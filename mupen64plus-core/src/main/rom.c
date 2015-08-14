@@ -43,10 +43,6 @@
 
 #define DEFAULT 16
 
-static romdatabase_entry* ini_search_by_md5(md5_byte_t* md5);
-
-static _romdatabase g_romdatabase;
-
 /* Global loaded rom memory space. */
 unsigned char* g_rom = NULL;
 /* Global loaded rom size. */
@@ -59,13 +55,64 @@ m64p_rom_header   ROM_HEADER;
 rom_params        ROM_PARAMS;
 m64p_rom_settings ROM_SETTINGS;
 
-static m64p_system_type rom_country_code_to_system_type(char country_code);
-static int rom_system_type_to_ai_dac_rate(m64p_system_type system_type);
-static int rom_system_type_to_vi_limit(m64p_system_type system_type);
-
 static const uint8_t Z64_SIGNATURE[4] = { 0x80, 0x37, 0x12, 0x40 };
 static const uint8_t V64_SIGNATURE[4] = { 0x37, 0x80, 0x40, 0x12 };
 static const uint8_t N64_SIGNATURE[4] = { 0x40, 0x12, 0x37, 0x80 };
+
+// Get the system type associated to a ROM country code.
+static m64p_system_type rom_country_code_to_system_type(char country_code)
+{
+   switch (country_code)
+   {
+      // PAL codes
+      case 0x44:
+      case 0x46:
+      case 0x49:
+      case 0x50:
+      case 0x53:
+      case 0x55:
+      case 0x58:
+      case 0x59:
+         return SYSTEM_PAL;
+
+         // NTSC codes
+      case 0x37:
+      case 0x41:
+      case 0x45:
+      case 0x4a:
+      default: // Fallback for unknown codes
+         return SYSTEM_NTSC;
+   }
+}
+
+// Get the VI (vertical interrupt) limit associated to a ROM system type.
+static int rom_system_type_to_vi_limit(m64p_system_type system_type)
+{
+   switch (system_type)
+   {
+      case SYSTEM_PAL:
+      case SYSTEM_MPAL:
+         return 50;
+
+      case SYSTEM_NTSC:
+      default:
+         return 60;
+   }
+}
+
+static int rom_system_type_to_ai_dac_rate(m64p_system_type system_type)
+{
+   switch (system_type)
+   {
+      case SYSTEM_PAL:
+         return 49656530;
+      case SYSTEM_MPAL:
+         return 48628316;
+      case SYSTEM_NTSC:
+      default:
+         return 48681812;
+   }
+}
 
 /* Tests if a file is a valid N64 rom by checking the first 4 bytes. */
 static int is_valid_rom(const unsigned char *buffer)
@@ -121,7 +168,6 @@ m64p_error open_rom(const unsigned char* romimage, unsigned int size)
 #include "rom_luts.c"
    md5_state_t state;
    md5_byte_t digest[16];
-   romdatabase_entry* entry;
    char buffer[256];
    unsigned char imagetype;
    int i;
@@ -213,26 +259,12 @@ m64p_error open_rom(const unsigned char* romimage, unsigned int size)
 
    if (!patch_applied)
    {
-      /* Look up this ROM in the .ini file and fill in goodname, etc */
-      if ((entry=ini_search_by_md5(digest)) != NULL ||
-            (entry=ini_search_by_crc(sl(ROM_HEADER.CRC1),sl(ROM_HEADER.CRC2))) != NULL)
-      {
-         strncpy(ROM_SETTINGS.goodname, entry->goodname, 255);
-         ROM_SETTINGS.goodname[255] = '\0';
-         ROM_SETTINGS.savetype = entry->savetype;
-         ROM_SETTINGS.status = entry->status;
-         ROM_SETTINGS.players = entry->players;
-         ROM_SETTINGS.rumble = entry->rumble;
-      }
-      else
-      {
-         strcpy(ROM_SETTINGS.goodname, ROM_PARAMS.headername);
-         strcat(ROM_SETTINGS.goodname, " (unknown rom)");
-         ROM_SETTINGS.savetype = NONE;
-         ROM_SETTINGS.status = 0;
-         ROM_SETTINGS.players = 0;
-         ROM_SETTINGS.rumble = 0;
-      }
+      strcpy(ROM_SETTINGS.goodname, ROM_PARAMS.headername);
+      strcat(ROM_SETTINGS.goodname, " (unknown rom)");
+      ROM_SETTINGS.savetype = NONE;
+      ROM_SETTINGS.status = 0;
+      ROM_SETTINGS.players = 0;
+      ROM_SETTINGS.rumble = 0;
    }
 
    for (i = 0; i < sizeof(lut_cpop)/sizeof(lut_cpop[0]); ++i)
@@ -303,307 +335,3 @@ m64p_error close_rom(void)
 
    return M64ERR_SUCCESS;
 }
-
-/********************************************************************************************/
-/* ROM utility functions */
-
-// Get the system type associated to a ROM country code.
-static m64p_system_type rom_country_code_to_system_type(char country_code)
-{
-   switch (country_code)
-   {
-      // PAL codes
-      case 0x44:
-      case 0x46:
-      case 0x49:
-      case 0x50:
-      case 0x53:
-      case 0x55:
-      case 0x58:
-      case 0x59:
-         return SYSTEM_PAL;
-
-         // NTSC codes
-      case 0x37:
-      case 0x41:
-      case 0x45:
-      case 0x4a:
-      default: // Fallback for unknown codes
-         return SYSTEM_NTSC;
-   }
-}
-
-// Get the VI (vertical interrupt) limit associated to a ROM system type.
-static int rom_system_type_to_vi_limit(m64p_system_type system_type)
-{
-   switch (system_type)
-   {
-      case SYSTEM_PAL:
-      case SYSTEM_MPAL:
-         return 50;
-
-      case SYSTEM_NTSC:
-      default:
-         return 60;
-   }
-}
-
-static int rom_system_type_to_ai_dac_rate(m64p_system_type system_type)
-{
-   switch (system_type)
-   {
-      case SYSTEM_PAL:
-         return 49656530;
-      case SYSTEM_MPAL:
-         return 48628316;
-      case SYSTEM_NTSC:
-      default:
-         return 48681812;
-   }
-}
-
-/********************************************************************************************/
-/* INI Rom database functions */
-
-void romdatabase_open(void)
-{
-   FILE *fPtr;
-   char buffer[256];
-   romdatabase_search* search = NULL;
-   romdatabase_search** next_search;
-
-   int counter, value, lineno;
-   unsigned char index;
-   const char *pathname = ConfigGetSharedDataFilepath("mupen64plus.ini");
-   DebugMessage(M64MSG_WARNING, "ROM Database: %s", pathname);
-
-   if(g_romdatabase.have_database)
-      return;
-
-   /* Open romdatabase. */
-   if (pathname == NULL || (fPtr = fopen(pathname, "rb")) == NULL)
-   {
-      DebugMessage(M64MSG_ERROR, "Unable to open rom database file '%s'.", pathname);
-      return;
-   }
-
-   g_romdatabase.have_database = 1;
-
-   /* Clear premade indices. */
-   for(counter = 0; counter < 255; ++counter)
-      g_romdatabase.crc_lists[counter] = NULL;
-   for(counter = 0; counter < 255; ++counter)
-      g_romdatabase.md5_lists[counter] = NULL;
-   g_romdatabase.list = NULL;
-
-   next_search = &g_romdatabase.list;
-
-   /* Parse ROM database file */
-   for (lineno = 1; fgets(buffer, 255, fPtr) != NULL; lineno++)
-   {
-      char *line = buffer;
-      ini_line l = ini_parse_line(&line);
-      switch (l.type)
-      {
-         case INI_SECTION:
-            {
-               md5_byte_t md5[16];
-               if (!parse_hex(l.name, md5, 16))
-               {
-                  DebugMessage(M64MSG_WARNING, "ROM Database: Invalid MD5 on line %i", lineno);
-                  search = NULL;
-                  continue;
-               }
-
-               *next_search = (romdatabase_search*)malloc(sizeof(romdatabase_search));
-               search = *next_search;
-               next_search = &search->next_entry;
-
-               search->entry.goodname = NULL;
-               memcpy(search->entry.md5, md5, 16);
-               search->entry.refmd5 = NULL;
-               search->entry.crc1 = 0;
-               search->entry.crc2 = 0;
-               search->entry.status = 0; /* Set default to 0 stars. */
-               search->entry.savetype = DEFAULT;
-               search->entry.players = DEFAULT;
-               search->entry.rumble = DEFAULT; 
-
-               search->next_entry = NULL;
-               search->next_crc = NULL;
-               /* Index MD5s by first 8 bits. */
-               index = search->entry.md5[0];
-               search->next_md5 = g_romdatabase.md5_lists[index];
-               g_romdatabase.md5_lists[index] = search;
-
-               break;
-            }
-         case INI_PROPERTY:
-            // This happens if there's stray properties before any section,
-            // or if some error happened on INI_SECTION (e.g. parsing).
-            if (search == NULL)
-            {
-               DebugMessage(M64MSG_WARNING, "ROM Database: Ignoring property on line %i", lineno);
-               continue;
-            }
-            if(!strcmp(l.name, "GoodName"))
-            {
-               search->entry.goodname = strdup(l.value);
-            }
-            else if(!strcmp(l.name, "CRC"))
-            {
-               char garbage_sweeper;
-               if (sscanf(l.value, "%X %X%c", &search->entry.crc1,
-                        &search->entry.crc2, &garbage_sweeper) == 2)
-               {
-                  /* Index CRCs by first 8 bits. */
-                  index = search->entry.crc1 >> 24;
-                  search->next_crc = g_romdatabase.crc_lists[index];
-                  g_romdatabase.crc_lists[index] = search;
-               }
-               else
-               {
-                  search->entry.crc1 = search->entry.crc2 = 0;
-                  DebugMessage(M64MSG_WARNING, "ROM Database: Invalid CRC on line %i", lineno);
-               }
-            }
-            else if(!strcmp(l.name, "RefMD5"))
-            {
-               md5_byte_t md5[16];
-               if (parse_hex(l.value, md5, 16))
-               {
-                  search->entry.refmd5 = (md5_byte_t*)malloc(16*sizeof(md5_byte_t));
-                  memcpy(search->entry.refmd5, md5, 16);
-               }
-               else
-                  DebugMessage(M64MSG_WARNING, "ROM Database: Invalid RefMD5 on line %i", lineno);
-            }
-            else if(!strcmp(l.name, "SaveType"))
-            {
-               if(!strcmp(l.value, "Eeprom 4KB"))
-                  search->entry.savetype = EEPROM_4KB;
-               else if(!strcmp(l.value, "Eeprom 16KB"))
-                  search->entry.savetype = EEPROM_16KB;
-               else if(!strcmp(l.value, "SRAM"))
-                  search->entry.savetype = SRAM;
-               else if(!strcmp(l.value, "Flash RAM"))
-                  search->entry.savetype = FLASH_RAM;
-               else if(!strcmp(l.value, "Controller Pack"))
-                  search->entry.savetype = CONTROLLER_PACK;
-               else if(!strcmp(l.value, "None"))
-                  search->entry.savetype = NONE;
-               else
-                  DebugMessage(M64MSG_WARNING, "ROM Database: Invalid save type on line %i", lineno);
-            }
-            else if(!strcmp(l.name, "Status"))
-            {
-               if (string_to_int(l.value, &value) && value >= 0 && value < 6)
-                  search->entry.status = value;
-               else
-                  DebugMessage(M64MSG_WARNING, "ROM Database: Invalid status on line %i", lineno);
-            }
-            else if(!strcmp(l.name, "Players"))
-            {
-               if (string_to_int(l.value, &value) && value >= 0 && value < 8)
-                  search->entry.players = value;
-               else
-                  DebugMessage(M64MSG_WARNING, "ROM Database: Invalid player count on line %i", lineno);
-            }
-            else if(!strcmp(l.name, "Rumble"))
-            {
-               if(!strcmp(l.value, "Yes"))
-                  search->entry.rumble = 1;
-               else if(!strcmp(l.value, "No"))
-                  search->entry.rumble = 0;
-               else
-                  DebugMessage(M64MSG_WARNING, "ROM Database: Invalid rumble string on line %i", lineno);
-            }
-            else
-            {
-               DebugMessage(M64MSG_WARNING, "ROM Database: Unknown property on line %i", lineno);
-            }
-            break;
-         default:
-            break;
-      }
-   }
-
-   fclose(fPtr);
-
-   /* Resolve RefMD5 references */
-   for (search = g_romdatabase.list; search != NULL; search = search->next_entry)
-   {
-      if (search->entry.refmd5 != NULL)
-      {
-         romdatabase_entry *ref = ini_search_by_md5(search->entry.refmd5);
-         if (ref != NULL)
-         {
-            if(ref->savetype!=DEFAULT)
-               search->entry.savetype = ref->savetype;
-            if(ref->status!=0)
-               search->entry.status = ref->status;
-            if(ref->players!=DEFAULT)
-               search->entry.players = ref->players;
-            if(ref->rumble!=DEFAULT)
-               search->entry.rumble = ref->rumble;
-         }
-         else
-            DebugMessage(M64MSG_WARNING, "ROM Database: Error solving RefMD5s");
-      }
-   }
-}
-
-void romdatabase_close(void)
-{
-   if (!g_romdatabase.have_database)
-      return;
-
-   while (g_romdatabase.list != NULL)
-   {
-      romdatabase_search* search = g_romdatabase.list->next_entry;
-      if(g_romdatabase.list->entry.goodname)
-         free(g_romdatabase.list->entry.goodname);
-      if(g_romdatabase.list->entry.refmd5)
-         free(g_romdatabase.list->entry.refmd5);
-      free(g_romdatabase.list);
-      g_romdatabase.list = search;
-   }
-}
-
-static romdatabase_entry* ini_search_by_md5(md5_byte_t* md5)
-{
-   romdatabase_search* search;
-
-   if(!g_romdatabase.have_database)
-      return NULL;
-
-   search = g_romdatabase.md5_lists[md5[0]];
-
-   while (search != NULL && memcmp(search->entry.md5, md5, 16) != 0)
-      search = search->next_md5;
-
-   if(search==NULL)
-      return NULL;
-
-   return &(search->entry);
-}
-
-romdatabase_entry* ini_search_by_crc(unsigned int crc1, unsigned int crc2)
-{
-   romdatabase_search* search;
-
-   if(!g_romdatabase.have_database) 
-      return NULL;
-
-   search = g_romdatabase.crc_lists[((crc1 >> 24) & 0xff)];
-
-   while (search != NULL && search->entry.crc1 != crc1 && search->entry.crc2 != crc2)
-      search = search->next_crc;
-
-   if(search == NULL) 
-      return NULL;
-
-   return &(search->entry);
-}
-
-
