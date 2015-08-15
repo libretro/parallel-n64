@@ -427,6 +427,7 @@ static const uint64_t lut_cpop[][2] = {
    { 0x3918834A15B50C29ULL, 1 }, /* Razor Freestyle Scooter (U) [!] */
    { 0xE921953313FBAFBDULL, 1 }, /* Ready 2 Rumble Boxing - Round 2 (U) [!] */
    { 0x9B500E8EE90550B3ULL, 1 }, /* Resident Evil 2 (E) (M2) [!] */
+   { 0x2F493DD02E64DFD9ULL, 1 }, /* Resident Evil 2 (U) [!] */
    { 0xAA18B1A507DB6AEBULL, 1 }, /* Resident Evil 2 (U) (V1.1) [!] */
    { 0x02D8366A6CABEF9CULL, 3 }, /* Road Rash 64 (E) [!] */
    { 0xF050746C247B820BULL, 3 }, /* Road Rash 64 (U) [!] */
