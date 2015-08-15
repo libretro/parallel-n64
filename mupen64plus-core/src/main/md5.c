@@ -54,13 +54,6 @@
 #include "md5.h"
 #include <string.h>
 
-#undef BYTE_ORDER   /* 1 = big-endian, -1 = little-endian, 0 = unknown */
-#ifdef ARCH_IS_BIG_ENDIAN
-#  define BYTE_ORDER (ARCH_IS_BIG_ENDIAN ? 1 : -1)
-#else
-#  define BYTE_ORDER 0
-#endif
-
 #define T_MASK ((md5_word_t)~0)
 #define T1 /* 0xd76aa478 */ (T_MASK ^ 0x28955b87)
 #define T2 /* 0xe8c7b756 */ (T_MASK ^ 0x173848a9)
@@ -135,7 +128,7 @@ md5_process(md5_state_t *pms, const md5_byte_t *data /*[64]*/)
     a = pms->abcd[0], b = pms->abcd[1],
     c = pms->abcd[2], d = pms->abcd[3];
     md5_word_t t;
-#if BYTE_ORDER > 0
+#ifdef MSB_FIRST
     /* Define storage only for big-endian CPUs. */
     md5_word_t X[16];
 #else
@@ -144,55 +137,35 @@ md5_process(md5_state_t *pms, const md5_byte_t *data /*[64]*/)
     const md5_word_t *X;
 #endif
 
+#ifdef MSB_FIRST
     {
-#if BYTE_ORDER == 0
-    /*
-     * Determine dynamically whether this is a big-endian or
-     * little-endian machine, since we can use a more efficient
-     * algorithm on the latter.
-     */
-    static const int w = 1;
+       /*
+        * On big-endian machines, we must arrange the bytes in the
+        * right order.
+        */
+       const md5_byte_t *xp = data;
+       int i;
 
-    if (*((const md5_byte_t *)&w)) /* dynamic little-endian */
-#endif
-#if BYTE_ORDER <= 0     /* little-endian */
+#define xbuf X      /* (static only) */
+       for (i = 0; i < 16; ++i, xp += 4)
+          xbuf[i] = xp[0] + (xp[1] << 8) + (xp[2] << 16) + (xp[3] << 24);
+    }
+#else
     {
-        /*
-         * On little-endian machines, we can process properly aligned
-         * data without copying it.
-         */
-        if (!((data - (const md5_byte_t *)0) & 3)) {
-        /* data are properly aligned */
-        X = (const md5_word_t *)data;
-        } else {
-        /* not aligned */
-        memcpy(xbuf, data, 64);
-        X = xbuf;
-        }
+       /*
+        * On little-endian machines, we can process properly aligned
+        * data without copying it.
+        */
+       if (!((data - (const md5_byte_t *)0) & 3)) {
+          /* data are properly aligned */
+          X = (const md5_word_t *)data;
+       } else {
+          /* not aligned */
+          memcpy(xbuf, data, 64);
+          X = xbuf;
+       }
     }
 #endif
-#if BYTE_ORDER == 0
-    else            /* dynamic big-endian */
-#endif
-#if BYTE_ORDER >= 0     /* big-endian */
-    {
-        /*
-         * On big-endian machines, we must arrange the bytes in the
-         * right order.
-         */
-        const md5_byte_t *xp = data;
-        int i;
-
-#  if BYTE_ORDER == 0
-        X = xbuf;       /* (dynamic only) */
-#  else
-#    define xbuf X      /* (static only) */
-#  endif
-        for (i = 0; i < 16; ++i, xp += 4)
-        xbuf[i] = xp[0] + (xp[1] << 8) + (xp[2] << 16) + (xp[3] << 24);
-    }
-#endif
-    }
 
 #define ROTATE_LEFT(x, n) (((x) << (n)) | ((x) >> (32 - (n))))
 
