@@ -60,9 +60,6 @@ EXPORT m64p_error CALL CoreStartup(int APIVersion, const char *ConfigPath, const
     if (l_CoreInit)
         return M64ERR_ALREADY_INIT;
 
-    /* set default AI backend */
-    SetAudioInterfaceBackend();
-
     /* very first thing is to set the callback functions for debug info and state changing*/
     SetDebugCallback(DebugCallback, Context);
     SetStateCallback(StateCallback, Context2);

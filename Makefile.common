@@ -51,7 +51,6 @@ SOURCES_C += \
 	$(CORE_DIR)/src/api/config.c \
 	$(CORE_DIR)/src/api/frontend.c \
 	$(CORE_DIR)/src/api/vidext_libretro.c \
-	$(CORE_DIR)/src/api/audio_backend.c \
 	$(CORE_DIR)/src/main/cheat.c \
 	$(CORE_DIR)/src/main/eventloop.c \
 	$(CORE_DIR)/src/main/main.c \

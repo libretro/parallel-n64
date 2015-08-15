@@ -31,11 +31,6 @@
 #include <stddef.h>
 
 
-
-/* Global function for use by frontend.c */
-m64p_error SetAudioInterfaceBackend(void);
-
-
 /* Thin wrappers to ease usage of backend callbacks - used by ai_controller.c */
 void set_audio_format(struct m64p_audio_backend* backend, unsigned int frequency, unsigned int bits);
 void push_audio_samples(struct m64p_audio_backend* backend, const void* buffer, size_t size);
