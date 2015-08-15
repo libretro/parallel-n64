@@ -30,6 +30,11 @@
 
 #include <string.h>
 
+void set_audio_format_via_libretro(void* user_data,
+      unsigned int frequency, unsigned int bits);
+
+void push_audio_samples_via_libretro(void* user_data, const void* buffer, size_t size);
+
 enum
 {
    AI_STATUS_BUSY = 0x40000000,
@@ -92,13 +97,13 @@ static void do_dma(struct ai_controller* ai, const struct ai_dma* dma)
          ? 16
          : 1 + ai->regs[AI_BITRATE_REG];
 
-      set_audio_format(&ai->backend, frequency, bits);
+      set_audio_format_via_libretro(&ai->backend, frequency, bits);
 
       ai->samples_format_changed = 0;
    }
 
    /* push audio samples to audio backend */
-   push_audio_samples(&ai->backend,
+   push_audio_samples_via_libretro(&ai->backend,
          &ai->ri->rdram.dram[dma->address/4], dma->length);
 
    /* schedule end of dma event */

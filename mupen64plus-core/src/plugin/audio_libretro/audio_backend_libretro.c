@@ -19,8 +19,6 @@
  *   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.          *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include "../audio_backend_compat.h"
-
 #include "api/m64p_types.h"
 #include "api/libretro.h"
 #include "ai/ai_controller.h"
@@ -93,7 +91,7 @@ void init_audio_libretro(void)
 /* A fully compliant implementation is not really possible with just the zilmar spec.
  * We assume bits == 16 (assumption compatible with audio-sdl plugin implementation)
  */
-static void set_audio_format_via_libretro(void* user_data,
+void set_audio_format_via_libretro(void* user_data,
       unsigned int frequency, unsigned int bits)
 {
    uint32_t saved_ai_dacrate = g_ai.regs[AI_DACRATE_REG];
@@ -115,7 +113,7 @@ static void set_audio_format_via_libretro(void* user_data,
 }
 
 /* Abuse core & audio plugin implementation details to obtain the desired effect. */
-static void push_audio_samples_via_libretro(void* user_data, const void* buffer, size_t size)
+void push_audio_samples_via_libretro(void* user_data, const void* buffer, size_t size)
 {
    int16_t *out;
    size_t max_frames, remain_frames;
@@ -188,10 +186,3 @@ audio_batch:
    g_ai.regs[AI_LEN_REG] = saved_ai_length;
    g_ai.regs[AI_DRAM_ADDR_REG] = saved_ai_dram;
 }
-
-const struct m64p_audio_backend AUDIO_BACKEND_COMPAT =
-{
-   NULL,
-   set_audio_format_via_libretro,
-   push_audio_samples_via_libretro
-};

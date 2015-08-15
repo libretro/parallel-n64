@@ -48,22 +48,8 @@ const struct m64p_audio_backend AUDIO_BACKEND_DUMMY =
 
 
 /* Global function for use by frontend.c */
-m64p_error SetAudioInterfaceBackend(const struct m64p_audio_backend* backend)
+m64p_error SetAudioInterfaceBackend()
 {
-    /* check input data */
-    if (backend == NULL)
-        return M64ERR_INPUT_ASSERT;
-
-    /* if any of the function pointers are NULL, use the dummy audio backend */
-    if (backend->set_audio_format == NULL ||
-        backend->push_audio_samples == NULL)
-    {
-        backend = &AUDIO_BACKEND_DUMMY;
-    }
-
-    /* otherwise use the user provided backend */
-    memcpy(&g_ai.backend, backend, sizeof(struct m64p_audio_backend));
-
     return M64ERR_SUCCESS;
 }
 

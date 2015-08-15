@@ -45,7 +45,6 @@
 #include "dd/dd_rom.h"
 #include "dd/dd_disk.h"
 #include "plugin/plugin.h"
-#include "plugin/audio_backend_compat.h"
 
 /* some local state variables */
 static int l_CoreInit   = 0;
@@ -62,7 +61,7 @@ EXPORT m64p_error CALL CoreStartup(int APIVersion, const char *ConfigPath, const
         return M64ERR_ALREADY_INIT;
 
     /* set default AI backend */
-    SetAudioInterfaceBackend(&AUDIO_BACKEND_COMPAT);
+    SetAudioInterfaceBackend();
 
     /* very first thing is to set the callback functions for debug info and state changing*/
     SetDebugCallback(DebugCallback, Context);
@@ -232,10 +231,7 @@ EXPORT m64p_error CALL CoreDoCommand(m64p_command Command, int ParamInt, void *P
 
 EXPORT m64p_error CALL CoreSetAudioInterfaceBackend(const struct m64p_audio_backend* backend)
 {
-   if (!l_CoreInit)
-      return M64ERR_NOT_INIT;
-
-   return SetAudioInterfaceBackend(backend);
+   return M64ERR_SUCCESS;
 }
 
 EXPORT m64p_error CALL CoreAddCheat(const char *CheatName, m64p_cheat_code *CodeList, int NumCodes)
