@@ -297,6 +297,7 @@ else ifeq ($(platform), emscripten)
 	TARGET := $(TARGET_NAME)_libretro_emscripten.bc
 	GLES := 1
 	GLIDE2GL=1
+	WITH_DYNAREC :=
 	CPUFLAGS += -Dasm=asmerror -D__asm__=asmerror -DNO_ASM -DNOSSE
 	SINGLE_THREAD := 1
 	PLATCFLAGS += -Drglgen_symbol_map=mupen_rglgen_symbol_map \
@@ -326,7 +327,7 @@ else ifneq (,$(findstring win,$(platform)))
 	PLATFORM_EXT := win32
 	CC = gcc
 	CXX = g++
-	
+
 endif
 
 include Makefile.common

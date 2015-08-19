@@ -3,3 +3,5 @@
 *.dylib
 *.so
 *.d
+*.js
+*.bc
