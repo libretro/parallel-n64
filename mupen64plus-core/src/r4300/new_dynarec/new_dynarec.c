@@ -7631,7 +7631,7 @@ void new_dynarec_init()
               PROT_READ | PROT_WRITE | PROT_EXEC,
               MAP_FIXED | MAP_PRIVATE | MAP_ANONYMOUS,
               -1, 0)) <= 0)
-     printf("mmap() failed")
+     printf("mmap() failed");
 #else
   if ((base_addr = mmap (NULL, 1<<TARGET_SIZE_2,
             PROT_READ | PROT_WRITE | PROT_EXEC,
@@ -7723,7 +7723,7 @@ void new_dynarec_cleanup(void)
 
 int new_recompile_block(int addr)
 {
-   int i, 
+   int i, j;
   unsigned int type,op,op2;
   int done=0;
    u_int pagelimit = 0;

@@ -206,10 +206,8 @@ SOURCES_C += $(LIBRETRO_DIR)/libretro.c \
 
 ifeq ($(WITH_CRC),brumme)
    SOURCES_C += $(LIBRETRO_DIR)/brumme_crc.c
-else ifeq ($(WITH_CRC),libretro)
-   SOURCES_C += $(LIBRETRO_DIR)/libretro_crc.c
 else
-   SOURCES_C += $(LIBRETRO_DIR)/glide64_crc.c
+   SOURCES_C += $(LIBRETRO_DIR)/libretro_crc.c
 endif
 
 SOURCES_GLN64VIDEO := $(VIDEODIR_GLN64)/3DMath.c \
