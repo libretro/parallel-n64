@@ -7641,7 +7641,7 @@ void new_dynarec_init()
 #endif
   out=(u_char *)base_addr;
 
-#ifdef MUPEN64
+#ifdef EMU_MUPEN64
   rdword=&readmem_dword;
   fake_pc.f.r.rs=(long long int *)&readmem_dword;
   fake_pc.f.r.rt=(long long int *)&readmem_dword;
