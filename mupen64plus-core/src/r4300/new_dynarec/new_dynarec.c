@@ -31,6 +31,8 @@ typedef unsigned int u_int;
 #define MAP_ANONYMOUS MAP_ANON
 #endif
 
+#define EMU_MUPEN64
+
 #include "../recomp.h"
 #include "../recomph.h" //include for function prototypes
 #include "../cp0_private.h"
@@ -89,7 +91,6 @@ struct ll_entry
 
 static u_int start;
 static u_int *source;
-static u_int pagelimit;
 static char insn[MAXBLOCK][10];
 static u_char itype[MAXBLOCK];
 static u_char opcode[MAXBLOCK];
@@ -325,50 +326,52 @@ static void nullf() {}
 
 #define log_message(...) DebugMessage(M64MSG_VERBOSE, __VA_ARGS__)
 
-static void tlb_hacks()
+#ifndef DISABLE_TLB
+static void tlb_hacks(void)
 {
-  // Goldeneye hack
-  if (strncmp((char *) ROM_HEADER.Name, "GOLDENEYE",9) == 0)
-  {
-    u_int addr;
-    int n;
-    switch (ROM_HEADER.destination_code&0xFF) 
-    {
-      case 0x45: // U
-        addr=0x34b30;
-        break;                   
-      case 0x4A: // J 
-        addr=0x34b70;    
-        break;    
-      case 0x50: // E 
-        addr=0x329f0;
-        break;                        
-      default: 
-        // Unknown country code
-        addr=0;
-        break;
-    }
-    u_int rom_addr=(u_int)g_rom;
-    #ifdef ROM_COPY
-    // Since memory_map is 32-bit, on 64-bit systems the rom needs to be
-    // in the lower 4G of memory to use this hack.  Copy it if necessary.
-    if((void *)g_rom > (void *)0xffffffff) {
-      munmap(ROM_COPY, 67108864);
-      if(mmap(ROM_COPY, 12582912,
-              PROT_READ | PROT_WRITE,
-              MAP_FIXED | MAP_PRIVATE | MAP_ANONYMOUS,
-              -1, 0) <= 0) {DebugMessage(M64MSG_ERROR, "mmap() failed");}
-      memcpy(ROM_COPY, g_rom, 12582912);
-      rom_addr=(u_int)ROM_COPY;
-    }
-    #endif
-    if(addr) {
-      for(n=0x7F000;n<0x80000;n++) {
-        memory_map[n]=(((u_int)(rom_addr+addr-0x7F000000))>>2)|0x40000000;
+   // Goldeneye hack
+   if (strncmp((char *) ROM_HEADER.Name, "GOLDENEYE",9) == 0)
+   {
+      u_int addr;
+      int n;
+      switch (ROM_HEADER.destination_code&0xFF) 
+      {
+         case 0x45: // U
+            addr=0x34b30;
+            break;                   
+         case 0x4A: // J 
+            addr=0x34b70;    
+            break;    
+         case 0x50: // E 
+            addr=0x329f0;
+            break;                        
+         default: 
+            // Unknown country code
+            addr=0;
+            break;
       }
-    }
-  }
+      u_int rom_addr=(u_int)g_rom;
+#ifdef ROM_COPY
+      // Since memory_map is 32-bit, on 64-bit systems the rom needs to be
+      // in the lower 4G of memory to use this hack.  Copy it if necessary.
+      if((void *)g_rom > (void *)0xffffffff) {
+         munmap(ROM_COPY, 67108864);
+         if(mmap(ROM_COPY, 12582912,
+                  PROT_READ | PROT_WRITE,
+                  MAP_FIXED | MAP_PRIVATE | MAP_ANONYMOUS,
+                  -1, 0) <= 0) {DebugMessage(M64MSG_ERROR, "mmap() failed");}
+         memcpy(ROM_COPY, g_rom, 12582912);
+         rom_addr=(u_int)ROM_COPY;
+      }
+#endif
+      if(addr) {
+         for(n=0x7F000;n<0x80000;n++) {
+            memory_map[n]=(((u_int)(rom_addr+addr-0x7F000000))>>2)|0x40000000;
+         }
+      }
+   }
 }
+#endif
 
 // Get address from virtual address
 // This is called from the recompiled JR/JALR instructions
@@ -1266,32 +1269,35 @@ static void invalidate_addr(u_int addr)
 // Anything could have changed, so invalidate everything.
 void invalidate_all_pages()
 {
-  u_int page;
-  for(page=0;page<4096;page++)
-    invalidate_page(page);
-  for(page=0;page<1048576;page++)
-    if(!invalid_code[page]) {
-      restore_candidate[(page&2047)>>3]|=1<<(page&7);
-      restore_candidate[((page&2047)>>3)+256]|=1<<(page&7);
-    }
-  #if NEW_DYNAREC == NEW_DYNAREC_ARM
-  __clear_cache((void *)base_addr,(void *)base_addr+(1<<TARGET_SIZE_2));
-  //cacheflush((void *)base_addr,(void *)base_addr+(1<<TARGET_SIZE_2),0);
-  #endif
-  #ifdef USE_MINI_HT
-  memset(mini_ht,-1,sizeof(mini_ht));
-  #endif
-  // TLB
-  for(page=0;page<0x100000;page++) {
-    if(tlb_LUT_r[page]) {
-      memory_map[page]=((tlb_LUT_r[page]&0xFFFFF000)-(page<<12)+(unsigned int)g_rdram-0x80000000)>>2;
-      if(!tlb_LUT_w[page]||!invalid_code[page])
-        memory_map[page]|=0x40000000; // Write protect
-    }
-    else memory_map[page]=-1;
-    if(page==0x80000) page=0xC0000;
-  }
-  tlb_hacks();
+   u_int page;
+   for(page=0;page<4096;page++)
+      invalidate_page(page);
+   for(page=0;page<1048576;page++)
+      if(!invalid_code[page]) {
+         restore_candidate[(page&2047)>>3]|=1<<(page&7);
+         restore_candidate[((page&2047)>>3)+256]|=1<<(page&7);
+      }
+#if NEW_DYNAREC == NEW_DYNAREC_ARM
+   __clear_cache((void *)base_addr,(void *)base_addr+(1<<TARGET_SIZE_2));
+   //cacheflush((void *)base_addr,(void *)base_addr+(1<<TARGET_SIZE_2),0);
+#endif
+#ifdef USE_MINI_HT
+   memset(mini_ht,-1,sizeof(mini_ht));
+#endif
+#ifndef DISABLE_TLB
+   for(page=0;page<0x100000;page++)
+   {
+      if(tlb_LUT_r[page])
+      {
+         memory_map[page]=((tlb_LUT_r[page]&0xFFFFF000)-(page<<12)+(unsigned int)g_rdram-0x80000000)>>2;
+         if(!tlb_LUT_w[page]||!invalid_code[page])
+            memory_map[page]|=0x40000000; // Write protect
+      }
+      else memory_map[page]=-1;
+      if(page==0x80000) page=0xC0000;
+   }
+   tlb_hacks();
+#endif
 }
 
 // Add an entry to jump_out after making a link
@@ -7616,26 +7622,32 @@ __attribute__ ((noinline)) void new_dynarec_init_mem_map(u_int rdrami)
 
 void new_dynarec_init()
 {
-  DebugMessage(M64MSG_INFO, "Init new dynarec");
+  int n;
+
+  printf("Init new dynarec\n");
 
 #if NEW_DYNAREC == NEW_DYNAREC_ARM
   if ((base_addr = mmap ((u_char *)BASE_ADDR, 1<<TARGET_SIZE_2,
-            PROT_READ | PROT_WRITE | PROT_EXEC,
-            MAP_FIXED | MAP_PRIVATE | MAP_ANONYMOUS,
-            -1, 0)) <= 0) {DebugMessage(M64MSG_ERROR, "mmap() failed");}
+              PROT_READ | PROT_WRITE | PROT_EXEC,
+              MAP_FIXED | MAP_PRIVATE | MAP_ANONYMOUS,
+              -1, 0)) <= 0)
+     printf("mmap() failed")
 #else
   if ((base_addr = mmap (NULL, 1<<TARGET_SIZE_2,
             PROT_READ | PROT_WRITE | PROT_EXEC,
             MAP_PRIVATE | MAP_ANONYMOUS,
-            -1, 0)) <= 0) {DebugMessage(M64MSG_ERROR, "mmap() failed");}
+            -1, 0)) <= 0)
+     printf("mmap() failed\n");
 #endif
   out=(u_char *)base_addr;
 
+#ifdef MUPEN64
   rdword=&readmem_dword;
   fake_pc.f.r.rs=(long long int *)&readmem_dword;
   fake_pc.f.r.rt=(long long int *)&readmem_dword;
   fake_pc.f.r.rd=(long long int *)&readmem_dword;
-  int n;
+#endif
+
   for(n=0x80000;n<0x80800;n++)
     invalid_code[n]=1;
   for(n=0;n<65536;n++)
@@ -7652,7 +7664,9 @@ void new_dynarec_init()
 #endif
   stop_after_jal=0;
   // TLB
+#ifndef DISABLE_TLB
   using_tlb=0;
+#endif
 #ifndef __clang__
   for(n=0;n<524288;n++) // 0 .. 0x7FFFFFFF
     memory_map[n]=-1;
@@ -7689,33 +7703,31 @@ void new_dynarec_init()
     readmemh[n] = read_nomemh_new;
     readmemd[n] = read_nomemd_new;
   }
+#ifndef DISABLE_TLB
   tlb_hacks();
+#endif
   arch_init();
 }
 
-void new_dynarec_cleanup()
+void new_dynarec_cleanup(void)
 {
-  int n;
-  if (munmap (base_addr, 1<<TARGET_SIZE_2) < 0) {DebugMessage(M64MSG_ERROR, "munmap() failed");}
-  for(n=0;n<4096;n++) ll_clear(jump_in+n);
-  for(n=0;n<4096;n++) ll_clear(jump_out+n);
-  for(n=0;n<4096;n++) ll_clear(jump_dirty+n);
-  #ifdef ROM_COPY
-  if (munmap (ROM_COPY, 67108864) < 0) {DebugMessage(M64MSG_ERROR, "munmap() failed");}
-  #endif
+   int n;
+   if (munmap (base_addr, 1<<TARGET_SIZE_2) < 0) {DebugMessage(M64MSG_ERROR, "munmap() failed");}
+   for(n=0;n<4096;n++) ll_clear(jump_in+n);
+   for(n=0;n<4096;n++) ll_clear(jump_out+n);
+   for(n=0;n<4096;n++) ll_clear(jump_dirty+n);
+#ifdef ROM_COPY
+   if (munmap (ROM_COPY, 67108864) < 0) {DebugMessage(M64MSG_ERROR, "munmap() failed");}
+#endif
 }
 
 int new_recompile_block(int addr)
 {
-/*
-  if(addr==0x800cd050) {
-    int block;
-    for(block=0x80000;block<0x80800;block++) invalidate_block(block);
-    int n;
-    for(n=0;n<=2048;n++) ll_clear(jump_dirty+n);
-  }
-*/
-  //if(g_cp0_regs[CP0_COUNT_REG] == 365117028) tracedebug=1;
+   int i, 
+  unsigned int type,op,op2;
+  int done=0;
+   u_int pagelimit = 0;
+
   assem_debug("NOTCOMPILED: addr = %x -> %x", (int)addr, (int)out);
 #if defined (COUNT_NOTCOMPILEDS )
   notcompiledCount++;
@@ -7730,38 +7742,43 @@ int new_recompile_block(int addr)
     rlist();
   }*/
   //rlist();
+ 
+
   start = (u_int)addr&~3;
   //assert(((u_int)addr&1)==0);
-  if ((int)addr >= 0xa4000000 && (int)addr < 0xa4001000) {
+  if ((int)addr >= 0xa4000000 && (int)addr < 0xa4001000)
+  {
     source = (u_int *)((u_int)g_sp.mem + start-0xa4000000);
     pagelimit = 0xa4001000;
   }
-  else if ((int)addr >= 0x80000000 && (int)addr < 0x80800000) {
+  else if ((int)addr >= 0x80000000 && (int)addr < 0x80800000)
+  {
     source = (u_int *)((u_int)g_rdram+start-0x80000000);
     pagelimit = 0x80800000;
   }
-  else if ((signed int)addr >= (signed int)0xC0000000) {
-    //DebugMessage(M64MSG_VERBOSE, "addr=%x mm=%x",(u_int)addr,(memory_map[start>>12]<<2));
-    //if(tlb_LUT_r[start>>12])
-      //source = (u_int *)(((int)g_rdram)+(tlb_LUT_r[start>>12]&0xFFFFF000)+(((int)addr)&0xFFF)-0x80000000);
-    if((signed int)memory_map[start>>12]>=0) {
-      source = (u_int *)((u_int)(start+(memory_map[start>>12]<<2)));
-      pagelimit=(start+4096)&0xFFFFF000;
-      int map=memory_map[start>>12];
-      int i;
-      for(i=0;i<5;i++) {
-        //DebugMessage(M64MSG_VERBOSE, "start: %x next: %x",map,memory_map[pagelimit>>12]);
-        if((map&0xBFFFFFFF)==(memory_map[pagelimit>>12]&0xBFFFFFFF)) pagelimit+=4096;
-      }
-      assem_debug("pagelimit=%x",pagelimit);
-      assem_debug("mapping=%x (%x)",memory_map[start>>12],(memory_map[start>>12]<<2)+start);
-    }
-    else {
-      assem_debug("Compile at unmapped memory address: %x ", (int)addr);
-      //assem_debug("start: %x next: %x",memory_map[start>>12],memory_map[(start+4096)>>12]);
-      return 1; // Caller will invoke exception handler
-    }
-    //DebugMessage(M64MSG_VERBOSE, "source= %x",(int)source);
+  else if ((signed int)addr >= (signed int)0xC0000000)
+  {
+     //DebugMessage(M64MSG_VERBOSE, "addr=%x mm=%x",(u_int)addr,(memory_map[start>>12]<<2));
+     //if(tlb_LUT_r[start>>12])
+     //source = (u_int *)(((int)g_rdram)+(tlb_LUT_r[start>>12]&0xFFFFF000)+(((int)addr)&0xFFF)-0x80000000);
+     if((signed int)memory_map[start>>12]>=0) {
+        source = (u_int *)((u_int)(start+(memory_map[start>>12]<<2)));
+        pagelimit=(start+4096)&0xFFFFF000;
+        int map=memory_map[start>>12];
+        int i;
+        for(i=0;i<5;i++) {
+           //DebugMessage(M64MSG_VERBOSE, "start: %x next: %x",map,memory_map[pagelimit>>12]);
+           if((map&0xBFFFFFFF)==(memory_map[pagelimit>>12]&0xBFFFFFFF)) pagelimit+=4096;
+        }
+        assem_debug("pagelimit=%x",pagelimit);
+        assem_debug("mapping=%x (%x)",memory_map[start>>12],(memory_map[start>>12]<<2)+start);
+     }
+     else {
+        assem_debug("Compile at unmapped memory address: %x ", (int)addr);
+        //assem_debug("start: %x next: %x",memory_map[start>>12],memory_map[(start+4096)>>12]);
+        return 1; // Caller will invoke exception handler
+     }
+     //DebugMessage(M64MSG_VERBOSE, "source= %x",(int)source);
   }
   else {
     //DebugMessage(M64MSG_VERBOSE, "Compile at bogus memory address: %x ", (int)addr);
@@ -7780,534 +7797,547 @@ int new_recompile_block(int addr)
   /* Pass 9: linker */
   /* Pass 10: garbage collection / free memory */
 
-  int i,j;
-  int done=0;
-  unsigned int type,op,op2;
-
-  //DebugMessage(M64MSG_VERBOSE, "addr = %x source = %x %x", addr,source,source[0]);
+  //printf("addr = %x source = %x %x", addr,source,source[0]);
   
   /* Pass 1 disassembly */
 
-  for(i=0;!done;i++) {
-    bt[i]=0;likely[i]=0;ooo[i]=0;op2=0;
-    minimum_free_regs[i]=0;
-    opcode[i]=op=source[i]>>26;
-    switch(op)
-    {
-      case 0x00: strcpy(insn[i],"special"); type=NI;
-        op2=source[i]&0x3f;
-        switch(op2)
+  for(i=0;!done;i++)
+  {
+     bt[i]=0;likely[i]=0;ooo[i]=0;op2=0;
+     minimum_free_regs[i]=0;
+     opcode[i]=op=source[i]>>26;
+
+     switch(op)
+     {
+        case 0x00:
+           strcpy(insn[i],"special"); type=NI;
+           op2=source[i]&0x3f;
+           switch(op2)
+           {
+              case 0x00: strcpy(insn[i],"SLL"); type=SHIFTIMM; break;
+              case 0x02: strcpy(insn[i],"SRL"); type=SHIFTIMM; break;
+              case 0x03: strcpy(insn[i],"SRA"); type=SHIFTIMM; break;
+              case 0x04: strcpy(insn[i],"SLLV"); type=SHIFT; break;
+              case 0x06: strcpy(insn[i],"SRLV"); type=SHIFT; break;
+              case 0x07: strcpy(insn[i],"SRAV"); type=SHIFT; break;
+              case 0x08: strcpy(insn[i],"JR"); type=RJUMP; break;
+              case 0x09: strcpy(insn[i],"JALR"); type=RJUMP; break;
+              case 0x0C: strcpy(insn[i],"SYSCALL"); type=SYSCALL; break;
+              case 0x0D: strcpy(insn[i],"BREAK"); type=OTHER; break;
+              case 0x0F: strcpy(insn[i],"SYNC"); type=OTHER; break;
+              case 0x10: strcpy(insn[i],"MFHI"); type=MOV; break;
+              case 0x11: strcpy(insn[i],"MTHI"); type=MOV; break;
+              case 0x12: strcpy(insn[i],"MFLO"); type=MOV; break;
+              case 0x13: strcpy(insn[i],"MTLO"); type=MOV; break;
+              case 0x14: strcpy(insn[i],"DSLLV"); type=SHIFT; break;
+              case 0x16: strcpy(insn[i],"DSRLV"); type=SHIFT; break;
+              case 0x17: strcpy(insn[i],"DSRAV"); type=SHIFT; break;
+              case 0x18: strcpy(insn[i],"MULT"); type=MULTDIV; break;
+              case 0x19: strcpy(insn[i],"MULTU"); type=MULTDIV; break;
+              case 0x1A: strcpy(insn[i],"DIV"); type=MULTDIV; break;
+              case 0x1B: strcpy(insn[i],"DIVU"); type=MULTDIV; break;
+              case 0x1C: strcpy(insn[i],"DMULT"); type=MULTDIV; break;
+              case 0x1D: strcpy(insn[i],"DMULTU"); type=MULTDIV; break;
+              case 0x1E: strcpy(insn[i],"DDIV"); type=MULTDIV; break;
+              case 0x1F: strcpy(insn[i],"DDIVU"); type=MULTDIV; break;
+              case 0x20: strcpy(insn[i],"ADD"); type=ALU; break;
+              case 0x21: strcpy(insn[i],"ADDU"); type=ALU; break;
+              case 0x22: strcpy(insn[i],"SUB"); type=ALU; break;
+              case 0x23: strcpy(insn[i],"SUBU"); type=ALU; break;
+              case 0x24: strcpy(insn[i],"AND"); type=ALU; break;
+              case 0x25: strcpy(insn[i],"OR"); type=ALU; break;
+              case 0x26: strcpy(insn[i],"XOR"); type=ALU; break;
+              case 0x27: strcpy(insn[i],"NOR"); type=ALU; break;
+              case 0x2A: strcpy(insn[i],"SLT"); type=ALU; break;
+              case 0x2B: strcpy(insn[i],"SLTU"); type=ALU; break;
+              case 0x2C: strcpy(insn[i],"DADD"); type=ALU; break;
+              case 0x2D: strcpy(insn[i],"DADDU"); type=ALU; break;
+              case 0x2E: strcpy(insn[i],"DSUB"); type=ALU; break;
+              case 0x2F: strcpy(insn[i],"DSUBU"); type=ALU; break;
+              case 0x30: strcpy(insn[i],"TGE"); type=NI; break;
+              case 0x31: strcpy(insn[i],"TGEU"); type=NI; break;
+              case 0x32: strcpy(insn[i],"TLT"); type=NI; break;
+              case 0x33: strcpy(insn[i],"TLTU"); type=NI; break;
+              case 0x34: strcpy(insn[i],"TEQ"); type=NI; break;
+              case 0x36: strcpy(insn[i],"TNE"); type=NI; break;
+              case 0x38: strcpy(insn[i],"DSLL"); type=SHIFTIMM; break;
+              case 0x3A: strcpy(insn[i],"DSRL"); type=SHIFTIMM; break;
+              case 0x3B: strcpy(insn[i],"DSRA"); type=SHIFTIMM; break;
+              case 0x3C: strcpy(insn[i],"DSLL32"); type=SHIFTIMM; break;
+              case 0x3E: strcpy(insn[i],"DSRL32"); type=SHIFTIMM; break;
+              case 0x3F: strcpy(insn[i],"DSRA32"); type=SHIFTIMM; break;
+           }
+           break;
+        case 0x01:
+           strcpy(insn[i],"regimm"); type=NI;
+           op2=(source[i]>>16)&0x1f;
+           switch(op2)
+           {
+              case 0x00: strcpy(insn[i],"BLTZ"); type=SJUMP; break;
+              case 0x01: strcpy(insn[i],"BGEZ"); type=SJUMP; break;
+              case 0x02: strcpy(insn[i],"BLTZL"); type=SJUMP; break;
+              case 0x03: strcpy(insn[i],"BGEZL"); type=SJUMP; break;
+              case 0x08: strcpy(insn[i],"TGEI"); type=NI; break;
+              case 0x09: strcpy(insn[i],"TGEIU"); type=NI; break;
+              case 0x0A: strcpy(insn[i],"TLTI"); type=NI; break;
+              case 0x0B: strcpy(insn[i],"TLTIU"); type=NI; break;
+              case 0x0C: strcpy(insn[i],"TEQI"); type=NI; break;
+              case 0x0E: strcpy(insn[i],"TNEI"); type=NI; break;
+              case 0x10: strcpy(insn[i],"BLTZAL"); type=SJUMP; break;
+              case 0x11: strcpy(insn[i],"BGEZAL"); type=SJUMP; break;
+              case 0x12: strcpy(insn[i],"BLTZALL"); type=SJUMP; break;
+              case 0x13: strcpy(insn[i],"BGEZALL"); type=SJUMP; break;
+           }
+           break;
+        case 0x02: strcpy(insn[i],"J"); type=UJUMP; break;
+        case 0x03: strcpy(insn[i],"JAL"); type=UJUMP; break;
+        case 0x04: strcpy(insn[i],"BEQ"); type=CJUMP; break;
+        case 0x05: strcpy(insn[i],"BNE"); type=CJUMP; break;
+        case 0x06: strcpy(insn[i],"BLEZ"); type=CJUMP; break;
+        case 0x07: strcpy(insn[i],"BGTZ"); type=CJUMP; break;
+        case 0x08: strcpy(insn[i],"ADDI"); type=IMM16; break;
+        case 0x09: strcpy(insn[i],"ADDIU"); type=IMM16; break;
+        case 0x0A: strcpy(insn[i],"SLTI"); type=IMM16; break;
+        case 0x0B: strcpy(insn[i],"SLTIU"); type=IMM16; break;
+        case 0x0C: strcpy(insn[i],"ANDI"); type=IMM16; break;
+        case 0x0D: strcpy(insn[i],"ORI"); type=IMM16; break;
+        case 0x0E: strcpy(insn[i],"XORI"); type=IMM16; break;
+        case 0x0F: strcpy(insn[i],"LUI"); type=IMM16; break;
+        case 0x10: strcpy(insn[i],"cop0"); type=NI;
+                   op2=(source[i]>>21)&0x1f;
+                   switch(op2)
+                   {
+                      case 0x00: strcpy(insn[i],"MFC0"); type=COP0; break;
+                      case 0x04: strcpy(insn[i],"MTC0"); type=COP0; break;
+                      case 0x10: strcpy(insn[i],"tlb"); type=NI;
+                                 switch(source[i]&0x3f)
+                                 {
+                                    case 0x01: strcpy(insn[i],"TLBR"); type=COP0; break;
+                                    case 0x02: strcpy(insn[i],"TLBWI"); type=COP0; break;
+                                    case 0x06: strcpy(insn[i],"TLBWR"); type=COP0; break;
+                                    case 0x08: strcpy(insn[i],"TLBP"); type=COP0; break;
+                                    case 0x18: strcpy(insn[i],"ERET"); type=COP0; break;
+                                 }
+                   }
+                   break;
+        case 0x11: strcpy(insn[i],"cop1"); type=NI;
+                   op2=(source[i]>>21)&0x1f;
+                   switch(op2)
+                   {
+                      case 0x00: strcpy(insn[i],"MFC1"); type=COP1; break;
+                      case 0x01: strcpy(insn[i],"DMFC1"); type=COP1; break;
+                      case 0x02: strcpy(insn[i],"CFC1"); type=COP1; break;
+                      case 0x04: strcpy(insn[i],"MTC1"); type=COP1; break;
+                      case 0x05: strcpy(insn[i],"DMTC1"); type=COP1; break;
+                      case 0x06: strcpy(insn[i],"CTC1"); type=COP1; break;
+                      case 0x08: strcpy(insn[i],"BC1"); type=FJUMP;
+                                 switch((source[i]>>16)&0x3)
+                                 {
+                                    case 0x00: strcpy(insn[i],"BC1F"); break;
+                                    case 0x01: strcpy(insn[i],"BC1T"); break;
+                                    case 0x02: strcpy(insn[i],"BC1FL"); break;
+                                    case 0x03: strcpy(insn[i],"BC1TL"); break;
+                                 }
+                                 break;
+                      case 0x10: strcpy(insn[i],"C1.S"); type=NI;
+                                 switch(source[i]&0x3f)
+                                 {
+                                    case 0x00: strcpy(insn[i],"ADD.S"); type=FLOAT; break;
+                                    case 0x01: strcpy(insn[i],"SUB.S"); type=FLOAT; break;
+                                    case 0x02: strcpy(insn[i],"MUL.S"); type=FLOAT; break;
+                                    case 0x03: strcpy(insn[i],"DIV.S"); type=FLOAT; break;
+                                    case 0x04: strcpy(insn[i],"SQRT.S"); type=FLOAT; break;
+                                    case 0x05: strcpy(insn[i],"ABS.S"); type=FLOAT; break;
+                                    case 0x06: strcpy(insn[i],"MOV.S"); type=FLOAT; break;
+                                    case 0x07: strcpy(insn[i],"NEG.S"); type=FLOAT; break;
+                                    case 0x08: strcpy(insn[i],"ROUND.L.S"); type=FCONV; break;
+                                    case 0x09: strcpy(insn[i],"TRUNC.L.S"); type=FCONV; break;
+                                    case 0x0A: strcpy(insn[i],"CEIL.L.S"); type=FCONV; break;
+                                    case 0x0B: strcpy(insn[i],"FLOOR.L.S"); type=FCONV; break;
+                                    case 0x0C: strcpy(insn[i],"ROUND.W.S"); type=FCONV; break;
+                                    case 0x0D: strcpy(insn[i],"TRUNC.W.S"); type=FCONV; break;
+                                    case 0x0E: strcpy(insn[i],"CEIL.W.S"); type=FCONV; break;
+                                    case 0x0F: strcpy(insn[i],"FLOOR.W.S"); type=FCONV; break;
+                                    case 0x21: strcpy(insn[i],"CVT.D.S"); type=FCONV; break;
+                                    case 0x24: strcpy(insn[i],"CVT.W.S"); type=FCONV; break;
+                                    case 0x25: strcpy(insn[i],"CVT.L.S"); type=FCONV; break;
+                                    case 0x30: strcpy(insn[i],"C.F.S"); type=FCOMP; break;
+                                    case 0x31: strcpy(insn[i],"C.UN.S"); type=FCOMP; break;
+                                    case 0x32: strcpy(insn[i],"C.EQ.S"); type=FCOMP; break;
+                                    case 0x33: strcpy(insn[i],"C.UEQ.S"); type=FCOMP; break;
+                                    case 0x34: strcpy(insn[i],"C.OLT.S"); type=FCOMP; break;
+                                    case 0x35: strcpy(insn[i],"C.ULT.S"); type=FCOMP; break;
+                                    case 0x36: strcpy(insn[i],"C.OLE.S"); type=FCOMP; break;
+                                    case 0x37: strcpy(insn[i],"C.ULE.S"); type=FCOMP; break;
+                                    case 0x38: strcpy(insn[i],"C.SF.S"); type=FCOMP; break;
+                                    case 0x39: strcpy(insn[i],"C.NGLE.S"); type=FCOMP; break;
+                                    case 0x3A: strcpy(insn[i],"C.SEQ.S"); type=FCOMP; break;
+                                    case 0x3B: strcpy(insn[i],"C.NGL.S"); type=FCOMP; break;
+                                    case 0x3C: strcpy(insn[i],"C.LT.S"); type=FCOMP; break;
+                                    case 0x3D: strcpy(insn[i],"C.NGE.S"); type=FCOMP; break;
+                                    case 0x3E: strcpy(insn[i],"C.LE.S"); type=FCOMP; break;
+                                    case 0x3F: strcpy(insn[i],"C.NGT.S"); type=FCOMP; break;
+                                 }
+                                 break;
+                      case 0x11: strcpy(insn[i],"C1.D"); type=NI;
+                                 switch(source[i]&0x3f)
+                                 {
+                                    case 0x00: strcpy(insn[i],"ADD.D"); type=FLOAT; break;
+                                    case 0x01: strcpy(insn[i],"SUB.D"); type=FLOAT; break;
+                                    case 0x02: strcpy(insn[i],"MUL.D"); type=FLOAT; break;
+                                    case 0x03: strcpy(insn[i],"DIV.D"); type=FLOAT; break;
+                                    case 0x04: strcpy(insn[i],"SQRT.D"); type=FLOAT; break;
+                                    case 0x05: strcpy(insn[i],"ABS.D"); type=FLOAT; break;
+                                    case 0x06: strcpy(insn[i],"MOV.D"); type=FLOAT; break;
+                                    case 0x07: strcpy(insn[i],"NEG.D"); type=FLOAT; break;
+                                    case 0x08: strcpy(insn[i],"ROUND.L.D"); type=FCONV; break;
+                                    case 0x09: strcpy(insn[i],"TRUNC.L.D"); type=FCONV; break;
+                                    case 0x0A: strcpy(insn[i],"CEIL.L.D"); type=FCONV; break;
+                                    case 0x0B: strcpy(insn[i],"FLOOR.L.D"); type=FCONV; break;
+                                    case 0x0C: strcpy(insn[i],"ROUND.W.D"); type=FCONV; break;
+                                    case 0x0D: strcpy(insn[i],"TRUNC.W.D"); type=FCONV; break;
+                                    case 0x0E: strcpy(insn[i],"CEIL.W.D"); type=FCONV; break;
+                                    case 0x0F: strcpy(insn[i],"FLOOR.W.D"); type=FCONV; break;
+                                    case 0x20: strcpy(insn[i],"CVT.S.D"); type=FCONV; break;
+                                    case 0x24: strcpy(insn[i],"CVT.W.D"); type=FCONV; break;
+                                    case 0x25: strcpy(insn[i],"CVT.L.D"); type=FCONV; break;
+                                    case 0x30: strcpy(insn[i],"C.F.D"); type=FCOMP; break;
+                                    case 0x31: strcpy(insn[i],"C.UN.D"); type=FCOMP; break;
+                                    case 0x32: strcpy(insn[i],"C.EQ.D"); type=FCOMP; break;
+                                    case 0x33: strcpy(insn[i],"C.UEQ.D"); type=FCOMP; break;
+                                    case 0x34: strcpy(insn[i],"C.OLT.D"); type=FCOMP; break;
+                                    case 0x35: strcpy(insn[i],"C.ULT.D"); type=FCOMP; break;
+                                    case 0x36: strcpy(insn[i],"C.OLE.D"); type=FCOMP; break;
+                                    case 0x37: strcpy(insn[i],"C.ULE.D"); type=FCOMP; break;
+                                    case 0x38: strcpy(insn[i],"C.SF.D"); type=FCOMP; break;
+                                    case 0x39: strcpy(insn[i],"C.NGLE.D"); type=FCOMP; break;
+                                    case 0x3A: strcpy(insn[i],"C.SEQ.D"); type=FCOMP; break;
+                                    case 0x3B: strcpy(insn[i],"C.NGL.D"); type=FCOMP; break;
+                                    case 0x3C: strcpy(insn[i],"C.LT.D"); type=FCOMP; break;
+                                    case 0x3D: strcpy(insn[i],"C.NGE.D"); type=FCOMP; break;
+                                    case 0x3E: strcpy(insn[i],"C.LE.D"); type=FCOMP; break;
+                                    case 0x3F: strcpy(insn[i],"C.NGT.D"); type=FCOMP; break;
+                                 }
+                                 break;
+                      case 0x14: strcpy(insn[i],"C1.W"); type=NI;
+                                 switch(source[i]&0x3f)
+                                 {
+                                    case 0x20: strcpy(insn[i],"CVT.S.W"); type=FCONV; break;
+                                    case 0x21: strcpy(insn[i],"CVT.D.W"); type=FCONV; break;
+                                 }
+                                 break;
+                      case 0x15: strcpy(insn[i],"C1.L"); type=NI;
+                                 switch(source[i]&0x3f)
+                                 {
+                                    case 0x20: strcpy(insn[i],"CVT.S.L"); type=FCONV; break;
+                                    case 0x21: strcpy(insn[i],"CVT.D.L"); type=FCONV; break;
+                                 }
+                                 break;
+                   }
+                   break;
+        case 0x14: strcpy(insn[i],"BEQL"); type=CJUMP; break;
+        case 0x15: strcpy(insn[i],"BNEL"); type=CJUMP; break;
+        case 0x16: strcpy(insn[i],"BLEZL"); type=CJUMP; break;
+        case 0x17: strcpy(insn[i],"BGTZL"); type=CJUMP; break;
+        case 0x18: strcpy(insn[i],"DADDI"); type=IMM16; break;
+        case 0x19: strcpy(insn[i],"DADDIU"); type=IMM16; break;
+        case 0x1A: strcpy(insn[i],"LDL"); type=LOADLR; break;
+        case 0x1B: strcpy(insn[i],"LDR"); type=LOADLR; break;
+        case 0x20: strcpy(insn[i],"LB"); type=LOAD; break;
+        case 0x21: strcpy(insn[i],"LH"); type=LOAD; break;
+        case 0x22: strcpy(insn[i],"LWL"); type=LOADLR; break;
+        case 0x23: strcpy(insn[i],"LW"); type=LOAD; break;
+        case 0x24: strcpy(insn[i],"LBU"); type=LOAD; break;
+        case 0x25: strcpy(insn[i],"LHU"); type=LOAD; break;
+        case 0x26: strcpy(insn[i],"LWR"); type=LOADLR; break;
+        case 0x27: strcpy(insn[i],"LWU"); type=LOAD; break;
+        case 0x28: strcpy(insn[i],"SB"); type=STORE; break;
+        case 0x29: strcpy(insn[i],"SH"); type=STORE; break;
+        case 0x2A: strcpy(insn[i],"SWL"); type=STORELR; break;
+        case 0x2B: strcpy(insn[i],"SW"); type=STORE; break;
+        case 0x2C: strcpy(insn[i],"SDL"); type=STORELR; break;
+        case 0x2D: strcpy(insn[i],"SDR"); type=STORELR; break;
+        case 0x2E: strcpy(insn[i],"SWR"); type=STORELR; break;
+        case 0x2F: strcpy(insn[i],"CACHE"); type=NOP; break;
+        case 0x30: strcpy(insn[i],"LL"); type=NI; break;
+        case 0x31: strcpy(insn[i],"LWC1"); type=C1LS; break;
+        case 0x34: strcpy(insn[i],"LLD"); type=NI; break;
+        case 0x35: strcpy(insn[i],"LDC1"); type=C1LS; break;
+        case 0x37: strcpy(insn[i],"LD"); type=LOAD; break;
+        case 0x38: strcpy(insn[i],"SC"); type=NI; break;
+        case 0x39: strcpy(insn[i],"SWC1"); type=C1LS; break;
+        case 0x3C: strcpy(insn[i],"SCD"); type=NI; break;
+        case 0x3D: strcpy(insn[i],"SDC1"); type=C1LS; break;
+        case 0x3F: strcpy(insn[i],"SD"); type=STORE; break;
+        default: strcpy(insn[i],"???"); type=NI; break;
+     }
+
+     itype[i]=type;
+     opcode2[i]=op2;
+     /* Get registers/immediates */
+     lt1[i]=0;
+     us1[i]=0;
+     us2[i]=0;
+     dep1[i]=0;
+     dep2[i]=0;
+
+     switch(type)
+     {
+        case LOAD:
+           rs1[i]=(source[i]>>21)&0x1f;
+           rs2[i]=0;
+           rt1[i]=(source[i]>>16)&0x1f;
+           rt2[i]=0;
+           imm[i]=(short)source[i];
+           break;
+        case STORE:
+        case STORELR:
+           rs1[i]=(source[i]>>21)&0x1f;
+           rs2[i]=(source[i]>>16)&0x1f;
+           rt1[i]=0;
+           rt2[i]=0;
+           imm[i]=(short)source[i];
+           if(op==0x2c||op==0x2d||op==0x3f)
+              us1[i]=rs2[i]; // 64-bit SDL/SDR/SD
+           break;
+        case LOADLR:
+           // LWL/LWR only load part of the register,
+           // therefore the target register must be treated as a source too
+           rs1[i]=(source[i]>>21)&0x1f;
+           rs2[i]=(source[i]>>16)&0x1f;
+           rt1[i]=(source[i]>>16)&0x1f;
+           rt2[i]=0;
+           imm[i]=(short)source[i];
+           if(op==0x1a||op==0x1b)
+              us1[i]=rs2[i]; // LDR/LDL
+           if(op==0x26)
+              dep1[i]=rt1[i]; // LWR
+           break;
+        case IMM16:
+           if (op==0x0f)
+              rs1[i]=0; // LUI instruction has no source register
+           else
+              rs1[i]=(source[i]>>21)&0x1f;
+           rs2[i]=0;
+           rt1[i]=(source[i]>>16)&0x1f;
+           rt2[i]=0;
+           if(op>=0x0c&&op<=0x0e) { // ANDI/ORI/XORI
+              imm[i]=(unsigned short)source[i];
+           }else{
+              imm[i]=(short)source[i];
+           }
+           if(op==0x18||op==0x19) us1[i]=rs1[i]; // DADDI/DADDIU
+           if(op==0x0a||op==0x0b) us1[i]=rs1[i]; // SLTI/SLTIU
+           if(op==0x0d||op==0x0e) dep1[i]=rs1[i]; // ORI/XORI
+           break;
+        case UJUMP:
+           rs1[i]=0;
+           rs2[i]=0;
+           rt1[i]=0;
+           rt2[i]=0;
+           // The JAL instruction writes to r31.
+           if (op&1)
+              rt1[i]=31;
+           rs2[i]=CCREG;
+           break;
+        case RJUMP:
+           rs1[i]=(source[i]>>21)&0x1f;
+           rs2[i]=0;
+           rt1[i]=0;
+           rt2[i]=0;
+           // The JALR instruction writes to rd.
+           if (op2&1) {
+              rt1[i]=(source[i]>>11)&0x1f;
+           }
+           rs2[i]=CCREG;
+           break;
+        case CJUMP:
+           rs1[i]=(source[i]>>21)&0x1f;
+           rs2[i]=(source[i]>>16)&0x1f;
+           rt1[i]=0;
+           rt2[i]=0;
+           if(op&2) { // BGTZ/BLEZ
+              rs2[i]=0;
+           }
+           us1[i]=rs1[i];
+           us2[i]=rs2[i];
+           likely[i]=op>>4;
+           break;
+        case SJUMP:
+           rs1[i]=(source[i]>>21)&0x1f;
+           rs2[i]=CCREG;
+           rt1[i]=0;
+           rt2[i]=0;
+           us1[i]=rs1[i];
+           if(op2&0x10) { // BxxAL
+              rt1[i]=31;
+              // NOTE: If the branch is not taken, r31 is still overwritten
+           }
+           likely[i]=(op2&2)>>1;
+           break;
+        case FJUMP:
+           rs1[i]=FSREG;
+           rs2[i]=CSREG;
+           rt1[i]=0;
+           rt2[i]=0;
+           likely[i]=((source[i])>>17)&1;
+           break;
+        case ALU:
+           rs1[i]=(source[i]>>21)&0x1f; // source
+           rs2[i]=(source[i]>>16)&0x1f; // subtract amount
+           rt1[i]=(source[i]>>11)&0x1f; // destination
+           rt2[i]=0;
+           if(op2==0x2a||op2==0x2b) { // SLT/SLTU
+              us1[i]=rs1[i];us2[i]=rs2[i];
+           }
+           else if(op2>=0x24&&op2<=0x27) { // AND/OR/XOR/NOR
+              dep1[i]=rs1[i];dep2[i]=rs2[i];
+           }
+           else if(op2>=0x2c&&op2<=0x2f) { // DADD/DSUB
+              dep1[i]=rs1[i];dep2[i]=rs2[i];
+           }
+           break;
+        case MULTDIV:
+           rs1[i]=(source[i]>>21)&0x1f; // source
+           rs2[i]=(source[i]>>16)&0x1f; // divisor
+           rt1[i]=HIREG;
+           rt2[i]=LOREG;
+           if (op2>=0x1c&&op2<=0x1f) { // DMULT/DMULTU/DDIV/DDIVU
+              us1[i]=rs1[i];us2[i]=rs2[i];
+           }
+           break;
+        case MOV:
+           rs1[i]=0;
+           rs2[i]=0;
+           rt1[i]=0;
+           rt2[i]=0;
+           if(op2==0x10) rs1[i]=HIREG; // MFHI
+           if(op2==0x11) rt1[i]=HIREG; // MTHI
+           if(op2==0x12) rs1[i]=LOREG; // MFLO
+           if(op2==0x13) rt1[i]=LOREG; // MTLO
+           if((op2&0x1d)==0x10) rt1[i]=(source[i]>>11)&0x1f; // MFxx
+           if((op2&0x1d)==0x11) rs1[i]=(source[i]>>21)&0x1f; // MTxx
+           dep1[i]=rs1[i];
+           break;
+        case SHIFT:
+           rs1[i]=(source[i]>>16)&0x1f; // target of shift
+           rs2[i]=(source[i]>>21)&0x1f; // shift amount
+           rt1[i]=(source[i]>>11)&0x1f; // destination
+           rt2[i]=0;
+           // DSLLV/DSRLV/DSRAV are 64-bit
+           if(op2>=0x14&&op2<=0x17) us1[i]=rs1[i];
+           break;
+        case SHIFTIMM:
+           rs1[i]=(source[i]>>16)&0x1f;
+           rs2[i]=0;
+           rt1[i]=(source[i]>>11)&0x1f;
+           rt2[i]=0;
+           imm[i]=(source[i]>>6)&0x1f;
+           // DSxx32 instructions
+           if(op2>=0x3c) imm[i]|=0x20;
+           // DSLL/DSRL/DSRA/DSRA32/DSRL32 but not DSLL32 require 64-bit source
+           if(op2>=0x38&&op2!=0x3c) us1[i]=rs1[i];
+           break;
+        case COP0:
+           rs1[i]=0;
+           rs2[i]=0;
+           rt1[i]=0;
+           rt2[i]=0;
+           if(op2==0) rt1[i]=(source[i]>>16)&0x1F; // MFC0
+           if(op2==4) rs1[i]=(source[i]>>16)&0x1F; // MTC0
+           if(op2==4&&((source[i]>>11)&0x1f)==12) rt2[i]=CSREG; // Status
+           if(op2==16) if((source[i]&0x3f)==0x18) rs2[i]=CCREG; // ERET
+           break;
+        case COP1:
+           rs1[i]=0;
+           rs2[i]=0;
+           rt1[i]=0;
+           rt2[i]=0;
+           if(op2<3) rt1[i]=(source[i]>>16)&0x1F; // MFC1/DMFC1/CFC1
+           if(op2>3) rs1[i]=(source[i]>>16)&0x1F; // MTC1/DMTC1/CTC1
+           if(op2==5) us1[i]=rs1[i]; // DMTC1
+           rs2[i]=CSREG;
+           break;
+        case C1LS:
+           rs1[i]=(source[i]>>21)&0x1F;
+           rs2[i]=CSREG;
+           rt1[i]=0;
+           rt2[i]=0;
+           imm[i]=(short)source[i];
+           break;
+        case FLOAT:
+        case FCONV:
+           rs1[i]=0;
+           rs2[i]=CSREG;
+           rt1[i]=0;
+           rt2[i]=0;
+           break;
+        case FCOMP:
+           rs1[i]=FSREG;
+           rs2[i]=CSREG;
+           rt1[i]=FSREG;
+           rt2[i]=0;
+           break;
+        case SYSCALL:
+           rs1[i]=CCREG;
+           rs2[i]=0;
+           rt1[i]=0;
+           rt2[i]=0;
+           break;
+        default:
+           rs1[i]=0;
+           rs2[i]=0;
+           rt1[i]=0;
+           rt2[i]=0;
+     }
+
+     /* Calculate branch target addresses */
+     if(type==UJUMP)
+        ba[i]=((start+i*4+4)&0xF0000000)|(((unsigned int)source[i]<<6)>>4);
+     else if(type==CJUMP&&rs1[i]==rs2[i]&&(op&1))
+        ba[i]=start+i*4+8; // Ignore never taken branch
+     else if(type==SJUMP&&rs1[i]==0&&!(op2&1))
+        ba[i]=start+i*4+8; // Ignore never taken branch
+     else if(type==CJUMP||type==SJUMP||type==FJUMP)
+        ba[i]=start+i*4+4+((signed int)((unsigned int)source[i]<<16)>>14);
+     else
+        ba[i]=-1;
+
+     /* Is this the end of the block? */
+     if(i>0&&(itype[i-1]==UJUMP||itype[i-1]==RJUMP||(source[i-1]>>16)==0x1000))
+     {
+        if(rt1[i-1]==0) /* Continue past subroutine call (JAL) */
+        { 
+           done=1;
+           // Does the block continue due to a branch?
+           for(j=i-1;j>=0;j--)
+           {
+              if(ba[j]==start+i*4) done=j=0; // Branch into delay slot
+              if(ba[j]==start+i*4+4) done=j=0;
+              if(ba[j]==start+i*4+8) done=j=0;
+           }
+        }
+        else
         {
-          case 0x00: strcpy(insn[i],"SLL"); type=SHIFTIMM; break;
-          case 0x02: strcpy(insn[i],"SRL"); type=SHIFTIMM; break;
-          case 0x03: strcpy(insn[i],"SRA"); type=SHIFTIMM; break;
-          case 0x04: strcpy(insn[i],"SLLV"); type=SHIFT; break;
-          case 0x06: strcpy(insn[i],"SRLV"); type=SHIFT; break;
-          case 0x07: strcpy(insn[i],"SRAV"); type=SHIFT; break;
-          case 0x08: strcpy(insn[i],"JR"); type=RJUMP; break;
-          case 0x09: strcpy(insn[i],"JALR"); type=RJUMP; break;
-          case 0x0C: strcpy(insn[i],"SYSCALL"); type=SYSCALL; break;
-          case 0x0D: strcpy(insn[i],"BREAK"); type=OTHER; break;
-          case 0x0F: strcpy(insn[i],"SYNC"); type=OTHER; break;
-          case 0x10: strcpy(insn[i],"MFHI"); type=MOV; break;
-          case 0x11: strcpy(insn[i],"MTHI"); type=MOV; break;
-          case 0x12: strcpy(insn[i],"MFLO"); type=MOV; break;
-          case 0x13: strcpy(insn[i],"MTLO"); type=MOV; break;
-          case 0x14: strcpy(insn[i],"DSLLV"); type=SHIFT; break;
-          case 0x16: strcpy(insn[i],"DSRLV"); type=SHIFT; break;
-          case 0x17: strcpy(insn[i],"DSRAV"); type=SHIFT; break;
-          case 0x18: strcpy(insn[i],"MULT"); type=MULTDIV; break;
-          case 0x19: strcpy(insn[i],"MULTU"); type=MULTDIV; break;
-          case 0x1A: strcpy(insn[i],"DIV"); type=MULTDIV; break;
-          case 0x1B: strcpy(insn[i],"DIVU"); type=MULTDIV; break;
-          case 0x1C: strcpy(insn[i],"DMULT"); type=MULTDIV; break;
-          case 0x1D: strcpy(insn[i],"DMULTU"); type=MULTDIV; break;
-          case 0x1E: strcpy(insn[i],"DDIV"); type=MULTDIV; break;
-          case 0x1F: strcpy(insn[i],"DDIVU"); type=MULTDIV; break;
-          case 0x20: strcpy(insn[i],"ADD"); type=ALU; break;
-          case 0x21: strcpy(insn[i],"ADDU"); type=ALU; break;
-          case 0x22: strcpy(insn[i],"SUB"); type=ALU; break;
-          case 0x23: strcpy(insn[i],"SUBU"); type=ALU; break;
-          case 0x24: strcpy(insn[i],"AND"); type=ALU; break;
-          case 0x25: strcpy(insn[i],"OR"); type=ALU; break;
-          case 0x26: strcpy(insn[i],"XOR"); type=ALU; break;
-          case 0x27: strcpy(insn[i],"NOR"); type=ALU; break;
-          case 0x2A: strcpy(insn[i],"SLT"); type=ALU; break;
-          case 0x2B: strcpy(insn[i],"SLTU"); type=ALU; break;
-          case 0x2C: strcpy(insn[i],"DADD"); type=ALU; break;
-          case 0x2D: strcpy(insn[i],"DADDU"); type=ALU; break;
-          case 0x2E: strcpy(insn[i],"DSUB"); type=ALU; break;
-          case 0x2F: strcpy(insn[i],"DSUBU"); type=ALU; break;
-          case 0x30: strcpy(insn[i],"TGE"); type=NI; break;
-          case 0x31: strcpy(insn[i],"TGEU"); type=NI; break;
-          case 0x32: strcpy(insn[i],"TLT"); type=NI; break;
-          case 0x33: strcpy(insn[i],"TLTU"); type=NI; break;
-          case 0x34: strcpy(insn[i],"TEQ"); type=NI; break;
-          case 0x36: strcpy(insn[i],"TNE"); type=NI; break;
-          case 0x38: strcpy(insn[i],"DSLL"); type=SHIFTIMM; break;
-          case 0x3A: strcpy(insn[i],"DSRL"); type=SHIFTIMM; break;
-          case 0x3B: strcpy(insn[i],"DSRA"); type=SHIFTIMM; break;
-          case 0x3C: strcpy(insn[i],"DSLL32"); type=SHIFTIMM; break;
-          case 0x3E: strcpy(insn[i],"DSRL32"); type=SHIFTIMM; break;
-          case 0x3F: strcpy(insn[i],"DSRA32"); type=SHIFTIMM; break;
+           if(stop_after_jal) done=1;
+           // Stop on BREAK
+           if((source[i+1]&0xfc00003f)==0x0d) done=1;
         }
-        break;
-      case 0x01: strcpy(insn[i],"regimm"); type=NI;
-        op2=(source[i]>>16)&0x1f;
-        switch(op2)
-        {
-          case 0x00: strcpy(insn[i],"BLTZ"); type=SJUMP; break;
-          case 0x01: strcpy(insn[i],"BGEZ"); type=SJUMP; break;
-          case 0x02: strcpy(insn[i],"BLTZL"); type=SJUMP; break;
-          case 0x03: strcpy(insn[i],"BGEZL"); type=SJUMP; break;
-          case 0x08: strcpy(insn[i],"TGEI"); type=NI; break;
-          case 0x09: strcpy(insn[i],"TGEIU"); type=NI; break;
-          case 0x0A: strcpy(insn[i],"TLTI"); type=NI; break;
-          case 0x0B: strcpy(insn[i],"TLTIU"); type=NI; break;
-          case 0x0C: strcpy(insn[i],"TEQI"); type=NI; break;
-          case 0x0E: strcpy(insn[i],"TNEI"); type=NI; break;
-          case 0x10: strcpy(insn[i],"BLTZAL"); type=SJUMP; break;
-          case 0x11: strcpy(insn[i],"BGEZAL"); type=SJUMP; break;
-          case 0x12: strcpy(insn[i],"BLTZALL"); type=SJUMP; break;
-          case 0x13: strcpy(insn[i],"BGEZALL"); type=SJUMP; break;
-        }
-        break;
-      case 0x02: strcpy(insn[i],"J"); type=UJUMP; break;
-      case 0x03: strcpy(insn[i],"JAL"); type=UJUMP; break;
-      case 0x04: strcpy(insn[i],"BEQ"); type=CJUMP; break;
-      case 0x05: strcpy(insn[i],"BNE"); type=CJUMP; break;
-      case 0x06: strcpy(insn[i],"BLEZ"); type=CJUMP; break;
-      case 0x07: strcpy(insn[i],"BGTZ"); type=CJUMP; break;
-      case 0x08: strcpy(insn[i],"ADDI"); type=IMM16; break;
-      case 0x09: strcpy(insn[i],"ADDIU"); type=IMM16; break;
-      case 0x0A: strcpy(insn[i],"SLTI"); type=IMM16; break;
-      case 0x0B: strcpy(insn[i],"SLTIU"); type=IMM16; break;
-      case 0x0C: strcpy(insn[i],"ANDI"); type=IMM16; break;
-      case 0x0D: strcpy(insn[i],"ORI"); type=IMM16; break;
-      case 0x0E: strcpy(insn[i],"XORI"); type=IMM16; break;
-      case 0x0F: strcpy(insn[i],"LUI"); type=IMM16; break;
-      case 0x10: strcpy(insn[i],"cop0"); type=NI;
-        op2=(source[i]>>21)&0x1f;
-        switch(op2)
-        {
-          case 0x00: strcpy(insn[i],"MFC0"); type=COP0; break;
-          case 0x04: strcpy(insn[i],"MTC0"); type=COP0; break;
-          case 0x10: strcpy(insn[i],"tlb"); type=NI;
-          switch(source[i]&0x3f)
-          {
-            case 0x01: strcpy(insn[i],"TLBR"); type=COP0; break;
-            case 0x02: strcpy(insn[i],"TLBWI"); type=COP0; break;
-            case 0x06: strcpy(insn[i],"TLBWR"); type=COP0; break;
-            case 0x08: strcpy(insn[i],"TLBP"); type=COP0; break;
-            case 0x18: strcpy(insn[i],"ERET"); type=COP0; break;
-          }
-        }
-        break;
-      case 0x11: strcpy(insn[i],"cop1"); type=NI;
-        op2=(source[i]>>21)&0x1f;
-        switch(op2)
-        {
-          case 0x00: strcpy(insn[i],"MFC1"); type=COP1; break;
-          case 0x01: strcpy(insn[i],"DMFC1"); type=COP1; break;
-          case 0x02: strcpy(insn[i],"CFC1"); type=COP1; break;
-          case 0x04: strcpy(insn[i],"MTC1"); type=COP1; break;
-          case 0x05: strcpy(insn[i],"DMTC1"); type=COP1; break;
-          case 0x06: strcpy(insn[i],"CTC1"); type=COP1; break;
-          case 0x08: strcpy(insn[i],"BC1"); type=FJUMP;
-          switch((source[i]>>16)&0x3)
-          {
-            case 0x00: strcpy(insn[i],"BC1F"); break;
-            case 0x01: strcpy(insn[i],"BC1T"); break;
-            case 0x02: strcpy(insn[i],"BC1FL"); break;
-            case 0x03: strcpy(insn[i],"BC1TL"); break;
-          }
-          break;
-          case 0x10: strcpy(insn[i],"C1.S"); type=NI;
-          switch(source[i]&0x3f)
-          {
-            case 0x00: strcpy(insn[i],"ADD.S"); type=FLOAT; break;
-            case 0x01: strcpy(insn[i],"SUB.S"); type=FLOAT; break;
-            case 0x02: strcpy(insn[i],"MUL.S"); type=FLOAT; break;
-            case 0x03: strcpy(insn[i],"DIV.S"); type=FLOAT; break;
-            case 0x04: strcpy(insn[i],"SQRT.S"); type=FLOAT; break;
-            case 0x05: strcpy(insn[i],"ABS.S"); type=FLOAT; break;
-            case 0x06: strcpy(insn[i],"MOV.S"); type=FLOAT; break;
-            case 0x07: strcpy(insn[i],"NEG.S"); type=FLOAT; break;
-            case 0x08: strcpy(insn[i],"ROUND.L.S"); type=FCONV; break;
-            case 0x09: strcpy(insn[i],"TRUNC.L.S"); type=FCONV; break;
-            case 0x0A: strcpy(insn[i],"CEIL.L.S"); type=FCONV; break;
-            case 0x0B: strcpy(insn[i],"FLOOR.L.S"); type=FCONV; break;
-            case 0x0C: strcpy(insn[i],"ROUND.W.S"); type=FCONV; break;
-            case 0x0D: strcpy(insn[i],"TRUNC.W.S"); type=FCONV; break;
-            case 0x0E: strcpy(insn[i],"CEIL.W.S"); type=FCONV; break;
-            case 0x0F: strcpy(insn[i],"FLOOR.W.S"); type=FCONV; break;
-            case 0x21: strcpy(insn[i],"CVT.D.S"); type=FCONV; break;
-            case 0x24: strcpy(insn[i],"CVT.W.S"); type=FCONV; break;
-            case 0x25: strcpy(insn[i],"CVT.L.S"); type=FCONV; break;
-            case 0x30: strcpy(insn[i],"C.F.S"); type=FCOMP; break;
-            case 0x31: strcpy(insn[i],"C.UN.S"); type=FCOMP; break;
-            case 0x32: strcpy(insn[i],"C.EQ.S"); type=FCOMP; break;
-            case 0x33: strcpy(insn[i],"C.UEQ.S"); type=FCOMP; break;
-            case 0x34: strcpy(insn[i],"C.OLT.S"); type=FCOMP; break;
-            case 0x35: strcpy(insn[i],"C.ULT.S"); type=FCOMP; break;
-            case 0x36: strcpy(insn[i],"C.OLE.S"); type=FCOMP; break;
-            case 0x37: strcpy(insn[i],"C.ULE.S"); type=FCOMP; break;
-            case 0x38: strcpy(insn[i],"C.SF.S"); type=FCOMP; break;
-            case 0x39: strcpy(insn[i],"C.NGLE.S"); type=FCOMP; break;
-            case 0x3A: strcpy(insn[i],"C.SEQ.S"); type=FCOMP; break;
-            case 0x3B: strcpy(insn[i],"C.NGL.S"); type=FCOMP; break;
-            case 0x3C: strcpy(insn[i],"C.LT.S"); type=FCOMP; break;
-            case 0x3D: strcpy(insn[i],"C.NGE.S"); type=FCOMP; break;
-            case 0x3E: strcpy(insn[i],"C.LE.S"); type=FCOMP; break;
-            case 0x3F: strcpy(insn[i],"C.NGT.S"); type=FCOMP; break;
-          }
-          break;
-          case 0x11: strcpy(insn[i],"C1.D"); type=NI;
-          switch(source[i]&0x3f)
-          {
-            case 0x00: strcpy(insn[i],"ADD.D"); type=FLOAT; break;
-            case 0x01: strcpy(insn[i],"SUB.D"); type=FLOAT; break;
-            case 0x02: strcpy(insn[i],"MUL.D"); type=FLOAT; break;
-            case 0x03: strcpy(insn[i],"DIV.D"); type=FLOAT; break;
-            case 0x04: strcpy(insn[i],"SQRT.D"); type=FLOAT; break;
-            case 0x05: strcpy(insn[i],"ABS.D"); type=FLOAT; break;
-            case 0x06: strcpy(insn[i],"MOV.D"); type=FLOAT; break;
-            case 0x07: strcpy(insn[i],"NEG.D"); type=FLOAT; break;
-            case 0x08: strcpy(insn[i],"ROUND.L.D"); type=FCONV; break;
-            case 0x09: strcpy(insn[i],"TRUNC.L.D"); type=FCONV; break;
-            case 0x0A: strcpy(insn[i],"CEIL.L.D"); type=FCONV; break;
-            case 0x0B: strcpy(insn[i],"FLOOR.L.D"); type=FCONV; break;
-            case 0x0C: strcpy(insn[i],"ROUND.W.D"); type=FCONV; break;
-            case 0x0D: strcpy(insn[i],"TRUNC.W.D"); type=FCONV; break;
-            case 0x0E: strcpy(insn[i],"CEIL.W.D"); type=FCONV; break;
-            case 0x0F: strcpy(insn[i],"FLOOR.W.D"); type=FCONV; break;
-            case 0x20: strcpy(insn[i],"CVT.S.D"); type=FCONV; break;
-            case 0x24: strcpy(insn[i],"CVT.W.D"); type=FCONV; break;
-            case 0x25: strcpy(insn[i],"CVT.L.D"); type=FCONV; break;
-            case 0x30: strcpy(insn[i],"C.F.D"); type=FCOMP; break;
-            case 0x31: strcpy(insn[i],"C.UN.D"); type=FCOMP; break;
-            case 0x32: strcpy(insn[i],"C.EQ.D"); type=FCOMP; break;
-            case 0x33: strcpy(insn[i],"C.UEQ.D"); type=FCOMP; break;
-            case 0x34: strcpy(insn[i],"C.OLT.D"); type=FCOMP; break;
-            case 0x35: strcpy(insn[i],"C.ULT.D"); type=FCOMP; break;
-            case 0x36: strcpy(insn[i],"C.OLE.D"); type=FCOMP; break;
-            case 0x37: strcpy(insn[i],"C.ULE.D"); type=FCOMP; break;
-            case 0x38: strcpy(insn[i],"C.SF.D"); type=FCOMP; break;
-            case 0x39: strcpy(insn[i],"C.NGLE.D"); type=FCOMP; break;
-            case 0x3A: strcpy(insn[i],"C.SEQ.D"); type=FCOMP; break;
-            case 0x3B: strcpy(insn[i],"C.NGL.D"); type=FCOMP; break;
-            case 0x3C: strcpy(insn[i],"C.LT.D"); type=FCOMP; break;
-            case 0x3D: strcpy(insn[i],"C.NGE.D"); type=FCOMP; break;
-            case 0x3E: strcpy(insn[i],"C.LE.D"); type=FCOMP; break;
-            case 0x3F: strcpy(insn[i],"C.NGT.D"); type=FCOMP; break;
-          }
-          break;
-          case 0x14: strcpy(insn[i],"C1.W"); type=NI;
-          switch(source[i]&0x3f)
-          {
-            case 0x20: strcpy(insn[i],"CVT.S.W"); type=FCONV; break;
-            case 0x21: strcpy(insn[i],"CVT.D.W"); type=FCONV; break;
-          }
-          break;
-          case 0x15: strcpy(insn[i],"C1.L"); type=NI;
-          switch(source[i]&0x3f)
-          {
-            case 0x20: strcpy(insn[i],"CVT.S.L"); type=FCONV; break;
-            case 0x21: strcpy(insn[i],"CVT.D.L"); type=FCONV; break;
-          }
-          break;
-        }
-        break;
-      case 0x14: strcpy(insn[i],"BEQL"); type=CJUMP; break;
-      case 0x15: strcpy(insn[i],"BNEL"); type=CJUMP; break;
-      case 0x16: strcpy(insn[i],"BLEZL"); type=CJUMP; break;
-      case 0x17: strcpy(insn[i],"BGTZL"); type=CJUMP; break;
-      case 0x18: strcpy(insn[i],"DADDI"); type=IMM16; break;
-      case 0x19: strcpy(insn[i],"DADDIU"); type=IMM16; break;
-      case 0x1A: strcpy(insn[i],"LDL"); type=LOADLR; break;
-      case 0x1B: strcpy(insn[i],"LDR"); type=LOADLR; break;
-      case 0x20: strcpy(insn[i],"LB"); type=LOAD; break;
-      case 0x21: strcpy(insn[i],"LH"); type=LOAD; break;
-      case 0x22: strcpy(insn[i],"LWL"); type=LOADLR; break;
-      case 0x23: strcpy(insn[i],"LW"); type=LOAD; break;
-      case 0x24: strcpy(insn[i],"LBU"); type=LOAD; break;
-      case 0x25: strcpy(insn[i],"LHU"); type=LOAD; break;
-      case 0x26: strcpy(insn[i],"LWR"); type=LOADLR; break;
-      case 0x27: strcpy(insn[i],"LWU"); type=LOAD; break;
-      case 0x28: strcpy(insn[i],"SB"); type=STORE; break;
-      case 0x29: strcpy(insn[i],"SH"); type=STORE; break;
-      case 0x2A: strcpy(insn[i],"SWL"); type=STORELR; break;
-      case 0x2B: strcpy(insn[i],"SW"); type=STORE; break;
-      case 0x2C: strcpy(insn[i],"SDL"); type=STORELR; break;
-      case 0x2D: strcpy(insn[i],"SDR"); type=STORELR; break;
-      case 0x2E: strcpy(insn[i],"SWR"); type=STORELR; break;
-      case 0x2F: strcpy(insn[i],"CACHE"); type=NOP; break;
-      case 0x30: strcpy(insn[i],"LL"); type=NI; break;
-      case 0x31: strcpy(insn[i],"LWC1"); type=C1LS; break;
-      case 0x34: strcpy(insn[i],"LLD"); type=NI; break;
-      case 0x35: strcpy(insn[i],"LDC1"); type=C1LS; break;
-      case 0x37: strcpy(insn[i],"LD"); type=LOAD; break;
-      case 0x38: strcpy(insn[i],"SC"); type=NI; break;
-      case 0x39: strcpy(insn[i],"SWC1"); type=C1LS; break;
-      case 0x3C: strcpy(insn[i],"SCD"); type=NI; break;
-      case 0x3D: strcpy(insn[i],"SDC1"); type=C1LS; break;
-      case 0x3F: strcpy(insn[i],"SD"); type=STORE; break;
-      default: strcpy(insn[i],"???"); type=NI; break;
-    }
-    itype[i]=type;
-    opcode2[i]=op2;
-    /* Get registers/immediates */
-    lt1[i]=0;
-    us1[i]=0;
-    us2[i]=0;
-    dep1[i]=0;
-    dep2[i]=0;
-    switch(type) {
-      case LOAD:
-        rs1[i]=(source[i]>>21)&0x1f;
-        rs2[i]=0;
-        rt1[i]=(source[i]>>16)&0x1f;
-        rt2[i]=0;
-        imm[i]=(short)source[i];
-        break;
-      case STORE:
-      case STORELR:
-        rs1[i]=(source[i]>>21)&0x1f;
-        rs2[i]=(source[i]>>16)&0x1f;
-        rt1[i]=0;
-        rt2[i]=0;
-        imm[i]=(short)source[i];
-        if(op==0x2c||op==0x2d||op==0x3f) us1[i]=rs2[i]; // 64-bit SDL/SDR/SD
-        break;
-      case LOADLR:
-        // LWL/LWR only load part of the register,
-        // therefore the target register must be treated as a source too
-        rs1[i]=(source[i]>>21)&0x1f;
-        rs2[i]=(source[i]>>16)&0x1f;
-        rt1[i]=(source[i]>>16)&0x1f;
-        rt2[i]=0;
-        imm[i]=(short)source[i];
-        if(op==0x1a||op==0x1b) us1[i]=rs2[i]; // LDR/LDL
-        if(op==0x26) dep1[i]=rt1[i]; // LWR
-        break;
-      case IMM16:
-        if (op==0x0f) rs1[i]=0; // LUI instruction has no source register
-        else rs1[i]=(source[i]>>21)&0x1f;
-        rs2[i]=0;
-        rt1[i]=(source[i]>>16)&0x1f;
-        rt2[i]=0;
-        if(op>=0x0c&&op<=0x0e) { // ANDI/ORI/XORI
-          imm[i]=(unsigned short)source[i];
-        }else{
-          imm[i]=(short)source[i];
-        }
-        if(op==0x18||op==0x19) us1[i]=rs1[i]; // DADDI/DADDIU
-        if(op==0x0a||op==0x0b) us1[i]=rs1[i]; // SLTI/SLTIU
-        if(op==0x0d||op==0x0e) dep1[i]=rs1[i]; // ORI/XORI
-        break;
-      case UJUMP:
-        rs1[i]=0;
-        rs2[i]=0;
-        rt1[i]=0;
-        rt2[i]=0;
-        // The JAL instruction writes to r31.
-        if (op&1) {
-          rt1[i]=31;
-        }
-        rs2[i]=CCREG;
-        break;
-      case RJUMP:
-        rs1[i]=(source[i]>>21)&0x1f;
-        rs2[i]=0;
-        rt1[i]=0;
-        rt2[i]=0;
-        // The JALR instruction writes to rd.
-        if (op2&1) {
-          rt1[i]=(source[i]>>11)&0x1f;
-        }
-        rs2[i]=CCREG;
-        break;
-      case CJUMP:
-        rs1[i]=(source[i]>>21)&0x1f;
-        rs2[i]=(source[i]>>16)&0x1f;
-        rt1[i]=0;
-        rt2[i]=0;
-        if(op&2) { // BGTZ/BLEZ
-          rs2[i]=0;
-        }
-        us1[i]=rs1[i];
-        us2[i]=rs2[i];
-        likely[i]=op>>4;
-        break;
-      case SJUMP:
-        rs1[i]=(source[i]>>21)&0x1f;
-        rs2[i]=CCREG;
-        rt1[i]=0;
-        rt2[i]=0;
-        us1[i]=rs1[i];
-        if(op2&0x10) { // BxxAL
-          rt1[i]=31;
-          // NOTE: If the branch is not taken, r31 is still overwritten
-        }
-        likely[i]=(op2&2)>>1;
-        break;
-      case FJUMP:
-        rs1[i]=FSREG;
-        rs2[i]=CSREG;
-        rt1[i]=0;
-        rt2[i]=0;
-        likely[i]=((source[i])>>17)&1;
-        break;
-      case ALU:
-        rs1[i]=(source[i]>>21)&0x1f; // source
-        rs2[i]=(source[i]>>16)&0x1f; // subtract amount
-        rt1[i]=(source[i]>>11)&0x1f; // destination
-        rt2[i]=0;
-        if(op2==0x2a||op2==0x2b) { // SLT/SLTU
-          us1[i]=rs1[i];us2[i]=rs2[i];
-        }
-        else if(op2>=0x24&&op2<=0x27) { // AND/OR/XOR/NOR
-          dep1[i]=rs1[i];dep2[i]=rs2[i];
-        }
-        else if(op2>=0x2c&&op2<=0x2f) { // DADD/DSUB
-          dep1[i]=rs1[i];dep2[i]=rs2[i];
-        }
-        break;
-      case MULTDIV:
-        rs1[i]=(source[i]>>21)&0x1f; // source
-        rs2[i]=(source[i]>>16)&0x1f; // divisor
-        rt1[i]=HIREG;
-        rt2[i]=LOREG;
-        if (op2>=0x1c&&op2<=0x1f) { // DMULT/DMULTU/DDIV/DDIVU
-          us1[i]=rs1[i];us2[i]=rs2[i];
-        }
-        break;
-      case MOV:
-        rs1[i]=0;
-        rs2[i]=0;
-        rt1[i]=0;
-        rt2[i]=0;
-        if(op2==0x10) rs1[i]=HIREG; // MFHI
-        if(op2==0x11) rt1[i]=HIREG; // MTHI
-        if(op2==0x12) rs1[i]=LOREG; // MFLO
-        if(op2==0x13) rt1[i]=LOREG; // MTLO
-        if((op2&0x1d)==0x10) rt1[i]=(source[i]>>11)&0x1f; // MFxx
-        if((op2&0x1d)==0x11) rs1[i]=(source[i]>>21)&0x1f; // MTxx
-        dep1[i]=rs1[i];
-        break;
-      case SHIFT:
-        rs1[i]=(source[i]>>16)&0x1f; // target of shift
-        rs2[i]=(source[i]>>21)&0x1f; // shift amount
-        rt1[i]=(source[i]>>11)&0x1f; // destination
-        rt2[i]=0;
-        // DSLLV/DSRLV/DSRAV are 64-bit
-        if(op2>=0x14&&op2<=0x17) us1[i]=rs1[i];
-        break;
-      case SHIFTIMM:
-        rs1[i]=(source[i]>>16)&0x1f;
-        rs2[i]=0;
-        rt1[i]=(source[i]>>11)&0x1f;
-        rt2[i]=0;
-        imm[i]=(source[i]>>6)&0x1f;
-        // DSxx32 instructions
-        if(op2>=0x3c) imm[i]|=0x20;
-        // DSLL/DSRL/DSRA/DSRA32/DSRL32 but not DSLL32 require 64-bit source
-        if(op2>=0x38&&op2!=0x3c) us1[i]=rs1[i];
-        break;
-      case COP0:
-        rs1[i]=0;
-        rs2[i]=0;
-        rt1[i]=0;
-        rt2[i]=0;
-        if(op2==0) rt1[i]=(source[i]>>16)&0x1F; // MFC0
-        if(op2==4) rs1[i]=(source[i]>>16)&0x1F; // MTC0
-        if(op2==4&&((source[i]>>11)&0x1f)==12) rt2[i]=CSREG; // Status
-        if(op2==16) if((source[i]&0x3f)==0x18) rs2[i]=CCREG; // ERET
-        break;
-      case COP1:
-        rs1[i]=0;
-        rs2[i]=0;
-        rt1[i]=0;
-        rt2[i]=0;
-        if(op2<3) rt1[i]=(source[i]>>16)&0x1F; // MFC1/DMFC1/CFC1
-        if(op2>3) rs1[i]=(source[i]>>16)&0x1F; // MTC1/DMTC1/CTC1
-        if(op2==5) us1[i]=rs1[i]; // DMTC1
-        rs2[i]=CSREG;
-        break;
-      case C1LS:
-        rs1[i]=(source[i]>>21)&0x1F;
-        rs2[i]=CSREG;
-        rt1[i]=0;
-        rt2[i]=0;
-        imm[i]=(short)source[i];
-        break;
-      case FLOAT:
-      case FCONV:
-        rs1[i]=0;
-        rs2[i]=CSREG;
-        rt1[i]=0;
-        rt2[i]=0;
-        break;
-      case FCOMP:
-        rs1[i]=FSREG;
-        rs2[i]=CSREG;
-        rt1[i]=FSREG;
-        rt2[i]=0;
-        break;
-      case SYSCALL:
-        rs1[i]=CCREG;
-        rs2[i]=0;
-        rt1[i]=0;
-        rt2[i]=0;
-        break;
-      default:
-        rs1[i]=0;
-        rs2[i]=0;
-        rt1[i]=0;
-        rt2[i]=0;
-    }
-    /* Calculate branch target addresses */
-    if(type==UJUMP)
-      ba[i]=((start+i*4+4)&0xF0000000)|(((unsigned int)source[i]<<6)>>4);
-    else if(type==CJUMP&&rs1[i]==rs2[i]&&(op&1))
-      ba[i]=start+i*4+8; // Ignore never taken branch
-    else if(type==SJUMP&&rs1[i]==0&&!(op2&1))
-      ba[i]=start+i*4+8; // Ignore never taken branch
-    else if(type==CJUMP||type==SJUMP||type==FJUMP)
-      ba[i]=start+i*4+4+((signed int)((unsigned int)source[i]<<16)>>14);
-    else ba[i]=-1;
-    /* Is this the end of the block? */
-    if(i>0&&(itype[i-1]==UJUMP||itype[i-1]==RJUMP||(source[i-1]>>16)==0x1000)) {
-      if(rt1[i-1]==0) { // Continue past subroutine call (JAL)
-        done=1;
-        // Does the block continue due to a branch?
-        for(j=i-1;j>=0;j--)
-        {
-          if(ba[j]==start+i*4) done=j=0; // Branch into delay slot
-          if(ba[j]==start+i*4+4) done=j=0;
-          if(ba[j]==start+i*4+8) done=j=0;
-        }
-      }
-      else {
-        if(stop_after_jal) done=1;
-        // Stop on BREAK
-        if((source[i+1]&0xfc00003f)==0x0d) done=1;
-      }
-      // Don't recompile stuff that's already compiled
-      if(check_addr(start+i*4+4)) done=1;
-      // Don't get too close to the limit
-      if(i>MAXBLOCK/2) done=1;
-    }
-    if(i>0&&itype[i-1]==SYSCALL&&stop_after_jal) done=1;
-    assert(i<MAXBLOCK-1);
-    if(start+i*4==pagelimit-4) done=1;
-    assert(start+i*4<pagelimit);
-    if (i==MAXBLOCK-1) done=1;
-    // Stop if we're compiling junk
-    if(itype[i]==NI&&opcode[i]==0x11) {
-      done=stop_after_jal=1;
-      DebugMessage(M64MSG_VERBOSE, "Disabled speculative precompilation");
-    }
+        /* Don't recompile stuff that's already compiled */
+        if(check_addr(start+i*4+4)) done=1;
+        /* Don't get too close to the limit */
+        if(i>MAXBLOCK/2) done=1;
+     }
+     if(i>0&&itype[i-1]==SYSCALL&&stop_after_jal) done=1;
+     assert(i<MAXBLOCK-1);
+     if(start+i*4==pagelimit-4) done=1;
+     assert(start+i*4<pagelimit);
+     if (i==MAXBLOCK-1) done=1;
+     // Stop if we're compiling junk
+     if(itype[i]==NI&&opcode[i]==0x11) {
+        done=stop_after_jal=1;
+        DebugMessage(M64MSG_VERBOSE, "Disabled speculative precompilation");
+     }
   }
   slen=i;
   if(itype[i-1]==UJUMP||itype[i-1]==CJUMP||itype[i-1]==SJUMP||itype[i-1]==RJUMP||itype[i-1]==FJUMP) {
@@ -8337,7 +8367,9 @@ int new_recompile_block(int addr)
   int cc=0;
   int hr;
   
+#ifndef FORCE32
   provisional_32bit();
+#endif
   
   if((u_int)addr&1) {
     // First instruction is delay slot
@@ -8380,6 +8412,8 @@ int new_recompile_block(int addr)
         }
       }
     }
+
+#ifndef FORCE32
     // If something jumps here with 64-bit values
     // then promote those registers to 64 bits
     if(bt[i])
@@ -8415,85 +8449,87 @@ int new_recompile_block(int addr)
         current.is32=temp_is32;
       }
     }
+#endif
+
     memcpy(regmap_pre[i],current.regmap,sizeof(current.regmap));
     regs[i].wasconst=current.isconst;
     regs[i].was32=current.is32;
     regs[i].wasdirty=current.dirty;
-    #ifdef DESTRUCTIVE_WRITEBACK
+#if defined(DESTRUCTIVE_WRITEBACK) && defined(FORCE32)
     // To change a dirty register from 32 to 64 bits, we must write
     // it out during the previous cycle (for branches, 2 cycles)
     if(i<slen-1&&bt[i+1]&&itype[i-1]!=UJUMP&&itype[i-1]!=CJUMP&&itype[i-1]!=SJUMP&&itype[i-1]!=RJUMP&&itype[i-1]!=FJUMP)
     {
-      uint64_t temp_is32=current.is32;
-      for(j=i-1;j>=0;j--)
-      {
-        if(ba[j]==start+i*4+4) 
-          temp_is32&=branch_regs[j].is32;
-      }
-      for(j=i;j<slen;j++)
-      {
-        if(ba[j]==start+i*4+4) 
-          //temp_is32=1;
-          temp_is32&=p32[j];
-      }
-      if(temp_is32!=current.is32) {
-        //DebugMessage(M64MSG_VERBOSE, "pre-dumping 32-bit regs (%x)",start+i*4);
-        for(hr=0;hr<HOST_REGS;hr++)
-        {
-          int r=current.regmap[hr];
-          if(r>0)
+       uint64_t temp_is32=current.is32;
+       for(j=i-1;j>=0;j--)
+       {
+          if(ba[j]==start+i*4+4) 
+             temp_is32&=branch_regs[j].is32;
+       }
+       for(j=i;j<slen;j++)
+       {
+          if(ba[j]==start+i*4+4) 
+             //temp_is32=1;
+             temp_is32&=p32[j];
+       }
+       if(temp_is32!=current.is32) {
+          //DebugMessage(M64MSG_VERBOSE, "pre-dumping 32-bit regs (%x)",start+i*4);
+          for(hr=0;hr<HOST_REGS;hr++)
           {
-            if((current.dirty>>hr)&((current.is32&~temp_is32)>>(r&63))&1) {
-              if(itype[i]!=UJUMP&&itype[i]!=CJUMP&&itype[i]!=SJUMP&&itype[i]!=RJUMP&&itype[i]!=FJUMP)
-              {
-                if(rs1[i]!=(r&63)&&rs2[i]!=(r&63))
-                {
-                  //DebugMessage(M64MSG_VERBOSE, "dump %d/r%d",hr,r);
-                  current.regmap[hr]=-1;
-                  if(get_reg(current.regmap,r|64)>=0) 
-                    current.regmap[get_reg(current.regmap,r|64)]=-1;
+             int r=current.regmap[hr];
+             if(r>0)
+             {
+                if((current.dirty>>hr)&((current.is32&~temp_is32)>>(r&63))&1) {
+                   if(itype[i]!=UJUMP&&itype[i]!=CJUMP&&itype[i]!=SJUMP&&itype[i]!=RJUMP&&itype[i]!=FJUMP)
+                   {
+                      if(rs1[i]!=(r&63)&&rs2[i]!=(r&63))
+                      {
+                         //DebugMessage(M64MSG_VERBOSE, "dump %d/r%d",hr,r);
+                         current.regmap[hr]=-1;
+                         if(get_reg(current.regmap,r|64)>=0) 
+                            current.regmap[get_reg(current.regmap,r|64)]=-1;
+                      }
+                   }
                 }
-              }
-            }
+             }
           }
-        }
-      }
+       }
     }
     else if(i<slen-2&&bt[i+2]&&(source[i-1]>>16)!=0x1000&&(itype[i]==CJUMP||itype[i]==SJUMP||itype[i]==FJUMP))
     {
-      uint64_t temp_is32=current.is32;
-      for(j=i-1;j>=0;j--)
-      {
-        if(ba[j]==start+i*4+8) 
-          temp_is32&=branch_regs[j].is32;
-      }
-      for(j=i;j<slen;j++)
-      {
-        if(ba[j]==start+i*4+8) 
-          //temp_is32=1;
-          temp_is32&=p32[j];
-      }
-      if(temp_is32!=current.is32) {
-        //DebugMessage(M64MSG_VERBOSE, "pre-dumping 32-bit regs (%x)",start+i*4);
-        for(hr=0;hr<HOST_REGS;hr++)
-        {
-          int r=current.regmap[hr];
-          if(r>0)
+       uint64_t temp_is32=current.is32;
+       for(j=i-1;j>=0;j--)
+       {
+          if(ba[j]==start+i*4+8) 
+             temp_is32&=branch_regs[j].is32;
+       }
+       for(j=i;j<slen;j++)
+       {
+          if(ba[j]==start+i*4+8) 
+             //temp_is32=1;
+             temp_is32&=p32[j];
+       }
+       if(temp_is32!=current.is32) {
+          //DebugMessage(M64MSG_VERBOSE, "pre-dumping 32-bit regs (%x)",start+i*4);
+          for(hr=0;hr<HOST_REGS;hr++)
           {
-            if((current.dirty>>hr)&((current.is32&~temp_is32)>>(r&63))&1) {
-              if(rs1[i]!=(r&63)&&rs2[i]!=(r&63)&&rs1[i+1]!=(r&63)&&rs2[i+1]!=(r&63))
-              {
-                //DebugMessage(M64MSG_VERBOSE, "dump %d/r%d",hr,r);
-                current.regmap[hr]=-1;
-                if(get_reg(current.regmap,r|64)>=0) 
-                  current.regmap[get_reg(current.regmap,r|64)]=-1;
-              }
-            }
+             int r=current.regmap[hr];
+             if(r>0)
+             {
+                if((current.dirty>>hr)&((current.is32&~temp_is32)>>(r&63))&1) {
+                   if(rs1[i]!=(r&63)&&rs2[i]!=(r&63)&&rs1[i+1]!=(r&63)&&rs2[i+1]!=(r&63))
+                   {
+                      //DebugMessage(M64MSG_VERBOSE, "dump %d/r%d",hr,r);
+                      current.regmap[hr]=-1;
+                      if(get_reg(current.regmap,r|64)>=0) 
+                         current.regmap[get_reg(current.regmap,r|64)]=-1;
+                   }
+                }
+             }
           }
-        }
-      }
+       }
     }
-    #endif
+#endif
     if(itype[i]!=UJUMP&&itype[i]!=CJUMP&&itype[i]!=SJUMP&&itype[i]!=RJUMP&&itype[i]!=FJUMP) {
       if(i+1<slen) {
         current.u=unneeded_reg[i+1]&~((1LL<<rs1[i])|(1LL<<rs2[i]));
