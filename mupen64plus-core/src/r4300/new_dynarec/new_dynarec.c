@@ -25,6 +25,8 @@
 #include <stdint.h> //include for uint64_t
 #include <assert.h>
 
+#include <sys/mman.h>
+
 #if defined(__LIBRETRO__) && (defined(IOS) || defined(__QNX__))
 typedef unsigned char u_char;
 typedef unsigned int u_int;
@@ -50,7 +52,6 @@ typedef unsigned int u_int;
 
 #include "rsp/rsp_core.h"
 
-#include <sys/mman.h>
 
 #if NEW_DYNAREC == NEW_DYNAREC_X86
 #include "assem_x86.h"
@@ -373,16 +374,32 @@ static void tlb_hacks(void)
 }
 #endif
 
+static u_int get_page(u_int vaddr)
+{
+  u_int page=(vaddr^0x80000000)>>12;
+#ifndef DISABLE_TLB
+  if(page>262143&&tlb_LUT_r[vaddr>>12]) page=(tlb_LUT_r[vaddr>>12]^0x80000000)>>12;
+#endif
+  if(page>2048) page=2048+(page&2047);
+  return page;
+}
+
+static u_int get_vpage(u_int vaddr)
+{
+  u_int vpage=(vaddr^0x80000000)>>12;
+#ifndef DISABLE_TLB
+  if(vpage>262143&&tlb_LUT_r[vaddr>>12]) vpage&=2047; // jump_dirty uses a hash of the virtual address instead
+#endif
+  if(vpage>2048) vpage=2048+(vpage&2047);
+  return vpage;
+}
+
 // Get address from virtual address
 // This is called from the recompiled JR/JALR instructions
 void *get_addr(u_int vaddr)
 {
-  u_int page=(vaddr^0x80000000)>>12;
-  u_int vpage=page;
-  if(page>262143&&tlb_LUT_r[vaddr>>12]) page=(tlb_LUT_r[vaddr>>12]^0x80000000)>>12;
-  if(page>2048) page=2048+(page&2047);
-  if(vpage>262143&&tlb_LUT_r[vaddr>>12]) vpage&=2047; // jump_dirty uses a hash of the virtual address instead
-  if(vpage>2048) vpage=2048+(vpage&2047);
+  u_int page  = get_page(vaddr);
+  u_int vpage = get_vpage(vaddr);
   struct ll_entry *head;
   //DebugMessage(M64MSG_VERBOSE, "TRACE: count=%d next=%d (get_addr %x,page %d)",g_cp0_regs[CP0_COUNT_REG],next_interupt,vaddr,page);
   head=jump_in[page];
@@ -407,25 +424,28 @@ void *get_addr(u_int vaddr)
       if(verify_dirty(head->addr)) {
         //DebugMessage(M64MSG_VERBOSE, "restore candidate: %x (%d) d=%d",vaddr,page,invalid_code[vaddr>>12]);
         invalid_code[vaddr>>12]=0;
+#ifndef DISABLE_TLB
         memory_map[vaddr>>12]|=0x40000000;
+#endif
         if(vpage<2048) {
+#ifndef DISABLE_TLB
           if(tlb_LUT_r[vaddr>>12]) {
             invalid_code[tlb_LUT_r[vaddr>>12]>>12]=0;
             memory_map[tlb_LUT_r[vaddr>>12]>>12]|=0x40000000;
           }
+#endif
           restore_candidate[vpage>>3]|=1<<(vpage&7);
         }
         else restore_candidate[page>>3]|=1<<(page&7);
         u_int *ht_bin=hash_table[((vaddr>>16)^vaddr)&0xFFFF];
-        if(ht_bin[0]==vaddr) {
+        if(ht_bin[0]==vaddr)
           ht_bin[1]=(int)head->addr; // Replace existing entry
-        }
         else
         {
-          ht_bin[3]=ht_bin[1];
-          ht_bin[2]=ht_bin[0];
-          ht_bin[1]=(int)head->addr;
-          ht_bin[0]=vaddr;
+          ht_bin[3] = ht_bin[1];
+          ht_bin[2] = ht_bin[0];
+          ht_bin[1] = (int)head->addr;
+          ht_bin[0] = vaddr;
         }
         return head->addr;
       }
@@ -436,12 +456,23 @@ void *get_addr(u_int vaddr)
   int r=new_recompile_block(vaddr);
   if(r==0) return get_addr(vaddr);
   // Execute in unmapped page, generate pagefault execption
+ 
+#if defined(EMU_MUPEN64)
   g_cp0_regs[CP0_STATUS_REG] |=2;
   g_cp0_regs[CP0_CAUSE_REG] =(vaddr<<31)|0x8;
   g_cp0_regs[CP0_EPC_REG] = (vaddr&1)?vaddr-5:vaddr;
   g_cp0_regs[CP0_BADVADDR_REG]=(vaddr&~1);
   g_cp0_regs[CP0_CONTEXT_REG] = (g_cp0_regs[CP0_CONTEXT_REG]&0xFF80000F)|((g_cp0_regs[CP0_BADVADDR_REG]>>9)&0x007FFFF0);
   g_cp0_regs[CP0_ENTRYHI_REG] = g_cp0_regs[CP0_BADVADDR_REG]&0xFFFFE000;
+#elif defined(EMU_PCSXR)
+  Status|=2;
+  Cause=(vaddr<<31)|0x8;
+  EPC=(vaddr&1)?vaddr-5:vaddr;
+  BadVAddr=(vaddr&~1);
+  Context=(Context&0xFF80000F)|((BadVAddr>>9)&0x007FFFF0);
+  EntryHi=BadVAddr&0xFFFFE000;
+#endif
+
   return get_addr_ht(0x80000000);
 }
 // Look up address in hash table first
@@ -577,18 +608,20 @@ static void dirty_reg(struct regstat *cur,signed char reg)
 {
   int hr;
   if(!reg) return;
-  for (hr=0;hr<HOST_REGS;hr++) {
-    if((cur->regmap[hr]&63)==reg) {
+  for (hr=0;hr<HOST_REGS;hr++)
+  {
+    if((cur->regmap[hr]&63)==reg)
       cur->dirty|=1<<hr;
-    }
   }
 }
 
-// If we dirty the lower half of a 64 bit register which is now being
-// sign-extended, we need to dump the upper half.
-// Note: Do this only after completion of the instruction, because
-// some instructions may need to read the full 64-bit value even if
-// overwriting it (eg SLTI, DSRA32).
+/* If we dirty the lower half of a 64 bit register which is now being
+ * sign-extended, we need to dump the upper half.
+ *
+ * Note: Do this only after completion of the instruction, because
+ * some instructions may need to read the full 64-bit value even if
+ * overwriting it (eg SLTI, DSRA32).
+ */
 static void flush_dirty_uppers(struct regstat *cur)
 {
   int hr,reg;
@@ -723,21 +756,34 @@ static void lsn(u_char hsn[], int i, int *preferred_reg)
     hsn[RHTBL]=1;
   }
   // Coprocessor load/store needs FTEMP, even if not declared
-  if(itype[i]==C1LS) {
+  if(itype[i]==C1LS
+#ifdef EMU_PCSXR
+  || (itype[i] == C2LS)
+#else
+#endif
+    )
     hsn[FTEMP]=0;
-  }
+
   // Load L/R also uses FTEMP as a temporary register
-  if(itype[i]==LOADLR) {
+  if(itype[i]==LOADLR)
     hsn[FTEMP]=0;
-  }
+
+#ifdef EMU_PCSXR
+  // Also SWL/SWR/SDL/SDR
+  if(opcode[i]==0x2a||opcode[i]==0x2e||opcode[i]==0x2c||opcode[i]==0x2d)
+#else
   // Also 64-bit SDL/SDR
-  if(opcode[i]==0x2c||opcode[i]==0x2d) {
+  if(opcode[i]==0x2c||opcode[i]==0x2d)
+#endif
     hsn[FTEMP]=0;
-  }
+
   // Don't remove the TLB registers either
-  if(itype[i]==LOAD || itype[i]==LOADLR || itype[i]==STORE || itype[i]==STORELR || itype[i]==C1LS ) {
+  if(itype[i]==LOAD || itype[i]==LOADLR || itype[i]==STORE || itype[i]==STORELR || itype[i]==C1LS
+#ifdef EMU_PCSXR
+        || itype[i]==C2LS
+#endif
+        )
     hsn[TLREG]=0;
-  }
   // Don't remove the miniht registers
   if(itype[i]==UJUMP||itype[i]==RJUMP)
   {
