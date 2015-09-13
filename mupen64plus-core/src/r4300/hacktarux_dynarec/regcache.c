@@ -227,7 +227,7 @@ int lru_register(void)
 
    for (i=0; i<8; i++)
    {
-      bool ret = i != ESP;
+      bool ret  = i != ESP;
 #if defined(__x86_64__)
       bool ret2 = (uint64_t)last_access[i] < oldest_access;
 #else
@@ -255,10 +255,9 @@ void set_register_state(int reg, unsigned int *addr, int _dirty, int _is64bits)
   else
     last_access[reg] = dst;
   reg_content[reg]   = (uint64_t*) addr;
+  r64[reg]           = -1;
 #ifdef __x86_64__
   r64[reg]           = _is64bits;
-#else
-  r64[reg]           = -1;
 #endif
   dirty[reg]         = _dirty;
 }
@@ -268,17 +267,17 @@ int lru_base_register(void) /* EBP cannot be used as a base register for SIB add
 {
    uint64_t oldest_access = 0xFFFFFFFFFFFFFFFFULL;
    int i, reg = 0;
+
    for (i=0; i<8; i++)
-     {
-    if (i != ESP && i != EBP && (uint64_t) last_access[i] < oldest_access)
+   {
+      if (i != ESP && i != EBP && (uint64_t) last_access[i] < oldest_access)
       {
          oldest_access = (uint64_t)last_access[i];
          reg = i;
       }
-     }
+   }
    return reg;
 }
-
 
 int lock_register(int reg)
 {
@@ -298,6 +297,7 @@ int lru_register_exc1(int exc1)
 {
    unsigned int oldest_access = 0xFFFFFFFF;
    int i, reg = 0;
+
    for (i=0; i<8; i++)
    {
       if (i != ESP && i != exc1 && (unsigned int)last_access[i] < oldest_access)
@@ -322,7 +322,7 @@ int allocate_register_64(unsigned long long *addr)
 {
   int reg, i;
 
-  // is it already cached?
+  /* is it already cached? */
   if (addr != NULL)
   {
     for (i = 0; i < 8; i++)
@@ -381,7 +381,7 @@ int allocate_register_32(unsigned int *addr)
 {
   int reg = 0, i;
    
-  // is it already cached ?
+  /* is it already cached ? */
   if (addr != NULL)
   {
     for (i = 0; i < 8; i++)
