@@ -112,10 +112,9 @@ void free_assembler(void **block_jumps_table, int *block_jumps_number, void **bl
 {
    *block_jumps_table   = jumps_table;
    *block_jumps_number  = jumps_number;
+   *block_riprel_table  = NULL;  /* RIP-relative addressing is only for x86-64 */
 #ifdef __x86_64__
    *block_riprel_table  = riprel_table;
-#else
-   *block_riprel_table  = NULL;  /* RIP-relative addressing is only for x86-64 */
 #endif
    *block_riprel_number = 0;
 }
