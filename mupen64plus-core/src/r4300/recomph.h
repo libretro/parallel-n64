@@ -49,11 +49,7 @@ void free_assembler(void **block_jumps_table, int *block_jumps_number, void **bl
  * Preferably, we'll start off by checking only for __i386__ on GCC, as the
  * libretro fork of Mupen64Plus does not yet have a tested 32-bit recompiler.
  */
-#if defined(__i386__)
-void gencallinterp(uint32_t addr, int jump);
-#else
-void gencallinterp(uint64_t addr, int jump);
-#endif
+void gencallinterp(uintptr_t addr, int jump);
 
 void genupdate_system(int type);
 void genbnel(void);

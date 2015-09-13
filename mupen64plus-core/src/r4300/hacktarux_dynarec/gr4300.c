@@ -583,11 +583,7 @@ void gendebug(void)
 }
 #endif
 
-#if defined(__i386__)
-void gencallinterp(uint32_t addr, int jump)
-#else
-void gencallinterp(uint64_t addr, int jump)
-#endif
+void gencallinterp(uintptr_t addr, int jump)
 {
 #ifdef __x86_64__
    free_registers_move_start();
