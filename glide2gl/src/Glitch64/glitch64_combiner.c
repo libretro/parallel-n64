@@ -298,7 +298,7 @@ static void append_shader_program(shader_program_key *shader)
       shader_programs = (shader_program_key*)malloc(sizeof(shader_program_key));
    else
    {
-      shader_program_Key *new_ptr = (shader_program_key*)
+      shader_program_key *new_ptr = (shader_program_key*)
          realloc(shader_programs, (index + 1) * sizeof(shader_program_key));
       if (!new_ptr)
          return;
