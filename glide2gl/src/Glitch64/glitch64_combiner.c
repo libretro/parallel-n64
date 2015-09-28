@@ -287,17 +287,24 @@ void check_link(GLuint program)
 static void append_shader_program(shader_program_key *shader)
 {
    int curr_index;
-   int index = number_of_programs;
+   int                   index = number_of_programs;
+   shader_program_key *new_ptr = NULL;
 
    if (current_shader)
       curr_index = current_shader->index;
 
    shader->index = index;
 
-   if (shader_programs == NULL)
+   if (!shader_programs)
       shader_programs = (shader_program_key*)malloc(sizeof(shader_program_key));
    else
-      shader_programs = (shader_program_key*)realloc(shader_programs, (index + 1) * sizeof(shader_program_key));
+   {
+      new_ptr = (shader_program_key*)realloc(shader_programs, (index + 1) * sizeof(shader_program_key));
+      if (!new_ptr)
+         return;
+
+      shader_programs = new_ptr;
+   }
 
    if (current_shader)
       current_shader = &shader_programs[curr_index];
