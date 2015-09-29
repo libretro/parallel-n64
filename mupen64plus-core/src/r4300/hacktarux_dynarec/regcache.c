@@ -380,57 +380,59 @@ int allocate_register_64(unsigned long long *addr)
 
 int allocate_register_32(unsigned int *addr)
 {
-  int reg = 0, i;
-   
-  /* is it already cached ? */
-  if (addr != NULL)
-  {
-    for (i = 0; i < 8; i++)
-    {
-      if (last_access[i] != NULL && (unsigned int *) reg_content[i] == addr)
+   int reg = 0;
+
+   /* is it already cached ? */
+   if (addr != NULL)
+   {
+      int i;
+
+      for (i = 0; i < 8; i++)
       {
-        precomp_instr *last = last_access[i]+1;
+         if (last_access[i] != NULL && (unsigned int *) reg_content[i] == addr)
+         {
+            precomp_instr *last = last_access[i]+1;
 
-        while (last <= dst)
-        {
-          last->reg_cache_infos.needed_registers[i] = reg_content[i];
-          last++;
-        }
-        last_access[i] = dst;
-        r64[i] = 0;
-        return i;
+            while (last <= dst)
+            {
+               last->reg_cache_infos.needed_registers[i] = reg_content[i];
+               last++;
+            }
+            last_access[i] = dst;
+            r64[i] = 0;
+            return i;
+         }
       }
-    }
-  }
+   }
 
-  // it's not cached, so take the least recently used register
-  reg = lru_register();
-   
-  if (last_access[reg])
-    free_register(reg);
-  else
-  {
-    while (free_since[reg] <= dst)
-    {
-      free_since[reg]->reg_cache_infos.needed_registers[reg] = NULL;
-      free_since[reg]++;
-    }
-  }
-   
-  last_access[reg] = dst;
-  reg_content[reg] = (uint64_t*) addr;
-  dirty[reg] = 0;
-  r64[reg] = 0;
-   
-  if (addr != NULL)
-  {
-    if (addr == (unsigned int *) r0)
-      xor_reg32_reg32(reg, reg);
-    else
-      mov_xreg32_m32rel(reg, addr);
-  }
+   // it's not cached, so take the least recently used register
+   reg = lru_register();
 
-  return reg;
+   if (last_access[reg])
+      free_register(reg);
+   else
+   {
+      while (free_since[reg] <= dst)
+      {
+         free_since[reg]->reg_cache_infos.needed_registers[reg] = NULL;
+         free_since[reg]++;
+      }
+   }
+
+   last_access[reg] = dst;
+   reg_content[reg] = (uint64_t*) addr;
+   dirty[reg] = 0;
+   r64[reg] = 0;
+
+   if (addr != NULL)
+   {
+      if (addr == (unsigned int *) r0)
+         xor_reg32_reg32(reg, reg);
+      else
+         mov_xreg32_m32rel(reg, addr);
+   }
+
+   return reg;
 }
 #else
 int allocate_register(unsigned int *addr)

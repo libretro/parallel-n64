@@ -70,16 +70,12 @@ static const int savestate_latest_version = 0x00010000;  /* 1.0 */
 
 int savestates_load_m64p(const unsigned char *data, size_t size)
 {
-   unsigned char header[44], *curr;
    char queue[1024];
    int version;
    int i;
    uint32_t FCR31;
    uint32_t* cp0_regs = r4300_cp0_regs();
-
-   (void)header;
-
-   curr = (unsigned char*)data; // < HACK
+   unsigned char *curr = (unsigned char*)data; // < HACK
 
    /* Read and check Mupen64Plus magic number. */
    if(strncmp((char *)curr, savestate_magic, 8)!=0)

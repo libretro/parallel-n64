@@ -60,8 +60,6 @@ static void exception_common(void)
 
 void TLB_refill_exception(uint32_t address, int mode)
 {
-   int usual_handler = 0, i;
-
    if (r4300emu != CORE_DYNAREC && mode != TLB_FAST_READ)
       cp0_update_count();
    if (mode == TLB_WRITE)
@@ -79,6 +77,8 @@ void TLB_refill_exception(uint32_t address, int mode)
    }
    else
    {
+      int usual_handler = 0, i;
+
       if (r4300emu != CORE_PURE_INTERPRETER) 
       {
          if (mode != TLB_FAST_READ)
@@ -93,6 +93,7 @@ void TLB_refill_exception(uint32_t address, int mode)
 
       if (address >= UINT32_C(0x80000000) && address < UINT32_C(0xc0000000))
          usual_handler = 1;
+
       for (i=0; i<32; i++)
       {
          if (/*tlb_e[i].v_even &&*/ address >= tlb_e[i].start_even &&
@@ -102,14 +103,11 @@ void TLB_refill_exception(uint32_t address, int mode)
                address <= tlb_e[i].end_odd)
             usual_handler = 1;
       }
+
       if (usual_handler)
-      {
          generic_jump_to(UINT32_C(0x80000180));
-      }
       else
-      {
          generic_jump_to(UINT32_C(0x80000000));
-      }
    }
    if(mode != TLB_FAST_READ) g_cp0_regs[CP0_EPC_REG] -= 4;
 

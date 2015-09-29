@@ -590,9 +590,6 @@ void free_blocks(void)
 
 void invalidate_cached_code_hacktarux(uint32_t address, size_t size)
 {
-   size_t i;
-   uint32_t addr;
-   uint32_t addr_max;
 
    if (size == 0)
    {
@@ -601,12 +598,13 @@ void invalidate_cached_code_hacktarux(uint32_t address, size_t size)
    }
    else
    {
+      uint32_t addr;
       /* invalidate blocks (if necessary) */
-      addr_max = address+size;
+      uint32_t addr_max = address+size;
 
       for(addr = address; addr < addr_max; addr += 4)
       {
-         i = (addr >> 12);
+         size_t i = (addr >> 12);
 
          if (invalid_code[i] == 0)
          {

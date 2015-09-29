@@ -170,19 +170,22 @@ uint32_t game_controller_get_input(struct game_controller* cont)
 
 void process_controller_command(struct game_controller* cont, uint8_t* cmd)
 {
-    switch (cmd[2])
-    {
-    case PIF_CMD_STATUS:
-    case PIF_CMD_RESET:
-        controller_status_command(cont, cmd); break;
-    case PIF_CMD_CONTROLLER_READ:
-        controller_read_buttons_command(cont, cmd); break;
-    case PIF_CMD_PAK_READ:
-        controller_read_pak_command(cont, cmd); break;
-    case PIF_CMD_PAK_WRITE:
-        controller_write_pak_command(cont, cmd); break;
-        break;
-    }
+   switch (cmd[2])
+   {
+      case PIF_CMD_STATUS:
+      case PIF_CMD_RESET:
+         controller_status_command(cont, cmd);
+         break;
+      case PIF_CMD_CONTROLLER_READ:
+         controller_read_buttons_command(cont, cmd);
+         break;
+      case PIF_CMD_PAK_READ:
+         controller_read_pak_command(cont, cmd);
+         break;
+      case PIF_CMD_PAK_WRITE:
+         controller_write_pak_command(cont, cmd);
+         break;
+   }
 }
 
 void read_controller(struct game_controller* cont, uint8_t* cmd)

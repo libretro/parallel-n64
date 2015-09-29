@@ -1821,12 +1821,13 @@ void genldr(void)
 
 void genlb(void)
 {
-   int gpr1, gpr2, base1, base2 = 0;
 #ifdef INTERPRET_LB
    gencallinterp((native_type)cached_interpreter_table.LB, 0);
 #else
 
 #ifdef __x86_64__
+   int gpr1, gpr2, base1, base2 = 0;
+
    free_registers_move_start();
 
    ld_register_alloc(&gpr1, &gpr2, &base1, &base2);
@@ -1991,11 +1992,11 @@ void genlwl(void)
 
 void genlw(void)
 {
-   int gpr1, gpr2, base1, base2 = 0;
 #ifdef INTERPRET_LW
    gencallinterp((native_type)cached_interpreter_table.LW, 0);
 #else
 #ifdef __x86_64__
+   int gpr1, gpr2, base1, base2 = 0;
    free_registers_move_start();
 
    ld_register_alloc(&gpr1, &gpr2, &base1, &base2);
@@ -2072,11 +2073,11 @@ void genlw(void)
 
 void genlbu(void)
 {
-   int gpr1, gpr2, base1, base2 = 0;
 #ifdef INTERPRET_LBU
    gencallinterp((native_type)cached_interpreter_table.LBU, 0);
 #else
 #ifdef __x86_64__
+   int gpr1, gpr2, base1, base2 = 0;
    free_registers_move_start();
 
    ld_register_alloc(&gpr1, &gpr2, &base1, &base2);
@@ -2157,11 +2158,11 @@ void genlbu(void)
 
 void genlhu(void)
 {
-   int gpr1, gpr2, base1, base2 = 0;
 #ifdef INTERPRET_LHU
    gencallinterp((native_type)cached_interpreter_table.LHU, 0);
 #else
 #ifdef __x86_64__
+   int gpr1, gpr2, base1, base2 = 0;
    free_registers_move_start();
 
    ld_register_alloc(&gpr1, &gpr2, &base1, &base2);
@@ -2247,11 +2248,11 @@ void genlwr(void)
 
 void genlwu(void)
 {
-   int gpr1, gpr2, base1, base2 = 0;
 #ifdef INTERPRET_LWU
    gencallinterp((native_type)cached_interpreter_table.LWU, 0);
 #else
 #ifdef __x86_64__
+   int gpr1, gpr2, base1, base2 = 0;
    free_registers_move_start();
 
    ld_register_alloc(&gpr1, &gpr2, &base1, &base2);

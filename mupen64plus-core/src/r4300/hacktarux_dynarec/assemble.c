@@ -142,7 +142,7 @@ void add_jump(unsigned int pc_addr, unsigned int mi_addr, unsigned int absolute6
 
 void passe2(precomp_instr *dest, int start, int end, precomp_block *block)
 {
-   unsigned int real_code_length, addr_dest;
+   unsigned int real_code_length;
    int i;
    build_wrappers(dest, start, end, block);
 
@@ -208,12 +208,12 @@ void passe2(precomp_instr *dest, int start, int end, precomp_block *block)
       code_length = jumps_table[i].pc_addr;
       if (dest[(jumps_table[i].mi_addr - dest[0].addr)/4].reg_cache_infos.need_map)
       {
-         addr_dest = (unsigned int)dest[(jumps_table[i].mi_addr - dest[0].addr)/4].reg_cache_infos.jump_wrapper;
+         unsigned int addr_dest = (unsigned int)dest[(jumps_table[i].mi_addr - dest[0].addr)/4].reg_cache_infos.jump_wrapper;
          put32(addr_dest-((unsigned int)block->code+code_length)-4);
       }
       else
       {
-         addr_dest = dest[(jumps_table[i].mi_addr - dest[0].addr)/4].local_addr;
+         unsigned int addr_dest = dest[(jumps_table[i].mi_addr - dest[0].addr)/4].local_addr;
          put32(addr_dest-code_length-4);
       }
    }
