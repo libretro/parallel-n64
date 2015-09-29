@@ -68,14 +68,6 @@ void HleVerboseMessage(void* UNUSED(user_defined), const char *message, ...)
     va_end(args);
 }
 
-void HleErrorMessage(void* UNUSED(user_defined), const char *message, ...)
-{
-    va_list args;
-    va_start(args, message);
-    DebugMessage(M64MSG_ERROR, message, args);
-    va_end(args);
-}
-
 void HleWarnMessage(void* UNUSED(user_defined), const char *message, ...)
 {
     va_list args;
@@ -83,47 +75,6 @@ void HleWarnMessage(void* UNUSED(user_defined), const char *message, ...)
     DebugMessage(M64MSG_WARNING, message, args);
     va_end(args);
 }
-
-void HleCheckInterrupts(void* UNUSED(user_defined))
-{
-    if (l_CheckInterrupts == NULL)
-        return;
-
-    (*l_CheckInterrupts)();
-}
-
-void HleProcessDlistList(void* UNUSED(user_defined))
-{
-    if (l_ProcessDlistList == NULL)
-        return;
-
-    (*l_ProcessDlistList)();
-}
-
-void HleProcessAlistList(void* UNUSED(user_defined))
-{
-    if (l_ProcessAlistList == NULL)
-        return;
-
-    (*l_ProcessAlistList)();
-}
-
-void HleProcessRdpList(void* UNUSED(user_defined))
-{
-    if (l_ProcessRdpList == NULL)
-        return;
-
-    (*l_ProcessRdpList)();
-}
-
-void HleShowCFB(void* UNUSED(user_defined))
-{
-    if (l_ShowCFB == NULL)
-        return;
-
-    (*l_ShowCFB)();
-}
-
 
 /* DLL-exported functions */
 EXPORT m64p_error CALL hlePluginStartup(m64p_dynlib_handle UNUSED(CoreLibHandle), void *Context,

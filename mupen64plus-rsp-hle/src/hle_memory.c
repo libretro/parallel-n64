@@ -44,16 +44,6 @@ void load_u16(uint16_t* dst, const unsigned char* buffer, unsigned address, size
    }
 }
 
-void store_u8(unsigned char* buffer, unsigned address, const uint8_t* src, size_t count)
-{
-   while (count)
-   {
-      *u8(buffer, address) = *(src++);
-      address += 1;
-      --count;
-   }
-}
-
 void store_u16(unsigned char* buffer, unsigned address, const uint16_t* src, size_t count)
 {
    while (count)

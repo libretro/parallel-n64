@@ -448,10 +448,10 @@ static void init_subframes_v2(musyx_t *musyx)
     subframes[2] = musyx->cc0;
     subframes[3] = musyx->e50;
 
-    for (i = 0; i < SUBFRAME_SIZE; ++i) {
-
-        for(k = 0; k < 4; ++k)
-            *(subframes[k]++) = values[k];
+    for (i = 0; i < SUBFRAME_SIZE; ++i)
+    {
+       for(k = 0; k < 4; ++k)
+          *(subframes[k]++) = values[k];
     }
 }
 
@@ -460,7 +460,6 @@ static uint32_t voice_stage(struct hle_t* hle, musyx_t *musyx,
                             uint32_t voice_ptr, uint32_t last_sample_ptr)
 {
     uint32_t output_ptr;
-    int i = 0;
 
     /* voice stage can be skipped if first voice has no samples */
     if (*dram_u16(hle, voice_ptr + VOICE_CATSRC_0 + CATSRC_SIZE1) == 0)
@@ -470,6 +469,8 @@ static uint32_t voice_stage(struct hle_t* hle, musyx_t *musyx,
     }
     else
     {
+       unsigned i = 0;
+
        /* otherwise process voices until a non null output_ptr is encountered */
        for (;;)
        {
@@ -776,7 +777,6 @@ static void sfx_stage(struct hle_t* hle, mix_sfx_with_main_subframes_t mix_sfx_w
    int16_t fir4_hcoeffs[4];
 
    int16_t delayed[SUBFRAME_SIZE];
-   int dpos, dlength;
 
    int16_t *subframe = buffer + 4;
    const uint32_t pos = idx * SUBFRAME_SIZE;
@@ -826,7 +826,8 @@ static void sfx_stage(struct hle_t* hle, mix_sfx_with_main_subframes_t mix_sfx_w
    memset(subframe, 0, SUBFRAME_SIZE * sizeof(subframe[0]));
    for (i = 0; i < tap_count; ++i)
    {
-      dpos = pos - tap_delays[i];
+      int dlength;
+      int dpos = pos - tap_delays[i];
       if (dpos <= 0)
          dpos += cbuffer_length;
       dlength = SUBFRAME_SIZE;

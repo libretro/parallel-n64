@@ -81,23 +81,18 @@ static int16_t ramp_step(struct ramp_t* ramp)
 /* global functions */
 void alist_process(struct hle_t* hle, const acmd_callback_t abi[], unsigned int abi_size)
 {
-   uint32_t w1, w2;
-   unsigned int acmd;
    uint32_t addr                    = *dmem_u32(hle, TASK_DATA_PTR);
    const uint32_t *alist            = dram_u32(hle, addr);
    const uint32_t *const alist_end = alist + (*dmem_u32(hle, TASK_DATA_SIZE) >> 2);
 
    while (alist != alist_end)
    {
-      w1 = *(alist++);
-      w2 = *(alist++);
-
-      acmd = (w1 >> 24) & 0x7f;
+      uint32_t w1 = *(alist++);
+      uint32_t w2 = *(alist++);
+      uint32_t acmd = (w1 >> 24) & 0x7f;
 
       if (acmd < abi_size)
          (*abi[acmd])(hle, w1, w2);
-      else
-         HleWarnMessage(hle->user_defined, "Invalid ABI command %u", acmd);
    }
 }
 

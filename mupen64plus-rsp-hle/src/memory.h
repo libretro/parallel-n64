@@ -73,7 +73,6 @@ void load_u16(uint16_t* dst, const unsigned char* buffer, unsigned address, size
 
 #define load_u32(dst, buffer, address, count)   memcpy((dst), u32((buffer), (address)), (count) * sizeof(uint32_t))
 
-void store_u8 (unsigned char* buffer, unsigned address, const uint8_t*  src, size_t count);
 void store_u16(unsigned char* buffer, unsigned address, const uint16_t* src, size_t count);
 void store_u32(unsigned char* buffer, unsigned address, const uint32_t* src, size_t count);
 
@@ -86,7 +85,6 @@ void store_u32(unsigned char* buffer, unsigned address, const uint32_t* src, siz
 #define dmem_load_u8(hle, dst, address, count)  load_u8((dst),  (hle)->dmem, (address) & 0xfff, (count))
 #define dmem_load_u16(hle, dst, address, count)  load_u16((dst), (hle)->dmem, (address) & 0xfff, (count))
 #define dmem_load_u32(hle, dst, address, count)  load_u32((dst), (hle)->dmem, (address) & 0xfff, (count))
-#define dmem_store_u8(hle, src, address, count)  store_u8((hle)->dmem, (address) & 0xfff, (src), (count))
 #define dmem_store_u16(hle, src, address, count) store_u16((hle)->dmem, (address) & 0xfff, (src), (count))
 #define dmem_store_u32(hle, src, address, count) store_u32((hle)->dmem, (address) & 0xfff, (src), (count))
 

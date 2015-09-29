@@ -205,7 +205,6 @@ static void MP3AB0(int32_t* v)
 
 void mp3_task(struct hle_t* hle, unsigned int index, uint32_t address)
 {
-    uint32_t inPtr, outPtr;
     uint32_t t6;/* = 0x08A0; - I think these are temporary storage buffers */
     uint32_t t5;/* = 0x0AC0; */
     uint32_t t4;/* = (w1 & 0x1E); */
@@ -227,29 +226,32 @@ void mp3_task(struct hle_t* hle, unsigned int index, uint32_t address)
     /* This must be a header byte or whatnot */
     readPtr += 8;
 
-    for (cnt = 0; cnt < 0x480; cnt += 0x180) {
-        /* DMA: 0xCF0 <- RDRAM[s5] : 0x180 */
-        memcpy(hle->mp3_buffer + 0xCF0, hle->dram + readPtr, 0x180);
-        inPtr  = 0xCF0; /* s7 */
-        outPtr = 0xE70; /* s3 */
-/* --------------- Inner Loop Start -------------------- */
-        for (cnt2 = 0; cnt2 < 0x180; cnt2 += 0x40) {
-            t6 &= 0xFFE0;
-            t5 &= 0xFFE0;
-            t6 |= t4;
-            t5 |= t4;
-            InnerLoop(hle, outPtr, inPtr, t6, t5, t4);
-            t4 = (t4 - 2) & 0x1E;
-            tmp = t6;
-            t6 = t5;
-            t5 = tmp;
-            inPtr += 0x40;
-            outPtr += 0x40;
-        }
-/* --------------- Inner Loop End -------------------- */
-        memcpy(hle->dram + writePtr, hle->mp3_buffer + 0xe70, 0x180);
-        writePtr += 0x180;
-        readPtr  += 0x180;
+    for (cnt = 0; cnt < 0x480; cnt += 0x180)
+    {
+       uint32_t inPtr, outPtr;
+
+       /* DMA: 0xCF0 <- RDRAM[s5] : 0x180 */
+       memcpy(hle->mp3_buffer + 0xCF0, hle->dram + readPtr, 0x180);
+       inPtr  = 0xCF0; /* s7 */
+       outPtr = 0xE70; /* s3 */
+       /* --------------- Inner Loop Start -------------------- */
+       for (cnt2 = 0; cnt2 < 0x180; cnt2 += 0x40) {
+          t6 &= 0xFFE0;
+          t5 &= 0xFFE0;
+          t6 |= t4;
+          t5 |= t4;
+          InnerLoop(hle, outPtr, inPtr, t6, t5, t4);
+          t4 = (t4 - 2) & 0x1E;
+          tmp = t6;
+          t6 = t5;
+          t5 = tmp;
+          inPtr += 0x40;
+          outPtr += 0x40;
+       }
+       /* --------------- Inner Loop End -------------------- */
+       memcpy(hle->dram + writePtr, hle->mp3_buffer + 0xe70, 0x180);
+       writePtr += 0x180;
+       readPtr  += 0x180;
     }
 }
 
@@ -280,7 +282,6 @@ static void InnerLoop(struct hle_t* hle,
     int tmp;
     int32_t hi0;
     int32_t hi1;
-    int32_t vt;
     int32_t v[32];
 
     v[0] = *(int16_t *)(hle->mp3_buffer + inPtr + (0x00 ^ S16));
@@ -661,24 +662,25 @@ static void InnerLoop(struct hle_t* hle,
 
     hi0 = (int)hi0 >> 0x10;
     hi1 = (int)hi1 >> 0x10;
-    for (i = 0; i < 8; i++) {
-        /* v0 */
-        vt = (*(int16_t *)(hle->mp3_buffer + ((tmp - 0x40)^S16)) * hi0);
-        *(int16_t *)((uint8_t *)hle->mp3_buffer + ((tmp - 0x40)^S16)) = clamp_s16(vt);
+    for (i = 0; i < 8; i++)
+    {
+       /* v0 */
+       int32_t vt = (*(int16_t *)(hle->mp3_buffer + ((tmp - 0x40)^S16)) * hi0);
+       *(int16_t *)((uint8_t *)hle->mp3_buffer + ((tmp - 0x40)^S16)) = clamp_s16(vt);
 
-        /* v17 */
-        vt = (*(int16_t *)(hle->mp3_buffer + ((tmp - 0x30)^S16)) * hi0);
-        *(int16_t *)((uint8_t *)hle->mp3_buffer + ((tmp - 0x30)^S16)) = clamp_s16(vt);
+       /* v17 */
+       vt = (*(int16_t *)(hle->mp3_buffer + ((tmp - 0x30)^S16)) * hi0);
+       *(int16_t *)((uint8_t *)hle->mp3_buffer + ((tmp - 0x30)^S16)) = clamp_s16(vt);
 
-        /* v2 */
-        vt = (*(int16_t *)(hle->mp3_buffer + ((tmp - 0x1E)^S16)) * hi1);
-        *(int16_t *)((uint8_t *)hle->mp3_buffer + ((tmp - 0x1E)^S16)) = clamp_s16(vt);
+       /* v2 */
+       vt = (*(int16_t *)(hle->mp3_buffer + ((tmp - 0x1E)^S16)) * hi1);
+       *(int16_t *)((uint8_t *)hle->mp3_buffer + ((tmp - 0x1E)^S16)) = clamp_s16(vt);
 
-        /* v4 */
-        vt = (*(int16_t *)(hle->mp3_buffer + ((tmp - 0xE)^S16)) * hi1);
-        *(int16_t *)((uint8_t *)hle->mp3_buffer + ((tmp - 0xE)^S16)) = clamp_s16(vt);
+       /* v4 */
+       vt = (*(int16_t *)(hle->mp3_buffer + ((tmp - 0xE)^S16)) * hi1);
+       *(int16_t *)((uint8_t *)hle->mp3_buffer + ((tmp - 0xE)^S16)) = clamp_s16(vt);
 
-        tmp += 2;
+       tmp += 2;
     }
 }
 
