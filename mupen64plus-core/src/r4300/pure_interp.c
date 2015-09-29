@@ -88,10 +88,10 @@ uint32_t adler32(uint32_t adler, void *buf, int len);
    static void name##_IDLE(uint32_t op) \
    { \
       const int take_jump = (condition); \
-      int skip; \
       if (cop1 && check_cop1_unusable()) return; \
       if (take_jump) \
       { \
+         int skip; \
          cp0_update_count(); \
          skip = next_interupt - g_cp0_regs[CP0_COUNT_REG]; \
          if (skip > 3) g_cp0_regs[CP0_COUNT_REG] += (skip & UINT32_C(0xFFFFFFFC)); \

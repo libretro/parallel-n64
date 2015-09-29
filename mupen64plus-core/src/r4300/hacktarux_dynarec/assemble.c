@@ -123,8 +123,14 @@ void add_jump(unsigned int pc_addr, unsigned int mi_addr, unsigned int absolute6
 {
    if (jumps_number == max_jumps_number)
    {
+      jump_table *new_ptr = NULL;
+
       max_jumps_number += JUMP_TABLE_SIZE;
-      jumps_table = (jump_table *) realloc(jumps_table, max_jumps_number*sizeof(jump_table));
+      new_ptr           = (jump_table *)
+         realloc(jumps_table, max_jumps_number*sizeof(jump_table));
+      if (!new_ptr)
+         return;
+      jumps_table = new_ptr;
    }
    jumps_table[jumps_number].pc_addr = pc_addr;
    jumps_table[jumps_number].mi_addr = mi_addr;

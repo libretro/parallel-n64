@@ -341,7 +341,7 @@ void check_interupt(void)
 {
    struct node *event;
 
-   if (g_r4300.mi.regs[MI_INTR_REG] & g_r4300.mi.regs[MI_INTR_REG])
+   if ((g_r4300.mi.regs[MI_INTR_REG] & g_r4300.mi.regs[MI_INTR_REG]))
       g_cp0_regs[CP0_CAUSE_REG] = (g_cp0_regs[CP0_CAUSE_REG] | UINT32_C(0x400)) & UINT32_C(0xFFFFFF83);
    else
       g_cp0_regs[CP0_CAUSE_REG] &= ~UINT32_C(0x400);

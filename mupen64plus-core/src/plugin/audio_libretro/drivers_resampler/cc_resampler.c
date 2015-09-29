@@ -497,13 +497,13 @@ static void resampler_CC_upsample(void *re_, struct resampler_data *data)
       while (re->distance < 1.0)
       {
          int i;
-         float temp;
+
          outp->l = 0.0;
          outp->r = 0.0;
 
          for (i = 0; i < 4; i++)
          {
-            temp = cc_kernel(re->distance + 1.0 - i, b);
+            float temp = cc_kernel(re->distance + 1.0 - i, b);
             outp->l += re->buffer[i].l * temp;
             outp->r += re->buffer[i].r * temp;
          }

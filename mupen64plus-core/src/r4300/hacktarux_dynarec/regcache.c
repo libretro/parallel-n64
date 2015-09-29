@@ -320,31 +320,32 @@ int lru_register_exc1(int exc1)
 // a 64 bits value, and return the register number of the LSB part
 int allocate_register_64(unsigned long long *addr)
 {
-  int reg, i;
+  int reg;
 
   /* is it already cached? */
   if (addr != NULL)
   {
-    for (i = 0; i < 8; i++)
-    {
-      if (last_access[i] != NULL && reg_content[i] == addr)
-      {
-        precomp_instr *last = last_access[i]+1;
+     unsigned i;
+     for (i = 0; i < 8; i++)
+     {
+        if (last_access[i] != NULL && reg_content[i] == addr)
+        {
+           precomp_instr *last = last_access[i]+1;
 
-        while (last <= dst)
-        {
-          last->reg_cache_infos.needed_registers[i] = reg_content[i];
-          last++;
+           while (last <= dst)
+           {
+              last->reg_cache_infos.needed_registers[i] = reg_content[i];
+              last++;
+           }
+           last_access[i] = dst;
+           if (r64[i] == 0)
+           {
+              movsxd_reg64_reg32(i, i);
+              r64[i] = 1;
+           }
+           return i;
         }
-        last_access[i] = dst;
-        if (r64[i] == 0)
-        {
-          movsxd_reg64_reg32(i, i);
-          r64[i] = 1;
-        }
-        return i;
-      }
-    }
+     }
   }
 
   // it's not cached, so take the least recently used register
@@ -887,23 +888,24 @@ static void build_wrapper(precomp_instr *instr, unsigned char* pCode, precomp_bl
 
    for (i=7; i>=0; i--)
    {
-     int64_t riprel;
      if (instr->reg_cache_infos.needed_registers[i] != NULL)
      {
-       *pCode++ = 0x48;
-       *pCode++ = 0x8B;
-       *pCode++ = 0x80 | (i << 3);
-       riprel = (int64_t) ((unsigned char *) instr->reg_cache_infos.needed_registers[i] - (unsigned char *) &reg[0]);
-       *((int *) pCode) = (int) riprel;
-       pCode += 4;
-       if (riprel >= 0x7fffffffLL || riprel < -0x80000000LL)
-       {
-         DebugMessage(M64MSG_ERROR, "build_wrapper error: reg[%i] offset too big for relative address from %p to %p",
-                i, (&reg[0]), instr->reg_cache_infos.needed_registers[i]);
+        int64_t riprel;
+
+        *pCode++ = 0x48;
+        *pCode++ = 0x8B;
+        *pCode++ = 0x80 | (i << 3);
+        riprel = (int64_t) ((unsigned char *) instr->reg_cache_infos.needed_registers[i] - (unsigned char *) &reg[0]);
+        *((int *) pCode) = (int) riprel;
+        pCode += 4;
+        if (riprel >= 0x7fffffffLL || riprel < -0x80000000LL)
+        {
+           DebugMessage(M64MSG_ERROR, "build_wrapper error: reg[%i] offset too big for relative address from %p to %p",
+                 i, (&reg[0]), instr->reg_cache_infos.needed_registers[i]);
 #if !defined(_MSC_VER)
-         asm(" int $3; ");
+           asm(" int $3; ");
 #endif
-       }
+        }
      }
    }
    *pCode++ = 0xC3;

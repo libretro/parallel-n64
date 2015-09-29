@@ -111,13 +111,13 @@ int write_pif_ram(void* opaque, uint32_t address, uint32_t value, uint32_t mask)
 
 void update_pif_write(struct si_controller *si)
 {
-   int8_t challenge[30], response[30];
    int i=0, channel=0;
-
    struct pif* pif = &si->pif;
 
    if (pif->ram[0x3F] > 1)
    {
+      int8_t challenge[30], response[30];
+
       switch (pif->ram[0x3F])
       {
          case 0x02:
