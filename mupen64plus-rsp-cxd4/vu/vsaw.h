@@ -48,8 +48,6 @@ static void VSAR(int vd, int vs, int vt, int e)
 
 static void VSAW(int vd, int vs, int vt, int e)
 {
-    register int i;
-
     vs = 0; /* unused--old VSAR algorithm */
     vt = 0; /* unused but mysteriously set many times */
     if (vs | vt)
@@ -57,11 +55,14 @@ static void VSAW(int vd, int vs, int vt, int e)
     e ^= 0x8; /* &= 7 */
 
     if (e > 0x2)
-    { /* branch very unlikely...never seen a game do VSAW illegally */
-        message("VSAW\nIllegal mask.", 2);
-        for (i = 0; i < N; i++)
-            VR[vd][i] = 0x0000; /* override behavior (zilmar) */
-        return;
+    {
+       /* branch very unlikely...never seen a game do VSAW illegally */
+       register int i;
+       message("VSAW\nIllegal mask.", 2);
+
+       for (i = 0; i < N; i++)
+          VR[vd][i] = 0x0000; /* override behavior (zilmar) */
+       return;
     }
     vector_copy(VR[vd], VACC[e]);
     return;

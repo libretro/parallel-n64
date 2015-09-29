@@ -24,9 +24,7 @@ unsigned char conf[32];
 #include <string.h>
 #include "Rsp_#1.1.h"
 #include "rsp.h"
-#include "bench.h"
 #include "m64p_plugin.h"
-
 
 #define RSP_CXD4_VERSION 0x0101
 
@@ -38,8 +36,6 @@ unsigned char conf[32];
 #define CONFIG_API_VERSION       0x020100
 #define CONFIG_PARAM_VERSION     1.00
 
-static void (*l_DebugCallback)(void *, int, const char *) = NULL;
-static void *l_DebugCallContext = NULL;
 static int l_PluginInit = 0;
 static m64p_handle l_ConfigRsp;
 extern RSP_INFO rsp_info;
@@ -56,22 +52,6 @@ NOINLINE void update_conf(const char* source)
     CFG_MEND_SEMAPHORE_LOCK = ConfigGetParamBool(l_ConfigRsp, "SupportCPUSemaphoreLock");
 }
 
-static void DebugMessage(int level, const char *message, ...)
-{
-  char msgbuf[1024];
-  va_list args;
-
-  if (l_DebugCallback == NULL)
-      return;
-
-  va_start(args, message);
-  vsprintf(msgbuf, message, args);
-
-  (*l_DebugCallback)(l_DebugCallContext, level, msgbuf);
-
-  va_end(args);
-}
-
 EXPORT m64p_error CALL PluginStartup(m64p_dynlib_handle CoreLibHandle, void *Context,
                                      void (*DebugCallback)(void *, int, const char *))
 {
@@ -81,8 +61,6 @@ EXPORT m64p_error CALL PluginStartup(m64p_dynlib_handle CoreLibHandle, void *Con
         return M64ERR_ALREADY_INIT;
 
     /* first thing is to set the callback function for debug info */
-    l_DebugCallback = DebugCallback;
-    l_DebugCallContext = Context;
 
     /* set the default values for this plugin */
     ConfigSetDefaultFloat(l_ConfigRsp, "Version", CONFIG_PARAM_VERSION,  "Mupen64Plus cxd4 RSP Plugin config parameter version number");
@@ -135,50 +113,6 @@ EXPORT int CALL RomOpen(void)
 }
 #else
 
-EXPORT void CALL CloseDLL(void)
-{
-    RSP.RDRAM = NULL; /* so DllTest benchmark doesn't think ROM is still open */
-    return;
-}
-static const char DLL_about[] =
-    "RSP Interpreter by Iconoclast&&ECHO."\
-    "&&ECHO "\
-    "Thanks for test RDP:  Jabo, ziggy, angrylion\n"\
-    "RSP driver examples:  bpoint, zilmar, Ville Linde\n"\
-    "Helpful shenanigans:  mudlord, MarathonMan, Garteal";
-EXPORT void CALL DllAbout(HWND hParent)
-{
-    hParent = NULL;
-    message(DLL_about, 3);
-    return;
-}
-EXPORT void CALL DllConfig(HWND hParent)
-{
-    FILE* stream;
-    register int PC;
-
-    hParent = NULL;
-    system("sp_cfgui"); /* This launches an EXE by default (if not, BAT/CMD). */
-    update_conf(CFG_FILE);
-    if (RSP.DMEM == RSP.IMEM || *RSP.SP_PC_REG == 0x00000000)
-        return;
-
-    export_SP_memory();
-    trace_RSP_registers();
-    stream = fopen("rsp_task.txt", "w");
-    fprintf(stream, "off   inst             disassembled\n");
-    fprintf(stream, "--- -------- --------------------------------\n");
-    for (PC = 0; PC < 4096; PC += 4)
-    {
-        const uint32_t inst = *(uint32_t *)(RSP.IMEM + PC);
-
-        disassemble(inst);
-        fprintf(stream, "%03X %08"PRIX32" %s\n", PC, inst, disasm);
-    }
-    fclose(stream);
-    return;
-}
-
 #endif
 
 EXPORT unsigned int CALL cxd4DoRspCycles(unsigned int cycles)
@@ -228,16 +162,6 @@ EXPORT unsigned int CALL cxd4DoRspCycles(unsigned int cycles)
     }
     run_task();
     return (cycles);
-}
-EXPORT void CALL GetDllInfo(PLUGIN_INFO *PluginInfo)
-{
-    PluginInfo -> Version = 0x0101; /* zilmar #1.1 (only standard RSP spec) */
-    PluginInfo -> Type = PLUGIN_TYPE_RSP;
-strcpy(
-    PluginInfo -> Name, DLL_name);
-    PluginInfo -> NormalMemory = 0;
-    PluginInfo -> MemoryBswaped = 1;
-    return;
 }
 
 RCPREG* CR[16];

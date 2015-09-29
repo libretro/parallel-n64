@@ -263,18 +263,18 @@ void SP_DMA_READ(void)
     ++count;
     skip += length;
     do
-    { /* `count` always starts > 0, so we begin with `do` instead of `while`. */
-        unsigned int offC, offD; /* SP cache and dynamic DMA pointers */
-        register unsigned int i = 0;
+    {
+       /* `count` always starts > 0, so we begin with `do` instead of `while`. */
+       register unsigned int i = 0;
 
-        --count;
-        do
-        {
-            offC = (count*length + *RSP.SP_MEM_ADDR_REG + i) & 0x00001FF8;
-            offD = (count*skip + *RSP.SP_DRAM_ADDR_REG + i) & 0x00FFFFF8;
-            memcpy(RSP.DMEM + offC, RSP.RDRAM + offD, 8);
-            i += 0x008;
-        } while (i < length);
+       --count;
+       do
+       {
+          unsigned int offC = (count*length + *RSP.SP_MEM_ADDR_REG + i) & 0x00001FF8; /* SP cache and dynamic DMA pointers */
+          unsigned int offD = (count*skip + *RSP.SP_DRAM_ADDR_REG + i) & 0x00FFFFF8;
+          memcpy(RSP.DMEM + offC, RSP.RDRAM + offD, 8);
+          i += 0x008;
+       } while (i < length);
     } while (count);
     *RSP.SP_DMA_BUSY_REG = 0x00000000;
     *RSP.SP_STATUS_REG &= ~0x00000004; /* SP_STATUS_DMABUSY */
@@ -293,18 +293,19 @@ void SP_DMA_WRITE(void)
     ++count;
     skip += length;
     do
-    { /* `count` always starts > 0, so we begin with `do` instead of `while`. */
-        unsigned int offC, offD; /* SP cache and dynamic DMA pointers */
-        register unsigned int i = 0;
+    {
+       /* `count` always starts > 0, so we begin with `do` instead of `while`. */
+       register unsigned int i = 0;
 
-        --count;
-        do
-        {
-            offC = (count*length + *RSP.SP_MEM_ADDR_REG + i) & 0x00001FF8;
-            offD = (count*skip + *RSP.SP_DRAM_ADDR_REG + i) & 0x00FFFFF8;
-            memcpy(RSP.RDRAM + offD, RSP.DMEM + offC, 8);
-            i += 0x000008;
-        } while (i < length);
+       --count;
+       do
+       {
+          /* SP cache and dynamic DMA pointers */
+          unsigned int offC = (count*length + *RSP.SP_MEM_ADDR_REG + i) & 0x00001FF8;
+          unsigned int offD = (count*skip + *RSP.SP_DRAM_ADDR_REG + i) & 0x00FFFFF8;
+          memcpy(RSP.RDRAM + offD, RSP.DMEM + offC, 8);
+          i += 0x000008;
+       } while (i < length);
     } while (count);
     *RSP.SP_DMA_BUSY_REG = 0x00000000;
     *RSP.SP_STATUS_REG &= ~0x00000004; /* SP_STATUS_DMABUSY */
