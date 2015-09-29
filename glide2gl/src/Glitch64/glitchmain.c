@@ -251,8 +251,8 @@ grLfbWriteRegion( int32_t dst_buffer,
    }
    else
    {
-      int tex_width, tex_height, invert;
-      int vertexOffset_location, textureSizes_location;
+      int invert;
+      int textureSizes_location;
       static float data[16];
       const unsigned int half_stride = src_stride / 2;
 
@@ -278,8 +278,6 @@ grLfbWriteRegion( int32_t dst_buffer,
 
       glDisable(GL_DEPTH_TEST);
       glDisable(GL_BLEND);
-      tex_width  = src_width;
-      tex_height = src_height;
       invert = 1;
 
       data[ 0] = (float)((int)dst_x);                             /* X 0 */

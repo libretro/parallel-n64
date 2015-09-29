@@ -105,7 +105,6 @@ static void add_tex(unsigned int id)
    }
 
 #ifdef LOG_TEXTUREMEM
-addtex_log:
   if (log_cb)
      log_cb(RETRO_LOG_DEBUG, "ADDTEX nbtex is now %d (%06x)\n", HASH_COUNT(list), id);
 #endif

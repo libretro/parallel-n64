@@ -148,7 +148,7 @@ static uint32_t textureCRC(uint32_t crc, uint8_t *addr, int width, int height, i
 // Gets information for either t0 or t1, checks if in cache & fills tex_found
 static void GetTexInfo (int id, int tile)
 {
-   int t, tile_width, tile_height, mask_width, mask_height, width, height, wid_64, line, bpl;
+   int t, tile_width, tile_height, mask_width, mask_height, width, height, wid_64, line;
    int real_image_width, real_image_height, crc_height;
    uint32_t crc, flags, mod, modcolor, modcolor1, modcolor2, modfactor, mod_mask;
    NODE *node;
@@ -237,8 +237,6 @@ static void GetTexInfo (int id, int tile)
    crc_height = height;
    if (rdp.timg.set_by == 1)
       crc_height = tile_height;
-
-   bpl = width << g_gdp.tile[tile].size >> 1;
 
 #ifndef NDEBUG
    LRDP(" | | |-+ Texture approved:\n");
@@ -687,7 +685,7 @@ void TexCache(void)
       tmu_v[1] = tmu_1;
       for (i = 0; i < NUM_TMU; i++)
       {
-         int tile, filter;
+         int tile;
          const int tmu = tmu_v[i];
 
          if (tmu >= NUM_TMU)
@@ -699,7 +697,7 @@ void TexCache(void)
          if (rdp.cur_cache[i])
          {
             uint32_t mode_s, mode_t;
-            int cs, ct;
+            int cs, ct, filter;
             if (rdp.force_wrap && !rdp.texrecting)
             {
                cs = g_gdp.tile[tile].cs && g_gdp.tile[tile].sl - g_gdp.tile[tile].sh < 256;
@@ -1125,7 +1123,6 @@ static void LoadTex(int id, int tmu)
                      ((uint16_t)(b >> 3) << 1) |
                      ((uint16_t)(a ) << 0));
             }while(--size);
-            break;
             break;
          case TMOD_COL_INTER_TEX_USING_COL1:
             do

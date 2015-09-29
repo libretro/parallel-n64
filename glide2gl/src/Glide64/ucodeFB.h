@@ -57,18 +57,14 @@ static void fb_bg_copy(uint32_t w0, uint32_t w1)
 {
    CI_STATUS status;
    uint32_t addr, imagePtr;
-   uint8_t imageFmt, imageSiz;
    if (rdp.main_ci == 0)
       return;
    status = rdp.frame_buffers[rdp.ci_count-1].status;
    if (status == CI_COPY)
       return;
 
-   addr = RSP_SegmentToPhysical(w1) >> 1;
-   imageFmt	= ((uint8_t *)gfx_info.RDRAM)[(((addr+11)<<1)+0)^3];
-   imageSiz	= ((uint8_t *)gfx_info.RDRAM)[(((addr+11)<<1)+1)^3];
+   addr     = RSP_SegmentToPhysical(w1) >> 1;
    imagePtr	= RSP_SegmentToPhysical(((uint32_t*)gfx_info.RDRAM)[(addr+8)>>1]);
-   FRDP ("fb_bg_copy. fmt: %d, size: %d, imagePtr %08lx, main_ci: %08lx, cur_ci: %08lx \n", imageFmt, imageSiz, imagePtr, rdp.main_ci, rdp.frame_buffers[rdp.ci_count-1].addr);
 
    if (status == CI_MAIN)
    {

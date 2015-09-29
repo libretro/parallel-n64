@@ -85,8 +85,7 @@ static void uc5_matrix(uint32_t w0, uint32_t w1)
 
 static void uc5_vertex(uint32_t w0, uint32_t w1)
 {
-   int i, first, prj, start, n;
-   float x, y, z;
+   int i, first, prj, n;
    uint32_t addr = dma_offset_vtx + RSP_SegmentToPhysical(w1);
 
    // | cccc cccc 1111 1??? 0000 0002 2222 2222 | cmd1 = address |
@@ -112,15 +111,13 @@ static void uc5_vertex(uint32_t w0, uint32_t w1)
 
    prj = cur_mtx;
 
-   start = 0;
-
    for (i = first; i < first + n; i++)
    {
       VERTEX *v = (VERTEX*)&rdp.vtx[i];
-      start = (i-first) * 10;
-      x   = (float)((int16_t*)gfx_info.RDRAM)[(((addr+start) >> 1) + 0)^1];
-      y   = (float)((int16_t*)gfx_info.RDRAM)[(((addr+start) >> 1) + 1)^1];
-      z   = (float)((int16_t*)gfx_info.RDRAM)[(((addr+start) >> 1) + 2)^1];
+      int start = (i-first) * 10;
+      float x   = (float)((int16_t*)gfx_info.RDRAM)[(((addr+start) >> 1) + 0)^1];
+      float y   = (float)((int16_t*)gfx_info.RDRAM)[(((addr+start) >> 1) + 1)^1];
+      float z   = (float)((int16_t*)gfx_info.RDRAM)[(((addr+start) >> 1) + 2)^1];
 
       v->x = x*rdp.dkrproj[prj][0][0] + y*rdp.dkrproj[prj][1][0] + z*rdp.dkrproj[prj][2][0] + rdp.dkrproj[prj][3][0];
       v->y = x*rdp.dkrproj[prj][0][1] + y*rdp.dkrproj[prj][1][1] + z*rdp.dkrproj[prj][2][1] + rdp.dkrproj[prj][3][1];
@@ -172,7 +169,7 @@ static void uc5_vertex(uint32_t w0, uint32_t w1)
 
 static void uc5_tridma(uint32_t w0, uint32_t w1)
 {
-   int i, start, v0, v1, v2, flags;
+   int i;
    uint32_t addr = RSP_SegmentToPhysical(w1);
    int num = _SHIFTR( w0, 4, 12);
 
@@ -187,12 +184,13 @@ static void uc5_tridma(uint32_t w0, uint32_t w1)
 
    for (i = 0; i < num; i++)
    {
-      unsigned cull_mode = GR_CULL_NEGATIVE;
+      int flags;
       VERTEX *v[3];
-      start = i << 4;
-      v0 = gfx_info.RDRAM[addr+start];
-      v1 = gfx_info.RDRAM[addr+start+1];
-      v2 = gfx_info.RDRAM[addr+start+2];
+      unsigned cull_mode = GR_CULL_NEGATIVE;
+      int start = i << 4;
+      int v0 = gfx_info.RDRAM[addr+start];
+      int v1 = gfx_info.RDRAM[addr+start+1];
+      int v2 = gfx_info.RDRAM[addr+start+2];
 
       v[0] = &rdp.vtx[v0];
       v[1] = &rdp.vtx[v1];

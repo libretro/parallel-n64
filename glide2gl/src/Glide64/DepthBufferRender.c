@@ -274,8 +274,8 @@ void Rasterize(struct vertexi * vtx, int vertices, int dzdx)
 
    for(;;)
    {
-      int x1, width;
-      x1 = iceil(left_x);
+      int width;
+      int x1 = iceil(left_x);
       if (x1 < g_gdp.__clip.xh)
          x1 = g_gdp.__clip.xh;
       width = iceil(right_x) - x1;
@@ -284,21 +284,23 @@ void Rasterize(struct vertexi * vtx, int vertices, int dzdx)
 
       if(width > 0 && y1 >= g_gdp.__clip.yh)
       {
-         int x, prestep, z, trueZ, idx;
-         uint16_t encodedZ;
+         unsigned x;
          // Prestep initial z
-
-         prestep = (x1 << 16) - left_x;
-         z = left_z + imul16(prestep, dzdx);
+         int prestep = (x1 << 16) - left_x;
+         int      z = left_z + imul16(prestep, dzdx);
 
          shift = x1 + y1 * rdp.zi_width;
+
          //draw to depth buffer
          for (x = 0; x < width; x++)
          {
-            trueZ = z/8192;
+            int idx;
+            uint16_t encodedZ;
+            int trueZ = z / 8192;
             if (trueZ < 0)
                trueZ = 0;
-            else if (trueZ > 0x3FFFF) trueZ = 0x3FFFF;
+            else if (trueZ > 0x3FFFF)
+               trueZ = 0x3FFFF;
             encodedZ = zLUT[trueZ];
             idx = (shift+x)^1;
             if(encodedZ < destptr[idx]) 
@@ -307,7 +309,6 @@ void Rasterize(struct vertexi * vtx, int vertices, int dzdx)
          }
       }
 
-      //destptr += rdp.zi_width;
       y1++;
       if (y1 >= g_gdp.__clip.yl)
          return;

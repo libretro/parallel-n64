@@ -740,18 +740,20 @@ static uint32_t Load32bRGBA(uintptr_t dst, uintptr_t src, int wid_64, int height
     if (mod /*|| !voodoo.sup_32bit_tex*/)
     {
         uint32_t i;
-        uint16_t *tex16, a, r, g, b;
         //convert to ARGB_4444
         const uint32_t tex_size = real_width * height;
-        tex =(uint32_t *)dst;
-        tex16 =(uint16_t*)dst;
-        for (i = 0; i < tex_size; i++) {
-            c = tex[i];
-            a = (c >> 28) & 0xF;
-            r = (c >> 20) & 0xF;
-            g = (c >> 12) & 0xF;
-            b = (c >> 4)  & 0xF;
-            tex16[i] = (a <<12) | (r << 8) | (g << 4) | b;
+        uint16_t *tex16 = (uint16_t*)dst;
+        tex   = (uint32_t *)dst;
+
+        for (i = 0; i < tex_size; i++)
+        {
+           uint16_t a, r, g, b;
+           c = tex[i];
+           a = (c >> 28) & 0xF;
+           r = (c >> 20) & 0xF;
+           g = (c >> 12) & 0xF;
+           b = (c >> 4)  & 0xF;
+           tex16[i] = (a <<12) | (r << 8) | (g << 4) | b;
         }
         return (1 << 16) | GR_TEXFMT_ARGB_4444;
     }
@@ -764,8 +766,7 @@ static uint32_t Load32bRGBA(uintptr_t dst, uintptr_t src, int wid_64, int height
 //
 void LoadTile32b(uint32_t tile, uint32_t ul_s, uint32_t ul_t, uint32_t width, uint32_t height)
 {
-    uint32_t i, j;
-    uint32_t c, ptr, tline, s, xorval;
+    uint32_t j;
     const uint32_t line  = g_gdp.tile[tile].line << 2;
     const uint32_t tbase = g_gdp.tile[tile].tmem << 2;
     const uint32_t addr  = g_gdp.ti_address >> 2;
@@ -774,16 +775,18 @@ void LoadTile32b(uint32_t tile, uint32_t ul_s, uint32_t ul_t, uint32_t width, ui
 
     for (j = 0; j < height; j++)
     {
-        tline = tbase + line * j;
-        s = ((j + ul_t) * g_gdp.ti_width) + ul_s;
-        xorval = (j & 1) ? 3 : 1;
-        for (i = 0; i < width; i++)
-        {
-            c = src[addr + s + i];
-            ptr = ((tline + i) ^ xorval) & 0x3ff;
-            tmem16[ptr] = c >> 16;
-            tmem16[ptr|0x400] = c & 0xffff;
-        }
+       uint32_t i;
+       uint32_t  tline = tbase + line * j;
+       uint32_t      s = ((j + ul_t) * g_gdp.ti_width) + ul_s;
+       uint32_t xorval = (j & 1) ? 3 : 1;
+
+       for (i = 0; i < width; i++)
+       {
+          uint32_t c = src[addr + s + i];
+          uint32_t ptr = ((tline + i) ^ xorval) & 0x3ff;
+          tmem16[ptr] = c >> 16;
+          tmem16[ptr|0x400] = c & 0xffff;
+       }
     }
 }
 
@@ -808,39 +811,41 @@ void LoadBlock32b(uint32_t tile, uint32_t ul_s,
 
     if (dxt != 0)
     {
-        uint32_t c, i;
-        uint32_t j= 0;
-        uint32_t t = 0;
+        uint32_t i;
+        uint32_t t    = 0;
+        uint32_t j    = 0;
         uint32_t oldt = 0;
-        uint32_t ptr;
 
         addr += (ul_t * tiwindwords) + slindwords;
-        c = 0;
+
         for (i = 0; i < width; i += 2)
         {
-            oldt = t;
-            t = ((j >> 11) & 1) ? 3 : 1;
-            if (t != oldt)
-                i += line;
-            ptr = ((tb + i) ^ t) & 0x3ff;
-            c = src[addr + i];
-            tmem16[ptr] = c >> 16;
-            tmem16[ptr|0x400] = c & 0xffff;
-            ptr = ((tb+ i + 1) ^ t) & 0x3ff;
-            c = src[addr + i + 1];
-            tmem16[ptr] = c >> 16;
-            tmem16[ptr|0x400] = c & 0xffff;
-            j += dxt;
+           uint32_t c, ptr;
+
+           oldt = t;
+           t = ((j >> 11) & 1) ? 3 : 1;
+           if (t != oldt)
+              i += line;
+           ptr = ((tb + i) ^ t) & 0x3ff;
+           c = src[addr + i];
+           tmem16[ptr] = c >> 16;
+           tmem16[ptr|0x400] = c & 0xffff;
+           ptr = ((tb+ i + 1) ^ t) & 0x3ff;
+           c = src[addr + i + 1];
+           tmem16[ptr] = c >> 16;
+           tmem16[ptr|0x400] = c & 0xffff;
+           j += dxt;
         }
     }
     else
     {
-        uint32_t c, ptr, i;
+        uint32_t i;
         addr += (ul_t * tiwindwords) + slindwords;
+
         for (i = 0; i < width; i ++)
         {
-            ptr = ((tb + i) ^ 1) & 0x3ff;
-            c = src[addr + i];
+            uint32_t ptr = ((tb + i) ^ 1) & 0x3ff;
+            uint32_t c = src[addr + i];
             tmem16[ptr] = c >> 16;
             tmem16[ptr|0x400] = c & 0xffff;
         }

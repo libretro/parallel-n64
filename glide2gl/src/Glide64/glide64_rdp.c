@@ -726,8 +726,6 @@ static void apply_shading(VERTEX *vptr)
 static void rdp_texrect(uint32_t w0, uint32_t w1)
 {
    float ul_x, ul_y, lr_x, lr_y;
-   uint32_t a;
-   uint8_t cmdHalf1, cmdHalf2;
    int i;
    int32_t off_x_i, off_y_i;
    uint32_t prev_tile;
@@ -740,9 +738,9 @@ static void rdp_texrect(uint32_t w0, uint32_t w1)
 
    if (!rdp.LLE)
    {
-      a = rdp.pc[rdp.pc_i];
-      cmdHalf1 = gfx_info.RDRAM[a+3];
-      cmdHalf2 = gfx_info.RDRAM[a+11];
+      uint32_t       a = rdp.pc[rdp.pc_i];
+      uint8_t cmdHalf1 = gfx_info.RDRAM[a+3];
+      uint8_t cmdHalf2 = gfx_info.RDRAM[a+11];
       a >>= 2;
 
       if (  (cmdHalf1 == 0xE1 && cmdHalf2 == 0xF1) || 
@@ -1167,7 +1165,6 @@ void load_palette (uint32_t addr, uint16_t start, uint16_t count)
 
 static void rdp_loadtlut(uint32_t w0, uint32_t w1)
 {
-   int32_t i, j;
    uint32_t tile  =  (w1 >> 24) & 0x07;
    uint16_t start = g_gdp.tile[tile].tmem - 256; // starting location in the palettes
    uint16_t count = ((uint16_t)(w1 >> 14) & 0x3FF) + 1;    // number to copy
@@ -2003,7 +2000,7 @@ EXPORT void CALL FBGetFrameBufferInfo(void *p)
 
 void DetectFrameBufferUsage(void)
 {
-   uint32_t a, ci, zi, ci_height;
+   uint32_t ci, zi;
    int i, previous_ci_was_read, all_zimg;
    uint32_t dlist_start = *(uint32_t*)(gfx_info.DMEM+0xFF0);
 
@@ -2013,7 +2010,7 @@ void DetectFrameBufferUsage(void)
 
    ci = rdp.cimg;
    zi = g_gdp.zb_address;
-   ci_height = rdp.frame_buffers[(rdp.ci_count > 0)?rdp.ci_count-1:0].height;
+
    rdp.main_ci_last_tex_addr = 0;
    rdp.main_ci          = 0;
    rdp.main_ci_end      = 0;
@@ -2042,7 +2039,7 @@ void DetectFrameBufferUsage(void)
    do
    {
       // Get the address of the next command
-      a = rdp.pc[rdp.pc_i] & BMASK;
+      uint32_t a = rdp.pc[rdp.pc_i] & BMASK;
 
       // Load the next command and its input
       rdp.cmd0 = ((uint32_t*)gfx_info.RDRAM)[a>>2];   // \ Current command, 64 bit
@@ -2677,12 +2674,13 @@ static void rdphalf_1(uint32_t w0, uint32_t w1)
    uint32_t cmd = rdp.cmd1 >> 24;
    if (cmd >= G_TRI_FILL && cmd <= G_TRI_SHADE_TXTR_ZBUFF) //triangle command
    {
-      uint32_t a;
       rdp_cmd_ptr = 0;
       rdp_cmd_cur = 0;
 
       do
       {
+         uint32_t a;
+
          rdp_cmd_data[rdp_cmd_ptr++] = rdp.cmd1;
          // check DL counter
          if (rdp.dl_count != -1)

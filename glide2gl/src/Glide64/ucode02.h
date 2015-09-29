@@ -41,7 +41,6 @@ static void calc_point_light (VERTEX *v, float * vpos)
 {
    uint32_t l;
    float color[3];
-   float light_intensity = 0.0f;
 
    color[0] = rdp.light[rdp.num_lights].col[0];
    color[1] = rdp.light[rdp.num_lights].col[1];
@@ -49,7 +48,7 @@ static void calc_point_light (VERTEX *v, float * vpos)
 
    for (l = 0; l < rdp.num_lights; l++)
    {
-      light_intensity = 0.0f;
+      float light_intensity = 0.0f;
 
       if (rdp.light[l].nonblack)
       {
@@ -89,9 +88,8 @@ static void calc_point_light (VERTEX *v, float * vpos)
 
 static void uc2_vertex(uint32_t w0, uint32_t w1)
 {
-   uint32_t i, l, addr, geom_mode;
+   uint32_t addr, geom_mode;
    int v0, n;
-   float x, y, z;
    
    if (!(w0 & 0x00FFFFFF))
    {

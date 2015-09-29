@@ -40,7 +40,6 @@
 
 static void rsp_vertex(int v0, int n)
 {
-   unsigned int i;
    uint32_t addr = RSP_SegmentToPhysical(rdp.cmd1);
 
    pre_update();
@@ -168,8 +167,6 @@ static void uc0_matrix(uint32_t w0, uint32_t w1)
 //
 static void uc0_movemem(uint32_t w0, uint32_t w1)
 {
-   uint32_t index     = (w0 >> 16) & 0xFF;
-
    // Check the command
    switch (_SHIFTR( w0, 16, 8))
    {
