@@ -24,10 +24,6 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#ifdef ENABLE_TASK_DUMP
-#include <stdio.h>
-#endif
-
 #include "hle_external.h"
 #include "hle_internal.h"
 #include "memory.h"
@@ -58,14 +54,6 @@ static bool try_fast_audio_dispatching(struct hle_t* hle);
 static bool try_fast_task_dispatching(struct hle_t* hle);
 static void normal_task_dispatching(struct hle_t* hle);
 static void non_task_dispatching(struct hle_t* hle);
-
-#ifdef ENABLE_TASK_DUMP
-static void dump_binary(const char *const filename, const unsigned char *const bytes,
-                        unsigned int size);
-static void dump_task(struct hle_t* hle, const char *const filename);
-static void dump_unknown_task(struct hle_t* hle, unsigned int sum);
-static void dump_unknown_non_task(struct hle_t* hle, unsigned int sum);
-#endif
 
 extern RSP_INFO rsp_info;
 
@@ -361,9 +349,6 @@ static void normal_task_dispatching(struct hle_t* hle)
    }
 
    HleWarnMessage(hle->user_defined, "unknown OSTask: sum: %x PC:%x", sum, *hle->sp_pc);
-#ifdef ENABLE_TASK_DUMP
-   dump_unknown_task(hle, sum);
-#endif
 }
 
 static void non_task_dispatching(struct hle_t* hle)
@@ -378,114 +363,5 @@ static void non_task_dispatching(struct hle_t* hle)
    }
 
    HleWarnMessage(hle->user_defined, "unknown RSP code: sum: %x PC:%x", sum, *hle->sp_pc);
-#ifdef ENABLE_TASK_DUMP
-   dump_unknown_non_task(hle, sum);
-#endif
 }
 
-
-#ifdef ENABLE_TASK_DUMP
-static void dump_unknown_task(struct hle_t* hle, unsigned int sum)
-{
-   char filename[256];
-   uint32_t ucode      = *dmem_u32(hle, TASK_UCODE);
-   uint32_t ucode_data = *dmem_u32(hle, TASK_UCODE_DATA);
-   uint32_t data_ptr   = *dmem_u32(hle, TASK_DATA_PTR);
-
-   sprintf(&filename[0], "task_%x.log", sum);
-   dump_task(hle, filename);
-
-   /* dump ucode_boot */
-   sprintf(&filename[0], "ucode_boot_%x.bin", sum);
-   dump_binary(filename, (void*)dram_u32(hle,
-            *dmem_u32(hle, TASK_UCODE_BOOT)), *dmem_u32(hle, TASK_UCODE_BOOT_SIZE));
-
-   /* dump ucode */
-   if (ucode != 0) {
-      sprintf(&filename[0], "ucode_%x.bin", sum);
-      dump_binary(filename, (void*)dram_u32(hle, ucode), 0xf80);
-   }
-
-   /* dump ucode_data */
-   if (ucode_data != 0) {
-      sprintf(&filename[0], "ucode_data_%x.bin", sum);
-      dump_binary(filename, (void*)dram_u32(hle, ucode_data), *dmem_u32(hle, TASK_UCODE_DATA_SIZE));
-   }
-
-   /* dump data */
-   if (data_ptr != 0) {
-      sprintf(&filename[0], "data_%x.bin", sum);
-      dump_binary(filename, (void*)dram_u32(hle, data_ptr), *dmem_u32(hle, TASK_DATA_SIZE));
-   }
-}
-
-static void dump_unknown_non_task(struct hle_t* hle, unsigned int sum)
-{
-   char filename[256];
-
-   /* dump IMEM & DMEM for further analysis */
-   sprintf(&filename[0], "imem_%x.bin", sum);
-   dump_binary(filename, hle->imem, 0x1000);
-
-   sprintf(&filename[0], "dmem_%x.bin", sum);
-   dump_binary(filename, hle->dmem, 0x1000);
-}
-
-static void dump_binary(const char *const filename, const unsigned char *const bytes,
-                        unsigned int size)
-{
-   FILE *f = fopen(filename, "r");
-
-   /* if file already exists, do nothing */
-   if (f != NULL)
-   {
-      fclose(f);
-      return;
-   }
-
-   /* we write bytes to the file */
-   f = fopen(filename, "wb");
-
-   if (f != NULL)
-   {
-      if (fwrite(bytes, 1, size, f) != size)
-         hleErrorMessage(hle->user_defined, "Writing error on %s", filename);
-      fclose(f);
-   } else
-      hleErrorMessage(hle->user_defined, "Couldn't open %s for writing !", filename);
-}
-
-static void dump_task(struct hle_t* hle, const char *const filename)
-{
-   FILE *f = fopen(filename, "r");
-
-   if (f != NULL)
-   {
-      fclose(f);
-      return;
-   }
-
-   f = fopen(filename, "w");
-
-   fprintf(f,
-         "type = %d\n"
-         "flags = %d\n"
-         "ucode_boot  = %#08x size  = %#x\n"
-         "ucode       = %#08x size  = %#x\n"
-         "ucode_data  = %#08x size  = %#x\n"
-         "dram_stack  = %#08x size  = %#x\n"
-         "output_buff = %#08x *size = %#x\n"
-         "data        = %#08x size  = %#x\n"
-         "yield_data  = %#08x size  = %#x\n",
-         *dmem_u32(hle, TASK_TYPE),
-         *dmem_u32(hle, TASK_FLAGS),
-         *dmem_u32(hle, TASK_UCODE_BOOT),     *dmem_u32(hle, TASK_UCODE_BOOT_SIZE),
-         *dmem_u32(hle, TASK_UCODE),          *dmem_u32(hle, TASK_UCODE_SIZE),
-         *dmem_u32(hle, TASK_UCODE_DATA),     *dmem_u32(hle, TASK_UCODE_DATA_SIZE),
-         *dmem_u32(hle, TASK_DRAM_STACK),     *dmem_u32(hle, TASK_DRAM_STACK_SIZE),
-         *dmem_u32(hle, TASK_OUTPUT_BUFF),    *dmem_u32(hle, TASK_OUTPUT_BUFF_SIZE),
-         *dmem_u32(hle, TASK_DATA_PTR),       *dmem_u32(hle, TASK_DATA_SIZE),
-         *dmem_u32(hle, TASK_YIELD_DATA_PTR), *dmem_u32(hle, TASK_YIELD_DATA_SIZE));
-   fclose(f);
-}
-#endif

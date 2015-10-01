@@ -7,7 +7,6 @@
 #include "vi.h"
 #include "rdp.h"
 
-#undef  LOG_RDP_EXECUTION
 #define DETAILED_LOGGING 0
 
 int scfield;
@@ -5649,9 +5648,6 @@ void rdp_init(void)
 {
     int i;
 
-#ifdef LOG_RDP_EXECUTION
-        rdp_exec = fopen("rdp_execute.txt", "wt");
-#endif
     __clip.xl = 0;
     __clip.yl = 0;
     __clip.xh = 0x2000;

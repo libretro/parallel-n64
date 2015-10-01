@@ -81,19 +81,15 @@ static const char DP_command_names[64][18] = {
 
 void count_DP_commands(void)
 {
-   FILE * stream;
-   long total;
    int i;
-
-   total = 0;
+   long total = 0;
+   
    for (i = 0; i < 64; i++)
       total += cmd_count[i];
-   stream = fopen("dp_count.txt", "w");
    for (i = 0; i < 64; i++)
-      fprintf(
-            stream, "%s:  %ld (%f%%)\n", DP_command_names[i], cmd_count[i],
+      printf(
+            "%s:  %ld (%f%%)\n", DP_command_names[i], cmd_count[i],
             (float)(cmd_count[i])/(float)(total) * 100.F);
-   fclose(stream);
    for (i = 0; i < 64; i++)
       cmd_count[i] = 0; /* reset for fresh data */
 }

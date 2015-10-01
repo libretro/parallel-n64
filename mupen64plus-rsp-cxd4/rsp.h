@@ -73,7 +73,6 @@ static short MFC0_count[32];
 static FILE *output_log;
 extern void step_SP_commands(uint32_t inst);
 #endif
-extern void export_SP_memory(void);
 NOINLINE void trace_RSP_registers(void);
 
 #include "su.h"
@@ -120,55 +119,6 @@ void step_SP_commands(uint32_t inst)
     }
 }
 #endif
-
-NOINLINE void export_data_cache(void)
-{
-    FILE* out;
-    register uint32_t addr;
-
-    out = fopen("rcpcache.dhex", "wb");
-#if (0)
-    for (addr = 0x00000000; addr < 0x00001000; addr += 0x00000001)
-        fputc(RSP.DMEM[BES(addr & 0x00000FFF)], out);
-#else
-    for (addr = 0x00000000; addr < 0x00001000; addr += 0x00000004)
-    {
-        fputc(RSP.DMEM[addr + 0x000 + BES(0x000)], out);
-        fputc(RSP.DMEM[addr + 0x001 + MES(0x000)], out);
-        fputc(RSP.DMEM[addr + 0x002 - MES(0x000)], out);
-        fputc(RSP.DMEM[addr + 0x003 - BES(0x000)], out);
-    }
-#endif
-    fclose(out);
-    return;
-}
-NOINLINE void export_instruction_cache(void)
-{
-    FILE* out;
-    register uint32_t addr;
-
-    out = fopen("rcpcache.ihex", "wb");
-#if (0)
-    for (addr = 0x00000000; addr < 0x00001000; addr += 0x00000001)
-        fputc(RSP.IMEM[BES(addr & 0x00000FFF)], out);
-#else
-    for (addr = 0x00000000; addr < 0x00001000; addr += 0x00000004)
-    {
-        fputc(RSP.IMEM[addr + 0x000 + BES(0x000)], out);
-        fputc(RSP.IMEM[addr + 0x001 + MES(0x000)], out);
-        fputc(RSP.IMEM[addr + 0x002 - MES(0x000)], out);
-        fputc(RSP.IMEM[addr + 0x003 - BES(0x000)], out);
-    }
-#endif
-    fclose(out);
-    return;
-}
-void export_SP_memory(void)
-{
-    export_data_cache();
-    export_instruction_cache();
-    return;
-}
 
 const char CR_names[16][14] = {
     "SP_MEM_ADDR  ","SP_DRAM_ADDR ","SP_DMA_RD_LEN","SP_DMA_WR_LEN",

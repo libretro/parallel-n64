@@ -33,8 +33,6 @@ static int SR[32];
 
 NOINLINE static void res_S(void)
 {
-    export_SP_memory();
-    trace_RSP_registers();
     message("RESERVED\nSee SP_STATE.TXT.", 3);
     return;
 }
