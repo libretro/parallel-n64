@@ -12,10 +12,6 @@ else
 VIDEODIR_GLIDE = $(ROOT_DIR)/gles2glide64/src
 endif
 
-ifeq ($(GLIDE64MK2), 1)
-VIDEODIR_GLIDE = $(ROOT_DIR)/mupen64plus-video-glide64mk2/src
-endif
-
 DYNAREC_USED := 0
 
 INCFLAGS += \
@@ -252,46 +248,6 @@ ifeq ($(HAVE_NEON), 1)
 						$(AUDIO_LIBRETRO_DIR)/drivers_resampler/cc_resampler_neon.S
 endif
 
-# Glide64
-ifeq ($(GLIDE64MK2), 1)
-SOURCES_CXX += $(VIDEODIR_GLIDE)/Glide64/3dmath.cpp \
-					$(VIDEODIR_GLIDE)/Glide64/Combine.cpp \
-					$(VIDEODIR_GLIDE)/Glide64/Debugger.cpp \
-					$(VIDEODIR_GLIDE)/Glide64/DepthBufferRender.cpp \
-					$(VIDEODIR_GLIDE)/Glide64/FBtoScreen.cpp \
-					$(VIDEODIR_GLIDE)/Glide64/Main.cpp \
-					$(VIDEODIR_GLIDE)/Glide64/rdp.cpp \
-					$(VIDEODIR_GLIDE)/Glide64/TexCache.cpp \
-					$(VIDEODIR_GLIDE)/Glide64/Util.cpp
-
-SOURCES_CXX += $(VIDEODIR_GLIDE)/Glide64/Glide64_Ini.cpp \
-					$(VIDEODIR_GLIDE)/Glide64/Glide64_UCode.cpp \
-
-#SOURCES_CXX += $(VIDEODIR_GLIDE)/Glide64/Glide64_Ini_Default.cpp \
-					$(VIDEODIR_GLIDE)/Glide64/Glide64_UCode_Default.cpp \
-
-SOURCES_CXX  += $(VIDEODIR_GLIDE)/Glitch64/textures_common.cpp \
-					 $(VIDEODIR_GLIDE)/Glitch64/glitchmain_common.cpp
-
-#ifeq ($(GLES), 1)
-SOURCES_CXX += $(VIDEODIR_GLIDE)/Glitch64/OGLEScombiner.cpp \
-					$(VIDEODIR_GLIDE)/Glitch64/OGLESgeometry_VBO.cpp \
-					$(VIDEODIR_GLIDE)/Glitch64/OGLESglitchmain.cpp \
-					$(VIDEODIR_GLIDE)/Glitch64/OGLEStextures.cpp \
-					$(VIDEODIR_GLIDE)/Glitch64/glitchlog.cpp \
-					$(VIDEODIR_GLIDE)/Glitch64/glitchgeometry.cpp \
-					$(VIDEODIR_GLIDE)/Glitch64/glitchtextureman_hash.cpp
-					#$(VIDEODIR_GLIDE)/Glitch64/glitchdebug.cpp
-#else #SOURCES_CXX += $(VIDEODIR_GLIDE)/Glitch64/OGLcombiner.cpp \
-					$(VIDEODIR_GLIDE)/Glitch64/OGLgeometry.cpp \
-					$(VIDEODIR_GLIDE)/Glitch64/OGLglitchmain.cpp \
-					$(VIDEODIR_GLIDE)/Glitch64/OGLtextures.cpp \
-					$(VIDEODIR_GLIDE)/Glitch64/glitchlog.cpp \
-					$(VIDEODIR_GLIDE)/Glitch64/glitchtextureman_hash.cpp
-					#$(VIDEODIR_GLIDE)/Glitch64/glitchdebug.cpp
-#endif
-
-else
 #Glide 64
 SOURCES_C += $(VIDEODIR_GLIDE)/Glide64/glide64_3dmath.c \
             $(VIDEODIR_GLIDE)/Glide64/FBtoScreen.c \
@@ -311,7 +267,6 @@ SOURCES_C   += $(VIDEODIR_GLIDE)/Glitch64/glitch64_combiner.c \
             $(VIDEODIR_GLIDE)/Glitch64/geometry.c \
             $(VIDEODIR_GLIDE)/Glitch64/glitchmain.c \
             $(VIDEODIR_GLIDE)/Glitch64/glitch64_textures.c
-endif
 
 ### Angrylion's renderer ###
 SOURCES_C +=  $(VIDEODIR_ANGRYLION)/n64video_main.c \
