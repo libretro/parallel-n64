@@ -1932,6 +1932,7 @@ static void emit_movzbl_dualindexedx4(int rs1, int rs2, int rt)
   assem_debug("ldrb %s,%s,%s lsl #2",regname[rt],regname[rs1],regname[rs2]);
   output_w32(0xe7d00000|rd_rn_rm(rt,rs1,rs2)|0x100);
 }
+
 static void emit_movzbl_indexed_tlb(int addr, int rs, int map, int rt)
 {
   if(map<0) emit_movzbl_indexed(addr, rs, rt);
@@ -2301,11 +2302,16 @@ static void emit_cmpmem_indexedsr12_reg(int base,int r,int imm)
   emit_cmpimm(HOST_TEMPREG,imm);
 }
 
-// special case for tlb mapping
+/* special case for tlb mapping */
 static void emit_addsr12(int rs1,int rs2,int rt)
 {
   assem_debug("add %s,%s,%s lsr #12",regname[rt],regname[rs1],regname[rs2]);
   output_w32(0xe0800620|rd_rn_rm(rt,rs1,rs2));
+}
+
+static void emit_readptr(intptr_t addr, int rt)
+{
+   emit_readword(addr,rt);
 }
 
 static void emit_callne(int a)
@@ -2314,6 +2320,12 @@ static void emit_callne(int a)
   u_int offset=genjmp(a);
   output_w32(0x1b000000|offset);
 }
+
+static void emit_gen_ram_ptr(u_int addr, int hr)
+{
+  emit_lea_rip((int)rdram-0x80000000+addr,hr);
+}
+
 
 #ifdef IMM_PREFETCH
 // Used to preload hash table entries
@@ -3384,7 +3396,8 @@ static void loadlr_assemble_arm(int i,struct regstat *i_regs)
     if(!c||memtarget) {
       //emit_readword_indexed((int)g_rdram-0x80000000,temp2,temp2);
       emit_readword_indexed_tlb(0,temp2,map,temp2);
-      if(jaddr) add_stub(LOADW_STUB,jaddr,(int)out,i,temp2,(int)i_regs,ccadj[i],reglist);
+      if(jaddr)
+         add_stub(LOADW_STUB,jaddr,(int)out,i,temp2,(intptr_t)i_regs,ccadj[i],reglist);
     }
     else
       inline_readstub(LOADW_STUB,i,(constmap[i][s]+offset)&0xFFFFFFFC,i_regs->regmap,FTEMP,ccadj[i],reglist);
@@ -3410,7 +3423,7 @@ static void loadlr_assemble_arm(int i,struct regstat *i_regs)
       //if(th>=0) emit_readword_indexed((int)g_rdram-0x80000000,temp2,temp2h);
       //emit_readword_indexed((int)g_rdram-0x7FFFFFFC,temp2,temp2);
       emit_readdword_indexed_tlb(0,temp2,map,temp2h,temp2);
-      if(jaddr) add_stub(LOADD_STUB,jaddr,(int)out,i,temp2,(int)i_regs,ccadj[i],reglist);
+      if(jaddr) add_stub(LOADD_STUB,jaddr,(int)out,i,temp2,(intptr_t)i_regs,ccadj[i],reglist);
     }
     else
       inline_readstub(LOADD_STUB,i,(constmap[i][s]+offset)&0xFFFFFFF8,i_regs->regmap,FTEMP,ccadj[i],reglist);
@@ -3560,7 +3573,7 @@ static void cop1_unusable(int i,struct regstat *i_regs)
   if(!cop1_usable) {
     int jaddr=(int)out;
     emit_jmp(0);
-    add_stub(FP_STUB,jaddr,(int)out,i,0,(int)i_regs,is_delayslot,0);
+    add_stub(FP_STUB,jaddr,(int)out,i,0,(intptr_t)i_regs,is_delayslot,0);
     cop1_usable=1;
   }
 }
@@ -3574,7 +3587,7 @@ static void cop1_assemble(int i,struct regstat *i_regs)
     emit_testimm(rs,0x20000000);
     int jaddr=(int)out;
     emit_jeq(0);
-    add_stub(FP_STUB,jaddr,(int)out,i,rs,(int)i_regs,is_delayslot,0);
+    add_stub(FP_STUB,jaddr,(int)out,i,rs,(intptr_t)i_regs,is_delayslot,0);
     cop1_usable=1;
   }
   if (opcode2[i]==0) { // MFC1
@@ -3644,7 +3657,7 @@ static void fconv_assemble_arm(int i,struct regstat *i_regs)
     emit_testimm(rs,0x20000000);
     int jaddr=(int)out;
     emit_jeq(0);
-    add_stub(FP_STUB,jaddr,(int)out,i,rs,(int)i_regs,is_delayslot,0);
+    add_stub(FP_STUB,jaddr,(int)out,i,rs,(intptr_t)i_regs,is_delayslot,0);
     cop1_usable=1;
   }
   
@@ -3863,7 +3876,7 @@ static void fcomp_assemble(int i,struct regstat *i_regs)
     emit_testimm(cs,0x20000000);
     int jaddr=(int)out;
     emit_jeq(0);
-    add_stub(FP_STUB,jaddr,(int)out,i,cs,(int)i_regs,is_delayslot,0);
+    add_stub(FP_STUB,jaddr,(int)out,i,cs,(intptr_t)i_regs,is_delayslot,0);
     cop1_usable=1;
   }
   
@@ -3995,7 +4008,7 @@ static void float_assemble(int i,struct regstat *i_regs)
     emit_testimm(cs,0x20000000);
     int jaddr=(int)out;
     emit_jeq(0);
-    add_stub(FP_STUB,jaddr,(int)out,i,cs,(int)i_regs,is_delayslot,0);
+    add_stub(FP_STUB,jaddr,(int)out,i,cs,(intptr_t)i_regs,is_delayslot,0);
     cop1_usable=1;
   }
   

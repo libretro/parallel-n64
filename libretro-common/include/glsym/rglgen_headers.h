@@ -49,7 +49,7 @@
 #include <GL3/gl3ext.h>
 #elif defined(HAVE_OPENGLES3)
 #include <GLES3/gl3.h>
-#include <GLES2/gl2ext.h> // There are no GLES3 extensions yet.
+#include <GLES2/gl2ext.h> /* There are no GLES3 extensions yet. */
 #elif defined(HAVE_OPENGLES2)
 #include <GLES2/gl2.h>
 #include <GLES2/gl2ext.h>
@@ -67,12 +67,6 @@
 
 #ifndef GL_MAP_WRITE_BIT
 #define GL_MAP_WRITE_BIT 0x0002
-#endif
-
-#ifndef GL_FRAMEBUFFER
-#ifdef GL_FRAMEBUFFER_EXT
-#define GL_FRAMEBUFFER GL_FRAMEBUFFER_EXT
-#endif
 #endif
 
 #ifndef GL_MAP_INVALIDATE_BUFFER_BIT

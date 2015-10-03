@@ -1,6 +1,7 @@
 RSPDIR             = $(ROOT_DIR)/mupen64plus-rsp-hle
 CXD4DIR            = $(ROOT_DIR)/mupen64plus-rsp-cxd4
 CORE_DIR           = $(ROOT_DIR)/mupen64plus-core
+LIBRETRO_COMM_DIR  = $(ROOT_DIR)/libretro-common
 AUDIO_LIBRETRO_DIR = $(CORE_DIR)/src/plugin/audio_libretro
 VIDEODIR_RICE      = $(ROOT_DIR)/gles2rice/src
 VIDEODIR_GLN64     = $(ROOT_DIR)/gles2n64/src
@@ -19,11 +20,11 @@ INCFLAGS += \
 	-I$(CORE_DIR)/src/api \
 	-I$(AUDIO_LIBRETRO_DIR) \
 	-I$(VIDEODIR_GLIDE)/Glitch64/inc \
-	-I$(LIBRETRO_DIR)/libco \
+	-I$(LIBRETRO_COMM_DIR)/include \
 	-I$(LIBRETRO_DIR)
 
 # libco
-SOURCES_C += $(LIBRETRO_DIR)/libco/libco.c
+SOURCES_C += $(LIBRETRO_COMM_DIR)/libco/libco.c
 
 SOURCES_C += $(RSPDIR)/src/alist.c \
     $(RSPDIR)/src/alist_audio.c \
@@ -276,13 +277,13 @@ SOURCES_C +=  $(VIDEODIR_ANGRYLION)/n64video_main.c \
 
 ifeq ($(GLES), 1)
 	GLFLAGS += -DGLES -DHAVE_OPENGLES2 -DDISABLE_3POINT -DUSE_GLES
-	SOURCES_C += $(LIBRETRO_DIR)/glsym/glsym_es2.c
+	SOURCES_C += $(LIBRETRO_COMM_DIR)/glsym/glsym_es2.c
 else
 	#Texture sampling enhancements.
 	GLFLAGS += -DENABLE_3POINT -DENABLE_TEXTURE_SAMPLING
 
 	GLFLAGS += -DHAVE_OPENGL
-	SOURCES_C += $(LIBRETRO_DIR)/glsym/glsym_gl.c
+	SOURCES_C += $(LIBRETRO_COMM_DIR)/glsym/glsym_gl.c
 endif
 
-SOURCES_C += $(LIBRETRO_DIR)/glsym/rglgen.c
+SOURCES_C += $(LIBRETRO_COMM_DIR)/glsym/rglgen.c

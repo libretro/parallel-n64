@@ -55,6 +55,8 @@ typedef unsigned int u_int;
 
 #if NEW_DYNAREC == NEW_DYNAREC_X86
 #include "assem_x86.h"
+#elif NEW_DYNAREC == NEW_DYNAREC_AMD64
+#include "assem_x64.h"
 #elif NEW_DYNAREC == NEW_DYNAREC_ARM
 #include "assem_arm.h"
 #else
@@ -118,10 +120,8 @@ static uint64_t branch_unneeded_reg_upper[MAXBLOCK];
 static uint64_t p32[MAXBLOCK];
 static uint64_t pr32[MAXBLOCK];
 static signed char regmap_pre[MAXBLOCK][HOST_REGS];
-#ifdef ASSEM_DEBUG
 static signed char regmap[MAXBLOCK][HOST_REGS];
 static signed char regmap_entry[MAXBLOCK][HOST_REGS];
-#endif
 static uint64_t constmap[MAXBLOCK][HOST_REGS];
 static struct regstat regs[MAXBLOCK];
 static struct regstat branch_regs[MAXBLOCK];
@@ -132,10 +132,10 @@ static u_int wont_dirty[MAXBLOCK];
 static u_int will_dirty[MAXBLOCK];
 static int ccadj[MAXBLOCK];
 static int slen;
-static u_int instr_addr[MAXBLOCK];
-static u_int link_addr[MAXBLOCK][3];
+static uintptr_t instr_addr[MAXBLOCK];
+static uintptr_t link_addr[MAXBLOCK][3];
 static int linkcount;
-static u_int stubs[MAXBLOCK*3][8];
+static uintptr_t stubs[MAXBLOCK*3][8];
 static int stubcount;
 static int literalcount;
 static int is_delayslot;
@@ -145,7 +145,7 @@ struct ll_entry *jump_in[4096];
 static struct ll_entry *jump_out[4096];
 struct ll_entry *jump_dirty[4096];
 u_int hash_table[65536][4]  __attribute__((aligned(16)));
-static char shadow[2097152]  __attribute__((aligned(16)));
+char shadow[2097152]  __attribute__((aligned(16)));
 static void *copy;
 static int expirep;
 u_int using_tlb;
@@ -278,7 +278,7 @@ void write_rdram_new();
 void write_rdramb_new();
 void write_rdramh_new();
 void write_rdramd_new();
-extern u_int memory_map[1048576];
+extern uintptr_t memory_map[1048576];
 
 // Needed by assembler
 static void wb_register(signed char r,signed char regmap[],uint64_t dirty,uint64_t is32);
@@ -289,11 +289,11 @@ static void load_needed_regs(signed char i_regmap[],signed char next_regmap[]);
 static void load_regs_entry(int t);
 static void load_all_consts(signed char regmap[],int is32,u_int dirty,int i);
 
-static void add_stub(int type,int addr,int retaddr,int a,int b,int c,int d,int e);
-static void add_to_linker(int addr,int target,int ext);
+static void add_stub(int type,intptr_t addr,int retaddr,int a,intptr_t b,intptr_t c,int d,int e);
+static void add_to_linker(intptr_t addr,int target,int ext);
 static int verify_dirty(void *addr);
 
-//static int tracedebug=0;
+static int tracedebug=0;
 
 //#define DEBUG_CYCLE_COUNT 1
 
@@ -425,13 +425,19 @@ void *get_addr(u_int vaddr)
         //DebugMessage(M64MSG_VERBOSE, "restore candidate: %x (%d) d=%d",vaddr,page,invalid_code[vaddr>>12]);
         invalid_code[vaddr>>12]=0;
 #ifndef DISABLE_TLB
-        memory_map[vaddr>>12]|=0x40000000;
+        if(sizeof(*memory_map)==8)
+           memory_map[vaddr>>12]|=0x4000000000000000;
+        else
+           memory_map[vaddr>>12]|=0x40000000;
 #endif
         if(vpage<2048) {
 #ifndef DISABLE_TLB
           if(tlb_LUT_r[vaddr>>12]) {
             invalid_code[tlb_LUT_r[vaddr>>12]>>12]=0;
-            memory_map[tlb_LUT_r[vaddr>>12]>>12]|=0x40000000;
+            if(sizeof(*memory_map)==8)
+               memory_map[tlb_LUT_r[vaddr>>12]>>12]|=0x4000000000000000;
+            else
+               memory_map[tlb_LUT_r[vaddr>>12]>>12]|=0x40000000;
           }
 #endif
           restore_candidate[vpage>>3]|=1<<(vpage&7);
@@ -480,17 +486,38 @@ void *get_addr_ht(u_int vaddr)
 {
   //DebugMessage(M64MSG_VERBOSE, "TRACE: count=%d next=%d (get_addr_ht %x)",g_cp0_regs[CP0_COUNT_REG],next_interupt,vaddr);
   u_int *ht_bin=hash_table[((vaddr>>16)^vaddr)&0xFFFF];
-  if(ht_bin[0]==vaddr) return (void *)ht_bin[1];
-  if(ht_bin[2]==vaddr) return (void *)ht_bin[3];
+  if(sizeof(void *)==8)
+  {
+     if(ht_bin[0]==vaddr) return (void *)base_addr+((int)ht_bin[1]-(int)base_addr);
+     if(ht_bin[2]==vaddr) return (void *)base_addr+((int)ht_bin[3]-(int)base_addr);
+  }
+  else
+  {
+     if(ht_bin[0]==vaddr) return (void *)ht_bin[1];
+     if(ht_bin[2]==vaddr) return (void *)ht_bin[3];
+  }
+  
   return get_addr(vaddr);
 }
 
+// Some code is optimized by assuming that certain registers only contain
+// 32-bit values.  We can jump to such locations only if all such registers
+// contain 32-bit values.  This matches such blocks, based on a bitmap of
+// which registers contain values not exceeding the signed 32-bit range.
 void *get_addr_32(u_int vaddr,u_int flags)
 {
   //DebugMessage(M64MSG_VERBOSE, "TRACE: count=%d next=%d (get_addr_32 %x,flags %x)",g_cp0_regs[CP0_COUNT_REG],next_interupt,vaddr,flags);
   u_int *ht_bin=hash_table[((vaddr>>16)^vaddr)&0xFFFF];
-  if(ht_bin[0]==vaddr) return (void *)ht_bin[1];
-  if(ht_bin[2]==vaddr) return (void *)ht_bin[3];
+  if(sizeof(void *)==8)
+  {
+    if(ht_bin[0]==vaddr) return (void *)base_addr+((int)ht_bin[1]-(int)base_addr);
+    if(ht_bin[2]==vaddr) return (void *)base_addr+((int)ht_bin[3]-(int)base_addr);
+  }
+  else
+  {
+    if(ht_bin[0]==vaddr) return (void *)ht_bin[1];
+    if(ht_bin[2]==vaddr) return (void *)ht_bin[3];
+  }
   u_int page=(vaddr^0x80000000)>>12;
   u_int vpage=page;
   if(page>262143&&tlb_LUT_r[vaddr>>12]) page=(tlb_LUT_r[vaddr>>12]^0x80000000)>>12;
@@ -529,11 +556,17 @@ void *get_addr_32(u_int vaddr,u_int flags)
       if(verify_dirty(head->addr)) {
         //DebugMessage(M64MSG_VERBOSE, "restore candidate: %x (%d) d=%d",vaddr,page,invalid_code[vaddr>>12]);
         invalid_code[vaddr>>12]=0;
-        memory_map[vaddr>>12]|=0x40000000;
+        if(sizeof(*memory_map)==8)
+           memory_map[vaddr>>12]|=0x4000000000000000;
+        else
+           memory_map[vaddr>>12]|=0x40000000;
         if(vpage<2048) {
           if(tlb_LUT_r[vaddr>>12]) {
             invalid_code[tlb_LUT_r[vaddr>>12]>>12]=0;
-            memory_map[tlb_LUT_r[vaddr>>12]>>12]|=0x40000000;
+            if(sizeof(*memory_map)==8)
+               memory_map[tlb_LUT_r[vaddr>>12]>>12]|=0x4000000000000000;
+            else
+               memory_map[tlb_LUT_r[vaddr>>12]>>12]|=0x40000000;
           }
           restore_candidate[vpage>>3]|=1<<(vpage&7);
         }
@@ -718,11 +751,11 @@ static void lsn(u_char hsn[], int i, int *preferred_reg)
       hsn[rs2[i+j]]=j;
     }
     // On some architectures stores need invc_ptr
-    #if defined(HOST_IMM8)
+#if defined(HOST_IMM8) || defined(NEED_INVC_PTR)
     if(itype[i+j]==STORE || itype[i+j]==STORELR || (opcode[i+j]&0x3b)==0x39) {
       hsn[INVCP]=j;
     }
-    #endif
+#endif
     if(i+j>=0&&(itype[i+j]==UJUMP||itype[i+j]==CJUMP||itype[i+j]==SJUMP||itype[i+j]==FJUMP))
     {
       hsn[CCREG]=j;
@@ -1034,6 +1067,8 @@ static uint64_t ldr_merge(uint64_t original,uint64_t loaded,u_int bits)
 
 #if NEW_DYNAREC == NEW_DYNAREC_X86
 #include "assem_x86.c"
+#elif NEW_DYNAREC == NEW_DYNAREC_AMD64
+#include "assem_x64.c"
 #elif NEW_DYNAREC == NEW_DYNAREC_ARM
 #include "assem_arm.c"
 #else
@@ -1128,11 +1163,11 @@ static void remove_hash(int vaddr)
   }
 }
 
-static void ll_remove_matching_addrs(struct ll_entry **head,int addr,int shift)
+static void ll_remove_matching_addrs(struct ll_entry **head, u_int addr,int shift)
 {
   struct ll_entry *next;
   while(*head) {
-     if((((u_int)((*head)->addr)-(u_int)base_addr)>>shift)==((addr-(u_int)base_addr)>>shift) ||
+     if((((u_int)((*head)->addr)-(u_int)base_addr)>>shift)==((addr-(u_int)base_addr)>>shift) || 
            (((u_int)((*head)->addr)-(u_int)base_addr-MAX_OUTPUT_BLOCK_SIZE)>>shift)==((addr-(u_int)base_addr)>>shift))
     {
       inv_debug("EXP: Remove pointer to %x (%x)\n",(int)(*head)->addr,(*head)->vaddr);
@@ -1164,15 +1199,21 @@ static void ll_clear(struct ll_entry **head)
 }
 
 // Dereference the pointers and remove if it matches
-static void ll_kill_pointers(struct ll_entry *head,int addr,int shift)
+static void ll_kill_pointers(struct ll_entry *head,u_int addr,int shift)
 {
   while(head) {
     u_int ptr=get_pointer(head->addr);
     inv_debug("EXP: Lookup pointer to %x at %x (%x)\n",(int)ptr,(int)head->addr,head->vaddr);
+#if 0
+    printf("EXP: Lookup pointer to %x at %x (%x)\n",(int)ptr,(int)head->addr,head->vaddr);
+#endif
     if((((ptr-(u_int)base_addr)>>shift)==((addr-(u_int)base_addr)>>shift)) ||
           (((ptr-(u_int)base_addr-MAX_OUTPUT_BLOCK_SIZE)>>shift)==((addr-(u_int)base_addr)>>shift)))
     {
       inv_debug("EXP: Kill pointer at %x (%x)\n",(int)head->addr,head->vaddr);
+#if 0
+      printf("EXP: Kill pointer at %x (%x)\n",(int)head->addr,head->vaddr);
+#endif
       u_int host_addr=(int)kill_pointer(head->addr);
       #if NEW_DYNAREC == NEW_DYNAREC_ARM
         needs_clear_cache[(host_addr-(u_int)base_addr)>>17]|=1<<(((host_addr-(u_int)base_addr)>>12)&31);
@@ -1183,6 +1224,7 @@ static void ll_kill_pointers(struct ll_entry *head,int addr,int shift)
     }
     head=head->next;
   }
+  fflush(stdout);
 }
 
 // This is called when we write to a compiled block (see do_invstub)
@@ -1233,7 +1275,7 @@ void invalidate_block(u_int block)
   while(head!=NULL) {
     u_int start,end;
     if(vpage>2047||(head->vaddr>>12)==block) { // Ignore vaddr hash collision
-      get_bounds((int)head->addr,&start,&end);
+      get_bounds((intptr_t)head->addr,&start,&end);
       //DebugMessage(M64MSG_VERBOSE, "start: %x end: %x",start,end);
       if(page<2048&&start>=0x80000000&&end<0x80800000) {
         if(((start-(u_int)g_rdram)>>12)<=page&&((end-1-(u_int)g_rdram)>>12)>=page) {
@@ -1272,12 +1314,13 @@ void invalidate_block(u_int block)
   if(tlb_LUT_w[block]) {
     assert(tlb_LUT_r[block]==tlb_LUT_w[block]);
     // CHECK: Is this right?
-    memory_map[block]=((tlb_LUT_w[block]&0xFFFFF000)-(block<<12)+(unsigned int)g_rdram-0x80000000)>>2;
+    memory_map[block]=((tlb_LUT_w[block]&0xFFFFF000)-(block<<12)+(uintptr_t)rdram-0x80000000)>>2;
     u_int real_block=tlb_LUT_w[block]>>12;
     invalid_code[real_block]=1;
-    if(real_block>=0x80000&&real_block<0x80800) memory_map[real_block]=((u_int)g_rdram-0x80000000)>>2;
+    if(real_block>=0x80000&&real_block<0x80800) memory_map[real_block]=((uintptr_t)rdram-0x80000000)>>2;
   }
-  else if(block>=0x80000&&block<0x80800) memory_map[block]=((u_int)g_rdram-0x80000000)>>2;
+  else if(block>=0x80000&&block<0x80800) memory_map[block]=((uintptr_t)rdram-0x80000000)>>2;
+  
   #ifdef USE_MINI_HT
   memset(mini_ht,-1,sizeof(mini_ht));
   #endif
@@ -1337,9 +1380,12 @@ void invalidate_all_pages()
       {
          memory_map[page]=((tlb_LUT_r[page]&0xFFFFF000)-(page<<12)+(unsigned int)g_rdram-0x80000000)>>2;
          if(!tlb_LUT_w[page]||!invalid_code[page])
-            memory_map[page]|=0x40000000; // Write protect
+         {
+            if(sizeof(*memory_map)==8) memory_map[page]|=0x4000000000000000; // Write protect
+            else memory_map[page]|=0x40000000; // Write protect
+         }
       }
-      else memory_map[page]=-1;
+      else memory_map[page]=-1L;
       if(page==0x80000) page=0xC0000;
    }
    tlb_hacks();
@@ -1376,7 +1422,7 @@ void clean_blocks(u_int page)
           //DebugMessage(M64MSG_VERBOSE, "Possibly Restore %x (%x)",head->vaddr, (int)head->addr);
           u_int i;
           u_int inv=0;
-          get_bounds((int)head->addr,&start,&end);
+          get_bounds((intptr_t)head->addr,&start,&end);
           if(start-(u_int)g_rdram<0x800000) {
             for(i=(start-(u_int)g_rdram+0x80000000)>>12;i<=(end-1-(u_int)g_rdram+0x80000000)>>12;i++) {
               inv|=invalid_code[i];
@@ -1391,7 +1437,7 @@ void clean_blocks(u_int page)
             inv=1;
           }
           if(!inv) {
-            void * clean_addr=(void *)get_clean_addr((int)head->addr);
+            void * clean_addr=(void *)get_clean_addr((intptr_t)head->addr);
             if((((u_int)clean_addr-(u_int)out)<<(32-TARGET_SIZE_2))>0x60000000+(MAX_OUTPUT_BLOCK_SIZE<<(32-TARGET_SIZE_2))) {
               u_int ppage=page;
               if(page<2048&&tlb_LUT_r[head->vaddr>>12]) ppage=(tlb_LUT_r[head->vaddr>>12]^0x80000000)>>12;
@@ -1765,7 +1811,7 @@ static void store_alloc(struct regstat *current,int i)
   }
   // If using TLB, need a register for pointer to the mapping table
   if(using_tlb) alloc_reg(current,i,TLREG);
-  #if defined(HOST_IMM8)
+  #if defined(HOST_IMM8) || defined(NEED_INVC_PTR)
   // On CPUs without 32-bit immediates we need a pointer to invalid_code
   else alloc_reg(current,i,INVCP);
   #endif
@@ -1789,7 +1835,7 @@ static void c1ls_alloc(struct regstat *current,int i)
   }
   // If using TLB, need a register for pointer to the mapping table
   if(using_tlb) alloc_reg(current,i,TLREG);
-  #if defined(HOST_IMM8)
+  #if defined(HOST_IMM8) || defined(NEED_INVC_PTR)
   // On CPUs without 32-bit immediates we need a pointer to invalid_code
   else if((opcode[i]&0x3b)==0x39) // SWC1/SDC1
     alloc_reg(current,i,INVCP);
@@ -2071,7 +2117,7 @@ static void pagespan_alloc(struct regstat *current,int i)
   //else ...
 }
 
-static void add_stub(int type,int addr,int retaddr,int a,int b,int c,int d,int e)
+static void add_stub(int type,intptr_t addr,int retaddr,int a,intptr_t b,intptr_t c,int d,int e)
 {
   stubs[stubcount][0]=type;
   stubs[stubcount][1]=addr;
@@ -2107,7 +2153,7 @@ static void wb_register(signed char r,signed char regmap[],uint64_t dirty,uint64
   }
 }
 #if 0
-static int mchecksum()
+int mchecksum()
 {
   //if(!tracedebug) return 0;
   int i;
@@ -2147,7 +2193,7 @@ static void enabletrace()
 }
 
 
-static void memdebug(int i)
+void memdebug(int i)
 {
   //DebugMessage(M64MSG_VERBOSE, "TRACE: count=%d next=%d (checksum %x) lo=%8x%8x",g_cp0_regs[CP0_COUNT_REG],next_interupt,mchecksum(),(int)(reg[LOREG]>>32),(int)reg[LOREG]);
   //DebugMessage(M64MSG_VERBOSE, "TRACE: count=%d next=%d (rchecksum %x)",g_cp0_regs[CP0_COUNT_REG],next_interupt,rchecksum());
@@ -2844,7 +2890,7 @@ static void load_assemble(int i,struct regstat *i_regs)
 {
   int s,th,tl,addr,map=-1,cache=-1;
   int offset;
-  int jaddr=0;
+  intptr_t jaddr=0;
   int memtarget,c=0;
   u_int hr,reglist=0;
   th=get_reg(i_regs->regmap,rt1[i]|64);
@@ -2868,12 +2914,22 @@ static void load_assemble(int i,struct regstat *i_regs)
   assert(tl>=0); // Even if the load is a NOP, we must check for pagefaults and I/O
   reglist&=~(1<<tl);
   if(th>=0) reglist&=~(1<<th);
+  int dummy=(rt1[i]==0)||(tl!=get_reg(i_regs->regmap,rt1[i])); // ignore loads to r0 and unneeded reg
   if(!using_tlb) {
     if(!c) {
-      #ifdef RAM_OFFSET
-      map=get_reg(i_regs->regmap,ROREG);
-      if(map<0) emit_loadreg(ROREG,map=HOST_TEMPREG);
-      #endif
+#ifdef RAM_OFFSET
+       map=get_reg(i_regs->regmap,ROREG);
+#ifdef HOST_TEMPREG
+       if(map<0) if(!dummy) emit_loadreg(ROREG,map=HOST_TEMPREG);
+#else
+       if(!dummy) {
+          if(map<0) {
+             map=get_reg(i_regs->regmap,-1);
+             if(map>=0) emit_loadreg(ROREG,map);
+          }
+       }
+#endif
+#endif
 //#define R29_HACK 1
       #ifdef R29_HACK
       // Strmnnrmn's speed hack
@@ -2881,7 +2937,7 @@ static void load_assemble(int i,struct regstat *i_regs)
       #endif
       {
         emit_cmpimm(addr,0x800000);
-        jaddr=(int)out;
+        jaddr=(intptr_t)out;
         #ifdef CORTEX_A8_BRANCH_PREDICTION_HACK
         // Hint to branch predictor that the branch is unlikely to be taken
         if(rs1[i]>=28)
@@ -2902,7 +2958,6 @@ static void load_assemble(int i,struct regstat *i_regs)
     map=do_tlb_r(addr,tl,map,cache,x,-1,-1,c,constmap[i][s]+offset);
     do_tlb_r_branch(map,c,constmap[i][s]+offset,&jaddr);
   }
-  int dummy=(rt1[i]==0)||(tl!=get_reg(i_regs->regmap,rt1[i])); // ignore loads to r0 and unneeded reg
   if (opcode[i]==0x20) { // LB
     if(!c||memtarget) {
       if(!dummy) {
@@ -2918,11 +2973,15 @@ static void load_assemble(int i,struct regstat *i_regs)
           int x=0;
           if(!c) emit_xorimm(addr,3,tl);
           else x=((constmap[i][s]+offset)^3)-(constmap[i][s]+offset);
+#ifdef RAM_OFFSET
+          if(c) emit_movsbl_indexed(x,tl,tl);
+          else
+#endif
           emit_movsbl_indexed_tlb(x,tl,map,tl);
         }
       }
       if(jaddr)
-        add_stub(LOADB_STUB,jaddr,(int)out,i,addr,(int)i_regs,ccadj[i],reglist);
+        add_stub(LOADB_STUB,jaddr,(int)out,i,addr,(intptr_t)i_regs,ccadj[i],reglist);
     }
     else
       inline_readstub(LOADB_STUB,i,constmap[i][s]+offset,i_regs->regmap,rt1[i],ccadj[i],reglist);
@@ -2947,6 +3006,7 @@ static void load_assemble(int i,struct regstat *i_regs)
             emit_movswl_indexed(x,tl,tl);
           }else{
             #ifdef RAM_OFFSET
+             if(!c) gen_tlb_addr_r(tl,-1);
             emit_movswl_indexed(x,tl,tl);
             #else
             emit_movswl_indexed((int)g_rdram-0x80000000+x,tl,tl);
@@ -2955,7 +3015,7 @@ static void load_assemble(int i,struct regstat *i_regs)
         }
       }
       if(jaddr)
-        add_stub(LOADH_STUB,jaddr,(int)out,i,addr,(int)i_regs,ccadj[i],reglist);
+        add_stub(LOADH_STUB,jaddr,(int)out,i,addr,(intptr_t)i_regs,ccadj[i],reglist);
     }
     else
       inline_readstub(LOADH_STUB,i,constmap[i][s]+offset,i_regs->regmap,rt1[i],ccadj[i],reglist);

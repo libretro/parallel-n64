@@ -81,7 +81,7 @@ static const u_int const_one=1;
 
 /* Linker */
 
-static void set_jump_target(int addr,int target)
+static void set_jump_target(intptr_t addr, int target)
 {
   u_char *ptr=(u_char *)addr;
   if(*ptr==0x0f)
@@ -2333,6 +2333,11 @@ static void emit_subfrommem(int addr,int r)
   output_w32((int)addr);
 }*/
 
+static void emit_readptr(intptr_t addr, int rt)
+{
+   emit_readword(addr, rt);
+}
+
 static void emit_flds(int r)
 {
   assem_debug("flds (%%%s)",regname[r]);
@@ -2517,7 +2522,7 @@ static void emit_fldcw_stack()
 }
 static void emit_fldcw_indexed(int addr,int r)
 {
-  assem_debug("fldcw %x(%%%s)",addr,regname[r]);
+  assem_debug("fldcw %x(%%%s,2)",addr,regname[r]);
   output_byte(0xd9);
   output_modrm(0,4,5);
   output_sib(1,r,5);
@@ -3071,11 +3076,11 @@ static int do_tlb_r(int s,int ar,int map,int cache,int x,int a,int shift,int c,u
   }
   return map;
 }
-static int do_tlb_r_branch(int map, int c, u_int addr, int *jaddr)
+static int do_tlb_r_branch(int map, int c, u_int addr, intptr_t *jaddr)
 {
   if(!c||(signed int)addr>=(signed int)0xC0000000) {
     emit_test(map,map);
-    *jaddr=(int)out;
+    *jaddr=(intptr_t)out;
     emit_js(0);
   }
   return map;
@@ -3107,10 +3112,11 @@ static int do_tlb_w(int s,int ar,int map,int cache,int x,int c,u_int addr)
   emit_shlimm(map,2,map);
   return map;
 }
-static void do_tlb_w_branch(int map, int c, u_int addr, int *jaddr)
+
+static void do_tlb_w_branch(int map, int c, u_int addr, intptr_t *jaddr)
 {
   if(!c||addr<0x80800000||addr>=0xC0000000) {
-    *jaddr=(int)out;
+    *jaddr=(intptr_t)out;
     emit_jc(0);
   }
 }
@@ -3274,7 +3280,7 @@ static void loadlr_assemble_x86(int i,struct regstat *i_regs)
 {
   int s,th,tl,temp,temp2,addr,map=-1;
   int offset;
-  int jaddr=0;
+  intptr_t jaddr=0;
   int memtarget,c=0;
   u_int hr,reglist=0;
   th=get_reg(i_regs->regmap,rt1[i]|64);
@@ -3305,7 +3311,7 @@ static void loadlr_assemble_x86(int i,struct regstat *i_regs)
         emit_andimm(addr,0xFFFFFFF8,temp2); // LDL/LDR
       }
       emit_cmpimm(addr,0x800000);
-      jaddr=(int)out;
+      jaddr=(intptr_t)out;
       emit_jno(0);
     }
     else {
@@ -3554,7 +3560,7 @@ static void cop1_assemble(int i,struct regstat *i_regs)
     signed char rs=get_reg(i_regs->regmap,CSREG);
     assert(rs>=0);
     emit_testimm(rs,0x20000000);
-    int jaddr=(int)out;
+    intptr_t jaddr=(intptr_t)out;
     emit_jeq(0);
     add_stub(FP_STUB,jaddr,(int)out,i,rs,(int)i_regs,is_delayslot,0);
     cop1_usable=1;
@@ -3624,7 +3630,7 @@ static void fconv_assemble_x86(int i,struct regstat *i_regs)
     signed char rs=get_reg(i_regs->regmap,CSREG);
     assert(rs>=0);
     emit_testimm(rs,0x20000000);
-    int jaddr=(int)out;
+    intptr_t jaddr=(intptr_t)out;
     emit_jeq(0);
     add_stub(FP_STUB,jaddr,(int)out,i,rs,(int)i_regs,is_delayslot,0);
     cop1_usable=1;
@@ -3881,7 +3887,7 @@ static void fcomp_assemble(int i,struct regstat *i_regs)
     signed char cs=get_reg(i_regs->regmap,CSREG);
     assert(cs>=0);
     emit_testimm(cs,0x20000000);
-    int jaddr=(int)out;
+    intptr_t jaddr=(intptr_t)out;
     emit_jeq(0);
     add_stub(FP_STUB,jaddr,(int)out,i,cs,(int)i_regs,is_delayslot,0);
     cop1_usable=1;
@@ -4005,7 +4011,7 @@ static void float_assemble(int i,struct regstat *i_regs)
     signed char cs=get_reg(i_regs->regmap,CSREG);
     assert(cs>=0);
     emit_testimm(cs,0x20000000);
-    int jaddr=(int)out;
+    intptr_t jaddr=(intptr_t)out;
     emit_jeq(0);
     add_stub(FP_STUB,jaddr,(int)out,i,cs,(int)i_regs,is_delayslot,0);
     cop1_usable=1;

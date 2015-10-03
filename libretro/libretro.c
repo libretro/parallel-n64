@@ -5,7 +5,7 @@
 
 #include "api/libretro.h"
 #ifndef SINGLE_THREAD
-#include "libco/libco.h"
+#include <libco.h>
 #endif
 
 #include "api/m64p_frontend.h"

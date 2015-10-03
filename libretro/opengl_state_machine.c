@@ -3,11 +3,11 @@
 
 #define NO_TRANSLATE 1
 
-#include "glsym/glsym.h"
+#include <glsym/glsym.h>
 #include "opengl_state_machine.h"
 #include "plugin/plugin.h"
 #include "api/libretro.h"
-#include "libco/libco.h"
+#include <libco.h>
 
 // mupen64 defines
 #ifndef GFX_ANGRYLION

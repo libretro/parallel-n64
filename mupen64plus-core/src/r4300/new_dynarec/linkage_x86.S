@@ -544,13 +544,13 @@ jump_eret:
 	adc	%edi, %edi
 	sub	$8, %ebx
 	jne	.E9
-	mov	hi(%ebx), %ecx
-	mov	hi+4(%ebx), %edx
+   mov   hi, %ecx
+   mov   hi+4, %edx
 	sar	$31, %ecx
 	xor	%ecx, %edx
 	jne	.E10
-	mov	lo(%ebx), %ecx
-	mov	lo+4(%ebx), %edx
+   mov   lo, %ecx
+   mov   lo+4, %edx
 	sar	$31, %ecx
 	xor	%ecx, %edx
 .E10:
