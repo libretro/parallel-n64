@@ -1314,12 +1314,12 @@ void invalidate_block(u_int block)
   if(tlb_LUT_w[block]) {
     assert(tlb_LUT_r[block]==tlb_LUT_w[block]);
     // CHECK: Is this right?
-    memory_map[block]=((tlb_LUT_w[block]&0xFFFFF000)-(block<<12)+(uintptr_t)rdram-0x80000000)>>2;
+    memory_map[block]=((tlb_LUT_w[block]&0xFFFFF000)-(block<<12)+(uintptr_t)g_rdram-0x80000000)>>2;
     u_int real_block=tlb_LUT_w[block]>>12;
     invalid_code[real_block]=1;
-    if(real_block>=0x80000&&real_block<0x80800) memory_map[real_block]=((uintptr_t)rdram-0x80000000)>>2;
+    if(real_block>=0x80000&&real_block<0x80800) memory_map[real_block]=((uintptr_t)g_rdram-0x80000000)>>2;
   }
-  else if(block>=0x80000&&block<0x80800) memory_map[block]=((uintptr_t)rdram-0x80000000)>>2;
+  else if(block>=0x80000&&block<0x80800) memory_map[block]=((uintptr_t)g_rdram-0x80000000)>>2;
   
   #ifdef USE_MINI_HT
   memset(mini_ht,-1,sizeof(mini_ht));

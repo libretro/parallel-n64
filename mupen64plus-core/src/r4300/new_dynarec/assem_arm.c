@@ -2323,7 +2323,7 @@ static void emit_callne(int a)
 
 static void emit_gen_ram_ptr(u_int addr, int hr)
 {
-  emit_lea_rip((int)rdram-0x80000000+addr,hr);
+  emit_lea_rip((int)g_rdram-0x80000000+addr,hr);
 }
 
 

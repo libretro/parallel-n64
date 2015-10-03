@@ -1,7 +1,7 @@
 #ifndef OPENGL_STATE_MACHINE_H__
 #define OPENGL_STATE_MACHINE_H__
 
-#include "glsym/rglgen.h"
+#include <glsym/rglgen.h>
 
 #ifdef __cplusplus
 extern "C" {
