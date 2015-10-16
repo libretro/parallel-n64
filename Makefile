@@ -209,14 +209,17 @@ else ifneq (,$(findstring ios,$(platform)))
 	CC = clang -arch armv7 -isysroot $(IOSSDK)
 	CC_AS = perl ./tools/gas-preprocessor.pl $(CC)
 	CXX = clang++ -arch armv7 -isysroot $(IOSSDK)
-	OSXVER = `sw_vers -productVersion | cut -d. -f 2`
-	OSX_LT_MAVERICKS = `(( $(OSXVER) <= 9)) && echo "YES"`
-	ifeq ($(OSX_LT_MAVERICKS),"YES")
-		CC += -miphoneos-version-min=5.0
-		CC_AS += -miphoneos-version-min=5.0
-		CXX += -miphoneos-version-min=5.0
-		PLATCFLAGS += -miphoneos-version-min=5.0
-	endif
+ifeq ($(platform),ios9)
+	CC         += -miphoneos-version-min=8.0
+	CC_AS      += -miphoneos-version-min=8.0
+	CXX        += -miphoneos-version-min=8.0
+	PLATCFLAGS += -miphoneos-version-min=8.0
+else
+	CC += -miphoneos-version-min=5.0
+	CC_AS += -miphoneos-version-min=5.0
+	CXX += -miphoneos-version-min=5.0
+	PLATCFLAGS += -miphoneos-version-min=5.0
+endif
 
 # Android
 else ifneq (,$(findstring android,$(platform)))
