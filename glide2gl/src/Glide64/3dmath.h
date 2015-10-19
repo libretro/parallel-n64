@@ -49,7 +49,6 @@ typedef void (*GLIDE64MULMATRIX)(float m1[4][4],float m2[4][4],float r[4][4]);
 extern GLIDE64MULMATRIX glide64MulMatrices;
 
 typedef void (*GLIDE64TRANSFORMVECTOR)(float *src,float *dst,float mat[4][4]); 
-extern GLIDE64TRANSFORMVECTOR glide64TransformVector;
 extern GLIDE64TRANSFORMVECTOR glide64InverseTransformVector;
 
 typedef float (*GLIDE64DOTPRODUCT)(register float *v1, register float *v2);
@@ -60,10 +59,6 @@ extern GLIDE64NORMALIZEVECTOR glide64NormalizeVector;
 
 #ifndef MulMatrices
 #define MulMatrices glide64MulMatrices
-#endif
-
-#ifndef TransformVector
-#define TransformVector glide64TransformVector
 #endif
 
 #ifndef InverseTransformVector

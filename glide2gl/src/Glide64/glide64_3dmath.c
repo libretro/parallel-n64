@@ -60,7 +60,7 @@ void NormalizeVectorC(float *v)
 }
 
 
-void TransformVectorC(float *src, float *dst, float mat[4][4])
+static void TransformVectorC(float *src, float *dst, float mat[4][4])
 {
    dst[0] = mat[0][0]*src[0] + mat[1][0]*src[1] + mat[2][0]*src[2];
    dst[1] = mat[0][1]*src[0] + mat[1][1]*src[1] + mat[2][1]*src[2];
@@ -106,7 +106,6 @@ void MulMatricesC(float m1[4][4], float m2[4][4], float r[4][4])
 // 2011-01-03 Balrog - removed because is in NASM format and not 64-bit compatible
 // This will need fixing.
 GLIDE64MULMATRIX glide64MulMatrices = MulMatricesC;
-GLIDE64TRANSFORMVECTOR glide64TransformVector = TransformVectorC;
 GLIDE64TRANSFORMVECTOR glide64InverseTransformVector = InverseTransformVectorC;
 GLIDE64DOTPRODUCT glide64DotProduct = DotProductC;
 GLIDE64NORMALIZEVECTOR glide64NormalizeVector = NormalizeVectorC;
@@ -262,7 +261,7 @@ void calc_linear (VERTEX *v)
       return;
    }
 
-   TransformVector (v->vec, vec, rdp.model);
+   TransformVectorC(v->vec, vec, rdp.model);
    NormalizeVector (vec);
    x = vec[0];
    y = vec[1];
@@ -308,7 +307,7 @@ void calc_sphere (VERTEX *v)
       t_scale = min(rdp.tiles[rdp.cur_tile].org_t_scale >> 6, g_gdp.tile[rdp.cur_tile].tl);
    }
 
-   TransformVector (v->vec, vec, rdp.model);
+   TransformVectorC(v->vec, vec, rdp.model);
    NormalizeVector (vec);
    x = vec[0];
    y = vec[1];
