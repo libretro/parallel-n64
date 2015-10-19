@@ -38,8 +38,8 @@ typedef struct _precomp_instr
      {
     struct
       {
-         long long int *rs;
-         long long int *rt;
+         int64_t *rs;
+         int64_t *rt;
          int16_t immediate;
       } i;
     struct
@@ -48,23 +48,23 @@ typedef struct _precomp_instr
       } j;
     struct
       {
-         long long int *rs;
-         long long int *rt;
-         long long int *rd;
-         unsigned char sa;
-         unsigned char nrd;
+         int64_t *rs;
+         int64_t *rt;
+         int64_t *rd;
+         uint8_t sa;
+         uint8_t nrd;
       } r;
     struct
       {
-         unsigned char base;
-         unsigned char ft;
-         short offset;
+         uint8_t base;
+         uint8_t ft;
+         int16_t offset;
       } lf;
     struct
       {
-         unsigned char ft;
-         unsigned char fs;
-         unsigned char fd;
+         uint8_t ft;
+         uint8_t fs;
+         uint8_t fd;
       } cf;
      } f;
    uint32_t addr; /* word-aligned instruction address in r4300 address space */
@@ -77,7 +77,7 @@ typedef struct _precomp_block
    precomp_instr *block;
    uint32_t start;
    uint32_t end;
-   unsigned char *code;
+   uint8_t *code;
    unsigned int code_length;
    unsigned int max_code_length;
    void *jumps_table;

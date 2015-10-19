@@ -801,16 +801,17 @@ static void (*recomp_tlb[64])(void) =
 static void RMFC0(void)
 {
    dst->ops = current_instruction_table.MFC0;
-   recomp_func = genmfc0;
+   recomp_func  = genmfc0;
    recompile_standard_r_type();
-   dst->f.r.rd = (long long*)(g_cp0_regs + ((src >> 11) & 0x1F));
+   dst->f.r.rd  = (int64_t*)(g_cp0_regs + ((src >> 11) & 0x1F));
    dst->f.r.nrd = (src >> 11) & 0x1F;
-   if (dst->f.r.rt == reg) RNOP();
+   if (dst->f.r.rt == reg)
+      RNOP();
 }
 
 static void RMTC0(void)
 {
-   dst->ops = current_instruction_table.MTC0;
+   dst->ops    = current_instruction_table.MTC0;
    recomp_func = genmtc0;
    recompile_standard_r_type();
    dst->f.r.nrd = (src >> 11) & 0x1F;
@@ -840,6 +841,7 @@ static void RBC1F(void)
    recomp_func = genbc1f;
    recompile_standard_i_type();
    target = dst->addr + dst->f.i.immediate*4 + 4;
+
    if (target == dst->addr)
    {
       if (check_nop)
