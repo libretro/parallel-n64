@@ -629,6 +629,8 @@ void update_variables(bool startup)
                case GFX_GLIDE64:
                   ChangeSize();
                   break;
+               default:
+                  break;
             }
 
             last_aspect = aspect_val;
