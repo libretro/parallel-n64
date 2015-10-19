@@ -48,7 +48,7 @@ void genmfc1(void)
 #else
    gencheck_cop1_unusable();
 #ifdef __x86_64__
-   mov_xreg64_m64rel(RAX, (unsigned long long*)(&reg_cop1_simple[dst->f.r.nrd]));
+   mov_xreg64_m64rel(RAX, (uint64_t*)(&reg_cop1_simple[dst->f.r.nrd]));
    mov_reg32_preg64(EBX, RAX);
    mov_m32rel_xreg32((uint32_t*)dst->f.r.rt, EBX);
    sar_reg32_imm8(EBX, 31);
@@ -70,7 +70,7 @@ void gendmfc1(void)
 #else
    gencheck_cop1_unusable();
 #ifdef __x86_64__
-   mov_xreg64_m64rel(RAX, (unsigned long long *) (&reg_cop1_double[dst->f.r.nrd]));
+   mov_xreg64_m64rel(RAX, (uint64_t *) (&reg_cop1_double[dst->f.r.nrd]));
    mov_reg32_preg64(EBX, RAX);
    mov_reg32_preg64pimm32(ECX, RAX, 4);
    mov_m32rel_xreg32((unsigned int*)dst->f.r.rt, EBX);
@@ -119,7 +119,7 @@ void genmtc1(void)
    gencheck_cop1_unusable();
 #ifdef __x86_64__
    mov_xreg32_m32rel(EAX, (unsigned int*)dst->f.r.rt);
-   mov_xreg64_m64rel(RBX, (unsigned long long *)(&reg_cop1_simple[dst->f.r.nrd]));
+   mov_xreg64_m64rel(RBX, (uint64_t *)(&reg_cop1_simple[dst->f.r.nrd]));
    mov_preg64_reg32(RBX, EAX);
 #else
    mov_eax_memoffs32((unsigned int*)dst->f.r.rt);
@@ -138,7 +138,7 @@ void gendmtc1(void)
 #ifdef __x86_64__
    mov_xreg32_m32rel(EAX, (unsigned int*)dst->f.r.rt);
    mov_xreg32_m32rel(EBX, ((unsigned int*)dst->f.r.rt)+1);
-   mov_xreg64_m64rel(RDX, (unsigned long long *)(&reg_cop1_double[dst->f.r.nrd]));
+   mov_xreg64_m64rel(RDX, (uint64_t *)(&reg_cop1_double[dst->f.r.nrd]));
    mov_preg64_reg32(RDX, EAX);
    mov_preg64pimm32_reg32(RDX, 4, EBX);
 #else
@@ -182,7 +182,7 @@ void genctc1(void)
    
    mov_m32rel_imm32((unsigned int*)&rounding_mode, 0x73F); // 11
    
-   fldcw_m16rel((unsigned short*)&rounding_mode);
+   fldcw_m16rel((uint16_t*)&rounding_mode);
 #else
    mov_eax_memoffs32((unsigned int*)dst->f.r.rt);
    mov_memoffs32_eax((unsigned int*)&FCR31);
@@ -205,7 +205,7 @@ void genctc1(void)
    
    mov_m32_imm32((unsigned int*)&rounding_mode, 0x73F); // 10
    
-   fldcw_m16((unsigned short*)&rounding_mode);
+   fldcw_m16((uint16_t*)&rounding_mode);
 #endif
 #endif
 }

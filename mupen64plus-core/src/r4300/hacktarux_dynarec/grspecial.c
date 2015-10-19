@@ -233,14 +233,14 @@ void genjr(void)
    jump_start_rel32();
 
    mov_m32rel_xreg32(&jump_to_address, EBX);
-   mov_reg64_imm64(RAX, (unsigned long long) (dst+1));
-   mov_m64rel_xreg64((unsigned long long *)(&PC), RAX);
-   mov_reg64_imm64(RAX, (unsigned long long) jump_to_func);
+   mov_reg64_imm64(RAX, (uint64_t) (dst+1));
+   mov_m64rel_xreg64((uint64_t *)(&PC), RAX);
+   mov_reg64_imm64(RAX, (uint64_t) jump_to_func);
    call_reg64(RAX);  /* will never return from call */
 
    jump_end_rel32();
 
-   mov_reg64_imm64(RSI, (unsigned long long) dst_block->block);
+   mov_reg64_imm64(RSI, (uint64_t) dst_block->block);
    mov_reg32_reg32(EAX, EBX);
    sub_eax_imm32(dst_block->start);
    shr_reg32_imm8(EAX, 2);
@@ -255,7 +255,7 @@ void genjr(void)
    jmp_reg64(RAX); // 2
 
    mov_reg32_preg64preg64pimm32(EBX, RAX, RSI, diff);
-   mov_rax_memoffs64((unsigned long long *) &dst_block->code);
+   mov_rax_memoffs64((uint64_t *) &dst_block->code);
    add_reg64_reg64(RAX, RBX);
    jmp_reg64(RAX);
 #else
@@ -366,14 +366,14 @@ void genjalr(void)
    jump_start_rel32();
 
    mov_m32rel_xreg32(&jump_to_address, EBX);
-   mov_reg64_imm64(RAX, (unsigned long long) (dst+1));
-   mov_m64rel_xreg64((unsigned long long *)(&PC), RAX);
-   mov_reg64_imm64(RAX, (unsigned long long) jump_to_func);
+   mov_reg64_imm64(RAX, (uint64_t) (dst+1));
+   mov_m64rel_xreg64((uint64_t *)(&PC), RAX);
+   mov_reg64_imm64(RAX, (uint64_t) jump_to_func);
    call_reg64(RAX);  /* will never return from call */
 
    jump_end_rel32();
 
-   mov_reg64_imm64(RSI, (unsigned long long) dst_block->block);
+   mov_reg64_imm64(RSI, (uint64_t) dst_block->block);
    mov_reg32_reg32(EAX, EBX);
    sub_eax_imm32(dst_block->start);
    shr_reg32_imm8(EAX, 2);
@@ -388,7 +388,7 @@ void genjalr(void)
    jmp_reg64(RAX); // 2
 
    mov_reg32_preg64preg64pimm32(EBX, RAX, RSI, diff);
-   mov_rax_memoffs64((unsigned long long *) &dst_block->code);
+   mov_rax_memoffs64((uint64_t *) &dst_block->code);
    add_reg64_reg64(RAX, RBX);
    jmp_reg64(RAX);
 #else
@@ -488,8 +488,8 @@ void genmfhi(void)
    gencallinterp((native_type)cached_interpreter_table.MFHI, 0);
 #else
 #ifdef __x86_64__
-   int rd = allocate_register_64_w((unsigned long long *) dst->f.r.rd);
-   int _hi = allocate_register_64((unsigned long long *) &hi);
+   int rd = allocate_register_64_w((uint64_t *) dst->f.r.rd);
+   int _hi = allocate_register_64((uint64_t *) &hi);
 
    mov_reg64_reg64(rd, _hi);
 #else
@@ -510,8 +510,8 @@ void genmthi(void)
    gencallinterp((native_type)cached_interpreter_table.MTHI, 0);
 #else
 #ifdef __x86_64__
-   int _hi = allocate_register_64_w((unsigned long long *) &hi);
-   int rs = allocate_register_64((unsigned long long *) dst->f.r.rs);
+   int _hi = allocate_register_64_w((uint64_t *) &hi);
+   int rs = allocate_register_64((uint64_t *) dst->f.r.rs);
 
    mov_reg64_reg64(_hi, rs);
 #else
@@ -532,8 +532,8 @@ void genmflo(void)
    gencallinterp((native_type)cached_interpreter_table.MFLO, 0);
 #else
 #ifdef __x86_64__
-   int rd = allocate_register_64_w((unsigned long long *) dst->f.r.rd);
-   int _lo = allocate_register_64((unsigned long long *) &lo);
+   int rd = allocate_register_64_w((uint64_t *) dst->f.r.rd);
+   int _lo = allocate_register_64((uint64_t *) &lo);
 
    mov_reg64_reg64(rd, _lo);
 #else
@@ -554,8 +554,8 @@ void genmtlo(void)
    gencallinterp((native_type)cached_interpreter_table.MTLO, 0);
 #else
 #ifdef __x86_64__
-   int _lo = allocate_register_64_w((unsigned long long *)&lo);
-   int rs = allocate_register_64((unsigned long long *)dst->f.r.rs);
+   int _lo = allocate_register_64_w((uint64_t *)&lo);
+   int rs = allocate_register_64((uint64_t *)dst->f.r.rs);
 
    mov_reg64_reg64(_lo, rs);
 #else
@@ -579,8 +579,8 @@ void gendsllv(void)
    int rt, rd;
    allocate_register_32_manually(ECX, (unsigned int *)dst->f.r.rs);
 
-   rt = allocate_register_64((unsigned long long *)dst->f.r.rt);
-   rd = allocate_register_64_w((unsigned long long *)dst->f.r.rd);
+   rt = allocate_register_64((uint64_t *)dst->f.r.rt);
+   rd = allocate_register_64_w((uint64_t *)dst->f.r.rd);
 
    if (rd != ECX)
    {
@@ -651,8 +651,8 @@ void gendsrlv(void)
    int rt, rd;
    allocate_register_32_manually(ECX, (unsigned int *)dst->f.r.rs);
 
-   rt = allocate_register_64((unsigned long long *)dst->f.r.rt);
-   rd = allocate_register_64_w((unsigned long long *)dst->f.r.rd);
+   rt = allocate_register_64((uint64_t *)dst->f.r.rt);
+   rd = allocate_register_64_w((uint64_t *)dst->f.r.rd);
 
    if (rd != ECX)
    {
@@ -723,8 +723,8 @@ void gendsrav(void)
    int rt, rd;
    allocate_register_32_manually(ECX, (unsigned int *)dst->f.r.rs);
 
-   rt = allocate_register_64((unsigned long long *)dst->f.r.rt);
-   rd = allocate_register_64_w((unsigned long long *)dst->f.r.rd);
+   rt = allocate_register_64((uint64_t *)dst->f.r.rt);
+   rd = allocate_register_64_w((uint64_t *)dst->f.r.rd);
 
    if (rd != ECX)
    {
@@ -893,11 +893,11 @@ void gendmultu(void)
 #ifdef __x86_64__
    free_registers_move_start();
 
-   mov_xreg64_m64rel(RAX, (unsigned long long *) dst->f.r.rs);
-   mov_xreg64_m64rel(RDX, (unsigned long long *) dst->f.r.rt);
+   mov_xreg64_m64rel(RAX, (uint64_t *) dst->f.r.rs);
+   mov_xreg64_m64rel(RDX, (uint64_t *) dst->f.r.rt);
    mul_reg64(RDX);
-   mov_m64rel_xreg64((unsigned long long *) &lo, RAX);
-   mov_m64rel_xreg64((unsigned long long *) &hi, RDX);
+   mov_m64rel_xreg64((uint64_t *) &lo, RAX);
+   mov_m64rel_xreg64((uint64_t *) &hi, RDX);
 #else
    free_all_registers();
    simplify_access();
@@ -1120,9 +1120,9 @@ void genand(void)
    gencallinterp((native_type)cached_interpreter_table.AND, 0);
 #else
 #ifdef __x86_64__
-   int rs = allocate_register_64((unsigned long long *)dst->f.r.rs);
-   int rt = allocate_register_64((unsigned long long *)dst->f.r.rt);
-   int rd = allocate_register_64_w((unsigned long long *)dst->f.r.rd);
+   int rs = allocate_register_64((uint64_t *)dst->f.r.rs);
+   int rt = allocate_register_64((uint64_t *)dst->f.r.rt);
+   int rd = allocate_register_64_w((uint64_t *)dst->f.r.rd);
 
    if (rs == rd)
       and_reg64_reg64(rd, rt);
@@ -1169,9 +1169,9 @@ void genor(void)
    gencallinterp((native_type)cached_interpreter_table.OR, 0);
 #else
 #ifdef __x86_64__
-   int rs = allocate_register_64((unsigned long long *)dst->f.r.rs);
-   int rt = allocate_register_64((unsigned long long *)dst->f.r.rt);
-   int rd = allocate_register_64_w((unsigned long long *)dst->f.r.rd);
+   int rs = allocate_register_64((uint64_t *)dst->f.r.rs);
+   int rt = allocate_register_64((uint64_t *)dst->f.r.rt);
+   int rd = allocate_register_64_w((uint64_t *)dst->f.r.rd);
 
    if (rs == rd)
       or_reg64_reg64(rd, rt);
@@ -1218,9 +1218,9 @@ void genxor(void)
    gencallinterp((native_type)cached_interpreter_table.XOR, 0);
 #else
 #ifdef __x86_64__
-   int rs = allocate_register_64((unsigned long long *)dst->f.r.rs);
-   int rt = allocate_register_64((unsigned long long *)dst->f.r.rt);
-   int rd = allocate_register_64_w((unsigned long long *)dst->f.r.rd);
+   int rs = allocate_register_64((uint64_t *)dst->f.r.rs);
+   int rt = allocate_register_64((uint64_t *)dst->f.r.rt);
+   int rd = allocate_register_64_w((uint64_t *)dst->f.r.rd);
 
    if (rs == rd)
       xor_reg64_reg64(rd, rt);
@@ -1267,9 +1267,9 @@ void gennor(void)
    gencallinterp((native_type)cached_interpreter_table.NOR, 0);
 #else
 #ifdef __x86_64__
-   int rs = allocate_register_64((unsigned long long *)dst->f.r.rs);
-   int rt = allocate_register_64((unsigned long long *)dst->f.r.rt);
-   int rd = allocate_register_64_w((unsigned long long *)dst->f.r.rd);
+   int rs = allocate_register_64((uint64_t *)dst->f.r.rs);
+   int rt = allocate_register_64((uint64_t *)dst->f.r.rt);
+   int rd = allocate_register_64_w((uint64_t *)dst->f.r.rd);
 
    if (rs == rd)
    {
@@ -1327,9 +1327,9 @@ void genslt(void)
    gencallinterp((native_type)cached_interpreter_table.SLT, 0);
 #else
 #ifdef __x86_64__
-   int rs = allocate_register_64((unsigned long long *)dst->f.r.rs);
-   int rt = allocate_register_64((unsigned long long *)dst->f.r.rt);
-   int rd = allocate_register_64_w((unsigned long long *)dst->f.r.rd);
+   int rs = allocate_register_64((uint64_t *)dst->f.r.rs);
+   int rt = allocate_register_64((uint64_t *)dst->f.r.rt);
+   int rd = allocate_register_64_w((uint64_t *)dst->f.r.rd);
 
    cmp_reg64_reg64(rs, rt);
    setl_reg8(rd);
@@ -1359,9 +1359,9 @@ void gensltu(void)
    gencallinterp((native_type)cached_interpreter_table.SLTU, 0);
 #else
 #ifdef __x86_64__
-   int rs = allocate_register_64((unsigned long long *)dst->f.r.rs);
-   int rt = allocate_register_64((unsigned long long *)dst->f.r.rt);
-   int rd = allocate_register_64_w((unsigned long long *)dst->f.r.rd);
+   int rs = allocate_register_64((uint64_t *)dst->f.r.rs);
+   int rt = allocate_register_64((uint64_t *)dst->f.r.rt);
+   int rd = allocate_register_64_w((uint64_t *)dst->f.r.rd);
 
    cmp_reg64_reg64(rs, rt);
    setb_reg8(rd);
@@ -1391,9 +1391,9 @@ void gendadd(void)
    gencallinterp((native_type)cached_interpreter_table.DADD, 0);
 #else
 #ifdef __x86_64__
-   int rs = allocate_register_64((unsigned long long *)dst->f.r.rs);
-   int rt = allocate_register_64((unsigned long long *)dst->f.r.rt);
-   int rd = allocate_register_64_w((unsigned long long *)dst->f.r.rd);
+   int rs = allocate_register_64((uint64_t *)dst->f.r.rs);
+   int rt = allocate_register_64((uint64_t *)dst->f.r.rt);
+   int rd = allocate_register_64_w((uint64_t *)dst->f.r.rd);
 
    if (rs == rd)
       add_reg64_reg64(rd, rt);
@@ -1440,9 +1440,9 @@ void gendaddu(void)
    gencallinterp((native_type)cached_interpreter_table.DADDU, 0);
 #else
 #ifdef __x86_64__
-   int rs = allocate_register_64((unsigned long long *)dst->f.r.rs);
-   int rt = allocate_register_64((unsigned long long *)dst->f.r.rt);
-   int rd = allocate_register_64_w((unsigned long long *)dst->f.r.rd);
+   int rs = allocate_register_64((uint64_t *)dst->f.r.rs);
+   int rt = allocate_register_64((uint64_t *)dst->f.r.rt);
+   int rd = allocate_register_64_w((uint64_t *)dst->f.r.rd);
 
    if (rs == rd)
       add_reg64_reg64(rd, rt);
@@ -1489,9 +1489,9 @@ void gendsub(void)
    gencallinterp((native_type)cached_interpreter_table.DSUB, 0);
 #else
 #ifdef __x86_64__
-   int rs = allocate_register_64((unsigned long long *)dst->f.r.rs);
-   int rt = allocate_register_64((unsigned long long *)dst->f.r.rt);
-   int rd = allocate_register_64_w((unsigned long long *)dst->f.r.rd);
+   int rs = allocate_register_64((uint64_t *)dst->f.r.rs);
+   int rt = allocate_register_64((uint64_t *)dst->f.r.rt);
+   int rd = allocate_register_64_w((uint64_t *)dst->f.r.rd);
 
    if (rs == rd)
       sub_reg64_reg64(rd, rt);
@@ -1541,9 +1541,9 @@ void gendsubu(void)
    gencallinterp((native_type)cached_interpreter_table.DSUBU, 0);
 #else
 #ifdef __x86_64__
-   int rs = allocate_register_64((unsigned long long *)dst->f.r.rs);
-   int rt = allocate_register_64((unsigned long long *)dst->f.r.rt);
-   int rd = allocate_register_64_w((unsigned long long *)dst->f.r.rd);
+   int rs = allocate_register_64((uint64_t *)dst->f.r.rs);
+   int rt = allocate_register_64((uint64_t *)dst->f.r.rt);
+   int rd = allocate_register_64_w((uint64_t *)dst->f.r.rd);
 
    if (rs == rd)
       sub_reg64_reg64(rd, rt);
@@ -1598,8 +1598,8 @@ void gendsll(void)
    gencallinterp((native_type)cached_interpreter_table.DSLL, 0);
 #else
 #ifdef __x86_64__
-   int rt = allocate_register_64((unsigned long long *)dst->f.r.rt);
-   int rd = allocate_register_64_w((unsigned long long *)dst->f.r.rd);
+   int rt = allocate_register_64((uint64_t *)dst->f.r.rt);
+   int rd = allocate_register_64_w((uint64_t *)dst->f.r.rd);
 
    mov_reg64_reg64(rd, rt);
    shl_reg64_imm8(rd, dst->f.r.sa);
@@ -1628,8 +1628,8 @@ void gendsrl(void)
    gencallinterp((native_type)cached_interpreter_table.DSRL, 0);
 #else
 #ifdef __x86_64__
-   int rt = allocate_register_64((unsigned long long *)dst->f.r.rt);
-   int rd = allocate_register_64_w((unsigned long long *)dst->f.r.rd);
+   int rt = allocate_register_64((uint64_t *)dst->f.r.rt);
+   int rd = allocate_register_64_w((uint64_t *)dst->f.r.rd);
 
    mov_reg64_reg64(rd, rt);
    shr_reg64_imm8(rd, dst->f.r.sa);
@@ -1658,8 +1658,8 @@ void gendsra(void)
    gencallinterp((native_type)cached_interpreter_table.DSRA, 0);
 #else
 #ifdef __x86_64__
-   int rt = allocate_register_64((unsigned long long *)dst->f.r.rt);
-   int rd = allocate_register_64_w((unsigned long long *)dst->f.r.rd);
+   int rt = allocate_register_64((uint64_t *)dst->f.r.rt);
+   int rd = allocate_register_64_w((uint64_t *)dst->f.r.rd);
 
    mov_reg64_reg64(rd, rt);
    sar_reg64_imm8(rd, dst->f.r.sa);
@@ -1688,8 +1688,8 @@ void gendsll32(void)
    gencallinterp((native_type)cached_interpreter_table.DSLL32, 0);
 #else
 #ifdef __x86_64__
-   int rt = allocate_register_64((unsigned long long *)dst->f.r.rt);
-   int rd = allocate_register_64_w((unsigned long long *)dst->f.r.rd);
+   int rt = allocate_register_64((uint64_t *)dst->f.r.rt);
+   int rd = allocate_register_64_w((uint64_t *)dst->f.r.rd);
 
    mov_reg64_reg64(rd, rt);
    shl_reg64_imm8(rd, dst->f.r.sa + 32);
@@ -1711,8 +1711,8 @@ void gendsrl32(void)
    gencallinterp((native_type)cached_interpreter_table.DSRL32, 0);
 #else
 #ifdef __x86_64__
-   int rt = allocate_register_64((unsigned long long *)dst->f.r.rt);
-   int rd = allocate_register_64_w((unsigned long long *)dst->f.r.rd);
+   int rt = allocate_register_64((uint64_t *)dst->f.r.rt);
+   int rd = allocate_register_64_w((uint64_t *)dst->f.r.rd);
 
    mov_reg64_reg64(rd, rt);
    shr_reg64_imm8(rd, dst->f.r.sa + 32);
@@ -1734,8 +1734,8 @@ void gendsra32(void)
    gencallinterp((native_type)cached_interpreter_table.DSRA32, 0);
 #else
 #ifdef __x86_64__
-   int rt = allocate_register_64((unsigned long long *)dst->f.r.rt);
-   int rd = allocate_register_64_w((unsigned long long *)dst->f.r.rd);
+   int rt = allocate_register_64((uint64_t *)dst->f.r.rt);
+   int rd = allocate_register_64_w((uint64_t *)dst->f.r.rd);
 
    mov_reg64_reg64(rd, rt);
    sar_reg64_imm8(rd, dst->f.r.sa + 32);

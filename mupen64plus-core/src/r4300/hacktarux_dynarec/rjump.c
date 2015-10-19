@@ -46,13 +46,13 @@ static int64_t save_rip = 0;
 # define ASM_NAME(name)
 #endif
 
-static long save_ebp ASM_NAME("save_ebp") = 0;
-static long save_ebx ASM_NAME("save_ebx") = 0;
-static long save_esi ASM_NAME("save_esi") = 0;
-static long save_edi ASM_NAME("save_edi") = 0;
-static long save_esp ASM_NAME("save_esp") = 0;
-static long save_eip ASM_NAME("save_eip") = 0;
-static unsigned long *return_address ASM_NAME("return_address");
+static int32_t save_ebp ASM_NAME("save_ebp") = 0;
+static int32_t save_ebx ASM_NAME("save_ebx") = 0;
+static int32_t save_esi ASM_NAME("save_esi") = 0;
+static int32_t save_edi ASM_NAME("save_edi") = 0;
+static int32_t save_esp ASM_NAME("save_esp") = 0;
+static int32_t save_eip ASM_NAME("save_eip") = 0;
+static uint32_t *return_address ASM_NAME("return_address");
 #endif
 
 void dyna_jump(void)

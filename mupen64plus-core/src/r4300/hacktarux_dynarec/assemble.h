@@ -44,7 +44,7 @@ typedef uint64_t native_type;
 #define RDI 7
 #else
 typedef uint32_t native_type;
-extern long long int reg[32];
+extern int64_t reg[32];
 #endif
 
 #define EAX 0
@@ -106,21 +106,21 @@ static INLINE void put32(unsigned int dword)
    code_length += 4;
 }
 
-static INLINE void put64(unsigned long long qword)
+static INLINE void put64(uint64_t qword)
 {
    if ((code_length + 8) >= max_code_length)
    {
       *inst_pointer = realloc_exec(*inst_pointer, max_code_length, max_code_length+8192);
       max_code_length += 8192;
    }
-   *((unsigned long long *) (*inst_pointer + code_length)) = qword;
+   *((uint64_t*) (*inst_pointer + code_length)) = qword;
    code_length += 8;
 }
 
 static INLINE int rel_r15_offset(void *dest, const char *op_name)
 {
    /* calculate the destination pointer's offset from the base of the r4300 registers */
-   long long rel_offset = (long long) ((unsigned char *) dest - (unsigned char *) reg);
+   int64_t rel_offset = (int64_t) ((uint8_t *) dest - (uint8_t *) reg);
 
    if (llabs(rel_offset) > 0x7fffffff)
    {
@@ -313,18 +313,18 @@ static INLINE void cmp_reg64_imm8(int reg64, unsigned char imm8)
    put8(imm8);
 }
 
-static INLINE void mov_rax_memoffs64(unsigned long long *memoffs64)
+static INLINE void mov_rax_memoffs64(uint64_t *memoffs64)
 {
    put8(0x48);
    put8(0xA1);
-   put64((unsigned long long) memoffs64);
+   put64((uint64_t) memoffs64);
 }
 
-static INLINE void mov_memoffs64_rax(unsigned long long *memoffs64)
+static INLINE void mov_memoffs64_rax(uint64_t *memoffs64)
 {
    put8(0x48);
    put8(0xA3);
-   put64((unsigned long long) memoffs64);
+   put64((uint64_t) memoffs64);
 }
 
 static INLINE void mov_m8rel_xreg8(unsigned char *m8, int xreg8)
@@ -369,7 +369,7 @@ static INLINE void cmp_xreg32_m32rel(int xreg32, unsigned int *m32)
    put32(offset);
 }
 
-static INLINE void cmp_xreg64_m64rel(int xreg64, unsigned long long *m64)
+static INLINE void cmp_xreg64_m64rel(int xreg64, uint64_t *m64)
 {
    int offset = rel_r15_offset(m64, "cmp_xreg64_m64rel");
 
@@ -672,7 +672,7 @@ static INLINE void mov_memoffs32_eax(unsigned int *memoffs32)
 {
    put8(0xA3);
 #ifdef __x86_64__
-   put64((unsigned long long) memoffs32);
+   put64((uint64_t) memoffs32);
 #else
    put32((unsigned int)(memoffs32));
 #endif
@@ -841,7 +841,7 @@ static INLINE void mov_reg32_imm32(int reg32, unsigned int imm32)
    put32(imm32);
 }
 
-static INLINE void mov_reg64_imm64(int reg64, unsigned long long imm64)
+static INLINE void mov_reg64_imm64(int reg64, uint64_t imm64)
 {
    put8(0x48);
    put8(0xB8+reg64);
@@ -1437,7 +1437,7 @@ static INLINE void mov_m32rel_xreg32(unsigned int *m32, unsigned int xreg32)
    put32(offset);
 }
 
-static INLINE void mov_xreg64_m64rel(unsigned int xreg64, unsigned long long* m64)
+static INLINE void mov_xreg64_m64rel(unsigned int xreg64, uint64_t* m64)
 {
    int offset = rel_r15_offset(m64, "mov_xreg64_m64rel");
 
@@ -1447,7 +1447,7 @@ static INLINE void mov_xreg64_m64rel(unsigned int xreg64, unsigned long long* m6
    put32(offset);
 }
 
-static INLINE void mov_m64rel_xreg64(unsigned long long *m64, unsigned int xreg64)
+static INLINE void mov_m64rel_xreg64(uint64_t *m64, unsigned int xreg64)
 {
    int offset = rel_r15_offset(m64, "mov_m64rel_xreg64");
 
