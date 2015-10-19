@@ -207,142 +207,185 @@ void InterpretOpcode()
                if (RD_OF(op) != 0) SRAV(op);
                else NOP(0);
                break;
-            case 8: JR(op); break;
+            case 8:
+               JR(op);
+               break;
             case 9: /* SPECIAL opcode 9: JALR */
-                    /* Note: This can omit the check for Rd == 0 because the JALR
-                     * function checks for link_register != &reg[0]. If you're
-                     * using this as a reference for a JIT, do check Rd == 0 in it. */
-                    JALR(op);
-                    break;
-            case 12: SYSCALL(op); break;
+               /* Note: This can omit the check for Rd == 0 because the JALR
+                * function checks for link_register != &reg[0]. If you're
+                * using this as a reference for a JIT, do check Rd == 0 in it. */
+               JALR(op);
+               break;
+            case 12:
+               SYSCALL(op);
+               break;
             case 13: /* SPECIAL opcode 13: BREAK (Not implemented) */
-                     NI(op);
-                     break;
-            case 15: SYNC(op); break;
+               NI(op);
+               break;
+            case 15:
+               SYNC(op);
+               break;
             case 16: /* SPECIAL opcode 16: MFHI */
-                     if (RD_OF(op) != 0) MFHI(op);
-                     else NOP(0);
-                     break;
-            case 17: MTHI(op); break;
+               if (RD_OF(op) != 0)
+                  MFHI(op);
+               else
+                  NOP(0);
+               break;
+            case 17:
+               MTHI(op);
+               break;
             case 18: /* SPECIAL opcode 18: MFLO */
-                     if (RD_OF(op) != 0) MFLO(op);
-                     else NOP(0);
-                     break;
-            case 19: MTLO(op); break;
+               if (RD_OF(op) != 0)
+                  MFLO(op);
+               else
+                  NOP(0);
+               break;
+            case 19:
+               MTLO(op);
+               break;
             case 20: /* SPECIAL opcode 20: DSLLV */
-                     if (RD_OF(op) != 0) DSLLV(op);
-                     else NOP(0);
-                     break;
+               if (RD_OF(op) != 0)
+                  DSLLV(op);
+               else
+                  NOP(0);
+               break;
             case 22: /* SPECIAL opcode 22: DSRLV */
-                     if (RD_OF(op) != 0) DSRLV(op);
-                     else NOP(0);
-                     break;
+               if (RD_OF(op) != 0)
+                  DSRLV(op);
+               else
+                  NOP(0);
+               break;
             case 23: /* SPECIAL opcode 23: DSRAV */
-                     if (RD_OF(op) != 0) DSRAV(op);
-                     else NOP(0);
-                     break;
-            case 24: MULT(op); break;
-            case 25: MULTU(op); break;
-            case 26: DIV(op); break;
-            case 27: DIVU(op); break;
-            case 28: DMULT(op); break;
-            case 29: DMULTU(op); break;
-            case 30: DDIV(op); break;
-            case 31: DDIVU(op); break;
+               if (RD_OF(op) != 0)
+                  DSRAV(op);
+               else
+                  NOP(0);
+               break;
+            case 24:
+               MULT(op);
+               break;
+            case 25:
+               MULTU(op);
+               break;
+            case 26:
+               DIV(op);
+               break;
+            case 27:
+               DIVU(op);
+               break;
+            case 28:
+               DMULT(op);
+               break;
+            case 29:
+               DMULTU(op);
+               break;
+            case 30:
+               DDIV(op);
+               break;
+            case 31:
+               DDIVU(op);
+               break;
             case 32: /* SPECIAL opcode 32: ADD */
-                     if (RD_OF(op) != 0) ADD(op);
-                     else NOP(0);
-                     break;
+               if (RD_OF(op) != 0)
+                  ADD(op);
+               else NOP(0);
+               break;
             case 33: /* SPECIAL opcode 33: ADDU */
-                     if (RD_OF(op) != 0) ADDU(op);
-                     else NOP(0);
-                     break;
+               if (RD_OF(op) != 0)
+                  ADDU(op);
+               else NOP(0);
+               break;
             case 34: /* SPECIAL opcode 34: SUB */
-                     if (RD_OF(op) != 0) SUB(op);
-                     else NOP(0);
-                     break;
+               if (RD_OF(op) != 0) SUB(op);
+               else NOP(0);
+               break;
             case 35: /* SPECIAL opcode 35: SUBU */
-                     if (RD_OF(op) != 0) SUBU(op);
-                     else NOP(0);
-                     break;
+               if (RD_OF(op) != 0) SUBU(op);
+               else NOP(0);
+               break;
             case 36: /* SPECIAL opcode 36: AND */
-                     if (RD_OF(op) != 0) AND(op);
-                     else NOP(0);
-                     break;
+               if (RD_OF(op) != 0) AND(op);
+               else NOP(0);
+               break;
             case 37: /* SPECIAL opcode 37: OR */
-                     if (RD_OF(op) != 0) OR(op);
-                     else NOP(0);
-                     break;
+               if (RD_OF(op) != 0) OR(op);
+               else NOP(0);
+               break;
             case 38: /* SPECIAL opcode 38: XOR */
-                     if (RD_OF(op) != 0) XOR(op);
-                     else NOP(0);
-                     break;
+               if (RD_OF(op) != 0) XOR(op);
+               else NOP(0);
+               break;
             case 39: /* SPECIAL opcode 39: NOR */
-                     if (RD_OF(op) != 0) NOR(op);
-                     else NOP(0);
-                     break;
+               if (RD_OF(op) != 0) NOR(op);
+               else NOP(0);
+               break;
             case 42: /* SPECIAL opcode 42: SLT */
-                     if (RD_OF(op) != 0) SLT(op);
-                     else NOP(0);
-                     break;
+               if (RD_OF(op) != 0) SLT(op);
+               else NOP(0);
+               break;
             case 43: /* SPECIAL opcode 43: SLTU */
-                     if (RD_OF(op) != 0) SLTU(op);
-                     else NOP(0);
-                     break;
+               if (RD_OF(op) != 0) SLTU(op);
+               else NOP(0);
+               break;
             case 44: /* SPECIAL opcode 44: DADD */
-                     if (RD_OF(op) != 0) DADD(op);
-                     else NOP(0);
-                     break;
+               if (RD_OF(op) != 0) DADD(op);
+               else NOP(0);
+               break;
             case 45: /* SPECIAL opcode 45: DADDU */
-                     if (RD_OF(op) != 0) DADDU(op);
-                     else NOP(0);
-                     break;
+               if (RD_OF(op) != 0) DADDU(op);
+               else NOP(0);
+               break;
             case 46: /* SPECIAL opcode 46: DSUB */
-                     if (RD_OF(op) != 0) DSUB(op);
-                     else NOP(0);
-                     break;
+               if (RD_OF(op) != 0) DSUB(op);
+               else NOP(0);
+               break;
             case 47: /* SPECIAL opcode 47: DSUBU */
-                     if (RD_OF(op) != 0) DSUBU(op);
-                     else NOP(0);
-                     break;
+               if (RD_OF(op) != 0) DSUBU(op);
+               else NOP(0);
+               break;
             case 48: /* SPECIAL opcode 48: TGE (Not implemented) */
             case 49: /* SPECIAL opcode 49: TGEU (Not implemented) */
             case 50: /* SPECIAL opcode 50: TLT (Not implemented) */
             case 51: /* SPECIAL opcode 51: TLTU (Not implemented) */
-                     NI(op);
-                     break;
-            case 52: TEQ(op); break;
+               NI(op);
+               break;
+            case 52:
+               TEQ(op);
+               break;
             case 54: /* SPECIAL opcode 54: TNE (Not implemented) */
-                     NI(op);
-                     break;
+               NI(op);
+               break;
             case 56: /* SPECIAL opcode 56: DSLL */
-                     if (RD_OF(op) != 0) DSLL(op);
-                     else NOP(0);
-                     break;
+               if (RD_OF(op) != 0) DSLL(op);
+               else NOP(0);
+               break;
             case 58: /* SPECIAL opcode 58: DSRL */
-                     if (RD_OF(op) != 0) DSRL(op);
-                     else NOP(0);
-                     break;
+               if (RD_OF(op) != 0) DSRL(op);
+               else NOP(0);
+               break;
             case 59: /* SPECIAL opcode 59: DSRA */
-                     if (RD_OF(op) != 0) DSRA(op);
-                     else NOP(0);
-                     break;
+               if (RD_OF(op) != 0) DSRA(op);
+               else NOP(0);
+               break;
             case 60: /* SPECIAL opcode 60: DSLL32 */
-                     if (RD_OF(op) != 0) DSLL32(op);
-                     else NOP(0);
-                     break;
+               if (RD_OF(op) != 0) DSLL32(op);
+               else NOP(0);
+               break;
             case 62: /* SPECIAL opcode 62: DSRL32 */
-                     if (RD_OF(op) != 0) DSRL32(op);
-                     else NOP(0);
-                     break;
+               if (RD_OF(op) != 0) DSRL32(op);
+               else NOP(0);
+               break;
             case 63: /* SPECIAL opcode 63: DSRA32 */
-                     if (RD_OF(op) != 0) DSRA32(op);
-                     else NOP(0);
-                     break;
-            default: /* SPECIAL opcodes 1, 5, 10, 11, 14, 21, 40, 41, 53, 55, 57,
+               if (RD_OF(op) != 0)
+                  DSRA32(op);
+               else
+                  NOP(0);
+               break;
+            default:
+               /* SPECIAL opcodes 1, 5, 10, 11, 14, 21, 40, 41, 53, 55, 57,
 61: Reserved Instructions */
-                     RESERVED(op);
-                     break;
+               RESERVED(op);
+               break;
          } /* switch (op & 0x3F) for the SPECIAL prefix */
          break;
       case 1: /* REGIMM prefix */
@@ -390,8 +433,8 @@ void InterpretOpcode()
                break;
             default: /* REGIMM opcodes 4..7, 13, 15, 20..31:
                         Reserved Instructions */
-               RESERVED(op);
-               break;
+            RESERVED(op);
+            break;
          } /* switch ((op >> 16) & 0x1F) for the REGIMM prefix */
          break;
       case 2: /* Major opcode 2: J */
@@ -454,187 +497,365 @@ void InterpretOpcode()
          switch ((op >> 21) & 0x1F)
          {
             case 0: /* Coprocessor 0 opcode 0: MFC0 */
-               if (RT_OF(op) != 0) MFC0(op);
-               else NOP(0);
+               if (RT_OF(op) != 0)
+                  MFC0(op);
+               else
+                  NOP(0);
                break;
-            case 4: MTC0(op); break;
+            case 4:
+               MTC0(op);
+               break;
             case 16: /* Coprocessor 0 opcode 16: TLB */
-                    switch (op & 0x3F)
-                    {
-                       case 1: TLBR(op); break;
-                       case 2: TLBWI(op); break;
-                       case 6: TLBWR(op); break;
-                       case 8: TLBP(op); break;
-                       case 24: ERET(op); break;
-                       default: /* TLB sub-opcodes 0, 3..5, 7, 9..23, 25..63:
-                                   Reserved Instructions */
-                                RESERVED(op);
-                                break;
-                    } /* switch (op & 0x3F) for Coprocessor 0 TLB opcodes */
-                    break;
-            default: /* Coprocessor 0 opcodes 1..3, 4..15, 17..31:
-                        Reserved Instructions */
-                    RESERVED(op);
-                    break;
+               switch (op & 0x3F)
+               {
+                  case 1:
+                     TLBR(op);
+                     break;
+                  case 2:
+                     TLBWI(op);
+                     break;
+                  case 6:
+                     TLBWR(op);
+                     break;
+                  case 8:
+                     TLBP(op);
+                     break;
+                  case 24:
+                     ERET(op);
+                     break;
+                  default: /* TLB sub-opcodes 0, 3..5, 7, 9..23, 25..63:
+                              Reserved Instructions */
+                  RESERVED(op);
+                  break;
+               } /* switch (op & 0x3F) for Coprocessor 0 TLB opcodes */
+               break;
+            default:
+               /* Coprocessor 0 opcodes 1..3, 4..15, 17..31:
+                  Reserved Instructions */
+            RESERVED(op);
+            break;
          } /* switch ((op >> 21) & 0x1F) for the Coprocessor 0 prefix */
          break;
       case 17: /* Coprocessor 1 prefix */
          switch ((op >> 21) & 0x1F)
          {
             case 0: /* Coprocessor 1 opcode 0: MFC1 */
-               if (RT_OF(op) != 0) MFC1(op);
+               if (RT_OF(op) != 0)
+                  MFC1(op);
                else NOP(0);
                break;
             case 1: /* Coprocessor 1 opcode 1: DMFC1 */
-               if (RT_OF(op) != 0) DMFC1(op);
+               if (RT_OF(op) != 0)
+                  DMFC1(op);
                else NOP(0);
                break;
             case 2: /* Coprocessor 1 opcode 2: CFC1 */
-               if (RT_OF(op) != 0) CFC1(op);
+               if (RT_OF(op) != 0)
+                  CFC1(op);
                else NOP(0);
                break;
-            case 4: MTC1(op); break;
-            case 5: DMTC1(op); break;
-            case 6: CTC1(op); break;
+            case 4:
+               MTC1(op);
+               break;
+            case 5:
+               DMTC1(op);
+               break;
+            case 6:
+               CTC1(op);
+               break;
             case 8: /* Coprocessor 1 opcode 8: Branch on C1 condition... */
-                    switch ((op >> 16) & 0x3)
-                    {
-                       case 0: /* opcode 0: BC1F */
-                          if (IS_RELATIVE_IDLE_LOOP(op, PC->addr)) BC1F_IDLE(op);
-                          else BC1F(op);
-                          break;
-                       case 1: /* opcode 1: BC1T */
-                          if (IS_RELATIVE_IDLE_LOOP(op, PC->addr)) BC1T_IDLE(op);
-                          else BC1T(op);
-                          break;
-                       case 2: /* opcode 2: BC1FL */
-                          if (IS_RELATIVE_IDLE_LOOP(op, PC->addr)) BC1FL_IDLE(op);
-                          else BC1FL(op);
-                          break;
-                       case 3: /* opcode 3: BC1TL */
-                          if (IS_RELATIVE_IDLE_LOOP(op, PC->addr)) BC1TL_IDLE(op);
-                          else BC1TL(op);
-                          break;
-                    } /* switch ((op >> 16) & 0x3) for branches on C1 condition */
-                    break;
+               switch ((op >> 16) & 0x3)
+               {
+                  case 0: /* opcode 0: BC1F */
+                     if (IS_RELATIVE_IDLE_LOOP(op, PC->addr)) BC1F_IDLE(op);
+                     else BC1F(op);
+                     break;
+                  case 1: /* opcode 1: BC1T */
+                     if (IS_RELATIVE_IDLE_LOOP(op, PC->addr)) BC1T_IDLE(op);
+                     else BC1T(op);
+                     break;
+                  case 2: /* opcode 2: BC1FL */
+                     if (IS_RELATIVE_IDLE_LOOP(op, PC->addr)) BC1FL_IDLE(op);
+                     else BC1FL(op);
+                     break;
+                  case 3: /* opcode 3: BC1TL */
+                     if (IS_RELATIVE_IDLE_LOOP(op, PC->addr)) BC1TL_IDLE(op);
+                     else BC1TL(op);
+                     break;
+               } /* switch ((op >> 16) & 0x3) for branches on C1 condition */
+               break;
             case 16: /* Coprocessor 1 S-format opcodes */
-                    switch (op & 0x3F)
-                    {
-                       case 0: ADD_S(op); break;
-                       case 1: SUB_S(op); break;
-                       case 2: MUL_S(op); break;
-                       case 3: DIV_S(op); break;
-                       case 4: SQRT_S(op); break;
-                       case 5: ABS_S(op); break;
-                       case 6: MOV_S(op); break;
-                       case 7: NEG_S(op); break;
-                       case 8: ROUND_L_S(op); break;
-                       case 9: TRUNC_L_S(op); break;
-                       case 10: CEIL_L_S(op); break;
-                       case 11: FLOOR_L_S(op); break;
-                       case 12: ROUND_W_S(op); break;
-                       case 13: TRUNC_W_S(op); break;
-                       case 14: CEIL_W_S(op); break;
-                       case 15: FLOOR_W_S(op); break;
-                       case 33: CVT_D_S(op); break;
-                       case 36: CVT_W_S(op); break;
-                       case 37: CVT_L_S(op); break;
-                       case 48: C_F_S(op); break;
-                       case 49: C_UN_S(op); break;
-                       case 50: C_EQ_S(op); break;
-                       case 51: C_UEQ_S(op); break;
-                       case 52: C_OLT_S(op); break;
-                       case 53: C_ULT_S(op); break;
-                       case 54: C_OLE_S(op); break;
-                       case 55: C_ULE_S(op); break;
-                       case 56: C_SF_S(op); break;
-                       case 57: C_NGLE_S(op); break;
-                       case 58: C_SEQ_S(op); break;
-                       case 59: C_NGL_S(op); break;
-                       case 60: C_LT_S(op); break;
-                       case 61: C_NGE_S(op); break;
-                       case 62: C_LE_S(op); break;
-                       case 63: C_NGT_S(op); break;
-                       default: /* Coprocessor 1 S-format opcodes 16..32, 34..35, 38..47:
-                                   Reserved Instructions */
-                                RESERVED(op);
-                                break;
-                    } /* switch (op & 0x3F) for Coprocessor 1 S-format opcodes */
-                    break;
-            case 17: /* Coprocessor 1 D-format opcodes */
-                    switch (op & 0x3F)
-                    {
-                       case 0: ADD_D(op); break;
-                       case 1: SUB_D(op); break;
-                       case 2: MUL_D(op); break;
-                       case 3: DIV_D(op); break;
-                       case 4: SQRT_D(op); break;
-                       case 5: ABS_D(op); break;
-                       case 6: MOV_D(op); break;
-                       case 7: NEG_D(op); break;
-                       case 8: ROUND_L_D(op); break;
-                       case 9: TRUNC_L_D(op); break;
-                       case 10: CEIL_L_D(op); break;
-                       case 11: FLOOR_L_D(op); break;
-                       case 12: ROUND_W_D(op); break;
-                       case 13: TRUNC_W_D(op); break;
-                       case 14: CEIL_W_D(op); break;
-                       case 15: FLOOR_W_D(op); break;
-                       case 32: CVT_S_D(op); break;
-                       case 36: CVT_W_D(op); break;
-                       case 37: CVT_L_D(op); break;
-                       case 48: C_F_D(op); break;
-                       case 49: C_UN_D(op); break;
-                       case 50: C_EQ_D(op); break;
-                       case 51: C_UEQ_D(op); break;
-                       case 52: C_OLT_D(op); break;
-                       case 53: C_ULT_D(op); break;
-                       case 54: C_OLE_D(op); break;
-                       case 55: C_ULE_D(op); break;
-                       case 56: C_SF_D(op); break;
-                       case 57: C_NGLE_D(op); break;
-                       case 58: C_SEQ_D(op); break;
-                       case 59: C_NGL_D(op); break;
-                       case 60: C_LT_D(op); break;
-                       case 61: C_NGE_D(op); break;
-                       case 62: C_LE_D(op); break;
-                       case 63: C_NGT_D(op); break;
-                       default: /* Coprocessor 1 D-format opcodes 16..31, 33..35, 38..47:
-                                   Reserved Instructions */
-                                RESERVED(op);
-                                break;
-                    } /* switch (op & 0x3F) for Coprocessor 1 D-format opcodes */
-                    break;
-            case 20: /* Coprocessor 1 W-format opcodes */
-                    switch (op & 0x3F)
-                    {
-                       case 32: CVT_S_W(op); break;
-                       case 33: CVT_D_W(op); break;
-                       default: /* Coprocessor 1 W-format opcodes 0..31, 34..63:
-                                   Reserved Instructions */
-                                RESERVED(op);
-                                break;
-                    }
-                    break;
-            case 21: /* Coprocessor 1 L-format opcodes */
-                    switch (op & 0x3F)
-                    {
-                       case 32: CVT_S_L(op); break;
-                       case 33: CVT_D_L(op); break;
-                       default: /* Coprocessor 1 L-format opcodes 0..31, 34..63:
-                                   Reserved Instructions */
-                                RESERVED(op);
-                                break;
-                    }
-                    break;
-            default: /* Coprocessor 1 opcodes 3, 7, 9..15, 18..19, 22..31:
+               switch (op & 0x3F)
+               {
+                  case 0:
+                     ADD_S(op);
+                     break;
+                  case 1:
+                     SUB_S(op);
+                     break;
+                  case 2:
+                     MUL_S(op);
+                     break;
+                  case 3:
+                     DIV_S(op);
+                     break;
+                  case 4:
+                     SQRT_S(op);
+                     break;
+                  case 5:
+                     ABS_S(op);
+                     break;
+                  case 6:
+                     MOV_S(op);
+                     break;
+                  case 7:
+                     NEG_S(op);
+                     break;
+                  case 8:
+                     ROUND_L_S(op);
+                     break;
+                  case 9:
+                     TRUNC_L_S(op);
+                     break;
+                  case 10:
+                     CEIL_L_S(op);
+                     break;
+                  case 11:
+                     FLOOR_L_S(op);
+                     break;
+                  case 12:
+                     ROUND_W_S(op);
+                     break;
+                  case 13:
+                     TRUNC_W_S(op);
+                     break;
+                  case 14:
+                     CEIL_W_S(op);
+                     break;
+                  case 15:
+                     FLOOR_W_S(op);
+                     break;
+                  case 33:
+                     CVT_D_S(op);
+                     break;
+                  case 36:
+                     CVT_W_S(op);
+                     break;
+                  case 37:
+                     CVT_L_S(op);
+                     break;
+                  case 48:
+                     C_F_S(op);
+                     break;
+                  case 49:
+                     C_UN_S(op);
+                     break;
+                  case 50:
+                     C_EQ_S(op);
+                     break;
+                  case 51:
+                     C_UEQ_S(op);
+                     break;
+                  case 52:
+                     C_OLT_S(op);
+                     break;
+                  case 53:
+                     C_ULT_S(op);
+                     break;
+                  case 54:
+                     C_OLE_S(op);
+                     break;
+                  case 55:
+                     C_ULE_S(op);
+                     break;
+                  case 56:
+                     C_SF_S(op);
+                     break;
+                  case 57:
+                     C_NGLE_S(op);
+                     break;
+                  case 58:
+                     C_SEQ_S(op);
+                     break;
+                  case 59:
+                     C_NGL_S(op);
+                     break;
+                  case 60:
+                     C_LT_S(op);
+                     break;
+                  case 61:
+                     C_NGE_S(op);
+                     break;
+                  case 62:
+                     C_LE_S(op);
+                     break;
+                  case 63:
+                     C_NGT_S(op);
+                     break;
+                  default:
+                     /* Coprocessor 1 S-format opcodes 16..32, 34..35, 38..47:
                         Reserved Instructions */
-                    RESERVED(op);
-                    break;
+                     RESERVED(op);
+                     break;
+               } /* switch (op & 0x3F) for Coprocessor 1 S-format opcodes */
+               break;
+            case 17: /* Coprocessor 1 D-format opcodes */
+               switch (op & 0x3F)
+               {
+                  case 0:
+                     ADD_D(op);
+                     break;
+                  case 1:
+                     SUB_D(op);
+                     break;
+                  case 2:
+                     MUL_D(op);
+                     break;
+                  case 3:
+                     DIV_D(op);
+                     break;
+                  case 4:
+                     SQRT_D(op);
+                     break;
+                  case 5:
+                     ABS_D(op);
+                     break;
+                  case 6:
+                     MOV_D(op);
+                     break;
+                  case 7:
+                     NEG_D(op);
+                     break;
+                  case 8:
+                     ROUND_L_D(op);
+                     break;
+                  case 9:
+                     TRUNC_L_D(op);
+                     break;
+                  case 10:
+                     CEIL_L_D(op);
+                     break;
+                  case 11:
+                     FLOOR_L_D(op);
+                     break;
+                  case 12:
+                     ROUND_W_D(op);
+                     break;
+                  case 13:
+                     TRUNC_W_D(op);
+                     break;
+                  case 14:
+                     CEIL_W_D(op);
+                     break;
+                  case 15:
+                     FLOOR_W_D(op);
+                     break;
+                  case 32:
+                     CVT_S_D(op);
+                     break;
+                  case 36:
+                     CVT_W_D(op);
+                     break;
+                  case 37:
+                     CVT_L_D(op);
+                     break;
+                  case 48:
+                     C_F_D(op);
+                     break;
+                  case 49:
+                     C_UN_D(op);
+                     break;
+                  case 50:
+                     C_EQ_D(op);
+                     break;
+                  case 51:
+                     C_UEQ_D(op);
+                     break;
+                  case 52:
+                     C_OLT_D(op);
+                     break;
+                  case 53:
+                     C_ULT_D(op);
+                     break;
+                  case 54:
+                     C_OLE_D(op);
+                     break;
+                  case 55:
+                     C_ULE_D(op);
+                     break;
+                  case 56:
+                     C_SF_D(op);
+                     break;
+                  case 57:
+                     C_NGLE_D(op);
+                     break;
+                  case 58:
+                     C_SEQ_D(op);
+                     break;
+                  case 59:
+                     C_NGL_D(op);
+                     break;
+                  case 60:
+                     C_LT_D(op);
+                     break;
+                  case 61:
+                     C_NGE_D(op);
+                     break;
+                  case 62:
+                     C_LE_D(op);
+                     break;
+                  case 63:
+                     C_NGT_D(op);
+                     break;
+                  default:
+                     /* Coprocessor 1 D-format opcodes 16..31, 33..35, 38..47:
+                        Reserved Instructions */
+                     RESERVED(op);
+                     break;
+               } /* switch (op & 0x3F) for Coprocessor 1 D-format opcodes */
+               break;
+            case 20: /* Coprocessor 1 W-format opcodes */
+               switch (op & 0x3F)
+               {
+                  case 32:
+                     CVT_S_W(op);
+                     break;
+                  case 33:
+                     CVT_D_W(op);
+                     break;
+                  default:
+                     /* Coprocessor 1 W-format opcodes 0..31, 34..63:
+                        Reserved Instructions */
+                  RESERVED(op);
+                  break;
+               }
+               break;
+            case 21: /* Coprocessor 1 L-format opcodes */
+               switch (op & 0x3F)
+               {
+                  case 32:
+                     CVT_S_L(op);
+                     break;
+                  case 33:
+                     CVT_D_L(op);
+                     break;
+                  default:
+                     /* Coprocessor 1 L-format opcodes 0..31, 34..63:
+                        Reserved Instructions */
+                  RESERVED(op);
+                  break;
+               }
+               break;
+            default:
+               /* Coprocessor 1 opcodes 3, 7, 9..15, 18..19, 22..31:
+                  Reserved Instructions */
+                     RESERVED(op);
+                     break;
          } /* switch ((op >> 21) & 0x1F) for the Coprocessor 1 prefix */
          break;
       case 20: /* Major opcode 20: BEQL */
-         if (IS_RELATIVE_IDLE_LOOP(op, PC->addr)) BEQL_IDLE(op);
+         if (IS_RELATIVE_IDLE_LOOP(op, PC->addr))
+            BEQL_IDLE(op);
          else BEQL(op);
          break;
       case 21: /* Major opcode 21: BNEL */
@@ -697,41 +918,75 @@ void InterpretOpcode()
          if (RT_OF(op) != 0) LWU(op);
          else NOP(0);
          break;
-      case 40: SB(op); break;
-      case 41: SH(op); break;
-      case 42: SWL(op); break;
-      case 43: SW(op); break;
-      case 44: SDL(op); break;
-      case 45: SDR(op); break;
-      case 46: SWR(op); break;
-      case 47: CACHE(op); break;
-      case 48: /* Major opcode 48: LL */
-               if (RT_OF(op) != 0) LL(op);
-               else NOP(0);
-               break;
-      case 49: LWC1(op); break;
-      case 52: /* Major opcode 52: LLD (Not implemented) */
-               NI(op);
-               break;
-      case 53: LDC1(op); break;
-      case 55: /* Major opcode 55: LD */
-               if (RT_OF(op) != 0) LD(op);
-               else NOP(0);
-               break;
-      case 56: /* Major opcode 56: SC */
-               if (RT_OF(op) != 0) SC(op);
-               else NOP(0);
-               break;
-      case 57: SWC1(op); break;
-      case 60: /* Major opcode 60: SCD (Not implemented) */
-               NI(op);
-               break;
-      case 61: SDC1(op); break;
-      case 63: SD(op); break;
-      default: /* Major opcodes 18..19, 28..31, 50..51, 54, 58..59, 62:
-                  Reserved Instructions */
-               RESERVED(op);
-               break;
+      case 40:
+         SB(op);
+         break;
+      case 41:
+         SH(op);
+         break;
+      case 42:
+         SWL(op);
+         break;
+      case 43:
+         SW(op);
+         break;
+      case 44:
+         SDL(op);
+         break;
+      case 45:
+         SDR(op);
+         break;
+      case 46:
+         SWR(op);
+         break;
+      case 47:
+         CACHE(op);
+         break;
+      case 48:
+         /* Major opcode 48: LL */
+         if (RT_OF(op) != 0)
+            LL(op);
+         else NOP(0);
+         break;
+      case 49:
+         LWC1(op);
+         break;
+      case 52:
+         /* Major opcode 52: LLD (Not implemented) */
+         NI(op);
+         break;
+      case 53:
+         LDC1(op);
+         break;
+      case 55:
+         /* Major opcode 55: LD */
+         if (RT_OF(op) != 0) LD(op);
+         else NOP(0);
+         break;
+      case 56:
+         /* Major opcode 56: SC */
+         if (RT_OF(op) != 0)
+            SC(op);
+         else NOP(0);
+         break;
+      case 57:
+         SWC1(op);
+         break;
+      case 60:
+         /* Major opcode 60: SCD (Not implemented) */
+         NI(op);
+         break;
+      case 61:
+         SDC1(op);
+         break;
+      case 63:
+         SD(op);
+         break;
+      default:
+         /* Major opcodes 18..19, 28..31, 50..51, 54, 58..59, 62:
+            Reserved Instructions */
+         RESERVED(op);
+         break;
    } /* switch ((op >> 26) & 0x3F) */
 }
 
