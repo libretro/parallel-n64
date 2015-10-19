@@ -58,43 +58,43 @@ uint32_t adler32(uint32_t adler, void *buf, int len);
    { \
       const int take_jump = (condition); \
       const uint32_t jump_target = (destination); \
-      long long int *link_register = (link); \
-      if (cop1 && check_cop1_unusable()) return; \
+      int64_t *link_register = (int64_t*)(link); \
+      if (cop1 && check_cop1_unusable()) \
+         return; \
       if (link_register != &reg[0]) \
-      { \
          *link_register = SE32(interp_PC.addr + 8); \
-      } \
+      interp_PC.addr += 4; \
       if (!likely || take_jump) \
       { \
-        interp_PC.addr += 4; \
         delay_slot=1; \
-         InterpretOpcode(); \
-         cp0_update_count(); \
+        InterpretOpcode(); \
+        cp0_update_count(); \
         cp0_update_count(); \
         delay_slot=0; \
         if (take_jump && !skip_jump) \
-        { \
           interp_PC.addr = jump_target; \
-        } \
       } \
       else \
       { \
-         interp_PC.addr += 8; \
+         interp_PC.addr += 4; \
          cp0_update_count(); \
       } \
       last_addr = interp_PC.addr; \
-      if (next_interupt <= g_cp0_regs[CP0_COUNT_REG]) gen_interupt(); \
+      if (next_interupt <= g_cp0_regs[CP0_COUNT_REG]) \
+        gen_interupt(); \
    } \
    static void name##_IDLE(uint32_t op) \
    { \
       const int take_jump = (condition); \
-      if (cop1 && check_cop1_unusable()) return; \
+      if (cop1 && check_cop1_unusable()) \
+         return; \
       if (take_jump) \
       { \
          int skip; \
          cp0_update_count(); \
          skip = next_interupt - g_cp0_regs[CP0_COUNT_REG]; \
-         if (skip > 3) g_cp0_regs[CP0_COUNT_REG] += (skip & UINT32_C(0xFFFFFFFC)); \
+         if (skip > 3) \
+           g_cp0_regs[CP0_COUNT_REG] += (skip & UINT32_C(0xFFFFFFFC)); \
          else name(op); \
       } \
       else name(op); \
@@ -116,8 +116,7 @@ uint32_t adler32(uint32_t adler, void *buf, int len);
  * same instruction without doing any work in its delay slot. The jump is
  * relative to the instruction in the delay slot, so 1 instruction backwards
  * (-1) goes back to the jump. */
-#define IS_RELATIVE_IDLE_LOOP(op, addr) \
- (IMM16S_OF(op) == -1 && *fast_mem_access((addr) + 4) == 0)
+#define IS_RELATIVE_IDLE_LOOP(op, addr) (IMM16S_OF(op) == -1 && *fast_mem_access((addr) + 4) == 0)
 
 /* Determines whether an absolute jump in a 26-bit immediate goes back to the
  * same instruction without doing any work in its delay slot. The jump is

@@ -70,28 +70,25 @@ uint32_t adler32(uint32_t adler, void *buf, int len);
    { \
       const int take_jump = (condition); \
       const uint32_t jump_target = (destination); \
-      long long int *link_register = (link); \
-      if (cop1 && check_cop1_unusable()) return; \
+      int64_t *link_register = (int64_t*)(link); \
+      if (cop1 && check_cop1_unusable()) \
+        return; \
       if (link_register != &reg[0]) \
-      { \
          *link_register = SE32(PC->addr + 8); \
-      } \
+      PC++; \
       if (!likely || take_jump) \
       { \
-         PC++; \
          delay_slot=1; \
          UPDATE_DEBUGGER(); \
          PC->ops(); \
          cp0_update_count(); \
          delay_slot=0; \
          if (take_jump && !skip_jump) \
-         { \
             PC=actual->block+((jump_target-actual->start)>>2); \
-         } \
       } \
       else \
       { \
-         PC += 2; \
+         PC++; \
          cp0_update_count(); \
       } \
       last_addr = PC->addr; \
@@ -101,28 +98,25 @@ uint32_t adler32(uint32_t adler, void *buf, int len);
    { \
       const int take_jump = (condition); \
       const uint32_t jump_target = (destination); \
-      long long int *link_register = (link); \
-      if (cop1 && check_cop1_unusable()) return; \
+      int64_t *link_register = (int64_t*)(link); \
+      if (cop1 && check_cop1_unusable()) \
+        return; \
       if (link_register != &reg[0]) \
-      { \
          *link_register = SE32(PC->addr + 8); \
-      } \
+      PC++; \
       if (!likely || take_jump) \
       { \
-         PC++; \
          delay_slot=1; \
          UPDATE_DEBUGGER(); \
          PC->ops(); \
          cp0_update_count(); \
          delay_slot=0; \
          if (take_jump && !skip_jump) \
-         { \
             jump_to(jump_target); \
-         } \
       } \
       else \
       { \
-         PC += 2; \
+         PC++; \
          cp0_update_count(); \
       } \
       last_addr = PC->addr; \
@@ -187,16 +181,15 @@ static void FIN_BLOCK(void)
 #endif
       // Used by dynarec only, check should be unnecessary
 #endif
+      PC->ops();
       if (!skip_jump)
       {
-         PC->ops();
          actual = blk;
          PC = inst+1;
       }
-      else
-         PC->ops();
 
-      if (r4300emu == CORE_DYNAREC) dyna_jump();
+      if (r4300emu == CORE_DYNAREC)
+         dyna_jump();
    }
 }
 

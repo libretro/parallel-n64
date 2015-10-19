@@ -88,7 +88,7 @@ DECLARE_INSTRUCTION(SLTI)
 
 DECLARE_INSTRUCTION(SLTIU)
 {
-   if ((unsigned long long)irs < (unsigned long long)((long long)iimmediate))
+   if ((uint64_t)irs < (uint64_t)((int64_t)iimmediate))
      irt = 1;
    else irt = 0;
    ADD_TO_PC(1);
@@ -283,7 +283,7 @@ DECLARE_INSTRUCTION(LB)
 DECLARE_INSTRUCTION(LH)
 {
    const uint32_t lsaddr = irs32 + iimmediate;
-   int64_t *lsrtp = &irt;
+   int64_t *lsrtp = (int64_t*)&irt;
    ADD_TO_PC(1);
    address = lsaddr;
    rdword = (uint64_t*) lsrtp;
@@ -295,7 +295,7 @@ DECLARE_INSTRUCTION(LH)
 DECLARE_INSTRUCTION(LWL)
 {
    const uint32_t lsaddr = irs32 + iimmediate;
-   int64_t *lsrtp = &irt;
+   int64_t *lsrtp = (int64_t*)&irt;
    uint64_t word = 0;
    ADD_TO_PC(1);
    switch ((lsaddr) & 3)
@@ -334,7 +334,7 @@ DECLARE_INSTRUCTION(LWL)
 DECLARE_INSTRUCTION(LW)
 {
    const uint32_t lsaddr = irs32 + iimmediate;
-   int64_t *lsrtp = &irt;
+   int64_t *lsrtp = (int64_t*)&irt;
    ADD_TO_PC(1);
    address = lsaddr;
    rdword = (uint64_t*) lsrtp;
@@ -346,7 +346,7 @@ DECLARE_INSTRUCTION(LW)
 DECLARE_INSTRUCTION(LBU)
 {
    const uint32_t lsaddr = irs32 + iimmediate;
-   int64_t *lsrtp = &irt;
+   int64_t *lsrtp = (int64_t*)&irt;
    ADD_TO_PC(1);
    address = lsaddr;
    rdword = (uint64_t*) lsrtp;
@@ -356,7 +356,7 @@ DECLARE_INSTRUCTION(LBU)
 DECLARE_INSTRUCTION(LHU)
 {
    const uint32_t lsaddr = irs32 + iimmediate;
-   int64_t *lsrtp = &irt;
+   int64_t *lsrtp = (int64_t*)&irt;
    ADD_TO_PC(1);
    address = lsaddr;
    rdword = (uint64_t*) lsrtp;
@@ -366,7 +366,7 @@ DECLARE_INSTRUCTION(LHU)
 DECLARE_INSTRUCTION(LWR)
 {
    const uint32_t lsaddr = irs32 + iimmediate;
-   int64_t *lsrtp = &irt;
+   int64_t *lsrtp = (int64_t*)&irt;
    uint64_t word = 0;
    ADD_TO_PC(1);
    switch ((lsaddr) & 3)
@@ -404,7 +404,7 @@ DECLARE_INSTRUCTION(LWR)
 DECLARE_INSTRUCTION(LWU)
 {
    const uint32_t lsaddr = irs32 + iimmediate;
-   int64_t *lsrtp = &irt;
+   int64_t *lsrtp = (int64_t*)&irt;
    ADD_TO_PC(1);
    address = lsaddr;
    rdword = (uint64_t*) lsrtp;
@@ -414,10 +414,10 @@ DECLARE_INSTRUCTION(LWU)
 DECLARE_INSTRUCTION(SB)
 {
    const uint32_t lsaddr = irs32 + iimmediate;
-   int64_t *lsrtp = &irt;
+   int64_t *lsrtp = (int64_t*)&irt;
    ADD_TO_PC(1);
    address = lsaddr;
-   cpu_byte = (unsigned char)(*lsrtp & 0xFF);
+   cpu_byte = (uint8_t)(*lsrtp & 0xFF);
    write_byte_in_memory();
    CHECK_MEMORY();
 }
@@ -425,10 +425,10 @@ DECLARE_INSTRUCTION(SB)
 DECLARE_INSTRUCTION(SH)
 {
    const uint32_t lsaddr = irs32 + iimmediate;
-   int64_t *lsrtp = &irt;
+   int64_t *lsrtp = (int64_t*)&irt;
    ADD_TO_PC(1);
    address = lsaddr;
-   hword = (unsigned short)(*lsrtp & 0xFFFF);
+   hword = (uint16_t)(*lsrtp & 0xFFFF);
    write_hword_in_memory();
    CHECK_MEMORY();
 }
@@ -436,14 +436,14 @@ DECLARE_INSTRUCTION(SH)
 DECLARE_INSTRUCTION(SWL)
 {
    const uint32_t lsaddr = irs32 + iimmediate;
-   int64_t *lsrtp = &irt;
+   int64_t *lsrtp = (int64_t*)&irt;
    uint64_t old_word = 0;
    ADD_TO_PC(1);
    switch ((lsaddr) & 3)
    {
       case 0:
          address = lsaddr & 0xFFFFFFFC;
-         word = (unsigned int)*lsrtp;
+         word = (uint32_t)*lsrtp;
          write_word_in_memory();
          CHECK_MEMORY();
          break;
@@ -453,7 +453,7 @@ DECLARE_INSTRUCTION(SWL)
          read_word_in_memory();
          if(address)
          {
-            word = ((unsigned int)*lsrtp >> 8) | ((unsigned int) old_word & 0xFF000000);
+            word = ((uint32_t)*lsrtp >> 8) | ((uint32_t) old_word & 0xFF000000);
             write_word_in_memory();
             CHECK_MEMORY();
          }
@@ -464,14 +464,14 @@ DECLARE_INSTRUCTION(SWL)
          read_word_in_memory();
          if(address)
          {
-            word = ((unsigned int)*lsrtp >> 16) | ((unsigned int) old_word & 0xFFFF0000);
+            word = ((uint32_t)*lsrtp >> 16) | ((uint32_t) old_word & 0xFFFF0000);
             write_word_in_memory();
             CHECK_MEMORY();
          }
          break;
       case 3:
          address = lsaddr;
-         cpu_byte = (unsigned char)(*lsrtp >> 24);
+         cpu_byte = (uint8_t)(*lsrtp >> 24);
          write_byte_in_memory();
          CHECK_MEMORY();
          break;
@@ -481,18 +481,18 @@ DECLARE_INSTRUCTION(SWL)
 DECLARE_INSTRUCTION(SW)
 {
    const uint32_t lsaddr = irs32 + iimmediate;
-   int64_t *lsrtp = &irt;
+   int64_t *lsrtp = (int64_t*)&irt;
    ADD_TO_PC(1);
    address = lsaddr;
-   word = (unsigned int)(*lsrtp & 0xFFFFFFFF);
+   word = (uint32_t)(*lsrtp & 0xFFFFFFFF);
    write_word_in_memory();
    CHECK_MEMORY();
 }
 
 DECLARE_INSTRUCTION(SDL)
 {
-   const uint32_t lsaddr = (unsigned int)(iimmediate + irs32);
-   int64_t *lsrtp = &irt;
+   const uint32_t lsaddr = (uint32_t)(iimmediate + irs32);
+   int64_t *lsrtp = (int64_t*)&irt;
    uint64_t old_word = 0;
    ADD_TO_PC(1);
    switch ((lsaddr) & 7)
@@ -586,7 +586,7 @@ DECLARE_INSTRUCTION(SDL)
 DECLARE_INSTRUCTION(SDR)
 {
    const uint32_t lsaddr = irs32 + iimmediate;
-   int64_t *lsrtp = &irt;
+   int64_t *lsrtp = (int64_t*)&irt;
    uint64_t old_word = 0;
    ADD_TO_PC(1);
    switch ((lsaddr) & 7)
@@ -625,7 +625,7 @@ DECLARE_INSTRUCTION(SDR)
          }
          break;
       case 3:
-         address = ((unsigned int) lsaddr) & 0xFFFFFFF8;
+         address = ((uint32_t) lsaddr) & 0xFFFFFFF8;
          rdword = &old_word;
          read_dword_in_memory();
          if(address)
@@ -636,7 +636,7 @@ DECLARE_INSTRUCTION(SDR)
          }
          break;
       case 4:
-         address = ((unsigned int) lsaddr) & 0xFFFFFFF8;
+         address = ((uint32_t) lsaddr) & 0xFFFFFFF8;
          rdword = &old_word;
          read_dword_in_memory();
          if(address)
@@ -647,7 +647,7 @@ DECLARE_INSTRUCTION(SDR)
          }
          break;
       case 5:
-         address = ((unsigned int) lsaddr) & 0xFFFFFFF8;
+         address = ((uint32_t) lsaddr) & 0xFFFFFFF8;
          rdword = &old_word;
          read_dword_in_memory();
          if(address)
@@ -658,7 +658,7 @@ DECLARE_INSTRUCTION(SDR)
          }
          break;
       case 6:
-         address = ((unsigned int) lsaddr) & 0xFFFFFFF8;
+         address = ((uint32_t) lsaddr) & 0xFFFFFFF8;
          rdword = &old_word;
          read_dword_in_memory();
          if(address)
@@ -669,7 +669,7 @@ DECLARE_INSTRUCTION(SDR)
          }
          break;
       case 7:
-         address = ((unsigned int) lsaddr) & 0xFFFFFFF8;
+         address = ((uint32_t) lsaddr) & 0xFFFFFFF8;
          dword = *lsrtp;
          write_dword_in_memory();
          CHECK_MEMORY();
@@ -680,7 +680,7 @@ DECLARE_INSTRUCTION(SDR)
 DECLARE_INSTRUCTION(SWR)
 {
    const uint32_t lsaddr = irs32 + iimmediate;
-   int64_t *lsrtp = &irt;
+   int64_t *lsrtp = (int64_t*)&irt;
    uint64_t old_word = 0;
    ADD_TO_PC(1);
    switch ((lsaddr) & 3)
@@ -691,7 +691,7 @@ DECLARE_INSTRUCTION(SWR)
          read_word_in_memory();
          if(address)
          {
-            word = ((unsigned int)*lsrtp << 24) | ((unsigned int) old_word & 0x00FFFFFF);
+            word = ((uint32_t)*lsrtp << 24) | ((uint32_t)old_word & 0x00FFFFFF);
             write_word_in_memory();
             CHECK_MEMORY();
          }
@@ -702,7 +702,7 @@ DECLARE_INSTRUCTION(SWR)
          read_word_in_memory();
          if(address)
          {
-            word = ((unsigned int)*lsrtp << 16) | ((unsigned int) old_word & 0x0000FFFF);
+            word = ((uint32_t)*lsrtp << 16) | ((uint32_t)old_word & 0x0000FFFF);
             write_word_in_memory();
             CHECK_MEMORY();
          }
@@ -713,14 +713,14 @@ DECLARE_INSTRUCTION(SWR)
          read_word_in_memory();
          if(address)
          {
-            word = ((unsigned int)*lsrtp << 8) | ((unsigned int) old_word & 0x000000FF);
+            word = ((uint32_t)*lsrtp << 8) | ((uint32_t) old_word & 0x000000FF);
             write_word_in_memory();
             CHECK_MEMORY();
          }
          break;
       case 3:
          address = lsaddr & 0xFFFFFFFC;
-         word = (unsigned int)*lsrtp;
+         word = (uint32_t)*lsrtp;
          write_word_in_memory();
          CHECK_MEMORY();
          break;
@@ -735,7 +735,7 @@ DECLARE_INSTRUCTION(CACHE)
 DECLARE_INSTRUCTION(LL)
 {
    const uint32_t lsaddr = irs32 + iimmediate;
-   int64_t *lsrtp = &irt;
+   int64_t *lsrtp = (int64_t*)&irt;
    ADD_TO_PC(1);
    address = lsaddr;
    rdword = (uint64_t*) lsrtp;
@@ -749,8 +749,8 @@ DECLARE_INSTRUCTION(LL)
 
 DECLARE_INSTRUCTION(LWC1)
 {
-   const unsigned char lslfft = lfft;
-   const uint32_t lslfaddr = (unsigned int)(lfoffset + reg[lfbase]);
+   const uint8_t lslfft = lfft;
+   const uint32_t lslfaddr = (uint32_t)(lfoffset + reg[lfbase]);
    uint64_t temp;
    if (check_cop1_unusable())
       return;
@@ -764,8 +764,8 @@ DECLARE_INSTRUCTION(LWC1)
 
 DECLARE_INSTRUCTION(LDC1)
 {
-   const unsigned char lslfft = lfft;
-   const uint32_t lslfaddr = (unsigned int)(lfoffset + reg[lfbase]);
+   const uint8_t lslfft = lfft;
+   const uint32_t lslfaddr = (uint32_t)(lfoffset + reg[lfbase]);
    if (check_cop1_unusable())
       return;
    ADD_TO_PC(1);
@@ -777,7 +777,7 @@ DECLARE_INSTRUCTION(LDC1)
 DECLARE_INSTRUCTION(LD)
 {
    const uint32_t lsaddr = irs32 + iimmediate;
-   int64_t *lsrtp = &irt;
+   int64_t *lsrtp = (int64_t*)&irt;
    ADD_TO_PC(1);
    address = lsaddr;
    rdword = (uint64_t*) lsrtp;
@@ -787,27 +787,25 @@ DECLARE_INSTRUCTION(LD)
 DECLARE_INSTRUCTION(SC)
 {
    const uint32_t lsaddr = irs32 + iimmediate;
-   int64_t *lsrtp = &irt;
+   int64_t *lsrtp = (int64_t*)&irt;
    ADD_TO_PC(1);
    if(llbit)
    {
       address = lsaddr;
-      word = (unsigned int)(*lsrtp & 0xFFFFFFFF);
+      word = (uint32_t)(*lsrtp & 0xFFFFFFFF);
       write_word_in_memory();
       CHECK_MEMORY();
       llbit = 0;
       *lsrtp = 1;
    }
    else
-   {
       *lsrtp = 0;
-   }
 }
 
 DECLARE_INSTRUCTION(SWC1)
 {
-   const unsigned char lslfft = lfft;
-   const uint32_t lslfaddr = (unsigned int)(lfoffset + reg[lfbase]);
+   const uint8_t lslfft = lfft;
+   const uint32_t lslfaddr = (uint32_t)(lfoffset + reg[lfbase]);
    if (check_cop1_unusable())
       return;
    ADD_TO_PC(1);
@@ -819,8 +817,8 @@ DECLARE_INSTRUCTION(SWC1)
 
 DECLARE_INSTRUCTION(SDC1)
 {
-   const unsigned char lslfft = lfft;
-   const uint32_t lslfaddr = (unsigned int)(lfoffset + reg[lfbase]);
+   const uint8_t lslfft = lfft;
+   const uint32_t lslfaddr = (uint32_t)(lfoffset + reg[lfbase]);
    if (check_cop1_unusable())
       return;
    ADD_TO_PC(1);
@@ -832,8 +830,8 @@ DECLARE_INSTRUCTION(SDC1)
 
 DECLARE_INSTRUCTION(SD)
 {
-   const uint32_t lsaddr = (unsigned int)(iimmediate + irs32);
-   int64_t *lsrtp = &irt;
+   const uint32_t lsaddr = (uint32_t)(iimmediate + irs32);
+   int64_t *lsrtp = (int64_t*)&irt;
    ADD_TO_PC(1);
    address = lsaddr;
    dword = *lsrtp;
@@ -976,22 +974,27 @@ DECLARE_INSTRUCTION(MFC1)
 
 DECLARE_INSTRUCTION(DMFC1)
 {
-   if (check_cop1_unusable()) return;
+   if (check_cop1_unusable())
+      return;
    rrt = *((int64_t*)reg_cop1_double[rfs]);
    ADD_TO_PC(1);
 }
 
 DECLARE_INSTRUCTION(CFC1)
 {  
-   if (check_cop1_unusable()) return;
-   if (rfs==31)
+   if (check_cop1_unusable())
+      return;
+
+   switch (rfs)
    {
-      rrt32 = SE32(FCR31);
+      case 31:
+         rrt32 = SE32(FCR31);
+         break;
+      case 0:
+         rrt32 = SE32(FCR0);
+         break;
    }
-   if (rfs==0)
-   {
-      rrt32 = SE32(FCR0);
-   }
+
    ADD_TO_PC(1);
 }
 
@@ -1731,20 +1734,19 @@ DECLARE_INSTRUCTION(DSLLV)
 
 DECLARE_INSTRUCTION(DSRLV)
 {
-   rrd = (unsigned long long)rrt >> (rrs32 & 0x3F);
+   rrd = (uint64_t)rrt >> (rrs32 & 0x3F);
    ADD_TO_PC(1);
 }
 
 DECLARE_INSTRUCTION(DSRAV)
 {
-   rrd = (long long)rrt >> (rrs32 & 0x3F);
+   rrd = (int64_t)rrt >> (rrs32 & 0x3F);
    ADD_TO_PC(1);
 }
 
 DECLARE_INSTRUCTION(MULT)
 {
-   long long int temp;
-   temp = rrs * rrt;
+   int64_t temp = rrs * rrt;
    hi = temp >> 32;
    lo = SE32(temp);
    ADD_TO_PC(1);
@@ -1752,9 +1754,8 @@ DECLARE_INSTRUCTION(MULT)
 
 DECLARE_INSTRUCTION(MULTU)
 {
-   unsigned long long int temp;
-   temp = (unsigned int)rrs * (unsigned long long)((unsigned int)rrt);
-   hi = (long long)temp >> 32;
+   uint64_t temp = (uint32_t)rrs * (uint64_t)((uint32_t)rrt);
+   hi = (int64_t)temp >> 32;
    lo = SE32(temp);
    ADD_TO_PC(1);
 }
@@ -1783,9 +1784,9 @@ DECLARE_INSTRUCTION(DIVU)
 
 DECLARE_INSTRUCTION(DMULT)
 {
-   unsigned long long int op1, op2, op3, op4;
-   unsigned long long int result1, result2, result3, result4;
-   unsigned long long int temp1, temp2, temp3, temp4;
+   uint64_t op1, op2, op3, op4;
+   uint64_t result1, result2, result3, result4;
+   uint64_t temp1, temp2, temp3, temp4;
    int sign = 0;
 
    if (rrs < 0)
@@ -1793,7 +1794,9 @@ DECLARE_INSTRUCTION(DMULT)
       op2 = -rrs;
       sign = 1 - sign;
    }
-   else op2 = rrs;
+   else
+      op2 = rrs;
+
    if (rrt < 0)
    {
       op4 = -rrt;
@@ -1829,24 +1832,20 @@ DECLARE_INSTRUCTION(DMULT)
 
 DECLARE_INSTRUCTION(DMULTU)
 {
-   unsigned long long int op1, op2, op3, op4;
-   unsigned long long int result1, result2, result3, result4;
-   unsigned long long int temp1, temp2, temp3, temp4;
+   uint64_t op1 = rrs & 0xFFFFFFFF;
+   uint64_t op2 = (rrs >> 32) & 0xFFFFFFFF;
+   uint64_t op3 = rrt & 0xFFFFFFFF;
+   uint64_t op4 = (rrt >> 32) & 0xFFFFFFFF;
    
-   op1 = rrs & 0xFFFFFFFF;
-   op2 = (rrs >> 32) & 0xFFFFFFFF;
-   op3 = rrt & 0xFFFFFFFF;
-   op4 = (rrt >> 32) & 0xFFFFFFFF;
+   uint64_t temp1 = op1 * op3;
+   uint64_t temp2 = (temp1 >> 32) + op1 * op4;
+   uint64_t temp3 = op2 * op3;
+   uint64_t temp4 = (temp3 >> 32) + op2 * op4;
    
-   temp1 = op1 * op3;
-   temp2 = (temp1 >> 32) + op1 * op4;
-   temp3 = op2 * op3;
-   temp4 = (temp3 >> 32) + op2 * op4;
-   
-   result1 = temp1 & 0xFFFFFFFF;
-   result2 = temp2 + (temp3 & 0xFFFFFFFF);
-   result3 = (result2 >> 32) + temp4;
-   result4 = (result3 >> 32);
+   uint64_t result1 = temp1 & 0xFFFFFFFF;
+   uint64_t result2 = temp2 + (temp3 & 0xFFFFFFFF);
+   uint64_t result3 = (result2 >> 32) + temp4;
+   uint64_t result4 = (result3 >> 32);
    
    lo = result1 | (result2 << 32);
    hi = (result3 & 0xFFFFFFFF) | (result4 << 32);
@@ -1858,8 +1857,8 @@ DECLARE_INSTRUCTION(DDIV)
 {
    if (rrt)
    {
-     lo = (long long int)rrs / (long long int)rrt;
-     hi = (long long int)rrs % (long long int)rrt;
+     lo = (int64_t)rrs / (int64_t)rrt;
+     hi = (int64_t)rrs % (int64_t)rrt;
    }
    else DebugMessage(M64MSG_ERROR, "DDIV: divide by 0");
    ADD_TO_PC(1);
@@ -1869,8 +1868,8 @@ DECLARE_INSTRUCTION(DDIVU)
 {
    if (rrt)
    {
-     lo = (unsigned long long int)rrs / (unsigned long long int)rrt;
-     hi = (unsigned long long int)rrs % (unsigned long long int)rrt;
+     lo = (uint64_t)rrs / (uint64_t)rrt;
+     hi = (uint64_t)rrs % (uint64_t)rrt;
    }
    else DebugMessage(M64MSG_ERROR, "DDIVU: divide by 0");
    ADD_TO_PC(1);
@@ -1933,7 +1932,7 @@ DECLARE_INSTRUCTION(SLT)
 
 DECLARE_INSTRUCTION(SLTU)
 {
-   if ((unsigned long long)rrs < (unsigned long long)rrt) 
+   if ((uint64_t)rrs < (uint64_t)rrt) 
      rrd = 1;
    else rrd = 0;
    ADD_TO_PC(1);
@@ -1981,7 +1980,7 @@ DECLARE_INSTRUCTION(DSLL)
 
 DECLARE_INSTRUCTION(DSRL)
 {
-   rrd = (unsigned long long)rrt >> rsa;
+   rrd = (uint64_t)rrt >> rsa;
    ADD_TO_PC(1);
 }
 
@@ -1999,13 +1998,13 @@ DECLARE_INSTRUCTION(DSLL32)
 
 DECLARE_INSTRUCTION(DSRL32)
 {
-   rrd = (unsigned long long int)rrt >> (32+rsa);
+   rrd = (uint64_t)rrt >> (32+rsa);
    ADD_TO_PC(1);
 }
 
 DECLARE_INSTRUCTION(DSRA32)
 {
-   rrd = (signed long long int)rrt >> (32+rsa);
+   rrd = (int64_t)rrt >> (32+rsa);
    ADD_TO_PC(1);
 }
 
@@ -2039,7 +2038,7 @@ static void TLBWrite(unsigned int idx)
                invalid_code[i] = 1;
             if (!invalid_code[i])
             {
-                blocks[i]->adler32 = adler32(0, (unsigned char *)&g_rdram[(tlb_LUT_r[i]&0x7FF000)/4], 0x1000);
+                blocks[i]->adler32 = adler32(0, (uint8_t*)&g_rdram[(tlb_LUT_r[i]&0x7FF000)/4], 0x1000);
                 
                 invalid_code[i] = 1;
             }
@@ -2058,7 +2057,7 @@ static void TLBWrite(unsigned int idx)
                invalid_code[i] = 1;
             if (!invalid_code[i])
             {
-               blocks[i]->adler32 = adler32(0, (unsigned char *)&g_rdram[(tlb_LUT_r[i]&0x7FF000)/4], 0x1000);
+               blocks[i]->adler32 = adler32(0, (uint8_t*)&g_rdram[(tlb_LUT_r[i]&0x7FF000)/4], 0x1000);
                 
                invalid_code[i] = 1;
             }
@@ -2108,7 +2107,7 @@ static void TLBWrite(unsigned int idx)
          {
                if(blocks[i] && blocks[i]->adler32)
                {
-                  if(blocks[i]->adler32 == adler32(0,(unsigned char *)&g_rdram[(tlb_LUT_r[i]&0x7FF000)/4],0x1000))
+                  if(blocks[i]->adler32 == adler32(0,(uint8_t*)&g_rdram[(tlb_LUT_r[i]&0x7FF000)/4],0x1000))
                      invalid_code[i] = 0;
                }
          }
@@ -2120,7 +2119,7 @@ static void TLBWrite(unsigned int idx)
          {
             if(blocks[i] && blocks[i]->adler32)
             {
-               if(blocks[i]->adler32 == adler32(0,(unsigned char *)&g_rdram[(tlb_LUT_r[i]&0x7FF000)/4],0x1000))
+               if(blocks[i]->adler32 == adler32(0,(uint8_t*)&g_rdram[(tlb_LUT_r[i]&0x7FF000)/4],0x1000))
                   invalid_code[i] = 0;
             }
          }
