@@ -199,7 +199,7 @@ void add_interupt_event_count(int type, unsigned count)
    else
    {
       for(e = q.first;
-            e && e->next != NULL &&
+            e && e->next &&
             (!before_event(count, e->next->data.count, e->next->data.type) || special);
             e = e->next);
 
@@ -211,7 +211,7 @@ void add_interupt_event_count(int type, unsigned count)
       else
       {
          if (!special)
-            for(; e->next != NULL && e->next->data.count == count; e = e->next);
+            for(; e->next && e->next->data.count == count; e = e->next);
 
          event->next = e->next;
          e->next = event;
@@ -225,7 +225,7 @@ static void remove_interupt_event(void)
    q.first = e->next;
    free_node(&q.pool, e);
 
-   next_interupt = (q.first != NULL
+   next_interupt = (q.first
          && (q.first->data.count > g_cp0_regs[CP0_COUNT_REG]
             || (g_cp0_regs[CP0_COUNT_REG] - q.first->data.count) < UINT32_C(0x80000000)))
       ? q.first->data.count
@@ -242,11 +242,9 @@ unsigned int get_event(int type)
    if (e->data.type == type)
       return e->data.count;
 
-   for(; e->next != NULL && e->next->data.type != type; e = e->next);
+   for(; e->next && e->next->data.type != type; e = e->next);
 
-   return (e->next != NULL)
-      ? e->next->data.count
-      : 0;
+   return (e->next) ? e->next->data.count : 0;
 }
 
 int get_next_event_type(void)
@@ -261,7 +259,7 @@ void remove_event(int type)
    struct node* to_del;
    struct node* e = q.first;
 
-   if (e == NULL)
+   if (!e)
       return;
 
    if (e->data.type == type)
@@ -271,9 +269,9 @@ void remove_event(int type)
    }
    else
    {
-      for(; e->next != NULL && e->next->data.type != type; e = e->next);
+      for(; e->next && e->next->data.type != type; e = e->next);
 
-      if (e->next != NULL)
+      if (e->next)
       {
          to_del = e->next;
          e->next = to_del->next;
@@ -290,9 +288,8 @@ void translate_event_queue(unsigned int base)
    remove_event(SPECIAL_INT);
 
    for(e = q.first; e != NULL; e = e->next)
-   {
       e->data.count = (e->data.count - g_cp0_regs[CP0_COUNT_REG]) + base;
-   }
+
    add_interupt_event_count(COMPARE_INT, g_cp0_regs[CP0_COMPARE_REG]);
    add_interupt_event_count(SPECIAL_INT, 0);
 }

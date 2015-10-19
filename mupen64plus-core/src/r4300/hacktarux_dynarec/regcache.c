@@ -338,7 +338,7 @@ int allocate_register_32(uint32_t *addr)
 
       for (i = 0; i < 8; i++)
       {
-         if (last_access[i] != NULL && (uint32_t*) reg_content[i] == addr)
+         if (last_access[i] && (uint32_t*) reg_content[i] == addr)
          {
             precomp_instr *last = (precomp_instr*)(last_access[i] + 1);
 
@@ -1131,7 +1131,7 @@ void allocate_register_manually(int reg, uint32_t *addr)
    // is it already cached ?
    for (i=0; i<8; i++)
    {
-      if (last_access[i] != NULL && reg_content[i] == addr)
+      if (last_access[i] && reg_content[i] == addr)
       {
          precomp_instr *last = last_access[i]+1;
 
@@ -1171,7 +1171,7 @@ void allocate_register_manually(int reg, uint32_t *addr)
    dirty[reg] = 0;
    r64[reg] = -1;
 
-   if (addr != NULL)
+   if (addr)
    {
       if (addr == r0 || addr == r0+1)
          xor_reg32_reg32(reg, reg);
@@ -1225,7 +1225,7 @@ void allocate_register_manually_w(int reg, uint32_t *addr, int load)
    // is it already cached ?
    for (i=0; i<8; i++)
    {
-      if (last_access[i] != NULL && reg_content[i] == addr)
+      if (last_access[i] && reg_content[i] == addr)
       {
          precomp_instr *last = last_access[i]+1;
 
@@ -1263,10 +1263,10 @@ void allocate_register_manually_w(int reg, uint32_t *addr, int load)
 
    last_access[reg] = dst;
    reg_content[reg] = addr;
-   dirty[reg] = 1;
-   r64[reg] = -1;
+   dirty[reg]       = 1;
+   r64[reg]         = -1;
 
-   if (addr != NULL && load)
+   if (addr && load)
    {
       if (addr == r0 || addr == r0+1)
          xor_reg32_reg32(reg, reg);

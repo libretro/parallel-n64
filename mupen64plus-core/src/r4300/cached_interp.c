@@ -200,7 +200,7 @@ static void NOTCOMPILED(void)
    DebugMessage(M64MSG_INFO, "NOTCOMPILED: addr = %x ops = %lx", PC->addr, (long) PC->ops);
 #endif
 
-   if (mem != NULL)
+   if (mem)
       recompile_block(mem, blocks[PC->addr >> 12], PC->addr);
    else
       DebugMessage(M64MSG_ERROR, "not compiled exception");

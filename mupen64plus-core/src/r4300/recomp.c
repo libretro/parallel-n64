@@ -2571,7 +2571,8 @@ static void *malloc_exec(size_t size)
 void *realloc_exec(void *ptr, size_t oldsize, size_t newsize)
 {
    void* block = malloc_exec(newsize);
-   if (block != NULL)
+
+   if (block)
    {
       size_t copysize;
       if (oldsize < newsize)
@@ -2580,6 +2581,7 @@ void *realloc_exec(void *ptr, size_t oldsize, size_t newsize)
          copysize = newsize;
       memcpy(block, ptr, copysize);
    }
+
    free_exec(ptr, oldsize);
    return block;
 }
