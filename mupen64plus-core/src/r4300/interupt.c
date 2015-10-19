@@ -92,7 +92,7 @@ static struct node* alloc_node(struct pool* p)
 
 static void free_node(struct pool *p, struct node *node)
 {
-   if (p->index == 0 || node == NULL)
+   if (p->index == 0 || !node)
       return;
 
    p->stack[--p->index] = node;
@@ -135,27 +135,23 @@ static int before_event(unsigned int evt1, unsigned int evt2, int type2)
    {
       if(evt2 - g_cp0_regs[CP0_COUNT_REG] < UINT32_C(0x80000000))
       {
-         if((evt1 - g_cp0_regs[CP0_COUNT_REG]) < (evt2 - g_cp0_regs[CP0_COUNT_REG])) return 1;
-         else return 0;
+         if((evt1 - g_cp0_regs[CP0_COUNT_REG]) < (evt2 - g_cp0_regs[CP0_COUNT_REG]))
+            return 1;
       }
       else
       {
          if((g_cp0_regs[CP0_COUNT_REG] - evt2) < UINT32_C(0x10000000))
          {
-            switch(type2)
-            {
-               case SPECIAL_INT:
-                  if(SPECIAL_done) return 1;
-                  else return 0;
-                  break;
-               default:
-                  return 0;
-            }
+            if (type2 == SPECIAL_INT)
+               if (SPECIAL_done)
+                  return 1;
          }
-         else return 1;
+         else
+            return 1;
       }
    }
-   else return 0;
+
+   return 0;
 }
 
 void add_interupt_event(int type, unsigned int delay)
@@ -166,16 +162,14 @@ void add_interupt_event(int type, unsigned int delay)
 void add_interupt_event_count(int type, unsigned count)
 {
    struct node *event = NULL;
-   struct node *e = NULL;
-   int special;
-
-   special = (type == SPECIAL_INT);
+   struct node *e     = NULL;
+   int        special = (type == SPECIAL_INT);
 
    if(g_cp0_regs[CP0_COUNT_REG] > UINT32_C(0x80000000))
       SPECIAL_done = 0;
 
    event = alloc_node(&q.pool);
-   if (event == NULL)
+   if (!event)
    {
       DebugMessage(M64MSG_ERROR, "Failed to allocate node for new interrupt event");
       return;
@@ -184,17 +178,17 @@ void add_interupt_event_count(int type, unsigned count)
    event->data.count = count;
    event->data.type  = type;
 
-   if (q.first == NULL)
+   if (!q.first)
    {
-      q.first = event;
-      event->next = NULL;
-      next_interupt = q.first->data.count;
+      q.first        = event;
+      event->next    = NULL;
+      next_interupt  = q.first->data.count;
    }
    else if (before_event(count, q.first->data.count, q.first->data.type) && !special)
    {
-      event->next = q.first;
-      q.first = event;
-      next_interupt = q.first->data.count;
+      event->next    = q.first;
+      q.first        = event;
+      next_interupt  = q.first->data.count;
    }
    else
    {
@@ -203,9 +197,9 @@ void add_interupt_event_count(int type, unsigned count)
             (!before_event(count, e->next->data.count, e->next->data.type) || special);
             e = e->next);
 
-      if (e->next == NULL)
+      if (!e->next)
       {
-         e->next = event;
+         e->next     = event;
          event->next = NULL;
       }
       else
@@ -214,7 +208,7 @@ void add_interupt_event_count(int type, unsigned count)
             for(; e->next && e->next->data.count == count; e = e->next);
 
          event->next = e->next;
-         e->next = event;
+         e->next     = event;
       }
    }
 }
@@ -236,7 +230,7 @@ unsigned int get_event(int type)
 {
    struct node* e = q.first;
 
-   if (e == NULL)
+   if (!e)
       return 0;
 
    if (e->data.type == type)
@@ -249,9 +243,7 @@ unsigned int get_event(int type)
 
 int get_next_event_type(void)
 {
-   return (q.first == NULL)
-      ? 0
-      : q.first->data.type;
+   return (q.first) ? q.first->data.type : 0;
 }
 
 void remove_event(int type)
@@ -348,7 +340,7 @@ void check_interupt(void)
    {
       event = alloc_node(&q.pool);
 
-      if (event == NULL)
+      if (!event)
       {
          DebugMessage(M64MSG_ERROR, "Failed to allocate node for new interrupt event");
          return;
@@ -357,7 +349,7 @@ void check_interupt(void)
       event->data.count = next_interupt = g_cp0_regs[CP0_COUNT_REG];
       event->data.type = CHECK_INT;
 
-      if (q.first == NULL)
+      if (!q.first)
       {
          q.first = event;
          event->next = NULL;
