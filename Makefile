@@ -161,27 +161,6 @@ else ifneq (,$(findstring osx,$(platform)))
 		WITH_DYNAREC =
 	endif
 
-# Theos iOS
-else ifneq (,$(findstring theos_ios,$(platform)))
-	DEPLOYMENT_IOSVERSION = 5.0
-	TARGET = iphone:latest:$(DEPLOYMENT_IOSVERSION)
-	ARCHS = armv7
-	TARGET_IPHONEOS_DEPLOYMENT_VERSION=$(DEPLOYMENT_IOSVERSION)
-	THEOS_BUILD_DIR := objs
-	include $(THEOS)/makefiles/common.mk
-
-	LIBRARY_NAME = $(TARGET_NAME)_libretro_ios
-	DEFINES += -DIOS
-	GLES = 1
-	WITH_DYNAREC=arm
-
-	PLATCFLAGS += -DHAVE_POSIX_MEMALIGN -DNO_ASM
-	PLATCFLAGS += -DIOS -marm
-	CPUFLAGS += -DNO_ASM  -DARM -D__arm__ -DARM_ASM -D__NEON_OPT -DNOSSE
-	GLIDE2GL=1
-	GLIDE64MK2=0
-	HAVE_NEON=1
-
 # iOS
 else ifneq (,$(findstring ios,$(platform)))
 	ifeq ($(IOSSDK),)
@@ -220,6 +199,28 @@ else
 	CXX += -miphoneos-version-min=5.0
 	PLATCFLAGS += -miphoneos-version-min=5.0
 endif
+
+# Theos iOS
+else ifneq (,$(findstring theos_ios,$(platform)))
+	DEPLOYMENT_IOSVERSION = 5.0
+	TARGET = iphone:latest:$(DEPLOYMENT_IOSVERSION)
+	ARCHS = armv7
+	TARGET_IPHONEOS_DEPLOYMENT_VERSION=$(DEPLOYMENT_IOSVERSION)
+	THEOS_BUILD_DIR := objs
+	include $(THEOS)/makefiles/common.mk
+
+	LIBRARY_NAME = $(TARGET_NAME)_libretro_ios
+	DEFINES += -DIOS
+	GLES = 1
+	WITH_DYNAREC=arm
+
+	PLATCFLAGS += -DHAVE_POSIX_MEMALIGN -DNO_ASM
+	PLATCFLAGS += -DIOS -marm
+	CPUFLAGS += -DNO_ASM  -DARM -D__arm__ -DARM_ASM -D__NEON_OPT -DNOSSE
+	GLIDE2GL=1
+	GLIDE64MK2=0
+	HAVE_NEON=1
+
 
 # Android
 else ifneq (,$(findstring android,$(platform)))
