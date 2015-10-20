@@ -39,9 +39,7 @@ extern retro_audio_sample_batch_t audio_batch_cb;
 #include "audio_resampler_driver.h"
 #include "audio_utils.h"
 
-#ifndef MAX_AUDIO_FRAMES
-#define MAX_AUDIO_FRAMES 2048
-#endif
+static unsigned MAX_AUDIO_FRAMES = 2048;
 
 #define VI_INTR_TIME 500000
 
@@ -77,13 +75,15 @@ void deinit_audio_libretro(void)
    }
 }
 
-void init_audio_libretro(void)
+void init_audio_libretro(unsigned max_audio_frames)
 {
    rarch_resampler_realloc(&resampler_audio_data, &resampler, "CC", 1.0);
 
-   audio_in_buffer_float = malloc(2 * MAX_AUDIO_FRAMES * sizeof(float));
+   MAX_AUDIO_FRAMES = max_audio_frames;
+
+   audio_in_buffer_float  = malloc(2 * MAX_AUDIO_FRAMES * sizeof(float));
    audio_out_buffer_float = malloc(2 * MAX_AUDIO_FRAMES * sizeof(float));
-   audio_out_buffer_s16 = malloc(2 * MAX_AUDIO_FRAMES * sizeof(int16_t));
+   audio_out_buffer_s16   = malloc(2 * MAX_AUDIO_FRAMES * sizeof(int16_t));
 
    audio_convert_init_simd();
 }

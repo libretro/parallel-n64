@@ -55,8 +55,9 @@ bool flip_only;
 static uint8_t* game_data = NULL;
 static uint32_t game_size = 0;
 
-static bool     emu_initialized = false;
-static unsigned initial_boot    = true;
+static bool     emu_initialized     = false;
+static unsigned initial_boot        = true;
+static unsigned audio_buffer_size   = 2048;
 
 static unsigned retro_filtering     = 0;
 static bool     reinit_screen       = false;
@@ -208,6 +209,8 @@ static void setup_variables(void)
 #else
          "CPU Core; cached_interpreter|pure_interpreter" },
 #endif
+      {"mupen64-audio-buffer-size",
+         "Audio Buffer Size (restart); 2048|1024"},
       {"mupen64-astick-deadzone",
         "Analog Deadzone (percent); 15|20|25|30|0|5|10"},
       {"mupen64-pak1",
@@ -480,7 +483,6 @@ void retro_init(void)
 
    environ_cb(RETRO_ENVIRONMENT_GET_RUMBLE_INTERFACE, &rumble);
 
-   init_audio_libretro();
    
    //hacky stuff for Glide64
    polygonOffsetUnits = -3.0f;
@@ -532,9 +534,14 @@ void update_variables(bool startup)
       }
    }
 
-
    if (startup)
    {
+      var.key = "mupen64-audio-buffer-size";
+      var.value = NULL;
+
+      if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+         audio_buffer_size = atoi(var.value);
+
       var.key = "mupen64-gfxplugin";
       var.value = NULL;
 
@@ -807,6 +814,8 @@ bool retro_load_game(const struct retro_game_info *game)
 
    update_variables(true);
    initial_boot = false;
+
+   init_audio_libretro(audio_buffer_size);
 
    if ((render = (struct retro_hw_render_callback*)retro_gl_init()))
    {
