@@ -131,6 +131,11 @@ void ReadSpecialSettings (const char * name)
    else if (strstr(name, (const char *)"A Bug's Life"))
    {
       //depthmode = 0
+      settings.zmode_compare_less = 1;
+   }
+   else if (strstr(name, (const char *)"Toy Story 2"))
+   {
+      settings.zmode_compare_less = 1;
    }
    else if (strstr(name, (const char *)"AERO FIGHTERS ASSAUL"))
    {
