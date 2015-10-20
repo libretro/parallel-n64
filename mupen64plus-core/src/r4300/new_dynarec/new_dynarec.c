@@ -3177,7 +3177,9 @@ static void store_assemble(int i,struct regstat *i_regs)
   int s,th,tl,map=-1,cache=-1;
   int addr,temp;
   int offset;
-  int jaddr=0,jaddr2,type;
+  int type;
+  intptr_t jaddr = 0;
+  intptr_t jaddr2;
   int memtarget,c=0;
   int agr=AGEN1+(i&1);
   u_int hr,reglist=0;
@@ -3219,7 +3221,7 @@ static void store_assemble(int i,struct regstat *i_regs)
       if(rs1[i]!=29||start<0x80001000||start>=0x80800000)
       #endif
       {
-        jaddr=(int)out;
+        jaddr=(intptr_t)out;
         #ifdef CORTEX_A8_BRANCH_PREDICTION_HACK
         // Hint to branch predictor that the branch is unlikely to be taken
         if(rs1[i]>=28)
@@ -3307,7 +3309,7 @@ static void store_assemble(int i,struct regstat *i_regs)
       #if defined(HAVE_CONDITIONAL_CALL) && !defined(DESTRUCTIVE_SHIFT)
       emit_callne(invalidate_addr_reg[addr]);
       #else
-      jaddr2=(int)out;
+      jaddr2=(intptr_t)out;
       emit_jne(0);
       add_stub(INVCODE_STUB,jaddr2,(int)out,reglist|(1<<HOST_CCREG),addr,0,0,0);
       #endif
@@ -3367,7 +3369,8 @@ static void storelr_assemble(int i,struct regstat *i_regs)
   int temp;
   int temp2;
   int offset;
-  int jaddr=0,jaddr2;
+  intptr_t jaddr2;
+  intptr_t jaddr = 0;
   int case1,case2,case3;
   int done0,done1,done2;
   int memtarget,c=0;
@@ -3393,13 +3396,13 @@ static void storelr_assemble(int i,struct regstat *i_regs)
     if(!c) {
       emit_cmpimm(s<0||offset?temp:s,0x800000);
       if(!offset&&s!=temp) emit_mov(s,temp);
-      jaddr=(int)out;
+      jaddr=(intptr_t)out;
       emit_jno(0);
     }
     else
     {
       if(!memtarget||!rs1[i]) {
-        jaddr=(int)out;
+        jaddr=(intptr_t)out;
         emit_jmp(0);
       }
     }
@@ -3420,7 +3423,7 @@ static void storelr_assemble(int i,struct regstat *i_regs)
     if(!c&&!offset&&s>=0) emit_mov(s,temp);
     do_tlb_w_branch(map,c,constmap[i][s]+offset,&jaddr);
     if(!jaddr&&!memtarget) {
-      jaddr=(int)out;
+      jaddr=(intptr_t)out;
       emit_jmp(0);
     }
     gen_tlb_addr_w(temp,map);
@@ -3582,7 +3585,7 @@ static void storelr_assemble(int i,struct regstat *i_regs)
     #if defined(HAVE_CONDITIONAL_CALL) && !defined(DESTRUCTIVE_SHIFT)
     emit_callne(invalidate_addr_reg[temp]);
     #else
-    jaddr2=(int)out;
+    jaddr2=(intptr_t)out;
     emit_jne(0);
     add_stub(INVCODE_STUB,jaddr2,(int)out,reglist|(1<<HOST_CCREG),temp,0,0,0);
     #endif
@@ -3609,7 +3612,8 @@ static void c1ls_assemble(int i,struct regstat *i_regs)
   int map=-1;
   int offset;
   int c=0;
-  int jaddr,jaddr2=0,jaddr3,type;
+  int jaddr,jaddr3,type;
+  intptr_t jaddr2 = 0;
   int agr=AGEN1+(i&1);
   u_int hr,reglist=0;
   th=get_reg(i_regs->regmap,FTEMP|64);
@@ -3693,11 +3697,11 @@ static void c1ls_assemble(int i,struct regstat *i_regs)
   }
   if(!using_tlb) {
     if(!c) {
-      jaddr2=(int)out;
+      jaddr2=(intptr_t)out;
       emit_jno(0);
     }
     else if(((signed int)(constmap[i][s]+offset))>=(signed int)0x80800000) {
-      jaddr2=(int)out;
+      jaddr2=(intptr_t)out;
       emit_jmp(0); // inline_readstub/inline_writestub?  Very rare case
     }
     #ifdef DESTRUCTIVE_SHIFT
@@ -4784,7 +4788,7 @@ static void ds_assemble_entry(int i)
   else
     assem_debug("branch: external");
   assert(internal_branch(regs[t].is32,ba[i]+4));
-  add_to_linker((int)out,ba[i]+4,internal_branch(regs[t].is32,ba[i]+4));
+  add_to_linker((intptr_t)out,ba[i]+4,internal_branch(regs[t].is32,ba[i]+4));
   emit_jmp(0);
 }
 
@@ -5102,7 +5106,7 @@ static void do_ccstub(int n)
   emit_jmpreg(EAX);*/
 }
 
-static void add_to_linker(int addr,int target,int ext)
+static void add_to_linker(intptr_t addr,int target,int ext)
 {
   link_addr[linkcount][0]=addr;
   link_addr[linkcount][1]=target;
@@ -5192,7 +5196,7 @@ static void ujump_assemble(int i,struct regstat *i_regs)
     ds_assemble_entry(i);
   }
   else {
-    add_to_linker((int)out,ba[i],internal_branch(branch_regs[i].is32,ba[i]));
+    add_to_linker((intptr_t)out,ba[i],internal_branch(branch_regs[i].is32,ba[i]));
     emit_jmp(0);
   }
 }
@@ -5429,7 +5433,7 @@ static void cjump_assemble(int i,struct regstat *i_regs)
           ds_assemble_entry(i);
         }
         else {
-          add_to_linker((int)out,ba[i],internal);
+          add_to_linker((intptr_t)out,ba[i],internal);
           emit_jmp(0);
         }
         #ifdef CORTEX_A8_BRANCH_PREDICTION_HACK
@@ -5462,14 +5466,14 @@ static void cjump_assemble(int i,struct regstat *i_regs)
           if(s2h>=0) emit_cmp(s1h,s2h);
           else emit_test(s1h,s1h);
           if(invert) taken=(int)out;
-          else add_to_linker((int)out,ba[i],internal);
+          else add_to_linker((intptr_t)out,ba[i],internal);
           emit_jne(0);
         }
         if(opcode[i]==6) // BLEZ
         {
           emit_test(s1h,s1h);
           if(invert) taken=(int)out;
-          else add_to_linker((int)out,ba[i],internal);
+          else add_to_linker((intptr_t)out,ba[i],internal);
           emit_js(0);
           nottaken1=(int)out;
           emit_jne(1);
@@ -5480,7 +5484,7 @@ static void cjump_assemble(int i,struct regstat *i_regs)
           nottaken1=(int)out;
           emit_js(1);
           if(invert) taken=(int)out;
-          else add_to_linker((int)out,ba[i],internal);
+          else add_to_linker((intptr_t)out,ba[i],internal);
           emit_jne(0);
         }
       } // if(!only32)
@@ -5495,7 +5499,7 @@ static void cjump_assemble(int i,struct regstat *i_regs)
           nottaken=(int)out;
           emit_jne(1);
         }else{
-          add_to_linker((int)out,ba[i],internal);
+          add_to_linker((intptr_t)out,ba[i],internal);
           emit_jeq(0);
         }
       }
@@ -10916,7 +10920,7 @@ int new_recompile_block(int addr)
         store_regs_bt(regs[i-2].regmap,regs[i-2].is32,regs[i-2].dirty,start+i*4);
         assert(regs[i-2].regmap[HOST_CCREG]==CCREG);
       }
-      add_to_linker((int)out,start+i*4,0);
+      add_to_linker((intptr_t)out,start+i*4,0);
       emit_jmp(0);
     }
   }
@@ -10928,7 +10932,7 @@ int new_recompile_block(int addr)
     if(regs[i-1].regmap[HOST_CCREG]!=CCREG)
       emit_loadreg(CCREG,HOST_CCREG);
     emit_addimm(HOST_CCREG,CLOCK_DIVIDER*(ccadj[i-1]+1),HOST_CCREG);
-    add_to_linker((int)out,start+i*4,0);
+    add_to_linker((intptr_t)out,start+i*4,0);
     emit_jmp(0);
   }
 

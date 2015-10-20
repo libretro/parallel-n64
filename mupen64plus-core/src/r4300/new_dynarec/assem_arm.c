@@ -36,7 +36,7 @@ extern int ram_offset;
 extern uint64_t readmem_dword;
 extern precomp_instr fake_pc;
 extern void *dynarec_local;
-extern u_int memory_map[1048576];
+extern uintptr_t memory_map[1048576];
 extern u_int mini_ht[32][2];
 extern u_int rounding_modes[4];
 
@@ -423,9 +423,9 @@ static int verify_dirty(void *addr)
 static int isclean(int addr)
 {
   #ifdef ARMv5_ONLY
-  int *ptr=((u_int *)addr)+4;
+  intptr_t* ptr= (intptr_t*)(((uintptr_t*)addr)+4);
   #else
-  int *ptr=((u_int *)addr)+6;
+  intptr_t* ptr= (intptr_t*)(((uintptr_t*)addr)+6);
   #endif
   if((*ptr&0xFF000000)!=0xeb000000) ptr++;
   if((*ptr&0xFF000000)!=0xeb000000) return 1; // bl instruction
@@ -3135,11 +3135,11 @@ static int do_tlb_r(int s,int ar,int map,int cache,int x,int a,int shift,int c,u
   }
   return map;
 }
-static int do_tlb_r_branch(int map, int c, u_int addr, int *jaddr)
+static int do_tlb_r_branch(int map, int c, u_int addr, intptr_t *jaddr)
 {
   if(!c||(signed int)addr>=(signed int)0xC0000000) {
     emit_test(map,map);
-    *jaddr=(int)out;
+    *jaddr=(intptr_t)out;
     emit_js(0);
   }
   return map;
@@ -3177,11 +3177,11 @@ static int do_tlb_w(int s,int ar,int map,int cache,int x,int c,u_int addr)
   }
   return map;
 }
-static void do_tlb_w_branch(int map, int c, u_int addr, int *jaddr)
+static void do_tlb_w_branch(int map, int c, u_int addr, intptr_t *jaddr)
 {
   if(!c||addr<0x80800000||addr>=0xC0000000) {
     emit_testimm(map,0x40000000);
-    *jaddr=(int)out;
+    *jaddr=(intptr_t)out;
     emit_jne(0);
   }
 }
@@ -3324,7 +3324,7 @@ static void loadlr_assemble_arm(int i,struct regstat *i_regs)
 {
   int s,th,tl,temp,temp2,addr,map=-1,cache=-1;
   int offset;
-  int jaddr=0;
+  intptr_t jaddr=0;
   int memtarget,c=0;
   u_int hr,reglist=0;
   th=get_reg(i_regs->regmap,rt1[i]|64);
@@ -3359,7 +3359,7 @@ static void loadlr_assemble_arm(int i,struct regstat *i_regs)
         emit_andimm(addr,0xFFFFFFF8,temp2); // LDL/LDR
       }
       emit_cmpimm(addr,0x800000);
-      jaddr=(int)out;
+      jaddr=(intptr_t)out;
       emit_jno(0);
     }
     else {
