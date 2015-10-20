@@ -46,31 +46,30 @@ int sub_mask[16] = {
     0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7
 };
 
-INLINE static void SHUFFLE_VECTOR(short* VD, short* VT, const int e)
+static INLINE void SHUFFLE_VECTOR(short* VD, short* VT, const int e)
 {
-    short SV[8];
-    register int i, j;
+   short SV[8];
+   register int i, j;
 #if (0 == 0)
-    j = sub_mask[e];
-    for (i = 0; i < N; i++)
-        SV[i] = VT[(i & ~j) | (e & j)];
+   j = sub_mask[e];
+   for (i = 0; i < N; i++)
+      SV[i] = VT[(i & ~j) | (e & j)];
 #else
-    if (e & 0x8)
-        for (i = 0; i < N; i++)
-            SV[i] = VT[(i & 0x0) | (e & 0x7)];
-    else if (e & 0x4)
-        for (i = 0; i < N; i++)
-            SV[i] = VT[(i & 0xC) | (e & 0x3)];
-    else if (e & 0x2)
-        for (i = 0; i < N; i++)
-            SV[i] = VT[(i & 0xE) | (e & 0x1)];
-    else /* if ((e == 0b0000) || (e == 0b0001)) */
-        for (i = 0; i < N; i++)
-            SV[i] = VT[(i & 0x7) | (e & 0x0)];
+   if (e & 0x8)
+      for (i = 0; i < N; i++)
+         SV[i] = VT[(i & 0x0) | (e & 0x7)];
+   else if (e & 0x4)
+      for (i = 0; i < N; i++)
+         SV[i] = VT[(i & 0xC) | (e & 0x3)];
+   else if (e & 0x2)
+      for (i = 0; i < N; i++)
+         SV[i] = VT[(i & 0xE) | (e & 0x1)];
+   else /* if ((e == 0b0000) || (e == 0b0001)) */
+      for (i = 0; i < N; i++)
+         SV[i] = VT[(i & 0x7) | (e & 0x0)];
 #endif
-    for (i = 0; i < N; i++)
-        *(VD + i) = *(SV + i);
-    return;
+   for (i = 0; i < N; i++)
+      *(VD + i) = *(SV + i);
 }
 #else
 #ifdef ARCH_MIN_SSSE3
@@ -93,16 +92,16 @@ static const unsigned char smask[16][16] = {
     {0xE,0xF,0xE,0xF,0xE,0xF,0xE,0xF,0xE,0xF,0xE,0xF,0xE,0xF,0xE,0xF}
 };
 
-INLINE static void SHUFFLE_VECTOR(short* VD, short* VT, const int e)
-{ /* SSSE3 shuffling method was written entirely by CEN64 author MarathonMan. */
-    __m128i xmm;
-    __m128i key;
+static INLINE void SHUFFLE_VECTOR(short* VD, short* VT, const int e)
+{
+   /* SSSE3 shuffling method was written entirely by CEN64 author MarathonMan. */
+   __m128i xmm;
+   __m128i key;
 
-    xmm = _mm_load_si128((__m128i *)VT);
-    key = _mm_load_si128((__m128i *)(smask[e]));
-    xmm = _mm_shuffle_epi8(xmm, key);
-    _mm_store_si128((__m128i *)VD, xmm);
-    return;
+   xmm = _mm_load_si128((__m128i *)VT);
+   key = _mm_load_si128((__m128i *)(smask[e]));
+   xmm = _mm_shuffle_epi8(xmm, key);
+   _mm_store_si128((__m128i *)VD, xmm);
 }
 #else
 #define B(x)    ((x) & 3)

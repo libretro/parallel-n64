@@ -13,7 +13,7 @@
 \******************************************************************************/
 #include "vu.h"
 
-INLINE static void do_mudm(short* VD, short* VS, short* VT)
+static INLINE void do_mudm(short* VD, short* VS, short* VT)
 {
     register int i;
 
@@ -24,14 +24,12 @@ INLINE static void do_mudm(short* VD, short* VS, short* VT)
     for (i = 0; i < N; i++)
         VACC_H[i] = -(VACC_M[i] < 0);
     vector_copy(VD, VACC_M); /* no possibilities to clamp */
-    return;
 }
 
 static void VMUDM(int vd, int vs, int vt, int e)
 {
-    short ST[N];
+   short ST[N];
 
-    SHUFFLE_VECTOR(ST, VR[vt], e);
-    do_mudm(VR[vd], VR[vs], ST);
-    return;
+   SHUFFLE_VECTOR(ST, VR[vt], e);
+   do_mudm(VR[vd], VR[vs], ST);
 }
