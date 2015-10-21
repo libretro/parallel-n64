@@ -3029,6 +3029,12 @@ static void load_assemble(int i,struct regstat *i_regs)
           emit_readword_tlb(constmap[i][s]+offset,map,tl);
         else
         #endif
+        #ifdef RAM_OFFSET
+        // This case is for x86-64 with 64-bit pointers
+        // (not using HOST_IMM_ADDR32) and offset (map) is not in a register
+        if(c) emit_readword_indexed(0,addr,tl);
+        else
+        #endif
         emit_readword_indexed_tlb(0,addr,map,tl);
       }
       if(jaddr)
@@ -3052,6 +3058,10 @@ static void load_assemble(int i,struct regstat *i_regs)
           int x=0;
           if(!c) emit_xorimm(addr,3,tl);
           else x=((constmap[i][s]+offset)^3)-(constmap[i][s]+offset);
+#ifdef RAM_OFFSET
+          if(c) emit_movzbl_indexed(x,tl,tl);
+          else
+#endif
           emit_movzbl_indexed_tlb(x,tl,map,tl);
         }
       }
