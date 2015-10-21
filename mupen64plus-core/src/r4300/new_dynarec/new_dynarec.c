@@ -3091,6 +3091,7 @@ static void load_assemble(int i,struct regstat *i_regs)
             emit_movzwl_indexed(x,tl,tl);
           }else{
             #ifdef RAM_OFFSET
+            if(!c) gen_tlb_addr_r(tl,-1);
             emit_movzwl_indexed(x,tl,tl);
             #else
             emit_movzwl_indexed((int)g_rdram-0x80000000+x,tl,tl);
@@ -4185,14 +4186,26 @@ static void address_generation(int i,struct regstat *i_regs,signed char entry[])
             if (opcode[i]==0x22||opcode[i]==0x26) { // LWL/LWR
               #ifdef RAM_OFFSET
               if((signed int)constmap[i][rs]+offset<(signed int)0x80800000) 
-                emit_movimm(((constmap[i][rs]+offset)&0xFFFFFFFC)+(int)g_rdram-0x80000000,ra);
+              {
+#if NEW_DYNAREC != NEW_DYNAREC_ARM
+                 emit_gen_ram_ptr(((constmap[i][rs]+offset)&0xFFFFFFFC),ra);
+#else
+                 emit_movimm(((constmap[i][rs]+offset)&0xFFFFFFFC)+(int)g_rdram-0x80000000,ra);
+#endif
+              }
               else
               #endif
               emit_movimm((constmap[i][rs]+offset)&0xFFFFFFFC,ra);
             }else if (opcode[i]==0x1a||opcode[i]==0x1b) { // LDL/LDR
               #ifdef RAM_OFFSET
               if((signed int)constmap[i][rs]+offset<(signed int)0x80800000) 
-                emit_movimm(((constmap[i][rs]+offset)&0xFFFFFFF8)+(int)g_rdram-0x80000000,ra);
+              {
+#if NEW_DYNAREC != NEW_DYNAREC_ARM
+                 emit_gen_ram_ptr(((constmap[i][rs]+offset)&0xFFFFFFF8),ra);
+#else
+                 emit_movimm(((constmap[i][rs]+offset)&0xFFFFFFF8)+(int)g_rdram-0x80000000,ra);
+#endif
+              }
               else
               #endif
               emit_movimm((constmap[i][rs]+offset)&0xFFFFFFF8,ra);
@@ -4203,7 +4216,13 @@ static void address_generation(int i,struct regstat *i_regs,signed char entry[])
               #endif
               #ifdef RAM_OFFSET
               if((itype[i]==LOAD||opcode[i]==0x31||opcode[i]==0x35)&&(signed int)constmap[i][rs]+offset<(signed int)0x80800000) 
-                emit_movimm(constmap[i][rs]+offset+(int)g_rdram-0x80000000,ra);
+              {
+#if NEW_DYNAREC != NEW_DYNAREC_ARM
+                 emit_gen_ram_ptr(constmap[i][rs]+offset,ra);
+#else
+                 emit_movimm(constmap[i][rs]+offset+(int)g_rdram-0x80000000,ra);
+#endif
+              }
               else
               #endif
               emit_movimm(constmap[i][rs]+offset,ra);
@@ -4259,14 +4278,26 @@ static void address_generation(int i,struct regstat *i_regs,signed char entry[])
         if (opcode[i+1]==0x22||opcode[i+1]==0x26) { // LWL/LWR
           #ifdef RAM_OFFSET
           if((signed int)constmap[i+1][rs]+offset<(signed int)0x80800000) 
-            emit_movimm(((constmap[i+1][rs]+offset)&0xFFFFFFFC)+(int)g_rdram-0x80000000,ra);
+          {
+#if NEW_DYNAREC != NEW_DYNAREC_ARM
+             emit_gen_ram_ptr(((constmap[i+1][rs]+offset)&0xFFFFFFFC),ra);
+#else
+             emit_movimm(((constmap[i+1][rs]+offset)&0xFFFFFFFC)+(int)g_rdram-0x80000000,ra);
+#endif
+          }
           else
           #endif
           emit_movimm((constmap[i+1][rs]+offset)&0xFFFFFFFC,ra);
         }else if (opcode[i+1]==0x1a||opcode[i+1]==0x1b) { // LDL/LDR
           #ifdef RAM_OFFSET
           if((signed int)constmap[i+1][rs]+offset<(signed int)0x80800000) 
-            emit_movimm(((constmap[i+1][rs]+offset)&0xFFFFFFF8)+(int)g_rdram-0x80000000,ra);
+          {
+#if NEW_DYNAREC != NEW_DYNAREC_ARM
+             emit_gen_ram_ptr(((constmap[i+1][rs]+offset)&0xFFFFFFF8),ra);
+#else
+             emit_movimm(((constmap[i+1][rs]+offset)&0xFFFFFFF8)+(int)g_rdram-0x80000000,ra);
+#endif
+          }
           else
           #endif
           emit_movimm((constmap[i+1][rs]+offset)&0xFFFFFFF8,ra);
@@ -4277,7 +4308,13 @@ static void address_generation(int i,struct regstat *i_regs,signed char entry[])
           #endif
           #ifdef RAM_OFFSET
           if((itype[i+1]==LOAD||opcode[i+1]==0x31||opcode[i+1]==0x35)&&(signed int)constmap[i+1][rs]+offset<(signed int)0x80800000) 
-            emit_movimm(constmap[i+1][rs]+offset+(int)g_rdram-0x80000000,ra);
+          {
+#if NEW_DYNAREC != NEW_DYNAREC_ARM
+             emit_gen_ram_ptr(constmap[i+1][rs]+offset,ra);
+#else
+             emit_movimm(constmap[i+1][rs]+offset+(int)g_rdram-0x80000000,ra);
+#endif
+          }
           else
           #endif
           emit_movimm(constmap[i+1][rs]+offset,ra);
@@ -9722,6 +9759,13 @@ int new_recompile_block(int addr)
              regs[i].regmap[hr]!=RTEMP && regs[i].regmap[hr]!=CCREG &&
              regs[i].regmap[hr]!=map )
           {
+            int upperhalf = get_reg(regs[i].regmap,regs[i].regmap[hr]|64);
+            if(upperhalf>=0) {
+              regs[i].regmap_entry[upperhalf]=-1;
+              regs[i].regmap[upperhalf]=-1;
+              regs[i].isconst&=~(1<<upperhalf);
+            }
+             
             regs[i].regmap[hr]=-1;
             regs[i].isconst&=~(1<<hr);
             if((branch_regs[i].regmap[hr]&63)!=rs1[i] && (branch_regs[i].regmap[hr]&63)!=rs2[i] &&
@@ -10028,6 +10072,9 @@ int new_recompile_block(int addr)
                 }
                 if(itype[j]==CJUMP||itype[j]==SJUMP||itype[j]==FJUMP)
                 {
+                   if(branch_regs[j].regmap[hr]>=0)
+                      break;
+
                   if(ooo[j]) {
                     if(count_free_regs(regs[j].regmap)<=minimum_free_regs[j+1]) 
                       break;
