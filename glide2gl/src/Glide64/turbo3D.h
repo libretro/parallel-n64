@@ -175,6 +175,7 @@ static void t3d_vertex(uint32_t addr, uint32_t v0, uint32_t n)
       v->y_w = v->y * v->oow;
       v->z_w = v->z * v->oow;
 
+      v->uv_calculated = 0xFFFFFFFF;
       v->screen_translated = 0;
       v->shade_mod = 0;
 

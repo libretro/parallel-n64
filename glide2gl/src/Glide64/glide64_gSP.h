@@ -289,6 +289,8 @@ static void draw_tri_uv_calculation(VERTEX **vtx, VERTEX *v)
       if (rdp.tex >= index && rdp.cur_cache[i])
          draw_tri_uv_calculation_update_shift(rdp.cur_tile+i, i, v);
    }
+
+   v->uv_calculated = rdp.tex_ctr;
 }
 
 static void draw_tri (VERTEX **vtx, uint16_t linew)
@@ -301,7 +303,8 @@ static void draw_tri (VERTEX **vtx, uint16_t linew)
    {
       VERTEX *v = (VERTEX*)vtx[i];
 
-      draw_tri_uv_calculation(vtx, v);
+      if (v->uv_calculated != rdp.tex_ctr)
+         draw_tri_uv_calculation(vtx, v);
       if (v->shade_mod != cmb.shade_mod_hash)
          apply_shade_mods (v);
    }
@@ -420,6 +423,7 @@ static void gSPVertex_G64(uint32_t v, uint32_t n, uint32_t v0)
       vtx->z = x*rdp.combined[0][2] + y*rdp.combined[1][2] + z*rdp.combined[2][2] + rdp.combined[3][2];
       vtx->w = x*rdp.combined[0][3] + y*rdp.combined[1][3] + z*rdp.combined[2][3] + rdp.combined[3][3];
 
+      vtx->uv_calculated = 0xFFFFFFFF;
       vtx->screen_translated = 0;
       vtx->shade_mod = 0;
 
@@ -649,6 +653,7 @@ static void gSPModifyVertex_G64( uint32_t vtx, uint32_t where, uint32_t val )
             float scale = (rdp.othermode_h & RDP_PERSP_TEX_ENABLE) ? 0.03125f : 0.015625f;
             v->ou = (float)((int16_t)(val>>16)) * scale;
             v->ov = (float)((int16_t)(val&0xFFFF)) * scale;
+            v->uv_calculated = 0xFFFFFFFF;
             v->uv_scaled = 1;
          }
          break;
