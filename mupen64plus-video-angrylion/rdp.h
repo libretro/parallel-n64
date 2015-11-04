@@ -192,6 +192,8 @@ typedef struct {
     int special_bsel0; 
     int special_bsel1;
     int rgb_alpha_dither;
+    int realblendershiftersneeded;
+    int interpixelblendershiftersneeded;
 } MODEDERIVS;
 
 typedef struct {

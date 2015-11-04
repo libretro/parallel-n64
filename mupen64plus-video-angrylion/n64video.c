@@ -809,7 +809,14 @@ static void combiner_1cycle(int adseed, UINT32* curpixel_cvg)
 {
 
     INT32 redkey, greenkey, bluekey, temp;
+    COLOR chromabypass;
 
+    if (other_modes.key_en)
+    {
+       chromabypass.r = *combiner_rgbsub_a_r[1];
+       chromabypass.g = *combiner_rgbsub_a_g[1];
+       chromabypass.b = *combiner_rgbsub_a_b[1];
+    }
     
 
     
@@ -854,9 +861,9 @@ static void combiner_1cycle(int adseed, UINT32* curpixel_cvg)
         keyalpha = CLIP(keyalpha, 0, 0xff);
 
         
-        pixel_color.r = special_9bit_clamptable[*combiner_rgbsub_a_r[1]];
-        pixel_color.g = special_9bit_clamptable[*combiner_rgbsub_a_g[1]];
-        pixel_color.b = special_9bit_clamptable[*combiner_rgbsub_a_b[1]];
+        pixel_color.r = special_9bit_clamptable[chromabypass.r];
+        pixel_color.g = special_9bit_clamptable[chromabypass.g];
+        pixel_color.b = special_9bit_clamptable[chromabypass.b];
 
         
         combined_color.r >>= 8;
@@ -901,6 +908,14 @@ static void combiner_1cycle(int adseed, UINT32* curpixel_cvg)
 static void combiner_2cycle(int adseed, UINT32* curpixel_cvg)
 {
     INT32 redkey, greenkey, bluekey, temp;
+    COLOR chromabypass;
+
+    if (other_modes.key_en)
+    {
+       chromabypass.r = *combiner_rgbsub_a_r[1];
+       chromabypass.g = *combiner_rgbsub_a_g[1];
+       chromabypass.b = *combiner_rgbsub_a_b[1];
+    }
 
     combined_color.r = color_combiner_equation(*combiner_rgbsub_a_r[0],*combiner_rgbsub_b_r[0],*combiner_rgbmul_r[0],*combiner_rgbadd_r[0]);
     combined_color.g = color_combiner_equation(*combiner_rgbsub_a_g[0],*combiner_rgbsub_b_g[0],*combiner_rgbmul_g[0],*combiner_rgbadd_g[0]);
@@ -965,10 +980,9 @@ static void combiner_2cycle(int adseed, UINT32* curpixel_cvg)
         keyalpha = CLIP(keyalpha, 0, 0xff);
 
         
-        pixel_color.r = special_9bit_clamptable[*combiner_rgbsub_a_r[1]];
-        pixel_color.g = special_9bit_clamptable[*combiner_rgbsub_a_g[1]];
-        pixel_color.b = special_9bit_clamptable[*combiner_rgbsub_a_b[1]];
-
+        pixel_color.r = special_9bit_clamptable[chromabypass.r];
+        pixel_color.g = special_9bit_clamptable[chromabypass.g];
+        pixel_color.b = special_9bit_clamptable[chromabypass.b];
         
         combined_color.r >>= 8;
         combined_color.g >>= 8;
@@ -5205,6 +5219,9 @@ void deduce_derivatives()
     other_modes.f.special_bsel0 = (blender2b_a[0] == &memory_color.a);
     other_modes.f.special_bsel1 = (blender2b_a[1] == &memory_color.a);
 
+    other_modes.f.realblendershiftersneeded = (other_modes.f.special_bsel0 && other_modes.cycle_type == CYCLE_TYPE_1) || (other_modes.f.special_bsel1 && other_modes.cycle_type == CYCLE_TYPE_2);
+    other_modes.f.interpixelblendershiftersneeded = (other_modes.f.special_bsel0 && other_modes.cycle_type == CYCLE_TYPE_2);
+
     other_modes.f.rgb_alpha_dither = (other_modes.rgb_dither_sel << 2) | other_modes.alpha_dither_sel;
 
     if (other_modes.rgb_dither_sel == 3)
@@ -5449,117 +5466,132 @@ STRICTINLINE UINT32 leftcvghex(UINT32 x, UINT32 fmask)
     return (covered & fmask);
 }
 
-static void compute_cvg_flip(INT32 scanline)
+STRICTINLINE void compute_cvg_flip(INT32 scanline)
 {
-    INT32 purgestart, purgeend;
-    int i, length, fmask, maskshift, fmaskshifted;
-    INT32 minorcur, majorcur, minorcurint, majorcurint, samecvg;
+   INT32 purgestart, purgeend;
+   int i, length, fmask, maskshift, fmaskshifted;
+   INT32 minorcur, majorcur, minorcurint, majorcurint, samecvg;
 
-    purgestart = span[scanline].rx;
-    purgeend = span[scanline].lx;
-    length = purgeend - purgestart;
-    if (length >= 0)
-    {
-        memset(&cvgbuf[purgestart], 0xff, length + 1);
+   purgestart = span[scanline].rx;
+   purgeend = span[scanline].lx;
+   length = purgeend - purgestart;
+   if (length >= 0)
+   {
 
-        for(i = 0; i < 4; i++)
-        {
-           fmask = 0xa >> (i & 1);
 
-           maskshift = (i - 2) & 4;
 
-           fmaskshifted = fmask << maskshift;
 
-            if (!span[scanline].invalyscan[i])
+
+
+      memset(&cvgbuf[purgestart], 0xff, length + 1);
+      for(i = 0; i < 4; i++)
+      {
+         int k;
+         fmask = 0xa >> (i & 1);
+
+
+
+
+         maskshift = (i - 2) & 4;
+         fmaskshifted = fmask << maskshift;
+
+         if (!span[scanline].invalyscan[i])
+         {
+
+            minorcur = span[scanline].minorx[i];
+            majorcur = span[scanline].majorx[i];
+            minorcurint = minorcur >> 3;
+            majorcurint = majorcur >> 3;
+
+
+            for (k = purgestart; k <= majorcurint; k++)
+               cvgbuf[k] &= ~fmaskshifted;
+            for (k = minorcurint; k <= purgeend; k++)
+               cvgbuf[k] &= ~fmaskshifted;
+
+
+
+
+
+
+
+
+
+            if (minorcurint > majorcurint)
             {
-               int k;
-               minorcur = span[scanline].minorx[i];
-               majorcur = span[scanline].majorx[i];
-               minorcurint = minorcur >> 3;
-               majorcurint = majorcur >> 3;
-
-
-               for (k = purgestart; k <= majorcurint; k++)
-                  cvgbuf[k] &= ~fmaskshifted;
-               for (k = minorcurint; k <= purgeend; k++)
-                  cvgbuf[k] &= ~fmaskshifted;
-
-
-               if (minorcurint > majorcurint)
-               {
-                  cvgbuf[minorcurint] |= (rightcvghex(minorcur, fmask) << maskshift);
-                  cvgbuf[majorcurint] |= (leftcvghex(majorcur, fmask) << maskshift);
-               }
-               else if (minorcurint == majorcurint)
-               {
-                  samecvg = rightcvghex(minorcur, fmask) & leftcvghex(majorcur, fmask);
-                  cvgbuf[majorcurint] |= (samecvg << maskshift);
-               }
+               cvgbuf[minorcurint] |= (rightcvghex(minorcur, fmask) << maskshift);
+               cvgbuf[majorcurint] |= (leftcvghex(majorcur, fmask) << maskshift);
             }
-            else
+            else if (minorcurint == majorcurint)
             {
-               int k;
-               for (k = purgestart; k <= purgeend; k++)
-                  cvgbuf[k] &= ~fmaskshifted;
+               samecvg = rightcvghex(minorcur, fmask) & leftcvghex(majorcur, fmask);
+               cvgbuf[majorcurint] |= (samecvg << maskshift);
             }
-        }
-    }
+         }
+         else
+         {
+            for (k = purgestart; k <= purgeend; k++)
+               cvgbuf[k] &= ~fmaskshifted;
+         }
+
+      }
+   }
 }
 
-static void compute_cvg_noflip(INT32 scanline)
+STRICTINLINE void compute_cvg_noflip(INT32 scanline)
 {
-    INT32 purgestart, purgeend;
-    int i, length, fmask, maskshift, fmaskshifted;
-    INT32 minorcur, majorcur, minorcurint, majorcurint, samecvg;
-    
-    purgestart = span[scanline].lx;
-    purgeend = span[scanline].rx;
-    length = purgeend - purgestart;
+	INT32 purgestart, purgeend;
+	int i, length, fmask, maskshift, fmaskshifted;
+	INT32 minorcur, majorcur, minorcurint, majorcurint, samecvg;
+	
+	purgestart = span[scanline].lx;
+	purgeend = span[scanline].rx;
+	length = purgeend - purgestart;
 
-    if (length >= 0)
-    {
-        memset(&cvgbuf[purgestart], 0xff, length + 1);
+	if (length >= 0)
+	{
+		memset(&cvgbuf[purgestart], 0xff, length + 1);
 
-        for(i = 0; i < 4; i++)
-        {
-           fmask = 0xa >> (i & 1);
-           maskshift = (i - 2) & 4;
-           fmaskshifted = fmask << maskshift;
+		for(i = 0; i < 4; i++)
+		{
+         int k;
 
-            if (!span[scanline].invalyscan[i])
-            {
-               int k;
+			fmask = 0xa >> (i & 1);
+			maskshift = (i - 2) & 4;
+			fmaskshifted = fmask << maskshift;
 
-                minorcur = span[scanline].minorx[i];
-                majorcur = span[scanline].majorx[i];
-                minorcurint = minorcur >> 3;
-                majorcurint = majorcur >> 3;
+			if (!span[scanline].invalyscan[i])
+			{
+				minorcur = span[scanline].minorx[i];
+				majorcur = span[scanline].majorx[i];
+				minorcurint = minorcur >> 3;
+				majorcurint = majorcur >> 3;
+								
+				for (k = purgestart; k <= minorcurint; k++)
+					cvgbuf[k] &= ~fmaskshifted;
+				for (k = majorcurint; k <= purgeend; k++)
+					cvgbuf[k] &= ~fmaskshifted;
 
-                for (k = purgestart; k <= minorcurint; k++)
-                   cvgbuf[k] &= ~fmaskshifted;
-                for (k = majorcurint; k <= purgeend; k++)
-                   cvgbuf[k] &= ~fmaskshifted;
-
-                if (majorcurint > minorcurint)
-                {
-                    cvgbuf[minorcurint] |= (leftcvghex(minorcur, fmask) << maskshift);
-                    cvgbuf[majorcurint] |= (rightcvghex(majorcur, fmask) << maskshift);
-                }
-                else if (minorcurint == majorcurint)
-                {
-                    samecvg = leftcvghex(minorcur, fmask) & rightcvghex(majorcur, fmask);
-                    cvgbuf[majorcurint] |= (samecvg << maskshift);
-                }
-            }
-            else
-            {
-               int k;
-               for (k = purgestart; k <= purgeend; k++)
-                  cvgbuf[k] &= ~fmaskshifted;
-            }
-        }
-    }
+				if (majorcurint > minorcurint)
+				{
+					cvgbuf[minorcurint] |= (leftcvghex(minorcur, fmask) << maskshift);
+					cvgbuf[majorcurint] |= (rightcvghex(majorcur, fmask) << maskshift);
+				}
+				else if (minorcurint == majorcurint)
+				{
+					samecvg = leftcvghex(minorcur, fmask) & rightcvghex(majorcur, fmask);
+					cvgbuf[majorcurint] |= (samecvg << maskshift);
+				}
+			}
+			else
+			{
+				for (k = purgestart; k <= purgeend; k++)
+					cvgbuf[k] &= ~fmaskshifted;
+			}
+		}
+	}
 }
+
 
 void rdp_close(void)
 {
@@ -6140,10 +6172,13 @@ static UINT32 z_compare(UINT32 zcurpixel, UINT32 sz, UINT16 dzpix, int dzpixenc,
         rawdzmem = ((zval & 3) << 2) | hval;
         dzmem = dz_decompress(rawdzmem);
 
-        blshifta = CLIP(dzpixenc - rawdzmem, 0, 4);
-        blshiftb = CLIP(rawdzmem - dzpixenc, 0, 4);
+        if (other_modes.f.realblendershiftersneeded)
+        {
+           blshifta = CLIP(dzpixenc - rawdzmem, 0, 4);
+           blshiftb = CLIP(rawdzmem - dzpixenc, 0, 4);
+        }
 
-        if (other_modes.cycle_type == CYCLE_TYPE_2)
+        if (other_modes.f.interpixelblendershiftersneeded)
         {
            pastblshifta = CLIP(dzpixenc - pastrawdzmem, 0, 4);
            pastblshiftb = CLIP(pastrawdzmem - dzpixenc, 0, 4);
@@ -6224,16 +6259,23 @@ static UINT32 z_compare(UINT32 zcurpixel, UINT32 sz, UINT16 dzpix, int dzpixenc,
     else
     {
        int overflow;
-       blshifta = 0;
-       if (dzpixenc < 0xb)
-          blshiftb = 4;
-       else
-          blshiftb = 0xf - dzpixenc;
 
-       if (other_modes.cycle_type == CYCLE_TYPE_2)
+       if (other_modes.f.realblendershiftersneeded)
+       {
+          blshifta = 0;
+          if (dzpixenc < 0xb)
+             blshiftb = 4;
+          else
+             blshiftb = 0xf - dzpixenc;
+       }
+
+       if (other_modes.f.interpixelblendershiftersneeded)
        {
           pastblshifta = 0;
-          pastblshiftb = blshiftb;
+          if (dzpixenc < 0xb)
+             pastblshiftb = 4;
+          else
+             pastblshiftb = 0xf - dzpixenc;
        }
        pastrawdzmem = 0xf;
 
