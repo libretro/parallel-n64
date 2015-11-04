@@ -94,6 +94,7 @@ FILE *rdp_exec;
 
 extern FILE* zeldainfo;
 
+UINT32 internal_vi_v_current_line = 0;
 UINT32 old_vi_origin = 0;
 UINT32 oldhstart = 0;
 UINT32 oldsomething = 0;

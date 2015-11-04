@@ -1,7 +1,9 @@
+#include <string.h>
+
 #include "z64.h"
+#include "rdp.h"
 #include "vi.h"
 #include "api/libretro.h"
-#include <string.h>
 
 extern retro_log_printf_t log_cb;
 
@@ -81,6 +83,7 @@ void rdp_update(void)
     int vactivelines;
     int validh;
     int serration_pulses;
+    int validinterlace;
     int lowerfield;
     register int i, j;
     extern uint32_t *blitter_buf;
@@ -101,10 +104,17 @@ void rdp_update(void)
  */
     serration_pulses  = !!(*GET_GFX_INFO(VI_STATUS_REG) & 0x00000040);
     serration_pulses &= (y1 != oldvstart);
-    lowerfield = serration_pulses & (ispal ? y1 < oldvstart : y1 > oldvstart);
     two_lines = serration_pulses ^ 0;
-    line_shifter = serration_pulses ^ 1;
+
+    validinterlace = (vitype & 2) && serration_pulses;
+    if (!validinterlace)
+       internal_vi_v_current_line = 0;
+    lowerfield = validinterlace && !(internal_vi_v_current_line & 1);
+    if (validinterlace)
+       internal_vi_v_current_line ^= 1;
+
     line_count = pitchindwords << serration_pulses;
+    line_shifter = serration_pulses ^ 1;
 
     hres = delta_x;
     vres = delta_y;

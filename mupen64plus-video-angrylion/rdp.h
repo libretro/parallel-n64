@@ -424,6 +424,8 @@ extern int fb_width;
 extern UINT32 fb_address;
 extern UINT32 zb_address;
 
+extern UINT32 internal_vi_v_current_line;
+
 extern UINT32 max_level;
 extern INT32 min_level;
 extern INT32 primitive_lod_frac;
