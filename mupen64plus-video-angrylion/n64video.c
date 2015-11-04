@@ -3505,19 +3505,20 @@ void render_spans_1cycle_complete(int start, int end, int tilenum, int flip)
 
     for (i = start; i <= end; i++)
     {
-        if (span[i].validline == 0)
+       SPAN *span_ptr = &span[i];
+        if (!span_ptr || span_ptr->validline == 0)
             continue;
-        xstart = span[i].lx;
-        xend = span[i].unscrx;
-        xendsc = span[i].rx;
-        r = span[i].rgba[0];
-        g = span[i].rgba[1];
-        b = span[i].rgba[2];
-        a = span[i].rgba[3];
-        s = span[i].stwz[0];
-        t = span[i].stwz[1];
-        w = span[i].stwz[2];
-        z = other_modes.z_source_sel ? primitive_z : span[i].stwz[3];
+        xstart = span_ptr->lx;
+        xend   = span_ptr->unscrx;
+        xendsc = span_ptr->rx;
+        r      = span_ptr->rgba[0];
+        g      = span_ptr->rgba[1];
+        b      = span_ptr->rgba[2];
+        a      = span_ptr->rgba[3];
+        s      = span_ptr->stwz[0];
+        t      = span_ptr->stwz[1];
+        w      = span_ptr->stwz[2];
+        z      = other_modes.z_source_sel ? primitive_z : span_ptr->stwz[3];
 
         x = xendsc;
         curpixel = fb_width * i + x;
@@ -3692,19 +3693,20 @@ void render_spans_1cycle_notexel1(int start, int end, int tilenum, int flip)
                     
     for (i = start; i <= end; i++)
     {
-        if (span[i].validline == 0)
+       SPAN *span_ptr = &span[i];
+        if (!span_ptr || span_ptr->validline == 0)
             continue;
-        xstart = span[i].lx;
-        xend = span[i].unscrx;
-        xendsc = span[i].rx;
-        r = span[i].rgba[0];
-        g = span[i].rgba[1];
-        b = span[i].rgba[2];
-        a = span[i].rgba[3];
-        s = span[i].stwz[0];
-        t = span[i].stwz[1];
-        w = span[i].stwz[2];
-        z = other_modes.z_source_sel ? primitive_z : span[i].stwz[3];
+        xstart = span_ptr->lx;
+        xend   = span_ptr->unscrx;
+        xendsc = span_ptr->rx;
+        r      = span_ptr->rgba[0];
+        g      = span_ptr->rgba[1];
+        b      = span_ptr->rgba[2];
+        a      = span_ptr->rgba[3];
+        s      = span_ptr->stwz[0];
+        t      = span_ptr->stwz[1];
+        w      = span_ptr->stwz[2];
+        z      = other_modes.z_source_sel ? primitive_z : span_ptr->stwz[3];
 
         x = xendsc;
         curpixel = fb_width * i + x;
@@ -3850,16 +3852,17 @@ void render_spans_1cycle_notex(int start, int end, int tilenum, int flip)
                     
     for (i = start; i <= end; i++)
     {
-        if (span[i].validline == 0)
+       SPAN *span_ptr = &span[i];
+        if (!span_ptr || span_ptr->validline == 0)
             continue;
-        xstart = span[i].lx;
-        xend = span[i].unscrx;
-        xendsc = span[i].rx;
-        r = span[i].rgba[0];
-        g = span[i].rgba[1];
-        b = span[i].rgba[2];
-        a = span[i].rgba[3];
-        z = other_modes.z_source_sel ? primitive_z : span[i].stwz[3];
+        xstart = span_ptr->lx;
+        xend   = span_ptr->unscrx;
+        xendsc = span_ptr->rx;
+        r      = span_ptr->rgba[0];
+        g      = span_ptr->rgba[1];
+        b      = span_ptr->rgba[2];
+        a      = span_ptr->rgba[3];
+        z      = other_modes.z_source_sel ? primitive_z : span_ptr->stwz[3];
 
         x = xendsc;
         curpixel = fb_width * i + x;
