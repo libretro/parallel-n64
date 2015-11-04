@@ -99,6 +99,7 @@ UINT32 oldhstart = 0;
 UINT32 oldsomething = 0;
 UINT32 double_stretch = 0;
 int blshifta = 0, blshiftb = 0, pastblshifta = 0, pastblshiftb = 0;
+INT32 pastrawdzmem = 0;
 INT32 iseed = 1;
 
 SPAN span[1024];
@@ -1342,10 +1343,16 @@ int blender_2cycle(UINT32* fr, UINT32* fg, UINT32* fb, int dith, UINT32 blend_en
             return 1;
         }
         else 
+        {
+           memory_color = pre_memory_color;
             return 0;
+        }
     }
     else 
+    {
+       memory_color = pre_memory_color;
         return 0;
+    }
 }
 
 static void fetch_texel(COLOR *color, int s, int t, UINT32 tilenum)
@@ -4080,10 +4087,9 @@ void render_spans_2cycle_complete(int start, int end, int tilenum, int flip)
                     
                 }
             }
+            else
+               memory_color = pre_memory_color;
 
-            memory_color = pre_memory_color;
-            pastblshifta = blshifta;
-            pastblshiftb = blshiftb;
             r += drinc;
             g += dginc;
             b += dbinc;
@@ -4247,10 +4253,9 @@ void render_spans_2cycle_notexelnext(int start, int end, int tilenum, int flip)
                         z_store(zbcur, sz, dzpixenc);
                 }
             }
+            else
+               memory_color = pre_memory_color;
 
-            memory_color = pre_memory_color;
-            pastblshifta = blshifta;
-            pastblshiftb = blshiftb;
             s += dsinc;
             t += dtinc;
             w += dwinc;
@@ -4415,10 +4420,9 @@ void render_spans_2cycle_notexel1(int start, int end, int tilenum, int flip)
                         z_store(zbcur, sz, dzpixenc);
                 }
             }
+            else
+               memory_color = pre_memory_color;
 
-            memory_color = pre_memory_color;
-            pastblshifta = blshifta;
-            pastblshiftb = blshiftb;
             s += dsinc;
             t += dtinc;
             w += dwinc;
@@ -4556,10 +4560,9 @@ void render_spans_2cycle_notex(int start, int end, int tilenum, int flip)
                         z_store(zbcur, sz, dzpixenc);
                 }
             }
+            else
+               memory_color = pre_memory_color;
 
-            memory_color = pre_memory_color;
-            pastblshifta = blshifta;
-            pastblshiftb = blshiftb;
             r += drinc;
             g += dginc;
             b += dbinc;
@@ -6139,6 +6142,13 @@ static UINT32 z_compare(UINT32 zcurpixel, UINT32 sz, UINT16 dzpix, int dzpixenc,
         blshifta = CLIP(dzpixenc - rawdzmem, 0, 4);
         blshiftb = CLIP(rawdzmem - dzpixenc, 0, 4);
 
+        if (other_modes.cycle_type == CYCLE_TYPE_2)
+        {
+           pastblshifta = CLIP(dzpixenc - pastrawdzmem, 0, 4);
+           pastblshiftb = CLIP(pastrawdzmem - dzpixenc, 0, 4);
+        }
+        pastrawdzmem = rawdzmem;
+
         precision_factor = (zval >> 13) & 0xf;
 
         if (precision_factor < 3)
@@ -6212,15 +6222,25 @@ static UINT32 z_compare(UINT32 zcurpixel, UINT32 sz, UINT16 dzpix, int dzpixenc,
     }
     else
     {
-        int overflow = (curpixel_memcvg + *curpixel_cvg) & 8;
+       int overflow;
+       blshifta = 0;
+       if (dzpixenc < 0xb)
+          blshiftb = 4;
+       else
+          blshiftb = 0xf - dzpixenc;
 
-        blshifta = CLIP(dzpixenc - 0xf, 0, 4);
-        blshiftb = CLIP(0xf - dzpixenc, 0, 4);
+       if (other_modes.cycle_type == CYCLE_TYPE_2)
+       {
+          pastblshifta = 0;
+          pastblshiftb = blshiftb;
+       }
+       pastrawdzmem = 0xf;
 
-        *blend_en = other_modes.force_blend || (!overflow && other_modes.antialias_en);
-        *prewrap = overflow;
+       overflow  = (curpixel_memcvg + *curpixel_cvg) & 8;
+       *blend_en = other_modes.force_blend || (!overflow && other_modes.antialias_en);
+       *prewrap  = overflow;
 
-        return 1;
+       return 1;
     }
 }
 
