@@ -2,7 +2,10 @@
 #define __Z64_H__
 
 #include <stdio.h>
-#include <string.h>
+
+#if defined (_MSC_VER) && (_MSC_VER >= 1300)
+#include <basetsd.h>
+#endif
 
 #if defined (_MSC_VER) && (_MSC_VER < 1300)
 typedef unsigned char UINT8;
@@ -59,22 +62,24 @@ typedef int8_t INT8;
 
 #define R4300i_SP_Intr 1
 
-#ifdef MSB_FIRST
-    #define BYTE_ADDR_XOR        0
-    #define WORD_ADDR_XOR        0
-    #define BYTE4_XOR_BE(a)     (a)
-#else
+
+#define LSB_FIRST 1 
+#ifdef LSB_FIRST
     #define BYTE_ADDR_XOR        3
     #define WORD_ADDR_XOR        1
     #define BYTE4_XOR_BE(a)     ((a) ^ 3)                
+#else
+    #define BYTE_ADDR_XOR        0
+    #define WORD_ADDR_XOR        0
+    #define BYTE4_XOR_BE(a)     (a)
 #endif
 
-#ifdef MSB_FIRST
-#define BYTE_XOR_DWORD_SWAP 4
-#define WORD_XOR_DWORD_SWAP 2
-#else
+#ifdef LSB_FIRST
 #define BYTE_XOR_DWORD_SWAP 7
 #define WORD_XOR_DWORD_SWAP 3
+#else
+#define BYTE_XOR_DWORD_SWAP 4
+#define WORD_XOR_DWORD_SWAP 2
 #endif
 #define DWORD_XOR_DWORD_SWAP 1
 
@@ -91,6 +96,8 @@ typedef int8_t INT8;
 #define PRESCALE_WIDTH 640
 #define PRESCALE_HEIGHT 625
 
+typedef unsigned int offs_t;
+
 #define GET_GFX_INFO(member)    (gfx_info.member)
 
 #define DRAM        GET_GFX_INFO(RDRAM)
@@ -104,38 +111,48 @@ typedef int8_t INT8;
 #define SP_DMEM32       ((i32 *)SP_DMEM)
 #define SP_IMEM32       ((i32 *)SP_IMEM)
 
-#define rdram ((uint32_t*)DRAM)
-#define rsp_imem ((uint32_t*)gfx_info.IMEM)
-#define rsp_dmem ((uint32_t*)gfx_info.DMEM)
+#define rdram ((UINT32*)DRAM)
+#define rsp_imem ((UINT32*)gfx_info.IMEM)
+#define rsp_dmem ((UINT32*)gfx_info.DMEM)
 
 #define rdram16 ((UINT16*)DRAM)
 #define rdram8 (DRAM)
 
-#define vi_origin (*(uint32_t*)gfx_info.VI_ORIGIN_REG)
-#define vi_width (*(uint32_t*)gfx_info.VI_WIDTH_REG)
-#define vi_control (*(uint32_t*)gfx_info.VI_STATUS_REG)
-#define vi_v_sync (*(uint32_t*)gfx_info.VI_V_SYNC_REG)
-#define vi_h_sync (*(uint32_t*)gfx_info.VI_H_SYNC_REG)
-#define vi_h_start (*(uint32_t*)gfx_info.VI_H_START_REG)
-#define vi_v_start (*(uint32_t*)gfx_info.VI_V_START_REG)
-#define vi_v_intr (*(uint32_t*)gfx_info.VI_INTR_REG)
-#define vi_x_scale (*(uint32_t*)gfx_info.VI_X_SCALE_REG)
-#define vi_y_scale (*(uint32_t*)gfx_info.VI_Y_SCALE_REG)
-#define vi_timing (*(uint32_t*)gfx_info.VI_TIMING_REG)
-#define vi_v_current_line (*(uint32_t*)gfx_info.VI_V_CURRENT_LINE_REG)
+#define vi_origin (*(UINT32*)gfx_info.VI_ORIGIN_REG)
+#define vi_width (*(UINT32*)gfx_info.VI_WIDTH_REG)
+#define vi_control (*(UINT32*)gfx_info.VI_STATUS_REG)
+#define vi_v_sync (*(UINT32*)gfx_info.VI_V_SYNC_REG)
+#define vi_h_sync (*(UINT32*)gfx_info.VI_H_SYNC_REG)
+#define vi_h_start (*(UINT32*)gfx_info.VI_H_START_REG)
+#define vi_v_start (*(UINT32*)gfx_info.VI_V_START_REG)
+#define vi_v_intr (*(UINT32*)gfx_info.VI_INTR_REG)
+#define vi_x_scale (*(UINT32*)gfx_info.VI_X_SCALE_REG)
+#define vi_y_scale (*(UINT32*)gfx_info.VI_Y_SCALE_REG)
+#define vi_timing (*(UINT32*)gfx_info.VI_TIMING_REG)
+#define vi_v_current_line (*(UINT32*)gfx_info.VI_V_CURRENT_LINE_REG)
 
-#define dp_start (*(uint32_t*)gfx_info.DPC_START_REG)
-#define dp_end (*(uint32_t*)gfx_info.DPC_END_REG)
-#define dp_current (*(uint32_t*)gfx_info.DPC_CURRENT_REG)
-#define dp_status (*(uint32_t*)gfx_info.DPC_STATUS_REG)
+#define dp_start (*(UINT32*)gfx_info.DPC_START_REG)
+#define dp_end (*(UINT32*)gfx_info.DPC_END_REG)
+#define dp_current (*(UINT32*)gfx_info.DPC_CURRENT_REG)
+#define dp_status (*(UINT32*)gfx_info.DPC_STATUS_REG)
 
-#define RREADADDR8(in) (((in) <= plim) ? (rdram8[(in) ^ BYTE_ADDR_XOR]) : 0)
-#define RREADIDX16(in) (((in) <= idxlim16) ? (rdram_16[(in) ^ WORD_ADDR_XOR]) : 0)
-#define RREADIDX32(in) (((in) <= idxlim32) ? (rdram[(in)]) : 0)
+#define GET_LOW(x)      (((x) & 0x003E) << 2)
+#define GET_MED(x)      (((x) & 0x07C0) >> 3)
+#define GET_HI(x)       (((x) >> 8) & 0x00F8)
 
-#define RWRITEADDR8(in, val) { if ((in) <= plim) rdram8[(in) ^ BYTE_ADDR_XOR] = (val);}
-#define RWRITEIDX16(in, val) { if ((in) <= idxlim16) rdram_16[(in) ^ WORD_ADDR_XOR] = (val);}
-#define RWRITEIDX32(in, val) { if ((in) <= idxlim32) rdram[(in)] = (val);}
+#define RREADADDR8(in) \
+    (((in) <= plim) ? (rdram_8[(in) ^ BYTE_ADDR_XOR]) : 0)
+#define RREADIDX16(in) \
+    (((in) <= idxlim16) ? (rdram_16[(in) ^ WORD_ADDR_XOR]) : 0)
+#define RREADIDX32(in) \
+    (((in) <= idxlim32) ? (rdram[(in)]) : 0)
+
+#define RWRITEADDR8(in, val) { \
+    if ((in) <= plim) rdram_8[(in) ^ BYTE_ADDR_XOR] = (val);}
+#define RWRITEIDX16(in, val) { \
+    if ((in) <= idxlim16) rdram_16[(in) ^ WORD_ADDR_XOR] = (val);}
+#define RWRITEIDX32(in, val) { \
+    if ((in) <= idxlim32) rdram[(in)] = (val);}
 
 #define PAIRREAD16(rdst, hdst, in) {             \
     if ((in) <= idxlim16) {                      \
@@ -159,10 +176,62 @@ typedef int8_t INT8;
 }
 #define PAIRWRITE8(in, rval, hval) {             \
     if ((in) <= plim) {                          \
-        rdram8[(in) ^ BYTE_ADDR_XOR] = (rval);  \
+        rdram_8[(in) ^ BYTE_ADDR_XOR] = (rval);  \
         if ((in) & 1)                            \
             hidden_bits[(in) >> 1] = (hval);     \
     }                                            \
+}
+
+#define VI_ANDER(x) {                                 \
+    PAIRREAD16(pix, hidval, x);                       \
+    if (hidval == 3 && (pix & 1)) {                   \
+        backr[numoffull] = GET_HI(pix);               \
+        backg[numoffull] = GET_MED(pix);              \
+        backb[numoffull] = GET_LOW(pix);              \
+        invr[numoffull] = (~backr[numoffull]) & 0xFF; \
+        invg[numoffull] = (~backg[numoffull]) & 0xFF; \
+        invb[numoffull] = (~backb[numoffull]) & 0xFF; \
+    } else {                                          \
+        backr[numoffull] = invr[numoffull] = 0;       \
+        backg[numoffull] = invg[numoffull] = 0;       \
+        backb[numoffull] = invb[numoffull] = 0;       \
+    }                                                 \
+    numoffull++;                                      \
+}
+#define VI_ANDER32(x) {                               \
+    pix = RREADIDX32(x);                              \
+    pixcvg = (pix >> 5) & 7;                          \
+    if (pixcvg == 7) {                                \
+        backr[numoffull] = (pix >> 24) & 0xFF;        \
+        backg[numoffull] = (pix >> 16) & 0xFF;        \
+        backb[numoffull] = (pix >>  8) & 0xFF;        \
+        invr[numoffull] = (~backr[numoffull]) & 0xFF; \
+        invg[numoffull] = (~backg[numoffull]) & 0xFF; \
+        invb[numoffull] = (~backb[numoffull]) & 0xFF; \
+    } else {                                          \
+        backr[numoffull] = invr[numoffull] = 0;       \
+        backg[numoffull] = invg[numoffull] = 0;       \
+        backb[numoffull] = invb[numoffull] = 0;       \
+    }                                                 \
+    numoffull++;                                      \
+}
+#define VI_COMPARE(x) {                      \
+    pix = RREADIDX16((x));                   \
+    tempr = (pix >> 6) & 0x03E0;             \
+    tempg = (pix >> 1) & 0x03E0;             \
+    tempb = (pix << 4) & 0x03E0;             \
+    rend += vi_restore_table[tempr | rcomp]; \
+    gend += vi_restore_table[tempg | gcomp]; \
+    bend += vi_restore_table[tempb | bcomp]; \
+}
+#define VI_COMPARE32(x) {                    \
+    pix = RREADIDX32(x);                     \
+    tempr = (pix >> 19) & 0x03E0;            \
+    tempg = (pix >> 11) & 0x03E0;            \
+    tempb = (pix >>  3) & 0x03E0;            \
+    rend += vi_restore_table[tempr | rcomp]; \
+    gend += vi_restore_table[tempg | gcomp]; \
+    bend += vi_restore_table[tempb | bcomp]; \
 }
 
 #endif

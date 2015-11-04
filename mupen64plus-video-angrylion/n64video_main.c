@@ -14,17 +14,18 @@ extern uint32_t screen_pitch;
 uint32_t *blitter_buf;
 int res;
 RECT __dst, __src;
-int32_t pitchindwords;
+INT32 pitchindwords;
 
+FILE* zeldainfo = 0;
 int ProcessDListShown = 0;
 extern int SaveLoaded;
-extern uint32_t command_counter;
+extern UINT32 command_counter;
 
 int retro_return(bool just_flipping);
 
 EXPORT void CALL CaptureScreen ( char * Directory )
 {
-   return;
+    return;
 }
 
 EXPORT void CALL angrylionChangeWindow (void)
@@ -33,27 +34,27 @@ EXPORT void CALL angrylionChangeWindow (void)
 
 EXPORT void CALL CloseDLL (void)
 {
-   return;
+    return;
 }
 
 EXPORT void CALL angrylionReadScreen2(void *dest, int *width, int *height, int front)
 {
 }
 
-
+ 
 EXPORT void CALL angrylionDrawScreen (void)
 {
 }
 
 EXPORT void CALL angrylionGetDllInfo(PLUGIN_INFO* PluginInfo)
 {
-   PluginInfo -> Version = 0x0103;
-   PluginInfo -> Type  = 2;
-   strcpy(
-         PluginInfo -> Name, "angrylion's RDP"
-         );
-   PluginInfo -> NormalMemory = true;
-   PluginInfo -> MemoryBswaped = true;
+    PluginInfo -> Version = 0x0103;
+    PluginInfo -> Type  = 2;
+    strcpy(
+    PluginInfo -> Name, "angrylion's RDP"
+    );
+    PluginInfo -> NormalMemory = true;
+    PluginInfo -> MemoryBswaped = true;
 }
 
 EXPORT void CALL angrylionSetRenderingCallback(void (*callback)(int))
@@ -65,39 +66,39 @@ EXPORT int CALL angrylionInitiateGFX (GFX_INFO Gfx_Info)
    return true;
 }
 
-
+ 
 EXPORT void CALL angrylionMoveScreen (int xpos, int ypos)
 {
 }
 
-
+ 
 EXPORT void CALL angrylionProcessDList(void)
 {
-   if (!ProcessDListShown)
-   {
-      DisplayError("ProcessDList");
-      ProcessDListShown = 1;
-   }
+    if (!ProcessDListShown)
+    {
+        DisplayError("ProcessDList");
+        ProcessDListShown = 1;
+    }
 }
 
 EXPORT void CALL angrylionProcessRDPList(void)
 {
-   process_RDP_list();
-   return;
+    process_RDP_list();
+    return;
 }
 
 EXPORT void CALL angrylionRomClosed (void)
 {
-   rdp_close();
-   if (blitter_buf)
-      free(blitter_buf);
+    rdp_close();
+    if (blitter_buf)
+       free(blitter_buf);
 
-   SaveLoaded = 1;
-   command_counter = 0;
+    SaveLoaded = 1;
+    command_counter = 0;
 }
 
 static m64p_handle l_ConfigAngrylion;
-
+ 
 EXPORT int CALL angrylionRomOpen (void)
 {
    /* TODO/FIXME: For now just force it to 640x480.
@@ -129,27 +130,27 @@ EXPORT int CALL angrylionRomOpen (void)
 
 EXPORT void CALL angrylionUpdateScreen(void)
 {
-   static int counter;
+    static int counter;
 
 #ifdef HAVE_FRAMESKIP
-   if (counter++ < skip)
-      return;
-   counter = 0;
+    if (counter++ < skip)
+        return;
+    counter = 0;
 #endif
-   rdp_update();
-   retro_return(true);
+    rdp_update();
+    retro_return(true);
 #if 0
-   if (step != 0)
-      MessageBox(NULL, "Updated screen.\nPaused.", "Frame Step", MB_OK);
+    if (step != 0)
+        MessageBox(NULL, "Updated screen.\nPaused.", "Frame Step", MB_OK);
 #endif
-   return;
+    return;
 }
 
 EXPORT void CALL angrylionShowCFB (void)
 {
-   //MessageBox(NULL, "ShowCFB", NULL, MB_ICONWARNING);
-   angrylionUpdateScreen();
-   return;
+    //MessageBox(NULL, "ShowCFB", NULL, MB_ICONWARNING);
+    angrylionUpdateScreen();
+    return;
 }
 
 

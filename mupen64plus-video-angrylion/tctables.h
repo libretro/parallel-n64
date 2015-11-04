@@ -1,7 +1,7 @@
 #ifndef _TCTABLES_H
 #define _TCTABLES_H
 
-const int32_t norm_point_table[64] = {
+const INT32 norm_point_table[64] = {
 0x4000,
 0x3f04,
 0x3e10,
@@ -68,7 +68,7 @@ const int32_t norm_point_table[64] = {
 0x2041 
 };
 
-const int32_t norm_slope_table[64] = {
+const INT32 norm_slope_table[64] = {
 0xf03,
 0xf0b,
 0xf11,

@@ -24,6 +24,8 @@ _mm_unpacklo_epi64(_mm_unpacklo_epi32(m, n), _mm_unpackhi_epi32(m, n))
 #endif
 #endif
 
+INLINE extern __m128i mm_mullo_epi32_seh(__m128i dest, __m128i src);
+
 #else
 #define setzero_si128(buf) \
     { ((i64 *)buf)[0] = ((i64 *)buf)[1] = 0x0000000000000000; }
@@ -57,18 +59,6 @@ _mm_unpacklo_epi64(_mm_unpacklo_epi32(m, n), _mm_unpackhi_epi32(m, n))
     cmd_data[word].W32[0] = *(i32 *)((base) + 8*(offset) + 0); \
     cmd_data[word].W32[1] = *(i32 *)((base) + 8*(offset) + 4); \
 }
-#endif
-
-#ifndef GET_LOW
-#define GET_LOW(x)      (((x) & 0x003E) << 2)
-#endif
-
-#ifndef GET_MED
-#define GET_MED(x)      (((x) & 0x07C0) >> 3)
-#endif
-
-#ifndef GET_HI
-#define GET_HI(x)       (((x) >> 8) & 0x00F8)
 #endif
 
 #ifdef _MSC_VER
@@ -135,16 +125,6 @@ typedef int*        v32;
 #endif
 #define SIGNF(x, numb)    ((x) | -((x) & (1 << (numb - 1))))
 
-#if defined(USE_SSE_SUPPORT)
-#define ZERO_MSB(word)    ((unsigned)(word) >> (8*sizeof(word) - 1))
-#define SIGN_MSB(word)    ((signed)(word) >> (8*sizeof(word) - 1))
-#define FULL_MSB(word)    SIGN_MSB(word)
-#else
-#define ZERO_MSB(word)    ((word < 0) ? +1 :  0)
-#define SIGN_MSB(word)    ((word < 0) ? -1 :  0)
-#define FULL_MSB(word)    ((word < 0) ? ~0 :  0)
-#endif
-
 #define GET_LOW_RGBA16_TMEM(x)      replicated_rgba[((x) & 0x003F) >>  1]
 #define GET_MED_RGBA16_TMEM(x)      replicated_rgba[((x) & 0x07FF) >>  6]
 #define GET_HI_RGBA16_TMEM(x)       replicated_rgba[(u16)(x) >> 11]
@@ -167,22 +147,22 @@ typedef union {
 } DP_FIFO;
 
 typedef struct {
-    int32_t r, g, b, a;
+    INT32 r, g, b, a;
 } COLOR;
 
 typedef struct {
     int lx, rx;
     int unscrx;
     int validline;
-    ALIGNED int32_t rgba[4];
-    ALIGNED int32_t stwz[4];
-    int32_t majorx[4];
-    int32_t minorx[4];
-    int32_t invalyscan[4];
+    ALIGNED INT32 rgba[4];
+    ALIGNED INT32 stwz[4];
+    INT32 majorx[4];
+    INT32 minorx[4];
+    INT32 invalyscan[4];
 } SPAN;
 
 typedef struct {
-    int32_t xl, yl, xh, yh;
+    INT32 xl, yl, xh, yh;
 } RECTANGLE;
 
 typedef struct {
@@ -193,23 +173,14 @@ typedef struct {
 } FAKETILE;
 
 typedef struct {
-    int format;            /* format: ARGB, IA, ... */
-    int size;              /* size: 4, 8, 16, or 32-bit */
-    int line;              /* size of one row (x axis) in 64 bit words */
-    int tmem;              /* location in texture memory (in 64 bit words, max 512 (4MB)) */
-    int palette;           /* palette # to use */
-    int ct;                /* clamp_t */
-    int mt;                /* mirror_t */
-    int cs;                /* clamp_s */
-    int ms;                /* mirror_s */
-    int mask_t;            /* mask to wrap around (y axis) */
-    int shift_t;           /* ??? (scaling) */
-    int mask_s;            /* mask to wrap around (x axis) */
-    int shift_s;           /* ??? (scaling) */
-    INT32 sl;              /* lr_s - lower right s coordinate */
-    INT32 tl;              /* lr_t - lower right t coordinate */
-    INT32 sh;              /* ul_s - upper left  s coordinate */
-    INT32 th;              /* ul_t - upper left  t coordinate */
+    int format;
+    int size;
+    int line;
+    int tmem;
+    int palette;
+    int ct, mt, cs, ms;
+    int mask_t, shift_t, mask_s, shift_s;
+    INT32 sl, tl, sh, th;
     FAKETILE f;
 } TILE;
 
@@ -344,53 +315,85 @@ enum {
     ZBUFFER_NO,
     ZBUFFER_YES = YES
 };
-enum {
-    TEXTURE_FLIP_NO,
-    TEXTURE_FLIP_YES = YES
-};
 
 extern void process_RDP_list(void);
 #ifdef TRACE_DP_COMMANDS
 extern void count_DP_commands(void);
 #endif
 
-extern void (*fbread1_ptr)(uint32_t, uint32_t*);
-extern void (*fbread2_ptr)(uint32_t, uint32_t*);
+extern void (*fbread1_ptr)(UINT32, UINT32*);
+extern void (*fbread2_ptr)(UINT32, UINT32*);
 extern void (*fbwrite_ptr)(
-    uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
-extern void (*fbfill_ptr)(uint32_t);
+    UINT32, UINT32, UINT32, UINT32, UINT32, UINT32, UINT32);
+extern void (*fbfill_ptr)(UINT32);
 
-extern void (*fbread_func[4])(uint32_t, uint32_t*);
-extern void (*fbread2_func[4])(uint32_t, uint32_t*);
-extern void (*fbwrite_func[4])(
-    uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
+extern void fbwrite_4(
+    UINT32 curpixel, UINT32 r, UINT32 g, UINT32 b, UINT32 blend_en,
+    UINT32 curpixel_cvg, UINT32 curpixel_memcvg);
+extern void fbwrite_8(
+    UINT32 curpixel, UINT32 r, UINT32 g, UINT32 b, UINT32 blend_en,
+    UINT32 curpixel_cvg, UINT32 curpixel_memcvg);
+extern void fbwrite_16(
+    UINT32 curpixel, UINT32 r, UINT32 g, UINT32 b, UINT32 blend_en,
+    UINT32 curpixel_cvg, UINT32 curpixel_memcvg);
+extern void fbwrite_32(
+    UINT32 curpixel, UINT32 r, UINT32 g, UINT32 b, UINT32 blend_en,
+    UINT32 curpixel_cvg, UINT32 curpixel_memcvg);
+extern void fbfill_4(UINT32 curpixel);
+extern void fbfill_8(UINT32 curpixel);
+extern void fbfill_16(UINT32 curpixel);
+extern void fbfill_32(UINT32 curpixel);
+extern void fbread_4(UINT32 num, UINT32* curpixel_memcvg);
+extern void fbread_8(UINT32 num, UINT32* curpixel_memcvg);
+extern void fbread_16(UINT32 num, UINT32* curpixel_memcvg);
+extern void fbread_32(UINT32 num, UINT32* curpixel_memcvg);
+extern void fbread2_4(UINT32 num, UINT32* curpixel_memcvg);
+extern void fbread2_8(UINT32 num, UINT32* curpixel_memcvg);
+extern void fbread2_16(UINT32 num, UINT32* curpixel_memcvg);
+extern void fbread2_32(UINT32 num, UINT32* curpixel_memcvg);
 
-extern void (*get_dither_noise_ptr)(int, int, int*, int*);
-extern void (*rgb_dither_func[2])(int*, int*, int*, int);
-extern void (*rgb_dither_ptr)(int*, int*, int*, int);
-extern void (*tcdiv_ptr)(int32_t, int32_t, int32_t, int32_t*, int32_t*);
-extern void (*tcdiv_func[2])(int32_t, int32_t, int32_t, int32_t*, int32_t*);
-extern void (*render_spans_1cycle_ptr)(int, int, int, int);
-extern void (*render_spans_2cycle_ptr)(int, int, int, int);
-extern void (*render_spans_1cycle_func[3])(int, int, int, int);
-extern void (*render_spans_2cycle_func[4])(int, int, int, int);
-extern void (*get_dither_noise_func[3])(int, int, int*, int*);
+static void (*fbread_func[4])(UINT32, UINT32*) = {
+    fbread_4, fbread_8, fbread_16, fbread_32
+};
+static void (*fbread2_func[4])(UINT32, UINT32*) = {
+    fbread2_4, fbread2_8, fbread2_16, fbread2_32
+};
+static void (*fbwrite_func[4])(
+    UINT32, UINT32, UINT32, UINT32, UINT32, UINT32, UINT32) = {
+    fbwrite_4, fbwrite_8, fbwrite_16, fbwrite_32
+};
+static void (*fbfill_func[4])(UINT32) = {
+    fbfill_4, fbfill_8, fbfill_16, fbfill_32
+};
 
+INLINE extern void calculate_clamp_diffs(UINT32 tile);
+INLINE extern void calculate_tile_derivs(UINT32 tile);
+extern void tile_tlut_common_cs_decoder(UINT32 w1, UINT32 w2);
+extern void deduce_derivatives(void);
 
+extern void render_spans_1cycle(int start, int end, int tilenum, int flip);
+extern void render_spans_2cycle(int start, int end, int tilenum, int flip);
 extern NOINLINE void render_spans_copy(
     int start, int end, int tilenum, int flip);
 extern NOINLINE void render_spans_fill(int start, int end, int flip);
 
-extern NOINLINE void loading_pipeline(
-      int start, int end, int tilenum, int coord_quad, int ltlut);
+NOINLINE extern void edgewalker_for_loads(INT32* lewdata);
+extern void (*render_spans_1cycle_ptr)(int, int, int, int);
+extern void (*render_spans_2cycle_ptr)(int, int, int, int);
 
-void SET_BLENDER_INPUT(
-      int cycle, int which,
-      int32_t **input_r,
-      int32_t **input_g,
-      int32_t **input_b,
-      int32_t **input_a,
-      int a, int b);
+extern INLINE void SET_BLENDER_INPUT(
+    int cycle, int which, INT32 **input_r, INT32 **input_g, INT32 **input_b,
+    INT32 **input_a, int a, int b);
+extern INLINE void SET_SUBA_RGB_INPUT(
+    INT32 **input_r, INT32 **input_g, INT32 **input_b, int code);
+extern INLINE void SET_SUBB_RGB_INPUT(
+    INT32 **input_r, INT32 **input_g, INT32 **input_b, int code);
+extern INLINE void SET_MUL_RGB_INPUT(
+    INT32 **input_r, INT32 **input_g, INT32 **input_b, int code);
+extern INLINE void SET_ADD_RGB_INPUT(
+    INT32 **input_r, INT32 **input_g, INT32 **input_b, int code);
+extern INLINE void SET_SUB_ALPHA_INPUT(INT32 **input, int code);
+extern INLINE void SET_MUL_ALPHA_INPUT(INT32 **input, int code);
 
 #ifdef _DEBUG
 int render_cycle_mode_counts[4];
@@ -410,11 +413,10 @@ extern i32 spans_d_stwz_dy[4];
 extern int scfield;
 extern int sckeepodd;
 
-/* texture image */
-extern int ti_format;         /* format: ARGB, IA, ... */
-extern int ti_size;           /* size: 4, 8, 16, or 32-bit */
-extern int ti_width;          /* used in rdp_settextureimage */
-extern UINT32 ti_address;     /* address in RDRAM to load the texture from */
+extern int ti_format;
+extern int ti_size;
+extern int ti_width;
+extern UINT32 ti_address;
 
 extern int fb_format;
 extern int fb_size;
@@ -422,93 +424,60 @@ extern int fb_width;
 extern UINT32 fb_address;
 extern UINT32 zb_address;
 
-extern uint32_t max_level;
+extern UINT32 max_level;
+extern INT32 min_level;
+extern INT32 primitive_lod_frac;
 
-extern uint32_t fill_color;
+extern UINT32 primitive_z;
+extern UINT16 primitive_delta_z;
 
-extern int32_t  min_level;
-extern int32_t primitive_lod_frac;
+extern UINT32 fill_color;
 
-extern uint32_t primitive_z;
-extern uint16_t primitive_delta_z;
+extern INT32 *combiner_rgbsub_a_r[2];
+extern INT32 *combiner_rgbsub_a_g[2];
+extern INT32 *combiner_rgbsub_a_b[2];
+extern INT32 *combiner_rgbsub_b_r[2];
+extern INT32 *combiner_rgbsub_b_g[2];
+extern INT32 *combiner_rgbsub_b_b[2];
+extern INT32 *combiner_rgbmul_r[2];
+extern INT32 *combiner_rgbmul_g[2];
+extern INT32 *combiner_rgbmul_b[2];
+extern INT32 *combiner_rgbadd_r[2];
+extern INT32 *combiner_rgbadd_g[2];
+extern INT32 *combiner_rgbadd_b[2];
 
-extern int32_t *combiner_rgbsub_a_r[2];
-extern int32_t *combiner_rgbsub_a_g[2];
-extern int32_t *combiner_rgbsub_a_b[2];
-extern int32_t *combiner_rgbsub_b_r[2];
-extern int32_t *combiner_rgbsub_b_g[2];
-extern int32_t *combiner_rgbsub_b_b[2];
-extern int32_t *combiner_rgbmul_r[2];
-extern int32_t *combiner_rgbmul_g[2];
-extern int32_t *combiner_rgbmul_b[2];
-extern int32_t *combiner_rgbadd_r[2];
-extern int32_t *combiner_rgbadd_g[2];
-extern int32_t *combiner_rgbadd_b[2];
+extern INT32 *combiner_alphasub_a[2];
+extern INT32 *combiner_alphasub_b[2];
+extern INT32 *combiner_alphamul[2];
+extern INT32 *combiner_alphaadd[2];
 
-extern int32_t *combiner_alphasub_a[2];
-extern int32_t *combiner_alphasub_b[2];
-extern int32_t *combiner_alphamul[2];
-extern int32_t *combiner_alphaadd[2];
+extern INT32 *blender1a_r[2];
+extern INT32 *blender1a_g[2];
+extern INT32 *blender1a_b[2];
+extern INT32 *blender1b_a[2];
+extern INT32 *blender2a_r[2];
+extern INT32 *blender2a_g[2];
+extern INT32 *blender2a_b[2];
+extern INT32 *blender2b_a[2];
 
-extern int32_t *blender1a_r[2];
-extern int32_t *blender1a_g[2];
-extern int32_t *blender1a_b[2];
-extern int32_t *blender1b_a[2];
-extern int32_t *blender2a_r[2];
-extern int32_t *blender2a_g[2];
-extern int32_t *blender2a_b[2];
-extern int32_t *blender2b_a[2];
+extern INT32 k0, k1, k2, k3, k4, k5;
 
 extern RECTANGLE __clip;
 extern TILE tile[8];
 
-extern INT32 k0_tf, k1_tf, k2_tf, k3_tf;
-extern INT32 k4, k5;
-
-extern COLOR texel0_color;
-extern COLOR texel1_color;
-extern COLOR combined_color;
-extern COLOR nexttexel_color;
-extern COLOR pixel_color;
-extern COLOR inv_pixel_color;
-extern COLOR memory_color;
-extern COLOR shade_color;
-extern int32_t noise;
-extern int32_t one_color;
-extern int32_t zero_color;
-
-extern COLOR prim_color;
+extern OTHER_MODES other_modes;
+extern COMBINE_MODES combine;
 
 extern COLOR key_width;
 extern COLOR key_scale;
 extern COLOR key_center;
-
-extern COLOR blend_color;
 extern COLOR fog_color;
-
+extern COLOR blend_color;
+extern COLOR prim_color;
 extern COLOR env_color;
-
-extern OTHER_MODES other_modes;
-extern COMBINE_MODES combine;
 
 extern int rdp_pipeline_crashed;
 
-extern INT32 lod_frac;
-
-static INLINE void calculate_clamp_diffs(UINT32 i)
-{
-   tile[i].f.clampdiffs = ((tile[i].sh >> 2) - (tile[i].sl >> 2)) & 0x3ff;
-   tile[i].f.clampdifft = ((tile[i].th >> 2) - (tile[i].tl >> 2)) & 0x3ff;
-}
-
-static INLINE void calculate_tile_derivs(UINT32 i)
-{
-    tile[i].f.clampens = tile[i].cs || !tile[i].mask_s;
-    tile[i].f.clampent = tile[i].ct || !tile[i].mask_t;
-    tile[i].f.masksclamped = tile[i].mask_s <= 10 ? tile[i].mask_s : 10;
-    tile[i].f.masktclamped = tile[i].mask_t <= 10 ? tile[i].mask_t : 10;
-    tile[i].f.notlutswitch = (tile[i].format << 2) | tile[i].size;
-    tile[i].f.tlutswitch = (tile[i].size << 2) | ((tile[i].format + 2) & 3);
-}
+extern UINT32 z64gl_command;
 
 #endif
