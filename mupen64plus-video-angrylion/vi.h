@@ -49,10 +49,6 @@ typedef struct {   // Declare an unnamed structure and give it the
 } POINT;
 #endif
 
-//extern LPDIRECTDRAW7 lpdd;
-//extern LPDIRECTDRAWSURFACE7 lpddsprimary;
-//extern LPDIRECTDRAWSURFACE7 lpddsback;
-//extern DDSURFACEDESC2 ddsd;
 extern RECT __src, __dst;
 extern int res;
 extern int32_t pitchindwords;
