@@ -763,14 +763,20 @@ static void set_key_r(void)
 
 static void set_convert(void)
 {
-    k0 = (cmd_data[cmd_cur + 0].UW32[0] & 0x003FE000) >> (45 - 32);
-    k1 = (cmd_data[cmd_cur + 0].UW32[0] & 0x00001FF0) >> (36 - 32);
-    k2  = (cmd_data[cmd_cur + 0].UW32[0] & 0x0000000F) << 5;
-    k2 |= (cmd_data[cmd_cur + 0].UW32[1] & 0xF8000000) >> (27 - 0);
-    k3 = (cmd_data[cmd_cur + 0].UW32[1] & 0x07FC0000) >> 18;
-    k4 = (cmd_data[cmd_cur + 0].UW32[1] & 0x0003FE00) >>  9;
-    k5 = (cmd_data[cmd_cur + 0].UW32[1] & 0x000001FF) >>  0;
-    return;
+   UINT32 w1 = cmd_data[cmd_cur + 0].UW32[0];
+   UINT32 w2 = cmd_data[cmd_cur + 0].UW32[1];
+
+   INT32 k0 = (w1 >> 13) & 0x1ff;
+   INT32 k1 = (w1 >> 4) & 0x1ff;
+   INT32 k2 = ((w1 & 0xf) << 5) | ((w2 >> 27) & 0x1f);
+   INT32 k3 = (w2 >> 18) & 0x1ff;
+   k0_tf = (SIGN(k0, 9) << 1) + 1;
+   k1_tf = (SIGN(k1, 9) << 1) + 1;
+   k2_tf = (SIGN(k2, 9) << 1) + 1;
+   k3_tf = (SIGN(k3, 9) << 1) + 1;
+   k4 = (w2 >> 9) & 0x1ff;
+ 	k5 = w2 & 0x1ff;
+   return;
 }
 
 static void set_scissor(void)

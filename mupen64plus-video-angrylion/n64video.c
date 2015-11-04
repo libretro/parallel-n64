@@ -55,7 +55,8 @@ INT32 *blender2a_g[2];
 INT32 *blender2a_b[2];
 INT32 *blender2b_a[2];
 
-INT32 k0, k1, k2, k3, k4, k5;
+INT32 k0_tf = 0, k1_tf = 0, k2_tf = 0, k3_tf = 0;
+INT32 k4 = 0, k5 = 0;
 
 TILE tile[8];
 
@@ -1413,17 +1414,12 @@ static void fetch_texel(COLOR *color, int s, int t, UINT32 tilenum)
     case TEXEL_YUV4:
     case TEXEL_YUV8:
         {
-            UINT16 c;
             INT32 u, save;
-            int taddrlow;
 
             taddr = (tbase << 3) + s;
-            taddrlow = taddr >> 1;
-            taddrlow ^= ((t & 1) ? WORD_XOR_DWORD_SWAP : WORD_ADDR_XOR);
-            taddrlow &= 0x3ff;
+            taddr ^= ((t & 1) ? BYTE_XOR_DWORD_SWAP : BYTE_ADDR_XOR);
                     
-            c = tc16[taddrlow];
-            save = u = c >> 8;
+            save = u = __TMEM[taddr & 0x7ff];
             u ^= 0x80;
             if (u & 0x80)
                 u |= 0x100;
@@ -1923,48 +1919,33 @@ static void fetch_texel_quadro(COLOR *color0, COLOR *color1, COLOR *color2, COLO
     case TEXEL_YUV4:
     case TEXEL_YUV8:
         {
-            UINT16 c0, c1, c2, c3;
             INT32 u0, u1, u2, u3, save0, save1, save2, save3;
 
             taddr0 = (tbase0 << 3) + s0;
             taddr1 = (tbase0 << 3) + s1;
             taddr2 = (tbase2 << 3) + s0;
             taddr3 = (tbase2 << 3) + s1;
-            taddrlow0 = taddr0 >> 1;
-            taddrlow1 = taddr1 >> 1;
-            taddrlow2 = taddr2 >> 1;
-            taddrlow3 = taddr3 >> 1;
 
-            xort = (t0 & 1) ? WORD_XOR_DWORD_SWAP : WORD_ADDR_XOR;
-            taddrlow0 ^= xort;
-            taddrlow1 ^= xort;
-            xort = (t1 & 1) ? WORD_XOR_DWORD_SWAP : WORD_ADDR_XOR;
-            taddrlow2 ^= xort;
-            taddrlow3 ^= xort;
+            xort = (t0 & 1) ? BYTE_XOR_DWORD_SWAP : BYTE_ADDR_XOR;
+            taddr0 ^= xort;
+            taddr1 ^= xort;
+            xort = (t1 & 1) ? BYTE_XOR_DWORD_SWAP : BYTE_ADDR_XOR;
+            taddr2 ^= xort;
+            taddr3 ^= xort;
 
-            taddrlow0 &= 0x3ff;
-            taddrlow1 &= 0x3ff;
-            taddrlow2 &= 0x3ff;
-            taddrlow3 &= 0x3ff;
-
-            c0 = tc16[taddrlow0];
-            c1 = tc16[taddrlow1];
-            c2 = tc16[taddrlow2];
-            c3 = tc16[taddrlow3];
-
-            save0 = u0 = c0 >> 8;
+            save0 = u0 = __TMEM[taddr0 & 0x7ff];
             u0 ^= 0x80;
             if (u0 & 0x80)
                 u0 |= 0x100;
-            save1 = u1 = c1 >> 8;
+            save1 = u1 = __TMEM[taddr1 & 0x7ff];
             u1 ^= 0x80;
             if (u1 & 0x80)
                 u1 |= 0x100;
-            save2 = u2 = c2 >> 8;
+            save2 = u2 = __TMEM[taddr2 & 0x7ff];
             u2 ^= 0x80;
             if (u2 & 0x80)
                 u2 |= 0x100;
-            save3 = u3 = c3 >> 8;
+            save3 = u3 = __TMEM[taddr3 & 0x7ff];
             u3 ^= 0x80;
             if (u3 & 0x80)
                 u3 |= 0x100;
@@ -3170,10 +3151,11 @@ void fetch_qword_copy(UINT32* hidword, UINT32* lowdword, INT32 ssss, INT32 ssst,
     }
 }
 
-static void texture_pipeline_cycle(COLOR* TEX, COLOR* prev, INT32 SSS, INT32 SST, UINT32 tilenum, UINT32 cycle)                                            
-{
 #define TRELATIVE(x, y)     ((x) - ((y) << 3));
 #define UPPER ((sfrac + tfrac) & 0x20)
+
+static void texture_pipeline_cycle(COLOR* TEX, COLOR* prev, INT32 SSS, INT32 SST, UINT32 tilenum, UINT32 cycle)                                            
+{
 
 
 
@@ -3185,7 +3167,6 @@ static void texture_pipeline_cycle(COLOR* TEX, COLOR* prev, INT32 SSS, INT32 SST
     int convert = other_modes.convert_one && cycle;
     COLOR t0, t1, t2, t3;
     int sss1, sst1, sss2, sst2;
-    INT32 newk0, newk1, newk2, newk3, invk0, invk1, invk2, invk3;
 
     sss1 = SSS;
     sst1 = SST;
@@ -3232,6 +3213,18 @@ static void texture_pipeline_cycle(COLOR* TEX, COLOR* prev, INT32 SSS, INT32 SST
                 fetch_texel_quadro(&t0, &t1, &t2, &t3, sss1, sss2, sst1, sst2, tilenum);
             else
                 fetch_texel_entlut_quadro(&t0, &t1, &t2, &t3, sss1, sss2, sst1, sst2, tilenum);
+
+            if (tile[tilenum].format == FORMAT_YUV)
+            {
+               t0.r = SIGN(t0.r, 9); 
+               t0.g = SIGN(t0.g, 9); 
+               t1.r = SIGN(t1.r, 9); 
+               t1.g = SIGN(t1.g, 9);
+               t2.r = SIGN(t2.r, 9); 
+               t2.g = SIGN(t2.g, 9);
+               t3.r = SIGN(t3.r, 9); 
+               t3.g = SIGN(t3.g, 9);
+            }
 
             if (!other_modes.mid_texel || sfrac != 0x10 || tfrac != 0x10)
             {
@@ -3298,26 +3291,23 @@ static void texture_pipeline_cycle(COLOR* TEX, COLOR* prev, INT32 SSS, INT32 SST
         }
         else
         {
-            newk0 = SIGN(k0, 9);
-            newk1 = SIGN(k1, 9);
-            newk2 = SIGN(k2, 9);
-            newk3 = SIGN(k3, 9);
-            invk0 = ~newk0; 
-            invk1 = ~newk1; 
-            invk2 = ~newk2; 
-            invk3 = ~newk3;
             if (!other_modes.en_tlut)
                 fetch_texel(&t0, sss1, sst1, tilenum);
             else
                 fetch_texel_entlut(&t0, sss1, sst1, tilenum);
             if (convert)
                 t0 = *prev;
-            t0.r = SIGN(t0.r, 9);
-            t0.g = SIGN(t0.g, 9); 
-            t0.b = SIGN(t0.b, 9);
-            TEX->r = t0.b + ((((newk0 - invk0) * t0.g) + 0x80) >> 8);
-            TEX->g = t0.b + ((((newk1 - invk1) * t0.r + (newk2 - invk2) * t0.g) + 0x80) >> 8);
-            TEX->b = t0.b + ((((newk3 - invk3) * t0.r) + 0x80) >> 8);
+
+            if (tile[tilenum].format == FORMAT_YUV)
+            {
+               t0.r = SIGN(t0.r, 9);
+               t0.g = SIGN(t0.g, 9);
+            }
+
+
+            TEX->r = t0.b + ((k0_tf * t0.g + 0x80) >> 8);
+            TEX->g = t0.b + ((k1_tf * t0.r + k2_tf * t0.g + 0x80) >> 8);
+            TEX->b = t0.b + ((k3_tf * t0.r + 0x80) >> 8);
             TEX->a = t0.b;
         }
         
@@ -3353,22 +3343,18 @@ static void texture_pipeline_cycle(COLOR* TEX, COLOR* prev, INT32 SSS, INT32 SST
         }
         else
         {
-            newk0 = SIGN(k0, 9); 
-            newk1 = SIGN(k1, 9); 
-            newk2 = SIGN(k2, 9); 
-            newk3 = SIGN(k3, 9);
-            invk0 = ~newk0; 
-            invk1 = ~newk1; 
-            invk2 = ~newk2; 
-            invk3 = ~newk3;
             if (convert)
                 t0 = *prev;
-            t0.r = SIGN(t0.r, 9);
-            t0.g = SIGN(t0.g, 9); 
-            t0.b = SIGN(t0.b, 9);
-            TEX->r = t0.b + ((((newk0 - invk0) * t0.g) + 0x80) >> 8);
-            TEX->g = t0.b + ((((newk1 - invk1) * t0.r + (newk2 - invk2) * t0.g) + 0x80) >> 8);
-            TEX->b = t0.b + ((((newk3 - invk3) * t0.r) + 0x80) >> 8);
+            
+            if (tile[tilenum].format == FORMAT_YUV)
+            {
+               t0.r = SIGN(t0.r, 9); 
+               t0.g = SIGN(t0.g, 9);
+            }
+
+            TEX->r = t0.b + ((k0_tf * t0.g + 0x80) >> 8);
+            TEX->g = t0.b + ((k1_tf * t0.r + k2_tf * t0.g + 0x80) >> 8);
+            TEX->b = t0.b + ((k3_tf * t0.r + 0x80) >> 8);
             TEX->a = t0.b;
             TEX->r &= 0x1ff;
             TEX->g &= 0x1ff;
