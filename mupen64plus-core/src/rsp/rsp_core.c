@@ -277,6 +277,10 @@ void do_SP_Task(struct rsp_core* sp)
           unprotect_framebuffers(sp->dp);
           new_frame();
 
+          sp->regs2[SP_PC_REG] &= 0xfff;
+          rsp.doRspCycles(0xffffffff);
+          sp->regs2[SP_PC_REG] |= save_pc;
+
           cp0_update_count();
           if (sp->r4300->mi.regs[MI_INTR_REG] & MI_INTR_SP)
              add_interupt_event(SP_INT, 1000);
@@ -288,6 +292,10 @@ void do_SP_Task(struct rsp_core* sp)
        else if (task == 2)
        {
           /* Audio List */
+          sp->regs2[SP_PC_REG] &= 0xfff;
+          rsp.doRspCycles(0xffffffff);
+          sp->regs2[SP_PC_REG] |= save_pc;
+
           cp0_update_count();
           if (sp->r4300->mi.regs[MI_INTR_REG] & MI_INTR_SP)
              add_interupt_event(SP_INT, 4000/*500*/);
@@ -297,6 +305,10 @@ void do_SP_Task(struct rsp_core* sp)
        else
        {
           /* Unknown list */
+          sp->regs2[SP_PC_REG] &= 0xfff;
+          rsp.doRspCycles(0xffffffff);
+          sp->regs2[SP_PC_REG] |= save_pc;
+
           cp0_update_count();
           if (sp->r4300->mi.regs[MI_INTR_REG] & MI_INTR_SP)
              add_interupt_event(SP_INT, 0/*100*/);
@@ -304,10 +316,6 @@ void do_SP_Task(struct rsp_core* sp)
           sp->regs[SP_STATUS_REG] &= ~0x200; /* task done (SP_STATUS_SIG2) */
        }
     }
-
-    sp->regs2[SP_PC_REG] &= 0xfff;
-    rsp.doRspCycles(0xffffffff);
-    sp->regs2[SP_PC_REG] |= save_pc;
 
     if (task == 1 && (sp->r4300->mi.regs[MI_INTR_REG] & MI_INTR_DP))
     {
