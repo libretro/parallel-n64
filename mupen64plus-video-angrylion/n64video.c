@@ -310,6 +310,7 @@ INT32 ge_two_table[128];
 INT32 log2table[256];
 INT32 tcdiv_table[0x8000];
 UINT8 bldiv_hwaccurate_table[0x8000];
+UINT16 deltaz_comparator_lut[0x10000];
 INT32 clamp_t_diff[8];
 INT32 clamp_s_diff[8];
 CVtcmaskDERIVATIVE cvarray[0x100];
@@ -1137,6 +1138,20 @@ static void precalculate_everything(void)
         }
         bldiv_hwaccurate_table[i] = res;
     }
+
+    deltaz_comparator_lut[0] = 0;
+    for (i = 1; i < 0x10000; i++)
+    {
+       for (k = 15; k >= 0; k--)
+       {
+          if (i & (1 << k))
+          {
+             deltaz_comparator_lut[i] = 1 << k;
+             break;
+          }
+       }
+    }
+
     return;
 }
 
@@ -6131,20 +6146,18 @@ static UINT32 z_compare(UINT32 zcurpixel, UINT32 sz, UINT16 dzpix, int dzpixenc,
             {
                 dzmemmodifier = 16 >> precision_factor;
                 dzmem <<= 1;
-                if (dzmem <= dzmemmodifier)
+                if (dzmem < dzmemmodifier)
                     dzmem = dzmemmodifier;
             }
             else
             {
                 force_coplanar = 1;
-                dzmem <<= 1;
+                dzmem = 0xffff;
             }
             
         }
-        if (dzmem > 0x8000)
-            dzmem = 0xffff;
 
-        dznew = (dzmem > dzpix) ? dzmem : (UINT32)dzpix;
+        dznew = (UINT32)deltaz_comparator_lut[dzpix | dzmem];
         dznotshift = dznew;
         dznew <<= 3;
         
