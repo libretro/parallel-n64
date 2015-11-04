@@ -257,6 +257,7 @@ UINT32 vi_integer_sqrt(UINT32 a);
 
 static INT32 lod_frac = 0;
 UINT32 DebugMode = 0, DebugMode2 = 0;
+INT32 DebugMode3 = 0;
 int debugcolor = 0;
 struct {UINT32 shift; UINT32 add;} z_dec_table[8] = {
      6, 0x00000,
@@ -5480,12 +5481,12 @@ static void compute_cvg_flip(INT32 scanline)
                   cvgbuf[k] &= ~fmaskshifted;
 
 
-               if (minorcurint != majorcurint)
+               if (minorcurint > majorcurint)
                {
                   cvgbuf[minorcurint] |= (rightcvghex(minorcur, fmask) << maskshift);
                   cvgbuf[majorcurint] |= (leftcvghex(majorcur, fmask) << maskshift);
                }
-               else
+               else if (minorcurint == majorcurint)
                {
                   samecvg = rightcvghex(minorcur, fmask) & leftcvghex(majorcur, fmask);
                   cvgbuf[majorcurint] |= (samecvg << maskshift);
@@ -5535,12 +5536,12 @@ static void compute_cvg_noflip(INT32 scanline)
                 for (k = majorcurint; k <= purgeend; k++)
                    cvgbuf[k] &= ~fmaskshifted;
 
-                if (minorcurint != majorcurint)
+                if (majorcurint > minorcurint)
                 {
                     cvgbuf[minorcurint] |= (leftcvghex(minorcur, fmask) << maskshift);
                     cvgbuf[majorcurint] |= (rightcvghex(majorcur, fmask) << maskshift);
                 }
-                else
+                else if (minorcurint == majorcurint)
                 {
                     samecvg = leftcvghex(minorcur, fmask) & rightcvghex(majorcur, fmask);
                     cvgbuf[majorcurint] |= (samecvg << maskshift);
