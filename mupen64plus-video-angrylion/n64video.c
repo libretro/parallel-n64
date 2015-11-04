@@ -7028,9 +7028,10 @@ static void tclod_1cycle_current(INT32* sss, INT32* sst, INT32 nexts, INT32 next
             }
             else
             {
-                fars = (span[nextscan].stwz[0] + dsinc) >> 16;
-                fart = (span[nextscan].stwz[1] + dtinc) >> 16;
-                farsw = (span[nextscan].stwz[2] + dwinc) >> 16;
+               ALIGNED INT32 *stwz_ptr = (ALIGNED INT32*)&span[nextscan].stwz[0];
+                fars =  (stwz_ptr[0] + dsinc) >> 16;
+                fart =  (stwz_ptr[1] + dtinc) >> 16;
+                farsw = (stwz_ptr[2] + dwinc) >> 16;
             }
         }
         else
@@ -7104,12 +7105,14 @@ static void tclod_1cycle_current_simple(INT32* sss, INT32* sst, INT32 s, INT32 t
             }
             else
             {
-                nexts = span[nextscan].stwz[0] >> 16;
-                nextt = span[nextscan].stwz[1] >> 16;
-                nextsw = span[nextscan].stwz[2] >> 16;
-                fars = (span[nextscan].stwz[0] + dsinc) >> 16;
-                fart = (span[nextscan].stwz[1] + dtinc) >> 16;
-                farsw = (span[nextscan].stwz[2] + dwinc) >> 16;
+               ALIGNED INT32 *stwz_ptr = (ALIGNED INT32*)&span[nextscan].stwz[0];
+
+                nexts  = stwz_ptr[0] >> 16;
+                nextt  = stwz_ptr[1] >> 16;
+                nextsw = stwz_ptr[2] >> 16;
+                fars   = (stwz_ptr[0] + dsinc) >> 16;
+                fart   = (stwz_ptr[1] + dtinc) >> 16;
+                farsw  = (stwz_ptr[2] + dwinc) >> 16;
             }
         }
         else
@@ -7344,10 +7347,11 @@ STRICTINLINE void get_texel1_1cycle(INT32* s1, INT32* t1, INT32 s, INT32 t, INT3
     else
     {
         INT32 nextscan = scanline + 1;
+        ALIGNED INT32 *stwz_ptr = (ALIGNED INT32*)&span[nextscan].stwz[0];
 
-        nexts = span[nextscan].stwz[0] >> 16;
-        nextt = span[nextscan].stwz[1] >> 16;
-        nextsw = span[nextscan].stwz[2] >> 16;
+        nexts  = stwz_ptr[0] >> 16;
+        nextt  = stwz_ptr[1] >> 16;
+        nextsw = stwz_ptr[2] >> 16;
     }
     tcdiv_ptr(nexts, nextt, nextsw, s1, t1);
     return;
