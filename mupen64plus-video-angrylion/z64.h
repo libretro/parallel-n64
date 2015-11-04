@@ -188,15 +188,8 @@ typedef unsigned int offs_t;
         backr[numoffull] = GET_HI(pix);               \
         backg[numoffull] = GET_MED(pix);              \
         backb[numoffull] = GET_LOW(pix);              \
-        invr[numoffull] = (~backr[numoffull]) & 0xFF; \
-        invg[numoffull] = (~backg[numoffull]) & 0xFF; \
-        invb[numoffull] = (~backb[numoffull]) & 0xFF; \
-    } else {                                          \
-        backr[numoffull] = invr[numoffull] = 0;       \
-        backg[numoffull] = invg[numoffull] = 0;       \
-        backb[numoffull] = invb[numoffull] = 0;       \
+       numoffull++;                                      \
     }                                                 \
-    numoffull++;                                      \
 }
 #define VI_ANDER32(x) {                               \
    RREADIDX32(pix, (x));                              \
@@ -205,15 +198,8 @@ typedef unsigned int offs_t;
         backr[numoffull] = (pix >> 24) & 0xFF;        \
         backg[numoffull] = (pix >> 16) & 0xFF;        \
         backb[numoffull] = (pix >>  8) & 0xFF;        \
-        invr[numoffull] = (~backr[numoffull]) & 0xFF; \
-        invg[numoffull] = (~backg[numoffull]) & 0xFF; \
-        invb[numoffull] = (~backb[numoffull]) & 0xFF; \
-    } else {                                          \
-        backr[numoffull] = invr[numoffull] = 0;       \
-        backg[numoffull] = invg[numoffull] = 0;       \
-        backb[numoffull] = invb[numoffull] = 0;       \
-    }                                                 \
-    numoffull++;                                      \
+       numoffull++;                                      \
+    }                                           \
 }
 #define VI_COMPARE(x) {                      \
    addr = (x);                               \

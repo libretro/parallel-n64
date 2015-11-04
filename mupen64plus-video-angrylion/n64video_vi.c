@@ -41,7 +41,7 @@ STRICTINLINE static void restore_filter32(
 static void gamma_filters(unsigned char* argb, int gamma_and_dither);
 static void adjust_brightness(unsigned char* argb, int brightcoeff);
 STRICTINLINE static void vi_vl_lerp(CCVG* up, CCVG down, UINT32 frac);
-STRICTINLINE static void video_max_optimized(UINT32* Pixels, UINT32* pen);
+STRICTINLINE static void video_max_optimized(UINT32* Pixels, UINT32* penumin, UINT32* penumax, int numofels);
 
 STRICTINLINE static void vi_fetch_filter16(
     CCVG* res, UINT32 fboffset, UINT32 cur_x, UINT32 fsaa, UINT32 dither_filter,
@@ -730,7 +730,6 @@ STRICTINLINE static void video_filter16(
     UINT32 hidval;
     UINT32 r, g, b; 
     UINT32 backr[7], backg[7], backb[7];
-    UINT32 invr[7], invg[7], invb[7];
     UINT32 colr, colg, colb;
 
     UINT32 idx = (fboffset >> 1) + num;
@@ -749,9 +748,6 @@ STRICTINLINE static void video_filter16(
     backr[0] = r;
     backg[0] = g;
     backb[0] = b;
-    invr[0] = (~r) & 0xff;
-    invg[0] = (~g) & 0xff;
-    invb[0] = (~b) & 0xff;
 
     VI_ANDER(leftup);
     VI_ANDER(rightup);
@@ -760,16 +756,9 @@ STRICTINLINE static void video_filter16(
     VI_ANDER(leftdown);
     VI_ANDER(rightdown);
 
-    video_max_optimized(&backr[0], &penumaxr);
-    video_max_optimized(&backg[0], &penumaxg);
-    video_max_optimized(&backb[0], &penumaxb);
-    video_max_optimized(&invr[0], &penuminr);
-    video_max_optimized(&invg[0], &penuming);
-    video_max_optimized(&invb[0], &penuminb);
-
-    penuminr = (~penuminr) & 0xFF;
-    penuming = (~penuming) & 0xFF;
-    penuminb = (~penuminb) & 0xFF;
+    video_max_optimized(backr, &penuminr, &penumaxr, numoffull);
+	video_max_optimized(backg, &penuming, &penumaxg, numoffull);
+	video_max_optimized(backb, &penuminb, &penumaxb, numoffull);
 
     colr = penuminr + penumaxr - (r << 1);
     colg = penuming + penumaxg - (g << 1);
@@ -794,7 +783,6 @@ STRICTINLINE static void video_filter32(
     UINT32 pix = 0, pixcvg = 0;
     UINT32 r, g, b; 
     UINT32 backr[7], backg[7], backb[7];
-    UINT32 invr[7], invg[7], invb[7];
     UINT32 colr, colg, colb;
 
     UINT32 idx = (fboffset >> 2) + num;
@@ -813,9 +801,6 @@ STRICTINLINE static void video_filter32(
     backr[0] = r;
     backg[0] = g;
     backb[0] = b;
-    invr[0] = (~r) & 0xff;
-    invg[0] = (~g) & 0xff;
-    invb[0] = (~b) & 0xff;
 
     VI_ANDER32(leftup);
     VI_ANDER32(rightup);
@@ -824,16 +809,9 @@ STRICTINLINE static void video_filter32(
     VI_ANDER32(leftdown);
     VI_ANDER32(rightdown);
 
-    video_max_optimized(&backr[0], &penumaxr);
-    video_max_optimized(&backg[0], &penumaxg);
-    video_max_optimized(&backb[0], &penumaxb);
-    video_max_optimized(&invr[0], &penuminr);
-    video_max_optimized(&invg[0], &penuming);
-    video_max_optimized(&invb[0], &penuminb);
-
-    penuminr = (~penuminr) & 0xFF;
-    penuming = (~penuming) & 0xFF;
-    penuminb = (~penuminb) & 0xFF;
+    video_max_optimized(backr, &penuminr, &penumaxr, numoffull);
+    video_max_optimized(backg, &penuming, &penumaxg, numoffull);
+    video_max_optimized(backb, &penuminb, &penumaxb, numoffull);
 
     colr = penuminr + penumaxr - (r << 1);
     colg = penuming + penumaxg - (g << 1);
@@ -1063,35 +1041,46 @@ STRICTINLINE static void vi_vl_lerp(CCVG* up, CCVG down, UINT32 frac)
     return;
 }
 
-STRICTINLINE static void video_max_optimized(UINT32* Pixels, UINT32* pen)
+STRICTINLINE void video_max_optimized(UINT32* pixels, UINT32* penumin, UINT32* penumax, int numofels)
 {
-    int i;
-    int pos;
-    UINT32 max;
-    UINT32 curpen = Pixels[0];
+	int i;
+	UINT32 max, min;
+	int posmax = 0, posmin = 0;
+	UINT32 curpenmax = pixels[0], curpenmin = pixels[0];
 
-    pos = 0;
-    for (i = 1; i < 7; i++)
-    {
-        if (Pixels[i] > Pixels[pos])
-        {
-            curpen = Pixels[pos];
-            pos = i;            
-        }
-    }
-    max = Pixels[pos];
-    if (curpen != max)
-    {
-        for (i = pos + 1; i < 7; i++)
-        {
-            if (Pixels[i] > curpen)
-            {
-                curpen = Pixels[i];
-            }
-        }
-    }
-    *pen = curpen;
-    return;
+	for (i = 1; i < numofels; i++)
+	{
+	    if (pixels[i] > pixels[posmax])
+		{
+			curpenmax = pixels[posmax];
+			posmax = i;			
+		}
+		else if (pixels[i] < pixels[posmin])
+		{
+			curpenmin = pixels[posmin];
+			posmin = i;
+		}
+	}
+	max = pixels[posmax];
+	min = pixels[posmin];
+	if (curpenmax != max)
+	{
+		for (i = posmax + 1; i < numofels; i++)
+		{
+			if (pixels[i] > curpenmax)
+				curpenmax = pixels[i];
+		}
+	}
+	if (curpenmin != min)
+	{
+		for (i = posmin + 1; i < numofels; i++)
+		{
+			if (pixels[i] < curpenmin)
+				curpenmin = pixels[i];
+		}
+	}
+	*penumax = curpenmax;
+	*penumin = curpenmin;
 }
 
 NOINLINE void DisplayError(char * error)
