@@ -6256,47 +6256,47 @@ INLINE void calculate_tile_derivs(UINT32 i)
 
 static void rgb_dither_complete(int* r, int* g, int* b, int dith)
 {
-    if ((*r & 7) > dith)
-    {
-        if (*r > 247)
-            *r = 255;
-        else
-            *r = (*r & 0xf8) + 8;
-    }
-    if (other_modes.rgb_dither_sel != 2)
-    {
-        if ((*g & 7) > dith)
-        {
-            if (*g > 247)
-                *g = 255;
-            else
-                *g = (*g & 0xf8) + 8;
-        }
-        if ((*b & 7) > dith)
-        {
-            if (*b > 247)
-                *b = 255;
-            else
-                *b = (*b & 0xf8) + 8;
-        }
-    }
-    else
-    {
-        if ((*g & 7) > ((dith + 3) & 7))
-        {
-            if (*g > 247)
-                *g = 255;
-            else
-                *g = (*g & 0xf8) + 8;
-        }
-        if ((*b & 7) > ((dith + 5) & 7))
-        {
-            if (*b > 247)
-                *b = 255;
-            else
-                *b = (*b & 0xf8) + 8;
-        }
-    }
+   INT32 newr = *r, newg = *g, newb = *b;
+	INT32 rcomp = dith, gcomp, bcomp;
+
+	
+	if (newr > 247)
+		newr = 255;
+	else
+		newr = (newr & 0xf8) + 8;
+	if (newg > 247)
+		newg = 255;
+	else
+		newg = (newg & 0xf8) + 8;
+	if (newb > 247)
+		newb = 255;
+	else
+		newb = (newb & 0xf8) + 8;
+
+	if (other_modes.rgb_dither_sel != 2)
+		gcomp = bcomp = dith;
+	else
+	{
+		gcomp = (dith + 3) & 7;
+		bcomp = (dith + 5) & 7;
+	}
+
+	
+	
+	
+	
+	INT32 replacesign = (rcomp - (*r & 7)) >> 31;
+	
+	INT32 ditherdiff = newr - *r;
+	*r = *r + (ditherdiff & replacesign);
+
+	replacesign = (gcomp - (*g & 7)) >> 31;
+	ditherdiff = newg - *g;
+	*g = *g + (ditherdiff & replacesign);
+
+	replacesign = (bcomp - (*b & 7)) >> 31;
+	ditherdiff = newb - *b;
+	*b = *b + (ditherdiff & replacesign);
 }
 
 static void rgb_dither_nothing(int* r, int* g, int* b, int dith)
