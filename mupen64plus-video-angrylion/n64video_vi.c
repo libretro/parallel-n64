@@ -658,11 +658,16 @@ STRICTINLINE static void vi_fetch_filter16(
     UINT32 idx = (fboffset >> 1) + cur_x;
     UINT32 fbw = vi_width & 0xfff;
 
-    PAIRREAD16(pix, hval, idx); 
     if (fsaa)
-        cur_cvg = ((pix & 1) << 2) | hval;
+    {
+       PAIRREAD16(pix, hval, idx); 
+       cur_cvg = ((pix & 1) << 2) | hval;
+    }
     else
-        cur_cvg = 7;
+    {
+       RREADIDX16(pix, idx);
+       cur_cvg = 7;
+    }
     r = GET_HI(pix);
     g = GET_MED(pix);
     b = GET_LOW(pix);
