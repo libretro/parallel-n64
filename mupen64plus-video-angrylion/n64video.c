@@ -4914,10 +4914,13 @@ NOINLINE void loading_pipeline(
             get_tmem_idx(sss, sst, tilenum, &tmemidx0, &tmemidx1, &tmemidx2, &tmemidx3, &bit3fl, &hibit);
 
             readidx32 = (tiptr >> 2) & ~1;
-            readval0 = RREADIDX32(readidx32);
-            readval1 = RREADIDX32(readidx32 + 1);
-            readval2 = RREADIDX32(readidx32 + 2);
-            readval3 = RREADIDX32(readidx32 + 3);
+            RREADIDX32(readval0, readidx32);
+            readidx32++;
+            RREADIDX32(readval1, readidx32);
+            readidx32++;
+            RREADIDX32(readval2, readidx32);
+            readidx32++;
+            RREADIDX32(readval3, readidx32);
 
             switch (tiptr & 7)
             {
@@ -5700,16 +5703,13 @@ void fbread2_4(UINT32 curpixel, UINT32* curpixel_memcvg)
 
 void fbread_8(UINT32 curpixel, UINT32* curpixel_memcvg)
 {
-    u8 color;
-    register unsigned long addr;
+   UINT8 mem;
+   UINT32 addr = fb_address + curpixel;
+   RREADADDR8(mem, addr);
 
-    addr  = fb_address + 1*curpixel;
-    addr &= 0x00FFFFFF;
-    color = RREADADDR8(addr);
-
-    memory_color.r = color;
-    memory_color.g = color;
-    memory_color.b = color;
+    memory_color.r = mem;
+    memory_color.g = mem;
+    memory_color.b = mem;
     memory_color.a = 0xE0;
     *curpixel_memcvg = 7;
     return;
@@ -5717,16 +5717,13 @@ void fbread_8(UINT32 curpixel, UINT32* curpixel_memcvg)
 
 void fbread2_8(UINT32 curpixel, UINT32* curpixel_memcvg)
 {
-    u8 color;
-    register unsigned long addr;
+   UINT8 mem;
+	UINT32 addr = fb_address + curpixel;
+	RREADADDR8(mem, addr);
 
-    addr  = fb_address + 1*curpixel;
-    addr &= 0x00FFFFFF;
-    color = RREADADDR8(addr);
-
-    pre_memory_color.r = color;
-    pre_memory_color.g = color;
-    pre_memory_color.b = color;
+    pre_memory_color.r = mem;
+    pre_memory_color.g = mem;
+    pre_memory_color.b = mem;
     pre_memory_color.a = 0xE0;
     *curpixel_memcvg = 7;
     return;
@@ -5796,19 +5793,14 @@ void fbread2_16(UINT32 curpixel, UINT32* curpixel_memcvg)
 
 void fbread_32(UINT32 curpixel, UINT32* curpixel_memcvg)
 {
-    u32 color;
-    register unsigned long addr;
+    UINT32 mem, addr = (fb_address >> 2) + curpixel;
+    RREADIDX32(mem, addr);
 
-    addr  = fb_address + 4*curpixel;
-    addr &= 0x00FFFFFF;
-    addr  = addr >> 2;
-    color = RREADIDX32(addr);
+    memory_color.r = (mem >> 24) & 0xFF;
+    memory_color.g = (mem >> 16) & 0xFF;
+    memory_color.b = (mem >>  8) & 0xFF;
 
-    memory_color.r = (color >> 24) & 0xFF;
-    memory_color.g = (color >> 16) & 0xFF;
-    memory_color.b = (color >>  8) & 0xFF;
-
-    memory_color.a  = (color >>  0) & 0xFF;
+    memory_color.a  = (mem >>  0) & 0xFF;
     memory_color.a |= ~(-other_modes.image_read_en);
     memory_color.a &= 0xE0;
 
@@ -5818,19 +5810,14 @@ void fbread_32(UINT32 curpixel, UINT32* curpixel_memcvg)
 
 void fbread2_32(UINT32 curpixel, UINT32* curpixel_memcvg)
 {
-    u32 color;
-    register unsigned long addr;
+   UINT32 mem, addr = (fb_address >> 2) + curpixel; 
+   RREADIDX32(mem, addr);
 
-    addr  = fb_address + 4*curpixel;
-    addr &= 0x00FFFFFF;
-    addr  = addr >> 2;
-    color = RREADIDX32(addr);
+    pre_memory_color.r = (mem >> 24) & 0xFF;
+    pre_memory_color.g = (mem >> 16) & 0xFF;
+    pre_memory_color.b = (mem >>  8) & 0xFF;
 
-    pre_memory_color.r = (color >> 24) & 0xFF;
-    pre_memory_color.g = (color >> 16) & 0xFF;
-    pre_memory_color.b = (color >>  8) & 0xFF;
-
-    pre_memory_color.a  = (color >>  0) & 0xFF;
+    pre_memory_color.a  = (mem >>  0) & 0xFF;
     pre_memory_color.a |= ~(-other_modes.image_read_en);
     pre_memory_color.a &= 0xE0;
 

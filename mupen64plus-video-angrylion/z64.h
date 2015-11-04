@@ -96,6 +96,8 @@ typedef int8_t INT8;
 #define PRESCALE_WIDTH 640
 #define PRESCALE_HEIGHT 625
 
+#define RDRAM_MASK 0x00ffffff
+
 typedef unsigned int offs_t;
 
 #define GET_GFX_INFO(member)    (gfx_info.member)
@@ -140,21 +142,16 @@ typedef unsigned int offs_t;
 #define GET_MED(x)      (((x) & 0x07C0) >> 3)
 #define GET_HI(x)       (((x) >> 8) & 0x00F8)
 
-#define RREADADDR8(in) \
-    (((in) <= plim) ? (rdram_8[(in) ^ BYTE_ADDR_XOR]) : 0)
-#define RREADIDX16(in) \
-    (((in) <= idxlim16) ? (rdram_16[(in) ^ WORD_ADDR_XOR]) : 0)
-#define RREADIDX32(in) \
-    (((in) <= idxlim32) ? (rdram[(in)]) : 0)
+#define RREADADDR8(rdst, in) {(in) &= RDRAM_MASK; (rdst) = ((in) <= plim) ? (rdram_8[(in) ^ BYTE_ADDR_XOR]) : 0;}
+#define RREADIDX16(rdst, in) {(in) &= (RDRAM_MASK >> 1); (rdst) = ((in) <= idxlim16) ? (rdram_16[(in) ^ WORD_ADDR_XOR]) : 0;}
+#define RREADIDX32(rdst, in) {(in) &= (RDRAM_MASK >> 2); (rdst) = ((in) <= idxlim32) ? (rdram[(in)]) : 0;}
 
-#define RWRITEADDR8(in, val) { \
-    if ((in) <= plim) rdram_8[(in) ^ BYTE_ADDR_XOR] = (val);}
-#define RWRITEIDX16(in, val) { \
-    if ((in) <= idxlim16) rdram_16[(in) ^ WORD_ADDR_XOR] = (val);}
-#define RWRITEIDX32(in, val) { \
-    if ((in) <= idxlim32) rdram[(in)] = (val);}
+#define RWRITEADDR8(in, val)	{(in) &= RDRAM_MASK; if ((in) <= plim) rdram_8[(in) ^ BYTE_ADDR_XOR] = (val);}
+#define RWRITEIDX16(in, val)	{(in) &= (RDRAM_MASK >> 1); if ((in) <= idxlim16) rdram_16[(in) ^ WORD_ADDR_XOR] = (val);}
+#define RWRITEIDX32(in, val)	{(in) &= (RDRAM_MASK >> 2); if ((in) <= idxlim32) rdram[(in)] = (val);}
 
 #define PAIRREAD16(rdst, hdst, in) {             \
+   (in) &= (RDRAM_MASK >> 1);			             \
     if ((in) <= idxlim16) {                      \
         (rdst) = rdram_16[(in) ^ WORD_ADDR_XOR]; \
         (hdst) = hidden_bits[(in)];              \
@@ -162,12 +159,14 @@ typedef unsigned int offs_t;
         (rdst) = (hdst) = 0;                     \
 }
 #define PAIRWRITE16(in, rval, hval) {            \
+   (in) &= (RDRAM_MASK >> 1);	                   \
     if ((in) <= idxlim16) {                      \
         rdram_16[(in) ^ WORD_ADDR_XOR] = (rval); \
         hidden_bits[(in)] = (hval);              \
     }                                            \
 }
 #define PAIRWRITE32(in, rval, hval0, hval1) {    \
+   (in) &= (RDRAM_MASK >> 2);                    \
     if ((in) <= idxlim32) {                      \
         rdram[(in)] = (rval);                    \
         hidden_bits[(in) << 1] = (hval0);        \
@@ -175,6 +174,7 @@ typedef unsigned int offs_t;
     }                                            \
 }
 #define PAIRWRITE8(in, rval, hval) {             \
+   (in) &= RDRAM_MASK;                           \
     if ((in) <= plim) {                          \
         rdram_8[(in) ^ BYTE_ADDR_XOR] = (rval);  \
         if ((in) & 1)                            \
@@ -199,7 +199,7 @@ typedef unsigned int offs_t;
     numoffull++;                                      \
 }
 #define VI_ANDER32(x) {                               \
-    pix = RREADIDX32(x);                              \
+   RREADIDX32(pix, (x));                              \
     pixcvg = (pix >> 5) & 7;                          \
     if (pixcvg == 7) {                                \
         backr[numoffull] = (pix >> 24) & 0xFF;        \
@@ -216,7 +216,8 @@ typedef unsigned int offs_t;
     numoffull++;                                      \
 }
 #define VI_COMPARE(x) {                      \
-    pix = RREADIDX16((x));                   \
+   addr = (x);                               \
+   RREADIDX16(pix, addr);                    \
     tempr = (pix >> 6) & 0x03E0;             \
     tempg = (pix >> 1) & 0x03E0;             \
     tempb = (pix << 4) & 0x03E0;             \
@@ -225,7 +226,8 @@ typedef unsigned int offs_t;
     bend += vi_restore_table[tempb | bcomp]; \
 }
 #define VI_COMPARE32(x) {                    \
-    pix = RREADIDX32(x);                     \
+   addr = (x);                               \
+   RREADIDX32(pix, addr);                    \
     tempr = (pix >> 19) & 0x03E0;            \
     tempg = (pix >> 11) & 0x03E0;            \
     tempb = (pix >>  3) & 0x03E0;            \

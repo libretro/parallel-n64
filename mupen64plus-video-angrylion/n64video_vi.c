@@ -690,8 +690,9 @@ STRICTINLINE static void vi_fetch_filter32(
 {
     int r, g, b;
     UINT32 cur_cvg;
-    UINT32 pix = RREADIDX32((fboffset >> 2) + cur_x);
     UINT32 fbw = vi_width & 0xfff;
+    UINT32 pix, addr = (fboffset >> 2) + cur_x;
+    RREADIDX32(pix, addr);
 
     if (fsaa)
         cur_cvg = (pix >> 5) & 7;
@@ -891,6 +892,7 @@ STRICTINLINE static void restore_filter16(
 {
     UINT32 tempr, tempg, tempb;
     UINT16 pix;
+    UINT32 addr;
 
     UINT32 idx = (fboffset >> 1) + num;
     UINT32 leftuppix = idx - hres - 1;
@@ -923,7 +925,7 @@ STRICTINLINE static void restore_filter32(
     int* r, int* g, int* b, UINT32 fboffset, UINT32 num, UINT32 hres)
 {
     UINT32 tempr, tempg, tempb;
-    UINT32 pix;
+    UINT32 pix, addr;
 
     UINT32 idx = (fboffset >> 2) + num;
     UINT32 leftuppix = idx - hres - 1;
