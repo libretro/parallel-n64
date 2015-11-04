@@ -876,22 +876,37 @@ STRICTINLINE static void restore_filter16(
     UINT32 leftuppix = idx - hres - 1;
     UINT32 leftdownpix = idx + hres - 1;
     UINT32 toleftpix = idx - 1;
+    UINT32 maxpix = idx + hres + 1;
 
-    UINT32 rend = *r;
-    UINT32 gend = *g;
-    UINT32 bend = *b;
-    UINT32 rcomp = (rend >> 3) & 31;
-    UINT32 gcomp = (gend >> 3) & 31;
-    UINT32 bcomp = (bend >> 3) & 31;
+    INT32 rend = *r;
+	INT32 gend = *g;
+	INT32 bend = *b;
+	const INT32* redptr = &vi_restore_table[(rend << 2) & 0x3e0];
+	const INT32* greenptr = &vi_restore_table[(gend << 2) & 0x3e0];
+	const INT32* blueptr = &vi_restore_table[(bend << 2) & 0x3e0];
 
-    VI_COMPARE(leftuppix);
-    VI_COMPARE(leftuppix + 1);
-    VI_COMPARE(leftuppix + 2);
-    VI_COMPARE(leftdownpix);
-    VI_COMPARE(leftdownpix + 1);
-    VI_COMPARE(leftdownpix + 2);
-    VI_COMPARE(toleftpix);
-    VI_COMPARE(toleftpix + 2);
+    if (maxpix <= idxlim16 && leftuppix <= idxlim16)
+	{
+		VI_COMPARE_OPT(leftuppix);
+		VI_COMPARE_OPT(leftuppix + 1);
+		VI_COMPARE_OPT(leftuppix + 2);
+		VI_COMPARE_OPT(leftdownpix);
+		VI_COMPARE_OPT(leftdownpix + 1);
+		VI_COMPARE_OPT(maxpix);
+		VI_COMPARE_OPT(toleftpix);
+		VI_COMPARE_OPT(toleftpix + 2);
+	}
+	else
+	{
+		VI_COMPARE(leftuppix);
+		VI_COMPARE(leftuppix + 1);
+		VI_COMPARE(leftuppix + 2);
+		VI_COMPARE(leftdownpix);
+		VI_COMPARE(leftdownpix + 1);
+		VI_COMPARE(maxpix);
+		VI_COMPARE(toleftpix);
+		VI_COMPARE(toleftpix + 2);
+	}
 
     *r = rend;
     *g = gend;
@@ -909,22 +924,39 @@ STRICTINLINE static void restore_filter32(
     UINT32 leftuppix = idx - hres - 1;
     UINT32 leftdownpix = idx + hres - 1;
     UINT32 toleftpix = idx - 1;
+    UINT32 maxpix = idx + hres + 1;
 
-    UINT32 rend = *r;
-    UINT32 gend = *g;
-    UINT32 bend = *b;
-    UINT32 rcomp = (rend >> 3) & 31;
-    UINT32 gcomp = (gend >> 3) & 31;
-    UINT32 bcomp = (bend >> 3) & 31;
+    INT32 rend = *r;
+    INT32 gend = *g;
+    INT32 bend = *b;
+    const INT32* redptr = &vi_restore_table[(rend << 2) & 0x3e0];
+    const INT32* greenptr = &vi_restore_table[(gend << 2) & 0x3e0];
+    const INT32* blueptr = &vi_restore_table[(bend << 2) & 0x3e0];
 
-    VI_COMPARE32(leftuppix);
-    VI_COMPARE32(leftuppix + 1);
-    VI_COMPARE32(leftuppix + 2);
-    VI_COMPARE32(leftdownpix);
-    VI_COMPARE32(leftdownpix + 1);
-    VI_COMPARE32(leftdownpix + 2);
-    VI_COMPARE32(toleftpix);
-    VI_COMPARE32(toleftpix + 2);
+
+    if (maxpix <= idxlim32 && leftuppix <= idxlim32)
+	{
+		VI_COMPARE32_OPT(leftuppix);
+		VI_COMPARE32_OPT(leftuppix + 1);
+		VI_COMPARE32_OPT(leftuppix + 2);
+		VI_COMPARE32_OPT(leftdownpix);
+		VI_COMPARE32_OPT(leftdownpix + 1);
+		VI_COMPARE32_OPT(maxpix);
+		VI_COMPARE32_OPT(toleftpix);
+		VI_COMPARE32_OPT(toleftpix + 2);
+	}
+	else
+	{
+		VI_COMPARE32(leftuppix);
+		VI_COMPARE32(leftuppix + 1);
+		VI_COMPARE32(leftuppix + 2);
+		VI_COMPARE32(leftdownpix);
+		VI_COMPARE32(leftdownpix + 1);
+		VI_COMPARE32(maxpix);
+		VI_COMPARE32(toleftpix);
+		VI_COMPARE32(toleftpix + 2);
+	}
+
 
     *r = rend;
     *g = gend;

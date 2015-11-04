@@ -1055,9 +1055,9 @@ static void precalculate_everything(void)
 
     for (i = 0; i < 0x400; i++)
     {
-        if (((i >> 5) & 0x1f) > (i & 0x1f))
+        if (((i >> 5) & 0x1f) < (i & 0x1f))
             vi_restore_table[i] = 1;
-        else if (((i >> 5) & 0x1f) < (i & 0x1f))
+        else if (((i >> 5) & 0x1f) > (i & 0x1f))
             vi_restore_table[i] = -1;
         else
             vi_restore_table[i] = 0;

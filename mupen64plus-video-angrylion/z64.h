@@ -204,22 +204,47 @@ typedef unsigned int offs_t;
 #define VI_COMPARE(x) {                      \
    addr = (x);                               \
    RREADIDX16(pix, addr);                    \
-    tempr = (pix >> 6) & 0x03E0;             \
-    tempg = (pix >> 1) & 0x03E0;             \
-    tempb = (pix << 4) & 0x03E0;             \
-    rend += vi_restore_table[tempr | rcomp]; \
-    gend += vi_restore_table[tempg | gcomp]; \
-    bend += vi_restore_table[tempb | bcomp]; \
+   tempr = (pix >> 11) & 0x1f;										\
+	tempg = (pix >> 6) & 0x1f;										\
+	tempb = (pix >> 1) & 0x1f;										\
+	rend += redptr[tempr];											\
+	gend += greenptr[tempg];										\
+	bend += blueptr[tempb];                               \
 }
+
+#define VI_COMPARE_OPT(x)											\
+{																	\
+	addr = (x);														\
+	pix = rdram_16[addr ^ WORD_ADDR_XOR];							\
+	tempr = (pix >> 11) & 0x1f;										\
+	tempg = (pix >> 6) & 0x1f;										\
+	tempb = (pix >> 1) & 0x1f;										\
+	rend += redptr[tempr];											\
+	gend += greenptr[tempg];										\
+	bend += blueptr[tempb];											\
+}
+
 #define VI_COMPARE32(x) {                    \
    addr = (x);                               \
    RREADIDX32(pix, addr);                    \
-    tempr = (pix >> 19) & 0x03E0;            \
-    tempg = (pix >> 11) & 0x03E0;            \
-    tempb = (pix >>  3) & 0x03E0;            \
-    rend += vi_restore_table[tempr | rcomp]; \
-    gend += vi_restore_table[tempg | gcomp]; \
-    bend += vi_restore_table[tempb | bcomp]; \
+   tempr = (pix >> 27) & 0x1f;											\
+	tempg = (pix >> 19) & 0x1f;											\
+	tempb = (pix >> 11) & 0x1f;											\
+	rend += redptr[tempr];												\
+	gend += greenptr[tempg];											\
+	bend += blueptr[tempb];                                  \
+}
+
+#define VI_COMPARE32_OPT(x)													\
+{																		\
+	addr = (x);															\
+	pix = rdram[addr];												\
+	tempr = (pix >> 27) & 0x1f;											\
+	tempg = (pix >> 19) & 0x1f;											\
+	tempb = (pix >> 11) & 0x1f;											\
+	rend += redptr[tempr];												\
+	gend += greenptr[tempg];											\
+	bend += blueptr[tempb];												\
 }
 
 #endif
