@@ -3,6 +3,8 @@
 
 #include "z64.h"
 
+#define OPTS_ENABLED
+
 #ifdef USE_SSE_SUPPORT
 #include <emmintrin.h>
 

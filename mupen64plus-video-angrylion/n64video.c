@@ -6941,10 +6941,15 @@ static void tclod_2cycle_next(INT32* sss, INT32* sst, INT32 s, INT32 t, INT32 w,
         
         if(!other_modes.sharpen_tex_en && !other_modes.detail_tex_en)
         {
-            if (distant)
-                *prelodfrac = 0xff;
-            else if (magnify)
-                *prelodfrac = 0;
+#ifdef OPTS_ENABLED
+           *prelodfrac &= ~magnify;
+           *prelodfrac |=  distant;
+#else
+           if (distant)
+              *prelodfrac = 0xff;
+           else if (magnify)
+              *prelodfrac = 0;
+#endif
         }
 
         
@@ -7246,10 +7251,15 @@ static void tclod_1cycle_next(INT32* sss, INT32* sst, INT32 s, INT32 t, INT32 w,
         
         if(!other_modes.sharpen_tex_en && !other_modes.detail_tex_en)
         {
-            if (distant)
-                *prelodfrac = 0xff;
-            else if (magnify)
-                *prelodfrac = 0;
+#ifdef OPTS_ENABLED
+           *prelodfrac &= ~magnify;
+           *prelodfrac |=  distant;
+#else
+           if (distant)
+              *prelodfrac = 0xff;
+           else if (magnify)
+              *prelodfrac = 0;
+#endif
         }
 
         if(other_modes.sharpen_tex_en && magnify)
