@@ -205,7 +205,7 @@ static void setup_variables(void)
    struct retro_variable variables[] = {
       { "mupen64-cpucore",
 #ifdef DYNAREC
-         "CPU Core; dynamic_recompiler|cached_interpreter|pure_interpreter" },
+         "CPU Core; cached_interpreter|pure_interpreter|dynamic_recompiler" },
 #else
          "CPU Core; cached_interpreter|pure_interpreter" },
 #endif
