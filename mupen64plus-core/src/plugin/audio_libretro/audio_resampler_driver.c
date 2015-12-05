@@ -114,7 +114,8 @@ resampler_simd_mask_t resampler_get_cpu_features(void)
 #ifdef RARCH_INTERNAL
    return rarch_get_cpu_features();
 #else
-   return perf_get_cpu_features_cb();
+/* no features if interface isn't implemented */
+   return perf_get_cpu_features_cb ? perf_get_cpu_features_cb() : 0;
 #endif
 }
 
