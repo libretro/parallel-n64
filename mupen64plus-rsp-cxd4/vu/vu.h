@@ -78,9 +78,7 @@ static void res_M(int vd, int vs, int vt, int e)
    /* Ultra64 OS did have these, so one could implement this ext. */
 }
 
-#include "vabs.h"
-#include "vadd.h"
-#include "vaddc.h"
+#include "add.h"
 #include "logical.h"
 #include "divide.h"
 #include "veq.h"
@@ -96,9 +94,6 @@ static void res_M(int vd, int vs, int vt, int e)
 #include "vmudl.h"
 #include "vmudm.h"
 #include "vmudn.h"
-#include "vsaw.h"
-#include "vsub.h"
-#include "vsubc.h"
 #include "vxor.h"
 
 static void (*COP2_C2[64])(int, int, int, int) = {
