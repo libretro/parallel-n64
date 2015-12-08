@@ -84,7 +84,6 @@ static void res_M(int vd, int vs, int vt, int e)
 #include "veq.h"
 #include "select.h"
 #include "multiply.h"
-#include "vmacq.h"
 #include "vmadh.h"
 #include "vmadl.h"
 #include "vmadm.h"
@@ -98,7 +97,7 @@ static void res_M(int vd, int vs, int vt, int e)
 
 static void (*COP2_C2[64])(int, int, int, int) = {
     VMULF  ,VMULU  ,res_M  ,res_M  ,VMUDL  ,VMUDM  ,VMUDN  ,VMUDH  , /* 000 */
-    VMACF  ,VMACU  ,res_M  ,VMACQ  ,VMADL  ,VMADM  ,VMADN  ,VMADH  , /* 001 */
+    VMACF  ,VMACU  ,res_M  ,res_M  ,VMADL  ,VMADM  ,VMADN  ,VMADH  , /* 001 */
     VADD   ,VSUB   ,res_V  ,VABS   ,VADDC  ,VSUBC  ,res_V  ,res_V  , /* 010 */
     res_V  ,res_V  ,res_V  ,res_V  ,res_V  ,VSAW   ,res_V  ,res_V  , /* 011 */
     VLT    ,VEQ    ,VNE    ,VGE    ,VCL    ,VCH    ,VCR    ,VMRG   , /* 100 */
