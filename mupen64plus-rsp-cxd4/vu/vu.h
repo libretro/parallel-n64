@@ -87,7 +87,7 @@ static void res_M(int vd, int vs, int vt, int e)
 #include "vcr.h"
 #include "veq.h"
 #include "vge.h"
-#include "vlt.h"
+#include "select.h"
 #include "multiply.h"
 #include "vmacq.h"
 #include "vmadh.h"
