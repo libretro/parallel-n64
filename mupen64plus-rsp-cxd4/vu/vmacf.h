@@ -43,9 +43,8 @@ INLINE static void do_macf(short* VD, short* VS, short* VT)
 
 static void VMACF(int vd, int vs, int vt, int e)
 {
-    short ST[N];
+   short ST[N];
 
-    SHUFFLE_VECTOR(ST, VR[vt], e);
-    do_macf(VR[vd], VR[vs], ST);
-    return;
+   SHUFFLE_VECTOR(ST, VR[vt], e);
+   do_macf(VR[vd], VR[vs], ST);
 }
