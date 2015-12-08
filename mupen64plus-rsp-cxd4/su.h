@@ -46,7 +46,7 @@ NOINLINE static void res_S(void)
 #define SLOT_OFF    (BASE_OFF + 0x000)
 #define LINK_OFF    (BASE_OFF + 0x004)
 
-extern int MF_SP_STATUS_TIMEOUT;
+#define MF_SP_STATUS_TIMEOUT 8192
 
 void set_PC(int address)
 {
