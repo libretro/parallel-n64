@@ -251,17 +251,10 @@ MT_CMD_CLOCK       ,MT_READ_ONLY       ,MT_READ_ONLY       ,MT_READ_ONLY
 }; 
 void SP_DMA_READ(void)
 {
-    register unsigned int length;
-    register unsigned int count;
-    register unsigned int skip;
+    register unsigned int length = ((*RSP.SP_RD_LEN_REG & 0x00000FFF) >>  0) + 1;
+    register unsigned int count  = ((*RSP.SP_RD_LEN_REG & 0x000FF000) >> 12) + 1;
+    register unsigned int skip   = ((*RSP.SP_RD_LEN_REG & 0xFFF00000) >> 20) + length;
 
-    length = (*RSP.SP_RD_LEN_REG & 0x00000FFF) >>  0;
-    count  = (*RSP.SP_RD_LEN_REG & 0x000FF000) >> 12;
-    skip   = (*RSP.SP_RD_LEN_REG & 0xFFF00000) >> 20;
-    /* length |= 07; // already corrected by mtc0 */
-    ++length;
-    ++count;
-    skip += length;
     do
     {
        /* `count` always starts > 0, so we begin with `do` instead of `while`. */
@@ -281,15 +274,10 @@ void SP_DMA_READ(void)
 }
 void SP_DMA_WRITE(void)
 {
-    register unsigned int length = (*RSP.SP_WR_LEN_REG & 0x00000FFF) >>  0;
-    register unsigned int count  = (*RSP.SP_WR_LEN_REG & 0x000FF000) >> 12;
-    register unsigned int skip   = (*RSP.SP_WR_LEN_REG & 0xFFF00000) >> 20;
+    register unsigned int length = ((*RSP.SP_WR_LEN_REG & 0x00000FFF) >>  0) + 1;
+    register unsigned int count  = ((*RSP.SP_WR_LEN_REG & 0x000FF000) >> 12) + 1;
+    register unsigned int skip   = ((*RSP.SP_WR_LEN_REG & 0xFFF00000) >> 20) + length;
 
-    /* length |= 07; // already corrected by mtc0 */
-
-    ++length;
-    ++count;
-    skip += length;
     do
     {
        /* `count` always starts > 0, so we begin with `do` instead of `while`. */
@@ -351,9 +339,7 @@ extern short vce[8];
 
 unsigned short rwR_VCE(void)
 { /* never saw a game try to read VCE out to a scalar GPR yet */
-    register unsigned short ret_slot;
-
-    ret_slot = 0x00 | (unsigned short)get_VCE();
+    register unsigned short ret_slot = 0x00 | (unsigned short)get_VCE();
     return (ret_slot);
 }
 
@@ -796,11 +782,10 @@ static void LPV(int vt, int element, int offset, int base)
 }
 static void LUV(int vt, int element, int offset, int base)
 {
-    register uint32_t addr;
     register int b;
     int e = element;
+    register uint32_t addr = (SR[base] + 8*offset) & 0x00000FFF;
 
-    addr = (SR[base] + 8*offset) & 0x00000FFF;
     if (e != 0x0)
     { /* "Mia Hamm Soccer 64" SP exception override (zilmar) */
         addr += -e & 0xF;
@@ -1117,12 +1102,10 @@ static void SHV(int vt, int element, int offset, int base)
 
 static void SFV(int vt, int element, int offset, int base)
 {
-    register uint32_t addr;
     const int e = element;
-
-    addr = (SR[base] + 16*offset) & 0x00000FFF;
-    addr &= 0x00000FF3;
+    register uint32_t addr = ((SR[base] + 16*offset) & 0x00000FFF) & 0x00000FF3;
     addr ^= BES(00);
+
     switch (e)
     {
         case 0x0:
@@ -1284,11 +1267,10 @@ static void LRV(int vt, int element, int offset, int base)
 
 static void SQV(int vt, int element, int offset, int base)
 {
-    register uint32_t addr;
     register int b;
     const unsigned int e = element;
+    register uint32_t addr = (SR[base] + 16*offset) & 0x00000FFF;
 
-    addr = (SR[base] + 16*offset) & 0x00000FFF;
     if (e != 0x0)
     { /* happens with "Mia Hamm Soccer 64" */
         register unsigned int i;
