@@ -100,7 +100,6 @@ static void res_M(int vd, int vs, int vt, int e)
 #include "vmudl.h"
 #include "vmudm.h"
 #include "vmudn.h"
-#include "vmulu.h"
 #include "vnand.h"
 #include "vne.h"
 #include "vnop.h"
