@@ -15,6 +15,8 @@
 #ifndef _SU_H
 #define _SU_H
 
+#include <stdint.h>
+
 /*
  * RSP virtual registers (of scalar unit)
  * The most important are the 32 general-purpose scalar registers.
@@ -1407,7 +1409,7 @@ static void LTV(int vt, int element, int offset, int base)
    if (addr & 0x0000000F) /* LTV, illegal address */
       return;
    for (i = 0; i < 8; i++) /* SGI screwed LTV up on N64.  See STV instead. */
-      VR[vt+i][(-e/2 + i) & 07] = *(short *)(RSP.DMEM + addr + HES(2*i));
+      VR[vt+i][(i - e/2) & 07] = *(int16_t*)(RSP.DMEM + addr + HES(2*i));
 }
 
 static void STV(int vt, int element, int offset, int base)
