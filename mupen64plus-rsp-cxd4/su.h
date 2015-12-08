@@ -455,7 +455,17 @@ static void LLV(int vt, int element, int offset, int base)
     /* Illegal (but still even) elements are used by Boss Game Studios. */
     addr = (SR[base] + 4*offset) & 0x00000FFF;
     if (addr & 0x00000001) /* LLV, Odd address */
-        return;
+    {
+       /* branch very unlikely:  "Star Wars:  Battle for Naboo" unaligned addr */
+       VR_A(vt, e+0x0) = RSP.DMEM[BES(addr)];
+       addr = (addr + 0x00000001) & 0x00000FFF;
+       VR_U(vt, e+0x1) = RSP.DMEM[BES(addr)];
+       addr = (addr + 0x00000001) & 0x00000FFF;
+       VR_A(vt, e+0x2) = RSP.DMEM[BES(addr)];
+       addr = (addr + 0x00000001) & 0x00000FFF;
+       VR_U(vt, e+0x3) = RSP.DMEM[BES(addr)];
+       return;
+    }
 
     correction = HES(0x000)*(addr%0x004 - 1);
     VR_S(vt, e+0x0) = *(short *)(RSP.DMEM + addr - correction);
