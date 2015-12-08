@@ -64,21 +64,22 @@ ALIGNED static short VACC[3][N];
 
 static void res_V(int vd, int vs, int vt, int e)
 {
-    register int i;
+   register int i;
 
-    vs = vt = e = 0;
-    if (vs != vt || vt != e)
-        return;
-    message("C2\nRESERVED", 2); /* uncertain how to handle reserved, untested */
-    for (i = 0; i < N; i++)
-        VR[vd][i] = 0x0000; /* override behavior (bpoint) */
-    return;
+   vs = vt = e = 0;
+   if (vs != vt || vt != e)
+      return;
+   /* C2, RESERVED */
+   /* uncertain how to handle reserved, untested */
+   for (i = 0; i < N; i++)
+      VR[vd][i] = 0x0000; /* override behavior (bpoint) */
 }
+
 static void res_M(int vd, int vs, int vt, int e)
 {
-    message("VMUL IQ", 2);
-    res_V(vd, vs, vt, e);
-    return; /* Ultra64 OS did have these, so one could implement this ext. */
+   /* VMUL IQ */
+   res_V(vd, vs, vt, e);
+   /* Ultra64 OS did have these, so one could implement this ext. */
 }
 
 #include "vabs.h"

@@ -117,11 +117,9 @@ EXPORT int CALL RomOpen(void)
 
 EXPORT unsigned int CALL cxd4DoRspCycles(unsigned int cycles)
 {
-    if (*RSP.SP_STATUS_REG & 0x00000003)
-    {
-        message("SP_STATUS_HALT", 3);
+    if (*RSP.SP_STATUS_REG & 0x00000003) /* SP_STATUS_HALT */
         return 0x00000000;
-    }
+
     switch (*(unsigned int *)(RSP.DMEM + 0xFC0))
     { /* Simulation barrier to redirect processing externally. */
 #ifdef EXTERN_COMMAND_LIST_GBI
@@ -140,7 +138,7 @@ EXPORT unsigned int CALL cxd4DoRspCycles(unsigned int cycles)
             }
             if (*RSP.DPC_STATUS_REG & 0x00000002) /* DPC_STATUS_FREEZE */
             {
-                message("DPC_CLR_FREEZE", 2);
+               /* DPC_CLR_FREEZE */
                 *RSP.DPC_STATUS_REG &= ~0x00000002;
             }
             return 0;
@@ -174,8 +172,11 @@ EXPORT void CALL cxd4InitiateRSP(RSP_INFO Rsp_Info, unsigned int *CycleCount)
 
     if (Rsp_Info.DMEM == Rsp_Info.IMEM) /* usually dummy RSP data for testing */
         return; /* DMA is not executed just because plugin initiates. */
+
+#if 0
     while (Rsp_Info.IMEM != Rsp_Info.DMEM + 4096)
         message("Virtual host map noncontiguity.", 3);
+#endif
 
     RSP = Rsp_Info;
     *RSP.SP_PC_REG = 0x04001000 & 0x00000FFF; /* task init bug on Mupen64 */

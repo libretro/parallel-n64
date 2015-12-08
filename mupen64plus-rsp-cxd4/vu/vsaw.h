@@ -31,9 +31,8 @@ static void VSAR(int vd, int vs, int vt, int e)
     * Currently this code is safer because &= is less likely to catch oddities.
     * Either way, documentation shows that the switch range is 0:2, not 8:A.
     */
-   if (e > 2)
+   if (e > 2) /* VSAR, invalid mask */
    {
-      message("VSAR\nInvalid mask.", 2);
       for (i = 0; i < N; i++)
          VR[vd][i] = 0x0000; /* override behavior (zilmar) */
    }
@@ -55,9 +54,9 @@ static void VSAW(int vd, int vs, int vt, int e)
 
    if (e > 0x2)
    {
+      /* VSAW, illegal mask */
       /* branch very unlikely...never seen a game do VSAW illegally */
       register int i;
-      message("VSAW\nIllegal mask.", 2);
 
       for (i = 0; i < N; i++)
          VR[vd][i] = 0x0000; /* override behavior (zilmar) */

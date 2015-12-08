@@ -449,10 +449,7 @@ BRANCH:
     else if (*RSP.SP_SEMAPHORE_REG != 0x00000000) /* semaphore lock fixes */
         {}
     else /* ??? unknown, possibly external intervention from CPU memory map */
-    {
-        message("SP_SET_HALT", 3);
-        return;
-    }
+        return; /* SP_SET_HALT */
     *RSP.SP_STATUS_REG &= ~0x00000001; /* CPU restarts with the correct SIGs. */
     return;
 }
