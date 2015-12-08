@@ -37,8 +37,6 @@ INLINE static void do_macf(short* VD, short* VS, short* VT)
         VACC_H[i] -= (product[i] < 0);
     for (i = 0; i < N; i++)
         VACC_H[i] += addend[i] >> 16;
-    SIGNED_CLAMP_AM(VD);
-    return;
 }
 
 static void VMACF(int vd, int vs, int vt, int e)
@@ -47,4 +45,14 @@ static void VMACF(int vd, int vs, int vt, int e)
 
    SHUFFLE_VECTOR(ST, VR[vt], e);
    do_macf(VR[vd], VR[vs], ST);
+   SIGNED_CLAMP_AM(VR[vd]);
+}
+
+static void VMACU(int vd, int vs, int vt, int e)
+{
+    short ST[N];
+
+    SHUFFLE_VECTOR(ST, VR[vt], e);
+    do_macf(VR[vd], VR[vs], ST);
+    UNSIGNED_CLAMP(VR[vd]);
 }
