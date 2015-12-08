@@ -283,14 +283,12 @@ void SP_DMA_READ(void)
 }
 void SP_DMA_WRITE(void)
 {
-    register unsigned int length;
-    register unsigned int count;
-    register unsigned int skip;
+    register unsigned int length = (*RSP.SP_WR_LEN_REG & 0x00000FFF) >>  0;
+    register unsigned int count  = (*RSP.SP_WR_LEN_REG & 0x000FF000) >> 12;
+    register unsigned int skip   = (*RSP.SP_WR_LEN_REG & 0xFFF00000) >> 20;
 
-    length = (*RSP.SP_WR_LEN_REG & 0x00000FFF) >>  0;
-    count  = (*RSP.SP_WR_LEN_REG & 0x000FF000) >> 12;
-    skip   = (*RSP.SP_WR_LEN_REG & 0xFFF00000) >> 20;
     /* length |= 07; // already corrected by mtc0 */
+
     ++length;
     ++count;
     skip += length;

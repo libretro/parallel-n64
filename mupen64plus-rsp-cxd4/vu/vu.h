@@ -18,14 +18,10 @@
 #if defined(ARCH_MIN_SSE2)
 #include <emmintrin.h>
 
-#define _mm_cmple_epu16(dst, src) \
-    _mm_cmpeq_epi16(_mm_subs_epu16(dst, src), _mm_setzero_si128())
-#define _mm_cmpgt_epu16(dst, src) \
-    _mm_andnot_si128(_mm_cmpeq_epi16(dst, src), _mm_cmple_epu16(src, dst))
-#define _mm_cmplt_epu16(dst, src) \
-    _mm_cmpgt_epu16(src, dst)
-#define _mm_mullo_epu16(dst, src) \
-    _mm_mullo_epi16(dst, src)
+#define _mm_cmple_epu16(dst, src) _mm_cmpeq_epi16(_mm_subs_epu16(dst, src), _mm_setzero_si128())
+#define _mm_cmpgt_epu16(dst, src) _mm_andnot_si128(_mm_cmpeq_epi16(dst, src), _mm_cmple_epu16(src, dst))
+#define _mm_cmplt_epu16(dst, src) _mm_cmpgt_epu16(src, dst)
+#define _mm_mullo_epu16(dst, src) _mm_mullo_epi16(dst, src)
 #endif
 
 #define N      8
