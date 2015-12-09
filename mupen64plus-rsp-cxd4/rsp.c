@@ -99,16 +99,6 @@ static void res_M(int vd, int vs, int vt, int e)
 #include "vu/select.h"
 #include "vu/multiply.h"
 
-static void (*COP2_C2[64])(int, int, int, int) = {
-    VMULF  ,VMULU  ,res_M  ,res_M  ,VMUDL  ,VMUDM  ,VMUDN  ,VMUDH  , /* 000 */
-    VMACF  ,VMACU  ,res_M  ,res_M  ,VMADL  ,VMADM  ,VMADN  ,VMADH  , /* 001 */
-    VADD   ,VSUB   ,res_V  ,VABS   ,VADDC  ,VSUBC  ,res_V  ,res_V  , /* 010 */
-    res_V  ,res_V  ,res_V  ,res_V  ,res_V  ,VSAW   ,res_V  ,res_V  , /* 011 */
-    VLT    ,VEQ    ,VNE    ,VGE    ,VCL    ,VCH    ,VCR    ,VMRG   , /* 100 */
-    VAND   ,VNAND  ,VOR    ,VNOR   ,VXOR   ,VNXOR  ,res_V  ,res_V  , /* 101 */
-    VRCP   ,VRCPL  ,VRCPH  ,VMOV   ,VRSQ   ,VRSQL  ,VRSQH  ,VNOP   , /* 110 */
-    res_V  ,res_V  ,res_V  ,res_V  ,res_V  ,res_V  ,res_V  ,res_V  , /* 111 */
-}; /* 000     001     010     011     100     101     110     111 */
 
 #include "matrix.h"
 
@@ -1811,6 +1801,167 @@ static void USW(int rs, uint32_t addr)
 /* Allocate the RSP CPU loop to its own functional space. */
 #define FIT_IMEM(PC)    (PC & 0xFFF & 0xFFC)
 
+NOINLINE void run_task_COP2_C2(uint32_t inst)
+{
+   const int opcode = inst % 64; /* inst.R.func */
+   const int vd = (inst & 0x000007FF) >> 6; /* inst.R.sa */
+   const int vs = (unsigned short)(inst) >> 11; /* inst.R.rd */
+   const int vt = (inst >> 16) & 31; /* inst.R.rt */
+   const int e  = (inst >> 21) & 0xF; /* rs & 0xF */
+
+   switch (opcode)
+   {
+      case 0:
+         VMULF(vd, vs, vt, e);
+         break;
+      case 1:
+         VMULU(vd, vs, vt, e);
+         break;
+      case 2:
+      case 3:
+      case 10:
+      case 11:
+         res_M(vd, vs, vt, e);
+         break;
+      case 4:
+         VMUDL(vd, vs, vt, e);
+         break;
+      case 5:
+         VMUDM(vd, vs, vt, e);
+         break;
+      case 6:
+         VMUDN(vd, vs, vt, e);
+         break;
+      case 7:
+         VMUDH(vd, vs, vt, e);
+         break;
+      case 8:
+         VMACF(vd, vs, vt, e);
+         break;
+      case 9:
+         VMACU(vd, vs, vt, e);
+         break;
+      case 12:
+         VMADL(vd, vs, vt, e);
+         break;
+      case 13:
+         VMADM(vd, vs, vt, e);
+         break;
+      case 14:
+         VMADN(vd, vs, vt, e);
+         break;
+      case 15:
+         VMADH(vd, vs, vt, e);
+         break;
+      case 16:
+         VADD(vd, vs, vt, e);
+         break;
+      case 17:
+         VSUB(vd, vs, vt, e);
+         break;
+      case 18:
+      case 22:
+      case 23:
+      case 24:
+      case 25:
+      case 26:
+      case 27:
+      case 28:
+      case 30:
+      case 31:
+      case 46:
+      case 47:
+      case 56:
+      case 57:
+      case 58:
+      case 59:
+      case 60:
+      case 61:
+      case 62:
+      case 63:
+         res_V(vd, vs, vt, e);
+         break;
+      case 19:
+         VABS(vd, vs, vt, e);
+         break;
+      case 20:
+         VADDC(vd, vs, vt, e);
+         break;
+      case 21:
+         VSUBC(vd, vs, vt, e);
+         break;
+      case 29:
+         VSAW(vd, vs, vt, e);
+         break;
+      case 32:
+         VLT(vd, vs, vt, e);
+         break;
+      case 33:
+         VEQ(vd, vs, vt, e);
+         break;
+      case 34:
+         VNE(vd, vs, vt, e);
+         break;
+      case 35:
+         VGE(vd, vs, vt, e);
+         break;
+      case 36:
+         VCL(vd, vs, vt, e);
+         break;
+      case 37:
+         VCH(vd, vs, vt, e);
+         break;
+      case 38:
+         VCR(vd, vs, vt, e);
+         break;
+      case 39:
+         VMRG(vd, vs, vt, e);
+         break;
+      case 40:
+         VAND(vd, vs, vt, e);
+         break;
+      case 41:
+         VNAND(vd, vs, vt, e);
+         break;
+      case 42:
+         VOR(vd, vs, vt, e);
+         break;
+      case 43:
+         VNOR(vd, vs, vt, e);
+         break;
+      case 44:
+         VXOR(vd, vs, vt, e);
+         break;
+      case 45:
+         VNXOR(vd, vs, vt, e);
+         break;
+      case 48:
+         VRCP(vd, vs, vt, e);
+         break;
+      case 49:
+         VRCPL(vd, vs, vt, e);
+         break;
+      case 50:
+         VRCPH(vd, vs, vt, e);
+         break;
+      case 51:
+         VMOV(vd, vs, vt, e);
+         break;
+      case 52:
+         VRSQ(vd, vs, vt, e);
+         break;
+      case 53:
+         VRSQL(vd, vs, vt, e);
+         break;
+      case 54:
+         VRSQH(vd, vs, vt, e);
+         break;
+      case 55:
+         VNOP(vd, vs, vt, e);
+         break;
+   }
+}
+
 NOINLINE void run_task(void)
 {
    register uint32_t PC;
@@ -1824,11 +1975,9 @@ NOINLINE void run_task(void)
    PC = FIT_IMEM(*RSP.SP_PC_REG);
    while ((*RSP.SP_STATUS_REG & 0x00000001) == 0x00000000)
    {
-      register uint32_t inst;
       register int rd, rs, rt;
       register int base;
-
-      inst = *(uint32_t *)(RSP.IMEM + FIT_IMEM(PC));
+      register uint32_t inst = *(uint32_t *)(RSP.IMEM + FIT_IMEM(PC));
 #ifdef EMULATE_STATIC_PC
       PC = (PC + 0x004);
 EX:
@@ -1837,15 +1986,7 @@ EX:
       step_SP_commands(inst);
 #endif
       if (inst >> 25 == 0x25) /* is a VU instruction */
-      {
-         const int opcode = inst % 64; /* inst.R.func */
-         const int vd = (inst & 0x000007FF) >> 6; /* inst.R.sa */
-         const int vs = (unsigned short)(inst) >> 11; /* inst.R.rd */
-         const int vt = (inst >> 16) & 31; /* inst.R.rt */
-         const int e  = (inst >> 21) & 0xF; /* rs & 0xF */
-
-         COP2_C2[opcode](vd, vs, vt, e);
-      }
+         run_task_COP2_C2(inst);
       else
       {
          const int op = inst >> 26;
