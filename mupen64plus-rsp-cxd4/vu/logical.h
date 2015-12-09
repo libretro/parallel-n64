@@ -48,21 +48,7 @@ static INLINE void do_nxor(short* VD, short* VS, short* VT)
    vector_copy(VD, VACC_L);
 }
 
-static INLINE void VNXOR(int vd, int vs, int vt, int e)
-{
-   short ST[N];
 
-   SHUFFLE_VECTOR(ST, VR[vt], e);
-   do_nxor(VR[vd], VR[vs], ST);
-}
-
-static INLINE void VNOR(int vd, int vs, int vt, int e)
-{
-   short ST[N];
-
-   SHUFFLE_VECTOR(ST, VR[vt], e);
-   do_nor(VR[vd], VR[vs], ST);
-}
 
 static INLINE void do_or(short* VD, short* VS, short* VT)
 {
@@ -82,34 +68,26 @@ static INLINE void do_xor(short* VD, short* VS, short* VT)
     vector_copy(VD, VACC_L);
 }
 
-static INLINE void VXOR(int vd, int vs, int vt, int e)
-{
-    short ST[N];
+#define VNXOR(vd, vs, vt, e) \
+   SHUFFLE_VECTOR(ST, VR[vt], e); \
+   do_nxor(VR[vd], VR[vs], ST);
 
-    SHUFFLE_VECTOR(ST, VR[vt], e);
+#define VNOR(vd, vs, vt, e) \
+   SHUFFLE_VECTOR(ST, VR[vt], e); \
+   do_nor(VR[vd], VR[vs], ST);
+
+#define VXOR(vd, vs, vt, e) \
+    SHUFFLE_VECTOR(ST, VR[vt], e); \
     do_xor(VR[vd], VR[vs], ST);
-}
 
-static INLINE void VOR(int vd, int vs, int vt, int e)
-{
-   short ST[N];
-
-   SHUFFLE_VECTOR(ST, VR[vt], e);
+#define VOR(vd, vs, vt, e) \
+   SHUFFLE_VECTOR(ST, VR[vt], e); \
    do_or(VR[vd], VR[vs], ST);
-}
 
-static INLINE void VAND(int vd, int vs, int vt, int e)
-{
-   short ST[N];
-
-   SHUFFLE_VECTOR(ST, VR[vt], e);
+#define VAND(vd, vs, vt, e) \
+   SHUFFLE_VECTOR(ST, VR[vt], e); \
    do_and(VR[vd], VR[vs], ST);
-}
 
-static INLINE void VNAND(int vd, int vs, int vt, int e)
-{
-   short ST[N];
-
-   SHUFFLE_VECTOR(ST, VR[vt], e);
+#define VNAND(vd, vs, vt, e) \
+   SHUFFLE_VECTOR(ST, VR[vt], e); \
    do_nand(VR[vd], VR[vs], ST);
-}
