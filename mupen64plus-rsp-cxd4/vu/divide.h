@@ -1116,66 +1116,51 @@ INLINE static void do_div(int data, int sqrt, int precision)
       DivOut ^= (DivIn < 0) ? ~0 : 0;
 }
 
-static INLINE void VRCP(int vd, int de, int vt, int e)
-{
-   DivIn = (int)VR[vt][e & 07];
-   do_div(DivIn, SP_DIV_SQRT_NO, SP_DIV_PRECISION_SINGLE);
-   SHUFFLE_VECTOR(VACC_L, VR[vt], e);
-   VR[vd][de &= 07] = (short)DivOut;
+#define VRCP(vd, de, vt, e) \
+   DivIn = (int)VR[vt][e & 07]; \
+   do_div(DivIn, SP_DIV_SQRT_NO, SP_DIV_PRECISION_SINGLE); \
+   SHUFFLE_VECTOR(VACC_L, VR[vt], e); \
+   VR[vd][de & 07] = (short)DivOut; \
    DPH = SP_DIV_PRECISION_SINGLE;
-}
 
-static void VRCPL(int vd, int de, int vt, int e)
-{
-   DivIn &= -DPH;
-   DivIn |= (unsigned short)VR[vt][e & 07];
-   do_div(DivIn, SP_DIV_SQRT_NO, DPH);
-   SHUFFLE_VECTOR(VACC_L, VR[vt], e);
-   VR[vd][de &= 07] = (short)DivOut;
+#define VRCPL(vd, de, vt, e) \
+   DivIn &= -DPH; \
+   DivIn |= (unsigned short)VR[vt][e & 07]; \
+   do_div(DivIn, SP_DIV_SQRT_NO, DPH); \
+   SHUFFLE_VECTOR(VACC_L, VR[vt], e); \
+   VR[vd][de & 07] = (short)DivOut; \
    DPH = SP_DIV_PRECISION_SINGLE;
-}
 
-static INLINE void VRCPH(int vd, int de, int vt, int e)
-{
-   DivIn = VR[vt][e & 07] << 16;
-   SHUFFLE_VECTOR(VACC_L, VR[vt], e);
-   VR[vd][de &= 07] = DivOut >> 16;
+#define VRCPH(vd, de, vt, e) \
+   DivIn = VR[vt][e & 07] << 16; \
+   SHUFFLE_VECTOR(VACC_L, VR[vt], e); \
+   VR[vd][de & 07] = DivOut >> 16; \
    DPH = SP_DIV_PRECISION_DOUBLE;
-}
 
-static void VMOV(int vd, int de, int vt, int e)
-{
-   SHUFFLE_VECTOR(VACC_L, VR[vt], e);
-   VR[vd][de &= 07] = VACC_L[e & 07];
-}
+#define VMOV(vd, de, vt, e) \
+   SHUFFLE_VECTOR(VACC_L, VR[vt], e); \
+   VR[vd][de & 07] = VACC_L[e & 07];
 
-static void VRSQ(int vd, int de, int vt, int e)
-{
-   /* VRSQ - untested */
-   DivIn = (int)VR[vt][e & 07];
-   do_div(DivIn, SP_DIV_SQRT_YES, SP_DIV_PRECISION_SINGLE);
-   SHUFFLE_VECTOR(VACC_L, VR[vt], e);
-   VR[vd][de &= 07] = (short)DivOut;
+#define VRSQ(vd, de, vt, e) \
+   DivIn = (int)VR[vt][e & 07]; \
+   do_div(DivIn, SP_DIV_SQRT_YES, SP_DIV_PRECISION_SINGLE); \
+   SHUFFLE_VECTOR(VACC_L, VR[vt], e); \
+   VR[vd][de & 07] = (short)DivOut; \
    DPH = SP_DIV_PRECISION_SINGLE;
-}
 
-static void VRSQL(int vd, int de, int vt, int e)
-{
-    DivIn &= -DPH;
-    DivIn |= (unsigned short)VR[vt][e & 07];
-    do_div(DivIn, SP_DIV_SQRT_YES, DPH);
-    SHUFFLE_VECTOR(VACC_L, VR[vt], e);
-    VR[vd][de &= 07] = (short)DivOut;
+#define VRSQL(vd, de, vt, e) \
+    DivIn &= -DPH; \
+    DivIn |= (unsigned short)VR[vt][e & 07]; \
+    do_div(DivIn, SP_DIV_SQRT_YES, DPH); \
+    SHUFFLE_VECTOR(VACC_L, VR[vt], e); \
+    VR[vd][de & 07] = (short)DivOut; \
     DPH = SP_DIV_PRECISION_SINGLE;
-}
 
-static INLINE void VRSQH(int vd, int de, int vt, int e)
-{
-   DivIn = VR[vt][e & 07] << 16;
-   SHUFFLE_VECTOR(VACC_L, VR[vt], e);
-   VR[vd][de &= 07] = DivOut >> 16;
+#define VRSQH(vd, de, vt, e) \
+   DivIn = VR[vt][e & 07] << 16; \
+   SHUFFLE_VECTOR(VACC_L, VR[vt], e); \
+   VR[vd][de & 07] = DivOut >> 16; \
    DPH = SP_DIV_PRECISION_DOUBLE;
-}
 
 static void VNOP(int vd, int vs, int vt, int e)
 {
