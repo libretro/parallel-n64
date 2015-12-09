@@ -1803,6 +1803,7 @@ static void USW(int rs, uint32_t addr)
 
 NOINLINE void run_task_COP2_C2(uint32_t inst)
 {
+   short ST[N];
    const int opcode = inst % 64; /* inst.R.func */
    const int vd = (inst & 0x000007FF) >> 6; /* inst.R.sa */
    const int vs = (unsigned short)(inst) >> 11; /* inst.R.rd */

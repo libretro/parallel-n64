@@ -462,100 +462,52 @@ static INLINE void do_mudl(short* VD, short* VS, short* VT)
 #endif
 }
 
-static void VMUDL(int vd, int vs, int vt, int e)
-{
-   short ST[N];
-
-   SHUFFLE_VECTOR(ST, VR[vt], e);
+#define VMUDL(vd, vs, vt, e) \
+   SHUFFLE_VECTOR(ST, VR[vt], e); \
    do_mudl(VR[vd], VR[vs], ST);
-}
 
-static void VMADL(int vd, int vs, int vt, int e)
-{
-   short ST[N];
-
-   SHUFFLE_VECTOR(ST, VR[vt], e);
+#define VMADL(vd, vs, vt, e) \
+   SHUFFLE_VECTOR(ST, VR[vt], e); \
    do_madl(VR[vd], VR[vs], ST);
-}
 
-static void VMADN(int vd, int vs, int vt, int e)
-{
-   short ST[N];
-
-   SHUFFLE_VECTOR(ST, VR[vt], e);
+#define VMADN(vd, vs, vt, e) \
+   SHUFFLE_VECTOR(ST, VR[vt], e); \
    do_madn(VR[vd], VR[vs], ST);
-}
 
-static void VMUDH(int vd, int vs, int vt, int e)
-{
-   short ST[N];
-
-   SHUFFLE_VECTOR(ST, VR[vt], e);
+#define VMUDH(vd, vs, vt, e) \
+   SHUFFLE_VECTOR(ST, VR[vt], e); \
    do_mudh(VR[vd], VR[vs], ST);
-}
 
-static void VMUDN(int vd, int vs, int vt, int e)
-{
-   short ST[N];
-
-   SHUFFLE_VECTOR(ST, VR[vt], e);
+#define VMUDN(vd, vs, vt, e) \
+   SHUFFLE_VECTOR(ST, VR[vt], e); \
    do_mudn(VR[vd], VR[vs], ST);
-}
 
-static void VMUDM(int vd, int vs, int vt, int e)
-{
-   short ST[N];
-
-   SHUFFLE_VECTOR(ST, VR[vt], e);
+#define VMUDM(vd, vs, vt, e) \
+   SHUFFLE_VECTOR(ST, VR[vt], e); \
    do_mudm(VR[vd], VR[vs], ST);
-}
 
-static void VMADH(int vd, int vs, int vt, int e)
-{
-   short ST[N];
-
-   SHUFFLE_VECTOR(ST, VR[vt], e);
+#define VMADH(vd, vs, vt, e) \
+   SHUFFLE_VECTOR(ST, VR[vt], e); \
    do_madh(VR[vd], VR[vs], ST);
-}
 
-static void VMADM(int vd, int vs, int vt, int e)
-{
-    short ST[N];
-
-    SHUFFLE_VECTOR(ST, VR[vt], e);
+#define VMADM(vd, vs, vt, e) \
+    SHUFFLE_VECTOR(ST, VR[vt], e); \
     do_madm(VR[vd], VR[vs], ST);
-}
 
-static INLINE void VMULU(int vd, int vs, int vt, int e)
-{
-   short ST[N];
-
-   SHUFFLE_VECTOR(ST, VR[vt], e);
+#define VMULU(vd, vs, vt, e) \
+   SHUFFLE_VECTOR(ST, VR[vt], e); \
    do_mulu(VR[vd], VR[vs], ST);
-}
 
-static void VMULF(int vd, int vs, int vt, int e)
-{
-    short ST[N];
+#define VMULF(vd, vs, vt,  e) \
+    SHUFFLE_VECTOR(ST, VR[vt], e); \
+    do_mulf(VR[vd], VR[vs], ST); 
 
-    SHUFFLE_VECTOR(ST, VR[vt], e);
-    do_mulf(VR[vd], VR[vs], ST);
-}
-
-static void VMACF(int vd, int vs, int vt, int e)
-{
-   short ST[N];
-
-   SHUFFLE_VECTOR(ST, VR[vt], e);
-   do_macf(VR[vd], VR[vs], ST);
+#define VMACF(vd, vs, vt, e) \
+   SHUFFLE_VECTOR(ST, VR[vt], e); \
+   do_macf(VR[vd], VR[vs], ST); \
    SIGNED_CLAMP_AM(VR[vd]);
-}
 
-static void VMACU(int vd, int vs, int vt, int e)
-{
-    short ST[N];
-
-    SHUFFLE_VECTOR(ST, VR[vt], e);
-    do_macf(VR[vd], VR[vs], ST);
-    UNSIGNED_CLAMP(VR[vd]);
-}
+#define VMACU(vd, vs, vt, e) \
+   SHUFFLE_VECTOR(ST, VR[vt], e); \
+   do_macf(VR[vd], VR[vs], ST); \
+   UNSIGNED_CLAMP(VR[vd]);
