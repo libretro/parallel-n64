@@ -29,7 +29,6 @@ NOINLINE void run_task(void)
    for (i = 0; i < 32; i++)
       MFC0_count[i] = 0;
 #endif
-   stale_signals = 0;
 
    PC = FIT_IMEM(*RSP.SP_PC_REG);
    while ((*RSP.SP_STATUS_REG & 0x00000001) == 0x00000000)
