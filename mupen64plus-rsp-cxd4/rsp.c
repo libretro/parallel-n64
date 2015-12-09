@@ -282,9 +282,7 @@ static int SR[32];
 
 #include "rsp.h"
 
-NOINLINE static void res_S(void)
-{
-}
+#define res_S() (void)0
 
 #ifdef EMULATE_STATIC_PC
 #define BASE_OFF    0x000
