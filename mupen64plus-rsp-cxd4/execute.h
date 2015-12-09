@@ -22,7 +22,7 @@
 
 NOINLINE void run_task(void)
 {
-   register int PC;
+   register uint32_t PC;
    register unsigned int i;
 
 #ifdef WAIT_FOR_CPU_HOST
@@ -42,9 +42,6 @@ NOINLINE void run_task(void)
       PC = (PC + 0x004);
 EX:
 #endif
-#ifdef SP_EXECUTE_LOG
-      step_SP_commands(inst);
-#endif
       if (inst >> 25 == 0x25) /* is a VU instruction */
       {
          const int opcode = inst % 64; /* inst.R.func */
@@ -60,9 +57,6 @@ EX:
          const int op = inst >> 26;
          const int element = (inst & 0x000007FF) >> 7;
 
-#if (0)
-         SR[0] = 0x00000000; /* already handled on per-instruction basis */
-#endif
          switch (op)
          {
             int16_t offset;
