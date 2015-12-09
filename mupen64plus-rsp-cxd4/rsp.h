@@ -43,6 +43,17 @@ RSP_INFO RSP;
 
 typedef uint8_t byte;
 
+typedef enum
+{
+    M_GFXTASK   = 1,
+    M_AUDTASK   = 2,
+    M_VIDTASK   = 3,
+    M_NJPEGTASK = 4,
+    M_NULTASK   = 5,
+    M_HVQTASK   = 6,
+    M_HVQMTASK  = 7
+} OSTask_type;
+
 /*
  * This allows us to update the program counter register in the RSP
  * interpreter in a much faster way overall to the running CPU loop.
