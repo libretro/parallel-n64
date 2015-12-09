@@ -14,8 +14,6 @@
 #ifndef _CLAMP_H
 #define _CLAMP_H
 
-extern short co[N];
-
 #ifdef ARCH_MIN_SSE2
 /*
  * We actually need to write explicit SSE2 code for this because GCC 4.8.1

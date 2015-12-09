@@ -38,7 +38,7 @@ static const int ei[16][8] = {
     { 07, 07, 07, 07, 07, 07, 07, 07 }  /* 7 */
 };
 
-int sub_mask[16] = {
+static int sub_mask[16] = {
     0x0,
     0x0,
     0x1, 0x1,
@@ -119,6 +119,7 @@ static __m128i shuffle_none(__m128i xmm)
     xmm = _mm_shufflelo_epi16(xmm, SHUFFLE(4, 5, 6, 7)); */
     return (xmm);
 }
+
 static __m128i shuffle_0q(__m128i xmm)
 {
     xmm = _mm_shufflehi_epi16(xmm, SHUFFLE(0, 0, 2, 2));
