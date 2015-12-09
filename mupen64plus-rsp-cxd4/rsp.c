@@ -589,13 +589,13 @@ extern void set_VCC(unsigned short VCC);
 extern void set_VCE(unsigned char VCE);
 extern short vce[8];
 
-unsigned short rwR_VCE(void)
+static unsigned short rwR_VCE(void)
 { /* never saw a game try to read VCE out to a scalar GPR yet */
     register unsigned short ret_slot = 0x00 | (unsigned short)get_VCE();
     return (ret_slot);
 }
 
-void rwW_VCE(unsigned short VCE)
+static void rwW_VCE(unsigned short VCE)
 { /* never saw a game try to write VCE using a scalar GPR yet */
     register int i;
 
@@ -627,32 +627,22 @@ static void (*W_VCF[32])(unsigned short) = {
     set_VCO,set_VCC,rwW_VCE,rwW_VCE
 };
 
-static void MFC2(int rt, int vs, int e)
-{
-    SR_B(rt, 2) = VR_B(vs, e);
-    e = (e + 0x1) & 0xF;
-    SR_B(rt, 3) = VR_B(vs, e);
-    SR[rt] = (signed short)(SR[rt]);
+#define MFC2(rt, vs, e) \
+    SR_B(rt, 2) = VR_B(vs, e); \
+    SR_B(rt, 3) = VR_B(vs, (e + 0x1) & 0xF); \
+    SR[rt] = (signed short)(SR[rt]); \
     SR[0] = 0x00000000;
-}
 
-static void MTC2(int rt, int vd, int e)
-{
-   VR_B(vd, e+0x0) = SR_B(rt, 2);
+/* If element == 0xF, it does not matter; loads do not wrap over. */
+#define MTC2(rt, vd, e) \
+   VR_B(vd, e+0x0) = SR_B(rt, 2); \
    VR_B(vd, e+0x1) = SR_B(rt, 3);
-   /* If element == 0xF, it does not matter; loads do not wrap over. */
-}
 
-static void CFC2(int rt, int rd)
-{
-    SR[rt] = (signed short)R_VCF[rd]();
+#define CFC2(rt, rd) \
+    SR[rt] = (signed short)R_VCF[rd](); \
     SR[0] = 0x00000000;
-}
 
-static void CTC2(int rt, int rd)
-{
-    W_VCF[rd](SR[rt] & 0x0000FFFF);
-}
+#define CTC2(rt, rd) W_VCF[rd](SR[rt] & 0x0000FFFF);
 
 /*** Scalar, Coprocessor Operations (vector unit, scalar cache transfers) ***/
 static void LBV(int vt, int element, int offset, int base)
