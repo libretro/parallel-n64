@@ -61,14 +61,6 @@ static short MFC0_count[32];
 
 static RCPREG* CR[16];
 
-#ifdef EMULATE_STATIC_PC
-#define CONTINUE    {continue;}
-#define JUMP        {goto BRANCH;}
-#else
-#define CONTINUE    {break;}
-#define JUMP        {break;}
-#endif
-
 #if (0)
 #define SP_EXECUTE_LOG
 #define VU_EMULATE_SCALAR_ACCUMULATOR_READ
@@ -261,7 +253,6 @@ void set_PC(int address)
 #ifndef EMULATE_STATIC_PC
     stage = 1;
 #endif
-    return;
 }
 
 /*
@@ -1803,100 +1794,101 @@ EX:
 
             case 000: /* SPECIAL */
 #if (1u >> 1 == 0)
-            rd = (inst & 0x0000FFFFu) >> 11;
-            /* rs = inst >> 21; // Primary op is 0, so we don't need &= 31. */
+               rd = (inst & 0x0000FFFFu) >> 11;
+               /* rs = inst >> 21; // Primary op is 0, so we don't need &= 31. */
 #else
-            rd = (inst >> 11) % 32;
-            /* rs = (inst >> 21) % 32; */
+               rd = (inst >> 11) % 32;
+               /* rs = (inst >> 21) % 32; */
 #endif
-            rt = (inst >> 16) % (1 << 5);
-            switch (inst % 64)
-            {
-               case 000: /* SLL */
-                  SR[rd] = SR[rt] << MASK_SA(inst >> 6);
-                  SR[0] = 0x00000000;
-                  CONTINUE
-               case 002: /* SRL */
+               rt = (inst >> 16) % (1 << 5);
+
+               switch (inst % 64)
+               {
+                  case 000: /* SLL */
+                     SR[rd] = SR[rt] << MASK_SA(inst >> 6);
+                     SR[0] = 0x00000000;
+                     continue;
+                  case 002: /* SRL */
                      SR[rd] = (unsigned)(SR[rt]) >> MASK_SA(inst >> 6);
                      SR[0] = 0x00000000;
-                     CONTINUE
-               case 003: /* SRA */
-                        SR[rd] = (signed)(SR[rt]) >> MASK_SA(inst >> 6);
-                        SR[0] = 0x00000000;
-                        CONTINUE
-               case 004: /* SLLV */
-                           SR[rd] = SR[rt] << MASK_SA(SR[rs = inst >> 21]);
-                           SR[0] = 0x00000000;
-                           CONTINUE
-               case 006: /* SRLV */
-                              SR[rd] = (unsigned)(SR[rt]) >> MASK_SA(SR[rs = inst >> 21]);
-                              SR[0] = 0x00000000;
-                              CONTINUE
-               case 007: /* SRAV */
-                                 SR[rd] = (signed)(SR[rt]) >> MASK_SA(SR[rs = inst >> 21]);
-                                 SR[0] = 0x00000000;
-                                 CONTINUE
-               case 011: /* JALR */
-                                    SR[rd] = (PC + LINK_OFF) & 0x00000FFC;
-                                    SR[0] = 0x00000000;
-               case 010: /* JR */
-                                    set_PC(SR[rs = inst >> 21]);
-                                    JUMP
-               case 015: /* BREAK */
-                                       *RSP.SP_STATUS_REG |= 0x00000003; /* BROKE | HALT */
-                                       if (*RSP.SP_STATUS_REG & 0x00000040)
-                                       { /* SP_STATUS_INTR_BREAK */
-                                          *RSP.MI_INTR_REG |= 0x00000001;
-                                          RSP.CheckInterrupts();
-                                       }
-                                       CONTINUE
-               case 040: /* ADD */
-               case 041: /* ADDU */
-                                          rs = inst >> 21;
-                                          SR[rd] = SR[rs] + SR[rt];
-                                          SR[0] = 0x00000000; /* needed for Rareware ucodes */
-                                          CONTINUE
-               case 042: /* SUB */
-               case 043: /* SUBU */
-                                             rs = inst >> 21;
-                                             SR[rd] = SR[rs] - SR[rt];
-                                             SR[0] = 0x00000000;
-                                             CONTINUE
-               case 044: /* AND */
-                                                rs = inst >> 21;
-                                                SR[rd] = SR[rs] & SR[rt];
-                                                SR[0] = 0x00000000; /* needed for Rareware ucodes */
-                                                CONTINUE
-               case 045: /* OR */
-                                                   rs = inst >> 21;
-                                                   SR[rd] = SR[rs] | SR[rt];
-                                                   SR[0] = 0x00000000;
-                                                   CONTINUE
-               case 046: /* XOR */
-                                                      rs = inst >> 21;
-                                                      SR[rd] = SR[rs] ^ SR[rt];
-                                                      SR[0] = 0x00000000;
-                                                      CONTINUE
-               case 047: /* NOR */
-                                                         rs = inst >> 21;
-                                                         SR[rd] = ~(SR[rs] | SR[rt]);
-                                                         SR[0] = 0x00000000;
-                                                         CONTINUE
-               case 052: /* SLT */
-                                                            rs = inst >> 21;
-                                                            SR[rd] = ((signed)(SR[rs]) < (signed)(SR[rt]));
-                                                            SR[0] = 0x00000000;
-                                                            CONTINUE
-               case 053: /* SLTU */
-                                                               rs = inst >> 21;
-                                                               SR[rd] = ((unsigned)(SR[rs]) < (unsigned)(SR[rt]));
-                                                               SR[0] = 0x00000000;
-                                                               CONTINUE
-               default:
-                                                                  res_S();
-                                                                  CONTINUE
-            }
-            CONTINUE
+                     continue;
+                  case 003: /* SRA */
+                     SR[rd] = (signed)(SR[rt]) >> MASK_SA(inst >> 6);
+                     SR[0] = 0x00000000;
+                     continue;
+                  case 004: /* SLLV */
+                     SR[rd] = SR[rt] << MASK_SA(SR[rs = inst >> 21]);
+                     SR[0] = 0x00000000;
+                     continue;
+                  case 006: /* SRLV */
+                     SR[rd] = (unsigned)(SR[rt]) >> MASK_SA(SR[rs = inst >> 21]);
+                     SR[0] = 0x00000000;
+                     continue;
+                  case 007: /* SRAV */
+                     SR[rd] = (signed)(SR[rt]) >> MASK_SA(SR[rs = inst >> 21]);
+                     SR[0] = 0x00000000;
+                     continue;
+                  case 011: /* JALR */
+                     SR[rd] = (PC + LINK_OFF) & 0x00000FFC;
+                     SR[0] = 0x00000000;
+                  case 010: /* JR */
+                     set_PC(SR[rs = inst >> 21]);
+                     goto BRANCH;
+                  case 015: /* BREAK */
+                     *RSP.SP_STATUS_REG |= 0x00000003; /* BROKE | HALT */
+                     if (*RSP.SP_STATUS_REG & 0x00000040)
+                     { /* SP_STATUS_INTR_BREAK */
+                        *RSP.MI_INTR_REG |= 0x00000001;
+                        RSP.CheckInterrupts();
+                     }
+                     continue;
+                  case 040: /* ADD */
+                  case 041: /* ADDU */
+                     rs = inst >> 21;
+                     SR[rd] = SR[rs] + SR[rt];
+                     SR[0] = 0x00000000; /* needed for Rareware ucodes */
+                     continue;
+                  case 042: /* SUB */
+                  case 043: /* SUBU */
+                     rs = inst >> 21;
+                     SR[rd] = SR[rs] - SR[rt];
+                     SR[0] = 0x00000000;
+                     continue;
+                  case 044: /* AND */
+                     rs = inst >> 21;
+                     SR[rd] = SR[rs] & SR[rt];
+                     SR[0] = 0x00000000; /* needed for Rareware ucodes */
+                     continue;
+                  case 045: /* OR */
+                     rs = inst >> 21;
+                     SR[rd] = SR[rs] | SR[rt];
+                     SR[0] = 0x00000000;
+                     continue;
+                  case 046: /* XOR */
+                     rs = inst >> 21;
+                     SR[rd] = SR[rs] ^ SR[rt];
+                     SR[0] = 0x00000000;
+                     continue;
+                  case 047: /* NOR */
+                     rs = inst >> 21;
+                     SR[rd] = ~(SR[rs] | SR[rt]);
+                     SR[0] = 0x00000000;
+                     continue;
+                  case 052: /* SLT */
+                     rs = inst >> 21;
+                     SR[rd] = ((signed)(SR[rs]) < (signed)(SR[rt]));
+                     SR[0] = 0x00000000;
+                     continue;
+                  case 053: /* SLTU */
+                     rs = inst >> 21;
+                     SR[rd] = ((unsigned)(SR[rs]) < (unsigned)(SR[rt]));
+                     SR[0] = 0x00000000;
+                     continue;
+                  default:
+                     res_S();
+                     continue;
+               }
+               continue;
             case 001: /* REGIMM */
                rs = (inst >> 21) & 31;
                rt = (inst >> 16) & 31;
@@ -1906,249 +1898,249 @@ EX:
                      SR[31] = (PC + LINK_OFF) & 0x00000FFC;
                   case 000: /* BLTZ */
                      if (!(SR[rs] < 0))
-                        CONTINUE
-                           set_PC(PC + 4*inst + SLOT_OFF);
-                     JUMP
+                        continue;
+                     set_PC(PC + 4*inst + SLOT_OFF);
+                     goto BRANCH;
                   case 021: /* BGEZAL */
-                        SR[31] = (PC + LINK_OFF) & 0x00000FFC;
+                     SR[31] = (PC + LINK_OFF) & 0x00000FFC;
                   case 001: /* BGEZ */
-                        if (!(SR[rs] >= 0))
-                           CONTINUE
-                              set_PC(PC + 4*inst + SLOT_OFF);
-                        JUMP
+                     if (!(SR[rs] >= 0))
+                        continue;
+                     set_PC(PC + 4*inst + SLOT_OFF);
+                     goto BRANCH;
                   default:
-                           res_S();
-                           CONTINUE
+                     res_S();
+                     continue;
                }
-               CONTINUE
+               continue;
             case 003: /* JAL */
-                  SR[31] = (PC + LINK_OFF) & 0x00000FFC;
+               SR[31] = (PC + LINK_OFF) & 0x00000FFC;
             case 002: /* J */
-                  set_PC(4*inst);
-                  JUMP
+               set_PC(4*inst);
+               goto BRANCH;
             case 004: /* BEQ */
-                     rs = (inst >> 21) & 31;
-                     rt = (inst >> 16) & 31;
-                     if (!(SR[rs] == SR[rt]))
-                        CONTINUE
-                           set_PC(PC + 4*inst + SLOT_OFF);
-                     JUMP
+               rs = (inst >> 21) & 31;
+               rt = (inst >> 16) & 31;
+               if (!(SR[rs] == SR[rt]))
+                  continue;
+               set_PC(PC + 4*inst + SLOT_OFF);
+               goto BRANCH;
             case 005: /* BNE */
-                        rs = (inst >> 21) & 31;
-                        rt = (inst >> 16) & 31;
-                        if (!(SR[rs] != SR[rt]))
-                           CONTINUE
-                              set_PC(PC + 4*inst + SLOT_OFF);
-                        JUMP
+               rs = (inst >> 21) & 31;
+               rt = (inst >> 16) & 31;
+               if (!(SR[rs] != SR[rt]))
+                  continue;
+               set_PC(PC + 4*inst + SLOT_OFF);
+               goto BRANCH;
             case 006: /* BLEZ */
-                           if (!((signed)SR[rs = (inst >> 21) & 31] <= 0x00000000))
-                              CONTINUE
-                                 set_PC(PC + 4*inst + SLOT_OFF);
-                           JUMP
+               if (!((signed)SR[rs = (inst >> 21) & 31] <= 0x00000000))
+                  continue;
+               set_PC(PC + 4*inst + SLOT_OFF);
+               goto BRANCH;
             case 007: /* BGTZ */
-                              if (!((signed)SR[rs = (inst >> 21) & 31] >  0x00000000))
-                                 CONTINUE
-                                    set_PC(PC + 4*inst + SLOT_OFF);
-                              JUMP
+               if (!((signed)SR[rs = (inst >> 21) & 31] >  0x00000000))
+                  continue;
+               set_PC(PC + 4*inst + SLOT_OFF);
+               goto BRANCH;
             case 010: /* ADDI */
             case 011: /* ADDIU */
-                                 rs = (inst >> 21) & 31;
-                                 rt = (inst >> 16) & 31;
-                                 SR[rt] = SR[rs] + (signed short)(inst);
-                                 SR[0] = 0x00000000;
-                                 CONTINUE
+               rs = (inst >> 21) & 31;
+               rt = (inst >> 16) & 31;
+               SR[rt] = SR[rs] + (signed short)(inst);
+               SR[0] = 0x00000000;
+               continue;
             case 012: /* SLTI */
-                                    rs = (inst >> 21) & 31;
-                                    rt = (inst >> 16) & 31;
-                                    SR[rt] = ((signed)(SR[rs]) < (signed short)(inst));
-                                    SR[0] = 0x00000000;
-                                    CONTINUE
+               rs = (inst >> 21) & 31;
+               rt = (inst >> 16) & 31;
+               SR[rt] = ((signed)(SR[rs]) < (signed short)(inst));
+               SR[0] = 0x00000000;
+               continue;
             case 013: /* SLTIU */
-                                       rs = (inst >> 21) & 31;
-                                       rt = (inst >> 16) & 31;
-                                       SR[rt] = ((unsigned)(SR[rs]) < (unsigned short)(inst));
-                                       SR[0] = 0x00000000;
-                                       CONTINUE
+               rs = (inst >> 21) & 31;
+               rt = (inst >> 16) & 31;
+               SR[rt] = ((unsigned)(SR[rs]) < (unsigned short)(inst));
+               SR[0] = 0x00000000;
+               continue;
             case 014: /* ANDI */
-                                          rs = (inst >> 21) & 31;
-                                          rt = (inst >> 16) & 31;
-                                          SR[rt] = SR[rs] & (unsigned short)(inst);
-                                          SR[0] = 0x00000000;
-                                          CONTINUE
+               rs = (inst >> 21) & 31;
+               rt = (inst >> 16) & 31;
+               SR[rt] = SR[rs] & (unsigned short)(inst);
+               SR[0] = 0x00000000;
+               continue;
             case 015: /* ORI */
-                                             rs = (inst >> 21) & 31;
-                                             rt = (inst >> 16) & 31;
-                                             SR[rt] = SR[rs] | (unsigned short)(inst);
-                                             SR[0] = 0x00000000;
-                                             CONTINUE
+               rs = (inst >> 21) & 31;
+               rt = (inst >> 16) & 31;
+               SR[rt] = SR[rs] | (unsigned short)(inst);
+               SR[0] = 0x00000000;
+               continue;
             case 016: /* XORI */
-                                                rs = (inst >> 21) & 31;
-                                                rt = (inst >> 16) & 31;
-                                                SR[rt] = SR[rs] ^ (unsigned short)(inst);
-                                                SR[0] = 0x00000000;
-                                                CONTINUE
+               rs = (inst >> 21) & 31;
+               rt = (inst >> 16) & 31;
+               SR[rt] = SR[rs] ^ (unsigned short)(inst);
+               SR[0] = 0x00000000;
+               continue;
             case 017: /* LUI */
-                                                   SR[rt = (inst >> 16) & 31] = inst << 16;
-                                                   SR[0] = 0x00000000;
-                                                   CONTINUE
+               SR[rt = (inst >> 16) & 31] = inst << 16;
+               SR[0] = 0x00000000;
+               continue;
             case 020: /* COP0 */
-                                                      rd = (inst & 0x0000F800u) >> 11;
-                                                      rs = (inst >> 21) & 31;
-                                                      rt = (inst >> 16) & 31;
-                                                      switch (rs)
-                                                      {
-                                                         case 000: /* MFC0 */
-                                                            MFC0(rt, rd & 0xF);
-                                                            CONTINUE
-                                                         case 004: /* MTC0 */
-                                                               MTC0[rd & 0xF](rt);
-                                                               CONTINUE
-                                                         default:
-                                                                  res_S();
-                                                                  CONTINUE
-                                                      }
-                                                      CONTINUE
+               rd = (inst & 0x0000F800u) >> 11;
+               rs = (inst >> 21) & 31;
+               rt = (inst >> 16) & 31;
+               switch (rs)
+               {
+                  case 000: /* MFC0 */
+                     MFC0(rt, rd & 0xF);
+                     continue;
+                  case 004: /* MTC0 */
+                     MTC0[rd & 0xF](rt);
+                     continue;
+                  default:
+                     res_S();
+                     continue;
+               }
+               continue;
             case 022: /* COP2 */
-                                                         rd = (inst & 0x0000F800u) >> 11;
-                                                         rs = (inst >> 21) & 31;
-                                                         rt = (inst >> 16) & 31;
-                                                         switch (rs)
-                                                         {
-                                                            case 000: /* MFC2 */
-                                                               MFC2(rt, rd, element);
-                                                               CONTINUE
-                                                            case 002: /* CFC2 */
-                                                                  CFC2(rt, rd);
-                                                                  CONTINUE
-                                                            case 004: /* MTC2 */
-                                                                     MTC2(rt, rd, element);
-                                                                     CONTINUE
-                                                            case 006: /* CTC2 */
-                                                                        CTC2(rt, rd);
-                                                                        CONTINUE
-                                                            default:
-                                                                           res_S();
-                                                                           CONTINUE
-                                                         }
-                                                         CONTINUE
+               rd = (inst & 0x0000F800u) >> 11;
+               rs = (inst >> 21) & 31;
+               rt = (inst >> 16) & 31;
+               switch (rs)
+               {
+                  case 000: /* MFC2 */
+                     MFC2(rt, rd, element);
+                     continue;
+                  case 002: /* CFC2 */
+                     CFC2(rt, rd);
+                     continue;
+                  case 004: /* MTC2 */
+                     MTC2(rt, rd, element);
+                     continue;
+                  case 006: /* CTC2 */
+                     CTC2(rt, rd);
+                     continue;
+                  default:
+                     res_S();
+                     continue;
+               }
+               continue;
             case 040: /* LB */
-                                                            rt = (inst >> 16) % (1 << 5);
-                                                            offset = (signed short)(inst);
-                                                            addr = (SR[base = (inst >> 21) & 31] + offset) & 0x00000FFF;
-                                                            SR[rt] = RSP.DMEM[BES(addr)];
-                                                            SR[rt] = (signed char)(SR[rt]);
-                                                            SR[0] = 0x00000000;
-                                                            CONTINUE
+               rt = (inst >> 16) % (1 << 5);
+               offset = (signed short)(inst);
+               addr = (SR[base = (inst >> 21) & 31] + offset) & 0x00000FFF;
+               SR[rt] = RSP.DMEM[BES(addr)];
+               SR[rt] = (signed char)(SR[rt]);
+               SR[0] = 0x00000000;
+               continue;
             case 041: /* LH */
-                                                               rt = (inst >> 16) % (1 << 5);
-                                                               offset = (signed short)(inst);
-                                                               addr = (SR[base = (inst >> 21) & 31] + offset) & 0x00000FFF;
-                                                               if (addr%0x004 == 0x003)
-                                                               {
-                                                                  SR_B(rt, 2) = RSP.DMEM[addr - BES(0x000)];
-                                                                  addr = (addr + 0x00000001) & 0x00000FFF;
-                                                                  SR_B(rt, 3) = RSP.DMEM[addr + BES(0x000)];
-                                                                  SR[rt] = (signed short)(SR[rt]);
-                                                               }
-                                                               else
-                                                               {
-                                                                  addr -= HES(0x000)*(addr%0x004 - 1);
-                                                                  SR[rt] = *(signed short *)(RSP.DMEM + addr);
-                                                               }
-                                                               SR[0] = 0x00000000;
-                                                               CONTINUE
+               rt = (inst >> 16) % (1 << 5);
+               offset = (signed short)(inst);
+               addr = (SR[base = (inst >> 21) & 31] + offset) & 0x00000FFF;
+               if (addr%0x004 == 0x003)
+               {
+                  SR_B(rt, 2) = RSP.DMEM[addr - BES(0x000)];
+                  addr = (addr + 0x00000001) & 0x00000FFF;
+                  SR_B(rt, 3) = RSP.DMEM[addr + BES(0x000)];
+                  SR[rt] = (signed short)(SR[rt]);
+               }
+               else
+               {
+                  addr -= HES(0x000)*(addr%0x004 - 1);
+                  SR[rt] = *(signed short *)(RSP.DMEM + addr);
+               }
+               SR[0] = 0x00000000;
+               continue;
             case 043: /* LW */
-                                                                  rt = (inst >> 16) % (1 << 5);
-                                                                  offset = (signed short)(inst);
-                                                                  addr = (SR[base = (inst >> 21) & 31] + offset) & 0x00000FFF;
-                                                                  if (addr%0x004 != 0x000)
-                                                                     ULW(rt, addr);
-                                                                  else
-                                                                     SR[rt] = *(int32_t *)(RSP.DMEM + addr);
-                                                                  SR[0] = 0x00000000;
-                                                                  CONTINUE
+               rt = (inst >> 16) % (1 << 5);
+               offset = (signed short)(inst);
+               addr = (SR[base = (inst >> 21) & 31] + offset) & 0x00000FFF;
+               if (addr%0x004 != 0x000)
+                  ULW(rt, addr);
+               else
+                  SR[rt] = *(int32_t *)(RSP.DMEM + addr);
+               SR[0] = 0x00000000;
+               continue;
             case 044: /* LBU */
-                                                                     rt = (inst >> 16) % (1 << 5);
-                                                                     offset = (signed short)(inst);
-                                                                     addr = (SR[base = (inst >> 21) & 31] + offset) & 0x00000FFF;
-                                                                     SR[rt] = RSP.DMEM[BES(addr)];
-                                                                     SR[rt] = (unsigned char)(SR[rt]);
-                                                                     SR[0] = 0x00000000;
-                                                                     CONTINUE
+               rt = (inst >> 16) % (1 << 5);
+               offset = (signed short)(inst);
+               addr = (SR[base = (inst >> 21) & 31] + offset) & 0x00000FFF;
+               SR[rt] = RSP.DMEM[BES(addr)];
+               SR[rt] = (unsigned char)(SR[rt]);
+               SR[0] = 0x00000000;
+               continue;
             case 045: /* LHU */
-                                                                        rt = (inst >> 16) % (1 << 5);
-                                                                        offset = (signed short)(inst);
-                                                                        addr = (SR[base = (inst >> 21) & 31] + offset) & 0x00000FFF;
-                                                                        if (addr%0x004 == 0x003)
-                                                                        {
-                                                                           SR_B(rt, 2) = RSP.DMEM[addr - BES(0x000)];
-                                                                           addr = (addr + 0x00000001) & 0x00000FFF;
-                                                                           SR_B(rt, 3) = RSP.DMEM[addr + BES(0x000)];
-                                                                           SR[rt] = (unsigned short)(SR[rt]);
-                                                                        }
-                                                                        else
-                                                                        {
-                                                                           addr -= HES(0x000)*(addr%0x004 - 1);
-                                                                           SR[rt] = *(unsigned short *)(RSP.DMEM + addr);
-                                                                        }
-                                                                        SR[0] = 0x00000000;
-                                                                        CONTINUE
+               rt = (inst >> 16) % (1 << 5);
+               offset = (signed short)(inst);
+               addr = (SR[base = (inst >> 21) & 31] + offset) & 0x00000FFF;
+               if (addr%0x004 == 0x003)
+               {
+                  SR_B(rt, 2) = RSP.DMEM[addr - BES(0x000)];
+                  addr = (addr + 0x00000001) & 0x00000FFF;
+                  SR_B(rt, 3) = RSP.DMEM[addr + BES(0x000)];
+                  SR[rt] = (unsigned short)(SR[rt]);
+               }
+               else
+               {
+                  addr -= HES(0x000)*(addr%0x004 - 1);
+                  SR[rt] = *(unsigned short *)(RSP.DMEM + addr);
+               }
+               SR[0] = 0x00000000;
+               continue;
             case 050: /* SB */
-                                                                           rt = (inst >> 16) % (1 << 5);
-                                                                           offset = (signed short)(inst);
-                                                                           addr = (SR[base = (inst >> 21) & 31] + offset) & 0x00000FFF;
-                                                                           RSP.DMEM[BES(addr)] = (unsigned char)(SR[rt]);
-                                                                           CONTINUE
+               rt = (inst >> 16) % (1 << 5);
+               offset = (signed short)(inst);
+               addr = (SR[base = (inst >> 21) & 31] + offset) & 0x00000FFF;
+               RSP.DMEM[BES(addr)] = (unsigned char)(SR[rt]);
+               continue;
             case 051: /* SH */
-                                                                              rt = (inst >> 16) % (1 << 5);
-                                                                              offset = (signed short)(inst);
-                                                                              addr = (SR[base = (inst >> 21) & 31] + offset) & 0x00000FFF;
-                                                                              if (addr%0x004 == 0x003)
-                                                                              {
-                                                                                 RSP.DMEM[addr - BES(0x000)] = SR_B(rt, 2);
-                                                                                 addr = (addr + 0x00000001) & 0x00000FFF;
-                                                                                 RSP.DMEM[addr + BES(0x000)] = SR_B(rt, 3);
-                                                                                 CONTINUE
-                                                                              }
-                                                                              addr -= HES(0x000)*(addr%0x004 - 1);
-                                                                              *(short *)(RSP.DMEM + addr) = (short)(SR[rt]);
-                                                                              CONTINUE
+               rt = (inst >> 16) % (1 << 5);
+               offset = (signed short)(inst);
+               addr = (SR[base = (inst >> 21) & 31] + offset) & 0x00000FFF;
+               if (addr%0x004 == 0x003)
+               {
+                  RSP.DMEM[addr - BES(0x000)] = SR_B(rt, 2);
+                  addr = (addr + 0x00000001) & 0x00000FFF;
+                  RSP.DMEM[addr + BES(0x000)] = SR_B(rt, 3);
+                  continue;
+               }
+               addr -= HES(0x000)*(addr%0x004 - 1);
+               *(short *)(RSP.DMEM + addr) = (short)(SR[rt]);
+               continue;
             case 053: /* SW */
-                                                                                 rt = (inst >> 16) % (1 << 5);
-                                                                                 offset = (signed short)(inst);
-                                                                                 addr = (SR[base = (inst >> 21) & 31] + offset) & 0x00000FFF;
-                                                                                 if (addr%0x004 != 0x000)
-                                                                                    USW(rt, addr);
-                                                                                 else
-                                                                                    *(int32_t *)(RSP.DMEM + addr) = SR[rt];
-                                                                                 CONTINUE
+               rt = (inst >> 16) % (1 << 5);
+               offset = (signed short)(inst);
+               addr = (SR[base = (inst >> 21) & 31] + offset) & 0x00000FFF;
+               if (addr%0x004 != 0x000)
+                  USW(rt, addr);
+               else
+                  *(int32_t *)(RSP.DMEM + addr) = SR[rt];
+               continue;
             case 062: /* LWC2 */
-                                                                                    rt = (inst >> 16) % (1 << 5);
-                                                                                    offset = (signed short)(inst & 0x0000FFFFu);
+               rt = (inst >> 16) % (1 << 5);
+               offset = (signed short)(inst & 0x0000FFFFu);
 #if defined(ARCH_MIN_SSE2)
-                                                                                    offset <<= 5 + 4; /* safe on x86, skips 5-bit rd, 4-bit element */
-                                                                                    offset >>= 5 + 4;
+               offset <<= 5 + 4; /* safe on x86, skips 5-bit rd, 4-bit element */
+               offset >>= 5 + 4;
 #else
-                                                                                    offset = SE(offset, 6);
+               offset = SE(offset, 6);
 #endif
-                                                                                    base = (inst >> 21) & 31;
-                                                                                    LWC2_op[rd = (inst & 0xF800u) >> 11](rt, element, offset, base);
-                                                                                    CONTINUE
+               base = (inst >> 21) & 31;
+               LWC2_op[rd = (inst & 0xF800u) >> 11](rt, element, offset, base);
+               continue;
             case 072: /* SWC2 */
-                                                                                       rt = (inst >> 16) % (1 << 5);
-                                                                                       offset = (signed short)(inst & 0x0000FFFFu);
+               rt = (inst >> 16) % (1 << 5);
+               offset = (signed short)(inst & 0x0000FFFFu);
 #if defined(ARCH_MIN_SSE2)
-                                                                                       offset <<= 5 + 4; /* safe on x86, skips 5-bit rd, 4-bit element */
-                                                                                       offset >>= 5 + 4;
+               offset <<= 5 + 4; /* safe on x86, skips 5-bit rd, 4-bit element */
+               offset >>= 5 + 4;
 #else
-                                                                                       offset = SE(offset, 6);
+               offset = SE(offset, 6);
 #endif
-                                                                                       base = (inst >> 21) & 31;
-                                                                                       SWC2_op[rd = (inst & 0xF800u) >> 11](rt, element, offset, base);
-                                                                                       CONTINUE
+               base = (inst >> 21) & 31;
+               SWC2_op[rd = (inst & 0xF800u) >> 11](rt, element, offset, base);
+               continue;
             default:
-                                                                                          res_S();
-                                                                                          CONTINUE
+               res_S();
+               continue;
          }
       }
 #ifndef EMULATE_STATIC_PC
