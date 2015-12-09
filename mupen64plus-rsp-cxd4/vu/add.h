@@ -13,6 +13,101 @@
 \******************************************************************************/
 #include "vu.h"
 
+#ifdef ARCH_MIN_SSE2
+
+static INLINE void SIGNED_CLAMP_ADD(short* VD, short* VS, short* VT)
+{
+   __m128i src = _mm_load_si128((__m128i *)VS);
+   __m128i dst = _mm_load_si128((__m128i *)VT);
+   __m128i vco = _mm_load_si128((__m128i *)co);
+
+   /*
+    * Due to premature clamping in between adds, sometimes we need to add the
+    * LESSER of two integers, either VS or VT, to the carry-in flag matching the
+    * current vector register slice, BEFORE finally adding the greater integer.
+    */
+   __m128i max = _mm_max_epi16(dst, src);
+   __m128i min = _mm_min_epi16(dst, src);
+
+   min = _mm_adds_epi16(min, vco);
+   max = _mm_adds_epi16(max, min);
+   _mm_store_si128((__m128i *)VD, max);
+}
+
+static INLINE void SIGNED_CLAMP_SUB(short* VD, short* VS, short* VT)
+{
+    __m128i xmm;
+
+    __m128i src = _mm_load_si128((__m128i *)VS);
+    __m128i dst = _mm_load_si128((__m128i *)VT);
+    __m128i vco = _mm_load_si128((__m128i *)co);
+
+    __m128i res = _mm_subs_epi16(src, dst);
+
+/*
+ * Due to premature clamps in-between subtracting two of the three operands,
+ * we must be careful not to offset the result accidentally when subtracting
+ * the corresponding VCO flag AFTER the saturation from doing (VS - VT).
+ */
+    __m128i dif = _mm_add_epi16(res, vco);
+
+    dif = _mm_xor_si128(dif, res); /* Adding one suddenly inverts the sign? */
+    dif = _mm_and_si128(dif, dst); /* Sign change due to subtracting a neg. */
+    xmm = _mm_sub_epi16(src, dst);
+    src = _mm_andnot_si128(src, dif); /* VS must be >= 0x0000 for overflow. */
+    xmm = _mm_and_si128(xmm, src); /* VS + VT != INT16_MIN; VS + VT >= +32768 */
+    xmm = _mm_srli_epi16(xmm, 15); /* src = (INT16_MAX + 1 === INT16_MIN) ? */
+
+    xmm = _mm_andnot_si128(xmm, vco); /* If it's NOT overflow, keep flag. */
+    res = _mm_subs_epi16(res, xmm);
+    _mm_store_si128((__m128i *)VD, res);
+}
+
+#else
+
+static INLINE void SIGNED_CLAMP_ADD(short* VD, short* VS, short* VT)
+{
+   int32_t sum[N];
+   short hi[N], lo[N];
+   register int i;
+
+   for (i = 0; i < N; i++)
+      sum[i] = VS[i] + VT[i] + co[i];
+   for (i = 0; i < N; i++)
+      lo[i] = (sum[i] + 0x8000) >> 31;
+   for (i = 0; i < N; i++)
+      hi[i] = (0x7FFF - sum[i]) >> 31;
+   vector_copy(VD, VACC_L);
+   for (i = 0; i < N; i++)
+      VD[i] &= ~lo[i];
+   for (i = 0; i < N; i++)
+      VD[i] |=  hi[i];
+   for (i = 0; i < N; i++)
+      VD[i] ^= 0x8000 & (hi[i] | lo[i]);
+}
+
+static INLINE void SIGNED_CLAMP_SUB(short* VD, short* VS, short* VT)
+{
+   int32_t dif[N];
+   short hi[N], lo[N];
+   register int i;
+
+   for (i = 0; i < N; i++)
+      dif[i] = VS[i] - VT[i] - co[i];
+   for (i = 0; i < N; i++)
+      lo[i] = (dif[i] + 0x8000) >> 31;
+   for (i = 0; i < N; i++)
+      hi[i] = (0x7FFF - dif[i]) >> 31;
+   vector_copy(VD, VACC_L);
+   for (i = 0; i < N; i++)
+      VD[i] &= ~lo[i];
+   for (i = 0; i < N; i++)
+      VD[i] |=  hi[i];
+   for (i = 0; i < N; i++)
+      VD[i] ^= 0x8000 & (hi[i] | lo[i]);
+}
+#endif
+
 static INLINE void set_bo(short* VD, short* VS, short* VT)
 {
    /* set CARRY and borrow out from difference */
