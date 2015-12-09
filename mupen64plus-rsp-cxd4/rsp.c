@@ -73,7 +73,7 @@ static ALIGNED short VACC[3][N];
 #include "vu/clamp.h"
 #include "vu/cf.h"
 
-static void res_V(int vd, int vs, int vt, int e)
+static INLINE void res_V(int vd, int vs, int vt, int e)
 {
    register int i;
 
@@ -86,12 +86,8 @@ static void res_V(int vd, int vs, int vt, int e)
       VR[vd][i] = 0x0000; /* override behavior (bpoint) */
 }
 
-static void res_M(int vd, int vs, int vt, int e)
-{
-   /* VMUL IQ */
-   res_V(vd, vs, vt, e);
-   /* Ultra64 OS did have these, so one could implement this ext. */
-}
+/* Ultra64 OS did have these, so one could implement this ext. */
+#define res_M(vd, vs, vt, e) res_V(vd, vs, vt, e);
 
 #include "vu/add.h"
 #include "vu/logical.h"
