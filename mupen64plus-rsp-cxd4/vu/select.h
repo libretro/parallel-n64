@@ -13,6 +13,30 @@
 \******************************************************************************/
 #include "vu.h"
 
+/*
+ * vector select merge (`VMRG`) formula
+ *
+ * This is really just a vectorizer for ternary conditional storage.
+ * I've named it so because it directly maps to the VMRG op-code.
+ * -- example --
+ * for (i = 0; i < N; i++)
+ *     if (c_pass)
+ *         dest = element_a;
+ *     else
+ *         dest = element_b;
+ */
+static INLINE void merge(short* VD, short* cmp, short* pass, short* fail)
+{
+   register int i;
+   short diff[N];
+
+   for (i = 0; i < N; i++)
+      diff[i] = pass[i] - fail[i];
+   for (i = 0; i < N; i++)
+      VD[i] = fail[i] + cmp[i]*diff[i]; /* actually `(cmp[i] != 0)*diff[i]` */
+}
+
+
 INLINE static void do_lt(short* VD, short* VS, short* VT)
 {
    short cn[N];

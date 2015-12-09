@@ -81,16 +81,17 @@ static INLINE void UNSIGNED_CLAMP(short* VD)
 static INLINE void SIGNED_CLAMP_AL(short* VD)
 {
    /* sign-clamp accumulator-low (bits 15:0) */
-   short cond[N];
-   short temp[N];
+   ALIGNED int16_t temp[N];
+   int16_t cond[N];
    register int i;
 
    SIGNED_CLAMP_AM(temp); /* no direct map in SSE, but closely based on this */
    for (i = 0; i < N; i++)
       cond[i] = (temp[i] != VACC_M[i]); /* result_clamped != result_raw ? */
    for (i = 0; i < N; i++)
-      temp[i] ^= 0x8000; /* half-assed unsigned saturation mix in the clamp */
-   merge(VD, cond, temp, VACC_L);
+      temp[i] ^= 0x8000; /* clamps 0x0000:0xFFFF instead of -0x8000:+0x7FFF */
+   for (i = 0; i < N; i++)
+      VD[i] = (cond[i] ? temp[i] : VACC_L[i]);
 }
 
 static INLINE void do_macf(short* VD, short* VS, short* VT)
