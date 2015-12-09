@@ -273,6 +273,20 @@ INLINE static void do_cr(short* VD, short* VS, short* VT)
       vce[i] = 0;
 }
 
+static INLINE void do_mrg(short* VD, short* VS, short* VT)
+{
+   merge(VACC_L, comp, VS, VT);
+   vector_copy(VD, VACC_L);
+}
+
+static void VMRG(int vd, int vs, int vt, int e)
+{
+   short ST[N];
+
+   SHUFFLE_VECTOR(ST, VR[vt], e);
+   do_mrg(VR[vd], VR[vs], ST);
+}
+
 static void VCR(int vd, int vs, int vt, int e)
 {
    short ST[N];

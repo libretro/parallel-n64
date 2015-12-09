@@ -74,6 +74,23 @@ static INLINE void do_or(short* VD, short* VS, short* VT)
     vector_copy(VD, VACC_L);
 }
 
+static INLINE void do_xor(short* VD, short* VS, short* VT)
+{
+    register int i;
+
+    for (i = 0; i < N; i++)
+        VACC_L[i] = VS[i] ^ VT[i];
+    vector_copy(VD, VACC_L);
+}
+
+static INLINE void VXOR(int vd, int vs, int vt, int e)
+{
+    short ST[N];
+
+    SHUFFLE_VECTOR(ST, VR[vt], e);
+    do_xor(VR[vd], VR[vs], ST);
+}
+
 static INLINE void VOR(int vd, int vs, int vt, int e)
 {
    short ST[N];
