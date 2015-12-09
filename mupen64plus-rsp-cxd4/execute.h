@@ -42,6 +42,9 @@ NOINLINE void run_task(void)
       PC = (PC + 0x004);
 EX:
 #endif
+#ifdef SP_EXECUTE_LOG
+      step_SP_commands(inst);
+#endif
       if (inst >> 25 == 0x25) /* is a VU instruction */
       {
          const int opcode = inst % 64; /* inst.R.func */
