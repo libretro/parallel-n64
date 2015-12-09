@@ -81,7 +81,6 @@ static void res_M(int vd, int vs, int vt, int e)
 #include "add.h"
 #include "logical.h"
 #include "divide.h"
-#include "veq.h"
 #include "select.h"
 #include "multiply.h"
 
