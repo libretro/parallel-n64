@@ -297,13 +297,13 @@ NOINLINE static void res_S(void)
 
 #define MF_SP_STATUS_TIMEOUT 8192
 
-void set_PC(int address)
-{
-    temp_PC = 0x04001000 + (address & 0xFFC);
 #ifndef EMULATE_STATIC_PC
+#define set_PC(address) \
+    temp_PC = 0x04001000 + (address & 0xFFC); \
     stage = 1;
+#else
+#define set_PC(address) temp_PC = 0x04001000 + (address & 0xFFC);
 #endif
-}
 
 /*
  * If the client CPU's shift amount is exactly 5 bits for a 32-bit source,
