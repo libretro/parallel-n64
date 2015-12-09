@@ -39,17 +39,6 @@ static INLINE void do_nor(short* VD, short* VS, short* VT)
    vector_copy(VD, VACC_L);
 }
 
-static INLINE void do_nxor(short* VD, short* VS, short* VT)
-{
-   register int i;
-
-   for (i = 0; i < N; i++)
-      VACC_L[i] = ~(VS[i] ^ VT[i]);
-   vector_copy(VD, VACC_L);
-}
-
-
-
 static INLINE void do_or(short* VD, short* VS, short* VT)
 {
     register int i;
@@ -59,26 +48,9 @@ static INLINE void do_or(short* VD, short* VS, short* VT)
     vector_copy(VD, VACC_L);
 }
 
-static INLINE void do_xor(short* VD, short* VS, short* VT)
-{
-    register int i;
-
-    for (i = 0; i < N; i++)
-        VACC_L[i] = VS[i] ^ VT[i];
-    vector_copy(VD, VACC_L);
-}
-
-#define VNXOR(vd, vs, vt, e) \
-   SHUFFLE_VECTOR(ST, VR[vt], e); \
-   do_nxor(VR[vd], VR[vs], ST);
-
 #define VNOR(vd, vs, vt, e) \
    SHUFFLE_VECTOR(ST, VR[vt], e); \
    do_nor(VR[vd], VR[vs], ST);
-
-#define VXOR(vd, vs, vt, e) \
-    SHUFFLE_VECTOR(ST, VR[vt], e); \
-    do_xor(VR[vd], VR[vs], ST);
 
 #define VOR(vd, vs, vt, e) \
    SHUFFLE_VECTOR(ST, VR[vt], e); \
