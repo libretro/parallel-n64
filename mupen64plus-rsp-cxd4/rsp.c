@@ -1801,7 +1801,7 @@ static void USW(int rs, uint32_t addr)
 /* Allocate the RSP CPU loop to its own functional space. */
 #define FIT_IMEM(PC)    (PC & 0xFFF & 0xFFC)
 
-NOINLINE void run_task_COP2_C2(uint32_t inst)
+static INLINE void run_task_COP2_C2(uint32_t inst)
 {
    short ST[N];
    const int opcode = inst % 64; /* inst.R.func */
@@ -1963,7 +1963,7 @@ NOINLINE void run_task_COP2_C2(uint32_t inst)
    }
 }
 
-NOINLINE void run_task(void)
+static INLINE void run_task(void)
 {
    register uint32_t PC;
    register unsigned int i;
