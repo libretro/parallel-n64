@@ -18,16 +18,25 @@
 #include <stdarg.h>
 #include <string.h>
 
-unsigned char conf[32];
-
-#include "config.h"
-
 #define MINIMUM_MESSAGE_PRIORITY    1
 #define EXTERN_COMMAND_LIST_GBI
 #define EXTERN_COMMAND_LIST_ABI
 #define SEMAPHORE_LOCK_CORRECTIONS
 #define WAIT_FOR_CPU_HOST
 #define EMULATE_STATIC_PC
+
+#include "config.h"
+
+#include "Rsp_#1.1.h"
+#include "rsp.h"
+#include "m64p_plugin.h"
+
+#include "vu/vu.h"
+#include "matrix.h"
+
+unsigned char conf[32];
+
+static RCPREG* CR[16];
 
 #ifdef EMULATE_STATIC_PC
 #define CONTINUE    {continue;}
@@ -71,9 +80,6 @@ unsigned char conf[32];
 #define CFG_MEND_SEMAPHORE_LOCK     (*(int *)(conf + 0x14))
 #define CFG_TRACE_RSP_REGISTERS     (*(int *)(conf + 0x18))
 
-#include "Rsp_#1.1.h"
-#include "rsp.h"
-#include "m64p_plugin.h"
 
 #define RSP_CXD4_VERSION 0x0101
 
@@ -155,7 +161,6 @@ EXPORT int CALL RomOpen(void)
 }
 
 
-RCPREG* CR[16];
 
 EXPORT void CALL cxd4InitiateRSP(RSP_INFO Rsp_Info, unsigned int *CycleCount)
 {
@@ -281,9 +286,8 @@ extern void USW(int rs, uint32_t addr);
  */
 
 /*** Scalar, Coprocessor Operations (system control) ***/
-extern RCPREG* CR[16];
-extern void SP_DMA_READ(void);
-extern void SP_DMA_WRITE(void);
+static void SP_DMA_READ(void);
+static void SP_DMA_WRITE(void);
 
 static void MFC0(int rt, int rd)
 {
@@ -433,7 +437,7 @@ MT_CMD_START       ,MT_CMD_END         ,MT_READ_ONLY       ,MT_CMD_STATUS,
 MT_CMD_CLOCK       ,MT_READ_ONLY       ,MT_READ_ONLY       ,MT_READ_ONLY
 }; 
 
-void SP_DMA_READ(void)
+static void SP_DMA_READ(void)
 {
     register unsigned int length = ((*RSP.SP_RD_LEN_REG & 0x00000FFF) >>  0) + 1;
     register unsigned int count  = ((*RSP.SP_RD_LEN_REG & 0x000FF000) >> 12) + 1;
@@ -456,7 +460,8 @@ void SP_DMA_READ(void)
     *RSP.SP_DMA_BUSY_REG = 0x00000000;
     *RSP.SP_STATUS_REG &= ~0x00000004; /* SP_STATUS_DMABUSY */
 }
-void SP_DMA_WRITE(void)
+
+static void SP_DMA_WRITE(void)
 {
     register unsigned int length = ((*RSP.SP_WR_LEN_REG & 0x00000FFF) >>  0) + 1;
     register unsigned int count  = ((*RSP.SP_WR_LEN_REG & 0x000FF000) >> 12) + 1;
@@ -1725,8 +1730,6 @@ void USW(int rs, uint32_t addr)
       *(short *)(RSP.DMEM + addr + HES(0x000)) = SR_temp.H[00];
    }
 }
-#include "vu/vu.h"
-#include "matrix.h"
 
 /* Allocate the RSP CPU loop to its own functional space. */
 #define FIT_IMEM(PC)    (PC & 0xFFF & 0xFFC)
