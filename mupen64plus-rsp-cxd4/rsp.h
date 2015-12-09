@@ -14,8 +14,6 @@
 #ifndef _RSP_H_
 #define _RSP_H_
 
-#include <stdint.h>
-#include "Rsp_#1.1.h"
 RSP_INFO RSP;
 
 #ifdef _MSC_VER
@@ -72,12 +70,5 @@ static int temp_PC;
 static short MFC0_count[32];
 /* Keep one C0 MF status read count for each scalar register. */
 #endif
-
-#include "su.h"
-#include "vu/vu.h"
-
-/* Allocate the RSP CPU loop to its own functional space. */
-NOINLINE extern void run_task(void);
-#include "execute.h"
 
 #endif
