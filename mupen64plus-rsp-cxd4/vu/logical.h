@@ -11,7 +11,6 @@
 * with this software.                                                          *
 * If not, see <http://creativecommons.org/publicdomain/zero/1.0/>.             *
 \******************************************************************************/
-#include "vu.h"
 
 static INLINE void do_and(short* VD, short* VS, short* VT)
 {

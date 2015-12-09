@@ -14,11 +14,6 @@
 #ifndef _CLAMP_H
 #define _CLAMP_H
 
-/*
- * dependency for 48-bit accumulator access
- */
-#include "vu.h"
-
 extern short co[N];
 
 #ifdef ARCH_MIN_SSE2

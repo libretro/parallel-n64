@@ -11,7 +11,6 @@
 * with this software.                                                          *
 * If not, see <http://creativecommons.org/publicdomain/zero/1.0/>.             *
 \******************************************************************************/
-#include "vu.h"
 
 static int DivIn = 0; /* buffered numerator of division read from vector file */
 static int DivOut = 0; /* global division result set by VRCP/VRCPL/VRSQ/VRSQH */
