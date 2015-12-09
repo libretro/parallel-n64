@@ -36,7 +36,6 @@ extern unsigned char conf[32];
 #define VU_EMULATE_SCALAR_ACCUMULATOR_READ
 #endif
 
-#define CFG_FILE    "rsp_conf.cfg"
 /*
  * The config file used to be a 32-byte EEPROM with binary settings storage.
  * It was found necessary for user and contributor convenience to replace.

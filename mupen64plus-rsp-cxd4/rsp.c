@@ -42,7 +42,7 @@ extern RSP_INFO rsp_info;
 
 #define VERSION_PRINTF_SPLIT(x) (((x) >> 16) & 0xffff), (((x) >> 8) & 0xff), ((x) & 0xff)
 
-NOINLINE void update_conf(const char* source)
+NOINLINE void update_conf(void)
 {
     memset(conf, 0, sizeof(conf));
 
@@ -108,7 +108,7 @@ EXPORT int CALL RomOpen(void)
     if (!l_PluginInit)
         return 0;
 
-    update_conf(CFG_FILE);
+    update_conf();
     return 1;
 }
 #else
