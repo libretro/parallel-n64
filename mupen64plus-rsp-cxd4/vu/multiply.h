@@ -25,6 +25,74 @@
 #define SEMIFRAC    (VS[i]*VT[i]*2/2 + 0x8000/2)
 #endif
 
+#ifdef ARCH_MIN_SSE2
+static INLINE void SIGNED_CLAMP_AM(short* VD)
+{
+   /* typical sign-clamp of accumulator-mid (bits 31:16) */
+   __m128i pvs = _mm_load_si128((__m128i *)VACC_H);
+   __m128i pvd = _mm_load_si128((__m128i *)VACC_M);
+   __m128i dst = _mm_unpacklo_epi16(pvd, pvs);
+   __m128i src = _mm_unpackhi_epi16(pvd, pvs);
+
+   dst = _mm_packs_epi32(dst, src);
+   _mm_store_si128((__m128i *)VD, dst);
+}
+#else
+static INLINE void SIGNED_CLAMP_AM(short* VD)
+{
+   /* typical sign-clamp of accumulator-mid (bits 31:16) */
+   short hi[N], lo[N];
+   register int i;
+
+   for (i = 0; i < N; i++)
+      lo[i]  = (VACC_H[i] < ~0);
+   for (i = 0; i < N; i++)
+      lo[i] |= (VACC_H[i] < 0) & !(VACC_M[i] < 0);
+   for (i = 0; i < N; i++)
+      hi[i]  = (VACC_H[i] >  0);
+   for (i = 0; i < N; i++)
+      hi[i] |= (VACC_H[i] == 0) & (VACC_M[i] < 0);
+   vector_copy(VD, VACC_M);
+   for (i = 0; i < N; i++)
+      VD[i] &= -(lo[i] ^ 1);
+   for (i = 0; i < N; i++)
+      VD[i] |= -(hi[i] ^ 0);
+   for (i = 0; i < N; i++)
+      VD[i] ^= 0x8000 * (hi[i] | lo[i]);
+}
+#endif
+
+static INLINE void UNSIGNED_CLAMP(short* VD)
+{
+   /* sign-zero hybrid clamp of accumulator-mid (bits 31:16) */
+   short cond[N];
+   short temp[N];
+   register int i;
+
+   SIGNED_CLAMP_AM(temp); /* no direct map in SSE, but closely based on this */
+   for (i = 0; i < N; i++)
+      cond[i] = -(temp[i] >  VACC_M[i]); /* VD |= -(ACC47..16 > +32767) */
+   for (i = 0; i < N; i++)
+      VD[i] = temp[i] & ~(temp[i] >> 15); /* Only this clamp is unsigned. */
+   for (i = 0; i < N; i++)
+      VD[i] = VD[i] | cond[i];
+}
+
+static INLINE void SIGNED_CLAMP_AL(short* VD)
+{
+   /* sign-clamp accumulator-low (bits 15:0) */
+   short cond[N];
+   short temp[N];
+   register int i;
+
+   SIGNED_CLAMP_AM(temp); /* no direct map in SSE, but closely based on this */
+   for (i = 0; i < N; i++)
+      cond[i] = (temp[i] != VACC_M[i]); /* result_clamped != result_raw ? */
+   for (i = 0; i < N; i++)
+      temp[i] ^= 0x8000; /* half-assed unsigned saturation mix in the clamp */
+   merge(VD, cond, temp, VACC_L);
+}
+
 static INLINE void do_macf(short* VD, short* VS, short* VT)
 {
     int32_t product[N];
