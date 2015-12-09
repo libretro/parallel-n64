@@ -26,19 +26,12 @@
  * just one extra scalar x86 instruction for every RSP vector op-code when we
  * use SSE2 explicitly for this particular goal instead of letting GCC do it.
  */
-static INLINE void vector_copy(short* VD, short* VS)
-{
-    __m128i xmm = _mm_load_si128((__m128i *)VS);
-    _mm_store_si128((__m128i *)VD, xmm);
-}
+#define vector_copy(VD, VS) \
+    _mm_store_si128((__m128i *)VD, _mm_load_si128((__m128i *)VS));
 #else
-static INLINE void vector_copy(short* VD, short* VS)
-{
-   register int i;
-
-   for (i = 0; i < N; i++)
+#define vector_copy(VD, VS) \
+   for (i = 0; i < N; i++) \
       VD[i] = VS[i];
-}
 #endif
 
 #endif
