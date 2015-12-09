@@ -24,27 +24,12 @@
 #define _mm_mullo_epu16(dst, src) _mm_mullo_epi16(dst, src)
 #endif
 
-#define N      8
-/* N:  number of processor elements in SIMD processor */
-
-/*
- * RSP virtual registers (of vector unit)
- * The most important are the 32 general-purpose vector registers.
- * The correct way to accurately store these is using big-endian vectors.
- *
- * For ?WC2 we may need to do byte-precision access just as directly.
- * This is amended by using the `VU_S` and `VU_B` macros defined in `rsp.h`.
- */
-ALIGNED short VR[32][N];
-
 /*
  * accumulator-indexing macros (inverted access dimensions, suited for SSE)
  */
 #define HI      00
 #define MD      01
 #define LO      02
-
-ALIGNED static short VACC[3][N];
 
 #define VACC_L      (VACC[LO])
 #define VACC_M      (VACC[MD])

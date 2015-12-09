@@ -62,13 +62,4 @@ typedef enum
  */
 #define EMULATE_STATIC_PC
 
-#ifndef EMULATE_STATIC_PC
-static int stage;
-#endif
-static int temp_PC;
-#ifdef WAIT_FOR_CPU_HOST
-static short MFC0_count[32];
-/* Keep one C0 MF status read count for each scalar register. */
-#endif
-
 #endif

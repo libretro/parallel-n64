@@ -31,10 +31,33 @@
 #include "rsp.h"
 #include "m64p_plugin.h"
 
+/* N:  number of processor elements in SIMD processor */
+#define N      8
+
+/*
+ * RSP virtual registers (of vector unit)
+ * The most important are the 32 general-purpose vector registers.
+ * The correct way to accurately store these is using big-endian vectors.
+ *
+ * For ?WC2 we may need to do byte-precision access just as directly.
+ * This is amended by using the `VU_S` and `VU_B` macros defined in `rsp.h`.
+ */
+static ALIGNED short VR[32][N];
+static ALIGNED short VACC[3][N];
+
 #include "vu/vu.h"
 #include "matrix.h"
 
 unsigned char conf[32];
+
+#ifndef EMULATE_STATIC_PC
+static int stage;
+#endif
+static int temp_PC;
+#ifdef WAIT_FOR_CPU_HOST
+static short MFC0_count[32];
+/* Keep one C0 MF status read count for each scalar register. */
+#endif
 
 static RCPREG* CR[16];
 
@@ -277,8 +300,8 @@ static union {
     unsigned W:  32;
 } SR_temp;
 
-extern void ULW(int rd, uint32_t addr);
-extern void USW(int rs, uint32_t addr);
+static void ULW(int rd, uint32_t addr);
+static void USW(int rs, uint32_t addr);
 
 /*
  * All other behaviors defined below this point in the file are specific to
@@ -488,7 +511,6 @@ static void SP_DMA_WRITE(void)
 
 /*** Scalar, Coprocessor Operations (vector unit) ***/
 
-extern ALIGNED short VR[32][8];
 
 /*
  * Since RSP vectors are stored 100% accurately as big-endian arrays for the
@@ -1688,7 +1710,7 @@ static void (*SWC2_op[1 << 5])(int, int, signed, int) = {
 
 /*** Modern pseudo-operations (not real instructions, but nice shortcuts) ***/
 
-void ULW(int rd, uint32_t addr)
+static void ULW(int rd, uint32_t addr)
 { /* "Unaligned Load Word" */
    if (addr & 0x00000001)
    {
@@ -1710,7 +1732,7 @@ void ULW(int rd, uint32_t addr)
    /* SR[0] = 0x00000000; */
 }
 
-void USW(int rs, uint32_t addr)
+static void USW(int rs, uint32_t addr)
 { /* "Unaligned Store Word" */
    SR_temp.W = SR[rs];
    if (addr & 0x00000001)
