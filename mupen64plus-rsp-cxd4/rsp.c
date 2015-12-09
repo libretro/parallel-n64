@@ -143,6 +143,8 @@ EXPORT unsigned int CALL cxd4DoRspCycles(unsigned int cycles)
              *RSP.DPC_STATUS_REG &= ~0x00000002;
           }
           return 0;
+#endif
+#ifdef EXTERN_COMMAND_LIST_ABI
        case 0x00000002: /* OSTask.type == M_AUDTASK */
           if (CFG_HLE_AUD == 0)
              break;
