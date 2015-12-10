@@ -14,6 +14,8 @@
 #ifndef _CLAMP_H
 #define _CLAMP_H
 
+extern short co[N];
+
 #ifdef ARCH_MIN_SSE2
 /*
  * We actually need to write explicit SSE2 code for this because GCC 4.8.1
@@ -26,12 +28,19 @@
  * just one extra scalar x86 instruction for every RSP vector op-code when we
  * use SSE2 explicitly for this particular goal instead of letting GCC do it.
  */
-#define vector_copy(VD, VS) \
-    _mm_store_si128((__m128i *)VD, _mm_load_si128((__m128i *)VS));
+static INLINE void vector_copy(short* VD, short* VS)
+{
+    __m128i xmm = _mm_load_si128((__m128i *)VS);
+    _mm_store_si128((__m128i *)VD, xmm);
+}
 #else
-#define vector_copy(VD, VS) \
-   for (i = 0; i < N; i++) \
+static INLINE void vector_copy(short* VD, short* VS)
+{
+   register int i;
+
+   for (i = 0; i < N; i++)
       VD[i] = VS[i];
+}
 #endif
 
 #endif

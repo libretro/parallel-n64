@@ -40,14 +40,14 @@ unsigned char VCE;
  * However, since SSE2 uses 128-bit XMM's, and Win32 `int` storage is 32-bit,
  * we have the problem of 32*8 > 128 bits, so we use `short` to reduce packs.
  */
-static short ne[8]; /* $vco:  high byte "NOTEQUAL" */
-static short co[8]; /* $vco:  low byte "carry/borrow in/out" */
-static short clip[8]; /* $vcc:  high byte (clip tests:  VCL, VCH, VCR) */
-static short comp[8]; /* $vcc:  low byte (VEQ, VNE, VLT, VGE, VCL, VCH, VCR) */
-static short vce[8]; /* $vce:  vector compare extension register */
+short ne[8]; /* $vco:  high byte "NOTEQUAL" */
+short co[8]; /* $vco:  low byte "carry/borrow in/out" */
+short clip[8]; /* $vcc:  high byte (clip tests:  VCL, VCH, VCR) */
+short comp[8]; /* $vcc:  low byte (VEQ, VNE, VLT, VGE, VCL, VCH, VCR) */
+short vce[8]; /* $vce:  vector compare extension register */
 
 #ifndef ARCH_MIN_SSE2
-static unsigned short get_VCO(void)
+unsigned short get_VCO(void)
 {
     register unsigned short VCO;
 
@@ -70,8 +70,7 @@ static unsigned short get_VCO(void)
       | (co[0x0 % 8] << 0x0);
     return (VCO); /* Big endian becomes little. */
 }
-
-static unsigned short get_VCC(void)
+unsigned short get_VCC(void)
 {
     register unsigned short VCC;
 
@@ -94,8 +93,7 @@ static unsigned short get_VCC(void)
       | (comp[0x0 % 8] << 0x0);
     return (VCC); /* Big endian becomes little. */
 }
-
-static unsigned char get_VCE(void)
+unsigned char get_VCE(void)
 {
     register unsigned char VCE;
 
@@ -111,7 +109,7 @@ static unsigned char get_VCE(void)
     return (VCE); /* Big endian becomes little. */
 }
 #else
-static unsigned short get_VCO(void)
+unsigned short get_VCO(void)
 {
     __m128i xmm, hi, lo;
     register unsigned short VCO;
@@ -129,8 +127,7 @@ static unsigned short get_VCO(void)
     VCO = _mm_movemask_epi8(xmm) & 0x0000FFFF; /* PMOVMSKB combines each MSB. */
     return (VCO);
 }
-
-static unsigned short get_VCC(void)
+unsigned short get_VCC(void)
 {
     __m128i xmm, hi, lo;
     register unsigned short VCC;
@@ -148,8 +145,7 @@ static unsigned short get_VCC(void)
     VCC = _mm_movemask_epi8(xmm) & 0x0000FFFF; /* PMOVMSKB combines each MSB. */
     return (VCC);
 }
-
-static unsigned char get_VCE(void)
+unsigned char get_VCE(void)
 {
     __m128i xmm, hi, lo;
     register unsigned char VCE;
@@ -169,7 +165,7 @@ static unsigned char get_VCE(void)
  * CTC2 resources
  * not sure how to vectorize going the other direction into SSE2
  */
-static void set_VCO(unsigned short VCO)
+void set_VCO(unsigned short VCO)
 {
     register int i;
 
@@ -177,10 +173,9 @@ static void set_VCO(unsigned short VCO)
         co[i] = (VCO >> (i + 0x0)) & 1;
     for (i = 0; i < 8; i++)
         ne[i] = (VCO >> (i + 0x8)) & 1;
-    /* Little endian becomes big. */
+    return; /* Little endian becomes big. */
 }
-
-static void set_VCC(unsigned short VCC)
+void set_VCC(unsigned short VCC)
 {
     register int i;
 
@@ -188,15 +183,14 @@ static void set_VCC(unsigned short VCC)
         comp[i] = (VCC >> (i + 0x0)) & 1;
     for (i = 0; i < 8; i++)
         clip[i] = (VCC >> (i + 0x8)) & 1;
-    /* Little endian becomes big. */
+    return; /* Little endian becomes big. */
 }
-
-static void set_VCE(unsigned char VCE)
+void set_VCE(unsigned char VCE)
 {
     register int i;
 
     for (i = 0; i < 8; i++)
         vce[i] = (VCE >> i) & 1;
-    /* Little endian becomes big. */
+    return; /* Little endian becomes big. */
 }
 #endif

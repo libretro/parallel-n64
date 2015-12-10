@@ -73,7 +73,7 @@ static ALIGNED short VACC[3][N];
 #include "vu/clamp.h"
 #include "vu/cf.h"
 
-static INLINE void res_V(int vd, int vs, int vt, int e)
+static void res_V(int vd, int vs, int vt, int e)
 {
    register int i;
 
@@ -86,8 +86,12 @@ static INLINE void res_V(int vd, int vs, int vt, int e)
       VR[vd][i] = 0x0000; /* override behavior (bpoint) */
 }
 
-/* Ultra64 OS did have these, so one could implement this ext. */
-#define res_M(vd, vs, vt, e) res_V(vd, vs, vt, e);
+static void res_M(int vd, int vs, int vt, int e)
+{
+   /* VMUL IQ */
+   res_V(vd, vs, vt, e);
+   /* Ultra64 OS did have these, so one could implement this ext. */
+}
 
 #include "vu/add.h"
 #include "vu/logical.h"
@@ -95,6 +99,16 @@ static INLINE void res_V(int vd, int vs, int vt, int e)
 #include "vu/select.h"
 #include "vu/multiply.h"
 
+static void (*COP2_C2[64])(int, int, int, int) = {
+    VMULF  ,VMULU  ,res_M  ,res_M  ,VMUDL  ,VMUDM  ,VMUDN  ,VMUDH  , /* 000 */
+    VMACF  ,VMACU  ,res_M  ,res_M  ,VMADL  ,VMADM  ,VMADN  ,VMADH  , /* 001 */
+    VADD   ,VSUB   ,res_V  ,VABS   ,VADDC  ,VSUBC  ,res_V  ,res_V  , /* 010 */
+    res_V  ,res_V  ,res_V  ,res_V  ,res_V  ,VSAW   ,res_V  ,res_V  , /* 011 */
+    VLT    ,VEQ    ,VNE    ,VGE    ,VCL    ,VCH    ,VCR    ,VMRG   , /* 100 */
+    VAND   ,VNAND  ,VOR    ,VNOR   ,VXOR   ,VNXOR  ,res_V  ,res_V  , /* 101 */
+    VRCP   ,VRCPL  ,VRCPH  ,VMOV   ,VRSQ   ,VRSQL  ,VRSQH  ,VNOP   , /* 110 */
+    res_V  ,res_V  ,res_V  ,res_V  ,res_V  ,res_V  ,res_V  ,res_V  , /* 111 */
+}; /* 000     001     010     011     100     101     110     111 */
 
 #include "matrix.h"
 
@@ -282,7 +296,9 @@ static int SR[32];
 
 #include "rsp.h"
 
-#define res_S() (void)0
+NOINLINE static void res_S(void)
+{
+}
 
 #ifdef EMULATE_STATIC_PC
 #define BASE_OFF    0x000
@@ -295,13 +311,13 @@ static int SR[32];
 
 #define MF_SP_STATUS_TIMEOUT 8192
 
+void set_PC(int address)
+{
+    temp_PC = 0x04001000 + (address & 0xFFC);
 #ifndef EMULATE_STATIC_PC
-#define set_PC(address) \
-    temp_PC = 0x04001000 + (address & 0xFFC); \
     stage = 1;
-#else
-#define set_PC(address) temp_PC = 0x04001000 + (address & 0xFFC);
 #endif
+}
 
 /*
  * If the client CPU's shift amount is exactly 5 bits for a 32-bit source,
@@ -587,13 +603,13 @@ extern void set_VCC(unsigned short VCC);
 extern void set_VCE(unsigned char VCE);
 extern short vce[8];
 
-static unsigned short rwR_VCE(void)
+unsigned short rwR_VCE(void)
 { /* never saw a game try to read VCE out to a scalar GPR yet */
     register unsigned short ret_slot = 0x00 | (unsigned short)get_VCE();
     return (ret_slot);
 }
 
-static void rwW_VCE(unsigned short VCE)
+void rwW_VCE(unsigned short VCE)
 { /* never saw a game try to write VCE using a scalar GPR yet */
     register int i;
 
@@ -625,22 +641,32 @@ static void (*W_VCF[32])(unsigned short) = {
     set_VCO,set_VCC,rwW_VCE,rwW_VCE
 };
 
-#define MFC2(rt, vs, e) \
-    SR_B(rt, 2) = VR_B(vs, e); \
-    SR_B(rt, 3) = VR_B(vs, (e + 0x1) & 0xF); \
-    SR[rt] = (signed short)(SR[rt]); \
+static void MFC2(int rt, int vs, int e)
+{
+    SR_B(rt, 2) = VR_B(vs, e);
+    e = (e + 0x1) & 0xF;
+    SR_B(rt, 3) = VR_B(vs, e);
+    SR[rt] = (signed short)(SR[rt]);
     SR[0] = 0x00000000;
+}
 
-/* If element == 0xF, it does not matter; loads do not wrap over. */
-#define MTC2(rt, vd, e) \
-   VR_B(vd, e+0x0) = SR_B(rt, 2); \
+static void MTC2(int rt, int vd, int e)
+{
+   VR_B(vd, e+0x0) = SR_B(rt, 2);
    VR_B(vd, e+0x1) = SR_B(rt, 3);
+   /* If element == 0xF, it does not matter; loads do not wrap over. */
+}
 
-#define CFC2(rt, rd) \
-    SR[rt] = (signed short)R_VCF[rd](); \
+static void CFC2(int rt, int rd)
+{
+    SR[rt] = (signed short)R_VCF[rd]();
     SR[0] = 0x00000000;
+}
 
-#define CTC2(rt, rd) W_VCF[rd](SR[rt] & 0x0000FFFF);
+static void CTC2(int rt, int rd)
+{
+    W_VCF[rd](SR[rt] & 0x0000FFFF);
+}
 
 /*** Scalar, Coprocessor Operations (vector unit, scalar cache transfers) ***/
 static void LBV(int vt, int element, int offset, int base)
@@ -1785,302 +1811,7 @@ static void USW(int rs, uint32_t addr)
 /* Allocate the RSP CPU loop to its own functional space. */
 #define FIT_IMEM(PC)    (PC & 0xFFF & 0xFFC)
 
-static INLINE void run_task_COP2_C2(uint32_t inst)
-{
-   register int i;
-   short ST[N];
-   const int opcode = inst % 64; /* inst.R.func */
-   const int vd = (inst & 0x000007FF) >> 6; /* inst.R.sa */
-   const int vs = (unsigned short)(inst) >> 11; /* inst.R.rd */
-   const int vt = (inst >> 16) & 31; /* inst.R.rt */
-   const int e  = (inst >> 21) & 0xF; /* rs & 0xF */
-
-   switch (opcode)
-   {
-      case 0:
-         VMULF(vd, vs, vt, e);
-         break;
-      case 1:
-         VMULU(vd, vs, vt, e);
-         break;
-      case 2:
-      case 3:
-      case 10:
-      case 11:
-         res_M(vd, vs, vt, e);
-         break;
-      case 4:
-         VMUDL(vd, vs, vt, e);
-         break;
-      case 5:
-         VMUDM(vd, vs, vt, e);
-         break;
-      case 6:
-         VMUDN(vd, vs, vt, e);
-         break;
-      case 7:
-         VMUDH(vd, vs, vt, e);
-         break;
-      case 8:
-         VMACF(vd, vs, vt, e);
-         break;
-      case 9:
-         VMACU(vd, vs, vt, e);
-         break;
-      case 12:
-         VMADL(vd, vs, vt, e);
-         break;
-      case 13:
-         VMADM(vd, vs, vt, e);
-         break;
-      case 14:
-         VMADN(vd, vs, vt, e);
-         break;
-      case 15:
-         VMADH(vd, vs, vt, e);
-         break;
-      case 16:
-         VADD(vd, vs, vt, e);
-         break;
-      case 17:
-         VSUB(vd, vs, vt, e);
-         break;
-      case 18:
-      case 22:
-      case 23:
-      case 24:
-      case 25:
-      case 26:
-      case 27:
-      case 28:
-      case 30:
-      case 31:
-      case 46:
-      case 47:
-      case 56:
-      case 57:
-      case 58:
-      case 59:
-      case 60:
-      case 61:
-      case 62:
-      case 63:
-         res_V(vd, vs, vt, e);
-         break;
-      case 19:
-         VABS(vd, vs, vt, e);
-         break;
-      case 20:
-         VADDC(vd, vs, vt, e);
-         break;
-      case 21:
-         VSUBC(vd, vs, vt, e);
-         break;
-      case 29:
-         VSAW(vd, vs, vt, e);
-         break;
-      case 32:
-         VLT(vd, vs, vt, e);
-         break;
-      case 33:
-         VEQ(vd, vs, vt, e);
-         break;
-      case 34:
-         VNE(vd, vs, vt, e);
-         break;
-      case 35:
-         VGE(vd, vs, vt, e);
-         break;
-      case 36:
-         VCL(vd, vs, vt, e);
-         break;
-      case 37:
-         VCH(vd, vs, vt, e);
-         break;
-      case 38:
-         VCR(vd, vs, vt, e);
-         break;
-      case 39:
-         VMRG(vd, vs, vt, e);
-         break;
-      case 40:
-         VAND(vd, vs, vt, e);
-         break;
-      case 41:
-         VNAND(vd, vs, vt, e);
-         break;
-      case 42:
-         VOR(vd, vs, vt, e);
-         break;
-      case 43:
-         VNOR(vd, vs, vt, e);
-         break;
-      case 44: /* VXOR */
-         SHUFFLE_VECTOR(ST, VR[vt], e);
-         for (i = 0; i < N; i++)
-            VACC_L[i] = VR[vs][i] ^ ST[i];
-         vector_copy(VR[vd], VACC_L);
-         break;
-      case 45: /* VNXOR */
-         SHUFFLE_VECTOR(ST, VR[vt], e);
-         for (i = 0; i < N; i++)
-            VACC_L[i] = ~(VR[vs][i] ^ ST[i]);
-         vector_copy(VR[vd], VACC_L);
-         break;
-      case 48:
-         DivIn = (int)VR[vt][e & 07];
-         do_div(DivIn, SP_DIV_SQRT_NO, SP_DIV_PRECISION_SINGLE);
-         SHUFFLE_VECTOR(VACC_L, VR[vt], e);
-         VR[vd][vs & 07] = (short)DivOut;
-         DPH = SP_DIV_PRECISION_SINGLE;
-         break;
-      case 49:
-         DivIn &= -DPH;
-         DivIn |= (unsigned short)VR[vt][e & 07];
-         do_div(DivIn, SP_DIV_SQRT_NO, DPH);
-         SHUFFLE_VECTOR(VACC_L, VR[vt], e);
-         VR[vd][vs & 07] = (short)DivOut;
-         DPH = SP_DIV_PRECISION_SINGLE;
-         break;
-      case 50: /* VRCPH */
-         DivIn = VR[vt][e & 07] << 16;
-         SHUFFLE_VECTOR(VACC_L, VR[vt], e);
-         VR[vd][vs & 07] = DivOut >> 16;
-         DPH = SP_DIV_PRECISION_DOUBLE;
-         break;
-      case 51: /* VMOV */
-         SHUFFLE_VECTOR(VACC_L, VR[vt], e);
-         VR[vd][vs & 07] = VACC_L[e & 07];
-         break;
-      case 52: /* VRSQ */
-         DivIn = (int)VR[vt][e & 07];
-         do_div(DivIn, SP_DIV_SQRT_YES, SP_DIV_PRECISION_SINGLE);
-         SHUFFLE_VECTOR(VACC_L, VR[vt], e);
-         VR[vd][vs & 07] = (short)DivOut;
-         DPH = SP_DIV_PRECISION_SINGLE;
-         break;
-      case 53: /* VRSQL */
-         DivIn &= -DPH;
-         DivIn |= (unsigned short)VR[vt][e & 07];
-         do_div(DivIn, SP_DIV_SQRT_YES, DPH);
-         SHUFFLE_VECTOR(VACC_L, VR[vt], e);
-         VR[vd][vs & 07] = (short)DivOut;
-         DPH = SP_DIV_PRECISION_SINGLE;
-         break;
-      case 54: /* VRSQH */
-         DivIn = VR[vt][e & 07] << 16;
-         SHUFFLE_VECTOR(VACC_L, VR[vt], e);
-         VR[vd][vs & 07] = DivOut >> 16;
-         DPH = SP_DIV_PRECISION_DOUBLE;
-         break;
-      case 55:
-         VNOP(vd, vs, vt, e);
-         break;
-   }
-}
-
-static INLINE int run_task_grspecial(uint32_t PC, uint32_t inst, int rd, int rt, int rs)
-{
-#if (1u >> 1 == 0)
-   rd = (inst & 0x0000FFFFu) >> 11;
-   /* rs = inst >> 21; // Primary op is 0, so we don't need &= 31. */
-#else
-   rd = (inst >> 11) % 32;
-   /* rs = (inst >> 21) % 32; */
-#endif
-   rt = (inst >> 16) % (1 << 5);
-
-   switch (inst % 64)
-   {
-      case 000: /* SLL */
-         SR[rd] = SR[rt] << MASK_SA(inst >> 6);
-         SR[0] = 0x00000000;
-         return 1;
-      case 002: /* SRL */
-         SR[rd] = (unsigned)(SR[rt]) >> MASK_SA(inst >> 6);
-         SR[0] = 0x00000000;
-         return 1;
-      case 003: /* SRA */
-         SR[rd] = (signed)(SR[rt]) >> MASK_SA(inst >> 6);
-         SR[0] = 0x00000000;
-         return 1;
-      case 004: /* SLLV */
-         SR[rd] = SR[rt] << MASK_SA(SR[rs = inst >> 21]);
-         SR[0] = 0x00000000;
-         return 1;
-      case 006: /* SRLV */
-         SR[rd] = (unsigned)(SR[rt]) >> MASK_SA(SR[rs = inst >> 21]);
-         SR[0] = 0x00000000;
-         return 1;
-      case 007: /* SRAV */
-         SR[rd] = (signed)(SR[rt]) >> MASK_SA(SR[rs = inst >> 21]);
-         SR[0] = 0x00000000;
-         return 1;
-      case 011: /* JALR */
-         SR[rd] = (PC + LINK_OFF) & 0x00000FFC;
-         SR[0] = 0x00000000;
-      case 010: /* JR */
-         set_PC(SR[rs = inst >> 21]);
-         return 0;
-      case 015: /* BREAK */
-         *RSP.SP_STATUS_REG |= 0x00000003; /* BROKE | HALT */
-         if (*RSP.SP_STATUS_REG & 0x00000040)
-         { /* SP_STATUS_INTR_BREAK */
-            *RSP.MI_INTR_REG |= 0x00000001;
-            RSP.CheckInterrupts();
-         }
-         return 1;
-      case 040: /* ADD */
-      case 041: /* ADDU */
-         rs = inst >> 21;
-         SR[rd] = SR[rs] + SR[rt];
-         SR[0] = 0x00000000; /* needed for Rareware ucodes */
-         return 1;
-      case 042: /* SUB */
-      case 043: /* SUBU */
-         rs = inst >> 21;
-         SR[rd] = SR[rs] - SR[rt];
-         SR[0] = 0x00000000;
-         return 1;
-      case 044: /* AND */
-         rs = inst >> 21;
-         SR[rd] = SR[rs] & SR[rt];
-         SR[0] = 0x00000000; /* needed for Rareware ucodes */
-         return 1;
-      case 045: /* OR */
-         rs = inst >> 21;
-         SR[rd] = SR[rs] | SR[rt];
-         SR[0] = 0x00000000;
-         return 1;
-      case 046: /* XOR */
-         rs = inst >> 21;
-         SR[rd] = SR[rs] ^ SR[rt];
-         SR[0] = 0x00000000;
-         return 1;
-      case 047: /* NOR */
-         rs = inst >> 21;
-         SR[rd] = ~(SR[rs] | SR[rt]);
-         SR[0] = 0x00000000;
-         return 1;
-      case 052: /* SLT */
-         rs = inst >> 21;
-         SR[rd] = ((signed)(SR[rs]) < (signed)(SR[rt]));
-         SR[0] = 0x00000000;
-         return 1;
-      case 053: /* SLTU */
-         rs = inst >> 21;
-         SR[rd] = ((unsigned)(SR[rs]) < (unsigned)(SR[rt]));
-         SR[0] = 0x00000000;
-         return 1;
-      default:
-         res_S();
-         return 1;
-   }
-
-   return 1;
-}
-
-static INLINE void run_task(void)
+NOINLINE void run_task(void)
 {
    register uint32_t PC;
    register unsigned int i;
@@ -2093,9 +1824,11 @@ static INLINE void run_task(void)
    PC = FIT_IMEM(*RSP.SP_PC_REG);
    while ((*RSP.SP_STATUS_REG & 0x00000001) == 0x00000000)
    {
+      register uint32_t inst;
       register int rd, rs, rt;
       register int base;
-      register uint32_t inst = *(uint32_t *)(RSP.IMEM + FIT_IMEM(PC));
+
+      inst = *(uint32_t *)(RSP.IMEM + FIT_IMEM(PC));
 #ifdef EMULATE_STATIC_PC
       PC = (PC + 0x004);
 EX:
@@ -2104,7 +1837,15 @@ EX:
       step_SP_commands(inst);
 #endif
       if (inst >> 25 == 0x25) /* is a VU instruction */
-         run_task_COP2_C2(inst);
+      {
+         const int opcode = inst % 64; /* inst.R.func */
+         const int vd = (inst & 0x000007FF) >> 6; /* inst.R.sa */
+         const int vs = (unsigned short)(inst) >> 11; /* inst.R.rd */
+         const int vt = (inst >> 16) & 31; /* inst.R.rt */
+         const int e  = (inst >> 21) & 0xF; /* rs & 0xF */
+
+         COP2_C2[opcode](vd, vs, vt, e);
+      }
       else
       {
          const int op = inst >> 26;
@@ -2116,8 +1857,101 @@ EX:
             register uint32_t addr;
 
             case 000: /* SPECIAL */
-               if (!run_task_grspecial(PC, inst, rd, rt, rs))
-                  goto BRANCH;
+#if (1u >> 1 == 0)
+               rd = (inst & 0x0000FFFFu) >> 11;
+               /* rs = inst >> 21; // Primary op is 0, so we don't need &= 31. */
+#else
+               rd = (inst >> 11) % 32;
+               /* rs = (inst >> 21) % 32; */
+#endif
+               rt = (inst >> 16) % (1 << 5);
+
+               switch (inst % 64)
+               {
+                  case 000: /* SLL */
+                     SR[rd] = SR[rt] << MASK_SA(inst >> 6);
+                     SR[0] = 0x00000000;
+                     continue;
+                  case 002: /* SRL */
+                     SR[rd] = (unsigned)(SR[rt]) >> MASK_SA(inst >> 6);
+                     SR[0] = 0x00000000;
+                     continue;
+                  case 003: /* SRA */
+                     SR[rd] = (signed)(SR[rt]) >> MASK_SA(inst >> 6);
+                     SR[0] = 0x00000000;
+                     continue;
+                  case 004: /* SLLV */
+                     SR[rd] = SR[rt] << MASK_SA(SR[rs = inst >> 21]);
+                     SR[0] = 0x00000000;
+                     continue;
+                  case 006: /* SRLV */
+                     SR[rd] = (unsigned)(SR[rt]) >> MASK_SA(SR[rs = inst >> 21]);
+                     SR[0] = 0x00000000;
+                     continue;
+                  case 007: /* SRAV */
+                     SR[rd] = (signed)(SR[rt]) >> MASK_SA(SR[rs = inst >> 21]);
+                     SR[0] = 0x00000000;
+                     continue;
+                  case 011: /* JALR */
+                     SR[rd] = (PC + LINK_OFF) & 0x00000FFC;
+                     SR[0] = 0x00000000;
+                  case 010: /* JR */
+                     set_PC(SR[rs = inst >> 21]);
+                     goto BRANCH;
+                  case 015: /* BREAK */
+                     *RSP.SP_STATUS_REG |= 0x00000003; /* BROKE | HALT */
+                     if (*RSP.SP_STATUS_REG & 0x00000040)
+                     { /* SP_STATUS_INTR_BREAK */
+                        *RSP.MI_INTR_REG |= 0x00000001;
+                        RSP.CheckInterrupts();
+                     }
+                     continue;
+                  case 040: /* ADD */
+                  case 041: /* ADDU */
+                     rs = inst >> 21;
+                     SR[rd] = SR[rs] + SR[rt];
+                     SR[0] = 0x00000000; /* needed for Rareware ucodes */
+                     continue;
+                  case 042: /* SUB */
+                  case 043: /* SUBU */
+                     rs = inst >> 21;
+                     SR[rd] = SR[rs] - SR[rt];
+                     SR[0] = 0x00000000;
+                     continue;
+                  case 044: /* AND */
+                     rs = inst >> 21;
+                     SR[rd] = SR[rs] & SR[rt];
+                     SR[0] = 0x00000000; /* needed for Rareware ucodes */
+                     continue;
+                  case 045: /* OR */
+                     rs = inst >> 21;
+                     SR[rd] = SR[rs] | SR[rt];
+                     SR[0] = 0x00000000;
+                     continue;
+                  case 046: /* XOR */
+                     rs = inst >> 21;
+                     SR[rd] = SR[rs] ^ SR[rt];
+                     SR[0] = 0x00000000;
+                     continue;
+                  case 047: /* NOR */
+                     rs = inst >> 21;
+                     SR[rd] = ~(SR[rs] | SR[rt]);
+                     SR[0] = 0x00000000;
+                     continue;
+                  case 052: /* SLT */
+                     rs = inst >> 21;
+                     SR[rd] = ((signed)(SR[rs]) < (signed)(SR[rt]));
+                     SR[0] = 0x00000000;
+                     continue;
+                  case 053: /* SLTU */
+                     rs = inst >> 21;
+                     SR[rd] = ((unsigned)(SR[rs]) < (unsigned)(SR[rt]));
+                     SR[0] = 0x00000000;
+                     continue;
+                  default:
+                     res_S();
+                     continue;
+               }
                continue;
             case 001: /* REGIMM */
                rs = (inst >> 21) & 31;
