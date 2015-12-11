@@ -726,6 +726,8 @@ static void lsn(u_char hsn[], int i, int *preferred_reg)
 {
   int j;
   int b=-1;
+  int itype_test;
+  
   for(j=0;j<9;j++)
   {
     if(i+j>=slen) {
@@ -789,13 +791,12 @@ static void lsn(u_char hsn[], int i, int *preferred_reg)
     hsn[RHTBL]=1;
   }
   // Coprocessor load/store needs FTEMP, even if not declared
-  if(itype[i]==C1LS
-#ifdef EMU_PCSXR
-  || (itype[i] == C2LS)
-#else
-#endif
-    )
-    hsn[FTEMP]=0;
+  itype_test = itype[i] == C1LS;
+  #ifdef EMU_PCSXR
+  itype_test = itype_test || (itype[i] == C2LS);
+  #endif
+  if (itype_test)
+     hsn[FTEMP]=0;
 
   // Load L/R also uses FTEMP as a temporary register
   if(itype[i]==LOADLR)
@@ -803,20 +804,22 @@ static void lsn(u_char hsn[], int i, int *preferred_reg)
 
 #ifdef EMU_PCSXR
   // Also SWL/SWR/SDL/SDR
-  if(opcode[i]==0x2a||opcode[i]==0x2e||opcode[i]==0x2c||opcode[i]==0x2d)
+  int opcode_test = opcode[i]==0x2a||opcode[i]==0x2e||opcode[i]==0x2c||opcode[i]==0x2d;
 #else
   // Also 64-bit SDL/SDR
-  if(opcode[i]==0x2c||opcode[i]==0x2d)
+  int opcode_test = opcode[i]==0x2c||opcode[i]==0x2d;
 #endif
-    hsn[FTEMP]=0;
+  if (opcode_test)
+      hsn[FTEMP]=0;
 
   // Don't remove the TLB registers either
-  if(itype[i]==LOAD || itype[i]==LOADLR || itype[i]==STORE || itype[i]==STORELR || itype[i]==C1LS
+  itype_test = itype[i]==LOAD || itype[i]==LOADLR || itype[i]==STORE || itype[i]==STORELR || itype[i]==C1LS;
 #ifdef EMU_PCSXR
-        || itype[i]==C2LS
+  itype_test = itype_test || itype[i]==C2LS;
 #endif
-        )
+  if (itype_test)
     hsn[TLREG]=0;
+    
   // Don't remove the miniht registers
   if(itype[i]==UJUMP||itype[i]==RJUMP)
   {
