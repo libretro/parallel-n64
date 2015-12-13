@@ -573,10 +573,11 @@ extern int InitGfx(void);
 extern void gles2n64_reset(void);
 extern void reinit_gfx_plugin(void);
 
+static int gotsym;
 static void context_reset(void)
 {
-
-   rglgen_resolve_symbols(hw_render.get_proc_address);
+   if (!gotsym)
+      gotsym = (rglgen_resolve_symbols(hw_render.get_proc_address), 1);
 
    reinit_gfx_plugin();
 
@@ -621,6 +622,9 @@ void *retro_gl_init(void)
 void sglEnter(void)
 {
    int i;
+
+	 if (!gotsym)
+      gotsym = (rglgen_resolve_symbols(hw_render.get_proc_address), 1);
 
    if (gfx_plugin == GFX_ANGRYLION || stop)
       return;
