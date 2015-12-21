@@ -2321,6 +2321,12 @@ static void emit_callne(int a)
   output_w32(0x1b000000|offset);
 }
 
+static void emit_gen_ram_ptr(u_int addr, int hr)
+{
+  emit_lea_rip((int)g_rdram-0x80000000+addr,hr);
+}
+
+
 #ifdef IMM_PREFETCH
 // Used to preload hash table entries
 static void emit_prefetch(void *addr)
