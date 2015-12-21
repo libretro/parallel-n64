@@ -3347,7 +3347,7 @@ static void loadlr_assemble_x86(int i,struct regstat *i_regs)
     if(!c||memtarget) {
       //emit_readword_indexed((int)g_rdram-0x80000000,temp2,temp2);
       emit_readword_indexed_tlb(0,temp2,map,temp2);
-      if(jaddr) add_stub(LOADW_STUB,jaddr,(int)out,i,temp2,(intptr_t)i_regs,ccadj[i],reglist);
+      if(jaddr) add_stub(LOADW_STUB,jaddr,(int)out,i,temp2,(int)i_regs,ccadj[i],reglist);
     }
     else
       inline_readstub(LOADW_STUB,i,(constmap[i][s]+offset)&0xFFFFFFFC,i_regs->regmap,FTEMP,ccadj[i],reglist);
@@ -3421,7 +3421,7 @@ static void loadlr_assemble_x86(int i,struct regstat *i_regs)
       //if(th>=0) emit_readword_indexed((int)g_rdram-0x80000000,temp2,temp2h);
       //emit_readword_indexed((int)g_rdram-0x7FFFFFFC,temp2,temp2);
       emit_readdword_indexed_tlb(0,temp2,map,temp2h,temp2);
-      if(jaddr) add_stub(LOADD_STUB,jaddr,(int)out,i,temp2,(intptr_t)i_regs,ccadj[i],reglist);
+      if(jaddr) add_stub(LOADD_STUB,jaddr,(int)out,i,temp2,(int)i_regs,ccadj[i],reglist);
     }
     else
       inline_readstub(LOADD_STUB,i,(constmap[i][s]+offset)&0xFFFFFFF8,i_regs->regmap,FTEMP,ccadj[i],reglist);
@@ -3562,7 +3562,7 @@ static void cop1_assemble(int i,struct regstat *i_regs)
     emit_testimm(rs,0x20000000);
     intptr_t jaddr=(intptr_t)out;
     emit_jeq(0);
-    add_stub(FP_STUB,jaddr,(int)out,i,rs,(intptr_t)i_regs,is_delayslot,0);
+    add_stub(FP_STUB,jaddr,(int)out,i,rs,(int)i_regs,is_delayslot,0);
     cop1_usable=1;
   }
   if (opcode2[i]==0) { // MFC1
@@ -3632,7 +3632,7 @@ static void fconv_assemble_x86(int i,struct regstat *i_regs)
     emit_testimm(rs,0x20000000);
     intptr_t jaddr=(intptr_t)out;
     emit_jeq(0);
-    add_stub(FP_STUB,jaddr,(int)out,i,rs,(intptr_t)i_regs,is_delayslot,0);
+    add_stub(FP_STUB,jaddr,(int)out,i,rs,(int)i_regs,is_delayslot,0);
     cop1_usable=1;
   }
 #ifdef __SSE__
@@ -3889,7 +3889,7 @@ static void fcomp_assemble(int i,struct regstat *i_regs)
     emit_testimm(cs,0x20000000);
     intptr_t jaddr=(intptr_t)out;
     emit_jeq(0);
-    add_stub(FP_STUB,jaddr,(int)out,i,cs,(intptr_t)i_regs,is_delayslot,0);
+    add_stub(FP_STUB,jaddr,(int)out,i,cs,(int)i_regs,is_delayslot,0);
     cop1_usable=1;
   }
   
@@ -4013,7 +4013,7 @@ static void float_assemble(int i,struct regstat *i_regs)
     emit_testimm(cs,0x20000000);
     intptr_t jaddr=(intptr_t)out;
     emit_jeq(0);
-    add_stub(FP_STUB,jaddr,(int)out,i,cs,(intptr_t)i_regs,is_delayslot,0);
+    add_stub(FP_STUB,jaddr,(int)out,i,cs,(int)i_regs,is_delayslot,0);
     cop1_usable=1;
   }
   
