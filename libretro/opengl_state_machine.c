@@ -576,7 +576,7 @@ extern void reinit_gfx_plugin(void);
 static int gotsym;
 static void context_reset(void)
 {
-   if (!gotsym)
+   if (!gotsym && gfx_plugin != GFX_ANGRYLION)
       gotsym = (rglgen_resolve_symbols(hw_render.get_proc_address), 1);
 
    reinit_gfx_plugin();
@@ -623,11 +623,11 @@ void sglEnter(void)
 {
    int i;
 
-	 if (!gotsym)
-      gotsym = (rglgen_resolve_symbols(hw_render.get_proc_address), 1);
-
    if (gfx_plugin == GFX_ANGRYLION || stop)
       return;
+
+   if (!gotsym)
+      gotsym = (rglgen_resolve_symbols(hw_render.get_proc_address), 1);
 
    for (i = 0; i < MAX_ATTRIB; i ++)
    {
