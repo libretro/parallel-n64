@@ -35,6 +35,19 @@
 #define N      8
 
 /*
+ * Illegal, unaligned LWC2 operations on the RSP may write past the terminal
+ * byte of a vector, while SWC2 operations may have to wrap around stores
+ * from the end to the start of a vector.  Both of these risk out-of-bounds
+ * memory access, but by doubling the number of bytes allocated (shift left)
+ * per each vector register, we could stabilize and probably optimize this.
+ */
+#if 0
+#define VR_STATIC_WRAPAROUND    0
+#else
+#define VR_STATIC_WRAPAROUND    1
+#endif
+
+/*
  * RSP virtual registers (of vector unit)
  * The most important are the 32 general-purpose vector registers.
  * The correct way to accurately store these is using big-endian vectors.
@@ -42,7 +55,7 @@
  * For ?WC2 we may need to do byte-precision access just as directly.
  * This is amended by using the `VU_S` and `VU_B` macros defined in `rsp.h`.
  */
-static ALIGNED short VR[32][N];
+static ALIGNED short VR[32][N << VR_STATIC_WRAPAROUND];
 static ALIGNED short VACC[3][N];
 
 #if defined(ARCH_MIN_SSE2)
@@ -849,15 +862,21 @@ static void SLV(int vt, int element, int offset, int base)
 static void SDV(int vt, int element, int offset, int base)
 {
    register uint32_t addr;
-   const int e = element;
+   const unsigned int e = element;
 
    addr = (SR[base] + 8*offset) & 0x00000FFF;
    if (e > 0x8 || (e & 0x1))
    { /* Illegal elements with Boss Game Studios publications. */
-      register int i;
+      register unsigned int i;
 
+#if (VR_STATIC_WRAPAROUND == 1)
+      vector_copy(VR[vt] + N, VR[vt]);
+      for (i = 0; i < 8; i++)
+         RSP.DMEM[BES(addr++ & 0x00000FFF)] = VR_B(vt, e + i);
+#else
       for (i = 0; i < 8; i++)
          RSP.DMEM[BES(addr++ & 0x00000FFF)] = VR_B(vt, (e+i)&0xF);
+#endif
       return;
    }
 
@@ -1538,11 +1557,17 @@ static void SQV(int vt, int element, int offset, int base)
     register uint32_t addr = (SR[base] + 16*offset) & 0x00000FFF;
 
     if (e != 0x0)
-    { /* happens with "Mia Hamm Soccer 64" */
+    { /* illegal SQV, happens with "Mia Hamm Soccer 64" */
         register unsigned int i;
 
+#if (VR_STATIC_WRAPAROUND == 1)
+        vector_copy(VR[vt] + N, VR[vt]);
+        for (i = 0; i < 16 - addr%16; i++)
+            RSP.DMEM[BES((addr + i) & 0xFFF)] = VR_B(vt, e + i);
+#else
         for (i = 0; i < 16 - addr%16; i++)
             RSP.DMEM[BES((addr + i) & 0xFFF)] = VR_B(vt, (e + i) & 0xF);
+#endif
         return;
     }
     b = addr & 0x0000000F;
