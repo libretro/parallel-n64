@@ -196,7 +196,8 @@ void Config_gln64_LoadRomConfig(unsigned char* header)
          log_cb(RETRO_LOG_INFO, "[gles2N64]: Searching Database for \"%s\" ROM\n", config.romName);
       while (!feof(f))
       {
-         fgets(line, 4096, f);
+         if (fgets(line, sizeof(line), f) == NULL)
+            fputs("glN64 ROM config stream read error.\n", stderr);
          if (line[0] == '\n') continue;
 
          if (strncmp(line,"rom name=", 9) == 0)
@@ -262,7 +263,9 @@ void Config_gln64_LoadConfig(void)
       while (!feof( f ))
       {
          char *val;
-         fgets( line, 4096, f );
+
+         if (fgets(line, sizeof(line), f) == NULL)
+            fputs("glN64 config stream read error.\n", stderr);
 
          if (line[0] == '#' || line[0] == '\n')
             continue;
