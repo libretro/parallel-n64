@@ -325,17 +325,17 @@ void r4300_deinit(void)
 static void (*r4300_step)(void);
 
 #if defined(DYNAREC)
-static void dyna_start_wrapper()
+static void dyna_start_wrapper(void)
 {
 #ifdef NEW_DYNAREC
-       new_dyna_start();
+   new_dyna_start();
 #else
-       dyna_start(dyna_jump);
+   dyna_start(dyna_jump);
 #endif
 }
 #endif
 
-static void pc_ops_wrapper()
+static void pc_ops_wrapper(void)
 {
 #ifdef COMPARE_CORE
            if (PC->ops == cached_interpreter_table.FIN_BLOCK && (PC->addr < 0x80000000 || PC->addr >= 0xc0000000))

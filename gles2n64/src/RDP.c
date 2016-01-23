@@ -11,6 +11,13 @@
 
 RDPInfo __RDP;
 
+enum
+{
+   gspTexRect = 0,
+   gdpTexRect,
+   halfTexRect
+};
+
 void RDP_Unknown( u32 w0, u32 w1 )
 {
 #ifdef DEBUG
@@ -231,6 +238,7 @@ void RDP_LoadSync( u32 w0, u32 w1 )
     gDPLoadSync();
 }
 
+
 static void _getTexRectParams(u32 *w2, u32 *w3)
 {
    if (__RSP.bLLE)
@@ -240,14 +248,10 @@ static void _getTexRectParams(u32 *w2, u32 *w3)
       return;
    }
 
-   enum {
-      gspTexRect,
-      gdpTexRect,
-      halfTexRect
-   } texRectMode = gdpTexRect;
+   unsigned texRectMode = gdpTexRect;
+   const u32 cmd1       = (*(u32*)&gfx_info.RDRAM[__RSP.PC[__RSP.PCi] + 0]) >> 24;
+   const u32 cmd2       = (*(u32*)&gfx_info.RDRAM[__RSP.PC[__RSP.PCi] + 8]) >> 24;
 
-   const u32 cmd1 = (*(u32*)&gfx_info.RDRAM[__RSP.PC[__RSP.PCi] + 0]) >> 24;
-   const u32 cmd2 = (*(u32*)&gfx_info.RDRAM[__RSP.PC[__RSP.PCi] + 8]) >> 24;
    if (cmd1 == G_RDPHALF_1)
    {
       if (cmd2 == G_RDPHALF_2)
@@ -574,7 +578,7 @@ void RDP_Half_1( u32 _c )
 #endif
 }
 
-static inline u32 GLN64_READ_RDP_DATA(u32 address)
+static INLINE u32 GLN64_READ_RDP_DATA(u32 address)
 {
 	if ((*(u32*)gfx_info.DPC_STATUS_REG) & 0x1)          // XBUS_DMEM_DMA enabled
 		return gfx_info.DMEM[(address & 0xfff)>>2];
@@ -607,6 +611,7 @@ EXPORT void CALL gln64ProcessRDPList(void)
    bool setZero = true;
    while (__RDP.cmd_cur != __RDP.cmd_ptr)
    {
+      u32 w0, w1;
       u32 cmd = (__RDP.cmd_data[__RDP.cmd_cur] >> 24) & 0x3f;
 
       if ((((__RDP.cmd_ptr - __RDP.cmd_cur)&maxCMDMask) * 4) < CmdLength[cmd])
@@ -619,8 +624,8 @@ EXPORT void CALL gln64ProcessRDPList(void)
          memcpy(__RDP.cmd_data + MAXCMD, __RDP.cmd_data, CmdLength[cmd] - (MAXCMD - __RDP.cmd_cur) * 4);
 
       // execute the command
-      u32 w0 = __RDP.cmd_data[__RDP.cmd_cur+0];
-      u32 w1 = __RDP.cmd_data[__RDP.cmd_cur+1];
+      w0 = __RDP.cmd_data[__RDP.cmd_cur+0];
+      w1 = __RDP.cmd_data[__RDP.cmd_cur+1];
       __RDP.w2 = __RDP.cmd_data[__RDP.cmd_cur+2];
       __RDP.w3 = __RDP.cmd_data[__RDP.cmd_cur + 3];
       __RSP.cmd = cmd;

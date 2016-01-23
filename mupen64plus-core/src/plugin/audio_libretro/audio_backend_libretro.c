@@ -120,9 +120,8 @@ void push_audio_samples_via_libretro(void* user_data, const void* buffer, size_t
    uint32_t i;
    double ratio;
    struct resampler_data data = {0};
-   uint32_t len      = size;
    int16_t *raw_data = (int16_t*)buffer;
-   size_t frames     = len / 4;
+   size_t frames     = size / 4;
    uint8_t *p        = (uint8_t*)buffer;
 
    /* save registers values */
@@ -134,7 +133,7 @@ void push_audio_samples_via_libretro(void* user_data, const void* buffer, size_t
    g_ai.regs[AI_DRAM_ADDR_REG] = (uint8_t*)buffer - (uint8_t*)g_rdram;
    g_ai.regs[AI_LEN_REG] = size;
 
-   for (i = 0; i < len; i += 4)
+   for (i = 0; i < size; i += 4)
    {
       p[i ] ^= p[i + 2];
       p[i + 2] ^= p[i ];
@@ -183,6 +182,6 @@ audio_batch:
    }
 
    /* restore original registers vlaues */
-   g_ai.regs[AI_LEN_REG] = saved_ai_length;
+   g_ai.regs[AI_LEN_REG]       = saved_ai_length;
    g_ai.regs[AI_DRAM_ADDR_REG] = saved_ai_dram;
 }

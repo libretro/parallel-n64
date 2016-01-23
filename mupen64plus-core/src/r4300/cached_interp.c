@@ -593,7 +593,7 @@ void invalidate_cached_code_hacktarux(uint32_t address, size_t size)
    {
       uint32_t addr;
       /* invalidate blocks (if necessary) */
-      uint32_t addr_max = address+size;
+      size_t addr_max = address+size;
 
       for(addr = address; addr < addr_max; addr += 4)
       {
