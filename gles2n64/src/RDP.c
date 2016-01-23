@@ -241,6 +241,9 @@ void RDP_LoadSync( u32 w0, u32 w1 )
 
 static void _getTexRectParams(u32 *w2, u32 *w3)
 {
+   unsigned texRectMode;
+   u32 cmd1, cmd2;
+
    if (__RSP.bLLE)
    {
       *w2 = __RDP.w2;
@@ -248,9 +251,9 @@ static void _getTexRectParams(u32 *w2, u32 *w3)
       return;
    }
 
-   unsigned texRectMode = gdpTexRect;
-   const u32 cmd1       = (*(u32*)&gfx_info.RDRAM[__RSP.PC[__RSP.PCi] + 0]) >> 24;
-   const u32 cmd2       = (*(u32*)&gfx_info.RDRAM[__RSP.PC[__RSP.PCi] + 8]) >> 24;
+   texRectMode = gdpTexRect;
+   cmd1        = (*(u32*)&gfx_info.RDRAM[__RSP.PC[__RSP.PCi] + 0]) >> 24;
+   cmd2        = (*(u32*)&gfx_info.RDRAM[__RSP.PC[__RSP.PCi] + 8]) >> 24;
 
    if (cmd1 == G_RDPHALF_1)
    {
