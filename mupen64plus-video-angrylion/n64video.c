@@ -6336,6 +6336,7 @@ INLINE void calculate_tile_derivs(UINT32 i)
 
 static void rgb_dither_complete(int* r, int* g, int* b, int dith)
 {
+   INT32 replacesign, ditherdiff;
    INT32 newr = *r, newg = *g, newb = *b;
 	INT32 rcomp = dith, gcomp, bcomp;
 
@@ -6361,13 +6362,9 @@ static void rgb_dither_complete(int* r, int* g, int* b, int dith)
 		bcomp = (dith + 5) & 7;
 	}
 
-	
-	
-	
-	
-	INT32 replacesign = (rcomp - (*r & 7)) >> 31;
-	
-	INT32 ditherdiff = newr - *r;
+	replacesign = (rcomp - (*r & 7)) >> 31;
+	ditherdiff = newr - *r;
+
 	*r = *r + (ditherdiff & replacesign);
 
 	replacesign = (gcomp - (*g & 7)) >> 31;
