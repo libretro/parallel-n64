@@ -591,6 +591,7 @@ static INLINE u32 GLN64_READ_RDP_DATA(u32 address)
 EXPORT void CALL gln64ProcessRDPList(void)
 {
    u32 i;
+   bool setZero = true;
    const u32 length = gfx_info.DPC_END_REG - gfx_info.DPC_CURRENT_REG;
 
 #ifdef DEBUG
@@ -611,7 +612,6 @@ EXPORT void CALL gln64ProcessRDPList(void)
       __RDP.cmd_ptr = (__RDP.cmd_ptr + 1) & maxCMDMask;
    }
 
-   bool setZero = true;
    while (__RDP.cmd_cur != __RDP.cmd_ptr)
    {
       u32 w0, w1;
