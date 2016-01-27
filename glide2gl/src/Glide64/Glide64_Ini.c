@@ -326,6 +326,17 @@ void ReadSpecialSettings (const char * name)
       settings.filtering = 1;
       settings.fog = 0;
    }
+      else if (strstr(name, (const char *)"Sin and Punishment"))
+   {
+      settings.swapmode_retro = true;
+      settings.filtering = 1;
+	  settings.old_style_adither = 1;
+      //depthmode = 1
+      smart_read = 1;
+#ifdef HAVE_HWFBE
+      hires = 1;
+#endif
+	}
    else if (strstr(name, (const char*)"Tigger's Honey Hunt"))
    {
       settings.zmode_compare_less = 1;
@@ -416,6 +427,7 @@ void ReadSpecialSettings (const char * name)
    {
       settings.swapmode_retro = true;
       settings.filtering = 1;
+	  settings.old_style_adither = 1;
       //depthmode = 1
       smart_read = 1;
 #ifdef HAVE_HWFBE
@@ -1371,6 +1383,7 @@ void ReadSpecialSettings (const char * name)
          || strstr(name, (const char *)"CASTLEVANIA2"))
    {
       settings.swapmode_retro = true;
+	  settings.old_style_adither = 1;
       //depthmode = 0
       //fb_clear = 1
 #ifndef HAVE_HWFBE
