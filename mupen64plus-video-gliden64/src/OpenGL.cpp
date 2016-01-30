@@ -155,6 +155,7 @@ void OGLVideo::restart()
 void OGLVideo::swapBuffers()
 {
 	_swapBuffers();
+   retro_return(true);
 	gDP.otherMode.l = 0;
 	gDPSetTextureLUT(G_TT_NONE);
 	++m_buffersSwapCount;
