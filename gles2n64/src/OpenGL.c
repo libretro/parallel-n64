@@ -181,10 +181,10 @@ static void _updateScissor(struct FrameBuffer *_pBuffer)
    }
    else
    {
-      scaleX       = _pBuffer->scaleX;
-      scaleY       = _pBuffer->scaleY;
+      scaleX       = _pBuffer->m_scaleX;
+      scaleY       = _pBuffer->m_scaleY;
       heightOffset = 0;
-      screenHeight = (_pBuffer->height == 0) ? VI.height : _pBuffer->height;
+      screenHeight = (_pBuffer->m_height == 0) ? VI.height : _pBuffer->m_height;
    }
 
 #if 0
@@ -548,10 +548,10 @@ void OGL_DrawLLETriangle(u32 _numVtx)
       glViewport( 0, OGL_GetHeightOffset(), OGL_GetScreenWidth(), OGL_GetScreenHeight());
    }
 	else
-		glViewport(0, 0, pCurrentBuffer->width * pCurrentBuffer->scaleX, pCurrentBuffer->height * pCurrentBuffer->scaleY);
+		glViewport(0, 0, pCurrentBuffer->m_width * pCurrentBuffer->m_scaleX, pCurrentBuffer->m_height * pCurrentBuffer->m_scaleY);
 
-	scaleX = pCurrentBuffer != NULL ? 1.0f / pCurrentBuffer->width : VI.rwidth;
-	scaleY = pCurrentBuffer != NULL ? 1.0f / pCurrentBuffer->height : VI.rheight;
+	scaleX = pCurrentBuffer != NULL ? 1.0f / pCurrentBuffer->m_width : VI.rwidth;
+	scaleY = pCurrentBuffer != NULL ? 1.0f / pCurrentBuffer->m_height : VI.rheight;
 
 	for (i = 0; i < _numVtx; ++i)
    {
@@ -704,12 +704,12 @@ void OGL_DrawRect( int ulx, int uly, int lrx, int lry, float *color)
    if (pCurrentBuffer == NULL)
       glViewport(0, OGL_GetHeightOffset(), OGL_GetScreenWidth(), OGL_GetScreenHeight());
    else
-      glViewport(0, 0, pCurrentBuffer->width * pCurrentBuffer->scaleX, pCurrentBuffer->height * pCurrentBuffer->scaleY);
+      glViewport(0, 0, pCurrentBuffer->m_width * pCurrentBuffer->m_scaleX, pCurrentBuffer->m_height * pCurrentBuffer->m_scaleY);
 
    glDisable(GL_CULL_FACE);
 
-   scaleX = pCurrentBuffer != NULL ? 1.0f / pCurrentBuffer->width  : VI.rwidth;
-   scaleY = pCurrentBuffer != NULL ? 1.0f / pCurrentBuffer->height : VI.rheight;
+   scaleX = pCurrentBuffer != NULL ? 1.0f / pCurrentBuffer->m_width  : VI.rwidth;
+   scaleY = pCurrentBuffer != NULL ? 1.0f / pCurrentBuffer->m_height : VI.rheight;
 	Z      = (gDP.otherMode.depthSource == G_ZS_PRIM) ? gDP.primDepth.z : gSP.viewport.nearz;
 	W      = 1.0f;
 
@@ -924,12 +924,12 @@ void OGL_DrawTexturedRect(const struct TexturedRectParams *_params)
    if (pCurrentBuffer == NULL)
       glViewport(0, OGL_GetHeightOffset(), OGL_GetScreenWidth(), OGL_GetScreenHeight());
    else
-      glViewport(0, 0, pCurrentBuffer->width * pCurrentBuffer->scaleX, pCurrentBuffer->height * pCurrentBuffer->scaleY);
+      glViewport(0, 0, pCurrentBuffer->m_width * pCurrentBuffer->m_scaleX, pCurrentBuffer->m_height * pCurrentBuffer->m_scaleY);
 
    glDisable(GL_CULL_FACE);
 
-   scaleX = pCurrentBuffer != NULL ? 1.0f / pCurrentBuffer->width  : VI.rwidth;
-   scaleY = pCurrentBuffer != NULL ? 1.0f / pCurrentBuffer->height : VI.rheight;
+   scaleX = pCurrentBuffer != NULL ? 1.0f / pCurrentBuffer->m_width  : VI.rwidth;
+   scaleY = pCurrentBuffer != NULL ? 1.0f / pCurrentBuffer->m_height : VI.rheight;
 	Z = (gDP.otherMode.depthSource == G_ZS_PRIM) ? gDP.primDepth.z : gSP.viewport.nearz;
 	W = 1.0f;
 

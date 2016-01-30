@@ -70,8 +70,8 @@ void VI_UpdateSize(void)
 	if (config.frameBufferEmulation.enable &&
 		((interlacedPrev != VI.interlaced) ||
 		(VI.width > 0 && VI.width != VI.widthPrev) ||
-		(!VI.interlaced && pDepthBuffer != NULL && pDepthBuffer->width != VI.width) ||
-		(pBuffer != NULL && pBuffer->height != VI.height))
+		(!VI.interlaced && pDepthBuffer != NULL && pDepthBuffer->m_width != VI.width) ||
+		(pBuffer != NULL && pBuffer->m_height != VI.height))
 	)
    {
       FrameBuffer_RemoveBuffer(VI.widthPrev);
@@ -108,7 +108,7 @@ void VI_UpdateScreen(void)
 			if ((gSP.changed&CHANGED_CPU_FB_WRITE) == CHANGED_CPU_FB_WRITE)
          {
 				struct FrameBuffer * pBuffer = FrameBuffer_FindBuffer(*gfx_info.VI_ORIGIN_REG);
-				if (pBuffer == NULL || pBuffer->width != VI.width)
+				if (pBuffer == NULL || pBuffer->m_width != VI.width)
             {
                u32 size;
 

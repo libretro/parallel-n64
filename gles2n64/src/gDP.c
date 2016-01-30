@@ -452,7 +452,7 @@ static bool CheckForFrameBufferTexture(u32 _address, u32 _bytes)
 #ifdef NEW
          if (gDP.colorImage.address == gDP.depthImageAddress && pBuffer->m_RdramCrc != 0)
          {
-            memcpy(RDRAM + gDP.depthImageAddress, RDRAM + pBuffer->startAddress, (pBuffer->width* pBuffer->height) << pBuffer->size >> 1);
+            memcpy(RDRAM + gDP.depthImageAddress, RDRAM + pBuffer->m_startAddress, (pBuffer->m_width* pBuffer->m_height) << pBuffer->m_size >> 1);
             pBuffer->m_RdramCrc = 0;
             frameBufferList().getCurrent()->m_isPauseScreen = true;
          }
@@ -464,7 +464,7 @@ static bool CheckForFrameBufferTexture(u32 _address, u32 _bytes)
 #ifdef NEW
       if (pBuffer->m_cfb)
       {
-         FrameBuffer_RemoveBuffer(pBuffer->startAddress);
+         FrameBuffer_RemoveBuffer(pBuffer->m_startAddress);
          bRes = false;
       }
 #endif
@@ -475,15 +475,15 @@ static bool CheckForFrameBufferTexture(u32 _address, u32 _bytes)
       if ((config.generalEmulation.hacks & hack_noDepthFrameBuffers) != 0 /* && pBuffer->m_isDepthBuffer */)
 #endif
       {
-         FrameBuffer_RemoveBuffer(pBuffer->startAddress);
+         FrameBuffer_RemoveBuffer(pBuffer->m_startAddress);
          bRes = false;
       }
 
       texEndAddress = _address + _bytes - 1;
-      if (_address > pBuffer->startAddress && texEndAddress > (pBuffer->endAddress + (pBuffer->width << pBuffer->size >> 1)))
+      if (_address > pBuffer->m_startAddress && texEndAddress > (pBuffer->m_endAddress + (pBuffer->m_width << pBuffer->m_size >> 1)))
          bRes = false;
 
-      if (bRes && gDP.loadTile->loadType == LOADTYPE_TILE && gDP.textureImage.width != pBuffer->width && gDP.textureImage.size != pBuffer->size)
+      if (bRes && gDP.loadTile->loadType == LOADTYPE_TILE && gDP.textureImage.width != pBuffer->m_width && gDP.textureImage.size != pBuffer->m_size)
          bRes = false;
 
 

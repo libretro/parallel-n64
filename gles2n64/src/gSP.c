@@ -1669,7 +1669,7 @@ void _loadBGImage(const struct uObjScaleBg * _bgInfo, bool _loadScale)
    {
 		struct FrameBuffer *pBuffer = FrameBuffer_FindBuffer(gSP.bgImage.address);
       /* TODO/FIXME */
-		if ((pBuffer != NULL) && pBuffer->size == gSP.bgImage.size && (/* !pBuffer->m_isDepthBuffer || */ pBuffer->changed))
+		if ((pBuffer != NULL) && pBuffer->m_size == gSP.bgImage.size && (/* !pBuffer->m_isDepthBuffer || */ pBuffer->m_changed))
       {
 			gDP.tiles[0].frameBuffer = pBuffer;
 			gDP.tiles[0].textureMode = TEXTUREMODE_FRAMEBUFFER_BG;

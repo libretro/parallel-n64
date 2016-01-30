@@ -81,7 +81,7 @@ void FrameBuffer_RemoveBuffer( u32 address )
 
    while (current != NULL)
    {
-      if (current->startAddress == address)
+      if (current->m_startAddress == address)
       {
          current->texture = NULL;
          FrameBuffer_Remove( current );
@@ -153,22 +153,22 @@ void FrameBuffer_SaveBuffer( u32 address, u16 format, u16 size, u16 width, u16 h
    /* Search through saved frame buffers */
    while (current != NULL)
    {
-      if ((current->startAddress == address) &&
-            (current->width == width) &&
-            (current->height == height) &&
-            (current->size == size))
+      if ((current->m_startAddress == address) &&
+            (current->m_width == width) &&
+            (current->m_height == height) &&
+            (current->m_size == size))
       {
-         if ((current->scaleX != OGL.scaleX) ||
-               (current->scaleY != OGL.scaleY))
+         if ((current->m_scaleX != OGL.scaleX) ||
+               (current->m_scaleY != OGL.scaleY))
          {
             FrameBuffer_Remove( current );
             break;
          }
 
          /* code goes here */
-         *(u32*)&gfx_info.RDRAM[current->startAddress] = current->startAddress;
+         *(u32*)&gfx_info.RDRAM[current->m_startAddress] = current->m_startAddress;
 
-         current->changed = TRUE;
+         current->m_changed = TRUE;
 
          FrameBuffer_MoveToTop( current );
 
@@ -181,35 +181,35 @@ void FrameBuffer_SaveBuffer( u32 address, u16 format, u16 size, u16 width, u16 h
    /* Wasn't found, create a new one */
    current = FrameBuffer_AddTop();
 
-   current->startAddress = address;
-   current->endAddress = address + ((width * height << size >> 1) - 1);
-   current->width = width;
-   current->height = height;
-   current->size = size;
-   current->scaleX = OGL.scaleX;
-   current->scaleY = OGL.scaleY;
+   current->m_startAddress = address;
+   current->m_endAddress = address + ((width * height << size >> 1) - 1);
+   current->m_width = width;
+   current->m_height = height;
+   current->m_size = size;
+   current->m_scaleX = OGL.scaleX;
+   current->m_scaleY = OGL.scaleY;
 
-   current->texture->width = current->width * OGL.scaleX;
-   current->texture->height = current->height * OGL.scaleY;
+   current->texture->width = current->m_width * OGL.scaleX;
+   current->texture->height = current->m_height * OGL.scaleY;
    current->texture->clampS = 1;
    current->texture->clampT = 1;
-   current->texture->address = current->startAddress;
-   current->texture->clampWidth = current->width;
-   current->texture->clampHeight = current->height;
+   current->texture->address = current->m_startAddress;
+   current->texture->clampWidth = current->m_width;
+   current->texture->clampHeight = current->m_height;
    current->texture->frameBufferTexture = TRUE;
    current->texture->maskS = 0;
    current->texture->maskT = 0;
    current->texture->mirrorS = 0;
    current->texture->mirrorT = 0;
-   current->texture->realWidth = pow2( current->width * OGL.scaleX );
-   current->texture->realHeight = pow2( current->height * OGL.scaleY );
+   current->texture->realWidth = pow2( current->m_width * OGL.scaleX );
+   current->texture->realHeight = pow2( current->m_height * OGL.scaleY );
    current->texture->textureBytes = current->texture->realWidth * current->texture->realHeight * 4;
    cache.cachedBytes += current->texture->textureBytes;
 
    /* code goes here - just bind texture and copy it over */
-   *(u32*)&gfx_info.RDRAM[current->startAddress] = current->startAddress;
+   *(u32*)&gfx_info.RDRAM[current->m_startAddress] = current->m_startAddress;
 
-   current->changed = TRUE;
+   current->m_changed = TRUE;
 
    gSP.changed |= CHANGED_TEXTURE;
 }
@@ -225,13 +225,12 @@ void FrameBuffer_RenderBuffer( u32 address )
 
    while (current != NULL)
    {
-      if ((current->startAddress <= address) &&
-            (current->endAddress >= address))
+      if ((current->m_startAddress <= address) &&
+            (current->m_endAddress >= address))
       {
-
          /* code goes here */
 
-         current->changed = FALSE;
+         current->m_changed = FALSE;
 
          FrameBuffer_MoveToTop( current );
 
@@ -249,9 +248,9 @@ void FrameBuffer_RestoreBuffer( u32 address, u16 size, u16 width )
 
    while (current != NULL)
    {
-      if ((current->startAddress == address) &&
-            (current->width == width) &&
-            (current->size == size))
+      if ((current->m_startAddress == address) &&
+            (current->m_width == width) &&
+            (current->m_size == size))
       {
 
          /* code goes here */
@@ -272,8 +271,8 @@ struct FrameBuffer *FrameBuffer_FindBuffer( u32 address )
 
    while (current)
    {
-      if ((current->startAddress <= address) &&
-            (current->endAddress >= address))
+      if ((current->m_startAddress <= address) &&
+            (current->m_endAddress >= address))
          return current;
       current = current->lower;
    }
@@ -303,13 +302,13 @@ void FrameBuffer_ActivateBufferTexture( s16 t, struct FrameBuffer *buffer )
    if (gDP.loadTile->loadType == LOADTYPE_TILE)
    {
       buffer->texture->offsetS = gDP.loadTile->uls;
-      buffer->texture->offsetT = (float)buffer->height - 
-         (gDP.loadTile->ult + (gDP.textureImage.address - buffer->startAddress) / (buffer->width << buffer->size >> 1));
+      buffer->texture->offsetT = (float)buffer->m_height - 
+         (gDP.loadTile->ult + (gDP.textureImage.address - buffer->m_startAddress) / (buffer->m_width << buffer->m_size >> 1));
    }
    else
    {
       buffer->texture->offsetS = 0.0f;
-      buffer->texture->offsetT = (float)buffer->height - (gDP.textureImage.address - buffer->startAddress) / (buffer->width << buffer->size >> 1);
+      buffer->texture->offsetT = (float)buffer->m_height - (gDP.textureImage.address - buffer->m_startAddress) / (buffer->m_width << buffer->m_size >> 1);
    }
 
    FrameBuffer_MoveToTop( buffer );
@@ -329,7 +328,7 @@ void FrameBuffer_ActivateBufferTextureBG(s16 t, struct FrameBuffer *buffer )
 	buffer->texture->shiftScaleT = 1.0f;
 
 	buffer->texture->offsetS = gSP.bgImage.imageX;
-	buffer->texture->offsetT = (float)buffer->height - gSP.bgImage.imageY;
+	buffer->texture->offsetT = (float)buffer->m_height - gSP.bgImage.imageY;
 
    FrameBuffer_MoveToTop( buffer );
    TextureCache_ActivateTexture( t, buffer->texture );
