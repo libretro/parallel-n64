@@ -717,7 +717,7 @@ void OGLRender::_prepareDrawTriangle(bool _dma)
 	}
 	currentCombiner()->updateRenderState();
 
-	const bool updateColorArrays = m_bFlatColors != (!RSP.bLLE && (gSP.geometryMode & G_SHADING_SMOOTH) == 0);
+	const bool updateColorArrays = m_bFlatColors != (!__RSP.bLLE && (gSP.geometryMode & G_SHADING_SMOOTH) == 0);
 	if (updateColorArrays)
 		m_bFlatColors = !m_bFlatColors;
 
@@ -1056,7 +1056,7 @@ void OGLRender::drawTexturedRect(const TexturedRectParams & _params)
 	}
 	currentCombiner()->updateRenderState();
 
-	if (RSP.cmd == 0xE4 && texturedRectSpecial != NULL && texturedRectSpecial(_params)) {
+	if (__RSP.cmd == 0xE4 && texturedRectSpecial != NULL && texturedRectSpecial(_params)) {
 		gSP.changed |= CHANGED_GEOMETRYMODE;
 		return;
 	}
@@ -1421,7 +1421,7 @@ void OGLRender::_destroyData()
 
 void OGLRender::_setSpecialTexrect() const
 {
-	const char * name = RSP.romname;
+	const char * name = __RSP.romname;
 	if (strstr(name, (const char *)"Beetle") || strstr(name, (const char *)"BEETLE") || strstr(name, (const char *)"HSV")
 		|| strstr(name, (const char *)"DUCK DODGERS") || strstr(name, (const char *)"DAFFY DUCK"))
 		texturedRectSpecial = texturedRectShadowMap;
@@ -1539,7 +1539,7 @@ void TextureFilterHandler::init()
 	GLint maxTextureSize;
 	glGetIntegerv(GL_MAX_TEXTURE_SIZE, &maxTextureSize);
 	wchar_t wRomName[32];
-	::mbstowcs(wRomName, RSP.romname, 32);
+	::mbstowcs(wRomName, __RSP.romname, 32);
 	wchar_t txPath[PLUGIN_PATH_SIZE + 16];
 	wchar_t * pTexPackPath = config.textureFilter.txPath;
 	if (::wcslen(config.textureFilter.txPath) == 0) {
