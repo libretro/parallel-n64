@@ -11,19 +11,19 @@
 
 #define	GZM_USER0		0
 #define	GZM_USER1		2
-#define	GZM_MMTX		4
-#define	GZM_PMTX		6
+#define	GZM_MMTX		   4
+#define	GZM_PMTX		   6
 #define	GZM_MPMTX		8
 #define	GZM_OTHERMODE	10
 #define	GZM_VIEWPORT	12
-#define	GZF_LOAD		0
-#define	GZF_SAVE		1
+#define	GZF_LOAD		   0
+#define	GZF_SAVE		   1
 
-#define	ZH_NULL		0
-#define	ZH_SHTRI	1
-#define	ZH_TXTRI	2
-#define	ZH_SHQUAD	3
-#define	ZH_TXQUAD	4
+#define	ZH_NULL		   0
+#define	ZH_SHTRI	      1
+#define	ZH_TXTRI	      2
+#define	ZH_SHQUAD	   3
+#define	ZH_TXQUAD	   4
 
 typedef f32 M44[4][4];
 
