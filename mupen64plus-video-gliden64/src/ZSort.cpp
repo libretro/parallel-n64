@@ -38,23 +38,23 @@ void ZSort_RDPCMD( u32, u32 _w1 )
 {
 	u32 addr = RSP_SegmentToPhysical(_w1) >> 2;
 	if (addr) {
-		RSP.bLLE = true;
+		__RSP.bLLE = true;
 		while(true)
 		{
 			u32 w0 = ((u32*)RDRAM)[addr++];
-			RSP.cmd = _SHIFTR( w0, 24, 8 );
-			if (RSP.cmd == 0xDF)
+			__RSP.cmd = _SHIFTR( w0, 24, 8 );
+			if (__RSP.cmd == 0xDF)
 				break;
 			u32 w1 = ((u32*)RDRAM)[addr++];
-			if (RSP.cmd == 0xE4 || RSP.cmd == 0xE5) {
+			if (__RSP.cmd == 0xE4 || __RSP.cmd == 0xE5) {
 				addr++;
-				RDP.w2 = ((u32*)RDRAM)[addr++];
+				__RDP.w2 = ((u32*)RDRAM)[addr++];
 				addr++;
-				RDP.w3 = ((u32*)RDRAM)[addr++];
+				__RDP.w3 = ((u32*)RDRAM)[addr++];
 			}
-			GBI.cmd[RSP.cmd]( w0, w1 );
+			GBI.cmd[__RSP.cmd]( w0, w1 );
 		};
-		RSP.bLLE = false;
+		__RSP.bLLE = false;
 	}
 }
 
