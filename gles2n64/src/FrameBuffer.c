@@ -7,6 +7,7 @@
 #include "Textures.h"
 #include "ShaderCombiner.h"
 #include "Types.h"
+#include "VI.h"
 
 struct FrameBufferInfo frameBuffer;
 CachedTexture *g_RDRAMtoFB;
@@ -146,6 +147,9 @@ void FrameBuffer_Destroy(void)
 void FrameBuffer_SaveBuffer( u32 address, u16 format, u16 size, u16 width, u16 height, bool unknown)
 {
    struct FrameBuffer *current = frameBuffer.top;
+
+   if (width != VI.width && height == 0)
+      return;
 
    (void)format;
    (void)unknown;
