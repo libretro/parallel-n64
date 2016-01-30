@@ -41,16 +41,16 @@ void ZSort_RDPCMD( u32, u32 _w1 )
 		__RSP.bLLE = true;
 		while(true)
 		{
-			u32 w0 = ((u32*)RDRAM)[addr++];
+			u32 w0 = ((u32*)gfx_info.RDRAM)[addr++];
 			__RSP.cmd = _SHIFTR( w0, 24, 8 );
 			if (__RSP.cmd == 0xDF)
 				break;
-			u32 w1 = ((u32*)RDRAM)[addr++];
+			u32 w1 = ((u32*)gfx_info.RDRAM)[addr++];
 			if (__RSP.cmd == 0xE4 || __RSP.cmd == 0xE5) {
 				addr++;
-				__RDP.w2 = ((u32*)RDRAM)[addr++];
+				__RDP.w2 = ((u32*)gfx_info.RDRAM)[addr++];
 				addr++;
-				__RDP.w3 = ((u32*)RDRAM)[addr++];
+				__RDP.w3 = ((u32*)gfx_info.RDRAM)[addr++];
 			}
 			GBI.cmd[__RSP.cmd]( w0, w1 );
 		};
@@ -161,7 +161,7 @@ static
 u32 ZSort_LoadObject (u32 _zHeader, u32 * _pRdpCmds)
 {
 	const u32 type = _zHeader & 7;
-	u8 * addr = RDRAM + (_zHeader&0xFFFFFFF8);
+	u8 * addr = gfx_info.RDRAM + (_zHeader&0xFFFFFFF8);
 	u32 w1;
 	switch (type) {
 	case ZH_SHTRI:
@@ -475,10 +475,10 @@ void ZSort_MoveMem( u32 _w0, u32 _w1 )
 	case GZF_LOAD: //save/load
 		if (flag == 0) {
 			int dmem_addr = (idx<<3) + ofs;
-			memcpy(DMEM + dmem_addr, RDRAM + addr, len);
+			memcpy(DMEM + dmem_addr, gfx_info.RDRAM + addr, len);
 		} else {
 			int dmem_addr = (idx<<3) + ofs;
-			memcpy(RDRAM + addr, DMEM + dmem_addr, len);
+			memcpy(gfx_info.RDRAM + addr, DMEM + dmem_addr, len);
 		}
 	break;
 
@@ -504,14 +504,14 @@ void ZSort_MoveMem( u32 _w0, u32 _w1 )
 	case GZM_VIEWPORT:   // VIEWPORT
 	{
 		u32 a = addr >> 1;
-		const f32 scale_x = _FIXED2FLOAT( *(s16*)&RDRAM[(a+0)^1], 2 );
-		const f32 scale_y = _FIXED2FLOAT( *(s16*)&RDRAM[(a+1)^1], 2 );
-		const f32 scale_z = _FIXED2FLOAT( *(s16*)&RDRAM[(a+2)^1], 10 );
-		gSP.fog.multiplier = ((s16*)RDRAM)[(a+3)^1];
-		const f32 trans_x = _FIXED2FLOAT( *(s16*)&RDRAM[(a+4)^1], 2 );
-		const f32 trans_y = _FIXED2FLOAT( *(s16*)&RDRAM[(a+5)^1], 2 );
-		const f32 trans_z = _FIXED2FLOAT( *(s16*)&RDRAM[(a+6)^1], 10 );
-		gSP.fog.offset = ((s16*)RDRAM)[(a+7)^1];
+		const f32 scale_x = _FIXED2FLOAT( *(s16*)&gfx_info.RDRAM[(a+0)^1], 2 );
+		const f32 scale_y = _FIXED2FLOAT( *(s16*)&gfx_info.RDRAM[(a+1)^1], 2 );
+		const f32 scale_z = _FIXED2FLOAT( *(s16*)&gfx_info.RDRAM[(a+2)^1], 10 );
+		gSP.fog.multiplier = ((s16*)gfx_info.RDRAM)[(a+3)^1];
+		const f32 trans_x = _FIXED2FLOAT( *(s16*)&gfx_info.RDRAM[(a+4)^1], 2 );
+		const f32 trans_y = _FIXED2FLOAT( *(s16*)&gfx_info.RDRAM[(a+5)^1], 2 );
+		const f32 trans_z = _FIXED2FLOAT( *(s16*)&gfx_info.RDRAM[(a+6)^1], 10 );
+		gSP.fog.offset = ((s16*)gfx_info.RDRAM)[(a+7)^1];
 
 		gSP.viewport.vscale[0] = scale_x;
 		gSP.viewport.vscale[1] = scale_y;
