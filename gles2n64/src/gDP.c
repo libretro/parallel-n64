@@ -157,7 +157,11 @@ void gDPSetColorImage( u32 format, u32 size, u32 width, u32 address )
 
 		if (width == VI.width)
 			height = VI.height;
+#if 0
+		else if (!__RSP.bLLE && width == gDP.scissor.lrx && width == gSP.viewport.width)
+#else
 		else if (width == gDP.scissor.lrx && width == gSP.viewport.width)
+#endif
       {
 			height = max(gDP.scissor.lry, gSP.viewport.height);
 			height = min(height, VI.height);
@@ -167,6 +171,10 @@ void gDPSetColorImage( u32 format, u32 size, u32 width, u32 address )
 			height = width;
 		else if (gSP.viewport.height > 0)
 			height = gSP.viewport.height;
+#if 0
+		else if (!__RSP.bLLE && gSP.viewport.height > 0)
+			height = gSP.viewport.height;
+#endif
 		else
 			height = gDP.scissor.lry;
 
@@ -270,6 +278,9 @@ void gDPSetBlendColor( u32 r, u32 g, u32 b, u32 a )
 
    ShaderCombiner_UpdateBlendColor();
 
+#if 0
+	gDP.changed |= CHANGED_BLENDCOLOR;
+#endif
 #ifdef DEBUG
    DebugMsg( DEBUG_HIGH | DEBUG_HANDLED, "gDPSetBlendColor( %u, %u, %u, %u );\n",
          r, g, b, a );
@@ -284,6 +295,10 @@ void gDPSetFogColor( u32 r, u32 g, u32 b, u32 a )
    gDP.fogColor.a = a * 0.0039215689f;
 
    ShaderCombiner_UpdateFogColor();
+
+#if 0
+	gDP.changed |= CHANGED_FOGCOLOR;
+#endif
 #ifdef DEBUG
    DebugMsg( DEBUG_HIGH | DEBUG_HANDLED, "gDPSetFogColor( %u, %u, %u, %u );\n",
          r, g, b, a );
@@ -366,6 +381,10 @@ void gDPSetTile( u32 format, u32 size, u32 line, u32 tmem, u32 tile, u32 palette
       }
    }
 
+#if 0
+	gDP.changed |= CHANGED_TILE;
+#endif
+
 #ifdef DEBUG
    DebugMsg( DEBUG_HIGH | DEBUG_HANDLED | DEBUG_TEXTURE, "gDPSetTile( %s, %s, %i, %i, %i, %i, %s%s, %s%s, %i, %i, %i, %i );\n",
          ImageFormatText[format],
@@ -421,6 +440,9 @@ static bool CheckForFrameBufferTexture(u32 _address, u32 _bytes)
 		return false;
 
 	struct FrameBuffer *pBuffer = FrameBuffer_FindBuffer(_address);
+#if 0
+	FrameBuffer *pBuffer = fbList.findBuffer(_address);
+#endif
 	bRes = pBuffer != NULL;
 	if (bRes)
    {
@@ -442,12 +464,16 @@ static bool CheckForFrameBufferTexture(u32 _address, u32 _bytes)
 #ifdef NEW
       if (pBuffer->m_cfb)
       {
-         frameBufferList().removeBuffer(pBuffer->m_startAddress);
+         FrameBuffer_RemoveBuffer(pBuffer->startAddress);
          bRes = false;
       }
 #endif
 
+#if 0
+		if ((config.generalEmulation.hacks & hack_noDepthFrameBuffers) != 0 && pBuffer->m_isDepthBuffer)
+#else
       if ((config.generalEmulation.hacks & hack_noDepthFrameBuffers) != 0 /* && pBuffer->m_isDepthBuffer */)
+#endif
       {
          FrameBuffer_RemoveBuffer(pBuffer->startAddress);
          bRes = false;
@@ -462,7 +488,7 @@ static bool CheckForFrameBufferTexture(u32 _address, u32 _bytes)
 
 
 #ifdef NEW
-      if (bRes && pBuffer->m_validityChecked != RSP.DList)
+      if (bRes && pBuffer->m_validityChecked != __RSP.DList)
       {
          if (pBuffer->m_cleared)
          {
@@ -474,7 +500,7 @@ static bool CheckForFrameBufferTexture(u32 _address, u32 _bytes)
             }
             bRes = wrongPixels < (pBuffer->m_endAddress - pBuffer->m_startAddress)/100; // treshold level 1%
             if (bRes)
-               pBuffer->m_validityChecked = RSP.DList;
+               pBuffer->m_validityChecked = __RSP.DList;
             else
                frameBufferList().removeBuffer(pBuffer->m_startAddress);
          }
@@ -483,7 +509,7 @@ static bool CheckForFrameBufferTexture(u32 _address, u32 _bytes)
             const u32 crc = textureCRC(RDRAM + pBuffer->m_startAddress, pBuffer->m_height, pBuffer->m_width << pBuffer->m_size >> 1);
             bRes = (pBuffer->m_RdramCrc == crc);
             if (bRes)
-               pBuffer->m_validityChecked = RSP.DList;
+               pBuffer->m_validityChecked = __RSP.DList;
             else
                frameBufferList().removeBuffer(pBuffer->m_startAddress);
          }
@@ -804,9 +830,9 @@ void gDPSetScissor( u32 mode, f32 ulx, f32 uly, f32 lrx, f32 lry )
    gDP.scissor.uly = uly;
    gDP.scissor.lrx = lrx;
    gDP.scissor.lry = lry;
+
    gDP.changed |= CHANGED_SCISSOR;
 
-   /* TODO/FIXME - update */
 #if 0
 	frameBufferList().correctHeight();
 #endif
@@ -1034,14 +1060,13 @@ void gDPTextureRectangle( f32 ulx, f32 uly, f32 lrx, f32 lry, s32 tile, f32 s, f
 	gSP.textureTile[0] = textureTileOrg[0];
 	gSP.textureTile[1] = textureTileOrg[1];
 
-#ifdef NEW
-	frameBufferList().setBufferChanged();
-#else
+#if 1
    if (depthBuffer.current)
       depthBuffer.current->cleared = FALSE;
    gDP.colorImage.changed = TRUE;
+#else
+	frameBufferList().setBufferChanged();
 #endif
-
    if (gDP.colorImage.width < 64)
 		gDP.colorImage.height = (u32)max( (f32)gDP.colorImage.height, lry );
    else
@@ -1064,6 +1089,23 @@ void gDPTextureRectangleFlip( f32 ulx, f32 uly, f32 lrx, f32 lry, s32 tile, f32 
 
 void gDPFullSync(void)
 {
+#if 0
+	if (config.frameBufferEmulation.copyAuxToRDRAM != 0) {
+		frameBufferList().copyAux();
+		frameBufferList().removeAux();
+	}
+
+	const bool sync = config.frameBufferEmulation.copyToRDRAM == Config::ctSync;
+	if (config.frameBufferEmulation.copyToRDRAM != Config::ctDisable)
+		FrameBuffer_CopyToRDRAM(gDP.colorImage.address, sync);
+
+	if (__RSP.bLLE)
+   {
+		if (config.frameBufferEmulation.copyDepthToRDRAM != Config::ctDisable)
+			FrameBuffer_CopyDepthBuffer(gDP.colorImage.address);
+	}
+#endif
+
    *gfx_info.MI_INTR_REG |= MI_INTR_DP;
 
    if (gfx_info.CheckInterrupts)

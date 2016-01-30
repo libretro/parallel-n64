@@ -945,7 +945,7 @@ bool texturedRectDepthBufferCopy(const OGLRender::TexturedRectParams & _params)
 		const u32 width = (u32)(_params.lrx - _params.ulx);
 		const u32 ulx = (u32)_params.ulx;
 		u16 * pSrc = ((u16*)TMEM) + (u32)floorf(_params.uls + 0.5f);
-		u16 *pDst = (u16*)(RDRAM + gDP.colorImage.address);
+		u16 *pDst = (u16*)(gfx_info.RDRAM + gDP.colorImage.address);
 		for (u32 x = 0; x < width; ++x)
 			pDst[(ulx + x) ^ 1] = swapword(pSrc[x]);
 
@@ -978,8 +978,8 @@ bool texturedRectBGCopy(const OGLRender::TexturedRectParams & _params)
 	const u32 uly = (u32)_params.uly;
 	const u32 lry = flry;
 
-	u8 * texaddr = RDRAM + gDP.loadInfo[gSP.textureTile[0]->tmem].texAddress + tex_width*(u32)_params.ult + (u32)_params.uls;
-	u8 * fbaddr = RDRAM + gDP.colorImage.address + (u32)_params.ulx;
+	u8 * texaddr = gfx_info.RDRAM + gDP.loadInfo[gSP.textureTile[0]->tmem].texAddress + tex_width*(u32)_params.ult + (u32)_params.uls;
+	u8 * fbaddr = gfx_info.RDRAM + gDP.colorImage.address + (u32)_params.ulx;
 //	LOG(LOG_VERBOSE, "memrect (%d, %d, %d, %d), ci_width: %d texaddr: 0x%08lx fbaddr: 0x%08lx\n", (u32)_params.ulx, uly, (u32)_params.lrx, lry, gDP.colorImage.width, gSP.textureTile[0]->imageAddress + tex_width*(u32)_params.ult + (u32)_params.uls, gDP.colorImage.address + (u32)_params.ulx);
 
 	for (u32 y = uly; y < lry; ++y) {
@@ -1005,7 +1005,7 @@ bool texturedRectPaletteMod(const OGLRender::TexturedRectParams & _params)
 	u8 prmb = (u8)(gDP.primColor.b * 31.0f);
 	u16 prim16 = (u16)((prmr << 11) | (prmg << 6) | (prmb << 1) | 1);
 	u16 * src = (u16*)&TMEM[256];
-	u16 * dst = (u16*)(RDRAM + gDP.colorImage.address);
+	u16 * dst = (u16*)(gfx_info.RDRAM + gDP.colorImage.address);
 	for (u32 i = 0; i < 16; ++i)
 		dst[i ^ 1] = (src[i<<2] & 0x100) ? prim16 : env16;
 	return true;

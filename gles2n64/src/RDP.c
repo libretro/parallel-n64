@@ -637,7 +637,8 @@ EXPORT void CALL gln64ProcessRDPList(void)
       __RDP.cmd_cur = (__RDP.cmd_cur + CmdLength[cmd] / 4) & maxCMDMask;
    }
 
-   if (setZero) {
+   if (setZero)
+   {
       __RDP.cmd_ptr = 0;
       __RDP.cmd_cur = 0;
    }

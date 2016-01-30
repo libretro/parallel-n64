@@ -130,7 +130,7 @@ void gDPSetColorImage( u32 format, u32 size, u32 width, u32 address )
 		u32 height = 1;
 		if (width == VI.width)
 			height = VI.height > 0 ? VI.height : gDP.scissor.lry;
-		else if (!RSP.bLLE && width == gDP.scissor.lrx && width == gSP.viewport.width) {
+		else if (!__RSP.bLLE && width == gDP.scissor.lrx && width == gSP.viewport.width) {
 			height = max(gDP.scissor.lry, gSP.viewport.height);
 			if (VI.height > 0)
 				height = min(height, VI.height);
@@ -138,7 +138,7 @@ void gDPSetColorImage( u32 format, u32 size, u32 width, u32 address )
 			height = gDP.scissor.lry;
 		else if (width <= 64)
 			height = width;
-		else if (!RSP.bLLE && gSP.viewport.height > 0)
+		else if (!__RSP.bLLE && gSP.viewport.height > 0)
 			height = gSP.viewport.height;
 		else
 			height = gDP.scissor.lry;
@@ -173,11 +173,14 @@ void gDPSetTextureImage(u32 format, u32 size, u32 width, u32 address)
 	gDP.textureImage.address = RSP_SegmentToPhysical(address);
 	gDP.textureImage.bpl = gDP.textureImage.width << gDP.textureImage.size >> 1;
 	if (gSP.DMAOffsets.tex_offset != 0) {
-		if (format == G_IM_FMT_RGBA) {
-			u16 * t = (u16*)(RDRAM + gSP.DMAOffsets.tex_offset);
+		if (format == G_IM_FMT_RGBA)
+      {
+			u16 * t = (u16*)(gfx_info.RDRAM + gSP.DMAOffsets.tex_offset);
 			gSP.DMAOffsets.tex_shift = t[gSP.DMAOffsets.tex_count ^ 1];
 			gDP.textureImage.address += gSP.DMAOffsets.tex_shift;
-		} else {
+		}
+      else
+      {
 			gSP.DMAOffsets.tex_offset = 0;
 			gSP.DMAOffsets.tex_shift = 0;
 			gSP.DMAOffsets.tex_count = 0;
@@ -381,7 +384,8 @@ bool CheckForFrameBufferTexture(u32 _address, u32 _bytes)
 	if (bRes) {
 		if ((config.generalEmulation.hacks & hack_blurPauseScreen) != 0) {
 			if (gDP.colorImage.address == gDP.depthImageAddress && pBuffer->m_copiedToRdram) {
-				memcpy(RDRAM + gDP.depthImageAddress, RDRAM + pBuffer->m_startAddress, (pBuffer->m_width*pBuffer->m_height) << pBuffer->m_size >> 1);
+				memcpy(gfx_info.RDRAM + gDP.depthImageAddress,
+                  gfx_info.RDRAM + pBuffer->m_startAddress, (pBuffer->m_width*pBuffer->m_height) << pBuffer->m_size >> 1);
 				pBuffer->m_copiedToRdram = false;
 				fbList.getCurrent()->m_isPauseScreen = true;
 			}
@@ -401,12 +405,10 @@ bool CheckForFrameBufferTexture(u32 _address, u32 _bytes)
 
 		const u32 texEndAddress = _address + _bytes - 1;
 		if (_address > pBuffer->m_startAddress && texEndAddress > (pBuffer->m_endAddress + (pBuffer->m_width << pBuffer->m_size >> 1))) {
-			//fbList.removeBuffer(pBuffer->m_startAddress);
 			bRes = false;
 		}
 
 		if (bRes && gDP.loadTile->loadType == LOADTYPE_TILE && gDP.textureImage.width != pBuffer->m_width && gDP.textureImage.size != pBuffer->m_size) {
-			//fbList.removeBuffer(pBuffer->m_startAddress); // Does not work with Zelda MM
 			bRes = false;
 		}
 
@@ -448,7 +450,7 @@ void gDPLoadTile32b(u32 uls, u32 ult, u32 lrs, u32 lrt)
 	const u32 line = gDP.loadTile->line << 2;
 	const u32 tbase = gDP.loadTile->tmem << 2;
 	const u32 addr = gDP.textureImage.address >> 2;
-	const u32 * src = (const u32*)RDRAM;
+	const u32 * src = (const u32*)gfx_info.RDRAM;
 	u16 * tmem16 = (u16*)TMEM;
 	u32 c, ptr, tline, s, xorval;
 
@@ -508,7 +510,7 @@ void gDPLoadTile(u32 tile, u32 uls, u32 ult, u32 lrs, u32 lrt)
 		u32 tmemAddr = gDP.loadTile->tmem;
 		const u32 line = gDP.loadTile->line;
 		for (u32 y = 0; y < height; ++y) {
-			UnswapCopyWrap(RDRAM, address, (u8*)TMEM, tmemAddr << 3, 0xFFF, bpl);
+			UnswapCopyWrap(gfx_info.RDRAM, address, (u8*)TMEM, tmemAddr << 3, 0xFFF, bpl);
 			if (y & 1)
 				DWordInterleaveWrap((u32*)TMEM, tmemAddr << 1, 0x3FF, line);
 
@@ -528,7 +530,7 @@ void gDPLoadTile(u32 tile, u32 uls, u32 ult, u32 lrs, u32 lrt)
 //
 void gDPLoadBlock32(u32 uls,u32 lrs, u32 dxt)
 {
-	const u32 * src = (const u32*)RDRAM;
+	const u32 * src = (const u32*)gfx_info.RDRAM;
 	const u32 tb = gDP.loadTile->tmem << 2;
 	const u32 line = gDP.loadTile->line << 2;
 
@@ -617,7 +619,7 @@ void gDPLoadBlock(u32 tile, u32 uls, u32 ult, u32 lrs, u32 dxt)
 	if (gDP.loadTile->size == G_IM_SIZ_32b)
 		gDPLoadBlock32(gDP.loadTile->uls, gDP.loadTile->lrs, dxt);
 	else if (gDP.loadTile->format == G_IM_FMT_YUV)
-		memcpy(TMEM, &RDRAM[address], bytes); // HACK!
+		memcpy(TMEM, &gfx_info.RDRAM[address], bytes); // HACK!
 	else {
 		u32 tmemAddr = gDP.loadTile->tmem;
 
@@ -627,14 +629,14 @@ void gDPLoadBlock(u32 tile, u32 uls, u32 ult, u32 lrs, u32 dxt)
 			u32 height = bytes / bpl;
 
 			for (u32 y = 0; y < height; ++y) {
-				UnswapCopyWrap(RDRAM, address, (u8*)TMEM, tmemAddr << 3, 0xFFF, bpl);
+				UnswapCopyWrap(gfx_info.RDRAM, address, (u8*)TMEM, tmemAddr << 3, 0xFFF, bpl);
 				if (y & 1)
 					DWordInterleaveWrap((u32*)TMEM, tmemAddr << 1, 0x3FF, line);
 				address += bpl;
 				tmemAddr += line;
 			}
 		} else
-			UnswapCopyWrap(RDRAM, address, (u8*)TMEM, tmemAddr << 3, 0xFFF, bytes);
+			UnswapCopyWrap(gfx_info.RDRAM, address, (u8*)TMEM, tmemAddr << 3, 0xFFF, bytes);
 	}
 #ifdef DEBUG
 	DebugMsg( DEBUG_HIGH | DEBUG_HANDLED | DEBUG_TEXTURE, "gDPLoadBlock( %i, %i, %i, %i, %i );\n",
@@ -655,7 +657,7 @@ void gDPLoadTLUT( u32 tile, u32 uls, u32 ult, u32 lrs, u32 lrt )
 	int i = 0;
 	while (i < count) {
 		for (u16 j = 0; (j < 16) && (i < count); ++j, ++i) {
-			*dest = swapword(*(u16*)(RDRAM + (address ^ 2)));
+			*dest = swapword(*(u16*)(gfx_info.RDRAM + (address ^ 2)));
 			address += 2;
 			dest += 4;
 		}
@@ -668,7 +670,7 @@ void gDPLoadTLUT( u32 tile, u32 uls, u32 ult, u32 lrs, u32 lrt )
 
 	if (TFH.isInited()) {
 		const u16 start = gDP.tiles[tile].tmem - 256; // starting location in the palettes
-		u16 *spal = (u16*)(RDRAM + gDP.textureImage.address);
+		u16 *spal = (u16*)(gfx_info.RDRAM + gDP.textureImage.address);
 		memcpy((u8*)(gDP.TexFilterPalette + start), spal, count<<1);
 	}
 
@@ -725,7 +727,7 @@ void gDPFillRDRAM(u32 address, s32 ulx, s32 uly, s32 lrx, s32 lry, u32 width, u3
 	u32 ci_width_in_dwords = width >> (3 - size);
 	ulx >>= (3 - size);
 	lrx >>= (3 - size);
-	u32 * dst = (u32*)(RDRAM + address);
+	u32 * dst = (u32*)(gfx_info.RDRAM + address);
 	dst += uly * ci_width_in_dwords;
 	for (u32 y = uly; y < lry; ++y) {
 		for (u32 x = ulx; x < lrx; ++x)
@@ -762,10 +764,13 @@ void gDPFillRectangle( s32 ulx, s32 uly, s32 lrx, s32 lry )
 
 	f32 fillColor[4];
 	gDPGetFillColor(fillColor);
-	if (gDP.otherMode.cycleType == G_CYC_FILL) {
-		if ((ulx == 0) && (uly == 0) && (lrx == gDP.scissor.lrx) && (lry == gDP.scissor.lry)) {
+	if (gDP.otherMode.cycleType == G_CYC_FILL)
+   {
+		if ((ulx == 0) && (uly == 0) && (lrx == gDP.scissor.lrx) && (lry == gDP.scissor.lry))
+      {
 			gDPFillRDRAM(gDP.colorImage.address, ulx, uly, lrx, lry, gDP.colorImage.width, gDP.colorImage.size, gDP.fillColor.color);
-			if ((*REG.VI_STATUS & 8) != 0) {
+			if ((*gfx_info.VI_STATUS & 8) != 0)
+         {
 				fillColor[0] = sqrtf(fillColor[0]);
 				fillColor[1] = sqrtf(fillColor[1]);
 				fillColor[2] = sqrtf(fillColor[2]);
@@ -844,15 +849,18 @@ void gDPTextureRectangle( f32 ulx, f32 uly, f32 lrx, f32 lry, s32 tile, f32 s, f
 		s = 0.0f;
 
 	f32 lrs, lrt;
-	if (RSP.cmd == G_TEXRECTFLIP) {
+	if (__RSP.cmd == G_TEXRECTFLIP)
+   {
 		lrs = s + (lry - uly - 1) * dsdx;
 		lrt = t + (lrx - ulx - 1) * dtdy;
-	} else {
+	}
+   else
+   {
 		lrs = s + (lrx - ulx - 1) * dsdx;
 		lrt = t + (lry - uly - 1) * dtdy;
 	}
 
-	OGLRender::TexturedRectParams params(ulx, uly, lrx, lry, s, t, lrs, lrt, (RSP.cmd == G_TEXRECTFLIP));
+	OGLRender::TexturedRectParams params(ulx, uly, lrx, lry, s, t, lrs, lrt, (__RSP.cmd == G_TEXRECTFLIP));
 	video().getRender().drawTexturedRect(params);
 
 	gSP.textureTile[0] = textureTileOrg[0];
@@ -891,14 +899,16 @@ void gDPFullSync()
 	if (config.frameBufferEmulation.copyToRDRAM != Config::ctDisable)
 		FrameBuffer_CopyToRDRAM(gDP.colorImage.address, sync);
 
-	if (RSP.bLLE) {
+	if (__RSP.bLLE)
+   {
 		if (config.frameBufferEmulation.copyDepthToRDRAM != Config::ctDisable)
 			FrameBuffer_CopyDepthBuffer(gDP.colorImage.address);
 	}
 
-	*REG.MI_INTR |= MI_INTR_DP;
+	*gfx_info.MI_INTR_REG |= MI_INTR_DP;
 
-	CheckInterrupts();
+   if (gfx_info.CheckInterrupts)
+      gfx_info.CheckInterrupts();
 
 #ifdef DEBUG
 	DebugMsg( DEBUG_HIGH | DEBUG_HANDLED, "gDPFullSync();\n" );
@@ -1237,7 +1247,7 @@ void gDPLLETriangle(u32 _w1, u32 _w2, int _shade, int _texture, int _zbuffer, u3
 
 static void gDPTriangle(u32 _w1, u32 _w2, int shade, int texture, int zbuffer)
 {
-	gDPLLETriangle(_w1, _w2, shade, texture, zbuffer, RDP.cmd_data + RDP.cmd_cur);
+	gDPLLETriangle(_w1, _w2, shade, texture, zbuffer, __RDP.cmd_data + __RDP.cmd_cur);
 }
 
 void gDPTriFill(u32 w0, u32 w1)

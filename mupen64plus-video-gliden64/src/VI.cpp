@@ -18,29 +18,29 @@ VIInfo VI;
 
 void VI_UpdateSize()
 {
-	const f32 xScale = _FIXED2FLOAT( _SHIFTR( *REG.VI_X_SCALE, 0, 12 ), 10 );
-//	f32 xOffset = _FIXED2FLOAT( _SHIFTR( *REG.VI_X_SCALE, 16, 12 ), 10 );
+	const f32 xScale = _FIXED2FLOAT( _SHIFTR( *gfx_info.VI_X_SCALE, 0, 12 ), 10 );
+//	f32 xOffset = _FIXED2FLOAT( _SHIFTR( *gfx_info.VI_X_SCALE, 16, 12 ), 10 );
 
-	const u32 vScale = _SHIFTR(*REG.VI_Y_SCALE, 0, 12);
-//	f32 yOffset = _FIXED2FLOAT( _SHIFTR( *REG.VI_Y_SCALE, 16, 12 ), 10 );
+	const u32 vScale = _SHIFTR(*gfx_info.VI_Y_SCALE, 0, 12);
+//	f32 yOffset = _FIXED2FLOAT( _SHIFTR( *gfx_info.VI_Y_SCALE, 16, 12 ), 10 );
 
-	const u32 hEnd = _SHIFTR( *REG.VI_H_START, 0, 10 );
-	const u32 hStart = _SHIFTR( *REG.VI_H_START, 16, 10 );
+	const u32 hEnd = _SHIFTR( *gfx_info.VI_H_START, 0, 10 );
+	const u32 hStart = _SHIFTR( *gfx_info.VI_H_START, 16, 10 );
 
 	// These are in half-lines, so shift an extra bit
-	const u32 vEnd = _SHIFTR( *REG.VI_V_START, 0, 10 );
-	const u32 vStart = _SHIFTR( *REG.VI_V_START, 16, 10 );
+	const u32 vEnd = _SHIFTR( *gfx_info.VI_V_START, 0, 10 );
+	const u32 vStart = _SHIFTR( *gfx_info.VI_V_START, 16, 10 );
 	const bool interlacedPrev = VI.interlaced;
 	if (VI.width > 0)
 		VI.widthPrev = VI.width;
 
 	VI.real_height = vEnd > vStart ? (((vEnd - vStart) >> 1) * vScale) >> 10 : 0;
-	VI.width = *REG.VI_WIDTH;
-	VI.interlaced = (*REG.VI_STATUS & 0x40) != 0;
+	VI.width = *gfx_info.VI_WIDTH;
+	VI.interlaced = (*gfx_info.VI_STATUS & 0x40) != 0;
 	if (VI.interlaced) {
 		f32 fullWidth = 640.0f*xScale;
-		if (*REG.VI_WIDTH > fullWidth) {
-			const u32 scale = (u32)floorf(*REG.VI_WIDTH / fullWidth + 0.5f);
+		if (*gfx_info.VI_WIDTH > fullWidth) {
+			const u32 scale = (u32)floorf(*gfx_info.VI_WIDTH / fullWidth + 0.5f);
 			VI.width /= scale;
 			VI.real_height *= scale;
 		}
@@ -48,7 +48,7 @@ void VI_UpdateSize()
 			--VI.real_height;
 	}
 
-	VI.PAL = (*REG.VI_V_SYNC & 0x3ff) > 550;
+	VI.PAL = (*gfx_info.VI_V_SYNC & 0x3ff) > 550;
 	if (VI.PAL && (vEnd - vStart) > 478) {
 		VI.height = (u32)(VI.real_height*1.0041841f);
 		if (VI.height > 576)
@@ -62,8 +62,8 @@ void VI_UpdateSize()
 	if (VI.height % 2 == 1)
 		--VI.height;
 
-//	const int fsaa = ((*REG.VI_STATUS) >> 8) & 3;
-//	const int divot = ((*REG.VI_STATUS) >> 4) & 1;
+//	const int fsaa = ((*gfx_info.VI_STATUS) >> 8) & 3;
+//	const int divot = ((*gfx_info.VI_STATUS) >> 4) & 1;
 	FrameBufferList & fbList = frameBufferList();
 	FrameBuffer * pBuffer = fbList.findBuffer(VI.lastOrigin);
 	DepthBuffer * pDepthBuffer = pBuffer != NULL ? pBuffer->m_pDepthBuffer : NULL;
@@ -99,7 +99,7 @@ void VI_UpdateScreen()
 	ogl.saveScreenshot();
 
 	bool bVIUpdated = false;
-	if (*REG.VI_ORIGIN != VI.lastOrigin) {
+	if (*gfx_info.VI_ORIGIN_REG != VI.lastOrigin) {
 		VI_UpdateSize();
 		bVIUpdated = true;
 		ogl.updateScale();
@@ -107,7 +107,7 @@ void VI_UpdateScreen()
 
 	if (config.frameBufferEmulation.enable) {
 
-		FrameBuffer * pBuffer = frameBufferList().findBuffer(*REG.VI_ORIGIN);
+		FrameBuffer * pBuffer = frameBufferList().findBuffer(*gfx_info.VI_ORIGIN_REG);
 		if (pBuffer == NULL)
 			gDP.changed |= CHANGED_CPU_FB_WRITE;
 		else if (!pBuffer->isValid()) {
@@ -123,7 +123,7 @@ void VI_UpdateScreen()
 			bNeedSwap = true;
 			break;
 		case Config::bsOnVIOriginChange:
-			bNeedSwap = bCFB ? true : (*REG.VI_ORIGIN != VI.lastOrigin);
+			bNeedSwap = bCFB ? true : (*gfx_info.VI_ORIGIN_REG != VI.lastOrigin);
 			break;
 		case Config::bsOnColorImageChange:
 			bNeedSwap = bCFB ? true : (gDP.colorImage.changed != 0);
@@ -138,21 +138,21 @@ void VI_UpdateScreen()
 						ogl.updateScale();
 						bVIUpdated = true;
 					}
-					const u32 size = *REG.VI_STATUS & 3;
+					const u32 size = *gfx_info.VI_STATUS & 3;
 					if (VI.height > 0 && size > G_IM_SIZ_8b  && VI.width > 0)
-						frameBufferList().saveBuffer(*REG.VI_ORIGIN, G_IM_FMT_RGBA, size, VI.width, VI.height, true);
+						frameBufferList().saveBuffer(*gfx_info.VI_ORIGIN_REG, G_IM_FMT_RGBA, size, VI.width, VI.height, true);
 				}
 			}
-			if ((((*REG.VI_STATUS) & 3) > 0) && ((config.frameBufferEmulation.copyFromRDRAM && gDP.colorImage.changed) || bCFB)) {
+			if ((((*gfx_info.VI_STATUS) & 3) > 0) && ((config.frameBufferEmulation.copyFromRDRAM && gDP.colorImage.changed) || bCFB)) {
 				if (!bVIUpdated) {
 					VI_UpdateSize();
 					bVIUpdated = true;
 				}
-				FrameBuffer_CopyFromRDRAM(*REG.VI_ORIGIN, config.frameBufferEmulation.copyFromRDRAM && !bCFB);
+				FrameBuffer_CopyFromRDRAM(*gfx_info.VI_ORIGIN_REG, config.frameBufferEmulation.copyFromRDRAM && !bCFB);
 			}
-			frameBufferList().renderBuffer(*REG.VI_ORIGIN);
+			frameBufferList().renderBuffer(*gfx_info.VI_ORIGIN_REG);
 			frameBufferList().clearBuffersChanged();
-			VI.lastOrigin = *REG.VI_ORIGIN;
+			VI.lastOrigin = *gfx_info.VI_ORIGIN_REG;
 #ifdef DEBUG
 			while (Debug.paused && !Debug.step);
 			Debug.step = FALSE;
@@ -167,7 +167,7 @@ void VI_UpdateScreen()
 			while (Debug.paused && !Debug.step);
 			Debug.step = FALSE;
 #endif
-			VI.lastOrigin = *REG.VI_ORIGIN;
+			VI.lastOrigin = *gfx_info.VI_ORIGIN_REG;
 		}
 	}
 

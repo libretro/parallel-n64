@@ -55,6 +55,7 @@ void gSPCombineMatrices(void)
 
 void gSPTriangle(s32 v0, s32 v1, s32 v2)
 {
+   /* TODO/FIXME - update with gliden64 code */
    if ((v0 < INDEXMAP_SIZE) && (v1 < INDEXMAP_SIZE) && (v2 < INDEXMAP_SIZE))
    {
       OGL_AddTriangle(v0, v1, v2);
@@ -142,6 +143,10 @@ static void gSPLightVertex_default(SPVertex * _vtx)
       _vtx->g = min(1.0f, _vtx->g);
       _vtx->b = min(1.0f, _vtx->b);
    }
+   else
+   {
+      /* TODO/FIXME - update with gliden64 code */
+   }
 
 }
 
@@ -179,12 +184,9 @@ static void gSPPointLightVertex_default(SPVertex *_vtx, float * _vPos)
          _vtx->b += gSP.lights[l].b * light_intensity;
       }
    }
-   if (_vtx->r > 1.0f)
-      _vtx->r = 1.0f;
-   if (_vtx->g > 1.0f)
-      _vtx->g = 1.0f;
-   if (_vtx->b > 1.0f)
-      _vtx->b = 1.0f;
+   if (_vtx->r > 1.0f)  _vtx->r = 1.0f;
+   if (_vtx->g > 1.0f)  _vtx->g = 1.0f;
+   if (_vtx->b > 1.0f)  _vtx->b = 1.0f;
 }
 
 static void gSPLightVertex_CBFD(SPVertex *_vtx)
@@ -377,6 +379,10 @@ void gSPLoadUcodeEx( u32 uc_start, u32 uc_dstart, u16 uc_dsize )
 
    ucode = (MicrocodeInfo*)GBI_DetectMicrocode( uc_start, uc_dstart, uc_dsize );
 
+   __RSP.uc_start  = uc_start;
+   __RSP.uc_dstart = uc_dstart;
+
+   /* TODO/FIXME - remove this maybe? for gliden64 */
    if (ucode->type != 0xFFFFFFFF)
       last_good_ucode = ucode->type;
 

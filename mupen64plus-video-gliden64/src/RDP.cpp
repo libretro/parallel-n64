@@ -232,7 +232,8 @@ void RDP_LoadSync( u32 w0, u32 w1 )
 static
 void _getTexRectParams(u32 & w2, u32 & w3)
 {
-	if (RSP.bLLE) {
+	if (__RSP.bLLE)
+   {
 		w2 = RDP.w2;
 		w3 = RDP.w3;
 		return;
@@ -244,8 +245,8 @@ void _getTexRectParams(u32 & w2, u32 & w3)
 		halfTexRect
 	} texRectMode = gdpTexRect;
 
-	const u32 cmd1 = (*(u32*)&RDRAM[RSP.PC[RSP.PCi] + 0]) >> 24;
-	const u32 cmd2 = (*(u32*)&RDRAM[RSP.PC[RSP.PCi] + 8]) >> 24;
+	const u32 cmd1 = (*(u32*)&gfx_info.RDRAM[__RSP.PC[__RSP.PCi] + 0]) >> 24;
+	const u32 cmd2 = (*(u32*)&gfx_info.RDRAM[__RSP.PC[__RSP.PCi] + 8]) >> 24;
 	if (cmd1 == G_RDPHALF_1) {
 		if (cmd2 == G_RDPHALF_2)
 			texRectMode = gspTexRect;
@@ -259,21 +260,21 @@ void _getTexRectParams(u32 & w2, u32 & w3)
 
 	switch (texRectMode) {
 	case gspTexRect:
-		w2 = *(u32*)&RDRAM[RSP.PC[RSP.PCi] + 4];
-		RSP.PC[RSP.PCi] += 8;
+		w2 = *(u32*)&gfx_info.RDRAM[__RSP.PC[__RSP.PCi] + 4];
+		__RSP.PC[__RSP.PCi] += 8;
 
-		w3 = *(u32*)&RDRAM[RSP.PC[RSP.PCi] + 4];
-		RSP.PC[RSP.PCi] += 8;
+		w3 = *(u32*)&gfx_info.RDRAM[__RSP.PC[__RSP.PCi] + 4];
+		__RSP.PC[__RSP.PCi] += 8;
 		break;
 	case gdpTexRect:
-		w2 = *(u32*)&RDRAM[RSP.PC[RSP.PCi] + 0];
-		w3 = *(u32*)&RDRAM[RSP.PC[RSP.PCi] + 4];
-		RSP.PC[RSP.PCi] += 8;
+		w2 = *(u32*)&gfx_info.RDRAM[__RSP.PC[__RSP.PCi] + 0];
+		w3 = *(u32*)&gfx_info.RDRAM[__RSP.PC[__RSP.PCi] + 4];
+		__RSP.PC[__RSP.PCi] += 8;
 		break;
 	case halfTexRect:
 		w2 = 0;
-		w3 = *(u32*)&RDRAM[RSP.PC[RSP.PCi] + 4];
-		RSP.PC[RSP.PCi] += 8;
+		w3 = *(u32*)&gfx_info.RDRAM[__RSP.PC[__RSP.PCi] + 4];
+		__RSP.PC[__RSP.PCi] += 8;
 		break;
 	default:
 		assert(false && "Unknown texrect mode");
@@ -364,7 +365,7 @@ void RDP_TriShadeTxtrZ( u32 _w0, u32 _w1 )
 	gDPTriShadeTxtrZ(_w0, _w1);
 }
 
-RDPInfo RDP;
+RDPInfo __RDP;
 
 void RDP_Init()
 {
@@ -407,7 +408,7 @@ void RDP_Init()
 	GBI.cmd[G_TEXRECT]			= RDP_TexRect;
 
 	RDP.w2 = RDP.w3 = 0;
-	RDP.cmd_ptr = RDP.cmd_cur = 0;
+	__RDP.cmd_ptr = __RDP.cmd_cur = 0;
 }
 
 static
@@ -509,102 +510,97 @@ void RDP_Half_1( u32 _c )
 	u32 cmd = _SHIFTR( _c, 24, 8 );
 	if (cmd >= 0xc8 && cmd <=0xcf) {//triangle command
 		DebugMsg( DEBUG_HIGH | DEBUG_HANDLED, "gDPHalf_1 LLE Triangle\n");
-		RDP.cmd_ptr = 0;
-		RDP.cmd_cur = 0;
+		__RDP.cmd_ptr = 0;
+		__RDP.cmd_cur = 0;
 		do {
-			RDP.cmd_data[RDP.cmd_ptr++] = w1;
-			RSP_CheckDLCounter();
+			__RDP.cmd_data[__RDP.cmd_ptr++] = w1;
+			__RSP_CheckDLCounter();
 
-			w0 = *(u32*)&RDRAM[RSP.PC[RSP.PCi]];
-			w1 = *(u32*)&RDRAM[RSP.PC[RSP.PCi] + 4];
-			RSP.cmd = _SHIFTR( w0, 24, 8 );
+			w0 = *(u32*)&gfx_info.RDRAM[__RSP.PC[__RSP.PCi]];
+			w1 = *(u32*)&gfx_info.RDRAM[__RSP.PC[__RSP.PCi] + 4];
+			__RSP.cmd = _SHIFTR( w0, 24, 8 );
 
-			DebugRSPState( RSP.PCi, RSP.PC[RSP.PCi], _SHIFTR( w0, 24, 8 ), w0, w1 );
-			DebugMsg( DEBUG_LOW | DEBUG_HANDLED, "0x%08lX: CMD=0x%02lX W0=0x%08lX W1=0x%08lX\n", RSP.PC[RSP.PCi], _SHIFTR( w0, 24, 8 ), w0, w1 );
+			DebugRSPState( RSP.PCi, __RSP.PC[__RSP.PCi], _SHIFTR( w0, 24, 8 ), w0, w1 );
+			DebugMsg( DEBUG_LOW | DEBUG_HANDLED, "0x%08lX: CMD=0x%02lX W0=0x%08lX W1=0x%08lX\n", __RSP.PC[__RSP.PCi], _SHIFTR( w0, 24, 8 ), w0, w1 );
 
-			RSP.PC[RSP.PCi] += 8;
-			// RSP.nextCmd = _SHIFTR( *(u32*)&RDRAM[RSP.PC[RSP.PCi]], 24, 8 );
-		} while (RSP.cmd != 0xb3);
-		RDP.cmd_data[RDP.cmd_ptr++] = w1;
-		RSP.cmd = (RDP.cmd_data[RDP.cmd_cur] >> 24) & 0x3f;
-		w0 = RDP.cmd_data[RDP.cmd_cur+0];
-		w1 = RDP.cmd_data[RDP.cmd_cur+1];
-		LLEcmd[RSP.cmd](w0, w1);
+			__RSP.PC[__RSP.PCi] += 8;
+			// __RSP.nextCmd = _SHIFTR( *(u32*)&gfx_info.RDRAM[__RSP.PC[__RSP.PCi]], 24, 8 );
+		} while (__RSP.cmd != 0xb3);
+		__RDP.cmd_data[__RDP.cmd_ptr++] = w1;
+		__RSP.cmd = (__RDP.cmd_data[__RDP.cmd_cur] >> 24) & 0x3f;
+		w0 = __RDP.cmd_data[__RDP.cmd_cur+0];
+		w1 = __RDP.cmd_data[__RDP.cmd_cur+1];
+		LLEcmd[__RSP.cmd](w0, w1);
 	} else {
 		DebugMsg( DEBUG_HIGH | DEBUG_IGNORED, "gDPHalf_1()\n" );
 	}
 }
 
-#define rdram ((u32*)RDRAM)
-#define rsp_dmem ((u32*)DMEM)
-
-#define dp_start (*(u32*)REG.DPC_START)
-#define dp_end (*(u32*)REG.DPC_END)
-#define dp_current (*(u32*)REG.DPC_CURRENT)
-#define dp_status (*(u32*)REG.DPC_STATUS)
-
 inline u32 READ_RDP_DATA(u32 address)
 {
-	if (dp_status & 0x1)          // XBUS_DMEM_DMA enabled
-		return rsp_dmem[(address & 0xfff)>>2];
-	else
-		return rdram[address>>2];
+	if ((*(u32*)gfx_info.DPC_STATUS_REG) & 0x1)          // XBUS_DMEM_DMA enabled
+		return gfx_info.DMEM[(address & 0xfff)>>2];
+   return gfx_info.RDRAM[address>>2];
 }
 
 void RDP_ProcessRDPList()
 {
 	if (ConfigOpen || video().isResizeWindow()) {
-		dp_status &= ~0x0002;
-		dp_start = dp_current = dp_end;
+      (*(u32*)gfx_info.DPC_STATUS_REG) &= ~0x0002;
+      gfx_info.DPC_START_REG = gfx_info.DPC_CURRENT_REG = gfx_info.DPC_END_REG;
 		gDPFullSync();
 		return;
 	}
 
-	const u32 length = dp_end - dp_current;
+   const u32 length = gfx_info.DPC_END_REG - gfx_info.DPC_CURRENT_REG;
 
-	dp_status &= ~0x0002;
+   (*(u32*)gfx_info.DPC_STATUS_REG) &= ~0x0002;
 
-	if (dp_end <= dp_current) return;
+   if (gfx_info.DPC_END_REG <= gfx_info.DPC_CURRENT_REG)
+      return;
 
-	RSP.bLLE = true;
+	__RSP.bLLE = true;
 
 	// load command data
 	for (u32 i = 0; i < length; i += 4) {
-		RDP.cmd_data[RDP.cmd_ptr] = READ_RDP_DATA(dp_current + i);
-		RDP.cmd_ptr = (RDP.cmd_ptr + 1) & maxCMDMask;
+      __RDP.cmd_data[__RDP.cmd_ptr] = READ_RDP_DATA(*gfx_info.DPC_CURRENT_REG + i);
+      __RDP.cmd_ptr = (__RDP.cmd_ptr + 1) & maxCMDMask;
 	}
 
 	bool setZero = true;
-	while (RDP.cmd_cur != RDP.cmd_ptr) {
-		u32 cmd = (RDP.cmd_data[RDP.cmd_cur] >> 24) & 0x3f;
+	while (__RDP.cmd_cur != __RDP.cmd_ptr)
+   {
+		u32 cmd = (__RDP.cmd_data[__RDP.cmd_cur] >> 24) & 0x3f;
 
-		if ((((RDP.cmd_ptr - RDP.cmd_cur)&maxCMDMask) * 4) < CmdLength[cmd]) {
+		if ((((__RDP.cmd_ptr - __RDP.cmd_cur)&maxCMDMask) * 4) < CmdLength[cmd])
+      {
 			setZero = false;
 			break;
 		}
 
-		if (RDP.cmd_cur + CmdLength[cmd] / 4 > MAXCMD)
-			::memcpy(RDP.cmd_data + MAXCMD, RDP.cmd_data, CmdLength[cmd] - (MAXCMD - RDP.cmd_cur) * 4);
+		if (__RDP.cmd_cur + CmdLength[cmd] / 4 > MAXCMD)
+			::memcpy(__RDP.cmd_data + MAXCMD, __RDP.cmd_data, CmdLength[cmd] - (MAXCMD - __RDP.cmd_cur) * 4);
 
 		// execute the command
-		u32 w0 = RDP.cmd_data[RDP.cmd_cur+0];
-		u32 w1 = RDP.cmd_data[RDP.cmd_cur+1];
-		RDP.w2 = RDP.cmd_data[RDP.cmd_cur+2];
-		RDP.w3 = RDP.cmd_data[RDP.cmd_cur + 3];
-		RSP.cmd = cmd;
+		u32 w0 = __RDP.cmd_data[__RDP.cmd_cur+0];
+		u32 w1 = __RDP.cmd_data[__RDP.cmd_cur+1];
+		RDP.w2 = __RDP.cmd_data[__RDP.cmd_cur+2];
+		RDP.w3 = __RDP.cmd_data[__RDP.cmd_cur + 3];
+		__RSP.cmd = cmd;
 		LLEcmd[cmd](w0, w1);
 
-		RDP.cmd_cur = (RDP.cmd_cur + CmdLength[cmd] / 4) & maxCMDMask;
+		__RDP.cmd_cur = (__RDP.cmd_cur + CmdLength[cmd] / 4) & maxCMDMask;
 	}
 
-	if (setZero) {
-		RDP.cmd_ptr = 0;
-		RDP.cmd_cur = 0;
+	if (setZero)
+   {
+		__RDP.cmd_ptr = 0;
+		__RDP.cmd_cur = 0;
 	}
 
-	RSP.bLLE = false;
+	__RSP.bLLE = false;
 	gDP.changed |= CHANGED_COLORBUFFER;
 	gDP.changed &= ~CHANGED_CPU_FB_WRITE;
 
-	dp_start = dp_current = dp_end;
+   gfx_info.DPC_START_REG = gfx_info.DPC_CURRENT_REG = gfx_info.DPC_END_REG;
 }

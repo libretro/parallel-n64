@@ -12,15 +12,15 @@ typedef struct
 	wchar_t pluginpath[PLUGIN_PATH_SIZE];
 } RSPInfo;
 
-extern RSPInfo RSP;
+extern RSPInfo __RSP;
 
 extern u32 DepthClearColor;
 
 #define RSP_SegmentToPhysical( segaddr ) ((gSP.segment[(segaddr >> 24) & 0x0F] + (segaddr & RDRAMSize)) & RDRAMSize)
 
-void RSP_Init();
-void RSP_ProcessDList();
+void RSP_Init(void);
+void RSP_ProcessDList(void);
 void RSP_LoadMatrix( f32 mtx[4][4], u32 address );
-void RSP_CheckDLCounter();
+void RSP_CheckDLCounter(void);
 
 #endif

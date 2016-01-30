@@ -12,11 +12,11 @@ typedef struct
 	u32 cmd_data[MAXCMD + 32];
 } RDPInfo;
 
-extern RDPInfo RDP;
+extern RDPInfo __RDP;
 
-void RDP_Init();
+void RDP_Init(void);
 void RDP_Half_1(u32 _c);
-void RDP_ProcessRDPList();
+void RDP_ProcessRDPList(void);
 void RDP_RepeatLastLoadBlock();
 void RDP_SetScissor(u32 w0, u32 w1);
 

@@ -15,7 +15,7 @@
 
 using namespace std;
 
-RSPInfo		RSP;
+RSPInfo		__RSP;
 
 void RSP_LoadMatrix( f32 mtx[4][4], u32 address )
 {
@@ -32,35 +32,40 @@ void RSP_LoadMatrix( f32 mtx[4][4], u32 address )
 			mtx[i][j] = (GLfloat)(n64Mat->integer[i][j^1]) + (GLfloat)(n64Mat->fraction[i][j^1]) * recip;
 }
 
-void RSP_CheckDLCounter()
+void RSP_CheckDLCounter(void)
 {
-	if (RSP.count != -1) {
-		--RSP.count;
-		if (RSP.count == 0) {
-			RSP.count = -1;
-			--RSP.PCi;
+	if (__RSP.count != -1)
+   {
+		--__RSP.count;
+		if (__RSP.count == 0)
+      {
+			__RSP.count = -1;
+			--__RSP.PCi;
 			DebugMsg( DEBUG_LOW | DEBUG_HANDLED, "End of DL\n" );
 		}
 	}
 }
 
-void RSP_ProcessDList()
+void RSP_ProcessDList(void)
 {
-	if (ConfigOpen || video().isResizeWindow()) {
+	if (ConfigOpen || video().isResizeWindow())
+   {
 		gDPFullSync();
 		return;
 	}
-	if (*REG.VI_ORIGIN != VI.lastOrigin) {
+
+	if (*REG.VI_ORIGIN != VI.lastOrigin)
+   {
 		VI_UpdateSize();
 		video().updateScale();
 	}
 
-	RSP.PC[0] = *(u32*)&DMEM[0x0FF0];
-	RSP.PCi = 0;
-	RSP.count = -1;
+	__RSP.PC[0] = *(u32*)&DMEM[0x0FF0];
+	__RSP.PCi = 0;
+	__RSP.count = -1;
 
-	RSP.halt = FALSE;
-	RSP.busy = TRUE;
+	__RSP.halt = FALSE;
+	__RSP.busy = TRUE;
 
 	gSP.matrix.stackSize = min( 32U, *(u32*)&DMEM[0x0FE4] >> 6 );
 	if (gSP.matrix.stackSize == 0)
@@ -74,7 +79,7 @@ void RSP_ProcessDList()
 	u32 uc_dstart = *(u32*)&DMEM[0x0FD8];
 	u32 uc_dsize = *(u32*)&DMEM[0x0FDC];
 
-	if ((uc_start != RSP.uc_start) || (uc_dstart != RSP.uc_dstart))
+	if ((uc_start != __RSP.uc_start) || (uc_dstart != __RSP.uc_dstart))
 		gSPLoadUcodeEx(uc_start, uc_dstart, uc_dsize);
 
 	depthBufferList().setNotCleared();
@@ -82,8 +87,8 @@ void RSP_ProcessDList()
 	if (GBI.getMicrocodeType() == Turbo3D)
 		RunTurbo3D();
 	else {
-		while (!RSP.halt) {
-			if ((RSP.PC[RSP.PCi] + 8) > RDRAMSize) {
+		while (!__RSP.halt) {
+			if ((__RSP.PC[__RSP.PCi] + 8) > RDRAMSize) {
 #ifdef DEBUG
 				switch (Debug.level)
 				{
@@ -101,19 +106,19 @@ void RSP_ProcessDList()
 				break;
 			}
 
-			u32 w0 = *(u32*)&RDRAM[RSP.PC[RSP.PCi]];
-			u32 w1 = *(u32*)&RDRAM[RSP.PC[RSP.PCi] + 4];
-			RSP.cmd = _SHIFTR(w0, 24, 8);
+			u32 w0 = *(u32*)&RDRAM[__RSP.PC[__RSP.PCi]];
+			u32 w1 = *(u32*)&RDRAM[__RSP.PC[__RSP.PCi] + 4];
+			__RSP.cmd = _SHIFTR(w0, 24, 8);
 
 #ifdef DEBUG
-			DebugRSPState( RSP.PCi, RSP.PC[RSP.PCi], _SHIFTR( w0, 24, 8 ), w0, w1 );
-			DebugMsg( DEBUG_LOW | DEBUG_HANDLED, "0x%08lX: CMD=0x%02lX W0=0x%08lX W1=0x%08lX\n", RSP.PC[RSP.PCi], _SHIFTR( w0, 24, 8 ), w0, w1 );
+			DebugRSPState( __RSP.PCi, __RSP.PC[__RSP.PCi], _SHIFTR( w0, 24, 8 ), w0, w1 );
+			DebugMsg( DEBUG_LOW | DEBUG_HANDLED, "0x%08lX: CMD=0x%02lX W0=0x%08lX W1=0x%08lX\n", __RSP.PC[__RSP.PCi], _SHIFTR( w0, 24, 8 ), w0, w1 );
 #endif
 
-			RSP.PC[RSP.PCi] += 8;
-			RSP.nextCmd = _SHIFTR(*(u32*)&RDRAM[RSP.PC[RSP.PCi]], 24, 8);
+			__RSP.PC[__RSP.PCi] += 8;
+			__RSP.nextCmd = _SHIFTR(*(u32*)&RDRAM[__RSP.PC[__RSP.PCi]], 24, 8);
 
-			GBI.cmd[RSP.cmd](w0, w1);
+			GBI.cmd[__RSP.cmd](w0, w1);
 			RSP_CheckDLCounter();
 		}
 	}
@@ -121,12 +126,11 @@ void RSP_ProcessDList()
 	if (config.frameBufferEmulation.copyDepthToRDRAM != Config::ctDisable)
 		FrameBuffer_CopyDepthBuffer(gDP.colorImage.address);
 
-	RSP.busy = FALSE;
+	__RSP.busy = FALSE;
 	gDP.changed |= CHANGED_COLORBUFFER;
 }
 
-static
-void RSP_SetDefaultState()
+static void RSP_SetDefaultState(void)
 {
 	memset(&gSP, 0, sizeof(gSPInfo));
 
@@ -161,20 +165,19 @@ void RSP_SetDefaultState()
 
 u32 DepthClearColor = 0xfffcfffc;
 
-static
-void setDepthClearColor()
+static void setDepthClearColor(void)
 {
-	if (strstr(RSP.romname, (const char *)"Elmo's") != NULL)
+	if (strstr(__RSP.romname, (const char *)"Elmo's") != NULL)
 		DepthClearColor = 0xFFFFFFFF;
-	else if (strstr(RSP.romname, (const char *)"Taz Express") != NULL)
+	else if (strstr(__RSP.romname, (const char *)"Taz Express") != NULL)
 		DepthClearColor = 0xFFBCFFBC;
-	else if (strstr(RSP.romname, (const char *)"NFL QBC 2000") != NULL || strstr(RSP.romname, (const char *)"NFL Quarterback Club") != NULL || strstr(RSP.romname, (const char *)"Jeremy McGrath Super") != NULL)
+	else if (strstr(__RSP.romname, (const char *)"NFL QBC 2000") != NULL || strstr(__RSP.romname, (const char *)"NFL Quarterback Club") != NULL || strstr(RSP.romname, (const char *)"Jeremy McGrath Super") != NULL)
 		DepthClearColor = 0xFFFDFFFC;
 	else
 		DepthClearColor = 0xFFFCFFFC;
 }
 
-void RSP_Init()
+void RSP_Init(void)
 {
 #ifdef OS_WINDOWS
 	// Calculate RDRAM size by intentionally causing an access violation
@@ -195,8 +198,8 @@ void RSP_Init()
 	RDRAMSize = 1024 * 1024 * 8 - 1;
 #endif // OS_WINDOWS
 
-	RSP.uc_start = RSP.uc_dstart = 0;
-	RSP.bLLE = false;
+	__RSP.uc_start = __RSP.uc_dstart = 0;
+	__RSP.bLLE = false;
 
 	// get the name of the ROM
 	char romname[21];
@@ -208,41 +211,41 @@ void RSP_Init()
 	while (romname[strlen(romname) - 1] == ' ')
 		romname[strlen(romname) - 1] = 0;
 
-	if (strcmp(RSP.romname, romname) != 0)
+	if (strcmp(__RSP.romname, romname) != 0)
 		TFH.shutdown();
 
-	strncpy(RSP.romname, romname, 21);
+	strncpy(__RSP.romname, romname, 21);
 	setDepthClearColor();
 	config.generalEmulation.hacks = 0;
-	if (strstr(RSP.romname, (const char *)"OgreBattle64") != NULL)
+	if (strstr(__RSP.romname, (const char *)"OgreBattle64") != NULL)
 		config.generalEmulation.hacks |= hack_Ogre64;
-	else if (strstr(RSP.romname, (const char *)"MarioGolf64") != NULL ||
-		strstr(RSP.romname, (const char *)"F1 POLE POSITION 64") != NULL
+	else if (strstr(__RSP.romname, (const char *)"MarioGolf64") != NULL ||
+		strstr(__RSP.romname, (const char *)"F1 POLE POSITION 64") != NULL
 		)
 		config.generalEmulation.hacks |= hack_noDepthFrameBuffers;
-	else if (strstr(RSP.romname, (const char *)"CONKER BFD") != NULL ||
-		strstr(RSP.romname, (const char *)"MICKEY USA") != NULL
+	else if (strstr(__RSP.romname, (const char *)"CONKER BFD") != NULL ||
+		strstr(__RSP.romname, (const char *)"MICKEY USA") != NULL
 		)
 		config.generalEmulation.hacks |= hack_blurPauseScreen;
-	else if (strstr(RSP.romname, (const char *)"MarioTennis64") != NULL)
+	else if (strstr(__RSP.romname, (const char *)"MarioTennis64") != NULL)
 		config.generalEmulation.hacks |= hack_scoreboardJ;
-	else if (strstr(RSP.romname, (const char *)"MarioTennis") != NULL)
+	else if (strstr(__RSP.romname, (const char *)"MarioTennis") != NULL)
 		config.generalEmulation.hacks |= hack_scoreboard;
-	else if (strstr(RSP.romname, (const char *)"Pilot Wings64") != NULL)
+	else if (strstr(__RSP.romname, (const char *)"Pilot Wings64") != NULL)
 		config.generalEmulation.hacks |= hack_pilotWings;
-	else if (strstr(RSP.romname, (const char *)"THE LEGEND OF ZELDA") != NULL ||
-		strstr(RSP.romname, (const char *)"ZELDA MASTER QUEST") != NULL ||
-		strstr(RSP.romname, (const char *)"DOUBUTSUNOMORI") != NULL
+	else if (strstr(__RSP.romname, (const char *)"THE LEGEND OF ZELDA") != NULL ||
+		strstr(__RSP.romname, (const char *)"ZELDA MASTER QUEST") != NULL ||
+		strstr(__RSP.romname, (const char *)"DOUBUTSUNOMORI") != NULL
 		)
 		config.generalEmulation.hacks |= hack_subscreen;
-	else if (strstr(RSP.romname, (const char *)"Blast") != NULL)
+	else if (strstr(__RSP.romname, (const char *)"Blast") != NULL)
 		config.generalEmulation.hacks |= hack_blastCorps;
-	else if (strstr(RSP.romname, (const char *)"SPACE INVADERS") != NULL)
+	else if (strstr(__RSP.romname, (const char *)"SPACE INVADERS") != NULL)
 		config.generalEmulation.hacks |= hack_ignoreVIHeightChange;
-	else if (strstr(RSP.romname, (const char *)"MASK") != NULL) // Zelda MM
+	else if (strstr(__RSP.romname, (const char *)"MASK") != NULL) // Zelda MM
 		config.generalEmulation.hacks |= hack_skipVIChangeCheck | hack_ZeldaCamera;
 
-	api().FindPluginPath(RSP.pluginpath);
+	api().FindPluginPath(__RSP.pluginpath);
 
 	RSP_SetDefaultState();
 }
