@@ -13,6 +13,8 @@
 extern "C" {
 #endif
 
+typedef u32 (*GetTexelFunc)( u64 *src, u16 x, u16 i, u8 palette );
+
 typedef struct CachedTexture
 {
    GLuint  glName;
