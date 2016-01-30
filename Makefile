@@ -2,6 +2,7 @@ DEBUG=0
 PERF_TEST=0
 HAVE_SHARED_CONTEXT=0
 SINGLE_THREAD=0
+GLIDEN64=0
 WITH_CRC=brumme
 
 DYNAFLAGS :=
@@ -358,6 +359,10 @@ ifeq ($(DEBUG), 1)
 	CPUOPTS += -DOPENGL_DEBUG
 else
 	CPUOPTS += -O2 -DNDEBUG
+endif
+
+ifeq ($(GLIDEN64), 1)
+COREFLAGS += -std=c++0x
 endif
 
 ifeq ($(platform), qnx)

@@ -1,7 +1,6 @@
 #include <fstream>
 #include <functional>
 #include <stdio.h>
-#include <osal_files.h>
 
 #include "OpenGL.h"
 #include "Combiner.h"
