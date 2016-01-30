@@ -7,11 +7,7 @@ VIDEODIR_RICE      = $(ROOT_DIR)/gles2rice/src
 VIDEODIR_GLN64     = $(ROOT_DIR)/gles2n64/src
 VIDEODIR_ANGRYLION = $(ROOT_DIR)/mupen64plus-video-angrylion
 
-ifeq ($(GLIDE2GL), 1)
 VIDEODIR_GLIDE = $(ROOT_DIR)/glide2gl/src
-else
-VIDEODIR_GLIDE = $(ROOT_DIR)/gles2glide64/src
-endif
 
 DYNAREC_USED := 0
 
