@@ -24,7 +24,7 @@ void RSP_LoadMatrix( f32 mtx[4][4], u32 address )
 	{
 		SHORT integer[4][4];
 		WORD fraction[4][4];
-	} *n64Mat = (struct _N64Matrix *)&RDRAM[address];
+	} *n64Mat = (struct _N64Matrix *)&gfx_info.RDRAM[address];
 	int i, j;
 
 	for (i = 0; i < 4; i++)
@@ -106,8 +106,8 @@ void RSP_ProcessDList(void)
 				break;
 			}
 
-			u32 w0 = *(u32*)&RDRAM[__RSP.PC[__RSP.PCi]];
-			u32 w1 = *(u32*)&RDRAM[__RSP.PC[__RSP.PCi] + 4];
+			u32 w0 = *(u32*)&gfx_info.RDRAM[__RSP.PC[__RSP.PCi]];
+			u32 w1 = *(u32*)&gfx_info.RDRAM[__RSP.PC[__RSP.PCi] + 4];
 			__RSP.cmd = _SHIFTR(w0, 24, 8);
 
 #ifdef DEBUG
@@ -116,7 +116,7 @@ void RSP_ProcessDList(void)
 #endif
 
 			__RSP.PC[__RSP.PCi] += 8;
-			__RSP.nextCmd = _SHIFTR(*(u32*)&RDRAM[__RSP.PC[__RSP.PCi]], 24, 8);
+			__RSP.nextCmd = _SHIFTR(*(u32*)&gfx_info.RDRAM[__RSP.PC[__RSP.PCi]], 24, 8);
 
 			GBI.cmd[__RSP.cmd](w0, w1);
 			RSP_CheckDLCounter();
