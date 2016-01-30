@@ -180,8 +180,6 @@ void PluginAPI::_initiateGFX(const GFX_INFO & _gfxInfo) const {
 	REG.VI_V_BURST = _gfxInfo.VI_V_BURST_REG;
 	REG.VI_X_SCALE = _gfxInfo.VI_X_SCALE_REG;
 	REG.VI_Y_SCALE = _gfxInfo.VI_Y_SCALE_REG;
-
-	CheckInterrupts = _gfxInfo.CheckInterrupts;
 }
 
 void PluginAPI::ChangeWindow()

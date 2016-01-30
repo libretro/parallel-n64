@@ -8,6 +8,4 @@ u8 *RDRAM;
 
 u32 RDRAMSize;
 
-N64Regs REG;
-
 bool ConfigOpen = false;
