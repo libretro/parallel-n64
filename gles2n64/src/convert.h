@@ -180,30 +180,6 @@ static INLINE void DWordInterleaveWrap(u32 *src, u32 srcIdx, u32 srcMask, u32 nu
 	}
 }
 
-static INLINE void QWordInterleave( void *mem, u32 numDWords )
-{
-   numDWords >>= 1; // qwords
-   while( numDWords-- )
-   {
-      int tmp0, tmp1;
-      tmp0 = *(int *)((intptr_t)mem + 0);
-      tmp1 = *(int *)((intptr_t)mem + 4);
-      *(int *)((intptr_t)mem + 0) = *(int *)((intptr_t)mem + 8);
-      *(int *)((intptr_t)mem + 8) = tmp0;
-      *(int *)((intptr_t)mem + 4) = *(int *)((intptr_t)mem + 12);
-      *(int *)((intptr_t)mem + 12) = tmp1;
-      mem = (void *)((intptr_t)mem + 16);
-   }
-}
-
-static INLINE u32 swapdword( u32 value )
-{
-   return ((value & 0xff000000) >> 24) |
-      ((value & 0x00ff0000) >>  8) |
-      ((value & 0x0000ff00) <<  8) |
-      ((value & 0x000000ff) << 24);
-}
-
 static INLINE u16 swapword( u16 value )
 {
    return (value << 8) | (value >> 8);
