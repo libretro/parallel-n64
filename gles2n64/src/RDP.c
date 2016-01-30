@@ -68,7 +68,7 @@ void RDP_SetEnvColor( u32 w0, u32 w1 )
 
 void RDP_SetPrimColor( u32 w0, u32 w1 )
 {
-    gDPSetPrimColor( _SHIFTL( w0,  8, 8 ),      // m
+    gDPSetPrimColor( _SHIFTL( w0,  8, 5 ),      // m
                      _SHIFTL( w0,  0, 8 ),      // l
                      _SHIFTR( w1, 24, 8 ),      // r
                      _SHIFTR( w1, 16, 8 ),      // g
