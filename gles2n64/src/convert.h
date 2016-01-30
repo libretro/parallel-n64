@@ -119,68 +119,65 @@ static const volatile unsigned char One2Eight[2] =
    255, // 1 = 11111111
 };
 
-static INLINE void UnswapCopy( void *src, void *dest, u32 numBytes )
+static INLINE void UnswapCopyWrap(const u8 *src, u32 srcIdx, u8 *dest, u32 destIdx, u32 destMask, u32 numBytes)
 {
-   int i, numDWords, trailingBytes;
-   // copy leading bytes
-   int leadingBytes = ((intptr_t)src) & 3;
-
-   if (numBytes == 1)
+	// copy leading bytes
+	u32 leadingBytes = srcIdx & 3;
+	if (leadingBytes != 0)
    {
-      *(u8 *)(dest) = *(u8 *)(src);
-      return;
-   }
+      unsigned i;
 
-   if (leadingBytes != 0)
-   {
-      leadingBytes = 4-leadingBytes;
-      if ((unsigned int)leadingBytes > numBytes)
-         leadingBytes = numBytes;
-      numBytes -= leadingBytes;
+		leadingBytes = 4 - leadingBytes;
+		if ((u32)leadingBytes > numBytes)
+			leadingBytes = numBytes;
+		numBytes -= leadingBytes;
 
-      src = (void *)((intptr_t)src ^ 3);
-      for (i = 0; i < leadingBytes; i++)
+		srcIdx ^= 3;
+		for (i = 0; i < leadingBytes; i++)
       {
-         *(u8 *)(dest) = *(u8 *)(src);
-         dest = (void *)((intptr_t)dest+1);
-         src  = (void *)((intptr_t)src -1);
-      }
-      src = (void *)((intptr_t)src+5);
-   }
+			dest[destIdx&destMask] = src[srcIdx];
+			++destIdx;
+			--srcIdx;
+		}
+		srcIdx += 5;
+	}
 
-   // copy dwords
-   numDWords = numBytes >> 2;
-   while (numDWords--)
-   {
-      *(u32 *)dest = bswap_32( *(u32 *)src ); 
-      dest = (void *)((intptr_t)dest+4);
-      src  = (void *)((intptr_t)src +4);
-   }
+	// copy dwords
+	int numDWords = numBytes >> 2;
+	while (numDWords--) {
+		dest[(destIdx + 3) & destMask] = src[srcIdx++];
+		dest[(destIdx + 2) & destMask] = src[srcIdx++];
+		dest[(destIdx + 1) & destMask] = src[srcIdx++];
+		dest[(destIdx + 0) & destMask] = src[srcIdx++];
+		destIdx += 4;
+	}
 
-   // copy trailing bytes
-   trailingBytes = numBytes & 3;
-   if (trailingBytes)
+	// copy trailing bytes
+	int trailingBytes = numBytes & 3;
+	if (trailingBytes)
    {
-      src = (void *)((intptr_t)src ^ 3);
-      for (i = 0; i < trailingBytes; i++)
+      unsigned i;
+
+		srcIdx ^= 3;
+		for (i = 0; i < trailingBytes; i++)
       {
-         *(u8 *)(dest) = *(u8 *)(src);
-         dest = (void *)((intptr_t)dest+1);
-         src  = (void *)((intptr_t)src -1);
-      }
-   }
+			dest[destIdx&destMask] = src[srcIdx];
+			++destIdx;
+			--srcIdx;
+		}
+	}
 }
 
-static INLINE void DWordInterleave( void *mem, u32 numDWords )
+static INLINE void DWordInterleaveWrap(u32 *src, u32 srcIdx, u32 srcMask, u32 numQWords)
 {
-   int tmp;
-   while( numDWords-- )
-   {
-      tmp = *(int *)((intptr_t)mem + 0);
-      *(int *)((intptr_t)mem + 0) = *(int *)((intptr_t)mem + 4);
-      *(int *)((intptr_t)mem + 4) = tmp;
-      mem = (void *)((intptr_t)mem + 8);
-   }
+	u32 tmp;
+	while (numQWords--)	{
+		tmp = src[srcIdx & srcMask];
+		src[srcIdx & srcMask] = src[(srcIdx + 1) & srcMask];
+		++srcIdx;
+		src[srcIdx & srcMask] = tmp;
+		++srcIdx;
+	}
 }
 
 static INLINE void QWordInterleave( void *mem, u32 numDWords )

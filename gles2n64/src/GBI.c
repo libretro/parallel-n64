@@ -239,7 +239,7 @@ MicrocodeInfo *GBI_DetectMicrocode( u32 uc_start, u32 uc_dstart, u16 uc_dsize )
    }
 
    // See if we can identify it by text
-   UnswapCopy( &gfx_info.RDRAM[uc_dstart & 0x1FFFFFFF], uc_data, 2048 );
+   UnswapCopyWrap(gfx_info.RDRAM, uc_dstart & 0x1FFFFFFF, (u8*)uc_data, 0, 0x7FF, 2048);
    strcpy( uc_str, "Not Found" );
 
    for (i = 0; i < 2048; i++)
