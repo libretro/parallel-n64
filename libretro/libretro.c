@@ -305,7 +305,7 @@ load_fail:
    return false;
 }
 
-bool emu_step_render()
+bool emu_step_render(void)
 {
    if (flip_only)
    {
@@ -812,10 +812,48 @@ static void format_saved_memory(void)
    format_mempak(saved_memory.mempack[3]);
 }
 
+static void context_reset(void)
+{
+   static bool first_init = true;
+   printf("context_reset.\n");
+   glsm_ctl(GLSM_CTL_STATE_CONTEXT_RESET, NULL);
+   reinit_gfx_plugin();
+
+   if (first_init)
+   {
+      glsm_ctl(GLSM_CTL_STATE_SETUP, NULL);
+      first_init = false;
+   }
+}
+
+static void context_destroy(void)
+{
+}
+
+static bool context_imm_vbo_draw(void *data)
+{
+   (void)data;
+   vbo_draw();
+   return true;
+}
+
+static bool context_imm_vbo_disable(void *data)
+{
+   (void)data;
+   vbo_disable();
+   return true;
+}
+
+static bool context_framebuffer_lock(void *data)
+{
+   if (!stop)
+      return false;
+   return true;
+}
+
 bool retro_load_game(const struct retro_game_info *game)
 {
-   struct retro_hw_render_callback *render = NULL;
-
+   glsm_ctx_params_t params = {0};
    format_saved_memory();
 
    update_variables(true);
@@ -825,15 +863,26 @@ bool retro_load_game(const struct retro_game_info *game)
 
    if (gfx_plugin != GFX_ANGRYLION)
    {
-      if ((render = (struct retro_hw_render_callback*)retro_gl_init()))
+      params.context_reset         = context_reset;
+      params.context_destroy       = context_destroy;
+      params.environ_cb            = environ_cb;
+      params.stencil               = true;
+
+      if (gfx_plugin == GFX_GLIDE64)
       {
-         if (!environ_cb(RETRO_ENVIRONMENT_SET_HW_RENDER, render))
-         {
-            if (log_cb)
-               log_cb(RETRO_LOG_ERROR, "mupen64plus: libretro frontend doesn't have OpenGL support.");
-            return false;
-         }
+         params.imm_vbo_draw       = context_imm_vbo_draw;
+         params.imm_vbo_disable    = context_imm_vbo_disable;
       }
+
+      params.framebuffer_lock      = context_framebuffer_lock;
+
+      if (!glsm_ctl(GLSM_CTL_STATE_CONTEXT_INIT, &params))
+      {
+         if (log_cb)
+            log_cb(RETRO_LOG_ERROR, "mupen64plus: libretro frontend doesn't have OpenGL support.");
+         return false;
+      }
+
    }
 
    game_data = malloc(game->size);
@@ -872,7 +921,7 @@ static void glsm_exit(void)
 #ifndef HAVE_SHARED_CONTEXT
    if (gfx_plugin == GFX_ANGRYLION || stop)
       return;
-   sglExit();
+   glsm_ctl(GLSM_CTL_STATE_UNBIND, NULL);
 #endif
 }
 
@@ -881,7 +930,7 @@ static void glsm_enter(void)
 #ifndef HAVE_SHARED_CONTEXT
    if (gfx_plugin == GFX_ANGRYLION || stop)
       return;
-   sglEnter();
+   glsm_ctl(GLSM_CTL_STATE_BIND, NULL);
 #endif
 }
 
@@ -918,7 +967,8 @@ void retro_run (void)
       reinit_screen = false;
    }
 
-   do {
+   do
+   {
       glsm_enter();
 
 #ifdef SINGLE_THREAD

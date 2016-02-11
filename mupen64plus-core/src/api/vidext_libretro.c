@@ -33,7 +33,7 @@
 #include "callbacks.h"
 
 #include <libretro.h>
-#include <opengl_state_machine.h>
+#include <glsmsym.h>
 
 extern struct retro_hw_render_callback hw_render;
 
