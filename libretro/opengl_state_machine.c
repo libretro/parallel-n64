@@ -536,10 +536,6 @@ static void context_reset(void)
       gotsym = (rglgen_resolve_symbols(hw_render.get_proc_address), 1);
 
    reinit_gfx_plugin();
-
-#ifdef HAVE_SHARED_CONTEXT
-   sglBindFramebuffer(GL_FRAMEBUFFER, 0);
-#endif
 }
 
 void *retro_gl_init(void)
