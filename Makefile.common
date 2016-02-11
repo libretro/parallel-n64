@@ -189,6 +189,7 @@ endif
 
 SOURCES_C += $(LIBRETRO_DIR)/libretro.c \
 					 $(LIBRETRO_DIR)/opengl_state_machine.c \
+					 $(LIBRETRO_DIR)/glsm.c \
 					 $(CORE_DIR)/src/plugin/emulate_game_controller_via_libretro.c \
 					 $(AUDIO_LIBRETRO_DIR)/audio_backend_libretro.c \
 					 $(AUDIO_LIBRETRO_DIR)/audio_resampler_driver.c \
