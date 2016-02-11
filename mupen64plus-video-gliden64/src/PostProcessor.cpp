@@ -8,17 +8,17 @@
 #include "ShaderUtils.h"
 #include "Config.h"
 
-#if defined(GLES3_1)
+#if defined(HAVE_OPENGLES31)
 #define SHADER_VERSION "#version 310 es \n"
-#elif defined(GLES3)
+#elif defined(HAVE_OPENGLES3)
 #define SHADER_VERSION "#version 300 es \n"
-#elif defined(GLES2)
+#elif defined(HAVE_OPENGLES2)
 #define SHADER_VERSION "#version 100 \n"
 #else
 #define SHADER_VERSION "#version 330 core \n"
 #endif
 
-#ifdef GLES2
+#ifdef HAVE_OPENGLES2
 #define FRAGMENT_SHADER_END "  gl_FragColor = fragColor; \n"
 #else
 #define FRAGMENT_SHADER_END "\n"
@@ -325,7 +325,7 @@ void PostProcessor::_initCommon()
 	m_pTextureOriginal = _createTexture();
 	m_FBO_original = _createFBO(m_pTextureOriginal);
 
-#ifdef GLES2
+#ifdef HAVE_OPENGLES2
 	m_copyProgram = _createShaderProgram(vertexShader, copyShader);
 	glUseProgram(m_copyProgram);
 	int loc = glGetUniformLocation(m_copyProgram, "Sample0");
@@ -507,7 +507,7 @@ void PostProcessor::_preDraw(FrameBuffer * _pBuffer)
 	_setGLState();
 	OGLVideo & ogl = video();
 
-#ifdef GLES2
+#ifdef HAVE_OPENGLES2
 	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, m_FBO_original);
 	textureCache().activateTexture(0, _pBuffer->m_pTexture);
 	glUseProgram(m_copyProgram);

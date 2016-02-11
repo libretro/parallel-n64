@@ -299,7 +299,7 @@ void OGLVideo::readScreen2(void * _dest, int * _width, int * _height, int _front
 	if (_dest == NULL)
 		return;
 
-#ifndef GLES2
+#ifndef HAVE_OPENGLES2
 	GLint oldMode;
 	glGetIntegerv(GL_READ_BUFFER, &oldMode);
 	if (_front != 0)
@@ -1229,7 +1229,7 @@ FBOTextureFormats fboFormats;
 
 void FBOTextureFormats::init()
 {
-#ifdef GLES2
+#ifdef HAVE_OPENGLES2
 	monochromeInternalFormat = GL_RGB;
 	monochromeFormat = GL_RGB;
 	monochromeType = GL_UNSIGNED_SHORT_5_6_5;
@@ -1251,7 +1251,7 @@ void FBOTextureFormats::init()
 		colorType = GL_UNSIGNED_SHORT_5_6_5;
 		colorFormatBytes = 2;
 	}
-#elif defined(GLES3) || defined (GLES3_1)
+#elif defined(HAVE_OPENGLES3) || defined (HAVE_OPENGLES31)
 	colorInternalFormat = GL_RGBA;
 	colorFormat = GL_RGBA;
 	colorType = GL_UNSIGNED_BYTE;
@@ -1316,7 +1316,7 @@ void OGLRender::_initExtensions()
 
 	fboFormats.init();
 
-#ifndef GLES2
+#ifndef HAVE_OPENGLES2
 	GLint majorVersion = 0;
 	glGetIntegerv(GL_MAJOR_VERSION, &majorVersion);
 	LOG(LOG_VERBOSE, "OpenGL major version: %d\n", majorVersion);
@@ -1329,7 +1329,7 @@ void OGLRender::_initExtensions()
 	LOG(LOG_VERBOSE, "OpenGL minor version: %d\n", minorVersion);
 #ifndef GLESX
 	m_bImageTexture = (majorVersion >= 4) && (minorVersion >= 3) && (glBindImageTexture != NULL);
-#elif defined(GLES3_1)
+#elif defined(HAVE_OPENGLES31)
 	m_bImageTexture = (majorVersion >= 3) && (minorVersion >= 1) && (glBindImageTexture != NULL);
 #else
 	m_bImageTexture = false;

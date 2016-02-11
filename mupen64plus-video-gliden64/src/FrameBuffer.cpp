@@ -18,7 +18,7 @@
 
 using namespace std;
 
-#ifndef GLES2
+#ifndef HAVE_OPENGLES2
 class FrameBufferToRDRAM
 {
 public:
@@ -65,7 +65,7 @@ private:
 	CachedTexture * m_pColorTexture;
 	CachedTexture * m_pDepthTexture;
 };
-#endif // GLES2
+#endif // HAVE_OPENGLES2
 
 class RDRAMtoFrameBuffer
 {
@@ -79,14 +79,14 @@ public:
 
 private:
 	CachedTexture * m_pTexture;
-#ifndef GLES2
+#ifndef HAVE_OPENGLES2
 	GLuint m_PBO;
 #else
 	GLubyte* m_PBO;
 #endif
 };
 
-#ifndef GLES2
+#ifndef HAVE_OPENGLES2
 FrameBufferToRDRAM g_fbToRDRAM;
 DepthBufferToRDRAM g_dbToRDRAM;
 #endif
@@ -211,7 +211,7 @@ void FrameBuffer::init(u32 _address, u32 _endAddress, u16 _format, u16 _size, u1
 #ifdef GL_MULTISAMPLING_SUPPORT
 	if (config.video.multisampling != 0) {
 		glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, m_pTexture->glName);
-#if defined(GLES3_1)
+#if defined(HAVE_OPENGLES31)
 		if (_size > G_IM_SIZ_8b)
 			glTexStorage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, config.video.multisampling, GL_RGBA8, m_pTexture->realWidth, m_pTexture->realHeight, false);
 		else
@@ -609,7 +609,7 @@ void FrameBufferList::attachDepthBuffer()
 	if (m_pCurrent->m_FBO > 0 && pDepthBuffer != NULL) {
 		pDepthBuffer->initDepthImageTexture(m_pCurrent);
 		pDepthBuffer->initDepthBufferTexture(m_pCurrent);
-#ifdef GLES2
+#ifdef HAVE_OPENGLES2
 		if (pDepthBuffer->m_pDepthBufferTexture->realWidth == m_pCurrent->m_pTexture->realWidth) {
 #else
 		if (pDepthBuffer->m_pDepthBufferTexture->realWidth >= m_pCurrent->m_pTexture->realWidth) {
@@ -623,7 +623,7 @@ void FrameBufferList::attachDepthBuffer()
 	} else
 		m_pCurrent->m_pDepthBuffer = NULL;
 
-#ifndef GLES2
+#ifndef HAVE_OPENGLES2
 	GLuint attachments[1] = { GL_COLOR_ATTACHMENT0 };
 	glDrawBuffers(1, attachments);
 #endif
@@ -634,7 +634,7 @@ void FrameBuffer_Init()
 {
 	frameBufferList().init();
 	if (config.frameBufferEmulation.enable != 0) {
-#ifndef GLES2
+#ifndef HAVE_OPENGLES2
 	g_fbToRDRAM.Init();
 	g_dbToRDRAM.Init();
 #endif
@@ -645,14 +645,14 @@ void FrameBuffer_Init()
 void FrameBuffer_Destroy()
 {
 	g_RDRAMtoFB.Destroy();
-#ifndef GLES2
+#ifndef HAVE_OPENGLES2
 	g_dbToRDRAM.Destroy();
 	g_fbToRDRAM.Destroy();
 #endif
 	frameBufferList().destroy();
 }
 
-#ifndef GLES2
+#ifndef HAVE_OPENGLES2
 void FrameBufferList::renderBuffer(u32 _address)
 {
 	static s32 vStartPrev = 0;
@@ -939,7 +939,7 @@ void copyWhiteToRDRAM(FrameBuffer * _pBuffer)
 	_pBuffer->m_cleared = false;
 }
 
-#ifndef GLES2
+#ifndef HAVE_OPENGLES2
 void FrameBufferToRDRAM::Init()
 {
 	// generate a framebuffer
@@ -1036,7 +1036,7 @@ void FrameBufferToRDRAM::CopyToRDRAM(u32 _address, bool _sync)
 		glBindFramebuffer(GL_DRAW_FRAMEBUFFER, frameBufferList().getCurrent()->m_FBO);
 		glBindFramebuffer(GL_READ_FRAMEBUFFER, m_FBO);
 	}
-#ifndef GLES2
+#ifndef HAVE_OPENGLES2
 	// If Sync, read pixels from the buffer, copy them to RDRAM.
 	// If not Sync, read pixels from the buffer, copy pixels from the previous buffer to RDRAM.
 	if (!_sync) {
@@ -1058,7 +1058,7 @@ void FrameBufferToRDRAM::CopyToRDRAM(u32 _address, bool _sync)
 	if (pixelData == NULL)
 		return;
 	glReadPixels(0, 0, VI.width, VI.height, GL_RGBA, GL_UNSIGNED_BYTE, pixelData);
-#endif // GLES2
+#endif // HAVE_OPENGLES2
 
 	if (pBuffer->m_size == G_IM_SIZ_32b) {
 		u32 *ptr_dst = (u32*)(RDRAM + _address);
@@ -1088,7 +1088,7 @@ void FrameBufferToRDRAM::CopyToRDRAM(u32 _address, bool _sync)
 	pBuffer->m_copiedToRdram = true;
 	pBuffer->copyRdram();
 	pBuffer->m_cleared = false;
-#ifndef GLES2
+#ifndef HAVE_OPENGLES2
 	glUnmapBuffer(GL_PIXEL_PACK_BUFFER);
 	glBindBuffer(GL_PIXEL_PACK_BUFFER, 0);
 #else
@@ -1097,11 +1097,11 @@ void FrameBufferToRDRAM::CopyToRDRAM(u32 _address, bool _sync)
 	glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
 	gDP.changed |= CHANGED_SCISSOR;
 }
-#endif // GLES2
+#endif // HAVE_OPENGLES2
 
 void FrameBuffer_CopyToRDRAM(u32 _address, bool _sync)
 {
-#ifndef GLES2
+#ifndef HAVE_OPENGLES2
 	g_fbToRDRAM.CopyToRDRAM(_address, _sync);
 #else
 	if ((config.generalEmulation.hacks & hack_subscreen) == 0)
@@ -1115,7 +1115,7 @@ void FrameBuffer_CopyToRDRAM(u32 _address, bool _sync)
 #endif
 }
 
-#ifndef GLES2
+#ifndef HAVE_OPENGLES2
 void DepthBufferToRDRAM::Init()
 {
 	// generate a framebuffer
@@ -1261,10 +1261,10 @@ bool DepthBufferToRDRAM::CopyToRDRAM( u32 _address) {
 	gDP.changed |= CHANGED_SCISSOR;
 	return true;
 }
-#endif // GLES2
+#endif // HAVE_OPENGLES2
 
 bool FrameBuffer_CopyDepthBuffer( u32 address ) {
-#ifndef GLES2
+#ifndef HAVE_OPENGLES2
 	FrameBuffer * pCopyBuffer = frameBufferList().getCopyBuffer();
 	if (pCopyBuffer != NULL) {
 		// This code is mainly to emulate Zelda MM camera.
@@ -1301,7 +1301,7 @@ void RDRAMtoFrameBuffer::Init()
 	glBindTexture(GL_TEXTURE_2D, 0);
 
 	// Generate Pixel Buffer Object. Initialize it later
-#ifndef GLES2
+#ifndef HAVE_OPENGLES2
 	glGenBuffers(1, &m_PBO);
 #endif
 }
@@ -1312,7 +1312,7 @@ void RDRAMtoFrameBuffer::Destroy()
 		textureCache().removeFrameBufferTexture(m_pTexture);
 		m_pTexture = NULL;
 	}
-#ifndef GLES2
+#ifndef HAVE_OPENGLES2
 	if (m_PBO != 0) {
 		glDeleteBuffers(1, &m_PBO);
 		m_PBO = 0;
@@ -1338,7 +1338,7 @@ void RDRAMtoFrameBuffer::CopyFromRDRAM( u32 _address, bool _bUseAlpha)
 	m_pTexture->width = width;
 	m_pTexture->height = height;
 	const u32 dataSize = width*height*4;
-#ifndef GLES2
+#ifndef HAVE_OPENGLES2
 	PBOBinder binder(GL_PIXEL_UNPACK_BUFFER, m_PBO);
 	glBufferData(GL_PIXEL_UNPACK_BUFFER, dataSize, NULL, GL_DYNAMIC_DRAW);
 	GLubyte* ptr = (GLubyte*)glMapBufferRange(GL_PIXEL_UNPACK_BUFFER, 0, dataSize, GL_MAP_WRITE_BIT);
@@ -1346,7 +1346,7 @@ void RDRAMtoFrameBuffer::CopyFromRDRAM( u32 _address, bool _bUseAlpha)
 	m_PBO = (GLubyte*)malloc(dataSize);
 	GLubyte* ptr = m_PBO;
 	PBOBinder binder(m_PBO);
-#endif // GLES2
+#endif // HAVE_OPENGLES2
 	if (ptr == NULL)
 		return;
 
@@ -1401,14 +1401,14 @@ void RDRAMtoFrameBuffer::CopyFromRDRAM( u32 _address, bool _bUseAlpha)
 			}
 		}
 	}
-#ifndef GLES2
+#ifndef HAVE_OPENGLES2
 	glUnmapBuffer(GL_PIXEL_UNPACK_BUFFER); // release the mapped buffer
 #endif
 	if (empty == 0)
 		return;
 
 	glBindTexture(GL_TEXTURE_2D, m_pTexture->glName);
-#ifndef GLES2
+#ifndef HAVE_OPENGLES2
 	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, 0);
 #else
 	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, m_PBO);

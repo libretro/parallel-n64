@@ -11,38 +11,27 @@
 
 #include "../../libretro/SDL_opengl.h"
 
-#ifdef GLES2
-#include <GLES2/gl2.h>
+#ifdef HAVE_OPENGLES2
 #define GL_DRAW_FRAMEBUFFER GL_FRAMEBUFFER
 #define GL_READ_FRAMEBUFFER GL_FRAMEBUFFER
 #define GLESX
-#elif defined(GLES3)
-#include <GLES3/gl3.h>
+#elif defined(HAVE_OPENGLES3)
 #define GLESX
 #define GL_UNIFORMBLOCK_SUPPORT
-#elif defined(GLES3_1)
-#include <GLES3/gl31.h>
+#elif defined(HAVE_OPENGLES31)
 #define GLESX
 #define GL_IMAGE_TEXTURES_SUPPORT
 #define GL_MULTISAMPLING_SUPPORT
 #define GL_UNIFORMBLOCK_SUPPORT
 #else
-#if defined(OS_MAC_OS_X)
+#if defined(__MACH__)
 #define GL_GLEXT_PROTOTYPES
-#include <OpenGL/OpenGL.h>
-#include <OpenGL/gl.h>
-#include <OpenGL/glext.h>
-#elif defined(OS_LINUX)
+#elif defined(__linux__)
 #define GL_GLEXT_PROTOTYPES
-#include <GL/gl.h>
-#include <GL/glext.h>
 #define GL_IMAGE_TEXTURES_SUPPORT
 #define GL_MULTISAMPLING_SUPPORT
 #define GL_UNIFORMBLOCK_SUPPORT
-#elif defined(OS_WINDOWS)
-#include <GL/gl.h>
-#include "glext.h"
-#include "windows/GLFunctions.h"
+#elif defined(_WIN32)
 #define GL_IMAGE_TEXTURES_SUPPORT
 #define GL_MULTISAMPLING_SUPPORT
 #define GL_UNIFORMBLOCK_SUPPORT

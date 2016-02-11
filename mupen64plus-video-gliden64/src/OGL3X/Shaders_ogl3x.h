@@ -1,7 +1,7 @@
-#if defined(GLES3_1)
+#if defined(HAVE_OPENGLES31)
 #define MAIN_SHADER_VERSION "#version 310 es \n"
 #define AUXILIARY_SHADER_VERSION "\n"
-#elif defined(GLES3)
+#elif defined(HAVE_OPENGLES3)
 #define MAIN_SHADER_VERSION "#version 300 es \n"
 #define AUXILIARY_SHADER_VERSION "\n"
 #else

@@ -12,7 +12,7 @@
 #include <bcm_host.h>
 #endif
 
-#if !defined(OS_WINDOWS) || defined(GLES2) || defined(GLES3) || defined(GLES3_1)
+#if !defined(OS_WINDOWS) || defined(HAVE_OPENGLES2) || defined(HAVE_OPENGLES3) || defined(HAVE_OPENGLES31)
 
 void initGLFunctions()
 {
@@ -44,14 +44,14 @@ OGLVideo & OGLVideo::get()
 
 void OGLVideoMupenPlus::_setAttributes()
 {
-#ifdef GLES2
+#ifdef HAVE_OPENGLES2
 	CoreVideo_GL_SetAttribute(M64P_GL_CONTEXT_MAJOR_VERSION, 2);
 	CoreVideo_GL_SetAttribute(M64P_GL_CONTEXT_MINOR_VERSION, 0);
 	LOG(LOG_VERBOSE, "[gles2GlideN64]: _setAttributes\n");
-#elif defined(GLES3)
+#elif defined(HAVE_OPENGLES3)
 	CoreVideo_GL_SetAttribute(M64P_GL_CONTEXT_MAJOR_VERSION, 3);
 	CoreVideo_GL_SetAttribute(M64P_GL_CONTEXT_MINOR_VERSION, 0);
-#elif defined(GLES3_1)
+#elif defined(HAVE_OPENGLES31)
 	CoreVideo_GL_SetAttribute(M64P_GL_CONTEXT_MAJOR_VERSION, 3);
 	CoreVideo_GL_SetAttribute(M64P_GL_CONTEXT_MINOR_VERSION, 1);
 #elif defined(OS_MAC_OS_X)

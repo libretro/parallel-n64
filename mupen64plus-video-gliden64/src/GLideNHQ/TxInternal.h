@@ -34,29 +34,6 @@
 #define KBHIT(key) (0)
 #endif
 
-#ifdef OS_WINDOWS
-#include <GL/gl.h>
-#include "glext.h"
-#elif defined(GLES2)
-#include <GLES2/gl2.h>
-#include <GLES2/gl2ext.h>
-#define GL_COLOR_INDEX8_EXT  0x80E5
-#elif defined(GLES3)
-#include <GLES3/gl3.h>
-#include <GLES3/gl3ext.h>
-#define GL_COLOR_INDEX8_EXT  0x80E5
-#elif defined(GLES3_1)
-#include <GLES3/gl31.h>
-#include <GLES3/gl3ext.h>
-#define GL_COLOR_INDEX8_EXT  0x80E5
-#elif defined(OS_MAC_OS_X)
-#include <OpenGL/gl.h>
-#include <OpenGL/glext.h>
-#elif defined(OS_LINUX)
-#include <GL/gl.h>
-#include <GL/glext.h>
-#endif // OS_WINDOWS
-
 /* in-memory zlib texture compression */
 #define GL_TEXFMT_GZ 0x80000000
 

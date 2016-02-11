@@ -123,7 +123,7 @@ void DepthBuffer::_initDepthBufferTexture(FrameBuffer * _pBuffer, CachedTexture 
 #ifdef GL_MULTISAMPLING_SUPPORT
 	if (_multisample) {
 		glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, _pTexture->glName);
-#if defined(GLES3_1)
+#if defined(HAVE_OPENGLES31)
 		if (_pBuffer != NULL)
 			glTexStorage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, config.video.multisampling, GL_DEPTH_COMPONENT, _pBuffer->m_pTexture->realWidth, _pBuffer->m_pTexture->realHeight, false);
 		else
