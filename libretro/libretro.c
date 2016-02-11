@@ -24,6 +24,8 @@
 #include "../mupen64plus-rsp-cxd4/config.h"
 #include "plugin/audio_libretro/audio_plugin.h"
 
+/* forward declarations */
+int InitGfx(void);
 int glide64InitGfx(void);
 void gles2n64_reset(void);
 
@@ -988,3 +990,43 @@ bool retro_load_game_special(unsigned game_type, const struct retro_game_info *i
 void retro_cheat_reset(void) { }
 void retro_cheat_set(unsigned unused, bool unused1, const char* unused2) { }
 
+#ifdef SINGLE_THREAD
+bool emu_step_render(void);
+
+int retro_return(int just_flipping)
+{
+   vbo_disable();
+
+   flip_only = just_flipping;
+
+   if (just_flipping)
+   {
+#ifndef HAVE_SHARED_CONTEXT
+      sglExit();
+#endif
+
+      emu_step_render();
+
+#ifndef HAVE_SHARED_CONTEXT
+      sglEnter();
+#endif
+   }
+
+   stop = 1;
+   return 0;
+}
+#else
+int retro_return(int just_flipping)
+{
+   if (stop)
+      return 0;
+
+   vbo_disable();
+
+   flip_only = just_flipping;
+
+   co_switch(main_thread);
+
+   return 0;
+}
+#endif

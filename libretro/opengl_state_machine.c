@@ -18,8 +18,6 @@
 #define HAVE_LEGACY_GL
 #endif
 
-extern cothread_t main_thread;
-extern bool flip_only;
 extern int stop;
 extern enum gfx_plugin_type gfx_plugin;
 struct retro_hw_render_callback hw_render;
@@ -435,15 +433,16 @@ void sglDeleteRenderbuffers(GLsizei n, GLuint *renderbuffers)
    glDeleteRenderbuffers(n, renderbuffers);
 }
 
+void sglGenRenderbuffers(GLsizei n, GLuint *renderbuffers)
+{
+   glGenRenderbuffers(n, renderbuffers);
+}
+
 void sglGenFramebuffers(GLsizei n, GLuint *ids)
 {
    glGenFramebuffers(n, ids);
 }
 
-void sglGenRenderbuffers(GLsizei n, GLuint *renderbuffers)
-{
-   glGenRenderbuffers(n, renderbuffers);
-}
 
 void sglGenTextures(GLsizei n, GLuint *textures)
 {
@@ -529,48 +528,6 @@ void sglDeleteBuffers(GLsizei n, const GLuint *buffers)
    glDeleteBuffers(n, buffers);
 }
 
-#if 0
-struct tex_map
-{
-   unsigned address;
-   GLuint tex;
-};
-
-static struct tex_map *texture_map;
-static size_t texture_map_size;
-static size_t texture_map_cap;
-
-static GLuint find_tex_from_address(unsigned address)
-{
-   size_t i;
-   for (i = 0; i < texture_map_size; i++)
-   {
-      if (texture_map[i].address == address)
-         return texture_map[i].tex;
-   }
-   return 0;
-}
-
-static void delete_tex_from_address(unsigned address)
-{
-   size_t i;
-   for (i = 0; i < texture_map_size; i++)
-   {
-      if (texture_map[i].address == address)
-      {
-         glDeleteTextures(1, &texture_map[i].tex);
-         memmove(texture_map + i, texture_map + i + 1, (texture_map_size - (i + 1)) * sizeof(*texture_map));
-         texture_map_size--;
-         return;
-      }
-   }
-
-   glDeleteTextures(1, &address);
-}
-#endif
-
-extern int InitGfx(void);
-extern void gles2n64_reset(void);
 extern void reinit_gfx_plugin(void);
 
 static int gotsym;
@@ -690,6 +647,7 @@ void sglExit(void)
     sglDepthRangef(0, 1);
     glFrontFace(GL_CCW);
     glPolygonOffset(0, 0);
+    glDepthFunc(GL_LESS);
     glUseProgram(0);
 
     // Clear textures
@@ -704,51 +662,5 @@ void sglExit(void)
        glDisableVertexAttribArray(i);
 
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
-}
-#endif
-
-extern bool frame_dupe;
-
-#ifdef SINGLE_THREAD
-extern retro_video_refresh_t video_cb;
-extern uint32_t screen_width;
-extern uint32_t screen_height;
-bool emu_step_render(void);
-
-int retro_return(int just_flipping)
-{
-   vbo_disable();
-
-   flip_only = just_flipping;
-
-   if (just_flipping)
-   {
-#ifndef HAVE_SHARED_CONTEXT
-      sglExit();
-#endif
-
-      emu_step_render();
-
-#ifndef HAVE_SHARED_CONTEXT
-      sglEnter();
-#endif
-   }
-
-   stop = 1;
-   return 0;
-}
-#else
-int retro_return(int just_flipping)
-{
-   if (stop)
-      return 0;
-
-   vbo_disable();
-
-   flip_only = just_flipping;
-
-   co_switch(main_thread);
-
-   return 0;
 }
 #endif
