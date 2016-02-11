@@ -188,14 +188,14 @@ endif
 # Libretro
 
 SOURCES_C += $(LIBRETRO_DIR)/libretro.c \
-					 $(LIBRETRO_DIR)/glsm.c \
-					 $(CORE_DIR)/src/plugin/emulate_game_controller_via_libretro.c \
-					 $(AUDIO_LIBRETRO_DIR)/audio_backend_libretro.c \
-					 $(AUDIO_LIBRETRO_DIR)/audio_resampler_driver.c \
-					 $(AUDIO_LIBRETRO_DIR)/drivers_resampler/sinc.c \
-					 $(AUDIO_LIBRETRO_DIR)/drivers_resampler/nearest.c \
-					 $(AUDIO_LIBRETRO_DIR)/drivers_resampler/cc_resampler.c \
-					 $(AUDIO_LIBRETRO_DIR)/audio_utils.c
+				 $(LIBRETRO_COMM_DIR)/glsm/glsm.c \
+				 $(CORE_DIR)/src/plugin/emulate_game_controller_via_libretro.c \
+				 $(AUDIO_LIBRETRO_DIR)/audio_backend_libretro.c \
+				 $(AUDIO_LIBRETRO_DIR)/audio_resampler_driver.c \
+				 $(AUDIO_LIBRETRO_DIR)/drivers_resampler/sinc.c \
+				 $(AUDIO_LIBRETRO_DIR)/drivers_resampler/nearest.c \
+				 $(AUDIO_LIBRETRO_DIR)/drivers_resampler/cc_resampler.c \
+				 $(AUDIO_LIBRETRO_DIR)/audio_utils.c
 
 ifeq ($(WITH_CRC),brumme)
    SOURCES_C += $(LIBRETRO_DIR)/brumme_crc.c

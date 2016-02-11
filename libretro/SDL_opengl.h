@@ -26,7 +26,7 @@
 #ifndef _SDL_OPENGLES2_LIBRETRO_H
 #define _SDL_OPENGLES2_LIBRETRO_H
 
-#include "opengl_state_machine.h"
-#include "glsym/rglgen.h"
+#include <glsm/glsmsym.h>
+#include <glsym/rglgen.h>
 
 #endif

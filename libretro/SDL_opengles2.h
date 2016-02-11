@@ -26,6 +26,6 @@
 #ifndef _SDL_OPENGLES2_LIBRETRO_H
 #define _SDL_OPENGLES2_LIBRETRO_H
 
-#include "glsmsym.h"
+#include <glsm/glsmsym.h>
 
 #endif

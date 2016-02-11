@@ -1,7 +1,7 @@
 #ifndef LIBRETRO_SDK_GLSM_SYM_H
 #define LIBRETRO_SDK_GLSM_SYM_H
 
-#include "glsm.h"
+#include <glsm/glsm.h>
 
 #ifdef __cplusplus
 extern "C" {
