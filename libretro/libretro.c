@@ -817,13 +817,14 @@ static void context_reset(void)
    static bool first_init = true;
    printf("context_reset.\n");
    glsm_ctl(GLSM_CTL_STATE_CONTEXT_RESET, NULL);
-   reinit_gfx_plugin();
 
    if (first_init)
    {
       glsm_ctl(GLSM_CTL_STATE_SETUP, NULL);
       first_init = false;
    }
+
+   reinit_gfx_plugin();
 }
 
 static void context_destroy(void)
