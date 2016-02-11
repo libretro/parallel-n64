@@ -67,12 +67,12 @@ extern void vbo_draw(void);
 extern void vbo_disable();
 
 #ifndef GLIDE64_MK2
-static void gl_vbo_draw(void)
+static void gl_vbo_draw(void *data)
 {
    vbo_draw();
 }
 #else
-static void gl_vbo_draw(void)
+static void gl_vbo_draw(void *data)
 {
    if (gfx_plugin != GFX_GLIDE64)
       return;
@@ -188,14 +188,14 @@ GLint sglGetUniformLocation(GLuint program, const GLchar *name)
 
 void sglEnable(GLenum cap)
 {
-   gl_vbo_draw();
+   gl_vbo_draw(NULL);
     glEnable(CapTranslate[cap]);
     CapState[cap] = 1;
 }
 
 void sglDisable(GLenum cap)
 {
-   gl_vbo_draw();
+   gl_vbo_draw(NULL);
     glDisable(CapTranslate[cap]);
     CapState[cap] = 0;
 }
@@ -209,7 +209,7 @@ GLboolean sglIsEnabled(GLenum cap)
 
 void sglEnableVertexAttribArray(GLuint index)
 {
-   gl_vbo_draw();
+   gl_vbo_draw(NULL);
 #ifndef HAVE_SHARED_CONTEXT
    VertexAttribPointer_enabled[index] = 1;
 #endif
@@ -241,14 +241,14 @@ void sglVertexAttrib4fv(GLuint name, GLfloat* v)
 
 void sglBindFramebuffer(GLenum target, GLuint framebuffer)
 {
-   gl_vbo_draw();
+   gl_vbo_draw(NULL);
    if (!stop)
       glBindFramebuffer(GL_FRAMEBUFFER, framebuffer ? framebuffer : hw_render.get_current_framebuffer());
 }
 
 void sglBlendFunc(GLenum sfactor, GLenum dfactor)
 {
-   gl_vbo_draw();
+   gl_vbo_draw(NULL);
 #ifndef HAVE_SHARED_CONTEXT
     BlendFunc_srcRGB = BlendFunc_srcAlpha = sfactor;
     BlendFunc_dstRGB = BlendFunc_dstAlpha = dfactor;
@@ -258,7 +258,7 @@ void sglBlendFunc(GLenum sfactor, GLenum dfactor)
 
 void sglBlendFuncSeparate(GLenum srcRGB, GLenum dstRGB, GLenum srcAlpha, GLenum dstAlpha)
 {
-   gl_vbo_draw();
+   gl_vbo_draw(NULL);
 #ifndef HAVE_SHARED_CONTEXT
     BlendFunc_srcRGB = srcRGB;
     BlendFunc_dstRGB = dstRGB;
@@ -270,7 +270,7 @@ void sglBlendFuncSeparate(GLenum srcRGB, GLenum dstRGB, GLenum srcAlpha, GLenum 
 
 void sglClearColor(GLclampf red, GLclampf green, GLclampf blue, GLclampf alpha)
 {
-   gl_vbo_draw();
+   gl_vbo_draw(NULL);
    glClearColor(red, green, blue, alpha);
 #ifndef HAVE_SHARED_CONTEXT
    ClearColor_red = red;
@@ -282,7 +282,7 @@ void sglClearColor(GLclampf red, GLclampf green, GLclampf blue, GLclampf alpha)
 
 void sglClearDepthf(GLdouble depth)
 {
-   gl_vbo_draw();
+   gl_vbo_draw(NULL);
 #ifdef GLES
    glClearDepthf(depth);
 #else
@@ -292,7 +292,7 @@ void sglClearDepthf(GLdouble depth)
 
 void sglClearDepth(GLdouble depth)
 {
-   gl_vbo_draw();
+   gl_vbo_draw(NULL);
    sglClearDepthf(depth);
 #ifndef HAVE_SHARED_CONTEXT
    ClearDepth_value = depth;
@@ -301,7 +301,7 @@ void sglClearDepth(GLdouble depth)
 
 void sglColorMask(GLboolean red, GLboolean green, GLboolean blue, GLboolean alpha)
 {
-   gl_vbo_draw();
+   gl_vbo_draw(NULL);
    glColorMask(red, green, blue, alpha);
 #ifndef HAVE_SHARED_CONTEXT
    ColorMask_red = red;
@@ -314,7 +314,7 @@ void sglColorMask(GLboolean red, GLboolean green, GLboolean blue, GLboolean alph
 
 void sglCullFace(GLenum mode)
 {
-   gl_vbo_draw();
+   gl_vbo_draw(NULL);
    glCullFace(mode);
 #ifndef HAVE_SHARED_CONTEXT
    CullFace_mode = mode;
@@ -323,7 +323,7 @@ void sglCullFace(GLenum mode)
 
 void sglDepthFunc(GLenum func)
 {
-   gl_vbo_draw();
+   gl_vbo_draw(NULL);
   glDepthFunc(func);
 #ifndef HAVE_SHARED_CONTEXT
   DepthFunc_func = func;
@@ -332,7 +332,7 @@ void sglDepthFunc(GLenum func)
 
 void sglDepthMask(GLboolean flag)
 {
-   gl_vbo_draw();
+   gl_vbo_draw(NULL);
   glDepthMask(flag);
 #ifndef HAVE_SHARED_CONTEXT
   DepthMask_flag = flag;
@@ -359,7 +359,7 @@ void sglDepthRange(GLclampd zNear, GLclampd zFar)
 
 void sglFrontFace(GLenum mode)
 {
-   gl_vbo_draw();
+   gl_vbo_draw(NULL);
    glFrontFace(mode);
 #ifndef HAVE_SHARED_CONTEXT
    FrontFace_mode = mode;
@@ -368,7 +368,7 @@ void sglFrontFace(GLenum mode)
 
 void sglPolygonOffset(GLfloat factor, GLfloat units)
 {
-   gl_vbo_draw();
+   gl_vbo_draw(NULL);
   glPolygonOffset(factor, units);
 #ifndef HAVE_SHARED_CONTEXT
   PolygonOffset_factor = factor;
@@ -378,19 +378,19 @@ void sglPolygonOffset(GLfloat factor, GLfloat units)
 
 void sglScissor(GLint x, GLint y, GLsizei width, GLsizei height)
 {
-   gl_vbo_draw();
-  glScissor(x, y, width, height);
+   gl_vbo_draw(NULL);
+   glScissor(x, y, width, height);
 #ifndef HAVE_SHARED_CONTEXT
-  Scissor_x = x;
-  Scissor_y = y;
-  Scissor_width = width;
-  Scissor_height = height;
+   Scissor_x = x;
+   Scissor_y = y;
+   Scissor_width = width;
+   Scissor_height = height;
 #endif
 }
 
 void sglUseProgram(GLuint program)
 {
-   gl_vbo_draw();
+   gl_vbo_draw(NULL);
    glUseProgram(program);
 #ifndef HAVE_SHARED_CONTEXT
    UseProgram_program = program;
@@ -399,7 +399,7 @@ void sglUseProgram(GLuint program)
 
 void sglViewport(GLint x, GLint y, GLsizei width, GLsizei height)
 {
-   gl_vbo_draw();
+   gl_vbo_draw(NULL);
    glViewport(x, y, width, height);
 #ifndef HAVE_SHARED_CONTEXT
    Viewport_x = x;
@@ -409,10 +409,9 @@ void sglViewport(GLint x, GLint y, GLsizei width, GLsizei height)
 #endif
 }
 
-
 void sglActiveTexture(GLenum texture)
 {
-   gl_vbo_draw();
+   gl_vbo_draw(NULL);
    glActiveTexture(texture);
 #ifndef HAVE_SHARED_CONTEXT
    ActiveTexture_texture = texture - GL_TEXTURE0;
@@ -421,7 +420,7 @@ void sglActiveTexture(GLenum texture)
 
 void sglBindTexture(GLenum target, GLuint texture)
 {
-   gl_vbo_draw();
+   gl_vbo_draw(NULL);
    glBindTexture(target, texture);
 #ifndef HAVE_SHARED_CONTEXT
    BindTexture_ids[ActiveTexture_texture] = texture;
@@ -486,7 +485,7 @@ void sglFramebufferTexture2D(GLenum target, GLenum attachment, GLenum textarget,
 
 void sglBindBuffer(GLenum target, GLuint buffer)
 {
-   gl_vbo_draw();
+   gl_vbo_draw(NULL);
    glBindBuffer(target, buffer);
 }
 
