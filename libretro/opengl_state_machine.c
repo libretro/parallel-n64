@@ -580,9 +580,6 @@ void sglEnter(void)
 {
    int i;
 
-   if (gfx_plugin == GFX_ANGRYLION || stop)
-      return;
-
    if (!gotsym)
       gotsym = (rglgen_resolve_symbols(hw_render.get_proc_address), 1);
 
@@ -633,9 +630,6 @@ void sglEnter(void)
 void sglExit(void)
 {
    int i;
-
-   if (gfx_plugin == GFX_ANGRYLION || stop)
-      return;
 
     for (i = 0; i < SGL_CAP_MAX; i ++)
         glDisable(CapTranslate[i]);

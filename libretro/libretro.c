@@ -864,6 +864,24 @@ void retro_unload_game(void)
     emu_initialized = false;
 }
 
+static void glsm_exit(void)
+{
+#ifndef HAVE_SHARED_CONTEXT
+   if (gfx_plugin == GFX_ANGRYLION || stop)
+      return;
+   sglExit();
+#endif
+}
+
+static void glsm_enter(void)
+{
+#ifndef HAVE_SHARED_CONTEXT
+   if (gfx_plugin == GFX_ANGRYLION || stop)
+      return;
+   sglEnter();
+#endif
+}
+
 void retro_run (void)
 {
    static bool updated = false;
@@ -898,9 +916,7 @@ void retro_run (void)
    }
 
    do {
-#ifndef HAVE_SHARED_CONTEXT
-      sglEnter();
-#endif
+      glsm_enter();
 
 #ifdef SINGLE_THREAD
       stop = 0;
@@ -910,9 +926,7 @@ void retro_run (void)
       co_switch(cpu_thread);
 #endif
 
-#ifndef HAVE_SHARED_CONTEXT
-      sglExit();
-#endif
+      glsm_exit();
    } while (emu_step_render());
 }
 
@@ -1001,15 +1015,11 @@ int retro_return(int just_flipping)
 
    if (just_flipping)
    {
-#ifndef HAVE_SHARED_CONTEXT
-      sglExit();
-#endif
+      glsm_exit();
 
       emu_step_render();
 
-#ifndef HAVE_SHARED_CONTEXT
-      sglEnter();
-#endif
+      glsm_enter();
    }
 
    stop = 1;
