@@ -27,6 +27,5 @@
 #define _SDL_OPENGLES2_LIBRETRO_H
 
 #include <glsm/glsmsym.h>
-#include <glsym/rglgen.h>
 
 #endif
