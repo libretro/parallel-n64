@@ -73,6 +73,7 @@ extern "C" {
 #define glGenBuffers                rglGenBuffers
 #define glDisable(T)                rglDisable(S##T)
 #define glEnable(T)                 rglEnable(S##T)
+#define glIsEnabled(T)              rglIsEnabled(S##T)
 #define glUseProgram                rglUseProgram
 #define glDepthMask                 rglDepthMask
 #define glStencilMask               rglStencilMask
@@ -97,7 +98,6 @@ extern "C" {
 #define glClearColor                rglClearColor
 #define glViewport                  rglViewport
 #define glScissor                   rglScissor
-#define glIsEnabled                 rglIsEnabled
 #define glStencilFunc               rglStencilFunc
 #define glCullFace                  rglCullFace
 #define glStencilOp                 rglStencilOp
