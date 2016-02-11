@@ -23,6 +23,7 @@
 #include <glsym/glsym.h>
 #include <glsm/glsm.h>
 
+
 struct gl_cached_state
 {
    struct
@@ -34,6 +35,12 @@ struct gl_cached_state
    {
       bool enabled[MAX_ATTRIB];
    } vertex_attrib_pointer;
+
+   struct
+   {
+      GLenum pname;
+      GLint param;
+   } pixelstore_i;
 
    struct
    {
@@ -96,6 +103,7 @@ struct gl_cached_state
       bool used;
       GLenum func;
    } depthfunc;
+
 
    struct
    {
@@ -177,6 +185,13 @@ void rglClearDepth(GLdouble depth)
 #endif
    gl_state.cleardepth.used  = true;
    gl_state.cleardepth.depth = depth;
+}
+
+void rglPixelStorei(GLenum pname, GLint param)
+{
+   glPixelStorei(pname, param);
+   gl_state.pixelstore_i.pname = pname;
+   gl_state.pixelstore_i.param = param;
 }
 
 void rglDepthRange(GLclampd zNear, GLclampd zFar)

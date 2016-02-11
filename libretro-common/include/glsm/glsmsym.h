@@ -105,7 +105,9 @@ extern "C" {
 #define glDepthRange                rglDepthRange
 #define glClearDepth                rglClearDepth
 #define glPolygonOffset             rglPolygonOffset
+#define glPixelStorei               rglPixelStorei
 
+void rglPixelStorei(GLenum pname, GLint param);
 void rglTexCoord2f(GLfloat s, GLfloat t);
 void rglDrawElements(GLenum mode, GLsizei count, GLenum type,
                            const GLvoid * indices);
