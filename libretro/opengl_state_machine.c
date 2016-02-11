@@ -9,17 +9,11 @@
 #include "api/libretro.h"
 #include <libco.h>
 
-// mupen64 defines
-#ifndef GFX_ANGRYLION
-#define GFX_ANGRYLION 3
-#endif
-
 #ifndef GLES
 #define HAVE_LEGACY_GL
 #endif
 
 extern int stop;
-extern enum gfx_plugin_type gfx_plugin;
 struct retro_hw_render_callback hw_render;
 
 //forward declarations
@@ -66,20 +60,10 @@ static GLuint BindTexture_ids[MAX_TEXTURE];
 extern void vbo_draw(void);
 extern void vbo_disable();
 
-#ifndef GLIDE64_MK2
 static void gl_vbo_draw(void *data)
 {
    vbo_draw();
 }
-#else
-static void gl_vbo_draw(void *data)
-{
-   if (gfx_plugin != GFX_GLIDE64)
-      return;
-
-   vbo_draw();
-}
-#endif
 
 void sglGenerateMipmap(GLenum target)
 {
@@ -204,8 +188,6 @@ GLboolean sglIsEnabled(GLenum cap)
 {
     return CapState[cap] ? GL_TRUE : GL_FALSE;
 }
-
-
 
 void sglEnableVertexAttribArray(GLuint index)
 {
@@ -532,7 +514,7 @@ extern void reinit_gfx_plugin(void);
 static int gotsym;
 static void context_reset(void)
 {
-   if (!gotsym && gfx_plugin != GFX_ANGRYLION)
+   if (!gotsym)
       gotsym = (rglgen_resolve_symbols(hw_render.get_proc_address), 1);
 
    reinit_gfx_plugin();
@@ -540,9 +522,6 @@ static void context_reset(void)
 
 void *retro_gl_init(void)
 {
-   if (gfx_plugin == GFX_ANGRYLION)
-      return NULL;
-
 #ifdef GLES
 #if defined(GLES31)
    hw_render.context_type = RETRO_HW_CONTEXT_OPENGLES_VERSION;
