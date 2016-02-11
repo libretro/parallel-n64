@@ -459,7 +459,9 @@ GLenum rglCheckFramebufferStatus(GLenum target)
 void rglBindFragDataLocation(GLuint program, GLuint colorNumber,
                                    const char * name)
 {
+#ifndef GLES
    glBindFragDataLocation(program, colorNumber, name);
+#endif
 }
 
 void rglBindAttribLocation(GLuint program, GLuint index, const GLchar *name)
