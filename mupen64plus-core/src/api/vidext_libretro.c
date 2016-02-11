@@ -35,8 +35,6 @@
 #include <libretro.h>
 #include <glsm/glsmsym.h>
 
-extern struct retro_hw_render_callback hw_render;
-
 /* local variables */
 static m64p_video_extension_functions l_ExternalVideoFuncTable = {10, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL};
 static int l_VideoExtensionActive = 0;
@@ -123,9 +121,11 @@ EXPORT m64p_error CALL VidExt_SetVideoMode(int Width, int Height, int BitsPerPix
 
 EXPORT void * CALL VidExt_GL_GetProcAddress(const char* Proc)
 {
-   if (hw_render.get_proc_address)
-      return hw_render.get_proc_address;
-   return NULL;
+   glsm_ctx_proc_address_t proc_info;
+   proc_info.addr = NULL;
+   if (!glsm_ctl(GLSM_CTL_PROC_ADDRESS_GET, NULL))
+      return NULL;
+   return proc_info.addr(Proc);
 }
 
 EXPORT m64p_error CALL VidExt_GL_SwapBuffers(void)
