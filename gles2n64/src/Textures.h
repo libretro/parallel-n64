@@ -1,11 +1,7 @@
 #ifndef TEXTURES_H
 #define TEXTURES_H
 
-#ifdef __LIBRETRO__ // Use SDL_opengles2.h instead of GLES2/gl2.h
-#include <SDL_opengles2.h>
-#else
-#include <GLES2/gl2.h>
-#endif
+#include <glsm/glsmsym.h>
 
 #include "convert.h"
 

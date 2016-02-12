@@ -22,15 +22,13 @@
 #if !defined(OSAL_OPENGL_H)
 #define OSAL_OPENGL_H
 
-#include <SDL_config.h>
-
 #if defined(_MSC_VER) && !defined(_XBOX)
 #include <windows.h>
 #elif defined(_XBOX)
 #include <xtl.h>
 #endif
 
-#include <SDL_opengles2.h>
+#include <glsm/glsmsym.h>
 
 #if !defined(__LIBRETRO__) || defined(HAVE_OPENGLES2) // Desktop GL fix
 #define GLSL_VERSION "100"

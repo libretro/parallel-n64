@@ -2,8 +2,8 @@
 #define __GLIDE_H__
 
 #define GL_GLEXT_PROTOTYPES
-#include <SDL_opengles2.h>
-#include "boolean.h"
+#include <boolean.h>
+#include <glsm/glsmsym.h>
 
 #include "../../../mupen64plus-core/src/rdp_common/gdp.h"
 

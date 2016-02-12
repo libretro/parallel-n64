@@ -5,8 +5,8 @@
 extern "C" {
 #endif
 
-#include "boolean.h"
-#include <SDL_opengles2.h>
+#include <boolean.h>
+#include <glsm/glsmsym.h>
 #include "gSP.h"
 
 #define RS_NONE         0

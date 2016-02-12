@@ -1,11 +1,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <SDL_opengles2.h>
 
 #include "api/libretro.h"
 #ifndef SINGLE_THREAD
 #include <libco.h>
+#endif
+
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
+#include <glsm/glsmsym.h>
 #endif
 
 #include "api/m64p_frontend.h"
