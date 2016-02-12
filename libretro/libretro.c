@@ -869,11 +869,13 @@ bool retro_load_game(const struct retro_game_info *game)
       params.environ_cb            = environ_cb;
       params.stencil               = true;
 
+#if 0
       if (gfx_plugin == GFX_GLIDE64)
       {
          params.imm_vbo_draw       = context_imm_vbo_draw;
          params.imm_vbo_disable    = context_imm_vbo_disable;
       }
+#endif
 
       params.framebuffer_lock      = context_framebuffer_lock;
 
