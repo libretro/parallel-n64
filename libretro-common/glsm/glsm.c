@@ -182,7 +182,9 @@ static struct gl_cached_state gl_state;
 
 void rglReadBuffer(GLenum mode)
 {
+#ifndef HAVE_OPENGLES2
    glReadBuffer(mode);
+#endif
    gl_state.readbuffer.mode = mode;
 }
 

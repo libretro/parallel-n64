@@ -67,7 +67,6 @@
 #define glLoadIdentity()
 #define glMatrixMode(x)
 #define glOrtho(a,b,c,d,e,f)
-#define glReadBuffer(x)
 #define glTexEnvi(x,y,z)
 #define glTexEnvfv(x,y,z)
 

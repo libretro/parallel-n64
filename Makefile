@@ -362,7 +362,7 @@ else
 endif
 
 ifeq ($(GLIDEN64), 1)
-COREFLAGS += -std=c++0x
+CXXFLAGS += -std=c++0x
 endif
 
 ifeq ($(platform), qnx)
