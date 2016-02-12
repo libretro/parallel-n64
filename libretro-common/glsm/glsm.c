@@ -159,6 +159,11 @@ struct gl_cached_state
       GLboolean mask;
    } depthmask;
 
+   struct
+   {
+      GLenum mode;
+   } readbuffer;
+
    GLuint vao;
    GLuint framebuf;
    GLuint program; 
@@ -174,6 +179,12 @@ static struct retro_hw_render_callback hw_render;
 static struct gl_cached_state gl_state;
 
 /* GL wrapper-side */
+
+void rglReadBuffer(GLenum mode)
+{
+   glReadBuffer(mode);
+   gl_state.readbuffer.mode = mode;
+}
 
 void rglClearDepth(GLdouble depth)
 {
