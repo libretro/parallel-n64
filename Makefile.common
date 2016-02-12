@@ -256,10 +256,6 @@ SOURCES_C += $(VIDEODIR_GLN64)/3DMath.c \
             $(VIDEODIR_GLN64)/Turbo3D.c \
             $(VIDEODIR_GLN64)/ZSort.c \
             $(VIDEODIR_GLN64)/VI.c
-
-ifeq ($(HAVE_NEON), 1)
-	SOURCES_C   += $(VIDEODIR_GLN64)/3DMathNeon.c
-endif
 endif
 
 ifeq ($(HAVE_NEON), 1)
