@@ -58,22 +58,13 @@ void        (*renderCallback)() = NULL;
 EXPORT m64p_error CALL PluginStartup(m64p_dynlib_handle CoreLibHandle,
         void *Context, void (*DebugCallback)(void *, int, const char *))
 {
-#ifdef __NEON_OPT
-   unsigned cpu = 0;
-
-   if (perf_get_cpu_features_cb)
-      cpu = perf_get_cpu_features_cb();
-
-   if (cpu & RETRO_SIMD_NEON)
-      MathInitNeon();
-#endif
    return M64ERR_SUCCESS;
 }
 
 EXPORT m64p_error CALL PluginShutdown(void)
 {
    OGL_Stop();  // paulscode, OGL_Stop missing from Yongzh's code
-   return M64ERR_SUCCESS; // __LIBRETRO__: Fix warning
+   return M64ERR_SUCCESS;
 }
 
 EXPORT m64p_error CALL PluginGetVersion(m64p_plugin_type *PluginType,
