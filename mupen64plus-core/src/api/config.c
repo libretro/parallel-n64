@@ -1087,7 +1087,7 @@ EXPORT int CALL ConfigGetParamInt(m64p_handle ConfigSectionHandle, const char *P
 
 #ifdef __LIBRETRO__
    if (!strcmp(ParamName, "AnisoFilter"))
-#ifdef GLES
+#ifdef HAVE_OPENGLES
       return 0;
 #else
    return 1;
@@ -1252,7 +1252,7 @@ EXPORT int CALL ConfigGetParamBool(m64p_handle ConfigSectionHandle, const char *
    if (!strcmp(ParamName, "FBO"))
       return true;
    if (!strcmp(ParamName, "AnisotropicFiltering"))
-#ifdef GLES
+#ifdef HAVE_OPENGLES
       return false;
 #else
    return true;
