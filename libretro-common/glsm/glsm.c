@@ -653,6 +653,11 @@ void rglUniform2f(GLint location, GLfloat v0, GLfloat v1)
    glUniform2f(location, v0, v1);
 }
 
+void rglUniform2i(GLint location, GLint v0, GLint v1)
+{
+   glUniform2i(location, v0, v1);
+}
+
 void rglUniform2fv(GLint location, GLsizei count, const GLfloat *value)
 {
    glUniform2fv(location, count, value);
