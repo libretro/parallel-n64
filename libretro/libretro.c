@@ -525,7 +525,6 @@ extern void ChangeSize();
 
 void update_variables(bool startup)
 {
-   static float last_aspect = 4.0 / 3.0;
    struct retro_variable var;
 
    var.key = "mupen64-screensize";
@@ -615,45 +614,6 @@ void update_variables(bool startup)
       }
    }
 
-   if (!startup)
-   {
-      var.key = "mupen64-aspectratiohint";
-      var.value = NULL;
-
-      if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
-      {
-         float aspect_val = 4.0 / 3.0;
-         float aspectmode = 0;
-
-         if (!strcmp(var.value, "widescreen"))
-         {
-            aspect_val = 16.0 / 9.0;
-            aspectmode = 1;
-         }
-         else if (!strcmp(var.value, "normal"))
-         {
-            aspect_val = 4.0 / 3.0;
-            aspectmode = 0;
-         }
-
-         if (aspect_val != last_aspect)
-         {
-            screen_aspectmodehint = aspectmode;
-
-            switch (gfx_plugin)
-            {
-               case GFX_GLIDE64:
-                  ChangeSize();
-                  break;
-               default:
-                  break;
-            }
-
-            last_aspect = aspect_val;
-            reinit_screen = true;
-         }
-      }
-   }
 
    var.key = "mupen64-polyoffset-factor";
    var.value = NULL;
@@ -945,7 +905,49 @@ void retro_run (void)
    static bool updated = false;
 
    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE_UPDATE, &updated) && updated)
+   {
+      static float last_aspect = 4.0 / 3.0;
+      struct retro_variable var;
+
       update_variables(false);
+
+      var.key = "mupen64-aspectratiohint";
+      var.value = NULL;
+
+      if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+      {
+         float aspect_val = 4.0 / 3.0;
+         float aspectmode = 0;
+
+         if (!strcmp(var.value, "widescreen"))
+         {
+            aspect_val = 16.0 / 9.0;
+            aspectmode = 1;
+         }
+         else if (!strcmp(var.value, "normal"))
+         {
+            aspect_val = 4.0 / 3.0;
+            aspectmode = 0;
+         }
+
+         if (aspect_val != last_aspect)
+         {
+            screen_aspectmodehint = aspectmode;
+
+            switch (gfx_plugin)
+            {
+               case GFX_GLIDE64:
+                  ChangeSize();
+                  break;
+               default:
+                  break;
+            }
+
+            last_aspect = aspect_val;
+            reinit_screen = true;
+         }
+      }
+   }
 
 #ifdef SINGLE_THREAD
    if (gfx_plugin == GFX_ANGRYLION && !emu_initialized)
