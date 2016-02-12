@@ -8,7 +8,7 @@
 #include "Log.h"
 #include "F3D.h"
 #include "OpenGL.h"
-#include "3DMath.h"
+#include "../../gles2n64/src/3DMath.h"
 
 #include "m64p_plugin.h"
 

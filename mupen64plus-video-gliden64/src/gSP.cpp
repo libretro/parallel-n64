@@ -10,7 +10,7 @@
 #include "GBI.h"
 #include "gSP.h"
 #include "gDP.h"
-#include "3DMath.h"
+#include "../../gles2n64/src/3DMath.h"
 #include "OpenGL.h"
 #include "CRC.h"
 #include <string.h>

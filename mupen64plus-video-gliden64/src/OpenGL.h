@@ -9,7 +9,7 @@
 #include "winlnxdefs.h"
 #endif
 
-#include "../../libretro/SDL_opengl.h"
+#include <glsm/glsmsym.h>
 
 #ifdef HAVE_OPENGLES2
 #define GL_DRAW_FRAMEBUFFER GL_FRAMEBUFFER
