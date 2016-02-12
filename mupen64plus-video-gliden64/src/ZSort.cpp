@@ -10,6 +10,8 @@
 #include "OpenGL.h"
 #include "3DMath.h"
 
+#include "m64p_plugin.h"
+
 #define	GZM_USER0		0
 #define	GZM_USER1		2
 #define	GZM_MMTX		4

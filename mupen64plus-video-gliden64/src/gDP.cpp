@@ -18,6 +18,8 @@
 #include "Config.h"
 #include "Combiner.h"
 
+#include "m64p_plugin.h"
+
 using namespace std;
 
 gDPInfo gDP;
@@ -769,7 +771,7 @@ void gDPFillRectangle( s32 ulx, s32 uly, s32 lrx, s32 lry )
 		if ((ulx == 0) && (uly == 0) && (lrx == gDP.scissor.lrx) && (lry == gDP.scissor.lry))
       {
 			gDPFillRDRAM(gDP.colorImage.address, ulx, uly, lrx, lry, gDP.colorImage.width, gDP.colorImage.size, gDP.fillColor.color);
-			if ((*gfx_info.VI_STATUS & 8) != 0)
+			if ((*gfx_info.VI_STATUS_REG & 8) != 0)
          {
 				fillColor[0] = sqrtf(fillColor[0]);
 				fillColor[1] = sqrtf(fillColor[1]);

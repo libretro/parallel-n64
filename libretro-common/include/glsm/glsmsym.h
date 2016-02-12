@@ -33,6 +33,7 @@ extern "C" {
 #define glTexCoord2f                rglTexCoord2f
 
 /* more forward-compatible GL subset symbols */
+#define glBlitFramebuffer           rglBlitFramebuffer
 #define glVertexAttrib4f            rglVertexAttrib4f
 #define glVertexAttrib4fv           rglVertexAttrib4fv
 #define glDrawArrays                rglDrawArrays
@@ -198,6 +199,13 @@ void rglVertexAttrib4f(GLuint name, GLfloat x, GLfloat y,
 void rglVertexAttrib4fv(GLuint name, GLfloat* v);
 void rglDeleteProgram(GLuint program);
 void rglDeleteBuffers(GLsizei n, const GLuint *buffers);
+void rglBlitFramebuffer(
+      GLint srcX0, GLint srcY0,
+      GLint srcX1, GLint srcY1,
+      GLint dstX0, GLint dstY0,
+      GLint dstX1, GLint dstY1,
+      GLbitfield mask, GLenum filter);
+
 
 #ifdef __cplusplus
 }

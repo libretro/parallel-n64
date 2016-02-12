@@ -22,6 +22,8 @@
 #include "Config.h"
 #include "Log.h"
 
+#include "m64p_plugin.h"
+
 using namespace std;
 
 inline void gSPFlushTriangles()
@@ -32,10 +34,10 @@ inline void gSPFlushTriangles()
 	}
 
 	if (
-		(RSP.nextCmd != G_TRI1) &&
-		(RSP.nextCmd != G_TRI2) &&
-		(RSP.nextCmd != G_TRI4) &&
-		(RSP.nextCmd != G_QUAD)
+		(__RSP.nextCmd != G_TRI1) &&
+		(__RSP.nextCmd != G_TRI2) &&
+		(__RSP.nextCmd != G_TRI4) &&
+		(__RSP.nextCmd != G_QUAD)
 	)
 		video().getRender().drawTriangles();
 }
@@ -615,8 +617,8 @@ void gSPLoadUcodeEx( u32 uc_start, u32 uc_dstart, u16 uc_dsize )
 		return;
 
 	GBI.loadMicrocode(uc_start, uc_dstart, uc_dsize);
-	RSP.uc_start = uc_start;
-	RSP.uc_dstart = uc_dstart;
+	__RSP.uc_start = uc_start;
+	__RSP.uc_dstart = uc_dstart;
 }
 
 void gSPNoOp()
@@ -1180,15 +1182,16 @@ void gSPDisplayList( u32 dl )
 		return;
 	}
 
-	if (RSP.PCi < (GBI.PCStackSize - 1)) {
+	if (__RSP.PCi < (GBI.PCStackSize - 1))
+   {
 #ifdef DEBUG
 	DebugMsg( DEBUG_HIGH | DEBUG_HANDLED, "\n" );
 	DebugMsg( DEBUG_HIGH | DEBUG_HANDLED, "gSPDisplayList( 0x%08X );\n",
 		dl );
 #endif
-		RSP.PCi++;
-		RSP.PC[RSP.PCi] = address;
-		RSP.nextCmd = _SHIFTR( *(u32*)&gfx_info.RDRAM[address], 24, 8 );
+		__RSP.PCi++;
+		__RSP.PC[__RSP.PCi] = address;
+		__RSP.nextCmd = _SHIFTR( *(u32*)&gfx_info.RDRAM[address], 24, 8 );
 	}
 	else
 	{
@@ -1217,8 +1220,8 @@ void gSPBranchList( u32 dl )
 		dl );
 #endif
 
-	RSP.PC[RSP.PCi] = address;
-	RSP.nextCmd = _SHIFTR( *(u32*)&gfx_info.RDRAM[address], 24, 8 );
+	__RSP.PC[__RSP.PCi] = address;
+	__RSP.nextCmd = _SHIFTR( *(u32*)&gfx_info.RDRAM[address], 24, 8 );
 }
 
 void gSPBranchLessZ( u32 branchdl, u32 vtx, f32 zval )
@@ -1237,7 +1240,7 @@ void gSPBranchLessZ( u32 branchdl, u32 vtx, f32 zval )
 	SPVertex & v = video().getRender().getVertex(vtx);
 	const float zTest = v.z / v.w;
 	if (zTest > 1.0f || zTest <= zval || !GBI.isBranchLessZ())
-		RSP.PC[RSP.PCi] = address;
+		__RSP.PC[__RSP.PCi] = address;
 
 #ifdef DEBUG
 		DebugMsg( DEBUG_HIGH | DEBUG_HANDLED, "gSPBranchLessZ( 0x%08X, %i, %i );\n",
@@ -1254,7 +1257,7 @@ void gSPDlistCount(u32 count, u32 v)
 		return;
 	}
 
-	if (RSP.PCi >= 9) {
+	if (__RSP.PCi >= 9) {
 		DebugMsg( DEBUG_HIGH | DEBUG_ERROR, "// ** DL stack overflow **\n" );
 		DebugMsg( DEBUG_HIGH | DEBUG_HANDLED, "gSPDlistCnt(%d, 0x%08X );\n", count, v );
 		return;
@@ -1262,10 +1265,10 @@ void gSPDlistCount(u32 count, u32 v)
 
 	DebugMsg( DEBUG_HIGH | DEBUG_HANDLED, "gSPDlistCnt(%d, 0x%08X );\n", count, v );
 
-	++RSP.PCi;  // go to the next PC in the stack
-	RSP.PC[RSP.PCi] = address;  // jump to the address
-	RSP.nextCmd = _SHIFTR( *(u32*)&gfx_info.RDRAM[address], 24, 8 );
-	RSP.count = count + 1;
+	++__RSP.PCi;  // go to the next PC in the stack
+	__RSP.PC[__RSP.PCi] = address;  // jump to the address
+	__RSP.nextCmd = _SHIFTR( *(u32*)&gfx_info.RDRAM[address], 24, 8 );
+	__RSP.count = count + 1;
 }
 
 void gSPSetDMAOffsets( u32 mtxoffset, u32 vtxoffset )
@@ -1395,13 +1398,13 @@ bool gSPCullVertices( u32 v0, u32 vn )
 void gSPCullDisplayList( u32 v0, u32 vn )
 {
 	if (gSPCullVertices( v0, vn )) {
-		if (RSP.PCi > 0)
-			RSP.PCi--;
+		if (__RSP.PCi > 0)
+			__RSP.PCi--;
 		else {
 #ifdef DEBUG
 			DebugMsg( DEBUG_DETAIL | DEBUG_HANDLED, "// End of display list, halting execution\n" );
 #endif
-			RSP.halt = TRUE;
+			__RSP.halt = TRUE;
 		}
 #ifdef DEBUG
 		DebugMsg( DEBUG_DETAIL | DEBUG_HANDLED, "// Culling display list\n" );
@@ -1650,14 +1653,14 @@ void gSPTexture( f32 sc, f32 tc, s32 level, s32 tile, s32 on )
 
 void gSPEndDisplayList()
 {
-	if (RSP.PCi > 0)
-		--RSP.PCi;
+	if (__RSP.PCi > 0)
+		--__RSP.PCi;
 	else
 	{
 #ifdef DEBUG
 		DebugMsg( DEBUG_DETAIL | DEBUG_HANDLED, "// End of display list, halting execution\n" );
 #endif
-		RSP.halt = TRUE;
+		__RSP.halt = TRUE;
 	}
 
 #ifdef DEBUG
@@ -2256,7 +2259,7 @@ void _loadSpriteImage(const uSprite *_pSprite)
 
 void gSPSprite2DBase(u32 _base)
 {
-	assert(RSP.nextCmd == 0xBE);
+	assert(__RSP.nextCmd == 0xBE);
 	const u32 address = RSP_SegmentToPhysical( _base );
 	uSprite *pSprite = (uSprite*)&gfx_info.RDRAM[address];
 
@@ -2282,14 +2285,14 @@ void gSPSprite2DBase(u32 _base)
 	f32 scaleX = 1.0f, scaleY = 1.0f;
 	u32 flipX = 0, flipY = 0;
 	do {
-		u32 w0 = *(u32*)&gfx_info.RDRAM[RSP.PC[RSP.PCi]];
-		u32 w1 = *(u32*)&gfx_info.RDRAM[RSP.PC[RSP.PCi] + 4];
-		RSP.cmd = _SHIFTR( w0, 24, 8 );
+		u32 w0 = *(u32*)&gfx_info.RDRAM[__RSP.PC[__RSP.PCi]];
+		u32 w1 = *(u32*)&gfx_info.RDRAM[__RSP.PC[__RSP.PCi] + 4];
+		__RSP.cmd = _SHIFTR( w0, 24, 8 );
 
-		RSP.PC[RSP.PCi] += 8;
-		RSP.nextCmd = _SHIFTR( *(u32*)&gfx_info.RDRAM[RSP.PC[RSP.PCi]], 24, 8 );
+		__RSP.PC[__RSP.PCi] += 8;
+		__RSP.nextCmd = _SHIFTR( *(u32*)&gfx_info.RDRAM[__RSP.PC[__RSP.PCi]], 24, 8 );
 
-		if ( RSP.cmd == 0xBE ) { // gSPSprite2DScaleFlip
+		if ( __RSP.cmd == 0xBE ) { // gSPSprite2DScaleFlip
 			scaleX  = _FIXED2FLOAT( _SHIFTR(w1, 16, 16), 10 );
 			scaleY  = _FIXED2FLOAT( _SHIFTR(w1,  0, 16), 10 );
 			flipX = _SHIFTR(w0, 8, 8);
@@ -2366,7 +2369,7 @@ void gSPSprite2DBase(u32 _base)
 		vtx3.t = lrt;
 
 		render.drawLLETriangle(4);
-	} while (RSP.nextCmd == 0xBD || RSP.nextCmd == 0xBE);
+	} while (__RSP.nextCmd == 0xBD || __RSP.nextCmd == 0xBE);
 }
 
 void gSPObjLoadTxSprite(u32 txsp)
