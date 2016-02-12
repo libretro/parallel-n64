@@ -361,16 +361,16 @@ else
 	CPUOPTS += -O2 -DNDEBUG
 endif
 
-ifeq ($(GLIDEN64), 1)
-CXXFLAGS += -std=c++0x
-endif
-
 ifeq ($(platform), qnx)
 	CFLAGS   += -Wp,-MMD
 	CXXFLAGS += -Wp,-MMD
 else
 	CFLAGS   += -std=gnu89 -MMD
+ifeq ($(GLIDEN64), 1)
+	CXXFLAGS += -std=c++0x -MMD
+else
 	CXXFLAGS += -std=gnu++98 -MMD
+endif
 endif
 
 ### Finalize ###
