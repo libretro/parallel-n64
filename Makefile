@@ -255,7 +255,7 @@ else ifeq ($(platform), qnx)
 	GLES = 1
 	PLATCFLAGS += -DNO_ASM -D__BLACKBERRY_QNX__
 	HAVE_NEON = 1
-	CPUFLAGS += -marm -mcpu=cortex-a9 -mfpu=neon -mfloat-abi=softfp -D__arm__ -DARM_ASM -D__NEON_OPT
+	CPUFLAGS += -marm -mcpu=cortex-a9 -mfpu=neon -mfloat-abi=softfp -D__arm__ -DARM_ASM -D__NEON_OPT -DNOSSE
 	CFLAGS += -D__QNX__
 
 	PLATFORM_EXT := unix
