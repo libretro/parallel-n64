@@ -53,7 +53,6 @@
 #define GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT 0x84FF
 #endif
 
-#include "glState.h"
 #include "gSP.h"
 
 #define INDEXMAP_SIZE 80U

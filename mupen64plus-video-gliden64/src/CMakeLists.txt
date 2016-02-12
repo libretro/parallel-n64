@@ -25,7 +25,6 @@ set(GLideN64_SOURCES
   GBI.cpp
   gDP.cpp
   GLideN64.cpp
-  glState.cpp
   gSP.cpp
   Keys.cpp
   L3D.cpp
