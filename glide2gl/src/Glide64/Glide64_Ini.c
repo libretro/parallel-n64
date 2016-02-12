@@ -5,7 +5,7 @@
 #include "DepthBufferRender.h"
 
 #include "api/libretro.h"
-#include "../../libretro/SDL.h"
+#include "../../libretro/libretro_private.h"
 
 extern bool no_audio;
 extern uint8_t microcode[4096];

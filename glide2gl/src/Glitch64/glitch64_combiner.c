@@ -26,9 +26,10 @@
 #include <stdlib.h>
 #endif // _WIN32
 #include <math.h>
+
 #include "glide.h"
 #include "glitchmain.h"
-#include "../../libretro/SDL.h"
+#include "../../libretro/libretro_private.h"
 
 float glide64_pow(float a, float b);
 

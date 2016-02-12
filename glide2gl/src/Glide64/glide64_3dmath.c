@@ -37,10 +37,11 @@
 //
 //****************************************************************
 
-#include "Gfx_1.3.h"
-#include "../../libretro/SDL.h"
-
 #include <math.h>
+
+#include "Gfx_1.3.h"
+#include "../../libretro/libretro_private.h"
+
 #include "3dmath.h"
 
 float DotProductC(float *v0, float *v1)

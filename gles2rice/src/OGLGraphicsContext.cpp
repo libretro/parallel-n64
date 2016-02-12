@@ -27,7 +27,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "TextureManager.h"
 #include "Video.h"
 #include "version.h"
-#include "SDL.h"
+#include "../../libretro/libretro_private.h"
 
 COGLGraphicsContext::COGLGraphicsContext() :
     m_bSupportLODBias(false),

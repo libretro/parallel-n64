@@ -1,5 +1,5 @@
-#ifndef _FAKE_SDL_H_
-#define _FAKE_SDL_H_
+#ifndef _LIBRETRO_PRIVATE_H_
+#define _LIBRETRO_PRIVATE_H_
 
 #include <stdio.h>
 #include <string.h>

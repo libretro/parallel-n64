@@ -47,7 +47,7 @@
 #include "CRC.h"
 #include "GBI.h"
 #include "Glide64_UCode.h"
-#include "../../libretro/SDL.h"
+#include "../../libretro/libretro_private.h"
 
 #ifdef __LIBRETRO__ // Prefix API
 #define VIDEO_TAG(X) glide64##X

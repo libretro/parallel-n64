@@ -21,7 +21,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include <fstream>
 
 #include <stdlib.h>
-#include "../../libretro/SDL.h"
+#include "../../libretro/libretro_private.h"
 
 #define M64P_PLUGIN_PROTOTYPES 1
 #include "osal_preproc.h"

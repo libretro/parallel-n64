@@ -33,7 +33,7 @@
 #include "RSP.h"
 #include "Textures.h"
 #include "OpenGL.h"
-#include "../../libretro/SDL.h"
+#include "../../libretro/libretro_private.h"
 
 #include "Config.h"
 #include "Common.h"

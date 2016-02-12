@@ -19,7 +19,9 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include <algorithm>
 #include <math.h>
-#include <SDL.h>
+#include <time.h>
+
+#include "../../libretro/libretro_private.h"
 
 #include "ConvertImage.h"
 #include "GraphicsContext.h"
@@ -27,7 +29,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "RenderTexture.h"
 #include "Video.h"
 #include "ucode.h"
-#include <time.h>
 
 #ifdef _MSC_VER
 #define strncasecmp _strnicmp
