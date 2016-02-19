@@ -984,6 +984,7 @@ void retro_run (void)
    }
 
 #ifdef SINGLE_THREAD
+#ifdef HAVE_OPENGL
    switch (gfx_plugin)
    {
       case GFX_ANGRYLION:
@@ -991,6 +992,10 @@ void retro_run (void)
             emu_step_initialize();
          break;
    }
+#else
+   if (!emu_initialized)
+      emu_step_initialize();
+#endif
 #endif
 
    FAKE_SDL_TICKS += 16;
