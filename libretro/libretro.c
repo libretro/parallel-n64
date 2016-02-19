@@ -118,7 +118,11 @@ static void core_settings_autoselect_gfx_plugin(void)
    if (gfx_var.value && strcmp(gfx_var.value, "auto") != 0)
       return;
 
+#ifdef HAVE_OPENGL
    gfx_plugin = GFX_GLIDE64;
+#else
+   gfx_plugin = GFX_ANGRYLION;
+#endif
 }
 
 unsigned libretro_get_gfx_plugin(void)
