@@ -314,10 +314,19 @@ bool emu_step_render(void)
 {
    if (flip_only)
    {
-      if (gfx_plugin == GFX_ANGRYLION)
-         video_cb((screen_pitch == 0) ? NULL : blitter_buf, screen_width, screen_height, screen_pitch);
-      else
-         video_cb(RETRO_HW_FRAME_BUFFER_VALID, screen_width, screen_height, 0);
+      switch (gfx_plugin)
+      {
+         case GFX_ANGRYLION:
+            video_cb((screen_pitch == 0) ? NULL : blitter_buf, screen_width, screen_height, screen_pitch);
+            break;
+         default:
+#ifdef HAVE_OPENGL
+            video_cb(RETRO_HW_FRAME_BUFFER_VALID, screen_width, screen_height, 0);
+#else
+            video_cb((screen_pitch == 0) ? NULL : blitter_buf, screen_width, screen_height, screen_pitch);
+#endif
+            break;
+      }
 
       pushed_frame = true;
       return true;
