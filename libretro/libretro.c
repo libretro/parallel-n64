@@ -29,8 +29,10 @@
 
 /* forward declarations */
 int InitGfx(void);
+#ifdef HAVE_OPENGL
 int glide64InitGfx(void);
 void gles2n64_reset(void);
+#endif
 
 struct retro_perf_callback perf_cb;
 retro_get_cpu_features_t perf_get_cpu_features_cb = NULL;
@@ -357,10 +359,17 @@ void reinit_gfx_plugin(void)
 #endif
     }
 
-   if (gfx_plugin == GFX_GLIDE64)
-      glide64InitGfx();
-   else if (gfx_plugin == GFX_GLN64)
-      gles2n64_reset();
+#ifdef HAVE_OPENGL
+    switch (gfx_plugin)
+    {
+       case GFX_GLIDE64:
+          glide64InitGfx();
+          break;
+       case GFX_GLN64:
+          gles2n64_reset();
+          break;
+    }
+#endif
 }
 
 #ifndef SINGLE_THREAD
@@ -520,7 +529,9 @@ void retro_deinit(void)
 
 #include "../mupen64plus-video-angrylion/vi.h"
 
+#ifdef HAVE_OPENGL
 extern void glide_set_filtering(unsigned value);
+#endif
 extern void ChangeSize();
 
 void update_variables(bool startup)
@@ -593,6 +604,7 @@ void update_variables(bool startup)
    var.key = "mupen64-filtering";
    var.value = NULL;
 
+#ifdef HAVE_OPENGL
    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
    {
 	  if (!strcmp(var.value, "automatic"))
@@ -613,7 +625,7 @@ void update_variables(bool startup)
 		  glide_set_filtering(retro_filtering);
       }
    }
-
+#endif
 
    var.key = "mupen64-polyoffset-factor";
    var.value = NULL;
@@ -775,6 +787,7 @@ static void format_saved_memory(void)
    format_mempak(saved_memory.mempack[3]);
 }
 
+#ifdef HAVE_OPENGL
 static void context_reset(void)
 {
    static bool first_init = true;
@@ -807,6 +820,7 @@ static bool context_imm_vbo_disable(void *data)
    vbo_disable();
    return true;
 }
+#endif
 
 static bool context_framebuffer_lock(void *data)
 {
@@ -817,7 +831,9 @@ static bool context_framebuffer_lock(void *data)
 
 bool retro_load_game(const struct retro_game_info *game)
 {
+#ifdef HAVE_OPENGL
    glsm_ctx_params_t params = {0};
+#endif
    format_saved_memory();
 
    update_variables(true);
@@ -825,6 +841,7 @@ bool retro_load_game(const struct retro_game_info *game)
 
    init_audio_libretro(audio_buffer_size);
 
+#ifdef HAVE_OPENGL
    if (gfx_plugin != GFX_ANGRYLION)
    {
       params.context_reset         = context_reset;
@@ -848,8 +865,8 @@ bool retro_load_game(const struct retro_game_info *game)
             log_cb(RETRO_LOG_ERROR, "mupen64plus: libretro frontend doesn't have OpenGL support.");
          return false;
       }
-
    }
+#endif
 
    game_data = malloc(game->size);
    memcpy(game_data, game->data, game->size);
@@ -882,6 +899,7 @@ void retro_unload_game(void)
     emu_initialized = false;
 }
 
+#ifdef HAVE_OPENGL
 static void glsm_exit(void)
 {
 #ifndef HAVE_SHARED_CONTEXT
@@ -899,6 +917,7 @@ static void glsm_enter(void)
    glsm_ctl(GLSM_CTL_STATE_BIND, NULL);
 #endif
 }
+#endif
 
 void retro_run (void)
 {
@@ -936,9 +955,11 @@ void retro_run (void)
 
             switch (gfx_plugin)
             {
+#ifdef HAVE_OPENGL
                case GFX_GLIDE64:
                   ChangeSize();
                   break;
+#endif
                default:
                   break;
             }
@@ -977,7 +998,9 @@ void retro_run (void)
 
    do
    {
+#ifdef HAVE_OPENGL
       glsm_enter();
+#endif
 
 #ifdef SINGLE_THREAD
       stop = 0;
@@ -987,7 +1010,9 @@ void retro_run (void)
       co_switch(cpu_thread);
 #endif
 
+#ifdef HAVE_OPENGL
       glsm_exit();
+#endif
    } while (emu_step_render());
 }
 
@@ -1070,17 +1095,23 @@ bool emu_step_render(void);
 
 int retro_return(int just_flipping)
 {
+#ifdef HAVE_OPENGL
    vbo_disable();
+#endif
 
    flip_only = just_flipping;
 
    if (just_flipping)
    {
+#ifdef HAVE_OPENGL
       glsm_exit();
+#endif
 
       emu_step_render();
 
+#ifdef HAVE_OPENGL
       glsm_enter();
+#endif
    }
 
    stop = 1;
@@ -1092,7 +1123,9 @@ int retro_return(int just_flipping)
    if (stop)
       return 0;
 
+#ifdef HAVE_OPENGL
    vbo_disable();
+#endif
 
    flip_only = just_flipping;
 

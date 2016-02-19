@@ -248,16 +248,36 @@ void plugin_connect_all(enum gfx_plugin_type gfx_plugin, enum rsp_plugin_type rs
 {
    switch (gfx_plugin)
    {
-      case GFX_ANGRYLION:  gfx = gfx_angrylion; break;
-      case GFX_RICE:  gfx = gfx_rice; break;
-      case GFX_GLN64: gfx = gfx_gln64; break;
-      default:        gfx = gfx_glide64; break;
+      case GFX_ANGRYLION:
+         gfx = gfx_angrylion;
+         break;
+      case GFX_RICE:
+#ifdef HAVE_OPENGL
+         gfx = gfx_rice;
+         break;
+#endif
+      case GFX_GLN64:
+#ifdef HAVE_OPENGL
+         gfx = gfx_gln64;
+         break;
+#endif
+      default:
+#ifdef HAVE_OPENGL
+         gfx = gfx_glide64;
+#else
+         gfx = gfx_angrylion;
+#endif
+         break;
    }
 
    switch (rsp_plugin)
    {
-      case RSP_CXD4: rsp = rsp_cxd4; break;
-      default:       rsp = rsp_hle; break;
+      case RSP_CXD4:
+         rsp = rsp_cxd4;
+         break;
+      default:
+         rsp = rsp_hle;
+         break;
    }
 
    plugin_start_gfx();

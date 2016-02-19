@@ -33,7 +33,9 @@
 #include "callbacks.h"
 
 #include <libretro.h>
+#ifdef HAVE_OPENGL
 #include <glsm/glsmsym.h>
+#endif
 
 /* local variables */
 static m64p_video_extension_functions l_ExternalVideoFuncTable = {10, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL};
@@ -121,11 +123,15 @@ EXPORT m64p_error CALL VidExt_SetVideoMode(int Width, int Height, int BitsPerPix
 
 EXPORT void * CALL VidExt_GL_GetProcAddress(const char* Proc)
 {
+#ifdef HAVE_OPENGL
    glsm_ctx_proc_address_t proc_info;
    proc_info.addr = NULL;
    if (!glsm_ctl(GLSM_CTL_PROC_ADDRESS_GET, NULL))
       return NULL;
    return proc_info.addr(Proc);
+#else
+   return NULL;
+#endif
 }
 
 EXPORT m64p_error CALL VidExt_GL_SwapBuffers(void)

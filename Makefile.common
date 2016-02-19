@@ -11,11 +11,26 @@ VIDEODIR_GLIDEN64  = $(ROOT_DIR)/mupen64plus-video-gliden64
 
 DYNAREC_USED := 0
 
+ifeq ($(HAVE_OPENGL),0)
+	HAVE_GLN64    = 0
+	HAVE_GLIDE64  = 0
+	HAVE_GLIDEN64 = 0
+	HAVE_RICE     = 0
+	HAVE_GLN64    = 0
+else
+	HAVE_GLN64   = 1
+	HAVE_GLIDE64 = 1
+	HAVE_GLIDEN64 = 0
+	HAVE_RICE     = 1
+	HAVE_GLN64    = 1
+
+INCFLAGS += -I$(VIDEODIR_GLIDE)/Glitch64/inc
+endif
+
 INCFLAGS += \
 	-I$(CORE_DIR)/src \
 	-I$(CORE_DIR)/src/api \
 	-I$(AUDIO_LIBRETRO_DIR) \
-	-I$(VIDEODIR_GLIDE)/Glitch64/inc \
 	-I$(LIBRETRO_COMM_DIR)/include \
 	-I$(LIBRETRO_DIR)
 
@@ -151,6 +166,7 @@ endif
 
 # Rice
 
+ifeq ($(HAVE_RICE), 1)
 SOURCES_CXX += $(VIDEODIR_RICE)/Blender.cpp \
             $(VIDEODIR_RICE)/Combiner.cpp \
             $(VIDEODIR_RICE)/RiceConfig.cpp \
@@ -184,11 +200,15 @@ SOURCES_CXX += $(VIDEODIR_RICE)/Blender.cpp \
 ifeq ($(HAVE_NEON), 1)
 	SOURCES_ASM += $(VIDEODIR_RICE)/RenderBase_neon.S
 endif
+endif
 
 # Libretro
 
+ifeq ($(HAVE_OPENGL), 1)
+SOURCES_C += $(LIBRETRO_COMM_DIR)/glsm/glsm.c
+endif
+
 SOURCES_C += $(LIBRETRO_DIR)/libretro.c \
-				 $(LIBRETRO_COMM_DIR)/glsm/glsm.c \
 				 $(CORE_DIR)/src/plugin/emulate_game_controller_via_libretro.c \
 				 $(AUDIO_LIBRETRO_DIR)/audio_backend_libretro.c \
 				 $(AUDIO_LIBRETRO_DIR)/audio_resampler_driver.c \
@@ -203,7 +223,7 @@ else
    SOURCES_C += $(LIBRETRO_DIR)/libretro_crc.c
 endif
 
-ifeq ($(GLIDEN64), 1)
+ifeq ($(HAVE_GLIDEN64), 1)
 SOURCES_C     += $(VIDEODIR_GLN64)/3DMath.c
 #SOURCES_CXX   += $(VIDEODIR_GLIDEN64)/src/Combiner.cpp
 #SOURCES_CXX  += $(VIDEODIR_GLIDEN64)/src/DepthBuffer.cpp
@@ -224,7 +244,9 @@ SOURCES_CXX  += $(VIDEODIR_GLIDEN64)/src/F3DEX2CBFD.cpp \
 					 $(VIDEODIR_GLIDEN64)/src/F3DWRUS.cpp \
 					 $(VIDEODIR_GLIDEN64)/src/ZSort.cpp \
 					 $(VIDEODIR_GLIDEN64)/src/VI.cpp
-else
+endif
+
+ifeq ($(HAVE_GLN64), 1)
 SOURCES_C += $(VIDEODIR_GLN64)/3DMath.c \
             $(VIDEODIR_GLN64)/glN64Config.c \
             $(VIDEODIR_GLN64)/FrameBuffer.c \
@@ -264,7 +286,7 @@ ifeq ($(HAVE_NEON), 1)
 						$(AUDIO_LIBRETRO_DIR)/drivers_resampler/cc_resampler_neon.S
 endif
 
-#Glide 64
+ifeq ($(HAVE_GLIDE64), 1)
 SOURCES_C += $(VIDEODIR_GLIDE)/Glide64/glide64_3dmath.c \
             $(VIDEODIR_GLIDE)/Glide64/FBtoScreen.c \
             $(VIDEODIR_GLIDE)/Glide64/Glide64_Ini.c \
@@ -283,6 +305,7 @@ SOURCES_C   += $(VIDEODIR_GLIDE)/Glitch64/glitch64_combiner.c \
             $(VIDEODIR_GLIDE)/Glitch64/geometry.c \
             $(VIDEODIR_GLIDE)/Glitch64/glitchmain.c \
             $(VIDEODIR_GLIDE)/Glitch64/glitch64_textures.c
+endif
 
 ### Angrylion's renderer ###
 SOURCES_C +=  $(VIDEODIR_ANGRYLION)/n64video_main.c \
@@ -290,6 +313,7 @@ SOURCES_C +=  $(VIDEODIR_ANGRYLION)/n64video_main.c \
 						  $(VIDEODIR_ANGRYLION)/n64video_rdp.c \
 						  $(VIDEODIR_ANGRYLION)/n64video.c
 
+ifeq ($(HAVE_OPENGL), 1)
 ifeq ($(GLES), 1)
 	GLFLAGS += -DGLES -DHAVE_OPENGLES -DHAVE_OPENGLES2 -DDISABLE_3POINT
 	SOURCES_C += $(LIBRETRO_COMM_DIR)/glsym/glsym_es2.c
@@ -300,5 +324,5 @@ else
 	GLFLAGS += -DHAVE_OPENGL
 	SOURCES_C += $(LIBRETRO_COMM_DIR)/glsym/glsym_gl.c
 endif
-
 SOURCES_C += $(LIBRETRO_COMM_DIR)/glsym/rglgen.c
+endif
