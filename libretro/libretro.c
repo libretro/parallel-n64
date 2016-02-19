@@ -980,8 +980,13 @@ void retro_run (void)
    }
 
 #ifdef SINGLE_THREAD
-   if (gfx_plugin == GFX_ANGRYLION && !emu_initialized)
-      emu_step_initialize();
+   switch (gfx_plugin)
+   {
+      case GFX_ANGRYLION:
+         if (!emu_initialized)
+            emu_step_initialize();
+         break;
+   }
 #endif
 
    FAKE_SDL_TICKS += 16;
