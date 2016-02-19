@@ -12,6 +12,7 @@ extern unsigned int screen_width, screen_height;
 extern uint32_t screen_pitch;
 
 uint32_t *blitter_buf;
+uint32_t *blitter_buf_ptr;
 int res;
 RECT __dst, __src;
 INT32 pitchindwords;
