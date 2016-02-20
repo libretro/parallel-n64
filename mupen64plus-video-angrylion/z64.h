@@ -81,8 +81,13 @@ typedef int8_t INT8;
 #define ALIGNED         __attribute__((aligned(16)))
 #endif
 
-#define PRESCALE_WIDTH 640
+#ifndef PRESCALE_WIDTH
+#define PRESCALE_WIDTH  640
+#endif
+
+#ifndef PRESCALE_HEIGHT
 #define PRESCALE_HEIGHT 625
+#endif
 
 #define RDRAM_MASK 0x00ffffff
 

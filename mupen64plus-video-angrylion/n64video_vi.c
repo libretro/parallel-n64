@@ -20,7 +20,7 @@ UINT32 gamma_table[0x100];
 UINT32 gamma_dither_table[0x4000];
 INT32 vi_restore_table[0x400];
 INT32 oldvstart = 1337;
-INT32* PreScale;
+int32_t* PreScale;
 
 int overlay = 0;
 
@@ -87,6 +87,7 @@ void rdp_update(void)
     int lowerfield;
     register int i, j;
     extern uint32_t *blitter_buf;
+    extern uint32_t *blitter_buf_lock;
     const int x_add = *GET_GFX_INFO(VI_X_SCALE_REG) & 0x00000FFF;
     const int v_sync = *GET_GFX_INFO(VI_V_SYNC_REG) & 0x000003FF;
     const int ispal  = (v_sync > 550);
@@ -159,7 +160,10 @@ void rdp_update(void)
     if (hres <= 0 || vres <= 0 || (!(vitype & 2) && prevwasblank)) /* early return. */
         return;
 
-    PreScale = (UINT32*)blitter_buf;
+    if (blitter_buf_lock)
+       PreScale = (uint32_t*)blitter_buf_lock;
+    else
+       PreScale = (uint32_t*)blitter_buf;
 
     if (vitype >> 1 == 0)
     {

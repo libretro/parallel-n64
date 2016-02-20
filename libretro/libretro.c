@@ -27,6 +27,14 @@
 #include "../mupen64plus-rsp-cxd4/config.h"
 #include "plugin/audio_libretro/audio_plugin.h"
 
+#ifndef PRESCALE_WIDTH
+#define PRESCALE_WIDTH  640
+#endif
+
+#ifndef PRESCALE_HEIGHT
+#define PRESCALE_HEIGHT 625
+#endif
+
 /* forward declarations */
 int InitGfx(void);
 #ifdef HAVE_OPENGL
@@ -74,6 +82,7 @@ static bool     pushed_frame        = false;
 unsigned frame_dupe = false;
 
 extern uint32_t *blitter_buf;
+uint32_t *blitter_buf_lock   = NULL;
 
 enum gfx_plugin_type gfx_plugin;
 uint32_t gfx_plugin_accuracy = 2;
@@ -321,13 +330,15 @@ bool emu_step_render(void)
       switch (gfx_plugin)
       {
          case GFX_ANGRYLION:
-            video_cb((screen_pitch == 0) ? NULL : blitter_buf, screen_width, screen_height, screen_pitch);
+            video_cb((screen_pitch == 0) ? NULL : (blitter_buf_lock ? 
+                     blitter_buf_lock : blitter_buf), screen_width, screen_height, screen_pitch);
             break;
          default:
 #ifdef HAVE_OPENGL
             video_cb(RETRO_HW_FRAME_BUFFER_VALID, screen_width, screen_height, 0);
 #else
-            video_cb((screen_pitch == 0) ? NULL : blitter_buf, screen_width, screen_height, screen_pitch);
+            video_cb((screen_pitch == 0) ? NULL : (blitter_buf_lock ? 
+                     blitter_buf_lock : blitter_buf), screen_width, screen_height, screen_pitch);
 #endif
             break;
       }
@@ -510,11 +521,8 @@ void retro_init(void)
       perf_get_cpu_features_cb = NULL;
 
    environ_cb(RETRO_ENVIRONMENT_SET_PIXEL_FORMAT, &colorMode);
-
-
    environ_cb(RETRO_ENVIRONMENT_GET_RUMBLE_INTERFACE, &rumble);
 
-   
    //hacky stuff for Glide64
    polygonOffsetUnits = -3.0f;
    polygonOffsetFactor =  -3.0f;
@@ -935,6 +943,27 @@ static void glsm_enter(void)
 void retro_run (void)
 {
    static bool updated = false;
+   struct retro_framebuffer fb = {0};
+
+#if 0
+   if (blitter_buf != NULL)
+   {
+      blitter_buf_lock = NULL;
+
+#ifdef HAVE_OPENGL
+      if (gfx_plugin == GFX_ANGRYLION)
+#endif
+      {
+         fb.width                    = PRESCALE_WIDTH;
+         fb.height                   = PRESCALE_HEIGHT;
+         fb.access_flags             = RETRO_MEMORY_ACCESS_WRITE;
+
+         if (environ_cb(RETRO_ENVIRONMENT_GET_CURRENT_SOFTWARE_FRAMEBUFFER, &fb) 
+               && fb.format == RETRO_PIXEL_FORMAT_XRGB8888)
+            blitter_buf_lock = (uint32_t*)fb.data;
+      }
+   }
+#endif
 
    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE_UPDATE, &updated) && updated)
    {
