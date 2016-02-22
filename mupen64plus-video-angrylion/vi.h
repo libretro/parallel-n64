@@ -6,13 +6,6 @@
 #include "Gfx #1.3.h"
 #include "z64.h"
 
-#ifndef SCREEN_WIDTH
-#define SCREEN_WIDTH        640
-#endif
-#ifndef SCREEN_HEIGHT
-#define SCREEN_HEIGHT       480
-#endif
-
 typedef struct {
     unsigned char r, g, b, cvg;
 } CCVG;
