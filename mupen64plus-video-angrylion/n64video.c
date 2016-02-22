@@ -1168,8 +1168,6 @@ static void precalculate_everything(void)
           }
        }
     }
-
-    return;
 }
 
 INLINE void SET_BLENDER_INPUT(int cycle, int which, INT32 **input_r, INT32 **input_g, INT32 **input_b, INT32 **input_a, int a, int b)
@@ -3624,7 +3622,6 @@ void render_spans_1cycle_complete(int start, int end, int tilenum, int flip)
             zbcur &= 0x00FFFFFF >> 1;
         }
     }
-    return;
 }
 
 
@@ -4818,7 +4815,6 @@ NOINLINE void render_spans_copy(int start, int end, int tilenum, int flip)
             fbptr &= 0x00FFFFFF;
         }
     }
-    return;
 }
 
 NOINLINE void loading_pipeline(
@@ -4869,7 +4865,6 @@ NOINLINE void loading_pipeline(
     case PIXEL_SIZE_4BIT:
         rdp_pipeline_crashed = 1;
         return;
-        break;
     case PIXEL_SIZE_8BIT:
         tiadvance = 8;
         spanadvance = 8;
@@ -5202,7 +5197,6 @@ void edgewalker_for_loads(INT32* lewdata)
     }
 
     loading_pipeline(yhlimit >> 2, yllimit >> 2, tilenum, coord_quad, ltlut);
-    return;
 }
 
 
@@ -5289,7 +5283,6 @@ void deduce_derivatives()
         get_dither_noise_ptr = get_dither_noise_func[2];
 
     other_modes.f.dolod = other_modes.tex_lod_en || lodfracused;
-    return;
 }
 
 void tile_tlut_common_cs_decoder(UINT32 w1, UINT32 w2)
@@ -5317,7 +5310,6 @@ void tile_tlut_common_cs_decoder(UINT32 w1, UINT32 w2)
     lewdata[9] = 0x20;
 
     edgewalker_for_loads(lewdata);
-    return;
 }
 
 STRICTINLINE INT32 irand(void)
@@ -5598,7 +5590,6 @@ STRICTINLINE void compute_cvg_noflip(INT32 scanline)
 
 void rdp_close(void)
 {
-    return;
 }
 
 void fbwrite_4(
@@ -5611,7 +5602,6 @@ void fbwrite_4(
     addr &= 0x00FFFFFF;
 
     RWRITEADDR8(addr, 0x00);
-    return;
 }
 
 void fbwrite_8(
@@ -5623,7 +5613,6 @@ void fbwrite_8(
     addr  = fb_address + 1*curpixel;
     addr &= 0x00FFFFFF;
     PAIRWRITE8(addr, r, (r & 1) ? 3 : 0);
-    return;
 }
 
 void fbwrite_16(
@@ -5660,7 +5649,6 @@ void fbwrite_16(
     addr &= 0x00FFFFFF;
     addr  = addr >> 1;
     PAIRWRITE16(addr, color, coverage & 3);
-    return;
 }
 
 void fbwrite_32(
@@ -5681,13 +5669,11 @@ void fbwrite_32(
 
     g = -(signed)(g & 1) & 3;
     PAIRWRITE32(addr, color, g, 0);
-    return;
 }
 
 void fbfill_4(UINT32 curpixel)
 {
     rdp_pipeline_crashed = 1;
-    return;
 }
 
 void fbfill_8(UINT32 curpixel)
@@ -5700,7 +5686,6 @@ void fbfill_8(UINT32 curpixel)
 
     source = (fill_color >> 8*(~addr & 3)) & 0xFF;
     PAIRWRITE8(addr, source, -(source & 1) & 3);
-    return;
 }
 
 void fbfill_16(UINT32 curpixel)
@@ -5714,7 +5699,6 @@ void fbfill_16(UINT32 curpixel)
 
     source = fill_color>>16*(~addr & 1) & 0xFFFF;
     PAIRWRITE16(addr, source, -(source & 1) & 3);
-    return;
 }
 
 void fbfill_32(UINT32 curpixel)
@@ -5728,7 +5712,6 @@ void fbfill_32(UINT32 curpixel)
     addr  = addr >> 2;
     PAIRWRITE32(addr, fill_color,
         -(fill_color_hi & 0x0001) & 3, -(fill_color_lo & 0x0001) & 3);
-    return;
 }
 
 void fbread_4(UINT32 curpixel, UINT32* curpixel_memcvg)
@@ -5736,7 +5719,6 @@ void fbread_4(UINT32 curpixel, UINT32* curpixel_memcvg)
     memory_color.r = memory_color.g = memory_color.b = 0x00;
     memory_color.a = 0xE0;
     *curpixel_memcvg = 7;
-    return;
 }
 
 void fbread2_4(UINT32 curpixel, UINT32* curpixel_memcvg)
@@ -5744,7 +5726,6 @@ void fbread2_4(UINT32 curpixel, UINT32* curpixel_memcvg)
     pre_memory_color.r = pre_memory_color.g = pre_memory_color.b = 0x00;
     pre_memory_color.a = 0xE0;
     *curpixel_memcvg = 7;
-    return;
 }
 
 void fbread_8(UINT32 curpixel, UINT32* curpixel_memcvg)
@@ -5758,7 +5739,6 @@ void fbread_8(UINT32 curpixel, UINT32* curpixel_memcvg)
     memory_color.b = mem;
     memory_color.a = 0xE0;
     *curpixel_memcvg = 7;
-    return;
 }
 
 void fbread2_8(UINT32 curpixel, UINT32* curpixel_memcvg)
@@ -5772,7 +5752,6 @@ void fbread2_8(UINT32 curpixel, UINT32* curpixel_memcvg)
     pre_memory_color.b = mem;
     pre_memory_color.a = 0xE0;
     *curpixel_memcvg = 7;
-    return;
 }
 
 INLINE void fbread_16(UINT32 curpixel, UINT32* curpixel_memcvg)
@@ -5883,7 +5862,6 @@ void fbread_32(UINT32 curpixel, UINT32* curpixel_memcvg)
     memory_color.a &= 0xE0;
 
     *curpixel_memcvg = (unsigned char)(memory_color.a) >> 5;
-    return;
 }
 
 void fbread2_32(UINT32 curpixel, UINT32* curpixel_memcvg)
@@ -5900,7 +5878,6 @@ void fbread2_32(UINT32 curpixel, UINT32* curpixel_memcvg)
     pre_memory_color.a &= 0xE0;
 
     *curpixel_memcvg = (unsigned char)(pre_memory_color.a) >> 5;
-    return;
 }
 
 STRICTINLINE UINT32 z_decompress(UINT32 zb)
@@ -7354,7 +7331,6 @@ STRICTINLINE void get_texel1_1cycle(INT32* s1, INT32* t1, INT32 s, INT32 t, INT3
         nextsw = stwz_ptr[2] >> 16;
     }
     tcdiv_ptr(nexts, nextt, nextsw, s1, t1);
-    return;
 }
 
 STRICTINLINE void get_nexttexel0_2cycle(INT32* s1, INT32* t1, INT32 s, INT32 t, INT32 w, INT32 dsinc, INT32 dtinc, INT32 dwinc)
@@ -7384,7 +7360,6 @@ STRICTINLINE void tclod_4x17_to_15(INT32 scurr, INT32 snext, INT32 tcurr, INT32 
     *lod = dels & 0x7fff;
     if (dels & 0x1c000)
         *lod |= 0x4000;
-    return;
 }
 
 STRICTINLINE void tclod_tcclamp(INT32* sss, INT32* sst)

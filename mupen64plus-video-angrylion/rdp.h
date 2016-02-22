@@ -321,9 +321,6 @@ enum {
 };
 
 extern void process_RDP_list(void);
-#ifdef TRACE_DP_COMMANDS
-extern void count_DP_commands(void);
-#endif
 
 extern void (*fbread1_ptr)(UINT32, UINT32*);
 extern void (*fbread2_ptr)(UINT32, UINT32*);

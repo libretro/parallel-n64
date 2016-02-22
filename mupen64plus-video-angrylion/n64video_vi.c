@@ -252,7 +252,6 @@ no_frame_buffer:
             --cur_line;
         }
     }
-    return;
 }
 
 static void do_frame_buffer_proper(
@@ -659,7 +658,6 @@ static void do_frame_buffer_raw(
             y_start += y_add;
         }
     }
-    return;
 }
 
 STRICTINLINE static void vi_fetch_filter16(
@@ -700,7 +698,6 @@ STRICTINLINE static void vi_fetch_filter16(
     res -> g = g;
     res -> b = b;
     res -> cvg = cur_cvg;
-    return;
 }
 
 STRICTINLINE static void vi_fetch_filter32(
@@ -736,7 +733,6 @@ STRICTINLINE static void vi_fetch_filter32(
     res -> g = g;
     res -> b = b;
     res -> cvg = cur_cvg;
-    return;
 }
 
 STRICTINLINE static void video_filter16(
@@ -790,7 +786,6 @@ STRICTINLINE static void video_filter16(
     *endr = colr & 0xFF;
     *endg = colg & 0xFF;
     *endb = colb & 0xFF;
-    return;
 }
 
 STRICTINLINE static void video_filter32(
@@ -843,7 +838,6 @@ STRICTINLINE static void video_filter32(
     *endr = colr & 0xFF;
     *endg = colg & 0xFF;
     *endb = colb & 0xFF;
-    return;
 }
 
 STRICTINLINE static void divot_filter(
@@ -881,7 +875,6 @@ STRICTINLINE static void divot_filter(
         final -> b = leftb;
     else if ((rightb >= centerb && leftb >= rightb) || (rightb >= leftb && centerb >= rightb))
         final -> b = rightb;
-    return;
 }
 
 STRICTINLINE static void restore_filter16(
@@ -930,7 +923,6 @@ STRICTINLINE static void restore_filter16(
     *r = rend;
     *g = gend;
     *b = bend;
-    return;
 }
 
 STRICTINLINE static void restore_filter32(
@@ -980,7 +972,6 @@ STRICTINLINE static void restore_filter32(
     *r = rend;
     *g = gend;
     *b = bend;
-    return;
 }
 
 static void gamma_filters(unsigned char* argb, int gamma_and_dither)
@@ -988,14 +979,15 @@ static void gamma_filters(unsigned char* argb, int gamma_and_dither)
     int cdith, dith;
     int r, g, b;
 
+    if (gamma_and_dither == 0)
+       return;
+
     r = argb[1 ^ BYTE_ADDR_XOR];
     g = argb[2 ^ BYTE_ADDR_XOR];
     b = argb[3 ^ BYTE_ADDR_XOR];
+
     switch(gamma_and_dither)
     {
-        case 0:
-            return;
-            break;
         case 1:
             cdith = irand();
             dith = cdith & 1;
@@ -1026,7 +1018,6 @@ static void gamma_filters(unsigned char* argb, int gamma_and_dither)
     argb[1 ^ BYTE_ADDR_XOR] = (unsigned char)(r);
     argb[2 ^ BYTE_ADDR_XOR] = (unsigned char)(g);
     argb[3 ^ BYTE_ADDR_XOR] = (unsigned char)(b);
-    return;
 }
 
 static void adjust_brightness(unsigned char* argb, int brightcoeff)
@@ -1072,7 +1063,6 @@ static void adjust_brightness(unsigned char* argb, int brightcoeff)
     argb[1 ^ BYTE_ADDR_XOR] = (unsigned char)(r);
     argb[2 ^ BYTE_ADDR_XOR] = (unsigned char)(g);
     argb[3 ^ BYTE_ADDR_XOR] = (unsigned char)(b);
-    return;
 }
 
 STRICTINLINE static void vi_vl_lerp(CCVG* up, CCVG down, UINT32 frac)
@@ -1089,7 +1079,6 @@ STRICTINLINE static void vi_vl_lerp(CCVG* up, CCVG down, UINT32 frac)
     up -> r = (((frac*(down.r - r0) + 16) >> 5) + r0) & 0xFF;
     up -> g = (((frac*(down.g - g0) + 16) >> 5) + g0) & 0xFF;
     up -> b = (((frac*(down.b - b0) + 16) >> 5) + b0) & 0xFF;
-    return;
 }
 
 STRICTINLINE void video_max_optimized(UINT32* pixels, UINT32* penumin, UINT32* penumax, int numofels)
@@ -1137,7 +1126,6 @@ STRICTINLINE void video_max_optimized(UINT32* pixels, UINT32* penumin, UINT32* p
 NOINLINE void DisplayError(char * error)
 {
     //MessageBox(NULL, error, NULL, MB_ICONERROR);
-    return;
 }
 
 NOINLINE void zerobuf(void * memory, size_t length)

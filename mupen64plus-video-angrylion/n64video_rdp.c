@@ -165,7 +165,7 @@ static const char DP_command_names[64][18] = {
     "SETCIMG          "
 };
 
-void count_DP_commands(void)
+static void count_DP_commands(void)
 {
     FILE * stream;
     long total;
@@ -182,7 +182,6 @@ void count_DP_commands(void)
     fclose(stream);
     for (i = 0; i < 64; i++)
         cmd_count[i] = 0; /* reset for fresh data */
-    return;
 }
 #endif
 
@@ -257,7 +256,6 @@ exit_b:
     *GET_GFX_INFO(DPC_START_REG)
   = *GET_GFX_INFO(DPC_CURRENT_REG)
   = *GET_GFX_INFO(DPC_END_REG);
-    return;
 }
 
 static char invalid_command[] = "00\nDP reserved command.";
@@ -269,60 +267,50 @@ static void invalid(void)
     invalid_command[0] = '0' | command >> 3;
     invalid_command[1] = '0' | command & 07;
     DisplayError(invalid_command);
-    return;
 }
 
 static void noop(void)
 {
-    return;
 }
 
 static void tri_noshade(void)
 {
     draw_triangle(SHADE_NO, TEXTURE_NO, ZBUFFER_NO);
-    return;
 }
 
 static void tri_noshade_z(void)
 {
     draw_triangle(SHADE_NO, TEXTURE_NO, ZBUFFER_YES);
-    return;
 }
 
 static void tri_tex(void)
 {
     draw_triangle(SHADE_NO, TEXTURE_YES, ZBUFFER_NO);
-    return;
 }
 
 static void tri_tex_z(void)
 {
     draw_triangle(SHADE_NO, TEXTURE_YES, ZBUFFER_YES);
-    return;
 }
 
 static void tri_shade(void)
 {
     draw_triangle(SHADE_YES, TEXTURE_NO, ZBUFFER_NO);
-    return;
 }
 
 static void tri_shade_z(void)
 {
     draw_triangle(SHADE_YES, TEXTURE_NO, ZBUFFER_YES);
-    return;
 }
 
 static void tri_texshade(void)
 {
     draw_triangle(SHADE_YES, TEXTURE_YES, ZBUFFER_NO);
-    return;
 }
 
 static void tri_texshade_z(void)
 {
     draw_triangle(SHADE_YES, TEXTURE_YES, ZBUFFER_YES);
-    return;
 }
 
 static void tex_rect(void)
@@ -515,7 +503,6 @@ static void tex_rect(void)
         }
     }
     render_spans(yhlimit >> 2, yllimit >> 2, tilenum, 1);
-    return;
 }
 
 static void tex_rect_flip(void)
@@ -716,22 +703,18 @@ static void tex_rect_flip(void)
         }
     }
     render_spans(yhlimit >> 2, yllimit >> 2, tilenum, 1);
-    return;
 }
 
 static void sync_load(void)
 {
-    return;
 }
 
 static void sync_pipe(void)
 {
-    return;
 }
 
 static void sync_tile(void)
 {
-    return;
 }
 
 static void sync_full(void)
@@ -739,7 +722,6 @@ static void sync_full(void)
     z64gl_command = 0; /* wtf is this for */
     *gfx_info.MI_INTR_REG |= DP_INTERRUPT;
     gfx_info.CheckInterrupts();
-    return;
 }
 
 static void set_key_gb(void)
@@ -750,7 +732,6 @@ static void set_key_gb(void)
     key_scale.g  = (cmd_data[cmd_cur + 0].UW32[1] & 0x00FF0000) >> 16;
     key_center.b = (cmd_data[cmd_cur + 0].UW32[1] & 0x0000FF00) >>  8;
     key_scale.b  = (cmd_data[cmd_cur + 0].UW32[1] & 0x000000FF) >>  0;
-    return;
 }
 
 static void set_key_r(void)
@@ -758,7 +739,6 @@ static void set_key_r(void)
     key_width.r  = (cmd_data[cmd_cur + 0].UW32[1] & 0x0FFF0000) >> 16;
     key_center.r = (cmd_data[cmd_cur + 0].UW32[1] & 0x0000FF00) >>  8;
     key_scale.r  = (cmd_data[cmd_cur + 0].UW32[1] & 0x000000FF) >>  0;
-    return;
 }
 
 static void set_convert(void)
@@ -776,7 +756,6 @@ static void set_convert(void)
    k3_tf = (SIGN(k3, 9) << 1) + 1;
    k4 = (w2 >> 9) & 0x1ff;
  	k5 = w2 & 0x1ff;
-   return;
 }
 
 static void set_scissor(void)
@@ -787,7 +766,6 @@ static void set_scissor(void)
     sckeepodd = (cmd_data[cmd_cur + 0].UW32[1] & 0x01000000) >> (24 -  0);
     __clip.xl   = (cmd_data[cmd_cur + 0].UW32[1] & 0x00FFF000) >> (12 -  0);
     __clip.yl   = (cmd_data[cmd_cur + 0].UW32[1] & 0x00000FFF) >> ( 0 -  0);
-    return;
 }
 
 static void set_prim_depth(void)
@@ -795,7 +773,6 @@ static void set_prim_depth(void)
     primitive_z       = (cmd_data[cmd_cur + 0].UW32[1] & 0xFFFF0000) >> 16;
     primitive_delta_z = (cmd_data[cmd_cur + 0].UW32[1] & 0x0000FFFF) >>  0;
     primitive_z = (primitive_z & 0x7FFF) << 16; /* angrylion does this why? */
-    return;
 }
 
 static void set_other_modes(void)
@@ -857,7 +834,6 @@ static void set_other_modes(void)
         &blender2b_a[1], other_modes.blend_m2a_1, other_modes.blend_m2b_1);
 
     other_modes.f.stalederivs = 1;
-    return;
 }
 
 static void set_tile_size(void)
@@ -875,7 +851,6 @@ static void set_tile_size(void)
     tile[tilenum].sh = sh;
     tile[tilenum].th = th;
     calculate_clamp_diffs(tilenum);
-    return;
 }
 
 static void load_block(void)
@@ -912,21 +887,18 @@ static void load_block(void)
     lewdata[9] = 0x20;
 
     edgewalker_for_loads(lewdata);
-    return;
 }
 
 static void load_tlut(void)
 {
     tile_tlut_common_cs_decoder(
         cmd_data[cmd_cur + 0].UW32[0], cmd_data[cmd_cur + 0].UW32[1]);
-    return;
 }
 
 static void load_tile(void)
 {
     tile_tlut_common_cs_decoder(
         cmd_data[cmd_cur + 0].UW32[0], cmd_data[cmd_cur + 0].UW32[1]);
-    return;
 }
 
 static void set_tile(void)
@@ -950,7 +922,6 @@ static void set_tile(void)
     tile[tilenum].shift_s = (cmd_fifo.UW32[1] & 0x0000000F) >> ( 0 -  0);
 
     calculate_tile_derivs(tilenum);
-    return;
 }
 
 static void fill_rect(void)
@@ -1090,13 +1061,11 @@ static void fill_rect(void)
         }
     }
     render_spans(yhlimit >> 2, yllimit >> 2, 0, 1);
-    return;
 }
 
 static void set_fill_color(void)
 {
     fill_color = cmd_data[cmd_cur + 0].UW32[1];
-    return;
 }
 
 static void set_fog_color(void)
@@ -1105,7 +1074,6 @@ static void set_fog_color(void)
     fog_color.g = (cmd_data[cmd_cur + 0].UW32[1] & 0x00FF0000) >> 16;
     fog_color.b = (cmd_data[cmd_cur + 0].UW32[1] & 0x0000FF00) >>  8;
     fog_color.a = (cmd_data[cmd_cur + 0].UW32[1] & 0x000000FF) >>  0;
-    return;
 }
 
 static void set_blend_color(void)
@@ -1114,7 +1082,6 @@ static void set_blend_color(void)
     blend_color.g = (cmd_data[cmd_cur + 0].UW32[1] & 0x00FF0000) >> 16;
     blend_color.b = (cmd_data[cmd_cur + 0].UW32[1] & 0x0000FF00) >>  8;
     blend_color.a = (cmd_data[cmd_cur + 0].UW32[1] & 0x000000FF) >>  0;
-    return;
 }
 
 static void set_prim_color(void)
@@ -1125,7 +1092,6 @@ static void set_prim_color(void)
     prim_color.g       = (cmd_data[cmd_cur + 0].UW32[1] & 0x00FF0000) >> 16;
     prim_color.b       = (cmd_data[cmd_cur + 0].UW32[1] & 0x0000FF00) >>  8;
     prim_color.a       = (cmd_data[cmd_cur + 0].UW32[1] & 0x000000FF) >>  0;
-    return;
 }
 
 static void set_env_color(void)
@@ -1134,7 +1100,6 @@ static void set_env_color(void)
     env_color.g = (cmd_data[cmd_cur + 0].UW32[1] & 0x00FF0000) >> 16;
     env_color.b = (cmd_data[cmd_cur + 0].UW32[1] & 0x0000FF00) >>  8;
     env_color.a = (cmd_data[cmd_cur + 0].UW32[1] & 0x000000FF) >>  0;
-    return;
 }
 
 static void set_combine(void)
@@ -1191,7 +1156,6 @@ static void set_combine(void)
     SET_SUB_ALPHA_INPUT(&combiner_alphaadd[1], combine.add_a1);
 
     other_modes.f.stalederivs = 1;
-    return;
 }
 
 static void set_texture_image(void)
@@ -1202,14 +1166,12 @@ static void set_texture_image(void)
     ti_address = (cmd_data[cmd_cur + 0].UW32[1] & 0x03FFFFFF) >> ( 0 -  0);
  /* ti_address &= 0x00FFFFFF; // physical memory limit, enforced later */
     ++ti_width;
-    return;
 }
 
 static void set_mask_image(void)
 {
     zb_address = cmd_data[cmd_cur + 0].UW32[1] & 0x03FFFFFF;
  /* zb_address &= 0x00FFFFFF; */
-    return;
 }
 
 static void set_color_image(void)
@@ -1220,7 +1182,6 @@ static void set_color_image(void)
     fb_address = (cmd_data[cmd_cur + 0].UW32[1] & 0x03FFFFFF) >> ( 0 -  0);
     ++fb_width;
  /* fb_address &= 0x00FFFFFF; */
-    return;
 }
 
 static NOINLINE void draw_triangle(int shade, int texture, int zbuffer)
@@ -1835,7 +1796,6 @@ no_read_zbuffer_coefficients:
 #ifdef USE_MMX_DECODES
     _mm_empty();
 #endif
-    return;
 }
 
 STRICTINLINE static u16 normalize_dzpix(u16 sum)
@@ -1884,7 +1844,6 @@ NOINLINE static void render_spans(
             render_spans_2cycle_ptr(yhlimit, yllimit, tilenum, flip);
         else
             render_spans_1cycle_ptr(yhlimit, yllimit, tilenum, flip);
-    return;
 }
 
 #ifdef USE_SSE_SUPPORT
