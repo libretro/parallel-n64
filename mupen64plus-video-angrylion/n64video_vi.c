@@ -6,6 +6,7 @@
 #include "api/libretro.h"
 
 extern retro_log_printf_t log_cb;
+extern retro_environment_t environ_cb;
 
 onetime onetimewarnings;
 
@@ -88,6 +89,7 @@ void rdp_update(void)
     int lowerfield;
     register int i, j;
     extern uint32_t *blitter_buf_lock;
+    struct retro_framebuffer fb = {0};
     const int x_add = *GET_GFX_INFO(VI_X_SCALE_REG) & 0x00000FFF;
     const int v_sync = *GET_GFX_INFO(VI_V_SYNC_REG) & 0x000003FF;
     const int ispal  = (v_sync > 550);
@@ -99,6 +101,16 @@ void rdp_update(void)
     const int delta_y = y2 - y1;
     const int vitype = *GET_GFX_INFO(VI_STATUS_REG) & 0x00000003;
     const int pixel_size = sizeof(INT32);
+
+#if 0
+    fb.width        = PRESCALE_WIDTH;
+    fb.height       = PRESCALE_HEIGHT;
+    fb.access_flags = RETRO_MEMORY_ACCESS_WRITE;
+
+    if (environ_cb(RETRO_ENVIRONMENT_GET_CURRENT_SOFTWARE_FRAMEBUFFER, &fb)
+          && fb.format == RETRO_PIXEL_FORMAT_XRGB8888)
+       blitter_buf_lock = (uint32_t*)fb.data;
+#endif
 
 /*
  * initial value (angrylion)

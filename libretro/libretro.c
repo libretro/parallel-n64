@@ -327,26 +327,9 @@ bool emu_step_render(void)
 {
    if (flip_only)
    {
-      struct retro_framebuffer fb = {0};
-
       switch (gfx_plugin)
       {
          case GFX_ANGRYLION:
-#if 0
-            fb.width                    = PRESCALE_WIDTH;
-            fb.height                   = PRESCALE_HEIGHT;
-            fb.access_flags             = RETRO_MEMORY_ACCESS_WRITE;
-
-            if (environ_cb(RETRO_ENVIRONMENT_GET_CURRENT_SOFTWARE_FRAMEBUFFER, &fb) 
-                  && fb.format == RETRO_PIXEL_FORMAT_XRGB8888)
-            {
-               blitter_buf_lock = (uint32_t*)fb.data;
-               screen_pitch     = fb.pitch;
-            }
-            else
-               blitter_buf_lock = blitter_buf;
-#endif
-
             video_cb((screen_pitch == 0) ? NULL : blitter_buf_lock, screen_width, screen_height, screen_pitch);
             break;
          default:
@@ -969,7 +952,7 @@ void retro_run (void)
 {
    static bool updated = false;
 
-
+   blitter_buf_lock = blitter_buf;
 
    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE_UPDATE, &updated) && updated)
    {
