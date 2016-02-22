@@ -87,7 +87,6 @@ void rdp_update(void)
     int validinterlace;
     int lowerfield;
     register int i, j;
-    extern uint32_t *blitter_buf;
     extern uint32_t *blitter_buf_lock;
     const int x_add = *GET_GFX_INFO(VI_X_SCALE_REG) & 0x00000FFF;
     const int v_sync = *GET_GFX_INFO(VI_V_SYNC_REG) & 0x000003FF;
