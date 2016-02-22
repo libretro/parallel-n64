@@ -20,9 +20,10 @@ UINT32 gamma_table[0x100];
 UINT32 gamma_dither_table[0x4000];
 INT32 vi_restore_table[0x400];
 INT32 oldvstart = 1337;
-int32_t* PreScale;
 
 int overlay = 0;
+
+extern uint32_t *blitter_buf_lock;
 
 static UINT32 tvfadeoutstate[625];
 static UINT32 brightness = 0;
@@ -160,16 +161,11 @@ void rdp_update(void)
     if (hres <= 0 || vres <= 0 || (!(vitype & 2) && prevwasblank)) /* early return. */
         return;
 
-    if (blitter_buf_lock)
-       PreScale = (uint32_t*)blitter_buf_lock;
-    else
-       PreScale = (uint32_t*)blitter_buf;
-
     if (vitype >> 1 == 0)
     {
         zerobuf(tvfadeoutstate, pixel_size*PRESCALE_HEIGHT);
         for (i = 0; i < PRESCALE_HEIGHT; i++)
-            zerobuf(&PreScale[i * pitchindwords], pixel_size*PRESCALE_WIDTH);
+            zerobuf(&blitter_buf_lock[i * pitchindwords], pixel_size*PRESCALE_WIDTH);
         prevwasblank = 1;
         goto no_frame_buffer;
     }
@@ -189,17 +185,17 @@ void rdp_update(void)
     prevwasblank = 0;
     if (h_start > 0 && h_start < PRESCALE_WIDTH)
         for (i = 0; i < vactivelines; i++)
-            zerobuf(&PreScale[i*pitchindwords], pixel_size*h_start);
+            zerobuf(&blitter_buf_lock[i*pitchindwords], pixel_size*h_start);
 
     if (h_end >= 0 && h_end < PRESCALE_WIDTH)
         for (i = 0; i < vactivelines; i++)
-            zerobuf(&PreScale[i*pitchindwords + h_end], pixel_size*hrightblank);
+            zerobuf(&blitter_buf_lock[i*pitchindwords + h_end], pixel_size*hrightblank);
 
     for (i = 0; i < (v_start << two_lines) + lowerfield; i++)
     {
         tvfadeoutstate[i] >>= 1;
         if (~tvfadeoutstate[i] & validh)
-            zerobuf(&PreScale[i*pitchindwords + h_start], pixel_size*hres);
+            zerobuf(&blitter_buf_lock[i*pitchindwords + h_start], pixel_size*hres);
     }
 
     if (serration_pulses == 0)
@@ -212,7 +208,7 @@ void rdp_update(void)
             ++i;
             tvfadeoutstate[i] >>= 1;
             if (~tvfadeoutstate[i] & validh)
-                zerobuf(&PreScale[i*pitchindwords + h_start], pixel_size*hres);
+                zerobuf(&blitter_buf_lock[i*pitchindwords + h_start], pixel_size*hres);
             ++i;
         }
 
@@ -220,7 +216,7 @@ void rdp_update(void)
     {
         tvfadeoutstate[i] >>= 1;
         if (~tvfadeoutstate[i] & validh)
-            zerobuf(&PreScale[i*pitchindwords + h_start], pixel_size*hres);
+            zerobuf(&blitter_buf_lock[i*pitchindwords + h_start], pixel_size*hres);
         ++i;
     }
 
@@ -240,13 +236,13 @@ no_frame_buffer:
         while (cur_line >= 0)
         {
             memcpy(
-                &PreScale[2*PRESCALE_WIDTH*cur_line + PRESCALE_WIDTH],
-                &PreScale[1*PRESCALE_WIDTH*cur_line],
+                &blitter_buf_lock[2*PRESCALE_WIDTH*cur_line + PRESCALE_WIDTH],
+                &blitter_buf_lock[1*PRESCALE_WIDTH*cur_line],
                 4 * PRESCALE_WIDTH
             );
             memcpy(
-                &PreScale[2*PRESCALE_WIDTH*cur_line + 0],
-                &PreScale[1*PRESCALE_WIDTH*cur_line],
+                &blitter_buf_lock[2*PRESCALE_WIDTH*cur_line + 0],
+                &blitter_buf_lock[1*PRESCALE_WIDTH*cur_line],
                 4 * PRESCALE_WIDTH
             );
             --cur_line;
@@ -350,7 +346,7 @@ static void do_frame_buffer_proper(
               = cache_marker_init;
         }
 
-        scanline = &PreScale[prescale_ptr];
+        scanline = &blitter_buf_lock[prescale_ptr];
         prescale_ptr += linecount;
 
         prevy = y_start >> 10;
@@ -595,7 +591,7 @@ static void do_frame_buffer_raw(
         while (--vres >= 0)
         {
             x_start = *GET_GFX_INFO(VI_X_SCALE_REG)>>16 & 0x0FFF;
-            scanline = &PreScale[prescale_ptr];
+            scanline = &blitter_buf_lock[prescale_ptr];
             prescale_ptr += linecount;
 
             prevy = y_start >> 10;
@@ -629,7 +625,7 @@ static void do_frame_buffer_raw(
         while (--vres >= 0)
         {
             x_start = *GET_GFX_INFO(VI_X_SCALE_REG)>>16 & 0x0FFF;
-            scanline = &PreScale[prescale_ptr];
+            scanline = &blitter_buf_lock[prescale_ptr];
             prescale_ptr += linecount;
 
             prevy = y_start >> 10;

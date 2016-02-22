@@ -330,15 +330,13 @@ bool emu_step_render(void)
       switch (gfx_plugin)
       {
          case GFX_ANGRYLION:
-            video_cb((screen_pitch == 0) ? NULL : (blitter_buf_lock ? 
-                     blitter_buf_lock : blitter_buf), screen_width, screen_height, screen_pitch);
+            video_cb((screen_pitch == 0) ? NULL : blitter_buf_lock, screen_width, screen_height, screen_pitch);
             break;
          default:
 #ifdef HAVE_OPENGL
             video_cb(RETRO_HW_FRAME_BUFFER_VALID, screen_width, screen_height, 0);
 #else
-            video_cb((screen_pitch == 0) ? NULL : (blitter_buf_lock ? 
-                     blitter_buf_lock : blitter_buf), screen_width, screen_height, screen_pitch);
+            video_cb((screen_pitch == 0) ? NULL : blitter_buf_lock, screen_width, screen_height, screen_pitch);
 #endif
             break;
       }
@@ -526,6 +524,7 @@ void retro_init(void)
    blitter_buf = (uint32_t*)calloc(
          PRESCALE_WIDTH * PRESCALE_HEIGHT, sizeof(uint32_t)
          );
+   blitter_buf_lock = blitter_buf;
 
    //hacky stuff for Glide64
    polygonOffsetUnits = -3.0f;
@@ -544,7 +543,8 @@ void retro_deinit(void)
 
    if (blitter_buf)
       free(blitter_buf);
-   blitter_buf = NULL;
+   blitter_buf      = NULL;
+   blitter_buf_lock = NULL;
 
 #ifndef SINGLE_THREAD
    co_delete(cpu_thread);
@@ -954,22 +954,19 @@ void retro_run (void)
    struct retro_framebuffer fb = {0};
 
 #if 0
-   if (blitter_buf != NULL)
-   {
-      blitter_buf_lock = NULL;
+   blitter_buf_lock = blitter_buf;
 
 #ifdef HAVE_OPENGL
-      if (gfx_plugin == GFX_ANGRYLION)
+   if (gfx_plugin == GFX_ANGRYLION)
 #endif
-      {
-         fb.width                    = PRESCALE_WIDTH;
-         fb.height                   = PRESCALE_HEIGHT;
-         fb.access_flags             = RETRO_MEMORY_ACCESS_WRITE;
+   {
+      fb.width                    = PRESCALE_WIDTH;
+      fb.height                   = PRESCALE_HEIGHT;
+      fb.access_flags             = RETRO_MEMORY_ACCESS_WRITE;
 
-         if (environ_cb(RETRO_ENVIRONMENT_GET_CURRENT_SOFTWARE_FRAMEBUFFER, &fb) 
-               && fb.format == RETRO_PIXEL_FORMAT_XRGB8888)
-            blitter_buf_lock = (uint32_t*)fb.data;
-      }
+      if (environ_cb(RETRO_ENVIRONMENT_GET_CURRENT_SOFTWARE_FRAMEBUFFER, &fb) 
+            && fb.format == RETRO_PIXEL_FORMAT_XRGB8888)
+         blitter_buf_lock = (uint32_t*)fb.data;
    }
 #endif
 

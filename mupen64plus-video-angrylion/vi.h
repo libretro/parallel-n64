@@ -73,7 +73,6 @@ extern UINT32 gamma_table[0x100];
 extern UINT32 gamma_dither_table[0x4000];
 extern INT32 vi_restore_table[0x400];
 extern INT32 oldvstart;
-extern INT32* PreScale;
 
 extern NOINLINE void DisplayError(char * error);
 extern NOINLINE void zerobuf(void * memory, size_t length);
