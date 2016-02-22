@@ -75,7 +75,6 @@ extern INT32 vi_restore_table[0x400];
 extern INT32 oldvstart;
 
 extern NOINLINE void DisplayError(char * error);
-extern NOINLINE void zerobuf(void * memory, size_t length);
 
 extern STRICTINLINE INT32 irand(void);
 extern void rdp_init(void);
