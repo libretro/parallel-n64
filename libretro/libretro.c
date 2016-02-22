@@ -81,7 +81,7 @@ static bool     pushed_frame        = false;
 
 unsigned frame_dupe = false;
 
-extern uint32_t *blitter_buf;
+uint32_t *blitter_buf;
 uint32_t *blitter_buf_lock   = NULL;
 
 enum gfx_plugin_type gfx_plugin;
@@ -523,6 +523,10 @@ void retro_init(void)
    environ_cb(RETRO_ENVIRONMENT_SET_PIXEL_FORMAT, &colorMode);
    environ_cb(RETRO_ENVIRONMENT_GET_RUMBLE_INTERFACE, &rumble);
 
+   blitter_buf = (uint32_t*)calloc(
+         PRESCALE_WIDTH * PRESCALE_HEIGHT, sizeof(uint32_t)
+         );
+
    //hacky stuff for Glide64
    polygonOffsetUnits = -3.0f;
    polygonOffsetFactor =  -3.0f;
@@ -537,6 +541,10 @@ void retro_deinit(void)
 {
    main_stop();
    main_exit();
+
+   if (blitter_buf)
+      free(blitter_buf);
+   blitter_buf = NULL;
 
 #ifndef SINGLE_THREAD
    co_delete(cpu_thread);

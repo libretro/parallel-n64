@@ -11,7 +11,7 @@
 extern unsigned int screen_width, screen_height;
 extern uint32_t screen_pitch;
 
-uint32_t *blitter_buf;
+extern uint32_t *blitter_buf;
 int res;
 RECT __dst, __src;
 INT32 pitchindwords;
@@ -90,8 +90,6 @@ EXPORT void CALL angrylionProcessRDPList(void)
 EXPORT void CALL angrylionRomClosed (void)
 {
     rdp_close();
-    if (blitter_buf)
-       free(blitter_buf);
 
     SaveLoaded = 1;
     command_counter = 0;
@@ -117,11 +115,8 @@ EXPORT int CALL angrylionRomOpen (void)
    if (screen_height > 480)
       screen_height = 480;
 
-   blitter_buf = (uint32_t*)calloc(
-         PRESCALE_WIDTH * PRESCALE_HEIGHT, sizeof(uint32_t)
-         );
    pitchindwords = PRESCALE_WIDTH / 1; /* sizeof(DWORD) == sizeof(pixel) == 4 */
-   screen_pitch = PRESCALE_WIDTH << 2;
+   screen_pitch  = PRESCALE_WIDTH << 2;
 
    rdp_init();
    overlay = ConfigGetParamBool(l_ConfigAngrylion, "VIOverlay");
