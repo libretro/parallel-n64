@@ -3168,6 +3168,13 @@ void fetch_qword_copy(UINT32* hidword, UINT32* lowdword, INT32 ssss, INT32 ssst,
     }
 }
 
+static unsigned angrylion_filtering = 0;
+
+void angrylion_set_filtering(unsigned filter_type)
+{
+   angrylion_filtering = filter_type;
+}
+
 #define TRELATIVE(x, y)     ((x) - ((y) << 3));
 #define UPPER ((sfrac + tfrac) & 0x20)
 
@@ -3193,7 +3200,8 @@ static void texture_pipeline_cycle(COLOR* TEX, COLOR* prev, INT32 SSS, INT32 SST
     sss1 = TRELATIVE(sss1, tile[tilenum].sl);
     sst1 = TRELATIVE(sst1, tile[tilenum].tl);
 
-    if (other_modes.sample_type)
+    if (other_modes.sample_type 
+          && angrylion_filtering != 2)
     {    
         sfrac = sss1 & 0x1f;
         tfrac = sst1 & 0x1f;

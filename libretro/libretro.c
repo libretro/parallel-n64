@@ -561,6 +561,7 @@ void retro_deinit(void)
 #ifdef HAVE_OPENGL
 extern void glide_set_filtering(unsigned value);
 #endif
+extern void angrylion_set_filtering(unsigned value);
 extern void ChangeSize();
 
 void update_variables(bool startup)
@@ -633,7 +634,6 @@ void update_variables(bool startup)
    var.key = "mupen64-filtering";
    var.value = NULL;
 
-#ifdef HAVE_OPENGL
    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
    {
 	  if (!strcmp(var.value, "automatic"))
@@ -648,13 +648,20 @@ void update_variables(bool startup)
 		  retro_filtering = 2;
 	  else if (!strcmp(var.value, "bilinear"))
 		  retro_filtering = 3;
-	  if (gfx_plugin == GFX_GLIDE64)
-      {
-          log_cb(RETRO_LOG_DEBUG, "set glide filtering mode\n");
-		  glide_set_filtering(retro_filtering);
-      }
-   }
+
+     log_cb(RETRO_LOG_DEBUG, "set filtering mode...\n");
+     switch (gfx_plugin)
+     {
+        case GFX_GLIDE64:
+#ifdef HAVE_OPENGL
+           glide_set_filtering(retro_filtering);
 #endif
+           break;
+        case GFX_ANGRYLION:
+           angrylion_set_filtering(retro_filtering);
+           break;
+     }
+   }
 
    var.key = "mupen64-polyoffset-factor";
    var.value = NULL;
