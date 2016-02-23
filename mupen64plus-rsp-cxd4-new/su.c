@@ -16,6 +16,12 @@
 #define EMULATE_STATIC_PC
 
 #include "su.h"
+#include "vu/add.c"
+#include "vu/divide.c"
+#include "vu/logical.c"
+#include "vu/multiply.c"
+#include "vu/select.c"
+#include "vu/vu.c"
 
 /*
  * including modular interface structure to access configuration settings...
@@ -1844,7 +1850,7 @@ EX:
             source = *(v16 *)VR[vs];
             target = *(v16 *)shuffle_temporary;
 
-            *(v16 *)(VR[vd]) = vector_op(source, target);
+            vector_op(source, target);
 #else
             vector_copy(source, VR[vs]);
             vector_copy(target, shuffle_temporary);

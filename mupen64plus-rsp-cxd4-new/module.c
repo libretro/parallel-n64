@@ -82,7 +82,7 @@ EXPORT m64p_error CALL PluginShutdown(void)
     return M64ERR_SUCCESS;
 }
 
-EXPORT m64p_error CALL PluginGetVersion(m64p_plugin_type *PluginType, int *PluginVersion, int *APIVersion, const char **PluginNamePtr, int *Capabilities)
+EXPORT m64p_error CALL cxd4PluginGetVersion(m64p_plugin_type *PluginType, int *PluginVersion, int *APIVersion, const char **PluginNamePtr, int *Capabilities)
 {
     /* set version info */
     if (PluginType != NULL)
@@ -109,7 +109,7 @@ EXPORT int CALL RomOpen(void)
 }
 
 
-EXPORT unsigned int CALL DoRspCycles(unsigned int cycles)
+EXPORT unsigned int CALL cxd4DoRspCycles(unsigned int cycles)
 {
     if (GET_RCP_REG(SP_STATUS_REG) & 0x00000003)
     {
