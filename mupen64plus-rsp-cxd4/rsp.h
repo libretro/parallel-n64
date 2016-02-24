@@ -89,11 +89,4 @@ static short MFC0_count[32];
 /* Keep one C0 MF status read count for each scalar register. */
 #endif
 
-#include "su.h"
-#include "vu/vu.h"
-
-/* Allocate the RSP CPU loop to its own functional space. */
-NOINLINE extern void run_task(void);
-#include "execute.h"
-
 #endif
