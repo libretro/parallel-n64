@@ -474,16 +474,6 @@ EX:
     *RSP.SP_PC_REG = 0x04001000 | FIT_IMEM(PC);
 }
 
-NOINLINE void update_conf(const char* source)
-{
-    memset(conf, 0, sizeof(conf));
-
-    CFG_HLE_GFX = ConfigGetParamBool(l_ConfigRsp, "DisplayListToGraphicsPlugin");
-    CFG_HLE_AUD = ConfigGetParamBool(l_ConfigRsp, "AudioListToAudioPlugin");
-    CFG_WAIT_FOR_CPU_HOST = ConfigGetParamBool(l_ConfigRsp, "WaitForCPUHost");
-    CFG_MEND_SEMAPHORE_LOCK = ConfigGetParamBool(l_ConfigRsp, "SupportCPUSemaphoreLock");
-}
-
 static void DebugMessage(int level, const char *message, ...)
 {
   char msgbuf[1024];
@@ -555,7 +545,12 @@ EXPORT int CALL RomOpen(void)
     if (!l_PluginInit)
         return 0;
 
-    update_conf(CFG_FILE);
+    memset(conf, 0, sizeof(conf));
+
+    CFG_HLE_GFX = ConfigGetParamBool(l_ConfigRsp, "DisplayListToGraphicsPlugin");
+    CFG_HLE_AUD = ConfigGetParamBool(l_ConfigRsp, "AudioListToAudioPlugin");
+    CFG_WAIT_FOR_CPU_HOST = ConfigGetParamBool(l_ConfigRsp, "WaitForCPUHost");
+    CFG_MEND_SEMAPHORE_LOCK = ConfigGetParamBool(l_ConfigRsp, "SupportCPUSemaphoreLock");
     return 1;
 }
 
