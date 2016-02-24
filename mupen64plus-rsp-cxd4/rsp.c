@@ -89,8 +89,8 @@ static INLINE unsigned SPECIAL(uint32_t inst, uint32_t PC)
          SET_PC(SR[rs = inst >> 21]);
          return 1;
       case 015: /* BREAK */
-         *RSP.SP_STATUS_REG |= 0x00000003; /* BROKE | HALT */
-         if (*RSP.SP_STATUS_REG & 0x00000040)
+         *RSP.SP_STATUS_REG |= SP_STATUS_BROKE | SP_STATUS_HALT;
+         if (*RSP.SP_STATUS_REG & SP_STATUS_INTR_BREAK)
          { /* SP_STATUS_INTR_BREAK */
             *RSP.MI_INTR_REG |= 0x00000001;
             RSP.CheckInterrupts();
@@ -263,7 +263,7 @@ static unsigned int run_task_opcode(uint32_t inst, const int opcode)
          switch (rs)
          {
             case 000: /* MFC0 */
-               MFC0(rt, rd & 0xF);
+               SP_CP0_MF(rt, rd);
                break;
             case 004: /* MTC0 */
                MTC0[rd & 0xF](rt);

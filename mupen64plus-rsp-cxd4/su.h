@@ -42,6 +42,8 @@ NOINLINE static void res_S(void)
 #define BASE_OFF    0x004
 #endif
 
+#define NUMBER_OF_CP0_REGISTERS 16
+
 #define SLOT_OFF    (BASE_OFF + 0x000)
 #define LINK_OFF    (BASE_OFF + 0x004)
 
@@ -97,24 +99,23 @@ extern void USW(int rs, uint32_t addr);
 extern RCPREG* CR[16];
 extern int stale_signals;
 
-static void MFC0(int rt, int rd)
+static void SP_CP0_MF(int rt, int rd)
 {
-    SR[rt] = *(CR[rd]);
+    SR[rt] = *(CR[rd %= NUMBER_OF_CP0_REGISTERS]);
     SR[0] = 0x00000000;
     if (rd == 0x7) /* SP_SEMAPHORE_REG */
     {
         if (CFG_MEND_SEMAPHORE_LOCK == 0)
             return;
+        if (CFG_HLE_GFX | CFG_HLE_AUD)
+            return;
         *RSP.SP_SEMAPHORE_REG = 0x00000001;
-        *RSP.SP_STATUS_REG |= 0x00000001; /* temporary bit to break CPU */
+        *RSP.SP_STATUS_REG |= SP_STATUS_HALT; /* temporary bit to break CPU */
         return;
     }
+#ifdef WAIT_FOR_CPU_HOST
     if (rd == 0x4) /* SP_STATUS_REG */
     {
-#if (0)
-        if (CFG_WAIT_FOR_CPU_HOST == 0)
-            return;
-#endif
         ++MFC0_count[rt];
         if (MFC0_count[rt] >= MF_SP_STATUS_TIMEOUT)
         {
@@ -122,6 +123,7 @@ static void MFC0(int rt, int rd)
             stale_signals = 1;
         }
     }
+#endif
 }
 
 static void MT_DMA_CACHE(int rt)
