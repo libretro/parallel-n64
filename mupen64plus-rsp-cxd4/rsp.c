@@ -30,8 +30,6 @@ unsigned char conf[32];
 
 #define RSP_CXD4_VERSION 0x0101
 
-#if defined(M64P_PLUGIN_API)
-
 #include <stdarg.h>
 
 #define RSP_PLUGIN_API_VERSION 0x020000
@@ -133,53 +131,6 @@ EXPORT int CALL RomOpen(void)
     update_conf(CFG_FILE);
     return 1;
 }
-#else
-
-EXPORT void CALL CloseDLL(void)
-{
-    RSP.RDRAM = NULL; /* so DllTest benchmark doesn't think ROM is still open */
-    return;
-}
-static const char DLL_about[] =
-    "RSP Interpreter by Iconoclast&&ECHO."\
-    "&&ECHO "\
-    "Thanks for test RDP:  Jabo, ziggy, angrylion\n"\
-    "RSP driver examples:  bpoint, zilmar, Ville Linde\n"\
-    "Helpful shenanigans:  mudlord, MarathonMan, Garteal";
-EXPORT void CALL DllAbout(HWND hParent)
-{
-    hParent = NULL;
-    message(DLL_about, 3);
-    return;
-}
-EXPORT void CALL DllConfig(HWND hParent)
-{
-    FILE* stream;
-    register int PC;
-
-    hParent = NULL;
-    system("sp_cfgui"); /* This launches an EXE by default (if not, BAT/CMD). */
-    update_conf(CFG_FILE);
-    if (RSP.DMEM == RSP.IMEM || *RSP.SP_PC_REG == 0x00000000)
-        return;
-
-    export_SP_memory();
-    trace_RSP_registers();
-    stream = fopen("rsp_task.txt", "w");
-    fprintf(stream, "off   inst             disassembled\n");
-    fprintf(stream, "--- -------- --------------------------------\n");
-    for (PC = 0; PC < 4096; PC += 4)
-    {
-        const uint32_t inst = *(uint32_t *)(RSP.IMEM + PC);
-
-        disassemble(inst);
-        fprintf(stream, "%03X %08"PRIX32" %s\n", PC, inst, disasm);
-    }
-    fclose(stream);
-    return;
-}
-
-#endif
 
 EXPORT unsigned int CALL cxd4DoRspCycles(unsigned int cycles)
 {
