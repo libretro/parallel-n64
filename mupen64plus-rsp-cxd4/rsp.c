@@ -440,19 +440,15 @@ EX:
 
           COP2_C2[opcode](vd, vs, vt, e);
        }
-       else
+       else if (run_task_opcode(inst, inst >> 26))
        {
-          int task_ran = run_task_opcode(inst, inst >> 26);
-          if (task_ran)
-          {
 #ifdef EMULATE_STATIC_PC
-             inst = *(uint32_t *)(RSP.IMEM + FIT_IMEM(PC));
-             PC = temp_PC & 0x00000FFC;
-             goto EX;
+          inst = *(uint32_t *)(RSP.IMEM + FIT_IMEM(PC));
+          PC = temp_PC & 0x00000FFC;
+          goto EX;
 #else
-             break;
+          break;
 #endif
-          }
        }
 
 #ifndef EMULATE_STATIC_PC
