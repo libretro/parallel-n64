@@ -103,7 +103,7 @@ EX:
                     SR[rd] = (PC + LINK_OFF) & 0x00000FFC;
                     SR[0] = 0x00000000;
                 case 010: /* JR */
-                    set_PC(SR[rs = inst >> 21]);
+                    SET_PC(SR[rs = inst >> 21]);
                     JUMP
                 case 015: /* BREAK */
                     *RSP.SP_STATUS_REG |= 0x00000003; /* BROKE | HALT */
@@ -170,14 +170,14 @@ EX:
                 case 000: /* BLTZ */
                     if (!(SR[rs] < 0))
                         CONTINUE
-                    set_PC(PC + 4*inst + SLOT_OFF);
+                    SET_PC(PC + 4*inst + SLOT_OFF);
                     JUMP
                 case 021: /* BGEZAL */
                     SR[31] = (PC + LINK_OFF) & 0x00000FFC;
                 case 001: /* BGEZ */
                     if (!(SR[rs] >= 0))
                         CONTINUE
-                    set_PC(PC + 4*inst + SLOT_OFF);
+                    SET_PC(PC + 4*inst + SLOT_OFF);
                     JUMP
                 default:
                     res_S();
@@ -187,31 +187,31 @@ EX:
             case 003: /* JAL */
                 SR[31] = (PC + LINK_OFF) & 0x00000FFC;
             case 002: /* J */
-                set_PC(4*inst);
+                SET_PC(4*inst);
                 JUMP
             case 004: /* BEQ */
                 rs = (inst >> 21) & 31;
                 rt = (inst >> 16) & 31;
                 if (!(SR[rs] == SR[rt]))
                     CONTINUE
-                set_PC(PC + 4*inst + SLOT_OFF);
+                SET_PC(PC + 4*inst + SLOT_OFF);
                 JUMP
             case 005: /* BNE */
                 rs = (inst >> 21) & 31;
                 rt = (inst >> 16) & 31;
                 if (!(SR[rs] != SR[rt]))
                     CONTINUE
-                set_PC(PC + 4*inst + SLOT_OFF);
+                SET_PC(PC + 4*inst + SLOT_OFF);
                 JUMP
             case 006: /* BLEZ */
                 if (!((signed)SR[rs = (inst >> 21) & 31] <= 0x00000000))
                     CONTINUE
-                set_PC(PC + 4*inst + SLOT_OFF);
+                SET_PC(PC + 4*inst + SLOT_OFF);
                 JUMP
             case 007: /* BGTZ */
                 if (!((signed)SR[rs = (inst >> 21) & 31] >  0x00000000))
                     CONTINUE
-                set_PC(PC + 4*inst + SLOT_OFF);
+                SET_PC(PC + 4*inst + SLOT_OFF);
                 JUMP
             case 010: /* ADDI */
             case 011: /* ADDIU */

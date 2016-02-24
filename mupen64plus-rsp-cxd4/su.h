@@ -50,14 +50,13 @@ NOINLINE static void res_S(void)
 
 extern int MF_SP_STATUS_TIMEOUT;
 
-void set_PC(int address)
-{
-    temp_PC = 0x04001000 + (address & 0xFFC);
-#ifndef EMULATE_STATIC_PC
-    stage = 1;
+#ifdef EMULATE_STATIC_PC
+#define SET_PC(addr) (temp_PC = 0x04001000  + ((addr) & 0xFFC))
+#else
+#define SET_PC(addr) \
+    temp_PC = 0x04001000 + ((addr) & 0xFFC); \
+    stage = 1
 #endif
-    return;
-}
 
 #if (0)
 #define MASK_SA(sa) (sa & 31)
