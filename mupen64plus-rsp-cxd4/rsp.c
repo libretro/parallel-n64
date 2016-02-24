@@ -25,7 +25,6 @@ unsigned char conf[32];
 #include "m64p_plugin.h"
 #include "su.h"
 #include "vu/vu.h"
-#include "matrix.h"
 
 #define RSP_CXD4_VERSION 0x0101
 
