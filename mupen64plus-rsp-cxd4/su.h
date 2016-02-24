@@ -97,64 +97,6 @@ extern void USW(int rs, uint32_t addr);
 extern RCPREG* CR[16];
 extern int stale_signals;
 
-static INLINE void SP_DMA_WRITE(void)
-{
-    unsigned int length = (*RSP.SP_WR_LEN_REG & 0x00000FFF) >>  0;
-    unsigned int count  = (*RSP.SP_WR_LEN_REG & 0x000FF000) >> 12;
-    unsigned int skip   = (*RSP.SP_WR_LEN_REG & 0xFFF00000) >> 20;
-    /* length |= 07; // already corrected by mtc0 */
-    ++length;
-    ++count;
-    skip += length;
-    do
-    { /* `count` always starts > 0, so we begin with `do` instead of `while`. */
-        unsigned int offC, offD; /* SP cache and dynamic DMA pointers */
-        register unsigned int i = 0;
-
-        --count;
-        do
-        {
-            offC = (count*length + *RSP.SP_MEM_ADDR_REG + i) & 0x00001FF8;
-            offD = (count*skip + *RSP.SP_DRAM_ADDR_REG + i) & 0x00FFFFF8;
-            *(int64_t*)(RSP.RDRAM + offD) = *(int64_t*)(RSP.DMEM + offC);
-            i += 0x000008;
-        } while (i < length);
-    } while (count);
-    *RSP.SP_DMA_BUSY_REG = 0x00000000;
-    *RSP.SP_STATUS_REG &= ~SP_STATUS_DMA_BUSY;
-}
-
-static INLINE void SP_DMA_READ(void)
-{
-   unsigned int length = (*RSP.SP_RD_LEN_REG & 0x00000FFF) >>  0;
-   unsigned int count  = (*RSP.SP_RD_LEN_REG & 0x000FF000) >> 12;
-   unsigned int skip   = (*RSP.SP_RD_LEN_REG & 0xFFF00000) >> 20;
-
-   ++length;
-   ++count;
-   skip += length;
-   do
-   { /* `count` always starts > 0, so we begin with `do` instead of `while`. */
-      unsigned int offC, offD; /* SP cache and dynamic DMA pointers */
-      register unsigned int i = 0;
-
-      --count;
-      do
-      {
-         offC = (count*length + *RSP.SP_MEM_ADDR_REG + i) & 0x00001FF8;
-         offD = (count*skip + *RSP.SP_DRAM_ADDR_REG + i) & 0x00FFFFF8;
-         *(int64_t*)(RSP.DMEM + offC) =
-            *(int64_t*)(RSP.RDRAM + offD)
-            & (offD & ~MAX_DRAM_DMA_ADDR ? 0 : ~0) /* 0 if (addr > limit) */
-            ;
-         i += 0x008;
-      } while (i < length);
-   } while (count);
-
-   *RSP.SP_DMA_BUSY_REG = 0x00000000;
-   *RSP.SP_STATUS_REG &= ~SP_STATUS_DMA_BUSY;
-}
-
 static void MFC0(int rt, int rd)
 {
     SR[rt] = *(CR[rd]);
@@ -195,12 +137,64 @@ static void MT_DMA_DRAM(int rt)
 static void MT_DMA_READ_LENGTH(int rt)
 {
     *RSP.SP_RD_LEN_REG = SR[rt] | 07;
-    SP_DMA_READ();
+    {
+       unsigned int length = (*RSP.SP_RD_LEN_REG & 0x00000FFF) >>  0;
+       unsigned int count  = (*RSP.SP_RD_LEN_REG & 0x000FF000) >> 12;
+       unsigned int skip   = (*RSP.SP_RD_LEN_REG & 0xFFF00000) >> 20;
+
+       ++length;
+       ++count;
+       skip += length;
+       do
+       { /* `count` always starts > 0, so we begin with `do` instead of `while`. */
+          unsigned int offC, offD; /* SP cache and dynamic DMA pointers */
+          register unsigned int i = 0;
+
+          --count;
+          do
+          {
+             offC = (count*length + *RSP.SP_MEM_ADDR_REG + i) & 0x00001FF8;
+             offD = (count*skip + *RSP.SP_DRAM_ADDR_REG + i) & 0x00FFFFF8;
+             *(int64_t*)(RSP.DMEM + offC) =
+                *(int64_t*)(RSP.RDRAM + offD)
+                & (offD & ~MAX_DRAM_DMA_ADDR ? 0 : ~0) /* 0 if (addr > limit) */
+                ;
+             i += 0x008;
+          } while (i < length);
+       } while (count);
+
+       *RSP.SP_DMA_BUSY_REG = 0x00000000;
+       *RSP.SP_STATUS_REG &= ~SP_STATUS_DMA_BUSY;
+    }
 }
 static void MT_DMA_WRITE_LENGTH(int rt)
 {
     *RSP.SP_WR_LEN_REG = SR[rt] | 07;
-    SP_DMA_WRITE();
+    {
+       unsigned int length = (*RSP.SP_WR_LEN_REG & 0x00000FFF) >>  0;
+       unsigned int count  = (*RSP.SP_WR_LEN_REG & 0x000FF000) >> 12;
+       unsigned int skip   = (*RSP.SP_WR_LEN_REG & 0xFFF00000) >> 20;
+       /* length |= 07; // already corrected by mtc0 */
+       ++length;
+       ++count;
+       skip += length;
+       do
+       { /* `count` always starts > 0, so we begin with `do` instead of `while`. */
+          unsigned int offC, offD; /* SP cache and dynamic DMA pointers */
+          register unsigned int i = 0;
+
+          --count;
+          do
+          {
+             offC = (count*length + *RSP.SP_MEM_ADDR_REG + i) & 0x00001FF8;
+             offD = (count*skip + *RSP.SP_DRAM_ADDR_REG + i) & 0x00FFFFF8;
+             *(int64_t*)(RSP.RDRAM + offD) = *(int64_t*)(RSP.DMEM + offC);
+             i += 0x000008;
+          } while (i < length);
+       } while (count);
+       *RSP.SP_DMA_BUSY_REG = 0x00000000;
+       *RSP.SP_STATUS_REG &= ~SP_STATUS_DMA_BUSY;
+    }
 }
 static void MT_SP_STATUS(int rt)
 {
