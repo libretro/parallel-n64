@@ -134,51 +134,55 @@ EXPORT int CALL RomOpen(void)
 
 EXPORT unsigned int CALL cxd4DoRspCycles(unsigned int cycles)
 {
-    if (*RSP.SP_STATUS_REG & 0x00000003)
-    {
-        message("SP_STATUS_HALT", 3);
-        return 0x00000000;
-    }
-    switch (*(unsigned int *)(RSP.DMEM + 0xFC0))
-    { /* Simulation barrier to redirect processing externally. */
+   unsigned int i;
+   if (*RSP.SP_STATUS_REG & 0x00000003)
+   {
+      message("SP_STATUS_HALT", 3);
+      return 0x00000000;
+   }
+   switch (*(unsigned int *)(RSP.DMEM + 0xFC0))
+   { /* Simulation barrier to redirect processing externally. */
 #ifdef EXTERN_COMMAND_LIST_GBI
-        case 0x00000001:
-            if (CFG_HLE_GFX == 0)
-                break;
-            if (*(unsigned int *)(RSP.DMEM + 0xFF0) == 0x00000000)
-                break; /* Resident Evil 2 */
-            if (rsp_info.ProcessDlistList == NULL) {/*branch next*/} else
-                rsp_info.ProcessDlistList();
-            *RSP.SP_STATUS_REG |= 0x00000203;
-            if (*RSP.SP_STATUS_REG & 0x00000040) /* SP_STATUS_INTR_BREAK */
-            {
-                *RSP.MI_INTR_REG |= 0x00000001; /* VR4300 SP interrupt */
-                rsp_info.CheckInterrupts();
-            }
-            if (*RSP.DPC_STATUS_REG & 0x00000002) /* DPC_STATUS_FREEZE */
-            {
-                message("DPC_CLR_FREEZE", 2);
-                *RSP.DPC_STATUS_REG &= ~0x00000002;
-            }
-            return 0;
+      case 0x00000001:
+         if (CFG_HLE_GFX == 0)
+            break;
+         if (*(unsigned int *)(RSP.DMEM + 0xFF0) == 0x00000000)
+            break; /* Resident Evil 2 */
+         if (rsp_info.ProcessDlistList == NULL) {/*branch next*/} else
+            rsp_info.ProcessDlistList();
+         *RSP.SP_STATUS_REG |= 0x00000203;
+         if (*RSP.SP_STATUS_REG & 0x00000040) /* SP_STATUS_INTR_BREAK */
+         {
+            *RSP.MI_INTR_REG |= 0x00000001; /* VR4300 SP interrupt */
+            rsp_info.CheckInterrupts();
+         }
+         if (*RSP.DPC_STATUS_REG & 0x00000002) /* DPC_STATUS_FREEZE */
+         {
+            message("DPC_CLR_FREEZE", 2);
+            *RSP.DPC_STATUS_REG &= ~0x00000002;
+         }
+         return 0;
 #endif
 #ifdef EXTERN_COMMAND_LIST_ABI
-        case 0x00000002: /* OSTask.type == M_AUDTASK */
-            if (CFG_HLE_AUD == 0)
-                break;
-            if (rsp_info.ProcessAlistList == 0) {} else
-                rsp_info.ProcessAlistList();
-            *RSP.SP_STATUS_REG |= 0x00000203;
-            if (*RSP.SP_STATUS_REG & 0x00000040) /* SP_STATUS_INTR_BREAK */
-            {
-                *RSP.MI_INTR_REG |= 0x00000001; /* VR4300 SP interrupt */
-                rsp_info.CheckInterrupts();
-            }
-            return 0;
+      case 0x00000002: /* OSTask.type == M_AUDTASK */
+         if (CFG_HLE_AUD == 0)
+            break;
+         if (rsp_info.ProcessAlistList == 0) {} else
+            rsp_info.ProcessAlistList();
+         *RSP.SP_STATUS_REG |= 0x00000203;
+         if (*RSP.SP_STATUS_REG & 0x00000040) /* SP_STATUS_INTR_BREAK */
+         {
+            *RSP.MI_INTR_REG |= 0x00000001; /* VR4300 SP interrupt */
+            rsp_info.CheckInterrupts();
+         }
+         return 0;
 #endif
-    }
-    run_task();
-    return (cycles);
+   }
+
+   for (i = 0; i < 32; i++)
+      MFC0_count[i] = 0;
+   run_task();
+   return (cycles);
 }
 EXPORT void CALL GetDllInfo(PLUGIN_INFO *PluginInfo)
 {

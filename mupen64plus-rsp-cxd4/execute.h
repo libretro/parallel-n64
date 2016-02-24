@@ -22,11 +22,8 @@
 
 NOINLINE void run_task(void)
 {
-    register unsigned int i;
     register int PC;
 
-    for (i = 0; i < 32; i++)
-        MFC0_count[i] = 0;
     stale_signals = 0;
 
     PC = FIT_IMEM(*RSP.SP_PC_REG);
