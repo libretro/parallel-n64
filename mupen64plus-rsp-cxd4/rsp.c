@@ -562,9 +562,13 @@ static void SP_DMA_READ(void)
 
 static void SP_DMA_WRITE(void)
 {
-    register unsigned int length = ((*RSP.SP_WR_LEN_REG & 0x00000FFF) >>  0) + 1;
-    register unsigned int count  = ((*RSP.SP_WR_LEN_REG & 0x000FF000) >> 12) + 1;
-    register unsigned int skip   = ((*RSP.SP_WR_LEN_REG & 0xFFF00000) >> 20) + length;
+    register unsigned int length = ((*RSP.SP_WR_LEN_REG & 0x00000FFFUL) >>  0);
+    register unsigned int count  = ((*RSP.SP_WR_LEN_REG & 0x000FF000UL) >> 12);
+    register unsigned int skip   = ((*RSP.SP_WR_LEN_REG & 0xFFF00000UL) >> 20);
+
+    ++length;
+    ++count;
+    skip += length;
 
     do
     {
@@ -575,14 +579,14 @@ static void SP_DMA_WRITE(void)
        do
        {
           /* SP cache and dynamic DMA pointers */
-          unsigned int offC = (count*length + *RSP.SP_MEM_ADDR_REG + i) & 0x00001FF8;
-          unsigned int offD = (count*skip + *RSP.SP_DRAM_ADDR_REG + i) & 0x00FFFFF8;
-          memcpy(RSP.RDRAM + offD, RSP.DMEM + offC, 8);
+          unsigned int offC = (count*length + *RSP.SP_MEM_ADDR_REG   + i) & 0x00001FF8UL;
+          unsigned int offD = (count*skip   + *RSP.SP_DRAM_ADDR_REG  + i) & 0x00FFFFF8UL;
+          *(int64_t*)(RSP.RDRAM + offD) = *(int64_t*)(RSP.DMEM + offC);
           i += 0x000008;
        } while (i < length);
     } while (count);
     *RSP.SP_DMA_BUSY_REG = 0x00000000;
-    *RSP.SP_STATUS_REG &= ~0x00000004; /* SP_STATUS_DMABUSY */
+    *RSP.SP_STATUS_REG &= ~SP_STATUS_DMA_BUSY;
 }
 
 /*** Scalar, Coprocessor Operations (vector unit) ***/

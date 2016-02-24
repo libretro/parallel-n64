@@ -65,4 +65,21 @@ typedef enum
  */
 #define EMULATE_STATIC_PC
 
+/*** Scalar, Coprocessor Operations (system control) ***/
+#define SP_STATUS_HALT          (0x00000001ul <<  0)
+#define SP_STATUS_BROKE         (0x00000001ul <<  1)
+#define SP_STATUS_DMA_BUSY      (0x00000001ul <<  2)
+#define SP_STATUS_DMA_FULL      (0x00000001ul <<  3)
+#define SP_STATUS_IO_FULL       (0x00000001ul <<  4)
+#define SP_STATUS_SSTEP         (0x00000001ul <<  5)
+#define SP_STATUS_INTR_BREAK    (0x00000001ul <<  6)
+#define SP_STATUS_SIG0          (0x00000001ul <<  7)
+#define SP_STATUS_SIG1          (0x00000001ul <<  8)
+#define SP_STATUS_SIG2          (0x00000001ul <<  9)
+#define SP_STATUS_SIG3          (0x00000001ul << 10)
+#define SP_STATUS_SIG4          (0x00000001ul << 11)
+#define SP_STATUS_SIG5          (0x00000001ul << 12)
+#define SP_STATUS_SIG6          (0x00000001ul << 13)
+#define SP_STATUS_SIG7          (0x00000001ul << 14)
+
 #endif
