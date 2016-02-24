@@ -2263,23 +2263,36 @@ EX:
 #else
       continue;
 BRANCH:
-      inst = *(uint32_t *)(RSP.IMEM + FIT_IMEM(PC));
+      inst = *(int32_t *)(RSP.IMEM + FIT_IMEM(PC));
       PC = temp_PC & 0x00000FFC;
       goto EX;
 #endif
    }
    *RSP.SP_PC_REG = 0x04001000 | FIT_IMEM(PC);
-   if (*RSP.SP_STATUS_REG & 0x00000002) /* normal exit, from executing BREAK */
+
+   /*
+    * An optional EMMS when compiling with Intel SIMD or MMX support.
+    *
+    * Whether or not MMX has been executed in this emulator, here is a good time
+    * to finally empty the MM state, at the end of a long interpreter loop.
+    */
+#ifdef ARCH_MIN_SSE2
+      _mm_empty();
+#endif
+
+   if (*RSP.SP_STATUS_REG & SP_STATUS_BROKE) /* normal exit, from executing BREAK */
       return;
-   else if (*RSP.MI_INTR_REG & 0x00000001) /* interrupt set by MTC0 to break */
+   else if (*RSP.MI_INTR_REG & 1) /* interrupt set by MTC0 to break */
       RSP.CheckInterrupts();
    else if (*RSP.SP_SEMAPHORE_REG != 0x00000000) /* semaphore lock fixes */
    {}
 #ifndef WAIT_FOR_CPU_HOST
    else /* ??? unknown, possibly external intervention from CPU memory map */
+   {
       return; /* SP_SET_HALT */
+   }
 #endif
-   *RSP.SP_STATUS_REG &= ~0x00000001; /* CPU restarts with the correct SIGs. */
+   *RSP.SP_STATUS_REG &= ~SP_STATUS_HALT; /* CPU restarts with the correct SIGs. */
 }
 
 EXPORT unsigned int CALL cxd4DoRspCycles(unsigned int cycles)
@@ -2360,14 +2373,5 @@ EXPORT unsigned int CALL cxd4DoRspCycles(unsigned int cycles)
 
    run_task();
 
-   /*
-    * An optional EMMS when compiling with Intel SIMD or MMX support.
-    *
-    * Whether or not MMX has been executed in this emulator, here is a good time
-    * to finally empty the MM state, at the end of a long interpreter loop.
-    */
-#ifdef ARCH_MIN_SSE2
-      _mm_empty();
-#endif
    return (cycles);
 }
