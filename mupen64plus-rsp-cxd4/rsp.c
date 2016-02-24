@@ -182,6 +182,25 @@ EXPORT unsigned int CALL cxd4DoRspCycles(unsigned int cycles)
    for (i = 0; i < 32; i++)
       MFC0_count[i] = 0;
    run_task();
+
+   if (*RSP.SP_STATUS_REG & SP_STATUS_BROKE) /* normal exit, from executing BREAK */
+      return (cycles);
+   else if (*RSP.MI_INTR_REG & 0x00000001) /* interrupt set by MTC0 to break */
+      RSP.CheckInterrupts();
+   else if (*RSP.SP_SEMAPHORE_REG != 0x00000000) /* semaphore lock fixes */
+   {}
+#ifdef WAIT_FOR_CPU_HOST
+   else if (stale_signals != 0) /* too many iterations of MFC0:  timed out */
+      MF_SP_STATUS_TIMEOUT = 16384; /* This is slow:  Make 16 if it works. */
+#else
+   else /* ??? unknown, possibly external intervention from CPU memory map */
+   {
+      message("SP_SET_HALT", 3);
+      return (cycles);
+   }
+#endif
+   *RSP.SP_STATUS_REG &= ~SP_STATUS_HALT; /* CPU restarts with the correct SIGs. */
+
    return (cycles);
 }
 EXPORT void CALL GetDllInfo(PLUGIN_INFO *PluginInfo)

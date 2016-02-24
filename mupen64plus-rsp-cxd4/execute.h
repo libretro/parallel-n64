@@ -437,19 +437,4 @@ BRANCH:
 #endif
     }
     *RSP.SP_PC_REG = 0x04001000 | FIT_IMEM(PC);
-    if (*RSP.SP_STATUS_REG & 0x00000002) /* normal exit, from executing BREAK */
-        return;
-    else if (*RSP.MI_INTR_REG & 0x00000001) /* interrupt set by MTC0 to break */
-        RSP.CheckInterrupts();
-    else if (stale_signals != 0) /* too many iterations of MFC0:  timed out */
-        MF_SP_STATUS_TIMEOUT = 16384; /* This is slow:  Make 16 if it works. */
-    else if (*RSP.SP_SEMAPHORE_REG != 0x00000000) /* semaphore lock fixes */
-        {}
-    else /* ??? unknown, possibly external intervention from CPU memory map */
-    {
-        message("SP_SET_HALT", 3);
-        return;
-    }
-    *RSP.SP_STATUS_REG &= ~0x00000001; /* CPU restarts with the correct SIGs. */
-    return;
 }
