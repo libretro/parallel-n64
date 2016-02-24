@@ -128,30 +128,27 @@ static void MFC0(int rt, int rd)
             stale_signals = 1;
         }
     }
-    return;
 }
 
 static void MT_DMA_CACHE(int rt)
 {
     *RSP.SP_MEM_ADDR_REG = SR[rt] & 0xFFFFFFF8; /* & 0x00001FF8 */
-    return; /* Reserved upper bits are ignored during DMA R/W. */
+    /* Reserved upper bits are ignored during DMA R/W. */
 }
 static void MT_DMA_DRAM(int rt)
 {
     *RSP.SP_DRAM_ADDR_REG = SR[rt] & 0xFFFFFFF8; /* & 0x00FFFFF8 */
-    return; /* Let the reserved bits get sent, but the pointer is 24-bit. */
+    /* Let the reserved bits get sent, but the pointer is 24-bit. */
 }
 static void MT_DMA_READ_LENGTH(int rt)
 {
     *RSP.SP_RD_LEN_REG = SR[rt] | 07;
     SP_DMA_READ();
-    return;
 }
 static void MT_DMA_WRITE_LENGTH(int rt)
 {
     *RSP.SP_WR_LEN_REG = SR[rt] | 07;
     SP_DMA_WRITE();
-    return;
 }
 static void MT_SP_STATUS(int rt)
 {
@@ -183,14 +180,12 @@ static void MT_SP_STATUS(int rt)
     *RSP.SP_STATUS_REG |=  (!!(SR[rt] & 0x00400000) << 13);
     *RSP.SP_STATUS_REG &= ~(!!(SR[rt] & 0x00800000) << 14);
     *RSP.SP_STATUS_REG |=  (!!(SR[rt] & 0x01000000) << 14);
-    return;
 }
 static void MT_SP_RESERVED(int rt)
 {
     const uint32_t source = SR[rt] & 0x00000000; /* forced (zilmar, dox) */
 
     *RSP.SP_SEMAPHORE_REG = source;
-    return;
 }
 static void MT_CMD_START(int rt)
 {
@@ -199,7 +194,6 @@ static void MT_CMD_START(int rt)
     if (*RSP.DPC_BUFBUSY_REG) /* lock hazards not implemented */
         message("MTC0\nCMD_START", 0);
     *RSP.DPC_END_REG = *RSP.DPC_CURRENT_REG = *RSP.DPC_START_REG = source;
-    return;
 }
 static void MT_CMD_END(int rt)
 {
@@ -209,30 +203,29 @@ static void MT_CMD_END(int rt)
     if (RSP.ProcessRdpList == NULL) /* zilmar GFX #1.2 */
         return;
     RSP.ProcessRdpList();
-    return;
 }
 static void MT_CMD_STATUS(int rt)
 {
-    if (SR[rt] & 0xFFFFFD80) /* unsupported or reserved bits */
-        message("MTC0\nCMD_STATUS", 2);
-    *RSP.DPC_STATUS_REG &= ~(!!(SR[rt] & 0x00000001) << 0);
-    *RSP.DPC_STATUS_REG |=  (!!(SR[rt] & 0x00000002) << 0);
-    *RSP.DPC_STATUS_REG &= ~(!!(SR[rt] & 0x00000004) << 1);
-    *RSP.DPC_STATUS_REG |=  (!!(SR[rt] & 0x00000008) << 1);
-    *RSP.DPC_STATUS_REG &= ~(!!(SR[rt] & 0x00000010) << 2);
-    *RSP.DPC_STATUS_REG |=  (!!(SR[rt] & 0x00000020) << 2);
-/* Some NUS-CIC-6105 SP tasks try to clear some zeroed DPC registers. */
-    *RSP.DPC_TMEM_REG     &= !(SR[rt] & 0x00000040) * -1;
- /* *RSP.DPC_PIPEBUSY_REG &= !(SR[rt] & 0x00000080) * -1; */
- /* *RSP.DPC_BUFBUSY_REG  &= !(SR[rt] & 0x00000100) * -1; */
-    *RSP.DPC_CLOCK_REG    &= !(SR[rt] & 0x00000200) * -1;
-    return;
+   if (SR[rt] & 0xFFFFFD80) /* unsupported or reserved bits */
+      message("MTC0\nCMD_STATUS", 2);
+   *RSP.DPC_STATUS_REG &= ~(!!(SR[rt] & 0x00000001) << 0);
+   *RSP.DPC_STATUS_REG |=  (!!(SR[rt] & 0x00000002) << 0);
+   *RSP.DPC_STATUS_REG &= ~(!!(SR[rt] & 0x00000004) << 1);
+   *RSP.DPC_STATUS_REG |=  (!!(SR[rt] & 0x00000008) << 1);
+   *RSP.DPC_STATUS_REG &= ~(!!(SR[rt] & 0x00000010) << 2);
+   *RSP.DPC_STATUS_REG |=  (!!(SR[rt] & 0x00000020) << 2);
+   /* Some NUS-CIC-6105 SP tasks try to clear some zeroed DPC registers. */
+   *RSP.DPC_TMEM_REG     &= !(SR[rt] & 0x00000040) * -1;
+   /* *RSP.DPC_PIPEBUSY_REG &= !(SR[rt] & 0x00000080) * -1; */
+   /* *RSP.DPC_BUFBUSY_REG  &= !(SR[rt] & 0x00000100) * -1; */
+   *RSP.DPC_CLOCK_REG    &= !(SR[rt] & 0x00000200) * -1;
 }
+
 static void MT_CMD_CLOCK(int rt)
 {
     message("MTC0\nCMD_CLOCK", 1); /* read-only?? */
     *RSP.DPC_CLOCK_REG = SR[rt];
-    return; /* Appendix says this is RW; elsewhere it says R. */
+    /* Appendix says this is RW; elsewhere it says R. */
 }
 static void MT_READ_ONLY(int rt)
 {
@@ -240,7 +233,6 @@ static void MT_READ_ONLY(int rt)
 
     sprintf(text, "MTC0\nInvalid write attempt.\nSR[%i] = 0x%08X", rt, SR[rt]);
     message(text, 2);
-    return;
 }
 
 static void (*MTC0[16])(int) = {
@@ -354,14 +346,14 @@ unsigned short rwR_VCE(void)
     ret_slot = 0x00 | (unsigned short)get_VCE();
     return (ret_slot);
 }
+
 void rwW_VCE(unsigned short VCE)
 { /* never saw a game try to write VCE using a scalar GPR yet */
-    register int i;
+   register int i;
 
-    VCE = 0x00 | (VCE & 0xFF);
-    for (i = 0; i < 8; i++)
-        vce[i] = (VCE >> i) & 1;
-    return;
+   VCE = 0x00 | (VCE & 0xFF);
+   for (i = 0; i < 8; i++)
+      vce[i] = (VCE >> i) & 1;
 }
 
 static unsigned short (*R_VCF[32])(void) = {
@@ -386,6 +378,7 @@ static void (*W_VCF[32])(unsigned short) = {
     set_VCO,set_VCC,rwW_VCE,rwW_VCE,
     set_VCO,set_VCC,rwW_VCE,rwW_VCE
 };
+
 static void MFC2(int rt, int vs, int e)
 {
     SR_B(rt, 2) = VR_B(vs, e);
@@ -393,24 +386,24 @@ static void MFC2(int rt, int vs, int e)
     SR_B(rt, 3) = VR_B(vs, e);
     SR[rt] = (signed short)(SR[rt]);
     SR[0] = 0x00000000;
-    return;
 }
+
 static void MTC2(int rt, int vd, int e)
 {
     VR_B(vd, e+0x0) = SR_B(rt, 2);
     VR_B(vd, e+0x1) = SR_B(rt, 3);
-    return; /* If element == 0xF, it does not matter; loads do not wrap over. */
+    /* If element == 0xF, it does not matter; loads do not wrap over. */
 }
+
 static void CFC2(int rt, int rd)
 {
     SR[rt] = (signed short)R_VCF[rd]();
     SR[0] = 0x00000000;
-    return;
 }
+
 static void CTC2(int rt, int rd)
 {
     W_VCF[rd](SR[rt] & 0x0000FFFF);
-    return;
 }
 
 /*** Scalar, Coprocessor Operations (vector unit, scalar cache transfers) ***/
@@ -421,8 +414,8 @@ static void LBV(int vt, int element, int offset, int base)
 
     addr = (SR[base] + 1*offset) & 0x00000FFF;
     VR_B(vt, e) = RSP.DMEM[BES(addr)];
-    return;
 }
+
 static void LSV(int vt, int element, int offset, int base)
 {
     int correction;
@@ -442,8 +435,8 @@ static void LSV(int vt, int element, int offset, int base)
         return;
     }
     VR_S(vt, e) = *(short *)(RSP.DMEM + addr - HES(0x000)*(correction - 1));
-    return;
 }
+
 static void LLV(int vt, int element, int offset, int base)
 {
     int correction;
@@ -465,8 +458,8 @@ static void LLV(int vt, int element, int offset, int base)
     VR_S(vt, e+0x0) = *(short *)(RSP.DMEM + addr - correction);
     addr = (addr + 0x00000002) & 0x00000FFF; /* F3DLX 1.23:  addr%4 is 0x002. */
     VR_S(vt, e+0x2) = *(short *)(RSP.DMEM + addr + correction);
-    return;
 }
+
 static void LDV(int vt, int element, int offset, int base)
 {
     register uint32_t addr;
@@ -554,47 +547,43 @@ static void LDV(int vt, int element, int offset, int base)
 }
 static void SBV(int vt, int element, int offset, int base)
 {
-    register uint32_t addr;
-    const int e = element;
-
-    addr = (SR[base] + 1*offset) & 0x00000FFF;
-    RSP.DMEM[BES(addr)] = VR_B(vt, e);
-    return;
+   const unsigned int e   = element;
+   register uint32_t addr = (SR[base] + 1*offset) & 0x00000FFF;
+   RSP.DMEM[BES(addr)] = VR_B(vt, e);
 }
+
 static void SSV(int vt, int element, int offset, int base)
 {
-    register uint32_t addr;
-    const int e = element;
-
-    addr = (SR[base] + 2*offset) & 0x00000FFF;
-    RSP.DMEM[BES(addr)] = VR_B(vt, (e + 0x0));
-    addr = (addr + 0x00000001) & 0x00000FFF;
-    RSP.DMEM[BES(addr)] = VR_B(vt, (e + 0x1) & 0xF);
-    return;
+   const unsigned int e   = element;
+   register uint32_t addr = (SR[base] + 2*offset) & 0x00000FFF;
+   RSP.DMEM[BES(addr)] = VR_B(vt, (e + 0x0));
+   addr = (addr + 0x00000001) & 0x00000FFF;
+   RSP.DMEM[BES(addr)] = VR_B(vt, (e + 0x1) & 0xF);
 }
+
 static void SLV(int vt, int element, int offset, int base)
 {
-    int correction;
-    register uint32_t addr;
-    const int e = element;
+   int correction;
+   register uint32_t addr;
+   const unsigned int e = element;
 
-    if ((e & 0x1) || e > 0xC) /* must support illegal even elements in F3DEX2 */
-    {
-        message("SLV\nIllegal element.", 3);
-        return;
-    }
-    addr = (SR[base] + 4*offset) & 0x00000FFF;
-    if (addr & 0x00000001)
-    {
-        message("SLV\nOdd addr.", 3);
-        return;
-    }
-    correction = HES(0x000)*(addr%0x004 - 1);
-    *(short *)(RSP.DMEM + addr - correction) = VR_S(vt, e+0x0);
-    addr = (addr + 0x00000002) & 0x00000FFF; /* F3DLX 0.95:  "Mario Kart 64" */
-    *(short *)(RSP.DMEM + addr + correction) = VR_S(vt, e+0x2);
-    return;
+   if ((e & 0x1) || e > 0xC) /* must support illegal even elements in F3DEX2 */
+   {
+      message("SLV\nIllegal element.", 3);
+      return;
+   }
+   addr = (SR[base] + 4*offset) & 0x00000FFF;
+   if (addr & 0x00000001)
+   {
+      message("SLV\nOdd addr.", 3);
+      return;
+   }
+   correction = HES(0x000)*(addr%0x004 - 1);
+   *(short *)(RSP.DMEM + addr - correction) = VR_S(vt, e+0x0);
+   addr = (addr + 0x00000002) & 0x00000FFF; /* F3DLX 0.95:  "Mario Kart 64" */
+   *(short *)(RSP.DMEM + addr + correction) = VR_S(vt, e+0x2);
 }
+
 static void SDV(int vt, int element, int offset, int base)
 {
     register uint32_t addr;
@@ -919,7 +908,7 @@ static void SPV(int vt, int element, int offset, int base)
 {
     register int b;
     register uint32_t addr;
-    const int e = element;
+    const unsigned int e = element;
 
     if (e != 0x0)
     {
@@ -1077,58 +1066,58 @@ static void SUV(int vt, int element, int offset, int base)
  */
 static void LHV(int vt, int element, int offset, int base)
 {
-    register uint32_t addr;
-    const int e = element;
+   register uint32_t addr;
+   const int e = element;
 
-    if (e != 0x0)
-    {
-        message("LHV\nIllegal element.", 3);
-        return;
-    }
-    addr = (SR[base] + 16*offset) & 0x00000FFF;
-    if (addr & 0x0000000E)
-    {
-        message("LHV\nIllegal addr.", 3);
-        return;
-    }
-    addr ^= MES(00);
-    VR[vt][07] = RSP.DMEM[addr + HES(0x00E)] << 7;
-    VR[vt][06] = RSP.DMEM[addr + HES(0x00C)] << 7;
-    VR[vt][05] = RSP.DMEM[addr + HES(0x00A)] << 7;
-    VR[vt][04] = RSP.DMEM[addr + HES(0x008)] << 7;
-    VR[vt][03] = RSP.DMEM[addr + HES(0x006)] << 7;
-    VR[vt][02] = RSP.DMEM[addr + HES(0x004)] << 7;
-    VR[vt][01] = RSP.DMEM[addr + HES(0x002)] << 7;
-    VR[vt][00] = RSP.DMEM[addr + HES(0x000)] << 7;
-    return;
+   if (e != 0x0)
+   {
+      message("LHV\nIllegal element.", 3);
+      return;
+   }
+   addr = (SR[base] + 16*offset) & 0x00000FFF;
+   if (addr & 0x0000000E)
+   {
+      message("LHV\nIllegal addr.", 3);
+      return;
+   }
+   addr ^= MES(00);
+   VR[vt][07] = RSP.DMEM[addr + HES(0x00E)] << 7;
+   VR[vt][06] = RSP.DMEM[addr + HES(0x00C)] << 7;
+   VR[vt][05] = RSP.DMEM[addr + HES(0x00A)] << 7;
+   VR[vt][04] = RSP.DMEM[addr + HES(0x008)] << 7;
+   VR[vt][03] = RSP.DMEM[addr + HES(0x006)] << 7;
+   VR[vt][02] = RSP.DMEM[addr + HES(0x004)] << 7;
+   VR[vt][01] = RSP.DMEM[addr + HES(0x002)] << 7;
+   VR[vt][00] = RSP.DMEM[addr + HES(0x000)] << 7;
 }
+
 static void SHV(int vt, int element, int offset, int base)
 {
-    register uint32_t addr;
-    const int e = element;
+   register uint32_t addr;
+   const int e = element;
 
-    if (e != 0x0)
-    {
-        message("SHV\nIllegal element.", 3);
-        return;
-    }
-    addr = (SR[base] + 16*offset) & 0x00000FFF;
-    if (addr & 0x0000000E)
-    {
-        message("SHV\nIllegal addr.", 3);
-        return;
-    }
-    addr ^= MES(00);
-    RSP.DMEM[addr + HES(0x00E)] = (unsigned char)(VR[vt][07] >> 7);
-    RSP.DMEM[addr + HES(0x00C)] = (unsigned char)(VR[vt][06] >> 7);
-    RSP.DMEM[addr + HES(0x00A)] = (unsigned char)(VR[vt][05] >> 7);
-    RSP.DMEM[addr + HES(0x008)] = (unsigned char)(VR[vt][04] >> 7);
-    RSP.DMEM[addr + HES(0x006)] = (unsigned char)(VR[vt][03] >> 7);
-    RSP.DMEM[addr + HES(0x004)] = (unsigned char)(VR[vt][02] >> 7);
-    RSP.DMEM[addr + HES(0x002)] = (unsigned char)(VR[vt][01] >> 7);
-    RSP.DMEM[addr + HES(0x000)] = (unsigned char)(VR[vt][00] >> 7);
-    return;
+   if (e != 0x0)
+   {
+      message("SHV\nIllegal element.", 3);
+      return;
+   }
+   addr = (SR[base] + 16*offset) & 0x00000FFF;
+   if (addr & 0x0000000E)
+   {
+      message("SHV\nIllegal addr.", 3);
+      return;
+   }
+   addr ^= MES(00);
+   RSP.DMEM[addr + HES(0x00E)] = (unsigned char)(VR[vt][07] >> 7);
+   RSP.DMEM[addr + HES(0x00C)] = (unsigned char)(VR[vt][06] >> 7);
+   RSP.DMEM[addr + HES(0x00A)] = (unsigned char)(VR[vt][05] >> 7);
+   RSP.DMEM[addr + HES(0x008)] = (unsigned char)(VR[vt][04] >> 7);
+   RSP.DMEM[addr + HES(0x006)] = (unsigned char)(VR[vt][03] >> 7);
+   RSP.DMEM[addr + HES(0x004)] = (unsigned char)(VR[vt][02] >> 7);
+   RSP.DMEM[addr + HES(0x002)] = (unsigned char)(VR[vt][01] >> 7);
+   RSP.DMEM[addr + HES(0x000)] = (unsigned char)(VR[vt][00] >> 7);
 }
+
 static void SFV(int vt, int element, int offset, int base)
 {
     register uint32_t addr;
@@ -1457,8 +1446,8 @@ static void LTV(int vt, int element, int offset, int base)
     }
     for (i = 0; i < 8; i++) /* SGI screwed LTV up on N64.  See STV instead. */
         VR[vt+i][(-e/2 + i) & 07] = *(short *)(RSP.DMEM + addr + HES(2*i));
-    return;
 }
+
 static void STV(int vt, int element, int offset, int base)
 {
     register int i;
@@ -1483,7 +1472,6 @@ static void STV(int vt, int element, int offset, int base)
     }
     for (i = 0; i < 8; i++)
         *(short *)(RSP.DMEM + addr + HES(2*i)) = VR[vt + (e/2 + i)%8][i];
-    return;
 }
 
 /*
@@ -1505,7 +1493,6 @@ NOINLINE static void lwc_res(int vt, int element, signed offset, int base)
         base
     );
     message(disasm, 3);
-    return;
 }
 
 /*
@@ -1526,17 +1513,14 @@ NOINLINE static void swc_res(int vt, int element, signed offset, int base)
         offset,
         base
     );
-    return;
 }
 static void LFV(int vt, int element, int offset, int base)
 { /* Dummy implementation only:  Do any games execute this? */
     lwc_res(vt, element, offset, base);
-    return;
 }
 static void SWV(int vt, int element, int offset, int base)
 { /* Dummy implementation only:  Do any games execute this? */
     swc_res(vt, element, offset, base);
-    return;
 }
 
 static void (*LWC2_op[1 << 5])(int, int, signed, int) = {
@@ -1572,9 +1556,8 @@ void ULW(int rd, uint32_t addr)
         SR_temp.H[00] = *(short *)(RSP.DMEM + addr + HES(0x000));
     }
     SR[rd] = SR_temp.W;
- /* SR[0] = 0x00000000; */
-    return;
 }
+
 void USW(int rs, uint32_t addr)
 { /* "Unaligned Store Word" */
     SR_temp.W = SR[rs];
@@ -1594,7 +1577,6 @@ void USW(int rs, uint32_t addr)
         addr = (addr + 0x002) & 0xFFF;
         *(short *)(RSP.DMEM + addr + HES(0x000)) = SR_temp.H[00];
     }
-    return;
 }
 
 #endif
