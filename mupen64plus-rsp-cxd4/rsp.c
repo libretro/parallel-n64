@@ -458,13 +458,13 @@ static void MT_SP_STATUS(int rt)
 }
 static void MT_SP_RESERVED(int rt)
 {
-    const uint32_t source = SR[rt] & 0x00000000; /* forced (zilmar, dox) */
+    const uint32_t source = SR[rt] & 0x00000000UL; /* forced (zilmar, dox) */
 
     *RSP.SP_SEMAPHORE_REG = source;
 }
 static void MT_CMD_START(int rt)
 {
-    const uint32_t source = SR[rt] & 0xFFFFFFF8; /* Funnelcube demo */
+    const uint32_t source = SR[rt] & 0xFFFFFFF8ul; /* Funnelcube demo by marshallh */
 
 #if 0
     if (*RSP.DPC_BUFBUSY_REG) /* lock hazards not implemented */
@@ -478,7 +478,7 @@ static void MT_CMD_END(int rt)
     if (*RSP.DPC_BUFBUSY_REG)
         message("MTC0\nCMD_END", 0); /* This is just CA-related. */
 #endif
-    *RSP.DPC_END_REG = SR[rt] & 0xFFFFFFF8;
+    *RSP.DPC_END_REG = SR[rt] & 0xFFFFFFF8UL;
     if (RSP.ProcessRdpList == NULL) /* zilmar GFX #1.2 */
         return;
     RSP.ProcessRdpList();
@@ -486,29 +486,29 @@ static void MT_CMD_END(int rt)
 static void MT_CMD_STATUS(int rt)
 {
 #if 0
-    if (SR[rt] & 0xFFFFFD80) /* unsupported or reserved bits */
-        message("MTC0\nCMD_STATUS", 2);
+   if (SR[rt] & 0xFFFFFD80) /* unsupported or reserved bits */
+      message("MTC0\nCMD_STATUS", 2);
 #endif
-    *RSP.DPC_STATUS_REG &= ~(!!(SR[rt] & 0x00000001) << 0);
-    *RSP.DPC_STATUS_REG |=  (!!(SR[rt] & 0x00000002) << 0);
-    *RSP.DPC_STATUS_REG &= ~(!!(SR[rt] & 0x00000004) << 1);
-    *RSP.DPC_STATUS_REG |=  (!!(SR[rt] & 0x00000008) << 1);
-    *RSP.DPC_STATUS_REG &= ~(!!(SR[rt] & 0x00000010) << 2);
-    *RSP.DPC_STATUS_REG |=  (!!(SR[rt] & 0x00000020) << 2);
-/* Some NUS-CIC-6105 SP tasks try to clear some zeroed DPC registers. */
-    *RSP.DPC_TMEM_REG     &= !(SR[rt] & 0x00000040) * -1;
- /* *RSP.DPC_PIPEBUSY_REG &= !(SR[rt] & 0x00000080) * -1; */
- /* *RSP.DPC_BUFBUSY_REG  &= !(SR[rt] & 0x00000100) * -1; */
-    *RSP.DPC_CLOCK_REG    &= !(SR[rt] & 0x00000200) * -1;
+   *RSP.DPC_STATUS_REG &= ~(!!(SR[rt] & 0x00000001) << 0);
+   *RSP.DPC_STATUS_REG |=  (!!(SR[rt] & 0x00000002) << 0);
+   *RSP.DPC_STATUS_REG &= ~(!!(SR[rt] & 0x00000004) << 1);
+   *RSP.DPC_STATUS_REG |=  (!!(SR[rt] & 0x00000008) << 1);
+   *RSP.DPC_STATUS_REG &= ~(!!(SR[rt] & 0x00000010) << 2);
+   *RSP.DPC_STATUS_REG |=  (!!(SR[rt] & 0x00000020) << 2);
+   /* Some NUS-CIC-6105 SP tasks try to clear some zeroed DPC registers. */
+   *RSP.DPC_TMEM_REG        &= !(SR[rt] & 0x00000040) ? ~0U : 0U;
+   /* *RSP.DPC_PIPEBUSY_REG &= !(SR[rt] & 0x00000080) ? ~0U : 0U; */
+   /* *RSP.DPC_BUFBUSY_REG  &= !(SR[rt] & 0x00000100) ? ~0U : 0U; */
+   *RSP.DPC_CLOCK_REG       &= !(SR[rt] & 0x00000200) ? ~0U : 0U;
 }
 
 static void MT_CMD_CLOCK(int rt)
 {
 #if 0
-    message("MTC0\nCMD_CLOCK", 1); /* read-only?? */
+   message("MTC0\nCMD_CLOCK", 1); /* read-only?? */
 #endif
-    *RSP.DPC_CLOCK_REG = SR[rt];
-    /* Appendix says this is RW; elsewhere it says R. */
+   *RSP.DPC_CLOCK_REG = SR[rt];
+   /* Appendix says this is RW; elsewhere it says R. */
 }
 
 static void MT_READ_ONLY(int rt)
@@ -521,35 +521,43 @@ static void MT_READ_ONLY(int rt)
 #endif
 }
 
-static void (*MTC0[16])(int) = {
-MT_DMA_CACHE       ,MT_DMA_DRAM        ,MT_DMA_READ_LENGTH ,MT_DMA_WRITE_LENGTH,
-MT_SP_STATUS       ,MT_READ_ONLY       ,MT_READ_ONLY       ,MT_SP_RESERVED,
-MT_CMD_START       ,MT_CMD_END         ,MT_READ_ONLY       ,MT_CMD_STATUS,
-MT_CMD_CLOCK       ,MT_READ_ONLY       ,MT_READ_ONLY       ,MT_READ_ONLY
+static void (*SP_CP0_MT[16])(int) = {
+   MT_DMA_CACHE       ,MT_DMA_DRAM        ,MT_DMA_READ_LENGTH ,MT_DMA_WRITE_LENGTH,
+   MT_SP_STATUS       ,MT_READ_ONLY       ,MT_READ_ONLY       ,MT_SP_RESERVED,
+   MT_CMD_START       ,MT_CMD_END         ,MT_READ_ONLY       ,MT_CMD_STATUS,
+   MT_CMD_CLOCK       ,MT_READ_ONLY       ,MT_READ_ONLY       ,MT_READ_ONLY
 }; 
 
 static void SP_DMA_READ(void)
 {
-    register unsigned int length = ((*RSP.SP_RD_LEN_REG & 0x00000FFF) >>  0) + 1;
-    register unsigned int count  = ((*RSP.SP_RD_LEN_REG & 0x000FF000) >> 12) + 1;
-    register unsigned int skip   = ((*RSP.SP_RD_LEN_REG & 0xFFF00000) >> 20) + length;
+   register unsigned int length = ((*RSP.SP_RD_LEN_REG & 0x00000FFFUL) >>  0);
+   register unsigned int count  = ((*RSP.SP_RD_LEN_REG & 0x000FF000UL) >> 12);
+   register unsigned int skip   = ((*RSP.SP_RD_LEN_REG & 0xFFF00000UL) >> 20);
 
-    do
-    {
-       /* `count` always starts > 0, so we begin with `do` instead of `while`. */
-       register unsigned int i = 0;
+   ++length;
+   ++count;
+   skip += length;
 
-       --count;
-       do
-       {
-          unsigned int offC = (count*length + *RSP.SP_MEM_ADDR_REG + i) & 0x00001FF8; /* SP cache and dynamic DMA pointers */
-          unsigned int offD = (count*skip + *RSP.SP_DRAM_ADDR_REG + i) & 0x00FFFFF8;
-          memcpy(RSP.DMEM + offC, RSP.RDRAM + offD, 8);
-          i += 0x008;
-       } while (i < length);
-    } while (count);
-    *RSP.SP_DMA_BUSY_REG = 0x00000000;
-    *RSP.SP_STATUS_REG &= ~0x00000004; /* SP_STATUS_DMABUSY */
+   do
+   {
+      /* `count` always starts > 0, so we begin with `do` instead of `while`. */
+      register unsigned int i = 0;
+
+      --count;
+      do
+      {
+         /* SP cache and dynamic DMA pointers */
+         unsigned int offC = (count * length + *RSP.SP_MEM_ADDR_REG   + i) & 0x00001FF8UL;
+         unsigned int offD = (count * skip   + *RSP.SP_DRAM_ADDR_REG  + i) & 0x00FFFFF8UL;
+         *(int64_t*)(RSP.DMEM + offC) =
+            *(int64_t*)(RSP.RDRAM + offD)
+            & (offD & ~MAX_DRAM_DMA_ADDR ? 0 : ~0) /* 0 if (addr > limit) */
+            ;
+         i += 0x008;
+      } while (i < length);
+   } while (count);
+   *RSP.SP_DMA_BUSY_REG = 0x00000000;
+   *RSP.SP_STATUS_REG &= ~0x00000004; /* SP_STATUS_DMABUSY */
 }
 
 static void SP_DMA_WRITE(void)
@@ -2082,7 +2090,7 @@ EX:
                      MFC0(rt, rd & 0xF);
                      continue;
                   case 004: /* MTC0 */
-                     MTC0[rd & 0xF](rt);
+                     SP_CP0_MT[rd & 0xF](rt);
                      continue;
                   default:
                      res_S();

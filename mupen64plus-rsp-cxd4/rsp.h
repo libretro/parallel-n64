@@ -39,6 +39,9 @@ RSP_INFO RSP;
 #include <emmintrin.h>
 #endif
 
+#define MAX_DRAM_ADDR           0x007FFFFFul
+#define MAX_DRAM_DMA_ADDR       (MAX_DRAM_ADDR & ~7)
+
 typedef uint8_t byte;
 
 typedef enum
