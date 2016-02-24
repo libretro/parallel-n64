@@ -603,14 +603,14 @@ static void SP_DMA_WRITE(void)
  * Universal byte-access macro for 16*8 halfword vectors.
  * Use this macro if you are not sure whether the element is odd or even.
  */
-#define VR_B(vt,element)    (*(byte *)((byte *)(VR[vt]) + MES(element)))
+#define VR_B(vt,element)    (*(int8_t*)((int8_t*)(VR[vt]) + MES(element)))
 
 /*
  * Optimized byte-access macros for the vector registers.
  * Use these ONLY if you know the element is even (or odd in the second).
  */
-#define VR_A(vt,element)    (*(byte *)((byte *)(VR[vt]) + element + MES(0x0)))
-#define VR_U(vt,element)    (*(byte *)((byte *)(VR[vt]) + element - MES(0x0)))
+#define VR_A(vt,element)    (*(int8_t*)((int8_t*)(VR[vt]) + element + MES(0x0)))
+#define VR_U(vt,element)    (*(int8_t*)((int8_t*)(VR[vt]) + element - MES(0x0)))
 
 /*
  * Optimized halfword-access macro for indexing eight-element vectors.
@@ -618,7 +618,7 @@ static void SP_DMA_WRITE(void)
  *
  * If the four-bit element is odd, then there is no solution in one hit.
  */
-#define VR_S(vt,element)    (*(short *)((byte *)(VR[vt]) + element))
+#define VR_S(vt,element)    (*(short *)((int8_t*)(VR[vt]) + element))
 
 extern unsigned short get_VCO(void);
 extern unsigned short get_VCC(void);
@@ -629,68 +629,54 @@ extern void set_VCE(unsigned char VCE);
 extern short vce[8];
 
 unsigned short rwR_VCE(void)
-{ /* never saw a game try to read VCE out to a scalar GPR yet */
-    register unsigned short ret_slot = 0x00 | (unsigned short)get_VCE();
-    return (ret_slot);
+{
+   /* never saw a game try to read VCE out to a scalar GPR yet */
+   return 0x00 | (uint16_t)get_VCE();
 }
 
 void rwW_VCE(unsigned short VCE)
-{ /* never saw a game try to write VCE using a scalar GPR yet */
-    register int i;
+{
+   /* never saw a game try to write VCE using a scalar GPR yet */
+   register int i;
 
-    VCE = 0x00 | (VCE & 0xFF);
-    for (i = 0; i < 8; i++)
-        vce[i] = (VCE >> i) & 1;
+   VCE = 0x00 | (VCE & 0xFF);
+   for (i = 0; i < 8; i++)
+      vce[i] = (VCE >> i) & 1;
 }
 
-static unsigned short (*R_VCF[32])(void) = {
-    get_VCO,get_VCC,rwR_VCE,rwR_VCE,
-/* Hazard reaction barrier:  RD = (UINT16)(inst) >> 11, without &= 3. */
-    get_VCO,get_VCC,rwR_VCE,rwR_VCE,
-    get_VCO,get_VCC,rwR_VCE,rwR_VCE,
-    get_VCO,get_VCC,rwR_VCE,rwR_VCE,
-    get_VCO,get_VCC,rwR_VCE,rwR_VCE,
-    get_VCO,get_VCC,rwR_VCE,rwR_VCE,
-    get_VCO,get_VCC,rwR_VCE,rwR_VCE,
+static uint16_t (*R_VCF[4])(void) = {
     get_VCO,get_VCC,rwR_VCE,rwR_VCE
 };
-static void (*W_VCF[32])(unsigned short) = {
-    set_VCO,set_VCC,rwW_VCE,rwW_VCE,
-/* Hazard reaction barrier:  RD = (UINT16)(inst) >> 11, without &= 3. */
-    set_VCO,set_VCC,rwW_VCE,rwW_VCE,
-    set_VCO,set_VCC,rwW_VCE,rwW_VCE,
-    set_VCO,set_VCC,rwW_VCE,rwW_VCE,
-    set_VCO,set_VCC,rwW_VCE,rwW_VCE,
-    set_VCO,set_VCC,rwW_VCE,rwW_VCE,
-    set_VCO,set_VCC,rwW_VCE,rwW_VCE,
+
+static void (*W_VCF[4])(uint16_t) = {
     set_VCO,set_VCC,rwW_VCE,rwW_VCE
 };
 
-static void MFC2(int rt, int vs, int e)
+static void MFC2(unsigned int rt, unsigned int vs, unsigned int e)
 {
     SR_B(rt, 2) = VR_B(vs, e);
-    e = (e + 0x1) & 0xF;
+    e           = (e + 0x1) & 0xF;
     SR_B(rt, 3) = VR_B(vs, e);
-    SR[rt] = (signed short)(SR[rt]);
-    SR[0] = 0x00000000;
+    SR[rt]      = (int16_t)(SR[rt]);
+    SR[0]       = 0x00000000;
 }
 
-static void MTC2(int rt, int vd, int e)
+static void MTC2(unsigned int rt, unsigned int vd, unsigned int e)
 {
    VR_B(vd, e+0x0) = SR_B(rt, 2);
    VR_B(vd, e+0x1) = SR_B(rt, 3);
    /* If element == 0xF, it does not matter; loads do not wrap over. */
 }
 
-static void CFC2(int rt, int rd)
+static void CFC2(unsigned int rt, unsigned int rd)
 {
-    SR[rt] = (signed short)R_VCF[rd]();
+    SR[rt] = (int16_t)R_VCF[rd & 3]();
     SR[0] = 0x00000000;
 }
 
-static void CTC2(int rt, int rd)
+static void CTC2(unsigned int rt, unsigned int rd)
 {
-    W_VCF[rd](SR[rt] & 0x0000FFFF);
+    W_VCF[rd & 3](SR[rt] & 0x0000FFFF);
 }
 
 /*** Scalar, Coprocessor Operations (vector unit, scalar cache transfers) ***/
