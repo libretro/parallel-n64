@@ -20,6 +20,106 @@
 
 #define FIT_IMEM(PC)    (PC & 0xFFF & 0xFFC)
 
+static INLINE unsigned SPECIAL(uint32_t inst, uint32_t PC)
+{
+   unsigned int rs;
+#if (1u >> 1 == 0)
+   unsigned int rd = (inst & 0x0000FFFFu) >> 11;
+   /* rs = inst >> 21; // Primary op is 0, so we don't need &= 31. */
+#else
+   unsigned int rd = (inst >> 11) % 32;
+   /* rs = (inst >> 21) % 32; */
+#endif
+   unsigned int rt = (inst >> 16) % (1 << 5);
+
+   switch (inst % 64)
+   {
+      case 000: /* SLL */
+         SR[rd] = SR[rt] << MASK_SA(inst >> 6);
+         SR[0] = 0x00000000;
+         break;
+      case 002: /* SRL */
+         SR[rd] = (unsigned)(SR[rt]) >> MASK_SA(inst >> 6);
+         SR[0] = 0x00000000;
+         break;
+      case 003: /* SRA */
+         SR[rd] = (signed)(SR[rt]) >> MASK_SA(inst >> 6);
+         SR[0] = 0x00000000;
+         break;
+      case 004: /* SLLV */
+         SR[rd] = SR[rt] << MASK_SA(SR[rs = inst >> 21]);
+         SR[0] = 0x00000000;
+         break;
+      case 006: /* SRLV */
+         SR[rd] = (unsigned)(SR[rt]) >> MASK_SA(SR[rs = inst >> 21]);
+         SR[0] = 0x00000000;
+         break;
+      case 007: /* SRAV */
+         SR[rd] = (signed)(SR[rt]) >> MASK_SA(SR[rs = inst >> 21]);
+         SR[0] = 0x00000000;
+         break;
+      case 011: /* JALR */
+         SR[rd] = (PC + LINK_OFF) & 0x00000FFC;
+         SR[0] = 0x00000000;
+      case 010: /* JR */
+         SET_PC(SR[rs = inst >> 21]);
+         return 1;
+      case 015: /* BREAK */
+         *RSP.SP_STATUS_REG |= 0x00000003; /* BROKE | HALT */
+         if (*RSP.SP_STATUS_REG & 0x00000040)
+         { /* SP_STATUS_INTR_BREAK */
+            *RSP.MI_INTR_REG |= 0x00000001;
+            RSP.CheckInterrupts();
+         }
+         break;
+      case 040: /* ADD */
+      case 041: /* ADDU */
+         rs = inst >> 21;
+         SR[rd] = SR[rs] + SR[rt];
+         SR[0] = 0x00000000; /* needed for Rareware ucodes */
+         break;
+      case 042: /* SUB */
+      case 043: /* SUBU */
+         rs = inst >> 21;
+         SR[rd] = SR[rs] - SR[rt];
+         SR[0] = 0x00000000;
+         break;
+      case 044: /* AND */
+         rs = inst >> 21;
+         SR[rd] = SR[rs] & SR[rt];
+         SR[0] = 0x00000000; /* needed for Rareware ucodes */
+         break;
+      case 045: /* OR */
+         rs = inst >> 21;
+         SR[rd] = SR[rs] | SR[rt];
+         SR[0] = 0x00000000;
+         break;
+      case 046: /* XOR */
+         rs = inst >> 21;
+         SR[rd] = SR[rs] ^ SR[rt];
+         SR[0] = 0x00000000;
+         break;
+      case 047: /* NOR */
+         rs = inst >> 21;
+         SR[rd] = ~(SR[rs] | SR[rt]);
+         SR[0] = 0x00000000;
+         break;
+      case 052: /* SLT */
+         rs = inst >> 21;
+         SR[rd] = ((signed)(SR[rs]) < (signed)(SR[rt]));
+         SR[0] = 0x00000000;
+         break;
+      case 053: /* SLTU */
+         rs = inst >> 21;
+         SR[rd] = ((unsigned)(SR[rs]) < (unsigned)(SR[rt]));
+         SR[0] = 0x00000000;
+         break;
+      default:
+         res_S();
+   }
+   return 0;
+}
+
 NOINLINE void run_task(void)
 {
     register int PC;
@@ -65,101 +165,9 @@ EX:
             register uint32_t addr;
 
             case 000: /* SPECIAL */
-#if (1u >> 1 == 0)
-                rd = (inst & 0x0000FFFFu) >> 11;
-             /* rs = inst >> 21; // Primary op is 0, so we don't need &= 31. */
-#else
-                rd = (inst >> 11) % 32;
-             /* rs = (inst >> 21) % 32; */
-#endif
-                rt = (inst >> 16) % (1 << 5);
-                switch (inst % 64)
-                {
-                case 000: /* SLL */
-                    SR[rd] = SR[rt] << MASK_SA(inst >> 6);
-                    SR[0] = 0x00000000;
-                    CONTINUE
-                case 002: /* SRL */
-                    SR[rd] = (unsigned)(SR[rt]) >> MASK_SA(inst >> 6);
-                    SR[0] = 0x00000000;
-                    CONTINUE
-                case 003: /* SRA */
-                    SR[rd] = (signed)(SR[rt]) >> MASK_SA(inst >> 6);
-                    SR[0] = 0x00000000;
-                    CONTINUE
-                case 004: /* SLLV */
-                    SR[rd] = SR[rt] << MASK_SA(SR[rs = inst >> 21]);
-                    SR[0] = 0x00000000;
-                    CONTINUE
-                case 006: /* SRLV */
-                    SR[rd] = (unsigned)(SR[rt]) >> MASK_SA(SR[rs = inst >> 21]);
-                    SR[0] = 0x00000000;
-                    CONTINUE
-                case 007: /* SRAV */
-                    SR[rd] = (signed)(SR[rt]) >> MASK_SA(SR[rs = inst >> 21]);
-                    SR[0] = 0x00000000;
-                    CONTINUE
-                case 011: /* JALR */
-                    SR[rd] = (PC + LINK_OFF) & 0x00000FFC;
-                    SR[0] = 0x00000000;
-                case 010: /* JR */
-                    SET_PC(SR[rs = inst >> 21]);
-                    JUMP
-                case 015: /* BREAK */
-                    *RSP.SP_STATUS_REG |= 0x00000003; /* BROKE | HALT */
-                    if (*RSP.SP_STATUS_REG & 0x00000040)
-                    { /* SP_STATUS_INTR_BREAK */
-                        *RSP.MI_INTR_REG |= 0x00000001;
-                        RSP.CheckInterrupts();
-                    }
-                    CONTINUE
-                case 040: /* ADD */
-                case 041: /* ADDU */
-                    rs = inst >> 21;
-                    SR[rd] = SR[rs] + SR[rt];
-                    SR[0] = 0x00000000; /* needed for Rareware ucodes */
-                    CONTINUE
-                case 042: /* SUB */
-                case 043: /* SUBU */
-                    rs = inst >> 21;
-                    SR[rd] = SR[rs] - SR[rt];
-                    SR[0] = 0x00000000;
-                    CONTINUE
-                case 044: /* AND */
-                    rs = inst >> 21;
-                    SR[rd] = SR[rs] & SR[rt];
-                    SR[0] = 0x00000000; /* needed for Rareware ucodes */
-                    CONTINUE
-                case 045: /* OR */
-                    rs = inst >> 21;
-                    SR[rd] = SR[rs] | SR[rt];
-                    SR[0] = 0x00000000;
-                    CONTINUE
-                case 046: /* XOR */
-                    rs = inst >> 21;
-                    SR[rd] = SR[rs] ^ SR[rt];
-                    SR[0] = 0x00000000;
-                    CONTINUE
-                case 047: /* NOR */
-                    rs = inst >> 21;
-                    SR[rd] = ~(SR[rs] | SR[rt]);
-                    SR[0] = 0x00000000;
-                    CONTINUE
-                case 052: /* SLT */
-                    rs = inst >> 21;
-                    SR[rd] = ((signed)(SR[rs]) < (signed)(SR[rt]));
-                    SR[0] = 0x00000000;
-                    CONTINUE
-                case 053: /* SLTU */
-                    rs = inst >> 21;
-                    SR[rd] = ((unsigned)(SR[rs]) < (unsigned)(SR[rt]));
-                    SR[0] = 0x00000000;
-                    CONTINUE
-                default:
-                    res_S();
-                    CONTINUE
-                }
-                CONTINUE
+                if (SPECIAL(inst, PC) != 0)
+                   JUMP; /* JR and JALR should return a non-zero value. */
+                break;
             case 001: /* REGIMM */
                 rs = (inst >> 21) & 31;
                 rt = (inst >> 16) & 31;
