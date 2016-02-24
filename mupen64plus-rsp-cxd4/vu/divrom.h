@@ -11,6 +11,8 @@
 * with this software.                                                          *
 * If not, see <http://creativecommons.org/publicdomain/zero/1.0/>.             *
 \******************************************************************************/
+#ifndef _DIVROM_H
+#define _DIVROM_H
 
 static int DivIn = 0; /* buffered numerator of division read from vector file */
 static int DivOut = 0; /* global division result set by VRCP/VRCPL/VRSQ/VRSQH */
@@ -1061,14 +1063,11 @@ static const unsigned short div_ROM[1024] = {
     0x6A64
 };
 
-enum
-{
+enum {
     SP_DIV_SQRT_NO,
     SP_DIV_SQRT_YES
 };
-
-enum
-{
+enum {
     SP_DIV_PRECISION_SINGLE = 0,
     SP_DIV_PRECISION_DOUBLE = 1,
     SP_DIV_PRECISION_CURRENT
@@ -1076,113 +1075,44 @@ enum
 
 INLINE static void do_div(int data, int sqrt, int precision)
 {
-   int32_t addr;
-   int fetch;
-   int shift;
+    int32_t addr;
+    int fetch;
+    int shift;
 
-   if (precision == SP_DIV_PRECISION_SINGLE)
-      data = (data < 0) ? -data : +data;
-   if (precision == SP_DIV_PRECISION_DOUBLE && data < 0)
-      data = (data >= -32768) ? -data : ~data;
+    if (precision == SP_DIV_PRECISION_SINGLE)
+        data = (data < 0) ? -data : +data;
+    if (precision == SP_DIV_PRECISION_DOUBLE && data < 0)
+        data = (data >= -32768) ? -data : ~data;
 
-   /*
-    * Note, from the code just above, that data cannot be negative.
-    * (data >= 0) is unconditionally forced by the above algorithm.
-    */
-   addr = data;
-   if (data == 0x00000000)
-   {
-      shift = (precision == SP_DIV_PRECISION_SINGLE) ? 16 : 0;
-      addr = addr << shift;
-   }
-   else
-      for (shift = 0; addr >= 0x00000000; addr <<= 1, shift++);
-   addr = (addr >> 22) & 0x000001FF;
+/*
+ * Note, from the code just above, that data cannot be negative.
+ * (data >= 0) is unconditionally forced by the above algorithm.
+ */
+    addr = data;
+    if (data == 0x00000000)
+    {
+        shift = (precision == SP_DIV_PRECISION_SINGLE) ? 16 : 0;
+        addr = addr << shift;
+    }
+    else
+        for (shift = 0; addr >= 0x00000000; addr <<= 1, shift++);
+    addr = (addr >> 22) & 0x000001FF;
 
-   if (sqrt == SP_DIV_SQRT_YES)
-   {
-      addr &= 0x000001FE;
-      addr |= 0x00000200 | (shift & 1);
-   }
-   fetch = div_ROM[addr];
-   shift ^= 31; /* flipping shift direction from left- to right- */
-   shift >>= (sqrt == SP_DIV_SQRT_YES);
-   DivOut = (0x40000000 | (fetch << 14)) >> shift;
-   if (DivIn == 0) /* corner case:  overflow via division by zero */
-      DivOut = 0x7FFFFFFF;
-   else if (DivIn == -32768) /* corner case:  signed underflow barrier */
-      DivOut = 0xFFFF0000;
-   else
-      DivOut ^= (DivIn < 0) ? ~0 : 0;
+    if (sqrt == SP_DIV_SQRT_YES)
+    {
+        addr &= 0x000001FE;
+        addr |= 0x00000200 | (shift & 1);
+    }
+    fetch = div_ROM[addr];
+    shift ^= 31; /* flipping shift direction from left- to right- */
+    shift >>= (sqrt == SP_DIV_SQRT_YES);
+    DivOut = (0x40000000 | (fetch << 14)) >> shift;
+    if (DivIn == 0) /* corner case:  overflow via division by zero */
+        DivOut = 0x7FFFFFFF;
+    else if (DivIn == -32768) /* corner case:  signed underflow barrier */
+        DivOut = 0xFFFF0000;
+    else
+        DivOut ^= (DivIn < 0) ? ~0 : 0;
+    return;
 }
-
-static INLINE void VRCP(int vd, int de, int vt, int e)
-{
-   DivIn = (int)VR[vt][e & 07];
-   do_div(DivIn, SP_DIV_SQRT_NO, SP_DIV_PRECISION_SINGLE);
-   SHUFFLE_VECTOR(VACC_L, VR[vt], e);
-   VR[vd][de &= 07] = (short)DivOut;
-   DPH = SP_DIV_PRECISION_SINGLE;
-}
-
-static void VRCPL(int vd, int de, int vt, int e)
-{
-   DivIn &= -DPH;
-   DivIn |= (unsigned short)VR[vt][e & 07];
-   do_div(DivIn, SP_DIV_SQRT_NO, DPH);
-   SHUFFLE_VECTOR(VACC_L, VR[vt], e);
-   VR[vd][de &= 07] = (short)DivOut;
-   DPH = SP_DIV_PRECISION_SINGLE;
-}
-
-static INLINE void VRCPH(int vd, int de, int vt, int e)
-{
-   DivIn = VR[vt][e & 07] << 16;
-   SHUFFLE_VECTOR(VACC_L, VR[vt], e);
-   VR[vd][de &= 07] = DivOut >> 16;
-   DPH = SP_DIV_PRECISION_DOUBLE;
-}
-
-static void VMOV(int vd, int de, int vt, int e)
-{
-   SHUFFLE_VECTOR(VACC_L, VR[vt], e);
-   VR[vd][de &= 07] = VACC_L[e & 07];
-}
-
-static void VRSQ(int vd, int de, int vt, int e)
-{
-   /* VRSQ - untested */
-   DivIn = (int)VR[vt][e & 07];
-   do_div(DivIn, SP_DIV_SQRT_YES, SP_DIV_PRECISION_SINGLE);
-   SHUFFLE_VECTOR(VACC_L, VR[vt], e);
-   VR[vd][de &= 07] = (short)DivOut;
-   DPH = SP_DIV_PRECISION_SINGLE;
-}
-
-static void VRSQL(int vd, int de, int vt, int e)
-{
-    DivIn &= -DPH;
-    DivIn |= (unsigned short)VR[vt][e & 07];
-    do_div(DivIn, SP_DIV_SQRT_YES, DPH);
-    SHUFFLE_VECTOR(VACC_L, VR[vt], e);
-    VR[vd][de &= 07] = (short)DivOut;
-    DPH = SP_DIV_PRECISION_SINGLE;
-}
-
-static INLINE void VRSQH(int vd, int de, int vt, int e)
-{
-   DivIn = VR[vt][e & 07] << 16;
-   SHUFFLE_VECTOR(VACC_L, VR[vt], e);
-   VR[vd][de &= 07] = DivOut >> 16;
-   DPH = SP_DIV_PRECISION_DOUBLE;
-}
-
-static void VNOP(int vd, int vs, int vt, int e)
-{
-#if 0
-    const int WB_inhibit = vd = vs = vt = e = 1;
-
-    if (WB_inhibit)
-        return; /* message("VNOP", WB_inhibit); */
 #endif
-}
