@@ -12,43 +12,44 @@
 * If not, see <http://creativecommons.org/publicdomain/zero/1.0/>.             *
 \******************************************************************************/
 
+#include "vu.h"
+
 #ifdef ARCH_MIN_SSE2
 
 static INLINE void SIGNED_CLAMP_ADD(short* VD, short* VS, short* VT)
 {
-   __m128i src = _mm_load_si128((__m128i *)VS);
-   __m128i dst = _mm_load_si128((__m128i *)VT);
-   __m128i vco = _mm_load_si128((__m128i *)co);
+   v16 src = _mm_load_si128((v16 *)VS);
+   v16 dst = _mm_load_si128((v16 *)VT);
+   v16 vco = _mm_load_si128((v16 *)co);
 
    /*
     * Due to premature clamping in between adds, sometimes we need to add the
     * LESSER of two integers, either VS or VT, to the carry-in flag matching the
     * current vector register slice, BEFORE finally adding the greater integer.
     */
-   __m128i max = _mm_max_epi16(dst, src);
-   __m128i min = _mm_min_epi16(dst, src);
+   v16 max = _mm_max_epi16(dst, src);
+   v16 min = _mm_min_epi16(dst, src);
 
    min = _mm_adds_epi16(min, vco);
    max = _mm_adds_epi16(max, min);
-   _mm_store_si128((__m128i *)VD, max);
+   _mm_store_si128((v16 *)VD, max);
 }
 
 static INLINE void SIGNED_CLAMP_SUB(short* VD, short* VS, short* VT)
 {
-    __m128i xmm;
+    v16 xmm;
 
-    __m128i src = _mm_load_si128((__m128i *)VS);
-    __m128i dst = _mm_load_si128((__m128i *)VT);
-    __m128i vco = _mm_load_si128((__m128i *)co);
-
-    __m128i res = _mm_subs_epi16(src, dst);
+    v16 src = _mm_load_si128((v16 *)VS);
+    v16 dst = _mm_load_si128((v16 *)VT);
+    v16 vco = _mm_load_si128((v16 *)co);
+    v16 res = _mm_subs_epi16(src, dst);
 
 /*
  * Due to premature clamps in-between subtracting two of the three operands,
  * we must be careful not to offset the result accidentally when subtracting
  * the corresponding VCO flag AFTER the saturation from doing (VS - VT).
  */
-    __m128i dif = _mm_add_epi16(res, vco);
+    v16 dif = _mm_add_epi16(res, vco);
 
     dif = _mm_xor_si128(dif, res); /* Adding one suddenly inverts the sign? */
     dif = _mm_and_si128(dif, dst); /* Sign change due to subtracting a neg. */
@@ -59,7 +60,7 @@ static INLINE void SIGNED_CLAMP_SUB(short* VD, short* VS, short* VT)
 
     xmm = _mm_andnot_si128(xmm, vco); /* If it's NOT overflow, keep flag. */
     res = _mm_subs_epi16(res, xmm);
-    _mm_store_si128((__m128i *)VD, res);
+    _mm_store_si128((v16 *)VD, res);
 }
 
 #else
@@ -67,7 +68,7 @@ static INLINE void SIGNED_CLAMP_SUB(short* VD, short* VS, short* VT)
 static INLINE void SIGNED_CLAMP_ADD(short* VD, short* VS, short* VT)
 {
    int32_t sum[N];
-   short hi[N], lo[N];
+   int16_t hi[N], lo[N];
    register int i;
 
    for (i = 0; i < N; i++)
@@ -85,10 +86,10 @@ static INLINE void SIGNED_CLAMP_ADD(short* VD, short* VS, short* VT)
       VD[i] ^= 0x8000 & (hi[i] | lo[i]);
 }
 
-static INLINE void SIGNED_CLAMP_SUB(short* VD, short* VS, short* VT)
+static INLINE void SIGNED_CLAMP_SUB(int16_t * VD, int16_t* VS, int16_t* VT)
 {
    int32_t dif[N];
-   short hi[N], lo[N];
+   int16_t hi[N], lo[N];
    register int i;
 
    for (i = 0; i < N; i++)
@@ -107,7 +108,7 @@ static INLINE void SIGNED_CLAMP_SUB(short* VD, short* VS, short* VT)
 }
 #endif
 
-static INLINE void set_bo(short* VD, short* VS, short* VT)
+static INLINE void set_bo(int16_t* VD, int16_t* VS, int16_t* VT)
 {
    /* set CARRY and borrow out from difference */
    int32_t dif[N];
@@ -147,34 +148,33 @@ static INLINE void set_co(short* VD, short* VS, short* VT)
  * +1:  VT *= +1, because VS > 0 // VT ^=  0
  *      VT ^= -1, "negate" -32768 as ~+32767 (corner case hack for N64 SP)
  */
-INLINE static void do_abs(short* VD, short* VS, short* VT)
+INLINE static void do_abs(int16_t * VD, int16_t * VS, int16_t * VT)
 {
-   short neg[N], pos[N];
-   short nez[N], cch[N]; /* corner case hack -- abs(-32768) == +32767 */
+   int16_t neg[N], pos[N];
+   int16_t nez[N], cch[N]; /* corner case hack -- abs(-32768) == +32767 */
    short res[N];
    register int i;
 
    vector_copy(res, VT);
-   for (i = 0; i < N; i++)
-      neg[i]  = (VS[i] <  0x0000);
-   for (i = 0; i < N; i++)
-      pos[i]  = (VS[i] >  0x0000);
-   for (i = 0; i < N; i++)
-      nez[i]  = 0;
+    for (i = 0; i < N; i++)
+        cch[i]  = (res[i] == -32768);
 
-   for (i = 0; i < N; i++)
-      nez[i] -= neg[i];
-   for (i = 0; i < N; i++)
-      nez[i] += pos[i];
+    for (i = 0; i < N; i++)
+        neg[i]  = (VS[i] <  0x0000);
+    for (i = 0; i < N; i++)
+        pos[i]  = (VS[i] >  0x0000);
 
-   for (i = 0; i < N; i++)
-      res[i] *= nez[i];
-   for (i = 0; i < N; i++)
-      cch[i]  = (res[i] == -32768);
-   for (i = 0; i < N; i++)
-      res[i] -= cch[i];
-   vector_copy(VACC_L, res);
-   vector_copy(VD, VACC_L);
+    for (i = 0; i < N; i++)
+        nez[i] = 0 - neg[i];
+    for (i = 0; i < N; i++)
+        nez[i] += pos[i];
+
+    for (i = 0; i < N; i++)
+        res[i] *= nez[i];
+    for (i = 0; i < N; i++)
+        res[i] -= cch[i];
+    vector_copy(VACC_L, res);
+    vector_copy(VD, VACC_L);
 }
 
 static INLINE void clr_bi(short* VD, short* VS, short* VT)

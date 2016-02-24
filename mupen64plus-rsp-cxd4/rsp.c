@@ -74,14 +74,6 @@ static ALIGNED short VACC[3][N];
 #define MD      01
 #define LO      02
 
-#define VACC_L      (VACC[LO])
-#define VACC_M      (VACC[MD])
-#define VACC_H      (VACC[HI])
-
-#define ACC_L(i)    (VACC_L[i])
-#define ACC_M(i)    (VACC_M[i])
-#define ACC_H(i)    (VACC_H[i])
-
 #include "vu/shuffle.h"
 #include "vu/clamp.h"
 #include "vu/cf.h"
