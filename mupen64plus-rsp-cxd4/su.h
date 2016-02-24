@@ -198,8 +198,10 @@ static void MT_DMA_WRITE_LENGTH(int rt)
 }
 static void MT_SP_STATUS(int rt)
 {
+#if 0
     if (SR[rt] & 0xFE000040)
         message("MTC0\nSP_STATUS", 2);
+#endif
     *RSP.SP_STATUS_REG &= ~(!!(SR[rt] & 0x00000001) <<  0);
     *RSP.SP_STATUS_REG |=  (!!(SR[rt] & 0x00000002) <<  0);
     *RSP.SP_STATUS_REG &= ~(!!(SR[rt] & 0x00000004) <<  1);
@@ -237,14 +239,18 @@ static void MT_CMD_START(int rt)
 {
     const uint32_t source = SR[rt] & 0xFFFFFFF8; /* Funnelcube demo */
 
+#if 0
     if (*RSP.DPC_BUFBUSY_REG) /* lock hazards not implemented */
         message("MTC0\nCMD_START", 0);
+#endif
     *RSP.DPC_END_REG = *RSP.DPC_CURRENT_REG = *RSP.DPC_START_REG = source;
 }
 static void MT_CMD_END(int rt)
 {
+#if 0
     if (*RSP.DPC_BUFBUSY_REG)
         message("MTC0\nCMD_END", 0); /* This is just CA-related. */
+#endif
     *RSP.DPC_END_REG = SR[rt] & 0xFFFFFFF8;
     if (RSP.ProcessRdpList == NULL) /* zilmar GFX #1.2 */
         return;
@@ -252,8 +258,10 @@ static void MT_CMD_END(int rt)
 }
 static void MT_CMD_STATUS(int rt)
 {
+#if 0
    if (SR[rt] & 0xFFFFFD80) /* unsupported or reserved bits */
       message("MTC0\nCMD_STATUS", 2);
+#endif
    *RSP.DPC_STATUS_REG &= ~(!!(SR[rt] & 0x00000001) << 0);
    *RSP.DPC_STATUS_REG |=  (!!(SR[rt] & 0x00000002) << 0);
    *RSP.DPC_STATUS_REG &= ~(!!(SR[rt] & 0x00000004) << 1);
@@ -269,16 +277,20 @@ static void MT_CMD_STATUS(int rt)
 
 static void MT_CMD_CLOCK(int rt)
 {
+#if 0
     message("MTC0\nCMD_CLOCK", 1); /* read-only?? */
+#endif
     *RSP.DPC_CLOCK_REG = SR[rt];
     /* Appendix says this is RW; elsewhere it says R. */
 }
 static void MT_READ_ONLY(int rt)
 {
+#if 0
     char text[64];
 
     sprintf(text, "MTC0\nInvalid write attempt.\nSR[%i] = 0x%08X", rt, SR[rt]);
     message(text, 2);
+#endif
 }
 
 static void (*MTC0[16])(int) = {
@@ -412,11 +424,8 @@ static void LSV(int vt, int element, int offset, int base)
     register uint32_t addr;
     const int e = element;
 
-    if (e & 0x1)
-    {
-        message("LSV\nIllegal element.", 3);
+    if (e & 0x1) /* Illegal element */
         return;
-    }
     addr = (SR[base] + 2*offset) & 0x00000FFF;
     correction = addr % 0x004;
     if (correction == 0x003)
@@ -433,11 +442,10 @@ static void LLV(int vt, int element, int offset, int base)
     register uint32_t addr;
     const int e = element;
 
-    if (e & 0x1)
-    {
-        message("LLV\nOdd element.", 3);
+    if (e & 0x1) /* odd element */
         return;
-    } /* Illegal (but still even) elements are used by Boss Game Studios. */
+
+    /* Illegal (but still even) elements are used by Boss Game Studios. */
     addr = (SR[base] + 4*offset) & 0x00000FFF;
     if (addr & 0x00000001)
     {
@@ -1470,6 +1478,7 @@ static void STV(int vt, int element, int offset, int base)
  */
 NOINLINE static void lwc_res(int vt, int element, signed offset, int base)
 {
+#if 0
     static char disasm[32];
 
     sprintf(
@@ -1483,6 +1492,7 @@ NOINLINE static void lwc_res(int vt, int element, signed offset, int base)
         base
     );
     message(disasm, 3);
+#endif
 }
 
 /*
