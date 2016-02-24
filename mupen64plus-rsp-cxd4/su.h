@@ -99,8 +99,64 @@ extern void USW(int rs, uint32_t addr);
 /*** Scalar, Coprocessor Operations (system control) ***/
 extern RCPREG* CR[16];
 extern int stale_signals;
-extern void SP_DMA_READ(void);
-extern void SP_DMA_WRITE(void);
+
+static INLINE void SP_DMA_WRITE(void)
+{
+    unsigned int length = (*RSP.SP_WR_LEN_REG & 0x00000FFF) >>  0;
+    unsigned int count  = (*RSP.SP_WR_LEN_REG & 0x000FF000) >> 12;
+    unsigned int skip   = (*RSP.SP_WR_LEN_REG & 0xFFF00000) >> 20;
+    /* length |= 07; // already corrected by mtc0 */
+    ++length;
+    ++count;
+    skip += length;
+    do
+    { /* `count` always starts > 0, so we begin with `do` instead of `while`. */
+        unsigned int offC, offD; /* SP cache and dynamic DMA pointers */
+        register unsigned int i = 0;
+
+        --count;
+        do
+        {
+            offC = (count*length + *RSP.SP_MEM_ADDR_REG + i) & 0x00001FF8;
+            offD = (count*skip + *RSP.SP_DRAM_ADDR_REG + i) & 0x00FFFFF8;
+            *(int64_t*)(RSP.RDRAM + offD) = *(int64_t*)(RSP.DMEM + offC);
+            i += 0x000008;
+        } while (i < length);
+    } while (count);
+    *RSP.SP_DMA_BUSY_REG = 0x00000000;
+    *RSP.SP_STATUS_REG &= ~SP_STATUS_DMA_BUSY;
+}
+
+static INLINE void SP_DMA_READ(void)
+{
+   unsigned int length = (*RSP.SP_RD_LEN_REG & 0x00000FFF) >>  0;
+   unsigned int count  = (*RSP.SP_RD_LEN_REG & 0x000FF000) >> 12;
+   unsigned int skip   = (*RSP.SP_RD_LEN_REG & 0xFFF00000) >> 20;
+
+   ++length;
+   ++count;
+   skip += length;
+   do
+   { /* `count` always starts > 0, so we begin with `do` instead of `while`. */
+      unsigned int offC, offD; /* SP cache and dynamic DMA pointers */
+      register unsigned int i = 0;
+
+      --count;
+      do
+      {
+         offC = (count*length + *RSP.SP_MEM_ADDR_REG + i) & 0x00001FF8;
+         offD = (count*skip + *RSP.SP_DRAM_ADDR_REG + i) & 0x00FFFFF8;
+         *(int64_t*)(RSP.DMEM + offC) =
+            *(int64_t*)(RSP.RDRAM + offD)
+            & (offD & ~MAX_DRAM_DMA_ADDR ? 0 : ~0) /* 0 if (addr > limit) */
+            ;
+         i += 0x008;
+      } while (i < length);
+   } while (count);
+
+   *RSP.SP_DMA_BUSY_REG = 0x00000000;
+   *RSP.SP_STATUS_REG &= ~SP_STATUS_DMA_BUSY;
+}
 
 static void MFC0(int rt, int rd)
 {
@@ -240,63 +296,7 @@ MT_SP_STATUS       ,MT_READ_ONLY       ,MT_READ_ONLY       ,MT_SP_RESERVED,
 MT_CMD_START       ,MT_CMD_END         ,MT_READ_ONLY       ,MT_CMD_STATUS,
 MT_CMD_CLOCK       ,MT_READ_ONLY       ,MT_READ_ONLY       ,MT_READ_ONLY
 }; 
-void SP_DMA_READ(void)
-{
-   unsigned int length = (*RSP.SP_RD_LEN_REG & 0x00000FFF) >>  0;
-   unsigned int count  = (*RSP.SP_RD_LEN_REG & 0x000FF000) >> 12;
-   unsigned int skip   = (*RSP.SP_RD_LEN_REG & 0xFFF00000) >> 20;
 
-   ++length;
-   ++count;
-   skip += length;
-   do
-   { /* `count` always starts > 0, so we begin with `do` instead of `while`. */
-      unsigned int offC, offD; /* SP cache and dynamic DMA pointers */
-      register unsigned int i = 0;
-
-      --count;
-      do
-      {
-         offC = (count*length + *RSP.SP_MEM_ADDR_REG + i) & 0x00001FF8;
-         offD = (count*skip + *RSP.SP_DRAM_ADDR_REG + i) & 0x00FFFFF8;
-         *(int64_t*)(RSP.DMEM + offC) =
-            *(int64_t*)(RSP.RDRAM + offD)
-            & (offD & ~MAX_DRAM_DMA_ADDR ? 0 : ~0) /* 0 if (addr > limit) */
-            ;
-         i += 0x008;
-      } while (i < length);
-   } while (count);
-
-   *RSP.SP_DMA_BUSY_REG = 0x00000000;
-   *RSP.SP_STATUS_REG &= ~SP_STATUS_DMA_BUSY;
-}
-
-void SP_DMA_WRITE(void)
-{
-    unsigned int length = (*RSP.SP_WR_LEN_REG & 0x00000FFF) >>  0;
-    unsigned int count  = (*RSP.SP_WR_LEN_REG & 0x000FF000) >> 12;
-    unsigned int skip   = (*RSP.SP_WR_LEN_REG & 0xFFF00000) >> 20;
-    /* length |= 07; // already corrected by mtc0 */
-    ++length;
-    ++count;
-    skip += length;
-    do
-    { /* `count` always starts > 0, so we begin with `do` instead of `while`. */
-        unsigned int offC, offD; /* SP cache and dynamic DMA pointers */
-        register unsigned int i = 0;
-
-        --count;
-        do
-        {
-            offC = (count*length + *RSP.SP_MEM_ADDR_REG + i) & 0x00001FF8;
-            offD = (count*skip + *RSP.SP_DRAM_ADDR_REG + i) & 0x00FFFFF8;
-            *(int64_t*)(RSP.RDRAM + offD) = *(int64_t*)(RSP.DMEM + offC);
-            i += 0x000008;
-        } while (i < length);
-    } while (count);
-    *RSP.SP_DMA_BUSY_REG = 0x00000000;
-    *RSP.SP_STATUS_REG &= ~SP_STATUS_DMA_BUSY;
-}
 
 /*** Scalar, Coprocessor Operations (vector unit) ***/
 
