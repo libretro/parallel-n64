@@ -24,10 +24,8 @@ extern unsigned char conf[32];
 #define EMULATE_STATIC_PC
 
 #ifdef EMULATE_STATIC_PC
-#define CONTINUE    {continue;}
 #define JUMP        {goto BRANCH;}
 #else
-#define CONTINUE    {break;}
 #define JUMP        {break;}
 #endif
 
