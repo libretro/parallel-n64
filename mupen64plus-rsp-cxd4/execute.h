@@ -399,53 +399,52 @@ NOINLINE void run_task(void)
 
     while ((*RSP.SP_STATUS_REG & 0x00000001) == 0x00000000)
     {
-        register uint32_t inst = *(uint32_t *)(RSP.IMEM + FIT_IMEM(PC));
+       register uint32_t inst = *(uint32_t *)(RSP.IMEM + FIT_IMEM(PC));
 #ifdef EMULATE_STATIC_PC
-        PC = (PC + 0x004);
+       PC = (PC + 0x004);
 EX:
 #endif
-#ifdef SP_EXECUTE_LOG
-        step_SP_commands(inst);
-#endif
-        if (inst >> 25 == 0x25) /* is a VU instruction */
-        {
-            const int opcode = inst % 64; /* inst.R.func */
-            const int vd = (inst & 0x000007FF) >> 6; /* inst.R.sa */
-            const int vs = (unsigned short)(inst) >> 11; /* inst.R.rd */
-            const int vt = (inst >> 16) & 31; /* inst.R.rt */
-            const int e  = (inst >> 21) & 0xF; /* rs & 0xF */
 
-            COP2_C2[opcode](vd, vs, vt, e);
-        }
-        else
-        {
-#if (0)
-            SR[0] = 0x00000000; /* already handled on per-instruction basis */
-#endif
-            if (run_task_opcode(inst, inst >> 26))
-               JUMP
-        }
-#ifndef EMULATE_STATIC_PC
-        if (stage == 2) /* branch phase of scheduler */
-        {
-            stage = 0*stage;
-            PC = temp_PC & 0x00000FFC;
-            *RSP.SP_PC_REG = temp_PC;
-        }
-        else
-        {
-            stage = 2*stage; /* next IW in branch delay slot? */
-            PC = (PC + 0x004) & 0xFFC;
-            *RSP.SP_PC_REG = 0x04001000 + PC;
-        }
-        continue;
+       if (inst >> 25 == 0x25) /* is a VU instruction */
+       {
+          const int opcode = inst % 64; /* inst.R.func */
+          const int vd = (inst & 0x000007FF) >> 6; /* inst.R.sa */
+          const int vs = (unsigned short)(inst) >> 11; /* inst.R.rd */
+          const int vt = (inst >> 16) & 31; /* inst.R.rt */
+          const int e  = (inst >> 21) & 0xF; /* rs & 0xF */
+
+          COP2_C2[opcode](vd, vs, vt, e);
+       }
+       else
+       {
+          int task_ran = run_task_opcode(inst, inst >> 26);
+          if (task_ran)
+          {
+#ifdef EMULATE_STATIC_PC
+             inst = *(uint32_t *)(RSP.IMEM + FIT_IMEM(PC));
+             PC = temp_PC & 0x00000FFC;
+             goto EX;
 #else
-        continue;
-BRANCH:
-        inst = *(uint32_t *)(RSP.IMEM + FIT_IMEM(PC));
-        PC = temp_PC & 0x00000FFC;
-        goto EX;
+             break;
 #endif
+          }
+       }
+
+#ifndef EMULATE_STATIC_PC
+       if (stage == 2) /* branch phase of scheduler */
+       {
+          stage = 0*stage;
+          PC = temp_PC & 0x00000FFC;
+          *RSP.SP_PC_REG = temp_PC;
+       }
+       else
+       {
+          stage = 2*stage; /* next IW in branch delay slot? */
+          PC = (PC + 0x004) & 0xFFC;
+          *RSP.SP_PC_REG = 0x04001000 + PC;
+       }
+#endif
+       continue;
     }
     *RSP.SP_PC_REG = 0x04001000 | FIT_IMEM(PC);
 }

@@ -23,12 +23,6 @@ extern unsigned char conf[32];
 #define WAIT_FOR_CPU_HOST
 #define EMULATE_STATIC_PC
 
-#ifdef EMULATE_STATIC_PC
-#define JUMP        {goto BRANCH;}
-#else
-#define JUMP        {break;}
-#endif
-
 #if (0)
 #define SP_EXECUTE_LOG
 #define VU_EMULATE_SCALAR_ACCUMULATOR_READ
