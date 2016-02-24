@@ -356,7 +356,7 @@ void set_PC(int address)
 #define MES(address)    ((address) ^ ((ENDIAN) & 01))
 #define WES(address)    ((address) ^ ((ENDIAN) & 00))
 #define SR_B(s, i)      (*(byte *)(((byte *)(SR + s)) + BES(i)))
-#define SR_S(s, i)      (*(short *)(((byte *)(SR + s)) + HES(i)))
+#define SR_S(s, i)      (*(int16_t *)(((byte *)(SR + s)) + HES(i)))
 #define SE(x, b)        (-(x & (1 << b)) | (x & ~(~0 << b)))
 #define ZE(x, b)        (+(x & (1 << b)) | (x & ~(~0 << b)))
 
@@ -618,7 +618,7 @@ static void SP_DMA_WRITE(void)
  *
  * If the four-bit element is odd, then there is no solution in one hit.
  */
-#define VR_S(vt,element)    (*(short *)((int8_t*)(VR[vt]) + element))
+#define VR_S(vt,element)    (*(int16_t *)((int8_t*)(VR[vt]) + element))
 
 extern unsigned short get_VCO(void);
 extern unsigned short get_VCC(void);
@@ -680,20 +680,20 @@ static void CTC2(unsigned int rt, unsigned int rd)
 }
 
 /*** Scalar, Coprocessor Operations (vector unit, scalar cache transfers) ***/
-static void LBV(int vt, int element, int offset, int base)
+static void LBV(unsigned vt, unsigned element, signed offset, unsigned base)
 {
    const int e = element;
    register uint32_t addr = (SR[base] + 1*offset) & 0x00000FFF;
    VR_B(vt, e) = RSP.DMEM[BES(addr)];
 }
 
-static void LSV(int vt, int element, int offset, int base)
+static void LSV(unsigned vt, unsigned element, signed offset, unsigned base)
 {
    int correction;
    register uint32_t addr;
    const int e = element;
 
-   if (e & 0x1) /* LSV, illegal element */
+   if (e & 0x1) /* illegal element */
       return;
 
    addr = (SR[base] + 2*offset) & 0x00000FFF;
@@ -701,10 +701,10 @@ static void LSV(int vt, int element, int offset, int base)
    if (correction == 0x003) /* LSV, weird address */
       return;
 
-   VR_S(vt, e) = *(short *)(RSP.DMEM + addr - HES(0x000)*(correction - 1));
+   VR_S(vt, e) = *(int16_t*)(RSP.DMEM + addr - HES(0x000)*(correction - 1));
 }
 
-static void LLV(int vt, int element, int offset, int base)
+static void LLV(unsigned vt, unsigned element, signed offset, unsigned base)
 {
     int correction;
     register uint32_t addr;
@@ -729,15 +729,15 @@ static void LLV(int vt, int element, int offset, int base)
     }
 
     correction = HES(0x000)*(addr%0x004 - 1);
-    VR_S(vt, e+0x0) = *(short *)(RSP.DMEM + addr - correction);
+    VR_S(vt, e+0x0) = *(int16_t *)(RSP.DMEM + addr - correction);
     addr = (addr + 0x00000002) & 0x00000FFF; /* F3DLX 1.23:  addr%4 is 0x002. */
-    VR_S(vt, e+0x2) = *(short *)(RSP.DMEM + addr + correction);
+    VR_S(vt, e+0x2) = *(int16_t *)(RSP.DMEM + addr + correction);
 }
 
-static void LDV(int vt, int element, int offset, int base)
+static void LDV(unsigned vt, unsigned element, signed offset, unsigned base)
 {
     register uint32_t addr;
-    const int e = element;
+    const unsigned int e = element;
 
     if (e & 0x1) /* LDV, Odd element */
         return;
@@ -748,89 +748,89 @@ static void LDV(int vt, int element, int offset, int base)
     switch (addr & 07)
     {
        case 00:
-          VR_S(vt, e+0x0) = *(short *)(RSP.DMEM + addr + HES(0x000));
-          VR_S(vt, e+0x2) = *(short *)(RSP.DMEM + addr + HES(0x002));
-          VR_S(vt, e+0x4) = *(short *)(RSP.DMEM + addr + HES(0x004));
-          VR_S(vt, e+0x6) = *(short *)(RSP.DMEM + addr + HES(0x006));
+          VR_S(vt, e+0x0) = *(int16_t*)(RSP.DMEM + addr + HES(0x000));
+          VR_S(vt, e+0x2) = *(int16_t*)(RSP.DMEM + addr + HES(0x002));
+          VR_S(vt, e+0x4) = *(int16_t*)(RSP.DMEM + addr + HES(0x004));
+          VR_S(vt, e+0x6) = *(int16_t*)(RSP.DMEM + addr + HES(0x006));
           break;
        case 01: /* standard ABI ucodes (unlike e.g. MusyX w/ even addresses) */
-          VR_S(vt, e+0x0) = *(short *)(RSP.DMEM + addr + 0x000);
+          VR_S(vt, e+0x0) = *(int16_t*)(RSP.DMEM + addr + 0x000);
           VR_A(vt, e+0x2) = RSP.DMEM[addr + 0x002 - BES(0x000)];
           VR_U(vt, e+0x3) = RSP.DMEM[addr + 0x003 + BES(0x000)];
-          VR_S(vt, e+0x4) = *(short *)(RSP.DMEM + addr + 0x004);
+          VR_S(vt, e+0x4) = *(int16_t*)(RSP.DMEM + addr + 0x004);
           VR_A(vt, e+0x6) = RSP.DMEM[addr + 0x006 - BES(0x000)];
           addr += 0x007 + BES(00);
           addr &= 0x00000FFF;
           VR_U(vt, e+0x7) = RSP.DMEM[addr];
           break;
        case 02:
-          VR_S(vt, e+0x0) = *(short *)(RSP.DMEM + addr + 0x000 - HES(0x000));
-          VR_S(vt, e+0x2) = *(short *)(RSP.DMEM + addr + 0x002 + HES(0x000));
-          VR_S(vt, e+0x4) = *(short *)(RSP.DMEM + addr + 0x004 - HES(0x000));
+          VR_S(vt, e+0x0) = *(int16_t*)(RSP.DMEM + addr + 0x000 - HES(0x000));
+          VR_S(vt, e+0x2) = *(int16_t*)(RSP.DMEM + addr + 0x002 + HES(0x000));
+          VR_S(vt, e+0x4) = *(int16_t*)(RSP.DMEM + addr + 0x004 - HES(0x000));
           addr += 0x006 + HES(00);
           addr &= 0x00000FFF;
-          VR_S(vt, e+0x6) = *(short *)(RSP.DMEM + addr);
+          VR_S(vt, e+0x6) = *(int16_t*)(RSP.DMEM + addr);
           break;
        case 03: /* standard ABI ucodes (unlike e.g. MusyX w/ even addresses) */
           VR_A(vt, e+0x0) = RSP.DMEM[addr + 0x000 - BES(0x000)];
           VR_U(vt, e+0x1) = RSP.DMEM[addr + 0x001 + BES(0x000)];
-          VR_S(vt, e+0x2) = *(short *)(RSP.DMEM + addr + 0x002);
+          VR_S(vt, e+0x2) = *(int16_t*)(RSP.DMEM + addr + 0x002);
           VR_A(vt, e+0x4) = RSP.DMEM[addr + 0x004 - BES(0x000)];
           addr += 0x005 + BES(00);
           addr &= 0x00000FFF;
           VR_U(vt, e+0x5) = RSP.DMEM[addr];
-          VR_S(vt, e+0x6) = *(short *)(RSP.DMEM + addr + 0x001 - BES(0x000));
+          VR_S(vt, e+0x6) = *(int16_t*)(RSP.DMEM + addr + 0x001 - BES(0x000));
           break;
        case 04:
-          VR_S(vt, e+0x0) = *(short *)(RSP.DMEM + addr + HES(0x000));
-          VR_S(vt, e+0x2) = *(short *)(RSP.DMEM + addr + HES(0x002));
+          VR_S(vt, e+0x0) = *(int16_t*)(RSP.DMEM + addr + HES(0x000));
+          VR_S(vt, e+0x2) = *(int16_t*)(RSP.DMEM + addr + HES(0x002));
           addr += 0x004 + WES(00);
           addr &= 0x00000FFF;
-          VR_S(vt, e+0x4) = *(short *)(RSP.DMEM + addr + HES(0x000));
-          VR_S(vt, e+0x6) = *(short *)(RSP.DMEM + addr + HES(0x002));
+          VR_S(vt, e+0x4) = *(int16_t*)(RSP.DMEM + addr + HES(0x000));
+          VR_S(vt, e+0x6) = *(int16_t*)(RSP.DMEM + addr + HES(0x002));
           break;
        case 05: /* standard ABI ucodes (unlike e.g. MusyX w/ even addresses) */
-          VR_S(vt, e+0x0) = *(short *)(RSP.DMEM + addr + 0x000);
+          VR_S(vt, e+0x0) = *(int16_t*)(RSP.DMEM + addr + 0x000);
           VR_A(vt, e+0x2) = RSP.DMEM[addr + 0x002 - BES(0x000)];
           addr += 0x003;
           addr &= 0x00000FFF;
           VR_U(vt, e+0x3) = RSP.DMEM[addr + BES(0x000)];
-          VR_S(vt, e+0x4) = *(short *)(RSP.DMEM + addr + 0x001);
+          VR_S(vt, e+0x4) = *(int16_t*)(RSP.DMEM + addr + 0x001);
           VR_A(vt, e+0x6) = RSP.DMEM[addr + BES(0x003)];
           VR_U(vt, e+0x7) = RSP.DMEM[addr + BES(0x004)];
           break;
        case 06:
-          VR_S(vt, e+0x0) = *(short *)(RSP.DMEM + addr - HES(0x000));
+          VR_S(vt, e+0x0) = *(int16_t*)(RSP.DMEM + addr - HES(0x000));
           addr += 0x002;
           addr &= 0x00000FFF;
-          VR_S(vt, e+0x2) = *(short *)(RSP.DMEM + addr + HES(0x000));
-          VR_S(vt, e+0x4) = *(short *)(RSP.DMEM + addr + HES(0x002));
-          VR_S(vt, e+0x6) = *(short *)(RSP.DMEM + addr + HES(0x004));
+          VR_S(vt, e+0x2) = *(int16_t*)(RSP.DMEM + addr + HES(0x000));
+          VR_S(vt, e+0x4) = *(int16_t*)(RSP.DMEM + addr + HES(0x002));
+          VR_S(vt, e+0x6) = *(int16_t*)(RSP.DMEM + addr + HES(0x004));
           break;
        case 07: /* standard ABI ucodes (unlike e.g. MusyX w/ even addresses) */
           VR_A(vt, e+0x0) = RSP.DMEM[addr - BES(0x000)];
           addr += 0x001;
           addr &= 0x00000FFF;
           VR_U(vt, e+0x1) = RSP.DMEM[addr + BES(0x000)];
-          VR_S(vt, e+0x2) = *(short *)(RSP.DMEM + addr + 0x001);
+          VR_S(vt, e+0x2) = *(int16_t*)(RSP.DMEM + addr + 0x001);
           VR_A(vt, e+0x4) = RSP.DMEM[addr + BES(0x003)];
           VR_U(vt, e+0x5) = RSP.DMEM[addr + BES(0x004)];
-          VR_S(vt, e+0x6) = *(short *)(RSP.DMEM + addr + 0x005);
+          VR_S(vt, e+0x6) = *(int16_t*)(RSP.DMEM + addr + 0x005);
           break;
     }
 }
 
-static void SBV(int vt, int element, int offset, int base)
+static void SBV(unsigned vt, unsigned element, signed offset, unsigned base)
 {
-   const int e = element;
+   const unsigned int e = element;
    register uint32_t addr = (SR[base] + 1*offset) & 0x00000FFF;
 
    RSP.DMEM[BES(addr)] = VR_B(vt, e);
 }
 
-static void SSV(int vt, int element, int offset, int base)
+static void SSV(unsigned vt, unsigned element, signed offset, unsigned base)
 {
-   const int e = element;
+   const unsigned int e = element;
    register uint32_t addr = (SR[base] + 2*offset) & 0x00000FFF;
 
    RSP.DMEM[BES(addr)] = VR_B(vt, (e + 0x0));
@@ -838,11 +838,11 @@ static void SSV(int vt, int element, int offset, int base)
    RSP.DMEM[BES(addr)] = VR_B(vt, (e + 0x1) & 0xF);
 }
 
-static void SLV(int vt, int element, int offset, int base)
+static void SLV(unsigned vt, unsigned element, signed offset, unsigned base)
 {
    int correction;
    register uint32_t addr;
-   const int e = element;
+   const unsigned int e = element;
 
    if ((e & 0x1) || e > 0xC) /* must support illegal even elements in F3DEX2 */
       return;
@@ -852,17 +852,16 @@ static void SLV(int vt, int element, int offset, int base)
       return;
 
    correction = HES(0x000)*(addr%0x004 - 1);
-   *(short *)(RSP.DMEM + addr - correction) = VR_S(vt, e+0x0);
+   *(int16_t*)(RSP.DMEM + addr - correction) = VR_S(vt, e+0x0);
    addr = (addr + 0x00000002) & 0x00000FFF; /* F3DLX 0.95:  "Mario Kart 64" */
-   *(short *)(RSP.DMEM + addr + correction) = VR_S(vt, e+0x2);
+   *(int16_t*)(RSP.DMEM + addr + correction) = VR_S(vt, e+0x2);
 }
 
-static void SDV(int vt, int element, int offset, int base)
+static void SDV(unsigned vt, unsigned element, signed offset, unsigned base)
 {
-   register uint32_t addr;
    const unsigned int e = element;
+   register uint32_t addr = (SR[base] + 8*offset) & 0x00000FFF;
 
-   addr = (SR[base] + 8*offset) & 0x00000FFF;
    if (e > 0x8 || (e & 0x1))
    { /* Illegal elements with Boss Game Studios publications. */
       register unsigned int i;
@@ -881,70 +880,70 @@ static void SDV(int vt, int element, int offset, int base)
    switch (addr & 07)
    {
       case 00:
-         *(short *)(RSP.DMEM + addr + HES(0x000)) = VR_S(vt, e+0x0);
-         *(short *)(RSP.DMEM + addr + HES(0x002)) = VR_S(vt, e+0x2);
-         *(short *)(RSP.DMEM + addr + HES(0x004)) = VR_S(vt, e+0x4);
-         *(short *)(RSP.DMEM + addr + HES(0x006)) = VR_S(vt, e+0x6);
+         *(int16_t*)(RSP.DMEM + addr + HES(0x000)) = VR_S(vt, e+0x0);
+         *(int16_t*)(RSP.DMEM + addr + HES(0x002)) = VR_S(vt, e+0x2);
+         *(int16_t*)(RSP.DMEM + addr + HES(0x004)) = VR_S(vt, e+0x4);
+         *(int16_t*)(RSP.DMEM + addr + HES(0x006)) = VR_S(vt, e+0x6);
          break;
       case 01: /* "Tetrisphere" audio ucode */
-         *(short *)(RSP.DMEM + addr + 0x000) = VR_S(vt, e+0x0);
+         *(int16_t*)(RSP.DMEM + addr + 0x000) = VR_S(vt, e+0x0);
          RSP.DMEM[addr + 0x002 - BES(0x000)] = VR_A(vt, e+0x2);
          RSP.DMEM[addr + 0x003 + BES(0x000)] = VR_U(vt, e+0x3);
-         *(short *)(RSP.DMEM + addr + 0x004) = VR_S(vt, e+0x4);
+         *(int16_t*)(RSP.DMEM + addr + 0x004) = VR_S(vt, e+0x4);
          RSP.DMEM[addr + 0x006 - BES(0x000)] = VR_A(vt, e+0x6);
          addr += 0x007 + BES(0x000);
          addr &= 0x00000FFF;
          RSP.DMEM[addr] = VR_U(vt, e+0x7);
          break;
       case 02:
-         *(short *)(RSP.DMEM + addr + 0x000 - HES(0x000)) = VR_S(vt, e+0x0);
-         *(short *)(RSP.DMEM + addr + 0x002 + HES(0x000)) = VR_S(vt, e+0x2);
-         *(short *)(RSP.DMEM + addr + 0x004 - HES(0x000)) = VR_S(vt, e+0x4);
+         *(int16_t*)(RSP.DMEM + addr + 0x000 - HES(0x000)) = VR_S(vt, e+0x0);
+         *(int16_t*)(RSP.DMEM + addr + 0x002 + HES(0x000)) = VR_S(vt, e+0x2);
+         *(int16_t*)(RSP.DMEM + addr + 0x004 - HES(0x000)) = VR_S(vt, e+0x4);
          addr += 0x006 + HES(0x000);
          addr &= 0x00000FFF;
-         *(short *)(RSP.DMEM + addr) = VR_S(vt, e+0x6);
+         *(int16_t*)(RSP.DMEM + addr) = VR_S(vt, e+0x6);
          break;
       case 03: /* "Tetrisphere" audio ucode */
          RSP.DMEM[addr + 0x000 - BES(0x000)] = VR_A(vt, e+0x0);
          RSP.DMEM[addr + 0x001 + BES(0x000)] = VR_U(vt, e+0x1);
-         *(short *)(RSP.DMEM + addr + 0x002) = VR_S(vt, e+0x2);
+         *(int16_t*)(RSP.DMEM + addr + 0x002) = VR_S(vt, e+0x2);
          RSP.DMEM[addr + 0x004 - BES(0x000)] = VR_A(vt, e+0x4);
          addr += 0x005 + BES(0x000);
          addr &= 0x00000FFF;
          RSP.DMEM[addr] = VR_U(vt, e+0x5);
-         *(short *)(RSP.DMEM + addr + 0x001 - BES(0x000)) = VR_S(vt, 0x6);
+         *(int16_t*)(RSP.DMEM + addr + 0x001 - BES(0x000)) = VR_S(vt, 0x6);
          break;
       case 04:
-         *(short *)(RSP.DMEM + addr + HES(0x000)) = VR_S(vt, e+0x0);
-         *(short *)(RSP.DMEM + addr + HES(0x002)) = VR_S(vt, e+0x2);
+         *(int16_t*)(RSP.DMEM + addr + HES(0x000)) = VR_S(vt, e+0x0);
+         *(int16_t*)(RSP.DMEM + addr + HES(0x002)) = VR_S(vt, e+0x2);
          addr = (addr + 0x004) & 0x00000FFF;
-         *(short *)(RSP.DMEM + addr + HES(0x000)) = VR_S(vt, e+0x4);
-         *(short *)(RSP.DMEM + addr + HES(0x002)) = VR_S(vt, e+0x6);
+         *(int16_t*)(RSP.DMEM + addr + HES(0x000)) = VR_S(vt, e+0x4);
+         *(int16_t*)(RSP.DMEM + addr + HES(0x002)) = VR_S(vt, e+0x6);
          break;
       case 05: /* "Tetrisphere" audio ucode */
-         *(short *)(RSP.DMEM + addr + 0x000) = VR_S(vt, e+0x0);
+         *(int16_t*)(RSP.DMEM + addr + 0x000) = VR_S(vt, e+0x0);
          RSP.DMEM[addr + 0x002 - BES(0x000)] = VR_A(vt, e+0x2);
          addr = (addr + 0x003) & 0x00000FFF;
          RSP.DMEM[addr + BES(0x000)] = VR_U(vt, e+0x3);
-         *(short *)(RSP.DMEM + addr + 0x001) = VR_S(vt, e+0x4);
+         *(int16_t*)(RSP.DMEM + addr + 0x001) = VR_S(vt, e+0x4);
          RSP.DMEM[addr + BES(0x003)] = VR_A(vt, e+0x6);
          RSP.DMEM[addr + BES(0x004)] = VR_U(vt, e+0x7);
          break;
       case 06:
-         *(short *)(RSP.DMEM + addr - HES(0x000)) = VR_S(vt, e+0x0);
+         *(int16_t*)(RSP.DMEM + addr - HES(0x000)) = VR_S(vt, e+0x0);
          addr = (addr + 0x002) & 0x00000FFF;
-         *(short *)(RSP.DMEM + addr + HES(0x000)) = VR_S(vt, e+0x2);
-         *(short *)(RSP.DMEM + addr + HES(0x002)) = VR_S(vt, e+0x4);
-         *(short *)(RSP.DMEM + addr + HES(0x004)) = VR_S(vt, e+0x6);
+         *(int16_t*)(RSP.DMEM + addr + HES(0x000)) = VR_S(vt, e+0x2);
+         *(int16_t*)(RSP.DMEM + addr + HES(0x002)) = VR_S(vt, e+0x4);
+         *(int16_t*)(RSP.DMEM + addr + HES(0x004)) = VR_S(vt, e+0x6);
          break;
       case 07: /* "Tetrisphere" audio ucode */
          RSP.DMEM[addr - BES(0x000)] = VR_A(vt, e+0x0);
          addr = (addr + 0x001) & 0x00000FFF;
          RSP.DMEM[addr + BES(0x000)] = VR_U(vt, e+0x1);
-         *(short *)(RSP.DMEM + addr + 0x001) = VR_S(vt, e+0x2);
+         *(int16_t*)(RSP.DMEM + addr + 0x001) = VR_S(vt, e+0x2);
          RSP.DMEM[addr + BES(0x003)] = VR_A(vt, e+0x4);
          RSP.DMEM[addr + BES(0x004)] = VR_U(vt, e+0x5);
-         *(short *)(RSP.DMEM + addr + 0x005) = VR_S(vt, e+0x6);
+         *(int16_t*)(RSP.DMEM + addr + 0x005) = VR_S(vt, e+0x6);
          break;
    }
 }
@@ -953,11 +952,11 @@ static void SDV(int vt, int element, int offset, int base)
  * Group II vector loads and stores:
  * PV and UV (As of RCP implementation, XV and ZV are reserved opcodes.)
  */
-static void LPV(int vt, int element, int offset, int base)
+static void LPV(unsigned vt, unsigned element, signed offset, unsigned base)
 {
     register uint32_t addr;
     register int b;
-    const int e = element;
+    const unsigned int e = element;
 
     if (e != 0x0) /* Illegal element */
         return;
@@ -1063,23 +1062,23 @@ static void LPV(int vt, int element, int offset, int base)
             break;
     }
 }
-static void LUV(int vt, int element, int offset, int base)
+static void LUV(unsigned vt, unsigned element, signed offset, unsigned base)
 {
-    register int b;
-    int e = element;
+    register unsigned int b;
+    const unsigned int e = element;
     register uint32_t addr = (SR[base] + 8*offset) & 0x00000FFF;
 
     if (e != 0x0)
-    { /* "Mia Hamm Soccer 64" SP exception override (zilmar) */
-        addr += -e & 0xF;
-        for (b = 0; b < 8; b++)
-        {
-            VR[vt][b] = RSP.DMEM[BES(addr &= 0x00000FFF)] << 7;
-            --e;
-            addr -= 16 * (e == 0x0);
-            ++addr;
-        }
-        return;
+    {
+       /* "Mia Hamm Soccer 64" SP exception override (zilmar) */
+       addr += (~e + 0x1) & 0xF;
+       for (b = 0; b < 8; b++)
+       {
+          VR[vt][b] = RSP.DMEM[BES(addr &= 0x00000FFF)] << 7;
+          addr -= 16 * (e - b - 1 == 0x0);
+          ++addr;
+       }
+       return;
     }
     b = addr & 07;
     addr &= ~07;
@@ -1181,13 +1180,13 @@ static void LUV(int vt, int element, int offset, int base)
             break;
     }
 }
-static void SPV(int vt, int element, int offset, int base)
+static void SPV(unsigned vt, unsigned element, signed offset, unsigned base)
 {
     register int b;
     register uint32_t addr;
     const int e = element;
 
-    if (e != 0x0) /* SPV, illegal element */
+    if (e != 0x0) /* illegal element */
         return;
 
     addr = (SR[base] + 8*offset) & 0x00000FFF;
@@ -1196,108 +1195,108 @@ static void SPV(int vt, int element, int offset, int base)
     switch (b)
     {
         case 00:
-            RSP.DMEM[addr + BES(0x007)] = (unsigned char)(VR[vt][07] >> 8);
-            RSP.DMEM[addr + BES(0x006)] = (unsigned char)(VR[vt][06] >> 8);
-            RSP.DMEM[addr + BES(0x005)] = (unsigned char)(VR[vt][05] >> 8);
-            RSP.DMEM[addr + BES(0x004)] = (unsigned char)(VR[vt][04] >> 8);
-            RSP.DMEM[addr + BES(0x003)] = (unsigned char)(VR[vt][03] >> 8);
-            RSP.DMEM[addr + BES(0x002)] = (unsigned char)(VR[vt][02] >> 8);
-            RSP.DMEM[addr + BES(0x001)] = (unsigned char)(VR[vt][01] >> 8);
-            RSP.DMEM[addr + BES(0x000)] = (unsigned char)(VR[vt][00] >> 8);
-            return;
+            RSP.DMEM[addr + BES(0x007)] = (uint8_t)(VR[vt][07] >> 8);
+            RSP.DMEM[addr + BES(0x006)] = (uint8_t)(VR[vt][06] >> 8);
+            RSP.DMEM[addr + BES(0x005)] = (uint8_t)(VR[vt][05] >> 8);
+            RSP.DMEM[addr + BES(0x004)] = (uint8_t)(VR[vt][04] >> 8);
+            RSP.DMEM[addr + BES(0x003)] = (uint8_t)(VR[vt][03] >> 8);
+            RSP.DMEM[addr + BES(0x002)] = (uint8_t)(VR[vt][02] >> 8);
+            RSP.DMEM[addr + BES(0x001)] = (uint8_t)(VR[vt][01] >> 8);
+            RSP.DMEM[addr + BES(0x000)] = (uint8_t)(VR[vt][00] >> 8);
+            break;
         case 01: /* F3DZEX 2.08J "Doubutsu no Mori" (Animal Forest) CFB layer */
-            RSP.DMEM[addr + BES(0x001)] = (unsigned char)(VR[vt][00] >> 8);
-            RSP.DMEM[addr + BES(0x002)] = (unsigned char)(VR[vt][01] >> 8);
-            RSP.DMEM[addr + BES(0x003)] = (unsigned char)(VR[vt][02] >> 8);
-            RSP.DMEM[addr + BES(0x004)] = (unsigned char)(VR[vt][03] >> 8);
-            RSP.DMEM[addr + BES(0x005)] = (unsigned char)(VR[vt][04] >> 8);
-            RSP.DMEM[addr + BES(0x006)] = (unsigned char)(VR[vt][05] >> 8);
-            RSP.DMEM[addr + BES(0x007)] = (unsigned char)(VR[vt][06] >> 8);
+            RSP.DMEM[addr + BES(0x001)] = (uint8_t)(VR[vt][00] >> 8);
+            RSP.DMEM[addr + BES(0x002)] = (uint8_t)(VR[vt][01] >> 8);
+            RSP.DMEM[addr + BES(0x003)] = (uint8_t)(VR[vt][02] >> 8);
+            RSP.DMEM[addr + BES(0x004)] = (uint8_t)(VR[vt][03] >> 8);
+            RSP.DMEM[addr + BES(0x005)] = (uint8_t)(VR[vt][04] >> 8);
+            RSP.DMEM[addr + BES(0x006)] = (uint8_t)(VR[vt][05] >> 8);
+            RSP.DMEM[addr + BES(0x007)] = (uint8_t)(VR[vt][06] >> 8);
             addr += BES(0x008);
             addr &= 0x00000FFF;
-            RSP.DMEM[addr] = (unsigned char)(VR[vt][07] >> 8);
-            return;
+            RSP.DMEM[addr] = (uint8_t)(VR[vt][07] >> 8);
+            break;
         case 02: /* F3DZEX 2.08J "Doubutsu no Mori" (Animal Forest) CFB layer */
-            RSP.DMEM[addr + BES(0x002)] = (unsigned char)(VR[vt][00] >> 8);
-            RSP.DMEM[addr + BES(0x003)] = (unsigned char)(VR[vt][01] >> 8);
-            RSP.DMEM[addr + BES(0x004)] = (unsigned char)(VR[vt][02] >> 8);
-            RSP.DMEM[addr + BES(0x005)] = (unsigned char)(VR[vt][03] >> 8);
-            RSP.DMEM[addr + BES(0x006)] = (unsigned char)(VR[vt][04] >> 8);
-            RSP.DMEM[addr + BES(0x007)] = (unsigned char)(VR[vt][05] >> 8);
+            RSP.DMEM[addr + BES(0x002)] = (uint8_t)(VR[vt][00] >> 8);
+            RSP.DMEM[addr + BES(0x003)] = (uint8_t)(VR[vt][01] >> 8);
+            RSP.DMEM[addr + BES(0x004)] = (uint8_t)(VR[vt][02] >> 8);
+            RSP.DMEM[addr + BES(0x005)] = (uint8_t)(VR[vt][03] >> 8);
+            RSP.DMEM[addr + BES(0x006)] = (uint8_t)(VR[vt][04] >> 8);
+            RSP.DMEM[addr + BES(0x007)] = (uint8_t)(VR[vt][05] >> 8);
             addr += 0x008;
             addr &= 0x00000FFF;
-            RSP.DMEM[addr + BES(0x000)] = (unsigned char)(VR[vt][06] >> 8);
-            RSP.DMEM[addr + BES(0x001)] = (unsigned char)(VR[vt][07] >> 8);
-            return;
+            RSP.DMEM[addr + BES(0x000)] = (uint8_t)(VR[vt][06] >> 8);
+            RSP.DMEM[addr + BES(0x001)] = (uint8_t)(VR[vt][07] >> 8);
+            break;
         case 03: /* F3DZEX 2.08J "Doubutsu no Mori" (Animal Forest) CFB layer */
-            RSP.DMEM[addr + BES(0x003)] = (unsigned char)(VR[vt][00] >> 8);
-            RSP.DMEM[addr + BES(0x004)] = (unsigned char)(VR[vt][01] >> 8);
-            RSP.DMEM[addr + BES(0x005)] = (unsigned char)(VR[vt][02] >> 8);
-            RSP.DMEM[addr + BES(0x006)] = (unsigned char)(VR[vt][03] >> 8);
-            RSP.DMEM[addr + BES(0x007)] = (unsigned char)(VR[vt][04] >> 8);
+            RSP.DMEM[addr + BES(0x003)] = (uint8_t)(VR[vt][00] >> 8);
+            RSP.DMEM[addr + BES(0x004)] = (uint8_t)(VR[vt][01] >> 8);
+            RSP.DMEM[addr + BES(0x005)] = (uint8_t)(VR[vt][02] >> 8);
+            RSP.DMEM[addr + BES(0x006)] = (uint8_t)(VR[vt][03] >> 8);
+            RSP.DMEM[addr + BES(0x007)] = (uint8_t)(VR[vt][04] >> 8);
             addr += 0x008;
             addr &= 0x00000FFF;
-            RSP.DMEM[addr + BES(0x000)] = (unsigned char)(VR[vt][05] >> 8);
-            RSP.DMEM[addr + BES(0x001)] = (unsigned char)(VR[vt][06] >> 8);
-            RSP.DMEM[addr + BES(0x002)] = (unsigned char)(VR[vt][07] >> 8);
-            return;
+            RSP.DMEM[addr + BES(0x000)] = (uint8_t)(VR[vt][05] >> 8);
+            RSP.DMEM[addr + BES(0x001)] = (uint8_t)(VR[vt][06] >> 8);
+            RSP.DMEM[addr + BES(0x002)] = (uint8_t)(VR[vt][07] >> 8);
+            break;
         case 04: /* F3DZEX 2.08J "Doubutsu no Mori" (Animal Forest) CFB layer */
-            RSP.DMEM[addr + BES(0x004)] = (unsigned char)(VR[vt][00] >> 8);
-            RSP.DMEM[addr + BES(0x005)] = (unsigned char)(VR[vt][01] >> 8);
-            RSP.DMEM[addr + BES(0x006)] = (unsigned char)(VR[vt][02] >> 8);
-            RSP.DMEM[addr + BES(0x007)] = (unsigned char)(VR[vt][03] >> 8);
+            RSP.DMEM[addr + BES(0x004)] = (uint8_t)(VR[vt][00] >> 8);
+            RSP.DMEM[addr + BES(0x005)] = (uint8_t)(VR[vt][01] >> 8);
+            RSP.DMEM[addr + BES(0x006)] = (uint8_t)(VR[vt][02] >> 8);
+            RSP.DMEM[addr + BES(0x007)] = (uint8_t)(VR[vt][03] >> 8);
             addr += 0x008;
             addr &= 0x00000FFF;
-            RSP.DMEM[addr + BES(0x000)] = (unsigned char)(VR[vt][04] >> 8);
-            RSP.DMEM[addr + BES(0x001)] = (unsigned char)(VR[vt][05] >> 8);
-            RSP.DMEM[addr + BES(0x002)] = (unsigned char)(VR[vt][06] >> 8);
-            RSP.DMEM[addr + BES(0x003)] = (unsigned char)(VR[vt][07] >> 8);
-            return;
+            RSP.DMEM[addr + BES(0x000)] = (uint8_t)(VR[vt][04] >> 8);
+            RSP.DMEM[addr + BES(0x001)] = (uint8_t)(VR[vt][05] >> 8);
+            RSP.DMEM[addr + BES(0x002)] = (uint8_t)(VR[vt][06] >> 8);
+            RSP.DMEM[addr + BES(0x003)] = (uint8_t)(VR[vt][07] >> 8);
+            break;
         case 05: /* F3DZEX 2.08J "Doubutsu no Mori" (Animal Forest) CFB layer */
-            RSP.DMEM[addr + BES(0x005)] = (unsigned char)(VR[vt][00] >> 8);
-            RSP.DMEM[addr + BES(0x006)] = (unsigned char)(VR[vt][01] >> 8);
-            RSP.DMEM[addr + BES(0x007)] = (unsigned char)(VR[vt][02] >> 8);
+            RSP.DMEM[addr + BES(0x005)] = (uint8_t)(VR[vt][00] >> 8);
+            RSP.DMEM[addr + BES(0x006)] = (uint8_t)(VR[vt][01] >> 8);
+            RSP.DMEM[addr + BES(0x007)] = (uint8_t)(VR[vt][02] >> 8);
             addr += 0x008;
             addr &= 0x00000FFF;
-            RSP.DMEM[addr + BES(0x000)] = (unsigned char)(VR[vt][03] >> 8);
-            RSP.DMEM[addr + BES(0x001)] = (unsigned char)(VR[vt][04] >> 8);
-            RSP.DMEM[addr + BES(0x002)] = (unsigned char)(VR[vt][05] >> 8);
-            RSP.DMEM[addr + BES(0x003)] = (unsigned char)(VR[vt][06] >> 8);
-            RSP.DMEM[addr + BES(0x004)] = (unsigned char)(VR[vt][07] >> 8);
-            return;
+            RSP.DMEM[addr + BES(0x000)] = (uint8_t)(VR[vt][03] >> 8);
+            RSP.DMEM[addr + BES(0x001)] = (uint8_t)(VR[vt][04] >> 8);
+            RSP.DMEM[addr + BES(0x002)] = (uint8_t)(VR[vt][05] >> 8);
+            RSP.DMEM[addr + BES(0x003)] = (uint8_t)(VR[vt][06] >> 8);
+            RSP.DMEM[addr + BES(0x004)] = (uint8_t)(VR[vt][07] >> 8);
+            break;
         case 06: /* F3DZEX 2.08J "Doubutsu no Mori" (Animal Forest) CFB layer */
-            RSP.DMEM[addr + BES(0x006)] = (unsigned char)(VR[vt][00] >> 8);
-            RSP.DMEM[addr + BES(0x007)] = (unsigned char)(VR[vt][01] >> 8);
+            RSP.DMEM[addr + BES(0x006)] = (uint8_t)(VR[vt][00] >> 8);
+            RSP.DMEM[addr + BES(0x007)] = (uint8_t)(VR[vt][01] >> 8);
             addr += 0x008;
             addr &= 0x00000FFF;
-            RSP.DMEM[addr + BES(0x000)] = (unsigned char)(VR[vt][02] >> 8);
-            RSP.DMEM[addr + BES(0x001)] = (unsigned char)(VR[vt][03] >> 8);
-            RSP.DMEM[addr + BES(0x002)] = (unsigned char)(VR[vt][04] >> 8);
-            RSP.DMEM[addr + BES(0x003)] = (unsigned char)(VR[vt][05] >> 8);
-            RSP.DMEM[addr + BES(0x004)] = (unsigned char)(VR[vt][06] >> 8);
-            RSP.DMEM[addr + BES(0x005)] = (unsigned char)(VR[vt][07] >> 8);
-            return;
+            RSP.DMEM[addr + BES(0x000)] = (uint8_t)(VR[vt][02] >> 8);
+            RSP.DMEM[addr + BES(0x001)] = (uint8_t)(VR[vt][03] >> 8);
+            RSP.DMEM[addr + BES(0x002)] = (uint8_t)(VR[vt][04] >> 8);
+            RSP.DMEM[addr + BES(0x003)] = (uint8_t)(VR[vt][05] >> 8);
+            RSP.DMEM[addr + BES(0x004)] = (uint8_t)(VR[vt][06] >> 8);
+            RSP.DMEM[addr + BES(0x005)] = (uint8_t)(VR[vt][07] >> 8);
+            break;
         case 07: /* F3DZEX 2.08J "Doubutsu no Mori" (Animal Forest) CFB layer */
-            RSP.DMEM[addr + BES(0x007)] = (unsigned char)(VR[vt][00] >> 8);
+            RSP.DMEM[addr + BES(0x007)] = (uint8_t)(VR[vt][00] >> 8);
             addr += 0x008;
             addr &= 0x00000FFF;
-            RSP.DMEM[addr + BES(0x000)] = (unsigned char)(VR[vt][01] >> 8);
-            RSP.DMEM[addr + BES(0x001)] = (unsigned char)(VR[vt][02] >> 8);
-            RSP.DMEM[addr + BES(0x002)] = (unsigned char)(VR[vt][03] >> 8);
-            RSP.DMEM[addr + BES(0x003)] = (unsigned char)(VR[vt][04] >> 8);
-            RSP.DMEM[addr + BES(0x004)] = (unsigned char)(VR[vt][05] >> 8);
-            RSP.DMEM[addr + BES(0x005)] = (unsigned char)(VR[vt][06] >> 8);
-            RSP.DMEM[addr + BES(0x006)] = (unsigned char)(VR[vt][07] >> 8);
-            return;
+            RSP.DMEM[addr + BES(0x000)] = (uint8_t)(VR[vt][01] >> 8);
+            RSP.DMEM[addr + BES(0x001)] = (uint8_t)(VR[vt][02] >> 8);
+            RSP.DMEM[addr + BES(0x002)] = (uint8_t)(VR[vt][03] >> 8);
+            RSP.DMEM[addr + BES(0x003)] = (uint8_t)(VR[vt][04] >> 8);
+            RSP.DMEM[addr + BES(0x004)] = (uint8_t)(VR[vt][05] >> 8);
+            RSP.DMEM[addr + BES(0x005)] = (uint8_t)(VR[vt][06] >> 8);
+            RSP.DMEM[addr + BES(0x006)] = (uint8_t)(VR[vt][07] >> 8);
+            break;
     }
 }
-static void SUV(int vt, int element, int offset, int base)
+static void SUV(unsigned vt, unsigned element, signed offset, unsigned base)
 {
     register int b;
     register uint32_t addr;
-    const int e = element;
+    const unsigned int e = element;
 
-    if (e != 0x0) /* SUV, Illegal element */
+    if (e != 0x0) /* Illegal element */
         return;
 
     addr = (SR[base] + 8*offset) & 0x00000FFF;
@@ -1306,30 +1305,30 @@ static void SUV(int vt, int element, int offset, int base)
     switch (b)
     {
         case 00:
-            RSP.DMEM[addr + BES(0x007)] = (unsigned char)(VR[vt][07] >> 7);
-            RSP.DMEM[addr + BES(0x006)] = (unsigned char)(VR[vt][06] >> 7);
-            RSP.DMEM[addr + BES(0x005)] = (unsigned char)(VR[vt][05] >> 7);
-            RSP.DMEM[addr + BES(0x004)] = (unsigned char)(VR[vt][04] >> 7);
-            RSP.DMEM[addr + BES(0x003)] = (unsigned char)(VR[vt][03] >> 7);
-            RSP.DMEM[addr + BES(0x002)] = (unsigned char)(VR[vt][02] >> 7);
-            RSP.DMEM[addr + BES(0x001)] = (unsigned char)(VR[vt][01] >> 7);
-            RSP.DMEM[addr + BES(0x000)] = (unsigned char)(VR[vt][00] >> 7);
-            return;
+            RSP.DMEM[addr + BES(0x007)] = (uint8_t)(VR[vt][07] >> 7);
+            RSP.DMEM[addr + BES(0x006)] = (uint8_t)(VR[vt][06] >> 7);
+            RSP.DMEM[addr + BES(0x005)] = (uint8_t)(VR[vt][05] >> 7);
+            RSP.DMEM[addr + BES(0x004)] = (uint8_t)(VR[vt][04] >> 7);
+            RSP.DMEM[addr + BES(0x003)] = (uint8_t)(VR[vt][03] >> 7);
+            RSP.DMEM[addr + BES(0x002)] = (uint8_t)(VR[vt][02] >> 7);
+            RSP.DMEM[addr + BES(0x001)] = (uint8_t)(VR[vt][01] >> 7);
+            RSP.DMEM[addr + BES(0x000)] = (uint8_t)(VR[vt][00] >> 7);
+            break;
         case 04: /* "Indiana Jones and the Infernal Machine" in-game */
-            RSP.DMEM[addr + BES(0x004)] = (unsigned char)(VR[vt][00] >> 7);
-            RSP.DMEM[addr + BES(0x005)] = (unsigned char)(VR[vt][01] >> 7);
-            RSP.DMEM[addr + BES(0x006)] = (unsigned char)(VR[vt][02] >> 7);
-            RSP.DMEM[addr + BES(0x007)] = (unsigned char)(VR[vt][03] >> 7);
+            RSP.DMEM[addr + BES(0x004)] = (uint8_t)(VR[vt][00] >> 7);
+            RSP.DMEM[addr + BES(0x005)] = (uint8_t)(VR[vt][01] >> 7);
+            RSP.DMEM[addr + BES(0x006)] = (uint8_t)(VR[vt][02] >> 7);
+            RSP.DMEM[addr + BES(0x007)] = (uint8_t)(VR[vt][03] >> 7);
             addr += 0x008;
             addr &= 0x00000FFF;
-            RSP.DMEM[addr + BES(0x000)] = (unsigned char)(VR[vt][04] >> 7);
-            RSP.DMEM[addr + BES(0x001)] = (unsigned char)(VR[vt][05] >> 7);
-            RSP.DMEM[addr + BES(0x002)] = (unsigned char)(VR[vt][06] >> 7);
-            RSP.DMEM[addr + BES(0x003)] = (unsigned char)(VR[vt][07] >> 7);
-            return;
+            RSP.DMEM[addr + BES(0x000)] = (uint8_t)(VR[vt][04] >> 7);
+            RSP.DMEM[addr + BES(0x001)] = (uint8_t)(VR[vt][05] >> 7);
+            RSP.DMEM[addr + BES(0x002)] = (uint8_t)(VR[vt][06] >> 7);
+            RSP.DMEM[addr + BES(0x003)] = (uint8_t)(VR[vt][07] >> 7);
+            break;
         default: /* Completely legal, just never seen it be done. */
             /* SUV, weird address */
-            return;
+            break;
     }
 }
 
@@ -1337,16 +1336,16 @@ static void SUV(int vt, int element, int offset, int base)
  * Group III vector loads and stores:
  * HV, FV, and AV (As of RCP implementation, AV opcodes are reserved.)
  */
-static void LHV(int vt, int element, int offset, int base)
+static void LHV(unsigned vt, unsigned element, signed offset, unsigned base)
 {
     register uint32_t addr;
-    const int e = element;
+    const unsigned int e = element;
 
-    if (e != 0x0) /* LHV, illegal element */
+    if (e != 0x0) /* illegal element */
         return;
 
     addr = (SR[base] + 16*offset) & 0x00000FFF;
-    if (addr & 0x0000000E) /* LHV, illegal address */
+    if (addr & 0x0000000E) /* illegal address */
         return;
 
     addr ^= MES(00);
@@ -1358,53 +1357,53 @@ static void LHV(int vt, int element, int offset, int base)
     VR[vt][02] = RSP.DMEM[addr + HES(0x004)] << 7;
     VR[vt][01] = RSP.DMEM[addr + HES(0x002)] << 7;
     VR[vt][00] = RSP.DMEM[addr + HES(0x000)] << 7;
-    return;
 }
-static void SHV(int vt, int element, int offset, int base)
+
+static void SHV(unsigned vt, unsigned element, signed offset, unsigned base)
 {
    register uint32_t addr;
-   const int e = element;
+   const unsigned int e = element;
 
-   if (e != 0x0) /* SHV, illegal element */
+   if (e != 0x0) /* illegal element */
       return;
 
    addr = (SR[base] + 16*offset) & 0x00000FFF;
-   if (addr & 0x0000000E) /* SHV, illegal address */
+   if (addr & 0x0000000E) /* illegal address */
       return;
 
    addr ^= MES(00);
-   RSP.DMEM[addr + HES(0x00E)] = (unsigned char)(VR[vt][07] >> 7);
-   RSP.DMEM[addr + HES(0x00C)] = (unsigned char)(VR[vt][06] >> 7);
-   RSP.DMEM[addr + HES(0x00A)] = (unsigned char)(VR[vt][05] >> 7);
-   RSP.DMEM[addr + HES(0x008)] = (unsigned char)(VR[vt][04] >> 7);
-   RSP.DMEM[addr + HES(0x006)] = (unsigned char)(VR[vt][03] >> 7);
-   RSP.DMEM[addr + HES(0x004)] = (unsigned char)(VR[vt][02] >> 7);
-   RSP.DMEM[addr + HES(0x002)] = (unsigned char)(VR[vt][01] >> 7);
-   RSP.DMEM[addr + HES(0x000)] = (unsigned char)(VR[vt][00] >> 7);
+   RSP.DMEM[addr + HES(0x00E)] = (uint8_t)(VR[vt][07] >> 7);
+   RSP.DMEM[addr + HES(0x00C)] = (uint8_t)(VR[vt][06] >> 7);
+   RSP.DMEM[addr + HES(0x00A)] = (uint8_t)(VR[vt][05] >> 7);
+   RSP.DMEM[addr + HES(0x008)] = (uint8_t)(VR[vt][04] >> 7);
+   RSP.DMEM[addr + HES(0x006)] = (uint8_t)(VR[vt][03] >> 7);
+   RSP.DMEM[addr + HES(0x004)] = (uint8_t)(VR[vt][02] >> 7);
+   RSP.DMEM[addr + HES(0x002)] = (uint8_t)(VR[vt][01] >> 7);
+   RSP.DMEM[addr + HES(0x000)] = (uint8_t)(VR[vt][00] >> 7);
 }
 
-static void SFV(int vt, int element, int offset, int base)
+static void SFV(unsigned vt, unsigned element, signed offset, unsigned base)
 {
-    const int e = element;
-    register uint32_t addr = ((SR[base] + 16*offset) & 0x00000FFF) & 0x00000FF3;
-    addr ^= BES(00);
+    const unsigned int e   = element;
+    register uint32_t addr = ((SR[base] + 16*offset) & 0x00000FFF);
+    addr &= 0x00000FF3;
 
     switch (e)
     {
         case 0x0:
-            RSP.DMEM[addr + 0x000] = (unsigned char)(VR[vt][00] >> 7);
-            RSP.DMEM[addr + 0x004] = (unsigned char)(VR[vt][01] >> 7);
-            RSP.DMEM[addr + 0x008] = (unsigned char)(VR[vt][02] >> 7);
-            RSP.DMEM[addr + 0x00C] = (unsigned char)(VR[vt][03] >> 7);
+            RSP.DMEM[addr + 0x000] = (uint8_t)(VR[vt][00] >> 7);
+            RSP.DMEM[addr + 0x004] = (uint8_t)(VR[vt][01] >> 7);
+            RSP.DMEM[addr + 0x008] = (uint8_t)(VR[vt][02] >> 7);
+            RSP.DMEM[addr + 0x00C] = (uint8_t)(VR[vt][03] >> 7);
             break;
         case 0x8:
-            RSP.DMEM[addr + 0x000] = (unsigned char)(VR[vt][04] >> 7);
-            RSP.DMEM[addr + 0x004] = (unsigned char)(VR[vt][05] >> 7);
-            RSP.DMEM[addr + 0x008] = (unsigned char)(VR[vt][06] >> 7);
-            RSP.DMEM[addr + 0x00C] = (unsigned char)(VR[vt][07] >> 7);
+            RSP.DMEM[addr + 0x000] = (uint8_t)(VR[vt][04] >> 7);
+            RSP.DMEM[addr + 0x004] = (uint8_t)(VR[vt][05] >> 7);
+            RSP.DMEM[addr + 0x008] = (uint8_t)(VR[vt][06] >> 7);
+            RSP.DMEM[addr + 0x00C] = (uint8_t)(VR[vt][07] >> 7);
             break;
         default:
-            /* SFV, illegal element */
+            /*  illegal element */
             break;
     }
 }
@@ -1413,11 +1412,11 @@ static void SFV(int vt, int element, int offset, int base)
  * Group IV vector loads and stores:
  * QV and RV
  */
-static void LQV(int vt, int element, int offset, int base)
+static void LQV(unsigned vt, unsigned element, signed offset, unsigned base)
 {
     register uint32_t addr;
     register int b;
-    const int e = element; /* Boss Game Studios illegal elements */
+    const unsigned int e = element; /* Boss Game Studios illegal elements */
 
     if (e & 0x1) /* LQV, odd element */
         return;
@@ -1431,66 +1430,67 @@ static void LQV(int vt, int element, int offset, int base)
     switch (b/2) /* mistake in SGI patent regarding LQV */
     {
         case 0x0/2:
-            VR_S(vt,e+0x0) = *(short *)(RSP.DMEM + addr + HES(0x000));
-            VR_S(vt,e+0x2) = *(short *)(RSP.DMEM + addr + HES(0x002));
-            VR_S(vt,e+0x4) = *(short *)(RSP.DMEM + addr + HES(0x004));
-            VR_S(vt,e+0x6) = *(short *)(RSP.DMEM + addr + HES(0x006));
-            VR_S(vt,e+0x8) = *(short *)(RSP.DMEM + addr + HES(0x008));
-            VR_S(vt,e+0xA) = *(short *)(RSP.DMEM + addr + HES(0x00A));
-            VR_S(vt,e+0xC) = *(short *)(RSP.DMEM + addr + HES(0x00C));
-            VR_S(vt,e+0xE) = *(short *)(RSP.DMEM + addr + HES(0x00E));
+            VR_S(vt,e+0x0) = *(int16_t *)(RSP.DMEM + addr + HES(0x000));
+            VR_S(vt,e+0x2) = *(int16_t *)(RSP.DMEM + addr + HES(0x002));
+            VR_S(vt,e+0x4) = *(int16_t *)(RSP.DMEM + addr + HES(0x004));
+            VR_S(vt,e+0x6) = *(int16_t *)(RSP.DMEM + addr + HES(0x006));
+            VR_S(vt,e+0x8) = *(int16_t *)(RSP.DMEM + addr + HES(0x008));
+            VR_S(vt,e+0xA) = *(int16_t *)(RSP.DMEM + addr + HES(0x00A));
+            VR_S(vt,e+0xC) = *(int16_t *)(RSP.DMEM + addr + HES(0x00C));
+            VR_S(vt,e+0xE) = *(int16_t *)(RSP.DMEM + addr + HES(0x00E));
             break;
         case 0x2/2:
-            VR_S(vt,e+0x0) = *(short *)(RSP.DMEM + addr + HES(0x002));
-            VR_S(vt,e+0x2) = *(short *)(RSP.DMEM + addr + HES(0x004));
-            VR_S(vt,e+0x4) = *(short *)(RSP.DMEM + addr + HES(0x006));
-            VR_S(vt,e+0x6) = *(short *)(RSP.DMEM + addr + HES(0x008));
-            VR_S(vt,e+0x8) = *(short *)(RSP.DMEM + addr + HES(0x00A));
-            VR_S(vt,e+0xA) = *(short *)(RSP.DMEM + addr + HES(0x00C));
-            VR_S(vt,e+0xC) = *(short *)(RSP.DMEM + addr + HES(0x00E));
+            VR_S(vt,e+0x0) = *(int16_t *)(RSP.DMEM + addr + HES(0x002));
+            VR_S(vt,e+0x2) = *(int16_t *)(RSP.DMEM + addr + HES(0x004));
+            VR_S(vt,e+0x4) = *(int16_t *)(RSP.DMEM + addr + HES(0x006));
+            VR_S(vt,e+0x6) = *(int16_t *)(RSP.DMEM + addr + HES(0x008));
+            VR_S(vt,e+0x8) = *(int16_t *)(RSP.DMEM + addr + HES(0x00A));
+            VR_S(vt,e+0xA) = *(int16_t *)(RSP.DMEM + addr + HES(0x00C));
+            VR_S(vt,e+0xC) = *(int16_t *)(RSP.DMEM + addr + HES(0x00E));
             break;
         case 0x4/2:
-            VR_S(vt,e+0x0) = *(short *)(RSP.DMEM + addr + HES(0x004));
-            VR_S(vt,e+0x2) = *(short *)(RSP.DMEM + addr + HES(0x006));
-            VR_S(vt,e+0x4) = *(short *)(RSP.DMEM + addr + HES(0x008));
-            VR_S(vt,e+0x6) = *(short *)(RSP.DMEM + addr + HES(0x00A));
-            VR_S(vt,e+0x8) = *(short *)(RSP.DMEM + addr + HES(0x00C));
-            VR_S(vt,e+0xA) = *(short *)(RSP.DMEM + addr + HES(0x00E));
+            VR_S(vt,e+0x0) = *(int16_t *)(RSP.DMEM + addr + HES(0x004));
+            VR_S(vt,e+0x2) = *(int16_t *)(RSP.DMEM + addr + HES(0x006));
+            VR_S(vt,e+0x4) = *(int16_t *)(RSP.DMEM + addr + HES(0x008));
+            VR_S(vt,e+0x6) = *(int16_t *)(RSP.DMEM + addr + HES(0x00A));
+            VR_S(vt,e+0x8) = *(int16_t *)(RSP.DMEM + addr + HES(0x00C));
+            VR_S(vt,e+0xA) = *(int16_t *)(RSP.DMEM + addr + HES(0x00E));
             break;
         case 0x6/2:
-            VR_S(vt,e+0x0) = *(short *)(RSP.DMEM + addr + HES(0x006));
-            VR_S(vt,e+0x2) = *(short *)(RSP.DMEM + addr + HES(0x008));
-            VR_S(vt,e+0x4) = *(short *)(RSP.DMEM + addr + HES(0x00A));
-            VR_S(vt,e+0x6) = *(short *)(RSP.DMEM + addr + HES(0x00C));
-            VR_S(vt,e+0x8) = *(short *)(RSP.DMEM + addr + HES(0x00E));
+            VR_S(vt,e+0x0) = *(int16_t *)(RSP.DMEM + addr + HES(0x006));
+            VR_S(vt,e+0x2) = *(int16_t *)(RSP.DMEM + addr + HES(0x008));
+            VR_S(vt,e+0x4) = *(int16_t *)(RSP.DMEM + addr + HES(0x00A));
+            VR_S(vt,e+0x6) = *(int16_t *)(RSP.DMEM + addr + HES(0x00C));
+            VR_S(vt,e+0x8) = *(int16_t *)(RSP.DMEM + addr + HES(0x00E));
             break;
         case 0x8/2: /* "Resident Evil 2" cinematics and Boss Game Studios */
-            VR_S(vt,e+0x0) = *(short *)(RSP.DMEM + addr + HES(0x008));
-            VR_S(vt,e+0x2) = *(short *)(RSP.DMEM + addr + HES(0x00A));
-            VR_S(vt,e+0x4) = *(short *)(RSP.DMEM + addr + HES(0x00C));
-            VR_S(vt,e+0x6) = *(short *)(RSP.DMEM + addr + HES(0x00E));
+            VR_S(vt,e+0x0) = *(int16_t *)(RSP.DMEM + addr + HES(0x008));
+            VR_S(vt,e+0x2) = *(int16_t *)(RSP.DMEM + addr + HES(0x00A));
+            VR_S(vt,e+0x4) = *(int16_t *)(RSP.DMEM + addr + HES(0x00C));
+            VR_S(vt,e+0x6) = *(int16_t *)(RSP.DMEM + addr + HES(0x00E));
             break;
         case 0xA/2: /* "Conker's Bad Fur Day" audio microcode by Rareware */
-            VR_S(vt,e+0x0) = *(short *)(RSP.DMEM + addr + HES(0x00A));
-            VR_S(vt,e+0x2) = *(short *)(RSP.DMEM + addr + HES(0x00C));
-            VR_S(vt,e+0x4) = *(short *)(RSP.DMEM + addr + HES(0x00E));
+            VR_S(vt,e+0x0) = *(int16_t *)(RSP.DMEM + addr + HES(0x00A));
+            VR_S(vt,e+0x2) = *(int16_t *)(RSP.DMEM + addr + HES(0x00C));
+            VR_S(vt,e+0x4) = *(int16_t *)(RSP.DMEM + addr + HES(0x00E));
             break;
         case 0xC/2: /* "Conker's Bad Fur Day" audio microcode by Rareware */
-            VR_S(vt,e+0x0) = *(short *)(RSP.DMEM + addr + HES(0x00C));
-            VR_S(vt,e+0x2) = *(short *)(RSP.DMEM + addr + HES(0x00E));
+            VR_S(vt,e+0x0) = *(int16_t *)(RSP.DMEM + addr + HES(0x00C));
+            VR_S(vt,e+0x2) = *(int16_t *)(RSP.DMEM + addr + HES(0x00E));
             break;
         case 0xE/2: /* "Conker's Bad Fur Day" audio microcode by Rareware */
-            VR_S(vt,e+0x0) = *(short *)(RSP.DMEM + addr + HES(0x00E));
+            VR_S(vt,e+0x0) = *(int16_t *)(RSP.DMEM + addr + HES(0x00E));
             break;
     }
 }
-static void LRV(int vt, int element, int offset, int base)
+
+static void LRV(unsigned vt, unsigned element, signed offset, unsigned base)
 {
     register uint32_t addr;
     register int b;
-    const int e = element;
+    const unsigned int e = element;
 
-    if (e != 0x0) /* LVR, illegal element */
+    if (e != 0x0) /* illegal element */
         return;
 
     addr = (SR[base] + 16*offset) & 0x00000FFF;
@@ -1502,53 +1502,53 @@ static void LRV(int vt, int element, int offset, int base)
     switch (b/2)
     {
         case 0xE/2:
-            VR[vt][01] = *(short *)(RSP.DMEM + addr + HES(0x000));
-            VR[vt][02] = *(short *)(RSP.DMEM + addr + HES(0x002));
-            VR[vt][03] = *(short *)(RSP.DMEM + addr + HES(0x004));
-            VR[vt][04] = *(short *)(RSP.DMEM + addr + HES(0x006));
-            VR[vt][05] = *(short *)(RSP.DMEM + addr + HES(0x008));
-            VR[vt][06] = *(short *)(RSP.DMEM + addr + HES(0x00A));
-            VR[vt][07] = *(short *)(RSP.DMEM + addr + HES(0x00C));
-            return;
+            VR[vt][01] = *(int16_t *)(RSP.DMEM + addr + HES(0x000));
+            VR[vt][02] = *(int16_t *)(RSP.DMEM + addr + HES(0x002));
+            VR[vt][03] = *(int16_t *)(RSP.DMEM + addr + HES(0x004));
+            VR[vt][04] = *(int16_t *)(RSP.DMEM + addr + HES(0x006));
+            VR[vt][05] = *(int16_t *)(RSP.DMEM + addr + HES(0x008));
+            VR[vt][06] = *(int16_t *)(RSP.DMEM + addr + HES(0x00A));
+            VR[vt][07] = *(int16_t *)(RSP.DMEM + addr + HES(0x00C));
+            break;
         case 0xC/2:
-            VR[vt][02] = *(short *)(RSP.DMEM + addr + HES(0x000));
-            VR[vt][03] = *(short *)(RSP.DMEM + addr + HES(0x002));
-            VR[vt][04] = *(short *)(RSP.DMEM + addr + HES(0x004));
-            VR[vt][05] = *(short *)(RSP.DMEM + addr + HES(0x006));
-            VR[vt][06] = *(short *)(RSP.DMEM + addr + HES(0x008));
-            VR[vt][07] = *(short *)(RSP.DMEM + addr + HES(0x00A));
-            return;
+            VR[vt][02] = *(int16_t *)(RSP.DMEM + addr + HES(0x000));
+            VR[vt][03] = *(int16_t *)(RSP.DMEM + addr + HES(0x002));
+            VR[vt][04] = *(int16_t *)(RSP.DMEM + addr + HES(0x004));
+            VR[vt][05] = *(int16_t *)(RSP.DMEM + addr + HES(0x006));
+            VR[vt][06] = *(int16_t *)(RSP.DMEM + addr + HES(0x008));
+            VR[vt][07] = *(int16_t *)(RSP.DMEM + addr + HES(0x00A));
+            break;
         case 0xA/2:
-            VR[vt][03] = *(short *)(RSP.DMEM + addr + HES(0x000));
-            VR[vt][04] = *(short *)(RSP.DMEM + addr + HES(0x002));
-            VR[vt][05] = *(short *)(RSP.DMEM + addr + HES(0x004));
-            VR[vt][06] = *(short *)(RSP.DMEM + addr + HES(0x006));
-            VR[vt][07] = *(short *)(RSP.DMEM + addr + HES(0x008));
-            return;
+            VR[vt][03] = *(int16_t *)(RSP.DMEM + addr + HES(0x000));
+            VR[vt][04] = *(int16_t *)(RSP.DMEM + addr + HES(0x002));
+            VR[vt][05] = *(int16_t *)(RSP.DMEM + addr + HES(0x004));
+            VR[vt][06] = *(int16_t *)(RSP.DMEM + addr + HES(0x006));
+            VR[vt][07] = *(int16_t *)(RSP.DMEM + addr + HES(0x008));
+            break;
         case 0x8/2:
-            VR[vt][04] = *(short *)(RSP.DMEM + addr + HES(0x000));
-            VR[vt][05] = *(short *)(RSP.DMEM + addr + HES(0x002));
-            VR[vt][06] = *(short *)(RSP.DMEM + addr + HES(0x004));
-            VR[vt][07] = *(short *)(RSP.DMEM + addr + HES(0x006));
-            return;
+            VR[vt][04] = *(int16_t *)(RSP.DMEM + addr + HES(0x000));
+            VR[vt][05] = *(int16_t *)(RSP.DMEM + addr + HES(0x002));
+            VR[vt][06] = *(int16_t *)(RSP.DMEM + addr + HES(0x004));
+            VR[vt][07] = *(int16_t *)(RSP.DMEM + addr + HES(0x006));
+            break;
         case 0x6/2:
-            VR[vt][05] = *(short *)(RSP.DMEM + addr + HES(0x000));
-            VR[vt][06] = *(short *)(RSP.DMEM + addr + HES(0x002));
-            VR[vt][07] = *(short *)(RSP.DMEM + addr + HES(0x004));
-            return;
+            VR[vt][05] = *(int16_t *)(RSP.DMEM + addr + HES(0x000));
+            VR[vt][06] = *(int16_t *)(RSP.DMEM + addr + HES(0x002));
+            VR[vt][07] = *(int16_t *)(RSP.DMEM + addr + HES(0x004));
+            break;
         case 0x4/2:
-            VR[vt][06] = *(short *)(RSP.DMEM + addr + HES(0x000));
-            VR[vt][07] = *(short *)(RSP.DMEM + addr + HES(0x002));
-            return;
+            VR[vt][06] = *(int16_t *)(RSP.DMEM + addr + HES(0x000));
+            VR[vt][07] = *(int16_t *)(RSP.DMEM + addr + HES(0x002));
+            break;
         case 0x2/2:
-            VR[vt][07] = *(short *)(RSP.DMEM + addr + HES(0x000));
-            return;
+            VR[vt][07] = *(int16_t *)(RSP.DMEM + addr + HES(0x000));
+            break;
         case 0x0/2:
-            return;
+            break;
     }
 }
 
-static void SQV(int vt, int element, int offset, int base)
+static void SQV(unsigned vt, unsigned element, signed offset, unsigned base)
 {
     register int b;
     const unsigned int e = element;
@@ -1573,51 +1573,55 @@ static void SQV(int vt, int element, int offset, int base)
     switch (b)
     {
         case 00:
-            *(short *)(RSP.DMEM + addr + HES(0x000)) = VR[vt][00];
-            *(short *)(RSP.DMEM + addr + HES(0x002)) = VR[vt][01];
-            *(short *)(RSP.DMEM + addr + HES(0x004)) = VR[vt][02];
-            *(short *)(RSP.DMEM + addr + HES(0x006)) = VR[vt][03];
-            *(short *)(RSP.DMEM + addr + HES(0x008)) = VR[vt][04];
-            *(short *)(RSP.DMEM + addr + HES(0x00A)) = VR[vt][05];
-            *(short *)(RSP.DMEM + addr + HES(0x00C)) = VR[vt][06];
-            *(short *)(RSP.DMEM + addr + HES(0x00E)) = VR[vt][07];
+            *(int16_t *)(RSP.DMEM + addr + HES(0x000)) = VR[vt][00];
+            *(int16_t *)(RSP.DMEM + addr + HES(0x002)) = VR[vt][01];
+            *(int16_t *)(RSP.DMEM + addr + HES(0x004)) = VR[vt][02];
+            *(int16_t *)(RSP.DMEM + addr + HES(0x006)) = VR[vt][03];
+            *(int16_t *)(RSP.DMEM + addr + HES(0x008)) = VR[vt][04];
+            *(int16_t *)(RSP.DMEM + addr + HES(0x00A)) = VR[vt][05];
+            *(int16_t *)(RSP.DMEM + addr + HES(0x00C)) = VR[vt][06];
+            *(int16_t *)(RSP.DMEM + addr + HES(0x00E)) = VR[vt][07];
             break;
         case 02:
-            *(short *)(RSP.DMEM + addr + HES(0x002)) = VR[vt][00];
-            *(short *)(RSP.DMEM + addr + HES(0x004)) = VR[vt][01];
-            *(short *)(RSP.DMEM + addr + HES(0x006)) = VR[vt][02];
-            *(short *)(RSP.DMEM + addr + HES(0x008)) = VR[vt][03];
-            *(short *)(RSP.DMEM + addr + HES(0x00A)) = VR[vt][04];
-            *(short *)(RSP.DMEM + addr + HES(0x00C)) = VR[vt][05];
-            *(short *)(RSP.DMEM + addr + HES(0x00E)) = VR[vt][06];
+            *(int16_t *)(RSP.DMEM + addr + HES(0x002)) = VR[vt][00];
+            *(int16_t *)(RSP.DMEM + addr + HES(0x004)) = VR[vt][01];
+            *(int16_t *)(RSP.DMEM + addr + HES(0x006)) = VR[vt][02];
+            *(int16_t *)(RSP.DMEM + addr + HES(0x008)) = VR[vt][03];
+            *(int16_t *)(RSP.DMEM + addr + HES(0x00A)) = VR[vt][04];
+            *(int16_t *)(RSP.DMEM + addr + HES(0x00C)) = VR[vt][05];
+            *(int16_t *)(RSP.DMEM + addr + HES(0x00E)) = VR[vt][06];
             break;
         case 04:
-            *(short *)(RSP.DMEM + addr + HES(0x004)) = VR[vt][00];
-            *(short *)(RSP.DMEM + addr + HES(0x006)) = VR[vt][01];
-            *(short *)(RSP.DMEM + addr + HES(0x008)) = VR[vt][02];
-            *(short *)(RSP.DMEM + addr + HES(0x00A)) = VR[vt][03];
-            *(short *)(RSP.DMEM + addr + HES(0x00C)) = VR[vt][04];
-            *(short *)(RSP.DMEM + addr + HES(0x00E)) = VR[vt][05];
+            *(int16_t *)(RSP.DMEM + addr + HES(0x004)) = VR[vt][00];
+            *(int16_t *)(RSP.DMEM + addr + HES(0x006)) = VR[vt][01];
+            *(int16_t *)(RSP.DMEM + addr + HES(0x008)) = VR[vt][02];
+            *(int16_t *)(RSP.DMEM + addr + HES(0x00A)) = VR[vt][03];
+            *(int16_t *)(RSP.DMEM + addr + HES(0x00C)) = VR[vt][04];
+            *(int16_t *)(RSP.DMEM + addr + HES(0x00E)) = VR[vt][05];
             break;
         case 06:
-            *(short *)(RSP.DMEM + addr + HES(0x006)) = VR[vt][00];
-            *(short *)(RSP.DMEM + addr + HES(0x008)) = VR[vt][01];
-            *(short *)(RSP.DMEM + addr + HES(0x00A)) = VR[vt][02];
-            *(short *)(RSP.DMEM + addr + HES(0x00C)) = VR[vt][03];
-            *(short *)(RSP.DMEM + addr + HES(0x00E)) = VR[vt][04];
+            *(int16_t *)(RSP.DMEM + addr + HES(0x006)) = VR[vt][00];
+            *(int16_t *)(RSP.DMEM + addr + HES(0x008)) = VR[vt][01];
+            *(int16_t *)(RSP.DMEM + addr + HES(0x00A)) = VR[vt][02];
+            *(int16_t *)(RSP.DMEM + addr + HES(0x00C)) = VR[vt][03];
+            *(int16_t *)(RSP.DMEM + addr + HES(0x00E)) = VR[vt][04];
             break;
         default:
             /* SQV, weird address */
             break;
     }
 }
-static void SRV(int vt, int element, int offset, int base)
+static void SRV(
+      unsigned vt,
+      unsigned element,
+      signed offset,
+      unsigned base)
 {
     register uint32_t addr;
     register int b;
-    const int e = element;
+    const unsigned int e = element;
 
-    if (e != 0x0) /* SRV, illegal element */
+    if (e != 0x0) /* illegal element */
         return;
 
     addr = (SR[base] + 16*offset) & 0x00000FFF;
@@ -1630,46 +1634,46 @@ static void SRV(int vt, int element, int offset, int base)
     switch (b/2)
     {
         case 0xE/2:
-            *(short *)(RSP.DMEM + addr + HES(0x000)) = VR[vt][01];
-            *(short *)(RSP.DMEM + addr + HES(0x002)) = VR[vt][02];
-            *(short *)(RSP.DMEM + addr + HES(0x004)) = VR[vt][03];
-            *(short *)(RSP.DMEM + addr + HES(0x006)) = VR[vt][04];
-            *(short *)(RSP.DMEM + addr + HES(0x008)) = VR[vt][05];
-            *(short *)(RSP.DMEM + addr + HES(0x00A)) = VR[vt][06];
-            *(short *)(RSP.DMEM + addr + HES(0x00C)) = VR[vt][07];
+            *(int16_t *)(RSP.DMEM + addr + HES(0x000)) = VR[vt][01];
+            *(int16_t *)(RSP.DMEM + addr + HES(0x002)) = VR[vt][02];
+            *(int16_t *)(RSP.DMEM + addr + HES(0x004)) = VR[vt][03];
+            *(int16_t *)(RSP.DMEM + addr + HES(0x006)) = VR[vt][04];
+            *(int16_t *)(RSP.DMEM + addr + HES(0x008)) = VR[vt][05];
+            *(int16_t *)(RSP.DMEM + addr + HES(0x00A)) = VR[vt][06];
+            *(int16_t *)(RSP.DMEM + addr + HES(0x00C)) = VR[vt][07];
             break;
         case 0xC/2:
-            *(short *)(RSP.DMEM + addr + HES(0x000)) = VR[vt][02];
-            *(short *)(RSP.DMEM + addr + HES(0x002)) = VR[vt][03];
-            *(short *)(RSP.DMEM + addr + HES(0x004)) = VR[vt][04];
-            *(short *)(RSP.DMEM + addr + HES(0x006)) = VR[vt][05];
-            *(short *)(RSP.DMEM + addr + HES(0x008)) = VR[vt][06];
-            *(short *)(RSP.DMEM + addr + HES(0x00A)) = VR[vt][07];
+            *(int16_t *)(RSP.DMEM + addr + HES(0x000)) = VR[vt][02];
+            *(int16_t *)(RSP.DMEM + addr + HES(0x002)) = VR[vt][03];
+            *(int16_t *)(RSP.DMEM + addr + HES(0x004)) = VR[vt][04];
+            *(int16_t *)(RSP.DMEM + addr + HES(0x006)) = VR[vt][05];
+            *(int16_t *)(RSP.DMEM + addr + HES(0x008)) = VR[vt][06];
+            *(int16_t *)(RSP.DMEM + addr + HES(0x00A)) = VR[vt][07];
             break;
         case 0xA/2:
-            *(short *)(RSP.DMEM + addr + HES(0x000)) = VR[vt][03];
-            *(short *)(RSP.DMEM + addr + HES(0x002)) = VR[vt][04];
-            *(short *)(RSP.DMEM + addr + HES(0x004)) = VR[vt][05];
-            *(short *)(RSP.DMEM + addr + HES(0x006)) = VR[vt][06];
-            *(short *)(RSP.DMEM + addr + HES(0x008)) = VR[vt][07];
+            *(int16_t *)(RSP.DMEM + addr + HES(0x000)) = VR[vt][03];
+            *(int16_t *)(RSP.DMEM + addr + HES(0x002)) = VR[vt][04];
+            *(int16_t *)(RSP.DMEM + addr + HES(0x004)) = VR[vt][05];
+            *(int16_t *)(RSP.DMEM + addr + HES(0x006)) = VR[vt][06];
+            *(int16_t *)(RSP.DMEM + addr + HES(0x008)) = VR[vt][07];
             break;
         case 0x8/2:
-            *(short *)(RSP.DMEM + addr + HES(0x000)) = VR[vt][04];
-            *(short *)(RSP.DMEM + addr + HES(0x002)) = VR[vt][05];
-            *(short *)(RSP.DMEM + addr + HES(0x004)) = VR[vt][06];
-            *(short *)(RSP.DMEM + addr + HES(0x006)) = VR[vt][07];
+            *(int16_t *)(RSP.DMEM + addr + HES(0x000)) = VR[vt][04];
+            *(int16_t *)(RSP.DMEM + addr + HES(0x002)) = VR[vt][05];
+            *(int16_t *)(RSP.DMEM + addr + HES(0x004)) = VR[vt][06];
+            *(int16_t *)(RSP.DMEM + addr + HES(0x006)) = VR[vt][07];
             break;
         case 0x6/2:
-            *(short *)(RSP.DMEM + addr + HES(0x000)) = VR[vt][05];
-            *(short *)(RSP.DMEM + addr + HES(0x002)) = VR[vt][06];
-            *(short *)(RSP.DMEM + addr + HES(0x004)) = VR[vt][07];
+            *(int16_t *)(RSP.DMEM + addr + HES(0x000)) = VR[vt][05];
+            *(int16_t *)(RSP.DMEM + addr + HES(0x002)) = VR[vt][06];
+            *(int16_t *)(RSP.DMEM + addr + HES(0x004)) = VR[vt][07];
             break;
         case 0x4/2:
-            *(short *)(RSP.DMEM + addr + HES(0x000)) = VR[vt][06];
-            *(short *)(RSP.DMEM + addr + HES(0x002)) = VR[vt][07];
+            *(int16_t *)(RSP.DMEM + addr + HES(0x000)) = VR[vt][06];
+            *(int16_t *)(RSP.DMEM + addr + HES(0x002)) = VR[vt][07];
             break;
         case 0x2/2:
-            *(short *)(RSP.DMEM + addr + HES(0x000)) = VR[vt][07];
+            *(int16_t *)(RSP.DMEM + addr + HES(0x000)) = VR[vt][07];
             break;
         case 0x0/2:
             break;
@@ -1680,13 +1684,17 @@ static void SRV(int vt, int element, int offset, int base)
  * Group V vector loads and stores
  * TV and SWV (As of RCP implementation, LTWV opcode was undesired.)
  */
-static void LTV(int vt, int element, int offset, int base)
+static void LTV(
+      unsigned vt,
+      unsigned element,
+      signed offset,
+      unsigned base)
 {
    register int i;
    register uint32_t addr;
-   const int e = element;
+   const unsigned int e = element;
 
-   if (e & 1) /* LTV, illegal element */
+   if (e & 1) /* illegal element */
       return;
 
    if (vt & 07) /* LTV, uncertain case */
@@ -1699,13 +1707,17 @@ static void LTV(int vt, int element, int offset, int base)
       VR[vt+i][(i - e/2) & 07] = *(int16_t*)(RSP.DMEM + addr + HES(2*i));
 }
 
-static void STV(int vt, int element, int offset, int base)
+static void STV(
+      unsigned vt,
+      unsigned element,
+      signed offset,
+      unsigned base)
 {
    register int i;
    register uint32_t addr;
-   const int e = element;
+   const unsigned int e = element;
 
-   if (e & 1) /* STV, illegal element */
+   if (e & 1) /* illegal element */
       return;
 
    if (vt & 07) /* STV, uncertain case */
@@ -1716,14 +1728,18 @@ static void STV(int vt, int element, int offset, int base)
       return;
 
    for (i = 0; i < 8; i++)
-      *(short *)(RSP.DMEM + addr + HES(2*i)) = VR[vt + (e/2 + i)%8][i];
+      *(int16_t *)(RSP.DMEM + addr + HES(2*i)) = VR[vt + (e/2 + i)%8][i];
 }
 
 /*
  * unused SGI opcodes for LWC2 on the RCP:
  * LAV, LXV, LZV, LTWV
  */
-NOINLINE static void lwc_res(int vt, int element, signed offset, int base)
+NOINLINE static void res_lsw(
+      unsigned vt,
+      unsigned element,
+      signed offset,
+      unsigned base)
 {
 #if 0
     static char disasm[32];
@@ -1745,7 +1761,7 @@ NOINLINE static void lwc_res(int vt, int element, signed offset, int base)
  * unused SGI opcodes for SWC2 on the RCP:
  * SAV, SXV, SZV
  */
-NOINLINE static void swc_res(int vt, int element, signed offset, int base)
+NOINLINE static void swc_res(unsigned vt, unsigned element, signed offset, unsigned base)
 {
 #if 0
     static char disasm[32];
@@ -1763,23 +1779,23 @@ NOINLINE static void swc_res(int vt, int element, signed offset, int base)
 #endif
 }
 
-static void LFV(int vt, int element, int offset, int base)
+static void LFV(unsigned vt, unsigned element, signed offset, unsigned base)
 { /* Dummy implementation only:  Do any games execute this? */
-    lwc_res(vt, element, offset, base);
+    res_lsw(vt, element, offset, base);
 }
 
-static void SWV(int vt, int element, int offset, int base)
+static void SWV(unsigned vt, unsigned element, signed offset, unsigned base)
 { /* Dummy implementation only:  Do any games execute this? */
     swc_res(vt, element, offset, base);
 }
 
-static void (*LWC2_op[1 << 5])(int, int, signed, int) = {
+static void (*LWC2_op[1 << 5])(unsigned, unsigned, signed, unsigned) = {
     LBV    ,LSV    ,LLV    ,LDV    ,LQV    ,LRV    ,LPV    ,LUV    ,
-    LHV    ,LFV    ,lwc_res,LTV    ,lwc_res,lwc_res,lwc_res,lwc_res,
-    lwc_res,lwc_res,lwc_res,lwc_res,lwc_res,lwc_res,lwc_res,lwc_res,
-    lwc_res,lwc_res,lwc_res,lwc_res,lwc_res,lwc_res,lwc_res,lwc_res,
+    LHV    ,LFV    ,res_lsw,LTV    ,res_lsw,res_lsw,res_lsw,res_lsw,
+    res_lsw,res_lsw,res_lsw,res_lsw,res_lsw,res_lsw,res_lsw,res_lsw,
+    res_lsw,res_lsw,res_lsw,res_lsw,res_lsw,res_lsw,res_lsw,res_lsw,
 }; /* 000  |  001  |  010  |  011  |  100  |  101  |  110  |  111 */
-static void (*SWC2_op[1 << 5])(int, int, signed, int) = {
+static void (*SWC2_op[1 << 5])(unsigned, unsigned, signed, unsigned) = {
     SBV    ,SSV    ,SLV    ,SDV    ,SQV    ,SRV    ,SPV    ,SUV    ,
     SHV    ,SFV    ,SWV    ,STV    ,swc_res,swc_res,swc_res,swc_res,
     swc_res,swc_res,swc_res,swc_res,swc_res,swc_res,swc_res,swc_res,
@@ -1802,9 +1818,9 @@ static void ULW(int rd, uint32_t addr)
    }
    else /* addr & 0x00000002 */
    {
-      SR_temp.H[01] = *(short *)(RSP.DMEM + addr - HES(0x000));
+      SR_temp.H[01] = *(int16_t *)(RSP.DMEM + addr - HES(0x000));
       addr = (addr + 0x002) & 0xFFF;
-      SR_temp.H[00] = *(short *)(RSP.DMEM + addr + HES(0x000));
+      SR_temp.H[00] = *(int16_t *)(RSP.DMEM + addr + HES(0x000));
    }
    SR[rd] = SR_temp.W;
    /* SR[0] = 0x00000000; */
@@ -1825,9 +1841,9 @@ static void USW(int rs, uint32_t addr)
    }
    else /* addr & 0x00000002 */
    {
-      *(short *)(RSP.DMEM + addr - HES(0x000)) = SR_temp.H[01];
+      *(int16_t *)(RSP.DMEM + addr - HES(0x000)) = SR_temp.H[01];
       addr = (addr + 0x002) & 0xFFF;
-      *(short *)(RSP.DMEM + addr + HES(0x000)) = SR_temp.H[00];
+      *(int16_t *)(RSP.DMEM + addr + HES(0x000)) = SR_temp.H[00];
    }
 }
 
@@ -2132,7 +2148,7 @@ EX:
                else
                {
                   addr -= HES(0x000)*(addr%0x004 - 1);
-                  SR[rt] = *(signed short *)(RSP.DMEM + addr);
+                  SR[rt] = *(int16_t *)(RSP.DMEM + addr);
                }
                SR[0] = 0x00000000;
                continue;
@@ -2151,7 +2167,7 @@ EX:
                offset = (signed short)(inst);
                addr = (SR[base = (inst >> 21) & 31] + offset) & 0x00000FFF;
                SR[rt] = RSP.DMEM[BES(addr)];
-               SR[rt] = (unsigned char)(SR[rt]);
+               SR[rt] = (uint8_t)(SR[rt]);
                SR[0] = 0x00000000;
                continue;
             case 045: /* LHU */
@@ -2168,7 +2184,7 @@ EX:
                else
                {
                   addr -= HES(0x000)*(addr%0x004 - 1);
-                  SR[rt] = *(unsigned short *)(RSP.DMEM + addr);
+                  SR[rt] = *(uint16_t *)(RSP.DMEM + addr);
                }
                SR[0] = 0x00000000;
                continue;
@@ -2176,7 +2192,7 @@ EX:
                rt = (inst >> 16) % (1 << 5);
                offset = (signed short)(inst);
                addr = (SR[base = (inst >> 21) & 31] + offset) & 0x00000FFF;
-               RSP.DMEM[BES(addr)] = (unsigned char)(SR[rt]);
+               RSP.DMEM[BES(addr)] = (uint8_t)(SR[rt]);
                continue;
             case 051: /* SH */
                rt = (inst >> 16) % (1 << 5);
@@ -2190,7 +2206,7 @@ EX:
                   continue;
                }
                addr -= HES(0x000)*(addr%0x004 - 1);
-               *(short *)(RSP.DMEM + addr) = (short)(SR[rt]);
+               *(int16_t *)(RSP.DMEM + addr) = (short)(SR[rt]);
                continue;
             case 053: /* SW */
                rt = (inst >> 16) % (1 << 5);
