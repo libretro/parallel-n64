@@ -52,6 +52,9 @@ extern uint32_t gfx_plugin_accuracy;
 
 #define MAX_TMU     2
 
+#define MAXCMD 0x100000
+#define MAXCMD_MASK (MAXCMD - 1)
+
 // Supported flags
 #define SUP_TEXMIRROR 0x00000001
 

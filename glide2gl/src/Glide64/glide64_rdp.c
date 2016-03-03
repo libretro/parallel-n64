@@ -505,7 +505,7 @@ EXPORT void CALL ProcessDList(void)
   if (exception)
     return;
 
-  //* Set states *//
+  /* Set states */
   if (settings.swapmode > 0)
     SwapOK = true;
   rdp.updatescreen = 1;
@@ -2739,61 +2739,97 @@ output:   none
 EXPORT void CALL ProcessRDPList(void)
 {
    int32_t i;
-   uint32_t cmd, cmd_length;
-   int32_t length = (*(uint32_t*)gfx_info.DPC_END_REG) - (*(uint32_t*)gfx_info.DPC_CURRENT_REG);
+   uint32_t length;
+   bool set_zero = true;
 
-   rdp_cmd_ptr = 0;
-   rdp_cmd_cur = 0;
+   no_dlist = false;
+   update_screen_count = 0;
+   ChangeSize();
 
-   if ((*(uint32_t*)gfx_info.DPC_END_REG) <= (*(uint32_t*)gfx_info.DPC_CURRENT_REG))
-      return;
+   /* Set states */
+   if (settings.swapmode > 0)
+      SwapOK = true;
+   rdp.updatescreen = 1;
 
-   if (length < 0)
-   {
-      (*(uint32_t*)gfx_info.DPC_CURRENT_REG) = (*(uint32_t*)gfx_info.DPC_END_REG);
-      return;
-   }
+   rdp.model_i = 0; // 0 matrices so far in stack
+   //stack_size can be less then 32! Important for Silicon Vally. Thanks Orkin!
+   rdp.model_stack_size = min(32, (*(uint32_t*)(gfx_info.DMEM+0x0FE4))>>6);
+   if (rdp.model_stack_size == 0)
+      rdp.model_stack_size = 32;
+   rdp.fb_drawn = rdp.fb_drawn_front = false;
+   g_gdp.flags = 0x7FFFFFFF;  // All but clear cache
+   rdp.geom_mode = 0;
+   rdp.maincimg[1] = rdp.maincimg[0];
+   rdp.skip_drawing = false;
+   rdp.s2dex_tex_loaded = false;
+   rdp.bg_image_height = 0xFFFF;
+   fbreads_front = fbreads_back = 0;
+   rdp.fog_multiplier = rdp.fog_offset = 0;
+   g_gdp.other_modes.z_source_sel = 0;
+   if (rdp.vi_org_reg != *gfx_info.VI_ORIGIN_REG)
+      rdp.tlut_mode = 0; //is it correct?
+   rdp.scissor_set = false;
+   ucode5_texshiftaddr = ucode5_texshiftcount = 0;
+   cpu_fb_write = false;
+   cpu_fb_read_called = false;
+   cpu_fb_write_called = false;
+   cpu_fb_ignore = false;
+   d_ul_x = 0xffff;
+   d_ul_y = 0xffff;
+   d_lr_x = 0;
+   d_lr_y = 0;
+   depth_buffer_fog = true;
+   
+   length = (*(uint32_t*)gfx_info.DPC_END_REG) - (*(uint32_t*)gfx_info.DPC_CURRENT_REG);
+
+   (*(uint32_t*)gfx_info.DPC_STATUS_REG) &= ~0x0002;
 
    // load command data
-   for (i=0; i < length; i += 4)
-      rdp_cmd_data[rdp_cmd_ptr++] = READ_RDP_DATA(((*(uint32_t*)gfx_info.DPC_CURRENT_REG) & 0x1fffffff) + i);
-
-   (*(uint32_t*)gfx_info.DPC_CURRENT_REG) = (*(uint32_t*)gfx_info.DPC_END_REG);
-
-   cmd        = (rdp_cmd_data[0] >> 24) & 0x3f;
-   cmd_length = (rdp_cmd_ptr + 1) * 4;
-
-   // check if more data is needed
-   if (cmd_length < rdp_command_length[cmd])
-      return;
+   for (i = 0; i < length; i += 4)
+   {
+      rdp_cmd_data[rdp_cmd_ptr] = READ_RDP_DATA((*(uint32_t*)gfx_info.DPC_CURRENT_REG) + i);
+      rdp_cmd_ptr = (rdp_cmd_ptr + 1) & MAXCMD_MASK;
+   }
 
    rdp.LLE = true;
 
-   while (rdp_cmd_cur < rdp_cmd_ptr)
+   /* Load command data */
+   while (rdp_cmd_cur != rdp_cmd_ptr)
    {
       uint32_t w0, w1;
-      cmd = (rdp_cmd_data[rdp_cmd_cur] >> 24) & 0x3f;
+      uint32_t cmd = (rdp_cmd_data[rdp_cmd_cur] >> 24) & 0x3f;
 
-      if (((rdp_cmd_ptr-rdp_cmd_cur) * 4) < rdp_command_length[cmd])
-         return;
+      if ((((rdp_cmd_ptr-rdp_cmd_cur)& MAXCMD_MASK) * 4) < rdp_command_length[cmd])
+      {
+         set_zero = false;
+         break;
+      }
 
-      // execute the command
-      rdp.cmd0 = rdp_cmd_data[rdp_cmd_cur+0];
-      rdp.cmd1 = rdp_cmd_data[rdp_cmd_cur+1];
-      rdp.cmd2 = rdp_cmd_data[rdp_cmd_cur+2];
-      rdp.cmd3 = rdp_cmd_data[rdp_cmd_cur+3];
+      if (rdp_cmd_cur + rdp_command_length[cmd] / 4 > MAXCMD)
+         memcpy(rdp_cmd_data + MAXCMD, rdp_cmd_data,
+               rdp_command_length[cmd] - (MAXCMD - rdp_cmd_cur) * 4);
+
+      /* execute the command */
+      rdp.cmd0 = rdp_cmd_data[rdp_cmd_cur + 0];
+      rdp.cmd1 = rdp_cmd_data[rdp_cmd_cur + 1];
+      rdp.cmd2 = rdp_cmd_data[rdp_cmd_cur + 2];
+      rdp.cmd3 = rdp_cmd_data[rdp_cmd_cur + 3];
 
       w0 = rdp.cmd0;
       w1 = rdp.cmd1;
 
       rdp_command_table[cmd](w0, w1);
 
-      rdp_cmd_cur += rdp_command_length[cmd] / 4;
+      rdp_cmd_cur = (rdp_cmd_cur + rdp_command_length[cmd] / 4) & MAXCMD_MASK;
+   }
+
+   if (set_zero)
+   {
+      rdp_cmd_cur = 0;
+      rdp_cmd_ptr = 0;
    }
 
    rdp.LLE = false;
-   (*(uint32_t*)gfx_info.DPC_START_REG) = (*(uint32_t*)gfx_info.DPC_END_REG);
-   (*(uint32_t*)gfx_info.DPC_STATUS_REG) &= ~0x0002;
-   rdp_cmd_cur = 0;
-   rdp_cmd_ptr = 0;
+
+   (*(uint32_t*)gfx_info.DPC_START_REG) = (*(uint32_t*)gfx_info.DPC_CURRENT_REG) = (*(uint32_t*)gfx_info.DPC_END_REG);
 }
