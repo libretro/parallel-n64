@@ -80,7 +80,7 @@ static void set_mask_image(uint32_t w1, uint32_t w2);
 static void set_color_image(uint32_t w1, uint32_t w2);
 
 static NOINLINE void draw_triangle(uint32_t w1, uint32_t w2,
-      int shade, int texture, int zbuffer, struct stepwalker_info *stw_info);
+      int texture, int zbuffer, struct stepwalker_info *stw_info);
 NOINLINE static void render_spans(
     int yhlimit, int yllimit, int tilenum, int flip);
 STRICTINLINE static u16 normalize_dzpix(u16 sum);
@@ -327,63 +327,122 @@ static INLINE void stepwalker_info_init(struct stepwalker_info *stw_info)
    setzero_si64(stw_info->d_stwz_de_frac);
    setzero_si64(stw_info->d_stwz_dy_int);
    setzero_si64(stw_info->d_stwz_dy_frac);
+}
 
+static INLINE void triangle_shade(struct stepwalker_info *stw_info)
+{
+   /* Shade Coefficients */
+#ifdef USE_MMX_DECODES
+   *(__m64 *)stw_info->rgba_int       = *(__m64 *)&cmd_data[stw_info->base +  4];
+   *(__m64 *)stw_info->d_rgba_dx_int  = *(__m64 *)&cmd_data[stw_info->base +  5];
+   *(__m64 *)stw_info->rgba_frac      = *(__m64 *)&cmd_data[stw_info->base +  6];
+   *(__m64 *)stw_info->d_rgba_dx_frac = *(__m64 *)&cmd_data[stw_info->base +  7];
+   *(__m64 *)stw_info->d_rgba_de_int  = *(__m64 *)&cmd_data[stw_info->base +  8];
+   *(__m64 *)stw_info->d_rgba_dy_int  = *(__m64 *)&cmd_data[stw_info->base +  9];
+   *(__m64 *)stw_info->d_rgba_de_frac = *(__m64 *)&cmd_data[stw_info->base + 10];
+   *(__m64 *)stw_info->d_rgba_dy_frac = *(__m64 *)&cmd_data[stw_info->base + 11];
+   *(__m64 *)stw_info->rgba_int       = _mm_shuffle_pi16(*(__m64 *)stw_info->rgba_int, 0xB1);
+   *(__m64 *)stw_info->d_rgba_dx_int  = _mm_shuffle_pi16(*(__m64 *)stw_info->d_rgba_dx_int, 0xB1);
+   *(__m64 *)stw_info->rgba_frac      = _mm_shuffle_pi16(*(__m64 *)stw_info->rgba_frac, 0xB1);
+   *(__m64 *)stw_info->d_rgba_dx_frac = _mm_shuffle_pi16(*(__m64 *)stw_info->d_rgba_dx_frac, 0xB1);
+   *(__m64 *)stw_info->d_rgba_de_int  = _mm_shuffle_pi16(*(__m64 *)stw_info->d_rgba_de_int, 0xB1);
+   *(__m64 *)stw_info->d_rgba_dy_int  = _mm_shuffle_pi16(*(__m64 *)stw_info->d_rgba_dy_int, 0xB1);
+   *(__m64 *)stw_info->d_rgba_de_frac = _mm_shuffle_pi16(*(__m64 *)stw_info->d_rgba_de_frac, 0xB1);
+   *(__m64 *)stw_info->d_rgba_dy_frac = _mm_shuffle_pi16(*(__m64 *)stw_info->d_rgba_dy_frac, 0xB1);
+#else
+   stw_info->rgba_int[0] = (cmd_data[stw_info->base + 4].UW32[0] >> 16) & 0xFFFF;
+   stw_info->rgba_int[1] = (cmd_data[stw_info->base + 4].UW32[0] >>  0) & 0xFFFF;
+   stw_info->rgba_int[2] = (cmd_data[stw_info->base + 4].UW32[1] >> 16) & 0xFFFF;
+   stw_info->rgba_int[3] = (cmd_data[stw_info->base + 4].UW32[1] >>  0) & 0xFFFF;
+   stw_info->d_rgba_dx_int[0] = (cmd_data[stw_info->base + 5].UW32[0] >> 16) & 0xFFFF;
+   stw_info->d_rgba_dx_int[1] = (cmd_data[stw_info->base + 5].UW32[0] >>  0) & 0xFFFF;
+   stw_info->d_rgba_dx_int[2] = (cmd_data[stw_info->base + 5].UW32[1] >> 16) & 0xFFFF;
+   stw_info->d_rgba_dx_int[3] = (cmd_data[stw_info->base + 5].UW32[1] >>  0) & 0xFFFF;
+   stw_info->rgba_frac[0] = (cmd_data[stw_info->base + 6].UW32[0] >> 16) & 0xFFFF;
+   stw_info->rgba_frac[1] = (cmd_data[stw_info->base + 6].UW32[0] >>  0) & 0xFFFF;
+   stw_info->rgba_frac[2] = (cmd_data[stw_info->base + 6].UW32[1] >> 16) & 0xFFFF;
+   stw_info->rgba_frac[3] = (cmd_data[stw_info->base + 6].UW32[1] >>  0) & 0xFFFF;
+   stw_info->d_rgba_dx_frac[0] = (cmd_data[stw_info->base + 7].UW32[0] >> 16) & 0xFFFF;
+   stw_info->d_rgba_dx_frac[1] = (cmd_data[stw_info->base + 7].UW32[0] >>  0) & 0xFFFF;
+   stw_info->d_rgba_dx_frac[2] = (cmd_data[stw_info->base + 7].UW32[1] >> 16) & 0xFFFF;
+   stw_info->d_rgba_dx_frac[3] = (cmd_data[stw_info->base + 7].UW32[1] >>  0) & 0xFFFF;
+   stw_info->d_rgba_de_int[0] = (cmd_data[stw_info->base + 8].UW32[0] >> 16) & 0xFFFF;
+   stw_info->d_rgba_de_int[1] = (cmd_data[stw_info->base + 8].UW32[0] >>  0) & 0xFFFF;
+   stw_info->d_rgba_de_int[2] = (cmd_data[stw_info->base + 8].UW32[1] >> 16) & 0xFFFF;
+   stw_info->d_rgba_de_int[3] = (cmd_data[stw_info->base + 8].UW32[1] >>  0) & 0xFFFF;
+   stw_info->d_rgba_dy_int[0] = (cmd_data[stw_info->base + 9].UW32[0] >> 16) & 0xFFFF;
+   stw_info->d_rgba_dy_int[1] = (cmd_data[stw_info->base + 9].UW32[0] >>  0) & 0xFFFF;
+   stw_info->d_rgba_dy_int[2] = (cmd_data[stw_info->base + 9].UW32[1] >> 16) & 0xFFFF;
+   stw_info->d_rgba_dy_int[3] = (cmd_data[stw_info->base + 9].UW32[1] >>  0) & 0xFFFF;
+   stw_info->d_rgba_de_frac[0] = (cmd_data[stw_info->base + 10].UW32[0] >> 16) & 0xFFFF;
+   stw_info->d_rgba_de_frac[1] = (cmd_data[stw_info->base + 10].UW32[0] >>  0) & 0xFFFF;
+   stw_info->d_rgba_de_frac[2] = (cmd_data[stw_info->base + 10].UW32[1] >> 16) & 0xFFFF;
+   stw_info->d_rgba_de_frac[3] = (cmd_data[stw_info->base + 10].UW32[1] >>  0) & 0xFFFF;
+   stw_info->d_rgba_dy_frac[0] = (cmd_data[stw_info->base + 11].UW32[0] >> 16) & 0xFFFF;
+   stw_info->d_rgba_dy_frac[1] = (cmd_data[stw_info->base + 11].UW32[0] >>  0) & 0xFFFF;
+   stw_info->d_rgba_dy_frac[2] = (cmd_data[stw_info->base + 11].UW32[1] >> 16) & 0xFFFF;
+   stw_info->d_rgba_dy_frac[3] = (cmd_data[stw_info->base + 11].UW32[1] >>  0) & 0xFFFF;
+#endif
 }
 
 static void tri_noshade(uint32_t w1, uint32_t w2)
 {
    struct stepwalker_info stw_info;
    stepwalker_info_init(&stw_info);
-   draw_triangle(w1, w2, SHADE_NO, TEXTURE_NO, ZBUFFER_NO, &stw_info);
+   draw_triangle(w1, w2, TEXTURE_NO, ZBUFFER_NO, &stw_info);
 }
 
 static void tri_noshade_z(uint32_t w1, uint32_t w2)
 {
    struct stepwalker_info stw_info;
    stepwalker_info_init(&stw_info);
-   draw_triangle(w1, w2, SHADE_NO, TEXTURE_NO, ZBUFFER_YES, &stw_info);
+   draw_triangle(w1, w2, TEXTURE_NO, ZBUFFER_YES, &stw_info);
 }
 
 static void tri_tex(uint32_t w1, uint32_t w2)
 {
    struct stepwalker_info stw_info;
    stepwalker_info_init(&stw_info);
-   draw_triangle(w1, w2, SHADE_NO, TEXTURE_YES, ZBUFFER_NO, &stw_info);
+   draw_triangle(w1, w2, TEXTURE_YES, ZBUFFER_NO, &stw_info);
 }
 
 static void tri_tex_z(uint32_t w1, uint32_t w2)
 {
    struct stepwalker_info stw_info;
    stepwalker_info_init(&stw_info);
-   draw_triangle(w1, w2, SHADE_NO, TEXTURE_YES, ZBUFFER_YES, &stw_info);
+   draw_triangle(w1, w2, TEXTURE_YES, ZBUFFER_YES, &stw_info);
 }
 
 static void tri_shade(uint32_t w1, uint32_t w2)
 {
    struct stepwalker_info stw_info;
    stepwalker_info_init(&stw_info);
-   draw_triangle(w1, w2, SHADE_YES, TEXTURE_NO, ZBUFFER_NO, &stw_info);
+   triangle_shade(&stw_info);
+   draw_triangle(w1, w2, TEXTURE_NO, ZBUFFER_NO, &stw_info);
 }
 
 static void tri_shade_z(uint32_t w1, uint32_t w2)
 {
    struct stepwalker_info stw_info;
    stepwalker_info_init(&stw_info);
-   draw_triangle(w1, w2, SHADE_YES, TEXTURE_NO, ZBUFFER_YES, &stw_info);
+   triangle_shade(&stw_info);
+   draw_triangle(w1, w2, TEXTURE_NO, ZBUFFER_YES, &stw_info);
 }
 
 static void tri_texshade(uint32_t w1, uint32_t w2)
 {
    struct stepwalker_info stw_info;
    stepwalker_info_init(&stw_info);
-   draw_triangle(w1, w2, SHADE_YES, TEXTURE_YES, ZBUFFER_NO, &stw_info);
+   triangle_shade(&stw_info);
+   draw_triangle(w1, w2, TEXTURE_YES, ZBUFFER_NO, &stw_info);
 }
 
 static void tri_texshade_z(uint32_t w1, uint32_t w2)
 {
    struct stepwalker_info stw_info;
    stepwalker_info_init(&stw_info);
-   draw_triangle(w1, w2, SHADE_YES, TEXTURE_YES, ZBUFFER_YES, &stw_info);
+   triangle_shade(&stw_info);
+   draw_triangle(w1, w2, TEXTURE_YES, ZBUFFER_YES, &stw_info);
 }
 
 static void tex_rect(uint32_t w1, uint32_t w2)
@@ -1249,7 +1308,7 @@ static void set_color_image(uint32_t w1, uint32_t w2)
 }
 
 static NOINLINE void draw_triangle(uint32_t w1, uint32_t w2,
-      int shade, int texture, int zbuffer, struct stepwalker_info *stw_info)
+      int texture, int zbuffer, struct stepwalker_info *stw_info)
 {
     int sign_dxhdy;
     int ycur, ylfar;
@@ -1293,63 +1352,6 @@ static NOINLINE void draw_triangle(uint32_t w1, uint32_t w2,
     xh = SIGN(xh, 30);
     xm = SIGN(xm, 30);
 
-    /* Shade Coefficients */
-    if (shade == 0) /* branch unlikely */
-        goto no_read_shade_coefficients;
-#ifdef USE_MMX_DECODES
-    *(__m64 *)stw_info->rgba_int       = *(__m64 *)&cmd_data[stw_info->base +  4];
-    *(__m64 *)stw_info->d_rgba_dx_int  = *(__m64 *)&cmd_data[stw_info->base +  5];
-    *(__m64 *)stw_info->rgba_frac      = *(__m64 *)&cmd_data[stw_info->base +  6];
-    *(__m64 *)stw_info->d_rgba_dx_frac = *(__m64 *)&cmd_data[stw_info->base +  7];
-    *(__m64 *)stw_info->d_rgba_de_int  = *(__m64 *)&cmd_data[stw_info->base +  8];
-    *(__m64 *)stw_info->d_rgba_dy_int  = *(__m64 *)&cmd_data[stw_info->base +  9];
-    *(__m64 *)stw_info->d_rgba_de_frac = *(__m64 *)&cmd_data[stw_info->base + 10];
-    *(__m64 *)stw_info->d_rgba_dy_frac = *(__m64 *)&cmd_data[stw_info->base + 11];
-    *(__m64 *)stw_info->rgba_int       = _mm_shuffle_pi16(*(__m64 *)stw_info->rgba_int, 0xB1);
-    *(__m64 *)stw_info->d_rgba_dx_int  = _mm_shuffle_pi16(*(__m64 *)stw_info->d_rgba_dx_int, 0xB1);
-    *(__m64 *)stw_info->rgba_frac      = _mm_shuffle_pi16(*(__m64 *)stw_info->rgba_frac, 0xB1);
-    *(__m64 *)stw_info->d_rgba_dx_frac = _mm_shuffle_pi16(*(__m64 *)stw_info->d_rgba_dx_frac, 0xB1);
-    *(__m64 *)stw_info->d_rgba_de_int  = _mm_shuffle_pi16(*(__m64 *)stw_info->d_rgba_de_int, 0xB1);
-    *(__m64 *)stw_info->d_rgba_dy_int  = _mm_shuffle_pi16(*(__m64 *)stw_info->d_rgba_dy_int, 0xB1);
-    *(__m64 *)stw_info->d_rgba_de_frac = _mm_shuffle_pi16(*(__m64 *)stw_info->d_rgba_de_frac, 0xB1);
-    *(__m64 *)stw_info->d_rgba_dy_frac = _mm_shuffle_pi16(*(__m64 *)stw_info->d_rgba_dy_frac, 0xB1);
-#else
-    stw_info->rgba_int[0] = (cmd_data[stw_info->base + 4].UW32[0] >> 16) & 0xFFFF;
-    stw_info->rgba_int[1] = (cmd_data[stw_info->base + 4].UW32[0] >>  0) & 0xFFFF;
-    stw_info->rgba_int[2] = (cmd_data[stw_info->base + 4].UW32[1] >> 16) & 0xFFFF;
-    stw_info->rgba_int[3] = (cmd_data[stw_info->base + 4].UW32[1] >>  0) & 0xFFFF;
-    stw_info->d_rgba_dx_int[0] = (cmd_data[stw_info->base + 5].UW32[0] >> 16) & 0xFFFF;
-    stw_info->d_rgba_dx_int[1] = (cmd_data[stw_info->base + 5].UW32[0] >>  0) & 0xFFFF;
-    stw_info->d_rgba_dx_int[2] = (cmd_data[stw_info->base + 5].UW32[1] >> 16) & 0xFFFF;
-    stw_info->d_rgba_dx_int[3] = (cmd_data[stw_info->base + 5].UW32[1] >>  0) & 0xFFFF;
-    stw_info->rgba_frac[0] = (cmd_data[stw_info->base + 6].UW32[0] >> 16) & 0xFFFF;
-    stw_info->rgba_frac[1] = (cmd_data[stw_info->base + 6].UW32[0] >>  0) & 0xFFFF;
-    stw_info->rgba_frac[2] = (cmd_data[stw_info->base + 6].UW32[1] >> 16) & 0xFFFF;
-    stw_info->rgba_frac[3] = (cmd_data[stw_info->base + 6].UW32[1] >>  0) & 0xFFFF;
-    stw_info->d_rgba_dx_frac[0] = (cmd_data[stw_info->base + 7].UW32[0] >> 16) & 0xFFFF;
-    stw_info->d_rgba_dx_frac[1] = (cmd_data[stw_info->base + 7].UW32[0] >>  0) & 0xFFFF;
-    stw_info->d_rgba_dx_frac[2] = (cmd_data[stw_info->base + 7].UW32[1] >> 16) & 0xFFFF;
-    stw_info->d_rgba_dx_frac[3] = (cmd_data[stw_info->base + 7].UW32[1] >>  0) & 0xFFFF;
-    stw_info->d_rgba_de_int[0] = (cmd_data[stw_info->base + 8].UW32[0] >> 16) & 0xFFFF;
-    stw_info->d_rgba_de_int[1] = (cmd_data[stw_info->base + 8].UW32[0] >>  0) & 0xFFFF;
-    stw_info->d_rgba_de_int[2] = (cmd_data[stw_info->base + 8].UW32[1] >> 16) & 0xFFFF;
-    stw_info->d_rgba_de_int[3] = (cmd_data[stw_info->base + 8].UW32[1] >>  0) & 0xFFFF;
-    stw_info->d_rgba_dy_int[0] = (cmd_data[stw_info->base + 9].UW32[0] >> 16) & 0xFFFF;
-    stw_info->d_rgba_dy_int[1] = (cmd_data[stw_info->base + 9].UW32[0] >>  0) & 0xFFFF;
-    stw_info->d_rgba_dy_int[2] = (cmd_data[stw_info->base + 9].UW32[1] >> 16) & 0xFFFF;
-    stw_info->d_rgba_dy_int[3] = (cmd_data[stw_info->base + 9].UW32[1] >>  0) & 0xFFFF;
-    stw_info->d_rgba_de_frac[0] = (cmd_data[stw_info->base + 10].UW32[0] >> 16) & 0xFFFF;
-    stw_info->d_rgba_de_frac[1] = (cmd_data[stw_info->base + 10].UW32[0] >>  0) & 0xFFFF;
-    stw_info->d_rgba_de_frac[2] = (cmd_data[stw_info->base + 10].UW32[1] >> 16) & 0xFFFF;
-    stw_info->d_rgba_de_frac[3] = (cmd_data[stw_info->base + 10].UW32[1] >>  0) & 0xFFFF;
-    stw_info->d_rgba_dy_frac[0] = (cmd_data[stw_info->base + 11].UW32[0] >> 16) & 0xFFFF;
-    stw_info->d_rgba_dy_frac[1] = (cmd_data[stw_info->base + 11].UW32[0] >>  0) & 0xFFFF;
-    stw_info->d_rgba_dy_frac[2] = (cmd_data[stw_info->base + 11].UW32[1] >> 16) & 0xFFFF;
-    stw_info->d_rgba_dy_frac[3] = (cmd_data[stw_info->base + 11].UW32[1] >>  0) & 0xFFFF;
-#endif
-    stw_info->base += 8;
-no_read_shade_coefficients:
-    stw_info->base -= 8;
 #ifdef USE_MMX_DECODES
     *(__m64 *)(stw_info->rgba + (0 ^ 2))
       = _mm_unpackhi_pi16(*(__m64 *)stw_info->rgba_frac, *(__m64 *)stw_info->rgba_int);
