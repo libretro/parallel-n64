@@ -138,6 +138,8 @@ static void MT_DMA_DRAM(int rt)
 }
 static void MT_DMA_READ_LENGTH(int rt)
 {
+    unsigned int offC, offD; /* SP cache and dynamic DMA pointers */
+
     *RSP.SP_RD_LEN_REG = SR[rt] | 07;
     {
        unsigned int length = (*RSP.SP_RD_LEN_REG & 0x00000FFF) >>  0;
@@ -149,7 +151,6 @@ static void MT_DMA_READ_LENGTH(int rt)
        skip += length;
        do
        { /* `count` always starts > 0, so we begin with `do` instead of `while`. */
-          unsigned int offC, offD; /* SP cache and dynamic DMA pointers */
           register unsigned int i = 0;
 
           --count;
@@ -165,12 +166,16 @@ static void MT_DMA_READ_LENGTH(int rt)
           } while (i < length);
        } while (count);
 
+       if ((offC & 0x1000) ^ (*RSP.SP_MEM_ADDR_REG & 0x1000))
+	  message("DMA over the DMEM-to-IMEM gap.", 3);
        *RSP.SP_DMA_BUSY_REG = 0x00000000;
        *RSP.SP_STATUS_REG &= ~SP_STATUS_DMA_BUSY;
     }
 }
 static void MT_DMA_WRITE_LENGTH(int rt)
 {
+    unsigned int offC, offD; /* SP cache and dynamic DMA pointers */
+
     *RSP.SP_WR_LEN_REG = SR[rt] | 07;
     {
        unsigned int length = (*RSP.SP_WR_LEN_REG & 0x00000FFF) >>  0;
@@ -182,7 +187,6 @@ static void MT_DMA_WRITE_LENGTH(int rt)
        skip += length;
        do
        { /* `count` always starts > 0, so we begin with `do` instead of `while`. */
-          unsigned int offC, offD; /* SP cache and dynamic DMA pointers */
           register unsigned int i = 0;
 
           --count;
@@ -194,6 +198,9 @@ static void MT_DMA_WRITE_LENGTH(int rt)
              i += 0x000008;
           } while (i < length);
        } while (count);
+
+       if ((offC & 0x1000) ^ (*RSP.SP_MEM_ADDR_REG & 0x1000))
+	  message("DMA over the DMEM-to-IMEM gap.", 3);
        *RSP.SP_DMA_BUSY_REG = 0x00000000;
        *RSP.SP_STATUS_REG &= ~SP_STATUS_DMA_BUSY;
     }
