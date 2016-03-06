@@ -1356,6 +1356,12 @@ static NOINLINE void draw_triangle(uint32_t w1, uint32_t w2,
     register int j, k;
     const i32 clipxlshift = __clip.xl << 1;
     const i32 clipxhshift = __clip.xh << 1;
+    uint32_t w3 = cmd_data[cmd_cur + 1].UW32[0]; /* Load RDP Command Word 3 */
+    uint32_t w4 = cmd_data[cmd_cur + 1].UW32[1]; /* Load RDP Command Word 4 */
+    uint32_t w5 = cmd_data[cmd_cur + 2].UW32[0]; /* Load RDP Command Word 5 */
+    uint32_t w6 = cmd_data[cmd_cur + 2].UW32[1]; /* Load RDP Command Word 6 */
+    uint32_t w7 = cmd_data[cmd_cur + 3].UW32[0]; /* Load RDP Command Word 7 */
+    uint32_t w8 = cmd_data[cmd_cur + 3].UW32[1]; /* Load RDP Command Word 8 */
 
     /* Edge Coefficients */
     int lft     = (w1 & 0x00800000) >> (55 - 32);
@@ -1371,13 +1377,13 @@ static NOINLINE void draw_triangle(uint32_t w1, uint32_t w2,
     s32      ym = (w2 & 0xFFFF0000) >> (16 -  0); /* & 0x3FFF */
     s32      yh = (w2 & 0x0000FFFF) >> ( 0 -  0); /* & 0x3FFF */
     /* Triangle edge X-coordinates */
-    s32      xl = cmd_data[stw_info->base + 1].UW32[0];
-    s32      xh = cmd_data[stw_info->base + 2].UW32[0];
-    s32      xm = cmd_data[stw_info->base + 3].UW32[0];
+    s32      xl = w3;
+    s32      xh = w5;
+    s32      xm = w7;
     /* Triangle edge inverse-slopes */
-    s32   DxLDy = cmd_data[stw_info->base + 1].UW32[1];
-    s32   DxHDy = cmd_data[stw_info->base + 2].UW32[1];
-    s32   DxMDy = cmd_data[stw_info->base + 3].UW32[1];
+    s32   DxLDy = w4;
+    s32   DxHDy = w6;
+    s32   DxMDy = w8;
 
     yl = SIGN(yl, 14);
     ym = SIGN(ym, 14);
