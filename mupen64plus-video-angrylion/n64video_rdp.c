@@ -317,8 +317,6 @@ static void tri_texshade_z(uint32_t w1, uint32_t w2)
 
 static void tex_rect(uint32_t w1, uint32_t w2)
 {
-    int tilenum;
-    int xl, yl, xh, yh;
     int s, t, dsdx, dtdy;
     int xlint, xhint;
 
@@ -341,11 +339,11 @@ static void tex_rect(uint32_t w1, uint32_t w2)
     uint32_t w3 = cmd_data[cmd_cur + 1].UW32[0]; /* Load RDP Command Word 3 */
     uint32_t w4 = cmd_data[cmd_cur + 1].UW32[1]; /* Load RDP Command Word 4 */
 
-    xl      = (w1 & 0x00FFF000) >> 12;
-    yl      = (w1 & 0x00000FFF) >>  0;
-    tilenum = (w2 & 0x07000000) >> 24;
-    xh      = (w2 & 0x00FFF000) >> 12;
-    yh      = (w2 & 0x00000FFF) >>  0;
+    int xl      = (w1 & 0x00FFF000) >> 12;
+    int yl      = (w1 & 0x00000FFF) >>  0;
+    int tilenum = (w2 & 0x07000000) >> 24;
+    int xh      = (w2 & 0x00FFF000) >> 12;
+    int yh      = (w2 & 0x00000FFF) >>  0;
 
     yl |= (other_modes.cycle_type & 2) ? 3 : 0; /* FILL OR COPY */
 
@@ -511,8 +509,6 @@ static void tex_rect(uint32_t w1, uint32_t w2)
 
 static void tex_rect_flip(uint32_t w1, uint32_t w2)
 {
-    int tilenum;
-    int xl, yl, xh, yh;
     int s, t, dsdx, dtdy;
     int dd_swap;
     int xlint, xhint;
@@ -533,19 +529,21 @@ static void tex_rect_flip(uint32_t w1, uint32_t w2)
     u8 xfrac;
     const i32 clipxlshift = __clip.xl << 1;
     const i32 clipxhshift = __clip.xh << 1;
+    uint32_t w3 = cmd_data[cmd_cur + 1].UW32[0];
+    uint32_t w4 = cmd_data[cmd_cur + 1].UW32[1];
 
-    xl      = (cmd_data[cmd_cur + 0].UW32[0] & 0x00FFF000) >> 12;
-    yl      = (cmd_data[cmd_cur + 0].UW32[0] & 0x00000FFF) >>  0;
-    tilenum = (cmd_data[cmd_cur + 0].UW32[1] & 0x07000000) >> 24;
-    xh      = (cmd_data[cmd_cur + 0].UW32[1] & 0x00FFF000) >> 12;
-    yh      = (cmd_data[cmd_cur + 0].UW32[1] & 0x00000FFF) >>  0;
+    int xl      = (w1 & 0x00FFF000) >> 12;
+    int yl      = (w1 & 0x00000FFF) >>  0;
+    int tilenum = (w2 & 0x07000000) >> 24;
+    int xh      = (w2 & 0x00FFF000) >> 12;
+    int yh      = (w2 & 0x00000FFF) >>  0;
 
     yl |= (other_modes.cycle_type & 2) ? 3 : 0; /* FILL OR COPY */
 
-    s    = (cmd_data[cmd_cur + 1].UW32[0] & 0xFFFF0000) >> 16;
-    t    = (cmd_data[cmd_cur + 1].UW32[0] & 0x0000FFFF) >>  0;
-    dsdx = (cmd_data[cmd_cur + 1].UW32[1] & 0xFFFF0000) >> 16;
-    dtdy = (cmd_data[cmd_cur + 1].UW32[1] & 0x0000FFFF) >>  0;
+    s    = (w3 & 0xFFFF0000) >> 16;
+    t    = (w3 & 0x0000FFFF) >>  0;
+    dsdx = (w4 & 0xFFFF0000) >> 16;
+    dtdy = (w4 & 0x0000FFFF) >>  0;
     
     dsdx = SIGN16(dsdx);
     dtdy = SIGN16(dtdy);
@@ -900,30 +898,28 @@ static void load_tile(uint32_t w1, uint32_t w2)
 
 static void set_tile(uint32_t w1, uint32_t w2)
 {
-    const DP_FIFO cmd_fifo = cmd_data[cmd_cur + 0];
-    const int tilenum     = (cmd_fifo.UW32[1] & 0x07000000) >> 24;
+    const int tilenum     = (w2 & 0x07000000) >> 24;
     
-    tile[tilenum].format  = (cmd_fifo.UW32[0] & 0x00E00000) >> (53 - 32);
-    tile[tilenum].size    = (cmd_fifo.UW32[0] & 0x00180000) >> (51 - 32);
-    tile[tilenum].line    = (cmd_fifo.UW32[0] & 0x0003FE00) >> (41 - 32);
-    tile[tilenum].tmem    = (cmd_fifo.UW32[0] & 0x000001FF) >> (32 - 32);
+    tile[tilenum].format  = (w1 & 0x00E00000) >> (53 - 32);
+    tile[tilenum].size    = (w1 & 0x00180000) >> (51 - 32);
+    tile[tilenum].line    = (w1 & 0x0003FE00) >> (41 - 32);
+    tile[tilenum].tmem    = (w1 & 0x000001FF) >> (32 - 32);
  /* tilenum               = (cmd_fifo.UW & 0x0000000007000000) >> 24; */
-    tile[tilenum].palette = (cmd_fifo.UW32[1] & 0x00F00000) >> (20 -  0);
-    tile[tilenum].ct      = (cmd_fifo.UW32[1] & 0x00080000) >> (19 -  0);
-    tile[tilenum].mt      = (cmd_fifo.UW32[1] & 0x00040000) >> (18 -  0);
-    tile[tilenum].mask_t  = (cmd_fifo.UW32[1] & 0x0003C000) >> (14 -  0);
-    tile[tilenum].shift_t = (cmd_fifo.UW32[1] & 0x00003C00) >> (10 -  0);
-    tile[tilenum].cs      = (cmd_fifo.UW32[1] & 0x00000200) >> ( 9 -  0);
-    tile[tilenum].ms      = (cmd_fifo.UW32[1] & 0x00000100) >> ( 8 -  0);
-    tile[tilenum].mask_s  = (cmd_fifo.UW32[1] & 0x000000F0) >> ( 4 -  0);
-    tile[tilenum].shift_s = (cmd_fifo.UW32[1] & 0x0000000F) >> ( 0 -  0);
+    tile[tilenum].palette = (w2 & 0x00F00000) >> (20 -  0);
+    tile[tilenum].ct      = (w2 & 0x00080000) >> (19 -  0);
+    tile[tilenum].mt      = (w2 & 0x00040000) >> (18 -  0);
+    tile[tilenum].mask_t  = (w2 & 0x0003C000) >> (14 -  0);
+    tile[tilenum].shift_t = (w2 & 0x00003C00) >> (10 -  0);
+    tile[tilenum].cs      = (w2 & 0x00000200) >> ( 9 -  0);
+    tile[tilenum].ms      = (w2 & 0x00000100) >> ( 8 -  0);
+    tile[tilenum].mask_s  = (w2 & 0x000000F0) >> ( 4 -  0);
+    tile[tilenum].shift_s = (w2 & 0x0000000F) >> ( 0 -  0);
 
     calculate_tile_derivs(tilenum);
 }
 
 static void fill_rect(uint32_t w1, uint32_t w2)
 {
-    int xl, yl, xh, yh;
     int xlint, xhint;
 
     int ycur, ylfar;
@@ -936,10 +932,10 @@ static void fill_rect(uint32_t w1, uint32_t w2)
     const i32 clipxlshift = __clip.xl << 1;
     const i32 clipxhshift = __clip.xh << 1;
 
-    xl = (w1 & 0x00FFF000) >> (44 - 32);
-    yl = (w1 & 0x00000FFF) >> (32 - 32);
-    xh = (w2 & 0x00FFF000) >> (12 -  0);
-    yh = (w2 & 0x00000FFF) >> ( 0 -  0);
+    int xl = (w1 & 0x00FFF000) >> (44 - 32); /* Load XL Integer Portion */
+    int yl = (w1 & 0x00000FFF) >> (32 - 32); /* Load YL Integer Portion */
+    int xh = (w2 & 0x00FFF000) >> (12 -  0); /* Load XH Integer Portion */
+    int yh = (w2 & 0x00000FFF) >> ( 0 -  0); /* Load YH Integer Portion */
 
     yl |= (other_modes.cycle_type & 2) ? 3 : 0; /* FILL or COPY */
 
