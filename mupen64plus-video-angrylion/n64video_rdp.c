@@ -776,48 +776,44 @@ static void set_prim_depth(uint32_t w1, uint32_t w2)
 
 static void set_other_modes(uint32_t w1, uint32_t w2)
 {
-    const DP_FIFO cmd_fifo = cmd_data[cmd_cur + 0];
-
- /* K:  atomic_prim              = (cmd_fifo.UW & 0x0080000000000000) >> 55; */
- /* j:  reserved for future use -- (cmd_fifo.UW & 0x0040000000000000) >> 54 */
-    other_modes.cycle_type       = (cmd_fifo.UW32[0] & 0x00300000) >> (52 - 32);
-    other_modes.persp_tex_en     = !!(cmd_fifo.UW32[0] & 0x00080000); /* 51 */
-    other_modes.detail_tex_en    = !!(cmd_fifo.UW32[0] & 0x00040000); /* 50 */
-    other_modes.sharpen_tex_en   = !!(cmd_fifo.UW32[0] & 0x00020000); /* 49 */
-    other_modes.tex_lod_en       = !!(cmd_fifo.UW32[0] & 0x00010000); /* 48 */
-    other_modes.en_tlut          = !!(cmd_fifo.UW32[0] & 0x00008000); /* 47 */
-    other_modes.tlut_type        = !!(cmd_fifo.UW32[0] & 0x00004000); /* 46 */
-    other_modes.sample_type      = !!(cmd_fifo.UW32[0] & 0x00002000); /* 45 */
-    other_modes.mid_texel        = !!(cmd_fifo.UW32[0] & 0x00001000); /* 44 */
-    other_modes.bi_lerp0         = !!(cmd_fifo.UW32[0] & 0x00000800); /* 43 */
-    other_modes.bi_lerp1         = !!(cmd_fifo.UW32[0] & 0x00000400); /* 42 */
-    other_modes.convert_one      = !!(cmd_fifo.UW32[0] & 0x00000200); /* 41 */
-    other_modes.key_en           = !!(cmd_fifo.UW32[0] & 0x00000100); /* 40 */
-    other_modes.rgb_dither_sel   = (cmd_fifo.UW32[0] & 0x000000C0) >> (38 - 32);
-    other_modes.alpha_dither_sel = (cmd_fifo.UW32[0] & 0x00000030) >> (36 - 32);
+    other_modes.cycle_type       = (w1 & 0x00300000) >> (52 - 32);
+    other_modes.persp_tex_en     = !!(w1 & 0x00080000); /* 51 */
+    other_modes.detail_tex_en    = !!(w1 & 0x00040000); /* 50 */
+    other_modes.sharpen_tex_en   = !!(w1 & 0x00020000); /* 49 */
+    other_modes.tex_lod_en       = !!(w1 & 0x00010000); /* 48 */
+    other_modes.en_tlut          = !!(w1 & 0x00008000); /* 47 */
+    other_modes.tlut_type        = !!(w1 & 0x00004000); /* 46 */
+    other_modes.sample_type      = !!(w1 & 0x00002000); /* 45 */
+    other_modes.mid_texel        = !!(w1 & 0x00001000); /* 44 */
+    other_modes.bi_lerp0         = !!(w1 & 0x00000800); /* 43 */
+    other_modes.bi_lerp1         = !!(w1 & 0x00000400); /* 42 */
+    other_modes.convert_one      = !!(w1 & 0x00000200); /* 41 */
+    other_modes.key_en           = !!(w1 & 0x00000100); /* 40 */
+    other_modes.rgb_dither_sel   = (w1 & 0x000000C0) >> (38 - 32);
+    other_modes.alpha_dither_sel = (w1 & 0x00000030) >> (36 - 32);
  /* reserved for future, def:15 -- (cmd_fifo.UW & 0x0000000F00000000) >> 32 */
-    other_modes.blend_m1a_0      = (cmd_fifo.UW32[1] & 0xC0000000) >> (30 -  0);
-    other_modes.blend_m1a_1      = (cmd_fifo.UW32[1] & 0x30000000) >> (28 -  0);
-    other_modes.blend_m1b_0      = (cmd_fifo.UW32[1] & 0x0C000000) >> (26 -  0);
-    other_modes.blend_m1b_1      = (cmd_fifo.UW32[1] & 0x03000000) >> (24 -  0);
-    other_modes.blend_m2a_0      = (cmd_fifo.UW32[1] & 0x00C00000) >> (22 -  0);
-    other_modes.blend_m2a_1      = (cmd_fifo.UW32[1] & 0x00300000) >> (20 -  0);
-    other_modes.blend_m2b_0      = (cmd_fifo.UW32[1] & 0x000C0000) >> (18 -  0);
-    other_modes.blend_m2b_1      = (cmd_fifo.UW32[1] & 0x00030000) >> (16 -  0);
+    other_modes.blend_m1a_0      = (w2 & 0xC0000000) >> (30 -  0);
+    other_modes.blend_m1a_1      = (w2 & 0x30000000) >> (28 -  0);
+    other_modes.blend_m1b_0      = (w2 & 0x0C000000) >> (26 -  0);
+    other_modes.blend_m1b_1      = (w2 & 0x03000000) >> (24 -  0);
+    other_modes.blend_m2a_0      = (w2 & 0x00C00000) >> (22 -  0);
+    other_modes.blend_m2a_1      = (w2 & 0x00300000) >> (20 -  0);
+    other_modes.blend_m2b_0      = (w2 & 0x000C0000) >> (18 -  0);
+    other_modes.blend_m2b_1      = (w2 & 0x00030000) >> (16 -  0);
  /* N:  reserved for future use -- (cmd_fifo.UW & 0x0000000000008000) >> 15 */
-    other_modes.force_blend      = !!(cmd_fifo.UW32[1] & 0x00004000); /* 14 */
-    other_modes.alpha_cvg_select = !!(cmd_fifo.UW32[1] & 0x00002000); /* 13 */
-    other_modes.cvg_times_alpha  = !!(cmd_fifo.UW32[1] & 0x00001000); /* 12 */
-    other_modes.z_mode           = (cmd_fifo.UW32[1] & 0x00000C00) >> (10 -  0);
-    other_modes.cvg_dest         = (cmd_fifo.UW32[1] & 0x00000300) >> ( 8 -  0);
-    other_modes.color_on_cvg     = !!(cmd_fifo.UW32[1] & 0x00000080); /*  7 */
-    other_modes.image_read_en    = !!(cmd_fifo.UW32[1] & 0x00000040); /*  6 */
-    other_modes.z_update_en      = !!(cmd_fifo.UW32[1] & 0x00000020); /*  5 */
-    other_modes.z_compare_en     = !!(cmd_fifo.UW32[1] & 0x00000010); /*  4 */
-    other_modes.antialias_en     = !!(cmd_fifo.UW32[1] & 0x00000008); /*  3 */
-    other_modes.z_source_sel     = !!(cmd_fifo.UW32[1] & 0x00000004); /*  2 */
-    other_modes.dither_alpha_en  = !!(cmd_fifo.UW32[1] & 0x00000002); /*  1 */
-    other_modes.alpha_compare_en = !!(cmd_fifo.UW32[1] & 0x00000001); /*  0 */
+    other_modes.force_blend      = !!(w2 & 0x00004000); /* 14 */
+    other_modes.alpha_cvg_select = !!(w2 & 0x00002000); /* 13 */
+    other_modes.cvg_times_alpha  = !!(w2 & 0x00001000); /* 12 */
+    other_modes.z_mode           =   (w2 & 0x00000C00) >> (10 -  0);
+    other_modes.cvg_dest         =   (w2 & 0x00000300) >> ( 8 -  0);
+    other_modes.color_on_cvg     = !!(w2 & 0x00000080); /*  7 */
+    other_modes.image_read_en    = !!(w2 & 0x00000040); /*  6 */
+    other_modes.z_update_en      = !!(w2 & 0x00000020); /*  5 */
+    other_modes.z_compare_en     = !!(w2 & 0x00000010); /*  4 */
+    other_modes.antialias_en     = !!(w2 & 0x00000008); /*  3 */
+    other_modes.z_source_sel     = !!(w2 & 0x00000004); /*  2 */
+    other_modes.dither_alpha_en  = !!(w2 & 0x00000002); /*  1 */
+    other_modes.alpha_compare_en = !!(w2 & 0x00000001); /*  0 */
 
     SET_BLENDER_INPUT(
         0, 0, &blender1a_r[0], &blender1a_g[0], &blender1a_b[0],
@@ -1224,6 +1220,12 @@ static NOINLINE void draw_triangle(uint32_t w1, uint32_t w2,
     register int j, k;
     const i32 clipxlshift = __clip.xl << 1;
     const i32 clipxhshift = __clip.xh << 1;
+    uint32_t w3 = cmd_data[base + 1].UW32[0];
+    uint32_t w4 = cmd_data[base + 1].UW32[1];
+    uint32_t w5 = cmd_data[base + 2].UW32[0];
+    uint32_t w6 = cmd_data[base + 2].UW32[1];
+    uint32_t w7 = cmd_data[base + 3].UW32[0];
+    uint32_t w8 = cmd_data[base + 3].UW32[1];
 
     base = cmd_cur + 0;
     setzero_si64(rgba_int);
@@ -1254,22 +1256,22 @@ static NOINLINE void draw_triangle(uint32_t w1, uint32_t w2,
     max_level = level;
     tilenum = tile;
 
-    yl = (w1 & 0x0000FFFF) >> (32 - 32); /* & 0x3FFF */
-    yl = SIGN(yl, 14);
-    ym = (w2 & 0xFFFF0000) >> (16 -  0); /* & 0x3FFF */
-    ym = SIGN(ym, 14);
-    yh = (w2 & 0x0000FFFF) >> ( 0 -  0); /* & 0x3FFF */
-    yh = SIGN(yh, 14);
+    yl    = (w1 & 0x0000FFFF) >> (32 - 32); /* & 0x3FFF */
+    yl    = SIGN(yl, 14);
+    ym    = (w2 & 0xFFFF0000) >> (16 -  0); /* & 0x3FFF */
+    ym    = SIGN(ym, 14);
+    yh    = (w2 & 0x0000FFFF) >> ( 0 -  0); /* & 0x3FFF */
+    yh    = SIGN(yh, 14);
 
-    xl = cmd_data[base + 1].UW32[0];
-    xl = SIGN(xl, 30);
-    DxLDy = cmd_data[base + 1].UW32[1];
-    xh = cmd_data[base + 2].UW32[0];
-    xh = SIGN(xh, 30);
-    DxHDy = cmd_data[base + 2].UW32[1];
-    xm = cmd_data[base + 3].UW32[0];
-    xm = SIGN(xm, 30);
-    DxMDy = cmd_data[base + 3].UW32[1];
+    xl    = w3;
+    xl    = SIGN(xl, 30);
+    DxLDy = w4;
+    xh    = w5;
+    xh    = SIGN(xh, 30);
+    DxHDy = w6;
+    xm    = w7;
+    xm    = SIGN(xm, 30);
+    DxMDy = w8;
 
 /*
  * Shade Coefficients
