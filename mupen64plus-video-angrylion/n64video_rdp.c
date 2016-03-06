@@ -1293,9 +1293,7 @@ static NOINLINE void draw_triangle(uint32_t w1, uint32_t w2,
     xh = SIGN(xh, 30);
     xm = SIGN(xm, 30);
 
-/*
- * Shade Coefficients
- */
+    /* Shade Coefficients */
     if (shade == 0) /* branch unlikely */
         goto no_read_shade_coefficients;
 #ifdef USE_MMX_DECODES
@@ -1387,9 +1385,8 @@ no_read_shade_coefficients:
     stw_info->d_rgba_dy[2] = (stw_info->d_rgba_dy_int[2] << 16) | (u16)(stw_info->d_rgba_dy_frac[2]);
     stw_info->d_rgba_dy[3] = (stw_info->d_rgba_dy_int[3] << 16) | (u16)(stw_info->d_rgba_dy_frac[3]);
 #endif
-/*
- * Texture Coefficients
- */
+
+    /* Texture Coefficients */
     if (texture == 0)
         goto no_read_texture_coefficients;
 #ifdef USE_MMX_DECODES
@@ -1447,9 +1444,7 @@ no_read_shade_coefficients:
 no_read_texture_coefficients:
     stw_info->base -= 8;
 
-/*
- * Z-Buffer Coefficients
- */
+    /* Z-Buffer Coefficients */
     if (zbuffer == 0) /* branch unlikely */
         goto no_read_zbuffer_coefficients;
     stw_info->stwz_int[3]       = (cmd_data[stw_info->base + 20].UW32[0] >> 16) & 0xFFFF;
@@ -1511,9 +1506,7 @@ no_read_zbuffer_coefficients:
     stw_info->xmm_d_stwz_de = _mm_load_si128((__m128i *)stw_info->d_stwz_de);
 #endif
 
-/*
- * rest of edgewalker algorithm
- */
+    /* rest of edgewalker algorithm */
     spans_d_rgba[0]    = stw_info->d_rgba_dx[0] & ~0x0000001F;
     spans_d_rgba[1]    = stw_info->d_rgba_dx[1] & ~0x0000001F;
     spans_d_rgba[2]    = stw_info->d_rgba_dx[2] & ~0x0000001F;
