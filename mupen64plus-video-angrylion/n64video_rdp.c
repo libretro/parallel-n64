@@ -4,6 +4,8 @@
 
 struct stepwalker_info
 {
+   int base;
+
    i32 rgba[4]; /* RGBA color components */
    i32 d_rgba_dx[4]; /* RGBA delda per x-coordinate delta */
    i32 d_rgba_de[4]; /* RGBA delta along the edge */
@@ -307,6 +309,8 @@ static void noop(uint32_t w1, uint32_t w2)
 
 static INLINE void stepwalker_info_init(struct stepwalker_info *stw_info)
 {
+   stw_info->base = cmd_cur + 0;
+
    setzero_si64(stw_info->rgba_int);
    setzero_si64(stw_info->rgba_frac);
    setzero_si64(stw_info->d_rgba_dx_int);
@@ -323,6 +327,7 @@ static INLINE void stepwalker_info_init(struct stepwalker_info *stw_info)
    setzero_si64(stw_info->d_stwz_de_frac);
    setzero_si64(stw_info->d_stwz_dy_int);
    setzero_si64(stw_info->d_stwz_dy_frac);
+
 }
 
 static void tri_noshade(uint32_t w1, uint32_t w2)
@@ -1243,7 +1248,6 @@ static void set_color_image(uint32_t w1, uint32_t w2)
  /* fb_address &= 0x00FFFFFF; */
 }
 
-
 static NOINLINE void draw_triangle(uint32_t w1, uint32_t w2,
       int shade, int texture, int zbuffer, struct stepwalker_info *stw_info)
 {
@@ -1259,9 +1263,7 @@ static NOINLINE void draw_triangle(uint32_t w1, uint32_t w2,
     const i32 clipxlshift = __clip.xl << 1;
     const i32 clipxhshift = __clip.xh << 1;
 
-    int base    = cmd_cur + 0;
-
-/* Edge Coefficients */
+    /* Edge Coefficients */
     int lft     = (w1 & 0x00800000) >> (55 - 32);
     /* unused  (w1 & 0x00400000) >> (54 - 32) */
     int level   = (w1 & 0x00380000) >> (51 - 32);
@@ -1275,13 +1277,13 @@ static NOINLINE void draw_triangle(uint32_t w1, uint32_t w2,
     s32      ym = (w2 & 0xFFFF0000) >> (16 -  0); /* & 0x3FFF */
     s32      yh = (w2 & 0x0000FFFF) >> ( 0 -  0); /* & 0x3FFF */
     /* Triangle edge X-coordinates */
-    s32      xl = cmd_data[base + 1].UW32[0];
-    s32      xh = cmd_data[base + 2].UW32[0];
-    s32      xm = cmd_data[base + 3].UW32[0];
+    s32      xl = cmd_data[stw_info->base + 1].UW32[0];
+    s32      xh = cmd_data[stw_info->base + 2].UW32[0];
+    s32      xm = cmd_data[stw_info->base + 3].UW32[0];
     /* Triangle edge inverse-slopes */
-    s32   DxLDy = cmd_data[base + 1].UW32[1];
-    s32   DxHDy = cmd_data[base + 2].UW32[1];
-    s32   DxMDy = cmd_data[base + 3].UW32[1];
+    s32   DxLDy = cmd_data[stw_info->base + 1].UW32[1];
+    s32   DxHDy = cmd_data[stw_info->base + 2].UW32[1];
+    s32   DxMDy = cmd_data[stw_info->base + 3].UW32[1];
 
     yl = SIGN(yl, 14);
     ym = SIGN(ym, 14);
@@ -1297,14 +1299,14 @@ static NOINLINE void draw_triangle(uint32_t w1, uint32_t w2,
     if (shade == 0) /* branch unlikely */
         goto no_read_shade_coefficients;
 #ifdef USE_MMX_DECODES
-    *(__m64 *)stw_info->rgba_int       = *(__m64 *)&cmd_data[base +  4];
-    *(__m64 *)stw_info->d_rgba_dx_int  = *(__m64 *)&cmd_data[base +  5];
-    *(__m64 *)stw_info->rgba_frac      = *(__m64 *)&cmd_data[base +  6];
-    *(__m64 *)stw_info->d_rgba_dx_frac = *(__m64 *)&cmd_data[base +  7];
-    *(__m64 *)stw_info->d_rgba_de_int  = *(__m64 *)&cmd_data[base +  8];
-    *(__m64 *)stw_info->d_rgba_dy_int  = *(__m64 *)&cmd_data[base +  9];
-    *(__m64 *)stw_info->d_rgba_de_frac = *(__m64 *)&cmd_data[base + 10];
-    *(__m64 *)stw_info->d_rgba_dy_frac = *(__m64 *)&cmd_data[base + 11];
+    *(__m64 *)stw_info->rgba_int       = *(__m64 *)&cmd_data[stw_info->base +  4];
+    *(__m64 *)stw_info->d_rgba_dx_int  = *(__m64 *)&cmd_data[stw_info->base +  5];
+    *(__m64 *)stw_info->rgba_frac      = *(__m64 *)&cmd_data[stw_info->base +  6];
+    *(__m64 *)stw_info->d_rgba_dx_frac = *(__m64 *)&cmd_data[stw_info->base +  7];
+    *(__m64 *)stw_info->d_rgba_de_int  = *(__m64 *)&cmd_data[stw_info->base +  8];
+    *(__m64 *)stw_info->d_rgba_dy_int  = *(__m64 *)&cmd_data[stw_info->base +  9];
+    *(__m64 *)stw_info->d_rgba_de_frac = *(__m64 *)&cmd_data[stw_info->base + 10];
+    *(__m64 *)stw_info->d_rgba_dy_frac = *(__m64 *)&cmd_data[stw_info->base + 11];
     *(__m64 *)stw_info->rgba_int       = _mm_shuffle_pi16(*(__m64 *)stw_info->rgba_int, 0xB1);
     *(__m64 *)stw_info->d_rgba_dx_int  = _mm_shuffle_pi16(*(__m64 *)stw_info->d_rgba_dx_int, 0xB1);
     *(__m64 *)stw_info->rgba_frac      = _mm_shuffle_pi16(*(__m64 *)stw_info->rgba_frac, 0xB1);
@@ -1314,42 +1316,42 @@ static NOINLINE void draw_triangle(uint32_t w1, uint32_t w2,
     *(__m64 *)stw_info->d_rgba_de_frac = _mm_shuffle_pi16(*(__m64 *)stw_info->d_rgba_de_frac, 0xB1);
     *(__m64 *)stw_info->d_rgba_dy_frac = _mm_shuffle_pi16(*(__m64 *)stw_info->d_rgba_dy_frac, 0xB1);
 #else
-    stw_info->rgba_int[0] = (cmd_data[base + 4].UW32[0] >> 16) & 0xFFFF;
-    stw_info->rgba_int[1] = (cmd_data[base + 4].UW32[0] >>  0) & 0xFFFF;
-    stw_info->rgba_int[2] = (cmd_data[base + 4].UW32[1] >> 16) & 0xFFFF;
-    stw_info->rgba_int[3] = (cmd_data[base + 4].UW32[1] >>  0) & 0xFFFF;
-    stw_info->d_rgba_dx_int[0] = (cmd_data[base + 5].UW32[0] >> 16) & 0xFFFF;
-    stw_info->d_rgba_dx_int[1] = (cmd_data[base + 5].UW32[0] >>  0) & 0xFFFF;
-    stw_info->d_rgba_dx_int[2] = (cmd_data[base + 5].UW32[1] >> 16) & 0xFFFF;
-    stw_info->d_rgba_dx_int[3] = (cmd_data[base + 5].UW32[1] >>  0) & 0xFFFF;
-    stw_info->rgba_frac[0] = (cmd_data[base + 6].UW32[0] >> 16) & 0xFFFF;
-    stw_info->rgba_frac[1] = (cmd_data[base + 6].UW32[0] >>  0) & 0xFFFF;
-    stw_info->rgba_frac[2] = (cmd_data[base + 6].UW32[1] >> 16) & 0xFFFF;
-    stw_info->rgba_frac[3] = (cmd_data[base + 6].UW32[1] >>  0) & 0xFFFF;
-    stw_info->d_rgba_dx_frac[0] = (cmd_data[base + 7].UW32[0] >> 16) & 0xFFFF;
-    stw_info->d_rgba_dx_frac[1] = (cmd_data[base + 7].UW32[0] >>  0) & 0xFFFF;
-    stw_info->d_rgba_dx_frac[2] = (cmd_data[base + 7].UW32[1] >> 16) & 0xFFFF;
-    stw_info->d_rgba_dx_frac[3] = (cmd_data[base + 7].UW32[1] >>  0) & 0xFFFF;
-    stw_info->d_rgba_de_int[0] = (cmd_data[base + 8].UW32[0] >> 16) & 0xFFFF;
-    stw_info->d_rgba_de_int[1] = (cmd_data[base + 8].UW32[0] >>  0) & 0xFFFF;
-    stw_info->d_rgba_de_int[2] = (cmd_data[base + 8].UW32[1] >> 16) & 0xFFFF;
-    stw_info->d_rgba_de_int[3] = (cmd_data[base + 8].UW32[1] >>  0) & 0xFFFF;
-    stw_info->d_rgba_dy_int[0] = (cmd_data[base + 9].UW32[0] >> 16) & 0xFFFF;
-    stw_info->d_rgba_dy_int[1] = (cmd_data[base + 9].UW32[0] >>  0) & 0xFFFF;
-    stw_info->d_rgba_dy_int[2] = (cmd_data[base + 9].UW32[1] >> 16) & 0xFFFF;
-    stw_info->d_rgba_dy_int[3] = (cmd_data[base + 9].UW32[1] >>  0) & 0xFFFF;
-    stw_info->d_rgba_de_frac[0] = (cmd_data[base + 10].UW32[0] >> 16) & 0xFFFF;
-    stw_info->d_rgba_de_frac[1] = (cmd_data[base + 10].UW32[0] >>  0) & 0xFFFF;
-    stw_info->d_rgba_de_frac[2] = (cmd_data[base + 10].UW32[1] >> 16) & 0xFFFF;
-    stw_info->d_rgba_de_frac[3] = (cmd_data[base + 10].UW32[1] >>  0) & 0xFFFF;
-    stw_info->d_rgba_dy_frac[0] = (cmd_data[base + 11].UW32[0] >> 16) & 0xFFFF;
-    stw_info->d_rgba_dy_frac[1] = (cmd_data[base + 11].UW32[0] >>  0) & 0xFFFF;
-    stw_info->d_rgba_dy_frac[2] = (cmd_data[base + 11].UW32[1] >> 16) & 0xFFFF;
-    stw_info->d_rgba_dy_frac[3] = (cmd_data[base + 11].UW32[1] >>  0) & 0xFFFF;
+    stw_info->rgba_int[0] = (cmd_data[stw_info->base + 4].UW32[0] >> 16) & 0xFFFF;
+    stw_info->rgba_int[1] = (cmd_data[stw_info->base + 4].UW32[0] >>  0) & 0xFFFF;
+    stw_info->rgba_int[2] = (cmd_data[stw_info->base + 4].UW32[1] >> 16) & 0xFFFF;
+    stw_info->rgba_int[3] = (cmd_data[stw_info->base + 4].UW32[1] >>  0) & 0xFFFF;
+    stw_info->d_rgba_dx_int[0] = (cmd_data[stw_info->base + 5].UW32[0] >> 16) & 0xFFFF;
+    stw_info->d_rgba_dx_int[1] = (cmd_data[stw_info->base + 5].UW32[0] >>  0) & 0xFFFF;
+    stw_info->d_rgba_dx_int[2] = (cmd_data[stw_info->base + 5].UW32[1] >> 16) & 0xFFFF;
+    stw_info->d_rgba_dx_int[3] = (cmd_data[stw_info->base + 5].UW32[1] >>  0) & 0xFFFF;
+    stw_info->rgba_frac[0] = (cmd_data[stw_info->base + 6].UW32[0] >> 16) & 0xFFFF;
+    stw_info->rgba_frac[1] = (cmd_data[stw_info->base + 6].UW32[0] >>  0) & 0xFFFF;
+    stw_info->rgba_frac[2] = (cmd_data[stw_info->base + 6].UW32[1] >> 16) & 0xFFFF;
+    stw_info->rgba_frac[3] = (cmd_data[stw_info->base + 6].UW32[1] >>  0) & 0xFFFF;
+    stw_info->d_rgba_dx_frac[0] = (cmd_data[stw_info->base + 7].UW32[0] >> 16) & 0xFFFF;
+    stw_info->d_rgba_dx_frac[1] = (cmd_data[stw_info->base + 7].UW32[0] >>  0) & 0xFFFF;
+    stw_info->d_rgba_dx_frac[2] = (cmd_data[stw_info->base + 7].UW32[1] >> 16) & 0xFFFF;
+    stw_info->d_rgba_dx_frac[3] = (cmd_data[stw_info->base + 7].UW32[1] >>  0) & 0xFFFF;
+    stw_info->d_rgba_de_int[0] = (cmd_data[stw_info->base + 8].UW32[0] >> 16) & 0xFFFF;
+    stw_info->d_rgba_de_int[1] = (cmd_data[stw_info->base + 8].UW32[0] >>  0) & 0xFFFF;
+    stw_info->d_rgba_de_int[2] = (cmd_data[stw_info->base + 8].UW32[1] >> 16) & 0xFFFF;
+    stw_info->d_rgba_de_int[3] = (cmd_data[stw_info->base + 8].UW32[1] >>  0) & 0xFFFF;
+    stw_info->d_rgba_dy_int[0] = (cmd_data[stw_info->base + 9].UW32[0] >> 16) & 0xFFFF;
+    stw_info->d_rgba_dy_int[1] = (cmd_data[stw_info->base + 9].UW32[0] >>  0) & 0xFFFF;
+    stw_info->d_rgba_dy_int[2] = (cmd_data[stw_info->base + 9].UW32[1] >> 16) & 0xFFFF;
+    stw_info->d_rgba_dy_int[3] = (cmd_data[stw_info->base + 9].UW32[1] >>  0) & 0xFFFF;
+    stw_info->d_rgba_de_frac[0] = (cmd_data[stw_info->base + 10].UW32[0] >> 16) & 0xFFFF;
+    stw_info->d_rgba_de_frac[1] = (cmd_data[stw_info->base + 10].UW32[0] >>  0) & 0xFFFF;
+    stw_info->d_rgba_de_frac[2] = (cmd_data[stw_info->base + 10].UW32[1] >> 16) & 0xFFFF;
+    stw_info->d_rgba_de_frac[3] = (cmd_data[stw_info->base + 10].UW32[1] >>  0) & 0xFFFF;
+    stw_info->d_rgba_dy_frac[0] = (cmd_data[stw_info->base + 11].UW32[0] >> 16) & 0xFFFF;
+    stw_info->d_rgba_dy_frac[1] = (cmd_data[stw_info->base + 11].UW32[0] >>  0) & 0xFFFF;
+    stw_info->d_rgba_dy_frac[2] = (cmd_data[stw_info->base + 11].UW32[1] >> 16) & 0xFFFF;
+    stw_info->d_rgba_dy_frac[3] = (cmd_data[stw_info->base + 11].UW32[1] >>  0) & 0xFFFF;
 #endif
-    base += 8;
+    stw_info->base += 8;
 no_read_shade_coefficients:
-    base -= 8;
+    stw_info->base -= 8;
 #ifdef USE_MMX_DECODES
     *(__m64 *)(stw_info->rgba + (0 ^ 2))
       = _mm_unpackhi_pi16(*(__m64 *)stw_info->rgba_frac, *(__m64 *)stw_info->rgba_int);
@@ -1391,14 +1393,14 @@ no_read_shade_coefficients:
     if (texture == 0)
         goto no_read_texture_coefficients;
 #ifdef USE_MMX_DECODES
-    *(__m64 *)stw_info->stwz_int = *(__m64 *)&cmd_data[base + 12];
-    *(__m64 *)stw_info->d_stwz_dx_int  = *(__m64 *)&cmd_data[base + 13];
-    *(__m64 *)stw_info->stwz_frac      = *(__m64 *)&cmd_data[base + 14];
-    *(__m64 *)stw_info->d_stwz_dx_frac = *(__m64 *)&cmd_data[base + 15];
-    *(__m64 *)stw_info->d_stwz_de_int  = *(__m64 *)&cmd_data[base + 16];
-    *(__m64 *)stw_info->d_stwz_dy_int  = *(__m64 *)&cmd_data[base + 17];
-    *(__m64 *)stw_info->d_stwz_de_frac = *(__m64 *)&cmd_data[base + 18];
-    *(__m64 *)stw_info->d_stwz_dy_frac = *(__m64 *)&cmd_data[base + 19];
+    *(__m64 *)stw_info->stwz_int = *(__m64 *)&cmd_data[stw_info->base + 12];
+    *(__m64 *)stw_info->d_stwz_dx_int  = *(__m64 *)&cmd_data[stw_info->base + 13];
+    *(__m64 *)stw_info->stwz_frac      = *(__m64 *)&cmd_data[stw_info->base + 14];
+    *(__m64 *)stw_info->d_stwz_dx_frac = *(__m64 *)&cmd_data[stw_info->base + 15];
+    *(__m64 *)stw_info->d_stwz_de_int  = *(__m64 *)&cmd_data[stw_info->base + 16];
+    *(__m64 *)stw_info->d_stwz_dy_int  = *(__m64 *)&cmd_data[stw_info->base + 17];
+    *(__m64 *)stw_info->d_stwz_de_frac = *(__m64 *)&cmd_data[stw_info->base + 18];
+    *(__m64 *)stw_info->d_stwz_dy_frac = *(__m64 *)&cmd_data[stw_info->base + 19];
     *(__m64 *)stw_info->stwz_int       = _mm_shuffle_pi16(*(__m64 *)stw_info->stwz_int, 0xB1);
     *(__m64 *)stw_info->d_stwz_dx_int  = _mm_shuffle_pi16(*(__m64 *)stw_info->d_stwz_dx_int, 0xB1);
     *(__m64 *)stw_info->stwz_frac      = _mm_shuffle_pi16(*(__m64 *)stw_info->stwz_frac, 0xB1);
@@ -1408,59 +1410,59 @@ no_read_shade_coefficients:
     *(__m64 *)stw_info->d_stwz_de_frac = _mm_shuffle_pi16(*(__m64 *)stw_info->d_stwz_de_frac, 0xB1);
     *(__m64 *)stw_info->d_stwz_dy_frac = _mm_shuffle_pi16(*(__m64 *)stw_info->d_stwz_dy_frac, 0xB1);
 #else
-    stw_info->stwz_int[0]       = (cmd_data[base + 12].UW32[0] >> 16) & 0xFFFF;
-    stw_info->stwz_int[1]       = (cmd_data[base + 12].UW32[0] >>  0) & 0xFFFF;
-    stw_info->stwz_int[2]       = (cmd_data[base + 12].UW32[1] >> 16) & 0xFFFF;
- /* stw_info->stwz_int[3]       = (cmd_data[base + 12].UW32[1] >>  0) & 0xFFFF; */
-    stw_info->d_stwz_dx_int[0]  = (cmd_data[base + 13].UW32[0] >> 16) & 0xFFFF;
-    stw_info->d_stwz_dx_int[1]  = (cmd_data[base + 13].UW32[0] >>  0) & 0xFFFF;
-    stw_info->d_stwz_dx_int[2]  = (cmd_data[base + 13].UW32[1] >> 16) & 0xFFFF;
- /* stw_info->d_stwz_dx_int[3]  = (cmd_data[base + 13].UW32[1] >>  0) & 0xFFFF; */
-    stw_info->stwz_frac[0]      = (cmd_data[base + 14].UW32[0] >> 16) & 0xFFFF;
-    stw_info->stwz_frac[1]      = (cmd_data[base + 14].UW32[0] >>  0) & 0xFFFF;
-    stw_info->stwz_frac[2]      = (cmd_data[base + 14].UW32[1] >> 16) & 0xFFFF;
- /* stw_info->stwz_frac[3]      = (cmd_data[base + 14].UW32[1] >>  0) & 0xFFFF; */
-    stw_info->d_stwz_dx_frac[0] = (cmd_data[base + 15].UW32[0] >> 16) & 0xFFFF;
-    stw_info->d_stwz_dx_frac[1] = (cmd_data[base + 15].UW32[0] >>  0) & 0xFFFF;
-    stw_info->d_stwz_dx_frac[2] = (cmd_data[base + 15].UW32[1] >> 16) & 0xFFFF;
- /* stw_info->d_stwz_dx_frac[3] = (cmd_data[base + 15].UW32[1] >>  0) & 0xFFFF; */
-    stw_info->d_stwz_de_int[0]  = (cmd_data[base + 16].UW32[0] >> 16) & 0xFFFF;
-    stw_info->d_stwz_de_int[1]  = (cmd_data[base + 16].UW32[0] >>  0) & 0xFFFF;
-    stw_info->d_stwz_de_int[2]  = (cmd_data[base + 16].UW32[1] >> 16) & 0xFFFF;
- /* stw_info->d_stwz_de_int[3]  = (cmd_data[base + 16].UW32[1] >>  0) & 0xFFFF; */
-    stw_info->d_stwz_dy_int[0]  = (cmd_data[base + 17].UW32[0] >> 16) & 0xFFFF;
-    stw_info->d_stwz_dy_int[1]  = (cmd_data[base + 17].UW32[0] >>  0) & 0xFFFF;
-    stw_info->d_stwz_dy_int[2]  = (cmd_data[base + 17].UW32[1] >> 16) & 0xFFFF;
- /* stw_info->d_stwz_dy_int[3]  = (cmd_data[base + 17].UW32[1] >>  0) & 0xFFFF; */
-    stw_info->d_stwz_de_frac[0] = (cmd_data[base + 18].UW32[0] >> 16) & 0xFFFF;
-    stw_info->d_stwz_de_frac[1] = (cmd_data[base + 18].UW32[0] >>  0) & 0xFFFF;
-    stw_info->d_stwz_de_frac[2] = (cmd_data[base + 18].UW32[1] >> 16) & 0xFFFF;
- /* stw_info->d_stwz_de_frac[3] = (cmd_data[base + 18].UW32[1] >>  0) & 0xFFFF; */
-    stw_info->d_stwz_dy_frac[0] = (cmd_data[base + 19].UW32[0] >> 16) & 0xFFFF;
-    stw_info->d_stwz_dy_frac[1] = (cmd_data[base + 19].UW32[0] >>  0) & 0xFFFF;
-    stw_info->d_stwz_dy_frac[2] = (cmd_data[base + 19].UW32[1] >> 16) & 0xFFFF;
- /* stw_info->d_stwz_dy_frac[3] = (cmd_data[base + 19].UW32[1] >>  0) & 0xFFFF; */
+    stw_info->stwz_int[0]       = (cmd_data[stw_info->base + 12].UW32[0] >> 16) & 0xFFFF;
+    stw_info->stwz_int[1]       = (cmd_data[stw_info->base + 12].UW32[0] >>  0) & 0xFFFF;
+    stw_info->stwz_int[2]       = (cmd_data[stw_info->base + 12].UW32[1] >> 16) & 0xFFFF;
+ /* stw_info->stwz_int[3]       = (cmd_data[stw_info->base + 12].UW32[1] >>  0) & 0xFFFF; */
+    stw_info->d_stwz_dx_int[0]  = (cmd_data[stw_info->base + 13].UW32[0] >> 16) & 0xFFFF;
+    stw_info->d_stwz_dx_int[1]  = (cmd_data[stw_info->base + 13].UW32[0] >>  0) & 0xFFFF;
+    stw_info->d_stwz_dx_int[2]  = (cmd_data[stw_info->base + 13].UW32[1] >> 16) & 0xFFFF;
+ /* stw_info->d_stwz_dx_int[3]  = (cmd_data[stw_info->base + 13].UW32[1] >>  0) & 0xFFFF; */
+    stw_info->stwz_frac[0]      = (cmd_data[stw_info->base + 14].UW32[0] >> 16) & 0xFFFF;
+    stw_info->stwz_frac[1]      = (cmd_data[stw_info->base + 14].UW32[0] >>  0) & 0xFFFF;
+    stw_info->stwz_frac[2]      = (cmd_data[stw_info->base + 14].UW32[1] >> 16) & 0xFFFF;
+ /* stw_info->stwz_frac[3]      = (cmd_data[stw_info->base + 14].UW32[1] >>  0) & 0xFFFF; */
+    stw_info->d_stwz_dx_frac[0] = (cmd_data[stw_info->base + 15].UW32[0] >> 16) & 0xFFFF;
+    stw_info->d_stwz_dx_frac[1] = (cmd_data[stw_info->base + 15].UW32[0] >>  0) & 0xFFFF;
+    stw_info->d_stwz_dx_frac[2] = (cmd_data[stw_info->base + 15].UW32[1] >> 16) & 0xFFFF;
+ /* stw_info->d_stwz_dx_frac[3] = (cmd_data[stw_info->base + 15].UW32[1] >>  0) & 0xFFFF; */
+    stw_info->d_stwz_de_int[0]  = (cmd_data[stw_info->base + 16].UW32[0] >> 16) & 0xFFFF;
+    stw_info->d_stwz_de_int[1]  = (cmd_data[stw_info->base + 16].UW32[0] >>  0) & 0xFFFF;
+    stw_info->d_stwz_de_int[2]  = (cmd_data[stw_info->base + 16].UW32[1] >> 16) & 0xFFFF;
+ /* stw_info->d_stwz_de_int[3]  = (cmd_data[stw_info->base + 16].UW32[1] >>  0) & 0xFFFF; */
+    stw_info->d_stwz_dy_int[0]  = (cmd_data[stw_info->base + 17].UW32[0] >> 16) & 0xFFFF;
+    stw_info->d_stwz_dy_int[1]  = (cmd_data[stw_info->base + 17].UW32[0] >>  0) & 0xFFFF;
+    stw_info->d_stwz_dy_int[2]  = (cmd_data[stw_info->base + 17].UW32[1] >> 16) & 0xFFFF;
+ /* stw_info->d_stwz_dy_int[3]  = (cmd_data[stw_info->base + 17].UW32[1] >>  0) & 0xFFFF; */
+    stw_info->d_stwz_de_frac[0] = (cmd_data[stw_info->base + 18].UW32[0] >> 16) & 0xFFFF;
+    stw_info->d_stwz_de_frac[1] = (cmd_data[stw_info->base + 18].UW32[0] >>  0) & 0xFFFF;
+    stw_info->d_stwz_de_frac[2] = (cmd_data[stw_info->base + 18].UW32[1] >> 16) & 0xFFFF;
+ /* stw_info->d_stwz_de_frac[3] = (cmd_data[stw_info->base + 18].UW32[1] >>  0) & 0xFFFF; */
+    stw_info->d_stwz_dy_frac[0] = (cmd_data[stw_info->base + 19].UW32[0] >> 16) & 0xFFFF;
+    stw_info->d_stwz_dy_frac[1] = (cmd_data[stw_info->base + 19].UW32[0] >>  0) & 0xFFFF;
+    stw_info->d_stwz_dy_frac[2] = (cmd_data[stw_info->base + 19].UW32[1] >> 16) & 0xFFFF;
+ /* stw_info->d_stwz_dy_frac[3] = (cmd_data[stw_info->base + 19].UW32[1] >>  0) & 0xFFFF; */
 #endif
-    base += 8;
+    stw_info->base += 8;
 no_read_texture_coefficients:
-    base -= 8;
+    stw_info->base -= 8;
 
 /*
  * Z-Buffer Coefficients
  */
     if (zbuffer == 0) /* branch unlikely */
         goto no_read_zbuffer_coefficients;
-    stw_info->stwz_int[3]       = (cmd_data[base + 20].UW32[0] >> 16) & 0xFFFF;
-    stw_info->stwz_frac[3]      = (cmd_data[base + 20].UW32[0] >>  0) & 0xFFFF;
-    stw_info->d_stwz_dx_int[3]  = (cmd_data[base + 20].UW32[1] >> 16) & 0xFFFF;
-    stw_info->d_stwz_dx_frac[3] = (cmd_data[base + 20].UW32[1] >>  0) & 0xFFFF;
-    stw_info->d_stwz_de_int[3]  = (cmd_data[base + 21].UW32[0] >> 16) & 0xFFFF;
-    stw_info->d_stwz_de_frac[3] = (cmd_data[base + 21].UW32[0] >>  0) & 0xFFFF;
-    stw_info->d_stwz_dy_int[3]  = (cmd_data[base + 21].UW32[1] >> 16) & 0xFFFF;
-    stw_info->d_stwz_dy_frac[3] = (cmd_data[base + 21].UW32[1] >>  0) & 0xFFFF;
-    base += 8;
+    stw_info->stwz_int[3]       = (cmd_data[stw_info->base + 20].UW32[0] >> 16) & 0xFFFF;
+    stw_info->stwz_frac[3]      = (cmd_data[stw_info->base + 20].UW32[0] >>  0) & 0xFFFF;
+    stw_info->d_stwz_dx_int[3]  = (cmd_data[stw_info->base + 20].UW32[1] >> 16) & 0xFFFF;
+    stw_info->d_stwz_dx_frac[3] = (cmd_data[stw_info->base + 20].UW32[1] >>  0) & 0xFFFF;
+    stw_info->d_stwz_de_int[3]  = (cmd_data[stw_info->base + 21].UW32[0] >> 16) & 0xFFFF;
+    stw_info->d_stwz_de_frac[3] = (cmd_data[stw_info->base + 21].UW32[0] >>  0) & 0xFFFF;
+    stw_info->d_stwz_dy_int[3]  = (cmd_data[stw_info->base + 21].UW32[1] >> 16) & 0xFFFF;
+    stw_info->d_stwz_dy_frac[3] = (cmd_data[stw_info->base + 21].UW32[1] >>  0) & 0xFFFF;
+    stw_info->base += 8;
 no_read_zbuffer_coefficients:
-    base -= 8;
+    stw_info->base -= 8;
 #ifdef USE_MMX_DECODES
     *(__m64 *)(stw_info->stwz + (0 ^ 2))
       = _mm_unpackhi_pi16(*(__m64 *)stw_info->stwz_frac,
@@ -1820,6 +1822,7 @@ no_read_zbuffer_coefficients:
     _mm_empty();
 #endif
 }
+
 
 STRICTINLINE static u16 normalize_dzpix(u16 sum)
 {
