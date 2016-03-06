@@ -338,19 +338,21 @@ static void tex_rect(uint32_t w1, uint32_t w2)
     u8 xfrac;
     const i32 clipxlshift = __clip.xl << 1;
     const i32 clipxhshift = __clip.xh << 1;
+    uint32_t w3 = cmd_data[cmd_cur + 1].UW32[0]; /* Load RDP Command Word 3 */
+    uint32_t w4 = cmd_data[cmd_cur + 1].UW32[1]; /* Load RDP Command Word 4 */
 
-    xl      = (cmd_data[cmd_cur + 0].UW32[0] & 0x00FFF000) >> 12;
-    yl      = (cmd_data[cmd_cur + 0].UW32[0] & 0x00000FFF) >>  0;
-    tilenum = (cmd_data[cmd_cur + 0].UW32[1] & 0x07000000) >> 24;
-    xh      = (cmd_data[cmd_cur + 0].UW32[1] & 0x00FFF000) >> 12;
-    yh      = (cmd_data[cmd_cur + 0].UW32[1] & 0x00000FFF) >>  0;
+    xl      = (w1 & 0x00FFF000) >> 12;
+    yl      = (w1 & 0x00000FFF) >>  0;
+    tilenum = (w2 & 0x07000000) >> 24;
+    xh      = (w2 & 0x00FFF000) >> 12;
+    yh      = (w2 & 0x00000FFF) >>  0;
 
     yl |= (other_modes.cycle_type & 2) ? 3 : 0; /* FILL OR COPY */
 
-    s    = (cmd_data[cmd_cur + 1].UW32[0] & 0xFFFF0000) >> 16;
-    t    = (cmd_data[cmd_cur + 1].UW32[0] & 0x0000FFFF) >>  0;
-    dsdx = (cmd_data[cmd_cur + 1].UW32[1] & 0xFFFF0000) >> 16;
-    dtdy = (cmd_data[cmd_cur + 1].UW32[1] & 0x0000FFFF) >>  0;
+    s    = (w3 & 0xFFFF0000) >> 16; /* Load S Sign Portion */
+    t    = (w3 & 0x0000FFFF) >>  0; /* Load T SIgn Portion */
+    dsdx = (w4 & 0xFFFF0000) >> 16; /* Load DsDx Sign Portion */
+    dtdy = (w4 & 0x0000FFFF) >>  0; /* Load DsDy Sign Portion */
     
     dsdx = SIGN16(dsdx);
     dtdy = SIGN16(dtdy);
