@@ -329,7 +329,7 @@ static INLINE void stepwalker_info_init(struct stepwalker_info *stw_info)
    setzero_si64(stw_info->d_stwz_dy_frac);
 }
 
-static INLINE void triangle_shade(struct stepwalker_info *stw_info)
+static INLINE void triangle_draw_shade(struct stepwalker_info *stw_info)
 {
    /* Shade Coefficients */
 #ifdef USE_MMX_DECODES
@@ -417,7 +417,7 @@ static void tri_shade(uint32_t w1, uint32_t w2)
 {
    struct stepwalker_info stw_info;
    stepwalker_info_init(&stw_info);
-   triangle_shade(&stw_info);
+   triangle_draw_shade(&stw_info);
    draw_triangle(w1, w2, TEXTURE_NO, ZBUFFER_NO, &stw_info);
 }
 
@@ -425,7 +425,7 @@ static void tri_shade_z(uint32_t w1, uint32_t w2)
 {
    struct stepwalker_info stw_info;
    stepwalker_info_init(&stw_info);
-   triangle_shade(&stw_info);
+   triangle_draw_shade(&stw_info);
    draw_triangle(w1, w2, TEXTURE_NO, ZBUFFER_YES, &stw_info);
 }
 
@@ -433,7 +433,7 @@ static void tri_texshade(uint32_t w1, uint32_t w2)
 {
    struct stepwalker_info stw_info;
    stepwalker_info_init(&stw_info);
-   triangle_shade(&stw_info);
+   triangle_draw_shade(&stw_info);
    draw_triangle(w1, w2, TEXTURE_YES, ZBUFFER_NO, &stw_info);
 }
 
@@ -441,7 +441,7 @@ static void tri_texshade_z(uint32_t w1, uint32_t w2)
 {
    struct stepwalker_info stw_info;
    stepwalker_info_init(&stw_info);
-   triangle_shade(&stw_info);
+   triangle_draw_shade(&stw_info);
    draw_triangle(w1, w2, TEXTURE_YES, ZBUFFER_YES, &stw_info);
 }
 
