@@ -305,51 +305,79 @@ static void noop(uint32_t w1, uint32_t w2)
 {
 }
 
+static INLINE void stepwalker_info_init(struct stepwalker_info *stw_info)
+{
+   setzero_si64(stw_info->rgba_int);
+   setzero_si64(stw_info->rgba_frac);
+   setzero_si64(stw_info->d_rgba_dx_int);
+   setzero_si64(stw_info->d_rgba_dx_frac);
+   setzero_si64(stw_info->d_rgba_de_int);
+   setzero_si64(stw_info->d_rgba_de_frac);
+   setzero_si64(stw_info->d_rgba_dy_int);
+   setzero_si64(stw_info->d_rgba_dy_frac);
+   setzero_si64(stw_info->stwz_int);
+   setzero_si64(stw_info->stwz_frac);
+   setzero_si64(stw_info->d_stwz_dx_int);
+   setzero_si64(stw_info->d_stwz_dx_frac);
+   setzero_si64(stw_info->d_stwz_de_int);
+   setzero_si64(stw_info->d_stwz_de_frac);
+   setzero_si64(stw_info->d_stwz_dy_int);
+   setzero_si64(stw_info->d_stwz_dy_frac);
+}
+
 static void tri_noshade(uint32_t w1, uint32_t w2)
 {
    struct stepwalker_info stw_info;
+   stepwalker_info_init(&stw_info);
    draw_triangle(w1, w2, SHADE_NO, TEXTURE_NO, ZBUFFER_NO, &stw_info);
 }
 
 static void tri_noshade_z(uint32_t w1, uint32_t w2)
 {
    struct stepwalker_info stw_info;
+   stepwalker_info_init(&stw_info);
    draw_triangle(w1, w2, SHADE_NO, TEXTURE_NO, ZBUFFER_YES, &stw_info);
 }
 
 static void tri_tex(uint32_t w1, uint32_t w2)
 {
    struct stepwalker_info stw_info;
+   stepwalker_info_init(&stw_info);
    draw_triangle(w1, w2, SHADE_NO, TEXTURE_YES, ZBUFFER_NO, &stw_info);
 }
 
 static void tri_tex_z(uint32_t w1, uint32_t w2)
 {
    struct stepwalker_info stw_info;
+   stepwalker_info_init(&stw_info);
    draw_triangle(w1, w2, SHADE_NO, TEXTURE_YES, ZBUFFER_YES, &stw_info);
 }
 
 static void tri_shade(uint32_t w1, uint32_t w2)
 {
    struct stepwalker_info stw_info;
+   stepwalker_info_init(&stw_info);
    draw_triangle(w1, w2, SHADE_YES, TEXTURE_NO, ZBUFFER_NO, &stw_info);
 }
 
 static void tri_shade_z(uint32_t w1, uint32_t w2)
 {
    struct stepwalker_info stw_info;
+   stepwalker_info_init(&stw_info);
    draw_triangle(w1, w2, SHADE_YES, TEXTURE_NO, ZBUFFER_YES, &stw_info);
 }
 
 static void tri_texshade(uint32_t w1, uint32_t w2)
 {
    struct stepwalker_info stw_info;
+   stepwalker_info_init(&stw_info);
    draw_triangle(w1, w2, SHADE_YES, TEXTURE_YES, ZBUFFER_NO, &stw_info);
 }
 
 static void tri_texshade_z(uint32_t w1, uint32_t w2)
 {
    struct stepwalker_info stw_info;
+   stepwalker_info_init(&stw_info);
    draw_triangle(w1, w2, SHADE_YES, TEXTURE_YES, ZBUFFER_YES, &stw_info);
 }
 
@@ -1219,13 +1247,6 @@ static void set_color_image(uint32_t w1, uint32_t w2)
 static NOINLINE void draw_triangle(uint32_t w1, uint32_t w2,
       int shade, int texture, int zbuffer, struct stepwalker_info *stw_info)
 {
-    register int base;
-    int lft, level, tile;
-    s32 yl, ym, yh; /* triangle edge y-coordinates */
-    s32 xl, xh, xm; /* triangle edge x-coordinates */
-    s32 DxLDy, DxHDy, DxMDy; /* triangle edge inverse-slopes */
-    int tilenum, flip;
-
     int sign_dxhdy;
     int ycur, ylfar;
     int yllimit, yhlimit;
@@ -1238,52 +1259,37 @@ static NOINLINE void draw_triangle(uint32_t w1, uint32_t w2,
     const i32 clipxlshift = __clip.xl << 1;
     const i32 clipxhshift = __clip.xh << 1;
 
-    base = cmd_cur + 0;
+    int base    = cmd_cur + 0;
 
-    setzero_si64(stw_info->rgba_int);
-    setzero_si64(stw_info->rgba_frac);
-    setzero_si64(stw_info->d_rgba_dx_int);
-    setzero_si64(stw_info->d_rgba_dx_frac);
-    setzero_si64(stw_info->d_rgba_de_int);
-    setzero_si64(stw_info->d_rgba_de_frac);
-    setzero_si64(stw_info->d_rgba_dy_int);
-    setzero_si64(stw_info->d_rgba_dy_frac);
-    setzero_si64(stw_info->stwz_int);
-    setzero_si64(stw_info->stwz_frac);
-    setzero_si64(stw_info->d_stwz_dx_int);
-    setzero_si64(stw_info->d_stwz_dx_frac);
-    setzero_si64(stw_info->d_stwz_de_int);
-    setzero_si64(stw_info->d_stwz_de_frac);
-    setzero_si64(stw_info->d_stwz_dy_int);
-    setzero_si64(stw_info->d_stwz_dy_frac);
+/* Edge Coefficients */
+    int lft     = (w1 & 0x00800000) >> (55 - 32);
+    /* unused  (w1 & 0x00400000) >> (54 - 32) */
+    int level   = (w1 & 0x00380000) >> (51 - 32);
+    int tile    = (w1 & 0x00070000) >> (48 - 32);
+    int flip    = lft;
+    max_level   = level;
+    int tilenum = tile;
 
-/*
- * Edge Coefficients
- */
-    lft   = (w1 & 0x00800000) >> (55 - 32);
- /* unused  (w1 & 0x00400000) >> (54 - 32) */
-    level = (w1 & 0x00380000) >> (51 - 32);
-    tile  = (w1 & 0x00070000) >> (48 - 32);
-    flip = lft;
-    max_level = level;
-    tilenum = tile;
+    /* Triangle edge Y-coordinates */
+    s32      yl = (w1 & 0x0000FFFF) >> (32 - 32); /* & 0x3FFF */
+    s32      ym = (w2 & 0xFFFF0000) >> (16 -  0); /* & 0x3FFF */
+    s32      yh = (w2 & 0x0000FFFF) >> ( 0 -  0); /* & 0x3FFF */
+    /* Triangle edge X-coordinates */
+    s32      xl = cmd_data[base + 1].UW32[0];
+    s32      xh = cmd_data[base + 2].UW32[0];
+    s32      xm = cmd_data[base + 3].UW32[0];
+    /* Triangle edge inverse-slopes */
+    s32   DxLDy = cmd_data[base + 1].UW32[1];
+    s32   DxHDy = cmd_data[base + 2].UW32[1];
+    s32   DxMDy = cmd_data[base + 3].UW32[1];
 
-    yl = (w1 & 0x0000FFFF) >> (32 - 32); /* & 0x3FFF */
     yl = SIGN(yl, 14);
-    ym = (w2 & 0xFFFF0000) >> (16 -  0); /* & 0x3FFF */
     ym = SIGN(ym, 14);
-    yh = (w2 & 0x0000FFFF) >> ( 0 -  0); /* & 0x3FFF */
     yh = SIGN(yh, 14);
 
-    xl = cmd_data[base + 1].UW32[0];
     xl = SIGN(xl, 30);
-    DxLDy = cmd_data[base + 1].UW32[1];
-    xh = cmd_data[base + 2].UW32[0];
     xh = SIGN(xh, 30);
-    DxHDy = cmd_data[base + 2].UW32[1];
-    xm = cmd_data[base + 3].UW32[0];
     xm = SIGN(xm, 30);
-    DxMDy = cmd_data[base + 3].UW32[1];
 
 /*
  * Shade Coefficients
@@ -1620,7 +1626,7 @@ no_read_zbuffer_coefficients:
     else if (yllimit >> 2 >= 0 && yllimit >> 2 < 1023)
         span[(yllimit >> 2) + 1].validline = 0;
 
-    yhlimit = (yh - __clip.yh >= 0) ? yh : __clip.yh; /* clip.yh always &= 0xFFF */
+    yhlimit              = (yh - __clip.yh >= 0) ? yh : __clip.yh; /* clip.yh always &= 0xFFF */
 
     stw_info->xlr_inc[0] = (DxMDy >> 2) & ~0x00000001;
     stw_info->xlr_inc[1] = (DxHDy >> 2) & ~0x00000001;
