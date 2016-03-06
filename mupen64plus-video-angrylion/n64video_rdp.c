@@ -1248,19 +1248,19 @@ static NOINLINE void draw_triangle(uint32_t w1, uint32_t w2,
 /*
  * Edge Coefficients
  */
-    lft   = (cmd_data[base + 0].UW32[0] & 0x00800000) >> (55 - 32);
- /* unused  (cmd_data[base + 0].UW32[0] & 0x00400000) >> (54 - 32) */
-    level = (cmd_data[base + 0].UW32[0] & 0x00380000) >> (51 - 32);
-    tile  = (cmd_data[base + 0].UW32[0] & 0x00070000) >> (48 - 32);
+    lft   = (w1 & 0x00800000) >> (55 - 32);
+ /* unused  (w1 & 0x00400000) >> (54 - 32) */
+    level = (w1 & 0x00380000) >> (51 - 32);
+    tile  = (w1 & 0x00070000) >> (48 - 32);
     flip = lft;
     max_level = level;
     tilenum = tile;
 
-    yl = (cmd_data[base + 0].UW32[0] & 0x0000FFFF) >> (32 - 32); /* & 0x3FFF */
+    yl = (w1 & 0x0000FFFF) >> (32 - 32); /* & 0x3FFF */
     yl = SIGN(yl, 14);
-    ym = (cmd_data[base + 0].UW32[1] & 0xFFFF0000) >> (16 -  0); /* & 0x3FFF */
+    ym = (w2 & 0xFFFF0000) >> (16 -  0); /* & 0x3FFF */
     ym = SIGN(ym, 14);
-    yh = (cmd_data[base + 0].UW32[1] & 0x0000FFFF) >> ( 0 -  0); /* & 0x3FFF */
+    yh = (w2 & 0x0000FFFF) >> ( 0 -  0); /* & 0x3FFF */
     yh = SIGN(yh, 14);
 
     xl = cmd_data[base + 1].UW32[0];
