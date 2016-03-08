@@ -833,8 +833,6 @@ static void glsm_state_bind(void)
    {
       if (gl_state.cap_state[i])
          glEnable(gl_state.cap_translate[i]);
-      else
-         glDisable(gl_state.cap_translate[i]);
    }
 
    if (gl_state.frontface.used)
@@ -872,7 +870,10 @@ static void glsm_state_unbind(void)
    glBindVertexArray(0);
 #endif
    for (i = 0; i < SGL_CAP_MAX; i ++)
-      glDisable(gl_state.cap_translate[i]);
+   {
+      if (gl_state.cap_state[i])
+         glDisable(gl_state.cap_translate[i]);
+   }
 
    glBlendFunc(GL_ONE, GL_ZERO);
 
