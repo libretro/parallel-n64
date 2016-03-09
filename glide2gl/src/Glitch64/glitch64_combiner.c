@@ -587,7 +587,10 @@ void free_combiners(void)
       shader_program_key *s = shader_programs;
 
       while (number_of_programs--)
-         glDeleteProgram(s->program_object);
+      {
+         if (glIsProgram(s->program_object))
+            glDeleteProgram(s->program_object);
+      }
 
       free(shader_programs);
    }
