@@ -87,25 +87,17 @@ void RSP_ProcessDList(void)
    if ((uc_start != __RSP.uc_start) || (uc_dstart != __RSP.uc_dstart))
       gSPLoadUcodeEx( uc_start, uc_dstart, uc_dsize );
 
-#if 0
    gDPSetAlphaCompare(G_AC_NONE);
    gDPSetDepthSource(G_ZS_PIXEL);
-   gDEPSetRenderMode(0, 0);
+   gDPSetRenderMode(0, 0);
    gDPSetAlphaDither(G_AD_DISABLE);
-#endif
    gDPSetCombineKey(G_CK_NONE);
-#if 0
    gDPSetTextureFilter(G_TF_POINT);
-#endif
    gDPSetTextureLUT(G_TT_NONE);
-#if 0
    gDPSetTextureLOD(G_TL_TILE);
-#endif
    gDPSetTexturePersp(G_TP_PERSP);
    gDPSetCycleType(G_CYC_1CYCLE);
-#if 0
    gDPPipelineMode(G_PM_NPRIMITIVE);
-#endif
 
 #ifdef NEW
 	depthBufferList().setNotCleared();

@@ -41,84 +41,64 @@ static INLINE u32 GetNone( u64 *src, u16 x, u16 i, u8 palette )
 
 static INLINE u32 GetCI4IA_RGBA4444( u64 *src, u16 x, u16 i, u8 palette )
 {
-	u8 color4B;
-
-	color4B = ((u8*)src)[(x>>1)^(i<<1)];
+	u8 color4B = ((u8*)src)[(x>>1)^(i<<1)];
 
 	if (x & 1)
 		return IA88_RGBA4444( *(u16*)&TMEM[256 + (palette << 4) + (color4B & 0x0F)] );
-	else
-		return IA88_RGBA4444( *(u16*)&TMEM[256 + (palette << 4) + (color4B >> 4)] );
+   return IA88_RGBA4444( *(u16*)&TMEM[256 + (palette << 4) + (color4B >> 4)] );
 }
 
 static INLINE u32 GetCI4IA_RGBA8888( u64 *src, u16 x, u16 i, u8 palette )
 {
-	u8 color4B;
-
-	color4B = ((u8*)src)[(x>>1)^(i<<1)];
+	u8 color4B = ((u8*)src)[(x>>1)^(i<<1)];
 
 	if (x & 1)
 		return IA88_RGBA8888( *(u16*)&TMEM[256 + (palette << 4) + (color4B & 0x0F)] );
-	else
-		return IA88_RGBA8888( *(u16*)&TMEM[256 + (palette << 4) + (color4B >> 4)] );
+   return IA88_RGBA8888( *(u16*)&TMEM[256 + (palette << 4) + (color4B >> 4)] );
 }
 
 static INLINE u32 GetCI4RGBA_RGBA5551( u64 *src, u16 x, u16 i, u8 palette )
 {
-	u8 color4B;
-
-	color4B = ((u8*)src)[(x>>1)^(i<<1)];
+	u8 color4B = ((u8*)src)[(x>>1)^(i<<1)];
 
 	if (x & 1)
 		return RGBA5551_RGBA5551( *(u16*)&TMEM[256 + (palette << 4) + (color4B & 0x0F)] );
-	else
-		return RGBA5551_RGBA5551( *(u16*)&TMEM[256 + (palette << 4) + (color4B >> 4)] );
+   return RGBA5551_RGBA5551( *(u16*)&TMEM[256 + (palette << 4) + (color4B >> 4)] );
 }
 
 static INLINE u32 GetCI4RGBA_RGBA8888( u64 *src, u16 x, u16 i, u8 palette )
 {
-	u8 color4B;
-
-	color4B = ((u8*)src)[(x>>1)^(i<<1)];
+	u8 color4B = ((u8*)src)[(x>>1)^(i<<1)];
 
 	if (x & 1)
 		return RGBA5551_RGBA8888( *(u16*)&TMEM[256 + (palette << 4) + (color4B & 0x0F)] );
-	else
-		return RGBA5551_RGBA8888( *(u16*)&TMEM[256 + (palette << 4) + (color4B >> 4)] );
+   return RGBA5551_RGBA8888( *(u16*)&TMEM[256 + (palette << 4) + (color4B >> 4)] );
 }
 
 static INLINE u32 GetIA31_RGBA8888( u64 *src, u16 x, u16 i, u8 palette )
 {
-	u8 color4B;
-
-	color4B = ((u8*)src)[(x>>1)^(i<<1)];
+	u8 color4B = ((u8*)src)[(x>>1)^(i<<1)];
 
 	return IA31_RGBA8888( (x & 1) ? (color4B & 0x0F) : (color4B >> 4) );
 }
 
 static INLINE u32 GetIA31_RGBA4444( u64 *src, u16 x, u16 i, u8 palette )
 {
-	u8 color4B;
-
-	color4B = ((u8*)src)[(x>>1)^(i<<1)];
+	u8 color4B = ((u8*)src)[(x>>1)^(i<<1)];
 
 	return IA31_RGBA4444( (x & 1) ? (color4B & 0x0F) : (color4B >> 4) );
 }
 
 static INLINE u32 GetI4_RGBA8888( u64 *src, u16 x, u16 i, u8 palette )
 {
-	u8 color4B;
-
-	color4B = ((u8*)src)[(x>>1)^(i<<1)];
+	u8 color4B = ((u8*)src)[(x>>1)^(i<<1)];
 
 	return I4_RGBA8888( (x & 1) ? (color4B & 0x0F) : (color4B >> 4) );
 }
 
 static INLINE u32 GetI4_RGBA4444( u64 *src, u16 x, u16 i, u8 palette )
 {
-	u8 color4B;
-
-	color4B = ((u8*)src)[(x>>1)^(i<<1)];
+	u8 color4B = ((u8*)src)[(x>>1)^(i<<1)];
 
 	return I4_RGBA4444( (x & 1) ? (color4B & 0x0F) : (color4B >> 4) );
 }
@@ -276,36 +256,36 @@ const struct TextureLoadParameters
 {
 	GetTexelFunc	Get16;
 	GLenum			glType16;
-	GLint			glInternalFormat16;
+	GLint			   glInternalFormat16;
 	GetTexelFunc	Get32;
 	GLenum			glType32;
-	GLint			glInternalFormat32;
+	GLint			   glInternalFormat32;
 	u32				autoFormat, lineShift, maxTexels;
 } imageFormat[4][4][5] =
 { // G_TT_NONE
 	{ //		Get16					glType16						glInternalFormat16	Get32					glType32						glInternalFormat32	autoFormat
-		{ // 4-bit
+		{ /* 4-bit */
 			{ GetI4_RGBA4444, GL_UNSIGNED_SHORT_4_4_4_4, GL_RGBA4, GetI4_RGBA8888, GL_UNSIGNED_BYTE, GL_RGBA, GL_RGBA4, 4, 8192 }, // RGBA as I
 			{ GetNone, GL_UNSIGNED_SHORT_4_4_4_4, GL_RGBA4, GetNone, GL_UNSIGNED_BYTE, GL_RGBA, GL_RGBA4, 4, 8192 }, // YUV
 			{ GetI4_RGBA4444, GL_UNSIGNED_SHORT_4_4_4_4, GL_RGBA4, GetI4_RGBA8888, GL_UNSIGNED_BYTE, GL_RGBA, GL_RGBA4, 4, 8192 }, // CI without palette
 			{ GetIA31_RGBA4444, GL_UNSIGNED_SHORT_4_4_4_4, GL_RGBA4, GetIA31_RGBA8888, GL_UNSIGNED_BYTE, GL_RGBA, GL_RGBA4, 4, 8192 }, // IA
 			{ GetI4_RGBA4444, GL_UNSIGNED_SHORT_4_4_4_4, GL_RGBA4, GetI4_RGBA8888, GL_UNSIGNED_BYTE, GL_RGBA, GL_RGBA4, 4, 8192 }, // I
 		},
-		{ // 8-bit
+		{ /* 8-bit */
 			{ GetI8_RGBA4444, GL_UNSIGNED_SHORT_4_4_4_4, GL_RGBA4, GetI8_RGBA8888, GL_UNSIGNED_BYTE, GL_RGBA, GL_RGBA, 3, 4096 }, // RGBA as I
 			{ GetNone, GL_UNSIGNED_SHORT_4_4_4_4, GL_RGBA4, GetNone, GL_UNSIGNED_BYTE, GL_RGBA, GL_RGBA4, 0, 4096 }, // YUV
 			{ GetI8_RGBA4444, GL_UNSIGNED_SHORT_4_4_4_4, GL_RGBA4, GetI8_RGBA8888, GL_UNSIGNED_BYTE, GL_RGBA, GL_RGBA, 3, 4096 }, // CI without palette
 			{ GetIA44_RGBA4444, GL_UNSIGNED_SHORT_4_4_4_4, GL_RGBA4, GetIA44_RGBA8888, GL_UNSIGNED_BYTE, GL_RGBA, GL_RGBA4, 3, 4096 }, // IA
 			{ GetI8_RGBA4444, GL_UNSIGNED_SHORT_4_4_4_4, GL_RGBA4, GetI8_RGBA8888, GL_UNSIGNED_BYTE, GL_RGBA, GL_RGBA, 3, 4096 }, // I
 		},
-		{ // 16-bit
+		{ /* 16-bit */
 			{ GetRGBA5551_RGBA5551, GL_UNSIGNED_SHORT_5_5_5_1, GL_RGB5_A1, GetRGBA5551_RGBA8888, GL_UNSIGNED_BYTE, GL_RGBA, GL_RGB5_A1, 2, 2048 }, // RGBA
 			{ GetNone, GL_UNSIGNED_SHORT_4_4_4_4, GL_RGBA4, GetNone, GL_UNSIGNED_BYTE, GL_RGBA, GL_RGBA4, 2, 2048 }, // YUV
 			{ GetIA88_RGBA4444, GL_UNSIGNED_SHORT_4_4_4_4, GL_RGBA4, GetIA88_RGBA8888, GL_UNSIGNED_BYTE, GL_RGBA, GL_RGBA, 2, 2048 }, // CI as IA
 			{ GetIA88_RGBA4444, GL_UNSIGNED_SHORT_4_4_4_4, GL_RGBA4, GetIA88_RGBA8888, GL_UNSIGNED_BYTE, GL_RGBA, GL_RGBA, 2, 2048 }, // IA
 			{ GetNone, GL_UNSIGNED_SHORT_4_4_4_4, GL_RGBA4, GetNone, GL_UNSIGNED_BYTE, GL_RGBA, GL_RGBA4, 0, 2048 }, // I
 		},
-		{ // 32-bit
+		{ /* 32-bit */
 			{ GetRGBA8888_RGBA4444, GL_UNSIGNED_SHORT_4_4_4_4, GL_RGBA4, GetRGBA8888_RGBA8888, GL_UNSIGNED_BYTE, GL_RGBA, GL_RGBA, 2, 1024 }, // RGBA
 			{ GetNone, GL_UNSIGNED_SHORT_4_4_4_4, GL_RGBA4, GetNone, GL_UNSIGNED_BYTE, GL_RGBA, GL_RGBA4, 0, 1024 }, // YUV
 			{ GetNone, GL_UNSIGNED_SHORT_4_4_4_4, GL_RGBA4, GetNone, GL_UNSIGNED_BYTE, GL_RGBA, GL_RGBA4, 0, 1024 }, // CI

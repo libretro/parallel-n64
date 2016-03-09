@@ -9,6 +9,8 @@
 extern "C" {
 #endif
 
+struct gDPTile;
+
 typedef u32 (*GetTexelFunc)( u64 *src, u16 x, u16 i, u8 palette );
 
 typedef struct CachedTexture
@@ -54,6 +56,23 @@ typedef struct TextureCache
 } TextureCache;
 
 extern TextureCache cache;
+
+static INLINE uint8_t TextureCache_SizeToBPP(uint8_t size)
+{
+   switch (size)
+   {
+      case 0:
+         return 4;
+      case 1:
+         return 8;
+      case 2:
+         return 16;
+      default:
+         break;
+   }
+
+   return 32;
+}
 
 static INLINE u32 pow2( u32 dim )
 {

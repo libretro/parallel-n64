@@ -12,8 +12,10 @@ extern "C" {
 #define CHANGED_SCISSOR         0x0004
 #define CHANGED_TMEM            0x0008
 #define CHANGED_TILE            0x0010
-
-#define CHANGED_COMBINE         0x0040
+#define CHANGED_COMBINE_COLORS  0x020
+#define CHANGED_COMBINE			  0x040
+#define CHANGED_ALPHACOMPARE	  0x080
+#define CHANGED_FOGCOLOR		  0x100
 
 #define CHANGED_FB_TEXTURE      0x0200
 
@@ -191,6 +193,7 @@ typedef struct
     struct
     {
         f32 z, dz;
+        f32 r, g, b, a;
         u32 color;
     } fillColor;
 
