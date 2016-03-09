@@ -28,7 +28,16 @@ extern u32 uc_crc, uc_dcrc;
 extern char uc_str[256];
 #endif
 
-void gSPCombineMatrices(void);
+gSPInfo gSP;
+
+f32 identityMatrix[4][4] =
+{
+    { 1.0f, 0.0f, 0.0f, 0.0f },
+    { 0.0f, 1.0f, 0.0f, 0.0f },
+    { 0.0f, 0.0f, 1.0f, 0.0f },
+    { 0.0f, 0.0f, 0.0f, 1.0f }
+};
+
 
 static INLINE void gSPFlushTriangles(void)
 {
@@ -47,10 +56,33 @@ static INLINE void gSPFlushTriangles(void)
          OGL_DrawTriangles();
 }
 
-void gSPCombineMatrices(void)
+
+void gSPCopyVertex( SPVertex *dest, SPVertex *src )
 {
-   MultMatrix(gSP.matrix.projection, gSP.matrix.modelView[gSP.matrix.modelViewi], gSP.matrix.combined);
-   gSP.changed &= ~CHANGED_MATRIX;
+	dest->x = src->x;
+	dest->y = src->y;
+	dest->z = src->z;
+	dest->w = src->w;
+	dest->r = src->r;
+	dest->g = src->g;
+	dest->b = src->b;
+	dest->a = src->a;
+	dest->s = src->s;
+	dest->t = src->t;
+}
+
+void gSPInterpolateVertex( SPVertex *dest, f32 percent, SPVertex *first, SPVertex *second )
+{
+	dest->x = first->x + percent * (second->x - first->x);
+	dest->y = first->y + percent * (second->y - first->y);
+	dest->z = first->z + percent * (second->z - first->z);
+	dest->w = first->w + percent * (second->w - first->w);
+	dest->r = first->r + percent * (second->r - first->r);
+	dest->g = first->g + percent * (second->g - first->g);
+	dest->b = first->b + percent * (second->b - first->b);
+	dest->a = first->a + percent * (second->a - first->a);
+	dest->s = first->s + percent * (second->s - first->s);
+	dest->t = first->t + percent * (second->t - first->t);
 }
 
 void gSPTriangle(s32 v0, s32 v1, s32 v2)
@@ -92,15 +124,6 @@ void gSP4Triangles(const s32 v00, const s32 v01, const s32 v02,
 }
 
 
-gSPInfo gSP;
-
-f32 identityMatrix[4][4] =
-{
-    { 1.0f, 0.0f, 0.0f, 0.0f },
-    { 0.0f, 1.0f, 0.0f, 0.0f },
-    { 0.0f, 0.0f, 1.0f, 0.0f },
-    { 0.0f, 0.0f, 0.0f, 1.0f }
-};
 
 
 static void gSPTransformVertex_default(float vtx[4], float mtx[4][4])
@@ -301,7 +324,6 @@ void gSPClipVertex(u32 v)
 
 void gSPProcessVertex(u32 v)
 {
-	float vPos[3];
    
    f32 intensity, r, g, b;
    SPVertex *vtx = (SPVertex*)&OGL.triangles.vertices[v];
@@ -309,9 +331,6 @@ void gSPProcessVertex(u32 v)
    if (gSP.changed & CHANGED_MATRIX)
       gSPCombineMatrices();
 
-   vPos[0] = (float)vtx->x;
-   vPos[1] = (float)vtx->y;
-   vPos[2] = (float)vtx->z;
    gSPTransformVertex( &vtx->x, gSP.matrix.combined );
 
    if (gSP.viewport.vscale[0] < 0)
@@ -328,6 +347,11 @@ void gSPProcessVertex(u32 v)
 
    if (gSP.geometryMode & G_LIGHTING)
    {
+      float vPos[3];
+      vPos[0] = (float)vtx->x;
+      vPos[1] = (float)vtx->y;
+      vPos[2] = (float)vtx->z;
+
       TransformVectorNormalize( &vtx->nx, gSP.matrix.modelView[gSP.matrix.modelViewi] );
 		if (gSP.geometryMode & G_POINT_LIGHTING)
 			gSPPointLightVertex(vtx, vPos);
@@ -375,7 +399,13 @@ void gSPLoadUcodeEx( u32 uc_start, u32 uc_dstart, u16 uc_dsize )
    gSP.status[0] = gSP.status[1] = gSP.status[2] = gSP.status[3] = 0;
 
    if ((((uc_start & 0x1FFFFFFF) + 4096) > RDRAMSize) || (((uc_dstart & 0x1FFFFFFF) + uc_dsize) > RDRAMSize))
+   {
+#ifdef DEBUG
+      DebugMsg( DEBUG_HIGH | DEBUG_ERROR, "// Attempting to loud ucode out of invalid address\n" );
+      DebugMsg( DEBUG_HIGH | DEBUG_HANDLED, "gSPLoadUcodeEx( 0x%08X, 0x%08X, %i );\n", uc_start, uc_dstart, uc_dsize );
+#endif
       return;
+   }
 
    ucode = (MicrocodeInfo*)GBI_DetectMicrocode( uc_start, uc_dstart, uc_dsize );
 
@@ -392,6 +422,12 @@ void gSPLoadUcodeEx( u32 uc_start, u32 uc_dstart, u16 uc_dsize )
    {
       LOG(LOG_WARNING, "Unknown Ucode\n");
    }
+}
+
+void gSPCombineMatrices(void)
+{
+   MultMatrix(gSP.matrix.projection, gSP.matrix.modelView[gSP.matrix.modelViewi], gSP.matrix.combined);
+   gSP.changed &= ~CHANGED_MATRIX;
 }
 
 void gSPNoOp(void)
@@ -698,14 +734,20 @@ void gSPVertex( u32 v, u32 n, u32 v0 )
    u32 address = RSP_SegmentToPhysical( v );
 
    if ((address + sizeof( Vertex ) * n) > RDRAMSize)
+   {
+#ifdef DEBUG
+      DebugMsg( DEBUG_HIGH | DEBUG_ERROR | DEBUG_VERTEX, "// Attempting to load vertices from invalid address\n" );
+      DebugMsg( DEBUG_HIGH | DEBUG_HANDLED | DEBUG_VERTEX, "gSPVertex( 0x%08X, %i, %i );\n",
+            v, n, v0 );
+#endif
       return;
+   }
 
    vertex = (Vertex*)&gfx_info.RDRAM[address];
 
    if ((n + v0) <= INDEXMAP_SIZE)
    {
-      i = v0;
-      for (; i < n + v0; i++)
+      for (i = v0; i < n + v0; i++)
       {
          u32 v = i;
          SPVertex *vtx = (SPVertex*)&OGL.triangles.vertices[v];
@@ -730,14 +772,15 @@ void gSPVertex( u32 v, u32 n, u32 v0 )
             vtx->b = vertex->color.b * 0.0039215689f;
             vtx->a = vertex->color.a * 0.0039215689f;
          }
+
          gSPProcessVertex(v);
          vertex++;
       }
    }
+#ifdef DEBUG
    else
-   {
-      LOG(LOG_ERROR, "Using Vertex outside buffer v0=%i, n=%i\n", v0, n);
-   }
+      DebugMsg( DEBUG_HIGH | DEBUG_ERROR | DEBUG_VERTEX, "// Attempting to load vertices past vertex buffer size\n" );
+#endif
 
 }
 
@@ -749,14 +792,20 @@ void gSPCIVertex( u32 v, u32 n, u32 v0 )
    u32 address = RSP_SegmentToPhysical( v );
 
    if ((address + sizeof( PDVertex ) * n) > RDRAMSize)
+   {
+#ifdef DEBUG
+      DebugMsg( DEBUG_HIGH | DEBUG_ERROR | DEBUG_VERTEX, "// Attempting to load vertices from invalid address\n" );
+      DebugMsg( DEBUG_HIGH | DEBUG_HANDLED | DEBUG_VERTEX, "gSPCIVertex( 0x%08X, %i, %i );\n",
+            v, n, v0 );
+#endif
       return;
+   }
 
    vertex = (PDVertex*)&gfx_info.RDRAM[address];
 
    if ((n + v0) <= INDEXMAP_SIZE)
    {
-      i = v0;
-      for(; i < n + v0; i++)
+      for(i = v0; i < n + v0; i++)
       {
          u8 *color;
          u32 v = i;
@@ -766,6 +815,7 @@ void gSPCIVertex( u32 v, u32 n, u32 v0 )
          vtx->z = vertex->z;
          vtx->s = _FIXED2FLOAT( vertex->s, 5 );
          vtx->t = _FIXED2FLOAT( vertex->t, 5 );
+
          color = (u8*)&gfx_info.RDRAM[gSP.vertexColorBase + (vertex->ci & 0xff)];
 
          if (gSP.geometryMode & G_LIGHTING)
@@ -787,10 +837,10 @@ void gSPCIVertex( u32 v, u32 n, u32 v0 )
          vertex++;
       }
    }
+#ifdef DEBUG
    else
-   {
-      LOG(LOG_ERROR, "Using Vertex outside buffer v0=%i, n=%i\n", v0, n);
-   }
+      DebugMsg( DEBUG_HIGH | DEBUG_ERROR | DEBUG_VERTEX, "// Attempting to load vertices past vertex buffer size\n" );
+#endif
 
 }
 
@@ -800,12 +850,18 @@ void gSPDMAVertex( u32 v, u32 n, u32 v0 )
    u32 address = gSP.DMAOffsets.vtx + RSP_SegmentToPhysical( v );
 
    if ((address + 10 * n) > RDRAMSize)
+   {
+#ifdef DEBUG
+      DebugMsg( DEBUG_HIGH | DEBUG_ERROR | DEBUG_VERTEX, "// Attempting to load vertices from invalid address\n" );
+      DebugMsg( DEBUG_HIGH | DEBUG_HANDLED | DEBUG_VERTEX, "gSPDMAVertex( 0x%08X, %i, %i );\n",
+            v, n, v0 );
+#endif
       return;
+   }
 
    if ((n + v0) <= INDEXMAP_SIZE)
    {
-      i = v0;
-      for (; i < n + v0; i++)
+      for (i = v0; i < n + v0; i++)
       {
          u32 v = i;
          SPVertex *vtx = (SPVertex*)&OGL.triangles.vertices[v];
@@ -833,10 +889,10 @@ void gSPDMAVertex( u32 v, u32 n, u32 v0 )
          address += 10;
       }
    }
+#ifdef DEBUG
    else
-   {
-      LOG(LOG_ERROR, "Using Vertex outside buffer v0=%i, n=%i\n", v0, n);
-   }
+      DebugMsg( DEBUG_HIGH | DEBUG_ERROR | DEBUG_VERTEX, "// Attempting to load vertices past vertex buffer size\n" );
+#endif
 }
 
 void gSPCBFDVertex( u32 a, u32 n, u32 v0 )
@@ -1277,7 +1333,9 @@ void gSPCullDisplayList( u32 v0, u32 vn )
       if (__RSP.PCi > 0)
          __RSP.PCi--;
       else
+      {
          __RSP.halt = TRUE;
+      }
    }
 }
 
