@@ -1,7 +1,6 @@
 #include <math.h>
 #include "Common.h"
 #include "gles2N64.h"
-#include "OpenGL.h"
 #include "Debug.h"
 #include "RSP.h"
 #include "RDP.h"
@@ -33,7 +32,7 @@ void RSP_LoadMatrix( f32 mtx[4][4], u32 address )
 
    for (i = 0; i < 4; i++)
       for (j = 0; j < 4; j++)
-         mtx[i][j] = (GLfloat)(n64Mat->integer[i][j^1]) + (GLfloat)(n64Mat->fraction[i][j^1]) * recip;
+         mtx[i][j] = (float)(n64Mat->integer[i][j^1]) + (float)(n64Mat->fraction[i][j^1]) * recip;
 }
 
 void RSP_CheckDLCounter(void)
@@ -57,6 +56,8 @@ void RSP_ProcessDList(void)
    int i, j;
    u32 uc_start, uc_dstart, uc_dsize;
 
+   VI_UpdateSize();
+
    __RSP.PC[0] = *(u32*)&gfx_info.DMEM[0x0FF0];
    __RSP.PCi   = 0;
    __RSP.count = -1;
@@ -79,17 +80,32 @@ void RSP_ProcessDList(void)
    gSP.matrix.modelView[0][2][2] = 1.0f;
    gSP.matrix.modelView[0][3][3] = 1.0f;
 
-   uc_start = *(u32*)&gfx_info.DMEM[0x0FD0];
+   uc_start  = *(u32*)&gfx_info.DMEM[0x0FD0];
    uc_dstart = *(u32*)&gfx_info.DMEM[0x0FD8];
-   uc_dsize = *(u32*)&gfx_info.DMEM[0x0FDC];
+   uc_dsize  = *(u32*)&gfx_info.DMEM[0x0FDC];
 
    if ((uc_start != __RSP.uc_start) || (uc_dstart != __RSP.uc_dstart))
       gSPLoadUcodeEx( uc_start, uc_dstart, uc_dsize );
 
+#if 0
+   gDPSetAlphaCompare(G_AC_NONE);
+   gDPSetDepthSource(G_ZS_PIXEL);
+   gDEPSetRenderMode(0, 0);
+   gDPSetAlphaDither(G_AD_DISABLE);
+#endif
    gDPSetCombineKey(G_CK_NONE);
+#if 0
+   gDPSetTextureFilter(G_TF_POINT);
+#endif
    gDPSetTextureLUT(G_TT_NONE);
+#if 0
+   gDPSetTextureLOD(G_TL_TILE);
+#endif
    gDPSetTexturePersp(G_TP_PERSP);
    gDPSetCycleType(G_CYC_1CYCLE);
+#if 0
+   gDPPipelineMode(G_PM_NPRIMITIVE);
+#endif
 
 #ifdef NEW
 	depthBufferList().setNotCleared();
@@ -132,7 +148,9 @@ void RSP_ProcessDList(void)
 	   FrameBuffer_CopyToRDRAM( gDP.colorImage.address );
    if (config.frameBufferEmulation.copyDepthToRDRAM)
 	   FrameBuffer_CopyDepthBuffer( gDP.colorImage.address );
+
    __RSP.busy = FALSE;
+   __RSP.DList++;
    gSP.changed |= CHANGED_COLORBUFFER;
 }
 
@@ -192,6 +210,7 @@ void RSP_Init(void)
    RDRAMSize      = 1024 * 1024 * 8;
    __RSP.DList    = 0;
    __RSP.uc_start = __RSP.uc_dstart = 0;
+
    __RSP.bLLE     = false;
 
 	for (i = 0; i < 20; ++i)

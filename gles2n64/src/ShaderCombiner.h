@@ -1,6 +1,8 @@
 #ifndef SHADERCOMBINER_H
 #define SHADERCOMBINER_H
 
+#include "OpenGL.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
