@@ -100,7 +100,7 @@ void RSP_ProcessDList(void)
    else
       while (!__RSP.halt)
       {
-         u32 w0, w1, pc;
+         u32 pc;
          pc = __RSP.PC[__RSP.PCi];
 
          if ((pc + 8) > RDRAMSize)
@@ -112,19 +112,19 @@ void RSP_ProcessDList(void)
          }
 
 
-         w0 = *(u32*)&gfx_info.RDRAM[pc];
-         w1 = *(u32*)&gfx_info.RDRAM[pc+4];
-         __RSP.cmd = _SHIFTR( w0, 24, 8 );
+         __RSP.w0 = *(u32*)&gfx_info.RDRAM[pc];
+         __RSP.w1 = *(u32*)&gfx_info.RDRAM[pc+4];
+         __RSP.cmd = _SHIFTR( __RSP.w0, 24, 8 );
 
 #ifdef DEBUG
-         DebugRSPState( RSP.PCi, RSP.PC[RSP.PCi], _SHIFTR( w0, 24, 8 ), w0, w1 );
-         DebugMsg( DEBUG_LOW | DEBUG_HANDLED, "0x%08lX: CMD=0x%02lX W0=0x%08lX W1=0x%08lX\n", RSP.PC[RSP.PCi], _SHIFTR( w0, 24, 8 ), w0, w1 );
+         DebugRSPState( RSP.PCi, RSP.PC[RSP.PCi], _SHIFTR( __RSP.w0, 24, 8 ), __RSP.w0, __RSP.w1 );
+         DebugMsg( DEBUG_LOW | DEBUG_HANDLED, "0x%08lX: CMD=0x%02lX W0=0x%08lX W1=0x%08lX\n", RSP.PC[RSP.PCi], _SHIFTR( __RSP.w0, 24, 8 ), __RSP.w0, __RSP.w1 );
 #endif
 
          __RSP.PC[__RSP.PCi] += 8;
          __RSP.nextCmd = _SHIFTR( *(u32*)&gfx_info.RDRAM[pc+8], 24, 8 );
 
-         GBI.cmd[__RSP.cmd]( w0, w1 );
+         GBI.cmd[__RSP.cmd]( __RSP.w0, __RSP.w1 );
          RSP_CheckDLCounter();
       }
 

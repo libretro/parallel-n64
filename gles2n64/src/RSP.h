@@ -1,6 +1,7 @@
 #ifndef RSP_H
 #define RSP_H
 
+#include <stdint.h>
 #include <boolean.h>
 
 #include "N64.h"
@@ -25,6 +26,8 @@ typedef struct
 	s32 count;
 	bool bLLE;
 	char romname[21];
+   uint32_t w0;
+   uint32_t w1;
 } RSPInfo;
 
 extern RSPInfo __RSP;
