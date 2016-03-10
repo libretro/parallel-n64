@@ -3,6 +3,7 @@ PERF_TEST=0
 HAVE_SHARED_CONTEXT=0
 SINGLE_THREAD=0
 WITH_CRC=brumme
+FORCE_GLES=0
 HAVE_OPENGL=1
 
 DYNAFLAGS :=
@@ -67,7 +68,10 @@ ifneq (,$(findstring unix,$(platform)))
 
 	fpic = -fPIC
 
-	ifneq (,$(findstring gles,$(platform)))
+   ifeq ($(FORCE_GLES),1)
+		GLES = 1
+		GL_LIB := -lGLESv2
+	else ifneq (,$(findstring gles,$(platform)))
 		GLES = 1
 		GL_LIB := -lGLESv2
 	else
