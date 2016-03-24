@@ -1081,7 +1081,7 @@ void TextureCache_ActivateTexture( u32 t, CachedTexture *_pTexture )
       }
    }
 
-#ifndef GLES
+#ifndef HAVE_OPENGLES
    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, _pTexture->max_level);
 #endif
 
