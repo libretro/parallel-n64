@@ -69,12 +69,8 @@ void dyna_jump(void)
         *return_address = (native_type)(actual->code + PC->local_addr);
 }
 
-#if !defined(__x86_64__)
-#if defined(WIN32) && !defined(__GNUC__) /* this warning disable only works if placed outside of the scope of a function */
-#pragma warning(disable:4731) /* frame pointer register 'ebp' modified by inline assembly code */
-#endif
-#endif
-
+#if defined(__x86_64__) && defined(_WIN32) && defined(_MSC_VER)
+#else
 void dyna_start(void *code)
 {
   /* save the base and stack pointers */
@@ -218,6 +214,7 @@ void dyna_start(void *code)
     save_eip=0;
 #endif
 }
+#endif
 
 void dyna_stop(void)
 {
