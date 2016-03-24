@@ -525,9 +525,6 @@
     <ClCompile Include="..\..\..\gles2n64\src\glN64Config.c">
       <Filter>Source Files\gles2n64\src</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\gles2n64\src\gSP.c">
-      <Filter>Source Files\gles2n64\src</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\..\gles2n64\src\Hash.c">
       <Filter>Source Files\gles2n64\src</Filter>
     </ClCompile>
@@ -648,6 +645,9 @@
     <ClCompile Include="..\..\..\mupen64plus-core\src\ri\rdram_detection_hack.c">
       <Filter>Source Files\mupen64plus-core\src\ri</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\gles2n64\src\gSP_gles2n64.c">
+      <Filter>Source Files\gles2n64\src</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\gles2n64\src\3DMath.h">
@@ -767,5 +767,10 @@
     <ClInclude Include="..\..\..\mupen64plus-core\src\r4300\hacktarux_dynarec\regcache.h">
       <Filter>Source Files\mupen64plus-core\src\r4300\hacktarux_dynarec</Filter>
     </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="..\..\..\mupen64plus-core\src\r4300\hacktarux_dynarec\dyna_start.asm">
+      <Filter>Source Files\mupen64plus-core\src\r4300\hacktarux_dynarec</Filter>
+    </CustomBuild>
   </ItemGroup>
 </Project>
