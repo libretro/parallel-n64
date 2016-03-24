@@ -22,6 +22,7 @@
     <ProjectGuid>{62F97835-3567-4EF3-ACDC-46F2CDECAF40}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
     <RootNamespace>msvc2010</RootNamespace>
+    <ProjectName>msvc-2013</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
@@ -78,7 +79,6 @@
     <LinkIncremental>false</LinkIncremental>
     <TargetName>libretro</TargetName>
     <GenerateManifest>false</GenerateManifest>
-    <IncludePath>C:\msys64\home\mudlord\mupen64plus-libretro\libretro-common\include;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
@@ -92,7 +92,7 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>WIN32;INLINE=_inline;__LIBRETRO__;__LIBRETRO_WIN64__;M64P_PLUGIN_API;M64P_CORE_PROTOTYPES;_ENDUSER_RELEASE;_DEBUG;_WINDOWS;_USRDLL;MSVC2010_EXPORTS;%(PreprocessorDefinitions);_CRT_SECURE_NO_WARNINGS;DYNAREC</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>$(MSBuildProjectDirectory)\..\..\..\mupen64plus-core\src\api;$(MSBuildProjectDirectory)\..\..\;$(MSBuildProjectDirectory)\..\..\..\mupen64plus-core\src;$(MSBuildProjectDirectory)\..\;$(MSBuildProjectDirectory)\..\libretro-common\include;$(MSBuildProjectDirectory)\..\..\..\glide2gl\src\Glitch64\inc;$(MSBuildProjectDirectory)\..\GL;$(MSBuildProjectDirectory)\..\..\..\tools\rzlib;$(MSBuildProjectDirectory)\..\..\libco;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(MSBuildProjectDirectory)\..\..\..\mupen64plus-core\src\api;$(MSBuildProjectDirectory)\..\..\;$(MSBuildProjectDirectory)\..\..\..\mupen64plus-core\src;$(MSBuildProjectDirectory)\..\;$(MSBuildProjectDirectory)\..\libretro-common\include;$(MSBuildProjectDirectory)\..\..\..\glide2gl\src\Glitch64\inc;$(MSBuildProjectDirectory)\..\GL;$(MSBuildProjectDirectory)\..\..\libco;$(MSBuildProjectDirectory)\..\..\..\libretro-common\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <FunctionLevelLinking>true</FunctionLevelLinking>
     </ClCompile>
     <Link>
@@ -129,7 +129,7 @@
       <Optimization>MaxSpeed</Optimization>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>WIN32;INLINE=_inline;__LIBRETRO__;__LIBRETRO_WIN64__;M64P_PLUGIN_API;M64P_CORE_PROTOTYPES;_ENDUSER_RELEASE;NDEBUG;_WINDOWS;_USRDLL;MSVC2010_EXPORTS;%(PreprocessorDefinitions);_CRT_SECURE_NO_WARNINGS;DYNAREC</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>$(MSBuildProjectDirectory)\..\..\..\mupen64plus-core\src\api;$(MSBuildProjectDirectory)\..\..\;$(MSBuildProjectDirectory)\..\..\..\mupen64plus-core\src;$(MSBuildProjectDirectory)\..\;$(MSBuildProjectDirectory)\..\libretro-common\include;$(MSBuildProjectDirectory)\..\..\..\glide2gl\src\Glitch64\inc;$(MSBuildProjectDirectory)\..\GL;$(MSBuildProjectDirectory)\..\..\..\tools\rzlib;$(MSBuildProjectDirectory)\..\..\libco;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(MSBuildProjectDirectory)\..\..\..\mupen64plus-core\src\api;$(MSBuildProjectDirectory)\..\..\;$(MSBuildProjectDirectory)\..\..\..\mupen64plus-core\src;$(MSBuildProjectDirectory)\..\;$(MSBuildProjectDirectory)\..\libretro-common\include;$(MSBuildProjectDirectory)\..\..\..\glide2gl\src\Glitch64\inc;$(MSBuildProjectDirectory)\..\GL;$(MSBuildProjectDirectory)\..\..\..\tools\rzlib;$(MSBuildProjectDirectory)\..\..\libco;$(MSBuildProjectDirectory)\..\..\..\libretro-common\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <BufferSecurityCheck>false</BufferSecurityCheck>
       <EnableEnhancedInstructionSet>StreamingSIMDExtensions2</EnableEnhancedInstructionSet>
@@ -204,6 +204,7 @@
     <ClCompile Include="..\..\..\gles2rice\src\Combiner.cpp" />
     <ClCompile Include="..\..\..\gles2rice\src\ConvertImage.cpp" />
     <ClCompile Include="..\..\..\gles2rice\src\ConvertImage16.cpp" />
+    <ClCompile Include="..\..\..\gles2rice\src\RiceDebugger.cpp" />
     <ClCompile Include="..\..\..\gles2rice\src\DecodedMux.cpp" />
     <ClCompile Include="..\..\..\gles2rice\src\DeviceBuilder.cpp" />
     <ClCompile Include="..\..\..\gles2rice\src\FrameBuffer.cpp" />
@@ -222,7 +223,6 @@
     <ClCompile Include="..\..\..\gles2rice\src\RenderExt.cpp" />
     <ClCompile Include="..\..\..\gles2rice\src\RenderTexture.cpp" />
     <ClCompile Include="..\..\..\gles2rice\src\RiceConfig.cpp" />
-    <ClCompile Include="..\..\..\gles2rice\src\RiceDebugger.cpp" />
     <ClCompile Include="..\..\..\gles2rice\src\RSP_Parser.cpp" />
     <ClCompile Include="..\..\..\gles2rice\src\RSP_S2DEX.cpp" />
     <ClCompile Include="..\..\..\gles2rice\src\Texture.cpp" />
@@ -783,14 +783,45 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\..\..\mupen64plus-core\src\dd\dd_controller.h" />
-    <ClInclude Include="..\..\..\mupen64plus-core\src\dd\dd_disk.h" />
-    <ClInclude Include="..\..\..\mupen64plus-core\src\dd\dd_rom.h" />
+    <ClInclude Include="..\..\..\gles2n64\src\3DMath.h" />
+    <ClInclude Include="..\..\..\gles2n64\src\Common.h" />
+    <ClInclude Include="..\..\..\gles2n64\src\Config.h" />
+    <ClInclude Include="..\..\..\gles2n64\src\convert.h" />
+    <ClInclude Include="..\..\..\gles2n64\src\CRC.h" />
+    <ClInclude Include="..\..\..\gles2n64\src\Debug.h" />
+    <ClInclude Include="..\..\..\gles2n64\src\DepthBuffer.h" />
+    <ClInclude Include="..\..\..\gles2n64\src\F3D.h" />
+    <ClInclude Include="..\..\..\gles2n64\src\F3DDKR.h" />
+    <ClInclude Include="..\..\..\gles2n64\src\F3DEX.h" />
+    <ClInclude Include="..\..\..\gles2n64\src\F3DEX2.h" />
+    <ClInclude Include="..\..\..\gles2n64\src\F3DEX2CBFD.h" />
+    <ClInclude Include="..\..\..\gles2n64\src\F3DPD.h" />
+    <ClInclude Include="..\..\..\gles2n64\src\F3DSWSE.h" />
+    <ClInclude Include="..\..\..\gles2n64\src\F3DWRUS.h" />
+    <ClInclude Include="..\..\..\gles2n64\src\FrameBuffer.h" />
+    <ClInclude Include="..\..\..\gles2n64\src\GBI.h" />
+    <ClInclude Include="..\..\..\gles2n64\src\gDP.h" />
+    <ClInclude Include="..\..\..\gles2n64\src\gles2N64.h" />
+    <ClInclude Include="..\..\..\gles2n64\src\gSP.h" />
+    <ClInclude Include="..\..\..\gles2n64\src\L3D.h" />
+    <ClInclude Include="..\..\..\gles2n64\src\L3DEX.h" />
+    <ClInclude Include="..\..\..\gles2n64\src\L3DEX2.h" />
+    <ClInclude Include="..\..\..\gles2n64\src\N64.h" />
+    <ClInclude Include="..\..\..\gles2n64\src\OpenGL.h" />
+    <ClInclude Include="..\..\..\gles2n64\src\RDP.h" />
+    <ClInclude Include="..\..\..\gles2n64\src\RSP.h" />
+    <ClInclude Include="..\..\..\gles2n64\src\S2DEX.h" />
+    <ClInclude Include="..\..\..\gles2n64\src\S2DEX2.h" />
+    <ClInclude Include="..\..\..\gles2n64\src\ShaderCombiner.h" />
+    <ClInclude Include="..\..\..\gles2n64\src\Textures.h" />
+    <ClInclude Include="..\..\..\gles2n64\src\Turbo3D.h" />
+    <ClInclude Include="..\..\..\gles2n64\src\Types.h" />
+    <ClInclude Include="..\..\..\gles2n64\src\VI.h" />
+    <ClInclude Include="..\..\..\gles2n64\src\ZSort.h" />
     <ClInclude Include="..\..\..\mupen64plus-core\src\r4300\hacktarux_dynarec\assemble.h" />
     <ClInclude Include="..\..\..\mupen64plus-core\src\r4300\hacktarux_dynarec\assemble_struct.h" />
     <ClInclude Include="..\..\..\mupen64plus-core\src\r4300\hacktarux_dynarec\interpret.h" />
     <ClInclude Include="..\..\..\mupen64plus-core\src\r4300\hacktarux_dynarec\regcache.h" />
-    <ClInclude Include="..\..\..\mupen64plus-core\src\rdp_common\gdp.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
