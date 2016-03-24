@@ -249,7 +249,7 @@ endif
 ifeq ($(HAVE_GLN64), 1)
 SOURCES_C += $(VIDEODIR_GLN64)/3DMath.c \
             $(VIDEODIR_GLN64)/glN64Config.c \
-            $(VIDEODIR_GLN64)/FrameBuffer_gles2n64.c.c \
+            $(VIDEODIR_GLN64)/FrameBuffer_gles2n64.c \
             $(VIDEODIR_GLN64)/Hash.c \
             $(VIDEODIR_GLN64)/DepthBuffer.c \
             $(VIDEODIR_GLN64)/F3DEX2CBFD.c \
@@ -261,9 +261,9 @@ SOURCES_C += $(VIDEODIR_GLN64)/3DMath.c \
             $(VIDEODIR_GLN64)/F3DSWSE.c \
             $(VIDEODIR_GLN64)/F3DWRUS.c \
             $(VIDEODIR_GLN64)/GBI.c \
-            $(VIDEODIR_GLN64)/gDP.c \
+            $(VIDEODIR_GLN64)/gDP_gles2n64.c \
             $(VIDEODIR_GLN64)/gles2N64.c \
-            $(VIDEODIR_GLN64)/gSP_gles2n64.c.c \
+            $(VIDEODIR_GLN64)/gSP_gles2n64.c \
             $(VIDEODIR_GLN64)/L3D.c \
             $(VIDEODIR_GLN64)/L3DEX2.c \
             $(VIDEODIR_GLN64)/L3DEX.c \
