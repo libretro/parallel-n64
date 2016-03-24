@@ -1385,17 +1385,19 @@ static void LoadTex(int id, int tmu)
          ((modcolor2 & 0x0000F000) >> 8) | ((modcolor2 & 0x000000F0) >> 4);
 
       {
+		  uint16_t *dst;
+		  uint32_t cr0, cg0, cb0, cr1, cg1, cb1, cr2, cg2, cb2;
          size = (real_x * real_y) << 1;
-         uint16_t *dst = (uint16_t*)texture;
-         uint32_t cr0 = (modcolor >> 12) & 0xF;
-         uint32_t cg0 = (modcolor >> 8) & 0xF;
-         uint32_t cb0 = (modcolor >> 4) & 0xF;
-         uint32_t cr1 = (modcolor1 >> 12) & 0xF;
-         uint32_t cg1 = (modcolor1 >> 8) & 0xF;
-         uint32_t cb1 = (modcolor1 >> 4) & 0xF;
-         uint32_t cr2 = (modcolor2 >> 12) & 0xF;
-         uint32_t cg2 = (modcolor2 >> 8) & 0xF;
-         uint32_t cb2 = (modcolor2 >> 4) & 0xF;
+         dst = (uint16_t*)texture;
+         cr0 = (modcolor >> 12) & 0xF;
+         cg0 = (modcolor >> 8) & 0xF;
+         cb0 = (modcolor >> 4) & 0xF;
+         cr1 = (modcolor1 >> 12) & 0xF;
+         cg1 = (modcolor1 >> 8) & 0xF;
+         cb1 = (modcolor1 >> 4) & 0xF;
+         cr2 = (modcolor2 >> 12) & 0xF;
+         cg2 = (modcolor2 >> 8) & 0xF;
+         cb2 = (modcolor2 >> 4) & 0xF;
 
          switch (mod)
          {

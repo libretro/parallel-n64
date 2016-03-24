@@ -131,6 +131,7 @@ static void *l_DebugCallContext = NULL;
 
 void _ChangeSize(void)
 {
+	uint32_t scale_x, scale_y;
    float res_scl_y      = (float)settings.res_y / 240.0f;
    uint32_t dwHStartReg = *gfx_info.VI_H_START_REG;
    uint32_t dwVStartReg = *gfx_info.VI_V_START_REG;
@@ -143,8 +144,8 @@ void _ChangeSize(void)
    uint32_t vend        = dwVStartReg & 0xFFFF;
    rdp.scale_1024       = settings.scr_res_x / 1024.0f;
    rdp.scale_768        = settings.scr_res_y / 768.0f;
-   uint32_t scale_x     = *gfx_info.VI_X_SCALE_REG & 0xFFF;
-   uint32_t scale_y     = *gfx_info.VI_Y_SCALE_REG & 0xFFF;
+   scale_x     = *gfx_info.VI_X_SCALE_REG & 0xFFF;
+   scale_y     = *gfx_info.VI_Y_SCALE_REG & 0xFFF;
    if (!scale_x)
       return;
    if (!scale_y)

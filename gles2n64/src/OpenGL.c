@@ -784,6 +784,8 @@ bool texturedRectDepthBufferCopy(const struct TexturedRectParams *_params)
          &&  gDP.textureImage.address < (gDP.depthImageAddress + gDP.colorImage.width*gDP.colorImage.width * 6 / 4))
    {
       u32 x;
+	  u32 width, ulx;
+	  u16 *pSrc, *pDst;
       struct FrameBuffer *pBuffer = FrameBuffer_GetCurrent();
       if (config.frameBufferEmulation.enable == 0 || !pBuffer)
          return true;
@@ -798,10 +800,11 @@ bool texturedRectDepthBufferCopy(const struct TexturedRectParams *_params)
          RDP_RepeatLastLoadBlock();
 #endif
 
-      const u32 width = (u32)(_params->lrx - _params->ulx);
-      const u32 ulx = (u32)_params->ulx;
-      u16 * pSrc = ((u16*)TMEM) + (u32)floorf(_params->uls + 0.5f);
-      u16 *pDst = (u16*)(gfx_info.RDRAM + gDP.colorImage.address);
+
+      width = (u32)(_params->lrx - _params->ulx);
+      ulx = (u32)_params->ulx;
+      pSrc = ((u16*)TMEM) + (u32)floorf(_params->uls + 0.5f);
+      pDst = (u16*)(gfx_info.RDRAM + gDP.colorImage.address);
       for (x = 0; x < width; ++x)
          pDst[(ulx + x) ^ 1] = swapword(pSrc[x]);
 
@@ -852,18 +855,20 @@ static bool texturedRectBGCopy(const struct TexturedRectParams *_params)
 static bool texturedRectPaletteMod(const struct TexturedRectParams *_params)
 {
    u32 i;
+   u16 env16, prim16, *src, *dst;
+   u8 envr, envg, envb, prmr, prmg, prmb;
 	if (gDP.scissor.lrx != 16 || gDP.scissor.lry != 1 || _params->lrx != 16 || _params->lry != 1)
 		return false;
-	u8 envr = (u8)(gDP.envColor.r * 31.0f);
-	u8 envg = (u8)(gDP.envColor.g * 31.0f);
-	u8 envb = (u8)(gDP.envColor.b * 31.0f);
-	u16 env16 = (u16)((envr << 11) | (envg << 6) | (envb << 1) | 1);
-	u8 prmr = (u8)(gDP.primColor.r * 31.0f);
-	u8 prmg = (u8)(gDP.primColor.g * 31.0f);
-	u8 prmb = (u8)(gDP.primColor.b * 31.0f);
-	u16 prim16 = (u16)((prmr << 11) | (prmg << 6) | (prmb << 1) | 1);
-	u16 * src = (u16*)&TMEM[256];
-	u16 * dst = (u16*)(gfx_info.RDRAM + gDP.colorImage.address);
+	envr = (u8)(gDP.envColor.r * 31.0f);
+	envg = (u8)(gDP.envColor.g * 31.0f);
+	envb = (u8)(gDP.envColor.b * 31.0f);
+	env16 = (u16)((envr << 11) | (envg << 6) | (envb << 1) | 1);
+	prmr = (u8)(gDP.primColor.r * 31.0f);
+	prmg = (u8)(gDP.primColor.g * 31.0f);
+	prmb = (u8)(gDP.primColor.b * 31.0f);
+	prim16 = (u16)((prmr << 11) | (prmg << 6) | (prmb << 1) | 1);
+	src = (u16*)&TMEM[256];
+	dst = (u16*)(gfx_info.RDRAM + gDP.colorImage.address);
 	for (i = 0; i < 16; ++i)
 		dst[i ^ 1] = (src[i<<2] & 0x100) ? prim16 : env16;
 	return true;

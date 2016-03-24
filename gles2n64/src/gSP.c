@@ -671,6 +671,8 @@ void gSPLightCBFD( u32 l, s32 n )
 
 	if (n < 12)
    {
+	   u32 addrShort;
+
 		gSP.lights[n].r = light->r * 0.0039215689f;
 		gSP.lights[n].g = light->g * 0.0039215689f;
 		gSP.lights[n].b = light->b * 0.0039215689f;
@@ -680,11 +682,11 @@ void gSPLightCBFD( u32 l, s32 n )
 		gSP.lights[n].z = light->z;
 
 		Normalize( &gSP.lights[n].x );
-		u32 addrShort = addrByte >> 1;
-		gSP.lights[n].posx = (float)(((short*)gfx_info.RDRAM)[(addrShort+16)^1]);
-		gSP.lights[n].posy = (float)(((short*)gfx_info.RDRAM)[(addrShort+17)^1]);
-		gSP.lights[n].posz = (float)(((short*)gfx_info.RDRAM)[(addrShort+18)^1]);
-		gSP.lights[n].posw = (float)(((short*)gfx_info.RDRAM)[(addrShort+19)^1]);
+		addrShort = addrByte >> 1;
+		gSP.lights[n].posx = (float)(((int16_t*)gfx_info.RDRAM)[(addrShort+16)^1]);
+		gSP.lights[n].posy = (float)(((int16_t*)gfx_info.RDRAM)[(addrShort+17)^1]);
+		gSP.lights[n].posz = (float)(((int16_t*)gfx_info.RDRAM)[(addrShort+18)^1]);
+		gSP.lights[n].posw = (float)(((int16_t*)gfx_info.RDRAM)[(addrShort+19)^1]);
 		gSP.lights[n].ca = (float)(gfx_info.RDRAM[(addrByte + 12) ^ 3]) / 16.0f;
 	}
 
@@ -703,6 +705,7 @@ void gSPLightCBFD( u32 l, s32 n )
 
 void gSPLookAt( u32 _l, u32 _n )
 {
+	Light *light;
    u32 address = RSP_SegmentToPhysical(_l);
 
    if ((address + sizeof(Light)) > RDRAMSize) {
@@ -716,7 +719,7 @@ void gSPLookAt( u32 _l, u32 _n )
 
    assert(_n < 2);
 
-   Light *light = (Light*)&gfx_info.RDRAM[address];
+   light = (Light*)&gfx_info.RDRAM[address];
 
    gSP.lookat[_n].x = light->x;
    gSP.lookat[_n].y = light->y;
@@ -897,12 +900,13 @@ void gSPDMAVertex( u32 v, u32 n, u32 v0 )
 
 void gSPCBFDVertex( u32 a, u32 n, u32 v0 )
 {
+	Vertex *vertex;
 	u32 address = RSP_SegmentToPhysical(a);
 
 	if ((address + sizeof( Vertex ) * n) > RDRAMSize)
 		return;
 
-	Vertex *vertex = (Vertex*)&gfx_info.RDRAM[address];
+	vertex = (Vertex*)&gfx_info.RDRAM[address];
 
 	if ((n + v0) <= INDEXMAP_SIZE)
    {
@@ -1200,6 +1204,8 @@ static void _loadSpriteImage(const struct uSprite *_pSprite)
 
 void gSPSprite2DBase( u32 _base )
 {
+	f32 z, w, scaleX, scaleY;
+	u32 flipX, flipY;
    //assert(RSP.nextCmd == 0xBE);
    const u32 address = RSP_SegmentToPhysical( _base );
    struct uSprite *pSprite = (struct uSprite*)&gfx_info.RDRAM[address];
@@ -1221,13 +1227,17 @@ void gSPSprite2DBase( u32 _base )
    gSPTexture( 1.0f, 1.0f, 0, 0, TRUE );
    gDP.otherMode.texturePersp = 1;
 
-   const f32 z = (gDP.otherMode.depthSource == G_ZS_PRIM) ? gDP.primDepth.z : gSP.viewport.nearz;
-   const f32 w = 1.0f;
+   z = (gDP.otherMode.depthSource == G_ZS_PRIM) ? gDP.primDepth.z : gSP.viewport.nearz;
+   w = 1.0f;
 
-   f32 scaleX = 1.0f, scaleY = 1.0f;
-   u32 flipX = 0, flipY = 0;
+   scaleX = 1.0f;
+   scaleY = 1.0f;
+   flipX = 0;
+   flipY = 0;
+
    do
    {
+	  f32 uls, ult, lrs, lrt;
       f32 ulx, uly, lrx, lry;
       f32 frameX, frameY, frameW, frameH;
       s32 v0 = 0, v1 = 1, v2 = 2, v3 = 3;
@@ -1277,10 +1287,10 @@ void gSPSprite2DBase( u32 _base )
          lry = frameY + frameH;
       }
 
-      f32 uls = pSprite->imageX;
-      f32 ult = pSprite->imageY;
-      f32 lrs = uls + pSprite->imageW - 1;
-      f32 lrt = ult + pSprite->imageH - 1;
+      uls = pSprite->imageX;
+      ult = pSprite->imageY;
+      lrs = uls + pSprite->imageW - 1;
+      lrt = ult + pSprite->imageH - 1;
 
       /* Hack for WCW Nitro. TODO : activate it later.
          if (WCW_NITRO) {
@@ -1705,11 +1715,12 @@ void gSPLineW3D( s32 v0, s32 v1, s32 wd, s32 flag )
 static
 void _loadBGImage(const struct uObjScaleBg * _bgInfo, bool _loadScale)
 {
+	u32 imageW, imageH;
 	gSP.bgImage.address = RSP_SegmentToPhysical( _bgInfo->imagePtr );
 
-	const u32 imageW = _bgInfo->imageW >> 2;
+	imageW = _bgInfo->imageW >> 2;
 	gSP.bgImage.width = imageW - imageW%2;
-	const u32 imageH = _bgInfo->imageH >> 2;
+	imageH = _bgInfo->imageH >> 2;
 	gSP.bgImage.height = imageH - imageH%2;
 	gSP.bgImage.format = _bgInfo->imageFmt;
 	gSP.bgImage.size = _bgInfo->imageSiz;
@@ -1986,6 +1997,7 @@ static void gSPSetSpriteTile(const struct uObjSprite *_pObjSprite)
 static
 u16 _YUVtoRGBA(u8 y, u8 u, u8 v)
 {
+	u16 c;
 	float r = y + (1.370705f * (v - 128));
 	float g = y - (0.698001f * (v - 128)) - (0.337633f * (u - 128));
 	float b = y + (1.732446f * (u - 128));
@@ -2000,7 +2012,7 @@ u16 _YUVtoRGBA(u8 y, u8 u, u8 v)
 	if (g < 0) g = 0;
 	if (b < 0) b = 0;
 
-	u16 c = (u16)(((u16)(r) << 11) |
+	c = (u16)(((u16)(r) << 11) |
 		((u16)(g) << 6) |
 		((u16)(b) << 1) | 1);
 	return c;
@@ -2009,6 +2021,8 @@ u16 _YUVtoRGBA(u8 y, u8 u, u8 v)
 static void _drawYUVImageToFrameBuffer(const struct ObjCoordinates *_objCoords)
 {
    u16 h, w;
+   u32 width, height, *mb, *dst;
+struct FrameBuffer *pBuffer;
 	const u32 ulx = (u32)_objCoords->ulx;
 	const u32 uly = (u32)_objCoords->uly;
 	const u32 lrx = (u32)_objCoords->lrx;
@@ -2019,13 +2033,14 @@ static void _drawYUVImageToFrameBuffer(const struct ObjCoordinates *_objCoords)
 		return;
 	if (uly >= ci_height)
 		return;
-	u32 width = 16, height = 16;
+	width = 16;
+	height = 16;
 	if (lrx > ci_width)
 		width = ci_width - ulx;
 	if (lry > ci_height)
 		height = ci_height - uly;
-	u32 * mb = (u32*)(gfx_info.RDRAM + gDP.textureImage.address); //pointer to the first macro block
-	u16 * dst = (u16*)(gfx_info.RDRAM + gDP.colorImage.address);
+	mb = (u32*)(gfx_info.RDRAM + gDP.textureImage.address); //pointer to the first macro block
+	dst = (u16*)(gfx_info.RDRAM + gDP.colorImage.address);
 	dst += ulx + uly * ci_width;
 
 	/* YUV macro block contains 16x16 texture. 
@@ -2048,7 +2063,7 @@ static void _drawYUVImageToFrameBuffer(const struct ObjCoordinates *_objCoords)
 		dst += ci_width - 16;
 	}
 
-	struct FrameBuffer *pBuffer = FrameBuffer_GetCurrent();
+	pBuffer = FrameBuffer_GetCurrent();
 	if (pBuffer != NULL)
    {
 #if 0
@@ -2069,11 +2084,11 @@ void gSPObjRectangle(u32 _sp)
 
 void gSPObjRectangleR(u32 _sp)
 {
+   struct ObjCoordinates objCoords;
    const u32 address = RSP_SegmentToPhysical(_sp);
    const struct uObjSprite *objSprite = (struct uObjSprite*)&gfx_info.RDRAM[address];
+
    gSPSetSpriteTile(objSprite);
-   struct ObjCoordinates objCoords;
-   
    ObjCoordinates_new(&objCoords, objSprite, true);
 
    if (objSprite->imageFmt == G_IM_FMT_YUV && (config.generalEmulation.hacks & hack_Ogre64)) //Ogre Battle needs to copy YUV texture to frame buffer
@@ -2085,6 +2100,8 @@ void gSPObjSprite( u32 _sp )
 {
    SPVertex *vtx0, *vtx1, *vtx2, *vtx3;
    float uls, lrs, ult, lrt;
+	float z;
+	s32 v0, v1, v2, v3;
    f32 ulx, uly, lrx, lry;
    struct ObjData data;
 	const u32 address = RSP_SegmentToPhysical( _sp );
@@ -2110,9 +2127,12 @@ void gSPObjSprite( u32 _sp )
 		ult = lrt;
 		lrt = 0;
 	}
-	const float z = (gDP.otherMode.depthSource == G_ZS_PRIM) ? gDP.primDepth.z : gSP.viewport.nearz;
+	z = (gDP.otherMode.depthSource == G_ZS_PRIM) ? gDP.primDepth.z : gSP.viewport.nearz;
 
-	s32 v0 = 0, v1 = 1, v2 = 2, v3 = 3;
+	v0 = 0;
+	v1 = 1;
+	v2 = 2;
+	v3 = 3;
 
    vtx0 = (SPVertex*)&OGL.triangles.vertices[v0];
 	vtx0->x = gSP.objMatrix.A * ulx + gSP.objMatrix.B * uly + gSP.objMatrix.X;

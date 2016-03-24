@@ -614,8 +614,10 @@ struct TileSizes
 
 static void _calcTileSizes(u32 _t, struct TileSizes *_sizes, gDPTile * _pLoadTile)
 {
+   u32 lineWidth, lineHeight, maskWidth, maskHeight, width, height;
+   struct gDPLoadTileInfo *info;
+   u32 loadWidth = 0, loadHeight = 0;
    gDPTile * pTile = _t < 2 ? gSP.textureTile[_t] : &gDP.tiles[_t];
-
    const struct TextureLoadParameters *loadParams = (const struct TextureLoadParameters*)
       &imageFormat[gDP.otherMode.textureLUT][pTile->size][pTile->format];
    const u32 maxTexels = loadParams->maxTexels;
@@ -625,20 +627,20 @@ static void _calcTileSizes(u32 _t, struct TileSizes *_sizes, gDPTile * _pLoadTil
    const bool bUseLoadSizes = _pLoadTile != NULL && _pLoadTile->loadType == LOADTYPE_TILE &&
       (pTile->tmem == _pLoadTile->tmem);
 
-   u32 loadWidth = 0, loadHeight = 0;
    if (bUseLoadSizes) {
       loadWidth = ((_pLoadTile->lrs - _pLoadTile->uls) & 0x03FF) + 1;
       loadHeight = ((_pLoadTile->lrt - _pLoadTile->ult) & 0x03FF) + 1;
    }
 
-   const u32 lineWidth = pTile->line << loadParams->lineShift;
-   const u32 lineHeight = lineWidth != 0 ? min(maxTexels / lineWidth, tileHeight) : 0;
 
-   u32 maskWidth = 1 << pTile->masks;
-   u32 maskHeight = 1 << pTile->maskt;
-   u32 width, height;
 
-   struct gDPLoadTileInfo *info = (struct gDPLoadTileInfo*)&gDP.loadInfo[pTile->tmem];
+   lineWidth = pTile->line << loadParams->lineShift;
+   lineHeight = lineWidth != 0 ? min(maxTexels / lineWidth, tileHeight) : 0;
+
+   maskWidth = 1 << pTile->masks;
+   maskHeight = 1 << pTile->maskt;
+
+   info = (struct gDPLoadTileInfo*)&gDP.loadInfo[pTile->tmem];
    if (info->loadType == LOADTYPE_TILE) {
       if (pTile->masks && ((maskWidth * maskHeight) <= maxTexels))
          width = maskWidth; // Use mask width if set and valid
@@ -715,7 +717,6 @@ static void _calcTileSizes(u32 _t, struct TileSizes *_sizes, gDPTile * _pLoadTil
 static void _loadBackground( CachedTexture *pTexture )
 {
 	u32 *pDest;
-
 	u8 *pSwapped, *pSrc;
 	u32 numBytes, bpl;
 	u32 x, y, j, tx, ty;
@@ -724,7 +725,7 @@ static void _loadBackground( CachedTexture *pTexture )
 	GetTexelFunc GetTexel;
 	GLuint glInternalFormat;
 	GLenum glType;
-
+	bool bLoaded = false;
 	const struct TextureLoadParameters *loadParams = (const struct TextureLoadParameters*)
       &imageFormat[pTexture->format == 2 ? G_TT_RGBA16 : G_TT_NONE][pTexture->size][pTexture->format];
 	if (loadParams->autoFormat == GL_RGBA) {
@@ -766,7 +767,6 @@ static void _loadBackground( CachedTexture *pTexture )
 		}
 	}
 
-	bool bLoaded = false;
 #if 0
 	if ((config.textureFilter.txEnhancementMode | config.textureFilter.txFilterMode) != 0 && config.textureFilter.txFilterIgnoreBG == 0 && TFH.isInited())
    {
@@ -818,6 +818,9 @@ static INLINE void TextureCache_getTextureDestData(CachedTexture *tmptex, u32* p
    }
 
    if (tmptex->size == G_IM_SIZ_32b) {
+	   int line32;
+	   int width;
+	   u16 gr, ab;
       const u16 * tmem16 = (u16*)TMEM;
       const u32 tbase = tmptex->tMem << 2;
 
@@ -825,29 +828,29 @@ static INLINE void TextureCache_getTextureDestData(CachedTexture *tmptex, u32* p
       if (wid_64 & 15) wid_64 += 16;
       wid_64 &= 0xFFFFFFF0;
       wid_64 >>= 3;
-      int line32 = tmptex->line << 1;
+      line32 = tmptex->line << 1;
       line32 = (line32 - wid_64) << 3;
       if (wid_64 < 1) wid_64 = 1;
-      int width = wid_64 << 1;
+      width = wid_64 << 1;
       line32 = width + (line32 >> 2);
-
-      u16 gr, ab;
 
       j = 0;
       for (y = 0; y < tmptex->realHeight; ++y) {
+		  u32 tline, xorval;
          ty = min(y, clampTClamp) & maskTMask;
          if (y & mirrorTBit)
             ty ^= maskTMask;
 
-         u32 tline = tbase + line32 * ty;
-         u32 xorval = (ty & 1) ? 3 : 1;
+         tline = tbase + line32 * ty;
+         xorval = (ty & 1) ? 3 : 1;
 
          for (x = 0; x < tmptex->realWidth; ++x) {
+			 u32 taddr;
             tx = min(x, clampSClamp) & maskSMask;
             if (x & mirrorSBit)
                tx ^= maskSMask;
 
-            u32 taddr = ((tline + tx) ^ xorval) & 0x3ff;
+            taddr = ((tline + tx) ^ xorval) & 0x3ff;
             gr = swapword(tmem16[taddr]);
             ab = swapword(tmem16[taddr | 0x400]);
             pDest[j++] = (ab << 16) | gr;
@@ -901,6 +904,8 @@ static void _load(u32 _tile, CachedTexture *_pTexture)
 	GLenum glType;
 	u32 sizeShift;
 	u64 ricecrc = 0;
+	GLint mipLevel = 0, maxLevel = 0;
+	CachedTexture tmptex = {0};
 
 	const struct TextureLoadParameters *loadParams = (const struct TextureLoadParameters*)&imageFormat[gDP.otherMode.textureLUT][_pTexture->size][_pTexture->format];
 	if (loadParams->autoFormat == GL_RGBA)
@@ -922,22 +927,24 @@ static void _load(u32 _tile, CachedTexture *_pTexture)
 
 	pDest = (u32*)malloc(_pTexture->textureBytes);
 
-	GLint mipLevel = 0, maxLevel = 0;
+
 	if (config.generalEmulation.enableLOD != 0 && gSP.texture.level > gSP.texture.tile + 1)
 		maxLevel = _tile == 0 ? 0 : gSP.texture.level - gSP.texture.tile - 1;
 
 	_pTexture->max_level = maxLevel;
 
-	CachedTexture tmptex = {0};
 	memcpy(&tmptex, _pTexture, sizeof(CachedTexture));
 
 	line = tmptex.line;
 
 	while (true)
    {
+     struct TileSizes sizes;
+  u32 tileMipLevel;
+	  gDPTile *mipTile;
+      bool bLoaded = false;
       TextureCache_getTextureDestData(&tmptex, pDest, glInternalFormat, GetTexel, &line);
 
-      bool bLoaded = false;
 #if 0
       if (m_toggleDumpTex && config.textureFilter.txHiresEnable != 0 && config.textureFilter.txDump != 0) {
          txfilter_dmptx((u8*)pDest, tmptex.realWidth, tmptex.realHeight, tmptex.realWidth, glInternalFormat, (unsigned short)(_pTexture->format << 8 | _pTexture->size), ricecrc);
@@ -963,14 +970,15 @@ static void _load(u32 _tile, CachedTexture *_pTexture)
       if (mipLevel == maxLevel)
          break;
       ++mipLevel;
-      const u32 tileMipLevel = gSP.texture.tile + mipLevel + 1;
-      gDPTile *mipTile = (gDPTile*)&gDP.tiles[tileMipLevel];
+
+	
+      tileMipLevel = gSP.texture.tile + mipLevel + 1;
+      mipTile = (gDPTile*)&gDP.tiles[tileMipLevel];
       line           = mipTile->line;
       tmptex.tMem    = mipTile->tmem;
       tmptex.palette = mipTile->palette;
       tmptex.maskS   = mipTile->masks;
       tmptex.maskT   = mipTile->maskt;
-      struct TileSizes sizes;
       _calcTileSizes(tileMipLevel, &sizes, NULL);
       tmptex.width = sizes.width;
       tmptex.clampWidth = sizes.clampWidth;
