@@ -53,6 +53,7 @@
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
+    <Import Project="$(VCTargetsPath)\BuildCustomizations\masm.props" />
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
@@ -109,7 +110,7 @@
       </PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>WIN32;INLINE=_inline;__LIBRETRO__;__LIBRETRO_WIN64__;M64P_PLUGIN_API;M64P_CORE_PROTOTYPES;_ENDUSER_RELEASE;_DEBUG;_WINDOWS;_USRDLL;MSVC2010_EXPORTS;%(PreprocessorDefinitions);_CRT_SECURE_NO_WARNINGS;DYNAREC</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;INLINE=_inline;__LIBRETRO__;__LIBRETRO_WIN64__;M64P_PLUGIN_API;M64P_CORE_PROTOTYPES;_ENDUSER_RELEASE;_DEBUG;_WINDOWS;_USRDLL;MSVC2010_EXPORTS;%(PreprocessorDefinitions);_CRT_SECURE_NO_WARNINGS;DYNAREC;HAVE_OPENGL</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>$(MSBuildProjectDirectory)\..\..\..\mupen64plus-core\src\api;$(MSBuildProjectDirectory)\..\..\;$(MSBuildProjectDirectory)\..\..\..\mupen64plus-core\src;$(MSBuildProjectDirectory)\..\;$(MSBuildProjectDirectory)\..\..\..\libretro-common\include;$(MSBuildProjectDirectory)\..\..\..\glide2gl\src\Glitch64\inc;$(MSBuildProjectDirectory)\..\GL;$(MSBuildProjectDirectory)\..\..\..\tools\rzlib;$(MSBuildProjectDirectory)\..\..\libco;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <FunctionLevelLinking>true</FunctionLevelLinking>
     </ClCompile>
@@ -152,7 +153,7 @@
       </PrecompiledHeader>
       <Optimization>MaxSpeed</Optimization>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>WIN32;INLINE=_inline;__LIBRETRO__;__LIBRETRO_WIN64__;M64P_PLUGIN_API;M64P_CORE_PROTOTYPES;_ENDUSER_RELEASE;NDEBUG;_WINDOWS;_USRDLL;MSVC2010_EXPORTS;%(PreprocessorDefinitions);_CRT_SECURE_NO_WARNINGS;DYNAREC</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;INLINE=_inline;__LIBRETRO__;__LIBRETRO_WIN64__;M64P_PLUGIN_API;M64P_CORE_PROTOTYPES;_ENDUSER_RELEASE;NDEBUG;_WINDOWS;_USRDLL;MSVC2010_EXPORTS;%(PreprocessorDefinitions);_CRT_SECURE_NO_WARNINGS;DYNAREC;HAVE_OPENGL</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>$(MSBuildProjectDirectory)\..\..\..\mupen64plus-core\src\api;$(MSBuildProjectDirectory)\..\..\;$(MSBuildProjectDirectory)\..\..\..\mupen64plus-core\src;$(MSBuildProjectDirectory)\..\;$(MSBuildProjectDirectory)\..\..\..\libretro-common\include;$(MSBuildProjectDirectory)\..\..\..\glide2gl\src\Glitch64\inc;$(MSBuildProjectDirectory)\..\GL;$(MSBuildProjectDirectory)\..\..\..\tools\rzlib;$(MSBuildProjectDirectory)\..\..\libco;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <BufferSecurityCheck>false</BufferSecurityCheck>
@@ -185,7 +186,7 @@
     <ClCompile Include="..\..\..\gles2n64\src\gles2N64.c" />
     <ClCompile Include="..\..\..\gles2n64\src\gles2n64_rsp.c" />
     <ClCompile Include="..\..\..\gles2n64\src\glN64Config.c" />
-    <ClCompile Include="..\..\..\gles2n64\src\gSP.c" />
+    <ClCompile Include="..\..\..\gles2n64\src\gSP_gles2n64.c" />
     <ClCompile Include="..\..\..\gles2n64\src\Hash.c" />
     <ClCompile Include="..\..\..\gles2n64\src\L3D.c" />
     <ClCompile Include="..\..\..\gles2n64\src\L3DEX.c" />
@@ -823,7 +824,20 @@
     <ClInclude Include="..\..\..\mupen64plus-core\src\r4300\hacktarux_dynarec\interpret.h" />
     <ClInclude Include="..\..\..\mupen64plus-core\src\r4300\hacktarux_dynarec\regcache.h" />
   </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="..\..\..\mupen64plus-core\src\r4300\hacktarux_dynarec\dyna_start.asm">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</ExcludedFromBuild>
+      <FileType>Document</FileType>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">nasm.exe -o $(IntDir)dyna_start.obj -f  win64 %(FullPath)</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(IntDir)dyna_start.obj</Outputs>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">nasm.exe -o $(IntDir)dyna_start.obj -f  win64 %(FullPath)</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(IntDir)dyna_start.obj</Outputs>
+    </CustomBuild>
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
+    <Import Project="$(VCTargetsPath)\BuildCustomizations\masm.targets" />
   </ImportGroup>
 </Project>
