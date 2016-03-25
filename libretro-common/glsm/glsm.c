@@ -520,6 +520,30 @@ void rglGetProgramiv(GLuint shader, GLenum pname, GLint *params)
    glGetProgramiv(shader, pname, params);
 }
 
+void rglProgramParameteri( 	GLuint program,
+  	GLenum pname,
+  	GLint value)
+{
+#if defined(CORE) || defined(HAVE_OPENGLES) && (defined(HAVE_OPENGLES3) || defined(HAVE_OPENGLES31))
+   glProgramParameteri(program, pname, value);
+#else
+   printf("WARNING! Not implemented.\n");
+#endif
+}
+
+void rglGetProgramBinary( 	GLuint program,
+  	GLsizei bufsize,
+  	GLsizei *length,
+  	GLenum *binaryFormat,
+  	void *binary)
+{
+#if defined(CORE) || defined(HAVE_OPENGLES) && (defined(HAVE_OPENGLES3) || defined(HAVE_OPENGLES31))
+   glGetProgramBinary(program, bufsize, length, binaryFormat, binary);
+#else
+   printf("WARNING! Not implemented.\n");
+#endif
+}
+
 void rglUniformMatrix4fv(GLint location, GLsizei count, GLboolean transpose,
       const GLfloat *value)
 {
@@ -727,7 +751,7 @@ GLboolean rglUnmapBuffer( 	GLenum target)
 
 void rglMemoryBarrier( 	GLbitfield barriers)
 {
-#if !defined(HAVE_OPENGLES) || defined(HAVE_OPENGLES) && defined(HAVE_OPENGLES31)
+#if defined(CORE) || defined(HAVE_OPENGLES3) && defined(HAVE_OPENGLES31)
    glMemoryBarrier(barriers);
 #else
    printf("WARNING! Not implemented.\n");
@@ -742,8 +766,20 @@ void rglBindImageTexture( 	GLuint unit,
   	GLenum access,
   	GLenum format)
 {
-#if !defined(HAVE_OPENGLES) || defined(HAVE_OPENGLES) && defined(HAVE_OPENGLES31)
+#if defined(CORE) || defined(HAVE_OPENGLES3) && defined(HAVE_OPENGLES31)
    glBindImageTexture(unit, texture, level, layered, layer, access, format);
+#else
+   printf("WARNING! Not implemented.\n");
+#endif
+}
+
+void rglProgramBinary( 	GLuint program,
+  	GLenum binaryFormat,
+  	const void *binary,
+  	GLsizei length)
+{
+#if defined(CORE) || defined(HAVE_OPENGLES3) && defined(HAVE_OPENGLES31)
+   glProgramBinary(program, binaryFormat, binary, length);
 #else
    printf("WARNING! Not implemented.\n");
 #endif
@@ -752,8 +788,10 @@ void rglBindImageTexture( 	GLuint unit,
 void rglDrawBuffers( 	GLsizei n,
   	const GLenum *bufs)
 {
-#if !defined(HAVE_OPENGLES)
+#if defined(CORE) || defined(HAVE_OPENGLES3) && defined(HAVE_OPENGLES31)
    glDrawBuffers(n, bufs);
+#else
+   printf("WARNING! Not implemented.\n");
 #endif
 }
 
@@ -762,7 +800,7 @@ void *rglMapBufferRange( 	GLenum target,
   	GLsizeiptr length,
   	GLbitfield access)
 {
-#if !defined(HAVE_OPENGLES) || defined(HAVE_OPENGLES3)
+#if defined(CORE) || defined(HAVE_OPENGLES) && defined(HAVE_OPENGLES31)
    return glMapBufferRange(target, offset, length, access);
 #else
    printf("WARNING! Not implemented.\n");

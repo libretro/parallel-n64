@@ -119,6 +119,9 @@ extern "C" {
 #define glDrawBuffers               rglDrawBuffers
 #define glBindImageTexture          rglBindImageTexture
 #define glMemoryBarrier             rglMemoryBarrier
+#define glGetProgramBinary          rglGetProgramBinary
+#define glProgramParameteri         rglProgramParameteri
+#define glProgramBinary             rglProgramBinary
 
 void rglReadBuffer(GLenum mode);
 void rglPixelStorei(GLenum pname, GLint param);
@@ -243,6 +246,18 @@ void rglBindImageTexture( 	GLuint unit,
   	GLenum access,
   	GLenum format);
 void rglMemoryBarrier( 	GLbitfield barriers);
+void rglGetProgramBinary( 	GLuint program,
+  	GLsizei bufsize,
+  	GLsizei *length,
+  	GLenum *binaryFormat,
+  	void *binary);
+void rglProgramParameteri( 	GLuint program,
+  	GLenum pname,
+  	GLint value);
+void rglProgramBinary( 	GLuint program,
+  	GLenum binaryFormat,
+  	const void *binary,
+  	GLsizei length);
 
 #ifdef __cplusplus
 }
