@@ -38,7 +38,6 @@
 
 #include <math.h>
 #include "Gfx_1.3.h"
-#include "m64p.h"
 #include "3dmath.h"
 #include "Util.h"
 #include "Combine.h"
