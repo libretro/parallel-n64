@@ -743,7 +743,11 @@ void rglTexImage2DMultisample( 	GLenum target,
 
 void * rglMapBuffer(	GLenum target, GLenum access)
 {
+#if defined(HAVE_OPENGLES)
+   return glMapBufferOES(target, access);
+#else
    return glMapBuffer(target, access);
+#endif
 }
 
 GLboolean rglUnmapBuffer( 	GLenum target)
