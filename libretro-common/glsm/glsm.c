@@ -703,6 +703,65 @@ void rglUniform4fv(GLint location, GLsizei count, const GLfloat *value)
    glUniform4fv(location, count, value);
 }
 
+void rglTexImage2DMultisample( 	GLenum target,
+  	GLsizei samples,
+  	GLenum internalformat,
+  	GLsizei width,
+  	GLsizei height,
+  	GLboolean fixedsamplelocations)
+{
+#ifndef HAVE_OPENGLES
+   glTexImage2DMultisample(target, samples, internalformat, width, height, fixedsamplelocations);
+#endif
+}
+
+void * rglMapBuffer(	GLenum target, GLenum access)
+{
+   return glMapBuffer(target, access);
+}
+
+GLboolean rglUnmapBuffer( 	GLenum target)
+{
+   return glUnmapBuffer(target);
+}
+
+void rglBindImageTexture( 	GLuint unit,
+  	GLuint texture,
+  	GLint level,
+  	GLboolean layered,
+  	GLint layer,
+  	GLenum access,
+  	GLenum format)
+{
+#if !defined(HAVE_OPENGLES) || defined(HAVE_OPENGLES) && defined(HAVE_OPENGLES31)
+   glBindImageTexture(unit, texture, level, layered, layer, access, format);
+#else
+   printf("WARNING! Not implemented.\n");
+#endif
+}
+
+void rglDrawBuffers( 	GLsizei n,
+  	const GLenum *bufs)
+{
+#if !defined(HAVE_OPENGLES)
+   glDrawBuffers(n, bufs);
+#endif
+}
+
+void *rglMapBufferRange( 	GLenum target,
+  	GLintptr offset,
+  	GLsizeiptr length,
+  	GLbitfield access)
+{
+#if !defined(HAVE_OPENGLES) || defined(HAVE_OPENGLES3)
+   return glMapBufferRange(target, offset, length, access);
+#else
+   printf("WARNING! Not implemented.\n");
+   return NULL;
+#endif
+}
+
+
 void rglPolygonOffset(GLfloat factor, GLfloat units)
 {
    glsm_ctl(GLSM_CTL_IMM_VBO_DRAW, NULL);

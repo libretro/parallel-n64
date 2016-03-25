@@ -112,6 +112,12 @@ extern "C" {
 #define glReadBuffer                rglReadBuffer
 #define glUniformMatrix4fv          rglUniformMatrix4fv
 #define glGetAttribLocation         rglGetAttribLocation
+#define glTexImage2DMultisample     rglTexImage2DMultisample
+#define glMapBuffer                 rglMapBuffer
+#define glUnmapBuffer               rglUnmapBuffer
+#define glMapBufferRange            rglMapBufferRange
+#define glDrawBuffers               rglDrawBuffers
+#define glBindImageTexture          rglBindImageTexture
 
 void rglReadBuffer(GLenum mode);
 void rglPixelStorei(GLenum pname, GLint param);
@@ -214,6 +220,27 @@ void rglDetachShader(GLuint program, GLuint shader);
 void rglUniformMatrix4fv(GLint location, GLsizei count, GLboolean transpose,
       const GLfloat *value);
 GLint rglGetAttribLocation(GLuint program, const GLchar *name);
+void rglTexImage2DMultisample( 	GLenum target,
+  	GLsizei samples,
+  	GLenum internalformat,
+  	GLsizei width,
+  	GLsizei height,
+  	GLboolean fixedsamplelocations);
+void * rglMapBuffer(	GLenum target, GLenum access);
+void *rglMapBufferRange( 	GLenum target,
+  	GLintptr offset,
+  	GLsizeiptr length,
+  	GLbitfield access);
+GLboolean rglUnmapBuffer( 	GLenum target);
+void rglDrawBuffers( 	GLsizei n,
+  	const GLenum *bufs);
+void rglBindImageTexture( 	GLuint unit,
+  	GLuint texture,
+  	GLint level,
+  	GLboolean layered,
+  	GLint layer,
+  	GLenum access,
+  	GLenum format);
 
 #ifdef __cplusplus
 }
