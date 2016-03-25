@@ -86,9 +86,7 @@ const char* GLErrorString(GLenum errorCode)
 	for (i=0; errors[i].string; i++)
 	{
 		if (errors[i].code == errorCode)
-		{
 			return errors[i].string;
-		}
 	}
 
 	return NULL;
