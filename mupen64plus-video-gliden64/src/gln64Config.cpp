@@ -8,6 +8,8 @@
 #include "Config.h"
 #include "wst.h"
 
+Config config;
+
 void Config::resetToDefaults()
 {
 	version = CONFIG_VERSION_CURRENT;
