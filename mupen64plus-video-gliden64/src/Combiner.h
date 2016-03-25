@@ -3,7 +3,6 @@
 
 #include <map>
 
-#include "GLideN64.h"
 #include "OpenGL.h"
 #include "gDP.h"
 #include "Types.h"

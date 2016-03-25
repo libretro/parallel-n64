@@ -1,4 +1,3 @@
-#include "GLideN64.h"
 #include <math.h>
 #include "Types.h"
 #include "VI.h"

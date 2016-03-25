@@ -1,6 +1,5 @@
 #include <assert.h>
 #include <algorithm>
-#include "GLideN64.h"
 #include "N64.h"
 #include "GBI.h"
 #include "RSP.h"
