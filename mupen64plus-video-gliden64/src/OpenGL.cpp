@@ -132,7 +132,7 @@ bool OGLVideo::isExtensionSupported(const char *extension)
 void OGLVideo::start()
 {
 	_start(); // TODO: process initialization error
-	initGLFunctions();
+	//initGLFunctions();
 	m_render._initData();
 	m_buffersSwapCount = 0;
 }
@@ -1522,6 +1522,7 @@ u32 TextureFilterHandler::_getConfigOptions() const
 
 void TextureFilterHandler::init()
 {
+#if 0
 	if (isInited())
 		return;
 
@@ -1554,7 +1555,7 @@ void TextureFilterHandler::init()
 		pTexPackPath, // path to texture packs folder
 		wRomName, // name of ROM. must be no longer than 256 characters
 		displayLoadProgress);
-
+#endif
 }
 
 void TextureFilterHandler::shutdown()

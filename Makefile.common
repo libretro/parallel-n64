@@ -231,6 +231,7 @@ endif
 ifeq ($(HAVE_GLIDEN64), 1)
 SOURCES_C     += $(VIDEODIR_GLN64)/3DMath.c
 SOURCES_CXX   += \
+					 $(VIDEODIR_GLIDEN64)/src/common/CommonAPIImpl_common.cpp \
 					 $(VIDEODIR_GLIDEN64)/src/FrameBuffer.cpp \
 					 $(VIDEODIR_GLIDEN64)/src/DepthBuffer.cpp \
 					 $(VIDEODIR_GLIDEN64)/src/TxFilterStub.cpp \
@@ -265,9 +266,10 @@ SOURCES_CXX   += \
 					 $(VIDEODIR_GLIDEN64)/src/ShaderUtils.cpp \
 					 $(VIDEODIR_GLIDEN64)/src/OGL3X/GLSLCombiner_ogl3x.cpp \
 					 $(VIDEODIR_GLIDEN64)/src/OGL3X/UniformBlock.cpp \
-					 $(VIDEODIR_GLIDEN64)/src/CommonPluginAPI.cpp \
 					 $(VIDEODIR_GLIDEN64)/src/mupenplus/OpenGL_mupenplus.cpp \
 					 $(VIDEODIR_GLIDEN64)/src/MupenPlusPluginAPI.cpp
+
+SOURCES_CXX +=  $(VIDEODIR_GLIDEN64)/src/CommonPluginAPI.cpp 
 endif
 
 ifeq ($(HAVE_GLN64), 1)

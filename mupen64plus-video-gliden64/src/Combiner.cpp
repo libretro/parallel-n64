@@ -332,6 +332,7 @@ void CombinerInfo::updateParameters(OGLRender::RENDER_STATE _renderState)
 static
 void getStorageFileName(wchar_t * _fileName)
 {
+#if 0
 	wchar_t strCacheFolderPath[PLUGIN_PATH_SIZE];
 	api().GetUserCachePath(strCacheFolderPath);
 	wchar_t strShaderFolderPath[PLUGIN_PATH_SIZE];
@@ -345,6 +346,7 @@ void getStorageFileName(wchar_t * _fileName)
 	}
 #endif
 	swprintf(_fileName, PLUGIN_PATH_SIZE, L"%ls/GLideN64.%08lx.shaders", pPath, std::hash<std::string>()(__RSP.romname));
+#endif
 }
 
 u32 CombinerInfo::_getConfigOptionsBitSet() const

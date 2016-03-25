@@ -23,7 +23,8 @@ EXPORT m64p_error CALL gln64PluginGetVersion(
 	int * _Capabilities
 )
 {
-	return api().PluginGetVersion(_PluginType, _PluginVersion, _APIVersion, _PluginNamePtr, _Capabilities);
+	//return api().PluginGetVersion(_PluginType, _PluginVersion, _APIVersion, _PluginNamePtr, _Capabilities);
+   return M64ERR_SUCCESS;
 }
 
 EXPORT m64p_error CALL gln64PluginStartup(
@@ -32,42 +33,44 @@ EXPORT m64p_error CALL gln64PluginStartup(
 	void (*DebugCallback)(void *, int, const char *)
 )
 {
-	return api().PluginStartup(CoreLibHandle);
+	//return api().PluginStartup(CoreLibHandle);
+   return M64ERR_SUCCESS;
 }
 
 EXPORT m64p_error CALL gln64PluginShutdown(void)
 {
-	return api().PluginShutdown();
+	//return api().PluginShutdown();
+   return M64ERR_SUCCESS;
 }
 
 EXPORT void CALL gln64ReadScreen2(void *dest, int *width, int *height, int front)
 {
-	api().ReadScreen2(dest, width, height, front);
+	//api().ReadScreen2(dest, width, height, front);
 }
 
 EXPORT void CALL gln64SetRenderingCallback(void (*callback)(int))
 {
-	api().SetRenderingCallback(callback);
+	//api().SetRenderingCallback(callback);
 }
 
 EXPORT void CALL gln64FBRead(u32 addr)
 {
-	api().FBRead(addr);
+	//api().FBRead(addr);
 }
 
 EXPORT void CALL gln64FBWrite(u32 addr, u32 size)
 {
-	api().FBWrite(addr, size);
+	//api().FBWrite(addr, size);
 }
 
 EXPORT void CALL gln64FBGetFrameBufferInfo(void *p)
 {
-	api().FBGetFrameBufferInfo(p);
+	//api().FBGetFrameBufferInfo(p);
 }
 
 EXPORT void CALL gln64ResizeVideoOutput(int Width, int Height)
 {
-	api().ResizeVideoOutput(Width, Height);
+	//api().ResizeVideoOutput(Width, Height);
 }
 
 } // extern "C"

@@ -245,7 +245,7 @@ void RSP_Init(void)
 	else if (strstr(__RSP.romname, (const char *)"MASK") != NULL) // Zelda MM
 		config.generalEmulation.hacks |= hack_skipVIChangeCheck | hack_ZeldaCamera;
 
-	api().FindPluginPath(__RSP.pluginpath);
+	//api().FindPluginPath(__RSP.pluginpath);
 
 	RSP_SetDefaultState();
 }

@@ -70,7 +70,7 @@ void Config::resetToDefaults()
 	textureFilter.txForce16bpp = 0;
 	textureFilter.txSaveCache = 1;
 
-	api().GetUserDataPath(textureFilter.txPath);
+	//api().GetUserDataPath(textureFilter.txPath);
 	gln_wcscat(textureFilter.txPath, wst("/hires_texture"));
 
 #ifdef OS_WINDOWS
