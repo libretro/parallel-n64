@@ -37,9 +37,9 @@ bool OGLVideoMupenPlus::_start()
 	//CoreVideo_Init();
 	_setAttributes();
 
-	m_bFullscreen = config.video.fullscreen > 0;
-	m_screenWidth = config.video.windowedWidth;
-	m_screenHeight = config.video.windowedHeight;
+	m_bFullscreen = 1;
+	m_screenWidth = 640;
+	m_screenHeight = 480;
 	_getDisplaySize();
 	_setBufferSize();
 
