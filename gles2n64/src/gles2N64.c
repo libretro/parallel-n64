@@ -257,7 +257,6 @@ EXPORT void CALL StopGL(void)
    OGL_Stop();
 }
 
-#ifdef __LIBRETRO__
 void gles2n64_reset(void)
 {
    // HACK: Check for leaks!
@@ -265,5 +264,3 @@ void gles2n64_reset(void)
    OGL_Start();
    RSP_Init();
 }
-#endif
-

@@ -9,3 +9,7 @@ u8 *RDRAM;
 u32 RDRAMSize;
 
 bool ConfigOpen = false;
+
+extern "C" void gles2n64_reset(void)
+{
+}
