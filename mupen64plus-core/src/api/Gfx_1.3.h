@@ -61,7 +61,15 @@ the plugin
 
 #include <stdint.h>
 #include <stdbool.h>
-#include "m64p.h"
+#include <stdio.h>
+#include "m64p_types.h"
+#include "m64p_plugin.h"
+#include "m64p_config.h"
+#include "m64p_vidext.h"
+
+#define VIDEO_PLUGIN_API_VERSION	0x020100
+
+void WriteLog(m64p_msg_level level, const char *msg, ...);
 
 #ifndef max
 #define max(a, b) ((a) > (b) ? (a) : (b))
