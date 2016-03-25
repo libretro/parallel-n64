@@ -4,12 +4,9 @@
 #include <thread>
 #include <condition_variable>
 
-#ifdef MUPENPLUSAPI
 #include "m64p_plugin.h"
-#else
-#include "ZilmarGFX_1_3.h"
-#define RSPTHREAD
-#endif
+
+#include "Gfx_1.3.h"
 
 enum API_COMMAND {
 	acNone = 0,
@@ -48,19 +45,6 @@ public:
 	void GetUserDataPath(wchar_t * _strPath);
 	void GetUserCachePath(wchar_t * _strPath);
 
-#ifndef MUPENPLUSAPI
-	// Zilmar
-	void DllTest(HWND /*_hParent*/) {}
-	void DrawScreen() {}
-	void CloseDLL(void) {}
-
-	void CaptureScreen(char * _Directory);
-	void DllConfig(HWND _hParent);
-	void GetDllInfo (PLUGIN_INFO * PluginInfo);
-	void ReadScreen(void **_dest, long *_width, long *_height);
-
-	void DllAbout(/*HWND _hParent*/);
-#else
 	// MupenPlus
 	void FBRead(unsigned int _addr) {}
 	void FBWrite(unsigned int addr, unsigned int size) {}
@@ -78,7 +62,6 @@ public:
 		int * _Capabilities
 	);
 	void SetRenderingCallback(void (*callback)(int));
-#endif
 
 	static PluginAPI & get();
 
