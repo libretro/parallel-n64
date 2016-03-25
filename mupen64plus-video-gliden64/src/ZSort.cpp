@@ -34,7 +34,7 @@ struct ZSORTRDP
 {
 	f32 view_scale[2];
 	f32 view_trans[2];
-} zSortRdp = {{0, 0}, {0, 0}};
+} GLN64zSortRdp = {{0, 0}, {0, 0}};
 
 void ZSort_RDPCMD( u32, u32 _w1 )
 {
@@ -404,8 +404,8 @@ void ZSort_MultMPMTX( u32 _w0, u32 _w1 )
 		f32 y = sx*gSP.matrix.combined[0][1] + sy*gSP.matrix.combined[1][1] + sz*gSP.matrix.combined[2][1] + gSP.matrix.combined[3][1];
 		f32 z = sx*gSP.matrix.combined[0][2] + sy*gSP.matrix.combined[1][2] + sz*gSP.matrix.combined[2][2] + gSP.matrix.combined[3][2];
 		f32 w = sx*gSP.matrix.combined[0][3] + sy*gSP.matrix.combined[1][3] + sz*gSP.matrix.combined[2][3] + gSP.matrix.combined[3][3];
-		v.sx = (s16)(zSortRdp.view_trans[0] + x / w * zSortRdp.view_scale[0]);
-		v.sy = (s16)(zSortRdp.view_trans[1] + y / w * zSortRdp.view_scale[1]);
+		v.sx = (s16)(GLN64zSortRdp.view_trans[0] + x / w * GLN64zSortRdp.view_scale[0]);
+		v.sy = (s16)(GLN64zSortRdp.view_trans[1] + y / w * GLN64zSortRdp.view_scale[1]);
 
 		v.xi = (s16)x;
 		v.yi = (s16)y;
@@ -529,10 +529,10 @@ void ZSort_MoveMem( u32 _w0, u32 _w1 )
 		gSP.viewport.nearz	= gSP.viewport.vtrans[2] - gSP.viewport.vscale[2];
 		gSP.viewport.farz	= (gSP.viewport.vtrans[2] + gSP.viewport.vscale[2]) ;
 
-		zSortRdp.view_scale[0] = scale_x*4.0f;
-		zSortRdp.view_scale[1] = scale_y*4.0f;
-		zSortRdp.view_trans[0] = trans_x*4.0f;
-		zSortRdp.view_trans[1] = trans_y*4.0f;
+		GLN64zSortRdp.view_scale[0] = scale_x*4.0f;
+		GLN64zSortRdp.view_scale[1] = scale_y*4.0f;
+		GLN64zSortRdp.view_trans[0] = trans_x*4.0f;
+		GLN64zSortRdp.view_trans[1] = trans_y*4.0f;
 
 		gSP.changed |= CHANGED_VIEWPORT;
 
@@ -550,7 +550,7 @@ void SZort_SetScissor(u32 _w0, u32 _w1)
 {
 	RDP_SetScissor(_w0, _w1);
 
-	if ((gDP.scissor.lrx - gDP.scissor.ulx) > (zSortRdp.view_scale[0] - zSortRdp.view_trans[0]))
+	if ((gDP.scissor.lrx - gDP.scissor.ulx) > (GLN64zSortRdp.view_scale[0] - GLN64zSortRdp.view_trans[0]))
 	{
 		f32 w = (gDP.scissor.lrx - gDP.scissor.ulx) / 2.0f;
 		f32 h = (gDP.scissor.lry - gDP.scissor.uly) / 2.0f;
@@ -565,10 +565,10 @@ void SZort_SetScissor(u32 _w0, u32 _w1)
 		gSP.viewport.width = gSP.viewport.vscale[0] * 2;
 		gSP.viewport.height = gSP.viewport.vscale[1] * 2;
 
-		zSortRdp.view_scale[0] = w * 4.0f;
-		zSortRdp.view_scale[1] = h * 4.0f;
-		zSortRdp.view_trans[0] = w * 4.0f;
-		zSortRdp.view_trans[1] = h * 4.0f;
+		GLN64zSortRdp.view_scale[0] = w * 4.0f;
+		GLN64zSortRdp.view_scale[1] = h * 4.0f;
+		GLN64zSortRdp.view_trans[0] = w * 4.0f;
+		GLN64zSortRdp.view_trans[1] = h * 4.0f;
 
 		gSP.changed |= CHANGED_VIEWPORT;
 

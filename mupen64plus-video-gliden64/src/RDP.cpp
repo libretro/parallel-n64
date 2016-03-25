@@ -10,6 +10,8 @@
 #include "OpenGL.h"
 #include "Debug.h"
 
+#include "Gfx_1.3.h"
+
 void RDP_Unknown( u32 w0, u32 w1 )
 {
 #ifdef DEBUG
@@ -234,8 +236,8 @@ void _getTexRectParams(u32 & w2, u32 & w3)
 {
 	if (__RSP.bLLE)
    {
-		w2 = RDP.w2;
-		w3 = RDP.w3;
+		w2 = __RDP.w2;
+		w3 = __RDP.w3;
 		return;
 	}
 
@@ -407,7 +409,7 @@ void RDP_Init()
 	GBI.cmd[G_TEXRECTFLIP]		= RDP_TexRectFlip;
 	GBI.cmd[G_TEXRECT]			= RDP_TexRect;
 
-	RDP.w2 = RDP.w3 = 0;
+	__RDP.w2 = __RDP.w3 = 0;
 	__RDP.cmd_ptr = __RDP.cmd_cur = 0;
 }
 
@@ -514,7 +516,7 @@ void RDP_Half_1( u32 _c )
 		__RDP.cmd_cur = 0;
 		do {
 			__RDP.cmd_data[__RDP.cmd_ptr++] = w1;
-			__RSP_CheckDLCounter();
+			RSP_CheckDLCounter();
 
 			w0 = *(u32*)&gfx_info.RDRAM[__RSP.PC[__RSP.PCi]];
 			w1 = *(u32*)&gfx_info.RDRAM[__RSP.PC[__RSP.PCi] + 4];
@@ -584,8 +586,8 @@ void RDP_ProcessRDPList()
 		// execute the command
 		u32 w0 = __RDP.cmd_data[__RDP.cmd_cur+0];
 		u32 w1 = __RDP.cmd_data[__RDP.cmd_cur+1];
-		RDP.w2 = __RDP.cmd_data[__RDP.cmd_cur+2];
-		RDP.w3 = __RDP.cmd_data[__RDP.cmd_cur + 3];
+		__RDP.w2 = __RDP.cmd_data[__RDP.cmd_cur+2];
+		__RDP.w3 = __RDP.cmd_data[__RDP.cmd_cur + 3];
 		__RSP.cmd = cmd;
 		LLEcmd[cmd](w0, w1);
 

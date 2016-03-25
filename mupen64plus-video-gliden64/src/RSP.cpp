@@ -54,7 +54,7 @@ void RSP_ProcessDList(void)
 		return;
 	}
 
-	if (*REG.VI_ORIGIN != VI.lastOrigin)
+	if (*gfx_info.VI_ORIGIN_REG != VI.lastOrigin)
    {
 		VI_UpdateSize();
 		video().updateScale();
@@ -171,7 +171,7 @@ static void setDepthClearColor(void)
 		DepthClearColor = 0xFFFFFFFF;
 	else if (strstr(__RSP.romname, (const char *)"Taz Express") != NULL)
 		DepthClearColor = 0xFFBCFFBC;
-	else if (strstr(__RSP.romname, (const char *)"NFL QBC 2000") != NULL || strstr(__RSP.romname, (const char *)"NFL Quarterback Club") != NULL || strstr(RSP.romname, (const char *)"Jeremy McGrath Super") != NULL)
+	else if (strstr(__RSP.romname, (const char *)"NFL QBC 2000") != NULL || strstr(__RSP.romname, (const char *)"NFL Quarterback Club") != NULL || strstr(__RSP.romname, (const char *)"Jeremy McGrath Super") != NULL)
 		DepthClearColor = 0xFFFDFFFC;
 	else
 		DepthClearColor = 0xFFFCFFFC;

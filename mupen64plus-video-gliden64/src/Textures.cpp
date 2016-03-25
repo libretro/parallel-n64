@@ -14,7 +14,6 @@
 #include "convert.h"
 #include "FrameBuffer.h"
 #include "Config.h"
-#include "Keys.h"
 #include "GLideNHQ/Ext_TxFilter.h"
 
 using namespace std;
@@ -1056,7 +1055,7 @@ void TextureCache::_load(u32 _tile, CachedTexture *_pTexture)
 		}
 		else if ((config.textureFilter.txEnhancementMode | config.textureFilter.txFilterMode) != 0 &&
 				maxLevel == 0 &&
-				(config.textureFilter.txFilterIgnoreBG == 0 || (RSP.cmd != G_TEXRECT && RSP.cmd != G_TEXRECTFLIP)) &&
+				(config.textureFilter.txFilterIgnoreBG == 0 || (__RSP.cmd != G_TEXRECT && __RSP.cmd != G_TEXRECTFLIP)) &&
 				TFH.isInited())
 		{
 			GHQTexInfo ghqTexInfo;
@@ -1350,24 +1349,31 @@ void TextureCache::update(u32 _t)
 {
 	if (config.textureFilter.txHiresEnable != 0 && config.textureFilter.txDump != 0) {
 		/* Force reload hi-res textures. Useful for texture artists */
+#if 0
 		if (isKeyPressed(G64_VK_R, 0x0001)) {
-			if (txfilter_reloadhirestex()) {
+			if (txfilter_reloadhirestex())
 				_clear();
-			}
 		}
+#endif
+
+#if 0
 		/* Turn on texture dump */
-		else if (isKeyPressed(G64_VK_D, 0x0001)) {
+		else if (isKeyPressed(G64_VK_D, 0x0001))
+      {
 			m_toggleDumpTex = !m_toggleDumpTex;
-			if (m_toggleDumpTex) {
+			if (m_toggleDumpTex)
+         {
 				displayLoadProgress(L"Texture dump - ON\n");
 				_clear();
 				std::this_thread::sleep_for(std::chrono::seconds(1));
 			}
-			else {
+			else
+         {
 				displayLoadProgress(L"Texture dump - OFF\n");
 				std::this_thread::sleep_for(std::chrono::seconds(1));
 			}
 		}
+#endif
 	}
 
 

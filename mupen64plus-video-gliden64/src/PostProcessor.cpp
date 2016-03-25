@@ -8,6 +8,8 @@
 #include "ShaderUtils.h"
 #include "Config.h"
 
+#include "Gfx_1.3.h"
+
 #if defined(HAVE_OPENGLES31)
 #define SHADER_VERSION "#version 310 es \n"
 #elif defined(HAVE_OPENGLES3)
@@ -575,7 +577,7 @@ void PostProcessor::doBlur(FrameBuffer * _pBuffer)
 
 void PostProcessor::doGammaCorrection(FrameBuffer * _pBuffer)
 {
-	if (((*REG.VI_STATUS & 8)|config.gammaCorrection.force) == 0)
+	if (((*gfx_info.VI_STATUS_REG & 8)|config.gammaCorrection.force) == 0)
 		return;
 
 	if (_pBuffer == nullptr || (_pBuffer->m_postProcessed&PostProcessor::postEffectGammaCorrection) == PostProcessor::postEffectGammaCorrection)
