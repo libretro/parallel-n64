@@ -265,15 +265,22 @@ SOURCES_CXX   += \
 					 $(VIDEODIR_GLIDEN64)/src/PostProcessor.cpp \
 					 $(VIDEODIR_GLIDEN64)/src/VI.cpp \
 					 $(VIDEODIR_GLIDEN64)/src/ShaderUtils.cpp \
-					 $(VIDEODIR_GLIDEN64)/src/OGL3X/GLSLCombiner_ogl3x.cpp \
-					 $(VIDEODIR_GLIDEN64)/src/OGL3X/UniformBlock.cpp \
 					 $(VIDEODIR_GLIDEN64)/src/mupenplus/OpenGL_mupenplus.cpp \
 					 $(VIDEODIR_GLIDEN64)/src/MupenPlusPluginAPI.cpp
+
+ifeq ($(GLIDEN64ES2), 1)
+SOURCES_CXX  += $(VIDEODIR_GLIDEN64)/src/OGL3X/GLSLCombiner_ogl3x.cpp \
+					 $(VIDEODIR_GLIDEN64)/src/OGL3X/UniformBlock.cpp
+else
+SOURCES_CXX	 += $(VIDEODIR_GLIDEN64)/src/GLES2/GLSLCombiner_gles2.cpp \
+					 $(VIDEODIR_GLIDEN64)/src/GLES2/UniformSet.cpp
+endif
 
 SOURCES_CXX +=  $(VIDEODIR_GLIDEN64)/src/CommonPluginAPI.cpp 
 endif
 
 ifeq ($(HAVE_GLN64), 1)
+
 SOURCES_C += $(VIDEODIR_GLN64)/3DMath.c \
             $(VIDEODIR_GLN64)/glN64Config.c \
             $(VIDEODIR_GLN64)/FrameBuffer_gles2n64.c \

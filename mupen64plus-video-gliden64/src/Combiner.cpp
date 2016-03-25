@@ -327,28 +327,6 @@ void CombinerInfo::updateParameters(OGLRender::RENDER_STATE _renderState)
 		m_pUniformCollection->updateUniforms(m_pCurrent, _renderState);
 }
 
-#ifndef GLES2
-#define SHADER_STORAGE_FOLDER_NAME L"shaders"
-static
-void getStorageFileName(wchar_t * _fileName)
-{
-#if 0
-	wchar_t strCacheFolderPath[PLUGIN_PATH_SIZE];
-	api().GetUserCachePath(strCacheFolderPath);
-	wchar_t strShaderFolderPath[PLUGIN_PATH_SIZE];
-	swprintf(strShaderFolderPath, PLUGIN_PATH_SIZE, L"%ls/%ls", strCacheFolderPath, SHADER_STORAGE_FOLDER_NAME);
-	wchar_t * pPath = strShaderFolderPath;
-   /* TODO/FIXME */
-#if 0
-	if (!osal_path_existsW(strShaderFolderPath) || !osal_is_directory(strShaderFolderPath)) {
-		if (osal_mkdirp(strShaderFolderPath) != 0)
-			pPath = strCacheFolderPath;
-	}
-#endif
-	swprintf(_fileName, PLUGIN_PATH_SIZE, L"%ls/GLideN64.%08lx.shaders", pPath, std::hash<std::string>()(__RSP.romname));
-#endif
-}
-
 u32 CombinerInfo::_getConfigOptionsBitSet() const
 {
 	std::vector<u32> vecOptions;
@@ -359,119 +337,6 @@ u32 CombinerInfo::_getConfigOptionsBitSet() const
 	return optionsSet;
 }
 
-/*
-Storage format:
-  uint32 - format version;
-  uint32 - bitset of config options, which may change how shader is created.
-  uint32 - len of renderer string
-  char * - renderer string
-  uint32 - len of GL version string
-  char * - GL version string
-  uint32 - number of shaders
-  shaders in binary form
-*/
-static const u32 ShaderStorageFormatVersion = 0x03U; // Shaders changed after rev. c6d37ca
-void CombinerInfo::_saveShadersStorage() const
-{
-	if (m_shadersLoaded >= m_combiners.size())
-		return;
-
-	wchar_t fileName[PLUGIN_PATH_SIZE];
-	getStorageFileName(fileName);
-
-#ifdef OS_WINDOWS
-	std::ofstream fout(fileName, std::ofstream::binary | std::ofstream::trunc);
-#else
-	char fileName_c[PATH_MAX];
-	wcstombs(fileName_c, fileName, PATH_MAX);
-	std::ofstream fout(fileName_c, std::ofstream::binary | std::ofstream::trunc);
-#endif
-	if (!fout)
-		return;
-
-	fout.write((char*)&ShaderStorageFormatVersion, sizeof(ShaderStorageFormatVersion));
-
-	const u32 optionsSet = _getConfigOptionsBitSet();
-	fout.write((char*)&optionsSet, sizeof(optionsSet));
-
-	const char * strRenderer = reinterpret_cast<const char *>(glGetString(GL_RENDERER));
-	u32 len = strlen(strRenderer);
-	fout.write((char*)&len, sizeof(len));
-	fout.write(strRenderer, len);
-
-	const char * strGLVersion = reinterpret_cast<const char *>(glGetString(GL_VERSION));
-	len = strlen(strGLVersion);
-	fout.write((char*)&len, sizeof(len));
-	fout.write(strGLVersion, len);
-
-	len = m_combiners.size();
-	fout.write((char*)&len, sizeof(len));
-	for (Combiners::const_iterator cur = m_combiners.begin(); cur != m_combiners.end(); ++cur)
-		fout << *(cur->second);
-	fout.flush();
-	fout.close();
-}
-
-bool CombinerInfo::_loadShadersStorage()
-{
-	wchar_t fileName[PLUGIN_PATH_SIZE];
-	getStorageFileName(fileName);
-
-#ifdef OS_WINDOWS
-	std::ifstream fin(fileName, std::ofstream::binary);
-#else
-	char fileName_c[PATH_MAX];
-	wcstombs(fileName_c, fileName, PATH_MAX);
-	std::ifstream fin(fileName_c, std::ofstream::binary);
-#endif
-	if (!fin)
-		return false;
-
-	try {
-		u32 version;
-		fin.read((char*)&version, sizeof(version));
-		if (version != ShaderStorageFormatVersion)
-			return false;
-
-		u32 optionsSet;
-		fin.read((char*)&optionsSet, sizeof(optionsSet));
-		if (optionsSet != _getConfigOptionsBitSet())
-			return false;
-
-		const char * strRenderer = reinterpret_cast<const char *>(glGetString(GL_RENDERER));
-		u32 len;
-		fin.read((char*)&len, sizeof(len));
-		std::vector<char> strBuf(len);
-		fin.read(strBuf.data(), len);
-		if (strncmp(strRenderer, strBuf.data(), len) != 0)
-			return false;
-
-		const char * strGLVersion = reinterpret_cast<const char *>(glGetString(GL_VERSION));
-		fin.read((char*)&len, sizeof(len));
-		strBuf.resize(len);
-		fin.read(strBuf.data(), len);
-		if (strncmp(strGLVersion, strBuf.data(), len) != 0)
-			return false;
-
-		fin.read((char*)&len, sizeof(len));
-		for (u32 i = 0; i < len; ++i) {
-			m_pCurrent = new ShaderCombiner();
-			fin >> *m_pCurrent;
-			m_pCurrent->update(true);
-			m_pUniformCollection->bindWithShaderCombiner(m_pCurrent);
-			m_combiners[m_pCurrent->getMux()] = m_pCurrent;
-		}
-	}
-	catch (...) {
-		m_shadersLoaded = 0;
-		return false;
-	}
-
-	m_shadersLoaded = m_combiners.size();
-	fin.close();
-	return !isGLError();
-}
-#else // GLES2
 void CombinerInfo::_saveShadersStorage() const
 {}
 
@@ -479,4 +344,3 @@ bool CombinerInfo::_loadShadersStorage()
 {
 	return true;
 }
-#endif //GLES2

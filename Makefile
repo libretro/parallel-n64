@@ -6,6 +6,7 @@ WITH_CRC=brumme
 FORCE_GLES=0
 HAVE_OPENGL=1
 GLIDEN64=0
+GLIDEN64ES2=0
 
 DYNAFLAGS :=
 INCFLAGS  :=
@@ -371,9 +372,11 @@ else
 	CFLAGS   += -std=gnu89 -MMD
 ifeq ($(GLIDEN64), 1)
 	CXXFLAGS += -std=c++0x -MMD
+ifneq ($(GLIDEN64ES2), 1)
 ifneq ($(GLES), 1)
 	CFLAGS   += -DCORE
 	CXXFLAGS += -DCORE
+endif
 endif
 else
 	CXXFLAGS += -std=gnu++98 -MMD
