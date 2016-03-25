@@ -37,6 +37,8 @@
 //
 //****************************************************************
 
+#include "../Glitch64/glide.h"
+
 void calc_light (VERTEX *v);
 void calc_linear (VERTEX *v);
 void calc_sphere (VERTEX *v);

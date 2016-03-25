@@ -44,6 +44,7 @@
 #include "Util.h"
 #include "GBI.h"
 #include "libretro.h"
+#include "GlideExtensions.h"
 
 #include "MiClWr.h"
 

@@ -86,9 +86,6 @@ the plugin
 #include <stddef.h>
 #include <string.h>
 #include <stdarg.h>
-#include "../Glitch64/glide.h"
-#include "GlideExtensions.h"
-#include "rdp.h"
 
 #define _ENDUSER_RELEASE_
 
@@ -141,10 +138,6 @@ extern int debugging;
 extern int exception;
 extern GFX_INFO gfx_info;
 
-int glide64InitGfx(void);
-void ReleaseGfx(void);
-
-
 // The highest 8 bits are the segment # (1-16), and the lower 24 bits are the offset to
 // add to it.
 #define RSP_SegmentToPhysical(so) (((rdp.segment[((so) >> 24) & 0x0f] + ((so) & BMASK)) & BMASK) & 0x00ffffff)
@@ -167,18 +160,5 @@ typedef struct
 } PLUGIN_INFO;
 
 extern bool no_dlist;
-
-#ifndef GR_STIPPLE_DISABLE
-#define GR_STIPPLE_DISABLE	0x0
-#define GR_STIPPLE_PATTERN	0x1
-#define GR_STIPPLE_ROTATE	0x2
-#endif
-
-
-int GetTexAddrUMA(int tmu, int texsize);
-extern void ReadSettings(void);
-extern void ReadSpecialSettings(const char * name);
-
-extern void (*_gSPVertex)(uint32_t addr, uint32_t n, uint32_t v0);
 
 #endif //_GFX_H_INCLUDED__

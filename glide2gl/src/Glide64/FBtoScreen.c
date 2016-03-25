@@ -46,6 +46,9 @@
 #include "Gfx_1.3.h"
 #include "FBtoScreen.h"
 #include "TexCache.h"
+#include "../Glitch64/glide.h"
+#include "GlideExtensions.h"
+#include "rdp.h"
 
 static void glide64_draw_fb(float ul_x, float ul_y, float lr_x,
       float lr_y, float lr_u, float lr_v, float zero)

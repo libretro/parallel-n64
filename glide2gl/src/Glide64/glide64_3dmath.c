@@ -41,6 +41,7 @@
 
 #include "Gfx_1.3.h"
 #include "../../libretro/libretro_private.h"
+#include "rdp.h"
 
 #include "3dmath.h"
 

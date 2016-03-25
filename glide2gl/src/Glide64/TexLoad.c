@@ -3,6 +3,7 @@
 #include "Gfx_1.3.h"
 #include "Combine.h"
 #include "Util.h"
+#include "GlideExtensions.h"
 
 #define ALOWORD(x)   (*((uint16_t*)&x))   // low word
 

@@ -40,6 +40,8 @@
 #ifndef Util_H
 #define Util_H
 
+#include "../Glitch64/glide.h"
+#include "rdp.h"
 #include "../../../mupen64plus-core/src/main/util.h"
 
 #define NOT_TMU0	0x00

@@ -46,6 +46,7 @@
 #include "FBtoScreen.h"
 #include "DepthBufferRender.h"
 #include "Glide64_Ini.h"
+#include "GlideExtensions.h"
 #include "api/libretro.h"
 
 extern void CRC_BuildTable();
@@ -93,8 +94,6 @@ extern uint32_t screen_aspectmodehint;
 #define ResizeVideoOutput VIDEO_TAG(ResizeVideoOutput)
 #define InitGfx VIDEO_TAG(InitGfx)
 #endif
-
-void (*_gSPVertex)(uint32_t addr, uint32_t n, uint32_t v0);
 
 int romopen = false;
 int exception = false;
