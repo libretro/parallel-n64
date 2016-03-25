@@ -249,6 +249,7 @@ SOURCES_CXX   += \
 					 $(VIDEODIR_GLIDEN64)/src/F3DPD.cpp \
 					 $(VIDEODIR_GLIDEN64)/src/F3DSWSE.cpp \
 					 $(VIDEODIR_GLIDEN64)/src/F3DWRUS.cpp \
+					 $(VIDEODIR_GLIDEN64)/src/L3D.cpp \
 					 $(VIDEODIR_GLIDEN64)/src/L3DEX.cpp \
 					 $(VIDEODIR_GLIDEN64)/src/L3DEX2.cpp \
 					 $(VIDEODIR_GLIDEN64)/src/S2DEX.cpp \

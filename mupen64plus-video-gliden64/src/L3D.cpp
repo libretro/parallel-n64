@@ -1,4 +1,3 @@
-#include "GLideN64.h"
 #include "Debug.h"
 #include "F3D.h"
 #include "L3D.h"

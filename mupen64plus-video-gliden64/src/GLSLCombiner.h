@@ -105,15 +105,6 @@ private:
 		iv2Uniform uMSTexEnabled, uFbMonochrome, uFbFixedAlpha;
 	};
 
-#ifdef OS_MAC_OS_X
-#define glUniform1i glUniform1iARB
-#define glUniform1f glUniform1fARB
-#define glUniform2f glUniform2fARB
-#define glUniform2i glUniform2iARB
-#define glUniform3fv glUniform3fvARB
-#define glUniform4fv glUniform4fvARB
-#endif
-
 	void _locate_attributes() const;
 	void _locateUniforms();
 
