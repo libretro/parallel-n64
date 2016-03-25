@@ -161,16 +161,10 @@ void OGLVideo::swapBuffers()
 
 void OGLVideo::setCaptureScreen(const char * const _strDirectory)
 {
-	::mbstowcs(m_strScreenDirectory, _strDirectory, PLUGIN_PATH_SIZE-1);
-	m_bCaptureScreen = true;
 }
 
 void OGLVideo::saveScreenshot()
 {
-	if (!m_bCaptureScreen)
-		return;
-	_saveScreenshot();
-	m_bCaptureScreen = false;
 }
 
 bool OGLVideo::changeWindow()
@@ -479,7 +473,8 @@ void OGLRender::_setBlendMode() const
 
 void OGLRender::_updateCullFace() const
 {
-	if (gSP.geometryMode & G_CULL_BOTH) {
+	if (gSP.geometryMode & G_CULL_BOTH)
+   {
 		glEnable( GL_CULL_FACE );
 
 		if (gSP.geometryMode & G_CULL_BACK)
@@ -565,7 +560,7 @@ void OGLRender::updateScissor(FrameBuffer * _pBuffer) const
 
 void OGLRender::_updateDepthUpdate() const
 {
-	if (gDP.otherMode.depthUpdate != 0)
+	if (gDP.otherMode.depthUpdate)
 		glDepthMask( TRUE );
 	else
 		glDepthMask( FALSE );
@@ -578,15 +573,19 @@ void OGLRender::_updateStates(RENDER_STATE _renderState) const
 	CombinerInfo & cmbInfo = CombinerInfo::get();
 	cmbInfo.update();
 
-	if (gSP.changed & CHANGED_GEOMETRYMODE) {
+	if (gSP.changed & CHANGED_GEOMETRYMODE)
+   {
 		_updateCullFace();
 		gSP.changed &= ~CHANGED_GEOMETRYMODE;
 	}
 
-	if (config.frameBufferEmulation.N64DepthCompare) {
+	if (config.frameBufferEmulation.N64DepthCompare)
+   {
 		glDisable( GL_DEPTH_TEST );
 		glDepthMask( FALSE );
-	} else if ((gDP.changed & (CHANGED_RENDERMODE | CHANGED_CYCLETYPE)) != 0) {
+	}
+   else if ((gDP.changed & (CHANGED_RENDERMODE | CHANGED_CYCLETYPE)) != 0)
+   {
 		if (((gSP.geometryMode & G_ZBUFFER) || gDP.otherMode.depthSource == G_ZS_PRIM) && gDP.otherMode.cycleType <= G_CYC_2CYCLE) {
 			if (gDP.otherMode.depthCompare != 0) {
 				switch (gDP.otherMode.depthMode) {
@@ -679,13 +678,16 @@ void OGLRender::_setColorArray() const
 
 void OGLRender::_setTexCoordArrays() const
 {
-	if (m_renderState == rsTriangle) {
+	if (m_renderState == rsTriangle)
+   {
 		glDisableVertexAttribArray(SC_TEXCOORD1);
 		if (currentCombiner()->usesTexture())
 			glEnableVertexAttribArray(SC_TEXCOORD0);
 		else
 			glDisableVertexAttribArray(SC_TEXCOORD0);
-	} else {
+	}
+   else
+   {
 		if (currentCombiner()->usesTile(0))
 			glEnableVertexAttribArray(SC_TEXCOORD0);
 		else
@@ -700,6 +702,7 @@ void OGLRender::_setTexCoordArrays() const
 
 void OGLRender::_prepareDrawTriangle(bool _dma)
 {
+   bool updateColorArrays, updateArrays;
 #ifdef GL_IMAGE_TEXTURES_SUPPORT
 	if (m_bImageTexture && config.frameBufferEmulation.N64DepthCompare != 0)
 		glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
@@ -708,19 +711,22 @@ void OGLRender::_prepareDrawTriangle(bool _dma)
 	if (gSP.changed || gDP.changed)
 		_updateStates(rsTriangle);
 
-	const bool updateArrays = m_renderState != rsTriangle;
-	if (updateArrays || CombinerInfo::get().isChanged()) {
+	updateArrays = m_renderState != rsTriangle;
+
+	if (updateArrays || CombinerInfo::get().isChanged())
+   {
 		m_renderState = rsTriangle;
 		_setColorArray();
 		_setTexCoordArrays();
 	}
 	currentCombiner()->updateRenderState();
 
-	const bool updateColorArrays = m_bFlatColors != (!__RSP.bLLE && (gSP.geometryMode & G_SHADING_SMOOTH) == 0);
+	updateColorArrays = m_bFlatColors != (!__RSP.bLLE && (gSP.geometryMode & G_SHADING_SMOOTH) == 0);
 	if (updateColorArrays)
 		m_bFlatColors = !m_bFlatColors;
 
-	if (updateArrays) {
+	if (updateArrays)
+   {
 		SPVertex * pVtx = _dma ? triangles.dmaVertices.data() : &triangles.vertices[0];
 		glVertexAttribPointer(SC_POSITION, 4, GL_FLOAT, GL_FALSE, sizeof(SPVertex), &pVtx->x);
 		if (m_bFlatColors)
@@ -728,12 +734,16 @@ void OGLRender::_prepareDrawTriangle(bool _dma)
 		else
 			glVertexAttribPointer(SC_COLOR, 4, GL_FLOAT, GL_FALSE, sizeof(SPVertex), &pVtx->r);
 		glVertexAttribPointer(SC_TEXCOORD0, 2, GL_FLOAT, GL_FALSE, sizeof(SPVertex), &pVtx->s);
-		if (config.generalEmulation.enableHWLighting) {
+
+		if (config.generalEmulation.enableHWLighting)
+      {
 			glEnableVertexAttribArray(SC_NUMLIGHTS);
 			glVertexAttribPointer(SC_NUMLIGHTS, 1, GL_BYTE, GL_FALSE, sizeof(SPVertex), &pVtx->HWLight);
 		}
 
-	} else if (updateColorArrays) {
+	}
+   else if (updateColorArrays)
+   {
 		SPVertex * pVtx = _dma ? triangles.dmaVertices.data() : &triangles.vertices[0];
 		if (m_bFlatColors)
 			glVertexAttribPointer(SC_COLOR, 4, GL_FLOAT, GL_FALSE, sizeof(SPVertex), &pVtx->flat_r);
@@ -1358,7 +1368,9 @@ void OGLRender::_initStates()
 		glDisable( GL_POLYGON_OFFSET_FILL );
 		glDepthFunc( GL_ALWAYS );
 		glDepthMask( FALSE );
-	} else {
+	}
+   else
+   {
 #ifdef ANDROID
 		if(config.generalEmulation.forcePolygonOffset != 0)
 			glPolygonOffset(config.generalEmulation.polygonOffsetFactor, config.generalEmulation.polygonOffsetUnits);
