@@ -178,7 +178,7 @@ static void GetTexInfo (int id, int tile)
       //  textures.
 
       // wrap all the way
-      width = min(mask_width, tile_width);	// changed from mask_width only
+      width = MIN(mask_width, tile_width);	// changed from mask_width only
       rdp.tiles[tile].width = width;
 
       // Get the width/height to load 
@@ -188,7 +188,7 @@ static void GetTexInfo (int id, int tile)
          rdp.tiles[tile].width = tile_width;
       }
 
-      height = min(mask_height, tile_height);
+      height = MIN(mask_height, tile_height);
       rdp.tiles[tile].height = height;
 
       if ((g_gdp.tile[tile].ct && tile_height <= 256) || (mask_height > 256))
@@ -215,7 +215,7 @@ static void GetTexInfo (int id, int tile)
       if ((g_gdp.tile[tile].cs && tile_width <= 256) )//|| (mask_width > 256))
       {
          // loading width
-         width = min(mask_width, tile_width);
+         width = MIN(mask_width, tile_width);
          // actual width
          rdp.tiles[tile].width = tile_width;
       }
@@ -226,7 +226,7 @@ static void GetTexInfo (int id, int tile)
       if ((g_gdp.tile[tile].ct && tile_height <= 256) || (mask_height > 256))
       {
          // loading height
-         height = min(mask_height, tile_height);
+         height = MIN(mask_height, tile_height);
          // actual height
          rdp.tiles[tile].height = tile_height;
       }
@@ -266,7 +266,7 @@ static void GetTexInfo (int id, int tile)
    wid_64 = wid_64>>3;
 
    // Texture too big for tmem & needs to wrap? (trees in mm)
-   if (g_gdp.tile[tile].tmem + min(height, tile_height) * (g_gdp.tile[tile].line << 3) > 4096)
+   if (g_gdp.tile[tile].tmem + MIN(height, tile_height) * (g_gdp.tile[tile].line << 3) > 4096)
    {
       int y, shift;
       LRDP("TEXTURE WRAPS TMEM!!! ");
@@ -315,7 +315,7 @@ static void GetTexInfo (int id, int tile)
          {
             int line_2, wid_64_2;
             line_2 = line >> 1;
-            wid_64_2 = max(1, wid_64 >> 1);
+            wid_64_2 = MAX(1, wid_64 >> 1);
             crc = textureCRC(crc, addr, wid_64_2, crc_height, line_2);
             crc = textureCRC(crc, addr+0x800, wid_64_2, crc_height, line_2);
          }
@@ -804,7 +804,7 @@ static void LoadTex(int id, int tmu)
    size_y = 1 << shift;
 
    // Calculate the maximum size
-   size_max = max (size_x, size_y);
+   size_max = MAX(size_x, size_y);
    real_x = size_max;
    real_y = size_max;
    switch (size_max)
@@ -1194,11 +1194,11 @@ static void LoadTex(int id, int tmu)
       size = HIWORD(result);
 
       if (g_gdp.tile[td].mask_s != 0)
-         min_x = min((int)real_x, 1 << g_gdp.tile[td].mask_s);
+         min_x = MIN((int)real_x, 1 << g_gdp.tile[td].mask_s);
       else
          min_x = real_x;
       if (g_gdp.tile[td].mask_t != 0)
-         min_y  = min((int)real_y, 1 << g_gdp.tile[td].mask_t);
+         min_y  = MIN((int)real_y, 1 << g_gdp.tile[td].mask_t);
       else
          min_y = real_y;
 

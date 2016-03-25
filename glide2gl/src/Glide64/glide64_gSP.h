@@ -214,8 +214,8 @@ static void draw_tri_depth(VERTEX **vtx)
       {
          // Calculate deltaZ per polygon for Decal z-mode
          float fdzdy = (float)((diffz_02*diffx_12 - diffz_12*diffx_02) / denom);
-         float fdz = (float)(fabs(fdzdx) + fabs(fdzdy));
-         deltaZ = max(8, (int)fdz);
+         float fdz   = (float)(fabs(fdzdx) + fabs(fdzdy));
+         deltaZ      = MAX(8, (int)fdz);
       }
       dzdx = (int)(fdzdx * 65536.0);
    }

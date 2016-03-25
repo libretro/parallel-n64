@@ -291,12 +291,12 @@ static void CalculateLOD(VERTEX *v, int n, uint32_t lodmode)
       lodFactor = lodFactor / n; // Divide by n (n edges) to find average
 
    ilod = (int)lodFactor;
-   lod_tile = min((int)(log10f((float)ilod)/log10f(2.0f)), rdp.cur_tile + rdp.mipmap_level);
+   lod_tile = MIN((int)(log10f((float)ilod)/log10f(2.0f)), rdp.cur_tile + rdp.mipmap_level);
    lod_fraction = 1.0f;
    detailmax = 1.0f - lod_fraction;
 
    if (lod_tile < rdp.cur_tile + rdp.mipmap_level)
-      lod_fraction = max((float)modff(lodFactor / pow(2.,lod_tile),&intptr), g_gdp.primitive_lod_min / 255.0f);
+      lod_fraction = MAX((float)modff(lodFactor / pow(2.,lod_tile),&intptr), g_gdp.primitive_lod_min / 255.0f);
 
    if (cmb.dc0_detailmax < 0.5f)
       detailmax = lod_fraction;
@@ -856,15 +856,15 @@ static void render_tri (uint16_t linew, int old_interpolate)
    {
       case FOG_MODE_ENABLED:
          for (i = 0; i < n; i++)
-            rdp.vtxbuf[i].f = 1.0f/max(4.0f, rdp.vtxbuf[i].f);
+            rdp.vtxbuf[i].f = 1.0f/MAX(4.0f, rdp.vtxbuf[i].f);
          break;
       case FOG_MODE_BLEND:
-         fog = 1.0f/max(1, g_gdp.fog_color.a);
+         fog = 1.0f/MAX(1, g_gdp.fog_color.a);
          for (i = 0; i < n; i++)
             rdp.vtxbuf[i].f = fog;
          break;
       case FOG_MODE_BLEND_INVERSE:
-         fog = 1.0f/max(1, (~g_gdp.fog_color.total) & 0xFF);
+         fog = 1.0f/MAX(1, (~g_gdp.fog_color.total) & 0xFF);
          for (i = 0; i < n; i++)
             rdp.vtxbuf[i].f = fog;
          break;
@@ -1306,10 +1306,10 @@ void update(void)
          float scale_x = (float)fabs(rdp.view_scale[0]);
          float scale_y = (float)fabs(rdp.view_scale[1]);
 
-         rdp.clip_min_x = max((rdp.view_trans[0] - scale_x + rdp.offset_x) / rdp.clip_ratio, 0.0f);
-         rdp.clip_min_y = max((rdp.view_trans[1] - scale_y + rdp.offset_y) / rdp.clip_ratio, 0.0f);
-         rdp.clip_max_x = min((rdp.view_trans[0] + scale_x + rdp.offset_x) * rdp.clip_ratio, settings.res_x);
-         rdp.clip_max_y = min((rdp.view_trans[1] + scale_y + rdp.offset_y) * rdp.clip_ratio, settings.res_y);
+         rdp.clip_min_x = MAX((rdp.view_trans[0] - scale_x + rdp.offset_x) / rdp.clip_ratio, 0.0f);
+         rdp.clip_min_y = MAX((rdp.view_trans[1] - scale_y + rdp.offset_y) / rdp.clip_ratio, 0.0f);
+         rdp.clip_max_x = MIN((rdp.view_trans[0] + scale_x + rdp.offset_x) * rdp.clip_ratio, settings.res_x);
+         rdp.clip_max_y = MIN((rdp.view_trans[1] + scale_y + rdp.offset_y) * rdp.clip_ratio, settings.res_y);
 
          FRDP (" |- viewport - (%d, %d, %d, %d)\n", (uint32_t)rdp.clip_min_x, (uint32_t)rdp.clip_min_y, (uint32_t)rdp.clip_max_x, (uint32_t)rdp.clip_max_y);
          if (!rdp.scissor_set)

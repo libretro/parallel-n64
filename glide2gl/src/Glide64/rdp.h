@@ -650,7 +650,7 @@ static INLINE void CalculateFog (VERTEX *v)
       if (v->w < 0.0f)
          v->f = 0.0f;
       else
-         v->f = min(255.0f, max(0.0f, v->z_w * rdp.fog_multiplier + rdp.fog_offset));
+         v->f = MIN(255.0f, MAX(0.0f, v->z_w * rdp.fog_multiplier + rdp.fog_offset));
       v->a = (uint8_t)v->f;
    }
    else
@@ -659,7 +659,7 @@ static INLINE void CalculateFog (VERTEX *v)
 
 static INLINE void glideSetVertexFlatShading(VERTEX *v, VERTEX **vtx, uint32_t w1)
 {
-   int flag = min(2, (w1 >> 24) & 3);
+   int flag = MIN(2, (w1 >> 24) & 3);
    v->a = vtx[flag]->a;
    v->b = vtx[flag]->b;
    v->g = vtx[flag]->g;

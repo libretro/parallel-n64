@@ -715,7 +715,7 @@ static uint32_t Load32bRGBA(uintptr_t dst, uintptr_t src, int wid_64, int height
     uint32_t mod;
     const uint16_t *tmem16 =(uint16_t*)g_gdp.tmem;
     const uint32_t tbase = (src -(uintptr_t)g_gdp.tmem) >> 1;
-    const uint32_t width = max(1, wid_64 << 1);
+    const uint32_t width = MAX(1, wid_64 << 1);
     const int ext = real_width - width;
     line = width + (line>>2);
     tex  =(uint32_t*)dst;

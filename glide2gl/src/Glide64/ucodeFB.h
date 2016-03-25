@@ -143,7 +143,7 @@ static void fb_rect(uint32_t w0, uint32_t w1)
    diff = abs((int)rdp.frame_buffers[rdp.ci_count-1].width - width);
    if (diff < 4)
    {
-      uint32_t lr_y = min(g_gdp.__clip.yl, (w0 & 0xFFF) >> 2);
+      uint32_t lr_y = MIN(g_gdp.__clip.yl, (w0 & 0xFFF) >> 2);
       if (rdp.frame_buffers[rdp.ci_count-1].height < lr_y)
       {
          FRDP("fb_rect. ul_x: %d, lr_x: %d, fb_height: %d -> %d\n", ul_x, lr_x, rdp.frame_buffers[rdp.ci_count-1].height, lr_y);
@@ -365,7 +365,7 @@ static void fb_setcolorimage(uint32_t w0, uint32_t w1)
    {
       if (rdp.cimg == rdp.main_ci) //switched to main fb again
       {
-         cur_fb->height = max(cur_fb->height, rdp.frame_buffers[rdp.main_ci_index].height);
+         cur_fb->height = MAX(cur_fb->height, rdp.frame_buffers[rdp.main_ci_index].height);
          rdp.main_ci_index = rdp.ci_count;
          rdp.main_ci_end = rdp.cimg + ((cur_fb->width * cur_fb->height) << cur_fb->size >> 1);
          cur_fb->status = CI_MAIN;

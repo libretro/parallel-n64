@@ -371,8 +371,8 @@ static void CopyFrameBuffer(int32_t buffer)
    else
    {
       GrLfbInfo_t info;
-      float scale_x = (settings.scr_res_x - rdp.offset_x*2.0f)  / max(width, rdp.vi_width);
-      float scale_y = (settings.scr_res_y - rdp.offset_y*2.0f) / max(height, rdp.vi_height);
+      float scale_x = (settings.scr_res_x - rdp.offset_x*2.0f)  / MAX(width, rdp.vi_width);
+      float scale_y = (settings.scr_res_y - rdp.offset_y*2.0f) / MAX(height, rdp.vi_height);
 
       FRDP("width: %d, height: %d, ul_y: %d, lr_y: %d, scale_x: %f, scale_y: %f, ci_width: %d, ci_height: %d\n",width, height, rdp.ci_upper_bound, rdp.ci_lower_bound, scale_x, scale_y, rdp.ci_width, rdp.ci_height);
       info.size = sizeof(GrLfbInfo_t);
@@ -512,7 +512,7 @@ EXPORT void CALL ProcessDList(void)
 
   rdp.model_i = 0; // 0 matrices so far in stack
   //stack_size can be less then 32! Important for Silicon Vally. Thanks Orkin!
-  rdp.model_stack_size = min(32, (*(uint32_t*)(gfx_info.DMEM+0x0FE4))>>6);
+  rdp.model_stack_size = MIN(32, (*(uint32_t*)(gfx_info.DMEM+0x0FE4))>>6);
   if (rdp.model_stack_size == 0)
     rdp.model_stack_size = 32;
   rdp.fb_drawn = rdp.fb_drawn_front = false;
@@ -1256,8 +1256,8 @@ static void rdp_loadtile(uint32_t w0, uint32_t w1)
    LOAD_TILE_INFO &info = rdp.load_info[g_gdp.tile[tile].tmem];
    info.tile_ul_s = ul_s;
    info.tile_ul_t = ul_t;
-   info.tile_width = (g_gdp.tile[tile].ms ? min((uint16_t)width,   1 << g_gdp.tile[tile].ms) : (uint16_t)width);
-   info.tile_height = (g_gdp.tile[tile].mt ? min((uint16_t)height, 1 << g_gdp.tile[tile].mt) : (uint16_t)height);
+   info.tile_width = (g_gdp.tile[tile].ms ? MIN((uint16_t)width,   1 << g_gdp.tile[tile].ms) : (uint16_t)width);
+   info.tile_height = (g_gdp.tile[tile].mt ? MIN((uint16_t)height, 1 << g_gdp.tile[tile].mt) : (uint16_t)height);
    if (settings.hacks&hack_MK64) {
       if (info.tile_width%2)
          info.tile_width--;
@@ -1339,10 +1339,10 @@ static void rdp_fillrect(uint32_t w0, uint32_t w1)
          //if (settings.frame_buffer&fb_depth_clear)
          {
             uint32_t zi_width_in_dwords, *dst, x, y;
-            ul_x = min(max(ul_x, g_gdp.__clip.xh),  g_gdp.__clip.xl);
-            lr_x = min(max(lr_x, g_gdp.__clip.xh),  g_gdp.__clip.xl);
-            ul_y = min(max(ul_y, g_gdp.__clip.yh),  g_gdp.__clip.yl);
-            lr_y = min(max(lr_y, g_gdp.__clip.yh),  g_gdp.__clip.yl);
+            ul_x = MIN(MAX(ul_x, g_gdp.__clip.xh),  g_gdp.__clip.xl);
+            lr_x = MIN(MAX(lr_x, g_gdp.__clip.xh),  g_gdp.__clip.xl);
+            ul_y = MIN(MAX(ul_y, g_gdp.__clip.yh),  g_gdp.__clip.yl);
+            lr_y = MIN(MAX(lr_y, g_gdp.__clip.yh),  g_gdp.__clip.yl);
             zi_width_in_dwords = rdp.ci_width >> 1;
             ul_x >>= 1;
             lr_x >>= 1;
@@ -1752,7 +1752,7 @@ static void rdp_setcolorimage(uint32_t w0, uint32_t w1)
    if (g_gdp.zb_address == rdp.cimg)
    {
       rdp.zi_width = rdp.ci_width;
-      // int zi_height = min((int)rdp.zi_width*3/4, (int)rdp.vi_height);
+      // int zi_height = MIN((int)rdp.zi_width*3/4, (int)rdp.vi_height);
       // rdp.zi_words = rdp.zi_width * zi_height;
    }
    rdp.ci_end = rdp.cimg + ((rdp.ci_width*rdp.ci_height) << (g_gdp.fb_size-1));
@@ -1917,10 +1917,10 @@ EXPORT void CALL FBWrite(uint32_t addr, uint32_t size)
   shift_l      = (a-rdp.cimg) >> 1;
   shift_r      = shift_l+2;
 
-  d_ul_x       = min(d_ul_x, shift_l%rdp.ci_width);
-  d_ul_y       = min(d_ul_y, shift_l/rdp.ci_width);
-  d_lr_x       = max(d_lr_x, shift_r%rdp.ci_width);
-  d_lr_y       = max(d_lr_y, shift_r/rdp.ci_width);
+  d_ul_x       = MIN(d_ul_x, shift_l%rdp.ci_width);
+  d_ul_y       = MIN(d_ul_y, shift_l/rdp.ci_width);
+  d_lr_x       = MAX(d_lr_x, shift_r%rdp.ci_width);
+  d_lr_y       = MAX(d_lr_y, shift_r/rdp.ci_width);
 }
 
 
@@ -2753,7 +2753,7 @@ EXPORT void CALL ProcessRDPList(void)
 
    rdp.model_i = 0; // 0 matrices so far in stack
    //stack_size can be less then 32! Important for Silicon Vally. Thanks Orkin!
-   rdp.model_stack_size = min(32, (*(uint32_t*)(gfx_info.DMEM+0x0FE4))>>6);
+   rdp.model_stack_size = MIN(32, (*(uint32_t*)(gfx_info.DMEM+0x0FE4))>>6);
    if (rdp.model_stack_size == 0)
       rdp.model_stack_size = 32;
    rdp.fb_drawn = rdp.fb_drawn_front = false;

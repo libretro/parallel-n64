@@ -140,12 +140,12 @@ static void DrawDepthImage (const DRAWIMAGE *d)
    scale_y_dst = rdp.scale_y;
    scale_x_src = 1.0f/rdp.scale_x;
    scale_y_src = 1.0f/rdp.scale_y;
-   src_width = d->imageW;
-   src_height = d->imageH;
-   dst_width = min((int)(src_width*scale_x_dst), (int)settings.scr_res_x);
-   dst_height = min((int)(src_height*scale_y_dst), (int)settings.scr_res_y);
-   src = (uint16_t*)(gfx_info.RDRAM+d->imagePtr);
-   dst = (uint16_t*)malloc(dst_width * dst_height * sizeof(uint16_t));
+   src_width   = d->imageW;
+   src_height  = d->imageH;
+   dst_width   = MIN((int)(src_width*scale_x_dst), (int)settings.scr_res_x);
+   dst_height  = MIN((int)(src_height*scale_y_dst), (int)settings.scr_res_y);
+   src         = (uint16_t*)(gfx_info.RDRAM+d->imagePtr);
+   dst         = (uint16_t*)malloc(dst_width * dst_height * sizeof(uint16_t));
 
    for (y = 0; y < dst_height; y++)
    {
@@ -344,8 +344,8 @@ static void DrawImage (DRAWIMAGE *d)
       {
          minx = rdp.scissor.ul_x;
          miny = rdp.scissor.ul_y;
-         maxx = min(rdp.scissor.lr_x, (uint32_t)((d->frameX+d->imageW/d->scaleX+0.5f)*rdp.scale_x));
-         maxy = min(rdp.scissor.lr_y, (uint32_t)((d->frameY+d->imageH/d->scaleY+0.5f)*rdp.scale_y));
+         maxx = MIN(rdp.scissor.lr_x, (uint32_t)((d->frameX+d->imageW/d->scaleX+0.5f)*rdp.scale_x));
+         maxy = MIN(rdp.scissor.lr_y, (uint32_t)((d->frameY+d->imageH/d->scaleY+0.5f)*rdp.scale_y));
       }
       grClipWindow(minx, miny, maxx, maxy);
       g_gdp.flags |= UPDATE_SCISSOR;
@@ -382,7 +382,7 @@ static void DrawImage (DRAWIMAGE *d)
       int cur_u = min_256_u + 1;
 
       // calculate intersection with this point
-      int nlr_v = min (min (cur_wrap_v*d->imageH, (cur_v<<y_shift)), lr_v);
+      int nlr_v = MIN (MIN (cur_wrap_v*d->imageH, (cur_v<<y_shift)), lr_v);
       nlr_y = my * nlr_v + by;
 
       nul_u = ul_u;
@@ -395,7 +395,7 @@ static void DrawImage (DRAWIMAGE *d)
       while (1)
       {
          // calculate intersection with this point
-         nlr_u = min (min (cur_wrap_u * d->imageW, (cur_u<<x_shift)), lr_u);
+         nlr_u = MIN (MIN (cur_wrap_u * d->imageW, (cur_u<<x_shift)), lr_u);
          nlr_x = mx * nlr_u + bx;
 
          // ** Load the texture, constant portions have been set above
@@ -585,11 +585,11 @@ static void draw_split_triangle(VERTEX **vtx)
 
   vtx[0]->not_zclipped = vtx[1]->not_zclipped = vtx[2]->not_zclipped = 1;
 
-  min_256 = min((int)vtx[0]->u[0],(int)vtx[1]->u[0]); // bah, don't put two mins on one line
-  min_256 = min(min_256,(int)vtx[2]->u[0]) >> 8;  // or it will be calculated twice
+  min_256 = MIN((int)vtx[0]->u[0],(int)vtx[1]->u[0]); // bah, don't put two mins on one line
+  min_256 = MIN(min_256,(int)vtx[2]->u[0]) >> 8;  // or it will be calculated twice
 
-  max_256 = max((int)vtx[0]->u[0],(int)vtx[1]->u[0]); // not like it makes much difference
-  max_256 = max(max_256,(int)vtx[2]->u[0]) >> 8;  // anyway :P
+  max_256 = MAX((int)vtx[0]->u[0],(int)vtx[1]->u[0]); // not like it makes much difference
+  max_256 = MAX(max_256,(int)vtx[2]->u[0]) >> 8;  // anyway :P
 
   for (cur_256=min_256; cur_256<=max_256; cur_256++)
   {

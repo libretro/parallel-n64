@@ -226,7 +226,7 @@ static void DrawRE2Video256(FB_TO_SCREEN_INFO *fb_info)
    t_info.largeLodLog2 = GR_LOD_LOG2_256;
    t_info.aspectRatioLog2 = GR_ASPECT_LOG2_1x1;
 
-   fb_info->height = min(256, fb_info->height);
+   fb_info->height = MIN(256, fb_info->height);
 
    for (h = 0; h < fb_info->height; h++)
    {
