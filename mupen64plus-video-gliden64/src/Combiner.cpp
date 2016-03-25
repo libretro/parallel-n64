@@ -337,10 +337,13 @@ void getStorageFileName(wchar_t * _fileName)
 	wchar_t strShaderFolderPath[PLUGIN_PATH_SIZE];
 	swprintf(strShaderFolderPath, PLUGIN_PATH_SIZE, L"%ls/%ls", strCacheFolderPath, SHADER_STORAGE_FOLDER_NAME);
 	wchar_t * pPath = strShaderFolderPath;
+   /* TODO/FIXME */
+#if 0
 	if (!osal_path_existsW(strShaderFolderPath) || !osal_is_directory(strShaderFolderPath)) {
 		if (osal_mkdirp(strShaderFolderPath) != 0)
 			pPath = strCacheFolderPath;
 	}
+#endif
 	swprintf(_fileName, PLUGIN_PATH_SIZE, L"%ls/GLideN64.%08lx.shaders", pPath, std::hash<std::string>()(__RSP.romname));
 }
 

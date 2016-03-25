@@ -16,6 +16,8 @@
 #include "Debug.h"
 #include "PostProcessor.h"
 
+#include "m64p_plugin.h"
+
 using namespace std;
 
 #ifndef HAVE_OPENGLES2
@@ -201,7 +203,7 @@ void FrameBuffer::init(u32 _address, u32 _endAddress, u16 _format, u16 _size, u1
 	}
 	m_fillcolor = 0;
 	m_cfb = _cfb;
-	m_needHeightCorrection = _width != VI.width && _width != *REG.VI_WIDTH;
+	m_needHeightCorrection = _width != VI.width && _width != *gfx_info.VI_WIDTH_REG;
 	m_cleared = false;
 	m_fingerprint = false;
 
@@ -416,7 +418,7 @@ void FrameBufferList::correctHeight()
 void FrameBufferList::clearBuffersChanged()
 {
 	gDP.colorImage.changed = FALSE;
-	FrameBuffer * pBuffer = frameBufferList().findBuffer(*REG.VI_ORIGIN);
+	FrameBuffer * pBuffer = frameBufferList().findBuffer(*gfx_info.VI_ORIGIN_REG);
 	if (pBuffer != NULL)
 		pBuffer->m_changed = false;
 }
@@ -657,7 +659,7 @@ void FrameBufferList::renderBuffer(u32 _address)
 {
 	static s32 vStartPrev = 0;
 
-	if (VI.width == 0 || *REG.VI_WIDTH == 0 || *REG.VI_H_START == 0) // H width is zero. Don't draw
+	if (VI.width == 0 || *gfx_info.VI_WIDTH_REG == 0 || *gfx_info.VI_H_START_REG == 0) // H width is zero. Don't draw
 		return;
 
 	FrameBuffer *pBuffer = findBuffer(_address);
@@ -671,13 +673,13 @@ void FrameBufferList::renderBuffer(u32 _address)
 	GLint srcPartHeight = 0;
 	GLint dstPartHeight = 0;
 
-	const f32 yScale = _FIXED2FLOAT(_SHIFTR(*REG.VI_Y_SCALE, 0, 12), 10);
-	s32 vEnd = _SHIFTR(*REG.VI_V_START, 0, 10);
-	s32 vStart = _SHIFTR(*REG.VI_V_START, 16, 10);
-	const s32 hEnd = _SHIFTR(*REG.VI_H_START, 0, 10);
-	const s32 hStart = _SHIFTR(*REG.VI_H_START, 16, 10);
-	const s32 vSync = (*REG.VI_V_SYNC) & 0x03FF;
-	const bool interlaced = (*REG.VI_STATUS & 0x40) != 0;
+	const f32 yScale = _FIXED2FLOAT(_SHIFTR(*gfx_info.VI_Y_SCALE_REG, 0, 12), 10);
+	s32 vEnd = _SHIFTR(*gfx_info.VI_V_START_REG, 0, 10);
+	s32 vStart = _SHIFTR(*gfx_info.VI_V_START_REG, 16, 10);
+	const s32 hEnd = _SHIFTR(*gfx_info.VI_H_START_REG, 0, 10);
+	const s32 hStart = _SHIFTR(*gfx_info.VI_H_START_REG, 16, 10);
+	const s32 vSync = (*gfx_info.VI_V_SYNC_REG) & 0x03FF;
+	const bool interlaced = (*gfx_info.VI_STATUS_REG & 0x40) != 0;
 	const bool isPAL = vSync > 550;
 	const s32 vShift = (isPAL ? 47 : 37);
 	dstY0 = vStart - vShift;
@@ -694,7 +696,7 @@ void FrameBufferList::renderBuffer(u32 _address)
 		isLowerField = vStart > vStartPrev;
 	vStartPrev = vStart;
 
-	srcY0 = ((_address - pBuffer->m_startAddress) << 1 >> pBuffer->m_size) / (*REG.VI_WIDTH);
+	srcY0 = ((_address - pBuffer->m_startAddress) << 1 >> pBuffer->m_size) / (*gfx_info.VI_WIDTH_REG);
 	if (isLowerField) {
 		if (srcY0 > 0)
 			--srcY0;
@@ -715,7 +717,7 @@ void FrameBufferList::renderBuffer(u32 _address)
 		srcY1 = srcY0 + VI.real_height;
 	}
 
-	const f32 scaleX = _FIXED2FLOAT(_SHIFTR(*REG.VI_X_SCALE, 0, 12), 10);
+	const f32 scaleX = _FIXED2FLOAT(_SHIFTR(*gfx_info.VI_X_SCALE_REG, 0, 12), 10);
 	const s32 h0 = (isPAL ? 128 : 108);
 	const s32 hx0 = max(0, hStart - h0);
 	const s32 hx1 = max(0, h0 + 640 - hEnd);
@@ -770,8 +772,8 @@ void FrameBufferList::renderBuffer(u32 _address)
 	);
 
 	if (dstPartHeight > 0) {
-		const u32 size = *REG.VI_STATUS & 3;
-		pBuffer = findBuffer(_address + (((*REG.VI_WIDTH)*VI.height)<<size>>1));
+		const u32 size = *gfx_info.VI_STATUS_REG & 3;
+		pBuffer = findBuffer(_address + (((*gfx_info.VI_WIDTH_REG)*VI.height)<<size>>1));
 		if (pBuffer != NULL) {
 			srcY0 = 0;
 			srcY1 = srcPartHeight;
@@ -796,7 +798,7 @@ void FrameBufferList::renderBuffer(u32 _address)
 
 void FrameBufferList::renderBuffer(u32 _address)
 {
-	if (VI.width == 0 || *REG.VI_WIDTH == 0 || *REG.VI_H_START == 0) // H width is zero. Don't draw
+	if (VI.width == 0 || *gfx_info.VI_WIDTH_REG == 0 || *gfx_info.VI_H_START_REG == 0) // H width is zero. Don't draw
 		return;
 
 	FrameBuffer *pBuffer = findBuffer(_address);
@@ -1402,7 +1404,7 @@ void RDRAMtoFrameBuffer::CopyFromRDRAM( u32 _address, bool _bUseAlpha)
 		}
 	}
 #ifndef HAVE_OPENGLES2
-	glUnmapBuffer(GL_PIXEL_UNPACK_BUFFER); // release the mapped buffer
+	glUnmapBuffer(GL_PIXEL_UNPACK_BUFFER); /* release the mapped buffer */
 #endif
 	if (empty == 0)
 		return;

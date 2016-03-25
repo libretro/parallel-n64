@@ -26,14 +26,6 @@ extern "C" {
 /* Plugin types */
 #define PLUGIN_TYPE_GFX				2
 
-#ifdef OS_WINDOWS
-  #define EXPORT	__declspec(dllexport)
-  #define CALL		__cdecl
-#else
-  #define EXPORT 	__attribute__((visibility("default")))
-  #define CALL          _cdecl
-#endif
-
 /***** Structures *****/
 typedef struct {
 	WORD Version;        /* Set to 0x0103 */
@@ -96,7 +88,7 @@ typedef struct {
   input:    pointer to the directory to save the file to
   output:   none
 *******************************************************************/ 
-EXPORT void CALL CaptureScreen ( char * Directory );
+ void CaptureScreen ( char * Directory );
 
 /******************************************************************
   Function: ChangeWindow
@@ -106,7 +98,7 @@ EXPORT void CALL CaptureScreen ( char * Directory );
   input:    none
   output:   none
 *******************************************************************/ 
-EXPORT void CALL ChangeWindow (void);
+ void ChangeWindow (void);
 
 /******************************************************************
   Function: CloseDLL
@@ -115,7 +107,7 @@ EXPORT void CALL ChangeWindow (void);
   input:    none
   output:   none
 *******************************************************************/ 
-EXPORT void CALL CloseDLL (void);
+ void CloseDLL (void);
 
 /******************************************************************
   Function: DllAbout
@@ -124,7 +116,7 @@ EXPORT void CALL CloseDLL (void);
   input:    a handle to the window that calls this function
   output:   none
 *******************************************************************/ 
-EXPORT void CALL DllAbout ( HWND hParent );
+ void DllAbout ( HWND hParent );
 
 /******************************************************************
   Function: DllConfig
@@ -133,7 +125,7 @@ EXPORT void CALL DllAbout ( HWND hParent );
   input:    a handle to the window that calls this function
   output:   none
 *******************************************************************/ 
-EXPORT void CALL DllConfig ( HWND hParent );
+ void DllConfig ( HWND hParent );
 
 /******************************************************************
   Function: DllTest
@@ -142,7 +134,7 @@ EXPORT void CALL DllConfig ( HWND hParent );
   input:    a handle to the window that calls this function
   output:   none
 *******************************************************************/ 
-EXPORT void CALL DllTest ( HWND hParent );
+ void DllTest ( HWND hParent );
 
 /******************************************************************
   Function: DrawScreen
@@ -152,7 +144,7 @@ EXPORT void CALL DllTest ( HWND hParent );
   input:    none
   output:   none
 *******************************************************************/ 
-EXPORT void CALL DrawScreen (void);
+ void DrawScreen (void);
 
 /******************************************************************
   Function: GetDllInfo
@@ -162,7 +154,7 @@ EXPORT void CALL DrawScreen (void);
             filled by the function. (see def above)
   output:   none
 *******************************************************************/ 
-EXPORT void CALL GetDllInfo ( PLUGIN_INFO * PluginInfo );
+ void GetDllInfo ( PLUGIN_INFO * PluginInfo );
 
 /******************************************************************
   Function: InitiateGFX
@@ -179,7 +171,7 @@ EXPORT void CALL GetDllInfo ( PLUGIN_INFO * PluginInfo );
   and then call the function CheckInterrupts to tell the emulator
   that there is a waiting interrupt.
 *******************************************************************/ 
-EXPORT BOOL CALL InitiateGFX (GFX_INFO Gfx_Info);
+ BOOL InitiateGFX (GFX_INFO Gfx_Info);
 
 /******************************************************************
   Function: MoveScreen
@@ -192,7 +184,7 @@ EXPORT BOOL CALL InitiateGFX (GFX_INFO Gfx_Info);
 			client area of the window. 
   output:   none
 *******************************************************************/ 
-EXPORT void CALL MoveScreen (int xpos, int ypos);
+ void MoveScreen (int xpos, int ypos);
 
 /******************************************************************
   Function: ProcessDList
@@ -201,7 +193,7 @@ EXPORT void CALL MoveScreen (int xpos, int ypos);
   input:    none
   output:   none
 *******************************************************************/ 
-EXPORT void CALL ProcessDList(void);
+ void ProcessDList(void);
 
 /******************************************************************
   Function: ProcessRDPList
@@ -210,7 +202,7 @@ EXPORT void CALL ProcessDList(void);
   input:    none
   output:   none
 *******************************************************************/ 
-EXPORT void CALL ProcessRDPList(void);
+ void ProcessRDPList(void);
 
 /******************************************************************
   Function: RomClosed
@@ -218,7 +210,7 @@ EXPORT void CALL ProcessRDPList(void);
   input:    none
   output:   none
 *******************************************************************/ 
-EXPORT void CALL RomClosed (void);
+void RomClosed (void);
 
 /******************************************************************
   Function: RomOpen
@@ -227,7 +219,7 @@ EXPORT void CALL RomClosed (void);
   input:    none
   output:   none
 *******************************************************************/ 
-EXPORT void CALL RomOpen (void);
+ void RomOpen (void);
 
 /******************************************************************
   Function: ShowCFB
@@ -237,7 +229,7 @@ EXPORT void CALL RomOpen (void);
   input:    none
   output:   none
 *******************************************************************/ 
-EXPORT void CALL ShowCFB (void);
+void ShowCFB (void);
 
 /******************************************************************
   Function: UpdateScreen
@@ -247,7 +239,7 @@ EXPORT void CALL ShowCFB (void);
   input:    none
   output:   none
 *******************************************************************/ 
-EXPORT void CALL UpdateScreen (void);
+void UpdateScreen (void);
 
 /******************************************************************
   Function: ViStatusChanged
@@ -256,7 +248,7 @@ EXPORT void CALL UpdateScreen (void);
   input:    none
   output:   none
 *******************************************************************/ 
-EXPORT void CALL ViStatusChanged (void);
+void ViStatusChanged (void);
 
 /******************************************************************
   Function: ViWidthChanged
@@ -265,7 +257,7 @@ EXPORT void CALL ViStatusChanged (void);
   input:    none
   output:   none
 *******************************************************************/
-EXPORT void CALL ViWidthChanged (void);
+void ViWidthChanged (void);
 
 /******************************************************************
   Function: ReadScreen
@@ -275,7 +267,7 @@ EXPORT void CALL ViWidthChanged (void);
             width - width of image
             height - height of image
  ******************************************************************/
-EXPORT void CALL ReadScreen (void **dest, long *width, long *height);
+void ReadScreen (void **dest, long *width, long *height);
 
 #if defined(__cplusplus)
 }

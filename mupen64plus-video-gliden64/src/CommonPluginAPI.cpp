@@ -8,52 +8,52 @@
 
 extern "C" {
 
-EXPORT BOOL CALL InitiateGFX (GFX_INFO Gfx_Info)
+BOOL gln64InitiateGFX (GFX_INFO Gfx_Info)
 {
 	return api().InitiateGFX(Gfx_Info);
 }
 
-EXPORT void CALL MoveScreen (int xpos, int ypos)
+void gln64MoveScreen (int xpos, int ypos)
 {
 	api().MoveScreen(xpos, ypos);
 }
 
-EXPORT void CALL ProcessDList(void)
+void gln64ProcessDList(void)
 {
 	api().ProcessDList();
 }
 
-EXPORT void CALL ProcessRDPList(void)
+void gln64ProcessRDPList(void)
 {
 	api().ProcessRDPList();
 }
 
-EXPORT void CALL RomClosed (void)
+void gln64RomClosed (void)
 {
 	api().RomClosed();
 }
 
-EXPORT void CALL ShowCFB (void)
+void gln64ShowCFB (void)
 {
 	api().ShowCFB();
 }
 
-EXPORT void CALL UpdateScreen (void)
+void gln64UpdateScreen (void)
 {
 	api().UpdateScreen();
 }
 
-EXPORT void CALL ViStatusChanged (void)
+void gln64ViStatusChanged (void)
 {
 	api().ViStatusChanged();
 }
 
-EXPORT void CALL ViWidthChanged (void)
+void gln64ViWidthChanged (void)
 {
 	api().ViWidthChanged();
 }
 
-EXPORT void CALL ChangeWindow(void)
+void gln64ChangeWindow(void)
 {
 	api().ChangeWindow();
 }

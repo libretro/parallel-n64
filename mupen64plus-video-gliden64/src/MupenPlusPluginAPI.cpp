@@ -1,15 +1,21 @@
+#include <stdint.h>
+#include <string.h>
+
 #include "PluginAPI.h"
 #include "Types.h"
 
+#include "m64p_types.h"
+#include "m64p_plugin.h"
+
 extern "C" {
 
-EXPORT int CALL RomOpen(void)
+EXPORT int CALL gln64RomOpen(void)
 {
 	api().RomOpen();
 	return 1;
 }
 
-EXPORT m64p_error CALL PluginGetVersion(
+EXPORT m64p_error CALL gln64PluginGetVersion(
 	m64p_plugin_type * _PluginType,
 	int * _PluginVersion,
 	int * _APIVersion,
@@ -20,7 +26,7 @@ EXPORT m64p_error CALL PluginGetVersion(
 	return api().PluginGetVersion(_PluginType, _PluginVersion, _APIVersion, _PluginNamePtr, _Capabilities);
 }
 
-EXPORT m64p_error CALL PluginStartup(
+EXPORT m64p_error CALL gln64PluginStartup(
 	m64p_dynlib_handle CoreLibHandle,
 	void *Context,
 	void (*DebugCallback)(void *, int, const char *)
@@ -29,37 +35,37 @@ EXPORT m64p_error CALL PluginStartup(
 	return api().PluginStartup(CoreLibHandle);
 }
 
-EXPORT m64p_error CALL PluginShutdown(void)
+EXPORT m64p_error CALL gln64PluginShutdown(void)
 {
 	return api().PluginShutdown();
 }
 
-EXPORT void CALL ReadScreen2(void *dest, int *width, int *height, int front)
+EXPORT void CALL gln64ReadScreen2(void *dest, int *width, int *height, int front)
 {
 	api().ReadScreen2(dest, width, height, front);
 }
 
-EXPORT void CALL SetRenderingCallback(void (*callback)(int))
+EXPORT void CALL gln64SetRenderingCallback(void (*callback)(int))
 {
 	api().SetRenderingCallback(callback);
 }
 
-EXPORT void CALL FBRead(u32 addr)
+EXPORT void CALL gln64FBRead(u32 addr)
 {
 	api().FBRead(addr);
 }
 
-EXPORT void CALL FBWrite(u32 addr, u32 size)
+EXPORT void CALL gln64FBWrite(u32 addr, u32 size)
 {
 	api().FBWrite(addr, size);
 }
 
-EXPORT void CALL FBGetFrameBufferInfo(void *p)
+EXPORT void CALL gln64FBGetFrameBufferInfo(void *p)
 {
 	api().FBGetFrameBufferInfo(p);
 }
 
-EXPORT void CALL ResizeVideoOutput(int Width, int Height)
+EXPORT void CALL gln64ResizeVideoOutput(int Width, int Height)
 {
 	api().ResizeVideoOutput(Width, Height);
 }
