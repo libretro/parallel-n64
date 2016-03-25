@@ -35,9 +35,15 @@
 
 /* that's where the dynarec will restart when going back from a C function */
 #if defined(__x86_64__)
+#ifdef _MSC_VER
 uint64_t *return_address;
 int64_t save_rsp = 0;
 int64_t save_rip = 0;
+ #else
+static uint64_t *return_address;
+static int64_t save_rsp = 0;
+static int64_t save_rip = 0;
+#endif
 #else
 #ifdef __GNUC__
 # define ASM_NAME(name) __asm(name)
