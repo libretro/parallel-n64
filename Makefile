@@ -371,6 +371,10 @@ else
 	CFLAGS   += -std=gnu89 -MMD
 ifeq ($(GLIDEN64), 1)
 	CXXFLAGS += -std=c++0x -MMD
+ifneq ($(GLES), 1)
+	CFLAGS   += -DCORE
+	CXXFLAGS += -DCORE
+endif
 else
 	CXXFLAGS += -std=gnu++98 -MMD
 endif
