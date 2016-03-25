@@ -20,9 +20,14 @@ ifeq ($(HAVE_OPENGL),0)
 else
 	HAVE_GLN64   = 1
 	HAVE_GLIDE64 = 1
-	HAVE_GLIDEN64 = 0
-	HAVE_RICE     = 1
+ifeq ($(GLIDEN64), 1)
+	HAVE_GLIDEN64 = 1
+	HAVE_GLN64    = 0
+else
 	HAVE_GLN64    = 1
+	HAVE_GLIDEN64 = 0
+endif
+	HAVE_RICE     = 1
 
 INCFLAGS += -I$(VIDEODIR_GLIDE)/Glitch64/inc
 endif
