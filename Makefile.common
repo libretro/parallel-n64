@@ -263,6 +263,7 @@ SOURCES_CXX   += \
 					 $(VIDEODIR_GLIDEN64)/src/VI.cpp \
 					 $(VIDEODIR_GLIDEN64)/src/ShaderUtils.cpp \
 					 $(VIDEODIR_GLIDEN64)/src/OGL3X/GLSLCombiner_ogl3x.cpp \
+					 $(VIDEODIR_GLIDEN64)/src/OGL3X/UniformBlock.cpp \
 					 $(VIDEODIR_GLIDEN64)/src/CommonPluginAPI.cpp \
 					 $(VIDEODIR_GLIDEN64)/src/mupenplus/OpenGL_mupenplus.cpp \
 					 $(VIDEODIR_GLIDEN64)/src/MupenPlusPluginAPI.cpp

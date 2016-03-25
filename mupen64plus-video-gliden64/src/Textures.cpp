@@ -402,14 +402,14 @@ inline u32 CalculateDXT(u32 txl2words)
 	else return (2048 + txl2words - 1) / txl2words;
 }
 
-u32 sizeBytes[4] = {0, 1, 2, 4};
+static u32 glN64sizeBytes[4] = {0, 1, 2, 4};
 
 inline u32 Txl2Words(u32 width, u32 size)
 {
 	if (size == 0)
 		return max(1U, width / 16);
 	else
-		return max(1U, width*sizeBytes[size] / 8);
+		return max(1U, width * glN64sizeBytes[size] / 8);
 }
 
 inline u32 ReverseDXT(u32 val, u32 lrs, u32 width, u32 size)
