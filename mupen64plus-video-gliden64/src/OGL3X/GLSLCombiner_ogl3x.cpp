@@ -204,9 +204,7 @@ GLuint _createShader(GLenum _type, const char * _strShader)
 void InitShaderCombiner()
 {
 	glActiveTexture(GL_TEXTURE0);
-	glEnable(GL_TEXTURE_2D);
 	glActiveTexture(GL_TEXTURE1);
-	glEnable(GL_TEXTURE_2D);
 
 	g_vertex_shader_object = _createShader(GL_VERTEX_SHADER, vertex_shader);
 	g_vertex_shader_object_notex = _createShader(GL_VERTEX_SHADER, vertex_shader_notex);
@@ -687,7 +685,7 @@ void ShaderCombiner::updateFBInfo(bool _bForce) {
 }
 
 void ShaderCombiner::updateDepthInfo(bool _bForce) {
-	if (RSP.bLLE)
+	if (__RSP.bLLE)
 		m_uniforms.uDepthScale.set(0.5f, 0.5f, _bForce);
 	else
 		m_uniforms.uDepthScale.set(gSP.viewport.vscale[2], gSP.viewport.vtrans[2], _bForce);
