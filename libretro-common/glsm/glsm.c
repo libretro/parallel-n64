@@ -20,6 +20,8 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+#include <stdio.h>
+
 #include <glsym/glsym.h>
 #include <glsm/glsm.h>
 
@@ -780,6 +782,80 @@ void rglProgramBinary( 	GLuint program,
 {
 #if defined(CORE) || defined(HAVE_OPENGLES3) && defined(HAVE_OPENGLES31)
    glProgramBinary(program, binaryFormat, binary, length);
+#else
+   printf("WARNING! Not implemented.\n");
+#endif
+}
+
+void rglGetActiveUniformBlockiv( 	GLuint program,
+  	GLuint uniformBlockIndex,
+  	GLenum pname,
+  	GLint *params)
+{
+#if defined(CORE) || defined(HAVE_OPENGLES3) && defined(HAVE_OPENGLES31)
+   glGetActiveUniformBlockiv(program, uniformBlockIndex,
+         pname, params);
+#else
+   printf("WARNING! Not implemented.\n");
+#endif
+}
+
+void rglGetActiveUniformsiv( 	GLuint program,
+  	GLsizei uniformCount,
+  	const GLuint *uniformIndices,
+  	GLenum pname,
+  	GLint *params)
+{
+#if defined(CORE) || defined(HAVE_OPENGLES3) && defined(HAVE_OPENGLES31)
+   glGetActiveUniformsiv(program, uniformCount,
+         uniformIndices, pname, params);
+#else
+   printf("WARNING! Not implemented.\n");
+#endif
+}
+
+void rglGetUniformIndices( 	GLuint program,
+  	GLsizei uniformCount,
+  	const GLchar **uniformNames,
+  	GLuint *uniformIndices)
+{
+#if defined(CORE) || defined(HAVE_OPENGLES3) && defined(HAVE_OPENGLES31)
+   glGetUniformIndices(program, uniformCount,
+         uniformNames, uniformIndices);
+#else
+   printf("WARNING! Not implemented.\n");
+#endif
+}
+
+void rglBindBufferBase( 	GLenum target,
+  	GLuint index,
+  	GLuint buffer)
+{
+#if defined(CORE) || defined(HAVE_OPENGLES3) && defined(HAVE_OPENGLES31)
+   glBindBufferBase(target, index, buffer);
+#else
+   printf("WARNING! Not implemented.\n");
+#endif
+}
+
+GLuint rglGetUniformBlockIndex( 	GLuint program,
+  	const GLchar *uniformBlockName)
+{
+#if defined(CORE) || defined(HAVE_OPENGLES3) && defined(HAVE_OPENGLES31)
+   return glGetUniformBlockIndex(program, uniformBlockName);
+#else
+   printf("WARNING! Not implemented.\n");
+   return 0;
+#endif
+}
+
+void rglUniformBlockBinding( 	GLuint program,
+  	GLuint uniformBlockIndex,
+  	GLuint uniformBlockBinding)
+{
+#if defined(CORE) || defined(HAVE_OPENGLES3) && defined(HAVE_OPENGLES31)
+   glUniformBlockBinding(program, uniformBlockIndex,
+         uniformBlockBinding);
 #else
    printf("WARNING! Not implemented.\n");
 #endif

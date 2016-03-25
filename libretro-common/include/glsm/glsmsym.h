@@ -122,7 +122,31 @@ extern "C" {
 #define glGetProgramBinary          rglGetProgramBinary
 #define glProgramParameteri         rglProgramParameteri
 #define glProgramBinary             rglProgramBinary
+#define glUniformBlockBinding       rglUniformBlockBinding
+#define glGetUniformBlockIndex      rglGetUniformBlockIndex
+#define glGetActiveUniformBlockiv   rglGetActiveUniformBlockiv
+#define glBindBufferBase            rglBindBufferBase 
+#define glGetUniformIndices         rglGetUniformIndices
+#define glGetActiveUniformsiv       rglGetActiveUniformsiv
 
+void rglGetActiveUniformsiv( 	GLuint program,
+  	GLsizei uniformCount,
+  	const GLuint *uniformIndices,
+  	GLenum pname,
+  	GLint *params);
+void rglGetUniformIndices( 	GLuint program,
+  	GLsizei uniformCount,
+  	const GLchar **uniformNames,
+  	GLuint *uniformIndices);
+void rglBindBufferBase( 	GLenum target,
+  	GLuint index,
+  	GLuint buffer);
+void rglGetActiveUniformBlockiv( 	GLuint program,
+  	GLuint uniformBlockIndex,
+  	GLenum pname,
+  	GLint *params);
+GLuint rglGetUniformBlockIndex( 	GLuint program,
+  	const GLchar *uniformBlockName);
 void rglReadBuffer(GLenum mode);
 void rglPixelStorei(GLenum pname, GLint param);
 void rglTexCoord2f(GLfloat s, GLfloat t);
@@ -258,6 +282,10 @@ void rglProgramBinary( 	GLuint program,
   	GLenum binaryFormat,
   	const void *binary,
   	GLsizei length);
+
+void rglUniformBlockBinding( 	GLuint program,
+  	GLuint uniformBlockIndex,
+  	GLuint uniformBlockBinding);
 
 #ifdef __cplusplus
 }
