@@ -725,6 +725,15 @@ GLboolean rglUnmapBuffer( 	GLenum target)
    return glUnmapBuffer(target);
 }
 
+void rglMemoryBarrier( 	GLbitfield barriers)
+{
+#if !defined(HAVE_OPENGLES) || defined(HAVE_OPENGLES) && defined(HAVE_OPENGLES31)
+   glMemoryBarrier(barriers);
+#else
+   printf("WARNING! Not implemented.\n");
+#endif
+}
+
 void rglBindImageTexture( 	GLuint unit,
   	GLuint texture,
   	GLint level,

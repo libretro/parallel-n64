@@ -4,7 +4,6 @@
 #include <time.h>       /* time_t, struct tm, difftime, time, mktime */
 
 #include "Types.h"
-#include "GLideN64.h"
 #include "OpenGL.h"
 #include "RDP.h"
 #include "RSP.h"
@@ -21,7 +20,6 @@
 #include "Config.h"
 #include "wst.h"
 #include "Log.h"
-#include "TextDrawer.h"
 #include "PluginAPI.h"
 #include "PostProcessor.h"
 
@@ -149,6 +147,8 @@ void OGLVideo::restart()
 {
 	m_bResizeWindow = true;
 }
+
+extern "C" int retro_return(int just_flipping);
 
 void OGLVideo::swapBuffers()
 {
@@ -1191,7 +1191,6 @@ void OGLRender::drawTexturedRect(const TexturedRectParams & _params)
 void OGLRender::drawText(const char *_pText, float x, float y)
 {
 	m_renderState = rsNone;
-	TextDrawer::get().renderText(_pText, x, y);
 }
 
 void OGLRender::clearDepthBuffer(u32 _uly, u32 _lry)
@@ -1389,7 +1388,6 @@ void OGLRender::_initData()
 	DepthBuffer_Init();
 	FrameBuffer_Init();
 	Combiner_Init();
-	TextDrawer::get().init();
 	TFH.init();
 	PostProcessor::get().init();
 	m_renderState = rsNone;
@@ -1410,7 +1408,6 @@ void OGLRender::_destroyData()
 		PostProcessor::get().destroy();
 	if (TFH.optionsChanged())
 		TFH.shutdown();
-	TextDrawer::get().destroy();
 	Combiner_Destroy();
 	FrameBuffer_Destroy();
 	DepthBuffer_Destroy();

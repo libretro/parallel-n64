@@ -118,6 +118,7 @@ extern "C" {
 #define glMapBufferRange            rglMapBufferRange
 #define glDrawBuffers               rglDrawBuffers
 #define glBindImageTexture          rglBindImageTexture
+#define glMemoryBarrier             rglMemoryBarrier
 
 void rglReadBuffer(GLenum mode);
 void rglPixelStorei(GLenum pname, GLint param);
@@ -241,6 +242,7 @@ void rglBindImageTexture( 	GLuint unit,
   	GLint layer,
   	GLenum access,
   	GLenum format);
+void rglMemoryBarrier( 	GLbitfield barriers);
 
 #ifdef __cplusplus
 }
