@@ -23,7 +23,7 @@ void RSP_ThreadProc(std::mutex * _pRspThreadMtx, std::mutex * _pPluginThreadMtx,
 	_pRspThreadMtx->lock();
 	RSP_Init();
 	GBI.init();
-	Config_LoadConfig();
+	//Config_LoadConfig();
 	video().start();
 	assert(!isGLError());
 
@@ -120,7 +120,7 @@ void PluginAPI::RomOpen()
 #else
 	RSP_Init();
 	GBI.init();
-	Config_LoadConfig();
+	//Config_LoadConfig();
 	video().start();
 #endif
 
