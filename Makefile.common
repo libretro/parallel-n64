@@ -254,10 +254,12 @@ SOURCES_CXX   += \
 					 $(VIDEODIR_GLIDEN64)/src/OpenGL.cpp \
 					 $(VIDEODIR_GLIDEN64)/src/RDP.cpp \
 					 $(VIDEODIR_GLIDEN64)/src/RSP.cpp \
+					 $(VIDEODIR_GLIDEN64)/src/Turbo3D.cpp \
 					 $(VIDEODIR_GLIDEN64)/src/Textures.cpp \
 					 $(VIDEODIR_GLIDEN64)/src/PostProcessor.cpp \
 					 $(VIDEODIR_GLIDEN64)/src/VI.cpp \
 					 $(VIDEODIR_GLIDEN64)/src/CommonPluginAPI.cpp \
+					 $(VIDEODIR_GLIDEN64)/src/mupenplus/OpenGL_mupenplus.cpp \
 					 $(VIDEODIR_GLIDEN64)/src/MupenPlusPluginAPI.cpp
 endif
 

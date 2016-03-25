@@ -53,21 +53,21 @@ void Turbo3D_ProcessRDP(u32 _cmds)
 {
 	u32 addr = RSP_SegmentToPhysical(_cmds) >> 2;
 	if (addr != 0) {
-		RSP.bLLE = true;
+		__RSP.bLLE = true;
 		u32 w0 = ((u32*)RDRAM)[addr++];
 		u32 w1 = ((u32*)RDRAM)[addr++];
-		RSP.cmd = _SHIFTR( w0, 24, 8 );
+		__RSP.cmd = _SHIFTR( w0, 24, 8 );
 		while (w0 + w1 != 0) {
-			GBI.cmd[RSP.cmd]( w0, w1 );
+			GBI.cmd[__RSP.cmd]( w0, w1 );
 			w0 = ((u32*)RDRAM)[addr++];
 			w1 = ((u32*)RDRAM)[addr++];
-			RSP.cmd = _SHIFTR( w0, 24, 8 );
-			if (RSP.cmd == 0xE4 || RSP.cmd == 0xE5) {
-				RDP.w2 = ((u32*)RDRAM)[addr++];
-				RDP.w3 = ((u32*)RDRAM)[addr++];
+			__RSP.cmd = _SHIFTR( w0, 24, 8 );
+			if (__RSP.cmd == 0xE4 || __RSP.cmd == 0xE5) {
+				__RDP.w2 = ((u32*)RDRAM)[addr++];
+				__RDP.w3 = ((u32*)RDRAM)[addr++];
 			}
 		}
-		RSP.bLLE = false;
+		__RSP.bLLE = false;
 	}
 }
 
@@ -133,19 +133,19 @@ void RunTurbo3D()
 {
 	u32 pstate;
 	do {
-		u32 addr = RSP.PC[RSP.PCi] >> 2;
+		u32 addr = __RSP.PC[__RSP.PCi] >> 2;
 		const u32 pgstate = ((u32*)RDRAM)[addr++];
 		pstate = ((u32*)RDRAM)[addr++];
 		const u32 pvtx = ((u32*)RDRAM)[addr++];
 		const u32 ptri = ((u32*)RDRAM)[addr];
 		if (pstate == 0) {
-			RSP.halt = 1;
+			__RSP.halt = 1;
 			break;
 		}
 		if (pgstate != 0)
 			Turbo3D_LoadGlobState(pgstate);
 		Turbo3D_LoadObject(pstate, pvtx, ptri);
 		// Go to the next instruction
-		RSP.PC[RSP.PCi] += 16;
+		__RSP.PC[__RSP.PCi] += 16;
 	} while (pstate != 0);
 }
