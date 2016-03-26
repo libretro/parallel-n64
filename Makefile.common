@@ -265,7 +265,7 @@ SOURCES_CXX   += \
 					 $(VIDEODIR_GLIDEN64)/src/mupenplus/OpenGL_mupenplus.cpp \
 					 $(VIDEODIR_GLIDEN64)/src/MupenPlusPluginAPI.cpp
 
-ifeq ($(GLIDEN64ES2),1)
+ifeq ($(GLIDEN64ES),1)
 SOURCES_CXX	 += $(VIDEODIR_GLIDEN64)/src/GLES2/GLSLCombiner_gles2.cpp \
 					 $(VIDEODIR_GLIDEN64)/src/GLES2/UniformSet.cpp
 else
