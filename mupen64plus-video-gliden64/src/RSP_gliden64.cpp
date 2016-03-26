@@ -22,8 +22,8 @@ void RSP_LoadMatrix( f32 mtx[4][4], u32 address )
 	f32 recip = 1.5258789e-05f;
 	struct _N64Matrix
 	{
-		SHORT integer[4][4];
-		WORD fraction[4][4];
+		int16_t integer[4][4];
+		uint16_t fraction[4][4];
 	} *n64Mat = (struct _N64Matrix *)&gfx_info.RDRAM[address];
 	int i, j;
 

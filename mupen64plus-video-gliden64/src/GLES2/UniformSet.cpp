@@ -1,9 +1,10 @@
+#include <string.h>
+
 #include "UniformSet.h"
 #include "../Config.h"
 #include "../Textures.h"
 
-#define LocateUniform2(A) \
-	location.A.loc = glGetUniformLocation(program, #A);
+#define LocateUniform2(A) location.A.loc = glGetUniformLocation(program, #A)
 
 void UniformSet::bindWithShaderCombiner(ShaderCombiner * _pCombiner)
 {

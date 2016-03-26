@@ -1,4 +1,6 @@
 #include <assert.h>
+#include <stdint.h>
+#include <string.h>
 #include <algorithm>
 #include "N64.h"
 #include "GBI.h"

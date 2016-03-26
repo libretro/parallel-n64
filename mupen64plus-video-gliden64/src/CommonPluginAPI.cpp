@@ -1,14 +1,10 @@
-#ifdef OS_WINDOWS
-# include <windows.h>
-#else
-# include "winlnxdefs.h"
-#endif // OS_WINDOWS
-
+#include <stdint.h>
+#include <boolean.h>
 #include "PluginAPI.h"
 
 extern "C" {
 
-BOOL gln64InitiateGFX (GFX_INFO Gfx_Info)
+bool gln64InitiateGFX (GFX_INFO Gfx_Info)
 {
 	return api().InitiateGFX(Gfx_Info);
 }

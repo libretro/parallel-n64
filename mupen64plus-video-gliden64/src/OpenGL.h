@@ -1,13 +1,9 @@
 #ifndef OPENGL_H
 #define OPENGL_H
 
-#include <vector>
+#include <stdint.h>
 
-#ifdef OS_WINDOWS
-#include <windows.h>
-#else
-#include "winlnxdefs.h"
-#endif
+#include <vector>
 
 #include <glsm/glsmsym.h>
 
@@ -43,10 +39,6 @@
 #else
 #define GET_PROGRAM_BINARY_EXTENSION "GL_ARB_get_program_binary"
 #endif
-
-#ifdef USE_SDL
-#include <SDL.h>
-#endif // USE_SDL
 
 #ifndef GL_EXT_texture_filter_anisotropic
 #define GL_TEXTURE_MAX_ANISOTROPY_EXT     0x84FE
