@@ -123,7 +123,7 @@ void RSP_ProcessDList(void)
 		}
 	}
 
-	if (config.frameBufferEmulation.copyDepthToRDRAM != Config::ctDisable)
+	if (config.frameBufferEmulation.copyDepthToRDRAM != gliden64_config::ctDisable)
 		FrameBuffer_CopyDepthBuffer(gDP.colorImage.address);
 
 	__RSP.busy = FALSE;

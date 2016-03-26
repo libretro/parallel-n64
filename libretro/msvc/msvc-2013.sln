@@ -9,6 +9,10 @@ Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Win32 = Debug|Win32
 		Debug|x64 = Debug|x64
+		GlideN64debug|Win32 = GlideN64debug|Win32
+		GlideN64debug|x64 = GlideN64debug|x64
+		GlideN64release|Win32 = GlideN64release|Win32
+		GlideN64release|x64 = GlideN64release|x64
 		Release|Win32 = Release|Win32
 		Release|x64 = Release|x64
 	EndGlobalSection
@@ -17,6 +21,14 @@ Global
 		{62F97835-3567-4EF3-ACDC-46F2CDECAF40}.Debug|Win32.Build.0 = Debug|Win32
 		{62F97835-3567-4EF3-ACDC-46F2CDECAF40}.Debug|x64.ActiveCfg = Debug|x64
 		{62F97835-3567-4EF3-ACDC-46F2CDECAF40}.Debug|x64.Build.0 = Debug|x64
+		{62F97835-3567-4EF3-ACDC-46F2CDECAF40}.GlideN64debug|Win32.ActiveCfg = GlideN64debug|Win32
+		{62F97835-3567-4EF3-ACDC-46F2CDECAF40}.GlideN64debug|Win32.Build.0 = GlideN64debug|Win32
+		{62F97835-3567-4EF3-ACDC-46F2CDECAF40}.GlideN64debug|x64.ActiveCfg = GlideN64debug|x64
+		{62F97835-3567-4EF3-ACDC-46F2CDECAF40}.GlideN64debug|x64.Build.0 = GlideN64debug|x64
+		{62F97835-3567-4EF3-ACDC-46F2CDECAF40}.GlideN64release|Win32.ActiveCfg = GlideN64release|Win32
+		{62F97835-3567-4EF3-ACDC-46F2CDECAF40}.GlideN64release|Win32.Build.0 = GlideN64release|Win32
+		{62F97835-3567-4EF3-ACDC-46F2CDECAF40}.GlideN64release|x64.ActiveCfg = GlideN64release|x64
+		{62F97835-3567-4EF3-ACDC-46F2CDECAF40}.GlideN64release|x64.Build.0 = GlideN64release|x64
 		{62F97835-3567-4EF3-ACDC-46F2CDECAF40}.Release|Win32.ActiveCfg = Release|Win32
 		{62F97835-3567-4EF3-ACDC-46F2CDECAF40}.Release|Win32.Build.0 = Release|Win32
 		{62F97835-3567-4EF3-ACDC-46F2CDECAF40}.Release|x64.ActiveCfg = Release|x64

@@ -39,7 +39,7 @@
 #include "Common.h"
 
 
-Config config;
+gln64Config config;
 
 typedef struct
 {

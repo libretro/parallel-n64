@@ -8,9 +8,9 @@
 #include "Config.h"
 #include "wst.h"
 
-Config config;
+gliden64_config config;
 
-void Config::resetToDefaults()
+void gliden64_config::resetToDefaults()
 {
 	version = CONFIG_VERSION_CURRENT;
 

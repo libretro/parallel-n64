@@ -233,17 +233,17 @@ SOURCES_C     += $(VIDEODIR_GLN64)/3DMath.c
 SOURCES_CXX   += \
 					 $(VIDEODIR_GLIDEN64)/src/mupenplus/CommonAPIImpl_mupenplus.cpp \
 					 $(VIDEODIR_GLIDEN64)/src/common/CommonAPIImpl_common.cpp \
-					 $(VIDEODIR_GLIDEN64)/src/FrameBuffer.cpp \
+					 $(VIDEODIR_GLIDEN64)/src/FrameBuffer_gliden64.cpp \
 					 $(VIDEODIR_GLIDEN64)/src/DepthBuffer.cpp \
 					 $(VIDEODIR_GLIDEN64)/src/TxFilterStub.cpp \
-					 $(VIDEODIR_GLIDEN64)/src/Combiner.cpp \
+					 $(VIDEODIR_GLIDEN64)/src/Combiner_gliden64.cpp \
 					 $(VIDEODIR_GLIDEN64)/src/F3DEX2CBFD.cpp \
 					 $(VIDEODIR_GLIDEN64)/src/F3DEX2.cpp \
 					 $(VIDEODIR_GLIDEN64)/src/gln64Config.cpp \
 					 $(VIDEODIR_GLIDEN64)/src/CRC.cpp \
 					 $(VIDEODIR_GLIDEN64)/src/F3D.cpp \
 					 $(VIDEODIR_GLIDEN64)/src/GBI.cpp \
-					 $(VIDEODIR_GLIDEN64)/src/gDP.cpp \
+					 $(VIDEODIR_GLIDEN64)/src/gDP_gliden64.cpp \
 					 $(VIDEODIR_GLIDEN64)/src/gSP.cpp \
 					 $(VIDEODIR_GLIDEN64)/src/N64.cpp \
 					 $(VIDEODIR_GLIDEN64)/src/F3DDKR.cpp \
@@ -259,7 +259,7 @@ SOURCES_CXX   += \
 					 $(VIDEODIR_GLIDEN64)/src/ZSort.cpp \
 					 $(VIDEODIR_GLIDEN64)/src/OpenGL.cpp \
 					 $(VIDEODIR_GLIDEN64)/src/RDP.cpp \
-					 $(VIDEODIR_GLIDEN64)/src/RSP.cpp \
+					 $(VIDEODIR_GLIDEN64)/src/RSP_gliden64.cpp \
 					 $(VIDEODIR_GLIDEN64)/src/Turbo3D.cpp \
 					 $(VIDEODIR_GLIDEN64)/src/Textures.cpp \
 					 $(VIDEODIR_GLIDEN64)/src/PostProcessor.cpp \
