@@ -5,9 +5,9 @@ SINGLE_THREAD=0
 WITH_CRC=brumme
 FORCE_GLES=0
 HAVE_OPENGL=1
-GLIDEN64=0
-GLIDEN64CORE=0
-GLIDEN64ES2=0
+GLIDEN64=0			# Turn this on to enable Gliden64
+GLIDEN64CORE=0		# Turn this on for core context
+GLIDEN64ES2=0		# Turn this on for GLES2 codepath
 
 DYNAFLAGS :=
 INCFLAGS  :=

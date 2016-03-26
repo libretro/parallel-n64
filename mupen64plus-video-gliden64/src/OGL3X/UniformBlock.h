@@ -1,6 +1,8 @@
 #ifndef UNIFORM_BLOCK_H
 #define UNIFORM_BLOCK_H
 
+#include <string.h>
+
 #include "../UniformCollection.h"
 
 class UniformBlock : public UniformCollection
