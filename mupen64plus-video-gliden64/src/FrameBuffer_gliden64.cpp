@@ -742,7 +742,6 @@ void FrameBufferList::renderBuffer(u32 _address)
 
 	render.updateScissor(pBuffer);
 	PostProcessor::get().doGammaCorrection(pBuffer);
-	PostProcessor::get().doBlur(pBuffer);
 	// glDisable(GL_SCISSOR_TEST) does not affect glBlitFramebuffer, at least on AMD
 	glScissor(0, 0, ogl.getScreenWidth(), ogl.getScreenHeight() + ogl.getHeightOffset());
 	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
@@ -808,7 +807,6 @@ void FrameBufferList::renderBuffer(u32 _address)
 	OGLVideo & ogl = video();
 	ogl.getRender().updateScissor(pBuffer);
 	PostProcessor::get().doGammaCorrection(pBuffer);
-	PostProcessor::get().doBlur(pBuffer);
 	ogl.getRender().dropRenderState();
 	gSP.changed = gDP.changed = 0;
 
