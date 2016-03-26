@@ -7,23 +7,27 @@
 
 #include <glsm/glsmsym.h>
 
-#ifdef HAVE_OPENGLES2
+#if defined(HAVE_OPENGLES2) || defined(GLIDEN64ES)
+
 #define GL_DRAW_FRAMEBUFFER GL_FRAMEBUFFER
 #define GL_READ_FRAMEBUFFER GL_FRAMEBUFFER
 #define GLESX
+
 #elif defined(HAVE_OPENGLES3)
+
 #define GLESX
 #define GL_UNIFORMBLOCK_SUPPORT
+
 #elif defined(HAVE_OPENGLES31)
+
 #define GLESX
 #define GL_IMAGE_TEXTURES_SUPPORT
 #define GL_MULTISAMPLING_SUPPORT
 #define GL_UNIFORMBLOCK_SUPPORT
+
 #else
-#if defined(__MACH__)
-#define GL_GLEXT_PROTOTYPES
-#elif defined(__linux__)
-#define GL_GLEXT_PROTOTYPES
+
+#if defined(__linux__)
 #define GL_IMAGE_TEXTURES_SUPPORT
 #define GL_MULTISAMPLING_SUPPORT
 #define GL_UNIFORMBLOCK_SUPPORT
@@ -31,8 +35,9 @@
 #define GL_IMAGE_TEXTURES_SUPPORT
 #define GL_MULTISAMPLING_SUPPORT
 #define GL_UNIFORMBLOCK_SUPPORT
-#endif // OS_MAC_OS_X
-#endif // GLES2
+#endif
+
+#endif
 
 #ifdef GLESX
 #define GET_PROGRAM_BINARY_EXTENSION "GL_OES_get_program_binary"

@@ -376,6 +376,10 @@ ifeq ($(GLIDEN64),1)
 else
 	CXXFLAGS += -std=gnu++98 -MMD
 endif
+ifeq ($(GLIDEN64ES),1)
+	CFLAGS   += -DGLIDEN64ES
+	CXXFLAGS += -DGLIDEN64ES
+endif
 ifeq ($(GLIDEN64CORE),1)
 	CFLAGS += -DCORE
 	CXXFLAGS += -DCORE

@@ -1314,26 +1314,26 @@ void FBOTextureFormats::init()
 
 void OGLRender::_initExtensions()
 {
-	LOG(LOG_VERBOSE, "OpenGL version string: %s\n", glGetString(GL_VERSION));
-	LOG(LOG_VERBOSE, "OpenGL vendor: %s\n", glGetString(GL_VENDOR));
+	printf("OpenGL version string: %s\n", glGetString(GL_VERSION));
+	printf("OpenGL vendor: %s\n", glGetString(GL_VENDOR));
 	const GLubyte * strRenderer = glGetString(GL_RENDERER);
 	if (strstr((const char*)strRenderer, "Adreno") != NULL)
 		m_oglRenderer = glrAdreno;
-	LOG(LOG_VERBOSE, "OpenGL renderer: %s\n", strRenderer);
+	printf("OpenGL renderer: %s\n", strRenderer);
 
 	fboFormats.init();
 
 #ifndef HAVE_OPENGLES2
 	GLint majorVersion = 0;
 	glGetIntegerv(GL_MAJOR_VERSION, &majorVersion);
-	LOG(LOG_VERBOSE, "OpenGL major version: %d\n", majorVersion);
+	printf("OpenGL major version: %d\n", majorVersion);
 	assert(majorVersion >= 3 && "Plugin requires GL version 3 or higher.");
 #endif
 
 #ifdef GL_IMAGE_TEXTURES_SUPPORT
 	GLint minorVersion = 0;
 	glGetIntegerv(GL_MINOR_VERSION, &minorVersion);
-	LOG(LOG_VERBOSE, "OpenGL minor version: %d\n", minorVersion);
+	printf("OpenGL minor version: %d\n", minorVersion);
 #ifndef GLESX
 	m_bImageTexture = (majorVersion >= 4) && (minorVersion >= 3) && (glBindImageTexture != NULL);
 #elif defined(HAVE_OPENGLES31)
@@ -1344,14 +1344,14 @@ void OGLRender::_initExtensions()
 #else
 	m_bImageTexture = false;
 #endif
-	LOG(LOG_VERBOSE, "ImageTexture support: %s\n", m_bImageTexture ? "yes" : "no");
+	printf("ImageTexture support: %s\n", m_bImageTexture ? "yes" : "no");
 
 	if (config.texture.maxAnisotropy != 0 && OGLVideo::isExtensionSupported("GL_EXT_texture_filter_anisotropic")) {
 		glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT, &config.texture.maxAnisotropyF);
 		config.texture.maxAnisotropyF = min(config.texture.maxAnisotropyF, (f32)config.texture.maxAnisotropy);
 	} else
 		config.texture.maxAnisotropyF = 0.0f;
-	LOG(LOG_VERBOSE, "Max Anisotropy: %f\n", config.texture.maxAnisotropyF);
+	printf("Max Anisotropy: %f\n", config.texture.maxAnisotropyF);
 }
 
 void OGLRender::_initStates()
