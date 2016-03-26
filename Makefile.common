@@ -12,23 +12,20 @@ VIDEODIR_GLIDEN64  = $(ROOT_DIR)/mupen64plus-video-gliden64
 DYNAREC_USED := 0
 
 ifeq ($(HAVE_OPENGL),0)
-	HAVE_GLN64    = 0
-	HAVE_GLIDE64  = 0
-	HAVE_GLIDEN64 = 0
-	HAVE_RICE     = 0
-	HAVE_GLN64    = 0
+	HAVE_GLN64    =0
+	HAVE_GLIDE64  =0
+	HAVE_GLIDEN64 =0
+	HAVE_RICE     =0
 else
-	HAVE_GLN64   = 1
 	HAVE_GLIDE64 = 1
-ifeq ($(GLIDEN64), 1)
-	HAVE_GLIDEN64 = 1
-	HAVE_GLN64    = 0
+ifeq ($(GLIDEN64),1)
+	HAVE_GLIDEN64 =1
+	HAVE_GLN64    =0
 else
-	HAVE_GLN64    = 1
-	HAVE_GLIDEN64 = 0
+	HAVE_GLN64    =1
+	HAVE_GLIDEN64 =0
 endif
 	HAVE_RICE     = 1
-
 INCFLAGS += -I$(VIDEODIR_GLIDE)/Glitch64/inc
 endif
 
@@ -160,7 +157,7 @@ ifeq ($(WITH_DYNAREC), $(filter $(WITH_DYNAREC), i386 i686 x86 x86_64 x64))
 						 $(CORE_DIR)/src/r4300/hacktarux_dynarec/regcache.c \
 						 $(CORE_DIR)/src/r4300/hacktarux_dynarec/rjump.c
 endif
-ifeq ($(DYNAREC_USED), 0)
+ifeq ($(DYNAREC_USED),0)
 	SOURCES_C += $(CORE_DIR)/src/r4300/empty_dynarec.c
 else
 	DYNAFLAGS += -DDYNAREC
@@ -171,7 +168,7 @@ endif
 
 # Rice
 
-ifeq ($(HAVE_RICE), 1)
+ifeq ($(HAVE_RICE),1)
 SOURCES_CXX += $(VIDEODIR_RICE)/Blender.cpp \
             $(VIDEODIR_RICE)/Combiner.cpp \
             $(VIDEODIR_RICE)/RiceConfig.cpp \
@@ -209,7 +206,7 @@ endif
 
 # Libretro
 
-ifeq ($(HAVE_OPENGL), 1)
+ifeq ($(HAVE_OPENGL),1)
 SOURCES_C += $(LIBRETRO_COMM_DIR)/glsm/glsm.c
 endif
 
@@ -228,7 +225,7 @@ else
    SOURCES_C += $(LIBRETRO_DIR)/libretro_crc.c
 endif
 
-ifeq ($(HAVE_GLIDEN64), 1)
+ifeq ($(HAVE_GLIDEN64),1)
 SOURCES_C     += $(VIDEODIR_GLN64)/3DMath.c
 SOURCES_CXX   += \
 					 $(VIDEODIR_GLIDEN64)/src/mupenplus/CommonAPIImpl_mupenplus.cpp \
@@ -268,7 +265,7 @@ SOURCES_CXX   += \
 					 $(VIDEODIR_GLIDEN64)/src/mupenplus/OpenGL_mupenplus.cpp \
 					 $(VIDEODIR_GLIDEN64)/src/MupenPlusPluginAPI.cpp
 
-ifeq ($(GLIDEN64ES2), 1)
+ifeq ($(GLIDEN64ES2),1)
 SOURCES_CXX	 += $(VIDEODIR_GLIDEN64)/src/GLES2/GLSLCombiner_gles2.cpp \
 					 $(VIDEODIR_GLIDEN64)/src/GLES2/UniformSet.cpp
 else
@@ -279,7 +276,7 @@ endif
 SOURCES_CXX +=  $(VIDEODIR_GLIDEN64)/src/CommonPluginAPI.cpp 
 endif
 
-ifeq ($(HAVE_GLN64), 1)
+ifeq ($(HAVE_GLN64),1)
 
 SOURCES_C += $(VIDEODIR_GLN64)/3DMath.c \
             $(VIDEODIR_GLN64)/glN64Config.c \
@@ -314,13 +311,13 @@ SOURCES_C += $(VIDEODIR_GLN64)/3DMath.c \
             $(VIDEODIR_GLN64)/VI.c
 endif
 
-ifeq ($(HAVE_NEON), 1)
+ifeq ($(HAVE_NEON),1)
 	SOURCES_ASM	+= $(AUDIO_LIBRETRO_DIR)/audio_utils_neon.S \
 						$(AUDIO_LIBRETRO_DIR)/drivers_resampler/sinc_neon.S \
 						$(AUDIO_LIBRETRO_DIR)/drivers_resampler/cc_resampler_neon.S
 endif
 
-ifeq ($(HAVE_GLIDE64), 1)
+ifeq ($(HAVE_GLIDE64),1)
 SOURCES_C += $(VIDEODIR_GLIDE)/Glide64/glide64_3dmath.c \
             $(VIDEODIR_GLIDE)/Glide64/FBtoScreen.c \
             $(VIDEODIR_GLIDE)/Glide64/Glide64_Ini.c \
@@ -347,8 +344,8 @@ SOURCES_C +=  $(VIDEODIR_ANGRYLION)/n64video_main.c \
 						  $(VIDEODIR_ANGRYLION)/n64video_rdp.c \
 						  $(VIDEODIR_ANGRYLION)/n64video.c
 
-ifeq ($(HAVE_OPENGL), 1)
-ifeq ($(GLES), 1)
+ifeq ($(HAVE_OPENGL),1)
+ifeq ($(GLES),1)
 	GLFLAGS += -DHAVE_OPENGLES -DHAVE_OPENGLES2 -DDISABLE_3POINT
 	SOURCES_C += $(LIBRETRO_COMM_DIR)/glsym/glsym_es2.c
 else

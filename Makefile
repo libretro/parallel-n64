@@ -5,9 +5,9 @@ SINGLE_THREAD=0
 WITH_CRC=brumme
 FORCE_GLES=0
 HAVE_OPENGL=1
-GLIDEN64=0			# Turn this on to enable Gliden64
-GLIDEN64CORE=0		# Turn this on for core context
-GLIDEN64ES2=0		# Turn this on for GLES2 codepath
+GLIDEN64=0
+GLIDEN64CORE=0
+GLIDEN64ES=0
 
 DYNAFLAGS :=
 INCFLAGS  :=
@@ -371,12 +371,12 @@ ifeq ($(platform), qnx)
 	CXXFLAGS += -Wp,-MMD
 else
 	CFLAGS   += -std=gnu89 -MMD
-ifeq ($(GLIDEN64), 1)
+ifeq ($(GLIDEN64),1)
 	CXXFLAGS += -std=c++0x -MMD
 else
 	CXXFLAGS += -std=gnu++98 -MMD
 endif
-ifeq ($(GLIDEN64CORE), 1)
+ifeq ($(GLIDEN64CORE),1)
 	CFLAGS += -DCORE
 	CXXFLAGS += -DCORE
 endif
