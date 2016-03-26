@@ -17,7 +17,7 @@
 
 const u32 gc_uMegabyte = 1024U * 1024U;
 
-struct Config
+struct gliden64_config
 {
 	u32 version;
 
@@ -142,7 +142,7 @@ struct Config
 #define hack_skipVIChangeCheck		(1<<11) //Don't reset FBO when VI parameters changed. Zelda MM
 #define hack_ZeldaCamera			(1<<12) //Special hack to detect and process Zelda MM camera.
 
-extern Config config;
+extern gliden64_config config;
 
 void Config_LoadConfig();
 #ifndef MUPENPLUSAPI

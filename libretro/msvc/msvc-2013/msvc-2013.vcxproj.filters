@@ -121,6 +121,9 @@
     <Filter Include="Source Files\mupen64plus-core\src\rdp_common">
       <UniqueIdentifier>{598942f2-e2ba-4f5d-948c-2f4e0093c706}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source Files\mupen64plus-video-gliden64">
+      <UniqueIdentifier>{5128d018-01a8-4e45-9d6d-e6cbf9c3f7bd}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\libretro.c">
@@ -169,9 +172,6 @@
       <Filter>Source Files\mupen64plus-core\src\api</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\mupen64plus-core\src\api\common.c">
-      <Filter>Source Files\mupen64plus-core\src\api</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\mupen64plus-core\src\api\config.c">
       <Filter>Source Files\mupen64plus-core\src\api</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\mupen64plus-core\src\api\frontend.c">
@@ -647,6 +647,126 @@
     </ClCompile>
     <ClCompile Include="..\..\..\gles2n64\src\gSP_gles2n64.c">
       <Filter>Source Files\gles2n64\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\mupen64plus-video-gliden64\src\common\CommonAPIImpl_common.cpp">
+      <Filter>Source Files\mupen64plus-video-gliden64</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\mupen64plus-video-gliden64\src\CommonPluginAPI.cpp">
+      <Filter>Source Files\mupen64plus-video-gliden64</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\mupen64plus-video-gliden64\src\CRC.cpp">
+      <Filter>Source Files\mupen64plus-video-gliden64</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\mupen64plus-video-gliden64\src\DepthBuffer.cpp">
+      <Filter>Source Files\mupen64plus-video-gliden64</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\mupen64plus-video-gliden64\src\F3D.cpp">
+      <Filter>Source Files\mupen64plus-video-gliden64</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\mupen64plus-video-gliden64\src\F3DDKR.cpp">
+      <Filter>Source Files\mupen64plus-video-gliden64</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\mupen64plus-video-gliden64\src\F3DEX.cpp">
+      <Filter>Source Files\mupen64plus-video-gliden64</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\mupen64plus-video-gliden64\src\F3DEX2.cpp">
+      <Filter>Source Files\mupen64plus-video-gliden64</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\mupen64plus-video-gliden64\src\F3DEX2CBFD.cpp">
+      <Filter>Source Files\mupen64plus-video-gliden64</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\mupen64plus-video-gliden64\src\F3DPD.cpp">
+      <Filter>Source Files\mupen64plus-video-gliden64</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\mupen64plus-video-gliden64\src\F3DSWSE.cpp">
+      <Filter>Source Files\mupen64plus-video-gliden64</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\mupen64plus-video-gliden64\src\F3DWRUS.cpp">
+      <Filter>Source Files\mupen64plus-video-gliden64</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\mupen64plus-video-gliden64\src\GBI.cpp">
+      <Filter>Source Files\mupen64plus-video-gliden64</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\mupen64plus-video-gliden64\src\gln64Config.cpp">
+      <Filter>Source Files\mupen64plus-video-gliden64</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\mupen64plus-video-gliden64\src\gSP.cpp">
+      <Filter>Source Files\mupen64plus-video-gliden64</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\mupen64plus-video-gliden64\src\L3D.cpp">
+      <Filter>Source Files\mupen64plus-video-gliden64</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\mupen64plus-video-gliden64\src\L3DEX.cpp">
+      <Filter>Source Files\mupen64plus-video-gliden64</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\mupen64plus-video-gliden64\src\L3DEX2.cpp">
+      <Filter>Source Files\mupen64plus-video-gliden64</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\mupen64plus-video-gliden64\src\MupenPlusPluginAPI.cpp">
+      <Filter>Source Files\mupen64plus-video-gliden64</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\mupen64plus-video-gliden64\src\N64.cpp">
+      <Filter>Source Files\mupen64plus-video-gliden64</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\mupen64plus-video-gliden64\src\OpenGL.cpp">
+      <Filter>Source Files\mupen64plus-video-gliden64</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\mupen64plus-video-gliden64\src\PostProcessor.cpp">
+      <Filter>Source Files\mupen64plus-video-gliden64</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\mupen64plus-video-gliden64\src\RDP.cpp">
+      <Filter>Source Files\mupen64plus-video-gliden64</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\mupen64plus-video-gliden64\src\S2DEX.cpp">
+      <Filter>Source Files\mupen64plus-video-gliden64</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\mupen64plus-video-gliden64\src\S2DEX2.cpp">
+      <Filter>Source Files\mupen64plus-video-gliden64</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\mupen64plus-video-gliden64\src\ShaderUtils.cpp">
+      <Filter>Source Files\mupen64plus-video-gliden64</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\mupen64plus-video-gliden64\src\Textures.cpp">
+      <Filter>Source Files\mupen64plus-video-gliden64</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\mupen64plus-video-gliden64\src\Turbo3D.cpp">
+      <Filter>Source Files\mupen64plus-video-gliden64</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\mupen64plus-video-gliden64\src\TxFilterStub.cpp">
+      <Filter>Source Files\mupen64plus-video-gliden64</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\mupen64plus-video-gliden64\src\VI.cpp">
+      <Filter>Source Files\mupen64plus-video-gliden64</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\mupen64plus-video-gliden64\src\ZSort.cpp">
+      <Filter>Source Files\mupen64plus-video-gliden64</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\mupen64plus-video-gliden64\src\mupenplus\CommonAPIImpl_mupenplus.cpp">
+      <Filter>Source Files\mupen64plus-video-gliden64</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\mupen64plus-video-gliden64\src\Combiner_gliden64.cpp">
+      <Filter>Source Files\mupen64plus-video-gliden64</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\mupen64plus-video-gliden64\src\FrameBuffer_gliden64.cpp">
+      <Filter>Source Files\mupen64plus-video-gliden64</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\mupen64plus-video-gliden64\src\mupenplus\OpenGL_mupenplus.cpp">
+      <Filter>Source Files\mupen64plus-video-gliden64</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\mupen64plus-video-gliden64\src\GLES2\GLSLCombiner_gles2.cpp">
+      <Filter>Source Files\mupen64plus-video-gliden64</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\mupen64plus-video-gliden64\src\GLES2\UniformSet.cpp">
+      <Filter>Source Files\mupen64plus-video-gliden64</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\mupen64plus-video-gliden64\src\gDP_gliden64.cpp">
+      <Filter>Source Files\mupen64plus-video-gliden64</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\mupen64plus-core\src\api\config.c">
+      <Filter>Source Files\mupen64plus-core\src\api</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\mupen64plus-video-gliden64\src\RSP_gliden64.cpp">
+      <Filter>Source Files\mupen64plus-video-gliden64</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

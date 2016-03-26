@@ -12,7 +12,7 @@
 * If not, see <http://creativecommons.org/publicdomain/zero/1.0/>.             *
 \******************************************************************************/
 
-unsigned char conf[32];
+unsigned char rsp_conf[32];
 
 #include "config.h"
 
@@ -541,7 +541,7 @@ EXPORT int CALL RomOpen(void)
     if (!l_PluginInit)
         return 0;
 
-    memset(conf, 0, sizeof(conf));
+    memset(rsp_conf, 0, sizeof(rsp_conf));
 
     CFG_HLE_GFX = ConfigGetParamBool(l_ConfigRsp, "DisplayListToGraphicsPlugin");
     CFG_HLE_AUD = ConfigGetParamBool(l_ConfigRsp, "AudioListToAudioPlugin");

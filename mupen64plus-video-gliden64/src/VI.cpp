@@ -120,13 +120,13 @@ void VI_UpdateScreen()
 		const bool bCFB = (gDP.changed&CHANGED_CPU_FB_WRITE) == CHANGED_CPU_FB_WRITE;
 		bool bNeedSwap = false;
 		switch (config.frameBufferEmulation.bufferSwapMode) {
-		case Config::bsOnVerticalInterrupt:
+		case gliden64_config::bsOnVerticalInterrupt:
 			bNeedSwap = true;
 			break;
-		case Config::bsOnVIOriginChange:
+		case gliden64_config::bsOnVIOriginChange:
 			bNeedSwap = bCFB ? true : (*gfx_info.VI_ORIGIN_REG != VI.lastOrigin);
 			break;
-		case Config::bsOnColorImageChange:
+		case gliden64_config::bsOnColorImageChange:
 			bNeedSwap = bCFB ? true : (gDP.colorImage.changed != 0);
 			break;
 		}

@@ -896,13 +896,13 @@ void gDPFullSync()
 		frameBufferList().removeAux();
 	}
 
-	const bool sync = config.frameBufferEmulation.copyToRDRAM == Config::ctSync;
-	if (config.frameBufferEmulation.copyToRDRAM != Config::ctDisable)
+	const bool sync = config.frameBufferEmulation.copyToRDRAM == gliden64_config::ctSync;
+	if (config.frameBufferEmulation.copyToRDRAM != gliden64_config::ctDisable)
 		FrameBuffer_CopyToRDRAM(gDP.colorImage.address, sync);
 
 	if (__RSP.bLLE)
    {
-		if (config.frameBufferEmulation.copyDepthToRDRAM != Config::ctDisable)
+		if (config.frameBufferEmulation.copyDepthToRDRAM != gliden64_config::ctDisable)
 			FrameBuffer_CopyDepthBuffer(gDP.colorImage.address);
 	}
 
