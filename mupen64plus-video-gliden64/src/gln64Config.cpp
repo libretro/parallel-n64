@@ -44,11 +44,7 @@ void Config::resetToDefaults()
 	generalEmulation.polygonOffsetUnits = 0.0f;
 #endif
 
-#ifdef VC
-	frameBufferEmulation.enable = 0;
-#else
 	frameBufferEmulation.enable = 1;
-#endif
 	frameBufferEmulation.copyDepthToRDRAM = ctDisable;
 	frameBufferEmulation.copyFromRDRAM = 0;
 	frameBufferEmulation.copyAuxToRDRAM = 0;
@@ -72,23 +68,6 @@ void Config::resetToDefaults()
 
 	//api().GetUserDataPath(textureFilter.txPath);
 	gln_wcscat(textureFilter.txPath, wst("/hires_texture"));
-
-#ifdef OS_WINDOWS
-	font.name.assign("arial.ttf");
-#elif defined (ANDROID)
-	font.name.assign("DroidSans.ttf");
-#elif defined (PANDORA)
-	font.name.assign("LiberationMono-Regular.ttf");
-#else
-	font.name = "FreeSans.ttf";
-#endif
-	font.size = 18;
-	font.color[0] = 0xB5;
-	font.color[1] = 0xE6;
-	font.color[2] = 0x1D;
-	font.color[3] = 0xFF;
-	for (int i = 0; i < 4; ++i)
-		font.colorf[i] = font.color[i] / 255.0f;
 
 	bloomFilter.enable = 0;
 	bloomFilter.thresholdLevel = 4;
