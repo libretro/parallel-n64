@@ -269,11 +269,11 @@ SOURCES_CXX   += \
 					 $(VIDEODIR_GLIDEN64)/src/MupenPlusPluginAPI.cpp
 
 ifeq ($(GLIDEN64ES2), 1)
-SOURCES_CXX  += $(VIDEODIR_GLIDEN64)/src/OGL3X/GLSLCombiner_ogl3x.cpp \
-					 $(VIDEODIR_GLIDEN64)/src/OGL3X/UniformBlock.cpp
-else
 SOURCES_CXX	 += $(VIDEODIR_GLIDEN64)/src/GLES2/GLSLCombiner_gles2.cpp \
 					 $(VIDEODIR_GLIDEN64)/src/GLES2/UniformSet.cpp
+else
+SOURCES_CXX  += $(VIDEODIR_GLIDEN64)/src/OGL3X/GLSLCombiner_ogl3x.cpp \
+					 $(VIDEODIR_GLIDEN64)/src/OGL3X/UniformBlock.cpp
 endif
 
 SOURCES_CXX +=  $(VIDEODIR_GLIDEN64)/src/CommonPluginAPI.cpp 
