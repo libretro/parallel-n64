@@ -15,7 +15,6 @@ public:
 
 	static PostProcessor & get();
 
-	static const uint32_t postEffectBlur = 1U;
 	static const uint32_t postEffectGammaCorrection = 2U;
 
 private:
