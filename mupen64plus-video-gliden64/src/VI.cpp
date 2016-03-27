@@ -97,7 +97,6 @@ void VI_UpdateScreen()
 		return;
 	if (ogl.resizeWindow())
 		return;
-	ogl.saveScreenshot();
 
 	bool bVIUpdated = false;
 	if (*gfx_info.VI_ORIGIN_REG != VI.lastOrigin) {

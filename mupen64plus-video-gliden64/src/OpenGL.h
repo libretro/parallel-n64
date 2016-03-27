@@ -160,7 +160,6 @@ public:
 	void stop();
 	void restart();
 	void swapBuffers();
-	void saveScreenshot();
 	bool changeWindow();
 	bool resizeWindow();
 	void setWindowSize(uint32_t _width, uint32_t _height);
@@ -217,7 +216,6 @@ private:
 	virtual bool _start() = 0;
 	virtual void _stop() = 0;
 	virtual void _swapBuffers() = 0;
-	virtual void _saveScreenshot() = 0;
 	virtual void _changeWindow() = 0;
 	virtual bool _resizeWindow() = 0;
 };

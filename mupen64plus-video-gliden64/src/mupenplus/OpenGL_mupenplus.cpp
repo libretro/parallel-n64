@@ -17,7 +17,6 @@ private:
 	virtual bool _start();
 	virtual void _stop();
 	virtual void _swapBuffers();
-	virtual void _saveScreenshot();
 	virtual bool _resizeWindow();
 	virtual void _changeWindow();
 };
@@ -70,10 +69,6 @@ void OGLVideoMupenPlus::_swapBuffers()
 #endif
 
 	//CoreVideo_GL_SwapBuffers();
-}
-
-void OGLVideoMupenPlus::_saveScreenshot()
-{
 }
 
 bool OGLVideoMupenPlus::_resizeWindow()

@@ -162,9 +162,6 @@ void OGLVideo::setCaptureScreen(const char * const _strDirectory)
 {
 }
 
-void OGLVideo::saveScreenshot()
-{
-}
 
 bool OGLVideo::changeWindow()
 {
