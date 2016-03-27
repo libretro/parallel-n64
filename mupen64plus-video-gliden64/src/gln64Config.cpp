@@ -65,12 +65,6 @@ void gliden64_config::resetToDefaults()
 	//api().GetUserDataPath(textureFilter.txPath);
 	gln_wcscat(textureFilter.txPath, wst("/hires_texture"));
 
-	bloomFilter.enable = 0;
-	bloomFilter.thresholdLevel = 4;
-	bloomFilter.blendMode = 0;
-	bloomFilter.blurAmount = 10;
-	bloomFilter.blurStrength = 20;
-
 	gammaCorrection.force = 0;
 	gammaCorrection.level = 2.0f;
 }

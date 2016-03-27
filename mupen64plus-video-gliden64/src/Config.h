@@ -105,22 +105,6 @@ struct gliden64_config
 		wchar_t txPath[256];
 	} textureFilter;
 
-	struct
-	{
-		std::string name;
-		uint32_t size;
-		uint8_t color[4];
-		float colorf[4];
-	} font;
-
-	struct {
-		uint32_t enable;
-		uint32_t thresholdLevel;
-		uint32_t blendMode;
-		uint32_t blurAmount;
-		uint32_t blurStrength;
-	} bloomFilter;
-
 	struct {
 		uint32_t force;
 		float level;

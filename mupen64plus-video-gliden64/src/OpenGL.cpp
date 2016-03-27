@@ -1415,8 +1415,6 @@ void OGLRender::_initData()
 void OGLRender::_destroyData()
 {
 	m_renderState = rsNone;
-	if (config.bloomFilter.enable != 0)
-		PostProcessor::get().destroy();
 	if (TFH.optionsChanged())
 		TFH.shutdown();
 	Combiner_Destroy();
