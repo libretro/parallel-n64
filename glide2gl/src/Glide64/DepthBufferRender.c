@@ -213,7 +213,6 @@ static void LeftSection(void)
 void Rasterize(struct vertexi * vtx, int vertices, int dzdx)
 {
    int n, min_y, max_y, y1, shift;
-   uint16_t *destptr;
    struct vertexi *min_vtx;
    start_vtx = vtx;        // First vertex in array
 
@@ -266,7 +265,6 @@ void Rasterize(struct vertexi * vtx, int vertices, int dzdx)
       LeftSection();
    } while(left_height <= 0);
 
-   destptr = (uint16_t*)(gfx_info.RDRAM + g_gdp.zb_address);
    y1      = iceil(min_y);
 
    if (y1 >= g_gdp.__clip.yl)
@@ -284,14 +282,16 @@ void Rasterize(struct vertexi * vtx, int vertices, int dzdx)
 
       if(width > 0 && y1 >= g_gdp.__clip.yh)
       {
+         /* Prestep initial z */
+
          unsigned x;
-         // Prestep initial z
-         int prestep = (x1 << 16) - left_x;
-         int      z = left_z + imul16(prestep, dzdx);
+         int       prestep = (x1 << 16) - left_x;
+         int             z = left_z + imul16(prestep, dzdx);
+         uint16_t *ptr_dst = (uint16_t*)(gfx_info.RDRAM + g_gdp.zb_address);
 
          shift = x1 + y1 * rdp.zi_width;
 
-         //draw to depth buffer
+         /* draw to depth buffer */
          for (x = 0; x < width; x++)
          {
             int idx;
@@ -303,8 +303,8 @@ void Rasterize(struct vertexi * vtx, int vertices, int dzdx)
                trueZ = 0x3FFFF;
             encodedZ = zLUT[trueZ];
             idx = (shift+x)^1;
-            if(encodedZ < destptr[idx]) 
-               destptr[idx] = encodedZ;
+            if(encodedZ < ptr_dst[idx]) 
+               ptr_dst[idx] = encodedZ;
             z += dzdx;
          }
       }
