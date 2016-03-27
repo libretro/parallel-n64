@@ -488,7 +488,7 @@ ypos - y-coordinate of the upper-left corner of the
 client area of the window.
 output:   none
 *******************************************************************/
-EXPORT void CALL glide64MoveScreen (int xpos, int ypos)
+void glide64MoveScreen (int xpos, int ypos)
 {
 }
 
@@ -498,7 +498,7 @@ Purpose:  This function is called when a rom is closed.
 input:    none
 output:   none
 *******************************************************************/
-EXPORT void CALL glide64RomClosed (void)
+void glide64RomClosed (void)
 {
    romopen = false;
    ReleaseGfx ();
@@ -750,7 +750,7 @@ ViStatus registers value has been changed.
 input:    none
 output:   none
 *******************************************************************/
-EXPORT void CALL glide64ViStatusChanged(void)
+void glide64ViStatusChanged(void)
 {
 }
 
