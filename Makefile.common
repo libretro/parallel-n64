@@ -229,6 +229,7 @@ ifeq ($(HAVE_GLIDEN64),1)
 SOURCES_C     += $(VIDEODIR_GLN64)/3DMath.c
 SOURCES_CXX   += \
 					 $(VIDEODIR_GLIDEN64)/src/mupenplus/CommonAPIImpl_mupenplus.cpp \
+					 $(VIDEODIR_GLIDEN64)/src/mupenplus/Config_mupenplus.cpp \
 					 $(VIDEODIR_GLIDEN64)/src/common/CommonAPIImpl_common.cpp \
 					 $(VIDEODIR_GLIDEN64)/src/FrameBuffer_gliden64.cpp \
 					 $(VIDEODIR_GLIDEN64)/src/FrameBufferInfo.cpp \

@@ -1,37 +1,25 @@
-#include "GLideN64_mupenplus.h"
 #include <assert.h>
 #include <errno.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 
 #include "../Config.h"
-#include "../GLideN64.h"
 #include "../OpenGL.h"
 #include "../GBI.h"
 #include "../RSP.h"
 #include "../Log.h"
 
-Config config;
+#include "m64p_config.h"
 
 static
-const u32 uMegabyte = 1024U*1024U;
-
-static m64p_handle g_configVideoGeneral = NULL;
-static m64p_handle g_configVideoGliden64 = NULL;
+const uint32_t uMegabyte = 1024U*1024U;
 
 static
 bool Config_SetDefault()
 {
-	if (ConfigOpenSection("Video-General", &g_configVideoGeneral) != M64ERR_SUCCESS) {
-		LOG(LOG_ERROR, "Unable to open Video-General configuration section");
-		return false;
-	}
-	if (ConfigOpenSection("Video-GLideN64", &g_configVideoGliden64) != M64ERR_SUCCESS) {
-		LOG(LOG_ERROR, "Unable to open GLideN64 configuration section");
-		return false;
-	}
-
 	config.resetToDefaults();
+#if 0
 	// Set default values for "Video-General" section, if they are not set yet. Taken from RiceVideo
 	m64p_error res = ConfigSetDefaultBool(g_configVideoGeneral, "Fullscreen", config.video.fullscreen, "Use fullscreen mode if True, or windowed mode if False ");
 	assert(res == M64ERR_SUCCESS);
@@ -120,43 +108,31 @@ bool Config_SetDefault()
 	res = ConfigSetDefaultString(g_configVideoGliden64, "txPath", txPath, "Path to folder with hi-res texture packs.");
 	assert(res == M64ERR_SUCCESS);
 
-	res = ConfigSetDefaultString(g_configVideoGliden64, "fontName", config.font.name.c_str(), "File name of True Type Font for text messages.");
-	assert(res == M64ERR_SUCCESS);
-	res = ConfigSetDefaultInt(g_configVideoGliden64, "fontSize", config.font.size, "Font size.");
-	assert(res == M64ERR_SUCCESS);
-	res = ConfigSetDefaultString(g_configVideoGliden64, "fontColor", "B5E61D", "Font color in RGB format.");
-	assert(res == M64ERR_SUCCESS);
-
-	//#Bloom filter settings
-	res = ConfigSetDefaultInt(g_configVideoGliden64, "EnableBloom", config.bloomFilter.enable, "Enable bloom filter");
-	assert(res == M64ERR_SUCCESS);
-	res = ConfigSetDefaultInt(g_configVideoGliden64, "bloomThresholdLevel", config.bloomFilter.thresholdLevel, "Brightness threshold level for bloom. Values [2, 6]");
-	assert(res == M64ERR_SUCCESS);
-	res = ConfigSetDefaultInt(g_configVideoGliden64, "bloomBlendMode", config.bloomFilter.blendMode, "Bloom blend mode (0=Strong, 1=Mild, 2=Light)");
-	assert(res == M64ERR_SUCCESS);
-	res = ConfigSetDefaultInt(g_configVideoGliden64, "blurAmount", config.bloomFilter.blurAmount, "Blur radius. Values [2, 10]");
-	assert(res == M64ERR_SUCCESS);
-	res = ConfigSetDefaultInt(g_configVideoGliden64, "blurStrength", config.bloomFilter.blurStrength, "Blur strength. Values [10, 100]");
-	assert(res == M64ERR_SUCCESS);
-
 	//#Gamma correction settings
 	res = ConfigSetDefaultBool(g_configVideoGliden64, "ForceGammaCorrection", config.gammaCorrection.force, "Force gamma correction.");
 	assert(res == M64ERR_SUCCESS);
 	res = ConfigSetDefaultFloat(g_configVideoGliden64, "GammaCorrectionLevel", config.gammaCorrection.level, "Gamma correction level.");
 	assert(res == M64ERR_SUCCESS);
+#endif
 
-	return ConfigSaveSection("Video-GLideN64") == M64ERR_SUCCESS;
+	return M64ERR_SUCCESS;
 }
 
 void Config_LoadConfig()
 {
-	const u32 hacks = config.generalEmulation.hacks;
+	const uint32_t hacks = config.generalEmulation.hacks;
 
 	if (!Config_SetDefault()) {
 		config.generalEmulation.hacks = hacks;
 		return;
 	}
 
+	config.video.fullscreen = 1;
+	config.video.windowedWidth = 640;
+	config.video.windowedHeight = 480;
+	config.video.verticalSync = false;
+
+#if 0
 	config.version = ConfigGetParamInt(g_configVideoGliden64, "configVersion");
 	if (config.version != CONFIG_VERSION_CURRENT) {
 		m64p_error res = ConfigDeleteSection("Video-GLideN64");
@@ -168,10 +144,6 @@ void Config_LoadConfig()
 		}
 	}
 
-	config.video.fullscreen = ConfigGetParamBool(g_configVideoGeneral, "Fullscreen");
-	config.video.windowedWidth = ConfigGetParamInt(g_configVideoGeneral, "ScreenWidth");
-	config.video.windowedHeight = ConfigGetParamInt(g_configVideoGeneral, "ScreenHeight");
-	config.video.verticalSync = ConfigGetParamBool(g_configVideoGeneral, "VerticalSync");
 
 #ifdef GL_MULTISAMPLING_SUPPORT
 	config.video.multisampling = ConfigGetParamInt(g_configVideoGliden64, "MultiSampling");
@@ -217,36 +189,10 @@ void Config_LoadConfig()
 	config.textureFilter.txSaveCache = ConfigGetParamBool(g_configVideoGliden64, "txSaveCache");
 	::mbstowcs(config.textureFilter.txPath, ConfigGetParamString(g_configVideoGliden64, "txPath"), PLUGIN_PATH_SIZE);
 
-	//#Font settings
-	config.font.name = ConfigGetParamString(g_configVideoGliden64, "fontName");
-	if (config.font.name.empty())
-		config.font.name = "arial.ttf";
-	char buf[16];
-	sprintf(buf, "0x%s", ConfigGetParamString(g_configVideoGliden64, "fontColor"));
-	long int uColor = strtol(buf, NULL, 16);
-	if (uColor != 0) {
-		config.font.color[0] = _SHIFTR(uColor, 16, 8);
-		config.font.color[1] = _SHIFTR(uColor, 8, 8);
-		config.font.color[2] = _SHIFTR(uColor, 0, 8);
-		config.font.color[3] = 0xFF;
-		config.font.colorf[0] = _FIXED2FLOAT(config.font.color[0], 8);
-		config.font.colorf[1] = _FIXED2FLOAT(config.font.color[1], 8);
-		config.font.colorf[2] = _FIXED2FLOAT(config.font.color[2], 8);
-		config.font.colorf[3] = 1.0f;
-	}
-	config.font.size = ConfigGetParamInt(g_configVideoGliden64, "fontSize");
-	if (config.font.size == 0)
-		config.font.size = 30;
-	//#Bloom filter settings
-	config.bloomFilter.enable = ConfigGetParamInt(g_configVideoGliden64, "EnableBloom");
-	config.bloomFilter.thresholdLevel = ConfigGetParamInt(g_configVideoGliden64, "bloomThresholdLevel");
-	config.bloomFilter.blendMode = ConfigGetParamInt(g_configVideoGliden64, "bloomBlendMode");
-	config.bloomFilter.blurAmount = ConfigGetParamInt(g_configVideoGliden64, "blurAmount");
-	config.bloomFilter.blurStrength = ConfigGetParamInt(g_configVideoGliden64, "blurStrength");
-
 	//#Gamma correction settings
 	config.gammaCorrection.force = ConfigGetParamBool(g_configVideoGliden64, "ForceGammaCorrection");
 	config.gammaCorrection.level = ConfigGetParamFloat(g_configVideoGliden64, "GammaCorrectionLevel");
+#endif
 
 	config.generalEmulation.hacks = hacks;
 }
