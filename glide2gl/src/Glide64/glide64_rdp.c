@@ -313,11 +313,19 @@ static void DrawPartFrameBufferToScreen(void)
    memset(gfx_info.RDRAM+rdp.cimg, 0, (rdp.ci_width*rdp.ci_height) << g_gdp.fb_size >> 1);
 }
 
-#define RGBA16TO32(color) \
-  ((color&1)?0xFF:0) | \
-  ((uint32_t)(((color & 0xF800) >> 11)) << 24) | \
-  ((uint32_t)(((color & 0x07C0) >> 6)) << 16) | \
-  ((uint32_t)(((color & 0x003E) >> 1)) << 8)
+union RGBA {
+   struct {
+      uint8_t r, g, b, a;
+   };
+   uint32_t raw;
+};
+
+static INLINE uint32_t RGBA16toRGBA32(uint32_t _c)
+{
+   union RGBA c;
+   c.raw = _c;
+   return (c.r << 24) | (c.g << 16) | (c.b << 8) | c.a;
+}
 
 /* defined in glitchmain.c */
 extern uint16_t *frameBuffer;
@@ -363,7 +371,7 @@ static void CopyFrameBuffer(int32_t buffer)
                if (g_gdp.fb_size == 2)
                   ptr_dst[(x + y * width)^1] = c;
                else
-                  ptr_dst32[x + y * width] = RGBA16TO32(c);
+                  ptr_dst32[x + y * width] = RGBA16toRGBA32(c);
             }
          }
       }
@@ -413,7 +421,7 @@ static void CopyFrameBuffer(int32_t buffer)
                if (g_gdp.fb_size <= 2)
                   ptr_dst[(x + y * width)^1] = c;
                else
-                  ptr_dst32[x + y * width] = RGBA16TO32(c);
+                  ptr_dst32[x + y * width] = RGBA16toRGBA32(c);
             }
          }
 
