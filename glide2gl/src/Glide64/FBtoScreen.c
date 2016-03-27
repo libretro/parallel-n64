@@ -44,6 +44,7 @@
 
 
 #include "Gfx_1.3.h"
+#include "GBI.h"
 #include "FBtoScreen.h"
 #include "TexCache.h"
 #include "../Glitch64/glide.h"
@@ -601,4 +602,30 @@ void DrawDepthBufferToScreen(FB_TO_SCREEN_INFO *fb_info)
 
    glide64_draw_fb(ul_x, ul_y, lr_x,
          lr_y, lr_u, lr_v, zero);
+}
+
+void copyWhiteToRDRAM(void)
+{
+   uint32_t y, x;
+   if(g_gdp.fb_width == 0)
+      return;
+
+   if(g_gdp.fb_size == G_IM_SIZ_32b)
+   {
+      uint32_t *ptr_dst = (uint32_t*)(gfx_info.RDRAM + rdp.cimg);
+      for(y = 0; y < rdp.ci_height; y++)
+      {
+         for(x = 0; x < g_gdp.fb_width; x++)
+            ptr_dst[x + y * g_gdp.fb_width] = 0xFFFFFFFF;
+      }
+   }
+   else
+   {
+      uint16_t *ptr_dst = (uint16_t*)(gfx_info.RDRAM + rdp.cimg);
+      for(y = 0; y < rdp.ci_height; y++)
+      {
+         for(x = 0; x < g_gdp.fb_width; x++)
+            ptr_dst[(x + y * g_gdp.fb_width) ^ 1] = 0xFFFF;
+      }
+   }
 }

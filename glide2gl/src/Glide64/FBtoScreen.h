@@ -60,4 +60,6 @@ typedef struct
 bool DrawFrameBufferToScreen(FB_TO_SCREEN_INFO *fb_info);
 void DrawDepthBufferToScreen(FB_TO_SCREEN_INFO *fb_info);
 
+void copyWhiteToRDRAM(void);
+
 #endif  // #ifndef FBtoSCREEN_H
