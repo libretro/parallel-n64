@@ -1,4 +1,4 @@
-#include "Types.h"
+#include <stdint.h>
 
 uint32_t Hash_CalculatePalette(void *buffer, uint32_t count)
 {

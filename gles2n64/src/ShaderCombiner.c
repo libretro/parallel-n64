@@ -8,7 +8,7 @@
 
 
 //(sa - sb) * m + a
-static const u32 saRGBExpanded[] =
+static const uint32_t saRGBExpanded[] =
 {
     COMBINED,           TEXEL0,             TEXEL1,             PRIMITIVE,
     SHADE,              ENVIRONMENT,        ONE,                NOISE,
@@ -16,7 +16,7 @@ static const u32 saRGBExpanded[] =
     ZERO,               ZERO,               ZERO,               ZERO
 };
 
-static const u32 sbRGBExpanded[] =
+static const uint32_t sbRGBExpanded[] =
 {
     COMBINED,           TEXEL0,             TEXEL1,             PRIMITIVE,
     SHADE,              ENVIRONMENT,        CENTER,             K4,
@@ -24,7 +24,7 @@ static const u32 sbRGBExpanded[] =
     ZERO,               ZERO,               ZERO,               ZERO
 };
 
-static const u32 mRGBExpanded[] =
+static const uint32_t mRGBExpanded[] =
 {
     COMBINED,           TEXEL0,             TEXEL1,             PRIMITIVE,
     SHADE,              ENVIRONMENT,        SCALE,              COMBINED_ALPHA,
@@ -36,31 +36,31 @@ static const u32 mRGBExpanded[] =
     ZERO,               ZERO,               ZERO,               ZERO
 };
 
-static const u32 aRGBExpanded[] =
+static const uint32_t aRGBExpanded[] =
 {
     COMBINED,           TEXEL0,             TEXEL1,             PRIMITIVE,
     SHADE,              ENVIRONMENT,        ONE,                ZERO
 };
 
-static const u32 saAExpanded[] =
+static const uint32_t saAExpanded[] =
 {
     COMBINED,           TEXEL0_ALPHA,       TEXEL1_ALPHA,       PRIMITIVE_ALPHA,
     SHADE_ALPHA,        ENV_ALPHA,          ONE,                ZERO
 };
 
-static const u32 sbAExpanded[] =
+static const uint32_t sbAExpanded[] =
 {
     COMBINED,           TEXEL0_ALPHA,       TEXEL1_ALPHA,       PRIMITIVE_ALPHA,
     SHADE_ALPHA,        ENV_ALPHA,          ONE,                ZERO
 };
 
-static const u32 mAExpanded[] =
+static const uint32_t mAExpanded[] =
 {
     LOD_FRACTION,       TEXEL0_ALPHA,       TEXEL1_ALPHA,       PRIMITIVE_ALPHA,
     SHADE_ALPHA,        ENV_ALPHA,          PRIM_LOD_FRAC,      ZERO,
 };
 
-static const u32 aAExpanded[] =
+static const uint32_t aAExpanded[] =
 {
     COMBINED,           TEXEL0_ALPHA,       TEXEL1_ALPHA,       PRIMITIVE_ALPHA,
     SHADE_ALPHA,        ENV_ALPHA,          ONE,                ZERO
@@ -273,7 +273,7 @@ static bool mux_replace(DecodedMux *dmux, int cycle, int src, int dest)
    return r;
 }
 
-static void *mux_new(u64 dmux, bool cycle2)
+static void *mux_new(uint64_t dmux, bool cycle2)
 {
    int i;
    DecodedMux *mux = malloc(sizeof(DecodedMux)); 
@@ -389,7 +389,7 @@ static void *mux_new(u64 dmux, bool cycle2)
 }
 
 
-static int program_compare(ShaderProgram *prog, DecodedMux *dmux, u32 flags)
+static int program_compare(ShaderProgram *prog, DecodedMux *dmux, uint32_t flags)
 {
    if (prog)
       return ((prog->combine.mux == dmux->combine.mux) && (prog->flags == flags));
@@ -688,7 +688,7 @@ static ShaderProgram *ShaderCombiner_Compile(DecodedMux *dmux, int flags)
    return prog;
 }
 
-void Combiner_Set(u64 mux, int flags)
+void Combiner_Set(uint64_t mux, int flags)
 {
    DecodedMux *dmux;
    ShaderProgram *root, *prog;

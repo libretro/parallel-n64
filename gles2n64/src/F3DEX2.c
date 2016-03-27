@@ -1,4 +1,7 @@
 #include <assert.h>
+
+#include <retro_miscellaneous.h>
+
 #include "gles2N64.h"
 #include "Debug.h"
 #include "F3D.h"
@@ -14,12 +17,12 @@
 
 #include "Config.h"
 
-void F3DEX2_Mtx( u32 w0, u32 w1 )
+void F3DEX2_Mtx( uint32_t w0, uint32_t w1 )
 {
    gSPMatrix( w1, _SHIFTR( w0, 0, 8 ) ^ G_MTX_PUSH );
 }
 
-void F3DEX2_MoveMem( u32 w0, u32 w1 )
+void F3DEX2_MoveMem( uint32_t w0, uint32_t w1 )
 {
    switch (_SHIFTR( w0, 0, 8 ))
    {
@@ -37,7 +40,7 @@ void F3DEX2_MoveMem( u32 w0, u32 w1 )
       case G_MV_LIGHT:
          {
             const uint32_t offset = (_SHIFTR( w0, 5, 11)) & 0x7F8;
-            const u32 n = offset / 24;
+            const uint32_t n = offset / 24;
 
             if (n < 2)
                gSPLookAt(w1, n);
@@ -48,34 +51,34 @@ void F3DEX2_MoveMem( u32 w0, u32 w1 )
    }
 }
 
-void F3DEX2_Vtx( u32 w0, u32 w1 )
+void F3DEX2_Vtx( uint32_t w0, uint32_t w1 )
 {
-   u32 n = _SHIFTR( w0, 12, 8 );
+   uint32_t n = _SHIFTR( w0, 12, 8 );
 
    gSPVertex( w1, n, _SHIFTR( w0, 1, 7 ) - n );
 }
 
-void F3DEX2_Reserved1( u32 w0, u32 w1 )
+void F3DEX2_Reserved1( uint32_t w0, uint32_t w1 )
 {
 }
 
-void F3DEX2_Tri1( u32 w0, u32 w1 )
+void F3DEX2_Tri1( uint32_t w0, uint32_t w1 )
 {
    gSP1Triangle( _SHIFTR( w0, 17, 7 ),
          _SHIFTR( w0, 9, 7 ),
          _SHIFTR( w0, 1, 7 ));
 }
 
-void F3DEX2_Line3D( u32 w0, u32 w1 )
+void F3DEX2_Line3D( uint32_t w0, uint32_t w1 )
 {
 }
 
-void F3DEX2_PopMtx( u32 w0, u32 w1 )
+void F3DEX2_PopMtx( uint32_t w0, uint32_t w1 )
 {
    gSPPopMatrixN( 0, w1 >> 6 );
 }
 
-void F3DEX2_MoveWord( u32 w0, u32 w1 )
+void F3DEX2_MoveWord( uint32_t w0, uint32_t w1 )
 {
    switch (_SHIFTR( w0, 16, 8 ))
    {
@@ -95,7 +98,7 @@ void F3DEX2_MoveWord( u32 w0, u32 w1 )
          gSPSegment( _SHIFTR( w0, 0, 16 ) >> 2, w1 & 0x00FFFFFF );
          break;
       case G_MW_FOG:
-         gSPFogFactor( (s16)_SHIFTR( w1, 16, 16 ), (s16)_SHIFTR( w1, 0, 16 ) );
+         gSPFogFactor( (int16_t)_SHIFTR( w1, 16, 16 ), (int16_t)_SHIFTR( w1, 0, 16 ) );
 			//offset must be 0 for move_fog, but it can be non zero in Nushi Zuri 64 - Shiokaze ni Notte
 			//low-level display list has setothermode commands in this place, so this is obviously not move_fog.
 			if (_SHIFTR(w0, 0, 16) == 0x04)
@@ -110,7 +113,7 @@ void F3DEX2_MoveWord( u32 w0, u32 w1 )
    }
 }
 
-void F3DEX2_Texture( u32 w0, u32 w1 )
+void F3DEX2_Texture( uint32_t w0, uint32_t w1 )
 {
    gSPTexture( _FIXED2FLOAT( _SHIFTR( w1, 16, 16 ), 16 ),
          _FIXED2FLOAT( _SHIFTR( w1, 0, 16 ), 16 ),
@@ -119,43 +122,43 @@ void F3DEX2_Texture( u32 w0, u32 w1 )
          _SHIFTR( w0, 1, 7 ) );
 }
 
-void F3DEX2_SetOtherMode_H( u32 w0, u32 w1 )
+void F3DEX2_SetOtherMode_H( uint32_t w0, uint32_t w1 )
 {
-	const u32 length = _SHIFTR(w0, 0, 8) + 1;
-	const u32 shift = MAX(0, (s32)(32 - _SHIFTR(w0, 8, 8) - length));
+	const uint32_t length = _SHIFTR(w0, 0, 8) + 1;
+	const uint32_t shift = MAX(0, (int32_t)(32 - _SHIFTR(w0, 8, 8) - length));
 	gSPSetOtherMode_H(length, shift, w1);
 }
 
-void F3DEX2_SetOtherMode_L( u32 w0, u32 w1 )
+void F3DEX2_SetOtherMode_L( uint32_t w0, uint32_t w1 )
 {
-	const u32 length = _SHIFTR(w0, 0, 8) + 1;
-	const u32 shift = MAX(0, (s32)(32 - _SHIFTR(w0, 8, 8) - length));
+	const uint32_t length = _SHIFTR(w0, 0, 8) + 1;
+	const uint32_t shift = MAX(0, (int32_t)(32 - _SHIFTR(w0, 8, 8) - length));
 	gSPSetOtherMode_L(length, shift, w1);
 }
 
-void F3DEX2_GeometryMode( u32 w0, u32 w1 )
+void F3DEX2_GeometryMode( uint32_t w0, uint32_t w1 )
 {
    gSPGeometryMode( ~_SHIFTR( w0, 0, 24 ), w1 );
 }
 
-void F3DEX2_DMAIO( u32 w0, u32 w1 )
+void F3DEX2_DMAIO( uint32_t w0, uint32_t w1 )
 {
 }
 
-void F3DEX2_Special_1( u32 w0, u32 w1 )
+void F3DEX2_Special_1( uint32_t w0, uint32_t w1 )
 {
 	gSPDlistCount(_SHIFTR( w0, 0, 8 ), w1);
 }
 
-void F3DEX2_Special_2( u32 w0, u32 w1 )
+void F3DEX2_Special_2( uint32_t w0, uint32_t w1 )
 {
 }
 
-void F3DEX2_Special_3( u32 w0, u32 w1 )
+void F3DEX2_Special_3( uint32_t w0, uint32_t w1 )
 {
 }
 
-void F3DEX2_Quad( u32 w0, u32 w1 )
+void F3DEX2_Quad( uint32_t w0, uint32_t w1 )
 {
    gSP2Triangles( _SHIFTR( w0, 17, 7 ),
          _SHIFTR( w0, 9, 7 ),

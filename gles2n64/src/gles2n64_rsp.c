@@ -19,15 +19,15 @@
 
 RSPInfo     __RSP;
 
-void RSP_LoadMatrix( f32 mtx[4][4], u32 address )
+void RSP_LoadMatrix( float mtx[4][4], uint32_t address )
 {
    int i, j;
-   f32 recip = 1.5258789e-05f;
+   float recip = 1.5258789e-05f;
 
    struct _N64Matrix
    {
-      s16 integer[4][4];
-      u16 fraction[4][4];
+      int16_t integer[4][4];
+      uint16_t fraction[4][4];
    } *n64Mat = (struct _N64Matrix *)&gfx_info.RDRAM[address];
 
    for (i = 0; i < 4; i++)
@@ -54,18 +54,18 @@ void RSP_CheckDLCounter(void)
 void RSP_ProcessDList(void)
 {
    int i, j;
-   u32 uc_start, uc_dstart, uc_dsize;
+   uint32_t uc_start, uc_dstart, uc_dsize;
 
    VI_UpdateSize();
 
-   __RSP.PC[0] = *(u32*)&gfx_info.DMEM[0x0FF0];
+   __RSP.PC[0] = *(uint32_t*)&gfx_info.DMEM[0x0FF0];
    __RSP.PCi   = 0;
    __RSP.count = -1;
 
-   __RSP.halt  = FALSE;
-   __RSP.busy  = TRUE;
+   __RSP.halt  = false;
+   __RSP.busy  = true;
 
-   gSP.matrix.stackSize = min( 32, *(u32*)&gfx_info.DMEM[0x0FE4] >> 6 );
+   gSP.matrix.stackSize = min( 32, *(uint32_t*)&gfx_info.DMEM[0x0FE4] >> 6 );
    gSP.matrix.modelViewi = 0;
    gSP.changed &= ~CHANGED_CPU_FB_WRITE;
    gSP.changed |= CHANGED_MATRIX;
@@ -80,9 +80,9 @@ void RSP_ProcessDList(void)
    gSP.matrix.modelView[0][2][2] = 1.0f;
    gSP.matrix.modelView[0][3][3] = 1.0f;
 
-   uc_start  = *(u32*)&gfx_info.DMEM[0x0FD0];
-   uc_dstart = *(u32*)&gfx_info.DMEM[0x0FD8];
-   uc_dsize  = *(u32*)&gfx_info.DMEM[0x0FDC];
+   uc_start  = *(uint32_t*)&gfx_info.DMEM[0x0FD0];
+   uc_dstart = *(uint32_t*)&gfx_info.DMEM[0x0FD8];
+   uc_dsize  = *(uint32_t*)&gfx_info.DMEM[0x0FDC];
 
    if ((uc_start != __RSP.uc_start) || (uc_dstart != __RSP.uc_dstart))
       gSPLoadUcodeEx( uc_start, uc_dstart, uc_dsize );
@@ -108,7 +108,7 @@ void RSP_ProcessDList(void)
    else
       while (!__RSP.halt)
       {
-         u32 pc;
+         uint32_t pc;
          pc = __RSP.PC[__RSP.PCi];
 
          if ((pc + 8) > RDRAMSize)
@@ -120,8 +120,8 @@ void RSP_ProcessDList(void)
          }
 
 
-         __RSP.w0 = *(u32*)&gfx_info.RDRAM[pc];
-         __RSP.w1 = *(u32*)&gfx_info.RDRAM[pc+4];
+         __RSP.w0 = *(uint32_t*)&gfx_info.RDRAM[pc];
+         __RSP.w1 = *(uint32_t*)&gfx_info.RDRAM[pc+4];
          __RSP.cmd = _SHIFTR( __RSP.w0, 24, 8 );
 
 #ifdef DEBUG
@@ -130,7 +130,7 @@ void RSP_ProcessDList(void)
 #endif
 
          __RSP.PC[__RSP.PCi] += 8;
-         __RSP.nextCmd = _SHIFTR( *(u32*)&gfx_info.RDRAM[pc+8], 24, 8 );
+         __RSP.nextCmd = _SHIFTR( *(uint32_t*)&gfx_info.RDRAM[pc+8], 24, 8 );
 
          GBI.cmd[__RSP.cmd]( __RSP.w0, __RSP.w1 );
          RSP_CheckDLCounter();
@@ -141,7 +141,7 @@ void RSP_ProcessDList(void)
    if (config.frameBufferEmulation.copyDepthToRDRAM)
 	   FrameBuffer_CopyDepthBuffer( gDP.colorImage.address );
 
-   __RSP.busy = FALSE;
+   __RSP.busy = false;
    __RSP.DList++;
    gSP.changed |= CHANGED_COLORBUFFER;
 }
@@ -151,7 +151,7 @@ void RSP_SetDefaultState(void)
 {
    unsigned i, j;
 
-	gSPTexture(1.0f, 1.0f, 0, 0, TRUE);
+	gSPTexture(1.0f, 1.0f, 0, 0, true);
    gDP.loadTile = &gDP.tiles[7];
    gSP.textureTile[0] = &gDP.tiles[0];
    gSP.textureTile[1] = &gDP.tiles[1];
@@ -180,7 +180,7 @@ void RSP_SetDefaultState(void)
    gDP.otherMode._u64 = 0U;
 }
 
-u32 DepthClearColor = 0xfffcfffc;
+uint32_t DepthClearColor = 0xfffcfffc;
 
 static void setDepthClearColor(void)
 {

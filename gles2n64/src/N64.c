@@ -1,7 +1,7 @@
+#include <stdint.h>
 #include "N64.h"
-#include "Types.h"
 
-u8 *DMEM;
-u64 TMEM[512];
-u8 *RDRAM;
-u32 RDRAMSize;
+uint8_t *DMEM;
+uint64_t TMEM[512];
+uint8_t *RDRAM;
+uint32_t RDRAMSize;

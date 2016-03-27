@@ -12,14 +12,14 @@
 #include "GBI.h"
 #include "OpenGL.h"
 
-void F3DEX2CBFD_Vtx( u32 w0, u32 w1 )
+void F3DEX2CBFD_Vtx( uint32_t w0, uint32_t w1 )
 {
-	u32 n = _SHIFTR( w0, 12, 8 );
+	uint32_t n = _SHIFTR( w0, 12, 8 );
 
 	gSPCBFDVertex( w1, n, _SHIFTR( w0, 1, 7 ) - n );
 }
 
-void F3DEX2CBFD_MoveWord( u32 w0, u32 w1 )
+void F3DEX2CBFD_MoveWord( uint32_t w0, uint32_t w1 )
 {
 	switch (_SHIFTR( w0, 16, 8 ))
    {
@@ -36,7 +36,7 @@ void F3DEX2CBFD_MoveWord( u32 w0, u32 w1 )
          break;
 
       case G_MW_FOG:
-			gSPFogFactor( (s16)_SHIFTR( w1, 16, 16 ), (s16)_SHIFTR( w1, 0, 16 ) );
+			gSPFogFactor( (int16_t)_SHIFTR( w1, 16, 16 ), (int16_t)_SHIFTR( w1, 0, 16 ) );
          break;
 
 		case G_MW_PERSPNORM:
@@ -49,7 +49,7 @@ void F3DEX2CBFD_MoveWord( u32 w0, u32 w1 )
    }
 }
 
-void F3DEX2CBFD_MoveMem( u32 w0, u32 w1 )
+void F3DEX2CBFD_MoveMem( uint32_t w0, uint32_t w1 )
 {
    switch (_SHIFTR( w0, 0, 8 ))
    {
@@ -59,8 +59,8 @@ void F3DEX2CBFD_MoveMem( u32 w0, u32 w1 )
 
       case F3DCBFD_MV_LIGHT:
          {
-            const u32 offset = _SHIFTR(w0, 5, 14);
-            u32 n = offset / 48;
+            const uint32_t offset = _SHIFTR(w0, 5, 14);
+            uint32_t n = offset / 48;
             if (n < 2)
                gSPLookAt(w1, n);
             else
@@ -74,7 +74,7 @@ void F3DEX2CBFD_MoveMem( u32 w0, u32 w1 )
    }
 }
 
-void F3DEX2CBFD_Tri4( u32 w0, u32 w1 )
+void F3DEX2CBFD_Tri4( uint32_t w0, uint32_t w1 )
 {
 	gSP4Triangles( _SHIFTR( w0, 23, 5 ), _SHIFTR( w0, 18, 5 ), (_SHIFTR( w0, 15, 3 )<<2)|_SHIFTR( w1, 30, 2 ),
 				   _SHIFTR( w0, 10, 5 ), _SHIFTR( w0,  5, 5 ), _SHIFTR( w0,  0, 5 ),

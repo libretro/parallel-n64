@@ -21,7 +21,6 @@
 #include "3DMath.h"
 #include "../../libretro/libretro_private.h"
 
-#ifdef __LIBRETRO__ // Prefix API
 #define VIDEO_TAG(X) gln64##X
 
 #define ReadScreen2 VIDEO_TAG(ReadScreen2)
@@ -50,9 +49,8 @@
 #define ProcessDList VIDEO_TAG(ProcessDList)
 #define ProcessRDPList VIDEO_TAG(ProcessRDPList)
 #define ResizeVideoOutput VIDEO_TAG(ResizeVideoOutput)
-#endif
 
-u32         last_good_ucode = (u32) -1;
+uint32_t         last_good_ucode = (uint32_t) -1;
 void        (*renderCallback)() = NULL;
 
 EXPORT m64p_error CALL PluginStartup(m64p_dynlib_handle CoreLibHandle,
@@ -187,7 +185,7 @@ EXPORT void CALL ViWidthChanged (void)
   output:   none
 *******************************************************************/ 
 
-EXPORT void CALL FBRead(u32 addr)
+EXPORT void CALL FBRead(uint32_t addr)
 {
 }
 
@@ -205,7 +203,7 @@ EXPORT void CALL FBRead(u32 addr)
   output:   none
 *******************************************************************/ 
 
-EXPORT void CALL FBWrite(u32 addr, u32 size)
+EXPORT void CALL FBWrite(uint32_t addr, uint32_t size)
 {
 }
 

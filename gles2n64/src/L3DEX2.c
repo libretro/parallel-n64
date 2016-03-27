@@ -11,9 +11,9 @@
 #include "gDP.h"
 #include "GBI.h"
 
-void L3DEX2_Line3D( u32 w0, u32 w1 )
+void L3DEX2_Line3D( uint32_t w0, uint32_t w1 )
 {
-   u32 wd = _SHIFTR( w0, 0, 8 );
+   uint32_t wd = _SHIFTR( w0, 0, 8 );
 
    if (wd == 0)
       gSPLine3D( _SHIFTR( w0, 17, 7 ), _SHIFTR( w0, 9, 7 ), 0 );

@@ -1,3 +1,5 @@
+#include <stdint.h>
+
 #include "OpenGL.h"
 #include "S2DEX.h"
 #include "F3D.h"
@@ -6,29 +8,28 @@
 #include "gSP.h"
 #include "gDP.h"
 #include "RSP.h"
-#include "Types.h"
 
-void S2DEX_BG_1Cyc( u32 w0, u32 w1 )
+void S2DEX_BG_1Cyc( uint32_t w0, uint32_t w1 )
 {
    gSPBgRect1Cyc( w1 );
 }
 
-void S2DEX_BG_Copy( u32 w0, u32 w1 )
+void S2DEX_BG_Copy( uint32_t w0, uint32_t w1 )
 {
    gSPBgRectCopy( w1 );
 }
 
-void S2DEX_Obj_Rectangle( u32 w0, u32 w1 )
+void S2DEX_Obj_Rectangle( uint32_t w0, uint32_t w1 )
 {
    gSPObjRectangle( w1 );
 }
 
-void S2DEX_Obj_Sprite( u32 w0, u32 w1 )
+void S2DEX_Obj_Sprite( uint32_t w0, uint32_t w1 )
 {
    gSPObjSprite( w1 );
 }
 
-void S2DEX_Obj_MoveMem( u32 w0, u32 w1 )
+void S2DEX_Obj_MoveMem( uint32_t w0, uint32_t w1 )
 {
 	switch (_SHIFTR( w0, 0, 16 )) {
 		case S2DEX_MV_MATRIX:
@@ -43,39 +44,39 @@ void S2DEX_Obj_MoveMem( u32 w0, u32 w1 )
 	}
 }
 
-void S2DEX_Select_DL( u32 w0, u32 w1 )
+void S2DEX_Select_DL( uint32_t w0, uint32_t w1 )
 {
 #ifdef DEBUG
 	LOG(LOG_WARNING, "S2DEX_Select_DL unimplemented\n");
 #endif
 }
 
-void S2DEX_Obj_RenderMode( u32 w0, u32 w1 )
+void S2DEX_Obj_RenderMode( uint32_t w0, uint32_t w1 )
 {
 	gSPObjRendermode(w1);
 }
 
-void S2DEX_Obj_Rectangle_R( u32 w0, u32 w1 )
+void S2DEX_Obj_Rectangle_R( uint32_t w0, uint32_t w1 )
 {
 	gSPObjRectangleR(w1);
 }
 
-void S2DEX_Obj_LoadTxtr( u32 w0, u32 w1 )
+void S2DEX_Obj_LoadTxtr( uint32_t w0, uint32_t w1 )
 {
    gSPObjLoadTxtr( w1 );
 }
 
-void S2DEX_Obj_LdTx_Sprite( u32 w0, u32 w1 )
+void S2DEX_Obj_LdTx_Sprite( uint32_t w0, uint32_t w1 )
 {
    gSPObjLoadTxSprite( w1 );
 }
 
-void S2DEX_Obj_LdTx_Rect( u32 w0, u32 w1 )
+void S2DEX_Obj_LdTx_Rect( uint32_t w0, uint32_t w1 )
 {
 	gSPObjLoadTxSprite( w1 );
 }
 
-void S2DEX_Obj_LdTx_Rect_R( u32 w0, u32 w1 )
+void S2DEX_Obj_LdTx_Rect_R( uint32_t w0, uint32_t w1 )
 {
    gSPObjLoadTxRectR( w1 );
 }

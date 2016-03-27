@@ -1,3 +1,5 @@
+#include <stdint.h>
+
 #include "gles2N64.h"
 #include "Debug.h"
 #include "F3D.h"
@@ -11,9 +13,9 @@
 #include "OpenGL.h"
 
 
-void F3DDKR_DMA_Mtx( u32 w0, u32 w1 )
+void F3DDKR_DMA_Mtx( uint32_t w0, uint32_t w1 )
 {
-   u32 index, multiply;
+   uint32_t index, multiply;
    if (_SHIFTR( w0, 0, 16 ) != 64)
    {
 #ifdef DEBUG
@@ -37,9 +39,9 @@ void F3DDKR_DMA_Mtx( u32 w0, u32 w1 )
    gSPDMAMatrix( w1, index, multiply );
 }
 
-void F3DDKR_DMA_Vtx( u32 w0, u32 w1 )
+void F3DDKR_DMA_Vtx( uint32_t w0, uint32_t w1 )
 {
-   u32 n;
+   uint32_t n;
    if ((w0 & F3DDKR_VTX_APPEND))
    {
       if (gSP.matrix.billboard)
@@ -55,9 +57,9 @@ void F3DDKR_DMA_Vtx( u32 w0, u32 w1 )
    gSP.vertexi += n;
 }
 
-void F3DJFG_DMA_Vtx(u32 w0, u32 w1)
+void F3DJFG_DMA_Vtx(uint32_t w0, uint32_t w1)
 {
-   u32 n;
+   uint32_t n;
 	if ((w0 & F3DDKR_VTX_APPEND))
    {
 		if (gSP.matrix.billboard)
@@ -72,28 +74,28 @@ void F3DJFG_DMA_Vtx(u32 w0, u32 w1)
 	gSP.vertexi += n;
 }
 
-void F3DDKR_DMA_Tri( u32 w0, u32 w1 )
+void F3DDKR_DMA_Tri( uint32_t w0, uint32_t w1 )
 {
    gSPDMATriangles( w1, _SHIFTR( w0, 4, 12 ) );
    gSP.vertexi = 0;
 }
 
-void F3DDKR_DMA_DList( u32 w0, u32 w1 )
+void F3DDKR_DMA_DList( uint32_t w0, uint32_t w1 )
 {
 	gSPDlistCount(_SHIFTR(w0, 16, 8), w1);
 }
 
-void F3DDKR_DMA_Offsets( u32 w0, u32 w1 )
+void F3DDKR_DMA_Offsets( uint32_t w0, uint32_t w1 )
 {
    gSPSetDMAOffsets( _SHIFTR( w0, 0, 24 ), _SHIFTR( w1, 0, 24 ) );
 }
 
-void F3DDKR_DMA_Tex_Offset(u32 w0, u32 w1)
+void F3DDKR_DMA_Tex_Offset(uint32_t w0, uint32_t w1)
 {
 	gSPSetDMATexOffset(w1);
 }
 
-void F3DDKR_MoveWord( u32 w0, u32 w1 )
+void F3DDKR_MoveWord( uint32_t w0, uint32_t w1 )
 {
    switch (_SHIFTR( w0, 0, 8 ))
    {

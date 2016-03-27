@@ -34,182 +34,182 @@
 
 TextureCache    cache;
 
-static INLINE u32 GetNone( u64 *src, u16 x, u16 i, u8 palette )
+static INLINE uint32_t GetNone( uint64_t *src, uint16_t x, uint16_t i, uint8_t palette )
 {
 	return 0x00000000;
 }
 
-static INLINE u32 GetCI4IA_RGBA4444( u64 *src, u16 x, u16 i, u8 palette )
+static INLINE uint32_t GetCI4IA_RGBA4444( uint64_t *src, uint16_t x, uint16_t i, uint8_t palette )
 {
-	u8 color4B = ((u8*)src)[(x>>1)^(i<<1)];
+	uint8_t color4B = ((uint8_t*)src)[(x>>1)^(i<<1)];
 
 	if (x & 1)
-		return IA88_RGBA4444( *(u16*)&TMEM[256 + (palette << 4) + (color4B & 0x0F)] );
-   return IA88_RGBA4444( *(u16*)&TMEM[256 + (palette << 4) + (color4B >> 4)] );
+		return IA88_RGBA4444( *(uint16_t*)&TMEM[256 + (palette << 4) + (color4B & 0x0F)] );
+   return IA88_RGBA4444( *(uint16_t*)&TMEM[256 + (palette << 4) + (color4B >> 4)] );
 }
 
-static INLINE u32 GetCI4IA_RGBA8888( u64 *src, u16 x, u16 i, u8 palette )
+static INLINE uint32_t GetCI4IA_RGBA8888( uint64_t *src, uint16_t x, uint16_t i, uint8_t palette )
 {
-	u8 color4B = ((u8*)src)[(x>>1)^(i<<1)];
+	uint8_t color4B = ((uint8_t*)src)[(x>>1)^(i<<1)];
 
 	if (x & 1)
-		return IA88_RGBA8888( *(u16*)&TMEM[256 + (palette << 4) + (color4B & 0x0F)] );
-   return IA88_RGBA8888( *(u16*)&TMEM[256 + (palette << 4) + (color4B >> 4)] );
+		return IA88_RGBA8888( *(uint16_t*)&TMEM[256 + (palette << 4) + (color4B & 0x0F)] );
+   return IA88_RGBA8888( *(uint16_t*)&TMEM[256 + (palette << 4) + (color4B >> 4)] );
 }
 
-static INLINE u32 GetCI4RGBA_RGBA5551( u64 *src, u16 x, u16 i, u8 palette )
+static INLINE uint32_t GetCI4RGBA_RGBA5551( uint64_t *src, uint16_t x, uint16_t i, uint8_t palette )
 {
-	u8 color4B = ((u8*)src)[(x>>1)^(i<<1)];
+	uint8_t color4B = ((uint8_t*)src)[(x>>1)^(i<<1)];
 
 	if (x & 1)
-		return RGBA5551_RGBA5551( *(u16*)&TMEM[256 + (palette << 4) + (color4B & 0x0F)] );
-   return RGBA5551_RGBA5551( *(u16*)&TMEM[256 + (palette << 4) + (color4B >> 4)] );
+		return RGBA5551_RGBA5551( *(uint16_t*)&TMEM[256 + (palette << 4) + (color4B & 0x0F)] );
+   return RGBA5551_RGBA5551( *(uint16_t*)&TMEM[256 + (palette << 4) + (color4B >> 4)] );
 }
 
-static INLINE u32 GetCI4RGBA_RGBA8888( u64 *src, u16 x, u16 i, u8 palette )
+static INLINE uint32_t GetCI4RGBA_RGBA8888( uint64_t *src, uint16_t x, uint16_t i, uint8_t palette )
 {
-	u8 color4B = ((u8*)src)[(x>>1)^(i<<1)];
+	uint8_t color4B = ((uint8_t*)src)[(x>>1)^(i<<1)];
 
 	if (x & 1)
-		return RGBA5551_RGBA8888( *(u16*)&TMEM[256 + (palette << 4) + (color4B & 0x0F)] );
-   return RGBA5551_RGBA8888( *(u16*)&TMEM[256 + (palette << 4) + (color4B >> 4)] );
+		return RGBA5551_RGBA8888( *(uint16_t*)&TMEM[256 + (palette << 4) + (color4B & 0x0F)] );
+   return RGBA5551_RGBA8888( *(uint16_t*)&TMEM[256 + (palette << 4) + (color4B >> 4)] );
 }
 
-static INLINE u32 GetIA31_RGBA8888( u64 *src, u16 x, u16 i, u8 palette )
+static INLINE uint32_t GetIA31_RGBA8888( uint64_t *src, uint16_t x, uint16_t i, uint8_t palette )
 {
-	u8 color4B = ((u8*)src)[(x>>1)^(i<<1)];
+	uint8_t color4B = ((uint8_t*)src)[(x>>1)^(i<<1)];
 
 	return IA31_RGBA8888( (x & 1) ? (color4B & 0x0F) : (color4B >> 4) );
 }
 
-static INLINE u32 GetIA31_RGBA4444( u64 *src, u16 x, u16 i, u8 palette )
+static INLINE uint32_t GetIA31_RGBA4444( uint64_t *src, uint16_t x, uint16_t i, uint8_t palette )
 {
-	u8 color4B = ((u8*)src)[(x>>1)^(i<<1)];
+	uint8_t color4B = ((uint8_t*)src)[(x>>1)^(i<<1)];
 
 	return IA31_RGBA4444( (x & 1) ? (color4B & 0x0F) : (color4B >> 4) );
 }
 
-static INLINE u32 GetI4_RGBA8888( u64 *src, u16 x, u16 i, u8 palette )
+static INLINE uint32_t GetI4_RGBA8888( uint64_t *src, uint16_t x, uint16_t i, uint8_t palette )
 {
-	u8 color4B = ((u8*)src)[(x>>1)^(i<<1)];
+	uint8_t color4B = ((uint8_t*)src)[(x>>1)^(i<<1)];
 
 	return I4_RGBA8888( (x & 1) ? (color4B & 0x0F) : (color4B >> 4) );
 }
 
-static INLINE u32 GetI4_RGBA4444( u64 *src, u16 x, u16 i, u8 palette )
+static INLINE uint32_t GetI4_RGBA4444( uint64_t *src, uint16_t x, uint16_t i, uint8_t palette )
 {
-	u8 color4B = ((u8*)src)[(x>>1)^(i<<1)];
+	uint8_t color4B = ((uint8_t*)src)[(x>>1)^(i<<1)];
 
 	return I4_RGBA4444( (x & 1) ? (color4B & 0x0F) : (color4B >> 4) );
 }
 
-static INLINE u32 GetCI8IA_RGBA4444( u64 *src, u16 x, u16 i, u8 palette )
+static INLINE uint32_t GetCI8IA_RGBA4444( uint64_t *src, uint16_t x, uint16_t i, uint8_t palette )
 {
-	return IA88_RGBA4444( *(u16*)&TMEM[256 + ((u8*)src)[x^(i<<1)]] );
+	return IA88_RGBA4444( *(uint16_t*)&TMEM[256 + ((uint8_t*)src)[x^(i<<1)]] );
 }
 
-static INLINE u32 GetCI8IA_RGBA8888( u64 *src, u16 x, u16 i, u8 palette )
+static INLINE uint32_t GetCI8IA_RGBA8888( uint64_t *src, uint16_t x, uint16_t i, uint8_t palette )
 {
-	return IA88_RGBA8888( *(u16*)&TMEM[256 + ((u8*)src)[x^(i<<1)]] );
+	return IA88_RGBA8888( *(uint16_t*)&TMEM[256 + ((uint8_t*)src)[x^(i<<1)]] );
 }
 
-static INLINE u32 GetCI8RGBA_RGBA5551( u64 *src, u16 x, u16 i, u8 palette )
+static INLINE uint32_t GetCI8RGBA_RGBA5551( uint64_t *src, uint16_t x, uint16_t i, uint8_t palette )
 {
-	return RGBA5551_RGBA5551( *(u16*)&TMEM[256 + ((u8*)src)[x^(i<<1)]] );
+	return RGBA5551_RGBA5551( *(uint16_t*)&TMEM[256 + ((uint8_t*)src)[x^(i<<1)]] );
 }
 
-static INLINE u32 GetCI8RGBA_RGBA8888( u64 *src, u16 x, u16 i, u8 palette )
+static INLINE uint32_t GetCI8RGBA_RGBA8888( uint64_t *src, uint16_t x, uint16_t i, uint8_t palette )
 {
-	return RGBA5551_RGBA8888( *(u16*)&TMEM[256 + ((u8*)src)[x^(i<<1)]] );
+	return RGBA5551_RGBA8888( *(uint16_t*)&TMEM[256 + ((uint8_t*)src)[x^(i<<1)]] );
 }
 
-static INLINE u32 GetIA44_RGBA8888( u64 *src, u16 x, u16 i, u8 palette )
+static INLINE uint32_t GetIA44_RGBA8888( uint64_t *src, uint16_t x, uint16_t i, uint8_t palette )
 {
-	return IA44_RGBA8888(((u8*)src)[x^(i<<1)]);
+	return IA44_RGBA8888(((uint8_t*)src)[x^(i<<1)]);
 }
 
-static INLINE u32 GetIA44_RGBA4444( u64 *src, u16 x, u16 i, u8 palette )
+static INLINE uint32_t GetIA44_RGBA4444( uint64_t *src, uint16_t x, uint16_t i, uint8_t palette )
 {
-	return IA44_RGBA4444(((u8*)src)[x^(i<<1)]);
+	return IA44_RGBA4444(((uint8_t*)src)[x^(i<<1)]);
 }
 
-static INLINE u32 GetI8_RGBA8888( u64 *src, u16 x, u16 i, u8 palette )
+static INLINE uint32_t GetI8_RGBA8888( uint64_t *src, uint16_t x, uint16_t i, uint8_t palette )
 {
-	return I8_RGBA8888(((u8*)src)[x^(i<<1)]);
+	return I8_RGBA8888(((uint8_t*)src)[x^(i<<1)]);
 }
 
-static INLINE u32 GetI8_RGBA4444( u64 *src, u16 x, u16 i, u8 palette )
+static INLINE uint32_t GetI8_RGBA4444( uint64_t *src, uint16_t x, uint16_t i, uint8_t palette )
 {
-	return I8_RGBA4444(((u8*)src)[x^(i<<1)]);
+	return I8_RGBA4444(((uint8_t*)src)[x^(i<<1)]);
 }
 
-static INLINE u32 GetCI16IA_RGBA8888(u64 *src, u16 x, u16 i, u8 palette)
+static INLINE uint32_t GetCI16IA_RGBA8888(uint64_t *src, uint16_t x, uint16_t i, uint8_t palette)
 {
-	const u16 tex = ((u16*)src)[x^i];
-	const u16 col = (*(u16*)&TMEM[256 + (tex >> 8)]);
-	const u16 c = col >> 8;
-	const u16 a = col & 0xFF;
+	const uint16_t tex = ((uint16_t*)src)[x^i];
+	const uint16_t col = (*(uint16_t*)&TMEM[256 + (tex >> 8)]);
+	const uint16_t c = col >> 8;
+	const uint16_t a = col & 0xFF;
 	return (a << 24) | (c << 16) | (c << 8) | c;
 }
 
-static INLINE u32 GetCI16IA_RGBA4444(u64 *src, u16 x, u16 i, u8 palette)
+static INLINE uint32_t GetCI16IA_RGBA4444(uint64_t *src, uint16_t x, uint16_t i, uint8_t palette)
 {
-	const u16 tex = ((u16*)src)[x^i];
-	const u16 col = (*(u16*)&TMEM[256 + (tex >> 8)]);
-	const u16 c = col >> 12;
-	const u16 a = col & 0x0F;
+	const uint16_t tex = ((uint16_t*)src)[x^i];
+	const uint16_t col = (*(uint16_t*)&TMEM[256 + (tex >> 8)]);
+	const uint16_t c = col >> 12;
+	const uint16_t a = col & 0x0F;
 	return (a << 12) | (c << 8) | (c << 4) | c;
 }
 
-static INLINE u32 GetCI16RGBA_RGBA8888(u64 *src, u16 x, u16 i, u8 palette)
+static INLINE uint32_t GetCI16RGBA_RGBA8888(uint64_t *src, uint16_t x, uint16_t i, uint8_t palette)
 {
-	const u16 tex = ((u16*)src)[x^i];
-	return RGBA5551_RGBA8888(*(u16*)&TMEM[256 + (tex >> 8)]);
+	const uint16_t tex = ((uint16_t*)src)[x^i];
+	return RGBA5551_RGBA8888(*(uint16_t*)&TMEM[256 + (tex >> 8)]);
 }
 
-static INLINE u32 GetCI16RGBA_RGBA5551(u64 *src, u16 x, u16 i, u8 palette)
+static INLINE uint32_t GetCI16RGBA_RGBA5551(uint64_t *src, uint16_t x, uint16_t i, uint8_t palette)
 {
-	const u16 tex = ((u16*)src)[x^i];
-	return RGBA5551_RGBA5551(*(u16*)&TMEM[256 + (tex >> 8)]);
+	const uint16_t tex = ((uint16_t*)src)[x^i];
+	return RGBA5551_RGBA5551(*(uint16_t*)&TMEM[256 + (tex >> 8)]);
 }
 
-static INLINE u32 GetRGBA5551_RGBA8888(u64 *src, u16 x, u16 i, u8 palette)
+static INLINE uint32_t GetRGBA5551_RGBA8888(uint64_t *src, uint16_t x, uint16_t i, uint8_t palette)
 {
-	u16 tex = ((u16*)src)[x^i];
+	uint16_t tex = ((uint16_t*)src)[x^i];
 	return RGBA5551_RGBA8888(tex);
 }
 
-static INLINE u32 GetRGBA5551_RGBA5551( u64 *src, u16 x, u16 i, u8 palette )
+static INLINE uint32_t GetRGBA5551_RGBA5551( uint64_t *src, uint16_t x, uint16_t i, uint8_t palette )
 {
-	u16 tex = ((u16*)src)[x^i];
+	uint16_t tex = ((uint16_t*)src)[x^i];
 	return RGBA5551_RGBA5551(tex);
 }
 
-static INLINE u32 GetIA88_RGBA8888( u64 *src, u16 x, u16 i, u8 palette )
+static INLINE uint32_t GetIA88_RGBA8888( uint64_t *src, uint16_t x, uint16_t i, uint8_t palette )
 {
-	return IA88_RGBA8888(((u16*)src)[x^i]);
+	return IA88_RGBA8888(((uint16_t*)src)[x^i]);
 }
 
-static INLINE u32 GetIA88_RGBA4444( u64 *src, u16 x, u16 i, u8 palette )
+static INLINE uint32_t GetIA88_RGBA4444( uint64_t *src, uint16_t x, uint16_t i, uint8_t palette )
 {
-	return IA88_RGBA4444(((u16*)src)[x^i]);
+	return IA88_RGBA4444(((uint16_t*)src)[x^i]);
 }
 
-static INLINE u32 GetRGBA8888_RGBA8888( u64 *src, u16 x, u16 i, u8 palette )
+static INLINE uint32_t GetRGBA8888_RGBA8888( uint64_t *src, uint16_t x, uint16_t i, uint8_t palette )
 {
-	return ((u32*)src)[x^i];
+	return ((uint32_t*)src)[x^i];
 }
 
-static INLINE u32 GetRGBA8888_RGBA4444( u64 *src, u16 x, u16 i, u8 palette )
+static INLINE uint32_t GetRGBA8888_RGBA4444( uint64_t *src, uint16_t x, uint16_t i, uint8_t palette )
 {
-	return RGBA8888_RGBA4444(((u32*)src)[x^i]);
+	return RGBA8888_RGBA4444(((uint32_t*)src)[x^i]);
 }
 
-u32 YUV_RGBA8888(u8 y, u8 u, u8 v)
+uint32_t YUV_RGBA8888(uint8_t y, uint8_t u, uint8_t v)
 {
-	s32 r = (s32)(y + (1.370705f * (v - 128)));
-	s32 g = (s32)((y - (0.698001f * (v - 128)) - (0.337633f * (u - 128))));
-	s32 b = (s32)(y + (1.732446f * (u - 128)));
+	int32_t r = (int32_t)(y + (1.370705f * (v - 128)));
+	int32_t g = (int32_t)((y - (0.698001f * (v - 128)) - (0.337633f * (u - 128))));
+	int32_t b = (int32_t)(y + (1.732446f * (u - 128)));
 	//clipping the result
 	if (r > 255) r = 255;
 	if (g > 255) g = 255;
@@ -221,32 +221,32 @@ u32 YUV_RGBA8888(u8 y, u8 u, u8 v)
 	return (0xff << 24) | (b << 16) | (g << 8) | r;
 }
 
-u16 YUV_RGBA4444(u8 y, u8 u, u8 v)
+uint16_t YUV_RGBA4444(uint8_t y, uint8_t u, uint8_t v)
 {
 	return RGBA8888_RGBA4444(YUV_RGBA8888(y, u, v));
 }
 
-static INLINE void GetYUV_RGBA8888(u64 * src, u32 * dst, u16 x)
+static INLINE void GetYUV_RGBA8888(uint64_t * src, uint32_t * dst, uint16_t x)
 {
-	const u32 t = (((u32*)src)[x]);
-	u8 y1 = (u8)t & 0xFF;
-	u8 v = (u8)(t >> 8) & 0xFF;
-	u8 y0 = (u8)(t >> 16) & 0xFF;
-	u8 u = (u8)(t >> 24) & 0xFF;
-	u32 c = YUV_RGBA8888(y0, u, v);
+	const uint32_t t = (((uint32_t*)src)[x]);
+	uint8_t y1 = (uint8_t)t & 0xFF;
+	uint8_t v = (uint8_t)(t >> 8) & 0xFF;
+	uint8_t y0 = (uint8_t)(t >> 16) & 0xFF;
+	uint8_t u = (uint8_t)(t >> 24) & 0xFF;
+	uint32_t c = YUV_RGBA8888(y0, u, v);
 	*(dst++) = c;
 	c = YUV_RGBA8888(y1, u, v);
 	*(dst++) = c;
 }
 
-static INLINE void GetYUV_RGBA4444(u64 * src, u16 * dst, u16 x)
+static INLINE void GetYUV_RGBA4444(uint64_t * src, uint16_t * dst, uint16_t x)
 {
-	const u32 t = (((u32*)src)[x]);
-	u8 y1 = (u8)t & 0xFF;
-	u8 v = (u8)(t >> 8) & 0xFF;
-	u8 y0 = (u8)(t >> 16) & 0xFF;
-	u8 u = (u8)(t >> 24) & 0xFF;
-	u16 c = YUV_RGBA4444(y0, u, v);
+	const uint32_t t = (((uint32_t*)src)[x]);
+	uint8_t y1 = (uint8_t)t & 0xFF;
+	uint8_t v = (uint8_t)(t >> 8) & 0xFF;
+	uint8_t y0 = (uint8_t)(t >> 16) & 0xFF;
+	uint8_t u = (uint8_t)(t >> 24) & 0xFF;
+	uint16_t c = YUV_RGBA4444(y0, u, v);
 	*(dst++) = c;
 	c = YUV_RGBA4444(y1, u, v);
 	*(dst++) = c;
@@ -260,7 +260,7 @@ const struct TextureLoadParameters
 	GetTexelFunc	Get32;
 	GLenum			glType32;
 	GLint			   glInternalFormat32;
-	u32				autoFormat, lineShift, maxTexels;
+	uint32_t				autoFormat, lineShift, maxTexels;
 } imageFormat[4][4][5] =
 { // G_TT_NONE
 	{ //		Get16					glType16						glInternalFormat16	Get32					glType32						glInternalFormat32	autoFormat
@@ -393,8 +393,8 @@ int isTexCacheInit = 0;
 void TextureCache_Init(void)
 {
    int x, y, i;
-   u8 noise[64*64*2];
-   u32 dummyTexture[16] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+   uint8_t noise[64*64*2];
+   uint32_t dummyTexture[16] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
 
    isTexCacheInit = 1;
    cache.current[0] = NULL;
@@ -416,7 +416,7 @@ void TextureCache_Init(void)
       {
          for (x = 0; x < 64; x++)
          {
-            u32 r = rand() & 0xFF;
+            uint32_t r = rand() & 0xFF;
             noise[y*64*2+x*2] = r;
             noise[y*64*2+x*2+1] = r;
          }
@@ -458,7 +458,7 @@ void TextureCache_Init(void)
 
 bool TextureCache_Verify(void)
 {
-   u16 i;
+   uint16_t i;
    CachedTexture *current;
 
    i = 0;
@@ -608,21 +608,21 @@ void TextureCache_Destroy(void)
 
 struct TileSizes
 {
-	u32 maskWidth, clampWidth, width, realWidth;
-	u32 maskHeight, clampHeight, height, realHeight;
+	uint32_t maskWidth, clampWidth, width, realWidth;
+	uint32_t maskHeight, clampHeight, height, realHeight;
 };
 
-static void _calcTileSizes(u32 _t, struct TileSizes *_sizes, gDPTile * _pLoadTile)
+static void _calcTileSizes(uint32_t _t, struct TileSizes *_sizes, gDPTile * _pLoadTile)
 {
-   u32 lineWidth, lineHeight, maskWidth, maskHeight, width, height;
+   uint32_t lineWidth, lineHeight, maskWidth, maskHeight, width, height;
    struct gDPLoadTileInfo *info;
-   u32 loadWidth = 0, loadHeight = 0;
+   uint32_t loadWidth = 0, loadHeight = 0;
    gDPTile * pTile = _t < 2 ? gSP.textureTile[_t] : &gDP.tiles[_t];
    const struct TextureLoadParameters *loadParams = (const struct TextureLoadParameters*)
       &imageFormat[gDP.otherMode.textureLUT][pTile->size][pTile->format];
-   const u32 maxTexels = loadParams->maxTexels;
-   const u32 tileWidth = ((pTile->lrs - pTile->uls) & 0x03FF) + 1;
-   const u32 tileHeight = ((pTile->lrt - pTile->ult) & 0x03FF) + 1;
+   const uint32_t maxTexels = loadParams->maxTexels;
+   const uint32_t tileWidth = ((pTile->lrs - pTile->uls) & 0x03FF) + 1;
+   const uint32_t tileHeight = ((pTile->lrt - pTile->ult) & 0x03FF) + 1;
 
    const bool bUseLoadSizes = _pLoadTile != NULL && _pLoadTile->loadType == LOADTYPE_TILE &&
       (pTile->tmem == _pLoadTile->tmem);
@@ -716,12 +716,12 @@ static void _calcTileSizes(u32 _t, struct TileSizes *_sizes, gDPTile * _pLoadTil
 
 static void _loadBackground( CachedTexture *pTexture )
 {
-	u32 *pDest;
-	u8 *pSwapped, *pSrc;
-	u32 numBytes, bpl;
-	u32 x, y, j, tx, ty;
-	u16 clampSClamp;
-	u16 clampTClamp;
+	uint32_t *pDest;
+	uint8_t *pSwapped, *pSrc;
+	uint32_t numBytes, bpl;
+	uint32_t x, y, j, tx, ty;
+	uint16_t clampSClamp;
+	uint16_t clampTClamp;
 	GetTexelFunc GetTexel;
 	GLuint glInternalFormat;
 	GLenum glType;
@@ -742,10 +742,10 @@ static void _loadBackground( CachedTexture *pTexture )
 
 	bpl = gSP.bgImage.width << gSP.bgImage.size >> 1;
 	numBytes = bpl * gSP.bgImage.height;
-	pSwapped = (u8*)malloc(numBytes);
+	pSwapped = (uint8_t*)malloc(numBytes);
 	//assert(pSwapped != NULL);
 	UnswapCopyWrap(gfx_info.RDRAM, gSP.bgImage.address, pSwapped, 0, RDRAMSize, numBytes);
-	pDest = (u32*)malloc(pTexture->textureBytes);
+	pDest = (uint32_t*)malloc(pTexture->textureBytes);
 	//assert(pDest != NULL);
 
 	clampSClamp = pTexture->width - 1;
@@ -753,17 +753,17 @@ static void _loadBackground( CachedTexture *pTexture )
 
 	j = 0;
 	for (y = 0; y < pTexture->realHeight; y++) {
-		ty = min(y, (u32)clampTClamp);
+		ty = min(y, (uint32_t)clampTClamp);
 
 		pSrc = &pSwapped[bpl * ty];
 
 		for (x = 0; x < pTexture->realWidth; x++) {
-			tx = min(x, (u32)clampSClamp);
+			tx = min(x, (uint32_t)clampSClamp);
 
 			if (glInternalFormat == GL_RGBA)
-				((u32*)pDest)[j++] = GetTexel((u64*)pSrc, tx, 0, pTexture->palette);
+				((uint32_t*)pDest)[j++] = GetTexel((uint64_t*)pSrc, tx, 0, pTexture->palette);
 			else
-				((u16*)pDest)[j++] = GetTexel((u64*)pSrc, tx, 0, pTexture->palette);
+				((uint16_t*)pDest)[j++] = GetTexel((uint64_t*)pSrc, tx, 0, pTexture->palette);
 		}
 	}
 
@@ -771,7 +771,7 @@ static void _loadBackground( CachedTexture *pTexture )
 	if ((config.textureFilter.txEnhancementMode | config.textureFilter.txFilterMode) != 0 && config.textureFilter.txFilterIgnoreBG == 0 && TFH.isInited())
    {
 		GHQTexInfo ghqTexInfo;
-		if (txfilter_filter((u8*)pDest, pTexture->realWidth, pTexture->realHeight, glInternalFormat, (uint64)pTexture->crc, &ghqTexInfo) != 0 && ghqTexInfo.data != NULL) {
+		if (txfilter_filter((uint8_t*)pDest, pTexture->realWidth, pTexture->realHeight, glInternalFormat, (uint64)pTexture->crc, &ghqTexInfo) != 0 && ghqTexInfo.data != NULL) {
 			if (ghqTexInfo.width % 2 != 0 && ghqTexInfo.format != GL_RGBA)
 				glPixelStorei(GL_UNPACK_ALIGNMENT, 2);
 			glTexImage2D(GL_TEXTURE_2D, 0, ghqTexInfo.format, ghqTexInfo.width, ghqTexInfo.height, 0, ghqTexInfo.texture_format, ghqTexInfo.pixel_type, ghqTexInfo.data);
@@ -790,12 +790,12 @@ static void _loadBackground( CachedTexture *pTexture )
 	free(pDest);
 }
 
-static INLINE void TextureCache_getTextureDestData(CachedTexture *tmptex, u32* pDest, GLuint glInternalFormat, GetTexelFunc GetTexel, u16* pLine)
+static INLINE void TextureCache_getTextureDestData(CachedTexture *tmptex, uint32_t* pDest, GLuint glInternalFormat, GetTexelFunc GetTexel, uint16_t* pLine)
 {
-	u64 *pSrc;
-	u16 x, y, i, j, tx, ty;
-	u16 mirrorSBit, maskSMask, clampSClamp;
-	u16 mirrorTBit, maskTMask, clampTClamp;
+	uint64_t *pSrc;
+	uint16_t x, y, i, j, tx, ty;
+	uint16_t mirrorSBit, maskSMask, clampSClamp;
+	uint16_t mirrorTBit, maskTMask, clampTClamp;
 
    if (tmptex->maskS > 0) {
       clampSClamp = tmptex->clampS ? tmptex->clampWidth - 1 : (tmptex->mirrorS ? (tmptex->width << 1) - 1 : tmptex->width - 1);
@@ -820,9 +820,9 @@ static INLINE void TextureCache_getTextureDestData(CachedTexture *tmptex, u32* p
    if (tmptex->size == G_IM_SIZ_32b) {
 	   int line32;
 	   int width;
-	   u16 gr, ab;
-      const u16 * tmem16 = (u16*)TMEM;
-      const u32 tbase = tmptex->tMem << 2;
+	   uint16_t gr, ab;
+      const uint16_t * tmem16 = (uint16_t*)TMEM;
+      const uint32_t tbase = tmptex->tMem << 2;
 
       int wid_64 = (tmptex->clampWidth) << 2;
       if (wid_64 & 15) wid_64 += 16;
@@ -836,7 +836,7 @@ static INLINE void TextureCache_getTextureDestData(CachedTexture *tmptex, u32* p
 
       j = 0;
       for (y = 0; y < tmptex->realHeight; ++y) {
-		  u32 tline, xorval;
+		  uint32_t tline, xorval;
          ty = min(y, clampTClamp) & maskTMask;
          if (y & mirrorTBit)
             ty ^= maskTMask;
@@ -845,7 +845,7 @@ static INLINE void TextureCache_getTextureDestData(CachedTexture *tmptex, u32* p
          xorval = (ty & 1) ? 3 : 1;
 
          for (x = 0; x < tmptex->realWidth; ++x) {
-			 u32 taddr;
+			 uint32_t taddr;
             tx = min(x, clampSClamp) & maskSMask;
             if (x & mirrorSBit)
                tx ^= maskSMask;
@@ -865,7 +865,7 @@ static INLINE void TextureCache_getTextureDestData(CachedTexture *tmptex, u32* p
             if (glInternalFormat == GL_RGBA)
                GetYUV_RGBA8888(pSrc, pDest + j, x);
             else
-               GetYUV_RGBA4444(pSrc, (u16*)pDest + j, x);
+               GetYUV_RGBA4444(pSrc, (uint16_t*)pDest + j, x);
             j += 2;
          }
       }
@@ -889,21 +889,21 @@ static INLINE void TextureCache_getTextureDestData(CachedTexture *tmptex, u32* p
             if (glInternalFormat == GL_RGBA)
                pDest[j++] = GetTexel(pSrc, tx, i, tmptex->palette);
             else
-               ((u16*)pDest)[j++] = GetTexel(pSrc, tx, i, tmptex->palette);
+               ((uint16_t*)pDest)[j++] = GetTexel(pSrc, tx, i, tmptex->palette);
          }
       }
    }
 }
 
-static void _load(u32 _tile, CachedTexture *_pTexture)
+static void _load(uint32_t _tile, CachedTexture *_pTexture)
 {
-	u32 *pDest;
-   u16 line;
+	uint32_t *pDest;
+   uint16_t line;
 	GetTexelFunc GetTexel;
 	GLuint glInternalFormat;
 	GLenum glType;
-	u32 sizeShift;
-	u64 ricecrc = 0;
+	uint32_t sizeShift;
+	uint64_t ricecrc = 0;
 	GLint mipLevel = 0, maxLevel = 0;
 	CachedTexture tmptex = {0};
 
@@ -925,7 +925,7 @@ static void _load(u32 _tile, CachedTexture *_pTexture)
 		glType = loadParams->glType16;
 	}
 
-	pDest = (u32*)malloc(_pTexture->textureBytes);
+	pDest = (uint32_t*)malloc(_pTexture->textureBytes);
 
 
 	if (config.generalEmulation.enableLOD != 0 && gSP.texture.level > gSP.texture.tile + 1)
@@ -940,21 +940,21 @@ static void _load(u32 _tile, CachedTexture *_pTexture)
 	while (true)
    {
      struct TileSizes sizes;
-  u32 tileMipLevel;
+  uint32_t tileMipLevel;
 	  gDPTile *mipTile;
       bool bLoaded = false;
       TextureCache_getTextureDestData(&tmptex, pDest, glInternalFormat, GetTexel, &line);
 
 #if 0
       if (m_toggleDumpTex && config.textureFilter.txHiresEnable != 0 && config.textureFilter.txDump != 0) {
-         txfilter_dmptx((u8*)pDest, tmptex.realWidth, tmptex.realHeight, tmptex.realWidth, glInternalFormat, (unsigned short)(_pTexture->format << 8 | _pTexture->size), ricecrc);
+         txfilter_dmptx((uint8_t*)pDest, tmptex.realWidth, tmptex.realHeight, tmptex.realWidth, glInternalFormat, (unsigned short)(_pTexture->format << 8 | _pTexture->size), ricecrc);
       }
 #endif
 #if 0
       else if ((config.textureFilter.txEnhancementMode | config.textureFilter.txFilterMode) != 0 && maxLevel == 0 && (config.textureFilter.txFilterIgnoreBG == 0 || (RSP.cmd != G_TEXRECT && RSP.cmd != G_TEXRECTFLIP)) && TFH.isInited())
       {
          GHQTexInfo ghqTexInfo;
-         if (txfilter_filter((u8*)pDest, tmptex.realWidth, tmptex.realHeight, glInternalFormat, (uint64)_pTexture->crc, &ghqTexInfo) != 0 && ghqTexInfo.data != NULL) {
+         if (txfilter_filter((uint8_t*)pDest, tmptex.realWidth, tmptex.realHeight, glInternalFormat, (uint64)_pTexture->crc, &ghqTexInfo) != 0 && ghqTexInfo.data != NULL) {
             glTexImage2D(GL_TEXTURE_2D, 0, ghqTexInfo.format, ghqTexInfo.width, ghqTexInfo.height, 0, ghqTexInfo.texture_format, ghqTexInfo.pixel_type, ghqTexInfo.data);
             _updateCachedTexture(ghqTexInfo, _pTexture);
             bLoaded = true;
@@ -997,32 +997,32 @@ static void _load(u32 _tile, CachedTexture *_pTexture)
 
 struct TextureParams
 {
-	u16 width;
-	u16 height;
-	u16 clampWidth;
-	u16 clampHeight;
-	u8 maskS;
-	u8 maskT;
-	u8 mirrorS;
-	u8 mirrorT;
-	u8 clampS;
-	u8 clampT;
-	u8 format;
-	u8 size;
+	uint16_t width;
+	uint16_t height;
+	uint16_t clampWidth;
+	uint16_t clampHeight;
+	uint8_t maskS;
+	uint8_t maskT;
+	uint8_t mirrorS;
+	uint8_t mirrorT;
+	uint8_t clampS;
+	uint8_t clampT;
+	uint8_t format;
+	uint8_t size;
 };
 
-static u32 _calculateCRC(u32 t, const struct TextureParams *_params)
+static uint32_t _calculateCRC(uint32_t t, const struct TextureParams *_params)
 {
-   const u32 line = gSP.textureTile[t]->line;
-   const u32 lineBytes = line << 3;
+   const uint32_t line = gSP.textureTile[t]->line;
+   const uint32_t lineBytes = line << 3;
 
-   const u64 *src = (u64*)&TMEM[gSP.textureTile[t]->tmem];
-   u32 crc = 0xFFFFFFFF;
+   const uint64_t *src = (uint64_t*)&TMEM[gSP.textureTile[t]->tmem];
+   uint32_t crc = 0xFFFFFFFF;
    crc = Hash_Calculate(crc, src, _params->height*lineBytes);
 
    if (gSP.textureTile[t]->size == G_IM_SIZ_32b)
    {
-      src = (u64*)&TMEM[gSP.textureTile[t]->tmem + 256];
+      src = (uint64_t*)&TMEM[gSP.textureTile[t]->tmem + 256];
       crc = Hash_Calculate(crc, src, _params->height*lineBytes);
    }
 
@@ -1038,7 +1038,7 @@ static u32 _calculateCRC(u32 t, const struct TextureParams *_params)
    return crc;
 }
 
-void TextureCache_ActivateTexture( u32 t, CachedTexture *_pTexture )
+void TextureCache_ActivateTexture( uint32_t t, CachedTexture *_pTexture )
 {
    bool bUseBilinear;
    glActiveTexture( GL_TEXTURE0 + t );
@@ -1099,7 +1099,7 @@ void TextureCache_ActivateTexture( u32 t, CachedTexture *_pTexture )
    cache.current[t] = _pTexture;
 }
 
-void TextureCache_ActivateDummy( u32 t)
+void TextureCache_ActivateDummy( uint32_t t)
 {
    glActiveTexture(GL_TEXTURE0 + t);
    glBindTexture(GL_TEXTURE_2D, cache.dummy->glName );
@@ -1107,7 +1107,7 @@ void TextureCache_ActivateDummy( u32 t)
    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 }
 
-int _background_compare(CachedTexture *current, u32 crc)
+int _background_compare(CachedTexture *current, uint32_t crc)
 {
    if ((current != NULL) &&
          (current->crc == crc) &&
@@ -1122,7 +1122,7 @@ int _background_compare(CachedTexture *current, u32 crc)
 
 void _updateBackground(void)
 {
-   u32 numBytes, crc;
+   uint32_t numBytes, crc;
    CachedTexture *current;
    CachedTexture *pCurrent;
 
@@ -1186,8 +1186,8 @@ void _updateBackground(void)
    pCurrent->realWidth = gSP.bgImage.width;
    pCurrent->realHeight = gSP.bgImage.height;
 
-   pCurrent->scaleS = 1.0f / (f32)(pCurrent->realWidth);
-   pCurrent->scaleT = 1.0f / (f32)(pCurrent->realHeight);
+   pCurrent->scaleS = 1.0f / (float)(pCurrent->realWidth);
+   pCurrent->scaleT = 1.0f / (float)(pCurrent->realHeight);
 
    pCurrent->shiftScaleS = 1.0f;
    pCurrent->shiftScaleT = 1.0f;
@@ -1202,7 +1202,7 @@ void _updateBackground(void)
    cache.current[0] = pCurrent;
 }
 
-int _texture_compare(u32 t, CachedTexture *current, u32 crc,  u32 width, u32 height, u32 clampWidth, u32 clampHeight)
+int _texture_compare(uint32_t t, CachedTexture *current, uint32_t crc,  uint32_t width, uint32_t height, uint32_t clampWidth, uint32_t clampHeight)
 {
    return  ((current != NULL) &&
          (current->crc == crc) &&
@@ -1221,27 +1221,27 @@ int _texture_compare(u32 t, CachedTexture *current, u32 crc,  u32 width, u32 hei
 }
 
 static
-void _updateShiftScale(u32 _t, CachedTexture *_pTexture)
+void _updateShiftScale(uint32_t _t, CachedTexture *_pTexture)
 {
 	_pTexture->shiftScaleS = 1.0f;
 	_pTexture->shiftScaleT = 1.0f;
 
 	if (gSP.textureTile[_t]->shifts > 10)
-		_pTexture->shiftScaleS = (f32)(1 << (16 - gSP.textureTile[_t]->shifts));
+		_pTexture->shiftScaleS = (float)(1 << (16 - gSP.textureTile[_t]->shifts));
 	else if (gSP.textureTile[_t]->shifts > 0)
-		_pTexture->shiftScaleS /= (f32)(1 << gSP.textureTile[_t]->shifts);
+		_pTexture->shiftScaleS /= (float)(1 << gSP.textureTile[_t]->shifts);
 
 	if (gSP.textureTile[_t]->shiftt > 10)
-		_pTexture->shiftScaleT = (f32)(1 << (16 - gSP.textureTile[_t]->shiftt));
+		_pTexture->shiftScaleT = (float)(1 << (16 - gSP.textureTile[_t]->shiftt));
 	else if (gSP.textureTile[_t]->shiftt > 0)
-		_pTexture->shiftScaleT /= (f32)(1 << gSP.textureTile[_t]->shiftt);
+		_pTexture->shiftScaleT /= (float)(1 << gSP.textureTile[_t]->shiftt);
 }
 
-void TextureCache_Update( u32 _t )
+void TextureCache_Update( uint32_t _t )
 {
    CachedTexture *current;
    CachedTexture *pCurrent;
-   u32 crc;
+   uint32_t crc;
    struct TextureParams params;
    struct TileSizes sizes;
 
@@ -1341,8 +1341,8 @@ void TextureCache_Update( u32 _t )
    pCurrent->realWidth = sizes.realWidth;
    pCurrent->realHeight = sizes.realHeight;
 
-   pCurrent->scaleS = 1.0f / (f32)(pCurrent->realWidth);
-   pCurrent->scaleT = 1.0f / (f32)(pCurrent->realHeight);
+   pCurrent->scaleS = 1.0f / (float)(pCurrent->realWidth);
+   pCurrent->scaleT = 1.0f / (float)(pCurrent->realHeight);
 
    pCurrent->offsetS = 0.5f;
    pCurrent->offsetT = 0.5f;
@@ -1360,7 +1360,7 @@ void TextureCache_Update( u32 _t )
    cache.current[_t] = pCurrent;
 }
 
-void TextureCache_ActivateNoise(u32 t)
+void TextureCache_ActivateNoise(uint32_t t)
 {
    glActiveTexture(GL_TEXTURE0 + t);
    glBindTexture(GL_TEXTURE_2D, cache.glNoiseNames[__RSP.DList & 0x1F]);

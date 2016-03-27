@@ -9,12 +9,12 @@
 #include "gDP.h"
 #include "GBI.h"
 
-void F3DPD_Vtx( u32 w0, u32 w1 )
+void F3DPD_Vtx( uint32_t w0, uint32_t w1 )
 {
    gSPCIVertex( w1, _SHIFTR( w0, 20, 4 ) + 1, _SHIFTR( w0, 16, 4 ) );
 }
 
-void F3DPD_VtxColorBase( u32 w0, u32 w1 )
+void F3DPD_VtxColorBase( uint32_t w0, uint32_t w1 )
 {
    gSPSetVertexColorBase( w1 );
 }

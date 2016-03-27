@@ -9,43 +9,43 @@
 #include "gDP.h"
 #include "GBI.h"
 
-void F3DEX_Vtx( u32 w0, u32 w1 )
+void F3DEX_Vtx( uint32_t w0, uint32_t w1 )
 {
    gSPVertex( w1, _SHIFTR( w0, 10, 6 ), _SHIFTR( w0, 17, 7 ) );
 }
 
-void F3DEX_Tri1( u32 w0, u32 w1 )
+void F3DEX_Tri1( uint32_t w0, uint32_t w1 )
 {
    gSP1Triangle( _SHIFTR( w1, 17, 7 ), _SHIFTR( w1, 9, 7 ), _SHIFTR( w1, 1, 7 ));
 }
 
-void F3DEX_CullDL( u32 w0, u32 w1 )
+void F3DEX_CullDL( uint32_t w0, uint32_t w1 )
 {
    gSPCullDisplayList( _SHIFTR( w0, 1, 15 ), _SHIFTR( w1, 1, 15 ) );
 }
 
-void F3DEX_ModifyVtx( u32 w0, u32 w1 )
+void F3DEX_ModifyVtx( uint32_t w0, uint32_t w1 )
 {
    gSPModifyVertex( _SHIFTR( w0, 1, 15 ), _SHIFTR( w0, 16, 8 ), w1 );
 }
 
-void F3DEX_Tri2( u32 w0, u32 w1 )
+void F3DEX_Tri2( uint32_t w0, uint32_t w1 )
 {
    gSP2Triangles( _SHIFTR( w0, 17, 7 ), _SHIFTR( w0, 9, 7 ), _SHIFTR( w0, 1, 7 ), 0,
          _SHIFTR( w1, 17, 7 ), _SHIFTR( w1, 9, 7 ), _SHIFTR( w1, 1, 7 ), 0);
 }
 
-void F3DEX_Quad( u32 w0, u32 w1 )
+void F3DEX_Quad( uint32_t w0, uint32_t w1 )
 {
    gSP1Quadrangle( _SHIFTR( w1, 25, 7 ), _SHIFTR( w1, 17, 7 ), _SHIFTR( w1, 9, 7 ), _SHIFTR( w1, 1, 7 ) );
 }
 
-void F3DEX_Branch_Z( u32 w0, u32 w1 )
+void F3DEX_Branch_Z( uint32_t w0, uint32_t w1 )
 {
-   gSPBranchLessZ( gDP.half_1, _SHIFTR( w0, 1, 11 ), (s32)w1 / 65535.0f / 1023.0f );
+   gSPBranchLessZ( gDP.half_1, _SHIFTR( w0, 1, 11 ), (int32_t)w1 / 65535.0f / 1023.0f );
 }
 
-void F3DEX_Load_uCode( u32 w0, u32 w1 )
+void F3DEX_Load_uCode( uint32_t w0, uint32_t w1 )
 {
    gSPLoadUcodeEx( w1, gDP.half_1, _SHIFTR( w0, 0, 16 ) + 1 );
 }

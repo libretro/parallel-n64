@@ -7,7 +7,6 @@
 #include "N64.h"
 #include "GBI.h"
 //#include "gSP.h"
-#include "Types.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -22,8 +21,8 @@ extern "C" {
 
 typedef struct
 {
-	u32 PC[18], PCi, busy, halt, close, DList, uc_start, uc_dstart, cmd, nextCmd;
-	s32 count;
+	uint32_t PC[18], PCi, busy, halt, close, DList, uc_start, uc_dstart, cmd, nextCmd;
+	int32_t count;
 	bool bLLE;
 	char romname[21];
    uint32_t w0;
@@ -32,13 +31,13 @@ typedef struct
 
 extern RSPInfo __RSP;
 
-extern u32 DepthClearColor;
+extern uint32_t DepthClearColor;
 
 #define RSP_SegmentToPhysical( segaddr ) ((gSP.segment[(segaddr >> 24) & 0x0F] + (segaddr & 0x00FFFFFF)) & 0x00FFFFFF)
 
 void RSP_Init(void);
 void RSP_ProcessDList(void);
-void RSP_LoadMatrix( f32 mtx[4][4], u32 address );
+void RSP_LoadMatrix( float mtx[4][4], uint32_t address );
 void RSP_CheckDLCounter();
 
 #ifdef __cplusplus

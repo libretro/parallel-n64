@@ -1,3 +1,4 @@
+#include <stdint.h>
 #include <stdlib.h>
 
 #include "OpenGL.h"
@@ -6,7 +7,6 @@
 #include "RDP.h"
 #include "Textures.h"
 #include "ShaderCombiner.h"
-#include "Types.h"
 #include "VI.h"
 
 struct FrameBufferInfo frameBuffer;
@@ -76,7 +76,7 @@ void FrameBuffer_Remove( struct FrameBuffer *buffer )
    frameBuffer.numBuffers--;
 }
 
-void FrameBuffer_RemoveBuffer( u32 address )
+void FrameBuffer_RemoveBuffer( uint32_t address )
 {
    struct FrameBuffer *current = (struct FrameBuffer*)frameBuffer.bottom;
 
@@ -144,7 +144,7 @@ void FrameBuffer_Destroy(void)
       FrameBuffer_RemoveBottom();
 }
 
-void FrameBuffer_SaveBuffer( u32 address, u16 format, u16 size, u16 width, u16 height, bool unknown)
+void FrameBuffer_SaveBuffer( uint32_t address, uint16_t format, uint16_t size, uint16_t width, uint16_t height, bool unknown)
 {
    struct FrameBuffer *current = frameBuffer.top;
 
@@ -170,9 +170,9 @@ void FrameBuffer_SaveBuffer( u32 address, u16 format, u16 size, u16 width, u16 h
          }
 
          /* code goes here */
-         *(u32*)&gfx_info.RDRAM[current->m_startAddress] = current->m_startAddress;
+         *(uint32_t*)&gfx_info.RDRAM[current->m_startAddress] = current->m_startAddress;
 
-         current->m_changed = TRUE;
+         current->m_changed = true;
 
          FrameBuffer_MoveToTop( current );
 
@@ -200,7 +200,7 @@ void FrameBuffer_SaveBuffer( u32 address, u16 format, u16 size, u16 width, u16 h
    current->texture->address = current->m_startAddress;
    current->texture->clampWidth = current->m_width;
    current->texture->clampHeight = current->m_height;
-   current->texture->frameBufferTexture = TRUE;
+   current->texture->frameBufferTexture = true;
    current->texture->maskS = 0;
    current->texture->maskT = 0;
    current->texture->mirrorS = 0;
@@ -211,9 +211,9 @@ void FrameBuffer_SaveBuffer( u32 address, u16 format, u16 size, u16 width, u16 h
    cache.cachedBytes += current->texture->textureBytes;
 
    /* code goes here - just bind texture and copy it over */
-   *(u32*)&gfx_info.RDRAM[current->m_startAddress] = current->m_startAddress;
+   *(uint32_t*)&gfx_info.RDRAM[current->m_startAddress] = current->m_startAddress;
 
-   current->m_changed = TRUE;
+   current->m_changed = true;
 
    gSP.changed |= CHANGED_TEXTURE;
 }
@@ -223,7 +223,7 @@ struct FrameBuffer *FrameBuffer_GetCurrent(void)
    return (struct FrameBuffer*)frameBuffer.top;
 }
 
-void FrameBuffer_RenderBuffer( u32 address )
+void FrameBuffer_RenderBuffer( uint32_t address )
 {
    struct FrameBuffer *current = (struct FrameBuffer*)frameBuffer.top;
 
@@ -234,7 +234,7 @@ void FrameBuffer_RenderBuffer( u32 address )
       {
          /* code goes here */
 
-         current->m_changed = FALSE;
+         current->m_changed = false;
 
          FrameBuffer_MoveToTop( current );
 
@@ -246,7 +246,7 @@ void FrameBuffer_RenderBuffer( u32 address )
    }
 }
 
-void FrameBuffer_RestoreBuffer( u32 address, u16 size, u16 width )
+void FrameBuffer_RestoreBuffer( uint32_t address, uint16_t size, uint16_t width )
 {
    struct FrameBuffer *current = (struct FrameBuffer*)frameBuffer.top;
 
@@ -269,7 +269,7 @@ void FrameBuffer_RestoreBuffer( u32 address, u16 size, u16 width )
    }
 }
 
-struct FrameBuffer *FrameBuffer_FindBuffer( u32 address )
+struct FrameBuffer *FrameBuffer_FindBuffer( uint32_t address )
 {
    struct FrameBuffer *current = (struct FrameBuffer*)frameBuffer.top;
 
@@ -284,7 +284,7 @@ struct FrameBuffer *FrameBuffer_FindBuffer( u32 address )
    return NULL;
 }
 
-void FrameBuffer_ActivateBufferTexture( s16 t, struct FrameBuffer *buffer )
+void FrameBuffer_ActivateBufferTexture( int16_t t, struct FrameBuffer *buffer )
 {
    buffer->texture->scaleS = OGL.scaleX / (float)buffer->texture->realWidth;
    buffer->texture->scaleT = OGL.scaleY / (float)buffer->texture->realHeight;
@@ -320,7 +320,7 @@ void FrameBuffer_ActivateBufferTexture( s16 t, struct FrameBuffer *buffer )
 	gDP.changed |= CHANGED_FB_TEXTURE;
 }
 
-void FrameBuffer_ActivateBufferTextureBG(s16 t, struct FrameBuffer *buffer )
+void FrameBuffer_ActivateBufferTextureBG(int16_t t, struct FrameBuffer *buffer )
 {
 	if (buffer == NULL || buffer->texture == NULL)
 		return;
@@ -339,17 +339,17 @@ void FrameBuffer_ActivateBufferTextureBG(s16 t, struct FrameBuffer *buffer )
 	gDP.changed |= CHANGED_FB_TEXTURE;
 }
 
-void FrameBuffer_CopyFromRDRAM( u32 _address, bool _bUseAlpha )
+void FrameBuffer_CopyFromRDRAM( uint32_t _address, bool _bUseAlpha )
 {
    /* stub */
 }
 
-void FrameBuffer_CopyToRDRAM( u32 _address )
+void FrameBuffer_CopyToRDRAM( uint32_t _address )
 {
    /* stub */
 }
 
-void FrameBuffer_CopyDepthBuffer( u32 _address )
+void FrameBuffer_CopyDepthBuffer( uint32_t _address )
 {
    /* stub */
 }

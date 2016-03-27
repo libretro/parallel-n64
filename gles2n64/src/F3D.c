@@ -12,12 +12,12 @@
 
 #include "Config.h"
 
-void F3D_SPNoOp( u32 w0, u32 w1 )
+void F3D_SPNoOp( uint32_t w0, uint32_t w1 )
 {
    gSPNoOp();
 }
 
-void F3D_Mtx( u32 w0, u32 w1 )
+void F3D_Mtx( uint32_t w0, uint32_t w1 )
 {
    if (_SHIFTR( w0, 0, 16 ) != 64)
    {
@@ -30,14 +30,14 @@ void F3D_Mtx( u32 w0, u32 w1 )
    gSPMatrix( w1, _SHIFTR( w0, 16, 8 ) );
 }
 
-void F3D_Reserved0( u32 w0, u32 w1 )
+void F3D_Reserved0( uint32_t w0, uint32_t w1 )
 {
 #ifdef DEBUG
    DebugMsg( DEBUG_MEDIUM | DEBUG_IGNORED | DEBUG_UNKNOWN, "G_RESERVED0: w0=0x%08lX w1=0x%08lX\n", w0, w1 );
 #endif
 }
 
-void F3D_MoveMem( u32 w0, u32 w1 )
+void F3D_MoveMem( uint32_t w0, uint32_t w1 )
 {
    switch (_SHIFTR( w0, 16, 8 ))
    {
@@ -82,16 +82,16 @@ void F3D_MoveMem( u32 w0, u32 w1 )
    }
 }
 
-void F3D_Vtx( u32 w0, u32 w1 )
+void F3D_Vtx( uint32_t w0, uint32_t w1 )
 {
    gSPVertex( w1, _SHIFTR( w0, 20, 4 ) + 1, _SHIFTR( w0, 16, 4 ) );
 }
 
-void F3D_Reserved1( u32 w0, u32 w1 )
+void F3D_Reserved1( uint32_t w0, uint32_t w1 )
 {
 }
 
-void F3D_DList( u32 w0, u32 w1 )
+void F3D_DList( uint32_t w0, uint32_t w1 )
 {
    switch (_SHIFTR( w0, 16, 8 ))
    {
@@ -104,38 +104,38 @@ void F3D_DList( u32 w0, u32 w1 )
    }
 }
 
-void F3D_Reserved2( u32 w0, u32 w1 )
+void F3D_Reserved2( uint32_t w0, uint32_t w1 )
 {
 }
 
-void F3D_Reserved3( u32 w0, u32 w1 )
+void F3D_Reserved3( uint32_t w0, uint32_t w1 )
 {
 }
 
-void F3D_Sprite2D_Base( u32 w0, u32 w1 )
+void F3D_Sprite2D_Base( uint32_t w0, uint32_t w1 )
 {
 	gSPSprite2DBase( w1 );
 }
 
 
-void F3D_Tri1( u32 w0, u32 w1 )
+void F3D_Tri1( uint32_t w0, uint32_t w1 )
 {
    gSP1Triangle( _SHIFTR( w1, 16, 8 ) / 10,
          _SHIFTR( w1, 8, 8 ) / 10,
          _SHIFTR( w1, 0, 8 ) / 10);
 }
 
-void F3D_CullDL( u32 w0, u32 w1 )
+void F3D_CullDL( uint32_t w0, uint32_t w1 )
 {
    gSPCullDisplayList( _SHIFTR( w0, 0, 24 ) / 40, (w1 / 40) - 1 );
 }
 
-void F3D_PopMtx( u32 w0, u32 w1 )
+void F3D_PopMtx( uint32_t w0, uint32_t w1 )
 {
    gSPPopMatrix( w1 );
 }
 
-void F3D_MoveWord( u32 w0, u32 w1 )
+void F3D_MoveWord( uint32_t w0, uint32_t w1 )
 {
    switch (_SHIFTR( w0, 0, 8 ))
    {
@@ -156,7 +156,7 @@ void F3D_MoveWord( u32 w0, u32 w1 )
          break;
 
       case G_MW_FOG:
-			gSPFogFactor( (s16)_SHIFTR( w1, 16, 16 ), (s16)_SHIFTR( w1, 0, 16 ) );
+			gSPFogFactor( (int16_t)_SHIFTR( w1, 16, 16 ), (int16_t)_SHIFTR( w1, 0, 16 ) );
          break;
 
       case G_MW_LIGHTCOL:
@@ -190,7 +190,7 @@ void F3D_MoveWord( u32 w0, u32 w1 )
          break;
       case G_MW_POINTS:
          {
-            const u32 val = _SHIFTR(w0, 8, 16);
+            const uint32_t val = _SHIFTR(w0, 8, 16);
             gSPModifyVertex(val / 40, val % 40, w1);
          }
          break;
@@ -200,7 +200,7 @@ void F3D_MoveWord( u32 w0, u32 w1 )
    }
 }
 
-void F3D_Texture( u32 w0, u32 w1 )
+void F3D_Texture( uint32_t w0, uint32_t w1 )
 {
    gSPTexture( _FIXED2FLOAT( _SHIFTR( w1, 16, 16 ), 16 ),
          _FIXED2FLOAT( _SHIFTR( w1, 0, 16 ), 16 ),
@@ -209,56 +209,56 @@ void F3D_Texture( u32 w0, u32 w1 )
          _SHIFTR( w0, 0, 8 ) );
 }
 
-void F3D_SetOtherMode_H( u32 w0, u32 w1 )
+void F3D_SetOtherMode_H( uint32_t w0, uint32_t w1 )
 {
-	const u32 length = _SHIFTR(w0, 0, 8);
-	const u32 shift = _SHIFTR(w0, 8, 8);
+	const uint32_t length = _SHIFTR(w0, 0, 8);
+	const uint32_t shift = _SHIFTR(w0, 8, 8);
 	gSPSetOtherMode_H(length, shift, w1);
 }
 
-void F3D_SetOtherMode_L( u32 w0, u32 w1 )
+void F3D_SetOtherMode_L( uint32_t w0, uint32_t w1 )
 {
-	const u32 length = _SHIFTR(w0, 0, 8);
-	const u32 shift = _SHIFTR(w0, 8, 8);
+	const uint32_t length = _SHIFTR(w0, 0, 8);
+	const uint32_t shift = _SHIFTR(w0, 8, 8);
 	gSPSetOtherMode_L(length, shift, w1);
 }
 
-void F3D_EndDL( u32 w0, u32 w1 )
+void F3D_EndDL( uint32_t w0, uint32_t w1 )
 {
    gSPEndDisplayList();
 }
 
-void F3D_SetGeometryMode( u32 w0, u32 w1 )
+void F3D_SetGeometryMode( uint32_t w0, uint32_t w1 )
 {
    gSPSetGeometryMode( w1 );
 }
 
-void F3D_ClearGeometryMode( u32 w0, u32 w1 )
+void F3D_ClearGeometryMode( uint32_t w0, uint32_t w1 )
 {
    gSPClearGeometryMode( w1 );
 }
 
-void F3D_Quad( u32 w0, u32 w1 )
+void F3D_Quad( uint32_t w0, uint32_t w1 )
 {
 	gSP1Quadrangle( _SHIFTR( w1, 24, 8 ) / 10, _SHIFTR( w1, 16, 8 ) / 10, _SHIFTR( w1, 8, 8 ) / 10, _SHIFTR( w1, 0, 8 ) / 10 );
 }
 
-void F3D_RDPHalf_1( u32 w0, u32 w1 )
+void F3D_RDPHalf_1( uint32_t w0, uint32_t w1 )
 {
    gDP.half_1 = w1;
 	RDP_Half_1(w1);
 }
 
-void F3D_RDPHalf_2( u32 w0, u32 w1 )
+void F3D_RDPHalf_2( uint32_t w0, uint32_t w1 )
 {
    gDP.half_2 = w1;
 }
 
-void F3D_RDPHalf_Cont( u32 w0, u32 w1 )
+void F3D_RDPHalf_Cont( uint32_t w0, uint32_t w1 )
 {
 }
 
-void F3D_Tri4( u32 w0, u32 w1 )
+void F3D_Tri4( uint32_t w0, uint32_t w1 )
 {
 	gSP4Triangles( _SHIFTR( w1, 28, 4 ), _SHIFTR( w0, 12, 4 ), _SHIFTR( w1, 24, 4 ),
 				   _SHIFTR( w1, 20, 4 ), _SHIFTR( w0,  8, 4 ), _SHIFTR( w1, 16, 4 ),

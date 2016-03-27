@@ -10,63 +10,63 @@
 
 struct T3DGlobState
 {
-	u16 pad0;
-	u16 perspNorm;
-	u32 flag;
-	u32 othermode0;
-	u32 othermode1;
-	u32 segBases[16];
+	uint16_t pad0;
+	uint16_t perspNorm;
+	uint32_t flag;
+	uint32_t othermode0;
+	uint32_t othermode1;
+	uint32_t segBases[16];
 	/* the viewport to use */
-	s16 vsacle1;
-	s16 vsacle0;
-	s16 vsacle3;
-	s16 vsacle2;
-	s16 vtrans1;
-	s16 vtrans0;
-	s16 vtrans3;
-	s16 vtrans2;
-	u32 rdpCmds;
+	int16_t vsacle1;
+	int16_t vsacle0;
+	int16_t vsacle3;
+	int16_t vsacle2;
+	int16_t vtrans1;
+	int16_t vtrans0;
+	int16_t vtrans3;
+	int16_t vtrans2;
+	uint32_t rdpCmds;
 };
 
 struct T3DState
 {
-	u32 renderState;	/* render state */
-	u32 textureState;	/* texture state */
-	u8 flag;
-	u8 triCount;	/* how many tris? */
-	u8 vtxV0;		/* where to load verts? */
-	u8 vtxCount;	/* how many verts? */
-	u32 rdpCmds;	/* ptr (segment address) to RDP DL */
-	u32 othermode0;
-	u32 othermode1;
+	uint32_t renderState;	/* render state */
+	uint32_t textureState;	/* texture state */
+	uint8_t flag;
+	uint8_t triCount;	/* how many tris? */
+	uint8_t vtxV0;		/* where to load verts? */
+	uint8_t vtxCount;	/* how many verts? */
+	uint32_t rdpCmds;	/* ptr (segment address) to RDP DL */
+	uint32_t othermode0;
+	uint32_t othermode1;
 };
 
 
 struct T3DTriN
 {
-	u8	flag, v2, v1, v0;	/* flag is which one for flat shade */
+	uint8_t	flag, v2, v1, v0;	/* flag is which one for flat shade */
 };
 
 
-static void Turbo3D_ProcessRDP(u32 _cmds)
+static void Turbo3D_ProcessRDP(uint32_t _cmds)
 {
-   u32 addr = RSP_SegmentToPhysical(_cmds) >> 2;
+   uint32_t addr = RSP_SegmentToPhysical(_cmds) >> 2;
    if (addr != 0)
    {
       __RSP.bLLE = true;
-      u32 w0 = ((u32*)gfx_info.RDRAM)[addr++];
-      u32 w1 = ((u32*)gfx_info.RDRAM)[addr++];
+      uint32_t w0 = ((uint32_t*)gfx_info.RDRAM)[addr++];
+      uint32_t w1 = ((uint32_t*)gfx_info.RDRAM)[addr++];
       __RSP.cmd = _SHIFTR( w0, 24, 8 );
       while (w0 + w1 != 0)
       {
          GBI.cmd[__RSP.cmd]( w0, w1 );
-         w0 = ((u32*)gfx_info.RDRAM)[addr++];
-         w1 = ((u32*)gfx_info.RDRAM)[addr++];
+         w0 = ((uint32_t*)gfx_info.RDRAM)[addr++];
+         w1 = ((uint32_t*)gfx_info.RDRAM)[addr++];
          __RSP.cmd = _SHIFTR( w0, 24, 8 );
          if (__RSP.cmd == 0xE4 || __RSP.cmd == 0xE5)
          {
-            __RDP.w2 = ((u32*)gfx_info.RDRAM)[addr++];
-            __RDP.w3 = ((u32*)gfx_info.RDRAM)[addr++];
+            __RDP.w2 = ((uint32_t*)gfx_info.RDRAM)[addr++];
+            __RDP.w3 = ((uint32_t*)gfx_info.RDRAM)[addr++];
          }
       }
       __RSP.bLLE = false;
@@ -74,13 +74,13 @@ static void Turbo3D_ProcessRDP(u32 _cmds)
 }
 
 static
-void Turbo3D_LoadGlobState(u32 pgstate)
+void Turbo3D_LoadGlobState(uint32_t pgstate)
 {
    uint32_t s;
-	const u32 addr = RSP_SegmentToPhysical(pgstate);
+	const uint32_t addr = RSP_SegmentToPhysical(pgstate);
 	struct T3DGlobState *gstate = (struct T3DGlobState*)&gfx_info.RDRAM[addr];
-	const u32 w0 = gstate->othermode0;
-	const u32 w1 = gstate->othermode1;
+	const uint32_t w0 = gstate->othermode0;
+	const uint32_t w1 = gstate->othermode1;
 	gDPSetOtherMode( _SHIFTR( w0, 0, 24 ),	// mode0
 					 w1 );					// mode1
 
@@ -93,19 +93,19 @@ void Turbo3D_LoadGlobState(u32 pgstate)
 }
 
 static
-void Turbo3D_LoadObject(u32 pstate, u32 pvtx, u32 ptri)
+void Turbo3D_LoadObject(uint32_t pstate, uint32_t pvtx, uint32_t ptri)
 {
-	u32 addr = RSP_SegmentToPhysical(pstate);
+	uint32_t addr = RSP_SegmentToPhysical(pstate);
 	struct T3DState *ostate = (struct T3DState*)&gfx_info.RDRAM[addr];
-	const u32 tile = (ostate->textureState)&7;
+	const uint32_t tile = (ostate->textureState)&7;
 	gSP.texture.tile = tile;
 	gSP.textureTile[0] = &gDP.tiles[tile];
 	gSP.textureTile[1] = &gDP.tiles[(tile + 1) & 7];
 	gSP.texture.scales = 1.0f;
 	gSP.texture.scalet = 1.0f;
 
-	const u32 w0 = ostate->othermode0;
-	const u32 w1 = ostate->othermode1;
+	const uint32_t w0 = ostate->othermode0;
+	const uint32_t w1 = ostate->othermode1;
 	gDPSetOtherMode( _SHIFTR( w0, 0, 24 ),	// mode0
 					 w1 );					// mode1
 
@@ -139,15 +139,15 @@ void Turbo3D_LoadObject(u32 pstate, u32 pvtx, u32 ptri)
 
 void RunTurbo3D(void)
 {
-	u32 pstate;
+	uint32_t pstate;
 
 	do
    {
-      u32 addr = __RSP.PC[__RSP.PCi] >> 2;
-      const u32 pgstate = ((u32*)gfx_info.RDRAM)[addr++];
-      pstate = ((u32*)gfx_info.RDRAM)[addr++];
-      const u32 pvtx = ((u32*)gfx_info.RDRAM)[addr++];
-      const u32 ptri = ((u32*)gfx_info.RDRAM)[addr];
+      uint32_t addr = __RSP.PC[__RSP.PCi] >> 2;
+      const uint32_t pgstate = ((uint32_t*)gfx_info.RDRAM)[addr++];
+      pstate = ((uint32_t*)gfx_info.RDRAM)[addr++];
+      const uint32_t pvtx = ((uint32_t*)gfx_info.RDRAM)[addr++];
+      const uint32_t ptri = ((uint32_t*)gfx_info.RDRAM)[addr];
       if (pstate == 0)
       {
          __RSP.halt = 1;
