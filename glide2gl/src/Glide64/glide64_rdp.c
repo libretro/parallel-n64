@@ -368,10 +368,10 @@ static void CopyFrameBuffer(int32_t buffer)
                if ((settings.frame_buffer & fb_read_alpha) && c <= 0) {}
                else
                   c = (c&0xFFC0) | ((c&0x001F) << 1) | 1;
-               if (g_gdp.fb_size == 2)
+               if (g_gdp.fb_size == G_IM_SIZ_16b)
                   ptr_dst[(x + y * width)^1] = c;
                else
-                  ptr_dst32[x + y * width] = RGBA16toRGBA32(c);
+                  ptr_dst32[x + y * width]   = RGBA16toRGBA32(c);
             }
          }
       }
@@ -418,7 +418,7 @@ static void CopyFrameBuffer(int32_t buffer)
                c = (c&0xFFC0) | ((c&0x001F) << 1) | 1;
                if (read_alpha && c == 1)
                   c = 0;
-               if (g_gdp.fb_size <= 2)
+               if (g_gdp.fb_size <= G_IM_SIZ_16b)
                   ptr_dst[(x + y * width)^1] = c;
                else
                   ptr_dst32[x + y * width] = RGBA16toRGBA32(c);
@@ -451,10 +451,10 @@ static void copyWhiteToRDRAM(void)
    {
       for(x = 0; x < g_gdp.fb_width; x++)
       {
-         if(g_gdp.fb_size == 2)
+         if(g_gdp.fb_size == G_IM_SIZ_16b)
             ptr_dst[(x + y * g_gdp.fb_width) ^ 1] = 0xFFFF;
          else
-            ptr_dst32[x + y * g_gdp.fb_width] = 0xFFFFFFFF;
+            ptr_dst32[x + y * g_gdp.fb_width]     = 0xFFFFFFFF;
       }
    }
 }
@@ -1436,7 +1436,7 @@ static void rdp_fillrect(uint32_t w0, uint32_t w1)
             //make it black, set 0 alpha to plack pixels on frame buffer read
             color = 0;
          }
-         else if (g_gdp.fb_size < 3)
+         else if (g_gdp.fb_size < G_IM_SIZ_32b)
          {
             color = ((color&1)?0xFF:0) |
                ((uint32_t)((float)((color&0xF800) >> 11) / 31.0f * 255.0f) << 24) |
