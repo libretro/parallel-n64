@@ -16,6 +16,7 @@
 #include "Config.h"
 #include "Debug.h"
 #include "PostProcessor.h"
+#include "FrameBufferInfo.h"
 
 #include "m64p_plugin.h"
 
@@ -632,6 +633,25 @@ void FrameBufferList::removeBuffers(uint32_t _width)
 				return;
 		}
 	}
+}
+
+
+void FrameBufferList::fillBufferInfo(FrameBufferInfo * _pinfo, uint32_t _size)
+{
+   uint32_t idx = 0;
+   for (FrameBuffers::iterator iter = m_list.begin(); iter != m_list.end(); ++iter)
+   {
+      if (iter->m_width == VI.width && !iter->m_cfb)
+      {
+         _pinfo[idx].addr = iter->m_startAddress;
+         _pinfo[idx].width = iter->m_width;
+         _pinfo[idx].height = iter->m_height;
+         _pinfo[idx++].size = iter->m_size;
+
+         if (idx >= _size)
+            return;
+      }
+   }
 }
 
 void FrameBufferList::attachDepthBuffer()

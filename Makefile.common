@@ -231,6 +231,7 @@ SOURCES_CXX   += \
 					 $(VIDEODIR_GLIDEN64)/src/mupenplus/CommonAPIImpl_mupenplus.cpp \
 					 $(VIDEODIR_GLIDEN64)/src/common/CommonAPIImpl_common.cpp \
 					 $(VIDEODIR_GLIDEN64)/src/FrameBuffer_gliden64.cpp \
+					 $(VIDEODIR_GLIDEN64)/src/FrameBufferInfo.cpp \
 					 $(VIDEODIR_GLIDEN64)/src/DepthBuffer.cpp \
 					 $(VIDEODIR_GLIDEN64)/src/TxFilterStub.cpp \
 					 $(VIDEODIR_GLIDEN64)/src/Combiner_gliden64.cpp \

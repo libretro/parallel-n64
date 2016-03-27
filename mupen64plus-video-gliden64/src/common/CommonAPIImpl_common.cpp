@@ -10,6 +10,7 @@
 #include "../VI.h"
 #include "../Config.h"
 #include "../Debug.h"
+#include "../FrameBufferInfo.h"
 
 PluginAPI & PluginAPI::get()
 {
@@ -154,4 +155,24 @@ void PluginAPI::_initiateGFX(const GFX_INFO & _gfxInfo) const {
 void PluginAPI::ChangeWindow()
 {
 	video().setToggleFullscreen();
+}
+
+void PluginAPI::FBWrite(unsigned int addr, unsigned int size)
+{
+	FrameBufferWrite(addr, size);
+}
+
+void PluginAPI::FBWList(FrameBufferModifyEntry *plist, unsigned int size)
+{
+	FrameBufferWriteList(plist, size);
+}
+
+void PluginAPI::FBRead(unsigned int addr)
+{
+	FrameBufferRead(addr);
+}
+
+void PluginAPI::FBGetFrameBufferInfo(void *pinfo)
+{
+	FrameBufferGetInfo(pinfo);
 }

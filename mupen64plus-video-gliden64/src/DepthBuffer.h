@@ -5,6 +5,8 @@
 
 #include "Textures.h"
 
+struct FrameBuffer;
+
 struct DepthBuffer
 {
 	DepthBuffer();

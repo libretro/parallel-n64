@@ -8,6 +8,8 @@
 
 #include "Gfx_1.3.h"
 
+#include "FrameBufferInfoAPI.h"
+
 enum API_COMMAND {
 	acNone = 0,
 	acProcessDList,
@@ -45,10 +47,13 @@ public:
 	void GetUserDataPath(wchar_t * _strPath);
 	void GetUserCachePath(wchar_t * _strPath);
 
+   // FrameBufferInfo extension
+	void FBWrite(unsigned int addr, unsigned int size);
+	void FBWList(FrameBufferModifyEntry *plist, unsigned int size);
+	void FBRead(unsigned int addr);
+	void FBGetFrameBufferInfo(void *pinfo);
+
 	// MupenPlus
-	void FBRead(unsigned int _addr) {}
-	void FBWrite(unsigned int addr, unsigned int size) {}
-	void FBGetFrameBufferInfo(void * _p) {}
 	void ResizeVideoOutput(int _Width, int _Height);
 	void ReadScreen2(void * _dest, int * _width, int * _height, int _front);
 

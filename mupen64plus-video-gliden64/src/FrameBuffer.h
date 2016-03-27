@@ -6,7 +6,9 @@
 #include <list>
 #include <vector>
 
+#include "m64p_plugin.h"
 #include "Textures.h"
+
 struct gDPTile;
 struct DepthBuffer;
 
@@ -76,6 +78,8 @@ public:
 
 	FrameBuffer * getCopyBuffer() const { return m_pCopy; }
 	void setCopyBuffer(FrameBuffer * _pBuffer) { m_pCopy = _pBuffer; }
+
+   void fillBufferInfo(FrameBufferInfo * _pinfo, uint32_t _size);
 
 	static FrameBufferList & get();
 

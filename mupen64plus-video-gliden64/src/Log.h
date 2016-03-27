@@ -3,6 +3,8 @@
 
 #include <stdint.h>
 
+#include <retro_inline.h>
+
 #define LOG_NONE	0
 #define LOG_ERROR   1
 #define LOG_MINIMAL	2
@@ -15,7 +17,9 @@
 #if LOG_LEVEL>0
 #include <stdio.h>
 #include <stdarg.h>
-static inline void LOG( uint16_t type, const char * format, ... ) {
+
+static INLINE void LOG( uint16_t type, const char * format, ... )
+{
 	if (type > LOG_LEVEL)
 		return;
 	FILE *dumpFile = fopen( "gliden64.log", "a+" );
@@ -26,7 +30,6 @@ static inline void LOG( uint16_t type, const char * format, ... ) {
 	va_end( va );
 }
 #else
-
 #define LOG(A, ...)
 
 #endif
