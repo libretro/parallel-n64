@@ -45,6 +45,8 @@
 #ifndef DEPTH_BUFFER_RENDER_H
 #define DEPTH_BUFFER_RENDER_H
 
+#include "FBtoScreen.h"
+
 struct vertexi
 {
    int x,y;       // Screen position in 16:16 bit fixed point
@@ -56,5 +58,6 @@ void ZLUT_init(void);
 void ZLUT_release(void);
 
 void Rasterize(struct vertexi * vtx, int vertices, int dzdx);
+void DrawDepthBufferToScreen(FB_TO_SCREEN_INFO *fb_info);
 
 #endif //DEPTH_BUFFER_RENDER_H

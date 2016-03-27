@@ -67,7 +67,7 @@ static INLINE uint32_t RGBA16toRGBA32(uint32_t _c)
    return (c.r << 24) | (c.g << 16) | (c.b << 8) | c.a;
 }
 
-static void glide64_draw_fb(float ul_x, float ul_y, float lr_x,
+void glide64_draw_fb(float ul_x, float ul_y, float lr_x,
       float lr_y, float lr_u, float lr_v, float zero)
 {
    VERTEX v[4], vout[4];
@@ -133,7 +133,7 @@ static void glide64_draw_fb(float ul_x, float ul_y, float lr_x,
    grDrawVertexArrayContiguous(GR_TRIANGLE_STRIP, 4, &vout[0]);
 }
 
-static int SetupFBtoScreenCombiner(uint32_t texture_size, uint32_t opaque)
+int SetupFBtoScreenCombiner(uint32_t texture_size, uint32_t opaque)
 {
    int tmu, filter;
 
@@ -486,138 +486,6 @@ bool DrawFrameBufferToScreen(FB_TO_SCREEN_INFO *fb_info)
             lr_y, lr_u, lr_v, 0.5f);
    }
    return true;
-}
-
-static void DrawDepthBufferToScreen256(FB_TO_SCREEN_INFO *fb_info)
-{
-   uint32_t h, w, x, y, tex_size;
-   uint32_t w_tail, h_tail, tex_adr;
-   int tmu;
-   GrTexInfo t_info;
-   uint32_t width = fb_info->lr_x - fb_info->ul_x + 1;
-   uint32_t height = fb_info->lr_y - fb_info->ul_y + 1;
-   uint8_t *image = (uint8_t*)(gfx_info.RDRAM + fb_info->addr);
-   uint32_t width256 = ((width-1) >> 8) + 1;
-   uint32_t height256 = ((height-1) >> 8) + 1;
-   uint16_t *tex = (uint16_t*)texture_buffer;
-   uint16_t *src = (uint16_t*)(image + fb_info->ul_x + fb_info->ul_y * fb_info->width);
-
-   t_info.smallLodLog2 = t_info.largeLodLog2 = GR_LOD_LOG2_256;
-   t_info.aspectRatioLog2 = GR_ASPECT_LOG2_1x1;
-   t_info.format = GR_TEXFMT_ALPHA_INTENSITY_88;
-   t_info.data = tex;
-
-   tex_size = grTexCalcMemRequired(t_info.largeLodLog2, t_info.aspectRatioLog2, t_info.format);
-   tmu = SetupFBtoScreenCombiner(tex_size*width256*height256, fb_info->opaque);
-   grConstantColorValue (g_gdp.fog_color.total);
-   grColorCombine (GR_COMBINE_FUNCTION_SCALE_OTHER,
-         GR_COMBINE_FACTOR_ONE,
-         GR_COMBINE_LOCAL_NONE,
-         GR_COMBINE_OTHER_CONSTANT,
-         FXFALSE);
-   w_tail  = width % 256;
-   h_tail  = height % 256;
-   tex_adr = voodoo.tmem_ptr[tmu];
-
-   for (h = 0; h < height256; h++)
-   {
-      for (w = 0; w < width256; w++)
-      {
-         float ul_x, ul_y, lr_x, lr_y, lr_u, lr_v;
-
-         uint32_t cur_width = (256 * (w + 1) < width) ? 256 : w_tail;
-         uint32_t cur_height = (256 * (h + 1) < height) ? 256 : h_tail;
-         uint32_t cur_tail = 256 - cur_width;
-         uint16_t *dst = tex;
-
-         for (y=0; y < cur_height; y++)
-         {
-            for (x=0; x < cur_width; x++)
-               *(dst++) = rdp.pal_8[src[(x + 256 * w + (y + 256 * h) * fb_info->width) ^ 1]>>8];
-            dst += cur_tail;
-         }
-         grTexSource (tmu, tex_adr, GR_MIPMAPLEVELMASK_BOTH, &t_info, true);
-         tex_adr += tex_size;
-         ul_x = (float)(fb_info->ul_x + 256 * w);
-         ul_y = (float)(fb_info->ul_y + 256 * h);
-         lr_x = (ul_x + (float)(cur_width)) * rdp.scale_x + rdp.offset_x;
-         lr_y = (ul_y + (float)(cur_height)) * rdp.scale_y + rdp.offset_y;
-         ul_x = ul_x * rdp.scale_x + rdp.offset_x;
-         ul_y = ul_y * rdp.scale_y + rdp.offset_y;
-         lr_u = (float)(cur_width-1);
-         lr_v = (float)(cur_height-1);
-
-         glide64_draw_fb(ul_x, ul_y, lr_x,
-               lr_y, lr_u, lr_v, 0.5f);
-      }
-   }
-}
-
-void DrawDepthBufferToScreen(FB_TO_SCREEN_INFO *fb_info)
-{
-   uint32_t x, y;
-   int tmu;
-   float ul_x, ul_y, lr_x, lr_y, lr_u, lr_v, zero;
-   GrTexInfo t_info;
-   uint32_t width  = fb_info->lr_x - fb_info->ul_x + 1;
-   uint32_t height = fb_info->lr_y - fb_info->ul_y + 1;
-   uint8_t *image = (uint8_t*)(gfx_info.RDRAM + fb_info->addr);
-   uint32_t texwidth = 512;
-   float scale = 0.5f;
-   uint16_t *tex = (uint16_t*)texture_buffer;
-   uint16_t *dst = (uint16_t*)tex;
-   uint16_t *src = (uint16_t*)(image + fb_info->ul_x + fb_info->ul_y * fb_info->width);
-
-   if (width > 512)
-   {
-      DrawDepthBufferToScreen256(fb_info);
-      return;
-   }
-
-   t_info.smallLodLog2 = t_info.largeLodLog2 = GR_LOD_LOG2_512;
-   t_info.aspectRatioLog2 = GR_ASPECT_LOG2_1x1;
-
-   if (width <= 256)
-   {
-      texwidth = 256;
-      scale = 1.0f;
-      t_info.smallLodLog2 = t_info.largeLodLog2 = GR_LOD_LOG2_256;
-   }
-
-   if (height <= (texwidth>>1))
-      t_info.aspectRatioLog2 = GR_ASPECT_LOG2_2x1;
-
-
-   for (y=0; y < height; y++)
-   {
-      for (x = 0; x < width; x++)
-         *(dst++) = rdp.pal_8[src[(x+y*fb_info->width)^1]>>8];
-      dst += texwidth-width;
-   }
-   t_info.format = GR_TEXFMT_ALPHA_INTENSITY_88;
-   t_info.data = tex;
-
-   tmu = SetupFBtoScreenCombiner(grTexCalcMemRequired(t_info.largeLodLog2, t_info.aspectRatioLog2, t_info.format), fb_info->opaque);
-   grConstantColorValue (g_gdp.fog_color.total);
-   grColorCombine (GR_COMBINE_FUNCTION_SCALE_OTHER,
-         GR_COMBINE_FACTOR_ONE,
-         GR_COMBINE_LOCAL_NONE,
-         GR_COMBINE_OTHER_CONSTANT,
-         FXFALSE);
-   grTexSource (tmu,
-         voodoo.tmem_ptr[tmu],
-         GR_MIPMAPLEVELMASK_BOTH,
-         &t_info, true);
-   ul_x = fb_info->ul_x * rdp.scale_x + rdp.offset_x;
-   ul_y = fb_info->ul_y * rdp.scale_y + rdp.offset_y;
-   lr_x = fb_info->lr_x * rdp.scale_x + rdp.offset_x;
-   lr_y = fb_info->lr_y * rdp.scale_y + rdp.offset_y;
-   lr_u = (width  - 1)  * scale;
-   lr_v = (height - 1)  * scale;
-   zero = scale * 0.5f;
-
-   glide64_draw_fb(ul_x, ul_y, lr_x,
-         lr_y, lr_u, lr_v, zero);
 }
 
 void copyWhiteToRDRAM(void)

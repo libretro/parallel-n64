@@ -58,11 +58,15 @@ typedef struct
 } FB_TO_SCREEN_INFO;
 
 bool DrawFrameBufferToScreen(FB_TO_SCREEN_INFO *fb_info);
-void DrawDepthBufferToScreen(FB_TO_SCREEN_INFO *fb_info);
 
 void copyWhiteToRDRAM(void);
 
 void DrawWholeFrameBufferToScreen(void);
 void CopyFrameBuffer (int32_t buffer);
+
+void glide64_draw_fb(float ul_x, float ul_y, float lr_x,
+      float lr_y, float lr_u, float lr_v, float zero);
+
+int SetupFBtoScreenCombiner(uint32_t texture_size, uint32_t opaque);
 
 #endif  // #ifndef FBtoSCREEN_H
