@@ -1,6 +1,8 @@
 #ifndef TEXTURES_H
 #define TEXTURES_H
 
+#include <stdint.h>
+
 #include <map>
 
 #include "CRC.h"
@@ -9,35 +11,35 @@
 extern const GLuint g_noiseTexIndex;
 extern const GLuint g_MSTex0Index;
 
-typedef u32 (*GetTexelFunc)( u64 *src, u16 x, u16 i, u8 palette );
+typedef uint32_t (*GetTexelFunc)( uint64_t *src, uint16_t x, uint16_t i, uint8_t palette );
 
 struct CachedTexture
 {
 	CachedTexture(GLuint _glName) : glName(_glName), max_level(0), frameBufferTexture(fbNone) {}
 
 	GLuint	glName;
-	u32		crc;
+	uint32_t		crc;
 //	float	fulS, fulT;
 //	WORD	ulS, ulT, lrS, lrT;
 	float	offsetS, offsetT;
-	u8		maskS, maskT;
-	u8		clampS, clampT;
-	u8		mirrorS, mirrorT;
-	u16		line;
-	u16		size;
-	u16		format;
-	u32		tMem;
-	u32		palette;
-	u16		width, height;			  // N64 width and height
-	u16		clampWidth, clampHeight;  // Size to clamp to
-	u16		realWidth, realHeight;	  // Actual texture size
-	f32		scaleS, scaleT;			  // Scale to map to 0.0-1.0
-	f32		shiftScaleS, shiftScaleT; // Scale to shift
-	u32		textureBytes;
+	uint8_t		maskS, maskT;
+	uint8_t		clampS, clampT;
+	uint8_t		mirrorS, mirrorT;
+	uint16_t		line;
+	uint16_t		size;
+	uint16_t		format;
+	uint32_t		tMem;
+	uint32_t		palette;
+	uint16_t		width, height;			  // N64 width and height
+	uint16_t		clampWidth, clampHeight;  // Size to clamp to
+	uint16_t		realWidth, realHeight;	  // Actual texture size
+	float		scaleS, scaleT;			  // Scale to map to 0.0-1.0
+	float		shiftScaleS, shiftScaleT; // Scale to shift
+	uint32_t		textureBytes;
 
-	u32		lastDList;
-	u32		address;
-	u8		max_level;
+	uint32_t		lastDList;
+	uint32_t		address;
+	uint8_t		max_level;
 	enum {
 		fbNone = 0,
 		fbOneSample = 1,
@@ -53,12 +55,12 @@ struct TextureCache
 	void init();
 	void destroy();
 	CachedTexture * addFrameBufferTexture();
-	void addFrameBufferTextureSize(u32 _size) {m_cachedBytes += _size;}
+	void addFrameBufferTextureSize(uint32_t _size) {m_cachedBytes += _size;}
 	void removeFrameBufferTexture(CachedTexture * _pTexture);
-	void activateTexture(u32 _t, CachedTexture *_pTexture);
-	void activateDummy(u32 _t);
-	void activateMSDummy(u32 _t);
-	void update(u32 _t);
+	void activateTexture(uint32_t _t, CachedTexture *_pTexture);
+	void activateDummy(uint32_t _t);
+	void activateMSDummy(uint32_t _t);
+	void update(uint32_t _t);
 
 	static TextureCache & get();
 
@@ -72,51 +74,51 @@ private:
 	TextureCache(const TextureCache &);
 
 	void _checkCacheSize();
-	CachedTexture * _addTexture(u32 _crc32);
-	void _load(u32 _tile, CachedTexture *_pTexture);
-	bool _loadHiresTexture(u32 _tile, CachedTexture *_pTexture, u64 & _ricecrc);
+	CachedTexture * _addTexture(uint32_t _crc32);
+	void _load(uint32_t _tile, CachedTexture *_pTexture);
+	bool _loadHiresTexture(uint32_t _tile, CachedTexture *_pTexture, uint64_t & _ricecrc);
 	void _loadBackground(CachedTexture *pTexture);
 	bool _loadHiresBackground(CachedTexture *_pTexture);
 	void _updateBackground();
 	void _clear();
 	void _initDummyTexture(CachedTexture * _pDummy);
-	void _getTextureDestData(CachedTexture& tmptex, u32* pDest, GLuint glInternalFormat, GetTexelFunc GetTexel, u16* pLine);
+	void _getTextureDestData(CachedTexture& tmptex, uint32_t* pDest, GLuint glInternalFormat, GetTexelFunc GetTexel, uint16_t* pLine);
 
 	typedef std::list<CachedTexture> Textures;
-	typedef std::map<u32, Textures::iterator> Texture_Locations;
-	typedef std::map<u32, CachedTexture> FBTextures;
+	typedef std::map<uint32_t, Textures::iterator> Texture_Locations;
+	typedef std::map<uint32_t, CachedTexture> FBTextures;
 	Textures m_textures;
 	Texture_Locations m_lruTextureLocations;
 	FBTextures m_fbTextures;
 	CachedTexture * m_pDummy;
 	CachedTexture * m_pMSDummy;
-	u32 m_hits, m_misses;
-	u32 m_maxBytes;
-	u32 m_cachedBytes;
+	uint32_t m_hits, m_misses;
+	uint32_t m_maxBytes;
+	uint32_t m_cachedBytes;
 	GLint m_curUnpackAlignment;
 	bool m_toggleDumpTex;
 };
 
-void getTextureShiftScale(u32 tile, const TextureCache & cache, f32 & shiftScaleS, f32 & shiftScaleT);
+void getTextureShiftScale(uint32_t tile, const TextureCache & cache, float & shiftScaleS, float & shiftScaleT);
 
 inline TextureCache & textureCache()
 {
 	return TextureCache::get();
 }
 
-inline u32 pow2( u32 dim )
+inline uint32_t pow2( uint32_t dim )
 {
-	u32 i = 1;
+	uint32_t i = 1;
 
 	while (i < dim) i <<= 1;
 
 	return i;
 }
 
-inline u32 powof( u32 dim )
+inline uint32_t powof( uint32_t dim )
 {
-	u32 num = 1;
-	u32 i = 0;
+	uint32_t num = 1;
+	uint32_t i = 0;
 
 	while (num < dim)
 	{

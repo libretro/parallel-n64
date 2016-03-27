@@ -1,3 +1,5 @@
+#include <boolean.h>
+
 #include <algorithm>
 #include "../PluginAPI.h"
 #include "../OpenGL.h"
@@ -7,7 +9,7 @@ int PluginAPI::InitiateGFX(const GFX_INFO & _gfxInfo)
 {
 	_initiateGFX(_gfxInfo);
 
-	return TRUE;
+	return true;
 }
 
 static
@@ -28,21 +30,12 @@ void _cutLastPathSeparator(wchar_t * _strPath)
 #endif
 }
 
-static
-void _getWSPath(const char * _path, wchar_t * _strPath)
-{
-	::mbstowcs(_strPath, _path, PLUGIN_PATH_SIZE);
-	_cutLastPathSeparator(_strPath);
-}
-
 void PluginAPI::GetUserDataPath(wchar_t * _strPath)
 {
-	_getWSPath(ConfigGetUserDataPath(), _strPath);
 }
 
 void PluginAPI::GetUserCachePath(wchar_t * _strPath)
 {
-	_getWSPath(ConfigGetUserCachePath(), _strPath);
 }
 
 void PluginAPI::FindPluginPath(wchar_t * _strPath)

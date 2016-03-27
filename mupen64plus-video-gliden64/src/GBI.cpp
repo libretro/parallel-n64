@@ -28,82 +28,82 @@
 #include "OpenGL.h"
 #include "Debug.h"
 
-u32 last_good_ucode = (u32) -1;
+uint32_t last_good_ucode = (uint32_t) -1;
 
 SpecialMicrocodeInfo specialMicrocodes[] =
 {
-	{ F3D,		FALSE,	0xe62a706d, "Fast3D" },
-	{ F3D,		FALSE,	0x7d372819, "Fast3D" },
-	{ F3D,		FALSE,	0x2edee7be, "Fast3D" },
-	{ F3D,		FALSE,	0xe01e14be, "Fast3D" },
+	{ F3D,		false,	0xe62a706d, "Fast3D" },
+	{ F3D,		false,	0x7d372819, "Fast3D" },
+	{ F3D,		false,	0x2edee7be, "Fast3D" },
+	{ F3D,		false,	0xe01e14be, "Fast3D" },
 
-	{ F3DWRUS,	FALSE,	0xd17906e2, "RSP SW Version: 2.0D, 04-01-96" },
-	{ F3DSWSE,	FALSE,	0x94c4c833, "RSP SW Version: 2.0D, 04-01-96" },
-	{ F3DEX,	TRUE,	0x637b4b58, "RSP SW Version: 2.0D, 04-01-96" },
-	{ F3D,		TRUE,	0x54c558ba, "RSP SW Version: 2.0D, 04-01-96" }, // Pilot Wings
-	{ F3D,		TRUE,	0x302bca09, "RSP SW Version: 2.0G, 09-30-96" }, // GoldenEye
+	{ F3DWRUS,	false,	0xd17906e2, "RSP SW Version: 2.0D, 04-01-96" },
+	{ F3DSWSE,	false,	0x94c4c833, "RSP SW Version: 2.0D, 04-01-96" },
+	{ F3DEX,	true,	0x637b4b58, "RSP SW Version: 2.0D, 04-01-96" },
+	{ F3D,		true,	0x54c558ba, "RSP SW Version: 2.0D, 04-01-96" }, // Pilot Wings
+	{ F3D,		true,	0x302bca09, "RSP SW Version: 2.0G, 09-30-96" }, // GoldenEye
 
-	{ S2DEX,	FALSE,	0x9df31081, "RSP Gfx ucode S2DEX  1.06 Yoshitaka Yasumoto Nintendo." },
+	{ S2DEX,	false,	0x9df31081, "RSP Gfx ucode S2DEX  1.06 Yoshitaka Yasumoto Nintendo." },
 
-	{ F3DDKR,	FALSE,	0x8d91244f, "Diddy Kong Racing" },
-	{ F3DDKR,	FALSE,	0x6e6fc893, "Diddy Kong Racing" },
-	{ F3DJFG,	FALSE,	0xbde9d1fb, "Jet Force Gemini" },
-	{ F3DPD,	TRUE,	0x1c4f7869, "Perfect Dark" },
-	{ Turbo3D,	FALSE,	0x2bdcfc8a, "Turbo3D" },
-	{ F3DEX2CBFD, TRUE, 0x1b4ace88, "Conker's Bad Fur Day" }
+	{ F3DDKR,	false,	0x8d91244f, "Diddy Kong Racing" },
+	{ F3DDKR,	false,	0x6e6fc893, "Diddy Kong Racing" },
+	{ F3DJFG,	false,	0xbde9d1fb, "Jet Force Gemini" },
+	{ F3DPD,	true,	0x1c4f7869, "Perfect Dark" },
+	{ Turbo3D,	false,	0x2bdcfc8a, "Turbo3D" },
+	{ F3DEX2CBFD, true, 0x1b4ace88, "Conker's Bad Fur Day" }
 };
 
-u32 G_RDPHALF_1, G_RDPHALF_2, G_RDPHALF_CONT;
-u32 G_SPNOOP;
-u32 G_SETOTHERMODE_H, G_SETOTHERMODE_L;
-u32 G_DL, G_ENDDL, G_CULLDL, G_BRANCH_Z;
-u32 G_LOAD_UCODE;
-u32 G_MOVEMEM, G_MOVEWORD;
-u32 G_MTX, G_POPMTX;
-u32 G_GEOMETRYMODE, G_SETGEOMETRYMODE, G_CLEARGEOMETRYMODE;
-u32 G_TEXTURE;
-u32 G_DMA_IO, G_DMA_DL, G_DMA_TRI, G_DMA_MTX, G_DMA_VTX, G_DMA_TEX_OFFSET, G_DMA_OFFSETS;
-u32 G_SPECIAL_1, G_SPECIAL_2, G_SPECIAL_3;
-u32 G_VTX, G_MODIFYVTX, G_VTXCOLORBASE;
-u32 G_TRI1, G_TRI2, G_TRI4;
-u32 G_QUAD, G_LINE3D;
-u32 G_RESERVED0, G_RESERVED1, G_RESERVED2, G_RESERVED3;
-u32 G_SPRITE2D_BASE;
-u32 G_BG_1CYC, G_BG_COPY;
-u32 G_OBJ_RECTANGLE, G_OBJ_SPRITE, G_OBJ_MOVEMEM;
-u32 G_SELECT_DL, G_OBJ_RENDERMODE, G_OBJ_RECTANGLE_R;
-u32 G_OBJ_LOADTXTR, G_OBJ_LDTX_SPRITE, G_OBJ_LDTX_RECT, G_OBJ_LDTX_RECT_R;
-u32 G_RDPHALF_0;
+uint32_t G_RDPHALF_1, G_RDPHALF_2, G_RDPHALF_CONT;
+uint32_t G_SPNOOP;
+uint32_t G_SETOTHERMODE_H, G_SETOTHERMODE_L;
+uint32_t G_DL, G_ENDDL, G_CULLDL, G_BRANCH_Z;
+uint32_t G_LOAD_UCODE;
+uint32_t G_MOVEMEM, G_MOVEWORD;
+uint32_t G_MTX, G_POPMTX;
+uint32_t G_GEOMETRYMODE, G_SETGEOMETRYMODE, G_CLEARGEOMETRYMODE;
+uint32_t G_TEXTURE;
+uint32_t G_DMA_IO, G_DMA_DL, G_DMA_TRI, G_DMA_MTX, G_DMA_VTX, G_DMA_TEX_OFFSET, G_DMA_OFFSETS;
+uint32_t G_SPECIAL_1, G_SPECIAL_2, G_SPECIAL_3;
+uint32_t G_VTX, G_MODIFYVTX, G_VTXCOLORBASE;
+uint32_t G_TRI1, G_TRI2, G_TRI4;
+uint32_t G_QUAD, G_LINE3D;
+uint32_t G_RESERVED0, G_RESERVED1, G_RESERVED2, G_RESERVED3;
+uint32_t G_SPRITE2D_BASE;
+uint32_t G_BG_1CYC, G_BG_COPY;
+uint32_t G_OBJ_RECTANGLE, G_OBJ_SPRITE, G_OBJ_MOVEMEM;
+uint32_t G_SELECT_DL, G_OBJ_RENDERMODE, G_OBJ_RECTANGLE_R;
+uint32_t G_OBJ_LOADTXTR, G_OBJ_LDTX_SPRITE, G_OBJ_LDTX_RECT, G_OBJ_LDTX_RECT_R;
+uint32_t G_RDPHALF_0;
 
-u32 G_MTX_STACKSIZE;
-u32 G_MTX_MODELVIEW;
-u32 G_MTX_PROJECTION;
-u32 G_MTX_MUL;
-u32 G_MTX_LOAD;
-u32 G_MTX_NOPUSH;
-u32 G_MTX_PUSH;
+uint32_t G_MTX_STACKSIZE;
+uint32_t G_MTX_MODELVIEW;
+uint32_t G_MTX_PROJECTION;
+uint32_t G_MTX_MUL;
+uint32_t G_MTX_LOAD;
+uint32_t G_MTX_NOPUSH;
+uint32_t G_MTX_PUSH;
 
-u32 G_TEXTURE_ENABLE;
-u32 G_SHADING_SMOOTH;
-u32 G_CULL_FRONT;
-u32 G_CULL_BACK;
-u32 G_CULL_BOTH;
-u32 G_CLIPPING;
+uint32_t G_TEXTURE_ENABLE;
+uint32_t G_SHADING_SMOOTH;
+uint32_t G_CULL_FRONT;
+uint32_t G_CULL_BACK;
+uint32_t G_CULL_BOTH;
+uint32_t G_CLIPPING;
 
-u32 G_MV_VIEWPORT;
+uint32_t G_MV_VIEWPORT;
 
-u32 G_MWO_aLIGHT_1, G_MWO_bLIGHT_1;
-u32 G_MWO_aLIGHT_2, G_MWO_bLIGHT_2;
-u32 G_MWO_aLIGHT_3, G_MWO_bLIGHT_3;
-u32 G_MWO_aLIGHT_4, G_MWO_bLIGHT_4;
-u32 G_MWO_aLIGHT_5, G_MWO_bLIGHT_5;
-u32 G_MWO_aLIGHT_6, G_MWO_bLIGHT_6;
-u32 G_MWO_aLIGHT_7, G_MWO_bLIGHT_7;
-u32 G_MWO_aLIGHT_8, G_MWO_bLIGHT_8;
+uint32_t G_MWO_aLIGHT_1, G_MWO_bLIGHT_1;
+uint32_t G_MWO_aLIGHT_2, G_MWO_bLIGHT_2;
+uint32_t G_MWO_aLIGHT_3, G_MWO_bLIGHT_3;
+uint32_t G_MWO_aLIGHT_4, G_MWO_bLIGHT_4;
+uint32_t G_MWO_aLIGHT_5, G_MWO_bLIGHT_5;
+uint32_t G_MWO_aLIGHT_6, G_MWO_bLIGHT_6;
+uint32_t G_MWO_aLIGHT_7, G_MWO_bLIGHT_7;
+uint32_t G_MWO_aLIGHT_8, G_MWO_bLIGHT_8;
 
 GBIInfo GBI;
 
-void GBI_Unknown( u32 w0, u32 w1 )
+void GBI_Unknown( uint32_t w0, uint32_t w1 )
 {
 #ifdef DEBUG
 	if (Debug.level == DEBUG_LOW)
@@ -209,7 +209,7 @@ void GBIInfo::_makeCurrent(MicrocodeInfo * _pCurrent)
 	m_pCurrent = _pCurrent;
 }
 
-bool GBIInfo::_makeExistingMicrocodeCurrent(u32 uc_start, u32 uc_dstart, u32 uc_dsize)
+bool GBIInfo::_makeExistingMicrocodeCurrent(uint32_t uc_start, uint32_t uc_dstart, uint32_t uc_dsize)
 {
 	auto iter = std::find_if(m_list.begin(), m_list.end(), [=](const MicrocodeInfo& info) {
 		return info.address == uc_start && info.dataAddress == uc_dstart && info.dataSize == uc_dsize;
@@ -222,7 +222,7 @@ bool GBIInfo::_makeExistingMicrocodeCurrent(u32 uc_start, u32 uc_dstart, u32 uc_
 	return true;
 }
 
-void GBIInfo::loadMicrocode(u32 uc_start, u32 uc_dstart, u16 uc_dsize)
+void GBIInfo::loadMicrocode(uint32_t uc_start, uint32_t uc_dstart, uint16_t uc_dsize)
 {
 	if (_makeExistingMicrocodeCurrent(uc_start, uc_dstart, uc_dsize))
 		return;
@@ -238,9 +238,9 @@ void GBIInfo::loadMicrocode(u32 uc_start, u32 uc_dstart, u16 uc_dsize)
 	current.type = NONE;
 
 	// See if we can identify it by CRC
-	const u32 uc_crc = CRC_Calculate( 0xFFFFFFFF, &RDRAM[uc_start & 0x1FFFFFFF], 4096 );
-	const u32 numSpecialMicrocodes = sizeof(specialMicrocodes) / sizeof(SpecialMicrocodeInfo);
-	for (u32 i = 0; i < numSpecialMicrocodes; ++i) {
+	const uint32_t uc_crc = CRC_Calculate( 0xFFFFFFFF, &RDRAM[uc_start & 0x1FFFFFFF], 4096 );
+	const uint32_t numSpecialMicrocodes = sizeof(specialMicrocodes) / sizeof(SpecialMicrocodeInfo);
+	for (uint32_t i = 0; i < numSpecialMicrocodes; ++i) {
 		if (uc_crc == specialMicrocodes[i].crc) {
 			current.type = specialMicrocodes[i].type;
 			current.NoN = specialMicrocodes[i].NoN;
@@ -251,13 +251,13 @@ void GBIInfo::loadMicrocode(u32 uc_start, u32 uc_dstart, u16 uc_dsize)
 
 	// See if we can identify it by text
 	char uc_data[2048];
-	UnswapCopyWrap(RDRAM, uc_dstart & 0x1FFFFFFF, (u8*)uc_data, 0, 0x7FF, 2048);
+	UnswapCopyWrap(RDRAM, uc_dstart & 0x1FFFFFFF, (uint8_t*)uc_data, 0, 0x7FF, 2048);
 	char uc_str[256];
 	strcpy(uc_str, "Not Found");
 
-	for (u32 i = 0; i < 2048; ++i) {
+	for (uint32_t i = 0; i < 2048; ++i) {
 		if ((uc_data[i] == 'R') && (uc_data[i+1] == 'S') && (uc_data[i+2] == 'P')) {
-			u32 j = 0;
+			uint32_t j = 0;
 			while (uc_data[i+j] > 0x0A) {
 				uc_str[j] = uc_data[i+j];
 				j++;
@@ -283,7 +283,7 @@ void GBIInfo::loadMicrocode(u32 uc_start, u32 uc_dstart, u16 uc_dsize)
 						current.branchLessZ = false;
 				}
 				else if (strncmp( &uc_str[14], "L3D", 3 ) == 0) {
-					u32 t = 22;
+					uint32_t t = 22;
 					while (!std::isdigit(uc_str[t]) && t++ < j);
 					if (uc_str[t] == '1')
 						type = L3DEX;
@@ -291,7 +291,7 @@ void GBIInfo::loadMicrocode(u32 uc_start, u32 uc_dstart, u16 uc_dsize)
 						type = L3DEX2;
 				}
 				else if (strncmp( &uc_str[14], "S2D", 3 ) == 0) {
-					u32 t = 20;
+					uint32_t t = 20;
 					while (!std::isdigit(uc_str[t]) && t++ < j);
 					if (uc_str[t] == '1')
 						type = S2DEX;

@@ -1,7 +1,8 @@
 #ifndef DEPTHBUFFER_H
 #define DEPTHBUFFER_H
 
-#include "Types.h"
+#include <stdint.h>
+
 #include "Textures.h"
 
 struct DepthBuffer
@@ -18,8 +19,8 @@ struct DepthBuffer
 
 	void bindDepthImageTexture();
 
-	u32 m_address, m_width;
-	u32 m_uly, m_lry; // Top and bottom bounds of fillrect command.
+	uint32_t m_address, m_width;
+	uint32_t m_uly, m_lry; // Top and bottom bounds of fillrect command.
 	GLuint m_FBO;
 	CachedTexture *m_pDepthImageTexture;
 	CachedTexture *m_pDepthBufferTexture;
@@ -37,16 +38,16 @@ class DepthBufferList
 public:
 	void init();
 	void destroy();
-	void saveBuffer(u32 _address);
-	void removeBuffer(u32 _address);
-	void clearBuffer(u32 _uly, u32 _lry);
+	void saveBuffer(uint32_t _address);
+	void removeBuffer(uint32_t _address);
+	void clearBuffer(uint32_t _uly, uint32_t _lry);
 	void setNotCleared();
-	DepthBuffer *findBuffer(u32 _address);
+	DepthBuffer *findBuffer(uint32_t _address);
 	DepthBuffer * getCurrent() const {return m_pCurrent;}
 
 	static DepthBufferList & get();
 
-	const u16 * const getZLUT() const {return m_pzLUT;}
+	const uint16_t * const getZLUT() const {return m_pzLUT;}
 
 private:
 	DepthBufferList();
@@ -56,7 +57,7 @@ private:
 	typedef std::list<DepthBuffer> DepthBuffers;
 	DepthBuffers m_list;
 	DepthBuffer *m_pCurrent;
-	u16 * m_pzLUT;
+	uint16_t * m_pzLUT;
 };
 
 inline

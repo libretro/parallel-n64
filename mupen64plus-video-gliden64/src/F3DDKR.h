@@ -1,6 +1,8 @@
 #ifndef F3DDKR_H
 #define F3DDKR_H
 
+#include <stdint.h>
+
 #define F3DDKR_VTX_APPEND		0x00010000
 
 #define F3DDKR_DMA_MTX			0x01

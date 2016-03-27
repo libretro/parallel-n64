@@ -185,7 +185,7 @@ void SimplifyCycle( CombineCycle *cc, CombinerStage *stage )
 	}
 }
 
-ShaderCombiner * CombinerInfo::_compile(u64 mux) const
+ShaderCombiner * CombinerInfo::_compile(uint64_t mux) const
 {
 	gDPCombine combine;
 
@@ -250,7 +250,7 @@ void CombinerInfo::update()
 //	}
 }
 
-void CombinerInfo::setCombine(u64 _mux )
+void CombinerInfo::setCombine(uint64_t _mux )
 {
 	if (m_pCurrent != NULL && m_pCurrent->getMux() == _mux) {
 		m_bChanged = false;
@@ -273,38 +273,38 @@ void CombinerInfo::setCombine(u64 _mux )
 void CombinerInfo::updatePrimColor()
 {
 	if (m_pUniformCollection != NULL)
-		m_pUniformCollection->setColorData(UniformCollection::cuPrimColor, sizeof(f32)* 5, &gDP.primColor.r);
+		m_pUniformCollection->setColorData(UniformCollection::cuPrimColor, sizeof(float)* 5, &gDP.primColor.r);
 }
 
 void CombinerInfo::updateEnvColor()
 {
 	if (m_pUniformCollection != NULL)
-		m_pUniformCollection->setColorData(UniformCollection::cuEnvColor, sizeof(f32)* 4, &gDP.envColor.r);
+		m_pUniformCollection->setColorData(UniformCollection::cuEnvColor, sizeof(float)* 4, &gDP.envColor.r);
 }
 
 void CombinerInfo::updateFogColor()
 {
 	if (m_pUniformCollection != NULL)
-		m_pUniformCollection->setColorData(UniformCollection::cuFogColor, sizeof(f32)* 4, &gDP.fogColor.r);
+		m_pUniformCollection->setColorData(UniformCollection::cuFogColor, sizeof(float)* 4, &gDP.fogColor.r);
 }
 
 void CombinerInfo::updateBlendColor()
 {
 	if (m_pUniformCollection != NULL)
-		m_pUniformCollection->setColorData(UniformCollection::cuBlendColor, sizeof(f32)* 4, &gDP.blendColor.r);
+		m_pUniformCollection->setColorData(UniformCollection::cuBlendColor, sizeof(float)* 4, &gDP.blendColor.r);
 }
 
 void CombinerInfo::updateKeyColor()
 {
 	if (m_pUniformCollection != NULL)
-		m_pUniformCollection->setColorData(UniformCollection::cuCenterColor, sizeof(f32)* 8, &gDP.key.center.r);
+		m_pUniformCollection->setColorData(UniformCollection::cuCenterColor, sizeof(float)* 8, &gDP.key.center.r);
 }
 
 void CombinerInfo::updateConvertColor()
 {
 	if (m_pUniformCollection == NULL)
 		return;
-	f32 convert[2] = { gDP.convert.k4*0.0039215689f, gDP.convert.k5*0.0039215689f };
+	float convert[2] = { gDP.convert.k4*0.0039215689f, gDP.convert.k5*0.0039215689f };
 	m_pUniformCollection->setColorData(UniformCollection::cuK4, sizeof(convert), convert);
 }
 
@@ -327,12 +327,12 @@ void CombinerInfo::updateParameters(OGLRender::RENDER_STATE _renderState)
 		m_pUniformCollection->updateUniforms(m_pCurrent, _renderState);
 }
 
-u32 CombinerInfo::_getConfigOptionsBitSet() const
+uint32_t CombinerInfo::_getConfigOptionsBitSet() const
 {
-	std::vector<u32> vecOptions;
+	std::vector<uint32_t> vecOptions;
 	ShaderCombiner::getShaderCombinerOptionsSet(vecOptions);
-	u32 optionsSet = 0;
-	for (u32 i = 0; i < vecOptions.size(); ++i)
+	uint32_t optionsSet = 0;
+	for (uint32_t i = 0; i < vecOptions.size(); ++i)
 		optionsSet |= vecOptions[i] << i;
 	return optionsSet;
 }

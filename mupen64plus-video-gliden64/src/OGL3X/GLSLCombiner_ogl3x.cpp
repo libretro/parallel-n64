@@ -1,5 +1,6 @@
 #include <assert.h>
 #include <stdio.h>
+#include <stdint.h>
 #include <string>
 #include <vector>
 
@@ -33,7 +34,7 @@ static GLuint  g_monochrome_image_program = 0;
 GLuint g_draw_shadow_map_program = 0;
 static GLuint g_zlut_tex = 0;
 GLuint g_tlut_tex = 0;
-static u32 g_paletteCRC256 = 0;
+static uint32_t g_paletteCRC256 = 0;
 #endif // GL_IMAGE_TEXTURES_SUPPORT
 
 static std::string strFragmentShader;
@@ -49,7 +50,7 @@ public:
 private:
 	CachedTexture * m_pTexture;
 	GLuint m_PBO;
-	u32 m_DList;
+	uint32_t m_DList;
 } noiseTex;
 
 void NoiseTexture::init()
@@ -95,15 +96,15 @@ void NoiseTexture::update()
 {
 	if (m_DList == video().getBuffersSwapCount() || config.generalEmulation.enableNoise == 0)
 		return;
-	const u32 dataSize = VI.width*VI.height;
+	const uint32_t dataSize = VI.width*VI.height;
 	if (dataSize == 0)
 		return;
 	PBOBinder binder(GL_PIXEL_UNPACK_BUFFER, m_PBO);
 	GLubyte* ptr = (GLubyte*)glMapBufferRange(GL_PIXEL_UNPACK_BUFFER, 0, dataSize, GL_MAP_WRITE_BIT);
 	if (ptr == NULL)
 		return;
-	for (u32 y = 0; y < VI.height; ++y)	{
-		for (u32 x = 0; x < VI.width; ++x)
+	for (uint32_t y = 0; y < VI.height; ++y)	{
+		for (uint32_t x = 0; x < VI.width; ++x)
 			ptr[x + y*VI.width] = rand()&0xFF;
 	}
 	glUnmapBuffer(GL_PIXEL_UNPACK_BUFFER); // release the mapped buffer
@@ -123,13 +124,13 @@ void InitZlutTexture()
 		return;
 
 #ifdef GLESX
-	std::vector<u32> vecZLUT(0x40000);
-	const u16 * const zLUT16 = depthBufferList().getZLUT();
-	for (u32 i = 0; i < 0x40000; ++i)
+	std::vector<uint32_t> vecZLUT(0x40000);
+	const uint16_t * const zLUT16 = depthBufferList().getZLUT();
+	for (uint32_t i = 0; i < 0x40000; ++i)
 		vecZLUT[i] = zLUT16[i];
-	const u32 * zLUT = vecZLUT.data();
+	const uint32_t * zLUT = vecZLUT.data();
 #else
-	const u16 * const zLUT = depthBufferList().getZLUT();
+	const uint16_t * const zLUT = depthBufferList().getZLUT();
 #endif
 	glGenTextures(1, &g_zlut_tex);
 	glBindTexture(GL_TEXTURE_2D, g_zlut_tex);
@@ -531,7 +532,7 @@ void ShaderCombiner::updateRenderState(bool _bForce)
 
 void ShaderCombiner::updateFogMode(bool _bForce)
 {
-	const u32 blender = (gDP.otherMode.l >> 16);
+	const uint32_t blender = (gDP.otherMode.l >> 16);
 	const int nFogBlendEnabled = config.generalEmulation.enableFog != 0 && gSP.fog.multiplier >= 0 && (gDP.otherMode.c1_m1a == 3 || gDP.otherMode.c1_m2a == 3 || gDP.otherMode.c2_m1a == 3 || gDP.otherMode.c2_m2a == 3) ? 256 : 0;
 	int nFogUsage = ((gSP.geometryMode & G_FOG) != 0) ? 1 : 0;
 	int nSpecialBlendMode = 0;
@@ -782,7 +783,7 @@ std::istream & operator>> (std::istream & _is, ShaderCombiner & _combiner)
 	return _is;
 }
 
-void ShaderCombiner::getShaderCombinerOptionsSet(std::vector<u32> & _vecOptions)
+void ShaderCombiner::getShaderCombinerOptionsSet(std::vector<uint32_t> & _vecOptions)
 {
 	// WARNING: Shader Storage format version must be increased after any change in this function.
 	_vecOptions.push_back(config.video.multisampling > 0 ? 1 : 0);
@@ -803,11 +804,11 @@ void SetDepthFogCombiner()
 		g_paletteCRC256 = gDP.paletteCRC256;
 
 #ifdef GLESX
-		u32 palette[256];
+		uint32_t palette[256];
 #else
-		u16 palette[256];
+		uint16_t palette[256];
 #endif
-		u16 *src = (u16*)&TMEM[256];
+		uint16_t *src = (uint16_t*)&TMEM[256];
 		for (int i = 0; i < 256; ++i)
 			palette[i] = swapword(src[i*4]);
 		glBindImageTexture(TlutImageUnit, 0, 0, GL_FALSE, 0, GL_READ_ONLY, fboFormats.lutInternalFormat);

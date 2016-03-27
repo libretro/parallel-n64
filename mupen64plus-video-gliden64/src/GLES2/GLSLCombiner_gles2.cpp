@@ -1,5 +1,6 @@
 #include <assert.h>
 #include <stdio.h>
+#include <stdint.h>
 #include <string.h>
 #include <string>
 #include <memory>
@@ -41,7 +42,7 @@ public:
 private:
 	CachedTexture * m_pTexture;
 	std::unique_ptr<GLubyte[]> m_pData;
-	u32 m_DList;
+	uint32_t m_DList;
 } noiseTex;
 
 void NoiseTexture::init()
@@ -85,8 +86,8 @@ void NoiseTexture::update()
 	if (VI.width*VI.height == 0)
 		return;
 
-	for (u32 y = 0; y < VI.height; ++y)	{
-		for (u32 x = 0; x < VI.width; ++x)
+	for (uint32_t y = 0; y < VI.height; ++y)	{
+		for (uint32_t x = 0; x < VI.width; ++x)
 			m_pData[x + y*VI.width] = rand() & 0xFF;
 	}
 
@@ -320,7 +321,7 @@ void ShaderCombiner::updateRenderState(bool _bForce)
 
 void ShaderCombiner::updateFogMode(bool _bForce)
 {
-	const u32 blender = (gDP.otherMode.l >> 16);
+	const uint32_t blender = (gDP.otherMode.l >> 16);
 	const int nFogBlendEnabled = config.generalEmulation.enableFog != 0 && gSP.fog.multiplier >= 0 && (gDP.otherMode.c1_m1a == 3 || gDP.otherMode.c1_m2a == 3 || gDP.otherMode.c2_m1a == 3 || gDP.otherMode.c2_m2a == 3) ? 256 : 0;
 	int nFogUsage = ((gSP.geometryMode & G_FOG) != 0) ? 1 : 0;
 	int nSpecialBlendMode = 0;
@@ -531,6 +532,6 @@ void SetDepthFogCombiner()
 {
 }
 
-void ShaderCombiner::getShaderCombinerOptionsSet(std::vector<u32> & _vecOptions)
+void ShaderCombiner::getShaderCombinerOptionsSet(std::vector<uint32_t> & _vecOptions)
 {
 }

@@ -145,7 +145,7 @@ void PostProcessor::_initGammaCorrection()
 	glUniform1i(loc, 0);
 	loc = glGetUniformLocation(m_gammaCorrectionProgram, "uGammaCorrectionLevel");
 	assert(loc >= 0);
-	const f32 gammaLevel = (config.gammaCorrection.force != 0) ? config.gammaCorrection.level : 2.0f;
+	const float gammaLevel = (config.gammaCorrection.force != 0) ? config.gammaCorrection.level : 2.0f;
 	glUniform1f(loc, gammaLevel);
 	glUseProgram(0);
 }

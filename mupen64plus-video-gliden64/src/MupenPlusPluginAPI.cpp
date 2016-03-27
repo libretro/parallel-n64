@@ -2,7 +2,6 @@
 #include <string.h>
 
 #include "PluginAPI.h"
-#include "Types.h"
 
 #include "m64p_types.h"
 #include "m64p_plugin.h"
@@ -53,12 +52,12 @@ EXPORT void CALL gln64SetRenderingCallback(void (*callback)(int))
 	//api().SetRenderingCallback(callback);
 }
 
-EXPORT void CALL gln64FBRead(u32 addr)
+EXPORT void CALL gln64FBRead(uint32_t addr)
 {
 	//api().FBRead(addr);
 }
 
-EXPORT void CALL gln64FBWrite(u32 addr, u32 size)
+EXPORT void CALL gln64FBWrite(uint32_t addr, uint32_t size)
 {
 	//api().FBWrite(addr, size);
 }

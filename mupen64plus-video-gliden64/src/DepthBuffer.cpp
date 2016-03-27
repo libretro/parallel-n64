@@ -3,6 +3,7 @@
 #else
 #include <malloc.h>
 #endif
+#include <stdint.h>
 #include <assert.h>
 #include "OpenGL.h"
 #include "Combiner.h"
@@ -55,8 +56,8 @@ void DepthBuffer::initDepthImageTexture(FrameBuffer * _pBuffer)
 
 	m_pDepthImageTexture = textureCache().addFrameBufferTexture();
 
-	m_pDepthImageTexture->width = (u32)(_pBuffer->m_pTexture->width);
-	m_pDepthImageTexture->height = (u32)(_pBuffer->m_pTexture->height);
+	m_pDepthImageTexture->width = (uint32_t)(_pBuffer->m_pTexture->width);
+	m_pDepthImageTexture->height = (uint32_t)(_pBuffer->m_pTexture->height);
 	m_pDepthImageTexture->format = 0;
 	m_pDepthImageTexture->size = 2;
 	m_pDepthImageTexture->clampS = 1;
@@ -93,8 +94,8 @@ void DepthBuffer::initDepthImageTexture(FrameBuffer * _pBuffer)
 void DepthBuffer::_initDepthBufferTexture(FrameBuffer * _pBuffer, CachedTexture * _pTexture, bool _multisample)
 {
 	if (_pBuffer != NULL) {
-		_pTexture->width = (u32)(_pBuffer->m_pTexture->width);
-		_pTexture->height = (u32)(_pBuffer->m_pTexture->height);
+		_pTexture->width = (uint32_t)(_pBuffer->m_pTexture->width);
+		_pTexture->height = (uint32_t)(_pBuffer->m_pTexture->height);
 		_pTexture->address = _pBuffer->m_startAddress;
 		_pTexture->clampWidth = _pBuffer->m_width;
 		_pTexture->clampHeight = _pBuffer->m_height;
@@ -221,17 +222,17 @@ void DepthBuffer::bindDepthImageTexture()
 
 DepthBufferList::DepthBufferList() : m_pCurrent(NULL), m_pzLUT(NULL) 
 {
-	m_pzLUT = new u16[0x40000];
+	m_pzLUT = new uint16_t[0x40000];
 	for (int i = 0; i<0x40000; i++) {
-		u32 exponent = 0;
-		u32 testbit = 1 << 17;
+		uint32_t exponent = 0;
+		uint32_t testbit = 1 << 17;
 		while ((i & testbit) && (exponent < 7)) {
 			exponent++;
 			testbit = 1 << (17 - exponent);
 		}
 
-		const u32 mantissa = (i >> (6 - (6 < exponent ? 6 : exponent))) & 0x7ff;
-		m_pzLUT[i] = (u16)(((exponent << 11) | mantissa) << 2);
+		const uint32_t mantissa = (i >> (6 - (6 < exponent ? 6 : exponent))) & 0x7ff;
+		m_pzLUT[i] = (uint16_t)(((exponent << 11) | mantissa) << 2);
 	}
 }
 
@@ -265,7 +266,7 @@ void DepthBufferList::setNotCleared()
 		iter->m_cleared = false;
 }
 
-DepthBuffer * DepthBufferList::findBuffer(u32 _address)
+DepthBuffer * DepthBufferList::findBuffer(uint32_t _address)
 {
 	for (DepthBuffers::iterator iter = m_list.begin(); iter != m_list.end(); ++iter)
 		if (iter->m_address == _address)
@@ -273,7 +274,7 @@ DepthBuffer * DepthBufferList::findBuffer(u32 _address)
 	return NULL;
 }
 
-void DepthBufferList::removeBuffer(u32 _address )
+void DepthBufferList::removeBuffer(uint32_t _address )
 {
 	for (DepthBuffers::iterator iter = m_list.begin(); iter != m_list.end(); ++iter)
 		if (iter->m_address == _address) {
@@ -282,7 +283,7 @@ void DepthBufferList::removeBuffer(u32 _address )
 		}
 }
 
-void DepthBufferList::saveBuffer(u32 _address)
+void DepthBufferList::saveBuffer(uint32_t _address)
 {
 	if (!config.frameBufferEmulation.enable)
 		return;
@@ -321,7 +322,7 @@ void DepthBufferList::saveBuffer(u32 _address)
 
 }
 
-void DepthBufferList::clearBuffer(u32 _uly, u32 _lry)
+void DepthBufferList::clearBuffer(uint32_t _uly, uint32_t _lry)
 {
 	if (m_pCurrent == NULL)
 		return;
@@ -334,7 +335,7 @@ void DepthBufferList::clearBuffer(u32 _uly, u32 _lry)
 	float color[4] = {1.0f, 1.0f, 0.0f, 1.0f};
 	glBindImageTexture(depthImageUnit, 0, 0, GL_FALSE, 0, GL_READ_WRITE, fboFormats.depthImageInternalFormat);
 	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, m_pCurrent->m_FBO);
-	const u32 cycleType = gDP.otherMode.cycleType;
+	const uint32_t cycleType = gDP.otherMode.cycleType;
 	gDP.otherMode.cycleType = G_CYC_FILL;
 	video().getRender().drawRect(0,0,VI.width, VI.height, color);
 	gDP.otherMode.cycleType = cycleType;

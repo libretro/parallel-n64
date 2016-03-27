@@ -1,9 +1,9 @@
-#include "Types.h"
+#include <stdint.h>
 
 void CRC_BuildTable();
 
 // CRC32
-u32 CRC_Calculate( u32 crc, const void *buffer, u32 count );
-u32 CRC_CalculatePalette( u32 crc, const void *buffer, u32 count );
+uint32_t CRC_Calculate( uint32_t crc, const void *buffer, uint32_t count );
+uint32_t CRC_CalculatePalette( uint32_t crc, const void *buffer, uint32_t count );
 // Fast checksum calculation from Glide64
-u32 textureCRC(u8 * addr, u32 height, u32 stride);
+uint32_t textureCRC(uint8_t * addr, uint32_t height, uint32_t stride);

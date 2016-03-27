@@ -1,3 +1,4 @@
+#include <stdint.h>
 #include <string.h>
 
 #include "UniformSet.h"
@@ -8,7 +9,7 @@
 
 void UniformSet::bindWithShaderCombiner(ShaderCombiner * _pCombiner)
 {
-	const u64 mux = _pCombiner->getMux();
+	const uint64_t mux = _pCombiner->getMux();
 	const GLuint program = _pCombiner->m_program;
 	m_uniforms.emplace(mux, program);
 	UniformSetLocation & location = m_uniforms.at(mux);
@@ -46,7 +47,7 @@ void UniformSet::bindWithShaderCombiner(ShaderCombiner * _pCombiner)
 	if (config.generalEmulation.enableHWLighting != 0 && GBI.isHWLSupported() && _pCombiner->usesShadeColor()) {
 		// locate lights uniforms
 		char buf[32];
-		for (s32 i = 0; i < 8; ++i) {
+		for (int32_t i = 0; i < 8; ++i) {
 			sprintf(buf, "uLightDirection[%d]", i);
 			location.uLightDirection[i].loc = glGetUniformLocation(program, buf);
 			sprintf(buf, "uLightColor[%d]", i);
@@ -75,7 +76,7 @@ void UniformSet::_updateTextureUniforms(UniformSetLocation & _location, bool _bU
 	int nFB[2] = { 0, 0 };
 	const bool bUsesTile[2] = { _bUsesT0, _bUsesT1 };
 	TextureCache & cache = textureCache();
-	for (u32 t = 0; t < 2; ++t) {
+	for (uint32_t t = 0; t < 2; ++t) {
 		if (!bUsesTile[t])
 			continue;
 
@@ -97,8 +98,8 @@ void UniformSet::_updateTextureUniforms(UniformSetLocation & _location, bool _bU
 		}
 
 		if (cache.current[t] != NULL) {
-			f32 shiftScaleS = 1.0f;
-			f32 shiftScaleT = 1.0f;
+			float shiftScaleS = 1.0f;
+			float shiftScaleT = 1.0f;
 			getTextureShiftScale(t, cache, shiftScaleS, shiftScaleT);
 			_location.uCacheShiftScale[t].set(shiftScaleS, shiftScaleT, _bForce);
 			_location.uCacheScale[t].set(cache.current[t]->scaleS, cache.current[t]->scaleT, _bForce);
@@ -122,7 +123,7 @@ void UniformSet::_updateTextureSize(UniformSetLocation & _location, bool _bUsesT
 
 void UniformSet::_updateLightUniforms(UniformSetLocation & _location, bool _bForce)
 {
-	for (s32 i = 0; i <= gSP.numLights; ++i) {
+	for (int32_t i = 0; i <= gSP.numLights; ++i) {
 		_location.uLightDirection[i].set(&gSP.lights[i].x, _bForce);
 		_location.uLightColor[i].set(&gSP.lights[i].r, _bForce);
 	}

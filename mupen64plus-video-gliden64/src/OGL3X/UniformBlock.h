@@ -12,7 +12,7 @@ public:
 	~UniformBlock();
 
 	virtual void bindWithShaderCombiner(ShaderCombiner * _pCombiner);
-	virtual void setColorData(ColorUniforms _index, u32 _dataSize, const void * _data);
+	virtual void setColorData(ColorUniforms _index, uint32_t _dataSize, const void * _data);
 	virtual void updateTextureParameters();
 	virtual void updateLightParameters();
 	virtual void updateUniforms(ShaderCombiner * /*_pCombiner*/, OGLRender::RENDER_STATE /*_renderState*/) {}
@@ -22,9 +22,9 @@ private:
 	void _initColorsBuffer(GLuint _program);
 	void _initLightBuffer(GLuint _program);
 
-	bool _isDataChanged(void * _pBuffer, const void * _pData, u32 _dataSize);
+	bool _isDataChanged(void * _pBuffer, const void * _pData, uint32_t _dataSize);
 
-	template <u32 _numUniforms, u32 _bindingPoint>
+	template <uint32_t _numUniforms, uint32_t _bindingPoint>
 	struct UniformBlockData
 	{
 		UniformBlockData() : m_buffer(0), m_blockBindingPoint(_bindingPoint)

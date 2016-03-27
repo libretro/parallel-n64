@@ -1,11 +1,12 @@
 #ifndef COMBINER_H
 #define COMBINER_H
 
+#include <stdint.h>
+
 #include <map>
 
 #include "OpenGL.h"
 #include "gDP.h"
-#include "Types.h"
 
 /*
 * G_SETCOMBINE: color combine modes
@@ -47,10 +48,10 @@
 
 #define EncodeCombineMode( a0, b0, c0, d0, Aa0, Ab0, Ac0, Ad0,	\
 	a1, b1, c1, d1,	Aa1, Ab1, Ac1, Ad1 ) \
-	(u64)(((u64)(_SHIFTL( G_CCMUX_##a0, 20, 4 ) | _SHIFTL( G_CCMUX_##c0, 15, 5 ) | \
+	(uint64_t)(((uint64_t)(_SHIFTL( G_CCMUX_##a0, 20, 4 ) | _SHIFTL( G_CCMUX_##c0, 15, 5 ) | \
 	_SHIFTL( G_ACMUX_##Aa0, 12, 3 ) | _SHIFTL( G_ACMUX_##Ac0, 9, 3 ) | \
 	_SHIFTL( G_CCMUX_##a1, 5, 4 ) | _SHIFTL( G_CCMUX_##c1, 0, 5 )) << 32) | \
-	(u64)(_SHIFTL( G_CCMUX_##b0, 28, 4 ) | _SHIFTL( G_CCMUX_##d0, 15, 3 ) | \
+	(uint64_t)(_SHIFTL( G_CCMUX_##b0, 28, 4 ) | _SHIFTL( G_CCMUX_##d0, 15, 3 ) | \
 	_SHIFTL( G_ACMUX_##Ab0, 12, 3 ) | _SHIFTL( G_ACMUX_##Ad0, 9, 3 ) | \
 	_SHIFTL( G_CCMUX_##b1, 24, 4 ) | _SHIFTL( G_ACMUX_##Aa1, 21, 3 ) | \
 	_SHIFTL( G_ACMUX_##Ac1, 18, 3 ) | _SHIFTL( G_CCMUX_##d1, 6, 3 ) | \
@@ -120,7 +121,7 @@ public:
 	void init();
 	void destroy();
 	void update();
-	void setCombine(u64 _mux);
+	void setCombine(uint64_t _mux);
 
 	ShaderCombiner * getCurrent() const {return m_pCurrent;}
 	bool isChanged() const {return m_bChanged;}
@@ -147,15 +148,15 @@ private:
 
 	void _saveShadersStorage() const;
 	bool _loadShadersStorage();
-	u32 _getConfigOptionsBitSet() const;
-	ShaderCombiner * _compile(u64 mux) const;
+	uint32_t _getConfigOptionsBitSet() const;
+	ShaderCombiner * _compile(uint64_t mux) const;
 
 	bool m_bChanged;
 	bool m_bShaderCacheSupported;
-	u32 m_shadersLoaded;
+	uint32_t m_shadersLoaded;
 
 	ShaderCombiner * m_pCurrent;
-	typedef std::map<u64, ShaderCombiner *> Combiners;
+	typedef std::map<uint64_t, ShaderCombiner *> Combiners;
 	Combiners m_combiners;
 	UniformCollection * m_pUniformCollection;
 };

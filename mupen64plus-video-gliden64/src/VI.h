@@ -1,12 +1,13 @@
 #ifndef VI_H
 #define VI_H
-#include "Types.h"
+
+#include <stdint.h>
 
 struct VIInfo
 {
-	u32 width, widthPrev, height, real_height;
-	f32 rwidth, rheight;
-	u32 lastOrigin;
+	uint32_t width, widthPrev, height, real_height;
+	float rwidth, rheight;
+	uint32_t lastOrigin;
 	bool interlaced;
 	bool PAL;
 

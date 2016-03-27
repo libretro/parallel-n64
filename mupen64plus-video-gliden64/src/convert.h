@@ -1,7 +1,7 @@
 #ifndef CONVERT_H
 #define CONVERT_H
 
-#include "Types.h"
+#include <stdint.h>
 
 const volatile unsigned char Five2Eight[32] =
 {
@@ -102,13 +102,13 @@ const volatile unsigned char One2Eight[2] =
 	255, // 1 = 11111111
 };
 
-static INLINE void UnswapCopyWrap(const u8 *src, u32 srcIdx, u8 *dest, u32 destIdx, u32 destMask, u32 numBytes)
+static INLINE void UnswapCopyWrap(const uint8_t *src, uint32_t srcIdx, uint8_t *dest, uint32_t destIdx, uint32_t destMask, uint32_t numBytes)
 {
 	// copy leading bytes
-	u32 leadingBytes = srcIdx & 3;
+	uint32_t leadingBytes = srcIdx & 3;
 	if (leadingBytes != 0) {
 		leadingBytes = 4 - leadingBytes;
-		if ((u32)leadingBytes > numBytes)
+		if ((uint32_t)leadingBytes > numBytes)
 			leadingBytes = numBytes;
 		numBytes -= leadingBytes;
 
@@ -143,9 +143,9 @@ static INLINE void UnswapCopyWrap(const u8 *src, u32 srcIdx, u8 *dest, u32 destI
 	}
 }
 
-static INLINE void DWordInterleaveWrap(u32 *src, u32 srcIdx, u32 srcMask, u32 numQWords)
+static INLINE void DWordInterleaveWrap(uint32_t *src, uint32_t srcIdx, uint32_t srcMask, uint32_t numQWords)
 {
-	u32 tmp;
+	uint32_t tmp;
 	while (numQWords--)	{
 		tmp = src[srcIdx & srcMask];
 		src[srcIdx & srcMask] = src[(srcIdx + 1) & srcMask];
@@ -155,7 +155,7 @@ static INLINE void DWordInterleaveWrap(u32 *src, u32 srcIdx, u32 srcMask, u32 nu
 	}
 }
 
-static INLINE u16 swapword( u16 value )
+static INLINE uint16_t swapword( uint16_t value )
 {
 #ifdef ARM_ASM
 	asm("rev16 %0, %0" : "+r"(value)::);
@@ -165,7 +165,7 @@ static INLINE u16 swapword( u16 value )
 #endif // ARM_ASM
 }
 
-inline u16 RGBA8888_RGBA4444( u32 color )
+inline uint16_t RGBA8888_RGBA4444( uint32_t color )
 {
 	return ((color & 0x000000f0) <<  8) |	// r
 			((color & 0x0000f000) >>  4) |	// g
@@ -173,10 +173,10 @@ inline u16 RGBA8888_RGBA4444( u32 color )
 			((color & 0xf0000000) >> 28);	// a
 }
 
-inline u32 RGBA5551_RGBA8888( u16 color )
+inline uint32_t RGBA5551_RGBA8888( uint16_t color )
 {
 	color = swapword( color );
-	u8 r, g, b, a;
+	uint8_t r, g, b, a;
 	r = Five2Eight[color >> 11];
 	g = Five2Eight[(color >> 6) & 0x001f];
 	b = Five2Eight[(color >> 1) & 0x001f];
@@ -185,74 +185,74 @@ inline u32 RGBA5551_RGBA8888( u16 color )
 }
 
 // Just swaps the word
-inline u16 RGBA5551_RGBA5551( u16 color )
+inline uint16_t RGBA5551_RGBA5551( uint16_t color )
 {
 	return swapword( color );
 }
 
-inline u32 IA88_RGBA8888( u16 color )
+inline uint32_t IA88_RGBA8888( uint16_t color )
 {
 	// ok
-	u8 a = color >> 8;
-	u8 i = color & 0x00FF;
+	uint8_t a = color >> 8;
+	uint8_t i = color & 0x00FF;
 	return (a << 24) | (i << 16) | (i << 8) | i;
 }
 
-inline u16 IA88_RGBA4444( u16 color )
+inline uint16_t IA88_RGBA4444( uint16_t color )
 {
-	u8 i = color >> 12;
-	u8 a = (color >> 4) & 0x000F;
+	uint8_t i = color >> 12;
+	uint8_t a = (color >> 4) & 0x000F;
 	return (i << 12) | (i << 8) | (i << 4) | a;
 }
 
-inline u16 IA44_RGBA4444( u8 color )
+inline uint16_t IA44_RGBA4444( uint8_t color )
 {
 	return ((color & 0xf0) << 8) | ((color & 0xf0) << 4) | (color);
 }
 
-inline u32 IA44_RGBA8888( u8 color )
+inline uint32_t IA44_RGBA8888( uint8_t color )
 {
-	u8 i = Four2Eight[color >> 4];
-	u8 a = Four2Eight[color & 0x0F];
+	uint8_t i = Four2Eight[color >> 4];
+	uint8_t a = Four2Eight[color & 0x0F];
 	return (a << 24) | (i << 16) | (i << 8) | i;
 }
 
-inline u16 IA31_RGBA4444( u8 color )
+inline uint16_t IA31_RGBA4444( uint8_t color )
 {
-	u8 i = Three2Four[color >> 1];
-	u8 a = One2Four[color & 0x01];
+	uint8_t i = Three2Four[color >> 1];
+	uint8_t a = One2Four[color & 0x01];
 	return (i << 12) | (i << 8) | (i << 4) | a;
 }
 
-inline u32 IA31_RGBA8888( u8 color )
+inline uint32_t IA31_RGBA8888( uint8_t color )
 {
-	u8 i = Three2Eight[color >> 1];
-	u8 a = One2Eight[color & 0x01];
+	uint8_t i = Three2Eight[color >> 1];
+	uint8_t a = One2Eight[color & 0x01];
 	return (i << 24) | (i << 16) | (i << 8) | a;
 }
 
-inline u16 I8_RGBA4444( u8 color )
+inline uint16_t I8_RGBA4444( uint8_t color )
 {
-	u8 c = color >> 4;
+	uint8_t c = color >> 4;
 	return (c << 12) | (c << 8) | (c << 4) | c;
 }
 
-inline u32 I8_RGBA8888( u8 color )
+inline uint32_t I8_RGBA8888( uint8_t color )
 {
 	return (color << 24) | (color << 16) | (color << 8) | color;
 }
 
-inline u16 I4_RGBA4444( u8 color )
+inline uint16_t I4_RGBA4444( uint8_t color )
 {
-	u16 ret = color & 0x0f;
+	uint16_t ret = color & 0x0f;
 	ret |= ret << 4;
 	ret |= ret << 8;
 	return ret;
 }
 
-inline u32 I4_RGBA8888( u8 color )
+inline uint32_t I4_RGBA8888( uint8_t color )
 {
-	u8 c = Four2Eight[color];
+	uint8_t c = Four2Eight[color];
 	c |= c << 4;
 	return (c << 24) | (c << 16) | (c << 8) | c;
 }

@@ -37,7 +37,7 @@ public:
 	virtual ~UniformCollection() {}
 
 	virtual void bindWithShaderCombiner(ShaderCombiner * _pCombiner) = 0;
-	virtual void setColorData(ColorUniforms _index, u32 _dataSize, const void * _data) = 0;
+	virtual void setColorData(ColorUniforms _index, uint32_t _dataSize, const void * _data) = 0;
 	virtual void updateTextureParameters() = 0;
 	virtual void updateLightParameters() = 0;
 	virtual void updateUniforms(ShaderCombiner * _pCombiner, OGLRender::RENDER_STATE _renderState) = 0;

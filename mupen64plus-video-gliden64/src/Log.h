@@ -1,6 +1,8 @@
 #ifndef __LOG_H__
 #define __LOG_H__
 
+#include <stdint.h>
+
 #define LOG_NONE	0
 #define LOG_ERROR   1
 #define LOG_MINIMAL	2
@@ -13,7 +15,7 @@
 #if LOG_LEVEL>0
 #include <stdio.h>
 #include <stdarg.h>
-inline void LOG( u16 type, const char * format, ... ) {
+static inline void LOG( uint16_t type, const char * format, ... ) {
 	if (type > LOG_LEVEL)
 		return;
 	FILE *dumpFile = fopen( "gliden64.log", "a+" );

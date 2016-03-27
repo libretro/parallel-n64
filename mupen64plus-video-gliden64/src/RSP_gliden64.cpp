@@ -17,9 +17,9 @@ using namespace std;
 
 RSPInfo		__RSP;
 
-void RSP_LoadMatrix( f32 mtx[4][4], u32 address )
+void RSP_LoadMatrix( float mtx[4][4], uint32_t address )
 {
-	f32 recip = 1.5258789e-05f;
+	float recip = 1.5258789e-05f;
 	struct _N64Matrix
 	{
 		int16_t integer[4][4];
@@ -60,14 +60,14 @@ void RSP_ProcessDList(void)
 		video().updateScale();
 	}
 
-	__RSP.PC[0] = *(u32*)&DMEM[0x0FF0];
+	__RSP.PC[0] = *(uint32_t*)&DMEM[0x0FF0];
 	__RSP.PCi = 0;
 	__RSP.count = -1;
 
-	__RSP.halt = FALSE;
-	__RSP.busy = TRUE;
+	__RSP.halt = false;
+	__RSP.busy = true;
 
-	gSP.matrix.stackSize = min( 32U, *(u32*)&DMEM[0x0FE4] >> 6 );
+	gSP.matrix.stackSize = min( 32U, *(uint32_t*)&DMEM[0x0FE4] >> 6 );
 	if (gSP.matrix.stackSize == 0)
 		gSP.matrix.stackSize = 32;
 	gSP.matrix.modelViewi = 0;
@@ -75,9 +75,9 @@ void RSP_ProcessDList(void)
 	gDP.changed &= ~CHANGED_CPU_FB_WRITE;
 	gDPSetTexturePersp(G_TP_PERSP);
 
-	u32 uc_start = *(u32*)&DMEM[0x0FD0];
-	u32 uc_dstart = *(u32*)&DMEM[0x0FD8];
-	u32 uc_dsize = *(u32*)&DMEM[0x0FDC];
+	uint32_t uc_start = *(uint32_t*)&DMEM[0x0FD0];
+	uint32_t uc_dstart = *(uint32_t*)&DMEM[0x0FD8];
+	uint32_t uc_dsize = *(uint32_t*)&DMEM[0x0FDC];
 
 	if ((uc_start != __RSP.uc_start) || (uc_dstart != __RSP.uc_dstart))
 		gSPLoadUcodeEx(uc_start, uc_dstart, uc_dsize);
@@ -106,8 +106,8 @@ void RSP_ProcessDList(void)
 				break;
 			}
 
-			u32 w0 = *(u32*)&gfx_info.RDRAM[__RSP.PC[__RSP.PCi]];
-			u32 w1 = *(u32*)&gfx_info.RDRAM[__RSP.PC[__RSP.PCi] + 4];
+			uint32_t w0 = *(uint32_t*)&gfx_info.RDRAM[__RSP.PC[__RSP.PCi]];
+			uint32_t w1 = *(uint32_t*)&gfx_info.RDRAM[__RSP.PC[__RSP.PCi] + 4];
 			__RSP.cmd = _SHIFTR(w0, 24, 8);
 
 #ifdef DEBUG
@@ -116,7 +116,7 @@ void RSP_ProcessDList(void)
 #endif
 
 			__RSP.PC[__RSP.PCi] += 8;
-			__RSP.nextCmd = _SHIFTR(*(u32*)&gfx_info.RDRAM[__RSP.PC[__RSP.PCi]], 24, 8);
+			__RSP.nextCmd = _SHIFTR(*(uint32_t*)&gfx_info.RDRAM[__RSP.PC[__RSP.PCi]], 24, 8);
 
 			GBI.cmd[__RSP.cmd](w0, w1);
 			RSP_CheckDLCounter();
@@ -126,7 +126,7 @@ void RSP_ProcessDList(void)
 	if (config.frameBufferEmulation.copyDepthToRDRAM != gliden64_config::ctDisable)
 		FrameBuffer_CopyDepthBuffer(gDP.colorImage.address);
 
-	__RSP.busy = FALSE;
+	__RSP.busy = false;
 	gDP.changed |= CHANGED_COLORBUFFER;
 }
 
@@ -134,7 +134,7 @@ static void RSP_SetDefaultState(void)
 {
 	memset(&gSP, 0, sizeof(gSPInfo));
 
-	gSPTexture(1.0f, 1.0f, 0, 0, TRUE);
+	gSPTexture(1.0f, 1.0f, 0, 0, true);
 	gDP.loadTile = &gDP.tiles[7];
 	gSP.textureTile[0] = &gDP.tiles[0];
 	gSP.textureTile[1] = &gDP.tiles[1];
@@ -163,7 +163,7 @@ static void RSP_SetDefaultState(void)
 	gDP.otherMode._u64 = 0U;
 }
 
-u32 DepthClearColor = 0xfffcfffc;
+uint32_t DepthClearColor = 0xfffcfffc;
 
 static void setDepthClearColor(void)
 {
@@ -181,7 +181,7 @@ void RSP_Init(void)
 {
 #ifdef OS_WINDOWS
 	// Calculate RDRAM size by intentionally causing an access violation
-	u32 test;
+	uint32_t test;
 	try
 	{
 		test = RDRAM[0x007FFFFF] + 1;

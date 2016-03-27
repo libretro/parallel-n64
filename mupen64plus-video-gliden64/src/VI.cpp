@@ -1,5 +1,5 @@
+#include <stdint.h>
 #include <math.h>
-#include "Types.h"
 #include "VI.h"
 #include "OpenGL.h"
 #include "N64.h"
@@ -19,18 +19,18 @@ VIInfo VI;
 
 void VI_UpdateSize()
 {
-	const f32 xScale = _FIXED2FLOAT( _SHIFTR( *gfx_info.VI_X_SCALE_REG, 0, 12 ), 10 );
-//	f32 xOffset = _FIXED2FLOAT( _SHIFTR( *gfx_info.VI_X_SCALE_REG, 16, 12 ), 10 );
+	const float xScale = _FIXED2FLOAT( _SHIFTR( *gfx_info.VI_X_SCALE_REG, 0, 12 ), 10 );
+//	float xOffset = _FIXED2FLOAT( _SHIFTR( *gfx_info.VI_X_SCALE_REG, 16, 12 ), 10 );
 
-	const u32 vScale = _SHIFTR(*gfx_info.VI_Y_SCALE_REG, 0, 12);
-//	f32 yOffset = _FIXED2FLOAT( _SHIFTR( *gfx_info.VI_Y_SCALE_REG, 16, 12 ), 10 );
+	const uint32_t vScale = _SHIFTR(*gfx_info.VI_Y_SCALE_REG, 0, 12);
+//	float yOffset = _FIXED2FLOAT( _SHIFTR( *gfx_info.VI_Y_SCALE_REG, 16, 12 ), 10 );
 
-	const u32 hEnd = _SHIFTR( *gfx_info.VI_H_START_REG, 0, 10 );
-	const u32 hStart = _SHIFTR( *gfx_info.VI_H_START_REG, 16, 10 );
+	const uint32_t hEnd = _SHIFTR( *gfx_info.VI_H_START_REG, 0, 10 );
+	const uint32_t hStart = _SHIFTR( *gfx_info.VI_H_START_REG, 16, 10 );
 
 	// These are in half-lines, so shift an extra bit
-	const u32 vEnd = _SHIFTR( *gfx_info.VI_V_START_REG, 0, 10 );
-	const u32 vStart = _SHIFTR( *gfx_info.VI_V_START_REG, 16, 10 );
+	const uint32_t vEnd = _SHIFTR( *gfx_info.VI_V_START_REG, 0, 10 );
+	const uint32_t vStart = _SHIFTR( *gfx_info.VI_V_START_REG, 16, 10 );
 	const bool interlacedPrev = VI.interlaced;
 	if (VI.width > 0)
 		VI.widthPrev = VI.width;
@@ -39,9 +39,9 @@ void VI_UpdateSize()
 	VI.width = *gfx_info.VI_WIDTH_REG;
 	VI.interlaced = (*gfx_info.VI_STATUS_REG & 0x40) != 0;
 	if (VI.interlaced) {
-		f32 fullWidth = 640.0f*xScale;
+		float fullWidth = 640.0f*xScale;
 		if (*gfx_info.VI_WIDTH_REG > fullWidth) {
-			const u32 scale = (u32)floorf(*gfx_info.VI_WIDTH_REG / fullWidth + 0.5f);
+			const uint32_t scale = (uint32_t)floorf(*gfx_info.VI_WIDTH_REG / fullWidth + 0.5f);
 			VI.width /= scale;
 			VI.real_height *= scale;
 		}
@@ -51,12 +51,12 @@ void VI_UpdateSize()
 
 	VI.PAL = (*gfx_info.VI_V_SYNC_REG & 0x3ff) > 550;
 	if (VI.PAL && (vEnd - vStart) > 478) {
-		VI.height = (u32)(VI.real_height*1.0041841f);
+		VI.height = (uint32_t)(VI.real_height*1.0041841f);
 		if (VI.height > 576)
 			VI.height = VI.real_height = 576;
 	}
 	else {
-		VI.height = (u32)(VI.real_height*1.0126582f);
+		VI.height = (uint32_t)(VI.real_height*1.0126582f);
 		if (VI.height > 480)
 			VI.height = VI.real_height = 480;
 	}
@@ -139,7 +139,7 @@ void VI_UpdateScreen()
 						ogl.updateScale();
 						bVIUpdated = true;
 					}
-					const u32 size = *gfx_info.VI_STATUS_REG & 3;
+					const uint32_t size = *gfx_info.VI_STATUS_REG & 3;
 					if (VI.height > 0 && size > G_IM_SIZ_8b  && VI.width > 0)
 						frameBufferList().saveBuffer(*gfx_info.VI_ORIGIN_REG, G_IM_FMT_RGBA, size, VI.width, VI.height, true);
 				}

@@ -1,7 +1,8 @@
 #ifndef POST_PROCESSOR_H
 #define POST_PROCESSOR_H
 
-#include "Types.h"
+#include <stdint.h>
+
 #include "OpenGL.h"
 #include "Textures.h"
 
@@ -14,8 +15,8 @@ public:
 
 	static PostProcessor & get();
 
-	static const u32 postEffectBlur = 1U;
-	static const u32 postEffectGammaCorrection = 2U;
+	static const uint32_t postEffectBlur = 1U;
+	static const uint32_t postEffectGammaCorrection = 2U;
 
 private:
 	PostProcessor() :

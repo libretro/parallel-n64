@@ -3,7 +3,6 @@
 #include <math.h>
 #include <time.h>       /* time_t, struct tm, difftime, time, mktime */
 
-#include "Types.h"
 #include "OpenGL.h"
 #include "RDP.h"
 #include "RSP.h"
@@ -179,7 +178,7 @@ bool OGLVideo::changeWindow()
 	return true;
 }
 
-void OGLVideo::setWindowSize(u32 _width, u32 _height)
+void OGLVideo::setWindowSize(uint32_t _width, uint32_t _height)
 {
 	if (m_width != _width || m_height != _height) {
 		m_resizeWidth = _width;
@@ -246,7 +245,7 @@ void OGLVideo::_setBufferSize()
 			m_width = m_screenWidth;
 			m_height = m_screenHeight;
 			if (m_screenWidth * 3 / 4 > m_screenHeight) {
-				f32 width43 = m_screenHeight * 4.0f / 3.0f;
+				float width43 = m_screenHeight * 4.0f / 3.0f;
 				m_adjustScale = width43 / m_screenWidth;
 				m_bAdjustScreen = true;
 			}
@@ -313,7 +312,7 @@ void OGLRender::addTriangle(int _v0, int _v1, int _v2)
 
 	if ((gSP.geometryMode & G_SHADE) == 0) {
 		// Prim shading
-		for (u32 i = triangles.num - 3; i < triangles.num; ++i) {
+		for (uint32_t i = triangles.num - 3; i < triangles.num; ++i) {
 			SPVertex & vtx = triangles.vertices[triangles.elements[i]];
 			vtx.flat_r = gDP.primColor.r;
 			vtx.flat_g = gDP.primColor.g;
@@ -323,7 +322,7 @@ void OGLRender::addTriangle(int _v0, int _v1, int _v2)
 	} else if ((gSP.geometryMode & G_SHADING_SMOOTH) == 0) {
 		// Flat shading
 		SPVertex & vtx0 = triangles.vertices[_v0];
-		for (u32 i = triangles.num - 3; i < triangles.num; ++i) {
+		for (uint32_t i = triangles.num - 3; i < triangles.num; ++i) {
 			SPVertex & vtx = triangles.vertices[triangles.elements[i]];
 			vtx.flat_r = vtx0.r;
 			vtx.flat_g = vtx0.g;
@@ -333,7 +332,7 @@ void OGLRender::addTriangle(int _v0, int _v1, int _v2)
 	}
 
 	if (gDP.otherMode.depthSource == G_ZS_PRIM) {
-		for (u32 i = triangles.num - 3; i < triangles.num; ++i) {
+		for (uint32_t i = triangles.num - 3; i < triangles.num; ++i) {
 			SPVertex & vtx = triangles.vertices[triangles.elements[i]];
 			vtx.z = gDP.primDepth.z * vtx.w;
 		}
@@ -341,7 +340,7 @@ void OGLRender::addTriangle(int _v0, int _v1, int _v2)
 
 #ifdef GLESX
 	if (GBI.isNoN() && gDP.otherMode.depthCompare == 0 && gDP.otherMode.depthUpdate == 0) {
-		for (u32 i = triangles.num - 3; i < triangles.num; ++i) {
+		for (uint32_t i = triangles.num - 3; i < triangles.num; ++i) {
 			SPVertex & vtx = triangles.vertices[triangles.elements[i]];
 			vtx.z = 0.0f;
 		}
@@ -351,7 +350,7 @@ void OGLRender::addTriangle(int _v0, int _v1, int _v2)
 
 void OGLRender::_setBlendMode() const
 {
-	const u32 blendmode = gDP.otherMode.l >> 16;
+	const uint32_t blendmode = gDP.otherMode.l >> 16;
 	// 0x7000 = CVG_X_ALPHA|ALPHA_CVG_SEL|FORCE_BL
 	if (gDP.otherMode.alphaCvgSel != 0 && (gDP.otherMode.l & 0x7000) != 0x7000) {
 		switch (blendmode) {
@@ -487,7 +486,7 @@ void OGLRender::_updateCullFace() const
 }
 
 inline
-float _adjustViewportX(f32 _X0)
+float _adjustViewportX(float _X0)
 {
 		const float halfX = gDP.colorImage.width / 2.0f;
 		const float halfVP = gSP.viewport.width / 2.0f;
@@ -499,8 +498,8 @@ void OGLRender::_updateViewport() const
 	OGLVideo & ogl = video();
 	FrameBuffer * pCurrentBuffer = frameBufferList().getCurrent();
 	if (pCurrentBuffer == NULL) {
-		const f32 scaleX = ogl.getScaleX();
-		const f32 scaleY = ogl.getScaleY();
+		const float scaleX = ogl.getScaleX();
+		const float scaleY = ogl.getScaleY();
 		float Xf = gSP.viewport.vscale[0] < 0 ? (gSP.viewport.x + gSP.viewport.vscale[0] * 2.0f) : gSP.viewport.x;
 		if (ogl.isAdjustScreen() && gSP.viewport.width < gDP.colorImage.width && gDP.colorImage.width > VI.width * 98 / 100)
 			Xf = _adjustViewportX(Xf);
@@ -509,8 +508,8 @@ void OGLRender::_updateViewport() const
 		glViewport(X, Y + ogl.getHeightOffset(),
 			max((GLint)(gSP.viewport.width * scaleX), 0), max((GLint)(gSP.viewport.height * scaleY), 0));
 	} else {
-		const f32 scaleX = pCurrentBuffer->m_scaleX;
-		const f32 scaleY = pCurrentBuffer->m_scaleY;
+		const float scaleX = pCurrentBuffer->m_scaleX;
+		const float scaleY = pCurrentBuffer->m_scaleY;
 		float Xf = gSP.viewport.vscale[0] < 0 ? (gSP.viewport.x + gSP.viewport.vscale[0] * 2.0f) : gSP.viewport.x;
 		if (ogl.isAdjustScreen() && gSP.viewport.width < gDP.colorImage.width && gDP.colorImage.width > VI.width * 98 / 100)
 			Xf = _adjustViewportX(Xf);
@@ -523,7 +522,7 @@ void OGLRender::_updateViewport() const
 }
 
 inline
-void _adjustScissorX(f32 & _X0, f32 & _X1, float _scale)
+void _adjustScissorX(float & _X0, float & _X1, float _scale)
 {
 	const float halfX = gDP.colorImage.width / 2.0f;
 	_X0 = (_X0 - halfX) * _scale + halfX;
@@ -533,8 +532,8 @@ void _adjustScissorX(f32 & _X0, f32 & _X1, float _scale)
 void OGLRender::updateScissor(FrameBuffer * _pBuffer) const
 {
 	OGLVideo & ogl = video();
-	f32 scaleX, scaleY;
-	u32 heightOffset, screenHeight;
+	float scaleX, scaleY;
+	uint32_t heightOffset, screenHeight;
 	if (_pBuffer == NULL) {
 		scaleX = ogl.getScaleX();
 		scaleY = ogl.getScaleY();
@@ -561,9 +560,9 @@ void OGLRender::updateScissor(FrameBuffer * _pBuffer) const
 void OGLRender::_updateDepthUpdate() const
 {
 	if (gDP.otherMode.depthUpdate)
-		glDepthMask( TRUE );
+		glDepthMask( true );
 	else
-		glDepthMask( FALSE );
+		glDepthMask( false );
 }
 
 void OGLRender::_updateStates(RENDER_STATE _renderState) const
@@ -582,7 +581,7 @@ void OGLRender::_updateStates(RENDER_STATE _renderState) const
 	if (config.frameBufferEmulation.N64DepthCompare)
    {
 		glDisable( GL_DEPTH_TEST );
-		glDepthMask( FALSE );
+		glDepthMask( false );
 	}
    else if ((gDP.changed & (CHANGED_RENDERMODE | CHANGED_CYCLETYPE)) != 0)
    {
@@ -646,7 +645,7 @@ void OGLRender::_updateStates(RENDER_STATE _renderState) const
 		//For some reason updating the texture cache on the first frame of LOZ:OOT causes a NULL Pointer exception...
 		ShaderCombiner * pCurrentCombiner = cmbInfo.getCurrent();
 		if (pCurrentCombiner != NULL) {
-			for (u32 t = 0; t < 2; ++t) {
+			for (uint32_t t = 0; t < 2; ++t) {
 				if (pCurrentCombiner->usesTile(t))
 					textureCache().update(t);
 				else
@@ -757,7 +756,7 @@ bool OGLRender::_canDraw() const
 	return config.frameBufferEmulation.enable == 0 || frameBufferList().getCurrent() != NULL;
 }
 
-void OGLRender::drawLLETriangle(u32 _numVtx)
+void OGLRender::drawLLETriangle(uint32_t _numVtx)
 {
 	if (_numVtx == 0 || !_canDraw())
 		return;
@@ -776,7 +775,7 @@ void OGLRender::drawLLETriangle(u32 _numVtx)
 	const float scaleX = pCurrentBuffer != NULL ? 1.0f / pCurrentBuffer->m_width : VI.rwidth;
 	const float scaleY = pCurrentBuffer != NULL ? 1.0f / pCurrentBuffer->m_height : VI.rheight;
 
-	for (u32 i = 0; i < _numVtx; ++i) {
+	for (uint32_t i = 0; i < _numVtx; ++i) {
 		SPVertex & vtx = triangles.vertices[i];
 		vtx.HWLight = 0;
 		vtx.x = vtx.x * (2.0f * scaleX) - 1.0f;
@@ -797,7 +796,7 @@ void OGLRender::drawLLETriangle(u32 _numVtx)
 	gSP.changed |= CHANGED_VIEWPORT | CHANGED_GEOMETRYMODE;
 }
 
-void OGLRender::drawDMATriangles(u32 _numVtx)
+void OGLRender::drawDMATriangles(uint32_t _numVtx)
 {
 	if (_numVtx == 0 || !_canDraw())
 		return;
@@ -898,7 +897,7 @@ void OGLRender::drawRect(int _ulx, int _uly, int _lrx, int _lry, float *_pColor)
 
 	if (ogl.isAdjustScreen() && (gDP.colorImage.width > VI.width * 98 / 100) && (_lrx - _ulx < VI.width * 9 / 10)) {
 		const float scale = ogl.getAdjustScale();
-		for (u32 i = 0; i < 4; ++i)
+		for (uint32_t i = 0; i < 4; ++i)
 			m_rect[i].x *= scale;
 	}
 
@@ -935,7 +934,7 @@ bool texturedRectDepthBufferCopy(const OGLRender::TexturedRectParams & _params)
 	// Data from depth buffer loaded into TMEM and then rendered to RDRAM by texrect.
 	// Works only with depth buffer emulation enabled.
 	// Load of arbitrary data to that area causes weird camera rotation in CBFD.
-	static u32 lastDList = 0xFFFFFFFF;
+	static uint32_t lastDList = 0xFFFFFFFF;
 	const gDPTile * pTile = gSP.textureTile[0];
 	if (pTile->loadType == LOADTYPE_BLOCK && gDP.textureImage.size == 2 && gDP.textureImage.address >= gDP.depthImageAddress &&  gDP.textureImage.address < (gDP.depthImageAddress + gDP.colorImage.width*gDP.colorImage.width * 6 / 4)) {
 		if (config.frameBufferEmulation.copyDepthToRDRAM == 0)
@@ -951,11 +950,11 @@ bool texturedRectDepthBufferCopy(const OGLRender::TexturedRectParams & _params)
 		}
 		RDP_RepeatLastLoadBlock();
 
-		const u32 width = (u32)(_params.lrx - _params.ulx);
-		const u32 ulx = (u32)_params.ulx;
-		u16 * pSrc = ((u16*)TMEM) + (u32)floorf(_params.uls + 0.5f);
-		u16 *pDst = (u16*)(gfx_info.RDRAM + gDP.colorImage.address);
-		for (u32 x = 0; x < width; ++x)
+		const uint32_t width = (uint32_t)(_params.lrx - _params.ulx);
+		const uint32_t ulx = (uint32_t)_params.ulx;
+		uint16_t * pSrc = ((uint16_t*)TMEM) + (uint32_t)floorf(_params.uls + 0.5f);
+		uint16_t *pDst = (uint16_t*)(gfx_info.RDRAM + gDP.colorImage.address);
+		for (uint32_t x = 0; x < width; ++x)
 			pDst[(ulx + x) ^ 1] = swapword(pSrc[x]);
 
 		return true;
@@ -982,18 +981,18 @@ bool texturedRectBGCopy(const OGLRender::TexturedRectParams & _params)
 	if (flry > gDP.scissor.lry)
 		flry = gDP.scissor.lry;
 
-	const u32 width = (u32)(_params.lrx - _params.ulx);
-	const u32 tex_width = gSP.textureTile[0]->line << 3;
-	const u32 uly = (u32)_params.uly;
-	const u32 lry = flry;
+	const uint32_t width = (uint32_t)(_params.lrx - _params.ulx);
+	const uint32_t tex_width = gSP.textureTile[0]->line << 3;
+	const uint32_t uly = (uint32_t)_params.uly;
+	const uint32_t lry = flry;
 
-	u8 * texaddr = gfx_info.RDRAM + gDP.loadInfo[gSP.textureTile[0]->tmem].texAddress + tex_width*(u32)_params.ult + (u32)_params.uls;
-	u8 * fbaddr = gfx_info.RDRAM + gDP.colorImage.address + (u32)_params.ulx;
-//	LOG(LOG_VERBOSE, "memrect (%d, %d, %d, %d), ci_width: %d texaddr: 0x%08lx fbaddr: 0x%08lx\n", (u32)_params.ulx, uly, (u32)_params.lrx, lry, gDP.colorImage.width, gSP.textureTile[0]->imageAddress + tex_width*(u32)_params.ult + (u32)_params.uls, gDP.colorImage.address + (u32)_params.ulx);
+	uint8_t * texaddr = gfx_info.RDRAM + gDP.loadInfo[gSP.textureTile[0]->tmem].texAddress + tex_width*(uint32_t)_params.ult + (uint32_t)_params.uls;
+	uint8_t * fbaddr = gfx_info.RDRAM + gDP.colorImage.address + (uint32_t)_params.ulx;
+//	LOG(LOG_VERBOSE, "memrect (%d, %d, %d, %d), ci_width: %d texaddr: 0x%08lx fbaddr: 0x%08lx\n", (uint32_t)_params.ulx, uly, (uint32_t)_params.lrx, lry, gDP.colorImage.width, gSP.textureTile[0]->imageAddress + tex_width*(uint32_t)_params.ult + (uint32_t)_params.uls, gDP.colorImage.address + (uint32_t)_params.ulx);
 
-	for (u32 y = uly; y < lry; ++y) {
-		u8 *src = texaddr + (y - uly) * tex_width;
-		u8 *dst = fbaddr + y * gDP.colorImage.width;
+	for (uint32_t y = uly; y < lry; ++y) {
+		uint8_t *src = texaddr + (y - uly) * tex_width;
+		uint8_t *dst = fbaddr + y * gDP.colorImage.width;
 		memcpy(dst, src, width);
 	}
 	frameBufferList().removeBuffer(gDP.colorImage.address);
@@ -1005,17 +1004,17 @@ bool texturedRectPaletteMod(const OGLRender::TexturedRectParams & _params)
 {
 	if (gDP.scissor.lrx != 16 || gDP.scissor.lry != 1 || _params.lrx != 16 || _params.lry != 1)
 		return false;
-	u8 envr = (u8)(gDP.envColor.r * 31.0f);
-	u8 envg = (u8)(gDP.envColor.g * 31.0f);
-	u8 envb = (u8)(gDP.envColor.b * 31.0f);
-	u16 env16 = (u16)((envr << 11) | (envg << 6) | (envb << 1) | 1);
-	u8 prmr = (u8)(gDP.primColor.r * 31.0f);
-	u8 prmg = (u8)(gDP.primColor.g * 31.0f);
-	u8 prmb = (u8)(gDP.primColor.b * 31.0f);
-	u16 prim16 = (u16)((prmr << 11) | (prmg << 6) | (prmb << 1) | 1);
-	u16 * src = (u16*)&TMEM[256];
-	u16 * dst = (u16*)(gfx_info.RDRAM + gDP.colorImage.address);
-	for (u32 i = 0; i < 16; ++i)
+	uint8_t envr = (uint8_t)(gDP.envColor.r * 31.0f);
+	uint8_t envg = (uint8_t)(gDP.envColor.g * 31.0f);
+	uint8_t envb = (uint8_t)(gDP.envColor.b * 31.0f);
+	uint16_t env16 = (uint16_t)((envr << 11) | (envg << 6) | (envb << 1) | 1);
+	uint8_t prmr = (uint8_t)(gDP.primColor.r * 31.0f);
+	uint8_t prmg = (uint8_t)(gDP.primColor.g * 31.0f);
+	uint8_t prmb = (uint8_t)(gDP.primColor.b * 31.0f);
+	uint16_t prim16 = (uint16_t)((prmr << 11) | (prmg << 6) | (prmb << 1) | 1);
+	uint16_t * src = (uint16_t*)&TMEM[256];
+	uint16_t * dst = (uint16_t*)(gfx_info.RDRAM + gDP.colorImage.address);
+	for (uint32_t i = 0; i < 16; ++i)
 		dst[i ^ 1] = (src[i<<2] & 0x100) ? prim16 : env16;
 	return true;
 }
@@ -1108,10 +1107,10 @@ void OGLRender::drawTexturedRect(const TexturedRectParams & _params)
 		float s0, t0, s1, t1;
 	} texST[2] = { { 0, 0, 0, 0 }, { 0, 0, 0, 0 } }; //struct for texture coordinates
 
-	for (u32 t = 0; t < 2; ++t) {
+	for (uint32_t t = 0; t < 2; ++t) {
 		if (currentCombiner()->usesTile(t) && cache.current[t] && gSP.textureTile[t]) {
-			f32 shiftScaleS = 1.0f;
-			f32 shiftScaleT = 1.0f;
+			float shiftScaleS = 1.0f;
+			float shiftScaleT = 1.0f;
 			getTextureShiftScale(t, cache, shiftScaleS, shiftScaleT);
 			if (_params.uls > _params.lrs) {
 				texST[t].s0 = (_params.uls + 1.0f) * shiftScaleS - gSP.textureTile[t]->fuls;
@@ -1190,7 +1189,7 @@ void OGLRender::drawTexturedRect(const TexturedRectParams & _params)
 
 	if (ogl.isAdjustScreen() && (gDP.colorImage.width > VI.width * 98 / 100) && (_params.lrx - _params.ulx < VI.width * 9 / 10)) {
 		const float scale = ogl.getAdjustScale();
-		for (u32 i = 0; i < 4; ++i)
+		for (uint32_t i = 0; i < 4; ++i)
 			m_rect[i].x *= scale;
 	}
 
@@ -1203,7 +1202,7 @@ void OGLRender::drawText(const char *_pText, float x, float y)
 	m_renderState = rsNone;
 }
 
-void OGLRender::clearDepthBuffer(u32 _uly, u32 _lry)
+void OGLRender::clearDepthBuffer(uint32_t _uly, uint32_t _lry)
 {
 	if (!_canDraw())
 		return;
@@ -1211,7 +1210,7 @@ void OGLRender::clearDepthBuffer(u32 _uly, u32 _lry)
 	depthBufferList().clearBuffer(_uly, _lry);
 
 	glDisable( GL_SCISSOR_TEST );
-	glDepthMask( TRUE );
+	glDepthMask( true );
 	glClear( GL_DEPTH_BUFFER_BIT );
 
 	_updateDepthUpdate();
@@ -1348,7 +1347,7 @@ void OGLRender::_initExtensions()
 
 	if (config.texture.maxAnisotropy != 0 && OGLVideo::isExtensionSupported("GL_EXT_texture_filter_anisotropic")) {
 		glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT, &config.texture.maxAnisotropyF);
-		config.texture.maxAnisotropyF = min(config.texture.maxAnisotropyF, (f32)config.texture.maxAnisotropy);
+		config.texture.maxAnisotropyF = min(config.texture.maxAnisotropyF, (float)config.texture.maxAnisotropy);
 	} else
 		config.texture.maxAnisotropyF = 0.0f;
 	printf("Max Anisotropy: %f\n", config.texture.maxAnisotropyF);
@@ -1367,7 +1366,7 @@ void OGLRender::_initStates()
 		glDisable( GL_DEPTH_TEST );
 		glDisable( GL_POLYGON_OFFSET_FILL );
 		glDepthFunc( GL_ALWAYS );
-		glDepthMask( FALSE );
+		glDepthMask( GL_FALSE );
 	}
    else
    {
@@ -1408,7 +1407,7 @@ void OGLRender::_initData()
 
 	memset(triangles.vertices, 0, VERTBUFF_SIZE * sizeof(SPVertex));
 	memset(triangles.elements, 0, ELEMBUFF_SIZE * sizeof(GLubyte));
-	for (u32 i = 0; i < VERTBUFF_SIZE; ++i)
+	for (uint32_t i = 0; i < VERTBUFF_SIZE; ++i)
 		triangles.vertices[i].w = 1.0f;
 	triangles.num = 0;
 }
@@ -1447,7 +1446,7 @@ void OGLRender::_setSpecialTexrect() const
 }
 
 static
-u32 textureFilters[] = {
+uint32_t textureFilters[] = {
 	NO_FILTER, //"None"
 	SMOOTH_FILTER_1, //"Smooth filtering 1"
 	SMOOTH_FILTER_2, //"Smooth filtering 2"
@@ -1458,7 +1457,7 @@ u32 textureFilters[] = {
 };
 
 static
-u32 textureEnhancements[] = {
+uint32_t textureEnhancements[] = {
 	NO_ENHANCEMENT,    //"None"
 	NO_ENHANCEMENT,    //"Store"
 	X2_ENHANCEMENT,    //"X2"
@@ -1483,7 +1482,7 @@ void displayLoadProgress(const wchar_t *format, ...)
 
 	// process input
 #ifdef ANDROID
-	const u32 bufSize = 2048;
+	const uint32_t bufSize = 2048;
 	char cbuf[bufSize];
 	char fmt[bufSize];
 	wcstombs(fmt, format, bufSize);
@@ -1514,9 +1513,9 @@ void displayLoadProgress(const wchar_t *format, ...)
 		glBindFramebuffer(GL_DRAW_FRAMEBUFFER, pBuffer->m_FBO);
 }
 
-u32 TextureFilterHandler::_getConfigOptions() const
+uint32_t TextureFilterHandler::_getConfigOptions() const
 {
-	u32 options = textureFilters[config.textureFilter.txFilterMode] | textureEnhancements[config.textureFilter.txEnhancementMode];
+	uint32_t options = textureFilters[config.textureFilter.txFilterMode] | textureEnhancements[config.textureFilter.txEnhancementMode];
 	if (config.textureFilter.txHiresEnable)
 		options |= RICE_HIRESTEXTURES;
 	if (config.textureFilter.txForce16bpp)

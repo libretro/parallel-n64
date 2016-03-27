@@ -1,7 +1,7 @@
 #ifndef GDP_H
 #define GDP_H
 
-#include "Types.h"
+#include <stdint.h>
 
 #define CHANGED_RENDERMODE		0x001
 #define CHANGED_CYCLETYPE		0x002
@@ -54,17 +54,17 @@ struct gDPCombine
 
 		struct
 		{
-			u32			muxs1, muxs0;
+			uint32_t			muxs1, muxs0;
 		};
 
-		u64				mux;
+		uint64_t				mux;
 	};
 };
 
 struct FrameBuffer;
 struct gDPTile
 {
-	u32 format, size, line, tmem, palette;
+	uint32_t format, size, line, tmem, palette;
 
 	union
 	{
@@ -81,31 +81,31 @@ struct gDPTile
 
 		struct
 		{
-			u32 cmt, cms;
+			uint32_t cmt, cms;
 		};
 	};
 
-	u32 maskt, masks;
-	u32 shiftt, shifts;
-	f32 fuls, fult, flrs, flrt;
-	u32 uls, ult, lrs, lrt;
+	uint32_t maskt, masks;
+	uint32_t shiftt, shifts;
+	float fuls, fult, flrs, flrt;
+	uint32_t uls, ult, lrs, lrt;
 
-	u32 textureMode;
-	u32 loadType;
-	u32 imageAddress;
+	uint32_t textureMode;
+	uint32_t loadType;
+	uint32_t imageAddress;
 	FrameBuffer *frameBuffer;
 };
 
 struct gDPLoadTileInfo {
-	u8 size;
-	u8 loadType;
-	u16 uls;
-	u16 ult;
-	u16 width;
-	u16 height;
-	u16 texWidth;
-	u32 texAddress;
-	u32 dxt;
+	uint8_t size;
+	uint8_t loadType;
+	uint16_t uls;
+	uint16_t ult;
+	uint16_t width;
+	uint16_t height;
+	uint16_t texWidth;
+	uint32_t texAddress;
+	uint32_t dxt;
 };
 
 struct gDPInfo
@@ -168,11 +168,11 @@ struct gDPInfo
 
 			};
 
-			u64			_u64;
+			uint64_t			_u64;
 
 			struct
 			{
-				u32			l, h;
+				uint32_t			l, h;
 			};
 		};
 	} otherMode;
@@ -183,49 +183,49 @@ struct gDPInfo
 
 	struct Color
 	{
-		f32 r, g, b, a;
+		float r, g, b, a;
 	} fogColor,  blendColor, envColor;
 
 	struct
 	{
-		f32 z, dz;
-		u32 color;
+		float z, dz;
+		uint32_t color;
 	} fillColor;
 
 	struct PrimColor : public Color
 	{
-		f32 l, m;
+		float l, m;
 	} primColor;
 
 	struct
 	{
-		f32 z, deltaZ;
+		float z, deltaZ;
 	} primDepth;
 
 	struct
 	{
-		u32 format, size, width, bpl;
-		u32 address;
+		uint32_t format, size, width, bpl;
+		uint32_t address;
 	} textureImage;
 
 	struct
 	{
-		u32 format, size, width, height, bpl;
-		u32 address, changed;
-		u32 depthImage;
+		uint32_t format, size, width, height, bpl;
+		uint32_t address, changed;
+		uint32_t depthImage;
 	} colorImage;
 
-	u32	depthImageAddress;
+	uint32_t	depthImageAddress;
 
 	struct
 	{
-		u32 mode;
-		f32 ulx, uly, lrx, lry;
+		uint32_t mode;
+		float ulx, uly, lrx, lry;
 	} scissor;
 
 	struct
 	{
-		s32 k0, k1, k2, k3, k4, k5;
+		int32_t k0, k1, k2, k3, k4, k5;
 	} convert;
 
 	struct
@@ -233,60 +233,60 @@ struct gDPInfo
 		Color center, scale, width;
 	} key;
 
-	u32 changed;
+	uint32_t changed;
 
-	u16 TexFilterPalette[512];
-	u32 paletteCRC16[16];
-	u32 paletteCRC256;
-	u32 half_1, half_2;
+	uint16_t TexFilterPalette[512];
+	uint32_t paletteCRC16[16];
+	uint32_t paletteCRC256;
+	uint32_t half_1, half_2;
 
 	 gDPLoadTileInfo loadInfo[512];
 };
 
 extern gDPInfo gDP;
 
-void gDPSetOtherMode( u32 mode0, u32 mode1 );
-void gDPSetPrimDepth( u16 z, u16 dz );
-void gDPSetTexturePersp( u32 enable );
-void gDPSetTextureLUT( u32 mode );
-void gDPSetCombine( s32 muxs0, s32 muxs1 );
-void gDPSetColorImage( u32 format, u32 size, u32 width, u32 address );
-void gDPSetTextureImage( u32 format, u32 size, u32 width, u32 address );
-void gDPSetDepthImage( u32 address );
-void gDPSetEnvColor( u32 r, u32 g, u32 b, u32 a );
-void gDPSetBlendColor( u32 r, u32 g, u32 b, u32 a );
-void gDPSetFogColor( u32 r, u32 g, u32 b, u32 a );
-void gDPSetFillColor( u32 c );
-void gDPGetFillColor(f32 _fillColor[4]);
-void gDPSetPrimColor( u32 m, u32 l, u32 r, u32 g, u32 b, u32 a );
-void gDPSetTile( u32 format, u32 size, u32 line, u32 tmem, u32 tile, u32 palette, u32 cmt, u32 cms, u32 maskt, u32 masks, u32 shiftt, u32 shifts );
-void gDPSetTileSize( u32 tile, u32 uls, u32 ult, u32 lrs, u32 lrt );
-void gDPLoadTile( u32 tile, u32 uls, u32 ult, u32 lrs, u32 lrt );
-void gDPLoadBlock( u32 tile, u32 uls, u32 ult, u32 lrs, u32 dxt );
-void gDPLoadTLUT( u32 tile, u32 uls, u32 ult, u32 lrs, u32 lrt );
-void gDPSetScissor( u32 mode, f32 ulx, f32 uly, f32 lrx, f32 lry );
-void gDPFillRectangle( s32 ulx, s32 uly, s32 lrx, s32 lry );
-void gDPSetConvert( s32 k0, s32 k1, s32 k2, s32 k3, s32 k4, s32 k5 );
-void gDPSetKeyR( u32 cR, u32 sR, u32 wR );
-void gDPSetKeyGB(u32 cG, u32 sG, u32 wG, u32 cB, u32 sB, u32 wB );
-void gDPTextureRectangle( f32 ulx, f32 uly, f32 lrx, f32 lry, s32 tile, f32 s, f32 t, f32 dsdx, f32 dtdy );
-void gDPTextureRectangleFlip( f32 ulx, f32 uly, f32 lrx, f32 lry, s32 tile, f32 s, f32 t, f32 dsdx, f32 dtdy );
+void gDPSetOtherMode( uint32_t mode0, uint32_t mode1 );
+void gDPSetPrimDepth( uint16_t z, uint16_t dz );
+void gDPSetTexturePersp( uint32_t enable );
+void gDPSetTextureLUT( uint32_t mode );
+void gDPSetCombine( int32_t muxs0, int32_t muxs1 );
+void gDPSetColorImage( uint32_t format, uint32_t size, uint32_t width, uint32_t address );
+void gDPSetTextureImage( uint32_t format, uint32_t size, uint32_t width, uint32_t address );
+void gDPSetDepthImage( uint32_t address );
+void gDPSetEnvColor( uint32_t r, uint32_t g, uint32_t b, uint32_t a );
+void gDPSetBlendColor( uint32_t r, uint32_t g, uint32_t b, uint32_t a );
+void gDPSetFogColor( uint32_t r, uint32_t g, uint32_t b, uint32_t a );
+void gDPSetFillColor( uint32_t c );
+void gDPGetFillColor(float _fillColor[4]);
+void gDPSetPrimColor( uint32_t m, uint32_t l, uint32_t r, uint32_t g, uint32_t b, uint32_t a );
+void gDPSetTile( uint32_t format, uint32_t size, uint32_t line, uint32_t tmem, uint32_t tile, uint32_t palette, uint32_t cmt, uint32_t cms, uint32_t maskt, uint32_t masks, uint32_t shiftt, uint32_t shifts );
+void gDPSetTileSize( uint32_t tile, uint32_t uls, uint32_t ult, uint32_t lrs, uint32_t lrt );
+void gDPLoadTile( uint32_t tile, uint32_t uls, uint32_t ult, uint32_t lrs, uint32_t lrt );
+void gDPLoadBlock( uint32_t tile, uint32_t uls, uint32_t ult, uint32_t lrs, uint32_t dxt );
+void gDPLoadTLUT( uint32_t tile, uint32_t uls, uint32_t ult, uint32_t lrs, uint32_t lrt );
+void gDPSetScissor( uint32_t mode, float ulx, float uly, float lrx, float lry );
+void gDPFillRectangle( int32_t ulx, int32_t uly, int32_t lrx, int32_t lry );
+void gDPSetConvert( int32_t k0, int32_t k1, int32_t k2, int32_t k3, int32_t k4, int32_t k5 );
+void gDPSetKeyR( uint32_t cR, uint32_t sR, uint32_t wR );
+void gDPSetKeyGB(uint32_t cG, uint32_t sG, uint32_t wG, uint32_t cB, uint32_t sB, uint32_t wB );
+void gDPTextureRectangle( float ulx, float uly, float lrx, float lry, int32_t tile, float s, float t, float dsdx, float dtdy );
+void gDPTextureRectangleFlip( float ulx, float uly, float lrx, float lry, int32_t tile, float s, float t, float dsdx, float dtdy );
 void gDPFullSync();
 void gDPTileSync();
 void gDPPipeSync();
 void gDPLoadSync();
 void gDPNoOp();
 
-void gDPTriFill( u32 w0, u32 w1 );
-void gDPTriShade( u32 w0, u32 w1 );
-void gDPTriTxtr( u32 w0, u32 w1 );
-void gDPTriShadeTxtr( u32 w0, u32 w1 );
-void gDPTriFillZ( u32 w0, u32 w1 );
-void gDPTriShadeZ( u32 w0, u32 w1 );
-void gDPTriTxtrZ( u32 w0, u32 w1 );
-void gDPTriShadeTxtrZ( u32 w0, u32 w1 );
+void gDPTriFill( uint32_t w0, uint32_t w1 );
+void gDPTriShade( uint32_t w0, uint32_t w1 );
+void gDPTriTxtr( uint32_t w0, uint32_t w1 );
+void gDPTriShadeTxtr( uint32_t w0, uint32_t w1 );
+void gDPTriFillZ( uint32_t w0, uint32_t w1 );
+void gDPTriShadeZ( uint32_t w0, uint32_t w1 );
+void gDPTriTxtrZ( uint32_t w0, uint32_t w1 );
+void gDPTriShadeTxtrZ( uint32_t w0, uint32_t w1 );
 
-void gDPFillRDRAM( u32 address, s32 ulx, s32 uly, s32 lrx, s32 lry, u32 width, u32 size,  u32 color, bool scissor=true );
+void gDPFillRDRAM( uint32_t address, int32_t ulx, int32_t uly, int32_t lrx, int32_t lry, uint32_t width, uint32_t size,  uint32_t color, bool scissor=true );
 
 #endif
 

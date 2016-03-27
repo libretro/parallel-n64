@@ -1,10 +1,11 @@
 #ifndef FRAMEBUFFER_H
 #define FRAMEBUFFER_H
 
+#include <stdint.h>
+
 #include <list>
 #include <vector>
 
-#include "Types.h"
 #include "Textures.h"
 struct gDPTile;
 struct DepthBuffer;
@@ -16,16 +17,16 @@ struct FrameBuffer
 	FrameBuffer();
 	FrameBuffer(FrameBuffer && _other);
 	~FrameBuffer();
-	void init(u32 _address, u32 _endAddress, u16 _format, u16 _size, u16 _width, u16 _height, bool _cfb);
-	void reinit(u16 _height);
+	void init(uint32_t _address, uint32_t _endAddress, uint16_t _format, uint16_t _size, uint16_t _width, uint16_t _height, bool _cfb);
+	void reinit(uint16_t _height);
 	void resolveMultisampledTexture();
 	CachedTexture * getTexture();
 	void copyRdram();
 	bool isValid() const;
 	bool _isMarioTennisScoreboard() const;
 
-	u32 m_startAddress, m_endAddress;
-	u32 m_size, m_width, m_height, m_fillcolor, m_validityChecked;
+	uint32_t m_startAddress, m_endAddress;
+	uint32_t m_size, m_width, m_height, m_fillcolor, m_validityChecked;
 	float m_scaleX, m_scaleY;
 	bool m_copiedToRdram;
 	bool m_fingerprint;
@@ -36,7 +37,7 @@ struct FrameBuffer
 	bool m_isPauseScreen;
 	bool m_isOBScreen;
 	bool m_needHeightCorrection;
-	u32 m_postProcessed;
+	uint32_t m_postProcessed;
 
 	GLuint m_FBO;
 	gDPTile *m_pLoadTile;
@@ -47,11 +48,11 @@ struct FrameBuffer
 	GLuint m_resolveFBO;
 	bool m_resolved;
 
-	std::vector<u8> m_RdramCopy;
+	std::vector<uint8_t> m_RdramCopy;
 
 private:
-	void _initTexture(u16 _format, u16 _size, CachedTexture *_pTexture);
-	void _setAndAttachTexture(u16 _size, CachedTexture *_pTexture);
+	void _initTexture(uint16_t _format, uint16_t _size, CachedTexture *_pTexture);
+	void _setAndAttachTexture(uint16_t _size, CachedTexture *_pTexture);
 };
 
 class FrameBufferList
@@ -59,16 +60,16 @@ class FrameBufferList
 public:
 	void init();
 	void destroy();
-	void saveBuffer(u32 _address, u16 _format, u16 _size, u16 _width, u16 _height, bool _cfb);
+	void saveBuffer(uint32_t _address, uint16_t _format, uint16_t _size, uint16_t _width, uint16_t _height, bool _cfb);
 	void removeAux();
 	void copyAux();
-	void removeBuffer(u32 _address);
-	void removeBuffers(u32 _width);
+	void removeBuffer(uint32_t _address);
+	void removeBuffers(uint32_t _width);
 	void attachDepthBuffer();
-	FrameBuffer * findBuffer(u32 _startAddress);
-	FrameBuffer * findTmpBuffer(u32 _address);
+	FrameBuffer * findBuffer(uint32_t _startAddress);
+	FrameBuffer * findTmpBuffer(uint32_t _address);
 	FrameBuffer * getCurrent() const {return m_pCurrent;}
-	void renderBuffer(u32 _address);
+	void renderBuffer(uint32_t _address);
 	void setBufferChanged();
 	void correctHeight();
 	void clearBuffersChanged();
@@ -82,7 +83,7 @@ private:
 	FrameBufferList() : m_pCurrent(NULL), m_pCopy(NULL) {}
 	FrameBufferList(const FrameBufferList &);
 
-	FrameBuffer * _findBuffer(u32 _startAddress, u32 _endAddress, u32 _width);
+	FrameBuffer * _findBuffer(uint32_t _startAddress, uint32_t _endAddress, uint32_t _width);
 
 	typedef std::list<FrameBuffer> FrameBuffers;
 	FrameBuffers m_list;
@@ -115,10 +116,10 @@ FrameBufferList & frameBufferList()
 
 void FrameBuffer_Init();
 void FrameBuffer_Destroy();
-void FrameBuffer_CopyToRDRAM( u32 _address , bool _sync );
-void FrameBuffer_CopyFromRDRAM( u32 address, bool bUseAlpha );
-bool FrameBuffer_CopyDepthBuffer( u32 address );
-void FrameBuffer_ActivateBufferTexture(s16 t, FrameBuffer *pBuffer);
-void FrameBuffer_ActivateBufferTextureBG(s16 t, FrameBuffer *pBuffer);
+void FrameBuffer_CopyToRDRAM( uint32_t _address , bool _sync );
+void FrameBuffer_CopyFromRDRAM( uint32_t address, bool bUseAlpha );
+bool FrameBuffer_CopyDepthBuffer( uint32_t address );
+void FrameBuffer_ActivateBufferTexture(int16_t t, FrameBuffer *pBuffer);
+void FrameBuffer_ActivateBufferTextureBG(int16_t t, FrameBuffer *pBuffer);
 
 #endif

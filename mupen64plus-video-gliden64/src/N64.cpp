@@ -1,12 +1,12 @@
 #include "N64.h"
 
-u8 *HEADER;
-u8 *DMEM;
-u8 *IMEM;
-u64 TMEM[512];
-u8 *RDRAM;
+uint8_t *HEADER;
+uint8_t *DMEM;
+uint8_t *IMEM;
+uint64_t TMEM[512];
+uint8_t *RDRAM;
 
-u32 RDRAMSize;
+uint32_t RDRAMSize;
 
 bool ConfigOpen = false;
 

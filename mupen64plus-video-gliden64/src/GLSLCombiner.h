@@ -22,9 +22,9 @@ public:
 	void updateTextureInfo(bool _bForce = false);
 	void updateRenderState(bool _bForce = false);
 
-	u64 getMux() const {return m_combine.mux;}
+	uint64_t getMux() const {return m_combine.mux;}
 
-	bool usesTile(u32 _t) const {
+	bool usesTile(uint32_t _t) const {
 		if (_t == 0)
 			return (m_nInputs & ((1<<TEXEL0)|(1<<TEXEL0_ALPHA))) != 0;
 		return (m_nInputs & ((1 << TEXEL1) | (1 << TEXEL1_ALPHA))) != 0;
@@ -37,7 +37,7 @@ public:
 	friend std::ostream & operator<< (std::ostream & _os, const ShaderCombiner & _combiner);
 	friend std::istream & operator>> (std::istream & _os, ShaderCombiner & _combiner);
 
-	static void getShaderCombinerOptionsSet(std::vector<u32> & _vecOptions);
+	static void getShaderCombinerOptionsSet(std::vector<uint32_t> & _vecOptions);
 
 private:
 	friend class UniformBlock;

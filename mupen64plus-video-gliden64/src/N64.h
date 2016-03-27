@@ -1,16 +1,16 @@
 #ifndef N64_H
 #define N64_H
 
-#include "Types.h"
+#include <stdint.h>
 
 #define MI_INTR_DP		0x20		// Bit 5: DP intr
 
-extern u8 *HEADER;
-extern u8 *DMEM;
-extern u8 *IMEM;
-extern u8 *RDRAM;
-extern u64 TMEM[512];
-extern u32 RDRAMSize;
+extern uint8_t *HEADER;
+extern uint8_t *DMEM;
+extern uint8_t *IMEM;
+extern uint8_t *RDRAM;
+extern uint64_t TMEM[512];
+extern uint32_t RDRAMSize;
 extern bool ConfigOpen;
 
 #endif

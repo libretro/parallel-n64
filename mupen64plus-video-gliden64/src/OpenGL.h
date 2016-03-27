@@ -61,8 +61,8 @@ class OGLRender
 public:
 	void addTriangle(int _v0, int _v1, int _v2);
 	void drawTriangles();
-	void drawLLETriangle(u32 _numVtx);
-	void drawDMATriangles(u32 _numVtx);
+	void drawLLETriangle(uint32_t _numVtx);
+	void drawDMATriangles(uint32_t _numVtx);
 	void drawLine(int _v0, int _v1, float _width);
 	void drawRect(int _ulx, int _uly, int _lrx, int _lry, float * _pColor);
 	struct TexturedRectParams
@@ -76,17 +76,17 @@ public:
 	};
 	void drawTexturedRect(const TexturedRectParams & _params);
 	void drawText(const char *_pText, float x, float y);
-	void clearDepthBuffer(u32 _uly, u32 _lry);
+	void clearDepthBuffer(uint32_t _uly, uint32_t _lry);
 	void clearColorBuffer( float * _pColor );
 
 	int getTrianglesCount() const {return triangles.num;}
-	bool isClipped(s32 _v0, s32 _v1, s32 _v2) const
+	bool isClipped(int32_t _v0, int32_t _v1, int32_t _v2) const
 	{
 		return (triangles.vertices[_v0].clip & triangles.vertices[_v1].clip & triangles.vertices[_v2].clip) != 0;
 	}
 	bool isImageTexturesSupported() const {return m_bImageTexture;}
-	SPVertex & getVertex(u32 _v) {return triangles.vertices[_v];}
-	void setDMAVerticesSize(u32 _size) { if (triangles.dmaVertices.size() < _size) triangles.dmaVertices.resize(_size); }
+	SPVertex & getVertex(uint32_t _v) {return triangles.vertices[_v];}
+	void setDMAVerticesSize(uint32_t _size) { if (triangles.dmaVertices.size() < _size) triangles.dmaVertices.resize(_size); }
 	SPVertex * getDMAVerticesData() { return triangles.dmaVertices.data(); }
 	void updateScissor(FrameBuffer * _pBuffer) const;
 
@@ -134,10 +134,10 @@ private:
 		std::vector<SPVertex> dmaVertices;
 		GLubyte elements[ELEMBUFF_SIZE];
 		int num;
-		u32 indexmap[INDEXMAP_SIZE];
-		u32 indexmapinv[VERTBUFF_SIZE];
-		u32 indexmap_prev;
-		u32 indexmap_nomap;
+		uint32_t indexmap[INDEXMAP_SIZE];
+		uint32_t indexmapinv[VERTBUFF_SIZE];
+		uint32_t indexmap_prev;
+		uint32_t indexmap_nomap;
 	} triangles;
 
 	struct GLVertex
@@ -163,22 +163,22 @@ public:
 	void saveScreenshot();
 	bool changeWindow();
 	bool resizeWindow();
-	void setWindowSize(u32 _width, u32 _height);
+	void setWindowSize(uint32_t _width, uint32_t _height);
 	void setCaptureScreen(const char * const _strDirectory);
 	void setToggleFullscreen() {m_bToggleFullscreen = true;}
 	void readScreen(void **_pDest, long *_pWidth, long *_pHeight );
 	void readScreen2(void * _dest, int * _width, int * _height, int _front);
 
 	void updateScale();
-	f32 getScaleX() const {return m_scaleX;}
-	f32 getScaleY() const {return m_scaleY;}
-	f32 getAdjustScale() const {return m_adjustScale;}
-	u32 getBuffersSwapCount() const {return m_buffersSwapCount;}
-	u32 getWidth() const { return m_width; }
-	u32 getHeight() const {return m_height;}
-	u32 getScreenWidth() const {return m_screenWidth;}
-	u32 getScreenHeight() const {return m_screenHeight;}
-	u32 getHeightOffset() const {return m_heightOffset;}
+	float getScaleX() const {return m_scaleX;}
+	float getScaleY() const {return m_scaleY;}
+	float getAdjustScale() const {return m_adjustScale;}
+	uint32_t getBuffersSwapCount() const {return m_buffersSwapCount;}
+	uint32_t getWidth() const { return m_width; }
+	uint32_t getHeight() const {return m_height;}
+	uint32_t getScreenWidth() const {return m_screenWidth;}
+	uint32_t getScreenHeight() const {return m_screenHeight;}
+	uint32_t getHeightOffset() const {return m_heightOffset;}
 	bool isFullscreen() const {return m_bFullscreen;}
 	bool isAdjustScreen() const {return m_bAdjustScreen;}
 	bool isResizeWindow() const {return m_bResizeWindow;}
@@ -204,14 +204,12 @@ protected:
 	bool m_bFullscreen;
 	bool m_bAdjustScreen;
 
-	u32 m_buffersSwapCount;
-	u32 m_width, m_height, m_heightOffset;
-	u32 m_screenWidth, m_screenHeight;
-	u32 m_resizeWidth, m_resizeHeight;
-	f32 m_scaleX, m_scaleY;
-	f32 m_adjustScale;
-
-	wchar_t m_strScreenDirectory[PLUGIN_PATH_SIZE];
+	uint32_t m_buffersSwapCount;
+	uint32_t m_width, m_height, m_heightOffset;
+	uint32_t m_screenWidth, m_screenHeight;
+	uint32_t m_resizeWidth, m_resizeHeight;
+	float m_scaleX, m_scaleY;
+	float m_adjustScale;
 
 private:
 	OGLRender m_render;
@@ -229,27 +227,27 @@ struct FBOTextureFormats
 	GLint colorInternalFormat;
 	GLenum colorFormat;
 	GLenum colorType;
-	u32 colorFormatBytes;
+	uint32_t colorFormatBytes;
 
 	GLint monochromeInternalFormat;
 	GLenum monochromeFormat;
 	GLenum monochromeType;
-	u32 monochromeFormatBytes;
+	uint32_t monochromeFormatBytes;
 
 	GLint depthInternalFormat;
 	GLenum depthFormat;
 	GLenum depthType;
-	u32 depthFormatBytes;
+	uint32_t depthFormatBytes;
 
 	GLint depthImageInternalFormat;
 	GLenum depthImageFormat;
 	GLenum depthImageType;
-	u32 depthImageFormatBytes;
+	uint32_t depthImageFormatBytes;
 
 	GLint lutInternalFormat;
 	GLenum lutFormat;
 	GLenum lutType;
-	u32 lutFormatBytes;
+	uint32_t lutFormatBytes;
 
 	void init();
 };
@@ -273,9 +271,9 @@ public:
 	bool isInited() const { return m_inited != 0; }
 	bool optionsChanged() const { return _getConfigOptions() != m_options; }
 private:
-	u32 _getConfigOptions() const;
-	u32 m_inited;
-	u32 m_options;
+	uint32_t _getConfigOptions() const;
+	uint32_t m_inited;
+	uint32_t m_options;
 };
 
 extern TextureFilterHandler TFH;

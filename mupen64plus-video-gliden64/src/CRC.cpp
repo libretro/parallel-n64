@@ -1,12 +1,12 @@
-#include "Types.h"
+#include <stdint.h>
 
 #define CRC32_POLYNOMIAL     0x04C11DB7
 
 unsigned int CRCTable[ 256 ];
 
-u32 Reflect( u32 ref, char ch )
+uint32_t Reflect( uint32_t ref, char ch )
 {
-	 u32 value = 0;
+	 uint32_t value = 0;
 
 	 // Swap bit 0 for bit 7
 	 // bit 1 for bit 6, etc.
@@ -20,7 +20,7 @@ u32 Reflect( u32 ref, char ch )
 
 void CRC_BuildTable()
 {
-	u32 crc;
+	uint32_t crc;
 
 	for (int i = 0; i < 256; ++i) {
 		crc = Reflect( i, 8 ) << 24;
@@ -31,24 +31,24 @@ void CRC_BuildTable()
 	}
 }
 
-u32 CRC_Calculate( u32 crc, const void * buffer, u32 count )
+uint32_t CRC_Calculate( uint32_t crc, const void * buffer, uint32_t count )
 {
-	u8 *p;
-	u32 orig = crc;
+	uint8_t *p;
+	uint32_t orig = crc;
 
-	p = (u8*) buffer;
+	p = (uint8_t*) buffer;
 	while (count--)
 		crc = (crc >> 8) ^ CRCTable[(crc & 0xFF) ^ *p++];
 
 	return crc ^ orig;
 }
 
-u32 CRC_CalculatePalette(u32 crc, const void * buffer, u32 count )
+uint32_t CRC_CalculatePalette(uint32_t crc, const void * buffer, uint32_t count )
 {
-	u8 *p;
-	u32 orig = crc;
+	uint8_t *p;
+	uint32_t orig = crc;
 
-	p = (u8*) buffer;
+	p = (uint8_t*) buffer;
 	while (count--) {
 		crc = (crc >> 8) ^ CRCTable[(crc & 0xFF) ^ *p++];
 		crc = (crc >> 8) ^ CRCTable[(crc & 0xFF) ^ *p++];
@@ -59,23 +59,23 @@ u32 CRC_CalculatePalette(u32 crc, const void * buffer, u32 count )
 	return crc ^ orig;
 }
 
-u32 textureCRC(u8 * addr, u32 height, u32 stride)
+uint32_t textureCRC(uint8_t * addr, uint32_t height, uint32_t stride)
 {
-	const u32 width = stride / 8;
-	const u32 line = stride % 8;
-	u64 crc = 0;
-	u64 twopixel_crc;
+	const uint32_t width = stride / 8;
+	const uint32_t line = stride % 8;
+	uint64_t crc = 0;
+	uint64_t twopixel_crc;
 
-	u32 *  pixelpos = (u32*)addr;
+	uint32_t *  pixelpos = (uint32_t*)addr;
 	for (; height; height--) {
 		int col = 0;
-		for (u32 i = width; i; --i) {
-			twopixel_crc = i * ((u64)(pixelpos[1] & 0xFFFEFFFE) + (u64)(pixelpos[0] & 0xFFFEFFFE) + crc);
+		for (uint32_t i = width; i; --i) {
+			twopixel_crc = i * ((uint64_t)(pixelpos[1] & 0xFFFEFFFE) + (uint64_t)(pixelpos[0] & 0xFFFEFFFE) + crc);
 			crc = (twopixel_crc >> 32) + twopixel_crc;
 			pixelpos += 2;
 		}
 		crc = (height * crc >> 32) + height * crc;
-		pixelpos = (u32*)((u8*)pixelpos + line);
+		pixelpos = (uint32_t*)((uint8_t*)pixelpos + line);
 	}
 
 	return crc&0xFFFFFFFF;

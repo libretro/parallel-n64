@@ -1,6 +1,8 @@
 #ifndef UNIFORM_SET_H
 #define UNIFORM_SET_H
 
+#include <stdint.h>
+
 #include "../UniformCollection.h"
 
 class UniformSet : public UniformCollection
@@ -11,7 +13,7 @@ public:
 	~UniformSet() {}
 
 	virtual void bindWithShaderCombiner(ShaderCombiner * _pCombiner);
-	virtual void setColorData(ColorUniforms _index, u32 _dataSize, const void * _data) {}
+	virtual void setColorData(ColorUniforms _index, uint32_t _dataSize, const void * _data) {}
 	virtual void updateTextureParameters() {}
 	virtual void updateLightParameters() {}
 	virtual void updateUniforms(ShaderCombiner * _pCombiner, OGLRender::RENDER_STATE _renderState);
@@ -64,7 +66,7 @@ private:
 	void _updateTextureSize(UniformSetLocation & _location, bool _bUsesT0, bool _bUsesT1, bool _bForce);
 	void _updateLightUniforms(UniformSetLocation & _location, bool _bForce);
 
-	typedef std::map<u64, UniformSetLocation> Uniforms;
+	typedef std::map<uint64_t, UniformSetLocation> Uniforms;
 	Uniforms m_uniforms;
 };
 

@@ -61,14 +61,14 @@ void UniformBlock::_initColorsBuffer(GLuint _program)
 	m_colorsBlockData.resize(blockSize);
 	GLbyte * pData = m_colorsBlockData.data();
 	memset(pData, 0, blockSize);
-	memcpy(pData + m_colorsBlock.m_offsets[cuFogColor], &gDP.fogColor.r, sizeof(f32)* 4);
-	memcpy(pData + m_colorsBlock.m_offsets[cuCenterColor], &gDP.key.center.r, sizeof(f32)* 4);
-	memcpy(pData + m_colorsBlock.m_offsets[cuScaleColor], &gDP.key.scale.r, sizeof(f32)* 4);
-	memcpy(pData + m_colorsBlock.m_offsets[cuEnvColor], &gDP.envColor.r, sizeof(f32)* 4);
-	memcpy(pData + m_colorsBlock.m_offsets[cuPrimColor], &gDP.primColor.r, sizeof(f32)* 4);
-	*(f32*)(pData + m_colorsBlock.m_offsets[cuPrimLod]) = gDP.primColor.l;
-	*(f32*)(pData + m_colorsBlock.m_offsets[cuK4]) = gDP.convert.k4*0.0039215689f;
-	*(f32*)(pData + m_colorsBlock.m_offsets[cuK5]) = gDP.convert.k5*0.0039215689f;
+	memcpy(pData + m_colorsBlock.m_offsets[cuFogColor], &gDP.fogColor.r, sizeof(float)* 4);
+	memcpy(pData + m_colorsBlock.m_offsets[cuCenterColor], &gDP.key.center.r, sizeof(float)* 4);
+	memcpy(pData + m_colorsBlock.m_offsets[cuScaleColor], &gDP.key.scale.r, sizeof(float)* 4);
+	memcpy(pData + m_colorsBlock.m_offsets[cuEnvColor], &gDP.envColor.r, sizeof(float)* 4);
+	memcpy(pData + m_colorsBlock.m_offsets[cuPrimColor], &gDP.primColor.r, sizeof(float)* 4);
+	*(float*)(pData + m_colorsBlock.m_offsets[cuPrimLod]) = gDP.primColor.l;
+	*(float*)(pData + m_colorsBlock.m_offsets[cuK4]) = gDP.convert.k4*0.0039215689f;
+	*(float*)(pData + m_colorsBlock.m_offsets[cuK5]) = gDP.convert.k5*0.0039215689f;
 
 	glBindBuffer(GL_UNIFORM_BUFFER, m_colorsBlock.m_buffer);
 	glBufferData(GL_UNIFORM_BUFFER, blockSize, pData, GL_DYNAMIC_DRAW);
@@ -90,12 +90,12 @@ void UniformBlock::_initLightBuffer(GLuint _program)
 	updateLightParameters();
 }
 
-bool UniformBlock::_isDataChanged(void * _pBuffer, const void * _pData, u32 _dataSize)
+bool UniformBlock::_isDataChanged(void * _pBuffer, const void * _pData, uint32_t _dataSize)
 {
-	u32 * pSrc = (u32*)_pData;
-	u32 * pDst = (u32*)_pBuffer;
-	u32 cnt = _dataSize / 4;
-	for (u32 i = 0; i < cnt; ++i) {
+	uint32_t * pSrc = (uint32_t*)_pData;
+	uint32_t * pDst = (uint32_t*)_pBuffer;
+	uint32_t cnt = _dataSize / 4;
+	for (uint32_t i = 0; i < cnt; ++i) {
 		if (pSrc[i] != pDst[i]) {
 			memcpy(_pBuffer, _pData, _dataSize);
 			return true;
@@ -136,7 +136,7 @@ void UniformBlock::bindWithShaderCombiner(ShaderCombiner * _pCombiner)
 	}
 }
 
-void UniformBlock::setColorData(ColorUniforms _index, u32 _dataSize, const void * _data)
+void UniformBlock::setColorData(ColorUniforms _index, uint32_t _dataSize, const void * _data)
 {
 	if (m_colorsBlock.m_buffer == 0)
 		return;
@@ -160,10 +160,10 @@ void UniformBlock::updateTextureParameters()
 		return;
 
 	GLbyte * pData = m_textureBlockData.data();
-	f32 texScale[4] = { gSP.texture.scales, gSP.texture.scalet, 0, 0 };
+	float texScale[4] = { gSP.texture.scales, gSP.texture.scalet, 0, 0 };
 	memcpy(pData + m_textureBlock.m_offsets[tuTexScale], texScale, m_textureBlock.m_offsets[tuTexOffset] - m_textureBlock.m_offsets[tuTexScale]);
 
-	f32 texOffset[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };
+	float texOffset[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };
 	if (gSP.textureTile[0] != NULL) {
 		if (gSP.textureTile[0]->textureMode != TEXTUREMODE_BGIMAGE && gSP.textureTile[0]->textureMode != TEXTUREMODE_FRAMEBUFFER_BG) {
 			texOffset[0] = gSP.textureTile[0]->fuls;
@@ -190,9 +190,9 @@ void UniformBlock::updateTextureParameters()
 	}
 	memcpy(pData + m_textureBlock.m_offsets[tuTexOffset], texOffset, m_textureBlock.m_offsets[tuCacheScale] - m_textureBlock.m_offsets[tuTexOffset]);
 
-	f32 texCacheScale[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };
-	f32 texCacheOffset[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };
-	f32 texCacheShiftScale[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };
+	float texCacheScale[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };
+	float texCacheOffset[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };
+	float texCacheShiftScale[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };
 	GLint texCacheFrameBuffer[4] = { 0, 0, 0, 0 };
 	TextureCache & cache = textureCache();
 	if (cache.current[0]) {
@@ -201,8 +201,8 @@ void UniformBlock::updateTextureParameters()
 		texCacheOffset[0] = cache.current[0]->offsetS;
 		texCacheOffset[1] = cache.current[0]->offsetT;
 
-		f32 shiftScaleS = 1.0f;
-		f32 shiftScaleT = 1.0f;
+		float shiftScaleS = 1.0f;
+		float shiftScaleT = 1.0f;
 		getTextureShiftScale(0, cache, shiftScaleS, shiftScaleT);
 		texCacheShiftScale[0] = shiftScaleS;
 		texCacheShiftScale[1] = shiftScaleT;
@@ -214,8 +214,8 @@ void UniformBlock::updateTextureParameters()
 		texCacheOffset[4] = cache.current[1]->offsetS;
 		texCacheOffset[5] = cache.current[1]->offsetT;
 
-		f32 shiftScaleS = 1.0f;
-		f32 shiftScaleT = 1.0f;
+		float shiftScaleS = 1.0f;
+		float shiftScaleT = 1.0f;
 		getTextureShiftScale(1, cache, shiftScaleS, shiftScaleT);
 		texCacheShiftScale[4] = shiftScaleS;
 		texCacheShiftScale[5] = shiftScaleT;
@@ -243,8 +243,8 @@ void UniformBlock::updateLightParameters()
 		return;
 
 	GLbyte * pData = m_lightBlockData.data();
-	const u32 arraySize = m_lightBlock.m_offsets[luLightColor] / 8;
-	for (s32 i = 0; i <= gSP.numLights; ++i) {
+	const uint32_t arraySize = m_lightBlock.m_offsets[luLightColor] / 8;
+	for (int32_t i = 0; i <= gSP.numLights; ++i) {
 		memcpy(pData + m_lightBlock.m_offsets[luLightDirection] + arraySize*i, &gSP.lights[i].x, arraySize);
 		memcpy(pData + m_lightBlock.m_offsets[luLightColor] + arraySize*i, &gSP.lights[i].r, arraySize);
 	}
