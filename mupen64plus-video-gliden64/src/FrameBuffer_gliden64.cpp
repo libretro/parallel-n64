@@ -31,7 +31,7 @@ public:
       m_pTexture(NULL),
       m_pCurFrameBuffer(NULL),
       m_curIndex(-1),
-      m_frameCount(0)
+      m_frameCount(-1)
 	{
 		m_PBO[0] = m_PBO[1] = m_PBO[2] = 0;
 	}
@@ -1049,6 +1049,10 @@ void FrameBufferToRDRAM::Destroy() {
 
 bool FrameBufferToRDRAM::_prepareCopy(uint32_t _address)
 {
+   const uint32_t curFrame = video().getBuffersSwapCount();
+	if (m_frameCount == curFrame)
+		return true;
+
 	if (VI.width == 0 || frameBufferList().getCurrent() == NULL)
 		return false;
 
@@ -1090,6 +1094,8 @@ bool FrameBufferToRDRAM::_prepareCopy(uint32_t _address)
 		glBindFramebuffer(GL_DRAW_FRAMEBUFFER, frameBufferList().getCurrent()->m_FBO);
 		glBindFramebuffer(GL_READ_FRAMEBUFFER, m_FBO);
 	}
+
+   m_frameCount = curFrame;
 
    return true;
 }
@@ -1235,7 +1241,6 @@ void FrameBufferToRDRAM::_copy(uint32_t _startAddress, uint32_t _endAddress, boo
 #else
 	free(pixelData);
 #endif
-	glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
 	gDP.changed |= CHANGED_SCISSOR;
 }
 
@@ -1445,7 +1450,6 @@ bool DepthBufferToRDRAM::_copy(uint32_t _startAddress, uint32_t _endAddress)
 		pBuffer->m_cleared = false;
 
 	glUnmapBuffer(GL_PIXEL_PACK_BUFFER);
-	glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
 	gDP.changed |= CHANGED_SCISSOR;
 	return true;
 }
