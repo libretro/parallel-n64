@@ -33,7 +33,9 @@ bool Config_SetDefault()
 	config.texture.bilinearMode = 1; /* Bilinear filtering mode (0=N64 3point, 1=standard) */
 
 	/*#Emulation Settings */
-	config.generalEmulation.enableFog = 1; /* Enable fog emulation. */
+	config.generalEmulation.enableFog = 1;   /* Enable fog emulation. */
+	config.generalEmulation.enableNoise = 1; /* Enable color noise emulation. */
+	config.generalEmulation.enableLOD   = 1; /* Enable LOD emulation. */
 #if 0
 	res = ConfigSetDefaultInt(g_configVideoGliden64, "AspectRatio", config.frameBufferEmulation.aspect, "Screen aspect ratio (0=stretch, 1=force 4:3, 2=force 16:9, 3=adjust)");
 	assert(res == M64ERR_SUCCESS);
@@ -46,10 +48,6 @@ bool Config_SetDefault()
 	assert(res == M64ERR_SUCCESS);
 
 	//#Emulation Settings
-	assert(res == M64ERR_SUCCESS);
-	res = ConfigSetDefaultBool(g_configVideoGliden64, "EnableNoise", config.generalEmulation.enableNoise, "Enable color noise emulation.");
-	assert(res == M64ERR_SUCCESS);
-	res = ConfigSetDefaultBool(g_configVideoGliden64, "EnableLOD", config.generalEmulation.enableLOD, "Enable LOD emulation.");
 	assert(res == M64ERR_SUCCESS);
 	res = ConfigSetDefaultBool(g_configVideoGliden64, "EnableHWLighting", config.generalEmulation.enableHWLighting, "Enable hardware per-pixel lighting.");
 	assert(res == M64ERR_SUCCESS);
