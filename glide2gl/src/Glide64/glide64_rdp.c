@@ -473,23 +473,26 @@ static void CopyFrameBuffer(int32_t buffer)
 
 static void copyWhiteToRDRAM(void)
 {
-   uint16_t *ptr_dst;
-   uint32_t *ptr_dst32;
    uint32_t y, x;
    if(g_gdp.fb_width == 0)
       return;
 
-   ptr_dst   = (uint16_t*)(gfx_info.RDRAM + rdp.cimg);
-   ptr_dst32 = (uint32_t*)(gfx_info.RDRAM + rdp.cimg);
-
-   for(y = 0; y < rdp.ci_height; y++)
+   if(g_gdp.fb_size == G_IM_SIZ_32b)
    {
-      for(x = 0; x < g_gdp.fb_width; x++)
+      uint32_t *ptr_dst = (uint32_t*)(gfx_info.RDRAM + rdp.cimg);
+      for(y = 0; y < rdp.ci_height; y++)
       {
-         if(g_gdp.fb_size == G_IM_SIZ_16b)
+         for(x = 0; x < g_gdp.fb_width; x++)
+            ptr_dst[x + y * g_gdp.fb_width] = 0xFFFFFFFF;
+      }
+   }
+   else
+   {
+      uint16_t *ptr_dst = (uint16_t*)(gfx_info.RDRAM + rdp.cimg);
+      for(y = 0; y < rdp.ci_height; y++)
+      {
+         for(x = 0; x < g_gdp.fb_width; x++)
             ptr_dst[(x + y * g_gdp.fb_width) ^ 1] = 0xFFFF;
-         else
-            ptr_dst32[x + y * g_gdp.fb_width]     = 0xFFFFFFFF;
       }
    }
 }
