@@ -1109,6 +1109,7 @@ void _writeToRdram(TSrc* _src, TDst* _dst, TDst(*converter)(TSrc _c), TSrc _test
    {
       --chunkStart;
       --_dst;
+      ++_numPixels;
    }
 
    uint32_t numStored = 0;
