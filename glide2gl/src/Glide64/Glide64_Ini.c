@@ -2,7 +2,7 @@
 #include "Glide64_Ini.h"
 #include "Glide64_UCode.h"
 #include "rdp.h"
-#include "DepthBufferRender.h"
+#include "FBtoScreen.h"
 
 #include "api/libretro.h"
 #include "../../libretro/libretro_private.h"

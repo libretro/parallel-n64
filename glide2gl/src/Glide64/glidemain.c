@@ -44,7 +44,6 @@
 #include "TexCache.h"
 #include "CRC.h"
 #include "FBtoScreen.h"
-#include "DepthBufferRender.h"
 #include "Glide64_Ini.h"
 #include "GlideExtensions.h"
 #include "api/libretro.h"

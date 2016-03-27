@@ -207,9 +207,6 @@
     <ClCompile Include="..\..\..\glide2gl\src\Glide64\Combine.c">
       <Filter>Source Files\glide2gl\src\Glide64</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\glide2gl\src\Glide64\DepthBufferRender.c">
-      <Filter>Source Files\glide2gl\src\Glide64</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\..\glide2gl\src\Glide64\FBtoScreen.c">
       <Filter>Source Files\glide2gl\src\Glide64</Filter>
     </ClCompile>

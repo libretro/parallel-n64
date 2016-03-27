@@ -44,6 +44,12 @@
 #ifndef FBtoSCREEN_H
 #define FBtoSCREEN_H
 
+struct vertexi
+{
+   int x,y;       // Screen position in 16:16 bit fixed point
+   int z;         // z value in 16:16 bit fixed point
+};
+
 typedef struct 
 {
   uint32_t addr;   //color image address
@@ -56,6 +62,13 @@ typedef struct
   uint32_t lr_y;
   uint32_t opaque;
 } FB_TO_SCREEN_INFO;
+
+extern uint16_t * zLUT;
+void ZLUT_init(void);
+void ZLUT_release(void);
+
+void Rasterize(struct vertexi * vtx, int vertices, int dzdx);
+void DrawDepthBufferToScreen(FB_TO_SCREEN_INFO *fb_info);
 
 bool DrawFrameBufferToScreen(FB_TO_SCREEN_INFO *fb_info);
 

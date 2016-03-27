@@ -51,6 +51,14 @@
 #include "GlideExtensions.h"
 #include "rdp.h"
 
+#define ZLUT_SIZE 0x40000
+
+/* (x * y) >> 16 */
+#define IMUL16(x, y) ((((int64_t)x) * ((int64_t)y)) >> 16)
+/* (x * y) >> 14 */
+#define IMUL14(x, y) ((((int64_t)x) * ((int64_t)y)) >> 14)
+
+uint16_t *zLUT;
 uint16_t *frameBuffer;
 
 union RGBA {
@@ -60,11 +68,433 @@ union RGBA {
    uint32_t raw;
 };
 
+static struct vertexi *max_vtx;                   // Max y vertex (ending vertex)
+static struct vertexi *start_vtx, *end_vtx;      // First and last vertex in array
+static struct vertexi *right_vtx, *left_vtx;     // Current right and left vertex
+
+static int right_height, left_height;
+static int right_x, right_dxdy, left_x, left_dxdy;
+static int left_z, left_dzdy;
+
 static INLINE uint32_t RGBA16toRGBA32(uint32_t _c)
 {
    union RGBA c;
    c.raw = _c;
    return (c.r << 24) | (c.g << 16) | (c.b << 8) | c.a;
+}
+
+void ZLUT_init(void)
+{
+   int i;
+   if (zLUT)
+      return;
+
+   zLUT = (uint16_t*)malloc(ZLUT_SIZE * sizeof(uint16_t));
+
+   for(i = 0; i< ZLUT_SIZE; i++)
+   {
+      uint32_t mantissa;
+      uint32_t exponent = 0;
+      uint32_t testbit  = 1 << 17;
+
+      while((i & testbit) && (exponent < 7))
+      {
+         exponent++;
+         testbit = 1 << (17 - exponent);
+      }
+
+      mantissa = (i >> (6 - (6 < exponent ? 6 : exponent))) & 0x7ff;
+      zLUT[i] = (uint16_t)(((exponent << 11) | mantissa) << 2);
+   }
+}
+
+void ZLUT_release(void)
+{
+   if (zLUT)
+      free(zLUT);
+   zLUT = 0;
+}
+
+
+static INLINE int idiv16(int x, int y)
+{
+   const int64_t m = (int64_t)(x);
+   const int64_t n = (int64_t)(y);
+   int64_t result = (m << 16) / n;
+
+   return (int)(result);
+}
+
+static INLINE int iceil(int x)
+{
+   return ((x + 0xffff)  >> 16);
+}
+
+static void RightSection(void)
+{
+   int prestep;
+   // Walk backwards trough the vertex array
+   struct vertexi *v1 = (struct vertexi*)right_vtx;
+   struct vertexi *v2 = end_vtx;         // Wrap to end of array
+
+   if(right_vtx > start_vtx)
+      v2 = right_vtx-1;     
+
+   right_vtx = v2;
+
+   // v1 = top vertex
+   // v2 = bottom vertex 
+
+   // Calculate number of scanlines in this section
+
+   right_height = iceil(v2->y) - iceil(v1->y);
+   if(right_height <= 0)
+      return;
+
+   // Guard against possible div overflows
+
+   if(right_height > 1)
+   {
+      // OK, no worries, we have a section that is at least
+      // one pixel high. Calculate slope as usual.
+
+      int height = v2->y - v1->y;
+      right_dxdy  = idiv16(v2->x - v1->x, height);
+   }
+   else
+   {
+      // Height is less or equal to one pixel.
+      // Calculate slope = width * 1/height
+      // using 18:14 bit precision to avoid overflows.
+
+      int inv_height = (0x10000 << 14) / (v2->y - v1->y);  
+      right_dxdy     = IMUL14(v2->x - v1->x, inv_height);
+   }
+
+   // Prestep initial values
+
+   prestep = (iceil(v1->y) << 16) - v1->y;
+   right_x = v1->x + IMUL16(prestep, right_dxdy);
+}
+
+static void LeftSection(void)
+{
+   int prestep;
+   // Walk forward through the vertex array
+   struct vertexi *v1 = (struct vertexi*)left_vtx;
+   struct vertexi *v2 = start_vtx;      // Wrap to start of array
+
+   if(left_vtx < end_vtx)
+      v2 = left_vtx+1;
+   left_vtx = v2;
+
+   // v1 = top vertex
+   // v2 = bottom vertex 
+
+   // Calculate number of scanlines in this section
+
+   left_height = iceil(v2->y) - iceil(v1->y);
+
+   if(left_height <= 0)
+      return;
+
+   // Guard against possible div overflows
+
+   if(left_height > 1)
+   {
+      // OK, no worries, we have a section that is at least
+      // one pixel high. Calculate slope as usual.
+
+      int height = v2->y - v1->y;
+      left_dxdy = idiv16(v2->x - v1->x, height);
+      left_dzdy = idiv16(v2->z - v1->z, height);
+   }
+   else
+   {
+      // Height is less or equal to one pixel.
+      // Calculate slope = width * 1/height
+      // using 18:14 bit precision to avoid overflows.
+
+      int inv_height = (0x10000 << 14) / (v2->y - v1->y);
+      left_dxdy      = IMUL14(v2->x - v1->x, inv_height);
+      left_dzdy      = IMUL14(v2->z - v1->z, inv_height);
+   }
+
+   // Prestep initial values
+
+   prestep = (iceil(v1->y) << 16) - v1->y;
+   left_x = v1->x + IMUL16(prestep, left_dxdy);
+   left_z = v1->z + IMUL16(prestep, left_dzdy);
+}
+
+
+void Rasterize(struct vertexi * vtx, int vertices, int dzdx)
+{
+   int n, min_y, max_y, y1;
+   struct vertexi *min_vtx;
+   start_vtx = vtx;        // First vertex in array
+
+   // Search trough the vtx array to find min y, max y
+   // and the location of these structures.
+
+   min_vtx = (struct vertexi*)vtx;
+   max_vtx = vtx;
+
+   min_y = vtx->y;
+   max_y = vtx->y;
+
+   vtx++;
+
+   for (n = 1; n < vertices; n++)
+   {
+      if(vtx->y < min_y)
+      {
+         min_y = vtx->y;
+         min_vtx = vtx;
+      }
+      else if(vtx->y > max_y)
+      {
+         max_y = vtx->y;
+         max_vtx = vtx;
+      }
+      vtx++;
+   }
+
+   // OK, now we know where in the array we should start and
+   // where to end while scanning the edges of the polygon
+
+   left_vtx  = min_vtx;    // Left side starting vertex
+   right_vtx = min_vtx;    // Right side starting vertex
+   end_vtx   = vtx-1;      // Last vertex in array
+
+   // Search for the first usable right section
+
+   do {
+      if(right_vtx == max_vtx)
+         return;
+      RightSection();
+   } while(right_height <= 0);
+
+   // Search for the first usable left section
+
+   do {
+      if(left_vtx == max_vtx)
+         return;
+      LeftSection();
+   } while(left_height <= 0);
+
+   y1      = iceil(min_y);
+
+   if (y1 >= g_gdp.__clip.yl)
+      return;
+
+   for(;;)
+   {
+      int width;
+      int x1 = iceil(left_x);
+
+      if (x1 < g_gdp.__clip.xh)
+         x1 = g_gdp.__clip.xh;
+      width = iceil(right_x) - x1;
+      if (x1+width >= g_gdp.__clip.xl)
+         width = g_gdp.__clip.xl - x1 - 1;
+
+      if(width > 0 && y1 >= g_gdp.__clip.yh)
+      {
+         /* Prestep initial z */
+
+         unsigned x;
+         int       prestep = (x1 << 16) - left_x;
+         int             z = left_z + IMUL16(prestep, dzdx);
+         uint16_t *ptr_dst = (uint16_t*)(gfx_info.RDRAM + g_gdp.zb_address);
+         int         shift = x1 + y1 * rdp.zi_width;
+
+         /* draw to depth buffer */
+         for (x = 0; x < width; x++)
+         {
+            int idx;
+            uint16_t encodedZ;
+            int trueZ = z / 8192;
+            if (trueZ < 0)
+               trueZ = 0;
+            else if (trueZ > 0x3FFFF)
+               trueZ = 0x3FFFF;
+            encodedZ = zLUT[trueZ];
+            idx = (shift+x)^1;
+            if(encodedZ < ptr_dst[idx]) 
+               ptr_dst[idx] = encodedZ;
+            z += dzdx;
+         }
+      }
+
+      y1++;
+      if (y1 >= g_gdp.__clip.yl)
+         return;
+
+      // Scan the right side
+
+      if(--right_height <= 0) // End of this section?
+      {
+         do
+         {
+            if(right_vtx == max_vtx)
+               return;
+            RightSection();
+         } while(right_height <= 0);
+      }
+      else 
+         right_x += right_dxdy;
+
+      // Scan the left side
+
+      if(--left_height <= 0) // End of this section ?
+      {
+         do
+         {
+            if(left_vtx == max_vtx)
+               return;
+            LeftSection();
+         } while(left_height <= 0);
+      }
+      else
+      {
+         left_x += left_dxdy;
+         left_z += left_dzdy;
+      }
+   }
+}
+
+static void DrawDepthBufferToScreen256(FB_TO_SCREEN_INFO *fb_info)
+{
+   uint32_t h, w, x, y, tex_size;
+   uint32_t w_tail, h_tail, tex_adr;
+   int tmu;
+   GrTexInfo t_info;
+   uint32_t width         = fb_info->lr_x - fb_info->ul_x + 1;
+   uint32_t height        = fb_info->lr_y - fb_info->ul_y + 1;
+   uint8_t *image         = (uint8_t*)(gfx_info.RDRAM + fb_info->addr);
+   uint32_t width256      = ((width-1) >> 8) + 1;
+   uint32_t height256     = ((height-1) >> 8) + 1;
+   uint16_t *tex          = (uint16_t*)texture_buffer;
+   uint16_t *src          = (uint16_t*)(image + fb_info->ul_x + fb_info->ul_y * fb_info->width);
+
+   t_info.smallLodLog2    = t_info.largeLodLog2 = GR_LOD_LOG2_256;
+   t_info.aspectRatioLog2 = GR_ASPECT_LOG2_1x1;
+   t_info.format          = GR_TEXFMT_ALPHA_INTENSITY_88;
+   t_info.data            = tex;
+
+   tex_size               = grTexCalcMemRequired(t_info.largeLodLog2, t_info.aspectRatioLog2, t_info.format);
+   tmu                    = SetupFBtoScreenCombiner(tex_size*width256*height256, fb_info->opaque);
+
+   grConstantColorValue (g_gdp.fog_color.total);
+   grColorCombine (GR_COMBINE_FUNCTION_SCALE_OTHER,
+         GR_COMBINE_FACTOR_ONE,
+         GR_COMBINE_LOCAL_NONE,
+         GR_COMBINE_OTHER_CONSTANT,
+         FXFALSE);
+   w_tail                 = width % 256;
+   h_tail                 = height % 256;
+   tex_adr                = voodoo.tmem_ptr[tmu];
+
+   for (h = 0; h < height256; h++)
+   {
+      for (w = 0; w < width256; w++)
+      {
+         float ul_x, ul_y, lr_x, lr_y, lr_u, lr_v;
+
+         uint32_t cur_width  = (256 * (w + 1) < width) ? 256 : w_tail;
+         uint32_t cur_height = (256 * (h + 1) < height) ? 256 : h_tail;
+         uint32_t cur_tail   = 256 - cur_width;
+         uint16_t *dst       = tex;
+
+         for (y=0; y < cur_height; y++)
+         {
+            for (x=0; x < cur_width; x++)
+               *(dst++) = rdp.pal_8[src[(x + 256 * w + (y + 256 * h) * fb_info->width) ^ 1]>>8];
+            dst += cur_tail;
+         }
+         grTexSource (tmu, tex_adr, GR_MIPMAPLEVELMASK_BOTH, &t_info, true);
+         tex_adr += tex_size;
+         ul_x     = (float)(fb_info->ul_x + 256 * w);
+         ul_y     = (float)(fb_info->ul_y + 256 * h);
+         lr_x     = (ul_x + (float)(cur_width)) * rdp.scale_x + rdp.offset_x;
+         lr_y     = (ul_y + (float)(cur_height)) * rdp.scale_y + rdp.offset_y;
+         ul_x     = ul_x * rdp.scale_x + rdp.offset_x;
+         ul_y     = ul_y * rdp.scale_y + rdp.offset_y;
+         lr_u     = (float)(cur_width-1);
+         lr_v     = (float)(cur_height-1);
+
+         glide64_draw_fb(ul_x, ul_y, lr_x,
+               lr_y, lr_u, lr_v, 0.5f);
+      }
+   }
+}
+
+void DrawDepthBufferToScreen(FB_TO_SCREEN_INFO *fb_info)
+{
+   uint32_t x, y;
+   int tmu;
+   float ul_x, ul_y, lr_x, lr_y, lr_u, lr_v, zero;
+   GrTexInfo t_info;
+   uint32_t width    = fb_info->lr_x - fb_info->ul_x + 1;
+   uint32_t height   = fb_info->lr_y - fb_info->ul_y + 1;
+   uint8_t *image    = (uint8_t*)(gfx_info.RDRAM + fb_info->addr);
+   uint32_t texwidth = 512;
+   float scale       = 0.5f;
+   uint16_t *tex     = (uint16_t*)texture_buffer;
+   uint16_t *dst     = (uint16_t*)tex;
+   uint16_t *src     = (uint16_t*)(image + fb_info->ul_x + fb_info->ul_y * fb_info->width);
+
+   if (width > 512)
+   {
+      DrawDepthBufferToScreen256(fb_info);
+      return;
+   }
+
+   t_info.smallLodLog2 = t_info.largeLodLog2 = GR_LOD_LOG2_512;
+   t_info.aspectRatioLog2 = GR_ASPECT_LOG2_1x1;
+
+   if (width <= 256)
+   {
+      texwidth = 256;
+      scale = 1.0f;
+      t_info.smallLodLog2 = t_info.largeLodLog2 = GR_LOD_LOG2_256;
+   }
+
+   if (height <= (texwidth>>1))
+      t_info.aspectRatioLog2 = GR_ASPECT_LOG2_2x1;
+
+
+   for (y=0; y < height; y++)
+   {
+      for (x = 0; x < width; x++)
+         *(dst++) = rdp.pal_8[src[(x+y*fb_info->width)^1]>>8];
+      dst += texwidth-width;
+   }
+   t_info.format = GR_TEXFMT_ALPHA_INTENSITY_88;
+   t_info.data = tex;
+
+   tmu = SetupFBtoScreenCombiner(grTexCalcMemRequired(t_info.largeLodLog2, t_info.aspectRatioLog2, t_info.format), fb_info->opaque);
+   grConstantColorValue (g_gdp.fog_color.total);
+   grColorCombine (GR_COMBINE_FUNCTION_SCALE_OTHER,
+         GR_COMBINE_FACTOR_ONE,
+         GR_COMBINE_LOCAL_NONE,
+         GR_COMBINE_OTHER_CONSTANT,
+         FXFALSE);
+   grTexSource (tmu,
+         voodoo.tmem_ptr[tmu],
+         GR_MIPMAPLEVELMASK_BOTH,
+         &t_info, true);
+   ul_x = fb_info->ul_x * rdp.scale_x + rdp.offset_x;
+   ul_y = fb_info->ul_y * rdp.scale_y + rdp.offset_y;
+   lr_x = fb_info->lr_x * rdp.scale_x + rdp.offset_x;
+   lr_y = fb_info->lr_y * rdp.scale_y + rdp.offset_y;
+   lr_u = (width  - 1)  * scale;
+   lr_v = (height - 1)  * scale;
+   zero = scale * 0.5f;
+
+   glide64_draw_fb(ul_x, ul_y, lr_x,
+         lr_y, lr_u, lr_v, zero);
 }
 
 void glide64_draw_fb(float ul_x, float ul_y, float lr_x,
@@ -218,13 +648,13 @@ int SetupFBtoScreenCombiner(uint32_t texture_size, uint32_t opaque)
 static void DrawRE2Video(FB_TO_SCREEN_INFO *fb_info, float scale)
 {
    float scale_y = (float)fb_info->width / rdp.vi_height;
-   float height = settings.scr_res_x / scale_y;
-   float ul_x = 0.5f;
-   float ul_y = (settings.scr_res_y - height) / 2.0f;
-   float lr_y = settings.scr_res_y - ul_y - 1.0f;
-   float lr_x = settings.scr_res_x - 1.0f;
-   float lr_u = (fb_info->width - 1) * scale;
-   float lr_v = (fb_info->height - 1) * scale;
+   float height  = settings.scr_res_x / scale_y;
+   float ul_x    = 0.5f;
+   float ul_y    = (settings.scr_res_y - height) / 2.0f;
+   float lr_y    = settings.scr_res_y - ul_y - 1.0f;
+   float lr_x    = settings.scr_res_x - 1.0f;
+   float lr_u    = (fb_info->width - 1) * scale;
+   float lr_v    = (fb_info->height - 1) * scale;
 
    glide64_draw_fb(ul_x, ul_y, lr_x,
          lr_y, lr_u, lr_v, 0.5f);
@@ -288,35 +718,35 @@ static void DrawFrameBufferToScreen256(FB_TO_SCREEN_INFO *fb_info)
      return;
   }
 
-  width = fb_info->lr_x - fb_info->ul_x + 1;
-  height = fb_info->lr_y - fb_info->ul_y + 1;
-  image = (uint8_t*)(gfx_info.RDRAM + fb_info->addr);
-  width256 = ((width - 1) >> 8) + 1;
-  height256 = ((height - 1) >> 8) + 1;
-  t_info.smallLodLog2 = t_info.largeLodLog2 = GR_LOD_LOG2_256;
+  width                  = fb_info->lr_x - fb_info->ul_x + 1;
+  height                 = fb_info->lr_y - fb_info->ul_y + 1;
+  image                  = (uint8_t*)(gfx_info.RDRAM + fb_info->addr);
+  width256               = ((width - 1) >> 8) + 1;
+  height256              = ((height - 1) >> 8) + 1;
+  t_info.smallLodLog2    = t_info.largeLodLog2 = GR_LOD_LOG2_256;
   t_info.aspectRatioLog2 = GR_ASPECT_LOG2_1x1;
-  t_info.format = GR_TEXFMT_ARGB_1555;
+  t_info.format          = GR_TEXFMT_ARGB_1555;
 
-  tex = (uint16_t*)texture_buffer;
-  t_info.data = tex;
-  tex_size = grTexCalcMemRequired(t_info.largeLodLog2, t_info.aspectRatioLog2, t_info.format);
-  tmu = SetupFBtoScreenCombiner(tex_size * width256 * height256, fb_info->opaque);
-  src =   (uint16_t*)(image + fb_info->ul_x + fb_info->ul_y * fb_info->width);
-  src32 = (uint32_t*)(image + fb_info->ul_x + fb_info->ul_y * fb_info->width);
-  w_tail = width % 256;
-  h_tail = height % 256;
-  bound = (BMASK + 1) - fb_info->addr;
-  bound = fb_info->size == 2 ? (bound >> 1) : (bound >> 2);
-  tex_adr = voodoo.tmem_ptr[tmu];
+  tex                    = (uint16_t*)texture_buffer;
+  t_info.data            = tex;
+  tex_size               = grTexCalcMemRequired(t_info.largeLodLog2, t_info.aspectRatioLog2, t_info.format);
+  tmu                    = SetupFBtoScreenCombiner(tex_size * width256 * height256, fb_info->opaque);
+  src                    = (uint16_t*)(image + fb_info->ul_x + fb_info->ul_y * fb_info->width);
+  src32                  = (uint32_t*)(image + fb_info->ul_x + fb_info->ul_y * fb_info->width);
+  w_tail                 = width % 256;
+  h_tail                 = height % 256;
+  bound                  = (BMASK + 1) - fb_info->addr;
+  bound                  = fb_info->size == 2 ? (bound >> 1) : (bound >> 2);
+  tex_adr                = voodoo.tmem_ptr[tmu];
 
   for (h = 0; h < height256; h++)
   {
     for (w = 0; w < width256; w++)
     {
-      uint32_t cur_width = (256 *  (w + 1) < width) ? 256 : w_tail;
+      uint32_t cur_width  = (256 *  (w + 1) < width) ? 256 : w_tail;
       uint32_t cur_height = (256 * (h + 1) < height) ? 256 : h_tail;
-      uint32_t cur_tail = 256 - cur_width;
-      uint16_t *dst = (uint16_t*)tex;
+      uint32_t cur_tail   = 256 - cur_width;
+      uint16_t *dst_ptr   = (uint16_t*)tex;
 
       if (fb_info->size == 2)
       {
@@ -328,9 +758,9 @@ static void DrawFrameBufferToScreen256(FB_TO_SCREEN_INFO *fb_info)
             if (idx >= bound)
               break;
             c = src[idx];
-            *(dst++) = (c >> 1) | ((c&1)<<15);
+            *(dst_ptr++) = (c >> 1) | ((c&1)<<15);
           }
-          dst += cur_tail;
+          dst_ptr += cur_tail;
         }
       }
       else
@@ -350,24 +780,23 @@ static void DrawFrameBufferToScreen256(FB_TO_SCREEN_INFO *fb_info)
             b = (uint8_t)((c32 >> 8) & 0xFF);
             b = (uint8_t)((float)b / 255.0f * 31.0f);
             a = (c32 & 0xFF) ? 1 : 0;
-            *(dst++) = (a<<15) | (r << 10) | (g << 5) | b;
+            *(dst_ptr++) = (a<<15) | (r << 10) | (g << 5) | b;
           }
-          dst += cur_tail;
+          dst_ptr += cur_tail;
         }
       }
       grTexSource (tmu, tex_adr, GR_MIPMAPLEVELMASK_BOTH, &t_info, true);
       tex_adr += tex_size;
 
-      ul_x = (fb_info->ul_x + 256 * w)    * rdp.scale_x + rdp.offset_x;
-      ul_y = (fb_info->ul_y + 256 * h)    * rdp.scale_y + rdp.offset_y;
-      lr_x = (ul_x + (float)(cur_width))  * rdp.scale_x + rdp.offset_x;
-      lr_y = (ul_y + (float)(cur_height)) * rdp.scale_y + rdp.offset_y;
+      ul_x     = (fb_info->ul_x + 256 * w)    * rdp.scale_x + rdp.offset_x;
+      ul_y     = (fb_info->ul_y + 256 * h)    * rdp.scale_y + rdp.offset_y;
+      lr_x     = (ul_x + (float)(cur_width))  * rdp.scale_x + rdp.offset_x;
+      lr_y     = (ul_y + (float)(cur_height)) * rdp.scale_y + rdp.offset_y;
 
-      lr_u = (float)(cur_width - 1);
-      lr_v = (float)(cur_height - 1);
+      lr_u     = (float)(cur_width - 1);
+      lr_v     = (float)(cur_height - 1);
 
-      glide64_draw_fb(ul_x, ul_y, lr_x,
-            lr_y, lr_u, lr_v, 0.5f);
+      glide64_draw_fb(ul_x, ul_y, lr_x, lr_y, lr_u, lr_v, 0.5f);
     }
   }
 }
@@ -415,12 +844,12 @@ bool DrawFrameBufferToScreen(FB_TO_SCREEN_INFO *fb_info)
       uint16_t c;
       uint32_t idx;
 
-      uint16_t *tex = (uint16_t*)texture_buffer;
-      uint16_t *dst = (uint16_t*)tex;
-      uint16_t *src = (uint16_t*)(image + fb_info->ul_x + fb_info->ul_y * fb_info->width);
+      uint16_t *tex  = (uint16_t*)texture_buffer;
+      uint16_t *dst  = (uint16_t*)tex;
+      uint16_t *src  = (uint16_t*)(image + fb_info->ul_x + fb_info->ul_y * fb_info->width);
 
       uint32_t bound = (BMASK+1 - fb_info->addr) >> 1;
-      bool empty = true;
+      bool empty     = true;
 
       for (y = 0; y < height; y++)
       {
@@ -430,7 +859,8 @@ bool DrawFrameBufferToScreen(FB_TO_SCREEN_INFO *fb_info)
             if (idx >= bound)
                break;
             c = src[idx];
-            if (c) empty = false;
+            if (c)
+               empty = false;
             *(dst++) = (c >> 1) | ((c & 1) << 15);
          }
          dst += texwidth-width;
@@ -438,22 +868,21 @@ bool DrawFrameBufferToScreen(FB_TO_SCREEN_INFO *fb_info)
       if (empty)
          return false;
       t_info.format = GR_TEXFMT_ARGB_1555;
-      t_info.data = tex;
+      t_info.data   = tex;
    }
    else
    {
-      uint32_t col, idx;
-
-      uint32_t *tex = (uint32_t*)texture_buffer;
-      uint32_t *dst = (uint32_t*)tex;
-      uint32_t *src = (uint32_t*)(image + fb_info->ul_x + fb_info->ul_y * fb_info->width);
+      uint32_t *tex  = (uint32_t*)texture_buffer;
+      uint32_t *dst  = (uint32_t*)tex;
+      uint32_t *src  = (uint32_t*)(image + fb_info->ul_x + fb_info->ul_y * fb_info->width);
       uint32_t bound = (BMASK + 1 - fb_info->addr) >> 2;
 
       for (y = 0; y < height; y++)
       {
          for (x = 0; x < width; x++)
          {
-            idx = x + y * fb_info->width;
+            uint32_t col;
+            uint32_t idx = x + y * fb_info->width;
             if (idx >= bound)
                break;
             col = src[idx];
@@ -465,7 +894,12 @@ bool DrawFrameBufferToScreen(FB_TO_SCREEN_INFO *fb_info)
       t_info.data   = tex;
    }
 
-   tmu = SetupFBtoScreenCombiner(grTexCalcMemRequired(t_info.largeLodLog2, t_info.aspectRatioLog2, t_info.format), fb_info->opaque);
+   tmu = SetupFBtoScreenCombiner(
+         grTexCalcMemRequired(t_info.largeLodLog2,
+            t_info.aspectRatioLog2,
+            t_info.format),
+         fb_info->opaque);
+
    grTexSource (tmu,
          voodoo.tmem_ptr[tmu],
          GR_MIPMAPLEVELMASK_BOTH,
@@ -531,10 +965,10 @@ void DrawWholeFrameBufferToScreen(void)
   fb_info.size   = g_gdp.fb_size;
   fb_info.width  = rdp.ci_width;
   fb_info.height = rdp.ci_height;
-  fb_info.ul_x = 0;
-  fb_info.lr_x = rdp.ci_width-1;
-  fb_info.ul_y = 0;
-  fb_info.lr_y = rdp.ci_height-1;
+  fb_info.ul_x   = 0;
+  fb_info.lr_x   = rdp.ci_width-1;
+  fb_info.ul_y   = 0;
+  fb_info.lr_y   = rdp.ci_height-1;
   fb_info.opaque = 0;
 
   DrawFrameBufferToScreen(&fb_info);
@@ -571,6 +1005,7 @@ void CopyFrameBuffer(int32_t buffer)
          if (g_gdp.fb_size == G_IM_SIZ_16b)
          {
             uint16_t *ptr_dst   = (uint16_t*)(gfx_info.RDRAM + rdp.cimg);
+
             for (y = 0; y < height; y++)
             {
                for (x = 0; x < width; x++)
@@ -674,10 +1109,6 @@ void CopyFrameBuffer(int32_t buffer)
          // Unlock the backbuffer
          grLfbUnlock (GR_LFB_READ_ONLY, buffer);
          LRDP("LfbLock.  Framebuffer copy complete.\n");
-      }
-      else
-      {
-         LRDP("Framebuffer copy failed.\n");
       }
    }
 }
