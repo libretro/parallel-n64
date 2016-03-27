@@ -24,27 +24,29 @@ bool Config_SetDefault()
    config.video.windowedHeight = 480;
    config.video.verticalSync = false;
 
-   config.video.multisampling = 0; /* 0=off, 2,4,8,16=quality */
-#if 0
-   config.frameBufferEmulation.bufferSwapMode = 0; /* 0=On VI update call, 1=on VI origin change, 2 =On buffer update */
-#endif
+   config.video.multisampling                   = 0; /* 0=off, 2,4,8,16=quality */
+   config.frameBufferEmulation.bufferSwapMode   = 0; /* 0=On VI update call, 1=on VI origin change, 2 =On buffer update */
+	config.frameBufferEmulation.aspect           = 0; /*Screen aspect ratio (0=stretch, 1=force 4:3, 2=force 16:9, 3=adjust) */
 
    /* Texture Settings */
-	config.texture.bilinearMode = 1; /* Bilinear filtering mode (0=N64 3point, 1=standard) */
+	config.texture.bilinearMode                  = 1; /* Bilinear filtering mode (0=N64 3point, 1=standard) */
 
-	/*#Emulation Settings */
-	config.generalEmulation.enableFog = 1;        /* Enable fog emulation. */
-	config.generalEmulation.enableNoise = 1;      /* Enable color noise emulation. */
-	config.generalEmulation.enableLOD   = 1;      /* Enable LOD emulation. */
-	config.generalEmulation.enableHWLighting = 1; /* Enable hardware per-pixel lighting. */
+	/* Emulation Settings */
+	config.generalEmulation.enableFog            = 1; /* Enable fog emulation. */
+	config.generalEmulation.enableNoise          = 1; /* Enable color noise emulation. */
+	config.generalEmulation.enableLOD            = 1; /* Enable LOD emulation. */
+	config.generalEmulation.enableHWLighting     = 1; /* Enable hardware per-pixel lighting. */
 
-	config.frameBufferEmulation.enable  = 0; /* Enable frame and|or depth buffer emulation. */
+	/* Frame Buffer Settings */
+	config.frameBufferEmulation.enable           = 0; /* Enable frame and|or depth buffer emulation. */
+	config.frameBufferEmulation.copyAuxToRDRAM   = 0; /* Copy auxiliary buffers to RDRAM */
+	config.frameBufferEmulation.copyDepthToRDRAM = 0; /* Enable depth buffer copy to RDRAM. */
+	config.frameBufferEmulation.copyToRDRAM      = 1; /* Enable color buffer copy to RDRAM (0=do not copy, 1=copy in sync mode, 2=copy in async mode) */
+	config.frameBufferEmulation.copyFromRDRAM    = 1; /* Enable color buffer copy from RDRAM. */
+	config.frameBufferEmulation.N64DepthCompare  = 0; /* Enable N64 depth compare instead of OpenGL standard one. Experimental. */
+
 #if 0
-	res = ConfigSetDefaultInt(g_configVideoGliden64, "AspectRatio", config.frameBufferEmulation.aspect, "Screen aspect ratio (0=stretch, 1=force 4:3, 2=force 16:9, 3=adjust)");
-	assert(res == M64ERR_SUCCESS);
-
 	//#Texture Settings
-	assert(res == M64ERR_SUCCESS);
 	res = ConfigSetDefaultBool(g_configVideoGliden64, "MaxAnisotropy", config.texture.maxAnisotropy, "Max level of Anisotropic Filtering, 0 for off");
 	assert(res == M64ERR_SUCCESS);
 	res = ConfigSetDefaultInt(g_configVideoGliden64, "CacheSize", config.texture.maxBytes / uMegabyte, "Size of texture cache in megabytes. Good value is VRAM*3/4");
@@ -61,18 +63,6 @@ bool Config_SetDefault()
 	res = ConfigSetDefaultFloat(g_configVideoGliden64, "PolygonOffsetUnits", config.generalEmulation.polygonOffsetUnits, "Is multiplied by an implementation-specific value to create a constant depth offset");
 	assert(res == M64ERR_SUCCESS);
 #endif
-
-	//#Frame Buffer Settings:"
-	res = ConfigSetDefaultBool(g_configVideoGliden64, "EnableCopyAuxiliaryToRDRAM", config.frameBufferEmulation.copyAuxToRDRAM, "Copy auxiliary buffers to RDRAM");
-	assert(res == M64ERR_SUCCESS);
-	res = ConfigSetDefaultInt(g_configVideoGliden64, "EnableCopyColorToRDRAM", config.frameBufferEmulation.copyToRDRAM, "Enable color buffer copy to RDRAM (0=do not copy, 1=copy in sync mode, 2=copy in async mode)");
-	assert(res == M64ERR_SUCCESS);
-	res = ConfigSetDefaultBool(g_configVideoGliden64, "EnableCopyDepthToRDRAM", config.frameBufferEmulation.copyDepthToRDRAM, "Enable depth buffer copy to RDRAM.");
-	assert(res == M64ERR_SUCCESS);
-	res = ConfigSetDefaultBool(g_configVideoGliden64, "EnableCopyColorFromRDRAM", config.frameBufferEmulation.copyFromRDRAM, "Enable color buffer copy from RDRAM.");
-	assert(res == M64ERR_SUCCESS);
-	res = ConfigSetDefaultBool(g_configVideoGliden64, "EnableN64DepthCompare", config.frameBufferEmulation.N64DepthCompare, "Enable N64 depth compare instead of OpenGL standard one. Experimental.");
-	assert(res == M64ERR_SUCCESS);
 
 	//#Texture filter settings
 	res = ConfigSetDefaultInt(g_configVideoGliden64, "txFilterMode", config.textureFilter.txFilterMode, "Texture filter (0=none, 1=Smooth filtering 1, 2=Smooth filtering 2, 3=Smooth filtering 3, 4=Smooth filtering 4, 5=Sharp filtering 1, 6=Sharp filtering 2)");
@@ -122,56 +112,6 @@ void Config_LoadConfig()
 		config.generalEmulation.hacks = hacks;
 		return;
 	}
-
-#if 0
-#ifdef GL_MULTISAMPLING_SUPPORT
-	config.video.multisampling = ConfigGetParamInt(g_configVideoGliden64, "MultiSampling");
-#else
-	config.video.multisampling = 0;
-#endif
-	config.frameBufferEmulation.aspect = ConfigGetParamInt(g_configVideoGliden64, "AspectRatio");
-	config.frameBufferEmulation.bufferSwapMode = ConfigGetParamInt(g_configVideoGliden64, "BufferSwapMode");
-
-	//#Texture Settings
-	config.texture.bilinearMode = ConfigGetParamBool(g_configVideoGliden64, "bilinearMode");
-	config.texture.maxAnisotropy = ConfigGetParamInt(g_configVideoGliden64, "MaxAnisotropy");
-	config.texture.maxBytes = ConfigGetParamInt(g_configVideoGliden64, "CacheSize") * uMegabyte;
-	//#Emulation Settings
-	config.generalEmulation.enableFog = ConfigGetParamBool(g_configVideoGliden64, "EnableFog");
-	config.generalEmulation.enableNoise = ConfigGetParamBool(g_configVideoGliden64, "EnableNoise");
-	config.generalEmulation.enableLOD = ConfigGetParamBool(g_configVideoGliden64, "EnableLOD");
-	config.generalEmulation.enableHWLighting = ConfigGetParamBool(g_configVideoGliden64, "EnableHWLighting");
-	config.generalEmulation.enableShadersStorage = ConfigGetParamBool(g_configVideoGliden64, "EnableShadersStorage");
-#ifdef ANDROID
-	config.generalEmulation.forcePolygonOffset = ConfigGetParamBool(g_configVideoGliden64, "ForcePolygonOffset");
-	config.generalEmulation.polygonOffsetFactor = ConfigGetParamFloat(g_configVideoGliden64, "PolygonOffsetFactor");
-	config.generalEmulation.polygonOffsetUnits = ConfigGetParamFloat(g_configVideoGliden64, "PolygonOffsetUnits");
-#endif
-	//#Frame Buffer Settings:"
-	config.frameBufferEmulation.enable = ConfigGetParamBool(g_configVideoGliden64, "EnableFBEmulation");
-	config.frameBufferEmulation.copyAuxToRDRAM = ConfigGetParamBool(g_configVideoGliden64, "EnableCopyAuxiliaryToRDRAM");
-	config.frameBufferEmulation.copyToRDRAM = ConfigGetParamInt(g_configVideoGliden64, "EnableCopyColorToRDRAM");
-	config.frameBufferEmulation.copyDepthToRDRAM = ConfigGetParamBool(g_configVideoGliden64, "EnableCopyDepthToRDRAM");
-	config.frameBufferEmulation.copyFromRDRAM = ConfigGetParamBool(g_configVideoGliden64, "EnableCopyColorFromRDRAM");
-	config.frameBufferEmulation.N64DepthCompare = ConfigGetParamBool(g_configVideoGliden64, "EnableN64DepthCompare");
-	//#Texture filter settings
-	config.textureFilter.txFilterMode = ConfigGetParamInt(g_configVideoGliden64, "txFilterMode");
-	config.textureFilter.txEnhancementMode = ConfigGetParamInt(g_configVideoGliden64, "txEnhancementMode");
-	config.textureFilter.txFilterIgnoreBG = ConfigGetParamBool(g_configVideoGliden64, "txFilterIgnoreBG");
-	config.textureFilter.txCacheSize = ConfigGetParamInt(g_configVideoGliden64, "txCacheSize") * uMegabyte;
-	config.textureFilter.txHiresEnable = ConfigGetParamBool(g_configVideoGliden64, "txHiresEnable");
-	config.textureFilter.txHiresFullAlphaChannel = ConfigGetParamBool(g_configVideoGliden64, "txHiresFullAlphaChannel");
-	config.textureFilter.txHresAltCRC = ConfigGetParamBool(g_configVideoGliden64, "txHresAltCRC");
-	config.textureFilter.txDump = ConfigGetParamBool(g_configVideoGliden64, "txDump");
-	config.textureFilter.txForce16bpp = ConfigGetParamBool(g_configVideoGliden64, "txForce16bpp");
-	config.textureFilter.txCacheCompression = ConfigGetParamBool(g_configVideoGliden64, "txCacheCompression");
-	config.textureFilter.txSaveCache = ConfigGetParamBool(g_configVideoGliden64, "txSaveCache");
-	::mbstowcs(config.textureFilter.txPath, ConfigGetParamString(g_configVideoGliden64, "txPath"), PLUGIN_PATH_SIZE);
-
-	//#Gamma correction settings
-	config.gammaCorrection.force = ConfigGetParamBool(g_configVideoGliden64, "ForceGammaCorrection");
-	config.gammaCorrection.level = ConfigGetParamFloat(g_configVideoGliden64, "GammaCorrectionLevel");
-#endif
 
 	config.generalEmulation.hacks = hacks;
 }
