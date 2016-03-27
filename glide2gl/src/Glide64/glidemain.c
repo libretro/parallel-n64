@@ -63,38 +63,6 @@ extern uint32_t screen_aspectmodehint;
 #define G64_VERSION "G64 Mk2"
 #define RELTIME "Date: " __DATE__// " Time: " __TIME__
 
-#ifdef __LIBRETRO__ // Prefix API
-#define VIDEO_TAG(X) glide64##X
-
-#define ReadScreen2 VIDEO_TAG(ReadScreen2)
-#define PluginStartup VIDEO_TAG(PluginStartup)
-#define PluginShutdown VIDEO_TAG(PluginShutdown)
-#define PluginGetVersion VIDEO_TAG(PluginGetVersion)
-#define CaptureScreen VIDEO_TAG(CaptureScreen)
-#define ChangeWindow VIDEO_TAG(ChangeWindow)
-#define CloseDLL VIDEO_TAG(CloseDLL)
-#define DllTest VIDEO_TAG(DllTest)
-#define DrawScreen VIDEO_TAG(DrawScreen)
-#define GetDllInfo VIDEO_TAG(GetDllInfo)
-#define InitiateGFX VIDEO_TAG(InitiateGFX)
-#define MoveScreen VIDEO_TAG(MoveScreen)
-#define RomClosed VIDEO_TAG(RomClosed)
-#define RomOpen VIDEO_TAG(RomOpen)
-#define ShowCFB VIDEO_TAG(ShowCFB)
-#define SetRenderingCallback VIDEO_TAG(SetRenderingCallback)
-#define UpdateScreen VIDEO_TAG(UpdateScreen)
-#define ViStatusChanged VIDEO_TAG(ViStatusChanged)
-#define ViWidthChanged VIDEO_TAG(ViWidthChanged)
-#define ReadScreen VIDEO_TAG(ReadScreen)
-#define FBGetFrameBufferInfo VIDEO_TAG(FBGetFrameBufferInfo)
-#define FBRead VIDEO_TAG(FBRead)
-#define FBWrite VIDEO_TAG(FBWrite)
-#define ProcessDList VIDEO_TAG(ProcessDList)
-#define ProcessRDPList VIDEO_TAG(ProcessRDPList)
-#define ResizeVideoOutput VIDEO_TAG(ResizeVideoOutput)
-#define InitGfx VIDEO_TAG(InitGfx)
-#endif
-
 int romopen = false;
 int exception = false;
 
@@ -273,7 +241,7 @@ void guLoadTextures(void)
    offset_textures = tbuf_size + 16;
 }
 
-int InitGfx(void)
+int glide64InitGfx(void)
 {
    rdp_reset ();
 
@@ -322,7 +290,7 @@ void ReleaseGfx(void)
 
 // new API code begins here!
 
-EXPORT void CALL ReadScreen2(void *dest, int *width, int *height, int front)
+void glide64ReadScreen2(void *dest, int *width, int *height, int front)
 {
    GrLfbInfo_t info;
    uint8_t *line = (uint8_t*)dest;
@@ -361,7 +329,7 @@ EXPORT void CALL ReadScreen2(void *dest, int *width, int *height, int front)
    }
 }
 
-EXPORT m64p_error CALL PluginStartup(m64p_dynlib_handle CoreLibHandle, void *Context,
+m64p_error glide64PluginStartup(m64p_dynlib_handle CoreLibHandle, void *Context,
                                    void (*DebugCallback)(void *, int, const char *))
 {
    l_DebugCallback = DebugCallback;
@@ -371,12 +339,12 @@ EXPORT m64p_error CALL PluginStartup(m64p_dynlib_handle CoreLibHandle, void *Con
    return M64ERR_SUCCESS;
 }
 
-EXPORT m64p_error CALL PluginShutdown(void)
+m64p_error glide64PluginShutdown(void)
 {
    return M64ERR_SUCCESS;
 }
 
-EXPORT m64p_error CALL PluginGetVersion(m64p_plugin_type *PluginType,
+m64p_error glide64PluginGetVersion(m64p_plugin_type *PluginType,
       int *PluginVersion, int *APIVersion, const char **PluginNamePtr, int *Capabilities)
 {
    /* set version info */
@@ -404,7 +372,7 @@ Purpose:  This function dumps the current frame to a file
 input:    pointer to the directory to save the file to
 output:   none
 *******************************************************************/
-EXPORT void CALL CaptureScreen ( char * Directory )
+void glide64CaptureScreen ( char * Directory )
 {
    capture_screen = 1;
    strcpy (capture_path, Directory);
@@ -419,7 +387,7 @@ input:    none
 output:   none
 *******************************************************************/
 //#warning ChangeWindow unimplemented
-EXPORT void CALL ChangeWindow (void)
+void glide64ChangeWindow (void)
 {
 }
 
@@ -430,7 +398,7 @@ down allowing the dll to de-initialise.
 input:    none
 output:   none
 *******************************************************************/
-void CALL CloseDLL (void)
+void glide64CloseDLL (void)
 {
    ZLUT_release();
    ClearCache ();
@@ -444,7 +412,7 @@ it is being used in the desktop.
 input:    none
 output:   none
 *******************************************************************/
-void CALL DrawScreen (void)
+void glide64DrawScreen (void)
 {
 }
 
@@ -456,7 +424,7 @@ input:    a pointer to a PLUGIN_INFO stucture that needs to be
 filled by the function. (see def above)
 output:   none
 *******************************************************************/
-void CALL GetDllInfo ( PLUGIN_INFO * PluginInfo )
+void glide64GetDllInfo ( PLUGIN_INFO * PluginInfo )
 {
    PluginInfo->Version = 0x0103;     // Set to 0x0103
    PluginInfo->Type  = PLUGIN_TYPE_GFX;  // Set to PLUGIN_TYPE_GFX
@@ -485,7 +453,7 @@ and then call the function CheckInterrupts to tell the emulator
 that there is a waiting interrupt.
 *******************************************************************/
 
-EXPORT int CALL InitiateGFX (GFX_INFO Gfx_Info)
+int glide64InitiateGFX (GFX_INFO Gfx_Info)
 {
    char name[21] = "DEFAULT";
 
@@ -520,7 +488,7 @@ ypos - y-coordinate of the upper-left corner of the
 client area of the window.
 output:   none
 *******************************************************************/
-EXPORT void CALL MoveScreen (int xpos, int ypos)
+EXPORT void CALL glide64MoveScreen (int xpos, int ypos)
 {
 }
 
@@ -530,7 +498,7 @@ Purpose:  This function is called when a rom is closed.
 input:    none
 output:   none
 *******************************************************************/
-EXPORT void CALL RomClosed (void)
+EXPORT void CALL glide64RomClosed (void)
 {
    romopen = false;
    ReleaseGfx ();
@@ -555,7 +523,7 @@ emulation thread)
 input:    none
 output:   none
 *******************************************************************/
-EXPORT int CALL RomOpen (void)
+int glide64RomOpen (void)
 {
    int i;
    char name[21] = "DEFAULT";
@@ -627,8 +595,7 @@ EXPORT int CALL RomOpen (void)
    OPEN_RDP_LOG ();
    OPEN_RDP_E_LOG ();
 
-
-   InitGfx ();
+   glide64InitGfx ();
    rdp_setfuncs();
 
    // **
@@ -645,13 +612,12 @@ output:   none
 *******************************************************************/
 bool no_dlist = true;
 
-EXPORT void CALL ShowCFB (void)
+void glide64ShowCFB (void)
 {
    no_dlist = true;
-   VLOG ("ShowCFB ()\n");
 }
 
-EXPORT void CALL SetRenderingCallback(void (*callback)(int))
+void glide64SetRenderingCallback(void (*callback)(int))
 {
 }
 
@@ -691,7 +657,7 @@ output:   none
 *******************************************************************/
 uint32_t update_screen_count = 0;
 
-EXPORT void CALL UpdateScreen (void)
+void glide64UpdateScreen (void)
 {
    bool forced_update = false;
    uint32_t width = (*gfx_info.VI_WIDTH_REG) << 1;
@@ -784,7 +750,7 @@ ViStatus registers value has been changed.
 input:    none
 output:   none
 *******************************************************************/
-EXPORT void CALL ViStatusChanged(void)
+EXPORT void CALL glide64ViStatusChanged(void)
 {
 }
 
@@ -795,6 +761,6 @@ ViWidth registers value has been changed.
 input:    none
 output:   none
 *******************************************************************/
-EXPORT void CALL ViWidthChanged(void)
+void  glide64ViWidthChanged(void)
 {
 }
