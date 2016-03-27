@@ -513,8 +513,8 @@ void FrameBufferList::saveBuffer(uint32_t _address, uint16_t _format, uint16_t _
 	if (m_pCurrent != NULL) {
 		if (gDP.colorImage.height > 0) {
 			if (m_pCurrent->m_width == VI.width || m_pCurrent->m_needHeightCorrection) {
-				gDP.colorImage.height = min(gDP.colorImage.height, VI.height);
-				m_pCurrent->m_endAddress = min(RDRAMSize, m_pCurrent->m_startAddress + (((m_pCurrent->m_width * gDP.colorImage.height) << m_pCurrent->m_size >> 1) - 1));
+				gDP.colorImage.height = MIN(gDP.colorImage.height, VI.height);
+				m_pCurrent->m_endAddress = MIN(RDRAMSize, m_pCurrent->m_startAddress + (((m_pCurrent->m_width * gDP.colorImage.height) << m_pCurrent->m_size >> 1) - 1));
 			}
 			if (!m_pCurrent->_isMarioTennisScoreboard() && !m_pCurrent->m_isDepthBuffer && !m_pCurrent->m_copiedToRdram && !m_pCurrent->m_cfb && !m_pCurrent->m_cleared && m_pCurrent->m_RdramCopy.empty() && gDP.colorImage.height > 1) {
 				m_pCurrent->copyRdram();
@@ -770,18 +770,18 @@ void FrameBufferList::renderBuffer(uint32_t _address)
 	}
 
 	const float scaleX = _FIXED2FLOAT(_SHIFTR(*gfx_info.VI_X_SCALE_REG, 0, 12), 10);
-	const int32_t h0 = (isPAL ? 128 : 108);
-	const int32_t hx0 = max(0, hStart - h0);
-	const int32_t hx1 = max(0, h0 + 640 - hEnd);
+	const int32_t h0   = (isPAL ? 128 : 108);
+	const int32_t hx0  = MAX(0, hStart - h0);
+	const int32_t hx1  = MAX(0, h0 + 640 - hEnd);
 	X0 = (GLint)(hx0 * scaleX * ogl.getScaleX());
-	Xwidth = (GLint)((min((float)VI.width, (hEnd - hStart)*scaleX)) * ogl.getScaleX());
+	Xwidth = (GLint)((MIN((float)VI.width, (hEnd - hStart)*scaleX)) * ogl.getScaleX());
 	X1 = ogl.getWidth() - (GLint)(hx1 *scaleX * ogl.getScaleX());
 
 	const float srcScaleY = ogl.getScaleY();
 	const GLint hOffset = (ogl.getScreenWidth() - ogl.getWidth()) / 2;
 	const GLint vOffset = (ogl.getScreenHeight() - ogl.getHeight()) / 2 + ogl.getHeightOffset();
 	CachedTexture * pBufferTexture = pBuffer->m_pTexture;
-	GLint srcCoord[4] = { 0, (GLint)(srcY0*srcScaleY), Xwidth, min((GLint)(srcY1*srcScaleY), (GLint)pBufferTexture->realHeight) };
+	GLint srcCoord[4] = { 0, (GLint)(srcY0*srcScaleY), Xwidth, MIN((GLint)(srcY1*srcScaleY), (GLint)pBufferTexture->realHeight) };
 	if (srcCoord[2] > pBufferTexture->realWidth || srcCoord[3] > pBufferTexture->realHeight) {
 		removeBuffer(pBuffer->m_startAddress);
 		return;
@@ -832,7 +832,7 @@ void FrameBufferList::renderBuffer(uint32_t _address)
 			dstY1 = dstY0 + dstPartHeight;
 			glBindFramebuffer(GL_READ_FRAMEBUFFER, pBuffer->m_FBO);
 			glBlitFramebuffer(
-				0, (GLint)(srcY0*srcScaleY), ogl.getWidth(), min((GLint)(srcY1*srcScaleY), (GLint)pBuffer->m_pTexture->realHeight),
+				0, (GLint)(srcY0*srcScaleY), ogl.getWidth(), MIN((GLint)(srcY1*srcScaleY), (GLint)pBuffer->m_pTexture->realHeight),
 				hOffset, vOffset + (GLint)(dstY0*dstScaleY), hOffset + ogl.getWidth(), vOffset + (GLint)(dstY1*dstScaleY),
 				GL_COLOR_BUFFER_BIT, filter
 			);
@@ -1050,13 +1050,14 @@ void FrameBufferToRDRAM::Destroy() {
 bool FrameBufferToRDRAM::_prepareCopy(uint32_t _address)
 {
    const uint32_t curFrame = video().getBuffersSwapCount();
-	if (m_frameCount == curFrame)
+   FrameBuffer * pBuffer = frameBufferList().findBuffer(_address);
+	if (m_frameCount == curFrame && pBuffer == m_pCurFrameBuffer)
 		return true;
 
 	if (VI.width == 0 || frameBufferList().getCurrent() == NULL)
 		return false;
 
-	m_pCurFrameBuffer = frameBufferList().findBuffer(_address);
+	m_pCurFrameBuffer = pBuffer;
 	if (m_pCurFrameBuffer == NULL || m_pCurFrameBuffer->m_isOBScreen)
 		return false;
 
@@ -1171,12 +1172,11 @@ void FrameBufferToRDRAM::_copy(uint32_t _startAddress, uint32_t _endAddress, boo
 		numPixels = (_endAddress - _startAddress) >> (m_pCurFrameBuffer->m_size - 1);
 	}
 
-	const GLsizei width = m_pCurFrameBuffer->m_width;
-
-	const GLint x0 = 0;
-   const GLint y0 = max_height - (_endAddress - m_pCurFrameBuffer->m_startAddress) / stride;
-	const GLint y1 = max_height - (_startAddress - m_pCurFrameBuffer->m_startAddress) / stride;
-   const GLsizei height = min(max_height, 1 + y1 - y0);
+	const GLsizei width  = m_pCurFrameBuffer->m_width;
+	const GLint x0       = 0;
+   const GLint y0       = max_height - (_endAddress - m_pCurFrameBuffer->m_startAddress) / stride;
+	const GLint y1       = max_height - (_startAddress - m_pCurFrameBuffer->m_startAddress) / stride;
+   const GLsizei height = MIN(max_height, 1 + y1 - y0);
 
 	GLenum colorFormat, colorType, colorFormatBytes;
 	if (m_pCurFrameBuffer->m_size > G_IM_SIZ_8b) {
@@ -1383,7 +1383,7 @@ bool DepthBufferToRDRAM::_prepareCopy( uint32_t _address)
 	if (address + numPixels * 2 > RDRAMSize)
 		return false;
 
-	const uint32_t height = _cutHeight(address, min(VI.height, m_pCurDepthBuffer->m_lry), pBuffer->m_width * 2);
+	const uint32_t height = _cutHeight(address, MIN(VI.height, m_pCurDepthBuffer->m_lry), pBuffer->m_width * 2);
 	if (height == 0)
 		return false;
 
@@ -1412,7 +1412,7 @@ uint16_t DepthBufferToRDRAM::_FloatToUInt16(float _z)
    if (_z < 1.0f)
    {
       _z *= 262144.0f;
-		idx = min(0x3FFFFU, (uint32_t)(floorf(_z + 0.5f)));
+		idx = MIN(0x3FFFFU, (uint32_t)(floorf(_z + 0.5f)));
    }
 
    return zLUT[idx];
@@ -1421,7 +1421,7 @@ uint16_t DepthBufferToRDRAM::_FloatToUInt16(float _z)
 bool DepthBufferToRDRAM::_copy(uint32_t _startAddress, uint32_t _endAddress)
 {
    const uint32_t stride     = m_pCurDepthBuffer->m_width << 1;
-   const uint32_t max_height =  _cutHeight(_startAddress, min(VI.height, m_pCurDepthBuffer->m_lry), stride);
+   const uint32_t max_height =  _cutHeight(_startAddress, MIN(VI.height, m_pCurDepthBuffer->m_lry), stride);
 
    uint32_t numPixels        = (_endAddress - _startAddress) >> 1;
    if (numPixels / m_pCurDepthBuffer->m_width > max_height)
@@ -1435,7 +1435,7 @@ bool DepthBufferToRDRAM::_copy(uint32_t _startAddress, uint32_t _endAddress)
 	const GLint x0 = 0;
    const GLint y0 = max_height - (_endAddress - m_pCurDepthBuffer->m_address) / stride;
 	const GLint y1 = max_height - (_startAddress - m_pCurDepthBuffer->m_address) / stride;
-   const GLsizei height = min(max_height, 1 + y1 - y0);
+   const GLsizei height = MIN(max_height, 1 + y1 - y0);
 
 	PBOBinder binder(GL_PIXEL_PACK_BUFFER, m_PBO);
 	glBindFramebuffer(GL_READ_FRAMEBUFFER, m_FBO);
@@ -1464,7 +1464,7 @@ bool DepthBufferToRDRAM::copyToRDRAM( uint32_t _address)
    if (!_prepareCopy(_address))
       return false;
 
-   const uint32_t endAddress = m_pCurDepthBuffer->m_address + (min(VI.height, m_pCurDepthBuffer->m_lry) * m_pCurDepthBuffer->m_width * 2);
+   const uint32_t endAddress = m_pCurDepthBuffer->m_address + (MIN(VI.height, m_pCurDepthBuffer->m_lry) * m_pCurDepthBuffer->m_width * 2);
    return _copy(m_pCurDepthBuffer->m_address, endAddress);
 }
 
