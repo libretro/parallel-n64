@@ -255,23 +255,23 @@ static void InterpolateColors3(VERTEX *v1, VERTEX *v2, VERTEX *v3, VERTEX *out)
 
 static INLINE void CalculateLODValues(VERTEX *v, int32_t i, int32_t j, float *lodFactor, float s_scale, float t_scale)
 {
-   float deltaS = (v[j].u[0]/v[j].q - v[i].u[0]/v[i].q) * s_scale;
-   float deltaT = (v[j].v[0]/v[j].q - v[i].v[0]/v[i].q) * t_scale;
+   float deltaS      = (v[j].u[0]/v[j].q - v[i].u[0]/v[i].q) * s_scale;
+   float deltaT      = (v[j].v[0]/v[j].q - v[i].v[0]/v[i].q) * t_scale;
    float deltaTexels = sqrtf( deltaS * deltaS + deltaT * deltaT );
 
-   float deltaX = (v[j].x - v[i].x)/rdp.scale_x;
-   float deltaY = (v[j].y - v[i].y)/rdp.scale_y;
+   float deltaX      = (v[j].x - v[i].x)/rdp.scale_x;
+   float deltaY      = (v[j].y - v[i].y)/rdp.scale_y;
    float deltaPixels = sqrtf( deltaX * deltaX + deltaY * deltaY );
 
-   *lodFactor += deltaTexels / deltaPixels;
+   *lodFactor       += deltaTexels / deltaPixels;
 }
 
 static void CalculateLOD(VERTEX *v, int n, uint32_t lodmode)
 {
    float intptr, lod_fraction, detailmax;
    int i, j, ilod, lod_tile;
-   float s_scale = rdp.tiles[rdp.cur_tile].width / 255.0f;
-   float t_scale = rdp.tiles[rdp.cur_tile].height / 255.0f;
+   float s_scale   = rdp.tiles[rdp.cur_tile].width / 255.0f;
+   float t_scale   = rdp.tiles[rdp.cur_tile].height / 255.0f;
    float lodFactor = 0;
 
    if (lodmode == G_TL_LOD)
@@ -290,10 +290,10 @@ static void CalculateLOD(VERTEX *v, int n, uint32_t lodmode)
    if (lodmode == G_TL_TILE)
       lodFactor = lodFactor / n; // Divide by n (n edges) to find average
 
-   ilod = (int)lodFactor;
-   lod_tile = MIN((int)(log10f((float)ilod)/log10f(2.0f)), rdp.cur_tile + rdp.mipmap_level);
+   ilod         = (int)lodFactor;
+   lod_tile     = MIN((int)(log10f((float)ilod)/log10f(2.0f)), rdp.cur_tile + rdp.mipmap_level);
    lod_fraction = 1.0f;
-   detailmax = 1.0f - lod_fraction;
+   detailmax    = 1.0f - lod_fraction;
 
    if (lod_tile < rdp.cur_tile + rdp.mipmap_level)
       lod_fraction = MAX((float)modff(lodFactor / pow(2.,lod_tile),&intptr), g_gdp.primitive_lod_min / 255.0f);
@@ -377,11 +377,11 @@ static void clip_tri(int interpolate_colors)
    if (rdp.clip & CLIP_XMAX) // right of the screen
    {
       // Swap vertex buffers
-      VERTEX *tmp = rdp.vtxbuf2;
-      rdp.vtxbuf2 = rdp.vtxbuf;
-      rdp.vtxbuf = tmp;
+      VERTEX *tmp     = rdp.vtxbuf2;
+      rdp.vtxbuf2     = rdp.vtxbuf;
+      rdp.vtxbuf      = tmp;
       rdp.vtx_buffer ^= 1;
-      index = 0;
+      index           = 0;
 
       // Check the vertices for clipping
       for (i=0; i<n; i++)
@@ -391,7 +391,7 @@ static void clip_tri(int interpolate_colors)
          j = i+1;
          if (j == n)
             j = 0;
-         first = (VERTEX*)&rdp.vtxbuf2[i];
+         first  = (VERTEX*)&rdp.vtxbuf2[i];
          second = (VERTEX*)&rdp.vtxbuf2[j];
 
          if (first->x <= rdp.clip_max_x)
