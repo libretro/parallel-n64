@@ -355,23 +355,36 @@ static void CopyFrameBuffer(int32_t buffer)
                width<<1,
                ptr_src))
       {
-         uint16_t c;
          uint32_t y, x;
-         uint16_t *ptr_dst = (uint16_t*)(gfx_info.RDRAM+rdp.cimg);
-         uint32_t *ptr_dst32 = (uint32_t*)(gfx_info.RDRAM+rdp.cimg);
 
-         for (y = 0; y < height; y++)
+         if (g_gdp.fb_size == G_IM_SIZ_16b)
          {
-            for (x = 0; x < width; x++)
+            uint16_t *ptr_dst   = (uint16_t*)(gfx_info.RDRAM + rdp.cimg);
+            for (y = 0; y < height; y++)
             {
-               c = ptr_src[x + y * width];
-               if ((settings.frame_buffer & fb_read_alpha) && c <= 0) {}
-               else
-                  c = (c&0xFFC0) | ((c&0x001F) << 1) | 1;
-               if (g_gdp.fb_size == G_IM_SIZ_16b)
+               for (x = 0; x < width; x++)
+               {
+                  uint16_t c = ptr_src[x + y * width];
+                  if ((settings.frame_buffer & fb_read_alpha) && c <= 0) {}
+                  else
+                     c = (c&0xFFC0) | ((c&0x001F) << 1) | 1;
                   ptr_dst[(x + y * width)^1] = c;
-               else
-                  ptr_dst32[x + y * width]   = RGBA16toRGBA32(c);
+               }
+            }
+         }
+         else
+         {
+            uint32_t *ptr_dst = (uint32_t*)(gfx_info.RDRAM+rdp.cimg);
+            for (y = 0; y < height; y++)
+            {
+               for (x = 0; x < width; x++)
+               {
+                  uint16_t c = ptr_src[x + y * width];
+                  if ((settings.frame_buffer & fb_read_alpha) && c <= 0) {}
+                  else
+                     c = (c&0xFFC0) | ((c&0x001F) << 1) | 1;
+                  ptr_dst[x + y * width]   = RGBA16toRGBA32(c);
+               }
             }
          }
       }
@@ -392,36 +405,58 @@ static void CopyFrameBuffer(int32_t buffer)
                FXFALSE,
                &info))
       {
-         int y, x, x_start, y_start, x_end, y_end, read_alpha;
-         uint16_t c;
-         uint16_t *ptr_src = (uint16_t*)info.lfbPtr;
-         uint16_t *ptr_dst = (uint16_t*)(gfx_info.RDRAM+rdp.cimg);
-         uint32_t *ptr_dst32 = (uint32_t*)(gfx_info.RDRAM+rdp.cimg);
-         uint32_t stride = info.strideInBytes>>1;
+         int        x_start  = 0;
+         int        y_start  = 0;
+         int         x_end   = width;
+         int         y_end   = height;
+         uint32_t stride     = info.strideInBytes>>1;
+         int read_alpha      = settings.frame_buffer & fb_read_alpha;
 
-         read_alpha = settings.frame_buffer & fb_read_alpha;
          if ((settings.hacks&hack_PMario) && rdp.ci_count > 0 && rdp.frame_buffers[rdp.ci_count-1].status != CI_AUX)
             read_alpha = false;
-         x_start = 0;
-         y_start = 0;
-         x_end = width;
-         y_end = height;
 
          if (settings.hacks&hack_BAR)
-            x_start = 80, y_start = 24, x_end = 240, y_end = 86;
-
-         for (y = y_start; y < y_end; y++)
          {
-            for (x = x_start; x < x_end; x++)
+            x_start = 80;
+            y_start = 24;
+            x_end   = 240;
+            y_end   = 86;
+         }
+
+         if (g_gdp.fb_size <= G_IM_SIZ_16b)
+         {
+            int y, x;
+            uint16_t *ptr_src   = (uint16_t*)info.lfbPtr;
+            uint16_t *ptr_dst   = (uint16_t*)(gfx_info.RDRAM+rdp.cimg);
+
+            for (y = y_start; y < y_end; y++)
             {
-               c = ptr_src[(int)(x*scale_x + rdp.offset_x) + (int)(y * scale_y + rdp.offset_y) * stride];
-               c = (c&0xFFC0) | ((c&0x001F) << 1) | 1;
-               if (read_alpha && c == 1)
-                  c = 0;
-               if (g_gdp.fb_size <= G_IM_SIZ_16b)
+               for (x = x_start; x < x_end; x++)
+               {
+                  uint16_t c = ptr_src[(int)(x*scale_x + rdp.offset_x) + (int)(y * scale_y + rdp.offset_y) * stride];
+                  c = (c&0xFFC0) | ((c&0x001F) << 1) | 1;
+                  if (read_alpha && c == 1)
+                     c = 0;
                   ptr_dst[(x + y * width)^1] = c;
-               else
-                  ptr_dst32[x + y * width] = RGBA16toRGBA32(c);
+               }
+            }
+         }
+         else
+         {
+            int y, x;
+            uint16_t *ptr_src   = (uint16_t*)info.lfbPtr;
+            uint32_t *ptr_dst = (uint32_t*)(gfx_info.RDRAM+rdp.cimg);
+
+            for (y = y_start; y < y_end; y++)
+            {
+               for (x = x_start; x < x_end; x++)
+               {
+                  uint16_t c = ptr_src[(int)(x*scale_x + rdp.offset_x) + (int)(y * scale_y + rdp.offset_y) * stride];
+                  c = (c&0xFFC0) | ((c&0x001F) << 1) | 1;
+                  if (read_alpha && c == 1)
+                     c = 0;
+                  ptr_dst[x + y * width] = RGBA16toRGBA32(c);
+               }
             }
          }
 
@@ -690,9 +725,9 @@ static void pd_zcopy(uint32_t w0, uint32_t w1)
    uint16_t      ul_x = (uint16_t)((w1 & 0x00FFF000) >> 14);
    uint16_t      lr_x = (uint16_t)((w0 & 0x00FFF000) >> 14) + 1;
    uint16_t      ul_u = (uint16_t)((rdp.cmd2 & 0xFFFF0000) >> 21) + 1;
-   uint16_t *ptr_dst  = (uint16_t*)(gfx_info.RDRAM+rdp.cimg);
    uint16_t     width = lr_x - ul_x;
-   uint16_t * ptr_src = ((uint16_t*)g_gdp.tmem)+ul_u;
+   uint16_t  *ptr_src = ((uint16_t*)g_gdp.tmem)+ul_u;
+   uint16_t  *ptr_dst = (uint16_t*)(gfx_info.RDRAM+rdp.cimg);
 
    for (x = 0; x < width; x++)
    {
