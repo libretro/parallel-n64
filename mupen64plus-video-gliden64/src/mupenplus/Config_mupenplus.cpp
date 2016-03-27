@@ -18,37 +18,34 @@ const uint32_t uMegabyte = 1024U*1024U;
 static
 bool Config_SetDefault()
 {
-	config.resetToDefaults();
+	//config.resetToDefaults();
+   config.video.fullscreen = true;
+   config.video.windowedWidth = 640;
+   config.video.windowedHeight = 480;
+   config.video.verticalSync = false;
+
+   config.video.multisampling = 0; /* 0=off, 2,4,8,16=quality */
 #if 0
-	// Set default values for "Video-General" section, if they are not set yet. Taken from RiceVideo
-	m64p_error res = ConfigSetDefaultBool(g_configVideoGeneral, "Fullscreen", config.video.fullscreen, "Use fullscreen mode if True, or windowed mode if False ");
-	assert(res == M64ERR_SUCCESS);
-	res = ConfigSetDefaultInt(g_configVideoGeneral, "ScreenWidth", config.video.windowedWidth, "Width of output window or fullscreen width");
-	assert(res == M64ERR_SUCCESS);
-	res = ConfigSetDefaultInt(g_configVideoGeneral, "ScreenHeight", config.video.windowedHeight, "Height of output window or fullscreen height");
-	assert(res == M64ERR_SUCCESS);
-	res = ConfigSetDefaultBool(g_configVideoGeneral, "VerticalSync", config.video.verticalSync, "If true, activate the SDL_GL_SWAP_CONTROL attribute");
-	assert(res == M64ERR_SUCCESS);
+   config.frameBufferEmulation.bufferSwapMode = 0; /* 0=On VI update call, 1=on VI origin change, 2 =On buffer update */
+#endif
 
-	res = ConfigSetDefaultInt(g_configVideoGliden64, "configVersion", CONFIG_VERSION_CURRENT, "Settings version. Don't touch it.");
-	assert(res == M64ERR_SUCCESS);
+   /* Texture Settings */
+	config.texture.bilinearMode = 1; /* Bilinear filtering mode (0=N64 3point, 1=standard) */
 
-	res = ConfigSetDefaultInt(g_configVideoGliden64, "MultiSampling", config.video.multisampling, "Enable/Disable MultiSampling (0=off, 2,4,8,16=quality)");
-	assert(res == M64ERR_SUCCESS);
+	/*#Emulation Settings */
+	config.generalEmulation.enableFog = 1; /* Enable fog emulation. */
+#if 0
 	res = ConfigSetDefaultInt(g_configVideoGliden64, "AspectRatio", config.frameBufferEmulation.aspect, "Screen aspect ratio (0=stretch, 1=force 4:3, 2=force 16:9, 3=adjust)");
-	assert(res == M64ERR_SUCCESS);
-	res = ConfigSetDefaultInt(g_configVideoGliden64, "BufferSwapMode", config.frameBufferEmulation.bufferSwapMode, "Swap frame buffers (0=On VI update call, 1=On VI origin change, 2=On buffer update)");
 	assert(res == M64ERR_SUCCESS);
 
 	//#Texture Settings
-	res = ConfigSetDefaultBool(g_configVideoGliden64, "bilinearMode", config.texture.bilinearMode, "Bilinear filtering mode (0=N64 3point, 1=standard)");
 	assert(res == M64ERR_SUCCESS);
 	res = ConfigSetDefaultBool(g_configVideoGliden64, "MaxAnisotropy", config.texture.maxAnisotropy, "Max level of Anisotropic Filtering, 0 for off");
 	assert(res == M64ERR_SUCCESS);
 	res = ConfigSetDefaultInt(g_configVideoGliden64, "CacheSize", config.texture.maxBytes / uMegabyte, "Size of texture cache in megabytes. Good value is VRAM*3/4");
 	assert(res == M64ERR_SUCCESS);
+
 	//#Emulation Settings
-	res = ConfigSetDefaultBool(g_configVideoGliden64, "EnableFog", config.generalEmulation.enableFog, "Enable fog emulation.");
 	assert(res == M64ERR_SUCCESS);
 	res = ConfigSetDefaultBool(g_configVideoGliden64, "EnableNoise", config.generalEmulation.enableNoise, "Enable color noise emulation.");
 	assert(res == M64ERR_SUCCESS);
@@ -66,6 +63,7 @@ bool Config_SetDefault()
 	res = ConfigSetDefaultFloat(g_configVideoGliden64, "PolygonOffsetUnits", config.generalEmulation.polygonOffsetUnits, "Is multiplied by an implementation-specific value to create a constant depth offset");
 	assert(res == M64ERR_SUCCESS);
 #endif
+
 	//#Frame Buffer Settings:"
 	res = ConfigSetDefaultBool(g_configVideoGliden64, "EnableFBEmulation", config.frameBufferEmulation.enable, "Enable frame and|or depth buffer emulation.");
 	assert(res == M64ERR_SUCCESS);
@@ -79,6 +77,7 @@ bool Config_SetDefault()
 	assert(res == M64ERR_SUCCESS);
 	res = ConfigSetDefaultBool(g_configVideoGliden64, "EnableN64DepthCompare", config.frameBufferEmulation.N64DepthCompare, "Enable N64 depth compare instead of OpenGL standard one. Experimental.");
 	assert(res == M64ERR_SUCCESS);
+
 	//#Texture filter settings
 	res = ConfigSetDefaultInt(g_configVideoGliden64, "txFilterMode", config.textureFilter.txFilterMode, "Texture filter (0=none, 1=Smooth filtering 1, 2=Smooth filtering 2, 3=Smooth filtering 3, 4=Smooth filtering 4, 5=Sharp filtering 1, 6=Sharp filtering 2)");
 	assert(res == M64ERR_SUCCESS);
@@ -102,6 +101,7 @@ bool Config_SetDefault()
 	assert(res == M64ERR_SUCCESS);
 	res = ConfigSetDefaultBool(g_configVideoGliden64, "txSaveCache", config.textureFilter.txSaveCache, "Save texture cache to hard disk.");
 	assert(res == M64ERR_SUCCESS);
+
 	// Convert to multibyte
 	char txPath[PLUGIN_PATH_SIZE * 2];
 	wcstombs(txPath, config.textureFilter.txPath, PLUGIN_PATH_SIZE * 2);
@@ -127,24 +127,7 @@ void Config_LoadConfig()
 		return;
 	}
 
-	config.video.fullscreen = 1;
-	config.video.windowedWidth = 640;
-	config.video.windowedHeight = 480;
-	config.video.verticalSync = false;
-
 #if 0
-	config.version = ConfigGetParamInt(g_configVideoGliden64, "configVersion");
-	if (config.version != CONFIG_VERSION_CURRENT) {
-		m64p_error res = ConfigDeleteSection("Video-GLideN64");
-		assert(res == M64ERR_SUCCESS);
-		ConfigSaveFile();
-		if (!Config_SetDefault()) {
-			config.generalEmulation.hacks = hacks;
-			return;
-		}
-	}
-
-
 #ifdef GL_MULTISAMPLING_SUPPORT
 	config.video.multisampling = ConfigGetParamInt(g_configVideoGliden64, "MultiSampling");
 #else
