@@ -321,7 +321,7 @@ endif
 
 ifeq ($(HAVE_GLIDE64),1)
 SOURCES_C += $(VIDEODIR_GLIDE)/Glide64/glide64_3dmath.c \
-            $(VIDEODIR_GLIDE)/Glide64/FBtoScreen.c \
+            $(VIDEODIR_GLIDE)/Glide64/Framebuffer_glide64.c \
             $(VIDEODIR_GLIDE)/Glide64/Glide64_Ini.c \
             $(VIDEODIR_GLIDE)/Glide64/glidemain.c \
             $(VIDEODIR_GLIDE)/Glide64/glide64_util.c \

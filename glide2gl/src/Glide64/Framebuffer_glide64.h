@@ -41,8 +41,8 @@
 // Created by Gonetz, 2007
 //
 //****************************************************************
-#ifndef FBtoSCREEN_H
-#define FBtoSCREEN_H
+#ifndef FRAMEBUFFER_GLIDE64_H
+#define FRAMEBUFFER_GLIDE64_H
 
 struct vertexi
 {

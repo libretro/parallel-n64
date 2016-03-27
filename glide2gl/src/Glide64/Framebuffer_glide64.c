@@ -45,7 +45,7 @@
 
 #include "Gfx_1.3.h"
 #include "GBI.h"
-#include "FBtoScreen.h"
+#include "Framebuffer_glide64.h"
 #include "TexCache.h"
 #include "../Glitch64/glide.h"
 #include "GlideExtensions.h"

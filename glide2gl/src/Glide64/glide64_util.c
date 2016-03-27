@@ -44,7 +44,7 @@
 #include "Combine.h"
 #include "3dmath.h"
 #include "TexCache.h"
-#include "FBtoScreen.h"
+#include "Framebuffer_glide64.h"
 #include "GBI.h"
 
 extern int dzdx;

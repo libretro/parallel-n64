@@ -42,7 +42,7 @@
 #include "Util.h"
 #include "Combine.h"
 #include "TexCache.h"
-#include "FBtoScreen.h"
+#include "Framebuffer_glide64.h"
 #include "CRC.h"
 #include "GBI.h"
 #include "Glide64_UCode.h"

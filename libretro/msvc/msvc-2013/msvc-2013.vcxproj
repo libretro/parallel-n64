@@ -555,7 +555,7 @@
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">CompileAsC</CompileAs>
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='GlideN64release|x64'">CompileAsC</CompileAs>
     </ClCompile>
-    <ClCompile Include="..\..\..\glide2gl\src\Glide64\FBtoScreen.c">
+    <ClCompile Include="..\..\..\glide2gl\src\Glide64\Framebuffer_glide64.c">
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">CompileAsC</CompileAs>
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='GlideN64debug|Win32'">CompileAsC</CompileAs>
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">CompileAsC</CompileAs>

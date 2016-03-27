@@ -43,7 +43,7 @@
 #include "Combine.h"
 #include "TexCache.h"
 #include "CRC.h"
-#include "FBtoScreen.h"
+#include "Framebuffer_glide64.h"
 #include "Glide64_Ini.h"
 #include "GlideExtensions.h"
 #include "api/libretro.h"
