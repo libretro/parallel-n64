@@ -35,7 +35,7 @@ bool Config_SetDefault()
 	config.generalEmulation.enableFog            = 1; /* Enable fog emulation. */
 	config.generalEmulation.enableNoise          = 1; /* Enable color noise emulation. */
 	config.generalEmulation.enableLOD            = 1; /* Enable LOD emulation. */
-	config.generalEmulation.enableHWLighting     = 1; /* Enable hardware per-pixel lighting. */
+	config.generalEmulation.enableHWLighting     = 0; /* Enable hardware per-pixel lighting. */
 
 	/* Frame Buffer Settings */
 	config.frameBufferEmulation.enable           = 0; /* Enable frame and|or depth buffer emulation. */
