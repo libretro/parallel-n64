@@ -686,8 +686,8 @@ static void ys_memrect(uint32_t w0, uint32_t w1)
   if (lr_y > g_gdp.__clip.yl)
     lr_y = g_gdp.__clip.yl;
 
-  off_x = ((rdp.cmd2 & 0xFFFF0000) >> 16) >> 5;
-  off_y = (rdp.cmd2 & 0x0000FFFF) >> 5;
+  off_x     = ((rdp.cmd2 & 0xFFFF0000) >> 16) >> 5;
+  off_y     = ((rdp.cmd2 & 0x0000FFFF) >> 5);
 
   width     = lr_x - ul_x;
   tex_width = g_gdp.tile[tile].line << 3;
@@ -706,15 +706,15 @@ static void pm_palette_mod(void)
 {
    int8_t i;
 
-   uint8_t envr = (uint8_t)(g_gdp.env_color.r * 0.0039215689f * 31.0f);
-   uint8_t envg = (uint8_t)(g_gdp.env_color.g * 0.0039215689f * 31.0f);
-   uint8_t envb = (uint8_t)(g_gdp.env_color.b * 0.0039215689f * 31.0f);
-   uint16_t env16 = (uint16_t)((envr<<11)|(envg<<6)|(envb<<1)|1);
-   uint16_t prmr = (uint8_t)(g_gdp.prim_color.r * 0.0039215689f * 31.0f);
-   uint16_t prmg = (uint8_t)(g_gdp.prim_color.g * 0.0039215689f * 31.0f);
-   uint16_t prmb = (uint8_t)(g_gdp.prim_color.b * 0.0039215689f * 31.0f);
+   uint8_t envr    = (uint8_t)(g_gdp.env_color.r * 0.0039215689f * 31.0f);
+   uint8_t envg    = (uint8_t)(g_gdp.env_color.g * 0.0039215689f * 31.0f);
+   uint8_t envb    = (uint8_t)(g_gdp.env_color.b * 0.0039215689f * 31.0f);
+   uint16_t env16  = (uint16_t)((envr<<11)|(envg<<6)|(envb<<1)|1);
+   uint16_t prmr   = (uint8_t)(g_gdp.prim_color.r * 0.0039215689f * 31.0f);
+   uint16_t prmg   = (uint8_t)(g_gdp.prim_color.g * 0.0039215689f * 31.0f);
+   uint16_t prmb   = (uint8_t)(g_gdp.prim_color.b * 0.0039215689f * 31.0f);
    uint16_t prim16 = (uint16_t)((prmr << 11)|(prmg << 6)|(prmb << 1)|1);
-   uint16_t *dst = (uint16_t*)(gfx_info.RDRAM+rdp.cimg);
+   uint16_t *dst   = (uint16_t*)(gfx_info.RDRAM+rdp.cimg);
 
    for (i = 0; i < 16; i++)
       dst[i^1] = (rdp.pal_8[i]&1) ? prim16 : env16;
