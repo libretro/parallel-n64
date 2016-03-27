@@ -3,6 +3,8 @@
 
 #include <stdint.h>
 
+#include "N64.h"
+
 typedef struct
 {
 	uint32_t PC[18], PCi, busy, halt, close, uc_start, uc_dstart, cmd, nextCmd;
