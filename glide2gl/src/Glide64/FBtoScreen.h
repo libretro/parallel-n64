@@ -63,5 +63,6 @@ void DrawDepthBufferToScreen(FB_TO_SCREEN_INFO *fb_info);
 void copyWhiteToRDRAM(void);
 
 void DrawWholeFrameBufferToScreen(void);
+void CopyFrameBuffer (int32_t buffer);
 
 #endif  // #ifndef FBtoSCREEN_H

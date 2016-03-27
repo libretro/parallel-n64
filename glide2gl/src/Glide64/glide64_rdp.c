@@ -49,38 +49,7 @@
 #include "GlideExtensions.h"
 #include "../../libretro/libretro_private.h"
 
-#ifdef __LIBRETRO__ // Prefix API
-#define VIDEO_TAG(X) glide64##X
-
-#define ReadScreen2 VIDEO_TAG(ReadScreen2)
-#define PluginStartup VIDEO_TAG(PluginStartup)
-#define PluginShutdown VIDEO_TAG(PluginShutdown)
-#define PluginGetVersion VIDEO_TAG(PluginGetVersion)
-#define CaptureScreen VIDEO_TAG(CaptureScreen)
-#define ChangeWindow VIDEO_TAG(ChangeWindow)
-#define CloseDLL VIDEO_TAG(CloseDLL)
-#define DllTest VIDEO_TAG(DllTest)
-#define DrawScreen VIDEO_TAG(DrawScreen)
-#define GetDllInfo VIDEO_TAG(GetDllInfo)
-#define InitiateGFX VIDEO_TAG(InitiateGFX)
-#define MoveScreen VIDEO_TAG(MoveScreen)
-#define RomClosed VIDEO_TAG(RomClosed)
-#define RomOpen VIDEO_TAG(RomOpen)
-#define ShowCFB VIDEO_TAG(ShowCFB)
-#define SetRenderingCallback VIDEO_TAG(SetRenderingCallback)
-#define UpdateScreen VIDEO_TAG(UpdateScreen)
-#define ViStatusChanged VIDEO_TAG(ViStatusChanged)
-#define ViWidthChanged VIDEO_TAG(ViWidthChanged)
-#define ReadScreen VIDEO_TAG(ReadScreen)
-#define FBGetFrameBufferInfo VIDEO_TAG(FBGetFrameBufferInfo)
-#define FBRead VIDEO_TAG(FBRead)
-#define FBWrite VIDEO_TAG(FBWrite)
-#define ProcessDList VIDEO_TAG(ProcessDList)
-#define ProcessRDPList VIDEO_TAG(ProcessRDPList)
-#define ResizeVideoOutput VIDEO_TAG(ResizeVideoOutput)
-#endif
-
-//angrylion's macro, helps to cut overflowed values.
+/* angrylion's macro, helps to cut overflowed values. */
 #define SIGN16(x) (int16_t)(x)
 
 #ifdef __GNUC__
@@ -182,10 +151,9 @@ uint8_t microcode[4096];
 uint32_t uc_crc;
 
 //forward decls
-static void CopyFrameBuffer (int32_t buffer);
 static void apply_shading(VERTEX *vptr);
 
-// ** UCODE FUNCTIONS **
+/* ** UCODE FUNCTIONS ** */
 #include "ucode.h"
 #include "glide64_gDP.h"
 #include "glide64_gSP.h"
@@ -313,164 +281,6 @@ static void DrawPartFrameBufferToScreen(void)
    memset(gfx_info.RDRAM+rdp.cimg, 0, (rdp.ci_width*rdp.ci_height) << g_gdp.fb_size >> 1);
 }
 
-union RGBA {
-   struct {
-      uint8_t r, g, b, a;
-   };
-   uint32_t raw;
-};
-
-static INLINE uint32_t RGBA16toRGBA32(uint32_t _c)
-{
-   union RGBA c;
-   c.raw = _c;
-   return (c.r << 24) | (c.g << 16) | (c.b << 8) | c.a;
-}
-
-/* defined in glitchmain.c */
-extern uint16_t *frameBuffer;
-
-static void CopyFrameBuffer(int32_t buffer)
-{
-   // don't bother to write the stuff in asm... the slow part is the read from video card,
-   //   not the copy.
-
-   uint32_t height = rdp.ci_lower_bound;
-   uint32_t width  = rdp.ci_width;//*gfx_info.VI_WIDTH_REG;
-
-   if (fb_emulation_enabled)
-   {
-      int ind = (rdp.ci_count > 0) ? (rdp.ci_count-1) : 0;
-      height = rdp.frame_buffers[ind].height;
-   }
-
-   if (rdp.scale_x < 1.1f)
-   {
-      uint16_t * ptr_src = (uint16_t*)frameBuffer;
-      if (grLfbReadRegion(buffer,
-               (uint32_t)rdp.offset_x,
-               (uint32_t)rdp.offset_y,//rdp.ci_upper_bound,
-               width,
-               height,
-               width<<1,
-               ptr_src))
-      {
-         uint32_t y, x;
-
-         if (g_gdp.fb_size == G_IM_SIZ_16b)
-         {
-            uint16_t *ptr_dst   = (uint16_t*)(gfx_info.RDRAM + rdp.cimg);
-            for (y = 0; y < height; y++)
-            {
-               for (x = 0; x < width; x++)
-               {
-                  uint16_t c = ptr_src[x + y * width];
-                  if ((settings.frame_buffer & fb_read_alpha) && c <= 0) {}
-                  else
-                     c = (c&0xFFC0) | ((c&0x001F) << 1) | 1;
-                  ptr_dst[(x + y * width)^1] = c;
-               }
-            }
-         }
-         else
-         {
-            uint32_t *ptr_dst = (uint32_t*)(gfx_info.RDRAM+rdp.cimg);
-            for (y = 0; y < height; y++)
-            {
-               for (x = 0; x < width; x++)
-               {
-                  uint16_t c = ptr_src[x + y * width];
-                  if ((settings.frame_buffer & fb_read_alpha) && c <= 0) {}
-                  else
-                     c = (c&0xFFC0) | ((c&0x001F) << 1) | 1;
-                  ptr_dst[x + y * width]   = RGBA16toRGBA32(c);
-               }
-            }
-         }
-      }
-   }
-   else
-   {
-      GrLfbInfo_t info;
-      float scale_x = (settings.scr_res_x - rdp.offset_x*2.0f)  / MAX(width, rdp.vi_width);
-      float scale_y = (settings.scr_res_y - rdp.offset_y*2.0f) / MAX(height, rdp.vi_height);
-
-      FRDP("width: %d, height: %d, ul_y: %d, lr_y: %d, scale_x: %f, scale_y: %f, ci_width: %d, ci_height: %d\n",width, height, rdp.ci_upper_bound, rdp.ci_lower_bound, scale_x, scale_y, rdp.ci_width, rdp.ci_height);
-      info.size = sizeof(GrLfbInfo_t);
-
-      if (grLfbLock (GR_LFB_READ_ONLY,
-               buffer,
-               GR_LFBWRITEMODE_565,
-               GR_ORIGIN_UPPER_LEFT,
-               FXFALSE,
-               &info))
-      {
-         int        x_start  = 0;
-         int        y_start  = 0;
-         int         x_end   = width;
-         int         y_end   = height;
-         uint32_t stride     = info.strideInBytes>>1;
-         int read_alpha      = settings.frame_buffer & fb_read_alpha;
-
-         if ((settings.hacks&hack_PMario) && rdp.ci_count > 0 && rdp.frame_buffers[rdp.ci_count-1].status != CI_AUX)
-            read_alpha = false;
-
-         if (settings.hacks&hack_BAR)
-         {
-            x_start = 80;
-            y_start = 24;
-            x_end   = 240;
-            y_end   = 86;
-         }
-
-         if (g_gdp.fb_size <= G_IM_SIZ_16b)
-         {
-            int y, x;
-            uint16_t *ptr_src   = (uint16_t*)info.lfbPtr;
-            uint16_t *ptr_dst   = (uint16_t*)(gfx_info.RDRAM+rdp.cimg);
-
-            for (y = y_start; y < y_end; y++)
-            {
-               for (x = x_start; x < x_end; x++)
-               {
-                  uint16_t c = ptr_src[(int)(x*scale_x + rdp.offset_x) + (int)(y * scale_y + rdp.offset_y) * stride];
-                  c = (c&0xFFC0) | ((c&0x001F) << 1) | 1;
-                  if (read_alpha && c == 1)
-                     c = 0;
-                  ptr_dst[(x + y * width)^1] = c;
-               }
-            }
-         }
-         else
-         {
-            int y, x;
-            uint16_t *ptr_src   = (uint16_t*)info.lfbPtr;
-            uint32_t *ptr_dst = (uint32_t*)(gfx_info.RDRAM+rdp.cimg);
-
-            for (y = y_start; y < y_end; y++)
-            {
-               for (x = x_start; x < x_end; x++)
-               {
-                  uint16_t c = ptr_src[(int)(x*scale_x + rdp.offset_x) + (int)(y * scale_y + rdp.offset_y) * stride];
-                  c = (c&0xFFC0) | ((c&0x001F) << 1) | 1;
-                  if (read_alpha && c == 1)
-                     c = 0;
-                  ptr_dst[x + y * width] = RGBA16toRGBA32(c);
-               }
-            }
-         }
-
-         // Unlock the backbuffer
-         grLfbUnlock (GR_LFB_READ_ONLY, buffer);
-         LRDP("LfbLock.  Framebuffer copy complete.\n");
-      }
-      else
-      {
-         LRDP("Framebuffer copy failed.\n");
-      }
-   }
-}
-
 /******************************************************************
 Function: ProcessDList
 Purpose:  This function is called when there is a Dlist to be
@@ -494,7 +304,7 @@ int depth_buffer_fog;
 
 extern bool frame_dupe;
 
-EXPORT void CALL ProcessDList(void)
+void glide64ProcessDList(void)
 {
   uint32_t dlist_start, dlist_length, a;
 
@@ -1853,7 +1663,7 @@ size            1 = uint8_t, 2 = uint16_t, 4 = uint32_t
 output:   none
 *******************************************************************/
 
-EXPORT void CALL FBRead(uint32_t addr)
+void glide64FBRead(uint32_t addr)
 {
   uint32_t a;
   if (cpu_fb_ignore)
@@ -1913,7 +1723,7 @@ val                     val
 size            1 = uint8_t, 2 = uint16_t, 4 = uint32_t
 output:   none
 *******************************************************************/
-EXPORT void CALL FBWrite(uint32_t addr, uint32_t size)
+void glide64FBWrite(uint32_t addr, uint32_t size)
 {
   uint32_t a, shift_l, shift_r;
 
@@ -1945,7 +1755,7 @@ EXPORT void CALL FBWrite(uint32_t addr, uint32_t size)
 
 
 /************************************************************************
-Function: FBGetFrameBufferInfo
+Function: glide64FBGetFrameBufferInfo
 Purpose:  This function is called by the emulator core to retrieve frame
 buffer information from the video plugin in order to be able
 to notify the video plugin about CPU frame buffer read/write
@@ -1966,7 +1776,7 @@ output:   Values are return in the FrameBufferInfo structure
 Plugin can return up to 6 frame buffer info
 ************************************************************************/
 ///*
-EXPORT void CALL FBGetFrameBufferInfo(void *p)
+void glide64FBGetFrameBufferInfo(void *p)
 {
    int i;
    FrameBufferInfo * pinfo = (FrameBufferInfo *)p;
@@ -2756,7 +2566,7 @@ processed. (Low level GFX list)
 input:    none
 output:   none
 *******************************************************************/
-EXPORT void CALL ProcessRDPList(void)
+void glide64ProcessRDPList(void)
 {
    int32_t i;
    uint32_t length;
