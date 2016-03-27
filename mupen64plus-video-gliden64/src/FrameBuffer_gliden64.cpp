@@ -26,13 +26,20 @@ class FrameBufferToRDRAM
 {
 public:
 	FrameBufferToRDRAM() :
-		m_FBO(0), m_pTexture(NULL), m_curIndex(0)
+		m_FBO(0),
+      m_pTexture(NULL),
+      m_pCurFrameBuffer(NULL),
+      m_curIndex(-1),
+      m_frameCount(0)
 	{
 		m_PBO[0] = m_PBO[1] = m_PBO[2] = 0;
 	}
 
 	void Init();
 	void Destroy();
+
+   void copyToRDRAM(uint32_t _address, bool _sync);
+	void copyChunkToRDRAM(uint32_t _address);
 
 	void CopyToRDRAM(uint32_t _address, bool _sync);
 
@@ -44,9 +51,19 @@ private:
 		uint32_t raw;
 	};
 
+   bool _prepareCopy(uint32_t _address);
+	void _copy(uint32_t _startAddress, uint32_t _endAddress, bool _sync);
+
+	// Convert pixel from video memory to N64 buffer format.
+	static uint8_t _RGBAtoR8(uint8_t _c);
+	static uint16_t _RGBAtoRGBA16(uint32_t _c);
+	static uint32_t _RGBAtoRGBA32(uint32_t _c);
+
 	GLuint m_FBO;
 	CachedTexture * m_pTexture;
+   FrameBuffer * m_pCurFrameBuffer;
 	uint32_t m_curIndex;
+   uint32_t m_frameCount;
 	GLuint m_PBO[3];
 };
 
@@ -54,19 +71,33 @@ class DepthBufferToRDRAM
 {
 public:
 	DepthBufferToRDRAM() :
-		m_FBO(0), m_PBO(0), m_pColorTexture(NULL), m_pDepthTexture(NULL)
+		m_FBO(0),
+      m_PBO(0),
+      m_frameCount(-1),
+      m_pColorTexture(NULL),
+      m_pDepthTexture(NULL),
+      m_pCurDepthBuffer(NULL)
 	{}
 
 	void Init();
 	void Destroy();
 
-	bool CopyToRDRAM( uint32_t address );
+   bool copyToRDRAM(uint32_t _address);
+	bool copyChunkToRDRAM(uint32_t _address);
 
 private:
+   bool _prepareCopy(uint32_t _address);
+	bool _copy(uint32_t _startAddress, uint32_t _endAddress);
+
+	// Convert pixel from video memory to N64 depth buffer format.
+	static uint16_t _FloatToUInt16(float _z);
+
 	GLuint m_FBO;
 	GLuint m_PBO;
+   uint32_t m_frameCount;
 	CachedTexture * m_pColorTexture;
 	CachedTexture * m_pDepthTexture;
+   DepthBuffer * m_pCurDepthBuffer;
 };
 #endif // HAVE_OPENGLES2
 
@@ -996,39 +1027,41 @@ void FrameBufferToRDRAM::Destroy() {
 	m_PBO[0] = m_PBO[1] = m_PBO[2] = 0;
 }
 
-void FrameBufferToRDRAM::CopyToRDRAM(uint32_t _address, bool _sync)
+bool FrameBufferToRDRAM::_prepareCopy(uint32_t _address)
 {
 	if (VI.width == 0 || frameBufferList().getCurrent() == NULL)
-		return;
+		return false;
 
-	FrameBuffer *pBuffer = frameBufferList().findBuffer(_address);
-	if (pBuffer == NULL || pBuffer->m_isOBScreen)
-		return;
+	m_pCurFrameBuffer = frameBufferList().findBuffer(_address);
+	if (m_pCurFrameBuffer == NULL || m_pCurFrameBuffer->m_isOBScreen)
+		return false;
 
-	const uint32_t numPixels = pBuffer->m_width * pBuffer->m_height;
+	const uint32_t numPixels = m_pCurFrameBuffer->m_width * m_pCurFrameBuffer->m_height;
 	if (numPixels == 0)
-		return;
+		return false;
 
-	const uint32_t stride = pBuffer->m_width << pBuffer->m_size >> 1;
-	const uint32_t height = _cutHeight(_address, pBuffer->m_height, stride);
+	const uint32_t stride = m_pCurFrameBuffer->m_width << m_pCurFrameBuffer->m_size >> 1;
+	const uint32_t height = _cutHeight(_address, m_pCurFrameBuffer->m_height, stride);
 	if (height == 0)
-		return;
+		return false;
 
-	if ((config.generalEmulation.hacks & hack_subscreen) != 0 && pBuffer->m_width == VI.width && pBuffer->m_height == VI.height) {
-		copyWhiteToRDRAM(pBuffer);
-		return;
+	if ((config.generalEmulation.hacks & hack_subscreen) != 0 && m_pCurFrameBuffer->m_width == VI.width && m_pCurFrameBuffer->m_height == VI.height) {
+		copyWhiteToRDRAM(m_pCurFrameBuffer);
+		return false;
 	}
 
-	_address = pBuffer->m_startAddress;
-	if (config.video.multisampling != 0) {
-		pBuffer->resolveMultisampledTexture();
-		glBindFramebuffer(GL_READ_FRAMEBUFFER, pBuffer->m_resolveFBO);
+	_address = m_pCurFrameBuffer->m_startAddress;
+	if (config.video.multisampling != 0)
+   {
+		m_pCurFrameBuffer->resolveMultisampledTexture();
+		glBindFramebuffer(GL_READ_FRAMEBUFFER, m_pCurFrameBuffer->m_resolveFBO);
 	} else
-		glBindFramebuffer(GL_READ_FRAMEBUFFER, pBuffer->m_FBO);
+		glBindFramebuffer(GL_READ_FRAMEBUFFER, m_pCurFrameBuffer->m_FBO);
 
-	if (pBuffer->m_scaleX > 1.0f) {
+	if (m_pCurFrameBuffer->m_scaleX > 1.0f)
+   {
 		glBindFramebuffer(GL_DRAW_FRAMEBUFFER, m_FBO);
-		glScissor(0, 0, pBuffer->m_pTexture->realWidth, pBuffer->m_pTexture->realHeight);
+		glScissor(0, 0, m_pCurFrameBuffer->m_pTexture->realWidth, m_pCurFrameBuffer->m_pTexture->realHeight);
 		glBlitFramebuffer(
 			0, 0, video().getWidth(), video().getHeight(),
 			0, 0, VI.width, VI.height,
@@ -1037,6 +1070,98 @@ void FrameBufferToRDRAM::CopyToRDRAM(uint32_t _address, bool _sync)
 		glBindFramebuffer(GL_DRAW_FRAMEBUFFER, frameBufferList().getCurrent()->m_FBO);
 		glBindFramebuffer(GL_READ_FRAMEBUFFER, m_FBO);
 	}
+
+   return true;
+}
+
+template <typename TSrc, typename TDst>
+void _writeToRdram(TSrc* _src, TDst* _dst, TDst(*converter)(TSrc _c), TSrc _testValue, uint32_t _xor, uint32_t _width,
+      uint32_t _height, uint32_t _numPixels, uint32_t _startAddress, uint32_t _bufferAddress, uint32_t _bufferSize)
+{
+   uint32_t chunkStart = ((_startAddress - _bufferAddress) >> (_bufferSize - 1)) % _width;
+   if (chunkStart % 2 != 0)
+   {
+      --chunkStart;
+      --_dst;
+   }
+
+   uint32_t numStored = 0;
+   uint32_t y = 0;
+   TSrc c;
+   if (chunkStart > 0)
+   {
+      for (uint32_t x = chunkStart; x < _width; ++x)
+      {
+         c = _src[x + (_height - 1)*_width];
+         if (c != _testValue)
+            _dst[x ^ _xor] = converter(c);
+         ++numStored;
+      }
+      ++y;
+      _dst += numStored;
+   }
+
+   uint32_t dsty = 0;
+   for (; y < _height; ++y) {
+      for (uint32_t x = 0; x < _width && numStored < _numPixels; ++x)
+      {
+         c = _src[x + (_height - y - 1)*_width];
+         if (c != _testValue)
+            _dst[(x + dsty*_width) ^ _xor] = converter(c);
+         ++numStored;
+      }
+      ++dsty;
+   }
+}
+
+uint8_t FrameBufferToRDRAM::_RGBAtoR8(uint8_t _c)
+{
+   return _c;
+}
+
+uint16_t FrameBufferToRDRAM::_RGBAtoRGBA16(uint32_t _c)
+{
+   RGBA c;
+   c.raw = _c;
+   return ((c.r >> 3) << 11) | ((c.g >> 3) << 6) | ((c.b >> 3) << 1) | (c.a == 0 ? 0 : 1);
+}
+
+uint32_t FrameBufferToRDRAM::_RGBAtoRGBA32(uint32_t _c)
+{
+   RGBA c;
+   c.raw = _c;
+   return (c.r << 24) | (c.g << 16) | (c.b << 8) | c.a;
+}
+
+void FrameBufferToRDRAM::_copy(uint32_t _startAddress, uint32_t _endAddress, bool _sync)
+{ 
+   const uint32_t stride = m_pCurFrameBuffer->m_width << m_pCurFrameBuffer->m_size >> 1;
+	const uint32_t max_height = _cutHeight(_startAddress, m_pCurFrameBuffer->m_height, stride);
+
+	uint32_t numPixels = (_endAddress - _startAddress) >> (m_pCurFrameBuffer->m_size - 1);
+	if (numPixels / m_pCurFrameBuffer->m_width > max_height) {
+		_endAddress = _startAddress + (max_height * stride);
+		numPixels = (_endAddress - _startAddress) >> (m_pCurFrameBuffer->m_size - 1);
+	}
+
+	const GLsizei width = m_pCurFrameBuffer->m_width;
+	const GLsizei height = numPixels / width + ((numPixels % width) > 0 ? 1 : 0);
+	const GLint x0 = 0;
+	const GLint y0 = max_height - (_startAddress - m_pCurFrameBuffer->m_startAddress) / width - height;
+
+	GLenum colorFormat, colorType, colorFormatBytes;
+	if (m_pCurFrameBuffer->m_size > G_IM_SIZ_8b) {
+		colorFormat = fboFormats.colorFormat;
+		colorType = fboFormats.colorType;
+		colorFormatBytes = fboFormats.colorFormatBytes;
+	}
+	else
+   {
+		colorFormat = fboFormats.monochromeFormat;
+		colorType = fboFormats.monochromeType;
+		colorFormatBytes = fboFormats.monochromeFormatBytes;
+	}
+
 #ifndef HAVE_OPENGLES2
 	// If Sync, read pixels from the buffer, copy them to RDRAM.
 	// If not Sync, read pixels from the buffer, copy pixels from the previous buffer to RDRAM.
@@ -1044,51 +1169,46 @@ void FrameBufferToRDRAM::CopyToRDRAM(uint32_t _address, bool _sync)
 		m_curIndex ^= 1;
 		const uint32_t nextIndex = m_curIndex^1;
 		glBindBuffer(GL_PIXEL_PACK_BUFFER, m_PBO[m_curIndex]);
-		glReadPixels(0, 0, pBuffer->m_width, pBuffer->m_height, GL_RGBA, GL_UNSIGNED_BYTE, 0);
+		glReadPixels(x0, y0, width, height, colorFormat, colorType, 0);
 		glBindBuffer(GL_PIXEL_PACK_BUFFER, m_PBO[nextIndex]);
 	} else {
 		glBindBuffer(GL_PIXEL_PACK_BUFFER, m_PBO[2]);
-		glReadPixels(0, 0, pBuffer->m_width, pBuffer->m_height, GL_RGBA, GL_UNSIGNED_BYTE, 0);
+		glReadPixels(x0, y0, width, height, colorFormat, colorType, 0);
 	}
 
-	GLubyte* pixelData = (GLubyte*)glMapBufferRange(GL_PIXEL_PACK_BUFFER, 0, numPixels * 4, GL_MAP_READ_BIT);
+	GLubyte* pixelData = (GLubyte*)glMapBufferRange(GL_PIXEL_PACK_BUFFER, 0, width * height * colorFormatBytes, GL_MAP_READ_BIT);
 	if (pixelData == NULL)
 		return;
 #else
-	GLubyte* pixelData = (GLubyte* )malloc(numPixels * 4);
+	GLubyte* pixelData = (GLubyte* )malloc(width * height * colorFormatBytes);
 	if (pixelData == NULL)
 		return;
-	glReadPixels(0, 0, VI.width, VI.height, GL_RGBA, GL_UNSIGNED_BYTE, pixelData);
+	glReadPixels(x0, y0, width, height, colorFormat, colorType, pixelData);
 #endif // HAVE_OPENGLES2
 
-	if (pBuffer->m_size == G_IM_SIZ_32b) {
-		uint32_t *ptr_dst = (uint32_t*)(RDRAM + _address);
+	if (m_pCurFrameBuffer->m_size == G_IM_SIZ_32b)
+   {
 		uint32_t *ptr_src = (uint32_t*)pixelData;
+		uint32_t *ptr_dst = (uint32_t*)(RDRAM + _startAddress);
 		RGBA c;
-
-		for (uint32_t y = 0; y < height; ++y) {
-			for (uint32_t x = 0; x < pBuffer->m_width; ++x) {
-				c.raw = ptr_src[x + (height - y - 1)*pBuffer->m_width];
-				if (c.raw != 0)
-					ptr_dst[(x + y*pBuffer->m_width)] = (c.r << 24) | (c.g << 16) | (c.b << 8) | c.a;
-			}
-		}
-	} else if (pBuffer->m_size == G_IM_SIZ_16b) {
-		uint16_t *ptr_dst = (uint16_t*)(RDRAM + _address);
-		uint32_t * ptr_src = (uint32_t*)pixelData;
-		RGBA c;
-
-		for (uint32_t y = 0; y < height; ++y) {
-			for (uint32_t x = 0; x < pBuffer->m_width; ++x) {
-				c.raw = ptr_src[x + (height - y - 1)*pBuffer->m_width];
-				if (c.raw != 0)
-					ptr_dst[(x + y*pBuffer->m_width) ^ 1] = ((c.r >> 3) << 11) | ((c.g >> 3) << 6) | ((c.b >> 3) << 1) | (c.a == 0 ? 0 : 1);
-			}
-		}
+      _writeToRdram<uint32_t, uint32_t>(ptr_src, ptr_dst, &FrameBufferToRDRAM::_RGBAtoRGBA32, 0, 0, width, height, numPixels, _startAddress, m_pCurFrameBuffer->m_startAddress, m_pCurFrameBuffer->m_size);
 	}
-	pBuffer->m_copiedToRdram = true;
-	pBuffer->copyRdram();
-	pBuffer->m_cleared = false;
+   else if (m_pCurFrameBuffer->m_size == G_IM_SIZ_16b)
+   {
+		uint32_t * ptr_src = (uint32_t*)pixelData;
+		uint16_t * ptr_dst = (uint16_t*)(RDRAM + _startAddress);
+      _writeToRdram<uint32_t, uint16_t>(ptr_src, ptr_dst, &FrameBufferToRDRAM::_RGBAtoRGBA16, 0, 1, width, height, numPixels, _startAddress, m_pCurFrameBuffer->m_startAddress, m_pCurFrameBuffer->m_size);
+	}
+   else if (m_pCurFrameBuffer->m_size == G_IM_SIZ_8b)
+   {
+      uint8_t *ptr_src = (uint8_t*)pixelData;
+      uint8_t *ptr_dst = RDRAM + _startAddress;
+      _writeToRdram<uint8_t, uint8_t>(ptr_src, ptr_dst, &FrameBufferToRDRAM::_RGBAtoR8, 0, 3, width, height, numPixels, _startAddress, m_pCurFrameBuffer->m_startAddress, m_pCurFrameBuffer->m_size);
+   }
+
+	m_pCurFrameBuffer->m_copiedToRdram = true;
+	m_pCurFrameBuffer->copyRdram();
+	m_pCurFrameBuffer->m_cleared = false;
 #ifndef HAVE_OPENGLES2
 	glUnmapBuffer(GL_PIXEL_PACK_BUFFER);
 	glBindBuffer(GL_PIXEL_PACK_BUFFER, 0);
@@ -1098,12 +1218,26 @@ void FrameBufferToRDRAM::CopyToRDRAM(uint32_t _address, bool _sync)
 	glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
 	gDP.changed |= CHANGED_SCISSOR;
 }
+
+void FrameBufferToRDRAM::copyToRDRAM(uint32_t _address, bool _sync)
+{
+	if (!_prepareCopy(_address))
+		return;
+	_copy(m_pCurFrameBuffer->m_startAddress, m_pCurFrameBuffer->m_endAddress, _sync);
+}
+
+void FrameBufferToRDRAM::copyChunkToRDRAM(uint32_t _address)
+{
+	if (!_prepareCopy(_address))
+		return;
+	_copy(_address, _address + 0x1000, true);
+}
 #endif // HAVE_OPENGLES2
 
 void FrameBuffer_CopyToRDRAM(uint32_t _address, bool _sync)
 {
 #ifndef HAVE_OPENGLES2
-	g_fbToRDRAM.CopyToRDRAM(_address, _sync);
+	g_fbToRDRAM.copyToRDRAM(_address, _sync);
 #else
 	if ((config.generalEmulation.hacks & hack_subscreen) == 0)
 		return;
@@ -1113,6 +1247,13 @@ void FrameBuffer_CopyToRDRAM(uint32_t _address, bool _sync)
 	if (pBuffer == NULL || pBuffer->m_width < VI.width || pBuffer->m_isOBScreen)
 		return;
 	copyWhiteToRDRAM(pBuffer);
+#endif
+}
+
+void FrameBuffer_CopyChunkToRDRAM(uint32_t _address)
+{
+#ifndef HAVE_OPENGLES2
+   g_fbToRDRAM.copyChunkToRDRAM(_address);
 #endif
 }
 
@@ -1196,7 +1337,12 @@ void DepthBufferToRDRAM::Destroy() {
 	}
 }
 
-bool DepthBufferToRDRAM::CopyToRDRAM( uint32_t _address) {
+bool DepthBufferToRDRAM::_prepareCopy( uint32_t _address)
+{
+   const uint32_t curFrame = video().getBuffersSwapCount();
+   if (m_frameCount == curFrame)
+      return true;
+
 	const uint32_t numPixels = VI.width * VI.height;
 	if (numPixels == 0) // Incorrect buffer size. Don't copy
 		return false;
@@ -1204,19 +1350,19 @@ bool DepthBufferToRDRAM::CopyToRDRAM( uint32_t _address) {
 	if (pBuffer == NULL || pBuffer->m_width < VI.width || pBuffer->m_pDepthBuffer == NULL || !pBuffer->m_pDepthBuffer->m_cleared)
 		return false;
 
-	DepthBuffer * pDepthBuffer = pBuffer->m_pDepthBuffer;
-	const uint32_t address = pDepthBuffer->m_address;
+	m_pCurDepthBuffer = pBuffer->m_pDepthBuffer;
+	const uint32_t address = m_pCurDepthBuffer->m_address;
 	if (address + numPixels * 2 > RDRAMSize)
 		return false;
 
-	const uint32_t height = _cutHeight(address, min(VI.height, pDepthBuffer->m_lry), pBuffer->m_width * 2);
+	const uint32_t height = _cutHeight(address, min(VI.height, m_pCurDepthBuffer->m_lry), pBuffer->m_width * 2);
 	if (height == 0)
 		return false;
 
 	if (config.video.multisampling == 0)
 		glBindFramebuffer(GL_READ_FRAMEBUFFER, pBuffer->m_FBO);
 	else {
-		pDepthBuffer->resolveDepthBufferTexture(pBuffer);
+		m_pCurDepthBuffer->resolveDepthBufferTexture(pBuffer);
 		glBindFramebuffer(GL_READ_FRAMEBUFFER, pBuffer->m_resolveFBO);
 	}
 	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, m_FBO);
@@ -1227,33 +1373,54 @@ bool DepthBufferToRDRAM::CopyToRDRAM( uint32_t _address) {
 		GL_DEPTH_BUFFER_BIT, GL_NEAREST
 	);
 	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, frameBufferList().getCurrent()->m_FBO);
+   m_frameCount = curFrame;
+   return true;
+}
+
+uint16_t DepthBufferToRDRAM::_FloatToUInt16(float _z)
+{
+   static const uint16_t * const zLUT = depthBufferList().getZLUT();
+   uint32_t idx = 0x3FFFF;
+   if (_z < 1.0f)
+   {
+      _z *= 262144.0f;
+		idx = min(0x3FFFFU, (uint32_t)(floorf(_z + 0.5f)));
+   }
+
+   return zLUT[idx];
+}
+
+bool DepthBufferToRDRAM::_copy(uint32_t _startAddress, uint32_t _endAddress)
+{
+   const uint32_t stride     = m_pCurDepthBuffer->m_width << 1;
+   const uint32_t max_height =  _cutHeight(_startAddress, min(VI.height, m_pCurDepthBuffer->m_lry), stride);
+
+   uint32_t numPixels        = (_endAddress - _startAddress) >> 1;
+   if (numPixels / m_pCurDepthBuffer->m_width > max_height)
+   {
+		_endAddress = _startAddress + (max_height * stride);
+		numPixels = (_endAddress - _startAddress) >> 1;
+	}
+
+   const GLsizei width = m_pCurDepthBuffer->m_width;
+	const GLsizei height = numPixels / width + ((numPixels % width) > 0 ? 1 : 0);
+	const GLint x0 = 0;
+	const GLint y0 = max_height - (_startAddress - m_pCurDepthBuffer->m_address) / stride - height;
 
 	PBOBinder binder(GL_PIXEL_PACK_BUFFER, m_PBO);
 	glBindFramebuffer(GL_READ_FRAMEBUFFER, m_FBO);
-	glReadPixels(0, 0, VI.width, VI.height, GL_DEPTH_COMPONENT, GL_FLOAT, 0);
+	glReadPixels(x0, y0, width, height, fboFormats.depthFormat, fboFormats.depthType, 0);
 
-	GLubyte* pixelData = (GLubyte*)glMapBufferRange(GL_PIXEL_PACK_BUFFER, 0, numPixels * 4, GL_MAP_READ_BIT);
+	GLubyte* pixelData = (GLubyte*)glMapBufferRange(GL_PIXEL_PACK_BUFFER, 0, width * height * fboFormats.depthFormatBytes, GL_MAP_READ_BIT);
 	if(pixelData == NULL)
 		return false;
 
-	float * ptr_src = (float*)pixelData;
-	uint16_t *ptr_dst = (uint16_t*)(RDRAM + address);
-	const uint16_t * const zLUT = depthBufferList().getZLUT();
+	float    * ptr_src = (float*)pixelData;
+	uint16_t *ptr_dst  = (uint16_t*)(RDRAM + _startAddress);
+   _writeToRdram<float, uint16_t>(ptr_src, ptr_dst, &DepthBufferToRDRAM::_FloatToUInt16, 2.0f, 1, width, height, numPixels, _startAddress, m_pCurDepthBuffer->m_address, G_IM_SIZ_16b);
 
-	for (uint32_t y = pDepthBuffer->m_uly; y < height; ++y) {
-		for (uint32_t x = 0; x < VI.width; ++x) {
-			float z = ptr_src[x + (height - y - 1)*VI.width];
-			uint32_t idx = 0x3FFFF;
-			if (z < 1.0f) {
-				z *= 262144.0f;
-				idx = min(0x3FFFFU, uint32_t(floorf(z + 0.5f)));
-			}
-			ptr_dst[(x + y*VI.width) ^ 1] = zLUT[idx];
-		}
-	}
-
-	pDepthBuffer->m_cleared = false;
-	pBuffer = frameBufferList().findBuffer(pDepthBuffer->m_address);
+	m_pCurDepthBuffer->m_cleared = false;
+	FrameBuffer *pBuffer = frameBufferList().findBuffer(m_pCurDepthBuffer->m_address);
 	if (pBuffer != NULL)
 		pBuffer->m_cleared = false;
 
@@ -1262,6 +1429,24 @@ bool DepthBufferToRDRAM::CopyToRDRAM( uint32_t _address) {
 	gDP.changed |= CHANGED_SCISSOR;
 	return true;
 }
+
+bool DepthBufferToRDRAM::copyToRDRAM( uint32_t _address)
+{
+   if (!_prepareCopy(_address))
+      return false;
+
+   const uint32_t endAddress = m_pCurDepthBuffer->m_address + (min(VI.height, m_pCurDepthBuffer->m_lry) * m_pCurDepthBuffer->m_width * 2);
+   return _copy(m_pCurDepthBuffer->m_address, endAddress);
+}
+
+bool DepthBufferToRDRAM::copyChunkToRDRAM( uint32_t _address)
+{
+   if (!_prepareCopy(_address))
+		return false;
+
+	const uint32_t endAddress = _address + 0x1000;
+	return _copy(_address, endAddress);
+}
 #endif // HAVE_OPENGLES2
 
 bool FrameBuffer_CopyDepthBuffer( uint32_t address ) {
@@ -1269,14 +1454,23 @@ bool FrameBuffer_CopyDepthBuffer( uint32_t address ) {
 	FrameBuffer * pCopyBuffer = frameBufferList().getCopyBuffer();
 	if (pCopyBuffer != NULL) {
 		// This code is mainly to emulate Zelda MM camera.
-		g_fbToRDRAM.CopyToRDRAM(pCopyBuffer->m_startAddress, true);
+		g_fbToRDRAM.copyToRDRAM(pCopyBuffer->m_startAddress, true);
 		pCopyBuffer->m_RdramCopy.resize(0); // To disable validity check by RDRAM content. CPU may change content of the buffer for some unknown reason.
 		frameBufferList().setCopyBuffer(NULL);
 		return true;
 	} else
-		return g_dbToRDRAM.CopyToRDRAM(address);
+		return g_dbToRDRAM.copyToRDRAM(address);
 #else
 	return false;
+#endif
+}
+
+bool FrameBuffer_CopyDepthBufferChunk(uint32_t address)
+{
+#ifdef HAVE_OPENGLES2
+   return false;
+#else
+   return g_dbToRDRAM.copyChunkToRDRAM(address);
 #endif
 }
 
