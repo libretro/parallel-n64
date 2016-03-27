@@ -63,9 +63,10 @@ void ZLUT_init(void)
 
    for(i = 0; i< ZLUT_SIZE; i++)
    {
-      uint32_t exponent, testbit, mantissa;
-      exponent = 0;
-      testbit = 1 << 17;
+      uint32_t mantissa;
+      uint32_t exponent = 0;
+      uint32_t testbit  = 1 << 17;
+
       while((i & testbit) && (exponent < 7))
       {
          exponent++;
