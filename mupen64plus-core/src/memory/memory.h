@@ -28,9 +28,7 @@
 #define MASKED_WRITE(dst, value, mask) ((*(dst) & ~(mask)) | ((value) & (mask)))
 #endif
 
-#ifdef __LIBRETRO__
 #include "libretro_memory.h"
-#endif
 
 #define AI_STATUS_FIFO_FULL	0x80000000		/* Bit 31: full */
 #define AI_STATUS_DMA_BUSY	   0x40000000		/* Bit 30: busy */

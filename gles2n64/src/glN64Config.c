@@ -99,7 +99,7 @@ static void Config_WriteConfig(const char *filename)
    for(i = 0; i < configOptionsSize; i++)
    {
       Option *o = &configOptions[i];
-      fprintf(f, "%s", o->name); // __LIBRETRO__: Fix warning
+      fprintf(f, "%s", o->name);
       if (o->data) fprintf(f,"=%i", *(o->data));
       fprintf(f, "\n");
    }
@@ -239,10 +239,8 @@ void Config_gln64_LoadConfig(void)
    // default configuration
    Config_SetDefault();
 
-   // __LIBRETRO__: Get screen size
    config.screen.width = screen_width;
    config.screen.height = screen_height;
-
 
    // read configuration
    f = (FILE*)fopen(filename, "r");

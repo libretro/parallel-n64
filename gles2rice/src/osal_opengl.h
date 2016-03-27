@@ -30,7 +30,7 @@
 
 #include <glsm/glsmsym.h>
 
-#if !defined(__LIBRETRO__) || defined(HAVE_OPENGLES2) // Desktop GL fix
+#if defined(HAVE_OPENGLES2) // Desktop GL fix
 #define GLSL_VERSION "100"
 #else
 #define GLSL_VERSION "120"

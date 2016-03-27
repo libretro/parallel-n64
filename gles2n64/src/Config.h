@@ -16,9 +16,7 @@ enum Aspect
 extern "C" {
 #endif
 
-#ifdef __LIBRETRO__ // Prefix symbol
 #define config gln64config
-#endif
 
 #include <stdbool.h>
 

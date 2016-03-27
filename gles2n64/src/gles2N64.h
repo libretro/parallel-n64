@@ -14,9 +14,7 @@ extern "C" {
 #define PLUGIN_VERSION  0x000005
 #define PLUGIN_API_VERSION 0x020200
 
-#ifdef __LIBRETRO__ // Avoid symbol clash
 #define renderCallback gln64RenderCallback
-#endif
 
 extern void (*renderCallback)();
 

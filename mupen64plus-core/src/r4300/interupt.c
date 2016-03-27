@@ -502,9 +502,7 @@ void gen_interupt(void)
       case VI_INT:
          remove_interupt_event();
          vi_vertical_interrupt_event(&g_vi);
-#ifdef __LIBRETRO__
          retro_return(false);
-#endif
          break;
       case COMPARE_INT:
          compare_int_handler();

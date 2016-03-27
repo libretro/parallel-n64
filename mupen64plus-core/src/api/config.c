@@ -37,7 +37,6 @@
 
 #include "osal/preproc.h"
 
-#ifdef __LIBRETRO__
 /* Cxd4 RSP */
 #include "../../../mupen64plus-rsp-cxd4/config.h"
 
@@ -47,7 +46,6 @@
 #define GFX_RICE        1 
 #define GFX_GLN64       2
 #define GFX_ANGRYLION   3
-#endif
 
 /* local types */
 #define MUPEN64PLUS_CFG_NAME "mupen64plus.cfg"
@@ -980,7 +978,6 @@ EXPORT m64p_error CALL ConfigSetDefaultString(m64p_handle ConfigSectionHandle, c
     return M64ERR_SUCCESS;
 }
 
-#ifdef __LIBRETRO__  // Conifg overrides
 #include "libretro.h"
 extern retro_environment_t environ_cb;
 
@@ -1003,7 +1000,6 @@ static int choose_value(const char* value_name, const value_pair* values)
 
    return -1;
 }
-#endif
 
 EXPORT int CALL ConfigGetParamInt(m64p_handle ConfigSectionHandle, const char *ParamName)
 {
@@ -1085,7 +1081,6 @@ EXPORT int CALL ConfigGetParamInt(m64p_handle ConfigSectionHandle, const char *P
       { 0, 0, { {0, 0} } }
    };
 
-#ifdef __LIBRETRO__
    if (!strcmp(ParamName, "AnisoFilter"))
 #ifdef HAVE_OPENGLES
       return 0;
@@ -1103,8 +1098,6 @@ EXPORT int CALL ConfigGetParamInt(m64p_handle ConfigSectionHandle, const char *P
          break;
       }
    }
-
-#endif
 
    /* check input conditions */
    if (!l_ConfigInit || ConfigSectionHandle == NULL || ParamName == NULL)
