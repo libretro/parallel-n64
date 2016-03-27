@@ -33,9 +33,12 @@ bool Config_SetDefault()
 	config.texture.bilinearMode = 1; /* Bilinear filtering mode (0=N64 3point, 1=standard) */
 
 	/*#Emulation Settings */
-	config.generalEmulation.enableFog = 1;   /* Enable fog emulation. */
-	config.generalEmulation.enableNoise = 1; /* Enable color noise emulation. */
-	config.generalEmulation.enableLOD   = 1; /* Enable LOD emulation. */
+	config.generalEmulation.enableFog = 1;        /* Enable fog emulation. */
+	config.generalEmulation.enableNoise = 1;      /* Enable color noise emulation. */
+	config.generalEmulation.enableLOD   = 1;      /* Enable LOD emulation. */
+	config.generalEmulation.enableHWLighting = 1; /* Enable hardware per-pixel lighting. */
+
+	config.frameBufferEmulation.enable  = 0; /* Enable frame and|or depth buffer emulation. */
 #if 0
 	res = ConfigSetDefaultInt(g_configVideoGliden64, "AspectRatio", config.frameBufferEmulation.aspect, "Screen aspect ratio (0=stretch, 1=force 4:3, 2=force 16:9, 3=adjust)");
 	assert(res == M64ERR_SUCCESS);
@@ -48,9 +51,6 @@ bool Config_SetDefault()
 	assert(res == M64ERR_SUCCESS);
 
 	//#Emulation Settings
-	assert(res == M64ERR_SUCCESS);
-	res = ConfigSetDefaultBool(g_configVideoGliden64, "EnableHWLighting", config.generalEmulation.enableHWLighting, "Enable hardware per-pixel lighting.");
-	assert(res == M64ERR_SUCCESS);
 	res = ConfigSetDefaultBool(g_configVideoGliden64, "EnableShadersStorage", config.generalEmulation.enableShadersStorage, "Use persistent storage for compiled shaders.");
 	assert(res == M64ERR_SUCCESS);
 #ifdef ANDROID
@@ -63,8 +63,6 @@ bool Config_SetDefault()
 #endif
 
 	//#Frame Buffer Settings:"
-	res = ConfigSetDefaultBool(g_configVideoGliden64, "EnableFBEmulation", config.frameBufferEmulation.enable, "Enable frame and|or depth buffer emulation.");
-	assert(res == M64ERR_SUCCESS);
 	res = ConfigSetDefaultBool(g_configVideoGliden64, "EnableCopyAuxiliaryToRDRAM", config.frameBufferEmulation.copyAuxToRDRAM, "Copy auxiliary buffers to RDRAM");
 	assert(res == M64ERR_SUCCESS);
 	res = ConfigSetDefaultInt(g_configVideoGliden64, "EnableCopyColorToRDRAM", config.frameBufferEmulation.copyToRDRAM, "Enable color buffer copy to RDRAM (0=do not copy, 1=copy in sync mode, 2=copy in async mode)");
