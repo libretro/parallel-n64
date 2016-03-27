@@ -204,7 +204,7 @@ void RSP_Init(void)
 	// get the name of the ROM
 	char romname[21];
 	for (int i = 0; i < 20; ++i)
-		romname[i] = HEADER[(32 + i) ^ 3];
+		romname[i] = gfx_info.HEADER[(32 + i) ^ 3];
 	romname[20] = 0;
 
 	// remove all trailing spaces
