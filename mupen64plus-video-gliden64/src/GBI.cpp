@@ -36,6 +36,7 @@ SpecialMicrocodeInfo specialMicrocodes[] =
 	{ F3D,		false,	0x7d372819, "Fast3D" },
 	{ F3D,		false,	0x2edee7be, "Fast3D" },
 	{ F3D,		false,	0xe01e14be, "Fast3D" },
+   { F3D,		false,	0x4AED6B3B, "Fast3D" }, //Vivid Dolls [ALECK64]
 
 	{ F3DWRUS,	false,	0xd17906e2, "RSP SW Version: 2.0D, 04-01-96" },
 	{ F3DSWSE,	false,	0x94c4c833, "RSP SW Version: 2.0D, 04-01-96" },
