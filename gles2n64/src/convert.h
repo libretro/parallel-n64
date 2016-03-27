@@ -212,8 +212,8 @@ static INLINE uint32_t IA88_RGBA8888( uint16_t color )
 
 static INLINE uint16_t IA88_RGBA4444( uint16_t color )
 {
-   uint8_t i = color >> 12;
-   uint8_t a = (color >> 4) & 0x000F;
+   uint8_t a = color >> 12;
+   uint8_t i = (color >> 4) & 0x000F;
    return (i << 12) | (i << 8) | (i << 4) | a;
 }
 
