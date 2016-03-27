@@ -54,17 +54,17 @@ EXPORT void CALL gln64SetRenderingCallback(void (*callback)(int))
 
 EXPORT void CALL gln64FBRead(uint32_t addr)
 {
-	//api().FBRead(addr);
+	api().FBRead(addr);
 }
 
 EXPORT void CALL gln64FBWrite(uint32_t addr, uint32_t size)
 {
-	//api().FBWrite(addr, size);
+	api().FBWrite(addr, size);
 }
 
 EXPORT void CALL gln64FBGetFrameBufferInfo(void *p)
 {
-	//api().FBGetFrameBufferInfo(p);
+	api().FBGetFrameBufferInfo(p);
 }
 
 EXPORT void CALL gln64ResizeVideoOutput(int Width, int Height)
