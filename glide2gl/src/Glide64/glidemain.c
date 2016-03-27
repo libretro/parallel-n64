@@ -736,36 +736,6 @@ EXPORT void CALL UpdateScreen (void)
       retro_return(true);
 }
 
-static void DrawWholeFrameBufferToScreen(void)
-{
-  FB_TO_SCREEN_INFO fb_info;
-  static uint32_t toScreenCI = 0;
-
-  if (rdp.ci_width < 200)
-    return;
-  if (rdp.cimg == toScreenCI)
-    return;
-  if (rdp.ci_height == 0)
-     return;
-  toScreenCI = rdp.cimg;
-
-  fb_info.addr   = rdp.cimg;
-  fb_info.size   = g_gdp.fb_size;
-  fb_info.width  = rdp.ci_width;
-  fb_info.height = rdp.ci_height;
-  fb_info.ul_x = 0;
-  fb_info.lr_x = rdp.ci_width-1;
-  fb_info.ul_y = 0;
-  fb_info.lr_y = rdp.ci_height-1;
-  fb_info.opaque = 0;
-
-  DrawFrameBufferToScreen(&fb_info);
-
-  if (!(settings.frame_buffer & fb_ref))
-    memset(gfx_info.RDRAM+rdp.cimg, 0,
-          (rdp.ci_width*rdp.ci_height) << g_gdp.fb_size >> 1);
-}
-
 uint32_t curframe = 0;
 extern int need_to_compile;
 void glide_set_filtering(unsigned value)
