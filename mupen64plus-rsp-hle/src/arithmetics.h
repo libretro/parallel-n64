@@ -22,6 +22,8 @@
 #ifndef ARITHMETICS_H
 #define ARITHMETICS_H
 
+#include <retro_inline.h>
+
 #include <stdint.h>
 
 static INLINE int16_t clamp_s16(int_fast32_t x)

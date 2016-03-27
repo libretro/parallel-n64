@@ -14,6 +14,8 @@
 
 unsigned char rsp_conf[32];
 
+#include <retro_inline.h>
+
 #include "config.h"
 
 #include <stdio.h>

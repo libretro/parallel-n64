@@ -1,9 +1,11 @@
 #ifndef _3DMATH_H
 #define _3DMATH_H
 
-#include <memory.h>
 #include <math.h>
+#include <memory.h>
 #include <string.h>
+
+#include <retro_inline.h>
 
 #ifdef __cplusplus
 extern "C" {

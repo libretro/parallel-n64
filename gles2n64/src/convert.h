@@ -1,6 +1,9 @@
 #ifndef CONVERT_H
 #define CONVERT_H
 
+#include <stdlib.h>
+#include <retro_inline.h>
+
 #if !defined(__MACH__) && !defined(__ppc__) && defined(__GNUC__)
 #define HAVE_BSWAP 
 #endif
@@ -8,7 +11,6 @@
 #ifdef HAVE_BSWAP
 #define bswap_32 __builtin_bswap32
 #elif defined(_MSC_VER) && (defined(_M_IX86) || defined(_M_X64))
-#include <stdlib.h>
 #define bswap_32(x) _byteswap_ulong(x)
 #else
 #define bswap_32(x) (((x) << 24) & 0xff000000) \

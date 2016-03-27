@@ -3,6 +3,8 @@
 
 #include <stdint.h>
 
+#include <retro_inline.h>
+
 #ifndef DP_INTERRUPT
 #define DP_INTERRUPT    0x20
 #endif

@@ -1,6 +1,8 @@
 #ifndef TEXTURES_H
 #define TEXTURES_H
 
+#include <retro_inline.h>
+
 #include <glsm/glsmsym.h>
 
 #include "convert.h"

@@ -1,4 +1,3 @@
-
 #include "gdp.h"
 #include "../plugin/plugin.h"
 

@@ -1,6 +1,8 @@
 #include <stdint.h>
 #include <string.h>
 
+#include <retro_inline.h>
+
 #include "N64.h"
 #include "RSP.h"
 #include "GBI.h"

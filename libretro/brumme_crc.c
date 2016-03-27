@@ -49,7 +49,9 @@
 
 #include <stddef.h>
 #include <stdlib.h>
-#include <stdbool.h>
+
+#include <retro_inline.h>
+#include <boolean.h>
 
 #ifdef _MSC_VER
 typedef unsigned __int8  uint8_t;

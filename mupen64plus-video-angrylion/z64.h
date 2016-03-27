@@ -4,6 +4,8 @@
 #include <stdio.h>
 #include <stdint.h>
 
+#include <retro_inline.h>
+
 typedef uint64_t UINT64;
 typedef int64_t INT64;
 typedef uint32_t UINT32;

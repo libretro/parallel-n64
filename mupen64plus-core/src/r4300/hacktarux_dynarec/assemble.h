@@ -30,6 +30,8 @@
 #include <stdlib.h>
 #include <stdint.h>
 
+#include <retro_inline.h>
+
 #ifdef __x86_64__
 extern int64_t reg[32];
 typedef uint64_t native_type;

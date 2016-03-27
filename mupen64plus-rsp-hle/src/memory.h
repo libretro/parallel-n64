@@ -27,6 +27,8 @@
 #include <stdint.h>
 #include <string.h>
 
+#include <retro_inline.h>
+
 #include "hle_internal.h"
 
 #ifdef MSB_FIRST

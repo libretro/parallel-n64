@@ -39,6 +39,8 @@
 #include <stdint.h>
 #include <string.h>
 
+#include <retro_inline.h>
+
 /* 8-bit Horizontal Mirror */
 static void Mirror8bS (uint8_t *tex, uint32_t mask,
       uint32_t max_width, uint32_t real_width, uint32_t height)

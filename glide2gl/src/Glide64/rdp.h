@@ -40,6 +40,8 @@
 #ifndef RDP_H
 #define RDP_H
 
+#include <retro_inline.h>
+
 #include "rdp_common/gdp.h"
 #include "Gfx_1.3.h"
 #include "../Glitch64/glide.h"
