@@ -50,7 +50,7 @@ static void t3dProcessRDP(uint32_t cmds)
 {
    if (cmds)
    {
-      rdp.LLE = 1;
+      rdp.LLE  = 1;
       rdp.cmd0 = ((uint32_t*)gfx_info.RDRAM)[cmds++];
       rdp.cmd1 = ((uint32_t*)gfx_info.RDRAM)[cmds++];
       while (rdp.cmd0 + rdp.cmd1)
@@ -59,7 +59,8 @@ static void t3dProcessRDP(uint32_t cmds)
          gfx_instruction[0][rdp.cmd0>>24](rdp.cmd0, rdp.cmd1);
          rdp.cmd0 = ((uint32_t*)gfx_info.RDRAM)[cmds++];
          rdp.cmd1 = ((uint32_t*)gfx_info.RDRAM)[cmds++];
-         cmd = rdp.cmd0>>24;
+         cmd      = rdp.cmd0>>24;
+
          if (cmd == G_TEXRECT || cmd == G_TEXRECTFLIP)
          {
             rdp.cmd2 = ((uint32_t*)gfx_info.RDRAM)[cmds++];
@@ -112,23 +113,23 @@ static void t3d_vertex(uint32_t addr, uint32_t v0, uint32_t n)
 
    for (i = 0; i < n; i+=16)
    {
-      VERTEX *v = &rdp.vtx[v0 + (i>>4)];
-      x   = (float)((int16_t*)gfx_info.RDRAM)[(((addr+i) >> 1) + 0)^1];
-      y   = (float)((int16_t*)gfx_info.RDRAM)[(((addr+i) >> 1) + 1)^1];
-      z   = (float)((int16_t*)gfx_info.RDRAM)[(((addr+i) >> 1) + 2)^1];
-      v->flags  = ((uint16_t*)gfx_info.RDRAM)[(((addr+i) >> 1) + 3)^1];
-      v->ou   = 2.0f * (float)((int16_t*)gfx_info.RDRAM)[(((addr+i) >> 1) + 4)^1];
-      v->ov   = 2.0f * (float)((int16_t*)gfx_info.RDRAM)[(((addr+i) >> 1) + 5)^1];
+      VERTEX *v    = &rdp.vtx[v0 + (i>>4)];
+      x            = (float)((int16_t*)gfx_info.RDRAM)[(((addr+i) >> 1) + 0)^1];
+      y            = (float)((int16_t*)gfx_info.RDRAM)[(((addr+i) >> 1) + 1)^1];
+      z            = (float)((int16_t*)gfx_info.RDRAM)[(((addr+i) >> 1) + 2)^1];
+      v->flags     = ((uint16_t*)gfx_info.RDRAM)[(((addr+i) >> 1) + 3)^1];
+      v->ou        = 2.0f * (float)((int16_t*)gfx_info.RDRAM)[(((addr+i) >> 1) + 4)^1];
+      v->ov        = 2.0f * (float)((int16_t*)gfx_info.RDRAM)[(((addr+i) >> 1) + 5)^1];
       v->uv_scaled = 0;
-      v->r = ((uint8_t*)gfx_info.RDRAM)[(addr+i + 12)^3];
-      v->g = ((uint8_t*)gfx_info.RDRAM)[(addr+i + 13)^3];
-      v->b = ((uint8_t*)gfx_info.RDRAM)[(addr+i + 14)^3];
-      v->a    = ((uint8_t*)gfx_info.RDRAM)[(addr+i + 15)^3];
+      v->r         = ((uint8_t*)gfx_info.RDRAM)[(addr+i + 12)^3];
+      v->g         = ((uint8_t*)gfx_info.RDRAM)[(addr+i + 13)^3];
+      v->b         = ((uint8_t*)gfx_info.RDRAM)[(addr+i + 14)^3];
+      v->a         = ((uint8_t*)gfx_info.RDRAM)[(addr+i + 15)^3];
 
-      v->x = x*rdp.combined[0][0] + y*rdp.combined[1][0] + z*rdp.combined[2][0] + rdp.combined[3][0];
-      v->y = x*rdp.combined[0][1] + y*rdp.combined[1][1] + z*rdp.combined[2][1] + rdp.combined[3][1];
-      v->z = x*rdp.combined[0][2] + y*rdp.combined[1][2] + z*rdp.combined[2][2] + rdp.combined[3][2];
-      v->w = x*rdp.combined[0][3] + y*rdp.combined[1][3] + z*rdp.combined[2][3] + rdp.combined[3][3];
+      v->x         = x*rdp.combined[0][0] + y*rdp.combined[1][0] + z*rdp.combined[2][0] + rdp.combined[3][0];
+      v->y         = x*rdp.combined[0][1] + y*rdp.combined[1][1] + z*rdp.combined[2][1] + rdp.combined[3][1];
+      v->z         = x*rdp.combined[0][2] + y*rdp.combined[1][2] + z*rdp.combined[2][2] + rdp.combined[3][2];
+      v->w         = x*rdp.combined[0][3] + y*rdp.combined[1][3] + z*rdp.combined[2][3] + rdp.combined[3][3];
 
       if (fabs(v->w) < 0.001)
          v->w = 0.001f;
@@ -137,9 +138,9 @@ static void t3d_vertex(uint32_t addr, uint32_t v0, uint32_t n)
       v->y_w = v->y * v->oow;
       v->z_w = v->z * v->oow;
 
-      v->uv_calculated = 0xFFFFFFFF;
+      v->uv_calculated     = 0xFFFFFFFF;
       v->screen_translated = 0;
-      v->shade_mod = 0;
+      v->shade_mod         = 0;
 
       v->scr_off = 0;
       if (v->x < -v->w)
@@ -225,23 +226,21 @@ static void t3dLoadObject(uint32_t pstate, uint32_t pvtx, uint32_t ptri)
 
 static void Turbo3D(void)
 {
-   uint32_t a, pgstate, pstate, pvtx, ptri;
    LRDP("Start Turbo3D microcode\n");
+
    settings.ucode = ucode_Fast3D;
-   a = 0;
-   pgstate = 0;
-   pstate = 0;
-   pvtx = 0;
-   ptri = 0;
 
    do
    {
-      a = rdp.pc[rdp.pc_i] & BMASK;
-      pgstate = ((uint32_t*)gfx_info.RDRAM)[a>>2];
-      pstate = ((uint32_t*)gfx_info.RDRAM)[(a>>2)+1];
-      pvtx = ((uint32_t*)gfx_info.RDRAM)[(a>>2)+2];
-      ptri = ((uint32_t*)gfx_info.RDRAM)[(a>>2)+3];
+      uint32_t          a = rdp.pc[rdp.pc_i] & BMASK;
+      uint32_t    pgstate = ((uint32_t*)gfx_info.RDRAM)[a>>2];
+      uint32_t       ptri = ((uint32_t*)gfx_info.RDRAM)[(a>>2)+3];
+      uint32_t       pvtx = ((uint32_t*)gfx_info.RDRAM)[(a>>2)+2];
+
+      uint32_t     pstate = ((uint32_t*)gfx_info.RDRAM)[(a>>2)+1];
+
       FRDP("GlobalState: %08lx, Object: %08lx, Vertices: %08lx, Triangles: %08lx\n", pgstate, pstate, pvtx, ptri);
+
       if (!pstate)
       {
          rdp.halt = 1;
@@ -253,7 +252,7 @@ static void Turbo3D(void)
       t3dLoadObject(pstate, pvtx, ptri);
       // Go to the next instruction
       rdp.pc[rdp.pc_i] += 16;
-   } while (pstate);
+   }while(1);
 
    // rdp_fullsync();
    
