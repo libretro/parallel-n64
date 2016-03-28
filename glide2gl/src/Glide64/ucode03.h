@@ -62,15 +62,9 @@ static void uc3_vertex(uint32_t w0, uint32_t w1)
 
 static void uc3_tri1(uint32_t w0, uint32_t w1)
 {
-   VERTEX *v[3];
-   if (rdp.skip_drawing)
-      return;
-
-   v[0] = &rdp.vtx[_SHIFTR( w1, 16, 8) / 5];  /* v0 */
-   v[1] = &rdp.vtx[_SHIFTR( w1,  8, 8) / 5];  /* v1 */
-   v[2] = &rdp.vtx[_SHIFTR( w1,  0, 8) / 5];  /* v2 */
-
-   cull_trianglefaces(v, 1, true, true, 0);
+	glide64gSP1Triangle( _SHIFTR( w1, 16, 8 ) / 5,
+				  _SHIFTR( w1, 8, 8 ) / 5,
+				  _SHIFTR( w1, 0, 8 ) / 5, 0);
 }
 
 static void uc3_tri2(uint32_t w0, uint32_t w1)
