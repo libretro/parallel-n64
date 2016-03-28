@@ -217,7 +217,7 @@ static void uc8_moveword(uint32_t w0, uint32_t w1)
          break;
 
       case G_MW_SEGMENT:
-         rdp.segment[(offset >> 2) & 0xF] = w1;
+         glide64gSPSegment((offset >> 2) & 0xF, w1);
          break;
 
       case G_MW_FOG:

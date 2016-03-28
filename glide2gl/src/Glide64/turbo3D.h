@@ -74,7 +74,6 @@ static void t3dProcessRDP(uint32_t cmds)
 static void t3dLoadGlobState(uint32_t pgstate)
 {
    unsigned s;
-   int16_t scale_x, scale_y, scale_z, trans_x, trans_y, trans_z;
    struct T3DGlobState *gstate = (struct T3DGlobState*)&gfx_info.RDRAM[RSP_SegmentToPhysical(pgstate)];
    const uint32_t w0           = gstate->othermode0;
    const uint32_t w1           = gstate->othermode1;
@@ -82,7 +81,7 @@ static void t3dLoadGlobState(uint32_t pgstate)
    rdp_setothermode(w0, w1);
 
    for (s = 0; s < 16; s++)
-      rdp.segment[s] = gstate->segBases[s];
+      glide64gSPSegment(s, gstate->segBases[s]);
 
    glide64gSPViewport(pgstate + 80);
 

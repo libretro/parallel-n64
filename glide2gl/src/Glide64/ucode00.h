@@ -312,7 +312,7 @@ static void uc0_moveword(uint32_t w0, uint32_t w1)
 
       case G_MW_SEGMENT:
          if ((w1 & BMASK)<BMASK)
-            rdp.segment[(w0 >> 10) & 0x0F] = w1;
+            glide64gSPSegment((w0 >> 10) & 0x0F, w1);
          break;
       case G_MW_FOG:
          glide64gSPFogFactor((int16_t)_SHIFTR(w1, 16, 16), (int16_t)_SHIFTR(w1, 0, 16));
