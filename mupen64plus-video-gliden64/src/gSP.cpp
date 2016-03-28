@@ -25,7 +25,7 @@
 
 using namespace std;
 
-inline void gSPFlushTriangles()
+static inline void gSPFlushTriangles(void)
 {
 	if ((gSP.geometryMode & G_SHADING_SMOOTH) == 0) {
 		video().getRender().drawTriangles();

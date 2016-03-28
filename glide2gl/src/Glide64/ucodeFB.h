@@ -44,13 +44,13 @@
 static void fb_uc0_moveword(uint32_t w0, uint32_t w1)
 {
    if ((w0 & 0xFF) == 0x06) // segment
-      rdp.segment[(w0 >> 10) & 0x0F] = w1;
+      glide64gSPSegment((w0 >> 10) & 0x0F, w1);
 }
 
 static void fb_uc2_moveword(uint32_t w0, uint32_t w1)
 {
    if (((w0 >> 16) & 0xFF) == 0x06) // segment
-      rdp.segment[((w0 & 0xFFFF) >> 2)&0xF] = w1;
+      glide64gSPSegment(((w0 & 0xFFFF) >> 2)&0xF, w1);
 }
 
 static void fb_bg_copy(uint32_t w0, uint32_t w1)

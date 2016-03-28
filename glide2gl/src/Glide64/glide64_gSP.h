@@ -675,6 +675,7 @@ static void glide64gSPCullDisplayList( uint32_t v0, uint32_t vn )
       glide64gSPEndDisplayList();
 }
 
+void glide64gSPSegment(int32_t seg, int32_t base);
 void glide64gSPLightColor( uint32_t lightNum, uint32_t packedColor );
 void glide64gSPCombineMatrices(void);
 void glide64gSPLookAt(uint32_t l, uint32_t n);

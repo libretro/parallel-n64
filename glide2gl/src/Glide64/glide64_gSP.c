@@ -8,6 +8,11 @@ void glide64gSPCombineMatrices(void)
    g_gdp.flags ^= UPDATE_MULT_MAT;
 }
 
+void glide64gSPSegment(int32_t seg, int32_t base)
+{
+   rdp.segment[seg] = base;
+}
+
 void glide64gSPClipVertex(uint32_t v)
 {
    VERTEX *vtx = (VERTEX*)&rdp.vtx[v];
