@@ -60,7 +60,6 @@
 
 uint16_t *zLUT;
 uint16_t *frameBuffer;
-extern int dzdx;
 
 union RGBA {
    struct {
@@ -229,7 +228,7 @@ static void LeftSection(void)
 }
 
 
-static void DepthBufferRasterize(struct vertexi * vtx, int vertices, int dzdx)
+void Rasterize(struct vertexi * vtx, int vertices, int dzdx)
 {
    int n, min_y, max_y, y1;
    struct vertexi *min_vtx;
@@ -363,40 +362,6 @@ static void DepthBufferRasterize(struct vertexi * vtx, int vertices, int dzdx)
          left_z += left_dzdy;
       }
    }
-}
-
-void DepthBuffer(void *data, int n)
-{
-   unsigned i     = 0;
-   VERTEX *vtx    = (VERTEX*)data;
-
-   if ( gfx_plugin_accuracy < 3)
-       return;
-
-   if (fb_depth_render_enabled && dzdx && (rdp.flags & ZBUF_UPDATE))
-   {
-      struct vertexi v[12];
-      int index = 0;
-      int inc   = 1;
-
-      if (rdp.u_cull_mode == 1) //cull front
-      {
-         index   = n - 1;
-         inc     = -1;
-      }
-
-      for (i = 0; i < n; i++)
-      {
-         v[i].x = (int)((vtx[index].x - rdp.offset_x) / rdp.scale_x * 65536.0);
-         v[i].y = (int)((vtx[index].y - rdp.offset_y) / rdp.scale_y * 65536.0);
-         v[i].z = (int)(vtx[index].z * 65536.0);
-         index += inc;
-      }
-      DepthBufferRasterize(v, n, dzdx);
-   }
-
-   for (i = 0; i < n; i++)
-      vtx[i].z = ScaleZ(vtx[i].z);
 }
 
 static void DrawDepthBufferToScreen256(FB_TO_SCREEN_INFO *fb_info)

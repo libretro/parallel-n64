@@ -47,6 +47,7 @@
 #include "Framebuffer_glide64.h"
 #include "GBI.h"
 
+extern int dzdx;
 extern int deltaZ;
 extern VERTEX **org_vtx;
 
@@ -321,6 +322,38 @@ float ScaleZ(float z)
    if (z > 65535.0f)
       return 65535.0f;
    return z;
+}
+
+static void DepthBuffer(VERTEX * vtx, int n)
+{
+   unsigned i     = 0;
+   if ( gfx_plugin_accuracy < 3)
+       return;
+
+   if (fb_depth_render_enabled && dzdx && (rdp.flags & ZBUF_UPDATE))
+   {
+      struct vertexi v[12];
+      int index = 0;
+      int inc   = 1;
+
+      if (rdp.u_cull_mode == 1) //cull front
+      {
+         index   = n - 1;
+         inc     = -1;
+      }
+
+      for (i = 0; i < n; i++)
+      {
+         v[i].x = (int)((vtx[index].x - rdp.offset_x) / rdp.scale_x * 65536.0);
+         v[i].y = (int)((vtx[index].y - rdp.offset_y) / rdp.scale_y * 65536.0);
+         v[i].z = (int)(vtx[index].z * 65536.0);
+         index += inc;
+      }
+      Rasterize(v, n, dzdx);
+   }
+
+   for (i = 0; i < n; i++)
+      vtx[i].z = ScaleZ(vtx[i].z);
 }
 
 #define clip_tri_uv(first, second, index, percent) \

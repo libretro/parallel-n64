@@ -63,16 +63,12 @@ typedef struct
   uint32_t opaque;
 } FB_TO_SCREEN_INFO;
 
-/* Depth buffer */
-
 extern uint16_t * zLUT;
 void ZLUT_init(void);
 void ZLUT_release(void);
 
-void DepthBuffer(void *data, int n);
+void Rasterize(struct vertexi * vtx, int vertices, int dzdx);
 void DrawDepthBufferToScreen(FB_TO_SCREEN_INFO *fb_info);
-
-/* Frame buffer */
 
 bool DrawFrameBufferToScreen(FB_TO_SCREEN_INFO *fb_info);
 
