@@ -50,15 +50,7 @@ static void uc1_vertex(uint32_t w0, uint32_t w1)
 
 static void uc1_tri1(uint32_t w0, uint32_t w1)
 {
-   VERTEX *v[3];
-   if (rdp.skip_drawing)
-      return;
-
-   v[0] = &rdp.vtx[(w1 >> 17) & 0x7F];
-   v[1] = &rdp.vtx[(w1 >> 9) & 0x7F];
-   v[2] = &rdp.vtx[(w1 >> 1) & 0x7F];
-
-   cull_trianglefaces(v, 1, true, true, 0);
+   glide64gSP1Triangle( _SHIFTR( w1, 17, 7 ), _SHIFTR( w1, 9, 7 ), _SHIFTR( w1, 1, 7 ), 0 );
 }
 
 static void uc1_tri2(uint32_t w0, uint32_t w1)

@@ -243,13 +243,9 @@ static void uc0_displaylist(uint32_t w0, uint32_t w1)
 //
 static void uc0_tri1(uint32_t w0, uint32_t w1)
 {
-   VERTEX *v[3];
-
-   v[0] = &rdp.vtx[_SHIFTR(w1, 16, 8) / 10];
-   v[1] = &rdp.vtx[_SHIFTR(w1,  8, 8) / 10];
-   v[2] = &rdp.vtx[_SHIFTR(w1,  0, 8) / 10];
-
-   cull_trianglefaces(v, 1, true, true, 0);
+	glide64gSP1Triangle( _SHIFTR( w1, 16, 8 ) / 10,
+				  _SHIFTR( w1, 8, 8 ) / 10,
+				  _SHIFTR( w1, 0, 8 ) / 10, 0);
 }
 
 static void uc0_tri1_mischief(uint32_t w0, uint32_t w1)
