@@ -158,11 +158,6 @@ static void t3dLoadObject(uint32_t pstate, uint32_t pvtx, uint32_t ptri)
    if (rdp.tiles[rdp.cur_tile].t_scale < 0.001f)
       rdp.tiles[rdp.cur_tile].t_scale = 0.015625;
 
-#ifdef EXTREME_LOGGING
-   FRDP("renderState: %08lx, textureState: %08lx, othermode0: %08lx, othermode1: %08lx, rdpCmds: %08lx, triCount : %d, v0: %d, vn: %d\n", ostate->renderState, ostate->textureState,
-         ostate->othermode0, ostate->othermode1, ostate->rdpCmds, ostate->triCount, ostate->vtxV0, ostate->vtxCount);
-#endif
-
    rdp.cmd0 = ostate->othermode0;
    rdp.cmd1 = ostate->othermode1;
    rdp_setothermode(rdp.cmd0, rdp.cmd1);
@@ -174,12 +169,6 @@ static void t3dLoadObject(uint32_t pstate, uint32_t pvtx, uint32_t ptri)
    {
       uint32_t addr = RSP_SegmentToPhysical(pstate+sizeof(struct T3DState)) & BMASK;
       load_matrix(rdp.combined, addr);
-#ifdef EXTREME_LOGGING
-      FRDP ("{%f,%f,%f,%f}\n", rdp.combined[0][0], rdp.combined[0][1], rdp.combined[0][2], rdp.combined[0][3]);
-      FRDP ("{%f,%f,%f,%f}\n", rdp.combined[1][0], rdp.combined[1][1], rdp.combined[1][2], rdp.combined[1][3]);
-      FRDP ("{%f,%f,%f,%f}\n", rdp.combined[2][0], rdp.combined[2][1], rdp.combined[2][2], rdp.combined[2][3]);
-      FRDP ("{%f,%f,%f,%f}\n", rdp.combined[3][0], rdp.combined[3][1], rdp.combined[3][2], rdp.combined[3][3]);
-#endif
    }
 
    rdp.geom_mode &= ~G_LIGHTING;
@@ -212,8 +201,6 @@ static void t3dLoadObject(uint32_t pstate, uint32_t pvtx, uint32_t ptri)
 
 static void Turbo3D(void)
 {
-   LRDP("Start Turbo3D microcode\n");
-
    settings.ucode = ucode_Fast3D;
 
    do
@@ -224,8 +211,6 @@ static void Turbo3D(void)
       uint32_t       pvtx = ((uint32_t*)gfx_info.RDRAM)[(a>>2)+2];
 
       uint32_t     pstate = ((uint32_t*)gfx_info.RDRAM)[(a>>2)+1];
-
-      FRDP("GlobalState: %08lx, Object: %08lx, Vertices: %08lx, Triangles: %08lx\n", pgstate, pstate, pvtx, ptri);
 
       if (!pstate)
       {
