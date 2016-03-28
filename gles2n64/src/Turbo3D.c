@@ -57,17 +57,17 @@ void Turbo3D_LoadGlobState(uint32_t pgstate)
 static
 void Turbo3D_LoadObject(uint32_t pstate, uint32_t pvtx, uint32_t ptri)
 {
-	uint32_t addr = RSP_SegmentToPhysical(pstate);
+	uint32_t addr           = RSP_SegmentToPhysical(pstate);
 	struct T3DState *ostate = (struct T3DState*)&gfx_info.RDRAM[addr];
 	const uint32_t tile = (ostate->textureState)&7;
-	gSP.texture.tile = tile;
-	gSP.textureTile[0] = &gDP.tiles[tile];
-	gSP.textureTile[1] = &gDP.tiles[(tile + 1) & 7];
-	gSP.texture.scales = 1.0f;
-	gSP.texture.scalet = 1.0f;
+	gSP.texture.tile    = tile;
+	gSP.textureTile[0]  = &gDP.tiles[tile];
+	gSP.textureTile[1]  = &gDP.tiles[(tile + 1) & 7];
+	gSP.texture.scales  = 1.0f;
+	gSP.texture.scalet  = 1.0f;
 
-	const uint32_t w0 = ostate->othermode0;
-	const uint32_t w1 = ostate->othermode1;
+	const uint32_t w0   = ostate->othermode0;
+	const uint32_t w1   = ostate->othermode1;
 	gDPSetOtherMode( _SHIFTR( w0, 0, 24 ),	// mode0
 					 w1 );					// mode1
 
@@ -101,15 +101,14 @@ void Turbo3D_LoadObject(uint32_t pstate, uint32_t pvtx, uint32_t ptri)
 
 void RunTurbo3D(void)
 {
-	uint32_t pstate;
-
 	do
    {
-      uint32_t addr = __RSP.PC[__RSP.PCi] >> 2;
+      uint32_t          addr = __RSP.PC[__RSP.PCi] >> 2;
       const uint32_t pgstate = ((uint32_t*)gfx_info.RDRAM)[addr++];
-      pstate = ((uint32_t*)gfx_info.RDRAM)[addr++];
-      const uint32_t pvtx = ((uint32_t*)gfx_info.RDRAM)[addr++];
-      const uint32_t ptri = ((uint32_t*)gfx_info.RDRAM)[addr];
+      uint32_t        pstate = ((uint32_t*)gfx_info.RDRAM)[addr++];
+      const uint32_t    pvtx = ((uint32_t*)gfx_info.RDRAM)[addr++];
+      const uint32_t    ptri = ((uint32_t*)gfx_info.RDRAM)[addr];
+
       if (pstate == 0)
       {
          __RSP.halt = 1;
@@ -118,7 +117,8 @@ void RunTurbo3D(void)
       if (pgstate != 0)
          Turbo3D_LoadGlobState(pgstate);
       Turbo3D_LoadObject(pstate, pvtx, ptri);
-      // Go to the next instruction
+
+      /* Go to the next instruction */
       __RSP.PC[__RSP.PCi] += 16;
-   } while (pstate != 0);
+   }while (1);
 }

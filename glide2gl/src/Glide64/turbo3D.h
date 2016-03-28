@@ -132,11 +132,11 @@ static void t3d_vertex(uint32_t addr, uint32_t v0, uint32_t n)
       v->w         = x*rdp.combined[0][3] + y*rdp.combined[1][3] + z*rdp.combined[2][3] + rdp.combined[3][3];
 
       if (fabs(v->w) < 0.001)
-         v->w = 0.001f;
-      v->oow = 1.0f / v->w;
-      v->x_w = v->x * v->oow;
-      v->y_w = v->y * v->oow;
-      v->z_w = v->z * v->oow;
+         v->w              = 0.001f;
+      v->oow               = 1.0f / v->w;
+      v->x_w               = v->x * v->oow;
+      v->y_w               = v->y * v->oow;
+      v->z_w               = v->z * v->oow;
 
       v->uv_calculated     = 0xFFFFFFFF;
       v->screen_translated = 0;
@@ -199,27 +199,28 @@ static void t3dLoadObject(uint32_t pstate, uint32_t pvtx, uint32_t ptri)
 
    rdp.geom_mode &= ~G_LIGHTING;
    rdp.geom_mode |= UPDATE_SCISSOR;
-   if (pvtx) //load vtx
+   if (pvtx) /* load vtx */
       t3d_vertex(RSP_SegmentToPhysical(pvtx), ostate->vtxV0, ostate->vtxCount);
 
    t3dProcessRDP(RSP_SegmentToPhysical(ostate->rdpCmds) >> 2);
 
    if (ptri)
    {
-      uint32_t a;
+      uint32_t addr = RSP_SegmentToPhysical(ptri);
+
       update();
-      a = RSP_SegmentToPhysical(ptri);
+
       for (t = 0; t < ostate->triCount; t++)
       {
          VERTEX *v[3];
-         struct T3DTriN *tri = (struct T3DTriN*)&gfx_info.RDRAM[a];
+         struct T3DTriN *tri = (struct T3DTriN*)&gfx_info.RDRAM[addr];
 
          v[0] = &rdp.vtx[tri->v0]; 
          v[1] = &rdp.vtx[tri->v1];
          v[2] = &rdp.vtx[tri->v2];
 
          cull_trianglefaces(v, 1, false, true, 0);
-         a += 4;
+         addr += 4;
       }
    }
 }
@@ -250,6 +251,7 @@ static void Turbo3D(void)
       if (pgstate)
          t3dLoadGlobState(pgstate);
       t3dLoadObject(pstate, pvtx, ptri);
+
       // Go to the next instruction
       rdp.pc[rdp.pc_i] += 16;
    }while(1);
