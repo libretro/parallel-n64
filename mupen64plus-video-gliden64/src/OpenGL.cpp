@@ -1539,14 +1539,14 @@ void TextureFilterHandler::init()
 	glGetIntegerv(GL_MAX_TEXTURE_SIZE, &maxTextureSize);
 	wchar_t wRomName[32];
 	::mbstowcs(wRomName, __RSP.romname, 32);
-	wchar_t txPath[PLUGIN_PATH_SIZE + 16];
+	wchar_t txPath[PATH_MAX_LENGTH + 16];
 	wchar_t * pTexPackPath = config.textureFilter.txPath;
 	if (::wcslen(config.textureFilter.txPath) == 0) {
 		api().GetUserDataPath(txPath);
 		gln_wcscat(txPath, wst("/hires_texture"));
 		pTexPackPath = txPath;
 	}
-	wchar_t txCachePath[PLUGIN_PATH_SIZE];
+	wchar_t txCachePath[PATH_MAX_LENGTH];
 	api().GetUserCachePath(txCachePath);
 
 	m_inited = txfilter_init(maxTextureSize, // max texture width supported by hardware

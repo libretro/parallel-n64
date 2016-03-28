@@ -1,6 +1,8 @@
 #ifndef WST_H
 #define WST_H
 
+#include <retro_miscellaneous.h>
+
 #ifdef ANDROID
 static
 void gln_wcscat(wchar_t* destination, const wchar_t* source)
@@ -11,7 +13,7 @@ void gln_wcscat(wchar_t* destination, const wchar_t* source)
 	std::string dest(cbuf);
 	wcstombs(cbuf, source, bufSize);
 	dest.append(cbuf);
-	mbstowcs(destination, dest.c_str(), PLUGIN_PATH_SIZE);
+	mbstowcs(destination, dest.c_str(), PATH_MAX_LENGTH);
 }
 
 class dummyWString

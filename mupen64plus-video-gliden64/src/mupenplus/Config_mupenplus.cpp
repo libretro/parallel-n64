@@ -4,6 +4,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <retro_miscellaneous.h>
+
 #include "../Config.h"
 #include "../OpenGL.h"
 #include "../GBI.h"
@@ -89,8 +91,8 @@ bool Config_SetDefault()
 	assert(res == M64ERR_SUCCESS);
 
 	// Convert to multibyte
-	char txPath[PLUGIN_PATH_SIZE * 2];
-	wcstombs(txPath, config.textureFilter.txPath, PLUGIN_PATH_SIZE * 2);
+	char txPath[PATH_MAX_LENGTH * 2];
+	wcstombs(txPath, config.textureFilter.txPath, PATH_MAX_LENGTH * 2);
 	res = ConfigSetDefaultString(g_configVideoGliden64, "txPath", txPath, "Path to folder with hi-res texture packs.");
 	assert(res == M64ERR_SUCCESS);
 
