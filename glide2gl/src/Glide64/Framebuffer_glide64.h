@@ -65,13 +65,21 @@ typedef struct
   uint32_t opaque;
 } FB_TO_SCREEN_INFO;
 
+typedef struct
+{
+   uint32_t d_ul_x;
+   uint32_t d_ul_y;
+   uint32_t d_lr_x;
+   uint32_t d_lr_y;
+} part_framebuffer;
+
+extern part_framebuffer part_framebuf;
+
 extern uint16_t * zLUT;
 void ZLUT_init(void);
 void ZLUT_release(void);
 
 void DrawDepthBufferFog(void);
-
-bool DrawFrameBufferToScreen(FB_TO_SCREEN_INFO *fb_info);
 
 void copyWhiteToRDRAM(void);
 
@@ -82,5 +90,7 @@ void glide64_draw_fb(float ul_x, float ul_y, float lr_x,
       float lr_y, float lr_u, float lr_v, float zero);
 
 int SetupFBtoScreenCombiner(uint32_t texture_size, uint32_t opaque);
+
+void drawViRegBG(void);
 
 #endif  // #ifndef FBtoSCREEN_H

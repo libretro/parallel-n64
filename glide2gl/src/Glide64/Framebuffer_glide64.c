@@ -806,7 +806,7 @@ static void DrawFrameBufferToScreen256(FB_TO_SCREEN_INFO *fb_info)
   }
 }
 
-bool DrawFrameBufferToScreen(FB_TO_SCREEN_INFO *fb_info)
+static bool DrawFrameBufferToScreen(FB_TO_SCREEN_INFO *fb_info)
 {
    uint32_t x, y, width, height, texwidth;
    uint8_t *image;
@@ -1186,4 +1186,48 @@ void DrawDepthBufferFog(void)
    fb_info.opaque = 0;
 
    DrawDepthBufferToScreen(&fb_info);
+}
+
+void drawViRegBG(void)
+{
+   FB_TO_SCREEN_INFO fb_info;
+
+   fb_info.width  = *gfx_info.VI_WIDTH_REG;
+   fb_info.height = (uint32_t)rdp.vi_height;
+   fb_info.ul_x   = 0;
+   fb_info.lr_x   = fb_info.width - 1;
+   fb_info.ul_y   = 0;
+   fb_info.lr_y   = fb_info.height - 1;
+   fb_info.opaque = 1;
+   fb_info.addr   = *gfx_info.VI_ORIGIN_REG;
+   fb_info.size   = *gfx_info.VI_STATUS_REG & 3;
+
+   rdp.last_bg    = fb_info.addr;
+
+   if (settings.hacks&hack_Lego && DrawFrameBufferToScreen(&fb_info))
+   {
+      rdp.updatescreen = 1;
+      newSwapBuffers ();
+      DrawFrameBufferToScreen(&fb_info);
+   }
+}
+
+part_framebuffer part_framebuf;
+
+void DrawPartFrameBufferToScreen(void)
+{
+   FB_TO_SCREEN_INFO fb_info;
+
+   fb_info.addr   = rdp.cimg;
+   fb_info.size   = g_gdp.fb_size;
+   fb_info.width  = rdp.ci_width;
+   fb_info.height = rdp.ci_height;
+   fb_info.ul_x   = part_framebuf.d_ul_x;
+   fb_info.lr_x   = part_framebuf.d_lr_x;
+   fb_info.ul_y   = part_framebuf.d_ul_y;
+   fb_info.lr_y   = part_framebuf.d_lr_y;
+   fb_info.opaque = 0;
+
+   DrawFrameBufferToScreen(&fb_info);
+   memset(gfx_info.RDRAM+rdp.cimg, 0, (rdp.ci_width*rdp.ci_height) << g_gdp.fb_size >> 1);
 }

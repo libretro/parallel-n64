@@ -267,25 +267,6 @@ void rdp_reset(void)
 }
 
 
-static uint32_t d_ul_x, d_ul_y, d_lr_x, d_lr_y;
-
-static void DrawPartFrameBufferToScreen(void)
-{
-   FB_TO_SCREEN_INFO fb_info;
-
-   fb_info.addr   = rdp.cimg;
-   fb_info.size   = g_gdp.fb_size;
-   fb_info.width  = rdp.ci_width;
-   fb_info.height = rdp.ci_height;
-   fb_info.ul_x   = d_ul_x;
-   fb_info.lr_x   = d_lr_x;
-   fb_info.ul_y   = d_ul_y;
-   fb_info.lr_y   = d_lr_y;
-   fb_info.opaque = 0;
-
-   DrawFrameBufferToScreen(&fb_info);
-   memset(gfx_info.RDRAM+rdp.cimg, 0, (rdp.ci_width*rdp.ci_height) << g_gdp.fb_size >> 1);
-}
 
 /******************************************************************
 Function: ProcessDList
@@ -375,10 +356,10 @@ void glide64ProcessDList(void)
   cpu_fb_read_called                  = false;
   cpu_fb_write_called                 = false;
   cpu_fb_ignore                       = false;
-  d_ul_x                              = 0xffff;
-  d_ul_y                              = 0xffff;
-  d_lr_x                              = 0;
-  d_lr_y                              = 0;
+  part_framebuf.d_ul_x                              = 0xffff;
+  part_framebuf.d_ul_y                              = 0xffff;
+  part_framebuf.d_lr_x                              = 0;
+  part_framebuf.d_lr_y                              = 0;
   depth_buffer_fog                    = true;
 
   //analyze possible frame buffer usage
@@ -1746,10 +1727,10 @@ void glide64FBWrite(uint32_t addr, uint32_t size)
   shift_l      = (a-rdp.cimg) >> 1;
   shift_r      = shift_l+2;
 
-  d_ul_x       = MIN(d_ul_x, shift_l%rdp.ci_width);
-  d_ul_y       = MIN(d_ul_y, shift_l/rdp.ci_width);
-  d_lr_x       = MAX(d_lr_x, shift_r%rdp.ci_width);
-  d_lr_y       = MAX(d_lr_y, shift_r/rdp.ci_width);
+  part_framebuf.d_ul_x       = MIN(part_framebuf.d_ul_x, shift_l%rdp.ci_width);
+  part_framebuf.d_ul_y       = MIN(part_framebuf.d_ul_y, shift_l/rdp.ci_width);
+  part_framebuf.d_lr_x       = MAX(part_framebuf.d_lr_x, shift_r%rdp.ci_width);
+  part_framebuf.d_lr_y       = MAX(part_framebuf.d_lr_y, shift_r/rdp.ci_width);
 }
 
 
@@ -2646,10 +2627,10 @@ void glide64ProcessRDPList(void)
    cpu_fb_read_called  = false;
    cpu_fb_write_called = false;
    cpu_fb_ignore       = false;
-   d_ul_x              = 0xffff;
-   d_ul_y              = 0xffff;
-   d_lr_x              = 0;
-   d_lr_y              = 0;
+   part_framebuf.d_ul_x              = 0xffff;
+   part_framebuf.d_ul_y              = 0xffff;
+   part_framebuf.d_lr_x              = 0;
+   part_framebuf.d_lr_y              = 0;
    depth_buffer_fog    = true;
    
    length              = (*(uint32_t*)gfx_info.DPC_END_REG) - (*(uint32_t*)gfx_info.DPC_CURRENT_REG);

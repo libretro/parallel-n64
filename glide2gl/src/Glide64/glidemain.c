@@ -620,32 +620,6 @@ void glide64SetRenderingCallback(void (*callback)(int))
 {
 }
 
-static void drawViRegBG(void)
-{
-   bool drawn;
-   FB_TO_SCREEN_INFO fb_info;
-
-   fb_info.width  = *gfx_info.VI_WIDTH_REG;
-   fb_info.height = (uint32_t)rdp.vi_height;
-   fb_info.ul_x   = 0;
-   fb_info.lr_x   = fb_info.width - 1;
-   fb_info.ul_y   = 0;
-   fb_info.lr_y   = fb_info.height - 1;
-   fb_info.opaque = 1;
-   fb_info.addr   = *gfx_info.VI_ORIGIN_REG;
-   fb_info.size   = *gfx_info.VI_STATUS_REG & 3;
-
-   rdp.last_bg    = fb_info.addr;
-   drawn          = DrawFrameBufferToScreen(&fb_info);
-
-   if (settings.hacks&hack_Lego && drawn)
-   {
-      rdp.updatescreen = 1;
-      newSwapBuffers ();
-      DrawFrameBufferToScreen(&fb_info);
-   }
-}
-
 /******************************************************************
 Function: UpdateScreen
 Purpose:  This function is called in response to a vsync of the
