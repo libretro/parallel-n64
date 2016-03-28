@@ -231,7 +231,7 @@ static void LeftSection(void)
 }
 
 
-void DepthBufferRasterize(struct vertexi * vtx, int vertices, int dzdx)
+static void DepthBufferRasterize(struct vertexi * vtx, int vertices, int dzdx)
 {
    int n, min_y, max_y, y1;
    struct vertexi *min_vtx;
@@ -433,7 +433,7 @@ static void DrawDepthBufferToScreen256(FB_TO_SCREEN_INFO *fb_info)
    }
 }
 
-void DrawDepthBufferToScreen(FB_TO_SCREEN_INFO *fb_info)
+static void DrawDepthBufferToScreen(FB_TO_SCREEN_INFO *fb_info)
 {
    uint32_t x, y;
    int tmu;
@@ -1167,4 +1167,23 @@ void DrawDepthBuffer(VERTEX * vtx, int n)
 
    for (i = 0; i < n; i++)
       vtx[i].z = ScaleZ(vtx[i].z);
+}
+
+void DrawDepthBufferFog(void)
+{
+   FB_TO_SCREEN_INFO fb_info;
+   if (rdp.zi_width < 200)
+      return;
+
+   fb_info.addr   = g_gdp.zb_address;
+   fb_info.size   = 2;
+   fb_info.width  = rdp.zi_width;
+   fb_info.height = rdp.ci_height;
+   fb_info.ul_x   = g_gdp.__clip.xh;
+   fb_info.lr_x   = g_gdp.__clip.xl;
+   fb_info.ul_y   = g_gdp.__clip.yh;
+   fb_info.lr_y   = g_gdp.__clip.yl;
+   fb_info.opaque = 0;
+
+   DrawDepthBufferToScreen(&fb_info);
 }

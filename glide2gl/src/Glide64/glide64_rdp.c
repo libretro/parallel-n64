@@ -537,25 +537,6 @@ static void pd_zcopy(uint32_t w0, uint32_t w1)
    }
 }
 
-static void DrawDepthBufferFog(void)
-{
-  FB_TO_SCREEN_INFO fb_info;
-  if (rdp.zi_width < 200)
-    return;
-
-  fb_info.addr   = g_gdp.zb_address;
-  fb_info.size   = 2;
-  fb_info.width  = rdp.zi_width;
-  fb_info.height = rdp.ci_height;
-  fb_info.ul_x   = g_gdp.__clip.xh;
-  fb_info.lr_x   = g_gdp.__clip.xl;
-  fb_info.ul_y   = g_gdp.__clip.yh;
-  fb_info.lr_y   = g_gdp.__clip.yl;
-  fb_info.opaque = 0;
-
-  DrawDepthBufferToScreen(&fb_info);
-}
-
 static void apply_shading(VERTEX *vptr)
 {
    int i;
@@ -634,9 +615,11 @@ static void rdp_texrect(uint32_t w0, uint32_t w1)
    {
       if (!depth_buffer_fog)
          return;
+      depth_buffer_fog = false;
+
       if (settings.fog)
          DrawDepthBufferFog();
-      depth_buffer_fog = false;
+
       return;
    }
 
