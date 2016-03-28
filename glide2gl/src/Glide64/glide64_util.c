@@ -349,7 +349,7 @@ static void DepthBuffer(VERTEX * vtx, int n)
          v[i].z = (int)(vtx[index].z * 65536.0);
          index += inc;
       }
-      Rasterize(v, n, dzdx);
+      DepthBufferRasterize(v, n, dzdx);
    }
 
    for (i = 0; i < n; i++)

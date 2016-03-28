@@ -228,7 +228,7 @@ static void LeftSection(void)
 }
 
 
-void Rasterize(struct vertexi * vtx, int vertices, int dzdx)
+void DepthBufferRasterize(struct vertexi * vtx, int vertices, int dzdx)
 {
    int n, min_y, max_y, y1;
    struct vertexi *min_vtx;

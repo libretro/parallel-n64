@@ -67,7 +67,7 @@ extern uint16_t * zLUT;
 void ZLUT_init(void);
 void ZLUT_release(void);
 
-void Rasterize(struct vertexi * vtx, int vertices, int dzdx);
+void DepthBufferRasterize(struct vertexi * vtx, int vertices, int dzdx);
 void DrawDepthBufferToScreen(FB_TO_SCREEN_INFO *fb_info);
 
 bool DrawFrameBufferToScreen(FB_TO_SCREEN_INFO *fb_info);
