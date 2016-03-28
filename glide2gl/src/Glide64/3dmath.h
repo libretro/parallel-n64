@@ -43,6 +43,14 @@
 
 #include "../../Graphics/3dmath.h"
 
+struct MAT2D {
+	float A, B, C, D;
+	float X, Y;
+	float BaseScaleX;
+	float BaseScaleY;
+};
+extern struct MAT2D mat_2d;
+
 void calc_light (VERTEX *v);
 void calc_linear (VERTEX *v);
 void calc_sphere (VERTEX *v);

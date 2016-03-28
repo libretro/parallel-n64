@@ -777,6 +777,12 @@
     <ClCompile Include="..\..\..\mupen64plus-video-gliden64\src\RSP_gliden64.cpp">
       <Filter>Source Files\mupen64plus-video-gliden64</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\mupen64plus-video-gliden64\src\FrameBufferInfo.cpp">
+      <Filter>Source Files\mupen64plus-video-gliden64</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\mupen64plus-video-gliden64\src\mupenplus\Config_mupenplus.cpp">
+      <Filter>Source Files\mupen64plus-video-gliden64</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\gles2n64\src\3DMath.h">

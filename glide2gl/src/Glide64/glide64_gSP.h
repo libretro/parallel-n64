@@ -1,3 +1,5 @@
+
+
 #include <math.h>
 
 #include "../Glitch64/glide.h"
@@ -23,14 +25,7 @@ typedef struct DRAWOBJECT_t
   uint8_t  imageFlags;
 } DRAWOBJECT;
 
-struct MAT2D {
-  float A, B, C, D;
-  float X, Y;
-  float BaseScaleX;
-  float BaseScaleY;
-};
 
-extern struct MAT2D mat_2d;
 
 // positional and texel coordinate clipping
 #define CCLIP2(ux,lx,ut,lt,un,ln,uc,lc) \
