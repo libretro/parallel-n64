@@ -235,7 +235,7 @@ static void uc5_tridma(uint32_t w0, uint32_t w1)
 
 static void uc5_dl_in_mem(uint32_t w0, uint32_t w1)
 {
-	gSPDlistCount_G64(_SHIFTR(w0, 16, 8), w1);
+	glide64gSPDlistCount(_SHIFTR(w0, 16, 8), w1);
 }
 
 static void uc5_moveword(uint32_t w0, uint32_t w1)

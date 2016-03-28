@@ -113,19 +113,19 @@ static void uc2_vertex(uint32_t w0, uint32_t w1)
          rdp.geom_mode ^= G_TEXTURE_GEN;
    }
 
-   gSPVertex_G64(addr, n, v0);
+   glide64gSPVertex(addr, n, v0);
 
    rdp.geom_mode = geom_mode;
 }
 
 static void uc2_modifyvtx(uint32_t w0, uint32_t w1)
 {
-   gSPModifyVertex_G64( _SHIFTR( w0, 1, 15 ), _SHIFTR( w0, 16, 8 ), w1 );
+   glide64gSPModifyVertex( _SHIFTR( w0, 1, 15 ), _SHIFTR( w0, 16, 8 ), w1 );
 }
 
 static void uc2_culldl(uint32_t w0, uint32_t w1)
 {
-	gSPCullDisplayList_G64( _SHIFTR( w0, 1, 15 ), _SHIFTR( w1, 1, 15 ) );
+	glide64gSPCullDisplayList( _SHIFTR( w0, 1, 15 ), _SHIFTR( w1, 1, 15 ) );
 }
 
 static void uc2_tri1(uint32_t w0, uint32_t w1)
@@ -216,7 +216,7 @@ static void uc2_dma_io(uint32_t w0, uint32_t w1)
 
 static void uc2_pop_matrix(uint32_t w0, uint32_t w1)
 {
-   gSPPopMatrixN_G64( 0, w1 >> 6 );
+   glide64gSPPopMatrixN( 0, w1 >> 6 );
 }
 
 static void uc2_geom_mode(uint32_t w0, uint32_t w1)
@@ -393,7 +393,7 @@ static void uc2_moveword(uint32_t w0, uint32_t w1)
          break;
 
       case G_MW_NUMLIGHT:
-         gSPNumLights_G64( w1 / 24);
+         glide64gSPNumLights( w1 / 24);
          break;
       case G_MW_CLIP:
          if (offset == 0x04)
@@ -407,7 +407,7 @@ static void uc2_moveword(uint32_t w0, uint32_t w1)
             rdp.segment[(offset >> 2) & 0xF] = w1;
          break;
       case G_MW_FOG:
-         gSPFogFactor_G64((int16_t)_SHIFTR(w1, 16, 16), (int16_t)_SHIFTR(w1, 0, 16));
+         glide64gSPFogFactor((int16_t)_SHIFTR(w1, 16, 16), (int16_t)_SHIFTR(w1, 0, 16));
 
          /*offset must be 0 for move_fog, but it can be non zero in Nushi Zuri 64 - Shiokaze ni Notte
           * low-level display list has setothermode commands in this place, so this is obviously not move_fog.
@@ -417,7 +417,7 @@ static void uc2_moveword(uint32_t w0, uint32_t w1)
          break;
 
       case G_MW_LIGHTCOL:
-         gSPLightColor_G64((_SHIFTR( w0, 0, 16 ) / 24) + 1, w1 );
+         glide64gSPLightColor((_SHIFTR( w0, 0, 16 ) / 24) + 1, w1 );
          break;
 
       case G_MW_FORCEMTX:
@@ -438,10 +438,10 @@ static void uc2_movemem(uint32_t w0, uint32_t w1)
          uc6_obj_movemem(w0, w1);
          break;
       case F3DEX2_MV_VIEWPORT:
-         gSPViewport_G64( w1 );
+         glide64gSPViewport( w1 );
          break;
       case G_MV_MATRIX:
-         gSPForceMatrix_G64(w1);
+         glide64gSPForceMatrix(w1);
 
          /* force matrix takes two commands */
          rdp.pc[rdp.pc_i] += 8; 
@@ -453,9 +453,9 @@ static void uc2_movemem(uint32_t w0, uint32_t w1)
             uint32_t n = offset / 24;
 
             if (n < 2)
-               gSPLookAt_G64(w1, n);
+               glide64gSPLookAt(w1, n);
             else
-               gSPLight_G64(w1, n - 1);
+               glide64gSPLight(w1, n - 1);
          }
          break;
 
@@ -472,5 +472,5 @@ static void uc2_rdphalf_2(uint32_t w0, uint32_t w1)
 
 static void uc2_dlist_cnt(uint32_t w0, uint32_t w1)
 {
-	gSPDlistCount_G64(_SHIFTR( w0, 0, 8 ), w1);
+	glide64gSPDlistCount(_SHIFTR( w0, 0, 8 ), w1);
 }

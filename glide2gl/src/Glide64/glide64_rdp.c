@@ -197,7 +197,7 @@ void rdp_new(void)
    if (perf_get_cpu_features_cb)
       cpu = perf_get_cpu_features_cb();
 
-   _gSPVertex = gSPVertex_G64;
+   _gSPVertex = glide64gSPVertex;
 }
 
 void rdp_setfuncs(void)
@@ -1015,7 +1015,7 @@ static void rdp_loadblock(uint32_t w0, uint32_t w1)
 {
    // lr_s specifies number of 64-bit words to copy
    // 10.2 format
-   gDPLoadBlock(
+   glide64gDPLoadBlock(
          ((w1 >> 24) & 0x07), 
          (w0 >> 14) & 0x3FF, /* ul_s */
          (w0 >>  2) & 0x3FF, /* ul_t */

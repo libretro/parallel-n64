@@ -205,7 +205,7 @@ static void uc8_moveword(uint32_t w0, uint32_t w1)
       //  be easily fixed, but only if i had something to test with.
 
       case G_MW_NUMLIGHT:
-         gSPNumLights_G64(w1 / 48);
+         glide64gSPNumLights(w1 / 48);
          break;
 
       case G_MW_CLIP:
@@ -221,7 +221,7 @@ static void uc8_moveword(uint32_t w0, uint32_t w1)
          break;
 
       case G_MW_FOG:
-         gSPFogFactor_G64((int16_t)_SHIFTR(w1, 16, 16), (int16_t)_SHIFTR(w1, 0, 16));
+         glide64gSPFogFactor((int16_t)_SHIFTR(w1, 16, 16), (int16_t)_SHIFTR(w1, 0, 16));
          break;
 
       case G_MW_PERSPNORM:
@@ -271,7 +271,7 @@ static void uc8_movemem(uint32_t w0, uint32_t w1)
    switch (_SHIFTR(w0, 0, 8))
    {
       case F3DCBFD_MV_VIEWPORT:
-         gSPViewport_G64(w1);
+         glide64gSPViewport(w1);
          break;
 
       case F3DCBFD_MV_LIGHT:  // LIGHT
@@ -280,7 +280,7 @@ static void uc8_movemem(uint32_t w0, uint32_t w1)
             int n = (ofs / 48);
 
             if (n < 2)
-               gSPLookAt_G64(w1, n);
+               glide64gSPLookAt(w1, n);
             else
             {
                n -= 2;

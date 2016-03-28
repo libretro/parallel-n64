@@ -43,7 +43,7 @@ static void rsp_vertex(int v0, int n)
    uint32_t addr = RSP_SegmentToPhysical(rdp.cmd1);
 
    pre_update();
-   gSPVertex_G64(addr, n, v0);
+   glide64gSPVertex(addr, n, v0);
 }
 
 //
@@ -171,42 +171,42 @@ static void uc0_movemem(uint32_t w0, uint32_t w1)
    switch (_SHIFTR( w0, 16, 8))
    {
       case F3D_MV_VIEWPORT:
-         gSPViewport_G64( w1 );
+         glide64gSPViewport( w1 );
          break;
       case G_MV_MATRIX_1:
-         gSPForceMatrix_G64(w1);
+         glide64gSPForceMatrix(w1);
          /* force matrix takes four commands */
          rdp.pc[rdp.pc_i] += 24; 
          break;
       case G_MV_L0:
-         gSPLight_G64( w1, LIGHT_1 );
+         glide64gSPLight( w1, LIGHT_1 );
          break;
       case G_MV_L1:
-         gSPLight_G64( w1, LIGHT_2 );
+         glide64gSPLight( w1, LIGHT_2 );
          break;
       case G_MV_L2:
-         gSPLight_G64( w1, LIGHT_3 );
+         glide64gSPLight( w1, LIGHT_3 );
          break;
       case G_MV_L3:
-         gSPLight_G64( w1, LIGHT_4 );
+         glide64gSPLight( w1, LIGHT_4 );
          break;
       case G_MV_L4:
-         gSPLight_G64( w1, LIGHT_5 );
+         glide64gSPLight( w1, LIGHT_5 );
          break;
       case G_MV_L5:
-         gSPLight_G64( w1, LIGHT_6 );
+         glide64gSPLight( w1, LIGHT_6 );
          break;
       case G_MV_L6:
-         gSPLight_G64( w1, LIGHT_7 );
+         glide64gSPLight( w1, LIGHT_7 );
          break;
       case G_MV_L7:
-         gSPLight_G64( w1, LIGHT_8 );
+         glide64gSPLight( w1, LIGHT_8 );
          break;
       case G_MV_LOOKATX:
-         gSPLookAt_G64(w1, 0);
+         glide64gSPLookAt(w1, 0);
          break;
       case G_MV_LOOKATY:
-         gSPLookAt_G64(w1, 1);
+         glide64gSPLookAt(w1, 1);
          break;
 
    }
@@ -280,17 +280,17 @@ static void uc0_tri1_mischief(uint32_t w0, uint32_t w1)
 //
 static void uc0_enddl(uint32_t w0, uint32_t w1)
 {
-   gSPEndDisplayList_G64();
+   glide64gSPEndDisplayList();
 }
 
 static void uc0_culldl(uint32_t w0, uint32_t w1)
 {
-	gSPCullDisplayList_G64( _SHIFTR( w0, 0, 24 ) / 40, (w1 / 40) - 1 );
+	glide64gSPCullDisplayList( _SHIFTR( w0, 0, 24 ) / 40, (w1 / 40) - 1 );
 }
 
 static void uc0_popmatrix(uint32_t w0, uint32_t w1)
 {
-   gSPPopMatrix_G64( w1 );
+   glide64gSPPopMatrix( w1 );
 }
 
 //
@@ -304,7 +304,7 @@ static void uc0_moveword(uint32_t w0, uint32_t w1)
       case G_MW_MATRIX:
          break;
       case G_MW_NUMLIGHT:
-         gSPNumLights_G64( ((w1 - 0x80000000) >> 5) - 1 );
+         glide64gSPNumLights( ((w1 - 0x80000000) >> 5) - 1 );
          break;
       case G_MW_CLIP:
          if (((w0 >> 8)&0xFFFF) == 0x04)
@@ -319,34 +319,34 @@ static void uc0_moveword(uint32_t w0, uint32_t w1)
             rdp.segment[(w0 >> 10) & 0x0F] = w1;
          break;
       case G_MW_FOG:
-         gSPFogFactor_G64((int16_t)_SHIFTR(w1, 16, 16), (int16_t)_SHIFTR(w1, 0, 16));
+         glide64gSPFogFactor((int16_t)_SHIFTR(w1, 16, 16), (int16_t)_SHIFTR(w1, 0, 16));
          break;
       case G_MW_LIGHTCOL:
          switch (_SHIFTR( w0, 8, 16 ))
          {
             case F3D_MWO_aLIGHT_1:
-               gSPLightColor_G64( LIGHT_1, w1 );
+               glide64gSPLightColor( LIGHT_1, w1 );
                break;
             case F3D_MWO_aLIGHT_2:
-               gSPLightColor_G64( LIGHT_2, w1 );
+               glide64gSPLightColor( LIGHT_2, w1 );
                break;
             case F3D_MWO_aLIGHT_3:
-               gSPLightColor_G64( LIGHT_3, w1 );
+               glide64gSPLightColor( LIGHT_3, w1 );
                break;
             case F3D_MWO_aLIGHT_4:
-               gSPLightColor_G64( LIGHT_4, w1 );
+               glide64gSPLightColor( LIGHT_4, w1 );
                break;
             case F3D_MWO_aLIGHT_5:
-               gSPLightColor_G64( LIGHT_5, w1 );
+               glide64gSPLightColor( LIGHT_5, w1 );
                break;
             case F3D_MWO_aLIGHT_6:
-               gSPLightColor_G64( LIGHT_6, w1 );
+               glide64gSPLightColor( LIGHT_6, w1 );
                break;
             case F3D_MWO_aLIGHT_7:
-               gSPLightColor_G64( LIGHT_7, w1 );
+               glide64gSPLightColor( LIGHT_7, w1 );
                break;
             case F3D_MWO_aLIGHT_8:
-               gSPLightColor_G64( LIGHT_8, w1 );
+               glide64gSPLightColor( LIGHT_8, w1 );
                break;
          }
          break;
@@ -354,7 +354,7 @@ static void uc0_moveword(uint32_t w0, uint32_t w1)
       case G_MW_POINTS:
          {
             const uint32_t val = _SHIFTR(w0, 8, 16);
-            gSPModifyVertex_G64(val / 40, val % 40, w1);
+            glide64gSPModifyVertex(val / 40, val % 40, w1);
          }
          break;
       case G_MW_PERSPNORM:

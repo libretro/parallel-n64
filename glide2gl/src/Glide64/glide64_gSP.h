@@ -112,7 +112,7 @@ static int cull_tri(VERTEX **v) // type changed to VERTEX** [Dave2001]
    return false;
 }
 
-static void gSPCombineMatrices(void)
+static void glide64gSPCombineMatrices(void)
 {
    MulMatrices(rdp.model, rdp.proj, rdp.combined);
    g_gdp.flags ^= UPDATE_MULT_MAT;
@@ -360,7 +360,7 @@ static void pre_update(void)
    // This is special, not handled in update(), but here
    // Matrix Pre-multiplication idea by Gonetz (Gonetz@ngs.ru)
    if (g_gdp.flags & UPDATE_MULT_MAT)
-      gSPCombineMatrices();
+      glide64gSPCombineMatrices();
 
    if (g_gdp.flags & UPDATE_LIGHTS)
    {
@@ -376,7 +376,7 @@ static void pre_update(void)
    }
 }
 
-static void gSPClipVertex_G64(uint32_t v)
+static void glide64gSPClipVertex(uint32_t v)
 {
    VERTEX *vtx = (VERTEX*)&rdp.vtx[v];
 
@@ -396,7 +396,7 @@ static void gSPClipVertex_G64(uint32_t v)
  * n  - Number of vertices (1 - 32).
  * v0 - Starting index in vertex buffer where vertices are to be loaded into.
  */
-static void gSPVertex_G64(uint32_t v, uint32_t n, uint32_t v0)
+static void glide64gSPVertex(uint32_t v, uint32_t n, uint32_t v0)
 {
    unsigned int i;
    float x, y, z;
@@ -435,7 +435,7 @@ static void gSPVertex_G64(uint32_t v, uint32_t n, uint32_t v0)
       vtx->z_w = vtx->z * vtx->oow;
       CalculateFog (vtx);
 
-      gSPClipVertex_G64(v0 + (i / iter));
+      glide64gSPClipVertex(v0 + (i / iter));
 
       if (rdp.geom_mode & G_LIGHTING)
       {
@@ -473,7 +473,7 @@ static void gSPVertex_G64(uint32_t v, uint32_t n, uint32_t v0)
    }
 }
 
-static void gSPLookAt_G64(uint32_t l, uint32_t n)
+static void glide64gSPLookAt(uint32_t l, uint32_t n)
 {
    int8_t  *rdram_s8  = (int8_t*) (gfx_info.RDRAM  + RSP_SegmentToPhysical(l));
    int8_t dir_x = rdram_s8[11];
@@ -485,7 +485,7 @@ static void gSPLookAt_G64(uint32_t l, uint32_t n)
    rdp.use_lookat = (n == 0) || (n == 1 && (dir_x || dir_y));
 }
 
-static void gSPLight_G64(uint32_t l, int32_t n)
+static void glide64gSPLight(uint32_t l, int32_t n)
 {
    int16_t *rdram     = (int16_t*)(gfx_info.RDRAM  + RSP_SegmentToPhysical(l));
    uint8_t *rdram_u8  = (uint8_t*)(gfx_info.RDRAM  + RSP_SegmentToPhysical(l));
@@ -521,7 +521,7 @@ static void gSPLight_G64(uint32_t l, int32_t n)
    }
 }
 
-static void gSPViewport_G64(uint32_t v)
+static void glide64gSPViewport(uint32_t v)
 {
    int16_t *rdram     = (int16_t*)(gfx_info.RDRAM  + RSP_SegmentToPhysical( v ));
 
@@ -546,13 +546,13 @@ static void gSPViewport_G64(uint32_t v)
    g_gdp.flags |= UPDATE_VIEWPORT;
 }
 
-static void gSPFogFactor_G64(int16_t fm, int16_t fo )
+static void glide64gSPFogFactor(int16_t fm, int16_t fo )
 {
    rdp.fog_multiplier = fm;
    rdp.fog_offset     = fo;
 }
 
-static void gSPNumLights_G64(int32_t n)
+static void glide64gSPNumLights(int32_t n)
 {
    if (n > 12)
       return;
@@ -561,7 +561,7 @@ static void gSPNumLights_G64(int32_t n)
    g_gdp.flags |= UPDATE_LIGHTS;
 }
 
-static void gSPForceMatrix_G64( uint32_t mptr )
+static void glide64gSPForceMatrix( uint32_t mptr )
 {
    uint32_t address = RSP_SegmentToPhysical( mptr );
 
@@ -570,7 +570,7 @@ static void gSPForceMatrix_G64( uint32_t mptr )
    g_gdp.flags &= ~UPDATE_MULT_MAT;
 }
 
-static void gSPPopMatrixN_G64(uint32_t param, uint32_t num )
+static void glide64gSPPopMatrixN(uint32_t param, uint32_t num )
 {
    if (rdp.model_i > num - 1)
    {
@@ -580,7 +580,7 @@ static void gSPPopMatrixN_G64(uint32_t param, uint32_t num )
    g_gdp.flags |= UPDATE_MULT_MAT;
 }
 
-static void gSPPopMatrix_G64(uint32_t param)
+static void glide64gSPPopMatrix(uint32_t param)
 {
    switch (param)
    {
@@ -605,7 +605,7 @@ static void gSPPopMatrix_G64(uint32_t param)
    }
 }
 
-static void gSPLightColor_G64( uint32_t lightNum, uint32_t packedColor )
+static void glide64gSPLightColor( uint32_t lightNum, uint32_t packedColor )
 {
    lightNum--;
 
@@ -618,7 +618,7 @@ static void gSPLightColor_G64( uint32_t lightNum, uint32_t packedColor )
    }
 }
 
-static void gSPDlistCount_G64(uint32_t count, uint32_t v)
+static void glide64gSPDlistCount(uint32_t count, uint32_t v)
 {
    uint32_t address = RSP_SegmentToPhysical(v);
 
@@ -630,7 +630,7 @@ static void gSPDlistCount_G64(uint32_t count, uint32_t v)
    rdp.dl_count = count + 1;
 }
 
-static void gSPModifyVertex_G64( uint32_t vtx, uint32_t where, uint32_t val )
+static void glide64gSPModifyVertex( uint32_t vtx, uint32_t where, uint32_t val )
 {
    VERTEX *v = (VERTEX*)&rdp.vtx[vtx];
 
@@ -691,7 +691,7 @@ static void gSPModifyVertex_G64( uint32_t vtx, uint32_t where, uint32_t val )
    }
 }
 
-static void gSPEndDisplayList_G64(void)
+static void glide64gSPEndDisplayList(void)
 {
    if (rdp.pc_i > 0)
       rdp.pc_i --;
@@ -703,7 +703,7 @@ static void gSPEndDisplayList_G64(void)
    }
 }
 
-static bool gSPCullVertices_G64( uint32_t v0, uint32_t vn )
+static bool glide64gSPCullVertices( uint32_t v0, uint32_t vn )
 {
    uint32_t i, clip = 0;
 	if (vn < v0)
@@ -733,8 +733,8 @@ static bool gSPCullVertices_G64( uint32_t v0, uint32_t vn )
    return true;
 }
 
-static void gSPCullDisplayList_G64( uint32_t v0, uint32_t vn )
+static void glide64gSPCullDisplayList( uint32_t v0, uint32_t vn )
 {
-	if (gSPCullVertices_G64( v0, vn ))
-      gSPEndDisplayList_G64();
+	if (glide64gSPCullVertices( v0, vn ))
+      glide64gSPEndDisplayList();
 }

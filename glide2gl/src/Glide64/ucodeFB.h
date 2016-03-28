@@ -106,7 +106,7 @@ static void fb_bg_copy(uint32_t w0, uint32_t w1)
 
 static void fb_setscissor(uint32_t w0, uint32_t w1)
 {
-    gDPSetScissor_G64( _SHIFTR( w1, 24, 2 ),                        // mode
+    glide64gDPSetScissor( _SHIFTR( w1, 24, 2 ),                        // mode
                    _FIXED2FLOAT( _SHIFTR( w0, 12, 12 ), 2 ),    // ulx
                    _FIXED2FLOAT( _SHIFTR( w0,  0, 12 ), 2 ),    // uly
                    _FIXED2FLOAT( _SHIFTR( w1, 12, 12 ), 2 ),    // lrx

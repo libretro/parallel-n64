@@ -1,5 +1,8 @@
-#include "Util.h"
 #include <stdint.h>
+
+#include <retro_inline.h>
+
+#include "Util.h"
 #include "TexLoad.h"
 
 //forward decls
@@ -11,7 +14,7 @@ extern uint16_t ucode5_texshift;
 extern int CI_SET;
 extern uint32_t swapped_addr;
 
-static void gDPSetScissor_G64( uint32_t mode, float ulx, float uly, float lrx, float lry )
+static void glide64gDPSetScissor( uint32_t mode, float ulx, float uly, float lrx, float lry )
 {
    g_gdp.__clip.xh = (uint32_t)ulx;
    g_gdp.__clip.yh = (uint32_t)ulx;
@@ -38,7 +41,7 @@ static void gDPSetScissor_G64( uint32_t mode, float ulx, float uly, float lrx, f
 * lr_s - texture tile's lower-right s coordinate (10.2, 0.0~1023.75)
 * dxt - amount of change in value of t per scan line (12-bit precision, 0~4095)
 */
-static void gDPLoadBlock( uint32_t tile, uint32_t ul_s, uint32_t ul_t, uint32_t lr_s, uint32_t dxt )
+static void glide64gDPLoadBlock( uint32_t tile, uint32_t ul_s, uint32_t ul_t, uint32_t lr_s, uint32_t dxt )
 {
    uint32_t _dxt, addr, off, cnt;
    uint8_t *dst;

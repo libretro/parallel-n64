@@ -269,7 +269,7 @@ static void uc9_fmlight(uint32_t w0, uint32_t w1)
    M44 *m;
 
    mid = w0 & 0xFF;
-   gSPNumLights_G64(1 + _SHIFTR(w1, 12, 8));
+   glide64gSPNumLights(1 + _SHIFTR(w1, 12, 8));
    a = -1024 + (w1 & 0xFFF);
    FRDP ("uc9:fmlight matrix: %d, num: %d, dmem: %04lx\n", mid, rdp.num_lights, a);
 
