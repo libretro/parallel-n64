@@ -417,7 +417,7 @@ static void uc2_moveword(uint32_t w0, uint32_t w1)
          break;
 
       case G_MW_LIGHTCOL:
-         glide64gSPLightColor((_SHIFTR( w0, 0, 16 ) / 24) + 1, w1 );
+         gSPLightColor((_SHIFTR( w0, 0, 16 ) / 24) + 1, w1 );
          break;
 
       case G_MW_FORCEMTX:

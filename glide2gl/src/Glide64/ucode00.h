@@ -325,28 +325,28 @@ static void uc0_moveword(uint32_t w0, uint32_t w1)
          switch (_SHIFTR( w0, 8, 16 ))
          {
             case F3D_MWO_aLIGHT_1:
-               glide64gSPLightColor( LIGHT_1, w1 );
+               gSPLightColor( LIGHT_1, w1 );
                break;
             case F3D_MWO_aLIGHT_2:
-               glide64gSPLightColor( LIGHT_2, w1 );
+               gSPLightColor( LIGHT_2, w1 );
                break;
             case F3D_MWO_aLIGHT_3:
-               glide64gSPLightColor( LIGHT_3, w1 );
+               gSPLightColor( LIGHT_3, w1 );
                break;
             case F3D_MWO_aLIGHT_4:
-               glide64gSPLightColor( LIGHT_4, w1 );
+               gSPLightColor( LIGHT_4, w1 );
                break;
             case F3D_MWO_aLIGHT_5:
-               glide64gSPLightColor( LIGHT_5, w1 );
+               gSPLightColor( LIGHT_5, w1 );
                break;
             case F3D_MWO_aLIGHT_6:
-               glide64gSPLightColor( LIGHT_6, w1 );
+               gSPLightColor( LIGHT_6, w1 );
                break;
             case F3D_MWO_aLIGHT_7:
-               glide64gSPLightColor( LIGHT_7, w1 );
+               gSPLightColor( LIGHT_7, w1 );
                break;
             case F3D_MWO_aLIGHT_8:
-               glide64gSPLightColor( LIGHT_8, w1 );
+               gSPLightColor( LIGHT_8, w1 );
                break;
          }
          break;

@@ -553,18 +553,6 @@ static void glide64gSPPopMatrix(uint32_t param)
    }
 }
 
-static void glide64gSPLightColor( uint32_t lightNum, uint32_t packedColor )
-{
-   lightNum--;
-
-   if (lightNum < 8)
-   {
-      rdp.light[lightNum].col[0] = _SHIFTR( packedColor, 24, 8 ) * 0.0039215689f;
-      rdp.light[lightNum].col[1] = _SHIFTR( packedColor, 16, 8 ) * 0.0039215689f;
-      rdp.light[lightNum].col[2] = _SHIFTR( packedColor, 8, 8 )  * 0.0039215689f;
-      rdp.light[lightNum].col[3] = 255;
-   }
-}
 
 static void glide64gSPDlistCount(uint32_t count, uint32_t v)
 {
@@ -687,5 +675,6 @@ static void glide64gSPCullDisplayList( uint32_t v0, uint32_t vn )
       glide64gSPEndDisplayList();
 }
 
+void glide64gSPLightColor( uint32_t lightNum, uint32_t packedColor );
 void glide64gSPCombineMatrices(void);
 void glide64gSPLookAt(uint32_t l, uint32_t n);

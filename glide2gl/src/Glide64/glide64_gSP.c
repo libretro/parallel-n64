@@ -66,3 +66,16 @@ void glide64gSPLight(uint32_t l, int32_t n)
       //g_gdp.flags |= UPDATE_LIGHTS;
    }
 }
+
+void glide64gSPLightColor( uint32_t lightNum, uint32_t packedColor )
+{
+   lightNum--;
+
+   if (lightNum < 8)
+   {
+      rdp.light[lightNum].col[0] = _SHIFTR( packedColor, 24, 8 ) * 0.0039215689f;
+      rdp.light[lightNum].col[1] = _SHIFTR( packedColor, 16, 8 ) * 0.0039215689f;
+      rdp.light[lightNum].col[2] = _SHIFTR( packedColor, 8, 8 )  * 0.0039215689f;
+      rdp.light[lightNum].col[3] = 255;
+   }
+}

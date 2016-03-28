@@ -47,3 +47,15 @@ void GSPLight(enum gsp_plugin_type plug_type, uint32_t l, int32_t n)
          break;
    }
 }
+
+void GSPLightColor(enum gsp_plugin_type plug_type, uint32_t lightNum, uint32_t packedColor )
+{
+   switch (plug_type)
+   {
+      case GSP_PLUGIN_GLIDE64:
+         gSPLightColor(lightNum, packedColor);
+         break;
+      case GSP_PLUGIN_GLN64:
+         break;
+   }
+}
