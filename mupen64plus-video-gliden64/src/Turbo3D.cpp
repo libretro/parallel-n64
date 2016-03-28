@@ -14,7 +14,9 @@ static
 void Turbo3D_ProcessRDP(uint32_t _cmds)
 {
 	uint32_t addr = RSP_SegmentToPhysical(_cmds) >> 2;
-	if (addr != 0) {
+
+	if (addr != 0)
+   {
 		__RSP.bLLE = true;
 		uint32_t w0 = ((uint32_t*)RDRAM)[addr++];
 		uint32_t w1 = ((uint32_t*)RDRAM)[addr++];

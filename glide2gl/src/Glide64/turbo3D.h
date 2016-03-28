@@ -46,24 +46,24 @@
 
 /******************Turbo3D microcode*************************/
 
-static void t3dProcessRDP(uint32_t a)
+static void t3dProcessRDP(uint32_t cmds)
 {
-   if (a)
+   if (cmds)
    {
       rdp.LLE = 1;
-      rdp.cmd0 = ((uint32_t*)gfx_info.RDRAM)[a++];
-      rdp.cmd1 = ((uint32_t*)gfx_info.RDRAM)[a++];
+      rdp.cmd0 = ((uint32_t*)gfx_info.RDRAM)[cmds++];
+      rdp.cmd1 = ((uint32_t*)gfx_info.RDRAM)[cmds++];
       while (rdp.cmd0 + rdp.cmd1)
       {
          uint32_t cmd;
          gfx_instruction[0][rdp.cmd0>>24](rdp.cmd0, rdp.cmd1);
-         rdp.cmd0 = ((uint32_t*)gfx_info.RDRAM)[a++];
-         rdp.cmd1 = ((uint32_t*)gfx_info.RDRAM)[a++];
+         rdp.cmd0 = ((uint32_t*)gfx_info.RDRAM)[cmds++];
+         rdp.cmd1 = ((uint32_t*)gfx_info.RDRAM)[cmds++];
          cmd = rdp.cmd0>>24;
          if (cmd == G_TEXRECT || cmd == G_TEXRECTFLIP)
          {
-            rdp.cmd2 = ((uint32_t*)gfx_info.RDRAM)[a++];
-            rdp.cmd3 = ((uint32_t*)gfx_info.RDRAM)[a++];
+            rdp.cmd2 = ((uint32_t*)gfx_info.RDRAM)[cmds++];
+            rdp.cmd3 = ((uint32_t*)gfx_info.RDRAM)[cmds++];
          }
       }
       rdp.LLE = 0;
