@@ -73,7 +73,7 @@ static void t3dProcessRDP(uint32_t cmds)
 
 static void t3dLoadGlobState(uint32_t pgstate)
 {
-   int s;
+   unsigned s;
    int16_t scale_x, scale_y, scale_z, trans_x, trans_y, trans_z;
    struct T3DGlobState *gstate = (struct T3DGlobState*)&gfx_info.RDRAM[RSP_SegmentToPhysical(pgstate)];
    const uint32_t w0           = gstate->othermode0;
