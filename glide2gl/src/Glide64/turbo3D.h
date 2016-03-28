@@ -76,30 +76,15 @@ static void t3dLoadGlobState(uint32_t pgstate)
    int s;
    int16_t scale_x, scale_y, scale_z, trans_x, trans_y, trans_z;
    struct T3DGlobState *gstate = (struct T3DGlobState*)&gfx_info.RDRAM[RSP_SegmentToPhysical(pgstate)];
+   const uint32_t w0           = gstate->othermode0;
+   const uint32_t w1           = gstate->othermode1;
 
-   FRDP ("Global state. pad0: %04lx, perspNorm: %04lx, flag: %08lx\n", gstate->pad0, gstate->perspNorm, gstate->flag);
-   rdp.cmd0 = gstate->othermode0;
-   rdp.cmd1 = gstate->othermode1;
-   rdp_setothermode(rdp.cmd0, rdp.cmd1);
+   rdp_setothermode(w0, w1);
 
    for (s = 0; s < 16; s++)
       rdp.segment[s] = gstate->segBases[s];
 
-   scale_x = gstate->vsacle0 / 4;
-   scale_y = gstate->vsacle1 / 4;;
-   scale_z = gstate->vsacle2;
-   trans_x = gstate->vtrans0 / 4;
-   trans_y = gstate->vtrans1 / 4;
-   trans_z = gstate->vtrans2;
-   rdp.view_scale[0] = scale_x * rdp.scale_x;
-   rdp.view_scale[1] = -scale_y * rdp.scale_y;
-   rdp.view_scale[2] = 32.0f * scale_z;
-   rdp.view_trans[0] = trans_x * rdp.scale_x;
-   rdp.view_trans[1] = trans_y * rdp.scale_y;
-   rdp.view_trans[2] = 32.0f * trans_z;
-   g_gdp.flags |= UPDATE_VIEWPORT;
-   FRDP ("viewport scale(%d, %d, %d), trans(%d, %d, %d)\n", scale_x, scale_y, scale_z,
-         trans_x, trans_y, trans_z);
+   gSPViewport(pgstate + 80);
 
    t3dProcessRDP(RSP_SegmentToPhysical(gstate->rdpCmds) >> 2);
 }
