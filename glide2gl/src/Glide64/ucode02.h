@@ -130,21 +130,15 @@ static void uc2_culldl(uint32_t w0, uint32_t w1)
 
 static void uc2_tri1(uint32_t w0, uint32_t w1)
 {
-   VERTEX *v[3];
    if ((w0 & 0x00FFFFFF) == 0x17)
    {
       uc6_obj_loadtxtr(w0, w1);
       return;
    }
 
-   if (rdp.skip_drawing)
-      return;
-
-   v[0] = &rdp.vtx[_SHIFTR(w0,  17, 7)];
-   v[1] = &rdp.vtx[_SHIFTR(w0,   9, 7)];
-   v[2] = &rdp.vtx[_SHIFTR(w0,   1, 7)];
-
-   cull_trianglefaces(v, 1, true, true, 0);
+	glide64gSP1Triangle( _SHIFTR( w0, 17, 7 ),
+				  _SHIFTR( w0, 9, 7 ),
+				  _SHIFTR( w0, 1, 7 ), 0);
 }
 
 static void uc2_quad(uint32_t w0, uint32_t w1)
