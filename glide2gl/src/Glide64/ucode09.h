@@ -183,13 +183,10 @@ static void uc9_draw_object (uint8_t * addr, uint32_t type)
 
 static uint32_t uc9_load_object (uint32_t zHeader, uint32_t * rdpcmds)
 {
-   uint32_t type, w0, w1;
-   uint8_t *addr;
-   
-   w0 = rdp.cmd0;
-   w1 = rdp.cmd1;
-   type = zHeader & 7;
-   addr = gfx_info.RDRAM + (zHeader&0xFFFFFFF8);
+   uint32_t w0   = rdp.cmd0;
+   uint32_t w1   = rdp.cmd1;
+   uint32_t type = zHeader & 7;
+   uint8_t *addr = gfx_info.RDRAM + (zHeader&0xFFFFFFF8);
 
    switch (type)
    {
@@ -248,7 +245,7 @@ static void uc9_object(uint32_t w0, uint32_t w1)
    rdpcmds[1] = 0;
    rdpcmds[2] = 0;
 
-   cmd1 = w1;
+   cmd1    = w1;
    zHeader = RSP_SegmentToPhysical(w0);
 
    while (zHeader)
@@ -264,13 +261,13 @@ static void uc9_mix(uint32_t w0, uint32_t w1)
 
 static void uc9_fmlight(uint32_t w0, uint32_t w1)
 {
-   uint32_t i, a;
-   int mid;
+   uint32_t i;
    M44 *m;
+   int    mid = w0 & 0xFF;
+   uint32_t a = -1024 + (w1 & 0xFFF);
 
-   mid = w0 & 0xFF;
    glide64gSPNumLights(1 + _SHIFTR(w1, 12, 8));
-   a = -1024 + (w1 & 0xFFF);
+
    FRDP ("uc9:fmlight matrix: %d, num: %d, dmem: %04lx\n", mid, rdp.num_lights, a);
 
    switch (mid)
@@ -331,11 +328,11 @@ static void uc9_light(uint32_t w0, uint32_t w1)
 {
    VERTEX v;
    uint32_t i;
-   uint32_t csrs = -1024 + ((w0 >> 12) & 0xFFF);
-   uint32_t nsrs = -1024 + (w0 & 0xFFF);
-   uint32_t num = 1 + ((w1 >> 24) & 0xFF);
-   uint32_t cdest = -1024 + ((w1 >> 12) & 0xFFF);
-   uint32_t tdest = -1024 + (w1 & 0xFFF);
+   uint32_t csrs    = -1024 + ((w0 >> 12) & 0xFFF);
+   uint32_t nsrs    = -1024 + (w0 & 0xFFF);
+   uint32_t num     = 1 + ((w1 >> 24) & 0xFF);
+   uint32_t cdest   = -1024 + ((w1 >> 12) & 0xFFF);
+   uint32_t tdest   = -1024 + (w1 & 0xFFF);
    int use_material = (csrs != 0x0ff0);
    tdest >>= 1;
    FRDP ("uc9:light n: %d, colsrs: %04lx, normales: %04lx, coldst: %04lx, texdst: %04lx\n", num, csrs, nsrs, cdest, tdest);
@@ -557,10 +554,10 @@ static void uc9_send_signal(uint32_t w0, uint32_t w1)
 
 static void uc9_movemem(uint32_t w0, uint32_t w1)
 {
-   int idx = w0 & 0x0E;
-   int ofs = ((w0 >> 6) & 0x1ff)<<3;
-   int len = (1 + ((w0 >> 15) & 0x1ff))<<3;
-   int flag = w0 & 0x01;
+   int idx       = w0 & 0x0E;
+   int ofs       = ((w0 >> 6) & 0x1ff)<<3;
+   int len       = (1 + ((w0 >> 15) & 0x1ff))<<3;
+   int flag      = w0 & 0x01;
    uint32_t addr = RSP_SegmentToPhysical(w1);
 
    switch (idx)
