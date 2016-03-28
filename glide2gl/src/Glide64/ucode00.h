@@ -567,26 +567,8 @@ static void uc0_line3d(uint32_t w0, uint32_t w1)
 
 static void uc0_tri4(uint32_t w0, uint32_t w1)
 {
-   // c0: 0000 0123, c1: 456789ab
-   // becomes: 405 617 829 a3b
-
-   VERTEX *v[12];
-
-   if (rdp.skip_drawing)
-      return;
-
-   v[0]  = &rdp.vtx[_SHIFTR(w1, 28, 4)];  /* v00 */
-   v[1]  = &rdp.vtx[_SHIFTR(w0, 12, 4)];  /* v01 */
-   v[2]  = &rdp.vtx[_SHIFTR(w1, 24, 4)];  /* v02 */
-   v[3]  = &rdp.vtx[_SHIFTR(w1, 20, 4)];  /* v10 */
-   v[4]  = &rdp.vtx[_SHIFTR(w0,  8, 4)];  /* v11 */
-   v[5]  = &rdp.vtx[_SHIFTR(w1, 16, 4)];  /* v12 */
-   v[6]  = &rdp.vtx[_SHIFTR(w1, 12, 4)];  /* v20 */
-   v[7]  = &rdp.vtx[_SHIFTR(w0,  4, 4)];  /* v21 */
-   v[8]  = &rdp.vtx[_SHIFTR(w1,  8, 4)];  /* v22 */
-   v[9]  = &rdp.vtx[_SHIFTR(w1,  4, 4)];  /* v30 */
-   v[10] = &rdp.vtx[_SHIFTR(w0,  0, 4)];  /* v31 */
-   v[11] = &rdp.vtx[_SHIFTR(w1,  0, 4)];  /* v32 */
-
-   cull_trianglefaces(v, 4, true, true, 0);
+	glide64gSP4Triangles( _SHIFTR( w1, 28, 4 ), _SHIFTR( w0, 12, 4 ), _SHIFTR( w1, 24, 4 ),
+				   _SHIFTR( w1, 20, 4 ), _SHIFTR( w0,  8, 4 ), _SHIFTR( w1, 16, 4 ),
+				   _SHIFTR( w1, 12, 4 ), _SHIFTR( w0,  4, 4 ), _SHIFTR( w1,  8, 4 ),
+				   _SHIFTR( w1,  4, 4 ), _SHIFTR( w0,  0, 4 ), _SHIFTR( w1,  0, 4 ) );
 }

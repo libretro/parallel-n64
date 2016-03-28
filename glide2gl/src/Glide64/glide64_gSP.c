@@ -79,3 +79,30 @@ void glide64gSPLightColor( uint32_t lightNum, uint32_t packedColor )
       rdp.light[lightNum].col[3] = 255;
    }
 }
+
+void glide64gSP4Triangles( int32_t v00, int32_t v01, int32_t v02,
+                    int32_t v10, int32_t v11, int32_t v12,
+                    int32_t v20, int32_t v21, int32_t v22,
+                    int32_t v30, int32_t v31, int32_t v32 )
+{
+   VERTEX *v[12];
+
+   if (rdp.skip_drawing)
+      return;
+
+   v[0]  = &rdp.vtx[v00];
+   v[1]  = &rdp.vtx[v01];
+   v[2]  = &rdp.vtx[v02];
+   v[3]  = &rdp.vtx[v10];
+   v[4]  = &rdp.vtx[v11];
+   v[5]  = &rdp.vtx[v12];
+   v[6]  = &rdp.vtx[v20];
+   v[7]  = &rdp.vtx[v21];
+   v[8]  = &rdp.vtx[v22];
+   v[9]  = &rdp.vtx[v30];
+   v[10] = &rdp.vtx[v31];
+   v[11] = &rdp.vtx[v32];
+
+   cull_trianglefaces(v, 4, true, true, 0);
+}
+
