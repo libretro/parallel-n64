@@ -85,9 +85,6 @@ VOODOO voodoo = {0, 0};
 uint32_t   offset_textures = 0;
 uint32_t   offset_texbuf1 = 0;
 
-int    capture_screen = 0;
-char    capture_path[256];
-
 // SOME FUNCTION DEFINITIONS 
 
 void glide_set_filtering(unsigned value);
@@ -373,8 +370,6 @@ output:   none
 *******************************************************************/
 void glide64CaptureScreen ( char * Directory )
 {
-   capture_screen = 1;
-   strcpy (capture_path, Directory);
 }
 
 /******************************************************************
