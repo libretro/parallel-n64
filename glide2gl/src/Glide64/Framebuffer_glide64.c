@@ -665,15 +665,15 @@ static void DrawRE2Video256(FB_TO_SCREEN_INFO *fb_info)
    uint32_t h, w;
    int tmu;
    GrTexInfo t_info;
-   uint32_t *src = (uint32_t*)(gfx_info.RDRAM + fb_info->addr);
-   uint16_t *tex = (uint16_t*)texture_buffer;
-   uint16_t *dst = (uint16_t*)tex;
+   uint32_t *src          = (uint32_t*)(gfx_info.RDRAM + fb_info->addr);
+   uint16_t *tex          = (uint16_t*)texture_buffer;
+   uint16_t *dst          = (uint16_t*)tex;
 
-   t_info.smallLodLog2 = GR_LOD_LOG2_256;
-   t_info.largeLodLog2 = GR_LOD_LOG2_256;
+   t_info.smallLodLog2    = GR_LOD_LOG2_256;
+   t_info.largeLodLog2    = GR_LOD_LOG2_256;
    t_info.aspectRatioLog2 = GR_ASPECT_LOG2_1x1;
 
-   fb_info->height = MIN(256, fb_info->height);
+   fb_info->height        = MIN(256, fb_info->height);
 
    for (h = 0; h < fb_info->height; h++)
    {
@@ -692,8 +692,10 @@ static void DrawRE2Video256(FB_TO_SCREEN_INFO *fb_info)
       src += (fb_info->width - 256);
    }
    t_info.format = GR_TEXFMT_RGB_565;
-   t_info.data = tex;
-   tmu = SetupFBtoScreenCombiner(grTexCalcMemRequired(t_info.largeLodLog2, t_info.aspectRatioLog2, t_info.format), fb_info->opaque);
+   t_info.data   = tex;
+   tmu           = SetupFBtoScreenCombiner(
+         grTexCalcMemRequired(t_info.largeLodLog2, t_info.aspectRatioLog2, t_info.format), fb_info->opaque);
+
    grTexSource (tmu,
          voodoo.tmem_ptr[tmu],
          GR_MIPMAPLEVELMASK_BOTH,

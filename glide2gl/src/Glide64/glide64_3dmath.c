@@ -45,12 +45,12 @@
 
 #include "3dmath.h"
 
-float DotProductC(float *v0, float *v1)
+float DotProduct(float *v0, float *v1)
 {
     return v0[0] * v1[0] + v0[1] * v1[1] + v0[2] * v1[2];
 }
 
-void NormalizeVectorC(float *v)
+void NormalizeVector(float *v)
 {
    float len = v[0]*v[0] + v[1]*v[1] + v[2]*v[2];
    if (len == 0.0f)
@@ -62,21 +62,21 @@ void NormalizeVectorC(float *v)
 }
 
 
-static void TransformVectorC(float *src, float *dst, float mat[4][4])
+void TransformVector(float *src, float *dst, float mat[4][4])
 {
    dst[0] = mat[0][0]*src[0] + mat[1][0]*src[1] + mat[2][0]*src[2];
    dst[1] = mat[0][1]*src[0] + mat[1][1]*src[1] + mat[2][1]*src[2];
    dst[2] = mat[0][2]*src[0] + mat[1][2]*src[1] + mat[2][2]*src[2];
 }
 
-void InverseTransformVectorC (float *src, float *dst, float mat[4][4])
+void InverseTransformVector (float *src, float *dst, float mat[4][4])
 {
    dst[0] = mat[0][0]*src[0] + mat[0][1]*src[1] + mat[0][2]*src[2];
    dst[1] = mat[1][0]*src[0] + mat[1][1]*src[1] + mat[1][2]*src[2];
    dst[2] = mat[2][0]*src[0] + mat[2][1]*src[1] + mat[2][2]*src[2];
 }
 
-void MulMatricesC(float m1[4][4], float m2[4][4], float r[4][4])
+void MulMatrices(float m1[4][4], float m2[4][4], float r[4][4])
 {
     float row[4][4];
     register unsigned int i, j;
@@ -104,16 +104,6 @@ void MulMatricesC(float m1[4][4], float m2[4][4], float r[4][4])
         ;
     }
 }
-
-// 2011-01-03 Balrog - removed because is in NASM format and not 64-bit compatible
-// This will need fixing.
-GLIDE64MULMATRIX glide64MulMatrices = MulMatricesC;
-GLIDE64TRANSFORMVECTOR glide64InverseTransformVector = InverseTransformVectorC;
-GLIDE64DOTPRODUCT glide64DotProduct = DotProductC;
-GLIDE64NORMALIZEVECTOR glide64NormalizeVector = NormalizeVectorC;
-
-// 2008.03.29 H.Morii - added SSE 3DNOW! 3x3 1x3 matrix multiplication
-//                      and 3DNOW! 4x4 4x4 matrix multiplication
 
 #if defined(__ARM_NEON__)
 static void NormalizeVectorNeon(float *v)
@@ -263,7 +253,7 @@ void calc_linear (VERTEX *v)
       return;
    }
 
-   TransformVectorC(v->vec, vec, rdp.model);
+   TransformVector(v->vec, vec, rdp.model);
    NormalizeVector (vec);
    x = vec[0];
    y = vec[1];
@@ -309,7 +299,7 @@ void calc_sphere (VERTEX *v)
       t_scale = MIN(rdp.tiles[rdp.cur_tile].org_t_scale >> 6, g_gdp.tile[rdp.cur_tile].tl);
    }
 
-   TransformVectorC(v->vec, vec, rdp.model);
+   TransformVector(v->vec, vec, rdp.model);
    NormalizeVector (vec);
    x = vec[0];
    y = vec[1];
