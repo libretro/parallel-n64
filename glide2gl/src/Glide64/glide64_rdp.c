@@ -213,10 +213,14 @@ void rdp_setfuncs(void)
 void rdp_free(void)
 {
    int i;
+
    if (rdp.vtx1)
       free(rdp.vtx1);
+   rdp.vtx1           = NULL;
+
    if (rdp.vtx2)
       free(rdp.vtx2);
+   rdp.vtx2           = NULL;
 
    for (i = 0; i < MAX_TMU; i++)
    {
@@ -229,26 +233,27 @@ void rdp_free(void)
 
    if (rdp.vtx)
       free(rdp.vtx);
+   rdp.vtx           = NULL;
+
    if (rdp.frame_buffers)
       free(rdp.frame_buffers);
-
-   rdp.vtx = rdp.vtx1 = rdp.vtx2 = NULL;
    rdp.frame_buffers = NULL;
+
 }
 
 void rdp_reset(void)
 {
    int i;
-   reset = 1;
+   reset                = 1;
 
    // set all vertex numbers
    for (i = 0; i < MAX_VTX; i++)
       rdp.vtx[i].number = i;
 
-   g_gdp.__clip.xh   = 0;
-   g_gdp.__clip.yh   = 0;
-   g_gdp.__clip.xl   = 320;
-   g_gdp.__clip.yl   = 240;
+   g_gdp.__clip.xh      = 0;
+   g_gdp.__clip.yh      = 0;
+   g_gdp.__clip.xl      = 320;
+   g_gdp.__clip.yl      = 240;
 
    rdp.vi_org_reg       = *gfx_info.VI_ORIGIN_REG;
    rdp.view_scale[2]    = 32.0f * 511.0f;
@@ -267,6 +272,7 @@ static uint32_t d_ul_x, d_ul_y, d_lr_x, d_lr_y;
 static void DrawPartFrameBufferToScreen(void)
 {
    FB_TO_SCREEN_INFO fb_info;
+
    fb_info.addr   = rdp.cimg;
    fb_info.size   = g_gdp.fb_size;
    fb_info.width  = rdp.ci_width;
@@ -337,37 +343,43 @@ void glide64ProcessDList(void)
 
   /* Set states */
   if (settings.swapmode > 0)
-    SwapOK = true;
-  rdp.updatescreen = 1;
+    SwapOK                            = true;
 
-  rdp.model_i = 0; // 0 matrices so far in stack
+  rdp.updatescreen                    = 1;
+
+  rdp.model_i                         = 0; /* 0 matrices so far in stack */
   //stack_size can be less then 32! Important for Silicon Vally. Thanks Orkin!
-  rdp.model_stack_size = MIN(32, (*(uint32_t*)(gfx_info.DMEM+0x0FE4))>>6);
+  rdp.model_stack_size                = MIN(32, (*(uint32_t*)(gfx_info.DMEM+0x0FE4))>>6);
   if (rdp.model_stack_size == 0)
-    rdp.model_stack_size = 32;
-  rdp.fb_drawn = rdp.fb_drawn_front = false;
-  g_gdp.flags = 0x7FFFFFFF;  // All but clear cache
-  rdp.geom_mode = 0;
-  rdp.maincimg[1] = rdp.maincimg[0];
-  rdp.skip_drawing = false;
-  rdp.s2dex_tex_loaded = false;
-  rdp.bg_image_height = 0xFFFF;
-  fbreads_front = fbreads_back = 0;
+    rdp.model_stack_size              = 32;
+  rdp.fb_drawn                        = false;
+  rdp.fb_drawn_front                  = false;
+  g_gdp.flags                         = 0x7FFFFFFF;  /* All but clear cache */
+  rdp.geom_mode                       = 0;
+  rdp.maincimg[1]                     = rdp.maincimg[0];
+  rdp.skip_drawing                    = false;
+  rdp.s2dex_tex_loaded                = false;
+  rdp.bg_image_height                 = 0xFFFF;
+  fbreads_front                       = 0;
+  fbreads_back                        = 0;
   rdp.fog_multiplier = rdp.fog_offset = 0;
-  g_gdp.other_modes.z_source_sel = 0;
+  g_gdp.other_modes.z_source_sel      = 0;
+
   if (rdp.vi_org_reg != *gfx_info.VI_ORIGIN_REG)
-    rdp.tlut_mode = 0; //is it correct?
-  rdp.scissor_set = false;
-  ucode5_texshiftaddr = ucode5_texshiftcount = 0;
-  cpu_fb_write = false;
-  cpu_fb_read_called = false;
-  cpu_fb_write_called = false;
-  cpu_fb_ignore = false;
-  d_ul_x = 0xffff;
-  d_ul_y = 0xffff;
-  d_lr_x = 0;
-  d_lr_y = 0;
-  depth_buffer_fog = true;
+    rdp.tlut_mode                     = 0; /* is it correct? */
+
+  rdp.scissor_set                     = false;
+  ucode5_texshiftaddr                 = 0;
+  ucode5_texshiftcount                = 0;
+  cpu_fb_write                        = false;
+  cpu_fb_read_called                  = false;
+  cpu_fb_write_called                 = false;
+  cpu_fb_ignore                       = false;
+  d_ul_x                              = 0xffff;
+  d_ul_y                              = 0xffff;
+  d_lr_x                              = 0;
+  d_lr_y                              = 0;
+  depth_buffer_fog                    = true;
 
   //analyze possible frame buffer usage
   if (fb_emulation_enabled)
@@ -394,24 +406,25 @@ void glide64ProcessDList(void)
   }
 
   // Start executing at the start of the display list
-  rdp.pc_i = 0;
+  rdp.pc_i         = 0;
   rdp.pc[rdp.pc_i] = dlist_start;
-  rdp.dl_count = -1;
-  rdp.halt = 0;
+  rdp.dl_count     = -1;
+  rdp.halt         = 0;
 
   if (settings.ucode == ucode_Turbo3d)
      Turbo3D();
   else
   {
-     // MAIN PROCESSING LOOP
-     do {
-        // Get the address of the next command
-        a = rdp.pc[rdp.pc_i] & BMASK;
+     /* MAIN PROCESSING LOOP */
+     do
+     {
+        /* Get the address of the next command */
+        a        = rdp.pc[rdp.pc_i] & BMASK;
 
-        // Load the next command and its input
+        /* Load the next command and its input */
         rdp.cmd0 = ((uint32_t*)gfx_info.RDRAM)[a>>2];   // \ Current command, 64 bit
         rdp.cmd1 = ((uint32_t*)gfx_info.RDRAM)[(a>>2)+1]; // /
-        // cmd2 and cmd3 are filled only when needed, by the function that needs them
+        /* cmd2 and cmd3 are filled only when needed, by the function that needs them */
 
 #ifdef LOG_COMMANDS
         // Output the address before the command
@@ -699,14 +712,14 @@ static void rdp_texrect(uint32_t w0, uint32_t w1)
       }
    }
 
-   tilenum = (uint16_t)((w1 & 0x07000000) >> 24);
+   tilenum        = (uint16_t)((w1 & 0x07000000) >> 24);
 
    rdp.texrecting = 1;
 
-   prev_tile    = rdp.cur_tile;
-   rdp.cur_tile = tilenum;
+   prev_tile      = rdp.cur_tile;
+   rdp.cur_tile   = tilenum;
 
-   Z = set_sprite_combine_mode ();
+   Z              = set_sprite_combine_mode ();
 
    rdp.texrecting = 0;
 
@@ -757,11 +770,11 @@ static void rdp_texrect(uint32_t w0, uint32_t w1)
       if (rdp.cur_cache[i] && (rdp.tex & (i+1)))
       {
          unsigned tilenum = rdp.cur_tile + i;
-         float maxs = 1;
-         float maxt = 1;
-         int x_i    = off_x_i;
-         int y_i    = off_y_i;
-         int32_t shifter = g_gdp.tile[tilenum].shift_s;
+         float maxs       = 1;
+         float maxt       = 1;
+         int x_i          = off_x_i;
+         int y_i          = off_y_i;
+         int32_t shifter  = g_gdp.tile[tilenum].shift_s;
 
          //shifting
          if (shifter)
@@ -924,14 +937,14 @@ static void rdp_setscissor(uint32_t w0, uint32_t w1)
 
    /* clipper resolution is 320x240, scale based on computer resolution */
    /* TODO/FIXME - all these values are different from Angrylion's */
-   g_gdp.__clip.xh = (uint32_t)(((w0 & 0x00FFF000) >> 14));
-   g_gdp.__clip.yh = (uint32_t)(((w0 & 0x00000FFF) >> 2));
-   g_gdp.__clip.xl = (uint32_t)(((w1 & 0x00FFF000) >> 14));
-   g_gdp.__clip.yl = (uint32_t)(((w1 & 0x00000FFF) >> 2));
+   g_gdp.__clip.xh    = (uint32_t)(((w0 & 0x00FFF000) >> 14));
+   g_gdp.__clip.yh    = (uint32_t)(((w0 & 0x00000FFF) >> 2));
+   g_gdp.__clip.xl    = (uint32_t)(((w1 & 0x00FFF000) >> 14));
+   g_gdp.__clip.yl    = (uint32_t)(((w1 & 0x00000FFF) >> 2));
 
    rdp.ci_upper_bound = g_gdp.__clip.yh;
    rdp.ci_lower_bound = g_gdp.__clip.yl;
-   rdp.scissor_set = true;
+   rdp.scissor_set    = true;
 
    if (rdp.view_scale[0] == 0) //viewport is not set?
    {
@@ -1014,7 +1027,7 @@ static void rdp_settilesize(uint32_t w0, uint32_t w1)
 {
    int tilenum = gdp_set_tile_size_wrap(w0, w1);
 
-   rdp.last_tile_size = tilenum;
+   rdp.last_tile_size        = tilenum;
 
    /* TODO - should get rid of this eventually */
    rdp.tiles[tilenum].f_ul_s = (float)g_gdp.tile[tilenum].sl / 4.0f;
@@ -1022,10 +1035,10 @@ static void rdp_settilesize(uint32_t w0, uint32_t w1)
 
    /* TODO - Wrong values being used by Glide64  - unify this
     * later so that it uses the same values as Angrylion */
-   g_gdp.tile[tilenum].sh   = (((uint16_t)(w0 >> 14)) & 0x03ff);
-   g_gdp.tile[tilenum].th   = (((uint16_t)(w0 >> 2 )) & 0x03ff);
-   g_gdp.tile[tilenum].sl   = (((uint16_t)(w1 >> 14)) & 0x03ff);
-   g_gdp.tile[tilenum].tl   = (((uint16_t)(w1 >> 2 )) & 0x03ff);
+   g_gdp.tile[tilenum].sh    = (((uint16_t)(w0 >> 14)) & 0x03ff);
+   g_gdp.tile[tilenum].th    = (((uint16_t)(w0 >> 2 )) & 0x03ff);
+   g_gdp.tile[tilenum].sl    = (((uint16_t)(w1 >> 14)) & 0x03ff);
+   g_gdp.tile[tilenum].tl    = (((uint16_t)(w1 >> 2 )) & 0x03ff);
 
    /* handle wrapping */
    if (g_gdp.tile[tilenum].sl < g_gdp.tile[tilenum].sh)
@@ -1056,9 +1069,9 @@ static void rdp_loadtile(uint32_t w0, uint32_t w1)
    if (rdp.skip_drawing)
       return;
 
-   rdp.timg.set_by = 1; // load tile
+   rdp.timg.set_by                 = 1; /* load tile */
 
-   tile = (uint32_t)((w1 >> 24) & 0x07);
+   tile                            = (uint32_t)((w1 >> 24) & 0x07);
 
    rdp.addr[g_gdp.tile[tile].tmem] = g_gdp.ti_address;
 
@@ -1084,18 +1097,19 @@ static void rdp_loadtile(uint32_t w0, uint32_t w1)
 
 #ifdef TEXTURE_FILTER
    LOAD_TILE_INFO &info = rdp.load_info[g_gdp.tile[tile].tmem];
-   info.tile_ul_s = ul_s;
-   info.tile_ul_t = ul_t;
-   info.tile_width = (g_gdp.tile[tile].ms ? MIN((uint16_t)width,   1 << g_gdp.tile[tile].ms) : (uint16_t)width);
-   info.tile_height = (g_gdp.tile[tile].mt ? MIN((uint16_t)height, 1 << g_gdp.tile[tile].mt) : (uint16_t)height);
+   info.tile_ul_s       = ul_s;
+   info.tile_ul_t       = ul_t;
+   info.tile_width      = (g_gdp.tile[tile].ms ? MIN((uint16_t)width,   1 << g_gdp.tile[tile].ms) : (uint16_t)width);
+   info.tile_height     = (g_gdp.tile[tile].mt ? MIN((uint16_t)height, 1 << g_gdp.tile[tile].mt) : (uint16_t)height);
+  
    if (settings.hacks&hack_MK64) {
       if (info.tile_width%2)
          info.tile_width--;
       if (info.tile_height%2)
          info.tile_height--;
    }
-   info.tex_width = g_gdp.ti_width;
-   info.tex_size  = g_gdp.ti_size;
+   info.tex_width       = g_gdp.ti_width;
+   info.tex_size        = g_gdp.ti_size;
 #endif
 
 
@@ -1122,8 +1136,8 @@ static void rdp_loadtile(uint32_t w0, uint32_t w1)
          return;
 
       wid_64 = g_gdp.tile[tile].line;
-      dst = ((uint8_t*)g_gdp.tmem) + (g_gdp.tile[tile].tmem << 3);
-      end = ((uint8_t*)g_gdp.tmem) + 4096 - (wid_64<<3);
+      dst    = ((uint8_t*)g_gdp.tmem) + (g_gdp.tile[tile].tmem << 3);
+      end    = ((uint8_t*)g_gdp.tmem) + 4096 - (wid_64<<3);
       loadTile((uint32_t *)gfx_info.RDRAM, (uint32_t *)dst, wid_64, height, line_n, offs, (uint32_t *)end);
    }
    //FRDP("loadtile: tile: %d, ul_s: %d, ul_t: %d, lr_s: %d, lr_t: %d\n", tile, ul_s, ul_t, lr_s, lr_t);
@@ -1350,14 +1364,14 @@ static void rdp_settextureimage(uint32_t w0, uint32_t w1)
    {
       if (g_gdp.ti_format == G_IM_FMT_RGBA)
       {
-         uint16_t * t = (uint16_t*)(gfx_info.RDRAM+ucode5_texshiftaddr);
-         ucode5_texshift = t[ucode5_texshiftcount^1];
-         g_gdp.ti_address += ucode5_texshift;
+         uint16_t * t         = (uint16_t*)(gfx_info.RDRAM+ucode5_texshiftaddr);
+         ucode5_texshift      = t[ucode5_texshiftcount^1];
+         g_gdp.ti_address    += ucode5_texshift;
       }
       else
       {
-         ucode5_texshiftaddr = 0;
-         ucode5_texshift = 0;
+         ucode5_texshiftaddr  = 0;
+         ucode5_texshift      = 0;
          ucode5_texshiftcount = 0;
       }
    }
@@ -1388,14 +1402,14 @@ int SwapOK = true;
 
 void RestoreScale(void)
 {
-   rdp.scale_x = rdp.scale_x_bak;
-   rdp.scale_y = rdp.scale_y_bak;
+   rdp.scale_x        = rdp.scale_x_bak;
+   rdp.scale_y        = rdp.scale_y_bak;
    rdp.view_scale[0] *= rdp.scale_x;
    rdp.view_scale[1] *= rdp.scale_y;
    rdp.view_trans[0] *= rdp.scale_x;
    rdp.view_trans[1] *= rdp.scale_y;
 
-   g_gdp.flags |= UPDATE_VIEWPORT | UPDATE_SCISSOR;
+   g_gdp.flags       |= UPDATE_VIEWPORT | UPDATE_SCISSOR;
 }
 
 
@@ -1416,11 +1430,11 @@ static void rdp_setcolorimage(uint32_t w0, uint32_t w1)
             {
                if (rdp.ci_status == CI_AUX) //for PPL
                {
-                  float sx, sy;
-                  sx = rdp.scale_x;
-                  sy = rdp.scale_y;
+                  float sx    = rdp.scale_x;
+                  float sy    = rdp.scale_y;
                   rdp.scale_x = 1.0f;
                   rdp.scale_y = 1.0f;
+
                   CopyFrameBuffer (GR_BUFFER_BACKBUFFER);
                   rdp.scale_x = sx;
                   rdp.scale_y = sy;
@@ -1570,15 +1584,17 @@ static void rdp_setcolorimage(uint32_t w0, uint32_t w1)
       rdp.ci_count++;
    }
 
-   rdp.ocimg    = rdp.cimg;
-   rdp.cimg     = RSP_SegmentToPhysical(w1);
-   rdp.ci_width = (w0 & 0xFFF) + 1;
+   rdp.ocimg        = rdp.cimg;
+   rdp.cimg         = RSP_SegmentToPhysical(w1);
+   rdp.ci_width     = (w0 & 0xFFF) + 1;
+
    if (fb_emulation_enabled && rdp.ci_count > 0)
       rdp.ci_height = rdp.frame_buffers[rdp.ci_count-1].height;
    else if (rdp.ci_width == 32)
       rdp.ci_height = 32;
    else
       rdp.ci_height = g_gdp.__clip.yl;
+
    if (g_gdp.zb_address == rdp.cimg)
    {
       rdp.zi_width = rdp.ci_width;
@@ -1631,7 +1647,7 @@ static void rsp_reserved0(uint32_t w0, uint32_t w1)
 
 static void rsp_uc5_reserved0(uint32_t w0, uint32_t w1)
 {
-  ucode5_texshiftaddr = RSP_SegmentToPhysical(w1);
+  ucode5_texshiftaddr  = RSP_SegmentToPhysical(w1);
   ucode5_texshiftcount = 0;
 }
 
@@ -1838,8 +1854,8 @@ void DetectFrameBufferUsage(void)
    if (dlist_start == 0)
       return;
 
-   ci = rdp.cimg;
-   zi = g_gdp.zb_address;
+   ci                   = rdp.cimg;
+   zi                   = g_gdp.zb_address;
 
    rdp.main_ci_last_tex_addr = 0;
    rdp.main_ci          = 0;
@@ -1868,12 +1884,12 @@ void DetectFrameBufferUsage(void)
 
    do
    {
-      // Get the address of the next command
+      /* Get the address of the next command */
       uint32_t a = rdp.pc[rdp.pc_i] & BMASK;
 
-      // Load the next command and its input
-      rdp.cmd0 = ((uint32_t*)gfx_info.RDRAM)[a>>2];   // \ Current command, 64 bit
-      rdp.cmd1 = ((uint32_t*)gfx_info.RDRAM)[(a>>2)+1]; // /
+      /* Load the next command and its input */
+      rdp.cmd0   = ((uint32_t*)gfx_info.RDRAM)[a>>2];   // \ Current command, 64 bit
+      rdp.cmd1   = ((uint32_t*)gfx_info.RDRAM)[(a>>2)+1]; // /
 
       // Output the address before the command
 
@@ -1902,11 +1918,11 @@ void DetectFrameBufferUsage(void)
 
    if (rdp.ci_count > NUMTEXBUF) //overflow
    {
-      rdp.cimg = ci;
+      rdp.cimg         = ci;
       g_gdp.zb_address = zi;
-      rdp.num_of_ci = rdp.ci_count;
-      rdp.scale_x = rdp.scale_x_bak;
-      rdp.scale_y = rdp.scale_y_bak;
+      rdp.num_of_ci    = rdp.ci_count;
+      rdp.scale_x      = rdp.scale_x_bak;
+      rdp.scale_y      = rdp.scale_y_bak;
       return;
    }
 
@@ -1959,9 +1975,9 @@ void DetectFrameBufferUsage(void)
    }
 #endif
 
-   rdp.cimg      = ci;
+   rdp.cimg              = ci;
    g_gdp.zb_address      = zi;
-   rdp.num_of_ci = rdp.ci_count;
+   rdp.num_of_ci         = rdp.ci_count;
 
    if (rdp.read_previous_ci && previous_ci_was_read)
    {
@@ -1991,11 +2007,12 @@ void DetectFrameBufferUsage(void)
             if (rdp.maincimg[0].height > 65) //for 1080
             {
                uint32_t h;
-               rdp.cimg = rdp.maincimg[0].addr;
-               rdp.ci_width = rdp.maincimg[0].width;
-               rdp.ci_count = 0;
-               h = rdp.frame_buffers[0].height;
+               rdp.cimg                    = rdp.maincimg[0].addr;
+               rdp.ci_width                = rdp.maincimg[0].width;
+               rdp.ci_count                = 0;
+               h                           = rdp.frame_buffers[0].height;
                rdp.frame_buffers[0].height = rdp.maincimg[0].height;
+
                CopyFrameBuffer (GR_BUFFER_BACKBUFFER);
                rdp.frame_buffers[0].height = h;
             }
@@ -2140,11 +2157,21 @@ static void lle_triangle(uint32_t w0, uint32_t w1, int shade, int texture, int z
       dzde = zbuffer_base[2];
    }
 
-   xh <<= 2; xm <<= 2; xl <<= 2;
-   r <<= 2; g <<= 2; b <<= 2; a <<= 2;
-   dsde >>= 2; dtde >>= 2; dsdx >>= 2; dtdx >>= 2;
-   dzdx >>= 2; dzde >>= 2;
-   dwdx >>= 2; dwde >>= 2;
+   xh <<= 2;
+   xm <<= 2;
+   xl <<= 2;
+   r <<= 2;
+   g <<= 2;
+   b <<= 2;
+   a <<= 2;
+   dsde >>= 2;
+   dtde >>= 2;
+   dsdx >>= 2;
+   dtdx >>= 2;
+   dzdx >>= 2;
+   dzde >>= 2;
+   dwdx >>= 2;
+   dwde >>= 2;
 
    nbVtxs = 0;
    vtx = (VERTEX*)&vtxbuf[nbVtxs++];
@@ -2160,8 +2187,13 @@ static void lle_triangle(uint32_t w0, uint32_t w1, int shade, int texture, int z
             (flip && xleft > xright-0x10000))) {
       xleft += xleft_inc;
       xright += xright_inc;
-      s += dsde; t += dtde; w += dwde;
-      r += drde; g += dgde; b += dbde; a += dade;
+      s += dsde;
+      t += dtde;
+      w += dwde;
+      r += drde;
+      g += dgde;
+      b += dbde;
+      a += dade;
       z += dzde;
       yh++;
    }
@@ -2208,11 +2240,18 @@ static void lle_triangle(uint32_t w0, uint32_t w1, int shade, int texture, int z
          vtx->w = WSCALE(w);
          vtx = &vtxbuf[nbVtxs++];
       }
-      xleft += xleft_inc*j; xright += xright_inc*j;
-      s += dsde*j; t += dtde*j;
-      if (w + dwde*j) w += dwde*j;
-      else w += dwde*(j-1);
-      r += drde*j; g += dgde*j; b += dbde*j; a += dade*j;
+      xleft += xleft_inc*j;
+      xright += xright_inc*j;
+      s += dsde*j;
+      t += dtde*j;
+      if (w + dwde*j)
+         w += dwde*j;
+      else
+         w += dwde*(j-1);
+      r += drde*j;
+      g += dgde*j;
+      b += dbde*j;
+      a += dade*j;
       z += dzde*j;
       // render ...
    }
@@ -2267,17 +2306,30 @@ static void lle_triangle(uint32_t w0, uint32_t w1, int shade, int texture, int z
 
    j = yl-ym;
    //j--; // ?
-   xleft += xleft_inc*j; xright += xright_inc*j;
-   s += dsde*j; t += dtde*j; w += dwde*j;
-   r += drde*j; g += dgde*j; b += dbde*j; a += dade*j;
+   xleft += xleft_inc*j;
+   xright += xright_inc*j;
+   s += dsde*j;
+   t += dtde*j;
+   w += dwde*j;
+   r += drde*j;
+   g += dgde*j;
+   b += dbde*j;
+   a += dade*j;
    z += dzde*j;
 
    while (yl>ym &&
          !((!flip && xleft < xright+0x10000) ||
-            (flip && xleft > xright-0x10000))) {
-      xleft -= xleft_inc; xright -= xright_inc;
-      s -= dsde; t -= dtde; w -= dwde;
-      r -= drde; g -= dgde; b -= dbde; a -= dade;
+            (flip && xleft > xright-0x10000)))
+   {
+      xleft -= xleft_inc;
+      xright -= xright_inc;
+      s -= dsde;
+      t -= dtde;
+      w -= dwde;
+      r -= drde;
+      g -= dgde;
+      b -= dbde;
+      a -= dade;
       z -= dzde;
       j--;
       yl--;
@@ -2335,12 +2387,12 @@ static void lle_triangle(uint32_t w0, uint32_t w1, int shade, int texture, int z
       for (k = 0; k < nbVtxs-1; k++)
       {
          VERTEX * v = (VERTEX*)&vtxbuf[k];
-         v->x = v->x * rdp.scale_x + rdp.offset_x;
-         v->y = v->y * rdp.scale_y + rdp.offset_y;
+         v->x       = v->x * rdp.scale_x + rdp.offset_x;
+         v->y       = v->y * rdp.scale_y + rdp.offset_y;
          // v->z = 1.0f;///v->w;
-         v->q = 1.0f/v->w;
-         v->u[1] = v->u[0] = v->ou;
-         v->v[1] = v->v[0] = v->ov;
+         v->q       = 1.0f/v->w;
+         v->u[1]    = v->u[0] = v->ou;
+         v->v[1]    = v->v[0] = v->ov;
 
          if (rdp.tex >= 1 && rdp.cur_cache[0])
          {
@@ -2512,7 +2564,8 @@ static void rdphalf_1(uint32_t w0, uint32_t w1)
          uint32_t a;
 
          rdp_cmd_data[rdp_cmd_ptr++] = rdp.cmd1;
-         // check DL counter
+
+         /* check DL counter */
          if (rdp.dl_count != -1)
          {
             rdp.dl_count --;
@@ -2525,10 +2578,10 @@ static void rdphalf_1(uint32_t w0, uint32_t w1)
             }
          }
 
-         // Get the address of the next command
-         a = rdp.pc[rdp.pc_i] & BMASK;
+         /* Get the address of the next command */
+         a        = rdp.pc[rdp.pc_i] & BMASK;
 
-         // Load the next command and its input
+         /* Load the next command and its input */
          rdp.cmd0 = ((uint32_t*)gfx_info.RDRAM)[a>>2];   // \ Current command, 64 bit
          rdp.cmd1 = ((uint32_t*)gfx_info.RDRAM)[(a>>2)+1]; // /
 
@@ -2536,10 +2589,11 @@ static void rdphalf_1(uint32_t w0, uint32_t w1)
          rdp.pc[rdp.pc_i] = (a+8) & BMASK;
 
       }while ((rdp.cmd0 >> 24) != 0xb3);
+
       rdp_cmd_data[rdp_cmd_ptr++] = rdp.cmd1;
-      cmd = (rdp_cmd_data[rdp_cmd_cur] >> 24) & 0x3f;
-      rdp.cmd0 = rdp_cmd_data[rdp_cmd_cur+0];
-      rdp.cmd1 = rdp_cmd_data[rdp_cmd_cur+1];
+      cmd                         = (rdp_cmd_data[rdp_cmd_cur] >> 24) & 0x3f;
+      rdp.cmd0                    = rdp_cmd_data[rdp_cmd_cur+0];
+      rdp.cmd1                    = rdp_cmd_data[rdp_cmd_cur+1];
       rdp_command_table[cmd](rdp.cmd0, rdp.cmd1);
    }
 }
@@ -2570,47 +2624,52 @@ void glide64ProcessRDPList(void)
 {
    int32_t i;
    uint32_t length;
-   bool set_zero = true;
+   bool set_zero                  = true;
 
-   no_dlist = false;
-   update_screen_count = 0;
+   no_dlist                       = false;
+   update_screen_count            = 0;
    ChangeSize();
 
    /* Set states */
    if (settings.swapmode > 0)
-      SwapOK = true;
-   rdp.updatescreen = 1;
+      SwapOK                      = true;
+   rdp.updatescreen               = 1;
 
-   rdp.model_i = 0; // 0 matrices so far in stack
-   //stack_size can be less then 32! Important for Silicon Vally. Thanks Orkin!
+   rdp.model_i                    = 0; /* 0 matrices so far in stack */
+
+   /* stack_size can be less then 32! Important for Silicon Vally. Thanks Orkin! */
    rdp.model_stack_size = MIN(32, (*(uint32_t*)(gfx_info.DMEM+0x0FE4))>>6);
    if (rdp.model_stack_size == 0)
-      rdp.model_stack_size = 32;
-   rdp.fb_drawn = rdp.fb_drawn_front = false;
-   g_gdp.flags = 0x7FFFFFFF;  // All but clear cache
-   rdp.geom_mode = 0;
-   rdp.maincimg[1] = rdp.maincimg[0];
-   rdp.skip_drawing = false;
-   rdp.s2dex_tex_loaded = false;
-   rdp.bg_image_height = 0xFFFF;
-   fbreads_front = fbreads_back = 0;
-   rdp.fog_multiplier = rdp.fog_offset = 0;
+      rdp.model_stack_size        = 32;
+
+   rdp.fb_drawn                   = false;
+   rdp.fb_drawn_front             = false;
+   g_gdp.flags                    = 0x7FFFFFFF;  /* All but clear cache */
+   rdp.geom_mode                  = 0;
+   rdp.maincimg[1]                = rdp.maincimg[0];
+   rdp.skip_drawing               = false;
+   rdp.s2dex_tex_loaded           = false;
+   rdp.bg_image_height            = 0xFFFF;
+   fbreads_front = fbreads_back   = 0;
+   rdp.fog_multiplier             = 0;
+   rdp.fog_offset                 = 0;
    g_gdp.other_modes.z_source_sel = 0;
+
    if (rdp.vi_org_reg != *gfx_info.VI_ORIGIN_REG)
-      rdp.tlut_mode = 0; //is it correct?
-   rdp.scissor_set = false;
+      rdp.tlut_mode    = 0; //is it correct?
+   rdp.scissor_set     = false;
    ucode5_texshiftaddr = ucode5_texshiftcount = 0;
-   cpu_fb_write = false;
-   cpu_fb_read_called = false;
+   cpu_fb_write        = false;
+   cpu_fb_read_called  = false;
    cpu_fb_write_called = false;
-   cpu_fb_ignore = false;
-   d_ul_x = 0xffff;
-   d_ul_y = 0xffff;
-   d_lr_x = 0;
-   d_lr_y = 0;
-   depth_buffer_fog = true;
+   cpu_fb_ignore       = false;
+   d_ul_x              = 0xffff;
+   d_ul_y              = 0xffff;
+   d_lr_x              = 0;
+   d_lr_y              = 0;
+   depth_buffer_fog    = true;
    
-   length = (*(uint32_t*)gfx_info.DPC_END_REG) - (*(uint32_t*)gfx_info.DPC_CURRENT_REG);
+   length              = (*(uint32_t*)gfx_info.DPC_END_REG) - (*(uint32_t*)gfx_info.DPC_CURRENT_REG);
 
    (*(uint32_t*)gfx_info.DPC_STATUS_REG) &= ~0x0002;
 
@@ -2645,8 +2704,8 @@ void glide64ProcessRDPList(void)
       rdp.cmd2 = rdp_cmd_data[rdp_cmd_cur + 2];
       rdp.cmd3 = rdp_cmd_data[rdp_cmd_cur + 3];
 
-      w0 = rdp.cmd0;
-      w1 = rdp.cmd1;
+      w0       = rdp.cmd0;
+      w1       = rdp.cmd1;
 
       rdp_command_table[cmd](w0, w1);
 
