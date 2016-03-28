@@ -179,28 +179,28 @@ static void uc0_movemem(uint32_t w0, uint32_t w1)
          rdp.pc[rdp.pc_i] += 24; 
          break;
       case G_MV_L0:
-         glide64gSPLight( w1, LIGHT_1 );
+         gSPLight( w1, LIGHT_1 );
          break;
       case G_MV_L1:
-         glide64gSPLight( w1, LIGHT_2 );
+         gSPLight( w1, LIGHT_2 );
          break;
       case G_MV_L2:
-         glide64gSPLight( w1, LIGHT_3 );
+         gSPLight( w1, LIGHT_3 );
          break;
       case G_MV_L3:
-         glide64gSPLight( w1, LIGHT_4 );
+         gSPLight( w1, LIGHT_4 );
          break;
       case G_MV_L4:
-         glide64gSPLight( w1, LIGHT_5 );
+         gSPLight( w1, LIGHT_5 );
          break;
       case G_MV_L5:
-         glide64gSPLight( w1, LIGHT_6 );
+         gSPLight( w1, LIGHT_6 );
          break;
       case G_MV_L6:
-         glide64gSPLight( w1, LIGHT_7 );
+         gSPLight( w1, LIGHT_7 );
          break;
       case G_MV_L7:
-         glide64gSPLight( w1, LIGHT_8 );
+         gSPLight( w1, LIGHT_8 );
          break;
       case G_MV_LOOKATX:
          gSPLookAt(w1, 0);

@@ -455,7 +455,7 @@ static void uc2_movemem(uint32_t w0, uint32_t w1)
             if (n < 2)
                gSPLookAt(w1, n);
             else
-               glide64gSPLight(w1, n - 1);
+               gSPLight(w1, n - 1);
          }
          break;
 

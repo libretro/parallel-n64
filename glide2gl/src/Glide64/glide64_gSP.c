@@ -31,3 +31,38 @@ void glide64gSPLookAt(uint32_t l, uint32_t n)
    rdp.lookat[n][2] = (float)(dir_z) / 127.0f;
    rdp.use_lookat = (n == 0) || (n == 1 && (dir_x || dir_y));
 }
+
+void glide64gSPLight(uint32_t l, int32_t n)
+{
+   int16_t *rdram     = (int16_t*)(gfx_info.RDRAM  + RSP_SegmentToPhysical(l));
+   uint8_t *rdram_u8  = (uint8_t*)(gfx_info.RDRAM  + RSP_SegmentToPhysical(l));
+   int8_t  *rdram_s8  = (int8_t*) (gfx_info.RDRAM  + RSP_SegmentToPhysical(l));
+
+   --n;
+
+   if (n < 8)
+   {
+      /* Get the data */
+      rdp.light[n].nonblack  = rdram_u8[3];
+      rdp.light[n].nonblack += rdram_u8[2];
+      rdp.light[n].nonblack += rdram_u8[1];
+
+      rdp.light[n].col[0]    = rdram_u8[3] / 255.0f;
+      rdp.light[n].col[1]    = rdram_u8[2] / 255.0f;
+      rdp.light[n].col[2]    = rdram_u8[1] / 255.0f;
+      rdp.light[n].col[3]    = 1.0f;
+
+      rdp.light[n].dir[0]    = (float)rdram_s8[11] / 127.0f;
+      rdp.light[n].dir[1]    = (float)rdram_s8[10] / 127.0f;
+      rdp.light[n].dir[2]    = (float)rdram_s8[9] / 127.0f;
+
+      rdp.light[n].x         = (float)rdram[5];
+      rdp.light[n].y         = (float)rdram[4];
+      rdp.light[n].z         = (float)rdram[7];
+      rdp.light[n].ca        = (float)rdram[0] / 16.0f;
+      rdp.light[n].la        = (float)rdram[4];
+      rdp.light[n].qa        = (float)rdram[13] / 8.0f;
+
+      //g_gdp.flags |= UPDATE_LIGHTS;
+   }
+}
