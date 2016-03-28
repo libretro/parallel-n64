@@ -1,11 +1,13 @@
-#ifndef _3DMATH_H
-#define _3DMATH_H
+#ifndef _GLES2N64_3DMATH_H
+#define _GLES2N64_3DMATH_H
 
 #include <math.h>
 #include <memory.h>
 #include <string.h>
 
 #include <retro_inline.h>
+
+#include "../../Graphics/3dmath.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -52,11 +54,6 @@ static INLINE void Transpose3x3Matrix( float mtx[4][4] )
     tmp = mtx[1][2];
     mtx[1][2] = mtx[2][1];
     mtx[2][1] = tmp;
-}
-
-static INLINE float DotProduct(const float v0[3], const float v1[3])
-{
-   return v0[0]*v1[0] + v0[1]*v1[1] + v0[2]*v1[2];
 }
 
 #ifdef __cplusplus

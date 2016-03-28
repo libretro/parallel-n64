@@ -36,10 +36,12 @@
 // * Do NOT send me the whole project or file that you modified.  Take out your modified code sections, and tell me where to put them.  If people sent the whole thing, I would have many different versions, but no idea how to combine them all.
 //
 //****************************************************************
-#ifndef _3DMATH_H
-#define _3DMATH_H
+#ifndef _GLIDE64_3DMATH_H
+#define _GLIDE64_3DMATH_H
 
 #include "../Glitch64/glide.h"
+
+#include "../../Graphics/3dmath.h"
 
 void calc_light (VERTEX *v);
 void calc_linear (VERTEX *v);
@@ -54,6 +56,5 @@ void MulMatrices(float m1[4][4], float m2[4][4], float r[4][4]);
 void TransformVector(float *src, float *dst, float mat[4][4]);
 void InverseTransformVector(float *src, float *dst, float mat[4][4]);
 void  NormalizeVector(float *v);
-float DotProduct(float *v0, float *v1);
 
 #endif
