@@ -206,7 +206,6 @@ void PluginAPI::UpdateScreen()
 
 void PluginAPI::_initiateGFX(const GFX_INFO & _gfxInfo) const {
 	HEADER = gfx_info.HEADER;
-	DMEM   = gfx_info.DMEM;
 	IMEM   = gfx_info.IMEM;
 	RDRAM  = gfx_info.RDRAM;
 }

@@ -60,14 +60,14 @@ void RSP_ProcessDList(void)
 		video().updateScale();
 	}
 
-	__RSP.PC[0] = *(uint32_t*)&DMEM[0x0FF0];
+	__RSP.PC[0] = *(uint32_t*)&gfx_info.DMEM[0x0FF0];
 	__RSP.PCi = 0;
 	__RSP.count = -1;
 
 	__RSP.halt = false;
 	__RSP.busy = true;
 
-	gSP.matrix.stackSize = min( 32U, *(uint32_t*)&DMEM[0x0FE4] >> 6 );
+	gSP.matrix.stackSize = min( 32U, *(uint32_t*)&gfx_info.DMEM[0x0FE4] >> 6 );
 	if (gSP.matrix.stackSize == 0)
 		gSP.matrix.stackSize = 32;
 	gSP.matrix.modelViewi = 0;
@@ -75,9 +75,9 @@ void RSP_ProcessDList(void)
 	gDP.changed &= ~CHANGED_CPU_FB_WRITE;
 	gDPSetTexturePersp(G_TP_PERSP);
 
-	uint32_t uc_start = *(uint32_t*)&DMEM[0x0FD0];
-	uint32_t uc_dstart = *(uint32_t*)&DMEM[0x0FD8];
-	uint32_t uc_dsize = *(uint32_t*)&DMEM[0x0FDC];
+	uint32_t uc_start = *(uint32_t*)&gfx_info.DMEM[0x0FD0];
+	uint32_t uc_dstart = *(uint32_t*)&gfx_info.DMEM[0x0FD8];
+	uint32_t uc_dsize = *(uint32_t*)&gfx_info.DMEM[0x0FDC];
 
 	if ((uc_start != __RSP.uc_start) || (uc_dstart != __RSP.uc_dstart))
 		gSPLoadUcodeEx(uc_start, uc_dstart, uc_dsize);

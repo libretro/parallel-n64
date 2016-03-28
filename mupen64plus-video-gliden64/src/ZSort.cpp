@@ -245,26 +245,26 @@ void ZSort_XFMLight( uint32_t _w0, uint32_t _w1 )
 */
 
 
-	gSP.lights[gSP.numLights].r = (float)(((uint8_t*)DMEM)[(addr+0)^3]) * 0.0039215689f;
-	gSP.lights[gSP.numLights].g = (float)(((uint8_t*)DMEM)[(addr+1)^3]) * 0.0039215689f;
-	gSP.lights[gSP.numLights].b = (float)(((uint8_t*)DMEM)[(addr+2)^3]) * 0.0039215689f;
+	gSP.lights[gSP.numLights].r = (float)(((uint8_t*)gfx_info.DMEM)[(addr+0)^3]) * 0.0039215689f;
+	gSP.lights[gSP.numLights].g = (float)(((uint8_t*)gfx_info.DMEM)[(addr+1)^3]) * 0.0039215689f;
+	gSP.lights[gSP.numLights].b = (float)(((uint8_t*)gfx_info.DMEM)[(addr+2)^3]) * 0.0039215689f;
 	addr += 8;
 	uint32_t i;
 	for (i = 0; i < gSP.numLights; ++i)
 	{
-		gSP.lights[i].r = (float)(((uint8_t*)DMEM)[(addr+0)^3]) * 0.0039215689f;
-		gSP.lights[i].g = (float)(((uint8_t*)DMEM)[(addr+1)^3]) * 0.0039215689f;
-		gSP.lights[i].b = (float)(((uint8_t*)DMEM)[(addr+2)^3]) * 0.0039215689f;
-		gSP.lights[i].x = (float)(((int8_t*)DMEM)[(addr+8)^3]);
-		gSP.lights[i].y = (float)(((int8_t*)DMEM)[(addr+9)^3]);
-		gSP.lights[i].z = (float)(((int8_t*)DMEM)[(addr+10)^3]);
+		gSP.lights[i].r = (float)(((uint8_t*)gfx_info.DMEM)[(addr+0)^3]) * 0.0039215689f;
+		gSP.lights[i].g = (float)(((uint8_t*)gfx_info.DMEM)[(addr+1)^3]) * 0.0039215689f;
+		gSP.lights[i].b = (float)(((uint8_t*)gfx_info.DMEM)[(addr+2)^3]) * 0.0039215689f;
+		gSP.lights[i].x = (float)(((int8_t*)gfx_info.DMEM)[(addr+8)^3]);
+		gSP.lights[i].y = (float)(((int8_t*)gfx_info.DMEM)[(addr+9)^3]);
+		gSP.lights[i].z = (float)(((int8_t*)gfx_info.DMEM)[(addr+10)^3]);
 		addr += 24;
 	}
 	for (i = 0; i < 2; i++)
 	{
-		gSP.lookat[i].x = (float)(((int8_t*)DMEM)[(addr+8)^3]);
-		gSP.lookat[i].y = (float)(((int8_t*)DMEM)[(addr+9)^3]);
-		gSP.lookat[i].z = (float)(((int8_t*)DMEM)[(addr+10)^3]);
+		gSP.lookat[i].x = (float)(((int8_t*)gfx_info.DMEM)[(addr+8)^3]);
+		gSP.lookat[i].y = (float)(((int8_t*)gfx_info.DMEM)[(addr+9)^3]);
+		gSP.lookat[i].z = (float)(((int8_t*)gfx_info.DMEM)[(addr+10)^3]);
 		gSP.lookatEnable = (i == 0) || (i == 1 && gSP.lookat[i].x != 0 && gSP.lookat[i].y != 0);
 		addr += 24;
 	}
@@ -289,9 +289,9 @@ void ZSort_Lighting( uint32_t _w0, uint32_t _w1 )
 	for (uint32_t i = 0; i < num; i++) {
 		SPVertex & vtx = render.getVertex(i);
 
-		vtx.nx = ((int8_t*)DMEM)[(nsrs++)^3];
-		vtx.ny = ((int8_t*)DMEM)[(nsrs++)^3];
-		vtx.nz = ((int8_t*)DMEM)[(nsrs++)^3];
+		vtx.nx = ((int8_t*)gfx_info.DMEM)[(nsrs++)^3];
+		vtx.ny = ((int8_t*)gfx_info.DMEM)[(nsrs++)^3];
+		vtx.nz = ((int8_t*)gfx_info.DMEM)[(nsrs++)^3];
 		TransformVectorNormalize( &vtx.nx, gSP.matrix.modelView[gSP.matrix.modelViewi] );
 		gSPLightVertex(vtx);
 		float fLightDir[3] = {vtx.nx, vtx.ny, vtx.nz};
@@ -310,17 +310,18 @@ void ZSort_Lighting( uint32_t _w0, uint32_t _w1 )
 		vtx.a = 1.0f;
 		if (use_material)
 		{
-			vtx.r *= DMEM[(csrs++)^3] * 0.0039215689f;
-			vtx.g *= DMEM[(csrs++)^3] * 0.0039215689f;
-			vtx.b *= DMEM[(csrs++)^3] * 0.0039215689f;
-			vtx.a = DMEM[(csrs++)^3] * 0.0039215689f;
+			vtx.r *= gfx_info.DMEM[(csrs++)^3] * 0.0039215689f;
+			vtx.g *= gfx_info.DMEM[(csrs++)^3] * 0.0039215689f;
+			vtx.b *= gfx_info.DMEM[(csrs++)^3] * 0.0039215689f;
+			vtx.a  = gfx_info.DMEM[(csrs++)^3] * 0.0039215689f;
 		}
-		DMEM[(cdest++)^3] = (uint8_t)(vtx.r * 255.0f);
-		DMEM[(cdest++)^3] = (uint8_t)(vtx.g * 255.0f);
-		DMEM[(cdest++)^3] = (uint8_t)(vtx.b * 255.0f);
-		DMEM[(cdest++)^3] = (uint8_t)(vtx.a * 255.0f);
-		((int16_t*)DMEM)[(tdest++)^1] = (int16_t)(vtx.s * 32.0f);
-		((int16_t*)DMEM)[(tdest++)^1] = (int16_t)(vtx.t * 32.0f);
+
+		gfx_info.DMEM[(cdest++)^3] = (uint8_t)(vtx.r * 255.0f);
+		gfx_info.DMEM[(cdest++)^3] = (uint8_t)(vtx.g * 255.0f);
+		gfx_info.DMEM[(cdest++)^3] = (uint8_t)(vtx.b * 255.0f);
+		gfx_info.DMEM[(cdest++)^3] = (uint8_t)(vtx.a * 255.0f);
+		((int16_t*)gfx_info.DMEM)[(tdest++)^1] = (int16_t)(vtx.s * 32.0f);
+		((int16_t*)gfx_info.DMEM)[(tdest++)^1] = (int16_t)(vtx.t * 32.0f);
 	}
 }
 
@@ -391,8 +392,8 @@ void ZSort_MultMPMTX( uint32_t _w0, uint32_t _w1 )
 	int num = 1 + _SHIFTR(_w1, 24, 8);
 	int src = -1024 + _SHIFTR(_w1, 12, 12);
 	int dst = -1024 + _SHIFTR(_w1, 0, 12);
-	int16_t * saddr = (int16_t*)(DMEM+src);
-	zSortVDest * daddr = (zSortVDest*)(DMEM+dst);
+	int16_t * saddr = (int16_t*)(gfx_info.DMEM+src);
+	zSortVDest * daddr = (zSortVDest*)(gfx_info.DMEM+dst);
 	int idx = 0;
 	zSortVDest v;
 	memset(&v, 0, sizeof(zSortVDest));
@@ -477,10 +478,10 @@ void ZSort_MoveMem( uint32_t _w0, uint32_t _w1 )
 	case GZF_LOAD: //save/load
 		if (flag == 0) {
 			int dmem_addr = (idx<<3) + ofs;
-			memcpy(DMEM + dmem_addr, gfx_info.RDRAM + addr, len);
+			memcpy(gfx_info.DMEM + dmem_addr, gfx_info.RDRAM + addr, len);
 		} else {
 			int dmem_addr = (idx<<3) + ofs;
-			memcpy(gfx_info.RDRAM + addr, DMEM + dmem_addr, len);
+			memcpy(gfx_info.RDRAM + addr, gfx_info.DMEM + dmem_addr, len);
 		}
 	break;
 

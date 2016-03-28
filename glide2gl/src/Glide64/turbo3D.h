@@ -84,7 +84,7 @@ static void t3dLoadGlobState(uint32_t pgstate)
    for (s = 0; s < 16; s++)
       rdp.segment[s] = gstate->segBases[s];
 
-   gSPViewport(pgstate + 80);
+   glide64gSPViewport(pgstate + 80);
 
    t3dProcessRDP(RSP_SegmentToPhysical(gstate->rdpCmds) >> 2);
 }
