@@ -467,18 +467,6 @@ static void glide64gSPVertex(uint32_t v, uint32_t n, uint32_t v0)
    }
 }
 
-static void glide64gSPLookAt(uint32_t l, uint32_t n)
-{
-   int8_t  *rdram_s8  = (int8_t*) (gfx_info.RDRAM  + RSP_SegmentToPhysical(l));
-   int8_t dir_x = rdram_s8[11];
-   int8_t dir_y = rdram_s8[10];
-   int8_t dir_z = rdram_s8[9];
-   rdp.lookat[n][0] = (float)(dir_x) / 127.0f;
-   rdp.lookat[n][1] = (float)(dir_y) / 127.0f;
-   rdp.lookat[n][2] = (float)(dir_z) / 127.0f;
-   rdp.use_lookat = (n == 0) || (n == 1 && (dir_x || dir_y));
-}
-
 static void glide64gSPLight(uint32_t l, int32_t n)
 {
    int16_t *rdram     = (int16_t*)(gfx_info.RDRAM  + RSP_SegmentToPhysical(l));
@@ -734,3 +722,4 @@ static void glide64gSPCullDisplayList( uint32_t v0, uint32_t vn )
 }
 
 void glide64gSPCombineMatrices(void);
+void glide64gSPLookAt(uint32_t l, uint32_t n);

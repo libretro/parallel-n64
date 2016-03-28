@@ -453,7 +453,7 @@ static void uc2_movemem(uint32_t w0, uint32_t w1)
             uint32_t n = offset / 24;
 
             if (n < 2)
-               glide64gSPLookAt(w1, n);
+               gSPLookAt(w1, n);
             else
                glide64gSPLight(w1, n - 1);
          }

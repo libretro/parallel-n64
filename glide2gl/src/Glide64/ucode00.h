@@ -203,10 +203,10 @@ static void uc0_movemem(uint32_t w0, uint32_t w1)
          glide64gSPLight( w1, LIGHT_8 );
          break;
       case G_MV_LOOKATX:
-         glide64gSPLookAt(w1, 0);
+         gSPLookAt(w1, 0);
          break;
       case G_MV_LOOKATY:
-         glide64gSPLookAt(w1, 1);
+         gSPLookAt(w1, 1);
          break;
 
    }

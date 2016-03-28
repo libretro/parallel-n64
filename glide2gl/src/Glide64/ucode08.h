@@ -280,7 +280,7 @@ static void uc8_movemem(uint32_t w0, uint32_t w1)
             int n = (ofs / 48);
 
             if (n < 2)
-               glide64gSPLookAt(w1, n);
+               gSPLookAt(w1, n);
             else
             {
                n -= 2;
