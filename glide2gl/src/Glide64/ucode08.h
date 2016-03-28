@@ -317,25 +317,10 @@ static void uc8_movemem(uint32_t w0, uint32_t w1)
    }
 }
 
-static void uc8_tri4(uint32_t w0, uint32_t w1) //by Gugaman Apr 19 2002
+static void uc8_tri4(uint32_t w0, uint32_t w1)
 {
-   VERTEX *v[12];
-
-   if (rdp.skip_drawing)
-      return;
-
-   v[0]  = &rdp.vtx[_SHIFTR( w0, 23, 5)]; /* v00 */
-   v[1]  = &rdp.vtx[_SHIFTR( w0, 18, 5)]; /* v01 */
-   v[2]  = &rdp.vtx[(_SHIFTR(w0, 15, 3) << 2) | _SHIFTR(w1, 30, 2)]; /* v02 */
-   v[3]  = &rdp.vtx[_SHIFTR( w0, 10, 5)]; /* v10 */
-   v[4]  = &rdp.vtx[_SHIFTR( w0,  5, 5)];  /* v11 */
-   v[5]  = &rdp.vtx[_SHIFTR( w0,  0, 5)];  /* v12 */
-   v[6]  = &rdp.vtx[_SHIFTR( w1, 25, 5)]; /* v20 */
-   v[7]  = &rdp.vtx[_SHIFTR( w1, 20, 5)]; /* v21 */
-   v[8]  = &rdp.vtx[_SHIFTR( w1, 15, 5)]; /* v22 */
-   v[9]  = &rdp.vtx[_SHIFTR( w1, 10, 5)]; /* v30 */
-   v[10] = &rdp.vtx[_SHIFTR( w1,  5, 5)];  /* v31 */
-   v[11] = &rdp.vtx[_SHIFTR( w1,  0, 5)];  /* v32 */
-
-   cull_trianglefaces(v, 4, true, true, 0);
+	glide64gSP4Triangles( _SHIFTR( w0, 23, 5 ), _SHIFTR( w0, 18, 5 ), (_SHIFTR( w0, 15, 3 )<<2)|_SHIFTR( w1, 30, 2 ),
+				   _SHIFTR( w0, 10, 5 ), _SHIFTR( w0,  5, 5 ), _SHIFTR( w0,  0, 5 ),
+				   _SHIFTR( w1, 25, 5 ), _SHIFTR( w1, 20, 5 ), _SHIFTR( w1, 15, 5 ),
+				   _SHIFTR( w1, 10, 5 ), _SHIFTR( w1,  5, 5 ), _SHIFTR( w1,  0, 5 ));
 }
