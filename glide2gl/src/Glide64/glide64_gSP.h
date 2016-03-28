@@ -380,17 +380,7 @@ static void pre_update(void)
    }
 }
 
-static void glide64gSPClipVertex(uint32_t v)
-{
-   VERTEX *vtx = (VERTEX*)&rdp.vtx[v];
-
-   vtx->scr_off = 0;
-   if (vtx->x > +vtx->w)   vtx->scr_off |= 2;
-   if (vtx->x < -vtx->w)   vtx->scr_off |= 1;
-   if (vtx->y > +vtx->w)   vtx->scr_off |= 8;
-   if (vtx->y < -vtx->w)   vtx->scr_off |= 4;
-   if (vtx->w < 0.1f)      vtx->scr_off |= 16;
-}
+void glide64gSPClipVertex(uint32_t v);
 
 /*
  * Loads into the RSP vertex buffer the vertices that will be used by the 
@@ -439,7 +429,7 @@ static void glide64gSPVertex(uint32_t v, uint32_t n, uint32_t v0)
       vtx->z_w = vtx->z * vtx->oow;
       CalculateFog (vtx);
 
-      glide64gSPClipVertex(v0 + (i / iter));
+      gSPClipVertex(v0 + (i / iter));
 
       if (rdp.geom_mode & G_LIGHTING)
       {
