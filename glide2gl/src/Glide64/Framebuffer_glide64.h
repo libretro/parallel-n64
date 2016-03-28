@@ -44,6 +44,8 @@
 #ifndef FRAMEBUFFER_GLIDE64_H
 #define FRAMEBUFFER_GLIDE64_H
 
+#include "Gfx_1.3.h"
+
 struct vertexi
 {
    int x,y;       // Screen position in 16:16 bit fixed point

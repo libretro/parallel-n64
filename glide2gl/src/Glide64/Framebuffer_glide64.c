@@ -43,6 +43,7 @@
 //****************************************************************
 
 
+#include <math.h>
 #include "Gfx_1.3.h"
 #include "GBI.h"
 #include "Framebuffer_glide64.h"
@@ -60,6 +61,8 @@
 
 uint16_t *zLUT;
 uint16_t *frameBuffer;
+
+extern int dzdx;
 
 union RGBA {
    struct {
@@ -1113,4 +1116,55 @@ void CopyFrameBuffer(int32_t buffer)
          LRDP("LfbLock.  Framebuffer copy complete.\n");
       }
    }
+}
+
+float ScaleZ(float z)
+{
+   if (settings.n64_z_scale)
+   {
+      int iz = (int)(z*8.0f+0.5f);
+      if (iz < 0)
+         iz = 0;
+      else if (iz >= ZLUT_SIZE)
+         iz = ZLUT_SIZE - 1;
+      return (float)zLUT[iz];
+   }
+   if (z  < 0.0f)
+      return 0.0f;
+   z *= 1.9f;
+   if (z > 65535.0f)
+      return 65535.0f;
+   return z;
+}
+
+void DrawDepthBuffer(VERTEX * vtx, int n)
+{
+   unsigned i     = 0;
+   if ( gfx_plugin_accuracy < 3)
+       return;
+
+   if (fb_depth_render_enabled && dzdx && (rdp.flags & ZBUF_UPDATE))
+   {
+      struct vertexi v[12];
+      int index = 0;
+      int inc   = 1;
+
+      if (rdp.u_cull_mode == 1) //cull front
+      {
+         index   = n - 1;
+         inc     = -1;
+      }
+
+      for (i = 0; i < n; i++)
+      {
+         v[i].x = (int)((vtx[index].x - rdp.offset_x) / rdp.scale_x * 65536.0);
+         v[i].y = (int)((vtx[index].y - rdp.offset_y) / rdp.scale_y * 65536.0);
+         v[i].z = (int)(vtx[index].z * 65536.0);
+         index += inc;
+      }
+      DepthBufferRasterize(v, n, dzdx);
+   }
+
+   for (i = 0; i < n; i++)
+      vtx[i].z = ScaleZ(vtx[i].z);
 }
