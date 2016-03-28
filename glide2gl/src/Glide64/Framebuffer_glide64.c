@@ -230,7 +230,6 @@ static void LeftSection(void)
    left_z = v1->z + IMUL16(prestep, left_dzdy);
 }
 
-
 static void DepthBufferRasterize(struct vertexi * vtx, int vertices, int dzdx)
 {
    int n, min_y, max_y, y1;
@@ -367,6 +366,154 @@ static void DepthBufferRasterize(struct vertexi * vtx, int vertices, int dzdx)
    }
 }
 
+static void glide64_draw_fb(float ul_x, float ul_y, float lr_x,
+      float lr_y, float lr_u, float lr_v, float zero)
+{
+   VERTEX v[4], vout[4];
+   /* Make the vertices */
+
+   v[0].x  = ul_x;
+   v[0].y  = ul_y;
+   v[0].z  = 1.0f;
+   v[0].q  = 1.0f;
+   v[0].u[0] = zero;
+   v[0].v[0] = zero;
+   v[0].u[1] = zero;
+   v[0].v[1] = zero;
+   v[0].coord[0] = zero;
+   v[0].coord[1] = zero;
+   v[0].coord[2] = zero;
+   v[0].coord[3] = zero;
+
+   v[1].x  = lr_x;
+   v[1].y  = ul_y;
+   v[1].z  = 1.0f;
+   v[1].q  = 1.0f;
+   v[1].u[0] = lr_u;
+   v[1].v[0] = zero;
+   v[1].u[1] = lr_u;
+   v[1].v[1] = zero;
+   v[1].coord[0] = lr_u;
+   v[1].coord[1] = zero;
+   v[1].coord[2] = lr_u;
+   v[1].coord[3] = zero;
+
+   v[2].x  = ul_x;
+   v[2].y  = lr_y;
+   v[2].z  = 1.0f;
+   v[2].q  = 1.0f;
+   v[2].u[0] = zero; 
+   v[2].v[0] = lr_v;
+   v[2].u[1] = zero;
+   v[2].v[1] = lr_v;
+   v[2].coord[0] = zero;
+   v[2].coord[1] = lr_v;
+   v[2].coord[2] = zero;
+   v[2].coord[3] = lr_v;
+
+   v[3].x  = lr_x;
+   v[3].y  = lr_y;
+   v[3].z  = 1.0f;
+   v[3].q  = 1.0f;
+   v[3].u[0] = lr_u; 
+   v[3].v[0] = lr_v;
+   v[3].u[1] = lr_u;
+   v[3].v[1] = lr_v;
+   v[3].coord[0] = lr_u;
+   v[3].coord[1] = lr_v;
+   v[3].coord[2] = lr_u;
+   v[3].coord[3] = lr_v;
+
+   vout[0] = v[0];
+   vout[1] = v[2];
+   vout[2] = v[1];
+   vout[3] = v[3];
+
+   grDrawVertexArrayContiguous(GR_TRIANGLE_STRIP, 4, &vout[0]);
+}
+
+static int SetupFBtoScreenCombiner(uint32_t texture_size, uint32_t opaque)
+{
+   int tmu, filter;
+
+   if (voodoo.tmem_ptr[GR_TMU0]+texture_size < voodoo.tex_max_addr)
+   {
+      tmu = GR_TMU0;
+      grTexCombine( GR_TMU1,
+            GR_COMBINE_FUNCTION_NONE,
+            GR_COMBINE_FACTOR_NONE,
+            GR_COMBINE_FUNCTION_NONE,
+            GR_COMBINE_FACTOR_NONE,
+            FXFALSE,
+            FXFALSE );
+      grTexCombine( GR_TMU0,
+            GR_COMBINE_FUNCTION_LOCAL,
+            GR_COMBINE_FACTOR_NONE,
+            GR_COMBINE_FUNCTION_LOCAL,
+            GR_COMBINE_FACTOR_NONE,
+            FXFALSE,
+            FXFALSE );
+   }
+   else
+   {
+      if (voodoo.tmem_ptr[GR_TMU1]+texture_size >= voodoo.tex_max_addr)
+         ClearCache ();
+      tmu = GR_TMU1;
+      grTexCombine( GR_TMU1,
+            GR_COMBINE_FUNCTION_LOCAL,
+            GR_COMBINE_FACTOR_NONE,
+            GR_COMBINE_FUNCTION_LOCAL,
+            GR_COMBINE_FACTOR_NONE,
+            FXFALSE,
+            FXFALSE );
+      grTexCombine( GR_TMU0,
+            GR_COMBINE_FUNCTION_SCALE_OTHER,
+            GR_COMBINE_FACTOR_ONE,
+            GR_COMBINE_FUNCTION_SCALE_OTHER,
+            GR_COMBINE_FACTOR_ONE,
+            FXFALSE,
+            FXFALSE );
+   }
+   filter = (rdp.filter_mode != 2) ? GR_TEXTUREFILTER_POINT_SAMPLED : GR_TEXTUREFILTER_BILINEAR;
+
+   grTexFilterClampMode (tmu,
+         GR_TEXTURECLAMP_CLAMP,
+         GR_TEXTURECLAMP_CLAMP,
+         filter,
+         filter);
+   grColorCombine (GR_COMBINE_FUNCTION_SCALE_OTHER,
+         GR_COMBINE_FACTOR_ONE,
+         GR_COMBINE_LOCAL_NONE,
+         GR_COMBINE_OTHER_TEXTURE,
+         //    GR_COMBINE_OTHER_CONSTANT,
+         FXFALSE);
+   grAlphaCombine (GR_COMBINE_FUNCTION_SCALE_OTHER,
+         GR_COMBINE_FACTOR_ONE,
+         GR_COMBINE_LOCAL_NONE,
+         GR_COMBINE_OTHER_TEXTURE,
+         FXFALSE);
+   if (opaque)
+   {
+      grAlphaTestFunction (GR_CMP_ALWAYS, 0x00, 0);
+      grAlphaBlendFunction( GR_BLEND_ONE,
+            GR_BLEND_ZERO,
+            GR_BLEND_ONE,
+            GR_BLEND_ZERO);
+   }
+   else
+   {
+      grAlphaBlendFunction( GR_BLEND_SRC_ALPHA,
+            GR_BLEND_ONE_MINUS_SRC_ALPHA,
+            GR_BLEND_ONE,
+            GR_BLEND_ZERO);
+   }
+   grDepthBufferFunction (GR_CMP_ALWAYS);
+   grCullMode(GR_CULL_DISABLE);
+   grDepthMask (FXFALSE);
+   g_gdp.flags |= UPDATE_COMBINE | UPDATE_ZBUF_ENABLED | UPDATE_CULL_MODE;
+   return tmu;
+}
+
 static void DrawDepthBufferToScreen256(FB_TO_SCREEN_INFO *fb_info)
 {
    uint32_t h, w, x, y, tex_size;
@@ -500,153 +647,7 @@ static void DrawDepthBufferToScreen(FB_TO_SCREEN_INFO *fb_info)
          lr_y, lr_u, lr_v, zero);
 }
 
-void glide64_draw_fb(float ul_x, float ul_y, float lr_x,
-      float lr_y, float lr_u, float lr_v, float zero)
-{
-   VERTEX v[4], vout[4];
-   /* Make the vertices */
 
-   v[0].x  = ul_x;
-   v[0].y  = ul_y;
-   v[0].z  = 1.0f;
-   v[0].q  = 1.0f;
-   v[0].u[0] = zero;
-   v[0].v[0] = zero;
-   v[0].u[1] = zero;
-   v[0].v[1] = zero;
-   v[0].coord[0] = zero;
-   v[0].coord[1] = zero;
-   v[0].coord[2] = zero;
-   v[0].coord[3] = zero;
-
-   v[1].x  = lr_x;
-   v[1].y  = ul_y;
-   v[1].z  = 1.0f;
-   v[1].q  = 1.0f;
-   v[1].u[0] = lr_u;
-   v[1].v[0] = zero;
-   v[1].u[1] = lr_u;
-   v[1].v[1] = zero;
-   v[1].coord[0] = lr_u;
-   v[1].coord[1] = zero;
-   v[1].coord[2] = lr_u;
-   v[1].coord[3] = zero;
-
-   v[2].x  = ul_x;
-   v[2].y  = lr_y;
-   v[2].z  = 1.0f;
-   v[2].q  = 1.0f;
-   v[2].u[0] = zero; 
-   v[2].v[0] = lr_v;
-   v[2].u[1] = zero;
-   v[2].v[1] = lr_v;
-   v[2].coord[0] = zero;
-   v[2].coord[1] = lr_v;
-   v[2].coord[2] = zero;
-   v[2].coord[3] = lr_v;
-
-   v[3].x  = lr_x;
-   v[3].y  = lr_y;
-   v[3].z  = 1.0f;
-   v[3].q  = 1.0f;
-   v[3].u[0] = lr_u; 
-   v[3].v[0] = lr_v;
-   v[3].u[1] = lr_u;
-   v[3].v[1] = lr_v;
-   v[3].coord[0] = lr_u;
-   v[3].coord[1] = lr_v;
-   v[3].coord[2] = lr_u;
-   v[3].coord[3] = lr_v;
-
-   vout[0] = v[0];
-   vout[1] = v[2];
-   vout[2] = v[1];
-   vout[3] = v[3];
-
-   grDrawVertexArrayContiguous(GR_TRIANGLE_STRIP, 4, &vout[0]);
-}
-
-int SetupFBtoScreenCombiner(uint32_t texture_size, uint32_t opaque)
-{
-   int tmu, filter;
-
-   if (voodoo.tmem_ptr[GR_TMU0]+texture_size < voodoo.tex_max_addr)
-   {
-      tmu = GR_TMU0;
-      grTexCombine( GR_TMU1,
-            GR_COMBINE_FUNCTION_NONE,
-            GR_COMBINE_FACTOR_NONE,
-            GR_COMBINE_FUNCTION_NONE,
-            GR_COMBINE_FACTOR_NONE,
-            FXFALSE,
-            FXFALSE );
-      grTexCombine( GR_TMU0,
-            GR_COMBINE_FUNCTION_LOCAL,
-            GR_COMBINE_FACTOR_NONE,
-            GR_COMBINE_FUNCTION_LOCAL,
-            GR_COMBINE_FACTOR_NONE,
-            FXFALSE,
-            FXFALSE );
-   }
-   else
-   {
-      if (voodoo.tmem_ptr[GR_TMU1]+texture_size >= voodoo.tex_max_addr)
-         ClearCache ();
-      tmu = GR_TMU1;
-      grTexCombine( GR_TMU1,
-            GR_COMBINE_FUNCTION_LOCAL,
-            GR_COMBINE_FACTOR_NONE,
-            GR_COMBINE_FUNCTION_LOCAL,
-            GR_COMBINE_FACTOR_NONE,
-            FXFALSE,
-            FXFALSE );
-      grTexCombine( GR_TMU0,
-            GR_COMBINE_FUNCTION_SCALE_OTHER,
-            GR_COMBINE_FACTOR_ONE,
-            GR_COMBINE_FUNCTION_SCALE_OTHER,
-            GR_COMBINE_FACTOR_ONE,
-            FXFALSE,
-            FXFALSE );
-   }
-   filter = (rdp.filter_mode != 2) ? GR_TEXTUREFILTER_POINT_SAMPLED : GR_TEXTUREFILTER_BILINEAR;
-
-   grTexFilterClampMode (tmu,
-         GR_TEXTURECLAMP_CLAMP,
-         GR_TEXTURECLAMP_CLAMP,
-         filter,
-         filter);
-   grColorCombine (GR_COMBINE_FUNCTION_SCALE_OTHER,
-         GR_COMBINE_FACTOR_ONE,
-         GR_COMBINE_LOCAL_NONE,
-         GR_COMBINE_OTHER_TEXTURE,
-         //    GR_COMBINE_OTHER_CONSTANT,
-         FXFALSE);
-   grAlphaCombine (GR_COMBINE_FUNCTION_SCALE_OTHER,
-         GR_COMBINE_FACTOR_ONE,
-         GR_COMBINE_LOCAL_NONE,
-         GR_COMBINE_OTHER_TEXTURE,
-         FXFALSE);
-   if (opaque)
-   {
-      grAlphaTestFunction (GR_CMP_ALWAYS, 0x00, 0);
-      grAlphaBlendFunction( GR_BLEND_ONE,
-            GR_BLEND_ZERO,
-            GR_BLEND_ONE,
-            GR_BLEND_ZERO);
-   }
-   else
-   {
-      grAlphaBlendFunction( GR_BLEND_SRC_ALPHA,
-            GR_BLEND_ONE_MINUS_SRC_ALPHA,
-            GR_BLEND_ONE,
-            GR_BLEND_ZERO);
-   }
-   grDepthBufferFunction (GR_CMP_ALWAYS);
-   grCullMode(GR_CULL_DISABLE);
-   grDepthMask (FXFALSE);
-   g_gdp.flags |= UPDATE_COMBINE | UPDATE_ZBUF_ENABLED | UPDATE_CULL_MODE;
-   return tmu;
-}
 
 static void DrawRE2Video(FB_TO_SCREEN_INFO *fb_info, float scale)
 {
