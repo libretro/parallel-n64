@@ -92,7 +92,7 @@ void glide_set_filtering(unsigned value);
 static void (*l_DebugCallback)(void *, int, const char *) = NULL;
 static void *l_DebugCallContext = NULL;
 
-void _ChangeSize(void)
+static void _ChangeSize(void)
 {
 	uint32_t scale_x, scale_y;
    float res_scl_y      = (float)settings.res_y / 240.0f;
@@ -674,7 +674,8 @@ uint32_t curframe = 0;
 extern int need_to_compile;
 void glide_set_filtering(unsigned value)
 {
-	if(settings.filtering != value){
+	if(settings.filtering != value)
+   {
 		need_to_compile = 1;
 		settings.filtering = value;
 	}
