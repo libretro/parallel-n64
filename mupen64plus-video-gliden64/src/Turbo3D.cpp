@@ -6,47 +6,9 @@
 #include "gDP.h"
 #include "OpenGL.h"
 
+#include "../../Graphics/HLE/Microcode/turbo3d.h"
+
 /******************Turbo3D microcode*************************/
-
-struct T3DGlobState
-{
-	uint16_t pad0;
-	uint16_t perspNorm;
-	uint32_t flag;
-	uint32_t othermode0;
-	uint32_t othermode1;
-	uint32_t segBases[16];
-	/* the viewport to use */
-	int16_t vsacle1;
-	int16_t vsacle0;
-	int16_t vsacle3;
-	int16_t vsacle2;
-	int16_t vtrans1;
-	int16_t vtrans0;
-	int16_t vtrans3;
-	int16_t vtrans2;
-	uint32_t rdpCmds;
-};
-
-struct T3DState
-{
-	uint32_t renderState;	/* render state */
-	uint32_t textureState;	/* texture state */
-	uint8_t flag;
-	uint8_t triCount;	/* how many tris? */
-	uint8_t vtxV0;		/* where to load verts? */
-	uint8_t vtxCount;	/* how many verts? */
-	uint32_t rdpCmds;	/* ptr (segment address) to RDP DL */
-	uint32_t othermode0;
-	uint32_t othermode1;
-};
-
-
-struct T3DTriN
-{
-	uint8_t	flag, v2, v1, v0;	/* flag is which one for flat shade */
-};
-
 
 static
 void Turbo3D_ProcessRDP(uint32_t _cmds)
