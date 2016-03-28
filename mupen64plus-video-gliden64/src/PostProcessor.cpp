@@ -14,10 +14,8 @@
 #define SHADER_VERSION "#version 310 es \n"
 #elif defined(HAVE_OPENGLES3)
 #define SHADER_VERSION "#version 300 es \n"
-#elif defined(HAVE_OPENGLES2)
-#define SHADER_VERSION "#version 100 \n"
 #else
-#define SHADER_VERSION "#version 330 core \n"
+#define SHADER_VERSION "#version 100 \n"
 #endif
 
 #ifdef HAVE_OPENGLES2
