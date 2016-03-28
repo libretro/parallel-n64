@@ -213,6 +213,18 @@
     <ClCompile Include="..\..\..\glide2gl\src\Glide64\glidemain.c">
       <Filter>Source Files\glide2gl\src\Glide64</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\glide2gl\src\Glide64\gDP_funcs.c">
+      <Filter>Source Files\glide2gl\src\Glide64</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\glide2gl\src\Glide64\gSP_funcs.c">
+      <Filter>Source Files\glide2gl\src\Glide64</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\glide2gl\src\Glide64\glide64_gDP.c">
+      <Filter>Source Files\glide2gl\src\Glide64</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\glide2gl\src\Glide64\glide64_gSP.c">
+      <Filter>Source Files\glide2gl\src\Glide64</Filter>
+    </ClCompile>
     <ClCompile Include="..\..\..\glide2gl\src\Glide64\glide64_rdp.c">
       <Filter>Source Files\glide2gl\src\Glide64</Filter>
     </ClCompile>

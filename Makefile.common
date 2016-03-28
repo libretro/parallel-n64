@@ -327,6 +327,10 @@ SOURCES_C += $(VIDEODIR_GLIDE)/Glide64/glide64_3dmath.c \
             $(VIDEODIR_GLIDE)/Glide64/glide64_util.c \
 				$(VIDEODIR_GLIDE)/Glide64/Glide64_UCode.c \
             $(VIDEODIR_GLIDE)/Glide64/glide64_rdp.c \
+            $(VIDEODIR_GLIDE)/Glide64/glide64_gSP.c \
+            $(VIDEODIR_GLIDE)/Glide64/glide64_gDP.c \
+            $(VIDEODIR_GLIDE)/Glide64/gSP_funcs.c \
+            $(VIDEODIR_GLIDE)/Glide64/gDP_funcs.c \
             $(VIDEODIR_GLIDE)/Glide64/Combine.c \
             $(VIDEODIR_GLIDE)/Glide64/TexCache.c \
 				$(VIDEODIR_GLIDE)/Glide64/MiClWr.c \

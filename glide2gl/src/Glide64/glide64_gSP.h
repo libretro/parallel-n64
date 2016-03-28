@@ -1,3 +1,11 @@
+#include <math.h>
+
+#include "../Glitch64/glide.h"
+#include "Combine.h"
+#include "GBI.h"
+#include "rdp.h"
+#include "gSP_funcs.h"
+
 typedef struct DRAWOBJECT_t
 {
   float objX;
@@ -20,7 +28,9 @@ struct MAT2D {
   float X, Y;
   float BaseScaleX;
   float BaseScaleY;
-} mat_2d = {1.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f, 1.0f};
+};
+
+extern struct MAT2D mat_2d;
 
 // positional and texel coordinate clipping
 #define CCLIP2(ux,lx,ut,lt,un,ln,uc,lc) \
@@ -47,9 +57,8 @@ extern int32_t cur_mtx;
 extern uint32_t dma_offset_mtx;
 extern uint32_t dma_offset_vtx;
 extern int32_t billboarding;
-
-int dzdx = 0;
-int deltaZ = 0;
+extern int dzdx;
+extern int deltaZ;
 VERTEX **org_vtx;
 
 //software backface culling. Gonetz
@@ -112,11 +121,6 @@ static int cull_tri(VERTEX **v) // type changed to VERTEX** [Dave2001]
    return false;
 }
 
-static void glide64gSPCombineMatrices(void)
-{
-   MulMatrices(rdp.model, rdp.proj, rdp.combined);
-   g_gdp.flags ^= UPDATE_MULT_MAT;
-}
 
 /* clip_w - clips aint the z-axis */
 static void clip_w (void)
@@ -360,7 +364,7 @@ static void pre_update(void)
    // This is special, not handled in update(), but here
    // Matrix Pre-multiplication idea by Gonetz (Gonetz@ngs.ru)
    if (g_gdp.flags & UPDATE_MULT_MAT)
-      glide64gSPCombineMatrices();
+      gSPCombineMatrices();
 
    if (g_gdp.flags & UPDATE_LIGHTS)
    {
@@ -738,3 +742,5 @@ static void glide64gSPCullDisplayList( uint32_t v0, uint32_t vn )
 	if (glide64gSPCullVertices( v0, vn ))
       glide64gSPEndDisplayList();
 }
+
+void glide64gSPCombineMatrices(void);
