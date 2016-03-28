@@ -123,7 +123,7 @@ static void uc0_matrix(uint32_t w0, uint32_t w1)
 {
    DECLAREALIGN16VAR(m[4][4]);
    // Use segment offset to get the address
-   uint32_t addr = RSP_SegmentToPhysical(w1);
+   uint32_t addr   = RSP_SegmentToPhysical(w1);
    uint8_t command = (uint8_t)((w0 >> 16) & 0xFF);
 
    load_matrix(m, addr);
@@ -254,22 +254,21 @@ static void uc0_tri1(uint32_t w0, uint32_t w1)
 
 static void uc0_tri1_mischief(uint32_t w0, uint32_t w1)
 {
+   int i;
    VERTEX *v[3];
 
-   v[0] = &rdp.vtx[_SHIFTR(w1, 16, 8) / 10];
-   v[1] = &rdp.vtx[_SHIFTR(w1,  8, 8) / 10];
-   v[2] = &rdp.vtx[_SHIFTR(w1,  0, 8) / 10];
+   v[0]           = &rdp.vtx[_SHIFTR(w1, 16, 8) / 10];
+   v[1]           = &rdp.vtx[_SHIFTR(w1,  8, 8) / 10];
+   v[2]           = &rdp.vtx[_SHIFTR(w1,  0, 8) / 10];
 
+   rdp.force_wrap = false;
+
+   for (i = 0; i < 3; i++)
    {
-      int i;
-      rdp.force_wrap = false;
-      for (i = 0; i < 3; i++)
+      if (v[i]->ou < 0.0f || v[i]->ov < 0.0f)
       {
-         if (v[i]->ou < 0.0f || v[i]->ov < 0.0f)
-         {
-            rdp.force_wrap = true;
-            break;
-         }
+         rdp.force_wrap = true;
+         break;
       }
    }
 
@@ -366,12 +365,12 @@ static void uc0_moveword(uint32_t w0, uint32_t w1)
 
 static void uc0_texture(uint32_t w0, uint32_t w1)
 {
-   int tile = (w0 >> 8) & 0x07;
+   int tile           = (w0 >> 8) & 0x07;
 
    if (tile == 7 && (settings.hacks&hack_Supercross))
-      tile = 0; //fix for supercross 2000
-   rdp.mipmap_level = (w0 >> 11) & 0x07;
-   rdp.cur_tile = tile;
+      tile = 0; /* fix for supercross 2000 */
+   rdp.mipmap_level   = (w0 >> 11) & 0x07;
+   rdp.cur_tile       = tile;
    rdp.tiles[tile].on = 0;
 
    if ((w0 & 0xFF))
@@ -379,11 +378,11 @@ static void uc0_texture(uint32_t w0, uint32_t w1)
       uint16_t s = (uint16_t)((w1 >> 16) & 0xFFFF);
       uint16_t t = (uint16_t)(w1 & 0xFFFF);
 
-      rdp.tiles[tile].on = 1;
+      rdp.tiles[tile].on          = 1;
       rdp.tiles[tile].org_s_scale = s;
       rdp.tiles[tile].org_t_scale = t;
-      rdp.tiles[tile].s_scale = (float)((s+1)/65536.0f) / 32.0f;
-      rdp.tiles[tile].t_scale = (float)((t+1)/65536.0f) / 32.0f;
+      rdp.tiles[tile].s_scale     = (float)((s+1)/65536.0f) / 32.0f;
+      rdp.tiles[tile].t_scale     = (float)((t+1)/65536.0f) / 32.0f;
 
       g_gdp.flags |= UPDATE_TEXTURE;
    }
@@ -392,8 +391,8 @@ static void uc0_texture(uint32_t w0, uint32_t w1)
 static void uc0_setothermode_h(uint32_t w0, uint32_t w1)
 {
    int i;
-   int len   = _SHIFTR(w0, 0, 8);
-   int shift = _SHIFTR(w0, 8, 8);
+   int len       = _SHIFTR(w0, 0, 8);
+   int shift     = _SHIFTR(w0, 8, 8);
    uint32_t mask = 0;
 
    if ((settings.ucode == ucode_F3DEX2) || (settings.ucode == ucode_CBFD))
@@ -404,8 +403,8 @@ static void uc0_setothermode_h(uint32_t w0, uint32_t w1)
       mask = (mask << 1) | 1;
    mask <<= shift;
 
-   rdp.cmd1 &= mask;
-   rdp.othermode_h = (rdp.othermode_h & ~mask) | rdp.cmd1;
+   rdp.cmd1        &= mask;
+   rdp.othermode_h  = (rdp.othermode_h & ~mask) | rdp.cmd1;
 
    if (mask & 0x00003000) // filter mode
    {
@@ -427,8 +426,8 @@ static void uc0_setothermode_h(uint32_t w0, uint32_t w1)
 static void uc0_setothermode_l(uint32_t w0, uint32_t w1)
 {
    int i;
-   int len   = _SHIFTR(w0, 0, 8);
-   int shift = _SHIFTR(w0, 8, 8);
+   int len       = _SHIFTR(w0, 0, 8);
+   int shift     = _SHIFTR(w0, 8, 8);
    uint32_t mask = 0;
 
    if ((settings.ucode == ucode_F3DEX2) || (settings.ucode == ucode_CBFD))
@@ -557,11 +556,12 @@ static void uc0_line3d(uint32_t w0, uint32_t w1)
    v[1] = &rdp.vtx[v0];
    v[2] = &rdp.vtx[v0];
 
-   rdp.flags |= CULLMASK;
+   rdp.flags   |= CULLMASK;
    g_gdp.flags |= UPDATE_CULL_MODE;
    cull_trianglefaces(v, 1, true, true, width);
-   rdp.flags ^= CULLMASK;
-   rdp.flags |= cull_mode << CULLSHIFT;
+
+   rdp.flags   ^= CULLMASK;
+   rdp.flags   |= cull_mode << CULLSHIFT;
    g_gdp.flags |= UPDATE_CULL_MODE;
 }
 

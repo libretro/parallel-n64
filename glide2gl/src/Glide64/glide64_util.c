@@ -178,9 +178,9 @@ static void Create1LineEquation(LineEquationType *l, VERTEX *v1, VERTEX *v2, VER
    float y = v3->sy;
 
    // Line between (x1,y1) to (x2,y2)
-   l->x = v2->sy-v1->sy;
-   l->y = v1->sx-v2->sx;
-   l->d = -(l->x * v2->sx+ (l->y) * v2->sy);
+   l->x    = v2->sy-v1->sy;
+   l->y    = v1->sx-v2->sx;
+   l->d    = -(l->x * v2->sx+ (l->y) * v2->sy);
 
    if (EvaLine(l,x,y) * v3->oow < 0)
    {
@@ -204,11 +204,11 @@ static INLINE void glide64_interpolate_colors(VERTEX *va, VERTEX *vb, VERTEX *re
    float fa = va->f * va_oow;
    float fb = vb->f * vb_oow;
 
-   res->r = (uint8_t)((ra + (rb - ra) * percent) * w);
-   res->g = (uint8_t)((ga + (gb - ga) * percent) * w);
-   res->b = (uint8_t)((ba + (bb - ba) * percent) * w);
-   res->a = (uint8_t)((aa + (ab - aa) * percent) * w);
-   res->f = (fa + (fb - fa) * percent) * w;
+   res->r   = (uint8_t)((ra + (rb - ra) * percent) * w);
+   res->g   = (uint8_t)((ga + (gb - ga) * percent) * w);
+   res->b   = (uint8_t)((ba + (bb - ba) * percent) * w);
+   res->a   = (uint8_t)((aa + (ab - aa) * percent) * w);
+   res->f   = (fa + (fb - fa) * percent) * w;
 }
 
 #define interp3p(a, b, c, r1, r2) ((a)+(((b)+((c)-(b))*(r2))-(a))*(r1))
@@ -219,14 +219,14 @@ static void InterpolateColors3(VERTEX *v1, VERTEX *v2, VERTEX *v3, VERTEX *out)
    float aDot, bDot, scale1, tx, ty, s1, s2, den, w;
    Create1LineEquation(&line, v2, v3, v1);
 
-   aDot = (out->x * line.x + out->y * line.y);
-   bDot = (v1->sx * line.x + v1->sy * line.y);
+   aDot   = (out->x * line.x + out->y * line.y);
+   bDot   = (v1->sx * line.x + v1->sy * line.y);
    scale1 = ( -line.d - aDot) / ( bDot - aDot );
-   tx = out->x + scale1 * (v1->sx - out->x);
-   ty = out->y + scale1 * (v1->sy - out->y);
-   s1 = 101.0;
-   s2 = 101.0;
-   den = tx - v1->sx;
+   tx     = out->x + scale1 * (v1->sx - out->x);
+   ty     = out->y + scale1 * (v1->sy - out->y);
+   s1     = 101.0;
+   s2     = 101.0;
+   den    = tx - v1->sx;
 
    if (fabs(den) > 1.0)
       s1 = (out->x-v1->sx)/den;
@@ -288,7 +288,7 @@ static void CalculateLOD(VERTEX *v, int n, uint32_t lodmode)
    }
 
    if (lodmode == G_TL_TILE)
-      lodFactor = lodFactor / n; // Divide by n (n edges) to find average
+      lodFactor = lodFactor / n; /* Divide by n (n edges) to find average */
 
    ilod         = (int)lodFactor;
    lod_tile     = MIN((int)(log10f((float)ilod)/log10f(2.0f)), rdp.cur_tile + rdp.mipmap_level);
@@ -338,8 +338,8 @@ static void DepthBuffer(VERTEX * vtx, int n)
 
       if (rdp.u_cull_mode == 1) //cull front
       {
-         index = n - 1;
-         inc   = -1;
+         index   = n - 1;
+         inc     = -1;
       }
 
       for (i = 0; i < n; i++)
@@ -371,7 +371,6 @@ static void DepthBuffer(VERTEX * vtx, int n)
 static void clip_tri(int interpolate_colors)
 {
    int i,j,index,n=rdp.n_global;
-   float percent;
 
    // Check which clipping is needed
    if (rdp.clip & CLIP_XMAX) // right of the screen
@@ -419,7 +418,7 @@ static void clip_tri(int interpolate_colors)
 
          if (current && current2)
          {
-            percent = (rdp.clip_max_x - current->x) / (current2->x - current->x);
+            float percent       = (rdp.clip_max_x - current->x) / (current2->x - current->x);
             rdp.vtxbuf[index].x = rdp.clip_max_x;
             rdp.vtxbuf[index].y = current->y + (current2->y - current->y) * percent;
             rdp.vtxbuf[index].z = current->z + (current2->z - current->z) * percent;
@@ -484,7 +483,7 @@ static void clip_tri(int interpolate_colors)
 
          if (current && current2)
          {
-            percent = (rdp.clip_min_x - current->x) / (current2->x - current->x);
+            float percent       = (rdp.clip_min_x - current->x) / (current2->x - current->x);
             rdp.vtxbuf[index].x = rdp.clip_min_x;
             rdp.vtxbuf[index].y = current->y + (current2->y - current->y) * percent;
             rdp.vtxbuf[index].z = current->z + (current2->z - current->z) * percent;
@@ -547,7 +546,7 @@ static void clip_tri(int interpolate_colors)
 
          if (current && current2)
          {
-            percent = (rdp.clip_max_y - current->y) / (current2->y - current->y);
+            float percent       = (rdp.clip_max_y - current->y) / (current2->y - current->y);
             rdp.vtxbuf[index].x = current->x + (current2->x - current->x) * percent;
             rdp.vtxbuf[index].y = rdp.clip_max_y;
             rdp.vtxbuf[index].z = current->z + (current2->z - current->z) * percent;
@@ -609,7 +608,7 @@ static void clip_tri(int interpolate_colors)
 
          if (current && current2)
          {
-            percent = (rdp.clip_min_y - current->y) / (current2->y - current->y);
+            float percent       = (rdp.clip_min_y - current->y) / (current2->y - current->y);
             rdp.vtxbuf[index].x = current->x + (current2->x - current->x) * percent;
             rdp.vtxbuf[index].y = rdp.clip_min_y;
             rdp.vtxbuf[index].z = current->z + (current2->z - current->z) * percent;
@@ -680,7 +679,7 @@ static void clip_tri(int interpolate_colors)
 
          if (current && current2)
          {
-            percent = (maxZ - current->z) / (current2->z - current->z);
+            float percent       = (maxZ - current->z) / (current2->z - current->z);
             rdp.vtxbuf[index].x = current->x + (current2->x - current->x) * percent;
             rdp.vtxbuf[index].y = current->y + (current2->y - current->y) * percent;
             rdp.vtxbuf[index].z = maxZ - 0.001f;;
@@ -720,7 +719,7 @@ static void clip_tri(int interpolate_colors)
             }
             else      // First is in, second is out, save intersection
             {
-               percent = (-rdp.vtxbuf2[i].z) / (rdp.vtxbuf2[j].z - rdp.vtxbuf2[i].z);
+               float       percent = (-rdp.vtxbuf2[i].z) / (rdp.vtxbuf2[j].z - rdp.vtxbuf2[i].z);
                rdp.vtxbuf[index].x = rdp.vtxbuf2[i].x + (rdp.vtxbuf2[j].x - rdp.vtxbuf2[i].x) * percent;
                rdp.vtxbuf[index].y = rdp.vtxbuf2[i].y + (rdp.vtxbuf2[j].y - rdp.vtxbuf2[i].y) * percent;
                rdp.vtxbuf[index].z = 0.0f;
@@ -740,7 +739,7 @@ static void clip_tri(int interpolate_colors)
             //if (rdp.vtxbuf2[j].z < 0.0f)  // Both are out, save nothing
             if (rdp.vtxbuf2[j].z >= 0.0f) // First is out, second is in, save intersection & in point
             {
-               percent = (-rdp.vtxbuf2[j].z) / (rdp.vtxbuf2[i].z - rdp.vtxbuf2[j].z);
+               float       percent = (-rdp.vtxbuf2[j].z) / (rdp.vtxbuf2[i].z - rdp.vtxbuf2[j].z);
                rdp.vtxbuf[index].x = rdp.vtxbuf2[j].x + (rdp.vtxbuf2[i].x - rdp.vtxbuf2[j].x) * percent;
                rdp.vtxbuf[index].y = rdp.vtxbuf2[j].y + (rdp.vtxbuf2[i].y - rdp.vtxbuf2[j].y) * percent;
                rdp.vtxbuf[index].z = 0.0f;;
@@ -798,7 +797,7 @@ static void render_tri (uint16_t linew, int old_interpolate)
       for (i = 0; i < n; i++)
       {
          float percent = 101.0f;
-         VERTEX * v1 = 0,  * v2 = 0;
+         VERTEX * v1   = 0,  * v2 = 0;
 
          switch (rdp.vtxbuf[i].number&7)
          {
@@ -884,51 +883,51 @@ static void render_tri (uint16_t linew, int old_interpolate)
       VERTEX *V1 = &rdp.vtxbuf[1];
 
       if (fabs(V0->x - V1->x) < 0.01 && fabs(V0->y - V1->y) < 0.01)
-         V1 = &rdp.vtxbuf[2];
+         V1      = &rdp.vtxbuf[2];
 
-      V0->z = ScaleZ(V0->z);
-      V1->z = ScaleZ(V1->z);
+      V0->z      = ScaleZ(V0->z);
+      V1->z      = ScaleZ(V1->z);
 
-      v[0] = *V0;
-      v[1] = *V0;
-      v[2] = *V1;
-      v[3] = *V1;
+      v[0]       = *V0;
+      v[1]       = *V0;
+      v[2]       = *V1;
+      v[3]       = *V1;
 
-      width = linew * 0.25f;
+      width      = linew * 0.25f;
 
       if (fabs(V0->y - V1->y) < 0.0001)
       {
-         v[0].x = v[1].x = V0->x;
-         v[2].x = v[3].x = V1->x;
+         v[0].x = v[1].x  = V0->x;
+         v[2].x = v[3].x  = V1->x;
 
-         width *= rdp.scale_y;
-         v[0].y = v[2].y = V0->y - width;
-         v[1].y = v[3].y = V0->y + width;
+         width           *= rdp.scale_y;
+         v[0].y = v[2].y  = V0->y - width;
+         v[1].y = v[3].y  = V0->y + width;
       }
       else if (fabs(V0->x - V1->x) < 0.0001)
       {
-         v[0].y = v[1].y = V0->y;
-         v[2].y = v[3].y = V1->y;
+         v[0].y = v[1].y  = V0->y;
+         v[2].y = v[3].y  = V1->y;
 
          width *= rdp.scale_x;
-         v[0].x = v[2].x = V0->x - width;
-         v[1].x = v[3].x = V0->x + width;
+         v[0].x = v[2].x  = V0->x - width;
+         v[1].x = v[3].x  = V0->x + width;
       }
       else
       {
-         float dx = V1->x - V0->x;
-         float dy = V1->y - V0->y;
+         float dx  = V1->x - V0->x;
+         float dy  = V1->y - V0->y;
          float len = sqrtf(dx*dx + dy*dy);
-         float wx = dy * width * rdp.scale_x / len;
-         float wy = dx * width * rdp.scale_y / len;
-         v[0].x = V0->x + wx;
-         v[0].y = V0->y - wy;
-         v[1].x = V0->x - wx;
-         v[1].y = V0->y + wy;
-         v[2].x = V1->x + wx;
-         v[2].y = V1->y - wy;
-         v[3].x = V1->x - wx;
-         v[3].y = V1->y + wy;
+         float wx  = dy * width * rdp.scale_x / len;
+         float wy  = dx * width * rdp.scale_y / len;
+         v[0].x    = V0->x + wx;
+         v[0].y    = V0->y - wy;
+         v[1].x    = V0->x - wx;
+         v[1].y    = V0->y + wy;
+         v[2].x    = V1->x + wx;
+         v[2].y    = V1->y - wy;
+         v[3].x    = V1->x - wx;
+         v[3].y    = V1->y + wy;
       }
 
       grDrawVertexArrayContiguous(GR_TRIANGLE_STRIP, 4, &v[0]);
@@ -979,10 +978,10 @@ void do_triangle_stuff (uint16_t linew, int old_interpolate) // what else?? do t
       if (vtx->not_zclipped)
       {
          //FRDP (" * NOT ZCLIPPPED: %d\n", vtx->number);
-         vtx->x = vtx->sx;
-         vtx->y = vtx->sy;
-         vtx->z = vtx->sz;
-         vtx->q = vtx->oow;
+         vtx->x    = vtx->sx;
+         vtx->y    = vtx->sy;
+         vtx->z    = vtx->sz;
+         vtx->q    = vtx->oow;
          vtx->u[0] = vtx->u_w[0];
          vtx->v[0] = vtx->v_w[0];
          vtx->u[1] = vtx->u_w[1];
@@ -1011,12 +1010,19 @@ void do_triangle_stuff (uint16_t linew, int old_interpolate) // what else?? do t
          vtx->z = g_gdp.prim_color.z;
 
       // Don't remove clipping, or it will freeze
-      if (vtx->x > rdp.clip_max_x) rdp.clip |= CLIP_XMAX;
-      if (vtx->x < rdp.clip_min_x) rdp.clip |= CLIP_XMIN;
-      if (vtx->y > rdp.clip_max_y) rdp.clip |= CLIP_YMAX;
-      if (vtx->y < rdp.clip_min_y) rdp.clip |= CLIP_YMIN;
-      if (vtx->z > maxZ)           rdp.clip |= CLIP_ZMAX;
-      if (vtx->z < 0.0f)           rdp.clip |= CLIP_ZMIN;
+      if (vtx->x > rdp.clip_max_x)
+         rdp.clip |= CLIP_XMAX;
+      if (vtx->x < rdp.clip_min_x)
+         rdp.clip |= CLIP_XMIN;
+      if (vtx->y > rdp.clip_max_y)
+         rdp.clip |= CLIP_YMAX;
+      if (vtx->y < rdp.clip_min_y)
+         rdp.clip |= CLIP_YMIN;
+      if (vtx->z > maxZ)
+         rdp.clip |= CLIP_ZMAX;
+      if (vtx->z < 0.0f)
+         rdp.clip |= CLIP_ZMIN;
+
       no_clip &= vtx->screen_translated;
    }
    if (!no_clip)
@@ -1068,11 +1074,11 @@ static void glide64_z_compare(void)
          switch (g_gdp.other_modes.z_mode)
          {
             case ZMODE_OPA:
-               depthbuf_func = settings.zmode_compare_less ? GR_CMP_LESS : GR_CMP_LEQUAL;
+               depthbuf_func   = settings.zmode_compare_less ? GR_CMP_LESS : GR_CMP_LEQUAL;
                break;
             case ZMODE_INTER:
                depthbias_level = -4;
-               depthbuf_func = settings.zmode_compare_less ? GR_CMP_LESS : GR_CMP_LEQUAL;
+               depthbuf_func   = settings.zmode_compare_less ? GR_CMP_LESS : GR_CMP_LEQUAL;
                break;
             case ZMODE_XLU:
                if (settings.ucode == 7)

@@ -65,11 +65,11 @@ typedef struct
 static void uc7_vertex(uint32_t w0, uint32_t w1)
 {
    unsigned int i;
-   uint32_t v0 = (w0 & 0x0F0000) >> 16;
-   uint32_t n = ((w0 & 0xF00000) >> 20) + 1;
-   uint32_t addr = RSP_SegmentToPhysical(w1);
+   uint32_t v0     = (w0 & 0x0F0000) >> 16;
+   uint32_t n      = ((w0 & 0xF00000) >> 20) + 1;
+   uint32_t addr   = RSP_SegmentToPhysical(w1);
    vtx_uc7 *vertex = (vtx_uc7*)&gfx_info.RDRAM[addr];
-   uint32_t iter = 1;
+   uint32_t iter   = 1;
 
    pre_update();
 
@@ -87,20 +87,20 @@ static void uc7_vertex(uint32_t w0, uint32_t w1)
       vert->uv_scaled = 0;
       vert->a         = color[0];
 
-      vert->x = x*rdp.combined[0][0] + y*rdp.combined[1][0] + z*rdp.combined[2][0] + rdp.combined[3][0];
-      vert->y = x*rdp.combined[0][1] + y*rdp.combined[1][1] + z*rdp.combined[2][1] + rdp.combined[3][1];
-      vert->z = x*rdp.combined[0][2] + y*rdp.combined[1][2] + z*rdp.combined[2][2] + rdp.combined[3][2];
-      vert->w = x*rdp.combined[0][3] + y*rdp.combined[1][3] + z*rdp.combined[2][3] + rdp.combined[3][3];
+      vert->x         = x*rdp.combined[0][0] + y*rdp.combined[1][0] + z*rdp.combined[2][0] + rdp.combined[3][0];
+      vert->y         = x*rdp.combined[0][1] + y*rdp.combined[1][1] + z*rdp.combined[2][1] + rdp.combined[3][1];
+      vert->z         = x*rdp.combined[0][2] + y*rdp.combined[1][2] + z*rdp.combined[2][2] + rdp.combined[3][2];
+      vert->w         = x*rdp.combined[0][3] + y*rdp.combined[1][3] + z*rdp.combined[2][3] + rdp.combined[3][3];
 
-      vert->uv_calculated = 0xFFFFFFFF;
+      vert->uv_calculated     = 0xFFFFFFFF;
       vert->screen_translated = 0;
 
       if (fabs(vert->w) < 0.001)
          vert->w = 0.001f;
-      vert->oow = 1.0f / vert->w;
-      vert->x_w = vert->x * vert->oow;
-      vert->y_w = vert->y * vert->oow;
-      vert->z_w = vert->z * vert->oow;
+      vert->oow  = 1.0f / vert->w;
+      vert->x_w  = vert->x * vert->oow;
+      vert->y_w  = vert->y * vert->oow;
+      vert->z_w  = vert->z * vert->oow;
       CalculateFog (vert);
 
       vert->scr_off = 0;

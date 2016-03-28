@@ -56,7 +56,7 @@ void uc9_rpdcmd(uint32_t w0, uint32_t w1)
       do
       {
          rdp.cmd0 = ((uint32_t*)gfx_info.RDRAM)[a++];   
-         cmd = rdp.cmd0>>24; 
+         cmd      = rdp.cmd0>>24; 
          if (cmd == F3DEX2_ENDDL)
             break;
          rdp.cmd1 = ((uint32_t*)gfx_info.RDRAM)[a++]; 

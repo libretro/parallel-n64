@@ -117,15 +117,17 @@ static void fb_uc2_movemem(uint32_t w0, uint32_t w1)
 {
    if ((w0 & 0xFF) == 8)
    {
-      uint32_t a = RSP_SegmentToPhysical(w1) >> 1;
-      int16_t scale_x = ((int16_t*)gfx_info.RDRAM)[(a+0)^1] >> 2;
-      int16_t trans_x = ((int16_t*)gfx_info.RDRAM)[(a+4)^1] >> 2;
-      COLOR_IMAGE *cur_fb = (COLOR_IMAGE*)&rdp.frame_buffers[rdp.ci_count-1];
+      uint32_t a           = RSP_SegmentToPhysical(w1) >> 1;
+      int16_t scale_x      = ((int16_t*)gfx_info.RDRAM)[(a+0)^1] >> 2;
+      int16_t trans_x      = ((int16_t*)gfx_info.RDRAM)[(a+4)^1] >> 2;
+      COLOR_IMAGE *cur_fb  = (COLOR_IMAGE*)&rdp.frame_buffers[rdp.ci_count-1];
+
       if ( abs((int)(scale_x + trans_x - cur_fb->width)) < 3)
       {
-         int16_t scale_y = ((int16_t*)gfx_info.RDRAM)[(a+1)^1] >> 2;
-         int16_t trans_y = ((int16_t*)gfx_info.RDRAM)[(a+5)^1] >> 2;
-         uint32_t height = scale_y + trans_y;
+         int16_t scale_y   = ((int16_t*)gfx_info.RDRAM)[(a+1)^1] >> 2;
+         int16_t trans_y   = ((int16_t*)gfx_info.RDRAM)[(a+5)^1] >> 2;
+         uint32_t height   = scale_y + trans_y;
+         
          if (height < g_gdp.__clip.yl)
             cur_fb->height = height;
       }
@@ -135,12 +137,15 @@ static void fb_uc2_movemem(uint32_t w0, uint32_t w1)
 static void fb_rect(uint32_t w0, uint32_t w1)
 {
    int ul_x, lr_x, width, diff;
+
    if (rdp.frame_buffers[rdp.ci_count-1].width == 32)
       return;
-   ul_x = ((w1 & 0x00FFF000) >> 14);
-   lr_x = ((w0 & 0x00FFF000) >> 14);
-   width = lr_x-ul_x;
-   diff = abs((int)rdp.frame_buffers[rdp.ci_count-1].width - width);
+
+   ul_x    = ((w1 & 0x00FFF000) >> 14);
+   lr_x    = ((w0 & 0x00FFF000) >> 14);
+   width   = lr_x-ul_x;
+   diff    = abs((int)rdp.frame_buffers[rdp.ci_count-1].width - width);
+
    if (diff < 4)
    {
       uint32_t lr_y = MIN(g_gdp.__clip.yl, (w0 & 0xFFF) >> 2);
@@ -168,7 +173,8 @@ static void fb_settextureimage(uint32_t w0, uint32_t w1)
    if (((w0 >> 19) & 0x03) >= 2)  //check that texture is 16/32bit
    {
       int tex_format = ((w0 >> 21) & 0x07);
-      uint32_t addr = RSP_SegmentToPhysical(w1);
+      uint32_t addr  = RSP_SegmentToPhysical(w1);
+
       if ( tex_format == 0 )
       {
          FRDP ("fb_settextureimage. fmt: %d, size: %d, imagePtr %08lx, main_ci: %08lx, cur_ci: %08lx \n", ((w0 >> 21) & 0x07), ((w0 >> 19) & 0x03), addr, rdp.main_ci, rdp.frame_buffers[rdp.ci_count-1].addr);
@@ -186,9 +192,10 @@ static void fb_settextureimage(uint32_t w0, uint32_t w1)
             if (cur_fb->status == CI_MAIN)
             {
                rdp.copy_ci_index = rdp.ci_count-1;
-               cur_fb->status = CI_COPY_SELF;
-               rdp.scale_x = rdp.scale_x_bak;
-               rdp.scale_y = rdp.scale_y_bak;
+               cur_fb->status    = CI_COPY_SELF;
+               rdp.scale_x       = rdp.scale_x_bak;
+               rdp.scale_y       = rdp.scale_y_bak;
+
                FRDP("rdp.frame_buffers[%d].status = CI_COPY_SELF\n", rdp.ci_count-1);
             }
             else
@@ -196,8 +203,10 @@ static void fb_settextureimage(uint32_t w0, uint32_t w1)
                if (cur_fb->width == rdp.frame_buffers[rdp.main_ci_index].width)
                {
                   rdp.copy_ci_index = rdp.ci_count-1;
-                  cur_fb->status = CI_COPY;
+                  cur_fb->status    = CI_COPY;
+
                   FRDP("rdp.frame_buffers[%d].status = CI_COPY\n", rdp.copy_ci_index);
+
                   if ((rdp.main_ci_last_tex_addr >= cur_fb->addr) &&
                         (rdp.main_ci_last_tex_addr < (cur_fb->addr + cur_fb->width*cur_fb->height*cur_fb->size)))
                   {
@@ -212,10 +221,10 @@ static void fb_settextureimage(uint32_t w0, uint32_t w1)
                else if (!(settings.frame_buffer & fb_ignore_aux_copy) && cur_fb->width < rdp.frame_buffers[rdp.main_ci_index].width)
                {
                   rdp.copy_ci_index = rdp.ci_count-1;
-                  cur_fb->status = CI_AUX_COPY;
+                  cur_fb->status    = CI_AUX_COPY;
                   FRDP("rdp.frame_buffers[%d].status = ci_aux_copy\n", rdp.copy_ci_index);
-                  rdp.scale_x = 1.0f;
-                  rdp.scale_y = 1.0f;
+                  rdp.scale_x       = 1.0f;
+                  rdp.scale_y       = 1.0f;
                }
                else
                {
@@ -257,9 +266,9 @@ static void fb_settextureimage(uint32_t w0, uint32_t w1)
       {
          if ((addr >= rdp.main_ci) && (addr < rdp.main_ci_end)) //addr within main frame buffer
          {
-            rdp.copy_ci_index = rdp.ci_count-1;
+            rdp.copy_ci_index  = rdp.ci_count-1;
             rdp.black_ci_index = rdp.ci_count-1;
-            cur_fb->status = CI_COPY_SELF;
+            cur_fb->status     = CI_COPY_SELF;
             FRDP("rdp.frame_buffers[%d].status = CI_COPY_SELF\n", rdp.ci_count-1);
          }
       }
@@ -284,11 +293,12 @@ static void fb_setdepthimage(uint32_t w0, uint32_t w1)
 {
    int i;
    g_gdp.zb_address = RSP_SegmentToPhysical(w1);
-   rdp.zimg_end = g_gdp.zb_address + rdp.ci_width*rdp.ci_height*2;
+   rdp.zimg_end     = g_gdp.zb_address + rdp.ci_width*rdp.ci_height*2;
 
    if (g_gdp.zb_address == rdp.main_ci)  //strange, but can happen
    {
       rdp.frame_buffers[rdp.main_ci_index].status = CI_UNKNOWN;
+
       if (rdp.main_ci_index < rdp.ci_count)
       {
          rdp.frame_buffers[rdp.main_ci_index].status = CI_ZIMG;
@@ -296,8 +306,11 @@ static void fb_setdepthimage(uint32_t w0, uint32_t w1)
          rdp.main_ci_index++;
          rdp.frame_buffers[rdp.main_ci_index].status = CI_MAIN;
          FRDP("rdp.frame_buffers[%d].status = CI_MAIN\n", rdp.main_ci_index);
-         rdp.main_ci = rdp.frame_buffers[rdp.main_ci_index].addr;
-         rdp.main_ci_end = rdp.main_ci + (rdp.frame_buffers[rdp.main_ci_index].width * rdp.frame_buffers[rdp.main_ci_index].height * rdp.frame_buffers[rdp.main_ci_index].size);
+         rdp.main_ci     = rdp.frame_buffers[rdp.main_ci_index].addr;
+         rdp.main_ci_end = rdp.main_ci + (rdp.frame_buffers[rdp.main_ci_index].width 
+               * rdp.frame_buffers[rdp.main_ci_index].height
+               * rdp.frame_buffers[rdp.main_ci_index].size);
+        
          for (i = rdp.main_ci_index+1; i < rdp.ci_count; i++)
          {
             COLOR_IMAGE *fb = (COLOR_IMAGE*)&rdp.frame_buffers[i];
@@ -324,24 +337,26 @@ static void fb_setdepthimage(uint32_t w0, uint32_t w1)
 
 static void fb_setcolorimage(uint32_t w0, uint32_t w1)
 {
-   COLOR_IMAGE *cur_fb;
-   rdp.ocimg = rdp.cimg;
-   rdp.cimg = RSP_SegmentToPhysical(w1);
+   COLOR_IMAGE *cur_fb = NULL;
+   rdp.ocimg           = rdp.cimg;
+   rdp.cimg            = RSP_SegmentToPhysical(w1);
 
-   cur_fb = (COLOR_IMAGE*)&rdp.frame_buffers[rdp.ci_count];
-   cur_fb->width = (w0 & 0xFFF) + 1;
+   cur_fb              = (COLOR_IMAGE*)&rdp.frame_buffers[rdp.ci_count];
+   cur_fb->width       = (w0 & 0xFFF) + 1;
    if (cur_fb->width == 32 )
-      cur_fb->height = 32;
+      cur_fb->height   = 32;
    else if (cur_fb->width == 16 )
-      cur_fb->height = 16;
+      cur_fb->height   = 16;
    else if (rdp.ci_count > 0)
-      cur_fb->height = g_gdp.__clip.yl;
+      cur_fb->height   = g_gdp.__clip.yl;
    else
-      cur_fb->height = 0;
-   cur_fb->format = (w0 >> 21) & 0x7;
-   cur_fb->size = (w0 >> 19) & 0x3;
-   cur_fb->addr = rdp.cimg;
-   cur_fb->changed = 1;
+      cur_fb->height   = 0;
+
+   cur_fb->format      = (w0 >> 21) & 0x7;
+   cur_fb->size        = (w0 >> 19) & 0x3;
+   cur_fb->addr        = rdp.cimg;
+   cur_fb->changed     = 1;
+
    /*
       if (rdp.ci_count > 0)
       if (rdp.frame_buffers[0].addr == rdp.cimg)
@@ -365,23 +380,23 @@ static void fb_setcolorimage(uint32_t w0, uint32_t w1)
    {
       if (rdp.cimg == rdp.main_ci) //switched to main fb again
       {
-         cur_fb->height = MAX(cur_fb->height, rdp.frame_buffers[rdp.main_ci_index].height);
+         cur_fb->height    = MAX(cur_fb->height, rdp.frame_buffers[rdp.main_ci_index].height);
          rdp.main_ci_index = rdp.ci_count;
-         rdp.main_ci_end = rdp.cimg + ((cur_fb->width * cur_fb->height) << cur_fb->size >> 1);
-         cur_fb->status = CI_MAIN;
+         rdp.main_ci_end   = rdp.cimg + ((cur_fb->width * cur_fb->height) << cur_fb->size >> 1);
+         cur_fb->status    = CI_MAIN;
          //FRDP("rdp.frame_buffers[%d].status = CI_MAIN\n", rdp.ci_count);
       }
       else // status is not known yet
-         cur_fb->status = CI_UNKNOWN;
+         cur_fb->status    = CI_UNKNOWN;
    }
    else
    {
       if ((g_gdp.zb_address != rdp.cimg))//&& (rdp.ocimg != rdp.cimg))
       {
-         rdp.main_ci = rdp.cimg;
-         rdp.main_ci_end = rdp.cimg + ((cur_fb->width * cur_fb->height) << cur_fb->size >> 1);
+         rdp.main_ci       = rdp.cimg;
+         rdp.main_ci_end   = rdp.cimg + ((cur_fb->width * cur_fb->height) << cur_fb->size >> 1);
          rdp.main_ci_index = rdp.ci_count;
-         cur_fb->status = CI_MAIN;
+         cur_fb->status    = CI_MAIN;
          //FRDP("rdp.frame_buffers[%d].status = CI_MAIN\n", rdp.ci_count);
       }
       else
@@ -392,7 +407,7 @@ static void fb_setcolorimage(uint32_t w0, uint32_t w1)
    {
       if (fb_hwfbe_enabled && !(settings.frame_buffer & fb_useless_is_useless))
       {
-         rdp.frame_buffers[rdp.ci_count-1].status = CI_AUX;
+         rdp.frame_buffers[rdp.ci_count-1].status  = CI_AUX;
          rdp.frame_buffers[rdp.ci_count-1].changed = 0;
          FRDP("rdp.frame_buffers[%d].status = ci_aux\n", rdp.ci_count-1);
       }
@@ -418,7 +433,7 @@ static void fb_setcolorimage(uint32_t w0, uint32_t w1)
       int viSwapOK = ((settings.swapmode == 2) && (rdp.vi_org_reg == *gfx_info.VI_ORIGIN_REG)) ? false : true;
       if ((rdp.maincimg[0].addr != cur_fb->addr) && SwapOK && viSwapOK)
       {
-         SwapOK = false;
+         SwapOK            = false;
          rdp.swap_ci_index = rdp.ci_count;
       }
    }

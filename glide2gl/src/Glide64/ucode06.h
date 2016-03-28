@@ -45,15 +45,17 @@ static float set_sprite_combine_mode(void)
   if (((rdp.othermode_h & RDP_CYCLE_TYPE) >> 20) == G_CYC_COPY)
   {
     int32_t color_source;
-    rdp.tex = 1;
+
+    rdp.tex           = 1;
     rdp.allow_combine = 0;
-    // Now actually combine !
-    color_source = GR_COMBINE_FUNCTION_LOCAL;
-    cmb.tmu1_func = cmb.tmu0_func = color_source;
-    cmb.tmu1_fac = cmb.tmu0_fac = GR_COMBINE_FACTOR_NONE;
-    cmb.tmu1_a_func = cmb.tmu0_a_func = GR_COMBINE_FUNCTION_LOCAL;
-    cmb.tmu1_a_fac = cmb.tmu0_a_fac = GR_COMBINE_FACTOR_NONE;
-    cmb.tmu1_invert = cmb.tmu0_invert = FXFALSE;
+
+    /* Now actually combine ! */
+    color_source      = GR_COMBINE_FUNCTION_LOCAL;
+    cmb.tmu1_func     = cmb.tmu0_func = color_source;
+    cmb.tmu1_fac      = cmb.tmu0_fac = GR_COMBINE_FACTOR_NONE;
+    cmb.tmu1_a_func   = cmb.tmu0_a_func = GR_COMBINE_FUNCTION_LOCAL;
+    cmb.tmu1_a_fac    = cmb.tmu0_a_fac = GR_COMBINE_FACTOR_NONE;
+    cmb.tmu1_invert   = cmb.tmu0_invert = FXFALSE;
     cmb.tmu1_a_invert = cmb.tmu0_a_invert = FXFALSE;
   }
 
@@ -187,42 +189,42 @@ static void DrawImage (DRAWIMAGE *d)
    switch (d->imageSiz)
    {
       case 0:
-         y_size = 32;
+         y_size  = 32;
          y_shift = 5;
          if (rdp.tlut_mode < 2)
          {
-            y_size = 64;
+            y_size  = 64;
             y_shift = 6;
          }
-         x_size = 128;
+         x_size  = 128;
          x_shift = 7;
-         line = 8;
+         line    = 8;
          break;
       case 1:
-         y_size = 32;
+         y_size  = 32;
          y_shift = 5;
          if (rdp.tlut_mode < 2)
          {
-            y_size = 64;
+            y_size  = 64;
             y_shift = 6;
          }
-         x_size = 64;
+         x_size  = 64;
          x_shift = 6;
-         line = 8;
+         line    = 8;
          break;
       case 2:
-         x_size = 64;
-         y_size = 32;
+         x_size  = 64;
+         y_size  = 32;
          x_shift = 6;
          y_shift = 5;
-         line = 16;
+         line    = 16;
          break;
       case 3:
-         x_size = 32;
-         y_size = 16;
+         x_size  = 32;
+         y_size  = 16;
          x_shift = 4;
          y_shift = 3;
-         line = 16;
+         line    = 16;
          break;
       default:
          FRDP("DrawImage. unknown image size: %d\n", d->imageSiz);
@@ -232,8 +234,9 @@ static void DrawImage (DRAWIMAGE *d)
    if (rdp.ci_width == 512 && !no_dlist) //RE2
    {
       uint16_t width = (uint16_t)(*gfx_info.VI_WIDTH_REG & 0xFFF);
-      d->frameH = d->imageH = (d->frameW * d->frameH)/width;
-      d->frameW = d->imageW = width;
+      d->frameH      = d->imageH = (d->frameW * d->frameH)/width;
+      d->frameW      = d->imageW = width;
+
       if (g_gdp.zb_address == rdp.cimg)
       {
          DrawDepthImage(d);
@@ -286,19 +289,17 @@ static void DrawImage (DRAWIMAGE *d)
       lr_y = d->frameY;
    }
 
-
    min_wrap_u = ul_u / d->imageW;
    min_wrap_v = ul_v / d->imageH;
-   min_256_u = ul_u >> x_shift;
-   min_256_v = ul_v >> y_shift;
-
+   min_256_u  = ul_u >> x_shift;
+   min_256_v  = ul_v >> y_shift;
 
    // SetTextureImage ()
-   g_gdp.ti_format = d->imageFmt; // RGBA
-   g_gdp.ti_size = d->imageSiz; // 16-bit
+   g_gdp.ti_format  = d->imageFmt; // RGBA
+   g_gdp.ti_size    = d->imageSiz; // 16-bit
    g_gdp.ti_address = d->imagePtr;
-   g_gdp.ti_width = (d->imageW%2)?d->imageW-1:d->imageW;
-   rdp.timg.set_by = 0;
+   g_gdp.ti_width   = (d->imageW%2)?d->imageW-1:d->imageW;
+   rdp.timg.set_by  = 0;
 
    // SetTile ()
    g_gdp.tile[0].format   = d->imageFmt; // RGBA
@@ -354,12 +355,11 @@ static void DrawImage (DRAWIMAGE *d)
    // Texture ()
    rdp.cur_tile = 0;
 
+   mx    = (float)(lr_x - ul_x) / (float)(lr_u - ul_u);
+   bx    = ul_x - mx * ul_u;
 
-   mx = (float)(lr_x - ul_x) / (float)(lr_u - ul_u);
-   bx = ul_x - mx * ul_u;
-
-   my = (float)(lr_y - ul_y) / (float)(lr_v - ul_v);
-   by = ul_y - my * ul_v;
+   my    = (float)(lr_y - ul_y) / (float)(lr_v - ul_v);
+   by    = ul_y - my * ul_v;
 
 
    nul_v = ul_v;
@@ -368,10 +368,10 @@ static void DrawImage (DRAWIMAGE *d)
    // #162
 
    cur_wrap_v = min_wrap_v + 1;
-   cur_v = min_256_v + 1;
-   cb_v = ((cur_v-1)<<y_shift);
+   cur_v      = min_256_v + 1;
+   cb_v       = ((cur_v-1)<<y_shift);
    while (cb_v >= d->imageH) cb_v -= d->imageH;
-   tb_v = cb_v;
+   tb_v       = cb_v;
    rdp.bg_image_height = d->imageH;
 
    while (1)
@@ -379,18 +379,18 @@ static void DrawImage (DRAWIMAGE *d)
       int nul_u, cb_u, tb_u;
       float nul_x, nlr_y;
       int cur_wrap_u = min_wrap_u + 1;
-      int cur_u = min_256_u + 1;
+      int cur_u      = min_256_u + 1;
 
       // calculate intersection with this point
-      int nlr_v = MIN (MIN (cur_wrap_v*d->imageH, (cur_v<<y_shift)), lr_v);
-      nlr_y = my * nlr_v + by;
+      int nlr_v      = MIN (MIN (cur_wrap_v*d->imageH, (cur_v<<y_shift)), lr_v);
+      nlr_y          = my * nlr_v + by;
 
-      nul_u = ul_u;
-      nul_x = ul_x;
-      cb_u = ((cur_u-1)<<x_shift);
+      nul_u          = ul_u;
+      nul_x          = ul_x;
+      cb_u           = ((cur_u-1)<<x_shift);
       while (cb_u >= d->imageW)
-         cb_u -= d->imageW;
-      tb_u = cb_u;
+         cb_u       -= d->imageW;
+      tb_u           = cb_u;
 
       while (1)
       {
@@ -469,25 +469,31 @@ static void DrawImage (DRAWIMAGE *d)
 
          // increment whatever caused this split
          tb_u += x_size - (x_size-(nlr_u-cb_u));
-         cb_u = nlr_u;
-         if (nlr_u == cur_wrap_u * d->imageW) {
+         cb_u  = nlr_u;
+         if (nlr_u == cur_wrap_u * d->imageW)
+         {
             cur_wrap_u ++;
             tb_u = 0;
          }
-         if (nlr_u == (cur_u<<x_shift)) cur_u ++;
-         if (nlr_u == lr_u) break;
+         if (nlr_u == (cur_u<<x_shift))
+            cur_u ++;
+         if (nlr_u == lr_u)
+            break;
          nul_u = nlr_u;
          nul_x = nlr_x;
       }
 
       tb_v += y_size - (y_size-(nlr_v-cb_v));
       cb_v = nlr_v;
-      if (nlr_v == cur_wrap_v* d->imageH) {
+      if (nlr_v == cur_wrap_v* d->imageH)
+      {
          cur_wrap_v ++;
          tb_v = 0;
       }
-      if (nlr_v == (cur_v<<y_shift)) cur_v ++;
-      if (nlr_v == lr_v) break;
+      if (nlr_v == (cur_v<<y_shift))
+         cur_v ++;
+      if (nlr_v == lr_v)
+         break;
       nul_v = nlr_v;
       nul_y = nlr_y;
    }
@@ -502,7 +508,7 @@ static void uc6_read_background_data (DRAWIMAGE *d, bool bReadScale)
 {
    int imageYorig;
    uint16_t imageFlip;
-   uint32_t addr = RSP_SegmentToPhysical(rdp.cmd1) >> 1;
+   uint32_t addr  = RSP_SegmentToPhysical(rdp.cmd1) >> 1;
 
    d->imageX      = (((uint16_t *)gfx_info.RDRAM)[(addr+0)^1] >> 5);   // 0
    d->imageW      = (((uint16_t *)gfx_info.RDRAM)[(addr+1)^1] >> 2);   // 1
@@ -523,15 +529,15 @@ static void uc6_read_background_data (DRAWIMAGE *d, bool bReadScale)
 
    if (bReadScale)
    {
-      d->scaleX      = ((int16_t*)gfx_info.RDRAM)[(addr+14)^1] / 1024.0f;  // 14
-      d->scaleY      = ((int16_t*)gfx_info.RDRAM)[(addr+15)^1] / 1024.0f;  // 15
+      d->scaleX   = ((int16_t*)gfx_info.RDRAM)[(addr+14)^1] / 1024.0f;  // 14
+      d->scaleY   = ((int16_t*)gfx_info.RDRAM)[(addr+15)^1] / 1024.0f;  // 15
    }
    else
-      d->scaleX = d->scaleY = 1.0f;
+      d->scaleX   = d->scaleY = 1.0f;
 
    d->flipY       = 0;
-   imageYorig= ((int *)gfx_info.RDRAM)[(addr+16)>>1] >> 5;
-   rdp.last_bg = d->imagePtr;
+   imageYorig     = ((int *)gfx_info.RDRAM)[(addr+16)>>1] >> 5;
+   rdp.last_bg    = d->imagePtr;
 
 #if 0
    FRDP ("imagePtr: %08lx\n", d->imagePtr);
@@ -583,7 +589,9 @@ static void draw_split_triangle(VERTEX **vtx)
   int index,i,j, min_256,max_256, cur_256;
   float percent;
 
-  vtx[0]->not_zclipped = vtx[1]->not_zclipped = vtx[2]->not_zclipped = 1;
+  vtx[0]->not_zclipped = 1;
+  vtx[1]->not_zclipped = 1;
+  vtx[2]->not_zclipped = 1;
 
   min_256 = MIN((int)vtx[0]->u[0],(int)vtx[1]->u[0]); // bah, don't put two mins on one line
   min_256 = MIN(min_256,(int)vtx[2]->u[0]) >> 8;  // or it will be calculated twice
@@ -600,8 +608,8 @@ static void draw_split_triangle(VERTEX **vtx)
     rdp.vtxbuf = rdp.vtx1;  // copy from v to rdp.vtx1
     rdp.vtxbuf2 = rdp.vtx2;
     rdp.vtx_buffer = 0;
-    rdp.n_global = 3;
-    index = 0;
+    rdp.n_global   = 3;
+    index          = 0;
 
     // ** Left plane **
     for (i=0; i<3; i++)
@@ -619,24 +627,24 @@ static void draw_split_triangle(VERTEX **vtx)
        {
           if (v2->u[0] >= left_256)   // Both are in, save the last one
           {
-             rdp.vtxbuf[index] = *v2;
-             rdp.vtxbuf[index].u[0] -= left_256;
+             rdp.vtxbuf[index]         = *v2;
+             rdp.vtxbuf[index].u[0]   -= left_256;
              rdp.vtxbuf[index++].v[0] += rdp.cur_cache[0]->c_scl_y * (cur_256 * rdp.cur_cache[0]->splitheight);
           }
           else      // First is in, second is out, save intersection
           {
              percent = (left_256 - v1->u[0]) / (v2->u[0] - v1->u[0]);
-             rdp.vtxbuf[index].x = v1->x + (v2->x - v1->x) * percent;
-             rdp.vtxbuf[index].y = v1->y + (v2->y - v1->y) * percent;
-             rdp.vtxbuf[index].z = 1;
-             rdp.vtxbuf[index].q = 1;
+             rdp.vtxbuf[index].x    = v1->x + (v2->x - v1->x) * percent;
+             rdp.vtxbuf[index].y    = v1->y + (v2->y - v1->y) * percent;
+             rdp.vtxbuf[index].z    = 1;
+             rdp.vtxbuf[index].q    = 1;
              rdp.vtxbuf[index].u[0] = 0.5f;
              rdp.vtxbuf[index].v[0] = v1->v[0] + (v2->v[0] - v1->v[0]) * percent +
                 rdp.cur_cache[0]->c_scl_y * cur_256 * rdp.cur_cache[0]->splitheight;
-             rdp.vtxbuf[index].b = (uint8_t)(v1->b + (v2->b - v1->b) * percent);
-             rdp.vtxbuf[index].g = (uint8_t)(v1->g + (v2->g - v1->g) * percent);
-             rdp.vtxbuf[index].r = (uint8_t)(v1->r + (v2->r - v1->r) * percent);
-             rdp.vtxbuf[index++].a = (uint8_t)(v1->a + (v2->a - v1->a) * percent);
+             rdp.vtxbuf[index].b    = (uint8_t)(v1->b + (v2->b - v1->b) * percent);
+             rdp.vtxbuf[index].g    = (uint8_t)(v1->g + (v2->g - v1->g) * percent);
+             rdp.vtxbuf[index].r    = (uint8_t)(v1->r + (v2->r - v1->r) * percent);
+             rdp.vtxbuf[index++].a  = (uint8_t)(v1->a + (v2->a - v1->a) * percent);
           }
        }
        else
@@ -1012,34 +1020,37 @@ static void uc6_obj_rendermode(uint32_t w0, uint32_t w1)
 
 static uint16_t uc6_yuv_to_rgba(uint8_t y, uint8_t u, uint8_t v)
 {
-   float r, g, b;
-   uint16_t c;
+   float r  = y + (1.370705f * (v-128));
+   float g  = y - (0.698001f * (v-128)) - (0.337633f * (u-128));
+   float b  = y + (1.732446f * (u-128));
+   r       *= 0.125f;
+   g       *= 0.125f;
+   b       *= 0.125f;
 
-   r = y + (1.370705f * (v-128));
-   g = y - (0.698001f * (v-128)) - (0.337633f * (u-128));
-   b = y + (1.732446f * (u-128));
-   r *= 0.125f;
-   g *= 0.125f;
-   b *= 0.125f;
-   //clipping the result
-   if (r > 32) r = 32;
-   if (g > 32) g = 32;
-   if (b > 32) b = 32;
-   if (r < 0) r = 0;
-   if (g < 0) g = 0;
-   if (b < 0) b = 0;
+   /* clipping the result */
+   if (r > 32)
+      r = 32;
+   if (g > 32)
+      g = 32;
+   if (b > 32)
+      b = 32;
+   if (r < 0)
+      r = 0;
+   if (g < 0)
+      g = 0;
+   if (b < 0)
+      b = 0;
 
-   c = (uint16_t)(((uint16_t)(r) << 11) | ((uint16_t)(g) << 6) | ((uint16_t)(b) << 1) | 1);
-   return c;
+   return (uint16_t)(((uint16_t)(r) << 11) | ((uint16_t)(g) << 6) | ((uint16_t)(b) << 1) | 1);
 }
 
 static void uc6_DrawYUVImageToFrameBuffer(uint16_t ul_x, uint16_t ul_y, uint16_t lr_x, uint16_t lr_y)
 {
    uint16_t h, w, *dst;
-   uint32_t ci_width, ci_height, width, height, *mb;
+   uint32_t width, height, *mb;
 
-   ci_width = rdp.ci_width;
-   ci_height = rdp.ci_lower_bound;
+   uint32_t ci_width  = rdp.ci_width;
+   uint32_t ci_height = rdp.ci_lower_bound;
 
    FRDP ("uc6:DrawYUVImageToFrameBuffer ul_x%d, ul_y%d, lr_x%d, lr_y%d\n", ul_x, ul_y, lr_x, lr_y);
    if (ul_x >= ci_width)
@@ -1047,32 +1058,33 @@ static void uc6_DrawYUVImageToFrameBuffer(uint16_t ul_x, uint16_t ul_y, uint16_t
    if (ul_y >= ci_height)
       return;
 
-   width = 16;
+   width  = 16;
    height = 16;
 
    if (lr_x > ci_width)
-      width = ci_width - ul_x;
+      width  = ci_width - ul_x;
    if (lr_y > ci_height)
       height = ci_height - ul_y;
 
-   mb = (uint32_t*)(gfx_info.RDRAM+g_gdp.ti_address); //pointer to the first macro block
-   dst = (uint16_t*)(gfx_info.RDRAM+rdp.cimg);
+   mb   = (uint32_t*)(gfx_info.RDRAM+g_gdp.ti_address); //pointer to the first macro block
+   dst  = (uint16_t*)(gfx_info.RDRAM+rdp.cimg);
    dst += ul_x + ul_y * ci_width;
-   //yuv macro block contains 16x16 texture. we need to put it in the proper place inside cimg
+
+   /* YUV macro block contains 16x16 texture. 
+    * we need to put it in the proper place inside cimg */
    for (h = 0; h < 16; h++)
    {
       for (w = 0; w < 16; w+=2)
       {
-         uint32_t t = *(mb++); //each uint32_t contains 2 pixels
-         if ((h < height) && (w < width)) //clipping. texture image may be larger than color image
+         uint32_t t = *(mb++); /* each uint32_t contains 2 pixels */
+         if ((h < height) && (w < width)) /* clipping. texture image may be larger than color image */
          {
-            uint8_t y0, v, y1, u;
-            y0 = (uint8_t)t&0xFF;
-            v  = (uint8_t)(t>>8)&0xFF;
-            y1 = (uint8_t)(t>>16)&0xFF;
-            u  = (uint8_t)(t>>24)&0xFF;
-            *(dst++) = uc6_yuv_to_rgba(y0, u, v);
-            *(dst++) = uc6_yuv_to_rgba(y1, u, v);
+            uint8_t y0 = (uint8_t)t&0xFF;
+            uint8_t v  = (uint8_t)(t>>8)&0xFF;
+            uint8_t y1 = (uint8_t)(t>>16)&0xFF;
+            uint8_t u  = (uint8_t)(t>>24)&0xFF;
+            *(dst++)   = uc6_yuv_to_rgba(y0, u, v);
+            *(dst++)   = uc6_yuv_to_rgba(y1, u, v);
          }
       }
       dst += rdp.ci_width - 16;
@@ -1100,7 +1112,7 @@ static void uc6_obj_rectangle_r(uint32_t w0, uint32_t w1)
 
    uc6_init_tile(&d);
 
-   Z = set_sprite_combine_mode();
+   Z    = set_sprite_combine_mode();
 
    ul_x = d.objX / mat_2d.BaseScaleX;
    lr_x = (d.objX + d.imageW / d.scaleW) / mat_2d.BaseScaleX;
@@ -1173,48 +1185,51 @@ static void uc6_obj_loadtxtr(uint32_t w0, uint32_t w1)
    type = ((uint32_t*)gfx_info.RDRAM)[(addr + 0) >> 1]; // 0, 1
 
    if (type == 0x00000030)
-   { // TLUT
+   {
+      /* TLUT */
+
       uint32_t image = RSP_SegmentToPhysical(((uint32_t*)gfx_info.RDRAM)[(addr + 2) >> 1]); // 2, 3
       uint16_t phead = ((uint16_t *)gfx_info.RDRAM)[(addr + 4) ^ 1] - 256; // 4
-      uint16_t pnum = ((uint16_t *)gfx_info.RDRAM)[(addr + 5) ^ 1] + 1; // 5
+      uint16_t pnum  = ((uint16_t *)gfx_info.RDRAM)[(addr + 5) ^ 1] + 1; // 5
 
       //FRDP ("palette addr: %08lx, start: %d, num: %d\n", image, phead, pnum);
       load_palette (image, phead, pnum);
    }
    else if (type == 0x00001033)
-   { // TxtrBlock
+   {
+      /* TxtrBlock */
       uint32_t image = RSP_SegmentToPhysical(((uint32_t*)gfx_info.RDRAM)[(addr + 2) >> 1]); // 2, 3
-      uint16_t tmem = ((uint16_t *)gfx_info.RDRAM)[(addr + 4) ^ 1]; // 4
+      uint16_t tmem  = ((uint16_t *)gfx_info.RDRAM)[(addr + 4) ^ 1]; // 4
       uint16_t tsize = ((uint16_t *)gfx_info.RDRAM)[(addr + 5) ^ 1]; // 5
       uint16_t tline = ((uint16_t *)gfx_info.RDRAM)[(addr + 6) ^ 1]; // 6
 
       //FRDP ("addr: %08lx, tmem: %08lx, size: %d\n", image, tmem, tsize);
       g_gdp.ti_address = image;
-      g_gdp.ti_width = 1;
-      g_gdp.ti_size = G_IM_SIZ_8b;
+      g_gdp.ti_width  = 1;
+      g_gdp.ti_size   = G_IM_SIZ_8b;
 
       g_gdp.tile[7].tmem = tmem;
       g_gdp.tile[7].size = 1;
-      rdp.cmd0 = 0;
-      rdp.cmd1 = 0x07000000 | (tsize << 14) | tline;
+      rdp.cmd0           = 0;
+      rdp.cmd1           = 0x07000000 | (tsize << 14) | tline;
       rdp_loadblock(rdp.cmd0, rdp.cmd1);
    }
    else if (type == 0x00fc1034)
    {
       int line;
 
-      uint32_t image = RSP_SegmentToPhysical(((uint32_t*)gfx_info.RDRAM)[(addr + 2) >> 1]); // 2, 3
-      uint16_t tmem = ((uint16_t *)gfx_info.RDRAM)[(addr + 4) ^ 1]; // 4
-      uint16_t twidth = ((uint16_t *)gfx_info.RDRAM)[(addr + 5) ^ 1]; // 5
+      uint32_t image   = RSP_SegmentToPhysical(((uint32_t*)gfx_info.RDRAM)[(addr + 2) >> 1]); // 2, 3
+      uint16_t tmem    = ((uint16_t *)gfx_info.RDRAM)[(addr + 4) ^ 1]; // 4
+      uint16_t twidth  = ((uint16_t *)gfx_info.RDRAM)[(addr + 5) ^ 1]; // 5
       uint16_t theight = ((uint16_t *)gfx_info.RDRAM)[(addr + 6) ^ 1]; // 6
 #if 0
       FRDP ("tile addr: %08lx, tmem: %08lx, twidth: %d, theight: %d\n", image, tmem, twidth, theight);
 #endif
-      line = (twidth + 1) >> 2;
+      line             = (twidth + 1) >> 2;
 
       g_gdp.ti_address = image;
-      g_gdp.ti_width = line << 3;
-      g_gdp.ti_size = G_IM_SIZ_8b;
+      g_gdp.ti_width   = line << 3;
+      g_gdp.ti_size    = G_IM_SIZ_8b;
 
       g_gdp.tile[7].tmem = tmem;
       g_gdp.tile[7].line = line;
@@ -1260,7 +1275,7 @@ static void uc6_ldtx_rect_r(uint32_t w0, uint32_t w1)
 
 static void uc6_loaducode(uint32_t w0, uint32_t w1)
 {
-   // copy the microcode data
+   /* copy the microcode data */
    uint32_t addr = RSP_SegmentToPhysical(w1);
    uint32_t size = (w0 & 0xFFFF) + 1;
    memcpy (microcode, gfx_info.RDRAM+addr, size);
@@ -1274,23 +1289,25 @@ static void uc6_sprite2d(uint32_t w0, uint32_t w1)
    uint32_t addr, tlut;
    int i;
    DRAWIMAGE d;
-   uint32_t a = rdp.pc[rdp.pc_i] & BMASK;
+   uint32_t    a = rdp.pc[rdp.pc_i] & BMASK;
    uint32_t cmd0 = ((uint32_t*)gfx_info.RDRAM)[a>>2]; //check next command
+
    if ( (cmd0>>24) != 0xBE )
       return;
 
    addr = RSP_SegmentToPhysical(w1) >> 1;
 
    d.imagePtr = RSP_SegmentToPhysical(((uint32_t*)gfx_info.RDRAM)[(addr+0)>>1]); // 0,1
-   stride = (((uint16_t *)gfx_info.RDRAM)[(addr+4)^1]); // 4
-   d.imageW = (((uint16_t *)gfx_info.RDRAM)[(addr+5)^1]); // 5
-   d.imageH = (((uint16_t *)gfx_info.RDRAM)[(addr+6)^1]); // 6
+   stride     = (((uint16_t *)gfx_info.RDRAM)[(addr+4)^1]); // 4
+   d.imageW   = (((uint16_t *)gfx_info.RDRAM)[(addr+5)^1]); // 5
+   d.imageH   = (((uint16_t *)gfx_info.RDRAM)[(addr+6)^1]); // 6
    d.imageFmt = ((uint8_t *)gfx_info.RDRAM)[(((addr+7)<<1)+0)^3]; // 7
    d.imageSiz = ((uint8_t *)gfx_info.RDRAM)[(((addr+7)<<1)+1)^3]; // |
    d.imagePal = 0;
-   d.imageX = (((uint16_t *)gfx_info.RDRAM)[(addr+8)^1]); // 8
-   d.imageY = (((uint16_t *)gfx_info.RDRAM)[(addr+9)^1]); // 9
-   tlut = ((uint32_t*)gfx_info.RDRAM)[(addr + 2) >> 1]; // 2, 3
+   d.imageX   = (((uint16_t *)gfx_info.RDRAM)[(addr+8)^1]); // 8
+   d.imageY   = (((uint16_t *)gfx_info.RDRAM)[(addr+9)^1]); // 9
+   tlut       = ((uint32_t*)gfx_info.RDRAM)[(addr + 2) >> 1]; // 2, 3
+
    //low-level implementation of sprite2d apparently calls setothermode command to set tlut mode
    //However, description of sprite2d microcode just says that
    //TlutPointer should be Null when CI images will not be used.
@@ -1316,21 +1333,22 @@ static void uc6_sprite2d(uint32_t w0, uint32_t w1)
       uint32_t texsize, maxTexSize;
       if ( (cmd0>>24) == 0xBE )
       {
-         uint32_t cmd1 = ((uint32_t*)gfx_info.RDRAM)[(a>>2)+1];
+         uint32_t cmd1    = ((uint32_t*)gfx_info.RDRAM)[(a>>2)+1];
          rdp.pc[rdp.pc_i] = (a+8) & BMASK;
 
          d.scaleX = ((cmd1>>16)&0xFFFF)/1024.0f;
          d.scaleY = (cmd1&0xFFFF)/1024.0f;
+
          //the code below causes wrong background height in super robot spirit, so it is disabled.
          //need to find, for which game this hack was made
          //if( (cmd1&0xFFFF) < 0x100 )
          // d.scaleY = d.scaleX;
-         d.flipX = (uint8_t)((cmd0>>8)&0xFF);
-         d.flipY = (uint8_t)(cmd0&0xFF);
+         d.flipX          = (uint8_t)((cmd0>>8)&0xFF);
+         d.flipY          = (uint8_t)(cmd0&0xFF);
 
-         a = rdp.pc[rdp.pc_i] & BMASK;
+         a                = rdp.pc[rdp.pc_i] & BMASK;
          rdp.pc[rdp.pc_i] = (a+8) & BMASK;
-         cmd0 = ((uint32_t*)gfx_info.RDRAM)[a>>2]; //check next command
+         cmd0             = ((uint32_t*)gfx_info.RDRAM)[a>>2]; //check next command
       }
       if ( (cmd0>>24) == 0xBD )
       {
@@ -1392,13 +1410,13 @@ static void uc6_sprite2d(uint32_t w0, uint32_t w1)
          if (line == 0)
             line = 1;
 
-         g_gdp.ti_address = d.imagePtr;
-         g_gdp.ti_width = stride;
+         g_gdp.ti_address   = d.imagePtr;
+         g_gdp.ti_width     = stride;
          g_gdp.tile[7].tmem = 0;
          g_gdp.tile[7].line = line;//(d.imageW>>3);
          g_gdp.tile[7].size = d.imageSiz;
-         rdp.cmd0 = (d.imageX << 14) | (d.imageY << 2);
-         rdp.cmd1 = 0x07000000 | ((d.imageX+d.imageW-1) << 14) | ((d.imageY+d.imageH-1) << 2);
+         rdp.cmd0           = (d.imageX << 14) | (d.imageY << 2);
+         rdp.cmd1           = 0x07000000 | ((d.imageX+d.imageW-1) << 14) | ((d.imageY+d.imageH-1) << 2);
          rdp_loadtile(rdp.cmd0, rdp.cmd1);
 
          // SetTile ()
