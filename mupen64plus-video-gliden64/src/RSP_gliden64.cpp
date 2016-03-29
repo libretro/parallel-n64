@@ -13,6 +13,8 @@
 #include "PluginAPI.h"
 #include "Config.h"
 
+#include "../../Graphics/RSP/RSP_state.h"
+
 using namespace std;
 
 void RSP_LoadMatrix( float mtx[4][4], uint32_t address )
@@ -28,20 +30,6 @@ void RSP_LoadMatrix( float mtx[4][4], uint32_t address )
 	for (i = 0; i < 4; i++)
 		for (j = 0; j < 4; j++)
 			mtx[i][j] = (GLfloat)(n64Mat->integer[i][j^1]) + (GLfloat)(n64Mat->fraction[i][j^1]) * recip;
-}
-
-void RSP_CheckDLCounter(void)
-{
-	if (__RSP.count != -1)
-   {
-		--__RSP.count;
-		if (__RSP.count == 0)
-      {
-			__RSP.count = -1;
-			--__RSP.PCi;
-			DebugMsg( DEBUG_LOW | DEBUG_HANDLED, "End of DL\n" );
-		}
-	}
 }
 
 void RSP_ProcessDList(void)

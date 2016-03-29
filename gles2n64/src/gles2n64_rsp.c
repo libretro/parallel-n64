@@ -33,21 +33,6 @@ void RSP_LoadMatrix( float mtx[4][4], uint32_t address )
          mtx[i][j] = (float)(n64Mat->integer[i][j^1]) + (float)(n64Mat->fraction[i][j^1]) * recip;
 }
 
-void RSP_CheckDLCounter(void)
-{
-	if (__RSP.count != -1)
-	{
-		--__RSP.count;
-		if (__RSP.count == 0)
-		{
-			__RSP.count = -1;
-			--__RSP.PCi;
-#ifdef DEBUG
-			DebugMsg( DEBUG_LOW | DEBUG_HANDLED, "End of DL\n" );
-#endif
-		}
-	}
-}
 
 void RSP_ProcessDList(void)
 {

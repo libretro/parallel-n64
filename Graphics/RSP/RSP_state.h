@@ -30,6 +30,8 @@ typedef struct
 
 extern RSPInfo __RSP;
 
+void RSP_CheckDLCounter(void);
+
 #ifdef __cplusplus
 }
 #endif

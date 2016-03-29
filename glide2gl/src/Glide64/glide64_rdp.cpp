@@ -439,18 +439,7 @@ extern "C" void glide64ProcessDList(void)
         // Process this instruction
         gfx_instruction[settings.ucode][__RSP.w0 >> 24](__RSP.w0, __RSP.w1);
 
-        // check DL counter
-        if (__RSP.count != -1)
-        {
-           __RSP.count --;
-           if (__RSP.count == 0)
-           {
-              __RSP.count = -1;
-
-              LRDP("End of DL\n");
-              __RSP.PCi --;
-           }
-        }
+        RSP_CheckDLCounter();
      } while (!__RSP.halt);
   }
 
@@ -1885,19 +1874,7 @@ void DetectFrameBufferUsage(void)
       if ((uintptr_t)((void*)(gfx_instruction_lite[settings.ucode][__RSP.w0 >> 24])))
          gfx_instruction_lite[settings.ucode][__RSP.w0 >> 24](__RSP.w0, __RSP.w1);
 
-      // check DL counter
-      if (__RSP.count != -1)
-      {
-         __RSP.count --;
-         if (__RSP.count == 0)
-         {
-            __RSP.count = -1;
-
-            LRDP("End of DL\n");
-            __RSP.PCi --;
-         }
-      }
-
+      RSP_CheckDLCounter();
    }while (!__RSP.halt);
 
    SwapOK = true;
@@ -2551,18 +2528,7 @@ static void rdphalf_1(uint32_t w0, uint32_t w1)
 
          rdp_cmd_data[rdp_cmd_ptr++] = __RSP.w1;
 
-         /* check DL counter */
-         if (__RSP.count != -1)
-         {
-            __RSP.count--;
-            if (__RSP.count == 0)
-            {
-               __RSP.count = -1;
-
-               LRDP("End of DL\n");
-               __RSP.PCi --;
-            }
-         }
+         RSP_CheckDLCounter();
 
          /* Get the address of the next command */
          a        = __RSP.PC[__RSP.PCi] & BMASK;
