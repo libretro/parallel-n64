@@ -669,13 +669,3 @@ static void glide64gSPCullDisplayList( uint32_t v0, uint32_t vn )
 	if (glide64gSPCullVertices( v0, vn ))
       glide64gSPEndDisplayList();
 }
-
-void glide64gSPSegment(int32_t seg, int32_t base);
-void glide64gSPLightColor( uint32_t lightNum, uint32_t packedColor );
-void glide64gSPCombineMatrices(void);
-void glide64gSPLookAt(uint32_t l, uint32_t n);
-void glide64gSP1Triangle( int32_t v0, int32_t v1, int32_t v2, int32_t flag );
-void glide64gSP4Triangles( int32_t v00, int32_t v01, int32_t v02,
-                    int32_t v10, int32_t v11, int32_t v12,
-                    int32_t v20, int32_t v21, int32_t v22,
-                    int32_t v30, int32_t v31, int32_t v32 );

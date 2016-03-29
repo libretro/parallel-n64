@@ -98,5 +98,3 @@ static void glide64gDPLoadBlock( uint32_t tile, uint32_t ul_s, uint32_t ul_t, ui
       setTBufTex(rdp.tiles[tile].t_mem, cnt);
 #endif
 }
-
-void glide64gDPSetScissor( uint32_t mode, float ulx, float uly, float lrx, float lry );
