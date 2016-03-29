@@ -375,8 +375,6 @@ static void pre_update(void)
    }
 }
 
-void glide64gSPClipVertex(uint32_t v);
-
 /*
  * Loads into the RSP vertex buffer the vertices that will be used by the 
  * gSP1Triangle commands to generate polygons.
@@ -461,8 +459,6 @@ static void glide64gSPVertex(uint32_t v, uint32_t n, uint32_t v0)
       vertex = (char*)vertex + iter;
    }
 }
-
-void glide64gSPLight(uint32_t l, int32_t n);
 
 static void glide64gSPViewport(uint32_t v)
 {

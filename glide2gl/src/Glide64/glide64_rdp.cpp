@@ -226,6 +226,9 @@ void rdp_setfuncs(void)
    }
 }
 
+extern "C"
+{
+
 void rdp_free(void)
 {
    int i;
@@ -282,6 +285,7 @@ void rdp_reset(void)
    rdp.maincimg[0].addr = rdp.maincimg[1].addr = rdp.last_drawn_ci_addr = 0x7FFFFFFF;
 }
 
+}
 
 
 /******************************************************************
@@ -307,7 +311,7 @@ int depth_buffer_fog;
 
 extern bool frame_dupe;
 
-void glide64ProcessDList(void)
+extern "C" void glide64ProcessDList(void)
 {
   uint32_t dlist_start, dlist_length, a;
 
@@ -1392,7 +1396,7 @@ void RestoreScale(void)
    g_gdp.flags       |= UPDATE_VIEWPORT | UPDATE_SCISSOR;
 }
 
-
+extern "C" {
 static void rdp_setcolorimage(uint32_t w0, uint32_t w1)
 {
    gdp_set_color_image(w0, w1);
@@ -1620,6 +1624,7 @@ static void rdp_setcolorimage(uint32_t w0, uint32_t w1)
       }
    }
 }
+};
 
 static void rsp_reserved0(uint32_t w0, uint32_t w1)
 {
@@ -1659,7 +1664,7 @@ size            1 = uint8_t, 2 = uint16_t, 4 = uint32_t
 output:   none
 *******************************************************************/
 
-void glide64FBRead(uint32_t addr)
+extern "C" void glide64FBRead(uint32_t addr)
 {
   uint32_t a;
   if (cpu_fb_ignore)
@@ -1719,7 +1724,7 @@ val                     val
 size            1 = uint8_t, 2 = uint16_t, 4 = uint32_t
 output:   none
 *******************************************************************/
-void glide64FBWrite(uint32_t addr, uint32_t size)
+extern "C" void glide64FBWrite(uint32_t addr, uint32_t size)
 {
   uint32_t a, shift_l, shift_r;
 
@@ -1772,7 +1777,7 @@ output:   Values are return in the FrameBufferInfo structure
 Plugin can return up to 6 frame buffer info
 ************************************************************************/
 ///*
-void glide64FBGetFrameBufferInfo(void *p)
+extern "C" void glide64FBGetFrameBufferInfo(void *p)
 {
    int i;
    FrameBufferInfo * pinfo = (FrameBufferInfo *)p;
@@ -2600,7 +2605,7 @@ processed. (Low level GFX list)
 input:    none
 output:   none
 *******************************************************************/
-void glide64ProcessRDPList(void)
+extern "C" void glide64ProcessRDPList(void)
 {
    int32_t i;
    uint32_t length;

@@ -373,6 +373,8 @@ ifeq ($(platform), qnx)
 else
 	CFLAGS   += -std=gnu89 -MMD
 ifeq ($(GLIDEN64),1)
+	CFLAGS   += -DGLIDEN64
+	CXXFLAGS += -DGLIDEN64
 	CXXFLAGS += -std=c++0x -MMD
 else
 	CXXFLAGS += -std=gnu++98 -MMD

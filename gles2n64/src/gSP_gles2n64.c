@@ -330,7 +330,7 @@ void gln64gSPProcessVertex(uint32_t v)
    if (gSP.changed & CHANGED_MATRIX)
       gln64gSPCombineMatrices();
 
-   gSPTransformVertex( &vtx->x, gSP.matrix.combined );
+   gln64gSPTransformVertex( &vtx->x, gSP.matrix.combined );
 
    if (gSP.viewport.vscale[0] < 0)
 		vtx->x = -vtx->x;
@@ -339,7 +339,7 @@ void gln64gSPProcessVertex(uint32_t v)
    {
       int i = 0;
 
-      gSPBillboardVertex(v, i);
+      gln64gSPBillboardVertex(v, i);
    }
 
    gln64gSPClipVertex(v);
@@ -353,9 +353,9 @@ void gln64gSPProcessVertex(uint32_t v)
 
       TransformVectorNormalize( &vtx->nx, gSP.matrix.modelView[gSP.matrix.modelViewi] );
 		if (gSP.geometryMode & G_POINT_LIGHTING)
-			gSPPointLightVertex(vtx, vPos);
+			gln64gSPPointLightVertex(vtx, vPos);
       else
-			gSPLightVertex(vtx);
+			gln64gSPLightVertex(vtx);
 
       if (/* GBI.isTextureGen() && */ gSP.geometryMode & G_TEXTURE_GEN)
       {
@@ -2221,20 +2221,20 @@ void gln64gSPObjRendermode(uint32_t _mode)
 	gSP.objRendermode = _mode;
 }
 
-void (*gSPTransformVertex)(float vtx[4], float mtx[4][4])  = gln64gSPTransformVertex_default;
-void (*gSPLightVertex)(SPVertex * _vtx)                    = gln64gSPLightVertex_default;
-void (*gSPPointLightVertex)(SPVertex *_vtx, float * _vPos) = gln64gSPPointLightVertex_default;
-void (*gSPBillboardVertex)(uint32_t v, uint32_t i)         = gln64gSPBillboardVertex_default;
+void (*gln64gSPTransformVertex)(float vtx[4], float mtx[4][4])  = gln64gSPTransformVertex_default;
+void (*gln64gSPLightVertex)(SPVertex * _vtx)                    = gln64gSPLightVertex_default;
+void (*gln64gSPPointLightVertex)(SPVertex *_vtx, float * _vPos) = gln64gSPPointLightVertex_default;
+void (*gln64gSPBillboardVertex)(uint32_t v, uint32_t i)         = gln64gSPBillboardVertex_default;
 
 void gSPSetupFunctions(void)
 {
    if (GBI_GetCurrentMicrocodeType() != F3DEX2CBFD)
    {
-      gSPLightVertex      = gln64gSPLightVertex_default;
-      gSPPointLightVertex = gln64gSPPointLightVertex_default;
+      gln64gSPLightVertex      = gln64gSPLightVertex_default;
+      gln64gSPPointLightVertex = gln64gSPPointLightVertex_default;
       return;
    }
 
-   gSPLightVertex      = gln64gSPLightVertex_CBFD;
-   gSPPointLightVertex = gln64gSPPointLightVertex_CBFD;
+   gln64gSPLightVertex      = gln64gSPLightVertex_CBFD;
+   gln64gSPPointLightVertex = gln64gSPPointLightVertex_CBFD;
 }

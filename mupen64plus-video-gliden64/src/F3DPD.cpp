@@ -10,12 +10,12 @@
 
 void F3DPD_Vtx( uint32_t w0, uint32_t w1 )
 {
-	gSPCIVertex( w1, _SHIFTR( w0, 20, 4 ) + 1, _SHIFTR( w0, 16, 4 ) );
+	gln64gSPCIVertex( w1, _SHIFTR( w0, 20, 4 ) + 1, _SHIFTR( w0, 16, 4 ) );
 }
 
 void F3DPD_VtxColorBase( uint32_t w0, uint32_t w1 )
 {
-	gSPSetVertexColorBase( w1 );
+	gln64gSPSetVertexColorBase( w1 );
 }
 
 void F3DPD_Init()
@@ -54,6 +54,6 @@ void F3DPD_Init()
 	GBI_SetGBI( G_RDPHALF_CONT,			F3D_RDPHALF_CONT,		F3D_RDPHalf_Cont );
 	GBI_SetGBI( G_TRI4,					F3D_TRI4,				F3D_Tri4 );
 
-	gSPSetDMAOffsets( 0, 0 );
+	gln64gSPSetDMAOffsets( 0, 0 );
 }
 

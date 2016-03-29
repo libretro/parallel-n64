@@ -39,6 +39,10 @@
 #ifndef _GLIDE64_3DMATH_H
 #define _GLIDE64_3DMATH_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include "../Glitch64/glide.h"
 
 #include "../../Graphics/3dmath.h"
@@ -64,5 +68,9 @@ void MulMatrices(float m1[4][4], float m2[4][4], float r[4][4]);
 void TransformVector(float *src, float *dst, float mat[4][4]);
 void InverseTransformVector(float *src, float *dst, float mat[4][4]);
 void  NormalizeVector(float *v);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

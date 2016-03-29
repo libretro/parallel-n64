@@ -28,7 +28,7 @@ void F3DDKR_DMA_Mtx( uint32_t w0, uint32_t w1 )
 		multiply = _SHIFTR( w0, 23, 1 );
 	}
 
-	gSPDMAMatrix( w1, index, multiply );
+	gln64gSPDMAMatrix( w1, index, multiply );
 }
 
 void F3DDKR_DMA_Vtx( uint32_t w0, uint32_t w1 )
@@ -41,7 +41,7 @@ void F3DDKR_DMA_Vtx( uint32_t w0, uint32_t w1 )
 
 	uint32_t n = _SHIFTR( w0, 19, 5 ) + 1;
 
-	gSPDMAVertex( w1, n, gSP.vertexi + _SHIFTR( w0, 9, 5 ) );
+	gln64gSPDMAVertex( w1, n, gSP.vertexi + _SHIFTR( w0, 9, 5 ) );
 
 	gSP.vertexi += n;
 }
@@ -56,30 +56,30 @@ void F3DJFG_DMA_Vtx(uint32_t w0, uint32_t w1)
 
 	uint32_t n = _SHIFTR(w0, 19, 5);
 
-	gSPDMAVertex(w1, n, gSP.vertexi + _SHIFTR(w0, 9, 5));
+	gln64gSPDMAVertex(w1, n, gSP.vertexi + _SHIFTR(w0, 9, 5));
 
 	gSP.vertexi += n;
 }
 
 void F3DDKR_DMA_Tri(uint32_t w0, uint32_t w1)
 {
-	gSPDMATriangles( w1, _SHIFTR( w0, 4, 12 ) );
+	gln64gSPDMATriangles( w1, _SHIFTR( w0, 4, 12 ) );
 	gSP.vertexi = 0;
 }
 
 void F3DDKR_DMA_DList( uint32_t w0, uint32_t w1 )
 {
-	gSPDlistCount(_SHIFTR(w0, 16, 8), w1);
+	gln64gSPDlistCount(_SHIFTR(w0, 16, 8), w1);
 }
 
 void F3DDKR_DMA_Offsets( uint32_t w0, uint32_t w1 )
 {
-	gSPSetDMAOffsets( _SHIFTR( w0, 0, 24 ), _SHIFTR( w1, 0, 24 ) );
+	gln64gSPSetDMAOffsets( _SHIFTR( w0, 0, 24 ), _SHIFTR( w1, 0, 24 ) );
 }
 
 void F3DDKR_DMA_Tex_Offset(uint32_t w0, uint32_t w1)
 {
-	gSPSetDMATexOffset(w1);
+	gln64gSPSetDMATexOffset(w1);
 }
 
 void F3DDKR_MoveWord( uint32_t w0, uint32_t w1 )
@@ -131,7 +131,7 @@ void F3DDKR_Init()
 	GBI_SetGBI( G_RDPHALF_CONT,			F3D_RDPHALF_CONT,		F3D_RDPHalf_Cont );
 	GBI_SetGBI( G_TRI4,					F3D_TRI4,				F3D_Tri4 );
 
-	gSPSetDMAOffsets( 0, 0 );
+	gln64gSPSetDMAOffsets( 0, 0 );
 }
 
 void F3DJFG_Init()

@@ -193,10 +193,10 @@ void gln64gSP4Triangles(const int32_t v00, const int32_t v01, const int32_t v02,
                     const int32_t v30, const int32_t v31, const int32_t v32 );
 
 
-extern void (*gSPTransformVertex)(float vtx[4], float mtx[4][4]);
-extern void (*gSPLightVertex)(SPVertex * _vtx);
-extern void (*gSPPointLightVertex)(SPVertex *_vtx, float * _vPos);
-extern void (*gSPBillboardVertex)(uint32_t v, uint32_t i);
+extern void (*gln64gSPTransformVertex)(float vtx[4], float mtx[4][4]);
+extern void (*gln64gSPLightVertex)(SPVertex * _vtx);
+extern void (*gln64gSPPointLightVertex)(SPVertex *_vtx, float * _vPos);
+extern void (*gln64gSPBillboardVertex)(uint32_t v, uint32_t i);
 void gln64gSPSetupFunctions(void);
 void gln64gSPSetDMATexOffset(uint32_t _addr);
 

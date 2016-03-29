@@ -42,6 +42,10 @@
 
 #include <stdint.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 typedef uint32_t (*texfunc)(uintptr_t, uintptr_t, int, int, int, int, int);
 extern texfunc load_table[4][5];
 
@@ -50,4 +54,9 @@ void LoadTile32b(uint32_t tile, uint32_t ul_s, uint32_t ul_t, uint32_t width, ui
 void loadBlock(uint32_t *src, uint32_t *dst, uint32_t off, int dxt, int cnt);
 
 void loadTile(uint32_t *src, uint32_t *dst, int width, int height, int line, int off, uint32_t *end);
+
+#ifdef __cplusplus
+}
+#endif
+
 #endif

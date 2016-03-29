@@ -15,9 +15,9 @@ void L3DEX_Line3D( uint32_t w0, uint32_t w1 )
 	uint32_t wd = _SHIFTR( w1, 0, 8 );
 
 	if (wd == 0)
-		gSPLine3D( _SHIFTR( w1, 17, 7 ), _SHIFTR( w1, 9, 7 ), 0 );
+		gln64gSPLine3D( _SHIFTR( w1, 17, 7 ), _SHIFTR( w1, 9, 7 ), 0 );
 	else
-		gSPLineW3D( _SHIFTR( w1, 17, 7 ), _SHIFTR( w1, 9, 7 ), wd, 0 );
+		gln64gSPLineW3D( _SHIFTR( w1, 17, 7 ), _SHIFTR( w1, 9, 7 ), wd, 0 );
 }
 
 void L3DEX_Init()

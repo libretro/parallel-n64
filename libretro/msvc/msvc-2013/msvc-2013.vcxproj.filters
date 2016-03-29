@@ -213,10 +213,10 @@
     <ClCompile Include="..\..\..\glide2gl\src\Glide64\glidemain.c">
       <Filter>Source Files\glide2gl\src\Glide64</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\Graphics\RDP\gDP_funcs.c">
+    <ClCompile Include="..\..\..\Graphics\RDP\gDP_funcs.cpp">
       <Filter>Source Files\glide2gl\src\Glide64</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\Graphics\RSP\gSP_funcs.c">
+    <ClCompile Include="..\..\..\Graphics\RSP\gSP_funcs.cpp">
       <Filter>Source Files\glide2gl\src\Glide64</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\glide2gl\src\Glide64\glide64_gDP.c">
@@ -225,7 +225,7 @@
     <ClCompile Include="..\..\..\glide2gl\src\Glide64\glide64_gSP.c">
       <Filter>Source Files\glide2gl\src\Glide64</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\glide2gl\src\Glide64\glide64_rdp.c">
+    <ClCompile Include="..\..\..\glide2gl\src\Glide64\glide64_rdp.cpp">
       <Filter>Source Files\glide2gl\src\Glide64</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\glide2gl\src\Glide64\TexCache.c">

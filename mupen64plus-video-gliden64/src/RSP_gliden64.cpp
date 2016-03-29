@@ -50,7 +50,7 @@ void RSP_ProcessDList(void)
 {
 	if (ConfigOpen || video().isResizeWindow())
    {
-		gDPFullSync();
+		gln64gDPFullSync();
 		return;
 	}
 
@@ -73,14 +73,14 @@ void RSP_ProcessDList(void)
 	gSP.matrix.modelViewi = 0;
 	gSP.changed |= CHANGED_MATRIX;
 	gDP.changed &= ~CHANGED_CPU_FB_WRITE;
-	gDPSetTexturePersp(G_TP_PERSP);
+	gln64gDPSetTexturePersp(G_TP_PERSP);
 
 	uint32_t uc_start = *(uint32_t*)&gfx_info.DMEM[0x0FD0];
 	uint32_t uc_dstart = *(uint32_t*)&gfx_info.DMEM[0x0FD8];
 	uint32_t uc_dsize = *(uint32_t*)&gfx_info.DMEM[0x0FDC];
 
 	if ((uc_start != __RSP.uc_start) || (uc_dstart != __RSP.uc_dstart))
-		gSPLoadUcodeEx(uc_start, uc_dstart, uc_dsize);
+		gln64gSPLoadUcodeEx(uc_start, uc_dstart, uc_dsize);
 
 	depthBufferList().setNotCleared();
 
@@ -134,7 +134,8 @@ static void RSP_SetDefaultState(void)
 {
 	memset(&gSP, 0, sizeof(gSPInfo));
 
-	gSPTexture(1.0f, 1.0f, 0, 0, true);
+	gln64gSPTexture(1.0f, 1.0f, 0, 0, true);
+
 	gDP.loadTile = &gDP.tiles[7];
 	gSP.textureTile[0] = &gDP.tiles[0];
 	gSP.textureTile[1] = &gDP.tiles[1];

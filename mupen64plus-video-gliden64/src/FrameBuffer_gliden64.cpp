@@ -541,7 +541,7 @@ void FrameBufferList::saveBuffer(uint32_t _address, uint16_t _format, uint16_t _
 			glBindFramebuffer(GL_FRAMEBUFFER, m_pCurrent->m_FBO);
 			if (m_pCurrent->m_size != _size) {
 				float fillColor[4];
-				gDPGetFillColor(fillColor);
+				gln64gDPGetFillColor(fillColor);
 				ogl.getRender().clearColorBuffer(fillColor);
 				m_pCurrent->m_size = _size;
 				m_pCurrent->m_pTexture->format = _format;

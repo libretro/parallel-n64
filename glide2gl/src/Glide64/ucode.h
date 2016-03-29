@@ -201,7 +201,11 @@ static void rdp_setprimcolor(uint32_t w0, uint32_t w1);
 static void rdp_setcombine(uint32_t w0, uint32_t w1);
 static void rdp_settextureimage(uint32_t w0, uint32_t w1);
 static void rdp_setdepthimage(uint32_t w0, uint32_t w1);
-static void rdp_setcolorimage(uint32_t w0, uint32_t w1);
+
+extern "C" {
+   static void rdp_setcolorimage(uint32_t w0, uint32_t w1);
+};
+
 static void rdp_trifill(uint32_t w0, uint32_t w1);
 static void rdp_trishade(uint32_t w0, uint32_t w1);
 static void rdp_tritxtr(uint32_t w0, uint32_t w1);

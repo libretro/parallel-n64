@@ -319,8 +319,8 @@ ifeq ($(HAVE_NEON),1)
 						$(AUDIO_LIBRETRO_DIR)/drivers_resampler/cc_resampler_neon.S
 endif
 
-SOURCES_C += $(ROOT_DIR)/Graphics/RSP/gSP_funcs.c \
-				 $(ROOT_DIR)/Graphics/RDP/gDP_funcs.c
+SOURCES_CXX += $(ROOT_DIR)/Graphics/RSP/gSP_funcs.cpp \
+				 $(ROOT_DIR)/Graphics/RDP/gDP_funcs.cpp
 
 ifeq ($(HAVE_GLIDE64),1)
 SOURCES_C += $(VIDEODIR_GLIDE)/Glide64/glide64_3dmath.c \
@@ -329,13 +329,14 @@ SOURCES_C += $(VIDEODIR_GLIDE)/Glide64/glide64_3dmath.c \
             $(VIDEODIR_GLIDE)/Glide64/glidemain.c \
             $(VIDEODIR_GLIDE)/Glide64/glide64_util.c \
 				$(VIDEODIR_GLIDE)/Glide64/Glide64_UCode.c \
-            $(VIDEODIR_GLIDE)/Glide64/glide64_rdp.c \
             $(VIDEODIR_GLIDE)/Glide64/glide64_gSP.c \
             $(VIDEODIR_GLIDE)/Glide64/glide64_gDP.c \
             $(VIDEODIR_GLIDE)/Glide64/Combine.c \
             $(VIDEODIR_GLIDE)/Glide64/TexCache.c \
 				$(VIDEODIR_GLIDE)/Glide64/MiClWr.c \
             $(VIDEODIR_GLIDE)/Glide64/TexLoad.c
+
+SOURCES_CXX += $(VIDEODIR_GLIDE)/Glide64/glide64_rdp.cpp
 
 # Glitch64
 SOURCES_C   += $(VIDEODIR_GLIDE)/Glitch64/glitch64_combiner.c \

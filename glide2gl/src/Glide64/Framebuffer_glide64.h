@@ -46,6 +46,10 @@
 
 #include "Gfx_1.3.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 struct vertexi
 {
    int x,y;       // Screen position in 16:16 bit fixed point
@@ -83,9 +87,14 @@ void DrawDepthBufferFog(void);
 
 void copyWhiteToRDRAM(void);
 
+void DrawPartFrameBufferToScreen(void);
 void DrawWholeFrameBufferToScreen(void);
 void CopyFrameBuffer (int32_t buffer);
 
 void drawViRegBG(void);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif  // #ifndef FBtoSCREEN_H

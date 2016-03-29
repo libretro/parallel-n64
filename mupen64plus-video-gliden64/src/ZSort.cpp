@@ -225,7 +225,7 @@ void ZSort_Interpolate( uint32_t, uint32_t )
 void ZSort_XFMLight( uint32_t _w0, uint32_t _w1 )
 {
 	int mid = _SHIFTR(_w0, 0, 8);
-	gSPNumLights(1 + _SHIFTR(_w1, 12, 8));
+	gln64gSPNumLights(1 + _SHIFTR(_w1, 12, 8));
 	uint32_t addr = -1024 + _SHIFTR(_w1, 0, 12);
 
 	assert(mid == GZM_MMTX);
@@ -293,7 +293,7 @@ void ZSort_Lighting( uint32_t _w0, uint32_t _w1 )
 		vtx.ny = ((int8_t*)gfx_info.DMEM)[(nsrs++)^3];
 		vtx.nz = ((int8_t*)gfx_info.DMEM)[(nsrs++)^3];
 		TransformVectorNormalize( &vtx.nx, gSP.matrix.modelView[gSP.matrix.modelViewi] );
-		gSPLightVertex(vtx);
+		gln64gSPLightVertex(vtx);
 		float fLightDir[3] = {vtx.nx, vtx.ny, vtx.nz};
 		TransformVectorNormalize(fLightDir, gSP.matrix.projection);
 		float x, y;
@@ -462,7 +462,7 @@ void ZSort_SetTexture()
 	gSP.texture.on = 1;
 	gSP.texture.tile = 0;
 
-	gSPSetGeometryMode(0x0200);
+	gln64gSPSetGeometryMode(0x0200);
 }
 
 void ZSort_MoveMem( uint32_t _w0, uint32_t _w1 )

@@ -3,10 +3,6 @@
 
 #include <stdint.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 enum gdp_plugin_type
 {
    GDP_PLUGIN_GLIDE64 = 0,
@@ -18,13 +14,13 @@ enum gdp_plugin_type
 void GDPSetScissor(enum gdp_plugin_type plug_type, uint32_t mode, float ulx, float uly, float lrx, float lry );
 
 /* Glide64 prototypes */
-void glide64gDPSetScissor( uint32_t mode, float ulx, float uly, float lrx, float lry );
+extern "C" void glide64gDPSetScissor( uint32_t mode, float ulx, float uly, float lrx, float lry );
 
 /* GLN64 prototypes */
+#ifdef GLIDEN64
 void gln64gDPSetScissor( uint32_t mode, float ulx, float uly, float lrx, float lry );
-
-#ifdef __cplusplus
-}
+#else
+extern "C" void gln64gDPSetScissor( uint32_t mode, float ulx, float uly, float lrx, float lry );
 #endif
 
 #endif

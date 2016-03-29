@@ -37,12 +37,16 @@
 //
 //****************************************************************
 
-#ifndef Util_H
-#define Util_H
+#ifndef _GLIDE64_UTIL_H
+#define _GLIDE64_UTIL_H
 
 #include "../Glitch64/glide.h"
 #include "rdp.h"
 #include "../../../mupen64plus-core/src/main/util.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #define NOT_TMU0	0x00
 #define NOT_TMU1	0x01
@@ -80,5 +84,9 @@ static INLINE uint16_t ror16(uint16_t value, uint16_t amount)
 {
     return (value << (-(int16_t)amount & 15)) | (value >> amount);
 }
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif  // ifndef Util_H

@@ -1,6 +1,8 @@
 #ifndef _GLIDE64_UCODE_H
 #define _GLIDE64_UCODE_H
 
+#include <stdint.h>
+
 #define UCODE_CRUISN_EXOTICA                 0x485abff2
 #define UCODE_NBA_SHOWTIME                   0xb62f900f
 #define UCODE_NAGANO_OLYMPICS                0xee47381b
@@ -113,6 +115,14 @@
 #define UCODE_ODT_PROTO                      0x9551177b
 #define UCODE_LAST_LEGION_UX                 0xff372492
 
-extern void microcheck(void);
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+void microcheck(void);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

@@ -565,7 +565,6 @@ struct RDP
    char RomName[21];
 };
 
-void ChangeSize(void);
 
 extern struct RDP rdp;
 extern SETTINGS settings;
@@ -576,10 +575,6 @@ extern uint32_t   offset_texbuf1;
 
 extern int	ucode_error_report;
 
-// RDP functions
-void rdp_free(void);
-void rdp_new(void);
-void rdp_reset(void);
 
 extern const char *ACmp[];
 extern const char *Mode0[];
@@ -705,11 +700,25 @@ static INLINE float get_float_color_clamped(float col)
    return col;
 }
 
-void newSwapBuffers(void);
-extern void rdp_setfuncs(void);
 extern int SwapOK;
 
 // ** utility functions
 void load_palette (uint32_t addr, uint16_t start, uint16_t count);
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+void newSwapBuffers(void);
+extern void rdp_setfuncs(void);
+
+void ChangeSize(void);
+void rdp_free(void);
+void rdp_new(void);
+void rdp_reset(void);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif  // ifndef RDP_H
