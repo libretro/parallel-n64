@@ -128,7 +128,6 @@ void gln64gSPLoadUcodeEx( uint32_t uc_start, uint32_t uc_dstart, uint16_t uc_dsi
 void gln64gSPNoOp();
 void gln64gSPMatrix( uint32_t matrix, uint8_t param );
 void gln64gSPDMAMatrix( uint32_t matrix, uint8_t index, uint8_t multiply );
-void gln64gSPViewport( uint32_t v );
 void gln64gSPForceMatrix( uint32_t mptr );
 void gln64gSPLight( uint32_t l, int32_t n );
 void gln64gSPLightCBFD( uint32_t l, int32_t n );

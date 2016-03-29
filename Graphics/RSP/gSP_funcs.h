@@ -20,12 +20,14 @@ enum gsp_plugin_type
 #define gSPLookAt(l, n)      GSPLookAt(GSP_DEF_PLUGIN, l, n)
 #define gSPLight(l, n)       GSPLight(GSP_DEF_PLUGIN, l, n)
 #define gSPLightColor(l, c)  GSPLightColor(GSP_DEF_PLUGIN, l, c)
+#define gSPViewport(v)       GSPViewport(GSP_DEF_PLUGIN, v)
 
 void GSPCombineMatrices(enum gsp_plugin_type plug_type);
 void GSPClipVertex(enum gsp_plugin_type plug_type, uint32_t v);
 void GSPLookAt(enum gsp_plugin_type plug_type, uint32_t l, uint32_t n);
 void GSPLight(enum gsp_plugin_type plug_type, uint32_t l, int32_t n);
 void GSPLightColor(enum gsp_plugin_type plug_type, uint32_t lightNum, uint32_t packedColor );
+void GSPViewport(enum gsp_plugin_type plug_type, uint32_t v);
 
 #ifdef __cplusplus
 extern "C" {
@@ -43,6 +45,7 @@ void glide64gSP4Triangles( int32_t v00, int32_t v01, int32_t v02,
                     int32_t v20, int32_t v21, int32_t v22,
                     int32_t v30, int32_t v31, int32_t v32 );
 void glide64gSPLight(uint32_t l, int32_t n);
+void glide64gSPViewport(uint32_t v);
 
 #ifdef __cplusplus
 }
@@ -68,6 +71,7 @@ void gln64gSP4Triangles( int32_t v00, int32_t v01, int32_t v02,
                     int32_t v10, int32_t v11, int32_t v12,
                     int32_t v20, int32_t v21, int32_t v22,
                     int32_t v30, int32_t v31, int32_t v32 );
+void gln64gSPViewport(uint32_t v);
 
 #ifndef GLIDEN64
 #ifdef __cplusplus
