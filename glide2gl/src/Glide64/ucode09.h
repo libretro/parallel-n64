@@ -60,10 +60,10 @@ static int Calc_invw (int w)
    int count, neg;
    union
    {
-      int32_t		  W;
+      int32_t	  W;
       uint32_t	  UW;
-      int16_t			HW[2];
-      uint16_t		UHW[2];
+      int16_t	  HW[2];
+      uint16_t	  UHW[2];
    } Result;
    Result.W = w;
 

@@ -19,7 +19,7 @@
 
 void F3DEX2_Mtx( uint32_t w0, uint32_t w1 )
 {
-   gSPMatrix( w1, _SHIFTR( w0, 0, 8 ) ^ G_MTX_PUSH );
+   gln64gSPMatrix( w1, _SHIFTR( w0, 0, 8 ) ^ G_MTX_PUSH );
 }
 
 void F3DEX2_MoveMem( uint32_t w0, uint32_t w1 )
@@ -27,11 +27,11 @@ void F3DEX2_MoveMem( uint32_t w0, uint32_t w1 )
    switch (_SHIFTR( w0, 0, 8 ))
    {
       case F3DEX2_MV_VIEWPORT:
-         gSPViewport( w1 );
+         gln64gSPViewport( w1 );
          break;
 
       case G_MV_MATRIX:
-         gSPForceMatrix( w1 );
+         gln64gSPForceMatrix( w1 );
 
          /* force matrix takes two commands */
          __RSP.PC[__RSP.PCi] += 8;
@@ -43,9 +43,9 @@ void F3DEX2_MoveMem( uint32_t w0, uint32_t w1 )
             const uint32_t n = offset / 24;
 
             if (n < 2)
-               gSPLookAt(w1, n);
+               gln64gSPLookAt(w1, n);
             else
-               gSPLight(w1, n - 1);
+               gln64gSPLight(w1, n - 1);
          }
          break;
    }
@@ -55,7 +55,7 @@ void F3DEX2_Vtx( uint32_t w0, uint32_t w1 )
 {
    uint32_t n = _SHIFTR( w0, 12, 8 );
 
-   gSPVertex( w1, n, _SHIFTR( w0, 1, 7 ) - n );
+   gln64gSPVertex( w1, n, _SHIFTR( w0, 1, 7 ) - n );
 }
 
 void F3DEX2_Reserved1( uint32_t w0, uint32_t w1 )
@@ -64,7 +64,7 @@ void F3DEX2_Reserved1( uint32_t w0, uint32_t w1 )
 
 void F3DEX2_Tri1( uint32_t w0, uint32_t w1 )
 {
-   gSP1Triangle( _SHIFTR( w0, 17, 7 ),
+   gln64gSP1Triangle( _SHIFTR( w0, 17, 7 ),
          _SHIFTR( w0, 9, 7 ),
          _SHIFTR( w0, 1, 7 ));
 }
@@ -75,7 +75,7 @@ void F3DEX2_Line3D( uint32_t w0, uint32_t w1 )
 
 void F3DEX2_PopMtx( uint32_t w0, uint32_t w1 )
 {
-   gSPPopMatrixN( 0, w1 >> 6 );
+   gln64gSPPopMatrixN( 0, w1 >> 6 );
 }
 
 void F3DEX2_MoveWord( uint32_t w0, uint32_t w1 )
@@ -86,36 +86,36 @@ void F3DEX2_MoveWord( uint32_t w0, uint32_t w1 )
          /* Handled in movemem */
          break;
       case G_MW_MATRIX:
-         gSPInsertMatrix( _SHIFTR( w0, 0, 16 ), w1 );
+         gln64gSPInsertMatrix( _SHIFTR( w0, 0, 16 ), w1 );
          break;
       case G_MW_NUMLIGHT:
-         gSPNumLights( w1 / 24 );
+         gln64gSPNumLights( w1 / 24 );
          break;
       case G_MW_CLIP:
-         gSPClipRatio( w1 );
+         gln64gSPClipRatio( w1 );
          break;
       case G_MW_SEGMENT:
-         gSPSegment( _SHIFTR( w0, 0, 16 ) >> 2, w1 & 0x00FFFFFF );
+         gln64gSPSegment( _SHIFTR( w0, 0, 16 ) >> 2, w1 & 0x00FFFFFF );
          break;
       case G_MW_FOG:
-         gSPFogFactor( (int16_t)_SHIFTR( w1, 16, 16 ), (int16_t)_SHIFTR( w1, 0, 16 ) );
+         gln64gSPFogFactor( (int16_t)_SHIFTR( w1, 16, 16 ), (int16_t)_SHIFTR( w1, 0, 16 ) );
 			//offset must be 0 for move_fog, but it can be non zero in Nushi Zuri 64 - Shiokaze ni Notte
 			//low-level display list has setothermode commands in this place, so this is obviously not move_fog.
 			if (_SHIFTR(w0, 0, 16) == 0x04)
-				gDPSetTextureLUT((w1 == 0xffffffff) ? G_TT_NONE : G_TT_RGBA16);
+				gln64gDPSetTextureLUT((w1 == 0xffffffff) ? G_TT_NONE : G_TT_RGBA16);
          break;
       case G_MW_LIGHTCOL:
-         gSPLightColor((_SHIFTR( w0, 0, 16 ) / 24) + 1, w1 );
+         gln64gSPLightColor((_SHIFTR( w0, 0, 16 ) / 24) + 1, w1 );
          break;
       case G_MW_PERSPNORM:
-         gSPPerspNormalize( w1 );
+         gln64gSPPerspNormalize( w1 );
          break;
    }
 }
 
 void F3DEX2_Texture( uint32_t w0, uint32_t w1 )
 {
-   gSPTexture( _FIXED2FLOAT( _SHIFTR( w1, 16, 16 ), 16 ),
+   gln64gSPTexture( _FIXED2FLOAT( _SHIFTR( w1, 16, 16 ), 16 ),
          _FIXED2FLOAT( _SHIFTR( w1, 0, 16 ), 16 ),
          _SHIFTR( w0, 11, 3 ),
          _SHIFTR( w0, 8, 3 ),
@@ -126,19 +126,19 @@ void F3DEX2_SetOtherMode_H( uint32_t w0, uint32_t w1 )
 {
 	const uint32_t length = _SHIFTR(w0, 0, 8) + 1;
 	const uint32_t shift = MAX(0, (int32_t)(32 - _SHIFTR(w0, 8, 8) - length));
-	gSPSetOtherMode_H(length, shift, w1);
+	gln64gSPSetOtherMode_H(length, shift, w1);
 }
 
 void F3DEX2_SetOtherMode_L( uint32_t w0, uint32_t w1 )
 {
 	const uint32_t length = _SHIFTR(w0, 0, 8) + 1;
 	const uint32_t shift = MAX(0, (int32_t)(32 - _SHIFTR(w0, 8, 8) - length));
-	gSPSetOtherMode_L(length, shift, w1);
+	gln64gSPSetOtherMode_L(length, shift, w1);
 }
 
 void F3DEX2_GeometryMode( uint32_t w0, uint32_t w1 )
 {
-   gSPGeometryMode( ~_SHIFTR( w0, 0, 24 ), w1 );
+   gln64gSPGeometryMode( ~_SHIFTR( w0, 0, 24 ), w1 );
 }
 
 void F3DEX2_DMAIO( uint32_t w0, uint32_t w1 )
@@ -147,7 +147,7 @@ void F3DEX2_DMAIO( uint32_t w0, uint32_t w1 )
 
 void F3DEX2_Special_1( uint32_t w0, uint32_t w1 )
 {
-	gSPDlistCount(_SHIFTR( w0, 0, 8 ), w1);
+	gln64gSPDlistCount(_SHIFTR( w0, 0, 8 ), w1);
 }
 
 void F3DEX2_Special_2( uint32_t w0, uint32_t w1 )
@@ -160,7 +160,7 @@ void F3DEX2_Special_3( uint32_t w0, uint32_t w1 )
 
 void F3DEX2_Quad( uint32_t w0, uint32_t w1 )
 {
-   gSP2Triangles( _SHIFTR( w0, 17, 7 ),
+   gln64gSP2Triangles( _SHIFTR( w0, 17, 7 ),
          _SHIFTR( w0, 9, 7 ),
          _SHIFTR( w0, 1, 7 ),
          0,

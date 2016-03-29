@@ -41,7 +41,7 @@ float identityMatrix[4][4] =
 };
 
 
-static INLINE void gSPFlushTriangles(void)
+static INLINE void gln64gSPFlushTriangles(void)
 {
    if ((gSP.geometryMode & G_SHADING_SMOOTH) == 0)
    {
@@ -59,7 +59,7 @@ static INLINE void gSPFlushTriangles(void)
 }
 
 
-void gSPCopyVertex( SPVertex *dest, SPVertex *src )
+void gln64gSPCopyVertex( SPVertex *dest, SPVertex *src )
 {
 	dest->x = src->x;
 	dest->y = src->y;
@@ -73,7 +73,7 @@ void gSPCopyVertex( SPVertex *dest, SPVertex *src )
 	dest->t = src->t;
 }
 
-void gSPInterpolateVertex( SPVertex *dest, float percent, SPVertex *first, SPVertex *second )
+void gln64gSPInterpolateVertex( SPVertex *dest, float percent, SPVertex *first, SPVertex *second )
 {
 	dest->x = first->x + percent * (second->x - first->x);
 	dest->y = first->y + percent * (second->y - first->y);
@@ -87,7 +87,7 @@ void gSPInterpolateVertex( SPVertex *dest, float percent, SPVertex *first, SPVer
 	dest->t = first->t + percent * (second->t - first->t);
 }
 
-void gSPTriangle(int32_t v0, int32_t v1, int32_t v2)
+void gln64gSPTriangle(int32_t v0, int32_t v1, int32_t v2)
 {
    /* TODO/FIXME - update with gliden64 code */
    if ((v0 < INDEXMAP_SIZE) && (v1 < INDEXMAP_SIZE) && (v2 < INDEXMAP_SIZE))
@@ -99,36 +99,33 @@ void gSPTriangle(int32_t v0, int32_t v1, int32_t v2)
    gDP.colorImage.height = (uint32_t)(max( gDP.colorImage.height, (uint32_t)gDP.scissor.lry ));
 }
 
-void gSP1Triangle( int32_t v0, int32_t v1, int32_t v2)
+void gln64gSP1Triangle( int32_t v0, int32_t v1, int32_t v2)
 {
-   gSPTriangle( v0, v1, v2);
-   gSPFlushTriangles();
+   gln64gSPTriangle( v0, v1, v2);
+   gln64gSPFlushTriangles();
 }
 
-void gSP2Triangles(const int32_t v00, const int32_t v01, const int32_t v02, const int32_t flag0,
+void gln64gSP2Triangles(const int32_t v00, const int32_t v01, const int32_t v02, const int32_t flag0,
                     const int32_t v10, const int32_t v11, const int32_t v12, const int32_t flag1 )
 {
-   gSPTriangle( v00, v01, v02);
-   gSPTriangle( v10, v11, v12);
-   gSPFlushTriangles();
+   gln64gSPTriangle( v00, v01, v02);
+   gln64gSPTriangle( v10, v11, v12);
+   gln64gSPFlushTriangles();
 }
 
-void gSP4Triangles(const int32_t v00, const int32_t v01, const int32_t v02,
+void gln64gSP4Triangles(const int32_t v00, const int32_t v01, const int32_t v02,
                     const int32_t v10, const int32_t v11, const int32_t v12,
                     const int32_t v20, const int32_t v21, const int32_t v22,
                     const int32_t v30, const int32_t v31, const int32_t v32 )
 {
-   gSPTriangle(v00, v01, v02);
-   gSPTriangle(v10, v11, v12);
-   gSPTriangle(v20, v21, v22);
-   gSPTriangle(v30, v31, v32);
-   gSPFlushTriangles();
+   gln64gSPTriangle(v00, v01, v02);
+   gln64gSPTriangle(v10, v11, v12);
+   gln64gSPTriangle(v20, v21, v22);
+   gln64gSPTriangle(v30, v31, v32);
+   gln64gSPFlushTriangles();
 }
 
-
-
-
-static void gSPTransformVertex_default(float vtx[4], float mtx[4][4])
+static void gln64gSPTransformVertex_default(float vtx[4], float mtx[4][4])
 {
    float x, y, z, w;
    x = vtx[0];
@@ -142,7 +139,7 @@ static void gSPTransformVertex_default(float vtx[4], float mtx[4][4])
    vtx[3] = x * mtx[0][3] + y * mtx[1][3] + z * mtx[2][3] + mtx[3][3];
 }
 
-static void gSPLightVertex_default(SPVertex * _vtx)
+static void gln64gSPLightVertex_default(SPVertex * _vtx)
 {
 
 	if (!config.generalEmulation.enableHWLighting)
@@ -175,7 +172,7 @@ static void gSPLightVertex_default(SPVertex * _vtx)
 
 }
 
-static void gSPPointLightVertex_default(SPVertex *_vtx, float * _vPos)
+static void gln64gSPPointLightVertex_default(SPVertex *_vtx, float * _vPos)
 {
    uint32_t l;
    float light_intensity = 0.0f;
@@ -214,7 +211,7 @@ static void gSPPointLightVertex_default(SPVertex *_vtx, float * _vPos)
    if (_vtx->b > 1.0f)  _vtx->b = 1.0f;
 }
 
-static void gSPLightVertex_CBFD(SPVertex *_vtx)
+static void gln64gSPLightVertex_CBFD(SPVertex *_vtx)
 {
    uint32_t l;
 	float r = gSP.lights[gSP.numLights].r;
@@ -247,7 +244,7 @@ static void gSPLightVertex_CBFD(SPVertex *_vtx)
 	_vtx->HWLight = 0;
 }
 
-static void gSPPointLightVertex_CBFD(SPVertex *_vtx, float * _vPos)
+static void gln64gSPPointLightVertex_CBFD(SPVertex *_vtx, float * _vPos)
 {
    uint32_t l;
    const SPLight *light = NULL;
@@ -302,7 +299,7 @@ static void gSPPointLightVertex_CBFD(SPVertex *_vtx, float * _vPos)
 	_vtx->HWLight = 0;
 }
 
-static void gSPBillboardVertex_default(uint32_t v, uint32_t i)
+static void gln64gSPBillboardVertex_default(uint32_t v, uint32_t i)
 {
    SPVertex *vtx0 = (SPVertex*)&OGL.triangles.vertices[i];
    SPVertex *vtx  = (SPVertex*)&OGL.triangles.vertices[v];
@@ -313,7 +310,7 @@ static void gSPBillboardVertex_default(uint32_t v, uint32_t i)
    vtx->w += vtx0->w;
 }
 
-void gSPClipVertex(uint32_t v)
+void gln64gSPClipVertex(uint32_t v)
 {
    SPVertex *vtx = &OGL.triangles.vertices[v];
    vtx->clip = 0;
@@ -324,14 +321,14 @@ void gSPClipVertex(uint32_t v)
    if (vtx->w < 0.01f)      vtx->clip |= CLIP_Z;
 }
 
-void gSPProcessVertex(uint32_t v)
+void gln64gSPProcessVertex(uint32_t v)
 {
    
    float intensity, r, g, b;
    SPVertex *vtx = (SPVertex*)&OGL.triangles.vertices[v];
 
    if (gSP.changed & CHANGED_MATRIX)
-      gSPCombineMatrices();
+      gln64gSPCombineMatrices();
 
    gSPTransformVertex( &vtx->x, gSP.matrix.combined );
 
@@ -345,7 +342,7 @@ void gSPProcessVertex(uint32_t v)
       gSPBillboardVertex(v, i);
    }
 
-   gSPClipVertex(v);
+   gln64gSPClipVertex(v);
 
    if (gSP.geometryMode & G_LIGHTING)
    {
@@ -392,7 +389,7 @@ void gSPProcessVertex(uint32_t v)
 		vtx->HWLight = 0;
 }
 
-void gSPLoadUcodeEx( uint32_t uc_start, uint32_t uc_dstart, uint16_t uc_dsize )
+void gln64gSPLoadUcodeEx( uint32_t uc_start, uint32_t uc_dstart, uint16_t uc_dsize )
 {
    MicrocodeInfo *ucode;
    __RSP.PCi = 0;
@@ -426,21 +423,21 @@ void gSPLoadUcodeEx( uint32_t uc_start, uint32_t uc_dstart, uint16_t uc_dsize )
    }
 }
 
-void gSPCombineMatrices(void)
+void gln64gSPCombineMatrices(void)
 {
    MultMatrix(gSP.matrix.projection, gSP.matrix.modelView[gSP.matrix.modelViewi], gSP.matrix.combined);
    gSP.changed &= ~CHANGED_MATRIX;
 }
 
-void gSPNoOp(void)
+void gln64gSPNoOp(void)
 {
-   gSPFlushTriangles();
+   gln64gSPFlushTriangles();
 #ifdef DEBUG
 	DebugMsg( DEBUG_HIGH | DEBUG_IGNORED, "gSPNoOp();\n" );
 #endif
 }
 
-void gSPMatrix( uint32_t matrix, uint8_t param )
+void gln64gSPMatrix( uint32_t matrix, uint8_t param )
 {
    float mtx[4][4];
    uint32_t address = RSP_SegmentToPhysical( matrix );
@@ -499,7 +496,7 @@ void gSPMatrix( uint32_t matrix, uint8_t param )
 #endif
 }
 
-void gSPDMAMatrix( uint32_t matrix, uint8_t index, uint8_t multiply )
+void gln64gSPDMAMatrix( uint32_t matrix, uint8_t index, uint8_t multiply )
 {
    float mtx[4][4];
    uint32_t address = gSP.DMAOffsets.mtx + RSP_SegmentToPhysical( matrix );
@@ -541,7 +538,7 @@ void gSPDMAMatrix( uint32_t matrix, uint8_t index, uint8_t multiply )
 #endif
 }
 
-void gSPViewport(uint32_t v)
+void gln64gSPViewport(uint32_t v)
 {
    uint32_t address = RSP_SegmentToPhysical( v );
 
@@ -577,7 +574,7 @@ void gSPViewport(uint32_t v)
 #endif
 }
 
-void gSPForceMatrix( uint32_t mptr )
+void gln64gSPForceMatrix( uint32_t mptr )
 {
    uint32_t address = RSP_SegmentToPhysical( mptr );
 
@@ -599,7 +596,7 @@ void gSPForceMatrix( uint32_t mptr )
 #endif
 }
 
-void gSPLight( uint32_t l, int32_t n )
+void gln64gSPLight( uint32_t l, int32_t n )
 {
    uint32_t addrByte;
    Light *light = NULL;
@@ -654,7 +651,7 @@ void gSPLight( uint32_t l, int32_t n )
 #endif
 }
 
-void gSPLightCBFD( uint32_t l, int32_t n )
+void gln64gSPLightCBFD( uint32_t l, int32_t n )
 {
    Light *light = NULL;
 	uint32_t addrByte = RSP_SegmentToPhysical( l );
@@ -705,7 +702,7 @@ void gSPLightCBFD( uint32_t l, int32_t n )
 #endif
 }
 
-void gSPLookAt( uint32_t _l, uint32_t _n )
+void gln64gSPLookAt( uint32_t _l, uint32_t _n )
 {
 	Light *light;
    uint32_t address = RSP_SegmentToPhysical(_l);
@@ -732,7 +729,7 @@ void gSPLookAt( uint32_t _l, uint32_t _n )
    Normalize(&gSP.lookat[_n].x);
 }
 
-void gSPVertex( uint32_t v, uint32_t n, uint32_t v0 )
+void gln64gSPVertex( uint32_t v, uint32_t n, uint32_t v0 )
 {
    unsigned int i;
    Vertex *vertex;
@@ -778,7 +775,7 @@ void gSPVertex( uint32_t v, uint32_t n, uint32_t v0 )
             vtx->a = vertex->color.a * 0.0039215689f;
          }
 
-         gSPProcessVertex(v);
+         gln64gSPProcessVertex(v);
          vertex++;
       }
    }
@@ -789,7 +786,7 @@ void gSPVertex( uint32_t v, uint32_t n, uint32_t v0 )
 
 }
 
-void gSPCIVertex( uint32_t v, uint32_t n, uint32_t v0 )
+void gln64gSPCIVertex( uint32_t v, uint32_t n, uint32_t v0 )
 {
    unsigned int i;
    PDVertex *vertex;
@@ -838,7 +835,7 @@ void gSPCIVertex( uint32_t v, uint32_t n, uint32_t v0 )
             vtx->a = color[0] * 0.0039215689f;
          }
 
-         gSPProcessVertex(v);
+         gln64gSPProcessVertex(v);
          vertex++;
       }
    }
@@ -849,7 +846,7 @@ void gSPCIVertex( uint32_t v, uint32_t n, uint32_t v0 )
 
 }
 
-void gSPDMAVertex( uint32_t v, uint32_t n, uint32_t v0 )
+void gln64gSPDMAVertex( uint32_t v, uint32_t n, uint32_t v0 )
 {
    unsigned int i;
    uint32_t address = gSP.DMAOffsets.vtx + RSP_SegmentToPhysical( v );
@@ -890,7 +887,7 @@ void gSPDMAVertex( uint32_t v, uint32_t n, uint32_t v0 )
             vtx->a = *(uint8_t*)&gfx_info.RDRAM[(address + 9) ^ 3] * 0.0039215689f;
          }
 
-         gSPProcessVertex(v);
+         gln64gSPProcessVertex(v);
          address += 10;
       }
    }
@@ -900,7 +897,7 @@ void gSPDMAVertex( uint32_t v, uint32_t n, uint32_t v0 )
 #endif
 }
 
-void gSPCBFDVertex( uint32_t a, uint32_t n, uint32_t v0 )
+void gln64gSPCBFDVertex( uint32_t a, uint32_t n, uint32_t v0 )
 {
 	Vertex *vertex;
 	uint32_t address = RSP_SegmentToPhysical(a);
@@ -934,7 +931,7 @@ void gSPCBFDVertex( uint32_t a, uint32_t n, uint32_t v0 )
 			vtx->g = vertex->color.g * 0.0039215689f;
 			vtx->b = vertex->color.b * 0.0039215689f;
 			vtx->a = vertex->color.a * 0.0039215689f;
-			gSPProcessVertex(v);
+			gln64gSPProcessVertex(v);
 			vertex++;
 		}
 	} else {
@@ -942,7 +939,7 @@ void gSPCBFDVertex( uint32_t a, uint32_t n, uint32_t v0 )
 	}
 }
 
-void gSPDisplayList( uint32_t dl )
+void gln64gSPDisplayList( uint32_t dl )
 {
    uint32_t address = RSP_SegmentToPhysical( dl );
 
@@ -978,7 +975,7 @@ void gSPDisplayList( uint32_t dl )
 	}
 }
 
-void gSPBranchList( uint32_t dl )
+void gln64gSPBranchList( uint32_t dl )
 {
    uint32_t address = RSP_SegmentToPhysical( dl );
 
@@ -1001,7 +998,7 @@ void gSPBranchList( uint32_t dl )
    __RSP.nextCmd = _SHIFTR( *(uint32_t*)&gfx_info.RDRAM[address], 24, 8 );
 }
 
-void gSPBranchLessZ( uint32_t branchdl, uint32_t vtx, float zval )
+void gln64gSPBranchLessZ( uint32_t branchdl, uint32_t vtx, float zval )
 {
    float zTest;
    SPVertex *v = NULL;
@@ -1029,7 +1026,7 @@ void gSPBranchLessZ( uint32_t branchdl, uint32_t vtx, float zval )
 #endif
 }
 
-void gSPDlistCount(uint32_t count, uint32_t v)
+void gln64gSPDlistCount(uint32_t count, uint32_t v)
 {
 	uint32_t address = RSP_SegmentToPhysical( v );
 	if (address == 0 || (address + 8) > RDRAMSize)
@@ -1060,7 +1057,7 @@ void gSPDlistCount(uint32_t count, uint32_t v)
 	__RSP.count = count + 1;
 }
 
-void gSPSetDMAOffsets( uint32_t mtxoffset, uint32_t vtxoffset )
+void gln64gSPSetDMAOffsets( uint32_t mtxoffset, uint32_t vtxoffset )
 {
    gSP.DMAOffsets.mtx = mtxoffset;
    gSP.DMAOffsets.vtx = vtxoffset;
@@ -1071,14 +1068,14 @@ void gSPSetDMAOffsets( uint32_t mtxoffset, uint32_t vtxoffset )
 #endif
 }
 
-void gSPSetDMATexOffset(uint32_t _addr)
+void gln64gSPSetDMATexOffset(uint32_t _addr)
 {
 	gSP.DMAOffsets.tex_offset = RSP_SegmentToPhysical(_addr);
 	gSP.DMAOffsets.tex_shift = 0;
 	gSP.DMAOffsets.tex_count = 0;
 }
 
-void gSPSetVertexColorBase( uint32_t base )
+void gln64gSPSetVertexColorBase( uint32_t base )
 {
    gSP.vertexColorBase = RSP_SegmentToPhysical( base );
 
@@ -1088,7 +1085,7 @@ void gSPSetVertexColorBase( uint32_t base )
 #endif
 }
 
-void gSPSetVertexNormaleBase( uint32_t base )
+void gln64gSPSetVertexNormaleBase( uint32_t base )
 {
 	gSP.vertexNormalBase = RSP_SegmentToPhysical( base );
 
@@ -1098,7 +1095,7 @@ void gSPSetVertexNormaleBase( uint32_t base )
 #endif
 }
 
-void gSPDMATriangles( uint32_t tris, uint32_t n )
+void gln64gSPDMATriangles( uint32_t tris, uint32_t n )
 {
    unsigned int i;
    int32_t v0, v1, v2;
@@ -1144,11 +1141,11 @@ void gSPDMATriangles( uint32_t tris, uint32_t n )
    OGL_DrawTriangles();
 }
 
-void gSP1Quadrangle( int32_t v0, int32_t v1, int32_t v2, int32_t v3)
+void gln64gSP1Quadrangle( int32_t v0, int32_t v1, int32_t v2, int32_t v3)
 {
-   gSPTriangle( v0, v1, v2);
-   gSPTriangle( v0, v2, v3);
-   gSPFlushTriangles();
+   gln64gSPTriangle( v0, v1, v2);
+   gln64gSPTriangle( v0, v2, v3);
+   gln64gSPFlushTriangles();
 
 #ifdef DEBUG
 		DebugMsg( DEBUG_HIGH | DEBUG_HANDLED | DEBUG_TRIANGLE, "gSP1Quadrangle( %i, %i, %i, %i );\n",
@@ -1156,7 +1153,7 @@ void gSP1Quadrangle( int32_t v0, int32_t v1, int32_t v2, int32_t v3)
 #endif
 }
 
-bool gSPCullVertices( uint32_t v0, uint32_t vn )
+bool gln64gSPCullVertices( uint32_t v0, uint32_t vn )
 {
    unsigned int i;
    uint32_t clip = 0;
@@ -1204,7 +1201,7 @@ static void _loadSpriteImage(const struct uSprite *_pSprite)
 	}
 }
 
-void gSPSprite2DBase( uint32_t _base )
+void gln64gSPSprite2DBase( uint32_t _base )
 {
 	float z, w, scaleX, scaleY;
 	uint32_t flipX, flipY;
@@ -1214,9 +1211,9 @@ void gSPSprite2DBase( uint32_t _base )
 
    if (pSprite->tlutPtr != 0)
    {
-      gDPSetTextureImage( 0, 2, 1, pSprite->tlutPtr );
-      gDPSetTile( 0, 2, 0, 256, 7, 0, 0, 0, 0, 0, 0, 0 );
-      gDPLoadTLUT( 7, 0, 0, 1020, 0 );
+      gln64gDPSetTextureImage( 0, 2, 1, pSprite->tlutPtr );
+      gln64gDPSetTile( 0, 2, 0, 256, 7, 0, 0, 0, 0, 0, 0, 0 );
+      gln64gDPLoadTLUT( 7, 0, 0, 1020, 0 );
 
       if (pSprite->imageFmt != G_IM_FMT_RGBA)
          gDP.otherMode.textureLUT = G_TT_RGBA16;
@@ -1226,7 +1223,7 @@ void gSPSprite2DBase( uint32_t _base )
       gDP.otherMode.textureLUT = G_TT_NONE;
 
    _loadSpriteImage(pSprite);
-   gSPTexture( 1.0f, 1.0f, 0, 0, true );
+   gln64gSPTexture( 1.0f, 1.0f, 0, 0, true );
    gDP.otherMode.texturePersp = 1;
 
    z = (gDP.otherMode.depthSource == G_ZS_PRIM) ? gDP.primDepth.z : gSP.viewport.nearz;
@@ -1338,9 +1335,9 @@ void gSPSprite2DBase( uint32_t _base )
    } while (__RSP.nextCmd == 0xBD || __RSP.nextCmd == 0xBE);
 }
 
-void gSPCullDisplayList( uint32_t v0, uint32_t vn )
+void gln64gSPCullDisplayList( uint32_t v0, uint32_t vn )
 {
-   if (gSPCullVertices( v0, vn ))
+   if (gln64gSPCullVertices( v0, vn ))
    {
       if (__RSP.PCi > 0)
          __RSP.PCi--;
@@ -1351,7 +1348,7 @@ void gSPCullDisplayList( uint32_t v0, uint32_t vn )
    }
 }
 
-void gSPPopMatrixN( uint32_t param, uint32_t num )
+void gln64gSPPopMatrixN( uint32_t param, uint32_t num )
 {
    if (gSP.matrix.modelViewi > num - 1)
    {
@@ -1361,7 +1358,7 @@ void gSPPopMatrixN( uint32_t param, uint32_t num )
    }
 }
 
-void gSPPopMatrix( uint32_t param )
+void gln64gSPPopMatrix( uint32_t param )
 {
    switch (param)
    {
@@ -1386,7 +1383,7 @@ void gSPPopMatrix( uint32_t param )
    }
 }
 
-void gSPSegment( int32_t seg, int32_t base )
+void gln64gSPSegment( int32_t seg, int32_t base )
 {
     gSP.segment[seg] = base;
 
@@ -1396,16 +1393,16 @@ void gSPSegment( int32_t seg, int32_t base )
 #endif
 }
 
-void gSPClipRatio( uint32_t r )
+void gln64gSPClipRatio( uint32_t r )
 {
 }
 
-void gSPInsertMatrix( uint32_t where, uint32_t num )
+void gln64gSPInsertMatrix( uint32_t where, uint32_t num )
 {
    float fraction, integer;
 
    if (gSP.changed & CHANGED_MATRIX)
-      gSPCombineMatrices();
+      gln64gSPCombineMatrices();
 
    if ((where & 0x3) || (where > 0x3C))
       return;
@@ -1444,7 +1441,7 @@ void gSPInsertMatrix( uint32_t where, uint32_t num )
    }
 }
 
-void gSPModifyVertex( uint32_t vtx, uint32_t where, uint32_t val )
+void gln64gSPModifyVertex( uint32_t vtx, uint32_t where, uint32_t val )
 {
    int32_t v = vtx;
    SPVertex *vtx0 = (SPVertex*)&OGL.triangles.vertices[v];
@@ -1483,7 +1480,7 @@ void gSPModifyVertex( uint32_t vtx, uint32_t where, uint32_t val )
    }
 }
 
-void gSPNumLights( int32_t n )
+void gln64gSPNumLights( int32_t n )
 {
    if (n <= 12)
    {
@@ -1502,7 +1499,7 @@ void gSPNumLights( int32_t n )
 #endif
 }
 
-void gSPLightColor( uint32_t lightNum, uint32_t packedColor )
+void gln64gSPLightColor( uint32_t lightNum, uint32_t packedColor )
 {
    lightNum--;
 
@@ -1520,7 +1517,7 @@ void gSPLightColor( uint32_t lightNum, uint32_t packedColor )
 #endif
 }
 
-void gSPFogFactor( int16_t fm, int16_t fo )
+void gln64gSPFogFactor( int16_t fm, int16_t fo )
 {
    gSP.fog.multiplier = fm;
    gSP.fog.offset     = fo;
@@ -1531,14 +1528,14 @@ void gSPFogFactor( int16_t fm, int16_t fo )
 #endif
 }
 
-void gSPPerspNormalize( uint16_t scale )
+void gln64gSPPerspNormalize( uint16_t scale )
 {
 #ifdef DEBUG
 		DebugMsg( DEBUG_HIGH | DEBUG_UNHANDLED, "gSPPerspNormalize( %i );\n", scale );
 #endif
 }
 
-void gSPCoordMod(uint32_t _w0, uint32_t _w1)
+void gln64gSPCoordMod(uint32_t _w0, uint32_t _w1)
 {
    uint32_t idx, pos;
 
@@ -1564,7 +1561,7 @@ void gSPCoordMod(uint32_t _w0, uint32_t _w1)
 	}
 }
 
-void gSPTexture( float sc, float tc, int32_t level, int32_t tile, int32_t on )
+void gln64gSPTexture( float sc, float tc, int32_t level, int32_t tile, int32_t on )
 {
    gSP.texture.on = on;
    if (on == 0)
@@ -1592,7 +1589,7 @@ void gSPTexture( float sc, float tc, int32_t level, int32_t tile, int32_t on )
 #endif
 }
 
-void gSPEndDisplayList(void)
+void gln64gSPEndDisplayList(void)
 {
    if (__RSP.PCi > 0)
       __RSP.PCi--;
@@ -1609,7 +1606,7 @@ void gSPEndDisplayList(void)
 #endif
 }
 
-void gSPGeometryMode( uint32_t clear, uint32_t set )
+void gln64gSPGeometryMode( uint32_t clear, uint32_t set )
 {
    gSP.geometryMode = (gSP.geometryMode & ~clear) | set;
    gSP.changed |= CHANGED_GEOMETRYMODE;
@@ -1639,7 +1636,7 @@ void gSPGeometryMode( uint32_t clear, uint32_t set )
 #endif
 }
 
-void gSPSetGeometryMode( uint32_t mode )
+void gln64gSPSetGeometryMode( uint32_t mode )
 {
    gSP.geometryMode |= mode;
    gSP.changed |= CHANGED_GEOMETRYMODE;
@@ -1659,7 +1656,7 @@ void gSPSetGeometryMode( uint32_t mode )
 #endif
 }
 
-void gSPClearGeometryMode( uint32_t mode )
+void gln64gSPClearGeometryMode( uint32_t mode )
 {
    gSP.geometryMode &= ~mode;
    gSP.changed |= CHANGED_GEOMETRYMODE;
@@ -1679,7 +1676,7 @@ void gSPClearGeometryMode( uint32_t mode )
 #endif
 }
 
-void gSPSetOtherMode_H(uint32_t _length, uint32_t _shift, uint32_t _data)
+void gln64gSPSetOtherMode_H(uint32_t _length, uint32_t _shift, uint32_t _data)
 {
 	const uint32_t mask = (((uint64_t)1 << _length) - 1) << _shift;
 	gDP.otherMode.h = (gDP.otherMode.h&(~mask)) | _data;
@@ -1688,7 +1685,7 @@ void gSPSetOtherMode_H(uint32_t _length, uint32_t _shift, uint32_t _data)
 		gDP.changed |= CHANGED_CYCLETYPE;
 }
 
-void gSPSetOtherMode_L(uint32_t _length, uint32_t _shift, uint32_t _data)
+void gln64gSPSetOtherMode_L(uint32_t _length, uint32_t _shift, uint32_t _data)
 {
 	const uint32_t mask = (((uint64_t)1 << _length) - 1) << _shift;
 	gDP.otherMode.l = (gDP.otherMode.l&(~mask)) | _data;
@@ -1697,7 +1694,7 @@ void gSPSetOtherMode_L(uint32_t _length, uint32_t _shift, uint32_t _data)
 		gDP.changed |= CHANGED_RENDERMODE;
 }
 
-void gSPLine3D( int32_t v0, int32_t v1, int32_t flag )
+void gln64gSPLine3D( int32_t v0, int32_t v1, int32_t flag )
 {
    OGL_DrawLine(v0, v1, 1.5f );
 
@@ -1706,7 +1703,7 @@ void gSPLine3D( int32_t v0, int32_t v1, int32_t flag )
 #endif
 }
 
-void gSPLineW3D( int32_t v0, int32_t v1, int32_t wd, int32_t flag )
+void gln64gSPLineW3D( int32_t v0, int32_t v1, int32_t wd, int32_t flag )
 {
    OGL_DrawLine(v0, v1, 1.5f + wd * 0.5f );
 #ifdef DEBUG
@@ -1874,7 +1871,7 @@ void ObjCoordinates2_new(struct ObjCoordinates *obj, const struct uObjScaleBg * 
    obj->w = 1.0f;
 }
 
-static void gSPDrawObjRect(const struct ObjCoordinates *_coords)
+static void gln64gSPDrawObjRect(const struct ObjCoordinates *_coords)
 {
    SPVertex *vtx0, *vtx1, *vtx2, *vtx3;
 	uint32_t v0 = 0, v1 = 1, v2 = 2, v3 = 3;
@@ -1911,7 +1908,7 @@ static void gSPDrawObjRect(const struct ObjCoordinates *_coords)
 	gDP.colorImage.height = (uint32_t)(max(gDP.colorImage.height, (uint32_t)gDP.scissor.lry));
 }
 
-void gSPBgRect1Cyc( uint32_t _bg )
+void gln64gSPBgRect1Cyc( uint32_t _bg )
 {
    struct ObjCoordinates objCoords;
 	const uint32_t address = RSP_SegmentToPhysical( _bg );
@@ -1928,14 +1925,14 @@ void gSPBgRect1Cyc( uint32_t _bg )
 
 	gDP.otherMode.cycleType = G_CYC_1CYCLE;
 	gDP.changed |= CHANGED_CYCLETYPE;
-	gSPTexture(1.0f, 1.0f, 0, 0, true);
+	gln64gSPTexture(1.0f, 1.0f, 0, 0, true);
 	gDP.otherMode.texturePersp = 1;
 
 	ObjCoordinates2_new(&objCoords, objScaleBg);
-	gSPDrawObjRect(&objCoords);
+	gln64gSPDrawObjRect(&objCoords);
 }
 
-void gSPBgRectCopy( uint32_t _bg )
+void gln64gSPBgRectCopy( uint32_t _bg )
 {
    struct ObjCoordinates objCoords;
 	const uint32_t address = RSP_SegmentToPhysical( _bg );
@@ -1948,14 +1945,14 @@ void gSPBgRectCopy( uint32_t _bg )
 	// See comment to gSPBgRect1Cyc
 #endif // GL_IMAGE_TEXTURES_SUPPORT
 
-	gSPTexture( 1.0f, 1.0f, 0, 0, true );
+	gln64gSPTexture( 1.0f, 1.0f, 0, 0, true );
 	gDP.otherMode.texturePersp = 1;
 
    ObjCoordinates2_new(&objCoords, objBg);
-	gSPDrawObjRect(&objCoords);
+	gln64gSPDrawObjRect(&objCoords);
 }
 
-void gSPObjLoadTxtr( uint32_t tx )
+void gln64gSPObjLoadTxtr( uint32_t tx )
 {
    uint32_t address = RSP_SegmentToPhysical( tx );
    uObjTxtr *objTxtr = (uObjTxtr*)&gfx_info.RDRAM[address];
@@ -1965,33 +1962,33 @@ void gSPObjLoadTxtr( uint32_t tx )
       switch (objTxtr->block.type)
       {
          case G_OBJLT_TXTRBLOCK:
-            gDPSetTextureImage( 0, 1, 0, objTxtr->block.image );
-            gDPSetTile( 0, 1, 0, objTxtr->block.tmem, 7, 0, 0, 0, 0, 0, 0, 0 );
-            gDPLoadBlock( 7, 0, 0, ((objTxtr->block.tsize + 1) << 3) - 1, objTxtr->block.tline );
+            gln64gDPSetTextureImage( 0, 1, 0, objTxtr->block.image );
+            gln64gDPSetTile( 0, 1, 0, objTxtr->block.tmem, 7, 0, 0, 0, 0, 0, 0, 0 );
+            gln64gDPLoadBlock( 7, 0, 0, ((objTxtr->block.tsize + 1) << 3) - 1, objTxtr->block.tline );
             break;
          case G_OBJLT_TXTRTILE:
-            gDPSetTextureImage( 0, 1, (objTxtr->tile.twidth + 1) << 1, objTxtr->tile.image );
-            gDPSetTile( 0, 1, (objTxtr->tile.twidth + 1) >> 2, objTxtr->tile.tmem, 7, 0, 0, 0, 0, 0, 0, 0 );
-            gDPLoadTile( 7, 0, 0, (((objTxtr->tile.twidth + 1) << 1) - 1) << 2, (((objTxtr->tile.theight + 1) >> 2) - 1) << 2 );
+            gln64gDPSetTextureImage( 0, 1, (objTxtr->tile.twidth + 1) << 1, objTxtr->tile.image );
+            gln64gDPSetTile( 0, 1, (objTxtr->tile.twidth + 1) >> 2, objTxtr->tile.tmem, 7, 0, 0, 0, 0, 0, 0, 0 );
+            gln64gDPLoadTile( 7, 0, 0, (((objTxtr->tile.twidth + 1) << 1) - 1) << 2, (((objTxtr->tile.theight + 1) >> 2) - 1) << 2 );
             break;
          case G_OBJLT_TLUT:
-            gDPSetTextureImage( 0, 2, 1, objTxtr->tlut.image );
-            gDPSetTile( 0, 2, 0, objTxtr->tlut.phead, 7, 0, 0, 0, 0, 0, 0, 0 );
-            gDPLoadTLUT( 7, 0, 0, objTxtr->tlut.pnum << 2, 0 );
+            gln64gDPSetTextureImage( 0, 2, 1, objTxtr->tlut.image );
+            gln64gDPSetTile( 0, 2, 0, objTxtr->tlut.phead, 7, 0, 0, 0, 0, 0, 0, 0 );
+            gln64gDPLoadTLUT( 7, 0, 0, objTxtr->tlut.pnum << 2, 0 );
             break;
       }
       gSP.status[objTxtr->block.sid >> 2] = (gSP.status[objTxtr->block.sid >> 2] & ~objTxtr->block.mask) | (objTxtr->block.flag & objTxtr->block.mask);
    }
 }
 
-static void gSPSetSpriteTile(const struct uObjSprite *_pObjSprite)
+static void gln64gSPSetSpriteTile(const struct uObjSprite *_pObjSprite)
 {
 	const uint32_t w = max(_pObjSprite->imageW >> 5, 1);
 	const uint32_t h = max(_pObjSprite->imageH >> 5, 1);
 
-	gDPSetTile( _pObjSprite->imageFmt, _pObjSprite->imageSiz, _pObjSprite->imageStride, _pObjSprite->imageAdrs, 0, _pObjSprite->imagePal, G_TX_CLAMP, G_TX_CLAMP, 0, 0, 0, 0 );
-	gDPSetTileSize( 0, 0, 0, (w - 1) << 2, (h - 1) << 2 );
-	gSPTexture( 1.0f, 1.0f, 0, 0, true );
+	gln64gDPSetTile( _pObjSprite->imageFmt, _pObjSprite->imageSiz, _pObjSprite->imageStride, _pObjSprite->imageAdrs, 0, _pObjSprite->imagePal, G_TX_CLAMP, G_TX_CLAMP, 0, 0, 0, 0 );
+	gln64gDPSetTileSize( 0, 0, 0, (w - 1) << 2, (h - 1) << 2 );
+	gln64gSPTexture( 1.0f, 1.0f, 0, 0, true );
 	gDP.otherMode.texturePersp = 1;
 }
 
@@ -2074,31 +2071,32 @@ struct FrameBuffer *pBuffer;
    }
 }
 
-void gSPObjRectangle(uint32_t _sp)
+void gln64gSPObjRectangle(uint32_t _sp)
 {
    struct ObjCoordinates objCoords;
 	const uint32_t address = RSP_SegmentToPhysical(_sp);
 	struct uObjSprite *objSprite = (struct uObjSprite*)&gfx_info.RDRAM[address];
-	gSPSetSpriteTile(objSprite);
+
+	gln64gSPSetSpriteTile(objSprite);
    ObjCoordinates_new(&objCoords, objSprite, false);
-	gSPDrawObjRect(&objCoords);
+	gln64gSPDrawObjRect(&objCoords);
 }
 
-void gSPObjRectangleR(uint32_t _sp)
+void gln64gSPObjRectangleR(uint32_t _sp)
 {
    struct ObjCoordinates objCoords;
    const uint32_t address = RSP_SegmentToPhysical(_sp);
    const struct uObjSprite *objSprite = (struct uObjSprite*)&gfx_info.RDRAM[address];
 
-   gSPSetSpriteTile(objSprite);
+   gln64gSPSetSpriteTile(objSprite);
    ObjCoordinates_new(&objCoords, objSprite, true);
 
    if (objSprite->imageFmt == G_IM_FMT_YUV && (config.generalEmulation.hacks & hack_Ogre64)) //Ogre Battle needs to copy YUV texture to frame buffer
       _drawYUVImageToFrameBuffer(&objCoords);
-   gSPDrawObjRect(&objCoords);
+   gln64gSPDrawObjRect(&objCoords);
 }
 
-void gSPObjSprite( uint32_t _sp )
+void gln64gSPObjSprite( uint32_t _sp )
 {
    SPVertex *vtx0, *vtx1, *vtx2, *vtx3;
    float uls, lrs, ult, lrt;
@@ -2108,7 +2106,8 @@ void gSPObjSprite( uint32_t _sp )
    struct ObjData data;
 	const uint32_t address = RSP_SegmentToPhysical( _sp );
 	struct uObjSprite *objSprite = (struct uObjSprite*)&gfx_info.RDRAM[address];
-	gSPSetSpriteTile(objSprite);
+
+	gln64gSPSetSpriteTile(objSprite);
 	ObjData_new(&data, objSprite);
 
 	ulx = data.X0;
@@ -2174,25 +2173,25 @@ void gSPObjSprite( uint32_t _sp )
 	gDP.colorImage.height = (uint32_t)(max( gDP.colorImage.height, (uint32_t)gDP.scissor.lry ));
 }
 
-void gSPObjLoadTxSprite( uint32_t txsp )
+void gln64gSPObjLoadTxSprite( uint32_t txsp )
 {
-   gSPObjLoadTxtr( txsp );
-   gSPObjSprite( txsp + sizeof( uObjTxtr ) );
+   gln64gSPObjLoadTxtr( txsp );
+   gln64gSPObjSprite( txsp + sizeof( uObjTxtr ) );
 }
 
-void gSPObjLoadTxRect(uint32_t txsp)
+void gln64gSPObjLoadTxRect(uint32_t txsp)
 {
-	gSPObjLoadTxtr(txsp);
-	gSPObjRectangle(txsp + sizeof(uObjTxtr));
+	gln64gSPObjLoadTxtr(txsp);
+	gln64gSPObjRectangle(txsp + sizeof(uObjTxtr));
 }
 
-void gSPObjLoadTxRectR( uint32_t txsp )
+void gln64gSPObjLoadTxRectR( uint32_t txsp )
 {
-	gSPObjLoadTxtr( txsp );
-	gSPObjRectangleR( txsp + sizeof( uObjTxtr ) );
+	gln64gSPObjLoadTxtr( txsp );
+	gln64gSPObjRectangleR( txsp + sizeof( uObjTxtr ) );
 }
 
-void gSPObjMatrix( uint32_t mtx )
+void gln64gSPObjMatrix( uint32_t mtx )
 {
    uint32_t address = RSP_SegmentToPhysical( mtx );
    uObjMtx *objMtx = (uObjMtx*)&gfx_info.RDRAM[address];
@@ -2207,7 +2206,7 @@ void gSPObjMatrix( uint32_t mtx )
    gSP.objMatrix.baseScaleY = _FIXED2FLOAT( objMtx->BaseScaleY, 10 );
 }
 
-void gSPObjSubMatrix( uint32_t mtx )
+void gln64gSPObjSubMatrix( uint32_t mtx )
 {
 	uint32_t address = RSP_SegmentToPhysical(mtx);
 	uObjSubMtx *objMtx = (uObjSubMtx*)&gfx_info.RDRAM[address];
@@ -2217,26 +2216,25 @@ void gSPObjSubMatrix( uint32_t mtx )
 	gSP.objMatrix.baseScaleY = _FIXED2FLOAT(objMtx->BaseScaleY, 10);
 }
 
-void gSPObjRendermode(uint32_t _mode)
+void gln64gSPObjRendermode(uint32_t _mode)
 {
 	gSP.objRendermode = _mode;
 }
 
-void (*gSPTransformVertex)(float vtx[4], float mtx[4][4]) =
-        gSPTransformVertex_default;
-void (*gSPLightVertex)(SPVertex * _vtx) = gSPLightVertex_default;
-void (*gSPPointLightVertex)(SPVertex *_vtx, float * _vPos) = gSPPointLightVertex_default;
-void (*gSPBillboardVertex)(uint32_t v, uint32_t i) = gSPBillboardVertex_default;
+void (*gSPTransformVertex)(float vtx[4], float mtx[4][4])  = gln64gSPTransformVertex_default;
+void (*gSPLightVertex)(SPVertex * _vtx)                    = gln64gSPLightVertex_default;
+void (*gSPPointLightVertex)(SPVertex *_vtx, float * _vPos) = gln64gSPPointLightVertex_default;
+void (*gSPBillboardVertex)(uint32_t v, uint32_t i)         = gln64gSPBillboardVertex_default;
 
 void gSPSetupFunctions(void)
 {
    if (GBI_GetCurrentMicrocodeType() != F3DEX2CBFD)
    {
-      gSPLightVertex = gSPLightVertex_default;
-      gSPPointLightVertex = gSPPointLightVertex_default;
+      gSPLightVertex      = gln64gSPLightVertex_default;
+      gSPPointLightVertex = gln64gSPPointLightVertex_default;
       return;
    }
 
-   gSPLightVertex = gSPLightVertex_CBFD;
-   gSPPointLightVertex = gSPPointLightVertex_CBFD;
+   gSPLightVertex      = gln64gSPLightVertex_CBFD;
+   gSPPointLightVertex = gln64gSPPointLightVertex_CBFD;
 }

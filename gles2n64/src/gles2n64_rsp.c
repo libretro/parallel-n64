@@ -69,7 +69,7 @@ void RSP_ProcessDList(void)
    gSP.matrix.modelViewi = 0;
    gSP.changed &= ~CHANGED_CPU_FB_WRITE;
    gSP.changed |= CHANGED_MATRIX;
-   gDPSetTexturePersp(G_TP_PERSP);
+   gln64gDPSetTexturePersp(G_TP_PERSP);
 
    for (i = 0; i < 4; i++)
       for (j = 0; j < 4; j++)
@@ -85,19 +85,19 @@ void RSP_ProcessDList(void)
    uc_dsize  = *(uint32_t*)&gfx_info.DMEM[0x0FDC];
 
    if ((uc_start != __RSP.uc_start) || (uc_dstart != __RSP.uc_dstart))
-      gSPLoadUcodeEx( uc_start, uc_dstart, uc_dsize );
+      gln64gSPLoadUcodeEx( uc_start, uc_dstart, uc_dsize );
 
-   gDPSetAlphaCompare(G_AC_NONE);
-   gDPSetDepthSource(G_ZS_PIXEL);
-   gDPSetRenderMode(0, 0);
-   gDPSetAlphaDither(G_AD_DISABLE);
-   gDPSetCombineKey(G_CK_NONE);
-   gDPSetTextureFilter(G_TF_POINT);
-   gDPSetTextureLUT(G_TT_NONE);
-   gDPSetTextureLOD(G_TL_TILE);
-   gDPSetTexturePersp(G_TP_PERSP);
-   gDPSetCycleType(G_CYC_1CYCLE);
-   gDPPipelineMode(G_PM_NPRIMITIVE);
+   gln64gDPSetAlphaCompare(G_AC_NONE);
+   gln64gDPSetDepthSource(G_ZS_PIXEL);
+   gln64gDPSetRenderMode(0, 0);
+   gln64gDPSetAlphaDither(G_AD_DISABLE);
+   gln64gDPSetCombineKey(G_CK_NONE);
+   gln64gDPSetTextureFilter(G_TF_POINT);
+   gln64gDPSetTextureLUT(G_TT_NONE);
+   gln64gDPSetTextureLOD(G_TL_TILE);
+   gln64gDPSetTexturePersp(G_TP_PERSP);
+   gln64gDPSetCycleType(G_CYC_1CYCLE);
+   gln64gDPPipelineMode(G_PM_NPRIMITIVE);
 
 #ifdef NEW
 	depthBufferList().setNotCleared();
@@ -151,7 +151,7 @@ void RSP_SetDefaultState(void)
 {
    unsigned i, j;
 
-	gSPTexture(1.0f, 1.0f, 0, 0, true);
+	gln64gSPTexture(1.0f, 1.0f, 0, 0, true);
    gDP.loadTile = &gDP.tiles[7];
    gSP.textureTile[0] = &gDP.tiles[0];
    gSP.textureTile[1] = &gDP.tiles[1];

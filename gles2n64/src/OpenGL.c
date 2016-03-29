@@ -1126,7 +1126,7 @@ void OGL_SwapBuffers(void)
 
    scProgramChanged = 0;
 	gDP.otherMode.l = 0;
-	gDPSetTextureLUT(G_TT_NONE);
+	gln64gDPSetTextureLUT(G_TT_NONE);
 	++__RSP.DList;
 }
 

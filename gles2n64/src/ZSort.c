@@ -243,7 +243,7 @@ void ZSort_XFMLight( uint32_t _w0, uint32_t _w1 )
 {
    uint32_t i;
    int mid = _SHIFTR(_w0, 0, 8);
-   gSPNumLights(1 + _SHIFTR(_w1, 12, 8));
+   gln64gSPNumLights(1 + _SHIFTR(_w1, 12, 8));
    uint32_t addr = -1024 + _SHIFTR(_w1, 0, 12);
 
    assert(mid == GZM_MMTX);
@@ -482,7 +482,7 @@ static void ZSort_SetTexture(void)
 	gSP.texture.on = 1;
 	gSP.texture.tile = 0;
 
-	gSPSetGeometryMode(0x0200);
+	gln64gSPSetGeometryMode(0x0200);
 }
 
 void ZSort_MoveMem( uint32_t _w0, uint32_t _w1 )

@@ -14,9 +14,9 @@ void L3D_Line3D( uint32_t w0, uint32_t w1 )
    uint32_t wd = _SHIFTR( w1, 0, 8 );
 
    if (wd == 0)
-      gSPLine3D( _SHIFTR( w1, 16, 8 ) / 10, _SHIFTR( w1, 8, 8 ) / 10, _SHIFTR( w1, 24, 8 ) );
+      gln64gSPLine3D( _SHIFTR( w1, 16, 8 ) / 10, _SHIFTR( w1, 8, 8 ) / 10, _SHIFTR( w1, 24, 8 ) );
    else
-      gSPLineW3D( _SHIFTR( w1, 16, 8 ) / 10, _SHIFTR( w1, 8, 8 ) / 10, wd, _SHIFTR( w1, 24, 8 ) );
+      gln64gSPLineW3D( _SHIFTR( w1, 16, 8 ) / 10, _SHIFTR( w1, 8, 8 ) / 10, wd, _SHIFTR( w1, 24, 8 ) );
 }
 
 void L3D_Init(void)

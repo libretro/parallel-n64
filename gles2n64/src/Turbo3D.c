@@ -43,13 +43,13 @@ void Turbo3D_LoadGlobState(uint32_t pgstate)
 	struct T3DGlobState *gstate = (struct T3DGlobState*)&gfx_info.RDRAM[addr];
 	const uint32_t w0 = gstate->othermode0;
 	const uint32_t w1 = gstate->othermode1;
-	gDPSetOtherMode( _SHIFTR( w0, 0, 24 ),	// mode0
+	gln64gDPSetOtherMode( _SHIFTR( w0, 0, 24 ),	// mode0
 					 w1 );					// mode1
 
 	for (s = 0; s < 16; ++s)
-		gSPSegment(s, gstate->segBases[s] & 0x00FFFFFF);
+		gln64gSPSegment(s, gstate->segBases[s] & 0x00FFFFFF);
 
-	gSPViewport(pgstate + 80);
+	gln64gSPViewport(pgstate + 80);
 
 	Turbo3D_ProcessRDP(gstate->rdpCmds);
 }
@@ -68,19 +68,20 @@ void Turbo3D_LoadObject(uint32_t pstate, uint32_t pvtx, uint32_t ptri)
 
 	const uint32_t w0   = ostate->othermode0;
 	const uint32_t w1   = ostate->othermode1;
-	gDPSetOtherMode( _SHIFTR( w0, 0, 24 ),	// mode0
+	gln64gDPSetOtherMode( _SHIFTR( w0, 0, 24 ),	// mode0
 					 w1 );					// mode1
 
-	gSPSetGeometryMode(ostate->renderState);
+	gln64gSPSetGeometryMode(ostate->renderState);
 
 	if ((ostate->flag&1) == 0) //load matrix
-		gSPForceMatrix(pstate + sizeof(struct T3DState));
+		gln64gSPForceMatrix(pstate + sizeof(struct T3DState));
 
-	gSPClearGeometryMode(G_LIGHTING);
-   gSPClearGeometryMode(G_FOG);
-	gSPSetGeometryMode(G_SHADING_SMOOTH);
+	gln64gSPClearGeometryMode(G_LIGHTING);
+   gln64gSPClearGeometryMode(G_FOG);
+	gln64gSPSetGeometryMode(G_SHADING_SMOOTH);
+  
 	if (pvtx != 0) //load vtx
-		gSPVertex(pvtx, ostate->vtxCount, ostate->vtxV0);
+		gln64gSPVertex(pvtx, ostate->vtxCount, ostate->vtxV0);
 
 	Turbo3D_ProcessRDP(ostate->rdpCmds);
 
@@ -93,7 +94,7 @@ void Turbo3D_LoadObject(uint32_t pstate, uint32_t pvtx, uint32_t ptri)
       {
 			struct T3DTriN * tri = (struct T3DTriN*)&gfx_info.RDRAM[addr];
 			addr += 4;
-			gSPTriangle(tri->v0, tri->v1, tri->v2);
+			gln64gSPTriangle(tri->v0, tri->v1, tri->v2);
 		}
       OGL_DrawTriangles();
 	}
