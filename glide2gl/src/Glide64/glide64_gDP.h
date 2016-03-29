@@ -92,9 +92,4 @@ static void glide64gDPLoadBlock( uint32_t tile, uint32_t ul_s, uint32_t ul_t, ui
    g_gdp.tile[tile].tl = ul_t + ((dxt*cnt)>>11);
 
    g_gdp.flags |= UPDATE_TEXTURE;
-
-#ifdef HAVE_HWFBE
-   if (fb_hwfbe_enabled)
-      setTBufTex(rdp.tiles[tile].t_mem, cnt);
-#endif
 }
