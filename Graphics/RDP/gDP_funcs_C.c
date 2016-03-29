@@ -21,7 +21,9 @@ void GDPSetScissorC(enum gdp_plugin_type plug_type, uint32_t mode,
          glide64gDPSetScissor(mode, ulx, uly, lrx, lry);
          break;
       case GDP_PLUGIN_GLN64:
+#ifndef GLIDEN64
          gln64gDPSetScissor(mode, ulx, uly, lrx, lry);
+#endif
          break;
    }
 }
