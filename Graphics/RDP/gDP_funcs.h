@@ -5,23 +5,11 @@
 
 #include "gDP_funcs_prot.h"
 
-enum gdp_plugin_type
-{
-   GDP_PLUGIN_GLIDE64 = 0,
-   GDP_PLUGIN_GLN64
-};
+#define gDPSetScissor(mode, ulx, uly, lrx, lry) GDPSetScissor(mode, ulx, uly, lrx, lry)
+#define gDPLoadBlock(tile, ul_s, ul_t, lr_s, lr_t) GDPLoadBlock(tile, ul_s, ul_t, lr_s, lr_t)
 
-#ifdef GDP_PLUGIN
-#define GDP_DEF_PLUGIN GDP_PLUGIN
-#else
-#define GDP_DEF_PLUGIN GDP_PLUGIN_GLIDE64
-#endif
-
-#define gDPSetScissor(mode, ulx, uly, lrx, lry) GDPSetScissor(GDP_DEF_PLUGIN, mode, ulx, uly, lrx, lry)
-#define gDPLoadBlock(tile, ul_s, ul_t, lr_s, lr_t) GDPLoadBlock(GDP_DEF_PLUGIN, tile, ul_s, ul_t, lr_s, lr_t)
-
-void GDPSetScissor(enum gdp_plugin_type plug_type, uint32_t mode, float ulx, float uly, float lrx, float lry );
-void GDPLoadBlock(enum gdp_plugin_type plug_type, uint32_t tile, uint32_t ul_s, uint32_t ul_t,
+void GDPSetScissor(uint32_t mode, float ulx, float uly, float lrx, float lry );
+void GDPLoadBlock(uint32_t tile, uint32_t ul_s, uint32_t ul_t,
       uint32_t lr_s, uint32_t dxt );
 
 #endif

@@ -1,4 +1,5 @@
 #include "gDP_funcs_C.h"
+#include "../plugin.h"
 
 /* Sets a scissoring box at the screen coordinates 
  *
@@ -12,18 +13,20 @@
  * lrx               - Screen's right edge coordinates (0.0~1023.75) 
  * lry               - Screen's bottom edge coordinates (0.0~1023.75) 
  * */
-void GDPSetScissorC(enum gdp_plugin_type plug_type, uint32_t mode,
+void GDPSetScissorC(uint32_t mode,
       float ulx, float uly, float lrx, float lry )
 {
-   switch (plug_type)
+   switch (gfx_plugin)
    {
-      case GDP_PLUGIN_GLIDE64:
+      case GFX_GLIDE64:
          glide64gDPSetScissor(mode, ulx, uly, lrx, lry);
          break;
-      case GDP_PLUGIN_GLN64:
+      case GFX_GLN64:
 #ifndef GLIDEN64
          gln64gDPSetScissor(mode, ulx, uly, lrx, lry);
 #endif
+         break;
+      default:
          break;
    }
 }
@@ -40,15 +43,15 @@ void GDPSetScissorC(enum gdp_plugin_type plug_type, uint32_t mode,
  * lr_s      - texture tile's lower-right s coordinate (10.2, 0.0~1023.75)
  * dxt        - amount of change in value of t per scan line (12-bit precision, 0~4095)
  */
-void GDPLoadBlockC(enum gdp_plugin_type plug_type, uint32_t tile, uint32_t ul_s, uint32_t ul_t,
+void GDPLoadBlockC(uint32_t tile, uint32_t ul_s, uint32_t ul_t,
       uint32_t lr_s, uint32_t dxt )
 {
-   switch (plug_type)
+   switch (gfx_plugin)
    {
-      case GDP_PLUGIN_GLIDE64:
+      case GFX_GLIDE64:
          glide64gDPLoadBlock(tile, ul_s, ul_t, lr_s, dxt);
          break;
-      case GDP_PLUGIN_GLN64:
+      case GFX_GLN64:
 #ifndef GLIDEN64
          gln64gDPLoadBlock(tile, ul_s, ul_t, lr_s, dxt);
 #endif

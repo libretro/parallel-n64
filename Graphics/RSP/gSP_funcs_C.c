@@ -1,13 +1,14 @@
 #include "gSP_funcs_C.h"
+#include "../plugin.h"
 
-void GSPCombineMatricesC(enum gsp_plugin_type plug_type)
+void GSPCombineMatricesC(void)
 {
-   switch (plug_type)
+   switch (gfx_plugin)
    {
-      case GSP_PLUGIN_GLIDE64:
+      case GFX_GLIDE64:
          glide64gSPCombineMatrices();
          break;
-      case GSP_PLUGIN_GLN64:
+      case GFX_GLN64:
 #ifndef GLIDEN64
          gln64gSPCombineMatrices();
 #endif
@@ -15,14 +16,14 @@ void GSPCombineMatricesC(enum gsp_plugin_type plug_type)
    }
 }
 
-void GSPClipVertexC(enum gsp_plugin_type plug_type, uint32_t v)
+void GSPClipVertexC(uint32_t v)
 {
-   switch (plug_type)
+   switch (gfx_plugin)
    {
-      case GSP_PLUGIN_GLIDE64:
+      case GFX_GLIDE64:
          glide64gSPClipVertex(v);
          break;
-      case GSP_PLUGIN_GLN64:
+      case GFX_GLN64:
 #ifndef GLIDEN64
          gln64gSPClipVertex(v);
 #endif
@@ -35,14 +36,14 @@ void GSPClipVertexC(enum gsp_plugin_type plug_type, uint32_t v)
  *
  * l             - The lookat structure address.
  */
-void GSPLookAtC(enum gsp_plugin_type plug_type, uint32_t l, uint32_t n)
+void GSPLookAtC(uint32_t l, uint32_t n)
 {
-   switch (plug_type)
+   switch (gfx_plugin)
    {
-      case GSP_PLUGIN_GLIDE64:
+      case GFX_GLIDE64:
          glide64gSPLookAt(l, n);
          break;
-      case GSP_PLUGIN_GLN64:
+      case GFX_GLN64:
 #ifndef GLIDEN64
          gln64gSPLookAt(l, n);
 #endif
@@ -55,14 +56,14 @@ void GSPLookAtC(enum gsp_plugin_type plug_type, uint32_t l, uint32_t n)
  * l             - The pointer to the light structure.
  * n             - The light number that is replaced (1~8)
  */
-void GSPLightC(enum gsp_plugin_type plug_type, uint32_t l, int32_t n)
+void GSPLightC(uint32_t l, int32_t n)
 {
-   switch (plug_type)
+   switch (gfx_plugin)
    {
-      case GSP_PLUGIN_GLIDE64:
+      case GFX_GLIDE64:
          glide64gSPLight(l, n);
          break;
-      case GSP_PLUGIN_GLN64:
+      case GFX_GLN64:
 #ifndef GLIDEN64
          gln64gSPLight(l, n);
 #endif
@@ -82,14 +83,14 @@ void GSPLightC(enum gsp_plugin_type plug_type, uint32_t l, int32_t n)
  *               (?? is ignored)
  * */
 
-void GSPLightColorC(enum gsp_plugin_type plug_type, uint32_t lightNum, uint32_t packedColor )
+void GSPLightColorC(uint32_t lightNum, uint32_t packedColor )
 {
-   switch (plug_type)
+   switch (gfx_plugin)
    {
-      case GSP_PLUGIN_GLIDE64:
+      case GFX_GLIDE64:
          glide64gSPLightColor(lightNum, packedColor);
          break;
-      case GSP_PLUGIN_GLN64:
+      case GFX_GLN64:
 #ifndef GLIDEN64
          gln64gSPLightColor(lightNum, packedColor);
 #endif
@@ -102,14 +103,14 @@ void GSPLightColorC(enum gsp_plugin_type plug_type, uint32_t lightNum, uint32_t 
  * v           - v is the segment address to the viewport
  *               structure "Vp".
  * */
-void GSPViewportC(enum gsp_plugin_type plug_type, uint32_t v)
+void GSPViewportC(uint32_t v)
 {
-   switch (plug_type)
+   switch (gfx_plugin)
    {
-      case GSP_PLUGIN_GLIDE64:
+      case GFX_GLIDE64:
          glide64gSPViewport(v);
          break;
-      case GSP_PLUGIN_GLN64:
+      case GFX_GLN64:
 #ifndef GLIDEN64
          gln64gSPViewport(v);
 #endif
@@ -117,14 +118,14 @@ void GSPViewportC(enum gsp_plugin_type plug_type, uint32_t v)
    }
 }
 
-void GSPForceMatrixC(enum gsp_plugin_type plug_type, uint32_t mptr)
+void GSPForceMatrixC(uint32_t mptr)
 {
-   switch (plug_type)
+   switch (gfx_plugin)
    {
-      case GSP_PLUGIN_GLIDE64:
+      case GFX_GLIDE64:
          glide64gSPForceMatrix(mptr);
          break;
-      case GSP_PLUGIN_GLN64:
+      case GFX_GLN64:
 #ifndef GLIDEN64
          gln64gSPForceMatrix(mptr);
 #endif
