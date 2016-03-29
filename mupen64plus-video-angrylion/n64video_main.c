@@ -22,30 +22,30 @@ extern UINT32 command_counter;
 
 int retro_return(bool just_flipping);
 
-EXPORT void CALL CaptureScreen ( char * Directory )
+void CaptureScreen ( char * Directory )
 {
     return;
 }
 
-EXPORT void CALL angrylionChangeWindow (void)
+void angrylionChangeWindow (void)
 {
 }
 
-EXPORT void CALL CloseDLL (void)
+void CloseDLL (void)
 {
     return;
 }
 
-EXPORT void CALL angrylionReadScreen2(void *dest, int *width, int *height, int front)
+void angrylionReadScreen2(void *dest, int *width, int *height, int front)
 {
 }
 
  
-EXPORT void CALL angrylionDrawScreen (void)
+void angrylionDrawScreen (void)
 {
 }
 
-EXPORT void CALL angrylionGetDllInfo(PLUGIN_INFO* PluginInfo)
+void angrylionGetDllInfo(PLUGIN_INFO* PluginInfo)
 {
     PluginInfo -> Version = 0x0103;
     PluginInfo -> Type  = 2;
@@ -56,22 +56,22 @@ EXPORT void CALL angrylionGetDllInfo(PLUGIN_INFO* PluginInfo)
     PluginInfo -> MemoryBswaped = true;
 }
 
-EXPORT void CALL angrylionSetRenderingCallback(void (*callback)(int))
+void angrylionSetRenderingCallback(void (*callback)(int))
 {
 }
 
-EXPORT int CALL angrylionInitiateGFX (GFX_INFO Gfx_Info)
+int angrylionInitiateGFX (GFX_INFO Gfx_Info)
 {
    return true;
 }
 
  
-EXPORT void CALL angrylionMoveScreen (int xpos, int ypos)
+void angrylionMoveScreen (int xpos, int ypos)
 {
 }
 
  
-EXPORT void CALL angrylionProcessDList(void)
+void angrylionProcessDList(void)
 {
     if (!ProcessDListShown)
     {
@@ -80,13 +80,13 @@ EXPORT void CALL angrylionProcessDList(void)
     }
 }
 
-EXPORT void CALL angrylionProcessRDPList(void)
+void angrylionProcessRDPList(void)
 {
     process_RDP_list();
     return;
 }
 
-EXPORT void CALL angrylionRomClosed (void)
+void angrylionRomClosed (void)
 {
     rdp_close();
 
@@ -96,7 +96,7 @@ EXPORT void CALL angrylionRomClosed (void)
 
 static m64p_handle l_ConfigAngrylion;
  
-EXPORT int CALL angrylionRomOpen (void)
+int angrylionRomOpen (void)
 {
    /* TODO/FIXME: For now just force it to 640x480.
     *
@@ -122,7 +122,7 @@ EXPORT int CALL angrylionRomOpen (void)
    return 1;
 }
 
-EXPORT void CALL angrylionUpdateScreen(void)
+void angrylionUpdateScreen(void)
 {
     static int counter;
 
@@ -140,7 +140,7 @@ EXPORT void CALL angrylionUpdateScreen(void)
     return;
 }
 
-EXPORT void CALL angrylionShowCFB (void)
+void angrylionShowCFB (void)
 {
     //MessageBox(NULL, "ShowCFB", NULL, MB_ICONWARNING);
     angrylionUpdateScreen();
@@ -148,27 +148,27 @@ EXPORT void CALL angrylionShowCFB (void)
 }
 
 
-EXPORT void CALL angrylionViStatusChanged (void)
+void angrylionViStatusChanged (void)
 {
 }
 
-EXPORT void CALL angrylionViWidthChanged (void)
+void angrylionViWidthChanged (void)
 {
 }
 
-EXPORT void CALL angrylionFBWrite(unsigned int addr, unsigned int size)
+void angrylionFBWrite(unsigned int addr, unsigned int size)
 {
 }
 
-EXPORT void CALL angrylionFBRead(unsigned int addr)
+void angrylionFBRead(unsigned int addr)
 {
 }
 
-EXPORT void CALL angrylionFBGetFrameBufferInfo(void *pinfo)
+void angrylionFBGetFrameBufferInfo(void *pinfo)
 {
 }
 
-EXPORT m64p_error CALL angrylionPluginGetVersion(m64p_plugin_type *PluginType, int *PluginVersion, int *APIVersion, const char **PluginNamePtr, int *Capabilities)
+m64p_error angrylionPluginGetVersion(m64p_plugin_type *PluginType, int *PluginVersion, int *APIVersion, const char **PluginNamePtr, int *Capabilities)
 {
    /* set version info */
    if (PluginType != NULL)
