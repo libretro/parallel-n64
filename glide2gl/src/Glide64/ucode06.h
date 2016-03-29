@@ -408,8 +408,13 @@ static void DrawImage (DRAWIMAGE *d)
          // LoadTile ()
          __RSP.w0 = ((int)g_gdp.tile[0].sh << 14) | ((int)g_gdp.tile[0].th << 2);
          __RSP.w1 = ((int)g_gdp.tile[0].sl << 14) | ((int)g_gdp.tile[0].tl << 2);
-         rdp_loadtile(__RSP.w0, __RSP.w1);
-
+         glide64gDPLoadTile(
+               (uint32_t)((__RSP.w1 >> 24) & 0x07),      /* tile */
+               (uint32_t)((__RSP.w0 >> 14) & 0x03FF),    /* ul_s */
+               (uint32_t)((__RSP.w0 >> 2 ) & 0x03FF),    /* ul_t */
+               (uint32_t)((__RSP.w1 >> 14) & 0x03FF),    /* lr_s */
+               (uint32_t)((__RSP.w1 >> 2 ) & 0x03FF)     /* lr_t */
+               );
          TexCache ();
          // **
 

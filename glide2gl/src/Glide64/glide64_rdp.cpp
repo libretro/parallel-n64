@@ -1039,86 +1039,13 @@ static void rdp_loadblock(uint32_t w0, uint32_t w1)
 
 static void rdp_loadtile(uint32_t w0, uint32_t w1)
 {
-   uint32_t tile, offs, height, width;
-   uint16_t ul_s, ul_t, lr_s, lr_t;
-   int line_n;
-   
-   if (rdp.skip_drawing)
-      return;
-
-   rdp.timg.set_by                 = 1; /* load tile */
-
-   tile                            = (uint32_t)((w1 >> 24) & 0x07);
-
-   rdp.addr[g_gdp.tile[tile].tmem] = g_gdp.ti_address;
-
-   ul_s = (uint16_t)((w0 >> 14) & 0x03FF);
-   ul_t = (uint16_t)((w0 >> 2 ) & 0x03FF);
-   lr_s = (uint16_t)((w1 >> 14) & 0x03FF);
-   lr_t = (uint16_t)((w1 >> 2 ) & 0x03FF);
-
-   if (lr_s < ul_s || lr_t < ul_t)
-      return;
-
-
-   if ((settings.hacks&hack_Tonic) && tile == 7)
-   {
-      g_gdp.tile[0].sh = ul_s;
-      g_gdp.tile[0].th = ul_t;
-      g_gdp.tile[0].sl = lr_s;
-      g_gdp.tile[0].tl = lr_t;
-   }
-
-   height = lr_t - ul_t + 1; // get height
-   width = lr_s - ul_s + 1;
-
-#ifdef TEXTURE_FILTER
-   LOAD_TILE_INFO &info = rdp.load_info[g_gdp.tile[tile].tmem];
-   info.tile_ul_s       = ul_s;
-   info.tile_ul_t       = ul_t;
-   info.tile_width      = (g_gdp.tile[tile].ms ? MIN((uint16_t)width,   1 << g_gdp.tile[tile].ms) : (uint16_t)width);
-   info.tile_height     = (g_gdp.tile[tile].mt ? MIN((uint16_t)height, 1 << g_gdp.tile[tile].mt) : (uint16_t)height);
-  
-   if (settings.hacks&hack_MK64) {
-      if (info.tile_width%2)
-         info.tile_width--;
-      if (info.tile_height%2)
-         info.tile_height--;
-   }
-   info.tex_width       = g_gdp.ti_width;
-   info.tex_size        = g_gdp.ti_size;
-#endif
-
-
-   line_n = g_gdp.ti_width << g_gdp.tile[tile].size >> 1;
-   offs   = ul_t * line_n;
-   offs  += ul_s << g_gdp.tile[tile].size >> 1;
-   offs  += g_gdp.ti_address;
-   if (offs >= BMASK)
-      return;
-
-   if (g_gdp.ti_size == G_IM_SIZ_32b)
-   {
-      LoadTile32b(tile, ul_s, ul_t, width, height);
-   }
-   else
-   {
-      uint8_t *dst, *end;
-      uint32_t wid_64;
-
-      // check if points to bad location
-      if (offs + line_n*height > BMASK)
-         height = (BMASK - offs) / line_n;
-      if (height == 0)
-         return;
-
-      wid_64 = g_gdp.tile[tile].line;
-      dst    = ((uint8_t*)g_gdp.tmem) + (g_gdp.tile[tile].tmem << 3);
-      end    = ((uint8_t*)g_gdp.tmem) + 4096 - (wid_64<<3);
-      loadTile((uint32_t *)gfx_info.RDRAM, (uint32_t *)dst, wid_64, height, line_n, offs, (uint32_t *)end);
-   }
-   //FRDP("loadtile: tile: %d, ul_s: %d, ul_t: %d, lr_s: %d, lr_t: %d\n", tile, ul_s, ul_t, lr_s, lr_t);
-
+   glide64gDPLoadTile(
+         (uint32_t)((w1 >> 24) & 0x07),      /* tile */
+         (uint32_t)((w0 >> 14) & 0x03FF),    /* ul_s */
+         (uint32_t)((w0 >> 2 ) & 0x03FF),    /* ul_t */
+         (uint32_t)((w1 >> 14) & 0x03FF),    /* lr_s */
+         (uint32_t)((w1 >> 2 ) & 0x03FF)     /* lr_t */
+         );
 }
 
 static void rdp_settile(uint32_t w0, uint32_t w1)
