@@ -432,7 +432,7 @@ static void uc2_movemem(uint32_t w0, uint32_t w1)
          uc6_obj_movemem(w0, w1);
          break;
       case F3DEX2_MV_VIEWPORT:
-         glide64gSPViewport( w1 );
+         gSPViewport( w1 );
          break;
       case G_MV_MATRIX:
          glide64gSPForceMatrix(w1);

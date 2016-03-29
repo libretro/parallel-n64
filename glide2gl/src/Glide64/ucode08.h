@@ -271,7 +271,7 @@ static void uc8_movemem(uint32_t w0, uint32_t w1)
    switch (_SHIFTR(w0, 0, 8))
    {
       case F3DCBFD_MV_VIEWPORT:
-         glide64gSPViewport(w1);
+         gSPViewport(w1);
          break;
 
       case F3DCBFD_MV_LIGHT:  // LIGHT

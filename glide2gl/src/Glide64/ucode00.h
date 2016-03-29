@@ -171,7 +171,7 @@ static void uc0_movemem(uint32_t w0, uint32_t w1)
    switch (_SHIFTR( w0, 16, 8))
    {
       case F3D_MV_VIEWPORT:
-         glide64gSPViewport( w1 );
+         gSPViewport( w1 );
          break;
       case G_MV_MATRIX_1:
          glide64gSPForceMatrix(w1);
