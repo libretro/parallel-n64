@@ -17,18 +17,6 @@ void MultMatrix( float m0[4][4], float m1[4][4], float dest[4][4]);
 
 void TransformVectorNormalize(float vec[3], float mtx[4][4]);
 
-static INLINE void Normalize(float v[3])
-{
-   float len = v[0]*v[0] + v[1]*v[1] + v[2]*v[2];
-   if (len != 0.0f)
-   {
-      len = sqrtf( len );
-      v[0] /= len;
-      v[1] /= len;
-      v[2] /= len;
-   }
-}
-
 static INLINE void CopyMatrix( float m0[4][4], float m1[4][4] )
 {
     memcpy( m0, m1, 16 * sizeof( float ) );

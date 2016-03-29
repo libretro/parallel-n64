@@ -47,18 +47,6 @@
 
 #include "../../Graphics/3dmath.h"
 
-void NormalizeVector(float *v)
-{
-   float len = v[0]*v[0] + v[1]*v[1] + v[2]*v[2];
-   if (len == 0.0f)
-      return;
-   len = sqrtf( len );
-   v[0] /= len;
-   v[1] /= len;
-   v[2] /= len;
-}
-
-
 void TransformVector(float *src, float *dst, float mat[4][4])
 {
    dst[0] = mat[0][0]*src[0] + mat[1][0]*src[1] + mat[2][0]*src[2];

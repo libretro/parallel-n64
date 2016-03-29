@@ -621,7 +621,7 @@ void gln64gSPLight( uint32_t l, int32_t n )
 		gSP.lights[n].y = light->y;
 		gSP.lights[n].z = light->z;
 
-		Normalize( &gSP.lights[n].x );
+		NormalizeVector( &gSP.lights[n].x );
 		addrShort = addrByte >> 1;
 		gSP.lights[n].posx = (float)(((short*)gfx_info.RDRAM)[(addrShort+4)^1]);
 		gSP.lights[n].posy = (float)(((short*)gfx_info.RDRAM)[(addrShort+5)^1]);
@@ -673,7 +673,7 @@ void gln64gSPLightCBFD( uint32_t l, int32_t n )
 		gSP.lights[n].y = light->y;
 		gSP.lights[n].z = light->z;
 
-		Normalize( &gSP.lights[n].x );
+		NormalizeVector( &gSP.lights[n].x );
 		addrShort = addrByte >> 1;
 		gSP.lights[n].posx = (float)(((int16_t*)gfx_info.RDRAM)[(addrShort+16)^1]);
 		gSP.lights[n].posy = (float)(((int16_t*)gfx_info.RDRAM)[(addrShort+17)^1]);
@@ -719,7 +719,7 @@ void gln64gSPLookAt( uint32_t _l, uint32_t _n )
 
    gSP.lookatEnable = (_n == 0) || (_n == 1 && (light->x != 0 || light->y != 0));
 
-   Normalize(&gSP.lookat[_n].x);
+   NormalizeVector(&gSP.lookat[_n].x);
 }
 
 void gln64gSPVertex( uint32_t v, uint32_t n, uint32_t v0 )
