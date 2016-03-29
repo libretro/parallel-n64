@@ -367,8 +367,6 @@ void RDP_TriShadeTxtrZ( uint32_t _w0, uint32_t _w1 )
 	gln64gDPTriShadeTxtrZ(_w0, _w1);
 }
 
-RDPInfo __RDP;
-
 void RDP_Init()
 {
 	// Initialize RDP commands to RDP_UNKNOWN

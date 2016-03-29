@@ -12,8 +12,6 @@
 #include "gSP.h"
 #include "RDP.h"
 
-RDPInfo __RDP;
-
 enum
 {
    gspTexRect = 0,
