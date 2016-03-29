@@ -6,6 +6,8 @@
 #include "Util.h"
 #include "TexLoad.h"
 
+#include "../../Graphics/RDP/gDP_funcs.h"
+
 //forward decls
 extern void RestoreScale(void);
 

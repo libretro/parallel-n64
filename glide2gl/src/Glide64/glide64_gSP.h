@@ -6,7 +6,7 @@
 #include "Combine.h"
 #include "GBI.h"
 #include "rdp.h"
-#include "gSP_funcs.h"
+#include "../../Graphics/RSP/gSP_funcs.h"
 
 typedef struct DRAWOBJECT_t
 {

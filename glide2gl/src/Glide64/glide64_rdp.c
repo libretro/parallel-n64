@@ -48,8 +48,8 @@
 #include "Glide64_UCode.h"
 #include "GlideExtensions.h"
 #include "../../libretro/libretro_private.h"
-#include "gDP_funcs.h"
-#include "gSP_funcs.h"
+#include "../../Graphics/RDP/gDP_funcs.h"
+#include "../../Graphics/RSP/gSP_funcs.h"
 
 /* angrylion's macro, helps to cut overflowed values. */
 #define SIGN16(x) (int16_t)(x)
