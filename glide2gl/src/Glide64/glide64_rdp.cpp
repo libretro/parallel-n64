@@ -1546,26 +1546,10 @@ static void rdp_setcolorimage(uint32_t w0, uint32_t w1)
 }
 };
 
-static void rsp_reserved0(uint32_t w0, uint32_t w1)
-{
-}
-
 static void rsp_uc5_reserved0(uint32_t w0, uint32_t w1)
 {
   ucode5_texshiftaddr  = RSP_SegmentToPhysical(w1);
   ucode5_texshiftcount = 0;
-}
-
-static void rsp_reserved1(uint32_t w0, uint32_t w1)
-{
-}
-
-static void rsp_reserved2(uint32_t w0, uint32_t w1)
-{
-}
-
-static void rsp_reserved3(uint32_t w0, uint32_t w1)
-{
 }
 
 /******************************************************************

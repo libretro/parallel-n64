@@ -218,11 +218,7 @@ static void rdphalf_1(uint32_t w0, uint32_t w1);
 static void rdphalf_2(uint32_t w0, uint32_t w1);
 static void rdphalf_cont(uint32_t w0, uint32_t w1);
 
-static void rsp_reserved0(uint32_t w0, uint32_t w1);
 static void rsp_uc5_reserved0(uint32_t w0, uint32_t w1);
-static void rsp_reserved1(uint32_t w0, uint32_t w1);
-static void rsp_reserved2(uint32_t w0, uint32_t w1);
-static void rsp_reserved3(uint32_t w0, uint32_t w1);
 
 static void ys_memrect(uint32_t w0, uint32_t w1);
 
@@ -359,9 +355,9 @@ static rdp_instr gfx_instruction[10][256] =
       // uCode 0 - RSP SW 2.0X
       // 00-3f
       // games: Super Mario 64, Tetrisphere, Demos
-      gdp_no_op,                     uc0_matrix,             rsp_reserved0,              F3D_MoveMem,
-      uc0_vertex,             rsp_reserved1,              uc0_displaylist,        rsp_reserved2,
-      rsp_reserved3,              uc6_sprite2d,           gdp_invalid,                      gdp_invalid,
+      gdp_no_op,                     uc0_matrix,             F3D_Reserved0,              F3D_MoveMem,
+      uc0_vertex,             F3D_Reserved1,              uc0_displaylist,        F3D_Reserved2,
+      F3D_Reserved3,              uc6_sprite2d,           gdp_invalid,                      gdp_invalid,
       gdp_invalid,                      gdp_invalid,                      gdp_invalid,                      gdp_invalid,        
       gdp_invalid,                      gdp_invalid,                      gdp_invalid,                      gdp_invalid,        
       gdp_invalid,                      gdp_invalid,                      gdp_invalid,                      gdp_invalid,        
@@ -432,9 +428,9 @@ static rdp_instr gfx_instruction[10][256] =
    // 00-3f
    // games: Mario Kart, Star Fox
    {
-      gdp_no_op,                     uc0_matrix,             rsp_reserved0,              F3D_MoveMem,
-      uc1_vertex,             rsp_reserved1,              uc0_displaylist,        rsp_reserved2,
-      rsp_reserved3,              uc6_sprite2d,           gdp_invalid,                      gdp_invalid,
+      gdp_no_op,                     uc0_matrix,             F3D_Reserved0,              F3D_MoveMem,
+      uc1_vertex,             F3D_Reserved1,              uc0_displaylist,        F3D_Reserved2,
+      F3D_Reserved3,              uc6_sprite2d,           gdp_invalid,                      gdp_invalid,
       gdp_invalid,                      gdp_invalid,                      gdp_invalid,                      gdp_invalid,        
       gdp_invalid,                      gdp_invalid,                      gdp_invalid,                      gdp_invalid,        
       gdp_invalid,                      gdp_invalid,                      gdp_invalid,                      gdp_invalid,        
@@ -582,9 +578,9 @@ static rdp_instr gfx_instruction[10][256] =
    // games: Wave Race
    // ** Added by Gonetz **
    {
-      gdp_no_op,                                 uc0_matrix,             rsp_reserved0,              F3D_MoveMem,
-      uc3_vertex,                             rsp_reserved1,              uc0_displaylist,        rsp_reserved2,
-      rsp_reserved3,              uc6_sprite2d,           gdp_invalid,                      gdp_invalid,
+      gdp_no_op,                                 uc0_matrix,             F3D_Reserved0,              F3D_MoveMem,
+      uc3_vertex,                             F3D_Reserved1,              uc0_displaylist,        F3D_Reserved2,
+      F3D_Reserved3,              uc6_sprite2d,           gdp_invalid,                      gdp_invalid,
       gdp_invalid,                      gdp_invalid,                      gdp_invalid,                      gdp_invalid,        
       gdp_invalid,                      gdp_invalid,                      gdp_invalid,                      gdp_invalid,        
       gdp_invalid,                      gdp_invalid,                      gdp_invalid,                      gdp_invalid,        
@@ -655,9 +651,9 @@ static rdp_instr gfx_instruction[10][256] =
       // uCode 4 - RSP SW 2.0D EXT
       // 00-3f
       // games: Star Wars: Shadows of the Empire
-      gdp_no_op,                     uc0_matrix,             rsp_reserved0,              F3D_MoveMem,
-      uc4_vertex,             rsp_reserved1,              uc0_displaylist,        rsp_reserved2,
-      rsp_reserved3,              uc6_sprite2d,           gdp_invalid,                      gdp_invalid,
+      gdp_no_op,                     uc0_matrix,             F3D_Reserved0,              F3D_MoveMem,
+      uc4_vertex,             F3D_Reserved1,              uc0_displaylist,        F3D_Reserved2,
+      F3D_Reserved3,              uc6_sprite2d,           gdp_invalid,                      gdp_invalid,
       gdp_invalid,                      gdp_invalid,                      gdp_invalid,                      gdp_invalid,        
       gdp_invalid,                      gdp_invalid,                      gdp_invalid,                      gdp_invalid,        
       gdp_invalid,                      gdp_invalid,                      gdp_invalid,                      gdp_invalid,        
@@ -730,7 +726,7 @@ static rdp_instr gfx_instruction[10][256] =
       // games: Diddy Kong Racing
       gdp_no_op,                     uc5_matrix,             rsp_uc5_reserved0,              F3D_MoveMem,
       uc5_vertex,                                     uc5_tridma,                            uc0_displaylist,                  uc5_dl_in_mem,
-      rsp_reserved3,              uc6_sprite2d,           gdp_invalid,                      gdp_invalid,
+      F3D_Reserved3,              uc6_sprite2d,           gdp_invalid,                      gdp_invalid,
       gdp_invalid,                      gdp_invalid,                      gdp_invalid,                      gdp_invalid,        
       gdp_invalid,                      gdp_invalid,                      gdp_invalid,                      gdp_invalid,        
       gdp_invalid,                      gdp_invalid,                      gdp_invalid,                      gdp_invalid,        
@@ -801,8 +797,8 @@ static rdp_instr gfx_instruction[10][256] =
    // games: Yoshi's Story
    {
       gdp_no_op,                     uc6_bg_1cyc,             uc6_bg_copy,              uc6_obj_rectangle,
-      uc6_obj_sprite,             uc6_obj_movemem,         uc0_displaylist,        rsp_reserved2,
-      rsp_reserved3,              gdp_invalid/*uc6_sprite2d*/,           gdp_invalid,                      gdp_invalid,
+      uc6_obj_sprite,             uc6_obj_movemem,         uc0_displaylist,        F3D_Reserved2,
+      F3D_Reserved3,              gdp_invalid/*uc6_sprite2d*/,           gdp_invalid,                      gdp_invalid,
       gdp_invalid,                      gdp_invalid,                      gdp_invalid,                      gdp_invalid,        
       gdp_invalid,                      gdp_invalid,                      gdp_invalid,                      gdp_invalid,        
       gdp_invalid,                      gdp_invalid,                      gdp_invalid,                      gdp_invalid,        
@@ -872,9 +868,9 @@ static rdp_instr gfx_instruction[10][256] =
    // games: Perfect Dark
    {
       // 00-3f
-      gdp_no_op,                                 uc0_matrix,                             rsp_reserved0,                  F3D_MoveMem,
-      uc7_vertex,                             rsp_reserved1,                  uc0_displaylist,                uc7_colorbase,
-      rsp_reserved3,                  gdp_invalid,                                  gdp_invalid,                                  gdp_invalid,
+      gdp_no_op,                                 uc0_matrix,                             F3D_Reserved0,                  F3D_MoveMem,
+      uc7_vertex,                             F3D_Reserved1,                  uc0_displaylist,                uc7_colorbase,
+      F3D_Reserved3,                  gdp_invalid,                                  gdp_invalid,                                  gdp_invalid,
       gdp_invalid,                                  gdp_invalid,                                  gdp_invalid,                                  gdp_invalid,
       gdp_invalid,                                  gdp_invalid,                                  gdp_invalid,                                  gdp_invalid,
       gdp_invalid,                                  gdp_invalid,                                  gdp_invalid,                                  gdp_invalid,

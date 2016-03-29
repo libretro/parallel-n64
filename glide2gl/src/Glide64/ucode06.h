@@ -405,7 +405,6 @@ static void DrawImage (DRAWIMAGE *d)
          g_gdp.tile[0].sl = tb_u+x_size-1;
          g_gdp.tile[0].tl = tb_v+y_size-1;
 
-         // LoadTile ()
          __RSP.w0 = ((int)g_gdp.tile[0].sh << 14) | ((int)g_gdp.tile[0].th << 2);
          __RSP.w1 = ((int)g_gdp.tile[0].sl << 14) | ((int)g_gdp.tile[0].tl << 2);
          glide64gDPLoadTile(
@@ -416,7 +415,6 @@ static void DrawImage (DRAWIMAGE *d)
                (uint32_t)((__RSP.w1 >> 2 ) & 0x03FF)     /* lr_t */
                );
          TexCache ();
-         // **
 
          ful_u = (float)nul_u - cb_u;
          flr_u = (float)nlr_u - cb_u;
