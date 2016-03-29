@@ -48,6 +48,7 @@
 #include "GlideExtensions.h"
 #include "../../libretro/libretro_private.h"
 #include "../../Graphics/GBI.h"
+#include "../../Graphics/HLE/Microcode/Fast3D.h"
 #include "../../Graphics/RDP/gDP_funcs.h"
 #include "../../Graphics/RSP/gSP_funcs.h"
 #include "../../Graphics/RDP/RDP_state.h"

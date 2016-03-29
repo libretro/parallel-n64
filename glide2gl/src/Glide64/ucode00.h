@@ -146,13 +146,6 @@ static void uc0_matrix(uint32_t w0, uint32_t w1)
    }
 }
 
-/* uc0:movemem - loads a structure with data */
-
-static void uc0_movemem(uint32_t w0, uint32_t w1)
-{
-   F3D_MoveMem(w0, w1);
-}
-
 /* uc0:displaylist - makes a call to another section of code */
 
 static void uc0_displaylist(uint32_t w0, uint32_t w1)
@@ -206,12 +199,6 @@ static void uc0_tri1_mischief(uint32_t w0, uint32_t w1)
    }
 
    cull_trianglefaces(v, 1, true, true, 0);
-}
-
-/* uc0:enddl - ends a call made by uc0:displaylist */
-static void uc0_enddl(uint32_t w0, uint32_t w1)
-{
-   gSPEndDisplayList();
 }
 
 static void uc0_culldl(uint32_t w0, uint32_t w1)

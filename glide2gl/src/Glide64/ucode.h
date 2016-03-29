@@ -243,11 +243,9 @@ static float set_sprite_combine_mode(void);
 //ucode 00
 static void uc0_vertex(uint32_t w0, uint32_t w1);
 static void uc0_matrix(uint32_t w0, uint32_t w1);
-static void uc0_movemem(uint32_t w0, uint32_t w1);
 static void uc0_displaylist(uint32_t w0, uint32_t w1);
 static void uc0_tri1(uint32_t w0, uint32_t w1);
 static void uc0_tri1_mischief(uint32_t w0, uint32_t w1);
-static void uc0_enddl(uint32_t w0, uint32_t w1);
 static void uc0_culldl(uint32_t w0, uint32_t w1);
 static void uc0_popmatrix(uint32_t w0, uint32_t w1);
 static void uc0_moveword(uint32_t w0, uint32_t w1);
@@ -361,7 +359,7 @@ static rdp_instr gfx_instruction[10][256] =
       // uCode 0 - RSP SW 2.0X
       // 00-3f
       // games: Super Mario 64, Tetrisphere, Demos
-      gdp_no_op,                     uc0_matrix,             rsp_reserved0,              uc0_movemem,
+      gdp_no_op,                     uc0_matrix,             rsp_reserved0,              F3D_MoveMem,
       uc0_vertex,             rsp_reserved1,              uc0_displaylist,        rsp_reserved2,
       rsp_reserved3,              uc6_sprite2d,           gdp_invalid,                      gdp_invalid,
       gdp_invalid,                      gdp_invalid,                      gdp_invalid,                      gdp_invalid,        
@@ -409,7 +407,7 @@ static rdp_instr gfx_instruction[10][256] =
       gdp_invalid,                      gdp_invalid,                      gdp_invalid,                      gdp_invalid,        
       gdp_invalid,                      uc0_tri4,           rdphalf_cont,           rdphalf_2,
       rdphalf_1,              uc0_line3d,             uc0_cleargeometrymode,  uc0_setgeometrymode,
-      uc0_enddl,              uc0_setothermode_l,     uc0_setothermode_h,     uc0_texture,
+      F3D_EndDL,              uc0_setothermode_l,     uc0_setothermode_h,     uc0_texture,
       uc0_moveword,           uc0_popmatrix,          uc0_culldl,             uc0_tri1,
       // c0-ff: RDP commands
       gdp_no_op,               gdp_invalid,                  gdp_invalid,                  gdp_invalid,    
@@ -434,7 +432,7 @@ static rdp_instr gfx_instruction[10][256] =
    // 00-3f
    // games: Mario Kart, Star Fox
    {
-      gdp_no_op,                     uc0_matrix,             rsp_reserved0,              uc0_movemem,
+      gdp_no_op,                     uc0_matrix,             rsp_reserved0,              F3D_MoveMem,
       uc1_vertex,             rsp_reserved1,              uc0_displaylist,        rsp_reserved2,
       rsp_reserved3,              uc6_sprite2d,           gdp_invalid,                      gdp_invalid,
       gdp_invalid,                      gdp_invalid,                      gdp_invalid,                      gdp_invalid,        
@@ -482,7 +480,7 @@ static rdp_instr gfx_instruction[10][256] =
       gdp_invalid,                      gdp_invalid,                      gdp_invalid,                      uc6_loaducode,        
       uc1_branch_z,           uc1_tri2,               uc2_modifyvtx,             rdphalf_2,
       uc1_rdphalf_1,          uc1_line3d,             uc0_cleargeometrymode,  uc0_setgeometrymode,
-      uc0_enddl,              uc0_setothermode_l,     uc0_setothermode_h,     uc0_texture,
+      F3D_EndDL,              uc0_setothermode_l,     uc0_setothermode_h,     uc0_texture,
       uc0_moveword,           uc0_popmatrix,          uc2_culldl,             uc1_tri1,
       // c0-ff: RDP commands
       gdp_no_op,               gdp_invalid,                  gdp_invalid,                  gdp_invalid,    
@@ -568,7 +566,7 @@ static rdp_instr gfx_instruction[10][256] =
       gdp_invalid,                  gdp_invalid,                  gdp_invalid,                  uc2_special3,
       uc2_special2,           uc2_dlist_cnt,          uc2_dma_io,             uc0_texture,
       uc2_pop_matrix,         uc2_geom_mode,          uc2_matrix,             uc2_moveword,
-      uc2_movemem,            uc2_load_ucode,         uc0_displaylist,        uc0_enddl,
+      uc2_movemem,            uc2_load_ucode,         uc0_displaylist,        F3D_EndDL,
       gdp_no_op,                 uc1_rdphalf_1,          uc0_setothermode_l,     uc0_setothermode_h,
       rdp_texrect,            rdp_texrect,            gdp_load_sync,           gdp_pipe_sync,
       gdp_tile_sync,           gdp_full_sync,           gdp_set_key_gb,         gdp_set_key_r,
@@ -584,7 +582,7 @@ static rdp_instr gfx_instruction[10][256] =
    // games: Wave Race
    // ** Added by Gonetz **
    {
-      gdp_no_op,                                 uc0_matrix,             rsp_reserved0,              uc0_movemem,
+      gdp_no_op,                                 uc0_matrix,             rsp_reserved0,              F3D_MoveMem,
       uc3_vertex,                             rsp_reserved1,              uc0_displaylist,        rsp_reserved2,
       rsp_reserved3,              uc6_sprite2d,           gdp_invalid,                      gdp_invalid,
       gdp_invalid,                      gdp_invalid,                      gdp_invalid,                      gdp_invalid,        
@@ -632,7 +630,7 @@ static rdp_instr gfx_instruction[10][256] =
       gdp_invalid,                      gdp_invalid,                      gdp_invalid,                      gdp_invalid,        
       gdp_invalid,                  uc3_tri2,               rdphalf_cont,       rdphalf_2,
       rdphalf_1,          uc3_quad3d,             uc0_cleargeometrymode,  uc0_setgeometrymode,
-      uc0_enddl,              uc0_setothermode_l,     uc0_setothermode_h,     uc0_texture,
+      F3D_EndDL,              uc0_setothermode_l,     uc0_setothermode_h,     uc0_texture,
       uc0_moveword,           uc0_popmatrix,          uc0_culldl,             uc3_tri1,
       // c0-ff: RDP commands
       gdp_no_op,               gdp_invalid,                  gdp_invalid,                  gdp_invalid,    
@@ -657,7 +655,7 @@ static rdp_instr gfx_instruction[10][256] =
       // uCode 4 - RSP SW 2.0D EXT
       // 00-3f
       // games: Star Wars: Shadows of the Empire
-      gdp_no_op,                     uc0_matrix,             rsp_reserved0,              uc0_movemem,
+      gdp_no_op,                     uc0_matrix,             rsp_reserved0,              F3D_MoveMem,
       uc4_vertex,             rsp_reserved1,              uc0_displaylist,        rsp_reserved2,
       rsp_reserved3,              uc6_sprite2d,           gdp_invalid,                      gdp_invalid,
       gdp_invalid,                      gdp_invalid,                      gdp_invalid,                      gdp_invalid,        
@@ -705,7 +703,7 @@ static rdp_instr gfx_instruction[10][256] =
       gdp_invalid,                      gdp_invalid,                      gdp_invalid,                      gdp_invalid,        
       gdp_invalid,                      uc0_tri4,                       rdphalf_cont,       rdphalf_2,
       rdphalf_1,          uc4_quad3d,             uc0_cleargeometrymode,  uc0_setgeometrymode,
-      uc0_enddl,              uc0_setothermode_l,     uc0_setothermode_h,     uc0_texture,
+      F3D_EndDL,              uc0_setothermode_l,     uc0_setothermode_h,     uc0_texture,
       uc0_moveword,           uc0_popmatrix,          uc0_culldl,             uc4_tri1,
       // c0-ff: RDP commands
       gdp_no_op,               gdp_invalid,                  gdp_invalid,                  gdp_invalid,    
@@ -730,7 +728,7 @@ static rdp_instr gfx_instruction[10][256] =
       // uCode 5 - RSP SW 2.0 Diddy
       // 00-3f
       // games: Diddy Kong Racing
-      gdp_no_op,                     uc5_matrix,             rsp_uc5_reserved0,              uc0_movemem,
+      gdp_no_op,                     uc5_matrix,             rsp_uc5_reserved0,              F3D_MoveMem,
       uc5_vertex,                                     uc5_tridma,                            uc0_displaylist,                  uc5_dl_in_mem,
       rsp_reserved3,              uc6_sprite2d,           gdp_invalid,                      gdp_invalid,
       gdp_invalid,                      gdp_invalid,                      gdp_invalid,                      gdp_invalid,        
@@ -778,7 +776,7 @@ static rdp_instr gfx_instruction[10][256] =
       gdp_invalid,                      gdp_invalid,                      gdp_invalid,                      gdp_invalid,        
       gdp_invalid,                      uc0_tri4,                   rdphalf_cont,               rdphalf_2,
       rdphalf_1,              uc0_line3d,             uc5_cleargeometrymode,  uc5_setgeometrymode,
-      uc0_enddl,              uc0_setothermode_l,     uc0_setothermode_h,     uc0_texture,
+      F3D_EndDL,              uc0_setothermode_l,     uc0_setothermode_h,     uc0_texture,
       uc5_moveword,           uc0_popmatrix,          uc0_culldl,             uc5_dma_offsets,
       // c0-ff: RDP commands
       gdp_no_op,               gdp_invalid,                  gdp_invalid,                  gdp_invalid,    
@@ -850,7 +848,7 @@ static rdp_instr gfx_instruction[10][256] =
       gdp_invalid,                      gdp_invalid,                      gdp_invalid,                      uc6_loaducode,        
       uc6_select_dl,              uc6_obj_rendermode,         uc6_obj_rectangle_r,            rdphalf_2,
       rdphalf_1,          uc1_line3d,             uc0_cleargeometrymode,  uc0_setgeometrymode,
-      uc0_enddl,              uc0_setothermode_l,     uc0_setothermode_h,     uc0_texture,
+      F3D_EndDL,              uc0_setothermode_l,     uc0_setothermode_h,     uc0_texture,
       uc0_moveword,           uc0_popmatrix,          uc2_culldl,             uc1_tri1,
       // c0-ff: RDP commands
       gdp_no_op,               uc6_obj_loadtxtr,       uc6_obj_ldtx_sprite,    uc6_obj_ldtx_rect,
@@ -874,7 +872,7 @@ static rdp_instr gfx_instruction[10][256] =
    // games: Perfect Dark
    {
       // 00-3f
-      gdp_no_op,                                 uc0_matrix,                             rsp_reserved0,                  uc0_movemem,
+      gdp_no_op,                                 uc0_matrix,                             rsp_reserved0,                  F3D_MoveMem,
       uc7_vertex,                             rsp_reserved1,                  uc0_displaylist,                uc7_colorbase,
       rsp_reserved3,                  gdp_invalid,                                  gdp_invalid,                                  gdp_invalid,
       gdp_invalid,                                  gdp_invalid,                                  gdp_invalid,                                  gdp_invalid,
@@ -927,7 +925,7 @@ static rdp_instr gfx_instruction[10][256] =
 
       gdp_invalid,                                  uc0_tri4,                               rdphalf_cont,           rdphalf_2,
       rdphalf_1,                      uc1_tri2,                               uc0_cleargeometrymode,  uc0_setgeometrymode,
-      uc0_enddl,                              uc0_setothermode_l,             uc0_setothermode_h,             uc0_texture,
+      F3D_EndDL,                              uc0_setothermode_l,             uc0_setothermode_h,             uc0_texture,
       uc0_moveword,                   uc0_popmatrix,                  uc0_culldl,                             uc0_tri1,
 
       // c0-ff: RDP commands mixed with uc2 commands
@@ -1017,7 +1015,7 @@ static rdp_instr gfx_instruction[10][256] =
       gdp_invalid,                                  gdp_invalid,                                  gdp_invalid,                                  uc2_special3,
       uc2_special2,                   uc2_dlist_cnt,                  uc2_dma_io,                             uc0_texture,
       uc2_pop_matrix,                 uc2_geom_mode,                  uc2_matrix,                             uc8_moveword,
-      uc8_movemem,                    uc2_load_ucode,                 uc0_displaylist,                uc0_enddl,
+      uc8_movemem,                    uc2_load_ucode,                 uc0_displaylist,                F3D_EndDL,
       gdp_no_op,                                 rdphalf_1,                      uc0_setothermode_l,             uc0_setothermode_h,
       rdp_texrect,            rdp_texrect,            gdp_load_sync,           gdp_pipe_sync,
       gdp_tile_sync,           gdp_full_sync,           gdp_set_key_gb,           gdp_set_key_r,
@@ -1080,7 +1078,7 @@ static rdp_instr gfx_instruction[10][256] =
       gdp_invalid,                      gdp_invalid,                      gdp_invalid,                      gdp_invalid,        
       gdp_invalid,                      gdp_invalid,                      gdp_invalid,                      gdp_invalid,        
       rdphalf_1,                  gdp_invalid,                      uc0_cleargeometrymode,      uc0_setgeometrymode,
-      uc0_enddl,                  uc0_setothermode_l,         uc0_setothermode_h,         uc0_texture,
+      F3D_EndDL,                  uc0_setothermode_l,         uc0_setothermode_h,         uc0_texture,
       uc0_moveword,               gdp_invalid,                      uc0_culldl,                 gdp_invalid,
       // c0-ff: RDP commands
       gdp_no_op,               gdp_invalid,                  gdp_invalid,                  gdp_invalid,    
@@ -1091,7 +1089,7 @@ static rdp_instr gfx_instruction[10][256] =
       uc9_mix,                uc9_fmlight,            uc9_light,              gdp_invalid,    
       uc9_mtxtrnsp,           uc9_mtxcat,             uc9_mult_mpmtx,         uc9_link_subdl,    
       uc9_set_subdl,          uc9_wait_signal,        uc9_send_signal,        uc0_moveword,    
-      uc9_movemem,            gdp_invalid,                  uc0_displaylist,        uc0_enddl,    
+      uc9_movemem,            gdp_invalid,                  uc0_displaylist,        F3D_EndDL,    
 
       gdp_invalid,                  gdp_invalid,                  uc0_setothermode_l,     uc0_setothermode_h,    
       rdp_texrect,            rdp_texrect,            gdp_load_sync,           gdp_pipe_sync,

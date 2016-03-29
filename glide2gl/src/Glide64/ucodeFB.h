@@ -498,7 +498,7 @@ static rdp_instr gfx_instruction_lite[9][256] =
       0,                      0,                      0,                      0,
       0,                      0,                      0,                      0,
       0,                      0,                      0,                      0,
-      uc0_enddl,              0,     					0,    					0,
+      F3D_EndDL,              0,     					0,    					0,
       fb_uc0_moveword,           0,          			uc0_culldl,             0,
       // c0-ff: RDP commands
       0,                      0,                      0,                      0,
@@ -571,7 +571,7 @@ static rdp_instr gfx_instruction_lite[9][256] =
       0,                      0,                      0,                      uc6_loaducode,
       uc1_branch_z,           0,               0,		   0,
       fb_rdphalf_1,          0,             0,  0,
-      uc0_enddl,              0,     0,     0,
+      F3D_EndDL,              0,     0,     0,
       fb_uc0_moveword,           0,          uc2_culldl,             0,
       // c0-ff: RDP commands
       0,                      0,                      0,                      0,
@@ -657,7 +657,7 @@ static rdp_instr gfx_instruction_lite[9][256] =
       0,                  0,                  0,                  0,
       0,			uc2_dlist_cnt,				0,					0,
       0,			0,			0,				fb_uc2_moveword,
-      fb_uc2_movemem,			uc2_load_ucode,			uc0_displaylist,	uc0_enddl,
+      fb_uc2_movemem,			uc2_load_ucode,			uc0_displaylist,	F3D_EndDL,
       0,					fb_rdphalf_1,			0, 		0,
       fb_rect,         fb_rect,         	  0,                  0,
       0,                  0,                  0,                  0,
@@ -721,7 +721,7 @@ static rdp_instr gfx_instruction_lite[9][256] =
       0,                      0,                      0,                      0,
       0,                  0,                  0,                  0,
       0,                  0,                  0,                  0,
-      uc0_enddl,              0,     0,     0,
+      F3D_EndDL,              0,     0,     0,
       fb_uc0_moveword,           0,          uc0_culldl,             0,
       // c0-ff: RDP commands
       0,                  0,                  0,                  0,
@@ -794,7 +794,7 @@ static rdp_instr gfx_instruction_lite[9][256] =
       0,                      0,                      0,                      0,
       0,                  0,                  0,                  0,
       0,                  0,                  0,                  0,
-      uc0_enddl,              0,     0,     0,
+      F3D_EndDL,              0,     0,     0,
       fb_uc0_moveword,           0,          uc0_culldl,             0,
       // c0-ff: RDP commands
       gdp_no_op,               0,                  0,                  0,
@@ -867,7 +867,7 @@ static rdp_instr gfx_instruction_lite[9][256] =
       0,                      0,                      0,                      0,
       0,                      0,                      0,                      0,
       0,                  	0,                  	0,                  	0,
-      uc0_enddl,              0,     					0,     					0,
+      F3D_EndDL,              0,     					0,     					0,
       fb_uc0_moveword,        0,          			uc0_culldl,             0,
       // c0-ff: RDP commands
       0,                  0,                  0,                  0,
@@ -939,7 +939,7 @@ static rdp_instr gfx_instruction_lite[9][256] =
       0,                      0,                      0,                      uc6_loaducode,
       uc6_select_dl,          0,         0,		0,
       0,                  0,                  0,                  0,
-      uc0_enddl,              0,     0,     0,
+      F3D_EndDL,              0,     0,     0,
       fb_uc0_moveword,           0,          uc2_culldl,             0,
       // c0-ff: RDP commands
       0,               fb_loadtxtr,       fb_loadtxtr,    fb_loadtxtr,
@@ -1009,7 +1009,7 @@ static rdp_instr gfx_instruction_lite[9][256] =
       0,                      0,                      0,                      0,
       0,           			0,               		0,		   				0,
       0,          			0,             			0,  					0,
-      uc0_enddl,              0,     					0,     					0,
+      F3D_EndDL,              0,     					0,     					0,
       fb_uc0_moveword,        0,          			uc0_culldl,             0,
       // c0-ff: RDP commands
       0,                      0,                      0,                      0,
@@ -1093,7 +1093,7 @@ static rdp_instr gfx_instruction_lite[9][256] =
       0,                  0,                  0,                  0,
       0,			uc2_dlist_cnt,				0,					0,
       0,			0,			0,				fb_uc2_moveword,
-      0,			uc2_load_ucode,			uc0_displaylist,	uc0_enddl,
+      0,			uc2_load_ucode,			uc0_displaylist,	F3D_EndDL,
       0,			0,			  0, 				  0,
       fb_rect,         fb_rect,         	  0,                  0,
       0,                  0,                  0,                  0,
