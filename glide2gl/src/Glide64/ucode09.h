@@ -41,6 +41,15 @@
 //
 //****************************************************************
 
+#define	GZM_USER0		0
+#define	GZM_USER1		2
+#define	GZM_MMTX		   4
+#define	GZM_PMTX		   6
+#define	GZM_MPMTX		8
+#define	GZM_OTHERMODE	10
+#define	GZM_VIEWPORT	12
+#define	GZF_LOAD		   0
+#define  GZF_SAVE       1
 
 typedef float M44[4][4];
 
@@ -562,67 +571,51 @@ static void uc9_movemem(uint32_t w0, uint32_t w1)
 
    switch (idx)
    {
-      case 0: //save/load
+      case GZF_LOAD:
          if (flag == 0)
          {
             int dmem_addr = (idx<<3) + ofs;
-            FRDP ("Load to DMEM. %08lx -> %08lx\n", addr, dmem_addr);
             memcpy(gfx_info.DMEM + dmem_addr, gfx_info.RDRAM + addr, len);
          }
          else
          {
             int dmem_addr = (idx<<3) + ofs;
-            FRDP ("Load from DMEM. %08lx -> %08lx\n", dmem_addr, addr);
             memcpy(gfx_info.RDRAM + addr, gfx_info.DMEM + dmem_addr, len);
          }
          break;
 
-      case 4:  // model matrix
-      case 6:  // projection matrix
-      case 8:  // combined matrix
+      case GZM_MMTX:
+      case GZM_PMTX:
+      case GZM_MPMTX:
          {
             DECLAREALIGN16VAR(m[4][4]);
             load_matrix(m, addr);
             switch (idx)
             {
-               case 4:  // model matrix
+               case GZM_MMTX:
                   modelview_load (m);
                   break;
-               case 6:  // projection matrix
+               case GZM_PMTX:
                   projection_load (m);
                   break;
-               case 8:  // projection matrix
+               case GZM_MPMTX:
                   LRDP("Combined load\n");
                   g_gdp.flags &= ~UPDATE_MULT_MAT;
                   memcpy (rdp.combined, m, 64);;
                   break;
             }
-#ifdef EXTREME_LOGGING
-            FRDP ("{%f,%f,%f,%f}\n", m[0][0], m[0][1], m[0][2], m[0][3]);
-            FRDP ("{%f,%f,%f,%f}\n", m[1][0], m[1][1], m[1][2], m[1][3]);
-            FRDP ("{%f,%f,%f,%f}\n", m[2][0], m[2][1], m[2][2], m[2][3]);
-            FRDP ("{%f,%f,%f,%f}\n", m[3][0], m[3][1], m[3][2], m[3][3]);
-            FRDP ("\nmodel\n{%f,%f,%f,%f}\n", rdp.model[0][0], rdp.model[0][1], rdp.model[0][2], rdp.model[0][3]);
-            FRDP ("{%f,%f,%f,%f}\n", rdp.model[1][0], rdp.model[1][1], rdp.model[1][2], rdp.model[1][3]);
-            FRDP ("{%f,%f,%f,%f}\n", rdp.model[2][0], rdp.model[2][1], rdp.model[2][2], rdp.model[2][3]);
-            FRDP ("{%f,%f,%f,%f}\n", rdp.model[3][0], rdp.model[3][1], rdp.model[3][2], rdp.model[3][3]);
-            FRDP ("\nproj\n{%f,%f,%f,%f}\n", rdp.proj[0][0], rdp.proj[0][1], rdp.proj[0][2], rdp.proj[0][3]);
-            FRDP ("{%f,%f,%f,%f}\n", rdp.proj[1][0], rdp.proj[1][1], rdp.proj[1][2], rdp.proj[1][3]);
-            FRDP ("{%f,%f,%f,%f}\n", rdp.proj[2][0], rdp.proj[2][1], rdp.proj[2][2], rdp.proj[2][3]);
-            FRDP ("{%f,%f,%f,%f}\n", rdp.proj[3][0], rdp.proj[3][1], rdp.proj[3][2], rdp.proj[3][3]);
-#endif
          }
          break;
 
-      case 10:
+      case GZM_OTHERMODE:
          LRDP("Othermode - IGNORED\n");
          break;
 
-      case 12:   // VIEWPORT
+      case GZM_VIEWPORT:
          {
             int16_t scale_x, scale_y, scale_z, trans_x, trans_y, trans_z;
-			uint32_t a;
-			TILE *tmp_tile;
+            uint32_t a;
+            TILE *tmp_tile;
 
             a = addr >> 1;
             scale_x = ((int16_t*)gfx_info.RDRAM)[(a+0)^1] >> 2;

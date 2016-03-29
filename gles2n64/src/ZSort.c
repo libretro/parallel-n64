@@ -494,12 +494,14 @@ void ZSort_MoveMem( uint32_t _w0, uint32_t _w1 )
    uint32_t addr = RSP_SegmentToPhysical(_w1);
    switch (idx)
    {
-
-      case GZF_LOAD: //save/load
-         if (flag == 0) {
+      case GZF_LOAD:
+         if (flag == 0)
+         {
             int dmem_addr = (idx<<3) + ofs;
             memcpy(gfx_info.DMEM + dmem_addr, gfx_info.RDRAM + addr, len);
-         } else {
+         }
+         else
+         {
             int dmem_addr = (idx<<3) + ofs;
             memcpy(gfx_info.RDRAM + addr, gfx_info.DMEM + dmem_addr, len);
          }
@@ -526,7 +528,7 @@ void ZSort_MoveMem( uint32_t _w0, uint32_t _w1 )
 #endif
          break;
 
-      case GZM_VIEWPORT:   // VIEWPORT
+      case GZM_VIEWPORT:
          {
             uint32_t a = addr >> 1;
             const float scale_x = _FIXED2FLOAT( *(int16_t*)&gfx_info.RDRAM[(a+0)^1], 2 );
