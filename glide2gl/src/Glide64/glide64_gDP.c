@@ -20,18 +20,6 @@ void glide64gDPSetScissor( uint32_t mode, float ulx, float uly, float lrx, float
    }
 }
 
-/*
-* Loads a texture image in a continguous block from DRAM to
-* on-chip texture memory (TMEM).
-*
-* The texture image is loaded into memory in a single transfer.
-*
-* tile      - Tile descriptor index 93-bit precision, 0~7).
-* ul_s      - texture tile's upper-left s coordinate (10.2, 0.0~1023.75)
-* ul_t      - texture tile's upper-left t coordinate (10.2, 0.0~1023.75)
-* lr_s      - texture tile's lower-right s coordinate (10.2, 0.0~1023.75)
-* dxt        - amount of change in value of t per scan line (12-bit precision, 0~4095)
-*/
 void glide64gDPLoadBlock( uint32_t tile, uint32_t ul_s, uint32_t ul_t,
       uint32_t lr_s, uint32_t dxt )
 {
@@ -68,12 +56,13 @@ void glide64gDPLoadBlock( uint32_t tile, uint32_t ul_s, uint32_t ul_t,
    g_gdp.tile[tile].th = ul_t;
    g_gdp.tile[tile].sl = lr_s;
 
-   rdp.timg.set_by = 0; // load block
+   rdp.timg.set_by = 0; /* load block */
 
-   // do a quick boundary check before copying to eliminate the possibility for exception
+   /* do a quick boundary check before copying 
+    * to eliminate the possibility for exception */
    if (ul_s >= 512)
    {
-      lr_s = 1; // 1 so that it doesn't die on memcpy
+      lr_s = 1; /* 1 so that it doesn't die on memcpy */
       ul_s = 511;
    }
    if (ul_s+lr_s > 512)
@@ -82,8 +71,10 @@ void glide64gDPLoadBlock( uint32_t tile, uint32_t ul_s, uint32_t ul_t,
    if (addr+(lr_s<<3) > BMASK+1)
       lr_s = (uint16_t)((BMASK-addr)>>3);
 
-   //angrylion's advice to use ul_s in texture image offset and cnt calculations.
-   //Helps to fix Vigilante 8 jpeg backgrounds and logos
+   /* angrylion's advice to use ul_s in texture image offset 
+    * and cnt calculations.
+    *
+    * Helps to fix Vigilante 8 JPEG backgrounds and logos */
    off = g_gdp.ti_address + (ul_s << g_gdp.tile[tile].size >> 1);
    dst = ((uint8_t*)g_gdp.tmem) + (g_gdp.tile[tile].tmem<<3);
    cnt = lr_s-ul_s+1;

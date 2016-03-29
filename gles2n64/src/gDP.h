@@ -281,7 +281,6 @@ void gDPSetTile(
     uint32_t cms, uint32_t maskt, uint32_t masks, uint32_t shiftt, uint32_t shifts );
 void gln64gDPSetTileSize( uint32_t tile, uint32_t uls, uint32_t ult, uint32_t lrs, uint32_t lrt );
 void gln64gDPLoadTile( uint32_t tile, uint32_t uls, uint32_t ult, uint32_t lrs, uint32_t lrt );
-void gln64gDPLoadBlock( uint32_t tile, uint32_t uls, uint32_t ult, uint32_t lrs, uint32_t dxt );
 void gln64gDPLoadTLUT( uint32_t tile, uint32_t uls, uint32_t ult, uint32_t lrs, uint32_t lrt );
 void gln64gDPSetScissor( uint32_t mode, float ulx, float uly, float lrx, float lry );
 void gln64gDPFillRectangle( int32_t ulx, int32_t uly, int32_t lrx, int32_t lry );

@@ -27,3 +27,31 @@ void GDPSetScissorC(enum gdp_plugin_type plug_type, uint32_t mode,
          break;
    }
 }
+
+/*
+ * Loads a texture image in a continguous block from DRAM to
+ * on-chip texture memory (TMEM).
+ *
+ * The texture image is loaded into memory in a single transfer.
+ *
+ * tile      - Tile descriptor index 93-bit precision, 0~7).
+ * ul_s      - texture tile's upper-left s coordinate (10.2, 0.0~1023.75)
+ * ul_t      - texture tile's upper-left t coordinate (10.2, 0.0~1023.75)
+ * lr_s      - texture tile's lower-right s coordinate (10.2, 0.0~1023.75)
+ * dxt        - amount of change in value of t per scan line (12-bit precision, 0~4095)
+ */
+void GDPLoadBlockC(enum gdp_plugin_type plug_type, uint32_t tile, uint32_t ul_s, uint32_t ul_t,
+      uint32_t lr_s, uint32_t dxt )
+{
+   switch (plug_type)
+   {
+      case GDP_PLUGIN_GLIDE64:
+         glide64gDPLoadBlock(tile, ul_s, ul_t, lr_s, dxt);
+         break;
+      case GDP_PLUGIN_GLN64:
+#ifndef GLIDEN64
+         gln64gDPLoadBlock(tile, ul_s, ul_t, lr_s, dxt);
+#endif
+         break;
+   }
+}
