@@ -79,7 +79,7 @@ void GSPLightColor(enum gsp_plugin_type plug_type, uint32_t lightNum, uint32_t p
    switch (plug_type)
    {
       case GSP_PLUGIN_GLIDE64:
-         gSPLightColor(lightNum, packedColor);
+         glide64gSPLightColor(lightNum, packedColor);
          break;
       case GSP_PLUGIN_GLN64:
          gln64gSPLightColor(lightNum, packedColor);

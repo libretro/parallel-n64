@@ -62,7 +62,7 @@ extern "C" {
 extern void (*gln64gSPLightVertex)(void *data);
 void gln64gSPSegment(int32_t seg, int32_t base);
 void gln64gSPClipVertex(uint32_t v);
-void gln64gSPLightColor( uint32_t lightNum, uint32_t packedColor );
+void gln64gSPLightColor(uint32_t lightNum, uint32_t packedColor);
 void gln64gSPLight(uint32_t l, int32_t n);
 void gln64gSPCombineMatrices(void);
 void gln64gSPLookAt(uint32_t l, uint32_t n);
