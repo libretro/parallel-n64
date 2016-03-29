@@ -50,6 +50,7 @@
 #include "../../libretro/libretro_private.h"
 #include "../../Graphics/RDP/gDP_funcs.h"
 #include "../../Graphics/RSP/gSP_funcs.h"
+#include "../../Graphics/RDP/RDP_state.h"
 #include "../../Graphics/RSP/RSP_state.h"
 
 /* angrylion's macro, helps to cut overflowed values. */
@@ -1999,10 +2000,6 @@ void DetectFrameBufferUsage(void)
  *    based on sources of ziggy's z64      *
  *******************************************/
 
-static uint32_t rdp_cmd_ptr = 0;
-static uint32_t rdp_cmd_cur = 0;
-static uint32_t rdp_cmd_data[0x1000];
-
 #define XSCALE(x) ((float)(x)/(1<<18))
 #define YSCALE(y) ((float)(y)/(1<<2))
 #define ZSCALE(z) ((g_gdp.other_modes.z_source_sel == 1) ? (float)(g_gdp.prim_color.z) : (float)((uint32_t)(z))/0xffff0000)
@@ -2382,42 +2379,42 @@ static void lle_triangle(uint32_t w0, uint32_t w1, int shade, int texture, int z
 
 static void rdp_trifill(uint32_t w0, uint32_t w1)
 {
-   rdp_triangle(w0, w1, 0, 0, 0, rdp_cmd_data + rdp_cmd_cur);
+   rdp_triangle(w0, w1, 0, 0, 0, __RDP.cmd_data + __RDP.cmd_cur);
 }
 
 static void rdp_trishade(uint32_t w0, uint32_t w1)
 {
-   rdp_triangle(w0, w1, 1, 0, 0, rdp_cmd_data + rdp_cmd_cur);
+   rdp_triangle(w0, w1, 1, 0, 0, __RDP.cmd_data + __RDP.cmd_cur);
 }
 
 static void rdp_tritxtr(uint32_t w0, uint32_t w1)
 {
-   rdp_triangle(w0, w1, 0, 1, 0, rdp_cmd_data + rdp_cmd_cur);
+   rdp_triangle(w0, w1, 0, 1, 0, __RDP.cmd_data + __RDP.cmd_cur);
 }
 
 static void rdp_trishadetxtr(uint32_t w0, uint32_t w1)
 {
-   rdp_triangle(w0, w1, 1, 1, 0, rdp_cmd_data + rdp_cmd_cur);
+   rdp_triangle(w0, w1, 1, 1, 0, __RDP.cmd_data + __RDP.cmd_cur);
 }
 
 static void rdp_trifillz(uint32_t w0, uint32_t w1)
 {
-   rdp_triangle(w0, w1, 0, 0, 1, rdp_cmd_data + rdp_cmd_cur);
+   rdp_triangle(w0, w1, 0, 0, 1, __RDP.cmd_data + __RDP.cmd_cur);
 }
 
 static void rdp_trishadez(uint32_t w0, uint32_t w1)
 {
-   rdp_triangle(w0, w1, 1, 0, 1, rdp_cmd_data + rdp_cmd_cur);
+   rdp_triangle(w0, w1, 1, 0, 1, __RDP.cmd_data + __RDP.cmd_cur);
 }
 
 static void rdp_tritxtrz(uint32_t w0, uint32_t w1)
 {
-   rdp_triangle(w0, w1, 0, 1, 1, rdp_cmd_data + rdp_cmd_cur);
+   rdp_triangle(w0, w1, 0, 1, 1, __RDP.cmd_data + __RDP.cmd_cur);
 }
 
 static void rdp_trishadetxtrz(uint32_t w0, uint32_t w1)
 {
-   rdp_triangle(w0, w1, 1, 1, 1, rdp_cmd_data + rdp_cmd_cur);
+   rdp_triangle(w0, w1, 1, 1, 1, __RDP.cmd_data + __RDP.cmd_cur);
 }
 
 
@@ -2519,14 +2516,14 @@ static void rdphalf_1(uint32_t w0, uint32_t w1)
    uint32_t cmd = __RSP.w1 >> 24;
    if (cmd >= G_TRI_FILL && cmd <= G_TRI_SHADE_TXTR_ZBUFF) //triangle command
    {
-      rdp_cmd_ptr = 0;
-      rdp_cmd_cur = 0;
+      __RDP.cmd_ptr = 0;
+      __RDP.cmd_cur = 0;
 
       do
       {
          uint32_t a;
 
-         rdp_cmd_data[rdp_cmd_ptr++] = __RSP.w1;
+         __RDP.cmd_data[__RDP.cmd_ptr++] = __RSP.w1;
 
          RSP_CheckDLCounter();
 
@@ -2542,10 +2539,10 @@ static void rdphalf_1(uint32_t w0, uint32_t w1)
 
       }while ((__RSP.w0 >> 24) != 0xb3);
 
-      rdp_cmd_data[rdp_cmd_ptr++] = __RSP.w1;
-      cmd                         = (rdp_cmd_data[rdp_cmd_cur] >> 24) & 0x3f;
-      __RSP.w0                    = rdp_cmd_data[rdp_cmd_cur+0];
-      __RSP.w1                    = rdp_cmd_data[rdp_cmd_cur+1];
+      __RDP.cmd_data[__RDP.cmd_ptr++] = __RSP.w1;
+      cmd                         = (__RDP.cmd_data[__RDP.cmd_cur] >> 24) & 0x3f;
+      __RSP.w0                    = __RDP.cmd_data[__RDP.cmd_cur+0];
+      __RSP.w1                    = __RDP.cmd_data[__RDP.cmd_cur+1];
       rdp_command_table[cmd](__RSP.w0, __RSP.w1);
    }
 }
@@ -2628,46 +2625,46 @@ extern "C" void glide64ProcessRDPList(void)
    // load command data
    for (i = 0; i < length; i += 4)
    {
-      rdp_cmd_data[rdp_cmd_ptr] = READ_RDP_DATA((*(uint32_t*)gfx_info.DPC_CURRENT_REG) + i);
-      rdp_cmd_ptr = (rdp_cmd_ptr + 1) & MAXCMD_MASK;
+      __RDP.cmd_data[__RDP.cmd_ptr] = READ_RDP_DATA((*(uint32_t*)gfx_info.DPC_CURRENT_REG) + i);
+      __RDP.cmd_ptr = (__RDP.cmd_ptr + 1) & MAXCMD_MASK;
    }
 
    __RSP.bLLE = true;
 
    /* Load command data */
-   while (rdp_cmd_cur != rdp_cmd_ptr)
+   while (__RDP.cmd_cur != __RDP.cmd_ptr)
    {
       uint32_t w0, w1;
-      uint32_t cmd = (rdp_cmd_data[rdp_cmd_cur] >> 24) & 0x3f;
+      uint32_t cmd = (__RDP.cmd_data[__RDP.cmd_cur] >> 24) & 0x3f;
 
-      if ((((rdp_cmd_ptr-rdp_cmd_cur)& MAXCMD_MASK) * 4) < rdp_command_length[cmd])
+      if ((((__RDP.cmd_ptr - __RDP.cmd_cur)& MAXCMD_MASK) * 4) < rdp_command_length[cmd])
       {
          set_zero = false;
          break;
       }
 
-      if (rdp_cmd_cur + rdp_command_length[cmd] / 4 > MAXCMD)
-         memcpy(rdp_cmd_data + MAXCMD, rdp_cmd_data,
-               rdp_command_length[cmd] - (MAXCMD - rdp_cmd_cur) * 4);
+      if (__RDP.cmd_cur + rdp_command_length[cmd] / 4 > MAXCMD)
+         memcpy(__RDP.cmd_data + MAXCMD, __RDP.cmd_data,
+               rdp_command_length[cmd] - (MAXCMD - __RDP.cmd_cur) * 4);
 
       /* execute the command */
-      __RSP.w0 = rdp_cmd_data[rdp_cmd_cur + 0];
-      __RSP.w1 = rdp_cmd_data[rdp_cmd_cur + 1];
-      rdp.cmd2 = rdp_cmd_data[rdp_cmd_cur + 2];
-      rdp.cmd3 = rdp_cmd_data[rdp_cmd_cur + 3];
+      __RSP.w0 = __RDP.cmd_data[__RDP.cmd_cur + 0];
+      __RSP.w1 = __RDP.cmd_data[__RDP.cmd_cur + 1];
+      rdp.cmd2 = __RDP.cmd_data[__RDP.cmd_cur + 2];
+      rdp.cmd3 = __RDP.cmd_data[__RDP.cmd_cur + 3];
 
       w0       = __RSP.w0;
       w1       = __RSP.w1;
 
       rdp_command_table[cmd](w0, w1);
 
-      rdp_cmd_cur = (rdp_cmd_cur + rdp_command_length[cmd] / 4) & MAXCMD_MASK;
+      __RDP.cmd_cur = (__RDP.cmd_cur + rdp_command_length[cmd] / 4) & MAXCMD_MASK;
    }
 
    if (set_zero)
    {
-      rdp_cmd_cur = 0;
-      rdp_cmd_ptr = 0;
+      __RDP.cmd_cur = 0;
+      __RDP.cmd_ptr = 0;
    }
 
    __RSP.bLLE = false;
