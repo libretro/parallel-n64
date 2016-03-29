@@ -185,17 +185,17 @@ int old_ucode = -1;
 
 void rdp_new(void)
 {
-   unsigned i, cpu;
-   cpu = 0;
-   rdp.vtx1 = (VERTEX*)calloc(256, sizeof(VERTEX));
-   rdp.vtx2 = (VERTEX*)calloc(256, sizeof(VERTEX));
-   rdp.vtx  = (VERTEX*)calloc(MAX_VTX, sizeof(VERTEX));
+   unsigned i;
+   unsigned      cpu = 0;
+   rdp.vtx1          = (VERTEX*)calloc(256, sizeof(VERTEX));
+   rdp.vtx2          = (VERTEX*)calloc(256, sizeof(VERTEX));
+   rdp.vtx           = (VERTEX*)calloc(MAX_VTX, sizeof(VERTEX));
    rdp.frame_buffers = (COLOR_IMAGE*)calloc(NUMTEXBUF+2, sizeof(COLOR_IMAGE));
 
-   rdp.vtxbuf = 0;
-   rdp.vtxbuf2 = 0;
-   rdp.vtx_buffer = 0;
-   rdp.n_global = 0;
+   rdp.vtxbuf        = 0;
+   rdp.vtxbuf2       = 0;
+   rdp.vtx_buffer    = 0;
+   rdp.n_global      = 0;
 
    for (i = 0; i < MAX_TMU; i++)
    {
