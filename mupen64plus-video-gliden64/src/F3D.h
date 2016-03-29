@@ -84,7 +84,7 @@ void F3D_MoveWord( uint32_t w0, uint32_t w1 );
 void F3D_Texture( uint32_t w0, uint32_t w1 );
 void F3D_SetOtherMode_H( uint32_t w0, uint32_t w1 );
 void F3D_SetOtherMode_L( uint32_t w0, uint32_t w1 );
-void F3D_EndDL( uint32_t w0, uint32_t w1 );
+extern "C" void F3D_EndDL( uint32_t w0, uint32_t w1 );
 void F3D_SetGeometryMode( uint32_t w0, uint32_t w1 );
 void F3D_ClearGeometryMode( uint32_t w0, uint32_t w1 );
 //void F3D_Line3D( uint32_t w0, uint32_t w1 );

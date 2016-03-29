@@ -581,18 +581,6 @@ static void glide64gSPModifyVertex( uint32_t vtx, uint32_t where, uint32_t val )
    }
 }
 
-static void glide64gSPEndDisplayList(void)
-{
-   if (__RSP.PCi > 0)
-      __RSP.PCi --;
-   else
-   {
-      //LRDP("RDP end\n");
-      // Halt execution here
-      __RSP.halt = 1;
-   }
-}
-
 static bool glide64gSPCullVertices( uint32_t v0, uint32_t vn )
 {
    unsigned i;
@@ -628,5 +616,5 @@ static bool glide64gSPCullVertices( uint32_t v0, uint32_t vn )
 static void glide64gSPCullDisplayList( uint32_t v0, uint32_t vn )
 {
 	if (glide64gSPCullVertices( v0, vn ))
-      glide64gSPEndDisplayList();
+      gSPEndDisplayList();
 }

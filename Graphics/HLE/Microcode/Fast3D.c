@@ -67,3 +67,8 @@ void F3D_Reserved2( uint32_t w0, uint32_t w1 )
 void F3D_Reserved3( uint32_t w0, uint32_t w1 )
 {
 }
+
+void F3D_EndDL( uint32_t w0, uint32_t w1 )
+{
+   gSPEndDisplayList();
+}

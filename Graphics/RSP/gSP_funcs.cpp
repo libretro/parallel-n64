@@ -118,3 +118,10 @@ void GSPForceMatrix(uint32_t mptr)
          break;
    }
 }
+
+extern "C" void GSPEndDisplayListC(void);
+
+void GSPEndDisplayList(void)
+{
+   GSPEndDisplayListC();
+}

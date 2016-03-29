@@ -16,6 +16,7 @@ extern "C" {
 #define gSPLightColor(l, c)  GSPLightColorC(l, c)
 #define gSPViewport(v)       GSPViewportC(v)
 #define gSPForceMatrix(mptr) GSPForceMatrixC(mptr)
+#define gSPEndDisplayList()  GSPEndDisplayListC()
 
 void GSPCombineMatricesC(void);
 void GSPClipVertexC(uint32_t v);
@@ -24,6 +25,7 @@ void GSPLightC(uint32_t l, int32_t n);
 void GSPLightColorC(uint32_t lightNum, uint32_t packedColor );
 void GSPViewportC(uint32_t v);
 void GSPForceMatrixC(uint32_t mptr);
+void GSPEndDisplayListC(void);
 
 #ifdef __cplusplus
 }

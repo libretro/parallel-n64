@@ -1331,7 +1331,7 @@ void gln64gSPSprite2DBase( uint32_t _base )
 void gln64gSPCullDisplayList( uint32_t v0, uint32_t vn )
 {
    if (gln64gSPCullVertices( v0, vn ))
-      gln64gSPEndDisplayList();
+      gSPEndDisplayList();
 }
 
 void gln64gSPPopMatrixN( uint32_t param, uint32_t num )
@@ -1573,14 +1573,6 @@ void gln64gSPTexture( float sc, float tc, int32_t level, int32_t tile, int32_t o
 	DebugMsg( DEBUG_HIGH | DEBUG_HANDLED | DEBUG_TEXTURE, "gSPTexture( %f, %f, %i, %i, %i );\n",
 		sc, tc, level, tile, on );
 #endif
-}
-
-void gln64gSPEndDisplayList(void)
-{
-   if (__RSP.PCi > 0)
-      __RSP.PCi--;
-   else
-      __RSP.halt = true;
 }
 
 void gln64gSPGeometryMode( uint32_t clear, uint32_t set )

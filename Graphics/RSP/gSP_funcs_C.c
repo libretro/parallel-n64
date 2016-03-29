@@ -1,5 +1,6 @@
 #include "gSP_funcs_C.h"
 #include "../plugin.h"
+#include "../RSP/RSP_state.h"
 
 void GSPCombineMatricesC(void)
 {
@@ -130,5 +131,16 @@ void GSPForceMatrixC(uint32_t mptr)
          gln64gSPForceMatrix(mptr);
 #endif
          break;
+   }
+}
+
+void GSPEndDisplayListC(void)
+{
+   if (__RSP.PCi > 0)
+      __RSP.PCi --;
+   else
+   {
+      /* Halt execution here */
+      __RSP.halt = 1;
    }
 }

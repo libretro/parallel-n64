@@ -211,7 +211,7 @@ static void uc0_tri1_mischief(uint32_t w0, uint32_t w1)
 /* uc0:enddl - ends a call made by uc0:displaylist */
 static void uc0_enddl(uint32_t w0, uint32_t w1)
 {
-   glide64gSPEndDisplayList();
+   gSPEndDisplayList();
 }
 
 static void uc0_culldl(uint32_t w0, uint32_t w1)

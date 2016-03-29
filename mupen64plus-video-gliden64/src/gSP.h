@@ -158,7 +158,6 @@ void gln64gSPLightColor( uint32_t lightNum, uint32_t packedColor );
 void gln64gSPFogFactor( int16_t fm, int16_t fo );
 void gln64gSPPerspNormalize( uint16_t scale );
 void gln64gSPTexture( float sc, float tc, int32_t level, int32_t tile, int32_t on );
-void gln64gSPEndDisplayList();
 void gln64gSPGeometryMode( uint32_t clear, uint32_t set );
 void gln64gSPSetGeometryMode( uint32_t mode );
 void gln64gSPClearGeometryMode( uint32_t mode );

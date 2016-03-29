@@ -147,11 +147,6 @@ void F3D_SetOtherMode_L( uint32_t w0, uint32_t w1 )
 	gln64gSPSetOtherMode_L(length, shift, w1);
 }
 
-void F3D_EndDL( uint32_t w0, uint32_t w1 )
-{
-	gln64gSPEndDisplayList();
-}
-
 void F3D_SetGeometryMode( uint32_t w0, uint32_t w1 )
 {
 	gln64gSPSetGeometryMode( w1 );

@@ -1260,23 +1260,6 @@ void gln64gSPTexture( float sc, float tc, int32_t level, int32_t tile, int32_t o
 #endif
 }
 
-void gln64gSPEndDisplayList(void)
-{
-	if (__RSP.PCi > 0)
-		--__RSP.PCi;
-	else
-	{
-#ifdef DEBUG
-		DebugMsg( DEBUG_DETAIL | DEBUG_HANDLED, "// End of display list, halting execution\n" );
-#endif
-		__RSP.halt = true;
-	}
-
-#ifdef DEBUG
-	DebugMsg( DEBUG_HIGH | DEBUG_HANDLED, "gSPEndDisplayList();\n\n" );
-#endif
-}
-
 void gln64gSPGeometryMode( uint32_t clear, uint32_t set )
 {
 	gSP.geometryMode = (gSP.geometryMode & ~clear) | set;
