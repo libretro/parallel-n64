@@ -579,7 +579,7 @@ static INLINE uint32_t GLN64_READ_RDP_DATA(uint32_t address)
    return gfx_info.RDRAM[address>>2];
 }
 
-EXPORT void CALL gln64ProcessRDPList(void)
+void gln64ProcessRDPList(void)
 {
    uint32_t i;
    bool setZero = true;
