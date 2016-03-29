@@ -8,6 +8,7 @@ void GSPCombineMatrices(enum gsp_plugin_type plug_type)
          glide64gSPCombineMatrices();
          break;
       case GSP_PLUGIN_GLN64:
+         gln64gSPCombineMatrices();
          break;
    }
 }
@@ -20,6 +21,7 @@ void GSPClipVertex(enum gsp_plugin_type plug_type, uint32_t v)
          glide64gSPClipVertex(v);
          break;
       case GSP_PLUGIN_GLN64:
+         gln64gSPClipVertex(v);
          break;
    }
 }
@@ -32,6 +34,7 @@ void GSPLookAt(enum gsp_plugin_type plug_type, uint32_t l, uint32_t n)
          glide64gSPLookAt(l, n);
          break;
       case GSP_PLUGIN_GLN64:
+         gln64gSPLookAt(l, n);
          break;
    }
 }
@@ -44,6 +47,7 @@ void GSPLight(enum gsp_plugin_type plug_type, uint32_t l, int32_t n)
          glide64gSPLight(l, n);
          break;
       case GSP_PLUGIN_GLN64:
+         gln64gSPLight(l, n);
          break;
    }
 }
@@ -56,6 +60,7 @@ void GSPLightColor(enum gsp_plugin_type plug_type, uint32_t lightNum, uint32_t p
          gSPLightColor(lightNum, packedColor);
          break;
       case GSP_PLUGIN_GLN64:
+         gln64gSPLightColor(lightNum, packedColor);
          break;
    }
 }

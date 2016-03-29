@@ -20,6 +20,9 @@ void GDPSetScissor(enum gdp_plugin_type plug_type, uint32_t mode, float ulx, flo
 /* Glide64 prototypes */
 void glide64gDPSetScissor( uint32_t mode, float ulx, float uly, float lrx, float lry );
 
+/* GLN64 prototypes */
+void gln64gDPSetScissor( uint32_t mode, float ulx, float uly, float lrx, float lry );
+
 #ifdef __cplusplus
 }
 #endif
