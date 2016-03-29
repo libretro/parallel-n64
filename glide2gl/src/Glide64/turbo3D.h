@@ -40,8 +40,7 @@
 // Created by Gonetz, 2008
 //
 //****************************************************************
-#include "GBI.h"
-
+#include "../../Graphics/GBI.h"
 #include "../../Graphics/HLE/Microcode/turbo3d.h"
 
 /******************Turbo3D microcode*************************/

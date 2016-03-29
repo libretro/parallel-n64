@@ -2,7 +2,7 @@
 
 #include <retro_inline.h>
 
-#include "GBI.h"
+#include "../../../Graphics/GBI.h"
 #include "Util.h"
 #include "TexLoad.h"
 

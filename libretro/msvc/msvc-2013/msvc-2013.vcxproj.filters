@@ -216,6 +216,9 @@
     <ClCompile Include="..\..\..\Graphics\plugins.c">
       <Filter>Source Files\Graphics</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\Graphics\HLE\Microcode\Fast3D.c">
+      <Filter>Source Files\Graphics\HLE\Microcode</Filter>
+    </ClCompile>
     <ClCompile Include="..\..\..\Graphics\RDP\RDP_state.c">
       <Filter>Source Files\Graphics\RDP</Filter>
     </ClCompile>

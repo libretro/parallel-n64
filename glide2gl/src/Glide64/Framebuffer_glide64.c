@@ -45,7 +45,7 @@
 
 #include <math.h>
 #include "Gfx_1.3.h"
-#include "GBI.h"
+#include "../../../Graphics/GBI.h"
 #include "Framebuffer_glide64.h"
 #include "TexCache.h"
 #include "../Glitch64/glide.h"

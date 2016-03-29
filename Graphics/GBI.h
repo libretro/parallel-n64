@@ -20,6 +20,7 @@ extern "C" {
 #define F3DCBFD     11
 #define NONE        12
 
+#define F3D_MV_VIEWPORT         0x80
 #define F3DCBFD_MV_VIEWPORT     8
 #define F3DCBFD_MV_LIGHT        10
 #define F3DCBFD_MV_NORMAL       14

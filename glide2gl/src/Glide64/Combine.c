@@ -40,7 +40,7 @@
 #include "Gfx_1.3.h"
 #include "Util.h"
 #include "Combine.h"
-#include "GBI.h"
+#include "../../../Graphics/GBI.h"
 
 #define HAVE_ASSUME_COMBINE_EXT
 

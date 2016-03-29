@@ -42,7 +42,7 @@
 #include "TexLoad.h"
 #include "Combine.h"
 #include "Util.h"
-#include "GBI.h"
+#include "../../../Graphics/GBI.h"
 #include "libretro.h"
 #include "GlideExtensions.h"
 

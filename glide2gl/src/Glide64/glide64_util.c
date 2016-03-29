@@ -45,7 +45,7 @@
 #include "3dmath.h"
 #include "TexCache.h"
 #include "Framebuffer_glide64.h"
-#include "GBI.h"
+#include "../../../Graphics/GBI.h"
 
 extern int deltaZ;
 extern VERTEX **org_vtx;

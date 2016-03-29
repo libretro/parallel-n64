@@ -2,8 +2,8 @@
 
 #include "../Glitch64/glide.h"
 #include "Combine.h"
-#include "GBI.h"
 #include "rdp.h"
+#include "../../Graphics/GBI.h"
 #include "../../Graphics/RSP/gSP_funcs.h"
 #include "../../Graphics/RSP/RSP_state.h"
 

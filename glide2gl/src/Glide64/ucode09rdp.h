@@ -40,7 +40,7 @@
 // December 2008 Created by Gonetz (Gonetz@ngs.ru)
 //
 //****************************************************************
-#include "GBI.h"
+#include "../../../Graphics/GBI.h"
 
 void uc9_rpdcmd(uint32_t w0, uint32_t w1)
 {
