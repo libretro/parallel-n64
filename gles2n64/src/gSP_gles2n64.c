@@ -401,13 +401,7 @@ void gln64gSPLoadUcodeEx( uint32_t uc_start, uint32_t uc_dstart, uint16_t uc_dsi
    gSP.status[0] = gSP.status[1] = gSP.status[2] = gSP.status[3] = 0;
 
    if ((((uc_start & 0x1FFFFFFF) + 4096) > RDRAMSize) || (((uc_dstart & 0x1FFFFFFF) + uc_dsize) > RDRAMSize))
-   {
-#ifdef DEBUG
-      DebugMsg( DEBUG_HIGH | DEBUG_ERROR, "// Attempting to loud ucode out of invalid address\n" );
-      DebugMsg( DEBUG_HIGH | DEBUG_HANDLED, "gSPLoadUcodeEx( 0x%08X, 0x%08X, %i );\n", uc_start, uc_dstart, uc_dsize );
-#endif
       return;
-   }
 
    ucode = (MicrocodeInfo*)GBI_DetectMicrocode( uc_start, uc_dstart, uc_dsize );
 
@@ -435,9 +429,6 @@ void gln64gSPCombineMatrices(void)
 void gln64gSPNoOp(void)
 {
    gln64gSPFlushTriangles();
-#ifdef DEBUG
-	DebugMsg( DEBUG_HIGH | DEBUG_IGNORED, "gSPNoOp();\n" );
-#endif
 }
 
 void gln64gSPMatrix( uint32_t matrix, uint8_t param )
@@ -446,17 +437,7 @@ void gln64gSPMatrix( uint32_t matrix, uint8_t param )
    uint32_t address = RSP_SegmentToPhysical( matrix );
 
    if (address + 64 > RDRAMSize)
-   {
-#ifdef DEBUG
-		DebugMsg( DEBUG_HIGH | DEBUG_ERROR | DEBUG_MATRIX, "// Attempting to load matrix from invalid address\n" );
-		DebugMsg( DEBUG_HIGH | DEBUG_HANDLED | DEBUG_MATRIX, "gSPMatrix( 0x%08X, %s | %s | %s );\n",
-			matrix,
-			(param & G_MTX_PROJECTION) ? "G_MTX_PROJECTION" : "G_MTX_MODELVIEW",
-			(param & G_MTX_LOAD) ? "G_MTX_LOAD" : "G_MTX_MUL",
-			(param & G_MTX_PUSH) ? "G_MTX_PUSH" : "G_MTX_NOPUSH" );
-#endif
       return;
-   }
 
    RSP_LoadMatrix( mtx, address );
 
@@ -505,14 +486,7 @@ void gln64gSPDMAMatrix( uint32_t matrix, uint8_t index, uint8_t multiply )
    uint32_t address = gSP.DMAOffsets.mtx + RSP_SegmentToPhysical( matrix );
 
    if (address + 64 > RDRAMSize)
-   {
-#ifdef DEBUG
-		DebugMsg( DEBUG_HIGH | DEBUG_ERROR | DEBUG_MATRIX, "// Attempting to load matrix from invalid address\n" );
-		DebugMsg( DEBUG_HIGH | DEBUG_HANDLED | DEBUG_MATRIX, "gSPDMAMatrix( 0x%08X, %i, %s );\n",
-			matrix, index, multiply ? "true" : "false" );
-#endif
       return;
-   }
 
    RSP_LoadMatrix( mtx, address );
 
@@ -546,13 +520,7 @@ void gln64gSPViewport(uint32_t v)
    uint32_t address = RSP_SegmentToPhysical( v );
 
    if ((address + 16) > RDRAMSize)
-   {
-#ifdef DEBUG
-      DebugMsg( DEBUG_HIGH | DEBUG_ERROR, "// Attempting to load viewport from invalid address\n" );
-      DebugMsg( DEBUG_HIGH | DEBUG_HANDLED, "gSPViewport( 0x%08X );\n", v );
-#endif
       return;
-   }
 
    gSP.viewport.vscale[0] = _FIXED2FLOAT( *(int16_t*)&gfx_info.RDRAM[address +  2], 2 );
    gSP.viewport.vscale[1] = _FIXED2FLOAT( *(int16_t*)&gfx_info.RDRAM[address     ], 2 );
@@ -571,10 +539,6 @@ void gln64gSPViewport(uint32_t v)
    gSP.viewport.farz   = (gSP.viewport.vtrans[2] + gSP.viewport.vscale[2]) ;
 
    gSP.changed |= CHANGED_VIEWPORT;
-
-#ifdef DEBUG
-	DebugMsg( DEBUG_HIGH | DEBUG_HANDLED, "gSPViewport( 0x%08X );\n", v );
-#endif
 }
 
 void gln64gSPForceMatrix( uint32_t mptr )
@@ -598,14 +562,7 @@ void gln64gSPLight( uint32_t l, int32_t n )
 	addrByte = RSP_SegmentToPhysical( l );
 
 	if ((addrByte + sizeof( Light )) > RDRAMSize)
-   {
-#ifdef DEBUG
-		DebugMsg( DEBUG_HIGH | DEBUG_ERROR, "// Attempting to load light from invalid address\n" );
-		DebugMsg( DEBUG_HIGH | DEBUG_HANDLED, "gSPLight( 0x%08X, LIGHT_%i );\n",
-			l, n );
-#endif
 		return;
-	}
 
 	light = (Light*)&gfx_info.RDRAM[addrByte];
 
@@ -650,14 +607,7 @@ void gln64gSPLightCBFD( uint32_t l, int32_t n )
 	uint32_t addrByte = RSP_SegmentToPhysical( l );
 
 	if ((addrByte + sizeof( Light )) > RDRAMSize)
-   {
-#ifdef DEBUG
-		DebugMsg( DEBUG_HIGH | DEBUG_ERROR, "// Attempting to load light from invalid address\n" );
-		DebugMsg( DEBUG_HIGH | DEBUG_HANDLED, "gSPLight( 0x%08X, LIGHT_%i );\n",
-			l, n );
-#endif
 		return;
-	}
 
 	light = (Light*)&gfx_info.RDRAM[addrByte];
 
@@ -700,14 +650,8 @@ void gln64gSPLookAt( uint32_t _l, uint32_t _n )
 	Light *light;
    uint32_t address = RSP_SegmentToPhysical(_l);
 
-   if ((address + sizeof(Light)) > RDRAMSize) {
-#ifdef DEBUG
-      DebugMsg(DEBUG_HIGH | DEBUG_ERROR, "// Attempting to load light from invalid address\n");
-      DebugMsg(DEBUG_HIGH | DEBUG_HANDLED, "gSPLookAt( 0x%08X, LOOKAT_%i );\n",
-            l, n);
-#endif
+   if ((address + sizeof(Light)) > RDRAMSize)
       return;
-   }
 
    assert(_n < 2);
 
@@ -729,14 +673,7 @@ void gln64gSPVertex( uint32_t v, uint32_t n, uint32_t v0 )
    uint32_t address = RSP_SegmentToPhysical( v );
 
    if ((address + sizeof( Vertex ) * n) > RDRAMSize)
-   {
-#ifdef DEBUG
-      DebugMsg( DEBUG_HIGH | DEBUG_ERROR | DEBUG_VERTEX, "// Attempting to load vertices from invalid address\n" );
-      DebugMsg( DEBUG_HIGH | DEBUG_HANDLED | DEBUG_VERTEX, "gSPVertex( 0x%08X, %i, %i );\n",
-            v, n, v0 );
-#endif
       return;
-   }
 
    vertex = (Vertex*)&gfx_info.RDRAM[address];
 
@@ -772,11 +709,6 @@ void gln64gSPVertex( uint32_t v, uint32_t n, uint32_t v0 )
          vertex++;
       }
    }
-#ifdef DEBUG
-   else
-      DebugMsg( DEBUG_HIGH | DEBUG_ERROR | DEBUG_VERTEX, "// Attempting to load vertices past vertex buffer size\n" );
-#endif
-
 }
 
 void gln64gSPCIVertex( uint32_t v, uint32_t n, uint32_t v0 )
@@ -787,14 +719,7 @@ void gln64gSPCIVertex( uint32_t v, uint32_t n, uint32_t v0 )
    uint32_t address = RSP_SegmentToPhysical( v );
 
    if ((address + sizeof( PDVertex ) * n) > RDRAMSize)
-   {
-#ifdef DEBUG
-      DebugMsg( DEBUG_HIGH | DEBUG_ERROR | DEBUG_VERTEX, "// Attempting to load vertices from invalid address\n" );
-      DebugMsg( DEBUG_HIGH | DEBUG_HANDLED | DEBUG_VERTEX, "gSPCIVertex( 0x%08X, %i, %i );\n",
-            v, n, v0 );
-#endif
       return;
-   }
 
    vertex = (PDVertex*)&gfx_info.RDRAM[address];
 
@@ -832,11 +757,6 @@ void gln64gSPCIVertex( uint32_t v, uint32_t n, uint32_t v0 )
          vertex++;
       }
    }
-#ifdef DEBUG
-   else
-      DebugMsg( DEBUG_HIGH | DEBUG_ERROR | DEBUG_VERTEX, "// Attempting to load vertices past vertex buffer size\n" );
-#endif
-
 }
 
 void gln64gSPDMAVertex( uint32_t v, uint32_t n, uint32_t v0 )
@@ -845,14 +765,7 @@ void gln64gSPDMAVertex( uint32_t v, uint32_t n, uint32_t v0 )
    uint32_t address = gSP.DMAOffsets.vtx + RSP_SegmentToPhysical( v );
 
    if ((address + 10 * n) > RDRAMSize)
-   {
-#ifdef DEBUG
-      DebugMsg( DEBUG_HIGH | DEBUG_ERROR | DEBUG_VERTEX, "// Attempting to load vertices from invalid address\n" );
-      DebugMsg( DEBUG_HIGH | DEBUG_HANDLED | DEBUG_VERTEX, "gSPDMAVertex( 0x%08X, %i, %i );\n",
-            v, n, v0 );
-#endif
       return;
-   }
 
    if ((n + v0) <= INDEXMAP_SIZE)
    {
@@ -884,10 +797,6 @@ void gln64gSPDMAVertex( uint32_t v, uint32_t n, uint32_t v0 )
          address += 10;
       }
    }
-#ifdef DEBUG
-   else
-      DebugMsg( DEBUG_HIGH | DEBUG_ERROR | DEBUG_VERTEX, "// Attempting to load vertices past vertex buffer size\n" );
-#endif
 }
 
 void gln64gSPCBFDVertex( uint32_t a, uint32_t n, uint32_t v0 )
