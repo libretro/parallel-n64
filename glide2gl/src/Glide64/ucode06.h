@@ -406,7 +406,7 @@ static void DrawImage (DRAWIMAGE *d)
          g_gdp.tile[0].tl = tb_v+y_size-1;
 
          // LoadTile ()
-         __RSP.w1 = ((int)g_gdp.tile[0].sh << 14) | ((int)g_gdp.tile[0].th << 2);
+         __RSP.w0 = ((int)g_gdp.tile[0].sh << 14) | ((int)g_gdp.tile[0].th << 2);
          __RSP.w1 = ((int)g_gdp.tile[0].sl << 14) | ((int)g_gdp.tile[0].tl << 2);
          rdp_loadtile(__RSP.w0, __RSP.w1);
 
