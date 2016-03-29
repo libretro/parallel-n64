@@ -8,6 +8,9 @@ extern "C" {
 #endif
 
 void F3D_MoveMem(uint32_t w0, uint32_t w1);
+void F3D_Reserved1(uint32_t w0, uint32_t w1);
+void F3D_Reserved2(uint32_t w0, uint32_t w1);
+void F3D_Reserved3(uint32_t w0, uint32_t w1);
 
 #ifdef __cplusplus
 }

@@ -44,10 +44,6 @@ void F3D_Vtx( uint32_t w0, uint32_t w1 )
    gln64gSPVertex( w1, _SHIFTR( w0, 20, 4 ) + 1, _SHIFTR( w0, 16, 4 ) );
 }
 
-void F3D_Reserved1( uint32_t w0, uint32_t w1 )
-{
-}
-
 void F3D_DList( uint32_t w0, uint32_t w1 )
 {
    switch (_SHIFTR( w0, 16, 8 ))
@@ -59,14 +55,6 @@ void F3D_DList( uint32_t w0, uint32_t w1 )
          gln64gSPBranchList( w1 );
          break;
    }
-}
-
-void F3D_Reserved2( uint32_t w0, uint32_t w1 )
-{
-}
-
-void F3D_Reserved3( uint32_t w0, uint32_t w1 )
-{
 }
 
 void F3D_Sprite2D_Base( uint32_t w0, uint32_t w1 )
