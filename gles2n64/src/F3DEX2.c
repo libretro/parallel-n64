@@ -17,7 +17,7 @@
 
 #include "Config.h"
 
-#include "../../Graphics/RSP/gSP_funcs.h"
+#include "../../Graphics/RSP/gSP_funcs_C.h"
 
 void F3DEX2_Mtx( uint32_t w0, uint32_t w1 )
 {
@@ -29,11 +29,11 @@ void F3DEX2_MoveMem( uint32_t w0, uint32_t w1 )
    switch (_SHIFTR( w0, 0, 8 ))
    {
       case F3DEX2_MV_VIEWPORT:
-         gln64gSPViewport( w1 );
+         gSPViewport( w1 );
          break;
 
       case G_MV_MATRIX:
-         gln64gSPForceMatrix( w1 );
+         gSPForceMatrix( w1 );
 
          /* force matrix takes two commands */
          __RSP.PC[__RSP.PCi] += 8;
@@ -45,9 +45,9 @@ void F3DEX2_MoveMem( uint32_t w0, uint32_t w1 )
             const uint32_t n = offset / 24;
 
             if (n < 2)
-               gln64gSPLookAt(w1, n);
+               gSPLookAt(w1, n);
             else
-               gln64gSPLight(w1, n - 1);
+               gSPLight(w1, n - 1);
          }
          break;
    }

@@ -2,6 +2,20 @@
 
 #include "glide64_gSP.h"
 
+void load_matrix (float m[4][4], uint32_t addr)
+{
+   int x,y;  // matrix index
+   uint16_t *src = (uint16_t*)gfx_info.RDRAM;
+   addr >>= 1;
+
+   // Adding 4 instead of one, just to remove mult. later
+   for (x = 0; x < 16; x += 4)
+   {
+      for (y=0; y<4; y++)
+         m[x>>2][y] = (float)((((int32_t)src[(addr+x+y)^1]) << 16) | src[(addr+x+y+16)^1]) / 65536.0f;
+   }
+}
+
 void glide64gSPCombineMatrices(void)
 {
    MulMatrices(rdp.model, rdp.proj, rdp.combined);
@@ -145,4 +159,13 @@ void glide64gSPViewport(uint32_t v)
    rdp.view_trans[2] = 32.0f * trans_z;
 
    g_gdp.flags |= UPDATE_VIEWPORT;
+}
+
+void glide64gSPForceMatrix( uint32_t mptr )
+{
+   uint32_t address = RSP_SegmentToPhysical( mptr );
+
+   load_matrix(rdp.combined, address);
+
+   g_gdp.flags &= ~UPDATE_MULT_MAT;
 }

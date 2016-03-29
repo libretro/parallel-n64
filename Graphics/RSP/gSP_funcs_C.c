@@ -1,6 +1,6 @@
-#include "gSP_funcs.h"
+#include "gSP_funcs_C.h"
 
-void GSPCombineMatrices(enum gsp_plugin_type plug_type)
+void GSPCombineMatricesC(enum gsp_plugin_type plug_type)
 {
    switch (plug_type)
    {
@@ -13,7 +13,7 @@ void GSPCombineMatrices(enum gsp_plugin_type plug_type)
    }
 }
 
-void GSPClipVertex(enum gsp_plugin_type plug_type, uint32_t v)
+void GSPClipVertexC(enum gsp_plugin_type plug_type, uint32_t v)
 {
    switch (plug_type)
    {
@@ -31,7 +31,7 @@ void GSPClipVertex(enum gsp_plugin_type plug_type, uint32_t v)
  *
  * l             - The lookat structure address.
  */
-void GSPLookAt(enum gsp_plugin_type plug_type, uint32_t l, uint32_t n)
+void GSPLookAtC(enum gsp_plugin_type plug_type, uint32_t l, uint32_t n)
 {
    switch (plug_type)
    {
@@ -49,7 +49,7 @@ void GSPLookAt(enum gsp_plugin_type plug_type, uint32_t l, uint32_t n)
  * l             - The pointer to the light structure.
  * n             - The light number that is replaced (1~8)
  */
-void GSPLight(enum gsp_plugin_type plug_type, uint32_t l, int32_t n)
+void GSPLightC(enum gsp_plugin_type plug_type, uint32_t l, int32_t n)
 {
    switch (plug_type)
    {
@@ -74,7 +74,7 @@ void GSPLight(enum gsp_plugin_type plug_type, uint32_t l, int32_t n)
  *               (?? is ignored)
  * */
 
-void GSPLightColor(enum gsp_plugin_type plug_type, uint32_t lightNum, uint32_t packedColor )
+void GSPLightColorC(enum gsp_plugin_type plug_type, uint32_t lightNum, uint32_t packedColor )
 {
    switch (plug_type)
    {
@@ -92,7 +92,7 @@ void GSPLightColor(enum gsp_plugin_type plug_type, uint32_t lightNum, uint32_t p
  * v           - v is the segment address to the viewport
  *               structure "Vp".
  * */
-void GSPViewport(enum gsp_plugin_type plug_type, uint32_t v)
+void GSPViewportC(enum gsp_plugin_type plug_type, uint32_t v)
 {
    switch (plug_type)
    {
@@ -105,7 +105,7 @@ void GSPViewport(enum gsp_plugin_type plug_type, uint32_t v)
    }
 }
 
-void GSPForceMatrix(enum gsp_plugin_type plug_type, uint32_t mptr)
+void GSPForceMatrixC(enum gsp_plugin_type plug_type, uint32_t mptr)
 {
    switch (plug_type)
    {

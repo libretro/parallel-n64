@@ -102,20 +102,6 @@ static void projection_mul (float m[4][4])
    g_gdp.flags |= UPDATE_MULT_MAT;
 }
 
-static void load_matrix (float m[4][4], uint32_t addr)
-{
-   int x,y;  // matrix index
-   uint16_t *src = (uint16_t*)gfx_info.RDRAM;
-   addr >>= 1;
-
-   // Adding 4 instead of one, just to remove mult. later
-   for (x = 0; x < 16; x += 4)
-   {
-      for (y=0; y<4; y++)
-         m[x>>2][y] = (float)((((int32_t)src[(addr+x+y)^1]) << 16) | src[(addr+x+y+16)^1]) / 65536.0f;
-   }
-}
-
 //
 // uc0:matrix - performs matrix operations
 //
@@ -174,7 +160,7 @@ static void uc0_movemem(uint32_t w0, uint32_t w1)
          gSPViewport( w1 );
          break;
       case G_MV_MATRIX_1:
-         glide64gSPForceMatrix(w1);
+         gSPForceMatrix(w1);
          /* force matrix takes four commands */
          rdp.pc[rdp.pc_i] += 24; 
          break;

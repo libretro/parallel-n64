@@ -10,7 +10,7 @@
 #include "gDP.h"
 #include "GBI.h"
 
-#include "../../Graphics/RSP/gSP_funcs.h"
+#include "../../Graphics/RSP/gSP_funcs_C.h"
 
 
 void F3DWRUS_Vtx( uint32_t w0, uint32_t w1 )

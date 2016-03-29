@@ -1,5 +1,3 @@
-
-
 #include <math.h>
 
 #include "../Glitch64/glide.h"
@@ -471,15 +469,6 @@ static void glide64gSPNumLights(int32_t n)
 
    rdp.num_lights = n;
    g_gdp.flags |= UPDATE_LIGHTS;
-}
-
-static void glide64gSPForceMatrix( uint32_t mptr )
-{
-   uint32_t address = RSP_SegmentToPhysical( mptr );
-
-   load_matrix(rdp.combined, address);
-
-   g_gdp.flags &= ~UPDATE_MULT_MAT;
 }
 
 static void glide64gSPPopMatrixN(uint32_t param, uint32_t num )

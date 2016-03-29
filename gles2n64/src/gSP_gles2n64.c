@@ -582,21 +582,11 @@ void gln64gSPForceMatrix( uint32_t mptr )
    uint32_t address = RSP_SegmentToPhysical( mptr );
 
    if (address + 64 > RDRAMSize)
-   {
-#ifdef DEBUG
-		DebugMsg( DEBUG_HIGH | DEBUG_ERROR | DEBUG_MATRIX, "// Attempting to load from invalid address" );
-		DebugMsg( DEBUG_HIGH | DEBUG_HANDLED | DEBUG_MATRIX, "gSPForceMatrix( 0x%08X );\n", mptr );
-#endif
       return;
-   }
 
    RSP_LoadMatrix( gSP.matrix.combined, address);
 
    gSP.changed &= ~CHANGED_MATRIX;
-
-#ifdef DEBUG
-	DebugMsg( DEBUG_HIGH | DEBUG_HANDLED | DEBUG_MATRIX, "gSPForceMatrix( 0x%08X );\n", mptr );
-#endif
 }
 
 void gln64gSPLight( uint32_t l, int32_t n )

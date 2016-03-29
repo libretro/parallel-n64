@@ -49,7 +49,7 @@ void Turbo3D_LoadGlobState(uint32_t pgstate)
 	for (s = 0; s < 16; ++s)
 		gln64gSPSegment(s, gstate->segBases[s] & 0x00FFFFFF);
 
-	gln64gSPViewport(pgstate + 80);
+	gSPViewport(pgstate + 80);
 
 	Turbo3D_ProcessRDP(gstate->rdpCmds);
 }
@@ -74,7 +74,7 @@ void Turbo3D_LoadObject(uint32_t pstate, uint32_t pvtx, uint32_t ptri)
 	gln64gSPSetGeometryMode(ostate->renderState);
 
 	if ((ostate->flag&1) == 0) //load matrix
-		gln64gSPForceMatrix(pstate + sizeof(struct T3DState));
+		gSPForceMatrix(pstate + sizeof(struct T3DState));
 
 	gln64gSPClearGeometryMode(G_LIGHTING);
    gln64gSPClearGeometryMode(G_FOG);

@@ -1,35 +1,7 @@
-#ifndef _GSP_FUNCS_H
-#define _GSP_FUNCS_H
+#ifndef _GSP_FUNCS_PROT_H
+#define _GSP_FUNCS_PROT_H
 
 #include <stdint.h>
-
-enum gsp_plugin_type
-{
-   GSP_PLUGIN_GLIDE64 = 0,
-   GSP_PLUGIN_GLN64
-};
-
-#ifdef GSP_PLUGIN
-#define GSP_DEF_PLUGIN GSP_PLUGIN
-#else
-#define GSP_DEF_PLUGIN GSP_PLUGIN_GLIDE64
-#endif
-
-#define gSPCombineMatrices() GSPCombineMatrices(GSP_DEF_PLUGIN)
-#define gSPClipVertex(v)     GSPClipVertex(GSP_DEF_PLUGIN, v)
-#define gSPLookAt(l, n)      GSPLookAt(GSP_DEF_PLUGIN, l, n)
-#define gSPLight(l, n)       GSPLight(GSP_DEF_PLUGIN, l, n)
-#define gSPLightColor(l, c)  GSPLightColor(GSP_DEF_PLUGIN, l, c)
-#define gSPViewport(v)       GSPViewport(GSP_DEF_PLUGIN, v)
-#define gSPForceMatrix(mptr) GSPForceMatrix(GSP_DEF_PLUGIN, mptr)
-
-void GSPCombineMatrices(enum gsp_plugin_type plug_type);
-void GSPClipVertex(enum gsp_plugin_type plug_type, uint32_t v);
-void GSPLookAt(enum gsp_plugin_type plug_type, uint32_t l, uint32_t n);
-void GSPLight(enum gsp_plugin_type plug_type, uint32_t l, int32_t n);
-void GSPLightColor(enum gsp_plugin_type plug_type, uint32_t lightNum, uint32_t packedColor );
-void GSPViewport(enum gsp_plugin_type plug_type, uint32_t v);
-void GSPForceMatrix(enum gsp_plugin_type plug_type, uint32_t mptr);
 
 #ifdef __cplusplus
 extern "C" {

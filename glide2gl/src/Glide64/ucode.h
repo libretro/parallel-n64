@@ -235,7 +235,8 @@ static void modelview_load_push (float m[4][4]);
 static void modelview_mul_push (float m[4][4]);
 static void projection_load (float m[4][4]);
 static void projection_mul (float m[4][4]);
-static void load_matrix (float m[4][4], uint32_t addr);
+
+extern "C" void load_matrix (float m[4][4], uint32_t addr);
 
 static float set_sprite_combine_mode(void);
 
