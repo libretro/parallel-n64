@@ -24,13 +24,6 @@ void F3D_Mtx( uint32_t w0, uint32_t w1 )
 	gln64gSPMatrix( w1, _SHIFTR( w0, 16, 8 ) );
 }
 
-void F3D_Reserved0( uint32_t w0, uint32_t w1 )
-{
-#ifdef DEBUG
-	DebugMsg( DEBUG_MEDIUM | DEBUG_IGNORED | DEBUG_UNKNOWN, "G_RESERVED0: w0=0x%08lX w1=0x%08lX\n", w0, w1 );
-#endif
-}
-
 void F3D_Vtx( uint32_t w0, uint32_t w1 )
 {
 	gln64gSPVertex( w1, _SHIFTR( w0, 20, 4 ) + 1, _SHIFTR( w0, 16, 4 ) );

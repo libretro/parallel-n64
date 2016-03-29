@@ -69,7 +69,7 @@
 
 void F3D_SPNoOp( uint32_t w0, uint32_t w1 );
 void F3D_Mtx( uint32_t w0, uint32_t w1 );
-void F3D_Reserved0( uint32_t w0, uint32_t w1 );
+extern "C" void F3D_Reserved0( uint32_t w0, uint32_t w1 );
 extern "C" void F3D_MoveMem( uint32_t w0, uint32_t w1 );
 void F3D_Vtx( uint32_t w0, uint32_t w1 );
 void F3D_DList( uint32_t w0, uint32_t w1 );
