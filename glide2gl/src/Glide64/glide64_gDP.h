@@ -6,9 +6,6 @@
 #include "Util.h"
 #include "TexLoad.h"
 
-//forward decls
-extern void RestoreScale(void);
-
 extern uint32_t ucode5_texshiftaddr;
 extern uint32_t ucode5_texshiftcount;
 extern uint16_t ucode5_texshift;

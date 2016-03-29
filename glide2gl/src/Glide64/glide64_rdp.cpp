@@ -1375,7 +1375,7 @@ static void rdp_setdepthimage(uint32_t w0, uint32_t w1)
 
 int SwapOK = true;
 
-void RestoreScale(void)
+static void RestoreScale(void)
 {
    rdp.scale_x        = rdp.scale_x_bak;
    rdp.scale_y        = rdp.scale_y_bak;
