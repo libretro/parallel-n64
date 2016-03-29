@@ -406,9 +406,9 @@ static void DrawImage (DRAWIMAGE *d)
          g_gdp.tile[0].tl = tb_v+y_size-1;
 
          // LoadTile ()
-         rdp.cmd0 = ((int)g_gdp.tile[0].sh << 14) | ((int)g_gdp.tile[0].th << 2);
-         rdp.cmd1 = ((int)g_gdp.tile[0].sl << 14) | ((int)g_gdp.tile[0].tl << 2);
-         rdp_loadtile(rdp.cmd0, rdp.cmd1);
+         __RSP.w1 = ((int)g_gdp.tile[0].sh << 14) | ((int)g_gdp.tile[0].th << 2);
+         __RSP.w1 = ((int)g_gdp.tile[0].sl << 14) | ((int)g_gdp.tile[0].tl << 2);
+         rdp_loadtile(__RSP.w0, __RSP.w1);
 
          TexCache ();
          // **
@@ -508,7 +508,7 @@ static void uc6_read_background_data (DRAWIMAGE *d, bool bReadScale)
 {
    int imageYorig;
    uint16_t imageFlip;
-   uint32_t addr  = RSP_SegmentToPhysical(rdp.cmd1) >> 1;
+   uint32_t addr  = RSP_SegmentToPhysical(__RSP.w1) >> 1;
 
    d->imageX      = (((uint16_t *)gfx_info.RDRAM)[(addr+0)^1] >> 5);   // 0
    d->imageW      = (((uint16_t *)gfx_info.RDRAM)[(addr+1)^1] >> 2);   // 1
@@ -765,7 +765,7 @@ static void uc6_draw_polygons (VERTEX v[4])
 
 static void uc6_read_object_data (DRAWOBJECT *d)
 {
-   uint32_t addr = RSP_SegmentToPhysical(rdp.cmd1) >> 1;
+   uint32_t addr = RSP_SegmentToPhysical(__RSP.w1) >> 1;
 
    d->objX    = ((int16_t*)gfx_info.RDRAM)[(addr+0)^1] / 4.0f;               // 0
    d->scaleW  = ((uint16_t *)gfx_info.RDRAM)[(addr+1)^1] / 1024.0f;        // 1
@@ -1210,9 +1210,9 @@ static void uc6_obj_loadtxtr(uint32_t w0, uint32_t w1)
 
       g_gdp.tile[7].tmem = tmem;
       g_gdp.tile[7].size = 1;
-      rdp.cmd0           = 0;
-      rdp.cmd1           = 0x07000000 | (tsize << 14) | tline;
-      rdp_loadblock(rdp.cmd0, rdp.cmd1);
+      __RSP.w0           = 0;
+      __RSP.w1           = 0x07000000 | (tsize << 14) | tline;
+      rdp_loadblock(__RSP.w0, __RSP.w1);
    }
    else if (type == 0x00fc1034)
    {
@@ -1235,10 +1235,10 @@ static void uc6_obj_loadtxtr(uint32_t w0, uint32_t w1)
       g_gdp.tile[7].line = line;
       g_gdp.tile[7].size = 1;
 
-      rdp.cmd0 = 0;
-      rdp.cmd1 = 0x07000000 | (twidth << 14) | (theight << 2);
+      __RSP.w0 = 0;
+      __RSP.w1 = 0x07000000 | (twidth << 14) | (theight << 2);
 
-      rdp_loadtile(rdp.cmd0, rdp.cmd1);
+      rdp_loadtile(__RSP.w0, __RSP.w1);
    }
 #if 0
    else
@@ -1252,25 +1252,25 @@ static void uc6_obj_loadtxtr(uint32_t w0, uint32_t w1)
 static void uc6_obj_ldtx_sprite(uint32_t w0, uint32_t w1)
 {
    uint32_t addr = w1;
-   uc6_obj_loadtxtr(rdp.cmd0, rdp.cmd1);
-   rdp.cmd1 = addr + 24;
-   uc6_obj_sprite(rdp.cmd0, rdp.cmd1);
+   uc6_obj_loadtxtr(__RSP.w0, __RSP.w1);
+   __RSP.w1 = addr + 24;
+   uc6_obj_sprite(__RSP.w0, __RSP.w1);
 }
 
 static void uc6_obj_ldtx_rect(uint32_t w0, uint32_t w1)
 {
    uint32_t addr = w1;
-   uc6_obj_loadtxtr(rdp.cmd0, rdp.cmd1);
-   rdp.cmd1 = addr + 24;
-   uc6_obj_rectangle(rdp.cmd0, rdp.cmd1);
+   uc6_obj_loadtxtr(__RSP.w0, __RSP.w1);
+   __RSP.w1 = addr + 24;
+   uc6_obj_rectangle(__RSP.w0, __RSP.w1);
 }
 
 static void uc6_ldtx_rect_r(uint32_t w0, uint32_t w1)
 {
    uint32_t addr = w1;
-   uc6_obj_loadtxtr(rdp.cmd0, rdp.cmd1);
-   rdp.cmd1 = addr + 24;
-   uc6_obj_rectangle_r(rdp.cmd0, rdp.cmd1);
+   uc6_obj_loadtxtr(__RSP.w0, __RSP.w1);
+   __RSP.w1 = addr + 24;
+   uc6_obj_rectangle_r(__RSP.w0, __RSP.w1);
 }
 
 static void uc6_loaducode(uint32_t w0, uint32_t w1)
@@ -1289,7 +1289,7 @@ static void uc6_sprite2d(uint32_t w0, uint32_t w1)
    uint32_t addr, tlut;
    int i;
    DRAWIMAGE d;
-   uint32_t    a = rdp.pc[rdp.pc_i] & BMASK;
+   uint32_t    a = __RSP.PC[__RSP.PCi] & BMASK;
    uint32_t cmd0 = ((uint32_t*)gfx_info.RDRAM)[a>>2]; //check next command
 
    if ( (cmd0>>24) != 0xBE )
@@ -1334,10 +1334,10 @@ static void uc6_sprite2d(uint32_t w0, uint32_t w1)
       if ( (cmd0>>24) == 0xBE )
       {
          uint32_t cmd1    = ((uint32_t*)gfx_info.RDRAM)[(a>>2)+1];
-         rdp.pc[rdp.pc_i] = (a+8) & BMASK;
+         __RSP.PC[__RSP.PCi] = (a+8) & BMASK;
 
-         d.scaleX = ((cmd1>>16)&0xFFFF)/1024.0f;
-         d.scaleY = (cmd1&0xFFFF)/1024.0f;
+         d.scaleX = ((cmd1 >> 16)&0xFFFF)/1024.0f;
+         d.scaleY = (cmd1  &  0xFFFF)/1024.0f;
 
          //the code below causes wrong background height in super robot spirit, so it is disabled.
          //need to find, for which game this hack was made
@@ -1346,9 +1346,9 @@ static void uc6_sprite2d(uint32_t w0, uint32_t w1)
          d.flipX          = (uint8_t)((cmd0>>8)&0xFF);
          d.flipY          = (uint8_t)(cmd0&0xFF);
 
-         a                = rdp.pc[rdp.pc_i] & BMASK;
-         rdp.pc[rdp.pc_i] = (a+8) & BMASK;
-         cmd0             = ((uint32_t*)gfx_info.RDRAM)[a>>2]; //check next command
+         a                   = __RSP.PC[__RSP.PCi] & BMASK;
+         __RSP.PC[__RSP.PCi] = (a+8) & BMASK;
+         cmd0                = ((uint32_t*)gfx_info.RDRAM)[a>>2]; //check next command
       }
       if ( (cmd0>>24) == 0xBD )
       {
@@ -1415,9 +1415,9 @@ static void uc6_sprite2d(uint32_t w0, uint32_t w1)
          g_gdp.tile[7].tmem = 0;
          g_gdp.tile[7].line = line;//(d.imageW>>3);
          g_gdp.tile[7].size = d.imageSiz;
-         rdp.cmd0           = (d.imageX << 14) | (d.imageY << 2);
-         rdp.cmd1           = 0x07000000 | ((d.imageX+d.imageW-1) << 14) | ((d.imageY+d.imageH-1) << 2);
-         rdp_loadtile(rdp.cmd0, rdp.cmd1);
+         __RSP.w0           = (d.imageX << 14) | (d.imageY << 2);
+         __RSP.w1           = 0x07000000 | ((d.imageX+d.imageW-1) << 14) | ((d.imageY+d.imageH-1) << 2);
+         rdp_loadtile(__RSP.w0, __RSP.w1);
 
          // SetTile ()
          g_gdp.tile[0].format   = d.imageFmt;
@@ -1550,10 +1550,10 @@ static void uc6_sprite2d(uint32_t w0, uint32_t w1)
             grFogMode (GR_FOG_WITH_TABLE_ON_FOGCOORD_EXT, g_gdp.fog_color.total);
 
       }
-      a = rdp.pc[rdp.pc_i] & BMASK;
+      a    = __RSP.PC[__RSP.PCi] & BMASK;
       cmd0 = ((uint32_t*)gfx_info.RDRAM)[a>>2]; //check next command
       if (( (cmd0>>24) == 0xBD ) || ( (cmd0>>24) == 0xBE ))
-         rdp.pc[rdp.pc_i] = (a+8) & BMASK;
+         __RSP.PC[__RSP.PCi] = (a+8) & BMASK;
       else
          return;
    }

@@ -439,7 +439,7 @@ static void fb_setcolorimage(uint32_t w0, uint32_t w1)
    }
    rdp.ci_count++;
    if (rdp.ci_count > NUMTEXBUF) //overflow
-      rdp.halt = 1;
+      __RSP.halt = 1;
 }
 
 // RDP graphic instructions pointer table used in DetectFrameBufferUsage

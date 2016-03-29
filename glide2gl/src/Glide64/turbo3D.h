@@ -50,16 +50,16 @@ static void t3dProcessRDP(uint32_t cmds)
 {
    if (cmds)
    {
-      rdp.LLE  = 1;
-      rdp.cmd0 = ((uint32_t*)gfx_info.RDRAM)[cmds++];
-      rdp.cmd1 = ((uint32_t*)gfx_info.RDRAM)[cmds++];
-      while (rdp.cmd0 + rdp.cmd1)
+      __RSP.bLLE  = 1;
+      __RSP.w0    = ((uint32_t*)gfx_info.RDRAM)[cmds++];
+      __RSP.w1    = ((uint32_t*)gfx_info.RDRAM)[cmds++];
+      while (__RSP.w0 + __RSP.w1)
       {
          uint32_t cmd;
-         gfx_instruction[0][rdp.cmd0>>24](rdp.cmd0, rdp.cmd1);
-         rdp.cmd0 = ((uint32_t*)gfx_info.RDRAM)[cmds++];
-         rdp.cmd1 = ((uint32_t*)gfx_info.RDRAM)[cmds++];
-         cmd      = rdp.cmd0>>24;
+         gfx_instruction[0][__RSP.w0 >> 24](__RSP.w0, __RSP.w1);
+         __RSP.w0 = ((uint32_t*)gfx_info.RDRAM)[cmds++];
+         __RSP.w1 = ((uint32_t*)gfx_info.RDRAM)[cmds++];
+         cmd      = __RSP.w0 >> 24;
 
          if (cmd == G_TEXRECT || cmd == G_TEXRECTFLIP)
          {
@@ -67,7 +67,7 @@ static void t3dProcessRDP(uint32_t cmds)
             rdp.cmd3 = ((uint32_t*)gfx_info.RDRAM)[cmds++];
          }
       }
-      rdp.LLE = 0;
+      __RSP.bLLE = 0;
    }
 }
 
@@ -157,12 +157,12 @@ static void t3dLoadObject(uint32_t pstate, uint32_t pvtx, uint32_t ptri)
    if (rdp.tiles[rdp.cur_tile].t_scale < 0.001f)
       rdp.tiles[rdp.cur_tile].t_scale = 0.015625;
 
-   rdp.cmd0 = ostate->othermode0;
-   rdp.cmd1 = ostate->othermode1;
-   rdp_setothermode(rdp.cmd0, rdp.cmd1);
+   __RSP.w0 = ostate->othermode0;
+   __RSP.w1 = ostate->othermode1;
+   rdp_setothermode(__RSP.w0, __RSP.w1);
 
-   rdp.cmd1 = ostate->renderState;
-   uc0_setgeometrymode(rdp.cmd0, rdp.cmd1);
+   __RSP.w1 = ostate->renderState;
+   uc0_setgeometrymode(__RSP.w0, __RSP.w1);
 
    if (!(ostate->flag&1)) //load matrix
    {
@@ -198,7 +198,7 @@ static void Turbo3D(void)
 
    do
    {
-      uint32_t          a = rdp.pc[rdp.pc_i] & BMASK;
+      uint32_t          a = __RSP.PC[__RSP.PCi] & BMASK;
       uint32_t    pgstate = ((uint32_t*)gfx_info.RDRAM)[a>>2];
       uint32_t       ptri = ((uint32_t*)gfx_info.RDRAM)[(a>>2)+3];
       uint32_t       pvtx = ((uint32_t*)gfx_info.RDRAM)[(a>>2)+2];
@@ -207,7 +207,7 @@ static void Turbo3D(void)
 
       if (!pstate)
       {
-         rdp.halt = 1;
+         __RSP.halt = 1;
          break;
       }
 
@@ -216,7 +216,7 @@ static void Turbo3D(void)
       t3dLoadObject(pstate, pvtx, ptri);
 
       // Go to the next instruction
-      rdp.pc[rdp.pc_i] += 16;
+      __RSP.PC[__RSP.PCi] += 16;
    }while(1);
 
    // rdp_fullsync();

@@ -40,7 +40,7 @@
 
 static void rsp_vertex(int v0, int n)
 {
-   uint32_t addr = RSP_SegmentToPhysical(rdp.cmd1);
+   uint32_t addr = RSP_SegmentToPhysical(__RSP.w1);
 
    pre_update();
    glide64gSPVertex(addr, n, v0);
@@ -162,7 +162,7 @@ static void uc0_movemem(uint32_t w0, uint32_t w1)
       case G_MV_MATRIX_1:
          gSPForceMatrix(w1);
          /* force matrix takes four commands */
-         rdp.pc[rdp.pc_i] += 24; 
+         __RSP.PC[__RSP.PCi] += 24; 
          break;
       case G_MV_L0:
          gSPLight( w1, LIGHT_1 );
@@ -207,19 +207,19 @@ static void uc0_displaylist(uint32_t w0, uint32_t w1)
    uint32_t addr = RSP_SegmentToPhysical(w1);
 
    /* This fixes partially Gauntlet: Legends */
-   if (addr == rdp.pc[rdp.pc_i] - 8)
+   if (addr == __RSP.PC[__RSP.PCi] - 8)
       return;
 
    switch (_SHIFTR(w0, 16, 8))
    {
       case G_DL_PUSH:
-         if (rdp.pc_i >= 9)
+         if (__RSP.PCi >= 9)
             return; /* DL stack overflow */
-         rdp.pc_i++; // go to the next PC in the stack
-         rdp.pc[rdp.pc_i] = addr; // jump to the address
+         __RSP.PCi++; // go to the next PC in the stack
+         __RSP.PC[__RSP.PCi] = addr; // jump to the address
          break;
       case G_DL_NOPUSH:
-         rdp.pc[rdp.pc_i] = addr; // jump to the address
+         __RSP.PC[__RSP.PCi] = addr; // jump to the address
          break;
    }
 }
@@ -385,8 +385,8 @@ static void uc0_setothermode_h(uint32_t w0, uint32_t w1)
       mask = (mask << 1) | 1;
    mask <<= shift;
 
-   rdp.cmd1        &= mask;
-   rdp.othermode_h  = (rdp.othermode_h & ~mask) | rdp.cmd1;
+   __RSP.w1        &= mask;
+   rdp.othermode_h  = (rdp.othermode_h & ~mask) | __RSP.w1;
 
    if (mask & 0x00003000) // filter mode
    {
@@ -423,8 +423,8 @@ static void uc0_setothermode_l(uint32_t w0, uint32_t w1)
       mask = (mask << 1) | 1;
    mask <<= shift;
 
-   rdp.cmd1 &= mask;
-   rdp.othermode_l = (rdp.othermode_l & ~mask) | rdp.cmd1;
+   __RSP.w1 &= mask;
+   rdp.othermode_l = (rdp.othermode_l & ~mask) | __RSP.w1;
 
    if (mask & RDP_ALPHA_COMPARE) // alpha compare
       g_gdp.flags |= UPDATE_ALPHA_COMPARE;

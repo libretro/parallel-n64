@@ -427,20 +427,10 @@ struct RDP
    int updatescreen;
 
    // Program counter
-   uint32_t pc[10]; // Display List PC stack
-   uint32_t pc_i;   // current PC index in the stack
-   int dl_count; // number of instructions before returning
-   int LLE;
-
    // Segments
    uint32_t segment[16];  // Segment pointer
 
-   // Marks the end of DList execution (done in uc?:enddl)
-   int halt;
-
    // Next command
-   uint32_t cmd0;
-   uint32_t cmd1;
    uint32_t cmd2;
    uint32_t cmd3;
 

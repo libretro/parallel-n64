@@ -15,8 +15,6 @@
 
 using namespace std;
 
-RSPInfo		__RSP;
-
 void RSP_LoadMatrix( float mtx[4][4], uint32_t address )
 {
 	float recip = 1.5258789e-05f;

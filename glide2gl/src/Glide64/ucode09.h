@@ -183,8 +183,8 @@ static void uc9_draw_object (uint8_t * addr, uint32_t type)
 
 static uint32_t uc9_load_object (uint32_t zHeader, uint32_t * rdpcmds)
 {
-   uint32_t w0   = rdp.cmd0;
-   uint32_t w1   = rdp.cmd1;
+   uint32_t w0   = __RSP.w0;
+   uint32_t w1   = __RSP.w1;
    uint32_t type = zHeader & 7;
    uint8_t *addr = gfx_info.RDRAM + (zHeader&0xFFFFFFF8);
 
@@ -193,10 +193,10 @@ static uint32_t uc9_load_object (uint32_t zHeader, uint32_t * rdpcmds)
       case 1: //sh tri
       case 3: //sh quad
          {
-            rdp.cmd1 = ((uint32_t*)addr)[1];
-            if (rdp.cmd1 != rdpcmds[0])
+            __RSP.w1 = ((uint32_t*)addr)[1];
+            if (__RSP.w1 != rdpcmds[0])
             {
-               rdpcmds[0] = rdp.cmd1;
+               rdpcmds[0] = __RSP.w1;
                uc9_rpdcmd(w0, w1);
             }
             update();
@@ -207,23 +207,23 @@ static uint32_t uc9_load_object (uint32_t zHeader, uint32_t * rdpcmds)
       case 2: //tx tri
       case 4: //tx quad
          {
-            rdp.cmd1 = ((uint32_t*)addr)[1];
-            if (rdp.cmd1 != rdpcmds[0])
+            __RSP.w1 = ((uint32_t*)addr)[1];
+            if (__RSP.w1 != rdpcmds[0])
             {
-               rdpcmds[0] = rdp.cmd1;
+               rdpcmds[0] = __RSP.w1;
                uc9_rpdcmd(w0, w1);
             }
-            rdp.cmd1 = ((uint32_t*)addr)[2];
-            if (rdp.cmd1 != rdpcmds[1])
+            __RSP.w1 = ((uint32_t*)addr)[2];
+            if (__RSP.w1 != rdpcmds[1])
             {
                uc9_rpdcmd(w0, w1);
-               rdpcmds[1] = rdp.cmd1;
+               rdpcmds[1] = __RSP.w1;
             }
-            rdp.cmd1 = ((uint32_t*)addr)[3];
-            if (rdp.cmd1 != rdpcmds[2])
+            __RSP.w1 = ((uint32_t*)addr)[3];
+            if (__RSP.w1 != rdpcmds[2])
             {
                uc9_rpdcmd(w0, w1);
-               rdpcmds[2] = rdp.cmd1;
+               rdpcmds[2] = __RSP.w1;
             }
             if (type)
             {

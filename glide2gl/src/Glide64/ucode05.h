@@ -246,7 +246,7 @@ static void uc5_moveword(uint32_t w0, uint32_t w1)
          billboarding = w1 & 1;
          break;
       case G_MW_CLIP:
-         if (((rdp.cmd0>>8)&0xFFFF) == 0x04)
+         if (((__RSP.w0 >> 8)&0xFFFF) == 0x04)
          {
             rdp.clip_ratio = (float)vi_integer_sqrt(w1);
             g_gdp.flags |= UPDATE_VIEWPORT;

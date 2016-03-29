@@ -438,7 +438,7 @@ static void uc2_movemem(uint32_t w0, uint32_t w1)
          glide64gSPForceMatrix(w1);
 
          /* force matrix takes two commands */
-         rdp.pc[rdp.pc_i] += 8; 
+         __RSP.PC[__RSP.PCi] += 8; 
          break;
 
       case G_MV_LIGHT:

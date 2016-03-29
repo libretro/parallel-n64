@@ -323,7 +323,8 @@ SOURCES_CXX += $(ROOT_DIR)/Graphics/RSP/gSP_funcs.cpp \
 				 $(ROOT_DIR)/Graphics/RDP/gDP_funcs.cpp
 
 SOURCES_C   += $(ROOT_DIR)/Graphics/RSP/gSP_funcs_C.c \
-				 $(ROOT_DIR)/Graphics/RDP/gDP_funcs_C.c
+				 	$(ROOT_DIR)/Graphics/RDP/gDP_funcs_C.c \
+					$(ROOT_DIR)/Graphics/RSP/RSP_state.c
 
 ifeq ($(HAVE_GLIDE64),1)
 SOURCES_C += $(VIDEODIR_GLIDE)/Glide64/glide64_3dmath.c \

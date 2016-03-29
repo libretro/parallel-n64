@@ -4,6 +4,8 @@
 #include <stdint.h>
 #include <boolean.h>
 
+#include "../../Graphics/RSP/RSP_state.h"
+
 #include "N64.h"
 #include "GBI.h"
 //#include "gSP.h"
@@ -18,18 +20,6 @@ extern "C" {
 #define RSPMSG_CAPTURESCREEN    3
 #define RSPMSG_DESTROYTEXTURES  4
 #define RSPMSG_INITTEXTURES     5
-
-typedef struct
-{
-	uint32_t PC[18], PCi, busy, halt, close, DList, uc_start, uc_dstart, cmd, nextCmd;
-	int32_t count;
-	bool bLLE;
-	char romname[21];
-   uint32_t w0;
-   uint32_t w1;
-} RSPInfo;
-
-extern RSPInfo __RSP;
 
 extern uint32_t DepthClearColor;
 

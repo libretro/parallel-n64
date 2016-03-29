@@ -3,17 +3,9 @@
 
 #include <stdint.h>
 
+#include "../../Graphics/RSP/RSP_state.h"
+
 #include "N64.h"
-
-typedef struct
-{
-	uint32_t PC[18], PCi, busy, halt, close, uc_start, uc_dstart, cmd, nextCmd;
-	int32_t count;
-	bool bLLE;
-	char romname[21];
-} RSPInfo;
-
-extern RSPInfo __RSP;
 
 extern uint32_t DepthClearColor;
 

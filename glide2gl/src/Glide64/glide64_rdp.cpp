@@ -50,6 +50,7 @@
 #include "../../libretro/libretro_private.h"
 #include "../../Graphics/RDP/gDP_funcs.h"
 #include "../../Graphics/RSP/gSP_funcs.h"
+#include "../../Graphics/RSP/RSP_state.h"
 
 /* angrylion's macro, helps to cut overflowed values. */
 #define SIGN16(x) (int16_t)(x)
@@ -401,16 +402,16 @@ extern "C" void glide64ProcessDList(void)
     DrawPartFrameBufferToScreen();
   if ((settings.hacks&hack_Tonic) && dlist_length < 16)
   {
-    gdp_full_sync(rdp.cmd0, rdp.cmd1);
+    gdp_full_sync(__RSP.w0, __RSP.w1);
     FRDP_E("DLIST is too short!\n");
     return;
   }
 
   // Start executing at the start of the display list
-  rdp.pc_i         = 0;
-  rdp.pc[rdp.pc_i] = dlist_start;
-  rdp.dl_count     = -1;
-  rdp.halt         = 0;
+  __RSP.PCi           = 0;
+  __RSP.PC[__RSP.PCi] = dlist_start;
+  __RSP.count         = -1;
+  __RSP.halt          = 0;
 
   if (settings.ucode == ucode_Turbo3d)
      Turbo3D();
@@ -420,37 +421,37 @@ extern "C" void glide64ProcessDList(void)
      do
      {
         /* Get the address of the next command */
-        a        = rdp.pc[rdp.pc_i] & BMASK;
+        a        = __RSP.PC[__RSP.PCi] & BMASK;
 
         /* Load the next command and its input */
-        rdp.cmd0 = ((uint32_t*)gfx_info.RDRAM)[a>>2];   // \ Current command, 64 bit
-        rdp.cmd1 = ((uint32_t*)gfx_info.RDRAM)[(a>>2)+1]; // /
+        __RSP.w0 = ((uint32_t*)gfx_info.RDRAM)[a>>2];   // \ Current command, 64 bit
+        __RSP.w1 = ((uint32_t*)gfx_info.RDRAM)[(a>>2)+1]; // /
         /* cmd2 and cmd3 are filled only when needed, by the function that needs them */
 
 #ifdef LOG_COMMANDS
         // Output the address before the command
-        FRDP ("%08lx (c0:%08lx, c1:%08lx): ", a, rdp.cmd0, rdp.cmd1);
+        FRDP ("%08lx (c0:%08lx, c1:%08lx): ", a, __RSP.w0, __RSP.w1);
 #endif
 
         // Go to the next instruction
-        rdp.pc[rdp.pc_i] = (a+8) & BMASK;
+        __RSP.PC[__RSP.PCi] = (a+8) & BMASK;
 
         // Process this instruction
-        gfx_instruction[settings.ucode][rdp.cmd0>>24](rdp.cmd0, rdp.cmd1);
+        gfx_instruction[settings.ucode][__RSP.w0 >> 24](__RSP.w0, __RSP.w1);
 
         // check DL counter
-        if (rdp.dl_count != -1)
+        if (__RSP.count != -1)
         {
-           rdp.dl_count --;
-           if (rdp.dl_count == 0)
+           __RSP.count --;
+           if (__RSP.count == 0)
            {
-              rdp.dl_count = -1;
+              __RSP.count = -1;
 
               LRDP("End of DL\n");
-              rdp.pc_i --;
+              __RSP.PCi --;
            }
         }
-     } while (!rdp.halt);
+     } while (!__RSP.halt);
   }
 
   if (fb_emulation_enabled)
@@ -561,9 +562,9 @@ static void rdp_texrect(uint32_t w0, uint32_t w1)
    } texUV[2]; //struct for texture coordinates
    VERTEX *vptr = NULL, vstd[4];
 
-   if (!rdp.LLE)
+   if (!__RSP.bLLE)
    {
-      uint32_t       a = rdp.pc[rdp.pc_i];
+      uint32_t       a = __RSP.PC[__RSP.PCi];
       uint8_t cmdHalf1 = gfx_info.RDRAM[a+3];
       uint8_t cmdHalf2 = gfx_info.RDRAM[a+11];
       a >>= 2;
@@ -576,7 +577,7 @@ static void rdp_texrect(uint32_t w0, uint32_t w1)
          //gSPTextureRectangle
          rdp.cmd2 = ((uint32_t*)gfx_info.RDRAM)[a+1];
          rdp.cmd3 = ((uint32_t*)gfx_info.RDRAM)[a+3];
-         rdp.pc[rdp.pc_i] += 16;
+         __RSP.PC[__RSP.PCi] += 16;
       }
       else
       {
@@ -586,7 +587,7 @@ static void rdp_texrect(uint32_t w0, uint32_t w1)
          else
             rdp.cmd2 = ((uint32_t*)gfx_info.RDRAM)[a+0];
          rdp.cmd3 = ((uint32_t*)gfx_info.RDRAM)[a+1];
-         rdp.pc[rdp.pc_i] += 8;
+         __RSP.PC[__RSP.PCi] += 8;
       }
    }
    if ((settings.hacks&hack_Yoshi) && settings.ucode == ucode_S2DEX)
@@ -735,7 +736,7 @@ static void rdp_texrect(uint32_t w0, uint32_t w1)
    s_ul_y = ul_y * rdp.scale_y + rdp.offset_y;
    s_lr_y = lr_y * rdp.scale_y + rdp.offset_y;
 
-   if ( ((rdp.cmd0>>24)&0xFF) == G_TEXRECTFLIP ) //texrectflip
+   if ( ((__RSP.w0 >> 24)&0xFF) == G_TEXRECTFLIP ) //texrectflip
    {
       off_size_x = (lr_y - ul_y - 1) * dsdx;
       off_size_y = (lr_x - ul_x - 1) * dtdy;
@@ -877,7 +878,7 @@ static void rdp_texrect(uint32_t w0, uint32_t w1)
    vstd[3].coord[3] = 0;
    vstd[3].f = 255.0f;
 
-   if ( ((rdp.cmd0>>24)&0xFF) == G_TEXRECTFLIP )
+   if ( ((__RSP.w0 >> 24)&0xFF) == G_TEXRECTFLIP )
    {
       vstd[1].u[0] = texUV[0].ul_u;
       vstd[1].v[0] = texUV[0].lr_v;
@@ -941,14 +942,14 @@ static void rdp_setscissor(uint32_t w0, uint32_t w1)
 }
 
 #define F3DEX2_SETOTHERMODE(cmd,sft,len,data) { \
-   rdp.cmd0 = (cmd<<24) | ((32-(sft)-(len))<<8) | (((len)-1)); \
-   rdp.cmd1 = data; \
-   gfx_instruction[settings.ucode][cmd](rdp.cmd0, rdp.cmd1); \
+   __RSP.w0 = (cmd<<24) | ((32-(sft)-(len))<<8) | (((len)-1)); \
+   __RSP.w1 = data; \
+   gfx_instruction[settings.ucode][cmd](__RSP.w0, __RSP.w1); \
 }
 #define SETOTHERMODE(cmd,sft,len,data) { \
-   rdp.cmd0 = (cmd<<24) | ((sft)<<8) | (len); \
-   rdp.cmd1 = data; \
-   gfx_instruction[settings.ucode][cmd](rdp.cmd0, rdp.cmd1); \
+   __RSP.w0 = (cmd<<24) | ((sft)<<8) | (len); \
+   __RSP.w1 = data; \
+   gfx_instruction[settings.ucode][cmd](__RSP.w0, __RSP.w1); \
 }
 
 static void rdp_setothermode(uint32_t w0, uint32_t w1)
@@ -957,14 +958,14 @@ static void rdp_setothermode(uint32_t w0, uint32_t w1)
 
    if ((settings.ucode == ucode_F3DEX2) || (settings.ucode == ucode_CBFD))
    {
-      int cmd0 = rdp.cmd0;
-      F3DEX2_SETOTHERMODE(0xE2, 0, 32, rdp.cmd1); // SETOTHERMODE_L
+      int cmd0 = __RSP.w0;
+      F3DEX2_SETOTHERMODE(0xE2, 0, 32, __RSP.w1); // SETOTHERMODE_L
       F3DEX2_SETOTHERMODE(0xE3, 0, 32, cmd0 & 0x00FFFFFF); // SETOTHERMODE_H
    }
    else
    {
-      int cmd0 = rdp.cmd0;
-      SETOTHERMODE(0xB9, 0, 32, rdp.cmd1); // SETOTHERMODE_L
+      int cmd0 = __RSP.w0;
+      SETOTHERMODE(0xB9, 0, 32, __RSP.w1); // SETOTHERMODE_L
       SETOTHERMODE(0xBA, 0, 32, cmd0 & 0x00FFFFFF); // SETOTHERMODE_H
    }
 }
@@ -1860,44 +1861,44 @@ void DetectFrameBufferUsage(void)
    SwapOK               = true;
 
    // Start executing at the start of the display list
-   rdp.pc_i             = 0;
-   rdp.pc[rdp.pc_i]     = dlist_start;
-   rdp.dl_count         = -1;
-   rdp.halt             = 0;
+   __RSP.PCi            = 0;
+   __RSP.PC[__RSP.PCi]  = dlist_start;
+   __RSP.count          = -1;
+   __RSP.halt           = 0;
    rdp.scale_x_bak      = rdp.scale_x;
    rdp.scale_y_bak      = rdp.scale_y;
 
    do
    {
       /* Get the address of the next command */
-      uint32_t a = rdp.pc[rdp.pc_i] & BMASK;
+      uint32_t a = __RSP.PC[__RSP.PCi] & BMASK;
 
       /* Load the next command and its input */
-      rdp.cmd0   = ((uint32_t*)gfx_info.RDRAM)[a>>2];   // \ Current command, 64 bit
-      rdp.cmd1   = ((uint32_t*)gfx_info.RDRAM)[(a>>2)+1]; // /
+      __RSP.w0   = ((uint32_t*)gfx_info.RDRAM)[a>>2];   // \ Current command, 64 bit
+      __RSP.w1   = ((uint32_t*)gfx_info.RDRAM)[(a>>2)+1]; // /
 
       // Output the address before the command
 
       // Go to the next instruction
-      rdp.pc[rdp.pc_i] = (a+8) & BMASK;
+      __RSP.PC[__RSP.PCi] = (a+8) & BMASK;
 
-      if ((uintptr_t)((void*)(gfx_instruction_lite[settings.ucode][rdp.cmd0>>24])))
-         gfx_instruction_lite[settings.ucode][rdp.cmd0>>24](rdp.cmd0, rdp.cmd1);
+      if ((uintptr_t)((void*)(gfx_instruction_lite[settings.ucode][__RSP.w0 >> 24])))
+         gfx_instruction_lite[settings.ucode][__RSP.w0 >> 24](__RSP.w0, __RSP.w1);
 
       // check DL counter
-      if (rdp.dl_count != -1)
+      if (__RSP.count != -1)
       {
-         rdp.dl_count --;
-         if (rdp.dl_count == 0)
+         __RSP.count --;
+         if (__RSP.count == 0)
          {
-            rdp.dl_count = -1;
+            __RSP.count = -1;
 
             LRDP("End of DL\n");
-            rdp.pc_i --;
+            __RSP.PCi --;
          }
       }
 
-   }while (!rdp.halt);
+   }while (!__RSP.halt);
 
    SwapOK = true;
 
@@ -2538,7 +2539,7 @@ static const uint32_t rdp_command_length[64] =
 
 static void rdphalf_1(uint32_t w0, uint32_t w1)
 {
-   uint32_t cmd = rdp.cmd1 >> 24;
+   uint32_t cmd = __RSP.w1 >> 24;
    if (cmd >= G_TRI_FILL && cmd <= G_TRI_SHADE_TXTR_ZBUFF) //triangle command
    {
       rdp_cmd_ptr = 0;
@@ -2548,38 +2549,38 @@ static void rdphalf_1(uint32_t w0, uint32_t w1)
       {
          uint32_t a;
 
-         rdp_cmd_data[rdp_cmd_ptr++] = rdp.cmd1;
+         rdp_cmd_data[rdp_cmd_ptr++] = __RSP.w1;
 
          /* check DL counter */
-         if (rdp.dl_count != -1)
+         if (__RSP.count != -1)
          {
-            rdp.dl_count --;
-            if (rdp.dl_count == 0)
+            __RSP.count--;
+            if (__RSP.count == 0)
             {
-               rdp.dl_count = -1;
+               __RSP.count = -1;
 
                LRDP("End of DL\n");
-               rdp.pc_i --;
+               __RSP.PCi --;
             }
          }
 
          /* Get the address of the next command */
-         a        = rdp.pc[rdp.pc_i] & BMASK;
+         a        = __RSP.PC[__RSP.PCi] & BMASK;
 
          /* Load the next command and its input */
-         rdp.cmd0 = ((uint32_t*)gfx_info.RDRAM)[a>>2];   // \ Current command, 64 bit
-         rdp.cmd1 = ((uint32_t*)gfx_info.RDRAM)[(a>>2)+1]; // /
+         __RSP.w0 = ((uint32_t*)gfx_info.RDRAM)[a>>2];   // \ Current command, 64 bit
+         __RSP.w1 = ((uint32_t*)gfx_info.RDRAM)[(a>>2)+1]; // /
 
          // Go to the next instruction
-         rdp.pc[rdp.pc_i] = (a+8) & BMASK;
+         __RSP.PC[__RSP.PCi] = (a+8) & BMASK;
 
-      }while ((rdp.cmd0 >> 24) != 0xb3);
+      }while ((__RSP.w0 >> 24) != 0xb3);
 
-      rdp_cmd_data[rdp_cmd_ptr++] = rdp.cmd1;
+      rdp_cmd_data[rdp_cmd_ptr++] = __RSP.w1;
       cmd                         = (rdp_cmd_data[rdp_cmd_cur] >> 24) & 0x3f;
-      rdp.cmd0                    = rdp_cmd_data[rdp_cmd_cur+0];
-      rdp.cmd1                    = rdp_cmd_data[rdp_cmd_cur+1];
-      rdp_command_table[cmd](rdp.cmd0, rdp.cmd1);
+      __RSP.w0                    = rdp_cmd_data[rdp_cmd_cur+0];
+      __RSP.w1                    = rdp_cmd_data[rdp_cmd_cur+1];
+      rdp_command_table[cmd](__RSP.w0, __RSP.w1);
    }
 }
 
@@ -2665,7 +2666,7 @@ extern "C" void glide64ProcessRDPList(void)
       rdp_cmd_ptr = (rdp_cmd_ptr + 1) & MAXCMD_MASK;
    }
 
-   rdp.LLE = true;
+   __RSP.bLLE = true;
 
    /* Load command data */
    while (rdp_cmd_cur != rdp_cmd_ptr)
@@ -2684,13 +2685,13 @@ extern "C" void glide64ProcessRDPList(void)
                rdp_command_length[cmd] - (MAXCMD - rdp_cmd_cur) * 4);
 
       /* execute the command */
-      rdp.cmd0 = rdp_cmd_data[rdp_cmd_cur + 0];
-      rdp.cmd1 = rdp_cmd_data[rdp_cmd_cur + 1];
+      __RSP.w0 = rdp_cmd_data[rdp_cmd_cur + 0];
+      __RSP.w1 = rdp_cmd_data[rdp_cmd_cur + 1];
       rdp.cmd2 = rdp_cmd_data[rdp_cmd_cur + 2];
       rdp.cmd3 = rdp_cmd_data[rdp_cmd_cur + 3];
 
-      w0       = rdp.cmd0;
-      w1       = rdp.cmd1;
+      w0       = __RSP.w0;
+      w1       = __RSP.w1;
 
       rdp_command_table[cmd](w0, w1);
 
@@ -2703,7 +2704,7 @@ extern "C" void glide64ProcessRDPList(void)
       rdp_cmd_ptr = 0;
    }
 
-   rdp.LLE = false;
+   __RSP.bLLE = false;
 
    (*(uint32_t*)gfx_info.DPC_START_REG) = (*(uint32_t*)gfx_info.DPC_CURRENT_REG) = (*(uint32_t*)gfx_info.DPC_END_REG);
 }

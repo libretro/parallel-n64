@@ -117,5 +117,5 @@ static void uc1_branch_z(uint32_t w0, uint32_t w1)
    uint32_t vtx  = (w0 & 0xFFF) >> 1;
 
    if( fabs(rdp.vtx[vtx].z) <= (w1/*&0xFFFF*/) )
-      rdp.pc[rdp.pc_i] = addr;
+      __RSP.PC[__RSP.PCi] = addr;
 }

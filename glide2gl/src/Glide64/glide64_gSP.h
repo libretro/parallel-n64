@@ -5,6 +5,7 @@
 #include "GBI.h"
 #include "rdp.h"
 #include "../../Graphics/RSP/gSP_funcs.h"
+#include "../../Graphics/RSP/RSP_state.h"
 
 typedef struct DRAWOBJECT_t
 {
@@ -256,7 +257,7 @@ static void draw_tri_uv_calculation(VERTEX **vtx, VERTEX *v)
       if (!(rdp.geom_mode & UPDATE_SCISSOR))
       {
          if (rdp.geom_mode & G_SHADE)
-            glideSetVertexFlatShading(v, vtx, rdp.cmd1);
+            glideSetVertexFlatShading(v, vtx, __RSP.w1);
          else
             glideSetVertexPrimShading(v, g_gdp.prim_color.total);
       }
@@ -511,12 +512,12 @@ static void glide64gSPDlistCount(uint32_t count, uint32_t v)
 {
    uint32_t address = RSP_SegmentToPhysical(v);
 
-   if (rdp.pc_i >= 9 || address == 0)
+   if (__RSP.PCi >= 9 || address == 0)
       return;
 
-   rdp.pc_i ++;  // go to the next PC in the stack
-   rdp.pc[rdp.pc_i] = address;  // jump to the address
-   rdp.dl_count = count + 1;
+   __RSP.PCi ++;  // go to the next PC in the stack
+   __RSP.PC[__RSP.PCi] = address;  // jump to the address
+   __RSP.count = count + 1;
 }
 
 static void glide64gSPModifyVertex( uint32_t vtx, uint32_t where, uint32_t val )
@@ -526,7 +527,7 @@ static void glide64gSPModifyVertex( uint32_t vtx, uint32_t where, uint32_t val )
    switch (where)
    {
       case 0:
-         uc6_obj_sprite(rdp.cmd0, rdp.cmd1);
+         uc6_obj_sprite(__RSP.w0, __RSP.w1);
          break;
 
       case G_MWO_POINT_RGBA:
@@ -582,13 +583,13 @@ static void glide64gSPModifyVertex( uint32_t vtx, uint32_t where, uint32_t val )
 
 static void glide64gSPEndDisplayList(void)
 {
-   if (rdp.pc_i > 0)
-      rdp.pc_i --;
+   if (__RSP.PCi > 0)
+      __RSP.PCi --;
    else
    {
       //LRDP("RDP end\n");
       // Halt execution here
-      rdp.halt = 1;
+      __RSP.halt = 1;
    }
 }
 
