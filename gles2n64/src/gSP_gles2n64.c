@@ -937,35 +937,14 @@ void gln64gSPDisplayList( uint32_t dl )
    uint32_t address = RSP_SegmentToPhysical( dl );
 
    if ((address + 8) > RDRAMSize)
-   {
-#ifdef DEBUG
-		DebugMsg( DEBUG_HIGH | DEBUG_ERROR, "// Attempting to load display list from invalid address\n" );
-		DebugMsg( DEBUG_HIGH | DEBUG_HANDLED, "gSPDisplayList( 0x%08X );\n",
-			dl );
-#endif
       return;
-   }
 
    if (__RSP.PCi < (GBI.PCStackSize - 1))
    {
-#ifdef DEBUG
-      DebugMsg( DEBUG_HIGH | DEBUG_HANDLED, "\n" );
-      DebugMsg( DEBUG_HIGH | DEBUG_HANDLED, "gSPDisplayList( 0x%08X );\n",
-            dl );
-#endif
       __RSP.PCi++;
       __RSP.PC[__RSP.PCi] = address;
       __RSP.nextCmd = _SHIFTR( *(uint32_t*)&gfx_info.RDRAM[address], 24, 8 );
    }
-	else
-	{
-#ifdef DEBUG
-		assert(false);
-		DebugMsg( DEBUG_HIGH | DEBUG_ERROR, "// PC stack overflow\n" );
-		DebugMsg( DEBUG_HIGH | DEBUG_HANDLED, "gSPDisplayList( 0x%08X );\n",
-			dl );
-#endif
-	}
 }
 
 void gln64gSPBranchList( uint32_t dl )
@@ -973,19 +952,7 @@ void gln64gSPBranchList( uint32_t dl )
    uint32_t address = RSP_SegmentToPhysical( dl );
 
    if ((address + 8) > RDRAMSize)
-   {
-#ifdef DEBUG
-      DebugMsg( DEBUG_HIGH | DEBUG_ERROR, "// Attempting to branch to display list at invalid address\n" );
-      DebugMsg( DEBUG_HIGH | DEBUG_HANDLED, "gSPBranchList( 0x%08X );\n",
-            dl );
-#endif
       return;
-   }
-
-#ifdef DEBUG
-	DebugMsg( DEBUG_HIGH | DEBUG_HANDLED, "gSPBranchList( 0x%08X );\n",
-		dl );
-#endif
 
    __RSP.PC[__RSP.PCi] = address;
    __RSP.nextCmd = _SHIFTR( *(uint32_t*)&gfx_info.RDRAM[address], 24, 8 );
@@ -994,55 +961,27 @@ void gln64gSPBranchList( uint32_t dl )
 void gln64gSPBranchLessZ( uint32_t branchdl, uint32_t vtx, float zval )
 {
    float zTest;
-   SPVertex *v = NULL;
+   SPVertex      *v = NULL;
    uint32_t address = RSP_SegmentToPhysical( branchdl );
 
    if ((address + 8) > RDRAMSize)
-   {
-#ifdef DEBUG
-      DebugMsg( DEBUG_HIGH | DEBUG_ERROR, "// Specified display list at invalid address\n" );
-      DebugMsg( DEBUG_HIGH | DEBUG_HANDLED, "gSPBranchLessZ( 0x%08X, %i, %i );\n",
-            branchdl, vtx, zval );
-#endif
       return;
-   }
 
    v = (SPVertex*)&OGL.triangles.vertices[vtx];
    zTest = v->z / v->w;
 
    if (zTest > 1.0f || zTest <= zval)
       __RSP.PC[__RSP.PCi] = address;
-
-#ifdef DEBUG
-		DebugMsg( DEBUG_HIGH | DEBUG_HANDLED, "gSPBranchLessZ( 0x%08X, %i, %i );\n",
-			branchdl, vtx, zval );
-#endif
 }
 
 void gln64gSPDlistCount(uint32_t count, uint32_t v)
 {
 	uint32_t address = RSP_SegmentToPhysical( v );
 	if (address == 0 || (address + 8) > RDRAMSize)
-   {
-#ifdef DEBUG
-		DebugMsg( DEBUG_HIGH | DEBUG_ERROR, "// Attempting to branch to display list at invalid address\n" );
-		DebugMsg( DEBUG_HIGH | DEBUG_HANDLED, "gSPDlistCnt(%d, 0x%08X );\n", count, v );
-#endif
 		return;
-	}
 
 	if (__RSP.PCi >= 9)
-   {
-#ifdef DEBUG
-		DebugMsg( DEBUG_HIGH | DEBUG_ERROR, "// ** DL stack overflow **\n" );
-		DebugMsg( DEBUG_HIGH | DEBUG_HANDLED, "gSPDlistCnt(%d, 0x%08X );\n", count, v );
-#endif
 		return;
-	}
-
-#ifdef DEBUG
-	DebugMsg( DEBUG_HIGH | DEBUG_HANDLED, "gSPDlistCnt(%d, 0x%08X );\n", count, v );
-#endif
 
 	++__RSP.PCi;  /* go to the next PC in the stack */
 	__RSP.PC[__RSP.PCi] = address;  /* jump to the address */
@@ -1054,11 +993,6 @@ void gln64gSPSetDMAOffsets( uint32_t mtxoffset, uint32_t vtxoffset )
 {
    gSP.DMAOffsets.mtx = mtxoffset;
    gSP.DMAOffsets.vtx = vtxoffset;
-
-#ifdef DEBUG
-		DebugMsg( DEBUG_HIGH | DEBUG_HANDLED, "gSPSetDMAOffsets( 0x%08X, 0x%08X );\n",
-			mtxoffset, vtxoffset );
-#endif
 }
 
 void gln64gSPSetDMATexOffset(uint32_t _addr)
@@ -1071,21 +1005,11 @@ void gln64gSPSetDMATexOffset(uint32_t _addr)
 void gln64gSPSetVertexColorBase( uint32_t base )
 {
    gSP.vertexColorBase = RSP_SegmentToPhysical( base );
-
-#ifdef DEBUG
-		DebugMsg( DEBUG_HIGH | DEBUG_HANDLED, "gSPSetVertexColorBase( 0x%08X );\n",
-			base );
-#endif
 }
 
 void gln64gSPSetVertexNormaleBase( uint32_t base )
 {
 	gSP.vertexNormalBase = RSP_SegmentToPhysical( base );
-
-#ifdef DEBUG
-		DebugMsg( DEBUG_HIGH | DEBUG_HANDLED, "gSPSetVertexNormaleBase( 0x%08X );\n",
-			base );
-#endif
 }
 
 void gln64gSPDMATriangles( uint32_t tris, uint32_t n )
@@ -1139,11 +1063,6 @@ void gln64gSP1Quadrangle( int32_t v0, int32_t v1, int32_t v2, int32_t v3)
    gln64gSPTriangle( v0, v1, v2);
    gln64gSPTriangle( v0, v2, v3);
    gln64gSPFlushTriangles();
-
-#ifdef DEBUG
-		DebugMsg( DEBUG_HIGH | DEBUG_HANDLED | DEBUG_TRIANGLE, "gSP1Quadrangle( %i, %i, %i, %i );\n",
-			v0, v1, v2, v3 );
-#endif
 }
 
 bool gln64gSPCullVertices( uint32_t v0, uint32_t vn )
@@ -1372,11 +1291,6 @@ void gln64gSPPopMatrix( uint32_t param )
 void gln64gSPSegment( int32_t seg, int32_t base )
 {
     gSP.segment[seg] = base;
-
-#ifdef DEBUG
-	DebugMsg( DEBUG_HIGH | DEBUG_HANDLED, "gSPSegment( %s, 0x%08X );\n",
-		SegmentText[seg], base );
-#endif
 }
 
 void gln64gSPClipRatio( uint32_t r )
@@ -1474,15 +1388,6 @@ void gln64gSPNumLights( int32_t n )
       if (config.generalEmulation.enableHWLighting != 0)
          gSP.changed |= CHANGED_LIGHT;
    }
-#ifdef DEBUG
-   else
-      DebugMsg( DEBUG_HIGH | DEBUG_ERROR, "// Setting an invalid number of lights\n" );
-#endif
-
-#ifdef DEBUG
-   DebugMsg( DEBUG_HIGH | DEBUG_HANDLED, "gSPNumLights( %i );\n",
-         n );
-#endif
 }
 
 void gln64gSPLightColor( uint32_t lightNum, uint32_t packedColor )
@@ -1497,10 +1402,6 @@ void gln64gSPLightColor( uint32_t lightNum, uint32_t packedColor )
 		if (config.generalEmulation.enableHWLighting != 0)
 			gSP.changed |= CHANGED_LIGHT;
    }
-#ifdef DEBUG
-	DebugMsg( DEBUG_HIGH | DEBUG_HANDLED, "gSPLightColor( %i, 0x%08X );\n",
-		lightNum, packedColor );
-#endif
 }
 
 void gln64gSPFogFactor( int16_t fm, int16_t fo )
@@ -1509,16 +1410,10 @@ void gln64gSPFogFactor( int16_t fm, int16_t fo )
    gSP.fog.offset     = fo;
 
    gSP.changed |= CHANGED_FOGPOSITION;
-#ifdef DEBUG
-		DebugMsg( DEBUG_HIGH | DEBUG_HANDLED, "gSPFogFactor( %i, %i );\n", fm, fo );
-#endif
 }
 
 void gln64gSPPerspNormalize( uint16_t scale )
 {
-#ifdef DEBUG
-		DebugMsg( DEBUG_HIGH | DEBUG_UNHANDLED, "gSPPerspNormalize( %i );\n", scale );
-#endif
 }
 
 void gln64gSPCoordMod(uint32_t _w0, uint32_t _w1)
@@ -1568,11 +1463,6 @@ void gln64gSPTexture( float sc, float tc, int32_t level, int32_t tile, int32_t o
    gSP.textureTile[1] = &gDP.tiles[(tile + 1) & 7];
 
    gSP.changed |= CHANGED_TEXTURE;
-
-#ifdef DEBUG
-	DebugMsg( DEBUG_HIGH | DEBUG_HANDLED | DEBUG_TEXTURE, "gSPTexture( %f, %f, %i, %i, %i );\n",
-		sc, tc, level, tile, on );
-#endif
 }
 
 void gln64gSPGeometryMode( uint32_t clear, uint32_t set )
@@ -1666,18 +1556,11 @@ void gln64gSPSetOtherMode_L(uint32_t _length, uint32_t _shift, uint32_t _data)
 void gln64gSPLine3D( int32_t v0, int32_t v1, int32_t flag )
 {
    OGL_DrawLine(v0, v1, 1.5f );
-
-#ifdef DEBUG
-	DebugMsg( DEBUG_HIGH | DEBUG_UNHANDLED, "gSPLine3D( %i, %i, %i );\n", v0, v1, flag );
-#endif
 }
 
 void gln64gSPLineW3D( int32_t v0, int32_t v1, int32_t wd, int32_t flag )
 {
    OGL_DrawLine(v0, v1, 1.5f + wd * 0.5f );
-#ifdef DEBUG
-	DebugMsg( DEBUG_HIGH | DEBUG_UNHANDLED, "gSPLineW3D( %i, %i, %i, %i );\n", v0, v1, wd, flag );
-#endif
 }
 
 static
