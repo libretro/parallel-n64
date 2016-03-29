@@ -188,7 +188,7 @@ void gln64gSPCoordMod(uint32_t _w0, uint32_t _w1);
 void gln64gSPTriangleUnknown();
 
 void gln64gSPTriangle(int32_t v0, int32_t v1, int32_t v2);
-void gln64gSP1Triangle(int32_t v0, int32_t v1, int32_t v2);
+void gln64gSP1Triangle(int32_t v0, int32_t v1, int32_t v2, int32_t flags);
 void gln64gSP2Triangles(const int32_t v00, const int32_t v01, const int32_t v02, const int32_t flag0,
 					const int32_t v10, const int32_t v11, const int32_t v12, const int32_t flag1 );
 void gln64gSP4Triangles(const int32_t v00, const int32_t v01, const int32_t v02,

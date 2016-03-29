@@ -72,7 +72,7 @@ void gln64gSPTriangle(int32_t v0, int32_t v1, int32_t v2)
 	gDP.colorImage.height = (uint32_t)max( gDP.colorImage.height, (uint32_t)gDP.scissor.lry );
 }
 
-void gln64gSP1Triangle( const int32_t v0, const int32_t v1, const int32_t v2)
+void gln64gSP1Triangle( const int32_t v0, const int32_t v1, const int32_t v2, const int32_t flags)
 {
 	gln64gSPTriangle( v0, v1, v2);
 	gln64gSPFlushTriangles();

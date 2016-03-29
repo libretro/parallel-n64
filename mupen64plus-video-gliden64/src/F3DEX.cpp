@@ -15,7 +15,8 @@ void F3DEX_Vtx( uint32_t w0, uint32_t w1 )
 
 void F3DEX_Tri1( uint32_t w0, uint32_t w1 )
 {
-	gln64gSP1Triangle( _SHIFTR( w1, 17, 7 ), _SHIFTR( w1, 9, 7 ), _SHIFTR( w1, 1, 7 ));
+	gln64gSP1Triangle( _SHIFTR( w1, 17, 7 ),
+         _SHIFTR( w1, 9, 7 ), _SHIFTR( w1, 1, 7 ), 0);
 }
 
 void F3DEX_CullDL( uint32_t w0, uint32_t w1 )

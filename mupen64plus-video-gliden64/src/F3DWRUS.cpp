@@ -18,7 +18,7 @@ void F3DWRUS_Tri1( uint32_t w0, uint32_t w1 )
 {
 	gln64gSP1Triangle( _SHIFTR( w1, 16, 8 ) / 5,
 				  _SHIFTR( w1, 8, 8 ) / 5,
-				  _SHIFTR( w1, 0, 8 ) / 5);
+				  _SHIFTR( w1, 0, 8 ) / 5, 0);
 }
 
 void F3DWRUS_Tri2( uint32_t w0, uint32_t w1 )
