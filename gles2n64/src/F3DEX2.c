@@ -17,6 +17,8 @@
 
 #include "Config.h"
 
+#include "../../Graphics/RSP/gSP_funcs.h"
+
 void F3DEX2_Mtx( uint32_t w0, uint32_t w1 )
 {
    gln64gSPMatrix( w1, _SHIFTR( w0, 0, 8 ) ^ G_MTX_PUSH );
@@ -66,7 +68,7 @@ void F3DEX2_Tri1( uint32_t w0, uint32_t w1 )
 {
    gln64gSP1Triangle( _SHIFTR( w0, 17, 7 ),
          _SHIFTR( w0, 9, 7 ),
-         _SHIFTR( w0, 1, 7 ));
+         _SHIFTR( w0, 1, 7 ), 0);
 }
 
 void F3DEX2_Line3D( uint32_t w0, uint32_t w1 )

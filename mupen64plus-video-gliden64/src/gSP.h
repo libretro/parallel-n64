@@ -196,13 +196,6 @@ void gln64gSP4Triangles(const int32_t v00, const int32_t v01, const int32_t v02,
 					const int32_t v20, const int32_t v21, const int32_t v22,
 					const int32_t v30, const int32_t v31, const int32_t v32 );
 
-#ifdef __VEC4_OPT
-extern void (*gln64gSPTransformVertex4)(uint32_t v, float mtx[4][4]);
-extern void (*gln64gSPTransformNormal4)(uint32_t v, float mtx[4][4]);
-extern void (*gln64gSPLightVertex4)(uint32_t v);
-extern void (*gln64gSPPointLightVertex4)(uint32_t v, float _vPos[4][3]);
-extern void (*gln64gSPBillboardVertex4)(uint32_t v);
-#endif
 extern void (*gln64gSPTransformVertex)(float vtx[4], float mtx[4][4]);
 extern void (*gln64gSPLightVertex)(SPVertex & _vtx);
 extern void (*gln64gSPPointLightVertex)(SPVertex & _vtx, float * _vPos);

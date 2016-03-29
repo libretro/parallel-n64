@@ -9,11 +9,17 @@ enum gsp_plugin_type
    GSP_PLUGIN_GLN64
 };
 
-#define gSPCombineMatrices() GSPCombineMatrices(GSP_PLUGIN_GLIDE64)
-#define gSPClipVertex(v)     GSPClipVertex(GSP_PLUGIN_GLIDE64, v)
-#define gSPLookAt(l, n)      GSPLookAt(GSP_PLUGIN_GLIDE64, l, n)
-#define gSPLight(l, n)       GSPLight(GSP_PLUGIN_GLIDE64, l, n)
-#define gSPLightColor(l, c)  GSPLightColor(GSP_PLUGIN_GLIDE64, l, c)
+#ifdef GSP_PLUGIN
+#define GSP_DEF_PLUGIN GSP_PLUGIN
+#else
+#define GSP_DEF_PLUGIN GSP_PLUGIN_GLIDE64
+#endif
+
+#define gSPCombineMatrices() GSPCombineMatrices(GSP_DEF_PLUGIN)
+#define gSPClipVertex(v)     GSPClipVertex(GSP_DEF_PLUGIN, v)
+#define gSPLookAt(l, n)      GSPLookAt(GSP_DEF_PLUGIN, l, n)
+#define gSPLight(l, n)       GSPLight(GSP_DEF_PLUGIN, l, n)
+#define gSPLightColor(l, c)  GSPLightColor(GSP_DEF_PLUGIN, l, c)
 
 void GSPCombineMatrices(enum gsp_plugin_type plug_type);
 void GSPClipVertex(enum gsp_plugin_type plug_type, uint32_t v);
@@ -50,6 +56,7 @@ extern "C" {
 #endif
 
 /* GLN64 prototypes */
+extern void (*gln64gSPLightVertex)(void *data);
 void gln64gSPSegment(int32_t seg, int32_t base);
 void gln64gSPClipVertex(uint32_t v);
 void gln64gSPLightColor( uint32_t lightNum, uint32_t packedColor );

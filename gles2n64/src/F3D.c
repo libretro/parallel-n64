@@ -12,6 +12,8 @@
 
 #include "Config.h"
 
+#include "../../Graphics/RSP/gSP_funcs.h"
+
 void F3D_SPNoOp( uint32_t w0, uint32_t w1 )
 {
    gln64gSPNoOp();
@@ -122,7 +124,7 @@ void F3D_Tri1( uint32_t w0, uint32_t w1 )
 {
    gln64gSP1Triangle( _SHIFTR( w1, 16, 8 ) / 10,
          _SHIFTR( w1, 8, 8 ) / 10,
-         _SHIFTR( w1, 0, 8 ) / 10);
+         _SHIFTR( w1, 0, 8 ) / 10, 0);
 }
 
 void F3D_CullDL( uint32_t w0, uint32_t w1 )

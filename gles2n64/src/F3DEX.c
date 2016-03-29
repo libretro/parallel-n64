@@ -9,6 +9,8 @@
 #include "gDP.h"
 #include "GBI.h"
 
+#include "../../Graphics/RSP/gSP_funcs.h"
+
 void F3DEX_Vtx( uint32_t w0, uint32_t w1 )
 {
    gln64gSPVertex( w1, _SHIFTR( w0, 10, 6 ), _SHIFTR( w0, 17, 7 ) );
@@ -16,7 +18,7 @@ void F3DEX_Vtx( uint32_t w0, uint32_t w1 )
 
 void F3DEX_Tri1( uint32_t w0, uint32_t w1 )
 {
-   gln64gSP1Triangle( _SHIFTR( w1, 17, 7 ), _SHIFTR( w1, 9, 7 ), _SHIFTR( w1, 1, 7 ));
+   gln64gSP1Triangle( _SHIFTR( w1, 17, 7 ), _SHIFTR( w1, 9, 7 ), _SHIFTR( w1, 1, 7 ), 0);
 }
 
 void F3DEX_CullDL( uint32_t w0, uint32_t w1 )

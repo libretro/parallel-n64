@@ -99,291 +99,6 @@ void gln64gSP4Triangles(const int32_t v00, const int32_t v01, const int32_t v02,
 }
 
 
-#ifdef __VEC4_OPT
-static void gln64gSPTransformVertex4_default(uint32_t v, float mtx[4][4])
-{
-	float x, y, z, w;
-	OGLRender & render = video().getRender();
-	for (int i = 0; i < 4; ++i) {
-		SPVertex & vtx = render.getVertex(v+i);
-		x = vtx.x;
-		y = vtx.y;
-		z = vtx.z;
-		w = vtx.w;
-		vtx.x = x * mtx[0][0] + y * mtx[1][0] + z * mtx[2][0] + mtx[3][0];
-		vtx.y = x * mtx[0][1] + y * mtx[1][1] + z * mtx[2][1] + mtx[3][1];
-		vtx.z = x * mtx[0][2] + y * mtx[1][2] + z * mtx[2][2] + mtx[3][2];
-		vtx.w = x * mtx[0][3] + y * mtx[1][3] + z * mtx[2][3] + mtx[3][3];
-	}
-}
-
-static void gln64gSPTransformNormal4_default(uint32_t v, float mtx[4][4])
-{
-	float len, x, y, z;
-	OGLRender & render = video().getRender();
-	for (int i = 0; i < 4; ++i) {
-		SPVertex & vtx = render.getVertex(v+i);
-		x = vtx.nx;
-		y = vtx.ny;
-		z = vtx.nz;
-
-		vtx.nx = mtx[0][0]*x + mtx[1][0]*y + mtx[2][0]*z;
-		vtx.ny = mtx[0][1]*x + mtx[1][1]*y + mtx[2][1]*z;
-		vtx.nz = mtx[0][2]*x + mtx[1][2]*y + mtx[2][2]*z;
-		len = vtx.nx*vtx.nx + vtx.ny*vtx.ny + vtx.nz*vtx.nz;
-		if (len != 0.0f) {
-			len = sqrtf(len);
-			vtx.nx /= len;
-			vtx.ny /= len;
-			vtx.nz /= len;
-		}
-	}
-}
-
-static void gln64gSPLightVertex4_default(uint32_t v)
-{
-	gln64gSPTransformNormal4(v, gSP.matrix.modelView[gSP.matrix.modelViewi]);
-	OGLRender & render = video().getRender();
-	if (!config.generalEmulation.enableHWLighting) {
-		for(int j = 0; j < 4; ++j) {
-			SPVertex & vtx = render.getVertex(v+j);
-			vtx.r = gSP.lights[gSP.numLights].r;
-			vtx.g = gSP.lights[gSP.numLights].g;
-			vtx.b = gSP.lights[gSP.numLights].b;
-			vtx.HWLight = 0;
-
-			for (int i = 0; i < gSP.numLights; ++i) {
-				float intensity = DotProduct( &vtx.nx, &gSP.lights[i].x );
-				if (intensity < 0.0f)
-					intensity = 0.0f;
-				vtx.r += gSP.lights[i].r * intensity;
-				vtx.g += gSP.lights[i].g * intensity;
-				vtx.b += gSP.lights[i].b * intensity;
-			}
-			vtx.r = min(1.0f, vtx.r);
-			vtx.g = min(1.0f, vtx.g);
-			vtx.b = min(1.0f, vtx.b);
-		}
-	} else {
-		for(int j = 0; j < 4; ++j) {
-			SPVertex & vtx = render.getVertex(v+j);
-			vtx.HWLight = gSP.numLights;
-			vtx.r = vtx.nx;
-			vtx.g = vtx.ny;
-			vtx.b = vtx.nz;
-		}
-	}
-}
-
-static void gSPPointLightVertex4_default(uint32_t v, float _vPos[4][3])
-{
-	assert(_vPos != NULL);
-	gln64gSPTransformNormal4(v, gSP.matrix.modelView[gSP.matrix.modelViewi]);
-	OGLRender & render = video().getRender();
-	for(int j = 0; j < 4; ++j) {
-		SPVertex & vtx = render.getVertex(v+j);
-		float light_intensity = 0.0f;
-		vtx.HWLight = 0;
-		vtx.r = gSP.lights[gSP.numLights].r;
-		vtx.g = gSP.lights[gSP.numLights].g;
-		vtx.b = gSP.lights[gSP.numLights].b;
-		for (uint32_t l=0; l < gSP.numLights; ++l) {
-			float lvec[3] = {gSP.lights[l].posx, gSP.lights[l].posy, gSP.lights[l].posz};
-			lvec[0] -= _vPos[j][0];
-			lvec[1] -= _vPos[j][1];
-			lvec[2] -= _vPos[j][2];
-			const float light_len2 = lvec[0]*lvec[0] + lvec[1]*lvec[1] + lvec[2]*lvec[2];
-			const float light_len = sqrtf(light_len2);
-			const float at = gSP.lights[l].ca + light_len/65535.0f*gSP.lights[l].la + light_len2/65535.0f*gSP.lights[l].qa;
-			if (at > 0.0f)
-				light_intensity = 1/at;
-			else
-				light_intensity = 0.0f;
-			if (light_intensity > 0.0f) {
-				vtx.r += gSP.lights[l].r * light_intensity;
-				vtx.g += gSP.lights[l].g * light_intensity;
-				vtx.b += gSP.lights[l].b * light_intensity;
-			}
-		}
-		if (vtx.r > 1.0f) vtx.r = 1.0f;
-		if (vtx.g > 1.0f) vtx.g = 1.0f;
-		if (vtx.b > 1.0f) vtx.b = 1.0f;
-	}
-}
-
-static void gln64gSPLightVertex4_CBFD(uint32_t v)
-{
-	gln64gSPTransformNormal4(v, gSP.matrix.modelView[gSP.matrix.modelViewi]);
-	OGLRender & render = video().getRender();
-	for(int j = 0; j < 4; ++j) {
-		SPVertex & vtx = render.getVertex(v+j);
-		float r = gSP.lights[gSP.numLights].r;
-		float g = gSP.lights[gSP.numLights].g;
-		float b = gSP.lights[gSP.numLights].b;
-
-		for (uint32_t l = 0; l < gSP.numLights; ++l) {
-			const SPLight & light = gSP.lights[l];
-			const float vx = (vtx.x + gSP.vertexCoordMod[ 8])*gSP.vertexCoordMod[12] - light.posx;
-			const float vy = (vtx.y + gSP.vertexCoordMod[ 9])*gSP.vertexCoordMod[13] - light.posy;
-			const float vz = (vtx.z + gSP.vertexCoordMod[10])*gSP.vertexCoordMod[14] - light.posz;
-			const float vw = (vtx.w + gSP.vertexCoordMod[11])*gSP.vertexCoordMod[15] - light.posw;
-			const float len = (vx*vx+vy*vy+vz*vz+vw*vw)/65536.0f;
-			float intensity = light.ca / len;
-			if (intensity > 1.0f) intensity = 1.0f;
-			r += light.r * intensity;
-			g += light.g * intensity;
-			b += light.b * intensity;
-		}
-
-		r = min(1.0f, r);
-		g = min(1.0f, g);
-		b = min(1.0f, b);
-
-		vtx.r *= r;
-		vtx.g *= g;
-		vtx.b *= b;
-		vtx.HWLight = 0;
-	}
-}
-
-static void gSPPointLightVertex4_CBFD(uint32_t v, float _vPos[4][3])
-{
-	gln64gSPTransformNormal4(v, gSP.matrix.modelView[gSP.matrix.modelViewi]);
-	OGLRender & render = video().getRender();
-	for(int j = 0; j < 4; ++j) {
-		SPVertex & vtx = render.getVertex(v+j);
-		float r = gSP.lights[gSP.numLights].r;
-		float g = gSP.lights[gSP.numLights].g;
-		float b = gSP.lights[gSP.numLights].b;
-
-		float intensity = 0.0f;
-		for (uint32_t l = 0; l < gSP.numLights-1; ++l) {
-			const SPLight & light = gSP.lights[l];
-			intensity = DotProduct( &vtx.nx, &light.x );
-			if (intensity < 0.0f)
-				continue;
-			if (light.ca > 0.0f) {
-				const float vx = (vtx.x + gSP.vertexCoordMod[ 8])*gSP.vertexCoordMod[12] - light.posx;
-				const float vy = (vtx.y + gSP.vertexCoordMod[ 9])*gSP.vertexCoordMod[13] - light.posy;
-				const float vz = (vtx.z + gSP.vertexCoordMod[10])*gSP.vertexCoordMod[14] - light.posz;
-				const float vw = (vtx.w + gSP.vertexCoordMod[11])*gSP.vertexCoordMod[15] - light.posw;
-				const float len = (vx*vx+vy*vy+vz*vz+vw*vw)/65536.0f;
-				float p_i = light.ca / len;
-				if (p_i > 1.0f) p_i = 1.0f;
-				intensity *= p_i;
-			}
-			r += light.r * intensity;
-			g += light.g * intensity;
-			b += light.b * intensity;
-		}
-		const SPLight & light = gSP.lights[gSP.numLights-1];
-		intensity = DotProduct( &vtx.nx, &light.x );
-		if (intensity > 0.0f) {
-			r += light.r * intensity;
-			g += light.g * intensity;
-			b += light.b * intensity;
-		}
-
-		r = min(1.0f, r);
-		g = min(1.0f, g);
-		b = min(1.0f, b);
-
-		vtx.r *= r;
-		vtx.g *= g;
-		vtx.b *= b;
-		vtx.HWLight = 0;
-	}
-}
-
-static void gln64gSPBillboardVertex4_default(uint32_t v)
-{
-	OGLRender & render = video().getRender();
-	int i = 0;
-	SPVertex & vtx0 = render.getVertex(i);
-	for (int j = 0; j < 4; ++j) {
-		SPVertex & vtx = render.getVertex(v+j);
-		vtx.x = vtx0.x;
-		vtx.y = vtx0.y;
-		vtx.z = vtx0.z;
-		vtx.w = vtx0.w;
-	}
-}
-
-void gln64gSPClipVertex4(uint32_t v)
-{
-	OGLRender & render = video().getRender();
-	for(int i = 0; i < 4; ++i) {
-		SPVertex & vtx = render.getVertex(v+i);
-		vtx.clip = 0;
-		if (vtx.x > +vtx.w) vtx.clip |= CLIP_POSX;
-		if (vtx.x < -vtx.w) vtx.clip |= CLIP_NEGX;
-		if (vtx.y > +vtx.w) vtx.clip |= CLIP_POSY;
-		if (vtx.y < -vtx.w) vtx.clip |= CLIP_NEGY;
-		if (vtx.w < 0.01f) vtx.clip |= CLIP_Z;
-	}
-}
-
-void gln64gSPProcessVertex4(uint32_t v)
-{
-	if (gSP.changed & CHANGED_MATRIX)
-		gln64gSPCombineMatrices();
-
-	OGLRender & render = video().getRender();
-	float vPos[4][3];
-	for(int i = 0; i < 4; ++i) {
-		SPVertex & vtx = render.getVertex(v+i);
-		vPos[i][0] = vtx.x;
-		vPos[i][1] = vtx.y;
-		vPos[i][2] = vtx.z;
-	}
-	gln64gSPTransformVertex4(v, gSP.matrix.combined );
-
-	if (gSP.viewport.vscale[0] < 0) {
-		for(int i = 0; i < 4; ++i) {
-			SPVertex & vtx = render.getVertex(v+i);
-			vtx.x = -vtx.x;
-		}
-	}
-
-	if (gSP.matrix.billboard)
-		gln64gSPBillboardVertex4(v);
-
-	if (gSP.geometryMode & G_LIGHTING) {
-		if (gSP.geometryMode & G_POINT_LIGHTING)
-			gSPPointLightVertex4(v, vPos);
-		else
-			gln64gSPLightVertex4(v);
-
-		if (GBI.isTextureGen() && gSP.geometryMode & G_TEXTURE_GEN) {
-			for(int i = 0; i < 4; ++i) {
-				SPVertex & vtx = render.getVertex(v+i);
-				float fLightDir[3] = {vtx.nx, vtx.ny, vtx.nz};
-				float x, y;
-				if (gSP.lookatEnable) {
-					x = DotProduct(&gSP.lookat[0].x, fLightDir);
-					y = DotProduct(&gSP.lookat[1].x, fLightDir);
-				} else {
-					x = fLightDir[0];
-					y = fLightDir[1];
-				}
-				if (gSP.geometryMode & G_TEXTURE_GEN_LINEAR) {
-					vtx.s = acosf(x) * 325.94931f;
-					vtx.t = acosf(y) * 325.94931f;
-				} else { // G_TEXTURE_GEN
-					vtx.s = (x + 1.0f) * 512.0f;
-					vtx.t = (y + 1.0f) * 512.0f;
-				}
-			}
-		}
-	} else {
-		for(int i = 0; i < 4; ++i)
-			render.getVertex(v+i).HWLight = 0;
-	}
-
-	gln64gSPClipVertex4(v);
-}
-#endif
-
 static void gln64gSPTransformVertex_default(float vtx[4], float mtx[4][4])
 {
 	float x, y, z, w;
@@ -917,33 +632,6 @@ void gln64gSPVertex( uint32_t a, uint32_t n, uint32_t v0 )
 	OGLRender & render = video().getRender();
 	if ((n + v0) <= INDEXMAP_SIZE) {
 		unsigned int i = v0;
-#ifdef __VEC4_OPT
-		for (; i < n - (n%4) + v0; i += 4) {
-			uint32_t v = i;
-			for(int j = 0; j < 4; ++j) {
-				SPVertex & vtx = render.getVertex(v+j);
-				vtx.x = vertex->x;
-				vtx.y = vertex->y;
-				vtx.z = vertex->z;
-				//vtx.flag = vertex->flag;
-				vtx.s = _FIXED2FLOAT( vertex->s, 5 );
-				vtx.t = _FIXED2FLOAT( vertex->t, 5 );
-				if (gSP.geometryMode & G_LIGHTING) {
-					vtx.nx = vertex->normal.x;
-					vtx.ny = vertex->normal.y;
-					vtx.nz = vertex->normal.z;
-					vtx.a = vertex->color.a * 0.0039215689f;
-				} else {
-					vtx.r = vertex->color.r * 0.0039215689f;
-					vtx.g = vertex->color.g * 0.0039215689f;
-					vtx.b = vertex->color.b * 0.0039215689f;
-					vtx.a = vertex->color.a * 0.0039215689f;
-				}
-				vertex++;
-			}
-			gln64gSPProcessVertex4(v);
-		}
-#endif
 		for (; i < n + v0; ++i) {
 			uint32_t v = i;
 			SPVertex & vtx = render.getVertex(v);
@@ -983,34 +671,6 @@ void gln64gSPCIVertex( uint32_t a, uint32_t n, uint32_t v0 )
 	OGLRender & render = video().getRender();
 	if ((n + v0) <= INDEXMAP_SIZE) {
 		unsigned int i = v0;
-#ifdef __VEC4_OPT
-		for (; i < n - (n%4) + v0; i += 4) {
-			uint32_t v = i;
-			for(unsigned int j = 0; j < 4; ++j) {
-				SPVertex & vtx = render.getVertex(v + j);
-				vtx.x = vertex->x;
-				vtx.y = vertex->y;
-				vtx.z = vertex->z;
-				vtx.s = _FIXED2FLOAT( vertex->s, 5 );
-				vtx.t = _FIXED2FLOAT( vertex->t, 5 );
-				uint8_t *color = &gfx_info.RDRAM[gSP.vertexColorBase + (vertex->ci & 0xff)];
-
-				if (gSP.geometryMode & G_LIGHTING) {
-					vtx.nx = (int8_t)color[3];
-					vtx.ny = (int8_t)color[2];
-					vtx.nz = (int8_t)color[1];
-					vtx.a = color[0] * 0.0039215689f;
-				} else {
-					vtx.r = color[3] * 0.0039215689f;
-					vtx.g = color[2] * 0.0039215689f;
-					vtx.b = color[1] * 0.0039215689f;
-					vtx.a = color[0] * 0.0039215689f;
-				}
-				vertex++;
-			}
-			gln64gSPProcessVertex4(v);
-		}
-#endif
 		for(; i < n + v0; ++i) {
 			uint32_t v = i;
 			SPVertex & vtx = render.getVertex(v);
@@ -1051,31 +711,6 @@ void gln64gSPDMAVertex( uint32_t a, uint32_t n, uint32_t v0 )
 	OGLRender & render = video().getRender();
 	if ((n + v0) <= INDEXMAP_SIZE) {
 		uint32_t i = v0;
-#ifdef __VEC4_OPT
-		for (; i < n - (n%4) + v0; i += 4) {
-			uint32_t v = i;
-			for(int j = 0; j < 4; ++j) {
-				SPVertex & vtx = render.getVertex(v + j);
-				vtx.x = *(int16_t*)&gfx_info.RDRAM[address ^ 2];
-				vtx.y = *(int16_t*)&gfx_info.RDRAM[(address + 2) ^ 2];
-				vtx.z = *(int16_t*)&gfx_info.RDRAM[(address + 4) ^ 2];
-
-				if (gSP.geometryMode & G_LIGHTING) {
-					vtx.nx = *(int8_t*)&gfx_info.RDRAM[(address + 6) ^ 3];
-					vtx.ny = *(int8_t*)&gfx_info.RDRAM[(address + 7) ^ 3];
-					vtx.nz = *(int8_t*)&gfx_info.RDRAM[(address + 8) ^ 3];
-					vtx.a = *(uint8_t*)&gfx_info.RDRAM[(address + 9) ^ 3] * 0.0039215689f;
-				} else {
-					vtx.r = *(uint8_t*)&gfx_info.RDRAM[(address + 6) ^ 3] * 0.0039215689f;
-					vtx.g = *(uint8_t*)&gfx_info.RDRAM[(address + 7) ^ 3] * 0.0039215689f;
-					vtx.b = *(uint8_t*)&gfx_info.RDRAM[(address + 8) ^ 3] * 0.0039215689f;
-					vtx.a = *(uint8_t*)&gfx_info.RDRAM[(address + 9) ^ 3] * 0.0039215689f;
-				}
-				address += 10;
-			}
-			gln64gSPProcessVertex4(v);
-		}
-#endif
 		for (; i < n + v0; ++i) {
 			uint32_t v = i;
 			SPVertex & vtx = render.getVertex(v);
@@ -1115,32 +750,6 @@ void gln64gSPCBFDVertex( uint32_t a, uint32_t n, uint32_t v0 )
 	OGLRender & render = video().getRender();
 	if ((n + v0) <= INDEXMAP_SIZE) {
 		unsigned int i = v0;
-#ifdef __VEC4_OPT
-		for (; i < n - (n%4) + v0; i += 4) {
-			uint32_t v = i;
-			for(int j = 0; j < 4; ++j) {
-				SPVertex & vtx = render.getVertex(v+j);
-				vtx.x = vertex->x;
-				vtx.y = vertex->y;
-				vtx.z = vertex->z;
-				vtx.s = _FIXED2FLOAT( vertex->s, 5 );
-				vtx.t = _FIXED2FLOAT( vertex->t, 5 );
-				if (gSP.geometryMode & G_LIGHTING) {
-					const uint32_t normaleAddrOffset = ((v0+v+j)<<1);
-					vtx.nx = (float)(((int8_t*)gfx_info.RDRAM)[(gSP.vertexNormalBase + normaleAddrOffset + 0)^3]);
-					vtx.ny = (float)(((int8_t*)gfx_info.RDRAM)[(gSP.vertexNormalBase + normaleAddrOffset + 1)^3]);
-					vtx.nz = (float)((int16_t)(vertex->flag&0xFF));
-					vtx.a = vertex->color.a * 0.0039215689f;
-				}
-				vtx.r = vertex->color.r * 0.0039215689f;
-				vtx.g = vertex->color.g * 0.0039215689f;
-				vtx.b = vertex->color.b * 0.0039215689f;
-				vtx.a = vertex->color.a * 0.0039215689f;
-				vertex++;
-			}
-			gln64gSPProcessVertex4(v);
-		}
-#endif
 		for (; i < n + v0; ++i) {
 			uint32_t v = i;
 			SPVertex & vtx = render.getVertex(v);
@@ -2418,15 +2027,6 @@ void gln64gSPObjRendermode(uint32_t _mode)
 	gSP.objRendermode = _mode;
 }
 
-#ifdef __VEC4_OPT
-void (*gln64gSPTransformVertex4)(uint32_t v, float mtx[4][4]) =
-		gln64gSPTransformVertex4_default;
-void (*gln64gSPTransformNormal4)(uint32_t v, float mtx[4][4]) =
-		gln64gSPTransformNormal4_default;
-void (*gln64gSPLightVertex4)(uint32_t v) = gln64gSPLightVertex4_default;
-void (*gln64gSPPointLightVertex4)(uint32_t v, float _vPos[4][3]) = gln64gSPPointLightVertex4_default;
-void (*gln64gSPBillboardVertex4)(uint32_t v) = gln64gSPBillboardVertex4_default;
-#endif
 void (*gln64gSPTransformVertex)(float vtx[4], float mtx[4][4]) =
 		gln64gSPTransformVertex_default;
 void (*gln64gSPLightVertex)(SPVertex & _vtx) = gln64gSPLightVertex_default;
@@ -2436,18 +2036,10 @@ void (*gln64gSPBillboardVertex)(uint32_t v, uint32_t i) = gln64gSPBillboardVerte
 void gSPSetupFunctions()
 {
 	if (GBI.getMicrocodeType() != F3DEX2CBFD) {
-#ifdef __VEC4_OPT
-		gln64gSPLightVertex4      = gln64gSPLightVertex4_default;
-		gln64gSPPointLightVertex4 = gln64gSPPointLightVertex4_default;
-#endif
 		gln64gSPLightVertex       = gln64gSPLightVertex_default;
 		gln64gSPPointLightVertex  = gln64gSPPointLightVertex_default;
 		return;
 	}
-#ifdef __VEC4_OPT
-		gln64gSPLightVertex4      = gln64gSPLightVertex4_CBFD;
-		gln64gSPPointLightVertex4 = gln64gSPPointLightVertex4_CBFD;
-#endif
 		gln64gSPLightVertex       = gln64gSPLightVertex_CBFD;
 		gln64gSPPointLightVertex  = gln64gSPPointLightVertex_CBFD;
 }

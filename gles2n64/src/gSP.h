@@ -6,6 +6,9 @@
 #include "GBI.h"
 #include "gDP.h"
 
+#define GSP_PLUGIN 1
+#include "../../Graphics/RSP/gSP_funcs.h"
+
 #define CHANGED_VIEWPORT        0x01
 #define CHANGED_MATRIX          0x02
 #define CHANGED_COLORBUFFER     0x04
@@ -129,7 +132,6 @@ void gln64gSPViewport( uint32_t v );
 void gln64gSPForceMatrix( uint32_t mptr );
 void gln64gSPLight( uint32_t l, int32_t n );
 void gln64gSPLightCBFD( uint32_t l, int32_t n );
-void gln64gSPLookAt( uint32_t _l, uint32_t _n );
 void gln64gSPVertex( uint32_t v, uint32_t n, uint32_t v0 );
 void gln64gSPCIVertex( uint32_t v, uint32_t n, uint32_t v0 );
 void gln64gSPDMAVertex( uint32_t v, uint32_t n, uint32_t v0 );
@@ -150,7 +152,6 @@ void gln64gSPClipRatio( uint32_t r );
 void gln64gSPInsertMatrix( uint32_t where, uint32_t num );
 void gln64gSPModifyVertex( uint32_t vtx, uint32_t where, uint32_t val );
 void gln64gSPNumLights( int32_t n );
-void gln64gSPLightColor( uint32_t lightNum, uint32_t packedColor );
 void gln64gSPFogFactor( int16_t fm, int16_t fo );
 void gln64gSPPerspNormalize( uint16_t scale );
 void gln64gSPTexture( float sc, float tc, int32_t level, int32_t tile, int32_t on );
@@ -179,12 +180,10 @@ void gln64gSPSetVertexColorBase( uint32_t base );
 void gln64gSPSetVertexNormaleBase( uint32_t base );
 void gln64gSPProcessVertex(uint32_t v);
 void gln64gSPCoordMod(uint32_t _w0, uint32_t _w1);
-void gln64gSPCombineMatrices(void);
 
 void gln64gSPTriangleUnknown(void);
 
 void gln64gSPTriangle(int32_t v0, int32_t v1, int32_t v2);
-void gln64gSP1Triangle(int32_t v0, int32_t v1, int32_t v2);
 void gln64gSP2Triangles(const int32_t v00, const int32_t v01, const int32_t v02, const int32_t flag0,
                     const int32_t v10, const int32_t v11, const int32_t v12, const int32_t flag1 );
 void gln64gSP4Triangles(const int32_t v00, const int32_t v01, const int32_t v02,
@@ -194,8 +193,7 @@ void gln64gSP4Triangles(const int32_t v00, const int32_t v01, const int32_t v02,
 
 
 extern void (*gln64gSPTransformVertex)(float vtx[4], float mtx[4][4]);
-extern void (*gln64gSPLightVertex)(SPVertex * _vtx);
-extern void (*gln64gSPPointLightVertex)(SPVertex *_vtx, float * _vPos);
+extern void (*gln64gSPPointLightVertex)(void *_vtx, float * _vPos);
 extern void (*gln64gSPBillboardVertex)(uint32_t v, uint32_t i);
 void gln64gSPSetupFunctions(void);
 void gln64gSPSetDMATexOffset(uint32_t _addr);

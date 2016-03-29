@@ -99,7 +99,7 @@ void gln64gSPTriangle(int32_t v0, int32_t v1, int32_t v2)
    gDP.colorImage.height = (uint32_t)(max( gDP.colorImage.height, (uint32_t)gDP.scissor.lry ));
 }
 
-void gln64gSP1Triangle( int32_t v0, int32_t v1, int32_t v2)
+void gln64gSP1Triangle( int32_t v0, int32_t v1, int32_t v2, int flags)
 {
    gln64gSPTriangle( v0, v1, v2);
    gln64gSPFlushTriangles();
@@ -139,9 +139,9 @@ static void gln64gSPTransformVertex_default(float vtx[4], float mtx[4][4])
    vtx[3] = x * mtx[0][3] + y * mtx[1][3] + z * mtx[2][3] + mtx[3][3];
 }
 
-static void gln64gSPLightVertex_default(SPVertex * _vtx)
+static void gln64gSPLightVertex_default(void *data)
 {
-
+   SPVertex * _vtx = (SPVertex*)data;
 	if (!config.generalEmulation.enableHWLighting)
    {
       unsigned i;
@@ -172,10 +172,11 @@ static void gln64gSPLightVertex_default(SPVertex * _vtx)
 
 }
 
-static void gln64gSPPointLightVertex_default(SPVertex *_vtx, float * _vPos)
+static void gln64gSPPointLightVertex_default(void *data, float * _vPos)
 {
    uint32_t l;
    float light_intensity = 0.0f;
+   SPVertex *_vtx = (SPVertex*)data;
 
    assert(_vPos != NULL);
    _vtx->HWLight = 0;
@@ -211,8 +212,9 @@ static void gln64gSPPointLightVertex_default(SPVertex *_vtx, float * _vPos)
    if (_vtx->b > 1.0f)  _vtx->b = 1.0f;
 }
 
-static void gln64gSPLightVertex_CBFD(SPVertex *_vtx)
+static void gln64gSPLightVertex_CBFD(void *data)
 {
+   SPVertex *_vtx = (SPVertex*)data;
    uint32_t l;
 	float r = gSP.lights[gSP.numLights].r;
 	float g = gSP.lights[gSP.numLights].g;
@@ -244,10 +246,11 @@ static void gln64gSPLightVertex_CBFD(SPVertex *_vtx)
 	_vtx->HWLight = 0;
 }
 
-static void gln64gSPPointLightVertex_CBFD(SPVertex *_vtx, float * _vPos)
+static void gln64gSPPointLightVertex_CBFD(void *data, float * _vPos)
 {
    uint32_t l;
    const SPLight *light = NULL;
+   SPVertex *_vtx = (SPVertex*)data;
 	float r = gSP.lights[gSP.numLights].r;
 	float g = gSP.lights[gSP.numLights].g;
 	float b = gSP.lights[gSP.numLights].b;
@@ -2222,8 +2225,8 @@ void gln64gSPObjRendermode(uint32_t _mode)
 }
 
 void (*gln64gSPTransformVertex)(float vtx[4], float mtx[4][4])  = gln64gSPTransformVertex_default;
-void (*gln64gSPLightVertex)(SPVertex * _vtx)                    = gln64gSPLightVertex_default;
-void (*gln64gSPPointLightVertex)(SPVertex *_vtx, float * _vPos) = gln64gSPPointLightVertex_default;
+void (*gln64gSPLightVertex)(void *data)                         = gln64gSPLightVertex_default;
+void (*gln64gSPPointLightVertex)(void *data, float * _vPos)     = gln64gSPPointLightVertex_default;
 void (*gln64gSPBillboardVertex)(uint32_t v, uint32_t i)         = gln64gSPBillboardVertex_default;
 
 void gSPSetupFunctions(void)
