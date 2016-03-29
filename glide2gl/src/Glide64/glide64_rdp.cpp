@@ -184,6 +184,20 @@ static int reset = 0;
 int old_ucode = -1;
 
 
+
+void rdp_setfuncs(void)
+{
+   if (settings.hacks & hack_Makers)
+   {
+      if (log_cb)
+         log_cb(RETRO_LOG_INFO, "Applying Mischief Makers function pointer table tweak...\n");
+      gfx_instruction[0][191] = uc0_tri1_mischief;
+   }
+}
+
+extern "C"
+{
+
 void rdp_new(void)
 {
    unsigned i;
@@ -218,19 +232,6 @@ void rdp_new(void)
    mat_2d.BaseScaleX = 1.0f;
    mat_2d.BaseScaleY = 1.0f;
 }
-
-void rdp_setfuncs(void)
-{
-   if (settings.hacks & hack_Makers)
-   {
-      if (log_cb)
-         log_cb(RETRO_LOG_INFO, "Applying Mischief Makers function pointer table tweak...\n");
-      gfx_instruction[0][191] = uc0_tri1_mischief;
-   }
-}
-
-extern "C"
-{
 
 void rdp_free(void)
 {
