@@ -1331,14 +1331,7 @@ void gln64gSPSprite2DBase( uint32_t _base )
 void gln64gSPCullDisplayList( uint32_t v0, uint32_t vn )
 {
    if (gln64gSPCullVertices( v0, vn ))
-   {
-      if (__RSP.PCi > 0)
-         __RSP.PCi--;
-      else
-      {
-         __RSP.halt = true;
-      }
-   }
+      gln64gSPEndDisplayList();
 }
 
 void gln64gSPPopMatrixN( uint32_t param, uint32_t num )
@@ -1587,16 +1580,7 @@ void gln64gSPEndDisplayList(void)
    if (__RSP.PCi > 0)
       __RSP.PCi--;
    else
-   {
-#ifdef DEBUG
-		DebugMsg( DEBUG_DETAIL | DEBUG_HANDLED, "// End of display list, halting execution\n" );
-#endif
       __RSP.halt = true;
-   }
-
-#ifdef DEBUG
-	DebugMsg( DEBUG_HIGH | DEBUG_HANDLED, "gSPEndDisplayList();\n\n" );
-#endif
 }
 
 void gln64gSPGeometryMode( uint32_t clear, uint32_t set )

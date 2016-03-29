@@ -595,7 +595,9 @@ static void glide64gSPEndDisplayList(void)
 
 static bool glide64gSPCullVertices( uint32_t v0, uint32_t vn )
 {
-   uint32_t i, clip = 0;
+   unsigned i;
+   uint32_t clip = 0;
+
 	if (vn < v0)
    {
       // Aidyn Chronicles - The First Mage seems to pass parameters in reverse order.
