@@ -26,6 +26,7 @@
 /* Cxd4 RSP */
 #include "../mupen64plus-rsp-cxd4/config.h"
 #include "plugin/audio_libretro/audio_plugin.h"
+#include "../Graphics/plugin.h"
 
 #ifndef PRESCALE_WIDTH
 #define PRESCALE_WIDTH  640
@@ -84,7 +85,6 @@ unsigned frame_dupe = false;
 uint32_t *blitter_buf;
 uint32_t *blitter_buf_lock   = NULL;
 
-enum gfx_plugin_type gfx_plugin;
 uint32_t gfx_plugin_accuracy = 2;
 static enum rsp_plugin_type rsp_plugin;
 uint32_t screen_width;
