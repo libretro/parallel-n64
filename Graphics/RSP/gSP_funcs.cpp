@@ -26,6 +26,11 @@ void GSPClipVertex(enum gsp_plugin_type plug_type, uint32_t v)
    }
 }
 
+/* Loads a LookAt structure in the RSP for specular highlighting
+ * and projection mapping.
+ *
+ * l             - The lookat structure address.
+ */
 void GSPLookAt(enum gsp_plugin_type plug_type, uint32_t l, uint32_t n)
 {
    switch (plug_type)
@@ -39,6 +44,11 @@ void GSPLookAt(enum gsp_plugin_type plug_type, uint32_t l, uint32_t n)
    }
 }
 
+/* Loads one light structure to the RSP.
+ *
+ * l             - The pointer to the light structure.
+ * n             - The light number that is replaced (1~8)
+ */
 void GSPLight(enum gsp_plugin_type plug_type, uint32_t l, int32_t n)
 {
    switch (plug_type)
@@ -51,6 +61,18 @@ void GSPLight(enum gsp_plugin_type plug_type, uint32_t l, int32_t n)
          break;
    }
 }
+
+/* Quickly changes the light color in the RSP.
+ *
+ * lightNum     - The light number whose color is being modified:
+ *                LIGHT_1 (First light)
+ *                LIGHT_2 (Second light)
+ *                :
+ *                LIGHT_u (Eighth light)
+ *
+ * packedColor - The new light color (32-bit value 0xRRGGBB??)
+ *               (?? is ignored)
+ * */
 
 void GSPLightColor(enum gsp_plugin_type plug_type, uint32_t lightNum, uint32_t packedColor )
 {

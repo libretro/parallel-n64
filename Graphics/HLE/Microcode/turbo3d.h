@@ -34,9 +34,9 @@ struct T3DState
 	uint32_t renderState;	/* render state */
 	uint32_t textureState;	/* texture state */
 	uint8_t flag;
-	uint8_t triCount;	      /* how many tris? */
-	uint8_t vtxV0;		      /* where to load verts? */
-	uint8_t vtxCount;	      /* how many verts? */
+	uint8_t triCount;	      /* how many triangles? */
+	uint8_t vtxV0;		      /* where to load vertices? */
+	uint8_t vtxCount;	      /* how many vertices? */
 	uint32_t rdpCmds;	      /* ptr (segment address) to RDP DL */
 	uint32_t othermode0;
 	uint32_t othermode1;
