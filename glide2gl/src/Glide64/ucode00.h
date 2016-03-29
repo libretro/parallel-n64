@@ -149,11 +149,11 @@ static void uc0_matrix(uint32_t w0, uint32_t w1)
    }
 }
 
-// uc0:movemem - loads a structure with data
-//
+/* uc0:movemem - loads a structure with data */
+
 static void uc0_movemem(uint32_t w0, uint32_t w1)
 {
-   // Check the command
+   /* Check the command */
    switch (_SHIFTR( w0, 16, 8))
    {
       case F3D_MV_VIEWPORT:
@@ -198,9 +198,7 @@ static void uc0_movemem(uint32_t w0, uint32_t w1)
    }
 }
 
-//
-// uc0:displaylist - makes a call to another section of code
-//
+/* uc0:displaylist - makes a call to another section of code */
 
 static void uc0_displaylist(uint32_t w0, uint32_t w1)
 {
