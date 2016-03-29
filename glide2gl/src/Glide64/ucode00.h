@@ -47,9 +47,7 @@ static void rsp_vertex(int v0, int n)
    glide64gSPVertex(addr, n, v0);
 }
 
-//
-// uc0:vertex - loads vertices
-//
+/* uc0:vertex - loads vertices */
 static void uc0_vertex(uint32_t w0, uint32_t w1)
 {
    int v0 = _SHIFTR(w0, 16, 4);     /* Current vertex */
@@ -103,9 +101,7 @@ static void projection_mul (float m[4][4])
    g_gdp.flags |= UPDATE_MULT_MAT;
 }
 
-//
-// uc0:matrix - performs matrix operations
-//
+/* uc0:matrix - performs matrix operations */
 static void uc0_matrix(uint32_t w0, uint32_t w1)
 {
    DECLAREALIGN16VAR(m[4][4]);
@@ -181,9 +177,7 @@ static void uc0_displaylist(uint32_t w0, uint32_t w1)
    }
 }
 
-//
-// tri1 - renders a triangle
-//
+/* tri1 - renders a triangle */
 static void uc0_tri1(uint32_t w0, uint32_t w1)
 {
 	glide64gSP1Triangle( _SHIFTR( w1, 16, 8 ) / 10,
@@ -214,9 +208,7 @@ static void uc0_tri1_mischief(uint32_t w0, uint32_t w1)
    cull_trianglefaces(v, 1, true, true, 0);
 }
 
-//
-// uc0:enddl - ends a call made by uc0:displaylist
-//
+/* uc0:enddl - ends a call made by uc0:displaylist */
 static void uc0_enddl(uint32_t w0, uint32_t w1)
 {
    glide64gSPEndDisplayList();
@@ -232,9 +224,7 @@ static void uc0_popmatrix(uint32_t w0, uint32_t w1)
    glide64gSPPopMatrix( w1 );
 }
 
-//
-// uc0:moveword - moves a word to someplace, like the segment pointers
-//
+/* uc0:moveword - moves a word to someplace, like the segment pointers */
 static void uc0_moveword(uint32_t w0, uint32_t w1)
 {
    // Find which command this is (lowest byte of cmd0)
