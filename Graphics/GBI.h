@@ -43,23 +43,20 @@ extern "C" {
 #define FIXED2FLOATRECIP15  3.0517578e-05f
 #define FIXED2FLOATRECIP16  1.5258789e-05f
 
-#define _FIXED2FLOAT( v, b ) \
-    ((float)v * FIXED2FLOATRECIP##b)
+#define _FIXED2FLOAT( v, b ) ((float)v * FIXED2FLOATRECIP##b)
 
-// Useful macros for decoding GBI command's parameters
-#define _SHIFTL( v, s, w )  \
-    (((uint32_t)v & ((0x01 << w) - 1)) << s)
-#define _SHIFTR( v, s, w )  \
-    (((uint32_t)v >> s) & ((0x01 << w) - 1))
+/* Useful macros for decoding GBI command's parameters */
+#define _SHIFTL( v, s, w )  (((uint32_t)v & ((0x01 << w) - 1)) << s)
+#define _SHIFTR( v, s, w )  (((uint32_t)v >> s) & ((0x01 << w) - 1))
 
-// BG flags
+/* BG flags */
 #define G_BGLT_LOADBLOCK    0x0033
 #define G_BGLT_LOADTILE     0xfff4
 
 #define G_BG_FLAG_FLIPS     0x01
 #define G_BG_FLAG_FLIPT     0x10
 
-// Sprite object render modes
+/* Sprite object render modes */
 #define G_OBJRM_NOTXCLAMP       0x01
 #define G_OBJRM_XLU             0x02    /* Ignored */
 #define G_OBJRM_ANTIALIAS       0x04    /* Ignored */
@@ -68,13 +65,12 @@ extern "C" {
 #define G_OBJRM_SHRINKSIZE_2    0x20
 #define G_OBJRM_WIDEN           0x40
 
-// Sprite texture loading types
+/* Sprite texture loading types */
 #define G_OBJLT_TXTRBLOCK   0x00001033
 #define G_OBJLT_TXTRTILE    0x00fc1034
 #define G_OBJLT_TLUT        0x00000030
 
-
-// These are all the constant flags
+/* These are all the constant flags */
 #define G_ZBUFFER               0x00000001
 #define G_SHADE                 0x00000004
 #define G_FOG                   0x00010000
@@ -127,7 +123,7 @@ extern "C" {
 #define G_MW_FORCEMTX       0x0C
 #define G_MW_POINTS         0x0C
 #define G_MW_PERSPNORM      0x0E
-#define G_MV_COORDMOD       0x10    //Conker Bad Fur Day
+#define G_MV_COORDMOD       0x10    /* Conker Bad Fur Day */
 
 #define G_MWO_NUMLIGHT      0x00
 #define G_MWO_CLIP_RNX      0x04
@@ -173,15 +169,15 @@ extern "C" {
 #define G_MWO_POINT_XYSCREEN    0x18
 #define G_MWO_POINT_ZSCREEN     0x1C
 
-// Image formats
+/* Image formats */
 #define G_IM_FMT_RGBA   0
 #define G_IM_FMT_YUV    1
 #define G_IM_FMT_CI     2
 #define G_IM_FMT_IA     3
 #define G_IM_FMT_I      4
-#define G_IM_FMT_CI_IA  5   //not real
+#define G_IM_FMT_CI_IA  5   /* not real */
 
-// Image sizes
+/* Image sizes */
 #define G_IM_SIZ_4b     0
 #define G_IM_SIZ_8b     1
 #define G_IM_SIZ_16b    2
@@ -225,7 +221,7 @@ static const char *SegmentText[] =
 
 #define G_IMMFIRST              -65
 
-// These GBI commands are common to all ucodes
+/* These GBI commands are common to all ucodes */
 #define G_SETCIMG               0xFF    /*  -1 */
 #define G_SETZIMG               0xFE    /*  -2 */
 #define G_SETTIMG               0xFD    /*  -3 */
@@ -579,8 +575,7 @@ static const char *aAText[] =
 #define G_DL_PUSH       0x00
 #define G_DL_NOPUSH     0x01
 
-
-//Blender
+/* Blender */
 #define BLEND_FOG_ASHADE   0xc800
 #define BLEND_FOG_APRIME   0xc400
 #define BLEND_XLU          0x0040
@@ -595,14 +590,13 @@ static const char *aAText[] =
 #define Z_CLIP_MAX  0x10
 #define Z_CLIP_MIN  0x20
 
-// G_MTX: parameter flags
+/* G_MTX: parameter flags */
 # define G_MTX_MODELVIEW	0x00	/* matrix types */
 # define G_MTX_PROJECTION	0x04
-# define G_MTX_MUL		0x00	/* concat or load */
-# define G_MTX_LOAD		0x02
+# define G_MTX_MUL		   0x00	/* concat or load */
+# define G_MTX_LOAD		   0x02
 # define G_MTX_NOPUSH		0x00	/* push or not */
-# define G_MTX_PUSH		0x01
-
+# define G_MTX_PUSH		   0x01
 
 #ifdef __cplusplus
 }
