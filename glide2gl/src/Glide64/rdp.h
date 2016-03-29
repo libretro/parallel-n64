@@ -695,10 +695,6 @@ extern int SwapOK;
 // ** utility functions
 void load_palette (uint32_t addr, uint16_t start, uint16_t count);
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 void newSwapBuffers(void);
 extern void rdp_setfuncs(void);
 
@@ -706,9 +702,5 @@ void ChangeSize(void);
 void rdp_free(void);
 void rdp_new(void);
 void rdp_reset(void);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif  // ifndef RDP_H

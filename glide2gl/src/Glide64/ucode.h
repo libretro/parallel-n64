@@ -202,9 +202,7 @@ static void rdp_setcombine(uint32_t w0, uint32_t w1);
 static void rdp_settextureimage(uint32_t w0, uint32_t w1);
 static void rdp_setdepthimage(uint32_t w0, uint32_t w1);
 
-extern "C" {
-   static void rdp_setcolorimage(uint32_t w0, uint32_t w1);
-};
+static void rdp_setcolorimage(uint32_t w0, uint32_t w1);
 
 static void rdp_trifill(uint32_t w0, uint32_t w1);
 static void rdp_trishade(uint32_t w0, uint32_t w1);
@@ -232,7 +230,7 @@ static void modelview_mul_push (float m[4][4]);
 static void projection_load (float m[4][4]);
 static void projection_mul (float m[4][4]);
 
-extern "C" void load_matrix (float m[4][4], uint32_t addr);
+void load_matrix (float m[4][4], uint32_t addr);
 
 static float set_sprite_combine_mode(void);
 

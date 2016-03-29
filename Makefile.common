@@ -341,9 +341,8 @@ SOURCES_C += $(VIDEODIR_GLIDE)/Glide64/glide64_3dmath.c \
             $(VIDEODIR_GLIDE)/Glide64/Combine.c \
             $(VIDEODIR_GLIDE)/Glide64/TexCache.c \
 				$(VIDEODIR_GLIDE)/Glide64/MiClWr.c \
-            $(VIDEODIR_GLIDE)/Glide64/TexLoad.c
-
-SOURCES_CXX += $(VIDEODIR_GLIDE)/Glide64/glide64_rdp.cpp
+            $(VIDEODIR_GLIDE)/Glide64/TexLoad.c \
+				$(VIDEODIR_GLIDE)/Glide64/glide64_rdp.c
 
 # Glitch64
 SOURCES_C   += $(VIDEODIR_GLIDE)/Glitch64/glitch64_combiner.c \

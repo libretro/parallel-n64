@@ -4,7 +4,7 @@
 #include "Combine.h"
 #include "rdp.h"
 #include "../../Graphics/GBI.h"
-#include "../../Graphics/RSP/gSP_funcs.h"
+#include "../../Graphics/RSP/gSP_funcs_C.h"
 #include "../../Graphics/RSP/RSP_state.h"
 
 typedef struct DRAWOBJECT_t
