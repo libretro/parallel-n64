@@ -21,51 +21,22 @@
 #include "3DMath.h"
 #include "../../libretro/libretro_private.h"
 
-#define VIDEO_TAG(X) gln64##X
-
-#define ReadScreen2 VIDEO_TAG(ReadScreen2)
-#define PluginStartup VIDEO_TAG(PluginStartup)
-#define PluginShutdown VIDEO_TAG(PluginShutdown)
-#define PluginGetVersion VIDEO_TAG(PluginGetVersion)
-#define CaptureScreen VIDEO_TAG(CaptureScreen)
-#define ChangeWindow VIDEO_TAG(ChangeWindow)
-#define CloseDLL VIDEO_TAG(CloseDLL)
-#define DllTest VIDEO_TAG(DllTest)
-#define DrawScreen VIDEO_TAG(DrawScreen)
-#define GetDllInfo VIDEO_TAG(GetDllInfo)
-#define InitiateGFX VIDEO_TAG(InitiateGFX)
-#define MoveScreen VIDEO_TAG(MoveScreen)
-#define RomClosed VIDEO_TAG(RomClosed)
-#define RomOpen VIDEO_TAG(RomOpen)
-#define ShowCFB VIDEO_TAG(ShowCFB)
-#define SetRenderingCallback VIDEO_TAG(SetRenderingCallback)
-#define UpdateScreen VIDEO_TAG(UpdateScreen)
-#define ViStatusChanged VIDEO_TAG(ViStatusChanged)
-#define ViWidthChanged VIDEO_TAG(ViWidthChanged)
-#define ReadScreen VIDEO_TAG(ReadScreen)
-#define FBGetFrameBufferInfo VIDEO_TAG(FBGetFrameBufferInfo)
-#define FBRead VIDEO_TAG(FBRead)
-#define FBWrite VIDEO_TAG(FBWrite)
-#define ProcessDList VIDEO_TAG(ProcessDList)
-#define ProcessRDPList VIDEO_TAG(ProcessRDPList)
-#define ResizeVideoOutput VIDEO_TAG(ResizeVideoOutput)
-
-uint32_t         last_good_ucode = (uint32_t) -1;
+uint32_t    last_good_ucode     = (uint32_t) -1;
 void        (*renderCallback)() = NULL;
 
-EXPORT m64p_error CALL PluginStartup(m64p_dynlib_handle CoreLibHandle,
+m64p_error gln64PluginStartup(m64p_dynlib_handle CoreLibHandle,
         void *Context, void (*DebugCallback)(void *, int, const char *))
 {
    return M64ERR_SUCCESS;
 }
 
-EXPORT m64p_error CALL PluginShutdown(void)
+m64p_error gln64PluginShutdown(void)
 {
    OGL_Stop();  // paulscode, OGL_Stop missing from Yongzh's code
    return M64ERR_SUCCESS;
 }
 
-EXPORT m64p_error CALL PluginGetVersion(m64p_plugin_type *PluginType,
+m64p_error gln64PluginGetVersion(m64p_plugin_type *PluginType,
         int *PluginVersion, int *APIVersion, const char **PluginNamePtr,
         int *Capabilities)
 {
@@ -90,15 +61,15 @@ EXPORT m64p_error CALL PluginGetVersion(m64p_plugin_type *PluginType,
    return M64ERR_SUCCESS;
 }
 
-EXPORT void CALL ChangeWindow (void)
+void gln64ChangeWindow (void)
 {
 }
 
-EXPORT void CALL MoveScreen (int xpos, int ypos)
+void gln64MoveScreen (int xpos, int ypos)
 {
 }
 
-EXPORT int CALL InitiateGFX (GFX_INFO Gfx_Info)
+int gln64InitiateGFX (GFX_INFO Gfx_Info)
 {
     Config_gln64_LoadConfig();
     Config_gln64_LoadRomConfig(Gfx_Info.HEADER);
@@ -108,7 +79,7 @@ EXPORT int CALL InitiateGFX (GFX_INFO Gfx_Info)
     return 1;
 }
 
-EXPORT void CALL ProcessDList(void)
+void gln64ProcessDList(void)
 {
     OGL.frame_dl++;
 
@@ -116,15 +87,15 @@ EXPORT void CALL ProcessDList(void)
     OGL.mustRenderDlist = true;
 }
 
-EXPORT void CALL ResizeVideoOutput(int Width, int Height)
+void gln64ResizeVideoOutput(int Width, int Height)
 {
 }
 
-EXPORT void CALL RomClosed (void)
+void gln64RomClosed (void)
 {
 }
 
-EXPORT int CALL RomOpen (void)
+int gln64RomOpen (void)
 {
     RSP_Init();
     OGL.frame_dl = 0;
@@ -138,13 +109,13 @@ EXPORT void CALL RomResumed(void)
 {
 }
 
-EXPORT void CALL ShowCFB (void)
+void gln64ShowCFB (void)
 {
 }
 
-EXPORT void CALL UpdateScreen (void)
+void gln64UpdateScreen (void)
 {
-   //has there been any display lists since last update
+   //has there been any display lists since last update ?
    if (OGL.frame_prevdl == OGL.frame_dl)
       return;
 
@@ -158,11 +129,11 @@ EXPORT void CALL UpdateScreen (void)
    }
 }
 
-EXPORT void CALL ViStatusChanged (void)
+void gln64ViStatusChanged (void)
 {
 }
 
-EXPORT void CALL ViWidthChanged (void)
+void gln64ViWidthChanged (void)
 {
 }
 
@@ -185,7 +156,7 @@ EXPORT void CALL ViWidthChanged (void)
   output:   none
 *******************************************************************/ 
 
-EXPORT void CALL FBRead(uint32_t addr)
+void gln64FBRead(uint32_t addr)
 {
 }
 
@@ -203,7 +174,7 @@ EXPORT void CALL FBRead(uint32_t addr)
   output:   none
 *******************************************************************/ 
 
-EXPORT void CALL FBWrite(uint32_t addr, uint32_t size)
+void gln64FBWrite(uint32_t addr, uint32_t size)
 {
 }
 
@@ -229,18 +200,18 @@ output:   Values are return in the FrameBufferInfo structure
           Plugin can return up to 6 frame buffer info
  ************************************************************************/
 
-EXPORT void CALL FBGetFrameBufferInfo(void *p)
+void gln64FBGetFrameBufferInfo(void *p)
 {
 }
 
 // paulscode, API changed this to "ReadScreen2" in Mupen64Plus 1.99.4
-EXPORT void CALL ReadScreen2(void *dest, int *width, int *height, int front)
+void gln64ReadScreen2(void *dest, int *width, int *height, int front)
 {
    /* TODO: 'int front' was added in 1.99.4.  What to do with this here? */
    OGL_ReadScreen(dest, width, height);
 }
 
-EXPORT void CALL SetRenderingCallback(void (*callback)())
+void gln64SetRenderingCallback(void (*callback)())
 {
    renderCallback = callback;
 }
