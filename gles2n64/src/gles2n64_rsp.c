@@ -91,8 +91,7 @@ void RSP_ProcessDList(void)
    else
       while (!__RSP.halt)
       {
-         uint32_t pc;
-         pc = __RSP.PC[__RSP.PCi];
+         uint32_t pc = __RSP.PC[__RSP.PCi];
 
          if ((pc + 8) > RDRAMSize)
          {
