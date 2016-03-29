@@ -87,6 +87,11 @@ void GSPLightColor(enum gsp_plugin_type plug_type, uint32_t lightNum, uint32_t p
    }
 }
 
+/* Loads the viewport projection parameters.
+ *
+ * v           - v is the segment address to the viewport
+ *               structure "Vp".
+ * */
 void GSPViewport(enum gsp_plugin_type plug_type, uint32_t v)
 {
    switch (plug_type)
