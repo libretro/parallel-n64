@@ -53,7 +53,7 @@ static void uc5_dma_offsets(uint32_t w0, uint32_t w1)
 static void uc5_matrix(uint32_t w0, uint32_t w1)
 {
    // Use segment offset to get the address
-   uint32_t addr = dma_offset_mtx + RSP_SegmentToPhysical(w1);
+   uint32_t address = dma_offset_mtx + RSP_SegmentToPhysical(w1);
 
    uint8_t index = _SHIFTR(w0, 16, 4);
    uint8_t multiply;
@@ -70,15 +70,15 @@ static void uc5_matrix(uint32_t w0, uint32_t w1)
 
    if (multiply)
    {
-      DECLAREALIGN16VAR(m[4][4]);
+      DECLAREALIGN16VAR(mtx[4][4]);
       DECLAREALIGN16VAR(m_src[4][4]);
 
-      load_matrix(m, addr);
+      load_matrix(mtx, address);
       memcpy (m_src, rdp.dkrproj[0], 64);
-      MulMatrices(m, m_src, rdp.dkrproj[index]);
+      MulMatrices(mtx, m_src, rdp.dkrproj[index]);
    }
    else
-      load_matrix(rdp.dkrproj[index], addr);
+      load_matrix(rdp.dkrproj[index], address);
 
    g_gdp.flags |= UPDATE_MULT_MAT;
 }
