@@ -564,11 +564,13 @@ static void uc6_bg_1cyc(uint32_t w0, uint32_t w1)
    if (settings.ucode == ucode_F3DEX2/* || (settings.hacks&hack_PPL)*/)
    {
       /* can't draw from framebuffer */
-      if ( (d.imagePtr != rdp.cimg) && (d.imagePtr != rdp.ocimg) && d.imagePtr) 
-         DrawImage(&d);
+      if (d.imagePtr == rdp.cimg || d.imagePtr == rdp.ocimg)
+         return;
+      if (!d.imagePtr)
+         return;
    }
-   else
-      DrawImage(&d);
+
+   DrawImage(&d);
 }
 
 static void uc6_bg_copy(uint32_t w0, uint32_t w1)
@@ -578,16 +580,18 @@ static void uc6_bg_copy(uint32_t w0, uint32_t w1)
    if (rdp.skip_drawing)
       return;
 
-   uc6_read_background_data(&d, false /* 1st cycle */);
+   uc6_read_background_data(&d, false);
 
    if (settings.ucode == ucode_F3DEX2/* || (settings.hacks&hack_PPL)*/)
    {
       /* can't draw from framebuffer */
-      if ( (d.imagePtr != rdp.cimg) && (d.imagePtr != rdp.ocimg) && d.imagePtr)
-         DrawImage(&d);
+      if (d.imagePtr == rdp.cimg || d.imagePtr == rdp.ocimg)
+         return;
+      if (!d.imagePtr)
+         return;
    }
-   else
-      DrawImage(&d);
+
+   DrawImage(&d);
 }
 
 static void draw_split_triangle(VERTEX **vtx)
