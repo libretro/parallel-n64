@@ -1209,10 +1209,12 @@ static void uc6_obj_loadtxtr(uint32_t w0, uint32_t w1)
       uint16_t tsize = ((uint16_t *)gfx_info.RDRAM)[(addr + 5) ^ 1]; // 5
       uint16_t tline = ((uint16_t *)gfx_info.RDRAM)[(addr + 6) ^ 1]; // 6
 
-      //FRDP ("addr: %08lx, tmem: %08lx, size: %d\n", image, tmem, tsize);
-      g_gdp.ti_address = image;
-      g_gdp.ti_width  = 1;
-      g_gdp.ti_size   = G_IM_SIZ_8b;
+      glide64gDPSetTextureImage(
+            g_gdp.ti_format,        /* format */
+            G_IM_SIZ_8b,            /* siz */
+            1,                      /* width */
+            image                   /* address */
+            );
 
       g_gdp.tile[7].tmem = tmem;
       g_gdp.tile[7].size = 1;
@@ -1233,9 +1235,12 @@ static void uc6_obj_loadtxtr(uint32_t w0, uint32_t w1)
 #endif
       line             = (twidth + 1) >> 2;
 
-      g_gdp.ti_address = image;
-      g_gdp.ti_width   = line << 3;
-      g_gdp.ti_size    = G_IM_SIZ_8b;
+      glide64gDPSetTextureImage(
+            g_gdp.ti_format,        /* format */
+            G_IM_SIZ_8b,            /* siz */
+            line << 3,              /* width */
+            image                   /* address */
+            );
 
       g_gdp.tile[7].tmem = tmem;
       g_gdp.tile[7].line = line;
@@ -1416,8 +1421,13 @@ static void uc6_sprite2d(uint32_t w0, uint32_t w1)
          if (line == 0)
             line = 1;
 
-         g_gdp.ti_address   = d.imagePtr;
-         g_gdp.ti_width     = stride;
+         glide64gDPSetTextureImage(
+               g_gdp.ti_format,        /* format */
+               g_gdp.ti_size,          /* siz */
+               stride,                 /* width */
+               d.imagePtr              /* address */
+               );
+
          g_gdp.tile[7].tmem = 0;
          g_gdp.tile[7].line = line;//(d.imageW>>3);
          g_gdp.tile[7].size = d.imageSiz;

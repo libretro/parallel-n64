@@ -1263,9 +1263,12 @@ static void rdp_settextureimage(uint32_t w0, uint32_t w1)
    gdp_set_texture_image(w0, w1);
 
    /* TODO/FIXME - all different values from the ones Angrylion sets. */
-   g_gdp.ti_format    = (uint8_t)((w0 >> 21) & 0x07);
-   g_gdp.ti_width     = (uint16_t)(1 + (w0 & 0x00000FFF));
-   g_gdp.ti_address   = RSP_SegmentToPhysical(w1);
+   glide64gDPSetTextureImage(
+         (uint8_t)((w0 >> 21) & 0x07),       /* format */
+         g_gdp.ti_size,                      /* size   */
+         (uint16_t)(1 + (w0 & 0x00000FFF)),  /* width */
+         RSP_SegmentToPhysical(w1)           /* address */
+         );
 
    if (ucode5_texshiftaddr)
    {
