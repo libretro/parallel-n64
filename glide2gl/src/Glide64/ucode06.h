@@ -552,14 +552,14 @@ static void uc6_read_background_data (DRAWIMAGE *d, bool bReadScale)
    rdp.last_bg    = d->imagePtr;
 }
 
-static void uc6_bg_1cyc(uint32_t w0, uint32_t w1)
+static void uc6_bg(bool first_cycle)
 {
    DRAWIMAGE d;
 
    if (rdp.skip_drawing)
       return;
 
-   uc6_read_background_data(&d, true /* 1st cycle */);
+   uc6_read_background_data(&d, first_cycle);
 
    if (settings.ucode == ucode_F3DEX2/* || (settings.hacks&hack_PPL)*/)
    {
@@ -573,25 +573,14 @@ static void uc6_bg_1cyc(uint32_t w0, uint32_t w1)
    DrawImage(&d);
 }
 
+static void uc6_bg_1cyc(uint32_t w0, uint32_t w1)
+{
+   uc6_bg(true);
+}
+
 static void uc6_bg_copy(uint32_t w0, uint32_t w1)
 {
-   DRAWIMAGE d;
-
-   if (rdp.skip_drawing)
-      return;
-
-   uc6_read_background_data(&d, false);
-
-   if (settings.ucode == ucode_F3DEX2/* || (settings.hacks&hack_PPL)*/)
-   {
-      /* can't draw from framebuffer */
-      if (d.imagePtr == rdp.cimg || d.imagePtr == rdp.ocimg)
-         return;
-      if (!d.imagePtr)
-         return;
-   }
-
-   DrawImage(&d);
+   uc6_bg(false);
 }
 
 static void draw_split_triangle(VERTEX **vtx)
