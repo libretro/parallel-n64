@@ -15,6 +15,8 @@
 #include "convert.h"
 #include "FrameBuffer.h"
 
+#include "../../Graphics/image_convert.h"
+
 #define FORMAT_NONE     0
 #define FORMAT_I8       1
 #define FORMAT_IA88     2
@@ -205,38 +207,23 @@ static INLINE uint32_t GetRGBA8888_RGBA4444( uint64_t *src, uint16_t x, uint16_t
 	return RGBA8888_RGBA4444(((uint32_t*)src)[x^i]);
 }
 
-uint32_t YUV_RGBA8888(uint8_t y, uint8_t u, uint8_t v)
-{
-	int32_t r = (int32_t)(y + (1.370705f * (v - 128)));
-	int32_t g = (int32_t)((y - (0.698001f * (v - 128)) - (0.337633f * (u - 128))));
-	int32_t b = (int32_t)(y + (1.732446f * (u - 128)));
-	//clipping the result
-	if (r > 255) r = 255;
-	if (g > 255) g = 255;
-	if (b > 255) b = 255;
-	if (r < 0) r = 0;
-	if (g < 0) g = 0;
-	if (b < 0) b = 0;
-
-	return (0xff << 24) | (b << 16) | (g << 8) | r;
-}
 
 uint16_t YUV_RGBA4444(uint8_t y, uint8_t u, uint8_t v)
 {
-	return RGBA8888_RGBA4444(YUV_RGBA8888(y, u, v));
+	return RGBA8888_RGBA4444(YUVtoRGBA8888(y, u, v));
 }
 
 static INLINE void GetYUV_RGBA8888(uint64_t * src, uint32_t * dst, uint16_t x)
 {
-	const uint32_t t = (((uint32_t*)src)[x]);
-	uint8_t y1 = (uint8_t)t & 0xFF;
-	uint8_t v = (uint8_t)(t >> 8) & 0xFF;
-	uint8_t y0 = (uint8_t)(t >> 16) & 0xFF;
-	uint8_t u = (uint8_t)(t >> 24) & 0xFF;
-	uint32_t c = YUV_RGBA8888(y0, u, v);
-	*(dst++) = c;
-	c = YUV_RGBA8888(y1, u, v);
-	*(dst++) = c;
+   const uint32_t t = (((uint32_t*)src)[x]);
+   uint8_t y1       = (uint8_t)t & 0xFF;
+   uint8_t v        = (uint8_t)(t >> 8) & 0xFF;
+   uint8_t y0       = (uint8_t)(t >> 16) & 0xFF;
+   uint8_t u        = (uint8_t)(t >> 24) & 0xFF;
+   uint32_t c       = YUVtoRGBA8888(y0, u, v);
+   *(dst++)         = c;
+   c                = YUVtoRGBA8888(y1, u, v);
+   *(dst++)         = c;
 }
 
 static INLINE void GetYUV_RGBA4444(uint64_t * src, uint16_t * dst, uint16_t x)

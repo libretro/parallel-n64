@@ -41,6 +41,22 @@ static INLINE uint16_t YUVtoRGBA16(uint8_t y, uint8_t u, uint8_t v)
    return (uint16_t)(((uint16_t)(r) << 11) | ((uint16_t)(g) << 6) | ((uint16_t)(b) << 1) | 1);
 }
 
+static INLINE uint32_t YUVtoRGBA8888(uint8_t y, uint8_t u, uint8_t v)
+{
+	int32_t r = (int32_t)(y + (1.370705f * (v - 128)));
+	int32_t g = (int32_t)((y - (0.698001f * (v - 128)) - (0.337633f * (u - 128))));
+	int32_t b = (int32_t)(y + (1.732446f * (u - 128)));
+	//clipping the result
+	if (r > 255) r = 255;
+	if (g > 255) g = 255;
+	if (b > 255) b = 255;
+	if (r < 0) r = 0;
+	if (g < 0) g = 0;
+	if (b < 0) b = 0;
+
+	return (0xff << 24) | (b << 16) | (g << 8) | r;
+}
+
 static uint16_t YUVtoRGB565(uint8_t y, uint8_t u, uint8_t v)
 {
    float r = y + (1.370705f * (v-128));

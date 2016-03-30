@@ -21,8 +21,8 @@
 #include "DepthBuffer.h"
 #include "Config.h"
 
-#include "../../graphics/3dmath.h"
-#include "../../graphics/image_convert.h"
+#include "../../Graphics/3dmath.h"
+#include "../../Graphics/image_convert.h"
 
 //Note: 0xC0 is used by 1080 alot, its an unknown command.
 
@@ -1792,8 +1792,8 @@ static void _drawYUVImageToFrameBuffer(const struct ObjCoordinates *_objCoords)
             uint8_t v = (uint8_t)(t >> 8) & 0xFF;
             uint8_t y1 = (uint8_t)(t >> 16) & 0xFF;
             uint8_t u = (uint8_t)(t >> 24) & 0xFF;
-            *(dst++) = _YUVtoRGBA16(y0, u, v);
-            *(dst++) = _YUVtoRGBA16(y1, u, v);
+            *(dst++) = YUVtoRGBA16(y0, u, v);
+            *(dst++) = YUVtoRGBA16(y1, u, v);
          }
       }
 		dst += ci_width - 16;
