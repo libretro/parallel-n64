@@ -8,6 +8,13 @@
 extern "C" {
 #endif
 
+union RGBA {
+   struct {
+      uint8_t r, g, b, a;
+   };
+   uint32_t raw;
+};
+
 static INLINE uint16_t YUVtoRGBA16(uint8_t y, uint8_t u, uint8_t v)
 {
    float r  = y + (1.370705f * (v-128));
@@ -32,6 +39,13 @@ static INLINE uint16_t YUVtoRGBA16(uint8_t y, uint8_t u, uint8_t v)
       b = 0;
 
    return (uint16_t)(((uint16_t)(r) << 11) | ((uint16_t)(g) << 6) | ((uint16_t)(b) << 1) | 1);
+}
+
+static INLINE uint32_t RGBA16toRGBA32(uint32_t _c)
+{
+   union RGBA c;
+   c.raw = _c;
+   return (c.r << 24) | (c.g << 16) | (c.b << 8) | c.a;
 }
 
 #ifdef __cplusplus

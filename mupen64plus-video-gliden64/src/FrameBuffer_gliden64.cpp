@@ -18,6 +18,8 @@
 #include "PostProcessor.h"
 #include "FrameBufferInfo.h"
 
+#include "../../Graphics/image_convert.h"
+
 #include "m64p_plugin.h"
 
 using namespace std;
@@ -58,7 +60,6 @@ private:
 	// Convert pixel from video memory to N64 buffer format.
 	static uint8_t _RGBAtoR8(uint8_t _c);
 	static uint16_t _RGBAtoRGBA16(uint32_t _c);
-	static uint32_t _RGBAtoRGBA32(uint32_t _c);
 
 	GLuint m_FBO;
 	CachedTexture * m_pTexture;
@@ -1154,13 +1155,6 @@ uint16_t FrameBufferToRDRAM::_RGBAtoRGBA16(uint32_t _c)
    return ((c.r >> 3) << 11) | ((c.g >> 3) << 6) | ((c.b >> 3) << 1) | (c.a == 0 ? 0 : 1);
 }
 
-uint32_t FrameBufferToRDRAM::_RGBAtoRGBA32(uint32_t _c)
-{
-   RGBA c;
-   c.raw = _c;
-   return (c.r << 24) | (c.g << 16) | (c.b << 8) | c.a;
-}
-
 void FrameBufferToRDRAM::_copy(uint32_t _startAddress, uint32_t _endAddress, bool _sync)
 { 
    const uint32_t stride = m_pCurFrameBuffer->m_width << m_pCurFrameBuffer->m_size >> 1;
@@ -1220,7 +1214,7 @@ void FrameBufferToRDRAM::_copy(uint32_t _startAddress, uint32_t _endAddress, boo
 		uint32_t *ptr_src = (uint32_t*)pixelData;
 		uint32_t *ptr_dst = (uint32_t*)(RDRAM + _startAddress);
 		RGBA c;
-      _writeToRdram<uint32_t, uint32_t>(ptr_src, ptr_dst, &FrameBufferToRDRAM::_RGBAtoRGBA32, 0, 0, width, height, numPixels, _startAddress, m_pCurFrameBuffer->m_startAddress, m_pCurFrameBuffer->m_size);
+      _writeToRdram<uint32_t, uint32_t>(ptr_src, ptr_dst, &RGBA16toRGBA32, 0, 0, width, height, numPixels, _startAddress, m_pCurFrameBuffer->m_startAddress, m_pCurFrameBuffer->m_size);
 	}
    else if (m_pCurFrameBuffer->m_size == G_IM_SIZ_16b)
    {

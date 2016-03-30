@@ -46,6 +46,7 @@
 #include <math.h>
 #include "Gfx_1.3.h"
 #include "../../../Graphics/GBI.h"
+#include "../../../Graphics/image_convert.h"
 #include "Framebuffer_glide64.h"
 #include "TexCache.h"
 #include "../Glitch64/glide.h"
@@ -64,13 +65,6 @@ uint16_t *frameBuffer;
 
 extern int dzdx;
 
-union RGBA {
-   struct {
-      uint8_t r, g, b, a;
-   };
-   uint32_t raw;
-};
-
 static struct vertexi *max_vtx;                   // Max y vertex (ending vertex)
 static struct vertexi *start_vtx, *end_vtx;      // First and last vertex in array
 static struct vertexi *right_vtx, *left_vtx;     // Current right and left vertex
@@ -78,13 +72,6 @@ static struct vertexi *right_vtx, *left_vtx;     // Current right and left verte
 static int right_height, left_height;
 static int right_x, right_dxdy, left_x, left_dxdy;
 static int left_z, left_dzdy;
-
-static INLINE uint32_t RGBA16toRGBA32(uint32_t _c)
-{
-   union RGBA c;
-   c.raw = _c;
-   return (c.r << 24) | (c.g << 16) | (c.b << 8) | c.a;
-}
 
 void ZLUT_init(void)
 {
