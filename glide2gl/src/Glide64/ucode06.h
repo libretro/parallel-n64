@@ -303,20 +303,20 @@ static void DrawImage (DRAWIMAGE *d)
 
    rdp.timg.set_by        = 0;
 
-   // SetTile ()
-   g_gdp.tile[0].format   = d->imageFmt; // RGBA
-   g_gdp.tile[0].size     = d->imageSiz; // 16-bit
-   g_gdp.tile[0].line     = line;
-   g_gdp.tile[0].tmem     = 0;
-   g_gdp.tile[0].palette  = (uint8_t)d->imagePal;
-   g_gdp.tile[0].ct       = 1;
-   g_gdp.tile[0].mt       = 0;
-   g_gdp.tile[0].mask_t   = 0;
-   g_gdp.tile[0].shift_t  = 0;
-   g_gdp.tile[0].cs       = 1;
-   g_gdp.tile[0].ms       = 0;
-   g_gdp.tile[0].mask_s   = 0;
-   g_gdp.tile[0].shift_s  = 0;
+   glide64gDPSetTile(
+         d->imageFmt,               /* RGBA */
+         d->imageSiz,               /* 16bit */
+         line,                      /* line */
+         0,                         /* tmem */
+         0,                         /* tile */
+         (uint8_t)d->imagePal,      /* palette */
+         0,                         /* cmt */
+         0,                         /* mask_t */
+         0,                         /* shift_t */
+         0,                         /* cms */
+         0,                         /* mask_s */
+         0                          /* shift_s */
+         );
 
    glide64gDPSetTileSize(
          0,                /* tile */
