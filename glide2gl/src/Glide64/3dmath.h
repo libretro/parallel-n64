@@ -47,10 +47,8 @@ extern "C" {
 
 #include "../../Graphics/3dmath.h"
 
-void calc_light (VERTEX *v);
 void calc_linear (VERTEX *v);
-void calc_sphere (VERTEX *v);
-
+void calc_sphere (VERTEX *v); 
 #define CopyMatrix(m0, m1, size) memcpy(m0, m1, size)
 
 void math_init(void);

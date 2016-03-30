@@ -354,7 +354,8 @@ static void uc9_light(uint32_t w0, uint32_t w1)
       calc_sphere (&v);
       //    calc_linear (&v);
       NormalizeVector (v.vec);
-      calc_light(&v);
+      glide64gSPLightVertex(&v);
+
       v.a = 0xFF;
       if (use_material)
       {

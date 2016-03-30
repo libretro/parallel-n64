@@ -132,7 +132,7 @@ static void uc7_vertex(uint32_t w0, uint32_t w1)
 
          NormalizeVector (vert->vec);
 
-         calc_light (vert);
+         glide64gSPLightVertex(vert);
       }
       else
       {

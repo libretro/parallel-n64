@@ -6,6 +6,33 @@
 
 void uc6_obj_sprite(uint32_t w0, uint32_t w1);
 
+void glide64gSPLightVertex(void *data)
+{
+   uint32_t i;
+   float color[3];
+   VERTEX *v = (VERTEX*)data;
+
+   color[0] = rdp.light[rdp.num_lights].col[0];
+   color[1] = rdp.light[rdp.num_lights].col[1];
+   color[2] = rdp.light[rdp.num_lights].col[2];
+
+   for (i = 0; i < rdp.num_lights; i++)
+   {
+      float intensity = DotProduct (rdp.light_vector[i], v->vec);
+
+      if (intensity < 0.0f) 
+         intensity = 0.0f;
+
+      color[0] += rdp.light[i].col[0] * intensity;
+      color[1] += rdp.light[i].col[1] * intensity;
+      color[2] += rdp.light[i].col[2] * intensity;
+   }
+
+   v->r = (uint8_t)(255.0f * get_float_color_clamped(color[0]));
+   v->g = (uint8_t)(255.0f * get_float_color_clamped(color[1]));
+   v->b = (uint8_t)(255.0f * get_float_color_clamped(color[2]));
+}
+
 void glide64gSPPointLightVertex(void *data, float * vpos)
 {
    uint32_t l;
@@ -428,7 +455,7 @@ void glide64gSPVertex(uint32_t v, uint32_t n, uint32_t v0)
          else
          {
             NormalizeVector (vtx->vec);
-            calc_light (vtx);
+            glide64gSPLightVertex(vtx);
          }
 
          if (rdp.geom_mode & G_TEXTURE_GEN)

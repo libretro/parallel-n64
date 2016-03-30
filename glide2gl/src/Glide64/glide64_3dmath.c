@@ -98,33 +98,6 @@ void math_init(void)
       cpu = perf_get_cpu_features_cb();
 }
 
-void calc_light (VERTEX *v)
-{
-   uint32_t i;
-   float color[3];
-   float light_intensity = 0.0f;
-
-   color[0] = rdp.light[rdp.num_lights].col[0];
-   color[1] = rdp.light[rdp.num_lights].col[1];
-   color[2] = rdp.light[rdp.num_lights].col[2];
-
-   for (i = 0; i < rdp.num_lights; i++)
-   {
-      light_intensity = DotProduct (rdp.light_vector[i], v->vec);
-
-      if (light_intensity > 0.0f) 
-      {
-         color[0] += rdp.light[i].col[0] * light_intensity;
-         color[1] += rdp.light[i].col[1] * light_intensity;
-         color[2] += rdp.light[i].col[2] * light_intensity;
-      }
-   }
-
-   v->r = (uint8_t)(255.0f * get_float_color_clamped(color[0]));
-   v->g = (uint8_t)(255.0f * get_float_color_clamped(color[1]));
-   v->b = (uint8_t)(255.0f * get_float_color_clamped(color[2]));
-}
-
 void calc_linear (VERTEX *v)
 {
    DECLAREALIGN16VAR(vec[3]);
