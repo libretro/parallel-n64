@@ -794,20 +794,20 @@ static void uc6_read_object_data (DRAWOBJECT *d)
 
 static void uc6_init_tile(const DRAWOBJECT *d)
 {
-   // SetTile ()
-   g_gdp.tile[0].format   = d->imageFmt; // RGBA
-   g_gdp.tile[0].size     = d->imageSiz; // 16-bit
-   g_gdp.tile[0].line     = d->imageStride;
-   g_gdp.tile[0].tmem     = d->imageAdrs;
-   g_gdp.tile[0].palette  = d->imagePal;
-   g_gdp.tile[0].ct       = 1;
-   g_gdp.tile[0].mt       = 0;
-   g_gdp.tile[0].mask_t   = 0;
-   g_gdp.tile[0].shift_t  = 0;
-   g_gdp.tile[0].cs       = 1;
-   g_gdp.tile[0].ms       = 0;
-   g_gdp.tile[0].mask_s   = 0;
-   g_gdp.tile[0].shift_s  = 0;
+   glide64gDPSetTile(
+         d->imageFmt,       /* fmt - RGBA */
+         d->imageSiz,       /* siz - 16bit */
+         d->imageStride,    /* line */
+         d->imageAdrs,      /* tmem */
+         0,                 /* tile */
+         d->imagePal,       /* palette */
+         0,                 /* cmt */
+         0,                 /* maskt */
+         0,                 /* shift_t */
+         0,                 /* cms */
+         0,                 /* mask_s */
+         0                  /* shift_s */
+         );
 
    glide64gDPSetTileSize(
          0,                                  /* tile */

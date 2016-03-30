@@ -3,6 +3,35 @@
 #include "glide64_gDP.h"
 #include "Util.h"
 
+void glide64gDPSetTile(
+      uint32_t fmt,
+      uint32_t siz,
+      uint32_t line,
+      uint32_t tmem,
+      uint32_t tile,
+      uint32_t palette,
+      uint32_t cmt,
+      uint32_t maskt,
+      uint32_t shiftt,
+      uint32_t cms,
+      uint32_t masks,
+      uint32_t shifts )
+{
+   g_gdp.tile[tile].format   = fmt;
+   g_gdp.tile[tile].size     = siz;
+   g_gdp.tile[tile].line     = line;
+   g_gdp.tile[tile].tmem     = tmem;
+   g_gdp.tile[tile].palette  = palette;
+   g_gdp.tile[tile].ct       = 1;
+   g_gdp.tile[tile].mt       = cmt;
+   g_gdp.tile[tile].mask_t   = maskt;
+   g_gdp.tile[tile].shift_t  = shiftt;
+   g_gdp.tile[tile].cs       = 1;
+   g_gdp.tile[tile].ms       = cms;
+   g_gdp.tile[tile].mask_s   = masks;
+   g_gdp.tile[tile].shift_s  = shifts;
+}
+
 void glide64gDPSetTileSize(uint32_t tile, uint32_t uls, uint32_t ult,
       uint32_t lrs, uint32_t lrt)
 {
