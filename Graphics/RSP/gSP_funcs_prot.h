@@ -3,6 +3,8 @@
 
 #include <stdint.h>
 
+#include <boolean.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -21,6 +23,38 @@ void glide64gSP4Triangles( int32_t v00, int32_t v01, int32_t v02,
 void glide64gSPLight(uint32_t l, int32_t n);
 void glide64gSPViewport(uint32_t v);
 void glide64gSPForceMatrix( uint32_t mptr );
+void glide64gSPObjMatrix( uint32_t mtx );
+void glide64gSPObjSubMatrix( uint32_t mtx );
+
+void glide64gSP2Triangles(
+      const int32_t v00,
+      const int32_t v01,
+      const int32_t v02,
+      const int32_t flag0,
+      const int32_t v10,
+      const int32_t v11,
+      const int32_t v12,
+      const int32_t flag1 );
+
+void glide64gSPVertex(uint32_t v, uint32_t n, uint32_t v0);
+
+void glide64gSPFogFactor(int16_t fm, int16_t fo );
+
+void glide64gSPNumLights(int32_t n);
+
+void glide64gSPPopMatrixN(uint32_t param, uint32_t num );
+
+void glide64gSPPopMatrix(uint32_t param);
+
+void glide64gSPDlistCount(uint32_t count, uint32_t v);
+
+void glide64gSPModifyVertex( uint32_t vtx, uint32_t where, uint32_t val );
+
+bool glide64gSPCullVertices( uint32_t v0, uint32_t vn );
+
+void glide64gSPCullDisplayList( uint32_t v0, uint32_t vn );
+
+void glide64gSP1Quadrangle(int32_t v0, int32_t v1, int32_t v2, int32_t v3);
 
 #ifdef __cplusplus
 }
