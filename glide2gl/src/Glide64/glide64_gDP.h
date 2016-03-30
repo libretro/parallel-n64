@@ -16,6 +16,12 @@ extern uint32_t swapped_addr;
 extern "C" {
 #endif
 
+void glide64gDPSetTextureImage(
+      int32_t fmt,
+      int32_t siz,
+      int32_t width,
+      int32_t addr);
+
 void glide64gDPSetTile(
       uint32_t fmt,
       uint32_t siz,

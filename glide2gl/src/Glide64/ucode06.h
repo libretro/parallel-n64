@@ -294,12 +294,14 @@ static void DrawImage (DRAWIMAGE *d)
    min_256_u  = ul_u >> x_shift;
    min_256_v  = ul_v >> y_shift;
 
-   // SetTextureImage ()
-   g_gdp.ti_format  = d->imageFmt; // RGBA
-   g_gdp.ti_size    = d->imageSiz; // 16-bit
-   g_gdp.ti_address = d->imagePtr;
-   g_gdp.ti_width   = (d->imageW%2)?d->imageW-1:d->imageW;
-   rdp.timg.set_by  = 0;
+   glide64gDPSetTextureImage(
+         d->imageFmt,                              /* format - RGBA */
+         d->imageSiz,                              /* size   - 16bit */
+         (d->imageW%2)?d->imageW-1:d->imageW,      /* width */
+         d->imagePtr                               /* address */
+         );
+
+   rdp.timg.set_by        = 0;
 
    // SetTile ()
    g_gdp.tile[0].format   = d->imageFmt; // RGBA

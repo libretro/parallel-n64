@@ -3,6 +3,15 @@
 #include "glide64_gDP.h"
 #include "Util.h"
 
+void glide64gDPSetTextureImage(int32_t fmt, int32_t siz,
+   int32_t width, int32_t addr)
+{
+   g_gdp.ti_format  = fmt;
+   g_gdp.ti_size    = siz;
+   g_gdp.ti_address = addr;
+   g_gdp.ti_width   = width;
+}
+
 void glide64gDPSetTile(
       uint32_t fmt,
       uint32_t siz,
