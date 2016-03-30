@@ -35,6 +35,18 @@ float identityMatrix[4][4] =
 	{ 0.0f, 0.0f, 0.0f, 1.0f }
 };
 
+static INLINE void Normalize(float v[3])
+{
+   float len = v[0]*v[0] + v[1]*v[1] + v[2]*v[2];
+   if (len != 0.0f)
+   {
+      len = sqrtf( len );
+      v[0] /= len;
+      v[1] /= len;
+      v[2] /= len;
+   }
+}
+
 static inline void gln64gSPFlushTriangles(void)
 {
 	if ((gSP.geometryMode & G_SHADING_SMOOTH) == 0) {
