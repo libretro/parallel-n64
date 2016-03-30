@@ -41,6 +41,18 @@ static INLINE uint16_t YUVtoRGBA16(uint8_t y, uint8_t u, uint8_t v)
    return (uint16_t)(((uint16_t)(r) << 11) | ((uint16_t)(g) << 6) | ((uint16_t)(b) << 1) | 1);
 }
 
+static INLINE uint16_t RGBA32toRGBA16(uint32_t _c)
+{
+   union RGBA c;
+   c.raw = _c;
+   return ((c.r >> 3) << 11) | ((c.g >> 3) << 6) | ((c.b >> 3) << 1) | (c.a == 0 ? 0 : 1);
+}
+
+static INLINE uint8_t RGBA8toR8(uint8_t _c)
+{
+   return _c;
+}
+
 static INLINE uint32_t RGBA16toRGBA32(uint32_t _c)
 {
    union RGBA c;
