@@ -4,8 +4,54 @@
 
 #include "glide64_gSP.h"
 
-void calc_point_light(VERTEX *v, float *vpos);
 void uc6_obj_sprite(uint32_t w0, uint32_t w1);
+
+void glide64gSPPointLightVertex(void *data, float * vpos)
+{
+   uint32_t l;
+   float color[3];
+   VERTEX *v      = (VERTEX*)data;
+
+   color[0] = rdp.light[rdp.num_lights].col[0];
+   color[1] = rdp.light[rdp.num_lights].col[1];
+   color[2] = rdp.light[rdp.num_lights].col[2];
+
+   for (l = 0; l < rdp.num_lights; l++)
+   {
+      float light_intensity = 0.0f;
+
+      if (rdp.light[l].nonblack)
+      {
+         float light_len2, light_len, at;
+         float lvec[3] = {rdp.light[l].x, rdp.light[l].y, rdp.light[l].z};
+         lvec[0] -= vpos[0];
+         lvec[1] -= vpos[1];
+         lvec[2] -= vpos[2];
+
+         light_len2 = lvec[0] * lvec[0] + lvec[1] * lvec[1] + lvec[2] * lvec[2];
+         light_len = sqrtf(light_len2);
+         at = rdp.light[l].ca + light_len/65535.0f*rdp.light[l].la + light_len2/65535.0f*rdp.light[l].qa;
+
+         if (at > 0.0f)
+            light_intensity = 1/at;//DotProduct (lvec, nvec) / (light_len * normal_len * at);
+      }
+
+      if (light_intensity > 0.0f)
+      {
+         color[0] += rdp.light[l].col[0] * light_intensity;
+         color[1] += rdp.light[l].col[1] * light_intensity;
+         color[2] += rdp.light[l].col[2] * light_intensity;
+      }
+   }
+
+   if (color[0] > 1.0f) color[0] = 1.0f;
+   if (color[1] > 1.0f) color[1] = 1.0f;
+   if (color[2] > 1.0f) color[2] = 1.0f;
+
+   v->r = (uint8_t)(color[0]*255.0f);
+   v->g = (uint8_t)(color[1]*255.0f);
+   v->b = (uint8_t)(color[2]*255.0f);
+}
 
 void load_matrix (float m[4][4], uint32_t addr)
 {
@@ -377,7 +423,7 @@ void glide64gSPVertex(uint32_t v, uint32_t n, uint32_t v0)
          if (settings.ucode == 2 && rdp.geom_mode & G_POINT_LIGHTING)
          {
             float tmpvec[3] = {x, y, z};
-            calc_point_light (vtx, tmpvec);
+            glide64gSPPointLightVertex(vtx, tmpvec);
          }
          else
          {

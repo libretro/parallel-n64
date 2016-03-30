@@ -37,55 +37,6 @@
 //
 //****************************************************************
 
-void calc_point_light (VERTEX *v, float * vpos)
-{
-   uint32_t l;
-   float color[3];
-
-   color[0] = rdp.light[rdp.num_lights].col[0];
-   color[1] = rdp.light[rdp.num_lights].col[1];
-   color[2] = rdp.light[rdp.num_lights].col[2];
-
-   for (l = 0; l < rdp.num_lights; l++)
-   {
-      float light_intensity = 0.0f;
-
-      if (rdp.light[l].nonblack)
-      {
-         float lvec[3], light_len2, light_len, at;
-         lvec[0] = rdp.light[l].x - vpos[0];
-         lvec[1] = rdp.light[l].y - vpos[1];
-         lvec[2] = rdp.light[l].z - vpos[2];
-
-         light_len2 = lvec[0] * lvec[0] + lvec[1] * lvec[1] + lvec[2] * lvec[2];
-         light_len = sqrtf(light_len2);
-         //FRDP ("calc_point_light: len: %f, len2: %f\n", light_len, light_len2);
-         at = rdp.light[l].ca + light_len/65535.0f*rdp.light[l].la + light_len2/65535.0f*rdp.light[l].qa;
-
-         if (at > 0.0f)
-            light_intensity = 1/at;//DotProduct (lvec, nvec) / (light_len * normal_len * at);
-      }
-
-      if (light_intensity > 0.0f)
-      {
-         color[0] += rdp.light[l].col[0] * light_intensity;
-         color[1] += rdp.light[l].col[1] * light_intensity;
-         color[2] += rdp.light[l].col[2] * light_intensity;
-      }
-   }
-
-   if (color[0] > 1.0f)
-      color[0] = 1.0f;
-   if (color[1] > 1.0f)
-      color[1] = 1.0f;
-   if (color[2] > 1.0f)
-      color[2] = 1.0f;
-
-   v->r = (uint8_t)(color[0]*255.0f);
-   v->g = (uint8_t)(color[1]*255.0f);
-   v->b = (uint8_t)(color[2]*255.0f);
-}
-
 static void uc2_vertex(uint32_t w0, uint32_t w1)
 {
    uint32_t addr, geom_mode;

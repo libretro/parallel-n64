@@ -274,7 +274,6 @@ static void uc6_obj_rectangle_r(uint32_t w0, uint32_t w1);
 static void uc6_obj_movemem(uint32_t w0, uint32_t w1);
 
 //ucode02
-void calc_point_light (VERTEX *v, float * vpos);
 static void uc2_quad(uint32_t w0, uint32_t w1);
 static void uc2_vertex_neon(uint32_t w0, uint32_t w1);
 static void uc2_vertex(uint32_t w0, uint32_t w1);
