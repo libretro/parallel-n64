@@ -141,9 +141,10 @@ static void uc2_tri1(uint32_t w0, uint32_t w1)
 				  _SHIFTR( w0, 1, 7 ), 0);
 }
 
+/* F3DEX2_Quad */
+
 static void uc2_quad(uint32_t w0, uint32_t w1)
 {
-   VERTEX *v[6];
    if ((w0 & 0x00FFFFFF) == 0x2F)
    {
       uint32_t command = w0 >> 24;
@@ -159,17 +160,14 @@ static void uc2_quad(uint32_t w0, uint32_t w1)
       }
    }
 
-   if (rdp.skip_drawing)
-      return;
-
-   v[0] = &rdp.vtx[_SHIFTR(w0, 17, 7)];
-   v[1] = &rdp.vtx[_SHIFTR(w0,  9, 7)];
-   v[2] = &rdp.vtx[_SHIFTR(w0,  1, 7)];
-   v[3] = &rdp.vtx[_SHIFTR(w1, 17, 7)];
-   v[4] = &rdp.vtx[_SHIFTR(w1,  9, 7)];
-   v[5] = &rdp.vtx[_SHIFTR(w1,  1, 7)];
-
-   cull_trianglefaces(v, 2, true, true, 0);
+   glide64gSP2Triangles( _SHIFTR( w0, 17, 7 ),
+         _SHIFTR( w0, 9, 7 ),
+         _SHIFTR( w0, 1, 7 ),
+         0,
+         _SHIFTR( w1, 17, 7 ),
+         _SHIFTR( w1, 9, 7 ),
+         _SHIFTR( w1, 1, 7 ),
+         0 );
 }
 
 static void uc2_line3d(uint32_t w0, uint32_t w1)
