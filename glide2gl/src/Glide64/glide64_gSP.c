@@ -110,6 +110,24 @@ void glide64gSP1Triangle( int32_t v0, int32_t v1, int32_t v2, int32_t flag )
    cull_trianglefaces(v, 1, true, true, 0);
 }
 
+void glide64gSP2Triangles(const int32_t v00, const int32_t v01, const int32_t v02, const int32_t flag0,
+                    const int32_t v10, const int32_t v11, const int32_t v12, const int32_t flag1 )
+{
+   VERTEX *v[6];
+
+   if (rdp.skip_drawing)
+      return;
+
+   v[0] = &rdp.vtx[v00];
+   v[1] = &rdp.vtx[v01];
+   v[2] = &rdp.vtx[v02];
+   v[3] = &rdp.vtx[v10];
+   v[4] = &rdp.vtx[v11];
+   v[5] = &rdp.vtx[v12];
+
+   cull_trianglefaces(v, 2, true, true, 0);
+}
+
 void glide64gSP4Triangles( int32_t v00, int32_t v01, int32_t v02,
                     int32_t v10, int32_t v11, int32_t v12,
                     int32_t v20, int32_t v21, int32_t v22,

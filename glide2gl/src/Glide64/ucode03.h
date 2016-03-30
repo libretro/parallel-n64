@@ -69,19 +69,16 @@ static void uc3_tri1(uint32_t w0, uint32_t w1)
 
 static void uc3_tri2(uint32_t w0, uint32_t w1)
 {
-   VERTEX *v[6];
-
-   if (rdp.skip_drawing)
-      return;
-
-   v[0] = &rdp.vtx[_SHIFTR(w0, 16, 8) / 5]; /* v00 */
-   v[1] = &rdp.vtx[_SHIFTR(w0,  8, 8) / 5]; /* v01 */
-   v[2] = &rdp.vtx[_SHIFTR(w0,  0, 8) / 5]; /* v02 */
-   v[3] = &rdp.vtx[_SHIFTR(w1, 16, 8) / 5]; /* v10 */
-   v[4] = &rdp.vtx[_SHIFTR(w1,  8, 8) / 5]; /* v11 */
-   v[5] = &rdp.vtx[_SHIFTR(w1,  0, 8) / 5]; /* v12 */
-
-   cull_trianglefaces(v, 2, true, true, 0);
+	glide64gSP2Triangles(
+         _SHIFTR( w0, 16, 8 ) / 5,     /* v00 */
+         _SHIFTR( w0, 8, 8 ) / 5,      /* v01 */
+         _SHIFTR( w0, 0, 8 ) / 5,      /* v02 */
+         0,                            /* flag0 */
+         _SHIFTR( w1, 16, 8 ) / 5,     /* v10 */
+         _SHIFTR( w1, 8, 8 ) / 5,      /* v11 */
+         _SHIFTR( w1, 0, 8 ) / 5,      /* v12 */
+         0
+         );
 }
 
 static void uc3_quad3d(uint32_t w0, uint32_t w1)

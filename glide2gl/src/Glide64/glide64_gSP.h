@@ -375,6 +375,16 @@ static void pre_update(void)
    }
 }
 
+void glide64gSP2Triangles(
+      const int32_t v00,
+      const int32_t v01,
+      const int32_t v02,
+      const int32_t flag0,
+      const int32_t v10,
+      const int32_t v11,
+      const int32_t v12,
+      const int32_t flag1 );
+
 /*
  * Loads into the RSP vertex buffer the vertices that will be used by the 
  * gSP1Triangle commands to generate polygons.
