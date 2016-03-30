@@ -111,6 +111,16 @@ static void fb_setscissor(uint32_t w0, uint32_t w1)
                    _FIXED2FLOAT( _SHIFTR( w0,  0, 12 ), 2 ),    // uly
                    _FIXED2FLOAT( _SHIFTR( w1, 12, 12 ), 2 ),    // lrx
                    _FIXED2FLOAT( _SHIFTR( w1,  0, 12 ), 2 ) );  // lry
+
+   if (rdp.ci_count)
+   {
+      COLOR_IMAGE *cur_fb = (COLOR_IMAGE*)&rdp.frame_buffers[rdp.ci_count-1];
+      if (g_gdp.__clip.xl - g_gdp.__clip.xh > (uint32_t)(cur_fb->width >> 1))
+      {
+         if (cur_fb->height == 0 || (cur_fb->width >= g_gdp.__clip.xl - 1 && cur_fb->width <= g_gdp.__clip.xl + 1))
+            cur_fb->height = g_gdp.__clip.yl;
+      }
+   }
 }
 
 static void fb_uc2_movemem(uint32_t w0, uint32_t w1)
