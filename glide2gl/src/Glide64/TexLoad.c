@@ -5,6 +5,8 @@
 #include "Util.h"
 #include "GlideExtensions.h"
 
+#include "../../Graphics/image_convert.h"
+
 #define ALOWORD(x)   (*((uint16_t*)&x))   // low word
 
 static INLINE void load4bCI(uint8_t *src, uint8_t *dst, int wid_64, int height, uint16_t line, int ext, uint16_t *pal)
@@ -638,40 +640,6 @@ static uint32_t Load16bIA(uintptr_t dst, uintptr_t src, int wid_64, int height, 
 // Size: 2, Format: 1
 //
 
-static uint16_t yuv_to_rgb565(uint8_t y, uint8_t u, uint8_t v)
-{
-    float r = y + (1.370705f * (v-128));
-    float g = y - (0.698001f * (v-128)) - (0.337633f * (u-128));
-    float b = y + (1.732446f * (u-128));
-
-    r *= 0.125f;
-    g *= 0.25f;
-    b *= 0.125f;
-    //clipping the result
-    if (r > 31) r = 31;
-    if (g > 63) g = 63;
-    if (b > 31) b = 31;
-    if (r < 0) r = 0;
-    if (g < 0) g = 0;
-    if (b < 0) b = 0;
-    return(uint16_t)(((uint16_t)(r) << 11) |
-                     ((uint16_t)(g) << 5) |
-                     (uint16_t)(b) );
-    //*/
-    /*
-      const uint32_t c = y - 16;
-      const uint32_t d = u - 128;
-      const uint32_t e = v - 128;
-
-      uint32_t r =  (298 * c           + 409 * e + 128) & 0xf800;
-      uint32_t g = ((298 * c - 100 * d - 208 * e + 128) >> 5) & 0x7e0;
-      uint32_t b = ((298 * c + 516 * d           + 128) >> 11) & 0x1f;
-
-      WORD texel = (WORD)(r | g | b);
-
-      return texel;
-      */
-}
 
 //****************************************************************
 // Size: 2, Format: 1
@@ -691,10 +659,10 @@ static uint32_t Load16bYUV(uintptr_t dst, uintptr_t src,
         uint8_t  v  =(uint8_t)(t>>8)&0xFF;
         uint8_t  y0 =(uint8_t)(t>>16)&0xFF;
         uint8_t  u  =(uint8_t)(t>>24)&0xFF;
-        uint16_t c = yuv_to_rgb565(y0, u, v);
+        uint16_t c = YUVtoRGB565(y0, u, v);
 
         *(tex++) = c;
-        c = yuv_to_rgb565(y1, u, v);
+        c = YUVtoRGB565(y1, u, v);
         *(tex++) = c;
     }
     return (1 << 16) | GR_TEXFMT_RGB_565;
