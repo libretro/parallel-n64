@@ -213,30 +213,6 @@
     <ClCompile Include="..\..\..\glide2gl\src\Glide64\glidemain.c">
       <Filter>Source Files\glide2gl\src\Glide64</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\Graphics\plugins.c">
-      <Filter>Source Files\Graphics</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\Graphics\HLE\Microcode\Fast3D.c">
-      <Filter>Source Files\Graphics\HLE\Microcode</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\Graphics\RDP\RDP_state.c">
-      <Filter>Source Files\Graphics\RDP</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\Graphics\RSP\RSP_state.c">
-      <Filter>Source Files\Graphics\RSP</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\Graphics\RDP\gDP_funcs.cpp">
-       <Filter>Source Files\Graphics\RDP</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\Graphics\RSP\gSP_funcs.cpp">
-      <Filter>Source Files\Graphics\RSP</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\Graphics\RDP\gDP_funcs_C.c">
-      <Filter>Source Files\Graphics\RDP</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\Graphics\RSP\gSP_funcs_C.c">
-      <Filter>Source Files\Graphics\RSP</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\..\glide2gl\src\Glide64\glide64_gDP.c">
       <Filter>Source Files\glide2gl\src\Glide64</Filter>
     </ClCompile>
@@ -800,6 +776,30 @@
     </ClCompile>
     <ClCompile Include="..\..\..\mupen64plus-video-gliden64\src\mupenplus\Config_mupenplus.cpp">
       <Filter>Source Files\mupen64plus-video-gliden64</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\Graphics\plugins.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\Graphics\RDP\RDP_state.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\Graphics\RSP\RSP_state.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\Graphics\HLE\Microcode\Fast3D.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\Graphics\RSP\gSP_funcs.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\Graphics\RDP\gDP_funcs.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\Graphics\RSP\gSP_funcs_C.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\Graphics\RDP\gDP_funcs_C.c">
+      <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
