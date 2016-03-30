@@ -1284,71 +1284,71 @@ static void LoadTex(int id, int tmu)
 
    if (mod && !modifyPalette)
    {
-	   int size      = real_x * real_y;
-      uint32_t *src = (uint32_t*)texture;
-      uint32_t *dst = (uint32_t*)tex2;
+	   int size        = real_x * real_y;
+      uint32_t *src   = (uint32_t*)texture;
+      uint32_t *dst   = (uint32_t*)tex2;
+      unsigned texfmt = LOWORD(result);
 
-      // Convert the texture to ARGB 4444
-      if (LOWORD(result) == GR_TEXFMT_ARGB_1555)
+      /* Convert the texture to ARGB 4444 */
+
+      switch (texfmt)
       {
-         // 2 pixels are converted in one loop
-         // NOTE: width * height must be a multiple of 2
-         
-         size >>= 1;
+         case GR_TEXFMT_ARGB_1555:
+            /* 2 pixels are converted in one loop
+             * NOTE: width * height must be a multiple of 2 */
 
-         while (size--)
-         {
-            uint32_t col = *src++;
-            *dst++ = ((col & 0x1E001E) >> 1) | ((col & 0x3C003C0) >> 2) | ((col & 0x78007800) >> 3) | ((col & 0x80008000) >> 3) | ((col & 0x80008000) >> 2) | ((col & 0x80008000) >> 1) | (col & 0x80008000);
-         }
+            size >>= 1;
 
-         texture = tex2;
-      }
-      else if (LOWORD(result) == GR_TEXFMT_ALPHA_INTENSITY_88)
-      {
-         // 2 pixels are converted in one loop
-         // NOTE: width * height must be a multiple of 2
-         
-         size >>= 1;
-        
-         while (size--)
-         {
-            uint32_t col = *src++;
-            *dst++ = (16 * (col & 0xF000F0) >> 8) | (col & 0xF000F0) | (16 * (col & 0xF000F0)) | (col & 0xF000F000);
-         }
-         texture = tex2;
-      }
-      else if (LOWORD(result) == GR_TEXFMT_ALPHA_INTENSITY_44)
-      {
-         // 4 pixels are converted in one loop
-         // NOTE: width * height must be a multiple of 4
-         
-         size >>= 2;
+            while (size--)
+            {
+               uint32_t col = *src++;
+               *dst++ = ((col & 0x1E001E) >> 1) | ((col & 0x3C003C0) >> 2) | ((col & 0x78007800) >> 3) | ((col & 0x80008000) >> 3) | ((col & 0x80008000) >> 2) | ((col & 0x80008000) >> 1) | (col & 0x80008000);
+            }
 
-         while (size--)
-         {
-            uint32_t col = *src++;
-            *dst++ = ((((uint16_t)col << 8) & 0xFF00 & 0xF00u) >> 8) | ((((uint16_t)col << 8) & 0xFF00 & 0xF00u) >> 4) | (uint16_t)(((uint16_t)col << 8) & 0xFF00) | (((col << 16) & 0xF000000) >> 8) | (((col << 16) & 0xF000000) >> 4) | ((col << 16) & 0xFF000000);
-            *dst++ = (((col >> 8) & 0xF00) >> 8) | (((col >> 8) & 0xF00) >> 4) | ((col >> 8) & 0xFF00) | ((col & 0xF000000) >> 8) | ((col & 0xF000000) >> 4) | (col & 0xFF000000);
-         }
+            texture = tex2;
+            break;
+         case GR_TEXFMT_ALPHA_INTENSITY_88:
+            /* 2 pixels are converted in one loop
+             * NOTE: width * height must be a multiple of 2 */
+            size >>= 1;
 
-         texture = tex2;
-      }
-      else if (LOWORD(result) == GR_TEXFMT_ALPHA_8)
-      {
-         // 4 pixels are converted in one loop
-         // NOTE: width * height must be a multiple of 4
-         
-         size >>= 2;
+            while (size--)
+            {
+               uint32_t col = *src++;
+               *dst++ = (16 * (col & 0xF000F0) >> 8) | (col & 0xF000F0) | (16 * (col & 0xF000F0)) | (col & 0xF000F000);
+            }
+            texture = tex2;
+            break;
+         case GR_TEXFMT_ALPHA_INTENSITY_44:
+            /* 4 pixels are converted in one loop
+             * NOTE: width * height must be a multiple of 4 */
 
-         while (size--)
-         {
-            uint32_t col = *src++;
-            *dst++ = ((col & 0xF0) << 8 >> 12) | (uint8_t)(col & 0xF0) | (16 * (uint8_t)(col & 0xF0) & 0xFFFFFFF) | ((uint8_t)(col & 0xF0) << 8) | (16 * (uint16_t)(col & 0xF000) & 0xFFFFF) | (((uint16_t)(col & 0xF000) << 8) & 0xFFFFFF) | (((uint16_t)(col & 0xF000) << 12) & 0xFFFFFFF) | ((uint16_t)(col & 0xF000) << 16);
-            *dst++ = ((col & 0xF00000) >> 20) | ((col & 0xF00000) >> 16) | ((col & 0xF00000) >> 12) | ((col & 0xF00000) >> 8) | ((col & 0xF0000000) >> 12) | ((col & 0xF0000000) >> 8) | ((col & 0xF0000000) >> 4) | (col & 0xF0000000);
-         }
+            size >>= 2;
 
-         texture = tex2;
+            while (size--)
+            {
+               uint32_t col = *src++;
+               *dst++ = ((((uint16_t)col << 8) & 0xFF00 & 0xF00u) >> 8) | ((((uint16_t)col << 8) & 0xFF00 & 0xF00u) >> 4) | (uint16_t)(((uint16_t)col << 8) & 0xFF00) | (((col << 16) & 0xF000000) >> 8) | (((col << 16) & 0xF000000) >> 4) | ((col << 16) & 0xFF000000);
+               *dst++ = (((col >> 8) & 0xF00) >> 8) | (((col >> 8) & 0xF00) >> 4) | ((col >> 8) & 0xFF00) | ((col & 0xF000000) >> 8) | ((col & 0xF000000) >> 4) | (col & 0xFF000000);
+            }
+
+            texture = tex2;
+            break;
+         case GR_TEXFMT_ALPHA_8:
+            /* 4 pixels are converted in one loop
+             * NOTE: width * height must be a multiple of 4 */
+
+            size >>= 2;
+
+            while (size--)
+            {
+               uint32_t col = *src++;
+               *dst++ = ((col & 0xF0) << 8 >> 12) | (uint8_t)(col & 0xF0) | (16 * (uint8_t)(col & 0xF0) & 0xFFFFFFF) | ((uint8_t)(col & 0xF0) << 8) | (16 * (uint16_t)(col & 0xF000) & 0xFFFFF) | (((uint16_t)(col & 0xF000) << 8) & 0xFFFFFF) | (((uint16_t)(col & 0xF000) << 12) & 0xFFFFFFF) | ((uint16_t)(col & 0xF000) << 16);
+               *dst++ = ((col & 0xF00000) >> 20) | ((col & 0xF00000) >> 16) | ((col & 0xF00000) >> 12) | ((col & 0xF00000) >> 8) | ((col & 0xF0000000) >> 12) | ((col & 0xF0000000) >> 8) | ((col & 0xF0000000) >> 4) | (col & 0xF0000000);
+            }
+
+            texture = tex2;
+            break;
       }
 
       result = (1 << 16) | GR_TEXFMT_ARGB_4444;
