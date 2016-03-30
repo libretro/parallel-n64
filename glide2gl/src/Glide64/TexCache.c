@@ -1045,16 +1045,18 @@ static void LoadTex(int id, int tmu)
                   float g = (uint8_t)((float)((*col & 0x07C0) >> 6));
                   float b = (uint8_t)((float)((*col & 0x003E) >> 1));
                   r = (r - cr0) * percent + r;
+                  g = (g - cg0) * percent + g;
+                  b = (b - cb0) * percent + b;
+
+                  /* clipping the result */
                   if (r > 255.0f)
                      r = 255.0f;
                   if (r < 0.0f)
                      r = 0.0f;
-                  g = (g - cg0) * percent + g;
                   if (g > 255.0f)
                      g = 255.0f;
                   if (g < 0.0f)
                      g = 0.0f;
-                  b = (b - cb0) * percent + b;
                   if (b > 255.0f)
                      g = 255.0f;
                   if (b < 0.0f)
@@ -1076,6 +1078,8 @@ static void LoadTex(int id, int tmu)
                   float r = (((float)((*col & 0xF800) >> 11)) - cr0) * percent;
                   float g = (((float)((*col & 0x07C0) >> 6)) - cg0) * percent;
                   float b = ((float)((*col & 0x003E) >> 1) - cb0) * percent;
+
+                  /* clipping the result */
                   if (r > 255.0f)
                      r = 255.0f;
                   if (r < 0.0f)
