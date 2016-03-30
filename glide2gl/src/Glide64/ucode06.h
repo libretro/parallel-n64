@@ -773,14 +773,14 @@ static void uc6_draw_polygons (VERTEX v[4])
 
 static void uc6_read_object_data (DRAWOBJECT *d)
 {
-   uint32_t addr = RSP_SegmentToPhysical(__RSP.w1) >> 1;
+   uint32_t addr  = RSP_SegmentToPhysical(__RSP.w1) >> 1;
 
-   d->objX    = ((int16_t*)gfx_info.RDRAM)[(addr+0)^1] / 4.0f;               // 0
-   d->scaleW  = ((uint16_t *)gfx_info.RDRAM)[(addr+1)^1] / 1024.0f;        // 1
-   d->imageW  = ((int16_t*)gfx_info.RDRAM)[(addr+2)^1] >> 5;                 // 2, 3 is padding
-   d->objY    = ((int16_t*)gfx_info.RDRAM)[(addr+4)^1] / 4.0f;               // 4
-   d->scaleH  = ((uint16_t *)gfx_info.RDRAM)[(addr+5)^1] / 1024.0f;        // 5
-   d->imageH  = ((int16_t*)gfx_info.RDRAM)[(addr+6)^1] >> 5;                 // 6, 7 is padding
+   d->objX        = ((int16_t*)gfx_info.RDRAM)[(addr+0)^1] / 4.0f;               // 0
+   d->scaleW      = ((uint16_t *)gfx_info.RDRAM)[(addr+1)^1] / 1024.0f;        // 1
+   d->imageW      = ((int16_t*)gfx_info.RDRAM)[(addr+2)^1] >> 5;                 // 2, 3 is padding
+   d->objY        = ((int16_t*)gfx_info.RDRAM)[(addr+4)^1] / 4.0f;               // 4
+   d->scaleH      = ((uint16_t *)gfx_info.RDRAM)[(addr+5)^1] / 1024.0f;        // 5
+   d->imageH      = ((int16_t*)gfx_info.RDRAM)[(addr+6)^1] >> 5;                 // 6, 7 is padding
 
    d->imageStride = ((uint16_t *)gfx_info.RDRAM)[(addr+8)^1];                  // 8
    d->imageAdrs   = ((uint16_t *)gfx_info.RDRAM)[(addr+9)^1];                  // 9
@@ -1429,20 +1429,19 @@ static void uc6_sprite2d(uint32_t w0, uint32_t w1)
          __RSP.w1           = 0x07000000 | ((d.imageX+d.imageW-1) << 14) | ((d.imageY+d.imageH-1) << 2);
          rdp_loadtile(__RSP.w0, __RSP.w1);
 
-         // SetTile ()
-         g_gdp.tile[0].format   = d.imageFmt;
-         g_gdp.tile[0].size     = d.imageSiz;
-         g_gdp.tile[0].line     = line;//(d.imageW>>3);
-         g_gdp.tile[0].tmem     = 0;
-         g_gdp.tile[0].palette  = 0;
-         g_gdp.tile[0].ct       = 1;
-         g_gdp.tile[0].mt       = 0;
-         g_gdp.tile[0].mask_t   = 0;
-         g_gdp.tile[0].shift_t  = 0;
-         g_gdp.tile[0].cs       = 1;
-         g_gdp.tile[0].ms       = 0;
-         g_gdp.tile[0].mask_s   = 0;
-         g_gdp.tile[0].shift_s  = 0;
+         glide64gDPSetTile(
+               d.imageFmt,
+               d.imageSiz,
+               line, /* (d.imageW>>3)  */
+               0,
+               0,
+               0,
+               0,
+               0,
+               0,
+               0,
+               0,
+               0);
 
          glide64gDPSetTileSize(
                0,                      /* tile */
