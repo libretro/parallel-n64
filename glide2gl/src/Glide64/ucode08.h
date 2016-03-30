@@ -230,8 +230,7 @@ static void uc8_moveword(uint32_t w0, uint32_t w1)
       case G_MV_COORDMOD:  // moveword coord mod
          {
             uint32_t idx, pos;
-            uint8_t n;
-			n = offset >> 2;
+            uint8_t n = offset >> 2;
 
             FRDP ("coord mod:%d, %08lx\n", n, w1);
             if (w0 & 8)

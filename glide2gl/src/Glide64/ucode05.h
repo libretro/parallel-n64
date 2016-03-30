@@ -257,8 +257,7 @@ static void uc5_moveword(uint32_t w0, uint32_t w1)
          glide64gSPSegment((w0 >> 10) & 0x0F, w1);
          break;
       case G_MW_FOG:
-         rdp.fog_multiplier = (int16_t)(w1 >> 16);
-         rdp.fog_offset = (int16_t)(w1 & 0x0000FFFF);
+         glide64gSPFogFactor( (int16_t)_SHIFTR( w1, 16, 16 ), (int16_t)_SHIFTR( w1, 0, 16 ) );
          break;
 
       case 0x0a:  // moveword matrix select
