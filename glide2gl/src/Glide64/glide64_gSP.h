@@ -626,8 +626,6 @@ static bool glide64gSPCullVertices( uint32_t v0, uint32_t vn )
    return true;
 }
 
-static void glide64gSPCullDisplayList( uint32_t v0, uint32_t vn )
-{
-	if (glide64gSPCullVertices( v0, vn ))
-      gSPEndDisplayList();
-}
+void glide64gSPCullDisplayList( uint32_t v0, uint32_t vn );
+
+void glide64gSP1Quadrangle(int32_t v0, int32_t v1, int32_t v2, int32_t v3);

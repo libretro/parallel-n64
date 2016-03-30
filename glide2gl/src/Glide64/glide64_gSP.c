@@ -110,6 +110,23 @@ void glide64gSP1Triangle( int32_t v0, int32_t v1, int32_t v2, int32_t flag )
    cull_trianglefaces(v, 1, true, true, 0);
 }
 
+void glide64gSP1Quadrangle(int32_t v0, int32_t v1, int32_t v2, int32_t v3)
+{
+   VERTEX *v[6];
+
+   if (rdp.skip_drawing)
+      return;
+
+   v[0] = &rdp.vtx[v0];
+   v[1] = &rdp.vtx[v1];
+   v[2] = &rdp.vtx[v2];
+   v[3] = &rdp.vtx[v3];
+   v[4] = &rdp.vtx[v0];
+   v[5] = &rdp.vtx[v2];
+
+   cull_trianglefaces(v, 2, true, true, 0);
+}
+
 void glide64gSP2Triangles(const int32_t v00, const int32_t v01, const int32_t v02, const int32_t flag0,
                     const int32_t v10, const int32_t v11, const int32_t v12, const int32_t flag1 )
 {
@@ -295,4 +312,11 @@ void glide64gSPObjLoadTxtr(uint32_t tx)
          }
          break;
    }
+}
+
+
+void glide64gSPCullDisplayList( uint32_t v0, uint32_t vn )
+{
+	if (glide64gSPCullVertices( v0, vn ))
+      gSPEndDisplayList();
 }
