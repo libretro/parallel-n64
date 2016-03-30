@@ -48,6 +48,8 @@
 #include "GlideExtensions.h"
 #include "api/libretro.h"
 
+#include "../../../Graphics/RDP/gDP_funcs_C.h"
+
 extern void CRC_BuildTable();
 extern retro_log_printf_t log_cb;
 extern uint32_t screen_aspectmodehint;
@@ -139,10 +141,13 @@ static void _ChangeSize(void)
    if (((uint32_t)rdp.vi_width <= (*gfx_info.VI_WIDTH_REG)/2) && (rdp.vi_width > rdp.vi_height))
       rdp.scale_y *= 0.5f;
 
-   g_gdp.__clip.xh = 0;
-   g_gdp.__clip.yh = 0;
-   g_gdp.__clip.xl = (uint32_t)rdp.vi_width;
-   g_gdp.__clip.yl = (uint32_t)rdp.vi_height;
+   gDPSetScissor(
+         0,                         /* mode */
+         0,                         /* ulx  */
+         0,                         /* uly  */
+         (uint32_t)rdp.vi_width,    /* lrx  */
+         (uint32_t)rdp.vi_height    /* lry  */
+         );
 
    g_gdp.flags |= UPDATE_VIEWPORT | UPDATE_SCISSOR;
 }
