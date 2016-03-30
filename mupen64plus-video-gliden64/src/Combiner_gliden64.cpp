@@ -70,18 +70,22 @@ static int aAExpanded[] =
 	SHADE_ALPHA,		ENV_ALPHA,			ONE,				ZERO
 };
 
-void Combiner_Init() {
-	CombinerInfo & cmbInfo = CombinerInfo::get();
-	cmbInfo.init();
-	InitShaderCombiner();
-	gDP.otherMode.cycleType = G_CYC_1CYCLE;
-	if (cmbInfo.getCombinersNumber() == 0) {
-		cmbInfo.setCombine(EncodeCombineMode(0, 0, 0, TEXEL0, 0, 0, 0, TEXEL0, 0, 0, 0, TEXEL0, 0, 0, 0, TEXEL0));
-		cmbInfo.setCombine(EncodeCombineMode(0, 0, 0, TEXEL0, 0, 0, 0, 1, 0, 0, 0, TEXEL0, 0, 0, 0, 1));
-	}
+void Combiner_Init(void)
+{
+   CombinerInfo & cmbInfo = CombinerInfo::get();
+   cmbInfo.init();
+   InitShaderCombiner();
+   gDP.otherMode.cycleType = G_CYC_1CYCLE;
+
+   if (cmbInfo.getCombinersNumber() == 0)
+   {
+      cmbInfo.setCombine(EncodeCombineMode(0, 0, 0, TEXEL0, 0, 0, 0, TEXEL0, 0, 0, 0, TEXEL0, 0, 0, 0, TEXEL0));
+      cmbInfo.setCombine(EncodeCombineMode(0, 0, 0, TEXEL0, 0, 0, 0, 1, 0, 0, 0, TEXEL0, 0, 0, 0, 1));
+   }
 }
 
-void Combiner_Destroy() {
+void Combiner_Destroy(void)
+{
 	DestroyShaderCombiner();
 	CombinerInfo::get().destroy();
 }
@@ -105,7 +109,8 @@ void CombinerInfo::init()
 								numBinaryFormats > 0;
 
 	m_shadersLoaded = 0;
-	if (m_bShaderCacheSupported && !_loadShadersStorage()) {
+	if (m_bShaderCacheSupported && !_loadShadersStorage())
+   {
 		for (Combiners::iterator cur = m_combiners.begin(); cur != m_combiners.end(); ++cur)
 			delete cur->second;
 		m_combiners.clear();
@@ -125,64 +130,69 @@ void CombinerInfo::destroy()
 	m_combiners.clear();
 }
 
-static
-void SimplifyCycle( CombineCycle *cc, CombinerStage *stage )
+static void SimplifyCycle( CombineCycle *cc, CombinerStage *stage )
 {
-	// Load the first operand
-	stage->op[0].op = LOAD;
-	stage->op[0].param1 = cc->sa;
-	stage->numOps = 1;
+   // Load the first operand
+   stage->op[0].op = LOAD;
+   stage->op[0].param1 = cc->sa;
+   stage->numOps = 1;
 
-	// If we're just subtracting zero, skip it
-	if (cc->sb != ZERO) {
-		// Subtracting a number from itself is zero
-		if (cc->sb == stage->op[0].param1)
-			stage->op[0].param1 = ZERO;
-		else {
-			stage->op[1].op = SUB;
-			stage->op[1].param1 = cc->sb;
-			stage->numOps++;
-		}
-	}
+   // If we're just subtracting zero, skip it
+   if (cc->sb != ZERO)
+   {
+      // Subtracting a number from itself is zero
+      if (cc->sb == stage->op[0].param1)
+         stage->op[0].param1 = ZERO;
+      else
+      {
+         stage->op[1].op = SUB;
+         stage->op[1].param1 = cc->sb;
+         stage->numOps++;
+      }
+   }
 
-	// If we either subtracted, or didn't load a zero
-	if ((stage->numOps > 1) || (stage->op[0].param1 != ZERO)) {
-		// Multiplying by zero is zero
-		if (cc->m == ZERO) {
-			stage->numOps = 1;
-			stage->op[0].op = LOAD;
-			stage->op[0].param1 = ZERO;
-		} else {
-			// Multiplying by one, so just do a load
-			if ((stage->numOps == 1) && (stage->op[0].param1 == ONE))
-				stage->op[0].param1 = cc->m;
-			else {
-				stage->op[stage->numOps].op = MUL;
-				stage->op[stage->numOps].param1 = cc->m;
-				stage->numOps++;
-			}
-		}
-	}
+   // If we either subtracted, or didn't load a zero
+   if ((stage->numOps > 1) || (stage->op[0].param1 != ZERO))
+   {
+      // Multiplying by zero is zero
+      if (cc->m == ZERO)
+      {
+         stage->numOps = 1;
+         stage->op[0].op = LOAD;
+         stage->op[0].param1 = ZERO;
+      }
+      else
+      {
+         // Multiplying by one, so just do a load
+         if ((stage->numOps == 1) && (stage->op[0].param1 == ONE))
+            stage->op[0].param1 = cc->m;
+         else {
+            stage->op[stage->numOps].op = MUL;
+            stage->op[stage->numOps].param1 = cc->m;
+            stage->numOps++;
+         }
+      }
+   }
 
-	// Don't bother adding zero
-	if (cc->a != ZERO) {
-		// If all we have so far is zero, then load this instead
-		if ((stage->numOps == 1) && (stage->op[0].param1 == ZERO))
-			stage->op[0].param1 = cc->a;
-		else {
-			stage->op[stage->numOps].op = ADD;
-			stage->op[stage->numOps].param1 = cc->a;
-			stage->numOps++;
-		}
-	}
+   // Don't bother adding zero
+   if (cc->a != ZERO) {
+      // If all we have so far is zero, then load this instead
+      if ((stage->numOps == 1) && (stage->op[0].param1 == ZERO))
+         stage->op[0].param1 = cc->a;
+      else {
+         stage->op[stage->numOps].op = ADD;
+         stage->op[stage->numOps].param1 = cc->a;
+         stage->numOps++;
+      }
+   }
 
-	// Handle interpolation
-	if ((stage->numOps == 4) && (stage->op[1].param1 == stage->op[3].param1)) {
-		stage->numOps = 1;
-		stage->op[0].op = INTER;
-		stage->op[0].param2 = stage->op[1].param1;
-		stage->op[0].param3 = stage->op[2].param1;
-	}
+   // Handle interpolation
+   if ((stage->numOps == 4) && (stage->op[1].param1 == stage->op[3].param1)) {
+      stage->numOps = 1;
+      stage->op[0].op = INTER;
+      stage->op[0].param2 = stage->op[1].param1;
+      stage->op[0].param3 = stage->op[2].param1;
+   }
 }
 
 ShaderCombiner * CombinerInfo::_compile(uint64_t mux) const
@@ -238,16 +248,16 @@ ShaderCombiner * CombinerInfo::_compile(uint64_t mux) const
 
 void CombinerInfo::update()
 {
-	// TODO: find, why gDP.changed & CHANGED_COMBINE not always works (e.g. Mario Tennis).
-//	if (gDP.changed & CHANGED_COMBINE) {
-		if (gDP.otherMode.cycleType == G_CYC_COPY)
-			setCombine(EncodeCombineMode(0, 0, 0, TEXEL0, 0, 0, 0, TEXEL0, 0, 0, 0, TEXEL0, 0, 0, 0, TEXEL0));
-		else if (gDP.otherMode.cycleType == G_CYC_FILL)
-			setCombine(EncodeCombineMode(0, 0, 0, SHADE, 0, 0, 0, SHADE, 0, 0, 0, SHADE, 0, 0, 0, SHADE));
-		else
-			setCombine(gDP.combine.mux);
-		gDP.changed &= ~CHANGED_COMBINE;
-//	}
+   // TODO: find, why gDP.changed & CHANGED_COMBINE not always works (e.g. Mario Tennis).
+   //	if (gDP.changed & CHANGED_COMBINE) {
+   if (gDP.otherMode.cycleType == G_CYC_COPY)
+      setCombine(EncodeCombineMode(0, 0, 0, TEXEL0, 0, 0, 0, TEXEL0, 0, 0, 0, TEXEL0, 0, 0, 0, TEXEL0));
+   else if (gDP.otherMode.cycleType == G_CYC_FILL)
+      setCombine(EncodeCombineMode(0, 0, 0, SHADE, 0, 0, 0, SHADE, 0, 0, 0, SHADE, 0, 0, 0, SHADE));
+   else
+      setCombine(gDP.combine.mux);
+   gDP.changed &= ~CHANGED_COMBINE;
+   //	}
 }
 
 void CombinerInfo::setCombine(uint64_t _mux )

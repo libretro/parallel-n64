@@ -34,7 +34,7 @@ static std::string strFragmentShader;
 class NoiseTexture
 {
 public:
-	NoiseTexture() : m_pTexture(nullptr), m_pData(nullptr), m_DList(0) {}
+	NoiseTexture() : m_pTexture(NULL), m_pData(nullptr), m_DList(0) {}
 	void init();
 	void destroy();
 	void update();
@@ -72,7 +72,8 @@ void NoiseTexture::init()
 
 void NoiseTexture::destroy()
 {
-	if (m_pTexture != nullptr) {
+	if (m_pTexture)
+   {
 		textureCache().removeFrameBufferTexture(m_pTexture);
 		m_pTexture = nullptr;
 	}
@@ -80,14 +81,16 @@ void NoiseTexture::destroy()
 
 void NoiseTexture::update()
 {
+   uint32_t y, x;
 	if (m_DList == video().getBuffersSwapCount() || config.generalEmulation.enableNoise == 0)
 		return;
 
 	if (VI.width*VI.height == 0)
 		return;
 
-	for (uint32_t y = 0; y < VI.height; ++y)	{
-		for (uint32_t x = 0; x < VI.width; ++x)
+	for (y = 0; y < VI.height; ++y)
+   {
+		for (x = 0; x < VI.width; ++x)
 			m_pData[x + y*VI.width] = rand() & 0xFF;
 	}
 
@@ -97,8 +100,7 @@ void NoiseTexture::update()
 	m_DList = video().getBuffersSwapCount();
 }
 
-static
-GLuint _createShader(GLenum _type, const char * _strShader)
+static GLuint _createShader(GLenum _type, const char * _strShader)
 {
 	GLuint shader_object = glCreateShader(_type);
 	glShaderSource(shader_object, 1, &_strShader, NULL);
@@ -107,11 +109,13 @@ GLuint _createShader(GLenum _type, const char * _strShader)
 	return shader_object;
 }
 
-void InitShaderCombiner()
+void InitShaderCombiner(void)
 {
-	if (strstr((const char*)glGetString(GL_VERSION), "OpenGL ES 2") != NULL) {
+	if (strstr((const char*)glGetString(GL_VERSION), "OpenGL ES 2") != NULL)
+   {
 		const char * strRenderer = reinterpret_cast<const char*>(glGetString(GL_RENDERER));
-		if (strstr(strRenderer, "PowerVR") != NULL || strstr(strRenderer, "Adreno") != NULL) {
+		if (strstr(strRenderer, "PowerVR") != NULL || strstr(strRenderer, "Adreno") != NULL)
+      {
 			g_weakGLSL = true;
 			LOG(LOG_MINIMAL, "GPU with week GLSL detected: %s\n", strRenderer);
 		}
@@ -129,7 +133,8 @@ void InitShaderCombiner()
 	g_monochrome_image_program = createShaderProgram(default_vertex_shader, zelda_monochrome_fragment_shader);
 }
 
-void DestroyShaderCombiner() {
+void DestroyShaderCombiner()
+{
 	strFragmentShader.clear();
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
@@ -235,50 +240,54 @@ ShaderCombiner::ShaderCombiner(Combiner & _color, Combiner & _alpha, const gDPCo
 	_locateUniforms();
 }
 
-ShaderCombiner::~ShaderCombiner() {
+ShaderCombiner::~ShaderCombiner()
+{
 	glDeleteProgram(m_program);
 	m_program = 0;
 }
 
-#define LocateUniform(A) \
-	m_uniforms.A.loc = glGetUniformLocation(m_program, #A);
+void ShaderCombiner::_locateUniforms()
+{
+	m_uniforms.uTex0.loc               = glGetUniformLocation(m_program, "uTex0");
+	m_uniforms.uTex1.loc               = glGetUniformLocation(m_program, "uTex1");
+	m_uniforms.uTexNoise.loc           = glGetUniformLocation(m_program, "uTexNoise");
+	m_uniforms.uTlutImage.loc          = glGetUniformLocation(m_program, "uTlutImage");
+	m_uniforms.uZlutImage.loc          = glGetUniformLocation(m_program, "uZlutImage");
+	m_uniforms.uDepthImage.loc         = glGetUniformLocation(m_program, "uDepthImage");
 
-void ShaderCombiner::_locateUniforms() {
-	LocateUniform(uTex0);
-	LocateUniform(uTex1);
-	LocateUniform(uTexNoise);
-	LocateUniform(uTlutImage);
-	LocateUniform(uZlutImage);
-	LocateUniform(uDepthImage);
-	LocateUniform(uFogMode);
-	LocateUniform(uFogUsage);
-	LocateUniform(uAlphaCompareMode);
-	LocateUniform(uEnableAlphaTest);
-	LocateUniform(uEnableDepth);
-	LocateUniform(uEnableDepthCompare)
-	LocateUniform(uEnableDepthUpdate);
-	LocateUniform(uDepthMode);
-	LocateUniform(uDepthSource);
-	LocateUniform(uFbMonochrome);
-	LocateUniform(uFbFixedAlpha);
-	LocateUniform(uMaxTile)
-	LocateUniform(uTexturePersp);
-	LocateUniform(uTextureFilterMode);
-	LocateUniform(uSpecialBlendMode);
+	m_uniforms.uFogMode.loc            = glGetUniformLocation(m_program, "uFogMode");
+	m_uniforms.uFogUsage.loc           = glGetUniformLocation(m_program, "uFogUsage");
+	m_uniforms.uAlphaCompareMode.loc   = glGetUniformLocation(m_program, "uAlphaCompareMode");
 
-	LocateUniform(uFogAlpha);
-	LocateUniform(uMinLod);
-	LocateUniform(uDeltaZ);
-	LocateUniform(uAlphaTestValue);
+   m_uniforms.uEnableAlphaTest.loc    = glGetUniformLocation(m_program, "uEnableAlphaTest");
+   m_uniforms.uEnableDepth.loc        = glGetUniformLocation(m_program, "uEnableDepth");
+   m_uniforms.uEnableDepthCompare.loc = glGetUniformLocation(m_program, "uEnableDepthCompare");
+   m_uniforms.uEnableDepthUpdate.loc  = glGetUniformLocation(m_program, "uEnableDepthUpdate");
 
-	LocateUniform(uRenderState);
+	m_uniforms.uDepthMode.loc          = glGetUniformLocation(m_program, "uDepthMode");
+	m_uniforms.uDepthSource.loc        = glGetUniformLocation(m_program, "uDepthSource");
+	m_uniforms.uFbMonochrome.loc       = glGetUniformLocation(m_program, "uFbMonochrome");
+	m_uniforms.uFbFixedAlpha.loc       = glGetUniformLocation(m_program, "uFbFixedAlpha");
 
-	LocateUniform(uScreenScale);
-	LocateUniform(uDepthScale);
-	LocateUniform(uFogScale);
+	m_uniforms.uMaxTile.loc            = glGetUniformLocation(m_program, "uMaxTile");
+	m_uniforms.uTexturePersp.loc       = glGetUniformLocation(m_program, "uTexturePersp");
+	m_uniforms.uTextureFilterMode.loc  = glGetUniformLocation(m_program, "uTextureFilterMode");
+	m_uniforms.uSpecialBlendMode.loc   = glGetUniformLocation(m_program, "uSpecialBlendMode");
+
+	m_uniforms.uFogAlpha.loc           = glGetUniformLocation(m_program, "uFogAlpha");
+	m_uniforms.uMinLod.loc             = glGetUniformLocation(m_program, "uMinLod");
+	m_uniforms.uDeltaZ.loc             = glGetUniformLocation(m_program, "uDeltaZ");
+	m_uniforms.uAlphaTestValue.loc     = glGetUniformLocation(m_program, "uAlphaTestValue");
+
+	m_uniforms.uRenderState.loc        = glGetUniformLocation(m_program, "uRenderState");
+   
+	m_uniforms.uScreenScale.loc        = glGetUniformLocation(m_program, "uScreenScale");
+	m_uniforms.uDepthScale.loc         = glGetUniformLocation(m_program, "uDepthScale");
+	m_uniforms.uFogScale.loc           = glGetUniformLocation(m_program, "uFogScale");
 }
 
-void ShaderCombiner::_locate_attributes() const {
+void ShaderCombiner::_locate_attributes() const
+{
 	glBindAttribLocation(m_program, SC_POSITION, "aPosition");
 	glBindAttribLocation(m_program, SC_COLOR, "aColor");
 	glBindAttribLocation(m_program, SC_TEXCOORD0, "aTexCoord0");
@@ -314,74 +323,81 @@ void ShaderCombiner::updateRenderState(bool _bForce)
 
 void ShaderCombiner::updateFogMode(bool _bForce)
 {
-	const uint32_t blender = (gDP.otherMode.l >> 16);
-	const int nFogBlendEnabled = config.generalEmulation.enableFog != 0 && gSP.fog.multiplier >= 0 && (gDP.otherMode.c1_m1a == 3 || gDP.otherMode.c1_m2a == 3 || gDP.otherMode.c2_m1a == 3 || gDP.otherMode.c2_m2a == 3) ? 256 : 0;
-	int nFogUsage = ((gSP.geometryMode & G_FOG) != 0) ? 1 : 0;
-	int nSpecialBlendMode = 0;
-	switch (blender) {
-	case 0x0150:
-	case 0x0D18:
-		nFogUsage = gDP.otherMode.cycleType == G_CYC_2CYCLE ? 2 : 0;
-		break;
-	case 0x0440:
-		nFogUsage = gDP.otherMode.cycleType == G_CYC_1CYCLE ? 2 : 0;
-		break;
-	case 0xC912:
-		nFogUsage = 2;
-		break;
-	case 0xF550:
-		nFogUsage = 3;
-		break;
-	case 0x0550:
-		nFogUsage = 4;
-		break;
-	case 0x0382:
-	case 0x0091:
-		// Mace
-		// CLR_IN * A_IN + CLR_BL * 1MA
-		if (gDP.otherMode.cycleType == G_CYC_2CYCLE)
-			nSpecialBlendMode = 1;
-		break;
-	case 0xA500:
-		// Bomberman 2
-		// CLR_BL * A_FOG + CLR_IN * 1MA
-		if (gDP.otherMode.cycleType == G_CYC_1CYCLE) {
-			nSpecialBlendMode = 2;
-			nFogUsage = 5;
-		}
-		break;
-	case 0x07C2:
-		// Conker BFD shadow
-		// CLR_IN * A_FOG + CLR_FOG * 1MA
-		if (gDP.otherMode.cycleType == G_CYC_2CYCLE) {
-			nSpecialBlendMode = 3;
-			nFogUsage = 5;
-		}
-		break;
-		/* Brings troubles with Roadsters sky
-		case 0xc702:
-		// Donald Duck
-		// clr_fog*a_fog + clr_in*1ma
-		nFogUsage = 5;
-		nSpecialBlendMode = 2;
-		break;
-		*/
-	}
+	const uint32_t blender     = (gDP.otherMode.l >> 16);
+	const int nFogBlendEnabled = 
+      config.generalEmulation.enableFog != 0 
+      && gSP.fog.multiplier >= 0 
+      && (gDP.otherMode.c1_m1a == 3 || gDP.otherMode.c1_m2a == 3 || gDP.otherMode.c2_m1a == 3 || gDP.otherMode.c2_m2a == 3) ? 256 : 0;
+	int nFogUsage              = ((gSP.geometryMode & G_FOG) != 0) ? 1 : 0;
+	int nSpecialBlendMode      = 0;
+
+	switch (blender)
+   {
+      case 0x0150:
+      case 0x0D18:
+         nFogUsage = gDP.otherMode.cycleType == G_CYC_2CYCLE ? 2 : 0;
+         break;
+      case 0x0440:
+         nFogUsage = gDP.otherMode.cycleType == G_CYC_1CYCLE ? 2 : 0;
+         break;
+      case 0xC912:
+         nFogUsage = 2;
+         break;
+      case 0xF550:
+         nFogUsage = 3;
+         break;
+      case 0x0550:
+         nFogUsage = 4;
+         break;
+      case 0x0382:
+      case 0x0091:
+         // Mace
+         // CLR_IN * A_IN + CLR_BL * 1MA
+         if (gDP.otherMode.cycleType == G_CYC_2CYCLE)
+            nSpecialBlendMode = 1;
+         break;
+      case 0xA500:
+         // Bomberman 2
+         // CLR_BL * A_FOG + CLR_IN * 1MA
+         if (gDP.otherMode.cycleType == G_CYC_1CYCLE) {
+            nSpecialBlendMode = 2;
+            nFogUsage = 5;
+         }
+         break;
+      case 0x07C2:
+         // Conker BFD shadow
+         // CLR_IN * A_FOG + CLR_FOG * 1MA
+         if (gDP.otherMode.cycleType == G_CYC_2CYCLE) {
+            nSpecialBlendMode = 3;
+            nFogUsage = 5;
+         }
+         break;
+         /* Brings troubles with Roadsters sky
+            case 0xc702:
+         // Donald Duck
+         // clr_fog*a_fog + clr_in*1ma
+         nFogUsage = 5;
+         nSpecialBlendMode = 2;
+         break;
+         */
+   }
 
 	int nFogMode = 0; // Normal
-	if (nFogUsage == 0) {
-		switch (blender) {
-		case 0xC410:
-		case 0xC411:
-		case 0xF500:
-			nFogMode = 1; // fog blend
-			nFogUsage = 1;
-			break;
-		case 0x04D1:
-			nFogMode = 2; // inverse fog blend
-			nFogUsage = 1;
-			break;
-		}
+	if (nFogUsage == 0)
+   {
+		switch (blender)
+      {
+         case 0xC410:
+         case 0xC411:
+         case 0xF500:
+            nFogMode = 1; // fog blend
+            nFogUsage = 1;
+            break;
+         case 0x04D1:
+            nFogMode = 2; // inverse fog blend
+            nFogUsage = 1;
+            break;
+      }
 	}
 
 	m_uniforms.uSpecialBlendMode.set(nSpecialBlendMode, _bForce);
@@ -479,42 +495,62 @@ void ShaderCombiner::updateDepthInfo(bool _bForce) {
 		m_uniforms.uDeltaZ.set(gDP.primDepth.deltaZ, _bForce);
 }
 
-void ShaderCombiner::updateAlphaTestInfo(bool _bForce) {
-	if (gDP.otherMode.cycleType == G_CYC_FILL) {
-		m_uniforms.uEnableAlphaTest.set(0, _bForce);
-		m_uniforms.uAlphaTestValue.set(0.0f, _bForce);
-	} else if (gDP.otherMode.cycleType == G_CYC_COPY) {
-		if (gDP.otherMode.alphaCompare & G_AC_THRESHOLD) {
-			m_uniforms.uEnableAlphaTest.set(1, _bForce);
-			m_uniforms.uAlphaTestValue.set(0.5f, _bForce);
-		} else {
-			m_uniforms.uEnableAlphaTest.set(0, _bForce);
-			m_uniforms.uAlphaTestValue.set(0.0f, _bForce);
-		}
-	} else if (((gDP.otherMode.alphaCompare & G_AC_THRESHOLD) != 0) && (gDP.otherMode.alphaCvgSel == 0) && (gDP.otherMode.forceBlender == 0 || gDP.blendColor.a > 0))	{
-		m_uniforms.uEnableAlphaTest.set(1, _bForce);
-		m_uniforms.uAlphaTestValue.set(max(gDP.blendColor.a, 1.0f / 256.0f), _bForce);
-	} else if ((gDP.otherMode.alphaCompare == G_AC_DITHER) && (gDP.otherMode.alphaCvgSel == 0))	{
-		m_uniforms.uEnableAlphaTest.set(1, _bForce);
-		m_uniforms.uAlphaTestValue.set(0.0f, _bForce);
-	} else if (gDP.otherMode.cvgXAlpha != 0)	{
-		m_uniforms.uEnableAlphaTest.set(1, _bForce);
-		m_uniforms.uAlphaTestValue.set(0.125f, _bForce);
-	} else {
-		m_uniforms.uEnableAlphaTest.set(0, _bForce);
-		m_uniforms.uAlphaTestValue.set(0.0f, _bForce);
-	}
+void ShaderCombiner::updateAlphaTestInfo(bool _bForce)
+{
+   if (gDP.otherMode.cycleType == G_CYC_FILL)
+   {
+      m_uniforms.uEnableAlphaTest.set(0, _bForce);
+      m_uniforms.uAlphaTestValue.set(0.0f, _bForce);
+   }
+   else if (gDP.otherMode.cycleType == G_CYC_COPY)
+   {
+      if (gDP.otherMode.alphaCompare & G_AC_THRESHOLD)
+      {
+         m_uniforms.uEnableAlphaTest.set(1, _bForce);
+         m_uniforms.uAlphaTestValue.set(0.5f, _bForce);
+      }
+      else
+      {
+         m_uniforms.uEnableAlphaTest.set(0, _bForce);
+         m_uniforms.uAlphaTestValue.set(0.0f, _bForce);
+      }
+   }
+   else if (((gDP.otherMode.alphaCompare & G_AC_THRESHOLD) != 0) && (gDP.otherMode.alphaCvgSel == 0) && (gDP.otherMode.forceBlender == 0 || gDP.blendColor.a > 0))	{
+      m_uniforms.uEnableAlphaTest.set(1, _bForce);
+      m_uniforms.uAlphaTestValue.set(max(gDP.blendColor.a, 1.0f / 256.0f), _bForce);
+   }
+   else if ((gDP.otherMode.alphaCompare == G_AC_DITHER) && (gDP.otherMode.alphaCvgSel == 0))
+   {
+      m_uniforms.uEnableAlphaTest.set(1, _bForce);
+      m_uniforms.uAlphaTestValue.set(0.0f, _bForce);
+   }
+   else if (gDP.otherMode.cvgXAlpha != 0)
+   {
+      m_uniforms.uEnableAlphaTest.set(1, _bForce);
+      m_uniforms.uAlphaTestValue.set(0.125f, _bForce);
+   }
+   else
+   {
+      m_uniforms.uEnableAlphaTest.set(0, _bForce);
+      m_uniforms.uAlphaTestValue.set(0.0f, _bForce);
+   }
 }
 
-void SetMonochromeCombiner() {
+void SetMonochromeCombiner(void)
+{
+	static int texLoc  = -1;
+	static int sizeLoc = -1;
+
 	glUseProgram(g_monochrome_image_program);
-	static int texLoc = -1;
-	if (texLoc < 0) {
+
+	if (texLoc < 0)
+   {
 		texLoc = glGetUniformLocation(g_monochrome_image_program, "uColorImage");
 		glUniform1i(texLoc, 0);
 	}
-	static int sizeLoc = -1;
-	if (sizeLoc < 0) {
+
+	if (sizeLoc < 0)
+   {
 		glGetUniformLocation(g_monochrome_image_program, "uScreenSize");
 		glUniform2f(sizeLoc, (float)video().getWidth(), (float)video().getHeight());
 	}

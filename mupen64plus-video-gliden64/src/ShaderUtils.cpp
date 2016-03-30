@@ -1,6 +1,9 @@
 #include <assert.h>
 #include <stdio.h>
 #include <string.h>
+
+#include <retro_inline.h>
+
 #include "ShaderUtils.h"
 #include "Log.h"
 
@@ -120,15 +123,15 @@ const char *AlphaInput[] = {
 	"0.0"
 };
 
-inline
-int correctFirstStageParam(int _param)
+static INLINE int correctFirstStageParam(int _param)
 {
-	switch (_param) {
-	case TEXEL1:
-		return TEXEL0;
-	case TEXEL1_ALPHA:
-		return TEXEL0_ALPHA;
-	}
+   switch (_param)
+   {
+      case TEXEL1:
+         return TEXEL0;
+      case TEXEL1_ALPHA:
+         return TEXEL0_ALPHA;
+   }
 	return _param;
 }
 
@@ -142,86 +145,92 @@ void _correctFirstStageParams(CombinerStage & _stage)
 	}
 }
 
-inline
-int correctSecondStageParam(int _param)
+static INLINE int correctSecondStageParam(int _param)
 {
-	switch (_param) {
-	case TEXEL0:
-		return TEXEL1;
-	case TEXEL1:
-		return TEXEL0;
-	case TEXEL0_ALPHA:
-		return TEXEL1_ALPHA;
-	case TEXEL1_ALPHA:
-		return TEXEL0_ALPHA;
-	}
+   switch (_param)
+   {
+      case TEXEL0:
+         return TEXEL1;
+      case TEXEL1:
+         return TEXEL0;
+      case TEXEL0_ALPHA:
+         return TEXEL1_ALPHA;
+      case TEXEL1_ALPHA:
+         return TEXEL0_ALPHA;
+   }
 	return _param;
 }
 
-static
-void _correctSecondStageParams(CombinerStage & _stage) {
-	for (int i = 0; i < _stage.numOps; ++i) {
+static void _correctSecondStageParams(CombinerStage & _stage)
+{
+   int i;
+	for (i = 0; i < _stage.numOps; ++i)
+   {
 		_stage.op[i].param1 = correctSecondStageParam(_stage.op[i].param1);
 		_stage.op[i].param2 = correctSecondStageParam(_stage.op[i].param2);
 		_stage.op[i].param3 = correctSecondStageParam(_stage.op[i].param3);
 	}
 }
 
-static
-int _compileCombiner(const CombinerStage & _stage, const char** _Input, char * _strCombiner) {
+static int _compileCombiner(const CombinerStage & _stage, const char** _Input, char * _strCombiner)
+{
+   int i;
 	char buf[128];
 	bool bBracketOpen = false;
 	int nRes = 0;
-	for (int i = 0; i < _stage.numOps; ++i) {
-		switch (_stage.op[i].op) {
-		case LOAD:
-			sprintf(buf, "(%s ", _Input[_stage.op[i].param1]);
-			strcat(_strCombiner, buf);
-			bBracketOpen = true;
-			nRes |= 1 << _stage.op[i].param1;
-			break;
-		case SUB:
-			if (bBracketOpen) {
-				sprintf(buf, "- %s)", _Input[_stage.op[i].param1]);
-				bBracketOpen = false;
-			}
-			else
-				sprintf(buf, "- %s", _Input[_stage.op[i].param1]);
-			strcat(_strCombiner, buf);
-			nRes |= 1 << _stage.op[i].param1;
-			break;
-		case ADD:
-			if (bBracketOpen) {
-				sprintf(buf, "+ %s)", _Input[_stage.op[i].param1]);
-				bBracketOpen = false;
-			}
-			else
-				sprintf(buf, "+ %s", _Input[_stage.op[i].param1]);
-			strcat(_strCombiner, buf);
-			nRes |= 1 << _stage.op[i].param1;
-			break;
-		case MUL:
-			if (bBracketOpen) {
-				sprintf(buf, ")*%s", _Input[_stage.op[i].param1]);
-				bBracketOpen = false;
-			}
-			else
-				sprintf(buf, "*%s", _Input[_stage.op[i].param1]);
-			strcat(_strCombiner, buf);
-			nRes |= 1 << _stage.op[i].param1;
-			break;
-		case INTER:
-			sprintf(buf, "mix(%s, %s, %s)", _Input[_stage.op[0].param2], _Input[_stage.op[0].param1], _Input[_stage.op[0].param3]);
-			strcat(_strCombiner, buf);
-			nRes |= 1 << _stage.op[i].param1;
-			nRes |= 1 << _stage.op[i].param2;
-			nRes |= 1 << _stage.op[i].param3;
-			break;
 
-			//			default:
-			//				assert(false);
-		}
-	}
+	for (i = 0; i < _stage.numOps; ++i)
+   {
+      switch (_stage.op[i].op)
+      {
+         case LOAD:
+            sprintf(buf, "(%s ", _Input[_stage.op[i].param1]);
+            strcat(_strCombiner, buf);
+            bBracketOpen = true;
+            nRes |= 1 << _stage.op[i].param1;
+            break;
+         case SUB:
+            if (bBracketOpen) {
+               sprintf(buf, "- %s)", _Input[_stage.op[i].param1]);
+               bBracketOpen = false;
+            }
+            else
+               sprintf(buf, "- %s", _Input[_stage.op[i].param1]);
+            strcat(_strCombiner, buf);
+            nRes |= 1 << _stage.op[i].param1;
+            break;
+         case ADD:
+            if (bBracketOpen) {
+               sprintf(buf, "+ %s)", _Input[_stage.op[i].param1]);
+               bBracketOpen = false;
+            }
+            else
+               sprintf(buf, "+ %s", _Input[_stage.op[i].param1]);
+            strcat(_strCombiner, buf);
+            nRes |= 1 << _stage.op[i].param1;
+            break;
+         case MUL:
+            if (bBracketOpen) {
+               sprintf(buf, ")*%s", _Input[_stage.op[i].param1]);
+               bBracketOpen = false;
+            }
+            else
+               sprintf(buf, "*%s", _Input[_stage.op[i].param1]);
+            strcat(_strCombiner, buf);
+            nRes |= 1 << _stage.op[i].param1;
+            break;
+         case INTER:
+            sprintf(buf, "mix(%s, %s, %s)", _Input[_stage.op[0].param2], _Input[_stage.op[0].param1], _Input[_stage.op[0].param3]);
+            strcat(_strCombiner, buf);
+            nRes |= 1 << _stage.op[i].param1;
+            nRes |= 1 << _stage.op[i].param2;
+            nRes |= 1 << _stage.op[i].param3;
+            break;
+
+            //			default:
+            //				assert(false);
+      }
+   }
 	if (bBracketOpen)
 		strcat(_strCombiner, ")");
 	strcat(_strCombiner, "; \n");
@@ -230,36 +239,37 @@ int _compileCombiner(const CombinerStage & _stage, const char** _Input, char * _
 
 int compileCombiner(Combiner & _color, Combiner & _alpha, char * _strShader)
 {
-	if (gDP.otherMode.cycleType == G_CYC_1CYCLE) {
-		_correctFirstStageParams(_alpha.stage[0]);
-		_correctFirstStageParams(_color.stage[0]);
-	}
-	strcpy(_strShader, "  alpha1 = ");
-	int nInputs = _compileCombiner(_alpha.stage[0], AlphaInput, _strShader);
+   if (gDP.otherMode.cycleType == G_CYC_1CYCLE)
+   {
+      _correctFirstStageParams(_alpha.stage[0]);
+      _correctFirstStageParams(_color.stage[0]);
+   }
+   strcpy(_strShader, "  alpha1 = ");
+   int nInputs = _compileCombiner(_alpha.stage[0], AlphaInput, _strShader);
    strcat(_strShader,
-		"  if (uEnableAlphaTest != 0) {				\n"
-		"    lowp float alphaTestValue = (uAlphaCompareMode == 3 && alpha1 > 0.0) ? snoise() : uAlphaTestValue;	\n"
-		"    if  (alpha1 < alphaTestValue) discard;	\n"
-		"  }										\n"
-		);
-	strcat(_strShader, "  color1 = ");
-	nInputs |= _compileCombiner(_color.stage[0], ColorInput, _strShader);
-	strcat(_strShader, fragment_shader_blender);
+         "  if (uEnableAlphaTest != 0) {				\n"
+         "    lowp float alphaTestValue = (uAlphaCompareMode == 3 && alpha1 > 0.0) ? snoise() : uAlphaTestValue;	\n"
+         "    if  (alpha1 < alphaTestValue) discard;	\n"
+         "  }										\n"
+         );
+   strcat(_strShader, "  color1 = ");
+   nInputs |= _compileCombiner(_color.stage[0], ColorInput, _strShader);
+   strcat(_strShader, fragment_shader_blender);
 
-	strcat(_strShader, "  combined_color = vec4(color1, alpha1); \n");
-	if (_alpha.numStages == 2) {
-		strcat(_strShader, "  alpha2 = ");
-		_correctSecondStageParams(_alpha.stage[1]);
-		nInputs |= _compileCombiner(_alpha.stage[1], AlphaInput, _strShader);
-	}
-	else
-		strcat(_strShader, "  alpha2 = alpha1; \n");
-	if (_color.numStages == 2) {
-		strcat(_strShader, "  color2 = ");
-		_correctSecondStageParams(_color.stage[1]);
-		nInputs |= _compileCombiner(_color.stage[1], ColorInput, _strShader);
-	}
-	else
-		strcat(_strShader, "  color2 = color1; \n");
-	return nInputs;
+   strcat(_strShader, "  combined_color = vec4(color1, alpha1); \n");
+   if (_alpha.numStages == 2) {
+      strcat(_strShader, "  alpha2 = ");
+      _correctSecondStageParams(_alpha.stage[1]);
+      nInputs |= _compileCombiner(_alpha.stage[1], AlphaInput, _strShader);
+   }
+   else
+      strcat(_strShader, "  alpha2 = alpha1; \n");
+   if (_color.numStages == 2) {
+      strcat(_strShader, "  color2 = ");
+      _correctSecondStageParams(_color.stage[1]);
+      nInputs |= _compileCombiner(_color.stage[1], ColorInput, _strShader);
+   }
+   else
+      strcat(_strShader, "  color2 = color1; \n");
+   return nInputs;
 }
