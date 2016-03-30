@@ -60,7 +60,7 @@
 /* (x * y) >> 14 */
 #define IMUL14(x, y) ((((int64_t)x) * ((int64_t)y)) >> 14)
 
-uint16_t *zLUT;
+static uint16_t *zLUT;
 uint16_t *frameBuffer;
 
 extern int dzdx;
@@ -102,7 +102,7 @@ void ZLUT_release(void)
 {
    if (zLUT)
       free(zLUT);
-   zLUT = 0;
+   zLUT = NULL;
 }
 
 

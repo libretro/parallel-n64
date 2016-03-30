@@ -79,7 +79,6 @@ typedef struct
 
 extern part_framebuffer part_framebuf;
 
-extern uint16_t * zLUT;
 void ZLUT_init(void);
 void ZLUT_release(void);
 
