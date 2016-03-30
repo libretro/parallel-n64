@@ -138,12 +138,13 @@ void glide64gDPLoadTile(uint32_t tile, uint32_t ul_s, uint32_t ul_t,
       return;
 
    if ((settings.hacks&hack_Tonic) && tile == 7)
-   {
-      g_gdp.tile[0].sh = ul_s;
-      g_gdp.tile[0].th = ul_t;
-      g_gdp.tile[0].sl = lr_s;
-      g_gdp.tile[0].tl = lr_t;
-   }
+      glide64gDPSetTileSize(
+            0,          /* tile */
+            ul_s,       /* ulx  */
+            ul_t,       /* uly  */
+            lr_s,       /* lrx  */
+            lr_t        /* lry  */
+            );
 
    height = lr_t - ul_t + 1; // get height
    width = lr_s - ul_s + 1;
