@@ -37,7 +37,7 @@
 //
 //****************************************************************
 
-static void calc_point_light (VERTEX *v, float * vpos)
+void calc_point_light (VERTEX *v, float * vpos)
 {
    uint32_t l;
    float color[3];

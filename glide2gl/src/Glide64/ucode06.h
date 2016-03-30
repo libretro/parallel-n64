@@ -897,7 +897,7 @@ static void uc6_obj_rectangle(uint32_t w0, uint32_t w1)
    uc6_draw_polygons (v);
 }
 
-static void uc6_obj_sprite(uint32_t w0, uint32_t w1)
+void uc6_obj_sprite(uint32_t w0, uint32_t w1)
 {
    DRAWOBJECT d;
    VERTEX v[4];

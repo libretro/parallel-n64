@@ -1,6 +1,11 @@
 #include <stdint.h>
 
+#include "../../../Graphics/3dmath.h"
+
 #include "glide64_gSP.h"
+
+void calc_point_light(VERTEX *v, float *vpos);
+void uc6_obj_sprite(uint32_t w0, uint32_t w1);
 
 void load_matrix (float m[4][4], uint32_t addr)
 {
@@ -314,9 +319,249 @@ void glide64gSPObjLoadTxtr(uint32_t tx)
    }
 }
 
+/*
+ * Loads into the RSP vertex buffer the vertices that will be used by the 
+ * gSP1Triangle commands to generate polygons.
+ *
+ * v  - Segment address of the vertex list  pointer to a list of vertices.
+ * n  - Number of vertices (1 - 32).
+ * v0 - Starting index in vertex buffer where vertices are to be loaded into.
+ */
+void glide64gSPVertex(uint32_t v, uint32_t n, uint32_t v0)
+{
+   unsigned int i;
+   float x, y, z;
+   uint32_t iter = 16;
+   void   *vertex  = (void*)(gfx_info.RDRAM + v);
+
+   for (i=0; i < (n * iter); i+= iter)
+   {
+      VERTEX *vtx = (VERTEX*)&rdp.vtx[v0 + (i / iter)];
+      int16_t *rdram    = (int16_t*)vertex;
+      uint8_t *rdram_u8 = (uint8_t*)vertex;
+      uint8_t *color = (uint8_t*)(rdram_u8 + 12);
+      y                 = (float)rdram[0];
+      x                 = (float)rdram[1];
+      vtx->flags        = (uint16_t)rdram[2];
+      z                 = (float)rdram[3];
+      vtx->ov           = (float)rdram[4];
+      vtx->ou           = (float)rdram[5];
+      vtx->uv_scaled    = 0;
+      vtx->a            = color[0];
+
+      vtx->x = x*rdp.combined[0][0] + y*rdp.combined[1][0] + z*rdp.combined[2][0] + rdp.combined[3][0];
+      vtx->y = x*rdp.combined[0][1] + y*rdp.combined[1][1] + z*rdp.combined[2][1] + rdp.combined[3][1];
+      vtx->z = x*rdp.combined[0][2] + y*rdp.combined[1][2] + z*rdp.combined[2][2] + rdp.combined[3][2];
+      vtx->w = x*rdp.combined[0][3] + y*rdp.combined[1][3] + z*rdp.combined[2][3] + rdp.combined[3][3];
+
+      vtx->uv_calculated = 0xFFFFFFFF;
+      vtx->screen_translated = 0;
+      vtx->shade_mod = 0;
+
+      if (fabs(vtx->w) < 0.001)
+         vtx->w = 0.001f;
+      vtx->oow = 1.0f / vtx->w;
+      vtx->x_w = vtx->x * vtx->oow;
+      vtx->y_w = vtx->y * vtx->oow;
+      vtx->z_w = vtx->z * vtx->oow;
+      CalculateFog (vtx);
+
+      gSPClipVertex(v0 + (i / iter));
+
+      if (rdp.geom_mode & G_LIGHTING)
+      {
+         vtx->vec[0] = (int8_t)color[3];
+         vtx->vec[1] = (int8_t)color[2];
+         vtx->vec[2] = (int8_t)color[1];
+
+         if (settings.ucode == 2 && rdp.geom_mode & G_POINT_LIGHTING)
+         {
+            float tmpvec[3] = {x, y, z};
+            calc_point_light (vtx, tmpvec);
+         }
+         else
+         {
+            NormalizeVector (vtx->vec);
+            calc_light (vtx);
+         }
+
+         if (rdp.geom_mode & G_TEXTURE_GEN)
+         {
+            if (rdp.geom_mode & G_TEXTURE_GEN_LINEAR)
+               calc_linear (vtx);
+            else
+               calc_sphere (vtx);
+         }
+
+      }
+      else
+      {
+         vtx->r = color[3];
+         vtx->g = color[2];
+         vtx->b = color[1];
+      }
+      vertex = (char*)vertex + iter;
+   }
+}
+
+void glide64gSPFogFactor(int16_t fm, int16_t fo )
+{
+   rdp.fog_multiplier = fm;
+   rdp.fog_offset     = fo;
+}
+
+void glide64gSPNumLights(int32_t n)
+{
+   if (n > 12)
+      return;
+
+   rdp.num_lights = n;
+   g_gdp.flags |= UPDATE_LIGHTS;
+}
+
+void glide64gSPPopMatrixN(uint32_t param, uint32_t num )
+
+{
+   if (rdp.model_i > num - 1)
+   {
+      rdp.model_i -= num;
+   }
+   memcpy (rdp.model, rdp.model_stack[rdp.model_i], 64);
+   g_gdp.flags |= UPDATE_MULT_MAT;
+}
+
+void glide64gSPPopMatrix(uint32_t param)
+{
+   switch (param)
+   {
+      case 0: // modelview
+         if (rdp.model_i > 0)
+         {
+            rdp.model_i--;
+            memcpy (rdp.model, rdp.model_stack[rdp.model_i], 64);
+            g_gdp.flags |= UPDATE_MULT_MAT;
+         }
+         break;
+      case 1: // projection, can't
+         break;
+      default:
+#ifdef DEBUG
+         DebugMsg( DEBUG_HIGH | DEBUG_ERROR | DEBUG_MATRIX, "// Attempting to pop matrix stack below 0\n" );
+         DebugMsg( DEBUG_HIGH | DEBUG_HANDLED | DEBUG_MATRIX, "gSPPopMatrix( %s );\n",
+               (param == G_MTX_MODELVIEW) ? "G_MTX_MODELVIEW" :
+               (param == G_MTX_PROJECTION) ? "G_MTX_PROJECTION" : "G_MTX_INVALID" );
+#endif
+         break;
+   }
+}
+
+void glide64gSPDlistCount(uint32_t count, uint32_t v)
+{
+   uint32_t address = RSP_SegmentToPhysical(v);
+
+   if (__RSP.PCi >= 9 || address == 0)
+      return;
+
+   __RSP.PCi ++;  // go to the next PC in the stack
+   __RSP.PC[__RSP.PCi] = address;  // jump to the address
+   __RSP.count = count + 1;
+}
 
 void glide64gSPCullDisplayList( uint32_t v0, uint32_t vn )
 {
 	if (glide64gSPCullVertices( v0, vn ))
       gSPEndDisplayList();
+}
+
+void glide64gSPModifyVertex( uint32_t vtx, uint32_t where, uint32_t val )
+{
+   VERTEX *v = (VERTEX*)&rdp.vtx[vtx];
+
+   switch (where)
+   {
+      case 0:
+         uc6_obj_sprite(__RSP.w0, __RSP.w1);
+         break;
+
+      case G_MWO_POINT_RGBA:
+         v->r = (uint8_t)(val >> 24);
+         v->g = (uint8_t)((val >> 16) & 0xFF);
+         v->b = (uint8_t)((val >> 8) & 0xFF);
+         v->a = (uint8_t)(val & 0xFF);
+         v->shade_mod = 0;
+         break;
+
+      case G_MWO_POINT_ST:
+         {
+            float scale = (rdp.othermode_h & RDP_PERSP_TEX_ENABLE) ? 0.03125f : 0.015625f;
+            v->ou = (float)((int16_t)(val>>16)) * scale;
+            v->ov = (float)((int16_t)(val&0xFFFF)) * scale;
+            v->uv_calculated = 0xFFFFFFFF;
+            v->uv_scaled = 1;
+         }
+         break;
+
+      case G_MWO_POINT_XYSCREEN:
+         {
+            float scr_x = (float)((int16_t)(val>>16)) / 4.0f;
+            float scr_y = (float)((int16_t)(val&0xFFFF)) / 4.0f;
+            v->screen_translated = 2;
+            v->sx = scr_x * rdp.scale_x + rdp.offset_x;
+            v->sy = scr_y * rdp.scale_y + rdp.offset_y;
+            if (v->w < 0.01f)
+            {
+               v->w = 1.0f;
+               v->oow = 1.0f;
+               v->z_w = 1.0f;
+            }
+            v->sz = rdp.view_trans[2] + v->z_w * rdp.view_scale[2];
+
+            v->scr_off = 0;
+            if (scr_x < 0) v->scr_off |= 1;
+            if (scr_x > rdp.vi_width) v->scr_off |= 2;
+            if (scr_y < 0) v->scr_off |= 4;
+            if (scr_y > rdp.vi_height) v->scr_off |= 8;
+            if (v->w < 0.1f) v->scr_off |= 16;
+         }
+         break;
+      case G_MWO_POINT_ZSCREEN:
+         {
+            float scr_z = _FIXED2FLOAT((int16_t)_SHIFTR(val, 16, 16), 15);
+            v->z_w = (scr_z - rdp.view_trans[2]) / rdp.view_scale[2];
+            v->z = v->z_w * v->w;
+         }
+         break;
+   }
+}
+
+bool glide64gSPCullVertices( uint32_t v0, uint32_t vn )
+{
+   unsigned i;
+   uint32_t clip = 0;
+
+	if (vn < v0)
+   {
+      // Aidyn Chronicles - The First Mage seems to pass parameters in reverse order.
+      const uint32_t v = v0;
+      v0 = vn;
+      vn = v;
+   }
+
+   /* Wipeout 64 passes vn = 512, increasing MAX_VTX to 512+ doesn't fix. */
+   if (vn > MAX_VTX)
+      return false;
+
+   for (i = v0; i <= vn; i++)
+   {
+      VERTEX *v = (VERTEX*)&rdp.vtx[i];
+      // Check if completely off the screen (quick frustrum clipping for 90 FOV)
+      if (v->x >= -v->w) clip |= 0x01;
+      if (v->x <= v->w)  clip |= 0x02;
+      if (v->y >= -v->w) clip |= 0x04;
+      if (v->y <= v->w)  clip |= 0x08;
+      if (v->w >= 0.1f)  clip |= 0x10;
+      if (clip == 0x1F)
+         return false;
+   }
+   return true;
 }
