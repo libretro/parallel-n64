@@ -60,17 +60,5 @@ static void uc4_tri1(uint32_t w0, uint32_t w1)
 
 static void uc4_quad3d(uint32_t w0, uint32_t w1)
 {
-   VERTEX *v[6];
-   
-   if (rdp.skip_drawing)
-      return;
-
-   v[0] = &rdp.vtx[_SHIFTR(w1, 24, 8)  / 5]; /* v00 */
-   v[1] = &rdp.vtx[_SHIFTR(w1, 16, 8)  / 5]; /* v01 */
-   v[2] = &rdp.vtx[_SHIFTR(w1,  8, 8)  / 5]; /* v02 */
-   v[3] = &rdp.vtx[((w1 >> 24) & 0xFF) / 5]; /* v10 */
-   v[4] = &rdp.vtx[((w1 >> 8) & 0xFF)  / 5]; /* v11 */
-   v[5] = &rdp.vtx[_SHIFTR(w1,  0, 8)  / 5]; /* v12 */
-
-   cull_trianglefaces(v, 2, true, true, 0);
+   glide64gSP1Quadrangle( _SHIFTR( w1, 24, 8 ) / 5, _SHIFTR( w1, 16, 8 ) / 5, _SHIFTR( w1, 8, 8 ) / 5, _SHIFTR( w1, 0, 8 ) / 5 );
 }
