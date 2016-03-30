@@ -1568,8 +1568,7 @@ static void rdp_setcolorimage(uint32_t w0, uint32_t w1)
 
 static void rsp_uc5_reserved0(uint32_t w0, uint32_t w1)
 {
-  ucode5_texshiftaddr  = RSP_SegmentToPhysical(w1);
-  ucode5_texshiftcount = 0;
+   glide64gSPSetDMATexOffset(w1);
 }
 
 /******************************************************************
@@ -2855,20 +2854,21 @@ void glide64ProcessRDPList(void)
    g_gdp.other_modes.z_source_sel = 0;
 
    if (rdp.vi_org_reg != *gfx_info.VI_ORIGIN_REG)
-      rdp.tlut_mode    = 0; //is it correct?
-   rdp.scissor_set     = false;
-   ucode5_texshiftaddr = ucode5_texshiftcount = 0;
-   cpu_fb_write        = false;
-   cpu_fb_read_called  = false;
-   cpu_fb_write_called = false;
-   cpu_fb_ignore       = false;
-   part_framebuf.d_ul_x              = 0xffff;
-   part_framebuf.d_ul_y              = 0xffff;
-   part_framebuf.d_lr_x              = 0;
-   part_framebuf.d_lr_y              = 0;
-   depth_buffer_fog    = true;
+      rdp.tlut_mode     = 0; //is it correct?
+   rdp.scissor_set      = false;
+   ucode5_texshiftaddr  = 0;
+   ucode5_texshiftcount = 0;
+   cpu_fb_write         = false;
+   cpu_fb_read_called   = false;
+   cpu_fb_write_called  = false;
+   cpu_fb_ignore        = false;
+   part_framebuf.d_ul_x = 0xffff;
+   part_framebuf.d_ul_y = 0xffff;
+   part_framebuf.d_lr_x = 0;
+   part_framebuf.d_lr_y = 0;
+   depth_buffer_fog     = true;
    
-   length              = (*(uint32_t*)gfx_info.DPC_END_REG) - (*(uint32_t*)gfx_info.DPC_CURRENT_REG);
+   length               = (*(uint32_t*)gfx_info.DPC_END_REG) - (*(uint32_t*)gfx_info.DPC_CURRENT_REG);
 
    (*(uint32_t*)gfx_info.DPC_STATUS_REG) &= ~0x0002;
 

@@ -51,6 +51,7 @@ void glide64gSPCullDisplayList( uint32_t v0, uint32_t vn );
 void glide64gSP1Quadrangle(int32_t v0, int32_t v1, int32_t v2, int32_t v3);
 void glide64gSPCIVertex(uint32_t v, uint32_t n, uint32_t v0);
 void glide64gSPSetVertexColorBase(uint32_t base);
+void glide64gSPSetDMATexOffset(uint32_t addr);
 
 #ifdef __cplusplus
 }

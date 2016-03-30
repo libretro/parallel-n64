@@ -12,6 +12,9 @@ int billboarding = 0;
 uint32_t dma_offset_mtx = 0;
 uint32_t dma_offset_vtx = 0;
 int vtx_last = 0;
+extern uint32_t ucode5_texshiftaddr;
+extern uint32_t ucode5_texshiftcount;
+extern uint16_t ucode5_texshift;
 
 typedef struct 
 {
@@ -1139,4 +1142,11 @@ void glide64gSPBranchList(uint32_t dl)
 {
    uint32_t addr = RSP_SegmentToPhysical(dl);
    __RSP.PC[__RSP.PCi] = addr; /* jump to the address */
+}
+
+void glide64gSPSetDMATexOffset(uint32_t addr)
+{
+   ucode5_texshiftaddr  = RSP_SegmentToPhysical(addr);
+
+   ucode5_texshiftcount = 0;
 }
