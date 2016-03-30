@@ -127,20 +127,19 @@ static void uc2_line3d(uint32_t w0, uint32_t w1)
       uc6_ldtx_rect_r(w0, w1);
    else
    {
-      VERTEX *v[3];
-      uint32_t cull_mode;
-      uint16_t width;
+      uint32_t mode  = (rdp.flags & CULLMASK) >> CULLSHIFT;
+      rdp.flags     |= CULLMASK;
+      g_gdp.flags   |= UPDATE_CULL_MODE;
 
-      v[0] = &rdp.vtx[(w0 >> 17) & 0x7F];
-      v[1] = &rdp.vtx[(w0 >> 9) & 0x7F];
-      v[2] = &rdp.vtx[(w0 >> 9) & 0x7F];
-      width = (uint16_t)(w0 + 3)&0xFF;
-      cull_mode = (rdp.flags & CULLMASK) >> CULLSHIFT;
-      rdp.flags |= CULLMASK;
-      g_gdp.flags |= UPDATE_CULL_MODE;
-      cull_trianglefaces(v, 1, true, true, width);
-      rdp.flags ^= CULLMASK;
-      rdp.flags |= cull_mode << CULLSHIFT;
+      glide64gSP1Triangle(
+            _SHIFTR( w0, 17, 7 ),
+            _SHIFTR( w0, 9, 7 ),
+            _SHIFTR( w0, 9, 7 ),
+            (uint16_t)(w0 + 3)&0xFF
+            );
+
+      rdp.flags   ^= CULLMASK;
+      rdp.flags   |= mode << CULLSHIFT;
       g_gdp.flags |= UPDATE_CULL_MODE;
    }
 }
