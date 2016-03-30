@@ -79,12 +79,6 @@ static float set_sprite_combine_mode(void)
     if (rdp.othermode_l & 0x00000400)
       grDepthBiasLevel(g_gdp.prim_color.dz);
   }
-#if 0
-  else
-  {
-    LRDP("z compare not used, using 0\n");
-  }
-#endif
 
   grCullMode (GR_CULL_DISABLE);
   grFogMode (GR_FOG_DISABLE, g_gdp.fog_color.total);
