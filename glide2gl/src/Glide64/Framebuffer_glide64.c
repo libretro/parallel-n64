@@ -1178,6 +1178,7 @@ void DrawDepthBufferFog(void)
 
 void drawViRegBG(void)
 {
+   bool drawn;
    FB_TO_SCREEN_INFO fb_info;
 
    fb_info.width  = *gfx_info.VI_WIDTH_REG;
@@ -1192,7 +1193,9 @@ void drawViRegBG(void)
 
    rdp.last_bg    = fb_info.addr;
 
-   if (settings.hacks&hack_Lego && DrawFrameBufferToScreen(&fb_info))
+   drawn          = DrawFrameBufferToScreen(&fb_info);
+
+   if (settings.hacks&hack_Lego && drawn)
    {
       rdp.updatescreen = 1;
       newSwapBuffers ();
