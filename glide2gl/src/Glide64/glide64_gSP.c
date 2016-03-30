@@ -1124,3 +1124,19 @@ void glide64gSPDMATriangles(uint32_t tris, uint32_t n)
       cull_trianglefaces(v, 1, true, true, 0);
    }
 }
+
+void glide64gSPDisplayList(uint32_t dl)
+{
+   uint32_t addr = RSP_SegmentToPhysical(dl);
+
+   if (__RSP.PCi >= 9)
+      return;                  /* DL stack overflow */
+   __RSP.PCi++;                /* go to the next PC in the stack */
+   __RSP.PC[__RSP.PCi] = addr; /* jump to the address */
+}
+
+void glide64gSPBranchList(uint32_t dl)
+{
+   uint32_t addr = RSP_SegmentToPhysical(dl);
+   __RSP.PC[__RSP.PCi] = addr; /* jump to the address */
+}

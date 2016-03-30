@@ -159,13 +159,10 @@ static void uc0_displaylist(uint32_t w0, uint32_t w1)
    switch (_SHIFTR(w0, 16, 8))
    {
       case G_DL_PUSH:
-         if (__RSP.PCi >= 9)
-            return; /* DL stack overflow */
-         __RSP.PCi++; // go to the next PC in the stack
-         __RSP.PC[__RSP.PCi] = addr; // jump to the address
+         glide64gSPDisplayList(w1);
          break;
       case G_DL_NOPUSH:
-         __RSP.PC[__RSP.PCi] = addr; // jump to the address
+         glide64gSPBranchList(w1);
          break;
    }
 }
