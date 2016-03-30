@@ -21,7 +21,8 @@
 #include "DepthBuffer.h"
 #include "Config.h"
 
-#include "../../Graphics/3dmath.h"
+#include "../../graphics/3dmath.h"
+#include "../../graphics/image_convert.h"
 
 //Note: 0xC0 is used by 1080 alot, its an unknown command.
 
@@ -1753,36 +1754,11 @@ static void gln64gSPSetSpriteTile(const struct uObjSprite *_pObjSprite)
 	gDP.otherMode.texturePersp = 1;
 }
 
-
-static
-uint16_t _YUVtoRGBA(uint8_t y, uint8_t u, uint8_t v)
-{
-	uint16_t c;
-	float r = y + (1.370705f * (v - 128));
-	float g = y - (0.698001f * (v - 128)) - (0.337633f * (u - 128));
-	float b = y + (1.732446f * (u - 128));
-	r *= 0.125f;
-	g *= 0.125f;
-	b *= 0.125f;
-	//clipping the result
-	if (r > 32) r = 32;
-	if (g > 32) g = 32;
-	if (b > 32) b = 32;
-	if (r < 0) r = 0;
-	if (g < 0) g = 0;
-	if (b < 0) b = 0;
-
-	c = (uint16_t)(((uint16_t)(r) << 11) |
-		((uint16_t)(g) << 6) |
-		((uint16_t)(b) << 1) | 1);
-	return c;
-}
-
 static void _drawYUVImageToFrameBuffer(const struct ObjCoordinates *_objCoords)
 {
    uint16_t h, w;
    uint32_t width, height, *mb, *dst;
-struct FrameBuffer *pBuffer;
+   struct FrameBuffer *pBuffer;
 	const uint32_t ulx = (uint32_t)_objCoords->ulx;
 	const uint32_t uly = (uint32_t)_objCoords->uly;
 	const uint32_t lrx = (uint32_t)_objCoords->lrx;
@@ -1816,8 +1792,8 @@ struct FrameBuffer *pBuffer;
             uint8_t v = (uint8_t)(t >> 8) & 0xFF;
             uint8_t y1 = (uint8_t)(t >> 16) & 0xFF;
             uint8_t u = (uint8_t)(t >> 24) & 0xFF;
-            *(dst++) = _YUVtoRGBA(y0, u, v);
-            *(dst++) = _YUVtoRGBA(y1, u, v);
+            *(dst++) = _YUVtoRGBA16(y0, u, v);
+            *(dst++) = _YUVtoRGBA16(y1, u, v);
          }
       }
 		dst += ci_width - 16;

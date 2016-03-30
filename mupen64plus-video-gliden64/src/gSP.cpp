@@ -23,6 +23,8 @@
 
 #include "m64p_plugin.h"
 
+#include "../../Graphics/image_convert.h"
+
 using namespace std;
 
 gSPInfo gSP;
@@ -1568,29 +1570,6 @@ static void gln64gSPDrawObjRect(const ObjCoordinates & _coords)
 }
 
 static
-uint16_t _YUVtoRGBA(uint8_t y, uint8_t u, uint8_t v)
-{
-	float r = y + (1.370705f * (v - 128));
-	float g = y - (0.698001f * (v - 128)) - (0.337633f * (u - 128));
-	float b = y + (1.732446f * (u - 128));
-	r *= 0.125f;
-	g *= 0.125f;
-	b *= 0.125f;
-	//clipping the result
-	if (r > 32) r = 32;
-	if (g > 32) g = 32;
-	if (b > 32) b = 32;
-	if (r < 0) r = 0;
-	if (g < 0) g = 0;
-	if (b < 0) b = 0;
-
-	uint16_t c = (uint16_t)(((uint16_t)(r) << 11) |
-		((uint16_t)(g) << 6) |
-		((uint16_t)(b) << 1) | 1);
-	return c;
-}
-
-static
 void _drawYUVImageToFrameBuffer(const ObjCoordinates & _objCoords)
 {
 	const uint32_t ulx = (uint32_t)_objCoords.ulx;
@@ -1618,11 +1597,11 @@ void _drawYUVImageToFrameBuffer(const ObjCoordinates & _objCoords)
 			if ((h < height) && (w < width)) //clipping. texture image may be larger than color image
 			{
 				uint8_t y0 = (uint8_t)t & 0xFF;
-				uint8_t v = (uint8_t)(t >> 8) & 0xFF;
+				uint8_t v  = (uint8_t)(t >> 8) & 0xFF;
 				uint8_t y1 = (uint8_t)(t >> 16) & 0xFF;
-				uint8_t u = (uint8_t)(t >> 24) & 0xFF;
-				*(dst++) = _YUVtoRGBA(y0, u, v);
-				*(dst++) = _YUVtoRGBA(y1, u, v);
+				uint8_t u  = (uint8_t)(t >> 24) & 0xFF;
+				*(dst++)   = YUVtoRGBA16(y0, u, v);
+				*(dst++)   = YUVtoRGBA16(y1, u, v);
 			}
 		}
 		dst += ci_width - 16;

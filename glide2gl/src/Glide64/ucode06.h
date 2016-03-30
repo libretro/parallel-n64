@@ -38,6 +38,7 @@
 //****************************************************************
 
 #include "../../Graphics/HLE/Microcode/S2DEX.h"
+#include "../../Graphics/image_convert.h"
 
 // STANDARD DRAWIMAGE - draws a 2d image based on the following structure
 
@@ -1004,32 +1005,6 @@ static void uc6_obj_rendermode(uint32_t w0, uint32_t w1)
 {
 }
 
-static uint16_t uc6_yuv_to_rgba(uint8_t y, uint8_t u, uint8_t v)
-{
-   float r  = y + (1.370705f * (v-128));
-   float g  = y - (0.698001f * (v-128)) - (0.337633f * (u-128));
-   float b  = y + (1.732446f * (u-128));
-   r       *= 0.125f;
-   g       *= 0.125f;
-   b       *= 0.125f;
-
-   /* clipping the result */
-   if (r > 32)
-      r = 32;
-   if (g > 32)
-      g = 32;
-   if (b > 32)
-      b = 32;
-   if (r < 0)
-      r = 0;
-   if (g < 0)
-      g = 0;
-   if (b < 0)
-      b = 0;
-
-   return (uint16_t)(((uint16_t)(r) << 11) | ((uint16_t)(g) << 6) | ((uint16_t)(b) << 1) | 1);
-}
-
 static void uc6_DrawYUVImageToFrameBuffer(uint16_t ul_x, uint16_t ul_y, uint16_t lr_x, uint16_t lr_y)
 {
    uint16_t h, w, *dst;
@@ -1069,8 +1044,8 @@ static void uc6_DrawYUVImageToFrameBuffer(uint16_t ul_x, uint16_t ul_y, uint16_t
             uint8_t v  = (uint8_t)(t>>8)&0xFF;
             uint8_t y1 = (uint8_t)(t>>16)&0xFF;
             uint8_t u  = (uint8_t)(t>>24)&0xFF;
-            *(dst++)   = uc6_yuv_to_rgba(y0, u, v);
-            *(dst++)   = uc6_yuv_to_rgba(y1, u, v);
+            *(dst++)   = YUVtoRGBA16(y0, u, v);
+            *(dst++)   = YUVtoRGBA16(y1, u, v);
          }
       }
       dst += rdp.ci_width - 16;
