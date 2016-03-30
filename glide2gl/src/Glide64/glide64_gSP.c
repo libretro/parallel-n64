@@ -172,7 +172,7 @@ void glide64gSPForceMatrix( uint32_t mptr )
 
 void glide64gSPObjMatrix( uint32_t mtx )
 {
-   uint32_t addr     = RSP_SegmentToPhysical(mtx);
+   uint32_t addr         = RSP_SegmentToPhysical(mtx) >> 1;
 
    rdp.mat_2d.A          = ((int*)gfx_info.RDRAM)[(addr+0)>>1] / 65536.0f;
    rdp.mat_2d.B          = ((int*)gfx_info.RDRAM)[(addr+2)>>1] / 65536.0f;
@@ -186,7 +186,7 @@ void glide64gSPObjMatrix( uint32_t mtx )
 
 void glide64gSPObjSubMatrix( uint32_t mtx )
 {
-   uint32_t addr     = RSP_SegmentToPhysical(mtx);
+   uint32_t addr         = RSP_SegmentToPhysical(mtx) >> 1;
 
    rdp.mat_2d.X          = ((int16_t*)gfx_info.RDRAM)[(addr+0)^1] / 4.0f;
    rdp.mat_2d.Y          = ((int16_t*)gfx_info.RDRAM)[(addr+1)^1] / 4.0f;
