@@ -79,6 +79,15 @@ static uint16_t YUVtoRGB565(uint8_t y, uint8_t u, uint8_t v)
          (uint16_t)(b) );
 }
 
+static INLINE uint16_t PAL8toRGBA16(uint8_t r, uint8_t g, uint8_t b, uint8_t a)
+{
+   return (uint16_t)(
+         ((uint16_t)(r >> 3) << 11) |
+         ((uint16_t)(g >> 3) << 6) |
+         ((uint16_t)(b >> 3) << 1) |
+         ((uint16_t)(a ) << 0));
+}
+
 static INLINE uint16_t RGBA32toRGBA16(uint32_t _c)
 {
    union RGBA c;

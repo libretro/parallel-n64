@@ -42,9 +42,11 @@
 #include "TexLoad.h"
 #include "Combine.h"
 #include "Util.h"
-#include "../../../Graphics/GBI.h"
 #include "libretro.h"
 #include "GlideExtensions.h"
+
+#include "../../../Graphics/GBI.h"
+#include "../../../Graphics/image_convert.h"
 
 #include "MiClWr.h"
 
@@ -986,10 +988,7 @@ static void LoadTex(int id, int tmu)
                uint8_t b = (uint8_t)
                   ((1-percent_b) * (((*col & 0x003E) >>  1)) + percent_b * cb0);
 
-               *col++ = (uint16_t)(((uint16_t)(r >> 3) << 11) |
-                     ((uint16_t)(g >> 3) << 6) |
-                     ((uint16_t)(b >> 3) << 1) |
-                     ((uint16_t)(a ) << 0));
+               *col++    = PAL8toRGBA16(r, g, b, a);
             }while(--size);
             break;
          case TMOD_FULL_COLOR_SUB_TEX:
@@ -999,10 +998,7 @@ static void LoadTex(int id, int tmu)
                uint8_t r = cr0 - (((*col & 0xF800) >> 11));
                uint8_t g = cg0 - (((*col & 0x07C0) >> 6));
                uint8_t b = cb0 - (((*col & 0x003E) >> 1));
-               *col++ = (uint16_t)(((uint16_t)(r >> 3) << 11) |
-                     ((uint16_t)(g >> 3) << 6) |
-                     ((uint16_t)(b >> 3) << 1) |
-                     ((uint16_t)(a ) << 0));
+               *col++    = PAL8toRGBA16(r, g, b, a);
             }while(--size);
             break;
          case TMOD_TEX_SUB_COL:
@@ -1012,10 +1008,7 @@ static void LoadTex(int id, int tmu)
                uint8_t r = (((*col & 0xF800) >> 11)) - cr0;
                uint8_t g = (((*col & 0x07C0) >> 6)) - cg0;
                uint8_t b = (((*col & 0x003E) >> 1)) - cb0;
-               *col++ = (uint16_t)(((uint16_t)(r >> 3) << 11) |
-                     ((uint16_t)(g >> 3) << 6) |
-                     ((uint16_t)(b >> 3) << 1) |
-                     ((uint16_t)(a ) << 0));
+               *col++    = PAL8toRGBA16(r, g, b, a);
             }while(--size);
             break;
          case TMOD_COL_INTER_COL1_USING_TEX:
@@ -1028,10 +1021,7 @@ static void LoadTex(int id, int tmu)
                uint8_t r = (uint8_t)((1.0f-percent_r) * cr0 + percent_r * cr1);
                uint8_t g = (uint8_t)((1.0f-percent_g) * cg0 + percent_g * cg1);
                uint8_t b = (uint8_t)((1.0f-percent_b) * cb0 + percent_b * cb1);
-               *col++ = (uint16_t)(((uint16_t)(r >> 3) << 11) |
-                     ((uint16_t)(g >> 3) << 6) |
-                     ((uint16_t)(b >> 3) << 1) |
-                     ((uint16_t)(a ) << 0));
+               *col++    = PAL8toRGBA16(r, g, b, a);
             }while(--size);
             break;
          case TMOD_TEX_SUB_COL_MUL_FAC_ADD_TEX:
@@ -1061,10 +1051,7 @@ static void LoadTex(int id, int tmu)
                      g = 255.0f;
                   if (b < 0.0f)
                      b = 0.0f;
-                  *col++ = (uint16_t)(((uint16_t)((uint8_t)(r) >> 3) << 11) |
-                        ((uint16_t)((uint8_t)(g) >> 3) << 6) |
-                        ((uint16_t)((uint8_t)(b) >> 3) << 1) |
-                        (uint16_t)(a) );
+                  *col++    = PAL8toRGBA16(r, g, b, a);
                }while(--size);
             }
             break;
@@ -1093,10 +1080,7 @@ static void LoadTex(int id, int tmu)
                   if (b < 0.0f)
                      b = 0.0f;
 
-                  *col++ = (uint16_t)(((uint16_t)((uint8_t)(r) >> 3) << 11) |
-                        ((uint16_t)((uint8_t)(g) >> 3) << 6) |
-                        ((uint16_t)((uint8_t)(b) >> 3) << 1) |
-                        (uint16_t)(a) );
+                  *col++    = PAL8toRGBA16(r, g, b, a);
                }while(--size);
             }
          case TMOD_TEX_SCALE_COL_ADD_COL:
@@ -1110,10 +1094,7 @@ static void LoadTex(int id, int tmu)
                uint8_t r = (uint8_t)(percent_r * ((*col & 0xF800) >> 11)) + cr0;
                uint8_t g = (uint8_t)(percent_g * ((*col & 0x07C0) >> 6)) + cg0;
                uint8_t b = (uint8_t)(percent_b * ((*col & 0x003E) >> 1)) + cb0;
-               *col++ = (uint16_t)(((uint16_t)(r >> 3) << 11) |
-                     ((uint16_t)(g >> 3) << 6) |
-                     ((uint16_t)(b >> 3) << 1) |
-                     ((uint16_t)(a ) << 0));
+               *col++    = PAL8toRGBA16(r, g, b, a);
             }while(--size);
             break;
          case TMOD_TEX_ADD_COL:
@@ -1123,10 +1104,7 @@ static void LoadTex(int id, int tmu)
                uint8_t r = cr0 + (((*col & 0xF800) >> 11));
                uint8_t g = cg0 + (((*col & 0x07C0) >> 6));
                uint8_t b = cb0 + (((*col & 0x003E) >> 1));
-               *col++ = (uint16_t)(((uint16_t)(r >> 3) << 11) |
-                     ((uint16_t)(g >> 3) << 6) |
-                     ((uint16_t)(b >> 3) << 1) |
-                     ((uint16_t)(a ) << 0));
+               *col++    = PAL8toRGBA16(r, g, b, a);
             }while(--size);
             break;
          case TMOD_COL_INTER_TEX_USING_COL1:
@@ -1139,10 +1117,7 @@ static void LoadTex(int id, int tmu)
                   (uint8_t)(percent_g * ((*col & 0x07C0) >>  6) + (1-percent_g) * cg0);
                uint8_t b =
                   (uint8_t)(percent_b * ((*col & 0x003E) >>  1) + (1-percent_b) * cb0);
-               *col++ = (uint16_t)(((uint16_t)(r >> 3) << 11) |
-                     ((uint16_t)(g >> 3) << 6) |
-                     ((uint16_t)(b >> 3) << 1) |
-                     ((uint16_t)(a ) << 0));
+               *col++    = PAL8toRGBA16(r, g, b, a);
             }while(--size);
             break;
          case TMOD_TEX_INTER_COL_USING_TEXA:
@@ -1167,10 +1142,7 @@ static void LoadTex(int id, int tmu)
                uint8_t r = (((*col & 0xF800) >> 11) * cr0);
                uint8_t g = (((*col & 0x07C0) >> 6) * cg0);
                uint8_t b = (((*col & 0x003E) >> 1) * cb0);
-               *col++ = (uint16_t)(((uint16_t)(r >> 3) << 11) |
-                     ((uint16_t)(g >> 3) << 6) |
-                     ((uint16_t)(b >> 3) << 1) |
-                     ((uint16_t)(a ) << 0));
+               *col++    = PAL8toRGBA16(r, g, b, a);
             }while(--size);
             break;
       }
