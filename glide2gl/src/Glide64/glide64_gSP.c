@@ -169,3 +169,27 @@ void glide64gSPForceMatrix( uint32_t mptr )
 
    g_gdp.flags &= ~UPDATE_MULT_MAT;
 }
+
+void glide64gSPObjMatrix( uint32_t mtx )
+{
+   uint32_t addr     = RSP_SegmentToPhysical(mtx);
+
+   rdp.mat_2d.A          = ((int*)gfx_info.RDRAM)[(addr+0)>>1] / 65536.0f;
+   rdp.mat_2d.B          = ((int*)gfx_info.RDRAM)[(addr+2)>>1] / 65536.0f;
+   rdp.mat_2d.C          = ((int*)gfx_info.RDRAM)[(addr+4)>>1] / 65536.0f;
+   rdp.mat_2d.D          = ((int*)gfx_info.RDRAM)[(addr+6)>>1] / 65536.0f;
+   rdp.mat_2d.X          = ((int16_t*)gfx_info.RDRAM)[(addr+8)^1] / 4.0f;
+   rdp.mat_2d.Y          = ((int16_t*)gfx_info.RDRAM)[(addr+9)^1] / 4.0f;
+   rdp.mat_2d.BaseScaleX = ((uint16_t*)gfx_info.RDRAM)[(addr+10)^1] / 1024.0f;
+   rdp.mat_2d.BaseScaleY = ((uint16_t*)gfx_info.RDRAM)[(addr+11)^1] / 1024.0f;
+}
+
+void glide64gSPObjSubMatrix( uint32_t mtx )
+{
+   uint32_t addr     = RSP_SegmentToPhysical(mtx);
+
+   rdp.mat_2d.X          = ((int16_t*)gfx_info.RDRAM)[(addr+0)^1] / 4.0f;
+   rdp.mat_2d.Y          = ((int16_t*)gfx_info.RDRAM)[(addr+1)^1] / 4.0f;
+   rdp.mat_2d.BaseScaleX = ((uint16_t*)gfx_info.RDRAM)[(addr+2)^1] / 1024.0f;
+   rdp.mat_2d.BaseScaleY = ((uint16_t*)gfx_info.RDRAM)[(addr+3)^1] / 1024.0f;
+}

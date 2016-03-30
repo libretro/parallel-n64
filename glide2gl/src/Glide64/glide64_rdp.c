@@ -46,6 +46,7 @@
 #include "CRC.h"
 #include "Glide64_UCode.h"
 #include "GlideExtensions.h"
+#include "rdp.h"
 #include "../../libretro/libretro_private.h"
 #include "../../Graphics/GBI.h"
 #include "../../Graphics/HLE/Microcode/Fast3D.h"
@@ -65,8 +66,6 @@
 
 int dzdx   = 0;
 int deltaZ = 0;
-
-struct MAT2D mat_2d;
 
 const char *ACmp[] = { "NONE", "THRESHOLD", "UNKNOWN", "DITHER" };
 
@@ -220,14 +219,14 @@ void rdp_new(void)
 
    _gSPVertex = glide64gSPVertex;
 
-   mat_2d.A          = 1.0f;
-   mat_2d.B          = 0.0f;
-   mat_2d.C          = 0.0f;
-   mat_2d.D          = 1.0f;
-   mat_2d.X          = 0.0f;
-   mat_2d.Y          = 0.0f;
-   mat_2d.BaseScaleX = 1.0f;
-   mat_2d.BaseScaleY = 1.0f;
+   rdp.mat_2d.A          = 1.0f;
+   rdp.mat_2d.B          = 0.0f;
+   rdp.mat_2d.C          = 0.0f;
+   rdp.mat_2d.D          = 1.0f;
+   rdp.mat_2d.X          = 0.0f;
+   rdp.mat_2d.Y          = 0.0f;
+   rdp.mat_2d.BaseScaleX = 1.0f;
+   rdp.mat_2d.BaseScaleY = 1.0f;
 }
 
 void rdp_free(void)

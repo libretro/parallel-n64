@@ -983,35 +983,11 @@ static void uc6_obj_sprite(uint32_t w0, uint32_t w1)
    {
       float x = v[i].x;
       float y = v[i].y;
-      v[i].x = ((x * mat_2d.A + y * mat_2d.B + mat_2d.X) * rdp.scale_x) + rdp.offset_x;
-      v[i].y = ((x * mat_2d.C + y * mat_2d.D + mat_2d.Y) * rdp.scale_y) + rdp.offset_y;
+      v[i].x = ((x * rdp.mat_2d.A + y * rdp.mat_2d.B + rdp.mat_2d.X) * rdp.scale_x) + rdp.offset_x;
+      v[i].y = ((x * rdp.mat_2d.C + y * rdp.mat_2d.D + rdp.mat_2d.Y) * rdp.scale_y) + rdp.offset_y;
    }
 
    uc6_draw_polygons (v);
-}
-
-void glide64gSPObjMatrix( uint32_t mtx )
-{
-   uint32_t addr     = RSP_SegmentToPhysical(mtx);
-
-   mat_2d.A          = ((int*)gfx_info.RDRAM)[(addr+0)>>1] / 65536.0f;
-   mat_2d.B          = ((int*)gfx_info.RDRAM)[(addr+2)>>1] / 65536.0f;
-   mat_2d.C          = ((int*)gfx_info.RDRAM)[(addr+4)>>1] / 65536.0f;
-   mat_2d.D          = ((int*)gfx_info.RDRAM)[(addr+6)>>1] / 65536.0f;
-   mat_2d.X          = ((int16_t*)gfx_info.RDRAM)[(addr+8)^1] / 4.0f;
-   mat_2d.Y          = ((int16_t*)gfx_info.RDRAM)[(addr+9)^1] / 4.0f;
-   mat_2d.BaseScaleX = ((uint16_t*)gfx_info.RDRAM)[(addr+10)^1] / 1024.0f;
-   mat_2d.BaseScaleY = ((uint16_t*)gfx_info.RDRAM)[(addr+11)^1] / 1024.0f;
-}
-
-void glide64gSPObjSubMatrix( uint32_t mtx )
-{
-   uint32_t addr     = RSP_SegmentToPhysical(mtx);
-
-   mat_2d.X          = ((int16_t*)gfx_info.RDRAM)[(addr+0)^1] / 4.0f;
-   mat_2d.Y          = ((int16_t*)gfx_info.RDRAM)[(addr+1)^1] / 4.0f;
-   mat_2d.BaseScaleX = ((uint16_t*)gfx_info.RDRAM)[(addr+2)^1] / 1024.0f;
-   mat_2d.BaseScaleY = ((uint16_t*)gfx_info.RDRAM)[(addr+3)^1] / 1024.0f;
 }
 
 static void uc6_obj_movemem(uint32_t w0, uint32_t w1)
@@ -1119,10 +1095,10 @@ static void uc6_obj_rectangle_r(uint32_t w0, uint32_t w1)
 
    if (d.imageFmt == 1 && (settings.hacks&hack_Ogre64)) //Ogre Battle needs to copy YUV texture to frame buffer
    {
-      ul_x = d.objX/mat_2d.BaseScaleX + mat_2d.X;
-      lr_x = (d.objX + d.imageW / d.scaleW) / mat_2d.BaseScaleX + mat_2d.X;
-      ul_y = d.objY / mat_2d.BaseScaleY + mat_2d.Y;
-      lr_y = (d.objY + d.imageH / d.scaleH) / mat_2d.BaseScaleY + mat_2d.Y;
+      ul_x = d.objX / rdp.mat_2d.BaseScaleX + rdp.mat_2d.X;
+      lr_x = (d.objX + d.imageW / d.scaleW) / rdp.mat_2d.BaseScaleX + rdp.mat_2d.X;
+      ul_y = d.objY / rdp.mat_2d.BaseScaleY + rdp.mat_2d.Y;
+      lr_y = (d.objY + d.imageH / d.scaleH) / rdp.mat_2d.BaseScaleY + rdp.mat_2d.Y;
       uc6_DrawYUVImageToFrameBuffer((uint16_t)ul_x, (uint16_t)ul_y, (uint16_t)lr_x, (uint16_t)lr_y);
       return;
    }
@@ -1131,10 +1107,10 @@ static void uc6_obj_rectangle_r(uint32_t w0, uint32_t w1)
 
    Z    = set_sprite_combine_mode();
 
-   ul_x = d.objX / mat_2d.BaseScaleX;
-   lr_x = (d.objX + d.imageW / d.scaleW) / mat_2d.BaseScaleX;
-   ul_y = d.objY / mat_2d.BaseScaleY;
-   lr_y = (d.objY + d.imageH / d.scaleH) / mat_2d.BaseScaleY;
+   ul_x = d.objX / rdp.mat_2d.BaseScaleX;
+   lr_x = (d.objX + d.imageW / d.scaleW) / rdp.mat_2d.BaseScaleX;
+   ul_y = d.objY / rdp.mat_2d.BaseScaleY;
+   lr_y = (d.objY + d.imageH / d.scaleH) / rdp.mat_2d.BaseScaleY;
    lr_u = 255.0f * rdp.cur_cache[0]->scale_x;
    lr_v = 255.0f * rdp.cur_cache[0]->scale_y;
 
@@ -1185,8 +1161,8 @@ static void uc6_obj_rectangle_r(uint32_t w0, uint32_t w1)
 
    for (i = 0; i < 4; i++)
    {
-      v[i].x = ((v[i].x + mat_2d.X) * rdp.scale_x) + rdp.offset_x;
-      v[i].y = ((v[i].y + mat_2d.Y) * rdp.scale_y) + rdp.offset_y;
+      v[i].x = ((v[i].x + rdp.mat_2d.X) * rdp.scale_x) + rdp.offset_x;
+      v[i].y = ((v[i].y + rdp.mat_2d.Y) * rdp.scale_y) + rdp.offset_y;
    }
 
    uc6_draw_polygons (v);

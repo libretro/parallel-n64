@@ -41,6 +41,9 @@ typedef struct DRAWOBJECT_t
 		}
 
 //forward decls
+void glide64gSPObjMatrix( uint32_t mtx );
+void glide64gSPObjSubMatrix( uint32_t mtx );
+
 static void uc6_draw_polygons (VERTEX v[4]);
 static void uc6_read_object_data (DRAWOBJECT *d);
 static void uc6_init_tile(const DRAWOBJECT *d);
