@@ -193,3 +193,88 @@ void glide64gSPObjSubMatrix( uint32_t mtx )
    rdp.mat_2d.BaseScaleX = ((uint16_t*)gfx_info.RDRAM)[(addr+2)^1] / 1024.0f;
    rdp.mat_2d.BaseScaleY = ((uint16_t*)gfx_info.RDRAM)[(addr+3)^1] / 1024.0f;
 }
+
+void glide64gSPObjLoadTxtr(uint32_t tx)
+{
+   uint32_t addr = RSP_SegmentToPhysical(tx) >> 1;
+   uint32_t type = ((uint32_t*)gfx_info.RDRAM)[(addr + 0) >> 1]; // 0, 1
+
+   switch (type)
+   {
+      case G_OBJLT_TLUT:
+         {
+            uint32_t image = RSP_SegmentToPhysical(((uint32_t*)gfx_info.RDRAM)[(addr + 2) >> 1]); // 2, 3
+            uint16_t phead = ((uint16_t *)gfx_info.RDRAM)[(addr + 4) ^ 1] - 256; // 4
+            uint16_t pnum  = ((uint16_t *)gfx_info.RDRAM)[(addr + 5) ^ 1] + 1; // 5
+
+            //FRDP ("palette addr: %08lx, start: %d, num: %d\n", image, phead, pnum);
+            load_palette (image, phead, pnum);
+         }
+         break;
+      case G_OBJLT_TXTRBLOCK:
+         {
+            uint32_t w0, w1;
+            uint32_t image = RSP_SegmentToPhysical(((uint32_t*)gfx_info.RDRAM)[(addr + 2) >> 1]); // 2, 3
+            uint16_t tmem  = ((uint16_t *)gfx_info.RDRAM)[(addr + 4) ^ 1]; // 4
+            uint16_t tsize = ((uint16_t *)gfx_info.RDRAM)[(addr + 5) ^ 1]; // 5
+            uint16_t tline = ((uint16_t *)gfx_info.RDRAM)[(addr + 6) ^ 1]; // 6
+
+            glide64gDPSetTextureImage(
+                  g_gdp.ti_format,        /* format */
+                  G_IM_SIZ_8b,            /* siz */
+                  1,                      /* width */
+                  image                   /* address */
+                  );
+
+            g_gdp.tile[7].tmem = tmem;
+            g_gdp.tile[7].size = 1;
+            w0 = __RSP.w0           = 0;
+            w1 = __RSP.w1           = 0x07000000 | (tsize << 14) | tline;
+
+            glide64gDPLoadBlock(
+                  ((w1 >> 24) & 0x07), 
+                  (w0 >> 14) & 0x3FF, /* ul_s */
+                  (w0 >>  2) & 0x3FF, /* ul_t */
+                  (w1 >> 14) & 0x3FF, /* lr_s */
+                  (w1 & 0x0FFF) /* dxt */
+                  );
+         }
+         break;
+      case G_OBJLT_TXTRTILE:
+         {
+            int line;
+            uint32_t w0, w1;
+            uint32_t image   = RSP_SegmentToPhysical(((uint32_t*)gfx_info.RDRAM)[(addr + 2) >> 1]); // 2, 3
+            uint16_t tmem    = ((uint16_t *)gfx_info.RDRAM)[(addr + 4) ^ 1]; // 4
+            uint16_t twidth  = ((uint16_t *)gfx_info.RDRAM)[(addr + 5) ^ 1]; // 5
+            uint16_t theight = ((uint16_t *)gfx_info.RDRAM)[(addr + 6) ^ 1]; // 6
+#if 0
+            FRDP ("tile addr: %08lx, tmem: %08lx, twidth: %d, theight: %d\n", image, tmem, twidth, theight);
+#endif
+            line             = (twidth + 1) >> 2;
+
+            glide64gDPSetTextureImage(
+                  g_gdp.ti_format,        /* format */
+                  G_IM_SIZ_8b,            /* siz */
+                  line << 3,              /* width */
+                  image                   /* address */
+                  );
+
+            g_gdp.tile[7].tmem = tmem;
+            g_gdp.tile[7].line = line;
+            g_gdp.tile[7].size = 1;
+
+            w0 = __RSP.w0 = 0;
+            w1 = __RSP.w1 = 0x07000000 | (twidth << 14) | (theight << 2);
+
+            glide64gDPLoadTile(
+                  (uint32_t)((w1 >> 24) & 0x07),      /* tile */
+                  (uint32_t)((w0 >> 14) & 0x03FF),    /* ul_s */
+                  (uint32_t)((w0 >> 2 ) & 0x03FF),    /* ul_t */
+                  (uint32_t)((w1 >> 14) & 0x03FF),    /* lr_s */
+                  (uint32_t)((w1 >> 2 ) & 0x03FF)     /* lr_t */
+                  );
+         }
+         break;
+   }
+}

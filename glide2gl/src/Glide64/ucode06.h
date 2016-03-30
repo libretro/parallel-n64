@@ -1170,78 +1170,10 @@ static void uc6_obj_rectangle_r(uint32_t w0, uint32_t w1)
 
 static void uc6_obj_loadtxtr(uint32_t w0, uint32_t w1)
 {
-   uint32_t addr, type;
    rdp.s2dex_tex_loaded = true;
    g_gdp.flags |= UPDATE_TEXTURE;
 
-   addr = RSP_SegmentToPhysical(w1) >> 1;
-   type = ((uint32_t*)gfx_info.RDRAM)[(addr + 0) >> 1]; // 0, 1
-
-   switch (type)
-   {
-      case G_OBJLT_TLUT:
-         {
-            uint32_t image = RSP_SegmentToPhysical(((uint32_t*)gfx_info.RDRAM)[(addr + 2) >> 1]); // 2, 3
-            uint16_t phead = ((uint16_t *)gfx_info.RDRAM)[(addr + 4) ^ 1] - 256; // 4
-            uint16_t pnum  = ((uint16_t *)gfx_info.RDRAM)[(addr + 5) ^ 1] + 1; // 5
-
-            //FRDP ("palette addr: %08lx, start: %d, num: %d\n", image, phead, pnum);
-            load_palette (image, phead, pnum);
-         }
-         break;
-      case G_OBJLT_TXTRBLOCK:
-         {
-            uint32_t image = RSP_SegmentToPhysical(((uint32_t*)gfx_info.RDRAM)[(addr + 2) >> 1]); // 2, 3
-            uint16_t tmem  = ((uint16_t *)gfx_info.RDRAM)[(addr + 4) ^ 1]; // 4
-            uint16_t tsize = ((uint16_t *)gfx_info.RDRAM)[(addr + 5) ^ 1]; // 5
-            uint16_t tline = ((uint16_t *)gfx_info.RDRAM)[(addr + 6) ^ 1]; // 6
-
-            glide64gDPSetTextureImage(
-                  g_gdp.ti_format,        /* format */
-                  G_IM_SIZ_8b,            /* siz */
-                  1,                      /* width */
-                  image                   /* address */
-                  );
-
-            g_gdp.tile[7].tmem = tmem;
-            g_gdp.tile[7].size = 1;
-            __RSP.w0           = 0;
-            __RSP.w1           = 0x07000000 | (tsize << 14) | tline;
-            rdp_loadblock(__RSP.w0, __RSP.w1);
-         }
-         break;
-      case G_OBJLT_TXTRTILE:
-         {
-            int line;
-
-            uint32_t image   = RSP_SegmentToPhysical(((uint32_t*)gfx_info.RDRAM)[(addr + 2) >> 1]); // 2, 3
-            uint16_t tmem    = ((uint16_t *)gfx_info.RDRAM)[(addr + 4) ^ 1]; // 4
-            uint16_t twidth  = ((uint16_t *)gfx_info.RDRAM)[(addr + 5) ^ 1]; // 5
-            uint16_t theight = ((uint16_t *)gfx_info.RDRAM)[(addr + 6) ^ 1]; // 6
-#if 0
-            FRDP ("tile addr: %08lx, tmem: %08lx, twidth: %d, theight: %d\n", image, tmem, twidth, theight);
-#endif
-            line             = (twidth + 1) >> 2;
-
-            glide64gDPSetTextureImage(
-                  g_gdp.ti_format,        /* format */
-                  G_IM_SIZ_8b,            /* siz */
-                  line << 3,              /* width */
-                  image                   /* address */
-                  );
-
-            g_gdp.tile[7].tmem = tmem;
-            g_gdp.tile[7].line = line;
-            g_gdp.tile[7].size = 1;
-
-            __RSP.w0 = 0;
-            __RSP.w1 = 0x07000000 | (twidth << 14) | (theight << 2);
-
-            rdp_loadtile(__RSP.w0, __RSP.w1);
-         }
-         break;
-   }
-
+   glide64gSPObjLoadTxtr(w1);
 }
 
 static void uc6_obj_ldtx_sprite(uint32_t w0, uint32_t w1)
