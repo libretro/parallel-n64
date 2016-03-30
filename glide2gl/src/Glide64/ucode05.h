@@ -103,12 +103,8 @@ static void uc5_moveword(uint32_t w0, uint32_t w1)
          break;
       case G_MW_CLIP:
          if (((__RSP.w0 >> 8)&0xFFFF) == 0x04)
-         {
-            rdp.clip_ratio = (float)vi_integer_sqrt(w1);
-            g_gdp.flags |= UPDATE_VIEWPORT;
-         }
+            glide64gSPClipRatio( w1 );
          break;
-
       case G_MW_SEGMENT:
          glide64gSPSegment((w0 >> 10) & 0x0F, w1);
          break;

@@ -126,6 +126,12 @@ void glide64gSPSegment(int32_t seg, int32_t base)
    rdp.segment[seg] = base;
 }
 
+void glide64gSPClipRatio(uint32_t r)
+{
+   rdp.clip_ratio = (float)vi_integer_sqrt(r);
+   g_gdp.flags |= UPDATE_VIEWPORT;
+}
+
 void glide64gSPClipVertex(uint32_t v)
 {
    VERTEX *vtx = (VERTEX*)&rdp.vtx[v];
