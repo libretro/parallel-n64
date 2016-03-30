@@ -44,13 +44,11 @@
 #include "Util.h"
 #include "libretro.h"
 #include "GlideExtensions.h"
+#include "MiClWr.h"
+#include "CRC.h"
 
 #include "../../../Graphics/GBI.h"
 #include "../../../Graphics/image_convert.h"
-
-#include "MiClWr.h"
-
-extern retro_log_printf_t log_cb;
 
 static void LoadTex (int id, int tmu);
 
@@ -58,8 +56,6 @@ uint8_t tex1[2048*2048*4];		// temporary texture
 uint8_t tex2[2048*2048*4];
 uint8_t *texture;
 uint8_t *texture_buffer = tex1;
-
-#include "CRC.h"
 
 typedef struct TEXINFO_t
 {
