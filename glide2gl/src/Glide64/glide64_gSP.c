@@ -185,7 +185,7 @@ void glide64gSP1Triangle( int32_t v0, int32_t v1, int32_t v2, int32_t flag )
    v[1] = &rdp.vtx[v1];
    v[2] = &rdp.vtx[v2];
 
-   cull_trianglefaces(v, 1, true, true, 0);
+   cull_trianglefaces(v, 1, true, true, flag);
 }
 
 void glide64gSP1Quadrangle(int32_t v0, int32_t v1, int32_t v2, int32_t v3)
