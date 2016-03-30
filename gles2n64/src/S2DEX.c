@@ -35,7 +35,7 @@ void S2DEX_Obj_MoveMem( uint32_t w0, uint32_t w1 )
 		case S2DEX_MV_MATRIX:
 			gln64gSPObjMatrix( w1 );
 			break;
-		case S2DEX_MV_SUBMUTRIX:
+		case S2DEX_MV_SUBMATRIX:
 			gln64gSPObjSubMatrix( w1 );
 			break;
 		case S2DEX_MV_VIEWPORT:
