@@ -462,23 +462,21 @@ static void uc0_cleargeometrymode(uint32_t w0, uint32_t w1)
 
 static void uc0_line3d(uint32_t w0, uint32_t w1)
 {
-   VERTEX *v[3];
-   uint32_t v0        = ((w1 >> 16) & 0xff) / 10;
-   uint32_t v1        = ((w1 >> 8) & 0xff) / 10;
-   uint16_t width     = (uint16_t)(w1 & 0xFF) + 3;
-   uint32_t cull_mode = (rdp.flags & CULLMASK) >> CULLSHIFT;
+   uint32_t mode      = (rdp.flags & CULLMASK) >> CULLSHIFT;
 
-   v[0] = &rdp.vtx[v1];
-   v[1] = &rdp.vtx[v0];
-   v[2] = &rdp.vtx[v0];
+   rdp.flags         |= CULLMASK;
+   g_gdp.flags       |= UPDATE_CULL_MODE;
 
-   rdp.flags   |= CULLMASK;
-   g_gdp.flags |= UPDATE_CULL_MODE;
-   cull_trianglefaces(v, 1, true, true, width);
+   glide64gSP1Triangle(
+         ((w1 >> 8) & 0xff) / 10,
+         ((w1 >> 16) & 0xff) / 10,
+         ((w1 >> 16) & 0xff) / 10,
+         (uint16_t)(w1 & 0xFF) + 3
+         );
 
-   rdp.flags   ^= CULLMASK;
-   rdp.flags   |= cull_mode << CULLSHIFT;
-   g_gdp.flags |= UPDATE_CULL_MODE;
+   rdp.flags         ^= CULLMASK;
+   rdp.flags         |= mode << CULLSHIFT;
+   g_gdp.flags       |= UPDATE_CULL_MODE;
 }
 
 static void uc0_tri4(uint32_t w0, uint32_t w1)
