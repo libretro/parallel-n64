@@ -44,7 +44,7 @@ void glide64gDPSetTileSize(uint32_t tile, uint32_t uls, uint32_t ult,
 void glide64gDPSetScissor( uint32_t mode, float ulx, float uly, float lrx, float lry )
 {
    g_gdp.__clip.xh = (uint32_t)ulx;
-   g_gdp.__clip.yh = (uint32_t)ulx;
+   g_gdp.__clip.yh = (uint32_t)uly;
    g_gdp.__clip.xl = (uint32_t)lrx;
    g_gdp.__clip.yl = (uint32_t)lry;
 }

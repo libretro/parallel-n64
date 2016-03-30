@@ -270,10 +270,13 @@ void rdp_reset(void)
    for (i = 0; i < MAX_VTX; i++)
       rdp.vtx[i].number = i;
 
-   g_gdp.__clip.xh      = 0;
-   g_gdp.__clip.yh      = 0;
-   g_gdp.__clip.xl      = 320;
-   g_gdp.__clip.yl      = 240;
+   gDPSetScissor(
+         0,             /* mode */
+         0,             /* ulx  */
+         0,             /* uly  */
+         320,           /* lrx  */
+         240            /* lry  */
+         );
 
    rdp.vi_org_reg       = *gfx_info.VI_ORIGIN_REG;
    rdp.view_scale[2]    = 32.0f * 511.0f;
@@ -908,10 +911,13 @@ static void rdp_setscissor(uint32_t w0, uint32_t w1)
 
    /* clipper resolution is 320x240, scale based on computer resolution */
    /* TODO/FIXME - all these values are different from Angrylion's */
-   g_gdp.__clip.xh    = (uint32_t)(((w0 & 0x00FFF000) >> 14));
-   g_gdp.__clip.yh    = (uint32_t)(((w0 & 0x00000FFF) >> 2));
-   g_gdp.__clip.xl    = (uint32_t)(((w1 & 0x00FFF000) >> 14));
-   g_gdp.__clip.yl    = (uint32_t)(((w1 & 0x00000FFF) >> 2));
+   gDPSetScissor(
+         0,                                        /* mode */
+         (uint32_t)(((w0 & 0x00FFF000) >> 14)),    /* ulx */
+         (uint32_t)(((w0 & 0x00000FFF) >> 2)),     /* uly */
+         (uint32_t)(((w1 & 0x00FFF000) >> 14)),    /* lrx */
+         (uint32_t)(((w1 & 0x00000FFF) >> 2))      /* lry */
+         );
 
    rdp.ci_upper_bound = g_gdp.__clip.yh;
    rdp.ci_lower_bound = g_gdp.__clip.yl;
