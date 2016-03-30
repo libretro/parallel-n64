@@ -19,6 +19,9 @@ extern "C" {
 void glide64gDPLoadTile(uint32_t tile, uint32_t ul_s, uint32_t ul_t,
       uint32_t lr_s, uint32_t lr_t);
 
+void glide64gDPSetTileSize(uint32_t tile, uint32_t uls, uint32_t ult,
+      uint32_t lrs, uint32_t lrt);
+
 #ifdef __cplusplus
 }
 #endif

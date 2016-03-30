@@ -3,6 +3,15 @@
 #include "glide64_gDP.h"
 #include "Util.h"
 
+void glide64gDPSetTileSize(uint32_t tile, uint32_t uls, uint32_t ult,
+      uint32_t lrs, uint32_t lrt)
+{
+   g_gdp.tile[tile].sh = uls;
+   g_gdp.tile[tile].th = ult;
+   g_gdp.tile[tile].sl = lrs;
+   g_gdp.tile[tile].tl = lrt;
+}
+
 void glide64gDPSetScissor( uint32_t mode, float ulx, float uly, float lrx, float lry )
 {
    g_gdp.__clip.xh = (uint32_t)ulx;

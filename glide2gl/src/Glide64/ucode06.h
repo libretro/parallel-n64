@@ -399,11 +399,13 @@ static void DrawImage (DRAWIMAGE *d)
          nlr_x = mx * nlr_u + bx;
 
          // ** Load the texture, constant portions have been set above
-         // SetTileSize ()
-         g_gdp.tile[0].sh = tb_u;
-         g_gdp.tile[0].th = tb_v;
-         g_gdp.tile[0].sl = tb_u+x_size-1;
-         g_gdp.tile[0].tl = tb_v+y_size-1;
+         glide64gDPSetTileSize(
+               0,                /* tile */
+               tb_u,             /* uls  */
+               tb_v,             /* ult  */
+               tb_u+x_size-1,    /* lrs  */
+               tb_v+y_size-1     /* lrt  */
+               );
 
          __RSP.w0 = ((int)g_gdp.tile[0].sh << 14) | ((int)g_gdp.tile[0].th << 2);
          __RSP.w1 = ((int)g_gdp.tile[0].sl << 14) | ((int)g_gdp.tile[0].tl << 2);
@@ -807,11 +809,13 @@ static void uc6_init_tile(const DRAWOBJECT *d)
    g_gdp.tile[0].mask_s   = 0;
    g_gdp.tile[0].shift_s  = 0;
 
-   // SetTileSize ()
-   g_gdp.tile[0].sh = 0;
-   g_gdp.tile[0].th = 0;
-   g_gdp.tile[0].sl = (d->imageW>0)?d->imageW-1:0;
-   g_gdp.tile[0].tl = (d->imageH>0)?d->imageH-1:0;
+   glide64gDPSetTileSize(
+         0,                                  /* tile */
+         0,                                  /* uls  */
+         0,                                  /* ult  */
+         (d->imageW>0) ? (d->imageW-1) : 0,  /* lrs */
+         (d->imageH>0) ? (d->imageH-1) : 0   /* lrt */
+         );
 }
 
 static void uc6_obj_rectangle(uint32_t w0, uint32_t w1)
@@ -1437,11 +1441,13 @@ static void uc6_sprite2d(uint32_t w0, uint32_t w1)
          g_gdp.tile[0].mask_s   = 0;
          g_gdp.tile[0].shift_s  = 0;
 
-         // SetTileSize ()
-         g_gdp.tile[0].sh = d.imageX;
-         g_gdp.tile[0].th = d.imageY;
-         g_gdp.tile[0].sl = d.imageX+d.imageW-1;
-         g_gdp.tile[0].tl = d.imageY+d.imageH-1;
+         glide64gDPSetTileSize(
+               0,                      /* tile */
+               d.imageX,               /* uls  */
+               d.imageY,               /* ult  */
+               d.imageX+d.imageW-1,    /* lrs  */
+               d.imageY+d.imageH-1     /* lrt  */
+               );
 
          Z = set_sprite_combine_mode ();
 
