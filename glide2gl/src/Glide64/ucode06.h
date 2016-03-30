@@ -546,50 +546,44 @@ static void uc6_read_background_data (DRAWIMAGE *d, bool bReadScale)
    d->flipY       = 0;
    imageYorig     = ((int *)gfx_info.RDRAM)[(addr+16)>>1] >> 5;
    rdp.last_bg    = d->imagePtr;
-
-#if 0
-   FRDP ("imagePtr: %08lx\n", d->imagePtr);
-   FRDP ("frameX: %f, frameW: %d, frameY: %f, frameH: %d\n", d->frameX, d->frameW, d->frameY, d->frameH);
-   FRDP ("imageX: %d, imageW: %d, imageY: %d, imageH: %d\n", d->imageX, d->imageW, d->imageY, d->imageH);
-   FRDP ("imageYorig: %d, scaleX: %f, scaleY: %f\n", imageYorig, d->scaleX, d->scaleY);
-   FRDP ("imageFmt: %d, imageSiz: %d, imagePal: %d, imageFlip: %d\n", d->imageFmt, d->imageSiz, d->imagePal, d->flipX);
-#endif
 }
 
-static void uc6_bg (bool bg_1cyc)
+static void uc6_bg_1cyc(uint32_t w0, uint32_t w1)
 {
    DRAWIMAGE d;
-   //static const char *strFuncNames[] = {"uc6:bg_1cyc", "uc6:bg_copy"};
-   //const char *strFuncName = bg_1cyc ? strFuncNames[0] : strFuncNames[1];
 
    if (rdp.skip_drawing)
       return;
 
-   uc6_read_background_data(&d, bg_1cyc);
+   uc6_read_background_data(&d, true /* 1st cycle */);
 
    if (settings.ucode == ucode_F3DEX2/* || (settings.hacks&hack_PPL)*/)
    {
-      if ( (d.imagePtr != rdp.cimg) && (d.imagePtr != rdp.ocimg) && d.imagePtr) //can't draw from framebuffer
+      /* can't draw from framebuffer */
+      if ( (d.imagePtr != rdp.cimg) && (d.imagePtr != rdp.ocimg) && d.imagePtr) 
          DrawImage(&d);
-#if 0
-      else
-      {
-         FRDP("%s skipped\n", strFuncName);
-      }
-#endif
    }
    else
       DrawImage(&d);
 }
 
-static void uc6_bg_1cyc(uint32_t w0, uint32_t w1)
-{
-  uc6_bg(true);
-}
-
 static void uc6_bg_copy(uint32_t w0, uint32_t w1)
 {
-  uc6_bg(false);
+   DRAWIMAGE d;
+
+   if (rdp.skip_drawing)
+      return;
+
+   uc6_read_background_data(&d, false /* 1st cycle */);
+
+   if (settings.ucode == ucode_F3DEX2/* || (settings.hacks&hack_PPL)*/)
+   {
+      /* can't draw from framebuffer */
+      if ( (d.imagePtr != rdp.cimg) && (d.imagePtr != rdp.ocimg) && d.imagePtr)
+         DrawImage(&d);
+   }
+   else
+      DrawImage(&d);
 }
 
 static void draw_split_triangle(VERTEX **vtx)
