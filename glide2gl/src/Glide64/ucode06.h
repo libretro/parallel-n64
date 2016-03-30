@@ -316,10 +316,13 @@ static void DrawImage (DRAWIMAGE *d)
    g_gdp.tile[0].mask_s   = 0;
    g_gdp.tile[0].shift_s  = 0;
 
-   g_gdp.tile[0].sh = 0;
-   g_gdp.tile[0].th = 0;
-   g_gdp.tile[0].sl = x_size-1;
-   g_gdp.tile[0].tl = y_size-1;
+   glide64gDPSetTileSize(
+         0,                /* tile */
+         0,                /* ulx  */
+         0,                /* uly  */
+         x_size - 1,       /* lrs  */
+         y_size - 1        /* lrt  */
+         );
 
    Z = set_sprite_combine_mode ();
    if (((rdp.othermode_h & RDP_CYCLE_TYPE) >> 20) == 2)
