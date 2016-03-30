@@ -134,7 +134,6 @@ void ClearCache(void)
       DeleteList(&cachelut[i]);
 }
 
-//****************************************************************
 static uint32_t textureCRC(uint32_t crc, uint8_t *addr, int width, int height, int line)
 {
    const size_t len = sizeof(uint32_t) * 2 * width;
@@ -148,7 +147,7 @@ static uint32_t textureCRC(uint32_t crc, uint8_t *addr, int width, int height, i
    return crc;
 }
 
-// Gets information for either t0 or t1, checks if in cache & fills tex_found
+/* Gets information for either t0 or t1, checks if in cache & fills tex_found */
 static void GetTexInfo (int id, int tile)
 {
    int t, tile_width, tile_height, mask_width, mask_height, width, height, wid_64, line;
@@ -157,8 +156,6 @@ static void GetTexInfo (int id, int tile)
    NODE *node;
    CACHE_LUT *cache;
    TEXINFO *info;
-
-   FRDP (" | |-+ GetTexInfo (id: %d, tile: %d)\n", id, tile);
 
    // this is the NEW cache searching, searches only textures with similar crc's
    for (t = 0; t < MAX_TMU; t++)
@@ -397,8 +394,6 @@ static void GetTexInfo (int id, int tile)
       }
       node = node->pNext;
    }
-
-   LRDP(" | | | +- Done.\n | | +- GetTexInfo end\n");
 }
 
 #define TMUMODE_NORMAL		0
@@ -411,7 +406,6 @@ int SwapTextureBuffer(void); //forward decl
 void TexCache(void)
 {
    int i, tmu_0_mode, tmu_1_mode, tmu_0, tmu_1;
-   LRDP(" |-+ TexCache called\n");
 
    if (rdp.tex & 1)
       GetTexInfo (0, rdp.cur_tile);
@@ -644,7 +638,7 @@ void TexCache(void)
 
    if ((rdp.tex & 1) && tmu_0 < NUM_TMU)
    {
-         if (tex_found[0][tmu_0] != -1)
+      if (tex_found[0][tmu_0] != -1)
       {
          CACHE_LUT *cache;
          LRDP(" | |- T0 found in cache.\n");
@@ -663,7 +657,7 @@ void TexCache(void)
    }
    if ((rdp.tex & 2) && tmu_1 < NUM_TMU)
    {
-         if (tex_found[1][tmu_1] != -1)
+      if (tex_found[1][tmu_1] != -1)
       {
          CACHE_LUT *cache;
          LRDP(" | |- T1 found in cache.\n");
@@ -735,20 +729,16 @@ void TexCache(void)
          }
       }
    }
-
-   LRDP(" | +- TexCache End\n");
 }
 
 // Does the actual texture loading after everything is prepared
 static void LoadTex(int id, int tmu)
 {
-   int td, lod, aspect, shift, size_max, wid, hei, modifyPalette;
+   int lod, aspect, shift, size_max, wid, hei, modifyPalette;
    uint32_t size_x, size_y, real_x, real_y, result;
    uint32_t mod, modcolor, modcolor1, modcolor2, modfactor;
    CACHE_LUT *cache;
-   FRDP (" | |-+ LoadTex (id: %d, tmu: %d)\n", id, tmu);
-
-   td = rdp.cur_tile + id;
+   int td = rdp.cur_tile + id;
 
    if (texinfo[id].width < 0 || texinfo[id].height < 0)
       return;
@@ -933,7 +923,6 @@ static void LoadTex(int id, int tmu)
    else cache->c_scl_x = 0.0f;
    if (hei != 1) cache->c_scl_y = cache->scale;
    else cache->c_scl_y = 0.0f;
-   // **
 
    if (id == 0)
    {
@@ -1150,8 +1139,8 @@ static void LoadTex(int id, int tmu)
       memcpy(rdp.pal_8, tmp_pal, 512);
    }
 
-   cache->mod = mod;
-   cache->mod_color = modcolor;
+   cache->mod        = mod;
+   cache->mod_color  = modcolor;
    cache->mod_color1 = modcolor1;
    cache->mod_factor = modfactor;
 
@@ -1721,25 +1710,25 @@ static void LoadTex(int id, int tmu)
 
 
    cache->t_info.format = LOWORD(result);
-
-   cache->realwidth = real_x;
-   cache->realheight = real_y;
-   cache->lod = lod;
-   cache->aspect = aspect;
+   cache->realwidth     = real_x;
+   cache->realheight    = real_y;
+   cache->lod           = lod;
+   cache->aspect        = aspect;
 
    {
 	   uint32_t texture_size, tex_addr;
 	   GrTexInfo *t_info;
-      // Load the texture into texture memory
-      t_info = (GrTexInfo*)&cache->t_info;
-      t_info->data = texture;
-      t_info->smallLodLog2 = lod;
-      t_info->largeLodLog2 = lod;
+
+      /* Load the texture into texture memory */
+      t_info                  = (GrTexInfo*)&cache->t_info;
+      t_info->data            = texture;
+      t_info->smallLodLog2    = lod;
+      t_info->largeLodLog2    = lod;
       t_info->aspectRatioLog2 = aspect;
 
-      texture_size = grTexCalcMemRequired (t_info->largeLodLog2, t_info->aspectRatioLog2, t_info->format);
+      texture_size            = grTexCalcMemRequired (t_info->largeLodLog2, t_info->aspectRatioLog2, t_info->format);
 
-      // Check for end of memory (too many textures to fit, clear cache)
+      /* Check for end of memory (too many textures to fit, clear cache) */
       if (voodoo.tmem_ptr[tmu]+texture_size >= voodoo.tex_max_addr)
       {
          LRDP("Cache size reached, clearing...\n");
@@ -1749,8 +1738,9 @@ static void LoadTex(int id, int tmu)
             LoadTex (0, rdp.t0);
 
          LoadTex (id, tmu);
+         /* Don't continue (already done) */
          return;
-         // DON'T CONTINUE (already done)
+         
       }
 
       tex_addr = GetTexAddrUMA(tmu, texture_size);
@@ -1760,6 +1750,4 @@ static void LoadTex(int id, int tmu)
             t_info,
             true);
    }
-
-   LRDP(" | | +- LoadTex end\n");
 }
