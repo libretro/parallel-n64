@@ -24,9 +24,65 @@ void F3D_Mtx( uint32_t w0, uint32_t w1 )
 	gln64gSPMatrix( w1, _SHIFTR( w0, 16, 8 ) );
 }
 
+void F3D_Reserved0( uint32_t w0, uint32_t w1 )
+{
+#ifdef DEBUG
+	DebugMsg( DEBUG_MEDIUM | DEBUG_IGNORED | DEBUG_UNKNOWN, "G_RESERVED0: w0=0x%08lX w1=0x%08lX\n", w0, w1 );
+#endif
+}
+
+void F3D_MoveMem( uint32_t w0, uint32_t w1 )
+{
+	switch (_SHIFTR( w0, 16, 8 )) {
+		case F3D_MV_VIEWPORT:
+			gln64gSPViewport( w1 );
+			break;
+		case G_MV_MATRIX_1:
+			gln64gSPForceMatrix( w1 );
+
+			// force matrix takes four commands
+			__RSP.PC[__RSP.PCi] += 24;
+			break;
+		case G_MV_L0:
+			gln64gSPLight( w1, LIGHT_1 );
+			break;
+		case G_MV_L1:
+			gln64gSPLight( w1, LIGHT_2 );
+			break;
+		case G_MV_L2:
+			gln64gSPLight( w1, LIGHT_3 );
+			break;
+		case G_MV_L3:
+			gln64gSPLight( w1, LIGHT_4 );
+			break;
+		case G_MV_L4:
+			gln64gSPLight( w1, LIGHT_5 );
+			break;
+		case G_MV_L5:
+			gln64gSPLight( w1, LIGHT_6 );
+			break;
+		case G_MV_L6:
+			gln64gSPLight( w1, LIGHT_7 );
+			break;
+		case G_MV_L7:
+			gln64gSPLight( w1, LIGHT_8 );
+			break;
+		case G_MV_LOOKATX:
+			gln64gSPLookAt(w1, 0);
+			break;
+		case G_MV_LOOKATY:
+			gln64gSPLookAt(w1, 1);
+			break;
+	}
+}
+
 void F3D_Vtx( uint32_t w0, uint32_t w1 )
 {
 	gln64gSPVertex( w1, _SHIFTR( w0, 20, 4 ) + 1, _SHIFTR( w0, 16, 4 ) );
+}
+
+void F3D_Reserved1( uint32_t w0, uint32_t w1 )
+{
 }
 
 void F3D_DList( uint32_t w0, uint32_t w1 )
@@ -42,6 +98,13 @@ void F3D_DList( uint32_t w0, uint32_t w1 )
 	}
 }
 
+void F3D_Reserved2( uint32_t w0, uint32_t w1 )
+{
+}
+
+void F3D_Reserved3( uint32_t w0, uint32_t w1 )
+{
+}
 
 void F3D_Sprite2D_Base( uint32_t w0, uint32_t w1 )
 {
