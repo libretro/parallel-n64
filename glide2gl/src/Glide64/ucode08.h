@@ -44,14 +44,12 @@
 uint32_t uc8_normale_addr = 0;
 float uc8_coord_mod[16];
 
-static void uc8_vertex(uint32_t w0, uint32_t w1)
+void glide64gSPCBFDVertex(uint32_t a, uint32_t n, uint32_t v0)
 {
    uint32_t i;
-   uint32_t addr = RSP_SegmentToPhysical(w1);
-   int32_t n = (w0 >> 12) & 0xFF;
-   int32_t v0 = ((w0 >> 1) & 0x7F) - n;
+   uint32_t addr        = RSP_SegmentToPhysical(a);
    void   *membase_ptr  = (void*)(gfx_info.RDRAM + addr);
-   uint32_t iter = 16;
+   uint32_t iter        = 16;
 
    if (v0 < 0)
       return;
@@ -191,6 +189,13 @@ static void uc8_vertex(uint32_t w0, uint32_t w1)
       }
       membase_ptr = (char*)membase_ptr + iter;
    }
+}
+
+static void uc8_vertex(uint32_t w0, uint32_t w1)
+{
+   uint32_t n = _SHIFTR(w0, 12, 8);
+
+   glide64gSPCBFDVertex(w1, n, _SHIFTR(w0, 1, 7) - n);
 }
 
 static void uc8_moveword(uint32_t w0, uint32_t w1)
