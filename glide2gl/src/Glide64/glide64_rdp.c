@@ -1006,10 +1006,13 @@ static void rdp_settilesize(uint32_t w0, uint32_t w1)
 
    /* TODO - Wrong values being used by Glide64  - unify this
     * later so that it uses the same values as Angrylion */
-   g_gdp.tile[tilenum].sh    = (((uint16_t)(w0 >> 14)) & 0x03ff);
-   g_gdp.tile[tilenum].th    = (((uint16_t)(w0 >> 2 )) & 0x03ff);
-   g_gdp.tile[tilenum].sl    = (((uint16_t)(w1 >> 14)) & 0x03ff);
-   g_gdp.tile[tilenum].tl    = (((uint16_t)(w1 >> 2 )) & 0x03ff);
+   glide64gDPSetTileSize(
+         tilenum,                            /* tile */
+         (((uint16_t)(w0 >> 14)) & 0x03ff),  /* uls  */   
+         (((uint16_t)(w0 >> 2 )) & 0x03ff),  /* ult  */
+         (((uint16_t)(w1 >> 14)) & 0x03ff),  /* lrs  */
+         (((uint16_t)(w1 >> 2 )) & 0x03ff)   /* lrt  */
+         );
 
    /* handle wrapping */
    if (g_gdp.tile[tilenum].sl < g_gdp.tile[tilenum].sh)
