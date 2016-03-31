@@ -622,8 +622,10 @@ static void uc9_movemem(uint32_t w0, uint32_t w1)
             int16_t trans_y = ((int16_t*)gfx_info.RDRAM)[(a+5)^1] >> 2;
             int16_t trans_z = ((int16_t*)gfx_info.RDRAM)[(a+6)^1];
 
-            rdp.fog_multiplier = ((int16_t*)gfx_info.RDRAM)[(a+3)^1];
-            rdp.fog_offset     = ((int16_t*)gfx_info.RDRAM)[(a+7)^1];
+            glide64gSPFogFactor(
+                  ((int16_t*)gfx_info.RDRAM)[(a+3)^1],   /* fm */
+                  ((int16_t*)gfx_info.RDRAM)[(a+7)^1]    /* fo */
+                  );
 
             rdp.view_scale[0] = scale_x * rdp.scale_x;
             rdp.view_scale[1] = scale_y * rdp.scale_y;
