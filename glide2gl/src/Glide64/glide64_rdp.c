@@ -725,8 +725,8 @@ static void rdp_texrect(uint32_t w0, uint32_t w1)
    //needed to detect and avoid overflow after shifting
    off_x_i = (rdp.cmd2 >> 16) & 0xFFFF;
    off_y_i = rdp.cmd2 & 0xFFFF;
-   dsdx    = (float)((int16_t)((rdp.cmd3 & 0xFFFF0000) >> 16)) / 1024.0f;
-   dtdy    = (float)((int16_t)(rdp.cmd3 & 0x0000FFFF)) / 1024.0f;
+   dsdx    = _FIXED2FLOAT((int16_t)((rdp.cmd3 & 0xFFFF0000) >> 16), 10);
+   dtdy    = _FIXED2FLOAT(((int16_t)(rdp.cmd3 & 0x0000FFFF)), 10);
    if (off_x_i & 0x8000) //check for sign bit
       off_x_i |= ~0xffff; //make it negative
    //the same as for off_x_i
@@ -1023,8 +1023,8 @@ static void rdp_settilesize(uint32_t w0, uint32_t w1)
    rdp.last_tile_size        = tilenum;
 
    /* TODO - should get rid of this eventually */
-   rdp.tiles[tilenum].f_ul_s = (float)g_gdp.tile[tilenum].sl / 4.0f;
-   rdp.tiles[tilenum].f_ul_t = (float)g_gdp.tile[tilenum].tl / 4.0f;
+   rdp.tiles[tilenum].f_ul_s = _FIXED2FLOAT(g_gdp.tile[tilenum].sl, 2);
+   rdp.tiles[tilenum].f_ul_t = _FIXED2FLOAT(g_gdp.tile[tilenum].tl, 2);
 
    /* TODO - Wrong values being used by Glide64  - unify this
     * later so that it uses the same values as Angrylion */
@@ -2259,6 +2259,7 @@ void cull_trianglefaces(VERTEX **v, unsigned iterations, bool do_update, bool do
 #define PERSP(s, w) ( ((int64_t)(s) << 20) / (_PERSP(w)? _PERSP(w):1) )
 #define SSCALE(s, _w) (PERSP_EN ? (float)(PERSP(s, _w))/(1 << 10) : (float)(s)/(1<<21))
 #define TSCALE(s, w)  (PERSP_EN ? (float)(PERSP(s, w))/(1 << 10) : (float)(s)/(1<<21))
+
 
 static void lle_triangle(uint32_t w0, uint32_t w1, int shade, int texture, int zbuffer, uint32_t *rdp_cmd)
 {
