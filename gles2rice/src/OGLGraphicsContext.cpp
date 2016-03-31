@@ -136,18 +136,6 @@ bool COGLGraphicsContext::IsExtensionSupported(const char* pExtName)
     }
 }
 
-bool COGLGraphicsContext::IsWglExtensionSupported(const char* pExtName)
-{
-    if (m_pWglExtensionStr == NULL)
-        return false;
-
-    if (strstr((const char*)m_pWglExtensionStr, pExtName) != NULL)
-        return true;
-    else
-        return false;
-}
-
-
 void COGLGraphicsContext::CleanUp()
 {
 }

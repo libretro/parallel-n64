@@ -54,8 +54,7 @@ const char* constStr(uint32_t op)
 {
     if (op <= MUX_UNK)
         return constStrs[op];
-    else
-       return "Invalid-Const";
+    return "Invalid-Const";
 }
 #endif
 
