@@ -1131,68 +1131,83 @@ void DLParser_RDPFullSync(Gfx *gfx)
     TriggerDPInterrupt();
 }
 
+void ricegDPSetScissor(ScissorType *tempScissor, 
+      uint32_t mode, float ulx, float uly, float lrx, float lry )
+{
+   tempScissor->mode = mode;
+   tempScissor->x0   = ulx;
+   tempScissor->y0   = uly;
+   tempScissor->x1   = lrx;
+   tempScissor->y1   = lry;
+}
+
 void DLParser_SetScissor(Gfx *gfx)
 {
-    DP_Timing(DLParser_SetScissor);
+   ScissorType tempScissor;
+   uint32_t w0 = gfx->words.w0;
+   uint32_t w1 = gfx->words.w1;
+   DP_Timing(DLParser_SetScissor);
 
-    ScissorType tempScissor;
-    // The coords are all in 8:2 fixed point
-    tempScissor.x0   = ((gfx->words.w0)>>12)&0xFFF;
-    tempScissor.y0   = ((gfx->words.w0)>>0 )&0xFFF;
-    tempScissor.mode = ((gfx->words.w1)>>24)&0x03;
-    tempScissor.x1   = ((gfx->words.w1)>>12)&0xFFF;
-    tempScissor.y1   = ((gfx->words.w1)>>0 )&0xFFF;
+   /* The coords are all in 8:2 fixed point */
+   ricegDPSetScissor(
+         &tempScissor,           /* tempScissor */
+         (w1 >> 24) & 0x03,      /* mode */
+         (w0 >> 12) & 0xFFF,     /* ulx */
+         (w0 >>  0) & 0xFFF,     /* uly */
+         (w1 >> 12) & 0xFFF,     /* lrx */
+         (w1 >>  0) & 0xFFF      /* lry */
+         );
 
-    tempScissor.left    = tempScissor.x0/4;
-    tempScissor.top     = tempScissor.y0/4;
-    tempScissor.right   = tempScissor.x1/4;
-    tempScissor.bottom  = tempScissor.y1/4;
+   tempScissor.left    = tempScissor.x0/4;
+   tempScissor.top     = tempScissor.y0/4;
+   tempScissor.right   = tempScissor.x1/4;
+   tempScissor.bottom  = tempScissor.y1/4;
 
-    if( options.bEnableHacks )
-    {
-        if( g_CI.dwWidth == 0x200 && tempScissor.right == 0x200 )
-        {
-            uint32_t width = *gfx_info.VI_WIDTH_REG & 0xFFF;
+   if( options.bEnableHacks )
+   {
+      if( g_CI.dwWidth == 0x200 && tempScissor.right == 0x200 )
+      {
+         uint32_t width = *gfx_info.VI_WIDTH_REG & 0xFFF;
 
-            if( width != 0x200 )
-            {
-                // Hack for RE2
-                tempScissor.bottom = tempScissor.right*tempScissor.bottom/width;
-                tempScissor.right = width;
-            }
+         if( width != 0x200 )
+         {
+            // Hack for RE2
+            tempScissor.bottom = tempScissor.right*tempScissor.bottom/width;
+            tempScissor.right = width;
+         }
 
-        }
-    }
+      }
+   }
 
-    if( gRDP.scissor.left != tempScissor.left || gRDP.scissor.top != tempScissor.top ||
-        gRDP.scissor.right != tempScissor.right || gRDP.scissor.bottom != tempScissor.bottom ||
-        gRSP.real_clip_scissor_left != tempScissor.left || gRSP.real_clip_scissor_top != tempScissor.top ||
-        gRSP.real_clip_scissor_right != tempScissor.right || gRSP.real_clip_scissor_bottom != tempScissor.bottom)
-    {
-        memcpy(&(gRDP.scissor), &tempScissor, sizeof(ScissorType) );
-        if( !status.bHandleN64RenderTexture )
-            SetVIScales();
+   if( gRDP.scissor.left != tempScissor.left || gRDP.scissor.top != tempScissor.top ||
+         gRDP.scissor.right != tempScissor.right || gRDP.scissor.bottom != tempScissor.bottom ||
+         gRSP.real_clip_scissor_left != tempScissor.left || gRSP.real_clip_scissor_top != tempScissor.top ||
+         gRSP.real_clip_scissor_right != tempScissor.right || gRSP.real_clip_scissor_bottom != tempScissor.bottom)
+   {
+      memcpy(&(gRDP.scissor), &tempScissor, sizeof(ScissorType) );
+      if( !status.bHandleN64RenderTexture )
+         SetVIScales();
 
-        if(  options.enableHackForGames == HACK_FOR_SUPER_BOWLING && g_CI.dwAddr%0x100 != 0 )
-        {
-            // right half screen
-            gRDP.scissor.left += 160;
-            gRDP.scissor.right += 160;
-            CRender::g_pRender->SetViewport(160, 0, 320, 240, 0xFFFF);
-        }
+      if(  options.enableHackForGames == HACK_FOR_SUPER_BOWLING && g_CI.dwAddr%0x100 != 0 )
+      {
+         // right half screen
+         gRDP.scissor.left += 160;
+         gRDP.scissor.right += 160;
+         CRender::g_pRender->SetViewport(160, 0, 320, 240, 0xFFFF);
+      }
 
-        CRender::g_pRender->UpdateClipRectangle();
-        CRender::g_pRender->UpdateScissor();
-        CRender::g_pRender->SetViewportRender();
-    }
+      CRender::g_pRender->UpdateClipRectangle();
+      CRender::g_pRender->UpdateScissor();
+      CRender::g_pRender->SetViewportRender();
+   }
 
-    LOG_UCODE("SetScissor: x0=%d y0=%d x1=%d y1=%d mode=%d",
-        gRDP.scissor.left, gRDP.scissor.top,
-        gRDP.scissor.right, gRDP.scissor.bottom,
-        gRDP.scissor.mode);
+   LOG_UCODE("SetScissor: x0=%d y0=%d x1=%d y1=%d mode=%d",
+         gRDP.scissor.left, gRDP.scissor.top,
+         gRDP.scissor.right, gRDP.scissor.bottom,
+         gRDP.scissor.mode);
 
-    ///TXTRBUF_DETAIL_DUMP(DebuggerAppendMsg("SetScissor: x0=%d y0=%d x1=%d y1=%d mode=%d", gRDP.scissor.left, gRDP.scissor.top,
-    //gRDP.scissor.right, gRDP.scissor.bottom, gRDP.scissor.mode););
+   ///TXTRBUF_DETAIL_DUMP(DebuggerAppendMsg("SetScissor: x0=%d y0=%d x1=%d y1=%d mode=%d", gRDP.scissor.left, gRDP.scissor.top,
+   //gRDP.scissor.right, gRDP.scissor.bottom, gRDP.scissor.mode););
 }
 
 
