@@ -304,20 +304,20 @@ bool FrameBufferManager::IsDIaRenderTexture()
         uint32_t w0 = *(uint32_t *)(rdram_u8 + dwPC + i*8);
         uint32_t w1 = *(uint32_t *)(rdram_u8 + dwPC + 4 + i*8);
 
-        if ((w0>>24) == RDP_SETSCISSOR)
+        if ((w0>>24) == G_SETSCISSOR)
         {
             foundSetScissor = true;
             continue;
         }
 
-        if ((w0>>24) == RDP_SETFILLCOLOR)
+        if ((w0>>24) == G_SETFILLCOLOR)
         {
             foundSetFillColor = true;
             newFillColor = w1;
             continue;
         }
 
-        if ((w0>>24) == RDP_FILLRECT)
+        if ((w0>>24) == G_FILLRECT)
         {
             uint32_t x0   = ((w1>>12)&0xFFF)/4;
             uint32_t y0   = ((w1>>0 )&0xFFF)/4;
@@ -339,12 +339,12 @@ bool FrameBufferManager::IsDIaRenderTexture()
             }
         }   
 
-        if ((w0>>24) == RDP_TEXRECT)
+        if ((w0>>24) == G_TEXRECT)
         {
             break;
         }
 
-        if ((w0>>24) == RDP_SETCIMG)
+        if ((w0>>24) == G_SETCIMG)
         {
             foundSetCImg = true;
             break;
@@ -917,14 +917,14 @@ uint32_t FrameBufferManager::ComputeCImgHeight(SetImgInfo &info, uint32_t &heigh
         uint32_t w0 = *(uint32_t *)(rdram_u8 + dwPC + i*8);
         uint32_t w1 = *(uint32_t *)(rdram_u8 + dwPC + 4 + i*8);
 
-        if ((w0>>24) == RDP_SETSCISSOR)
+        if ((w0>>24) == G_SETSCISSOR)
         {
             height   = ((w1>>0 )&0xFFF)/4;
             TXTRBUF_DETAIL_DUMP(TRACE1("buffer height = %d", height));
-            return RDP_SETSCISSOR;
+            return G_SETSCISSOR;
         }
 
-        if ((w0>>24) == RDP_FILLRECT)
+        if ((w0>>24) == G_FILLRECT)
         {
             uint32_t x0   = ((w1>>12)&0xFFF)/4;
             uint32_t y0   = ((w1>>0 )&0xFFF)/4;
@@ -937,24 +937,24 @@ uint32_t FrameBufferManager::ComputeCImgHeight(SetImgInfo &info, uint32_t &heigh
                 {
                     height = y1;
                     TXTRBUF_DETAIL_DUMP(TRACE1("buffer height = %d", height));
-                    return RDP_FILLRECT;
+                    return G_FILLRECT;
                 }
 
                 if (x1 == (unsigned int)(info.dwWidth-1))
                 {
                     height = y1+1;
                     TXTRBUF_DETAIL_DUMP(TRACE1("buffer height = %d", height));
-                    return RDP_FILLRECT;
+                    return G_FILLRECT;
                 }
             }
         }   
 
-        if ((w0>>24) == RDP_SETCIMG)
+        if ((w0>>24) == G_SETCIMG)
         {
             goto step2;
         }
 
-        if ((w0>>24) == RDP_SETCIMG)
+        if ((w0>>24) == G_SETCIMG)
         {
             goto step2;
         }
@@ -964,7 +964,7 @@ uint32_t FrameBufferManager::ComputeCImgHeight(SetImgInfo &info, uint32_t &heigh
     {
         height = gRDP.scissor.bottom;
         TXTRBUF_DETAIL_DUMP(TRACE1("buffer height = %d", height));
-        return RDP_SETSCISSOR+1;
+        return G_SETSCISSOR+1;
     }
 
 step2:
@@ -1479,7 +1479,7 @@ void FrameBufferManager::ActiveTextureBuffer(void)
         if (gRenderTextureInfos[idxToUse].pRenderTexture == NULL || matchidx < 0)
         {
             int w = newRenderTextureInfo.bufferWidth;
-            if (newRenderTextureInfo.knownHeight == RDP_SETSCISSOR && newRenderTextureInfo.CI_Info.dwAddr == g_ZI.dwAddr)
+            if (newRenderTextureInfo.knownHeight == G_SETSCISSOR && newRenderTextureInfo.CI_Info.dwAddr == g_ZI.dwAddr)
             {
                 w = gRDP.scissor.right;
             }

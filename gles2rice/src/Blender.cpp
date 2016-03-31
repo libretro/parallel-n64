@@ -170,7 +170,7 @@ void CBlender::InitBlenderMode(void)                    // Set Alpha Blender mod
                 Disable();
             }
 
-            render->SetAlphaTestEnable( ((gRDP.otherModeL >> RSP_SETOTHERMODE_SHIFT_ALPHACOMPARE) & 0x3)==1 ? true : false);
+            render->SetAlphaTestEnable( ((gRDP.otherModeL >> G_MDSFT_ALPHACOMPARE) & 0x3)==1 ? true : false);
             break;
         case BLEND_PASS+(BLEND_OPA>>2):
             // 0x0c19

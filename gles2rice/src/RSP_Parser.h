@@ -87,39 +87,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #define RSP_DMATRI  0x05
 #define G_DLINMEM   0x07
 
-// RDP commands:
-#define RDP_NOOP            0xc0
-#define RDP_SETCIMG         0xff
-#define RDP_SETZIMG         0xfe
-#define RDP_SETTIMG         0xfd
-#define RDP_SETCOMBINE      0xfc
-#define RDP_SETENVCOLOR     0xfb
-#define RDP_SETPRIMCOLOR    0xfa
-#define RDP_SETBLENDCOLOR   0xf9
-#define RDP_SETFOGCOLOR     0xf8
-#define RDP_SETFILLCOLOR    0xf7
-#define RDP_FILLRECT        0xf6
-#define RDP_SETTILE         0xf5
-#define RDP_LOADTILE        0xf4
-#define RDP_LOADBLOCK       0xf3
-#define RDP_SETTILESIZE     0xf2
-#define RDP_LOADTLUT        0xf0
-#define RDP_RDPSETOTHERMODE 0xef
-#define RDP_SETPRIMDEPTH    0xee
-#define RDP_SETSCISSOR      0xed
-#define RDP_SETCONVERT      0xec
-#define RDP_SETKEYR         0xeb
-#define RDP_SETKEYGB        0xea
-#define RDP_FULLSYNC        0xe9
-#define RDP_TILESYNC        0xe8
-#define RDP_PIPESYNC        0xe7
-#define RDP_LOADSYNC        0xe6
-#define RDP_TEXRECT_FLIP    0xe5
-#define RDP_TEXRECT         0xe4
-
-
-
-
 #define RSP_ZELDA_MTX_MODELVIEW     0x00
 #define RSP_ZELDA_MTX_PROJECTION    0x04
 #define RSP_ZELDA_MTX_MUL           0x00
@@ -127,23 +94,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #define RSP_ZELDA_MTX_PUSH          0x00
 #define RSP_ZELDA_MTX_NOPUSH        0x01
 
-
-
-//
-// RSP_SETOTHERMODE_L sft: shift count
-
-#define RSP_SETOTHERMODE_SHIFT_ALPHACOMPARE     0
-#define RSP_SETOTHERMODE_SHIFT_ZSRCSEL          2
-#define RSP_SETOTHERMODE_SHIFT_RENDERMODE       3
-#define RSP_SETOTHERMODE_SHIFT_BLENDER          16
-
-//
 // RSP_SETOTHERMODE_H sft: shift count
-
-#define RSP_SETOTHERMODE_SHIFT_BLENDMASK        0   // unsupported 
-#define RSP_SETOTHERMODE_SHIFT_ALPHADITHER      4
-#define RSP_SETOTHERMODE_SHIFT_RGBDITHER        6
-
 #define RSP_SETOTHERMODE_SHIFT_COMBKEY          8
 #define RSP_SETOTHERMODE_SHIFT_TEXTCONV         9
 #define RSP_SETOTHERMODE_SHIFT_TEXTFILT         12

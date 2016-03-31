@@ -1080,7 +1080,7 @@ void DLParser_RDPSetOtherMode(Gfx *gfx)
         CRender::g_pRender->SetZCompare( bZCompare );
         CRender::g_pRender->SetZUpdate( bZUpdate );
 
-        uint32_t dwAlphaTestMode = (gRDP.otherModeL >> RSP_SETOTHERMODE_SHIFT_ALPHACOMPARE) & 0x3;
+        uint32_t dwAlphaTestMode = (gRDP.otherModeL >> G_MDSFT_ALPHACOMPARE) & 0x3;
 
         if ((dwAlphaTestMode) != 0)
             CRender::g_pRender->SetAlphaTestEnable( true );
@@ -1396,10 +1396,10 @@ void DLParser_FillRect(Gfx *gfx)
       uint32_t dwPC = gDlistStack[gDlistStackPointer].pc;       // This points to the next instruction
       uint32_t w2   = *(uint32_t *)(rdram_u8 + dwPC);
 
-      if( (w2>>24) == RDP_FILLRECT )
+      if( (w2>>24) == G_FILLRECT )
       {
          // Mario Tennis, a lot of FillRect ucodes, skip all of them
-         while( (w2>>24) == RDP_FILLRECT )
+         while( (w2>>24) == G_FILLRECT )
          {
             dwPC += 8;
             w2 = *(uint32_t *)(rdram_u8 + dwPC);

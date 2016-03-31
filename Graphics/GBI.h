@@ -298,7 +298,9 @@ static const char *SegmentText[] =
 
 #define G_IMMFIRST              -65
 
+/* RDP commands */
 /* These GBI commands are common to all ucodes */
+#define G_RDPNOOP               0xC0
 #define G_SETCIMG               0xFF    /*  -1 */
 #define G_SETZIMG               0xFE    /*  -2 */
 #define G_SETTIMG               0xFD    /*  -3 */
@@ -327,8 +329,6 @@ static const char *SegmentText[] =
 #define G_TEXRECTFLIP           0xE5    /* -27 */
 #define G_TEXRECT               0xE4    /* -28 */
 
-#define G_RDPNOOP               0xC0
-
 #define G_TRI_FILL              0xC8    /* fill triangle:            11001000 */
 #define G_TRI_FILL_ZBUFF        0xC9    /* fill, zbuff triangle:     11001001 */
 #define G_TRI_TXTR              0xCA    /* texture triangle:         11001010 */
@@ -338,20 +338,16 @@ static const char *SegmentText[] =
 #define G_TRI_SHADE_TXTR        0xCE    /* shade, texture triangle:  11001110 */
 #define G_TRI_SHADE_TXTR_ZBUFF  0xCF    /* shade, txtr, zbuff trngl: 11001111 */
 
-#define G_SETOTHERMODE_H	0xe3
-#define G_SETOTHERMODE_L	0xe2
+#define G_SETOTHERMODE_H	     0xe3
+#define G_SETOTHERMODE_L	     0xe2
 
-/*
- * G_SETOTHERMODE_L sft: shift count
- */
+/* G_SETOTHERMODE_L sft: shift count */
 #define G_MDSFT_ALPHACOMPARE    0
 #define G_MDSFT_ZSRCSEL         2
 #define G_MDSFT_RENDERMODE      3
 #define G_MDSFT_BLENDER         16
 
-/*
- * G_SETOTHERMODE_H sft: shift count
- */
+/* G_SETOTHERMODE_H sft: shift count */
 #define G_MDSFT_BLENDMASK       0   /* unsupported */
 #define G_MDSFT_ALPHADITHER     4
 #define G_MDSFT_RGBDITHER       6
