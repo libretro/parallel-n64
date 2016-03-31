@@ -114,6 +114,12 @@ extern "C" {
 #define G_MV_MATRIX_3   0x9A
 #define G_MV_MATRIX_4   0x9C
 
+/* MOVEWORD indices
+ *
+ * each of these indexes an entry
+ * in a DMEM table which points to
+ * a word in DMEM where an immediate
+ * word will be stored. */
 #define G_MW_MATRIX         0x00
 #define G_MW_NUMLIGHT       0x02
 #define G_MW_CLIP           0x04

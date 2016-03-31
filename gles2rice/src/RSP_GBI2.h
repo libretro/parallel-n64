@@ -104,10 +104,10 @@ void RSP_GBI2_MoveWord(Gfx *gfx)
 
     switch (gfx->gbi2moveword.type)
     {
-    case RSP_MOVE_WORD_MATRIX:
+    case G_MW_MATRIX:
         RSP_RDP_InsertMatrix(gfx);
         break;
-    case RSP_MOVE_WORD_NUMLIGHT:
+    case G_MW_NUMLIGHT:
         {
             uint32_t dwNumLights = gfx->gbi2moveword.value/24;
             gRSP.ambientLightIndex = dwNumLights;
@@ -115,7 +115,7 @@ void RSP_GBI2_MoveWord(Gfx *gfx)
         }
         break;
 
-    case RSP_MOVE_WORD_CLIP:
+    case G_MW_CLIP:
         {
             switch (gfx->gbi2moveword.offset)
             {
@@ -131,7 +131,7 @@ void RSP_GBI2_MoveWord(Gfx *gfx)
         }
         break;
 
-    case RSP_MOVE_WORD_SEGMENT:
+    case G_MW_SEGMENT:
         {
             uint32_t dwSeg     = gfx->gbi2moveword.offset / 4;
             uint32_t dwAddr = gfx->gbi2moveword.value & 0x00FFFFFF;           // Hack - convert to physical
@@ -151,7 +151,7 @@ void RSP_GBI2_MoveWord(Gfx *gfx)
             }
         }
         break;
-    case RSP_MOVE_WORD_FOG:
+    case G_MW_FOG:
         {
             uint16_t wMult = (uint16_t)((gfx->gbi2moveword.value >> 16) & 0xFFFF);
             uint16_t wOff  = (uint16_t)((gfx->gbi2moveword.value      ) & 0xFFFF);
@@ -178,7 +178,7 @@ void RSP_GBI2_MoveWord(Gfx *gfx)
             FOG_DUMP(TRACE3("Set Fog: Min=%f, Max=%f, Data=0x%08X", fMin, fMax, gfx->gbi2moveword.value));
         }
         break;
-    case RSP_MOVE_WORD_LIGHTCOL:
+    case G_MW_LIGHTCOL:
         {
             uint32_t dwLight = gfx->gbi2moveword.offset / 0x18;
             uint32_t dwField = (gfx->gbi2moveword.offset & 0x7);
@@ -187,13 +187,9 @@ void RSP_GBI2_MoveWord(Gfx *gfx)
             {
             case 0:
                 if (dwLight == gRSP.ambientLightIndex)
-                {
                     SetAmbientLight( (gfx->gbi2moveword.value>>8) );
-                }
                 else
-                {
                     SetLightCol(dwLight, gfx->gbi2moveword.value);
-                }
                 break;
 
             case 4:
@@ -208,11 +204,11 @@ void RSP_GBI2_MoveWord(Gfx *gfx)
         }
         break;
 
-    case RSP_MOVE_WORD_PERSPNORM:
+    case G_MW_PERSPNORM:
         LOG_UCODE("     RSP_MOVE_WORD_PERSPNORM 0x%04x", (short)gfx->words.w1);
         break;
 
-    case RSP_MOVE_WORD_POINTS:
+    case G_MW_POINTS:
         LOG_UCODE("     2nd cmd of Force Matrix");
         break;
 

@@ -23,6 +23,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include <retro_miscellaneous.h>
 
+#include "../../Graphics/GBI.h"
+
 #include "Render.h"
 #include "Timing.h"
 #include "osal_preproc.h"
@@ -474,7 +476,7 @@ void RSP_MoveWord_DKR(Gfx *gfx)
 
     switch ((gfx->words.w0) & 0xFF)
     {
-    case RSP_MOVE_WORD_NUMLIGHT:
+    case G_MW_NUMLIGHT:
         dwNumLights = (gfx->words.w1)&0x7;
         LOG_UCODE("    RSP_MOVE_WORD_NUMLIGHT: Val:%d", dwNumLights);
 
@@ -486,7 +488,7 @@ void RSP_MoveWord_DKR(Gfx *gfx)
         LOG_UCODE("    gRSP.DKRBillBoard = %d", gRSP.DKRBillBoard);
         DEBUGGER_PAUSE_AND_DUMP_COUNT_N(NEXT_MATRIX_CMD, {DebuggerAppendMsg("DKR Moveword, select gRSP.DKRBillBoard %s, cmd0=%08X, cmd1=%08X", gRSP.DKRBillBoard?"true":"false", (gfx->words.w0), (gfx->words.w1));});
         break;
-    case RSP_MOVE_WORD_LIGHTCOL:
+    case G_MW_LIGHTCOL:
         gRSP.DKRCMatrixIndex = ((gfx->words.w1)>>6)&7;
         //gRSP.DKRCMatrixIndex = ((gfx->words.w1)>>6)&3;
         LOG_UCODE("    gRSP.DKRCMatrixIndex = %d", gRSP.DKRCMatrixIndex);
@@ -825,7 +827,7 @@ void DLParser_MoveWord_Conker(Gfx *gfx)
 {
     uint32_t dwType   = ((gfx->words.w0) >> 16) & 0xFF;
 
-    if( dwType != RSP_MOVE_WORD_NUMLIGHT )
+    if( dwType != G_MW_NUMLIGHT )
     {
         RSP_GBI2_MoveWord(gfx);
     }

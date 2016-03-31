@@ -32,10 +32,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 extern FiddledVtx * g_pVtxBase;
 
 #define ENABLE_CLIP_TRI
-#define X_CLIP_MAX  0x1
-#define X_CLIP_MIN  0x2
-#define Y_CLIP_MAX  0x4
-#define Y_CLIP_MIN  0x8
 #define Z_CLIP_MAX  0x10
 #define Z_CLIP_MIN  0x20
 

@@ -1092,9 +1092,9 @@ void DLParser_RDPSetOtherMode(Gfx *gfx)
 
     if( gRDP.otherModeL != (gfx->words.w1) )
     {
-        if( (gRDP.otherModeL&ZMODE_DEC) != ((gfx->words.w1)&ZMODE_DEC) )
+        if( (gRDP.otherModeL & ZMODE_DECAL) != ((gfx->words.w1) & ZMODE_DECAL) )
         {
-            if( ((gfx->words.w1)&ZMODE_DEC) == ZMODE_DEC )
+            if( ((gfx->words.w1) & ZMODE_DECAL) == ZMODE_DECAL )
                 CRender::g_pRender->SetZBias( 2 );
             else
                 CRender::g_pRender->SetZBias( 0 );

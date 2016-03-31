@@ -21,6 +21,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #ifndef __RICE_RDP_GFX_H__
 #define __RICE_RDP_GFX_H__
 
+#include "../../Graphics/GBI.h"
+
 #define RSP_SPNOOP              0   // handle 0 gracefully 
 #define RSP_MTX                 1
 #define RSP_RESERVED0           2   // unknown 
@@ -182,8 +184,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 // RSP_SETOTHERMODE_L gSetRenderMode 
 #define Z_COMPARE           0x0010
 #define Z_UPDATE            0x0020
-#define ZMODE_DEC           0x0c00
-
 
 //
 // flags for RSP_SETGEOMETRYMODE
@@ -275,27 +275,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 # define RSP_GBI2_MV_MEM_O_L6       (8*24)
 # define RSP_GBI2_MV_MEM_O_L7       (9*24)
 
-
-//
-// MOVEWORD indices
-//
-// Each of these indexes an entry in a dmem table
-// which points to a word in dmem in dmem where
-// an immediate word will be stored.
-//
-//
-#define RSP_MOVE_WORD_MATRIX    0x00    // NOTE: also used by movemem 
-#define RSP_MOVE_WORD_NUMLIGHT  0x02
-#define RSP_MOVE_WORD_CLIP      0x04
-#define RSP_MOVE_WORD_SEGMENT   0x06
-#define RSP_MOVE_WORD_FOG       0x08
-#define RSP_MOVE_WORD_LIGHTCOL  0x0a
-#define RSP_MOVE_WORD_POINTS    0x0c
-#define RSP_MOVE_WORD_PERSPNORM 0x0e
-
-//
 // These are offsets from the address in the dmem table
-// 
 #define RSP_MV_WORD_OFFSET_NUMLIGHT         0x00
 #define RSP_MV_WORD_OFFSET_CLIP_RNX         0x04
 #define RSP_MV_WORD_OFFSET_CLIP_RNY         0x0c

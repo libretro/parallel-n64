@@ -488,10 +488,10 @@ void RSP_GBI1_MoveWord(Gfx *gfx)
 
     switch (gfx->gbi0moveword.type)
     {
-    case RSP_MOVE_WORD_MATRIX:
+    case G_MW_MATRIX:
         RSP_RDP_InsertMatrix(gfx);
         break;
-    case RSP_MOVE_WORD_NUMLIGHT:
+    case G_MW_NUMLIGHT:
         {
             uint32_t dwNumLights = (((gfx->gbi0moveword.value)-0x80000000)/32)-1;
             LOG_UCODE("    RSP_MOVE_WORD_NUMLIGHT: Val:%d", dwNumLights);
@@ -500,7 +500,7 @@ void RSP_GBI1_MoveWord(Gfx *gfx)
             SetNumLights(dwNumLights);
         }
         break;
-    case RSP_MOVE_WORD_CLIP:
+    case G_MW_CLIP:
         {
             switch (gfx->gbi0moveword.offset)
             {
@@ -516,7 +516,7 @@ void RSP_GBI1_MoveWord(Gfx *gfx)
             }
         }
         break;
-    case RSP_MOVE_WORD_SEGMENT:
+    case G_MW_SEGMENT:
         {
             uint32_t dwSegment = (gfx->gbi0moveword.offset >> 2) & 0xF;
             uint32_t dwBase = (gfx->gbi0moveword.value)&0x00FFFFFF;
@@ -535,7 +535,7 @@ void RSP_GBI1_MoveWord(Gfx *gfx)
             }
         }
         break;
-    case RSP_MOVE_WORD_FOG:
+    case G_MW_FOG:
         {
             uint16_t wMult = (uint16_t)(((gfx->gbi0moveword.value) >> 16) & 0xFFFF);
             uint16_t wOff  = (uint16_t)(((gfx->gbi0moveword.value)      ) & 0xFFFF);
@@ -563,7 +563,7 @@ void RSP_GBI1_MoveWord(Gfx *gfx)
             SetFogMinMax(fMin, fMax, fMult, fOff);
         }
         break;
-    case RSP_MOVE_WORD_LIGHTCOL:
+    case G_MW_LIGHTCOL:
         {
             uint32_t dwLight = gfx->gbi0moveword.offset / 0x20;
             uint32_t dwField = (gfx->gbi0moveword.offset & 0x7);
@@ -592,14 +592,14 @@ void RSP_GBI1_MoveWord(Gfx *gfx)
             }
         }
         break;
-    case RSP_MOVE_WORD_POINTS:
+    case G_MW_POINTS:
         {
             uint32_t vtx = gfx->gbi0moveword.offset/40;
             uint32_t where = gfx->gbi0moveword.offset - vtx*40;
             ModifyVertexInfo(where, vtx, gfx->gbi0moveword.value);
         }
         break;
-    case RSP_MOVE_WORD_PERSPNORM:
+    case G_MW_PERSPNORM:
         LOG_UCODE("    RSP_MOVE_WORD_PERSPNORM");
         //if( word1 != 0x1A ) DebuggerAppendMsg("PerspNorm: 0x%04x", (short)word1); 
         break;
