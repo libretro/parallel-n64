@@ -379,7 +379,7 @@ void RDP_DLParser_Process(void);
 void PrepareTextures();
 void RDP_InitRenderState();
 void DisplayVertexInfo(uint32_t dwAddr, uint32_t dwV0, uint32_t dwN);
-void RSP_MoveMemLight(uint32_t dwLight, uint32_t dwAddr);
+void ricegSPLight(uint32_t dwAddr, uint32_t dwLight);
 void RSP_MoveMemViewport(uint32_t dwAddr);
 void RDP_NOIMPL_WARN(const char* op);
 void RSP_GFX_Force_Matrix(uint32_t dwAddr);

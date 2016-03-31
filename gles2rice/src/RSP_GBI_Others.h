@@ -771,7 +771,7 @@ void DLParser_MoveMem_Conker(Gfx *gfx)
         {
             dwLight = (dwOffset2 - 0x30)/0x30;
             LOG_UCODE("    Light %d:", dwLight);
-            RSP_MoveMemLight(dwLight, dwAddr);
+            ricegSPLight(dwAddr, dwLight);
         }
         else
         {

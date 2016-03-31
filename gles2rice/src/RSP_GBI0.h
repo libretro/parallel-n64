@@ -109,9 +109,9 @@ void RSP_GBI1_MoveMem(Gfx *gfx)
 {
     SP_Timing(RSP_GBI1_MoveMem);
 
-    uint32_t type    = ((gfx->words.w0)>>16)&0xFF;
+    uint32_t type      = ((gfx->words.w0)>>16)&0xFF;
     uint32_t dwLength  = ((gfx->words.w0))&0xFFFF;
-    uint32_t addr = RSPSegmentAddr((gfx->words.w1));
+    uint32_t addr      = RSPSegmentAddr((gfx->words.w1));
 
     switch (type) 
     {
@@ -140,7 +140,7 @@ void RSP_GBI1_MoveMem(Gfx *gfx)
              LOG_UCODE("    RSP_GBI1_MV_MEM_L%d", dwLight);
              LOG_UCODE("    Light%d: Length:0x%04x, Address: 0x%08x", dwLight, dwLength, addr);
 
-             RSP_MoveMemLight(dwLight, addr);
+             ricegSPLight(addr, dwLight);
           }
           break;
        case G_MV_TXTATT:

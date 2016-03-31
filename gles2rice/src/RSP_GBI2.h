@@ -773,7 +773,7 @@ void RSP_GBI2_MoveMem(Gfx *gfx)
                   {
                      uint32_t dwLight = (dwOffset2 - 0x30)/0x18;
                      LOG_UCODE("    Light %d:", dwLight);
-                     RSP_MoveMemLight(dwLight, addr);
+                     ricegSPLight(addr, dwLight);
                   }
                   break;
             }
