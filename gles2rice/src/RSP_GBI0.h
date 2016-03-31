@@ -562,7 +562,7 @@ void RSP_GBI1_MoveWord(Gfx *gfx)
                   if (dwLight == gRSP.ambientLightIndex)
                      SetAmbientLight( ((gfx->gbi0moveword.value)>>8) );
                   else
-                     SetLightCol(dwLight, gfx->gbi0moveword.value);
+                     ricegSPLightColor(dwLight, gfx->gbi0moveword.value);
                   break;
 
                case 4:

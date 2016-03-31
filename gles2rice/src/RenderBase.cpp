@@ -1632,19 +1632,19 @@ void ProcessVertexData_Rogue_Squadron(uint32_t dwXYZAddr, uint32_t dwColorAddr, 
     DEBUGGER_PAUSE_AND_DUMP(NEXT_VERTEX_CMD,{TRACE0("Paused at Vertex Cmd");});
 }
 
-void SetLightCol(uint32_t dwLight, uint32_t dwCol)
+void ricegSPLightColor(uint32_t lightNum, uint32_t packedColor)
 {
-    gRSPlights[dwLight].r = (uint8_t)((dwCol >> 24)&0xFF);
-    gRSPlights[dwLight].g = (uint8_t)((dwCol >> 16)&0xFF);
-    gRSPlights[dwLight].b = (uint8_t)((dwCol >>  8)&0xFF);
-    gRSPlights[dwLight].a = 255;    // Ignore light alpha
-    gRSPlights[dwLight].fr = (float)gRSPlights[dwLight].r;
-    gRSPlights[dwLight].fg = (float)gRSPlights[dwLight].g;
-    gRSPlights[dwLight].fb = (float)gRSPlights[dwLight].b;
-    gRSPlights[dwLight].fa = 255;   // Ignore light alpha
+    gRSPlights[lightNum].r = (uint8_t)_SHIFTR( packedColor, 24, 8 );
+    gRSPlights[lightNum].g = (uint8_t)_SHIFTR( packedColor, 16, 8 );
+    gRSPlights[lightNum].b = (uint8_t)_SHIFTR( packedColor, 8,  8 );
+    gRSPlights[lightNum].a = 255;    // Ignore light alpha
+    gRSPlights[lightNum].fr = (float)gRSPlights[lightNum].r;
+    gRSPlights[lightNum].fg = (float)gRSPlights[lightNum].g;
+    gRSPlights[lightNum].fb = (float)gRSPlights[lightNum].b;
+    gRSPlights[lightNum].fa = 255;   // Ignore light alpha
 
-    //TRACE1("Set light %d color", dwLight);
-    LIGHT_DUMP(TRACE2("Set Light %d color: %08X", dwLight, dwCol));
+    //TRACE1("Set light %d color", lightNum);
+    LIGHT_DUMP(TRACE2("Set Light %d color: %08X", lightNum, dwCol));
 }
 
 void SetLightDirection(uint32_t dwLight, float x, float y, float z, float range)

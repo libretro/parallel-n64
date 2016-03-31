@@ -325,7 +325,7 @@ void ricegSPLight(uint32_t dwAddr, uint32_t dwLight)
    {
       LOG_UCODE("      (Normal Light)");
 
-      SetLightCol(dwLight, gRSPn64lights[dwLight].dwRGBA);
+      ricegSPLightColor(dwLight, gRSPn64lights[dwLight].dwRGBA);
       if (pdwBase[2] == 0)    // Direction is 0!
       {
          LOG_UCODE("      Light is invalid");

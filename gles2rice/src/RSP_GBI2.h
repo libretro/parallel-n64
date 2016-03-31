@@ -60,14 +60,10 @@ void RSP_GBI2_CullDL(Gfx *gfx)
 
 #ifdef DEBUGGER
     if( !debuggerEnableCullFace )
-    {
         return; //Disable Culling
-    }
 #endif
     if( g_curRomInfo.bDisableCulling )
-    {
         return; //Disable Culling
-    }
 
     uint32_t dwVFirst = (((gfx->words.w0)) & 0xfff) / gRSP.vertexMult;
     uint32_t dwVLast  = (((gfx->words.w1)) & 0xfff) / gRSP.vertexMult;
@@ -189,7 +185,7 @@ void RSP_GBI2_MoveWord(Gfx *gfx)
                   if (dwLight == gRSP.ambientLightIndex)
                      SetAmbientLight( (gfx->gbi2moveword.value>>8) );
                   else
-                     SetLightCol(dwLight, gfx->gbi2moveword.value);
+                     ricegSPLightColor(dwLight, gfx->gbi2moveword.value);
                   break;
 
                case 4:

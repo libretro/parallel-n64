@@ -247,7 +247,7 @@ void SetPrimitiveDepth(uint32_t z, uint32_t dwDZ);
 void SetVertexXYZ(uint32_t vertex, float x, float y, float z);
 void ricegSPModifyVertex(uint32_t vtx, uint32_t where,  uint32_t val);
 void ProcessVertexDataDKR(uint32_t dwAddr, uint32_t dwV0, uint32_t dwNum);
-void SetLightCol(uint32_t dwLight, uint32_t dwCol);
+void ricegSPLightColor(uint32_t dwLight, uint32_t dwCol);
 void SetLightDirection(uint32_t dwLight, float x, float y, float z, float range);
 void ForceMainTextureIndex(int dwTile); 
 void UpdateCombinedMatrix();
