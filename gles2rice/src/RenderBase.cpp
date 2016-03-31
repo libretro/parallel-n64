@@ -37,7 +37,7 @@ extern FiddledVtx * g_pVtxBase;
 
 #ifdef ENABLE_CLIP_TRI
 
-inline void RSP_Vtx_Clipping(int i)
+void RSP_Vtx_Clipping(int i)
 {
     g_clipFlag[i] = 0;
     g_clipFlag2[i] = 0;
@@ -110,7 +110,7 @@ inline void RSP_Vtx_Clipping(int i) {}
 ALIGN(16,RSP_Options gRSP);
 ALIGN(16,RDP_Options gRDP);
 
-static ALIGN(16,XVECTOR4 g_normal);
+ALIGN(16,XVECTOR4 g_normal);
 //static int norms[3];
 
 ALIGN(16,XVECTOR4 g_vtxNonTransformed[MAX_VERTS]);
@@ -659,7 +659,7 @@ float zero = 0.0f;
 float onef = 1.0f;
 float fcosT;
 
-inline void ReplaceAlphaWithFogFactor(int i)
+void ReplaceAlphaWithFogFactor(int i)
 {
     if( gRDP.geometryMode & G_FOG )
     {
@@ -1119,74 +1119,6 @@ void SetVertexXYZ(uint32_t vertex, float x, float y, float z)
     g_vtxTransformed[vertex].z = z*g_vtxTransformed[vertex].w;
 }
 
-void ricegSPModifyVertex(uint32_t vtx, uint32_t where, uint32_t val)
-{
-    switch (where)
-    {
-    case G_MWO_POINT_RGBA:
-        {
-            uint32_t r = (val>>24)&0xFF;
-            uint32_t g = (val>>16)&0xFF;
-            uint32_t b = (val>>8)&0xFF;
-            uint32_t a = val&0xFF;
-            g_dwVtxDifColor[vtx] = COLOR_RGBA(r, g, b, a);
-            LOG_UCODE("Modify vertex %d color, 0x%08x", vtx, g_dwVtxDifColor[vtx]);
-        }
-        break;
-    case G_MWO_POINT_ST:
-        {
-            int16_t tu = (int16_t)(val>>16);
-            int16_t tv = (int16_t)(val & 0xFFFF);
-            float ftu  = tu / 32.0f;
-            float ftv  = tv / 32.0f;
-            LOG_UCODE("      Setting vertex %d tu/tv to %f, %f", vtx, (float)tu, (float)tv);
-            CRender::g_pRender->SetVtxTextureCoord(vtx, ftu/gRSP.fTexScaleX, ftv/gRSP.fTexScaleY);
-        }
-        break;
-    case G_MWO_POINT_XYSCREEN:
-        {
-            uint16_t nX = (uint16_t)(val>>16);
-            int16_t x   = *((int16_t*)&nX);
-            x /= 4;
-
-            uint16_t nY = (uint16_t)(val&0xFFFF);
-            int16_t y   = *((int16_t*)&nY);
-            y /= 4;
-
-            // Should do viewport transform.
-
-
-            x -= windowSetting.uViWidth/2;
-            y = windowSetting.uViHeight/2-y;
-
-            if( options.bEnableHacks && ((*gfx_info.VI_X_SCALE_REG)&0xF) != 0 )
-            {
-                // Tarzan
-                // I don't know why Tarzan is different
-                SetVertexXYZ(vtx, x/windowSetting.fViWidth, y/windowSetting.fViHeight, g_vecProjected[vtx].z);
-            }
-            else
-            {
-                // Toy Story 2 and other games
-                SetVertexXYZ(vtx, x*2/windowSetting.fViWidth, y*2/windowSetting.fViHeight, g_vecProjected[vtx].z);
-            }
-
-            LOG_UCODE("Modify vertex %d: x=%d, y=%d", vtx, x, y);
-            VTX_DUMP(TRACE3("Modify vertex %d: (%d,%d)", vtx, x, y));
-        }
-        break;
-    case G_MWO_POINT_ZSCREEN:
-        {
-            int z = val>>16;
-
-            SetVertexXYZ(vtx, g_vecProjected[vtx].x, g_vecProjected[vtx].y, (((float)z/0x03FF)+0.5f)/2.0f );
-            LOG_UCODE("Modify vertex %d: z=%d", vtx, z);
-            VTX_DUMP(TRACE2("Modify vertex %d: z=%d", vtx, z));
-        }
-        break;
-    }
-    DEBUGGER_PAUSE_AND_DUMP(NEXT_VERTEX_CMD,{TRACE0("Paused at ModVertex Command");});
-}
 
 void ProcessVertexDataDKR(uint32_t dwAddr, uint32_t dwV0, uint32_t dwNum)
 {
@@ -1296,103 +1228,9 @@ void ProcessVertexDataDKR(uint32_t dwAddr, uint32_t dwV0, uint32_t dwNum)
     DEBUGGER_PAUSE_AND_DUMP(NEXT_VERTEX_CMD,{DebuggerAppendMsg("Paused at DKR Vertex Command, v0=%d, vn=%d, addr=%08X", dwV0, dwNum, dwAddr);});
 }
 
-
 extern uint32_t dwPDCIAddr;
-void ricegSPCIVertex(uint32_t v, uint32_t n, uint32_t v0)
-{
-    UpdateCombinedMatrix();
-
-    uint8_t *rdram_u8   = (uint8_t*)gfx_info.RDRAM;
-    N64VtxPD * pVtxBase = (N64VtxPD*)(rdram_u8 + v);
-    g_pVtxBase          = (FiddledVtx*)pVtxBase; // Fix me
-
-    for (uint32_t i = v0; i < v0 + n; i++)
-    {
-        N64VtxPD           &vert = pVtxBase[i - v0];
-
-        g_vtxNonTransformed[i].x = (float)vert.x;
-        g_vtxNonTransformed[i].y = (float)vert.y;
-        g_vtxNonTransformed[i].z = (float)vert.z;
-
-        Vec3Transform(&g_vtxTransformed[i], (XVECTOR3*)&g_vtxNonTransformed[i], &gRSPworldProject); // Convert to w=1
-        g_vecProjected[i].w = 1.0f / g_vtxTransformed[i].w;
-        g_vecProjected[i].x = g_vtxTransformed[i].x * g_vecProjected[i].w;
-        g_vecProjected[i].y = g_vtxTransformed[i].y * g_vecProjected[i].w;
-        g_vecProjected[i].z = g_vtxTransformed[i].z * g_vecProjected[i].w;
-
-        g_fFogCoord[i] = g_vecProjected[i].z;
-        if( g_vecProjected[i].w < 0 || g_vecProjected[i].z < 0 || g_fFogCoord[i] < gRSPfFogMin )
-            g_fFogCoord[i] = gRSPfFogMin;
-
-        RSP_Vtx_Clipping(i);
-
-        uint8_t *addr = rdram_u8 + dwPDCIAddr + (vert.cidx&0xFF);
-        uint32_t a = addr[0];
-        uint32_t r = addr[3];
-        uint32_t g = addr[2];
-        uint32_t b = addr[1];
-
-        if( gRSP.bLightingEnable )
-        {
-            g_normal.x = (char)r;
-            g_normal.y = (char)g;
-            g_normal.z = (char)b;
-            {
-                Vec3TransformNormal(g_normal, gRSPmodelViewTop);
-                g_dwVtxDifColor[i] = LightVert(g_normal, i);
-            }
-            *(((uint8_t*)&(g_dwVtxDifColor[i]))+3) = (uint8_t)a;    // still use alpha from the vertex
-        }
-        else
-        {
-            if( (gRDP.geometryMode & G_SHADE) == 0 && gRSP.ucode < 5 )  //Shade is disabled
-            {
-                g_dwVtxDifColor[i] = gRDP.primitiveColor;
-            }
-            else    //FLAT shade
-            {
-                g_dwVtxDifColor[i] = COLOR_RGBA(r, g, b, a);
-            }
-        }
-
-        if( options.bWinFrameMode )
-        {
-            g_dwVtxDifColor[i] = COLOR_RGBA(r, g, b, a);
-        }
-
-        ReplaceAlphaWithFogFactor(i);
-
-        VECTOR2 & t = g_fVtxTxtCoords[i];
-        if (gRSP.bTextureGen && gRSP.bLightingEnable )
-        {
-            // Not sure if we should transform the normal here
-            //Matrix & matWV = gRSP.projectionMtxs[gRSP.projectionMtxTop];
-            //Vec3TransformNormal(g_normal, matWV);
-
-            TexGen(g_fVtxTxtCoords[i].x, g_fVtxTxtCoords[i].y);
-        }
-        else
-        {
-            t.x = vert.s;
-            t.y = vert.t; 
-        }
-
-
-        VTX_DUMP( 
-        {
-            DebuggerAppendMsg("Vertex %d: %d %d %d", i, vert.x,vert.y,vert.z); 
-            DebuggerAppendMsg("      : %f, %f, %f, %f", 
-                g_vtxTransformed[i].x,g_vtxTransformed[i].y,g_vtxTransformed[i].z,g_vtxTransformed[i].w);
-            DebuggerAppendMsg("      : %X, %X, %X, %X", r,g,b,a);
-            DebuggerAppendMsg("      : u=%f, v=%f", t.x, t.y);
-        });
-    }
-
-    VTX_DUMP(TRACE2("Setting Vertexes: %d - %d\n", dwV0, dwV0+dwNum-1));
-    DEBUGGER_PAUSE_AND_DUMP(NEXT_VERTEX_CMD,{TRACE0("Paused at Vertex Command");});
-}
-
 extern uint32_t dwConkerVtxZAddr;
+
 void ProcessVertexDataConker(uint32_t dwAddr, uint32_t dwV0, uint32_t dwNum)
 {
     UpdateCombinedMatrix();
@@ -1630,21 +1468,6 @@ void ProcessVertexData_Rogue_Squadron(uint32_t dwXYZAddr, uint32_t dwColorAddr, 
 
     VTX_DUMP(TRACE2("Setting Vertexes: %d - %d\n", dwV0, dwV0+dwNum-1));
     DEBUGGER_PAUSE_AND_DUMP(NEXT_VERTEX_CMD,{TRACE0("Paused at Vertex Cmd");});
-}
-
-void ricegSPLightColor(uint32_t lightNum, uint32_t packedColor)
-{
-    gRSPlights[lightNum].r = (uint8_t)_SHIFTR( packedColor, 24, 8 );
-    gRSPlights[lightNum].g = (uint8_t)_SHIFTR( packedColor, 16, 8 );
-    gRSPlights[lightNum].b = (uint8_t)_SHIFTR( packedColor, 8,  8 );
-    gRSPlights[lightNum].a = 255;    // Ignore light alpha
-    gRSPlights[lightNum].fr = (float)gRSPlights[lightNum].r;
-    gRSPlights[lightNum].fg = (float)gRSPlights[lightNum].g;
-    gRSPlights[lightNum].fb = (float)gRSPlights[lightNum].b;
-    gRSPlights[lightNum].fa = 255;   // Ignore light alpha
-
-    //TRACE1("Set light %d color", lightNum);
-    LIGHT_DUMP(TRACE2("Set Light %d color: %08X", lightNum, dwCol));
 }
 
 void SetLightDirection(uint32_t dwLight, float x, float y, float z, float range)

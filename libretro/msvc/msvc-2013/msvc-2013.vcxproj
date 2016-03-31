@@ -507,6 +507,7 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="..\..\..\gles2rice\src\Blender.cpp" />
+    <ClCompile Include="..\..\..\gles2rice\src\gSP_rice.cpp" />
     <ClCompile Include="..\..\..\gles2rice\src\Combiner.cpp" />
     <ClCompile Include="..\..\..\gles2rice\src\ConvertImage.cpp" />
     <ClCompile Include="..\..\..\gles2rice\src\ConvertImage16.cpp" />

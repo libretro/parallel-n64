@@ -1618,21 +1618,7 @@ void DLParser_SetPrimColor(Gfx *gfx)
         gfx->setcolor.prim_min_level, gfx->setcolor.prim_level);
 }
 
-void ricegSPNumLights(int32_t n) 
-{ 
-    gRSPnumLights = n; 
-    DEBUGGER_PAUSE_AND_DUMP(NEXT_SET_LIGHT,TRACE1("Set Number Of Lights: %d", dwNumLights));
-}
-
-void ricegDPSetEnvColor(uint32_t r, uint32_t g, uint32_t b, uint32_t a)
-{
-   gRDP.colorsAreReloaded = true;
-   gRDP.envColor = COLOR_RGBA(r, g, b, a); 
-   gRDP.fvEnvColor[0] = r / 255.0f;
-   gRDP.fvEnvColor[1] = g / 255.0f;
-   gRDP.fvEnvColor[2] = b / 255.0f;
-   gRDP.fvEnvColor[3] = a / 255.0f;
-}
+extern void ricegDPSetEnvColor(uint32_t r, uint32_t g, uint32_t b, uint32_t a);
 
 void DLParser_SetEnvColor(Gfx *gfx)
 {
