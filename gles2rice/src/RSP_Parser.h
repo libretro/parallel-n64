@@ -179,26 +179,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #define Z_COMPARE           0x0010
 #define Z_UPDATE            0x0020
 
-//
-// flags for RSP_SETGEOMETRYMODE
-//
-#define G_ZBUFFER               0x00000001
-#define G_TEXTURE_ENABLE        0x00000002  // Microcode use only 
-#define G_SHADE                 0x00000004  // Enable Gouraud interp 
-//
-#define G_SHADING_SMOOTH        0x00000200  // Flat or smooth shaded 
-#define G_CULL_FRONT            0x00001000
-#define G_CULL_BACK             0x00002000
-#define G_CULL_BOTH             0x00003000  // To make code cleaner 
-#define G_FOG                   0x00010000
-#define G_LIGHTING              0x00020000
-#define G_TEXTURE_GEN           0x00040000
-#define G_TEXTURE_GEN_LINEAR    0x00080000
-#define G_LOD                   0x00100000  // NOT IMPLEMENTED 
-
-//
 // G_SETIMG fmt: set image formats
-//
 #define TXT_FMT_RGBA    0
 #define TXT_FMT_YUV     1
 #define TXT_FMT_CI      2
