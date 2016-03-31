@@ -623,7 +623,7 @@ static void uc9_movemem(uint32_t w0, uint32_t w1)
             int16_t trans_z = ((int16_t*)gfx_info.RDRAM)[(a+6)^1];
 
             rdp.fog_multiplier = ((int16_t*)gfx_info.RDRAM)[(a+3)^1];
-            rdp.fog_offset = ((int16_t*)gfx_info.RDRAM)[(a+7)^1];
+            rdp.fog_offset     = ((int16_t*)gfx_info.RDRAM)[(a+7)^1];
 
             rdp.view_scale[0] = scale_x * rdp.scale_x;
             rdp.view_scale[1] = scale_y * rdp.scale_y;
@@ -668,30 +668,30 @@ static void uc9_setscissor(uint32_t w0, uint32_t w1)
 
    if ((g_gdp.__clip.xl - g_gdp.__clip.xh) > (zSortRdp.view_scale[0] - zSortRdp.view_trans[0]))
    {
-      TILE *tmp_tile;
       float w = (g_gdp.__clip.xl - g_gdp.__clip.xh) / 2.0f;
       float h = (g_gdp.__clip.yl - g_gdp.__clip.yh) / 2.0f;
+
       rdp.view_scale[0] = w * rdp.scale_x;
       rdp.view_scale[1] = h * rdp.scale_y;
       rdp.view_trans[0] = w * rdp.scale_x;
       rdp.view_trans[1] = h * rdp.scale_y;
+
       zSortRdp.view_scale[0] = w * 4.0f;
       zSortRdp.view_scale[1] = h * 4.0f;
       zSortRdp.view_trans[0] = w * 4.0f;
       zSortRdp.view_trans[1] = h * 4.0f;
       zSortRdp.scale_x = rdp.scale_x / 4.0f;
       zSortRdp.scale_y = rdp.scale_y / 4.0f;
+
       g_gdp.flags |= UPDATE_VIEWPORT;
 
-      rdp.mipmap_level = 0;
-      rdp.cur_tile = 0;
-
-      tmp_tile = (TILE*)&rdp.tiles[0];
-      tmp_tile->on = 1;
-      tmp_tile->org_s_scale = 0xFFFF;
-      tmp_tile->org_t_scale = 0xFFFF;
-      tmp_tile->s_scale = 0.031250f;
-      tmp_tile->t_scale = 0.031250f;
+      glide64gSPTexture(
+            0xFFFF,     /* sc */
+            0xFFFF,     /* tc */
+            0,          /* level */
+            0,          /* tile  */
+            1           /* on */
+            );
 
       rdp.geom_mode |= 0x0200;
    }
