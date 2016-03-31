@@ -584,20 +584,19 @@ void RSP_DMA_Tri_DKR(Gfx *gfx)
 }
 
 uint32_t dwPDCIAddr = 0;
-void ProcessVertexDataPD(uint32_t dwAddr, uint32_t dwV0, uint32_t dwNum);
+
+void ricegSPCIVertex(uint32_t v, uint32_t n, uint32_t v0);
+
 void RSP_Vtx_PD(Gfx *gfx)
 {
-    SP_Timing(RSP_GBI0_Vtx);
+   SP_Timing(RSP_GBI0_Vtx);
 
-    uint32_t dwAddr = RSPSegmentAddr((gfx->words.w1));
-    uint32_t dwV0 =  ((gfx->words.w0)>>16)&0x0F;
-    uint32_t dwN  = (((gfx->words.w0)>>20)&0x0F)+1;
-    //uint32_t dwLength = ((gfx->words.w0))&0xFFFF;
+   uint32_t v    = RSPSegmentAddr((gfx->words.w1));
+   uint32_t v0   = ((gfx->words.w0)  >> 16) &0x0F;
+   uint32_t n    = (((gfx->words.w0) >> 20) &0x0F)+1;
 
-    LOG_UCODE("    Address 0x%08x, v0: %d, Num: %d", dwAddr, dwV0, dwN);
-
-    ProcessVertexDataPD(dwAddr, dwV0, dwN);
-    status.dwNumVertices += dwN;
+   ricegSPCIVertex(v, n, v0);
+   status.dwNumVertices += n;
 }
 
 void RSP_Set_Vtx_CI_PD(Gfx *gfx)

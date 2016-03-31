@@ -1387,29 +1387,27 @@ void ProcessVertexDataDKR(uint32_t dwAddr, uint32_t dwV0, uint32_t dwNum)
 
 
 extern uint32_t dwPDCIAddr;
-void ProcessVertexDataPD(uint32_t dwAddr, uint32_t dwV0, uint32_t dwNum)
+void ricegSPCIVertex(uint32_t v, uint32_t n, uint32_t v0)
 {
     UpdateCombinedMatrix();
 
-    uint8_t *rdram_u8 = (uint8_t*)gfx_info.RDRAM;
-    N64VtxPD * pVtxBase = (N64VtxPD*)(rdram_u8 + dwAddr);
-    g_pVtxBase = (FiddledVtx*)pVtxBase; // Fix me
+    uint8_t *rdram_u8   = (uint8_t*)gfx_info.RDRAM;
+    N64VtxPD * pVtxBase = (N64VtxPD*)(rdram_u8 + v);
+    g_pVtxBase          = (FiddledVtx*)pVtxBase; // Fix me
 
-    for (uint32_t i = dwV0; i < dwV0 + dwNum; i++)
+    for (uint32_t i = v0; i < v0 + n; i++)
     {
-        N64VtxPD &vert = pVtxBase[i - dwV0];
+        N64VtxPD           &vert = pVtxBase[i - v0];
 
         g_vtxNonTransformed[i].x = (float)vert.x;
         g_vtxNonTransformed[i].y = (float)vert.y;
         g_vtxNonTransformed[i].z = (float)vert.z;
 
-        {
-            Vec3Transform(&g_vtxTransformed[i], (XVECTOR3*)&g_vtxNonTransformed[i], &gRSPworldProject); // Convert to w=1
-            g_vecProjected[i].w = 1.0f / g_vtxTransformed[i].w;
-            g_vecProjected[i].x = g_vtxTransformed[i].x * g_vecProjected[i].w;
-            g_vecProjected[i].y = g_vtxTransformed[i].y * g_vecProjected[i].w;
-            g_vecProjected[i].z = g_vtxTransformed[i].z * g_vecProjected[i].w;
-        }
+        Vec3Transform(&g_vtxTransformed[i], (XVECTOR3*)&g_vtxNonTransformed[i], &gRSPworldProject); // Convert to w=1
+        g_vecProjected[i].w = 1.0f / g_vtxTransformed[i].w;
+        g_vecProjected[i].x = g_vtxTransformed[i].x * g_vecProjected[i].w;
+        g_vecProjected[i].y = g_vtxTransformed[i].y * g_vecProjected[i].w;
+        g_vecProjected[i].z = g_vtxTransformed[i].z * g_vecProjected[i].w;
 
         g_fFogCoord[i] = g_vecProjected[i].z;
         if( g_vecProjected[i].w < 0 || g_vecProjected[i].z < 0 || g_fFogCoord[i] < gRSPfFogMin )
