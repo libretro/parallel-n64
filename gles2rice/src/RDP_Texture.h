@@ -58,8 +58,7 @@ inline uint32_t Txl2Words(uint32_t width, uint32_t size)
 {
     if( size == TXT_SIZE_4b )
         return max(1, width/16);
-    else
-        return max(1, width*sizeBytes[size]/8);
+    return max(1, width*sizeBytes[size]/8);
 }
 
 inline uint32_t CalculateImgSize(uint32_t width, uint32_t height, uint32_t size)
@@ -74,8 +73,7 @@ inline uint32_t CalculateDXT(uint32_t txl2words)
     //#define CALC_DXT(width, b_txl)    ((2048 + TXL2WORDS(width, b_txl) - 1) / TXL2WORDS(width, b_txl))
     if( txl2words == 0 )
         return 1;
-    else
-        return (2048+txl2words-1)/txl2words;
+    return (2048+txl2words-1)/txl2words;
 }
 
 inline uint32_t ReverseDXT(uint32_t val, uint32_t lrs, uint32_t width, uint32_t size)
