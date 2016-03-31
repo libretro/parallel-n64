@@ -54,7 +54,7 @@ enum
     MUX_ALPHAREPLICATE = 0x40,
     MUX_COMPLEMENT     = 0x80,
     MUX_FORCE_0        = 0xFE,
-    MUX_ERR            = 0xFF,
+    MUX_ERR            = 0xFF
 };
 
 
@@ -80,28 +80,29 @@ enum CombinerFormatType
     CM_FMT_TYPE_AB_SUB_CD,          // = A*B-C*D    Use by nvidia video cards
     CM_FMT_TYPE_AB_ADD_C,           // = A*B+C      Use by ATI video cards
     CM_FMT_TYPE_AB_SUB_C,           // = A*B-C      Use by ATI video cards
-    CM_FMT_TYPE_NOT_CHECKED = 0xFF,
+    CM_FMT_TYPE_NOT_CHECKED = 0xFF
 };
 
 
-typedef enum {
-    ENABLE_BOTH,
-    DISABLE_ALPHA,
-    DISABLE_COLOR,
-    DISABLE_BOTH,
-    COLOR_ONE,
-    ALPHA_ONE,
+typedef enum
+{
+   ENABLE_BOTH,
+   DISABLE_ALPHA,
+   DISABLE_COLOR,
+   DISABLE_BOTH,
+   COLOR_ONE,
+   ALPHA_ONE
 } BlendingFunc;
 
 
-typedef enum {
-    COLOR_CHANNEL,
-    ALPHA_CHANNEL,
+typedef enum
+{
+   COLOR_CHANNEL,
+   ALPHA_CHANNEL
 } CombineChannel;
 
-
-
-typedef struct {
+typedef struct
+{
     uint8_t a;
     uint8_t b;
     uint8_t c;
@@ -115,20 +116,23 @@ typedef struct {
 #define CONST_SUB(a,b)          (a|b<<8)                //A-B
 #define CONST_MULADD(a,b,c)     (a|b<<16|c<<24)         //A*C+D
 
-#define G_CCMUX_TEXEL1      2
-#define G_ACMUX_TEXEL1      2
+#define G_CCMUX_TEXEL1           2
+#define G_ACMUX_TEXEL1           2
 
 #define NOTUSED MUX_0
 
-enum { TEX_0=0, TEX_1=1};
+enum
+{
+   TEX_0=0,
+   TEX_1=1
+};
 
-
-
-typedef struct {
-    uint32_t op;
-    uint32_t Arg1;
-    uint32_t Arg2;
-    uint32_t Arg0;
+typedef struct
+{
+   uint32_t op;
+   uint32_t Arg1;
+   uint32_t Arg2;
+   uint32_t Arg0;
 } StageOperate;
 
 #endif
