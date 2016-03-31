@@ -115,49 +115,49 @@ void RSP_GBI1_MoveMem(Gfx *gfx)
 
     switch (type) 
     {
-        case RSP_GBI1_MV_MEM_VIEWPORT:
-            {
-                LOG_UCODE("    RSP_GBI1_MV_MEM_VIEWPORT. Address: 0x%08x, Length: 0x%04x", addr, dwLength);
-                RSP_MoveMemViewport(addr);
-            }
-            break;
-        case RSP_GBI1_MV_MEM_LOOKATY:
-            LOG_UCODE("    RSP_GBI1_MV_MEM_LOOKATY");
-            break;
-        case RSP_GBI1_MV_MEM_LOOKATX:
-            LOG_UCODE("    RSP_GBI1_MV_MEM_LOOKATX");
-            break;
-        case RSP_GBI1_MV_MEM_L0:
-        case RSP_GBI1_MV_MEM_L1:
-        case RSP_GBI1_MV_MEM_L2:
-        case RSP_GBI1_MV_MEM_L3:
-        case RSP_GBI1_MV_MEM_L4:
-        case RSP_GBI1_MV_MEM_L5:
-        case RSP_GBI1_MV_MEM_L6:
-        case RSP_GBI1_MV_MEM_L7:
-            {
-                uint32_t dwLight = (type-RSP_GBI1_MV_MEM_L0)/2;
-                LOG_UCODE("    RSP_GBI1_MV_MEM_L%d", dwLight);
-                LOG_UCODE("    Light%d: Length:0x%04x, Address: 0x%08x", dwLight, dwLength, addr);
+       case F3D_MV_VIEWPORT:
+          {
+             LOG_UCODE("    RSP_GBI1_MV_MEM_VIEWPORT. Address: 0x%08x, Length: 0x%04x", addr, dwLength);
+             RSP_MoveMemViewport(addr);
+          }
+          break;
+       case G_MV_LOOKATY:
+          LOG_UCODE("    RSP_GBI1_MV_MEM_LOOKATY");
+          break;
+       case G_MV_LOOKATX:
+          LOG_UCODE("    RSP_GBI1_MV_MEM_LOOKATX");
+          break;
+       case G_MV_L0:
+       case G_MV_L1:
+       case G_MV_L2:
+       case G_MV_L3:
+       case G_MV_L4:
+       case G_MV_L5:
+       case G_MV_L6:
+       case G_MV_L7:
+          {
+             uint32_t dwLight = (type - G_MV_L0)/2;
+             LOG_UCODE("    RSP_GBI1_MV_MEM_L%d", dwLight);
+             LOG_UCODE("    Light%d: Length:0x%04x, Address: 0x%08x", dwLight, dwLength, addr);
 
-                RSP_MoveMemLight(dwLight, addr);
-            }
-            break;
-        case RSP_GBI1_MV_MEM_TXTATT:
-            LOG_UCODE("    RSP_GBI1_MV_MEM_TXTATT");
-            break;
-        case RSP_GBI1_MV_MEM_MATRIX_1:
-            RSP_GFX_Force_Matrix(addr);
-            break;
-        case RSP_GBI1_MV_MEM_MATRIX_2:
-            break;
-        case RSP_GBI1_MV_MEM_MATRIX_3:
-            break;
-        case RSP_GBI1_MV_MEM_MATRIX_4:
-            break;
-        default:
-            RSP_RDP_NOIMPL("MoveMem: Unknown Move Type, cmd=%08X, %08X", gfx->words.w0, gfx->words.w1);
-            break;
+             RSP_MoveMemLight(dwLight, addr);
+          }
+          break;
+       case G_MV_TXTATT:
+          LOG_UCODE("    RSP_GBI1_MV_MEM_TXTATT");
+          break;
+       case G_MV_MATRIX_1:
+          RSP_GFX_Force_Matrix(addr);
+          break;
+       case G_MV_MATRIX_2:
+          break;
+       case G_MV_MATRIX_3:
+          break;
+       case G_MV_MATRIX_4:
+          break;
+       default:
+          RSP_RDP_NOIMPL("MoveMem: Unknown Move Type, cmd=%08X, %08X", gfx->words.w0, gfx->words.w1);
+          break;
     }
 }
 

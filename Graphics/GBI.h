@@ -20,7 +20,7 @@ extern "C" {
 #define F3DCBFD     11
 #define NONE        12
 
-#define F3D_MV_VIEWPORT         0x80
+
 #define F3DCBFD_MV_VIEWPORT     8
 #define F3DCBFD_MV_LIGHT        10
 #define F3DCBFD_MV_NORMAL       14
@@ -103,6 +103,13 @@ extern "C" {
 #define G_MVO_L6        192
 #define G_MVO_L7        216
 
+/* MOVEMEM indices
+ *
+ * each of these indexes an entry
+ * in a DMEM table which points to
+ * a 1-4 word block of DMEM in which
+ * to store a 1-4 word DMA. */
+#define F3D_MV_VIEWPORT 0x80
 #define G_MV_LOOKATY    0x82
 #define G_MV_LOOKATX    0x84
 #define G_MV_L0         0x86
@@ -114,7 +121,7 @@ extern "C" {
 #define G_MV_L6         0x92
 #define G_MV_L7         0x94
 #define G_MV_TXTATT     0x96
-#define G_MV_MATRIX_1   0x9E
+#define G_MV_MATRIX_1   0x9E /* NOTE: this is in moveword table */
 #define G_MV_MATRIX_2   0x98
 #define G_MV_MATRIX_3   0x9A
 #define G_MV_MATRIX_4   0x9C

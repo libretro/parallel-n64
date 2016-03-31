@@ -130,32 +130,11 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #define RDP_TXT_NOMASK      0
 #define RDP_TXT_NOLOD       0
 
-
-
-//
 // MOVEMEM indices
 //
 // Each of these indexes an entry in a dmem table
 // which points to a 1-4 word block of dmem in
 // which to store a 1-4 word DMA.
-//
-//
-#define RSP_GBI1_MV_MEM_VIEWPORT    0x80
-#define RSP_GBI1_MV_MEM_LOOKATY     0x82
-#define RSP_GBI1_MV_MEM_LOOKATX     0x84
-#define RSP_GBI1_MV_MEM_L0          0x86
-#define RSP_GBI1_MV_MEM_L1          0x88
-#define RSP_GBI1_MV_MEM_L2          0x8a
-#define RSP_GBI1_MV_MEM_L3          0x8c
-#define RSP_GBI1_MV_MEM_L4          0x8e
-#define RSP_GBI1_MV_MEM_L5          0x90
-#define RSP_GBI1_MV_MEM_L6          0x92
-#define RSP_GBI1_MV_MEM_L7          0x94
-#define RSP_GBI1_MV_MEM_TXTATT      0x96
-#define RSP_GBI1_MV_MEM_MATRIX_1    0x9e    // NOTE: this is in moveword table 
-#define RSP_GBI1_MV_MEM_MATRIX_2    0x98
-#define RSP_GBI1_MV_MEM_MATRIX_3    0x9a
-#define RSP_GBI1_MV_MEM_MATRIX_4    0x9c
 
 # define RSP_GBI2_MV_MEM__VIEWPORT  8
 # define RSP_GBI2_MV_MEM__LIGHT     10
