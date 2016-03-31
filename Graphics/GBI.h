@@ -649,6 +649,7 @@ static const char *aAText[] =
 #define LIGHT_7 7
 #define LIGHT_8 8
 
+/* Flags to inhibit pushing of the display list (on branch) */
 #define G_DL_PUSH          0x00
 #define G_DL_NOPUSH        0x01
 

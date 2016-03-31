@@ -233,22 +233,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 # define RSP_GBI2_MV_MEM_O_L6       (8*24)
 # define RSP_GBI2_MV_MEM_O_L7       (9*24)
 
-/* Flags to inhibit pushing of the display list (on branch) */
-#define RSP_DLIST_PUSH      0x00
-#define RSP_DLIST_NOPUSH    0x01
-
-/* RSP_MTX: parameter flags */
-#define RSP_MATRIX_MODELVIEW    0x00
-#define RSP_MATRIX_PROJECTION   0x01
-
-#define RSP_MATRIX_MUL          0x00
-#define RSP_MATRIX_LOAD         0x02
-
-#define RSP_MATRIX_NOPUSH       0x00
-#define RSP_MATRIX_PUSH         0x04
-
-
-
 typedef struct 
 {
     uint32_t  type;

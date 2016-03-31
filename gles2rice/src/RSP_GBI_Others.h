@@ -35,31 +35,31 @@ static void RDP_GFX_DumpVtxInfoDKR(uint32_t dwAddr, uint32_t dwV0, uint32_t dwN)
 
 void RDP_GFX_DLInMem(Gfx *gfx)
 {
-    uint32_t dwLimit = ((gfx->words.w0) >> 16) & 0xFF;
-    uint32_t dwPush = RSP_DLIST_PUSH; //((gfx->words.w0) >> 16) & 0xFF;
-    uint32_t dwAddr = 0x00000000 | (gfx->words.w1); //RSPSegmentAddr((gfx->words.w1));
+   uint32_t dwLimit = ((gfx->words.w0) >> 16) & 0xFF;
+   uint32_t dwPush  = G_DL_PUSH; //((gfx->words.w0) >> 16) & 0xFF;
+   uint32_t dwAddr  = 0x00000000 | (gfx->words.w1); //RSPSegmentAddr((gfx->words.w1));
 
-    LOG_UCODE("    Address=0x%08x Push: 0x%02x", dwAddr, dwPush);
+   LOG_UCODE("    Address=0x%08x Push: 0x%02x", dwAddr, dwPush);
 
-    switch (dwPush)
-    {
-    case RSP_DLIST_PUSH:
-        LOG_UCODE("    Pushing DisplayList 0x%08x", dwAddr);
-        gDlistStackPointer++;
-        gDlistStack[gDlistStackPointer].pc = dwAddr;
-        gDlistStack[gDlistStackPointer].countdown = dwLimit;
+   switch (dwPush)
+   {
+      case G_DL_PUSH:
+         LOG_UCODE("    Pushing DisplayList 0x%08x", dwAddr);
+         gDlistStackPointer++;
+         gDlistStack[gDlistStackPointer].pc = dwAddr;
+         gDlistStack[gDlistStackPointer].countdown = dwLimit;
 
-        break;
-    case RSP_DLIST_NOPUSH:
-        LOG_UCODE("    Jumping to DisplayList 0x%08x", dwAddr);
-        gDlistStack[gDlistStackPointer].pc = dwAddr;
-        gDlistStack[gDlistStackPointer].countdown = dwLimit;
-        break;
-    }
+         break;
+      case G_DL_NOPUSH:
+         LOG_UCODE("    Jumping to DisplayList 0x%08x", dwAddr);
+         gDlistStack[gDlistStackPointer].pc = dwAddr;
+         gDlistStack[gDlistStackPointer].countdown = dwLimit;
+         break;
+   }
 
-    LOG_UCODE("");
-    LOG_UCODE("\\/ \\/ \\/ \\/ \\/ \\/ \\/ \\/ \\/ \\/ \\/ \\/ \\/ \\/ \\/");
-    LOG_UCODE("#############################################");
+   LOG_UCODE("");
+   LOG_UCODE("\\/ \\/ \\/ \\/ \\/ \\/ \\/ \\/ \\/ \\/ \\/ \\/ \\/ \\/ \\/");
+   LOG_UCODE("#############################################");
 }
 
 extern Matrix ALIGN(16, dkrMatrixTransposed);

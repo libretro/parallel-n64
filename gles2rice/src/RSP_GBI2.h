@@ -843,24 +843,24 @@ void RSP_GBI2_DL(Gfx *gfx)
     
     switch (dwPush)
     {
-    case RSP_DLIST_PUSH:
-        LOG_UCODE("    Pushing ZeldaDisplayList 0x%08x", dwAddr);
-        gDlistStackPointer++;
-        gDlistStack[gDlistStackPointer].pc = dwAddr;
-        gDlistStack[gDlistStackPointer].countdown = MAX_DL_COUNT;
+       case G_DL_PUSH:
+          LOG_UCODE("    Pushing ZeldaDisplayList 0x%08x", dwAddr);
+          gDlistStackPointer++;
+          gDlistStack[gDlistStackPointer].pc = dwAddr;
+          gDlistStack[gDlistStackPointer].countdown = MAX_DL_COUNT;
 
-        break;
-    case RSP_DLIST_NOPUSH:
-        LOG_UCODE("    Jumping to ZeldaDisplayList 0x%08x", dwAddr);
-        if( gDlistStack[gDlistStackPointer].pc == dwAddr+8 )    //Is this a loop
-        {
-            //Hack for Gauntlet Legends
-            gDlistStack[gDlistStackPointer].pc = dwAddr+8;
-        }
-        else
-            gDlistStack[gDlistStackPointer].pc = dwAddr;
-        gDlistStack[gDlistStackPointer].countdown = MAX_DL_COUNT;
-        break;
+          break;
+       case G_DL_NOPUSH:
+          LOG_UCODE("    Jumping to ZeldaDisplayList 0x%08x", dwAddr);
+          if( gDlistStack[gDlistStackPointer].pc == dwAddr+8 )    //Is this a loop
+          {
+             //Hack for Gauntlet Legends
+             gDlistStack[gDlistStackPointer].pc = dwAddr+8;
+          }
+          else
+             gDlistStack[gDlistStackPointer].pc = dwAddr;
+          gDlistStack[gDlistStackPointer].countdown = MAX_DL_COUNT;
+          break;
     }
 
     LOG_UCODE("");

@@ -206,7 +206,7 @@ void RSP_GBI0_DL(Gfx *gfx)
         DebuggerPauseCountN( NEXT_DLIST );
     }
 
-    if( gfx->gbi0dlist.param == RSP_DLIST_PUSH )
+    if( gfx->gbi0dlist.param == G_DL_PUSH )
         gDlistStackPointer++;
 
     gDlistStack[gDlistStackPointer].pc = addr;
