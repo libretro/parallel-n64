@@ -468,7 +468,6 @@ void DLParser_Bomberman2TextRect(Gfx *gfx)
     );
 }
 
-
 void RSP_MoveWord_DKR(Gfx *gfx)
 {
     SP_Timing(RSP_GBI1_MoveWord);
@@ -476,118 +475,125 @@ void RSP_MoveWord_DKR(Gfx *gfx)
 
     switch ((gfx->words.w0) & 0xFF)
     {
-    case G_MW_NUMLIGHT:
-        dwNumLights = (gfx->words.w1)&0x7;
-        LOG_UCODE("    RSP_MOVE_WORD_NUMLIGHT: Val:%d", dwNumLights);
+       case G_MW_NUMLIGHT:
+          dwNumLights = (gfx->words.w1)&0x7;
+          LOG_UCODE("    RSP_MOVE_WORD_NUMLIGHT: Val:%d", dwNumLights);
 
-        gRSP.ambientLightIndex = dwNumLights;
-        SetNumLights(dwNumLights);
-        //gRSP.DKRBillBoard = (gfx->words.w1)&0x1 ? true : false;
-        gRSP.DKRBillBoard = (gfx->words.w1)&0x7 ? true : false;
+          gRSP.ambientLightIndex = dwNumLights;
+          SetNumLights(dwNumLights);
+          //gRSP.DKRBillBoard = (gfx->words.w1)&0x1 ? true : false;
+          gRSP.DKRBillBoard = (gfx->words.w1)&0x7 ? true : false;
 
-        LOG_UCODE("    gRSP.DKRBillBoard = %d", gRSP.DKRBillBoard);
-        DEBUGGER_PAUSE_AND_DUMP_COUNT_N(NEXT_MATRIX_CMD, {DebuggerAppendMsg("DKR Moveword, select gRSP.DKRBillBoard %s, cmd0=%08X, cmd1=%08X", gRSP.DKRBillBoard?"true":"false", (gfx->words.w0), (gfx->words.w1));});
-        break;
-    case G_MW_LIGHTCOL:
-        gRSP.DKRCMatrixIndex = ((gfx->words.w1)>>6)&7;
-        //gRSP.DKRCMatrixIndex = ((gfx->words.w1)>>6)&3;
-        LOG_UCODE("    gRSP.DKRCMatrixIndex = %d", gRSP.DKRCMatrixIndex);
-        DEBUGGER_PAUSE_AND_DUMP_COUNT_N(NEXT_MATRIX_CMD, {DebuggerAppendMsg("DKR Moveword, select matrix %d, cmd0=%08X, cmd1=%08X", gRSP.DKRCMatrixIndex, (gfx->words.w0), (gfx->words.w1));});
-        break;
-    default:
-        RSP_GBI1_MoveWord(gfx);
-        break;
+          LOG_UCODE("    gRSP.DKRBillBoard = %d", gRSP.DKRBillBoard);
+          DEBUGGER_PAUSE_AND_DUMP_COUNT_N(NEXT_MATRIX_CMD, {DebuggerAppendMsg("DKR Moveword, select gRSP.DKRBillBoard %s, cmd0=%08X, cmd1=%08X", gRSP.DKRBillBoard?"true":"false", (gfx->words.w0), (gfx->words.w1));});
+          break;
+       case G_MW_LIGHTCOL:
+          gRSP.DKRCMatrixIndex = ((gfx->words.w1)>>6)&7;
+          //gRSP.DKRCMatrixIndex = ((gfx->words.w1)>>6)&3;
+          LOG_UCODE("    gRSP.DKRCMatrixIndex = %d", gRSP.DKRCMatrixIndex);
+          DEBUGGER_PAUSE_AND_DUMP_COUNT_N(NEXT_MATRIX_CMD, {DebuggerAppendMsg("DKR Moveword, select matrix %d, cmd0=%08X, cmd1=%08X", gRSP.DKRCMatrixIndex, (gfx->words.w0), (gfx->words.w1));});
+          break;
+       default:
+          RSP_GBI1_MoveWord(gfx);
+          break;
     }
 }
 
+void ricegSPCIVertex(uint32_t v, uint32_t n, uint32_t v0);
+
+void ricegSPDMATriangles( uint32_t tris, uint32_t n )
+{
+   bool bTrisAdded     = false;
+   uint32_t *rdram_u32 = (uint32_t*)gfx_info.RDRAM;
+   uint32_t dwAddr     = RSPSegmentAddr((tris));
+   uint32_t * pData    = (uint32_t*)&rdram_u32[dwAddr/4];
+
+   if( dwAddr+ 16 * n >= g_dwRamSize )
+   {
+      TRACE0("DMATRI invalid memory pointer");
+      return;
+   }
+
+   TRI_DUMP(TRACE2("DMATRI, addr=%08X, Cmd0=%08X\n", dwAddr, (gfx->words.w0)));
+
+   status.primitiveType = PRIM_DMA_TRI;
+
+   for (uint32_t i = 0; i < n; i++)
+   {
+      LOG_UCODE("    0x%08x: %08x %08x %08x %08x", dwAddr + i*16,
+            pData[0], pData[1], pData[2], pData[3]);
+
+      uint32_t dwInfo = pData[0];
+
+      uint32_t dwV0 = (dwInfo >> 16) & 0x1F;
+      uint32_t dwV1 = (dwInfo >>  8) & 0x1F;
+      uint32_t dwV2 = (dwInfo      ) & 0x1F;
+
+      TRI_DUMP(TRACE5("DMATRI: %d, %d, %d (%08X-%08X)", dwV0,dwV1,dwV2,(gfx->words.w0),(tris)));
+
+      //if (IsTriangleVisible(dwV0, dwV1, dwV2))
+      {
+         DEBUG_DUMP_VERTEXES("DmaTri", dwV0, dwV1, dwV2);
+         LOG_UCODE("   Tri: %d,%d,%d", dwV0, dwV1, dwV2);
+         if (!bTrisAdded )//&& CRender::g_pRender->IsTextureEnabled())
+         {
+            PrepareTextures();
+            InitVertexTextureConstants();
+         }
+
+         // Generate texture coordinates
+         short s0 = ((short)(pData[1]>>16));
+         short t0 = ((short)(pData[1]&0xFFFF));
+         short s1 = ((short)(pData[2]>>16));
+         short t1 = ((short)(pData[2]&0xFFFF));
+         short s2 = ((short)(pData[3]>>16));
+         short t2 = ((short)(pData[3]&0xFFFF));
+
+         TRI_DUMP( 
+               {
+               DebuggerAppendMsg(" (%d,%d), (%d,%d), (%d,%d)",s0,t0,s1,t1,s2,t2);
+               DebuggerAppendMsg(" (%08X), (%08X), (%08X), (%08X)",pData[0],pData[1],pData[2],pData[3]);
+               });
+         CRender::g_pRender->SetVtxTextureCoord(dwV0, s0, t0);
+         CRender::g_pRender->SetVtxTextureCoord(dwV1, s1, t1);
+         CRender::g_pRender->SetVtxTextureCoord(dwV2, s2, t2);
+
+         if( !bTrisAdded )
+         {
+            CRender::g_pRender->SetCombinerAndBlender();
+         }
+
+         bTrisAdded = true;
+         PrepareTriangle(dwV0, dwV1, dwV2);
+      }
+
+      pData += 4;
+
+   }
+
+   if (bTrisAdded) 
+      CRender::g_pRender->DrawTriangles();
+}
 
 void RSP_DMA_Tri_DKR(Gfx *gfx)
 {
-    bool bTrisAdded = false;
-    uint32_t *rdram_u32 = (uint32_t*)gfx_info.RDRAM;
-    uint32_t dwAddr = RSPSegmentAddr((gfx->words.w1));
-    uint32_t flag = ((gfx->words.w0) & 0xFF0000) >> 16;
-    if (flag&1) 
-        CRender::g_pRender->SetCullMode(false,true);
-    else
-        CRender::g_pRender->SetCullMode(false,false);
+   uint32_t flag   = ((gfx->words.w0) & 0xFF0000) >> 16;
 
-    uint32_t dwNum = (((gfx->words.w0) &  0xFFF0) >>4 );
-    uint32_t * pData = (uint32_t*)&rdram_u32[dwAddr/4];
+   if (flag & 1) 
+      CRender::g_pRender->SetCullMode(false,true);
+   else
+      CRender::g_pRender->SetCullMode(false,false);
 
-    if( dwAddr+16*dwNum >= g_dwRamSize )
-    {
-        TRACE0("DMATRI invalid memory pointer");
-        return;
-    }
+   ricegSPDMATriangles(
+         gfx->words.w1,
+         (((gfx->words.w0) &  0xFFF0) >>4 )
+         );
 
-    TRI_DUMP(TRACE2("DMATRI, addr=%08X, Cmd0=%08X\n", dwAddr, (gfx->words.w0)));
-
-    status.primitiveType = PRIM_DMA_TRI;
-
-    for (uint32_t i = 0; i < dwNum; i++)
-    {
-        LOG_UCODE("    0x%08x: %08x %08x %08x %08x", dwAddr + i*16,
-            pData[0], pData[1], pData[2], pData[3]);
-
-        uint32_t dwInfo = pData[0];
-
-        uint32_t dwV0 = (dwInfo >> 16) & 0x1F;
-        uint32_t dwV1 = (dwInfo >>  8) & 0x1F;
-        uint32_t dwV2 = (dwInfo      ) & 0x1F;
-
-        TRI_DUMP(TRACE5("DMATRI: %d, %d, %d (%08X-%08X)", dwV0,dwV1,dwV2,(gfx->words.w0),(gfx->words.w1)));
-
-        //if (IsTriangleVisible(dwV0, dwV1, dwV2))
-        {
-            DEBUG_DUMP_VERTEXES("DmaTri", dwV0, dwV1, dwV2);
-            LOG_UCODE("   Tri: %d,%d,%d", dwV0, dwV1, dwV2);
-            if (!bTrisAdded )//&& CRender::g_pRender->IsTextureEnabled())
-            {
-                PrepareTextures();
-                InitVertexTextureConstants();
-            }
-
-            // Generate texture coordinates
-            short s0 = ((short)(pData[1]>>16));
-            short t0 = ((short)(pData[1]&0xFFFF));
-            short s1 = ((short)(pData[2]>>16));
-            short t1 = ((short)(pData[2]&0xFFFF));
-            short s2 = ((short)(pData[3]>>16));
-            short t2 = ((short)(pData[3]&0xFFFF));
-
-            TRI_DUMP( 
-            {
-                DebuggerAppendMsg(" (%d,%d), (%d,%d), (%d,%d)",s0,t0,s1,t1,s2,t2);
-                DebuggerAppendMsg(" (%08X), (%08X), (%08X), (%08X)",pData[0],pData[1],pData[2],pData[3]);
-            });
-            CRender::g_pRender->SetVtxTextureCoord(dwV0, s0, t0);
-            CRender::g_pRender->SetVtxTextureCoord(dwV1, s1, t1);
-            CRender::g_pRender->SetVtxTextureCoord(dwV2, s2, t2);
-
-            if( !bTrisAdded )
-            {
-                CRender::g_pRender->SetCombinerAndBlender();
-            }
-
-            bTrisAdded = true;
-            PrepareTriangle(dwV0, dwV1, dwV2);
-        }
-
-        pData += 4;
-
-    }
-
-    if (bTrisAdded) 
-    {
-        CRender::g_pRender->DrawTriangles();
-    }
-    gRSP.DKRVtxCount=0;
+   gRSP.DKRVtxCount=0;
 }
 
 uint32_t dwPDCIAddr = 0;
 
-void ricegSPCIVertex(uint32_t v, uint32_t n, uint32_t v0);
 
 void RSP_Vtx_PD(Gfx *gfx)
 {
