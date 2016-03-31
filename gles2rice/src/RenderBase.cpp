@@ -156,90 +156,7 @@ N64Light        gRSPn64lights[16];
 
 void (*ProcessVertexData)(uint32_t dwAddr, uint32_t dwV0, uint32_t dwNum)=NULL;
 
-/*
- *  
- */
-
-
-/*n.x = (g_normal.x * matWorld.m00) + (g_normal.y * matWorld.m10) + (g_normal.z * matWorld.m20);
-n.y = (g_normal.x * matWorld.m01) + (g_normal.y * matWorld.m11) + (g_normal.z * matWorld.m21);
-n.z = (g_normal.x * matWorld.m02) + (g_normal.y * matWorld.m12) + (g_normal.z * matWorld.m22);*/
-
-// Multiply (x,y,z,0) by matrix m, then normalize
-#if defined(__INTEL_COMPILER) && !defined(NO_ASM)
-#define Vec3TransformNormal(vec, m) __asm                   \
-{                                       \
-    __asm fld   dword ptr [vec + 0]     \
-    __asm fmul  dword ptr [m + 0]       \ /* x m00*/
-    __asm fld   dword ptr [vec + 0]     \
-    __asm fmul  dword ptr [m + 4]       \ /* x m01  x m00*/
-    __asm fld   dword ptr [vec + 0]     \
-    __asm fmul  dword ptr [m + 8]       \ /* x m02  x m01  x m00*/
-                                        \
-    __asm fld   dword ptr [vec + 4]     \
-    __asm fmul  dword ptr [m + 16]      \ /* y m10  x m02  x m01  x m00*/
-    __asm fld   dword ptr [vec + 4]     \
-    __asm fmul  dword ptr [m + 20]      \ /* y m11  y m10  x m02  x m01  x m00*/
-    __asm fld   dword ptr [vec + 4]     \
-    __asm fmul  dword ptr [m + 24]      \ /* y m12  y m11  y m10  x m02  x m01  x m00*/
-                                        \
-    __asm fxch  st(2)                   \ /* y m10  y m11  y m12  x m02  x m01  x m00*/
-    __asm faddp st(5), st(0)            \ /* y m11  y m12  x m02  x m01  (x m00 + y m10)*/
-    __asm faddp st(3), st(0)            \ /* y m12  x m02  (x m01 + ym11)  (x m00 + y m10)*/
-    __asm faddp st(1), st(0)            \ /* (x m02 + y m12) (x m01 + ym11)  (x m00 + y m10)*/
-                                        \
-    __asm fld   dword ptr [vec + 8]     \
-    __asm fmul  dword ptr [m + 32]      \ /* z m20  (x m02 + y m12) (x m01 + ym11)  (x m00 + y m10)*/
-    __asm fld   dword ptr [vec + 8]     \
-    __asm fmul  dword ptr [m + 36]      \ /* z m21  z m20  (x m02 + y m12) (x m01 + ym11)  (x m00 + y m10)*/
-    __asm fld   dword ptr [vec + 8]     \
-    __asm fmul  dword ptr [m + 40]      \ /* z m22  z m21  z m20  (x m02 + y m12) (x m01 + ym11)  (x m00 + y m10)*/
-                                        \
-    __asm fxch  st(2)                   \ /* z m20  z m21  z m22  (x m02 + y m12) (x m01 + ym11)  (x m00 + y m10)*/
-    __asm faddp st(5), st(0)            \ /* z m21  z m22  (x m02 + y m12) (x m01 + ym11)  (x m00 + y m10 + z m20)*/ 
-    __asm faddp st(3), st(0)            \ /* z m22  (x m02 + y m12) (x m01 + ym11 + z m21)  (x m00 + y m10 + z m20)*/
-    __asm faddp st(1), st(0)            \ /* (x m02 + y m12 + z m 22) (x m01 + ym11 + z m21)  (x m00 + y m10 + z m20)*/
-                                        \
-    __asm fxch  st(2)                   \ /* (x m00 + y m10 + z m20) (x m01 + ym11 + z m21) (x m02 + y m12 + z m 22) */
-                                        \
-    __asm fld1                          \ /* 1 x y z */
-    __asm fld   st(1)                   \ /* x 1 x y z */
-    __asm fmul  st(0),st(0)             \ /* xx 1 x y z */
-    __asm fld   st(3)                   \ /* y xx 1 x y z */
-    __asm fmul  st(0),st(0)             \ /* yy xx 1 x y z */
-    __asm fld   st(5)                   \ /* z yy xx 1 x y z */
-    __asm fmul  st(0),st(0)             \ /* zz yy xx 1 x y z */
-                                        \
-    __asm fxch  st(2)                   \ /* xx yy zz 1 x y z */
-                                        \
-    __asm faddp st(1),st(0)             \ /* (xx+yy) zz 1 x y z */
-    __asm faddp st(1),st(0)             \ /* (xx+yy+zz) 1 x y z */
-                                        \
-    __asm ftst                          \ /* Compare ST to 0  */
-    __asm fstsw ax                      \ /* Store FPU status word in a   */
-    __asm sahf                          \ /* Transfer ax to flags register */
-    __asm jz        l2                  \ /* Skip if length is zero   */
-                                        \
-    __asm fsqrt                         \ /* l 1 x y z */
-                                        \
-    __asm fdivp st(1),st(0)             \ /* (1/l) x y z */
-                                        \
-    __asm fmul  st(3),st(0)             \ /* f x y fz */
-    __asm fmul  st(2),st(0)             \ /* f x fy fz */
-    __asm fmulp st(1),st(0)             \ /* fx fy fz */
-                                        \
-    __asm fstp  dword ptr [vec + 0]     \ /* fy fz*/
-    __asm fstp  dword ptr [vec + 4]     \ /* fz   */
-    __asm fstp  dword ptr [vec + 8]     \ /* done */
-    __asm jmp   l3                      \
-__asm l2:                               \
-    __asm mov dword ptr [vec + 0], 0    \
-    __asm mov dword ptr [vec + 4], 0    \
-    __asm mov dword ptr [vec + 8], 0    \
-__asm l3:                               \
-}                                       \
-
-#else  // use C code in other cases, this is probably faster anyway
+/* Multiply (x,y,z,0) by matrix m, then normalize */
 #define Vec3TransformNormal(vec, m) \
    VECTOR3 temp; \
    temp.x = (vec.x * m._11) + (vec.y * m._21) + (vec.z * m._31); \
@@ -248,8 +165,6 @@ __asm l3:                               \
    float norm = sqrt(temp.x*temp.x+temp.y*temp.y+temp.z*temp.z); \
    if (norm == 0.0) { vec.x = 0.0; vec.y = 0.0; vec.z = 0.0;} else \
    { vec.x = temp.x/norm; vec.y = temp.y/norm; vec.z = temp.z/norm; }
-#endif
-
 
 float real255 = 255.0f;
 float real128 = 128.0f;
@@ -1777,13 +1692,9 @@ void LogTextureCoords(float fTex0S, float fTex0T, float fTex1S, float fTex1T)
 bool CheckTextureCoords(int tex)
 {
     if( tex==0 )
-    {
         return validS0&&validT0;
-    }
-    else
-    {
-        return validS1&&validT1;
-    }
+
+    return validS1&&validT1;
 }
 
 void ResetTextureCoordsLog(float maxs0, float maxt0, float maxs1, float maxt1)
@@ -1798,15 +1709,11 @@ void ResetTextureCoordsLog(float maxs0, float maxt0, float maxs1, float maxt1)
 
 void ForceMainTextureIndex(int dwTile) 
 {
-    if( dwTile == 1 && !(CRender::g_pRender->IsTexel0Enable()) && CRender::g_pRender->IsTexel1Enable() )
-    {
-        // Hack
-        gRSP.curTile = 0;
-    }
-    else
-    {
-        gRSP.curTile = dwTile;
-    }
+   // Hack
+   if( dwTile == 1 && !(CRender::g_pRender->IsTexel0Enable()) && CRender::g_pRender->IsTexel1Enable() )
+      gRSP.curTile = 0;
+   else
+      gRSP.curTile = dwTile;
 }
 
 float HackZ2(float z)
@@ -1846,9 +1753,7 @@ void HackZAll()
     if( CDeviceBuilder::m_deviceGeneralType == DIRECTX_DEVICE )
     {
         for( uint32_t i=0; i<gRSP.numVertices; i++)
-        {
             g_vtxBuffer[i].z = HackZ(g_vtxBuffer[i].z);
-        }
     }
     else
     {

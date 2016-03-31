@@ -87,13 +87,9 @@ void CRender::LoadFrameBuffer(bool useVIreg, uint32_t left, uint32_t top, uint32
         }
 
         if( gti.Size == TXT_SIZE_4b )
-        {
             gti.Pitch = g_CI.dwWidth >> 1;
-        }
         else
-        {
             gti.Pitch = g_CI.dwWidth << (gti.Size-1);
-        }
     }
 
 

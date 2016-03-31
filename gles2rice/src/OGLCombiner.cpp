@@ -71,14 +71,10 @@ bool COGLColorCombiner::Initialize(void)
 
     COGLGraphicsContext *pcontext = (COGLGraphicsContext *)(CGraphicsContext::g_pGraphicsContext);
     if( pcontext->IsExtensionSupported(OSAL_GL_ARB_TEXTURE_ENV_ADD) || pcontext->IsExtensionSupported("GL_EXT_texture_env_add") )
-    {
         m_bSupportAdd = true;
-    }
 
     if( pcontext->IsExtensionSupported("GL_EXT_blend_subtract") )
-    {
         m_bSupportSubtract = true;
-    }
 
     return true;
 }
@@ -99,12 +95,6 @@ void COGLColorCombiner::DisableCombiner(void)
             glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
             m_pOGLRender->SetAllTexelRepeatFlag();
         }
-#ifdef DEBUGGER
-        else
-        {
-            DebuggerAppendMsg("Check me, texture is NULL but it is enabled");
-        }
-#endif
     }
     else
     {
@@ -123,12 +113,6 @@ void COGLColorCombiner::InitCombinerCycleCopy(void)
         m_pOGLRender->BindTexture(pTexture->m_dwTextureName, 0);
         m_pOGLRender->SetTexelRepeatFlags(gRSP.curTile);
     }
-#ifdef DEBUGGER
-    else
-    {
-        DebuggerAppendMsg("Check me, texture is NULL");
-    }
-#endif
 
     glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
 }

@@ -437,10 +437,8 @@ uint8_t CIFindIndex(uint16_t val)
 {
     for (int i=0; i<=0xFF; i++)
     {
-        if (val == g_wRDPTlut[i])
-        {
-            return (uint8_t)i;
-        }
+       if (val == g_wRDPTlut[i])
+          return (uint8_t)i;
     }
 
     return 0;
@@ -564,23 +562,15 @@ uint32_t CalculateRDRAMCRC(void *pPhysicalAddress, uint32_t left, uint32_t top, 
         uint32_t realWidthInDWORD = dwAsmdwBytesPerLine>>2;
         uint32_t xinc = realWidthInDWORD / FAST_CRC_CHECKING_INC_X;   
         if (xinc < FAST_CRC_MIN_X_INC)
-        {
             xinc = MIN(FAST_CRC_MIN_X_INC, width);
-        }
         if (xinc > FAST_CRC_MAX_X_INC)
-        {
             xinc = FAST_CRC_MAX_X_INC;
-        }
 
         uint32_t yinc = height / FAST_CRC_CHECKING_INC_Y; 
         if (yinc < FAST_CRC_MIN_Y_INC) 
-        {
             yinc = MIN(FAST_CRC_MIN_Y_INC, height);
-        }
         if (yinc > FAST_CRC_MAX_Y_INC)
-        {
             yinc = FAST_CRC_MAX_Y_INC;
-        }
 
         uint32_t pitch = pitchInBytes>>2;
         register uint32_t *pStart = (uint32_t*)(pPhysicalAddress);

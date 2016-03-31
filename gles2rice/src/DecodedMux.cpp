@@ -1424,31 +1424,21 @@ void DecodedMux::To_AB_Add_C_Format(void)   // Use by ATI Radeon
 void DecodedMux::CheckCombineInCycle1(void)
 {
     if (IsUsedInCycle(MUX_COMBINED, 0, COLOR_CHANNEL, MUX_MASK))
-    {
         ReplaceVal(MUX_COMBINED, MUX_SHADE, 0, MUX_MASK);
-    }
 
     if (IsUsedInCycle(MUX_COMBALPHA, 0, COLOR_CHANNEL, MUX_MASK))
-    {
         ReplaceVal(MUX_COMBALPHA, MUX_SHADE|MUX_ALPHAREPLICATE, 0, MUX_MASK);
-    }
 
     if (IsUsedInCycle(MUX_COMBINED, 0, ALPHA_CHANNEL, MUX_MASK))
     {
         if (cA0 == MUX_COMBINED && cRGB0 == MUX_LODFRAC && bRGB0 == dRGB0 && bA0 == dA0)
-        {
             cA0 = MUX_LODFRAC;
-        }
         else
-        {
             ReplaceVal(MUX_COMBINED, MUX_SHADE, 1, MUX_MASK);
-        }
     }
 
     if (IsUsedInCycle(MUX_COMBALPHA, 0, ALPHA_CHANNEL, MUX_MASK))
-    {
         ReplaceVal(MUX_COMBALPHA, MUX_SHADE, 1, MUX_MASK);
-    }
 }
 
 void DecodedMux::SplitComplexStages()
@@ -1538,16 +1528,12 @@ void DecodedMux::Hack(void)
     if( options.enableHackForGames == HACK_FOR_TONYHAWK )
     {
         if( gRSP.curTile == 1 )
-        {
             ReplaceVal(MUX_TEXEL1, MUX_TEXEL0, -1, MUX_MASK);
-        }
     }
     else if( options.enableHackForGames == HACK_FOR_ZELDA || options.enableHackForGames == HACK_FOR_ZELDA_MM)
     {
         if( m_dwMux1 == 0xfffd9238 && m_dwMux0 == 0x00ffadff )
-        {
             ReplaceVal(MUX_TEXEL1, MUX_TEXEL0, -1, MUX_MASK);
-        }
         else if( m_dwMux1 == 0xff5bfff8 && m_dwMux0 == 0x00121603 )
         {
             // The Zelda road trace

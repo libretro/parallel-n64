@@ -149,10 +149,13 @@ void OGLRender::ZBufferEnable(bool bZBuffer)
 
 void OGLRender::ClearBuffer(bool cbuffer, bool zbuffer)
 {
-    uint32_t flag=0;
-    if( cbuffer )   flag |= GL_COLOR_BUFFER_BIT;
-    if( zbuffer )   flag |= GL_DEPTH_BUFFER_BIT;
-    float depth = ((gRDP.originalFillColor&0xFFFF)>>2)/(float)0x3FFF;
+    uint32_t flag = 0;
+    float depth   = ((gRDP.originalFillColor&0xFFFF)>>2)/(float)0x3FFF;
+
+    if( cbuffer )
+       flag |= GL_COLOR_BUFFER_BIT;
+    if( zbuffer )
+       flag |= GL_DEPTH_BUFFER_BIT;
     glClearDepth(depth);
     glClear(flag);
 }
@@ -655,9 +658,7 @@ COLOR OGLRender::PostProcessDiffuseColor(COLOR curDiffuseColor)
     if( colorflag+alphaflag != MUX_0 )
     {
         if( (colorflag & 0xFFFFFF00) == 0 && (alphaflag & 0xFFFFFF00) == 0 )
-        {
             color = (m_pColorCombiner->GetConstFactor(colorflag, alphaflag, curDiffuseColor));
-        }
         else
             color = (CalculateConstFactor(colorflag, alphaflag, curDiffuseColor));
     }
@@ -724,14 +725,10 @@ void OGLRender::EnableTexUnit(int unitno, bool flag)
 {
 #ifdef DEBUGGER
     if( unitno != 0 )
-    {
         DebuggerAppendMsg("Check me, in the base OpenGL render, unitno!=0");
-    }
 #endif
     if( m_texUnitEnabled[0] != flag )
-    {
         m_texUnitEnabled[0] = flag;
-    }
 }
 
 void OGLRender::TexCoord2f(float u, float v)

@@ -124,16 +124,14 @@ void COGLGraphicsContext::InitOGLExtension(void)
 
 bool COGLGraphicsContext::IsExtensionSupported(const char* pExtName)
 {
-    if (strstr((const char*)m_pExtensionStr, pExtName) != NULL)
-    {
-        DebugMessage(M64MSG_VERBOSE, "OpenGL Extension '%s' is supported.", pExtName);
-        return true;
-    }
-    else
-    {
-        DebugMessage(M64MSG_VERBOSE, "OpenGL Extension '%s' is NOT supported.", pExtName);
-        return false;
-    }
+   if (strstr((const char*)m_pExtensionStr, pExtName) != NULL)
+   {
+      DebugMessage(M64MSG_VERBOSE, "OpenGL Extension '%s' is supported.", pExtName);
+      return true;
+   }
+
+   DebugMessage(M64MSG_VERBOSE, "OpenGL Extension '%s' is NOT supported.", pExtName);
+   return false;
 }
 
 void COGLGraphicsContext::CleanUp()
@@ -143,14 +141,17 @@ void COGLGraphicsContext::CleanUp()
 
 void COGLGraphicsContext::Clear(ClearFlag dwFlags, uint32_t color, float depth)
 {
-    uint32_t flag=0;
-    if (dwFlags & CLEAR_COLOR_BUFFER) flag |= GL_COLOR_BUFFER_BIT;
-    if (dwFlags & CLEAR_DEPTH_BUFFER) flag |= GL_DEPTH_BUFFER_BIT;
+    uint32_t flag = 0;
+    float r       = ((color>>16)&0xFF)/255.0f;
+    float g       = ((color>> 8)&0xFF)/255.0f;
+    float b       = ((color    )&0xFF)/255.0f;
+    float a       = ((color>>24)&0xFF)/255.0f;
 
-    float r = ((color>>16)&0xFF)/255.0f;
-    float g = ((color>> 8)&0xFF)/255.0f;
-    float b = ((color    )&0xFF)/255.0f;
-    float a = ((color>>24)&0xFF)/255.0f;
+    if (dwFlags & CLEAR_COLOR_BUFFER)
+       flag |= GL_COLOR_BUFFER_BIT;
+    if (dwFlags & CLEAR_DEPTH_BUFFER)
+       flag |= GL_DEPTH_BUFFER_BIT;
+
     glClearColor(r, g, b, a);
     glClearDepth(depth);
     glClear(flag);  //Clear color buffer and depth buffer
@@ -171,13 +172,9 @@ void COGLGraphicsContext::UpdateFrame(bool swapOnly)
     glDepthMask(GL_TRUE);
     glClearDepth(1.0f);
     if (!g_curRomInfo.bForceScreenClear)
-    {
         glClear(GL_DEPTH_BUFFER_BIT);
-    }
     else
-    {
         needCleanScene = true;
-    }
 
     status.bScreenIsDrawn = false;
 }
