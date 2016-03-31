@@ -162,9 +162,6 @@ inline uint16_t Convert555To565(uint16_t w555)
     return PAL8toRGB565(red, grn, blu, 0);
 }
 
-#define R4G4B4A4_MAKE(r,g,b,a)  ((uint16_t)(((a) << 12) | ((r)<< 8) | ((g)<<4) | (b)))
-
-
 inline uint32_t Convert555ToRGBA(uint16_t w555)
 {
     uint32_t dwRed   = FiveToEight[(w555&RGBA5551_RedMask)  >> RGBA5551_RedShift];
@@ -181,7 +178,7 @@ inline uint16_t Convert555ToR4G4B4A4(uint16_t w555)
     uint8_t dwBlue  = ((w555&RGBA5551_BlueMask) >> RGBA5551_BlueShift)>>1;
     uint8_t dwAlpha =             (w555&RGBA5551_AlphaMask) ? 0xF : 0x0;
 
-    return R4G4B4A4_MAKE(dwRed, dwGreen, dwBlue, dwAlpha);
+    return PAL8toR4G4B4A4(dwRed, dwGreen, dwBlue, dwAlpha);
 }
 
 inline uint32_t ConvertIA4ToRGBA(uint8_t IA4)
@@ -195,7 +192,7 @@ inline uint16_t ConvertIA4ToR4G4B4A4(uint8_t IA4)
 {
     uint32_t I = ThreeToFour[(IA4 & 0x0F) >> 1];
     uint32_t A = OneToFour[(IA4 & 0x01)];     
-    return R4G4B4A4_MAKE(I, I, I, A);
+    return PAL8toR4G4B4A4(I, I, I, A);
 }
 inline uint32_t ConvertI4ToRGBA(uint8_t I4)
 {
@@ -220,7 +217,7 @@ inline uint16_t ConvertIA16ToR4G4B4A4(uint16_t wIA)
     uint16_t dwIntensity = (wIA >> 12) & 0x0F;
     uint16_t dwAlpha     = (wIA >> 4) & 0x0F;
 
-    return R4G4B4A4_MAKE(dwIntensity, dwIntensity, dwIntensity, dwAlpha);
+    return PAL8toR4G4B4A4(dwIntensity, dwIntensity, dwIntensity, dwAlpha);
 }
 
 extern int g_convk0,g_convk1,g_convk2,g_convk3,g_convk4,g_convk5;

@@ -95,6 +95,11 @@ static uint16_t YUVtoRGB565(uint8_t y, uint8_t u, uint8_t v)
          );
 }
 
+static INLINE uint16_t PAL8toR4G4B4A4(uint8_t r, uint8_t g, uint8_t b, uint8_t a)
+{
+   return (uint16_t)((a << 12) | (r << 8) | (g <<4) | (b));
+}
+
 static INLINE uint16_t PAL8toRGBA16(uint8_t r, uint8_t g, uint8_t b, uint8_t a)
 {
    return (uint16_t)(
