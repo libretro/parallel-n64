@@ -8,6 +8,16 @@
 extern "C" {
 #endif
 
+#define RGB565_RSHIFT      11
+#define RGB565_GSHIFT      5
+#define RGB565_BSHIFT      0
+
+#define RGB5551_RSHIFT     11
+#define RGB5551_GSHIFT     6
+#define RGB5551_BSHIFT     1
+#define RGB5551_ASHIFT     0
+
+
 union RGBA {
    struct {
       uint8_t r, g, b, a;
@@ -38,7 +48,11 @@ static INLINE uint16_t YUVtoRGBA16(uint8_t y, uint8_t u, uint8_t v)
    if (b < 0)
       b = 0;
 
-   return (uint16_t)(((uint16_t)(r) << 11) | ((uint16_t)(g) << 6) | ((uint16_t)(b) << 1) | 1);
+   return (uint16_t)(
+         ((uint16_t)(r) << RGB5551_RSHIFT) | 
+         ((uint16_t)(g) << RGB5551_GSHIFT) | 
+         ((uint16_t)(b) << RGB5551_BSHIFT) | 
+         1);
 }
 
 static INLINE uint32_t YUVtoRGBA8888(uint8_t y, uint8_t u, uint8_t v)
@@ -74,25 +88,31 @@ static uint16_t YUVtoRGB565(uint8_t y, uint8_t u, uint8_t v)
    if (r < 0) r = 0;
    if (g < 0) g = 0;
    if (b < 0) b = 0;
-   return(uint16_t)(((uint16_t)(r) << 11) |
-         ((uint16_t)(g) << 5) |
-         (uint16_t)(b) );
+   return(uint16_t)(
+         ((uint16_t)(r) << RGB565_RSHIFT) |
+         ((uint16_t)(g) << RGB565_GSHIFT) |
+         ((uint16_t)(b) << RGB565_BSHIFT )
+         );
 }
 
 static INLINE uint16_t PAL8toRGBA16(uint8_t r, uint8_t g, uint8_t b, uint8_t a)
 {
    return (uint16_t)(
-         ((uint16_t)(r >> 3) << 11) |
-         ((uint16_t)(g >> 3) << 6) |
-         ((uint16_t)(b >> 3) << 1) |
-         ((uint16_t)(a ) << 0));
+         ((uint16_t)(r >> 3) << RGB5551_RSHIFT) |
+         ((uint16_t)(g >> 3) << RGB5551_GSHIFT) |
+         ((uint16_t)(b >> 3) << RGB5551_BSHIFT) |
+         ((uint16_t)(a )     << 0));
 }
 
 static INLINE uint16_t RGBA32toRGBA16(uint32_t _c)
 {
    union RGBA c;
    c.raw = _c;
-   return ((c.r >> 3) << 11) | ((c.g >> 3) << 6) | ((c.b >> 3) << 1) | (c.a == 0 ? 0 : 1);
+   return (
+         (c.r  >> 3) << RGB5551_RSHIFT) | 
+         ((c.g >> 3) << RGB5551_GSHIFT) |
+         ((c.b >> 3) << RGB5551_BSHIFT) |
+         ((c.a == 0)  ? 0 : 1);
 }
 
 static INLINE uint8_t RGBA8toR8(uint8_t _c)
