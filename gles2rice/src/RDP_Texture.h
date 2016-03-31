@@ -823,7 +823,7 @@ TxtrCacheEntry* LoadTexture(uint32_t tileno)
 
     gti = tile; // Copy tile info to textureInfo entry
 
-    gti.TLutFmt = gRDP.otherMode.text_tlut <<RSP_SETOTHERMODE_SHIFT_TEXTLUT;
+    gti.TLutFmt = gRDP.otherMode.text_tlut << G_MDSFT_TEXTLUT;
     if (gti.Format == G_IM_FMT_CI && gti.TLutFmt == TLUT_FMT_NONE )
         gti.TLutFmt = TLUT_FMT_RGBA16;      // Force RGBA
 
@@ -937,7 +937,7 @@ void DLParser_LoadTLut(Gfx *gfx)
     uint32_t lrt = gfx->loadtile.th/4;
 
 #ifdef DEBUGGER
-    uint32_t dwTLutFmt = (gRDP.otherModeH >> RSP_SETOTHERMODE_SHIFT_TEXTLUT)&0x3;
+    uint32_t dwTLutFmt = (gRDP.otherModeH >> G_MDSFT_TEXTLUT)&0x3;
 #endif
     // Starting location in the palettes
     uint32_t dwTMEMOffset = gRDP.tiles[tileno].dwTMem - 256;  

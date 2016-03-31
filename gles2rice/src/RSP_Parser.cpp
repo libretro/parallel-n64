@@ -1058,8 +1058,8 @@ void DLParser_RDPSetOtherMode(Gfx *gfx)
     {
         gRDP.otherModeH = ((gfx->words.w0) & 0x0FFFFFFF);
 
-        uint32_t dwTextFilt  = (gRDP.otherModeH>>RSP_SETOTHERMODE_SHIFT_TEXTFILT)&0x3;
-        CRender::g_pRender->SetTextureFilter(dwTextFilt<<RSP_SETOTHERMODE_SHIFT_TEXTFILT);
+        uint32_t dwTextFilt  = (gRDP.otherModeH >> G_MDSFT_TEXTFILT)&0x3;
+        CRender::g_pRender->SetTextureFilter(dwTextFilt << G_MDSFT_TEXTFILT);
     }
 
     if( gRDP.otherModeL != (gfx->words.w1) )
