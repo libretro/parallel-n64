@@ -614,25 +614,24 @@ static void uc9_movemem(uint32_t w0, uint32_t w1)
 
       case GZM_VIEWPORT:
          {
-            int16_t scale_x, scale_y, scale_z, trans_x, trans_y, trans_z;
-            uint32_t a;
-            TILE *tmp_tile;
+            uint32_t      a = addr >> 1;
+            int16_t scale_x = ((int16_t*)gfx_info.RDRAM)[(a+0)^1] >> 2;
+            int16_t scale_y = ((int16_t*)gfx_info.RDRAM)[(a+1)^1] >> 2;
+            int16_t scale_z = ((int16_t*)gfx_info.RDRAM)[(a+2)^1];
+            int16_t trans_x = ((int16_t*)gfx_info.RDRAM)[(a+4)^1] >> 2;
+            int16_t trans_y = ((int16_t*)gfx_info.RDRAM)[(a+5)^1] >> 2;
+            int16_t trans_z = ((int16_t*)gfx_info.RDRAM)[(a+6)^1];
 
-            a = addr >> 1;
-            scale_x = ((int16_t*)gfx_info.RDRAM)[(a+0)^1] >> 2;
-            scale_y = ((int16_t*)gfx_info.RDRAM)[(a+1)^1] >> 2;
-            scale_z = ((int16_t*)gfx_info.RDRAM)[(a+2)^1];
             rdp.fog_multiplier = ((int16_t*)gfx_info.RDRAM)[(a+3)^1];
-            trans_x = ((int16_t*)gfx_info.RDRAM)[(a+4)^1] >> 2;
-            trans_y = ((int16_t*)gfx_info.RDRAM)[(a+5)^1] >> 2;
-            trans_z = ((int16_t*)gfx_info.RDRAM)[(a+6)^1];
             rdp.fog_offset = ((int16_t*)gfx_info.RDRAM)[(a+7)^1];
+
             rdp.view_scale[0] = scale_x * rdp.scale_x;
             rdp.view_scale[1] = scale_y * rdp.scale_y;
             rdp.view_scale[2] = 32.0f * scale_z;
             rdp.view_trans[0] = trans_x * rdp.scale_x;
             rdp.view_trans[1] = trans_y * rdp.scale_y;
             rdp.view_trans[2] = 32.0f * trans_z;
+
             zSortRdp.view_scale[0] = (float)(scale_x*4);
             zSortRdp.view_scale[1] = (float)(scale_y*4);
             zSortRdp.view_trans[0] = (float)(trans_x*4);
@@ -642,15 +641,13 @@ static void uc9_movemem(uint32_t w0, uint32_t w1)
 
             g_gdp.flags |= UPDATE_VIEWPORT;
 
-            rdp.mipmap_level = 0;
-            rdp.cur_tile = 0;
-
-            tmp_tile = (TILE*)&rdp.tiles[0];
-            tmp_tile->on = 1;
-            tmp_tile->org_s_scale = 0xFFFF;
-            tmp_tile->org_t_scale = 0xFFFF;
-            tmp_tile->s_scale = 0.031250f;
-            tmp_tile->t_scale = 0.031250f;
+            glide64gSPTexture(
+                  0xFFFF,     /* sc */
+                  0xFFFF,     /* tc */
+                  0,          /* level */
+                  0,          /* tile  */
+                  1           /* on */
+                  );
 
             rdp.geom_mode |= 0x0200;
 

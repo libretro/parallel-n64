@@ -534,10 +534,11 @@ void ZSort_MoveMem( uint32_t _w0, uint32_t _w1 )
             const float scale_x = _FIXED2FLOAT( *(int16_t*)&gfx_info.RDRAM[(a+0)^1], 2 );
             const float scale_y = _FIXED2FLOAT( *(int16_t*)&gfx_info.RDRAM[(a+1)^1], 2 );
             const float scale_z = _FIXED2FLOAT( *(int16_t*)&gfx_info.RDRAM[(a+2)^1], 10 );
-            gSP.fog.multiplier = ((int16_t*)gfx_info.RDRAM)[(a+3)^1];
             const float trans_x = _FIXED2FLOAT( *(int16_t*)&gfx_info.RDRAM[(a+4)^1], 2 );
             const float trans_y = _FIXED2FLOAT( *(int16_t*)&gfx_info.RDRAM[(a+5)^1], 2 );
             const float trans_z = _FIXED2FLOAT( *(int16_t*)&gfx_info.RDRAM[(a+6)^1], 10 );
+
+            gSP.fog.multiplier = ((int16_t*)gfx_info.RDRAM)[(a+3)^1];
             gSP.fog.offset = ((int16_t*)gfx_info.RDRAM)[(a+7)^1];
 
             gSP.viewport.vscale[0] = scale_x;
