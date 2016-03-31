@@ -11,6 +11,7 @@
 #endif
 
 #include <boolean.h>
+#include <retro_miscellaneous.h>
 
 #include "Common.h"
 #include "gles2N64.h"
@@ -150,8 +151,8 @@ static void _updateViewport(void)
    
    glViewport(X,
          Y + OGL_GetHeightOffset(),
-         max((GLint)(gSP.viewport.width * scaleX), 0),
-         max((GLint)(gSP.viewport.height * scaleY), 0));
+         MAX((GLint)(gSP.viewport.width * scaleX), 0),
+         MAX((GLint)(gSP.viewport.height * scaleY), 0));
 
 	gSP.changed &= ~CHANGED_VIEWPORT;
 }
@@ -194,8 +195,8 @@ static void _updateScissor(struct FrameBuffer *_pBuffer)
    glScissor(
          (GLint)(SX0 * scaleX),
          (GLint)((screenHeight - gDP.scissor.lry) * scaleY + heightOffset),
-         max((GLint)((SX1 - gDP.scissor.ulx) * scaleX), 0),
-         max((GLint)((gDP.scissor.lry - gDP.scissor.uly) * scaleY), 0)
+         MAX((GLint)((SX1 - gDP.scissor.ulx) * scaleX), 0),
+         MAX((GLint)((gDP.scissor.lry - gDP.scissor.uly) * scaleY), 0)
          );
 	gDP.changed &= ~CHANGED_SCISSOR;
 }

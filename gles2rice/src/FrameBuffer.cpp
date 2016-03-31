@@ -21,16 +21,14 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include <vector>
 
+#include <retro_miscellaneous.h>
+
 #include "ConvertImage.h"
 #include "DeviceBuilder.h"
 #include "FrameBuffer.h"
 #include "UcodeDefs.h"
 #include "RSP_Parser.h"
 #include "Render.h"
-
-#ifndef min
-#define min(a,b) ((a) < (b) ? (a) : (b))
-#endif
 
 extern TMEMLoadMapInfo g_tmemLoadAddrMap[0x200];    // Totally 4KB TMEM;
 
@@ -488,8 +486,8 @@ void TexRectToFrameBuffer_8b(uint32_t dwXL, uint32_t dwYL, uint32_t dwXH, uint32
     uint32_t dwLeft = dwXL;
     uint32_t dwTop = dwYL;
 
-    dwWidth = min(dwWidth, maxW-dwLeft);
-    dwHeight = min(dwHeight, maxH-dwTop);
+    dwWidth = MIN(dwWidth, maxW-dwLeft);
+    dwHeight = MIN(dwHeight, maxH-dwTop);
     
     if (maxH <= dwTop)
         return;
@@ -567,7 +565,7 @@ uint32_t CalculateRDRAMCRC(void *pPhysicalAddress, uint32_t left, uint32_t top, 
         uint32_t xinc = realWidthInDWORD / FAST_CRC_CHECKING_INC_X;   
         if (xinc < FAST_CRC_MIN_X_INC)
         {
-            xinc = min(FAST_CRC_MIN_X_INC, width);
+            xinc = MIN(FAST_CRC_MIN_X_INC, width);
         }
         if (xinc > FAST_CRC_MAX_X_INC)
         {
@@ -577,7 +575,7 @@ uint32_t CalculateRDRAMCRC(void *pPhysicalAddress, uint32_t left, uint32_t top, 
         uint32_t yinc = height / FAST_CRC_CHECKING_INC_Y; 
         if (yinc < FAST_CRC_MIN_Y_INC) 
         {
-            yinc = min(FAST_CRC_MIN_Y_INC, height);
+            yinc = MIN(FAST_CRC_MIN_Y_INC, height);
         }
         if (yinc > FAST_CRC_MAX_Y_INC)
         {

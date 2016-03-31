@@ -18,17 +18,12 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include <stdint.h>
 #include <algorithm>
 
+#include <retro_miscellaneous.h>
+
 #include "Combiner.h"
 #include "Config.h"
 #include "RenderBase.h"
 
-#ifndef min
-#define min(a,b) ((a) < (b) ? (a) : (b))
-#endif
-
-#ifndef max
-#define max(a,b) ((a) > (b) ? (a) : (b))
-#endif
 
 #define ALLOW_USE_TEXTURE_FOR_CONSTANTS
 
@@ -708,9 +703,9 @@ void DecodedMux::Reformat(bool do_complement)
         m_n64Combiners[3].d = MUX_COMBINED;
     }
     
-    signed cond3 = max(splitType[0], splitType[1]);
-    signed cond2 = max(cond3, splitType[2]);
-    mType = (CombinerFormatType)max(cond2,splitType[3]);
+    signed cond3 = MAX(splitType[0], splitType[1]);
+    signed cond2 = MAX(cond3, splitType[2]);
+    mType = (CombinerFormatType)MAX(cond2,splitType[3]);
 }
 
 const char* MuxGroupStr[4] =
@@ -818,7 +813,7 @@ int DecodedMux::CountTexels(void)
     for (int i=0; i<4; i++)
     {
         N64CombinerType &m = m_n64Combiners[i];
-        count = max(count, ::CountTexel1Cycle(m));
+        count = MAX(count, ::CountTexel1Cycle(m));
         if (count == 2) 
             break;
     }
@@ -1020,7 +1015,7 @@ void DecodedMux::UseShadeForConstant(void)
 
     bool forceToUsed = constants>m_maxConstants;
 
-    if (!IsUsedInColorChannel(MUX_SHADE, MUX_MASK) && (forceToUsed || max(splitType[0], splitType[2]) >= CM_FMT_TYPE_A_MOD_C_ADD_D))
+    if (!IsUsedInColorChannel(MUX_SHADE, MUX_MASK) && (forceToUsed || MAX(splitType[0], splitType[2]) >= CM_FMT_TYPE_A_MOD_C_ADD_D))
     {
         int countEnv = Count(MUX_ENV, N64Cycle0RGB, mask) + Count(MUX_ENV, N64Cycle1RGB, mask);
         int countPrim = Count(MUX_PRIM, N64Cycle0RGB, mask) + Count(MUX_PRIM, N64Cycle1RGB, mask);
@@ -1056,8 +1051,8 @@ void DecodedMux::UseShadeForConstant(void)
         int countEnv = Count(MUX_ENV|MUX_ALPHAREPLICATE, N64Cycle0RGB, mask) + Count(MUX_ENV|MUX_ALPHAREPLICATE, N64Cycle1RGB, mask);
         int countPrim = Count(MUX_PRIM|MUX_ALPHAREPLICATE, N64Cycle0RGB, mask) + Count(MUX_PRIM|MUX_ALPHAREPLICATE, N64Cycle1RGB, mask);
 
-        if (forceToUsed || max(splitType[1], splitType[3]) >= CM_FMT_TYPE_A_MOD_C_ADD_D ||
-            (max(splitType[0], splitType[2]) >= CM_FMT_TYPE_A_MOD_C_ADD_D && countEnv+countPrim > 0 ))
+        if (forceToUsed || MAX(splitType[1], splitType[3]) >= CM_FMT_TYPE_A_MOD_C_ADD_D ||
+            (MAX(splitType[0], splitType[2]) >= CM_FMT_TYPE_A_MOD_C_ADD_D && countEnv+countPrim > 0 ))
         {
             countEnv = Count(MUX_ENV, N64Cycle0Alpha, MUX_MASK) +
                        Count(MUX_ENV, N64Cycle1Alpha, MUX_MASK) +

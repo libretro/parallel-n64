@@ -3,6 +3,8 @@
 #include <string.h>
 #include <math.h>
 
+#include <retro_miscellaneous.h>
+
 #include "Common.h"
 #include "gles2N64.h"
 #include "N64.h"
@@ -64,7 +66,7 @@ void gln64gDPSetPrimDepth( uint16_t z, uint16_t dz )
 	if (gSP.viewport.vscale[2] == 0)
 		gDP.primDepth.z = _FIXED2FLOAT(_SHIFTR(z, 0, 15), 15);
 	else
-		gDP.primDepth.z = min(1.0f, max(-1.0f, (_FIXED2FLOAT(_SHIFTR(z, 0, 15), 15) - gSP.viewport.vtrans[2]) / gSP.viewport.vscale[2]));
+		gDP.primDepth.z = MIN(1.0f, MAX(-1.0f, (_FIXED2FLOAT(_SHIFTR(z, 0, 15), 15) - gSP.viewport.vtrans[2]) / gSP.viewport.vscale[2]));
 	gDP.primDepth.deltaZ = _FIXED2FLOAT(_SHIFTR(dz, 0, 15), 15);
 }
 
@@ -210,8 +212,8 @@ void gln64gDPSetColorImage( uint32_t format, uint32_t size, uint32_t width, uint
 		else if (width == gDP.scissor.lrx && width == gSP.viewport.width)
 #endif
       {
-			height = max(gDP.scissor.lry, gSP.viewport.height);
-			height = min(height, VI.height);
+			height = MAX(gDP.scissor.lry, gSP.viewport.height);
+			height = MIN(height, VI.height);
 		} else if (width == gDP.scissor.lrx)
 			height = gDP.scissor.lry;
 		else if (width <= 64)
@@ -588,8 +590,8 @@ void gln64gDPLoadTile(uint32_t tile, uint32_t uls, uint32_t ult, uint32_t lrs, u
 	info->texAddress = gDP.loadTile->imageAddress;
 	info->uls        = gDP.loadTile->uls;
 	info->ult        = gDP.loadTile->ult;
-	info->width      = gDP.loadTile->masks != 0 ? (uint16_t)min(width, 1U<<gDP.loadTile->masks) : (uint16_t)width;
-	info->height     = gDP.loadTile->maskt != 0 ? (uint16_t)min(height, 1U<<gDP.loadTile->maskt) : (uint16_t)height;
+	info->width      = gDP.loadTile->masks != 0 ? (uint16_t)MIN(width, 1U<<gDP.loadTile->masks) : (uint16_t)width;
+	info->height     = gDP.loadTile->maskt != 0 ? (uint16_t)MIN(height, 1U<<gDP.loadTile->maskt) : (uint16_t)height;
 	info->texWidth   = gDP.textureImage.width;
 	info->size       = gDP.textureImage.size;
 	info->loadType   = LOADTYPE_TILE;
@@ -834,10 +836,10 @@ void gln64gDPFillRDRAM(uint32_t address, int32_t ulx, int32_t uly, int32_t lrx, 
    }
 	if (scissor)
    {
-		ulx = min(max((float)ulx, gDP.scissor.ulx), gDP.scissor.lrx);
-		lrx = min(max((float)lrx, gDP.scissor.ulx), gDP.scissor.lrx);
-		uly = min(max((float)uly, gDP.scissor.uly), gDP.scissor.lry);
-		lry = min(max((float)lry, gDP.scissor.uly), gDP.scissor.lry);
+		ulx = MIN(MAX((float)ulx, gDP.scissor.ulx), gDP.scissor.lrx);
+		lrx = MIN(MAX((float)lrx, gDP.scissor.ulx), gDP.scissor.lrx);
+		uly = MIN(MAX((float)uly, gDP.scissor.uly), gDP.scissor.lry);
+		lry = MIN(MAX((float)lry, gDP.scissor.uly), gDP.scissor.lry);
 	}
 	stride = width << size >> 1;
 	lowerBound = address + lry*stride;
@@ -929,12 +931,12 @@ void gln64gDPFillRectangle( int32_t ulx, int32_t uly, int32_t lrx, int32_t lry )
    if (gDP.otherMode.cycleType == G_CYC_FILL)
    {
       if (lry > (uint32_t)gDP.scissor.lry)
-         gDP.colorImage.height = (uint32_t)max( gDP.colorImage.height, (unsigned int)gDP.scissor.lry );
+         gDP.colorImage.height = (uint32_t)MAX( gDP.colorImage.height, (unsigned int)gDP.scissor.lry );
       else
-         gDP.colorImage.height = (uint32_t)max((int32_t)gDP.colorImage.height, lry);
+         gDP.colorImage.height = (uint32_t)MAX((int32_t)gDP.colorImage.height, lry);
    }
    else
-      gDP.colorImage.height = max( gDP.colorImage.height, (unsigned int)lry );
+      gDP.colorImage.height = MAX( gDP.colorImage.height, (unsigned int)lry );
 }
 
 void gln64gDPSetConvert( int32_t k0, int32_t k1, int32_t k2, int32_t k3, int32_t k4, int32_t k5 )
@@ -982,7 +984,7 @@ void gln64gDPTextureRectangle( float ulx, float uly, float lrx, float lry, int32
       lrx += 1.0f;
       lry += 1.0f;
    }
-	lry = max(lry, uly + 1.0f);
+	lry = MAX(lry, uly + 1.0f);
 
 	textureTileOrg[0] = gSP.textureTile[0];
 	textureTileOrg[1] = gSP.textureTile[1];
@@ -1010,8 +1012,8 @@ void gln64gDPTextureRectangle( float ulx, float uly, float lrx, float lry, int32
       lrt = t + (lry - uly - 1) * dtdy;
    }
 
-   gDP.texRect.width = (unsigned int)(max( lrs, s ) + dsdx);
-   gDP.texRect.height = (unsigned int)(max( lrt, t ) + dtdy);
+   gDP.texRect.width = (unsigned int)(MAX( lrs, s ) + dsdx);
+   gDP.texRect.height = (unsigned int)(MAX( lrt, t ) + dtdy);
 
    params.ulx  = ulx;
    params.uly  = uly;
@@ -1035,9 +1037,9 @@ void gln64gDPTextureRectangle( float ulx, float uly, float lrx, float lry, int32
 	frameBufferList().setBufferChanged();
 #endif
    if (gDP.colorImage.width < 64)
-		gDP.colorImage.height = (uint32_t)max( (float)gDP.colorImage.height, lry );
+		gDP.colorImage.height = (uint32_t)MAX( (float)gDP.colorImage.height, lry );
    else
-      gDP.colorImage.height = (unsigned int)(max( gDP.colorImage.height, gDP.scissor.lry ));
+      gDP.colorImage.height = (unsigned int)(MAX( gDP.colorImage.height, gDP.scissor.lry ));
 }
 
 void gln64gDPTextureRectangleFlip( float ulx, float uly, float lrx, float lry, int32_t tile, float s, float t, float dsdx, float dtdy )

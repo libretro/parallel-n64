@@ -1,6 +1,8 @@
-#include <time.h>
 #include <stdlib.h>
 #include <memory.h>
+#include <time.h>
+
+#include <retro_miscellaneous.h>
 
 #include "Common.h"
 #include "Config.h"
@@ -622,7 +624,7 @@ static void _calcTileSizes(uint32_t _t, struct TileSizes *_sizes, gDPTile * _pLo
 
 
    lineWidth = pTile->line << loadParams->lineShift;
-   lineHeight = lineWidth != 0 ? min(maxTexels / lineWidth, tileHeight) : 0;
+   lineHeight = lineWidth != 0 ? MIN(maxTexels / lineWidth, tileHeight) : 0;
 
    maskWidth = 1 << pTile->masks;
    maskHeight = 1 << pTile->maskt;
@@ -632,7 +634,7 @@ static void _calcTileSizes(uint32_t _t, struct TileSizes *_sizes, gDPTile * _pLo
       if (pTile->masks && ((maskWidth * maskHeight) <= maxTexels))
          width = maskWidth; // Use mask width if set and valid
       else {
-         width = min(info->width, info->texWidth);
+         width = MIN(info->width, info->texWidth);
          if (info->size > pTile->size)
             width <<= info->size - pTile->size;
       }
@@ -740,12 +742,12 @@ static void _loadBackground( CachedTexture *pTexture )
 
 	j = 0;
 	for (y = 0; y < pTexture->realHeight; y++) {
-		ty = min(y, (uint32_t)clampTClamp);
+		ty = MIN(y, (uint32_t)clampTClamp);
 
 		pSrc = &pSwapped[bpl * ty];
 
 		for (x = 0; x < pTexture->realWidth; x++) {
-			tx = min(x, (uint32_t)clampSClamp);
+			tx = MIN(x, (uint32_t)clampSClamp);
 
 			if (glInternalFormat == GL_RGBA)
 				((uint32_t*)pDest)[j++] = GetTexel((uint64_t*)pSrc, tx, 0, pTexture->palette);
@@ -789,7 +791,7 @@ static INLINE void TextureCache_getTextureDestData(CachedTexture *tmptex, uint32
       maskSMask = (1 << tmptex->maskS) - 1;
       mirrorSBit = (tmptex->mirrorS != 0 || tmptex->realWidth/ tmptex->width == 2) ? 1 << tmptex->maskS : 0;
    } else {
-      clampSClamp = min(tmptex->clampWidth, tmptex->width) - 1;
+      clampSClamp = MIN(tmptex->clampWidth, tmptex->width) - 1;
       maskSMask = 0xFFFF;
       mirrorSBit = 0x0000;
    }
@@ -799,7 +801,7 @@ static INLINE void TextureCache_getTextureDestData(CachedTexture *tmptex, uint32
       maskTMask = (1 << tmptex->maskT) - 1;
       mirrorTBit = (tmptex->mirrorT != 0 || tmptex->realHeight / tmptex->height == 2) ? 1 << tmptex->maskT : 0;
    } else {
-      clampTClamp = min(tmptex->clampHeight, tmptex->height) - 1;
+      clampTClamp = MIN(tmptex->clampHeight, tmptex->height) - 1;
       maskTMask = 0xFFFF;
       mirrorTBit = 0x0000;
    }
@@ -824,7 +826,7 @@ static INLINE void TextureCache_getTextureDestData(CachedTexture *tmptex, uint32
       j = 0;
       for (y = 0; y < tmptex->realHeight; ++y) {
 		  uint32_t tline, xorval;
-         ty = min(y, clampTClamp) & maskTMask;
+         ty = MIN(y, clampTClamp) & maskTMask;
          if (y & mirrorTBit)
             ty ^= maskTMask;
 
@@ -833,7 +835,7 @@ static INLINE void TextureCache_getTextureDestData(CachedTexture *tmptex, uint32
 
          for (x = 0; x < tmptex->realWidth; ++x) {
 			 uint32_t taddr;
-            tx = min(x, clampSClamp) & maskSMask;
+            tx = MIN(x, clampSClamp) & maskSMask;
             if (x & mirrorSBit)
                tx ^= maskSMask;
 
@@ -860,7 +862,7 @@ static INLINE void TextureCache_getTextureDestData(CachedTexture *tmptex, uint32
       j = 0;
       const uint32_t tMemMask = gDP.otherMode.textureLUT == G_TT_NONE ? 0x1FF : 0xFF;
       for (y = 0; y < tmptex->realHeight; ++y) {
-         ty = min(y, clampTClamp) & maskTMask;
+         ty = MIN(y, clampTClamp) & maskTMask;
 
          if (y & mirrorTBit)
             ty ^= maskTMask;
@@ -869,7 +871,7 @@ static INLINE void TextureCache_getTextureDestData(CachedTexture *tmptex, uint32
 
          i = (ty & 1) << 1;
          for (x = 0; x < tmptex->realWidth; ++x) {
-            tx = min(x, clampSClamp) & maskSMask;
+            tx = MIN(x, clampSClamp) & maskSMask;
 
             if (x & mirrorSBit)
                tx ^= maskSMask;

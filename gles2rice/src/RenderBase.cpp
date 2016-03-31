@@ -21,19 +21,13 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include <math.h>
 #include <vector>
 
+#include <retro_miscellaneous.h>
+
 #include "osal_preproc.h"
 #include "float.h"
 #include "DeviceBuilder.h"
 #include "Render.h"
 #include "Timing.h"
-
-#ifndef min
-#define min(a,b) ((a) < (b) ? (a) : (b))
-#endif
-
-#ifndef max
-#define max(a,b) ((a) > (b) ? (a) : (b))
-#endif
 
 extern FiddledVtx * g_pVtxBase;
 
@@ -390,7 +384,7 @@ void SetFogMinMax(float fMin, float fMax, float fMul, float fOffset)
     }
 
     {
-        gRSPfFogMin = max(0,fMin/500-1);
+        gRSPfFogMin = MAX(0,fMin/500-1);
         gRSPfFogMax = fMax/500-1;
     }
 
@@ -706,7 +700,7 @@ uint32_t LightVert(XVECTOR4 & norm, int vidx)
                 {
                     //float f = d2/gRSPlights[l].range*50;
                     float f = d2/15000*50;
-                    f = 1 - min(f,1);
+                    f = 1 - MIN(f,1);
                     fCosT *= f*f;
 
                     r += gRSPlights[l].fr * fCosT;

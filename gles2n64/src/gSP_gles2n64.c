@@ -1,7 +1,9 @@
-#include <assert.h>
-#include <math.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <assert.h>
+#include <math.h>
+
+#include <retro_miscellaneous.h>
 
 #include "Common.h"
 #include "gles2N64.h"
@@ -97,7 +99,7 @@ void gln64gSPTriangle(int32_t v0, int32_t v1, int32_t v2)
    }
 
    if (depthBuffer.current) depthBuffer.current->cleared = false;
-   gDP.colorImage.height = (uint32_t)(max( gDP.colorImage.height, (uint32_t)gDP.scissor.lry ));
+   gDP.colorImage.height = (uint32_t)(MAX( gDP.colorImage.height, (uint32_t)gDP.scissor.lry ));
 }
 
 void gln64gSP1Triangle( int32_t v0, int32_t v1, int32_t v2, int flags)
@@ -162,9 +164,9 @@ static void gln64gSPLightVertex_default(void *data)
          _vtx->b += gSP.lights[i].b * intensity;
       }
 
-      _vtx->r = min(1.0f, _vtx->r);
-      _vtx->g = min(1.0f, _vtx->g);
-      _vtx->b = min(1.0f, _vtx->b);
+      _vtx->r = MIN(1.0f, _vtx->r);
+      _vtx->g = MIN(1.0f, _vtx->g);
+      _vtx->b = MIN(1.0f, _vtx->b);
    }
    else
    {
@@ -237,9 +239,9 @@ static void gln64gSPLightVertex_CBFD(void *data)
       b += light->b * intensity;
    }
 
-	r = min(1.0f, r);
-	g = min(1.0f, g);
-	b = min(1.0f, b);
+	r = MIN(1.0f, r);
+	g = MIN(1.0f, g);
+	b = MIN(1.0f, b);
 
 	_vtx->r *= r;
 	_vtx->g *= g;
@@ -293,9 +295,9 @@ static void gln64gSPPointLightVertex_CBFD(void *data, float * _vPos)
 		b += light->b * intensity;
 	}
 
-	r = min(1.0f, r);
-	g = min(1.0f, g);
-	b = min(1.0f, b);
+	r = MIN(1.0f, r);
+	g = MIN(1.0f, g);
+	b = MIN(1.0f, b);
 
 	_vtx->r *= r;
 	_vtx->g *= g;
@@ -1597,8 +1599,8 @@ void ObjCoordinates2_new(struct ObjCoordinates *obj, const struct uObjScaleBg * 
 
    obj->ulx = frameX;
    obj->uly = frameY;
-   obj->lrx = frameX + min(imageW/scaleW, frameW) - 1.0f;
-   obj->lry = frameY + min(imageH/scaleH, frameH) - 1.0f;
+   obj->lrx = frameX + MIN(imageW/scaleW, frameW) - 1.0f;
+   obj->lry = frameY + MIN(imageH/scaleH, frameH) - 1.0f;
    if (gDP.otherMode.cycleType == G_CYC_COPY)
    {
       obj->lrx += 1.0f;
@@ -1667,7 +1669,7 @@ static void gln64gSPDrawObjRect(const struct ObjCoordinates *_coords)
 	vtx3->t = _coords->lrt;
 
    OGL_DrawLLETriangle(4);
-	gDP.colorImage.height = (uint32_t)(max(gDP.colorImage.height, (uint32_t)gDP.scissor.lry));
+	gDP.colorImage.height = (uint32_t)(MAX(gDP.colorImage.height, (uint32_t)gDP.scissor.lry));
 }
 
 void gln64gSPBgRect1Cyc( uint32_t _bg )
@@ -1745,8 +1747,8 @@ void gln64gSPObjLoadTxtr( uint32_t tx )
 
 static void gln64gSPSetSpriteTile(const struct uObjSprite *_pObjSprite)
 {
-	const uint32_t w = max(_pObjSprite->imageW >> 5, 1);
-	const uint32_t h = max(_pObjSprite->imageH >> 5, 1);
+	const uint32_t w = MAX(_pObjSprite->imageW >> 5, 1);
+	const uint32_t h = MAX(_pObjSprite->imageH >> 5, 1);
 
 	gln64gDPSetTile( _pObjSprite->imageFmt, _pObjSprite->imageSiz, _pObjSprite->imageStride, _pObjSprite->imageAdrs, 0, _pObjSprite->imagePal, G_TX_CLAMP, G_TX_CLAMP, 0, 0, 0, 0 );
 	gln64gDPSetTileSize( 0, 0, 0, (w - 1) << 2, (h - 1) << 2 );
@@ -1907,7 +1909,7 @@ void gln64gSPObjSprite( uint32_t _sp )
    /* TODO/FIXME */
 	frameBufferList().setBufferChanged();
 #endif
-	gDP.colorImage.height = (uint32_t)(max( gDP.colorImage.height, (uint32_t)gDP.scissor.lry ));
+	gDP.colorImage.height = (uint32_t)(MAX( gDP.colorImage.height, (uint32_t)gDP.scissor.lry ));
 }
 
 void gln64gSPObjLoadTxSprite( uint32_t txsp )

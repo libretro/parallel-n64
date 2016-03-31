@@ -21,17 +21,11 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include <algorithm>
 
+#include <retro_miscellaneous.h>
+
 #include "Render.h"
 #include "Timing.h"
 #include "osal_preproc.h"
-
-#ifndef min
-#define min(a,b) ((a) < (b) ? (a) : (b))
-#endif
-
-#ifndef max
-#define max(a,b) ((a) > (b) ? (a) : (b))
-#endif
 
 uint32_t dwConkerVtxZAddr=0;
 
@@ -909,7 +903,7 @@ void DLParser_RS_Color_Buffer(Gfx *gfx)
         DebuggerAppendMsg("Vtx_Color at PC=%08X: 0x%08x 0x%08x\n", dwPC-8, (gfx->words.w0), (gfx->words.w1));
         if( dwAddr < g_dwRamSize )
         {
-            DumpHex(dwAddr, min(64, g_dwRamSize-dwAddr));
+            DumpHex(dwAddr, MIN(64, g_dwRamSize-dwAddr));
         }
     }
 #endif
@@ -939,7 +933,7 @@ void DLParser_RS_Vtx_Buffer(Gfx *gfx)
         DebuggerAppendMsg("Vtx_XYZ at PC=%08X: 0x%08x 0x%08x\n", dwPC-8, (gfx->words.w0), (gfx->words.w1));
         if( dwAddr < g_dwRamSize )
         {
-            DumpHex(dwAddr, min(64, g_dwRamSize-dwAddr));
+            DumpHex(dwAddr, MIN(64, g_dwRamSize-dwAddr));
         }
     }
 #endif
@@ -1723,7 +1717,7 @@ void DLParser_TexRect_Last_Legion(Gfx *gfx)
     }
 
     if( status.bHandleN64RenderTexture ) 
-        g_pRenderTextureInfo->maxUsedHeight = max(g_pRenderTextureInfo->maxUsedHeight,(int)dwYH);
+        g_pRenderTextureInfo->maxUsedHeight = MAX(g_pRenderTextureInfo->maxUsedHeight,(int)dwYH);
 
     ForceMainTextureIndex(curTile);
 }

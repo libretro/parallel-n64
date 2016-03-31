@@ -661,7 +661,7 @@ static ShaderProgram *ShaderCombiner_Compile(DecodedMux *dmux, int flags)
    //Compile:
 
    src[0] = frag;
-   len[0] = min(4096, strlen(frag));
+   len[0] = MIN(4096, strlen(frag));
    prog->fragment = glCreateShader(GL_FRAGMENT_SHADER);
 
    glShaderSource(prog->fragment, 1, (const char**) src, len);

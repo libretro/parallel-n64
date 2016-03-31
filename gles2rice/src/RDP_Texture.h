@@ -21,18 +21,12 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #ifndef RDP_TEXTURE_H
 #define RDP_TEXTURE_H
 
+#include <stdlib.h>
 #include <algorithm>
 
-#include <stdlib.h>
+#include <retro_miscellaneous.h>
+
 #include "Render.h"
-
-#ifndef min
-#define min(a,b) ((a) < (b) ? (a) : (b))
-#endif
-
-#ifndef max
-#define max(a,b) ((a) > (b) ? (a) : (b))
-#endif
 
 uint32_t g_TmemFlag[16];
 void SetTmemFlag(uint32_t tmemAddr, uint32_t size);
@@ -57,8 +51,8 @@ uint32_t sizeBytes[4] = {0,1,2,4};
 inline uint32_t Txl2Words(uint32_t width, uint32_t size)
 {
     if( size == TXT_SIZE_4b )
-        return max(1, width/16);
-    return max(1, width*sizeBytes[size]/8);
+        return MAX(1, width/16);
+    return MAX(1, width*sizeBytes[size]/8);
 }
 
 inline uint32_t CalculateImgSize(uint32_t width, uint32_t height, uint32_t size)
@@ -507,7 +501,7 @@ bool CalculateTileSizes_method_2(int tileno, TMEMLoadMapInfo *info, TxtrInfo &gt
         if( gti.WidthToLoad > gti.HeightToLoad )
         {
             uint32_t newheight = (dwPitch << 1 )>> tile.dwSize;
-            tile.dwWidth = gti.WidthToLoad = gti.WidthToCreate = min(newheight, (gti.WidthToLoad&0xFFFFFFFE));
+            tile.dwWidth = gti.WidthToLoad = gti.WidthToCreate = MIN(newheight, (gti.WidthToLoad&0xFFFFFFFE));
             tile.dwHeight = gti.HeightToCreate = gti.HeightToLoad = ((0x200 - tile.dwTMem) << (4-tile.dwSize)) / gti.WidthToLoad;
         }
         else
@@ -720,30 +714,30 @@ bool CalculateTileSizes_method_1(int tileno, TMEMLoadMapInfo *info, TxtrInfo &gt
 
     if( tile.dwMaskS == 0 || tile.bClampS )
     {
-        gti.WidthToLoad = linewidth ? min( linewidth, maskwidth ? min(clampwidth,maskwidth) : clampwidth ) : clampwidth;
+        gti.WidthToLoad = linewidth ? MIN( linewidth, maskwidth ? MIN(clampwidth,maskwidth) : clampwidth ) : clampwidth;
         if( tile.dwMaskS && clampwidth < maskwidth )
             tile.dwWidth = gti.WidthToCreate = clampwidth;
         else
-            tile.dwWidth = gti.WidthToCreate = max(clampwidth,maskwidth);
+            tile.dwWidth = gti.WidthToCreate = MAX(clampwidth,maskwidth);
     }
     else
     {
-        gti.WidthToLoad = loadwidth > 2 ? min(loadwidth,maskwidth) : maskwidth;
-        if( linewidth ) gti.WidthToLoad = min( linewidth, (int)gti.WidthToLoad );
+        gti.WidthToLoad = loadwidth > 2 ? MIN(loadwidth,maskwidth) : maskwidth;
+        if( linewidth ) gti.WidthToLoad = MIN( linewidth, (int)gti.WidthToLoad );
         tile.dwWidth = gti.WidthToCreate = maskwidth;
     }
 
     if( tile.dwMaskT == 0 || tile.bClampT )
     {
-        gti.HeightToLoad = maskheight ? min(clampheight,maskheight) : clampheight;
+        gti.HeightToLoad = maskheight ? MIN(clampheight,maskheight) : clampheight;
         if( tile.dwMaskT && clampheight < maskheight )
             tile.dwHeight = gti.HeightToCreate = clampheight;
         else
-            tile.dwHeight = gti.HeightToCreate = max(clampheight,maskheight);
+            tile.dwHeight = gti.HeightToCreate = MAX(clampheight,maskheight);
     }
     else
     {
-        gti.HeightToLoad = loadheight > 2 ? min(loadheight,maskheight) : maskheight;
+        gti.HeightToLoad = loadheight > 2 ? MIN(loadheight,maskheight) : maskheight;
         tile.dwHeight = gti.HeightToCreate = maskheight;
     }
 
@@ -764,7 +758,7 @@ bool CalculateTileSizes_method_1(int tileno, TMEMLoadMapInfo *info, TxtrInfo &gt
         if( gti.WidthToLoad > gti.HeightToLoad )
         {
             uint32_t newheight = (tile.dwPitch << 1 )>> tile.dwSize;
-            tile.dwWidth = gti.WidthToLoad = gti.WidthToCreate = min(newheight, (gti.WidthToLoad&0xFFFFFFFE));
+            tile.dwWidth = gti.WidthToLoad = gti.WidthToCreate = MIN(newheight, (gti.WidthToLoad&0xFFFFFFFE));
             tile.dwHeight = gti.HeightToCreate = gti.HeightToLoad = ((0x200 - tile.dwTMem) << (4-tile.dwSize)) / gti.WidthToLoad;
         }
         else
@@ -1672,7 +1666,7 @@ void DLParser_TexRect(Gfx *gfx)
         }
     }
 
-    if( status.bHandleN64RenderTexture )    g_pRenderTextureInfo->maxUsedHeight = max(g_pRenderTextureInfo->maxUsedHeight,(int)dwYH);
+    if( status.bHandleN64RenderTexture )    g_pRenderTextureInfo->maxUsedHeight = MAX(g_pRenderTextureInfo->maxUsedHeight,(int)dwYH);
 
     ForceMainTextureIndex(curTile);
 }
@@ -1743,7 +1737,7 @@ void DLParser_TexRectFlip(Gfx *gfx)
     CRender::g_pRender->TexRectFlip(dwXL, dwYL, dwXH, dwYH, t0u0, t0v0, t0u1, t0v1);
     status.dwNumTrisRendered += 2;
 
-    if( status.bHandleN64RenderTexture )    g_pRenderTextureInfo->maxUsedHeight = max(g_pRenderTextureInfo->maxUsedHeight,int(dwYL+(dwXH-dwXL)));
+    if( status.bHandleN64RenderTexture )    g_pRenderTextureInfo->maxUsedHeight = MAX(g_pRenderTextureInfo->maxUsedHeight,int(dwYL+(dwXH-dwXL)));
 
     ForceMainTextureIndex(curTile);
 }
