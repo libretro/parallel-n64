@@ -54,13 +54,9 @@ void RSP_GBI0_Mtx(Gfx *gfx)
     LoadMatrix(addr);
     
     if (gfx->gbi0matrix.projection)
-    {
         CRender::g_pRender->SetProjection(matToLoad, gfx->gbi0matrix.push, gfx->gbi0matrix.load);
-    }
     else
-    {
         CRender::g_pRender->SetWorldView(matToLoad, gfx->gbi0matrix.push, gfx->gbi0matrix.load);
-    }
 
 #ifdef DEBUGGER
     const char *loadstr = gfx->gbi0matrix.load == 1 ? "Load" : "Mul";
