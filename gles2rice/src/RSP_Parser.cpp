@@ -984,6 +984,28 @@ void RSP_GFX_InitGeometryMode()
     CRender::g_pRender->ZBufferEnable( gRDP.geometryMode & G_ZBUFFER );
 }
 
+void ricegDPSetScissor(ScissorType *tempScissor, 
+      uint32_t mode, float ulx, float uly, float lrx, float lry )
+{
+   tempScissor->mode = mode;
+   tempScissor->x0   = ulx;
+   tempScissor->y0   = uly;
+   tempScissor->x1   = lrx;
+   tempScissor->y1   = lry;
+}
+
+void ricegDPSetFillColor(uint32_t c)
+{
+   DP_Timing(DLParser_SetFillColor);
+   gRDP.fillColor = Convert555ToRGBA(c);
+}
+
+void ricegDPSetFogColor(uint32_t r, uint32_t g, uint32_t b, uint32_t a)
+{
+   DP_Timing(DLParser_SetFogColor);
+   CRender::g_pRender->SetFogColor(r, g, b, a );
+}
+
 //////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////
 //                   DP Ucodes                          //
@@ -1131,15 +1153,6 @@ void DLParser_RDPFullSync(Gfx *gfx)
     TriggerDPInterrupt();
 }
 
-void ricegDPSetScissor(ScissorType *tempScissor, 
-      uint32_t mode, float ulx, float uly, float lrx, float lry )
-{
-   tempScissor->mode = mode;
-   tempScissor->x0   = ulx;
-   tempScissor->y0   = uly;
-   tempScissor->x1   = lrx;
-   tempScissor->y1   = lry;
-}
 
 void DLParser_SetScissor(Gfx *gfx)
 {
@@ -1608,21 +1621,23 @@ void DLParser_SetCombine(Gfx *gfx)
     CRender::g_pRender->SetMux(dwMux0, dwMux1);
 }
 
+
 void DLParser_SetFillColor(Gfx *gfx)
 {
-    DP_Timing(DLParser_SetFillColor);
-    gRDP.fillColor = Convert555ToRGBA(gfx->setcolor.fillcolor);
-    gRDP.originalFillColor = (gfx->setcolor.color);
+   ricegDPSetFillColor(gfx->setcolor.fillcolor);
 
-    LOG_UCODE("    Color5551=0x%04x = 0x%08x", (uint16_t)gfx->words.w1, gRDP.fillColor);
+   gRDP.originalFillColor = (gfx->setcolor.color);
+
+   LOG_UCODE("    Color5551=0x%04x = 0x%08x", (uint16_t)gfx->words.w1, gRDP.fillColor);
 
 }
 
+
 void DLParser_SetFogColor(Gfx *gfx)
 {
-    DP_Timing(DLParser_SetFogColor);
-    CRender::g_pRender->SetFogColor( gfx->setcolor.r, gfx->setcolor.g, gfx->setcolor.b, gfx->setcolor.a );
-    FOG_DUMP(TRACE1("Set Fog color: %08X", gfx->setcolor.color));
+   ricegDPSetFogColor(gfx->setcolor.r, gfx->setcolor.g, gfx->setcolor.b,
+         gfx->setcolor.a);
+   FOG_DUMP(TRACE1("Set Fog color: %08X", gfx->setcolor.color));
 }
 
 void DLParser_SetBlendColor(Gfx *gfx)
