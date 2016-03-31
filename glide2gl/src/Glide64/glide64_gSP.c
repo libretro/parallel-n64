@@ -1090,45 +1090,49 @@ void glide64gSPDMATriangles(uint32_t tris, uint32_t n)
 
    for (i = 0; i < n; i++)
    {
-      int flags;
       VERTEX *v[3];
       unsigned cull_mode = GR_CULL_NEGATIVE;
-      int start = i << 4;
-      int v0 = gfx_info.RDRAM[addr+start];
-      int v1 = gfx_info.RDRAM[addr+start+1];
-      int v2 = gfx_info.RDRAM[addr+start+2];
+      int start          = i << 4;
+      int v0             = gfx_info.RDRAM[addr+start];
+      int v1             = gfx_info.RDRAM[addr+start+1];
+      int v2             = gfx_info.RDRAM[addr+start+2];
+      int flags          = gfx_info.RDRAM[addr+start+3];
 
-      v[0] = &rdp.vtx[v0];
-      v[1] = &rdp.vtx[v1];
-      v[2] = &rdp.vtx[v2];
-
-      flags = gfx_info.RDRAM[addr+start+3];
 
       if (flags & 0x40)
-      { // no cull
+      {
+         /* no cull */
          rdp.flags &= ~CULLMASK;
          cull_mode = GR_CULL_DISABLE;
       }
       else
-      {        // front cull
+      {
+         /* front cull */
          rdp.flags &= ~CULLMASK;
          if (rdp.view_scale[0] < 0)
          {
-            rdp.flags |= CULL_BACK;   // agh, backwards culling
+            /* agh, backwards culling */
+            rdp.flags |= CULL_BACK;   
             cull_mode = GR_CULL_POSITIVE;
          }
          else
             rdp.flags |= CULL_FRONT;
       }
-      grCullMode(cull_mode);
-      start += 4;
 
-      v[0]->ou = (float)((int16_t*)gfx_info.RDRAM)[((addr+start) >> 1) + 5] / 32.0f;
-      v[0]->ov = (float)((int16_t*)gfx_info.RDRAM)[((addr+start) >> 1) + 4] / 32.0f;
-      v[1]->ou = (float)((int16_t*)gfx_info.RDRAM)[((addr+start) >> 1) + 3] / 32.0f;
-      v[1]->ov = (float)((int16_t*)gfx_info.RDRAM)[((addr+start) >> 1) + 2] / 32.0f;
-      v[2]->ou = (float)((int16_t*)gfx_info.RDRAM)[((addr+start) >> 1) + 1] / 32.0f;
-      v[2]->ov = (float)((int16_t*)gfx_info.RDRAM)[((addr+start) >> 1) + 0] / 32.0f;
+      grCullMode(cull_mode);
+
+      start   += 4;
+
+      v[0]     = &rdp.vtx[v0];
+      v[1]     = &rdp.vtx[v1];
+      v[2]     = &rdp.vtx[v2];
+
+      v[0]->ou = _FIXED2FLOAT(((int16_t*)gfx_info.RDRAM)[((addr+start) >> 1) + 5], 5);
+      v[0]->ov = _FIXED2FLOAT(((int16_t*)gfx_info.RDRAM)[((addr+start) >> 1) + 4], 5);
+      v[1]->ou = _FIXED2FLOAT(((int16_t*)gfx_info.RDRAM)[((addr+start) >> 1) + 3], 5);
+      v[1]->ov = _FIXED2FLOAT(((int16_t*)gfx_info.RDRAM)[((addr+start) >> 1) + 2], 5);
+      v[2]->ou = _FIXED2FLOAT(((int16_t*)gfx_info.RDRAM)[((addr+start) >> 1) + 1], 5);
+      v[2]->ov = _FIXED2FLOAT(((int16_t*)gfx_info.RDRAM)[((addr+start) >> 1) + 0], 5);
 
       v[0]->uv_calculated = 0xFFFFFFFF;
       v[1]->uv_calculated = 0xFFFFFFFF;
