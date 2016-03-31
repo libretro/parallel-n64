@@ -252,8 +252,5 @@ protected:
 
 #define ffloor(a) (((int(a))<=(a))?(float)(int(a)):((float)(int(a))-1))
 
-bool SaveRGBBufferToFile(char *filename, unsigned char *buf, int width, int height, int pitch);
-bool SaveRGBABufferToPNGFile(char *filename, unsigned char *buf, int width, int height, int pitch);
-
 #endif  //_RICE_RENDER_H
 

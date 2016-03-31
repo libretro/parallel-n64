@@ -1691,14 +1691,3 @@ void CRender::SetTextureFilter(uint32_t dwFilter)
 
     ApplyTextureFilter();
 }
-
-bool SaveRGBBufferToFile(char *filename, unsigned char *buf, int width, int height, int pitch)
-{
-   return false;
-}
-
-bool SaveRGBABufferToPNGFile(char *filename, unsigned char *buf, int width, int height, int pitch)
-{
-   return false;
-}
-
