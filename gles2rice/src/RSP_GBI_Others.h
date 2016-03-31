@@ -359,54 +359,33 @@ void RSP_DL_In_MEM_DKR(Gfx *gfx)
         gDlistStack[gDlistStackPointer].countdown = (((gfx->words.w0)>>16)&0xFF);
     }
 }
-uint16_t ConvertYUVtoR5G5B5X1(int y, int u, int v)
-{
-    float r = y + (1.370705f * (v-128));
-    float g = y - (0.698001f * (v-128)) - (0.337633f * (u-128));
-    float b = y + (1.732446f * (u-128));
-    r *= 0.125f;
-    g *= 0.125f;
-    b *= 0.125f;
-
-    //clipping the result
-    if (r > 32) r = 32;
-    if (g > 32) g = 32;
-    if (b > 32) b = 32;
-    if (r < 0) r = 0;
-    if (g < 0) g = 0;
-    if (b < 0) b = 0;
-
-    uint16_t c = (uint16_t)(((uint16_t)(r) << 11) |
-                        ((uint16_t)(g) << 6)  |
-                        ((uint16_t)(b) << 1)  | 1);
-    return c;
-}
 
 void TexRectToN64FrameBuffer_YUV_16b(uint32_t x0, uint32_t y0, uint32_t width, uint32_t height)
 {
-    // Convert YUV image at TImg and Copy the texture into the N64 RDRAM framebuffer memory
+   /* Convert YUV image at TImg and Copy the texture into the N64 RDRAM framebuffer memory */
 
-    uint32_t n64CIaddr = g_CI.dwAddr;
-    uint32_t n64CIwidth = g_CI.dwWidth;
+   uint32_t n64CIaddr = g_CI.dwAddr;
+   uint32_t n64CIwidth = g_CI.dwWidth;
 
-    for (uint32_t y = 0; y < height; y++)
-    {
-       uint8_t *rdram_u8 = (uint8_t*)gfx_info.RDRAM;
-        uint32_t* pN64Src = (uint32_t*)(rdram_u8 + (g_TI.dwAddr&(g_dwRamSize-1)))+y*(g_TI.dwWidth>>1);
-        uint16_t* pN64Dst = (uint16_t*)(rdram_u8 + (n64CIaddr&(g_dwRamSize-1)))+(y+y0)*n64CIwidth;
+   for (uint32_t y = 0; y < height; y++)
+   {
+      uint32_t x;
+      uint8_t *rdram_u8 = (uint8_t*)gfx_info.RDRAM;
+      uint32_t* pN64Src = (uint32_t*)(rdram_u8 + (g_TI.dwAddr&(g_dwRamSize-1)))+y*(g_TI.dwWidth>>1);
+      uint16_t* pN64Dst = (uint16_t*)(rdram_u8 + (n64CIaddr&(g_dwRamSize-1)))+(y+y0)*n64CIwidth;
 
-        for (uint32_t x = 0; x < width; x+=2)
-        {
-            uint32_t val = *pN64Src++;
-            int y0 = (uint8_t)val&0xFF;
-            int v  = (uint8_t)(val>>8)&0xFF;
-            int y1 = (uint8_t)(val>>16)&0xFF;
-            int u  = (uint8_t)(val>>24)&0xFF;
+      for (x = 0; x < width; x+=2)
+      {
+         uint32_t val    = *pN64Src++;
+         int y0          = (uint8_t)val&0xFF;
+         int v           = (uint8_t)(val>>8)&0xFF;
+         int y1          = (uint8_t)(val>>16)&0xFF;
+         int u           = (uint8_t)(val>>24)&0xFF;
 
-            pN64Dst[x+x0] = ConvertYUVtoR5G5B5X1(y0,u,v);
-            pN64Dst[x+x0+1] = ConvertYUVtoR5G5B5X1(y1,u,v);
-        }
-    }
+         pN64Dst[x+x0]   = YUVtoRGBA16(y0,u,v);
+         pN64Dst[x+x0+1] = YUVtoRGBA16(y1,u,v);
+      }
+   }
 }
 
 extern uObjMtxReal gObjMtxReal;
