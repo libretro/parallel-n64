@@ -116,10 +116,7 @@ void RSP_GBI1_MoveMem(Gfx *gfx)
     switch (type) 
     {
        case F3D_MV_VIEWPORT:
-          {
-             LOG_UCODE("    RSP_GBI1_MV_MEM_VIEWPORT. Address: 0x%08x, Length: 0x%04x", addr, dwLength);
-             RSP_MoveMemViewport(addr);
-          }
+          ricegSPViewport(addr);
           break;
        case G_MV_LOOKATY:
           LOG_UCODE("    RSP_GBI1_MV_MEM_LOOKATY");

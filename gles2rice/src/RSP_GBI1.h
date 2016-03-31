@@ -334,10 +334,10 @@ void ricegSPLight(uint32_t dwAddr, uint32_t dwLight)
    }
 }
 
-void RSP_MoveMemViewport(uint32_t dwAddr)
+void ricegSPViewport(uint32_t v)
 {
    uint8_t *rdram_u8 = (uint8_t*)gfx_info.RDRAM;
-    if( dwAddr+16 >= g_dwRamSize )
+    if( v + 16 >= g_dwRamSize )
     {
         TRACE0("MoveMem Viewport, invalid memory");
         return;
@@ -346,16 +346,16 @@ void RSP_MoveMemViewport(uint32_t dwAddr)
     short scale[4];
     short trans[4];
 
-    // dwAddr is offset into RD_RAM of 8 x 16bits of data...
-    scale[0] = *(short *)(rdram_u8 + ((dwAddr+(0*2))^0x2));
-    scale[1] = *(short *)(rdram_u8 + ((dwAddr+(1*2))^0x2));
-    scale[2] = *(short *)(rdram_u8 + ((dwAddr+(2*2))^0x2));
-    scale[3] = *(short *)(rdram_u8 + ((dwAddr+(3*2))^0x2));
+    // v is offset into RD_RAM of 8 x 16bits of data...
+    scale[0] = *(short *)(rdram_u8 + ((v+(0*2))^0x2));
+    scale[1] = *(short *)(rdram_u8 + ((v+(1*2))^0x2));
+    scale[2] = *(short *)(rdram_u8 + ((v+(2*2))^0x2));
+    scale[3] = *(short *)(rdram_u8 + ((v+(3*2))^0x2));
 
-    trans[0] = *(short *)(rdram_u8 + ((dwAddr+(4*2))^0x2));
-    trans[1] = *(short *)(rdram_u8 + ((dwAddr+(5*2))^0x2));
-    trans[2] = *(short *)(rdram_u8 + ((dwAddr+(6*2))^0x2));
-    trans[3] = *(short *)(rdram_u8 + ((dwAddr+(7*2))^0x2));
+    trans[0] = *(short *)(rdram_u8 + ((v+(4*2))^0x2));
+    trans[1] = *(short *)(rdram_u8 + ((v+(5*2))^0x2));
+    trans[2] = *(short *)(rdram_u8 + ((v+(6*2))^0x2));
+    trans[3] = *(short *)(rdram_u8 + ((v+(7*2))^0x2));
 
 
     int nCenterX = trans[0]/4;
@@ -363,17 +363,22 @@ void RSP_MoveMemViewport(uint32_t dwAddr)
     int nWidth   = scale[0]/4;
     int nHeight  = scale[1]/4;
 
-    // Check for some strange games
-    if( nWidth < 0 )    nWidth = -nWidth;
-    if( nHeight < 0 )   nHeight = -nHeight;
+    /* Check for some strange games */
+    if( nWidth < 0 )
+       nWidth = -nWidth;
+    if( nHeight < 0 )
+       nHeight = -nHeight;
 
     int nLeft = nCenterX - nWidth;
     int nTop  = nCenterY - nHeight;
     int nRight= nCenterX + nWidth;
     int nBottom= nCenterY + nHeight;
 
-    //int maxZ = scale[2];
+#if 0
+    int maxZ = scale[2];
+#else
     int maxZ = 0x3FF;
+#endif
 
     CRender::g_pRender->SetViewport(nLeft, nTop, nRight, nBottom, maxZ);
 
