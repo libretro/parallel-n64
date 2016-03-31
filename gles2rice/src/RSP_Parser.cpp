@@ -1223,234 +1223,236 @@ void DLParser_SetScissor(Gfx *gfx)
    //gRDP.scissor.right, gRDP.scissor.bottom, gRDP.scissor.mode););
 }
 
+void ricegDPFillRect(int32_t ulx, int32_t uly, int32_t lrx, int32_t lry )
+{
+   uint8_t *rdram_u8 = (uint8_t*)gfx_info.RDRAM;
+
+   /* Note, in some modes, the right/bottom lines aren't drawn */
+
+   LOG_UCODE("    (%d,%d) (%d,%d)", ulx, uly, lrx, lry);
+
+   if( gRDP.otherMode.cycle_type >= CYCLE_TYPE_COPY )
+   {
+      ++lrx;
+      ++lry;
+   }
+
+   //TXTRBUF_DETAIL_DUMP(DebuggerAppendMsg("FillRect: X0=%d, Y0=%d, X1=%d, Y1=%d, Color=0x%08X", ulx, uly, lrx, lry, gRDP.originalFillColor););
+
+   // Skip this
+   if( status.bHandleN64RenderTexture && options.enableHackForGames == HACK_FOR_BANJO_TOOIE )
+      return;
+
+   if (IsUsedAsDI(g_CI.dwAddr))
+   {
+      // Clear the Z Buffer
+      if( ulx != 0 || uly != 0 || windowSetting.uViWidth- lrx > 1 || windowSetting.uViHeight - lry > 1)
+      {
+         if( options.enableHackForGames == HACK_FOR_GOLDEN_EYE )
+         {
+            // GoldenEye is using double zbuffer
+            if( g_CI.dwAddr == g_ZI.dwAddr )
+            {
+               // The zbuffer is the upper screen
+               COORDRECT rect={int(ulx * windowSetting.fMultX),int(uly * windowSetting.fMultY),int(lrx * windowSetting.fMultX),int(lry * windowSetting.fMultY)};
+               CRender::g_pRender->ClearBuffer(false,true,rect);   //Check me
+               LOG_UCODE("    Clearing ZBuffer");
+            }
+            else
+            {
+               // The zbuffer is the lower screen
+               int h = (g_CI.dwAddr-g_ZI.dwAddr)/g_CI.dwWidth/2;
+               COORDRECT rect={int(ulx * windowSetting.fMultX),int((uly + h)*windowSetting.fMultY),int(lrx * windowSetting.fMultX),int((lry + h)*windowSetting.fMultY)};
+               CRender::g_pRender->ClearBuffer(false,true,rect);   //Check me
+               LOG_UCODE("    Clearing ZBuffer");
+            }
+         }
+         else
+         {
+            COORDRECT rect={int(ulx * windowSetting.fMultX),int(uly * windowSetting.fMultY),int(lrx * windowSetting.fMultX),int(lry * windowSetting.fMultY)};
+            CRender::g_pRender->ClearBuffer(false,true,rect);   //Check me
+            LOG_UCODE("    Clearing ZBuffer");
+         }
+      }
+      else
+      {
+         CRender::g_pRender->ClearBuffer(false,true);    //Check me
+         LOG_UCODE("    Clearing ZBuffer");
+      }
+
+      DEBUGGER_PAUSE_AND_DUMP_COUNT_N( NEXT_FLUSH_TRI,{TRACE0("Pause after FillRect: ClearZbuffer\n");});
+      DEBUGGER_PAUSE_AND_DUMP_COUNT_N( NEXT_FILLRECT, {DebuggerAppendMsg("ClearZbuffer: X0=%d, Y0=%d, X1=%d, Y1=%d, Color=0x%08X", ulx, uly, lrx, lry, gRDP.originalFillColor);
+            DebuggerAppendMsg("Pause after ClearZbuffer: Color=%08X\n", gRDP.originalFillColor);});
+
+      if( g_curRomInfo.bEmulateClear )
+      {
+         // Emulating Clear, by write the memory in RDRAM
+         uint16_t color = (uint16_t)gRDP.originalFillColor;
+         uint32_t pitch = g_CI.dwWidth<<1;
+         long long base = (long long) (rdram_u8 + g_CI.dwAddr);
+         for( uint32_t i = uly; i < lry; i++ )
+         {
+            for( uint32_t j= ulx; j < lrx; j++ )
+            {
+               *(uint16_t*)((base+pitch*i+j)^2) = color;
+            }
+         }
+      }
+   }
+   else if( status.bHandleN64RenderTexture )
+   {
+      if( !status.bCIBufferIsRendered )
+         g_pFrameBufferManager->ActiveTextureBuffer();
+
+      int cond1 =  (((int)ulx < status.leftRendered) ? ((int)ulx) : (status.leftRendered));
+      int cond2 =  (((int)uly < status.topRendered)  ? ((int)uly) : (status.topRendered));
+      int cond3 =  ((status.rightRendered > ((int)lrx)) ? ((int)lrx) : (status.rightRendered));
+      int cond4 =  ((status.bottomRendered > ((int)lry)) ? ((int)lry) : (status.bottomRendered));
+      int cond5 =  ((g_pRenderTextureInfo->maxUsedHeight > ((int)lry)) ? ((int)lry) : (g_pRenderTextureInfo->maxUsedHeight));
+
+      status.leftRendered = status.leftRendered < 0   ? ulx  : cond1;
+      status.topRendered = status.topRendered<0       ? uly : cond2;
+      status.rightRendered = status.rightRendered<0   ? lrx : cond3;
+      status.bottomRendered = status.bottomRendered<0 ? lry : cond4;
+
+      g_pRenderTextureInfo->maxUsedHeight = cond5;
+
+      if( status.bDirectWriteIntoRDRAM || ( ulx ==0 && uly == 0 && (lrx == g_pRenderTextureInfo->N64Width || lrx == g_pRenderTextureInfo->N64Width-1 ) ) )
+      {
+         if( g_pRenderTextureInfo->CI_Info.dwSize == TXT_SIZE_16b )
+         {
+            uint16_t color = (uint16_t)gRDP.originalFillColor;
+            uint32_t pitch = g_pRenderTextureInfo->N64Width<<1;
+            long long base = (long long) (rdram_u8 + g_pRenderTextureInfo->CI_Info.dwAddr);
+            for( uint32_t i = uly; i < lry; i++ )
+            {
+               for( uint32_t j= ulx; j< lrx; j++ )
+               {
+                  *(uint16_t*)((base+pitch*i+j)^2) = color;
+               }
+            }
+         }
+         else
+         {
+            uint8_t color = (uint8_t)gRDP.originalFillColor;
+            uint32_t pitch = g_pRenderTextureInfo->N64Width;
+            long long base = (long long) (rdram_u8 + g_pRenderTextureInfo->CI_Info.dwAddr);
+            for( uint32_t i= uly; i< lry; i++ )
+            {
+               for( uint32_t j= ulx; j< lrx; j++ )
+               {
+                  *(uint8_t*)((base+pitch*i+j)^3) = color;
+               }
+            }
+         }
+
+         status.bFrameBufferDrawnByTriangles = false;
+      }
+      else
+      {
+         status.bFrameBufferDrawnByTriangles = true;
+      }
+      status.bFrameBufferDrawnByTriangles = true;
+
+      if( !status.bDirectWriteIntoRDRAM )
+      {
+         status.bFrameBufferIsDrawn = true;
+
+         //if( ulx ==0 && uly ==0 && (lrx == g_pRenderTextureInfo->N64Width || lrx == g_pRenderTextureInfo->N64Width-1 ) && gRDP.fillColor == 0)
+         //{
+         //  CRender::g_pRender->ClearBuffer(true,false);
+         //}
+         //else
+         {
+            if( gRDP.otherMode.cycle_type == CYCLE_TYPE_FILL )
+            {
+               CRender::g_pRender->FillRect(ulx, uly, lrx, lry, gRDP.fillColor);
+            }
+            else
+            {
+               COLOR primColor = GetPrimitiveColor();
+               CRender::g_pRender->FillRect(ulx, uly, lrx, lry, primColor);
+            }
+         }
+      }
+
+      DEBUGGER_PAUSE_AND_DUMP_COUNT_N( NEXT_FLUSH_TRI,{TRACE0("Pause after FillRect\n");});
+      DEBUGGER_PAUSE_AND_DUMP_COUNT_N( NEXT_FILLRECT, {DebuggerAppendMsg("FillRect: X0=%d, Y0=%d, X1=%d, Y1=%d, Color=0x%08X", ulx, uly, lrx, lry, gRDP.originalFillColor);
+            DebuggerAppendMsg("Pause after FillRect: Color=%08X\n", gRDP.originalFillColor);});
+   }
+   else
+   {
+      LOG_UCODE("    Filling Rectangle");
+      if( frameBufferOptions.bSupportRenderTextures || frameBufferOptions.bCheckBackBufs )
+      {
+         int cond1 =  (((int)ulx < status.leftRendered)     ? ((int)ulx) : (status.leftRendered));
+         int cond2 =  (((int)uly < status.topRendered)      ? ((int)uly) : (status.topRendered));
+         int cond3 =  ((status.rightRendered > ((int)lrx))  ? ((int)lrx) : (status.rightRendered));
+         int cond4 =  ((status.bottomRendered > ((int)lry)) ? ((int)lry) : (status.bottomRendered));
+         int cond5 =  ((g_pRenderTextureInfo->maxUsedHeight > ((int)lry)) ? ((int)lry) : (g_pRenderTextureInfo->maxUsedHeight));
+
+         if( !status.bCIBufferIsRendered ) g_pFrameBufferManager->ActiveTextureBuffer();
+
+         status.leftRendered = status.leftRendered<0     ? ulx  : cond1;
+         status.topRendered = status.topRendered<0       ? uly  : cond2;
+         status.rightRendered = status.rightRendered<0   ? lrx  : cond3;
+         status.bottomRendered = status.bottomRendered<0 ? lry  : cond4;
+      }
+
+      if( gRDP.otherMode.cycle_type == CYCLE_TYPE_FILL )
+      {
+         if( !status.bHandleN64RenderTexture || g_pRenderTextureInfo->CI_Info.dwSize == TXT_SIZE_16b )
+            CRender::g_pRender->FillRect(ulx, uly, lrx, lry, gRDP.fillColor);
+      }
+      else
+      {
+         COLOR primColor = GetPrimitiveColor();
+         //if( RGBA_GETALPHA(primColor) != 0 )
+         {
+            CRender::g_pRender->FillRect(ulx, uly, lrx, lry, primColor);
+         }
+      }
+      DEBUGGER_PAUSE_AND_DUMP_COUNT_N( NEXT_FLUSH_TRI,{TRACE0("Pause after FillRect\n");});
+      DEBUGGER_PAUSE_AND_DUMP_COUNT_N( NEXT_FILLRECT, {DebuggerAppendMsg("FillRect: X0=%d, Y0=%d, X1=%d, Y1=%d, Color=0x%08X",
+               ulx, uly, lrx, lry, gRDP.originalFillColor);
+            DebuggerAppendMsg("Pause after FillRect: Color=%08X\n", gRDP.originalFillColor);});
+   }
+}
 
 void DLParser_FillRect(Gfx *gfx)
 { 
    uint8_t *rdram_u8 = (uint8_t*)gfx_info.RDRAM;
-    DP_Timing(DLParser_FillRect);   // fix me
-    status.primitiveType = PRIM_FILLRECT;
+   DP_Timing(DLParser_FillRect);   // fix me
+   status.primitiveType = PRIM_FILLRECT;
 
-    if( status.bN64IsDrawingTextureBuffer && frameBufferOptions.bIgnore )
-    {
-        return;
-    }
+   if( status.bN64IsDrawingTextureBuffer && frameBufferOptions.bIgnore )
+      return;
 
-    if( options.enableHackForGames == HACK_FOR_MARIO_TENNIS )
-    {
-        uint32_t dwPC = gDlistStack[gDlistStackPointer].pc;       // This points to the next instruction
-        uint32_t w2 = *(uint32_t *)(rdram_u8 + dwPC);
-        if( (w2>>24) == RDP_FILLRECT )
-        {
-            // Mario Tennis, a lot of FillRect ucodes, skip all of them
-            while( (w2>>24) == RDP_FILLRECT )
-            {
-                dwPC += 8;
-                w2 = *(uint32_t *)(rdram_u8 + dwPC);
-            }
+   if( options.enableHackForGames == HACK_FOR_MARIO_TENNIS )
+   {
+      uint32_t dwPC = gDlistStack[gDlistStackPointer].pc;       // This points to the next instruction
+      uint32_t w2   = *(uint32_t *)(rdram_u8 + dwPC);
 
-            gDlistStack[gDlistStackPointer].pc = dwPC;
-            return;
-        }
-    }
+      if( (w2>>24) == RDP_FILLRECT )
+      {
+         // Mario Tennis, a lot of FillRect ucodes, skip all of them
+         while( (w2>>24) == RDP_FILLRECT )
+         {
+            dwPC += 8;
+            w2 = *(uint32_t *)(rdram_u8 + dwPC);
+         }
 
-    uint32_t x0   = (((gfx->words.w1)>>12)&0xFFF)/4;
-    uint32_t y0   = (((gfx->words.w1)>>0 )&0xFFF)/4;
-    uint32_t x1   = (((gfx->words.w0)>>12)&0xFFF)/4;
-    uint32_t y1   = (((gfx->words.w0)>>0 )&0xFFF)/4;
+         gDlistStack[gDlistStackPointer].pc = dwPC;
+         return;
+      }
+   }
 
-    // Note, in some modes, the right/bottom lines aren't drawn
-
-    LOG_UCODE("    (%d,%d) (%d,%d)", x0, y0, x1, y1);
-
-    if( gRDP.otherMode.cycle_type >= CYCLE_TYPE_COPY )
-    {
-        x1++;
-        y1++;
-    }
-
-    //TXTRBUF_DETAIL_DUMP(DebuggerAppendMsg("FillRect: X0=%d, Y0=%d, X1=%d, Y1=%d, Color=0x%08X", x0, y0, x1, y1, gRDP.originalFillColor););
-
-    if( status.bHandleN64RenderTexture && options.enableHackForGames == HACK_FOR_BANJO_TOOIE )
-    {
-        // Skip this
-        return;
-    }
-
-    if (IsUsedAsDI(g_CI.dwAddr))
-    {
-        // Clear the Z Buffer
-        if( x0!=0 || y0!=0 || windowSetting.uViWidth-x1>1 || windowSetting.uViHeight-y1>1)
-        {
-            if( options.enableHackForGames == HACK_FOR_GOLDEN_EYE )
-            {
-                // GoldenEye is using double zbuffer
-                if( g_CI.dwAddr == g_ZI.dwAddr )
-                {
-                    // The zbuffer is the upper screen
-                    COORDRECT rect={int(x0*windowSetting.fMultX),int(y0*windowSetting.fMultY),int(x1*windowSetting.fMultX),int(y1*windowSetting.fMultY)};
-                    CRender::g_pRender->ClearBuffer(false,true,rect);   //Check me
-                    LOG_UCODE("    Clearing ZBuffer");
-                }
-                else
-                {
-                    // The zbuffer is the lower screen
-                    int h = (g_CI.dwAddr-g_ZI.dwAddr)/g_CI.dwWidth/2;
-                    COORDRECT rect={int(x0*windowSetting.fMultX),int((y0+h)*windowSetting.fMultY),int(x1*windowSetting.fMultX),int((y1+h)*windowSetting.fMultY)};
-                    CRender::g_pRender->ClearBuffer(false,true,rect);   //Check me
-                    LOG_UCODE("    Clearing ZBuffer");
-                }
-            }
-            else
-            {
-                COORDRECT rect={int(x0*windowSetting.fMultX),int(y0*windowSetting.fMultY),int(x1*windowSetting.fMultX),int(y1*windowSetting.fMultY)};
-                CRender::g_pRender->ClearBuffer(false,true,rect);   //Check me
-                LOG_UCODE("    Clearing ZBuffer");
-            }
-        }
-        else
-        {
-            CRender::g_pRender->ClearBuffer(false,true);    //Check me
-            LOG_UCODE("    Clearing ZBuffer");
-        }
-
-        DEBUGGER_PAUSE_AND_DUMP_COUNT_N( NEXT_FLUSH_TRI,{TRACE0("Pause after FillRect: ClearZbuffer\n");});
-        DEBUGGER_PAUSE_AND_DUMP_COUNT_N( NEXT_FILLRECT, {DebuggerAppendMsg("ClearZbuffer: X0=%d, Y0=%d, X1=%d, Y1=%d, Color=0x%08X", x0, y0, x1, y1, gRDP.originalFillColor);
-        DebuggerAppendMsg("Pause after ClearZbuffer: Color=%08X\n", gRDP.originalFillColor);});
-
-        if( g_curRomInfo.bEmulateClear )
-        {
-            // Emulating Clear, by write the memory in RDRAM
-            uint16_t color = (uint16_t)gRDP.originalFillColor;
-            uint32_t pitch = g_CI.dwWidth<<1;
-            long long base = (long long) (rdram_u8 + g_CI.dwAddr);
-            for( uint32_t i =y0; i<y1; i++ )
-            {
-                for( uint32_t j=x0; j<x1; j++ )
-                {
-                    *(uint16_t*)((base+pitch*i+j)^2) = color;
-                }
-            }
-        }
-    }
-    else if( status.bHandleN64RenderTexture )
-    {
-        if( !status.bCIBufferIsRendered )
-            g_pFrameBufferManager->ActiveTextureBuffer();
-
-        int cond1 =  (((int)x0 < status.leftRendered) ? ((int)x0) : (status.leftRendered));
-        int cond2 =  (((int)y0 < status.topRendered) ? ((int)y0) : (status.topRendered));
-        int cond3 =  ((status.rightRendered > ((int)x1)) ? ((int)x1) : (status.rightRendered));
-        int cond4 =  ((status.bottomRendered > ((int)y1)) ? ((int)y1) : (status.bottomRendered));
-        int cond5 =  ((g_pRenderTextureInfo->maxUsedHeight > ((int)y1)) ? ((int)y1) : (g_pRenderTextureInfo->maxUsedHeight));
-
-        status.leftRendered = status.leftRendered < 0 ? x0 : cond1;
-        status.topRendered = status.topRendered<0 ? y0 : cond2;
-        status.rightRendered = status.rightRendered<0 ? x1 : cond3;
-        status.bottomRendered = status.bottomRendered<0 ? y1 : cond4;
-
-        g_pRenderTextureInfo->maxUsedHeight = cond5;
-
-        if( status.bDirectWriteIntoRDRAM || ( x0==0 && y0==0 && (x1 == g_pRenderTextureInfo->N64Width || x1 == g_pRenderTextureInfo->N64Width-1 ) ) )
-        {
-            if( g_pRenderTextureInfo->CI_Info.dwSize == TXT_SIZE_16b )
-            {
-                uint16_t color = (uint16_t)gRDP.originalFillColor;
-                uint32_t pitch = g_pRenderTextureInfo->N64Width<<1;
-                long long base = (long long) (rdram_u8 + g_pRenderTextureInfo->CI_Info.dwAddr);
-                for( uint32_t i =y0; i<y1; i++ )
-                {
-                    for( uint32_t j=x0; j<x1; j++ )
-                    {
-                        *(uint16_t*)((base+pitch*i+j)^2) = color;
-                    }
-                }
-            }
-            else
-            {
-                uint8_t color = (uint8_t)gRDP.originalFillColor;
-                uint32_t pitch = g_pRenderTextureInfo->N64Width;
-                long long base = (long long) (rdram_u8 + g_pRenderTextureInfo->CI_Info.dwAddr);
-                for( uint32_t i=y0; i<y1; i++ )
-                {
-                    for( uint32_t j=x0; j<x1; j++ )
-                    {
-                        *(uint8_t*)((base+pitch*i+j)^3) = color;
-                    }
-                }
-            }
-
-            status.bFrameBufferDrawnByTriangles = false;
-        }
-        else
-        {
-            status.bFrameBufferDrawnByTriangles = true;
-        }
-        status.bFrameBufferDrawnByTriangles = true;
-
-        if( !status.bDirectWriteIntoRDRAM )
-        {
-            status.bFrameBufferIsDrawn = true;
-
-            //if( x0==0 && y0==0 && (x1 == g_pRenderTextureInfo->N64Width || x1 == g_pRenderTextureInfo->N64Width-1 ) && gRDP.fillColor == 0)
-            //{
-            //  CRender::g_pRender->ClearBuffer(true,false);
-            //}
-            //else
-            {
-                if( gRDP.otherMode.cycle_type == CYCLE_TYPE_FILL )
-                {
-                    CRender::g_pRender->FillRect(x0, y0, x1, y1, gRDP.fillColor);
-                }
-                else
-                {
-                    COLOR primColor = GetPrimitiveColor();
-                    CRender::g_pRender->FillRect(x0, y0, x1, y1, primColor);
-                }
-            }
-        }
-
-        DEBUGGER_PAUSE_AND_DUMP_COUNT_N( NEXT_FLUSH_TRI,{TRACE0("Pause after FillRect\n");});
-        DEBUGGER_PAUSE_AND_DUMP_COUNT_N( NEXT_FILLRECT, {DebuggerAppendMsg("FillRect: X0=%d, Y0=%d, X1=%d, Y1=%d, Color=0x%08X", x0, y0, x1, y1, gRDP.originalFillColor);
-        DebuggerAppendMsg("Pause after FillRect: Color=%08X\n", gRDP.originalFillColor);});
-    }
-    else
-    {
-        LOG_UCODE("    Filling Rectangle");
-        if( frameBufferOptions.bSupportRenderTextures || frameBufferOptions.bCheckBackBufs )
-        {
-           int cond1 =  (((int)x0 < status.leftRendered) ? ((int)x0) : (status.leftRendered));
-           int cond2 =  (((int)y0 < status.topRendered) ? ((int)y0) : (status.topRendered));
-           int cond3 =  ((status.rightRendered > ((int)x1)) ? ((int)x1) : (status.rightRendered));
-           int cond4 =  ((status.bottomRendered > ((int)y1)) ? ((int)y1) : (status.bottomRendered));
-           int cond5 =  ((g_pRenderTextureInfo->maxUsedHeight > ((int)y1)) ? ((int)y1) : (g_pRenderTextureInfo->maxUsedHeight));
-
-            if( !status.bCIBufferIsRendered ) g_pFrameBufferManager->ActiveTextureBuffer();
-
-            status.leftRendered = status.leftRendered<0 ? x0 : cond1;
-            status.topRendered = status.topRendered<0 ? y0 : cond2;
-            status.rightRendered = status.rightRendered<0 ? x1 : cond3;
-            status.bottomRendered = status.bottomRendered<0 ? y1 : cond4;
-        }
-
-        if( gRDP.otherMode.cycle_type == CYCLE_TYPE_FILL )
-        {
-            if( !status.bHandleN64RenderTexture || g_pRenderTextureInfo->CI_Info.dwSize == TXT_SIZE_16b )
-            {
-                CRender::g_pRender->FillRect(x0, y0, x1, y1, gRDP.fillColor);
-            }
-        }
-        else
-        {
-            COLOR primColor = GetPrimitiveColor();
-            //if( RGBA_GETALPHA(primColor) != 0 )
-            {
-                CRender::g_pRender->FillRect(x0, y0, x1, y1, primColor);
-            }
-        }
-        DEBUGGER_PAUSE_AND_DUMP_COUNT_N( NEXT_FLUSH_TRI,{TRACE0("Pause after FillRect\n");});
-        DEBUGGER_PAUSE_AND_DUMP_COUNT_N( NEXT_FILLRECT, {DebuggerAppendMsg("FillRect: X0=%d, Y0=%d, X1=%d, Y1=%d, Color=0x%08X", x0, y0, x1, y1, gRDP.originalFillColor);
-        DebuggerAppendMsg("Pause after FillRect: Color=%08X\n", gRDP.originalFillColor);});
-    }
+   ricegDPFillRect(
+         (((gfx->words.w1)>>12)&0xFFF)/4,    /* ulx */
+         (((gfx->words.w1)>>0 )&0xFFF)/4,    /* uly */
+         (((gfx->words.w0)>>12)&0xFFF)/4,    /* lrx */
+         (((gfx->words.w0)>>0 )&0xFFF)/4     /* lry */
+         );
 }
 
 
