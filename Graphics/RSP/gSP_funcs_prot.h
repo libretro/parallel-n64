@@ -10,6 +10,8 @@ extern "C" {
 #endif
 
 /* Glide64 prototypes */
+void glide64gSPTexture(int32_t sc, int32_t tc, int32_t level, 
+      int32_t tile, int32_t on);
 void glide64gSPClipRatio(uint32_t r);
 void glide64gSPDisplayList(uint32_t dl);
 void glide64gSPBranchList(uint32_t dl);

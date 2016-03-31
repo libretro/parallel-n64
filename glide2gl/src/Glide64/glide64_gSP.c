@@ -1150,3 +1150,25 @@ void glide64gSPSetDMATexOffset(uint32_t addr)
 
    ucode5_texshiftcount = 0;
 }
+
+void glide64gSPTexture(int32_t sc, int32_t tc, int32_t level, 
+      int32_t tile, int32_t on)
+{
+   if (tile == 7 && (settings.hacks&hack_Supercross))
+      tile = 0; /* fix for supercross 2000 */
+
+   rdp.mipmap_level   = level;
+   rdp.cur_tile       = tile;
+   rdp.tiles[tile].on = 0;
+
+   if (on)
+   {
+      rdp.tiles[tile].on          = 1;
+      rdp.tiles[tile].org_s_scale = sc;
+      rdp.tiles[tile].org_t_scale = tc;
+      rdp.tiles[tile].s_scale     = (float)((sc+1)/65536.0f) / 32.0f;
+      rdp.tiles[tile].t_scale     = (float)((tc+1)/65536.0f) / 32.0f;
+
+      g_gdp.flags |= UPDATE_TEXTURE;
+   }
+}

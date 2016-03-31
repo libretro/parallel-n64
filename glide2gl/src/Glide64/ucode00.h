@@ -272,30 +272,15 @@ static void uc0_moveword(uint32_t w0, uint32_t w1)
    }
 }
 
-
 static void uc0_texture(uint32_t w0, uint32_t w1)
 {
-   int tile           = (w0 >> 8) & 0x07;
-
-   if (tile == 7 && (settings.hacks&hack_Supercross))
-      tile = 0; /* fix for supercross 2000 */
-   rdp.mipmap_level   = (w0 >> 11) & 0x07;
-   rdp.cur_tile       = tile;
-   rdp.tiles[tile].on = 0;
-
-   if ((w0 & 0xFF))
-   {
-      uint16_t s = (uint16_t)((w1 >> 16) & 0xFFFF);
-      uint16_t t = (uint16_t)(w1 & 0xFFFF);
-
-      rdp.tiles[tile].on          = 1;
-      rdp.tiles[tile].org_s_scale = s;
-      rdp.tiles[tile].org_t_scale = t;
-      rdp.tiles[tile].s_scale     = (float)((s+1)/65536.0f) / 32.0f;
-      rdp.tiles[tile].t_scale     = (float)((t+1)/65536.0f) / 32.0f;
-
-      g_gdp.flags |= UPDATE_TEXTURE;
-   }
+   glide64gSPTexture(
+         _SHIFTR(w1, 16, 16), /* sc */
+         _SHIFTR(w1,  0, 16), /* tc */
+         _SHIFTR(w0, 11, 3),  /* level */
+         _SHIFTR(w0, 8, 3),   /* tile */
+         _SHIFTR(w0, 0, 8)    /* on */
+         );
 }
 
 static void uc0_setothermode_h(uint32_t w0, uint32_t w1)
