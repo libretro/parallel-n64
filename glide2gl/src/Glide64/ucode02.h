@@ -171,7 +171,7 @@ static void uc2_geom_mode(uint32_t w0, uint32_t w1)
       ((w1 & 0x00000600) << 3) |
       ((w1 & 0x00200000) >> 12);
 
-   glide64gSPClearGeometryMode(clr_mode);
+   rdp.geom_mode &= clr_mode;
    glide64gSPSetGeometryMode(set_mode);
 
    if (rdp.geom_mode & G_ZBUFFER)
