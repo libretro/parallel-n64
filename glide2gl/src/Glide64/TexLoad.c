@@ -659,7 +659,7 @@ static uint32_t Load16bYUV(uintptr_t dst, uintptr_t src,
         uint8_t  v  =(uint8_t)(t>>8)&0xFF;
         uint8_t  y0 =(uint8_t)(t>>16)&0xFF;
         uint8_t  u  =(uint8_t)(t>>24)&0xFF;
-        uint16_t c = YUVtoRGB565(y0, u, v);
+        uint16_t c  = YUVtoRGB565(y0, u, v);
 
         *(tex++) = c;
         c = YUVtoRGB565(y1, u, v);
@@ -677,35 +677,38 @@ static uint32_t Load16bYUV(uintptr_t dst, uintptr_t src,
 //
 static uint32_t Load32bRGBA(uintptr_t dst, uintptr_t src, int wid_64, int height, int line, int real_width, int tile)
 {
-    uint32_t s, t, c, *tex;
-    uint16_t rg, ba;
+    uint32_t s, t;
     int id;
     uint32_t mod;
-    const uint16_t *tmem16 =(uint16_t*)g_gdp.tmem;
     const uint32_t tbase = (src -(uintptr_t)g_gdp.tmem) >> 1;
     const uint32_t width = MAX(1, wid_64 << 1);
-    const int ext = real_width - width;
+    const int ext        = real_width - width;
+    uint32_t *tex        = (uint32_t*)dst;
+
     line = width + (line>>2);
-    tex  =(uint32_t*)dst;
+
     if (height < 1)
         height = 1;
 
     for (t = 0; t <(uint32_t)height; t++)
     {
-        uint32_t tline = tbase + line * t;
-        uint32_t xorval = (t & 1) ? 3 : 1;
-        for (s = 0; s < width; s++)
-        {
-            uint32_t taddr = ((tline + s) ^ xorval) & 0x3ff;
-            rg = tmem16[taddr];
-            ba = tmem16[taddr|0x400];
-            c = ((ba&0xFF)<<24) | (rg << 8) | (ba>>8);
-            *tex++ = c;
-        }
-        tex += ext;
+       const uint16_t *tmem16 =(uint16_t*)g_gdp.tmem;
+       uint32_t tline         = tbase + line * t;
+       uint32_t xorval        = (t & 1) ? 3 : 1;
+       for (s = 0; s < width; s++)
+       {
+          uint32_t taddr = ((tline + s) ^ xorval) & 0x3ff;
+          uint16_t rg    = tmem16[taddr];
+          uint16_t ba    = tmem16[taddr|0x400];
+          uint32_t c     = ((ba&0xFF)<<24) | (rg << 8) | (ba>>8);
+          *tex++ = c;
+       }
+       tex += ext;
     }
-    id = tile - rdp.cur_tile;
+
+    id  = tile - rdp.cur_tile;
     mod = (id == 0) ? cmb.mod_0 : cmb.mod_1;
+
     if (mod /*|| !voodoo.sup_32bit_tex*/)
     {
         uint32_t i;
@@ -716,13 +719,12 @@ static uint32_t Load32bRGBA(uintptr_t dst, uintptr_t src, int wid_64, int height
 
         for (i = 0; i < tex_size; i++)
         {
-           uint16_t a, r, g, b;
-           c = tex[i];
-           a = (c >> 28) & 0xF;
-           r = (c >> 20) & 0xF;
-           g = (c >> 12) & 0xF;
-           b = (c >> 4)  & 0xF;
-           tex16[i] = (a <<12) | (r << 8) | (g << 4) | b;
+           uint32_t c = tex[i];
+           uint16_t a = (c >> 28) & 0xF;
+           uint16_t r = (c >> 20) & 0xF;
+           uint16_t g = (c >> 12) & 0xF;
+           uint16_t b = (c >> 4)  & 0xF;
+           tex16[i] = PAL8toR4G4B4A4(r, g, b, a);
         }
         return (1 << 16) | GR_TEXFMT_ARGB_4444;
     }
