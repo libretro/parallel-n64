@@ -351,9 +351,7 @@ void RDP_GFX_Reset()
 void RDP_Cleanup()
 {
     if( status.bHandleN64RenderTexture )
-    {
         g_pFrameBufferManager->CloseRenderTexture(false);
-    }
 }
 
 void RDP_SetUcodeMap(int ucode)
@@ -540,13 +538,9 @@ void RSP_SetUcode(int ucode, uint32_t ucStart, uint32_t ucDStart, uint32_t ucSiz
 
     RDP_SetUcodeMap(ucode);
     if( status.bUseModifiedUcodeMap )
-    {
         currentUcodeMap = &LoadedUcodeMap[0];
-    }
     else
-    {
         currentUcodeMap = *ucodeMaps[ucode];
-    }
 
     gRSP.vertexMult = vertexMultVals[ucode];
 
@@ -573,37 +567,29 @@ void RSP_SetUcode(int ucode, uint32_t ucStart, uint32_t ucDStart, uint32_t ucSiz
 //*****************************************************************************
 static uint32_t DLParser_IdentifyUcodeFromString( const unsigned char * str_ucode )
 {
-    const unsigned char str_ucode0[] = "RSP SW Version: 2.0";
-    const unsigned char str_ucode1[] = "RSP Gfx ucode ";
+   const unsigned char str_ucode0[] = "RSP SW Version: 2.0";
+   const unsigned char str_ucode1[] = "RSP Gfx ucode ";
 
-    if ( strncasecmp( (char*)str_ucode, (char*)str_ucode0, strlen((char*)str_ucode0) ) == 0 )
-    {
-        return 0;
-    }
+   if ( strncasecmp( (char*)str_ucode, (char*)str_ucode0, strlen((char*)str_ucode0) ) == 0 )
+      return 0;
 
-    if ( strncasecmp( (char*)str_ucode, (char*)str_ucode1, strlen((char*)str_ucode1) ) == 0 )
-    {
-        if( strstr((char*)str_ucode,"1.") != 0 )
-        {
-            if( strstr((char*)str_ucode,"S2DEX") != 0 )
-            {
-                return 7;
-            }
-            else
-                return 1;
-        }
-        else if( strstr((char*)str_ucode,"2.") != 0 )
-        {
-            if( strstr((char*)str_ucode,"S2DEX") != 0 )
-            {
-                return 3;
-            }
-            else
-                return 5;
-        }
-    }
+   if ( strncasecmp( (char*)str_ucode, (char*)str_ucode1, strlen((char*)str_ucode1) ) == 0 )
+   {
+      if( strstr((char*)str_ucode,"1.") != 0 )
+      {
+         if( strstr((char*)str_ucode,"S2DEX") != 0 )
+            return 7;
+         return 1;
+      }
+      else if( strstr((char*)str_ucode,"2.") != 0 )
+      {
+         if( strstr((char*)str_ucode,"S2DEX") != 0 )
+            return 3;
+         return 5;
+      }
+   }
 
-    return 5;
+   return 5;
 }
 
 //*****************************************************************************
@@ -660,18 +646,14 @@ static uint32_t DLParser_IdentifyUcode( uint32_t crc_size, uint32_t crc_800, cha
 uint32_t DLParser_CheckUcode(uint32_t ucStart, uint32_t ucDStart, uint32_t ucSize, uint32_t ucDSize)
 {
     if( options.enableHackForGames == HACK_FOR_ROGUE_SQUADRON )
-    {
         return 17;
-    }
 
     // Check the used ucode table first
     int usedUcodeIndex = 0;
     for( usedUcodeIndex=0; (unsigned int)usedUcodeIndex<maxUsedUcodes; usedUcodeIndex++ )
     {
         if( UsedUcodes[usedUcodeIndex].used == false )
-        {
             break;
-        }
 
         if( UsedUcodes[usedUcodeIndex].ucStart == ucStart && UsedUcodes[usedUcodeIndex].ucSize == ucSize &&
             UsedUcodes[usedUcodeIndex].ucDStart == ucDStart /*&& UsedUcodes[usedUcodeIndex].ucDSize == ucDSize*/ )
@@ -717,70 +699,64 @@ uint32_t DLParser_CheckUcode(uint32_t ucStart, uint32_t ucDStart, uint32_t ucSiz
     //if ( strcmp( str, gLastMicrocodeString ) != 0 )
     {
        uint8_t *rdram_u8 = (uint8_t*)gfx_info.RDRAM;
-        //uint32_t size = ucDSize;
-        base = ucStart & 0x1fffffff;
-
-        uint32_t crc_size = ComputeCRC32( 0, &rdram_u8[ base ], 8);//size );
-        uint32_t crc_800 = ComputeCRC32( 0, &rdram_u8[ base ], 0x800 );
-        uint32_t ucode;
-        ucode = DLParser_IdentifyUcode( crc_size, crc_800, (char*)str );
-        if ( (int)ucode == ~0 )
-        {
+       //uint32_t size = ucDSize;
+       base = ucStart & 0x1fffffff;
+       uint32_t crc_size = ComputeCRC32( 0, &rdram_u8[ base ], 8);//size );
+       uint32_t crc_800  = ComputeCRC32( 0, &rdram_u8[ base ], 0x800 );
+       uint32_t ucode    = DLParser_IdentifyUcode( crc_size, crc_800, (char*)str );
+       if ( (int)ucode == ~0 )
+       {
 #ifdef DEBUGGER
-            static bool warned=false;
-            //if( warned == false )
-            {
-                char message[300];
+          static bool warned=false;
+          //if( warned == false )
+          {
+             char message[300];
 
-                sprintf(message, "Unable to find ucode to use for '%s' CRCSize: 0x%08x CRC800: 0x%08x",
-                        str, crc_size, crc_800);
-                TRACE0(message);
-                DebugMessage(M64MSG_ERROR, message);
-                warned = true;
-            }
+             sprintf(message, "Unable to find ucode to use for '%s' CRCSize: 0x%08x CRC800: 0x%08x",
+                   str, crc_size, crc_800);
+             TRACE0(message);
+             DebugMessage(M64MSG_ERROR, message);
+             warned = true;
+          }
 #endif
-            ucode = DLParser_IdentifyUcodeFromString(str);
-            if ( (int)ucode == ~0 )
-            {
-                ucode=5;
-            }
-        }
+          ucode = DLParser_IdentifyUcodeFromString(str);
+          if ( (int)ucode == ~0 )
+             ucode=5;
+       }
 
-        //DLParser_SetuCode( ucode );
-        
+       //DLParser_SetuCode( ucode );
+
 #ifdef DEBUGGER
-        {
-            static bool warned=false;
-            if( warned == false )
-            {
-                warned = true;
-                if( strlen((char *) str) == 0 )
-                    DebuggerAppendMsg("Can not find RSP string in the DLIST, CRC800: 0x%08x, CRCSize: 0x%08x", crc_800, crc_size);
-                else
-                    TRACE0((char *) str);
-            }
-        }
+       {
+          static bool warned=false;
+          if( warned == false )
+          {
+             warned = true;
+             if( strlen((char *) str) == 0 )
+                DebuggerAppendMsg("Can not find RSP string in the DLIST, CRC800: 0x%08x, CRCSize: 0x%08x", crc_800, crc_size);
+             else
+                TRACE0((char *) str);
+          }
+       }
 #endif
-        strcpy( (char*)gLastMicrocodeString, (char*)str );
+       strcpy( (char*)gLastMicrocodeString, (char*)str );
 
-        if( usedUcodeIndex >= MAX_UCODE_INFO )
-        {
-            usedUcodeIndex = rand()%MAX_UCODE_INFO;
-        }
+       if( usedUcodeIndex >= MAX_UCODE_INFO )
+          usedUcodeIndex = rand()%MAX_UCODE_INFO;
 
-        UsedUcodes[usedUcodeIndex].ucStart = ucStart;
-        UsedUcodes[usedUcodeIndex].ucSize = ucSize;
-        UsedUcodes[usedUcodeIndex].ucDStart = ucDStart;
-        UsedUcodes[usedUcodeIndex].ucDSize = ucDSize;
-        UsedUcodes[usedUcodeIndex].ucode = ucode;
-        UsedUcodes[usedUcodeIndex].crc_800 = crc_800;
-        UsedUcodes[usedUcodeIndex].crc_size = crc_size;
-        UsedUcodes[usedUcodeIndex].used = true;
-        strcpy( UsedUcodes[usedUcodeIndex].rspstr, (char*)str );
+       UsedUcodes[usedUcodeIndex].ucStart = ucStart;
+       UsedUcodes[usedUcodeIndex].ucSize = ucSize;
+       UsedUcodes[usedUcodeIndex].ucDStart = ucDStart;
+       UsedUcodes[usedUcodeIndex].ucDSize = ucDSize;
+       UsedUcodes[usedUcodeIndex].ucode = ucode;
+       UsedUcodes[usedUcodeIndex].crc_800 = crc_800;
+       UsedUcodes[usedUcodeIndex].crc_size = crc_size;
+       UsedUcodes[usedUcodeIndex].used = true;
+       strcpy( UsedUcodes[usedUcodeIndex].rspstr, (char*)str );
 
-        TRACE2("New ucode has been detected:\n%s, ucode=%d", str, ucode);
-    
-        return ucode;
+       TRACE2("New ucode has been detected:\n%s, ucode=%d", str, ucode);
+
+       return ucode;
     }
 }
 
@@ -804,9 +780,7 @@ void DLParser_Process(OSTask * pTask)
     status.bScreenIsDrawn = true;
 
     if( currentRomOptions.N64RenderToTextureEmuType != TXT_BUF_NONE && defaultRomOptions.bSaveVRAM )
-    {
         g_pFrameBufferManager->CheckRenderTextureCRCInRDRAM();
-    }
 
     g_pOSTask = pTask;
     
@@ -956,9 +930,7 @@ uint32_t CalcalateCRC(uint32_t* srcPtr, uint32_t srcSize)
 {
     uint32_t crc=0;
     for( uint32_t i=0; i<srcSize; i++ )
-    {
         crc += srcPtr[i];
-    }
     return crc;
 }
 
@@ -967,10 +939,10 @@ void RSP_GFX_InitGeometryMode()
 {
     bool bCullFront     = (gRDP.geometryMode & G_CULL_FRONT) ? true : false;
     bool bCullBack      = (gRDP.geometryMode & G_CULL_BACK) ? true : false;
+
     if( bCullFront && bCullBack ) // should never cull front
-    {
         bCullFront = false;
-    }
+
     CRender::g_pRender->SetCullMode(bCullFront, bCullBack);
     
     bool bShade         = (gRDP.geometryMode & G_SHADE) ? true : false;
@@ -1119,13 +1091,9 @@ void DLParser_RDPSetOtherMode(Gfx *gfx)
     uint16_t blender = gRDP.otherMode.blender;
     RDP_BlenderSetting &bl = *(RDP_BlenderSetting*)(&(blender));
     if( bl.c1_m1a==3 || bl.c1_m2a == 3 || bl.c2_m1a == 3 || bl.c2_m2a == 3 )
-    {
         gRDP.bFogEnableInBlender = true;
-    }
     else
-    {
         gRDP.bFogEnableInBlender = false;
-    }
 }
 
 
@@ -1289,13 +1257,12 @@ void ricegDPFillRect(int32_t ulx, int32_t uly, int32_t lrx, int32_t lry )
          // Emulating Clear, by write the memory in RDRAM
          uint16_t color = (uint16_t)gRDP.originalFillColor;
          uint32_t pitch = g_CI.dwWidth<<1;
-         long long base = (long long) (rdram_u8 + g_CI.dwAddr);
+         int64_t base   = (int64_t)(rdram_u8 + g_CI.dwAddr);
+
          for( uint32_t i = uly; i < lry; i++ )
          {
             for( uint32_t j= ulx; j < lrx; j++ )
-            {
                *(uint16_t*)((base+pitch*i+j)^2) = color;
-            }
          }
       }
    }
@@ -1304,9 +1271,9 @@ void ricegDPFillRect(int32_t ulx, int32_t uly, int32_t lrx, int32_t lry )
       if( !status.bCIBufferIsRendered )
          g_pFrameBufferManager->ActiveTextureBuffer();
 
-      int cond1 =  (((int)ulx < status.leftRendered) ? ((int)ulx) : (status.leftRendered));
-      int cond2 =  (((int)uly < status.topRendered)  ? ((int)uly) : (status.topRendered));
-      int cond3 =  ((status.rightRendered > ((int)lrx)) ? ((int)lrx) : (status.rightRendered));
+      int cond1 =  (((int)ulx < status.leftRendered)     ? ((int)ulx) : (status.leftRendered));
+      int cond2 =  (((int)uly < status.topRendered)      ? ((int)uly) : (status.topRendered));
+      int cond3 =  ((status.rightRendered > ((int)lrx))  ? ((int)lrx) : (status.rightRendered));
       int cond4 =  ((status.bottomRendered > ((int)lry)) ? ((int)lry) : (status.bottomRendered));
       int cond5 =  ((g_pRenderTextureInfo->maxUsedHeight > ((int)lry)) ? ((int)lry) : (g_pRenderTextureInfo->maxUsedHeight));
 
@@ -1323,26 +1290,22 @@ void ricegDPFillRect(int32_t ulx, int32_t uly, int32_t lrx, int32_t lry )
          {
             uint16_t color = (uint16_t)gRDP.originalFillColor;
             uint32_t pitch = g_pRenderTextureInfo->N64Width<<1;
-            long long base = (long long) (rdram_u8 + g_pRenderTextureInfo->CI_Info.dwAddr);
+            int64_t base   = (int64_t)(rdram_u8 + g_pRenderTextureInfo->CI_Info.dwAddr);
             for( uint32_t i = uly; i < lry; i++ )
             {
                for( uint32_t j= ulx; j< lrx; j++ )
-               {
                   *(uint16_t*)((base+pitch*i+j)^2) = color;
-               }
             }
          }
          else
          {
-            uint8_t color = (uint8_t)gRDP.originalFillColor;
+            uint8_t color  = (uint8_t)gRDP.originalFillColor;
             uint32_t pitch = g_pRenderTextureInfo->N64Width;
-            long long base = (long long) (rdram_u8 + g_pRenderTextureInfo->CI_Info.dwAddr);
+            int64_t base   = (int64_t) (rdram_u8 + g_pRenderTextureInfo->CI_Info.dwAddr);
             for( uint32_t i= uly; i< lry; i++ )
             {
                for( uint32_t j= ulx; j< lrx; j++ )
-               {
                   *(uint8_t*)((base+pitch*i+j)^3) = color;
-               }
             }
          }
 
@@ -1550,11 +1513,11 @@ void DLParser_SetCImg(Gfx *gfx)
     }
 
     SetImgInfo newCI;
-    newCI.bpl = dwBpl;
-    newCI.dwAddr = dwNewAddr;
+    newCI.bpl      = dwBpl;
+    newCI.dwAddr   = dwNewAddr;
     newCI.dwFormat = dwFmt;
-    newCI.dwSize = dwSiz;
-    newCI.dwWidth = dwWidth;
+    newCI.dwSize   = dwSiz;
+    newCI.dwWidth  = dwWidth;
 
     g_pFrameBufferManager->Set_CI_addr(newCI);
 }
@@ -1567,7 +1530,7 @@ void DLParser_SetZImg(Gfx *gfx)
     uint32_t dwFmt   = gfx->setimg.fmt;
     uint32_t dwSiz   = gfx->setimg.siz;
     uint32_t dwWidth = gfx->setimg.width + 1;
-    uint32_t dwAddr = RSPSegmentAddr((gfx->setimg.addr));
+    uint32_t dwAddr  = RSPSegmentAddr((gfx->setimg.addr));
 
     if( dwAddr != g_ZI_saves[0].CI_Info.dwAddr )
     {
@@ -1575,7 +1538,7 @@ void DLParser_SetZImg(Gfx *gfx)
         g_ZI_saves[1].CI_Info.dwFormat  = g_ZI.dwFormat;
         g_ZI_saves[1].CI_Info.dwSize    = g_ZI.dwSize;
         g_ZI_saves[1].CI_Info.dwWidth   = g_ZI.dwWidth;
-        g_ZI_saves[1].updateAtFrame = g_ZI_saves[0].updateAtFrame;
+        g_ZI_saves[1].updateAtFrame     = g_ZI_saves[0].updateAtFrame;
 
         g_ZI_saves[0].CI_Info.dwAddr    = g_ZI.dwAddr   = dwAddr;
         g_ZI_saves[0].CI_Info.dwFormat  = g_ZI.dwFormat = dwFmt;
@@ -1585,9 +1548,9 @@ void DLParser_SetZImg(Gfx *gfx)
     }
     else
     {
-        g_ZI.dwAddr = dwAddr;
-        g_ZI.dwFormat = dwFmt;
-        g_ZI.dwSize = dwSiz;
+        g_ZI.dwAddr     = dwAddr;
+        g_ZI.dwFormat   = dwFmt;
+        g_ZI.dwSize     = dwSiz;
         g_ZI.dwWidth    = dwWidth;
     }
 
@@ -1668,12 +1631,12 @@ void RDP_DLParser_Process(void)
 
     status.gDlistCount++;
 
-    uint32_t start = *(gfx_info.DPC_START_REG);
-    uint32_t end = *(gfx_info.DPC_END_REG);
+    uint32_t start      = *(gfx_info.DPC_START_REG);
+    uint32_t end        = *(gfx_info.DPC_END_REG);
     uint32_t *rdram_u32 = (uint32_t*)gfx_info.RDRAM;
 
-    gDlistStackPointer=0;
-    gDlistStack[gDlistStackPointer].pc = start;
+    gDlistStackPointer                        = 0;
+    gDlistStack[gDlistStackPointer].pc        = start;
     gDlistStack[gDlistStackPointer].countdown = MAX_DL_COUNT;
 
     // Check if we need to purge (every 5 milliseconds)
@@ -1736,29 +1699,30 @@ void RDP_TriShadeTxtrZ(Gfx *gfx)
 
 static int crc_table_empty = 1;
 static unsigned int crc_table[256];
-static void make_crc_table(void);
 
-static void make_crc_table()
+static void make_crc_table(void)
 {
-    /* terms of polynomial defining this crc (except x^32): */
-    static const uint8_t p[] = {0,1,2,4,5,7,8,10,11,12,16,22,23,26};
+   unsigned n;
+   /* terms of polynomial defining this crc (except x^32): */
+   static const uint8_t p[] = {0,1,2,4,5,7,8,10,11,12,16,22,23,26};
+   /* make exclusive-or pattern from polynomial (0xedb88320L) */
+   unsigned int poly   = 0L;
 
-    /* make exclusive-or pattern from polynomial (0xedb88320L) */
-    unsigned int poly = 0L;
-    for (unsigned int n = 0; n < sizeof(p)/sizeof(uint8_t); n++)
-        poly |= 1L << (31 - p[n]);
+   for (n = 0; n < sizeof(p)/sizeof(uint8_t); n++)
+      poly |= 1L << (31 - p[n]);
 
-    for (unsigned int n = 0; n < 256; n++)
-    {
-        unsigned int c = n;
-        for (int k = 0; k < 8; k++)
-        {
-            c = (c & 1) ? (poly ^ (c >> 1)) : c >> 1;
-        }
+   for (unsigned int n = 0; n < 256; n++)
+   {
+      unsigned k;
+      unsigned int c = n;
+      for (k = 0; k < 8; k++)
+      {
+         c = (c & 1) ? (poly ^ (c >> 1)) : c >> 1;
+      }
 
-        crc_table[n] = c;
-    }
-    crc_table_empty = 0;
+      crc_table[n] = c;
+   }
+   crc_table_empty = 0;
 }
 
 /* ========================================================================= */
@@ -1815,18 +1779,5 @@ void LoadMatrix(uint32_t addr)
          matToLoad.m[i][j] = (float)((hi<<16) | lo) * fRecip;
       }
    }
-
-
-#ifdef DEBUGGER
-   LOG_UCODE(
-         " %#+12.5f %#+12.5f %#+12.5f %#+12.5f\r\n"
-         " %#+12.5f %#+12.5f %#+12.5f %#+12.5f\r\n"
-         " %#+12.5f %#+12.5f %#+12.5f %#+12.5f\r\n"
-         " %#+12.5f %#+12.5f %#+12.5f %#+12.5f\r\n",
-         matToLoad.m[0][0], matToLoad.m[0][1], matToLoad.m[0][2], matToLoad.m[0][3],
-         matToLoad.m[1][0], matToLoad.m[1][1], matToLoad.m[1][2], matToLoad.m[1][3],
-         matToLoad.m[2][0], matToLoad.m[2][1], matToLoad.m[2][2], matToLoad.m[2][3],
-         matToLoad.m[3][0], matToLoad.m[3][1], matToLoad.m[3][2], matToLoad.m[3][3]);
-#endif // DEBUGGER
 }
 
