@@ -961,7 +961,7 @@ void Convert4b_16(CTexture *pTexture, const TxtrInfo &tinfo)
 
     uint16_t * pPal = (uint16_t *)tinfo.PalAddress;
     bool bIgnoreAlpha = (tinfo.TLutFmt==TLUT_FMT_UNKNOWN);
-    if( tinfo.Format <= TXT_FMT_CI ) bIgnoreAlpha = (tinfo.TLutFmt==TLUT_FMT_NONE);
+    if( tinfo.Format <= G_IM_FMT_CI ) bIgnoreAlpha = (tinfo.TLutFmt==TLUT_FMT_NONE);
 
     Tile &tile = gRDP.tiles[tinfo.tileNo];
 
@@ -999,7 +999,7 @@ void Convert4b_16(CTexture *pTexture, const TxtrInfo &tinfo)
             uint8_t bhi = (b&0xf0)>>4;
             uint8_t blo = (b&0x0f);
 
-            if( gRDP.otherMode.text_tlut>=2 || ( tinfo.Format != TXT_FMT_IA && tinfo.Format != TXT_FMT_I) )
+            if( gRDP.otherMode.text_tlut>=2 || ( tinfo.Format != G_IM_FMT_IA && tinfo.Format != G_IM_FMT_I) )
             {
                 if( tinfo.TLutFmt == TLUT_FMT_IA16 )
                 {
@@ -1028,12 +1028,12 @@ void Convert4b_16(CTexture *pTexture, const TxtrInfo &tinfo)
                     }
                 }
             }
-            else if( tinfo.Format == TXT_FMT_IA )
+            else if( tinfo.Format == G_IM_FMT_IA )
             {
                 pDst[0] = ConvertIA4ToR4G4B4A4(b>>4);
                 pDst[1] = ConvertIA4ToR4G4B4A4(b&0xF);
             }
-            else //if( tinfo.Format == TXT_FMT_I )
+            else //if( tinfo.Format == G_IM_FMT_I )
             {
                 pDst[0] = ConvertI4ToR4G4B4A4(b>>4);
                 pDst[1] = ConvertI4ToR4G4B4A4(b&0xF);
@@ -1061,7 +1061,7 @@ void Convert8b_16(CTexture *pTexture, const TxtrInfo &tinfo)
 
     uint16_t * pPal = (uint16_t *)tinfo.PalAddress;
     bool bIgnoreAlpha = (tinfo.TLutFmt==TLUT_FMT_UNKNOWN);
-    if( tinfo.Format <= TXT_FMT_CI ) bIgnoreAlpha = (tinfo.TLutFmt==TLUT_FMT_NONE);
+    if( tinfo.Format <= G_IM_FMT_CI ) bIgnoreAlpha = (tinfo.TLutFmt==TLUT_FMT_NONE);
 
     Tile &tile = gRDP.tiles[tinfo.tileNo];
 
@@ -1102,7 +1102,7 @@ void Convert8b_16(CTexture *pTexture, const TxtrInfo &tinfo)
         {
             uint8_t b = pByteSrc[idx^nFiddle];
 
-            if( gRDP.otherMode.text_tlut>=2 || ( tinfo.Format != TXT_FMT_IA && tinfo.Format != TXT_FMT_I) )
+            if( gRDP.otherMode.text_tlut>=2 || ( tinfo.Format != G_IM_FMT_IA && tinfo.Format != G_IM_FMT_I) )
             {
                 if( tinfo.TLutFmt == TLUT_FMT_IA16 )
                 {
@@ -1119,11 +1119,11 @@ void Convert8b_16(CTexture *pTexture, const TxtrInfo &tinfo)
                         *pDst = Convert555ToR4G4B4A4(pPal[b^1]);
                 }
             }
-            else if( tinfo.Format == TXT_FMT_IA )
+            else if( tinfo.Format == G_IM_FMT_IA )
             {
                 *pDst = PAL8toR4G4B4A4( ((b&0xf0)>>4),((b&0xf0)>>4),((b&0xf0)>>4),(b&0x0f));
             }
-            else //if( tinfo.Format == TXT_FMT_I )
+            else //if( tinfo.Format == G_IM_FMT_I )
             {
                 *pDst = PAL8toR4G4B4A4(b>>4, b>>4, b>>4, b>>4);
             }
@@ -1187,14 +1187,14 @@ void Convert16b_16(CTexture *pTexture, const TxtrInfo &tinfo)
             uint16_t w = pWordSrc[idx^nFiddle];
             uint16_t w2 = tinfo.tileNo>=0? ((w>>8)|(w<<8)) : w;
 
-            if( tinfo.Format == TXT_FMT_RGBA )
+            if( tinfo.Format == G_IM_FMT_RGBA )
             {
                 dwDst[x] = Convert555ToR4G4B4A4(w2);
             }
-            else if( tinfo.Format == TXT_FMT_YUV )
+            else if( tinfo.Format == G_IM_FMT_YUV )
             {
             }
-            else if( tinfo.Format >= TXT_FMT_IA )
+            else if( tinfo.Format >= G_IM_FMT_IA )
             {
                 uint8_t i = (uint8_t)(w2 >> 12);
                 uint8_t a = (uint8_t)(w2 & 0xFF);

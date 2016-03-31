@@ -437,7 +437,7 @@ void DLParser_Bomberman2TextRect(Gfx *gfx)
     // Bomberman 64 - The Second Attack! (U) [!]
     // The 0x02 cmd, list a TexRect cmd
 
-    if( options.enableHackForGames == HACK_FOR_OGRE_BATTLE && gRDP.tiles[7].dwFormat == TXT_FMT_YUV )
+    if( options.enableHackForGames == HACK_FOR_OGRE_BATTLE && gRDP.tiles[7].dwFormat == G_IM_FMT_YUV )
     {
         TexRectToN64FrameBuffer_YUV_16b( (uint32_t)gObjMtxReal.X, (uint32_t)gObjMtxReal.Y, 16, 16);
         //DLParser_OgreBatter64BG((gfx->words.w0), (gfx->words.w1));
@@ -1679,7 +1679,7 @@ void DLParser_TexRect_Last_Legion(Gfx *gfx)
         if( status.bHandleN64RenderTexture && //status.bDirectWriteIntoRDRAM && 
             g_pRenderTextureInfo->CI_Info.dwFormat == gRDP.tiles[tileno].dwFormat && 
             g_pRenderTextureInfo->CI_Info.dwSize == gRDP.tiles[tileno].dwSize && 
-            gRDP.tiles[tileno].dwFormat == TXT_FMT_CI && gRDP.tiles[tileno].dwSize == TXT_SIZE_8b )
+            gRDP.tiles[tileno].dwFormat == G_IM_FMT_CI && gRDP.tiles[tileno].dwSize == G_IM_SIZ_8b )
         {
             if( options.enableHackForGames == HACK_FOR_YOSHI )
             {

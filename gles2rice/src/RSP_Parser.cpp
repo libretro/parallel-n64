@@ -247,9 +247,9 @@ static UcodeData g_UcodeData[] =
 
 FiddledVtx * g_pVtxBase=NULL;
 
-SetImgInfo g_TI = { TXT_FMT_RGBA, TXT_SIZE_16b, 1, 0 };
-SetImgInfo g_CI = { TXT_FMT_RGBA, TXT_SIZE_16b, 1, 0 };
-SetImgInfo g_ZI = { TXT_FMT_RGBA, TXT_SIZE_16b, 1, 0 };
+SetImgInfo g_TI = { G_IM_FMT_RGBA, G_IM_SIZ_16b, 1, 0 };
+SetImgInfo g_CI = { G_IM_FMT_RGBA, G_IM_SIZ_16b, 1, 0 };
+SetImgInfo g_ZI = { G_IM_FMT_RGBA, G_IM_SIZ_16b, 1, 0 };
 RenderTextureInfo g_ZI_saves[2];
 
 DListStack  gDlistStack[MAX_DL_STACK_SIZE];
@@ -1286,7 +1286,7 @@ void ricegDPFillRect(int32_t ulx, int32_t uly, int32_t lrx, int32_t lry )
 
       if( status.bDirectWriteIntoRDRAM || ( ulx ==0 && uly == 0 && (lrx == g_pRenderTextureInfo->N64Width || lrx == g_pRenderTextureInfo->N64Width-1 ) ) )
       {
-         if( g_pRenderTextureInfo->CI_Info.dwSize == TXT_SIZE_16b )
+         if( g_pRenderTextureInfo->CI_Info.dwSize == G_IM_SIZ_16b )
          {
             uint16_t color = (uint16_t)gRDP.originalFillColor;
             uint32_t pitch = g_pRenderTextureInfo->N64Width<<1;
@@ -1364,7 +1364,7 @@ void ricegDPFillRect(int32_t ulx, int32_t uly, int32_t lrx, int32_t lry )
 
       if( gRDP.otherMode.cycle_type == G_CYC_FILL )
       {
-         if( !status.bHandleN64RenderTexture || g_pRenderTextureInfo->CI_Info.dwSize == TXT_SIZE_16b )
+         if( !status.bHandleN64RenderTexture || g_pRenderTextureInfo->CI_Info.dwSize == G_IM_SIZ_16b )
             CRender::g_pRender->FillRect(ulx, uly, lrx, lry, gRDP.fillColor);
       }
       else
@@ -1431,7 +1431,7 @@ void DLParser_SetCImg(Gfx *gfx)
 
     TXTRBUF_DETAIL_DUMP(DebuggerAppendMsg("SetCImg: Addr=0x%08X, Fmt:%s-%sb, Width=%d\n", dwNewAddr, pszImgFormat[dwFmt], pszImgSize[dwSiz], dwWidth););
 
-    if( dwFmt == TXT_FMT_YUV || dwFmt == TXT_FMT_IA )
+    if( dwFmt == G_IM_FMT_YUV || dwFmt == G_IM_FMT_IA )
     {
         WARNING(TRACE4("Check me:  SetCImg Addr=0x%08X, Fmt:%s-%sb, Width=%d\n", 
             g_CI.dwAddr, pszImgFormat[dwFmt], pszImgSize[dwSiz], dwWidth));

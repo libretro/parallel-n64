@@ -179,24 +179,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #define Z_COMPARE           0x0010
 #define Z_UPDATE            0x0020
 
-// G_SETIMG fmt: set image formats
-#define TXT_FMT_RGBA    0
-#define TXT_FMT_YUV     1
-#define TXT_FMT_CI      2
-#define TXT_FMT_IA      3
-#define TXT_FMT_I       4
-
-//
-// G_SETIMG siz: set image pixel size
-//
-#define TXT_SIZE_4b     0
-#define TXT_SIZE_8b     1
-#define TXT_SIZE_16b    2
-#define TXT_SIZE_32b    3
-
-//
 // Texturing macros
-//
 
 #define RDP_TXT_LOADTILE    7
 #define RDP_TXT_RENDERTILE  0

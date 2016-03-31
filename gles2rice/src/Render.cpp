@@ -340,7 +340,7 @@ bool CRender::FillRect(int nX0, int nY0, int nX1, int nY1, uint32_t dwColor)
 {
     LOG_UCODE("FillRect: X0=%d, Y0=%d, X1=%d, Y1=%d, Color=0x%8X", nX0, nY0, nX1, nY1, dwColor);
 
-    if (g_CI.dwSize != TXT_SIZE_16b && frameBufferOptions.bIgnore) 
+    if (g_CI.dwSize != G_IM_SIZ_16b && frameBufferOptions.bIgnore) 
         return true;
 
     if (status.bHandleN64RenderTexture && !status.bDirectWriteIntoRDRAM)
@@ -568,7 +568,7 @@ bool CRender::TexRect(int nX0, int nY0, int nX1, int nY1, float fS0, float fT0, 
     if( options.enableHackForGames == HACK_FOR_BANJO_TOOIE )
     {
         // Hack for Banjo shadow in Banjo Tooie
-        if( g_TI.dwWidth == g_CI.dwWidth && g_TI.dwFormat == TXT_FMT_CI && g_TI.dwSize == TXT_SIZE_8b )
+        if( g_TI.dwWidth == g_CI.dwWidth && g_TI.dwFormat == G_IM_FMT_CI && g_TI.dwSize == G_IM_SIZ_8b )
         {
             if( nX0 == fS0 && nY0 == fT0 )//&& nX0 > 90 && nY0 > 130 && nX1-nX0 > 80 && nY1-nY0 > 20 )
             {
@@ -588,7 +588,7 @@ bool CRender::TexRect(int nX0, int nY0, int nX1, int nY1, float fS0, float fT0, 
 
     PrepareTextures();
 
-    if( status.bHandleN64RenderTexture && g_pRenderTextureInfo->CI_Info.dwSize == TXT_SIZE_8b ) 
+    if( status.bHandleN64RenderTexture && g_pRenderTextureInfo->CI_Info.dwSize == G_IM_SIZ_8b ) 
     {
         return true;
     }
@@ -1188,7 +1188,7 @@ bool CRender::DrawTriangles()
     }
 
     /*
-    if( status.bHandleN64RenderTexture && g_pRenderTextureInfo->CI_Info.dwSize == TXT_SIZE_8b ) 
+    if( status.bHandleN64RenderTexture && g_pRenderTextureInfo->CI_Info.dwSize == G_IM_SIZ_8b ) 
     {
         gRSP.numVertices = 0;
         gRSP.maxVertexID = 0;
@@ -1225,10 +1225,10 @@ bool CRender::DrawTriangles()
         }
         else
         {
-            if( ( gRDP.tiles[gRSP.curTile].dwSize == TXT_SIZE_32b && options.enableHackForGames == HACK_FOR_RUMBLE ) ||
+            if( ( gRDP.tiles[gRSP.curTile].dwSize == G_IM_SIZ_32b && options.enableHackForGames == HACK_FOR_RUMBLE ) ||
                 (bHalfTxtScale && g_curRomInfo.bTextureScaleHack ) ||
-                (options.enableHackForGames == HACK_FOR_POLARISSNOCROSS && gRDP.tiles[7].dwFormat == TXT_FMT_CI && gRDP.tiles[7].dwSize == TXT_SIZE_8b 
-                && gRDP.tiles[0].dwFormat == TXT_FMT_CI && gRDP.tiles[0].dwSize == TXT_SIZE_8b && gRSP.curTile == 0 ))
+                (options.enableHackForGames == HACK_FOR_POLARISSNOCROSS && gRDP.tiles[7].dwFormat == G_IM_FMT_CI && gRDP.tiles[7].dwSize == G_IM_SIZ_8b 
+                && gRDP.tiles[0].dwFormat == G_IM_FMT_CI && gRDP.tiles[0].dwSize == G_IM_SIZ_8b && gRSP.curTile == 0 ))
             {
                 halfscaleS = 0.5;
             }
@@ -1299,7 +1299,7 @@ bool CRender::DrawTriangles()
         */
     }
 
-    if( status.bHandleN64RenderTexture && g_pRenderTextureInfo->CI_Info.dwSize == TXT_SIZE_8b )
+    if( status.bHandleN64RenderTexture && g_pRenderTextureInfo->CI_Info.dwSize == G_IM_SIZ_8b )
     {
         ZBufferEnable(false);
     }
@@ -1400,8 +1400,8 @@ void CRender::SetVertexTextureUVCoord(TLITVERTEX &v, const TexCord &fTex0_, cons
         // Hack for Zelda Sun
         Tile &t0 = gRDP.tiles[0];
         Tile &t1 = gRDP.tiles[1];
-        if( t0.dwFormat == TXT_FMT_I && t0.dwSize == TXT_SIZE_8b && t0.dwWidth == 64 &&
-            t1.dwFormat == TXT_FMT_I && t1.dwSize == TXT_SIZE_8b && t1.dwWidth == 64 &&
+        if( t0.dwFormat == G_IM_FMT_I && t0.dwSize == G_IM_SIZ_8b && t0.dwWidth == 64 &&
+            t1.dwFormat == G_IM_FMT_I && t1.dwSize == G_IM_SIZ_8b && t1.dwWidth == 64 &&
             t0.dwHeight == t1.dwHeight )
         {
             fTex0.u /= 2;

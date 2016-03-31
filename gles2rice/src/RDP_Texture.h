@@ -50,7 +50,7 @@ uint32_t sizeBytes[4] = {0,1,2,4};
 
 inline uint32_t Txl2Words(uint32_t width, uint32_t size)
 {
-    if( size == TXT_SIZE_4b )
+    if( size == G_IM_SIZ_4b )
         return MAX(1, width/16);
     return MAX(1, width*sizeBytes[size]/8);
 }
@@ -437,7 +437,7 @@ bool CalculateTileSizes_method_2(int tileno, TMEMLoadMapInfo *info, TxtrInfo &gt
         {
             dwPitch = tile.dwLine << 3;
             gti.bSwapped = true;
-            if( info->dwTmem != tile.dwTMem && info->dxt != 0 && info->dwSize == TXT_SIZE_16b && tile.dwSize == TXT_SIZE_4b )
+            if( info->dwTmem != tile.dwTMem && info->dxt != 0 && info->dwSize == G_IM_SIZ_16b && tile.dwSize == G_IM_SIZ_4b )
                 conkerSwapHack = true;
         }
         else
@@ -450,7 +450,7 @@ bool CalculateTileSizes_method_2(int tileno, TMEMLoadMapInfo *info, TxtrInfo &gt
             dwPitch = DXT << 3;
         }
 
-        if (tile.dwSize == TXT_SIZE_32b)
+        if (tile.dwSize == G_IM_SIZ_32b)
             dwPitch = tile.dwLine << 4;
     }
 
@@ -579,13 +579,13 @@ bool CalculateTileSizes_method_1(int tileno, TMEMLoadMapInfo *info, TxtrInfo &gt
 
 
         // It was a block load - the pitch is determined by the tile size
-        if (tile.dwSize == TXT_SIZE_32b)
+        if (tile.dwSize == G_IM_SIZ_32b)
             tile.dwPitch = tile.dwLine << 4;
         else if (info->dxt == 0 )
         {
             tile.dwPitch = tile.dwLine << 3;
             gti.bSwapped = true;
-            if( info->dwTmem != tile.dwTMem && info->dxt != 0 && info->dwSize == TXT_SIZE_16b && tile.dwSize == TXT_SIZE_4b )
+            if( info->dwTmem != tile.dwTMem && info->dxt != 0 && info->dwSize == G_IM_SIZ_16b && tile.dwSize == G_IM_SIZ_4b )
                 conkerSwapHack = true;
         }
         else
@@ -824,11 +824,11 @@ TxtrCacheEntry* LoadTexture(uint32_t tileno)
     gti = tile; // Copy tile info to textureInfo entry
 
     gti.TLutFmt = gRDP.otherMode.text_tlut <<RSP_SETOTHERMODE_SHIFT_TEXTLUT;
-    if (gti.Format == TXT_FMT_CI && gti.TLutFmt == TLUT_FMT_NONE )
+    if (gti.Format == G_IM_FMT_CI && gti.TLutFmt == TLUT_FMT_NONE )
         gti.TLutFmt = TLUT_FMT_RGBA16;      // Force RGBA
 
     gti.PalAddress = (uint8_t *) (&g_wRDPTlut[0]);
-    if( !options.bUseFullTMEM && tile.dwSize == TXT_SIZE_4b )
+    if( !options.bUseFullTMEM && tile.dwSize == G_IM_SIZ_4b )
         gti.PalAddress += 16  * 2 * tile.dwPalette; 
 
     gti.Address = (info->dwLoadAddress+(tile.dwTMem-infoTmemAddr)*8) & (g_dwRamSize-1) ;
@@ -1024,7 +1024,7 @@ void DLParser_LoadBlock(Gfx *gfx)
     tile.bForceWrapS = tile.bForceWrapT = tile.bForceClampS = tile.bForceClampT = false;
 
     uint32_t size     = lrs+1;
-    if( tile.dwSize == TXT_SIZE_32b )   size<<=1;
+    if( tile.dwSize == G_IM_SIZ_32b )   size<<=1;
 
     SetTmemFlag(tile.dwTMem, size>>2);
 
@@ -1101,7 +1101,7 @@ void DLParser_LoadBlock(Gfx *gfx)
             uint32_t bpl = line << 3;
             uint32_t height = bytes / bpl;
 
-            if (tile.dwSize == TXT_SIZE_32b)
+            if (tile.dwSize == G_IM_SIZ_32b)
                 Interleave = QWordInterleave;
             else
                 Interleave = DWordInterleave;
@@ -1165,7 +1165,7 @@ void DLParser_LoadTile(Gfx *gfx)
     uint32_t bpl = (lrs - uls + 1) << tile.dwSize >> 1;
     uint32_t height = lrt - ult + 1;
     uint32_t line = tile.dwLine;
-    if (tile.dwSize == TXT_SIZE_32b) line <<= 1;
+    if (tile.dwSize == G_IM_SIZ_32b) line <<= 1;
 
     if (((tile.dwTMem << 3) + line * height) > 4096)  // check destination ending point (TMEM is 4k bytes)
         return;
@@ -1198,7 +1198,7 @@ void DLParser_LoadTile(Gfx *gfx)
 
         // Line given for 32-bit is half what it seems it should since they split the
         // high and low words. I'm cheating by putting them together.
-        if (tile.dwSize == TXT_SIZE_32b)
+        if (tile.dwSize == G_IM_SIZ_32b)
         {
             Interleave = QWordInterleave;
         }
@@ -1627,7 +1627,7 @@ void DLParser_TexRect(Gfx *gfx)
         if( status.bHandleN64RenderTexture && //status.bDirectWriteIntoRDRAM && 
             g_pRenderTextureInfo->CI_Info.dwFormat == gRDP.tiles[tileno].dwFormat && 
             g_pRenderTextureInfo->CI_Info.dwSize == gRDP.tiles[tileno].dwSize && 
-            gRDP.tiles[tileno].dwFormat == TXT_FMT_CI && gRDP.tiles[tileno].dwSize == TXT_SIZE_8b )
+            gRDP.tiles[tileno].dwFormat == G_IM_FMT_CI && gRDP.tiles[tileno].dwSize == G_IM_SIZ_8b )
         {
             if( options.enableHackForGames == HACK_FOR_YOSHI )
             {

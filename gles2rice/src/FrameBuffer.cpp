@@ -637,7 +637,7 @@ unsigned char CalculateMaxCI(void *pPhysicalAddress, uint32_t left, uint32_t top
     unsigned char *buf;
     unsigned char val = 0;
 
-    if (TXT_SIZE_8b == size)
+    if (G_IM_SIZ_8b == size)
     {
         for (uint32_t y = 0; y<height; y++)
         {
@@ -1278,7 +1278,7 @@ void FrameBufferManager::ClearN64FrameBufferToBlack(uint32_t left, uint32_t top,
     {
         uint32_t len = p.dwHeight*p.dwWidth*p.dwSize;
 
-        if (p.dwSize == TXT_SIZE_4b)
+        if (p.dwSize == G_IM_SIZ_4b)
             len = (p.dwHeight*p.dwWidth)>>1;
 
         memset(frameBufferBase, 0, len);
@@ -1566,7 +1566,7 @@ void FrameBufferManager::ActiveTextureBuffer(void)
 void FrameBufferManager::Set_CI_addr(SetImgInfo &newCI)
 {
     bool wasDrawingTextureBuffer = status.bN64IsDrawingTextureBuffer;
-    status.bN64IsDrawingTextureBuffer = ( newCI.dwSize != TXT_SIZE_16b || newCI.dwFormat != TXT_FMT_RGBA || newCI.dwWidth < 200 || ( newCI.dwAddr != g_ZI.dwAddr && newCI.dwWidth != 512 && !g_pFrameBufferManager->HasAddrBeenDisplayed(newCI.dwAddr, newCI.dwWidth)) );
+    status.bN64IsDrawingTextureBuffer = ( newCI.dwSize != G_IM_SIZ_16b || newCI.dwFormat != G_IM_FMT_RGBA || newCI.dwWidth < 200 || ( newCI.dwAddr != g_ZI.dwAddr && newCI.dwWidth != 512 && !g_pFrameBufferManager->HasAddrBeenDisplayed(newCI.dwAddr, newCI.dwWidth)) );
     status.bN64FrameBufferIsUsed = status.bN64IsDrawingTextureBuffer;
 
     if (!wasDrawingTextureBuffer && g_CI.dwAddr == g_ZI.dwAddr && status.bCIBufferIsRendered)
@@ -1767,7 +1767,7 @@ void FrameBufferManager::CopyBufferToRDRAM(uint32_t addr, uint32_t fmt, uint32_t
         }
     }
 
-    if (siz == TXT_SIZE_16b)
+    if (siz == G_IM_SIZ_16b)
     {
        uint8_t *rdram_u8 = (uint8_t*)gfx_info.RDRAM;
         uint16_t *frameBufferBase = (uint16_t*)(rdram_u8 + addr);
@@ -1801,7 +1801,7 @@ void FrameBufferManager::CopyBufferToRDRAM(uint32_t addr, uint32_t fmt, uint32_t
             TRACE1("Copy %sb FrameBuffer to RDRAM, not implemented", pszImgSize[siz]);
         }
     }
-    else if (siz == TXT_SIZE_8b && fmt == TXT_FMT_CI)
+    else if (siz == G_IM_SIZ_8b && fmt == G_IM_FMT_CI)
     {
        uint8_t *rdram_u8 = (uint8_t*)gfx_info.RDRAM;
         uint8_t *frameBufferBase = (uint8_t*)(rdram_u8 + addr);
@@ -1835,7 +1835,7 @@ void FrameBufferManager::CopyBufferToRDRAM(uint32_t addr, uint32_t fmt, uint32_t
         }
         DEBUGGER_IF_DUMP(pauseAtNext,{DebuggerAppendMsg("Copy %sb FrameBuffer to RDRAM", pszImgSize[siz]);});
     }
-    else if (siz == TXT_SIZE_8b && fmt == TXT_FMT_I)
+    else if (siz == G_IM_SIZ_8b && fmt == G_IM_FMT_I)
     {
        uint8_t *rdram_u8 = (uint8_t*)gfx_info.RDRAM;
         uint8_t *frameBufferBase = (uint8_t*)(rdram_u8 + addr);

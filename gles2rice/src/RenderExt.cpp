@@ -86,7 +86,7 @@ void CRender::LoadFrameBuffer(bool useVIreg, uint32_t left, uint32_t top, uint32
             gti.HeightToCreate  = height;
         }
 
-        if( gti.Size == TXT_SIZE_4b )
+        if( gti.Size == G_IM_SIZ_4b )
             gti.Pitch = g_CI.dwWidth >> 1;
         else
             gti.Pitch = g_CI.dwWidth << (gti.Size-1);
@@ -901,7 +901,7 @@ void CRender::LoadObjSprite(uObjTxSprite &sprite, bool useTIAddr)
         gti.WidthToCreate       = ((sprite.txtr.tile.twidth+1)>>2)<<(4-gti.Size);
         gti.HeightToCreate  = (sprite.txtr.tile.theight+1)>>2;
 
-        if( gti.Size == TXT_SIZE_4b )
+        if( gti.Size == G_IM_SIZ_4b )
         {
             gti.Pitch = gti.WidthToCreate >> 1;
         }

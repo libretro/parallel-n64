@@ -392,7 +392,7 @@ extern uint32_t lastSetTile;
 static noinline void InitVertex_scale_hack_check(uint32_t dwV)
 {
     // Check for txt scale hack
-    if( gRDP.tiles[lastSetTile].dwSize == TXT_SIZE_32b || gRDP.tiles[lastSetTile].dwSize == TXT_SIZE_4b )
+    if( gRDP.tiles[lastSetTile].dwSize == G_IM_SIZ_32b || gRDP.tiles[lastSetTile].dwSize == G_IM_SIZ_4b )
     {
         int width = ((gRDP.tiles[lastSetTile].sh-gRDP.tiles[lastSetTile].sl+1)<<1);
         int height = ((gRDP.tiles[lastSetTile].th-gRDP.tiles[lastSetTile].tl+1)<<1);

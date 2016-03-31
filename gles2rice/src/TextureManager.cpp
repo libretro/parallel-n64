@@ -592,9 +592,9 @@ TxtrCacheEntry * CTextureManager::GetTexture(TxtrInfo * pgti, bool fromTMEM, boo
     }
 
     int maxCI = 0;
-    if ( doCRCCheck && (pgti->Format == TXT_FMT_CI || (pgti->Format == TXT_FMT_RGBA && pgti->Size <= TXT_SIZE_8b )))
+    if ( doCRCCheck && (pgti->Format == G_IM_FMT_CI || (pgti->Format == G_IM_FMT_RGBA && pgti->Size <= G_IM_SIZ_8b )))
     {
-        //maxCI = pgti->Size == TXT_SIZE_8b ? 255 : 15;
+        //maxCI = pgti->Size == G_IM_SIZ_8b ? 255 : 15;
         extern unsigned char CalculateMaxCI(void *pPhysicalAddress, uint32_t left, uint32_t top, uint32_t width, uint32_t height, uint32_t size, uint32_t pitchInBytes );
 
         if( !pEntry || pEntry->dwCRC != dwAsmCRC || pEntry->maxCI < 0 )
@@ -611,7 +611,7 @@ TxtrCacheEntry * CTextureManager::GetTexture(TxtrInfo * pgti, bool fromTMEM, boo
         uint32_t dwPalSize = 16;
         uint32_t dwOffset;
 
-        if( pgti->Size == TXT_SIZE_8b )
+        if( pgti->Size == G_IM_SIZ_8b )
         {
             dwPalSize = 256;
             dwOffset = 0;
@@ -629,8 +629,8 @@ TxtrCacheEntry * CTextureManager::GetTexture(TxtrInfo * pgti, bool fromTMEM, boo
         //}
 
         uint32_t dwAsmCRCSave = dwAsmCRC;
-        //dwPalCRC = CalculateRDRAMCRC(pStart, 0, 0, dwPalSize, 1, TXT_SIZE_16b, dwPalSize*2);
-        dwPalCRC = CalculateRDRAMCRC(pStart, 0, 0, maxCI+1, 1, TXT_SIZE_16b, dwPalSize*2);
+        //dwPalCRC = CalculateRDRAMCRC(pStart, 0, 0, dwPalSize, 1, G_IM_SIZ_16b, dwPalSize*2);
+        dwPalCRC = CalculateRDRAMCRC(pStart, 0, 0, maxCI+1, 1, G_IM_SIZ_16b, dwPalSize*2);
         dwAsmCRC = dwAsmCRCSave;
     }
 
@@ -709,12 +709,12 @@ TxtrCacheEntry * CTextureManager::GetTexture(TxtrInfo * pgti, bool fromTMEM, boo
                    );
 
              extern void ConvertTextureRGBAtoI(TxtrCacheEntry* pEntry, bool alpha);
-             if( g_pRenderTextureInfo->CI_Info.dwFormat == TXT_FMT_I )
+             if( g_pRenderTextureInfo->CI_Info.dwFormat == G_IM_FMT_I )
              {
                 // Convert texture from RGBA to I
                 ConvertTextureRGBAtoI(pEntry,false);
              }
-             else if( g_pRenderTextureInfo->CI_Info.dwFormat == TXT_FMT_IA )
+             else if( g_pRenderTextureInfo->CI_Info.dwFormat == G_IM_FMT_IA )
              {
                 // Convert texture from RGBA to IA
                 ConvertTextureRGBAtoI(pEntry,true);
@@ -748,10 +748,10 @@ TxtrCacheEntry * CTextureManager::GetTexture(TxtrInfo * pgti, bool fromTMEM, boo
        if( pauseAtNext && eventToPause == NEXT_NEW_TEXTURE )
        {
           CRender::g_pRender->SetCurrentTexture( 0, pEntry->pTexture, pEntry->ti.WidthToCreate, pEntry->ti.HeightToCreate, pEntry);
-          CRender::g_pRender->DrawTexture(0, TXT_RGB);
+          CRender::g_pRender->DrawTexture(0, G_IM_RGB);
           debuggerPause = true;
           TRACE0("Pause after loading a new texture");
-          if( pEntry->ti.Format == TXT_FMT_YUV )
+          if( pEntry->ti.Format == G_IM_FMT_YUV )
           {
              TRACE0("This is YUV texture");
           }
@@ -795,12 +795,12 @@ void CTextureManager::ConvertTexture(TxtrCacheEntry * pEntry, bool fromTMEM)
     }
     else
     {
-        if( gRDP.tiles[7].dwFormat == TXT_FMT_YUV )
+        if( gRDP.tiles[7].dwFormat == G_IM_FMT_YUV )
         {
             if( gRDP.otherMode.text_tlut>=2 )
-                pF = gConvertTlutFunctions[ TXT_FMT_YUV ][ pEntry->ti.Size ];
+                pF = gConvertTlutFunctions[ G_IM_FMT_YUV ][ pEntry->ti.Size ];
             else
-                pF = gConvertFunctions[ TXT_FMT_YUV ][ pEntry->ti.Size ];
+                pF = gConvertFunctions[ G_IM_FMT_YUV ][ pEntry->ti.Size ];
         }
         else
         {
