@@ -119,10 +119,10 @@ void RSP_GBI2_MoveWord(Gfx *gfx)
         {
             switch (gfx->gbi2moveword.offset)
             {
-            case RSP_MV_WORD_OFFSET_CLIP_RNX:
-            case RSP_MV_WORD_OFFSET_CLIP_RNY:
-            case RSP_MV_WORD_OFFSET_CLIP_RPX:
-            case RSP_MV_WORD_OFFSET_CLIP_RPY:
+            case G_MWO_CLIP_RNX:
+            case G_MWO_CLIP_RNY:
+            case G_MWO_CLIP_RPX:
+            case G_MWO_CLIP_RPY:
                 CRender::g_pRender->SetClipRatio(gfx->gbi2moveword.offset, gfx->gbi2moveword.value);
             default:
                 LOG_UCODE("     RSP_MOVE_WORD_CLIP  ?   : 0x%08x", gfx->words.w1);
@@ -156,12 +156,12 @@ void RSP_GBI2_MoveWord(Gfx *gfx)
             uint16_t wMult = (uint16_t)((gfx->gbi2moveword.value >> 16) & 0xFFFF);
             uint16_t wOff  = (uint16_t)((gfx->gbi2moveword.value      ) & 0xFFFF);
 
-            float fMult = (float)(short)wMult;
-            float fOff = (float)(short)wOff;
+            float fMult    = (float)(short)wMult;
+            float fOff     = (float)(short)wOff;
 
-            float rng = 128000.0f / fMult;
-            float fMin = 500.0f - (fOff*rng/256.0f);
-            float fMax = rng + fMin;
+            float rng      = 128000.0f / fMult;
+            float fMin     = 500.0f - (fOff*rng/256.0f);
+            float fMax     = rng + fMin;
 
             FOG_DUMP(TRACE4("Set Fog: Min=%f, Max=%f, Mul=%f, Off=%f", fMin, fMax, fMult, fOff));
             //if( fMult <= 0 || fMin > fMax || fMax < 0 || fMin > 1000 )
@@ -185,19 +185,19 @@ void RSP_GBI2_MoveWord(Gfx *gfx)
 
             switch (dwField)
             {
-            case 0:
-                if (dwLight == gRSP.ambientLightIndex)
-                    SetAmbientLight( (gfx->gbi2moveword.value>>8) );
-                else
-                    SetLightCol(dwLight, gfx->gbi2moveword.value);
-                break;
+               case 0:
+                  if (dwLight == gRSP.ambientLightIndex)
+                     SetAmbientLight( (gfx->gbi2moveword.value>>8) );
+                  else
+                     SetLightCol(dwLight, gfx->gbi2moveword.value);
+                  break;
 
-            case 4:
-                break;
+               case 4:
+                  break;
 
-            default:
-                DebuggerAppendMsg("RSP_MOVE_WORD_LIGHTCOL with unknown offset 0x%08x", dwField);
-                break;
+               default:
+                  DebuggerAppendMsg("RSP_MOVE_WORD_LIGHTCOL with unknown offset 0x%08x", dwField);
+                  break;
             }
 
 

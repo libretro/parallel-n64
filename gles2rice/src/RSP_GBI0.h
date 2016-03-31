@@ -504,10 +504,10 @@ void RSP_GBI1_MoveWord(Gfx *gfx)
         {
             switch (gfx->gbi0moveword.offset)
             {
-            case RSP_MV_WORD_OFFSET_CLIP_RNX:
-            case RSP_MV_WORD_OFFSET_CLIP_RNY:
-            case RSP_MV_WORD_OFFSET_CLIP_RPX:
-            case RSP_MV_WORD_OFFSET_CLIP_RPY:
+            case G_MWO_CLIP_RNX:
+            case G_MWO_CLIP_RNY:
+            case G_MWO_CLIP_RPX:
+            case G_MWO_CLIP_RPY:
                 CRender::g_pRender->SetClipRatio(gfx->gbi0moveword.offset, gfx->gbi0moveword.value);
                 break;
             default:

@@ -69,10 +69,10 @@ void RSP_GBI1_ModifyVtx(Gfx *gfx)
         // Data for other commands?
         switch (dwWhere)
         {
-        case RSP_MV_WORD_OFFSET_POINT_RGBA:         // Modify RGBA
-        case RSP_MV_WORD_OFFSET_POINT_XYSCREEN:     // Modify X,Y
-        case RSP_MV_WORD_OFFSET_POINT_ZSCREEN:      // Modify C
-        case RSP_MV_WORD_OFFSET_POINT_ST:           // Texture
+        case G_MWO_POINT_RGBA:
+        case G_MWO_POINT_XYSCREEN:
+        case G_MWO_POINT_ZSCREEN:
+        case G_MWO_POINT_ST:
             ModifyVertexInfo(dwWhere, dwVert, dwValue);
             break;
         default:

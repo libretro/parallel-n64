@@ -136,6 +136,7 @@ extern "C" {
 #define G_MW_PERSPNORM      0x0E
 #define G_MV_COORDMOD       0x10    /* Conker Bad Fur Day */
 
+/* These are offsets from the address in the DMEM table */
 #define G_MWO_NUMLIGHT      0x00
 #define G_MWO_CLIP_RNX      0x04
 #define G_MWO_CLIP_RNY      0x0c
@@ -648,8 +649,8 @@ static const char *aAText[] =
 #define LIGHT_7 7
 #define LIGHT_8 8
 
-#define G_DL_PUSH       0x00
-#define G_DL_NOPUSH     0x01
+#define G_DL_PUSH          0x00
+#define G_DL_NOPUSH        0x01
 
 /* Blender */
 #define BLEND_FOG_ASHADE   0xc800

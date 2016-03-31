@@ -1444,7 +1444,7 @@ void CRender::SetClipRatio(uint32_t type, uint32_t w1)
     bool modified = false;
     switch(type)
     {
-    case RSP_MV_WORD_OFFSET_CLIP_RNX:
+    case G_MWO_CLIP_RNX:
         LOG_UCODE("    RSP_MOVE_WORD_CLIP  NegX: %d", (int)(short)w1);
         if( gRSP.clip_ratio_negx != (short)w1 )
         {
@@ -1452,7 +1452,7 @@ void CRender::SetClipRatio(uint32_t type, uint32_t w1)
             modified = true;
         }
         break;
-    case RSP_MV_WORD_OFFSET_CLIP_RNY:
+    case G_MWO_CLIP_RNY:
         LOG_UCODE("    RSP_MOVE_WORD_CLIP  NegY: %d", (int)(short)w1);
         if( gRSP.clip_ratio_negy != (short)w1 )
         {
@@ -1460,7 +1460,7 @@ void CRender::SetClipRatio(uint32_t type, uint32_t w1)
             modified = true;
         }
         break;
-    case RSP_MV_WORD_OFFSET_CLIP_RPX:
+    case G_MWO_CLIP_RPX:
         LOG_UCODE("    RSP_MOVE_WORD_CLIP  PosX: %d", (int)(short)w1);
         if( gRSP.clip_ratio_posx != -(short)w1 )
         {
@@ -1468,7 +1468,7 @@ void CRender::SetClipRatio(uint32_t type, uint32_t w1)
             modified = true;
         }
         break;
-    case RSP_MV_WORD_OFFSET_CLIP_RPY:
+    case G_MWO_CLIP_RPY:
         LOG_UCODE("    RSP_MOVE_WORD_CLIP  PosY: %d", (int)(short)w1);
         if( gRSP.clip_ratio_posy != -(short)w1 )
         {
@@ -1479,11 +1479,9 @@ void CRender::SetClipRatio(uint32_t type, uint32_t w1)
     }
 
     if( modified )
-    {
         UpdateClipRectangle();
-    }
-
 }
+
 void CRender::UpdateClipRectangle()
 {
     if( status.bHandleN64RenderTexture )

@@ -1123,7 +1123,7 @@ void ModifyVertexInfo(uint32_t where, uint32_t vertex, uint32_t val)
 {
     switch (where)
     {
-    case RSP_MV_WORD_OFFSET_POINT_RGBA:     // Modify RGBA
+    case G_MWO_POINT_RGBA:
         {
             uint32_t r = (val>>24)&0xFF;
             uint32_t g = (val>>16)&0xFF;
@@ -1133,7 +1133,7 @@ void ModifyVertexInfo(uint32_t where, uint32_t vertex, uint32_t val)
             LOG_UCODE("Modify vertex %d color, 0x%08x", vertex, g_dwVtxDifColor[vertex]);
         }
         break;
-    case RSP_MV_WORD_OFFSET_POINT_XYSCREEN:     // Modify X,Y
+    case G_MWO_POINT_XYSCREEN:
         {
             uint16_t nX = (uint16_t)(val>>16);
             short x = *((short*)&nX);
@@ -1165,7 +1165,7 @@ void ModifyVertexInfo(uint32_t where, uint32_t vertex, uint32_t val)
             VTX_DUMP(TRACE3("Modify vertex %d: (%d,%d)", vertex, x, y));
         }
         break;
-    case RSP_MV_WORD_OFFSET_POINT_ZSCREEN:      // Modify C
+    case G_MWO_POINT_ZSCREEN:
         {
             int z = val>>16;
 
@@ -1174,7 +1174,7 @@ void ModifyVertexInfo(uint32_t where, uint32_t vertex, uint32_t val)
             VTX_DUMP(TRACE2("Modify vertex %d: z=%d", vertex, z));
         }
         break;
-    case RSP_MV_WORD_OFFSET_POINT_ST:       // Texture
+    case G_MWO_POINT_ST:       // Texture
         {
             short tu = short(val>>16);
             short tv = short(val & 0xFFFF);

@@ -233,28 +233,11 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 # define RSP_GBI2_MV_MEM_O_L6       (8*24)
 # define RSP_GBI2_MV_MEM_O_L7       (9*24)
 
-// These are offsets from the address in the dmem table
-#define RSP_MV_WORD_OFFSET_NUMLIGHT         0x00
-#define RSP_MV_WORD_OFFSET_CLIP_RNX         0x04
-#define RSP_MV_WORD_OFFSET_CLIP_RNY         0x0c
-#define RSP_MV_WORD_OFFSET_CLIP_RPX         0x14
-#define RSP_MV_WORD_OFFSET_CLIP_RPY         0x1c
-#define RSP_MV_WORD_OFFSET_FOG              0x00    
-#define RSP_MV_WORD_OFFSET_POINT_RGBA       0x10
-#define RSP_MV_WORD_OFFSET_POINT_ST         0x14
-#define RSP_MV_WORD_OFFSET_POINT_XYSCREEN   0x18
-#define RSP_MV_WORD_OFFSET_POINT_ZSCREEN    0x1c
-
-
-
-// Flags to inhibit pushing of the display list (on branch)
+/* Flags to inhibit pushing of the display list (on branch) */
 #define RSP_DLIST_PUSH      0x00
 #define RSP_DLIST_NOPUSH    0x01
 
-
-//
-// RSP_MTX: parameter flags
-//
+/* RSP_MTX: parameter flags */
 #define RSP_MATRIX_MODELVIEW    0x00
 #define RSP_MATRIX_PROJECTION   0x01
 
