@@ -518,6 +518,11 @@ void glide64gSPSetGeometryMode (uint32_t mode)
    rdp.geom_mode |= mode;
 }
 
+void glide64gSPClearGeometryMode (uint32_t mode)
+{
+   rdp.geom_mode &= ~mode;
+}
+
 void glide64gSPNumLights(int32_t n)
 {
    if (n > 12)

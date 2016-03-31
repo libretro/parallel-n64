@@ -163,7 +163,7 @@ static void uc2_pop_matrix(uint32_t w0, uint32_t w1)
 
 static void uc2_geom_mode(uint32_t w0, uint32_t w1)
 {
-   // Switch around some things
+   /* Switch around some things */
    uint32_t clr_mode = (w0 & 0x00DFC9FF) |
       ((w0 & 0x00000600) << 3) |
       ((w0 & 0x00200000) >> 12) | 0xFF000000;
@@ -171,8 +171,7 @@ static void uc2_geom_mode(uint32_t w0, uint32_t w1)
       ((w1 & 0x00000600) << 3) |
       ((w1 & 0x00200000) >> 12);
 
-   rdp.geom_mode &= clr_mode;
-
+   glide64gSPClearGeometryMode(clr_mode);
    glide64gSPSetGeometryMode(set_mode);
 
    if (rdp.geom_mode & G_ZBUFFER)

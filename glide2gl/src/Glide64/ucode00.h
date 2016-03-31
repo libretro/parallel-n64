@@ -400,7 +400,7 @@ static void uc0_cleargeometrymode(uint32_t w0, uint32_t w1)
 {
    //FRDP("uc0:cleargeometrymode %08lx\n", w1);
 
-   rdp.geom_mode &= ~w1;
+   glide64gSPClearGeometryMode(w1);
 
    if (w1 & 0x00000001) // Z-Buffer enable
    {
