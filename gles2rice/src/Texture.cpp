@@ -170,9 +170,7 @@ void CTexture::ClampImageToSurfaceS()
                uint32_t* line = (uint32_t*)((uint8_t*)di.lpSurface+di.lPitch*y);
                uint32_t val = line[m_dwWidth-1];
                for( uint32_t x=m_dwWidth; x<m_dwCreatedTextureWidth; x++ )
-               {
                   line[x] = val;
-               }
             }
          }
          else
@@ -182,9 +180,7 @@ void CTexture::ClampImageToSurfaceS()
                uint16_t* line = (uint16_t*)((uint8_t*)di.lpSurface+di.lPitch*y);
                uint16_t val = line[m_dwWidth-1];
                for( uint32_t x=m_dwWidth; x<m_dwCreatedTextureWidth; x++ )
-               {
                   line[x] = val;
-               }
             }
          }
          EndUpdate(&di);
@@ -207,9 +203,7 @@ void CTexture::ClampImageToSurfaceT()
             {
                uint32_t* linedst = (uint32_t*)((uint8_t*)di.lpSurface+di.lPitch*y);
                for( uint32_t x=0; x<m_dwCreatedTextureWidth; x++ )
-               {
                   linedst[x] = linesrc[x];
-               }
             }
          }
          else
@@ -219,9 +213,7 @@ void CTexture::ClampImageToSurfaceT()
             {
                uint16_t* linedst = (uint16_t*)((uint8_t*)di.lpSurface+di.lPitch*y);
                for( uint32_t x=0; x<m_dwCreatedTextureWidth; x++ )
-               {
                   linedst[x] = linesrc[x];
-               }
             }
          }
          EndUpdate(&di);
