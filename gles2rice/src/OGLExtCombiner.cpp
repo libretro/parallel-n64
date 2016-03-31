@@ -53,7 +53,7 @@ void COGLColorCombiner4::InitCombinerCycleFill(void)
 {
     for( int i=0; i<m_supportedStages; i++ )
     {
-        pglActiveTexture(GL_TEXTURE0+i);
+        glActiveTexture(GL_TEXTURE0+i);
         m_pOGLRender->EnableTexUnit(i, false);
     }
 }
@@ -353,7 +353,7 @@ void COGLColorCombiner4::GenerateCombinerSetting(int index)
 
     for( int i=0; i<res.numOfUnits; i++ )
     {
-        pglActiveTexture(GL_TEXTURE0 + i);
+        glActiveTexture(GL_TEXTURE0 + i);
         m_pOGLRender->EnableTexUnit(i, true);
         glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_COMBINE);
         ApplyFor1Unit(res.units[i]);
@@ -363,7 +363,7 @@ void COGLColorCombiner4::GenerateCombinerSetting(int index)
     {
         for( int i=res.numOfUnits; i<m_maxTexUnits; i++ )
         {
-            pglActiveTexture(GL_TEXTURE0 + i);
+            glActiveTexture(GL_TEXTURE0 + i);
             m_pOGLRender->DisBindTexture(0, i);
             m_pOGLRender->EnableTexUnit(i, false);
         }
@@ -403,7 +403,7 @@ void COGLColorCombiner4::GenerateCombinerSettingConstants(int index)
     {
         for( int i=0; i<res.numOfUnits; i++ )
         {
-            pglActiveTexture(GL_TEXTURE0 + i);
+            glActiveTexture(GL_TEXTURE0 + i);
             glTexEnvfv(GL_TEXTURE_ENV, GL_TEXTURE_ENV_COLOR,fv);
         }
     }

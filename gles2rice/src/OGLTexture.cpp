@@ -28,43 +28,42 @@ COGLTexture::COGLTexture(uint32_t dwWidth, uint32_t dwHeight, TextureUsage usage
     CTexture(dwWidth,dwHeight,usage),
     m_glFmt(GL_RGBA)
 {
-    // FIXME: If usage is AS_RENDER_TARGET, we need to create pbuffer instead of regular texture
+   // FIXME: If usage is AS_RENDER_TARGET, we need to create pbuffer instead of regular texture
 
-    m_dwTextureFmt = TEXTURE_FMT_A8R8G8B8;  // Always use 32bit to load texture
-    glGenTextures( 1, &m_dwTextureName );
+   m_dwTextureFmt = TEXTURE_FMT_A8R8G8B8;  // Always use 32bit to load texture
+   glGenTextures( 1, &m_dwTextureName );
 
-    // Make the width and height be the power of 2
-    uint32_t w;
-    for (w = 1; w < dwWidth; w <<= 1);
-    m_dwCreatedTextureWidth = w;
-    for (w = 1; w < dwHeight; w <<= 1);
-    m_dwCreatedTextureHeight = w;
-    
-    if (dwWidth*dwHeight > 256*256)
-        TRACE4("Large texture: (%d x %d), created as (%d x %d)", 
+   // Make the width and height be the power of 2
+   uint32_t w;
+   for (w = 1; w < dwWidth; w <<= 1);
+   m_dwCreatedTextureWidth = w;
+   for (w = 1; w < dwHeight; w <<= 1);
+   m_dwCreatedTextureHeight = w;
+
+   if (dwWidth*dwHeight > 256*256)
+      TRACE4("Large texture: (%d x %d), created as (%d x %d)", 
             dwWidth, dwHeight,m_dwCreatedTextureWidth,m_dwCreatedTextureHeight);
-    
-    m_fYScale = (float)m_dwCreatedTextureHeight/(float)m_dwHeight;
-    m_fXScale = (float)m_dwCreatedTextureWidth/(float)m_dwWidth;
 
-    m_pTexture = malloc(m_dwCreatedTextureWidth * m_dwCreatedTextureHeight * GetPixelSize());
+   m_fYScale = (float)m_dwCreatedTextureHeight/(float)m_dwHeight;
+   m_fXScale = (float)m_dwCreatedTextureWidth/(float)m_dwWidth;
 
-    switch( options.textureQuality )
-    {
-    case TXT_QUALITY_DEFAULT:
-        if( options.colorQuality == TEXTURE_FMT_A4R4G4B4 ) 
+   m_pTexture = malloc(m_dwCreatedTextureWidth * m_dwCreatedTextureHeight * GetPixelSize());
+
+   switch( options.textureQuality )
+   {
+      case TXT_QUALITY_DEFAULT:
+         if( options.colorQuality == TEXTURE_FMT_A4R4G4B4 ) 
             m_glFmt = GL_RGBA4;
-        break;
-    case TXT_QUALITY_32BIT:
-        break;
-    case TXT_QUALITY_16BIT:
-            m_glFmt = GL_RGBA4;
-        break;
-    };
-    LOG_TEXTURE(TRACE2("New texture: (%d, %d)", dwWidth, dwHeight));
+         break;
+      case TXT_QUALITY_32BIT:
+         break;
+      case TXT_QUALITY_16BIT:
+         m_glFmt = GL_RGBA4;
+         break;
+   };
 
-    glBindTexture(GL_TEXTURE_2D, m_dwTextureName);
-    glTexImage2D(GL_TEXTURE_2D, 0, m_glFmt, m_dwCreatedTextureWidth, m_dwCreatedTextureHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, m_pTexture);
+   glBindTexture(GL_TEXTURE_2D, m_dwTextureName);
+   glTexImage2D(GL_TEXTURE_2D, 0, m_glFmt, m_dwCreatedTextureWidth, m_dwCreatedTextureHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, m_pTexture);
 }
 
 COGLTexture::~COGLTexture()
@@ -83,12 +82,12 @@ bool COGLTexture::StartUpdate(DrawInfo *di)
     if (m_pTexture == NULL)
         return false;
 
-    di->dwHeight = (uint16_t)m_dwHeight;
-    di->dwWidth = (uint16_t)m_dwWidth;
+    di->dwHeight        = (uint16_t)m_dwHeight;
+    di->dwWidth         = (uint16_t)m_dwWidth;
     di->dwCreatedHeight = m_dwCreatedTextureHeight;
-    di->dwCreatedWidth = m_dwCreatedTextureWidth;
-    di->lpSurface = m_pTexture;
-    di->lPitch = GetPixelSize()*m_dwCreatedTextureWidth;
+    di->dwCreatedWidth  = m_dwCreatedTextureWidth;
+    di->lpSurface       = m_pTexture;
+    di->lPitch          = GetPixelSize()*m_dwCreatedTextureWidth;
 
     return true;
 }
@@ -104,9 +103,7 @@ void COGLTexture::EndUpdate(DrawInfo *di)
     // Mipmap support
     if(options.mipmapping)
     {
-        // Set Mipmap
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_NEAREST);
-
         glGenerateMipmap(GL_TEXTURE_2D);
     }
     else

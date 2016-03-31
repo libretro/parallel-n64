@@ -43,7 +43,7 @@ void COGLExtRender::BindTexture(GLuint texture, int unitno)
         {
             if( m_curBoundTex[unitno] != texture )
             {
-                pglActiveTexture(GL_TEXTURE0 + unitno);
+                glActiveTexture(GL_TEXTURE0 + unitno);
                 glBindTexture(GL_TEXTURE_2D,texture);
                 m_curBoundTex[unitno] = texture;
             }
@@ -59,7 +59,7 @@ void COGLExtRender::DisBindTexture(GLuint texture, int unitno)
 {
     if( m_bEnableMultiTexture )
     {
-        pglActiveTexture(GL_TEXTURE0 + unitno);
+        glActiveTexture(GL_TEXTURE0 + unitno);
         glBindTexture(GL_TEXTURE_2D, 0);    //Not to bind any texture
     }
     else
@@ -81,7 +81,7 @@ void COGLExtRender::SetTexWrapS(int unitno,GLuint flag)
     static GLuint mtex[8];
     if( m_curBoundTex[unitno] != mtex[unitno] || mflag[unitno] != flag )
     {
-        pglActiveTexture(GL_TEXTURE0+unitno);
+        glActiveTexture(GL_TEXTURE0+unitno);
         mtex[unitno] = m_curBoundTex[0];
         mflag[unitno] = flag;
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, flag);
@@ -188,7 +188,7 @@ void COGLExtRender::EnableTexUnit(int unitno, bool flag)
     if( m_texUnitEnabled[unitno] != flag )
     {
         m_texUnitEnabled[unitno] = flag;
-        pglActiveTexture(GL_TEXTURE0 + unitno);
+        glActiveTexture(GL_TEXTURE0 + unitno);
     }
 }
 
@@ -243,7 +243,7 @@ void COGLExtRender::ApplyTextureFilter()
             if( mtex[i] != m_curBoundTex[i] )
             {
                 mtex[i] = m_curBoundTex[i];
-                pglActiveTexture(GL_TEXTURE0 + i);
+                glActiveTexture(GL_TEXTURE0 + i);
                 minflag[i] = m_dwMinFilter;
                 magflag[i] = m_dwMagFilter;
                 glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, iMinFilter);
@@ -254,13 +254,13 @@ void COGLExtRender::ApplyTextureFilter()
                 if( minflag[i] != (unsigned int)m_dwMinFilter )
                 {
                     minflag[i] = m_dwMinFilter;
-                    pglActiveTexture(GL_TEXTURE0 + i);
+                    glActiveTexture(GL_TEXTURE0 + i);
                     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, iMinFilter);
                 }
                 if( magflag[i] != (unsigned int)m_dwMagFilter )
                 {
                     magflag[i] = m_dwMagFilter;
-                    pglActiveTexture(GL_TEXTURE0 + i);
+                    glActiveTexture(GL_TEXTURE0 + i);
                     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, iMagFilter);
                 }
             }

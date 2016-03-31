@@ -58,9 +58,6 @@
 #define GL_PREVIOUS                         0x8578
 #endif
 
-// Function substitutions
-#define pglActiveTexture                    glActiveTexture
-
 // No-op substitutions (unavailable in GLES2)
 #define glLoadIdentity()
 #define glMatrixMode(x)

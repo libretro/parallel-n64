@@ -831,11 +831,11 @@ void OGLRender::SetFogColor(uint32_t r, uint32_t g, uint32_t b, uint32_t a)
 
 void OGLRender::DisableMultiTexture()
 {
-    pglActiveTexture(GL_TEXTURE1);
+    glActiveTexture(GL_TEXTURE1);
     EnableTexUnit(1, false);
-    pglActiveTexture(GL_TEXTURE0);
+    glActiveTexture(GL_TEXTURE0);
     EnableTexUnit(0, false);
-    pglActiveTexture(GL_TEXTURE0);
+    glActiveTexture(GL_TEXTURE0);
     EnableTexUnit(0, true);
 }
 
