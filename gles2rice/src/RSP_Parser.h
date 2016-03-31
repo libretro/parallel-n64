@@ -161,16 +161,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 # define RSP_GBI2_MV_MEM__LIGHT     10
 # define RSP_GBI2_MV_MEM__POINT     12
 # define RSP_GBI2_MV_MEM__MATRIX    14      // NOTE: this is in moveword table
-# define RSP_GBI2_MV_MEM_O_LOOKATX  (0*24)
-# define RSP_GBI2_MV_MEM_O_LOOKATY  (1*24)
-# define RSP_GBI2_MV_MEM_O_L0       (2*24)
-# define RSP_GBI2_MV_MEM_O_L1       (3*24)
-# define RSP_GBI2_MV_MEM_O_L2       (4*24)
-# define RSP_GBI2_MV_MEM_O_L3       (5*24)
-# define RSP_GBI2_MV_MEM_O_L4       (6*24)
-# define RSP_GBI2_MV_MEM_O_L5       (7*24)
-# define RSP_GBI2_MV_MEM_O_L6       (8*24)
-# define RSP_GBI2_MV_MEM_O_L7       (9*24)
 
 typedef struct 
 {

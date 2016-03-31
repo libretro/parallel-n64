@@ -727,103 +727,101 @@ void RSP_GBI2_Mtx(Gfx *gfx)
 
 void RSP_GBI2_MoveMem(Gfx *gfx)
 {
-    SP_Timing(RSP_GBI1_MoveMem);
+   SP_Timing(RSP_GBI1_MoveMem);
 
-    uint32_t addr = RSPSegmentAddr((gfx->words.w1));
-    uint32_t type    = ((gfx->words.w0)     ) & 0xFE;
+   uint32_t addr = RSPSegmentAddr((gfx->words.w1));
+   uint32_t type    = ((gfx->words.w0)     ) & 0xFE;
 
-    //uint32_t dwLen = ((gfx->words.w0) >> 16) & 0xFF;
-    //uint32_t dwOffset = ((gfx->words.w0) >> 8) & 0xFFFF;
+   //uint32_t dwLen = ((gfx->words.w0) >> 16) & 0xFF;
+   //uint32_t dwOffset = ((gfx->words.w0) >> 8) & 0xFFFF;
 
-    switch (type)
-    {
-    case RSP_GBI2_MV_MEM__VIEWPORT:
-        {
+   switch (type)
+   {
+      case RSP_GBI2_MV_MEM__VIEWPORT:
+         {
             RSP_MoveMemViewport(addr);
-        }
-        break;
-    case RSP_GBI2_MV_MEM__LIGHT:
-        {
-           int8_t *rdram_s8 = (int8_t*)gfx_info.RDRAM;
-           uint32_t dwOffset2 = ((gfx->words.w0) >> 5) & 0x3FFF;
-           switch (dwOffset2)
-           {
-              case 0x00:
-                 {
-                    int8_t * pcBase = rdram_s8 + addr;
-                    LOG_UCODE("    RSP_GBI1_MV_MEM_LOOKATX %f %f %f",
-                          (float)pcBase[8 ^ 0x3],
-                          (float)pcBase[9 ^ 0x3],
-                          (float)pcBase[10 ^ 0x3]);
+         }
+         break;
+      case RSP_GBI2_MV_MEM__LIGHT:
+         {
+            int8_t *rdram_s8 = (int8_t*)gfx_info.RDRAM;
+            uint32_t dwOffset2 = ((gfx->words.w0) >> 5) & 0x3FFF;
+            switch (dwOffset2)
+            {
+               case 0x00:
+                  {
+                     int8_t * pcBase = rdram_s8 + addr;
+                     LOG_UCODE("    RSP_GBI1_MV_MEM_LOOKATX %f %f %f",
+                           (float)pcBase[8 ^ 0x3],
+                           (float)pcBase[9 ^ 0x3],
+                           (float)pcBase[10 ^ 0x3]);
 
-                 }
-                 break;
-              case 0x18:
-                 {
-                    int8_t * pcBase = rdram_s8 + addr;
-                    LOG_UCODE("    RSP_GBI1_MV_MEM_LOOKATY %f %f %f",
-                          (float)pcBase[8 ^ 0x3],
-                          (float)pcBase[9 ^ 0x3],
-                          (float)pcBase[10 ^ 0x3]);
-                 }
-                 break;
-              default:        //0x30/48/60
-                 {
-                    uint32_t dwLight = (dwOffset2 - 0x30)/0x18;
-                    LOG_UCODE("    Light %d:", dwLight);
-                    RSP_MoveMemLight(dwLight, addr);
-                 }
-                 break;
-           }
-           break;
+                  }
+                  break;
+               case 0x18:
+                  {
+                     int8_t * pcBase = rdram_s8 + addr;
+                     LOG_UCODE("    RSP_GBI1_MV_MEM_LOOKATY %f %f %f",
+                           (float)pcBase[8 ^ 0x3],
+                           (float)pcBase[9 ^ 0x3],
+                           (float)pcBase[10 ^ 0x3]);
+                  }
+                  break;
+               default:        //0x30/48/60
+                  {
+                     uint32_t dwLight = (dwOffset2 - 0x30)/0x18;
+                     LOG_UCODE("    Light %d:", dwLight);
+                     RSP_MoveMemLight(dwLight, addr);
+                  }
+                  break;
+            }
+            break;
 
-        }
-    case RSP_GBI2_MV_MEM__MATRIX:
-        LOG_UCODE("Force Matrix: addr=%08X", addr);
-        RSP_GFX_Force_Matrix(addr);
-        break;
-    case RSP_GBI2_MV_MEM_O_L0:
-    case RSP_GBI2_MV_MEM_O_L1:
-    case RSP_GBI2_MV_MEM_O_L2:
-    case RSP_GBI2_MV_MEM_O_L3:
-    case RSP_GBI2_MV_MEM_O_L4:
-    case RSP_GBI2_MV_MEM_O_L5:
-    case RSP_GBI2_MV_MEM_O_L6:
-    case RSP_GBI2_MV_MEM_O_L7:
-        LOG_UCODE("Zelda Move Light");
-        RDP_NOIMPL_WARN("Zelda Move Light");
-        break;
+         }
+      case RSP_GBI2_MV_MEM__MATRIX:
+         LOG_UCODE("Force Matrix: addr=%08X", addr);
+         RSP_GFX_Force_Matrix(addr);
+         break;
+      case G_MVO_L0:
+      case G_MVO_L1:
+      case G_MVO_L2:
+      case G_MVO_L3:
+      case G_MVO_L4:
+      case G_MVO_L5:
+      case G_MVO_L6:
+      case G_MVO_L7:
+         LOG_UCODE("Zelda Move Light");
+         RDP_NOIMPL_WARN("Zelda Move Light");
+         break;
 
-    case RSP_GBI2_MV_MEM__POINT:
-        LOG_UCODE("Zelda Move Point");
-        void RDP_NOIMPL_WARN(const char* op);
-        RDP_NOIMPL_WARN("Zelda Move Point");
-        break;
+      case RSP_GBI2_MV_MEM__POINT:
+         LOG_UCODE("Zelda Move Point");
+         void RDP_NOIMPL_WARN(const char* op);
+         RDP_NOIMPL_WARN("Zelda Move Point");
+         break;
 
-    case RSP_GBI2_MV_MEM_O_LOOKATX:
-        if( (gfx->words.w0) == 0xDC170000 && ((gfx->words.w1)&0xFF000000) == 0x80000000 )
-        {
+      case G_MVO_LOOKATX:
+         if( (gfx->words.w0) == 0xDC170000 && ((gfx->words.w1)&0xFF000000) == 0x80000000 )
+         {
             // Ucode for Evangelion.v64, the ObjMatrix cmd
             RSP_S2DEX_OBJ_MOVEMEM(gfx);
-        }
-        break;
-    case RSP_GBI2_MV_MEM_O_LOOKATY:
-        RSP_RDP_NOIMPL("Not implemented ZeldaMoveMem LOOKATY, Cmd0=0x%08X, Cmd1=0x%08X", gfx->words.w0, gfx->words.w1);
-        break;
-    case 0x02:
-        if( (gfx->words.w0) == 0xDC070002 && ((gfx->words.w1)&0xFF000000) == 0x80000000 )
-        {
+         }
+         break;
+      case G_MVO_LOOKATY:
+         RSP_RDP_NOIMPL("Not implemented ZeldaMoveMem LOOKATY, Cmd0=0x%08X, Cmd1=0x%08X", gfx->words.w0, gfx->words.w1);
+         break;
+      case 0x02:
+         if( (gfx->words.w0) == 0xDC070002 && ((gfx->words.w1)&0xFF000000) == 0x80000000 )
+         {
             RSP_S2DEX_OBJ_MOVEMEM(gfx);
             break;
-        }
-    default:
-        LOG_UCODE("ZeldaMoveMem Type: Unknown");
-        RSP_RDP_NOIMPL("Unknown ZeldaMoveMem Type, type=0x%X, Addr=%08X", type, addr);
-        break;
-    }
+         }
+      default:
+         LOG_UCODE("ZeldaMoveMem Type: Unknown");
+         RSP_RDP_NOIMPL("Unknown ZeldaMoveMem Type, type=0x%X, Addr=%08X", type, addr);
+         break;
+   }
 }
-
-
 
 void RSP_GBI2_DL(Gfx *gfx)
 {
