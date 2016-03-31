@@ -65,10 +65,7 @@ static void uc8_moveword(uint32_t w0, uint32_t w1)
 
       case G_MW_CLIP:
          if (offset == 0x04)
-         {
-            rdp.clip_ratio = (float)vi_integer_sqrt(w1);
-            g_gdp.flags |= UPDATE_VIEWPORT;
-         }
+            glide64gSPClipRatio(w1);
          break;
 
       case G_MW_SEGMENT:
