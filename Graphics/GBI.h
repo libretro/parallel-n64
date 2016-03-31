@@ -679,6 +679,19 @@ static const char *aAText[] =
 # define G_MTX_NOPUSH		0x00	/* push or not */
 # define G_MTX_PUSH		   0x01
 
+#define RDRAM_UWORD(addr)   (*(uint32_t *)((addr)+ (uint8_t*)gfx_info.RDRAM))
+#define RDRAM_SWORD(addr)   (*(int32_t *)((addr)+ (uint8_t*)gfx_info.RDRAM))
+#define RDRAM_UHALF(addr)   (*(uint16_t *)(((addr)^2) + (uint8_t*)gfx_info.RDRAM))
+#define RDRAM_SHALF(addr)   (*(int16_t *)(((addr)^2)+ (uint8_t*)gfx_info.RDRAM))
+#define RDRAM_UBYTE(addr)   (*(uint8_t *)(((addr)^3)+ (uint8_t*)gfx_info.RDRAM))
+#define RDRAM_SBYTE(addr)   (*(int8_t *)(((addr)^3) + (uint8_t*)gfx_info.RDRAM))
+#define pRDRAM_UWORD(addr)  ((uint32_t *)((addr) + (uint8_t*)gfx_info.RDRAM))
+#define pRDRAM_SWORD(addr)  ((int32_t *)((addr)+ (uint8_t*)gfx_info.RDRAM))
+#define pRDRAM_UHALF(addr)  ((uint16_t *)(((addr)^2) + (uint8_t*)gfx_info.RDRAM))
+#define pRDRAM_SHALF(addr)  ((int16_t*)(((addr)^2)  + (uint8_t*)gfx_info.RDRAM))
+#define pRDRAM_UBYTE(addr)  ((uint8_t *)(((addr)^3) + (uint8_t*)gfx_info.RDRAM))
+#define pRDRAM_SBYTE(addr)  ((int8_t *)(((addr)^3)) + (uint8_t*)gfx_info.RDRAM)
+
 #ifdef __cplusplus
 }
 #endif
