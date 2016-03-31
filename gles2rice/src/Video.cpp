@@ -406,7 +406,7 @@ int riceRomOpen(void)
 #ifdef DEBUGGER
     if( debuggerPause )
     {
-        debuggerPause = FALSE;
+        debuggerPause = false;
         usleep(100 * 1000);
     }
 #endif
@@ -564,13 +564,13 @@ int riceInitiateGFX(GFX_INFO Gfx_Info)
     if (!InitConfiguration())
     {
         DebugMessage(M64MSG_ERROR, "Failed to read configuration data");
-        return FALSE;
+        return false;
     }
 
     CGraphicsContext::InitWindowInfo();
     CGraphicsContext::InitDeviceParameters();
 
-    return(TRUE);
+    return true;
 }
 
 void riceResizeVideoOutput(int width, int height)

@@ -179,7 +179,7 @@ void COGLColorCombiner::InitCombinerBlenderForSimpleTextureDraw(uint32_t tile)
     glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_LINEAR); // Linear Filtering
 
     glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
-    m_pOGLRender->SetAlphaTestEnable(FALSE);
+    m_pOGLRender->SetAlphaTestEnable(false);
 }
 
 #ifdef DEBUGGER

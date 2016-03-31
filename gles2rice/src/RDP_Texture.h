@@ -436,7 +436,7 @@ bool CalculateTileSizes_method_2(int tileno, TMEMLoadMapInfo *info, TxtrInfo &gt
         if (info->dxt == 0 || info->dwTmem != tile.dwTMem )
         {
             dwPitch = tile.dwLine << 3;
-            gti.bSwapped = TRUE;
+            gti.bSwapped = true;
             if( info->dwTmem != tile.dwTMem && info->dxt != 0 && info->dwSize == TXT_SIZE_16b && tile.dwSize == TXT_SIZE_4b )
                 conkerSwapHack = true;
         }
@@ -584,7 +584,7 @@ bool CalculateTileSizes_method_1(int tileno, TMEMLoadMapInfo *info, TxtrInfo &gt
         else if (info->dxt == 0 )
         {
             tile.dwPitch = tile.dwLine << 3;
-            gti.bSwapped = TRUE;
+            gti.bSwapped = true;
             if( info->dwTmem != tile.dwTMem && info->dxt != 0 && info->dwSize == TXT_SIZE_16b && tile.dwSize == TXT_SIZE_4b )
                 conkerSwapHack = true;
         }
@@ -1030,7 +1030,7 @@ void DLParser_LoadBlock(Gfx *gfx)
 
     TMEMLoadMapInfo &info = g_tmemLoadAddrMap[tile.dwTMem];
 
-    info.bSwapped = (dxt == 0? TRUE : FALSE);
+    info.bSwapped = (dxt == 0? true : false);
 
     info.sl = tile.hilite_sl = tile.sl = uls;
     info.sh = tile.hilite_sh = tile.sh = lrs;
@@ -1265,7 +1265,7 @@ void DLParser_LoadTile(Gfx *gfx)
     info.dwTotalWords = size<<2;
 
     info.bSetBy = CMD_LOADTILE;
-    info.bSwapped =FALSE;
+    info.bSwapped =false;
 
     g_TxtLoadBy = CMD_LOADTILE;
 

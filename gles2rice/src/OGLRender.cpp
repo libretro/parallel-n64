@@ -42,7 +42,7 @@ OGLRender::OGLRender()
     for( int i=0; i<8; i++ )
     {
         m_curBoundTex[i]=0;
-        m_texUnitEnabled[i]=FALSE;
+        m_texUnitEnabled[i]= false;
     }
 
     m_bEnableMultiTexture = false;
@@ -132,7 +132,7 @@ void OGLRender::ZBufferEnable(bool bZBuffer)
 {
     gRSP.bZBufferEnabled = bZBuffer;
     if( g_curRomInfo.bForceDepthBuffer )
-        bZBuffer = TRUE;
+        bZBuffer = true;
     if( bZBuffer )
     {
         glDepthMask(GL_TRUE);
@@ -170,10 +170,10 @@ void OGLRender::ClearZBuffer(float depth)
 void OGLRender::SetZCompare(bool bZCompare)
 {
     if( g_curRomInfo.bForceDepthBuffer )
-        bZCompare = TRUE;
+        bZCompare = true;
 
     gRSP.bZBufferEnabled = bZCompare;
-    if( bZCompare == TRUE )
+    if( bZCompare == true )
     {
         //glEnable(GL_DEPTH_TEST);
         glDepthFunc( GL_LEQUAL );
@@ -188,7 +188,7 @@ void OGLRender::SetZCompare(bool bZCompare)
 void OGLRender::SetZUpdate(bool bZUpdate)
 {
     if( g_curRomInfo.bForceDepthBuffer )
-        bZUpdate = TRUE;
+        bZUpdate = true;
 
     if( bZUpdate )
     {
@@ -506,7 +506,7 @@ bool OGLRender::RenderFlushTris()
 
     glViewportWrapper(windowSetting.vpLeftW, windowSetting.uDisplayHeight - windowSetting.vpTopW - windowSetting.vpHeightW, windowSetting.vpWidthW, windowSetting.vpHeightW, false);
 
-    //if options.bOGLVertexClipper == FALSE )
+    //if options.bOGLVertexClipper == false )
     {
         glDrawElements( GL_TRIANGLES, gRSP.numVertices, GL_UNSIGNED_SHORT, g_vtxIndex );
     }
@@ -804,7 +804,7 @@ void OGLRender::TurnFogOnOff(bool flag)
 
 void OGLRender::SetFogEnable(bool bEnable)
 {
-    DEBUGGER_IF_DUMP( (gRSP.bFogEnabled != (bEnable==TRUE) && logFog ), TRACE1("Set Fog %s", bEnable? "enable":"disable"));
+    DEBUGGER_IF_DUMP( (gRSP.bFogEnabled != (bEnable==true) && logFog ), TRACE1("Set Fog %s", bEnable? "enable":"disable"));
 
     gRSP.bFogEnabled = bEnable;
     

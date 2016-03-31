@@ -225,7 +225,7 @@ void InitRenderBase()
 
     gRSP.fTexScaleX = 1/32.0f;
     gRSP.fTexScaleY = 1/32.0f;
-    gRSP.bTextureEnabled = FALSE;
+    gRSP.bTextureEnabled = false;
 
     gRSP.clip_ratio_left = 0;
     gRSP.clip_ratio_top = 0;
@@ -479,7 +479,7 @@ void InitVertex(uint32_t dwV, uint32_t vtxIndex, bool bTexture)
 
     g_vtxIndex[vtxIndex] = vtxIndex;
 
-    if( options.bOGLVertexClipper == TRUE )
+    if( options.bOGLVertexClipper == true )
     {
         InitVertex_notopengl_or_clipper_adjust(v, dwV);
     }
@@ -1001,13 +1001,13 @@ bool PrepareTriangle(uint32_t dwV0, uint32_t dwV1, uint32_t dwV2)
 
 
 
-// Returns TRUE if it thinks the triangle is visible
-// Returns FALSE if it is clipped
+// Returns true if it thinks the triangle is visible
+// Returns false if it is clipped
 bool IsTriangleVisible(uint32_t dwV0, uint32_t dwV1, uint32_t dwV2)
 {
     //return true;  //fix me
 
-    DEBUGGER_ONLY_IF( (!debuggerEnableTestTris || !debuggerEnableCullFace), {return TRUE;});
+    DEBUGGER_ONLY_IF( (!debuggerEnableTestTris || !debuggerEnableCullFace), {return true;});
     
 #ifdef DEBUGGER
     // Check vertices are valid!

@@ -62,18 +62,18 @@ CRender::CRender() :
     m_fScreenViewportMultX(2.0f),
     m_fScreenViewportMultY(2.0f),
 
-    m_dwTexturePerspective(FALSE),
-    m_bAlphaTestEnable(FALSE),
+    m_dwTexturePerspective(false),
+    m_bAlphaTestEnable(false),
 
-    m_bZUpdate(FALSE),
-    m_bZCompare(FALSE),
+    m_bZUpdate(false),
+    m_bZCompare(false),
     m_dwZBias(0),
     
     m_dwMinFilter(FILTER_POINT),
     m_dwMagFilter(FILTER_POINT),
     m_dwAlpha(0xFF),
     m_Mux(0),
-    m_bBlendModeValid(FALSE)
+    m_bBlendModeValid(false)
 {
     InitRenderBase();
 
@@ -304,7 +304,7 @@ void CRender::SetMux(uint32_t dwMux0, uint32_t dwMux1)
     if( m_Mux != tempmux )
     {
         m_Mux = tempmux;
-        m_bBlendModeValid = FALSE;
+        m_bBlendModeValid = false;
         m_pColorCombiner->UpdateCombiner(dwMux0, dwMux1);
     }
 }
@@ -380,7 +380,7 @@ bool CRender::FillRect(int nX0, int nY0, int nX1, int nY1, uint32_t dwColor)
     */
     {
         //bool m_savedZBufferFlag = gRSP.bZBufferEnabled;   // Save ZBuffer state
-        ZBufferEnable( FALSE );
+        ZBufferEnable( false );
 
         m_fillRectVtx[0].x = ViewPortTranslatei_x(nX0);
         m_fillRectVtx[0].y = ViewPortTranslatei_y(nY0);
@@ -391,7 +391,7 @@ bool CRender::FillRect(int nX0, int nY0, int nX1, int nY1, uint32_t dwColor)
 
         if( gRDP.otherMode.cycle_type  >= CYCLE_TYPE_COPY )
         {
-            ZBufferEnable(FALSE);
+            ZBufferEnable(false);
         }
         else
         {
@@ -640,7 +640,7 @@ bool CRender::TexRect(int nX0, int nY0, int nX1, int nY1, float fS0, float fT0, 
 
     if( gRDP.otherMode.cycle_type  >= CYCLE_TYPE_COPY || !gRDP.otherMode.z_cmp )
     {
-        ZBufferEnable(FALSE);
+        ZBufferEnable(false);
     }
 
     bool accurate = currentRomOptions.bAccurateTextureMapping;
@@ -868,7 +868,7 @@ bool CRender::TexRectFlip(int nX0, int nY0, int nX1, int nY1, float fS0, float f
     // Save ZBuffer state
     m_savedZBufferFlag = gRSP.bZBufferEnabled;
     if( gRDP.otherMode.depth_source == 0 ) 
-        ZBufferEnable( FALSE );
+        ZBufferEnable( false );
 
     float widthDiv = g_textures[gRSP.curTile].m_fTexWidth;
     float heightDiv = g_textures[gRSP.curTile].m_fTexHeight;
@@ -1137,7 +1137,7 @@ bool CRender::DrawTriangles()
     if( !status.bCIBufferIsRendered )
         g_pFrameBufferManager->ActiveTextureBuffer();
 
-    DEBUGGER_ONLY_IF( (!debuggerEnableZBuffer), {ZBufferEnable( FALSE );} );
+    DEBUGGER_ONLY_IF( (!debuggerEnableZBuffer), {ZBufferEnable( false );} );
 
     if( status.bVIOriginIsUpdated == true && currentRomOptions.screenUpdateSetting==SCREEN_UPDATE_AT_1ST_PRIMITIVE )
     {
@@ -1301,7 +1301,7 @@ bool CRender::DrawTriangles()
 
     if( status.bHandleN64RenderTexture && g_pRenderTextureInfo->CI_Info.dwSize == TXT_SIZE_8b )
     {
-        ZBufferEnable(FALSE);
+        ZBufferEnable(false);
     }
 
     ApplyScissorWithClipRatio(false);
@@ -1602,24 +1602,24 @@ void CRender::InitOtherModes(void)
         {
             ForceAlphaRef(128); // Strange, I have to use value=2 for pixel shader combiner for Nvidia FX5200
                                 // for other video cards, value=1 is good enough.
-            SetAlphaTestEnable(TRUE);
+            SetAlphaTestEnable(true);
         }
         else
         {
-            SetAlphaTestEnable(FALSE);
+            SetAlphaTestEnable(false);
         }
     }
     else if ( gRDP.otherMode.alpha_compare == 3 )
     {
         //RDP_ALPHA_COMPARE_DITHER
-        SetAlphaTestEnable(FALSE);
+        SetAlphaTestEnable(false);
     }
     else
     {
         if( (gRDP.otherMode.alpha_cvg_sel ) && !gRDP.otherMode.cvg_x_alpha )
         {
             // Use CVG for pixel alpha
-            SetAlphaTestEnable(FALSE);
+            SetAlphaTestEnable(false);
         }
         else
         {
@@ -1628,21 +1628,21 @@ void CRender::InitOtherModes(void)
                 ForceAlphaRef(1);
             else
                 ForceAlphaRef(m_dwAlpha);
-            SetAlphaTestEnable(TRUE);
+            SetAlphaTestEnable(true);
         }
     }
 
     if( options.enableHackForGames == HACK_FOR_SOUTH_PARK_RALLY && m_Mux == 0x00121824ff33ffffLL &&
         gRSP.bCullFront && gRDP.otherMode.aa_en && gRDP.otherMode.z_cmp && gRDP.otherMode.z_upd )
     {
-        SetZCompare(FALSE);
+        SetZCompare(false);
     }
 
 
     if( gRDP.otherMode.cycle_type  >= CYCLE_TYPE_COPY )
     {
         // Disable zbuffer for COPY and FILL mode
-        SetZCompare(FALSE);
+        SetZCompare(false);
     }
     else
     {
@@ -1654,8 +1654,8 @@ void CRender::InitOtherModes(void)
     if( options.enableHackForGames == HACK_FOR_SOUTH_PARK_RALLY && m_Mux == 0x00121824ff33ffff &&
         gRSP.bCullFront && gRDP.otherMode.z_cmp && gRDP.otherMode.z_upd )//&& gRDP.otherMode.aa_en )
     {
-        SetZCompare(FALSE);
-        SetZUpdate(FALSE);
+        SetZCompare(false);
+        SetZUpdate(false);
     }
     */
 }

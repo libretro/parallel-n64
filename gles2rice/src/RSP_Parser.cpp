@@ -284,15 +284,15 @@ void DLParser_Init()
     status.gRDPTime = 0;
     status.gDlistCount = 0;
     status.gUcodeCount = 0;
-    status.frameReadByCPU = FALSE;
-    status.frameWriteByCPU = FALSE;
+    status.frameReadByCPU = false;
+    status.frameWriteByCPU = false;
     status.SPCycleCount = 0;
     status.DPCycleCount = 0;
     status.bN64IsDrawingTextureBuffer = false;
     status.bDirectWriteIntoRDRAM = false;
     status.bHandleN64RenderTexture = false;
 
-    status.bUcodeIsKnown = FALSE;
+    status.bUcodeIsKnown = false;
     status.lastPurgeTimeTime = status.gRDPTime;
 
     status.curRenderBuffer = 0;
@@ -343,7 +343,7 @@ void DLParser_Init()
 void RDP_GFX_Reset()
 {
     gDlistStackPointer=-1;
-    status.bUcodeIsKnown = FALSE;
+    status.bUcodeIsKnown = false;
     gTextureManager.RecycleAllTextures();
 }
 
@@ -624,7 +624,7 @@ static uint32_t DLParser_IdentifyUcode( uint32_t crc_size, uint32_t crc_800, cha
             {
                 DebuggerAppendMsg("Incorrect description for this ucode:\n%x, %x, %s",crc_800, crc_size, str);
             }
-            status.bUcodeIsKnown = TRUE;
+            status.bUcodeIsKnown = true;
             gRSP.bNearClip = !g_UcodeData[i].non_nearclip;
             gRSP.bRejectVtx = g_UcodeData[i].reject;
             DebuggerAppendMsg("Identify ucode = %d, crc = %08X, %s", g_UcodeData[i].ucode, crc_800, str);
@@ -633,7 +633,7 @@ static uint32_t DLParser_IdentifyUcode( uint32_t crc_size, uint32_t crc_800, cha
 #else
         if ( crc_800 == g_UcodeData[i].crc_800 )
         {
-            status.bUcodeIsKnown = TRUE;
+            status.bUcodeIsKnown = true;
             gRSP.bNearClip = !g_UcodeData[i].non_nearclip;
             gRSP.bRejectVtx = g_UcodeData[i].reject;
             return g_UcodeData[i].ucode;
@@ -653,7 +653,7 @@ static uint32_t DLParser_IdentifyUcode( uint32_t crc_size, uint32_t crc_800, cha
 #endif
     gRSP.bNearClip = false;
     gRSP.bRejectVtx = false;
-    status.bUcodeIsKnown = FALSE;
+    status.bUcodeIsKnown = false;
     return ~0;
 }
 
@@ -1102,8 +1102,8 @@ void DLParser_RDPSetOtherMode(Gfx *gfx)
 
         gRDP.otherModeL = (gfx->words.w1);
 
-        bool bZCompare      = (gRDP.otherModeL & Z_COMPARE) ? TRUE : FALSE;
-        bool bZUpdate       = (gRDP.otherModeL & Z_UPDATE)  ? TRUE : FALSE;
+        bool bZCompare      = (gRDP.otherModeL & Z_COMPARE) ? true : false;
+        bool bZUpdate       = (gRDP.otherModeL & Z_UPDATE)  ? true : false;
 
         CRender::g_pRender->SetZCompare( bZCompare );
         CRender::g_pRender->SetZUpdate( bZUpdate );
@@ -1111,9 +1111,9 @@ void DLParser_RDPSetOtherMode(Gfx *gfx)
         uint32_t dwAlphaTestMode = (gRDP.otherModeL >> RSP_SETOTHERMODE_SHIFT_ALPHACOMPARE) & 0x3;
 
         if ((dwAlphaTestMode) != 0)
-            CRender::g_pRender->SetAlphaTestEnable( TRUE );
+            CRender::g_pRender->SetAlphaTestEnable( true );
         else
-            CRender::g_pRender->SetAlphaTestEnable( FALSE );
+            CRender::g_pRender->SetAlphaTestEnable( false );
     }
 
     uint16_t blender = gRDP.otherMode.blender;
