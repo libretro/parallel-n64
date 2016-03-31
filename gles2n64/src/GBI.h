@@ -31,27 +31,6 @@ extern "C" {
 #define F3DCBFD_MV_LIGHT        10
 #define F3DCBFD_MV_NORMAL       14
 
-#ifdef MAINDEF
-const char *MicrocodeTypes[] =
-{
-    "Fast3D",
-    "F3DEX",
-    "F3DEX2",
-    "Line3D",
-    "L3DEX",
-    "L3DEX2",
-    "S2DEX",
-    "S2DEX2",
-    "Perfect Dark",
-    "DKR/JFG",
-    "Waverace US",
-    "Conker's Bad Fur Day",
-    "None",
-};
-#else
-extern const char *MicrocodeTypes[];
-#endif
-
 static const int numMicrocodeTypes = 11;
 
 // Fixed point conversion factors
