@@ -29,11 +29,11 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "Render.h"
 #include "Timing.h"
 
+#include "../../Graphics/GBI.h"
+
 extern FiddledVtx * g_pVtxBase;
 
 #define ENABLE_CLIP_TRI
-#define Z_CLIP_MAX  0x10
-#define Z_CLIP_MIN  0x20
 
 #ifdef ENABLE_CLIP_TRI
 
