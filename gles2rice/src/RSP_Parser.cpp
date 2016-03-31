@@ -1608,11 +1608,10 @@ bool IsUsedAsDI(uint32_t addr)
 {
     if( addr == g_ZI_saves[0].CI_Info.dwAddr )
         return true;
-    else if( addr == g_ZI_saves[1].CI_Info.dwAddr && status.gDlistCount - g_ZI_saves[1].updateAtFrame < 10 
-        && g_ZI_saves[1].CI_Info.dwAddr != 0 )
-        return true;
-    else
-        return false;
+    if( addr == g_ZI_saves[1].CI_Info.dwAddr && status.gDlistCount - g_ZI_saves[1].updateAtFrame < 10 
+          && g_ZI_saves[1].CI_Info.dwAddr != 0 )
+       return true;
+    return false;
 }
 
 void DLParser_SetCombine(Gfx *gfx)
@@ -1798,35 +1797,36 @@ unsigned int ComputeCRC32(unsigned int crc, const uint8_t *buf, unsigned int len
 Matrix matToLoad;
 void LoadMatrix(uint32_t addr)
 {
-   uint8_t *rdram_u8 = (uint8_t*)gfx_info.RDRAM;
-    const float fRecip = 1.0f / 65536.0f;
-    if (addr + 64 > g_dwRamSize)
-    {
-        TRACE1("Mtx: Address invalid (0x%08x)", addr);
-        return;
-    }
+   uint8_t   *rdram_u8 = (uint8_t*)gfx_info.RDRAM;
+   const float fRecip = 1.0f / 65536.0f;
 
-    for (int i = 0; i < 4; i++)
-    {
-        for (int j = 0; j < 4; j++) 
-        {
-            int hi = *(short *)(rdram_u8 + ((addr+(i<<3)+(j<<1)     )^0x2));
-            int lo = *(unsigned short *)(rdram_u8 + ((addr+(i<<3)+(j<<1) + 32)^0x2));
-            matToLoad.m[i][j] = (float)((hi<<16) | lo) * fRecip;
-        }
-    }
+   if (addr + 64 > g_dwRamSize)
+   {
+      TRACE1("Mtx: Address invalid (0x%08x)", addr);
+      return;
+   }
+
+   for (int i = 0; i < 4; i++)
+   {
+      for (int j = 0; j < 4; j++) 
+      {
+         int hi = *(short *)(rdram_u8 + ((addr+(i<<3)+(j<<1)     )^0x2));
+         int lo = *(unsigned short *)(rdram_u8 + ((addr+(i<<3)+(j<<1) + 32)^0x2));
+         matToLoad.m[i][j] = (float)((hi<<16) | lo) * fRecip;
+      }
+   }
 
 
 #ifdef DEBUGGER
-    LOG_UCODE(
-        " %#+12.5f %#+12.5f %#+12.5f %#+12.5f\r\n"
-        " %#+12.5f %#+12.5f %#+12.5f %#+12.5f\r\n"
-        " %#+12.5f %#+12.5f %#+12.5f %#+12.5f\r\n"
-        " %#+12.5f %#+12.5f %#+12.5f %#+12.5f\r\n",
-        matToLoad.m[0][0], matToLoad.m[0][1], matToLoad.m[0][2], matToLoad.m[0][3],
-        matToLoad.m[1][0], matToLoad.m[1][1], matToLoad.m[1][2], matToLoad.m[1][3],
-        matToLoad.m[2][0], matToLoad.m[2][1], matToLoad.m[2][2], matToLoad.m[2][3],
-        matToLoad.m[3][0], matToLoad.m[3][1], matToLoad.m[3][2], matToLoad.m[3][3]);
+   LOG_UCODE(
+         " %#+12.5f %#+12.5f %#+12.5f %#+12.5f\r\n"
+         " %#+12.5f %#+12.5f %#+12.5f %#+12.5f\r\n"
+         " %#+12.5f %#+12.5f %#+12.5f %#+12.5f\r\n"
+         " %#+12.5f %#+12.5f %#+12.5f %#+12.5f\r\n",
+         matToLoad.m[0][0], matToLoad.m[0][1], matToLoad.m[0][2], matToLoad.m[0][3],
+         matToLoad.m[1][0], matToLoad.m[1][1], matToLoad.m[1][2], matToLoad.m[1][3],
+         matToLoad.m[2][0], matToLoad.m[2][1], matToLoad.m[2][2], matToLoad.m[2][3],
+         matToLoad.m[3][0], matToLoad.m[3][1], matToLoad.m[3][2], matToLoad.m[3][3]);
 #endif // DEBUGGER
 }
 
