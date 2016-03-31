@@ -101,7 +101,15 @@ static INLINE uint16_t PAL8toRGBA16(uint8_t r, uint8_t g, uint8_t b, uint8_t a)
          ((uint16_t)(r >> 3) << RGB5551_RSHIFT) |
          ((uint16_t)(g >> 3) << RGB5551_GSHIFT) |
          ((uint16_t)(b >> 3) << RGB5551_BSHIFT) |
-         ((uint16_t)(a )     << 0));
+         ((uint16_t)(a )     << RGB5551_ASHIFT));
+}
+
+static INLINE uint16_t PAL8toRGB565(uint8_t r, uint8_t g, uint8_t b, uint8_t a)
+{
+   return (uint16_t)(
+         ((uint16_t)(r >> 3) << RGB565_RSHIFT) |
+         ((uint16_t)(g >> 2) << RGB565_GSHIFT) |
+         ((uint16_t)(b >> 3) << RGB565_BSHIFT));
 }
 
 static INLINE uint16_t RGBA32toRGBA16(uint32_t _c)

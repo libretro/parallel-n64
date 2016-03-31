@@ -24,6 +24,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "Texture.h"
 #include "TextureManager.h"
 
+#include "../../Graphics/image_convert.h"
 
 static const uint8_t OneToEight[2] =
 {
@@ -150,20 +151,6 @@ static const uint8_t FiveToEight[32] =
 #define RGBA565_GreenShift  5
 #define RGBA565_BlueShift   0
 
-inline uint16_t ConvertRGBTo555(uint8_t red, uint8_t grn, uint8_t blu)
-{
-    return (uint16_t)(((uint16_t)(red >> 3) << RGBA5551_RedShift) |
-                  ((uint16_t)(grn >> 3) << RGBA5551_GreenShift) |
-                  ((uint16_t)(blu >> 3) << RGBA5551_BlueShift) |
-                  ((uint16_t)(1)        << RGBA5551_AlphaShift));
-}
-
-inline uint16_t ConvertRGBTo565(uint8_t red, uint8_t grn, uint8_t blu)
-{
-    return (uint16_t)(((uint16_t)(red >> 3) << RGBA565_RedShift) |
-                  ((uint16_t)(grn >> 2) << RGBA565_GreenShift) |
-                  ((uint16_t)(blu >> 3) << RGBA565_BlueShift));
-}
 inline uint16_t Convert555To565(uint16_t w555)
 {
     // Probably a faster method by fudging the low bits..
@@ -172,7 +159,7 @@ inline uint16_t Convert555To565(uint16_t w555)
     uint8_t grn = FiveToEight[(w555&RGBA5551_GreenMask)>> RGBA5551_GreenShift];
     uint8_t blu = FiveToEight[(w555&RGBA5551_BlueMask) >> RGBA5551_BlueShift];
 
-    return ConvertRGBTo565(red, grn, blu);
+    return PAL8toRGB565(red, grn, blu, 0);
 }
 
 #define R4G4B4A4_MAKE(r,g,b,a)  ((uint16_t)(((a) << 12) | ((r)<< 8) | ((g)<<4) | (b)))
