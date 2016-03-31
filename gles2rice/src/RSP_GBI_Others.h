@@ -648,9 +648,7 @@ void RSP_Tri4_PD(Gfx *gfx)
     gDlistStack[gDlistStackPointer].pc = dwPC-8;
 
     if (bTrisAdded) 
-    {
         CRender::g_pRender->DrawTriangles();
-    }
 
     DEBUG_TRIANGLE(TRACE0("Pause at PD Tri4"));
 }
@@ -1156,8 +1154,8 @@ void DLParser_Ucode8_0x05(Gfx *gfx)
 
     if((gfx->words.w1) == 0)
         return;
-    else
-        DLParser_Unknown_Skip4(gfx);
+
+    DLParser_Unknown_Skip4(gfx);
 }
 
 void DLParser_Ucode8_0xb4(Gfx *gfx)
@@ -1707,6 +1705,3 @@ void DLParser_TexRect_Last_Legion(Gfx *gfx)
 
     ForceMainTextureIndex(curTile);
 }
-
-#undef min
-#undef max
