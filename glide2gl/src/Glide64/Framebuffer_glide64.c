@@ -670,15 +670,15 @@ static void DrawRE2Video256(FB_TO_SCREEN_INFO *fb_info)
    {
       for (w = 0; w < 256; w++)
       {
-         uint8_t r, g, b;
          uint32_t col = *(src++);
-         r = (uint8_t)((col >> 24)&0xFF);
+         uint8_t r    = (uint8_t)((col >> 24)&0xFF);
+         uint8_t g    = (uint8_t)((col >> 16)&0xFF);
+         uint8_t b    = (uint8_t)((col >> 8)&0xFF);
+
          r = (uint8_t)((float)r / 255.0f * 31.0f);
-         g = (uint8_t)((col >> 16)&0xFF);
          g = (uint8_t)((float)g / 255.0f * 63.0f);
-         b = (uint8_t)((col >> 8)&0xFF);
          b = (uint8_t)((float)b / 255.0f * 31.0f);
-         *(dst++) = (r << 11) | (g << 5) | b;
+         *(dst++) = PAL8toRGB565(r, g, b, 0);
       }
       src += (fb_info->width - 256);
    }
