@@ -594,9 +594,9 @@ void RSP_GBI1_MoveWord(Gfx *gfx)
         break;
     case G_MW_POINTS:
         {
-            uint32_t vtx = gfx->gbi0moveword.offset/40;
+            uint32_t vtx   = gfx->gbi0moveword.offset/40;
             uint32_t where = gfx->gbi0moveword.offset - vtx*40;
-            ModifyVertexInfo(where, vtx, gfx->gbi0moveword.value);
+            ricegSPModifyVertex(vtx, where, gfx->gbi0moveword.value);
         }
         break;
     case G_MW_PERSPNORM:

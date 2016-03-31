@@ -1119,7 +1119,7 @@ void SetVertexXYZ(uint32_t vertex, float x, float y, float z)
     g_vtxTransformed[vertex].z = z*g_vtxTransformed[vertex].w;
 }
 
-void ModifyVertexInfo(uint32_t where, uint32_t vertex, uint32_t val)
+void ricegSPModifyVertex(uint32_t vtx, uint32_t where, uint32_t val)
 {
     switch (where)
     {
@@ -1129,18 +1129,28 @@ void ModifyVertexInfo(uint32_t where, uint32_t vertex, uint32_t val)
             uint32_t g = (val>>16)&0xFF;
             uint32_t b = (val>>8)&0xFF;
             uint32_t a = val&0xFF;
-            g_dwVtxDifColor[vertex] = COLOR_RGBA(r, g, b, a);
-            LOG_UCODE("Modify vertex %d color, 0x%08x", vertex, g_dwVtxDifColor[vertex]);
+            g_dwVtxDifColor[vtx] = COLOR_RGBA(r, g, b, a);
+            LOG_UCODE("Modify vertex %d color, 0x%08x", vtx, g_dwVtxDifColor[vtx]);
+        }
+        break;
+    case G_MWO_POINT_ST:
+        {
+            int16_t tu = (int16_t)(val>>16);
+            int16_t tv = (int16_t)(val & 0xFFFF);
+            float ftu  = tu / 32.0f;
+            float ftv  = tv / 32.0f;
+            LOG_UCODE("      Setting vertex %d tu/tv to %f, %f", vtx, (float)tu, (float)tv);
+            CRender::g_pRender->SetVtxTextureCoord(vtx, ftu/gRSP.fTexScaleX, ftv/gRSP.fTexScaleY);
         }
         break;
     case G_MWO_POINT_XYSCREEN:
         {
             uint16_t nX = (uint16_t)(val>>16);
-            short x = *((short*)&nX);
+            int16_t x   = *((int16_t*)&nX);
             x /= 4;
 
             uint16_t nY = (uint16_t)(val&0xFFFF);
-            short y = *((short*)&nY);
+            int16_t y   = *((int16_t*)&nY);
             y /= 4;
 
             // Should do viewport transform.
@@ -1153,35 +1163,25 @@ void ModifyVertexInfo(uint32_t where, uint32_t vertex, uint32_t val)
             {
                 // Tarzan
                 // I don't know why Tarzan is different
-                SetVertexXYZ(vertex, x/windowSetting.fViWidth, y/windowSetting.fViHeight, g_vecProjected[vertex].z);
+                SetVertexXYZ(vtx, x/windowSetting.fViWidth, y/windowSetting.fViHeight, g_vecProjected[vtx].z);
             }
             else
             {
                 // Toy Story 2 and other games
-                SetVertexXYZ(vertex, x*2/windowSetting.fViWidth, y*2/windowSetting.fViHeight, g_vecProjected[vertex].z);
+                SetVertexXYZ(vtx, x*2/windowSetting.fViWidth, y*2/windowSetting.fViHeight, g_vecProjected[vtx].z);
             }
 
-            LOG_UCODE("Modify vertex %d: x=%d, y=%d", vertex, x, y);
-            VTX_DUMP(TRACE3("Modify vertex %d: (%d,%d)", vertex, x, y));
+            LOG_UCODE("Modify vertex %d: x=%d, y=%d", vtx, x, y);
+            VTX_DUMP(TRACE3("Modify vertex %d: (%d,%d)", vtx, x, y));
         }
         break;
     case G_MWO_POINT_ZSCREEN:
         {
             int z = val>>16;
 
-            SetVertexXYZ(vertex, g_vecProjected[vertex].x, g_vecProjected[vertex].y, (((float)z/0x03FF)+0.5f)/2.0f );
-            LOG_UCODE("Modify vertex %d: z=%d", vertex, z);
-            VTX_DUMP(TRACE2("Modify vertex %d: z=%d", vertex, z));
-        }
-        break;
-    case G_MWO_POINT_ST:       // Texture
-        {
-            short tu = short(val>>16);
-            short tv = short(val & 0xFFFF);
-            float ftu = tu / 32.0f;
-            float ftv = tv / 32.0f;
-            LOG_UCODE("      Setting vertex %d tu/tv to %f, %f", vertex, (float)tu, (float)tv);
-            CRender::g_pRender->SetVtxTextureCoord(vertex, ftu/gRSP.fTexScaleX, ftv/gRSP.fTexScaleY);
+            SetVertexXYZ(vtx, g_vecProjected[vtx].x, g_vecProjected[vtx].y, (((float)z/0x03FF)+0.5f)/2.0f );
+            LOG_UCODE("Modify vertex %d: z=%d", vtx, z);
+            VTX_DUMP(TRACE2("Modify vertex %d: z=%d", vtx, z));
         }
         break;
     }

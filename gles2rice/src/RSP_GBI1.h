@@ -56,29 +56,29 @@ void RSP_GBI1_ModifyVtx(Gfx *gfx)
     }
     else
     {
-        uint32_t dwWhere = ((gfx->words.w0) >> 16) & 0xFF;
-        uint32_t dwVert   = (((gfx->words.w0)      ) & 0xFFFF) / 2;
-        uint32_t dwValue  = (gfx->words.w1);
+       uint32_t where    = ((gfx->words.w0) >> 16) & 0xFF;
+       uint32_t vtx      = (((gfx->words.w0)      ) & 0xFFFF) / 2;
+       uint32_t val      = (gfx->words.w1);
 
-        if( dwVert > 80 )
-        {
-            RSP_RDP_NOIMPL("RSP_GBI1_ModifyVtx: Invalid vertex number: %d", dwVert, 0);
-            return;
-        }
+       if( vtx > 80 )
+       {
+          RSP_RDP_NOIMPL("RSP_GBI1_ModifyVtx: Invalid vertex number: %d", vtx, 0);
+          return;
+       }
 
-        // Data for other commands?
-        switch (dwWhere)
-        {
-        case G_MWO_POINT_RGBA:
-        case G_MWO_POINT_XYSCREEN:
-        case G_MWO_POINT_ZSCREEN:
-        case G_MWO_POINT_ST:
-            ModifyVertexInfo(dwWhere, dwVert, dwValue);
-            break;
-        default:
-            RSP_RDP_NOIMPL("RSP_GBI1_ModifyVtx: Setting unk value: 0x%02x, 0x%08x", dwWhere, dwValue);
-            break;
-        }
+       // Data for other commands?
+       switch (where)
+       {
+          case G_MWO_POINT_RGBA:
+          case G_MWO_POINT_XYSCREEN:
+          case G_MWO_POINT_ZSCREEN:
+          case G_MWO_POINT_ST:
+             ricegSPModifyVertex(vtx, where, val);
+             break;
+          default:
+             RSP_RDP_NOIMPL("RSP_GBI1_ModifyVtx: Setting unk value: 0x%02x, 0x%08x", where, val);
+             break;
+       }
     }
 }
 
