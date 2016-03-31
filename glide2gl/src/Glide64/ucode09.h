@@ -651,7 +651,7 @@ static void uc9_movemem(uint32_t w0, uint32_t w1)
                   1           /* on */
                   );
 
-            rdp.geom_mode |= 0x0200;
+            glide64gSPSetGeometryMode(0x0200);
 
             FRDP ("viewport scale(%d, %d, %d), trans(%d, %d, %d), from:%08lx\n", scale_x, scale_y, scale_z,
                   trans_x, trans_y, trans_z, a);
@@ -695,6 +695,6 @@ static void uc9_setscissor(uint32_t w0, uint32_t w1)
             1           /* on */
             );
 
-      rdp.geom_mode |= 0x0200;
+      glide64gSPSetGeometryMode(0x0200);
    }
 }

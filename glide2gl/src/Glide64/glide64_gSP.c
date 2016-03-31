@@ -513,6 +513,11 @@ void glide64gSPFogFactor(int16_t fm, int16_t fo )
    rdp.fog_offset     = fo;
 }
 
+void glide64gSPSetGeometryMode (uint32_t mode)
+{
+   rdp.geom_mode |= mode;
+}
+
 void glide64gSPNumLights(int32_t n)
 {
    if (n > 12)

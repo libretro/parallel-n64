@@ -357,8 +357,7 @@ static void uc0_setothermode_l(uint32_t w0, uint32_t w1)
 
 static void uc0_setgeometrymode(uint32_t w0, uint32_t w1)
 {
-   rdp.geom_mode |= w1;
-   //FRDP("uc0:setgeometrymode %08lx; result: %08lx\n", w1, rdp.geom_mode);
+   glide64gSPSetGeometryMode(w1);
 
    if (w1 & 0x00000001) // Z-Buffer enable
    {

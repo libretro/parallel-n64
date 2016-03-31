@@ -170,7 +170,9 @@ static void t3dLoadObject(uint32_t pstate, uint32_t pvtx, uint32_t ptri)
    }
 
    rdp.geom_mode &= ~G_LIGHTING;
-   rdp.geom_mode |= UPDATE_SCISSOR;
+
+   glide64gSPSetGeometryMode(UPDATE_SCISSOR);
+
    if (pvtx) /* load vtx */
       t3d_vertex(RSP_SegmentToPhysical(pvtx), ostate->vtxV0, ostate->vtxCount);
 

@@ -121,25 +121,25 @@ static void uc5_moveword(uint32_t w0, uint32_t w1)
 
 static void uc5_setgeometrymode(uint32_t w0, uint32_t w1)
 {
-  rdp.geom_mode |= w1;
+   glide64gSPSetGeometryMode(w1);
 
-  if (w1 & 0x00000001)  // Z-Buffer enable
-  {
-    if (!(rdp.flags & ZBUF_ENABLED))
-    {
-      rdp.flags |= ZBUF_ENABLED;
-      g_gdp.flags |= UPDATE_ZBUF_ENABLED;
-    }
-  }
+   if (w1 & 0x00000001)  // Z-Buffer enable
+   {
+      if (!(rdp.flags & ZBUF_ENABLED))
+      {
+         rdp.flags |= ZBUF_ENABLED;
+         g_gdp.flags |= UPDATE_ZBUF_ENABLED;
+      }
+   }
 
-  if (w1 & 0x00010000)      // Fog enable
-  {
-    if (!(rdp.flags & FOG_ENABLED))
-    {
-      rdp.flags |= FOG_ENABLED;
-      g_gdp.flags |= UPDATE_FOG_ENABLED;
-    }
-  }
+   if (w1 & 0x00010000)      // Fog enable
+   {
+      if (!(rdp.flags & FOG_ENABLED))
+      {
+         rdp.flags |= FOG_ENABLED;
+         g_gdp.flags |= UPDATE_FOG_ENABLED;
+      }
+   }
 }
 
 static void uc5_cleargeometrymode(uint32_t w0, uint32_t w1)
