@@ -1618,6 +1618,12 @@ void DLParser_SetPrimColor(Gfx *gfx)
         gfx->setcolor.prim_min_level, gfx->setcolor.prim_level);
 }
 
+void ricegSPNumLights(int32_t n) 
+{ 
+    gRSPnumLights = n; 
+    DEBUGGER_PAUSE_AND_DUMP(NEXT_SET_LIGHT,TRACE1("Set Number Of Lights: %d", dwNumLights));
+}
+
 void ricegDPSetEnvColor(uint32_t r, uint32_t g, uint32_t b, uint32_t a)
 {
    gRDP.colorsAreReloaded = true;

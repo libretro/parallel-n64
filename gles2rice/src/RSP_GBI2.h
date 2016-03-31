@@ -111,7 +111,7 @@ void RSP_GBI2_MoveWord(Gfx *gfx)
         {
             uint32_t dwNumLights = gfx->gbi2moveword.value/24;
             gRSP.ambientLightIndex = dwNumLights;
-            SetNumLights(dwNumLights);
+            ricegSPNumLights(dwNumLights);
         }
         break;
 

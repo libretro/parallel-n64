@@ -287,15 +287,12 @@ inline void SetLighting(bool bLighting) { gRSP.bLightingEnable = bLighting; }
 
 // Generate texture coords?
 inline void SetTextureGen(bool bTextureGen) { gRSP.bTextureGen = bTextureGen; }
-inline void SetNumLights(uint32_t dwNumLights) 
-{ 
-    gRSPnumLights = dwNumLights; 
-    DEBUGGER_PAUSE_AND_DUMP(NEXT_SET_LIGHT,TRACE1("Set Number Of Lights: %d", dwNumLights));
-}
 inline uint32_t GetNumLights() { return gRSPnumLights; }
 inline COLOR GetVertexDiffuseColor(uint32_t ver) { return g_dwVtxDifColor[ver]; }
 inline void SetScreenMult(float fMultX, float fMultY) { windowSetting.fMultX = fMultX; windowSetting.fMultY = fMultY; }
 inline COLOR GetLightCol(uint32_t dwLight) { return gRSPlights[dwLight].col; }
+
+void ricegSPNumLights(int32_t n);
 
 #endif
 

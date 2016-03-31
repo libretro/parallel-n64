@@ -479,7 +479,7 @@ void RSP_GBI1_MoveWord(Gfx *gfx)
             LOG_UCODE("    RSP_MOVE_WORD_NUMLIGHT: Val:%d", dwNumLights);
 
             gRSP.ambientLightIndex = dwNumLights;
-            SetNumLights(dwNumLights);
+            ricegSPNumLights(dwNumLights);
          }
          break;
       case G_MW_CLIP:

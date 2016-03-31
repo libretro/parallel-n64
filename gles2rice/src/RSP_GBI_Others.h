@@ -459,7 +459,7 @@ void RSP_MoveWord_DKR(Gfx *gfx)
           LOG_UCODE("    RSP_MOVE_WORD_NUMLIGHT: Val:%d", dwNumLights);
 
           gRSP.ambientLightIndex = dwNumLights;
-          SetNumLights(dwNumLights);
+          ricegSPNumLights(dwNumLights);
           //gRSP.DKRBillBoard = (gfx->words.w1)&0x1 ? true : false;
           gRSP.DKRBillBoard = (gfx->words.w1)&0x7 ? true : false;
 
@@ -819,7 +819,7 @@ void DLParser_MoveWord_Conker(Gfx *gfx)
         uint32_t dwNumLights = ((gfx->words.w1)/48);
         LOG_UCODE("Conker RSP_MOVE_WORD_NUMLIGHT: %d", dwNumLights);
         gRSP.ambientLightIndex = dwNumLights+1;
-        SetNumLights(dwNumLights);
+        ricegSPNumLights(dwNumLights);
         DEBUGGER_PAUSE_AND_DUMP_COUNT_N( NEXT_SET_LIGHT, 
         {
             DebuggerAppendMsg("SetNumLights: %d", dwNumLights);
