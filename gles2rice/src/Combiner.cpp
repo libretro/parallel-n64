@@ -330,12 +330,12 @@ void CColorCombiner::InitCombinerMode(void)
     {
         DisableCombiner();
     }
-    else if (gRDP.otherMode.cycle_type  == CYCLE_TYPE_COPY)
+    else if (gRDP.otherMode.cycle_type  == G_CYC_COPY)
     {
         InitCombinerCycleCopy();
         m_bCycleChanged = true;
     }
-    else if (gRDP.otherMode.cycle_type == CYCLE_TYPE_FILL)
+    else if (gRDP.otherMode.cycle_type == G_CYC_FILL)
     {
         InitCombinerCycleFill();
         m_bCycleChanged = true;
@@ -437,11 +437,11 @@ void CColorCombiner::UpdateCombiner(uint32_t dwMux0, uint32_t dwMux1)
 #ifdef DEBUGGER
 void CColorCombiner::DisplayMuxString(void)
 {
-    if (gRDP.otherMode.cycle_type == CYCLE_TYPE_COPY)
+    if (gRDP.otherMode.cycle_type == G_CYC_COPY)
     {
         TRACE0("COPY Mode\n");
     }   
-    else if (gRDP.otherMode.cycle_type == CYCLE_TYPE_FILL)
+    else if (gRDP.otherMode.cycle_type == G_CYC_FILL)
     {
         TRACE0("FILL Mode\n");
     }

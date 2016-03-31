@@ -372,7 +372,7 @@ bool CRender::FillRect(int nX0, int nY0, int nX1, int nY1, uint32_t dwColor)
 
     /*
     // I don't know why this does not work for OpenGL
-    if( gRDP.otherMode.cycle_type == CYCLE_TYPE_FILL && nX0 == 0 && nY0 == 0 && ((nX1==windowSetting.uViWidth && nY1==windowSetting.uViHeight)||(nX1==windowSetting.uViWidth-1 && nY1==windowSetting.uViHeight-1)) )
+    if( gRDP.otherMode.cycle_type == G_CYC_FILL && nX0 == 0 && nY0 == 0 && ((nX1==windowSetting.uViWidth && nY1==windowSetting.uViHeight)||(nX1==windowSetting.uViWidth-1 && nY1==windowSetting.uViHeight-1)) )
     {
         CGraphicsContext::g_pGraphicsContext->Clear(CLEAR_COLOR_BUFFER,dwColor, 0xFF000000, 1.0f);
     }
@@ -389,7 +389,7 @@ bool CRender::FillRect(int nX0, int nY0, int nX1, int nY1, uint32_t dwColor)
 
         SetCombinerAndBlender();
 
-        if( gRDP.otherMode.cycle_type  >= CYCLE_TYPE_COPY )
+        if( gRDP.otherMode.cycle_type  >= G_CYC_COPY )
         {
             ZBufferEnable(false);
         }
@@ -406,7 +406,7 @@ bool CRender::FillRect(int nX0, int nY0, int nX1, int nY1, uint32_t dwColor)
         res = RenderFillRect(dwColor, depth);
         TurnFogOnOff(gRSP.bFogEnabled);
 
-        if( gRDP.otherMode.cycle_type  >= CYCLE_TYPE_COPY )
+        if( gRDP.otherMode.cycle_type  >= G_CYC_COPY )
         {
             ZBufferEnable(gRSP.bZBufferEnabled);
         }
@@ -593,7 +593,7 @@ bool CRender::TexRect(int nX0, int nY0, int nX1, int nY1, float fS0, float fT0, 
         return true;
     }
 
-    if( !IsTextureEnabled() &&  gRDP.otherMode.cycle_type  != CYCLE_TYPE_COPY )
+    if( !IsTextureEnabled() &&  gRDP.otherMode.cycle_type  != G_CYC_COPY )
     {
         FillRect(nX0, nY0, nX1, nY1, gRDP.primitiveColor);
         return true;
@@ -617,7 +617,7 @@ bool CRender::TexRect(int nX0, int nY0, int nX1, int nY1, float fS0, float fT0, 
             nY1 = nY1+2;
 
         //// Text edge hack
-        else if( gRDP.otherMode.cycle_type == CYCLE_TYPE_1 && fScaleS == 1 && fScaleT == 1 && 
+        else if( gRDP.otherMode.cycle_type == G_CYC_1CYCLE && fScaleS == 1 && fScaleT == 1 && 
             (int)g_textures[gRSP.curTile].m_dwTileWidth == nX1-nX0+1 && (int)g_textures[gRSP.curTile].m_dwTileHeight == nY1-nY0+1 &&
             g_textures[gRSP.curTile].m_dwTileWidth%2 == 0 && g_textures[gRSP.curTile].m_dwTileHeight%2 == 0 )
         {
@@ -638,7 +638,7 @@ bool CRender::TexRect(int nX0, int nY0, int nX1, int nY1, float fS0, float fT0, 
     SetCombinerAndBlender();
     
 
-    if( gRDP.otherMode.cycle_type  >= CYCLE_TYPE_COPY || !gRDP.otherMode.z_cmp )
+    if( gRDP.otherMode.cycle_type  >= G_CYC_COPY || !gRDP.otherMode.z_cmp )
     {
         ZBufferEnable(false);
     }
@@ -661,7 +661,7 @@ bool CRender::TexRect(int nX0, int nY0, int nX1, int nY1, float fS0, float fT0, 
     }
     
     float t0u1;
-    if( accurate && gRDP.otherMode.cycle_type >= CYCLE_TYPE_COPY )
+    if( accurate && gRDP.otherMode.cycle_type >= G_CYC_COPY )
     {
         t0u1 = t0u0 + (fScaleS * (nX1 - nX0 - 1))*tile0.fShiftScaleS;
     }
@@ -695,7 +695,7 @@ bool CRender::TexRect(int nX0, int nY0, int nX1, int nY1, float fS0, float fT0, 
     }
     
     float t0v1;
-    if ( accurate && gRDP.otherMode.cycle_type >= CYCLE_TYPE_COPY)
+    if ( accurate && gRDP.otherMode.cycle_type >= G_CYC_COPY)
     {
         t0v1 = t0v0 + (fScaleT * (nY1 - nY0-1))*tile0.fShiftScaleT;
     }
@@ -756,7 +756,7 @@ bool CRender::TexRect(int nX0, int nY0, int nX1, int nY1, float fS0, float fT0, 
         float t0v0 = fT0 * tile1.fShiftScaleT -tile1.fhilite_tl;
         float t0u1;
         float t0v1;
-        if ( accurate && gRDP.otherMode.cycle_type >= CYCLE_TYPE_COPY)
+        if ( accurate && gRDP.otherMode.cycle_type >= G_CYC_COPY)
         {
             t0u1 = t0u0 + (fScaleS * (nX1 - nX0 - 1))*tile1.fShiftScaleS;
             t0v1 = t0v0 + (fScaleT * (nY1 - nY0 - 1))*tile1.fShiftScaleT;
@@ -829,7 +829,7 @@ bool CRender::TexRect(int nX0, int nY0, int nX1, int nY1, float fS0, float fT0, 
     }
     TurnFogOnOff(gRSP.bFogEnabled);
 
-    if( gRDP.otherMode.cycle_type  >= CYCLE_TYPE_COPY || !gRDP.otherMode.z_cmp  )
+    if( gRDP.otherMode.cycle_type  >= G_CYC_COPY || !gRDP.otherMode.z_cmp  )
     {
         ZBufferEnable(gRSP.bZBufferEnabled);
     }
@@ -1011,7 +1011,7 @@ void CRender::SetAllTexelRepeatFlag()
 {
     if( IsTextureEnabled() )
     {
-        if( IsTexel0Enable() || gRDP.otherMode.cycle_type  == CYCLE_TYPE_COPY )
+        if( IsTexel0Enable() || gRDP.otherMode.cycle_type  == G_CYC_COPY )
             SetTexelRepeatFlags(gRSP.curTile);
         if( IsTexel1Enable() )
             SetTexelRepeatFlags((gRSP.curTile+1)&7);
@@ -1029,7 +1029,7 @@ void CRender::SetTexelRepeatFlags(uint32_t dwTile)
             SetTextureUFlag(TEXTURE_UV_FLAG_WRAP, dwTile);
     else if( tile.dwMaskS == 0 || tile.bClampS )
     {
-        if( gRDP.otherMode.cycle_type  >= CYCLE_TYPE_COPY )
+        if( gRDP.otherMode.cycle_type  >= G_CYC_COPY )
             SetTextureUFlag(TEXTURE_UV_FLAG_WRAP, dwTile);  // Can not clamp in COPY/FILL mode
         else
             SetTextureUFlag(TEXTURE_UV_FLAG_CLAMP, dwTile);
@@ -1045,7 +1045,7 @@ void CRender::SetTexelRepeatFlags(uint32_t dwTile)
         SetTextureVFlag(TEXTURE_UV_FLAG_WRAP, dwTile);
     else if( tile.dwMaskT == 0 || tile.bClampT)
     {
-        if( gRDP.otherMode.cycle_type  >= CYCLE_TYPE_COPY )
+        if( gRDP.otherMode.cycle_type  >= G_CYC_COPY )
             SetTextureVFlag(TEXTURE_UV_FLAG_WRAP, dwTile);  // Can not clamp in COPY/FILL mode
         else
             SetTextureVFlag(TEXTURE_UV_FLAG_CLAMP, dwTile);
@@ -1639,7 +1639,7 @@ void CRender::InitOtherModes(void)
     }
 
 
-    if( gRDP.otherMode.cycle_type  >= CYCLE_TYPE_COPY )
+    if( gRDP.otherMode.cycle_type  >= G_CYC_COPY )
     {
         // Disable zbuffer for COPY and FILL mode
         SetZCompare(false);

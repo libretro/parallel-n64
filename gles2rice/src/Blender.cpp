@@ -129,17 +129,17 @@ void CBlender::InitBlenderMode(void)                    // Set Alpha Blender mod
 
     switch( cycletype )
     {
-    case CYCLE_TYPE_FILL:
+    case G_CYC_FILL:
         //BlendFunc(BLEND_ONE, BLEND_ZERO);
         //Enable();
         Disable();
         break;
-    case CYCLE_TYPE_COPY:
+    case G_CYC_COPY:
         //Disable();
         BlendFunc(BLEND_ONE, BLEND_ZERO);
         Enable();
         break;
-    case CYCLE_TYPE_2:
+    case G_CYC_2CYCLE:
         if( gRDP.otherMode.force_bl && gRDP.otherMode.z_cmp )
         {
             BlendFunc(BLEND_SRCALPHA, BLEND_INVSRCALPHA);

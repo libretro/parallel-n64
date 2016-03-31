@@ -335,9 +335,9 @@ void COGLColorCombiner4::GenerateCombinerSetting(int index)
     COGLTexture* pTexture = NULL;
     COGLTexture* pTexture1 = NULL;
 
-    if( m_bTex0Enabled || m_bTex1Enabled || gRDP.otherMode.cycle_type  == CYCLE_TYPE_COPY )
+    if( m_bTex0Enabled || m_bTex1Enabled || gRDP.otherMode.cycle_type  == G_CYC_COPY )
     {
-        if( m_bTex0Enabled || gRDP.otherMode.cycle_type  == CYCLE_TYPE_COPY )
+        if( m_bTex0Enabled || gRDP.otherMode.cycle_type  == G_CYC_COPY )
         {
             pTexture = g_textures[gRSP.curTile].m_pCOGLTexture;
             if( pTexture )  m_pOGLRender->BindTexture(pTexture->m_dwTextureName, 0);

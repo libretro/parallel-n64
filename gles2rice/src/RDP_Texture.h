@@ -880,7 +880,7 @@ void PrepareTextures()
         status.UseLargerTile[1]=false;
 
         int tilenos[2];
-        if( CRender::g_pRender->IsTexel0Enable() || gRDP.otherMode.cycle_type  == CYCLE_TYPE_COPY )
+        if( CRender::g_pRender->IsTexel0Enable() || gRDP.otherMode.cycle_type  == G_CYC_COPY )
             tilenos[0] = gRSP.curTile;
         else
             tilenos[0] = -1;
@@ -1589,13 +1589,13 @@ void DLParser_TexRect(Gfx *gfx)
 
     uint32_t cycletype = gRDP.otherMode.cycle_type;
 
-    if (cycletype == CYCLE_TYPE_COPY)
+    if (cycletype == G_CYC_COPY)
     {
         fDSDX /= 4.0f;  // In copy mode 4 pixels are copied at once.
         dwXH++;
         dwYH++;
     }
-    else if (cycletype == CYCLE_TYPE_FILL)
+    else if (cycletype == G_CYC_FILL)
     {
         dwXH++;
         dwYH++;
@@ -1708,13 +1708,13 @@ void DLParser_TexRectFlip(Gfx *gfx)
 
     uint32_t cycletype = gRDP.otherMode.cycle_type;
 
-    if (cycletype == CYCLE_TYPE_COPY)
+    if (cycletype == G_CYC_COPY)
     {
         fDSDX /= 4.0f;  // In copy mode 4 pixels are copied at once.
         dwXH++;
         dwYH++;
     }
-    else if (cycletype == CYCLE_TYPE_FILL)
+    else if (cycletype == G_CYC_FILL)
     {
         dwXH++;
         dwYH++;

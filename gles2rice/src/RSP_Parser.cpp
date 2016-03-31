@@ -1199,7 +1199,7 @@ void ricegDPFillRect(int32_t ulx, int32_t uly, int32_t lrx, int32_t lry )
 
    LOG_UCODE("    (%d,%d) (%d,%d)", ulx, uly, lrx, lry);
 
-   if( gRDP.otherMode.cycle_type >= CYCLE_TYPE_COPY )
+   if( gRDP.otherMode.cycle_type >= G_CYC_COPY )
    {
       ++lrx;
       ++lry;
@@ -1327,7 +1327,7 @@ void ricegDPFillRect(int32_t ulx, int32_t uly, int32_t lrx, int32_t lry )
          //}
          //else
          {
-            if( gRDP.otherMode.cycle_type == CYCLE_TYPE_FILL )
+            if( gRDP.otherMode.cycle_type == G_CYC_FILL )
             {
                CRender::g_pRender->FillRect(ulx, uly, lrx, lry, gRDP.fillColor);
             }
@@ -1362,7 +1362,7 @@ void ricegDPFillRect(int32_t ulx, int32_t uly, int32_t lrx, int32_t lry )
          status.bottomRendered = status.bottomRendered<0 ? lry  : cond4;
       }
 
-      if( gRDP.otherMode.cycle_type == CYCLE_TYPE_FILL )
+      if( gRDP.otherMode.cycle_type == G_CYC_FILL )
       {
          if( !status.bHandleN64RenderTexture || g_pRenderTextureInfo->CI_Info.dwSize == TXT_SIZE_16b )
             CRender::g_pRender->FillRect(ulx, uly, lrx, lry, gRDP.fillColor);
