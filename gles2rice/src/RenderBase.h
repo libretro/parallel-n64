@@ -271,15 +271,6 @@ inline float GetPrimitiveDepth() { return gRDP.fPrimitiveDepth; }
 inline uint32_t GetPrimitiveColor() { return gRDP.primitiveColor; }
 inline float* GetPrimitiveColorfv() { return gRDP.fvPrimitiveColor; }
 inline uint32_t GetLODFrac() { return gRDP.LODFrac; }
-inline void SetEnvColor(uint32_t dwCol) 
-{ 
-    gRDP.colorsAreReloaded = true;
-    gRDP.envColor = dwCol; 
-    gRDP.fvEnvColor[0] = ((dwCol>>16)&0xFF)/255.0f;     // R 
-    gRDP.fvEnvColor[1] = ((dwCol>>8)&0xFF)/255.0f;      // G
-    gRDP.fvEnvColor[2] = ((dwCol)&0xFF)/255.0f;         // B
-    gRDP.fvEnvColor[3] = ((dwCol>>24)&0xFF)/255.0f;     // A
-}
 inline uint32_t GetEnvColor() { return gRDP.envColor; }
 inline float* GetEnvColorfv() { return gRDP.fvEnvColor; }
 

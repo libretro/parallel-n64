@@ -1618,10 +1618,21 @@ void DLParser_SetPrimColor(Gfx *gfx)
         gfx->setcolor.prim_min_level, gfx->setcolor.prim_level);
 }
 
+void ricegDPSetEnvColor(uint32_t r, uint32_t g, uint32_t b, uint32_t a)
+{
+   gRDP.colorsAreReloaded = true;
+   gRDP.envColor = COLOR_RGBA(r, g, b, a); 
+   gRDP.fvEnvColor[0] = r / 255.0f;
+   gRDP.fvEnvColor[1] = g / 255.0f;
+   gRDP.fvEnvColor[2] = b / 255.0f;
+   gRDP.fvEnvColor[3] = a / 255.0f;
+}
+
 void DLParser_SetEnvColor(Gfx *gfx)
 {
     DP_Timing(DLParser_SetEnvColor);
-    SetEnvColor( COLOR_RGBA(gfx->setcolor.r, gfx->setcolor.g, gfx->setcolor.b, gfx->setcolor.a) );
+
+    ricegDPSetEnvColor(gfx->setcolor.r, gfx->setcolor.g, gfx->setcolor.b, gfx->setcolor.a);
 }
 
 
