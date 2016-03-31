@@ -67,32 +67,10 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #define RSP_ZELDATRI1               5
 #define RSP_ZELDATRI2               6
 #define RSP_ZELDALINE3D             7
-#define RSP_ZELDARDPHALF_2          0xf1
-#define RSP_ZELDASETOTHERMODE_H     0xe3
-#define RSP_ZELDASETOTHERMODE_L     0xe2
-#define RSP_ZELDARDPHALF_1          0xe1
-#define RSP_ZELDASPNOOP             0xe0
-#define RSP_ZELDAENDDL              0xdf
-#define RSP_ZELDADL                 0xde
-#define RSP_ZELDALOAD_UCODE         0xdd
-#define RSP_ZELDAMOVEMEM            0xdc
-#define RSP_ZELDAMOVEWORD           0xdb
-#define RSP_ZELDAMTX                0xda
-#define RSP_ZELDAGEOMETRYMODE       0xd9
-#define RSP_ZELDAPOPMTX             0xd8
-#define RSP_ZELDATEXTURE            0xd7
-#define RSP_ZELDASUBMODULE          0xd6
 
 // 4 is something like a conditional DL
 #define RSP_DMATRI  0x05
 #define G_DLINMEM   0x07
-
-#define RSP_ZELDA_MTX_MODELVIEW     0x00
-#define RSP_ZELDA_MTX_PROJECTION    0x04
-#define RSP_ZELDA_MTX_MUL           0x00
-#define RSP_ZELDA_MTX_LOAD          0x02
-#define RSP_ZELDA_MTX_PUSH          0x00
-#define RSP_ZELDA_MTX_NOPUSH        0x01
 
 // RSP_SETOTHERMODE_H gPipelineMode 
 #define RSP_PIPELINE_MODE_1PRIMITIVE        (1 << RSP_SETOTHERMODE_SHIFT_PIPELINE)

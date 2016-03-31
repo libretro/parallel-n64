@@ -528,37 +528,39 @@ void RSP_GBI2_Texture(Gfx *gfx)
 
 void RSP_GBI2_PopMtx(Gfx *gfx)
 {
-    SP_Timing(RSP_GBI1_PopMtx);
+   /* G_MTX_PROJECTION might be Zelda-specific */
 
-    uint8_t nCommand = (uint8_t)(gfx->words.w0 & 0xFF);
+   SP_Timing(RSP_GBI1_PopMtx);
 
-    LOG_UCODE("        PopMtx: 0x%02x (%s)",
-        nCommand, 
-        (nCommand & RSP_ZELDA_MTX_PROJECTION) ? "Projection" : "ModelView");
+   uint8_t nCommand = (uint8_t)(gfx->words.w0 & 0xFF);
+
+   LOG_UCODE("        PopMtx: 0x%02x (%s)",
+         nCommand, 
+         (nCommand & G_MTX_PROJECTION) ? "Projection" : "ModelView");
 
 
-/*  if (nCommand & RSP_ZELDA_MTX_PROJECTION)
-    {
-        CRender::g_pRender->PopProjection();
-    }
-    else*/
-    {
-        CRender::g_pRender->PopWorldView();
-    }
+   /*  if (nCommand & G_MTX_PROJECTION)
+       {
+       CRender::g_pRender->PopProjection();
+       }
+       else*/
+   {
+      CRender::g_pRender->PopWorldView();
+   }
 #ifdef DEBUGGER
-    if( pauseAtNext && eventToPause == NEXT_MATRIX_CMD )
-    {
-        pauseAtNext = false;
-        debuggerPause = true;
-        TRACE0("Pause after Pop GBI2_PopMtx:");
-    }
-    else
-    {
-        if( pauseAtNext && logMatrix ) 
-        {
-            TRACE0("Pause after Pop GBI2_PopMtx:");
-        }
-    }
+   if( pauseAtNext && eventToPause == NEXT_MATRIX_CMD )
+   {
+      pauseAtNext = false;
+      debuggerPause = true;
+      TRACE0("Pause after Pop GBI2_PopMtx:");
+   }
+   else
+   {
+      if( pauseAtNext && logMatrix ) 
+      {
+         TRACE0("Pause after Pop GBI2_PopMtx:");
+      }
+   }
 #endif
 
 }
