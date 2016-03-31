@@ -1180,8 +1180,8 @@ void glide64gSPTexture(int32_t sc, int32_t tc, int32_t level,
       rdp.tiles[tile].on          = 1;
       rdp.tiles[tile].org_s_scale = sc;
       rdp.tiles[tile].org_t_scale = tc;
-      rdp.tiles[tile].s_scale     = (float)((sc+1)/65536.0f) / 32.0f;
-      rdp.tiles[tile].t_scale     = (float)((tc+1)/65536.0f) / 32.0f;
+      rdp.tiles[tile].s_scale     = _FIXED2FLOAT(((sc+1)/65536.0f), 5);
+      rdp.tiles[tile].t_scale     = _FIXED2FLOAT(((tc+1)/65536.0f), 5);
 
       g_gdp.flags |= UPDATE_TEXTURE;
    }
