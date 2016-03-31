@@ -17,7 +17,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
 
 #include <stdlib.h>
-#include "OGLDebug.h"
 #include "OGLES2FragmentShaders.h"
 #include "OGLRender.h"
 #include "OGLTexture.h"
@@ -246,9 +245,7 @@ COGL_FragmentProgramCombiner::COGL_FragmentProgramCombiner(CRender *pRender)
     glAttachShader(copyProgram,fs);
 
     glBindAttribLocation(copyProgram,VS_TEXCOORD0,"aTexCoord0");
-    OPENGL_CHECK_ERRORS;
     glBindAttribLocation(copyProgram,VS_POSITION,"aPosition");
-    OPENGL_CHECK_ERRORS;
 
     glLinkProgram(copyProgram);
     copyAlphaLocation = glGetUniformLocation(copyProgram,"AlphaRef");
@@ -280,7 +277,6 @@ COGL_FragmentProgramCombiner::COGL_FragmentProgramCombiner(CRender *pRender)
     glAttachShader(fillProgram,fs);
 
     glBindAttribLocation(fillProgram,VS_POSITION,"aPosition");
-    OPENGL_CHECK_ERRORS;
 
     glLinkProgram(fillProgram);
 
@@ -298,7 +294,6 @@ COGL_FragmentProgramCombiner::~COGL_FragmentProgramCombiner()
         GLuint ID = m_vCompiledShaders[i].programID;
         glDeleteProgram(ID);
 
-        OPENGL_CHECK_ERRORS;
         m_vCompiledShaders[i].programID = 0;
     }
 
@@ -331,17 +326,11 @@ void COGL_FragmentProgramCombiner::InitCombinerCycleCopy(void)
     m_pOGLRender->EnableTexUnit(0, true);
     UseProgram(copyProgram);
     glUniform1f(copyAlphaLocation,m_AlphaRef);
-    OPENGL_CHECK_ERRORS;
     glEnableVertexAttribArray(VS_POSITION);
-    OPENGL_CHECK_ERRORS;
     glEnableVertexAttribArray(VS_TEXCOORD0);
-    OPENGL_CHECK_ERRORS;
     glDisableVertexAttribArray(VS_COLOR);
-    OPENGL_CHECK_ERRORS;
     glDisableVertexAttribArray(VS_TEXCOORD1);
-    OPENGL_CHECK_ERRORS;
     glDisableVertexAttribArray(VS_FOG);
-    OPENGL_CHECK_ERRORS;
     COGLTexture* pTexture = g_textures[gRSP.curTile].m_pCOGLTexture;
     if( pTexture )
     {
@@ -354,7 +343,6 @@ void COGL_FragmentProgramCombiner::InitCombinerCycleFill(void)
 {
     UseProgram(fillProgram);
     glUniform4f(fillColorLocation,((gRDP.fillColor>>16)&0xFF)/255.0f,((gRDP.fillColor>>8)&0xFF)/255.0f,((gRDP.fillColor)&0xFF)/255.0f,((gRDP.fillColor>>24)&0xFF)/255.0f);
-    OPENGL_CHECK_ERRORS;
 }
 
 #ifdef BGR_SHADER
@@ -520,9 +508,7 @@ int COGL_FragmentProgramCombiner::ParseDecodedMux()
     {
         vertexProgram = res.vertexShaderID = glCreateShader(GL_VERTEX_SHADER);
         glShaderSource(res.vertexShaderID, 1, &vertexShader,NULL);
-        OPENGL_CHECK_ERRORS;
         glCompileShader(res.vertexShaderID);
-        OPENGL_CHECK_ERRORS;
     }
     else
     {
@@ -556,7 +542,6 @@ int COGL_FragmentProgramCombiner::ParseDecodedMux()
           free(tmpShader);
 
 
-          OPENGL_CHECK_ERRORS;
           glCompileShader(res.fragmentShaderID);
 
           glGetShaderiv(res.fragmentShaderID, GL_COMPILE_STATUS, &success);
@@ -575,18 +560,12 @@ int COGL_FragmentProgramCombiner::ParseDecodedMux()
 
           //Bind Attributes
           glBindAttribLocation(res.programID,VS_COLOR,"aColor");
-          OPENGL_CHECK_ERRORS;
           glBindAttribLocation(res.programID,VS_TEXCOORD0,"aTexCoord0");
-          OPENGL_CHECK_ERRORS;
           glBindAttribLocation(res.programID,VS_TEXCOORD1,"aTexCoord1");
-          OPENGL_CHECK_ERRORS;
           glBindAttribLocation(res.programID,VS_POSITION,"aPosition");
-          OPENGL_CHECK_ERRORS;
           glBindAttribLocation(res.programID,VS_FOG,"aFogCoord");
-          OPENGL_CHECK_ERRORS;
 
           glLinkProgram(res.programID);
-          OPENGL_CHECK_ERRORS;
 
           glGetProgramiv(res.programID, GL_LINK_STATUS, &success);
           if (!success)
@@ -599,7 +578,6 @@ int COGL_FragmentProgramCombiner::ParseDecodedMux()
           }
 
           UseProgram(res.programID);
-          OPENGL_CHECK_ERRORS;
 
           //Bind texture samplers
           GLint tex0 = glGetUniformLocation(res.programID,"uTex0");
@@ -612,19 +590,12 @@ int COGL_FragmentProgramCombiner::ParseDecodedMux()
 
           //Bind Uniforms
           res.PrimColorLocation = glGetUniformLocation(res.programID,"PrimColor");
-          OPENGL_CHECK_ERRORS;
           res.EnvColorLocation = glGetUniformLocation(res.programID,"EnvColor");
-          OPENGL_CHECK_ERRORS;
           res.PrimFracLocation = glGetUniformLocation(res.programID,"PrimFrac");
-          OPENGL_CHECK_ERRORS;
           res.EnvFracLocation = glGetUniformLocation(res.programID,"EnvFrac");
-          OPENGL_CHECK_ERRORS;
           res.AlphaRefLocation = glGetUniformLocation(res.programID,"AlphaRef");
-          OPENGL_CHECK_ERRORS;
           res.FogColorLocation = glGetUniformLocation(res.programID,"FogColor");
-          OPENGL_CHECK_ERRORS;
           res.FogMinMaxLocation = glGetUniformLocation(res.programID,"FogMinMax");
-          OPENGL_CHECK_ERRORS;
 
           res.dwMux0 = m_pDecodedMux->m_dwMux0;
           res.dwMux1 = m_pDecodedMux->m_dwMux1;
@@ -643,29 +614,19 @@ void COGL_FragmentProgramCombiner::GenerateCombinerSetting(int index)
 
     UseProgram(ID);
     glEnableVertexAttribArray(VS_POSITION);
-    OPENGL_CHECK_ERRORS;
     glVertexAttribPointer(VS_POSITION,4,GL_FLOAT,GL_FALSE,sizeof(float)*5,&(g_vtxProjected5[0][0]));
-    OPENGL_CHECK_ERRORS;
 
     glEnableVertexAttribArray(VS_TEXCOORD0);
-    OPENGL_CHECK_ERRORS;
     glVertexAttribPointer(VS_TEXCOORD0,2,GL_FLOAT,GL_FALSE, sizeof( TLITVERTEX ), &(g_vtxBuffer[0].tcord[0].u));
-    OPENGL_CHECK_ERRORS;
 
     glEnableVertexAttribArray(VS_TEXCOORD1);
-    OPENGL_CHECK_ERRORS;
     glVertexAttribPointer(VS_TEXCOORD1,2,GL_FLOAT,GL_FALSE, sizeof( TLITVERTEX ), &(g_vtxBuffer[0].tcord[1].u));
-    OPENGL_CHECK_ERRORS;
 
     glEnableVertexAttribArray(VS_COLOR);
-    OPENGL_CHECK_ERRORS;
     glVertexAttribPointer(VS_COLOR, 4, GL_UNSIGNED_BYTE,GL_TRUE, sizeof(uint8_t)*4, &(g_oglVtxColors[0][0]) );
-    OPENGL_CHECK_ERRORS;
 
     glEnableVertexAttribArray(VS_FOG);
-    OPENGL_CHECK_ERRORS;
     glVertexAttribPointer(VS_FOG, 1, GL_FLOAT,GL_FALSE, sizeof(float)*5, &(g_vtxProjected5[0][4]) );
-    OPENGL_CHECK_ERRORS;
 }
 
 void COGL_FragmentProgramCombiner::GenerateCombinerSettingConstants(int index)
@@ -680,7 +641,6 @@ void COGL_FragmentProgramCombiner::GenerateCombinerSettingConstants(int index)
         if (memcmp(pf, prog.EnvColors, sizeof(prog.EnvColors))) {
             memcpy(prog.EnvColors, pf, sizeof(prog.EnvColors));
             glUniform4fv(prog.EnvColorLocation, 1, pf);
-            OPENGL_CHECK_ERRORS;
         }
     }
 
@@ -690,7 +650,6 @@ void COGL_FragmentProgramCombiner::GenerateCombinerSettingConstants(int index)
         if (memcmp(pf, prog.PrimColors, sizeof(prog.PrimColors))) {
             memcpy(prog.PrimColors, pf, sizeof(prog.PrimColors));
             glUniform4fv(prog.PrimColorLocation, 1, pf);
-            OPENGL_CHECK_ERRORS;
         }
     }
 
@@ -703,7 +662,6 @@ void COGL_FragmentProgramCombiner::GenerateCombinerSettingConstants(int index)
 
             prog.EnvLODFrac = (float)gRDP.LODFrac;
             glUniform4fv(prog.EnvFracLocation, 1, tempf);
-            OPENGL_CHECK_ERRORS;
         }
     }
 
@@ -715,7 +673,6 @@ void COGL_FragmentProgramCombiner::GenerateCombinerSettingConstants(int index)
 
             prog.PrimLODFrac = (float)gRDP.primLODFrac;
             glUniform4fv(prog.PrimFracLocation, 1, tempf2);
-            OPENGL_CHECK_ERRORS;
         }
     }
 
@@ -725,7 +682,6 @@ void COGL_FragmentProgramCombiner::GenerateCombinerSettingConstants(int index)
         if (memcmp(pf, prog.FogColors, sizeof(prog.FogColors))) {
             memcpy(prog.FogColors, pf, sizeof(prog.FogColors));
             glUniform4fv(prog.FogColorLocation, 1, pf);
-            OPENGL_CHECK_ERRORS;
         }
     }
 
@@ -735,7 +691,6 @@ void COGL_FragmentProgramCombiner::GenerateCombinerSettingConstants(int index)
             prog.FogMin = gRSPfFogMin;
             prog.FogMax = gRSPfFogMax;
             glUniform2f(prog.FogMinMaxLocation,gRSPfFogMin,gRSPfFogMax);
-            OPENGL_CHECK_ERRORS;
         }
     }
 
@@ -744,7 +699,6 @@ void COGL_FragmentProgramCombiner::GenerateCombinerSettingConstants(int index)
         if( m_AlphaRef != prog.AlphaRef ) {
             prog.AlphaRef = m_AlphaRef;
             glUniform1f(prog.AlphaRefLocation, m_AlphaRef);
-            OPENGL_CHECK_ERRORS;
         }
     }
 }

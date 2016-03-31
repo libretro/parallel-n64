@@ -22,7 +22,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "m64p_plugin.h"
 #include "Config.h"
 #include "Debugger.h"
-#include "OGLDebug.h"
 #include "OGLGraphicsContext.h"
 #include "TextureManager.h"
 #include "Video.h"
@@ -101,34 +100,22 @@ void COGLGraphicsContext::InitState(void)
     m_pVersionStr = glGetString(GL_VERSION);
     m_pVendorStr = glGetString(GL_VENDOR);
     glMatrixMode(GL_PROJECTION);
-    OPENGL_CHECK_ERRORS;
     glLoadIdentity();
-    OPENGL_CHECK_ERRORS;
 
     glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
-    OPENGL_CHECK_ERRORS;
     glClearDepth(1.0f);
-    OPENGL_CHECK_ERRORS;
 
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    OPENGL_CHECK_ERRORS;
     glDisable(GL_BLEND);
-    OPENGL_CHECK_ERRORS;
 
     glFrontFace(GL_CCW);
-    OPENGL_CHECK_ERRORS;
     glDisable(GL_CULL_FACE);
-    OPENGL_CHECK_ERRORS;
 
     glDepthFunc(GL_LEQUAL);
-    OPENGL_CHECK_ERRORS;
     glEnable(GL_DEPTH_TEST);
-    OPENGL_CHECK_ERRORS;
 
     glEnable(GL_BLEND);
-    OPENGL_CHECK_ERRORS;
     glDepthRange(-1.0f, 1.0f);
-    OPENGL_CHECK_ERRORS;
 }
 
 void COGLGraphicsContext::InitOGLExtension(void)
@@ -177,11 +164,8 @@ void COGLGraphicsContext::Clear(ClearFlag dwFlags, uint32_t color, float depth)
     float b = ((color    )&0xFF)/255.0f;
     float a = ((color>>24)&0xFF)/255.0f;
     glClearColor(r, g, b, a);
-    OPENGL_CHECK_ERRORS;
     glClearDepth(depth);
-    OPENGL_CHECK_ERRORS;
     glClear(flag);  //Clear color buffer and depth buffer
-    OPENGL_CHECK_ERRORS;
 }
 
 void COGLGraphicsContext::UpdateFrame(bool swapOnly)
@@ -189,7 +173,6 @@ void COGLGraphicsContext::UpdateFrame(bool swapOnly)
     status.gFrameCount++;
 
     glFlush();
-    OPENGL_CHECK_ERRORS;
 
     // if emulator defined a render callback function, call it before buffer swap
     if (renderCallback)
@@ -198,13 +181,10 @@ void COGLGraphicsContext::UpdateFrame(bool swapOnly)
    retro_return(true);
    
     glDepthMask(GL_TRUE);
-    OPENGL_CHECK_ERRORS;
     glClearDepth(1.0f);
-    OPENGL_CHECK_ERRORS;
     if (!g_curRomInfo.bForceScreenClear)
     {
         glClear(GL_DEPTH_BUFFER_BIT);
-        OPENGL_CHECK_ERRORS;
     }
     else
     {
