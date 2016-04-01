@@ -71,17 +71,47 @@ extern "C" {
 #define G_OBJLT_TLUT        0x00000030
 
 /* These are all the constant flags */
-#define G_ZBUFFER               0x00000001
+#define G_ZBUFFER               0x00000001  /* Enables Z buffer calculations.
+                                             *
+                                             * Other Z buffer-related parameters
+                                             * for the framebuffer must also be
+                                             * set. */
 #define G_TEXTURE_ENABLE        0x00000002  /* Microcode use only  */
-#define G_SHADE                 0x00000004  /* Enable Gouraud shading */
-#define G_SHADING_SMOOTH        0x00000200  /* Flat or smooth shaded  */
-#define G_CULL_FRONT            0x00001000
-#define G_CULL_BACK             0x00002000
-#define G_CULL_BOTH             0x00003000  /* To make code cleaner  */
-#define G_FOG                   0x00010000
-#define G_LIGHTING              0x00020000
-#define G_TEXTURE_GEN           0x00040000
-#define G_TEXTURE_GEN_LINEAR    0x00080000
+#define G_SHADE                 0x00000004  /* Enable Gouraud shading 
+                                             *
+                                             * Enables calculation of 
+                                             * the vertex color for
+                                             * a triangle. */
+
+#define G_SHADING_SMOOTH        0x00000200  /* Enables Gouraud shading.
+                                             * 
+                                             * When this is not enabled, 
+                                             * flat shading is used for the 
+                                             * triangle based on the color
+                                             * of one vertex (see gSP1Triangle).
+                                             * */
+#define G_CULL_FRONT            0x00001000  /* Enables front-face culling.
+                                             *
+                                             * This does not support F3DLX.Rej
+                                             * but it does support F3DLX2.Rej.
+                                             */
+#define G_CULL_BACK             0x00002000  /* Enables back-face culling. */
+#define G_CULL_BOTH             0x00003000  /* Enables both back-face and
+                                             * front-face culling.
+                                             *
+                                             * This does not support F3DLX.Rej
+                                             * but it does support F3DLX2.Rej. */
+#define G_FOG                   0x00010000  /* Enables generation of vertex
+                                             * alpha coordinate fog parameters. */
+#define G_LIGHTING              0x00020000  /* Enables lighting calculations. */
+#define G_TEXTURE_GEN           0x00040000  /* Enables automatic generation of
+                                             * the texture's S/T coordinates.
+                                             *
+                                             * Spherical mapping based on the 
+                                             * normal vector is used.
+                                             */
+#define G_TEXTURE_GEN_LINEAR    0x00080000  /* Enables automatic generation of
+                                             * the texture's S/T coordinates. */
 #define G_LOD                   0x00100000
 #define G_POINT_LIGHTING		  0x00400000
 
