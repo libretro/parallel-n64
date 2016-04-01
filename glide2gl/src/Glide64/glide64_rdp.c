@@ -58,12 +58,6 @@
 /* angrylion's macro, helps to cut overflowed values. */
 #define SIGN16(x) (int16_t)(x)
 
-#ifdef __GNUC__
-#define align(x) __attribute__ ((aligned(x)))
-#else
-#define align(x)
-#endif
-
 /* positional and texel coordinate clipping */
 #define CCLIP2(ux,lx,ut,lt,un,ln,uc,lc) \
 		if (ux > lx || lx < uc || ux > lc) return; \
@@ -980,7 +974,7 @@ void load_palette (uint32_t addr, uint16_t start, uint16_t count)
 {
    uint16_t i, p;
    uint16_t *dpal = (uint16_t*)(rdp.pal_8 + start);
-   uint16_t end = start+count;
+   uint16_t end   = start+count;
 
    for (i=start; i<end; i++)
    {
@@ -1016,7 +1010,7 @@ static void rdp_loadtlut(uint32_t w0, uint32_t w1)
 
 static void rdp_settilesize(uint32_t w0, uint32_t w1)
 {
-   int tilenum = gdp_set_tile_size_wrap(w0, w1);
+   int tilenum               = gdp_set_tile_size_wrap(w0, w1);
 
    rdp.last_tile_size        = tilenum;
 
