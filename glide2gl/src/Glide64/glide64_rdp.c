@@ -1076,8 +1076,8 @@ static void rdp_fillrect(uint32_t w0, uint32_t w1)
 {
 	const uint32_t ul_x = _SHIFTR(w1, 14, 10);
 	const uint32_t ul_y = _SHIFTR(w1, 2, 10);
-	const uint32_t lr_x = _SHIFTR(w0, 14, 10);
-	const uint32_t lr_y = _SHIFTR(w0, 2, 10);
+	const uint32_t lr_x = _SHIFTR(w0, 14, 10) + 1;
+	const uint32_t lr_y = _SHIFTR(w0, 2, 10)  + 1;
 
    /* Wrong coordinates. Skipped */
    if (lr_x < ul_x || lr_y < ul_y)
