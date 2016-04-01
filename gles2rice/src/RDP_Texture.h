@@ -179,18 +179,12 @@ bool CalculateTileSizes_method_2(int tileno, TMEMLoadMapInfo *info, TxtrInfo &gt
             dwTileWidth = dwTileWidth << info->dwSize >> tile.dwSize;
         }
         else
-        {
             dwTileWidth= tile.sh - tile.sl + 1;
-        }
 
         if( tile.tl >= tile.th )
-        {
             dwTileHeight= info->th - info->tl + 1;
-        }
         else
-        {
             dwTileHeight= tile.th - tile.tl + 1;
-        }
     }
     else
     {
@@ -209,23 +203,15 @@ bool CalculateTileSizes_method_2(int tileno, TMEMLoadMapInfo *info, TxtrInfo &gt
             if( tile.dwMaskS < 8 )
                 dwTileWidth = (1 << tile.dwMaskS );
             else if( tile.dwLine )
-            {
                 dwTileWidth = (tile.dwLine<<5)>>tile.dwSize;
-            }
             else
             {
                 if( tile.sl <= tile.sh )
-                {
                     dwTileWidth = tile.sh - tile.sl +1;
-                }
                 else if( loadtile.sl <= loadtile.sh )
-                {
                     dwTileWidth = loadtile.sh - loadtile.sl +1;
-                }
                 else
-                {
                     dwTileWidth = tile.sh - tile.sl +1;
-                }
             }
         }
 
@@ -236,26 +222,18 @@ bool CalculateTileSizes_method_2(int tileno, TMEMLoadMapInfo *info, TxtrInfo &gt
                 dwTileHeight = tile.th - tile.tl +1;
 
             if( dwTileHeight <= 0 )
-            {
                 DebuggerAppendMsg("Error");
-            }
         }
         else
         {
             if( tile.dwMaskT < 8 )
                 dwTileHeight = (1 << tile.dwMaskT );
             else if( tile.tl <= tile.th )
-            {
                 dwTileHeight = tile.th - tile.tl +1;
-            }
             else if( loadtile.tl <= loadtile.th )
-            {
                 dwTileHeight = loadtile.th - loadtile.tl +1;
-            }
             else
-            {
                 dwTileHeight = tile.th - tile.tl +1;
-            }
         }
     }
 
@@ -291,14 +269,6 @@ bool CalculateTileSizes_method_2(int tileno, TMEMLoadMapInfo *info, TxtrInfo &gt
     ComputeTileDimension(tile.dwMaskT, tile.bClampT,
         tile.bMirrorT, dwTileHeight, gti.HeightToCreate, gti.HeightToLoad);
     tile.dwHeight = gti.HeightToCreate;
-
-#ifdef DEBUGGER
-    if( gti.WidthToCreate < gti.WidthToLoad )
-        TRACE2("Check me, width to create = %d, width to load = %d", gti.WidthToCreate, gti.WidthToLoad);
-    if( gti.HeightToCreate < gti.HeightToLoad )
-        TRACE2("Check me, height to create = %d, height to load = %d", gti.HeightToCreate, gti.HeightToLoad);
-#endif
-
 
     gti.bSwapped = info->bSwapped;
 
@@ -911,21 +881,6 @@ void DLParser_SetTile(Gfx *gfx)
 
     tile.lastTileCmd = CMD_SETTILE;
 
-    LOG_TEXTURE(
-    {
-    DebuggerAppendMsg("SetTile:%d  Fmt: %s/%s Line:%d TMem:0x%04x Palette:%d\n",
-        tileno, pszImgFormat[tile.dwFormat], pszImgSize[tile.dwSize],
-        tile.dwLine,  tile.dwTMem, tile.dwPalette);
-    DebuggerAppendMsg("         S: Clamp: %s Mirror:%s Mask:0x%x Shift:0x%x\n",
-        pszOnOff[tile.bClampS],pszOnOff[tile.bMirrorS],
-        tile.dwMaskS, tile.dwShiftS);
-    DebuggerAppendMsg("         T: Clamp: %s Mirror:%s Mask:0x%x Shift:0x%x\n",
-        pszOnOff[tile.bClampT],pszOnOff[tile.bMirrorT],
-        tile.dwMaskT, tile.dwShiftT);
-    });
-
-    DEBUGGER_PAUSE_COUNT_N(NEXT_TEXTURE_CMD);
-
     LOG_UCODE("    Tile:%d  Fmt: %s/%s Line:%d TMem:0x%04x Palette:%d",
         tileno, pszImgFormat[tile.dwFormat], pszImgSize[tile.dwSize],
         tile.dwLine, tile.dwTMem, tile.dwPalette);
@@ -1026,199 +981,186 @@ void DLParser_SetTileSize(Gfx *gfx)
 
 extern const char *pszImgFormat[8];// = {"RGBA", "YUV", "CI", "IA", "I", "?1", "?2", "?3"};
 extern const char *pszImgSize[4];// = {"4", "8", "16", "32"};
+
 void DLParser_SetTImg(Gfx *gfx)
 {
-    gRDP.textureIsChanged = true;
+   gRDP.textureIsChanged = true;
 
-    g_TI.dwFormat   = gfx->setimg.fmt;
-    g_TI.dwSize     = gfx->setimg.siz;
-    g_TI.dwWidth    = gfx->setimg.width + 1;
-    g_TI.dwAddr     = RSPSegmentAddr((gfx->setimg.addr));
-    g_TI.bpl        = g_TI.dwWidth << g_TI.dwSize >> 1;
-
-#ifdef DEBUGGER
-    if( g_TI.dwAddr == 0x00ffffff)
-    {
-        TRACE0("Check me here in setTimg");
-    }
-
-    LOG_TEXTURE(TRACE4("SetTImage: 0x%08x Fmt: %s/%s Width in Pixel: %d\n", g_TI.dwAddr,
-            pszImgFormat[g_TI.dwFormat], pszImgSize[g_TI.dwSize], g_TI.dwWidth));
-
-    DEBUGGER_PAUSE_COUNT_N(NEXT_TEXTURE_CMD);
-
-    LOG_UCODE("Image: 0x%08x Fmt: %s/%s Width in Pixel: %d", g_TI.dwAddr,
-        pszImgFormat[g_TI.dwFormat], pszImgSize[g_TI.dwSize], g_TI.dwWidth);
-#endif
+   g_TI.dwFormat   = gfx->setimg.fmt;
+   g_TI.dwSize     = gfx->setimg.siz;
+   g_TI.dwWidth    = gfx->setimg.width + 1;
+   g_TI.dwAddr     = RSPSegmentAddr((gfx->setimg.addr));
+   g_TI.bpl        = g_TI.dwWidth << g_TI.dwSize >> 1;
 }
 
 void DLParser_TexRect(Gfx *gfx)
 {
    uint8_t *rdram_u8 = (uint8_t*)gfx_info.RDRAM;
-    //Gtexrect *gtextrect = (Gtexrect *)gfx;
 
-    if( !status.bCIBufferIsRendered ) g_pFrameBufferManager->ActiveTextureBuffer();
+   if( !status.bCIBufferIsRendered )
+      g_pFrameBufferManager->ActiveTextureBuffer();
 
-    status.primitiveType = PRIM_TEXTRECT;
+   status.primitiveType = PRIM_TEXTRECT;
 
-    // This command used 128bits, and not 64 bits. This means that we have to look one 
-    // Command ahead in the buffer, and update the PC.
-    uint32_t dwPC = gDlistStack[gDlistStackPointer].pc;       // This points to the next instruction
-    uint32_t dwCmd2 = *(uint32_t *)(rdram_u8 + dwPC+4);
-    uint32_t dwCmd3 = *(uint32_t *)(rdram_u8 + dwPC+4+8);
-    uint32_t dwHalf1 = *(uint32_t *)(rdram_u8 + dwPC);
-    uint32_t dwHalf2 = *(uint32_t *)(rdram_u8 + dwPC+8);
+   // This command used 128bits, and not 64 bits. This means that we have to look one 
+   // Command ahead in the buffer, and update the PC.
+   uint32_t dwPC = gDlistStack[gDlistStackPointer].pc;       // This points to the next instruction
+   uint32_t dwCmd2 = *(uint32_t *)(rdram_u8 + dwPC+4);
+   uint32_t dwCmd3 = *(uint32_t *)(rdram_u8 + dwPC+4+8);
+   uint32_t dwHalf1 = *(uint32_t *)(rdram_u8 + dwPC);
+   uint32_t dwHalf2 = *(uint32_t *)(rdram_u8 + dwPC+8);
 
-    if( options.enableHackForGames == HACK_FOR_ALL_STAR_BASEBALL || options.enableHackForGames == HACK_FOR_MLB )
-    {
-        if( ((dwHalf1>>24) == 0xb4 || (dwHalf1>>24) == 0xb3 || (dwHalf1>>24) == 0xb2 || (dwHalf1>>24) == 0xe1) && 
+   if( options.enableHackForGames == HACK_FOR_ALL_STAR_BASEBALL || options.enableHackForGames == HACK_FOR_MLB )
+   {
+      if( ((dwHalf1>>24) == 0xb4 || (dwHalf1>>24) == 0xb3 || (dwHalf1>>24) == 0xb2 || (dwHalf1>>24) == 0xe1) && 
             ((dwHalf2>>24) == 0xb4 || (dwHalf2>>24) == 0xb3 || (dwHalf2>>24) == 0xb2 || (dwHalf2>>24) == 0xf1) )
-        {
-            // Increment PC so that it points to the right place
-            gDlistStack[gDlistStackPointer].pc += 16;
-        }
-        else
-        {
-            // Hack for some games, All_Star_Baseball_2000
-            gDlistStack[gDlistStackPointer].pc += 8;
-            dwCmd3 = dwCmd2;
-            //dwCmd2 = dwHalf1;
-            //dwCmd2 = 0;
+      {
+         // Increment PC so that it points to the right place
+         gDlistStack[gDlistStackPointer].pc += 16;
+      }
+      else
+      {
+         // Hack for some games, All_Star_Baseball_2000
+         gDlistStack[gDlistStackPointer].pc += 8;
+         dwCmd3 = dwCmd2;
+         //dwCmd2 = dwHalf1;
+         //dwCmd2 = 0;
 
-            // fix me here
-            dwCmd2 = (((dwHalf1>>12)&0x03FF)<<17) | (((dwHalf1)&0x03FF)<<1);
-        }   
-    }
-    else
-    {
-        gDlistStack[gDlistStackPointer].pc += 16;
-    }
-
-
-    // Hack for Mario Tennis
-    if( !status.bHandleN64RenderTexture && g_CI.dwAddr == g_ZI.dwAddr )
-    {
-        return;
-    }
+         // fix me here
+         dwCmd2 = (((dwHalf1>>12)&0x03FF)<<17) | (((dwHalf1)&0x03FF)<<1);
+      }   
+   }
+   else
+   {
+      gDlistStack[gDlistStackPointer].pc += 16;
+   }
 
 
-    LOG_UCODE("0x%08x: %08x %08x", dwPC, *(uint32_t *)(rdram_u8 + dwPC+0), *(uint32_t *)(rdram_u8 + dwPC+4));
-    LOG_UCODE("0x%08x: %08x %08x", dwPC+8, *(uint32_t *)(rdram_u8 + dwPC+8), *(uint32_t *)(rdram_u8 + dwPC+8+4));
+   // Hack for Mario Tennis
+   if( !status.bHandleN64RenderTexture && g_CI.dwAddr == g_ZI.dwAddr )
+   {
+      return;
+   }
 
-    uint32_t dwXH     = (((gfx->words.w0)>>12)&0x0FFF)/4;
-    uint32_t dwYH     = (((gfx->words.w0)    )&0x0FFF)/4;
-    uint32_t tileno   = ((gfx->words.w1)>>24)&0x07;
-    uint32_t dwXL     = (((gfx->words.w1)>>12)&0x0FFF)/4;
-    uint32_t dwYL     = (((gfx->words.w1)    )&0x0FFF)/4;
-    uint16_t uS       = (uint16_t)(  dwCmd2>>16)&0xFFFF;
-    uint16_t uT       = (uint16_t)(  dwCmd2    )&0xFFFF;
-    uint16_t  uDSDX   = (uint16_t)((  dwCmd3>>16)&0xFFFF);
-    uint16_t  uDTDY       = (uint16_t)((  dwCmd3    )&0xFFFF);
-    
 
-    if( (int)dwXL >= gRDP.scissor.right || (int)dwYL >= gRDP.scissor.bottom || (int)dwXH < gRDP.scissor.left || (int)dwYH < gRDP.scissor.top )
-    {
-        // Clipping
-        return;
-    }
+   LOG_UCODE("0x%08x: %08x %08x", dwPC, *(uint32_t *)(rdram_u8 + dwPC+0), *(uint32_t *)(rdram_u8 + dwPC+4));
+   LOG_UCODE("0x%08x: %08x %08x", dwPC+8, *(uint32_t *)(rdram_u8 + dwPC+8), *(uint32_t *)(rdram_u8 + dwPC+8+4));
 
-    short s16S = *(short*)(&uS);
-    short s16T = *(short*)(&uT);
+   uint32_t dwXH     = (((gfx->words.w0)>>12)&0x0FFF)/4;
+   uint32_t dwYH     = (((gfx->words.w0)    )&0x0FFF)/4;
+   uint32_t tileno   = ((gfx->words.w1)>>24)&0x07;
+   uint32_t dwXL     = (((gfx->words.w1)>>12)&0x0FFF)/4;
+   uint32_t dwYL     = (((gfx->words.w1)    )&0x0FFF)/4;
+   uint16_t uS       = (uint16_t)(  dwCmd2>>16)&0xFFFF;
+   uint16_t uT       = (uint16_t)(  dwCmd2    )&0xFFFF;
+   uint16_t  uDSDX   = (uint16_t)((  dwCmd3>>16)&0xFFFF);
+   uint16_t  uDTDY       = (uint16_t)((  dwCmd3    )&0xFFFF);
 
-    short    s16DSDX  = *(short*)(&uDSDX);
-    short  s16DTDY  = *(short*)(&uDTDY);
 
-    uint32_t curTile = gRSP.curTile;
-    ForceMainTextureIndex(tileno);
+   if( (int)dwXL >= gRDP.scissor.right || (int)dwYL >= gRDP.scissor.bottom || (int)dwXH < gRDP.scissor.left || (int)dwYH < gRDP.scissor.top )
+   {
+      // Clipping
+      return;
+   }
 
-    float fS0 = s16S / 32.0f;
-    float fT0 = s16T / 32.0f;
+   short s16S = *(short*)(&uS);
+   short s16T = *(short*)(&uT);
 
-    float fDSDX = s16DSDX / 1024.0f;
-    float fDTDY = s16DTDY / 1024.0f;
+   short    s16DSDX  = *(short*)(&uDSDX);
+   short  s16DTDY  = *(short*)(&uDTDY);
 
-    uint32_t cycletype = gRDP.otherMode.cycle_type;
+   uint32_t curTile = gRSP.curTile;
+   ForceMainTextureIndex(tileno);
 
-    if (cycletype == G_CYC_COPY)
-    {
-        fDSDX /= 4.0f;  // In copy mode 4 pixels are copied at once.
-        dwXH++;
-        dwYH++;
-    }
-    else if (cycletype == G_CYC_FILL)
-    {
-        dwXH++;
-        dwYH++;
-    }
+   float fS0 = s16S / 32.0f;
+   float fT0 = s16T / 32.0f;
 
-    if( fDSDX == 0 )    fDSDX = 1;
-    if( fDTDY == 0 )    fDTDY = 1;
+   float fDSDX = s16DSDX / 1024.0f;
+   float fDTDY = s16DTDY / 1024.0f;
 
-    float fS1 = fS0 + (fDSDX * (dwXH - dwXL));
-    float fT1 = fT0 + (fDTDY * (dwYH - dwYL));
+   uint32_t cycletype = gRDP.otherMode.cycle_type;
 
-    LOG_UCODE("    Tile:%d Screen(%d,%d) -> (%d,%d)", tileno, dwXL, dwYL, dwXH, dwYH);
-    LOG_UCODE("           Tex:(%#5f,%#5f) -> (%#5f,%#5f) (DSDX:%#5f DTDY:%#5f)",
-                                            fS0, fT0, fS1, fT1, fDSDX, fDTDY);
-    LOG_UCODE("");
+   if (cycletype == G_CYC_COPY)
+   {
+      fDSDX /= 4.0f;  // In copy mode 4 pixels are copied at once.
+      dwXH++;
+      dwYH++;
+   }
+   else if (cycletype == G_CYC_FILL)
+   {
+      dwXH++;
+      dwYH++;
+   }
 
-    float t0u0 = (fS0-gRDP.tiles[tileno].hilite_sl) * gRDP.tiles[tileno].fShiftScaleS;
-    float t0v0 = (fT0-gRDP.tiles[tileno].hilite_tl) * gRDP.tiles[tileno].fShiftScaleT;
-    float t0u1 = t0u0 + (fDSDX * (dwXH - dwXL))*gRDP.tiles[tileno].fShiftScaleS;
-    float t0v1 = t0v0 + (fDTDY * (dwYH - dwYL))*gRDP.tiles[tileno].fShiftScaleT;
+   if( fDSDX == 0 )    fDSDX = 1;
+   if( fDTDY == 0 )    fDTDY = 1;
 
-    if( dwXL==0 && dwYL==0 && dwXH==windowSetting.fViWidth-1 && dwYH==windowSetting.fViHeight-1 &&
-        t0u0 == 0 && t0v0==0 && t0u1==0 && t0v1==0 )
-    {
-        //Using TextRect to clear the screen
-    }
-    else
-    {
-        if( status.bHandleN64RenderTexture && //status.bDirectWriteIntoRDRAM && 
+   float fS1 = fS0 + (fDSDX * (dwXH - dwXL));
+   float fT1 = fT0 + (fDTDY * (dwYH - dwYL));
+
+   LOG_UCODE("    Tile:%d Screen(%d,%d) -> (%d,%d)", tileno, dwXL, dwYL, dwXH, dwYH);
+   LOG_UCODE("           Tex:(%#5f,%#5f) -> (%#5f,%#5f) (DSDX:%#5f DTDY:%#5f)",
+         fS0, fT0, fS1, fT1, fDSDX, fDTDY);
+   LOG_UCODE("");
+
+   float t0u0 = (fS0-gRDP.tiles[tileno].hilite_sl) * gRDP.tiles[tileno].fShiftScaleS;
+   float t0v0 = (fT0-gRDP.tiles[tileno].hilite_tl) * gRDP.tiles[tileno].fShiftScaleT;
+   float t0u1 = t0u0 + (fDSDX * (dwXH - dwXL))*gRDP.tiles[tileno].fShiftScaleS;
+   float t0v1 = t0v0 + (fDTDY * (dwYH - dwYL))*gRDP.tiles[tileno].fShiftScaleT;
+
+   if( dwXL==0 && dwYL==0 && dwXH==windowSetting.fViWidth-1 && dwYH==windowSetting.fViHeight-1 &&
+         t0u0 == 0 && t0v0==0 && t0u1==0 && t0v1==0 )
+   {
+      //Using TextRect to clear the screen
+   }
+   else
+   {
+      if( status.bHandleN64RenderTexture && //status.bDirectWriteIntoRDRAM && 
             g_pRenderTextureInfo->CI_Info.dwFormat == gRDP.tiles[tileno].dwFormat && 
             g_pRenderTextureInfo->CI_Info.dwSize == gRDP.tiles[tileno].dwSize && 
             gRDP.tiles[tileno].dwFormat == G_IM_FMT_CI && gRDP.tiles[tileno].dwSize == G_IM_SIZ_8b )
-        {
-            if( options.enableHackForGames == HACK_FOR_YOSHI )
-            {
-                // Hack for Yoshi background image
-                PrepareTextures();
-                TexRectToFrameBuffer_8b(dwXL, dwYL, dwXH, dwYH, t0u0, t0v0, t0u1, t0v1, tileno);
-                DEBUGGER_PAUSE_AT_COND_AND_DUMP_COUNT_N((eventToPause == NEXT_FLUSH_TRI || eventToPause == NEXT_TEXTRECT), {
-                    DebuggerAppendMsg("TexRect: tile=%d, X0=%d, Y0=%d, X1=%d, Y1=%d,\nfS0=%f, fT0=%f, ScaleS=%f, ScaleT=%f\n",
+      {
+         if( options.enableHackForGames == HACK_FOR_YOSHI )
+         {
+            // Hack for Yoshi background image
+            PrepareTextures();
+            TexRectToFrameBuffer_8b(dwXL, dwYL, dwXH, dwYH, t0u0, t0v0, t0u1, t0v1, tileno);
+            DEBUGGER_PAUSE_AT_COND_AND_DUMP_COUNT_N((eventToPause == NEXT_FLUSH_TRI || eventToPause == NEXT_TEXTRECT), {
+                  DebuggerAppendMsg("TexRect: tile=%d, X0=%d, Y0=%d, X1=%d, Y1=%d,\nfS0=%f, fT0=%f, ScaleS=%f, ScaleT=%f\n",
                         gRSP.curTile, dwXL, dwYL, dwXH, dwYH, fS0, fT0, fDSDX, fDTDY);
-                    DebuggerAppendMsg("Pause after TexRect for Yoshi\n");
-                });
+                  DebuggerAppendMsg("Pause after TexRect for Yoshi\n");
+                  });
 
-            }
-            else
+         }
+         else
+         {
+            if( frameBufferOptions.bUpdateCIInfo )
             {
-                if( frameBufferOptions.bUpdateCIInfo )
-                {
-                    PrepareTextures();
-                    TexRectToFrameBuffer_8b(dwXL, dwYL, dwXH, dwYH, t0u0, t0v0, t0u1, t0v1, tileno);
-                }
-
-                if( !status.bDirectWriteIntoRDRAM )
-                {
-                    CRender::g_pRender->TexRect(dwXL, dwYL, dwXH, dwYH, fS0, fT0, fDSDX, fDTDY, false, 0xFFFFFFFF);
-
-                    status.dwNumTrisRendered += 2;
-                }
+               PrepareTextures();
+               TexRectToFrameBuffer_8b(dwXL, dwYL, dwXH, dwYH, t0u0, t0v0, t0u1, t0v1, tileno);
             }
-        }
-        else
-        {
-            CRender::g_pRender->TexRect(dwXL, dwYL, dwXH, dwYH, fS0, fT0, fDSDX, fDTDY, false, 0xFFFFFFFF);
-            status.bFrameBufferDrawnByTriangles = true;
 
-            status.dwNumTrisRendered += 2;
-        }
-    }
+            if( !status.bDirectWriteIntoRDRAM )
+            {
+               CRender::g_pRender->TexRect(dwXL, dwYL, dwXH, dwYH, fS0, fT0, fDSDX, fDTDY, false, 0xFFFFFFFF);
 
-    if( status.bHandleN64RenderTexture )    g_pRenderTextureInfo->maxUsedHeight = MAX(g_pRenderTextureInfo->maxUsedHeight,(int)dwYH);
+               status.dwNumTrisRendered += 2;
+            }
+         }
+      }
+      else
+      {
+         CRender::g_pRender->TexRect(dwXL, dwYL, dwXH, dwYH, fS0, fT0, fDSDX, fDTDY, false, 0xFFFFFFFF);
+         status.bFrameBufferDrawnByTriangles = true;
 
-    ForceMainTextureIndex(curTile);
+         status.dwNumTrisRendered += 2;
+      }
+   }
+
+   if( status.bHandleN64RenderTexture )
+      g_pRenderTextureInfo->maxUsedHeight = MAX(g_pRenderTextureInfo->maxUsedHeight,(int)dwYH);
+
+   ForceMainTextureIndex(curTile);
 }
 
 
