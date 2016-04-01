@@ -362,8 +362,8 @@ static void fb_setcolorimage(uint32_t w0, uint32_t w1)
    else
       cur_fb->height   = 0;
 
-   cur_fb->format      = (w0 >> 21) & 0x7;
-   cur_fb->size        = (w0 >> 19) & 0x3;
+   cur_fb->format      = (w0 & 0x00E00000) >> (53 - 32);
+   cur_fb->size        = (w0 & 0x00180000) >> (51 - 32);
    cur_fb->addr        = rdp.cimg;
    cur_fb->changed     = 1;
 
