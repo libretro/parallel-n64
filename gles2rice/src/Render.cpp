@@ -19,6 +19,9 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #define M64P_PLUGIN_PROTOTYPES 1
 #include <stdint.h>
+
+#include <retro_miscellaneous.h>
+
 #include "osal_preproc.h"
 #include "m64p_plugin.h"
 
@@ -39,13 +42,6 @@ extern char* right (const char * src, int nchars);
 
 #if defined(WIN32)
   #define strcasecmp _stricmp
-#endif
-
-#ifdef min
-#undef min
-#endif
-#ifdef max
-#undef max
 #endif
 
 //========================================================================
@@ -1543,15 +1539,15 @@ void CRender::UpdateClipRectangle()
 
 void CRender::UpdateScissorWithClipRatio()
 {
-    gRSP.real_clip_scissor_left = std::max(gRDP.scissor.left, gRSP.clip_ratio_left);
-    gRSP.real_clip_scissor_top = std::max(gRDP.scissor.top, gRSP.clip_ratio_top);
-    gRSP.real_clip_scissor_right = std::min(gRDP.scissor.right,gRSP.clip_ratio_right);
-    gRSP.real_clip_scissor_bottom = std::min(gRDP.scissor.bottom, gRSP.clip_ratio_bottom);
+    gRSP.real_clip_scissor_left   = MAX(gRDP.scissor.left, gRSP.clip_ratio_left);
+    gRSP.real_clip_scissor_top    = MAX(gRDP.scissor.top, gRSP.clip_ratio_top);
+    gRSP.real_clip_scissor_right  = MIN(gRDP.scissor.right,gRSP.clip_ratio_right);
+    gRSP.real_clip_scissor_bottom = MIN(gRDP.scissor.bottom, gRSP.clip_ratio_bottom);
 
-    gRSP.real_clip_scissor_left = std::max(gRSP.real_clip_scissor_left, 0);
-    gRSP.real_clip_scissor_top = std::max(gRSP.real_clip_scissor_top, 0);
-    gRSP.real_clip_scissor_right = std::min(gRSP.real_clip_scissor_right,windowSetting.uViWidth-1);
-    gRSP.real_clip_scissor_bottom = std::min(gRSP.real_clip_scissor_bottom, windowSetting.uViHeight-1);
+    gRSP.real_clip_scissor_left   = MAX(gRSP.real_clip_scissor_left, 0);
+    gRSP.real_clip_scissor_top    = MAX(gRSP.real_clip_scissor_top, 0);
+    gRSP.real_clip_scissor_right  = MIN(gRSP.real_clip_scissor_right,windowSetting.uViWidth-1);
+    gRSP.real_clip_scissor_bottom = MIN(gRSP.real_clip_scissor_bottom, windowSetting.uViHeight-1);
 
     WindowSettingStruct &w = windowSetting;
     w.clipping.left = (uint32_t)(gRSP.real_clip_scissor_left*windowSetting.fMultX);
