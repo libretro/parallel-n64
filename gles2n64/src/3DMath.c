@@ -23,33 +23,3 @@ void MultMatrix( float m0[4][4], float m1[4][4], float dest[4][4])
    dest[2][3] = m0[0][3]*m1[2][0] + m0[1][3]*m1[2][1] + m0[2][3]*m1[2][2] + m0[3][3]*m1[2][3];
    dest[3][3] = m0[3][3]*m1[3][3] + m0[2][3]*m1[3][2] + m0[1][3]*m1[3][1] + m0[0][3]*m1[3][0];
 }
-
-void TransformVectorNormalize(float vec[3], float mtx[4][4])
-{
-   float len;
-   float x   = vec[0];
-   float y   = vec[1];
-   float z   = vec[2];
-
-   vec[0] = mtx[0][0] * x 
-   + mtx[1][0] * y 
-   + mtx[2][0] * z;
-
-   vec[1] = mtx[0][1] *x 
-   + mtx[1][1] * y 
-   + mtx[2][1] * z;
-
-   vec[2] = mtx[0][2] * x 
-   + mtx[1][2] * y 
-   + mtx[2][2] * z;
-
-   len = vec[0]*vec[0] + vec[1]*vec[1] + vec[2]*vec[2];
-
-   if (len != 0.0)
-   {
-      len = sqrtf(len);
-      vec[0] /= len;
-      vec[1] /= len;
-      vec[2] /= len;
-   }
-}

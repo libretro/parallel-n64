@@ -780,6 +780,9 @@
     <ClCompile Include="..\..\..\mupen64plus-video-gliden64\src\mupenplus\Config_mupenplus.cpp">
       <Filter>Source Files\mupen64plus-video-gliden64</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\Graphics\3dmaths.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="..\..\..\Graphics\plugins.c">
       <Filter>Source Files</Filter>
     </ClCompile>
