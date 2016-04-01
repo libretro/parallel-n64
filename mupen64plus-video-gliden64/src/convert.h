@@ -5,6 +5,8 @@
 
 #include <retro_inline.h>
 
+#include "../../Graphics/image_convert.h"
+
 const volatile uint8_t Five2Eight[32] =
 {
 	  0, // 00000 = 00000000
@@ -103,69 +105,6 @@ const volatile uint8_t One2Eight[2] =
 	  0, // 0 = 00000000
 	255, // 1 = 11111111
 };
-
-static INLINE void UnswapCopyWrap(const uint8_t *src, uint32_t srcIdx, uint8_t *dest, uint32_t destIdx, uint32_t destMask, uint32_t numBytes)
-{
-	// copy leading bytes
-	uint32_t leadingBytes = srcIdx & 3;
-	if (leadingBytes != 0) {
-		leadingBytes = 4 - leadingBytes;
-		if ((uint32_t)leadingBytes > numBytes)
-			leadingBytes = numBytes;
-		numBytes -= leadingBytes;
-
-		srcIdx ^= 3;
-		for (int i = 0; i < leadingBytes; i++) {
-			dest[destIdx&destMask] = src[srcIdx];
-			++destIdx;
-			--srcIdx;
-		}
-		srcIdx += 5;
-	}
-
-	// copy dwords
-	int numDWords = numBytes >> 2;
-	while (numDWords--) {
-		dest[(destIdx + 3) & destMask] = src[srcIdx++];
-		dest[(destIdx + 2) & destMask] = src[srcIdx++];
-		dest[(destIdx + 1) & destMask] = src[srcIdx++];
-		dest[(destIdx + 0) & destMask] = src[srcIdx++];
-		destIdx += 4;
-	}
-
-	// copy trailing bytes
-	int trailingBytes = numBytes & 3;
-	if (trailingBytes) {
-		srcIdx ^= 3;
-		for (int i = 0; i < trailingBytes; i++) {
-			dest[destIdx&destMask] = src[srcIdx];
-			++destIdx;
-			--srcIdx;
-		}
-	}
-}
-
-static INLINE void DWordInterleaveWrap(uint32_t *src, uint32_t srcIdx, uint32_t srcMask, uint32_t numQWords)
-{
-	uint32_t tmp;
-	while (numQWords--)	{
-		tmp = src[srcIdx & srcMask];
-		src[srcIdx & srcMask] = src[(srcIdx + 1) & srcMask];
-		++srcIdx;
-		src[srcIdx & srcMask] = tmp;
-		++srcIdx;
-	}
-}
-
-static INLINE uint16_t swapword( uint16_t value )
-{
-#ifdef ARM_ASM
-	asm("rev16 %0, %0" : "+r"(value)::);
-	return value;
-#else
-	return (value << 8) | (value >> 8);
-#endif // ARM_ASM
-}
 
 inline uint16_t RGBA8888_RGBA4444( uint32_t color )
 {

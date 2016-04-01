@@ -4,6 +4,8 @@
 #include <stdlib.h>
 #include <retro_inline.h>
 
+#include "../../Graphics/image_convert.h"
+
 #if !defined(__MACH__) && !defined(__ppc__) && defined(__GNUC__)
 #define HAVE_BSWAP 
 #endif
@@ -118,74 +120,6 @@ static const volatile uint8_t One2Eight[2] =
    0, // 0 = 00000000
    255, // 1 = 11111111
 };
-
-static INLINE void UnswapCopyWrap(const uint8_t *src, uint32_t srcIdx, uint8_t *dest, uint32_t destIdx, uint32_t destMask, uint32_t numBytes)
-{
-    int numDWords;
-	int trailingBytes; 
-	// copy leading bytes
-	uint32_t leadingBytes = srcIdx & 3;
-	if (leadingBytes != 0)
-   {
-      unsigned i;
-
-		leadingBytes = 4 - leadingBytes;
-		if ((uint32_t)leadingBytes > numBytes)
-			leadingBytes = numBytes;
-		numBytes -= leadingBytes;
-
-		srcIdx ^= 3;
-		for (i = 0; i < leadingBytes; i++)
-      {
-			dest[destIdx&destMask] = src[srcIdx];
-			++destIdx;
-			--srcIdx;
-		}
-		srcIdx += 5;
-	}
-
-	// copy dwords
-	numDWords = numBytes >> 2;
-	while (numDWords--) {
-		dest[(destIdx + 3) & destMask] = src[srcIdx++];
-		dest[(destIdx + 2) & destMask] = src[srcIdx++];
-		dest[(destIdx + 1) & destMask] = src[srcIdx++];
-		dest[(destIdx + 0) & destMask] = src[srcIdx++];
-		destIdx += 4;
-	}
-
-	// copy trailing bytes
-	trailingBytes = numBytes & 3;
-	if (trailingBytes)
-   {
-      unsigned i;
-
-		srcIdx ^= 3;
-		for (i = 0; i < trailingBytes; i++)
-      {
-			dest[destIdx&destMask] = src[srcIdx];
-			++destIdx;
-			--srcIdx;
-		}
-	}
-}
-
-static INLINE void DWordInterleaveWrap(uint32_t *src, uint32_t srcIdx, uint32_t srcMask, uint32_t numQWords)
-{
-	uint32_t tmp;
-	while (numQWords--)	{
-		tmp = src[srcIdx & srcMask];
-		src[srcIdx & srcMask] = src[(srcIdx + 1) & srcMask];
-		++srcIdx;
-		src[srcIdx & srcMask] = tmp;
-		++srcIdx;
-	}
-}
-
-static INLINE uint16_t swapword( uint16_t value )
-{
-   return (value << 8) | (value >> 8);
-}
 
 #define RGBA8888_RGBA4444(color) (((color & 0x000000f0) <<  8) | ((color & 0x0000f000) >>  4) | ((color & 0x00f00000) >> 16) | ((color & 0xf0000000) >> 28))
 
