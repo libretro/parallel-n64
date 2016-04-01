@@ -123,7 +123,7 @@ static void uc5_setgeometrymode(uint32_t w0, uint32_t w1)
 {
    glide64gSPSetGeometryMode(w1);
 
-   if (w1 & 0x00000001)  // Z-Buffer enable
+   if (w1 & G_ZBUFFER)
    {
       if (!(rdp.flags & ZBUF_ENABLED))
       {
@@ -132,7 +132,7 @@ static void uc5_setgeometrymode(uint32_t w0, uint32_t w1)
       }
    }
 
-   if (w1 & 0x00010000)      // Fog enable
+   if (w1 & G_FOG)
    {
       if (!(rdp.flags & FOG_ENABLED))
       {
@@ -146,7 +146,7 @@ static void uc5_cleargeometrymode(uint32_t w0, uint32_t w1)
 {
    glide64gSPClearGeometryMode(w1);
 
-   if (w1 & 0x00000001)  // Z-Buffer enable
+   if (w1 & G_ZBUFFER)
    {
       if (rdp.flags & ZBUF_ENABLED)
       {
@@ -155,7 +155,7 @@ static void uc5_cleargeometrymode(uint32_t w0, uint32_t w1)
       }
    }
 
-   if (w1 & 0x00010000)      // Fog enable
+   if (w1 & G_FOG)
    {
       if (rdp.flags & FOG_ENABLED)
       {

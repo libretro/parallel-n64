@@ -359,7 +359,7 @@ static void uc0_setgeometrymode(uint32_t w0, uint32_t w1)
 {
    glide64gSPSetGeometryMode(w1);
 
-   if (w1 & 0x00000001) // Z-Buffer enable
+   if (w1 & G_ZBUFFER)
    {
       if (!(rdp.flags & ZBUF_ENABLED))
       {
@@ -367,7 +367,7 @@ static void uc0_setgeometrymode(uint32_t w0, uint32_t w1)
          g_gdp.flags |= UPDATE_ZBUF_ENABLED;
       }
    }
-   if (w1 & 0x00001000) // Front culling
+   if (w1 & G_CULL_FRONT)
    {
       if (!(rdp.flags & CULL_FRONT))
       {
@@ -375,7 +375,7 @@ static void uc0_setgeometrymode(uint32_t w0, uint32_t w1)
          g_gdp.flags |= UPDATE_CULL_MODE;
       }
    }
-   if (w1 & 0x00002000) // Back culling
+   if (w1 & G_CULL_BACK)
    {
       if (!(rdp.flags & CULL_BACK))
       {
@@ -384,8 +384,7 @@ static void uc0_setgeometrymode(uint32_t w0, uint32_t w1)
       }
    }
 
-   //Added by Gonetz
-   if (w1 & 0x00010000) // Fog enable
+   if (w1 & G_FOG)
    {
       if (!(rdp.flags & FOG_ENABLED))
       {
@@ -402,7 +401,7 @@ static void uc0_cleargeometrymode(uint32_t w0, uint32_t w1)
 
    glide64gSPClearGeometryMode(w1);
 
-   if (w1 & 0x00000001) // Z-Buffer enable
+   if (w1 & G_ZBUFFER)
    {
       if (rdp.flags & ZBUF_ENABLED)
       {
@@ -410,7 +409,7 @@ static void uc0_cleargeometrymode(uint32_t w0, uint32_t w1)
          g_gdp.flags |= UPDATE_ZBUF_ENABLED;
       }
    }
-   if (w1 & 0x00001000) // Front culling
+   if (w1 & G_CULL_FRONT)
    {
       if (rdp.flags & CULL_FRONT)
       {
@@ -418,7 +417,7 @@ static void uc0_cleargeometrymode(uint32_t w0, uint32_t w1)
          g_gdp.flags |= UPDATE_CULL_MODE;
       }
    }
-   if (w1 & 0x00002000) // Back culling
+   if (w1 & G_CULL_BACK)
    {
       if (rdp.flags & CULL_BACK)
       {
@@ -427,8 +426,7 @@ static void uc0_cleargeometrymode(uint32_t w0, uint32_t w1)
       }
    }
 
-   //Added by Gonetz
-   if (w1 & 0x00010000) // Fog enable
+   if (w1 & G_FOG)
    {
       if (rdp.flags & FOG_ENABLED)
       {
