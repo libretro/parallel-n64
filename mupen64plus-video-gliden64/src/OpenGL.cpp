@@ -158,11 +158,6 @@ void OGLVideo::swapBuffers()
 	++m_buffersSwapCount;
 }
 
-void OGLVideo::setCaptureScreen(const char * const _strDirectory)
-{
-}
-
-
 bool OGLVideo::changeWindow()
 {
 	if (!m_bToggleFullscreen)

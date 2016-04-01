@@ -21,11 +21,6 @@ extern UINT32 command_counter;
 
 int retro_return(bool just_flipping);
 
-void CaptureScreen ( char * Directory )
-{
-    return;
-}
-
 void angrylionChangeWindow (void)
 {
 }

@@ -367,16 +367,6 @@ m64p_error glide64PluginGetVersion(m64p_plugin_type *PluginType,
 }
 
 /******************************************************************
-Function: CaptureScreen
-Purpose:  This function dumps the current frame to a file
-input:    pointer to the directory to save the file to
-output:   none
-*******************************************************************/
-void glide64CaptureScreen ( char * Directory )
-{
-}
-
-/******************************************************************
 Function: ChangeWindow
 Purpose:  to change the window between fullscreen and window
 mode. If the window was in fullscreen this should

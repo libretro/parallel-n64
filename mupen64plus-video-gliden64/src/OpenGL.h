@@ -159,7 +159,6 @@ public:
 	bool changeWindow();
 	bool resizeWindow();
 	void setWindowSize(uint32_t _width, uint32_t _height);
-	void setCaptureScreen(const char * const _strDirectory);
 	void setToggleFullscreen() {m_bToggleFullscreen = true;}
 	void readScreen(void **_pDest, long *_pWidth, long *_pHeight );
 	void readScreen2(void * _dest, int * _width, int * _height, int _front);
@@ -185,7 +184,7 @@ public:
 
 protected:
 	OGLVideo() :
-		m_bCaptureScreen(false), m_bToggleFullscreen(false), m_bResizeWindow(false), m_bFullscreen(false), m_bAdjustScreen(false),
+		m_bToggleFullscreen(false), m_bResizeWindow(false), m_bFullscreen(false), m_bAdjustScreen(false),
 		m_width(0), m_height(0), m_heightOffset(0),
 		m_screenWidth(0), m_screenHeight(0), m_resizeWidth(0), m_resizeHeight(0),
 		m_scaleX(0), m_scaleY(0), m_adjustScale(0)
@@ -193,7 +192,6 @@ protected:
 
 	void _setBufferSize();
 
-	bool m_bCaptureScreen;
 	bool m_bToggleFullscreen;
 	bool m_bResizeWindow;
 	bool m_bFullscreen;
