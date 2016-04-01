@@ -22,10 +22,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "OGLTexture.h"
 
 #define ALPHA_TEST "    if(gl_FragColor.a < AlphaRef) discard;                        \n"
-//#define ALPHA_TEST
-#define ENABLE true
-#define DISABLE false
-
 
 GLuint vertexProgram = 9999;
 const char *vertexShader =

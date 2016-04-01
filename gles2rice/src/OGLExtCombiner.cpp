@@ -32,8 +32,6 @@ COGLColorCombiner4::COGLColorCombiner4(CRender *pRender)
         :COGLColorCombiner(pRender), m_maxTexUnits(0), m_lastIndex(-1),
         m_dwLastMux0(0), m_dwLastMux1(0)
 {
-    m_bSupportModAdd_ATI = false;
-    m_bSupportModSub_ATI = false;
     delete m_pDecodedMux;
     m_pDecodedMux = new COGLExtDecodedMux;
 }
@@ -41,8 +39,6 @@ COGLColorCombiner4::COGLColorCombiner4(CRender *pRender)
 //////////////////////////////////////////////////////////////////////////
 bool COGLColorCombiner4::Initialize(void)
 {
-    m_bSupportModAdd_ATI = false;
-    m_bSupportModSub_ATI = false;
     m_maxTexUnits = 1;
 
     return true;

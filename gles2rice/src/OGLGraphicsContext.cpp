@@ -80,9 +80,6 @@ bool COGLGraphicsContext::ResizeInitialize(uint32_t dwWidth, uint32_t dwHeight)
     if (options.colorQuality == TEXTURE_FMT_A4R4G4B4)
         colorBufferDepth = 16;
 
-    /* Hard-coded attribute values */
-    const int iDOUBLEBUFFER = 1;
-
     InitState();
 
     Clear(CLEAR_COLOR_AND_DEPTH_BUFFER, 0xFF000000, 1.0f);    // Clear buffers
