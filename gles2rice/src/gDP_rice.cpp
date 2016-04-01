@@ -12,19 +12,13 @@
 
 #include "../../Graphics/GBI.h"
 #include "../../Graphics/RDP/gDP_funcs_prot.h"
+#include "../../Graphics/image_convert.h"
 
 extern TMEMLoadMapInfo g_tmemLoadAddrMap[0x200]; /* Totally 4KB TMEM */
 extern TMEMLoadMapInfo g_tmemInfo0;              /* Info for Tmem=0 */
 extern TMEMLoadMapInfo g_tmemInfo1;              /* Info for Tmem=0x100 */
 extern uint32_t g_TmemFlag[16];
 extern uint32_t g_TxtLoadBy;
-
-static void swap(uint32_t &a, uint32_t &b)
-{
-    uint32_t temp = a;
-    a = b;
-    b = temp;
-}
 
 static inline void UnswapCopy( void *src, void *dest, uint32_t numBytes )
 {
@@ -512,8 +506,8 @@ void ricegDPLoadTile(uint32_t tileno, uint32_t uls, uint32_t ult,
    Tile &tile = gRDP.tiles[tileno];
    tile.bForceWrapS = tile.bForceWrapT = tile.bForceClampS = tile.bForceClampT = false;
 
-   if (lrt < ult) swap(lrt, ult);
-   if (lrs < uls) swap(lrs, uls);
+   if (lrt < ult) swapdword(&lrt, &ult);
+   if (lrs < uls) swapdword(&lrs, &uls);
 
    tile.hilite_sl = tile.sl = uls;
    tile.hilite_tl = tile.tl = ult;

@@ -203,6 +203,20 @@ static INLINE void DWordInterleaveWrap(uint32_t *src, uint32_t srcIdx, uint32_t 
 	}
 }
 
+static INLINE void swapdword(uint32_t *a, uint32_t *b)
+{
+   uint32_t temp = *a;
+   *a = *b;
+   *b = temp;
+}
+
+static INLINE void swapbyte(uint8_t *a, uint8_t *b)
+{
+   uint8_t temp = *a;
+   *a = *b;
+   *b = temp;
+}
+
 static INLINE uint16_t swapword( uint16_t value )
 {
    return (value << 8) | (value >> 8);

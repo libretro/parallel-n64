@@ -24,6 +24,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "Config.h"
 #include "RenderBase.h"
 
+#include "../../Graphics/image_convert.h"
 
 #define ALLOW_USE_TEXTURE_FOR_CONSTANTS
 
@@ -547,8 +548,8 @@ void DecodedMux::Reformat(bool do_complement)
         splitType[i] = CM_FMT_TYPE_A_ADD_D;         //All Type 2 will be changed to = A+D
         if( m.b == MUX_0 && m.c == MUX_1 )
         {
-            if( m.d == MUX_TEXEL0 || m.d == MUX_TEXEL1 )    swap(m.a, m.d);
-            if( m.a == MUX_COMBINED ) swap(m.a, m.d);
+            if( m.d == MUX_TEXEL0 || m.d == MUX_TEXEL1 )    swapbyte(&m.a, &m.d);
+            if( m.a == MUX_COMBINED ) swapbyte(&m.a, &m.d);
             continue;
         }
 
@@ -556,7 +557,7 @@ void DecodedMux::Reformat(bool do_complement)
         {
             m.a = m.c;          //Change format A+D
             m.c = MUX_1;
-            if( m.d == MUX_TEXEL0 || m.d == MUX_TEXEL1 )    swap(m.a, m.d);
+            if( m.d == MUX_TEXEL0 || m.d == MUX_TEXEL1 )    swapbyte(&m.a, &m.d);
             continue;
         }
 
@@ -567,8 +568,8 @@ void DecodedMux::Reformat(bool do_complement)
         splitType[i] = CM_FMT_TYPE_A_MOD_C;         //A*C
         if( m.b == MUX_0 && m.d == MUX_0 )
         {
-            if( m.c == MUX_TEXEL0 || m.c == MUX_TEXEL1 )    swap(m.a, m.c);
-            if( m.a == MUX_COMBINED ) swap(m.a, m.c);
+            if( m.c == MUX_TEXEL0 || m.c == MUX_TEXEL1 )    swapbyte(&m.a, &m.c);
+            if( m.a == MUX_COMBINED ) swapbyte(&m.a, &m.c);
             continue;
         }
 
@@ -576,8 +577,8 @@ void DecodedMux::Reformat(bool do_complement)
         {
             m.a = m.b^MUX_COMPLEMENT;
             m.b = MUX_0;
-            if( m.c == MUX_TEXEL0 || m.c == MUX_TEXEL1 )    swap(m.a, m.c);
-            if( m.a == MUX_COMBINED ) swap(m.a, m.c);
+            if( m.c == MUX_TEXEL0 || m.c == MUX_TEXEL1 )    swapbyte(&m.a, &m.c);
+            if( m.a == MUX_COMBINED ) swapbyte(&m.a, &m.c);
             continue;
         }
 
@@ -595,8 +596,8 @@ void DecodedMux::Reformat(bool do_complement)
         splitType[i] = CM_FMT_TYPE_A_MOD_C_ADD_D;
         if( m.b == MUX_0 )
         {
-            if( m.c == MUX_TEXEL0 || m.c == MUX_TEXEL1 )    swap(m.a, m.c);
-            if( m.a == MUX_COMBINED ) swap(m.a, m.c); 
+            if( m.c == MUX_TEXEL0 || m.c == MUX_TEXEL1 )    swapbyte(&m.a, &m.c);
+            if( m.a == MUX_COMBINED ) swapbyte(&m.a, &m.c); 
             continue;
         }
 
@@ -604,8 +605,8 @@ void DecodedMux::Reformat(bool do_complement)
         {
             m.a = m.b^MUX_COMPLEMENT;
             m.b = MUX_0;
-            if( m.c == MUX_TEXEL0 || m.c == MUX_TEXEL1 )    swap(m.a, m.c);
-            if( m.a == MUX_COMBINED ) swap(m.a, m.c); 
+            if( m.c == MUX_TEXEL0 || m.c == MUX_TEXEL1 )    swapbyte(&m.a, &m.c);
+            if( m.a == MUX_COMBINED ) swapbyte(&m.a, &m.c); 
             continue;
         }
 
@@ -623,7 +624,7 @@ void DecodedMux::Reformat(bool do_complement)
         splitType[i] = CM_FMT_TYPE_A_SUB_B_ADD_D;
         if( m.c == MUX_1 )
         {
-            if( m.c == MUX_TEXEL0 || m.c == MUX_TEXEL1 )    swap(m.a, m.c);
+            if( m.c == MUX_TEXEL0 || m.c == MUX_TEXEL1 )    swapbyte(&m.a, &m.c);
             continue;
         }
 
@@ -1365,7 +1366,7 @@ void DecodedMux::To_AB_Add_CD_Format(void)  // Use by TNT,Geforce
             }
             else if( splitType[i+2] == CM_FMT_TYPE_A_MOD_C )
             {
-                if( (m1.c&MUX_MASK) == MUX_COMBINED )   swap(m1.a, m1.c);
+                if( (m1.c&MUX_MASK) == MUX_COMBINED )   swapbyte(&m1.a, &m1.c);
                 m1.b = m1.d = m1.c;
                 m1.c = (m0.d | (m1.a & (~MUX_MASK)));
                 splitType[i+2] = CM_FMT_TYPE_AB_ADD_CD;
@@ -1398,7 +1399,7 @@ void DecodedMux::To_AB_Add_CD_Format(void)  // Use by TNT,Geforce
             }
             else if( splitType[i+2] == CM_FMT_TYPE_A_MOD_C )
             {
-                if( (m1.c&MUX_MASK) == MUX_COMBINED )   swap(m1.a, m1.c);
+                if( (m1.c&MUX_MASK) == MUX_COMBINED )   swapbyte(&m1.a, &m1.c);
                 m1.b = m1.d = m1.c;
                 m1.c = (m0.d | (m1.a & (~MUX_MASK)));
                 splitType[i+2] = CM_FMT_TYPE_AB_ADD_CD;
