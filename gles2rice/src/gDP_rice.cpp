@@ -11,6 +11,7 @@
 #include "Timing.h"
 
 #include "../../Graphics/GBI.h"
+#include "../../Graphics/RDP/gDP_funcs_prot.h"
 
 void ricegDPSetScissor(void *data, 
       uint32_t mode, float ulx, float uly, float lrx, float lry )
@@ -225,4 +226,14 @@ void ricegDPFillRect(int32_t ulx, int32_t uly, int32_t lrx, int32_t lry )
                ulx, uly, lrx, lry, gRDP.originalFillColor);
             DebuggerAppendMsg("Pause after FillRect: Color=%08X\n", gRDP.originalFillColor);});
    }
+}
+
+void ricegDPSetEnvColor(uint32_t r, uint32_t g, uint32_t b, uint32_t a)
+{
+   gRDP.colorsAreReloaded = true;
+   gRDP.envColor = COLOR_RGBA(r, g, b, a); 
+   gRDP.fvEnvColor[0] = r / 255.0f;
+   gRDP.fvEnvColor[1] = g / 255.0f;
+   gRDP.fvEnvColor[2] = b / 255.0f;
+   gRDP.fvEnvColor[3] = a / 255.0f;
 }

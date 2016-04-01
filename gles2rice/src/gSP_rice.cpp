@@ -8,7 +8,7 @@
 #include "Render.h"
 #include "Timing.h"
 
-#include "../../Graphics/RDP/gDP_funcs_prot.h"
+#include "../../Graphics/RSP/gSP_funcs_prot.h"
 #include "../../Graphics/GBI.h"
 
 /* Multiply (x,y,z,0) by matrix m, then normalize */
@@ -35,30 +35,30 @@ extern void ReplaceAlphaWithFogFactor(int i);
 
 void ricegSPModifyVertex(uint32_t vtx, uint32_t where, uint32_t val)
 {
-    switch (where)
-    {
-    case G_MWO_POINT_RGBA:
-        {
+   switch (where)
+   {
+      case G_MWO_POINT_RGBA:
+         {
             uint32_t r = (val>>24)&0xFF;
             uint32_t g = (val>>16)&0xFF;
             uint32_t b = (val>>8)&0xFF;
             uint32_t a = val&0xFF;
             g_dwVtxDifColor[vtx] = COLOR_RGBA(r, g, b, a);
             LOG_UCODE("Modify vertex %d color, 0x%08x", vtx, g_dwVtxDifColor[vtx]);
-        }
-        break;
-    case G_MWO_POINT_ST:
-        {
+         }
+         break;
+      case G_MWO_POINT_ST:
+         {
             int16_t tu = (int16_t)(val>>16);
             int16_t tv = (int16_t)(val & 0xFFFF);
             float ftu  = tu / 32.0f;
             float ftv  = tv / 32.0f;
             LOG_UCODE("      Setting vertex %d tu/tv to %f, %f", vtx, (float)tu, (float)tv);
             CRender::g_pRender->SetVtxTextureCoord(vtx, ftu/gRSP.fTexScaleX, ftv/gRSP.fTexScaleY);
-        }
-        break;
-    case G_MWO_POINT_XYSCREEN:
-        {
+         }
+         break;
+      case G_MWO_POINT_XYSCREEN:
+         {
             uint16_t nX = (uint16_t)(val>>16);
             int16_t x   = *((int16_t*)&nX);
             x /= 4;
@@ -75,159 +75,147 @@ void ricegSPModifyVertex(uint32_t vtx, uint32_t where, uint32_t val)
 
             if( options.bEnableHacks && ((*gfx_info.VI_X_SCALE_REG)&0xF) != 0 )
             {
-                // Tarzan
-                // I don't know why Tarzan is different
-                SetVertexXYZ(vtx, x/windowSetting.fViWidth, y/windowSetting.fViHeight, g_vecProjected[vtx].z);
+               // Tarzan
+               // I don't know why Tarzan is different
+               SetVertexXYZ(vtx, x/windowSetting.fViWidth, y/windowSetting.fViHeight, g_vecProjected[vtx].z);
             }
             else
             {
-                // Toy Story 2 and other games
-                SetVertexXYZ(vtx, x*2/windowSetting.fViWidth, y*2/windowSetting.fViHeight, g_vecProjected[vtx].z);
+               // Toy Story 2 and other games
+               SetVertexXYZ(vtx, x*2/windowSetting.fViWidth, y*2/windowSetting.fViHeight, g_vecProjected[vtx].z);
             }
 
             LOG_UCODE("Modify vertex %d: x=%d, y=%d", vtx, x, y);
             VTX_DUMP(TRACE3("Modify vertex %d: (%d,%d)", vtx, x, y));
-        }
-        break;
-    case G_MWO_POINT_ZSCREEN:
-        {
+         }
+         break;
+      case G_MWO_POINT_ZSCREEN:
+         {
             int z = val>>16;
 
             SetVertexXYZ(vtx, g_vecProjected[vtx].x, g_vecProjected[vtx].y, (((float)z/0x03FF)+0.5f)/2.0f );
             LOG_UCODE("Modify vertex %d: z=%d", vtx, z);
             VTX_DUMP(TRACE2("Modify vertex %d: z=%d", vtx, z));
-        }
-        break;
-    }
-    DEBUGGER_PAUSE_AND_DUMP(NEXT_VERTEX_CMD,{TRACE0("Paused at ModVertex Command");});
+         }
+         break;
+   }
+   DEBUGGER_PAUSE_AND_DUMP(NEXT_VERTEX_CMD,{TRACE0("Paused at ModVertex Command");});
 }
 
 void ricegSPCIVertex(uint32_t v, uint32_t n, uint32_t v0)
 {
-    UpdateCombinedMatrix();
+   UpdateCombinedMatrix();
 
-    uint8_t *rdram_u8   = (uint8_t*)gfx_info.RDRAM;
-    N64VtxPD * pVtxBase = (N64VtxPD*)(rdram_u8 + v);
-    g_pVtxBase          = (FiddledVtx*)pVtxBase; // Fix me
+   uint8_t *rdram_u8   = (uint8_t*)gfx_info.RDRAM;
+   N64VtxPD * pVtxBase = (N64VtxPD*)(rdram_u8 + v);
+   g_pVtxBase          = (FiddledVtx*)pVtxBase; // Fix me
 
-    for (uint32_t i = v0; i < v0 + n; i++)
-    {
-        N64VtxPD           &vert = pVtxBase[i - v0];
+   for (uint32_t i = v0; i < v0 + n; i++)
+   {
+      N64VtxPD           &vert = pVtxBase[i - v0];
 
-        g_vtxNonTransformed[i].x = (float)vert.x;
-        g_vtxNonTransformed[i].y = (float)vert.y;
-        g_vtxNonTransformed[i].z = (float)vert.z;
+      g_vtxNonTransformed[i].x = (float)vert.x;
+      g_vtxNonTransformed[i].y = (float)vert.y;
+      g_vtxNonTransformed[i].z = (float)vert.z;
 
-        Vec3Transform(&g_vtxTransformed[i], (XVECTOR3*)&g_vtxNonTransformed[i], &gRSPworldProject); // Convert to w=1
-        g_vecProjected[i].w = 1.0f / g_vtxTransformed[i].w;
-        g_vecProjected[i].x = g_vtxTransformed[i].x * g_vecProjected[i].w;
-        g_vecProjected[i].y = g_vtxTransformed[i].y * g_vecProjected[i].w;
-        g_vecProjected[i].z = g_vtxTransformed[i].z * g_vecProjected[i].w;
+      Vec3Transform(&g_vtxTransformed[i], (XVECTOR3*)&g_vtxNonTransformed[i], &gRSPworldProject); // Convert to w=1
+      g_vecProjected[i].w = 1.0f / g_vtxTransformed[i].w;
+      g_vecProjected[i].x = g_vtxTransformed[i].x * g_vecProjected[i].w;
+      g_vecProjected[i].y = g_vtxTransformed[i].y * g_vecProjected[i].w;
+      g_vecProjected[i].z = g_vtxTransformed[i].z * g_vecProjected[i].w;
 
-        g_fFogCoord[i] = g_vecProjected[i].z;
-        if( g_vecProjected[i].w < 0 || g_vecProjected[i].z < 0 || g_fFogCoord[i] < gRSPfFogMin )
-            g_fFogCoord[i] = gRSPfFogMin;
+      g_fFogCoord[i] = g_vecProjected[i].z;
+      if( g_vecProjected[i].w < 0 || g_vecProjected[i].z < 0 || g_fFogCoord[i] < gRSPfFogMin )
+         g_fFogCoord[i] = gRSPfFogMin;
 
-        RSP_Vtx_Clipping(i);
+      RSP_Vtx_Clipping(i);
 
-        uint8_t *addr = rdram_u8 + dwPDCIAddr + (vert.cidx&0xFF);
-        uint32_t a = addr[0];
-        uint32_t r = addr[3];
-        uint32_t g = addr[2];
-        uint32_t b = addr[1];
+      uint8_t *addr = rdram_u8 + dwPDCIAddr + (vert.cidx&0xFF);
+      uint32_t a = addr[0];
+      uint32_t r = addr[3];
+      uint32_t g = addr[2];
+      uint32_t b = addr[1];
 
-        if( gRSP.bLightingEnable )
-        {
-            g_normal.x = (char)r;
-            g_normal.y = (char)g;
-            g_normal.z = (char)b;
-            {
-                Vec3TransformNormal(g_normal, gRSPmodelViewTop);
-                g_dwVtxDifColor[i] = LightVert(g_normal, i);
-            }
-            *(((uint8_t*)&(g_dwVtxDifColor[i]))+3) = (uint8_t)a;    // still use alpha from the vertex
-        }
-        else
-        {
-            if( (gRDP.geometryMode & G_SHADE) == 0 && gRSP.ucode < 5 )  //Shade is disabled
-            {
-                g_dwVtxDifColor[i] = gRDP.primitiveColor;
-            }
-            else    //FLAT shade
-            {
-                g_dwVtxDifColor[i] = COLOR_RGBA(r, g, b, a);
-            }
-        }
-
-        if( options.bWinFrameMode )
-        {
+      if( gRSP.bLightingEnable )
+      {
+         g_normal.x = (char)r;
+         g_normal.y = (char)g;
+         g_normal.z = (char)b;
+         {
+            Vec3TransformNormal(g_normal, gRSPmodelViewTop);
+            g_dwVtxDifColor[i] = LightVert(g_normal, i);
+         }
+         *(((uint8_t*)&(g_dwVtxDifColor[i]))+3) = (uint8_t)a;    // still use alpha from the vertex
+      }
+      else
+      {
+         if( (gRDP.geometryMode & G_SHADE) == 0 && gRSP.ucode < 5 )  //Shade is disabled
+         {
+            g_dwVtxDifColor[i] = gRDP.primitiveColor;
+         }
+         else    //FLAT shade
+         {
             g_dwVtxDifColor[i] = COLOR_RGBA(r, g, b, a);
-        }
+         }
+      }
 
-        ReplaceAlphaWithFogFactor(i);
+      if( options.bWinFrameMode )
+      {
+         g_dwVtxDifColor[i] = COLOR_RGBA(r, g, b, a);
+      }
 
-        VECTOR2 & t = g_fVtxTxtCoords[i];
-        if (gRSP.bTextureGen && gRSP.bLightingEnable )
-        {
-            // Not sure if we should transform the normal here
-            //Matrix & matWV = gRSP.projectionMtxs[gRSP.projectionMtxTop];
-            //Vec3TransformNormal(g_normal, matWV);
+      ReplaceAlphaWithFogFactor(i);
 
-            TexGen(g_fVtxTxtCoords[i].x, g_fVtxTxtCoords[i].y);
-        }
-        else
-        {
-            t.x = vert.s;
-            t.y = vert.t; 
-        }
+      VECTOR2 & t = g_fVtxTxtCoords[i];
+      if (gRSP.bTextureGen && gRSP.bLightingEnable )
+      {
+         // Not sure if we should transform the normal here
+         //Matrix & matWV = gRSP.projectionMtxs[gRSP.projectionMtxTop];
+         //Vec3TransformNormal(g_normal, matWV);
+
+         TexGen(g_fVtxTxtCoords[i].x, g_fVtxTxtCoords[i].y);
+      }
+      else
+      {
+         t.x = vert.s;
+         t.y = vert.t; 
+      }
 
 
-        VTX_DUMP( 
-        {
+      VTX_DUMP( 
+            {
             DebuggerAppendMsg("Vertex %d: %d %d %d", i, vert.x,vert.y,vert.z); 
             DebuggerAppendMsg("      : %f, %f, %f, %f", 
-                g_vtxTransformed[i].x,g_vtxTransformed[i].y,g_vtxTransformed[i].z,g_vtxTransformed[i].w);
+                  g_vtxTransformed[i].x,g_vtxTransformed[i].y,g_vtxTransformed[i].z,g_vtxTransformed[i].w);
             DebuggerAppendMsg("      : %X, %X, %X, %X", r,g,b,a);
             DebuggerAppendMsg("      : u=%f, v=%f", t.x, t.y);
-        });
-    }
+            });
+   }
 
-    VTX_DUMP(TRACE2("Setting Vertexes: %d - %d\n", dwV0, dwV0+dwNum-1));
-    DEBUGGER_PAUSE_AND_DUMP(NEXT_VERTEX_CMD,{TRACE0("Paused at Vertex Command");});
+   VTX_DUMP(TRACE2("Setting Vertexes: %d - %d\n", dwV0, dwV0+dwNum-1));
+   DEBUGGER_PAUSE_AND_DUMP(NEXT_VERTEX_CMD,{TRACE0("Paused at Vertex Command");});
 }
 
 void ricegSPLightColor(uint32_t lightNum, uint32_t packedColor)
 {
-    gRSPlights[lightNum].r = (uint8_t)_SHIFTR( packedColor, 24, 8 );
-    gRSPlights[lightNum].g = (uint8_t)_SHIFTR( packedColor, 16, 8 );
-    gRSPlights[lightNum].b = (uint8_t)_SHIFTR( packedColor, 8,  8 );
-    gRSPlights[lightNum].a = 255;    // Ignore light alpha
-    gRSPlights[lightNum].fr = (float)gRSPlights[lightNum].r;
-    gRSPlights[lightNum].fg = (float)gRSPlights[lightNum].g;
-    gRSPlights[lightNum].fb = (float)gRSPlights[lightNum].b;
-    gRSPlights[lightNum].fa = 255;   // Ignore light alpha
+   gRSPlights[lightNum].r = (uint8_t)_SHIFTR( packedColor, 24, 8 );
+   gRSPlights[lightNum].g = (uint8_t)_SHIFTR( packedColor, 16, 8 );
+   gRSPlights[lightNum].b = (uint8_t)_SHIFTR( packedColor, 8,  8 );
+   gRSPlights[lightNum].a = 255;    // Ignore light alpha
+   gRSPlights[lightNum].fr = (float)gRSPlights[lightNum].r;
+   gRSPlights[lightNum].fg = (float)gRSPlights[lightNum].g;
+   gRSPlights[lightNum].fb = (float)gRSPlights[lightNum].b;
+   gRSPlights[lightNum].fa = 255;   // Ignore light alpha
 
-    //TRACE1("Set light %d color", lightNum);
-    LIGHT_DUMP(TRACE2("Set Light %d color: %08X", lightNum, dwCol));
+   //TRACE1("Set light %d color", lightNum);
+   LIGHT_DUMP(TRACE2("Set Light %d color: %08X", lightNum, dwCol));
 }
 
 void ricegSPNumLights(int32_t n) 
-{ 
-    gRSPnumLights = n; 
-    DEBUGGER_PAUSE_AND_DUMP(NEXT_SET_LIGHT,TRACE1("Set Number Of Lights: %d", dwNumLights));
-}
-
-void ricegDPSetEnvColor(uint32_t r, uint32_t g, uint32_t b, uint32_t a)
 {
-   gRDP.colorsAreReloaded = true;
-   gRDP.envColor = COLOR_RGBA(r, g, b, a); 
-   gRDP.fvEnvColor[0] = r / 255.0f;
-   gRDP.fvEnvColor[1] = g / 255.0f;
-   gRDP.fvEnvColor[2] = b / 255.0f;
-   gRDP.fvEnvColor[3] = a / 255.0f;
+   gRSPnumLights = n; 
+   DEBUGGER_PAUSE_AND_DUMP(NEXT_SET_LIGHT,TRACE1("Set Number Of Lights: %d", dwNumLights));
 }
-
-void ricegSPCIVertex(uint32_t v, uint32_t n, uint32_t v0);
 
 void ricegSPDMATriangles( uint32_t tris, uint32_t n )
 {
@@ -371,51 +359,51 @@ void ricegSPLight(uint32_t dwAddr, uint32_t dwLight)
 void ricegSPViewport(uint32_t v)
 {
    uint8_t *rdram_u8 = (uint8_t*)gfx_info.RDRAM;
-    if( v + 16 >= g_dwRamSize )
-    {
-        TRACE0("MoveMem Viewport, invalid memory");
-        return;
-    }
+   if( v + 16 >= g_dwRamSize )
+   {
+      TRACE0("MoveMem Viewport, invalid memory");
+      return;
+   }
 
-    short scale[4];
-    short trans[4];
+   short scale[4];
+   short trans[4];
 
-    // v is offset into RD_RAM of 8 x 16bits of data...
-    scale[0] = *(short *)(rdram_u8 + ((v+(0*2))^0x2));
-    scale[1] = *(short *)(rdram_u8 + ((v+(1*2))^0x2));
-    scale[2] = *(short *)(rdram_u8 + ((v+(2*2))^0x2));
-    scale[3] = *(short *)(rdram_u8 + ((v+(3*2))^0x2));
+   // v is offset into RD_RAM of 8 x 16bits of data...
+   scale[0] = *(short *)(rdram_u8 + ((v+(0*2))^0x2));
+   scale[1] = *(short *)(rdram_u8 + ((v+(1*2))^0x2));
+   scale[2] = *(short *)(rdram_u8 + ((v+(2*2))^0x2));
+   scale[3] = *(short *)(rdram_u8 + ((v+(3*2))^0x2));
 
-    trans[0] = *(short *)(rdram_u8 + ((v+(4*2))^0x2));
-    trans[1] = *(short *)(rdram_u8 + ((v+(5*2))^0x2));
-    trans[2] = *(short *)(rdram_u8 + ((v+(6*2))^0x2));
-    trans[3] = *(short *)(rdram_u8 + ((v+(7*2))^0x2));
+   trans[0] = *(short *)(rdram_u8 + ((v+(4*2))^0x2));
+   trans[1] = *(short *)(rdram_u8 + ((v+(5*2))^0x2));
+   trans[2] = *(short *)(rdram_u8 + ((v+(6*2))^0x2));
+   trans[3] = *(short *)(rdram_u8 + ((v+(7*2))^0x2));
 
 
-    int nCenterX = trans[0]/4;
-    int nCenterY = trans[1]/4;
-    int nWidth   = scale[0]/4;
-    int nHeight  = scale[1]/4;
+   int nCenterX = trans[0]/4;
+   int nCenterY = trans[1]/4;
+   int nWidth   = scale[0]/4;
+   int nHeight  = scale[1]/4;
 
-    /* Check for some strange games */
-    if( nWidth < 0 )
-       nWidth = -nWidth;
-    if( nHeight < 0 )
-       nHeight = -nHeight;
+   /* Check for some strange games */
+   if( nWidth < 0 )
+      nWidth = -nWidth;
+   if( nHeight < 0 )
+      nHeight = -nHeight;
 
-    int nLeft = nCenterX - nWidth;
-    int nTop  = nCenterY - nHeight;
-    int nRight= nCenterX + nWidth;
-    int nBottom= nCenterY + nHeight;
+   int nLeft = nCenterX - nWidth;
+   int nTop  = nCenterY - nHeight;
+   int nRight= nCenterX + nWidth;
+   int nBottom= nCenterY + nHeight;
 
 #if 0
-    int maxZ = scale[2];
+   int maxZ = scale[2];
 #else
-    int maxZ = 0x3FF;
+   int maxZ = 0x3FF;
 #endif
 
-    CRender::g_pRender->SetViewport(nLeft, nTop, nRight, nBottom, maxZ);
+   CRender::g_pRender->SetViewport(nLeft, nTop, nRight, nBottom, maxZ);
 
-    LOG_UCODE("        Scale: %d %d %d %d = %d,%d", scale[0], scale[1], scale[2], scale[3], nWidth, nHeight);
-    LOG_UCODE("        Trans: %d %d %d %d = %d,%d", trans[0], trans[1], trans[2], trans[3], nCenterX, nCenterY);
+   LOG_UCODE("        Scale: %d %d %d %d = %d,%d", scale[0], scale[1], scale[2], scale[3], nWidth, nHeight);
+   LOG_UCODE("        Trans: %d %d %d %d = %d,%d", trans[0], trans[1], trans[2], trans[3], nCenterX, nCenterY);
 }
