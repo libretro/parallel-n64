@@ -57,40 +57,6 @@ void RSP_GBI0_Mtx(Gfx *gfx)
         CRender::g_pRender->SetProjection(matToLoad, gfx->gbi0matrix.push, gfx->gbi0matrix.load);
     else
         CRender::g_pRender->SetWorldView(matToLoad, gfx->gbi0matrix.push, gfx->gbi0matrix.load);
-
-#ifdef DEBUGGER
-    const char *loadstr = gfx->gbi0matrix.load == 1 ? "Load" : "Mul";
-    const char *pushstr = gfx->gbi0matrix.push == 1 ? "Push" : "Nopush";
-    int projlevel = CRender::g_pRender->GetProjectMatrixLevel();
-    int worldlevel = CRender::g_pRender->GetWorldViewMatrixLevel();
-    if( pauseAtNext && eventToPause == NEXT_MATRIX_CMD )
-    {
-        pauseAtNext = false;
-        debuggerPause = true;
-        if (gfx->gbi0matrix.projection)
-        {
-            TRACE3("Pause after %s and %s Matrix: Projection, level=%d\n", loadstr, pushstr, projlevel );
-        }
-        else
-        {
-            TRACE3("Pause after %s and %s Matrix: WorldView level=%d\n", loadstr, pushstr, worldlevel);
-        }
-    }
-    else
-    {
-        if( pauseAtNext && logMatrix ) 
-        {
-            if (gfx->gbi0matrix.projection)
-            {
-                TRACE3("Matrix: %s and %s Projection level=%d\n", loadstr, pushstr, projlevel);
-            }
-            else
-            {
-                TRACE3("Matrix: %s and %s WorldView\n level=%d", loadstr, pushstr, worldlevel);
-            }
-        }
-    }
-#endif
 }
 
 
@@ -153,7 +119,6 @@ void RSP_GBI1_MoveMem(Gfx *gfx)
           break;
     }
 }
-
 
 void RSP_GBI0_Vtx(Gfx *gfx)
 {
