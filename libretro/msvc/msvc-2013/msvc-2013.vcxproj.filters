@@ -243,6 +243,12 @@
     <ClCompile Include="..\..\..\gles2rice\src\Combiner.cpp">
       <Filter>Source Files\gles2rice\src</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\gles2rice\src\gDP_rice.cpp">
+      <Filter>Source Files\gles2rice\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\gles2rice\src\gSP_rice.cpp">
+      <Filter>Source Files\gles2rice\src</Filter>
+    </ClCompile>
     <ClCompile Include="..\..\..\gles2rice\src\ConvertImage.cpp">
       <Filter>Source Files\gles2rice\src</Filter>
     </ClCompile>

@@ -8,6 +8,7 @@
 #include "Render.h"
 #include "Timing.h"
 
+#include "../../Graphics/RDP/gDP_funcs_prot.h"
 #include "../../Graphics/GBI.h"
 
 /* Multiply (x,y,z,0) by matrix m, then normalize */

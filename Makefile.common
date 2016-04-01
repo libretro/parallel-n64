@@ -171,6 +171,7 @@ endif
 ifeq ($(HAVE_RICE),1)
 SOURCES_CXX += $(VIDEODIR_RICE)/Blender.cpp \
 				$(VIDEODIR_RICE)/gSP_rice.cpp \
+				$(VIDEODIR_RICE)/gDP_rice.cpp \
             $(VIDEODIR_RICE)/Combiner.cpp \
             $(VIDEODIR_RICE)/RiceConfig.cpp \
             $(VIDEODIR_RICE)/ConvertImage16.cpp \
