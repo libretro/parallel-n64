@@ -1072,29 +1072,26 @@ static void rdp_settile(uint32_t w0, uint32_t w1)
    rdp.last_tile = gdp_set_tile(w0, w1);
 }
 
-static void rdp_fillrect(uint32_t w0, uint32_t w1)
+void glide64gDPFillRectangle(uint32_t ul_x, uint32_t ul_y, uint32_t lr_x, uint32_t lr_y)
 {
    int32_t s_ul_x, s_lr_x, s_ul_y, s_lr_y;
-   int pd_multiplayer;
+   int pd_multiplayer = 
+         (settings.ucode == ucode_PerfectDark) 
+      && (((rdp.othermode_h & RDP_CYCLE_TYPE) >> 20) == 3)
+      && (g_gdp.fill_color.total == 0xFFFCFFFC);
 
-   uint32_t ul_x = ((w1 & 0x00FFF000) >> 14);
-   uint32_t ul_y =  (w1 & 0x00000FFF) >> 2;
-   uint32_t lr_x = ((w0 & 0x00FFF000) >> 14) + 1;
-   uint32_t lr_y = ((w0 & 0x00000FFF) >> 2) + 1;
-
-   if ((ul_x > lr_x) || (ul_y > lr_y))
+   if (
+         (rdp.cimg == g_gdp.zb_address) || 
+         (fb_emulation_enabled && rdp.ci_count > 0 && rdp.frame_buffers[rdp.ci_count-1].status == CI_ZIMG) ||
+         pd_multiplayer
+      )
    {
-      //LRDP("Fillrect. Wrong coordinates. Skipped\n");
-      return;
-   }
+      /* FillRect - cleared the depth buffer */
 
-   pd_multiplayer = (settings.ucode == ucode_PerfectDark) && (((rdp.othermode_h & RDP_CYCLE_TYPE) >> 20) == 3) && (g_gdp.fill_color.total == 0xFFFCFFFC);
-   if ((rdp.cimg == g_gdp.zb_address) || (fb_emulation_enabled && rdp.ci_count > 0 && rdp.frame_buffers[rdp.ci_count-1].status == CI_ZIMG) || pd_multiplayer)
-   {
-      //LRDP("Fillrect - cleared the depth buffer\n");
       //if (fullscreen)
       {
-         if (!(settings.hacks&hack_Hyperbike) || rdp.ci_width > 64) //do not clear main depth buffer for aux depth buffers
+         /* do not clear main depth buffer for aux depth buffers */
+         if (!(settings.hacks&hack_Hyperbike) || rdp.ci_width > 64) 
          {
             update_scissor(false);
             grDepthMask (FXTRUE);
@@ -1126,13 +1123,11 @@ static void rdp_fillrect(uint32_t w0, uint32_t w1)
       return;
    }
 
+   /* Fillrect skipped */
    if (rdp.skip_drawing)
-   {
-      //LRDP("Fillrect skipped\n");
       return;
-   }
 
-   // Update scissor
+   /* Update scissor */
    //if (fullscreen)
    update_scissor(false);
 
@@ -1256,6 +1251,20 @@ static void rdp_fillrect(uint32_t w0, uint32_t w1)
 
       grDrawVertexArrayContiguous(GR_TRIANGLE_STRIP, 4, &vout[0]);
    }
+}
+
+static void rdp_fillrect(uint32_t w0, uint32_t w1)
+{
+	const uint32_t ul_x = _SHIFTR(w1, 14, 10);
+	const uint32_t ul_y = _SHIFTR(w1, 2, 10);
+	const uint32_t lr_x = _SHIFTR(w0, 14, 10);
+	const uint32_t lr_y = _SHIFTR(w0, 2, 10);
+
+   /* Wrong coordinates. Skipped */
+   if (lr_x < ul_x || lr_y < ul_y)
+      return;
+
+   glide64gDPFillRectangle(ul_x, ul_y, lr_x, lr_y);
 }
 
 static void rdp_setprimcolor(uint32_t w0, uint32_t w1)
