@@ -287,7 +287,7 @@ void CRender::SetWorldProjectMatrix(Matrix &mtx)
 #ifdef DEBUGGER
     if( pauseAtNext && (eventToPause == NEXT_TRIANGLE || eventToPause == NEXT_FLUSH_TRI || eventToPause == NEXT_MATRIX_CMD ) )
     {
-        uint32_t dwPC = gDlistStack[gDlistStackPointer].pc-8;
+        uint32_t dwPC = gDlistStack[__RSP.PCi].pc-8;
         DebuggerAppendMsg("Force Matrix: pc=%08X", dwPC);
         DumpMatrix(mtx, "Force Matrix, loading new world-project matrix");
     }

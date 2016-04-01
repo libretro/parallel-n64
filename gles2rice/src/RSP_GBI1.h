@@ -89,7 +89,7 @@ void RSP_GBI1_Tri2(Gfx *gfx)
     bool bTexturesAreEnabled = CRender::g_pRender->IsTextureEnabled();
 
     // While the next command pair is Tri2, add vertices
-    uint32_t dwPC = gDlistStack[gDlistStackPointer].pc;
+    uint32_t dwPC = gDlistStack[__RSP.PCi].pc;
 
     do {
         // Vertex indices are multiplied by 10 for Mario64, by 2 for MarioKart
@@ -146,7 +146,7 @@ void RSP_GBI1_Tri2(Gfx *gfx)
 #endif
 
 
-    gDlistStack[gDlistStackPointer].pc = dwPC-8;
+    gDlistStack[__RSP.PCi].pc = dwPC-8;
 
 
     if (bTrisAdded) 
@@ -173,13 +173,13 @@ void RSP_GBI1_BranchZ(Gfx *gfx)
     if( vtxdepth <= (int32_t)(gfx->words.w1) || g_curRomInfo.bForceDepthBuffer )
 #endif
     {
-        uint32_t dwPC = gDlistStack[gDlistStackPointer].pc;       // This points to the next instruction
+        uint32_t dwPC = gDlistStack[__RSP.PCi].pc;       // This points to the next instruction
         uint32_t dwDL = *(uint32_t *)(rdram_u8 + dwPC-12);
         uint32_t dwAddr = RSPSegmentAddr(dwDL);
 
         LOG_UCODE("BranchZ to DisplayList 0x%08x", dwAddr);
-        gDlistStack[gDlistStackPointer].pc = dwAddr;
-        gDlistStack[gDlistStackPointer].countdown = MAX_DL_COUNT;
+        gDlistStack[__RSP.PCi].pc = dwAddr;
+        gDlistStack[__RSP.PCi].countdown = MAX_DL_COUNT;
     }
 }
 
@@ -201,7 +201,7 @@ void RSP_GBI1_LoadUCode(Gfx *gfx)
     SP_Timing(RSP_GBI1_LoadUCode);
 
     //TRACE0("Load ucode");
-    uint32_t dwPC = gDlistStack[gDlistStackPointer].pc;
+    uint32_t dwPC = gDlistStack[__RSP.PCi].pc;
     uint32_t dwUcStart = RSPSegmentAddr((gfx->words.w1));
     uint32_t dwSize = ((gfx->words.w0)&0xFFFF)+1;
     uint32_t dwUcDStart = RSPSegmentAddr(*(uint32_t *)(rdram_u8 + dwPC-12));

@@ -368,8 +368,6 @@ extern TmemType g_Tmem;
 
 extern DListStack   gDlistStack[MAX_DL_STACK_SIZE];
 
-extern int              gDlistStackPointer;
-
 void DLParser_Init();
 void RDP_GFX_Reset();
 void RDP_Cleanup();

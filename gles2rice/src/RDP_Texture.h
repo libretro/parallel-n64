@@ -1004,7 +1004,7 @@ void DLParser_TexRect(Gfx *gfx)
 
    // This command used 128bits, and not 64 bits. This means that we have to look one 
    // Command ahead in the buffer, and update the PC.
-   uint32_t dwPC = gDlistStack[gDlistStackPointer].pc;       // This points to the next instruction
+   uint32_t dwPC = gDlistStack[__RSP.PCi].pc;       // This points to the next instruction
    uint32_t dwCmd2 = *(uint32_t *)(rdram_u8 + dwPC+4);
    uint32_t dwCmd3 = *(uint32_t *)(rdram_u8 + dwPC+4+8);
    uint32_t dwHalf1 = *(uint32_t *)(rdram_u8 + dwPC);
@@ -1016,12 +1016,12 @@ void DLParser_TexRect(Gfx *gfx)
             ((dwHalf2>>24) == 0xb4 || (dwHalf2>>24) == 0xb3 || (dwHalf2>>24) == 0xb2 || (dwHalf2>>24) == 0xf1) )
       {
          // Increment PC so that it points to the right place
-         gDlistStack[gDlistStackPointer].pc += 16;
+         gDlistStack[__RSP.PCi].pc += 16;
       }
       else
       {
          // Hack for some games, All_Star_Baseball_2000
-         gDlistStack[gDlistStackPointer].pc += 8;
+         gDlistStack[__RSP.PCi].pc += 8;
          dwCmd3 = dwCmd2;
          //dwCmd2 = dwHalf1;
          //dwCmd2 = 0;
@@ -1032,7 +1032,7 @@ void DLParser_TexRect(Gfx *gfx)
    }
    else
    {
-      gDlistStack[gDlistStackPointer].pc += 16;
+      gDlistStack[__RSP.PCi].pc += 16;
    }
 
 
@@ -1172,12 +1172,12 @@ void DLParser_TexRectFlip(Gfx *gfx)
 
     // This command used 128bits, and not 64 bits. This means that we have to look one 
     // Command ahead in the buffer, and update the PC.
-    uint32_t dwPC = gDlistStack[gDlistStackPointer].pc;       // This points to the next instruction
+    uint32_t dwPC = gDlistStack[__RSP.PCi].pc;       // This points to the next instruction
     uint32_t dwCmd2 = *(uint32_t *)(rdram_u8 + dwPC+4);
     uint32_t dwCmd3 = *(uint32_t *)(rdram_u8 + dwPC+4+8);
 
     // Increment PC so that it points to the right place
-    gDlistStack[gDlistStackPointer].pc += 16;
+    gDlistStack[__RSP.PCi].pc += 16;
 
     uint32_t dwXH     = (((gfx->words.w0)>>12)&0x0FFF)/4;
     uint32_t dwYH     = (((gfx->words.w0)    )&0x0FFF)/4;

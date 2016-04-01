@@ -24,6 +24,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "Render.h"
 #include "Timing.h"
 
+#include "../../Graphics/RSP/RSP_state.h"
+
 uObjTxtr *gObjTxtr = NULL;
 uObjTxtrTLUT *gObjTlut = NULL;
 uint32_t gObjTlutAddr = 0;
@@ -346,7 +348,7 @@ void RSP_S2DEX_RDPHALF_0(Gfx *gfx)
     //0x001d3c98: b3000000 04000400 RSP_RDPHALF_2
 
    uint8_t *rdram_u8 = (uint8_t*)gfx_info.RDRAM;
-    uint32_t dwPC = gDlistStack[gDlistStackPointer].pc;       // This points to the next instruction
+    uint32_t dwPC = gDlistStack[__RSP.PCi].pc;       // This points to the next instruction
     uint32_t dwNextUcode = *(uint32_t *)(rdram_u8 + dwPC);
 
     if( (dwNextUcode>>24) != S2DEX_SELECT_DL )

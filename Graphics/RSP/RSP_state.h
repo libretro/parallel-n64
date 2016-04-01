@@ -12,7 +12,7 @@ extern "C" {
 typedef struct
 {
 	uint32_t PC[18];      /* Display List Program Counter stack */
-   uint32_t PCi;         /* Current Program Counter index on the stack */
+   int64_t PCi;         /* Current Program Counter index on the stack */
    uint32_t busy;
    uint32_t halt;        /* Marks the end of Display List execution */
    uint32_t DList;

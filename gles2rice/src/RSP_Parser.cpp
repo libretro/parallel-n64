@@ -23,6 +23,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "../../libretro/libretro_private.h"
 #include "../../Graphics/RDP/gDP_funcs_prot.h"
+#include "../../Graphics/RSP/RSP_state.h"
 
 #include "ConvertImage.h"
 #include "GraphicsContext.h"
@@ -30,6 +31,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "RenderTexture.h"
 #include "Video.h"
 #include "ucode.h"
+
 
 #ifdef _MSC_VER
 #define strncasecmp _strnicmp
@@ -254,7 +256,6 @@ SetImgInfo g_ZI = { G_IM_FMT_RGBA, G_IM_SIZ_16b, 1, 0 };
 RenderTextureInfo g_ZI_saves[2];
 
 DListStack  gDlistStack[MAX_DL_STACK_SIZE];
-int     gDlistStackPointer= -1;
 
 TMEMLoadMapInfo g_tmemLoadAddrMap[0x200];   // Totally 4KB TMEM
 TMEMLoadMapInfo g_tmemInfo0;                // Info for Tmem=0
@@ -343,7 +344,7 @@ void DLParser_Init()
 
 void RDP_GFX_Reset()
 {
-    gDlistStackPointer=-1;
+    __RSP.PCi =-1;
     status.bUcodeIsKnown = false;
     gTextureManager.RecycleAllTextures();
 }
@@ -799,10 +800,10 @@ void DLParser_Process(OSTask * pTask)
 
     // Initialize stack
     status.bN64FrameBufferIsUsed = false;
-    gDlistStackPointer=0;
-    gDlistStack[gDlistStackPointer].pc = (uint32_t)pTask->t.data_ptr;
-    gDlistStack[gDlistStackPointer].countdown = MAX_DL_COUNT;
-    DEBUGGER_PAUSE_AT_COND_AND_DUMP_COUNT_N((gDlistStack[gDlistStackPointer].pc == 0 && pauseAtNext && eventToPause==NEXT_UNKNOWN_OP),
+    __RSP.PCi =0;
+    gDlistStack[__RSP.PCi].pc = (uint32_t)pTask->t.data_ptr;
+    gDlistStack[__RSP.PCi].countdown = MAX_DL_COUNT;
+    DEBUGGER_PAUSE_AT_COND_AND_DUMP_COUNT_N((gDlistStack[__RSP.PCi].pc == 0 && pauseAtNext && eventToPause==NEXT_UNKNOWN_OP),
             {DebuggerAppendMsg("Start Task without DLIST: ucode=%08X, data=%08X", (uint32_t)pTask->t.ucode, (uint32_t)pTask->t.ucode_data);});
 
 
@@ -833,7 +834,7 @@ void DLParser_Process(OSTask * pTask)
 
     {
         // The main loop
-        while( gDlistStackPointer >= 0 )
+        while( __RSP.PCi >= 0 )
         {
 #ifdef DEBUGGER
             DEBUGGER_PAUSE_COUNT_N(NEXT_UCODE);
@@ -843,27 +844,27 @@ void DLParser_Process(OSTask * pTask)
                 CRender::g_pRender->SetFillMode(options.bWinFrameMode? RICE_FILLMODE_WINFRAME : RICE_FILLMODE_SOLID);
             }
 
-            if (gDlistStack[gDlistStackPointer].pc > g_dwRamSize)
+            if (gDlistStack[__RSP.PCi].pc > g_dwRamSize)
             {
-                DebuggerAppendMsg("Error: dwPC is %08X", gDlistStack[gDlistStackPointer].pc );
+                DebuggerAppendMsg("Error: dwPC is %08X", gDlistStack[__RSP.PCi].pc );
                 break;
             }
 #endif
 
             status.gUcodeCount++;
 
-            Gfx *pgfx = (Gfx*)&rdram_u32[(gDlistStack[gDlistStackPointer].pc>>2)];
+            Gfx *pgfx = (Gfx*)&rdram_u32[(gDlistStack[__RSP.PCi].pc>>2)];
 #ifdef DEBUGGER
             LOG_UCODE("0x%08x: %08x %08x %-10s", 
-                gDlistStack[gDlistStackPointer].pc, pgfx->words.w0, pgfx->words.w1, (gRSP.ucode!=5&&gRSP.ucode!=10)?ucodeNames_GBI1[(pgfx->words.w0>>24)]:ucodeNames_GBI2[(pgfx->words.w0>>24)]);
+                gDlistStack[__RSP.PCi].pc, pgfx->words.w0, pgfx->words.w1, (gRSP.ucode!=5&&gRSP.ucode!=10)?ucodeNames_GBI1[(pgfx->words.w0>>24)]:ucodeNames_GBI2[(pgfx->words.w0>>24)]);
 #endif
-            gDlistStack[gDlistStackPointer].pc += 8;
+            gDlistStack[__RSP.PCi].pc += 8;
             currentUcodeMap[pgfx->words.w0 >>24](pgfx);
 
-            if ( gDlistStackPointer >= 0 && --gDlistStack[gDlistStackPointer].countdown < 0 )
+            if ( __RSP.PCi >= 0 && --gDlistStack[__RSP.PCi].countdown < 0 )
             {
                 LOG_UCODE("**EndDLInMem");
-                gDlistStackPointer--;
+                __RSP.PCi--;
             }
         }
 
@@ -888,11 +889,11 @@ void RDP_NOIMPL_Real(const char* op, uint32_t word0, uint32_t word1)
     if( logWarning )
     {
         TRACE0("Stack Trace");
-        for( int i=0; i<gDlistStackPointer; i++ )
+        for( int i=0; i < __RSP.PCi; i++ )
         {
             DebuggerAppendMsg("  %08X", gDlistStack[i].pc);
         }
-        uint32_t dwPC = gDlistStack[gDlistStackPointer].pc-8;
+        uint32_t dwPC = gDlistStack[__RSP.PCi].pc-8;
         DebuggerAppendMsg("PC=%08X",dwPC);
         DebuggerAppendMsg(op, word0, word1);
     }
@@ -919,12 +920,12 @@ void RSP_GBI1_Noop(Gfx *gfx)
 
 void RDP_GFX_PopDL()
 {
-    LOG_UCODE("Returning from DisplayList: level=%d", gDlistStackPointer+1);
+    LOG_UCODE("Returning from DisplayList: level=%d", __RSP.PCi+1);
     LOG_UCODE("############################################");
     LOG_UCODE("/\\ /\\ /\\ /\\ /\\ /\\ /\\ /\\ /\\ /\\ /\\ /\\ /\\ /\\ /\\");
     LOG_UCODE("");
 
-    gDlistStackPointer--;
+    __RSP.PCi--;
 }
 
 uint32_t CalcalateCRC(uint32_t* srcPtr, uint32_t srcSize)
@@ -1181,7 +1182,7 @@ void DLParser_FillRect(Gfx *gfx)
 
    if( options.enableHackForGames == HACK_FOR_MARIO_TENNIS )
    {
-      uint32_t dwPC = gDlistStack[gDlistStackPointer].pc;       // This points to the next instruction
+      uint32_t dwPC = gDlistStack[__RSP.PCi].pc;       // This points to the next instruction
       uint32_t w2   = *(uint32_t *)(rdram_u8 + dwPC);
 
       if( (w2>>24) == G_FILLRECT )
@@ -1193,7 +1194,7 @@ void DLParser_FillRect(Gfx *gfx)
             w2 = *(uint32_t *)(rdram_u8 + dwPC);
          }
 
-         gDlistStack[gDlistStackPointer].pc = dwPC;
+         gDlistStack[__RSP.PCi].pc = dwPC;
          return;
       }
    }
@@ -1424,9 +1425,9 @@ void RDP_DLParser_Process(void)
     uint32_t end        = *(gfx_info.DPC_END_REG);
     uint32_t *rdram_u32 = (uint32_t*)gfx_info.RDRAM;
 
-    gDlistStackPointer                        = 0;
-    gDlistStack[gDlistStackPointer].pc        = start;
-    gDlistStack[gDlistStackPointer].countdown = MAX_DL_COUNT;
+    __RSP.PCi                        = 0;
+    gDlistStack[__RSP.PCi].pc        = start;
+    gDlistStack[__RSP.PCi].countdown = MAX_DL_COUNT;
 
     // Check if we need to purge (every 5 milliseconds)
     if (status.gRDPTime - status.lastPurgeTimeTime > 5)
@@ -1444,10 +1445,10 @@ void RDP_DLParser_Process(void)
     CRender::g_pRender->BeginRendering();
     CRender::g_pRender->SetViewport(0, 0, windowSetting.uViWidth, windowSetting.uViHeight, 0x3FF);
 
-    while( gDlistStack[gDlistStackPointer].pc < end )
+    while( gDlistStack[__RSP.PCi].pc < end )
     {
-        Gfx *pgfx = (Gfx*)&rdram_u32[(gDlistStack[gDlistStackPointer].pc>>2)];
-        gDlistStack[gDlistStackPointer].pc += 8;
+        Gfx *pgfx = (Gfx*)&rdram_u32[(gDlistStack[__RSP.PCi].pc>>2)];
+        gDlistStack[__RSP.PCi].pc += 8;
         currentUcodeMap[pgfx->words.w0 >>24](pgfx);
     }
 

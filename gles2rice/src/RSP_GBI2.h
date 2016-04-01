@@ -220,7 +220,7 @@ void RSP_GBI2_Tri1(Gfx *gfx)
         bool bTexturesAreEnabled = CRender::g_pRender->IsTextureEnabled();
 
         // While the next command pair is Tri1, add vertices
-        uint32_t dwPC = gDlistStack[gDlistStackPointer].pc;
+        uint32_t dwPC = gDlistStack[__RSP.PCi].pc;
 
         do
         {
@@ -255,7 +255,7 @@ void RSP_GBI2_Tri1(Gfx *gfx)
         } while( gfx->words.cmd == (uint8_t)RSP_ZELDATRI1);
 #endif
 
-        gDlistStack[gDlistStackPointer].pc = dwPC-8;
+        gDlistStack[__RSP.PCi].pc = dwPC-8;
 
         if (bTrisAdded) 
         {
@@ -280,7 +280,7 @@ void RSP_GBI2_Tri2(Gfx *gfx)
         bool bTrisAdded = false;
 
         // While the next command pair is Tri2, add vertices
-        uint32_t dwPC = gDlistStack[gDlistStackPointer].pc;
+        uint32_t dwPC = gDlistStack[__RSP.PCi].pc;
         bool bTexturesAreEnabled = CRender::g_pRender->IsTextureEnabled();
 
         do {
@@ -344,7 +344,7 @@ void RSP_GBI2_Tri2(Gfx *gfx)
 #endif
 
 
-        gDlistStack[gDlistStackPointer].pc = dwPC-8;
+        gDlistStack[__RSP.PCi].pc = dwPC-8;
 
         if (bTrisAdded) 
         {
@@ -366,7 +366,7 @@ void RSP_GBI2_Line3D(Gfx *gfx)
     {
         status.primitiveType = PRIM_TRI3;
 
-        uint32_t dwPC = gDlistStack[gDlistStackPointer].pc;
+        uint32_t dwPC = gDlistStack[__RSP.PCi].pc;
 
         bool bTrisAdded = false;
 
@@ -426,7 +426,7 @@ void RSP_GBI2_Line3D(Gfx *gfx)
         } while ( gfx->words.cmd == (uint8_t)RSP_LINE3D);
 #endif
 
-        gDlistStack[gDlistStackPointer].pc = dwPC-8;
+        gDlistStack[__RSP.PCi].pc = dwPC-8;
 
 
         if (bTrisAdded) 
@@ -768,7 +768,7 @@ void RSP_GBI2_DL(Gfx *gfx)
 
     if( dwAddr > g_dwRamSize )
     {
-        RSP_RDP_NOIMPL("Error: DL addr = %08X out of range, PC=%08X", dwAddr, gDlistStack[gDlistStackPointer].pc );
+        RSP_RDP_NOIMPL("Error: DL addr = %08X out of range, PC=%08X", dwAddr, gDlistStack[__RSP.PCi].pc );
         dwAddr &= (g_dwRamSize-1);
         DebuggerPauseCountN( NEXT_DLIST );
     }
@@ -779,21 +779,21 @@ void RSP_GBI2_DL(Gfx *gfx)
     {
        case G_DL_PUSH:
           LOG_UCODE("    Pushing ZeldaDisplayList 0x%08x", dwAddr);
-          gDlistStackPointer++;
-          gDlistStack[gDlistStackPointer].pc = dwAddr;
-          gDlistStack[gDlistStackPointer].countdown = MAX_DL_COUNT;
+          __RSP.PCi++;
+          gDlistStack[__RSP.PCi].pc = dwAddr;
+          gDlistStack[__RSP.PCi].countdown = MAX_DL_COUNT;
 
           break;
        case G_DL_NOPUSH:
           LOG_UCODE("    Jumping to ZeldaDisplayList 0x%08x", dwAddr);
-          if( gDlistStack[gDlistStackPointer].pc == dwAddr+8 )    //Is this a loop
+          if( gDlistStack[__RSP.PCi].pc == dwAddr+8 )    //Is this a loop
           {
              //Hack for Gauntlet Legends
-             gDlistStack[gDlistStackPointer].pc = dwAddr+8;
+             gDlistStack[__RSP.PCi].pc = dwAddr+8;
           }
           else
-             gDlistStack[gDlistStackPointer].pc = dwAddr;
-          gDlistStack[gDlistStackPointer].countdown = MAX_DL_COUNT;
+             gDlistStack[__RSP.PCi].pc = dwAddr;
+          gDlistStack[__RSP.PCi].countdown = MAX_DL_COUNT;
           break;
     }
 

@@ -30,6 +30,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "RSP_Parser.h"
 #include "Render.h"
 
+#include "../../Graphics/RSP/RSP_state.h"
+
 extern TMEMLoadMapInfo g_tmemLoadAddrMap[0x200];    // Totally 4KB TMEM;
 
 // 0 keeps the most recent CI info
@@ -300,7 +302,7 @@ bool FrameBufferManager::IsDIaRenderTexture()
     bool foundSetCImg=false;
     uint32_t newFillColor = 0;
 
-    uint32_t dwPC = gDlistStack[gDlistStackPointer].pc;       // This points to the next instruction
+    uint32_t dwPC = gDlistStack[__RSP.PCi].pc;       // This points to the next instruction
 
     for (int i=0; i<10; i++)
     {
@@ -913,7 +915,7 @@ void FrameBufferManager::UpdateFrameBufferBeforeUpdateFrame()
 
 uint32_t FrameBufferManager::ComputeCImgHeight(SetImgInfo &info, uint32_t &height)
 {
-    uint32_t dwPC = gDlistStack[gDlistStackPointer].pc;       // This points to the next instruction
+    uint32_t dwPC = gDlistStack[__RSP.PCi].pc;       // This points to the next instruction
 
     for (int i=0; i<10; i++)
     {
