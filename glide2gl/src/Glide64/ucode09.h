@@ -128,8 +128,8 @@ static uint32_t uc9_load_object (uint32_t zHeader, uint32_t * rdpcmds)
 
    switch (type)
    {
-      case 1: //sh tri
-      case 3: //sh quad
+      case ZH_SHTRI:
+      case ZH_SHQUAD:
          __RSP.w1 = ((uint32_t*)addr)[1];
          if (__RSP.w1 != rdpcmds[0])
          {
@@ -139,9 +139,9 @@ static uint32_t uc9_load_object (uint32_t zHeader, uint32_t * rdpcmds)
          update();
          uc9_draw_object(addr + 8, type);
          break;
-      case 0: //null
-      case 2: //tx tri
-      case 4: //tx quad
+      case ZH_NULL:
+      case ZH_TXTRI:
+      case ZH_TXQUAD:
          __RSP.w1 = ((uint32_t*)addr)[1];
          if (__RSP.w1 != rdpcmds[0])
          {
