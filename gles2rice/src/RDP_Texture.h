@@ -1046,18 +1046,18 @@ void DLParser_TexRect(Gfx *gfx)
    LOG_UCODE("0x%08x: %08x %08x", dwPC, *(uint32_t *)(rdram_u8 + dwPC+0), *(uint32_t *)(rdram_u8 + dwPC+4));
    LOG_UCODE("0x%08x: %08x %08x", dwPC+8, *(uint32_t *)(rdram_u8 + dwPC+8), *(uint32_t *)(rdram_u8 + dwPC+8+4));
 
-   uint32_t dwXH     = (((gfx->words.w0)>>12)&0x0FFF)/4;
-   uint32_t dwYH     = (((gfx->words.w0)    )&0x0FFF)/4;
+   uint32_t lr_x     = (((gfx->words.w0)>>12)&0x0FFF)/4;
+   uint32_t lr_y     = (((gfx->words.w0)    )&0x0FFF)/4;
    uint32_t tileno   = ((gfx->words.w1)>>24)&0x07;
-   uint32_t dwXL     = (((gfx->words.w1)>>12)&0x0FFF)/4;
-   uint32_t dwYL     = (((gfx->words.w1)    )&0x0FFF)/4;
+   uint32_t ul_x     = (((gfx->words.w1)>>12)&0x0FFF)/4;
+   uint32_t ul_y     = (((gfx->words.w1)    )&0x0FFF)/4;
    uint16_t uS       = (uint16_t)(  dwCmd2>>16)&0xFFFF;
    uint16_t uT       = (uint16_t)(  dwCmd2    )&0xFFFF;
    uint16_t  uDSDX   = (uint16_t)((  dwCmd3>>16)&0xFFFF);
-   uint16_t  uDTDY       = (uint16_t)((  dwCmd3    )&0xFFFF);
+   uint16_t  uDTDY   = (uint16_t)((  dwCmd3    )&0xFFFF);
 
 
-   if( (int)dwXL >= gRDP.scissor.right || (int)dwYL >= gRDP.scissor.bottom || (int)dwXH < gRDP.scissor.left || (int)dwYH < gRDP.scissor.top )
+   if( (int)ul_x >= gRDP.scissor.right || (int)ul_y >= gRDP.scissor.bottom || (int)lr_x < gRDP.scissor.left || (int)lr_y < gRDP.scissor.top )
    {
       // Clipping
       return;
@@ -1083,33 +1083,40 @@ void DLParser_TexRect(Gfx *gfx)
    if (cycletype == G_CYC_COPY)
    {
       fDSDX /= 4.0f;  // In copy mode 4 pixels are copied at once.
-      dwXH++;
-      dwYH++;
+      lr_x++;
+      lr_y++;
    }
    else if (cycletype == G_CYC_FILL)
    {
-      dwXH++;
-      dwYH++;
+      lr_x++;
+      lr_y++;
    }
 
    if( fDSDX == 0 )    fDSDX = 1;
    if( fDTDY == 0 )    fDTDY = 1;
 
-   float fS1 = fS0 + (fDSDX * (dwXH - dwXL));
-   float fT1 = fT0 + (fDTDY * (dwYH - dwYL));
+   float fS1 = fS0 + (fDSDX * (lr_x - ul_x));
+   float fT1 = fT0 + (fDTDY * (lr_y - ul_y));
 
-   LOG_UCODE("    Tile:%d Screen(%d,%d) -> (%d,%d)", tileno, dwXL, dwYL, dwXH, dwYH);
+   LOG_UCODE("    Tile:%d Screen(%d,%d) -> (%d,%d)", tileno, ul_x, ul_y, lr_x, lr_y);
    LOG_UCODE("           Tex:(%#5f,%#5f) -> (%#5f,%#5f) (DSDX:%#5f DTDY:%#5f)",
          fS0, fT0, fS1, fT1, fDSDX, fDTDY);
    LOG_UCODE("");
 
    float t0u0 = (fS0-gRDP.tiles[tileno].hilite_sl) * gRDP.tiles[tileno].fShiftScaleS;
    float t0v0 = (fT0-gRDP.tiles[tileno].hilite_tl) * gRDP.tiles[tileno].fShiftScaleT;
-   float t0u1 = t0u0 + (fDSDX * (dwXH - dwXL))*gRDP.tiles[tileno].fShiftScaleS;
-   float t0v1 = t0v0 + (fDTDY * (dwYH - dwYL))*gRDP.tiles[tileno].fShiftScaleT;
+   float t0u1 = t0u0 + (fDSDX * (lr_x - ul_x)) * gRDP.tiles[tileno].fShiftScaleS;
+   float t0v1 = t0v0 + (fDTDY * (lr_y - ul_y)) * gRDP.tiles[tileno].fShiftScaleT;
 
-   if( dwXL==0 && dwYL==0 && dwXH==windowSetting.fViWidth-1 && dwYH==windowSetting.fViHeight-1 &&
-         t0u0 == 0 && t0v0==0 && t0u1==0 && t0v1==0 )
+   if( 
+         ul_x ==0  && 
+         ul_y == 0 &&
+         lr_x == windowSetting.fViWidth-1 && 
+         lr_y == windowSetting.fViHeight-1 &&
+         t0u0 == 0 && 
+         t0v0 == 0 && 
+         t0u1 == 0 && 
+         t0v1==0 )
    {
       //Using TextRect to clear the screen
    }
@@ -1124,19 +1131,19 @@ void DLParser_TexRect(Gfx *gfx)
          {
             // Hack for Yoshi background image
             PrepareTextures();
-            TexRectToFrameBuffer_8b(dwXL, dwYL, dwXH, dwYH, t0u0, t0v0, t0u1, t0v1, tileno);
+            TexRectToFrameBuffer_8b(ul_x, ul_y, lr_x, lr_y, t0u0, t0v0, t0u1, t0v1, tileno);
          }
          else
          {
             if( frameBufferOptions.bUpdateCIInfo )
             {
                PrepareTextures();
-               TexRectToFrameBuffer_8b(dwXL, dwYL, dwXH, dwYH, t0u0, t0v0, t0u1, t0v1, tileno);
+               TexRectToFrameBuffer_8b(ul_x, ul_y, lr_x, lr_y, t0u0, t0v0, t0u1, t0v1, tileno);
             }
 
             if( !status.bDirectWriteIntoRDRAM )
             {
-               CRender::g_pRender->TexRect(dwXL, dwYL, dwXH, dwYH, fS0, fT0, fDSDX, fDTDY, false, 0xFFFFFFFF);
+               CRender::g_pRender->TexRect(ul_x, ul_y, lr_x, lr_y, fS0, fT0, fDSDX, fDTDY, false, 0xFFFFFFFF);
 
                status.dwNumTrisRendered += 2;
             }
@@ -1144,7 +1151,7 @@ void DLParser_TexRect(Gfx *gfx)
       }
       else
       {
-         CRender::g_pRender->TexRect(dwXL, dwYL, dwXH, dwYH, fS0, fT0, fDSDX, fDTDY, false, 0xFFFFFFFF);
+         CRender::g_pRender->TexRect(ul_x, ul_y, lr_x, lr_y, fS0, fT0, fDSDX, fDTDY, false, 0xFFFFFFFF);
          status.bFrameBufferDrawnByTriangles = true;
 
          status.dwNumTrisRendered += 2;
@@ -1152,7 +1159,7 @@ void DLParser_TexRect(Gfx *gfx)
    }
 
    if( status.bHandleN64RenderTexture )
-      g_pRenderTextureInfo->maxUsedHeight = MAX(g_pRenderTextureInfo->maxUsedHeight,(int)dwYH);
+      g_pRenderTextureInfo->maxUsedHeight = MAX(g_pRenderTextureInfo->maxUsedHeight,(int)lr_y);
 
    ForceMainTextureIndex(curTile);
 }
@@ -1173,11 +1180,11 @@ void DLParser_TexRectFlip(Gfx *gfx)
     // Increment PC so that it points to the right place
     gDlistStack[__RSP.PCi].pc += 16;
 
-    uint32_t dwXH     = (((gfx->words.w0)>>12)&0x0FFF)/4;
-    uint32_t dwYH     = (((gfx->words.w0)    )&0x0FFF)/4;
+    uint32_t lr_x     = (((gfx->words.w0)>>12)&0x0FFF)/4;
+    uint32_t lr_y     = (((gfx->words.w0)    )&0x0FFF)/4;
     uint32_t tileno   = ((gfx->words.w1)>>24)&0x07;
-    uint32_t dwXL     = (((gfx->words.w1)>>12)&0x0FFF)/4;
-    uint32_t dwYL     = (((gfx->words.w1)    )&0x0FFF)/4;
+    uint32_t ul_x     = (((gfx->words.w1)>>12)&0x0FFF)/4;
+    uint32_t ul_y     = (((gfx->words.w1)    )&0x0FFF)/4;
     uint32_t dwS      = (  dwCmd2>>16)&0xFFFF;
     uint32_t dwT      = (  dwCmd2    )&0xFFFF;
     int  nDSDX     = (int)(short)((  dwCmd3>>16)&0xFFFF);
@@ -1197,33 +1204,33 @@ void DLParser_TexRectFlip(Gfx *gfx)
     if (cycletype == G_CYC_COPY)
     {
         fDSDX /= 4.0f;  // In copy mode 4 pixels are copied at once.
-        dwXH++;
-        dwYH++;
+        lr_x++;
+        lr_y++;
     }
     else if (cycletype == G_CYC_FILL)
     {
-        dwXH++;
-        dwYH++;
+        lr_x++;
+        lr_y++;
     }
 
-    float fS1 = fS0 + (fDSDX * (dwYH - dwYL));
-    float fT1 = fT0 + (fDTDY * (dwXH - dwXL));
+    float fS1 = fS0 + (fDSDX * (lr_y - ul_y));
+    float fT1 = fT0 + (fDTDY * (lr_x - ul_x));
     
     LOG_UCODE("    Tile:%d (%d,%d) -> (%d,%d)",
-        tileno, dwXL, dwYL, dwXH, dwYH);
+        tileno, ul_x, ul_y, lr_x, lr_y);
     LOG_UCODE("    Tex:(%#5f,%#5f) -> (%#5f,%#5f) (DSDX:%#5f DTDY:%#5f)",
         fS0, fT0, fS1, fT1, fDSDX, fDTDY);
     LOG_UCODE("");
 
     float t0u0 = (fS0) * gRDP.tiles[tileno].fShiftScaleS-gRDP.tiles[tileno].sl;
     float t0v0 = (fT0) * gRDP.tiles[tileno].fShiftScaleT-gRDP.tiles[tileno].tl;
-    float t0u1 = t0u0 + (fDSDX * (dwYH - dwYL))*gRDP.tiles[tileno].fShiftScaleS;
-    float t0v1 = t0v0 + (fDTDY * (dwXH - dwXL))*gRDP.tiles[tileno].fShiftScaleT;
+    float t0u1 = t0u0 + (fDSDX * (lr_y - ul_y))*gRDP.tiles[tileno].fShiftScaleS;
+    float t0v1 = t0v0 + (fDTDY * (lr_x - ul_x))*gRDP.tiles[tileno].fShiftScaleT;
 
-    CRender::g_pRender->TexRectFlip(dwXL, dwYL, dwXH, dwYH, t0u0, t0v0, t0u1, t0v1);
+    CRender::g_pRender->TexRectFlip(ul_x, ul_y, lr_x, lr_y, t0u0, t0v0, t0u1, t0v1);
     status.dwNumTrisRendered += 2;
 
-    if( status.bHandleN64RenderTexture )    g_pRenderTextureInfo->maxUsedHeight = MAX(g_pRenderTextureInfo->maxUsedHeight,int(dwYL+(dwXH-dwXL)));
+    if( status.bHandleN64RenderTexture )    g_pRenderTextureInfo->maxUsedHeight = MAX(g_pRenderTextureInfo->maxUsedHeight,int(ul_y + (lr_x - ul_x)));
 
     ForceMainTextureIndex(curTile);
 }

@@ -86,8 +86,6 @@ static void rdphalf_cont(uint32_t w0, uint32_t w1);
 
 static void rsp_uc5_reserved0(uint32_t w0, uint32_t w1);
 
-static void ys_memrect(uint32_t w0, uint32_t w1);
-
 void uc6_obj_sprite(uint32_t w0, uint32_t w1);
 
 static void modelview_load (float m[4][4]);

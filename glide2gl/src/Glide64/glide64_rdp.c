@@ -484,27 +484,19 @@ void glide64ProcessDList(void)
   }
 }
 
-static void ys_memrect(uint32_t w0, uint32_t w1)
+static void ys_memrect(uint32_t w0, uint32_t w1, uint32_t ul_x, uint32_t ul_y, 
+      uint32_t lr_x, uint32_t lr_y, uint32_t tileno)
 {
-  uint32_t off_x, off_y;
-  uint32_t y, width, tex_width;
-  uint8_t *texaddr, *fbaddr;
-  uint32_t tile = (uint16_t)((w1 & 0x07000000) >> 24);
-  uint32_t lr_x = (uint16_t)((w0 & 0x00FFF000) >> 14);
-  uint32_t lr_y = (uint16_t)((w0 & 0x00000FFF) >> 2);
-  uint32_t ul_x = (uint16_t)((w1 & 0x00FFF000) >> 14);
-  uint32_t ul_y = (uint16_t)((w1 & 0x00000FFF) >> 2);
+  uint32_t y;
+  uint32_t off_x     = ((rdp.cmd2 & 0xFFFF0000) >> 16) >> 5;
+  uint32_t off_y     = ((rdp.cmd2 & 0x0000FFFF) >> 5);
+  uint32_t width     = lr_x - ul_x;
+  uint32_t tex_width = g_gdp.tile[tileno].line << 3;
+  uint8_t *texaddr   = (uint8_t*)(gfx_info.RDRAM + rdp.addr[g_gdp.tile[tileno].tmem] + tex_width*off_y + off_x);
+  uint8_t *fbaddr    = (uint8_t*)(gfx_info.RDRAM + rdp.cimg + ul_x);
 
   if (lr_y > g_gdp.__clip.yl)
     lr_y = g_gdp.__clip.yl;
-
-  off_x     = ((rdp.cmd2 & 0xFFFF0000) >> 16) >> 5;
-  off_y     = ((rdp.cmd2 & 0x0000FFFF) >> 5);
-
-  width     = lr_x - ul_x;
-  tex_width = g_gdp.tile[tile].line << 3;
-  texaddr   = (uint8_t*)(gfx_info.RDRAM + rdp.addr[g_gdp.tile[tile].tmem] + tex_width*off_y + off_x);
-  fbaddr    = (uint8_t*)(gfx_info.RDRAM + rdp.cimg + ul_x);
 
   for (y = ul_y; y < lr_y; y++)
   {
@@ -597,7 +589,15 @@ static void rdp_texrect(uint32_t w0, uint32_t w1)
    }
    if ((settings.hacks&hack_Yoshi) && settings.ucode == ucode_S2DEX)
    {
-      ys_memrect(w0, w1);
+      ys_memrect(
+            w0,
+            w1,
+            (uint16_t)((w1 & 0x00FFF000) >> 14),   /* ul_x */
+            (uint16_t)((w1 & 0x00000FFF) >> 2),    /* ul_y */
+            (uint16_t)((w0 & 0x00FFF000) >> 14),   /* lr_x */
+            (uint16_t)((w0 & 0x00000FFF) >> 2),    /* lr_y */
+            (uint16_t)((w1 & 0x07000000) >> 24)    /* tileno */
+            );
       return;
    }
 
@@ -741,7 +741,7 @@ static void rdp_texrect(uint32_t w0, uint32_t w1)
    s_ul_y = ul_y * rdp.scale_y + rdp.offset_y;
    s_lr_y = lr_y * rdp.scale_y + rdp.offset_y;
 
-   if ( ((__RSP.w0 >> 24)&0xFF) == G_TEXRECTFLIP ) //texrectflip
+   if ( ((__RSP.w0 >> 24)&0xFF) == G_TEXRECTFLIP )
    {
       off_size_x = (lr_y - ul_y - 1) * dsdx;
       off_size_y = (lr_x - ul_x - 1) * dtdy;
