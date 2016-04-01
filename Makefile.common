@@ -98,7 +98,6 @@ SOURCES_C += \
 	$(CORE_DIR)/src/vi/vi_controller.c \
 	$(CORE_DIR)/src/rdp/rdp_core.c \
 	$(CORE_DIR)/src/rdp/fb.c \
-	$(CORE_DIR)/src/rdp_common/gdp.c \
 	$(CORE_DIR)/src/rsp/rsp_core.c \
 	$(CORE_DIR)/src/ai/ai_controller.c \
 	$(CORE_DIR)/src/pi/pi_controller.c \

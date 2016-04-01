@@ -31,6 +31,8 @@
 #include "glitchmain.h"
 #include "../../libretro/libretro_private.h"
 
+#include "../../Graphics/RDP/RDP_state.h"
+
 float glide64_pow(float a, float b);
 
 typedef struct _shader_program_key

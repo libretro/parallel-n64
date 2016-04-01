@@ -648,9 +648,6 @@
     <ClCompile Include="..\..\..\mupen64plus-core\src\r4300\hacktarux_dynarec\rjump.c">
       <Filter>Source Files\mupen64plus-core\src\r4300\hacktarux_dynarec</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\mupen64plus-core\src\rdp_common\gdp.c">
-      <Filter>Source Files\mupen64plus-core\src\rdp_common</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\..\mupen64plus-core\src\ri\rdram_detection_hack.c">
       <Filter>Source Files\mupen64plus-core\src\ri</Filter>
     </ClCompile>

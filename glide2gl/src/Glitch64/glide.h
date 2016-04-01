@@ -5,8 +5,6 @@
 #include <boolean.h>
 #include <glsm/glsmsym.h>
 
-#include "../../../mupen64plus-core/src/rdp_common/gdp.h"
-
 #ifdef __cplusplus
 extern "C" {
 #endif

@@ -23,7 +23,7 @@
 #include "Config.h"
 #include "ShaderCombiner.h"
 
-#include "../../mupen64plus-core/src/rdp_common/gdp.h"
+#include "../../Graphics/RDP/RDP_state.h"
 
 gDPInfo gDP;
 
