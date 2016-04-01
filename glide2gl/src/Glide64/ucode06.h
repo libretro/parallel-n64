@@ -42,7 +42,7 @@
 
 // STANDARD DRAWIMAGE - draws a 2d image based on the following structure
 
-static float set_sprite_combine_mode(void)
+float set_sprite_combine_mode(void)
 {
   float Z;
   if (((rdp.othermode_h & RDP_CYCLE_TYPE) >> 20) == G_CYC_COPY)

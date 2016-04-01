@@ -30,15 +30,13 @@ void glide64gDPSetTile(
       uint32_t cms,
       uint32_t masks,
       uint32_t shifts );
-
 void glide64gDPLoadTile(uint32_t tile, uint32_t ul_s, uint32_t ul_t,
       uint32_t lr_s, uint32_t lr_t);
-
 void glide64gDPSetTileSize(uint32_t tile, uint32_t uls, uint32_t ult,
       uint32_t lrs, uint32_t lrt);
-
 void glide64gDPSetTextureImage(int32_t fmt, int32_t siz,
    int32_t width, int32_t addr);
+void glide64gDPFillRectangle(uint32_t ul_x, uint32_t ul_y, uint32_t lr_x, uint32_t lr_y);
 
 #ifdef __cplusplus
 }

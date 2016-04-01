@@ -100,7 +100,7 @@ static void projection_mul (float m[4][4]);
 
 void load_matrix (float m[4][4], uint32_t addr);
 
-static float set_sprite_combine_mode(void);
+float set_sprite_combine_mode(void);
 
 //ucode 00
 static void uc0_vertex(uint32_t w0, uint32_t w1);
