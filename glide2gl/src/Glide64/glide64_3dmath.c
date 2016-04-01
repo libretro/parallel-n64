@@ -47,13 +47,6 @@
 
 #include "../../Graphics/3dmath.h"
 
-void TransformVector(float *src, float *dst, float mat[4][4])
-{
-   dst[0] = mat[0][0]*src[0] + mat[1][0]*src[1] + mat[2][0]*src[2];
-   dst[1] = mat[0][1]*src[0] + mat[1][1]*src[1] + mat[2][1]*src[2];
-   dst[2] = mat[0][2]*src[0] + mat[1][2]*src[1] + mat[2][2]*src[2];
-}
-
 void InverseTransformVector (float *src, float *dst, float mat[4][4])
 {
    dst[0] = mat[0][0]*src[0] + mat[0][1]*src[1] + mat[0][2]*src[2];
