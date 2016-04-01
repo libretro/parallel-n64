@@ -94,22 +94,12 @@ void RSP_ProcessDList(void)
          uint32_t pc = __RSP.PC[__RSP.PCi];
 
          if ((pc + 8) > RDRAMSize)
-         {
-#ifdef DEBUG
-            DebugMsg( DEBUG_LOW | DEBUG_ERROR, "ATTEMPTING TO EXECUTE RSP COMMAND AT INVALID RDRAM LOCATION\n" );
-#endif
             break;
-         }
 
 
          __RSP.w0 = *(uint32_t*)&gfx_info.RDRAM[pc];
          __RSP.w1 = *(uint32_t*)&gfx_info.RDRAM[pc+4];
          __RSP.cmd = _SHIFTR( __RSP.w0, 24, 8 );
-
-#ifdef DEBUG
-         DebugRSPState( RSP.PCi, RSP.PC[RSP.PCi], _SHIFTR( __RSP.w0, 24, 8 ), __RSP.w0, __RSP.w1 );
-         DebugMsg( DEBUG_LOW | DEBUG_HANDLED, "0x%08lX: CMD=0x%02lX W0=0x%08lX W1=0x%08lX\n", RSP.PC[RSP.PCi], _SHIFTR( __RSP.w0, 24, 8 ), __RSP.w0, __RSP.w1 );
-#endif
 
          __RSP.PC[__RSP.PCi] += 8;
          __RSP.nextCmd = _SHIFTR( *(uint32_t*)&gfx_info.RDRAM[pc+8], 24, 8 );

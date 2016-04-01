@@ -75,34 +75,14 @@ void RSP_ProcessDList(void)
 	else {
 		while (!__RSP.halt) {
 			if ((__RSP.PC[__RSP.PCi] + 8) > RDRAMSize) {
-#ifdef DEBUG
-				switch (Debug.level)
-				{
-					case DEBUG_LOW:
-					DebugMsg( DEBUG_LOW | DEBUG_ERROR, "ATTEMPTING TO EXECUTE RSP COMMAND AT INVALID RDRAM LOCATION\n" );
-					break;
-					case DEBUG_MEDIUM:
-					DebugMsg( DEBUG_MEDIUM | DEBUG_ERROR, "Attempting to execute RSP command at invalid RDRAM location\n" );
-					break;
-					case DEBUG_HIGH:
-					DebugMsg( DEBUG_HIGH | DEBUG_ERROR, "// Attempting to execute RSP command at invalid RDRAM location\n" );
-					break;
-				}
-#endif
 				break;
 			}
 
 			uint32_t w0 = *(uint32_t*)&gfx_info.RDRAM[__RSP.PC[__RSP.PCi]];
 			uint32_t w1 = *(uint32_t*)&gfx_info.RDRAM[__RSP.PC[__RSP.PCi] + 4];
-			__RSP.cmd = _SHIFTR(w0, 24, 8);
-
-#ifdef DEBUG
-			DebugRSPState( __RSP.PCi, __RSP.PC[__RSP.PCi], _SHIFTR( w0, 24, 8 ), w0, w1 );
-			DebugMsg( DEBUG_LOW | DEBUG_HANDLED, "0x%08lX: CMD=0x%02lX W0=0x%08lX W1=0x%08lX\n", __RSP.PC[__RSP.PCi], _SHIFTR( w0, 24, 8 ), w0, w1 );
-#endif
-
+			__RSP.cmd            = _SHIFTR(w0, 24, 8);
 			__RSP.PC[__RSP.PCi] += 8;
-			__RSP.nextCmd = _SHIFTR(*(uint32_t*)&gfx_info.RDRAM[__RSP.PC[__RSP.PCi]], 24, 8);
+			__RSP.nextCmd        = _SHIFTR(*(uint32_t*)&gfx_info.RDRAM[__RSP.PC[__RSP.PCi]], 24, 8);
 
 			GBI.cmd[__RSP.cmd](w0, w1);
 			RSP_CheckDLCounter();
@@ -231,8 +211,6 @@ void RSP_Init(void)
 		config.generalEmulation.hacks |= hack_ignoreVIHeightChange;
 	else if (strstr(__RSP.romname, (const char *)"MASK") != NULL) // Zelda MM
 		config.generalEmulation.hacks |= hack_skipVIChangeCheck | hack_ZeldaCamera;
-
-	//api().FindPluginPath(__RSP.pluginpath);
 
 	RSP_SetDefaultState();
 }

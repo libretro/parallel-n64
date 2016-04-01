@@ -14,10 +14,6 @@
 
 void RDP_Unknown( uint32_t w0, uint32_t w1 )
 {
-#ifdef DEBUG
-	DebugMsg( DEBUG_UNKNOWN, "RDP_Unknown\r\n" );
-	DebugMsg( DEBUG_UNKNOWN, "\tUnknown RDP opcode %02X\r\n", _SHIFTR( w0, 24, 8 ) );
-#endif
 }
 
 void RDP_NoOp( uint32_t w0, uint32_t w1 )

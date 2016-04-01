@@ -21,10 +21,6 @@ enum
 
 void RDP_Unknown( uint32_t w0, uint32_t w1 )
 {
-#ifdef DEBUG
-	DebugMsg( DEBUG_UNKNOWN, "RDP_Unknown\r\n" );
-	DebugMsg( DEBUG_UNKNOWN, "\tUnknown RDP opcode %02X\r\n", _SHIFTR( w0, 24, 8 ) );
-#endif
 }
 
 void RDP_NoOp( uint32_t w0, uint32_t w1 )
@@ -582,10 +578,6 @@ void gln64ProcessRDPList(void)
    uint32_t i;
    bool setZero = true;
    const uint32_t length = gfx_info.DPC_END_REG - gfx_info.DPC_CURRENT_REG;
-
-#ifdef DEBUG
-   DebugMsg(DEBUG_HIGH | DEBUG_HANDLED, "ProcessRDPList()\n");
-#endif
 
    (*(uint32_t*)gfx_info.DPC_STATUS_REG) &= ~0x0002;
 
