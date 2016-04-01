@@ -17,12 +17,7 @@ void F3DDKR_DMA_Mtx( uint32_t w0, uint32_t w1 )
 {
    uint32_t index, multiply;
    if (_SHIFTR( w0, 0, 16 ) != 64)
-   {
-#ifdef DEBUG
-      DebugMsg( DEBUG_MEDIUM | DEBUG_HIGH | DEBUG_ERROR, "G_MTX: address = 0x%08X    length = %i    params = 0x%02X\n", w1, _SHIFTR( w0, 0, 16 ), _SHIFTR( w0, 16, 8 ) );
-#endif
       return;
-   }
 
    index = _SHIFTR( w0, 16, 4 );
 
