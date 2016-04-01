@@ -10,29 +10,9 @@
 #include "OpenGL.h"
 #include "3DMath.h"
 
-#define	GZM_USER0		0
-#define	GZM_USER1		2
-#define	GZM_MMTX		   4
-#define	GZM_PMTX		   6
-#define	GZM_MPMTX		8
-#define	GZM_OTHERMODE	10
-#define	GZM_VIEWPORT	12
-#define	GZF_LOAD		   0
-#define	GZF_SAVE		   1
+#include "../../Graphics/HLE/Microcode/ZSort.h"
 
-#define	ZH_NULL		   0
-#define	ZH_SHTRI	      1
-#define	ZH_TXTRI	      2
-#define	ZH_SHQUAD	   3
-#define	ZH_TXQUAD	   4
-
-typedef float M44[4][4];
-
-struct ZSORTRDP
-{
-	float view_scale[2];
-	float view_trans[2];
-} GLN64zSortRdp = {{0, 0}, {0, 0}};
+ZSORTRDP GLN64zSortRdp = {{0, 0}, {0, 0}, 0, 0};
 
 void ZSort_RDPCMD( uint32_t a, uint32_t _w1)
 {
@@ -60,59 +40,7 @@ void ZSort_RDPCMD( uint32_t a, uint32_t _w1)
    }
 }
 
-//RSP command VRCPL
-static int Calc_invw (int _w)
-{
-   int count, neg;
-   union
-   {
-      int32_t W;
-      uint32_t UW;
-      int16_t HW[2];
-      uint16_t UHW[2];
-   } Result;
-
-   Result.W = _w;
-
-   if (Result.UW == 0)
-      Result.UW = 0x7FFFFFFF;
-   else
-   {
-      if (Result.W < 0)
-      {
-         neg = true;
-         if (Result.UHW[1] == 0xFFFF && Result.HW[0] < 0)
-            Result.W = ~Result.W + 1;
-         else
-            Result.W = ~Result.W;
-      }
-      else
-         neg = false;
-
-      for (count = 31; count > 0; --count)
-      {
-         if ((Result.W & (1 << count)))
-         {
-            Result.W &= (0xFFC00000 >> (31 - count) );
-            count = 0;
-         }
-      }
-
-      Result.W = 0x7FFFFFFF / Result.W;
-      for (count = 31; count > 0; --count)
-      {
-         if ((Result.W & (1 << count)))
-         {
-            Result.W &= (0xFFFF8000 >> (31 - count) );
-            count = 0;
-         }
-      }
-
-      if (neg == true)
-         Result.W = ~Result.W;
-   }
-   return Result.W;
-}
+/* RSP command VRCPL */
 
 static void ZSort_DrawObject (uint8_t * _addr, uint32_t _type)
 {
@@ -156,16 +84,16 @@ static void ZSort_DrawObject (uint8_t * _addr, uint32_t _type)
       vtx->g = _addr[5^3] * 0.0039215689f;
       vtx->b = _addr[6^3] * 0.0039215689f;
       vtx->a = _addr[7^3] * 0.0039215689f;
-      vtx->flag = 0;
+      vtx->flag    = 0;
       vtx->HWLight = 0;
-      vtx->clip = 0;
+      vtx->clip    = 0;
+      vtx->w       = 1.0f;
       if (textured != 0)
       {
          vtx->s = _FIXED2FLOAT(((int16_t*)_addr)[4^1], 5 );
          vtx->t = _FIXED2FLOAT(((int16_t*)_addr)[5^1], 5 );
-         vtx->w = Calc_invw(((int*)_addr)[3]) / 31.0f;
-      } else
-         vtx->w = 1.0f;
+         vtx->w = ZSort_Calc_invw(((int*)_addr)[3]) / 31.0f;
+      }
 
       _addr += vsize;
    }
@@ -418,13 +346,13 @@ void ZSort_MultMPMTX( uint32_t _w0, uint32_t _w1 )
       float y = sx*gSP.matrix.combined[0][1] + sy*gSP.matrix.combined[1][1] + sz*gSP.matrix.combined[2][1] + gSP.matrix.combined[3][1];
       float z = sx*gSP.matrix.combined[0][2] + sy*gSP.matrix.combined[1][2] + sz*gSP.matrix.combined[2][2] + gSP.matrix.combined[3][2];
       float w = sx*gSP.matrix.combined[0][3] + sy*gSP.matrix.combined[1][3] + sz*gSP.matrix.combined[2][3] + gSP.matrix.combined[3][3];
-      v.sx = (int16_t)(GLN64zSortRdp.view_trans[0] + x / w * GLN64zSortRdp.view_scale[0]);
-      v.sy = (int16_t)(GLN64zSortRdp.view_trans[1] + y / w * GLN64zSortRdp.view_scale[1]);
+      v.sx    = (int16_t)(GLN64zSortRdp.view_trans[0] + x / w * GLN64zSortRdp.view_scale[0]);
+      v.sy    = (int16_t)(GLN64zSortRdp.view_trans[1] + y / w * GLN64zSortRdp.view_scale[1]);
 
-      v.xi = (int16_t)x;
-      v.yi = (int16_t)y;
-      v.wi = (int16_t)w;
-      v.invw = Calc_invw((int)(w * 31.0));
+      v.xi    = (int16_t)x;
+      v.yi    = (int16_t)y;
+      v.wi    = (int16_t)w;
+      v.invw  = ZSort_Calc_invw((int)(w * 31.0));
 
       if (w < 0.0f)
          v.fog = 0;

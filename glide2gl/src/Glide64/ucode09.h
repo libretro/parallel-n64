@@ -41,79 +41,11 @@
 //
 //****************************************************************
 
-#define	GZM_USER0		0
-#define	GZM_USER1		2
-#define	GZM_MMTX		   4
-#define	GZM_PMTX		   6
-#define	GZM_MPMTX		8
-#define	GZM_OTHERMODE	10
-#define	GZM_VIEWPORT	12
-#define	GZF_LOAD		   0
-#define  GZF_SAVE       1
+#include <stdint.h>
 
-typedef float M44[4][4];
-
-typedef struct
-{
-   float view_scale[2];
-   float view_trans[2];
-   float scale_x;
-   float scale_y;
-} ZSORTRDP;
+#include "../../Graphics/HLE/Microcode/ZSort.h"
 
 ZSORTRDP zSortRdp = {{0, 0}, {0, 0}, 0, 0};
-
-//RSP command VRCPL
-static int Calc_invw (int w)
-{
-   int count, neg;
-   union
-   {
-      int32_t	  W;
-      uint32_t	  UW;
-      int16_t	  HW[2];
-      uint16_t	  UHW[2];
-   } Result;
-   Result.W = w;
-
-   if (Result.UW == 0)
-      Result.UW = 0x7FFFFFFF;
-   else
-   {
-      if (Result.W < 0)
-      {
-         neg = true;
-         if (Result.UHW[1] == 0xFFFF && Result.HW[0] < 0)
-            Result.W = ~Result.W + 1;
-         else
-            Result.W = ~Result.W;
-      }
-      else
-         neg = false;
-
-      for (count = 31; count > 0; count--)
-      {
-         if ((Result.W & (1 << count)))
-         {
-            Result.W &= (0xFFC00000 >> (31 - count) );
-            count = 0;
-         }
-      }
-
-      Result.W = 0x7FFFFFFF / Result.W;
-      for (count = 31; count > 0; count--)
-      {
-         if ((Result.W & (1 << count)))
-         {
-            Result.W &= (0xFFFF8000 >> (31 - count) );
-            count = 0;
-         }
-      }
-      if (neg == true)
-         Result.W = ~Result.W;
-   }
-   return Result.W;
-}
 
 static void uc9_draw_object (uint8_t * addr, uint32_t type)
 {
@@ -170,7 +102,7 @@ static void uc9_draw_object (uint8_t * addr, uint32_t type)
       {
          v->ou  = ((int16_t*)addr)[4^1];
          v->ov  = ((int16_t*)addr)[5^1];
-         v->w   = Calc_invw(((int*)addr)[3]) / 31.0f;
+         v->w   = ZSort_Calc_invw(((int*)addr)[3]) / 31.0f;
          v->oow = 1.0f / v->w;
       }
       addr += vsize;
@@ -488,13 +420,13 @@ static void uc9_mult_mpmtx(uint32_t w0, uint32_t w1)
       float y = sx*rdp.combined[0][1] + sy*rdp.combined[1][1] + sz*rdp.combined[2][1] + rdp.combined[3][1];
       float z = sx*rdp.combined[0][2] + sy*rdp.combined[1][2] + sz*rdp.combined[2][2] + rdp.combined[3][2];
       float w = sx*rdp.combined[0][3] + sy*rdp.combined[1][3] + sz*rdp.combined[2][3] + rdp.combined[3][3];
-      v.sx = (int16_t)(zSortRdp.view_trans[0] + x / w * zSortRdp.view_scale[0]);
-      v.sy = (int16_t)(zSortRdp.view_trans[1] + y / w * zSortRdp.view_scale[1]);
+      v.sx    = (int16_t)(zSortRdp.view_trans[0] + x / w * zSortRdp.view_scale[0]);
+      v.sy    = (int16_t)(zSortRdp.view_trans[1] + y / w * zSortRdp.view_scale[1]);
 
-      v.xi = (int16_t)x;
-      v.yi = (int16_t)y;
-      v.wi = (int16_t)w;
-      v.invw = Calc_invw((int)(w * 31.0));
+      v.xi    = (int16_t)x;
+      v.yi    = (int16_t)y;
+      v.wi    = (int16_t)w;
+      v.invw  = ZSort_Calc_invw((int)(w * 31.0));
 
       if (w < 0.0f)
          v.fog = 0;
