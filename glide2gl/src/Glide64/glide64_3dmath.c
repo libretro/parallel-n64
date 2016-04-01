@@ -91,6 +91,32 @@ void math_init(void)
       cpu = perf_get_cpu_features_cb();
 }
 
+void calc_sphere (VERTEX *v)
+{
+   float x, y;
+   int s_scale = rdp.tiles[rdp.cur_tile].org_s_scale >> 6;
+   int t_scale = rdp.tiles[rdp.cur_tile].org_t_scale >> 6;
+
+   if (settings.hacks&hack_Chopper)
+   {
+      s_scale = MIN(rdp.tiles[rdp.cur_tile].org_s_scale >> 6, g_gdp.tile[rdp.cur_tile].sl);
+      t_scale = MIN(rdp.tiles[rdp.cur_tile].org_t_scale >> 6, g_gdp.tile[rdp.cur_tile].tl);
+   }
+
+   TransformVectorNormalize(v->vec, rdp.model);
+   x = v->vec[0];
+   y = v->vec[1];
+
+   if (rdp.use_lookat)
+   {
+      x = DotProduct (rdp.lookat[0], v->vec);
+      y = DotProduct (rdp.lookat[1], v->vec);
+   }
+   v->ou        = (x * 0.5f + 0.5f) * s_scale;
+   v->ov        = (y * 0.5f + 0.5f) * t_scale;
+   v->uv_scaled = 1;
+}
+
 void calc_linear (VERTEX *v)
 {
    float x, y;
@@ -122,41 +148,9 @@ void calc_linear (VERTEX *v)
    if (rdp.cur_cache[0])
    {
       // scale >> 6 is size to map to
-      v->ou = (acosf(x)/3.141592654f) * (rdp.tiles[rdp.cur_tile].org_s_scale >> 6);
-      v->ov = (acosf(y)/3.141592654f) * (rdp.tiles[rdp.cur_tile].org_t_scale >> 6);
+      v->ou     = (acosf(x)/3.141592654f) * (rdp.tiles[rdp.cur_tile].org_s_scale >> 6);
+      v->ov     = (acosf(y)/3.141592654f) * (rdp.tiles[rdp.cur_tile].org_t_scale >> 6);
    }
    v->uv_scaled = 1;
-#ifdef EXTREME_LOGGING
-   FRDP ("calc linear u: %f, v: %f\n", v->ou, v->ov);
-#endif
 }
 
-void calc_sphere (VERTEX *v)
-{
-   float x, y;
-   int s_scale, t_scale;
-
-   s_scale = rdp.tiles[rdp.cur_tile].org_s_scale >> 6;
-   t_scale = rdp.tiles[rdp.cur_tile].org_t_scale >> 6;
-
-   if (settings.hacks&hack_Chopper)
-   {
-      s_scale = MIN(rdp.tiles[rdp.cur_tile].org_s_scale >> 6, g_gdp.tile[rdp.cur_tile].sl);
-      t_scale = MIN(rdp.tiles[rdp.cur_tile].org_t_scale >> 6, g_gdp.tile[rdp.cur_tile].tl);
-   }
-
-   TransformVectorNormalize(v->vec, rdp.model);
-   x = v->vec[0];
-   y = v->vec[1];
-   if (rdp.use_lookat)
-   {
-      x = DotProduct (rdp.lookat[0], v->vec);
-      y = DotProduct (rdp.lookat[1], v->vec);
-   }
-   v->ou = (x * 0.5f + 0.5f) * s_scale;
-   v->ov = (y * 0.5f + 0.5f) * t_scale;
-   v->uv_scaled = 1;
-#ifdef EXTREME_LOGGING
-   FRDP ("calc sphere u: %f, v: %f\n", v->ou, v->ov);
-#endif
-}
