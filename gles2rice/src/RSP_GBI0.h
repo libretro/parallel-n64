@@ -501,20 +501,8 @@ void RSP_GBI1_MoveWord(Gfx *gfx)
       case G_MW_SEGMENT:
          {
             uint32_t dwSegment = (gfx->gbi0moveword.offset >> 2) & 0xF;
-            uint32_t dwBase = (gfx->gbi0moveword.value)&0x00FFFFFF;
-            LOG_UCODE("    RSP_MOVE_WORD_SEGMENT Seg[%d] = 0x%08x", dwSegment, dwBase);
-            if( dwBase > g_dwRamSize )
-            {
-               gRSP.segments[dwSegment] = dwBase;
-#ifdef DEBUGGER
-               if( pauseAtNext )
-                  DebuggerAppendMsg("warning: Segment %d addr is %8X", dwSegment, dwBase);
-#endif
-            }
-            else
-            {
-               gRSP.segments[dwSegment] = dwBase;
-            }
+            uint32_t dwBase    = (gfx->gbi0moveword.value)&0x00FFFFFF;
+            gRSP.segments[dwSegment] = dwBase;
          }
          break;
       case G_MW_FOG:
@@ -606,19 +594,6 @@ void RSP_GBI1_PopMtx(Gfx *gfx)
         CRender::g_pRender->PopProjection();
     else
         CRender::g_pRender->PopWorldView();
-#ifdef DEBUGGER
-    if( pauseAtNext && eventToPause == NEXT_MATRIX_CMD )
-    {
-        pauseAtNext = false;
-        debuggerPause = true;
-        DebuggerAppendMsg("Pause after Pop Matrix: %s\n", gfx->gbi0popmatrix.projection ? "Proj":"World");
-    }
-    else
-    {
-        if( pauseAtNext && logMatrix ) 
-            DebuggerAppendMsg("Pause after Pop Matrix: %s\n", gfx->gbi0popmatrix.projection ? "Proj":"World");
-    }
-#endif
 }
 
 
@@ -788,26 +763,6 @@ void RSP_RDP_Nothing(Gfx *gfx)
 {
     SP_Timing(RSP_RDP_Nothing);
 
-#ifdef DEBUGGER
-    if( logWarning )
-    {
-        TRACE0("Stack Trace");
-        for( int i=0; i<gDlistStackPointer; i++ )
-        {
-            DebuggerAppendMsg("  %08X", gDlistStack[i].pc);
-        }
-
-        uint32_t dwPC = gDlistStack[gDlistStackPointer].pc-8;
-        DebuggerAppendMsg("PC=%08X",dwPC);
-        DebuggerAppendMsg("Warning, unknown ucode PC=%08X: 0x%08x 0x%08x\n", dwPC, gfx->words.w0, gfx->words.w1);
-    }
-    DEBUGGER_PAUSE_AND_DUMP_COUNT_N(NEXT_UNKNOWN_OP, {TRACE0("Paused at unknown ucode\n");})
-    if( debuggerContinueWithUnknown )
-    {
-        return;
-    }
-#endif
-        
     if( options.bEnableHacks )
         return;
     
@@ -861,21 +816,5 @@ void RSP_RDP_InsertMatrix(Gfx *gfx)
 
     gRSP.bMatrixIsUpdated = false;
     gRSP.bCombinedMatrixIsUpdated = true;
-
-#ifdef DEBUGGER
-    if( pauseAtNext && eventToPause == NEXT_MATRIX_CMD )
-    {
-        pauseAtNext = false;
-        debuggerPause = true;
-        DebuggerAppendMsg("Pause after insert matrix: %08X, %08X", gfx->words.w0, gfx->words.w1);
-    }
-    else
-    {
-        if( pauseAtNext && logMatrix ) 
-        {
-            DebuggerAppendMsg("insert matrix: %08X, %08X", gfx->words.w0, gfx->words.w1);
-        }
-    }
-#endif
 }
 

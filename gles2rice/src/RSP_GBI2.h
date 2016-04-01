@@ -129,22 +129,10 @@ void RSP_GBI2_MoveWord(Gfx *gfx)
 
     case G_MW_SEGMENT:
         {
-            uint32_t dwSeg     = gfx->gbi2moveword.offset / 4;
-            uint32_t dwAddr = gfx->gbi2moveword.value & 0x00FFFFFF;           // Hack - convert to physical
+            uint32_t dwSeg       = gfx->gbi2moveword.offset / 4;
+            uint32_t dwAddr      = gfx->gbi2moveword.value & 0x00FFFFFF;           // Hack - convert to physical
 
-            LOG_UCODE("      RSP_MOVE_WORD_SEGMENT Segment[%d] = 0x%08x",   dwSeg, dwAddr);
-            if( dwAddr > g_dwRamSize )
-            {
-                gRSP.segments[dwSeg] = dwAddr;
-#ifdef DEBUGGER
-                if( pauseAtNext )
-                    DebuggerAppendMsg("warning: Segment %d addr is %8X", dwSeg, dwAddr);
-#endif
-            }
-            else
-            {
-                gRSP.segments[dwSeg] = dwAddr;
-            }
+            gRSP.segments[dwSeg] = dwAddr;
         }
         break;
     case G_MW_FOG:
@@ -406,9 +394,7 @@ void RSP_GBI2_Line3D(Gfx *gfx)
                 }
 
                 if( !bTrisAdded )
-                {
                     CRender::g_pRender->SetCombinerAndBlender();
-                }
 
                 bTrisAdded = true;
                 PrepareTriangle(dwV0, dwV1, dwV2);
@@ -425,9 +411,7 @@ void RSP_GBI2_Line3D(Gfx *gfx)
                 }
 
                 if( !bTrisAdded )
-                {
                     CRender::g_pRender->SetCombinerAndBlender();
-                }
 
                 bTrisAdded = true;
                 PrepareTriangle(dwV3, dwV4, dwV5);
@@ -446,9 +430,7 @@ void RSP_GBI2_Line3D(Gfx *gfx)
 
 
         if (bTrisAdded) 
-        {
             CRender::g_pRender->DrawTriangles();
-        }
 
         DEBUG_TRIANGLE(TRACE0("Pause at GBI2 Line3D"));
     }
@@ -462,21 +444,13 @@ void RSP_GBI2_Texture(Gfx *gfx)
     float fTextureScaleT = (float)(gfx->texture.scaleT) / (65536.0f * 32.0f);
 
     if( (((gfx->words.w1)>>16)&0xFFFF) == 0xFFFF )
-    {
         fTextureScaleS = 1/32.0f;
-    }
     else if( (((gfx->words.w1)>>16)&0xFFFF) == 0x8000 )
-    {
         fTextureScaleS = 1/64.0f;
-    }
     if( (((gfx->words.w1)    )&0xFFFF) == 0xFFFF )
-    {
         fTextureScaleT = 1/32.0f;
-    }
     else if( (((gfx->words.w1)    )&0xFFFF) == 0x8000 )
-    {
         fTextureScaleT = 1/64.0f;
-    }
 
     CRender::g_pRender->SetTextureEnableAndScale(gfx->texture.tile, gfx->texture.enable_gbi2, fTextureScaleS, fTextureScaleT);
 
@@ -687,40 +661,6 @@ void RSP_GBI2_Mtx(Gfx *gfx)
             }
         }
     }
-
-#ifdef DEBUGGER
-    const char *loadstr = gfx->gbi2matrix.load?"Load":"Mul";
-    const char *pushstr = gfx->gbi2matrix.nopush==0?"Push":"Nopush";
-    int projlevel = CRender::g_pRender->GetProjectMatrixLevel();
-    int worldlevel = CRender::g_pRender->GetWorldViewMatrixLevel();
-    if( pauseAtNext && eventToPause == NEXT_MATRIX_CMD )
-    {
-        pauseAtNext = false;
-        debuggerPause = true;
-        if (gfx->gbi2matrix.projection)
-        {
-            DebuggerAppendMsg("Pause after %s and %s Matrix: Projection, level=%d\n", loadstr, pushstr, projlevel );
-        }
-        else
-        {
-            DebuggerAppendMsg("Pause after %s and %s Matrix: WorldView level=%d\n", loadstr, pushstr, worldlevel);
-        }
-    }
-    else
-    {
-        if( pauseAtNext && logMatrix ) 
-        {
-            if (gfx->gbi2matrix.projection)
-            {
-                DebuggerAppendMsg("Matrix: %s and %s Projection level=%d\n", loadstr, pushstr, projlevel);
-            }
-            else
-            {
-                DebuggerAppendMsg("Matrix: %s and %s WorldView\n level=%d", loadstr, pushstr, worldlevel);
-            }
-        }
-    }
-#endif
 }
 
 void RSP_GBI2_MoveMem(Gfx *gfx)

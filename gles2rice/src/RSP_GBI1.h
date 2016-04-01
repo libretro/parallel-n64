@@ -279,10 +279,10 @@ void RSP_S2DEX_SPObjLoadTxtr_Ucode1(Gfx *gfx)
     RSP_SetUcode(1, 0, 0, 0);
     memcpy( &LoadedUcodeMap, &ucodeMap1, sizeof(UcodeMap));
     
-    LoadedUcodeMap[S2DEX_OBJ_MOVEMEM] = &RSP_S2DEX_OBJ_MOVEMEM;
-    LoadedUcodeMap[S2DEX_OBJ_LOADTXTR] = &RSP_S2DEX_SPObjLoadTxtr;
+    LoadedUcodeMap[S2DEX_OBJ_MOVEMEM]     = &RSP_S2DEX_OBJ_MOVEMEM;
+    LoadedUcodeMap[S2DEX_OBJ_LOADTXTR]    = &RSP_S2DEX_SPObjLoadTxtr;
     LoadedUcodeMap[S2DEX_OBJ_LDTX_SPRITE] = &RSP_S2DEX_SPObjLoadTxSprite;
-    LoadedUcodeMap[S2DEX_OBJ_LDTX_RECT] = &RSP_S2DEX_SPObjLoadTxRect;
+    LoadedUcodeMap[S2DEX_OBJ_LDTX_RECT]   = &RSP_S2DEX_SPObjLoadTxRect;
     LoadedUcodeMap[S2DEX_OBJ_LDTX_RECT_R] = &RSP_S2DEX_SPObjLoadTxRectR;
 
     RSP_S2DEX_SPObjLoadTxtr(gfx);
