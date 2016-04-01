@@ -484,8 +484,8 @@ void glide64ProcessDList(void)
   }
 }
 
-static void ys_memrect(uint32_t w0, uint32_t w1, uint32_t ul_x, uint32_t ul_y, 
-      uint32_t lr_x, uint32_t lr_y, uint32_t tileno)
+static void yoshis_story_memrect(uint16_t ul_x, uint16_t ul_y, 
+      uint16_t lr_x, uint16_t lr_y, uint16_t tileno)
 {
   uint32_t y;
   uint32_t off_x     = ((rdp.cmd2 & 0xFFFF0000) >> 16) >> 5;
@@ -589,9 +589,7 @@ static void rdp_texrect(uint32_t w0, uint32_t w1)
    }
    if ((settings.hacks&hack_Yoshi) && settings.ucode == ucode_S2DEX)
    {
-      ys_memrect(
-            w0,
-            w1,
+      yoshis_story_memrect(
             (uint16_t)((w1 & 0x00FFF000) >> 14),   /* ul_x */
             (uint16_t)((w1 & 0x00000FFF) >> 2),    /* ul_y */
             (uint16_t)((w0 & 0x00FFF000) >> 14),   /* lr_x */
