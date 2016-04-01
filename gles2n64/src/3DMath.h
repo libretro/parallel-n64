@@ -15,8 +15,6 @@ extern "C" {
 
 void MultMatrix( float m0[4][4], float m1[4][4], float dest[4][4]);
 
-void TransformVectorNormalize(float vec[3], float mtx[4][4]);
-
 static INLINE void MultMatrix2( float m0[4][4], float m1[4][4] )
 {
     float dst[4][4];

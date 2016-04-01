@@ -24,6 +24,7 @@
 #include "m64p_plugin.h"
 
 #include "../../Graphics/image_convert.h"
+#include "../../Graphics/3dmath.h"
 
 using namespace std;
 

@@ -1,11 +1,15 @@
-#ifndef _3DMATH_H
-#define _3DMATH_H
+#ifndef _GRAPHICS_3DMATH_H
+#define _GRAPHICS_3DMATH_H
 
 #include <math.h>
 #include <string.h>
 
 #include <retro_inline.h>
 #include <retro_miscellaneous.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 static INLINE float DotProduct(const float *v0, const float *v1)
 {
@@ -29,5 +33,9 @@ static INLINE void NormalizeVector(float *v)
 }
 
 void TransformVectorNormalize(float vec[3], float mtx[4][4]);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

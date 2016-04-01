@@ -8,33 +8,14 @@
 #include "Log.h"
 #include "F3D.h"
 #include "OpenGL.h"
+
+#include "../../Graphics/3dmath.h"
+#include "../../Graphics/HLE/Microcode/ZSort.h"
 #include "../../gles2n64/src/3DMath.h"
 
 #include "m64p_plugin.h"
 
-#define	GZM_USER0		0
-#define	GZM_USER1		2
-#define	GZM_MMTX		4
-#define	GZM_PMTX		6
-#define	GZM_MPMTX		8
-#define	GZM_OTHERMODE	10
-#define	GZM_VIEWPORT	12
-#define	GZF_LOAD		0
-#define	GZF_SAVE		1
-
-#define	ZH_NULL		0
-#define	ZH_SHTRI	1
-#define	ZH_TXTRI	2
-#define	ZH_SHQUAD	3
-#define	ZH_TXQUAD	4
-
-typedef float M44[4][4];
-
-struct ZSORTRDP
-{
-	float view_scale[2];
-	float view_trans[2];
-} GLN64zSortRdp = {{0, 0}, {0, 0}};
+ZSORTRDP GLN64zSortRdp = {{0, 0}, {0, 0}};
 
 void ZSort_RDPCMD( uint32_t, uint32_t _w1 )
 {
@@ -58,50 +39,6 @@ void ZSort_RDPCMD( uint32_t, uint32_t _w1 )
 		};
 		__RSP.bLLE = false;
 	}
-}
-
-//RSP command VRCPL
-static
-int Calc_invw (int _w) {
-	int count, neg;
-	union {
-		int32_t W;
-		uint32_t UW;
-		int16_t HW[2];
-		uint16_t UHW[2];
-	} Result;
-	Result.W = _w;
-	if (Result.UW == 0) {
-		Result.UW = 0x7FFFFFFF;
-	} else {
-		if (Result.W < 0) {
-			neg = true;
-			if (Result.UHW[1] == 0xFFFF && Result.HW[0] < 0) {
-				Result.W = ~Result.W + 1;
-			} else {
-				Result.W = ~Result.W;
-			}
-		} else {
-			neg = false;
-		}
-		for (count = 31; count > 0; --count) {
-			if ((Result.W & (1 << count))) {
-				Result.W &= (0xFFC00000 >> (31 - count) );
-				count = 0;
-			}
-		}
-		Result.W = 0x7FFFFFFF / Result.W;
-		for (count = 31; count > 0; --count) {
-			if ((Result.W & (1 << count))) {
-				Result.W &= (0xFFFF8000 >> (31 - count) );
-				count = 0;
-			}
-		}
-		if (neg == true) {
-			Result.W = ~Result.W;
-		}
-	}
-	return Result.W;
 }
 
 static
@@ -150,7 +87,7 @@ void ZSort_DrawObject (uint8_t * _addr, uint32_t _type)
 		if (textured != 0) {
 			vtx.s = _FIXED2FLOAT(((int16_t*)_addr)[4^1], 5 );
 			vtx.t = _FIXED2FLOAT(((int16_t*)_addr)[5^1], 5 );
-			vtx.w = Calc_invw(((int*)_addr)[3]) / 31.0f;
+			vtx.w = ZSort_Calc_invw(((int*)_addr)[3]) / 31.0f;
 		} else
 			vtx.w = 1.0f;
 
@@ -411,7 +348,7 @@ void ZSort_MultMPMTX( uint32_t _w0, uint32_t _w1 )
 		v.xi = (int16_t)x;
 		v.yi = (int16_t)y;
 		v.wi = (int16_t)w;
-		v.invw = Calc_invw((int)(w * 31.0));
+		v.invw = ZSort_Calc_invw((int)(w * 31.0));
 
 		if (w < 0.0f)
 			v.fog = 0;
