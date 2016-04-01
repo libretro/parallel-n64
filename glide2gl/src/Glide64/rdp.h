@@ -537,7 +537,7 @@ struct RDP
    COLOR_IMAGE maincimg[2];
    uint32_t last_drawn_ci_addr;
    uint32_t main_ci, main_ci_end, main_ci_bg, main_ci_last_tex_addr, zimg_end, last_bg;
-   uint32_t ci_width, ci_height, ci_end;
+   uint32_t ci_end;
    uint32_t zi_width;
    int zi_lrx, zi_lry;
    uint8_t  ci_count, num_of_ci, main_ci_index, copy_ci_index, copy_zi_index;

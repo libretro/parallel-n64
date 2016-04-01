@@ -226,7 +226,7 @@ void glide64gDPFillRectangle(uint32_t ul_x, uint32_t ul_y, uint32_t lr_x, uint32
       //if (fullscreen)
       {
          /* do not clear main depth buffer for aux depth buffers */
-         if (!(settings.hacks&hack_Hyperbike) || rdp.ci_width > 64) 
+         if (!(settings.hacks&hack_Hyperbike) || rdp.colorImage.width > 64) 
          {
             update_scissor(false);
             grDepthMask (FXTRUE);
@@ -242,7 +242,7 @@ void glide64gDPFillRectangle(uint32_t ul_x, uint32_t ul_y, uint32_t lr_x, uint32
             lr_x = MIN(MAX(lr_x, g_gdp.__clip.xh),  g_gdp.__clip.xl);
             ul_y = MIN(MAX(ul_y, g_gdp.__clip.yh),  g_gdp.__clip.yl);
             lr_y = MIN(MAX(lr_y, g_gdp.__clip.yh),  g_gdp.__clip.yl);
-            zi_width_in_dwords = rdp.ci_width >> 1;
+            zi_width_in_dwords = rdp.colorImage.width >> 1;
             ul_x >>= 1;
             lr_x >>= 1;
             dst = (uint32_t*)(gfx_info.RDRAM + rdp.colorImage.address);

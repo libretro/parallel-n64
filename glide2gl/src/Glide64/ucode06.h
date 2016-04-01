@@ -228,7 +228,7 @@ static void DrawImage (DRAWIMAGE *d)
          return;
    }
 
-   if (rdp.ci_width == 512 && !no_dlist) //RE2
+   if (rdp.colorImage.width == 512 && !no_dlist) //RE2
    {
       uint16_t width = (uint16_t)(*gfx_info.VI_WIDTH_REG & 0xFFF);
       d->frameH      = d->imageH = (d->frameW * d->frameH)/width;
@@ -258,9 +258,9 @@ static void DrawImage (DRAWIMAGE *d)
    }
    else
    {
-      if ( (d->frameX > 0) && (d->frameW == rdp.ci_width) )
+      if ( (d->frameX > 0) && (d->frameW == rdp.colorImage.width) )
          d->frameW -= (uint16_t)(2.0f*d->frameX);
-      if ( (d->frameY > 0) && (d->frameH == rdp.ci_height) )
+      if ( (d->frameY > 0) && (d->frameH == rdp.colorImage.height) )
          d->frameH -= (uint16_t)(2.0f*d->frameY);
    }
 
@@ -331,7 +331,7 @@ static void DrawImage (DRAWIMAGE *d)
       uint32_t minx = 0;
       uint32_t miny = 0;
       uint32_t maxx, maxy;
-      if (rdp.ci_width == 512 && !no_dlist)
+      if (rdp.colorImage.width == 512 && !no_dlist)
       {
          maxx = settings.scr_res_x;
          maxy = settings.scr_res_y;
@@ -1004,7 +1004,7 @@ static void DrawYUVImageToFrameBuffer(uint16_t ul_x, uint16_t ul_y, uint16_t lr_
    uint16_t h, w, *dst;
    uint32_t width, height, *mb;
 
-   uint32_t ci_width  = rdp.ci_width;
+   uint32_t ci_width  = rdp.colorImage.width;
    uint32_t ci_height = rdp.ci_lower_bound;
 
    if (ul_x >= ci_width)
