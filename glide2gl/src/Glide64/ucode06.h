@@ -234,7 +234,7 @@ static void DrawImage (DRAWIMAGE *d)
       d->frameH      = d->imageH = (d->frameW * d->frameH)/width;
       d->frameW      = d->imageW = width;
 
-      if (g_gdp.zb_address == rdp.cimg)
+      if (g_gdp.zb_address == rdp.colorImage.address)
       {
          DrawDepthImage(d);
          g_gdp.flags |= UPDATE_ZBUF_ENABLED | UPDATE_COMBINE |
@@ -559,7 +559,7 @@ static void uc6_bg(bool first_cycle)
    if (settings.ucode == ucode_F3DEX2/* || (settings.hacks&hack_PPL)*/)
    {
       /* can't draw from framebuffer */
-      if (d.imagePtr == rdp.cimg || d.imagePtr == rdp.ocimg)
+      if (d.imagePtr == rdp.colorImage.address || d.imagePtr == rdp.ocimg)
          return;
       if (!d.imagePtr)
          return;
@@ -1020,8 +1020,8 @@ static void DrawYUVImageToFrameBuffer(uint16_t ul_x, uint16_t ul_y, uint16_t lr_
    if (lr_y > ci_height)
       height = ci_height - ul_y;
 
-   mb   = (uint32_t*)(gfx_info.RDRAM+g_gdp.ti_address); //pointer to the first macro block
-   dst  = (uint16_t*)(gfx_info.RDRAM+rdp.cimg);
+   mb   = (uint32_t*)(gfx_info.RDRAM + g_gdp.ti_address); //pointer to the first macro block
+   dst  = (uint16_t*)(gfx_info.RDRAM + rdp.colorImage.address);
    dst += ul_x + ul_y * ci_width;
 
    /* YUV macro block contains 16x16 texture. 

@@ -216,7 +216,7 @@ void glide64gDPFillRectangle(uint32_t ul_x, uint32_t ul_y, uint32_t lr_x, uint32
       && (g_gdp.fill_color.total == 0xFFFCFFFC);
 
    if (
-         (rdp.cimg == g_gdp.zb_address) || 
+         (rdp.colorImage.address == g_gdp.zb_address) || 
          (fb_emulation_enabled && rdp.ci_count > 0 && rdp.frame_buffers[rdp.ci_count-1].status == CI_ZIMG) ||
          pd_multiplayer
       )
@@ -245,7 +245,7 @@ void glide64gDPFillRectangle(uint32_t ul_x, uint32_t ul_y, uint32_t lr_x, uint32
             zi_width_in_dwords = rdp.ci_width >> 1;
             ul_x >>= 1;
             lr_x >>= 1;
-            dst = (uint32_t*)(gfx_info.RDRAM+rdp.cimg);
+            dst = (uint32_t*)(gfx_info.RDRAM + rdp.colorImage.address);
             dst += ul_y * zi_width_in_dwords;
             for (y = ul_y; y < lr_y; y++)
             {

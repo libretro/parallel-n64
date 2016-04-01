@@ -347,39 +347,39 @@ static void fb_setdepthimage(uint32_t w0, uint32_t w1)
 
 static void fb_setcolorimage(uint32_t w0, uint32_t w1)
 {
-   COLOR_IMAGE *cur_fb = NULL;
-   rdp.ocimg           = rdp.cimg;
-   rdp.cimg            = RSP_SegmentToPhysical(w1);
+   COLOR_IMAGE *cur_fb    = NULL;
+   rdp.ocimg              = rdp.colorImage.address;
+   rdp.colorImage.address = RSP_SegmentToPhysical(w1);
 
-   cur_fb              = (COLOR_IMAGE*)&rdp.frame_buffers[rdp.ci_count];
-   cur_fb->width       = (w0 & 0xFFF) + 1;
+   cur_fb                 = (COLOR_IMAGE*)&rdp.frame_buffers[rdp.ci_count];
+   cur_fb->width          = (w0 & 0xFFF) + 1;
    if (cur_fb->width == 32 )
-      cur_fb->height   = 32;
+      cur_fb->height      = 32;
    else if (cur_fb->width == 16 )
-      cur_fb->height   = 16;
+      cur_fb->height      = 16;
    else if (rdp.ci_count > 0)
-      cur_fb->height   = g_gdp.__clip.yl;
+      cur_fb->height      = g_gdp.__clip.yl;
    else
-      cur_fb->height   = 0;
+      cur_fb->height      = 0;
 
-   cur_fb->format      = (w0 & 0x00E00000) >> (53 - 32);
-   cur_fb->size        = (w0 & 0x00180000) >> (51 - 32);
-   cur_fb->addr        = rdp.cimg;
-   cur_fb->changed     = 1;
+   cur_fb->format         = (w0 & 0x00E00000) >> (53 - 32);
+   cur_fb->size           = (w0 & 0x00180000) >> (51 - 32);
+   cur_fb->addr           = rdp.colorImage.address;
+   cur_fb->changed        = 1;
 
    /*
       if (rdp.ci_count > 0)
-      if (rdp.frame_buffers[0].addr == rdp.cimg)
+      if (rdp.frame_buffers[0].addr == rdp.colorImage.address)
       rdp.frame_buffers[0].height = g_gdp.__clip.yl;
       */
    //FRDP ("fb_setcolorimage. width: %d,  height: %d,  fmt: %d, size: %d, addr %08lx\n", cur_fb->width, cur_fb->height, cur_fb->format, cur_fb->size, cur_fb->addr);
-   if (rdp.cimg == g_gdp.zb_address)
+   if (rdp.colorImage.address == g_gdp.zb_address)
    {
       cur_fb->status = CI_ZIMG;
       rdp.zimg_end = g_gdp.zb_address + cur_fb->width * g_gdp.__clip.yl * 2;
       //FRDP("rdp.frame_buffers[%d].status = CI_ZIMG\n", rdp.ci_count);
    }
-   else if (rdp.cimg == rdp.tmpzimg)
+   else if (rdp.colorImage.address == rdp.tmpzimg)
    {
       cur_fb->status = CI_ZCOPY;
       if (!rdp.copy_zi_index)
@@ -388,11 +388,11 @@ static void fb_setcolorimage(uint32_t w0, uint32_t w1)
    }
    else if (rdp.main_ci != 0)
    {
-      if (rdp.cimg == rdp.main_ci) //switched to main fb again
+      if (rdp.colorImage.address == rdp.main_ci) //switched to main fb again
       {
          cur_fb->height    = MAX(cur_fb->height, rdp.frame_buffers[rdp.main_ci_index].height);
          rdp.main_ci_index = rdp.ci_count;
-         rdp.main_ci_end   = rdp.cimg + ((cur_fb->width * cur_fb->height) << cur_fb->size >> 1);
+         rdp.main_ci_end   = rdp.colorImage.address + ((cur_fb->width * cur_fb->height) << cur_fb->size >> 1);
          cur_fb->status    = CI_MAIN;
          //FRDP("rdp.frame_buffers[%d].status = CI_MAIN\n", rdp.ci_count);
       }
@@ -401,10 +401,10 @@ static void fb_setcolorimage(uint32_t w0, uint32_t w1)
    }
    else
    {
-      if ((g_gdp.zb_address != rdp.cimg))//&& (rdp.ocimg != rdp.cimg))
+      if ((g_gdp.zb_address != rdp.colorImage.address))//&& (rdp.ocimg != rdp.colorImage.address))
       {
-         rdp.main_ci       = rdp.cimg;
-         rdp.main_ci_end   = rdp.cimg + ((cur_fb->width * cur_fb->height) << cur_fb->size >> 1);
+         rdp.main_ci       = rdp.colorImage.address;
+         rdp.main_ci_end   = rdp.colorImage.address + ((cur_fb->width * cur_fb->height) << cur_fb->size >> 1);
          rdp.main_ci_index = rdp.ci_count;
          cur_fb->status    = CI_MAIN;
          //FRDP("rdp.frame_buffers[%d].status = CI_MAIN\n", rdp.ci_count);

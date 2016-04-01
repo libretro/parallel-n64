@@ -923,7 +923,7 @@ void copyWhiteToRDRAM(void)
 
    if(g_gdp.fb_size == G_IM_SIZ_32b)
    {
-      uint32_t *ptr_dst = (uint32_t*)(gfx_info.RDRAM + rdp.cimg);
+      uint32_t *ptr_dst = (uint32_t*)(gfx_info.RDRAM + rdp.colorImage.address);
       for(y = 0; y < rdp.ci_height; y++)
       {
          for(x = 0; x < g_gdp.fb_width; x++)
@@ -932,7 +932,7 @@ void copyWhiteToRDRAM(void)
    }
    else
    {
-      uint16_t *ptr_dst = (uint16_t*)(gfx_info.RDRAM + rdp.cimg);
+      uint16_t *ptr_dst = (uint16_t*)(gfx_info.RDRAM + rdp.colorImage.address);
       for(y = 0; y < rdp.ci_height; y++)
       {
          for(x = 0; x < g_gdp.fb_width; x++)
@@ -948,13 +948,13 @@ void DrawWholeFrameBufferToScreen(void)
 
   if (rdp.ci_width < 200)
     return;
-  if (rdp.cimg == toScreenCI)
+  if (rdp.colorImage.address == toScreenCI)
     return;
   if (rdp.ci_height == 0)
      return;
-  toScreenCI = rdp.cimg;
+  toScreenCI = rdp.colorImage.address;
 
-  fb_info.addr   = rdp.cimg;
+  fb_info.addr   = rdp.colorImage.address;
   fb_info.size   = g_gdp.fb_size;
   fb_info.width  = rdp.ci_width;
   fb_info.height = rdp.ci_height;
@@ -967,7 +967,7 @@ void DrawWholeFrameBufferToScreen(void)
   DrawFrameBufferToScreen(&fb_info);
 
   if (!(settings.frame_buffer & fb_ref))
-    memset(gfx_info.RDRAM+rdp.cimg, 0,
+    memset(gfx_info.RDRAM+rdp.colorImage.address, 0,
           (rdp.ci_width*rdp.ci_height) << g_gdp.fb_size >> 1);
 }
 
@@ -997,7 +997,7 @@ void CopyFrameBuffer(int32_t buffer)
 
          if (g_gdp.fb_size == G_IM_SIZ_16b)
          {
-            uint16_t *ptr_dst   = (uint16_t*)(gfx_info.RDRAM + rdp.cimg);
+            uint16_t *ptr_dst   = (uint16_t*)(gfx_info.RDRAM + rdp.colorImage.address);
 
             for (y = 0; y < height; y++)
             {
@@ -1013,7 +1013,7 @@ void CopyFrameBuffer(int32_t buffer)
          }
          else
          {
-            uint32_t *ptr_dst = (uint32_t*)(gfx_info.RDRAM+rdp.cimg);
+            uint32_t *ptr_dst = (uint32_t*)(gfx_info.RDRAM+rdp.colorImage.address);
             for (y = 0; y < height; y++)
             {
                for (x = 0; x < width; x++)
@@ -1066,7 +1066,7 @@ void CopyFrameBuffer(int32_t buffer)
          {
             int y, x;
             uint16_t *ptr_src   = (uint16_t*)info.lfbPtr;
-            uint16_t *ptr_dst   = (uint16_t*)(gfx_info.RDRAM+rdp.cimg);
+            uint16_t *ptr_dst   = (uint16_t*)(gfx_info.RDRAM+rdp.colorImage.address);
 
             for (y = y_start; y < y_end; y++)
             {
@@ -1084,7 +1084,7 @@ void CopyFrameBuffer(int32_t buffer)
          {
             int y, x;
             uint16_t *ptr_src   = (uint16_t*)info.lfbPtr;
-            uint32_t *ptr_dst = (uint32_t*)(gfx_info.RDRAM+rdp.cimg);
+            uint32_t *ptr_dst = (uint32_t*)(gfx_info.RDRAM + rdp.colorImage.address);
 
             for (y = y_start; y < y_end; y++)
             {
@@ -1209,7 +1209,7 @@ void DrawPartFrameBufferToScreen(void)
 {
    FB_TO_SCREEN_INFO fb_info;
 
-   fb_info.addr   = rdp.cimg;
+   fb_info.addr   = rdp.colorImage.address;
    fb_info.size   = g_gdp.fb_size;
    fb_info.width  = rdp.ci_width;
    fb_info.height = rdp.ci_height;
@@ -1220,5 +1220,5 @@ void DrawPartFrameBufferToScreen(void)
    fb_info.opaque = 0;
 
    DrawFrameBufferToScreen(&fb_info);
-   memset(gfx_info.RDRAM+rdp.cimg, 0, (rdp.ci_width*rdp.ci_height) << g_gdp.fb_size >> 1);
+   memset(gfx_info.RDRAM + rdp.colorImage.address, 0, (rdp.ci_width*rdp.ci_height) << g_gdp.fb_size >> 1);
 }
