@@ -54,27 +54,27 @@ void InverseTransformVector (float *src, float *dst, float mat[4][4])
    dst[2] = mat[2][0]*src[0] + mat[2][1]*src[1] + mat[2][2]*src[2];
 }
 
-void MulMatrices(float m1[4][4], float m2[4][4], float r[4][4])
+void MulMatrices(float m0[4][4], float m1[4][4], float dest[4][4])
 {
     float row[4][4];
     register unsigned int i, j;
 
     for (i = 0; i < 4; i++)
         for (j = 0; j < 4; j++)
-            row[i][j] = m2[i][j];
+            row[i][j] = m1[i][j];
     for (i = 0; i < 4; i++)
     {
         float summand[4][4];
 
         for (j = 0; j < 4; j++)
         {
-            summand[0][j] = m1[i][0] * row[0][j];
-            summand[1][j] = m1[i][1] * row[1][j];
-            summand[2][j] = m1[i][2] * row[2][j];
-            summand[3][j] = m1[i][3] * row[3][j];
+            summand[0][j] = m0[i][0] * row[0][j];
+            summand[1][j] = m0[i][1] * row[1][j];
+            summand[2][j] = m0[i][2] * row[2][j];
+            summand[3][j] = m0[i][3] * row[3][j];
         }
         for (j = 0; j < 4; j++)
-            r[i][j] =
+            dest[i][j] =
                 summand[0][j]
               + summand[1][j]
               + summand[2][j]
