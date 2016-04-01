@@ -195,7 +195,12 @@ static void uc0_tri1_mischief(uint32_t w0, uint32_t w1)
       }
    }
 
-   cull_trianglefaces(v, 1, true, true, 0);
+   glide64gSP1Triangle(
+         _SHIFTR(w1, 16, 8) / 10,
+         _SHIFTR(w1,  8, 8) / 10,
+         _SHIFTR(w1,  0, 8) / 10,
+         0 
+         );
 }
 
 static void uc0_culldl(uint32_t w0, uint32_t w1)
@@ -444,9 +449,9 @@ static void uc0_line3d(uint32_t w0, uint32_t w1)
    g_gdp.flags       |= UPDATE_CULL_MODE;
 
    glide64gSP1Triangle(
-         ((w1 >> 8) & 0xff) / 10,
-         ((w1 >> 16) & 0xff) / 10,
-         ((w1 >> 16) & 0xff) / 10,
+         _SHIFTR(w1,  8,  8) / 10,
+         _SHIFTR(w1,  16, 8) / 10,
+         _SHIFTR(w1,  16, 8) / 10,
          (uint16_t)(w1 & 0xFF) + 3
          );
 
