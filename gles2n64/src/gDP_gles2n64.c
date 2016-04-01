@@ -33,32 +33,6 @@ void gln64gDPSetOtherMode( uint32_t mode0, uint32_t mode1 )
    gDP.otherMode.l = mode1;
 
    gDP.changed |= CHANGED_RENDERMODE | CHANGED_CYCLETYPE;
-
-#ifdef DEBUG
-   DebugMsg( DEBUG_HIGH | DEBUG_HANDLED, "gDPSetOtherMode( %s | %s | %s | %s | %s | %s | %s | %s | %s | %s | %s, %s | %s | %s%s%s%s%s | %s | %s%s%s );\n",
-         AlphaDitherText[gDP.otherMode.alphaDither],
-         ColorDitherText[gDP.otherMode.colorDither],
-         CombineKeyText[gDP.otherMode.combineKey],
-         TextureConvertText[gDP.otherMode.textureConvert],
-         TextureFilterText[gDP.otherMode.textureFilter],
-         TextureLUTText[gDP.otherMode.textureLUT],
-         TextureLODText[gDP.otherMode.textureLOD],
-         TextureDetailText[gDP.otherMode.textureDetail],
-         TexturePerspText[gDP.otherMode.texturePersp],
-         CycleTypeText[gDP.otherMode.cycleType],
-         PipelineModeText[gDP.otherMode.pipelineMode],
-         AlphaCompareText[gDP.otherMode.alphaCompare],
-         DepthSourceText[gDP.otherMode.depthSource],
-         gDP.otherMode.AAEnable ? "AA_EN | " : "",
-         gDP.otherMode.depthCompare ? "Z_CMP | " : "",
-         gDP.otherMode.depthUpdate ? "Z_UPD | " : "",
-         gDP.otherMode.imageRead ? "IM_RD | " : "",
-         CvgDestText[gDP.otherMode.cvgDest],
-         DepthModeText[gDP.otherMode.depthMode],
-         gDP.otherMode.cvgXAlpha ? "CVG_X_ALPHA | " : "",
-         gDP.otherMode.alphaCvgSel ? "ALPHA_CVG_SEL | " : "",
-         gDP.otherMode.forceBlender ? "FORCE_BL" : "" );
-#endif
 }
 
 void gln64gDPSetPrimDepth( uint16_t z, uint16_t dz )
@@ -145,20 +119,6 @@ void gln64gDPSetRenderMode( uint32_t mode1, uint32_t mode2 )
 	gDP.otherMode.l |= mode1 | mode2;
 
 	gDP.changed |= CHANGED_RENDERMODE;
-
-#ifdef DEBUG
-	// THIS IS INCOMPLETE!!!
-	DebugMsg( DEBUG_HIGH | DEBUG_HANDLED, "gDPSetRenderMode( %s%s%s%s%s | %s | %s%s%s );\n",
-		gDP.otherMode.AAEnable ? "AA_EN | " : "",
-		gDP.otherMode.depthCompare ? "Z_CMP | " : "",
-		gDP.otherMode.depthUpdate ? "Z_UPD | " : "",
-		gDP.otherMode.imageRead ? "IM_RD | " : "",
-		CvgDestText[gDP.otherMode.cvgDest],
-		DepthModeText[gDP.otherMode.depthMode],
-		gDP.otherMode.cvgXAlpha ? "CVG_X_ALPHA | " : "",
-		gDP.otherMode.alphaCvgSel ? "ALPHA_CVG_SEL | " : "",
-		gDP.otherMode.forceBlender ? "FORCE_BL" : "" );
-#endif
 }
 
 void gln64gDPSetCombine( int32_t muxs0, int32_t muxs1 )
@@ -167,29 +127,6 @@ void gln64gDPSetCombine( int32_t muxs0, int32_t muxs1 )
    gDP.combine.muxs1 = muxs1;
 
    gDP.changed |= CHANGED_COMBINE;
-
-#ifdef DEBUG
-   DebugMsg( DEBUG_HIGH | DEBUG_HANDLED | DEBUG_COMBINE, "gDPSetCombine( %s, %s, %s, %s, %s, %s, %s, %s,\n",
-         saRGBText[gDP.combine.saRGB0],
-         sbRGBText[gDP.combine.sbRGB0],
-         mRGBText[gDP.combine.mRGB0],
-         aRGBText[gDP.combine.aRGB0],
-         saAText[gDP.combine.saA0],
-         sbAText[gDP.combine.sbA0],
-         mAText[gDP.combine.mA0],
-         aAText[gDP.combine.aA0] );
-
-   DebugMsg( DEBUG_HIGH | DEBUG_HANDLED | DEBUG_COMBINE, "               %s, %s, %s, %s, %s, %s, %s, %s );\n",
-         saRGBText[gDP.combine.saRGB1],
-         sbRGBText[gDP.combine.sbRGB1],
-         mRGBText[gDP.combine.mRGB1],
-         aRGBText[gDP.combine.aRGB1],
-         saAText[gDP.combine.saA1],
-         sbAText[gDP.combine.sbA1],
-         mAText[gDP.combine.mA1],
-         aAText[gDP.combine.aA1] );
-
-#endif
 }
 
 void gln64gDPUpdateColorImage(void)
@@ -376,24 +313,6 @@ void gln64gDPSetTile( uint32_t format, uint32_t size, uint32_t line, uint32_t tm
    }
 
 	gDP.changed |= CHANGED_TILE;
-
-#ifdef DEBUG
-   DebugMsg( DEBUG_HIGH | DEBUG_HANDLED | DEBUG_TEXTURE, "gDPSetTile( %s, %s, %i, %i, %i, %i, %s%s, %s%s, %i, %i, %i, %i );\n",
-         ImageFormatText[format],
-         ImageSizeText[size],
-         line,
-         tmem,
-         tile,
-         palette,
-         cmt & G_TX_MIRROR ? "G_TX_MIRROR" : "G_TX_NOMIRROR",
-         cmt & G_TX_CLAMP ? " | G_TX_CLAMP" : "",
-         cms & G_TX_MIRROR ? "G_TX_MIRROR" : "G_TX_NOMIRROR",
-         cms & G_TX_CLAMP ? " | G_TX_CLAMP" : "",
-         maskt,
-         masks,
-         shiftt,
-         shifts );
-#endif
 }
 
 void gln64gDPGetFillColor(float _fillColor[4])

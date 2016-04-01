@@ -187,7 +187,8 @@ typedef struct
 
 extern ALIGN(16, RSP_Options gRSP);
 
-typedef struct {
+typedef struct
+{
     uint32_t  keyR;
     uint32_t  keyG;
     uint32_t  keyB;
