@@ -1604,13 +1604,9 @@ void UpdateCombinedMatrix()
     if( gRSP.bCombinedMatrixIsUpdated )
     {
         if( options.enableHackForGames == HACK_REVERSE_XY_COOR )
-        {
             gRSPworldProject = gRSPworldProject * reverseXY;
-        }
         if( options.enableHackForGames == HACK_REVERSE_Y_COOR )
-        {
             gRSPworldProject = gRSPworldProject * reverseY;
-        }
         gRSP.bCombinedMatrixIsUpdated = false;
     }
 
