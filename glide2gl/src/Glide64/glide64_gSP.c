@@ -850,7 +850,8 @@ void glide64gSPCBFDVertex(uint32_t a, uint32_t n, uint32_t v0)
          color[2] = rdp.light[rdp.num_lights].col[2];
 
          light_intensity = 0.0f;
-         if (rdp.geom_mode & 0x00400000)
+
+         if (rdp.geom_mode & G_POINT_LIGHTING)
          {
             NormalizeVector (vert->vec);
             for (l = 0; l < rdp.num_lights-1; l++)
