@@ -100,7 +100,6 @@ void math_init(void)
 
 void calc_linear (VERTEX *v)
 {
-   DECLAREALIGN16VAR(vec[3]);
    float x, y;
 
    if (settings.force_calc_sphere)
@@ -109,14 +108,13 @@ void calc_linear (VERTEX *v)
       return;
    }
 
-   TransformVector(v->vec, vec, rdp.model);
-   NormalizeVector (vec);
-   x = vec[0];
-   y = vec[1];
+   TransformVectorNormalize(v->vec, rdp.model);
+   x = v->vec[0];
+   y = v->vec[1];
    if (rdp.use_lookat)
    {
-      x = DotProduct (rdp.lookat[0], vec);
-      y = DotProduct (rdp.lookat[1], vec);
+      x = DotProduct (rdp.lookat[0], v->vec);
+      y = DotProduct (rdp.lookat[1], v->vec);
    }
 
    if (x > 1.0f)
@@ -142,7 +140,6 @@ void calc_linear (VERTEX *v)
 
 void calc_sphere (VERTEX *v)
 {
-   DECLAREALIGN16VAR(vec[3]);
    float x, y;
    int s_scale, t_scale;
 
@@ -155,14 +152,13 @@ void calc_sphere (VERTEX *v)
       t_scale = MIN(rdp.tiles[rdp.cur_tile].org_t_scale >> 6, g_gdp.tile[rdp.cur_tile].tl);
    }
 
-   TransformVector(v->vec, vec, rdp.model);
-   NormalizeVector (vec);
-   x = vec[0];
-   y = vec[1];
+   TransformVectorNormalize(v->vec, rdp.model);
+   x = v->vec[0];
+   y = v->vec[1];
    if (rdp.use_lookat)
    {
-      x = DotProduct (rdp.lookat[0], vec);
-      y = DotProduct (rdp.lookat[1], vec);
+      x = DotProduct (rdp.lookat[0], v->vec);
+      y = DotProduct (rdp.lookat[1], v->vec);
    }
    v->ou = (x * 0.5f + 0.5f) * s_scale;
    v->ov = (y * 0.5f + 0.5f) * t_scale;
