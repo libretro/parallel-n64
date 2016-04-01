@@ -59,7 +59,7 @@ static void uc0_vertex(uint32_t w0, uint32_t w1)
 
 static void modelview_load (float m[4][4])
 {
-   CopyMatrix(rdp.model, m, 64); // 4*4*4 (float)
+   CopyMatrix(rdp.model, m);
    g_gdp.flags |= UPDATE_MULT_MAT | UPDATE_LIGHTS;
 }
 
@@ -74,7 +74,7 @@ static void modelview_push(void)
    if (rdp.model_i == rdp.model_stack_size)
       return;
 
-   CopyMatrix(rdp.model_stack[rdp.model_i++], rdp.model, 64);
+   CopyMatrix(rdp.model_stack[rdp.model_i++], rdp.model);
 }
 
 static void modelview_load_push (float m[4][4])
@@ -91,7 +91,7 @@ static void modelview_mul_push (float m[4][4])
 
 static void projection_load (float m[4][4])
 {
-   CopyMatrix(rdp.proj, m, 64); // 4*4*4 (float)
+   CopyMatrix(rdp.proj, m);
    g_gdp.flags |= UPDATE_MULT_MAT;
 }
 

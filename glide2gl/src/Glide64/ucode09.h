@@ -449,16 +449,13 @@ static void uc9_mtxcat(uint32_t w0, uint32_t w1)
    switch (D)
    {
       case 4:
-         memcpy (rdp.model, m, 64);;
-         LRDP("Model\n");
+         CopyMatrix(rdp.model, m);
          break;
       case 6:
-         memcpy (rdp.proj, m, 64);;
-         LRDP("Proj\n");
+         CopyMatrix(rdp.proj, m);
          break;
       case 8:
-         memcpy (rdp.combined, m, 64);;
-         LRDP("Comb\n");
+         CopyMatrix(rdp.combined, m);
          break;
    }
 
@@ -602,7 +599,7 @@ static void uc9_movemem(uint32_t w0, uint32_t w1)
                case GZM_MPMTX:
                   LRDP("Combined load\n");
                   g_gdp.flags &= ~UPDATE_MULT_MAT;
-                  memcpy (rdp.combined, m, 64);;
+                  CopyMatrix(rdp.combined, m);
                   break;
             }
          }

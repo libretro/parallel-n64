@@ -539,7 +539,7 @@ void glide64gSPPopMatrixN(uint32_t param, uint32_t num )
    {
       rdp.model_i -= num;
    }
-   memcpy (rdp.model, rdp.model_stack[rdp.model_i], 64);
+   CopyMatrix(rdp.model, rdp.model_stack[rdp.model_i]);
    g_gdp.flags |= UPDATE_MULT_MAT;
 }
 
@@ -551,7 +551,7 @@ void glide64gSPPopMatrix(uint32_t param)
          if (rdp.model_i > 0)
          {
             rdp.model_i--;
-            memcpy (rdp.model, rdp.model_stack[rdp.model_i], 64);
+            CopyMatrix(rdp.model, rdp.model_stack[rdp.model_i]);
             g_gdp.flags |= UPDATE_MULT_MAT;
          }
          break;
@@ -997,7 +997,7 @@ void glide64gSPDMAMatrix(uint32_t matrix, uint8_t index, uint8_t multiply)
       DECLAREALIGN16VAR(m_src[4][4]);
 
       load_matrix(mtx, address);
-      memcpy (m_src, rdp.dkrproj[0], 64);
+      CopyMatrix(m_src, rdp.dkrproj[0]);
       MulMatrices(mtx, m_src, rdp.dkrproj[index]);
    }
    else

@@ -49,7 +49,6 @@ extern "C" {
 
 void calc_linear (VERTEX *v);
 void calc_sphere (VERTEX *v); 
-#define CopyMatrix(m0, m1, size) memcpy(m0, m1, size)
 
 void math_init(void);
 
