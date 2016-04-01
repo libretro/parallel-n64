@@ -1125,12 +1125,6 @@ void DLParser_TexRect(Gfx *gfx)
             // Hack for Yoshi background image
             PrepareTextures();
             TexRectToFrameBuffer_8b(dwXL, dwYL, dwXH, dwYH, t0u0, t0v0, t0u1, t0v1, tileno);
-            DEBUGGER_PAUSE_AT_COND_AND_DUMP_COUNT_N((eventToPause == NEXT_FLUSH_TRI || eventToPause == NEXT_TEXTRECT), {
-                  DebuggerAppendMsg("TexRect: tile=%d, X0=%d, Y0=%d, X1=%d, Y1=%d,\nfS0=%f, fT0=%f, ScaleS=%f, ScaleT=%f\n",
-                        gRSP.curTile, dwXL, dwYL, dwXH, dwYH, fS0, fT0, fDSDX, fDTDY);
-                  DebuggerAppendMsg("Pause after TexRect for Yoshi\n");
-                  });
-
          }
          else
          {
