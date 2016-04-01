@@ -522,10 +522,6 @@ void RDP_SetUcodeMap(int ucode)
         break;
     }
 
-#ifdef DEBUGGER
-    if( logMicrocode )
-        TRACE1("Using ucode %d", ucode);
-#endif
 }
 
 void RSP_SetUcode(int ucode, uint32_t ucStart, uint32_t ucDStart, uint32_t ucSize)
@@ -836,28 +832,9 @@ void DLParser_Process(OSTask * pTask)
         // The main loop
         while( __RSP.PCi >= 0 )
         {
-#ifdef DEBUGGER
-            DEBUGGER_PAUSE_COUNT_N(NEXT_UCODE);
-            if( debuggerPause )
-            {
-                DebuggerPause();
-                CRender::g_pRender->SetFillMode(options.bWinFrameMode? RICE_FILLMODE_WINFRAME : RICE_FILLMODE_SOLID);
-            }
-
-            if (gDlistStack[__RSP.PCi].pc > g_dwRamSize)
-            {
-                DebuggerAppendMsg("Error: dwPC is %08X", gDlistStack[__RSP.PCi].pc );
-                break;
-            }
-#endif
-
             status.gUcodeCount++;
 
             Gfx *pgfx = (Gfx*)&rdram_u32[(gDlistStack[__RSP.PCi].pc>>2)];
-#ifdef DEBUGGER
-            LOG_UCODE("0x%08x: %08x %08x %-10s", 
-                gDlistStack[__RSP.PCi].pc, pgfx->words.w0, pgfx->words.w1, (gRSP.ucode!=5&&gRSP.ucode!=10)?ucodeNames_GBI1[(pgfx->words.w0>>24)]:ucodeNames_GBI2[(pgfx->words.w0>>24)]);
-#endif
             gDlistStack[__RSP.PCi].pc += 8;
             currentUcodeMap[pgfx->words.w0 >>24](pgfx);
 
@@ -1025,7 +1002,6 @@ void DLParser_SetPrimDepth(Gfx *gfx)
         gfx->words.w0, gfx->words.w1, dwZ, dwDZ);
     
     SetPrimitiveDepth(dwZ, dwDZ);
-    DEBUGGER_PAUSE(NEXT_SET_PRIM_COLOR);
 }
 
 void DLParser_RDPSetOtherMode(Gfx *gfx)
@@ -1291,13 +1267,6 @@ void DLParser_SetCImg(Gfx *gfx)
 
         TXTRBUF_DUMP(TRACE4("SetCImg : Addr=0x%08X, Fmt:%s-%sb, Width=%d\n", 
             g_CI.dwAddr, pszImgFormat[dwFmt], pszImgSize[dwSiz], dwWidth));
-
-        DEBUGGER_PAUSE_AND_DUMP_NO_UPDATE(NEXT_SET_CIMG, 
-        {
-            DebuggerAppendMsg("Pause after SetCImg: Addr=0x%08X, Fmt:%s-%sb, Width=%d\n", 
-                dwNewAddr, pszImgFormat[dwFmt], pszImgSize[dwSiz], dwWidth);
-        }
-        );
         return;
     }
 
@@ -1342,18 +1311,6 @@ void DLParser_SetZImg(Gfx *gfx)
         g_ZI.dwSize     = dwSiz;
         g_ZI.dwWidth    = dwWidth;
     }
-
-    DEBUGGER_IF_DUMP((pauseAtNext) ,
-    {DebuggerAppendMsg("SetZImg: Addr=0x%08X, Fmt:%s-%sb, Width=%d\n", 
-    g_ZI.dwAddr, pszImgFormat[dwFmt], pszImgSize[dwSiz], dwWidth);}
-    );
-
-    DEBUGGER_PAUSE_AND_DUMP_NO_UPDATE(NEXT_SET_CIMG, 
-        {
-            DebuggerAppendMsg("Pause after SetZImg: Addr=0x%08X, Fmt:%s-%sb, Width=%d\n", 
-                g_ZI.dwAddr, pszImgFormat[dwFmt], pszImgSize[dwSiz], dwWidth);
-        }
-    );
 }
 
 bool IsUsedAsDI(uint32_t addr)
