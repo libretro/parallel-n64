@@ -29,17 +29,10 @@ void RSP_GBI1_Vtx(Gfx *gfx)
     LOG_UCODE("    Address 0x%08x, v0: %d, Num: %d, Length: 0x%04x", addr, v0, n, gfx->gbi1vtx.len);
 
     if (addr > g_dwRamSize)
-    {
-        TRACE0("     Address out of range - ignoring load");
         return;
-    }
 
     if ((v0 + n) > 80)
-    {
-        TRACE5("Warning, invalid vertex positions, N=%d, v0=%d, Addr=0x%08X, Cmd=%08X-%08X",
-            n, v0, addr, gfx->words.w0, gfx->words.w1);
         return;
-    }
 
     ProcessVertexData(addr, v0, n);
     status.dwNumVertices += n;
@@ -61,10 +54,7 @@ void RSP_GBI1_ModifyVtx(Gfx *gfx)
        uint32_t val      = (gfx->words.w1);
 
        if( vtx > 80 )
-       {
-          RSP_RDP_NOIMPL("RSP_GBI1_ModifyVtx: Invalid vertex number: %d", vtx, 0);
           return;
-       }
 
        // Data for other commands?
        switch (where)
