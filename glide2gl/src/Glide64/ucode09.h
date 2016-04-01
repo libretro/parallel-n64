@@ -57,22 +57,22 @@ static void uc9_draw_object (uint8_t * addr, uint32_t type)
 
    switch (type)
    {
-      case 0: //null
+      case ZH_NULL:
          break;
-      case 1: //sh tri
+      case ZH_SHTRI:
          vnum     = 3;
          vsize    = 8;
          break;
-      case 2: //tx tri
+      case ZH_TXTRI:
          textured = 1;
          vnum     = 3;
          vsize    = 16;
          break;
-      case 3: //sh quad
+      case ZH_SHQUAD:
          vnum     = 4;
          vsize    = 8;
          break;
-      case 4: //tx quad
+      case ZH_TXQUAD:
          textured = 1;
          vnum     = 4;
          vsize    = 16;
