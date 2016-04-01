@@ -28,16 +28,14 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "Render.h"
 
+extern uint32_t g_TxtLoadBy;
+
 uint32_t g_TmemFlag[16];
 void SetTmemFlag(uint32_t tmemAddr, uint32_t size);
 bool IsTmemFlagValid(uint32_t tmemAddr);
 uint32_t GetValidTmemInfoIndex(uint32_t tmemAddr);
 
 void LoadHiresTexture( TxtrCacheEntry &entry );
-
-
-extern TMEMLoadMapInfo g_tmemInfo0;             // Info for Tmem=0
-extern TMEMLoadMapInfo g_tmemInfo1;             // Info for Tmem=0x100
 
 TmemType g_Tmem;
 
@@ -92,122 +90,6 @@ inline uint32_t ReverseDXT(uint32_t val, uint32_t lrs, uint32_t width, uint32_t 
     }
 
     return  (low+high)/2;   //dxt = 2047 / (dxt-1);
-}
-
-#if defined(_WIN32) || defined(_WIN64)
-/*
- * 2015.07.27 cxd4
- * Windows uses Microsoft's own "LLP64" ABI, so `long` is not a 64-bit type.
- */
-#include <stddef.h>
-typedef size_t                  ptr_as_int;
-#elif defined(UINTPTR_MAX)
-/* Use <stdint.h> extension or core C99 support to define it. */
-typedef uintptr_t               ptr_as_int;
-#else
-typedef unsigned long           ptr_as_int;
-#endif
-
-#ifdef _WIN64
-#define NO_ASM
-#endif
-// The following inline assemble routines are borrowed from glN64, I am too tired to
-// rewrite these routine by myself.
-// Rice, 02/24/2004
-
-static inline void UnswapCopy( void *src, void *dest, uint32_t numBytes )
-{
-   // copy leading bytes
-   int leadingBytes = ((ptr_as_int)src) & 3;
-   if (leadingBytes != 0)
-   {
-      leadingBytes = 4-leadingBytes;
-      if ((unsigned int)leadingBytes > numBytes)
-         leadingBytes = numBytes;
-      numBytes -= leadingBytes;
-
-#ifdef MSB_FIRST
-      src = (void *)((ptr_as_int)src);
-#else
-      src = (void *)((ptr_as_int)src ^ 3);
-#endif
-      for (int i = 0; i < leadingBytes; i++)
-      {
-         *(uint8_t *)(dest) = *(uint8_t *)(src);
-         dest = (void *)((ptr_as_int)dest+1);
-         src  = (void *)((ptr_as_int)src -1);
-      }
-      src = (void *)((ptr_as_int)src+5);
-   }
-
-   // copy dwords
-   int numDWords = numBytes >> 2;
-   while (numDWords--)
-   {
-      uint32_t dword = *(uint32_t *)src;
-      dword = ((dword<<24)|((dword<<8)&0x00FF0000)|((dword>>8)&0x0000FF00)|(dword>>24));
-      *(uint32_t *)dest = dword;
-      dest = (void *)((ptr_as_int)dest+4);
-      src  = (void *)((ptr_as_int)src +4);
-   }
-
-   // copy trailing bytes
-   int trailingBytes = numBytes & 3;
-   if (trailingBytes)
-   {
-#ifdef MSB_FIRST
-      src = (void *)((ptr_as_int)src);
-#else
-      src = (void *)((ptr_as_int)src ^ 3);
-#endif
-      for (int i = 0; i < trailingBytes; i++)
-      {
-         *(uint8_t *)(dest) = *(uint8_t *)(src);
-         dest = (void *)((ptr_as_int)dest+1);
-         src  = (void *)((ptr_as_int)src -1);
-      }
-   }
-}
-
-static inline void DWordInterleave( void *mem, uint32_t numDWords )
-{
-    int tmp;
-    while( numDWords-- )
-    {
-        tmp = *(int *)((ptr_as_int)mem + 0);
-        *(int *)((ptr_as_int)mem + 0) = *(int *)((ptr_as_int)mem + 4);
-        *(int *)((ptr_as_int)mem + 4) = tmp;
-        mem = (void *)((ptr_as_int)mem + 8);
-    }
-}
-
-static inline void QWordInterleave( void *mem, uint32_t numDWords )
-{
-   numDWords >>= 1; // qwords
-   while( numDWords-- )
-   {
-      int tmp0, tmp1;
-      tmp0 = *(int *)((ptr_as_int)mem + 0);
-      tmp1 = *(int *)((ptr_as_int)mem + 4);
-      *(int *)((ptr_as_int)mem + 0) = *(int *)((ptr_as_int)mem + 8);
-      *(int *)((ptr_as_int)mem + 8) = tmp0;
-      *(int *)((ptr_as_int)mem + 4) = *(int *)((ptr_as_int)mem + 12);
-      *(int *)((ptr_as_int)mem + 12) = tmp1;
-      mem = (void *)((ptr_as_int)mem + 16);
-   }
-}
-
-inline uint32_t swapdword( uint32_t value )
-{
-   return ((value & 0xff000000) >> 24) |
-      ((value & 0x00ff0000) >>  8) |
-      ((value & 0x0000ff00) <<  8) |
-      ((value & 0x000000ff) << 24);
-}
-
-static inline uint16_t swapword( uint16_t value )
-{
-   return (value << 8) | (value >> 8);
 }
 
 void ComputeTileDimension(int mask, int clamp, int mirror, int width, uint32_t &widthToCreate, uint32_t &widthToLoad)
@@ -923,8 +805,6 @@ void PrepareTextures()
     }
 }
 
-extern uint32_t g_TxtLoadBy;;
-
 void DLParser_LoadTLut(Gfx *gfx)
 {
    uint8_t *rdram_u8 = (uint8_t*)gfx_info.RDRAM;
@@ -1013,284 +893,24 @@ void DLParser_LoadTLut(Gfx *gfx)
 void DLParser_LoadBlock(Gfx *gfx)
 {
     gRDP.textureIsChanged = true;
-
-    uint32_t tileno   = gfx->loadtile.tile;
-    uint32_t uls      = gfx->loadtile.sl;
-    uint32_t ult      = gfx->loadtile.tl;
-    uint32_t lrs      = gfx->loadtile.sh;
-    uint32_t dxt      = gfx->loadtile.th;                 // 1.11 fixed point
-
-    Tile &tile = gRDP.tiles[tileno];
-    tile.bForceWrapS = tile.bForceWrapT = tile.bForceClampS = tile.bForceClampT = false;
-
-    uint32_t size     = lrs+1;
-    if( tile.dwSize == G_IM_SIZ_32b )   size<<=1;
-
-    SetTmemFlag(tile.dwTMem, size>>2);
-
-    TMEMLoadMapInfo &info = g_tmemLoadAddrMap[tile.dwTMem];
-
-    info.bSwapped = (dxt == 0? true : false);
-
-    info.sl = tile.hilite_sl = tile.sl = uls;
-    info.sh = tile.hilite_sh = tile.sh = lrs;
-    info.tl = tile.tl = ult;
-    info.th = tile.th = dxt;
-    tile.bSizeIsValid = false;
-
-    for( int i=0; i<8; i++ )
-    {
-        if( gRDP.tiles[i].dwTMem == tile.dwTMem )
-            tile.lastTileCmd = CMD_LOADBLOCK;
-    }
-
-    info.dwLoadAddress = g_TI.dwAddr;
-    info.bSetBy = CMD_LOADBLOCK;
-    info.dxt = dxt;
-    info.dwLine = tile.dwLine;
-
-    info.dwFormat = g_TI.dwFormat;
-    info.dwSize = g_TI.dwSize;
-    info.dwWidth = g_TI.dwWidth;
-    info.dwTotalWords = size;
-    info.dwTmem = tile.dwTMem;
-
-    if( gRDP.tiles[tileno].dwTMem == 0 )
-    {
-        if( size >= 1024 )
-        {
-            memcpy(&g_tmemInfo0, &info, sizeof(TMEMLoadMapInfo) );
-            g_tmemInfo0.dwTotalWords = size>>2;
-        }
-        
-        if( size == 2048 )
-        {
-            memcpy(&g_tmemInfo1, &info, sizeof(TMEMLoadMapInfo) );
-            g_tmemInfo1.dwTotalWords = size>>2;
-        }
-    }
-    else if( tile.dwTMem == 0x100 )
-    {
-        if( size == 1024 )
-        {
-            memcpy(&g_tmemInfo1, &info, sizeof(TMEMLoadMapInfo) );
-            g_tmemInfo1.dwTotalWords = size>>2;
-        }
-    }
-
-    g_TxtLoadBy = CMD_LOADBLOCK;
-
-
-    if( options.bUseFullTMEM )
-    {
-       uint8_t *rdram_u8 = (uint8_t*)gfx_info.RDRAM;
-        uint32_t bytes = (lrs + 1) << tile.dwSize >> 1;
-        uint32_t address = g_TI.dwAddr + ult * g_TI.bpl + (uls << g_TI.dwSize >> 1);
-        if ((bytes == 0) || ((address + bytes) > g_dwRamSize) || (((tile.dwTMem << 3) + bytes) > 4096))
-        {
-            return;
-        }
-        uint64_t* src = (uint64_t*)(rdram_u8 + address);
-        uint64_t* dest = &g_Tmem.g_Tmem64bit[tile.dwTMem];
-
-        if( dxt > 0)
-        {
-            void (*Interleave)( void *mem, uint32_t numDWords );
-
-            uint32_t line = (2047 + dxt) / dxt;
-            uint32_t bpl = line << 3;
-            uint32_t height = bytes / bpl;
-
-            if (tile.dwSize == G_IM_SIZ_32b)
-                Interleave = QWordInterleave;
-            else
-                Interleave = DWordInterleave;
-
-            for (uint32_t y = 0; y < height; y++)
-            {
-                UnswapCopy( src, dest, bpl );
-                if (y & 1) Interleave( dest, line );
-
-                src += line;
-                dest += line;
-            }
-        }
-        else
-        {
-            UnswapCopy( src, dest, bytes );
-        }
-    }
-
-
-    LOG_UCODE("    Tile:%d (%d,%d - %d) DXT:0x%04x\n", tileno, uls, ult, lrs, dxt);
-
-    LOG_TEXTURE(
-    {
-        DebuggerAppendMsg("LoadBlock:%d (%d,%d,%d) DXT:0x%04x(%X)\n",
-            tileno, uls, ult, (((gfx->words.w1)>>12)&0x0FFF), dxt, ((gfx->words.w1)&0x0FFF));
-    });
-
-    DEBUGGER_PAUSE_COUNT_N(NEXT_TEXTURE_CMD);
+    ricegDPLoadBlock(
+          gfx->loadtile.tile,
+          gfx->loadtile.sl,
+          gfx->loadtile.tl,
+          gfx->loadtile.sh,
+          gfx->loadtile.th);
 }
 
-void swap(uint32_t &a, uint32_t &b)
-{
-    uint32_t temp = a;
-    a = b;
-    b = temp;
-}
 void DLParser_LoadTile(Gfx *gfx)
 {
     gRDP.textureIsChanged = true;
 
-    uint32_t tileno   = gfx->loadtile.tile;
-    uint32_t uls      = gfx->loadtile.sl/4;
-    uint32_t ult      = gfx->loadtile.tl/4;
-    uint32_t lrs      = gfx->loadtile.sh/4;
-    uint32_t lrt      = gfx->loadtile.th/4;
-
-    Tile &tile = gRDP.tiles[tileno];
-    tile.bForceWrapS = tile.bForceWrapT = tile.bForceClampS = tile.bForceClampT = false;
-
-    if (lrt < ult) swap(lrt, ult);
-    if (lrs < uls) swap(lrs, uls);
-
-    tile.hilite_sl = tile.sl = uls;
-    tile.hilite_tl = tile.tl = ult;
-    tile.hilite_sh = tile.sh = lrs;
-    tile.hilite_th = tile.th = lrt;
-    tile.bSizeIsValid = true;
-
-    // compute block height, and bpl of source and destination
-    uint32_t bpl = (lrs - uls + 1) << tile.dwSize >> 1;
-    uint32_t height = lrt - ult + 1;
-    uint32_t line = tile.dwLine;
-    if (tile.dwSize == G_IM_SIZ_32b) line <<= 1;
-
-    if (((tile.dwTMem << 3) + line * height) > 4096)  // check destination ending point (TMEM is 4k bytes)
-        return;
-
-    if( options.bUseFullTMEM )
-    {
-       uint8_t *rdram_u8 = (uint8_t*)gfx_info.RDRAM;
-        void (*Interleave)( void *mem, uint32_t numDWords );
-
-        if( g_TI.bpl == 0 )
-        {
-            if( options.enableHackForGames == HACK_FOR_BUST_A_MOVE )
-            {
-                g_TI.bpl = 1024;        // Hack for Bust-A-Move
-            }
-            else
-            {
-                TRACE0("Warning: g_TI.bpl = 0" );
-            }
-        }
-
-        uint32_t address = g_TI.dwAddr + tile.tl * g_TI.bpl + (tile.sl << g_TI.dwSize >> 1);
-        uint64_t* src = (uint64_t*)&rdram_u8[address];
-        uint8_t* dest = (uint8_t*)&g_Tmem.g_Tmem64bit[tile.dwTMem];
-
-        if ((address + height * bpl) > g_dwRamSize) // check source ending point
-        {
-            return;
-        }
-
-        // Line given for 32-bit is half what it seems it should since they split the
-        // high and low words. I'm cheating by putting them together.
-        if (tile.dwSize == G_IM_SIZ_32b)
-        {
-            Interleave = QWordInterleave;
-        }
-        else
-        {
-            Interleave = DWordInterleave;
-        }
-
-        if( tile.dwLine == 0 )
-        {
-            //tile.dwLine = 1;
-            return;
-        }
-
-        for (uint32_t y = 0; y < height; y++)
-        {
-            UnswapCopy( src, dest, bpl );
-            if (y & 1) Interleave( dest, line );
-
-            src += g_TI.bpl;
-            dest += line;
-        }
-    }
-
-
-    for( int i=0; i<8; i++ )
-    {
-        if( gRDP.tiles[i].dwTMem == tile.dwTMem )
-            gRDP.tiles[i].lastTileCmd = CMD_LOADTILE;
-    }
-
-    uint32_t size = line * height;
-    SetTmemFlag(tile.dwTMem,size );
-
-    LOG_TEXTURE(
-    {
-        DebuggerAppendMsg("LoadTile:%d (%d,%d) -> (%d,%d) [%d x %d]\n",
-            tileno, uls, ult, lrs, lrt,
-            (lrs - uls)+1, (lrt - ult)+1);
-    });
-
-    
-    DEBUGGER_PAUSE_COUNT_N(NEXT_TEXTURE_CMD);
-
-    LOG_UCODE("    Tile:%d (%d,%d) -> (%d,%d) [%d x %d]",
-        tileno, uls, ult, lrs, lrt,
-        (lrs - uls)+1, (lrt - ult)+1);
-
-    TMEMLoadMapInfo &info = g_tmemLoadAddrMap[tile.dwTMem];
-
-    info.dwLoadAddress = g_TI.dwAddr;
-    info.dwFormat = g_TI.dwFormat;
-    info.dwSize = g_TI.dwSize;
-    info.dwWidth = g_TI.dwWidth;
-
-    info.sl = uls;
-    info.sh = lrs;
-    info.tl = ult;
-    info.th = lrt;
-    
-    info.dxt = 0;
-    info.dwLine = tile.dwLine;
-    info.dwTmem = tile.dwTMem;
-    info.dwTotalWords = size<<2;
-
-    info.bSetBy = CMD_LOADTILE;
-    info.bSwapped =false;
-
-    g_TxtLoadBy = CMD_LOADTILE;
-
-    if( tile.dwTMem == 0 )
-    {
-        if( size >= 256 )
-        {
-            memcpy(&g_tmemInfo0, &info, sizeof(TMEMLoadMapInfo) );
-            g_tmemInfo0.dwTotalWords = size;
-        }
-
-        if( size == 512 )
-        {
-            memcpy(&g_tmemInfo1, &info, sizeof(TMEMLoadMapInfo) );
-            g_tmemInfo1.dwTotalWords = size;
-        }
-    }
-    else if( tile.dwTMem == 0x100 )
-    {
-        if( size == 256 )
-        {
-            memcpy(&g_tmemInfo1, &info, sizeof(TMEMLoadMapInfo) );
-            g_tmemInfo1.dwTotalWords = size;
-        }
-    }
+    ricegDPLoadTile(
+          gfx->loadtile.tile,
+          gfx->loadtile.sl/4,
+          gfx->loadtile.tl/4,
+          gfx->loadtile.sh/4,
+          gfx->loadtile.th/4);
 }
 
 
@@ -1912,75 +1532,5 @@ uint32_t GetValidTmemInfoIndex(uint32_t tmemAddr)
         return 0;
     }
 }
-
-
-void SetTmemFlag(uint32_t tmemAddr, uint32_t size)
-{
-    uint32_t index = tmemAddr>>5;
-    uint32_t bitIndex = (tmemAddr&0x1F);
-
-#ifdef DEBUGGER
-    if( size > 0x200 )
-    {
-        DebuggerAppendMsg("Check me: tmemaddr=%X, size=%x", tmemAddr, size);
-        size = 0x200-tmemAddr;
-    }
-#endif
-
-    if( bitIndex == 0 )
-    {
-        uint32_t i;
-        for( i=0; i< (size>>5); i++ )
-        {
-            g_TmemFlag[index+i] = 0;
-        }
-
-        if( (size&0x1F) != 0 )
-        {
-            //ErrorMsg("Check me: tmemaddr=%X, size=%x", tmemAddr, size);
-            g_TmemFlag[index+i] &= ~((1<<(size&0x1F))-1);
-        }
-
-        g_TmemFlag[index] |= 1;
-    }
-    else
-    {
-        if( bitIndex + size <= 0x1F )
-        {
-            uint32_t val = g_TmemFlag[index];
-            uint32_t mask = (1<<(bitIndex))-1;
-            mask |= ~((1<<(bitIndex + size))-1);
-            val &= mask;
-            val |= (1<<bitIndex);
-            g_TmemFlag[index] = val;
-        }
-        else
-        {
-            //ErrorMsg("Check me: tmemaddr=%X, size=%x", tmemAddr, size);
-            uint32_t val = g_TmemFlag[index];
-            uint32_t mask = (1<<bitIndex)-1;
-            val &= mask;
-            val |= (1<<bitIndex);
-            g_TmemFlag[index] = val;
-            index++;
-            size -= (0x20-bitIndex);
-
-            uint32_t i;
-            for( i=0; i< (size>>5); i++ )
-            {
-                g_TmemFlag[index+i] = 0;
-            }
-
-            if( (size&0x1F) != 0 )
-            {
-                //ErrorMsg("Check me: tmemaddr=%X, size=%x", tmemAddr, size);
-                g_TmemFlag[index+i] &= ~((1<<(size&0x1F))-1);
-            }
-        }
-    }
-}
-
-#undef min
-#undef max
 
 #endif

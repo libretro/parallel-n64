@@ -71,6 +71,10 @@ void ricegDPSetFillColor(uint32_t c);
 void ricegDPSetFogColor(uint32_t r, uint32_t g, uint32_t b, uint32_t a);
 void ricegDPFillRect(int32_t ulx, int32_t uly, int32_t lrx, int32_t lry );
 void ricegDPSetEnvColor(uint32_t r, uint32_t g, uint32_t b, uint32_t a);
+void ricegDPLoadBlock( uint32_t tileno, uint32_t uls, uint32_t ult,
+      uint32_t lrs, uint32_t dxt );
+void ricegDPLoadTile(uint32_t tileno, uint32_t uls, uint32_t ult,
+      uint32_t lrs, uint32_t lrt);
 
 #endif
 
