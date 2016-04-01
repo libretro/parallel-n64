@@ -999,7 +999,7 @@ static void uc6_obj_rendermode(uint32_t w0, uint32_t w1)
 {
 }
 
-static void uc6_DrawYUVImageToFrameBuffer(uint16_t ul_x, uint16_t ul_y, uint16_t lr_x, uint16_t lr_y)
+static void DrawYUVImageToFrameBuffer(uint16_t ul_x, uint16_t ul_y, uint16_t lr_x, uint16_t lr_y)
 {
    uint16_t h, w, *dst;
    uint32_t width, height, *mb;
@@ -1007,7 +1007,6 @@ static void uc6_DrawYUVImageToFrameBuffer(uint16_t ul_x, uint16_t ul_y, uint16_t
    uint32_t ci_width  = rdp.ci_width;
    uint32_t ci_height = rdp.ci_lower_bound;
 
-   FRDP ("uc6:DrawYUVImageToFrameBuffer ul_x%d, ul_y%d, lr_x%d, lr_y%d\n", ul_x, ul_y, lr_x, lr_y);
    if (ul_x >= ci_width)
       return;
    if (ul_y >= ci_height)
@@ -1042,7 +1041,7 @@ static void uc6_DrawYUVImageToFrameBuffer(uint16_t ul_x, uint16_t ul_y, uint16_t
             *(dst++)   = YUVtoRGBA16(y1, u, v);
          }
       }
-      dst += rdp.ci_width - 16;
+      dst += ci_width - 16;
    }
 }
 
@@ -1055,13 +1054,13 @@ static void uc6_obj_rectangle_r(uint32_t w0, uint32_t w1)
 
    uc6_read_object_data(&d);
 
-   if (d.imageFmt == 1 && (settings.hacks&hack_Ogre64)) //Ogre Battle needs to copy YUV texture to frame buffer
+   if (d.imageFmt == G_IM_FMT_YUV && (settings.hacks&hack_Ogre64)) //Ogre Battle needs to copy YUV texture to frame buffer
    {
       ul_x = d.objX / rdp.mat_2d.BaseScaleX + rdp.mat_2d.X;
       lr_x = (d.objX + d.imageW / d.scaleW) / rdp.mat_2d.BaseScaleX + rdp.mat_2d.X;
       ul_y = d.objY / rdp.mat_2d.BaseScaleY + rdp.mat_2d.Y;
       lr_y = (d.objY + d.imageH / d.scaleH) / rdp.mat_2d.BaseScaleY + rdp.mat_2d.Y;
-      uc6_DrawYUVImageToFrameBuffer((uint16_t)ul_x, (uint16_t)ul_y, (uint16_t)lr_x, (uint16_t)lr_y);
+      DrawYUVImageToFrameBuffer((uint16_t)ul_x, (uint16_t)ul_y, (uint16_t)lr_x, (uint16_t)lr_y);
       return;
    }
 
@@ -1207,7 +1206,7 @@ static void uc6_sprite2d(uint32_t w0, uint32_t w1)
    if (tlut)
    {
       load_palette (RSP_SegmentToPhysical(tlut), 0, 256);
-      if (d.imageFmt > 0)
+      if (d.imageFmt > G_IM_FMT_RGBA)
          rdp.tlut_mode = 2;
       else
          rdp.tlut_mode = 0;
