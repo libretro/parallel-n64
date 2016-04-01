@@ -1,5 +1,5 @@
-#ifndef _FRAME_BUFFER_INFO_H_
-#define _FRAME_BUFFER_INFO_H_
+#ifndef _GLIDEN64_FRAME_BUFFER_INFO_H_
+#define _GLIDEN64_FRAME_BUFFER_INFO_H_
 
 #include <stdint.h>
 
@@ -12,7 +12,6 @@ void FrameBufferWriteList(FrameBufferModifyEntry *plist, uint32_t size);
 
 void FrameBufferRead(uint32_t addr);
 
-void FrameBufferGetInfo(void *pinfo);
+void FrameBufferGetInfo(void* data);
 
-#endif // _FRAME_BUFFER_INFO_H_
-
+#endif

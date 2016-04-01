@@ -70,10 +70,6 @@ extern RDPInfo __RDP;
 #define UPDATE_SCISSOR        0x00000200
 #define UPDATE_FOG_ENABLED    0x00010000
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 typedef struct
 {
    uint32_t total;

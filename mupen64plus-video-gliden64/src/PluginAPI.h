@@ -1,5 +1,5 @@
-#ifndef COMMONPLUGINAPI_H
-#define COMMONPLUGINAPI_H
+#ifndef GLIDEN64_COMMONPLUGINAPI_H
+#define GLIDEN64_COMMONPLUGINAPI_H
 
 #include <thread>
 #include <condition_variable>
