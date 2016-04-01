@@ -77,8 +77,8 @@ extern "C" {
                                              * for the framebuffer must also be
                                              * set. */
 #define G_TEXTURE_ENABLE        0x00000002  /* Microcode use only  */
-#define G_SHADE                 0x00000004  /* Enable Gouraud shading 
-                                             *
+#define G_SHADE                 0x00000004  /* Calculate vertex color.
+                                             * 
                                              * Enables calculation of 
                                              * the vertex color for
                                              * a triangle. */
