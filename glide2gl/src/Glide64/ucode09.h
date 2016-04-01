@@ -117,33 +117,33 @@ static int Calc_invw (int w)
 
 static void uc9_draw_object (uint8_t * addr, uint32_t type)
 {
-   uint32_t i, textured, vnum, vsize;
+   uint32_t i;
    VERTEX vtx[4], *pV[4];
+   uint32_t textured = 0;
+   uint32_t vnum     = 0;
+   uint32_t vsize    = 0;
 
    switch (type)
    {
       case 0: //null
-         textured = vnum = vsize = 0;
          break;
       case 1: //sh tri
-         textured = 0;
-         vnum = 3;
-         vsize = 8;
+         vnum     = 3;
+         vsize    = 8;
          break;
       case 2: //tx tri
          textured = 1;
-         vnum = 3;
-         vsize = 16;
+         vnum     = 3;
+         vsize    = 16;
          break;
       case 3: //sh quad
-         textured = 0;
-         vnum = 4;
-         vsize = 8;
+         vnum     = 4;
+         vsize    = 8;
          break;
       case 4: //tx quad
          textured = 1;
-         vnum = 4;
-         vsize = 16;
+         vnum     = 4;
+         vsize    = 16;
          break;
    }
 
@@ -163,22 +163,19 @@ static void uc9_draw_object (uint8_t * addr, uint32_t type)
       v->shade_mod = 0;
       v->scr_off = 0;
       v->screen_translated = 2;
+      v->oow = 1.0f;
+      v->w   = 1.0f;
+
       if (textured)
       {
-         v->ou = ((int16_t*)addr)[4^1];
-         v->ov = ((int16_t*)addr)[5^1];
-         v->w = Calc_invw(((int*)addr)[3]) / 31.0f;
+         v->ou  = ((int16_t*)addr)[4^1];
+         v->ov  = ((int16_t*)addr)[5^1];
+         v->w   = Calc_invw(((int*)addr)[3]) / 31.0f;
          v->oow = 1.0f / v->w;
-         //FRDP ("v%d - sx: %f, sy: %f ou: %f, ov: %f, w: %f, r=%d, g=%d, b=%d, a=%d\n", i, v->sx/rdp.scale_x, v->sy/rdp.scale_y, v->ou*rdp.tiles[rdp.cur_tile].s_scale, v->ov*rdp.tiles[rdp.cur_tile].t_scale, v->w, v->r, v->g, v->b, v->a);
-      }
-      else
-      {
-         v->oow = v->w = 1.0f;
-         //FRDP ("v%d - sx: %f, sy: %f r=%d, g=%d, b=%d, a=%d\n", i, v->sx/rdp.scale_x, v->sy/rdp.scale_y, v->r, v->g, v->b, v->a);
       }
       addr += vsize;
    }
-   //*
+
    pV[0] = &vtx[0];
    pV[1] = &vtx[1];
    pV[2] = &vtx[2];
@@ -201,44 +198,40 @@ static uint32_t uc9_load_object (uint32_t zHeader, uint32_t * rdpcmds)
    {
       case 1: //sh tri
       case 3: //sh quad
+         __RSP.w1 = ((uint32_t*)addr)[1];
+         if (__RSP.w1 != rdpcmds[0])
          {
-            __RSP.w1 = ((uint32_t*)addr)[1];
-            if (__RSP.w1 != rdpcmds[0])
-            {
-               rdpcmds[0] = __RSP.w1;
-               uc9_rpdcmd(w0, w1);
-            }
-            update();
-            uc9_draw_object(addr + 8, type);
+            rdpcmds[0] = __RSP.w1;
+            uc9_rpdcmd(w0, w1);
          }
+         update();
+         uc9_draw_object(addr + 8, type);
          break;
       case 0: //null
       case 2: //tx tri
       case 4: //tx quad
+         __RSP.w1 = ((uint32_t*)addr)[1];
+         if (__RSP.w1 != rdpcmds[0])
          {
-            __RSP.w1 = ((uint32_t*)addr)[1];
-            if (__RSP.w1 != rdpcmds[0])
-            {
-               rdpcmds[0] = __RSP.w1;
-               uc9_rpdcmd(w0, w1);
-            }
-            __RSP.w1 = ((uint32_t*)addr)[2];
-            if (__RSP.w1 != rdpcmds[1])
-            {
-               uc9_rpdcmd(w0, w1);
-               rdpcmds[1] = __RSP.w1;
-            }
-            __RSP.w1 = ((uint32_t*)addr)[3];
-            if (__RSP.w1 != rdpcmds[2])
-            {
-               uc9_rpdcmd(w0, w1);
-               rdpcmds[2] = __RSP.w1;
-            }
-            if (type)
-            {
-               update();
-               uc9_draw_object(addr + 16, type);
-            }
+            rdpcmds[0] = __RSP.w1;
+            uc9_rpdcmd(w0, w1);
+         }
+         __RSP.w1 = ((uint32_t*)addr)[2];
+         if (__RSP.w1 != rdpcmds[1])
+         {
+            uc9_rpdcmd(w0, w1);
+            rdpcmds[1] = __RSP.w1;
+         }
+         __RSP.w1 = ((uint32_t*)addr)[3];
+         if (__RSP.w1 != rdpcmds[2])
+         {
+            uc9_rpdcmd(w0, w1);
+            rdpcmds[2] = __RSP.w1;
+         }
+         if (type)
+         {
+            update();
+            uc9_draw_object(addr + 16, type);
          }
          break;
    }
@@ -276,8 +269,6 @@ static void uc9_fmlight(uint32_t w0, uint32_t w1)
    uint32_t a = -1024 + (w1 & 0xFFF);
 
    glide64gSPNumLights(1 + _SHIFTR(w1, 12, 8));
-
-   FRDP ("uc9:fmlight matrix: %d, num: %d, dmem: %04lx\n", mid, rdp.num_lights, a);
 
    switch (mid)
    {
@@ -344,19 +335,20 @@ static void uc9_light(uint32_t w0, uint32_t w1)
    uint32_t tdest   = -1024 + (w1 & 0xFFF);
    int use_material = (csrs != 0x0ff0);
    tdest >>= 1;
-   FRDP ("uc9:light n: %d, colsrs: %04lx, normales: %04lx, coldst: %04lx, texdst: %04lx\n", num, csrs, nsrs, cdest, tdest);
 
    for (i = 0; i < num; i++)
    {
       v.vec[0] = ((int8_t*)gfx_info.DMEM)[(nsrs++)^3];
       v.vec[1] = ((int8_t*)gfx_info.DMEM)[(nsrs++)^3];
       v.vec[2] = ((int8_t*)gfx_info.DMEM)[(nsrs++)^3];
+
       calc_sphere (&v);
-      //    calc_linear (&v);
+
       NormalizeVector (v.vec);
       glide64gSPLightVertex(&v);
 
       v.a = 0xFF;
+
       if (use_material)
       {
          v.r = (uint8_t)(((uint32_t)v.r * gfx_info.DMEM[(csrs++)^3]) >> 8);
@@ -458,21 +450,6 @@ static void uc9_mtxcat(uint32_t w0, uint32_t w1)
          CopyMatrix(rdp.combined, m);
          break;
    }
-
-#ifdef EXTREME_LOGGING
-   FRDP ("\nmodel\n{%f,%f,%f,%f}\n", rdp.model[0][0], rdp.model[0][1], rdp.model[0][2], rdp.model[0][3]);
-   FRDP ("{%f,%f,%f,%f}\n", rdp.model[1][0], rdp.model[1][1], rdp.model[1][2], rdp.model[1][3]);
-   FRDP ("{%f,%f,%f,%f}\n", rdp.model[2][0], rdp.model[2][1], rdp.model[2][2], rdp.model[2][3]);
-   FRDP ("{%f,%f,%f,%f}\n", rdp.model[3][0], rdp.model[3][1], rdp.model[3][2], rdp.model[3][3]);
-   FRDP ("\nproj\n{%f,%f,%f,%f}\n", rdp.proj[0][0], rdp.proj[0][1], rdp.proj[0][2], rdp.proj[0][3]);
-   FRDP ("{%f,%f,%f,%f}\n", rdp.proj[1][0], rdp.proj[1][1], rdp.proj[1][2], rdp.proj[1][3]);
-   FRDP ("{%f,%f,%f,%f}\n", rdp.proj[2][0], rdp.proj[2][1], rdp.proj[2][2], rdp.proj[2][3]);
-   FRDP ("{%f,%f,%f,%f}\n", rdp.proj[3][0], rdp.proj[3][1], rdp.proj[3][2], rdp.proj[3][3]);
-   FRDP ("\ncombined\n{%f,%f,%f,%f}\n", rdp.combined[0][0], rdp.combined[0][1], rdp.combined[0][2], rdp.combined[0][3]);
-   FRDP ("{%f,%f,%f,%f}\n", rdp.combined[1][0], rdp.combined[1][1], rdp.combined[1][2], rdp.combined[1][3]);
-   FRDP ("{%f,%f,%f,%f}\n", rdp.combined[2][0], rdp.combined[2][1], rdp.combined[2][2], rdp.combined[2][3]);
-   FRDP ("{%f,%f,%f,%f}\n", rdp.combined[3][0], rdp.combined[3][1], rdp.combined[3][2], rdp.combined[3][3]);
-#endif
 }
 
 typedef struct
@@ -537,9 +514,6 @@ static void uc9_mult_mpmtx(uint32_t w0, uint32_t w1)
       if (w < 0.1f) v.cc |= 0x04;
 
       daddr[i] = v;
-      //memcpy(gfx_info.DMEM+dst+sizeof(zSortVDest)*i, &v, sizeof(zSortVDest));
-      //    FRDP("v%d x: %d, y: %d, z: %d -> sx: %d, sy: %d, w: %d, xi: %d, yi: %d, wi: %d, fog: %d\n", i, sx, sy, sz, v.sx, v.sy, v.invw, v.xi, v.yi, v.wi, v.fog);
-      FRDP("v%d x: %d, y: %d, z: %d -> sx: %04lx, sy: %04lx, invw: %08lx - %f, xi: %04lx, yi: %04lx, wi: %04lx, fog: %04lx\n", i, sx, sy, sz, v.sx, v.sy, v.invw, w, v.xi, v.yi, v.wi, v.fog);
    }
 }
 
