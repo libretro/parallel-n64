@@ -652,3 +652,42 @@ void ricegDPLoadTile(uint32_t tileno, uint32_t uls, uint32_t ult,
       }
    }
 }
+
+void ricegDPLoadTLUT(uint16_t dwCount, uint32_t tileno, uint32_t uls, uint32_t ult, uint32_t lrs, uint32_t lrt)
+{
+   uint8_t *rdram_u8      = (uint8_t*)gfx_info.RDRAM;
+   /* Starting location in the palettes */
+   uint32_t dwTMEMOffset  = gRDP.tiles[tileno].dwTMem - 256;  
+   /* Number to copy */
+   uint32_t dwRDRAMOffset = 0;
+
+   Tile &tile = gRDP.tiles[tileno];
+   tile.bForceWrapS = tile.bForceWrapT = tile.bForceClampS = tile.bForceClampT = false;
+
+   tile.hilite_sl = tile.sl = uls;
+   tile.hilite_tl = tile.tl = ult;
+   tile.sh = lrs;
+   tile.th = lrt;
+   tile.bSizeIsValid = true;
+
+   tile.lastTileCmd = CMD_LOADTLUT;
+
+   dwCount = (lrs - uls)+1;
+   dwRDRAMOffset = (uls + ult*g_TI.dwWidth )*2;
+   uint32_t dwPalAddress = g_TI.dwAddr + dwRDRAMOffset;
+
+   /* Copy PAL to the PAL memory */
+   uint16_t *srcPal = (uint16_t*)(rdram_u8 + (dwPalAddress& (g_dwRamSize-1)) );
+   for (uint32_t i=0; i<dwCount && i<0x100; i++)
+      g_wRDPTlut[(i+dwTMEMOffset)^1] = srcPal[i^1];
+
+   if( options.bUseFullTMEM )
+   {
+      for (uint32_t i=0; i<dwCount && i+tile.dwTMem<0x200; i++)
+         *(uint16_t*)(&g_Tmem.g_Tmem64bit[tile.dwTMem+i]) = srcPal[i^1];
+   }
+
+   extern bool RevTlutTableNeedUpdate;
+   RevTlutTableNeedUpdate = true;
+   g_TxtLoadBy = CMD_LOADTLUT;
+}

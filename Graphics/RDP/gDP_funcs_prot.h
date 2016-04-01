@@ -73,6 +73,8 @@ void ricegDPLoadBlock( uint32_t tileno, uint32_t uls, uint32_t ult,
       uint32_t lrs, uint32_t dxt );
 void ricegDPLoadTile(uint32_t tileno, uint32_t uls, uint32_t ult,
       uint32_t lrs, uint32_t lrt);
+void ricegDPLoadTLUT(uint16_t count, uint32_t tileno,
+      uint32_t uls, uint32_t ult, uint32_t lrs, uint32_t lrt);
 
 #endif
 
