@@ -15,7 +15,6 @@ int res;
 RECT __dst, __src;
 INT32 pitchindwords;
 
-FILE* zeldainfo = 0;
 int ProcessDListShown = 0;
 extern int SaveLoaded;
 extern UINT32 command_counter;
