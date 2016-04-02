@@ -815,9 +815,9 @@ void glide64gSPCBFDVertex(uint32_t a, uint32_t n, uint32_t v0)
       vert->z = x*rdp.combined[0][2] + y*rdp.combined[1][2] + z*rdp.combined[2][2] + rdp.combined[3][2];
       vert->w = x*rdp.combined[0][3] + y*rdp.combined[1][3] + z*rdp.combined[2][3] + rdp.combined[3][3];
 
-      vert->uv_calculated = 0xFFFFFFFF;
+      vert->uv_calculated     = 0xFFFFFFFF;
       vert->screen_translated = 0;
-      vert->shade_mod = 0;
+      vert->shade_mod         = 0;
 
       if (fabs(vert->w) < 0.001)
          vert->w = 0.001f;
@@ -828,15 +828,15 @@ void glide64gSPCBFDVertex(uint32_t a, uint32_t n, uint32_t v0)
 
       vert->scr_off = 0;
       if (vert->x < -vert->w)
-         vert->scr_off |= 1;
+         vert->scr_off |= X_CLIP_MAX;
       if (vert->x > vert->w)
-         vert->scr_off |= 2;
+         vert->scr_off |= X_CLIP_MIN;
       if (vert->y < -vert->w)
-         vert->scr_off |= 4;
+         vert->scr_off |= Y_CLIP_MAX;
       if (vert->y > vert->w)
-         vert->scr_off |= 8;
+         vert->scr_off |= Y_CLIP_MIN;
       if (vert->w < 0.1f)
-         vert->scr_off |= 16;
+         vert->scr_off |= Z_CLIP_MAX;
 
       vert->r = color[3];
       vert->g = color[2];
@@ -844,13 +844,13 @@ void glide64gSPCBFDVertex(uint32_t a, uint32_t n, uint32_t v0)
 
       if ((rdp.geom_mode & G_LIGHTING))
       {
-         uint32_t shift, l;
+         uint32_t l;
          float light_intensity, color[3];
+         uint32_t shift = v0 << 1;
 
-         shift = v0 << 1;
-         vert->vec[0] = ((int8_t*)gfx_info.RDRAM)[(uc8_normale_addr + (i>>3) + shift + 0)^3];
-         vert->vec[1] = ((int8_t*)gfx_info.RDRAM)[(uc8_normale_addr + (i>>3) + shift + 1)^3];
-         vert->vec[2] = (int8_t)(vert->flags & 0xff);
+         vert->vec[0]   = ((int8_t*)gfx_info.RDRAM)[(uc8_normale_addr + (i>>3) + shift + 0)^3];
+         vert->vec[1]   = ((int8_t*)gfx_info.RDRAM)[(uc8_normale_addr + (i>>3) + shift + 1)^3];
+         vert->vec[2]   = (int8_t)(vert->flags & 0xff);
 
          if (rdp.geom_mode & G_TEXTURE_GEN_LINEAR)
             calc_linear (vert);
@@ -874,7 +874,7 @@ void glide64gSPCBFDVertex(uint32_t a, uint32_t n, uint32_t v0)
                FRDP("light %d, intensity : %f\n", l, light_intensity);
                if (light_intensity < 0.0f)
                   continue;
-               //*
+
                if (rdp.light[l].ca > 0.0f)
                {
                   float vx = (vert->x + uc8_coord_mod[8])*uc8_coord_mod[12] - rdp.light[l].x;
@@ -883,10 +883,11 @@ void glide64gSPCBFDVertex(uint32_t a, uint32_t n, uint32_t v0)
                   float vw = (vert->w + uc8_coord_mod[11])*uc8_coord_mod[15] - rdp.light[l].w;
                   float len = (vx*vx+vy*vy+vz*vz+vw*vw)/65536.0f;
                   float p_i = rdp.light[l].ca / len;
-                  if (p_i > 1.0f) p_i = 1.0f;
+                  if (p_i > 1.0f)
+                     p_i = 1.0f;
                   light_intensity *= p_i;
                }
-               //*/
+
                color[0] += rdp.light[l].col[0] * light_intensity;
                color[1] += rdp.light[l].col[1] * light_intensity;
                color[2] += rdp.light[l].col[2] * light_intensity;
@@ -911,7 +912,8 @@ void glide64gSPCBFDVertex(uint32_t a, uint32_t n, uint32_t v0)
                   float vw = (vert->w + uc8_coord_mod[11])*uc8_coord_mod[15] - rdp.light[l].w;
                   float len = (vx*vx+vy*vy+vz*vz+vw*vw)/65536.0f;
                   light_intensity = rdp.light[l].ca / len;
-                  if (light_intensity > 1.0f) light_intensity = 1.0f;
+                  if (light_intensity > 1.0f)
+                     light_intensity = 1.0f;
                   color[0] += rdp.light[l].col[0] * light_intensity;
                   color[1] += rdp.light[l].col[1] * light_intensity;
                   color[2] += rdp.light[l].col[2] * light_intensity;
@@ -946,8 +948,8 @@ void glide64gSPCoordMod(uint32_t w0, uint32_t w1)
    }
    else if (pos == 0x10)
    {
-      uc8_coord_mod[4+idx] = (w1 >> 16) / 65536.0f;
-      uc8_coord_mod[5+idx] = (w1 & 0xffff) / 65536.0f;
+      uc8_coord_mod[4+idx]  = (w1 >> 16) / 65536.0f;
+      uc8_coord_mod[5+idx]  = (w1 & 0xffff) / 65536.0f;
       uc8_coord_mod[12+idx] = uc8_coord_mod[0+idx] + uc8_coord_mod[4+idx];
       uc8_coord_mod[13+idx] = uc8_coord_mod[1+idx] + uc8_coord_mod[5+idx];
 
@@ -1067,17 +1069,17 @@ void glide64gSPDMAVertex(uint32_t v, uint32_t n, uint32_t v0)
 
       v->scr_off = 0;
       if (v->x < -v->w)
-         v->scr_off |= 1;
+         v->scr_off |= X_CLIP_MAX;
       if (v->x > v->w)
-         v->scr_off |= 2;
+         v->scr_off |= X_CLIP_MIN;
       if (v->y < -v->w)
-         v->scr_off |= 4;
+         v->scr_off |= Y_CLIP_MAX;
       if (v->y > v->w)
-         v->scr_off |= 8;
+         v->scr_off |= Y_CLIP_MIN;
       if (v->w < 0.1f)
-         v->scr_off |= 16;
+         v->scr_off |= Z_CLIP_MAX;
       if (fabs(v->z_w) > 1.0)
-         v->scr_off |= 32;
+         v->scr_off |= Z_CLIP_MIN;
 
       v->r = ((uint8_t*)gfx_info.RDRAM)[(addr+start + 6)^3];
       v->g = ((uint8_t*)gfx_info.RDRAM)[(addr+start + 7)^3];
@@ -1116,7 +1118,7 @@ void glide64gSPDMATriangles(uint32_t tris, uint32_t n)
       {
          /* no cull */
          rdp.flags &= ~CULLMASK;
-         cull_mode = GR_CULL_DISABLE;
+         cull_mode  = GR_CULL_DISABLE;
       }
       else
       {
@@ -1126,7 +1128,7 @@ void glide64gSPDMATriangles(uint32_t tris, uint32_t n)
          {
             /* agh, backwards culling */
             rdp.flags |= CULL_BACK;   
-            cull_mode = GR_CULL_POSITIVE;
+            cull_mode  = GR_CULL_POSITIVE;
          }
          else
             rdp.flags |= CULL_FRONT;
