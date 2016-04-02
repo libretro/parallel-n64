@@ -623,25 +623,30 @@ void glide64gSPModifyVertex( uint32_t vtx, uint32_t where, uint32_t val )
             v->sy = scr_y * rdp.scale_y + rdp.offset_y;
             if (v->w < 0.01f)
             {
-               v->w = 1.0f;
+               v->w   = 1.0f;
                v->oow = 1.0f;
                v->z_w = 1.0f;
             }
             v->sz = rdp.view_trans[2] + v->z_w * rdp.view_scale[2];
 
             v->scr_off = 0;
-            if (scr_x < 0) v->scr_off |= 1;
-            if (scr_x > rdp.vi_width) v->scr_off |= 2;
-            if (scr_y < 0) v->scr_off |= 4;
-            if (scr_y > rdp.vi_height) v->scr_off |= 8;
-            if (v->w < 0.1f) v->scr_off |= 16;
+            if (scr_x < 0)
+               v->scr_off |= X_CLIP_MAX;
+            if (scr_x > rdp.vi_width)
+               v->scr_off |= X_CLIP_MIN;
+            if (scr_y < 0)
+               v->scr_off |= Y_CLIP_MAX;
+            if (scr_y > rdp.vi_height)
+               v->scr_off |= Y_CLIP_MIN;
+            if (v->w < 0.1f)
+               v->scr_off |= Z_CLIP_MAX;
          }
          break;
       case G_MWO_POINT_ZSCREEN:
          {
             float scr_z = _FIXED2FLOAT((int16_t)_SHIFTR(val, 16, 16), 15);
-            v->z_w = (scr_z - rdp.view_trans[2]) / rdp.view_scale[2];
-            v->z = v->z_w * v->w;
+            v->z_w      = (scr_z - rdp.view_trans[2]) / rdp.view_scale[2];
+            v->z        = v->z_w * v->w;
          }
          break;
    }
