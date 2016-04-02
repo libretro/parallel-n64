@@ -1026,18 +1026,9 @@ static void LoadTex(int id, int tmu)
                   b = (b - cb0) * percent + b;
 
                   /* clipping the result */
-                  if (r > 255.0f)
-                     r = 255.0f;
-                  if (r < 0.0f)
-                     r = 0.0f;
-                  if (g > 255.0f)
-                     g = 255.0f;
-                  if (g < 0.0f)
-                     g = 0.0f;
-                  if (b > 255.0f)
-                     g = 255.0f;
-                  if (b < 0.0f)
-                     b = 0.0f;
+                  r = clamp_float(r, 0.0f, 255.0f);
+                  g = clamp_float(g, 0.0f, 255.0f);
+                  b = clamp_float(b, 0.0f, 255.0f);
                   *col++    = PAL8toRGBA16(r, g, b, a);
                }while(--size);
             }
@@ -1049,24 +1040,12 @@ static void LoadTex(int id, int tmu)
                do
                {
                   uint8_t a = (*col & 0x0001);
-                  float r = (((float)((*col & 0xF800) >> 11)) - cr0) * percent;
-                  float g = (((float)((*col & 0x07C0) >> 6)) - cg0) * percent;
-                  float b = ((float)((*col & 0x003E) >> 1) - cb0) * percent;
-
-                  /* clipping the result */
-                  if (r > 255.0f)
-                     r = 255.0f;
-                  if (r < 0.0f)
-                     r = 0.0f;
-                  if (g > 255.0f)
-                     g = 255.0f;
-                  if (g < 0.0f)
-                     g = 0.0f;
-                  if (b > 255.0f)
-                     g = 255.0f;
-                  if (b < 0.0f)
-                     b = 0.0f;
-
+                  float r   = (((float)((*col & 0xF800) >> 11)) - cr0) * percent;
+                  float g   = (((float)((*col & 0x07C0) >> 6)) - cg0) * percent;
+                  float b   = ((float)((*col & 0x003E) >> 1) - cb0) * percent;
+                  r         = clamp_float(r, 0.0f, 255.0f);
+                  g         = clamp_float(g, 0.0f, 255.0f);
+                  b         = clamp_float(b, 0.0f, 255.0f);
                   *col++    = PAL8toRGBA16(r, g, b, a);
                }while(--size);
             }
@@ -1148,7 +1127,7 @@ static void LoadTex(int id, int tmu)
 
    {
       uint32_t size;
-	  int min_x, min_y;
+      int min_x, min_y;
 
       result = load_table[g_gdp.tile[td].size][g_gdp.tile[td].format]
          ((uintptr_t)(texture), (uintptr_t)(g_gdp.tmem)+(g_gdp.tile[td].tmem<<3),
@@ -1172,7 +1151,7 @@ static void LoadTex(int id, int tmu)
       if (texinfo[id].width < (int)real_x)
       {
          bool cond_true = g_gdp.tile[td].mask_s != 0
-               && (real_x > (1U << g_gdp.tile[td].mask_s));
+            && (real_x > (1U << g_gdp.tile[td].mask_s));
 
          if (g_gdp.tile[td].ms && cond_true)
          {
