@@ -9,7 +9,7 @@
 
 #define ALOWORD(x)   (*((uint16_t*)&x))   // low word
 
-static INLINE void load4bCI(uint8_t *src, uint8_t *dst, int wid_64, int height, uint16_t line, int ext, uint16_t *pal)
+static INLINE void load4bCI(uint8_t *src, uint8_t *dst, int wid_64, int height, uint16_t line, int ext, uint16_t *palette)
 {
     uint32_t *src32 =(uint32_t*)src;
     uint32_t *dst32 =(uint32_t*)dst;
@@ -25,44 +25,44 @@ static INLINE void load4bCI(uint8_t *src, uint8_t *dst, int wid_64, int height, 
             uint32_t v16 = m64p_swap32(src32[!odd]);
             uint32_t pix = width + 1;
 
-            ALOWORD(pix) = ror16(*(uint16_t*)((uint8_t*)pal + ((v12 >> 23) & 0x1E)), 1);
+            ALOWORD(pix) = ror16(*(uint16_t*)((uint8_t*)palette + ((v12 >> 23) & 0x1E)), 1);
             pix = pix << 16;
-            ALOWORD(pix) = ror16(*(uint16_t*)((uint8_t*)pal + ((v12 >> 27) & 0x1E)), 1);
+            ALOWORD(pix) = ror16(*(uint16_t*)((uint8_t*)palette + ((v12 >> 27) & 0x1E)), 1);
             *dst32++ = pix;
 
-            ALOWORD(pix) = ror16(*(uint16_t*)((uint8_t*)pal + ((v12 >> 15) & 0x1E)), 1);
+            ALOWORD(pix) = ror16(*(uint16_t*)((uint8_t*)palette + ((v12 >> 15) & 0x1E)), 1);
             pix <<= 16;
-            ALOWORD(pix) = ror16(*(uint16_t*)((uint8_t*)pal + ((v12 >> 19) & 0x1E)), 1);
+            ALOWORD(pix) = ror16(*(uint16_t*)((uint8_t*)palette + ((v12 >> 19) & 0x1E)), 1);
             *dst32++ = pix;
 
-            ALOWORD(pix) = ror16(*(uint16_t*)((uint8_t*)pal + ((v12 >> 7) & 0x1E)), 1);
+            ALOWORD(pix) = ror16(*(uint16_t*)((uint8_t*)palette + ((v12 >> 7) & 0x1E)), 1);
             pix <<= 16;
-            ALOWORD(pix) = ror16(*(uint16_t*)((uint8_t*)pal + ((v12 >> 11) & 0x1E)), 1);
+            ALOWORD(pix) = ror16(*(uint16_t*)((uint8_t*)palette + ((v12 >> 11) & 0x1E)), 1);
             *dst32++ = pix;
 
-            ALOWORD(pix) = ror16(*(uint16_t*)((uint8_t*)pal + (2 *(uint8_t)v12 & 0x1E)), 1);
+            ALOWORD(pix) = ror16(*(uint16_t*)((uint8_t*)palette + (2 *(uint8_t)v12 & 0x1E)), 1);
             pix <<= 16;
-            ALOWORD(pix) = ror16(*(uint16_t*)((uint8_t*)pal + ((v12 >> 3) & 0x1E)), 1);
+            ALOWORD(pix) = ror16(*(uint16_t*)((uint8_t*)palette + ((v12 >> 3) & 0x1E)), 1);
             *dst32++ = pix;
 
-            ALOWORD(pix) = ror16(*(uint16_t*)((uint8_t*)pal + ((v16 >> 23) & 0x1E)), 1);
+            ALOWORD(pix) = ror16(*(uint16_t*)((uint8_t*)palette + ((v16 >> 23) & 0x1E)), 1);
             pix <<= 16;
-            ALOWORD(pix) = ror16(*(uint16_t*)((uint8_t*)pal + ((v16 >> 27) & 0x1E)), 1);
+            ALOWORD(pix) = ror16(*(uint16_t*)((uint8_t*)palette + ((v16 >> 27) & 0x1E)), 1);
             *dst32++ = pix;
 
-            ALOWORD(pix) = ror16(*(uint16_t*)((uint8_t*)pal + ((v16 >> 15) & 0x1E)), 1);
+            ALOWORD(pix) = ror16(*(uint16_t*)((uint8_t*)palette + ((v16 >> 15) & 0x1E)), 1);
             pix <<= 16;
-            ALOWORD(pix) = ror16(*(uint16_t*)((uint8_t*)pal + ((v16 >> 19) & 0x1E)), 1);
+            ALOWORD(pix) = ror16(*(uint16_t*)((uint8_t*)palette + ((v16 >> 19) & 0x1E)), 1);
             *dst32++ = pix;
 
-            ALOWORD(pix) = ror16(*(uint16_t*)((uint8_t*)pal + ((v16 >> 7) & 0x1E)), 1);
+            ALOWORD(pix) = ror16(*(uint16_t*)((uint8_t*)palette + ((v16 >> 7) & 0x1E)), 1);
             pix <<= 16;
-            ALOWORD(pix) = ror16(*(uint16_t*)((uint8_t*)pal + ((v16 >> 11) & 0x1E)), 1);
+            ALOWORD(pix) = ror16(*(uint16_t*)((uint8_t*)palette + ((v16 >> 11) & 0x1E)), 1);
             *dst32++ = pix;
 
-            ALOWORD(pix) = ror16(*(uint16_t*)((uint8_t*)pal + (2 *(uint8_t)v16 & 0x1E)), 1);
+            ALOWORD(pix) = ror16(*(uint16_t*)((uint8_t*)palette + (2 *(uint8_t)v16 & 0x1E)), 1);
             pix <<= 16;
-            ALOWORD(pix) = ror16(*(uint16_t*)((uint8_t*)pal + ((v16 >> 3) & 0x1E)), 1);
+            ALOWORD(pix) = ror16(*(uint16_t*)((uint8_t*)palette + ((v16 >> 3) & 0x1E)), 1);
             *dst32++ = pix;
 
             src32 += 2;
@@ -75,7 +75,7 @@ static INLINE void load4bCI(uint8_t *src, uint8_t *dst, int wid_64, int height, 
     }
 }
 
-static INLINE void load4bIAPal(uint8_t *src, uint8_t *dst, int wid_64, int height, int line, int ext, uint16_t *pal)
+static INLINE void load4bIAPal(uint8_t *src, uint8_t *dst, int wid_64, int height, int line, int ext, uint16_t *palette)
 {
     uint32_t *src32 =(uint32_t*)src;
     uint32_t *dst32 =(uint32_t*)dst;
@@ -90,44 +90,44 @@ static INLINE void load4bIAPal(uint8_t *src, uint8_t *dst, int wid_64, int heigh
             uint32_t cd = m64p_swap32(src32[!odd]);
             uint32_t pix = width + 1;
 
-            ALOWORD(pix) = ror16(*(uint16_t *)((char *)pal + ((ab >> 23) & 0x1E)), 8);
+            ALOWORD(pix) = ror16(*(uint16_t *)((char *)palette + ((ab >> 23) & 0x1E)), 8);
             pix = pix << 16;
-            ALOWORD(pix) = ror16(*(uint16_t *)((char *)pal + ((ab >> 27) & 0x1E)), 8);
+            ALOWORD(pix) = ror16(*(uint16_t *)((char *)palette + ((ab >> 27) & 0x1E)), 8);
             *dst32++ = pix;
 
-            ALOWORD(pix) = ror16(*(uint16_t *)((char *)pal + ((ab >> 15) & 0x1E)), 8);
+            ALOWORD(pix) = ror16(*(uint16_t *)((char *)palette + ((ab >> 15) & 0x1E)), 8);
             pix <<= 16;
-            ALOWORD(pix) = ror16(*(uint16_t *)((char *)pal + ((ab >> 19) & 0x1E)), 8);
+            ALOWORD(pix) = ror16(*(uint16_t *)((char *)palette + ((ab >> 19) & 0x1E)), 8);
             *dst32++ = pix;
 
-            ALOWORD(pix) = ror16(*(uint16_t *)((char *)pal + ((ab >> 7) & 0x1E)), 8);
+            ALOWORD(pix) = ror16(*(uint16_t *)((char *)palette + ((ab >> 7) & 0x1E)), 8);
             pix <<= 16;
-            ALOWORD(pix) = ror16(*(uint16_t *)((char *)pal + ((ab >> 11) & 0x1E)), 8);
+            ALOWORD(pix) = ror16(*(uint16_t *)((char *)palette + ((ab >> 11) & 0x1E)), 8);
             *dst32++ = pix;
 
-            ALOWORD(pix) = ror16(*(uint16_t *)((char *)pal + (2 *(uint8_t)ab & 0x1E)), 8);
+            ALOWORD(pix) = ror16(*(uint16_t *)((char *)palette + (2 *(uint8_t)ab & 0x1E)), 8);
             pix <<= 16;
-            ALOWORD(pix) = ror16(*(uint16_t *)((char *)pal + ((ab >> 3) & 0x1E)), 8);
+            ALOWORD(pix) = ror16(*(uint16_t *)((char *)palette + ((ab >> 3) & 0x1E)), 8);
             *dst32++ = pix;
 
-            ALOWORD(pix) = ror16(*(uint16_t *)((char *)pal + ((cd >> 23) & 0x1E)), 8);
+            ALOWORD(pix) = ror16(*(uint16_t *)((char *)palette + ((cd >> 23) & 0x1E)), 8);
             pix <<= 16;
-            ALOWORD(pix) = ror16(*(uint16_t *)((char *)pal + ((cd >> 27) & 0x1E)), 8);
+            ALOWORD(pix) = ror16(*(uint16_t *)((char *)palette + ((cd >> 27) & 0x1E)), 8);
             *dst32++ = pix;
 
-            ALOWORD(pix) = ror16(*(uint16_t *)((char *)pal + ((cd >> 15) & 0x1E)), 8);
+            ALOWORD(pix) = ror16(*(uint16_t *)((char *)palette + ((cd >> 15) & 0x1E)), 8);
             pix <<= 16;
-            ALOWORD(pix) = ror16(*(uint16_t *)((char *)pal + ((cd >> 19) & 0x1E)), 8);
+            ALOWORD(pix) = ror16(*(uint16_t *)((char *)palette + ((cd >> 19) & 0x1E)), 8);
             *dst32++ = pix;
 
-            ALOWORD(pix) = ror16(*(uint16_t *)((char *)pal + ((cd >> 7) & 0x1E)), 8);
+            ALOWORD(pix) = ror16(*(uint16_t *)((char *)palette + ((cd >> 7) & 0x1E)), 8);
             pix <<= 16;
-            ALOWORD(pix) = ror16(*(uint16_t *)((char *)pal + ((cd >> 11) & 0x1E)), 8);
+            ALOWORD(pix) = ror16(*(uint16_t *)((char *)palette + ((cd >> 11) & 0x1E)), 8);
             *dst32++ = pix;
 
-            ALOWORD(pix) = ror16(*(uint16_t *)((char *)pal + (2 *(uint8_t)cd & 0x1E)), 8);
+            ALOWORD(pix) = ror16(*(uint16_t *)((char *)palette + (2 *(uint8_t)cd & 0x1E)), 8);
             pix <<= 16;
-            ALOWORD(pix) = ror16(*(uint16_t *)((char *)pal + ((cd >> 3) & 0x1E)), 8);
+            ALOWORD(pix) = ror16(*(uint16_t *)((char *)palette + ((cd >> 3) & 0x1E)), 8);
             *dst32++ = pix;
 
             src32 += 2;
@@ -224,8 +224,7 @@ static INLINE void load4bI(uint8_t *src, uint8_t *dst, int wid_64, int height, i
     }
 }
 
-
-static INLINE void load8bCI(uint8_t *src, uint8_t *dst, int wid_64, int height, int line, int ext, uint16_t *pal)
+static INLINE void load8bCI(uint8_t *src, uint8_t *dst, int wid_64, int height, int line, int ext, uint16_t *palette)
 {
     uint32_t *src32 =(uint32_t*)src;
     uint32_t *dst32 =(uint32_t *)dst;
@@ -241,24 +240,24 @@ static INLINE void load8bCI(uint8_t *src, uint8_t *dst, int wid_64, int height, 
             uint32_t efgh = m64p_swap32(src32[!odd]);
             uint32_t pix = width + 1;
 
-            ALOWORD(pix) = ror16(*(uint16_t*)((uint8_t*)pal + ((abcd >> 15) & 0x1FE)), 1);
+            ALOWORD(pix) = ror16(*(uint16_t*)((uint8_t*)palette + ((abcd >> 15) & 0x1FE)), 1);
             pix = pix << 16;
-            ALOWORD(pix) = ror16(*(uint16_t*)((uint8_t*)pal + ((abcd >> 23) & 0x1FE)), 1);
+            ALOWORD(pix) = ror16(*(uint16_t*)((uint8_t*)palette + ((abcd >> 23) & 0x1FE)), 1);
             *dst32++ = pix;
 
-            ALOWORD(pix) = ror16(*(uint16_t*)((uint8_t*)pal + (2 *(uint16_t)abcd & 0x1FE)), 1);
+            ALOWORD(pix) = ror16(*(uint16_t*)((uint8_t*)palette + (2 *(uint16_t)abcd & 0x1FE)), 1);
             pix <<= 16;
-            ALOWORD(pix) = ror16(*(uint16_t*)((uint8_t*)pal + ((abcd >> 7) & 0x1FE)), 1);
+            ALOWORD(pix) = ror16(*(uint16_t*)((uint8_t*)palette + ((abcd >> 7) & 0x1FE)), 1);
             *dst32++ = pix;
 
-            ALOWORD(pix) = ror16(*(uint16_t*)((uint8_t*)pal + ((efgh >> 15) & 0x1FE)), 1);
+            ALOWORD(pix) = ror16(*(uint16_t*)((uint8_t*)palette + ((efgh >> 15) & 0x1FE)), 1);
             pix <<= 16;
-            ALOWORD(pix) = ror16(*(uint16_t*)((uint8_t*)pal + ((efgh >> 23) & 0x1FE)), 1);
+            ALOWORD(pix) = ror16(*(uint16_t*)((uint8_t*)palette + ((efgh >> 23) & 0x1FE)), 1);
             *dst32++ = pix;
 
-            ALOWORD(pix) = ror16(*(uint16_t*)((uint8_t*)pal + (2 *(uint16_t)efgh & 0x1FE)), 1);
+            ALOWORD(pix) = ror16(*(uint16_t*)((uint8_t*)palette + (2 *(uint16_t)efgh & 0x1FE)), 1);
             pix <<= 16;
-            ALOWORD(pix) = ror16(*(uint16_t*)((uint8_t*)pal + ((efgh >> 7) & 0x1FE)), 1);
+            ALOWORD(pix) = ror16(*(uint16_t*)((uint8_t*)palette + ((efgh >> 7) & 0x1FE)), 1);
             *dst32++ = pix;
 
             src32 += 2;
@@ -271,7 +270,7 @@ static INLINE void load8bCI(uint8_t *src, uint8_t *dst, int wid_64, int height, 
     }
 }
 
-static INLINE void load8bIA8(uint8_t *src, uint8_t *dst, int wid_64, int height, int line, int ext, uint16_t *pal)
+static INLINE void load8bIA8(uint8_t *src, uint8_t *dst, int wid_64, int height, int line, int ext, uint16_t *palette)
 {
     uint32_t *src32 =(uint32_t *)src;
     uint32_t *dst32 =(uint32_t *)dst;
@@ -287,24 +286,24 @@ static INLINE void load8bIA8(uint8_t *src, uint8_t *dst, int wid_64, int height,
             uint32_t efgh = m64p_swap32(src32[!odd]);
             uint32_t pix  = width + 1;
 
-            ALOWORD(pix) = ror16(*(uint16_t *)((uint8_t*)pal + ((abcd >> 15) & 0x1FE)), 8);
+            ALOWORD(pix) = ror16(*(uint16_t *)((uint8_t*)palette + ((abcd >> 15) & 0x1FE)), 8);
             pix = pix << 16;
-            ALOWORD(pix) = ror16(*(uint16_t *)((uint8_t*)pal + ((abcd >> 23) & 0x1FE)), 8);
+            ALOWORD(pix) = ror16(*(uint16_t *)((uint8_t*)palette + ((abcd >> 23) & 0x1FE)), 8);
             *dst32++ = pix;
 
-            ALOWORD(pix) = ror16(*(uint16_t *)((uint8_t*)pal + (2 *(uint16_t)abcd & 0x1FE)), 8);
+            ALOWORD(pix) = ror16(*(uint16_t *)((uint8_t*)palette + (2 *(uint16_t)abcd & 0x1FE)), 8);
             pix <<= 16;
-            ALOWORD(pix) = ror16(*(uint16_t *)((uint8_t*)pal + ((abcd >> 7) & 0x1FE)), 8);
+            ALOWORD(pix) = ror16(*(uint16_t *)((uint8_t*)palette + ((abcd >> 7) & 0x1FE)), 8);
             *dst32++ = pix;
 
-            ALOWORD(pix) = ror16(*(uint16_t *)((uint8_t*)pal + ((efgh >> 15) & 0x1FE)), 8);
+            ALOWORD(pix) = ror16(*(uint16_t *)((uint8_t*)palette + ((efgh >> 15) & 0x1FE)), 8);
             pix <<= 16;
-            ALOWORD(pix) = ror16(*(uint16_t *)((uint8_t*)pal + ((efgh >> 23) & 0x1FE)), 8);
+            ALOWORD(pix) = ror16(*(uint16_t *)((uint8_t*)palette + ((efgh >> 23) & 0x1FE)), 8);
             *dst32++ = pix;
 
-            ALOWORD(pix) = ror16(*(uint16_t *)((uint8_t*)pal + (2 *(uint16_t)efgh & 0x1FE)), 8);
+            ALOWORD(pix) = ror16(*(uint16_t *)((uint8_t*)palette + (2 *(uint16_t)efgh & 0x1FE)), 8);
             pix <<= 16;
-            ALOWORD(pix) = ror16(*(uint16_t *)((uint8_t*)pal + ((efgh >> 7) & 0x1FE)), 8);
+            ALOWORD(pix) = ror16(*(uint16_t *)((uint8_t*)palette + ((efgh >> 7) & 0x1FE)), 8);
             *dst32++ = pix;
 
             src32 += 2;
@@ -446,7 +445,7 @@ static uint32_t LoadNone(uintptr_t dst, uintptr_t src, int wid_64, int height, i
 static uint32_t Load4bCI(uintptr_t dst, uintptr_t src, int wid_64, int height, int line, int real_width, int tile)
 {
     int ext;
-    uintptr_t pal;
+    uintptr_t palette;
 
     if (wid_64 < 1)
         wid_64 = 1;
@@ -462,17 +461,17 @@ static uint32_t Load4bCI(uintptr_t dst, uintptr_t src, int wid_64, int height, i
         return /*(0 << 16) | */GR_TEXFMT_ALPHA_INTENSITY_44;
     }
 
-    pal =(uintptr_t)(rdp.pal_8 + (g_gdp.tile[tile].palette << 4));
+    palette =(uintptr_t)(rdp.pal_8 + (g_gdp.tile[tile].palette << 4));
     if (rdp.tlut_mode == 2)
     {
         ext <<= 1;
-        load4bCI ((uint8_t *)src,(uint8_t *)dst, wid_64, height, line, ext,(uint16_t *)pal);
+        load4bCI ((uint8_t *)src,(uint8_t *)dst, wid_64, height, line, ext,(uint16_t *)palette);
 
         return (1 << 16) | GR_TEXFMT_ARGB_1555;
     }
 
     ext <<= 1;
-    load4bIAPal ((uint8_t *)src,(uint8_t *)dst, wid_64, height, line, ext,(uint16_t *)pal);
+    load4bIAPal ((uint8_t *)src,(uint8_t *)dst, wid_64, height, line, ext,(uint16_t *)palette);
     return (1 << 16) | GR_TEXFMT_ALPHA_INTENSITY_88;
 }
 
@@ -533,7 +532,7 @@ static uint32_t Load4bSelect(uintptr_t dst, uintptr_t src, int wid_64, int heigh
 static uint32_t Load8bCI(uintptr_t dst, uintptr_t src, int wid_64, int height, int line, int real_width, int tile)
 {
     int ext;
-    unsigned short *pal;
+    unsigned short *palette;
 
     if (wid_64 < 1)
         wid_64 = 1;
@@ -541,24 +540,24 @@ static uint32_t Load8bCI(uintptr_t dst, uintptr_t src, int wid_64, int height, i
         height = 1;
 
     ext = (real_width - (wid_64 << 3));
-    pal = (unsigned short*)rdp.pal_8;
+    palette = (unsigned short*)rdp.pal_8;
 
     switch (rdp.tlut_mode)
     {
-    case 0:
-        //palette is not used
-        //in tlut DISABLE mode load CI texture as plain intensity texture instead of palette dereference.
-        //Thanks to angrylion for the advice
-        load8bI ((uint8_t *)src,(uint8_t *)dst, wid_64, height, line, ext);
-        return /*(0 << 16) | */GR_TEXFMT_ALPHA_8;
-    case 2: //color palette
-        ext <<= 1;
-        load8bCI ((uint8_t *)src,(uint8_t *)dst, wid_64, height, line, ext, pal);
-        return (1 << 16) | GR_TEXFMT_ARGB_1555;
-    default: //IA palette
-        ext <<= 1;
-        load8bIA8 ((uint8_t *)src,(uint8_t *)dst, wid_64, height, line, ext, pal);
-        return (1 << 16) | GR_TEXFMT_ALPHA_INTENSITY_88;
+       case 0:
+          //palette is not used
+          //in tlut DISABLE mode load CI texture as plain intensity texture instead of palette dereference.
+          //Thanks to angrylion for the advice
+          load8bI ((uint8_t *)src,(uint8_t *)dst, wid_64, height, line, ext);
+          return /*(0 << 16) | */GR_TEXFMT_ALPHA_8;
+       case 2: //color palette
+          ext <<= 1;
+          load8bCI ((uint8_t *)src,(uint8_t *)dst, wid_64, height, line, ext, palette);
+          return (1 << 16) | GR_TEXFMT_ARGB_1555;
+       default: /*IA palette */
+          ext <<= 1;
+          load8bIA8 ((uint8_t *)src,(uint8_t *)dst, wid_64, height, line, ext, palette);
+          return (1 << 16) | GR_TEXFMT_ALPHA_INTENSITY_88;
     }
 }
 
