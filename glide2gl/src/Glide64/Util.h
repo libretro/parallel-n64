@@ -52,6 +52,18 @@ extern "C" {
 #define NOT_TMU1	0x01
 #define NOT_TMU2	0x02
 
+#define clip_tri_uv(first, second, index, percent) \
+   rdp.vtxbuf[index].u[0] = first->u[0] + (second->u[0] - first->u[0]) * percent; \
+   rdp.vtxbuf[index].v[0] = first->v[0] + (second->v[0] - first->v[0]) * percent; \
+   rdp.vtxbuf[index].u[1] = first->u[1] + (second->u[1] - first->u[1]) * percent; \
+   rdp.vtxbuf[index].v[1] = first->v[1] + (second->v[1] - first->v[1]) * percent
+
+#define clip_tri_interp_colors(first, second, index, percent, val, interpolate_colors) \
+   if (interpolate_colors) \
+      glide64_interpolate_colors(first, second, &rdp.vtxbuf[index++], percent, 1.0f, 1.0f, 1.0f); \
+   else \
+      rdp.vtxbuf[index++].number = first->number | second->number | val
+
 void do_triangle_stuff(uint16_t linew, int old_interpolate);
 void do_triangle_stuff_2(uint16_t linew, uint8_t no_clip, int old_interpolate);
 void apply_shade_mods(VERTEX *v);

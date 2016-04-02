@@ -1832,12 +1832,10 @@ static void clip_w (void)
          rdp.vtxbuf[index].x = current->x + (current2->x - current->x) * percent;
          rdp.vtxbuf[index].y = current->y + (current2->y - current->y) * percent;
          rdp.vtxbuf[index].z = current->z + (current2->z - current->z) * percent;
-         rdp.vtxbuf[index].u[0] = current->u[0] + (current2->u[0] - current->u[0]) * percent;
-         rdp.vtxbuf[index].v[0] = current->v[0] + (current2->v[0] - current->v[0]) * percent;
-         rdp.vtxbuf[index].u[1] = current->u[1] + (current2->u[1] - current->u[1]) * percent;
-         rdp.vtxbuf[index].v[1] = current->v[1] + (current2->v[1] - current->v[1]) * percent;
          rdp.vtxbuf[index].w = settings.depth_bias * 0.01f;
-         rdp.vtxbuf[index++].number = first->number | second->number;
+
+         clip_tri_uv(current, current2, index, percent);
+         clip_tri_interp_colors(first, second, index, percent, 0, 0);
       }
 
       if (save_inpoint)

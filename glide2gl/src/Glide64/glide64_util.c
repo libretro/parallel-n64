@@ -304,18 +304,6 @@ static void CalculateLOD(VERTEX *v, int n, uint32_t lodmode)
    grTexDetailControl (GR_TMU1, cmb.dc1_lodbias, cmb.dc1_detailscale, detailmax);
 }
 
-#define clip_tri_uv(first, second, index, percent) \
-   rdp.vtxbuf[index].u[0] = first->u[0] + (second->u[0] - first->u[0]) * percent; \
-   rdp.vtxbuf[index].v[0] = first->v[0] + (second->v[0] - first->v[0]) * percent; \
-   rdp.vtxbuf[index].u[1] = first->u[1] + (second->u[1] - first->u[1]) * percent; \
-   rdp.vtxbuf[index].v[1] = first->v[1] + (second->v[1] - first->v[1]) * percent
-
-#define clip_tri_interp_colors(first, second, index, percent, val, interpolate_colors) \
-   if (interpolate_colors) \
-      glide64_interpolate_colors(first, second, &rdp.vtxbuf[index++], percent, 1.0f, 1.0f, 1.0f); \
-   else \
-      rdp.vtxbuf[index++].number = first->number | second->number | val
-
 static void clip_tri(int interpolate_colors)
 {
    int i,j,index,n=rdp.n_global;
