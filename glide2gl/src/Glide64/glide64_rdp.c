@@ -756,38 +756,35 @@ static void rdp_texrect(uint32_t w0, uint32_t w1)
          float maxt       = 1;
          int x_i          = off_x_i;
          int y_i          = off_y_i;
-         int32_t shifter  = g_gdp.tile[tilenum].shift_s;
 
          //shifting
-         if (shifter)
+         if (g_gdp.tile[tilenum].shift_s)
          {
-            if (shifter < 11)
+            if (g_gdp.tile[tilenum].shift_s < 11)
             {
                x_i   = SIGN16(x_i);
-               x_i >>= shifter;
-               maxs = 1.0f/(float)(1 << shifter);
+               x_i >>= g_gdp.tile[tilenum].shift_s;
+               maxs = 1.0f/(float)(1 << g_gdp.tile[tilenum].shift_s);
             }
             else
             {
-               uint8_t iShift = (16 - shifter);
+               uint8_t iShift = (16 - g_gdp.tile[tilenum].shift_s);
                x_i <<= SIGN16(iShift);
                maxs = (float)(1 << iShift);
             }
          }
 
-         shifter = g_gdp.tile[tilenum].shift_t;
-
-         if (shifter)
+         if (g_gdp.tile[tilenum].shift_t)
          {
-            if (shifter < 11)
+            if (g_gdp.tile[tilenum].shift_t < 11)
             {
                y_i   = SIGN16(y_i);
-               y_i >>= shifter;
-               maxt = 1.0f/(float)(1 << shifter);
+               y_i >>= g_gdp.tile[tilenum].shift_t;
+               maxt = 1.0f/(float)(1 << g_gdp.tile[tilenum].shift_t);
             }
             else
             {
-               uint8_t iShift = (16 - shifter);
+               uint8_t iShift = (16 - g_gdp.tile[tilenum].shift_t);
                y_i <<= SIGN16(iShift);
                maxt = (float)(1 << iShift);
             }
@@ -1933,24 +1930,20 @@ void pre_update(void)
 
 static INLINE void draw_tri_uv_calculation_update_shift(unsigned cur_tile, unsigned index, VERTEX *v)
 {
-   int32_t shifter = g_gdp.tile[cur_tile].shift_s;
-
-   if (shifter)
+   if (g_gdp.tile[cur_tile].shift_s)
    {
-      if (shifter > 10)
-         v->u[index] *= (float)(1 << (16 - shifter));
+      if (g_gdp.tile[cur_tile].shift_s > 10)
+         v->u[index] *= (float)(1 << (16 - g_gdp.tile[cur_tile].shift_s));
       else
-         v->u[index] /= (float)(1 << shifter);
+         v->u[index] /= (float)(1 << g_gdp.tile[cur_tile].shift_s);
    }
 
-   shifter = g_gdp.tile[cur_tile].shift_t;
-
-   if (shifter)
+   if (g_gdp.tile[cur_tile].shift_t)
    {
-      if (shifter > 10)
-         v->v[index] *= (float)(1 << (16 - shifter));
+      if (g_gdp.tile[cur_tile].shift_t > 10)
+         v->v[index] *= (float)(1 << (16 - g_gdp.tile[cur_tile].shift_t));
       else
-         v->v[index] /= (float)(1 << shifter);
+         v->v[index] /= (float)(1 << g_gdp.tile[cur_tile].shift_t);
    }
 
    v->u[index]   -= rdp.tiles[cur_tile].f_ul_s;

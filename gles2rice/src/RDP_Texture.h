@@ -846,13 +846,9 @@ void DLParser_SetTile(Gfx *gfx)
     if( tile.dwShiftS )
     {
         if( tile.dwShiftS > 10 )
-        {
             tile.fShiftScaleS = (float)(1 << (16 - tile.dwShiftS));
-        }
         else
-        {
             tile.fShiftScaleS = (float)1.0f/(1 << tile.dwShiftS);
-        }
     }
 
     tile.fShiftScaleT = 1.0f;
