@@ -321,7 +321,7 @@ static void clip_tri(int interpolate_colors)
    int i,j,index,n=rdp.n_global;
 
    // Check which clipping is needed
-   if (rdp.clip & CLIP_XMAX) // right of the screen
+   if (rdp.clip & X_CLIP_MAX) // right of the screen
    {
       // Swap vertex buffers
       VERTEX *tmp     = rdp.vtxbuf2;
@@ -385,7 +385,7 @@ static void clip_tri(int interpolate_colors)
       n = index;
    }
 
-   if (rdp.clip & CLIP_XMIN) // left of the screen
+   if (rdp.clip & X_CLIP_MIN) // left of the screen
    {
       // Swap vertex buffers
       VERTEX *tmp = rdp.vtxbuf2;
@@ -449,7 +449,7 @@ static void clip_tri(int interpolate_colors)
       n = index;
    }
 
-   if (rdp.clip & CLIP_YMAX) // top of the screen
+   if (rdp.clip & Y_CLIP_MAX) // top of the screen
    {
       // Swap vertex buffers
       VERTEX *tmp = rdp.vtxbuf2;
@@ -512,7 +512,7 @@ static void clip_tri(int interpolate_colors)
       n = index;
    }
 
-   if (rdp.clip & CLIP_YMIN) // bottom of the screen
+   if (rdp.clip & Y_CLIP_MIN) // bottom of the screen
    {
       // Swap vertex buffers
       VERTEX *tmp = rdp.vtxbuf2;
@@ -901,13 +901,13 @@ void do_triangle_stuff_2 (uint16_t linew, uint8_t no_clip, int old_interpolate)
    for (i = 0; i < rdp.n_global; i++)
    {
       if (rdp.vtxbuf[i].x > rdp.clip_max_x)
-         rdp.clip |= CLIP_XMAX;
+         rdp.clip |= X_CLIP_MAX;
       if (rdp.vtxbuf[i].x < rdp.clip_min_x)
-         rdp.clip |= CLIP_XMIN;
+         rdp.clip |= X_CLIP_MIN;
       if (rdp.vtxbuf[i].y > rdp.clip_max_y)
-         rdp.clip |= CLIP_YMAX;
+         rdp.clip |= Y_CLIP_MAX;
       if (rdp.vtxbuf[i].y < rdp.clip_min_y)
-         rdp.clip |= CLIP_YMIN;
+         rdp.clip |= Y_CLIP_MIN;
    }
 
    render_tri (linew, old_interpolate);
@@ -959,13 +959,13 @@ void do_triangle_stuff (uint16_t linew, int old_interpolate) // what else?? do t
 
       // Don't remove clipping, or it will freeze
       if (vtx->x > rdp.clip_max_x)
-         rdp.clip |= CLIP_XMAX;
+         rdp.clip |= X_CLIP_MAX;
       if (vtx->x < rdp.clip_min_x)
-         rdp.clip |= CLIP_XMIN;
+         rdp.clip |= X_CLIP_MIN;
       if (vtx->y > rdp.clip_max_y)
-         rdp.clip |= CLIP_YMAX;
+         rdp.clip |= Y_CLIP_MAX;
       if (vtx->y < rdp.clip_min_y)
-         rdp.clip |= CLIP_YMIN;
+         rdp.clip |= Y_CLIP_MIN;
       if (vtx->z > maxZ)
          rdp.clip |= CLIP_ZMAX;
       if (vtx->z < 0.0f)
