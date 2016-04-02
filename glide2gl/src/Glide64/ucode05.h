@@ -47,14 +47,11 @@ static void uc5_dma_offsets(uint32_t w0, uint32_t w1)
 
 static void uc5_matrix(uint32_t w0, uint32_t w1)
 {
-   uint8_t multiply;
+   uint8_t multiply = 0;
    uint8_t index    = _SHIFTR(w0, 16, 4);
 
    if (index == 0) //DKR
-   {
       index    = _SHIFTR(w0, 22, 2);
-      multiply = 0;
-   }
    else //JF
       multiply = _SHIFTR(w0, 23, 1);
 
