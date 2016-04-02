@@ -439,11 +439,16 @@ static void uc9_mult_mpmtx(uint32_t w0, uint32_t w1)
       }
 
       v.cc = 0;
-      if (x < -w) v.cc |= 0x10;
-      if (x > w) v.cc |= 0x01;
-      if (y < -w) v.cc |= 0x20;
-      if (y > w) v.cc |= 0x02;
-      if (w < 0.1f) v.cc |= 0x04;
+      if (x < -w)
+         v.cc |= Z_CLIP_MAX;
+      if (x > w)
+         v.cc |= X_CLIP_MAX;
+      if (y < -w)
+         v.cc |= Z_CLIP_MIN;
+      if (y > w)
+         v.cc |= X_CLIP_MIN;
+      if (w < 0.1f)
+         v.cc |= Y_CLIP_MAX;
 
       daddr[i] = v;
    }
