@@ -69,7 +69,6 @@ extern uint32_t gfx_plugin_accuracy;
 #define SUP_TEXMIRROR 0x00000001
 
 // Clipping flags
-#define CLIP_WMIN 0x00000010
 #define CLIP_ZMAX 0x00000020
 #define CLIP_ZMIN 0x00000040
 
