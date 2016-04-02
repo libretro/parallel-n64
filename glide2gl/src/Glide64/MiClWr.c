@@ -184,17 +184,6 @@ static void Mirror32bS (uint8_t *tex, uint32_t mask, uint32_t max_width,
    }while (--height);
 }
 
-void MirrorTex (uint8_t *tex, uint32_t mask, uint32_t max_width,
-      uint32_t real_width, uint32_t height, uint32_t size)
-{
-   if (size == 1)
-      Mirror16bS (tex, mask, max_width, real_width, height);
-   else if (size == 2)
-      Mirror32bS (tex, mask, max_width, real_width, height);
-   else
-      Mirror8bS (tex, mask, max_width, real_width, height);
-}
-
 //****************************************************************
 // 32-bit Horizontal Clamp
 
@@ -210,14 +199,37 @@ static void Clamp32bS (uint8_t *tex, uint32_t width, uint32_t clamp_to,
       clamp32bS (dest, constant, real_height, line, line_full, count);
 }
 
+void MirrorTex (uint8_t *tex, uint32_t mask, uint32_t max_width,
+      uint32_t real_width, uint32_t height, uint32_t size)
+{
+   switch (size)
+   {
+      case 1:
+         Mirror16bS (tex, mask, max_width, real_width, height);
+         break;
+      case 2:
+         Mirror32bS (tex, mask, max_width, real_width, height);
+         break;
+      default:
+         Mirror8bS (tex, mask, max_width, real_width, height);
+         break;
+   }
+}
+
 void ClampTex(uint8_t *tex, uint32_t width,
       uint32_t clamp_to, uint32_t real_width, uint32_t real_height,
       uint32_t size)
 {
-   if (size == 1)
-      Clamp16bS (tex, width, clamp_to, real_width, real_height);
-   else if (size == 2)
-      Clamp32bS (tex, width, clamp_to, real_width, real_height);
-   else
-      Clamp8bS (tex,  width, clamp_to, real_width, real_height);
+   switch (size)
+   {
+      case 1:
+         Clamp16bS (tex, width, clamp_to, real_width, real_height);
+         break;
+      case 2:
+         Clamp32bS (tex, width, clamp_to, real_width, real_height);
+         break;
+      default:
+         Clamp8bS (tex,  width, clamp_to, real_width, real_height);
+         break;
+   }
 }
