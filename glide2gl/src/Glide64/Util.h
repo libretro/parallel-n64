@@ -44,6 +44,8 @@
 #include "rdp.h"
 #include "../../../mupen64plus-core/src/main/util.h"
 
+#include "../../Graphics/RDP/RDP_state.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -76,6 +78,31 @@ float ScaleZ(float z);
 // rotate left
 #define __ROL__(value, count, nbits) ((value << (count % (nbits))) | (value >> ((nbits) - (count % (nbits)))))
 
+static INLINE void draw_tri_uv_calculation_update_shift(unsigned cur_tile, unsigned index, VERTEX *v)
+{
+   if (g_gdp.tile[cur_tile].shift_s)
+   {
+      if (g_gdp.tile[cur_tile].shift_s > 10)
+         v->u[index] *= (float)(1 << (16 - g_gdp.tile[cur_tile].shift_s));
+      else
+         v->u[index] /= (float)(1 << g_gdp.tile[cur_tile].shift_s);
+   }
+
+   if (g_gdp.tile[cur_tile].shift_t)
+   {
+      if (g_gdp.tile[cur_tile].shift_t > 10)
+         v->v[index] *= (float)(1 << (16 - g_gdp.tile[cur_tile].shift_t));
+      else
+         v->v[index] /= (float)(1 << g_gdp.tile[cur_tile].shift_t);
+   }
+
+   v->u[index]   -= rdp.tiles[cur_tile].f_ul_s;
+   v->v[index]   -= rdp.tiles[cur_tile].f_ul_t;
+   v->u[index]    = rdp.cur_cache[index]->c_off + rdp.cur_cache[index]->c_scl_x * v->u[index];
+   v->v[index]    = rdp.cur_cache[index]->c_off + rdp.cur_cache[index]->c_scl_y * v->v[index];
+   v->u_w[index]  = v->u[index] / v->w;
+   v->v_w[index]  = v->v[index] / v->w;
+}
 
 static INLINE uint32_t rol32(uint32_t value, uint32_t amount)
 {
