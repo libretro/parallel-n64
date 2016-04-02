@@ -667,12 +667,19 @@ bool glide64gSPCullVertices( uint32_t v0, uint32_t vn )
    for (i = v0; i <= vn; i++)
    {
       VERTEX *v = (VERTEX*)&rdp.vtx[i];
-      // Check if completely off the screen (quick frustrum clipping for 90 FOV)
-      if (v->x >= -v->w) clip |= 0x01;
-      if (v->x <= v->w)  clip |= 0x02;
-      if (v->y >= -v->w) clip |= 0x04;
-      if (v->y <= v->w)  clip |= 0x08;
-      if (v->w >= 0.1f)  clip |= 0x10;
+
+      /* Check if completely off the screen 
+       * (quick frustrum clipping for 90 FOV) */
+      if (v->x >= -v->w)
+         clip |= X_CLIP_MAX;
+      if (v->x <= v->w)
+         clip |= X_CLIP_MIN;
+      if (v->y >= -v->w)
+         clip |= Y_CLIP_MAX;
+      if (v->y <= v->w)
+         clip |= Y_CLIP_MIN;
+      if (v->w >= 0.1f)
+         clip |= Z_CLIP_MAX;
       if (clip == 0x1F)
          return false;
    }
@@ -725,18 +732,18 @@ void glide64gSPCIVertex(uint32_t v, uint32_t n, uint32_t v0)
 
       vert->scr_off = 0;
       if (vert->x < -vert->w)
-         vert->scr_off |= 1;
+         vert->scr_off |= X_CLIP_MAX;
       if (vert->x > vert->w)
-         vert->scr_off |= 2;
+         vert->scr_off |= X_CLIP_MIN;
       if (vert->y < -vert->w)
-         vert->scr_off |= 4;
+         vert->scr_off |= Y_CLIP_MAX;
       if (vert->y > vert->w)
-         vert->scr_off |= 8;
+         vert->scr_off |= Y_CLIP_MIN;
       if (vert->w < 0.1f)
-         vert->scr_off |= 16;
+         vert->scr_off |= Z_CLIP_MAX;
 #if 0
       if (vert->z_w > 1.0f)
-         vert->scr_off |= 32;
+         vert->scr_off |= Z_CLIP_MIN; 
 #endif
 
       if (rdp.geom_mode & G_LIGHTING)
