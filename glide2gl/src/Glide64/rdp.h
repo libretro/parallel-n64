@@ -41,6 +41,7 @@
 #define RDP_H
 
 #include <retro_inline.h>
+#include <clamping.h>
 
 #include "../../Graphics/RDP/RDP_state.h"
 #include "Gfx_1.3.h"
@@ -694,15 +695,6 @@ static INLINE uint32_t vi_integer_sqrt(uint32_t a)
       one >>= 2;
    }
    return res;
-}
-
-static INLINE float get_float_color_clamped(float col)
-{
-   if (col > 1.0f)
-      col = 1.0f;
-   if (col < 0.0f)
-      col = 0.0f;
-   return col;
 }
 
 extern int SwapOK;

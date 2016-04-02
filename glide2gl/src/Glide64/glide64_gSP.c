@@ -52,9 +52,9 @@ void glide64gSPLightVertex(void *data)
       color[2] += rdp.light[i].col[2] * intensity;
    }
 
-   v->r = (uint8_t)(255.0f * get_float_color_clamped(color[0]));
-   v->g = (uint8_t)(255.0f * get_float_color_clamped(color[1]));
-   v->b = (uint8_t)(255.0f * get_float_color_clamped(color[2]));
+   v->r = (uint8_t)(255.0f * clamp_float(color[0], 0.0, 1.0));
+   v->g = (uint8_t)(255.0f * clamp_float(color[1], 0.0, 1.0));
+   v->b = (uint8_t)(255.0f * clamp_float(color[2], 0.0, 1.0));
 }
 
 void glide64gSPPointLightVertex(void *data, float * vpos)

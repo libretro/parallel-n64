@@ -83,13 +83,13 @@ void apply_shade_mods (VERTEX *v)
 
       if (rdp.cmb_flags & CMB_SET)
       {
-         v->r = (uint8_t)(255.0f * get_float_color_clamped(rdp.col[0]));
-         v->g = (uint8_t)(255.0f * get_float_color_clamped(rdp.col[1]));
-         v->b = (uint8_t)(255.0f * get_float_color_clamped(rdp.col[2]));
+         v->r = (uint8_t)(255.0f * clamp_float(rdp.col[0], 0.0, 1.0));
+         v->g = (uint8_t)(255.0f * clamp_float(rdp.col[1], 0.0, 1.0));
+         v->b = (uint8_t)(255.0f * clamp_float(rdp.col[2], 0.0, 1.0));
       }
 
       if (rdp.cmb_flags & CMB_A_SET)
-         v->a = (uint8_t)(255.0f * get_float_color_clamped(rdp.col[3]));
+         v->a = (uint8_t)(255.0f * clamp_float(rdp.col[3], 0.0, 1.0));
 
       if (rdp.cmb_flags & CMB_SETSHADE_SHADEALPHA)
          v->r = v->g = v->b = v->a;
@@ -104,13 +104,13 @@ void apply_shade_mods (VERTEX *v)
 
       if (rdp.cmb_flags & CMB_MULT)
       {
-         v->r = (uint8_t)(v->r * get_float_color_clamped(rdp.col[0]));
-         v->g = (uint8_t)(v->g * get_float_color_clamped(rdp.col[1]));
-         v->b = (uint8_t)(v->b * get_float_color_clamped(rdp.col[2]));
+         v->r = (uint8_t)(v->r * clamp_float(rdp.col[0], 0.0, 1.0));
+         v->g = (uint8_t)(v->g * clamp_float(rdp.col[1], 0.0, 1.0));
+         v->b = (uint8_t)(v->b * clamp_float(rdp.col[2], 0.0, 1.0));
       }
 
       if (rdp.cmb_flags & CMB_A_MULT)
-         v->a = (uint8_t)(v->a * get_float_color_clamped(rdp.col[3]));
+         v->a = (uint8_t)(v->a * clamp_float(rdp.col[3], 0.0, 1.0));
       if (rdp.cmb_flags & CMB_SUB)
       {
          int r = v->r - (int)(255.0f * rdp.coladd[0]);
