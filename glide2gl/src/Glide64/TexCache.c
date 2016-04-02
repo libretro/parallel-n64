@@ -47,6 +47,8 @@
 #include "MiClWr.h"
 #include "CRC.h"
 
+#include <clamping.h>
+
 #include "../../../Graphics/GBI.h"
 #include "../../../Graphics/image_convert.h"
 
@@ -1531,21 +1533,17 @@ static void LoadTex(int id, int tmu)
 
                   while (size--)
                   {
-                     float r, g, b;
-                     r = (float)(((*dst) >> 8) & 0xF);
-                     r = (r - cr0) * percent + r;
-                     if (r > 15.0f) r = 15.0f;
-                     if (r < 0.0f) r = 0.0f;
-                     g = (float)(((*dst) >> 4) & 0xF);
-                     g = (g - cg0) * percent + g;
-                     if (g > 15.0f) g = 15.0f;
-                     if (g < 0.0f) g = 0.0f;
-                     b = (float)(*dst & 0xF);
-                     b = (b - cb0) * percent + b;
-                     if (b > 15.0f) b = 15.0f;
-                     if (b < 0.0f) b = 0.0f;
+                     float r = (float)(((*dst) >> 8) & 0xF);
+                     float g = (float)(((*dst) >> 4) & 0xF);
+                     float b = (float)(*dst & 0xF);
+                     r       = (r - cr0) * percent + r;
+                     r       = clamp_float(r, 0.0f, 15.0f);
+                     g       = (g - cg0) * percent + g;
+                     g       = clamp_float(g, 0.0f, 15.0f);
+                     b       = (b - cb0) * percent + b;
+                     b       = clamp_float(b, 0.0f, 15.0f);
 
-                     *dst = (*dst & 0xF000) | ((uint16_t)r << 8) | ((uint16_t)g << 4) | (uint16_t)b;
+                     *dst    = (*dst & 0xF000) | ((uint16_t)r << 8) | ((uint16_t)g << 4) | (uint16_t)b;
                      dst++;
                   }
                }
@@ -1594,18 +1592,10 @@ static void LoadTex(int id, int tmu)
                      float r = ((float)(((*dst) >> 8) & 0xF) - cr0) * percent;
                      float g = ((float)(((*dst) >> 4) & 0xF) - cg0) * percent;
                      float b = ((float)(*dst & 0xF) - cb0) * percent;
-                     if (r > 15.0f)
-                        r = 15.0f;
-                     if (r < 0.0f)
-                        r = 0.0f;
-                     if (g > 15.0f)
-                        g = 15.0f;
-                     if (g < 0.0f)
-                        g = 0.0f;
-                     if (b > 15.0f)
-                        b = 15.0f;
-                     if (b < 0.0f)
-                        b = 0.0f;
+
+                     r       = clamp_float(r, 0.0f, 15.0f);
+                     g       = clamp_float(g, 0.0f, 15.0f);
+                     b       = clamp_float(b, 0.0f, 15.0f);
 
                      *dst = ((((*dst) >> 12) & 0xF) << 12) | ((uint16_t)r << 8) | ((uint16_t)g << 4) | (uint16_t)b;
                      dst++;
@@ -1657,7 +1647,7 @@ static void LoadTex(int id, int tmu)
                         ((1 - percent_g)*(((*dst) >> 4) & 0xF) + percent_g*noise);
                      uint8_t b = (uint8_t)
                         ((1 - percent_b)*(*dst & 0xF) + percent_b*noise);
-                     *dst = (*dst & 0xF000) | (r << 8) | (g << 4) | b;
+                     *dst      = (*dst & 0xF000) | (r << 8) | (g << 4) | b;
                      dst++;
                   }
                }
@@ -1672,7 +1662,7 @@ static void LoadTex(int id, int tmu)
                      (percent*cg0 + (1 - percent)*((*dst & 0x00F0) >> 4));
                   uint8_t b = (uint8_t)
                      (percent*cb0 + (1 - percent)*(*dst & 0x000F));
-                  *dst = (*dst & 0xF000) | (r << 8) | (g << 4) | b;
+                  *dst      = (*dst & 0xF000) | (r << 8) | (g << 4) | b;
                   dst++;
                }
                break;
@@ -1682,7 +1672,7 @@ static void LoadTex(int id, int tmu)
                   uint8_t r = (cr0 * ((*dst & 0x0F00) >> 8));
                   uint8_t g = (cg0 * ((*dst & 0x00F0) >> 4));
                   uint8_t b = (cb0 * (*dst & 0x000F));
-                  *dst = (*dst & 0xF000) | (r << 8) | (g << 4) | b;
+                  *dst      = (*dst & 0xF000) | (r << 8) | (g << 4) | b;
                   dst++;
                }
                break;
@@ -1695,7 +1685,7 @@ static void LoadTex(int id, int tmu)
                      uint8_t r = (uint8_t)(cr0 + percent*(((*dst) >> 8) & 0xF));
                      uint8_t g = (uint8_t)(cg0 + percent*(((*dst) >> 4) & 0xF));
                      uint8_t b = (uint8_t)(cb0 + percent*(((*dst) >> 0) & 0xF));
-                     *dst = (*dst & 0xF000) | (r << 8) | (g << 4) | b;
+                     *dst      = (*dst & 0xF000) | (r << 8) | (g << 4) | b;
                      dst++;
                   }
                }
