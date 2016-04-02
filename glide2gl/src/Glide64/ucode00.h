@@ -57,93 +57,10 @@ static void uc0_vertex(uint32_t w0, uint32_t w1)
 
 // ** Definitions **
 
-static void modelview_load (float m[4][4])
-{
-   CopyMatrix(rdp.model, m);
-   g_gdp.flags |= UPDATE_MULT_MAT | UPDATE_LIGHTS;
-}
-
-static void modelview_mul (float m[4][4])
-{
-   MulMatrices(m, rdp.model, rdp.model);
-   g_gdp.flags |= UPDATE_MULT_MAT | UPDATE_LIGHTS;
-}
-
-static void modelview_push(void)
-{
-   if (rdp.model_i == rdp.model_stack_size)
-      return;
-
-   CopyMatrix(rdp.model_stack[rdp.model_i++], rdp.model);
-}
-
-static void modelview_load_push (float m[4][4])
-{
-   modelview_push();
-   modelview_load(m);
-}
-
-static void modelview_mul_push (float m[4][4])
-{
-   modelview_push();
-   modelview_mul (m);
-}
-
-static void projection_load (float m[4][4])
-{
-   CopyMatrix(rdp.proj, m);
-   g_gdp.flags |= UPDATE_MULT_MAT;
-}
-
-static void projection_mul (float m[4][4])
-{
-   MulMatrices(m, rdp.proj, rdp.proj);
-   g_gdp.flags |= UPDATE_MULT_MAT;
-}
-
 /* uc0:matrix - performs matrix operations */
 static void uc0_matrix(uint32_t w0, uint32_t w1)
 {
-   DECLAREALIGN16VAR(m[4][4]);
-   // Use segment offset to get the address
-   uint32_t addr   = RSP_SegmentToPhysical(w1);
-   uint8_t command = (uint8_t)((w0 >> 16) & 0xFF);
-
-   load_matrix(m, addr);
-
-   switch (command)
-   {
-      case G_MTX_NOPUSH: // modelview mul nopush
-         modelview_mul (m);
-         break;
-
-      case 1: // projection mul nopush
-      case 5: // projection mul push, can't push projection
-         projection_mul(m);
-         break;
-
-      case G_MTX_LOAD: // modelview load nopush
-         modelview_load(m);
-         break;
-
-      case 3: // projection load nopush
-      case 7: // projection load push, can't push projection
-         projection_load(m);
-         break;
-
-      case 4: // modelview mul push
-         modelview_mul_push(m);
-         break;
-
-      case 6: // modelview load push
-         modelview_load_push(m);
-         break;
-#if 0
-      default:
-         FRDP_E ("Unknown matrix command, %02lx", command);
-         FRDP ("Unknown matrix command, %02lx", command);
-#endif
-   }
+   glide64gSPMatrix(w1, _SHIFTR(w0, 16, 8));
 }
 
 /* uc0:displaylist - makes a call to another section of code */

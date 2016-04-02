@@ -10,6 +10,7 @@ extern "C" {
 #endif
 
 /* Glide64 prototypes */
+void glide64gSPMatrix( uint32_t matrix, uint8_t param );
 void glide64gSPClearGeometryMode (uint32_t mode);
 void glide64gSPSetGeometryMode (uint32_t mode);
 void glide64gSPTexture(int32_t sc, int32_t tc, int32_t level, 

@@ -54,6 +54,14 @@
 
 #include "../../Graphics/GBI.h"
 
+void modelview_load (float m[4][4]);
+void modelview_mul (float m[4][4]);
+void modelview_push(void);
+void modelview_load_push (float m[4][4]);
+void modelview_mul_push (float m[4][4]);
+void projection_load (float m[4][4]);
+void projection_mul (float m[4][4]);
+
 // ** RDP graphics functions **
 
 static void rdp_texrect(uint32_t w0, uint32_t w1);
@@ -87,14 +95,6 @@ static void rdphalf_cont(uint32_t w0, uint32_t w1);
 static void rsp_uc5_reserved0(uint32_t w0, uint32_t w1);
 
 void uc6_obj_sprite(uint32_t w0, uint32_t w1);
-
-static void modelview_load (float m[4][4]);
-static void modelview_mul (float m[4][4]);
-static void modelview_push(void);
-static void modelview_load_push (float m[4][4]);
-static void modelview_mul_push (float m[4][4]);
-static void projection_load (float m[4][4]);
-static void projection_mul (float m[4][4]);
 
 void load_matrix (float m[4][4], uint32_t addr);
 
