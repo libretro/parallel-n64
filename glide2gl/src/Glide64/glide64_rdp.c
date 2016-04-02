@@ -633,10 +633,10 @@ static void rdp_texrect(uint32_t w0, uint32_t w1)
    }
    else
    {
-      ul_x = ((int16_t)((w1 & 0x00FFF000) >> 12)) / 4.0f;
-      ul_y = ((int16_t)(w1 & 0x00000FFF)) / 4.0f;
-      lr_x = ((int16_t)((w0 & 0x00FFF000) >> 12)) / 4.0f;
-      lr_y = ((int16_t)(w0 & 0x00000FFF)) / 4.0f;
+      ul_x = _SHIFTR(w1, 12, 12) / 4.0f;
+      ul_y = _SHIFTR(w1,  0, 12) / 4.0f;
+      lr_x = _SHIFTR(w0, 12, 12) / 4.0f;
+      lr_y = _SHIFTR(w0,  0, 12) / 4.0f;
    }
 
    if (ul_x >= lr_x)
@@ -1040,11 +1040,11 @@ static void rdp_loadblock(uint32_t w0, uint32_t w1)
    /* lr_s specifies number of 64-bit words to copy
     * 10.2 format. */
    gDPLoadBlock(
-         ((w1 >> 24) & 0x07), 
-         (w0 >> 14) & 0x3FF, /* ul_s */
-         (w0 >>  2) & 0x3FF, /* ul_t */
-         (w1 >> 14) & 0x3FF, /* lr_s */
-         (w1 & 0x0FFF) /* dxt */
+         _SHIFTR(w1, 24, 3),     /* tile */ 
+         (w0 >> 14) & 0x3FF,     /* ul_s */
+         (w0 >>  2) & 0x3FF,     /* ul_t */
+         (w1 >> 14) & 0x3FF,     /* lr_s */
+         _SHIFTR(w1, 0, 12)      /* dxt */
          );
 }
 
@@ -1100,9 +1100,9 @@ static void rdp_settextureimage(uint32_t w0, uint32_t w1)
 
    /* TODO/FIXME - all different values from the ones Angrylion sets. */
    glide64gDPSetTextureImage(
-         (uint8_t)((w0 >> 21) & 0x07),       /* format */
+         _SHIFTR(w0, 21, 3),                 /* format */
          g_gdp.ti_size,                      /* size   */
-         (uint16_t)(1 + (w0 & 0x00000FFF)),  /* width */
+         _SHIFTR(w0, 0, 12) + 1,             /* width */
          RSP_SegmentToPhysical(w1)           /* address */
          );
 
