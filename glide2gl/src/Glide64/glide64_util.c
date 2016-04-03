@@ -47,6 +47,7 @@
 #include "Framebuffer_glide64.h"
 #include "../../../Graphics/GBI.h"
 #include "../../Graphics/RSP/gSP_funcs_C.h"
+#include "../../Graphics/RSP/gSP_state.h"
 #include "../../Graphics/RSP/RSP_state.h"
 
 extern int dzdx;
@@ -1455,7 +1456,7 @@ void pre_update(void)
       g_gdp.flags ^= UPDATE_LIGHTS;
 
       // Calculate light vectors
-      for (l = 0; l < rdp.num_lights; l++)
+      for (l = 0; l < gSP.numLights; l++)
       {
          InverseTransformVector(&rdp.light[l].dir[0], rdp.light_vector[l], rdp.model);
          NormalizeVector (rdp.light_vector[l]);

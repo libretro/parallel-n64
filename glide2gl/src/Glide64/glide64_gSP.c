@@ -1,6 +1,7 @@
 #include <stdint.h>
 
 #include "../../../Graphics/3dmath.h"
+#include "../../../Graphics/RSP/gSP_state.h"
 
 #include "glide64_gSP.h"
 
@@ -50,11 +51,11 @@ void glide64gSPLightVertex(void *data)
    float color[3];
    VERTEX *v = (VERTEX*)data;
 
-   color[0] = rdp.light[rdp.num_lights].col[0];
-   color[1] = rdp.light[rdp.num_lights].col[1];
-   color[2] = rdp.light[rdp.num_lights].col[2];
+   color[0] = rdp.light[gSP.numLights].col[0];
+   color[1] = rdp.light[gSP.numLights].col[1];
+   color[2] = rdp.light[gSP.numLights].col[2];
 
-   for (i = 0; i < rdp.num_lights; i++)
+   for (i = 0; i < gSP.numLights; i++)
    {
       float intensity = DotProduct (rdp.light_vector[i], v->vec);
 
@@ -77,11 +78,11 @@ void glide64gSPPointLightVertex(void *data, float * vpos)
    float color[3];
    VERTEX *v      = (VERTEX*)data;
 
-   color[0] = rdp.light[rdp.num_lights].col[0];
-   color[1] = rdp.light[rdp.num_lights].col[1];
-   color[2] = rdp.light[rdp.num_lights].col[2];
+   color[0] = rdp.light[gSP.numLights].col[0];
+   color[1] = rdp.light[gSP.numLights].col[1];
+   color[2] = rdp.light[gSP.numLights].col[2];
 
-   for (l = 0; l < rdp.num_lights; l++)
+   for (l = 0; l < gSP.numLights; l++)
    {
       float light_intensity = 0.0f;
 
@@ -542,7 +543,7 @@ void glide64gSPNumLights(int32_t n)
    if (n > 12)
       return;
 
-   rdp.num_lights = n;
+   gSP.numLights = n;
    g_gdp.flags |= UPDATE_LIGHTS;
 }
 
@@ -871,16 +872,16 @@ void glide64gSPCBFDVertex(uint32_t a, uint32_t n, uint32_t v0)
          else if (rdp.geom_mode & G_TEXTURE_GEN)
             calc_sphere (vert);
 
-         color[0] = rdp.light[rdp.num_lights].col[0];
-         color[1] = rdp.light[rdp.num_lights].col[1];
-         color[2] = rdp.light[rdp.num_lights].col[2];
+         color[0] = rdp.light[gSP.numLights].col[0];
+         color[1] = rdp.light[gSP.numLights].col[1];
+         color[2] = rdp.light[gSP.numLights].col[2];
 
          light_intensity = 0.0f;
 
          if (rdp.geom_mode & G_POINT_LIGHTING)
          {
             NormalizeVector (vert->vec);
-            for (l = 0; l < rdp.num_lights-1; l++)
+            for (l = 0; l < gSP.numLights-1; l++)
             {
                if (!rdp.light[l].nonblack)
                   continue;
@@ -916,7 +917,7 @@ void glide64gSPCBFDVertex(uint32_t a, uint32_t n, uint32_t v0)
          }
          else
          {
-            for (l = 0; l < rdp.num_lights; l++)
+            for (l = 0; l < gSP.numLights; l++)
             {
                if (rdp.light[l].nonblack && rdp.light[l].nonzero)
                {

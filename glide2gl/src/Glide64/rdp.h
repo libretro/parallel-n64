@@ -486,7 +486,6 @@ struct RDP
    int force_wrap;
 
    // Lighting
-   uint32_t num_lights;
    LIGHT light[12];
    float light_vector[12][3];
    float lookat[2][3];

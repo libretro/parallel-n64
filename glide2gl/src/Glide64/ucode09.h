@@ -44,6 +44,7 @@
 #include <stdint.h>
 
 #include "../../Graphics/HLE/Microcode/ZSort.h"
+#include "../../Graphics/RSP/gSP_state.h"
 
 ZSORTRDP zSortRdp = {{0, 0}, {0, 0}, 0, 0};
 
@@ -215,14 +216,14 @@ static void uc9_fmlight(uint32_t w0, uint32_t w1)
          break;
    }
 
-   rdp.light[rdp.num_lights].col[0] = (float)(((uint8_t*)gfx_info.DMEM)[(a+0)^3]) / 255.0f;
-   rdp.light[rdp.num_lights].col[1] = (float)(((uint8_t*)gfx_info.DMEM)[(a+1)^3]) / 255.0f;
-   rdp.light[rdp.num_lights].col[2] = (float)(((uint8_t*)gfx_info.DMEM)[(a+2)^3]) / 255.0f;
-   rdp.light[rdp.num_lights].col[3] = 1.0f;
-   //FRDP ("ambient light: r: %.3f, g: %.3f, b: %.3f\n", rdp.light[rdp.num_lights].r, rdp.light[rdp.num_lights].g, rdp.light[rdp.num_lights].b);
+   rdp.light[gSP.numLights].col[0] = (float)(((uint8_t*)gfx_info.DMEM)[(a+0)^3]) / 255.0f;
+   rdp.light[gSP.numLights].col[1] = (float)(((uint8_t*)gfx_info.DMEM)[(a+1)^3]) / 255.0f;
+   rdp.light[gSP.numLights].col[2] = (float)(((uint8_t*)gfx_info.DMEM)[(a+2)^3]) / 255.0f;
+   rdp.light[gSP.numLights].col[3] = 1.0f;
+   //FRDP ("ambient light: r: %.3f, g: %.3f, b: %.3f\n", rdp.light[gSP.numLights].r, rdp.light[gSP.numLights].g, rdp.light[gSP.numLights].b);
    a += 8;
 
-   for (i = 0; i < rdp.num_lights; i++)
+   for (i = 0; i < gSP.numLights; i++)
    {
       rdp.light[i].col[0] = (float)(((uint8_t*)gfx_info.DMEM)[(a+0)^3]) / 255.0f;
       rdp.light[i].col[1] = (float)(((uint8_t*)gfx_info.DMEM)[(a+1)^3]) / 255.0f;
