@@ -321,13 +321,6 @@ typedef struct
    uint32_t nonzero;
 } LIGHT;
 
-typedef struct {
-    int clampdiffs, clampdifft;
-    int clampens, clampent;
-    int masksclamped, masktclamped;
-    int notlutswitch, tlutswitch;
-} FAKETILE;
-
 typedef enum
 {
    CI_MAIN,      //0, main color image
@@ -353,47 +346,6 @@ typedef struct
    CI_STATUS status;
    int   changed;
 } COLOR_IMAGE;
-
-typedef struct
-{
-   int32_t tmu;
-   uint32_t addr;          //address of color image
-   uint32_t end_addr;
-   uint32_t tex_addr;      //address in video memory
-   uint32_t width;         //width of color image
-   uint32_t height;        //height of color image
-   uint8_t  format;        //format of color image
-   uint8_t  size;          //format of color image
-   uint8_t  clear;         //flag. texture buffer must be cleared
-   uint8_t  drawn;         //flag. if equal to 1, this image was already drawn in current frame
-   uint32_t crc;           //checksum of the color image
-   float scr_width;        //width of rendered image
-   float scr_height;       //height of rendered image
-   uint32_t tex_width;     //width of texture buffer
-   uint32_t tex_height;    //height of texture buffer
-   int   tile;     
-   uint16_t  tile_uls;     //shift from left bound of the texture
-   uint16_t  tile_ult;     //shift from top of the texture
-   uint32_t v_shift;       //shift from top of the texture
-   uint32_t u_shift;       //shift from left of the texture
-   float lr_u;
-   float lr_v;
-   float u_scale;          //used to map vertex u,v coordinates into hires texture
-   float v_scale;          //used to map vertex u,v coordinates into hires texture
-   CACHE_LUT * cache;      //pointer to texture cache item
-   GrTexInfo info;
-   uint16_t t_mem;
-} TBUFF_COLOR_IMAGE;
-
-typedef struct
-{
-   int32_t tmu;
-   uint32_t begin;         //start of the block in video memory
-   uint32_t end;           //end of the block in video memory
-   uint8_t count;          //number of allocated texture buffers
-   int clear_allowed;      //stack of buffers can be cleared
-   TBUFF_COLOR_IMAGE images[256];
-} TEXTURE_BUFFER;
 
 #define NUMTEXBUF 92
 
