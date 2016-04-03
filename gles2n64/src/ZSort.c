@@ -10,6 +10,7 @@
 #include "OpenGL.h"
 #include "3DMath.h"
 
+#include "../../Graphics/RDP/gDP_state.h"
 #include "../../Graphics/HLE/Microcode/ZSort.h"
 
 ZSORTRDP GLN64zSortRdp = {{0, 0}, {0, 0}, 0, 0};

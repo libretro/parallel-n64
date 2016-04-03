@@ -84,7 +84,7 @@ typedef struct
         int32_t level, on, tile;
     } texture;
 
-    gDPTile *textureTile[2];
+    struct gDPTile *textureTile[2];
 
     struct
     {

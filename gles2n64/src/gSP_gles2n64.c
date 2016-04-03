@@ -24,6 +24,7 @@
 #include "Config.h"
 
 #include "../../Graphics/3dmath.h"
+#include "../../Graphics/RDP/gDP_state.h"
 #include "../../Graphics/image_convert.h"
 
 //Note: 0xC0 is used by 1080 alot, its an unknown command.

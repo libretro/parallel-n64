@@ -3,6 +3,8 @@
 
 #include "OpenGL.h"
 
+#include "../../Graphics/RDP/gDP_state.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -187,7 +189,7 @@ typedef struct ShaderProgram
     int         usesNoise;    //requires noise texture
 
     UniformLocation uniforms;
-    gDPCombine      combine;
+    struct gDPCombine      combine;
     uint32_t             flags;
     struct ShaderProgram   *left, *right;
     uint32_t             lastUsed;
@@ -207,7 +209,7 @@ struct CombineCycle
 
 typedef struct
 {
-   gDPCombine combine;
+   struct gDPCombine combine;
    struct CombineCycle decode[4];
    int flags;
 } DecodedMux;

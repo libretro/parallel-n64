@@ -23,9 +23,8 @@
 #include "Config.h"
 #include "ShaderCombiner.h"
 
+#include "../../Graphics/RDP/gDP_state.h"
 #include "../../Graphics/RDP/RDP_state.h"
-
-gDPInfo gDP;
 
 void gln64gDPSetOtherMode( uint32_t mode0, uint32_t mode1 )
 {
@@ -255,10 +254,6 @@ void gln64gDPSetFogColor( uint32_t r, uint32_t g, uint32_t b, uint32_t a )
 void gln64gDPSetFillColor( uint32_t c )
 {
 	gDP.fillColor.color = c;
-   gDP.fillColor.r = _SHIFTR( c, 11, 5 ) * 0.032258064f;
-	gDP.fillColor.g = _SHIFTR( c,  6, 5 ) * 0.032258064f;
-	gDP.fillColor.b = _SHIFTR( c,  1, 5 ) * 0.032258064f;
-	gDP.fillColor.a = _SHIFTR( c,  0, 1 );
    gDP.fillColor.z     = (float)_SHIFTR( c,  2, 14 );
    gDP.fillColor.dz    = (float)_SHIFTR( c,  0,  2 );
 }
@@ -450,7 +445,7 @@ static bool CheckForFrameBufferTexture(uint32_t _address, uint32_t _bytes)
    {
 		if (gDP.tiles[nTile].tmem == gDP.loadTile->tmem)
       {
-			gDPTile *curTile = (gDPTile*)&gDP.tiles[nTile];
+			struct gDPTile *curTile = (struct gDPTile*)&gDP.tiles[nTile];
 			curTile->textureMode  = gDP.loadTile->textureMode;
 			curTile->loadType     = gDP.loadTile->loadType;
 			curTile->imageAddress = gDP.loadTile->imageAddress;
@@ -895,7 +890,7 @@ void gln64gDPTextureRectangle( float ulx, float uly, float lrx, float lry, int32
    struct TexturedRectParams params;
    float lrs, lrt;
    float tmp;
-	gDPTile *textureTileOrg[2];
+	struct gDPTile *textureTileOrg[2];
 
    if (gDP.otherMode.cycleType == G_CYC_COPY)
    {
@@ -1041,7 +1036,7 @@ void gln64gDPLLETriangle(uint32_t _w1, uint32_t _w2, int _shade, int _texture, i
 	uint32_t * texture_base = _pRdpCmd + 8;
 	uint32_t * zbuffer_base = _pRdpCmd + 8;
 	const uint32_t tile = _SHIFTR(_w1, 16, 3);
-	gDPTile *textureTileOrg[2];
+	struct gDPTile *textureTileOrg[2];
 	textureTileOrg[0] = gSP.textureTile[0];
 	textureTileOrg[1] = gSP.textureTile[1];
 	gSP.textureTile[0] = &gDP.tiles[tile];

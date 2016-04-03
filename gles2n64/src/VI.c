@@ -12,6 +12,8 @@
 #include "Config.h"
 #include "FrameBuffer.h"
 
+#include "../../Graphics/RDP/gDP_state.h"
+
 VIInfo VI;
 
 void VI_UpdateSize(void)

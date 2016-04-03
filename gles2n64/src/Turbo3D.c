@@ -6,6 +6,7 @@
 #include "gDP.h"
 #include "OpenGL.h"
 
+#include "../../Graphics/RDP/gDP_state.h"
 #include "../../Graphics/HLE/Microcode/turbo3d.h"
 
 /******************Turbo3D microcode*************************/

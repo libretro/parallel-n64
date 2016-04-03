@@ -22,8 +22,6 @@
 
 using namespace std;
 
-gDPInfo gDP;
-
 void gln64gDPSetOtherMode( uint32_t mode0, uint32_t mode1 )
 {
 	gDP.otherMode.h = mode0;

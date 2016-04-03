@@ -12,6 +12,7 @@
 
 #include "Config.h"
 
+#include "../../Graphics/RDP/gDP_state.h"
 #include "../../Graphics/RSP/gSP_funcs_C.h"
 
 void F3D_SPNoOp( uint32_t w0, uint32_t w1 )

@@ -26,6 +26,8 @@
 #include "RSP.h"
 #include "Config.h"
 
+#include "../../Graphics/RDP/gDP_state.h"
+
 GLInfo OGL;
 
 static bool m_bFlatColors;
@@ -778,7 +780,7 @@ bool texturedRectDepthBufferCopy(const struct TexturedRectParams *_params)
 	// Data from depth buffer loaded into TMEM and then rendered to RDRAM by texrect.
 	// Works only with depth buffer emulation enabled.
 	// Load of arbitrary data to that area causes weird camera rotation in CBFD.
-	const gDPTile *pTile = (const gDPTile*)gSP.textureTile[0];
+	const struct gDPTile *pTile = (const struct gDPTile*)gSP.textureTile[0];
 	if (pTile->loadType == LOADTYPE_BLOCK && gDP.textureImage.size == 2 
          && gDP.textureImage.address >= gDP.depthImageAddress 
          &&  gDP.textureImage.address < (gDP.depthImageAddress + gDP.colorImage.width*gDP.colorImage.width * 6 / 4))

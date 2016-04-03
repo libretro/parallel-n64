@@ -17,6 +17,7 @@
 #include "convert.h"
 #include "FrameBuffer.h"
 
+#include "../../Graphics/RDP/gDP_state.h"
 #include "../../Graphics/image_convert.h"
 
 #define FORMAT_NONE     0
@@ -601,12 +602,12 @@ struct TileSizes
 	uint32_t maskHeight, clampHeight, height, realHeight;
 };
 
-static void _calcTileSizes(uint32_t _t, struct TileSizes *_sizes, gDPTile * _pLoadTile)
+static void _calcTileSizes(uint32_t _t, struct TileSizes *_sizes, struct gDPTile * _pLoadTile)
 {
    uint32_t lineWidth, lineHeight, maskWidth, maskHeight, width, height;
    struct gDPLoadTileInfo *info;
    uint32_t loadWidth = 0, loadHeight = 0;
-   gDPTile * pTile = _t < 2 ? gSP.textureTile[_t] : &gDP.tiles[_t];
+   struct gDPTile * pTile = _t < 2 ? gSP.textureTile[_t] : &gDP.tiles[_t];
    const struct TextureLoadParameters *loadParams = (const struct TextureLoadParameters*)
       &imageFormat[gDP.otherMode.textureLUT][pTile->size][pTile->format];
    const uint32_t maxTexels = loadParams->maxTexels;
@@ -929,9 +930,9 @@ static void _load(uint32_t _tile, CachedTexture *_pTexture)
 
 	while (true)
    {
-     struct TileSizes sizes;
-  uint32_t tileMipLevel;
-	  gDPTile *mipTile;
+      struct TileSizes sizes;
+      uint32_t tileMipLevel;
+      struct gDPTile *mipTile;
       bool bLoaded = false;
       TextureCache_getTextureDestData(&tmptex, pDest, glInternalFormat, GetTexel, &line);
 
@@ -961,9 +962,9 @@ static void _load(uint32_t _tile, CachedTexture *_pTexture)
          break;
       ++mipLevel;
 
-	
+
       tileMipLevel = gSP.texture.tile + mipLevel + 1;
-      mipTile = (gDPTile*)&gDP.tiles[tileMipLevel];
+      mipTile = (struct gDPTile*)&gDP.tiles[tileMipLevel];
       line           = mipTile->line;
       tmptex.tMem    = mipTile->tmem;
       tmptex.palette = mipTile->palette;

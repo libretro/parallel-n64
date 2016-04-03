@@ -18,6 +18,7 @@
 #include "PostProcessor.h"
 #include "FrameBufferInfo.h"
 
+#include "../../Graphics/RDP/gDP_state.h"
 #include "../../Graphics/image_convert.h"
 
 #include "m64p_plugin.h"
