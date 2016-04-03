@@ -64,9 +64,9 @@ void uc9_rpdcmd(uint32_t w0, uint32_t w1)
          if (cmd == G_TEXRECT || cmd == G_TEXRECTFLIP)
          {
             a++;
-            rdp.cmd2 = ((uint32_t*)gfx_info.RDRAM)[a++]; 
+            __RDP.w2 = ((uint32_t*)gfx_info.RDRAM)[a++]; 
             a++;
-            rdp.cmd3 = ((uint32_t*)gfx_info.RDRAM)[a++];
+            __RDP.w3 = ((uint32_t*)gfx_info.RDRAM)[a++];
          }
          gfx_instruction[ucode_zSort][cmd](w0, w1);
       }while(1);

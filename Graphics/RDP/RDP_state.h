@@ -18,7 +18,10 @@ extern "C" {
 
 typedef struct
 {
-	uint32_t w2, w3;
+   /* Next command */
+	uint32_t w2;
+   uint32_t w3;
+
 	uint32_t cmd_ptr;
 	uint32_t cmd_cur;
 	uint32_t cmd_data[MAXCMD + 32];

@@ -23,8 +23,11 @@ typedef struct
    uint32_t nextCmd;
 	int32_t  count;       /* Number of instructions before returning */
 	bool bLLE;            /* LLE mode enabled? */
+
+   /* Next command */
    uint32_t w0;
    uint32_t w1;
+
 	char romname[21];
 } RSPInfo;
 

@@ -374,10 +374,6 @@ struct RDP
 
    int updatescreen;
 
-   // Next command
-   uint32_t cmd2;
-   uint32_t cmd3;
-
    // Clipping
    SCISSOR scissor;
    int scissor_set;

@@ -62,8 +62,8 @@ static void t3dProcessRDP(uint32_t cmds)
 
          if (cmd == G_TEXRECT || cmd == G_TEXRECTFLIP)
          {
-            rdp.cmd2 = ((uint32_t*)gfx_info.RDRAM)[cmds++];
-            rdp.cmd3 = ((uint32_t*)gfx_info.RDRAM)[cmds++];
+            __RDP.w2 = ((uint32_t*)gfx_info.RDRAM)[cmds++];
+            __RDP.w3 = ((uint32_t*)gfx_info.RDRAM)[cmds++];
          }
       }
       __RSP.bLLE = 0;

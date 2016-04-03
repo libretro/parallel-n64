@@ -445,7 +445,7 @@ void glide64ProcessDList(void)
         /* Load the next command and its input */
         __RSP.w0 = ((uint32_t*)gfx_info.RDRAM)[a>>2];   // \ Current command, 64 bit
         __RSP.w1 = ((uint32_t*)gfx_info.RDRAM)[(a>>2)+1]; // /
-        /* cmd2 and cmd3 are filled only when needed, by the function that needs them */
+        /* RDP state's w2 and w3 are filled only when needed, by the function that needs them */
 
 #ifdef LOG_COMMANDS
         // Output the address before the command
@@ -483,8 +483,8 @@ static void yoshis_story_memrect(uint16_t ul_x, uint16_t ul_y,
       uint16_t lr_x, uint16_t lr_y, uint16_t tileno)
 {
   uint32_t y;
-  uint32_t off_x     = ((rdp.cmd2 & 0xFFFF0000) >> 16) >> 5;
-  uint32_t off_y     = ((rdp.cmd2 & 0x0000FFFF) >> 5);
+  uint32_t off_x     = ((__RDP.w2 & 0xFFFF0000) >> 16) >> 5;
+  uint32_t off_y     = ((__RDP.w2 & 0x0000FFFF) >> 5);
   uint32_t width     = lr_x - ul_x;
   uint32_t tex_width = g_gdp.tile[tileno].line << 3;
   uint8_t *texaddr   = (uint8_t*)(gfx_info.RDRAM + rdp.addr[g_gdp.tile[tileno].tmem] + tex_width*off_y + off_x);
@@ -526,7 +526,7 @@ static void pd_zcopy(uint32_t w0, uint32_t w1)
    int x;
    uint16_t      ul_x = (uint16_t)((w1 & 0x00FFF000) >> 14);
    uint16_t      lr_x = (uint16_t)((w0 & 0x00FFF000) >> 14) + 1;
-   uint16_t      ul_u = (uint16_t)((rdp.cmd2 & 0xFFFF0000) >> 21) + 1;
+   uint16_t      ul_u = (uint16_t)((__RDP.w2 & 0xFFFF0000) >> 21) + 1;
    uint16_t     width = lr_x - ul_x;
    uint16_t  *ptr_src = ((uint16_t*)g_gdp.tmem)+ul_u;
    uint16_t  *ptr_dst = (uint16_t*)(gfx_info.RDRAM + rdp.colorImage.address);
@@ -567,18 +567,18 @@ static void rdp_texrect(uint32_t w0, uint32_t w1)
          )
       {
          //gSPTextureRectangle
-         rdp.cmd2 = ((uint32_t*)gfx_info.RDRAM)[a+1];
-         rdp.cmd3 = ((uint32_t*)gfx_info.RDRAM)[a+3];
+         __RDP.w2 = ((uint32_t*)gfx_info.RDRAM)[a+1];
+         __RDP.w3 = ((uint32_t*)gfx_info.RDRAM)[a+3];
          __RSP.PC[__RSP.PCi] += 16;
       }
       else
       {
          //gDPTextureRectangle
          if (settings.hacks&hack_ASB)
-            rdp.cmd2 = 0;
+            __RDP.w2 = 0;
          else
-            rdp.cmd2 = ((uint32_t*)gfx_info.RDRAM)[a+0];
-         rdp.cmd3 = ((uint32_t*)gfx_info.RDRAM)[a+1];
+            __RDP.w2 = ((uint32_t*)gfx_info.RDRAM)[a+0];
+         __RDP.w3 = ((uint32_t*)gfx_info.RDRAM)[a+1];
          __RSP.PC[__RSP.PCi] += 8;
       }
    }
@@ -716,10 +716,10 @@ static void rdp_texrect(uint32_t w0, uint32_t w1)
    //
    //integer representation of texture coordinate.
    //needed to detect and avoid overflow after shifting
-   off_x_i = (rdp.cmd2 >> 16) & 0xFFFF;
-   off_y_i = rdp.cmd2 & 0xFFFF;
-   dsdx    = _FIXED2FLOAT((int16_t)((rdp.cmd3 & 0xFFFF0000) >> 16), 10);
-   dtdy    = _FIXED2FLOAT(((int16_t)(rdp.cmd3 & 0x0000FFFF)), 10);
+   off_x_i = (__RDP.w2 >> 16) & 0xFFFF;
+   off_y_i = __RDP.w2 & 0xFFFF;
+   dsdx    = _FIXED2FLOAT((int16_t)((__RDP.w3 & 0xFFFF0000) >> 16), 10);
+   dtdy    = _FIXED2FLOAT(((int16_t)(__RDP.w3 & 0x0000FFFF)), 10);
    if (off_x_i & 0x8000) //check for sign bit
       off_x_i |= ~0xffff; //make it negative
    //the same as for off_x_i
@@ -2023,8 +2023,8 @@ void glide64ProcessRDPList(void)
       /* execute the command */
       __RSP.w0 = __RDP.cmd_data[__RDP.cmd_cur + 0];
       __RSP.w1 = __RDP.cmd_data[__RDP.cmd_cur + 1];
-      rdp.cmd2 = __RDP.cmd_data[__RDP.cmd_cur + 2];
-      rdp.cmd3 = __RDP.cmd_data[__RDP.cmd_cur + 3];
+      __RDP.w2 = __RDP.cmd_data[__RDP.cmd_cur + 2];
+      __RDP.w3 = __RDP.cmd_data[__RDP.cmd_cur + 3];
 
       w0       = __RSP.w0;
       w1       = __RSP.w1;
