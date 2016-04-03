@@ -169,18 +169,6 @@ int ucode_error_report = true;
 uint8_t microcode[4096];
 uint32_t uc_crc;
 
-void apply_shading(void *data)
-{
-   int i;
-   VERTEX *vptr = (VERTEX*)data;
-
-   for (i = 0; i < 4; i++)
-   {
-      vptr[i].shade_mod = 0;
-      apply_shade_mods (&vptr[i]);
-   }
-}
-
 /* ** UCODE FUNCTIONS ** */
 #include "ucode.h"
 #include "glide64_gDP.h"

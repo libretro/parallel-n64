@@ -81,7 +81,7 @@ static INLINE void glideSetVertexFlatShading(VERTEX *v, VERTEX **vtx, uint32_t w
    v->r = vtx[flag]->r;
 }
 
-void apply_shade_mods (VERTEX *v)
+void apply_shade_modulation(VERTEX *v)
 {
    if (rdp.cmb_flags)
    {
@@ -177,6 +177,18 @@ void apply_shade_mods (VERTEX *v)
       v->g = (uint8_t)(rdp.col_2[1] * rdp.shade_factor * 255.0f + v->g * (1.0f - rdp.shade_factor));
       v->b = (uint8_t)(rdp.col_2[2] * rdp.shade_factor * 255.0f + v->b * (1.0f - rdp.shade_factor));
       v->shade_mod = cmb.shade_mod_hash;
+   }
+}
+
+void apply_shading(void *data)
+{
+   int i;
+   VERTEX *vptr = (VERTEX*)data;
+
+   for (i = 0; i < 4; i++)
+   {
+      vptr[i].shade_mod = 0;
+      apply_shade_modulation(&vptr[i]);
    }
 }
 
@@ -1507,7 +1519,7 @@ static void draw_tri (VERTEX **vtx, uint16_t linew)
       if (v->uv_calculated != rdp.tex_ctr)
          draw_tri_uv_calculation(vtx, v);
       if (v->shade_mod != cmb.shade_mod_hash)
-         apply_shade_mods (v);
+         apply_shade_modulation(v);
    }
 
    rdp.clip = 0;

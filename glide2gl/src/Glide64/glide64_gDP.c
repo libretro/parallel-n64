@@ -375,7 +375,7 @@ static void glide64gDPLLETriangle(uint32_t w0, uint32_t w1, int shade, int textu
             v->u[1] /= v->w;
             v->v[1] /= v->w;
          }
-         apply_shade_mods (v);
+         apply_shade_modulation(v);
       }
       grCullMode(GR_CULL_DISABLE);
       ConvertCoordsConvert (vtxbuf, vn);
