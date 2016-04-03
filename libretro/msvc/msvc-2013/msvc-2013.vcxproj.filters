@@ -759,12 +759,6 @@
     <ClCompile Include="..\..\..\mupen64plus-video-gliden64\src\mupenplus\OpenGL_mupenplus.cpp">
       <Filter>Source Files\mupen64plus-video-gliden64</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\mupen64plus-video-gliden64\src\GLES2\GLSLCombiner_gles2.cpp">
-      <Filter>Source Files\mupen64plus-video-gliden64</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\mupen64plus-video-gliden64\src\GLES2\UniformSet.cpp">
-      <Filter>Source Files\mupen64plus-video-gliden64</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\..\mupen64plus-video-gliden64\src\gDP_gliden64.cpp">
       <Filter>Source Files\mupen64plus-video-gliden64</Filter>
     </ClCompile>
@@ -806,6 +800,12 @@
     </ClCompile>
     <ClCompile Include="..\..\..\Graphics\RDP\gDP_funcs_C.c">
       <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\mupen64plus-video-gliden64\src\GLES2\GLSLCombiner_gles2.cpp">
+      <Filter>Source Files\mupen64plus-video-gliden64</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\mupen64plus-video-gliden64\src\GLES2\UniformSet.cpp">
+      <Filter>Source Files\mupen64plus-video-gliden64</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
