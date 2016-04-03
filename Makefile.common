@@ -324,6 +324,7 @@ SOURCES_CXX += $(ROOT_DIR)/Graphics/RSP/gSP_funcs.cpp \
 				 $(ROOT_DIR)/Graphics/RDP/gDP_funcs.cpp
 
 SOURCES_C   += $(ROOT_DIR)/Graphics/RSP/gSP_funcs_C.c \
+					$(ROOT_DIR)/Graphics/RSP/gSP_state.c \
 				 	$(ROOT_DIR)/Graphics/RDP/gDP_funcs_C.c \
 					$(ROOT_DIR)/Graphics/RDP/gDP_state.c \
 					$(ROOT_DIR)/Graphics/RDP/RDP_state.c \

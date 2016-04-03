@@ -25,6 +25,7 @@
 
 #include "../../Graphics/RDP/gDP_state.h"
 #include "../../Graphics/RDP/RDP_state.h"
+#include "../../Graphics/RSP/gSP_state.h"
 
 void gln64gDPSetOtherMode( uint32_t mode0, uint32_t mode1 )
 {
@@ -1025,7 +1026,7 @@ void gln64gDPLLETriangle(uint32_t _w1, uint32_t _w2, int _shade, int _texture, i
 	int32_t xl, xm, xh;
 	int32_t dxldy, dxhdy, dxmdy;
 	uint32_t w3, w4, w5, w6, w7, w8;
-	SPVertex *vtx0, *vtx;
+	struct SPVertex *vtx0, *vtx;
 	int j;
 	int xleft, xright, xleft_inc, xright_inc;
 	int r, g, b, a, z, s, t, w;
@@ -1113,8 +1114,8 @@ void gln64gDPLLETriangle(uint32_t _w1, uint32_t _w2, int _shade, int _texture, i
 	dzdx >>= 2;  dzde >>= 2;
 	dwdx >>= 2;  dwde >>= 2;
 
-	vtx0 = (SPVertex*)&OGL.triangles.vertices[0];
-	vtx = (SPVertex*)vtx0;
+	vtx0 = (struct SPVertex*)&OGL.triangles.vertices[0];
+	vtx = (struct SPVertex*)vtx0;
 
 	xleft = xm;
 	xright = xh;

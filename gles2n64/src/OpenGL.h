@@ -9,6 +9,8 @@ extern "C" {
 #include <glsm/glsmsym.h>
 #include "gSP.h"
 
+#include "../../Graphics/RSP/gSP_state.h"
+
 #define RS_NONE         0
 #define RS_TRIANGLE     1
 #define RS_RECT         2
@@ -60,7 +62,7 @@ typedef struct
 
 typedef struct triangles_t
 {
-   SPVertex    vertices[VERTBUFF_SIZE];
+   struct SPVertex    vertices[VERTBUFF_SIZE];
    GLubyte     elements[ELEMBUFF_SIZE];
    int         num;
 } triangles_t;
@@ -100,7 +102,7 @@ void OGL_Stop();
 void OGL_AddTriangle(int v0, int v1, int v2);
 void OGL_DrawTriangles(void);
 void OGL_DrawDMATriangles(uint32_t _numVtx);
-void OGL_DrawTriangle(SPVertex *vertices, int v0, int v1, int v2);
+void OGL_DrawTriangle(struct SPVertex *vertices, int v0, int v1, int v2);
 void OGL_DrawLLETriangle(uint32_t _numVtx);
 void OGL_DrawLine(int v0, int v1, float width);
 void OGL_DrawRect(int ulx, int uly, int lrx, int lry, float *color);

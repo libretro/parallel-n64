@@ -28,8 +28,6 @@
 
 using namespace std;
 
-gSPInfo gSP;
-
 float identityMatrix[4][4] =
 {
 	{ 1.0f, 0.0f, 0.0f, 0.0f },

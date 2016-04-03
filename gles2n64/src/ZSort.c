@@ -11,6 +11,7 @@
 #include "3DMath.h"
 
 #include "../../Graphics/RDP/gDP_state.h"
+#include "../../Graphics/RSP/gSP_state.h"
 #include "../../Graphics/HLE/Microcode/ZSort.h"
 
 ZSORTRDP GLN64zSortRdp = {{0, 0}, {0, 0}, 0, 0};
@@ -77,7 +78,7 @@ static void ZSort_DrawObject (uint8_t * _addr, uint32_t _type)
 
    for (i = 0; i < vnum; ++i)
    {
-      SPVertex *vtx = (SPVertex*)&OGL.triangles.vertices[i];
+      struct SPVertex *vtx = (struct SPVertex*)&OGL.triangles.vertices[i];
       vtx->x = _FIXED2FLOAT(((int16_t*)_addr)[0 ^ 1], 2);
       vtx->y = _FIXED2FLOAT(((int16_t*)_addr)[1 ^ 1], 2);
       vtx->z = 0.0f;
@@ -222,7 +223,7 @@ void ZSort_Lighting( uint32_t _w0, uint32_t _w1 )
 
    for (i = 0; i < num; i++)
    {
-      SPVertex *vtx = (SPVertex*)&OGL.triangles.vertices[i];
+      struct SPVertex *vtx = (struct SPVertex*)&OGL.triangles.vertices[i];
 
       vtx->nx = ((int8_t*)gfx_info.DMEM)[(nsrs++)^3];
       vtx->ny = ((int8_t*)gfx_info.DMEM)[(nsrs++)^3];

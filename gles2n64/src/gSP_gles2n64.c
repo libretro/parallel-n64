@@ -25,11 +25,10 @@
 
 #include "../../Graphics/3dmath.h"
 #include "../../Graphics/RDP/gDP_state.h"
+#include "../../Graphics/RSP/gSP_state.h"
 #include "../../Graphics/image_convert.h"
 
 //Note: 0xC0 is used by 1080 alot, its an unknown command.
-
-gSPInfo gSP;
 
 float identityMatrix[4][4] =
 {
@@ -58,7 +57,7 @@ static INLINE void gln64gSPFlushTriangles(void)
 }
 
 
-void gln64gSPCopyVertex( SPVertex *dest, SPVertex *src )
+void gln64gSPCopyVertex( struct SPVertex *dest, struct SPVertex *src )
 {
 	dest->x = src->x;
 	dest->y = src->y;
@@ -72,7 +71,7 @@ void gln64gSPCopyVertex( SPVertex *dest, SPVertex *src )
 	dest->t = src->t;
 }
 
-void gln64gSPInterpolateVertex( SPVertex *dest, float percent, SPVertex *first, SPVertex *second )
+void gln64gSPInterpolateVertex( struct SPVertex *dest, float percent, struct SPVertex *first, struct SPVertex *second )
 {
 	dest->x = first->x + percent * (second->x - first->x);
 	dest->y = first->y + percent * (second->y - first->y);
@@ -140,7 +139,7 @@ static void gln64gSPTransformVertex_default(float vtx[4], float mtx[4][4])
 
 static void gln64gSPLightVertex_default(void *data)
 {
-   SPVertex * _vtx = (SPVertex*)data;
+   struct SPVertex * _vtx = (struct SPVertex*)data;
 	if (!config.generalEmulation.enableHWLighting)
    {
       unsigned i;
@@ -175,7 +174,7 @@ static void gln64gSPPointLightVertex_default(void *data, float * _vPos)
 {
    uint32_t l;
    float light_intensity = 0.0f;
-   SPVertex *_vtx = (SPVertex*)data;
+   struct SPVertex *_vtx = (struct SPVertex*)data;
 
    assert(_vPos != NULL);
    _vtx->HWLight = 0;
@@ -213,7 +212,7 @@ static void gln64gSPPointLightVertex_default(void *data, float * _vPos)
 
 static void gln64gSPLightVertex_CBFD(void *data)
 {
-   SPVertex *_vtx = (SPVertex*)data;
+   struct SPVertex *_vtx = (struct SPVertex*)data;
    uint32_t l;
 	float r = gSP.lights[gSP.numLights].r;
 	float g = gSP.lights[gSP.numLights].g;
@@ -221,7 +220,7 @@ static void gln64gSPLightVertex_CBFD(void *data)
 
 	for (l = 0; l < gSP.numLights; ++l)
    {
-      const SPLight *light = (const SPLight*)&gSP.lights[l];
+      const struct SPLight *light = (const struct SPLight*)&gSP.lights[l];
       const float vx = (_vtx->x + gSP.vertexCoordMod[ 8])*gSP.vertexCoordMod[12] - light->posx;
       const float vy = (_vtx->y + gSP.vertexCoordMod[ 9])*gSP.vertexCoordMod[13] - light->posy;
       const float vz = (_vtx->z + gSP.vertexCoordMod[10])*gSP.vertexCoordMod[14] - light->posz;
@@ -248,8 +247,8 @@ static void gln64gSPLightVertex_CBFD(void *data)
 static void gln64gSPPointLightVertex_CBFD(void *data, float * _vPos)
 {
    uint32_t l;
-   const SPLight *light = NULL;
-   SPVertex *_vtx = (SPVertex*)data;
+   const struct SPLight *light = NULL;
+   struct SPVertex *_vtx = (struct SPVertex*)data;
 	float r = gSP.lights[gSP.numLights].r;
 	float g = gSP.lights[gSP.numLights].g;
 	float b = gSP.lights[gSP.numLights].b;
@@ -258,7 +257,7 @@ static void gln64gSPPointLightVertex_CBFD(void *data, float * _vPos)
 
 	for (l = 0; l < gSP.numLights-1; ++l)
    {
-		light = (SPLight*)&gSP.lights[l];
+		light = (struct SPLight*)&gSP.lights[l];
 		intensity = DotProduct( &_vtx->nx, &light->x );
 
 		if (intensity < 0.0f)
@@ -280,7 +279,7 @@ static void gln64gSPPointLightVertex_CBFD(void *data, float * _vPos)
 		b += light->b * intensity;
 	}
 
-	light = (SPLight*)&gSP.lights[gSP.numLights-1];
+	light = (struct SPLight*)&gSP.lights[gSP.numLights-1];
 
 	intensity = DotProduct( &_vtx->nx, &light->x );
 
@@ -303,8 +302,8 @@ static void gln64gSPPointLightVertex_CBFD(void *data, float * _vPos)
 
 static void gln64gSPBillboardVertex_default(uint32_t v, uint32_t i)
 {
-   SPVertex *vtx0 = (SPVertex*)&OGL.triangles.vertices[i];
-   SPVertex *vtx  = (SPVertex*)&OGL.triangles.vertices[v];
+   struct SPVertex *vtx0 = (struct SPVertex*)&OGL.triangles.vertices[i];
+   struct SPVertex *vtx  = (struct SPVertex*)&OGL.triangles.vertices[v];
 
    vtx->x += vtx0->x;
    vtx->y += vtx0->y;
@@ -314,7 +313,7 @@ static void gln64gSPBillboardVertex_default(uint32_t v, uint32_t i)
 
 void gln64gSPClipVertex(uint32_t v)
 {
-   SPVertex *vtx = &OGL.triangles.vertices[v];
+   struct SPVertex *vtx = &OGL.triangles.vertices[v];
    vtx->clip = 0;
    if (vtx->x > +vtx->w)   vtx->clip |= CLIP_POSX;
    if (vtx->x < -vtx->w)   vtx->clip |= CLIP_NEGX;
@@ -327,7 +326,7 @@ void gln64gSPProcessVertex(uint32_t v)
 {
    
    float intensity, r, g, b;
-   SPVertex *vtx = (SPVertex*)&OGL.triangles.vertices[v];
+   struct SPVertex *vtx = (struct SPVertex*)&OGL.triangles.vertices[v];
 
    if (gSP.changed & CHANGED_MATRIX)
       gln64gSPCombineMatrices();
@@ -634,7 +633,7 @@ void gln64gSPVertex( uint32_t v, uint32_t n, uint32_t v0 )
       for (i = v0; i < n + v0; i++)
       {
          uint32_t v = i;
-         SPVertex *vtx = (SPVertex*)&OGL.triangles.vertices[v];
+         struct SPVertex *vtx = (struct SPVertex*)&OGL.triangles.vertices[v];
 
          vtx->x = vertex->x;
          vtx->y = vertex->y;
@@ -681,7 +680,7 @@ void gln64gSPCIVertex( uint32_t v, uint32_t n, uint32_t v0 )
       {
          uint8_t *color;
          uint32_t v = i;
-         SPVertex *vtx = (SPVertex*)&OGL.triangles.vertices[v];
+         struct SPVertex *vtx = (struct SPVertex*)&OGL.triangles.vertices[v];
          vtx->x = vertex->x;
          vtx->y = vertex->y;
          vtx->z = vertex->z;
@@ -724,7 +723,7 @@ void gln64gSPDMAVertex( uint32_t v, uint32_t n, uint32_t v0 )
       for (i = v0; i < n + v0; i++)
       {
          uint32_t v = i;
-         SPVertex *vtx = (SPVertex*)&OGL.triangles.vertices[v];
+         struct SPVertex *vtx = (struct SPVertex*)&OGL.triangles.vertices[v];
 
          vtx->x = *(int16_t*)&gfx_info.RDRAM[address ^ 2];
          vtx->y = *(int16_t*)&gfx_info.RDRAM[(address + 2) ^ 2];
@@ -767,7 +766,7 @@ void gln64gSPCBFDVertex( uint32_t a, uint32_t n, uint32_t v0 )
 		for (; i < n + v0; ++i)
       {
 			uint32_t v = i;
-         SPVertex *vtx = (SPVertex*)&OGL.triangles.vertices[v];
+         struct SPVertex *vtx = (struct SPVertex*)&OGL.triangles.vertices[v];
 
 			vtx->x = vertex->x;
 			vtx->y = vertex->y;
@@ -822,13 +821,13 @@ void gln64gSPBranchList( uint32_t dl )
 void gln64gSPBranchLessZ( uint32_t branchdl, uint32_t vtx, float zval )
 {
    float zTest;
-   SPVertex      *v = NULL;
+   struct SPVertex      *v = NULL;
    uint32_t address = RSP_SegmentToPhysical( branchdl );
 
    if ((address + 8) > RDRAMSize)
       return;
 
-   v = (SPVertex*)&OGL.triangles.vertices[vtx];
+   v = (struct SPVertex*)&OGL.triangles.vertices[vtx];
    zTest = v->z / v->w;
 
    if (zTest > 1.0f || zTest <= zval)
@@ -877,7 +876,7 @@ void gln64gSPDMATriangles( uint32_t tris, uint32_t n )
 {
    unsigned int i;
    int32_t v0, v1, v2;
-   SPVertex *pVtx;
+   struct SPVertex *pVtx;
    DKRTriangle *triangles;
    uint32_t address = RSP_SegmentToPhysical( tris );
 
@@ -1013,7 +1012,7 @@ void gln64gSPSprite2DBase( uint32_t _base )
       float ulx, uly, lrx, lry;
       float frameX, frameY, frameW, frameH;
       int32_t v0 = 0, v1 = 1, v2 = 2, v3 = 3;
-      SPVertex *vtx0, *vtx1, *vtx2, *vtx3;
+      struct SPVertex *vtx0, *vtx1, *vtx2, *vtx3;
       uint32_t w0 = *(uint32_t*)&gfx_info.RDRAM[__RSP.PC[__RSP.PCi]];
       uint32_t w1 = *(uint32_t*)&gfx_info.RDRAM[__RSP.PC[__RSP.PCi] + 4];
       __RSP.cmd = _SHIFTR( w0, 24, 8 );
@@ -1075,28 +1074,28 @@ void gln64gSPSprite2DBase( uint32_t _base )
          */
 
 
-      vtx0 = (SPVertex*)&OGL.triangles.vertices[v0];
+      vtx0 = (struct SPVertex*)&OGL.triangles.vertices[v0];
       vtx0->x = ulx;
       vtx0->y = uly;
       vtx0->z = z;
       vtx0->w = w;
       vtx0->s = uls;
       vtx0->t = ult;
-      vtx1 = (SPVertex*)&OGL.triangles.vertices[v1];
+      vtx1 = (struct SPVertex*)&OGL.triangles.vertices[v1];
       vtx1->x = lrx;
       vtx1->y = uly;
       vtx1->z = z;
       vtx1->w = w;
       vtx1->s = lrs;
       vtx1->t = ult;
-      vtx2 = (SPVertex*)&OGL.triangles.vertices[v2];
+      vtx2 = (struct SPVertex*)&OGL.triangles.vertices[v2];
       vtx2->x = ulx;
       vtx2->y = lry;
       vtx2->z = z;
       vtx2->w = w;
       vtx2->s = uls;
       vtx2->t = lrt;
-      vtx3 = (SPVertex*)&OGL.triangles.vertices[v3];
+      vtx3 = (struct SPVertex*)&OGL.triangles.vertices[v3];
       vtx3->x = lrx;
       vtx3->y = lry;
       vtx3->z = z;
@@ -1199,7 +1198,7 @@ void gln64gSPInsertMatrix( uint32_t where, uint32_t num )
 void gln64gSPModifyVertex( uint32_t vtx, uint32_t where, uint32_t val )
 {
    int32_t v = vtx;
-   SPVertex *vtx0 = (SPVertex*)&OGL.triangles.vertices[v];
+   struct SPVertex *vtx0 = (struct SPVertex*)&OGL.triangles.vertices[v];
 
    switch (where)
    {
@@ -1528,30 +1527,30 @@ void ObjCoordinates2_new(struct ObjCoordinates *obj, const struct uObjScaleBg * 
 
 static void gln64gSPDrawObjRect(const struct ObjCoordinates *_coords)
 {
-   SPVertex *vtx0, *vtx1, *vtx2, *vtx3;
+   struct SPVertex *vtx0, *vtx1, *vtx2, *vtx3;
 	uint32_t v0 = 0, v1 = 1, v2 = 2, v3 = 3;
-   vtx0 = (SPVertex*)&OGL.triangles.vertices[v0];
+   vtx0 = (struct SPVertex*)&OGL.triangles.vertices[v0];
 	vtx0->x = _coords->ulx;
 	vtx0->y = _coords->uly;
 	vtx0->z = _coords->z;
 	vtx0->w = _coords->w;
 	vtx0->s = _coords->uls;
 	vtx0->t = _coords->ult;
-	vtx1 = (SPVertex*)&OGL.triangles.vertices[v1];
+	vtx1 = (struct SPVertex*)&OGL.triangles.vertices[v1];
 	vtx1->x = _coords->lrx;
 	vtx1->y = _coords->uly;
 	vtx1->z = _coords->z;
 	vtx1->w = _coords->w;
 	vtx1->s = _coords->lrs;
 	vtx1->t = _coords->ult;
-	vtx2 = (SPVertex*)&OGL.triangles.vertices[v2];
+	vtx2 = (struct SPVertex*)&OGL.triangles.vertices[v2];
 	vtx2->x = _coords->ulx;
 	vtx2->y = _coords->lry;
 	vtx2->z = _coords->z;
 	vtx2->w = _coords->w;
 	vtx2->s = _coords->uls;
 	vtx2->t = _coords->lrt;
-	vtx3 = (SPVertex*)&OGL.triangles.vertices[v3];
+	vtx3 = (struct SPVertex*)&OGL.triangles.vertices[v3];
 	vtx3->x = _coords->lrx;
 	vtx3->y = _coords->lry;
 	vtx3->z = _coords->z;
@@ -1728,7 +1727,7 @@ void gln64gSPObjRectangleR(uint32_t _sp)
 
 void gln64gSPObjSprite( uint32_t _sp )
 {
-   SPVertex *vtx0, *vtx1, *vtx2, *vtx3;
+   struct SPVertex *vtx0, *vtx1, *vtx2, *vtx3;
    float uls, lrs, ult, lrt;
 	float z;
 	int32_t v0, v1, v2, v3;
@@ -1765,28 +1764,28 @@ void gln64gSPObjSprite( uint32_t _sp )
 	v2 = 2;
 	v3 = 3;
 
-   vtx0 = (SPVertex*)&OGL.triangles.vertices[v0];
+   vtx0 = (struct SPVertex*)&OGL.triangles.vertices[v0];
 	vtx0->x = gSP.objMatrix.A * ulx + gSP.objMatrix.B * uly + gSP.objMatrix.X;
 	vtx0->y = gSP.objMatrix.C * ulx + gSP.objMatrix.D * uly + gSP.objMatrix.Y;
 	vtx0->z = z;
 	vtx0->w = 1.0f;
 	vtx0->s = uls;
 	vtx0->t = ult;
-   vtx1 = (SPVertex*)&OGL.triangles.vertices[v1];
+   vtx1 = (struct SPVertex*)&OGL.triangles.vertices[v1];
 	vtx1->x = gSP.objMatrix.A * lrx + gSP.objMatrix.B * uly + gSP.objMatrix.X;
 	vtx1->y = gSP.objMatrix.C * lrx + gSP.objMatrix.D * uly + gSP.objMatrix.Y;
 	vtx1->z = z;
 	vtx1->w = 1.0f;
 	vtx1->s = lrs;
 	vtx1->t = ult;
-   vtx2 = (SPVertex*)&OGL.triangles.vertices[v2];
+   vtx2 = (struct SPVertex*)&OGL.triangles.vertices[v2];
 	vtx2->x = gSP.objMatrix.A * ulx + gSP.objMatrix.B * lry + gSP.objMatrix.X;
 	vtx2->y = gSP.objMatrix.C * ulx + gSP.objMatrix.D * lry + gSP.objMatrix.Y;
 	vtx2->z = z;
 	vtx2->w = 1.0f;
 	vtx2->s = uls;
 	vtx2->t = lrt;
-   vtx3 = (SPVertex*)&OGL.triangles.vertices[v3];
+   vtx3 = (struct SPVertex*)&OGL.triangles.vertices[v3];
 	vtx3->x = gSP.objMatrix.A * lrx + gSP.objMatrix.B * lry + gSP.objMatrix.X;
 	vtx3->y = gSP.objMatrix.C * lrx + gSP.objMatrix.D * lry + gSP.objMatrix.Y;
 	vtx3->z = z;

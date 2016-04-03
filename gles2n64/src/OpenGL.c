@@ -27,6 +27,7 @@
 #include "Config.h"
 
 #include "../../Graphics/RDP/gDP_state.h"
+#include "../../Graphics/RSP/gSP_state.h"
 
 GLInfo OGL;
 
@@ -457,7 +458,7 @@ static void _updateStates(void)
    gSP.changed &= CHANGED_TEXTURE | CHANGED_MATRIX;
 }
 
-void OGL_DrawTriangle(SPVertex *vertices, int v0, int v1, int v2)
+void OGL_DrawTriangle(struct SPVertex *vertices, int v0, int v1, int v2)
 {
 }
 
@@ -516,21 +517,21 @@ static void OGL_prepareDrawTriangle(bool _dma)
 
    if (updateArrays)
    {
-      SPVertex *pVtx = (SPVertex*)&OGL.triangles.vertices[0];
-      glVertexAttribPointer(SC_POSITION, 4, GL_FLOAT, GL_FALSE, sizeof(SPVertex), &pVtx->x);
+      struct SPVertex *pVtx = (struct SPVertex*)&OGL.triangles.vertices[0];
+      glVertexAttribPointer(SC_POSITION, 4, GL_FLOAT, GL_FALSE, sizeof(struct SPVertex), &pVtx->x);
       if (m_bFlatColors)
-         glVertexAttribPointer(SC_COLOR, 4, GL_FLOAT, GL_FALSE, sizeof(SPVertex), &pVtx->flat_r);
+         glVertexAttribPointer(SC_COLOR, 4, GL_FLOAT, GL_FALSE, sizeof(struct SPVertex), &pVtx->flat_r);
       else
-         glVertexAttribPointer(SC_COLOR, 4, GL_FLOAT, GL_FALSE, sizeof(SPVertex), &pVtx->r);
-      glVertexAttribPointer(SC_TEXCOORD0, 2, GL_FLOAT, GL_FALSE, sizeof(SPVertex), &pVtx->s);
+         glVertexAttribPointer(SC_COLOR, 4, GL_FLOAT, GL_FALSE, sizeof(struct SPVertex), &pVtx->r);
+      glVertexAttribPointer(SC_TEXCOORD0, 2, GL_FLOAT, GL_FALSE, sizeof(struct SPVertex), &pVtx->s);
    }
    else if (updateColorArrays)
    {
-      SPVertex *pVtx = (SPVertex*)&OGL.triangles.vertices[0];
+      struct SPVertex *pVtx = (struct SPVertex*)&OGL.triangles.vertices[0];
       if (m_bFlatColors)
-         glVertexAttribPointer(SC_COLOR, 4, GL_FLOAT, GL_FALSE, sizeof(SPVertex), &pVtx->flat_r);
+         glVertexAttribPointer(SC_COLOR, 4, GL_FLOAT, GL_FALSE, sizeof(struct SPVertex), &pVtx->flat_r);
       else
-         glVertexAttribPointer(SC_COLOR, 4, GL_FLOAT, GL_FALSE, sizeof(SPVertex), &pVtx->r);
+         glVertexAttribPointer(SC_COLOR, 4, GL_FLOAT, GL_FALSE, sizeof(struct SPVertex), &pVtx->r);
    }
 }
 
@@ -560,7 +561,7 @@ void OGL_DrawLLETriangle(uint32_t _numVtx)
 
 	for (i = 0; i < _numVtx; ++i)
    {
-      SPVertex *vtx = (SPVertex*)&OGL.triangles.vertices[i];
+      struct SPVertex *vtx = (struct SPVertex*)&OGL.triangles.vertices[i];
 
       vtx->HWLight = 0;
       vtx->x  = vtx->x * (2.0f * scaleX) - 1.0f;
@@ -588,7 +589,7 @@ void OGL_DrawLLETriangle(uint32_t _numVtx)
 void OGL_AddTriangle(int v0, int v1, int v2)
 {
    uint32_t i;
-   SPVertex *vtx = NULL;
+   struct SPVertex *vtx = NULL;
 
    OGL.triangles.elements[OGL.triangles.num++] = v0;
    OGL.triangles.elements[OGL.triangles.num++] = v1;
@@ -599,7 +600,7 @@ void OGL_AddTriangle(int v0, int v1, int v2)
       /* Prim shading */
       for (i = OGL.triangles.num - 3; i < OGL.triangles.num; ++i)
       {
-         vtx = (SPVertex*)&OGL.triangles.vertices[OGL.triangles.elements[i]];
+         vtx = (struct SPVertex*)&OGL.triangles.vertices[OGL.triangles.elements[i]];
          vtx->flat_r = gDP.primColor.r;
          vtx->flat_g = gDP.primColor.g;
          vtx->flat_b = gDP.primColor.b;
@@ -609,11 +610,11 @@ void OGL_AddTriangle(int v0, int v1, int v2)
    else if ((gSP.geometryMode & G_SHADING_SMOOTH) == 0)
    {
       /* Flat shading */
-      SPVertex *vtx0 = (SPVertex*)&OGL.triangles.vertices[v0];
+      struct SPVertex *vtx0 = (struct SPVertex*)&OGL.triangles.vertices[v0];
 
       for (i = OGL.triangles.num - 3; i < OGL.triangles.num; ++i)
       {
-         vtx = (SPVertex*)&OGL.triangles.vertices[OGL.triangles.elements[i]];
+         vtx = (struct SPVertex*)&OGL.triangles.vertices[OGL.triangles.elements[i]];
          vtx->flat_r = vtx0->r;
          vtx->flat_g = vtx0->g;
          vtx->flat_b = vtx0->b;
@@ -625,7 +626,7 @@ void OGL_AddTriangle(int v0, int v1, int v2)
    {
 		for (i = OGL.triangles.num - 3; i < OGL.triangles.num; ++i)
       {
-			vtx = (SPVertex*)&OGL.triangles.vertices[OGL.triangles.elements[i]];
+			vtx = (struct SPVertex*)&OGL.triangles.vertices[OGL.triangles.elements[i]];
 			vtx->z = gDP.primDepth.z * vtx->w;
 		}
 	}
@@ -663,8 +664,8 @@ void OGL_DrawLine(int v0, int v1, float width )
       OGL_SetColorArray();
       glDisableVertexAttribArray(SC_TEXCOORD0);
       glDisableVertexAttribArray(SC_TEXCOORD1);
-      glVertexAttribPointer(SC_POSITION, 4, GL_FLOAT, GL_FALSE, sizeof(SPVertex), &OGL.triangles.vertices[0].x);
-      glVertexAttribPointer(SC_COLOR, 4, GL_FLOAT, GL_FALSE, sizeof(SPVertex), &OGL.triangles.vertices[0].r);
+      glVertexAttribPointer(SC_POSITION, 4, GL_FLOAT, GL_FALSE, sizeof(struct SPVertex), &OGL.triangles.vertices[0].x);
+      glVertexAttribPointer(SC_COLOR, 4, GL_FLOAT, GL_FALSE, sizeof(struct SPVertex), &OGL.triangles.vertices[0].r);
 
       SC_ForceUniform1f(uRenderState, RS_LINE);
       _updateCullFace();
@@ -1201,7 +1202,7 @@ bool OGL_Start(void)
    OGL.renderState = RS_NONE;
    gSP.changed = gDP.changed = 0xFFFFFFFF;
 
-   memset(OGL.triangles.vertices, 0, VERTBUFF_SIZE * sizeof(SPVertex));
+   memset(OGL.triangles.vertices, 0, VERTBUFF_SIZE * sizeof(struct SPVertex));
    memset(OGL.triangles.elements, 0, ELEMBUFF_SIZE * sizeof(GLubyte));
 
    OGL.triangles.num = 0;
