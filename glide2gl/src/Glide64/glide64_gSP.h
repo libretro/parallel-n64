@@ -29,10 +29,7 @@ typedef struct DRAWOBJECT_t
 static void uc6_draw_polygons (VERTEX v[4]);
 static void uc6_read_object_data (DRAWOBJECT *d);
 static void uc6_init_tile(const DRAWOBJECT *d);
-extern uint32_t dma_offset_mtx;
 extern int32_t cur_mtx;
-extern uint32_t dma_offset_mtx;
-extern uint32_t dma_offset_vtx;
 extern int dzdx;
 extern int deltaZ;
 VERTEX **org_vtx;

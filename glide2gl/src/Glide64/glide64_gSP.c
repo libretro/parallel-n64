@@ -9,8 +9,6 @@ static uint32_t pd_col_addr = 0;
 static uint32_t uc8_normale_addr = 0;
 static float uc8_coord_mod[16];
 int cur_mtx = 0;
-uint32_t dma_offset_mtx = 0;
-uint32_t dma_offset_vtx = 0;
 int vtx_last = 0;
 extern uint32_t ucode5_texshiftaddr;
 extern uint32_t ucode5_texshiftcount;
@@ -1008,14 +1006,14 @@ void glide64gSPLightCBFD(uint32_t l, int32_t n)
 
 void glide64gSPSetDMAOffsets(uint32_t mtxoffset, uint32_t vtxoffset)
 {
-  dma_offset_mtx = mtxoffset;
-  dma_offset_vtx = vtxoffset;
+  gSP.DMAOffsets.mtx = mtxoffset;
+  gSP.DMAOffsets.vtx = vtxoffset;
   vtx_last = 0;
 }
 
 void glide64gSPDMAMatrix(uint32_t matrix, uint8_t index, uint8_t multiply)
 {
-   uint32_t address = dma_offset_mtx + RSP_SegmentToPhysical(matrix);
+   uint32_t address = gSP.DMAOffsets.mtx + RSP_SegmentToPhysical(matrix);
 
    cur_mtx = index;
 
@@ -1037,7 +1035,7 @@ void glide64gSPDMAMatrix(uint32_t matrix, uint8_t index, uint8_t multiply)
 void glide64gSPDMAVertex(uint32_t v, uint32_t n, uint32_t v0)
 {
    unsigned int i;
-   uint32_t addr = dma_offset_vtx + RSP_SegmentToPhysical(v);
+   uint32_t addr = gSP.DMAOffsets.vtx + RSP_SegmentToPhysical(v);
 
    // | cccc cccc 1111 1??? 0000 0002 2222 2222 | cmd1 = address |
    // c = vtx command
