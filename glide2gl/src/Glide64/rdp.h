@@ -81,7 +81,6 @@ extern uint32_t gfx_plugin_accuracy;
 #define RDP_CYCLE_TYPE        0x00300000
 #define RDP_TEX_LOD_ENABLE    0x00010000
 #define RDP_PERSP_TEX_ENABLE  0x00080000
-#define RDP_FORCE_BLEND       0x00004000
 #define RDP_COLOR_ON_CVG      0x00000080
 #define RDP_ALPHA_CVG_SELECT  0x00002000
 #define ZBUF_ENABLED  0x00000001

@@ -1159,7 +1159,7 @@ void update(void)
    {
       g_gdp.flags ^= UPDATE_ALPHA_COMPARE;
 
-      if ((gDP.otherMode.l & RDP_ALPHA_COMPARE) == 1 && !(gDP.otherMode.l & RDP_ALPHA_CVG_SELECT) && (!(gDP.otherMode.l & RDP_FORCE_BLEND) || (g_gdp.blend_color.a)))
+      if ((gDP.otherMode.l & RDP_ALPHA_COMPARE) == 1 && !(gDP.otherMode.l & RDP_ALPHA_CVG_SELECT) && (!(gDP.otherMode.l & FORCE_BL) || (g_gdp.blend_color.a)))
       {
          uint8_t reference = (uint8_t)g_gdp.blend_color.a;
          grAlphaTestFunction (reference ? GR_CMP_GEQUAL : GR_CMP_GREATER, reference, 1);

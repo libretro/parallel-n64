@@ -749,7 +749,7 @@ void glide64gDPFillRectangle(uint32_t ul_x, uint32_t ul_y, uint32_t lr_x, uint32
          if (cmb_mode_c == 0x9fff9fff || cmb_mode_a == 0x09ff09ff) //shade
             apply_shading(v);
 
-         if ((gDP.otherMode.l & RDP_FORCE_BLEND) && ((gDP.otherMode.l >> 16) == 0x0550)) //special blender mode for Bomberman64
+         if ((gDP.otherMode.l & FORCE_BL) && ((gDP.otherMode.l >> 16) == 0x0550)) //special blender mode for Bomberman64
          {
             grAlphaCombine (GR_COMBINE_FUNCTION_LOCAL,
                   GR_COMBINE_FACTOR_NONE,
