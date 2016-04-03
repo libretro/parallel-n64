@@ -271,7 +271,6 @@ static void uc0_setothermode_l(uint32_t w0, uint32_t w1)
       rdp.rm = gDP.otherMode.l;
       if (settings.flame_corona && (rdp.rm == 0x00504341)) //hack for flame's corona
          gDP.otherMode.l |= 0x00000010;
-      FRDP ("rendermode: %08lx\n", gDP.otherMode.l); // just output whole othermode_l
    }
 
    // there is not one setothermode_l that's not handled :)

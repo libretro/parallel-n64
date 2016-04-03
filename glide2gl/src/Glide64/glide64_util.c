@@ -1119,16 +1119,6 @@ void update(void)
    {
       FRDP (" |- render_mode_changed force_blend - %08lx\n", gDP.otherMode.l&0xFFFF0000);
       rdp.render_mode_changed &= 0x0000FFFF;
-
-      rdp.fbl_a0 = (uint8_t)((gDP.otherMode.l>>30)&0x3);
-      rdp.fbl_b0 = (uint8_t)((gDP.otherMode.l>>26)&0x3);
-      rdp.fbl_c0 = (uint8_t)((gDP.otherMode.l>>22)&0x3);
-      rdp.fbl_d0 = (uint8_t)((gDP.otherMode.l>>18)&0x3);
-      rdp.fbl_a1 = (uint8_t)((gDP.otherMode.l>>28)&0x3);
-      rdp.fbl_b1 = (uint8_t)((gDP.otherMode.l>>24)&0x3);
-      rdp.fbl_c1 = (uint8_t)((gDP.otherMode.l>>20)&0x3);
-      rdp.fbl_d1 = (uint8_t)((gDP.otherMode.l>>16)&0x3);
-
       g_gdp.flags |= UPDATE_COMBINE;
    }
 

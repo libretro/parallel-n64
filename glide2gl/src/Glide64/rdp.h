@@ -423,9 +423,6 @@ struct RDP
    // Combine modes
    uint32_t cycle1, cycle2;
 
-   uint8_t fbl_a0, fbl_b0, fbl_c0, fbl_d0;
-   uint8_t fbl_a1, fbl_b1, fbl_c1, fbl_d1;
-
    // What needs updating
    uint32_t flags;
 
