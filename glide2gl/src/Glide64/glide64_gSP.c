@@ -141,7 +141,7 @@ void glide64gSPCombineMatrices(void)
 
 void glide64gSPSegment(int32_t seg, int32_t base)
 {
-   rdp.segment[seg] = base;
+   gSP.segment[seg] = base;
 }
 
 void glide64gSPClipRatio(uint32_t r)

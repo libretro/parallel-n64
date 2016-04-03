@@ -44,6 +44,7 @@
 #include <clamping.h>
 
 #include "../../Graphics/RDP/RDP_state.h"
+#include "../../Graphics/RSP/gSP_state.h"
 #include "Gfx_1.3.h"
 #include "../Glitch64/glide.h"
 
@@ -52,9 +53,10 @@ void (*_gSPVertex)(uint32_t addr, uint32_t n, uint32_t v0);
 extern uint32_t frame_count; // frame counter
 extern uint32_t gfx_plugin_accuracy;
 
-// The highest 8 bits are the segment # (1-16), and the lower 24 bits are the offset to
-// add to it.
-#define RSP_SegmentToPhysical(so) (((rdp.segment[((so) >> 24) & 0x0f] + ((so) & BMASK)) & BMASK) & 0x00ffffff)
+/* The highest 8 bits are the segment # (1-16), 
+ * and the lower 24 bits are the offset to
+ * add to it. */
+#define RSP_SegmentToPhysical(so) (((gSP.segment[((so) >> 24) & 0x0f] + ((so) & BMASK)) & BMASK) & 0x00ffffff)
 
 #define MAX_CACHE   1024*4
 #define MAX_TRI_CACHE 768 // this is actually # of vertices, not triangles
@@ -430,10 +432,6 @@ struct RDP
    float clip_ratio;
 
    int updatescreen;
-
-   // Program counter
-   // Segments
-   uint32_t segment[16];  // Segment pointer
 
    // Next command
    uint32_t cmd2;
