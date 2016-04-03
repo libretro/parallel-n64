@@ -53,7 +53,7 @@
 
 extern int dzdx;
 extern int deltaZ;
-extern VERTEX **org_vtx;
+static VERTEX **org_vtx;
 
 typedef struct
 {

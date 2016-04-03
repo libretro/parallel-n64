@@ -32,7 +32,6 @@ static void uc6_init_tile(const DRAWOBJECT *d);
 extern int32_t cur_mtx;
 extern int dzdx;
 extern int deltaZ;
-VERTEX **org_vtx;
 
 void cull_trianglefaces(VERTEX **v, unsigned iterations, bool do_update, bool do_cull, int32_t wd);
 void pre_update(void);
