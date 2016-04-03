@@ -1926,13 +1926,6 @@ static void rdphalf_cont(uint32_t w0, uint32_t w1)
 {
 }
 
-static INLINE uint32_t READ_RDP_DATA(uint32_t address)
-{
-   if ((*(uint32_t*)gfx_info.DPC_STATUS_REG) & 0x1) /* XBUS_DMEM_DMA enabled */
-      return ((uint32_t*)gfx_info.DMEM)[(address & 0xfff) >> 2];
-   return ((uint32_t*)gfx_info.RDRAM)[address >> 2];
-}
-
 static void glide64ProcessRDPList_restorestate(void)
 {
    no_dlist                       = false;
@@ -1994,7 +1987,7 @@ static void glide64ProcessRDPList_internal(void)
    // load command data
    for (i = 0; i < length; i += 4)
    {
-      __RDP.cmd_data[__RDP.cmd_ptr] = READ_RDP_DATA((*(uint32_t*)gfx_info.DPC_CURRENT_REG) + i);
+      __RDP.cmd_data[__RDP.cmd_ptr] = rdp_read_data((*(uint32_t*)gfx_info.DPC_CURRENT_REG) + i);
       __RDP.cmd_ptr = (__RDP.cmd_ptr + 1) & MAXCMD_MASK;
    }
 

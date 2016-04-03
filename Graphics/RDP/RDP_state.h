@@ -6,6 +6,8 @@
 #include <boolean.h>
 #include <retro_inline.h>
 
+#include "m64p_plugin.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -364,6 +366,13 @@ void gdp_invalid(uint32_t w0, uint32_t w1);
 void gdp_set_mask_image(uint32_t w0, uint32_t w1);
 
 void gdp_set_color_image(uint32_t w0, uint32_t w1);
+
+static INLINE uint32_t rdp_read_data(uint32_t address)
+{
+   if ((*(uint32_t*)gfx_info.DPC_STATUS_REG) & 0x1) /* XBUS_DMEM_DMA enabled */
+      return ((uint32_t*)gfx_info.DMEM)[(address & 0xfff) >> 2];
+   return ((uint32_t*)gfx_info.RDRAM)[address >> 2];
+}
 
 extern struct gdp_global g_gdp;
 

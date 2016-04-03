@@ -591,7 +591,7 @@ void gln64ProcessRDPList(void)
    /* load command data */
    for (i = 0; i < length; i += 4)
    {
-      __RDP.cmd_data[__RDP.cmd_ptr] = GLN64_READ_RDP_DATA(*gfx_info.DPC_CURRENT_REG + i);
+      __RDP.cmd_data[__RDP.cmd_ptr] = rdp_read_data(*gfx_info.DPC_CURRENT_REG + i);
       __RDP.cmd_ptr = (__RDP.cmd_ptr + 1) & maxCMDMask;
    }
 
