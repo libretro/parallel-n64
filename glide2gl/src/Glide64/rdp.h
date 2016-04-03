@@ -356,14 +356,6 @@ typedef struct
 #define NOISE_MODE_COMBINE      1
 #define NOISE_MODE_TEXTURE      2
 
-struct MAT2D
-{
-	float A, B, C, D;
-	float X, Y;
-	float BaseScaleX;
-	float BaseScaleY;
-};
-
 struct RDP
 {
    uint32_t u_cull_mode;
