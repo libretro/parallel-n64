@@ -1989,9 +1989,6 @@ static void glide64ProcessRDPList_internal(void)
 
    (*(uint32_t*)gfx_info.DPC_STATUS_REG) &= ~0x0002;
 
-   if (gfx_info.DPC_END_REG <= gfx_info.DPC_CURRENT_REG)
-      return;
-
    __RSP.bLLE = true;
 
    // load command data
