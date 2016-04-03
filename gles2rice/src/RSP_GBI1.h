@@ -129,11 +129,7 @@ void RSP_GBI1_Tri2(Gfx *gfx)
         
         gfx++;
         dwPC += 8;
-#ifdef DEBUGGER
-    } while (!(pauseAtNext && eventToPause==NEXT_TRIANGLE) && gfx->words.cmd == (uint8_t)RSP_TRI2);
-#else
     } while( gfx->words.cmd == (uint8_t)RSP_TRI2);
-#endif
 
 
     gDlistStack[__RSP.PCi].pc = dwPC-8;
@@ -157,11 +153,7 @@ void RSP_GBI1_BranchZ(Gfx *gfx)
     uint32_t vtx = ((gfx->words.w0)&0xFFF)>>1;
     float vtxdepth = g_vecProjected[vtx].z/g_vecProjected[vtx].w;
 
-#ifdef DEBUGGER
-    if( debuggerEnableZBuffer==FALSE || vtxdepth <= (int32_t)gfx->words.w1 || g_curRomInfo.bForceDepthBuffer )
-#else
     if( vtxdepth <= (int32_t)(gfx->words.w1) || g_curRomInfo.bForceDepthBuffer )
-#endif
     {
         uint32_t dwPC = gDlistStack[__RSP.PCi].pc;       // This points to the next instruction
         uint32_t dwDL = *(uint32_t *)(rdram_u8 + dwPC-12);
@@ -172,18 +164,6 @@ void RSP_GBI1_BranchZ(Gfx *gfx)
         gDlistStack[__RSP.PCi].countdown = MAX_DL_COUNT;
     }
 }
-
-#ifdef DEBUGGER
-void DumpUcodeInfo(UcodeInfo &info)
-{
-    DebuggerAppendMsg("Loading Unknown Ucode:\n%08X-%08X-%08X-%08X, Size=0x%X, CRC=0x%08X\nCode:\n",
-        info.ucDWORD1, info.ucDWORD2, info.ucDWORD3, info.ucDWORD4, 
-        info.ucSize, info.ucCRC);
-    DumpHex(info.ucStart,20);
-    TRACE0("Data:\n");
-    DumpHex(info.ucDStart,20);
-}
-#endif
 
 void RSP_GBI1_LoadUCode(Gfx *gfx)
 {
@@ -217,42 +197,6 @@ void RSP_GFX_Force_Matrix(uint32_t dwAddr)
 
 void DisplayVertexInfo(uint32_t dwAddr, uint32_t dwV0, uint32_t dwN)
 {
-#ifdef DEBUGGER
-   uint8_t *rdram_u8 = (uint8_t*)gfx_info.RDRAM;
-        int8_t *pcSrc = (int8_t *)(rdram_u8 + dwAddr);
-        short *psSrc = (short *)(rdram_u8 + dwAddr);
-
-        for (uint32_t dwV = dwV0; dwV < dwV0 + dwN; dwV++)
-        {
-            float x = (float)psSrc[0^0x1];
-            float y = (float)psSrc[1^0x1];
-            float z = (float)psSrc[2^0x1];
-
-            //uint32_t wFlags = g_dwVtxFlags[dwV]; //(uint16_t)psSrc[3^0x1];
-            uint32_t wFlags = 0;
-
-            uint8_t a = pcSrc[12^0x3];
-            uint8_t b = pcSrc[13^0x3];
-            uint8_t c = pcSrc[14^0x3];
-            uint8_t d = pcSrc[15^0x3];
-            
-            //int nTU = (int)(short)(psSrc[4^0x1]<<4);
-            //int nTV = (int)(short)(psSrc[5^0x1]<<4);
-
-            //float tu = (float)(nTU>>4);
-            //float tv = (float)(nTV>>4);
-            float tu = (float)(short)(psSrc[4^0x1]);
-            float tv = (float)(short)(psSrc[5^0x1]);
-
-            XVECTOR4 & t = g_vecProjected[dwV];
-
-            psSrc += 8;         // Increase by 16 bytes
-            pcSrc += 16;
-
-            LOG_UCODE(" #%02d Flags: 0x%04x Pos: {% 6f,% 6f,% 6f} Tex: {%+7.2f,%+7.2f}, Extra: %02x %02x %02x %02x (transf: {% 6f,% 6f,% 6f})",
-                dwV, wFlags, x, y, z, tu, tv, a, b, c, d, t.x, t.y, t.z );
-        }
-#endif
 }
 
 // S2DEX uses this - 0xc1

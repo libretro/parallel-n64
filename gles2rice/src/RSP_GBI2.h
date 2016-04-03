@@ -58,10 +58,6 @@ void RSP_GBI2_CullDL(Gfx *gfx)
 {
     SP_Timing(RSP_GBI1_CullDL);
 
-#ifdef DEBUGGER
-    if( !debuggerEnableCullFace )
-        return; //Disable Culling
-#endif
     if( g_curRomInfo.bDisableCulling )
         return; //Disable Culling
 
@@ -247,11 +243,7 @@ void RSP_GBI2_Tri1(Gfx *gfx)
             gfx++;
             dwPC += 8;
 
-#ifdef DEBUGGER
-        } while (!(pauseAtNext && eventToPause==NEXT_TRIANGLE) && gfx->words.cmd == (uint8_t)RSP_ZELDATRI1);
-#else
         } while( gfx->words.cmd == (uint8_t)RSP_ZELDATRI1);
-#endif
 
         gDlistStack[__RSP.PCi].pc = dwPC-8;
 
@@ -329,11 +321,7 @@ void RSP_GBI2_Tri2(Gfx *gfx)
             gfx++;
             dwPC += 8;
 
-#ifdef DEBUGGER
-        } while (!(pauseAtNext && eventToPause==NEXT_TRIANGLE) && gfx->words.cmd == (uint8_t)RSP_ZELDATRI2);
-#else
         } while ( gfx->words.cmd == (uint8_t)RSP_ZELDATRI2 );//&& status.dwNumTrisRendered < 50);
-#endif
 
 
         gDlistStack[__RSP.PCi].pc = dwPC-8;
@@ -406,11 +394,7 @@ void RSP_GBI2_Line3D(Gfx *gfx)
             gfx++;
             dwPC += 8;
 
-#ifdef DEBUGGER
-        } while (!(pauseAtNext && eventToPause==NEXT_TRIANGLE) && gfx->words.cmd == (uint8_t)RSP_LINE3D);
-#else
         } while ( gfx->words.cmd == (uint8_t)RSP_LINE3D);
-#endif
 
         gDlistStack[__RSP.PCi].pc = dwPC-8;
 
@@ -510,35 +494,7 @@ void RSP_GBI2_GeometryMode(Gfx *gfx)
     uint32_t dwAnd = ((gfx->words.w0)) & 0x00FFFFFF;
     uint32_t dwOr  = ((gfx->words.w1)) & 0x00FFFFFF;
 
-#ifdef DEBUGGER
-        LOG_UCODE("    0x%08x 0x%08x =(x & 0x%08x) | 0x%08x", gfx->words.w0, gfx->words.w1, dwAnd, dwOr);
-
-        if ((~dwAnd) & RSP_ZELDA_ZBUFFER)               LOG_UCODE("  Disabling ZBuffer");
-        //if ((~dwAnd) & RSP_ZELDA_TEXTURE_ENABLE)        LOG_UCODE("  Disabling Texture");
-        //if ((~dwAnd) & RSP_ZELDA_SHADE)                 LOG_UCODE("  Disabling Shade");
-        if ((~dwAnd) & RSP_ZELDA_SHADING_SMOOTH)        LOG_UCODE("  Disabling Flat Shading");
-        if ((~dwAnd) & RSP_ZELDA_CULL_FRONT)            LOG_UCODE("  Disabling Front Culling");
-        if ((~dwAnd) & RSP_ZELDA_CULL_BACK)             LOG_UCODE("  Disabling Back Culling");
-        if ((~dwAnd) & RSP_ZELDA_FOG)                   LOG_UCODE("  Disabling Fog");
-        if ((~dwAnd) & RSP_ZELDA_LIGHTING)              LOG_UCODE("  Disabling Lighting");
-        if ((~dwAnd) & RSP_ZELDA_TEXTURE_GEN)           LOG_UCODE("  Disabling Texture Gen");
-        if ((~dwAnd) & RSP_ZELDA_TEXTURE_GEN_LINEAR)    LOG_UCODE("  Disabling Texture Gen Linear");
-        //  if ((~dwAnd) & RSP_ZELDA_LOD)                       LOG_UCODE("  Disabling LOD (no impl)");
-
-        if (dwOr & RSP_ZELDA_ZBUFFER)                   LOG_UCODE("  Enabling ZBuffer");
-        //if (dwOr & RSP_ZELDA_TEXTURE_ENABLE)            LOG_UCODE("  Enabling Texture");
-        //if (dwOr & RSP_ZELDA_SHADE)                     LOG_UCODE("  Enabling Shade");
-        if (dwOr & RSP_ZELDA_SHADING_SMOOTH)            LOG_UCODE("  Enabling Flat Shading");
-        if (dwOr & RSP_ZELDA_CULL_FRONT)                LOG_UCODE("  Enabling Front Culling");
-        if (dwOr & RSP_ZELDA_CULL_BACK)                 LOG_UCODE("  Enabling Back Culling");
-        if (dwOr & RSP_ZELDA_FOG)                       LOG_UCODE("  Enabling Fog");
-        if (dwOr & RSP_ZELDA_LIGHTING)                  LOG_UCODE("  Enabling Lighting");
-        if (dwOr & RSP_ZELDA_TEXTURE_GEN)               LOG_UCODE("  Enabling Texture Gen");
-        if (dwOr & RSP_ZELDA_TEXTURE_GEN_LINEAR)        LOG_UCODE("  Enabling Texture Gen Linear");
-        ///if (dwOr & RSP_ZELDA_LOD)                       LOG_UCODE("  Enabling LOD (no impl)");
-#endif // DEBUGGER
-
-        gRDP.geometryMode &= dwAnd;
+    gRDP.geometryMode &= dwAnd;
     gRDP.geometryMode |= dwOr;
 
 

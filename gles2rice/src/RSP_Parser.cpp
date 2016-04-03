@@ -598,24 +598,6 @@ static uint32_t DLParser_IdentifyUcode( uint32_t crc_size, uint32_t crc_800, cha
 {
     for ( uint32_t i = 0; i < sizeof(g_UcodeData)/sizeof(UcodeData); i++ )
     {
-#ifdef DEBUGGER
-        if ( crc_800 == g_UcodeData[i].crc_800 )
-        {
-            if( strlen(str)==0 || strcmp((const char *) g_UcodeData[i].ucode_name, str) == 0 ) 
-            {
-                TRACE0((const char *) g_UcodeData[i].ucode_name);
-            }
-            else
-            {
-                DebuggerAppendMsg("Incorrect description for this ucode:\n%x, %x, %s",crc_800, crc_size, str);
-            }
-            status.bUcodeIsKnown = true;
-            gRSP.bNearClip = !g_UcodeData[i].non_nearclip;
-            gRSP.bRejectVtx = g_UcodeData[i].reject;
-            DebuggerAppendMsg("Identify ucode = %d, crc = %08X, %s", g_UcodeData[i].ucode, crc_800, str);
-            return g_UcodeData[i].ucode;
-        }
-#else
         if ( crc_800 == g_UcodeData[i].crc_800 )
         {
             status.bUcodeIsKnown = true;
@@ -623,19 +605,8 @@ static uint32_t DLParser_IdentifyUcode( uint32_t crc_size, uint32_t crc_800, cha
             gRSP.bRejectVtx = g_UcodeData[i].reject;
             return g_UcodeData[i].ucode;
         }
-#endif
     }
 
-#ifdef DEBUGGER
-    {
-        static bool warned = false;
-        if( warned == false )
-        {
-            warned = true;
-            TRACE0("Can not identify ucode for this game");
-        }
-    }
-#endif
     gRSP.bNearClip = false;
     gRSP.bRejectVtx = false;
     status.bUcodeIsKnown = false;
@@ -657,13 +628,6 @@ uint32_t DLParser_CheckUcode(uint32_t ucStart, uint32_t ucDStart, uint32_t ucSiz
         if( UsedUcodes[usedUcodeIndex].ucStart == ucStart && UsedUcodes[usedUcodeIndex].ucSize == ucSize &&
             UsedUcodes[usedUcodeIndex].ucDStart == ucDStart /*&& UsedUcodes[usedUcodeIndex].ucDSize == ucDSize*/ )
         {
-#ifdef DEBUGGER
-            if(gRSP.ucode != (int)UsedUcodes[usedUcodeIndex].ucode && logMicrocode)
-            {
-                DebuggerAppendMsg("Check, ucode = %d, crc = %08X, %s", UsedUcodes[usedUcodeIndex].ucode, 
-                    UsedUcodes[usedUcodeIndex].crc_800 , UsedUcodes[usedUcodeIndex].rspstr);
-            }
-#endif
             lastUcodeInfo.ucStart = ucStart;
             lastUcodeInfo.used = true;
             lastUcodeInfo.ucDStart = ucDStart;
@@ -705,19 +669,6 @@ uint32_t DLParser_CheckUcode(uint32_t ucStart, uint32_t ucDStart, uint32_t ucSiz
        uint32_t ucode    = DLParser_IdentifyUcode( crc_size, crc_800, (char*)str );
        if ( (int)ucode == ~0 )
        {
-#ifdef DEBUGGER
-          static bool warned=false;
-          //if( warned == false )
-          {
-             char message[300];
-
-             sprintf(message, "Unable to find ucode to use for '%s' CRCSize: 0x%08x CRC800: 0x%08x",
-                   str, crc_size, crc_800);
-             TRACE0(message);
-             DebugMessage(M64MSG_ERROR, message);
-             warned = true;
-          }
-#endif
           ucode = DLParser_IdentifyUcodeFromString(str);
           if ( (int)ucode == ~0 )
              ucode=5;
@@ -725,19 +676,6 @@ uint32_t DLParser_CheckUcode(uint32_t ucStart, uint32_t ucDStart, uint32_t ucSiz
 
        //DLParser_SetuCode( ucode );
 
-#ifdef DEBUGGER
-       {
-          static bool warned=false;
-          if( warned == false )
-          {
-             warned = true;
-             if( strlen((char *) str) == 0 )
-                DebuggerAppendMsg("Can not find RSP string in the DLIST, CRC800: 0x%08x, CRCSize: 0x%08x", crc_800, crc_size);
-             else
-                TRACE0((char *) str);
-          }
-       }
-#endif
        strcpy( (char*)gLastMicrocodeString, (char*)str );
 
        if( usedUcodeIndex >= MAX_UCODE_INFO )
@@ -792,7 +730,6 @@ void DLParser_Process(OSTask * pTask)
     {
         uint32_t ucode = DLParser_CheckUcode(pTask->t.ucode, pTask->t.ucode_data, pTask->t.ucode_size, pTask->t.ucode_data_size);
         RSP_SetUcode(ucode, pTask->t.ucode, pTask->t.ucode_data, pTask->t.ucode_size);
-        DEBUGGER_PAUSE_AND_DUMP(NEXT_SWITCH_UCODE,{DebuggerAppendMsg("Pause at switching ucode");});
     }
 
     // Initialize stack
@@ -800,9 +737,6 @@ void DLParser_Process(OSTask * pTask)
     __RSP.PCi =0;
     gDlistStack[__RSP.PCi].pc = (uint32_t)pTask->t.data_ptr;
     gDlistStack[__RSP.PCi].countdown = MAX_DL_COUNT;
-    DEBUGGER_PAUSE_AT_COND_AND_DUMP_COUNT_N((gDlistStack[__RSP.PCi].pc == 0 && pauseAtNext && eventToPause==NEXT_UNKNOWN_OP),
-            {DebuggerAppendMsg("Start Task without DLIST: ucode=%08X, data=%08X", (uint32_t)pTask->t.ucode, (uint32_t)pTask->t.ucode_data);});
-
 
     // Check if we need to purge (every 5 milliseconds)
     if (status.gRDPTime - status.lastPurgeTimeTime > 5)
@@ -860,30 +794,10 @@ void DLParser_Process(OSTask * pTask)
 
 void RDP_NOIMPL_Real(const char* op, uint32_t word0, uint32_t word1) 
 {
-#ifdef DEBUGGER
-    if( logWarning )
-    {
-        TRACE0("Stack Trace");
-        for( int i=0; i < __RSP.PCi; i++ )
-        {
-            DebuggerAppendMsg("  %08X", gDlistStack[i].pc);
-        }
-        uint32_t dwPC = gDlistStack[__RSP.PCi].pc-8;
-        DebuggerAppendMsg("PC=%08X",dwPC);
-        DebuggerAppendMsg(op, word0, word1);
-    }
-    DEBUGGER_PAUSE_AND_DUMP_COUNT_N(NEXT_UNKNOWN_OP, {TRACE0("Paused at unimplemented ucode\n");})
-#endif
 }
 
 void RDP_NOIMPL_WARN(const char* op)
 {
-#ifdef DEBUGGER
-    if(logWarning)
-    {
-        TRACE0(op);
-    }
-#endif
 }
 
 

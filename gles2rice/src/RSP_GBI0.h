@@ -244,11 +244,7 @@ void RSP_GBI1_Line3D(Gfx *gfx)
 
             gfx++;
             dwPC += 8;
-#ifdef DEBUGGER
-        } while (gfx->words.cmd == (uint8_t)RSP_LINE3D && !(pauseAtNext && eventToPause==NEXT_FLUSH_TRI));
-#else
         } while (gfx->words.cmd == (uint8_t)RSP_LINE3D);
-#endif
 
         gDlistStack[__RSP.PCi].pc = dwPC-8;
 
@@ -338,19 +334,11 @@ void RSP_GBI1_Texture(Gfx *gfx)
         fTextureScaleS = 1/32.0f;
     else if( (((gfx->words.w1)>>16)&0xFFFF) == 0x8000 )
         fTextureScaleS = 1/64.0f;
-#ifdef DEBUGGER
-    else if( ((gfx->words.w1>>16)&0xFFFF) != 0 )
-        DebuggerAppendMsg("Warning, texture scale = %08X is not integer", (word1>>16)&0xFFFF);
-#endif
 
     if( (((gfx->words.w1)    )&0xFFFF) == 0xFFFF )
         fTextureScaleT = 1/32.0f;
     else if( (((gfx->words.w1)    )&0xFFFF) == 0x8000 )
         fTextureScaleT = 1/64.0f;
-#ifdef DEBUGGER
-    else if( (gfx->words.w1&0xFFFF) != 0 )
-        DebuggerAppendMsg("Warning, texture scale = %08X is not integer", (word1)&0xFFFF);
-#endif
 
     if( gRSP.ucode == 6 )
     {
@@ -494,10 +482,6 @@ void RSP_GBI1_CullDL(Gfx *gfx)
 {
     SP_Timing(RSP_GBI1_CullDL);
 
-#ifdef DEBUGGER
-    if( !debuggerEnableCullFace )
-        return; //Disable Culling
-#endif
     if( g_curRomInfo.bDisableCulling )
         return; //Disable Culling
 
@@ -564,11 +548,7 @@ void RSP_GBI1_Tri1(Gfx *gfx)
         gfx++;
         dwPC += 8;
 
-#ifdef DEBUGGER
-    } while (!(pauseAtNext && eventToPause==NEXT_TRIANGLE) && gfx->words.cmd == (uint8_t)RSP_TRI1);
-#else
     } while (gfx->words.cmd == (uint8_t)RSP_TRI1);
-#endif
 
     gDlistStack[__RSP.PCi].pc = dwPC-8;
 
@@ -622,12 +602,7 @@ void RSP_GBI0_Tri4(Gfx *gfx)
        w1  = *(uint32_t *)(rdram_u8 + dwPC+4);
        dwPC += 8;
 
-#ifdef DEBUGGER
-    } while (!(pauseAtNext && eventToPause==NEXT_TRIANGLE) && (w0>>24) == (uint8_t)RSP_TRI2);
-#else
     } while (((w0)>>24) == (uint8_t)RSP_TRI2);
-#endif
-
 
     gDlistStack[__RSP.PCi].pc = dwPC-8;
 

@@ -128,10 +128,6 @@ void RSP_Mtx_DKR(Gfx *gfx)
         mat = matToLoad*gRSP.DKRMatrixes[0];
     else
         mat = matToLoad;
-
-    DEBUGGER_IF_DUMP(logMatrix,TRACE3("DKR Matrix: cmd=0x%X, idx = %d, mul=%d", dwCommand, index, mul));
-    LOG_UCODE("    DKR Loading Mtx: %d, command=%d", index, dwCommand);
-    DEBUGGER_PAUSE_AND_DUMP(NEXT_MATRIX_CMD,{TRACE0("Paused at DKR Matrix Cmd");});
 }
 
 void RSP_Vtx_DKR(Gfx *gfx)
@@ -151,12 +147,6 @@ void RSP_Vtx_DKR(Gfx *gfx)
     }
 
     dwV0 += gRSP.DKRVtxCount;
-
-    LOG_UCODE("    Address 0x%08x, v0: %d, Num: %d", dwAddr, dwV0, dwN);
-    DEBUGGER_ONLY_IF( (pauseAtNext && (eventToPause==NEXT_VERTEX_CMD||eventToPause==NEXT_MATRIX_CMD)), {DebuggerAppendMsg("DKR Vtx: Cmd0=%08X, Cmd1=%08X", (gfx->words.w0), (gfx->words.w1));});
-
-    VTX_DUMP(TRACE2("Vtx_DKR, cmd0=%08X cmd1=%08X", (gfx->words.w0), (gfx->words.w1)));
-    VTX_DUMP(TRACE2("Vtx_DKR, v0=%d n=%d", dwV0, dwN));
 
     if (dwV0 >= 32)
         dwV0 = 31;
@@ -195,11 +185,6 @@ void RSP_Vtx_Gemini(Gfx *gfx)
     uint32_t dwV0 =  (((gfx->words.w0)>>9)&0x1F);
     uint32_t dwN  = (((gfx->words.w0) >>19 )&0x1F);
 
-    LOG_UCODE("    Address 0x%08x, v0: %d, Num: %d", dwAddr, dwV0, dwN);
-    DEBUGGER_ONLY_IF( (pauseAtNext && (eventToPause==NEXT_VERTEX_CMD||eventToPause==NEXT_MATRIX_CMD)), {DebuggerAppendMsg("DKR Vtx: Cmd0=%08X, Cmd1=%08X", (gfx->words.w0), (gfx->words.w1));});
-
-    VTX_DUMP(TRACE2("Vtx_DKR, cmd0=%08X cmd1=%08X", (gfx->words.w0), (gfx->words.w1)));
-
     if (dwV0 >= 32)
         dwV0 = 31;
 
@@ -233,52 +218,6 @@ void RSP_Vtx_Gemini(Gfx *gfx)
 // DKR verts are extra 4 bytes
 void RDP_GFX_DumpVtxInfoDKR(uint32_t dwAddr, uint32_t dwV0, uint32_t dwN)
 {
-#ifdef DEBUGGER
-   uint8_t *rdram_u8 = (uint8_t*)gfx_info.RDRAM;
-        short * psSrc = (short *)(rdram_u8 + dwAddr);
-
-        int i = 0;
-        for (uint32_t dwV = dwV0; dwV < dwV0 + dwN; dwV++)
-        {
-            float x = (float)psSrc[(i + 0) ^ 1];
-            float y = (float)psSrc[(i + 1) ^ 1];
-            float z = (float)psSrc[(i + 2) ^ 1];
-
-            //uint16_t wFlags = CRender::g_pRender->m_dwVecFlags[dwV]; //(uint16_t)psSrc[3^0x1];
-
-            uint16_t wA = psSrc[(i + 3) ^ 1];
-            uint16_t wB = psSrc[(i + 4) ^ 1];
-
-            uint8_t a = wA>>8;
-            uint8_t b = (uint8_t)wA;
-            uint8_t c = wB>>8;
-            uint8_t d = (uint8_t)wB;
-
-            XVECTOR4 & t = g_vecProjected[dwV];
-
-
-            LOG_UCODE(" #%02d Pos: {% 6f,% 6f,% 6f} Extra: %02x %02x %02x %02x (transf: {% 6f,% 6f,% 6f})",
-                dwV, x, y, z, a, b, c, d, t.x, t.y, t.z );
-
-            i+=5;
-        }
-
-
-        uint16_t * pwSrc = (uint16_t *)(rdram_u8 + dwAddr);
-        i = 0;
-        for (uint32_t dwV = dwV0; dwV < dwV0 + dwN; dwV++)
-        {
-            LOG_UCODE(" #%02d %04x %04x %04x %04x %04x",
-                dwV, pwSrc[(i + 0) ^ 1],
-                pwSrc[(i + 1) ^ 1],
-                pwSrc[(i + 2) ^ 1],
-                pwSrc[(i + 3) ^ 1],
-                pwSrc[(i + 4) ^ 1]);
-
-            i += 5;
-        }
-
-#endif // DEBUGGER
 }
 
 void DLParser_Set_Addr_Ucode6(Gfx *gfx)
@@ -385,24 +324,11 @@ void TexRectToN64FrameBuffer_YUV_16b(uint32_t x0, uint32_t y0, uint32_t width, u
 extern uObjMtxReal gObjMtxReal;
 void DLParser_OgreBatter64BG(Gfx *gfx)
 {
-#ifdef DEBUGGER
-uint8_t *rdram_u8 = (uint8_t*)gfx_info.RDRAM;
-uint32_t dwAddr = RSPSegmentAddr((gfx->words.w1));
-uObjTxSprite *ptr = (uObjTxSprite*)(rdram_u8 + dwAddr);
-#endif
 
-PrepareTextures();
+   PrepareTextures();
 
-CTexture *ptexture = g_textures[0].m_pCTexture;
-TexRectToN64FrameBuffer_16b( (uint32_t)gObjMtxReal.X, (uint32_t)gObjMtxReal.Y, ptexture->m_dwWidth, ptexture->m_dwHeight, gRSP.curTile);
-
-#ifdef DEBUGGER
-CRender::g_pRender->DrawSpriteR(*ptr, false, 0, 0, 0, 0, 0);
-
-DEBUGGER_PAUSE_AT_COND_AND_DUMP_COUNT_N((pauseAtNext && 
-(eventToPause==NEXT_OBJ_TXT_CMD|| eventToPause==NEXT_FLUSH_TRI)),
-{DebuggerAppendMsg("Ogre Battle 64 BG: Address=%08X\n", dwAddr);});
-#endif
+   CTexture *ptexture = g_textures[0].m_pCTexture;
+   TexRectToN64FrameBuffer_16b( (uint32_t)gObjMtxReal.X, (uint32_t)gObjMtxReal.Y, ptexture->m_dwWidth, ptexture->m_dwHeight, gRSP.curTile);
 }
 
 void DLParser_Bomberman2TextRect(Gfx *gfx)
@@ -430,15 +356,6 @@ void DLParser_Bomberman2TextRect(Gfx *gfx)
     uObjTxSprite drawinfo;
     memcpy( &(drawinfo.sprite), info, sizeof(uObjSprite));
     CRender::g_pRender->DrawSpriteR(drawinfo, false, dwTile, 0, 0, drawinfo.sprite.imageW/32, drawinfo.sprite.imageH/32);
-
-    DEBUGGER_PAUSE_AT_COND_AND_DUMP_COUNT_N((pauseAtNext && (eventToPause==NEXT_TRIANGLE|| eventToPause==NEXT_FLUSH_TRI)),
-        {
-            DebuggerAppendMsg("Bomberman 64 - TextRect: Addr=%08X\n", dwAddr);
-            dwAddr &= (g_dwRamSize-1);
-            DebuggerAppendMsg("%08X-%08X-%08X-%08X-%08X-%08X\n", RDRAM_UWORD(dwAddr), RDRAM_UWORD(dwAddr+4),
-                RDRAM_UWORD(dwAddr+8), RDRAM_UWORD(dwAddr+12), RDRAM_UWORD(dwAddr+16), RDRAM_UWORD(dwAddr+20) );
-        }
-    );
 }
 
 void RSP_MoveWord_DKR(Gfx *gfx)
@@ -456,15 +373,10 @@ void RSP_MoveWord_DKR(Gfx *gfx)
           ricegSPNumLights(dwNumLights);
           //gRSP.DKRBillBoard = (gfx->words.w1)&0x1 ? true : false;
           gRSP.DKRBillBoard = (gfx->words.w1)&0x7 ? true : false;
-
-          LOG_UCODE("    gRSP.DKRBillBoard = %d", gRSP.DKRBillBoard);
-          DEBUGGER_PAUSE_AND_DUMP_COUNT_N(NEXT_MATRIX_CMD, {DebuggerAppendMsg("DKR Moveword, select gRSP.DKRBillBoard %s, cmd0=%08X, cmd1=%08X", gRSP.DKRBillBoard?"true":"false", (gfx->words.w0), (gfx->words.w1));});
           break;
        case G_MW_LIGHTCOL:
           gRSP.DKRCMatrixIndex = ((gfx->words.w1)>>6)&7;
           //gRSP.DKRCMatrixIndex = ((gfx->words.w1)>>6)&3;
-          LOG_UCODE("    gRSP.DKRCMatrixIndex = %d", gRSP.DKRCMatrixIndex);
-          DEBUGGER_PAUSE_AND_DUMP_COUNT_N(NEXT_MATRIX_CMD, {DebuggerAppendMsg("DKR Moveword, select matrix %d, cmd0=%08X, cmd1=%08X", gRSP.DKRCMatrixIndex, (gfx->words.w0), (gfx->words.w1));});
           break;
        default:
           RSP_GBI1_MoveWord(gfx);
@@ -558,11 +470,7 @@ void RSP_Tri4_PD(Gfx *gfx)
         w1 = *(uint32_t *)(rdram_u8 + dwPC+4);
         dwPC += 8;
 
-#ifdef DEBUGGER
-    } while (!(pauseAtNext && eventToPause==NEXT_TRIANGLE) && (w0>>24) == (uint8_t)RSP_TRI2);
-#else
     } while ((w0>>24) == (uint8_t)RSP_TRI2);
-#endif
 
     gDlistStack[__RSP.PCi].pc = dwPC-8;
 
@@ -632,11 +540,7 @@ void DLParser_Tri4_Conker(Gfx *gfx)
         w1 = *(uint32_t *)(rdram_u8 + dwPC+4);
         dwPC += 8;
 
-#ifdef DEBUGGER
-    } while (!(pauseAtNext && eventToPause==NEXT_TRIANGLE) && (w0>>28) == 1 );
-#else
     } while ((w0>>28) == 1);
-#endif
 
     gDlistStack[__RSP.PCi].pc = dwPC-8;
 
@@ -662,7 +566,6 @@ void RDP_GFX_Force_Vertex_Z_Conker(uint32_t dwAddr)
     });
 
     dwConkerVtxZAddr = dwAddr;
-    DEBUGGER_PAUSE_AND_DUMP(NEXT_VERTEX_CMD,{TRACE0("Paused at RDP_GFX_Force_Matrix_Conker Cmd");});
 }
 
 
@@ -693,11 +596,6 @@ void DLParser_MoveMem_Conker(Gfx *gfx)
             // fix me
             //TRACE0("Check me in DLParser_MoveMem_Conker - MoveMem Light");
         }
-        DEBUGGER_PAUSE_AND_DUMP_COUNT_N( NEXT_SET_LIGHT, 
-        {
-            DebuggerAppendMsg("RSP_MoveMemLight: %d, Addr=%08X, cmd0=%08X", dwLight, dwAddr, (gfx->words.w0));
-            TRACE0("Pause after MoveMemLight");
-        });
     }
     else
     {
@@ -735,11 +633,6 @@ void DLParser_MoveWord_Conker(Gfx *gfx)
         LOG_UCODE("Conker RSP_MOVE_WORD_NUMLIGHT: %d", dwNumLights);
         gRSP.ambientLightIndex = dwNumLights+1;
         ricegSPNumLights(dwNumLights);
-        DEBUGGER_PAUSE_AND_DUMP_COUNT_N( NEXT_SET_LIGHT, 
-        {
-            DebuggerAppendMsg("SetNumLights: %d", dwNumLights);
-            TRACE0("Pause after SetNumLights");
-        });
     }
 }
 
@@ -796,16 +689,6 @@ void DLParser_RS_Color_Buffer(Gfx *gfx)
     Rogue_Squadron_Vtx_Color_Addr = dwAddr;
 
     LOG_UCODE("Vtx_Color at PC=%08X: 0x%08x 0x%08x\n", dwPC-8, (gfx->words.w0), (gfx->words.w1));
-#ifdef DEBUGGER
-    if( pauseAtNext && (eventToPause == NEXT_VERTEX_CMD ) )
-    {
-        DebuggerAppendMsg("Vtx_Color at PC=%08X: 0x%08x 0x%08x\n", dwPC-8, (gfx->words.w0), (gfx->words.w1));
-        if( dwAddr < g_dwRamSize )
-        {
-            DumpHex(dwAddr, MIN(64, g_dwRamSize-dwAddr));
-        }
-    }
-#endif
 
     ProcessVertexData_Rogue_Squadron(Rogue_Squadron_Vtx_XYZ_Addr, Rogue_Squadron_Vtx_Color_Addr, Rogue_Squadron_Vtx_XYZ_Cmd, Rogue_Squadron_Vtx_Color_Cmd);
 
@@ -825,17 +708,6 @@ void DLParser_RS_Vtx_Buffer(Gfx *gfx)
     LOG_UCODE("Vtx_XYZ at PC=%08X: 0x%08x 0x%08x\n", dwPC-8, (gfx->words.w0), (gfx->words.w1));
     Rogue_Squadron_Vtx_XYZ_Cmd = (gfx->words.w0);
     Rogue_Squadron_Vtx_XYZ_Addr = dwAddr;
-
-#ifdef DEBUGGER
-    if( pauseAtNext && (eventToPause == NEXT_VERTEX_CMD ) )
-    {
-        DebuggerAppendMsg("Vtx_XYZ at PC=%08X: 0x%08x 0x%08x\n", dwPC-8, (gfx->words.w0), (gfx->words.w1));
-        if( dwAddr < g_dwRamSize )
-        {
-            DumpHex(dwAddr, MIN(64, g_dwRamSize-dwAddr));
-        }
-    }
-#endif
 }
 
 
@@ -852,10 +724,6 @@ void DLParser_RS_MoveMem(Gfx *gfx)
     RSP_GBI1_MoveMem(gfx);
     gDlistStack[__RSP.PCi].pc += 16;
 
-    //DEBUGGER_PAUSE_AND_DUMP(NEXT_SET_MODE_CMD, {
-    //  DebuggerAppendMsg("Pause after RS_MoveMem at: %08X\n", dwPC-8);
-    //});
-
 }
 
 void DLParser_RS_0xbe(Gfx *gfx)
@@ -870,30 +738,17 @@ void DLParser_RS_0xbe(Gfx *gfx)
     LOG_UCODE("\tPC=%08X: 0x%08x 0x%08x\n", dwPC, dwCmd2, dwCmd3);
     gDlistStack[__RSP.PCi].pc += 8;
 
-    DEBUGGER_PAUSE_AND_DUMP(NEXT_SET_MODE_CMD, {
-        DebuggerAppendMsg("Pause after RS_0xbe at: %08X\n", dwPC-8);
-        DebuggerAppendMsg("\t0x%08x 0x%08x", (gfx->words.w0), (gfx->words.w1));
-        DebuggerAppendMsg("\t0x%08x 0x%08x", dwCmd2, dwCmd3);
-    });
 }
 
 
 void DLParser_Ucode8_EndDL(Gfx *gfx)
 {
-#ifdef DEBUGGER
-    uint32_t dwPC = gDlistStack[__RSP.PCi].pc-8;
-#endif
-
     RDP_GFX_PopDL();
-    DEBUGGER_PAUSE_AND_DUMP(NEXT_DLIST, DebuggerAppendMsg("PC=%08X: EndDL, return to %08X\n\n", dwPC, gDlistStack[__RSP.PCi].pc));
 }
 
 void DLParser_Ucode8_DL(Gfx *gfx)   // DL Function Call
 {
    uint8_t *rdram_u8 = (uint8_t*)gfx_info.RDRAM;
-#ifdef DEBUGGER
-    uint32_t dwPC = gDlistStack[__RSP.PCi].pc-8;
-#endif
 
     uint32_t dwAddr = RSPSegmentAddr((gfx->words.w1));
     uint32_t dwCmd2 = *(uint32_t *)(rdram_u8 + dwAddr);
@@ -937,10 +792,6 @@ void DLParser_Ucode8_DL(Gfx *gfx)   // DL Function Call
         GSBlkAddrSaves[__RSP.PCi][0] = dwCmd2;
         GSBlkAddrSaves[__RSP.PCi][1] = dwCmd3;
     }
-
-    DEBUGGER_PAUSE_AND_DUMP(NEXT_DLIST, 
-    DebuggerAppendMsg("\nPC=%08X: Call DL at Address %08X - %08X, %08X\n\n", 
-    dwPC, dwAddr, dwCmd2, dwCmd3));
 }
 
 void DLParser_Ucode8_JUMP(Gfx *gfx) // DL Function Call
@@ -948,9 +799,6 @@ void DLParser_Ucode8_JUMP(Gfx *gfx) // DL Function Call
    uint8_t *rdram_u8 = (uint8_t*)gfx_info.RDRAM;
     if( ((gfx->words.w0)&0x00FFFFFF) == 0 )
     {
-#ifdef DEBUGGER
-        uint32_t dwPC = gDlistStack[__RSP.PCi].pc-8;
-#endif
 
         uint32_t dwAddr = RSPSegmentAddr((gfx->words.w1));
 
@@ -960,14 +808,7 @@ void DLParser_Ucode8_JUMP(Gfx *gfx) // DL Function Call
             dwAddr = (gfx->words.w1)&(g_dwRamSize-1);
         }
 
-#ifdef DEBUGGER
-        uint32_t dwCmd2 = *(uint32_t *)(rdram_u8 + dwAddr);
-        uint32_t dwCmd3 = *(uint32_t *)(rdram_u8 + dwAddr+4);
-#endif
-
         gDlistStack[__RSP.PCi].pc = dwAddr+8; // Jump to new address
-        DEBUGGER_PAUSE_AND_DUMP(NEXT_DLIST, 
-            DebuggerAppendMsg("\nPC=%08X: Jump to Address %08X - %08X, %08X\n\n", dwPC, dwAddr, dwCmd2, dwCmd3));
     }
     else
     {
@@ -1075,10 +916,6 @@ void DLParser_Ucode8_0x05(Gfx *gfx)
 
 void DLParser_Ucode8_0xb4(Gfx *gfx)
 {
-#ifdef DEBUGGER
-    uint32_t dwPC = gDlistStack[__RSP.PCi].pc;
-#endif
-
     if(((gfx->words.w0)&0xFF) == 0x06)
         DLParser_Unknown_Skip3(gfx);
     else if(((gfx->words.w0)&0xFF) == 0x04)
@@ -1087,13 +924,6 @@ void DLParser_Ucode8_0xb4(Gfx *gfx)
         DLParser_Unknown_Skip3(gfx);
     else
     {
-#ifdef DEBUGGER
-        if(pauseAtNext)
-        {
-            DebuggerAppendMsg("ucode 0xb4 at PC=%08X: 0x%08x 0x%08x\n", dwPC-8,
-                (gfx->words.w0), (gfx->words.w1));
-        }
-#endif
         DLParser_Unknown_Skip3(gfx);
     }
 }
@@ -1120,36 +950,18 @@ void DLParser_Ucode8_0xb5(Gfx *gfx)
 
     if( GSBlkAddrSaves[__RSP.PCi][0] == 0 || GSBlkAddrSaves[__RSP.PCi][1] == 0 )
     {
-#ifdef DEBUGGER
-        if( pauseAtNext && eventToPause == NEXT_DLIST)
-        {
-            DebuggerAppendMsg("PC=%08X: 0xB5 - %08X : %08X, %08X, EndDL, no next blk\n", dwPC, (gfx->words.w1), dwCmd2, dwCmd3);
-        }
-#endif
         DLParser_Ucode8_EndDL(gfx); // Check me
         return;
     }
 
     if( ((dwCmd2>>24)!=0x80 && (dwCmd2>>24)!=0x00 ) || ((dwCmd3>>24)!=0x80 && (dwCmd3>>24)!=0x00 ) )
     {
-#ifdef DEBUGGER
-        if( pauseAtNext && eventToPause == NEXT_DLIST)
-        {
-            DebuggerAppendMsg("PC=%08X: 0xB5 - %08X : %08X, %08X, EndDL, Unknown\n", dwPC, (gfx->words.w1), dwCmd2, dwCmd3);
-        }
-#endif
         DLParser_Ucode8_EndDL(gfx); // Check me
         return;
     }
 
     if( (dwCmd2>>24)!= (dwCmd3>>24) )
     {
-#ifdef DEBUGGER
-        if( pauseAtNext && eventToPause == NEXT_DLIST)
-        {
-            DebuggerAppendMsg("PC=%08X: 0xB5 - %08X : %08X, %08X, EndDL, Unknown\n", dwPC, (gfx->words.w1), dwCmd2, dwCmd3);
-        }
-#endif
         DLParser_Ucode8_EndDL(gfx); // Check me
         return;
     }
@@ -1160,12 +972,6 @@ void DLParser_Ucode8_0xb5(Gfx *gfx)
         if( dwCmd2 < dwCmd3  )
         {
             // All right, the next block is not ucode, but data
-#ifdef DEBUGGER
-            if( pauseAtNext && eventToPause == NEXT_DLIST)
-            {
-                DebuggerAppendMsg("PC=%08X: 0xB5 - %08X : %08X, %08X, EndDL, next blk is data\n", dwPC, (gfx->words.w1), dwCmd2, dwCmd3);
-            }
-#endif
             DLParser_Ucode8_EndDL(gfx); // Check me
             return;
         }
@@ -1177,31 +983,15 @@ void DLParser_Ucode8_0xb5(Gfx *gfx)
         if( (dwCmd4>>24) != 0x80 || (dwCmd5>>24) != 0x80 || (dwCmd6>>24) != 0x80 || (dwCmd7>>24) != 0x80 || dwCmd4 < dwCmd5 || dwCmd6 < dwCmd7 )
         {
             // All right, the next block is not ucode, but data
-#ifdef DEBUGGER
-            if( pauseAtNext && eventToPause == NEXT_DLIST)
-            {
-                DebuggerAppendMsg("PC=%08X: 0xB5 - %08X : %08X, %08X, EndDL, next blk is data\n", dwPC, (gfx->words.w1), dwCmd2, dwCmd3);
-                DebuggerAppendMsg("%08X, %08X     %08X,%08X\n", dwCmd4, dwCmd5, dwCmd6, dwCmd7);
-            }
-#endif
             DLParser_Ucode8_EndDL(gfx); // Check me
             return;
         }
 
         gDlistStack[__RSP.PCi].pc += 8;
-        DEBUGGER_PAUSE_AND_DUMP(NEXT_DLIST, 
-            DebuggerAppendMsg("PC=%08X: 0xB5 - %08X : %08X, %08X, continue\n", dwPC, (gfx->words.w1), dwCmd2, dwCmd3);
-            );
         return;
     }
     else if( (dwCmd2>>24)==0x00 && (dwCmd3>>24)==0x00 )
     {
-#ifdef DEBUGGER
-        if( pauseAtNext && eventToPause == NEXT_DLIST)
-        {
-            DebuggerAppendMsg("PC=%08X: 0xB5 - %08X : %08X, %08X, EndDL, next blk is data\n", dwPC, (gfx->words.w1), dwCmd2, dwCmd3);
-        }
-#endif
         DLParser_Ucode8_EndDL(gfx); // Check me
         return;
     }
@@ -1212,40 +1002,15 @@ void DLParser_Ucode8_0xb5(Gfx *gfx)
         if( (dwCmd2>>24)==0x80 && (dwCmd3>>24)==0x80 && dwCmd2 < dwCmd3 )
         {
             // All right, the next block is not ucode, but data
-#ifdef DEBUGGER
-            if( pauseAtNext && eventToPause == NEXT_DLIST)
-            {
-                DebuggerAppendMsg("PC=%08X: 0xB5 - %08X : %08X, %08X, EndDL, next blk is data\n", dwPC, (gfx->words.w1), dwCmd2, dwCmd3);
-            }
-#endif
             DLParser_Ucode8_EndDL(gfx); // Check me
             return;
         }
         else
         {
             gDlistStack[__RSP.PCi].pc += 8;
-            DEBUGGER_PAUSE_AND_DUMP(NEXT_DLIST, 
-                DebuggerAppendMsg("PC=%08X: 0xB5 - %08X : %08X, %08X, continue\n", dwPC, (gfx->words.w1), dwCmd2, dwCmd3)
-                );
             return;
         }
     }
-
-#ifdef DEBUGGER
-uint32_t dwAddr1 = RSPSegmentAddr(dwCmd2);
-uint32_t dwAddr2 = RSPSegmentAddr(dwCmd3);
-
-    if( (gfx->words.w1) != 0 )
-    {
-        DebuggerAppendMsg("!!!! PC=%08X: 0xB5 - %08X : %08X, %08X\n", dwPC, (gfx->words.w1), dwCmd2, dwCmd3);
-    }
-#endif
-
-    DEBUGGER_PAUSE_AND_DUMP(NEXT_DLIST, 
-        DebuggerAppendMsg("PC=%08X: 0xB5 - %08X : %08X, %08X, continue\n", dwPC, (gfx->words.w1), dwAddr1, dwAddr2)
-        );
-
-    return;
 }
 
 void DLParser_Ucode8_0xbc(Gfx *gfx)
@@ -1376,23 +1141,6 @@ void DLParser_RDPHalf_1_0xb4_GoldenEye(Gfx *gfx)
       CRender::g_pRender->TexRect(x0, y0, x1, y1, 0, 0, xscale, yscale, true, color);
 
       gDlistStack[__RSP.PCi].pc += 312;
-
-#ifdef DEBUGGER
-      if (logUcodes)
-      {
-         dwPC -= 8;
-         LOG_UCODE("GoldenEye Sky at PC=%08X: 0x%08x 0x%08x", dwPC, (gfx->words.w0), (gfx->words.w1));
-         uint32_t *ptr = (uint32_t *)(rdram_u8 + dwPC);
-         for( int i=0; i<21; i++, dwPC+=16,ptr+=4 )
-         {
-            LOG_UCODE("%08X: %08X %08X %08X %08X", dwPC, ptr[0], ptr[1], ptr[2], ptr[3]);
-         }
-      }
-#endif
-
-      DEBUGGER_PAUSE_AND_DUMP_COUNT_N(NEXT_FLUSH_TRI, {
-            TRACE0("Pause after Golden Sky Drawing\n");
-            });
    }
 }
 
@@ -1571,11 +1319,6 @@ void DLParser_TexRect_Last_Legion(Gfx *gfx)
                 // Hack for Yoshi background image
                 PrepareTextures();
                 TexRectToFrameBuffer_8b(dwXL, dwYL, dwXH, dwYH, t0u0, t0v0, t0u1, t0v1, tileno);
-                DEBUGGER_PAUSE_AT_COND_AND_DUMP_COUNT_N((eventToPause == NEXT_FLUSH_TRI || eventToPause == NEXT_TEXTRECT), {
-                    DebuggerAppendMsg("TexRect: tile=%d, X0=%d, Y0=%d, X1=%d, Y1=%d,\nfS0=%f, fT0=%f, ScaleS=%f, ScaleT=%f\n",
-                        gRSP.curTile, dwXL, dwYL, dwXH, dwYH, fS0, fT0, fDSDX, fDTDY);
-                    DebuggerAppendMsg("Pause after TexRect for Yoshi\n");
-                });
             }
             else
             {
