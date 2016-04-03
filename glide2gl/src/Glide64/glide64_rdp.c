@@ -1933,19 +1933,8 @@ static INLINE uint32_t READ_RDP_DATA(uint32_t address)
    return ((uint32_t*)gfx_info.RDRAM)[address >> 2];
 }
 
-/******************************************************************
-Function: ProcessRDPList
-Purpose:  This function is called when there is a Dlist to be
-processed. (Low level GFX list)
-input:    none
-output:   none
-*******************************************************************/
-void glide64ProcessRDPList(void)
+static void glide64ProcessRDPList_restorestate(void)
 {
-   int32_t i;
-   uint32_t length;
-   bool set_zero                  = true;
-
    no_dlist                       = false;
    update_screen_count            = 0;
    ChangeSize();
@@ -1990,10 +1979,20 @@ void glide64ProcessRDPList(void)
    part_framebuf.d_lr_x = 0;
    part_framebuf.d_lr_y = 0;
    depth_buffer_fog     = true;
-   
-   length               = (*(uint32_t*)gfx_info.DPC_END_REG) - (*(uint32_t*)gfx_info.DPC_CURRENT_REG);
+}
+
+static void glide64ProcessRDPList_internal(void)
+{
+   uint32_t i;
+   bool set_zero                  = true;
+   const uint32_t length          = (*(uint32_t*)gfx_info.DPC_END_REG) - (*(uint32_t*)gfx_info.DPC_CURRENT_REG);
 
    (*(uint32_t*)gfx_info.DPC_STATUS_REG) &= ~0x0002;
+
+   if (gfx_info.DPC_END_REG <= gfx_info.DPC_CURRENT_REG)
+      return;
+
+   __RSP.bLLE = true;
 
    // load command data
    for (i = 0; i < length; i += 4)
@@ -2001,8 +2000,6 @@ void glide64ProcessRDPList(void)
       __RDP.cmd_data[__RDP.cmd_ptr] = READ_RDP_DATA((*(uint32_t*)gfx_info.DPC_CURRENT_REG) + i);
       __RDP.cmd_ptr = (__RDP.cmd_ptr + 1) & MAXCMD_MASK;
    }
-
-   __RSP.bLLE = true;
 
    /* Load command data */
    while (__RDP.cmd_cur != __RDP.cmd_ptr)
@@ -2043,4 +2040,17 @@ void glide64ProcessRDPList(void)
    __RSP.bLLE = false;
 
    (*(uint32_t*)gfx_info.DPC_START_REG) = (*(uint32_t*)gfx_info.DPC_CURRENT_REG) = (*(uint32_t*)gfx_info.DPC_END_REG);
+}
+
+/******************************************************************
+Function: ProcessRDPList
+Purpose:  This function is called when there is a Dlist to be
+processed. (Low level GFX list)
+input:    none
+output:   none
+*******************************************************************/
+void glide64ProcessRDPList(void)
+{
+   glide64ProcessRDPList_restorestate();
+   glide64ProcessRDPList_internal();
 }

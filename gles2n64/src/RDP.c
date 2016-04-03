@@ -578,7 +578,7 @@ static INLINE uint32_t GLN64_READ_RDP_DATA(uint32_t address)
 void gln64ProcessRDPList(void)
 {
    uint32_t i;
-   bool setZero = true;
+   bool set_zero = true;
    const uint32_t length = gfx_info.DPC_END_REG - gfx_info.DPC_CURRENT_REG;
 
    (*(uint32_t*)gfx_info.DPC_STATUS_REG) &= ~0x0002;
@@ -602,7 +602,7 @@ void gln64ProcessRDPList(void)
 
       if ((((__RDP.cmd_ptr - __RDP.cmd_cur)&maxCMDMask) * 4) < CmdLength[cmd])
       {
-         setZero = false;
+         set_zero = false;
          break;
       }
 
@@ -620,7 +620,7 @@ void gln64ProcessRDPList(void)
       __RDP.cmd_cur = (__RDP.cmd_cur + CmdLength[cmd] / 4) & maxCMDMask;
    }
 
-   if (setZero)
+   if (set_zero)
    {
       __RDP.cmd_ptr = 0;
       __RDP.cmd_cur = 0;
