@@ -107,14 +107,6 @@ static void SetTmemFlag(uint32_t tmemAddr, uint32_t size)
     uint32_t index    = tmemAddr>>5;
     uint32_t bitIndex = (tmemAddr&0x1F);
 
-#ifdef DEBUGGER
-    if( size > 0x200 )
-    {
-        DebuggerAppendMsg("Check me: tmemaddr=%X, size=%x", tmemAddr, size);
-        size = 0x200-tmemAddr;
-    }
-#endif
-
     if( bitIndex == 0 )
     {
         uint32_t i;
@@ -247,10 +239,6 @@ void ricegDPFillRect(int32_t ulx, int32_t uly, int32_t lrx, int32_t lry )
          LOG_UCODE("    Clearing ZBuffer");
       }
 
-      DEBUGGER_PAUSE_AND_DUMP_COUNT_N( NEXT_FLUSH_TRI,{TRACE0("Pause after FillRect: ClearZbuffer\n");});
-      DEBUGGER_PAUSE_AND_DUMP_COUNT_N( NEXT_FILLRECT, {DebuggerAppendMsg("ClearZbuffer: X0=%d, Y0=%d, X1=%d, Y1=%d, Color=0x%08X", ulx, uly, lrx, lry, gRDP.originalFillColor);
-            DebuggerAppendMsg("Pause after ClearZbuffer: Color=%08X\n", gRDP.originalFillColor);});
-
       if( g_curRomInfo.bEmulateClear )
       {
          // Emulating Clear, by write the memory in RDRAM
@@ -337,10 +325,6 @@ void ricegDPFillRect(int32_t ulx, int32_t uly, int32_t lrx, int32_t lry )
             }
          }
       }
-
-      DEBUGGER_PAUSE_AND_DUMP_COUNT_N( NEXT_FLUSH_TRI,{TRACE0("Pause after FillRect\n");});
-      DEBUGGER_PAUSE_AND_DUMP_COUNT_N( NEXT_FILLRECT, {DebuggerAppendMsg("FillRect: X0=%d, Y0=%d, X1=%d, Y1=%d, Color=0x%08X", ulx, uly, lrx, lry, gRDP.originalFillColor);
-            DebuggerAppendMsg("Pause after FillRect: Color=%08X\n", gRDP.originalFillColor);});
    }
    else
    {
@@ -374,10 +358,6 @@ void ricegDPFillRect(int32_t ulx, int32_t uly, int32_t lrx, int32_t lry )
             CRender::g_pRender->FillRect(ulx, uly, lrx, lry, primColor);
          }
       }
-      DEBUGGER_PAUSE_AND_DUMP_COUNT_N( NEXT_FLUSH_TRI,{TRACE0("Pause after FillRect\n");});
-      DEBUGGER_PAUSE_AND_DUMP_COUNT_N( NEXT_FILLRECT, {DebuggerAppendMsg("FillRect: X0=%d, Y0=%d, X1=%d, Y1=%d, Color=0x%08X",
-               ulx, uly, lrx, lry, gRDP.originalFillColor);
-            DebuggerAppendMsg("Pause after FillRect: Color=%08X\n", gRDP.originalFillColor);});
    }
 }
 

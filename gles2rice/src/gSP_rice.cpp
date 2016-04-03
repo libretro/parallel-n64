@@ -92,7 +92,6 @@ void ricegSPModifyVertex(uint32_t vtx, uint32_t where, uint32_t val)
          }
          break;
    }
-   DEBUGGER_PAUSE_AND_DUMP(NEXT_VERTEX_CMD,{TRACE0("Paused at ModVertex Command");});
 }
 
 void ricegSPCIVertex(uint32_t v, uint32_t n, uint32_t v0)
@@ -173,20 +172,7 @@ void ricegSPCIVertex(uint32_t v, uint32_t n, uint32_t v0)
          t.x = vert.s;
          t.y = vert.t; 
       }
-
-
-      VTX_DUMP( 
-            {
-            DebuggerAppendMsg("Vertex %d: %d %d %d", i, vert.x,vert.y,vert.z); 
-            DebuggerAppendMsg("      : %f, %f, %f, %f", 
-                  g_vtxTransformed[i].x,g_vtxTransformed[i].y,g_vtxTransformed[i].z,g_vtxTransformed[i].w);
-            DebuggerAppendMsg("      : %X, %X, %X, %X", r,g,b,a);
-            DebuggerAppendMsg("      : u=%f, v=%f", t.x, t.y);
-            });
    }
-
-   VTX_DUMP(TRACE2("Setting Vertexes: %d - %d\n", dwV0, dwV0+dwNum-1));
-   DEBUGGER_PAUSE_AND_DUMP(NEXT_VERTEX_CMD,{TRACE0("Paused at Vertex Command");});
 }
 
 void ricegSPLightColor(uint32_t lightNum, uint32_t packedColor)
@@ -207,7 +193,6 @@ void ricegSPLightColor(uint32_t lightNum, uint32_t packedColor)
 void ricegSPNumLights(int32_t n) 
 {
    gSP.numLights = n; 
-   DEBUGGER_PAUSE_AND_DUMP(NEXT_SET_LIGHT,TRACE1("Set Number Of Lights: %d", dwNumLights));
 }
 
 void ricegSPDMATriangles( uint32_t tris, uint32_t n )

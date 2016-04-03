@@ -923,13 +923,6 @@ void DLParser_SetTileSize(Gfx *gfx)
             tile.bSizeIsValid = true;
             if( sl/4 > sh/4 || tl/4 > th/4 || (sh == 0 && tile.dwShiftS==0 && th == 0 && tile.dwShiftT ==0 ) )
             {
-#ifdef DEBUGGER
-                if( sl != 0 || tl != 0 || sh != 0 || th != 0 )
-                {
-                    if( tile.dwMaskS==0 || tile.dwMaskT==0 )
-                        TRACE0("Check me, setTileSize is not correct");
-                }
-#endif
                 tile.bSizeIsValid = false;
             }
             tile.hilite_sl = tile.sl = sl / 4;
@@ -961,18 +954,6 @@ void DLParser_SetTileSize(Gfx *gfx)
             tile.lastTileCmd = CMD_SETTILE_SIZE;
         }
     }
-
-    LOG_TEXTURE(
-    {
-    DebuggerAppendMsg("SetTileSize:%d (%d/4,%d/4) -> (%d/4,%d/4) [%d x %d]\n",
-        tileno, sl, tl, sh, th, 
-        ((sh/4) - (sl/4)) + 1, ((th/4) - (tl/4)) + 1);
-    });
-    DEBUGGER_PAUSE_COUNT_N(NEXT_TEXTURE_CMD);
-
-    LOG_UCODE("    Tile:%d (%d,%d) -> (%d,%d) [%d x %d]",
-        tileno, sl/4, tl/4, sh/4, th/4,
-        ((sh/4) - (sl/4)) + 1, ((th/4) - (tl/4)) + 1);
 }
 
 extern const char *pszImgFormat[8];// = {"RGBA", "YUV", "CI", "IA", "I", "?1", "?2", "?3"};
