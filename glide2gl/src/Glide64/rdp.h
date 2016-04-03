@@ -366,7 +366,6 @@ struct MAT2D
 
 struct RDP
 {
-   struct MAT2D mat_2d;
    uint32_t u_cull_mode;
    float vi_width;
    float vi_height;

@@ -239,14 +239,14 @@ void rdp_new(void)
 
    _gSPVertex = glide64gSPVertex;
 
-   rdp.mat_2d.A          = 1.0f;
-   rdp.mat_2d.B          = 0.0f;
-   rdp.mat_2d.C          = 0.0f;
-   rdp.mat_2d.D          = 1.0f;
-   rdp.mat_2d.X          = 0.0f;
-   rdp.mat_2d.Y          = 0.0f;
-   rdp.mat_2d.BaseScaleX = 1.0f;
-   rdp.mat_2d.BaseScaleY = 1.0f;
+   gSP.objMatrix.A          = 1.0f;
+   gSP.objMatrix.B          = 0.0f;
+   gSP.objMatrix.C          = 0.0f;
+   gSP.objMatrix.D          = 1.0f;
+   gSP.objMatrix.X          = 0.0f;
+   gSP.objMatrix.Y          = 0.0f;
+   gSP.objMatrix.baseScaleX = 1.0f;
+   gSP.objMatrix.baseScaleY = 1.0f;
 
    gSP.matrix.billboard  = 0;
 }

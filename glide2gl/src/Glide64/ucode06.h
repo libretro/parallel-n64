@@ -971,8 +971,8 @@ void uc6_obj_sprite(uint32_t w0, uint32_t w1)
    {
       float x = v[i].x;
       float y = v[i].y;
-      v[i].x = ((x * rdp.mat_2d.A + y * rdp.mat_2d.B + rdp.mat_2d.X) * rdp.scale_x) + rdp.offset_x;
-      v[i].y = ((x * rdp.mat_2d.C + y * rdp.mat_2d.D + rdp.mat_2d.Y) * rdp.scale_y) + rdp.offset_y;
+      v[i].x = ((x * gSP.objMatrix.A + y * gSP.objMatrix.B + gSP.objMatrix.X) * rdp.scale_x) + rdp.offset_x;
+      v[i].y = ((x * gSP.objMatrix.C + y * gSP.objMatrix.D + gSP.objMatrix.Y) * rdp.scale_y) + rdp.offset_y;
    }
 
    uc6_draw_polygons (v);
@@ -1056,10 +1056,10 @@ static void uc6_obj_rectangle_r(uint32_t w0, uint32_t w1)
 
    if (d.imageFmt == G_IM_FMT_YUV && (settings.hacks&hack_Ogre64)) //Ogre Battle needs to copy YUV texture to frame buffer
    {
-      ul_x = d.objX / rdp.mat_2d.BaseScaleX + rdp.mat_2d.X;
-      lr_x = (d.objX + d.imageW / d.scaleW) / rdp.mat_2d.BaseScaleX + rdp.mat_2d.X;
-      ul_y = d.objY / rdp.mat_2d.BaseScaleY + rdp.mat_2d.Y;
-      lr_y = (d.objY + d.imageH / d.scaleH) / rdp.mat_2d.BaseScaleY + rdp.mat_2d.Y;
+      ul_x = d.objX / gSP.objMatrix.baseScaleX + gSP.objMatrix.X;
+      lr_x = (d.objX + d.imageW / d.scaleW) / gSP.objMatrix.baseScaleX + gSP.objMatrix.X;
+      ul_y = d.objY / gSP.objMatrix.baseScaleY + gSP.objMatrix.Y;
+      lr_y = (d.objY + d.imageH / d.scaleH) / gSP.objMatrix.baseScaleY + gSP.objMatrix.Y;
       DrawYUVImageToFrameBuffer((uint16_t)ul_x, (uint16_t)ul_y, (uint16_t)lr_x, (uint16_t)lr_y);
       return;
    }
@@ -1068,10 +1068,10 @@ static void uc6_obj_rectangle_r(uint32_t w0, uint32_t w1)
 
    Z    = set_sprite_combine_mode();
 
-   ul_x = d.objX / rdp.mat_2d.BaseScaleX;
-   lr_x = (d.objX + d.imageW / d.scaleW) / rdp.mat_2d.BaseScaleX;
-   ul_y = d.objY / rdp.mat_2d.BaseScaleY;
-   lr_y = (d.objY + d.imageH / d.scaleH) / rdp.mat_2d.BaseScaleY;
+   ul_x = d.objX / gSP.objMatrix.baseScaleX;
+   lr_x = (d.objX + d.imageW / d.scaleW) / gSP.objMatrix.baseScaleX;
+   ul_y = d.objY / gSP.objMatrix.baseScaleY;
+   lr_y = (d.objY + d.imageH / d.scaleH) / gSP.objMatrix.baseScaleY;
    lr_u = 255.0f * rdp.cur_cache[0]->scale_x;
    lr_v = 255.0f * rdp.cur_cache[0]->scale_y;
 
@@ -1122,8 +1122,8 @@ static void uc6_obj_rectangle_r(uint32_t w0, uint32_t w1)
 
    for (i = 0; i < 4; i++)
    {
-      v[i].x = ((v[i].x + rdp.mat_2d.X) * rdp.scale_x) + rdp.offset_x;
-      v[i].y = ((v[i].y + rdp.mat_2d.Y) * rdp.scale_y) + rdp.offset_y;
+      v[i].x = ((v[i].x + gSP.objMatrix.X) * rdp.scale_x) + rdp.offset_x;
+      v[i].y = ((v[i].y + gSP.objMatrix.Y) * rdp.scale_y) + rdp.offset_y;
    }
 
    uc6_draw_polygons (v);
