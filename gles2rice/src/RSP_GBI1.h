@@ -198,8 +198,6 @@ void RSP_GBI1_LoadUCode(Gfx *gfx)
 
     uint32_t ucode = DLParser_CheckUcode(dwUcStart, dwUcDStart, dwSize, 8);
     RSP_SetUcode(ucode, dwUcStart, dwUcDStart, dwSize);
-
-    DEBUGGER_PAUSE_AND_DUMP(NEXT_SWITCH_UCODE,{DebuggerAppendMsg("Pause at loading ucode");});
 }
 
 void RSP_GFX_Force_Matrix(uint32_t dwAddr)
@@ -214,8 +212,6 @@ void RSP_GFX_Force_Matrix(uint32_t dwAddr)
     LoadMatrix(dwAddr);
 
     CRender::g_pRender->SetWorldProjectMatrix(matToLoad);
-
-    DEBUGGER_PAUSE_AND_DUMP(NEXT_MATRIX_CMD,{TRACE0("Paused at ModMatrix Cmd");});
 }
 
 

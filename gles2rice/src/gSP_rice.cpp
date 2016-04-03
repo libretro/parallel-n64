@@ -44,7 +44,6 @@ void ricegSPModifyVertex(uint32_t vtx, uint32_t where, uint32_t val)
             uint32_t b = (val>>8)&0xFF;
             uint32_t a = val&0xFF;
             g_dwVtxDifColor[vtx] = COLOR_RGBA(r, g, b, a);
-            LOG_UCODE("Modify vertex %d color, 0x%08x", vtx, g_dwVtxDifColor[vtx]);
          }
          break;
       case G_MWO_POINT_ST:
@@ -53,7 +52,6 @@ void ricegSPModifyVertex(uint32_t vtx, uint32_t where, uint32_t val)
             int16_t tv = (int16_t)(val & 0xFFFF);
             float ftu  = tu / 32.0f;
             float ftv  = tv / 32.0f;
-            LOG_UCODE("      Setting vertex %d tu/tv to %f, %f", vtx, (float)tu, (float)tv);
             CRender::g_pRender->SetVtxTextureCoord(vtx, ftu/gRSP.fTexScaleX, ftv/gRSP.fTexScaleY);
          }
          break;
@@ -84,9 +82,6 @@ void ricegSPModifyVertex(uint32_t vtx, uint32_t where, uint32_t val)
                // Toy Story 2 and other games
                SetVertexXYZ(vtx, x*2/windowSetting.fViWidth, y*2/windowSetting.fViHeight, g_vecProjected[vtx].z);
             }
-
-            LOG_UCODE("Modify vertex %d: x=%d, y=%d", vtx, x, y);
-            VTX_DUMP(TRACE3("Modify vertex %d: (%d,%d)", vtx, x, y));
          }
          break;
       case G_MWO_POINT_ZSCREEN:
@@ -94,8 +89,6 @@ void ricegSPModifyVertex(uint32_t vtx, uint32_t where, uint32_t val)
             int z = val>>16;
 
             SetVertexXYZ(vtx, g_vecProjected[vtx].x, g_vecProjected[vtx].y, (((float)z/0x03FF)+0.5f)/2.0f );
-            LOG_UCODE("Modify vertex %d: z=%d", vtx, z);
-            VTX_DUMP(TRACE2("Modify vertex %d: z=%d", vtx, z));
          }
          break;
    }
@@ -236,9 +229,6 @@ void ricegSPDMATriangles( uint32_t tris, uint32_t n )
 
    for (uint32_t i = 0; i < n; i++)
    {
-      LOG_UCODE("    0x%08x: %08x %08x %08x %08x", dwAddr + i*16,
-            pData[0], pData[1], pData[2], pData[3]);
-
       uint32_t dwInfo = pData[0];
 
       uint32_t dwV0 = (dwInfo >> 16) & 0x1F;
@@ -249,8 +239,6 @@ void ricegSPDMATriangles( uint32_t tris, uint32_t n )
 
       //if (IsTriangleVisible(dwV0, dwV1, dwV2))
       {
-         DEBUG_DUMP_VERTEXES("DmaTri", dwV0, dwV1, dwV2);
-         LOG_UCODE("   Tri: %d,%d,%d", dwV0, dwV1, dwV2);
          if (!bTrisAdded )//&& CRender::g_pRender->IsTextureEnabled())
          {
             PrepareTextures();
@@ -325,14 +313,6 @@ void ricegSPLight(uint32_t dwAddr, uint32_t dwLight)
    }
 
 
-   LOG_UCODE("       RGBA: 0x%08x, RGBACopy: 0x%08x, x: %d, y: %d, z: %d", 
-         gRSPn64lights[dwLight].dwRGBA,
-         gRSPn64lights[dwLight].dwRGBACopy,
-         x, y, z);
-
-   LIGHT_DUMP(TRACE3("Move Light: %08X, %08X, %08X", pdwBase[0], pdwBase[1], pdwBase[2]));
-
-
    if (dwLight == gRSP.ambientLightIndex)
    {
       LOG_UCODE("      (Ambient Light)");
@@ -348,10 +328,6 @@ void ricegSPLight(uint32_t dwAddr, uint32_t dwLight)
       LOG_UCODE("      (Normal Light)");
 
       ricegSPLightColor(dwLight, gRSPn64lights[dwLight].dwRGBA);
-      if (pdwBase[2] == 0)    // Direction is 0!
-      {
-         LOG_UCODE("      Light is invalid");
-      }
       SetLightDirection(dwLight, x, y, z, range);
    }
 }
@@ -403,7 +379,4 @@ void ricegSPViewport(uint32_t v)
 #endif
 
    CRender::g_pRender->SetViewport(nLeft, nTop, nRight, nBottom, maxZ);
-
-   LOG_UCODE("        Scale: %d %d %d %d = %d,%d", scale[0], scale[1], scale[2], scale[3], nWidth, nHeight);
-   LOG_UCODE("        Trans: %d %d %d %d = %d,%d", trans[0], trans[1], trans[2], trans[3], nCenterX, nCenterY);
 }

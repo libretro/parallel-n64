@@ -230,8 +230,6 @@ void RSP_GBI2_Tri1(Gfx *gfx)
 
             if (IsTriangleVisible(dwV0, dwV1, dwV2))
             {
-                DEBUG_DUMP_VERTEXES("ZeldaTri1", dwV0, dwV1, dwV2);
-                LOG_UCODE("    ZeldaTri1: 0x%08x 0x%08x %d,%d,%d", gfx->words.w0, gfx->words.w1, dwV0, dwV1, dwV2);
                 if (!bTrisAdded)
                 {
                     if( bTexturesAreEnabled )
@@ -261,8 +259,6 @@ void RSP_GBI2_Tri1(Gfx *gfx)
         {
             CRender::g_pRender->DrawTriangles();
         }
-
-        DEBUG_TRIANGLE(TRACE0("Pause at GBI2 TRI1"));
     }
 }
 
@@ -291,10 +287,6 @@ void RSP_GBI2_Tri2(Gfx *gfx)
             uint32_t dwV5 = gfx->gbi2tri2.v5;
             uint32_t dwV4 = gfx->gbi2tri2.v4;
             uint32_t dwV3 = gfx->gbi2tri2.v3;
-
-            LOG_UCODE("    ZeldaTri2: 0x%08x 0x%08x", gfx->words.w0, gfx->words.w1);
-            LOG_UCODE("           V0: %d, V1: %d, V2: %d", dwV0, dwV1, dwV2);
-            LOG_UCODE("           V3: %d, V4: %d, V5: %d", dwV3, dwV4, dwV5);
 
             // Do first tri
             if (IsTriangleVisible(dwV0, dwV1, dwV2))
@@ -350,8 +342,6 @@ void RSP_GBI2_Tri2(Gfx *gfx)
         {
             CRender::g_pRender->DrawTriangles();
         }
-
-        DEBUG_TRIANGLE(TRACE0("Pause at GBI2 TRI2"));
     }
 }
 
@@ -378,10 +368,6 @@ void RSP_GBI2_Line3D(Gfx *gfx)
             uint32_t dwV3 = gfx->gbi2line3d.v3/gRSP.vertexMult;
             uint32_t dwV4 = gfx->gbi2line3d.v4/gRSP.vertexMult;
             uint32_t dwV5 = gfx->gbi2line3d.v5/gRSP.vertexMult;
-
-            LOG_UCODE("    ZeldaTri3: 0x%08x 0x%08x", gfx->words.w0, gfx->words.w1);
-            LOG_UCODE("           V0: %d, V1: %d, V2: %d", dwV0, dwV1, dwV2);
-            LOG_UCODE("           V3: %d, V4: %d, V5: %d", dwV3, dwV4, dwV5);
 
             // Do first tri
             if (IsTriangleVisible(dwV0, dwV1, dwV2))
@@ -431,8 +417,6 @@ void RSP_GBI2_Line3D(Gfx *gfx)
 
         if (bTrisAdded) 
             CRender::g_pRender->DrawTriangles();
-
-        DEBUG_TRIANGLE(TRACE0("Pause at GBI2 Line3D"));
     }
 }
 
@@ -481,17 +465,6 @@ void RSP_GBI2_Texture(Gfx *gfx)
     */
 
     CRender::g_pRender->SetTextureEnableAndScale(gfx->texture.tile, gfx->texture.enable_gbi2, fTextureScaleS, fTextureScaleT);
-
-    LOG_TEXTURE(
-    {
-        DebuggerAppendMsg("SetTexture: Level: %d Tile: %d %s\n", gfx->texture.level, gfx->texture.tile, gfx->texture.enable_gbi2 ? "enabled":"disabled");
-        DebuggerAppendMsg("            ScaleS: %f, ScaleT: %f\n", fTextureScaleS*32.0f, fTextureScaleT*32.0f);
-    });
-
-    DEBUGGER_PAUSE_COUNT_N(NEXT_SET_TEXTURE);
-
-    LOG_UCODE("    Level: %d Tile: %d %s", gfx->texture.level, gfx->texture.tile, gfx->texture.enable_gbi2 ? "enabled":"disabled");
-    LOG_UCODE("    ScaleS: %f, ScaleT: %f", fTextureScaleS*32.0f, fTextureScaleT*32.0f);
 }
 
 
@@ -517,21 +490,6 @@ void RSP_GBI2_PopMtx(Gfx *gfx)
    {
       CRender::g_pRender->PopWorldView();
    }
-#ifdef DEBUGGER
-   if( pauseAtNext && eventToPause == NEXT_MATRIX_CMD )
-   {
-      pauseAtNext = false;
-      debuggerPause = true;
-      TRACE0("Pause after Pop GBI2_PopMtx:");
-   }
-   else
-   {
-      if( pauseAtNext && logMatrix ) 
-      {
-         TRACE0("Pause after Pop GBI2_PopMtx:");
-      }
-   }
-#endif
 
 }
 
@@ -628,12 +586,6 @@ void RSP_GBI2_Mtx(Gfx *gfx)
         DLParser_Bomberman2TextRect(gfx);
         return;
     }
-
-    LOG_UCODE("    Mtx: %s %s %s Length %d Address 0x%08x",
-        gfx->gbi2matrix.projection ? "Projection" : "ModelView",
-        gfx->gbi2matrix.load ? "Load" : "Mul",  
-        gfx->gbi2matrix.nopush==0 ? "Push" : "No Push",
-        gfx->gbi2matrix.len, addr);
 
     if (addr + 64 > g_dwRamSize)
     {
@@ -847,7 +799,5 @@ void RSP_GBI2_SetOtherModeH(Gfx *gfx)
 void RSP_GBI2_SubModule(Gfx *gfx)
 {
     SP_Timing(RSP_GBI2_SubModule);
-
-    RSP_RDP_NOIMPL("RDP: RSP_GBI2_SubModule (0x%08x 0x%08x)", (gfx->words.w0), (gfx->words.w1));
 }
 

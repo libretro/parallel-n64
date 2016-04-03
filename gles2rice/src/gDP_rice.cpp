@@ -198,8 +198,6 @@ void ricegDPFillRect(int32_t ulx, int32_t uly, int32_t lrx, int32_t lry )
 
    /* Note, in some modes, the right/bottom lines aren't drawn */
 
-   LOG_UCODE("    (%d,%d) (%d,%d)", ulx, uly, lrx, lry);
-
    if( gRDP.otherMode.cycle_type >= G_CYC_COPY )
    {
       ++lrx;
@@ -586,20 +584,6 @@ void ricegDPLoadTile(uint32_t tileno, uint32_t uls, uint32_t ult,
 
    uint32_t size = line * height;
    SetTmemFlag(tile.dwTMem,size );
-
-   LOG_TEXTURE(
-         {
-         DebuggerAppendMsg("LoadTile:%d (%d,%d) -> (%d,%d) [%d x %d]\n",
-               tileno, uls, ult, lrs, lrt,
-               (lrs - uls)+1, (lrt - ult)+1);
-         });
-
-
-   DEBUGGER_PAUSE_COUNT_N(NEXT_TEXTURE_CMD);
-
-   LOG_UCODE("    Tile:%d (%d,%d) -> (%d,%d) [%d x %d]",
-         tileno, uls, ult, lrs, lrt,
-         (lrs - uls)+1, (lrt - ult)+1);
 
    TMEMLoadMapInfo &info = g_tmemLoadAddrMap[tile.dwTMem];
 

@@ -39,12 +39,6 @@ void RSP_GBI0_Mtx(Gfx *gfx)
 
     uint32_t addr = RSPSegmentAddr((gfx->gbi0matrix.addr));
 
-    LOG_UCODE("    Command: %s %s %s Length %d Address 0x%08x",
-        gfx->gbi0matrix.projection == 1 ? "Projection" : "ModelView",
-        gfx->gbi0matrix.load == 1 ? "Load" : "Mul", 
-        gfx->gbi0matrix.push == 1 ? "Push" : "NoPush",
-        gfx->gbi0matrix.len, addr);
-
     if (addr + 64 > g_dwRamSize)
     {
         TRACE1("Mtx: Address invalid (0x%08x)", addr);
@@ -81,10 +75,8 @@ void RSP_GBI1_MoveMem(Gfx *gfx)
           ricegSPViewport(addr);
           break;
        case G_MV_LOOKATY:
-          LOG_UCODE("    RSP_GBI1_MV_MEM_LOOKATY");
           break;
        case G_MV_LOOKATX:
-          LOG_UCODE("    RSP_GBI1_MV_MEM_LOOKATX");
           break;
        case G_MV_L0:
        case G_MV_L1:
@@ -96,14 +88,10 @@ void RSP_GBI1_MoveMem(Gfx *gfx)
        case G_MV_L7:
           {
              uint32_t dwLight = (type - G_MV_L0)/2;
-             LOG_UCODE("    RSP_GBI1_MV_MEM_L%d", dwLight);
-             LOG_UCODE("    Light%d: Length:0x%04x, Address: 0x%08x", dwLight, dwLength, addr);
-
              ricegSPLight(addr, dwLight);
           }
           break;
        case G_MV_TXTATT:
-          LOG_UCODE("    RSP_GBI1_MV_MEM_TXTATT");
           break;
        case G_MV_MATRIX_1:
           RSP_GFX_Force_Matrix(addr);
@@ -127,8 +115,6 @@ void RSP_GBI0_Vtx(Gfx *gfx)
     int n = gfx->gbi0vtx.n + 1;
     int v0 = gfx->gbi0vtx.v0;
     uint32_t addr = RSPSegmentAddr((gfx->gbi0vtx.addr));
-
-    LOG_UCODE("    Address 0x%08x, v0: %d, Num: %d, Length: 0x%04x", addr, v0, n, gfx->gbi0vtx.len);
 
     if ((v0 + n) > 80)
     {
@@ -156,7 +142,6 @@ void RSP_GBI0_DL(Gfx *gfx)
 
     uint32_t addr = RSPSegmentAddr((gfx->gbi0dlist.addr)) & (g_dwRamSize-1);
 
-    LOG_UCODE("    Address=0x%08x Push: 0x%02x", addr, gfx->gbi0dlist.param);
     if( addr > g_dwRamSize )
     {
         RSP_RDP_NOIMPL("Error: DL addr = %08X out of range, PC=%08X", addr, gDlistStack[__RSP.PCi].pc );
@@ -169,30 +154,22 @@ void RSP_GBI0_DL(Gfx *gfx)
 
     gDlistStack[__RSP.PCi].pc = addr;
     gDlistStack[__RSP.PCi].countdown = MAX_DL_COUNT;
-
-    LOG_UCODE("Level=%d", __RSP.PCi+1);
-    LOG_UCODE("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^");
 }
 
 
 void RSP_GBI1_RDPHalf_Cont(Gfx *gfx)    
 {
     SP_Timing(RSP_GBI1_RDPHalf_Cont);
-
-    LOG_UCODE("RDPHalf_Cont: (Ignored)"); 
 }
+
 void RSP_GBI1_RDPHalf_2(Gfx *gfx)       
 { 
     SP_Timing(RSP_GBI1_RDPHalf_2);
-
-    LOG_UCODE("RDPHalf_2: (Ignored)"); 
 }
 
 void RSP_GBI1_RDPHalf_1(Gfx *gfx)       
 {
     SP_Timing(RSP_GBI1_RDPHalf_1);
-
-    LOG_UCODE("RDPHalf_1: (Ignored)"); 
 }
 
 void RSP_GBI1_Line3D(Gfx *gfx)
@@ -226,8 +203,6 @@ void RSP_GBI1_Line3D(Gfx *gfx)
             uint32_t dwV0  = gfx->ln3dtri2.v0/gRSP.vertexMult;
             uint32_t dwV1  = gfx->ln3dtri2.v1/gRSP.vertexMult;
             uint32_t dwV2  = gfx->ln3dtri2.v2/gRSP.vertexMult;
-
-            LOG_UCODE("    Line3D: V0: %d, V1: %d, V2: %d, V3: %d", dwV0, dwV1, dwV2, dwV3);
 
             // Do first tri
             if (IsTriangleVisible(dwV0, dwV1, dwV2))
@@ -386,16 +361,6 @@ void RSP_GBI1_Texture(Gfx *gfx)
     CRender::g_pRender->SetTextureEnableAndScale(gfx->texture.tile, gfx->texture.enable_gbi0, fTextureScaleS, fTextureScaleT);
 
     /* What happens if these are 0? Interpret as 1.0f? */
-
-    LOG_TEXTURE(
-    {
-        DebuggerAppendMsg("SetTexture: Level: %d Tile: %d %s\n", gfx->texture.level, gfx->texture.tile, gfx->texture.enable_gbi0 ? "enabled":"disabled");
-        DebuggerAppendMsg("            ScaleS: %f, ScaleT: %f\n", fTextureScaleS*32.0f, fTextureScaleT*32.0f);
-    });
-
-    DEBUGGER_PAUSE_COUNT_N(NEXT_SET_TEXTURE);
-    LOG_UCODE("    Level: %d Tile: %d %s", gfx->texture.level, gfx->texture.tile, gfx->texture.enable_gbi0 ? "enabled":"disabled");
-    LOG_UCODE("    ScaleS: %f, ScaleT: %f", fTextureScaleS*32.0f, fTextureScaleT*32.0f);
 }
 
 extern void RSP_RDP_InsertMatrix(uint32_t word0, uint32_t word1);
@@ -412,7 +377,6 @@ void RSP_GBI1_MoveWord(Gfx *gfx)
       case G_MW_NUMLIGHT:
          {
             uint32_t dwNumLights = (((gfx->gbi0moveword.value)-0x80000000)/32)-1;
-            LOG_UCODE("    RSP_MOVE_WORD_NUMLIGHT: Val:%d", dwNumLights);
 
             gRSP.ambientLightIndex = dwNumLights;
             ricegSPNumLights(dwNumLights);
@@ -429,7 +393,6 @@ void RSP_GBI1_MoveWord(Gfx *gfx)
                   CRender::g_pRender->SetClipRatio(gfx->gbi0moveword.offset, gfx->gbi0moveword.value);
                   break;
                default:
-                  LOG_UCODE("    RSP_MOVE_WORD_CLIP  ?   : 0x%08x", gfx->words.w1);
                   break;
             }
          }
@@ -469,8 +432,6 @@ void RSP_GBI1_MoveWord(Gfx *gfx)
                fOff = 1;
             }
 
-            LOG_UCODE("    RSP_MOVE_WORD_FOG/Mul=%d: Off=%d", wMult, wOff);
-            FOG_DUMP(TRACE3("Set Fog: Min=%f, Max=%f, Data=%08X", fMin, fMax, gfx->gbi0moveword.value));
             SetFogMinMax(fMin, fMax, fMult, fOff);
          }
          break;
@@ -478,8 +439,6 @@ void RSP_GBI1_MoveWord(Gfx *gfx)
          {
             uint32_t dwLight = gfx->gbi0moveword.offset / 0x20;
             uint32_t dwField = (gfx->gbi0moveword.offset & 0x7);
-
-            LOG_UCODE("    RSP_MOVE_WORD_LIGHTCOL/0x%08x: 0x%08x", gfx->gbi0moveword.offset, gfx->words.w1);
 
             switch (dwField)
             {
@@ -507,7 +466,6 @@ void RSP_GBI1_MoveWord(Gfx *gfx)
          }
          break;
       case G_MW_PERSPNORM:
-         LOG_UCODE("    RSP_MOVE_WORD_PERSPNORM");
          //if( word1 != 0x1A ) DebuggerAppendMsg("PerspNorm: 0x%04x", (short)word1); 
          break;
       default:
@@ -521,8 +479,6 @@ void RSP_GBI1_MoveWord(Gfx *gfx)
 void RSP_GBI1_PopMtx(Gfx *gfx)
 {
     SP_Timing(RSP_GBI1_PopMtx);
-
-    LOG_UCODE("    Command: (%s)",  gfx->gbi0popmatrix.projection ? "Projection" : "ModelView");
 
     // Do any of the other bits do anything?
     // So far only Extreme-G seems to Push/Pop projection matrices
@@ -547,8 +503,6 @@ void RSP_GBI1_CullDL(Gfx *gfx)
 
     uint32_t dwVFirst = ((gfx->words.w0) & 0xFFF) / gRSP.vertexMult;
     uint32_t dwVLast  = (((gfx->words.w1)) & 0xFFF) / gRSP.vertexMult;
-
-    LOG_UCODE("    Culling using verts %d to %d", dwVFirst, dwVLast);
 
     // Mask into range
     dwVFirst &= 0x1f;
@@ -594,9 +548,6 @@ void RSP_GBI1_Tri1(Gfx *gfx)
 
         if (IsTriangleVisible(dwV0, dwV1, dwV2))
         {
-            DEBUG_DUMP_VERTEXES("Tri1", dwV0, dwV1, dwV2);
-            LOG_UCODE("    Tri1: 0x%08x 0x%08x %d,%d,%d", gfx->words.w0, gfx->words.w1, dwV0, dwV1, dwV2);
-
             if (!bTrisAdded)
             {
                 if( bTexturesAreEnabled )
@@ -623,8 +574,6 @@ void RSP_GBI1_Tri1(Gfx *gfx)
 
     if (bTrisAdded) 
         CRender::g_pRender->DrawTriangles();
-
-    DEBUG_TRIANGLE(TRACE0("Pause at GBI0 TRI1"));
 }
 
 
@@ -644,7 +593,6 @@ void RSP_GBI0_Tri4(Gfx *gfx)
     do
     {
        uint32_t dwFlag = (w0>>16)&0xFF;
-       LOG_UCODE("    PD Tri4: 0x%08x 0x%08x Flag: 0x%02x", gfx->words.w0, gfx->words.w1, dwFlag);
 
        for( int i=0; i<4; i++)
        {
@@ -652,8 +600,6 @@ void RSP_GBI0_Tri4(Gfx *gfx)
           uint32_t v1   = (w1>>(  (i<<3))) & 0xF;
           uint32_t v2   = (w0>>(  (i<<2))) & 0xF;
           bool bVisible = IsTriangleVisible(v0, v2, v1);
-
-          LOG_UCODE("       (%d, %d, %d) %s", v0, v1, v2, bVisible ? "": "(clipped)");
 
           if (bVisible)
           {
@@ -688,8 +634,6 @@ void RSP_GBI0_Tri4(Gfx *gfx)
     if (bTrisAdded) 
         CRender::g_pRender->DrawTriangles();
     
-    DEBUG_TRIANGLE(TRACE0("Pause at GBI0 TRI4"));
-
     gRSP.DKRVtxCount=0;
 }
 
