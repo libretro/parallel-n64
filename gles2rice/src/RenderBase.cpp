@@ -402,7 +402,6 @@ static noinline void InitVertex_notopengl_or_clipper_adjust(TLITVERTEX &v, uint3
     v.z = (g_vecProjected[dwV].z + 1.0f) * 0.5f;    // DirectX minZ=0, maxZ=1
     //v.z = g_vecProjected[dwV].z;  // DirectX minZ=0, maxZ=1
     v.rhw = g_vecProjected[dwV].w;
-    VTX_DUMP(TRACE4("  Proj : x=%f, y=%f, z=%f, rhw=%f",  v.x,v.y,v.z,v.rhw));
 
     if( gRSP.bProcessSpecularColor )
     {
@@ -455,9 +454,7 @@ static void multiply_subtract2(float *d, const float *m1, const float *m2, const
 
 void InitVertex(uint32_t dwV, uint32_t vtxIndex, bool bTexture)
 {
-    VTX_DUMP(TRACE2("Initialize vertex (%d) to vertex buffer[%d]:", dwV, vtxIndex));
     TLITVERTEX &v = g_vtxBuffer[vtxIndex];
-    VTX_DUMP(TRACE4("  Trans: x=%f, y=%f, z=%f, w=%f",  g_vtxTransformed[dwV].x,g_vtxTransformed[dwV].y,g_vtxTransformed[dwV].z,g_vtxTransformed[dwV].w));
     g_vtxProjected5[vtxIndex][0] = g_vtxTransformed[dwV].x;
     g_vtxProjected5[vtxIndex][1] = g_vtxTransformed[dwV].y;
     g_vtxProjected5[vtxIndex][2] = g_vtxTransformed[dwV].z;
@@ -470,7 +467,6 @@ void InitVertex(uint32_t dwV, uint32_t vtxIndex, bool bTexture)
     {
         InitVertex_notopengl_or_clipper_adjust(v, dwV);
     }
-    VTX_DUMP(TRACE2("  (U,V): %f, %f",  g_fVtxTxtCoords[dwV].x,g_fVtxTxtCoords[dwV].y));
 
     v.dcDiffuse = g_dwVtxDifColor[dwV];
     if( gRDP.otherMode.key_en )
@@ -522,9 +518,6 @@ void InitVertex(uint32_t dwV, uint32_t vtxIndex, bool bTexture)
         if(g_curRomInfo.bTextureScaleHack && !bHalfTxtScale)
             InitVertex_scale_hack_check(dwV);
     }
-
-    VTX_DUMP(TRACE2("  DIF(%08X), SPE(%08X)",   v.dcDiffuse, v.dcSpecular));
-    VTX_DUMP(TRACE0(""));
 }
 
 uint32_t LightVert(XVECTOR4 & norm, int vidx)
@@ -720,16 +713,6 @@ void ProcessVertexDataNoSSE(uint32_t dwAddr, uint32_t dwV0, uint32_t dwNum)
                 g_fFogCoord[i] = gRSPfFogMin;
         }
 
-        VTX_DUMP( 
-        {
-            uint32_t *dat = (uint32_t*)(&vert);
-            DebuggerAppendMsg("Vertex %d: %08X %08X %08X %08X", i, dat[0],dat[1],dat[2],dat[3]); 
-            DebuggerAppendMsg("      : %f, %f, %f, %f", 
-                g_vtxTransformed[i].x,g_vtxTransformed[i].y,g_vtxTransformed[i].z,g_vtxTransformed[i].w);
-            DebuggerAppendMsg("      : %f, %f, %f, %f", 
-                g_vecProjected[i].x,g_vecProjected[i].y,g_vecProjected[i].z,g_vecProjected[i].w);
-        });
-
         RSP_Vtx_Clipping(i);
 
         if( gRSP.bLightingEnable )
@@ -780,9 +763,6 @@ void ProcessVertexDataNoSSE(uint32_t dwAddr, uint32_t dwV0, uint32_t dwNum)
             g_fVtxTxtCoords[i].y = (float)vert.tv; 
         }
     }
-
-    VTX_DUMP(TRACE2("Setting Vertexes: %d - %d\n", dwV0, dwV0+dwNum-1));
-    DEBUGGER_PAUSE_AND_DUMP(NEXT_VERTEX_CMD,{TRACE0("Paused at Vertex Command");});
 }
 
 bool PrepareTriangle(uint32_t dwV0, uint32_t dwV1, uint32_t dwV2)
@@ -949,9 +929,6 @@ void ProcessVertexDataDKR(uint32_t dwAddr, uint32_t dwV0, uint32_t dwNum)
         gRSP.DKRVtxCount++;
     }
 
-    LOG_UCODE("    ProcessVertexDataDKR, CMatrix = %d, Add base=%s", gRSP.DKRCMatrixIndex, gRSP.DKRBillBoard?"true":"false");
-    VTX_DUMP(TRACE2("DKR Setting Vertexes\nCMatrix = %d, Add base=%s", gRSP.DKRCMatrixIndex, gRSP.DKRBillBoard?"true":"false"));
-
     int nOff = 0;
     uint32_t end = dwV0 + dwNum;
     for (uint32_t i = dwV0; i < end; i++)
@@ -985,9 +962,6 @@ void ProcessVertexDataDKR(uint32_t dwAddr, uint32_t dwV0, uint32_t dwNum)
         g_vecProjected[i].z = g_vtxTransformed[i].z * g_vecProjected[i].w;
 
         gRSP.DKRVtxCount++;
-
-        VTX_DUMP(TRACE5("Vertex %d: %f, %f, %f, %f", i, 
-            g_vtxTransformed[i].x,g_vtxTransformed[i].y,g_vtxTransformed[i].z,g_vtxTransformed[i].w));
 
         if( gRSP.bFogEnabled )
         {
@@ -1069,16 +1043,6 @@ void ProcessVertexDataConker(uint32_t dwAddr, uint32_t dwV0, uint32_t dwNum)
         if( g_vecProjected[i].w < 0 || g_vecProjected[i].z < 0 || g_fFogCoord[i] < gRSPfFogMin )
             g_fFogCoord[i] = gRSPfFogMin;
 
-        VTX_DUMP( 
-        {
-            uint32_t *dat = (uint32_t*)(&vert);
-            DebuggerAppendMsg("Vertex %d: %08X %08X %08X %08X", i, dat[0],dat[1],dat[2],dat[3]); 
-            DebuggerAppendMsg("      : %f, %f, %f, %f", 
-                g_vtxTransformed[i].x,g_vtxTransformed[i].y,g_vtxTransformed[i].z,g_vtxTransformed[i].w);
-            DebuggerAppendMsg("      : %f, %f, %f, %f", 
-                g_vecProjected[i].x,g_vecProjected[i].y,g_vecProjected[i].z,g_vecProjected[i].w);
-        });
-
         RSP_Vtx_Clipping(i);
 
         if( gRSP.bLightingEnable )
@@ -1149,9 +1113,6 @@ void ProcessVertexDataConker(uint32_t dwAddr, uint32_t dwV0, uint32_t dwNum)
             g_fVtxTxtCoords[i].y = (float)vert.tv; 
         }
     }
-
-    VTX_DUMP(TRACE2("Setting Vertexes: %d - %d\n", dwV0, dwV0+dwNum-1));
-    DEBUGGER_PAUSE_AND_DUMP(NEXT_VERTEX_CMD,{DebuggerAppendMsg("Paused at Vertex Command");});
 }
 
 
@@ -1211,14 +1172,6 @@ void ProcessVertexData_Rogue_Squadron(uint32_t dwXYZAddr, uint32_t dwColorAddr, 
             g_vecProjected[i].z = g_vtxTransformed[i].z * g_vecProjected[i].w;
         }
 
-        VTX_DUMP( 
-        {
-            DebuggerAppendMsg("      : %f, %f, %f, %f", 
-                g_vtxTransformed[i].x,g_vtxTransformed[i].y,g_vtxTransformed[i].z,g_vtxTransformed[i].w);
-            DebuggerAppendMsg("      : %f, %f, %f, %f", 
-                g_vecProjected[i].x,g_vecProjected[i].y,g_vecProjected[i].z,g_vecProjected[i].w);
-        });
-
         g_fFogCoord[i] = g_vecProjected[i].z;
         if( g_vecProjected[i].w < 0 || g_vecProjected[i].z < 0 || g_fFogCoord[i] < gRSPfFogMin )
             g_fFogCoord[i] = gRSPfFogMin;
@@ -1273,9 +1226,6 @@ void ProcessVertexData_Rogue_Squadron(uint32_t dwXYZAddr, uint32_t dwColorAddr, 
         }
         */
     }
-
-    VTX_DUMP(TRACE2("Setting Vertexes: %d - %d\n", dwV0, dwV0+dwNum-1));
-    DEBUGGER_PAUSE_AND_DUMP(NEXT_VERTEX_CMD,{TRACE0("Paused at Vertex Cmd");});
 }
 
 void SetLightDirection(uint32_t dwLight, float x, float y, float z, float range)
