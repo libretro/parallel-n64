@@ -367,11 +367,11 @@ void glide64ProcessDList(void)
 
   rdp.updatescreen                    = 1;
 
-  rdp.model_i                         = 0; /* 0 matrices so far in stack */
+  gSP.matrix.modelViewi               = 0; /* 0 matrices so far in stack */
   //stack_size can be less then 32! Important for Silicon Vally. Thanks Orkin!
-  rdp.model_stack_size                = MIN(32, (*(uint32_t*)(gfx_info.DMEM+0x0FE4))>>6);
-  if (rdp.model_stack_size == 0)
-    rdp.model_stack_size              = 32;
+  gSP.matrix.stackSize                = MIN(32, (*(uint32_t*)(gfx_info.DMEM+0x0FE4))>>6);
+  if (gSP.matrix.stackSize == 0)
+    gSP.matrix.stackSize              = 32;
   rdp.fb_drawn                        = false;
   rdp.fb_drawn_front                  = false;
   g_gdp.flags                         = 0x7FFFFFFF;  /* All but clear cache */
@@ -1954,12 +1954,13 @@ void glide64ProcessRDPList(void)
       SwapOK                      = true;
    rdp.updatescreen               = 1;
 
-   rdp.model_i                    = 0; /* 0 matrices so far in stack */
+   gSP.matrix.modelViewi          = 0; /* 0 matrices so far in stack */
 
    /* stack_size can be less then 32! Important for Silicon Vally. Thanks Orkin! */
-   rdp.model_stack_size = MIN(32, (*(uint32_t*)(gfx_info.DMEM+0x0FE4))>>6);
-   if (rdp.model_stack_size == 0)
-      rdp.model_stack_size        = 32;
+   gSP.matrix.stackSize           = MIN(32, (*(uint32_t*)(gfx_info.DMEM+0x0FE4))>>6);
+
+   if (gSP.matrix.stackSize == 0)
+      gSP.matrix.stackSize        = 32;
 
    rdp.fb_drawn                   = false;
    rdp.fb_drawn_front             = false;

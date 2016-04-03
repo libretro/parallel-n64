@@ -544,11 +544,9 @@ void glide64gSPNumLights(int32_t n)
 void glide64gSPPopMatrixN(uint32_t param, uint32_t num )
 
 {
-   if (rdp.model_i > num - 1)
-   {
-      rdp.model_i -= num;
-   }
-   CopyMatrix(rdp.model, rdp.model_stack[rdp.model_i]);
+   if (gSP.matrix.modelViewi > num - 1)
+      gSP.matrix.modelViewi -= num;
+   CopyMatrix(rdp.model, gSP.matrix.modelView[gSP.matrix.modelViewi]);
    g_gdp.flags |= UPDATE_MULT_MAT;
 }
 
@@ -557,10 +555,10 @@ void glide64gSPPopMatrix(uint32_t param)
    switch (param)
    {
       case 0: // modelview
-         if (rdp.model_i > 0)
+         if (gSP.matrix.modelViewi > 0)
          {
-            rdp.model_i--;
-            CopyMatrix(rdp.model, rdp.model_stack[rdp.model_i]);
+            gSP.matrix.modelViewi--;
+            CopyMatrix(rdp.model, gSP.matrix.modelView[gSP.matrix.modelViewi]);
             g_gdp.flags |= UPDATE_MULT_MAT;
          }
          break;
@@ -1224,10 +1222,10 @@ void modelview_mul (float m[4][4])
 
 void modelview_push(void)
 {
-   if (rdp.model_i == rdp.model_stack_size)
+   if (gSP.matrix.modelViewi == gSP.matrix.stackSize)
       return;
 
-   CopyMatrix(rdp.model_stack[rdp.model_i++], rdp.model);
+   CopyMatrix(gSP.matrix.modelView[gSP.matrix.modelViewi++], rdp.model);
 }
 
 void modelview_load_push (float m[4][4])

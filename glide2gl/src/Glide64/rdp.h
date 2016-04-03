@@ -410,10 +410,6 @@ struct RDP
    DECLAREALIGN16VAR(combined[4][4]);
    DECLAREALIGN16VAR(dkrproj[3][4][4]);
 
-   DECLAREALIGN16VAR(model_stack[32][4][4]);  // 32 deep, will warn if overflow
-   int model_i;          // index in the model matrix stack
-   int model_stack_size;
-
    // Textures
    TEXTURE_IMAGE timg;       // 1 for each tmem address
    TILE tiles[8];          // 8 tile descriptors
