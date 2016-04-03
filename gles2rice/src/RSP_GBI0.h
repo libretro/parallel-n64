@@ -40,10 +40,7 @@ void RSP_GBI0_Mtx(Gfx *gfx)
     uint32_t addr = RSPSegmentAddr((gfx->gbi0matrix.addr));
 
     if (addr + 64 > g_dwRamSize)
-    {
-        TRACE1("Mtx: Address invalid (0x%08x)", addr);
         return;
-    }
 
     LoadMatrix(addr);
     
@@ -405,8 +402,6 @@ void RSP_GBI1_MoveWord(Gfx *gfx)
             float fMin     = 500.0f - (fOff*rng/256.0f);
             float fMax     = rng + fMin;
 
-            FOG_DUMP(TRACE4("Set Fog: Min=%f, Max=%f, Mul=%f, Off=%f", fMin, fMax, fMult, fOff));
-
 #if 0
             if( fMult <= 0 || fMin > fMax || fMax < 0 || fMin > 1000 )
 #else
@@ -441,7 +436,6 @@ void RSP_GBI1_MoveWord(Gfx *gfx)
                   break;
 
                default:
-                  TRACE1("RSP_MOVE_WORD_LIGHTCOL with unknown offset 0x%08x", dwField);
                   break;
             }
          }
