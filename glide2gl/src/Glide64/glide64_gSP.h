@@ -33,7 +33,6 @@ extern uint32_t dma_offset_mtx;
 extern int32_t cur_mtx;
 extern uint32_t dma_offset_mtx;
 extern uint32_t dma_offset_vtx;
-extern int32_t billboarding;
 extern int dzdx;
 extern int deltaZ;
 VERTEX **org_vtx;
