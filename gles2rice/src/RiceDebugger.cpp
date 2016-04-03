@@ -390,7 +390,7 @@ void DumpOtherMode()
     DebuggerAppendMsg("\tFog: %s", gRSP.bFogEnabled?"enabled":"disabled");
     DebuggerAppendMsg("\tZbuffer in SP: %s", gRSP.bZBufferEnabled?"enabled":"disabled");
     DebuggerAppendMsg("\tLighting: %s", gRSP.bLightingEnable?"enabled":"disabled");
-    DebuggerAppendMsg("\\Number of lights: %d", gRSPnumLights);
+    DebuggerAppendMsg("\\Number of lights: %d", gSP.numLights);
     DebuggerAppendMsg("\tTexture Gen: %s", gRSP.bTextureGen?"enabled":"disabled");
     DebuggerAppendMsg("\tTexture Gen Linear: %s", (gRDP.geometryMode & G_TEXTURE_GEN_LINEAR)?"enabled":"disabled");
 }
@@ -431,8 +431,8 @@ void DumpInfo(int thingToDump)
         CRender::GetRender()->m_pColorCombiner->DisplayMuxString();
         break;
     case DUMP_LIGHT:
-        DebuggerAppendMsg("----Light Colors----\nNumber of Lights: %d\n",GetNumLights());
-        for( uint32 i=0; i<GetNumLights()+2; i++)
+        DebuggerAppendMsg("----Light Colors----\nNumber of Lights: %d\n", gSP.numLights);
+        for( uint32 i=0; i < gSP.numLights + 2; i++)
         {
             DebuggerAppendMsg("Light %d:\t%08X, (%d,%d,%d)\n", i, gRSPn64lights[i].dwRGBA,gRSPn64lights[i].x,gRSPn64lights[i].y,gRSPn64lights[i].z );
         }

@@ -83,7 +83,6 @@ extern EXTERNAL_VERTEX  g_vtxForExternal[MAX_VERTS];
 /*      Don't move                                                      */
 /************************************************************************/
 
-extern uint32_t             gRSPnumLights;
 extern Light              gRSPlights[16];
 extern ALIGN(16, Matrix   gRSPworldProjectTransported);
 extern ALIGN(16, Matrix   gRSPworldProject);
@@ -288,7 +287,6 @@ inline void SetLighting(bool bLighting) { gRSP.bLightingEnable = bLighting; }
 
 // Generate texture coords?
 inline void SetTextureGen(bool bTextureGen) { gRSP.bTextureGen = bTextureGen; }
-inline uint32_t GetNumLights() { return gRSPnumLights; }
 inline COLOR GetVertexDiffuseColor(uint32_t ver) { return g_dwVtxDifColor[ver]; }
 inline void SetScreenMult(float fMultX, float fMultY) { windowSetting.fMultX = fMultX; windowSetting.fMultY = fMultY; }
 inline COLOR GetLightCol(uint32_t dwLight) { return gRSPlights[dwLight].col; }

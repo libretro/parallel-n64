@@ -213,7 +213,7 @@ void ricegSPLightColor(uint32_t lightNum, uint32_t packedColor)
 
 void ricegSPNumLights(int32_t n) 
 {
-   gRSPnumLights = n; 
+   gSP.numLights = n; 
    DEBUGGER_PAUSE_AND_DUMP(NEXT_SET_LIGHT,TRACE1("Set Number Of Lights: %d", dwNumLights));
 }
 

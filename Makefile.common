@@ -199,10 +199,6 @@ SOURCES_CXX += $(VIDEODIR_RICE)/Blender.cpp \
             $(VIDEODIR_RICE)/TextureManager.cpp \
             $(VIDEODIR_RICE)/VectorMath.cpp \
             $(VIDEODIR_RICE)/Video.cpp
-
-ifeq ($(HAVE_NEON), 1)
-	SOURCES_ASM += $(VIDEODIR_RICE)/RenderBase_neon.S
-endif
 endif
 
 # Libretro
