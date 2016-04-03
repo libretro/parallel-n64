@@ -1,6 +1,7 @@
 #include <stdint.h>
 
 #include "../../../Graphics/3dmath.h"
+#include "../../../Graphics/RDP/gDP_state.h"
 #include "../../../Graphics/RSP/gSP_state.h"
 
 #include "glide64_gSP.h"
@@ -614,7 +615,7 @@ void glide64gSPModifyVertex( uint32_t vtx, uint32_t where, uint32_t val )
 
       case G_MWO_POINT_ST:
          {
-            float scale = (rdp.othermode_h & RDP_PERSP_TEX_ENABLE) ? 0.03125f : 0.015625f;
+            float scale = (gDP.otherMode.h & RDP_PERSP_TEX_ENABLE) ? 0.03125f : 0.015625f;
             v->ou = (float)((int16_t)(val>>16)) * scale;
             v->ov = (float)((int16_t)(val&0xFFFF)) * scale;
             v->uv_calculated = 0xFFFFFFFF;

@@ -221,18 +221,18 @@ static void uc0_setothermode_h(uint32_t w0, uint32_t w1)
    mask <<= shift;
 
    __RSP.w1        &= mask;
-   rdp.othermode_h  = (rdp.othermode_h & ~mask) | __RSP.w1;
+   gDP.otherMode.h  = (gDP.otherMode.h & ~mask) | __RSP.w1;
 
    if (mask & 0x00003000) // filter mode
    {
-      rdp.filter_mode = (int)((rdp.othermode_h & 0x00003000) >> 12);
+      rdp.filter_mode = (int)((gDP.otherMode.h & 0x00003000) >> 12);
       g_gdp.flags |= UPDATE_TEXTURE;
       FRDP ("filter mode: %s\n", str_filter[rdp.filter_mode]);
    }
 
    if (mask & 0x0000C000) // tlut mode
    {
-      rdp.tlut_mode = (uint8_t)((rdp.othermode_h & 0x0000C000) >> 14);
+      rdp.tlut_mode = (uint8_t)((gDP.otherMode.h & 0x0000C000) >> 14);
       FRDP ("tlut mode: %s\n", str_tlut[rdp.tlut_mode]);
    }
 
@@ -259,7 +259,7 @@ static void uc0_setothermode_l(uint32_t w0, uint32_t w1)
    mask <<= shift;
 
    __RSP.w1 &= mask;
-   rdp.othermode_l = (rdp.othermode_l & ~mask) | __RSP.w1;
+   gDP.otherMode.l = (gDP.otherMode.l & ~mask) | __RSP.w1;
 
    if (mask & RDP_ALPHA_COMPARE) // alpha compare
       g_gdp.flags |= UPDATE_ALPHA_COMPARE;
@@ -267,11 +267,11 @@ static void uc0_setothermode_l(uint32_t w0, uint32_t w1)
    if (mask & 0xFFFFFFF8) // rendermode / blender bits
    {
       g_gdp.flags |= UPDATE_FOG_ENABLED; //if blender has no fog bits, fog must be set off
-      rdp.render_mode_changed |= rdp.rm ^ rdp.othermode_l;
-      rdp.rm = rdp.othermode_l;
+      rdp.render_mode_changed |= rdp.rm ^ gDP.otherMode.l;
+      rdp.rm = gDP.otherMode.l;
       if (settings.flame_corona && (rdp.rm == 0x00504341)) //hack for flame's corona
-         rdp.othermode_l |= 0x00000010;
-      FRDP ("rendermode: %08lx\n", rdp.othermode_l); // just output whole othermode_l
+         gDP.otherMode.l |= 0x00000010;
+      FRDP ("rendermode: %08lx\n", gDP.otherMode.l); // just output whole othermode_l
    }
 
    // there is not one setothermode_l that's not handled :)

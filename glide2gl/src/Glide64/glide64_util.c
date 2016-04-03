@@ -46,6 +46,7 @@
 #include "TexCache.h"
 #include "Framebuffer_glide64.h"
 #include "../../../Graphics/GBI.h"
+#include "../../Graphics/RDP/gDP_state.h"
 #include "../../Graphics/RSP/gSP_funcs_C.h"
 #include "../../Graphics/RSP/gSP_state.h"
 #include "../../Graphics/RSP/RSP_state.h"
@@ -731,7 +732,7 @@ static void render_tri (uint16_t linew, int old_interpolate)
 
    n = rdp.n_global;
 
-   if ((rdp.clip & CLIP_ZMIN) && (rdp.othermode_l & G_OBJLT_TLUT))
+   if ((rdp.clip & CLIP_ZMIN) && (gDP.otherMode.l & G_OBJLT_TLUT))
    {
       int to_render = false;
 
@@ -1023,7 +1024,7 @@ static void glide64_z_compare(void)
    int depthmask_val   = FXFALSE;
    g_gdp.flags ^= UPDATE_ZBUF_ENABLED;
 
-   if (((rdp.flags & ZBUF_ENABLED) || ((g_gdp.other_modes.z_source_sel == G_ZS_PRIM) && (((rdp.othermode_h & RDP_CYCLE_TYPE) >> 20) < G_CYC_COPY))))
+   if (((rdp.flags & ZBUF_ENABLED) || ((g_gdp.other_modes.z_source_sel == G_ZS_PRIM) && (((gDP.otherMode.h & RDP_CYCLE_TYPE) >> 20) < G_CYC_COPY))))
    {
       if (rdp.flags & ZBUF_COMPARE)
       {
@@ -1070,21 +1071,21 @@ void update(void)
    if (rdp.render_mode_changed & 0x00000C30)
    {
       FRDP (" |- render_mode_changed zbuf - decal: %s, update: %s, compare: %s\n",
-            str_yn[(rdp.othermode_l & G_CULL_BACK)?1:0],
-            str_yn[(rdp.othermode_l & UPDATE_BIASLEVEL)?1:0],
-            str_yn[(rdp.othermode_l & ALPHA_COMPARE)?1:0]);
+            str_yn[(gDP.otherMode.l & G_CULL_BACK)?1:0],
+            str_yn[(gDP.otherMode.l & UPDATE_BIASLEVEL)?1:0],
+            str_yn[(gDP.otherMode.l & ALPHA_COMPARE)?1:0]);
 
       rdp.render_mode_changed &= ~0x00000C30;
       g_gdp.flags |= UPDATE_ZBUF_ENABLED;
 
       // Update?
-      if ((rdp.othermode_l & RDP_Z_UPDATE_ENABLE))
+      if ((gDP.otherMode.l & RDP_Z_UPDATE_ENABLE))
          rdp.flags |= ZBUF_UPDATE;
       else
          rdp.flags &= ~ZBUF_UPDATE;
 
       // Compare?
-      if (rdp.othermode_l & ALPHA_COMPARE)
+      if (gDP.otherMode.l & ALPHA_COMPARE)
          rdp.flags |= ZBUF_COMPARE;
       else
          rdp.flags &= ~ZBUF_COMPARE;
@@ -1094,11 +1095,11 @@ void update(void)
    if (rdp.render_mode_changed & CULL_FRONT)
    {
       FRDP (" |- render_mode_changed alpha compare - on: %s\n",
-            str_yn[(rdp.othermode_l & CULL_FRONT)?1:0]);
+            str_yn[(gDP.otherMode.l & CULL_FRONT)?1:0]);
       rdp.render_mode_changed &= ~CULL_FRONT;
       g_gdp.flags |= UPDATE_ALPHA_COMPARE;
 
-      if (rdp.othermode_l & CULL_FRONT)
+      if (gDP.otherMode.l & CULL_FRONT)
          rdp.flags |= ALPHA_COMPARE;
       else
          rdp.flags &= ~ALPHA_COMPARE;
@@ -1107,7 +1108,7 @@ void update(void)
    if (rdp.render_mode_changed & CULL_BACK) // alpha cvg sel
    {
       FRDP (" |- render_mode_changed alpha cvg sel - on: %s\n",
-            str_yn[(rdp.othermode_l & CULL_BACK)?1:0]);
+            str_yn[(gDP.otherMode.l & CULL_BACK)?1:0]);
       rdp.render_mode_changed &= ~CULL_BACK;
       g_gdp.flags |= UPDATE_COMBINE;
       g_gdp.flags |= UPDATE_ALPHA_COMPARE;
@@ -1116,17 +1117,17 @@ void update(void)
    // Force blend
    if (rdp.render_mode_changed & 0xFFFF0000)
    {
-      FRDP (" |- render_mode_changed force_blend - %08lx\n", rdp.othermode_l&0xFFFF0000);
+      FRDP (" |- render_mode_changed force_blend - %08lx\n", gDP.otherMode.l&0xFFFF0000);
       rdp.render_mode_changed &= 0x0000FFFF;
 
-      rdp.fbl_a0 = (uint8_t)((rdp.othermode_l>>30)&0x3);
-      rdp.fbl_b0 = (uint8_t)((rdp.othermode_l>>26)&0x3);
-      rdp.fbl_c0 = (uint8_t)((rdp.othermode_l>>22)&0x3);
-      rdp.fbl_d0 = (uint8_t)((rdp.othermode_l>>18)&0x3);
-      rdp.fbl_a1 = (uint8_t)((rdp.othermode_l>>28)&0x3);
-      rdp.fbl_b1 = (uint8_t)((rdp.othermode_l>>24)&0x3);
-      rdp.fbl_c1 = (uint8_t)((rdp.othermode_l>>20)&0x3);
-      rdp.fbl_d1 = (uint8_t)((rdp.othermode_l>>16)&0x3);
+      rdp.fbl_a0 = (uint8_t)((gDP.otherMode.l>>30)&0x3);
+      rdp.fbl_b0 = (uint8_t)((gDP.otherMode.l>>26)&0x3);
+      rdp.fbl_c0 = (uint8_t)((gDP.otherMode.l>>22)&0x3);
+      rdp.fbl_d0 = (uint8_t)((gDP.otherMode.l>>18)&0x3);
+      rdp.fbl_a1 = (uint8_t)((gDP.otherMode.l>>28)&0x3);
+      rdp.fbl_b1 = (uint8_t)((gDP.otherMode.l>>24)&0x3);
+      rdp.fbl_c1 = (uint8_t)((gDP.otherMode.l>>20)&0x3);
+      rdp.fbl_d1 = (uint8_t)((gDP.otherMode.l>>16)&0x3);
 
       g_gdp.flags |= UPDATE_COMBINE;
    }
@@ -1158,7 +1159,7 @@ void update(void)
    {
       g_gdp.flags ^= UPDATE_ALPHA_COMPARE;
 
-      if ((rdp.othermode_l & RDP_ALPHA_COMPARE) == 1 && !(rdp.othermode_l & RDP_ALPHA_CVG_SELECT) && (!(rdp.othermode_l & RDP_FORCE_BLEND) || (g_gdp.blend_color.a)))
+      if ((gDP.otherMode.l & RDP_ALPHA_COMPARE) == 1 && !(gDP.otherMode.l & RDP_ALPHA_CVG_SELECT) && (!(gDP.otherMode.l & RDP_FORCE_BLEND) || (g_gdp.blend_color.a)))
       {
          uint8_t reference = (uint8_t)g_gdp.blend_color.a;
          grAlphaTestFunction (reference ? GR_CMP_GEQUAL : GR_CMP_GREATER, reference, 1);
@@ -1168,10 +1169,10 @@ void update(void)
       {
          if (rdp.flags & ALPHA_COMPARE)
          {
-            bool cond_set = (rdp.othermode_l & 0x5000) == 0x5000;
+            bool cond_set = (gDP.otherMode.l & 0x5000) == 0x5000;
             grAlphaTestFunction (!cond_set ? GR_CMP_GEQUAL : GR_CMP_GREATER, 0x20, !cond_set ? 1 : 0);
             if (cond_set)
-               grAlphaTestReferenceValue (((rdp.othermode_l & RDP_ALPHA_COMPARE) == 3) ? (uint8_t)g_gdp.blend_color.a : 0x00);
+               grAlphaTestReferenceValue (((gDP.otherMode.l & RDP_ALPHA_COMPARE) == 3) ? (uint8_t)g_gdp.blend_color.a : 0x00);
          }
          else
          {
@@ -1179,7 +1180,7 @@ void update(void)
             LRDP (" |- alpha compare: none\n");
          }
       }
-      if ((rdp.othermode_l & RDP_ALPHA_COMPARE) == 3 && (((rdp.othermode_h & RDP_CYCLE_TYPE) >> 20) < G_CYC_COPY))
+      if ((gDP.otherMode.l & RDP_ALPHA_COMPARE) == 3 && (((gDP.otherMode.h & RDP_CYCLE_TYPE) >> 20) < G_CYC_COPY))
       {
          if (settings.old_style_adither || g_gdp.other_modes.alpha_dither_sel != 3)
          {
@@ -1224,7 +1225,7 @@ void update(void)
       uint16_t blender;
       g_gdp.flags ^= UPDATE_FOG_ENABLED;
 
-      blender = (uint16_t)(rdp.othermode_l >> 16);
+      blender = (uint16_t)(gDP.otherMode.l >> 16);
       if (rdp.flags & FOG_ENABLED)
       {
          rdp_blender_setting *bl = (rdp_blender_setting*)(&blender);
@@ -1487,7 +1488,7 @@ static void draw_tri_uv_calculation(VERTEX **vtx, VERTEX *v)
       v->ou *= rdp.tiles[rdp.cur_tile].s_scale;
       v->ov *= rdp.tiles[rdp.cur_tile].t_scale;
       v->uv_scaled = 1;
-      if (!(rdp.othermode_h & RDP_PERSP_TEX_ENABLE))
+      if (!(gDP.otherMode.h & RDP_PERSP_TEX_ENABLE))
       {
          //          v->oow = v->w = 1.0f;
          v->ou *= 0.5f;

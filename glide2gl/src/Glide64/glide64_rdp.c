@@ -608,7 +608,7 @@ static void rdp_texrect(uint32_t w0, uint32_t w1)
       return;
    }
 
-   if ((rdp.othermode_l >> 16) == 0x3c18 && 
+   if ((gDP.otherMode.l >> 16) == 0x3c18 && 
          rdp.cycle1 == 0x03ffffff && 
          rdp.cycle2 == 0x01ff1fff) //depth image based fog
    {
@@ -645,7 +645,7 @@ static void rdp_texrect(uint32_t w0, uint32_t w1)
       return;
    }
 
-   if (((rdp.othermode_h & RDP_CYCLE_TYPE) >> 20) > 1)
+   if (((gDP.otherMode.h & RDP_CYCLE_TYPE) >> 20) > 1)
    {
       lr_x += 1.0f;
       lr_y += 1.0f;
@@ -662,7 +662,7 @@ static void rdp_texrect(uint32_t w0, uint32_t w1)
 
    //*/
    // framebuffer workaround for Zelda: MM LOT
-   if ((rdp.othermode_l & 0xFFFF0000) == 0x0f5a0000)
+   if ((gDP.otherMode.l & 0xFFFF0000) == 0x0f5a0000)
       return;
 
    /*Gonetz*/
@@ -674,7 +674,7 @@ static void rdp_texrect(uint32_t w0, uint32_t w1)
    }
 
    //hack for Banjo2. it removes black texrects under Banjo
-   if (settings.hacks&hack_Banjo2 && (!fb_hwfbe_enabled && ((rdp.cycle1 << 16) | (rdp.cycle2 & 0xFFFF)) == 0xFFFFFFFF && (rdp.othermode_l & 0xFFFF0000) == 0x00500000))
+   if (settings.hacks&hack_Banjo2 && (!fb_hwfbe_enabled && ((rdp.cycle1 << 16) | (rdp.cycle2 & 0xFFFF)) == 0xFFFFFFFF && (gDP.otherMode.l & 0xFFFF0000) == 0x00500000))
       return;
 
    /*remove motion blur in night vision */
@@ -725,7 +725,7 @@ static void rdp_texrect(uint32_t w0, uint32_t w1)
    if (off_y_i & 0x8000)
       off_y_i |= ~0xffff;
 
-   if (((rdp.othermode_h & RDP_CYCLE_TYPE) >> 20) == G_CYC_COPY)
+   if (((gDP.otherMode.h & RDP_CYCLE_TYPE) >> 20) == G_CYC_COPY)
       dsdx /= 4.0f;
 
    s_ul_x = ul_x * rdp.scale_x + rdp.offset_x;

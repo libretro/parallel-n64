@@ -45,7 +45,7 @@
 float set_sprite_combine_mode(void)
 {
   float Z;
-  if (((rdp.othermode_h & RDP_CYCLE_TYPE) >> 20) == G_CYC_COPY)
+  if (((gDP.otherMode.h & RDP_CYCLE_TYPE) >> 20) == G_CYC_COPY)
   {
     int32_t color_source;
 
@@ -69,14 +69,14 @@ float set_sprite_combine_mode(void)
 
   // set z buffer mode
   Z = 0.0f;
-  if ((rdp.othermode_l & 0x00000030) && (((rdp.othermode_h & RDP_CYCLE_TYPE) >> 20) < 2))
+  if ((gDP.otherMode.l & 0x00000030) && (((gDP.otherMode.h & RDP_CYCLE_TYPE) >> 20) < 2))
   {
      if (g_gdp.other_modes.z_source_sel == 1)
       Z = g_gdp.prim_color.z;
     FRDP ("prim_depth = %d, prim_dz = %d\n", g_gdp.prim_color.z, g_gdp.prim_color.dz);
     Z = ScaleZ(Z);
 
-    if (rdp.othermode_l & 0x00000400)
+    if (gDP.otherMode.l & 0x00000400)
       grDepthBiasLevel(g_gdp.prim_color.dz);
   }
 
@@ -84,7 +84,7 @@ float set_sprite_combine_mode(void)
   grFogMode (GR_FOG_DISABLE, g_gdp.fog_color.total);
   g_gdp.flags |= UPDATE_CULL_MODE | UPDATE_FOG_ENABLED;
 
-  if (((rdp.othermode_h & RDP_CYCLE_TYPE) >> 20) == G_CYC_COPY)
+  if (((gDP.otherMode.h & RDP_CYCLE_TYPE) >> 20) == G_CYC_COPY)
   {
     grColorCombine (GR_COMBINE_FUNCTION_SCALE_OTHER,
       GR_COMBINE_FACTOR_ONE,
@@ -100,7 +100,7 @@ float set_sprite_combine_mode(void)
       GR_BLEND_ZERO,
       GR_BLEND_ZERO,
       GR_BLEND_ZERO);
-    grAlphaTestFunction ((rdp.othermode_l & 1) ? GR_CMP_GEQUAL : GR_CMP_ALWAYS, 0x80, (rdp.othermode_l & 1) ? 1 : 0);
+    grAlphaTestFunction ((gDP.otherMode.l & 1) ? GR_CMP_GEQUAL : GR_CMP_ALWAYS, 0x80, (gDP.otherMode.l & 1) ? 1 : 0);
     g_gdp.flags |= UPDATE_ALPHA_COMPARE | UPDATE_COMBINE;
   }
   return Z;
@@ -324,7 +324,7 @@ static void DrawImage (DRAWIMAGE *d)
          );
 
    Z = set_sprite_combine_mode ();
-   if (((rdp.othermode_h & RDP_CYCLE_TYPE) >> 20) == 2)
+   if (((gDP.otherMode.h & RDP_CYCLE_TYPE) >> 20) == 2)
       rdp.allow_combine = 0;
 
    {

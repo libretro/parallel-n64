@@ -508,9 +508,6 @@ struct RDP
    uint32_t render_mode_changed;
    uint32_t geom_mode;
 
-   uint32_t othermode_h;
-   uint32_t othermode_l;
-
    // used to check if in texrect while loading texture
    uint8_t texrecting;
 

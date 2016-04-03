@@ -40,7 +40,9 @@
 #include "Gfx_1.3.h"
 #include "Util.h"
 #include "Combine.h"
+
 #include "../../../Graphics/GBI.h"
+#include "../../../Graphics/RDP/gDP_state.h"
 
 #define HAVE_ASSUME_COMBINE_EXT
 
@@ -772,9 +774,9 @@ static void cc_zero(void)
 
 static void cc_t0(void)
 {
-   if ((rdp.othermode_l & RDP_FORCE_BLEND) && (((rdp.othermode_h & RDP_CYCLE_TYPE) >> 20) < G_CYC_COPY))
+   if ((gDP.otherMode.l & RDP_FORCE_BLEND) && (((gDP.otherMode.h & RDP_CYCLE_TYPE) >> 20) < G_CYC_COPY))
    {
-      uint32_t blend_mode = (rdp.othermode_l >> 16);
+      uint32_t blend_mode = (gDP.otherMode.l >> 16);
 
       if (blend_mode == 0xa500)
       {
@@ -5011,7 +5013,7 @@ static void cc_prim_sub_env_mul_t1_add_env()
          GR_COMBINE_OTHER_CONSTANT);
    CC_PRIM();
    SETSHADE_ENV();
-   if (((rdp.othermode_h & RDP_CYCLE_TYPE) >> 20) == G_CYC_1CYCLE || ((settings.hacks&hack_KI) && (rdp.cycle2 & 0x0FFFFFFF) == 0x01FF1FFF))
+   if (((gDP.otherMode.h & RDP_CYCLE_TYPE) >> 20) == G_CYC_1CYCLE || ((settings.hacks&hack_KI) && (rdp.cycle2 & 0x0FFFFFFF) == 0x01FF1FFF))
    {
       USE_T0();
    }
@@ -6829,7 +6831,7 @@ static void cc__t1_inter_t0_using_prim__mul_shade()
 static void cc__t0_inter_t1_using_primlod__mul_shade()
 {
    //*
-   if ((rdp.othermode_h & RDP_TEX_LOD_ENABLE) && (rdp.mipmap_level == 0) && !(settings.hacks&hack_Fifa98))
+   if ((gDP.otherMode.h & RDP_TEX_LOD_ENABLE) && (rdp.mipmap_level == 0) && !(settings.hacks&hack_Fifa98))
    {
       cc_t0_mul_shade();
       return;
@@ -6949,8 +6951,8 @@ static void cc__env_inter_prim_using_t0__mul_prim()
 static void cc__env_inter_prim_using_t0__mul_shade()
 {
    // amazing... mace actually uses the blender as part of the combine
-   if ((rdp.othermode_l & 0xFFFF0000) == 0x03820000 ||
-         (rdp.othermode_l & 0xFFFF0000) == 0x00910000)
+   if ((gDP.otherMode.l & 0xFFFF0000) == 0x03820000 ||
+         (gDP.otherMode.l & 0xFFFF0000) == 0x00910000)
    {
       // blender:
       //  1ST = CLR_IN * A_IN + CLR_BL * 1MA
@@ -7319,9 +7321,9 @@ static void ac_one()
 
 static void ac_t0()
 {
-   if ((rdp.othermode_l & RDP_FORCE_BLEND) && (((rdp.othermode_h & RDP_CYCLE_TYPE) >> 20) < G_CYC_COPY))
+   if ((gDP.otherMode.l & RDP_FORCE_BLEND) && (((gDP.otherMode.h & RDP_CYCLE_TYPE) >> 20) < G_CYC_COPY))
    {
-      uint32_t blend_mode = (rdp.othermode_l >> 16);
+      uint32_t blend_mode = (gDP.otherMode.l >> 16);
       if (blend_mode == 0x0550)
       {
          ACMB (GR_COMBINE_FUNCTION_SCALE_OTHER,
@@ -7616,7 +7618,7 @@ static void ac_t1_mul_prim()
          GR_COMBINE_LOCAL_CONSTANT,
          GR_COMBINE_OTHER_TEXTURE);
    CA_PRIM();
-   if (((rdp.othermode_h & RDP_CYCLE_TYPE) >> 20) == G_CYC_1CYCLE)
+   if (((gDP.otherMode.h & RDP_CYCLE_TYPE) >> 20) == G_CYC_1CYCLE)
       A_USE_T0();
    else
       A_USE_T1();
@@ -7879,7 +7881,7 @@ static void ac_t1_mul_env() //Added by Gonetz
          GR_COMBINE_OTHER_TEXTURE);
    CA_ENV();
    //  if ((settings.hacks&hack_Powerpuff) && (rdp.last_tile == 0))
-   if (((rdp.othermode_h & RDP_CYCLE_TYPE) >> 20) == G_CYC_1CYCLE)
+   if (((gDP.otherMode.h & RDP_CYCLE_TYPE) >> 20) == G_CYC_1CYCLE)
       A_USE_T0();
    else
       A_USE_T1();
@@ -13961,7 +13963,7 @@ void Combine(void)
          Alpha0[(rdp.cycle1>>16)&7], Alpha1[(rdp.cycle1>>19)&7], Alpha2[(rdp.cycle1>>22)&7], Alpha3[(rdp.cycle1>>25)&7],
          Alpha0[(rdp.cycle2>>16)&7], Alpha1[(rdp.cycle2>>19)&7], Alpha2[(rdp.cycle2>>22)&7], Alpha3[(rdp.cycle2>>25)&7]);
 #endif
-   if (!(rdp.othermode_h & RDP_TEX_LOD_ENABLE) || rdp.cur_tile == rdp.mipmap_level)
+   if (!(gDP.otherMode.h & RDP_TEX_LOD_ENABLE) || rdp.cur_tile == rdp.mipmap_level)
       lod_frac = g_gdp.primitive_lod_frac;
    else if (settings.lodmode == 0)
       lod_frac = 0;
@@ -14142,9 +14144,9 @@ void Combine(void)
 
 void CombineBlender(void)
 {
-   uint32_t blendmode = rdp.othermode_l >> 16;
+   uint32_t blendmode = gDP.otherMode.l >> 16;
    // Check force-blending
-   if ((rdp.othermode_l & RDP_FORCE_BLEND) && (((rdp.othermode_h & RDP_CYCLE_TYPE) >> 20) < G_CYC_COPY))
+   if ((gDP.otherMode.l & RDP_FORCE_BLEND) && (((gDP.otherMode.h & RDP_CYCLE_TYPE) >> 20) < G_CYC_COPY))
    {
       switch (blendmode)
       {
@@ -14208,7 +14210,7 @@ void CombineBlender(void)
 
          case 0x0150: //spiderman
             A_BLEND (GR_BLEND_SRC_ALPHA, GR_BLEND_ONE_MINUS_SRC_ALPHA);
-            if (((rdp.othermode_h & RDP_CYCLE_TYPE) >> 20) == G_CYC_2CYCLE && rdp.cycle2 != 0x01ff1fff)
+            if (((gDP.otherMode.h & RDP_CYCLE_TYPE) >> 20) == G_CYC_2CYCLE && rdp.cycle2 != 0x01ff1fff)
             {
                uint32_t temp = g_gdp.prim_color.total;
                g_gdp.prim_color.total = g_gdp.fog_color.total;
@@ -14268,7 +14270,7 @@ void CombineBlender(void)
    }
    else if (blendmode == BLEND_XLU) // Mia Soccer Lights
       A_BLEND (GR_BLEND_SRC_ALPHA, GR_BLEND_ONE_MINUS_SRC_ALPHA);
-   else if ((settings.hacks&hack_Pilotwings) && (rdp.othermode_l & RDP_COLOR_ON_CVG)) //RDP_COLOR_ON_CVG without RDP_FORCE_BLEND
+   else if ((settings.hacks&hack_Pilotwings) && (gDP.otherMode.l & RDP_COLOR_ON_CVG)) //RDP_COLOR_ON_CVG without RDP_FORCE_BLEND
       A_BLEND (GR_BLEND_ZERO, GR_BLEND_ONE);
 #if 0
    else if ((settings.hacks & hack_Blastcorps))
@@ -14281,7 +14283,7 @@ void CombineBlender(void)
 
    // RDP_ALPHA_CVG_SELECT means full alpha
    // The reason it wasn't working before was because I wasn't handling rdp:setothermode
-   if ((rdp.othermode_l & RDP_ALPHA_CVG_SELECT) && ((rdp.othermode_l & 0x7000) != 0x7000))
+   if ((gDP.otherMode.l & RDP_ALPHA_CVG_SELECT) && ((gDP.otherMode.l & 0x7000) != 0x7000))
    {
       switch (blendmode)
       {
@@ -14297,18 +14299,18 @@ void CombineBlender(void)
 
    if (settings.hacks&hack_ISS64)
    {
-      if (rdp.othermode_l == 0xff5a6379)
+      if (gDP.otherMode.l == 0xff5a6379)
       {
          A_BLEND (GR_BLEND_ZERO, GR_BLEND_SRC_ALPHA);
       }
-      else if (rdp.othermode_l == 0x00504dd9) //players shadows. CVG_DST_WRAP
+      else if (gDP.otherMode.l == 0x00504dd9) //players shadows. CVG_DST_WRAP
       {
          A_BLEND (GR_BLEND_ZERO, GR_BLEND_ONE);
       }
    }
    else if (settings.hacks&hack_TGR)
    {
-      if (rdp.othermode_l == 0x0f0a0235)
+      if (gDP.otherMode.l == 0x0f0a0235)
       {
          A_BLEND (GR_BLEND_SRC_ALPHA, GR_BLEND_ONE_MINUS_SRC_ALPHA);
       }
