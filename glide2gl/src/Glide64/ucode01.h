@@ -91,17 +91,15 @@ static void uc1_line3d(uint32_t w0, uint32_t w1)
          0);
 }
 
-uint32_t branch_dl = 0;
-
 static void uc1_rdphalf_1(uint32_t w0, uint32_t w1)
 {
-   branch_dl = w1;
+   gDP.half_1 = w1;
    rdphalf_1(w0, w1);
 }
 
 static void uc1_branch_z(uint32_t w0, uint32_t w1)
 {
-   uint32_t addr = RSP_SegmentToPhysical(branch_dl);
+   uint32_t addr = RSP_SegmentToPhysical(gDP.half_1);
    uint32_t vtx  = (w0 & 0xFFF) >> 1;
 
    if( fabs(rdp.vtx[vtx].z) <= (w1/*&0xFFFF*/) )

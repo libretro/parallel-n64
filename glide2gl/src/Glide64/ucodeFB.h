@@ -169,7 +169,7 @@ static void fb_rect(uint32_t w0, uint32_t w1)
 
 static void fb_rdphalf_1(uint32_t w0, uint32_t w1)
 {
-   branch_dl = w1;
+   gDP.half_1 = w1;
 }
 
 static void fb_settextureimage(uint32_t w0, uint32_t w1)
