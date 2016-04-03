@@ -91,77 +91,78 @@ struct gDPLoadTileInfo
    uint32_t dxt;
 };
 
+struct gDPOtherMode
+{
+   union
+   {
+      struct
+      {
+         unsigned int alphaCompare    : 2;      /* 0..1   - alpha_compare */
+         unsigned int depthSource     : 1;      /* 2..2   - depth_source  */
+
+         //				struct
+         //				{
+         unsigned int AAEnable     : 1;      /* 3      - aa_en      */
+         unsigned int depthCompare : 1;      /* 4      - z_cmp      */
+         unsigned int depthUpdate  : 1;      /* 5      - z_upd      */
+         unsigned int imageRead    : 1;      /* 6      - im_rd      */
+         unsigned int clearOnCvg   : 1;      /* 7      - clr_on_cvg */
+
+         unsigned int cvgDest      : 2;      /* 8..9   - cvg_dst    */
+         unsigned int depthMode    : 2;      /* 10..11 - zmode      */
+
+         unsigned int cvgXAlpha    : 1;      /* 12     - cvg_x_alpha */
+         unsigned int alphaCvgSel  : 1;      /* 13     - alpha_cvg_sel */
+         unsigned int forceBlender : 1;      /* 14     - force_bl   */
+         unsigned int textureEdge  : 1;      /* 15     - tex_edge - not used */
+         //				} renderMode;
+
+         //				struct
+         //				{
+         unsigned int c2_m2b : 2;
+         unsigned int c1_m2b : 2;
+         unsigned int c2_m2a : 2;
+         unsigned int c1_m2a : 2;
+         unsigned int c2_m1b : 2;
+         unsigned int c1_m1b : 2;
+         unsigned int c2_m1a : 2;
+         unsigned int c1_m1a : 2;
+         //				} blender;                             /* 16..31 - blender */
+
+         unsigned int blendMask   : 4;          /* 0..3   - blend_mask */
+         unsigned int alphaDither : 2;          /* 4..5   - alpha_dither */
+         unsigned int colorDither : 2;          /* 6..7   - rgb_dither */
+
+         unsigned int combineKey     : 1;       /* 8..8   - key_en */
+         unsigned int textureConvert : 3;       /* 9..11  - text_conv */
+         unsigned int textureFilter  : 2;       /* 12..13 - text_filt */
+         unsigned int textureLUT     : 2;       /* 14..15 - text_tlut */
+
+         unsigned int textureLOD        : 1;    /* 16..16 - text_lod */
+         unsigned int textureSharpen    : 1;    /* 17..18 - text_sharpen */
+         unsigned int textureDetail     : 1;    /* 17..18 - text_sharpen */
+         unsigned int texturePersp      : 1;    /* 19..19 - text_persp */
+         unsigned int cycleType         : 2;    /* 20..21 - cycle_type */
+         unsigned int unusedColorDither : 1;    /* 22..22 - unsupported */
+         unsigned int pipelineMode      : 1;    /* 23..23 - atomic_prim */
+
+         unsigned int pad : 8;                  /* 24..31 - padding */
+
+      };
+
+      uint64_t			_u64;
+      uint32_t       _u32[2];
+
+      struct
+      {
+         uint32_t			l, h;
+      };
+   };
+};
+
 struct gDPInfo
 {
-	struct
-	{
-		union
-		{
-			struct
-			{
-				unsigned int alphaCompare    : 2;      /* 0..1   - alpha_compare */
-				unsigned int depthSource     : 1;      /* 2..2   - depth_source  */
-
-//				struct
-//				{
-					unsigned int AAEnable     : 1;      /* 3      - aa_en      */
-					unsigned int depthCompare : 1;      /* 4      - z_cmp      */
-					unsigned int depthUpdate  : 1;      /* 5      - z_upd      */
-					unsigned int imageRead    : 1;      /* 6      - im_rd      */
-					unsigned int clearOnCvg   : 1;      /* 7      - clr_on_cvg */
-
-					unsigned int cvgDest      : 2;      /* 8..9   - cvg_dst    */
-					unsigned int depthMode    : 2;      /* 10..11 - zmode      */
-
-					unsigned int cvgXAlpha    : 1;      /* 12     - cvg_x_alpha */
-					unsigned int alphaCvgSel  : 1;      /* 13     - alpha_cvg_sel */
-					unsigned int forceBlender : 1;      /* 14     - force_bl   */
-					unsigned int textureEdge  : 1;      /* 15     - tex_edge - not used */
-//				} renderMode;
-
-//				struct
-//				{
-					unsigned int c2_m2b : 2;
-					unsigned int c1_m2b : 2;
-					unsigned int c2_m2a : 2;
-					unsigned int c1_m2a : 2;
-					unsigned int c2_m1b : 2;
-					unsigned int c1_m1b : 2;
-					unsigned int c2_m1a : 2;
-					unsigned int c1_m1a : 2;
-//				} blender;                             /* 16..31 - blender */
-
-				unsigned int blendMask   : 4;          /* 0..3   - blend_mask */
-				unsigned int alphaDither : 2;          /* 4..5   - alpha_dither */
-				unsigned int colorDither : 2;          /* 6..7   - rgb_dither */
-
-				unsigned int combineKey     : 1;       /* 8..8   - key_en */
-				unsigned int textureConvert : 3;       /* 9..11  - text_conv */
-				unsigned int textureFilter  : 2;       /* 12..13 - text_filt */
-				unsigned int textureLUT     : 2;       /* 14..15 - text_tlut */
-
-				unsigned int textureLOD        : 1;    /* 16..16 - text_lod */
-            unsigned int textureSharpen    : 1;    /* 17..18 - text_sharpen */
-				unsigned int textureDetail     : 1;    /* 17..18 - text_sharpen */
-				unsigned int texturePersp      : 1;    /* 19..19 - text_persp */
-				unsigned int cycleType         : 2;    /* 20..21 - cycle_type */
-				unsigned int unusedColorDither : 1;    /* 22..22 - unsupported */
-				unsigned int pipelineMode      : 1;    /* 23..23 - atomic_prim */
-
-				unsigned int pad : 8;                  /* 24..31 - padding */
-
-			};
-
-			uint64_t			_u64;
-         uint32_t       _u32[2];
-
-			struct
-			{
-				uint32_t			l, h;
-			};
-		};
-	} otherMode;
-
+   struct gDPOtherMode otherMode;
 	struct gDPCombine combine;
 	struct gDPTile tiles[8], *loadTile;
 
