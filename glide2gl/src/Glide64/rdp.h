@@ -641,37 +641,6 @@ static INLINE void ConvertCoordsConvert (VERTEX *v, int n)
    }
 }
 
-static INLINE void CalculateFog (VERTEX *v)
-{
-   if (rdp.flags & FOG_ENABLED)
-   {
-      if (v->w < 0.0f)
-         v->f = 0.0f;
-      else
-         v->f = MIN(255.0f, MAX(0.0f, v->z_w * rdp.fog_multiplier + rdp.fog_offset));
-      v->a = (uint8_t)v->f;
-   }
-   else
-      v->f = 1.0f;
-}
-
-static INLINE void glideSetVertexFlatShading(VERTEX *v, VERTEX **vtx, uint32_t w1)
-{
-   int flag = MIN(2, (w1 >> 24) & 3);
-   v->a = vtx[flag]->a;
-   v->b = vtx[flag]->b;
-   v->g = vtx[flag]->g;
-   v->r = vtx[flag]->r;
-}
-
-static INLINE void glideSetVertexPrimShading(VERTEX *v, uint32_t prim_color)
-{
-   v->r = (uint8_t)g_gdp.prim_color.r;
-   v->g = (uint8_t)g_gdp.prim_color.g;
-   v->b = (uint8_t)g_gdp.prim_color.b;
-   v->a = (uint8_t)g_gdp.prim_color.a;
-}
-
 static INLINE uint32_t vi_integer_sqrt(uint32_t a)
 {
    unsigned long op = a, res = 0, one = 1 << 30;

@@ -74,6 +74,22 @@ typedef struct
 
 #define EvaLine(li, x, y) ((li->x) * (x) + (li->y) * (y) + (li->d))
 
+static INLINE void glideSetVertexPrimShading(VERTEX *v, uint32_t prim_color)
+{
+   v->r = (uint8_t)g_gdp.prim_color.r;
+   v->g = (uint8_t)g_gdp.prim_color.g;
+   v->b = (uint8_t)g_gdp.prim_color.b;
+   v->a = (uint8_t)g_gdp.prim_color.a;
+}
+
+static INLINE void glideSetVertexFlatShading(VERTEX *v, VERTEX **vtx, uint32_t w1)
+{
+   int flag = MIN(2, (w1 >> 24) & 3);
+   v->a = vtx[flag]->a;
+   v->b = vtx[flag]->b;
+   v->g = vtx[flag]->g;
+   v->r = vtx[flag]->r;
+}
 
 void apply_shade_mods (VERTEX *v)
 {

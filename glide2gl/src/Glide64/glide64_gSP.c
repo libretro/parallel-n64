@@ -30,6 +30,20 @@ typedef struct
 
 void uc6_obj_sprite(uint32_t w0, uint32_t w1);
 
+static INLINE void calculateVertexFog(VERTEX *v)
+{
+   if (rdp.flags & FOG_ENABLED)
+   {
+      if (v->w < 0.0f)
+         v->f = 0.0f;
+      else
+         v->f = MIN(255.0f, MAX(0.0f, v->z_w * rdp.fog_multiplier + rdp.fog_offset));
+      v->a = (uint8_t)v->f;
+   }
+   else
+      v->f = 1.0f;
+}
+
 void glide64gSPLightVertex(void *data)
 {
    uint32_t i;
@@ -467,7 +481,7 @@ void glide64gSPVertex(uint32_t v, uint32_t n, uint32_t v0)
       vtx->x_w = vtx->x * vtx->oow;
       vtx->y_w = vtx->y * vtx->oow;
       vtx->z_w = vtx->z * vtx->oow;
-      CalculateFog (vtx);
+      calculateVertexFog (vtx);
 
       gSPClipVertex(v0 + (i / iter));
 
@@ -733,7 +747,7 @@ void glide64gSPCIVertex(uint32_t v, uint32_t n, uint32_t v0)
       vert->x_w  = vert->x * vert->oow;
       vert->y_w  = vert->y * vert->oow;
       vert->z_w  = vert->z * vert->oow;
-      CalculateFog (vert);
+      calculateVertexFog (vert);
 
       vert->scr_off = 0;
       if (vert->x < -vert->w)
@@ -1085,7 +1099,7 @@ void glide64gSPDMAVertex(uint32_t v, uint32_t n, uint32_t v0)
       v->g = ((uint8_t*)gfx_info.RDRAM)[(addr+start + 7)^3];
       v->b = ((uint8_t*)gfx_info.RDRAM)[(addr+start + 8)^3];
       v->a = ((uint8_t*)gfx_info.RDRAM)[(addr+start + 9)^3];
-      CalculateFog (v);
+      calculateVertexFog (v);
    }
 }
 
