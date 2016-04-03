@@ -1229,7 +1229,7 @@ void update(void)
       if (rdp.flags & FOG_ENABLED)
       {
          rdp_blender_setting *bl = (rdp_blender_setting*)(&blender);
-         if((rdp.fog_multiplier > 0) && (bl->c1_m1a==3 || bl->c1_m2a == 3 || bl->c2_m1a == 3 || bl->c2_m2a == 3))
+         if((gSP.fog.multiplier > 0) && (bl->c1_m1a==3 || bl->c1_m2a == 3 || bl->c2_m1a == 3 || bl->c2_m2a == 3))
          {
             grFogMode (GR_FOG_WITH_TABLE_ON_FOGCOORD_EXT, g_gdp.fog_color.total);
             rdp.fog_mode = FOG_MODE_ENABLED;

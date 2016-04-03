@@ -482,7 +482,6 @@ struct RDP
    int skip_drawing; //rendering is not required. used for frame buffer emulation
 
    //fog related slots. Added by Gonetz
-   float fog_multiplier, fog_offset;
    unsigned fog_mode;
    // Clipping
    int clip;     // clipping flags

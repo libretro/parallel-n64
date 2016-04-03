@@ -382,7 +382,8 @@ void glide64ProcessDList(void)
   rdp.bg_image_height                 = 0xFFFF;
   fbreads_front                       = 0;
   fbreads_back                        = 0;
-  rdp.fog_multiplier = rdp.fog_offset = 0;
+  gSP.fog.multiplier                  = 0;
+  gSP.fog.offset                      = 0;
   g_gdp.other_modes.z_source_sel      = 0;
 
   if (rdp.vi_org_reg != *gfx_info.VI_ORIGIN_REG)
@@ -1971,8 +1972,8 @@ void glide64ProcessRDPList(void)
    rdp.s2dex_tex_loaded           = false;
    rdp.bg_image_height            = 0xFFFF;
    fbreads_front = fbreads_back   = 0;
-   rdp.fog_multiplier             = 0;
-   rdp.fog_offset                 = 0;
+   gSP.fog.multiplier             = 0;
+   gSP.fog.offset                 = 0;
    g_gdp.other_modes.z_source_sel = 0;
 
    if (rdp.vi_org_reg != *gfx_info.VI_ORIGIN_REG)

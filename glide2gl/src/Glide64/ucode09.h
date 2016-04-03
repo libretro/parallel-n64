@@ -433,7 +433,7 @@ static void uc9_mult_mpmtx(uint32_t w0, uint32_t w1)
          v.fog = 0;
       else
       {
-         int fog = (int)(z / w * rdp.fog_multiplier + rdp.fog_offset);
+         int fog = (int)(z / w * gSP.fog.multiplier + gSP.fog.offset);
          if (fog > 255)
             fog = 255;
          v.fog = (fog >= 0) ? (uint8_t)fog : 0;
@@ -564,7 +564,7 @@ static void uc9_movemem(uint32_t w0, uint32_t w1)
 
             FRDP ("viewport scale(%d, %d, %d), trans(%d, %d, %d), from:%08lx\n", scale_x, scale_y, scale_z,
                   trans_x, trans_y, trans_z, a);
-            FRDP ("fog: multiplier: %f, offset: %f\n", rdp.fog_multiplier, rdp.fog_offset);
+            FRDP ("fog: multiplier: %f, offset: %f\n", gSP.fog.multiplier, gSP.fog.offset);
          }
          break;
 

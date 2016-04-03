@@ -32,7 +32,7 @@ static INLINE void calculateVertexFog(VERTEX *v)
       if (v->w < 0.0f)
          v->f = 0.0f;
       else
-         v->f = MIN(255.0f, MAX(0.0f, v->z_w * rdp.fog_multiplier + rdp.fog_offset));
+         v->f = MIN(255.0f, MAX(0.0f, v->z_w * gSP.fog.multiplier + gSP.fog.offset));
       v->a = (uint8_t)v->f;
    }
    else
@@ -518,8 +518,8 @@ void glide64gSPVertex(uint32_t v, uint32_t n, uint32_t v0)
 
 void glide64gSPFogFactor(int16_t fm, int16_t fo )
 {
-   rdp.fog_multiplier = fm;
-   rdp.fog_offset     = fo;
+   gSP.fog.multiplier = fm;
+   gSP.fog.offset     = fo;
 }
 
 void glide64gSPSetGeometryMode (uint32_t mode)
