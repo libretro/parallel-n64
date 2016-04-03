@@ -63,8 +63,8 @@ static void uc1_line3d(uint32_t w0, uint32_t w1)
 {
    if (!settings.force_quad3d && ((w1 & 0xFF000000) == 0) && ((w0 & 0x00FFFFFF) == 0))
    {
-      uint32_t mode = (rdp.flags & CULLMASK) >> CULLSHIFT;
-      rdp.flags    |= CULLMASK;
+      uint32_t mode = (rdp.flags & G_CULL_BOTH) >> CULLSHIFT;
+      rdp.flags    |= G_CULL_BOTH;
       g_gdp.flags  |= UPDATE_CULL_MODE;
 
       glide64gSP1Triangle(
@@ -73,7 +73,7 @@ static void uc1_line3d(uint32_t w0, uint32_t w1)
             (w1 >> 9) & 0x7F,
             (uint16_t)(w1 & 0xFF) + 3);
 
-      rdp.flags    ^= CULLMASK;
+      rdp.flags    ^= G_CULL_BOTH;
       rdp.flags    |= mode << CULLSHIFT;
       g_gdp.flags  |= UPDATE_CULL_MODE;
 

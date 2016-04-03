@@ -92,7 +92,6 @@ extern uint32_t gfx_plugin_accuracy;
 #define CULL_BACK     0x00002000  // * must be here
 #define FOG_ENABLED   0x00010000
 
-#define CULLMASK    0x00003000
 #define CULLSHIFT   12
 
 #define CMB_MULT    0x00000001

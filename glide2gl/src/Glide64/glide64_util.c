@@ -1202,7 +1202,7 @@ void update(void)
    {
       uint32_t mode;
       g_gdp.flags ^= UPDATE_CULL_MODE;
-      mode = (rdp.flags & CULLMASK) >> CULLSHIFT;
+      mode = (rdp.flags & G_CULL_BOTH) >> CULLSHIFT;
       FRDP (" |- cull_mode - mode: %s\n", str_cull[mode]);
       switch (mode)
       {
@@ -1412,8 +1412,8 @@ static int cull_tri(VERTEX **v) // type changed to VERTEX** [Dave2001]
          draw = 1;
    }
 
-   rdp.u_cull_mode = (rdp.flags & CULLMASK);
-   if (draw || rdp.u_cull_mode == 0 || rdp.u_cull_mode == CULLMASK) //no culling set
+   rdp.u_cull_mode = (rdp.flags & G_CULL_BOTH);
+   if (draw || rdp.u_cull_mode == 0 || rdp.u_cull_mode == G_CULL_BOTH) //no culling set
    {
       rdp.u_cull_mode >>= CULLSHIFT;
       return false;
@@ -1435,7 +1435,7 @@ static int cull_tri(VERTEX **v) // type changed to VERTEX** [Dave2001]
       return true;
    }
 
-   if ((rdp.flags & CULLMASK) && ((int)(iarea ^ mode)) >= 0)
+   if ((rdp.flags & G_CULL_BOTH) && ((int)(iarea ^ mode)) >= 0)
    {
       //LRDP (" culled\n");
       return true;

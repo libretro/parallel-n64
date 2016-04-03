@@ -360,9 +360,9 @@ static void uc0_cleargeometrymode(uint32_t w0, uint32_t w1)
 
 static void uc0_line3d(uint32_t w0, uint32_t w1)
 {
-   uint32_t mode      = (rdp.flags & CULLMASK) >> CULLSHIFT;
+   uint32_t mode      = (rdp.flags & G_CULL_BOTH) >> CULLSHIFT;
 
-   rdp.flags         |= CULLMASK;
+   rdp.flags         |= G_CULL_BOTH;
    g_gdp.flags       |= UPDATE_CULL_MODE;
 
    glide64gSP1Triangle(
@@ -372,7 +372,7 @@ static void uc0_line3d(uint32_t w0, uint32_t w1)
          (uint16_t)(w1 & 0xFF) + 3
          );
 
-   rdp.flags         ^= CULLMASK;
+   rdp.flags         ^= G_CULL_BOTH;
    rdp.flags         |= mode << CULLSHIFT;
    g_gdp.flags       |= UPDATE_CULL_MODE;
 }

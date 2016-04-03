@@ -127,8 +127,8 @@ static void uc2_line3d(uint32_t w0, uint32_t w1)
       uc6_ldtx_rect_r(w0, w1);
    else
    {
-      uint32_t mode  = (rdp.flags & CULLMASK) >> CULLSHIFT;
-      rdp.flags     |= CULLMASK;
+      uint32_t mode  = (rdp.flags & G_CULL_BOTH) >> CULLSHIFT;
+      rdp.flags     |= G_CULL_BOTH;
       g_gdp.flags   |= UPDATE_CULL_MODE;
 
       glide64gSP1Triangle(
@@ -138,7 +138,7 @@ static void uc2_line3d(uint32_t w0, uint32_t w1)
             (uint16_t)(w0 + 3)&0xFF
             );
 
-      rdp.flags   ^= CULLMASK;
+      rdp.flags   ^= G_CULL_BOTH;
       rdp.flags   |= mode << CULLSHIFT;
       g_gdp.flags |= UPDATE_CULL_MODE;
    }
