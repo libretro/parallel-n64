@@ -383,7 +383,7 @@ static void glide64gDPLLETriangle(uint32_t w0, uint32_t w1, int shade, int textu
 
 void glide64gDPTriangle(uint32_t w0, uint32_t w1, int shade, int texture, int zbuffer)
 {
-   glide64gDPLLETriangle(w0, w1, 0, 0, 0, __RDP.cmd_data + __RDP.cmd_cur);
+   glide64gDPLLETriangle(w0, w1, shade, texture, zbuffer, __RDP.cmd_data + __RDP.cmd_cur);
 }
 
 void glide64gDPSetTextureImage(int32_t fmt, int32_t siz,
