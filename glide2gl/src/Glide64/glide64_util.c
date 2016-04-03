@@ -52,7 +52,7 @@
 #include "../../Graphics/RSP/RSP_state.h"
 
 extern int dzdx;
-extern int deltaZ;
+static int deltaZ;
 static VERTEX **org_vtx;
 
 typedef struct
@@ -1294,7 +1294,7 @@ static void draw_tri_depth(VERTEX **vtx)
 
       if ((rdp.rm & ZMODE_DECAL) == ZMODE_DECAL)
       {
-         // Calculate deltaZ per polygon for Decal z-mode
+         /* Calculate deltaZ per polygon for Decal z-mode */
          float fdzdy = (float)((diffz_02*diffx_12 - diffz_12*diffx_02) / denom);
          float fdz   = (float)(fabs(fdzdx) + fabs(fdzdy));
          deltaZ      = MAX(8, (int)fdz);

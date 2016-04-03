@@ -76,7 +76,6 @@
 		}
 
 int dzdx   = 0;
-int deltaZ = 0;
 
 const char *ACmp[] = { "NONE", "THRESHOLD", "UNKNOWN", "DITHER" };
 
