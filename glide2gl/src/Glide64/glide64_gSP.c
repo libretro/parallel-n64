@@ -1120,25 +1120,24 @@ void glide64gSPDMATriangles(uint32_t tris, uint32_t n)
       int v2             = gfx_info.RDRAM[addr+start+2];
       int flags          = gfx_info.RDRAM[addr+start+3];
 
+      rdp.flags &= ~G_CULL_BOTH;
 
       if (flags & 0x40)
       {
          /* no cull */
-         rdp.flags &= ~G_CULL_BOTH;
          cull_mode  = GR_CULL_DISABLE;
       }
       else
       {
          /* front cull */
-         rdp.flags &= ~G_CULL_BOTH;
-         if (rdp.view_scale[0] < 0)
+         if (rdp.view_scale[0] >= 0)
+            rdp.flags |= CULL_FRONT;
+         else
          {
             /* agh, backwards culling */
             rdp.flags |= CULL_BACK;   
             cull_mode  = GR_CULL_POSITIVE;
          }
-         else
-            rdp.flags |= CULL_FRONT;
       }
 
       grCullMode(cull_mode);
