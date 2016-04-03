@@ -479,7 +479,6 @@ struct RDP
    // Texture palette
    uint16_t pal_8[256];
    uint32_t pal_8_crc[16];
-   uint32_t pal_256_crc;
    uint8_t tlut_mode;
    int force_wrap;
 

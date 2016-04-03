@@ -50,6 +50,7 @@
 #include <clamping.h>
 
 #include "../../../Graphics/GBI.h"
+#include "../../../Graphics/RDP/gDP_state.h"
 #include "../../../Graphics/image_convert.h"
 
 static void LoadTex (int id, int tmu);
@@ -295,7 +296,7 @@ static void GetTexInfo (int id, int tile)
       if (g_gdp.tile[tile].size == G_IM_SIZ_4b)
          crc = rdp.pal_8_crc[g_gdp.tile[tile].palette];
       else
-         crc = rdp.pal_256_crc;
+         crc = gDP.paletteCRC256;
    }
 
    {

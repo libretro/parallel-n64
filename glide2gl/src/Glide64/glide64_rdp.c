@@ -53,6 +53,7 @@
 #include "../../Graphics/RDP/gDP_funcs_C.h"
 #include "../../Graphics/RSP/gSP_funcs_C.h"
 #include "../../Graphics/RDP/RDP_state.h"
+#include "../../Graphics/RDP/gDP_state.h"
 #include "../../Graphics/RSP/RSP_state.h"
 
 /* angrylion's macro, helps to cut overflowed values. */
@@ -984,7 +985,7 @@ void load_palette (uint32_t addr, uint16_t start, uint16_t count)
       end = start + 1;
    for (p = start; p < end; p++)
       rdp.pal_8_crc[p] = CRC32( 0xFFFFFFFF, &rdp.pal_8[(p << 4)], 32 );
-   rdp.pal_256_crc = CRC32( 0xFFFFFFFF, rdp.pal_8_crc, 64 );
+   gDP.paletteCRC256 = CRC32( 0xFFFFFFFF, rdp.pal_8_crc, 64 );
 }
 
 static void rdp_loadtlut(uint32_t w0, uint32_t w1)
