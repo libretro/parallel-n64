@@ -438,7 +438,8 @@ void RSP_GBI1_MoveWord(Gfx *gfx)
          {
             uint32_t dwSegment = (gfx->gbi0moveword.offset >> 2) & 0xF;
             uint32_t dwBase    = (gfx->gbi0moveword.value)&0x00FFFFFF;
-            gRSP.segments[dwSegment] = dwBase;
+
+            gSP.segment[dwSegment] = dwBase;
          }
          break;
       case G_MW_FOG:

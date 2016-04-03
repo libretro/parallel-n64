@@ -22,6 +22,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #define __RICE_RDP_GFX_H__
 
 #include "../../Graphics/GBI.h"
+#include "../../Graphics/RSP/gSP_state.h"
 
 #define RSP_SPNOOP              0   // handle 0 gracefully 
 #define RSP_MTX                 1
@@ -351,7 +352,7 @@ typedef struct
 } ScissorType;
 
 // Mask down to 0x003FFFFF?
-#define RSPSegmentAddr(seg) ( gRSP.segments[((seg)>>24)&0x0F] + ((seg)&0x00FFFFFF) )
+#define RSPSegmentAddr(seg) ( gSP.segment[((seg)>>24)&0x0F] + ((seg)&0x00FFFFFF) )
 
 extern uint16_t g_wRDPTlut[];
 extern const char *textluttype[4];

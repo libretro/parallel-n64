@@ -132,7 +132,7 @@ void RSP_GBI2_MoveWord(Gfx *gfx)
             uint32_t dwSeg       = gfx->gbi2moveword.offset / 4;
             uint32_t dwAddr      = gfx->gbi2moveword.value & 0x00FFFFFF;           // Hack - convert to physical
 
-            gRSP.segments[dwSeg] = dwAddr;
+            gSP.segment[dwSeg] = dwAddr;
         }
         break;
     case G_MW_FOG:

@@ -25,6 +25,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "RSP_Parser.h"
 #include "Video.h"
 
+#include "../../Graphics/RSP/gSP_state.h"
+
 /*
  *  Global variables defined in this file were moved out of Render class
  *  to make them be accessed faster
@@ -147,8 +149,6 @@ typedef struct
     bool    bMatrixIsUpdated;
     bool    bCombinedMatrixIsUpdated;
     bool    bLightIsUpdated;
-
-    uint32_t  segments[16];
 
     int     DKRCMatrixIndex;
     int     DKRVtxCount;
