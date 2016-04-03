@@ -334,8 +334,6 @@ void CRender::RenderReset()
 
 bool CRender::FillRect(int nX0, int nY0, int nX1, int nY1, uint32_t dwColor)
 {
-    LOG_UCODE("FillRect: X0=%d, Y0=%d, X1=%d, Y1=%d, Color=0x%8X", nX0, nY0, nX1, nY1, dwColor);
-
     if (g_CI.dwSize != G_IM_SIZ_16b && frameBufferOptions.bIgnore) 
         return true;
 
@@ -422,7 +420,6 @@ bool CRender::FillRect(int nX0, int nY0, int nX1, int nY1, uint32_t dwColor)
 
 bool CRender::Line3D(uint32_t dwV0, uint32_t dwV1, uint32_t dwWidth)
 {
-    LOG_UCODE("Line3D: Vtx0=%d, Vtx1=%d, Width=%d", dwV0, dwV1, dwWidth);
     if( !status.bCIBufferIsRendered )
         g_pFrameBufferManager->ActiveTextureBuffer();
 
@@ -602,9 +599,6 @@ bool CRender::TexRect(int nX0, int nY0, int nX1, int nY1, float fS0, float fT0, 
     }
 
     if( status.bHandleN64RenderTexture && !status.bDirectWriteIntoRDRAM )   status.bFrameBufferIsDrawn = true;
-
-    LOG_UCODE("TexRect: X0=%d, Y0=%d, X1=%d, Y1=%d,\n\t\tfS0=%f, fT0=%f, ScaleS=%f, ScaleT=%f ",
-        nX0, nY0, nX1, nY1, fS0, fT0, fScaleS, fScaleT);
 
     if( options.bEnableHacks )
     {
@@ -850,9 +844,6 @@ bool CRender::TexRect(int nX0, int nY0, int nX1, int nY1, float fS0, float fT0, 
 
 bool CRender::TexRectFlip(int nX0, int nY0, int nX1, int nY1, float fS0, float fT0, float fS1, float fT1)
 {
-    LOG_UCODE("TexRectFlip: X0=%d, Y0=%d, X1=%d, Y1=%d,\n\t\tfS0=%f, fT0=%f, fS1=%f, fT1=%f ",
-            nX0, nY0, nX1, nY1, fS0, fT0, fS1, fT1);
-
     if( status.bHandleN64RenderTexture && !status.bDirectWriteIntoRDRAM )   
     {
         status.bFrameBufferIsDrawn = true;
@@ -1122,8 +1113,6 @@ void CRender::SetViewport(int nLeft, int nTop, int nRight, int nBottom, int maxZ
 
     UpdateClipRectangle();
     SetViewportRender();
-
-    LOG_UCODE("SetViewport (%d,%d - %d,%d)",gRSP.nVPLeftN, gRSP.nVPTopN, gRSP.nVPRightN, gRSP.nVPBottomN);
 }
 
 extern bool bHalfTxtScale;
@@ -1311,8 +1300,6 @@ bool CRender::DrawTriangles()
     bool res = RenderFlushTris();
     g_clippedVtxCount = 0;
 
-    LOG_UCODE("DrawTriangles: Draw %d Triangles", gRSP.numVertices/3);
-    
     gRSP.numVertices = 0;   // Reset index
     gRSP.maxVertexID = 0;
 
@@ -1441,7 +1428,6 @@ void CRender::SetClipRatio(uint32_t type, uint32_t w1)
     switch(type)
     {
     case G_MWO_CLIP_RNX:
-        LOG_UCODE("    RSP_MOVE_WORD_CLIP  NegX: %d", (int)(short)w1);
         if( gRSP.clip_ratio_negx != (short)w1 )
         {
             gRSP.clip_ratio_negx = (short)w1;
@@ -1449,7 +1435,6 @@ void CRender::SetClipRatio(uint32_t type, uint32_t w1)
         }
         break;
     case G_MWO_CLIP_RNY:
-        LOG_UCODE("    RSP_MOVE_WORD_CLIP  NegY: %d", (int)(short)w1);
         if( gRSP.clip_ratio_negy != (short)w1 )
         {
             gRSP.clip_ratio_negy = (short)w1;
@@ -1457,7 +1442,6 @@ void CRender::SetClipRatio(uint32_t type, uint32_t w1)
         }
         break;
     case G_MWO_CLIP_RPX:
-        LOG_UCODE("    RSP_MOVE_WORD_CLIP  PosX: %d", (int)(short)w1);
         if( gRSP.clip_ratio_posx != -(short)w1 )
         {
             gRSP.clip_ratio_posx = -(short)w1;
@@ -1465,7 +1449,6 @@ void CRender::SetClipRatio(uint32_t type, uint32_t w1)
         }
         break;
     case G_MWO_CLIP_RPY:
-        LOG_UCODE("    RSP_MOVE_WORD_CLIP  PosY: %d", (int)(short)w1);
         if( gRSP.clip_ratio_posy != -(short)w1 )
         {
             gRSP.clip_ratio_posy = -(short)w1;

@@ -840,10 +840,7 @@ void DLParser_Process(OSTask * pTask)
             currentUcodeMap[pgfx->words.w0 >>24](pgfx);
 
             if ( __RSP.PCi >= 0 && --gDlistStack[__RSP.PCi].countdown < 0 )
-            {
-                LOG_UCODE("**EndDLInMem");
                 __RSP.PCi--;
-            }
         }
 
     }
@@ -898,11 +895,6 @@ void RSP_GBI1_Noop(Gfx *gfx)
 
 void RDP_GFX_PopDL()
 {
-    LOG_UCODE("Returning from DisplayList: level=%d", __RSP.PCi+1);
-    LOG_UCODE("############################################");
-    LOG_UCODE("/\\ /\\ /\\ /\\ /\\ /\\ /\\ /\\ /\\ /\\ /\\ /\\ /\\ /\\ /\\");
-    LOG_UCODE("");
-
     __RSP.PCi--;
 }
 
@@ -999,9 +991,6 @@ void DLParser_SetPrimDepth(Gfx *gfx)
     uint32_t dwZ  = ((gfx->words.w1) >> 16) & 0xFFFF;
     uint32_t dwDZ = ((gfx->words.w1)      ) & 0xFFFF;
 
-    LOG_UCODE("SetPrimDepth: 0x%08x 0x%08x - z: 0x%04x dz: 0x%04x",
-        gfx->words.w0, gfx->words.w1, dwZ, dwDZ);
-    
     SetPrimitiveDepth(dwZ, dwDZ);
 }
 
@@ -1058,18 +1047,15 @@ void DLParser_RDPSetOtherMode(Gfx *gfx)
 void DLParser_RDPLoadSync(Gfx *gfx) 
 { 
     DP_Timing(DLParser_RDPLoadSync);
-    LOG_UCODE("LoadSync: (Ignored)"); 
 }
 
 void DLParser_RDPPipeSync(Gfx *gfx) 
 { 
     DP_Timing(DLParser_RDPPipeSync);
-    LOG_UCODE("PipeSync: (Ignored)"); 
 }
 void DLParser_RDPTileSync(Gfx *gfx) 
 { 
     DP_Timing(DLParser_RDPTileSync);
-    LOG_UCODE("TileSync: (Ignored)"); 
 }
 
 void DLParser_RDPFullSync(Gfx *gfx)
@@ -1139,11 +1125,6 @@ void DLParser_SetScissor(Gfx *gfx)
       CRender::g_pRender->SetViewportRender();
    }
 
-   LOG_UCODE("SetScissor: x0=%d y0=%d x1=%d y1=%d mode=%d",
-         gRDP.scissor.left, gRDP.scissor.top,
-         gRDP.scissor.right, gRDP.scissor.bottom,
-         gRDP.scissor.mode);
-
    ///TXTRBUF_DETAIL_DUMP(DebuggerAppendMsg("SetScissor: x0=%d y0=%d x1=%d y1=%d mode=%d", gRDP.scissor.left, gRDP.scissor.top,
    //gRDP.scissor.right, gRDP.scissor.bottom, gRDP.scissor.mode););
 }
@@ -1202,10 +1183,6 @@ void DLParser_SetCImg(Gfx *gfx)
         WARNING(TRACE4("Check me:  SetCImg Addr=0x%08X, Fmt:%s-%sb, Width=%d\n", 
             g_CI.dwAddr, pszImgFormat[dwFmt], pszImgSize[dwSiz], dwWidth));
     }
-
-    LOG_UCODE("    Image: 0x%08x", RSPSegmentAddr(gfx->words.w1));
-    LOG_UCODE("    Fmt: %s Size: %s Width: %d",
-        pszImgFormat[dwFmt], pszImgSize[dwSiz], dwWidth);
 
     if( g_CI.dwAddr == dwNewAddr && g_CI.dwFormat == dwFmt && g_CI.dwSize == dwSiz && g_CI.dwWidth == dwWidth )
     {
@@ -1284,7 +1261,6 @@ void DLParser_SetCImg(Gfx *gfx)
 void DLParser_SetZImg(Gfx *gfx)
 {
     DP_Timing(DLParser_SetZImg);
-    LOG_UCODE("    Image: 0x%08x", RSPSegmentAddr(gfx->words.w1));
 
     uint32_t dwFmt   = gfx->setimg.fmt;
     uint32_t dwSiz   = gfx->setimg.siz;
@@ -1338,9 +1314,6 @@ void DLParser_SetFillColor(Gfx *gfx)
    ricegDPSetFillColor(gfx->setcolor.fillcolor);
 
    gRDP.originalFillColor = (gfx->setcolor.color);
-
-   LOG_UCODE("    Color5551=0x%04x = 0x%08x", (uint16_t)gfx->words.w1, gRDP.fillColor);
-
 }
 
 
