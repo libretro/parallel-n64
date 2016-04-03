@@ -671,11 +671,12 @@ void glide64gDPFillRectangle(uint32_t ul_x, uint32_t ul_y, uint32_t lr_x, uint32
 
    {
       VERTEX v[4], vout[4];
-      float Z;
+      float Z = 0;
 
       grFogMode (GR_FOG_DISABLE, g_gdp.fog_color.total);
 
-      Z = (((gDP.otherMode.h & RDP_CYCLE_TYPE) >> 20) == 3) ? 0.0f : set_sprite_combine_mode();
+      if (((gDP.otherMode.h & RDP_CYCLE_TYPE) >> 20) != G_CYC_FILL)
+         Z = set_sprite_combine_mode();
 
       memset(v, 0, sizeof(VERTEX) * 4);
 
@@ -697,14 +698,14 @@ void glide64gDPFillRectangle(uint32_t ul_x, uint32_t ul_y, uint32_t lr_x, uint32
       v[3].z = Z;
       v[3].q = 1.0f;
 
-      if (((gDP.otherMode.h & RDP_CYCLE_TYPE) >> 20) == 3)
+      if (((gDP.otherMode.h & RDP_CYCLE_TYPE) >> 20) == G_CYC_FILL)
       {
          uint32_t color = g_gdp.fill_color.total;
 
          if ((settings.hacks&hack_PMario) && rdp.ci_count > 0 && rdp.frame_buffers[rdp.ci_count-1].status == CI_AUX)
          {
-            //background of auxiliary frame buffers must have zero alpha.
-            //make it black, set 0 alpha to plack pixels on frame buffer read
+            /* background of auxiliary frame buffers must have zero alpha.
+             * make it black, set 0 alpha to black pixels on frame buffer read */
             color = 0;
          }
          else if (g_gdp.fb_size < G_IM_SIZ_32b)
@@ -749,7 +750,8 @@ void glide64gDPFillRectangle(uint32_t ul_x, uint32_t ul_y, uint32_t lr_x, uint32
          if (cmb_mode_c == 0x9fff9fff || cmb_mode_a == 0x09ff09ff) //shade
             apply_shading(v);
 
-         if ((gDP.otherMode.l & FORCE_BL) && ((gDP.otherMode.l >> 16) == 0x0550)) //special blender mode for Bomberman64
+         /* special blender mode for Bomberman64 */
+         if ((gDP.otherMode.l & FORCE_BL) && ((gDP.otherMode.l >> 16) == 0x0550))
          {
             grAlphaCombine (GR_COMBINE_FUNCTION_LOCAL,
                   GR_COMBINE_FACTOR_NONE,
