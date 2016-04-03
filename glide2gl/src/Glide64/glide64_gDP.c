@@ -25,7 +25,7 @@ static void glide64gDPLLETriangle(uint32_t w0, uint32_t w1, int shade, int textu
    int xleft, xright, xleft_inc, xright_inc;
    VERTEX vtxbuf[12], *vtx;
 
-   int32_t nbVtxs;
+   int32_t vn;
    int32_t yl, ym, yh;          /* triangle edge y-coordinates */
    int32_t xl, xh, xm;          /* triangle edge x-coordinates */
    int32_t dxldy, dxhdy, dxmdy; /* triangle edge inverse-slopes */
@@ -141,8 +141,8 @@ static void glide64gDPLLETriangle(uint32_t w0, uint32_t w1, int shade, int textu
    dwdx >>= 2;
    dwde >>= 2;
 
-   nbVtxs = 0;
-   vtx = (VERTEX*)&vtxbuf[nbVtxs++];
+   vn = 0;
+   vtx = (VERTEX*)&vtxbuf[vn++];
    memset(vtxbuf, 0, sizeof(vtxbuf));
 
    xleft      = xm;
@@ -187,7 +187,7 @@ static void glide64gDPLLETriangle(uint32_t w0, uint32_t w1, int shade, int textu
          vtx->y = YSCALE(yh);
          vtx->z = ZSCALE(z+dzdx*dx);
          vtx->w = WSCALE(w+dwdx*dx);
-         vtx = &vtxbuf[nbVtxs++];
+         vtx = &vtxbuf[vn++];
       }
       if ((!flip/* && xleft < xright*/) ||
             (flip && xleft > xright))
@@ -206,7 +206,7 @@ static void glide64gDPLLETriangle(uint32_t w0, uint32_t w1, int shade, int textu
          vtx->y = YSCALE(yh);
          vtx->z = ZSCALE(z);
          vtx->w = WSCALE(w);
-         vtx = &vtxbuf[nbVtxs++];
+         vtx = &vtxbuf[vn++];
       }
       xleft += xleft_inc*j;
       xright += xright_inc*j;
@@ -247,7 +247,7 @@ static void glide64gDPLLETriangle(uint32_t w0, uint32_t w1, int shade, int textu
          vtx->y = YSCALE(ym);
          vtx->z = ZSCALE(z+dzdx*dx);
          vtx->w = WSCALE(w+dwdx*dx);
-         vtx = &vtxbuf[nbVtxs++];
+         vtx = &vtxbuf[vn++];
       }
       if ((!flip/* && xleft <= xright*/) ||
             (flip && xleft >= xright))
@@ -266,7 +266,7 @@ static void glide64gDPLLETriangle(uint32_t w0, uint32_t w1, int shade, int textu
          vtx->y = YSCALE(ym);
          vtx->z = ZSCALE(z);
          vtx->w = WSCALE(w);
-         vtx = &vtxbuf[nbVtxs++];
+         vtx = &vtxbuf[vn++];
       }
    }
    xleft_inc = dxldy;
@@ -323,7 +323,7 @@ static void glide64gDPLLETriangle(uint32_t w0, uint32_t w1, int shade, int textu
          vtx->y = YSCALE(yl);
          vtx->z = ZSCALE(z+dzdx*dx);
          vtx->w = WSCALE(w+dwdx*dx);
-         vtx = &vtxbuf[nbVtxs++];
+         vtx = &vtxbuf[vn++];
       }
       if ((!flip/* && xleft <= xright*/) ||
             (flip && xleft >= xright))
@@ -342,7 +342,7 @@ static void glide64gDPLLETriangle(uint32_t w0, uint32_t w1, int shade, int textu
          vtx->y = YSCALE(yl);
          vtx->z = ZSCALE(z);
          vtx->w = WSCALE(w);
-         vtx = &vtxbuf[nbVtxs++];
+         vtx = &vtxbuf[vn++];
       }
    }
 
@@ -352,7 +352,7 @@ static void glide64gDPLLETriangle(uint32_t w0, uint32_t w1, int shade, int textu
 
       update ();
 
-      for (k = 0; k < nbVtxs-1; k++)
+      for (k = 0; k < vn-1; k++)
       {
          VERTEX * v = (VERTEX*)&vtxbuf[k];
          v->x       = v->x * rdp.scale_x + rdp.offset_x;
@@ -378,8 +378,8 @@ static void glide64gDPLLETriangle(uint32_t w0, uint32_t w1, int shade, int textu
          apply_shade_mods (v);
       }
       grCullMode(GR_CULL_DISABLE);
-      ConvertCoordsConvert (vtxbuf, nbVtxs);
-      grDrawVertexArrayContiguous (GR_TRIANGLE_STRIP, nbVtxs-1, vtxbuf);
+      ConvertCoordsConvert (vtxbuf, vn);
+      grDrawVertexArrayContiguous (GR_TRIANGLE_STRIP, vn-1, vtxbuf);
    }
 }
 
