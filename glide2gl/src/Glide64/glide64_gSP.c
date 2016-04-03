@@ -6,7 +6,6 @@
 
 #include "glide64_gSP.h"
 
-static uint32_t pd_col_addr = 0;
 static uint32_t uc8_normale_addr = 0;
 int cur_mtx = 0;
 int vtx_last = 0;
@@ -700,7 +699,7 @@ bool glide64gSPCullVertices( uint32_t v0, uint32_t vn )
 
 void glide64gSPSetVertexColorBase(uint32_t base)
 {
-   pd_col_addr = RSP_SegmentToPhysical(base);
+   gSP.vertexColorBase = RSP_SegmentToPhysical(base);
 }
 
 void glide64gSPCIVertex(uint32_t v, uint32_t n, uint32_t v0)
@@ -715,7 +714,7 @@ void glide64gSPCIVertex(uint32_t v, uint32_t n, uint32_t v0)
    for (i = 0; i < (n * iter); i += iter)
    {
       VERTEX *vert    = (VERTEX*)&rdp.vtx[v0 + (i / iter)];
-      uint8_t *color  = (uint8_t*)&gfx_info.RDRAM[pd_col_addr + (vertex->idx & 0xff)];
+      uint8_t *color  = (uint8_t*)&gfx_info.RDRAM[gSP.vertexColorBase + (vertex->idx & 0xff)];
       float x         = (float)vertex->x;
       float y         = (float)vertex->y;
       float z         = (float)vertex->z;
