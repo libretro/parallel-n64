@@ -62,18 +62,6 @@ typedef struct
    float y;
 } LineEquationType;
 
-typedef struct
-{
-   unsigned int	c2_m2b:2;
-   unsigned int	c1_m2b:2;
-   unsigned int	c2_m2a:2;
-   unsigned int	c1_m2a:2;
-   unsigned int	c2_m1b:2;
-   unsigned int	c1_m1b:2;
-   unsigned int	c2_m1a:2;
-   unsigned int	c1_m1a:2;
-} rdp_blender_setting;
-
 #define EvaLine(li, x, y) ((li->x) * (x) + (li->y) * (y) + (li->d))
 
 static INLINE void glideSetVertexPrimShading(VERTEX *v, uint32_t prim_color)
@@ -1222,14 +1210,12 @@ void update(void)
    //Added by Gonetz.
    if (settings.fog && (g_gdp.flags & UPDATE_FOG_ENABLED))
    {
-      uint16_t blender;
+      uint16_t blender = (uint16_t)(gDP.otherMode.l >> 16);
       g_gdp.flags ^= UPDATE_FOG_ENABLED;
 
-      blender = (uint16_t)(gDP.otherMode.l >> 16);
       if (rdp.flags & FOG_ENABLED)
       {
-         rdp_blender_setting *bl = (rdp_blender_setting*)(&blender);
-         if((gSP.fog.multiplier > 0) && (bl->c1_m1a==3 || bl->c1_m2a == 3 || bl->c2_m1a == 3 || bl->c2_m2a == 3))
+         if((gSP.fog.multiplier > 0) && (gDP.otherMode.c1_m1a==3 || gDP.otherMode.c1_m2a == 3 || gDP.otherMode.c2_m1a == 3 || gDP.otherMode.c2_m2a == 3))
          {
             grFogMode (GR_FOG_WITH_TABLE_ON_FOGCOORD_EXT, g_gdp.fog_color.total);
             rdp.fog_mode = FOG_MODE_ENABLED;
