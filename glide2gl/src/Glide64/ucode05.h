@@ -65,7 +65,7 @@ static void uc5_vertex(uint32_t w0, uint32_t w1)
 
    if (w0 & G_FOG)
    {
-      if (billboarding)
+      if (gSP.matrix.billboard)
          vtx_last = 1;
    }
    else
@@ -96,7 +96,7 @@ static void uc5_moveword(uint32_t w0, uint32_t w1)
    switch (_SHIFTR( w0, 0, 8))
    {
       case 0x02:
-         billboarding = w1 & 1;
+         gSP.matrix.billboard = w1 & 1;
          break;
       case G_MW_CLIP:
          if (((__RSP.w0 >> 8)&0xFFFF) == 0x04)

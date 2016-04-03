@@ -9,7 +9,6 @@ static uint32_t pd_col_addr = 0;
 static uint32_t uc8_normale_addr = 0;
 static float uc8_coord_mod[16];
 int cur_mtx = 0;
-int billboarding = 0;
 uint32_t dma_offset_mtx = 0;
 uint32_t dma_offset_vtx = 0;
 int vtx_last = 0;
@@ -1062,7 +1061,7 @@ void glide64gSPDMAVertex(uint32_t v, uint32_t n, uint32_t v0)
       v->z = x*rdp.dkrproj[prj][0][2] + y*rdp.dkrproj[prj][1][2] + z*rdp.dkrproj[prj][2][2] + rdp.dkrproj[prj][3][2];
       v->w = x*rdp.dkrproj[prj][0][3] + y*rdp.dkrproj[prj][1][3] + z*rdp.dkrproj[prj][2][3] + rdp.dkrproj[prj][3][3];
 
-      if (billboarding)
+      if (gSP.matrix.billboard)
       {
          v->x += rdp.vtx[0].x;
          v->y += rdp.vtx[0].y;

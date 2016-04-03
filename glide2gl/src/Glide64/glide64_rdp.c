@@ -246,6 +246,8 @@ void rdp_new(void)
    rdp.mat_2d.Y          = 0.0f;
    rdp.mat_2d.BaseScaleX = 1.0f;
    rdp.mat_2d.BaseScaleY = 1.0f;
+
+   gSP.matrix.billboard  = 0;
 }
 
 void rdp_free(void)
