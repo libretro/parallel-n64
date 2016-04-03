@@ -325,9 +325,6 @@ int cpu_fb_write = false;
 int cpu_fb_ignore = false;
 int CI_SET = true;
 uint32_t swapped_addr = 0;
-uint32_t ucode5_texshiftaddr = 0;
-uint32_t ucode5_texshiftcount = 0;
-uint16_t ucode5_texshift = 0;
 int depth_buffer_fog;
 
 extern bool frame_dupe;
@@ -391,8 +388,8 @@ void glide64ProcessDList(void)
     rdp.tlut_mode                     = 0; /* is it correct? */
 
   rdp.scissor_set                     = false;
-  ucode5_texshiftaddr                 = 0;
-  ucode5_texshiftcount                = 0;
+  gSP.DMAOffsets.tex_offset           = 0;
+  gSP.DMAOffsets.tex_count            = 0;
   cpu_fb_write                        = false;
   cpu_fb_read_called                  = false;
   cpu_fb_write_called                 = false;
@@ -1105,19 +1102,19 @@ static void rdp_settextureimage(uint32_t w0, uint32_t w1)
          RSP_SegmentToPhysical(w1)           /* address */
          );
 
-   if (ucode5_texshiftaddr)
+   if (gSP.DMAOffsets.tex_offset)
    {
       if (g_gdp.ti_format == G_IM_FMT_RGBA)
       {
-         uint16_t * t         = (uint16_t*)(gfx_info.RDRAM+ucode5_texshiftaddr);
-         ucode5_texshift      = t[ucode5_texshiftcount^1];
-         g_gdp.ti_address    += ucode5_texshift;
+         uint16_t * t               = (uint16_t*)(gfx_info.RDRAM + gSP.DMAOffsets.tex_offset);
+         gSP.DMAOffsets.tex_shift   = t[gSP.DMAOffsets.tex_count ^ 1];
+         g_gdp.ti_address          += gSP.DMAOffsets.tex_shift;
       }
       else
       {
-         ucode5_texshiftaddr  = 0;
-         ucode5_texshift      = 0;
-         ucode5_texshiftcount = 0;
+         gSP.DMAOffsets.tex_offset  = 0;
+         gSP.DMAOffsets.tex_shift   = 0;
+         gSP.DMAOffsets.tex_count   = 0;
       }
    }
 
@@ -1979,8 +1976,8 @@ void glide64ProcessRDPList(void)
    if (rdp.vi_org_reg != *gfx_info.VI_ORIGIN_REG)
       rdp.tlut_mode     = 0; //is it correct?
    rdp.scissor_set      = false;
-   ucode5_texshiftaddr  = 0;
-   ucode5_texshiftcount = 0;
+   gSP.DMAOffsets.tex_offset  = 0;
+   gSP.DMAOffsets.tex_count   = 0;
    cpu_fb_write         = false;
    cpu_fb_read_called   = false;
    cpu_fb_write_called  = false;

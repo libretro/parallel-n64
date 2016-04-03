@@ -450,17 +450,17 @@ void glide64gDPLoadBlock( uint32_t tile, uint32_t ul_s, uint32_t ul_t,
    if (rdp.skip_drawing)
       return;
 
-   if (ucode5_texshiftaddr)
+   if (gSP.DMAOffsets.tex_offset)
    {
-      if (ucode5_texshift % ((lr_s+1)<<3))
+      if (gSP.DMAOffsets.tex_shift % ((lr_s+1)<<3))
       {
-         g_gdp.ti_address -= ucode5_texshift;
-         ucode5_texshiftaddr = 0;
-         ucode5_texshift = 0;
-         ucode5_texshiftcount = 0;
+         g_gdp.ti_address -= gSP.DMAOffsets.tex_shift;
+         gSP.DMAOffsets.tex_offset = 0;
+         gSP.DMAOffsets.tex_shift  = 0;
+         gSP.DMAOffsets.tex_count  = 0;
       }
       else
-         ucode5_texshiftcount++;
+         gSP.DMAOffsets.tex_count++;
    }
 
    rdp.addr[g_gdp.tile[tile].tmem] = g_gdp.ti_address;

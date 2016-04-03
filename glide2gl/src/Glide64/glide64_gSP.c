@@ -9,9 +9,6 @@ static uint32_t pd_col_addr = 0;
 static uint32_t uc8_normale_addr = 0;
 int cur_mtx = 0;
 int vtx_last = 0;
-extern uint32_t ucode5_texshiftaddr;
-extern uint32_t ucode5_texshiftcount;
-extern uint16_t ucode5_texshift;
 
 typedef struct 
 {
@@ -1186,9 +1183,8 @@ void glide64gSPBranchList(uint32_t dl)
 
 void glide64gSPSetDMATexOffset(uint32_t addr)
 {
-   ucode5_texshiftaddr  = RSP_SegmentToPhysical(addr);
-
-   ucode5_texshiftcount = 0;
+   gSP.DMAOffsets.tex_offset = RSP_SegmentToPhysical(addr);
+   gSP.DMAOffsets.tex_count  = 0;
 }
 
 void glide64gSPTexture(int32_t sc, int32_t tc, int32_t level, 
