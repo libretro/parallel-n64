@@ -30,6 +30,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "Timing.h"
 
 #include "../../Graphics/GBI.h"
+#include "../../Graphics/RDP/gDP_state.h"
 
 extern FiddledVtx * g_pVtxBase;
 
@@ -250,8 +251,8 @@ void InitRenderBase()
 
 
     gRDP.geometryMode   = 0;
-    gRDP.otherModeL     = 0;
-    gRDP.otherModeH     = 0;
+    gDP.otherMode.l     = 0;
+    gDP.otherMode.h     = 0;
     gRDP.fillColor      = 0xFFFFFFFF;
     gRDP.originalFillColor  =0;
 

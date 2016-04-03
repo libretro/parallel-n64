@@ -23,6 +23,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "../../libretro/libretro_private.h"
 #include "../../Graphics/RDP/gDP_funcs_prot.h"
+#include "../../Graphics/RDP/gDP_state.h"
 #include "../../Graphics/RSP/RSP_state.h"
 
 #include "ConvertImage.h"
@@ -1010,17 +1011,17 @@ void DLParser_RDPSetOtherMode(Gfx *gfx)
     gRDP.otherMode._u32[1] = (gfx->words.w0);   // High
     gRDP.otherMode._u32[0] = (gfx->words.w1);   // Low
 
-    if( gRDP.otherModeH != ((gfx->words.w0) & 0x0FFFFFFF) )
+    if( gDP.otherMode.h != ((gfx->words.w0) & 0x0FFFFFFF) )
     {
-        gRDP.otherModeH = ((gfx->words.w0) & 0x0FFFFFFF);
+        gDP.otherMode.h = ((gfx->words.w0) & 0x0FFFFFFF);
 
-        uint32_t dwTextFilt  = (gRDP.otherModeH >> G_MDSFT_TEXTFILT)&0x3;
+        uint32_t dwTextFilt  = (gDP.otherMode.h >> G_MDSFT_TEXTFILT)&0x3;
         CRender::g_pRender->SetTextureFilter(dwTextFilt << G_MDSFT_TEXTFILT);
     }
 
-    if( gRDP.otherModeL != (gfx->words.w1) )
+    if( gDP.otherMode.l != (gfx->words.w1) )
     {
-        if( (gRDP.otherModeL & ZMODE_DECAL) != ((gfx->words.w1) & ZMODE_DECAL) )
+        if( (gDP.otherMode.l & ZMODE_DECAL) != ((gfx->words.w1) & ZMODE_DECAL) )
         {
             if( ((gfx->words.w1) & ZMODE_DECAL) == ZMODE_DECAL )
                 CRender::g_pRender->SetZBias( 2 );
@@ -1028,15 +1029,15 @@ void DLParser_RDPSetOtherMode(Gfx *gfx)
                 CRender::g_pRender->SetZBias( 0 );
         }
 
-        gRDP.otherModeL = (gfx->words.w1);
+        gDP.otherMode.l = (gfx->words.w1);
 
-        bool bZCompare      = (gRDP.otherModeL & Z_COMPARE) ? true : false;
-        bool bZUpdate       = (gRDP.otherModeL & Z_UPDATE)  ? true : false;
+        bool bZCompare      = (gDP.otherMode.l & Z_COMPARE) ? true : false;
+        bool bZUpdate       = (gDP.otherMode.l & Z_UPDATE)  ? true : false;
 
         CRender::g_pRender->SetZCompare( bZCompare );
         CRender::g_pRender->SetZUpdate( bZUpdate );
 
-        uint32_t dwAlphaTestMode = (gRDP.otherModeL >> G_MDSFT_ALPHACOMPARE) & 0x3;
+        uint32_t dwAlphaTestMode = (gDP.otherMode.l >> G_MDSFT_ALPHACOMPARE) & 0x3;
 
         if ((dwAlphaTestMode) != 0)
             CRender::g_pRender->SetAlphaTestEnable( true );

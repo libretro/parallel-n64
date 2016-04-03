@@ -815,11 +815,11 @@ void RSP_GBI2_SetOtherModeL(Gfx *gfx)
     uint32_t dwMask = (uint32_t)((int32_t)(0x80000000)>>dwLength)>>dwShift;
     dwData &= dwMask;
 
-    uint32_t modeL = gRDP.otherModeL;
+    uint32_t modeL = gDP.otherMode.l;
     modeL = (modeL&(~dwMask)) | dwData;
 
     Gfx tempgfx;
-    tempgfx.words.w0 = gRDP.otherModeH;
+    tempgfx.words.w0 = gDP.otherMode.h;
     tempgfx.words.w1 = modeL;
     DLParser_RDPSetOtherMode(&tempgfx );
 }
@@ -834,12 +834,12 @@ void RSP_GBI2_SetOtherModeH(Gfx *gfx)
     uint32_t dwData  = (gfx->words.w1);
 
     uint32_t dwMask2 = ((1<<dwLength)-1)<<dwShift;
-    uint32_t dwModeH = gRDP.otherModeH;
+    uint32_t dwModeH = gDP.otherMode.h;
     dwModeH = (dwModeH&(~dwMask2)) | dwData;
 
     Gfx tempgfx;
     tempgfx.words.w0 = dwModeH;
-    tempgfx.words.w1 = gRDP.otherModeL;
+    tempgfx.words.w1 = gDP.otherMode.l;
     DLParser_RDPSetOtherMode(&tempgfx );
 }
 

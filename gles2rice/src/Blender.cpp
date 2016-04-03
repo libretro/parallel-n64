@@ -18,6 +18,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "Render.h"
 
+#include "../../Graphics/RDP/gDP_state.h"
+
 const char * sc_szBlClr[4]      = { "In", "Mem", "Bl", "Fog" };
 const char * sc_szBlA1[4]       = { "AIn", "AFog", "AShade", "0" };
 const char * sc_szBlA2[4]       = { "1-A", "AMem", "1", "0" };
@@ -168,7 +170,7 @@ void CBlender::InitBlenderMode(void)                    // Set Alpha Blender mod
                   Disable();
                }
 
-               render->SetAlphaTestEnable( ((gRDP.otherModeL >> G_MDSFT_ALPHACOMPARE) & 0x3)==1 ? true : false);
+               render->SetAlphaTestEnable( ((gDP.otherMode.l >> G_MDSFT_ALPHACOMPARE) & 0x3)==1 ? true : false);
                break;
             case BLEND_PASS+(BLEND_OPA>>2):
                // 0x0c19
