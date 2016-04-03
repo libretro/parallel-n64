@@ -6,7 +6,6 @@
 
 #include "glide64_gSP.h"
 
-static uint32_t uc8_normale_addr = 0;
 int cur_mtx = 0;
 int vtx_last = 0;
 
@@ -784,7 +783,7 @@ void glide64gSPCIVertex(uint32_t v, uint32_t n, uint32_t v0)
 
 void glide64gSPSetVertexNormaleBase(uint32_t base)
 {
-   uc8_normale_addr = RSP_SegmentToPhysical(base);
+   gSP.vertexNormalBase = RSP_SegmentToPhysical(base);
 }
 
 void glide64gSPCBFDVertex(uint32_t a, uint32_t n, uint32_t v0)
@@ -854,8 +853,8 @@ void glide64gSPCBFDVertex(uint32_t a, uint32_t n, uint32_t v0)
          float light_intensity, color[3];
          uint32_t shift = v0 << 1;
 
-         vert->vec[0]   = ((int8_t*)gfx_info.RDRAM)[(uc8_normale_addr + (i>>3) + shift + 0)^3];
-         vert->vec[1]   = ((int8_t*)gfx_info.RDRAM)[(uc8_normale_addr + (i>>3) + shift + 1)^3];
+         vert->vec[0]   = ((int8_t*)gfx_info.RDRAM)[(gSP.vertexNormalBase + (i>>3) + shift + 0)^3];
+         vert->vec[1]   = ((int8_t*)gfx_info.RDRAM)[(gSP.vertexNormalBase + (i>>3) + shift + 1)^3];
          vert->vec[2]   = (int8_t)(vert->flags & 0xff);
 
          if (rdp.geom_mode & G_TEXTURE_GEN_LINEAR)
