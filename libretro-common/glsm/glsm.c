@@ -492,6 +492,7 @@ void rglBindFramebuffer(GLenum target, GLuint framebuffer)
       glBindFramebuffer(target, framebuffer);
       gl_state.framebuf = framebuffer;
    }
+
 }
 
 void rglGenerateMipmap(GLenum target)
