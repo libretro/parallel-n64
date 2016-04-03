@@ -7,7 +7,6 @@
 
 static uint32_t pd_col_addr = 0;
 static uint32_t uc8_normale_addr = 0;
-static float uc8_coord_mod[16];
 int cur_mtx = 0;
 int vtx_last = 0;
 extern uint32_t ucode5_texshiftaddr;
@@ -889,10 +888,10 @@ void glide64gSPCBFDVertex(uint32_t a, uint32_t n, uint32_t v0)
 
                if (rdp.light[l].ca > 0.0f)
                {
-                  float vx = (vert->x + uc8_coord_mod[8])*uc8_coord_mod[12] - rdp.light[l].x;
-                  float vy = (vert->y + uc8_coord_mod[9])*uc8_coord_mod[13] - rdp.light[l].y;
-                  float vz = (vert->z + uc8_coord_mod[10])*uc8_coord_mod[14] - rdp.light[l].z;
-                  float vw = (vert->w + uc8_coord_mod[11])*uc8_coord_mod[15] - rdp.light[l].w;
+                  float vx = (vert->x + gSP.vertexCoordMod[8])*gSP.vertexCoordMod[12] - rdp.light[l].x;
+                  float vy = (vert->y + gSP.vertexCoordMod[9])*gSP.vertexCoordMod[13] - rdp.light[l].y;
+                  float vz = (vert->z + gSP.vertexCoordMod[10])*gSP.vertexCoordMod[14] - rdp.light[l].z;
+                  float vw = (vert->w + gSP.vertexCoordMod[11])*gSP.vertexCoordMod[15] - rdp.light[l].w;
                   float len = (vx*vx+vy*vy+vz*vz+vw*vw)/65536.0f;
                   float p_i = rdp.light[l].ca / len;
                   if (p_i > 1.0f)
@@ -918,10 +917,10 @@ void glide64gSPCBFDVertex(uint32_t a, uint32_t n, uint32_t v0)
             {
                if (rdp.light[l].nonblack && rdp.light[l].nonzero)
                {
-                  float vx = (vert->x + uc8_coord_mod[8])*uc8_coord_mod[12] - rdp.light[l].x;
-                  float vy = (vert->y + uc8_coord_mod[9])*uc8_coord_mod[13] - rdp.light[l].y;
-                  float vz = (vert->z + uc8_coord_mod[10])*uc8_coord_mod[14] - rdp.light[l].z;
-                  float vw = (vert->w + uc8_coord_mod[11])*uc8_coord_mod[15] - rdp.light[l].w;
+                  float vx = (vert->x + gSP.vertexCoordMod[8])*gSP.vertexCoordMod[12] - rdp.light[l].x;
+                  float vy = (vert->y + gSP.vertexCoordMod[9])*gSP.vertexCoordMod[13] - rdp.light[l].y;
+                  float vz = (vert->z + gSP.vertexCoordMod[10])*gSP.vertexCoordMod[14] - rdp.light[l].z;
+                  float vw = (vert->w + gSP.vertexCoordMod[11])*gSP.vertexCoordMod[15] - rdp.light[l].w;
                   float len = (vx*vx+vy*vy+vz*vz+vw*vw)/65536.0f;
                   light_intensity = rdp.light[l].ca / len;
                   if (light_intensity > 1.0f)
@@ -955,21 +954,21 @@ void glide64gSPCoordMod(uint32_t w0, uint32_t w1)
    pos = w0 & 0x30;
    if (pos == 0)
    {
-      uc8_coord_mod[0+idx] = (int16_t)(w1 >> 16);
-      uc8_coord_mod[1+idx] = (int16_t)(w1 & 0xffff);
+      gSP.vertexCoordMod[0+idx] = (int16_t)(w1 >> 16);
+      gSP.vertexCoordMod[1+idx] = (int16_t)(w1 & 0xffff);
    }
    else if (pos == 0x10)
    {
-      uc8_coord_mod[4+idx]  = (w1 >> 16) / 65536.0f;
-      uc8_coord_mod[5+idx]  = (w1 & 0xffff) / 65536.0f;
-      uc8_coord_mod[12+idx] = uc8_coord_mod[0+idx] + uc8_coord_mod[4+idx];
-      uc8_coord_mod[13+idx] = uc8_coord_mod[1+idx] + uc8_coord_mod[5+idx];
+      gSP.vertexCoordMod[4+idx]  = (w1 >> 16) / 65536.0f;
+      gSP.vertexCoordMod[5+idx]  = (w1 & 0xffff) / 65536.0f;
+      gSP.vertexCoordMod[12+idx] = gSP.vertexCoordMod[0+idx] + gSP.vertexCoordMod[4+idx];
+      gSP.vertexCoordMod[13+idx] = gSP.vertexCoordMod[1+idx] + gSP.vertexCoordMod[5+idx];
 
    }
    else if (pos == 0x20)
    {
-      uc8_coord_mod[8+idx] = (int16_t)(w1 >> 16);
-      uc8_coord_mod[9+idx] = (int16_t)(w1 & 0xffff);
+      gSP.vertexCoordMod[8+idx] = (int16_t)(w1 >> 16);
+      gSP.vertexCoordMod[9+idx] = (int16_t)(w1 & 0xffff);
    }
 }
 
