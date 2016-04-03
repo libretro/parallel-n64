@@ -1747,428 +1747,44 @@ void DetectFrameBufferUsage(void)
    //rdp.scale_y = rdp.scale_y_bak;
 }
 
-/*******************************************
- *          ProcessRDPList                 *
- *******************************************
- *    based on sources of ziggy's z64      *
- *******************************************/
-
-#define XSCALE(x) ((float)(x)/(1<<18))
-#define YSCALE(y) ((float)(y)/(1<<2))
-#define ZSCALE(z) ((g_gdp.other_modes.z_source_sel == 1) ? (float)(g_gdp.prim_color.z) : (float)((uint32_t)(z))/0xffff0000)
-#define PERSP_EN  ((rdp.othermode_h & RDP_PERSP_TEX_ENABLE))
-#define WSCALE(z) 1.0f/(PERSP_EN? ((float)((uint32_t)(z) + 0x10000)/0xffff0000) : 1.0f)
-#define CSCALE(c) (((c)>0x3ff0000? 0x3ff0000:((c)<0? 0 : (c)))>>18)
-#define _PERSP(w) ( w )
-#define PERSP(s, w) ( ((int64_t)(s) << 20) / (_PERSP(w)? _PERSP(w):1) )
-#define SSCALE(s, _w) (PERSP_EN ? (float)(PERSP(s, _w))/(1 << 10) : (float)(s)/(1<<21))
-#define TSCALE(s, w)  (PERSP_EN ? (float)(PERSP(s, w))/(1 << 10) : (float)(s)/(1<<21))
-
-
-static void lle_triangle(uint32_t w0, uint32_t w1, int shade, int texture, int zbuffer, uint32_t *rdp_cmd)
-{
-   int j;
-   int xleft, xright, xleft_inc, xright_inc;
-   VERTEX vtxbuf[12], *vtx;
-
-   int32_t nbVtxs;
-   int32_t yl, ym, yh;          /* triangle edge y-coordinates */
-   int32_t xl, xh, xm;          /* triangle edge x-coordinates */
-   int32_t dxldy, dxhdy, dxmdy; /* triangle edge inverse-slopes */
-
-   uint32_t w2, w3, w4, w5, w6, w7;
-
-   int r = 0xff;
-   int g = 0xff;
-   int b = 0xff;
-   int a = 0xff;
-   int z = 0xffff0000;
-   int s = 0;
-   int t = 0;
-   int w = 0x30000;
-
-   int drdx = 0, dgdx = 0, dbdx = 0, dadx = 0, dzdx = 0, dsdx = 0, dtdx = 0, dwdx = 0;
-   int drde = 0, dgde = 0, dbde = 0, dade = 0, dzde = 0, dsde = 0, dtde = 0, dwde = 0;
-   int flip = (w0 & 0x800000) ? 1 : 0;
-   uint32_t * shade_base = rdp_cmd + 8;
-   uint32_t * texture_base = rdp_cmd + 8;
-   uint32_t * zbuffer_base = rdp_cmd + 8;
-
-   if (shade)
-   {
-      texture_base += 16;
-      zbuffer_base += 16;
-   }
-   if (texture)
-   {
-      zbuffer_base += 16;
-   }
-
-   w2 = rdp_cmd[2];
-   w3 = rdp_cmd[3];
-   w4 = rdp_cmd[4];
-   w5 = rdp_cmd[5];
-   w6 = rdp_cmd[6];
-   w7 = rdp_cmd[7];
-
-   /* triangle edge y-coordinates */
-   yl = (w0 & 0x3fff);
-   ym = ((w1 >> 16) & 0x3fff);
-   yh = ((w1 >> 0) & 0x3fff);
-
-   /* triangle edge x-coordinates */
-   xl = (int32_t)(w2);
-   xh = (int32_t)(w4);
-   xm = (int32_t)(w6);
-
-   /* triangle edge inverse-slopes */
-   dxldy = (int32_t)(w3);
-   dxhdy = (int32_t)(w5);
-   dxmdy = (int32_t)(w7);
-
-   rdp.cur_tile = (w0 >> 16) & 0x7;
-
-
-   if (yl & (0x800<<2)) yl |= 0xfffff000<<2;
-   if (ym & (0x800<<2)) ym |= 0xfffff000<<2;
-   if (yh & (0x800<<2)) yh |= 0xfffff000<<2;
-
-   yh &= ~3;
-
-
-   if (shade)
-   {
-      r = (shade_base[0] & 0xffff0000) | ((shade_base[+4 ] >> 16) & 0x0000ffff);
-      g = ((shade_base[0 ] << 16) & 0xffff0000) | (shade_base[4 ] & 0x0000ffff);
-      b = (shade_base[1 ] & 0xffff0000) | ((shade_base[5 ] >> 16) & 0x0000ffff);
-      a = ((shade_base[1 ] << 16) & 0xffff0000) | (shade_base[5 ] & 0x0000ffff);
-      drdx = (shade_base[2 ] & 0xffff0000) | ((shade_base[6 ] >> 16) & 0x0000ffff);
-      dgdx = ((shade_base[2 ] << 16) & 0xffff0000) | (shade_base[6 ] & 0x0000ffff);
-      dbdx = (shade_base[3 ] & 0xffff0000) | ((shade_base[7 ] >> 16) & 0x0000ffff);
-      dadx = ((shade_base[3 ] << 16) & 0xffff0000) | (shade_base[7 ] & 0x0000ffff);
-      drde = (shade_base[8 ] & 0xffff0000) | ((shade_base[12] >> 16) & 0x0000ffff);
-      dgde = ((shade_base[8 ] << 16) & 0xffff0000) | (shade_base[12] & 0x0000ffff);
-      dbde = (shade_base[9 ] & 0xffff0000) | ((shade_base[13] >> 16) & 0x0000ffff);
-      dade = ((shade_base[9 ] << 16) & 0xffff0000) | (shade_base[13] & 0x0000ffff);
-   }
-   if (texture)
-   {
-      s = (texture_base[0 ] & 0xffff0000) | ((texture_base[4 ] >> 16) & 0x0000ffff);
-      t = ((texture_base[0 ] << 16) & 0xffff0000) | (texture_base[4 ] & 0x0000ffff);
-      w = (texture_base[1 ] & 0xffff0000) | ((texture_base[5 ] >> 16) & 0x0000ffff);
-      // w = abs(w);
-      dsdx = (texture_base[2 ] & 0xffff0000) | ((texture_base[6 ] >> 16) & 0x0000ffff);
-      dtdx = ((texture_base[2 ] << 16) & 0xffff0000) | (texture_base[6 ] & 0x0000ffff);
-      dwdx = (texture_base[3 ] & 0xffff0000) | ((texture_base[7 ] >> 16) & 0x0000ffff);
-      dsde = (texture_base[8 ] & 0xffff0000) | ((texture_base[12] >> 16) & 0x0000ffff);
-      dtde = ((texture_base[8 ] << 16) & 0xffff0000) | (texture_base[12] & 0x0000ffff);
-      dwde = (texture_base[9 ] & 0xffff0000) | ((texture_base[13] >> 16) & 0x0000ffff);
-   }
-   if (zbuffer)
-   {
-      z = zbuffer_base[0];
-      dzdx = zbuffer_base[1];
-      dzde = zbuffer_base[2];
-   }
-
-   xh <<= 2;
-   xm <<= 2;
-   xl <<= 2;
-   r <<= 2;
-   g <<= 2;
-   b <<= 2;
-   a <<= 2;
-   dsde >>= 2;
-   dtde >>= 2;
-   dsdx >>= 2;
-   dtdx >>= 2;
-   dzdx >>= 2;
-   dzde >>= 2;
-   dwdx >>= 2;
-   dwde >>= 2;
-
-   nbVtxs = 0;
-   vtx = (VERTEX*)&vtxbuf[nbVtxs++];
-   memset(vtxbuf, 0, sizeof(vtxbuf));
-
-   xleft      = xm;
-   xright     = xh;
-   xleft_inc  = dxmdy;
-   xright_inc = dxhdy;
-
-   while (yh<ym &&
-         !((!flip && xleft < xright+0x10000) ||
-            (flip && xleft > xright-0x10000))) {
-      xleft += xleft_inc;
-      xright += xright_inc;
-      s += dsde;
-      t += dtde;
-      w += dwde;
-      r += drde;
-      g += dgde;
-      b += dbde;
-      a += dade;
-      z += dzde;
-      yh++;
-   }
-
-   j = ym-yh;
-   if (j > 0)
-   {
-      int dx = (xleft-xright)>>16;
-      if ((!flip && xleft < xright) ||
-            (flip/* && xleft > xright*/))
-      {
-         if (shade) {
-            vtx->r = CSCALE(r+drdx*dx);
-            vtx->g = CSCALE(g+dgdx*dx);
-            vtx->b = CSCALE(b+dbdx*dx);
-            vtx->a = CSCALE(a+dadx*dx);
-         }
-         if (texture) {
-            vtx->ou = SSCALE(s+dsdx*dx, w+dwdx*dx);
-            vtx->ov = TSCALE(t+dtdx*dx, w+dwdx*dx);
-         }
-         vtx->x = XSCALE(xleft);
-         vtx->y = YSCALE(yh);
-         vtx->z = ZSCALE(z+dzdx*dx);
-         vtx->w = WSCALE(w+dwdx*dx);
-         vtx = &vtxbuf[nbVtxs++];
-      }
-      if ((!flip/* && xleft < xright*/) ||
-            (flip && xleft > xright))
-      {
-         if (shade) {
-            vtx->r = CSCALE(r);
-            vtx->g = CSCALE(g);
-            vtx->b = CSCALE(b);
-            vtx->a = CSCALE(a);
-         }
-         if (texture) {
-            vtx->ou = SSCALE(s, w);
-            vtx->ov = TSCALE(t, w);
-         }
-         vtx->x = XSCALE(xright);
-         vtx->y = YSCALE(yh);
-         vtx->z = ZSCALE(z);
-         vtx->w = WSCALE(w);
-         vtx = &vtxbuf[nbVtxs++];
-      }
-      xleft += xleft_inc*j;
-      xright += xright_inc*j;
-      s += dsde*j;
-      t += dtde*j;
-      if (w + dwde*j)
-         w += dwde*j;
-      else
-         w += dwde*(j-1);
-      r += drde*j;
-      g += dgde*j;
-      b += dbde*j;
-      a += dade*j;
-      z += dzde*j;
-      // render ...
-   }
-
-   if (xl != xh)
-      xleft = xl;
-
-   //if (yl-ym > 0)
-   {
-      int dx = (xleft-xright)>>16;
-      if ((!flip && xleft <= xright) ||
-            (flip/* && xleft >= xright*/))
-      {
-         if (shade) {
-            vtx->r = CSCALE(r+drdx*dx);
-            vtx->g = CSCALE(g+dgdx*dx);
-            vtx->b = CSCALE(b+dbdx*dx);
-            vtx->a = CSCALE(a+dadx*dx);
-         }
-         if (texture) {
-            vtx->ou = SSCALE(s+dsdx*dx, w+dwdx*dx);
-            vtx->ov = TSCALE(t+dtdx*dx, w+dwdx*dx);
-         }
-         vtx->x = XSCALE(xleft);
-         vtx->y = YSCALE(ym);
-         vtx->z = ZSCALE(z+dzdx*dx);
-         vtx->w = WSCALE(w+dwdx*dx);
-         vtx = &vtxbuf[nbVtxs++];
-      }
-      if ((!flip/* && xleft <= xright*/) ||
-            (flip && xleft >= xright))
-      {
-         if (shade) {
-            vtx->r = CSCALE(r);
-            vtx->g = CSCALE(g);
-            vtx->b = CSCALE(b);
-            vtx->a = CSCALE(a);
-         }
-         if (texture) {
-            vtx->ou = SSCALE(s, w);
-            vtx->ov = TSCALE(t, w);
-         }
-         vtx->x = XSCALE(xright);
-         vtx->y = YSCALE(ym);
-         vtx->z = ZSCALE(z);
-         vtx->w = WSCALE(w);
-         vtx = &vtxbuf[nbVtxs++];
-      }
-   }
-   xleft_inc = dxldy;
-   xright_inc = dxhdy;
-
-   j = yl-ym;
-   //j--; // ?
-   xleft += xleft_inc*j;
-   xright += xright_inc*j;
-   s += dsde*j;
-   t += dtde*j;
-   w += dwde*j;
-   r += drde*j;
-   g += dgde*j;
-   b += dbde*j;
-   a += dade*j;
-   z += dzde*j;
-
-   while (yl>ym &&
-         !((!flip && xleft < xright+0x10000) ||
-            (flip && xleft > xright-0x10000)))
-   {
-      xleft -= xleft_inc;
-      xright -= xright_inc;
-      s -= dsde;
-      t -= dtde;
-      w -= dwde;
-      r -= drde;
-      g -= dgde;
-      b -= dbde;
-      a -= dade;
-      z -= dzde;
-      j--;
-      yl--;
-   }
-
-   // render ...
-   if (j >= 0) {
-      int dx = (xleft-xright)>>16;
-      if ((!flip && xleft <= xright) ||
-            (flip/* && xleft >= xright*/))
-      {
-         if (shade) {
-            vtx->r = CSCALE(r+drdx*dx);
-            vtx->g = CSCALE(g+dgdx*dx);
-            vtx->b = CSCALE(b+dbdx*dx);
-            vtx->a = CSCALE(a+dadx*dx);
-         }
-         if (texture) {
-            vtx->ou = SSCALE(s+dsdx*dx, w+dwdx*dx);
-            vtx->ov = TSCALE(t+dtdx*dx, w+dwdx*dx);
-         }
-         vtx->x = XSCALE(xleft);
-         vtx->y = YSCALE(yl);
-         vtx->z = ZSCALE(z+dzdx*dx);
-         vtx->w = WSCALE(w+dwdx*dx);
-         vtx = &vtxbuf[nbVtxs++];
-      }
-      if ((!flip/* && xleft <= xright*/) ||
-            (flip && xleft >= xright))
-      {
-         if (shade) {
-            vtx->r = CSCALE(r);
-            vtx->g = CSCALE(g);
-            vtx->b = CSCALE(b);
-            vtx->a = CSCALE(a);
-         }
-         if (texture) {
-            vtx->ou = SSCALE(s, w);
-            vtx->ov = TSCALE(t, w);
-         }
-         vtx->x = XSCALE(xright);
-         vtx->y = YSCALE(yl);
-         vtx->z = ZSCALE(z);
-         vtx->w = WSCALE(w);
-         vtx = &vtxbuf[nbVtxs++];
-      }
-   }
-
-   //if (fullscreen)
-   {
-      int k;
-
-      update ();
-
-      for (k = 0; k < nbVtxs-1; k++)
-      {
-         VERTEX * v = (VERTEX*)&vtxbuf[k];
-         v->x       = v->x * rdp.scale_x + rdp.offset_x;
-         v->y       = v->y * rdp.scale_y + rdp.offset_y;
-         // v->z = 1.0f;///v->w;
-         v->q       = 1.0f/v->w;
-         v->u[1]    = v->u[0] = v->ou;
-         v->v[1]    = v->v[0] = v->ov;
-
-         if (rdp.tex >= 1 && rdp.cur_cache[0])
-         {
-            draw_tri_uv_calculation_update_shift(rdp.cur_tile, 0, v);
-            v->u[0] /= v->w;
-            v->v[0] /= v->w;
-         }
-
-         if (rdp.tex >= 2 && rdp.cur_cache[1])
-         {
-            draw_tri_uv_calculation_update_shift(rdp.cur_tile, 1, v);
-            v->u[1] /= v->w;
-            v->v[1] /= v->w;
-         }
-         apply_shade_mods (v);
-      }
-      grCullMode(GR_CULL_DISABLE);
-      ConvertCoordsConvert (vtxbuf, nbVtxs);
-      grDrawVertexArrayContiguous (GR_TRIANGLE_STRIP, nbVtxs-1, vtxbuf);
-   }
-}
-
-#define rdp_triangle(w0, w1, shade, texture, zbuffer, wptr) lle_triangle(w0, w1, shade, texture, zbuffer, (wptr))
-
 static void rdp_trifill(uint32_t w0, uint32_t w1)
 {
-   rdp_triangle(w0, w1, 0, 0, 0, __RDP.cmd_data + __RDP.cmd_cur);
+   glide64gDPTriangle(w0, w1, 0, 0, 0);
 }
 
 static void rdp_trishade(uint32_t w0, uint32_t w1)
 {
-   rdp_triangle(w0, w1, 1, 0, 0, __RDP.cmd_data + __RDP.cmd_cur);
+   glide64gDPTriangle(w0, w1, 1, 0, 0);
 }
 
 static void rdp_tritxtr(uint32_t w0, uint32_t w1)
 {
-   rdp_triangle(w0, w1, 0, 1, 0, __RDP.cmd_data + __RDP.cmd_cur);
+   glide64gDPTriangle(w0, w1, 0, 1, 0);
 }
 
 static void rdp_trishadetxtr(uint32_t w0, uint32_t w1)
 {
-   rdp_triangle(w0, w1, 1, 1, 0, __RDP.cmd_data + __RDP.cmd_cur);
+   glide64gDPTriangle(w0, w1, 1, 1, 0);
 }
 
 static void rdp_trifillz(uint32_t w0, uint32_t w1)
 {
-   rdp_triangle(w0, w1, 0, 0, 1, __RDP.cmd_data + __RDP.cmd_cur);
+   glide64gDPTriangle(w0, w1, 0, 0, 1);
 }
 
 static void rdp_trishadez(uint32_t w0, uint32_t w1)
 {
-   rdp_triangle(w0, w1, 1, 0, 1, __RDP.cmd_data + __RDP.cmd_cur);
+   glide64gDPTriangle(w0, w1, 1, 0, 1);
 }
 
 static void rdp_tritxtrz(uint32_t w0, uint32_t w1)
 {
-   rdp_triangle(w0, w1, 0, 1, 1, __RDP.cmd_data + __RDP.cmd_cur);
+   glide64gDPTriangle(w0, w1, 0, 1, 1);
 }
 
 static void rdp_trishadetxtrz(uint32_t w0, uint32_t w1)
 {
-   rdp_triangle(w0, w1, 1, 1, 1, __RDP.cmd_data + __RDP.cmd_cur);
+   glide64gDPTriangle(w0, w1, 1, 1, 1);
 }
 
 

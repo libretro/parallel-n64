@@ -8,6 +8,7 @@ extern "C" {
 #endif
 
 /* Glide64 prototypes */
+void glide64gDPTriangle(uint32_t w0, uint32_t w1, int shade, int texture, int zbuffer);
 void glide64gSPClipRatio(uint32_t r);
 void glide64gDPSetScissor( uint32_t mode, float ulx, float uly, float lrx, float lry );
 void glide64gDPLoadBlock( uint32_t tile, uint32_t ul_s, uint32_t ul_t,
