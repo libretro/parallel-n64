@@ -171,7 +171,7 @@ void glide64gSPLookAt(uint32_t l, uint32_t n)
    rdp.lookat[n][0] = (float)(dir_x) / 127.0f;
    rdp.lookat[n][1] = (float)(dir_y) / 127.0f;
    rdp.lookat[n][2] = (float)(dir_z) / 127.0f;
-   rdp.use_lookat = (n == 0) || (n == 1 && (dir_x || dir_y));
+   gSP.lookatEnable = (n == 0) || (n == 1 && (dir_x || dir_y));
 }
 
 void glide64gSPLight(uint32_t l, int32_t n)

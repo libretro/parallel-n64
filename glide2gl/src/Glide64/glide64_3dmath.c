@@ -46,6 +46,7 @@
 #include "3dmath.h"
 
 #include "../../Graphics/3dmath.h"
+#include "../../Graphics/RSP/gSP_state.h"
 
 void InverseTransformVector (float *src, float *dst, float mat[4][4])
 {
@@ -107,7 +108,7 @@ void calc_sphere (VERTEX *v)
    x = v->vec[0];
    y = v->vec[1];
 
-   if (rdp.use_lookat)
+   if (gSP.lookatEnable)
    {
       x = DotProduct (rdp.lookat[0], v->vec);
       y = DotProduct (rdp.lookat[1], v->vec);
@@ -130,7 +131,7 @@ void calc_linear (VERTEX *v)
    TransformVectorNormalize(v->vec, rdp.model);
    x = v->vec[0];
    y = v->vec[1];
-   if (rdp.use_lookat)
+   if (gSP.lookatEnable)
    {
       x = DotProduct (rdp.lookat[0], v->vec);
       y = DotProduct (rdp.lookat[1], v->vec);

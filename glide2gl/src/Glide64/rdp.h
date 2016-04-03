@@ -489,7 +489,6 @@ struct RDP
    LIGHT light[12];
    float light_vector[12][3];
    float lookat[2][3];
-   int  use_lookat;
 
    // Combine modes
    uint32_t cycle1, cycle2;

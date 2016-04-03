@@ -246,7 +246,7 @@ static void uc9_fmlight(uint32_t w0, uint32_t w1)
       float dir_z = (float)(((int8_t*)gfx_info.DMEM)[(a+10)^3]) / 127.0f;
       if (sqrt(dir_x*dir_x + dir_y*dir_y + dir_z*dir_z) < 0.98)
       {
-         rdp.use_lookat = false;
+         gSP.lookatEnable = false;
          return;
       }
       rdp.lookat[i][0] = dir_x;
@@ -254,7 +254,7 @@ static void uc9_fmlight(uint32_t w0, uint32_t w1)
       rdp.lookat[i][2] = dir_z;
       a += 24;
    }
-   rdp.use_lookat = true;
+   gSP.lookatEnable = true;
 }
 
 static void uc9_light(uint32_t w0, uint32_t w1)
