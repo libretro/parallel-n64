@@ -45,8 +45,11 @@
 
 #include <math.h>
 #include "Gfx_1.3.h"
+
 #include "../../../Graphics/GBI.h"
 #include "../../../Graphics/image_convert.h"
+#include "../../../Graphics/RDP/gDP_state.h"
+
 #include "Framebuffer_glide64.h"
 #include "TexCache.h"
 #include "../Glitch64/glide.h"
@@ -461,7 +464,7 @@ static int SetupFBtoScreenCombiner(uint32_t texture_size, uint32_t opaque)
             FXFALSE,
             FXFALSE );
    }
-   filter = (rdp.filter_mode != 2) ? GR_TEXTUREFILTER_POINT_SAMPLED : GR_TEXTUREFILTER_BILINEAR;
+   filter = (gDP.otherMode.textureFilter == 2) ? GR_TEXTUREFILTER_BILINEAR : GR_TEXTUREFILTER_POINT_SAMPLED;
 
    grTexFilterClampMode (tmu,
          GR_TEXTURECLAMP_CLAMP,

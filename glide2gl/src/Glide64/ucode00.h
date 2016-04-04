@@ -224,11 +224,7 @@ static void uc0_setothermode_h(uint32_t w0, uint32_t w1)
    gDP.otherMode.h  = (gDP.otherMode.h & ~mask) | __RSP.w1;
 
    if (mask & 0x00003000) // filter mode
-   {
-      rdp.filter_mode = (int)((gDP.otherMode.h & 0x00003000) >> 12);
       g_gdp.flags |= UPDATE_TEXTURE;
-      FRDP ("filter mode: %s\n", str_filter[rdp.filter_mode]);
-   }
 
    if (mask & 0x00300000) // cycle type
       g_gdp.flags |= UPDATE_ZBUF_ENABLED;

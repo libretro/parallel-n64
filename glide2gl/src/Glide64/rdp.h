@@ -407,7 +407,6 @@ struct RDP
 
    int     t0, t1;
    int     tex;
-   int     filter_mode;
 
    // Texture palette
    uint16_t pal_8[256];

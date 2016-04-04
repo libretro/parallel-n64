@@ -721,7 +721,7 @@ void TexCache(void)
                mode_t = GR_TEXTURECLAMP_MIRROR_EXT;
 
             if (settings.filtering == 0)
-               filter = (rdp.filter_mode!=2)?GR_TEXTUREFILTER_POINT_SAMPLED:GR_TEXTUREFILTER_3POINT_LINEAR;
+               filter = (gDP.otherMode.textureFilter == 2)? GR_TEXTUREFILTER_3POINT_LINEAR : GR_TEXTUREFILTER_POINT_SAMPLED;
             else
                filter = (settings.filtering==1)? GR_TEXTUREFILTER_3POINT_LINEAR : (settings.filtering==2)?GR_TEXTUREFILTER_POINT_SAMPLED:GR_TEXTUREFILTER_BILINEAR;
             grTexFilterClampMode (tmu, mode_s, mode_t, filter, filter);
