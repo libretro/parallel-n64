@@ -1259,11 +1259,9 @@ void CRender::SetVertexTextureUVCoord(TLITVERTEX &v, const TexCord &fTex0_, cons
         // Hack for Zelda Sun
         gDPTile *t0 = &gDP.tiles[0];
         gDPTile *t1 = &gDP.tiles[1];
-        TileAdditionalInfo *t0info = &gRDP.tilesinfo[0];
-        TileAdditionalInfo *t1info = &gRDP.tilesinfo[1];
-        if( t0->format == G_IM_FMT_I && t0->size == G_IM_SIZ_8b && t0info->dwWidth == 64 &&
-            t1->format == G_IM_FMT_I && t1->size == G_IM_SIZ_8b && t1info->dwWidth == 64 &&
-            t0info->dwHeight == t1info->dwHeight )
+        if( t0->format == G_IM_FMT_I && t0->size == G_IM_SIZ_8b && t0->width == 64 &&
+            t1->format == G_IM_FMT_I && t1->size == G_IM_SIZ_8b && t1->width == 64 &&
+            t0->height == t1->height )
         {
             fTex0.u /= 2;
             fTex0.v /= 2;

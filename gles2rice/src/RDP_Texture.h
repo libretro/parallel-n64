@@ -258,11 +258,11 @@ bool CalculateTileSizes_method_2(int tileno, TMEMLoadMapInfo *info, TxtrInfo &gt
 
     ComputeTileDimension(tile->masks, tile->clamps,
         tile->mirrors, dwTileWidth, gti.WidthToCreate, gti.WidthToLoad);
-    tileinfo->dwWidth = gti.WidthToCreate;
+    tile->width = gti.WidthToCreate;
 
     ComputeTileDimension(tile->maskt, tile->clampt,
         tile->mirrort, dwTileHeight, gti.HeightToCreate, gti.HeightToLoad);
-    tileinfo->dwHeight = gti.HeightToCreate;
+    tile->height = gti.HeightToCreate;
 
     gti.bSwapped = info->bSwapped;
 
@@ -345,13 +345,11 @@ bool CalculateTileSizes_method_2(int tileno, TMEMLoadMapInfo *info, TxtrInfo &gt
         if( gti.WidthToLoad > gti.HeightToLoad )
         {
             uint32_t newheight = (dwPitch << 1 )>> tile->size;
-            tileinfo->dwWidth = gti.WidthToLoad = gti.WidthToCreate = MIN(newheight, (gti.WidthToLoad&0xFFFFFFFE));
-            tileinfo->dwHeight = gti.HeightToCreate = gti.HeightToLoad = ((0x200 - tile->tmem) << (4-tile->size)) / gti.WidthToLoad;
+            tile->width = gti.WidthToLoad = gti.WidthToCreate = MIN(newheight, (gti.WidthToLoad&0xFFFFFFFE));
+            tile->height = gti.HeightToCreate = gti.HeightToLoad = ((0x200 - tile->tmem) << (4-tile->size)) / gti.WidthToLoad;
         }
         else
-        {
-            tileinfo->dwHeight = gti.HeightToCreate = gti.HeightToLoad = info->dwTotalWords / ((gti.WidthToLoad << tile->size) >> 1);
-        }
+            tile->height = gti.HeightToCreate = gti.HeightToLoad = info->dwTotalWords / ((gti.WidthToLoad << tile->size) >> 1);
     }
 
     // Check the info
@@ -364,7 +362,7 @@ bool CalculateTileSizes_method_2(int tileno, TMEMLoadMapInfo *info, TxtrInfo &gt
 
     //Check memory boundary
     if( gti.Address + gti.HeightToLoad*gti.Pitch >= g_dwRamSize )
-        gti.HeightToCreate = gti.HeightToLoad = tileinfo->dwHeight = (g_dwRamSize-gti.Address)/gti.Pitch;
+        gti.HeightToCreate = gti.HeightToLoad = tile->height = (g_dwRamSize-gti.Address)/gti.Pitch;
 
     return true;
 }
@@ -549,29 +547,29 @@ bool CalculateTileSizes_method_1(int tileno, TMEMLoadMapInfo *info, TxtrInfo &gt
     {
         gti.WidthToLoad = linewidth ? MIN( linewidth, maskwidth ? MIN(clampwidth,maskwidth) : clampwidth ) : clampwidth;
         if( tile->masks && clampwidth < maskwidth )
-            tileinfo->dwWidth = gti.WidthToCreate = clampwidth;
+            tile->width = gti.WidthToCreate = clampwidth;
         else
-            tileinfo->dwWidth = gti.WidthToCreate = MAX(clampwidth,maskwidth);
+            tile->width = gti.WidthToCreate = MAX(clampwidth,maskwidth);
     }
     else
     {
         gti.WidthToLoad = loadwidth > 2 ? MIN(loadwidth,maskwidth) : maskwidth;
         if( linewidth ) gti.WidthToLoad = MIN( linewidth, (int)gti.WidthToLoad );
-        tileinfo->dwWidth = gti.WidthToCreate = maskwidth;
+        tile->width = gti.WidthToCreate = maskwidth;
     }
 
     if( tile->maskt == 0 || tile->clampt )
     {
         gti.HeightToLoad = maskheight ? MIN(clampheight,maskheight) : clampheight;
         if( tile->maskt && clampheight < maskheight )
-            tileinfo->dwHeight = gti.HeightToCreate = clampheight;
+            tile->height = gti.HeightToCreate = clampheight;
         else
-            tileinfo->dwHeight = gti.HeightToCreate = MAX(clampheight,maskheight);
+            tile->height = gti.HeightToCreate = MAX(clampheight,maskheight);
     }
     else
     {
         gti.HeightToLoad = loadheight > 2 ? MIN(loadheight,maskheight) : maskheight;
-        tileinfo->dwHeight = gti.HeightToCreate = maskheight;
+        tile->height     = gti.HeightToCreate = maskheight;
     }
 
     if( options.enableHackForGames == HACK_FOR_MARIO_KART )
@@ -591,12 +589,12 @@ bool CalculateTileSizes_method_1(int tileno, TMEMLoadMapInfo *info, TxtrInfo &gt
         if( gti.WidthToLoad > gti.HeightToLoad )
         {
             uint32_t newheight = (tileinfo->dwPitch << 1 )>> tile->size;
-            tileinfo->dwWidth = gti.WidthToLoad = gti.WidthToCreate = MIN(newheight, (gti.WidthToLoad&0xFFFFFFFE));
-            tileinfo->dwHeight = gti.HeightToCreate = gti.HeightToLoad = ((0x200 - tile->tmem) << (4-tile->size)) / gti.WidthToLoad;
+            tile->width  = gti.WidthToLoad = gti.WidthToCreate = MIN(newheight, (gti.WidthToLoad&0xFFFFFFFE));
+            tile->height = gti.HeightToCreate = gti.HeightToLoad = ((0x200 - tile->tmem) << (4-tile->size)) / gti.WidthToLoad;
         }
         else
         {
-            tileinfo->dwHeight = gti.HeightToCreate = gti.HeightToLoad = info->dwTotalWords / ((gti.WidthToLoad << tile->size) >> 1);
+            tile->height = gti.HeightToCreate = gti.HeightToLoad = info->dwTotalWords / ((gti.WidthToLoad << tile->size) >> 1);
         }
     }
 
@@ -612,7 +610,7 @@ bool CalculateTileSizes_method_1(int tileno, TMEMLoadMapInfo *info, TxtrInfo &gt
     if( gti.Address + gti.HeightToLoad*gti.Pitch >= g_dwRamSize )
     {
         WARNING(TRACE0("Warning: texture loading tmem is over range 3"));
-        gti.HeightToCreate = gti.HeightToLoad = tileinfo->dwHeight = (g_dwRamSize-gti.Address)/gti.Pitch;
+        gti.HeightToCreate = gti.HeightToLoad = tile->height = (g_dwRamSize-gti.Address)/gti.Pitch;
     }
 
     return true;

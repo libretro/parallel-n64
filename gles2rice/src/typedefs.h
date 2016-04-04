@@ -75,9 +75,6 @@ typedef struct
 
     uint32_t dwPitch;
 
-    uint32_t dwWidth;
-    uint32_t dwHeight;
-
     float fShiftScaleS;
     float fShiftScaleT;
 

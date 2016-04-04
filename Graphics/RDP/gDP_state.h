@@ -46,6 +46,9 @@ struct gDPCombine
 struct FrameBuffer;
 struct gDPTile
 {
+   uint32_t   width;
+   uint32_t  height;
+
 	uint32_t  format;               /* e.g. RGBA, YUV, etc. */
    uint32_t    size;               /* e.g. 4/8/16/32bpp    */
    uint32_t    line;             
