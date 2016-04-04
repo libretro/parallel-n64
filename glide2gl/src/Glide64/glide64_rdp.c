@@ -472,7 +472,7 @@ static void colorimage_yoshis_story_memrect(uint16_t ul_x, uint16_t ul_y,
   uint32_t width     = lr_x - ul_x;
   uint32_t tex_width = g_gdp.tile[tileno].line << 3;
   uint8_t *texaddr   = (uint8_t*)(gfx_info.RDRAM + rdp.addr[g_gdp.tile[tileno].tmem] + tex_width*off_y + off_x);
-  uint8_t *fbaddr    = (uint8_t*)(gfx_info.RDRAM + rdp.colorImage.address + ul_x);
+  uint8_t *fbaddr    = (uint8_t*)(gfx_info.RDRAM + gDP.colorImage.address + ul_x);
 
   if (lr_y > g_gdp.__clip.yl)
     lr_y = g_gdp.__clip.yl;
@@ -480,7 +480,7 @@ static void colorimage_yoshis_story_memrect(uint16_t ul_x, uint16_t ul_y,
   for (y = ul_y; y < lr_y; y++)
   {
     uint8_t *src = (uint8_t*)(texaddr + (y - ul_y) * tex_width);
-    uint8_t *dst = (uint8_t*)(fbaddr + y * rdp.colorImage.width);
+    uint8_t *dst = (uint8_t*)(fbaddr + y * gDP.colorImage.width);
     memcpy (dst, src, width);
   }
 }
@@ -497,7 +497,7 @@ static void colorimage_palette_modification(void)
    uint16_t prmg       = (uint8_t)(g_gdp.prim_color.g * 0.0039215689f * 31.0f);
    uint16_t prmb       = (uint8_t)(g_gdp.prim_color.b * 0.0039215689f * 31.0f);
    uint16_t prim16     = (uint16_t)((prmr << 11)|(prmg << 6)|(prmb << 1)|1);
-   uint16_t *ptr_dst   = (uint16_t*)(gfx_info.RDRAM + rdp.colorImage.address);
+   uint16_t *ptr_dst   = (uint16_t*)(gfx_info.RDRAM + gDP.colorImage.address);
 
    for (i = 0; i < 16; i++)
       ptr_dst[i^1] = (rdp.pal_8[i]&1) ? prim16 : env16;
@@ -511,7 +511,7 @@ static void colorimage_zbuffer_copy(uint32_t w0, uint32_t w1)
    uint16_t      ul_u = (uint16_t)((__RDP.w2 & 0xFFFF0000) >> 21) + 1;
    uint16_t     width = lr_x - ul_x;
    uint16_t  *ptr_src = ((uint16_t*)g_gdp.tmem)+ul_u;
-   uint16_t  *ptr_dst = (uint16_t*)(gfx_info.RDRAM + rdp.colorImage.address);
+   uint16_t  *ptr_dst = (uint16_t*)(gfx_info.RDRAM + gDP.colorImage.address);
 
    for (x = 0; x < width; x++)
    {
@@ -576,7 +576,7 @@ static void rdp_texrect(uint32_t w0, uint32_t w1)
       return;
    }
 
-   if (rdp.skip_drawing || (!fb_emulation_enabled && (rdp.colorImage.address == g_gdp.zb_address)))
+   if (rdp.skip_drawing || (!fb_emulation_enabled && (gDP.colorImage.address == g_gdp.zb_address)))
    {
       if ((settings.hacks&hack_PMario) && rdp.ci_status == CI_USELESS)
          colorimage_palette_modification();
@@ -650,9 +650,9 @@ static void rdp_texrect(uint32_t w0, uint32_t w1)
 
    /*Gonetz*/
    //hack for Zelda MM. it removes black texrects which cover all geometry in "Link meets Zelda" cut scene
-   if ((settings.hacks&hack_Zelda) && g_gdp.ti_address >= rdp.colorImage.address && g_gdp.ti_address < rdp.ci_end)
+   if ((settings.hacks&hack_Zelda) && g_gdp.ti_address >= gDP.colorImage.address && g_gdp.ti_address < rdp.ci_end)
    {
-      FRDP("Wrong Texrect. texaddr: %08lx, cimg: %08lx, cimg_end: %08lx\n", rdp.cur_cache[0]->addr, rdp.colorImage.address, rdp.colorImage.address + rdp.colorImage.width*rdp.colorImage.height*2);
+      FRDP("Wrong Texrect. texaddr: %08lx, cimg: %08lx, cimg_end: %08lx\n", rdp.cur_cache[0]->addr, gDP.colorImage.address, gDP.colorImage.address + gDP.colorImage.width*gDP.colorImage.height*2);
       return;
    }
 
@@ -665,13 +665,13 @@ static void rdp_texrect(uint32_t w0, uint32_t w1)
          (    settings.ucode == ucode_PerfectDark)
          && (rdp.maincimg[1].addr != rdp.maincimg[0].addr)
          && (g_gdp.ti_address >= rdp.maincimg[1].addr)
-         && (g_gdp.ti_address < (rdp.maincimg[1].addr+rdp.colorImage.width * rdp.colorImage.height* g_gdp.fb_size))
+         && (g_gdp.ti_address < (rdp.maincimg[1].addr + gDP.colorImage.width * gDP.colorImage.height* g_gdp.fb_size))
       )
    {
       if (fb_emulation_enabled)
       {
          /* FRDP("Wrong Texrect. texaddr: %08lx, cimg: %08lx, cimg_end: %08lx\n",
-          * g_gdp.ti_address, rdp.maincimg[1], rdp.maincimg[1]+rdp.colorImage.width * rdp.colorImage.height * g_gdp.fb_size); */
+          * g_gdp.ti_address, rdp.maincimg[1], rdp.maincimg[1] + gDP.colorImage.width * gDP.colorImage.height * g_gdp.fb_size); */
          if (rdp.ci_count > 0 && rdp.frame_buffers[rdp.ci_count-1].status == CI_COPY_SELF)
             return;
       }
@@ -1104,7 +1104,7 @@ static void rdp_settextureimage(uint32_t w0, uint32_t w1)
 
    rdp.s2dex_tex_loaded = true;
 
-   if (rdp.ci_count > 0 && rdp.frame_buffers[rdp.ci_count-1].status == CI_COPY_SELF && (g_gdp.ti_address >= rdp.colorImage.address) && (g_gdp.ti_address < rdp.ci_end))
+   if (rdp.ci_count > 0 && rdp.frame_buffers[rdp.ci_count-1].status == CI_COPY_SELF && (g_gdp.ti_address >= gDP.colorImage.address) && (g_gdp.ti_address < rdp.ci_end))
    {
       if (!rdp.fb_drawn)
       {
@@ -1121,7 +1121,7 @@ static void rdp_setdepthimage(uint32_t w0, uint32_t w1)
    /* TODO/FIXME - different from Angrylion's value */
    g_gdp.zb_address = RSP_SegmentToPhysical(w1);
 
-   rdp.zi_width = rdp.colorImage.width;
+   rdp.zi_width = gDP.colorImage.width;
 }
 
 int SwapOK = true;
@@ -1182,7 +1182,7 @@ static void rdp_setcolorimage(uint32_t w0, uint32_t w1)
          case CI_COPY:
             if (!rdp.motionblur || (settings.frame_buffer&fb_motionblur))
             {
-               if (cur_fb->width == rdp.colorImage.width)
+               if (cur_fb->width == gDP.colorImage.width)
                {
                   {
                      if (!rdp.fb_drawn || prev_fb->status == CI_COPY_SELF)
@@ -1191,7 +1191,7 @@ static void rdp_setcolorimage(uint32_t w0, uint32_t w1)
                         rdp.fb_drawn = true;
                      }
                      memcpy(gfx_info.RDRAM+cur_fb->addr,
-                           gfx_info.RDRAM + rdp.colorImage.address,
+                           gfx_info.RDRAM + gDP.colorImage.address,
                            (cur_fb->width*cur_fb->height)<<cur_fb->size>>1);
                   }
                }
@@ -1211,7 +1211,7 @@ static void rdp_setcolorimage(uint32_t w0, uint32_t w1)
          case CI_OLD_COPY:
             if (!rdp.motionblur || (settings.frame_buffer&fb_motionblur))
             {
-               if (cur_fb->width == rdp.colorImage.width)
+               if (cur_fb->width == gDP.colorImage.width)
                   memcpy(gfx_info.RDRAM+cur_fb->addr,
                         gfx_info.RDRAM+rdp.maincimg[1].addr,
                         (cur_fb->width*cur_fb->height)<<cur_fb->size>>1);
@@ -1311,24 +1311,24 @@ static void rdp_setcolorimage(uint32_t w0, uint32_t w1)
       rdp.ci_count++;
    }
 
-   rdp.ocimg              = rdp.colorImage.address;
-   rdp.colorImage.address = RSP_SegmentToPhysical(w1);
-   rdp.colorImage.width           = (w0 & 0xFFF) + 1;
+   rdp.ocimg              = gDP.colorImage.address;
+   gDP.colorImage.address = RSP_SegmentToPhysical(w1);
+   gDP.colorImage.width           = (w0 & 0xFFF) + 1;
 
    if (fb_emulation_enabled && rdp.ci_count > 0)
-      rdp.colorImage.height = rdp.frame_buffers[rdp.ci_count-1].height;
-   else if (rdp.colorImage.width == 32)
-      rdp.colorImage.height = 32;
+      gDP.colorImage.height = rdp.frame_buffers[rdp.ci_count-1].height;
+   else if (gDP.colorImage.width == 32)
+      gDP.colorImage.height = 32;
    else
-      rdp.colorImage.height = g_gdp.__clip.yl;
+      gDP.colorImage.height = g_gdp.__clip.yl;
 
-   if (g_gdp.zb_address == rdp.colorImage.address)
+   if (g_gdp.zb_address == gDP.colorImage.address)
    {
-      rdp.zi_width = rdp.colorImage.width;
+      rdp.zi_width = gDP.colorImage.width;
       // int zi_height = MIN((int)rdp.zi_width*3/4, (int)rdp.vi_height);
       // rdp.zi_words = rdp.zi_width * zi_height;
    }
-   rdp.ci_end = rdp.colorImage.address + ((rdp.colorImage.width*rdp.colorImage.height) << (g_gdp.fb_size-1));
+   rdp.ci_end = gDP.colorImage.address + ((gDP.colorImage.width * gDP.colorImage.height) << (g_gdp.fb_size-1));
 
    if (g_gdp.fb_format != G_IM_FMT_RGBA) //can't draw into non RGBA buffer
    {
@@ -1348,19 +1348,19 @@ static void rdp_setcolorimage(uint32_t w0, uint32_t w1)
    {
       int viSwapOK;
 
-      if (g_gdp.zb_address == rdp.colorImage.address)
+      if (g_gdp.zb_address == gDP.colorImage.address)
          rdp.updatescreen = 1;
 
       viSwapOK = ((settings.swapmode == 2) && (rdp.vi_org_reg == *gfx_info.VI_ORIGIN_REG)) ? false : true;
-      if ((g_gdp.zb_address != rdp.colorImage.address) && (rdp.ocimg != rdp.colorImage.address) && SwapOK && viSwapOK
+      if ((g_gdp.zb_address != gDP.colorImage.address) && (rdp.ocimg != gDP.colorImage.address) && SwapOK && viSwapOK
             )
       {
          if (fb_emulation_enabled)
             rdp.maincimg[0] = rdp.frame_buffers[rdp.main_ci_index];
          else
-            rdp.maincimg[0].addr = rdp.colorImage.address;
+            rdp.maincimg[0].addr = gDP.colorImage.address;
          rdp.last_drawn_ci_addr = (settings.swapmode == 2) ? swapped_addr : rdp.maincimg[0].addr;
-         swapped_addr = rdp.colorImage.address;
+         swapped_addr = gDP.colorImage.address;
          newSwapBuffers();
          rdp.vi_org_reg = *gfx_info.VI_ORIGIN_REG;
          SwapOK = false;
@@ -1403,26 +1403,26 @@ void glide64FBRead(uint32_t addr)
   cpu_fb_read_called = true;
   a = RSP_SegmentToPhysical(addr);
 
-  if (!rdp.fb_drawn && (a >= rdp.colorImage.address) && (a < rdp.ci_end))
+  if (!rdp.fb_drawn && (a >= gDP.colorImage.address) && (a < rdp.ci_end))
   {
     fbreads_back++;
-    //if (fbreads_back > 2) //&& (rdp.colorImage.width <= 320))
+    //if (fbreads_back > 2) //&& (gDP.colorImage.width <= 320))
     {
        CopyFrameBuffer (GR_BUFFER_BACKBUFFER);
       rdp.fb_drawn = true;
     }
   }
-  if (!rdp.fb_drawn_front && (a >= rdp.maincimg[1].addr) && (a < rdp.maincimg[1].addr + rdp.colorImage.width*rdp.colorImage.height*2))
+  if (!rdp.fb_drawn_front && (a >= rdp.maincimg[1].addr) && (a < rdp.maincimg[1].addr + gDP.colorImage.width * gDP.colorImage.height*2))
   {
     fbreads_front++;
-    //if (fbreads_front > 2)//&& (rdp.colorImage.width <= 320))
+    //if (fbreads_front > 2)//&& (gDP.colorImage.width <= 320))
     {
-      uint32_t cimg = rdp.colorImage.address;
-      rdp.colorImage.address = rdp.maincimg[1].addr;
+      uint32_t cimg = gDP.colorImage.address;
+      gDP.colorImage.address = rdp.maincimg[1].addr;
       if (fb_emulation_enabled)
       {
         uint32_t h;
-        rdp.colorImage.width = rdp.maincimg[1].width;
+        gDP.colorImage.width = rdp.maincimg[1].width;
         rdp.ci_count = 0;
         h = rdp.frame_buffers[0].height;
         rdp.frame_buffers[0].height = rdp.maincimg[1].height;
@@ -1433,7 +1433,7 @@ void glide64FBRead(uint32_t addr)
       {
         CopyFrameBuffer(GR_BUFFER_FRONTBUFFER);
       }
-      rdp.colorImage.address = cimg;
+      gDP.colorImage.address = cimg;
       rdp.fb_drawn_front     = true;
     }
   }
@@ -1466,17 +1466,17 @@ void glide64FBWrite(uint32_t addr, uint32_t size)
   cpu_fb_write_called = true;
   a                   = RSP_SegmentToPhysical(addr);
 
-  if (a < rdp.colorImage.address || a > rdp.ci_end)
+  if (a < gDP.colorImage.address || a > rdp.ci_end)
     return;
 
   cpu_fb_write = true;
-  shift_l      = (a - rdp.colorImage.address) >> 1;
+  shift_l      = (a - gDP.colorImage.address) >> 1;
   shift_r      = shift_l+2;
 
-  part_framebuf.d_ul_x       = MIN(part_framebuf.d_ul_x, shift_l%rdp.colorImage.width);
-  part_framebuf.d_ul_y       = MIN(part_framebuf.d_ul_y, shift_l/rdp.colorImage.width);
-  part_framebuf.d_lr_x       = MAX(part_framebuf.d_lr_x, shift_r%rdp.colorImage.width);
-  part_framebuf.d_lr_y       = MAX(part_framebuf.d_lr_y, shift_r/rdp.colorImage.width);
+  part_framebuf.d_ul_x       = MIN(part_framebuf.d_ul_x, shift_l % gDP.colorImage.width);
+  part_framebuf.d_ul_y       = MIN(part_framebuf.d_ul_y, shift_l / gDP.colorImage.width);
+  part_framebuf.d_lr_x       = MAX(part_framebuf.d_lr_x, shift_r % gDP.colorImage.width);
+  part_framebuf.d_lr_y       = MAX(part_framebuf.d_lr_y, shift_r / gDP.colorImage.width);
 }
 
 
@@ -1543,12 +1543,12 @@ void glide64FBGetFrameBufferInfo(void *p)
    {
       pinfo[0].addr   = rdp.maincimg[0].addr;
       pinfo[0].size   = g_gdp.fb_size;
-      pinfo[0].width  = rdp.colorImage.width;
-      pinfo[0].height = rdp.colorImage.width*3/4;
+      pinfo[0].width  = gDP.colorImage.width;
+      pinfo[0].height = gDP.colorImage.width*3/4;
       pinfo[1].addr   = rdp.maincimg[1].addr;
       pinfo[1].size   = g_gdp.fb_size;
-      pinfo[1].width  = rdp.colorImage.width;
-      pinfo[1].height = rdp.colorImage.width*3/4;
+      pinfo[1].width  = gDP.colorImage.width;
+      pinfo[1].height = gDP.colorImage.width*3/4;
    }
 }
 
@@ -1564,7 +1564,7 @@ void DetectFrameBufferUsage(void)
    if (dlist_start == 0)
       return;
 
-   ci                   = rdp.colorImage.address;
+   ci                   = gDP.colorImage.address;
    zi                   = g_gdp.zb_address;
 
    rdp.main_ci_last_tex_addr = 0;
@@ -1616,7 +1616,7 @@ void DetectFrameBufferUsage(void)
 
    if (rdp.ci_count > NUMTEXBUF) //overflow
    {
-      rdp.colorImage.address = ci;
+      gDP.colorImage.address = ci;
       g_gdp.zb_address       = zi;
       rdp.num_of_ci          = rdp.ci_count;
       rdp.scale_x            = rdp.scale_x_bak;
@@ -1673,7 +1673,7 @@ void DetectFrameBufferUsage(void)
    }
 #endif
 
-   rdp.colorImage.address = ci;
+   gDP.colorImage.address = ci;
    g_gdp.zb_address       = zi;
    rdp.num_of_ci          = rdp.ci_count;
 
@@ -1698,17 +1698,17 @@ void DetectFrameBufferUsage(void)
             if (settings.frame_buffer&fb_motionblur)
                CopyFrameBuffer (GR_BUFFER_BACKBUFFER);
             else
-               memset(gfx_info.RDRAM + rdp.colorImage.address,
+               memset(gfx_info.RDRAM + gDP.colorImage.address,
                      0,
-                     rdp.colorImage.width * rdp.colorImage.height * g_gdp.fb_size);
+                     gDP.colorImage.width * gDP.colorImage.height * g_gdp.fb_size);
          }
          else //if (ci_width == rdp.frame_buffers[rdp.main_ci_index].width)
          {
             if (rdp.maincimg[0].height > 65) //for 1080
             {
                uint32_t h;
-               rdp.colorImage.address      = rdp.maincimg[0].addr;
-               rdp.colorImage.width        = rdp.maincimg[0].width;
+               gDP.colorImage.address      = rdp.maincimg[0].addr;
+               gDP.colorImage.width        = rdp.maincimg[0].width;
                rdp.ci_count                = 0;
                h                           = rdp.frame_buffers[0].height;
                rdp.frame_buffers[0].height = rdp.maincimg[0].height;

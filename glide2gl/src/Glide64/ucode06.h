@@ -228,13 +228,13 @@ static void DrawImage (DRAWIMAGE *d)
          return;
    }
 
-   if (rdp.colorImage.width == 512 && !no_dlist) //RE2
+   if (gDP.colorImage.width == 512 && !no_dlist) //RE2
    {
       uint16_t width = (uint16_t)(*gfx_info.VI_WIDTH_REG & 0xFFF);
       d->frameH      = d->imageH = (d->frameW * d->frameH)/width;
       d->frameW      = d->imageW = width;
 
-      if (g_gdp.zb_address == rdp.colorImage.address)
+      if (g_gdp.zb_address == gDP.colorImage.address)
       {
          DrawDepthImage(d);
          g_gdp.flags |= UPDATE_ZBUF_ENABLED | UPDATE_COMBINE |
@@ -258,9 +258,9 @@ static void DrawImage (DRAWIMAGE *d)
    }
    else
    {
-      if ( (d->frameX > 0) && (d->frameW == rdp.colorImage.width) )
+      if ( (d->frameX > 0) && (d->frameW == gDP.colorImage.width) )
          d->frameW -= (uint16_t)(2.0f*d->frameX);
-      if ( (d->frameY > 0) && (d->frameH == rdp.colorImage.height) )
+      if ( (d->frameY > 0) && (d->frameH == gDP.colorImage.height) )
          d->frameH -= (uint16_t)(2.0f*d->frameY);
    }
 
@@ -331,7 +331,7 @@ static void DrawImage (DRAWIMAGE *d)
       uint32_t minx = 0;
       uint32_t miny = 0;
       uint32_t maxx, maxy;
-      if (rdp.colorImage.width == 512 && !no_dlist)
+      if (gDP.colorImage.width == 512 && !no_dlist)
       {
          maxx = settings.scr_res_x;
          maxy = settings.scr_res_y;
@@ -559,7 +559,7 @@ static void uc6_bg(bool first_cycle)
    if (settings.ucode == ucode_F3DEX2/* || (settings.hacks&hack_PPL)*/)
    {
       /* can't draw from framebuffer */
-      if (d.imagePtr == rdp.colorImage.address || d.imagePtr == rdp.ocimg)
+      if (d.imagePtr == gDP.colorImage.address || d.imagePtr == rdp.ocimg)
          return;
       if (!d.imagePtr)
          return;
@@ -1004,7 +1004,7 @@ static void DrawYUVImageToFrameBuffer(uint16_t ul_x, uint16_t ul_y, uint16_t lr_
    uint16_t h, w, *dst;
    uint32_t width, height, *mb;
 
-   uint32_t ci_width  = rdp.colorImage.width;
+   uint32_t ci_width  = gDP.colorImage.width;
    uint32_t ci_height = rdp.ci_lower_bound;
 
    if (ul_x >= ci_width)
@@ -1021,7 +1021,7 @@ static void DrawYUVImageToFrameBuffer(uint16_t ul_x, uint16_t ul_y, uint16_t lr_
       height = ci_height - ul_y;
 
    mb   = (uint32_t*)(gfx_info.RDRAM + g_gdp.ti_address); //pointer to the first macro block
-   dst  = (uint16_t*)(gfx_info.RDRAM + rdp.colorImage.address);
+   dst  = (uint16_t*)(gfx_info.RDRAM + gDP.colorImage.address);
    dst += ul_x + ul_y * ci_width;
 
    /* YUV macro block contains 16x16 texture. 

@@ -414,13 +414,6 @@ struct RDP
    // used to check if in texrect while loading texture
    uint8_t texrecting;
 
-   struct
-   {
-      uint32_t format, size, width, height, bpl;
-      uint32_t address, changed;
-      uint32_t depthImage;
-   } colorImage;
-
    //frame buffer related slots. Added by Gonetz
    uint32_t ocimg, tmpzimg, vi_org_reg;
    COLOR_IMAGE maincimg[2];
