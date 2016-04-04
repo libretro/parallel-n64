@@ -40,6 +40,7 @@
 #ifndef _GLIDE64_UCODE_GENERIC_H
 #define _GLIDE64_UCODE_GENERIC_H
 
+
 #define ucode_Fast3D 0        // ** F3D     **
 #define ucode_F3DEX 1         // ** F3DEX   **
 #define ucode_F3DEX2 2        // ** F3DEX2  **
@@ -52,6 +53,7 @@
 #define ucode_zSort 9         // ** ZSORT   **
 #define ucode_Turbo3d 21      // ** TURBO3D **
 
+#include "../../Graphics/RDP/gDP_state.h"
 #include "../../Graphics/GBI.h"
 
 void modelview_load (float m[4][4]);

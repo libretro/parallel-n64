@@ -291,7 +291,7 @@ static void GetTexInfo (int id, int tile)
 
    crc = 0;
 
-   if ((g_gdp.tile[tile].size < 2) && (rdp.tlut_mode || g_gdp.tile[tile].format == G_IM_FMT_CI))
+   if ((g_gdp.tile[tile].size < 2) && (gDP.otherMode.textureLUT || g_gdp.tile[tile].format == G_IM_FMT_CI))
    {
       if (g_gdp.tile[tile].size == G_IM_SIZ_4b)
          crc = rdp.pal_8_crc[g_gdp.tile[tile].palette];
@@ -757,7 +757,7 @@ static void LoadTex(int id, int tmu)
 
    //!Hackalert
    //GoldenEye water texture. It has CI format in fact, but the game set it to RGBA
-   if ((settings.hacks&hack_GoldenEye) && g_gdp.tile[td].format == G_IM_FMT_RGBA && rdp.tlut_mode == 2 && g_gdp.tile[td].size == G_IM_SIZ_16b)
+   if ((settings.hacks&hack_GoldenEye) && g_gdp.tile[td].format == G_IM_FMT_RGBA && gDP.otherMode.textureLUT == 2 && g_gdp.tile[td].size == G_IM_SIZ_16b)
    {
       g_gdp.tile[td].format = G_IM_FMT_CI;
       g_gdp.tile[td].size = G_IM_SIZ_8b;
@@ -940,7 +940,7 @@ static void LoadTex(int id, int tmu)
       modfactor = cmb.modfactor_1;
    }
 
-   modifyPalette = (mod && (cache->format == G_IM_FMT_CI) && (rdp.tlut_mode == 2));
+   modifyPalette = (mod && (cache->format == G_IM_FMT_CI) && (gDP.otherMode.textureLUT == 2));
 
    if (modifyPalette)
    {

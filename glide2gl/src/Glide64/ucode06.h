@@ -188,7 +188,7 @@ static void DrawImage (DRAWIMAGE *d)
       case 0:
          y_size  = 32;
          y_shift = 5;
-         if (rdp.tlut_mode < 2)
+         if (gDP.otherMode.textureLUT < 2)
          {
             y_size  = 64;
             y_shift = 6;
@@ -200,7 +200,7 @@ static void DrawImage (DRAWIMAGE *d)
       case 1:
          y_size  = 32;
          y_shift = 5;
-         if (rdp.tlut_mode < 2)
+         if (gDP.otherMode.textureLUT < 2)
          {
             y_size  = 64;
             y_shift = 6;
@@ -1196,22 +1196,6 @@ static void uc6_sprite2d(uint32_t w0, uint32_t w1)
    d.imageY   = (((uint16_t *)gfx_info.RDRAM)[(addr+9)^1]); // 9
    tlut       = ((uint32_t*)gfx_info.RDRAM)[(addr + 2) >> 1]; // 2, 3
 
-   //low-level implementation of sprite2d apparently calls setothermode command to set tlut mode
-   //However, description of sprite2d microcode just says that
-   //TlutPointer should be Null when CI images will not be used.
-   //HLE implementation sets rdp.tlut_mode=2 if TlutPointer is not null, and rdp.tlut_mode=0 otherwise
-   //Alas, it is not sufficient, since WCW Nitro uses non-Null TlutPointer for rgba textures.
-   //So, additional check added.
-   rdp.tlut_mode = 0;
-   if (tlut)
-   {
-      load_palette (RSP_SegmentToPhysical(tlut), 0, 256);
-      if (d.imageFmt > G_IM_FMT_RGBA)
-         rdp.tlut_mode = 2;
-      else
-         rdp.tlut_mode = 0;
-   }
-
    if (d.imageW == 0)
       return;// d.imageW = stride;
 
@@ -1266,7 +1250,7 @@ static void uc6_sprite2d(uint32_t w0, uint32_t w1)
          return;
  
       texsize = (d.imageW * d.imageH) << d.imageSiz >> 1;
-      maxTexSize = rdp.tlut_mode < 2 ? 4096 : 2048;
+      maxTexSize = gDP.otherMode.textureLUT < 2 ? 4096 : 2048;
 
       if (texsize > maxTexSize)
       {

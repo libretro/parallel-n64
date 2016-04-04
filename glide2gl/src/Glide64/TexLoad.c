@@ -5,6 +5,7 @@
 #include "Util.h"
 #include "GlideExtensions.h"
 
+#include "../../Graphics/RDP/gDP_state.h"
 #include "../../Graphics/image_convert.h"
 
 #define ALOWORD(x)   (*((uint16_t*)&x))   // low word
@@ -453,7 +454,7 @@ static uint32_t Load4bCI(uintptr_t dst, uintptr_t src, int wid_64, int height, i
         height = 1;
     ext = (real_width - (wid_64 << 4));
 
-    if (rdp.tlut_mode == 0)
+    if (gDP.otherMode.textureLUT == 0)
     {
         //in tlut DISABLE mode load CI texture as plain intensity texture instead of palette dereference.
         //Thanks to angrylion for the advice
@@ -462,7 +463,7 @@ static uint32_t Load4bCI(uintptr_t dst, uintptr_t src, int wid_64, int height, i
     }
 
     palette =(uintptr_t)(rdp.pal_8 + (g_gdp.tile[tile].palette << 4));
-    if (rdp.tlut_mode == 2)
+    if (gDP.otherMode.textureLUT == 2)
     {
         ext <<= 1;
         load4bCI ((uint8_t *)src,(uint8_t *)dst, wid_64, height, line, ext,(uint16_t *)palette);
@@ -483,7 +484,7 @@ static uint32_t Load4bCI(uintptr_t dst, uintptr_t src, int wid_64, int height, i
 static uint32_t Load4bIA(uintptr_t dst, uintptr_t src, int wid_64, int height, int line, int real_width, int tile)
 {
     int ext;
-    if (rdp.tlut_mode != 0)
+    if (gDP.otherMode.textureLUT != 0)
         return Load4bCI (dst, src, wid_64, height, line, real_width, tile);
 
     if (wid_64 < 1) wid_64 = 1;
@@ -499,7 +500,7 @@ static uint32_t Load4bIA(uintptr_t dst, uintptr_t src, int wid_64, int height, i
 static uint32_t Load4bI(uintptr_t dst, uintptr_t src, int wid_64, int height, int line, int real_width, int tile)
 {
     int ext;
-    if (rdp.tlut_mode != 0)
+    if (gDP.otherMode.textureLUT != 0)
         return Load4bCI (dst, src, wid_64, height, line, real_width, tile);
 
     if (wid_64 < 1)
@@ -517,7 +518,7 @@ static uint32_t Load4bI(uintptr_t dst, uintptr_t src, int wid_64, int height, in
 
 static uint32_t Load4bSelect(uintptr_t dst, uintptr_t src, int wid_64, int height, int line, int real_width, int tile)
 {
-    if (rdp.tlut_mode == 0)
+    if (gDP.otherMode.textureLUT == 0)
         return Load4bI (dst, src, wid_64, height, line, real_width, tile);
 
     return Load4bCI (dst, src, wid_64, height, line, real_width, tile);
@@ -542,7 +543,7 @@ static uint32_t Load8bCI(uintptr_t dst, uintptr_t src, int wid_64, int height, i
     ext = (real_width - (wid_64 << 3));
     palette = (unsigned short*)rdp.pal_8;
 
-    switch (rdp.tlut_mode)
+    switch (gDP.otherMode.textureLUT)
     {
        case 0:
           //palette is not used
@@ -569,7 +570,7 @@ static uint32_t Load8bCI(uintptr_t dst, uintptr_t src, int wid_64, int height, i
 static uint32_t Load8bIA(uintptr_t dst, uintptr_t src, int wid_64, int height, int line, int real_width, int tile)
 {
     int ext;
-    if (rdp.tlut_mode != 0)
+    if (gDP.otherMode.textureLUT != 0)
         return Load8bCI (dst, src, wid_64, height, line, real_width, tile);
 
     if (wid_64 < 1) wid_64 = 1;
@@ -587,7 +588,7 @@ static uint32_t Load8bIA(uintptr_t dst, uintptr_t src, int wid_64, int height, i
 static uint32_t Load8bI(uintptr_t dst, uintptr_t src, int wid_64, int height, int line, int real_width, int tile)
 {
     int ext;
-    if (rdp.tlut_mode != 0)
+    if (gDP.otherMode.textureLUT != 0)
         return Load8bCI (dst, src, wid_64, height, line, real_width, tile);
 
     if (wid_64 < 1) wid_64 = 1;

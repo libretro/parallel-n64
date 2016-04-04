@@ -347,12 +347,6 @@ static void uc2_moveword(uint32_t w0, uint32_t w1)
          break;
       case G_MW_FOG:
          glide64gSPFogFactor((int16_t)_SHIFTR(w1, 16, 16), (int16_t)_SHIFTR(w1, 0, 16));
-
-         /*offset must be 0 for move_fog, but it can be non zero in Nushi Zuri 64 - Shiokaze ni Notte
-          * low-level display list has setothermode commands in this place, so this is obviously not move_fog.
-          */
-         if (offset == 0x04)
-            rdp.tlut_mode = (w1 == 0xffffffff) ? 0 : 2;
          break;
 
       case G_MW_LIGHTCOL:
