@@ -311,11 +311,11 @@ static void CalculateLOD(VERTEX *v, int n, uint32_t lodmode)
       lodFactor = lodFactor / n; /* Divide by n (n edges) to find average */
 
    ilod         = (int)lodFactor;
-   lod_tile     = MIN((int)(log10f((float)ilod)/log10f(2.0f)), rdp.cur_tile + rdp.mipmap_level);
+   lod_tile     = MIN((int)(log10f((float)ilod)/log10f(2.0f)), rdp.cur_tile + gDP.otherMode.textureDetail);
    lod_fraction = 1.0f;
    detailmax    = 1.0f - lod_fraction;
 
-   if (lod_tile < rdp.cur_tile + rdp.mipmap_level)
+   if (lod_tile < rdp.cur_tile + gDP.otherMode.textureDetail)
       lod_fraction = MAX((float)modff(lodFactor / pow(2.,lod_tile),&intptr), g_gdp.primitive_lod_min / 255.0f);
 
    if (cmb.dc0_detailmax < 0.5f)
@@ -826,7 +826,7 @@ static void render_tri (uint16_t linew, int old_interpolate)
          break;
    }
 
-   if (settings.lodmode && rdp.cur_tile < rdp.mipmap_level)
+   if (settings.lodmode && rdp.cur_tile < gDP.otherMode.textureDetail)
       CalculateLOD(rdp.vtxbuf, n, settings.lodmode);
 
    cmb.cmb_ext_use = cmb.tex_cmb_ext_use = 0;

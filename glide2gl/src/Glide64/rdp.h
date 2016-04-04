@@ -401,7 +401,6 @@ struct RDP
    uint32_t addr[512];        // 512 addresses (used to determine address loaded from)
 
    int     cur_tile;   // current tile
-   int     mipmap_level;
    int     last_tile;   // last tile set
    int     last_tile_size;   // last tile size set
 

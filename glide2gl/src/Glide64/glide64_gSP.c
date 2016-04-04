@@ -1189,9 +1189,9 @@ void glide64gSPTexture(int32_t sc, int32_t tc, int32_t level,
    if (tile == 7 && (settings.hacks&hack_Supercross))
       tile = 0; /* fix for supercross 2000 */
 
-   rdp.mipmap_level   = level;
-   rdp.cur_tile       = tile;
-   rdp.tiles[tile].on = 0;
+   gDP.otherMode.textureDetail    = level;
+   rdp.cur_tile                   = tile;
+   rdp.tiles[tile].on             = 0;
 
    if (on)
    {
