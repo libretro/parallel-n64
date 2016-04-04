@@ -1459,11 +1459,11 @@ static void draw_tri_uv_calculation(VERTEX **vtx, VERTEX *v)
    unsigned i;
    //FRDP(" * CALCULATING VERTEX U/V: %d\n", v->number);
 
-   if (!(rdp.geom_mode & G_LIGHTING))
+   if (!(gSP.geometryMode & G_LIGHTING))
    {
-      if (!(rdp.geom_mode & UPDATE_SCISSOR))
+      if (!(gSP.geometryMode & UPDATE_SCISSOR))
       {
-         if (rdp.geom_mode & G_SHADE)
+         if (gSP.geometryMode & G_SHADE)
             glideSetVertexFlatShading(v, vtx, __RSP.w1);
          else
             glideSetVertexPrimShading(v, g_gdp.prim_color.total);

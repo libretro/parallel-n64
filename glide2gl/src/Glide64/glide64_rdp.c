@@ -362,7 +362,7 @@ void glide64ProcessDList(void)
   rdp.fb_drawn                        = false;
   rdp.fb_drawn_front                  = false;
   g_gdp.flags                         = 0x7FFFFFFF;  /* All but clear cache */
-  rdp.geom_mode                       = 0;
+  gSP.geometryMode                    = 0;
   rdp.maincimg[1]                     = rdp.maincimg[0];
   rdp.skip_drawing                    = false;
   rdp.s2dex_tex_loaded                = false;
@@ -1930,7 +1930,7 @@ static void glide64ProcessRDPList_restorestate(void)
    rdp.fb_drawn                   = false;
    rdp.fb_drawn_front             = false;
    g_gdp.flags                    = 0x7FFFFFFF;  /* All but clear cache */
-   rdp.geom_mode                  = 0;
+   gSP.geometryMode               = 0;
    rdp.maincimg[1]                = rdp.maincimg[0];
    rdp.skip_drawing               = false;
    rdp.s2dex_tex_loaded           = false;

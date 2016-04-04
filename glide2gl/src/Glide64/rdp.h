@@ -433,7 +433,6 @@ struct RDP
    // Debug stuff
    uint32_t rm; // use othermode_l instead, this just as a check for changes
    uint32_t render_mode_changed;
-   uint32_t geom_mode;
 
    // used to check if in texrect while loading texture
    uint8_t texrecting;

@@ -57,16 +57,16 @@ static void uc2_vertex(uint32_t w0, uint32_t w1)
    if (v0 < 0)
       return;
 
-   geom_mode = rdp.geom_mode;
-   if ((settings.hacks&hack_Fzero) && (rdp.geom_mode & G_TEXTURE_GEN))
+   geom_mode = gSP.geometryMode;
+   if ((settings.hacks&hack_Fzero) && (gSP.geometryMode & G_TEXTURE_GEN))
    {
       if (((int16_t*)gfx_info.RDRAM)[(((addr) >> 1) + 4)^1] || ((int16_t*)gfx_info.RDRAM)[(((addr) >> 1) + 5)^1])
-         rdp.geom_mode ^= G_TEXTURE_GEN;
+         gSP.geometryMode ^= G_TEXTURE_GEN;
    }
 
    glide64gSPVertex(addr, n, v0);
 
-   rdp.geom_mode = geom_mode;
+   gSP.geometryMode = geom_mode;
 }
 
 static void uc2_modifyvtx(uint32_t w0, uint32_t w1)
@@ -171,10 +171,10 @@ static void uc2_geom_mode(uint32_t w0, uint32_t w1)
       ((w1 & 0x00000600) << 3) |
       ((w1 & 0x00200000) >> 12);
 
-   rdp.geom_mode &= clr_mode;
+   gSP.geometryMode &= clr_mode;
    glide64gSPSetGeometryMode(set_mode);
 
-   if (rdp.geom_mode & G_ZBUFFER)
+   if (gSP.geometryMode & G_ZBUFFER)
    {
       if (!(rdp.flags & ZBUF_ENABLED))
       {
@@ -192,7 +192,7 @@ static void uc2_geom_mode(uint32_t w0, uint32_t w1)
       }
    }
 
-   if (rdp.geom_mode & CULL_FRONT)
+   if (gSP.geometryMode & CULL_FRONT)
    {
       if (!(rdp.flags & CULL_FRONT))
       {
@@ -208,7 +208,7 @@ static void uc2_geom_mode(uint32_t w0, uint32_t w1)
          g_gdp.flags |= UPDATE_CULL_MODE;
       }
    }
-   if (rdp.geom_mode & CULL_BACK)
+   if (gSP.geometryMode & CULL_BACK)
    {
       if (!(rdp.flags & CULL_BACK))
       {
@@ -225,7 +225,7 @@ static void uc2_geom_mode(uint32_t w0, uint32_t w1)
       }
    }
 
-   if (rdp.geom_mode & G_FOG)
+   if (gSP.geometryMode & G_FOG)
    {
       if (!(rdp.flags & FOG_ENABLED))
       {

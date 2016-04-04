@@ -478,13 +478,13 @@ void glide64gSPVertex(uint32_t v, uint32_t n, uint32_t v0)
 
       gSPClipVertex(v0 + (i / iter));
 
-      if (rdp.geom_mode & G_LIGHTING)
+      if (gSP.geometryMode & G_LIGHTING)
       {
          vtx->vec[0] = (int8_t)color[3];
          vtx->vec[1] = (int8_t)color[2];
          vtx->vec[2] = (int8_t)color[1];
 
-         if (settings.ucode == 2 && rdp.geom_mode & G_POINT_LIGHTING)
+         if (settings.ucode == 2 && gSP.geometryMode & G_POINT_LIGHTING)
          {
             float tmpvec[3] = {x, y, z};
             glide64gSPPointLightVertex(vtx, tmpvec);
@@ -495,9 +495,9 @@ void glide64gSPVertex(uint32_t v, uint32_t n, uint32_t v0)
             glide64gSPLightVertex(vtx);
          }
 
-         if (rdp.geom_mode & G_TEXTURE_GEN)
+         if (gSP.geometryMode & G_TEXTURE_GEN)
          {
-            if (rdp.geom_mode & G_TEXTURE_GEN_LINEAR)
+            if (gSP.geometryMode & G_TEXTURE_GEN_LINEAR)
                calc_linear (vtx);
             else
                calc_sphere (vtx);
@@ -522,12 +522,12 @@ void glide64gSPFogFactor(int16_t fm, int16_t fo )
 
 void glide64gSPSetGeometryMode (uint32_t mode)
 {
-   rdp.geom_mode |= mode;
+   gSP.geometryMode |= mode;
 }
 
 void glide64gSPClearGeometryMode (uint32_t mode)
 {
-   rdp.geom_mode &= ~mode;
+    gSP.geometryMode &= ~mode;
 }
 
 void glide64gSPNumLights(int32_t n)
@@ -756,15 +756,15 @@ void glide64gSPCIVertex(uint32_t v, uint32_t n, uint32_t v0)
          vert->scr_off |= Z_CLIP_MIN; 
 #endif
 
-      if (rdp.geom_mode & G_LIGHTING)
+      if (gSP.geometryMode & G_LIGHTING)
       {
          vert->vec[0] = (int8_t)color[3];
          vert->vec[1] = (int8_t)color[2];
          vert->vec[2] = (int8_t)color[1];
 
-         if (rdp.geom_mode & G_TEXTURE_GEN_LINEAR) 
+         if (gSP.geometryMode & G_TEXTURE_GEN_LINEAR) 
             calc_linear(vert);
-         else if (rdp.geom_mode & G_TEXTURE_GEN) 
+         else if (gSP.geometryMode & G_TEXTURE_GEN) 
             calc_sphere(vert);
 
          NormalizeVector (vert->vec);
@@ -847,7 +847,7 @@ void glide64gSPCBFDVertex(uint32_t a, uint32_t n, uint32_t v0)
       vert->g = color[2];
       vert->b = color[1];
 
-      if ((rdp.geom_mode & G_LIGHTING))
+      if ((gSP.geometryMode & G_LIGHTING))
       {
          uint32_t l;
          float light_intensity, color[3];
@@ -857,9 +857,9 @@ void glide64gSPCBFDVertex(uint32_t a, uint32_t n, uint32_t v0)
          vert->vec[1]   = ((int8_t*)gfx_info.RDRAM)[(gSP.vertexNormalBase + (i>>3) + shift + 1)^3];
          vert->vec[2]   = (int8_t)(vert->flags & 0xff);
 
-         if (rdp.geom_mode & G_TEXTURE_GEN_LINEAR)
+         if (gSP.geometryMode & G_TEXTURE_GEN_LINEAR)
             calc_linear (vert);
-         else if (rdp.geom_mode & G_TEXTURE_GEN)
+         else if (gSP.geometryMode & G_TEXTURE_GEN)
             calc_sphere (vert);
 
          color[0] = rdp.light[gSP.numLights].col[0];
@@ -868,7 +868,7 @@ void glide64gSPCBFDVertex(uint32_t a, uint32_t n, uint32_t v0)
 
          light_intensity = 0.0f;
 
-         if (rdp.geom_mode & G_POINT_LIGHTING)
+         if (gSP.geometryMode & G_POINT_LIGHTING)
          {
             NormalizeVector (vert->vec);
             for (l = 0; l < gSP.numLights-1; l++)

@@ -166,7 +166,7 @@ static void t3dLoadObject(uint32_t pstate, uint32_t pvtx, uint32_t ptri)
       load_matrix(rdp.combined, addr);
    }
 
-   rdp.geom_mode &= ~G_LIGHTING;
+   gSP.geometryMode &= ~G_LIGHTING;
 
    glide64gSPSetGeometryMode(UPDATE_SCISSOR);
 
