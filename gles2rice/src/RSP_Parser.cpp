@@ -357,169 +357,169 @@ void RDP_Cleanup()
 
 void RDP_SetUcodeMap(int ucode)
 {
-    status.bUseModifiedUcodeMap = false;
-    switch( ucode )
-    {
-    case 0: // Mario and demos
-        break;
-    case 1: // F3DEX GBI1
-    case 20:
-        break;
-    case 2: // Golden Eye
-        memcpy( &LoadedUcodeMap, &ucodeMap0, sizeof(UcodeMap));
-        //LoadedUcodeMap[9]=RSP_GBI1_Sprite2DBase;
-        //LoadedUcodeMap[0xaf]=RSP_GBI1_LoadUCode;
-        //LoadedUcodeMap[0xb0]=RSP_GBI1_BranchZ;
-        LoadedUcodeMap[0xb4]=DLParser_RDPHalf_1_0xb4_GoldenEye;
-        status.bUseModifiedUcodeMap = true;
-        break;
-    case 3: // S2DEX GBI2
-        break;
-    case 4:
-        memcpy( &LoadedUcodeMap, &ucodeMap0, sizeof(UcodeMap));
-        LoadedUcodeMap[4]=RSP_Vtx_WRUS;
-        LoadedUcodeMap[0xb1]=RSP_GBI1_Tri2;
-        //LoadedUcodeMap[9]=RSP_GBI1_Sprite2DBase;
-        //LoadedUcodeMap[0xaf]=RSP_GBI1_LoadUCode;
-        //LoadedUcodeMap[0xb0]=RSP_GBI1_BranchZ;
-        //LoadedUcodeMap[0xb2]=RSP_GBI1_ModifyVtx;
-        status.bUseModifiedUcodeMap = true;
-        break;
-    case 5: // F3DEX GBI2
-        break;
-    case 6: // DKR, Jet Force Gemini, Mickey
-    case 11: // DKR, Jet Force Gemini, Mickey
-        memcpy( &LoadedUcodeMap, &ucodeMap0, sizeof(UcodeMap));
-        LoadedUcodeMap[1]=RSP_Mtx_DKR;
-        LoadedUcodeMap[4]=RSP_Vtx_DKR;
-        if( ucode == 11 )   LoadedUcodeMap[4]=RSP_Vtx_Gemini;
-        LoadedUcodeMap[5]=RSP_DMA_Tri_DKR;
-        LoadedUcodeMap[7]=RSP_DL_In_MEM_DKR;
-        LoadedUcodeMap[0xbc]=RSP_MoveWord_DKR;
-        LoadedUcodeMap[0xbf]=DLParser_Set_Addr_Ucode6;
-        //LoadedUcodeMap[9]=RSP_GBI1_Sprite2DBase;
-        //LoadedUcodeMap[0xb0]=RSP_GBI1_BranchZ;
-        //LoadedUcodeMap[0xb2]=RSP_GBI1_ModifyVtx;
-        status.bUseModifiedUcodeMap = true;
-        break;
-    case 7: // S2DEX GBI1
-        break;
-    case 8: // Ucode 0 with Sprite2D, Puzzle Master 64
-        memcpy( &LoadedUcodeMap, &ucodeMap0, sizeof(UcodeMap));
-        LoadedUcodeMap[RSP_SPRITE2D_BASE] = RSP_GBI_Sprite2D_PuzzleMaster64;
-        LoadedUcodeMap[RSP_SPRITE2D_SCALEFLIP] = RSP_GBI1_Sprite2DScaleFlip;
-        LoadedUcodeMap[RSP_SPRITE2D_DRAW] = RSP_GBI0_Sprite2DDraw;
-        status.bUseModifiedUcodeMap = true;
-        break;
-    case 9: // Perfect Dark
-        memcpy( &LoadedUcodeMap, &ucodeMap0, sizeof(UcodeMap));
-        LoadedUcodeMap[4]=RSP_Vtx_PD;
-        LoadedUcodeMap[7]=RSP_Set_Vtx_CI_PD;
-        LoadedUcodeMap[0xb1]=RSP_Tri4_PD;
-        LoadedUcodeMap[0xb4]=DLParser_RDPHalf_1_0xb4_GoldenEye;
-        status.bUseModifiedUcodeMap = true;
-        break;
-    case 10: // Conker BFD
-        memcpy( &LoadedUcodeMap, &ucodeMap5, sizeof(UcodeMap));
-        LoadedUcodeMap[1]=RSP_Vtx_Conker;
-        LoadedUcodeMap[0x10]=DLParser_Tri4_Conker;
-        LoadedUcodeMap[0x11]=DLParser_Tri4_Conker;
-        LoadedUcodeMap[0x12]=DLParser_Tri4_Conker;
-        LoadedUcodeMap[0x13]=DLParser_Tri4_Conker;
-        LoadedUcodeMap[0x14]=DLParser_Tri4_Conker;
-        LoadedUcodeMap[0x15]=DLParser_Tri4_Conker;
-        LoadedUcodeMap[0x16]=DLParser_Tri4_Conker;
-        LoadedUcodeMap[0x17]=DLParser_Tri4_Conker;
-        LoadedUcodeMap[0x18]=DLParser_Tri4_Conker;
-        LoadedUcodeMap[0x19]=DLParser_Tri4_Conker;
-        LoadedUcodeMap[0x1a]=DLParser_Tri4_Conker;
-        LoadedUcodeMap[0x1b]=DLParser_Tri4_Conker;
-        LoadedUcodeMap[0x1c]=DLParser_Tri4_Conker;
-        LoadedUcodeMap[0x1d]=DLParser_Tri4_Conker;
-        LoadedUcodeMap[0x1e]=DLParser_Tri4_Conker;
-        LoadedUcodeMap[0x1f]=DLParser_Tri4_Conker;
-        LoadedUcodeMap[0xdb]=DLParser_MoveWord_Conker;
-        LoadedUcodeMap[0xdc]=DLParser_MoveMem_Conker;
-        status.bUseModifiedUcodeMap = true;
-        break;
-    case 12: // Silicon Velley, Space Station
-        memcpy( &LoadedUcodeMap, &ucodeMap1, sizeof(UcodeMap));
-        LoadedUcodeMap[0x01]=RSP_GBI0_Mtx;
-        status.bUseModifiedUcodeMap = true;
-        break;
-    case 13: // modified S2DEX
-        memcpy( &LoadedUcodeMap, &ucodeMap7, sizeof(UcodeMap));
-        //LoadedUcodeMap[S2DEX_BG_1CYC] = ucodeMap1[S2DEX_BG_1CYC];
-        LoadedUcodeMap[S2DEX_OBJ_RECTANGLE] = ucodeMap1[S2DEX_OBJ_RECTANGLE];
-        LoadedUcodeMap[S2DEX_OBJ_SPRITE] = ucodeMap1[S2DEX_OBJ_SPRITE];
-        //LoadedUcodeMap[S2DEX_OBJ_RENDERMODE] = ucodeMap1[S2DEX_OBJ_RENDERMODE];
-        //LoadedUcodeMap[S2DEX_OBJ_RECTANGLE_R] = ucodeMap1[S2DEX_OBJ_RECTANGLE_R];
-        LoadedUcodeMap[S2DEX_RDPHALF_0] = ucodeMap1[S2DEX_RDPHALF_0];
-        status.bUseModifiedUcodeMap = true;
-        break;
-    case 14: // OgreBattle Background
-        memcpy( &LoadedUcodeMap, &ucodeMap5, sizeof(UcodeMap));
-        LoadedUcodeMap[0xda] = DLParser_OgreBatter64BG;
-        LoadedUcodeMap[0xdc] = RSP_S2DEX_OBJ_MOVEMEM;
-        status.bUseModifiedUcodeMap = true;
-        break;
-    case 15: // Ucode 0 with Sprite2D
-        memcpy( &LoadedUcodeMap, &ucodeMap0, sizeof(UcodeMap));
-        LoadedUcodeMap[RSP_SPRITE2D_BASE] = RSP_GBI_Sprite2DBase;
-        LoadedUcodeMap[RSP_SPRITE2D_SCALEFLIP] = RSP_GBI1_Sprite2DScaleFlip;
-        LoadedUcodeMap[RSP_SPRITE2D_DRAW] = RSP_GBI0_Sprite2DDraw;
-        status.bUseModifiedUcodeMap = true;
-        break;
-    case 16: // Star War, Shadow Of Empire
-        memcpy( &LoadedUcodeMap, &ucodeMap0, sizeof(UcodeMap));
-        LoadedUcodeMap[4]=RSP_Vtx_ShadowOfEmpire;
-        status.bUseModifiedUcodeMap = true;
-        break;
-    case 17:    //Indiana Jones, does not work anyway
-        memcpy( &LoadedUcodeMap, &ucodeMap1, sizeof(UcodeMap));
-        LoadedUcodeMap[0]=DLParser_Ucode8_0x0;
-        //LoadedUcodeMap[1]=RSP_RDP_Nothing;
-        LoadedUcodeMap[2]=DLParser_RS_Color_Buffer;
-        LoadedUcodeMap[3]=DLParser_RS_MoveMem;
-        LoadedUcodeMap[4]=DLParser_RS_Vtx_Buffer;
-        LoadedUcodeMap[5]=DLParser_Ucode8_0x05;
-        LoadedUcodeMap[6]=DLParser_Ucode8_DL;
-        LoadedUcodeMap[7]=DLParser_Ucode8_JUMP;
-        LoadedUcodeMap[8]=RSP_RDP_Nothing;
-        LoadedUcodeMap[9]=RSP_RDP_Nothing;
-        LoadedUcodeMap[10]=RSP_RDP_Nothing;
-        LoadedUcodeMap[11]=RSP_RDP_Nothing;
-        LoadedUcodeMap[0x80]=DLParser_RS_Block;
-        LoadedUcodeMap[0xb4]=DLParser_Ucode8_0xb4;
-        LoadedUcodeMap[0xb5]=DLParser_Ucode8_0xb5;
-        LoadedUcodeMap[0xb8]=DLParser_Ucode8_EndDL;
-        LoadedUcodeMap[0xbc]=DLParser_Ucode8_0xbc;
-        LoadedUcodeMap[0xbd]=DLParser_Ucode8_0xbd;
-        LoadedUcodeMap[0xbe]=DLParser_RS_0xbe;
-        LoadedUcodeMap[0xbF]=DLParser_Ucode8_0xbf;
-        LoadedUcodeMap[0xe4]=DLParser_TexRect_Last_Legion;
-        status.bUseModifiedUcodeMap = true;
-        break;
-    case 18: // World Driver Championship
-        memcpy( &LoadedUcodeMap, &ucodeMap1, sizeof(UcodeMap));
-        LoadedUcodeMap[0xe]=DLParser_RSP_DL_WorldDriver;
-        LoadedUcodeMap[0x2]=DLParser_RSP_Pop_DL_WorldDriver;
-        LoadedUcodeMap[0xdf]=DLParser_RSP_Pop_DL_WorldDriver;
-        LoadedUcodeMap[0x6]=RSP_RDP_Nothing;
-        status.bUseModifiedUcodeMap = true;
-        break;
-    case 19: // Last Legion UX
-        memcpy( &LoadedUcodeMap, &ucodeMap1, sizeof(UcodeMap));
-        LoadedUcodeMap[0x80]=DLParser_RSP_Last_Legion_0x80;
-        LoadedUcodeMap[0x00]=DLParser_RSP_Last_Legion_0x00;
-        LoadedUcodeMap[0xe4]=DLParser_TexRect_Last_Legion;
-        status.bUseModifiedUcodeMap = true;
-        break;
-    default:
-        memcpy( &LoadedUcodeMap, &ucodeMap5, sizeof(UcodeMap));
-        status.bUseModifiedUcodeMap = true;
-        break;
-    }
+   status.bUseModifiedUcodeMap = false;
+   switch( ucode )
+   {
+      case 0: // Mario and demos
+         break;
+      case 1: // F3DEX GBI1
+      case 20:
+         break;
+      case 2: // Golden Eye
+         memcpy( &LoadedUcodeMap, &ucodeMap0, sizeof(UcodeMap));
+         //LoadedUcodeMap[9]=RSP_GBI1_Sprite2DBase;
+         //LoadedUcodeMap[0xaf]=RSP_GBI1_LoadUCode;
+         //LoadedUcodeMap[0xb0]=RSP_GBI1_BranchZ;
+         LoadedUcodeMap[0xb4]=DLParser_RDPHalf_1_0xb4_GoldenEye;
+         status.bUseModifiedUcodeMap = true;
+         break;
+      case 3: // S2DEX GBI2
+         break;
+      case 4:
+         memcpy( &LoadedUcodeMap, &ucodeMap0, sizeof(UcodeMap));
+         LoadedUcodeMap[4]=RSP_Vtx_WRUS;
+         LoadedUcodeMap[0xb1]=RSP_GBI1_Tri2;
+         //LoadedUcodeMap[9]=RSP_GBI1_Sprite2DBase;
+         //LoadedUcodeMap[0xaf]=RSP_GBI1_LoadUCode;
+         //LoadedUcodeMap[0xb0]=RSP_GBI1_BranchZ;
+         //LoadedUcodeMap[0xb2]=RSP_GBI1_ModifyVtx;
+         status.bUseModifiedUcodeMap = true;
+         break;
+      case 5: // F3DEX GBI2
+         break;
+      case 6: // DKR, Jet Force Gemini, Mickey
+      case 11: // DKR, Jet Force Gemini, Mickey
+         memcpy( &LoadedUcodeMap, &ucodeMap0, sizeof(UcodeMap));
+         LoadedUcodeMap[1]=RSP_Mtx_DKR;
+         LoadedUcodeMap[4]=RSP_Vtx_DKR;
+         if( ucode == 11 )   LoadedUcodeMap[4]=RSP_Vtx_Gemini;
+         LoadedUcodeMap[5]=RSP_DMA_Tri_DKR;
+         LoadedUcodeMap[7]=RSP_DL_In_MEM_DKR;
+         LoadedUcodeMap[0xbc]=RSP_MoveWord_DKR;
+         LoadedUcodeMap[0xbf]=DLParser_Set_Addr_Ucode6;
+         //LoadedUcodeMap[9]=RSP_GBI1_Sprite2DBase;
+         //LoadedUcodeMap[0xb0]=RSP_GBI1_BranchZ;
+         //LoadedUcodeMap[0xb2]=RSP_GBI1_ModifyVtx;
+         status.bUseModifiedUcodeMap = true;
+         break;
+      case 7: // S2DEX GBI1
+         break;
+      case 8: // Ucode 0 with Sprite2D, Puzzle Master 64
+         memcpy( &LoadedUcodeMap, &ucodeMap0, sizeof(UcodeMap));
+         LoadedUcodeMap[RSP_SPRITE2D_BASE] = RSP_GBI_Sprite2D_PuzzleMaster64;
+         LoadedUcodeMap[RSP_SPRITE2D_SCALEFLIP] = RSP_GBI1_Sprite2DScaleFlip;
+         LoadedUcodeMap[RSP_SPRITE2D_DRAW] = RSP_GBI0_Sprite2DDraw;
+         status.bUseModifiedUcodeMap = true;
+         break;
+      case 9: // Perfect Dark
+         memcpy( &LoadedUcodeMap, &ucodeMap0, sizeof(UcodeMap));
+         LoadedUcodeMap[4]=RSP_Vtx_PD;
+         LoadedUcodeMap[7]=RSP_Set_Vtx_CI_PD;
+         LoadedUcodeMap[0xb1]=RSP_Tri4_PD;
+         LoadedUcodeMap[0xb4]=DLParser_RDPHalf_1_0xb4_GoldenEye;
+         status.bUseModifiedUcodeMap = true;
+         break;
+      case 10: // Conker BFD
+         memcpy( &LoadedUcodeMap, &ucodeMap5, sizeof(UcodeMap));
+         LoadedUcodeMap[1]=RSP_Vtx_Conker;
+         LoadedUcodeMap[0x10]=DLParser_Tri4_Conker;
+         LoadedUcodeMap[0x11]=DLParser_Tri4_Conker;
+         LoadedUcodeMap[0x12]=DLParser_Tri4_Conker;
+         LoadedUcodeMap[0x13]=DLParser_Tri4_Conker;
+         LoadedUcodeMap[0x14]=DLParser_Tri4_Conker;
+         LoadedUcodeMap[0x15]=DLParser_Tri4_Conker;
+         LoadedUcodeMap[0x16]=DLParser_Tri4_Conker;
+         LoadedUcodeMap[0x17]=DLParser_Tri4_Conker;
+         LoadedUcodeMap[0x18]=DLParser_Tri4_Conker;
+         LoadedUcodeMap[0x19]=DLParser_Tri4_Conker;
+         LoadedUcodeMap[0x1a]=DLParser_Tri4_Conker;
+         LoadedUcodeMap[0x1b]=DLParser_Tri4_Conker;
+         LoadedUcodeMap[0x1c]=DLParser_Tri4_Conker;
+         LoadedUcodeMap[0x1d]=DLParser_Tri4_Conker;
+         LoadedUcodeMap[0x1e]=DLParser_Tri4_Conker;
+         LoadedUcodeMap[0x1f]=DLParser_Tri4_Conker;
+         LoadedUcodeMap[0xdb]=DLParser_MoveWord_Conker;
+         LoadedUcodeMap[0xdc]=DLParser_MoveMem_Conker;
+         status.bUseModifiedUcodeMap = true;
+         break;
+      case 12: // Silicon Velley, Space Station
+         memcpy( &LoadedUcodeMap, &ucodeMap1, sizeof(UcodeMap));
+         LoadedUcodeMap[0x01]=RSP_GBI0_Mtx;
+         status.bUseModifiedUcodeMap = true;
+         break;
+      case 13: // modified S2DEX
+         memcpy( &LoadedUcodeMap, &ucodeMap7, sizeof(UcodeMap));
+         //LoadedUcodeMap[S2DEX_BG_1CYC] = ucodeMap1[S2DEX_BG_1CYC];
+         LoadedUcodeMap[S2DEX_OBJ_RECTANGLE] = ucodeMap1[S2DEX_OBJ_RECTANGLE];
+         LoadedUcodeMap[S2DEX_OBJ_SPRITE] = ucodeMap1[S2DEX_OBJ_SPRITE];
+         //LoadedUcodeMap[S2DEX_OBJ_RENDERMODE] = ucodeMap1[S2DEX_OBJ_RENDERMODE];
+         //LoadedUcodeMap[S2DEX_OBJ_RECTANGLE_R] = ucodeMap1[S2DEX_OBJ_RECTANGLE_R];
+         LoadedUcodeMap[S2DEX_RDPHALF_0] = ucodeMap1[S2DEX_RDPHALF_0];
+         status.bUseModifiedUcodeMap = true;
+         break;
+      case 14: // OgreBattle Background
+         memcpy( &LoadedUcodeMap, &ucodeMap5, sizeof(UcodeMap));
+         LoadedUcodeMap[0xda] = DLParser_OgreBatter64BG;
+         LoadedUcodeMap[0xdc] = RSP_S2DEX_OBJ_MOVEMEM;
+         status.bUseModifiedUcodeMap = true;
+         break;
+      case 15: // Ucode 0 with Sprite2D
+         memcpy( &LoadedUcodeMap, &ucodeMap0, sizeof(UcodeMap));
+         LoadedUcodeMap[RSP_SPRITE2D_BASE] = RSP_GBI_Sprite2DBase;
+         LoadedUcodeMap[RSP_SPRITE2D_SCALEFLIP] = RSP_GBI1_Sprite2DScaleFlip;
+         LoadedUcodeMap[RSP_SPRITE2D_DRAW] = RSP_GBI0_Sprite2DDraw;
+         status.bUseModifiedUcodeMap = true;
+         break;
+      case 16: // Star Wars Shadow Of The Empire
+         memcpy( &LoadedUcodeMap, &ucodeMap0, sizeof(UcodeMap));
+         LoadedUcodeMap[4]=RSP_Vtx_ShadowOfEmpire;
+         status.bUseModifiedUcodeMap = true;
+         break;
+      case 17:    //Indiana Jones, does not work anyway
+         memcpy( &LoadedUcodeMap, &ucodeMap1, sizeof(UcodeMap));
+         LoadedUcodeMap[0]=DLParser_Ucode8_0x0;
+         //LoadedUcodeMap[1]=RSP_RDP_Nothing;
+         LoadedUcodeMap[2]=DLParser_RS_Color_Buffer;
+         LoadedUcodeMap[3]=DLParser_RS_MoveMem;
+         LoadedUcodeMap[4]=DLParser_RS_Vtx_Buffer;
+         LoadedUcodeMap[5]=DLParser_Ucode8_0x05;
+         LoadedUcodeMap[6]=DLParser_Ucode8_DL;
+         LoadedUcodeMap[7]=DLParser_Ucode8_JUMP;
+         LoadedUcodeMap[8]=RSP_RDP_Nothing;
+         LoadedUcodeMap[9]=RSP_RDP_Nothing;
+         LoadedUcodeMap[10]=RSP_RDP_Nothing;
+         LoadedUcodeMap[11]=RSP_RDP_Nothing;
+         LoadedUcodeMap[0x80]=DLParser_RS_Block;
+         LoadedUcodeMap[0xb4]=DLParser_Ucode8_0xb4;
+         LoadedUcodeMap[0xb5]=DLParser_Ucode8_0xb5;
+         LoadedUcodeMap[0xb8]=DLParser_Ucode8_EndDL;
+         LoadedUcodeMap[0xbc]=DLParser_Ucode8_0xbc;
+         LoadedUcodeMap[0xbd]=DLParser_Ucode8_0xbd;
+         LoadedUcodeMap[0xbe]=DLParser_RS_0xbe;
+         LoadedUcodeMap[0xbF]=DLParser_Ucode8_0xbf;
+         LoadedUcodeMap[0xe4]=DLParser_TexRect_Last_Legion;
+         status.bUseModifiedUcodeMap = true;
+         break;
+      case 18: // World Driver Championship
+         memcpy( &LoadedUcodeMap, &ucodeMap1, sizeof(UcodeMap));
+         LoadedUcodeMap[0xe]=DLParser_RSP_DL_WorldDriver;
+         LoadedUcodeMap[0x2]=DLParser_RSP_Pop_DL_WorldDriver;
+         LoadedUcodeMap[0xdf]=DLParser_RSP_Pop_DL_WorldDriver;
+         LoadedUcodeMap[0x6]=RSP_RDP_Nothing;
+         status.bUseModifiedUcodeMap = true;
+         break;
+      case 19: // Last Legion UX
+         memcpy( &LoadedUcodeMap, &ucodeMap1, sizeof(UcodeMap));
+         LoadedUcodeMap[0x80]=DLParser_RSP_Last_Legion_0x80;
+         LoadedUcodeMap[0x00]=DLParser_RSP_Last_Legion_0x00;
+         LoadedUcodeMap[0xe4]=DLParser_TexRect_Last_Legion;
+         status.bUseModifiedUcodeMap = true;
+         break;
+      default:
+         memcpy( &LoadedUcodeMap, &ucodeMap5, sizeof(UcodeMap));
+         status.bUseModifiedUcodeMap = true;
+         break;
+   }
 
 }
 
@@ -541,7 +541,6 @@ void RSP_SetUcode(int ucode, uint32_t ucStart, uint32_t ucDStart, uint32_t ucSiz
 
     gRSP.vertexMult = vertexMultVals[ucode];
 
-    //if( gRSP.ucode != ucode ) DebuggerAppendMsg("Set to ucode: %d", ucode);
     gRSP.ucode = ucode;
 
     lastUcodeInfo.used = true;
@@ -605,8 +604,8 @@ static uint32_t DLParser_IdentifyUcode( uint32_t crc_size, uint32_t crc_800, cha
         }
     }
 
-    gRSP.bNearClip = false;
-    gRSP.bRejectVtx = false;
+    gRSP.bNearClip       = false;
+    gRSP.bRejectVtx      = false;
     status.bUcodeIsKnown = false;
     return ~0;
 }
@@ -620,7 +619,7 @@ uint32_t DLParser_CheckUcode(uint32_t ucStart, uint32_t ucDStart, uint32_t ucSiz
     int usedUcodeIndex = 0;
     for( usedUcodeIndex=0; (unsigned int)usedUcodeIndex<maxUsedUcodes; usedUcodeIndex++ )
     {
-        if( UsedUcodes[usedUcodeIndex].used == false )
+        if(!UsedUcodes[usedUcodeIndex].used)
             break;
 
         if( UsedUcodes[usedUcodeIndex].ucStart == ucStart && UsedUcodes[usedUcodeIndex].ucSize == ucSize &&
@@ -1394,6 +1393,7 @@ unsigned int ComputeCRC32(unsigned int crc, const uint8_t *buf, unsigned int len
 Matrix matToLoad;
 void LoadMatrix(uint32_t addr)
 {
+   unsigned i, j;
    uint8_t   *rdram_u8 = (uint8_t*)gfx_info.RDRAM;
    const float fRecip = 1.0f / 65536.0f;
 
@@ -1403,9 +1403,9 @@ void LoadMatrix(uint32_t addr)
       return;
    }
 
-   for (int i = 0; i < 4; i++)
+   for (i = 0; i < 4; i++)
    {
-      for (int j = 0; j < 4; j++) 
+      for (j = 0; j < 4; j++) 
       {
          int hi = *(short *)(rdram_u8 + ((addr+(i<<3)+(j<<1)     )^0x2));
          int lo = *(unsigned short *)(rdram_u8 + ((addr+(i<<3)+(j<<1) + 32)^0x2));

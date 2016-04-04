@@ -158,8 +158,6 @@ void CRender::SetProjection(const Matrix & mat, bool bPush, bool bReplace)
     }
     
     gRSP.bMatrixIsUpdated = true;
-
-    DumpMatrix(mat,"Set Projection Matrix");
 }
 
 bool mtxPopUpError = false;
@@ -209,8 +207,6 @@ void CRender::SetWorldView(const Matrix & mat, bool bPush, bool bReplace)
 
     gRSP.bMatrixIsUpdated = true;
     gRSP.bWorldMatrixIsUpdated = true;
-
-    DumpMatrix(mat,"Set WorldView Matrix");
 }
 
 
@@ -1268,23 +1264,15 @@ void CRender::SetVertexTextureUVCoord(TLITVERTEX &v, const TexCord &fTex0_, cons
 
     RenderTexture &txtr0 = g_textures[0];
     if( txtr0.pTextureEntry && txtr0.pTextureEntry->txtrBufIdx > 0 )
-    {
         ::SetVertexTextureUVCoord(v.tcord[0], fTex0, 0, txtr0.pTextureEntry);
-    }
     else
-    {
         v.tcord[0] = fTex0;
-    }
 
     RenderTexture &txtr1 = g_textures[1];
     if( txtr1.pTextureEntry && txtr1.pTextureEntry->txtrBufIdx > 0 )
-    {
         ::SetVertexTextureUVCoord(v.tcord[1], fTex1, 1, txtr1.pTextureEntry);
-    }
     else
-    {
         v.tcord[1] = fTex1;
-    }
 }
 
 void CRender::SetVertexTextureUVCoord(TLITVERTEX &v, float fTex0S, float fTex0T, float fTex1S, float fTex1T)
@@ -1452,9 +1440,7 @@ void CRender::InitOtherModes(void)
             SetAlphaTestEnable(true);
         }
         else
-        {
             SetAlphaTestEnable(false);
-        }
     }
     else if ( gRDP.otherMode.alpha_compare == 3 )
     {
@@ -1463,11 +1449,9 @@ void CRender::InitOtherModes(void)
     }
     else
     {
+       // Use CVG for pixel alpha
         if( (gRDP.otherMode.alpha_cvg_sel ) && !gRDP.otherMode.cvg_x_alpha )
-        {
-            // Use CVG for pixel alpha
             SetAlphaTestEnable(false);
-        }
         else
         {
             // RDP_ALPHA_COMPARE_THRESHOLD || RDP_ALPHA_COMPARE_DITHER
