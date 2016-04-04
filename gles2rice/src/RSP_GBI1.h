@@ -79,7 +79,7 @@ void RSP_GBI1_Tri2(Gfx *gfx)
     bool bTexturesAreEnabled = CRender::g_pRender->IsTextureEnabled();
 
     // While the next command pair is Tri2, add vertices
-    uint32_t dwPC = gDlistStack[__RSP.PCi].pc;
+    uint32_t dwPC = __RSP.PC[__RSP.PCi];
 
     do {
         // Vertex indices are multiplied by 10 for Mario64, by 2 for MarioKart
@@ -132,15 +132,11 @@ void RSP_GBI1_Tri2(Gfx *gfx)
     } while( gfx->words.cmd == (uint8_t)RSP_TRI2);
 
 
-    gDlistStack[__RSP.PCi].pc = dwPC-8;
+    __RSP.PC[__RSP.PCi] = dwPC-8;
 
 
     if (bTrisAdded) 
-    {
         CRender::g_pRender->DrawTriangles();
-    }
-
-    DEBUG_TRIANGLE(TRACE0("Pause at GBI1 TRI1"));
 }
 
 extern XVECTOR4 g_vtxNonTransformed[MAX_VERTS];
@@ -155,13 +151,13 @@ void RSP_GBI1_BranchZ(Gfx *gfx)
 
     if( vtxdepth <= (int32_t)(gfx->words.w1) || g_curRomInfo.bForceDepthBuffer )
     {
-        uint32_t dwPC = gDlistStack[__RSP.PCi].pc;       // This points to the next instruction
+        uint32_t dwPC = __RSP.PC[__RSP.PCi];       // This points to the next instruction
         uint32_t dwDL = *(uint32_t *)(rdram_u8 + dwPC-12);
         uint32_t dwAddr = RSPSegmentAddr(dwDL);
 
         LOG_UCODE("BranchZ to DisplayList 0x%08x", dwAddr);
-        gDlistStack[__RSP.PCi].pc = dwAddr;
-        gDlistStack[__RSP.PCi].countdown = MAX_DL_COUNT;
+        __RSP.PC[__RSP.PCi]        = dwAddr;
+        __RSP.countdown[__RSP.PCi] = MAX_DL_COUNT;
     }
 }
 
@@ -171,9 +167,9 @@ void RSP_GBI1_LoadUCode(Gfx *gfx)
     SP_Timing(RSP_GBI1_LoadUCode);
 
     //TRACE0("Load ucode");
-    uint32_t dwPC = gDlistStack[__RSP.PCi].pc;
-    uint32_t dwUcStart = RSPSegmentAddr((gfx->words.w1));
-    uint32_t dwSize = ((gfx->words.w0)&0xFFFF)+1;
+    uint32_t dwPC       = __RSP.PC[__RSP.PCi];
+    uint32_t dwUcStart  = RSPSegmentAddr((gfx->words.w1));
+    uint32_t dwSize     = ((gfx->words.w0)&0xFFFF)+1;
     uint32_t dwUcDStart = RSPSegmentAddr(*(uint32_t *)(rdram_u8 + dwPC-12));
 
     uint32_t ucode = DLParser_CheckUcode(dwUcStart, dwUcDStart, dwSize, 8);

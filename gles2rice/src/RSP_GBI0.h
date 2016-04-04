@@ -27,7 +27,7 @@ void RSP_GBI1_SpNoop(Gfx *gfx)
 
     if( (gfx+1)->words.cmd == 0x00 && gRSP.ucode >= 17 )
     {
-        RSP_RDP_NOIMPL("Double SPNOOP, Skip remain ucodes, PC=%08X, Cmd1=%08X", gDlistStack[__RSP.PCi].pc, gfx->words.w1);
+        RSP_RDP_NOIMPL("Double SPNOOP, Skip remain ucodes, PC=%08X, Cmd1=%08X", __RSP.PC[__RSP.PCi], gfx->words.w1);
         RDP_GFX_PopDL();
         //if( gRSP.ucode < 17 ) TriggerDPInterrupt();
     }
@@ -141,7 +141,7 @@ void RSP_GBI0_DL(Gfx *gfx)
 
     if( addr > g_dwRamSize )
     {
-        RSP_RDP_NOIMPL("Error: DL addr = %08X out of range, PC=%08X", addr, gDlistStack[__RSP.PCi].pc );
+        RSP_RDP_NOIMPL("Error: DL addr = %08X out of range, PC=%08X", addr, __RSP.PC[__RSP.PCi] );
         addr &= (g_dwRamSize-1);
         DebuggerPauseCountN( NEXT_DLIST );
     }
@@ -149,8 +149,8 @@ void RSP_GBI0_DL(Gfx *gfx)
     if( gfx->gbi0dlist.param == G_DL_PUSH )
         __RSP.PCi++;
 
-    gDlistStack[__RSP.PCi].pc = addr;
-    gDlistStack[__RSP.PCi].countdown = MAX_DL_COUNT;
+    __RSP.PC[__RSP.PCi]        = addr;
+    __RSP.countdown[__RSP.PCi] = MAX_DL_COUNT;
 }
 
 
@@ -173,7 +173,7 @@ void RSP_GBI1_Line3D(Gfx *gfx)
 {
     status.primitiveType = PRIM_LINE3D;
 
-    uint32_t dwPC = gDlistStack[__RSP.PCi].pc;
+    uint32_t dwPC = __RSP.PC[__RSP.PCi];
 
     bool bTrisAdded = false;
 
@@ -243,12 +243,10 @@ void RSP_GBI1_Line3D(Gfx *gfx)
             dwPC += 8;
         } while (gfx->words.cmd == (uint8_t)RSP_LINE3D);
 
-        gDlistStack[__RSP.PCi].pc = dwPC-8;
+        __RSP.PC[__RSP.PCi] = dwPC-8;
 
         if (bTrisAdded) 
-        {
             CRender::g_pRender->DrawTriangles();
-        }
     }
 }
 
@@ -516,7 +514,7 @@ void RSP_GBI1_Tri1(Gfx *gfx)
     bool bTexturesAreEnabled = CRender::g_pRender->IsTextureEnabled();
 
     // While the next command pair is Tri1, add vertices
-    uint32_t dwPC = gDlistStack[__RSP.PCi].pc;
+    uint32_t dwPC = __RSP.PC[__RSP.PCi];
     
     do
     {
@@ -544,7 +542,7 @@ void RSP_GBI1_Tri1(Gfx *gfx)
 
     } while (gfx->words.cmd == (uint8_t)RSP_TRI1);
 
-    gDlistStack[__RSP.PCi].pc = dwPC-8;
+    __RSP.PC[__RSP.PCi] = dwPC-8;
 
     if (bTrisAdded) 
         CRender::g_pRender->DrawTriangles();
@@ -560,7 +558,7 @@ void RSP_GBI0_Tri4(Gfx *gfx)
     status.primitiveType = PRIM_TRI2;
 
     // While the next command pair is Tri2, add vertices
-    uint32_t dwPC = gDlistStack[__RSP.PCi].pc;
+    uint32_t dwPC = __RSP.PC[__RSP.PCi];
 
     bool bTrisAdded = false;
 
@@ -598,7 +596,7 @@ void RSP_GBI0_Tri4(Gfx *gfx)
 
     } while (((w0)>>24) == (uint8_t)RSP_TRI2);
 
-    gDlistStack[__RSP.PCi].pc = dwPC-8;
+    __RSP.PC[__RSP.PCi] = dwPC-8;
 
     if (bTrisAdded) 
         CRender::g_pRender->DrawTriangles();

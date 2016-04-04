@@ -981,9 +981,9 @@ void DLParser_TexRect(Gfx *gfx)
 
    // This command used 128bits, and not 64 bits. This means that we have to look one 
    // Command ahead in the buffer, and update the PC.
-   uint32_t dwPC = gDlistStack[__RSP.PCi].pc;       // This points to the next instruction
-   uint32_t dwCmd2 = *(uint32_t *)(rdram_u8 + dwPC+4);
-   uint32_t dwCmd3 = *(uint32_t *)(rdram_u8 + dwPC+4+8);
+   uint32_t dwPC    = __RSP.PC[__RSP.PCi];       // This points to the next instruction
+   uint32_t dwCmd2  = *(uint32_t *)(rdram_u8 + dwPC+4);
+   uint32_t dwCmd3  = *(uint32_t *)(rdram_u8 + dwPC+4+8);
    uint32_t dwHalf1 = *(uint32_t *)(rdram_u8 + dwPC);
    uint32_t dwHalf2 = *(uint32_t *)(rdram_u8 + dwPC+8);
 
@@ -993,12 +993,12 @@ void DLParser_TexRect(Gfx *gfx)
             ((dwHalf2>>24) == 0xb4 || (dwHalf2>>24) == 0xb3 || (dwHalf2>>24) == 0xb2 || (dwHalf2>>24) == 0xf1) )
       {
          // Increment PC so that it points to the right place
-         gDlistStack[__RSP.PCi].pc += 16;
+         __RSP.PC[__RSP.PCi] += 16;
       }
       else
       {
          // Hack for some games, All_Star_Baseball_2000
-         gDlistStack[__RSP.PCi].pc += 8;
+         __RSP.PC[__RSP.PCi] += 8;
          dwCmd3 = dwCmd2;
          //dwCmd2 = dwHalf1;
          //dwCmd2 = 0;
@@ -1009,7 +1009,7 @@ void DLParser_TexRect(Gfx *gfx)
    }
    else
    {
-      gDlistStack[__RSP.PCi].pc += 16;
+      __RSP.PC[__RSP.PCi] += 16;
    }
 
 
@@ -1150,24 +1150,24 @@ void DLParser_TexRectFlip(Gfx *gfx)
 
     // This command used 128bits, and not 64 bits. This means that we have to look one 
     // Command ahead in the buffer, and update the PC.
-    uint32_t dwPC = gDlistStack[__RSP.PCi].pc;       // This points to the next instruction
+    uint32_t dwPC   = __RSP.PC[__RSP.PCi];       // This points to the next instruction
     uint32_t dwCmd2 = *(uint32_t *)(rdram_u8 + dwPC+4);
     uint32_t dwCmd3 = *(uint32_t *)(rdram_u8 + dwPC+4+8);
 
     // Increment PC so that it points to the right place
-    gDlistStack[__RSP.PCi].pc += 16;
+    __RSP.PC[__RSP.PCi] += 16;
 
-    uint32_t lr_x     = (((gfx->words.w0)>>12)&0x0FFF)/4;
-    uint32_t lr_y     = (((gfx->words.w0)    )&0x0FFF)/4;
-    uint32_t tileno   = ((gfx->words.w1)>>24)&0x07;
-    uint32_t ul_x     = (((gfx->words.w1)>>12)&0x0FFF)/4;
-    uint32_t ul_y     = (((gfx->words.w1)    )&0x0FFF)/4;
-    uint32_t dwS      = (  dwCmd2>>16)&0xFFFF;
-    uint32_t dwT      = (  dwCmd2    )&0xFFFF;
-    int  nDSDX     = (int)(short)((  dwCmd3>>16)&0xFFFF);
-    int  nDTDY     = (int)(short)((  dwCmd3    )&0xFFFF);
+    uint32_t lr_x        = (((gfx->words.w0)>>12)&0x0FFF)/4;
+    uint32_t lr_y        = (((gfx->words.w0)    )&0x0FFF)/4;
+    uint32_t tileno      = ((gfx->words.w1)>>24)&0x07;
+    uint32_t ul_x        = (((gfx->words.w1)>>12)&0x0FFF)/4;
+    uint32_t ul_y        = (((gfx->words.w1)    )&0x0FFF)/4;
+    uint32_t dwS         = (  dwCmd2>>16)&0xFFFF;
+    uint32_t dwT         = (  dwCmd2    )&0xFFFF;
+    int  nDSDX           = (int)(short)((  dwCmd3>>16)&0xFFFF);
+    int  nDTDY           = (int)(short)((  dwCmd3    )&0xFFFF);
 
-    uint32_t curTile = gRSP.curTile;
+    uint32_t curTile     = gRSP.curTile;
     ForceMainTextureIndex(tileno);
     
     float fS0 = (float)dwS / 32.0f;

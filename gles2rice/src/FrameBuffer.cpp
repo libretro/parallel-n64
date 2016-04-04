@@ -302,7 +302,7 @@ bool FrameBufferManager::IsDIaRenderTexture()
     bool foundSetCImg=false;
     uint32_t newFillColor = 0;
 
-    uint32_t dwPC = gDlistStack[__RSP.PCi].pc;       // This points to the next instruction
+    uint32_t dwPC = __RSP.PC[__RSP.PCi];       // This points to the next instruction
 
     for (int i=0; i<10; i++)
     {
@@ -915,7 +915,7 @@ void FrameBufferManager::UpdateFrameBufferBeforeUpdateFrame()
 
 uint32_t FrameBufferManager::ComputeCImgHeight(SetImgInfo &info, uint32_t &height)
 {
-    uint32_t dwPC = gDlistStack[__RSP.PCi].pc;       // This points to the next instruction
+    uint32_t dwPC = __RSP.PC[__RSP.PCi];       // This points to the next instruction
 
     for (int i=0; i<10; i++)
     {

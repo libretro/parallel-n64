@@ -27,8 +27,8 @@ void RSP_GBI2_DL_Count(Gfx *gfx)
     uint32_t dwAddr = RSPSegmentAddr((gfx->words.w1));
     {
         __RSP.PCi++;
-        gDlistStack[__RSP.PCi].pc = dwAddr;
-        gDlistStack[__RSP.PCi].countdown = ((gfx->words.w0)&0xFFFF);
+        __RSP.PC[__RSP.PCi]        = dwAddr;
+        __RSP.countdown[__RSP.PCi] = ((gfx->words.w0)&0xFFFF);
     }
 }
 

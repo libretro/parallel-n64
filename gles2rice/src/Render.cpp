@@ -264,10 +264,6 @@ void CRender::PopWorldView()
     }
     else
     {
-#ifdef DEBUGGER
-        if( pauseAtNext )
-            TRACE0("Popping past worldview stack limits");
-#endif
         mtxPopUpError = true;
     }
 }
@@ -280,14 +276,6 @@ Matrix & CRender::GetWorldProjectMatrix(void)
 
 void CRender::SetWorldProjectMatrix(Matrix &mtx)
 {
-#ifdef DEBUGGER
-    if( pauseAtNext && (eventToPause == NEXT_TRIANGLE || eventToPause == NEXT_FLUSH_TRI || eventToPause == NEXT_MATRIX_CMD ) )
-    {
-        uint32_t dwPC = gDlistStack[__RSP.PCi].pc-8;
-        DebuggerAppendMsg("Force Matrix: pc=%08X", dwPC);
-        DumpMatrix(mtx, "Force Matrix, loading new world-project matrix");
-    }
-#endif
     gRSPworldProject = mtx;
 
     gRSP.bMatrixIsUpdated = false;
@@ -344,7 +332,6 @@ bool CRender::FillRect(int nX0, int nY0, int nX1, int nY1, uint32_t dwColor)
     {
         status.bVIOriginIsUpdated=false;
         CGraphicsContext::Get()->UpdateFrame(false);
-        DEBUGGER_PAUSE_AND_DUMP_NO_UPDATE(NEXT_SET_CIMG, {DebuggerAppendMsg("Screen Update at 1st FillRectangle");});
     }
 
   if (status.bCIBufferIsRendered && status.bVIOriginIsUpdated == true && currentRomOptions.screenUpdateSetting==SCREEN_UPDATE_BEFORE_SCREEN_CLEAR )
@@ -355,7 +342,6 @@ bool CRender::FillRect(int nX0, int nY0, int nX1, int nY1, uint32_t dwColor)
       {
           status.bVIOriginIsUpdated=false;
           CGraphicsContext::Get()->UpdateFrame(false);
-          DEBUGGER_PAUSE_AND_DUMP_NO_UPDATE(NEXT_SET_CIMG,{DebuggerAppendMsg("Screen Update Before Screen Clear");});
       }
   }
 
@@ -408,11 +394,6 @@ bool CRender::FillRect(int nX0, int nY0, int nX1, int nY1, uint32_t dwColor)
 
     if( options.bWinFrameMode )
         SetFillMode(RICE_FILLMODE_WINFRAME);
-
-    DEBUGGER_PAUSE_AND_DUMP_COUNT_N( NEXT_FILLRECT, {DebuggerAppendMsg("FillRect: X0=%d, Y0=%d, X1=%d, Y1=%d, Color=0x%08X", nX0, nY0, nX1, nY1, dwColor);
-            DebuggerAppendMsg("Pause after FillRect: Color=%08X\n", dwColor);if( logCombiners ) m_pColorCombiner->DisplayMuxString();});
-    DEBUGGER_PAUSE_AND_DUMP_COUNT_N( NEXT_FLUSH_TRI, {DebuggerAppendMsg("FillRect: X0=%d, Y0=%d, X1=%d, Y1=%d, Color=0x%08X", nX0, nY0, nX1, nY1, dwColor);
-            DebuggerAppendMsg("Pause after FillRect: Color=%08X\n", dwColor);if( logCombiners ) m_pColorCombiner->DisplayMuxString();});
 
     return res;
 }
@@ -475,19 +456,7 @@ bool CRender::Line3D(uint32_t dwV0, uint32_t dwV1, uint32_t dwWidth)
 
     SetCombinerAndBlender();
 
-    bool res=RenderLine3D();
-
-    DEBUGGER_PAUSE_AND_DUMP_COUNT_N(NEXT_FLUSH_TRI, {
-        DebuggerAppendMsg("Pause after Line3D: v%d(%f,%f,%f), v%d(%f,%f,%f), Width=%d\n", dwV0, m_line3DVtx[0].x, m_line3DVtx[0].y, m_line3DVtx[0].z, 
-            dwV1, m_line3DVtx[1].x, m_line3DVtx[1].y, m_line3DVtx[1].z, dwWidth);
-    });
-
-    DEBUGGER_PAUSE_AND_DUMP_COUNT_N(NEXT_OBJ_TXT_CMD, {
-        DebuggerAppendMsg("Pause after Line3D: v%d(%f,%f,%f), v%d(%f,%f,%f), Width=%d\n", dwV0, m_line3DVtx[0].x, m_line3DVtx[0].y, m_line3DVtx[0].z, 
-            dwV1, m_line3DVtx[1].x, m_line3DVtx[1].y, m_line3DVtx[1].z, dwWidth);
-    });
-
-    return res;
+    return RenderLine3D();
 }
 
 bool CRender::RemapTextureCoordinate
@@ -555,7 +524,6 @@ bool CRender::TexRect(int nX0, int nY0, int nX1, int nY1, float fS0, float fT0, 
     {
         status.bVIOriginIsUpdated=false;
         CGraphicsContext::Get()->UpdateFrame(false);
-        DEBUGGER_PAUSE_AND_DUMP_NO_UPDATE(NEXT_SET_CIMG,{DebuggerAppendMsg("Screen Update at 1st textRect");});
     }
 
     if( options.enableHackForGames == HACK_FOR_BANJO_TOOIE )
@@ -820,23 +788,7 @@ bool CRender::TexRect(int nX0, int nY0, int nX1, int nY1, float fS0, float fT0, 
     TurnFogOnOff(gRSP.bFogEnabled);
 
     if( gRDP.otherMode.cycle_type  >= G_CYC_COPY || !gRDP.otherMode.z_cmp  )
-    {
         ZBufferEnable(gRSP.bZBufferEnabled);
-    }
-
-    DEBUGGER_PAUSE_AT_COND_AND_DUMP_COUNT_N((eventToPause == NEXT_FLUSH_TRI || eventToPause == NEXT_TEXTRECT), {
-        DebuggerAppendMsg("TexRect: tile=%d, X0=%d, Y0=%d, X1=%d, Y1=%d,\nfS0=%f, fT0=%f, ScaleS=%f, ScaleT=%f\n",
-            gRSP.curTile, nX0, nY0, nX1, nY1, fS0, fT0, fScaleS, fScaleT);
-        DebuggerAppendMsg("       : x0=%f, y0=%f, x1=%f, y1=%f\n",  g_texRectTVtx[0].x, g_texRectTVtx[0].y, g_texRectTVtx[2].x, g_texRectTVtx[2].y);
-        DebuggerAppendMsg("   Tex0: u0=%f, v0=%f, u1=%f, v1=%f\n",  m_texRectTex1UV[0].u, m_texRectTex1UV[0].v, m_texRectTex1UV[1].u, m_texRectTex1UV[1].v);
-        if( IsTexel1Enable() )
-        {
-            DebuggerAppendMsg("   Tex1: u0=%f, v0=%f, u1=%f, v1=%f\n",  m_texRectTex2UV[0].u, m_texRectTex2UV[0].v, m_texRectTex2UV[1].u, m_texRectTex2UV[1].v);
-        }
-        DebuggerAppendMsg("color=%08X, %08X\n", g_texRectTVtx[0].dcDiffuse, g_texRectTVtx[0].dcSpecular);
-        DebuggerAppendMsg("Pause after TexRect\n");
-        if( logCombiners ) m_pColorCombiner->DisplayMuxString();
-    });
 
     return res;
 }
@@ -915,15 +867,6 @@ bool CRender::TexRectFlip(int nX0, int nY0, int nX1, int nY1, float fS0, float f
 
     // Restore state
     ZBufferEnable( m_savedZBufferFlag );
-
-    DEBUGGER_PAUSE_AT_COND_AND_DUMP_COUNT_N((eventToPause == NEXT_FLUSH_TRI || eventToPause == NEXT_TEXTRECT), {
-        DebuggerAppendMsg("TexRectFlip: tile=%d, X0=%d, Y0=%d, X1=%d, Y1=%d,\nfS0=%f, fT0=%f, nfS1=%f, fT1=%f\n",
-            gRSP.curTile, nX0, nY0, nX1, nY1, fS0, fT0, fS1, fT1);
-        DebuggerAppendMsg("       : x0=%f, y0=%f, x1=%f, y1=%f\n",  g_texRectTVtx[0].x, g_texRectTVtx[0].y, g_texRectTVtx[2].x, g_texRectTVtx[2].y);
-        DebuggerAppendMsg("   Tex0: u0=%f, v0=%f, u1=%f, v1=%f\n",  g_texRectTVtx[0].tcord[0].u, g_texRectTVtx[0].tcord[0].v, g_texRectTVtx[2].tcord[0].u, g_texRectTVtx[2].tcord[0].v);
-        TRACE0("Pause after TexRectFlip\n");
-        if( logCombiners ) m_pColorCombiner->DisplayMuxString();
-    });
 
     return res;
 }
@@ -1122,13 +1065,10 @@ bool CRender::DrawTriangles()
     if( !status.bCIBufferIsRendered )
         g_pFrameBufferManager->ActiveTextureBuffer();
 
-    DEBUGGER_ONLY_IF( (!debuggerEnableZBuffer), {ZBufferEnable( false );} );
-
     if( status.bVIOriginIsUpdated == true && currentRomOptions.screenUpdateSetting==SCREEN_UPDATE_AT_1ST_PRIMITIVE )
     {
         status.bVIOriginIsUpdated=false;
         CGraphicsContext::Get()->UpdateFrame(false);
-        DEBUGGER_PAUSE_AND_DUMP_NO_UPDATE(NEXT_SET_CIMG,{DebuggerAppendMsg("Screen Update at 1st triangle");});
     }
 
     // Hack for Pilotwings 64 (U) [!].v64
@@ -1303,15 +1243,8 @@ bool CRender::DrawTriangles()
     gRSP.numVertices = 0;   // Reset index
     gRSP.maxVertexID = 0;
 
-    DEBUGGER_PAUSE_AND_DUMP_COUNT_N(NEXT_FLUSH_TRI, {
-        TRACE0("Pause after DrawTriangles\n");
-        if( logCombiners ) m_pColorCombiner->DisplayMuxString();
-    });
-
     if( !gRDP.bFogEnableInBlender && gRSP.bFogEnabled )
-    {
         TurnFogOnOff(true);
-    }
 
     return res;
 }

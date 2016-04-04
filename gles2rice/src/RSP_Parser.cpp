@@ -256,8 +256,6 @@ SetImgInfo g_CI = { G_IM_FMT_RGBA, G_IM_SIZ_16b, 1, 0 };
 SetImgInfo g_ZI = { G_IM_FMT_RGBA, G_IM_SIZ_16b, 1, 0 };
 RenderTextureInfo g_ZI_saves[2];
 
-DListStack  gDlistStack[MAX_DL_STACK_SIZE];
-
 TMEMLoadMapInfo g_tmemLoadAddrMap[0x200];   // Totally 4KB TMEM
 TMEMLoadMapInfo g_tmemInfo0;                // Info for Tmem=0
 TMEMLoadMapInfo g_tmemInfo1;                // Info for Tmem=0x100
@@ -735,8 +733,8 @@ void DLParser_Process(OSTask * pTask)
     // Initialize stack
     status.bN64FrameBufferIsUsed = false;
     __RSP.PCi =0;
-    gDlistStack[__RSP.PCi].pc = (uint32_t)pTask->t.data_ptr;
-    gDlistStack[__RSP.PCi].countdown = MAX_DL_COUNT;
+    __RSP.PC[__RSP.PCi]        = (uint32_t)pTask->t.data_ptr;
+    __RSP.countdown[__RSP.PCi] = MAX_DL_COUNT;
 
     // Check if we need to purge (every 5 milliseconds)
     if (status.gRDPTime - status.lastPurgeTimeTime > 5)
@@ -769,11 +767,11 @@ void DLParser_Process(OSTask * pTask)
         {
             status.gUcodeCount++;
 
-            Gfx *pgfx = (Gfx*)&rdram_u32[(gDlistStack[__RSP.PCi].pc>>2)];
-            gDlistStack[__RSP.PCi].pc += 8;
+            Gfx *pgfx = (Gfx*)&rdram_u32[(__RSP.PC[__RSP.PCi]>>2)];
+            __RSP.PC[__RSP.PCi] += 8;
             currentUcodeMap[pgfx->words.w0 >>24](pgfx);
 
-            if ( __RSP.PCi >= 0 && --gDlistStack[__RSP.PCi].countdown < 0 )
+            if ( __RSP.PCi >= 0 && --__RSP.countdown[__RSP.PCi] < 0 )
                 __RSP.PCi--;
         }
 
@@ -1054,7 +1052,7 @@ void DLParser_FillRect(Gfx *gfx)
 
    if( options.enableHackForGames == HACK_FOR_MARIO_TENNIS )
    {
-      uint32_t dwPC = gDlistStack[__RSP.PCi].pc;       // This points to the next instruction
+      uint32_t dwPC = __RSP.PC[__RSP.PCi];       // This points to the next instruction
       uint32_t w2   = *(uint32_t *)(rdram_u8 + dwPC);
 
       if( (w2>>24) == G_FILLRECT )
@@ -1066,7 +1064,7 @@ void DLParser_FillRect(Gfx *gfx)
             w2 = *(uint32_t *)(rdram_u8 + dwPC);
          }
 
-         gDlistStack[__RSP.PCi].pc = dwPC;
+         __RSP.PC[__RSP.PCi] = dwPC;
          return;
       }
    }
@@ -1270,9 +1268,9 @@ void RDP_DLParser_Process(void)
     uint32_t end        = *(gfx_info.DPC_END_REG);
     uint32_t *rdram_u32 = (uint32_t*)gfx_info.RDRAM;
 
-    __RSP.PCi                        = 0;
-    gDlistStack[__RSP.PCi].pc        = start;
-    gDlistStack[__RSP.PCi].countdown = MAX_DL_COUNT;
+    __RSP.PCi                  = 0;
+    __RSP.PC[__RSP.PCi]        = start;
+    __RSP.countdown[__RSP.PCi] = MAX_DL_COUNT;
 
     // Check if we need to purge (every 5 milliseconds)
     if (status.gRDPTime - status.lastPurgeTimeTime > 5)
@@ -1290,10 +1288,10 @@ void RDP_DLParser_Process(void)
     CRender::g_pRender->BeginRendering();
     CRender::g_pRender->SetViewport(0, 0, windowSetting.uViWidth, windowSetting.uViHeight, 0x3FF);
 
-    while( gDlistStack[__RSP.PCi].pc < end )
+    while( __RSP.PC[__RSP.PCi] < end )
     {
-        Gfx *pgfx = (Gfx*)&rdram_u32[(gDlistStack[__RSP.PCi].pc>>2)];
-        gDlistStack[__RSP.PCi].pc += 8;
+        Gfx *pgfx = (Gfx*)&rdram_u32[(__RSP.PC[__RSP.PCi] >> 2)];
+        __RSP.PC[__RSP.PCi] += 8;
         currentUcodeMap[pgfx->words.w0 >>24](pgfx);
     }
 

@@ -152,7 +152,6 @@ typedef union {
     uint64_t  force_structure_alignment;
 } OSTask;
 
-#define MAX_DL_STACK_SIZE   32
 #define MAX_DL_COUNT        1000000
 
 typedef struct {
@@ -366,8 +365,6 @@ extern SetImgInfo g_CI;
 extern SetImgInfo g_ZI;
 extern SetImgInfo g_TI;
 extern TmemType g_Tmem;
-
-extern DListStack   gDlistStack[MAX_DL_STACK_SIZE];
 
 void DLParser_Init();
 void RDP_GFX_Reset();
