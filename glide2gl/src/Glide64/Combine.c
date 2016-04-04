@@ -14154,14 +14154,14 @@ void CombineBlender(void)
          case 0x0091:            /* Mace special blend mode */
          case 0x0c08:            /* 1080 Snowboarding - sky */
          case 0x0f0a:            /* Mario Kart 64 - player select
-                                  * clr_in * 0 + clr_in * 1
+                                  * In * 0 + In * 1
                                   * - or just clr_in, no matter what alpha
                                   */
          case 0x0302:            /* Donkey Kong 64 blue prints */
          case 0xA500:            /* Bomberman 2 special blend mode */
          case 0xcb02:            /* Sin and Punishment */
          case BLEND_FOG_ASHADE:  /* Battlezone
-                                  * clr_in * a + clr_in * (1-a) */
+                                  * In * a + In * (1-A) */
          case 0x07C2:            /* Conker BFD */
          case 0x00c0:            /* Conker BFD */
          case 0xc302:            /* ISS64 */
@@ -14181,15 +14181,15 @@ void CombineBlender(void)
          case 0x0FA5:   /* LOT in Zelda: Majora's Mask */
          case 0x0f5a:   /* Seems to be doing just blend color - maybe combiner can be used for this? */
          case 0x5055:   /* Used in Paper Mario intro, I'm not sure if this is right... */
-            /* clr_in * 0 + clr_mem * 1 */
+            /* In * 0 + Mem * 1 */
             A_BLEND (GR_BLEND_ZERO, GR_BLEND_ONE);
             break;
 
-         case 0x5f50: //clr_mem * 0 + clr_mem * (1-a)
+         case 0x5f50: /* Mem * 0 + Mem * (1-A) */
             A_BLEND (GR_BLEND_ZERO, GR_BLEND_ONE_MINUS_SRC_ALPHA);
             break;
-         case 0xf550: //clr_fog * a_fog + clr_mem * (1-a)
-			case 0x0D18: //clr_in * a_fog + clr_mem * (1-a)
+         case 0xf550: /* Fog * AFog + Mem * (1-A) */
+			case 0x0D18: /* In  * AFog + Mem * (1-A) */
             A_BLEND (GR_BLEND_SRC_ALPHA, GR_BLEND_ONE_MINUS_SRC_ALPHA);
             {
                uint32_t temp = g_gdp.prim_color.total;
@@ -14288,7 +14288,8 @@ void CombineBlender(void)
       switch (blendmode)
       {
          case 0x4055:      /* Mario Golf */
-         case 0x5055:      /* Paper Mario intro clr_mem * a_in + clr_mem * a_mem */
+         case 0x5055:      /* Paper Mario intro
+                              Mem * AIn + Mem * AMem */
             A_BLEND (GR_BLEND_ZERO, GR_BLEND_ONE);
             break;
          default:
