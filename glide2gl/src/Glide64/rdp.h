@@ -364,8 +364,8 @@ struct RDP
 
    float offset_x, offset_y, offset_x_bak, offset_y_bak;
 
-   float scale_x, scale_1024, scale_x_bak;
-   float scale_y, scale_768, scale_y_bak;
+   float scale_x, scale_x_bak;
+   float scale_y, scale_y_bak;
 
    float view_scale[3];
    float view_trans[3];

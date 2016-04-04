@@ -43,7 +43,7 @@ void ReadSettings(void)
    settings.ucode = 2;
    settings.fog = 1;
    settings.buff_clear = 1;
-   settings.unk_as_red = false;
+   settings.unk_as_red = true;
    settings.unk_clear = false;
 }
 
