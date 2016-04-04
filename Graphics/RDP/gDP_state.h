@@ -46,7 +46,11 @@ struct gDPCombine
 struct FrameBuffer;
 struct gDPTile
 {
-	uint32_t format, size, line, tmem, palette;
+	uint32_t  format;               /* e.g. RGBA, YUV, etc. */
+   uint32_t    size;               /* e.g. 4/8/16/32bpp    */
+   uint32_t    line;             
+   uint32_t palette;               /* 0..15 - palette index */
+   uint32_t    tmem;               /* Texture memory location */
 
 	union
 	{
@@ -70,7 +74,10 @@ struct gDPTile
 	uint32_t maskt, masks;
 	uint32_t shiftt, shifts;
 	float fuls, fult, flrs, flrt;
-	uint32_t uls, ult, lrs, lrt;
+	uint32_t uls;                 /* Upper left S - 8:3 */
+   uint32_t ult;                 /* Upper Left T - 8:3 */
+   uint32_t lrs;                 /* Lower Right S      */
+   uint32_t lrt;                 /* Lower Right T      */
 
 	uint32_t textureMode;
 	uint32_t loadType;
