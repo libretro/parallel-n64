@@ -9,12 +9,17 @@
 extern "C" {
 #endif
 
+#define DL_STACKSIZE 32
+
 typedef struct
 {
-	uint32_t PC[18];      /* Display List Program Counter stack */
-   int64_t PCi;         /* Current Program Counter index on the stack */
+   /* Display list stack */
+   uint32_t countdown[DL_STACKSIZE];
+   uint32_t PC[DL_STACKSIZE];     /* Display List Program Counter stack */
+   int64_t  PCi;                  /* Current Program Counter index on the stack */
+
    uint32_t busy;
-   uint32_t halt;        /* Marks the end of Display List execution */
+   uint32_t halt;                 /* Marks the end of Display List execution */
    uint32_t DList;
    uint32_t close;
    uint32_t uc_start;
