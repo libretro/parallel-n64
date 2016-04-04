@@ -69,7 +69,7 @@ float set_sprite_combine_mode(void)
 
   // set z buffer mode
   Z = 0.0f;
-  if ((gDP.otherMode.l & 0x00000030) && (gDP.otherMode.cycleType < 2))
+  if ((gDP.otherMode.l & 0x00000030) && (gDP.otherMode.cycleType < G_CYC_COPY))
   {
      if (g_gdp.other_modes.z_source_sel == 1)
       Z = g_gdp.prim_color.z;
@@ -188,7 +188,7 @@ static void DrawImage (DRAWIMAGE *d)
       case 0:
          y_size  = 32;
          y_shift = 5;
-         if (gDP.otherMode.textureLUT < 2)
+         if (gDP.otherMode.textureLUT < G_TT_RGBA16)
          {
             y_size  = 64;
             y_shift = 6;
@@ -200,7 +200,7 @@ static void DrawImage (DRAWIMAGE *d)
       case 1:
          y_size  = 32;
          y_shift = 5;
-         if (gDP.otherMode.textureLUT < 2)
+         if (gDP.otherMode.textureLUT < G_TT_RGBA16)
          {
             y_size  = 64;
             y_shift = 6;
@@ -324,7 +324,7 @@ static void DrawImage (DRAWIMAGE *d)
          );
 
    Z = set_sprite_combine_mode ();
-   if (gDP.otherMode.cycleType == 2)
+   if (gDP.otherMode.cycleType == G_CYC_COPY)
       rdp.allow_combine = 0;
 
    {
@@ -1250,7 +1250,7 @@ static void uc6_sprite2d(uint32_t w0, uint32_t w1)
          return;
  
       texsize = (d.imageW * d.imageH) << d.imageSiz >> 1;
-      maxTexSize = gDP.otherMode.textureLUT < 2 ? 4096 : 2048;
+      maxTexSize = gDP.otherMode.textureLUT < G_TT_RGBA16 ? 4096 : 2048;
 
       if (texsize > maxTexSize)
       {
