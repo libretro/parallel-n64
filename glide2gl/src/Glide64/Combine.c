@@ -774,7 +774,7 @@ static void cc_zero(void)
 
 static void cc_t0(void)
 {
-   if ((gDP.otherMode.l & FORCE_BL) && (((gDP.otherMode.h & RDP_CYCLE_TYPE) >> 20) < G_CYC_COPY))
+   if ((gDP.otherMode.forceBlender) && gDP.otherMode.cycleType < G_CYC_COPY)
    {
       uint32_t blend_mode = (gDP.otherMode.l >> 16);
 
@@ -5013,7 +5013,7 @@ static void cc_prim_sub_env_mul_t1_add_env()
          GR_COMBINE_OTHER_CONSTANT);
    CC_PRIM();
    SETSHADE_ENV();
-   if (((gDP.otherMode.h & RDP_CYCLE_TYPE) >> 20) == G_CYC_1CYCLE || ((settings.hacks&hack_KI) && (rdp.cycle2 & 0x0FFFFFFF) == 0x01FF1FFF))
+   if (gDP.otherMode.cycleType == G_CYC_1CYCLE || ((settings.hacks&hack_KI) && (rdp.cycle2 & 0x0FFFFFFF) == 0x01FF1FFF))
    {
       USE_T0();
    }
@@ -7321,7 +7321,7 @@ static void ac_one()
 
 static void ac_t0()
 {
-   if ((gDP.otherMode.l & FORCE_BL) && (((gDP.otherMode.h & RDP_CYCLE_TYPE) >> 20) < G_CYC_COPY))
+   if (gDP.otherMode.forceBlender && (gDP.otherMode.cycleType < G_CYC_COPY))
    {
       uint32_t blend_mode = (gDP.otherMode.l >> 16);
       if (blend_mode == 0x0550)
@@ -7618,7 +7618,7 @@ static void ac_t1_mul_prim()
          GR_COMBINE_LOCAL_CONSTANT,
          GR_COMBINE_OTHER_TEXTURE);
    CA_PRIM();
-   if (((gDP.otherMode.h & RDP_CYCLE_TYPE) >> 20) == G_CYC_1CYCLE)
+   if (gDP.otherMode.cycleType == G_CYC_1CYCLE)
       A_USE_T0();
    else
       A_USE_T1();
@@ -7881,7 +7881,7 @@ static void ac_t1_mul_env() //Added by Gonetz
          GR_COMBINE_OTHER_TEXTURE);
    CA_ENV();
    //  if ((settings.hacks&hack_Powerpuff) && (rdp.last_tile == 0))
-   if (((gDP.otherMode.h & RDP_CYCLE_TYPE) >> 20) == G_CYC_1CYCLE)
+   if (gDP.otherMode.cycleType == G_CYC_1CYCLE)
       A_USE_T0();
    else
       A_USE_T1();
@@ -14146,7 +14146,7 @@ void CombineBlender(void)
 {
    uint32_t blendmode = gDP.otherMode.l >> 16;
    // Check force-blending
-   if ((gDP.otherMode.l & FORCE_BL) && (((gDP.otherMode.h & RDP_CYCLE_TYPE) >> 20) < G_CYC_COPY))
+   if (gDP.otherMode.forceBlender && (gDP.otherMode.cycleType < G_CYC_COPY))
    {
       switch (blendmode)
       {
@@ -14210,7 +14210,7 @@ void CombineBlender(void)
 
          case 0x0150: //spiderman
             A_BLEND (GR_BLEND_SRC_ALPHA, GR_BLEND_ONE_MINUS_SRC_ALPHA);
-            if (((gDP.otherMode.h & RDP_CYCLE_TYPE) >> 20) == G_CYC_2CYCLE && rdp.cycle2 != 0x01ff1fff)
+            if (gDP.otherMode.cycleType == G_CYC_2CYCLE && rdp.cycle2 != 0x01ff1fff)
             {
                uint32_t temp = g_gdp.prim_color.total;
                g_gdp.prim_color.total = g_gdp.fog_color.total;
@@ -14270,7 +14270,7 @@ void CombineBlender(void)
    }
    else if (blendmode == BLEND_XLU) // Mia Soccer Lights
       A_BLEND (GR_BLEND_SRC_ALPHA, GR_BLEND_ONE_MINUS_SRC_ALPHA);
-   else if ((settings.hacks&hack_Pilotwings) && (gDP.otherMode.l & RDP_COLOR_ON_CVG)) //RDP_COLOR_ON_CVG without FORCE_BL
+   else if ((settings.hacks&hack_Pilotwings) && gDP.otherMode.clearOnCvg) //RDP_COLOR_ON_CVG without FORCE_BL
       A_BLEND (GR_BLEND_ZERO, GR_BLEND_ONE);
 #if 0
    else if ((settings.hacks & hack_Blastcorps))
@@ -14283,7 +14283,7 @@ void CombineBlender(void)
 
    // RDP_ALPHA_CVG_SELECT means full alpha
    // The reason it wasn't working before was because I wasn't handling rdp:setothermode
-   if ((gDP.otherMode.l & RDP_ALPHA_CVG_SELECT) && ((gDP.otherMode.l & 0x7000) != 0x7000))
+   if (gDP.otherMode.alphaCvgSel && ((gDP.otherMode.l & 0x7000) != 0x7000))
    {
       switch (blendmode)
       {
