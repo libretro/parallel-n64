@@ -248,26 +248,6 @@ typedef struct
    int set_by;          // 0-loadblock 1-loadtile
 } TEXTURE_IMAGE;
 
-// This structure is a tile descriptor (as used by rdp:settile and rdp:settilesize)
-typedef struct
-{
-   // rdp:settilesize
-   // TODO - eventually remove these
-   float f_ul_s;
-   float f_ul_t;
-
-   uint32_t width;
-   uint32_t height;
-
-   // uc0:texture
-   uint8_t on;
-   float s_scale;
-   float t_scale;
-
-   uint16_t org_s_scale;
-   uint16_t org_t_scale;
-} TILE;
-
 // This structure forms the lookup table for cached textures
 typedef struct {
   uint32_t addr;        // address in RDRAM
@@ -395,7 +375,6 @@ struct RDP
 
    // Textures
    TEXTURE_IMAGE timg;       // 1 for each tmem address
-   TILE tiles[8];          // 8 tile descriptors
    uint32_t addr[512];        // 512 addresses (used to determine address loaded from)
 
    int     cur_tile;   // current tile

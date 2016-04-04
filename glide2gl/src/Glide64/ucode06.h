@@ -175,7 +175,7 @@ static void DrawImage (DRAWIMAGE *d)
    float ful_u, ful_v, flr_u, flr_v;
    float ful_x, ful_y, flr_x, flr_y, mx, bx, my, by;
    float Z;
-   TILE *tile;
+   struct gDPTile *tile;
    int ul_u, ul_v, lr_u, lr_v;
    float ul_x, ul_y, lr_x, lr_y;
 
@@ -1263,7 +1263,7 @@ static void uc6_sprite2d(uint32_t w0, uint32_t w1)
       else
       {
          float Z, ul_x, ul_y, lr_x, lr_y, lr_u, lr_v;
-         TILE *tile;
+         struct gDPTile *tile;
          VERTEX v[4];
          uint16_t line = d.imageW;
 

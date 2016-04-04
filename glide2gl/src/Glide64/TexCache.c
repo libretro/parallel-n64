@@ -177,23 +177,18 @@ static void GetTexInfo (int id, int tile)
 
       // wrap all the way
       width = MIN(mask_width, tile_width);	// changed from mask_width only
-      rdp.tiles[tile].width = width;
+      gDP.tiles[tile].width = width;
 
       // Get the width/height to load 
-      if ((g_gdp.tile[tile].cs && tile_width <= 256) || (mask_width > 256))
-      {
-         // actual width
-         rdp.tiles[tile].width = tile_width;
-      }
+      if ((g_gdp.tile[tile].cs && tile_width <= 256) || (mask_width > 256))   // actual width
+         gDP.tiles[tile].width = tile_width;
 
       height = MIN(mask_height, tile_height);
-      rdp.tiles[tile].height = height;
+      gDP.tiles[tile].height = height;
 
+      // actual height
       if ((g_gdp.tile[tile].ct && tile_height <= 256) || (mask_height > 256))
-      {
-         // actual height
-         rdp.tiles[tile].height = tile_height;
-      }
+         gDP.tiles[tile].height = tile_height;
    }
    else
    {
@@ -208,31 +203,31 @@ static void GetTexInfo (int id, int tile)
       }
 
       width = mask_width;
-      rdp.tiles[tile].width = mask_width;
+      gDP.tiles[tile].width = mask_width;
       // Get the width/height to load
       if ((g_gdp.tile[tile].cs && tile_width <= 256) )//|| (mask_width > 256))
       {
          // loading width
          width = MIN(mask_width, tile_width);
          // actual width
-         rdp.tiles[tile].width = tile_width;
+         gDP.tiles[tile].width = tile_width;
       }
 
       height = mask_height;
-      rdp.tiles[tile].height = mask_height;
+      gDP.tiles[tile].height = mask_height;
 
       if ((g_gdp.tile[tile].ct && tile_height <= 256) || (mask_height > 256))
       {
          // loading height
          height = MIN(mask_height, tile_height);
          // actual height
-         rdp.tiles[tile].height = tile_height;
+         gDP.tiles[tile].height = tile_height;
       }
    }
 
    // without any large texture fixing-up; for alignment
-   real_image_width = rdp.tiles[tile].width;
-   real_image_height = rdp.tiles[tile].height;
+   real_image_width  = gDP.tiles[tile].width;
+   real_image_height = gDP.tiles[tile].height;
    crc_height = height;
    if (rdp.timg.set_by == 1)
       crc_height = tile_height;
@@ -242,8 +237,8 @@ static void GetTexInfo (int id, int tile)
    FRDP (" | | | |- tmem: %08lx\n", g_gdp.tile[tile].tmem);
    FRDP (" | | | |- load width: %d\n", width);
    FRDP (" | | | |- load height: %d\n", height);
-   FRDP (" | | | |- actual width: %d\n", rdp.tiles[tile].width);
-   FRDP (" | | | |- actual height: %d\n", rdp.tiles[tile].height);
+   FRDP (" | | | |- actual width: %d\n", gDP.tiles[tile].width);
+   FRDP (" | | | |- actual height: %d\n", gDP.tiles[tile].height);
    FRDP (" | | | |- size: %d\n", g_gdp.tile[tile].size);
    FRDP (" | | | +- format: %d\n", g_gdp.tile[tile].format);
    LRDP(" | | |- Calculating CRC... ");
@@ -374,8 +369,8 @@ static void GetTexInfo (int id, int tile)
                g_gdp.tile[tile].palette == cache->palette &&
                g_gdp.tile[tile].format == cache->format &&
                g_gdp.tile[tile].size == cache->size &&*/
-               rdp.tiles[tile].width == cache->width &&
-               rdp.tiles[tile].height == cache->height &&
+               gDP.tiles[tile].width == cache->width &&
+               gDP.tiles[tile].height == cache->height &&
                flags == cache->flags)
          {
             if (!(mod+cache->mod) || (cache->mod == mod &&
@@ -764,18 +759,18 @@ static void LoadTex(int id, int tmu)
    }
 
    // Set the data
-   cache->line = g_gdp.tile[td].line;
-   cache->addr = rdp.addr[g_gdp.tile[td].tmem];
-   cache->crc = texinfo[id].crc;
-   cache->palette = g_gdp.tile[td].palette;
-   cache->width = rdp.tiles[td].width;
-   cache->height = rdp.tiles[td].height;
-   cache->format = g_gdp.tile[td].format;
-   cache->size = g_gdp.tile[td].size;
-   cache->tmem_addr = voodoo.tmem_ptr[tmu];
-   cache->set_by = rdp.timg.set_by;
+   cache->line       = g_gdp.tile[td].line;
+   cache->addr       = rdp.addr[g_gdp.tile[td].tmem];
+   cache->crc        = texinfo[id].crc;
+   cache->palette    = g_gdp.tile[td].palette;
+   cache->width      = gDP.tiles[td].width;
+   cache->height     = gDP.tiles[td].height;
+   cache->format     = g_gdp.tile[td].format;
+   cache->size       = g_gdp.tile[td].size;
+   cache->tmem_addr  = voodoo.tmem_ptr[tmu];
+   cache->set_by     = rdp.timg.set_by;
    cache->texrecting = rdp.texrecting;
-   cache->last_used = frame_count;
+   cache->last_used  = frame_count;
    cache->uses = 0;
    cache->flags = texinfo[id].flags;
 
@@ -786,8 +781,8 @@ static void LoadTex(int id, int tmu)
    cache->t_info.format = GR_TEXFMT_ARGB_1555;
 
    // Calculate lod and aspect
-   size_x = rdp.tiles[td].width;
-   size_y = rdp.tiles[td].height;
+   size_x = gDP.tiles[td].width;
+   size_y = gDP.tiles[td].height;
 
    for (shift=0; (1<<shift) < (int)size_x; shift++);
    size_x = 1 << shift;

@@ -776,8 +776,8 @@ static void rdp_texrect(uint32_t w0, uint32_t w1)
          texUV[i].ul_u = x_i / 32.0f;
          texUV[i].ul_v = y_i / 32.0f;
 
-         texUV[i].ul_u -= rdp.tiles[tilenum].f_ul_s;
-         texUV[i].ul_v -= rdp.tiles[tilenum].f_ul_t;
+         texUV[i].ul_u -= gDP.tiles[tilenum].fuls;
+         texUV[i].ul_v -= gDP.tiles[tilenum].fult;
 
          texUV[i].lr_u = texUV[i].ul_u + off_size_x * maxs;
          texUV[i].lr_v = texUV[i].ul_v + off_size_y * maxt;
@@ -995,8 +995,8 @@ static void rdp_settilesize(uint32_t w0, uint32_t w1)
    rdp.last_tile_size        = tilenum;
 
    /* TODO - should get rid of this eventually */
-   rdp.tiles[tilenum].f_ul_s = _FIXED2FLOAT(g_gdp.tile[tilenum].sl, 2);
-   rdp.tiles[tilenum].f_ul_t = _FIXED2FLOAT(g_gdp.tile[tilenum].tl, 2);
+   gDP.tiles[tilenum].fuls = _FIXED2FLOAT(g_gdp.tile[tilenum].sl, 2);
+   gDP.tiles[tilenum].fult = _FIXED2FLOAT(g_gdp.tile[tilenum].tl, 2);
 
    /* TODO - Wrong values being used by Glide64  - unify this
     * later so that it uses the same values as Angrylion */

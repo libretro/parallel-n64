@@ -148,10 +148,10 @@ static void t3dLoadObject(uint32_t pstate, uint32_t pvtx, uint32_t ptri)
    LRDP("Loading Turbo3D object\n");
    FRDP("tile: %d\n", rdp.cur_tile);
 
-   if (rdp.tiles[rdp.cur_tile].s_scale < 0.001f)
-      rdp.tiles[rdp.cur_tile].s_scale = 0.015625;
-   if (rdp.tiles[rdp.cur_tile].t_scale < 0.001f)
-      rdp.tiles[rdp.cur_tile].t_scale = 0.015625;
+   if (gDP.tiles[rdp.cur_tile].s_scale < 0.001f)
+      gDP.tiles[rdp.cur_tile].s_scale = 0.015625;
+   if (gDP.tiles[rdp.cur_tile].t_scale < 0.001f)
+      gDP.tiles[rdp.cur_tile].t_scale = 0.015625;
 
    __RSP.w0 = ostate->othermode0;
    __RSP.w1 = ostate->othermode1;

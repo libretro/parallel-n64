@@ -46,6 +46,7 @@
 #include "3dmath.h"
 
 #include "../../Graphics/3dmath.h"
+#include "../../Graphics/RDP/gDP_state.h"
 #include "../../Graphics/RSP/gSP_state.h"
 
 void InverseTransformVector (float *src, float *dst, float mat[4][4])
@@ -95,13 +96,13 @@ void math_init(void)
 void calc_sphere (VERTEX *v)
 {
    float x, y;
-   int s_scale = rdp.tiles[rdp.cur_tile].org_s_scale >> 6;
-   int t_scale = rdp.tiles[rdp.cur_tile].org_t_scale >> 6;
+   int s_scale = gDP.tiles[rdp.cur_tile].org_s_scale >> 6;
+   int t_scale = gDP.tiles[rdp.cur_tile].org_t_scale >> 6;
 
    if (settings.hacks&hack_Chopper)
    {
-      s_scale = MIN(rdp.tiles[rdp.cur_tile].org_s_scale >> 6, g_gdp.tile[rdp.cur_tile].sl);
-      t_scale = MIN(rdp.tiles[rdp.cur_tile].org_t_scale >> 6, g_gdp.tile[rdp.cur_tile].tl);
+      s_scale = MIN(gDP.tiles[rdp.cur_tile].org_s_scale >> 6, g_gdp.tile[rdp.cur_tile].sl);
+      t_scale = MIN(gDP.tiles[rdp.cur_tile].org_t_scale >> 6, g_gdp.tile[rdp.cur_tile].tl);
    }
 
    TransformVectorNormalize(v->vec, rdp.model);
@@ -149,8 +150,8 @@ void calc_linear (VERTEX *v)
    if (rdp.cur_cache[0])
    {
       // scale >> 6 is size to map to
-      v->ou     = (acosf(x)/3.141592654f) * (rdp.tiles[rdp.cur_tile].org_s_scale >> 6);
-      v->ov     = (acosf(y)/3.141592654f) * (rdp.tiles[rdp.cur_tile].org_t_scale >> 6);
+      v->ou     = (acosf(x)/3.141592654f) * (gDP.tiles[rdp.cur_tile].org_s_scale >> 6);
+      v->ov     = (acosf(y)/3.141592654f) * (gDP.tiles[rdp.cur_tile].org_t_scale >> 6);
    }
    v->uv_scaled = 1;
 }

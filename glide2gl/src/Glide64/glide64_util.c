@@ -290,8 +290,8 @@ static void CalculateLOD(VERTEX *v, int n, uint32_t lodmode)
 {
    float intptr, lod_fraction, detailmax;
    int i, j, ilod, lod_tile;
-   float s_scale   = rdp.tiles[rdp.cur_tile].width / 255.0f;
-   float t_scale   = rdp.tiles[rdp.cur_tile].height / 255.0f;
+   float s_scale   = gDP.tiles[rdp.cur_tile].width / 255.0f;
+   float t_scale   = gDP.tiles[rdp.cur_tile].height / 255.0f;
    float lodFactor = 0;
 
    if (lodmode == G_TL_LOD)
@@ -1473,8 +1473,8 @@ static void draw_tri_uv_calculation(VERTEX **vtx, VERTEX *v)
    // Fix texture coordinates
    if (!v->uv_scaled)
    {
-      v->ou *= rdp.tiles[rdp.cur_tile].s_scale;
-      v->ov *= rdp.tiles[rdp.cur_tile].t_scale;
+      v->ou *= gDP.tiles[rdp.cur_tile].s_scale;
+      v->ov *= gDP.tiles[rdp.cur_tile].t_scale;
       v->uv_scaled = 1;
 
       if (!gDP.otherMode.texturePersp)

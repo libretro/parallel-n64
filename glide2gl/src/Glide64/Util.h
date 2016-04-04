@@ -44,6 +44,7 @@
 #include "rdp.h"
 #include "../../../mupen64plus-core/src/main/util.h"
 
+#include "../../Graphics/RDP/gDP_state.h"
 #include "../../Graphics/RDP/RDP_state.h"
 
 #ifdef __cplusplus
@@ -96,8 +97,8 @@ static INLINE void draw_tri_uv_calculation_update_shift(unsigned cur_tile, unsig
          v->v[index] /= (float)(1 << g_gdp.tile[cur_tile].shift_t);
    }
 
-   v->u[index]   -= rdp.tiles[cur_tile].f_ul_s;
-   v->v[index]   -= rdp.tiles[cur_tile].f_ul_t;
+   v->u[index]   -= gDP.tiles[cur_tile].fuls;
+   v->v[index]   -= gDP.tiles[cur_tile].fult;
    v->u[index]    = rdp.cur_cache[index]->c_off + rdp.cur_cache[index]->c_scl_x * v->u[index];
    v->v[index]    = rdp.cur_cache[index]->c_off + rdp.cur_cache[index]->c_scl_y * v->v[index];
    v->u_w[index]  = v->u[index] / v->w;
