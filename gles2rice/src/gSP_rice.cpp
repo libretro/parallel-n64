@@ -141,14 +141,10 @@ void ricegSPCIVertex(uint32_t v, uint32_t n, uint32_t v0)
       }
       else
       {
-         if( (gRDP.geometryMode & G_SHADE) == 0 && gRSP.ucode < 5 )  //Shade is disabled
-         {
+         if( (gSP.geometryMode & G_SHADE) == 0 && gRSP.ucode < 5 )  //Shade is disabled
             g_dwVtxDifColor[i] = gRDP.primitiveColor;
-         }
          else    //FLAT shade
-         {
             g_dwVtxDifColor[i] = COLOR_RGBA(r, g, b, a);
-         }
       }
 
       if( options.bWinFrameMode )

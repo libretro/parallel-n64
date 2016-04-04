@@ -258,7 +258,7 @@ void RSP_GBI1_ClearGeometryMode(Gfx *gfx)
     SP_Timing(RSP_GBI1_ClearGeometryMode);
     uint32_t dwMask = ((gfx->words.w1));
 
-    gRDP.geometryMode &= ~dwMask;
+    gSP.geometryMode &= ~dwMask;
     RSP_GFX_InitGeometryMode();
 }
 
@@ -269,7 +269,7 @@ void RSP_GBI1_SetGeometryMode(Gfx *gfx)
     SP_Timing(RSP_GBI1_SetGeometryMode);
     uint32_t dwMask = ((gfx->words.w1));
 
-    gRDP.geometryMode |= dwMask;
+    gSP.geometryMode |= dwMask;
     RSP_GFX_InitGeometryMode();
 }
 

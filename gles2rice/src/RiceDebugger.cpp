@@ -20,6 +20,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #define M64P_PLUGIN_PROTOTYPES 1
 #include "m64p_plugin.h"
 #include "typedefs.h"
+#include "../../Graphics/RDP/gDP_state.h"
 
 #ifndef DEBUGGER
 void DebuggerAppendMsg(const char * Message, ...) {}
@@ -392,7 +393,7 @@ void DumpOtherMode()
     DebuggerAppendMsg("\tLighting: %s", gRSP.bLightingEnable?"enabled":"disabled");
     DebuggerAppendMsg("\\Number of lights: %d", gSP.numLights);
     DebuggerAppendMsg("\tTexture Gen: %s", gRSP.bTextureGen?"enabled":"disabled");
-    DebuggerAppendMsg("\tTexture Gen Linear: %s", (gRDP.geometryMode & G_TEXTURE_GEN_LINEAR)?"enabled":"disabled");
+    DebuggerAppendMsg("\tTexture Gen Linear: %s", (gSP.geometryMode & G_TEXTURE_GEN_LINEAR)?"enabled":"disabled");
 }
 
 void DumpCachedTexture(uint32 index)

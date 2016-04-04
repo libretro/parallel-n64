@@ -214,7 +214,6 @@ typedef struct
     uint32_t  fillColor;
     uint32_t  originalFillColor;
 
-    uint32_t  geometryMode;
     RDP_OtherMode otherMode;
 
     Tile    tiles[8];

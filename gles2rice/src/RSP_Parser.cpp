@@ -823,23 +823,23 @@ uint32_t CalcalateCRC(uint32_t* srcPtr, uint32_t srcSize)
 
 void RSP_GFX_InitGeometryMode()
 {
-    bool bCullFront     = (gRDP.geometryMode & G_CULL_FRONT) ? true : false;
-    bool bCullBack      = (gRDP.geometryMode & G_CULL_BACK) ? true : false;
+    bool bCullFront     = (gSP.geometryMode & G_CULL_FRONT) ? true : false;
+    bool bCullBack      = (gSP.geometryMode & G_CULL_BACK) ? true : false;
 
     if( bCullFront && bCullBack ) // should never cull front
         bCullFront = false;
 
     CRender::g_pRender->SetCullMode(bCullFront, bCullBack);
     
-    bool bShade         = (gRDP.geometryMode & G_SHADE) ? true : false;
-    bool bShadeSmooth   = (gRDP.geometryMode & G_SHADING_SMOOTH) ? true : false;
+    bool bShade         = (gSP.geometryMode & G_SHADE) ? true : false;
+    bool bShadeSmooth   = (gSP.geometryMode & G_SHADING_SMOOTH) ? true : false;
     if (bShade && bShadeSmooth)     CRender::g_pRender->SetShadeMode( SHADE_SMOOTH );
     else                            CRender::g_pRender->SetShadeMode( SHADE_FLAT );
     
-    CRender::g_pRender->SetFogEnable( gRDP.geometryMode & G_FOG ? true : false );
-    SetTextureGen((gRDP.geometryMode & G_TEXTURE_GEN) ? true : false );
-    SetLighting( (gRDP.geometryMode & G_LIGHTING ) ? true : false );
-    CRender::g_pRender->ZBufferEnable( gRDP.geometryMode & G_ZBUFFER );
+    CRender::g_pRender->SetFogEnable( gSP.geometryMode & G_FOG ? true : false );
+    SetTextureGen((gSP.geometryMode & G_TEXTURE_GEN) ? true : false );
+    SetLighting( (gSP.geometryMode & G_LIGHTING ) ? true : false );
+    CRender::g_pRender->ZBufferEnable( gSP.geometryMode & G_ZBUFFER );
 }
 
 //////////////////////////////////////////////////////////

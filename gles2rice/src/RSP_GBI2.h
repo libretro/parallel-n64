@@ -494,24 +494,24 @@ void RSP_GBI2_GeometryMode(Gfx *gfx)
     uint32_t dwAnd = ((gfx->words.w0)) & 0x00FFFFFF;
     uint32_t dwOr  = ((gfx->words.w1)) & 0x00FFFFFF;
 
-    gRDP.geometryMode &= dwAnd;
-    gRDP.geometryMode |= dwOr;
+    gSP.geometryMode &= dwAnd;
+    gSP.geometryMode |= dwOr;
 
 
-    bool bCullFront     = (gRDP.geometryMode & RSP_ZELDA_CULL_FRONT) ? true : false;
-    bool bCullBack      = (gRDP.geometryMode & RSP_ZELDA_CULL_BACK) ? true : false;
+    bool bCullFront     = (gSP.geometryMode & RSP_ZELDA_CULL_FRONT) ? true : false;
+    bool bCullBack      = (gSP.geometryMode & RSP_ZELDA_CULL_BACK) ? true : false;
     
-    //bool bShade         = (gRDP.geometryMode & G_SHADE) ? true : false;
-    //bool bFlatShade     = (gRDP.geometryMode & RSP_ZELDA_SHADING_SMOOTH) ? true : false;
-    bool bFlatShade     = (gRDP.geometryMode & RSP_ZELDA_TEXTURE_GEN_LINEAR) ? true : false;
+    //bool bShade         = (gSP.geometryMode & G_SHADE) ? true : false;
+    //bool bFlatShade     = (gSP.geometryMode & RSP_ZELDA_SHADING_SMOOTH) ? true : false;
+    bool bFlatShade     = (gSP.geometryMode & RSP_ZELDA_TEXTURE_GEN_LINEAR) ? true : false;
     if( options.enableHackForGames == HACK_FOR_TIGER_HONEY_HUNT )
         bFlatShade      = false;
     
-    bool bFog           = (gRDP.geometryMode & RSP_ZELDA_FOG) ? true : false;
-    bool bTextureGen    = (gRDP.geometryMode & RSP_ZELDA_TEXTURE_GEN) ? true : false;
+    bool bFog           = (gSP.geometryMode & RSP_ZELDA_FOG) ? true : false;
+    bool bTextureGen    = (gSP.geometryMode & RSP_ZELDA_TEXTURE_GEN) ? true : false;
 
-    bool bLighting      = (gRDP.geometryMode & RSP_ZELDA_LIGHTING) ? true : false;
-    bool bZBuffer       = (gRDP.geometryMode & RSP_ZELDA_ZBUFFER)  ? true : false; 
+    bool bLighting      = (gSP.geometryMode & RSP_ZELDA_LIGHTING) ? true : false;
+    bool bZBuffer       = (gSP.geometryMode & RSP_ZELDA_ZBUFFER)  ? true : false; 
 
     CRender::g_pRender->SetCullMode(bCullFront, bCullBack);
     

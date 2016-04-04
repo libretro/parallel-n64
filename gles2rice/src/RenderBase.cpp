@@ -250,7 +250,7 @@ void InitRenderBase()
     gRSP.dwDKRMatrixAddr=0;
 
 
-    gRDP.geometryMode   = 0;
+    gSP.geometryMode    = 0;
     gDP.otherMode.l     = 0;
     gDP.otherMode.h     = 0;
     gRDP.fillColor      = 0xFFFFFFFF;
@@ -329,7 +329,7 @@ void InitVertexTextureConstants()
 
 void TexGen(float &s, float &t)
 {
-    if (gRDP.geometryMode & G_TEXTURE_GEN_LINEAR)
+    if (gSP.geometryMode & G_TEXTURE_GEN_LINEAR)
     {   
         s = acosf(g_normal.x) / 3.14159f;
         t = acosf(g_normal.y) / 3.14159f;
@@ -634,7 +634,7 @@ float fcosT;
 
 void ReplaceAlphaWithFogFactor(int i)
 {
-    if( gRDP.geometryMode & G_FOG )
+    if( gSP.geometryMode & G_FOG )
     {
         // Use fog factor to replace vertex alpha
         if( g_vecProjected[i].z > 1 )
@@ -727,7 +727,7 @@ void ProcessVertexDataNoSSE(uint32_t dwAddr, uint32_t dwV0, uint32_t dwNum)
         }
         else
         {
-            if( (gRDP.geometryMode & G_SHADE) == 0 && gRSP.ucode < 5 )  //Shade is disabled
+            if( (gSP.geometryMode & G_SHADE) == 0 && gRSP.ucode < 5 )  //Shade is disabled
             {
                 //FLAT shade
                 g_dwVtxDifColor[i] = gRDP.primitiveColor;
@@ -1076,7 +1076,7 @@ void ProcessVertexDataConker(uint32_t dwAddr, uint32_t dwV0, uint32_t dwNum)
         }
         else
         {
-            if( (gRDP.geometryMode & G_SHADE) == 0 && gRSP.ucode < 5 )  //Shade is disabled
+            if( (gSP.geometryMode & G_SHADE) == 0 && gRSP.ucode < 5 )  //Shade is disabled
             {
                 g_dwVtxDifColor[i] = gRDP.primitiveColor;
             }
@@ -1192,7 +1192,7 @@ void ProcessVertexData_Rogue_Squadron(uint32_t dwXYZAddr, uint32_t dwColorAddr, 
         }
         else
         {
-            if( (gRDP.geometryMode & G_SHADE) == 0 && gRSP.ucode < 5 )  //Shade is disabled
+            if( (gSP.geometryMode & G_SHADE) == 0 && gRSP.ucode < 5 )  //Shade is disabled
             {
                 g_dwVtxDifColor[i] = gRDP.primitiveColor;
             }
