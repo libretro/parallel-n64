@@ -193,10 +193,6 @@ bool CalculateTileSizes_method_2(int tileno, TMEMLoadMapInfo *info, TxtrInfo &gt
             dwTileWidth = tile.hilite_sh - tile.hilite_sl +1;
             if( dwTileWidth < tile.sh - tile.sl +1 )
                 dwTileWidth = tile.sh - tile.sl +1;
-            if( dwTileWidth <= 0 )
-            {
-                DebuggerAppendMsg("Error");
-            }
         }
         else
         {
@@ -220,9 +216,6 @@ bool CalculateTileSizes_method_2(int tileno, TMEMLoadMapInfo *info, TxtrInfo &gt
             dwTileHeight= tile.hilite_th - tile.hilite_tl +1;
             if( dwTileHeight < tile.th - tile.tl +1 )
                 dwTileHeight = tile.th - tile.tl +1;
-
-            if( dwTileHeight <= 0 )
-                DebuggerAppendMsg("Error");
         }
         else
         {
@@ -365,25 +358,14 @@ bool CalculateTileSizes_method_2(int tileno, TMEMLoadMapInfo *info, TxtrInfo &gt
     // Check the info
     if( (info->dwTotalWords>>2) < total64BitWordsToLoad+tile.dwTMem-info->dwTmem - 4 )
     {
-        // Hack here
-        if( (options.enableHackForGames == HACK_FOR_ZELDA||options.enableHackForGames == HACK_FOR_ZELDA_MM) && (unsigned int)tileno != gRSP.curTile )
-        {
-            return false;
-        }
-
-        if( total64BitWordsToLoad+tile.dwTMem-info->dwTmem <= 0x200 )
-        {
-            LOG_TEXTURE(TRACE4("Fix me, info is not covering this TMEM address,Info start: 0x%x, total=0x%x, TMEM start: 0x%x, total=0x%x", 
-                info->dwTmem,info->dwTotalWords>>2, tile.dwTMem, total64BitWordsToLoad));
-        }
+       // Hack here
+       if( (options.enableHackForGames == HACK_FOR_ZELDA||options.enableHackForGames == HACK_FOR_ZELDA_MM) && (unsigned int)tileno != gRSP.curTile )
+          return false;
     }
 
     //Check memory boundary
     if( gti.Address + gti.HeightToLoad*gti.Pitch >= g_dwRamSize )
-    {
-        WARNING(TRACE0("Warning: texture loading TMEM is over range 3"));
         gti.HeightToCreate = gti.HeightToLoad = tile.dwHeight = (g_dwRamSize-gti.Address)/gti.Pitch;
-    }
 
     return true;
 }
@@ -624,15 +606,7 @@ bool CalculateTileSizes_method_1(int tileno, TMEMLoadMapInfo *info, TxtrInfo &gt
     {
         // Hack here
         if( (options.enableHackForGames == HACK_FOR_ZELDA||options.enableHackForGames == HACK_FOR_ZELDA_MM) && (unsigned int)tileno != gRSP.curTile )
-        {
             return false;
-        }
-
-        if( total64BitWordsToLoad+tile.dwTMem-info->dwTmem <= 0x200 )
-        {
-            LOG_TEXTURE(TRACE4("Fix me, info is not covering this Tmem address,Info start: 0x%x, total=0x%x, Tmem start: 0x%x, total=0x%x", 
-                info->dwTmem,info->dwTotalWords>>2, tile.dwTMem, total64BitWordsToLoad));
-        }
     }
 
     //Check memory boundary
@@ -697,14 +671,6 @@ TxtrCacheEntry* LoadTexture(uint32_t tileno)
         if( !CalculateTileSizes_method_1(tileno, info, gti) )
             return NULL;
     }
-
-    LOG_TEXTURE(
-    {
-        TRACE0("Loading texture:\n");
-        DebuggerAppendMsg("Left: %d, Top: %d, Width: %d, Height: %d, Size to Load (%d, %d)", 
-            gti.LeftToLoad, gti.TopToLoad, gti.WidthToCreate, gti.HeightToCreate, gti.WidthToLoad, gti.HeightToLoad);
-        DebuggerAppendMsg("Pitch: %d, Addr: 0x%08x", gti.Pitch, gti.Address);
-    });
 
     // Option for faster loading tiles
     if( g_curRomInfo.bFastLoadTile && info->bSetBy == CMD_LOADTILE && ((gti.Pitch<<1)>>gti.Size) <= 0x400
@@ -876,16 +842,6 @@ void DLParser_SetTile(Gfx *gfx)
     */
 
     tile.lastTileCmd = CMD_SETTILE;
-
-    LOG_UCODE("    Tile:%d  Fmt: %s/%s Line:%d TMem:0x%04x Palette:%d",
-        tileno, pszImgFormat[tile.dwFormat], pszImgSize[tile.dwSize],
-        tile.dwLine, tile.dwTMem, tile.dwPalette);
-    LOG_UCODE("         S: Clamp: %s Mirror:%s Mask:0x%x Shift:0x%x",
-        pszOnOff[tile.bClampS],pszOnOff[tile.bMirrorS],
-        tile.dwMaskS, tile.dwShiftS);
-    LOG_UCODE("         T: Clamp: %s Mirror:%s Mask:0x%x Shift:0x%x",
-        pszOnOff[tile.bClampT],pszOnOff[tile.bMirrorT],
-        tile.dwMaskT, tile.dwShiftT);
 }
 
 void DLParser_SetTileSize(Gfx *gfx)
@@ -1008,20 +964,11 @@ void DLParser_TexRect(Gfx *gfx)
       }   
    }
    else
-   {
       __RSP.PC[__RSP.PCi] += 16;
-   }
-
 
    // Hack for Mario Tennis
    if( !status.bHandleN64RenderTexture && g_CI.dwAddr == g_ZI.dwAddr )
-   {
       return;
-   }
-
-
-   LOG_UCODE("0x%08x: %08x %08x", dwPC, *(uint32_t *)(rdram_u8 + dwPC+0), *(uint32_t *)(rdram_u8 + dwPC+4));
-   LOG_UCODE("0x%08x: %08x %08x", dwPC+8, *(uint32_t *)(rdram_u8 + dwPC+8), *(uint32_t *)(rdram_u8 + dwPC+8+4));
 
    uint32_t lr_x     = (((gfx->words.w0)>>12)&0x0FFF)/4;
    uint32_t lr_y     = (((gfx->words.w0)    )&0x0FFF)/4;
@@ -1074,11 +1021,6 @@ void DLParser_TexRect(Gfx *gfx)
 
    float fS1 = fS0 + (fDSDX * (lr_x - ul_x));
    float fT1 = fT0 + (fDTDY * (lr_y - ul_y));
-
-   LOG_UCODE("    Tile:%d Screen(%d,%d) -> (%d,%d)", tileno, ul_x, ul_y, lr_x, lr_y);
-   LOG_UCODE("           Tex:(%#5f,%#5f) -> (%#5f,%#5f) (DSDX:%#5f DTDY:%#5f)",
-         fS0, fT0, fS1, fT1, fDSDX, fDTDY);
-   LOG_UCODE("");
 
    float t0u0 = (fS0-gRDP.tiles[tileno].hilite_sl) * gRDP.tiles[tileno].fShiftScaleS;
    float t0v0 = (fT0-gRDP.tiles[tileno].hilite_tl) * gRDP.tiles[tileno].fShiftScaleT;
@@ -1193,12 +1135,6 @@ void DLParser_TexRectFlip(Gfx *gfx)
     float fS1 = fS0 + (fDSDX * (lr_y - ul_y));
     float fT1 = fT0 + (fDTDY * (lr_x - ul_x));
     
-    LOG_UCODE("    Tile:%d (%d,%d) -> (%d,%d)",
-        tileno, ul_x, ul_y, lr_x, lr_y);
-    LOG_UCODE("    Tex:(%#5f,%#5f) -> (%#5f,%#5f) (DSDX:%#5f DTDY:%#5f)",
-        fS0, fT0, fS1, fT1, fDSDX, fDTDY);
-    LOG_UCODE("");
-
     float t0u0 = (fS0) * gRDP.tiles[tileno].fShiftScaleS-gRDP.tiles[tileno].sl;
     float t0v0 = (fT0) * gRDP.tiles[tileno].fShiftScaleT-gRDP.tiles[tileno].tl;
     float t0u1 = t0u0 + (fDSDX * (lr_y - ul_y))*gRDP.tiles[tileno].fShiftScaleS;
@@ -1207,7 +1143,8 @@ void DLParser_TexRectFlip(Gfx *gfx)
     CRender::g_pRender->TexRectFlip(ul_x, ul_y, lr_x, lr_y, t0u0, t0v0, t0u1, t0v1);
     status.dwNumTrisRendered += 2;
 
-    if( status.bHandleN64RenderTexture )    g_pRenderTextureInfo->maxUsedHeight = MAX(g_pRenderTextureInfo->maxUsedHeight,int(ul_y + (lr_x - ul_x)));
+    if( status.bHandleN64RenderTexture )
+       g_pRenderTextureInfo->maxUsedHeight = MAX(g_pRenderTextureInfo->maxUsedHeight,int(ul_y + (lr_x - ul_x)));
 
     ForceMainTextureIndex(curTile);
 }
@@ -1354,33 +1291,29 @@ bool IsTmemFlagValid(uint32_t tmemAddr)
 
 uint32_t GetValidTmemInfoIndex(uint32_t tmemAddr)
 {
-    uint32_t index = tmemAddr>>5;
-    uint32_t bitIndex = (tmemAddr&0x1F);
+   uint32_t index = tmemAddr>>5;
+   uint32_t bitIndex = (tmemAddr&0x1F);
 
-    if ((g_TmemFlag[index] & (1<<bitIndex))!=0 )    //This address is valid
-    {
-        return tmemAddr;
-    }
-    else
-    {
-        for( uint32_t x=index+1; x != 0; x-- )
-        {
-            uint32_t i = x - 1;
-            if( g_TmemFlag[i] != 0 )
+   if ((g_TmemFlag[index] & (1<<bitIndex))!=0 )    //This address is valid
+      return tmemAddr;
+
+   for( uint32_t x=index+1; x != 0; x-- )
+   {
+      uint32_t i = x - 1;
+      if( g_TmemFlag[i] != 0 )
+      {
+         for( uint32_t y=0x20; y != 0; y-- )
+         {
+            uint32_t j = y - 1;
+            if( (g_TmemFlag[i] & (1<<j)) != 0 )
             {
-                for( uint32_t y=0x20; y != 0; y-- )
-                {
-                    uint32_t j = y - 1;
-                    if( (g_TmemFlag[i] & (1<<j)) != 0 )
-                    {
-                        return ((i<<5)+j);
-                    }
-                }
+               return ((i<<5)+j);
             }
-        }
-        TRACE0("Error, check me");
-        return 0;
-    }
+         }
+      }
+   }
+   TRACE0("Error, check me");
+   return 0;
 }
 
 #endif

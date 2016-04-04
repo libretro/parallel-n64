@@ -27,8 +27,6 @@ void RSP_GBI2_Vtx(Gfx *gfx)
     int n       = gfx->gbi2vtx.n;
     int v0      = vend - n;
 
-    LOG_UCODE("    Vtx: Address 0x%08x, vEnd: %d, v0: %d, Num: %d", addr, vend, v0, n);
-
     if( vend > 64 )
     {
         DebuggerAppendMsg("Warning, attempting to load into invalid vertex positions, v0=%d, n=%d", v0, n);
@@ -63,8 +61,6 @@ void RSP_GBI2_CullDL(Gfx *gfx)
 
     uint32_t dwVFirst = (((gfx->words.w0)) & 0xfff) / gRSP.vertexMult;
     uint32_t dwVLast  = (((gfx->words.w1)) & 0xfff) / gRSP.vertexMult;
-
-    LOG_UCODE("    Culling using verts %d to %d", dwVFirst, dwVLast);
 
     // Mask into range
     dwVFirst &= 0x1f;
@@ -111,14 +107,13 @@ void RSP_GBI2_MoveWord(Gfx *gfx)
         {
             switch (gfx->gbi2moveword.offset)
             {
-            case G_MWO_CLIP_RNX:
-            case G_MWO_CLIP_RNY:
-            case G_MWO_CLIP_RPX:
-            case G_MWO_CLIP_RPY:
-                CRender::g_pRender->SetClipRatio(gfx->gbi2moveword.offset, gfx->gbi2moveword.value);
-            default:
-                LOG_UCODE("     RSP_MOVE_WORD_CLIP  ?   : 0x%08x", gfx->words.w1);
-                break;
+               case G_MWO_CLIP_RNX:
+               case G_MWO_CLIP_RNY:
+               case G_MWO_CLIP_RPX:
+               case G_MWO_CLIP_RPY:
+                  CRender::g_pRender->SetClipRatio(gfx->gbi2moveword.offset, gfx->gbi2moveword.value);
+               default:
+                  break;
             }
         }
         break;
@@ -143,8 +138,6 @@ void RSP_GBI2_MoveWord(Gfx *gfx)
             float fMin     = 500.0f - (fOff*rng/256.0f);
             float fMax     = rng + fMin;
 
-            FOG_DUMP(TRACE4("Set Fog: Min=%f, Max=%f, Mul=%f, Off=%f", fMin, fMax, fMult, fOff));
-            //if( fMult <= 0 || fMin > fMax || fMax < 0 || fMin > 1000 )
             if( fMult <= 0 || fMax < 0 )
             {
                 // Hack
@@ -155,7 +148,6 @@ void RSP_GBI2_MoveWord(Gfx *gfx)
             }
 
             SetFogMinMax(fMin, fMax, fMult, fOff);
-            FOG_DUMP(TRACE3("Set Fog: Min=%f, Max=%f, Data=0x%08X", fMin, fMax, gfx->gbi2moveword.value));
         }
         break;
     case G_MW_LIGHTCOL:
@@ -176,7 +168,6 @@ void RSP_GBI2_MoveWord(Gfx *gfx)
                   break;
 
                default:
-                  DebuggerAppendMsg("RSP_MOVE_WORD_LIGHTCOL with unknown offset 0x%08x", dwField);
                   break;
             }
 
@@ -193,10 +184,6 @@ void RSP_GBI2_MoveWord(Gfx *gfx)
         break;
 
     default:
-        {
-            LOG_UCODE("      Ignored!!");
-
-        }
         break;
     }
 }
@@ -372,7 +359,6 @@ void RSP_GBI2_Line3D(Gfx *gfx)
             // Do second tri
             if (IsTriangleVisible(dwV3, dwV4, dwV5))
             {
-                DEBUG_DUMP_VERTEXES("ZeldaTri3 2/2", dwV3, dwV4, dwV5);
                 if (!bTrisAdded && CRender::g_pRender->IsTextureEnabled())
                 {
                     PrepareTextures();
@@ -546,11 +532,9 @@ void RSP_GBI2_Mtx(Gfx *gfx)
 
     LoadMatrix(addr);
 
+    // So far only Extreme-G seems to Push/Pop projection matrices  
     if (gfx->gbi2matrix.projection)
-    {
-        // So far only Extreme-G seems to Push/Pop projection matrices  
         CRender::g_pRender->SetProjection(matToLoad, gfx->gbi2matrix.nopush==0, gfx->gbi2matrix.load);
-    }
     else
     {
         CRender::g_pRender->SetWorldView(matToLoad, gfx->gbi2matrix.nopush==0, gfx->gbi2matrix.load);
@@ -609,7 +593,6 @@ void RSP_GBI2_MoveMem(Gfx *gfx)
                default:        //0x30/48/60
                   {
                      uint32_t dwLight = (dwOffset2 - 0x30)/0x18;
-                     LOG_UCODE("    Light %d:", dwLight);
                      ricegSPLight(addr, dwLight);
                   }
                   break;
@@ -673,11 +656,8 @@ void RSP_GBI2_DL(Gfx *gfx)
     {
         RSP_RDP_NOIMPL("Error: DL addr = %08X out of range, PC=%08X", dwAddr, __RSP.PC[__RSP.PCi] );
         dwAddr &= (g_dwRamSize-1);
-        DebuggerPauseCountN( NEXT_DLIST );
     }
 
-    LOG_UCODE("    DL: Push:0x%02x Addr: 0x%08x", dwPush, dwAddr);
-    
     switch (dwPush)
     {
        case G_DL_PUSH:
@@ -699,10 +679,6 @@ void RSP_GBI2_DL(Gfx *gfx)
           __RSP.countdown[__RSP.PCi] = MAX_DL_COUNT;
           break;
     }
-
-    LOG_UCODE("");
-    LOG_UCODE("\\/ \\/ \\/ \\/ \\/ \\/ \\/ \\/ \\/ \\/ \\/ \\/ \\/ \\/ \\/");
-    LOG_UCODE("#############################################");
 }
 
 

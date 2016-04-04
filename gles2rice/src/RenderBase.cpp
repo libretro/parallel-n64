@@ -799,12 +799,6 @@ bool IsTriangleVisible(uint32_t dwV0, uint32_t dwV1, uint32_t dwV2)
 {
     //return true;  //fix me
 
-#ifdef DEBUGGER
-    // Check vertices are valid!
-    if (dwV0 >= MAX_VERTS || dwV1 >= MAX_VERTS || dwV2 >= MAX_VERTS)
-        return false;
-#endif
-
     // Here we AND all the flags. If any of the bits is set for all
     // 3 vertices, it means that all three x, y or z lie outside of
     // the current viewing volume.
@@ -883,13 +877,6 @@ void SetPrimitiveDepth(uint32_t z, uint32_t dwDZ)
     */
 
     // TODO: How to use dwDZ?
-
-#ifdef DEBUGGER
-    if( (pauseAtNext && (eventToPause == NEXT_VERTEX_CMD || eventToPause == NEXT_FLUSH_TRI )) )//&& logTriangles ) 
-    {
-        DebuggerAppendMsg("Set prim Depth: %f, (%08X, %08X)", gRDP.fPrimitiveDepth, z, dwDZ); 
-    }
-#endif
 }
 
 void SetVertexXYZ(uint32_t vertex, float x, float y, float z)
@@ -902,7 +889,6 @@ void SetVertexXYZ(uint32_t vertex, float x, float y, float z)
     g_vtxTransformed[vertex].y = y*g_vtxTransformed[vertex].w;
     g_vtxTransformed[vertex].z = z*g_vtxTransformed[vertex].w;
 }
-
 
 void ProcessVertexDataDKR(uint32_t dwAddr, uint32_t dwV0, uint32_t dwNum)
 {
@@ -921,9 +907,7 @@ void ProcessVertexDataDKR(uint32_t dwAddr, uint32_t dwV0, uint32_t dwNum)
         addbase = true;
 
     if( addbase && gRSP.DKRVtxCount == 0 && dwNum > 1 )
-    {
         gRSP.DKRVtxCount++;
-    }
 
     int nOff = 0;
     uint32_t end = dwV0 + dwNum;
@@ -985,15 +969,8 @@ void ProcessVertexDataDKR(uint32_t dwAddr, uint32_t dwV0, uint32_t dwNum)
             Vec3TransformNormal(g_normal, matWorldProject)
                 g_dwVtxDifColor[i] = LightVert(g_normal, i);
         }
-        else
-        {
-            int nR = r;
-            int nG = g;
-            int nB = b;
-            int nA = a;
-            // Assign true vert colour after lighting/fogging
-            g_dwVtxDifColor[i] = COLOR_RGBA(nR, nG, nB, nA);
-        }
+        else   // Assign true vert colour after lighting/fogging
+            g_dwVtxDifColor[i] = COLOR_RGBA(r, g, b, a);
 
         ReplaceAlphaWithFogFactor(i);
 
@@ -1070,13 +1047,9 @@ void ProcessVertexDataConker(uint32_t dwAddr, uint32_t dwV0, uint32_t dwNum)
         else
         {
             if( (gSP.geometryMode & G_SHADE) == 0 && gRSP.ucode < 5 )  //Shade is disabled
-            {
                 g_dwVtxDifColor[i] = gRDP.primitiveColor;
-            }
             else    //FLAT shade
-            {
                 g_dwVtxDifColor[i] = COLOR_RGBA(vert.rgba.r, vert.rgba.g, vert.rgba.b, vert.rgba.a);
-            }
         }
 
         if( options.bWinFrameMode )

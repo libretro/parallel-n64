@@ -140,35 +140,21 @@ void CRender::SetProjection(const Matrix & mat, bool bPush, bool bReplace)
 {
     if (bPush)
     {
-        if (gRSP.projectionMtxTop >= (RICE_MATRIX_STACK-1))
-        {
-            TRACE0("Pushing past proj stack limits!");
-        }
-        else
+        if (gRSP.projectionMtxTop < (RICE_MATRIX_STACK-1))
             gRSP.projectionMtxTop++;
 
-        if (bReplace)
-        {
-            // Load projection matrix
+        if (bReplace)   // Load projection matrix
             gRSP.projectionMtxs[gRSP.projectionMtxTop] = mat;
-        }
         else
-        {
             gRSP.projectionMtxs[gRSP.projectionMtxTop] = mat * gRSP.projectionMtxs[gRSP.projectionMtxTop-1];
-        }
         
     }
     else
     {
-        if (bReplace)
-        {
-            // Load projection matrix
+        if (bReplace)   // Load projection matrix
             gRSP.projectionMtxs[gRSP.projectionMtxTop] = mat;
-        }
         else
-        {
             gRSP.projectionMtxs[gRSP.projectionMtxTop] = mat * gRSP.projectionMtxs[gRSP.projectionMtxTop];
-        }
     }
     
     gRSP.bMatrixIsUpdated = true;
@@ -181,9 +167,7 @@ void CRender::SetWorldView(const Matrix & mat, bool bPush, bool bReplace)
 {
     if (bPush)
     {
-        if (gRSP.modelViewMtxTop >= (RICE_MATRIX_STACK-1))
-            DebuggerAppendMsg("Pushing past modelview stack limits! %s", bReplace?"Load":"Mul");
-        else
+        if (gRSP.modelViewMtxTop < (RICE_MATRIX_STACK-1))
             gRSP.modelViewMtxTop++;
 
         // We should store the current projection matrix...
@@ -202,39 +186,25 @@ void CRender::SetWorldView(const Matrix & mat, bool bPush, bool bReplace)
                      && gRSP.modelviewMtxs[gRSP.modelViewMtxTop]._42 != 0.0f
                      && gRSP.modelviewMtxs[gRSP.modelViewMtxTop]._42 <= 94.5f
                      && gRSP.modelviewMtxs[gRSP.modelViewMtxTop]._42 >= -94.5f)
-               {
                   gRSP.modelviewMtxs[gRSP.modelViewMtxTop]._43 -= 10.1f;
-               }
             }
         }
         else            // Multiply projection matrix
-        {
             gRSP.modelviewMtxs[gRSP.modelViewMtxTop] = mat * gRSP.modelviewMtxs[gRSP.modelViewMtxTop-1];
-        }
     }
     else    // NoPush
     {
-        if (bReplace)
-        {
-            // Load projection matrix
+        if (bReplace)   // Load projection matrix
             gRSP.modelviewMtxs[gRSP.modelViewMtxTop] = mat;
-        }
-        else
-        {
-            // Multiply projection matrix
+        else            // Multiply projection matrix
             gRSP.modelviewMtxs[gRSP.modelViewMtxTop] = mat * gRSP.modelviewMtxs[gRSP.modelViewMtxTop];
-        }
     }
 
     gRSPmodelViewTop = gRSP.modelviewMtxs[gRSP.modelViewMtxTop];
     if( options.enableHackForGames == HACK_REVERSE_XY_COOR )
-    {
         gRSPmodelViewTop = gRSPmodelViewTop * reverseXY;
-    }
     if( options.enableHackForGames == HACK_REVERSE_Y_COOR )
-    {
         gRSPmodelViewTop = gRSPmodelViewTop * reverseY;
-    }
     MatrixTranspose(&gRSPmodelViewTopTranspose, &gRSPmodelViewTop);
 
     gRSP.bMatrixIsUpdated = true;
@@ -251,13 +221,9 @@ void CRender::PopWorldView()
         gRSP.modelViewMtxTop--;
         gRSPmodelViewTop = gRSP.modelviewMtxs[gRSP.modelViewMtxTop];
         if( options.enableHackForGames == HACK_REVERSE_XY_COOR )
-        {
             gRSPmodelViewTop = gRSPmodelViewTop * reverseXY;
-        }
         if( options.enableHackForGames == HACK_REVERSE_Y_COOR )
-        {
             gRSPmodelViewTop = gRSPmodelViewTop * reverseY;
-        }
         MatrixTranspose(&gRSPmodelViewTopTranspose, &gRSPmodelViewTop);
         gRSP.bMatrixIsUpdated = true;
         gRSP.bWorldMatrixIsUpdated = true;
@@ -531,28 +497,22 @@ bool CRender::TexRect(int nX0, int nY0, int nX1, int nY1, float fS0, float fT0, 
         // Hack for Banjo shadow in Banjo Tooie
         if( g_TI.dwWidth == g_CI.dwWidth && g_TI.dwFormat == G_IM_FMT_CI && g_TI.dwSize == G_IM_SIZ_8b )
         {
-            if( nX0 == fS0 && nY0 == fT0 )//&& nX0 > 90 && nY0 > 130 && nX1-nX0 > 80 && nY1-nY0 > 20 )
-            {
-                // Skip the text rect
-                return true;
-            }
+           // Skip the text rect
+           if( nX0 == fS0 && nY0 == fT0 )//&& nX0 > 90 && nY0 > 130 && nX1-nX0 > 80 && nY1-nY0 > 20 )
+              return true;
         }
     }
 
     if( status.bN64IsDrawingTextureBuffer )
     {
         if( frameBufferOptions.bIgnore || ( frameBufferOptions.bIgnoreRenderTextureIfHeightUnknown && newRenderTextureInfo.knownHeight == 0 ) )
-        {
             return true;
-        }
     }
 
     PrepareTextures();
 
     if( status.bHandleN64RenderTexture && g_pRenderTextureInfo->CI_Info.dwSize == G_IM_SIZ_8b ) 
-    {
         return true;
-    }
 
     if( !IsTextureEnabled() &&  gRDP.otherMode.cycle_type  != G_CYC_COPY )
     {
@@ -562,9 +522,7 @@ bool CRender::TexRect(int nX0, int nY0, int nX1, int nY1, float fS0, float fT0, 
 
 
     if( IsUsedAsDI(g_CI.dwAddr) && !status.bHandleN64RenderTexture )
-    {
         status.bFrameBufferIsDrawn = true;
-    }
 
     if( status.bHandleN64RenderTexture && !status.bDirectWriteIntoRDRAM )   status.bFrameBufferIsDrawn = true;
 
@@ -597,9 +555,7 @@ bool CRender::TexRect(int nX0, int nY0, int nX1, int nY1, float fS0, float fT0, 
     
 
     if( gRDP.otherMode.cycle_type  >= G_CYC_COPY || !gRDP.otherMode.z_cmp )
-    {
         ZBufferEnable(false);
-    }
 
     bool accurate = currentRomOptions.bAccurateTextureMapping;
 
@@ -610,23 +566,15 @@ bool CRender::TexRect(int nX0, int nY0, int nX1, int nY1, float fS0, float fT0, 
     float heightDiv = tex0.m_fTexHeight;
     float t0u0;
     if( options.enableHackForGames == HACK_FOR_ALL_STAR_BASEBALL || options.enableHackForGames == HACK_FOR_MLB )
-    {
         t0u0 = (fS0 -tile0.fhilite_sl);
-    }
     else
-    {
         t0u0 = (fS0 * tile0.fShiftScaleS -tile0.fhilite_sl);
-    }
     
     float t0u1;
     if( accurate && gRDP.otherMode.cycle_type >= G_CYC_COPY )
-    {
         t0u1 = t0u0 + (fScaleS * (nX1 - nX0 - 1))*tile0.fShiftScaleS;
-    }
     else
-    {
         t0u1 = t0u0 + (fScaleS * (nX1 - nX0))*tile0.fShiftScaleS;
-    }
 
 
     if( status.UseLargerTile[0] )
@@ -644,23 +592,15 @@ bool CRender::TexRect(int nX0, int nY0, int nX1, int nY1, float fS0, float fT0, 
 
     float t0v0;
     if( options.enableHackForGames == HACK_FOR_ALL_STAR_BASEBALL || options.enableHackForGames == HACK_FOR_MLB )
-    {
         t0v0 = (fT0 -tile0.fhilite_tl);
-    }
     else
-    {
         t0v0 = (fT0 * tile0.fShiftScaleT -tile0.fhilite_tl);
-    }
     
     float t0v1;
     if ( accurate && gRDP.otherMode.cycle_type >= G_CYC_COPY)
-    {
         t0v1 = t0v0 + (fScaleT * (nY1 - nY0-1))*tile0.fShiftScaleT;
-    }
     else
-    {
         t0v1 = t0v0 + (fScaleT * (nY1 - nY0))*tile0.fShiftScaleT;
-    }
 
     m_texRectTex1UV[0].v = t0v0/heightDiv;
     m_texRectTex1UV[1].v = t0v1/heightDiv;
@@ -1015,8 +955,7 @@ void CRender::SetTextureEnableAndScale(int dwTile, bool bEnable, float fScaleX, 
         if( gRSP.curTile != (unsigned int)dwTile )
             gRDP.textureIsChanged = true;
 
-        gRSP.curTile = dwTile;
-
+        gRSP.curTile    = dwTile;
         gRSP.fTexScaleX = fScaleX;
         gRSP.fTexScaleY = fScaleY;
 
@@ -1357,41 +1296,41 @@ void CRender::SetVertexTextureUVCoord(TLITVERTEX &v, float fTex0S, float fTex0T,
 
 void CRender::SetClipRatio(uint32_t type, uint32_t w1)
 {
-    bool modified = false;
-    switch(type)
-    {
-    case G_MWO_CLIP_RNX:
-        if( gRSP.clip_ratio_negx != (short)w1 )
-        {
+   bool modified = false;
+   switch(type)
+   {
+      case G_MWO_CLIP_RNX:
+         if( gRSP.clip_ratio_negx != (short)w1 )
+         {
             gRSP.clip_ratio_negx = (short)w1;
             modified = true;
-        }
-        break;
-    case G_MWO_CLIP_RNY:
-        if( gRSP.clip_ratio_negy != (short)w1 )
-        {
+         }
+         break;
+      case G_MWO_CLIP_RNY:
+         if( gRSP.clip_ratio_negy != (short)w1 )
+         {
             gRSP.clip_ratio_negy = (short)w1;
             modified = true;
-        }
-        break;
-    case G_MWO_CLIP_RPX:
-        if( gRSP.clip_ratio_posx != -(short)w1 )
-        {
+         }
+         break;
+      case G_MWO_CLIP_RPX:
+         if( gRSP.clip_ratio_posx != -(short)w1 )
+         {
             gRSP.clip_ratio_posx = -(short)w1;
             modified = true;
-        }
-        break;
-    case G_MWO_CLIP_RPY:
-        if( gRSP.clip_ratio_posy != -(short)w1 )
-        {
+         }
+         break;
+      case G_MWO_CLIP_RPY:
+         if( gRSP.clip_ratio_posy != -(short)w1 )
+         {
             gRSP.clip_ratio_posy = -(short)w1;
             modified = true;
-        }
-        break;
-    }
+         }
+         break;
+   }
 
-    if( modified )
-        UpdateClipRectangle();
+   if( modified )
+      UpdateClipRectangle();
 }
 
 void CRender::UpdateClipRectangle()
@@ -1470,15 +1409,13 @@ void CRender::UpdateScissorWithClipRatio()
     w.clipping.top  = (uint32_t)(gRSP.real_clip_scissor_top*windowSetting.fMultY);
     w.clipping.bottom = (uint32_t)(gRSP.real_clip_scissor_bottom*windowSetting.fMultY);
     w.clipping.right = (uint32_t)(gRSP.real_clip_scissor_right*windowSetting.fMultX);
+
     if( w.clipping.left > 0 || w.clipping.top > 0 || w.clipping.right < (uint32_t)windowSetting.uDisplayWidth-1 ||
         w.clipping.bottom < (uint32_t)windowSetting.uDisplayHeight-1 )
-    {
         w.clipping.needToClip = true;
-    }
     else
-    {
         w.clipping.needToClip = false;
-    }
+
     w.clipping.width = (uint32_t)((gRSP.real_clip_scissor_right-gRSP.real_clip_scissor_left+1)*windowSetting.fMultX);
     w.clipping.height = (uint32_t)((gRSP.real_clip_scissor_bottom-gRSP.real_clip_scissor_top+1)*windowSetting.fMultY);
 

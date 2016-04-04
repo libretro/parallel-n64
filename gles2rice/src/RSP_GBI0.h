@@ -143,7 +143,6 @@ void RSP_GBI0_DL(Gfx *gfx)
     {
         RSP_RDP_NOIMPL("Error: DL addr = %08X out of range, PC=%08X", addr, __RSP.PC[__RSP.PCi] );
         addr &= (g_dwRamSize-1);
-        DebuggerPauseCountN( NEXT_DLIST );
     }
 
     if( gfx->gbi0dlist.param == G_DL_PUSH )

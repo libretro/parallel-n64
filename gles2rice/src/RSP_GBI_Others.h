@@ -553,19 +553,6 @@ void DLParser_Tri4_Conker(Gfx *gfx)
 
 void RDP_GFX_Force_Vertex_Z_Conker(uint32_t dwAddr)
 {
-    VTX_DUMP( 
-    {
-    int8_t *rdram_s8 = (int8_t*)gfx_info.RDRAM;
-        s8 * pcBase = rdram_s8 + (dwAddr&(g_dwRamSize-1));
-        uint32_t * pdwBase = (uint32_t *)pcBase;
-
-        for (int i = 0; i < 4; i++)
-        {
-            DebuggerAppendMsg("    %08x %08x %08x %08x", pdwBase[0], pdwBase[1], pdwBase[2], pdwBase[3]);
-            pdwBase+=4;
-        }
-    });
-
     dwConkerVtxZAddr = dwAddr;
 }
 
@@ -1134,7 +1121,6 @@ void DLParser_RSP_DL_WorldDriver(Gfx *gfx)
     {
         RSP_RDP_NOIMPL("Error: DL addr = %08X out of range, PC=%08X", dwAddr, __RSP.PC[__RSP.PCi] );
         dwAddr &= (g_dwRamSize-1);
-        DebuggerPauseCountN( NEXT_DLIST );
     }
 
     LOG_UCODE("    WorldDriver DisplayList 0x%08x", dwAddr);
