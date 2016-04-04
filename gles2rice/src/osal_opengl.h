@@ -59,9 +59,6 @@
 #endif
 
 // No-op substitutions (unavailable in GLES2)
-#define glLoadIdentity()
-#define glMatrixMode(x)
-#define glOrtho(a,b,c,d,e,f)
 #define glTexEnvi(x,y,z)
 #define glTexEnvfv(x,y,z)
 

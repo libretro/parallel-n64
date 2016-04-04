@@ -67,9 +67,6 @@ bool OGLRender::ClearDeviceObjects()
 
 void OGLRender::Initialize(void)
 {
-    glMatrixMode(GL_MODELVIEW);
-    glLoadIdentity();
-
     glViewportWrapper(0, 0, windowSetting.uDisplayWidth, windowSetting.uDisplayHeight, true);
 
     OGLXUVFlagMaps[TEXTURE_UV_FLAG_MIRROR].realFlag = GL_MIRRORED_REPEAT;
@@ -679,14 +676,6 @@ void OGLRender::SetViewportRender()
 void OGLRender::RenderReset()
 {
     CRender::RenderReset();
-
-    glMatrixMode(GL_PROJECTION);
-    glLoadIdentity();
-    glOrtho(0, windowSetting.uDisplayWidth, windowSetting.uDisplayHeight, 0, -1, 1);
-
-    // position viewer 
-    glMatrixMode(GL_MODELVIEW);
-    glLoadIdentity();
 }
 
 void OGLRender::SetAlphaTestEnable(bool bAlphaTestEnable)
@@ -850,9 +839,6 @@ void OGLRender::glViewportWrapper(GLint x, GLint y, GLsizei width, GLsizei heigh
         m_width=width;
         m_height=height;
         mflag=flag;
-        glMatrixMode(GL_PROJECTION);
-        glLoadIdentity();
-        if( flag )  glOrtho(0, windowSetting.uDisplayWidth, windowSetting.uDisplayHeight, 0, -1, 1);
         glViewport(x,y,width,height);
     }
 }
