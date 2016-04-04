@@ -1024,7 +1024,7 @@ static void glide64_z_compare(void)
    int depthmask_val   = FXFALSE;
    g_gdp.flags ^= UPDATE_ZBUF_ENABLED;
 
-   if (((rdp.flags & ZBUF_ENABLED) || ((g_gdp.other_modes.z_source_sel == G_ZS_PRIM) && (((gDP.otherMode.h & RDP_CYCLE_TYPE) >> 20) < G_CYC_COPY))))
+   if (((rdp.flags & ZBUF_ENABLED) || ((g_gdp.other_modes.z_source_sel == G_ZS_PRIM) && (gDP.otherMode.cycleType < G_CYC_COPY))))
    {
       if (rdp.flags & ZBUF_COMPARE)
       {
@@ -1073,19 +1073,19 @@ void update(void)
       FRDP (" |- render_mode_changed zbuf - decal: %s, update: %s, compare: %s\n",
             str_yn[(gDP.otherMode.l & G_CULL_BACK)?1:0],
             str_yn[(gDP.otherMode.l & UPDATE_BIASLEVEL)?1:0],
-            str_yn[(gDP.otherMode.l & ALPHA_COMPARE)?1:0]);
+            str_yn[(gDP.otherMode.alphaCompare)?1:0]);
 
       rdp.render_mode_changed &= ~0x00000C30;
       g_gdp.flags |= UPDATE_ZBUF_ENABLED;
 
       // Update?
-      if ((gDP.otherMode.l & RDP_Z_UPDATE_ENABLE))
+      if (gDP.otherMode.depthUpdate)
          rdp.flags |= ZBUF_UPDATE;
       else
          rdp.flags &= ~ZBUF_UPDATE;
 
       // Compare?
-      if (gDP.otherMode.l & ALPHA_COMPARE)
+      if (gDP.otherMode.depthCompare)
          rdp.flags |= ZBUF_COMPARE;
       else
          rdp.flags &= ~ZBUF_COMPARE;
@@ -1149,7 +1149,7 @@ void update(void)
    {
       g_gdp.flags ^= UPDATE_ALPHA_COMPARE;
 
-      if ((gDP.otherMode.l & RDP_ALPHA_COMPARE) == 1 && !(gDP.otherMode.l & RDP_ALPHA_CVG_SELECT) && (!(gDP.otherMode.l & FORCE_BL) || (g_gdp.blend_color.a)))
+      if (gDP.otherMode.alphaCompare == 1 && !(gDP.otherMode.alphaCvgSel) && (!gDP.otherMode.forceBlender || (g_gdp.blend_color.a)))
       {
          uint8_t reference = (uint8_t)g_gdp.blend_color.a;
          grAlphaTestFunction (reference ? GR_CMP_GEQUAL : GR_CMP_GREATER, reference, 1);
@@ -1162,7 +1162,7 @@ void update(void)
             bool cond_set = (gDP.otherMode.l & 0x5000) == 0x5000;
             grAlphaTestFunction (!cond_set ? GR_CMP_GEQUAL : GR_CMP_GREATER, 0x20, !cond_set ? 1 : 0);
             if (cond_set)
-               grAlphaTestReferenceValue (((gDP.otherMode.l & RDP_ALPHA_COMPARE) == 3) ? (uint8_t)g_gdp.blend_color.a : 0x00);
+               grAlphaTestReferenceValue ((gDP.otherMode.alphaCompare == 3) ? (uint8_t)g_gdp.blend_color.a : 0x00);
          }
          else
          {
@@ -1170,7 +1170,7 @@ void update(void)
             LRDP (" |- alpha compare: none\n");
          }
       }
-      if ((gDP.otherMode.l & RDP_ALPHA_COMPARE) == 3 && (((gDP.otherMode.h & RDP_CYCLE_TYPE) >> 20) < G_CYC_COPY))
+      if (gDP.otherMode.alphaCompare == 3 && (gDP.otherMode.cycleType < G_CYC_COPY))
       {
          if (settings.old_style_adither || g_gdp.other_modes.alpha_dither_sel != 3)
          {
@@ -1476,9 +1476,9 @@ static void draw_tri_uv_calculation(VERTEX **vtx, VERTEX *v)
       v->ou *= rdp.tiles[rdp.cur_tile].s_scale;
       v->ov *= rdp.tiles[rdp.cur_tile].t_scale;
       v->uv_scaled = 1;
-      if (!(gDP.otherMode.h & RDP_PERSP_TEX_ENABLE))
+
+      if (!gDP.otherMode.texturePersp)
       {
-         //          v->oow = v->w = 1.0f;
          v->ou *= 0.5f;
          v->ov *= 0.5f;
       }

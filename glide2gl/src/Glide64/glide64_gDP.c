@@ -11,7 +11,7 @@ void apply_shading(void *data);
 #define XSCALE(x) ((float)(x)/(1<<18))
 #define YSCALE(y) ((float)(y)/(1<<2))
 #define ZSCALE(z) ((g_gdp.other_modes.z_source_sel == 1) ? (float)(g_gdp.prim_color.z) : (float)((uint32_t)(z))/0xffff0000)
-#define PERSP_EN  ((gDP.otherMode.h & RDP_PERSP_TEX_ENABLE))
+#define PERSP_EN  ((gDP.otherMode.texturePersp))
 #define WSCALE(z) 1.0f/(PERSP_EN? ((float)((uint32_t)(z) + 0x10000)/0xffff0000) : 1.0f)
 #define CSCALE(c) (((c)>0x3ff0000? 0x3ff0000:((c)<0? 0 : (c)))>>18)
 #define _PERSP(w) ( w )
@@ -594,7 +594,7 @@ void glide64gDPFillRectangle(uint32_t ul_x, uint32_t ul_y, uint32_t lr_x, uint32
 {
    int32_t s_ul_x, s_lr_x, s_ul_y, s_lr_y;
    int pd_multiplayer = (settings.ucode == 7)  /* ucode_PerfectDark */
-      && (((gDP.otherMode.h & RDP_CYCLE_TYPE) >> 20) == 3)
+      && (gDP.otherMode.cycleType == 3)
       && (g_gdp.fill_color.total == 0xFFFCFFFC);
 
    if (
@@ -648,7 +648,7 @@ void glide64gDPFillRectangle(uint32_t ul_x, uint32_t ul_y, uint32_t lr_x, uint32
    //if (fullscreen)
    update_scissor(false);
 
-   if (settings.decrease_fillrect_edge && ((gDP.otherMode.h & RDP_CYCLE_TYPE) >> 20) == 0)
+   if (settings.decrease_fillrect_edge && gDP.otherMode.cycleType == 0)
    {
       lr_x--; lr_y--;
    }
@@ -675,7 +675,7 @@ void glide64gDPFillRectangle(uint32_t ul_x, uint32_t ul_y, uint32_t lr_x, uint32
 
       grFogMode (GR_FOG_DISABLE, g_gdp.fog_color.total);
 
-      if (((gDP.otherMode.h & RDP_CYCLE_TYPE) >> 20) != G_CYC_FILL)
+      if (gDP.otherMode.cycleType != G_CYC_FILL)
          Z = set_sprite_combine_mode();
 
       memset(v, 0, sizeof(VERTEX) * 4);
@@ -698,7 +698,7 @@ void glide64gDPFillRectangle(uint32_t ul_x, uint32_t ul_y, uint32_t lr_x, uint32
       v[3].z = Z;
       v[3].q = 1.0f;
 
-      if (((gDP.otherMode.h & RDP_CYCLE_TYPE) >> 20) == G_CYC_FILL)
+      if (gDP.otherMode.cycleType == G_CYC_FILL)
       {
          uint32_t color = g_gdp.fill_color.total;
 
@@ -751,7 +751,7 @@ void glide64gDPFillRectangle(uint32_t ul_x, uint32_t ul_y, uint32_t lr_x, uint32
             apply_shading(v);
 
          /* special blender mode for Bomberman64 */
-         if ((gDP.otherMode.l & FORCE_BL) && ((gDP.otherMode.l >> 16) == 0x0550))
+         if (gDP.otherMode.forceBlender && ((gDP.otherMode.l >> 16) == 0x0550))
          {
             grAlphaCombine (GR_COMBINE_FUNCTION_LOCAL,
                   GR_COMBINE_FACTOR_NONE,

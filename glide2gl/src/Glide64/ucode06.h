@@ -45,7 +45,7 @@
 float set_sprite_combine_mode(void)
 {
   float Z;
-  if (((gDP.otherMode.h & RDP_CYCLE_TYPE) >> 20) == G_CYC_COPY)
+  if (gDP.otherMode.cycleType == G_CYC_COPY)
   {
     int32_t color_source;
 
@@ -69,7 +69,7 @@ float set_sprite_combine_mode(void)
 
   // set z buffer mode
   Z = 0.0f;
-  if ((gDP.otherMode.l & 0x00000030) && (((gDP.otherMode.h & RDP_CYCLE_TYPE) >> 20) < 2))
+  if ((gDP.otherMode.l & 0x00000030) && (gDP.otherMode.cycleType < 2))
   {
      if (g_gdp.other_modes.z_source_sel == 1)
       Z = g_gdp.prim_color.z;
@@ -84,7 +84,7 @@ float set_sprite_combine_mode(void)
   grFogMode (GR_FOG_DISABLE, g_gdp.fog_color.total);
   g_gdp.flags |= UPDATE_CULL_MODE | UPDATE_FOG_ENABLED;
 
-  if (((gDP.otherMode.h & RDP_CYCLE_TYPE) >> 20) == G_CYC_COPY)
+  if (gDP.otherMode.cycleType == G_CYC_COPY)
   {
     grColorCombine (GR_COMBINE_FUNCTION_SCALE_OTHER,
       GR_COMBINE_FACTOR_ONE,
@@ -324,7 +324,7 @@ static void DrawImage (DRAWIMAGE *d)
          );
 
    Z = set_sprite_combine_mode ();
-   if (((gDP.otherMode.h & RDP_CYCLE_TYPE) >> 20) == 2)
+   if (gDP.otherMode.cycleType == 2)
       rdp.allow_combine = 0;
 
    {

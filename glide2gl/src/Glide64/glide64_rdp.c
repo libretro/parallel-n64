@@ -628,7 +628,7 @@ static void rdp_texrect(uint32_t w0, uint32_t w1)
       return;
    }
 
-   if (((gDP.otherMode.h & RDP_CYCLE_TYPE) >> 20) > 1)
+   if (gDP.otherMode.cycleType > 1)
    {
       lr_x += 1.0f;
       lr_y += 1.0f;
@@ -708,7 +708,7 @@ static void rdp_texrect(uint32_t w0, uint32_t w1)
    if (off_y_i & 0x8000)
       off_y_i |= ~0xffff;
 
-   if (((gDP.otherMode.h & RDP_CYCLE_TYPE) >> 20) == G_CYC_COPY)
+   if (gDP.otherMode.cycleType == G_CYC_COPY)
       dsdx /= 4.0f;
 
    s_ul_x = ul_x * rdp.scale_x + rdp.offset_x;
