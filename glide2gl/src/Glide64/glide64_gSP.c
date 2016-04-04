@@ -1191,15 +1191,15 @@ void glide64gSPTexture(int32_t sc, int32_t tc, int32_t level,
 
    gDP.otherMode.textureDetail    = level;
    rdp.cur_tile                   = tile;
-   gDP.tiles[tile].on             = 0;
+   gSP.texture.on                 = 0;
 
    if (on)
    {
-      gDP.tiles[tile].on          = 1;
-      gDP.tiles[tile].org_s_scale = sc;
-      gDP.tiles[tile].org_t_scale = tc;
-      gDP.tiles[tile].s_scale     = _FIXED2FLOAT(((sc+1)/65536.0f), 5);
-      gDP.tiles[tile].t_scale     = _FIXED2FLOAT(((tc+1)/65536.0f), 5);
+      gSP.texture.on              = 1;
+      gSP.texture.org_scales      = sc;
+      gSP.texture.org_scalet      = tc;
+      gSP.texture.scales          = _FIXED2FLOAT(((sc+1)/65536.0f), 5);
+      gSP.texture.scalet          = _FIXED2FLOAT(((tc+1)/65536.0f), 5);
 
       g_gdp.flags |= UPDATE_TEXTURE;
    }

@@ -1473,9 +1473,9 @@ static void draw_tri_uv_calculation(VERTEX **vtx, VERTEX *v)
    // Fix texture coordinates
    if (!v->uv_scaled)
    {
-      v->ou *= gDP.tiles[rdp.cur_tile].s_scale;
-      v->ov *= gDP.tiles[rdp.cur_tile].t_scale;
-      v->uv_scaled = 1;
+      v->ou        *= gSP.texture.scales;
+      v->ov        *= gSP.texture.scalet;
+      v->uv_scaled  = 1;
 
       if (!gDP.otherMode.texturePersp)
       {

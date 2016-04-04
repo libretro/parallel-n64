@@ -81,12 +81,6 @@ struct gDPTile
    uint32_t ult;                 /* Upper Left T - 8:3 */
    uint32_t lrs;                 /* Lower Right S      */
    uint32_t lrt;                 /* Lower Right T      */
-   uint8_t on;
-   float s_scale;
-   float t_scale;
-
-   uint16_t org_s_scale;
-   uint16_t org_t_scale;
 
 	uint32_t textureMode;
 	uint32_t loadType;

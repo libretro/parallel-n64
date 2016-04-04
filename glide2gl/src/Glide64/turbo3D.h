@@ -145,13 +145,10 @@ static void t3dLoadObject(uint32_t pstate, uint32_t pvtx, uint32_t ptri)
    struct T3DState *ostate = (struct T3DState*)&gfx_info.RDRAM[RSP_SegmentToPhysical(pstate)];
    rdp.cur_tile = (ostate->textureState)&7;
 
-   LRDP("Loading Turbo3D object\n");
-   FRDP("tile: %d\n", rdp.cur_tile);
-
-   if (gDP.tiles[rdp.cur_tile].s_scale < 0.001f)
-      gDP.tiles[rdp.cur_tile].s_scale = 0.015625;
-   if (gDP.tiles[rdp.cur_tile].t_scale < 0.001f)
-      gDP.tiles[rdp.cur_tile].t_scale = 0.015625;
+   if (gSP.texture.scales < 0.001f)
+      gSP.texture.scales = 0.015625;
+   if (gSP.texture.scalet < 0.001f)
+      gSP.texture.scalet = 0.015625;
 
    __RSP.w0 = ostate->othermode0;
    __RSP.w1 = ostate->othermode1;

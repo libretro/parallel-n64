@@ -60,6 +60,7 @@ struct gSPInfo
 	struct
 	{
 		float scales, scalet;
+      uint16_t org_scales, org_scalet;
 		int32_t level, on, tile;
 	} texture;
 
