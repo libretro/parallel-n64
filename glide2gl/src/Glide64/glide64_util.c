@@ -594,7 +594,7 @@ static void clip_tri(int interpolate_colors)
       rdp.vtxbuf = tmp;
       rdp.vtx_buffer ^= 1;
       index = 0;
-      maxZ = rdp.view_trans[2] + rdp.view_scale[2];
+      maxZ = gSP.viewport.vtrans[2] + gSP.viewport.vscale[2];
 
       // Check the vertices for clipping
       for (i=0; i<n; i++)
@@ -925,7 +925,7 @@ void do_triangle_stuff_2 (uint16_t linew, uint8_t no_clip, int old_interpolate)
 void do_triangle_stuff (uint16_t linew, int old_interpolate) // what else?? do the triangle stuff :P (to keep from writing code twice)
 {
    int i;
-   float maxZ = (g_gdp.other_modes.z_source_sel != 1) ? rdp.view_trans[2] + rdp.view_scale[2] : g_gdp.prim_color.z;
+   float maxZ = (g_gdp.other_modes.z_source_sel != 1) ? gSP.viewport.vtrans[2] + gSP.viewport.vscale[2] : g_gdp.prim_color.z;
    uint8_t no_clip = 2;
 
    for (i=0; i< rdp.n_global; i++)
@@ -948,9 +948,9 @@ void do_triangle_stuff (uint16_t linew, int old_interpolate) // what else?? do t
       {
          //FRDP (" * ZCLIPPED: %d\n", vtx->number);
          vtx->q = 1.0f / vtx->w;
-         vtx->x = rdp.view_trans[0] + vtx->x * vtx->q * rdp.view_scale[0] + rdp.offset_x;
-         vtx->y = rdp.view_trans[1] + vtx->y * vtx->q * rdp.view_scale[1] + rdp.offset_y;
-         vtx->z = rdp.view_trans[2] + vtx->z * vtx->q * rdp.view_scale[2];
+         vtx->x = gSP.viewport.vtrans[0] + vtx->x * vtx->q * gSP.viewport.vscale[0] + rdp.offset_x;
+         vtx->y = gSP.viewport.vtrans[1] + vtx->y * vtx->q * gSP.viewport.vscale[1] + rdp.offset_y;
+         vtx->z = gSP.viewport.vtrans[2] + vtx->z * vtx->q * gSP.viewport.vscale[2];
          if (rdp.tex >= 1)
          {
             vtx->u[0] *= vtx->q;
@@ -1254,13 +1254,13 @@ void update(void)
    {
       g_gdp.flags ^= UPDATE_VIEWPORT;
       {
-         float scale_x = (float)fabs(rdp.view_scale[0]);
-         float scale_y = (float)fabs(rdp.view_scale[1]);
+         float scale_x = (float)fabs(gSP.viewport.vscale[0]);
+         float scale_y = (float)fabs(gSP.viewport.vscale[1]);
 
-         rdp.clip_min_x = MAX((rdp.view_trans[0] - scale_x + rdp.offset_x) / rdp.clip_ratio, 0.0f);
-         rdp.clip_min_y = MAX((rdp.view_trans[1] - scale_y + rdp.offset_y) / rdp.clip_ratio, 0.0f);
-         rdp.clip_max_x = MIN((rdp.view_trans[0] + scale_x + rdp.offset_x) * rdp.clip_ratio, settings.res_x);
-         rdp.clip_max_y = MIN((rdp.view_trans[1] + scale_y + rdp.offset_y) * rdp.clip_ratio, settings.res_y);
+         rdp.clip_min_x = MAX((gSP.viewport.vtrans[0] - scale_x + rdp.offset_x) / rdp.clip_ratio, 0.0f);
+         rdp.clip_min_y = MAX((gSP.viewport.vtrans[1] - scale_y + rdp.offset_y) / rdp.clip_ratio, 0.0f);
+         rdp.clip_max_x = MIN((gSP.viewport.vtrans[0] + scale_x + rdp.offset_x) * rdp.clip_ratio, settings.res_x);
+         rdp.clip_max_y = MIN((gSP.viewport.vtrans[1] + scale_y + rdp.offset_y) * rdp.clip_ratio, settings.res_y);
 
          FRDP (" |- viewport - (%d, %d, %d, %d)\n", (uint32_t)rdp.clip_min_x, (uint32_t)rdp.clip_min_y, (uint32_t)rdp.clip_max_x, (uint32_t)rdp.clip_max_y);
          if (!rdp.scissor_set)
@@ -1391,9 +1391,9 @@ static int cull_tri(VERTEX **v) // type changed to VERTEX** [Dave2001]
    {
       if (!v[i]->screen_translated)
       {
-         v[i]->sx = rdp.view_trans[0] + v[i]->x_w * rdp.view_scale[0] + rdp.offset_x;
-         v[i]->sy = rdp.view_trans[1] + v[i]->y_w * rdp.view_scale[1] + rdp.offset_y;
-         v[i]->sz = rdp.view_trans[2] + v[i]->z_w * rdp.view_scale[2];
+         v[i]->sx = gSP.viewport.vtrans[0] + v[i]->x_w * gSP.viewport.vscale[0] + rdp.offset_x;
+         v[i]->sy = gSP.viewport.vtrans[1] + v[i]->y_w * gSP.viewport.vscale[1] + rdp.offset_y;
+         v[i]->sz = gSP.viewport.vtrans[2] + v[i]->z_w * gSP.viewport.vscale[2];
          v[i]->screen_translated = 1;
       }
       if (v[i]->w < 0.01f) //need clip_z. can't be culled now

@@ -367,8 +367,6 @@ struct RDP
    float scale_x, scale_x_bak;
    float scale_y, scale_y_bak;
 
-   float view_scale[3];
-   float view_trans[3];
    float clip_min_x, clip_max_x, clip_min_y, clip_max_y;
    float clip_ratio;
 

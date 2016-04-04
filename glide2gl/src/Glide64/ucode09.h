@@ -536,12 +536,12 @@ static void uc9_movemem(uint32_t w0, uint32_t w1)
                   ((int16_t*)gfx_info.RDRAM)[(a+7)^1]    /* fo */
                   );
 
-            rdp.view_scale[0] = scale_x * rdp.scale_x;
-            rdp.view_scale[1] = scale_y * rdp.scale_y;
-            rdp.view_scale[2] = 32.0f * scale_z;
-            rdp.view_trans[0] = trans_x * rdp.scale_x;
-            rdp.view_trans[1] = trans_y * rdp.scale_y;
-            rdp.view_trans[2] = 32.0f * trans_z;
+            gSP.viewport.vscale[0] = scale_x * rdp.scale_x;
+            gSP.viewport.vscale[1] = scale_y * rdp.scale_y;
+            gSP.viewport.vscale[2] = 32.0f * scale_z;
+            gSP.viewport.vtrans[0] = trans_x * rdp.scale_x;
+            gSP.viewport.vtrans[1] = trans_y * rdp.scale_y;
+            gSP.viewport.vtrans[2] = 32.0f * trans_z;
 
             zSortRdp.view_scale[0] = (float)(scale_x*4);
             zSortRdp.view_scale[1] = (float)(scale_y*4);
@@ -582,10 +582,10 @@ static void uc9_setscissor(uint32_t w0, uint32_t w1)
       float w = (g_gdp.__clip.xl - g_gdp.__clip.xh) / 2.0f;
       float h = (g_gdp.__clip.yl - g_gdp.__clip.yh) / 2.0f;
 
-      rdp.view_scale[0] = w * rdp.scale_x;
-      rdp.view_scale[1] = h * rdp.scale_y;
-      rdp.view_trans[0] = w * rdp.scale_x;
-      rdp.view_trans[1] = h * rdp.scale_y;
+      gSP.viewport.vscale[0] = w * rdp.scale_x;
+      gSP.viewport.vscale[1] = h * rdp.scale_y;
+      gSP.viewport.vtrans[0] = w * rdp.scale_x;
+      gSP.viewport.vtrans[1] = h * rdp.scale_y;
 
       zSortRdp.view_scale[0] = w * 4.0f;
       zSortRdp.view_scale[1] = h * 4.0f;

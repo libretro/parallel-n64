@@ -287,8 +287,8 @@ void rdp_reset(void)
          );
 
    rdp.vi_org_reg       = *gfx_info.VI_ORIGIN_REG;
-   rdp.view_scale[2]    = 32.0f * 511.0f;
-   rdp.view_trans[2]    = 32.0f * 511.0f;
+   gSP.viewport.vscale[2]    = 32.0f * 511.0f;
+   gSP.viewport.vtrans[2]    = 32.0f * 511.0f;
    rdp.clip_ratio       = 1.0f;
    rdp.lookat[0][0]     = rdp.lookat[1][1] = 1.0f;
    rdp.allow_combine    = 1;
@@ -911,12 +911,12 @@ static void rdp_setscissor(uint32_t w0, uint32_t w1)
    rdp.ci_lower_bound = g_gdp.__clip.yl;
    rdp.scissor_set    = true;
 
-   if (rdp.view_scale[0] == 0) //viewport is not set?
+   if (gSP.viewport.vscale[0] == 0) //viewport is not set?
    {
-      rdp.view_scale[0] = (g_gdp.__clip.xl >> 1) * rdp.scale_x;
-      rdp.view_scale[1] = (g_gdp.__clip.yl >> 1) * -rdp.scale_y;
-      rdp.view_trans[0] = rdp.view_scale[0];
-      rdp.view_trans[1] = -rdp.view_scale[1];
+      gSP.viewport.vscale[0] = (g_gdp.__clip.xl >> 1) * rdp.scale_x;
+      gSP.viewport.vscale[1] = (g_gdp.__clip.yl >> 1) * -rdp.scale_y;
+      gSP.viewport.vtrans[0] = gSP.viewport.vscale[0];
+      gSP.viewport.vtrans[1] = -gSP.viewport.vscale[1];
       g_gdp.flags |= UPDATE_VIEWPORT;
    }
 }
@@ -1130,10 +1130,10 @@ static void RestoreScale(void)
 {
    rdp.scale_x        = rdp.scale_x_bak;
    rdp.scale_y        = rdp.scale_y_bak;
-   rdp.view_scale[0] *= rdp.scale_x;
-   rdp.view_scale[1] *= rdp.scale_y;
-   rdp.view_trans[0] *= rdp.scale_x;
-   rdp.view_trans[1] *= rdp.scale_y;
+   gSP.viewport.vscale[0] *= rdp.scale_x;
+   gSP.viewport.vscale[1] *= rdp.scale_y;
+   gSP.viewport.vtrans[0] *= rdp.scale_x;
+   gSP.viewport.vtrans[1] *= rdp.scale_y;
 
    g_gdp.flags       |= UPDATE_VIEWPORT | UPDATE_SCISSOR;
 }

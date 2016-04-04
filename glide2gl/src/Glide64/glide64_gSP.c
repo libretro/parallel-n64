@@ -301,12 +301,12 @@ void glide64gSPViewport(uint32_t v)
       scale_x = abs(scale_x);
       scale_y = abs(scale_y);
    }
-   rdp.view_scale[0] = scale_x * rdp.scale_x;
-   rdp.view_scale[1] = -scale_y * rdp.scale_y;
-   rdp.view_scale[2] = 32.0f * scale_z;
-   rdp.view_trans[0] = trans_x * rdp.scale_x;
-   rdp.view_trans[1] = trans_y * rdp.scale_y;
-   rdp.view_trans[2] = 32.0f * trans_z;
+   gSP.viewport.vscale[0] = scale_x * rdp.scale_x;
+   gSP.viewport.vscale[1] = -scale_y * rdp.scale_y;
+   gSP.viewport.vscale[2] = 32.0f * scale_z;
+   gSP.viewport.vtrans[0] = trans_x * rdp.scale_x;
+   gSP.viewport.vtrans[1] = trans_y * rdp.scale_y;
+   gSP.viewport.vtrans[2] = 32.0f * trans_z;
 
    g_gdp.flags |= UPDATE_VIEWPORT;
 }
@@ -632,7 +632,7 @@ void glide64gSPModifyVertex( uint32_t vtx, uint32_t where, uint32_t val )
                v->oow = 1.0f;
                v->z_w = 1.0f;
             }
-            v->sz = rdp.view_trans[2] + v->z_w * rdp.view_scale[2];
+            v->sz = gSP.viewport.vtrans[2] + v->z_w * gSP.viewport.vscale[2];
 
             v->scr_off = 0;
             if (scr_x < 0)
@@ -650,7 +650,7 @@ void glide64gSPModifyVertex( uint32_t vtx, uint32_t where, uint32_t val )
       case G_MWO_POINT_ZSCREEN:
          {
             float scr_z = _FIXED2FLOAT((int16_t)_SHIFTR(val, 16, 16), 15);
-            v->z_w      = (scr_z - rdp.view_trans[2]) / rdp.view_scale[2];
+            v->z_w      = (scr_z - gSP.viewport.vtrans[2]) / gSP.viewport.vscale[2];
             v->z        = v->z_w * v->w;
          }
          break;
@@ -1128,7 +1128,7 @@ void glide64gSPDMATriangles(uint32_t tris, uint32_t n)
       else
       {
          /* front cull */
-         if (rdp.view_scale[0] >= 0)
+         if (gSP.viewport.vscale[0] >= 0)
             rdp.flags |= CULL_FRONT;
          else
          {
