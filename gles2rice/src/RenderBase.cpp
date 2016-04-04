@@ -266,7 +266,8 @@ void InitRenderBase()
     gRDP.colorsAreReloaded = false;
 
     memset(&gRDP.otherMode,0,sizeof(RDP_OtherMode));
-    memset(&gRDP.tiles,0,sizeof(Tile)*8);
+    memset(&gRDP.tilesinfo,0,sizeof(TileAdditionalInfo)*8);
+    memset(&gDP.tiles,0,sizeof(struct gDPTile)*8);
 
     for (int i=0; i<MAX_VERTS; i++)
     {
@@ -299,32 +300,32 @@ void InitVertexTextureConstants()
 {
     RenderTexture &tex0 = g_textures[gRSP.curTile];
     //CTexture *surf = tex0.m_pCTexture;
-    Tile &tile0 = gRDP.tiles[gRSP.curTile];
+    TileAdditionalInfo *tile0 = &gRDP.tilesinfo[gRSP.curTile];
 
     float scaleX = gRSP.fTexScaleX;
     float scaleY = gRSP.fTexScaleY;
 
-    gRSP.tex0scaleX = scaleX * tile0.fShiftScaleS/tex0.m_fTexWidth;
-    gRSP.tex0scaleY = scaleY * tile0.fShiftScaleT/tex0.m_fTexHeight;
+    gRSP.tex0scaleX = scaleX * tile0->fShiftScaleS/tex0.m_fTexWidth;
+    gRSP.tex0scaleY = scaleY * tile0->fShiftScaleT/tex0.m_fTexHeight;
 
-    gRSP.tex0OffsetX = tile0.fhilite_sl/tex0.m_fTexWidth;
-    gRSP.tex0OffsetY = tile0.fhilite_tl/tex0.m_fTexHeight;
+    gRSP.tex0OffsetX = tile0->fhilite_sl/tex0.m_fTexWidth;
+    gRSP.tex0OffsetY = tile0->fhilite_tl/tex0.m_fTexHeight;
 
     if( CRender::g_pRender->IsTexel1Enable() )
     {
         RenderTexture &tex1 = g_textures[(gRSP.curTile+1)&7];
         //CTexture *surf = tex1.m_pCTexture;
-        Tile &tile1 = gRDP.tiles[(gRSP.curTile+1)&7];
+        TileAdditionalInfo *tile1 = &gRDP.tilesinfo[(gRSP.curTile+1)&7];
 
-        gRSP.tex1scaleX = scaleX * tile1.fShiftScaleS/tex1.m_fTexWidth;
-        gRSP.tex1scaleY = scaleY * tile1.fShiftScaleT/tex1.m_fTexHeight;
+        gRSP.tex1scaleX = scaleX * tile1->fShiftScaleS/tex1.m_fTexWidth;
+        gRSP.tex1scaleY = scaleY * tile1->fShiftScaleT/tex1.m_fTexHeight;
 
-        gRSP.tex1OffsetX = tile1.fhilite_sl/tex1.m_fTexWidth;
-        gRSP.tex1OffsetY = tile1.fhilite_tl/tex1.m_fTexHeight;
+        gRSP.tex1OffsetX = tile1->fhilite_sl/tex1.m_fTexWidth;
+        gRSP.tex1OffsetY = tile1->fhilite_tl/tex1.m_fTexHeight;
     }
 
-    gRSP.texGenXRatio = tile0.fShiftScaleS;
-    gRSP.texGenYRatio = gRSP.fTexScaleX/gRSP.fTexScaleY*tex0.m_fTexWidth/tex0.m_fTexHeight*tile0.fShiftScaleT;
+    gRSP.texGenXRatio = tile0->fShiftScaleS;
+    gRSP.texGenYRatio = gRSP.fTexScaleX/gRSP.fTexScaleY*tex0.m_fTexWidth/tex0.m_fTexHeight*tile0->fShiftScaleT;
 }
 
 void TexGen(float &s, float &t)
@@ -382,14 +383,12 @@ extern uint32_t lastSetTile;
 static noinline void InitVertex_scale_hack_check(uint32_t dwV)
 {
     // Check for txt scale hack
-    if( gRDP.tiles[lastSetTile].dwSize == G_IM_SIZ_32b || gRDP.tiles[lastSetTile].dwSize == G_IM_SIZ_4b )
+    if( gDP.tiles[lastSetTile].size == G_IM_SIZ_32b || gDP.tiles[lastSetTile].size == G_IM_SIZ_4b )
     {
-        int width = ((gRDP.tiles[lastSetTile].sh-gRDP.tiles[lastSetTile].sl+1)<<1);
-        int height = ((gRDP.tiles[lastSetTile].th-gRDP.tiles[lastSetTile].tl+1)<<1);
+        int width = ((gDP.tiles[lastSetTile].uls  - gDP.tiles[lastSetTile].lrs+1)<<1);
+        int height = ((gDP.tiles[lastSetTile].ult - gDP.tiles[lastSetTile].lrt+1)<<1);
         if( g_fVtxTxtCoords[dwV].x*gRSP.fTexScaleX == width || g_fVtxTxtCoords[dwV].y*gRSP.fTexScaleY == height )
-        {
             bHalfTxtScale=true;
-        }
     }
 }
 
@@ -425,16 +424,16 @@ static noinline void InitVertex_texgen_correct(TLITVERTEX &v, uint32_t dwV)
     RenderTexture &tex0 = g_textures[gRSP.curTile];
     u0 = g_fVtxTxtCoords[dwV].x * 32 * 1024 * gRSP.fTexScaleX / tex0.m_fTexWidth;
     v0 = g_fVtxTxtCoords[dwV].y * 32 * 1024 * gRSP.fTexScaleY / tex0.m_fTexHeight;
-    u0 *= (gRDP.tiles[gRSP.curTile].fShiftScaleS);
-    v0 *= (gRDP.tiles[gRSP.curTile].fShiftScaleT);
+    u0 *= (gRDP.tilesinfo[gRSP.curTile].fShiftScaleS);
+    v0 *= (gRDP.tilesinfo[gRSP.curTile].fShiftScaleT);
 
     if( CRender::g_pRender->IsTexel1Enable() )
     {
         RenderTexture &tex1 = g_textures[(gRSP.curTile+1)&7];
         u1 = g_fVtxTxtCoords[dwV].x * 32 * 1024 * gRSP.fTexScaleX / tex1.m_fTexWidth;
         v1 = g_fVtxTxtCoords[dwV].y * 32 * 1024 * gRSP.fTexScaleY / tex1.m_fTexHeight;
-        u1 *= gRDP.tiles[(gRSP.curTile+1)&7].fShiftScaleS;
-        v1 *= gRDP.tiles[(gRSP.curTile+1)&7].fShiftScaleT;
+        u1 *= gRDP.tilesinfo[(gRSP.curTile+1)&7].fShiftScaleS;
+        v1 *= gRDP.tilesinfo[(gRSP.curTile+1)&7].fShiftScaleT;
         CRender::g_pRender->SetVertexTextureUVCoord(v, u0, v0, u1, v1);
     }
     else

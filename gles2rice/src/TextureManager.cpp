@@ -622,7 +622,6 @@ TxtrCacheEntry * CTextureManager::GetTexture(TxtrInfo * pgti, bool fromTMEM, boo
             pEntry->dwUses++;
             pEntry->dwTimeLastUsed = status.gRDPTime;
             pEntry->FrameLastUsed = status.gDlistCount;
-            LOG_TEXTURE(TRACE0("   Use current texture:\n"));
             pEntry->lastEntry = g_lastTextureEntry;
             g_lastTextureEntry = pEntry;
             lastEntryModified = false;
@@ -697,11 +696,8 @@ TxtrCacheEntry * CTextureManager::GetTexture(TxtrInfo * pgti, bool fromTMEM, boo
           }
           else
           {
-             LOG_TEXTURE(TRACE0("   Load new texture from RDRAM:\n"));
              if (dwType == TEXTURE_FMT_A8R8G8B8)
-             {
                 ConvertTexture(pEntry, fromTMEM);
-             }
              else
                 ConvertTexture_16(pEntry, fromTMEM);
              pEntry->FrameLastUpdated = status.gDlistCount;
@@ -771,7 +767,7 @@ void CTextureManager::ConvertTexture(TxtrCacheEntry * pEntry, bool fromTMEM)
       pF = gConvertFunctions_FullTMEM[ pEntry->ti.Format ][ pEntry->ti.Size ];
    else
    {
-      if( gRDP.tiles[7].dwFormat == G_IM_FMT_YUV )
+      if( gDP.tiles[7].format == G_IM_FMT_YUV )
       {
          if( gRDP.otherMode.text_tlut>=2 )
             pF = gConvertTlutFunctions[ G_IM_FMT_YUV ][ pEntry->ti.Size ];
@@ -790,13 +786,6 @@ void CTextureManager::ConvertTexture(TxtrCacheEntry * pEntry, bool fromTMEM)
    if( pF )
    {
       pF( pEntry->pTexture, pEntry->ti );
-
-      LOG_TEXTURE(
-            {
-            DebuggerAppendMsg("Decompress 32bit Texture:\n\tFormat: %s\n\tImage Size:%d\n", 
-                  pszImgFormat[pEntry->ti.Format], pnImgSize[pEntry->ti.Size]);
-            DebuggerAppendMsg("Palette Format: %s (%d)\n", textlutname[pEntry->ti.TLutFmt>>RSP_SETOTHERMODE_SHIFT_TEXTLUT], pEntry->ti.TLutFmt>>RSP_SETOTHERMODE_SHIFT_TEXTLUT);
-            });
    }
    else
    {
@@ -825,12 +814,7 @@ void CTextureManager::ConvertTexture_16(TxtrCacheEntry * pEntry, bool fromTMEM)
     }
 
     if( pF )
-    {
         pF( pEntry->pTexture, pEntry->ti );
-
-        LOG_TEXTURE(TRACE2("Decompress 16bit Texture:\n\tFormat: %s\n\tImage Size:%d\n", 
-            pszImgFormat[pEntry->ti.Format], pnImgSize[pEntry->ti.Size]));
-    }
     else
     {
         TRACE2("ConvertTexture: Unable to decompress %s/%dbpp", pszImgFormat[pEntry->ti.Format], pnImgSize[pEntry->ti.Size]);

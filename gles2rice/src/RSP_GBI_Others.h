@@ -337,7 +337,7 @@ void DLParser_Bomberman2TextRect(Gfx *gfx)
     // Bomberman 64 - The Second Attack! (U) [!]
     // The 0x02 cmd, list a TexRect cmd
 
-    if( options.enableHackForGames == HACK_FOR_OGRE_BATTLE && gRDP.tiles[7].dwFormat == G_IM_FMT_YUV )
+    if( options.enableHackForGames == HACK_FOR_OGRE_BATTLE && gDP.tiles[7].format == G_IM_FMT_YUV )
     {
         TexRectToN64FrameBuffer_YUV_16b( (uint32_t)gObjMtxReal.X, (uint32_t)gObjMtxReal.Y, 16, 16);
         //DLParser_OgreBatter64BG((gfx->words.w0), (gfx->words.w1));
@@ -1266,10 +1266,10 @@ void DLParser_TexRect_Last_Legion(Gfx *gfx)
         fS0, fT0, fS1, fT1, fDSDX, fDTDY);
     LOG_UCODE("");
 
-    float t0u0 = (fS0-gRDP.tiles[tileno].hilite_sl) * gRDP.tiles[tileno].fShiftScaleS;
-    float t0v0 = (fT0-gRDP.tiles[tileno].hilite_tl) * gRDP.tiles[tileno].fShiftScaleT;
-    float t0u1 = t0u0 + (fDSDX * (dwXH - dwXL))*gRDP.tiles[tileno].fShiftScaleS;
-    float t0v1 = t0v0 + (fDTDY * (dwYH - dwYL))*gRDP.tiles[tileno].fShiftScaleT;
+    float t0u0 = (fS0-gRDP.tilesinfo[tileno].hilite_sl) * gRDP.tilesinfo[tileno].fShiftScaleS;
+    float t0v0 = (fT0-gRDP.tilesinfo[tileno].hilite_tl) * gRDP.tilesinfo[tileno].fShiftScaleT;
+    float t0u1 = t0u0 + (fDSDX * (dwXH - dwXL))*gRDP.tilesinfo[tileno].fShiftScaleS;
+    float t0v1 = t0v0 + (fDTDY * (dwYH - dwYL))*gRDP.tilesinfo[tileno].fShiftScaleT;
 
     if( dwXL==0 && dwYL==0 && dwXH==windowSetting.fViWidth-1 && dwYH==windowSetting.fViHeight-1 &&
         t0u0 == 0 && t0v0==0 && t0u1==0 && t0v1==0 )
@@ -1279,9 +1279,9 @@ void DLParser_TexRect_Last_Legion(Gfx *gfx)
     else
     {
         if( status.bHandleN64RenderTexture && //status.bDirectWriteIntoRDRAM && 
-            g_pRenderTextureInfo->CI_Info.dwFormat == gRDP.tiles[tileno].dwFormat && 
-            g_pRenderTextureInfo->CI_Info.dwSize == gRDP.tiles[tileno].dwSize && 
-            gRDP.tiles[tileno].dwFormat == G_IM_FMT_CI && gRDP.tiles[tileno].dwSize == G_IM_SIZ_8b )
+            g_pRenderTextureInfo->CI_Info.dwFormat == gDP.tiles[tileno].format && 
+            g_pRenderTextureInfo->CI_Info.dwSize == gDP.tiles[tileno].size && 
+            gDP.tiles[tileno].format == G_IM_FMT_CI && gDP.tiles[tileno].size == G_IM_SIZ_8b )
         {
             if( options.enableHackForGames == HACK_FOR_YOSHI )
             {

@@ -216,7 +216,7 @@ typedef struct
 
     RDP_OtherMode otherMode;
 
-    Tile    tiles[8];
+    TileAdditionalInfo    tilesinfo[8];
     ScissorType scissor;
 
     bool    textureIsChanged;

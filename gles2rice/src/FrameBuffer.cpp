@@ -450,21 +450,12 @@ void TexRectToFrameBuffer_8b(uint32_t dwXL, uint32_t dwYL, uint32_t dwXH, uint32
     // Copy the framebuffer texture into the N64 framebuffer memory
     // Used in Yoshi
 
-    /*
-    uint32_t maxW = g_pRenderTextureInfo->CI_Info.dwWidth;
-    uint32_t maxH = maxW*3/4;
-    if( status.dwTvSystem == TV_SYSTEM_PAL )
-    {
-    maxH = maxW*9/11;
-    }
-    */
-
     uint32_t maxW = g_pRenderTextureInfo->N64Width;
     uint32_t maxH = g_pRenderTextureInfo->N64Height;
 
     uint32_t maxOff = maxW*maxH;
 
-    TMEMLoadMapInfo &info = g_tmemLoadAddrMap[gRDP.tiles[dwTile].dwTMem];
+    TMEMLoadMapInfo &info = g_tmemLoadAddrMap[gDP.tiles[dwTile].tmem];
     uint32_t dwWidth = dwXH-dwXL;
     uint32_t dwHeight = dwYH-dwYL;
 
@@ -475,11 +466,11 @@ void TexRectToFrameBuffer_8b(uint32_t dwXL, uint32_t dwYL, uint32_t dwXH, uint32
     uint8_t* dwSrc = rdram_u8 + info.dwLoadAddress;
     uint8_t* dwDst = rdram_u8 + g_pRenderTextureInfo->CI_Info.dwAddr;
 
-    uint32_t dwSrcPitch = gRDP.tiles[dwTile].dwPitch;
+    uint32_t dwSrcPitch = gRDP.tilesinfo[dwTile].dwPitch;
     uint32_t dwDstPitch = g_pRenderTextureInfo->CI_Info.dwWidth;
 
-    uint32_t dwSrcOffX = gRDP.tiles[dwTile].hilite_sl;
-    uint32_t dwSrcOffY = gRDP.tiles[dwTile].hilite_tl;
+    uint32_t dwSrcOffX = gRDP.tilesinfo[dwTile].hilite_sl;
+    uint32_t dwSrcOffY = gRDP.tilesinfo[dwTile].hilite_tl;
 
     uint32_t dwLeft = dwXL;
     uint32_t dwTop = dwYL;

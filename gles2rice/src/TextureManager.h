@@ -26,6 +26,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include <strings.h>
 #endif
 
+#include "../../Graphics/RDP/gDP_state.h"
 #include "typedefs.h"
 #include "Texture.h"
 #define absi(x)     ((x)>=0?(x):(-x))
@@ -72,18 +73,18 @@ public:
         return *this;
     }
 
-    inline TxtrInfo& operator = (const Tile& tile)
+    inline TxtrInfo& operator = (const gDPTile& tile)
     {
-        Format = tile.dwFormat;
-        Size = tile.dwSize;
-        Palette = tile.dwPalette;
+        Format  = tile.format;
+        Size    = tile.size;
+        Palette = tile.palette;
         
-        maskS = tile.dwMaskS;
-        maskT = tile.dwMaskT;
-        mirrorS = tile.bMirrorS;
-        mirrorT = tile.bMirrorT;
-        clampS = tile.bClampS;
-        clampT = tile.bClampT;
+        maskS   = tile.masks;
+        maskT   = tile.maskt;
+        mirrorS = tile.mirrors;
+        mirrorT = tile.mirrort;
+        clampS  = tile.clamps;
+        clampT  = tile.clampt;
 
         return *this;
     }

@@ -140,19 +140,19 @@ void ConvertRGBA32_16(CTexture *pTexture, const TxtrInfo &tinfo)
 
     if( options.bUseFullTMEM )
     {
-        Tile &tile = gRDP.tiles[tinfo.tileNo];
+        gDPTile *tile = &gDP.tiles[tinfo.tileNo];
 
         uint32_t *pWordSrc;
         if( tinfo.tileNo >= 0 )
         {
-            pWordSrc = (uint32_t*)&g_Tmem.g_Tmem64bit[tile.dwTMem];
+            pWordSrc = (uint32_t*)&g_Tmem.g_Tmem64bit[tile->tmem];
 
             for (uint32_t y = 0; y < tinfo.HeightToLoad; y++)
             {
                 uint16_t * dwDst = (uint16_t *)((uint8_t *)dInfo.lpSurface + y*dInfo.lPitch);
 
                 uint32_t nFiddle = ( y&1 )? 0x2 : 0;
-                int idx = tile.dwLine*4*y;
+                int idx = tile->line * 4 * y;
 
                 for (uint32_t x = 0; x < tinfo.WidthToLoad; x++, idx++)
                 {
@@ -841,11 +841,11 @@ void ConvertYUV_16(CTexture *pTexture, const TxtrInfo &tinfo)
 
     if( options.bUseFullTMEM )
     {
-        Tile &tile = gRDP.tiles[tinfo.tileNo];
+        gDPTile *tile = &gDP.tiles[tinfo.tileNo];
 
         uint16_t * pSrc;
         if( tinfo.tileNo >= 0 )
-            pSrc = (uint16_t*)&g_Tmem.g_Tmem64bit[tile.dwTMem];
+            pSrc = (uint16_t*)&g_Tmem.g_Tmem64bit[tile->tmem];
         else
             pSrc = (uint16_t*)(tinfo.pPhysicalAddress);
 
@@ -853,7 +853,7 @@ void ConvertYUV_16(CTexture *pTexture, const TxtrInfo &tinfo)
         for (y = 0; y < tinfo.HeightToLoad; y++)
         {
             nFiddle = ( y&1 )? 0x4 : 0;
-            int dwWordOffset = tinfo.tileNo>=0? tile.dwLine*8*y : ((y+tinfo.TopToLoad) * tinfo.Pitch) + (tinfo.LeftToLoad * 2);
+            int dwWordOffset = tinfo.tileNo>=0? tile->line * 8 * y : ((y+tinfo.TopToLoad) * tinfo.Pitch) + (tinfo.LeftToLoad * 2);
             uint16_t * wDst = (uint16_t *)((uint8_t *)dInfo.lpSurface + y*dInfo.lPitch);
 
             for (x = 0; x < tinfo.WidthToLoad/2; x++)
@@ -963,9 +963,9 @@ void Convert4b_16(CTexture *pTexture, const TxtrInfo &tinfo)
     bool bIgnoreAlpha = (tinfo.TLutFmt==TLUT_FMT_UNKNOWN);
     if( tinfo.Format <= G_IM_FMT_CI ) bIgnoreAlpha = (tinfo.TLutFmt==TLUT_FMT_NONE);
 
-    Tile &tile = gRDP.tiles[tinfo.tileNo];
+    gDPTile *tile = &gDP.tiles[tinfo.tileNo];
 
-    uint8_t *pByteSrc = tinfo.tileNo >= 0 ? (uint8_t*)&g_Tmem.g_Tmem64bit[tile.dwTMem] : (uint8_t*)(tinfo.pPhysicalAddress);
+    uint8_t *pByteSrc = tinfo.tileNo >= 0 ? (uint8_t*)&g_Tmem.g_Tmem64bit[tile->tmem] : (uint8_t*)(tinfo.pPhysicalAddress);
 
     for (uint32_t y = 0; y < tinfo.HeightToLoad; y++)
     {
@@ -991,7 +991,7 @@ void Convert4b_16(CTexture *pTexture, const TxtrInfo &tinfo)
             nFiddle = ( y&1 )? 0x4 : 0;
         }
 
-        int idx = tinfo.tileNo>=0 ? tile.dwLine*8*y : ((y+tinfo.TopToLoad) * tinfo.Pitch) + (tinfo.LeftToLoad / 2);
+        int idx = tinfo.tileNo>=0 ? tile->line * 8 * y : ((y+tinfo.TopToLoad) * tinfo.Pitch) + (tinfo.LeftToLoad / 2);
 
         for (uint32_t x = 0; x < tinfo.WidthToLoad; x+=2, idx++)
         {
@@ -1063,11 +1063,11 @@ void Convert8b_16(CTexture *pTexture, const TxtrInfo &tinfo)
     bool bIgnoreAlpha = (tinfo.TLutFmt==TLUT_FMT_UNKNOWN);
     if( tinfo.Format <= G_IM_FMT_CI ) bIgnoreAlpha = (tinfo.TLutFmt==TLUT_FMT_NONE);
 
-    Tile &tile = gRDP.tiles[tinfo.tileNo];
+    gDPTile *tile = &gDP.tiles[tinfo.tileNo];
 
     uint8_t *pByteSrc;
     if( tinfo.tileNo >= 0 )
-        pByteSrc = (uint8_t*)&g_Tmem.g_Tmem64bit[tile.dwTMem];
+        pByteSrc = (uint8_t*)&g_Tmem.g_Tmem64bit[tile->tmem];
     else
         pByteSrc = (uint8_t*)(tinfo.pPhysicalAddress);
 
@@ -1087,16 +1087,12 @@ void Convert8b_16(CTexture *pTexture, const TxtrInfo &tinfo)
                     nFiddle = 0x7;
             }
             else
-            {
                 nFiddle = 3;
-            }
         }
         else
-        {
             nFiddle = ( y&1 )? 0x4 : 0;
-        }
 
-        int idx = tinfo.tileNo>=0? tile.dwLine*8*y : ((y+tinfo.TopToLoad) * tinfo.Pitch) + tinfo.LeftToLoad;
+        int idx = tinfo.tileNo>=0? tile->line * 8 * y : ((y+tinfo.TopToLoad) * tinfo.Pitch) + tinfo.LeftToLoad;
 
         for (uint32_t x = 0; x < tinfo.WidthToLoad; x++, idx++)
         {
@@ -1147,11 +1143,11 @@ void Convert16b_16(CTexture *pTexture, const TxtrInfo &tinfo)
     if (!pTexture->StartUpdate(&dInfo)) 
         return;
 
-    Tile &tile = gRDP.tiles[tinfo.tileNo];
+    gDPTile *tile = &gDP.tiles[tinfo.tileNo];
 
     uint16_t *pWordSrc;
     if( tinfo.tileNo >= 0 )
-        pWordSrc = (uint16_t*)&g_Tmem.g_Tmem64bit[tile.dwTMem];
+        pWordSrc = (uint16_t*)&g_Tmem.g_Tmem64bit[tile->tmem];
     else
         pWordSrc = (uint16_t*)(tinfo.pPhysicalAddress);
 
@@ -1171,16 +1167,14 @@ void Convert16b_16(CTexture *pTexture, const TxtrInfo &tinfo)
                     nFiddle = 0x3;
             }
             else
-            {
                 nFiddle = 0x1;
-            }
         }
         else
         {
             nFiddle = ( y&1 )? 0x2 : 0;
         }
 
-        int idx = tinfo.tileNo>=0? tile.dwLine*4*y : (((y+tinfo.TopToLoad) * tinfo.Pitch)>>1) + tinfo.LeftToLoad;
+        int idx = tinfo.tileNo>=0? tile->line * 4 * y : (((y+tinfo.TopToLoad) * tinfo.Pitch)>>1) + tinfo.LeftToLoad;
 
         for (uint32_t x = 0; x < tinfo.WidthToLoad; x++, idx++)
         {

@@ -163,8 +163,9 @@ bool conkerSwapHack=false;
 
 bool CalculateTileSizes_method_2(int tileno, TMEMLoadMapInfo *info, TxtrInfo &gti)
 {
-    Tile &tile = gRDP.tiles[tileno];
-    Tile &loadtile = gRDP.tiles[RDP_TXT_LOADTILE];
+    gDPTile *tile = &gDP.tiles[tileno];
+    TileAdditionalInfo *tileinfo = &gRDP.tilesinfo[tileno];
+    gDPTile *loadtile = &gDP.tiles[RDP_TXT_LOADTILE];
 
     uint32_t dwPitch;
 
@@ -173,65 +174,65 @@ bool CalculateTileSizes_method_2(int tileno, TMEMLoadMapInfo *info, TxtrInfo &gt
     int dwTileHeight;
     if( info->bSetBy == CMD_LOADTILE )
     {
-        if( tile.sl >= tile.sh )
+        if( tile->lrs >= tile->uls )
         {
             dwTileWidth = info->dwWidth;    // From SetTImage
-            dwTileWidth = dwTileWidth << info->dwSize >> tile.dwSize;
+            dwTileWidth = dwTileWidth << info->dwSize >> tile->size;
         }
         else
-            dwTileWidth= tile.sh - tile.sl + 1;
+            dwTileWidth= tile->uls - tile->lrs + 1;
 
-        if( tile.tl >= tile.th )
+        if( tile->lrt >= tile->ult )
             dwTileHeight= info->th - info->tl + 1;
         else
-            dwTileHeight= tile.th - tile.tl + 1;
+            dwTileHeight= tile->ult - tile->lrt + 1;
     }
     else
     {
-        if( tile.dwMaskS == 0 || tile.bClampS )
+        if( tile->masks == 0 || tile->clamps )
         {
-            dwTileWidth = tile.hilite_sh - tile.hilite_sl +1;
-            if( dwTileWidth < tile.sh - tile.sl +1 )
-                dwTileWidth = tile.sh - tile.sl +1;
+            dwTileWidth = tileinfo->hilite_sh - tileinfo->hilite_sl +1;
+            if( dwTileWidth < tile->uls - tile->lrs +1 )
+                dwTileWidth = tile->uls - tile->lrs +1;
         }
         else
         {
-            if( tile.dwMaskS < 8 )
-                dwTileWidth = (1 << tile.dwMaskS );
-            else if( tile.dwLine )
-                dwTileWidth = (tile.dwLine<<5)>>tile.dwSize;
+            if( tile->masks < 8 )
+                dwTileWidth = (1 << tile->masks );
+            else if( tile->line )
+                dwTileWidth = (tile->line << 5) >> tile->size;
             else
             {
-                if( tile.sl <= tile.sh )
-                    dwTileWidth = tile.sh - tile.sl +1;
-                else if( loadtile.sl <= loadtile.sh )
-                    dwTileWidth = loadtile.sh - loadtile.sl +1;
+                if( tile->uls <= tile->ult )
+                    dwTileWidth = tile->uls - tile->lrs +1;
+                else if( loadtile->lrs <= loadtile->uls )
+                    dwTileWidth = loadtile->uls - loadtile->lrs +1;
                 else
-                    dwTileWidth = tile.sh - tile.sl +1;
+                    dwTileWidth = tile->uls - tile->lrs +1;
             }
         }
 
-        if( tile.dwMaskT == 0 || tile.bClampT )
+        if( tile->maskt == 0 || tile->clampt )
         {
-            dwTileHeight= tile.hilite_th - tile.hilite_tl +1;
-            if( dwTileHeight < tile.th - tile.tl +1 )
-                dwTileHeight = tile.th - tile.tl +1;
+            dwTileHeight= tileinfo->hilite_th - tileinfo->hilite_tl +1;
+            if( dwTileHeight < tile->ult - tile->lrt +1 )
+                dwTileHeight = tile->ult - tile->lrt +1;
         }
         else
         {
-            if( tile.dwMaskT < 8 )
-                dwTileHeight = (1 << tile.dwMaskT );
-            else if( tile.tl <= tile.th )
-                dwTileHeight = tile.th - tile.tl +1;
-            else if( loadtile.tl <= loadtile.th )
-                dwTileHeight = loadtile.th - loadtile.tl +1;
+            if( tile->maskt < 8 )
+                dwTileHeight = (1 << tile->maskt );
+            else if( tile->lrt <= tile->ult )
+                dwTileHeight = tile->ult - tile->lrt +1;
+            else if( loadtile->lrt <= loadtile->ult )
+                dwTileHeight = loadtile->ult - loadtile->lrt +1;
             else
-                dwTileHeight = tile.th - tile.tl +1;
+                dwTileHeight = tile->ult - tile->lrt +1;
         }
     }
 
-    int dwTileMaskWidth = tile.dwMaskS > 0 ? (1 << tile.dwMaskS ) : 0;
-    int dwTileMaskHeight = tile.dwMaskT > 0 ? (1 << tile.dwMaskT ) : 0;
+    int dwTileMaskWidth = tile->masks > 0 ? (1 << tile->masks ) : 0;
+    int dwTileMaskHeight = tile->maskt > 0 ? (1 << tile->maskt ) : 0;
 
     if( dwTileWidth < 0 || dwTileHeight < 0)
     {
@@ -255,13 +256,13 @@ bool CalculateTileSizes_method_2(int tileno, TMEMLoadMapInfo *info, TxtrInfo &gt
         dwTileHeight--;
     }
 
-    ComputeTileDimension(tile.dwMaskS, tile.bClampS,
-        tile.bMirrorS, dwTileWidth, gti.WidthToCreate, gti.WidthToLoad);
-    tile.dwWidth = gti.WidthToCreate;
+    ComputeTileDimension(tile->masks, tile->clamps,
+        tile->mirrors, dwTileWidth, gti.WidthToCreate, gti.WidthToLoad);
+    tileinfo->dwWidth = gti.WidthToCreate;
 
-    ComputeTileDimension(tile.dwMaskT, tile.bClampT,
-        tile.bMirrorT, dwTileHeight, gti.HeightToCreate, gti.HeightToLoad);
-    tile.dwHeight = gti.HeightToCreate;
+    ComputeTileDimension(tile->maskt, tile->clampt,
+        tile->mirrort, dwTileHeight, gti.HeightToCreate, gti.HeightToLoad);
+    tileinfo->dwHeight = gti.HeightToCreate;
 
     gti.bSwapped = info->bSwapped;
 
@@ -278,47 +279,45 @@ bool CalculateTileSizes_method_2(int tileno, TMEMLoadMapInfo *info, TxtrInfo &gt
     else    //Set by LoadBlock
     {
         // It was a block load - the pitch is determined by the tile size
-        if (info->dxt == 0 || info->dwTmem != tile.dwTMem )
+        if (info->dxt == 0 || info->dwTmem != tile->tmem )
         {
-            dwPitch = tile.dwLine << 3;
+            dwPitch = tile->line << 3;
             gti.bSwapped = true;
-            if( info->dwTmem != tile.dwTMem && info->dxt != 0 && info->dwSize == G_IM_SIZ_16b && tile.dwSize == G_IM_SIZ_4b )
+            if( info->dwTmem != tile->tmem && info->dxt != 0 && info->dwSize == G_IM_SIZ_16b && tile->size == G_IM_SIZ_4b )
                 conkerSwapHack = true;
         }
         else
         {
             uint32_t DXT = info->dxt;
             if( info->dxt > 1 )
-            {
-                DXT = ReverseDXT(info->dxt, info->sh, dwTileWidth, tile.dwSize);
-            }
+                DXT = ReverseDXT(info->dxt, info->sh, dwTileWidth, tile->size);
             dwPitch = DXT << 3;
         }
 
-        if (tile.dwSize == G_IM_SIZ_32b)
-            dwPitch = tile.dwLine << 4;
+        if (tile->size == G_IM_SIZ_32b)
+            dwPitch = tile->line << 4;
     }
 
-    gti.Pitch = tile.dwPitch = dwPitch;
+    gti.Pitch = tileinfo->dwPitch = dwPitch;
 
-    if( (gti.WidthToLoad < gti.WidthToCreate || tile.bSizeIsValid == false) && tile.dwMaskS > 0 && gti.WidthToLoad != (unsigned int)dwTileMaskWidth &&
+    if( (gti.WidthToLoad < gti.WidthToCreate || tileinfo->bSizeIsValid == false) && tile->masks > 0 && gti.WidthToLoad != (unsigned int)dwTileMaskWidth &&
         info->bSetBy == CMD_LOADBLOCK )
-        //if( (gti.WidthToLoad < gti.WidthToCreate ) && tile.dwMaskS > 0 && gti.WidthToLoad != dwTileMaskWidth &&
+        //if( (gti.WidthToLoad < gti.WidthToCreate ) && tile->masks > 0 && gti.WidthToLoad != dwTileMaskWidth &&
         //  info->bSetBy == CMD_LOADBLOCK )
     {
         // We have got the pitch now, recheck the width_to_load
-        uint32_t pitchwidth = dwPitch<<1>>tile.dwSize;
+        uint32_t pitchwidth = dwPitch<<1>>tile->size;
         if( pitchwidth == (unsigned int)dwTileMaskWidth )
         {
             gti.WidthToLoad = pitchwidth;
         }
     }
-    if( (gti.HeightToLoad < gti.HeightToCreate  || tile.bSizeIsValid == false) && tile.dwMaskT > 0 && gti.HeightToLoad != (unsigned int)dwTileMaskHeight &&
+    if( (gti.HeightToLoad < gti.HeightToCreate  || tileinfo->bSizeIsValid == false) && tile->maskt > 0 && gti.HeightToLoad != (unsigned int)dwTileMaskHeight &&
         info->bSetBy == CMD_LOADBLOCK )
-        //if( (gti.HeightToLoad < gti.HeightToCreate  ) && tile.dwMaskT > 0 && gti.HeightToLoad != dwTileMaskHeight &&
+        //if( (gti.HeightToLoad < gti.HeightToCreate  ) && tile->maskt > 0 && gti.HeightToLoad != dwTileMaskHeight &&
         //  info->bSetBy == CMD_LOADBLOCK )
     {
-        //uint32_t pitchwidth = dwPitch<<1>>tile.dwSize;
+        //uint32_t pitchwidth = dwPitch << 1 >> tile->size;
         uint32_t pitchHeight = (info->dwTotalWords<<1)/dwPitch;
         if( pitchHeight == (unsigned int)dwTileMaskHeight || gti.HeightToLoad == 1 )
         {
@@ -330,33 +329,33 @@ bool CalculateTileSizes_method_2(int tileno, TMEMLoadMapInfo *info, TxtrInfo &gt
 
     if( info->bSetBy == CMD_LOADTILE )
     {
-        gti.LeftToLoad = (info->sl<<info->dwSize)>>tile.dwSize;
+        gti.LeftToLoad = (info->sl<<info->dwSize) >> tile->size;
         gti.TopToLoad = info->tl;
     }
     else
     {
-        gti.LeftToLoad = (info->sl<<info->dwSize)>>tile.dwSize;
-        gti.TopToLoad = (info->tl<<info->dwSize)>>tile.dwSize;
+        gti.LeftToLoad = (info->sl<<info->dwSize)>> tile->size;
+        gti.TopToLoad = (info->tl<<info->dwSize)>> tile->size;
     }
 
-    uint32_t total64BitWordsToLoad = (gti.HeightToLoad*gti.WidthToLoad)>>(4-tile.dwSize);
-    if( total64BitWordsToLoad + tile.dwTMem > 0x200 )
+    uint32_t total64BitWordsToLoad = (gti.HeightToLoad*gti.WidthToLoad)>>(4-tile->size);
+    if( total64BitWordsToLoad + tile->tmem > 0x200 )
     {
         //TRACE0("Warning: texture loading TMEM is over range");
         if( gti.WidthToLoad > gti.HeightToLoad )
         {
-            uint32_t newheight = (dwPitch << 1 )>> tile.dwSize;
-            tile.dwWidth = gti.WidthToLoad = gti.WidthToCreate = MIN(newheight, (gti.WidthToLoad&0xFFFFFFFE));
-            tile.dwHeight = gti.HeightToCreate = gti.HeightToLoad = ((0x200 - tile.dwTMem) << (4-tile.dwSize)) / gti.WidthToLoad;
+            uint32_t newheight = (dwPitch << 1 )>> tile->size;
+            tileinfo->dwWidth = gti.WidthToLoad = gti.WidthToCreate = MIN(newheight, (gti.WidthToLoad&0xFFFFFFFE));
+            tileinfo->dwHeight = gti.HeightToCreate = gti.HeightToLoad = ((0x200 - tile->tmem) << (4-tile->size)) / gti.WidthToLoad;
         }
         else
         {
-            tile.dwHeight = gti.HeightToCreate = gti.HeightToLoad = info->dwTotalWords / ((gti.WidthToLoad << tile.dwSize) >> 1);
+            tileinfo->dwHeight = gti.HeightToCreate = gti.HeightToLoad = info->dwTotalWords / ((gti.WidthToLoad << tile->size) >> 1);
         }
     }
 
     // Check the info
-    if( (info->dwTotalWords>>2) < total64BitWordsToLoad+tile.dwTMem-info->dwTmem - 4 )
+    if( (info->dwTotalWords>>2) < total64BitWordsToLoad+tile->tmem-info->dwTmem - 4 )
     {
        // Hack here
        if( (options.enableHackForGames == HACK_FOR_ZELDA||options.enableHackForGames == HACK_FOR_ZELDA_MM) && (unsigned int)tileno != gRSP.curTile )
@@ -365,61 +364,61 @@ bool CalculateTileSizes_method_2(int tileno, TMEMLoadMapInfo *info, TxtrInfo &gt
 
     //Check memory boundary
     if( gti.Address + gti.HeightToLoad*gti.Pitch >= g_dwRamSize )
-        gti.HeightToCreate = gti.HeightToLoad = tile.dwHeight = (g_dwRamSize-gti.Address)/gti.Pitch;
+        gti.HeightToCreate = gti.HeightToLoad = tileinfo->dwHeight = (g_dwRamSize-gti.Address)/gti.Pitch;
 
     return true;
 }
 
 bool CalculateTileSizes_method_1(int tileno, TMEMLoadMapInfo *info, TxtrInfo &gti)
 {
-    Tile &tile = gRDP.tiles[tileno];
-    //Tile &loadtile = gRDP.tiles[RDP_TXT_LOADTILE];
+    gDPTile *tile = &gDP.tiles[tileno];
+    TileAdditionalInfo *tileinfo = &gRDP.tilesinfo[tileno];
 
     // Now Initialize the texture dimension
     int loadwidth, loadheight;
 
-    int maskwidth = tile.dwMaskS ? (1 << tile.dwMaskS ) : 0;
-    int maskheight = tile.dwMaskT ? (1 << tile.dwMaskT ) : 0;
-    int clampwidth = abs(tile.hilite_sh - tile.hilite_sl) +1;
-    int clampheight = abs(tile.hilite_th - tile.hilite_tl) +1;
-    int linewidth = tile.dwLine << (5 - tile.dwSize);
+    int maskwidth = tile->masks ? (1 << tile->masks ) : 0;
+    int maskheight = tile->maskt ? (1 << tile->maskt ) : 0;
+    int clampwidth = abs(tileinfo->hilite_sh - tileinfo->hilite_sl) +1;
+    int clampheight = abs(tileinfo->hilite_th - tileinfo->hilite_tl) +1;
+    int linewidth = tile->line << (5 - tile->size);
 
     gti.bSwapped = info->bSwapped;
 
     if( info->bSetBy == CMD_LOADTILE )
     {
-        loadwidth = (abs(info->sh - info->sl) + 1) << info->dwSize >> tile.dwSize;
-        loadheight = (abs(info->th - info->tl) + 1) << info->dwSize >> tile.dwSize;
+        loadwidth = (abs(info->sh - info->sl) + 1) << info->dwSize >> tile->size;
+        loadheight = (abs(info->th - info->tl) + 1) << info->dwSize >> tile->size;
 
-        tile.dwPitch = info->dwWidth << info->dwSize >> 1;
-        if( tile.dwPitch == 0 ) tile.dwPitch = 1024;        // Hack for Bust-A-Move
+        tileinfo->dwPitch = info->dwWidth << info->dwSize >> 1;
+        if( tileinfo->dwPitch == 0 ) tileinfo->dwPitch = 1024;        // Hack for Bust-A-Move
 
-        gti.LeftToLoad = (info->sl<<info->dwSize)>>tile.dwSize;
+        gti.LeftToLoad = (info->sl<<info->dwSize)>>tile->size;
         gti.TopToLoad = info->tl;
     }
     else
     {
-        loadwidth = abs(tile.sh - tile.sl) +1;
-        if( tile.dwMaskS )  
+        loadwidth = abs(tile->uls - tile->lrs) +1;
+        if( tile->masks )  
         {
             loadwidth = maskwidth;
         }
 
-        loadheight = abs(tile.th - tile.tl) +1;
-        if( tile.dwMaskT )  
+        loadheight = abs(tile->ult - tile->lrt) +1;
+        if( tile->maskt )  
         {
             loadheight = maskheight;
         }
 
 
         // It was a block load - the pitch is determined by the tile size
-        if (tile.dwSize == G_IM_SIZ_32b)
-            tile.dwPitch = tile.dwLine << 4;
+        if (tile->size == G_IM_SIZ_32b)
+            tileinfo->dwPitch = tile->line << 4;
         else if (info->dxt == 0 )
         {
-            tile.dwPitch = tile.dwLine << 3;
+            tileinfo->dwPitch = tile->line << 3;
             gti.bSwapped = true;
-            if( info->dwTmem != tile.dwTMem && info->dxt != 0 && info->dwSize == G_IM_SIZ_16b && tile.dwSize == G_IM_SIZ_4b )
+            if( info->dwTmem != tile->tmem && info->dxt != 0 && info->dwSize == G_IM_SIZ_16b && tile->size == G_IM_SIZ_4b )
                 conkerSwapHack = true;
         }
         else
@@ -427,30 +426,30 @@ bool CalculateTileSizes_method_1(int tileno, TMEMLoadMapInfo *info, TxtrInfo &gt
             uint32_t DXT = info->dxt;
             if( info->dxt > 1 )
             {
-                DXT = ReverseDXT(info->dxt, info->sh, loadwidth, tile.dwSize);
+                DXT = ReverseDXT(info->dxt, info->sh, loadwidth, tile->size);
             }
-            tile.dwPitch = DXT << 3;
+            tileinfo->dwPitch = DXT << 3;
         }
 
-        gti.LeftToLoad = (info->sl<<info->dwSize)>>tile.dwSize;
-        gti.TopToLoad = (info->tl<<info->dwSize)>>tile.dwSize;
+        gti.LeftToLoad = (info->sl<<info->dwSize)>>tile->size;
+        gti.TopToLoad = (info->tl<<info->dwSize)>>tile->size;
     }
 
     if( options.enableHackForGames == HACK_FOR_MARIO_KART )
     {
-        if( loadwidth-maskwidth == 1 && tile.dwMaskS )
+        if( loadwidth-maskwidth == 1 && tile->masks )
         {
             loadwidth--;
             if( loadheight%2 )  loadheight--;
         }
 
-        if( loadheight-maskheight == 1 && tile.dwMaskT )
+        if( loadheight-maskheight == 1 && tile->maskt )
         {
             loadheight--;
             if(loadwidth%2) loadwidth--;
         }
 
-        if( loadwidth - ((g_TI.dwWidth<<g_TI.dwSize)>>tile.dwSize) == 1 )
+        if( loadwidth - ((g_TI.dwWidth<<g_TI.dwSize)>>tile->size) == 1 )
         {
             loadwidth--;
             if( loadheight%2 )  loadheight--;
@@ -461,19 +460,19 @@ bool CalculateTileSizes_method_1(int tileno, TMEMLoadMapInfo *info, TxtrInfo &gt
     // Limit the texture size
     if( g_curRomInfo.bUseSmallerTexture )
     {
-        if( tile.dwMaskS && tile.bClampS )
+        if( tile->masks && tile->clamps )
         {
-            if( !tile.bMirrorS )
+            if( !tile->mirrors )
             {
                 if( clampwidth/maskwidth >= 2 )
                 {
                     clampwidth = maskwidth;
-                    tile.bForceWrapS = true;
+                    tileinfo->bForceWrapS = true;
                 }
                 else if( clampwidth && maskwidth/clampwidth >= 2 )
                 {
                     maskwidth = clampwidth;
-                    tile.bForceClampS = true;
+                    tileinfo->bForceClampS = true;
                 }
             }
             else
@@ -481,29 +480,29 @@ bool CalculateTileSizes_method_1(int tileno, TMEMLoadMapInfo *info, TxtrInfo &gt
                 if( clampwidth/maskwidth == 2 )
                 {
                     clampwidth = maskwidth*2;
-                    tile.bForceWrapS = false;
+                    tileinfo->bForceWrapS = false;
                 }
                 else if( clampwidth/maskwidth > 2 )
                 {
                     clampwidth = maskwidth*2;
-                    tile.bForceWrapS = true;
+                    tileinfo->bForceWrapS = true;
                 }
             }
         }
 
-        if( tile.dwMaskT && tile.bClampT )
+        if( tile->maskt && tile->clampt )
         {
-            if( !tile.bMirrorT )
+            if( !tile->mirrort )
             {
                 if( clampheight/maskheight >= 2 )
                 {
                     clampheight = maskheight;
-                    tile.bForceWrapT = true;
+                    tileinfo->bForceWrapT = true;
                 }
                 else if( clampheight && maskheight/clampheight >= 2 )
                 {
                     maskwidth = clampwidth;
-                    tile.bForceClampT = true;
+                    tileinfo->bForceClampT = true;
                 }
             }
             else
@@ -511,12 +510,12 @@ bool CalculateTileSizes_method_1(int tileno, TMEMLoadMapInfo *info, TxtrInfo &gt
                 if( clampheight/maskheight == 2 )
                 {
                     clampheight = maskheight*2;
-                    tile.bForceWrapT = false;
+                    tileinfo->bForceWrapT = false;
                 }
                 else if( clampheight/maskheight >= 2 )
                 {
                     clampheight = maskheight*2;
-                    tile.bForceWrapT = true;
+                    tileinfo->bForceWrapT = true;
                 }
             }
         }
@@ -530,54 +529,54 @@ bool CalculateTileSizes_method_1(int tileno, TMEMLoadMapInfo *info, TxtrInfo &gt
             if( clampheight > maskheight && maskheight && clampheight > 256 )   clampheight = maskheight;
         }
 
-        if( tile.dwMaskS > 8 && tile.dwMaskT > 8 )  
+        if( tile->masks > 8 && tile->maskt > 8 )  
         {
             maskwidth = loadwidth;
             maskheight = loadheight;
         }
         else 
         {
-            if( tile.dwMaskS > 10 )
+            if( tile->masks > 10 )
                 maskwidth = loadwidth;
-            if( tile.dwMaskT > 10 )
+            if( tile->maskt > 10 )
                 maskheight = loadheight;
         }
     }
 
-    gti.Pitch = tile.dwPitch;
+    gti.Pitch = tileinfo->dwPitch;
 
-    if( tile.dwMaskS == 0 || tile.bClampS )
+    if( tile->masks == 0 || tile->clamps )
     {
         gti.WidthToLoad = linewidth ? MIN( linewidth, maskwidth ? MIN(clampwidth,maskwidth) : clampwidth ) : clampwidth;
-        if( tile.dwMaskS && clampwidth < maskwidth )
-            tile.dwWidth = gti.WidthToCreate = clampwidth;
+        if( tile->masks && clampwidth < maskwidth )
+            tileinfo->dwWidth = gti.WidthToCreate = clampwidth;
         else
-            tile.dwWidth = gti.WidthToCreate = MAX(clampwidth,maskwidth);
+            tileinfo->dwWidth = gti.WidthToCreate = MAX(clampwidth,maskwidth);
     }
     else
     {
         gti.WidthToLoad = loadwidth > 2 ? MIN(loadwidth,maskwidth) : maskwidth;
         if( linewidth ) gti.WidthToLoad = MIN( linewidth, (int)gti.WidthToLoad );
-        tile.dwWidth = gti.WidthToCreate = maskwidth;
+        tileinfo->dwWidth = gti.WidthToCreate = maskwidth;
     }
 
-    if( tile.dwMaskT == 0 || tile.bClampT )
+    if( tile->maskt == 0 || tile->clampt )
     {
         gti.HeightToLoad = maskheight ? MIN(clampheight,maskheight) : clampheight;
-        if( tile.dwMaskT && clampheight < maskheight )
-            tile.dwHeight = gti.HeightToCreate = clampheight;
+        if( tile->maskt && clampheight < maskheight )
+            tileinfo->dwHeight = gti.HeightToCreate = clampheight;
         else
-            tile.dwHeight = gti.HeightToCreate = MAX(clampheight,maskheight);
+            tileinfo->dwHeight = gti.HeightToCreate = MAX(clampheight,maskheight);
     }
     else
     {
         gti.HeightToLoad = loadheight > 2 ? MIN(loadheight,maskheight) : maskheight;
-        tile.dwHeight = gti.HeightToCreate = maskheight;
+        tileinfo->dwHeight = gti.HeightToCreate = maskheight;
     }
 
     if( options.enableHackForGames == HACK_FOR_MARIO_KART )
     {
-        if( gti.WidthToLoad - ((g_TI.dwWidth<<g_TI.dwSize)>>tile.dwSize) == 1 )
+        if( gti.WidthToLoad - ((g_TI.dwWidth<<g_TI.dwSize)>>tile->size) == 1 )
         {
             gti.WidthToLoad--;
             if( gti.HeightToLoad%2 )    gti.HeightToLoad--;
@@ -585,24 +584,24 @@ bool CalculateTileSizes_method_1(int tileno, TMEMLoadMapInfo *info, TxtrInfo &gt
     }
 
     // Double check
-    uint32_t total64BitWordsToLoad = (gti.HeightToLoad*gti.WidthToLoad)>>(4-tile.dwSize);
-    if( total64BitWordsToLoad + tile.dwTMem > 0x200 )
+    uint32_t total64BitWordsToLoad = (gti.HeightToLoad*gti.WidthToLoad)>>(4-tile->size);
+    if( total64BitWordsToLoad + tile->tmem > 0x200 )
     {
         //TRACE0("Warning: texture loading tmem is over range");
         if( gti.WidthToLoad > gti.HeightToLoad )
         {
-            uint32_t newheight = (tile.dwPitch << 1 )>> tile.dwSize;
-            tile.dwWidth = gti.WidthToLoad = gti.WidthToCreate = MIN(newheight, (gti.WidthToLoad&0xFFFFFFFE));
-            tile.dwHeight = gti.HeightToCreate = gti.HeightToLoad = ((0x200 - tile.dwTMem) << (4-tile.dwSize)) / gti.WidthToLoad;
+            uint32_t newheight = (tileinfo->dwPitch << 1 )>> tile->size;
+            tileinfo->dwWidth = gti.WidthToLoad = gti.WidthToCreate = MIN(newheight, (gti.WidthToLoad&0xFFFFFFFE));
+            tileinfo->dwHeight = gti.HeightToCreate = gti.HeightToLoad = ((0x200 - tile->tmem) << (4-tile->size)) / gti.WidthToLoad;
         }
         else
         {
-            tile.dwHeight = gti.HeightToCreate = gti.HeightToLoad = info->dwTotalWords / ((gti.WidthToLoad << tile.dwSize) >> 1);
+            tileinfo->dwHeight = gti.HeightToCreate = gti.HeightToLoad = info->dwTotalWords / ((gti.WidthToLoad << tile->size) >> 1);
         }
     }
 
     // Check the info
-    if( (info->dwTotalWords>>2) < total64BitWordsToLoad+tile.dwTMem-info->dwTmem - 4 )
+    if( (info->dwTotalWords>>2) < total64BitWordsToLoad+tile->tmem-info->dwTmem - 4 )
     {
         // Hack here
         if( (options.enableHackForGames == HACK_FOR_ZELDA||options.enableHackForGames == HACK_FOR_ZELDA_MM) && (unsigned int)tileno != gRSP.curTile )
@@ -613,7 +612,7 @@ bool CalculateTileSizes_method_1(int tileno, TMEMLoadMapInfo *info, TxtrInfo &gt
     if( gti.Address + gti.HeightToLoad*gti.Pitch >= g_dwRamSize )
     {
         WARNING(TRACE0("Warning: texture loading tmem is over range 3"));
-        gti.HeightToCreate = gti.HeightToLoad = tile.dwHeight = (g_dwRamSize-gti.Address)/gti.Pitch;
+        gti.HeightToCreate = gti.HeightToLoad = tileinfo->dwHeight = (g_dwRamSize-gti.Address)/gti.Pitch;
     }
 
     return true;
@@ -625,10 +624,10 @@ TxtrCacheEntry* LoadTexture(uint32_t tileno)
     TxtrInfo gti;
     uint32_t *rdram_uint32_t = (uint32_t*)gfx_info.RDRAM;
 
-    Tile &tile = gRDP.tiles[tileno];
+    gDPTile *tile = &gDP.tiles[tileno];
 
     // Retrieve the tile loading info
-    uint32_t infoTmemAddr = tile.dwTMem;
+    uint32_t infoTmemAddr = tile->tmem;
     TMEMLoadMapInfo *info = &g_tmemLoadAddrMap[infoTmemAddr];
     if( !IsTmemFlagValid(infoTmemAddr) )
     {
@@ -636,28 +635,28 @@ TxtrCacheEntry* LoadTexture(uint32_t tileno)
         info = &g_tmemLoadAddrMap[infoTmemAddr];
     }
 
-    if( info->dwFormat != tile.dwFormat )
+    if( info->dwFormat != tile->format )
     {
         // Check the tile format, hack for Zelda's road
-        if( tileno != gRSP.curTile && tile.dwTMem == gRDP.tiles[gRSP.curTile].dwTMem &&
-            tile.dwFormat != gRDP.tiles[gRSP.curTile].dwFormat )
+        if( tileno != gRSP.curTile && tile->tmem == gDP.tiles[gRSP.curTile].tmem &&
+            tile->format != gDP.tiles[gRSP.curTile].format )
         {
             //TRACE1("Tile %d format is not matching the loaded texture format", tileno);
             return NULL;
         }
     }
 
-    gti = tile; // Copy tile info to textureInfo entry
+    gti = *tile; // Copy tile info to textureInfo entry
 
     gti.TLutFmt = gRDP.otherMode.text_tlut << G_MDSFT_TEXTLUT;
     if (gti.Format == G_IM_FMT_CI && gti.TLutFmt == TLUT_FMT_NONE )
         gti.TLutFmt = TLUT_FMT_RGBA16;      // Force RGBA
 
     gti.PalAddress = (uint8_t *) (&g_wRDPTlut[0]);
-    if( !options.bUseFullTMEM && tile.dwSize == G_IM_SIZ_4b )
-        gti.PalAddress += 16  * 2 * tile.dwPalette; 
+    if( !options.bUseFullTMEM && tile->size == G_IM_SIZ_4b )
+        gti.PalAddress += 16  * 2 * tile->palette; 
 
-    gti.Address = (info->dwLoadAddress+(tile.dwTMem-infoTmemAddr)*8) & (g_dwRamSize-1) ;
+    gti.Address = (info->dwLoadAddress+(tile->tmem-infoTmemAddr)*8) & (g_dwRamSize-1) ;
     gti.pPhysicalAddress = ((uint8_t*)rdram_uint32_t) + gti.Address;
     gti.tileNo = tileno;
 
@@ -787,61 +786,58 @@ void DLParser_SetTile(Gfx *gfx)
     gRDP.textureIsChanged = true;
 
     uint32_t tileno       = gfx->settile.tile;
-    Tile &tile = gRDP.tiles[tileno];
-    tile.bForceWrapS = tile.bForceWrapT = tile.bForceClampS = tile.bForceClampT = false;
+    gDPTile *tile         = &gDP.tiles[tileno];
+    TileAdditionalInfo *tileinfo = &gRDP.tilesinfo[tileno];
+    tileinfo->bForceWrapS = tileinfo->bForceWrapT = tileinfo->bForceClampS = tileinfo->bForceClampT = false;
 
     lastSetTile = tileno;
 
-    tile.dwFormat   = gfx->settile.fmt;
-    tile.dwSize     = gfx->settile.siz;
-    tile.dwLine     = gfx->settile.line;
-    tile.dwTMem     = gfx->settile.tmem;
+    tile->format   = gfx->settile.fmt;
+    tile->size     = gfx->settile.siz;
+    tile->line     = gfx->settile.line;
+    tile->tmem     = gfx->settile.tmem;
 
-    tile.dwPalette  = gfx->settile.palette;
-    tile.bClampT    = gfx->settile.ct;
-    tile.bMirrorT   = gfx->settile.mt;
-    tile.dwMaskT    = gfx->settile.maskt;
-    tile.dwShiftT   = gfx->settile.shiftt;
-    tile.bClampS    = gfx->settile.cs;
-    tile.bMirrorS   = gfx->settile.ms;
-    tile.dwMaskS    = gfx->settile.masks;
-    tile.dwShiftS   = gfx->settile.shifts;
+    tile->palette  = gfx->settile.palette;
+    tile->clampt   = gfx->settile.ct;
+    tile->mirrort  = gfx->settile.mt;
+    tile->maskt    = gfx->settile.maskt;
+    tile->shiftt   = gfx->settile.shiftt;
+    tile->clamps   = gfx->settile.cs;
+    tile->mirrors  = gfx->settile.ms;
+    tile->masks    = gfx->settile.masks;
+    tile->shifts   = gfx->settile.shifts;
 
 
-    tile.fShiftScaleS = 1.0f;
-    if( tile.dwShiftS )
+    tileinfo->fShiftScaleS = 1.0f;
+    if( tile->shifts )
     {
-        if( tile.dwShiftS > 10 )
-            tile.fShiftScaleS = (float)(1 << (16 - tile.dwShiftS));
+        if( tile->shifts > 10 )
+            tileinfo->fShiftScaleS = (float)(1 << (16 - tile->shifts));
         else
-            tile.fShiftScaleS = (float)1.0f/(1 << tile.dwShiftS);
+            tileinfo->fShiftScaleS = (float)1.0f/(1 << tile->shifts);
     }
 
-    tile.fShiftScaleT = 1.0f;
-    if( tile.dwShiftT )
+    tileinfo->fShiftScaleT = 1.0f;
+    if( tile->shiftt )
     {
-        if( tile.dwShiftT > 10 )
-        {
-            tile.fShiftScaleT = (float)(1 << (16 - tile.dwShiftT));
-        }
+        if( tile->shiftt > 10 )
+            tileinfo->fShiftScaleT = (float)(1 << (16 - tile->shiftt));
         else
-        {
-            tile.fShiftScaleT = (float)1.0f/(1 << tile.dwShiftT);
-        }
+            tileinfo->fShiftScaleT = (float)1.0f/(1 << tile->shiftt);
     }
 
     // Hack for DK64
     /*
-    if( tile.dwMaskS > 0 && tile.dwMaskT > 0 && tile.dwMaskS < 8 && tile.dwMaskT < 8 )
+    if( tile->masks > 0 && tile->maskt > 0 && tile->masks < 8 && tile->maskt < 8 )
     {
-        tile.sh = tile.sl + (1<<tile.dwMaskS);
-        tile.th = tile.tl + (1<<tile.dwMaskT);
-        tile.hilite_sl = tile.sl;
-        tile.hilite_tl = tile.tl;
+        tile.sh = tile.sl + (1<<tile->masks);
+        tile.th = tile.tl + (1<<tile->maskt);
+        tileinfo->hilite_sl = tile.sl;
+        tileinfo->hilite_tl = tile.tl;
     }
     */
 
-    tile.lastTileCmd = CMD_SETTILE;
+    tileinfo->lastTileCmd = CMD_SETTILE;
 }
 
 void DLParser_SetTileSize(Gfx *gfx)
@@ -854,60 +850,62 @@ void DLParser_SetTileSize(Gfx *gfx)
     int sh      = gfx->loadtile.sh;
     int th      = gfx->loadtile.th;
 
-    Tile &tile = gRDP.tiles[tileno];
-    tile.bForceWrapS = tile.bForceWrapT = tile.bForceClampS = tile.bForceClampT = false;
+    gDPTile *tile = &gDP.tiles[tileno];
+    TileAdditionalInfo *tileinfo = &gRDP.tilesinfo[tileno];
+
+    tileinfo->bForceWrapS = tileinfo->bForceWrapT = tileinfo->bForceClampS = tileinfo->bForceClampT = false;
 
     if( options.bUseFullTMEM )
     {
-        tile.bSizeIsValid = true;
-        tile.hilite_sl = tile.sl = sl / 4;
-        tile.hilite_tl = tile.tl = tl / 4;
-        tile.hilite_sh = tile.sh = sh / 4;
-        tile.hilite_th = tile.th = th / 4;
+        tileinfo->bSizeIsValid = true;
+        tileinfo->hilite_sl = tile->lrs = sl / 4;
+        tileinfo->hilite_tl = tile->lrt = tl / 4;
+        tileinfo->hilite_sh = tile->uls = sh / 4;
+        tileinfo->hilite_th = tile->ult = th / 4;
 
-        tile.fhilite_sl = tile.fsl = sl / 4.0f;
-        tile.fhilite_tl = tile.ftl = tl / 4.0f;
-        tile.fhilite_sh = tile.fsh = sh / 4.0f;
-        tile.fhilite_th = tile.fth = th / 4.0f;
+        tileinfo->fhilite_sl = tile->flrs = sl / 4.0f;
+        tileinfo->fhilite_tl = tile->flrt = tl / 4.0f;
+        tileinfo->fhilite_sh = tile->fuls = sh / 4.0f;
+        tileinfo->fhilite_th = tile->fult = th / 4.0f;
 
-        tile.lastTileCmd = CMD_SETTILE_SIZE;
+        tileinfo->lastTileCmd = CMD_SETTILE_SIZE;
     }
     else
     {
-        if( tile.lastTileCmd != CMD_SETTILE_SIZE )
+        if( tileinfo->lastTileCmd != CMD_SETTILE_SIZE )
         {
-            tile.bSizeIsValid = true;
-            if( sl/4 > sh/4 || tl/4 > th/4 || (sh == 0 && tile.dwShiftS==0 && th == 0 && tile.dwShiftT ==0 ) )
+            tileinfo->bSizeIsValid = true;
+            if( sl/4 > sh/4 || tl/4 > th/4 || (sh == 0 && tile->shifts==0 && th == 0 && tile->shiftt ==0 ) )
             {
-                tile.bSizeIsValid = false;
+                tileinfo->bSizeIsValid = false;
             }
-            tile.hilite_sl = tile.sl = sl / 4;
-            tile.hilite_tl = tile.tl = tl / 4;
-            tile.hilite_sh = tile.sh = sh / 4;
-            tile.hilite_th = tile.th = th / 4;
+            tileinfo->hilite_sl = tile->lrs = sl / 4;
+            tileinfo->hilite_tl = tile->lrt = tl / 4;
+            tileinfo->hilite_sh = tile->uls = sh / 4;
+            tileinfo->hilite_th = tile->ult = th / 4;
 
-            tile.fhilite_sl = tile.fsl = sl / 4.0f;
-            tile.fhilite_tl = tile.ftl = tl / 4.0f;
-            tile.fhilite_sh = tile.fsh = sh / 4.0f;
-            tile.fhilite_th = tile.fth = th / 4.0f;
+            tileinfo->fhilite_sl = tile->flrs = sl / 4.0f;
+            tileinfo->fhilite_tl = tile->flrt = tl / 4.0f;
+            tileinfo->fhilite_sh = tile->fuls = sh / 4.0f;
+            tileinfo->fhilite_th = tile->fult = th / 4.0f;
 
-            tile.lastTileCmd = CMD_SETTILE_SIZE;
+            tileinfo->lastTileCmd = CMD_SETTILE_SIZE;
         }
         else
         {
-            tile.fhilite_sh = tile.fsh;
-            tile.fhilite_th = tile.fth;
-            tile.fhilite_sl = tile.fsl = (sl>0x7ff ? (sl-0xfff) : sl)/4.0f;
-            tile.fhilite_tl = tile.ftl = (tl>0x7ff ? (tl-0xfff) : tl)/4.0f;
+            tileinfo->fhilite_sh = tile->fuls;
+            tileinfo->fhilite_th = tile->fult;
+            tileinfo->fhilite_sl = tile->flrs = (sl>0x7ff ? (sl-0xfff) : sl)/4.0f;
+            tileinfo->fhilite_tl = tile->flrt = (tl>0x7ff ? (tl-0xfff) : tl)/4.0f;
 
-            tile.hilite_sl = sl>0x7ff ? (sl-0xfff) : sl;
-            tile.hilite_tl = tl>0x7ff ? (tl-0xfff) : tl;
-            tile.hilite_sl /= 4;
-            tile.hilite_tl /= 4;
-            tile.hilite_sh = sh/4;
-            tile.hilite_th = th/4;
+            tileinfo->hilite_sl = sl>0x7ff ? (sl-0xfff) : sl;
+            tileinfo->hilite_tl = tl>0x7ff ? (tl-0xfff) : tl;
+            tileinfo->hilite_sl /= 4;
+            tileinfo->hilite_tl /= 4;
+            tileinfo->hilite_sh = sh/4;
+            tileinfo->hilite_th = th/4;
 
-            tile.lastTileCmd = CMD_SETTILE_SIZE;
+            tileinfo->lastTileCmd = CMD_SETTILE_SIZE;
         }
     }
 }
@@ -1022,10 +1020,10 @@ void DLParser_TexRect(Gfx *gfx)
    float fS1 = fS0 + (fDSDX * (lr_x - ul_x));
    float fT1 = fT0 + (fDTDY * (lr_y - ul_y));
 
-   float t0u0 = (fS0-gRDP.tiles[tileno].hilite_sl) * gRDP.tiles[tileno].fShiftScaleS;
-   float t0v0 = (fT0-gRDP.tiles[tileno].hilite_tl) * gRDP.tiles[tileno].fShiftScaleT;
-   float t0u1 = t0u0 + (fDSDX * (lr_x - ul_x)) * gRDP.tiles[tileno].fShiftScaleS;
-   float t0v1 = t0v0 + (fDTDY * (lr_y - ul_y)) * gRDP.tiles[tileno].fShiftScaleT;
+   float t0u0 = (fS0-gRDP.tilesinfo[tileno].hilite_sl) * gRDP.tilesinfo[tileno].fShiftScaleS;
+   float t0v0 = (fT0-gRDP.tilesinfo[tileno].hilite_tl) * gRDP.tilesinfo[tileno].fShiftScaleT;
+   float t0u1 = t0u0 + (fDSDX * (lr_x - ul_x)) * gRDP.tilesinfo[tileno].fShiftScaleS;
+   float t0v1 = t0v0 + (fDTDY * (lr_y - ul_y)) * gRDP.tilesinfo[tileno].fShiftScaleT;
 
    if( 
          ul_x ==0  && 
@@ -1042,9 +1040,9 @@ void DLParser_TexRect(Gfx *gfx)
    else
    {
       if( status.bHandleN64RenderTexture && //status.bDirectWriteIntoRDRAM && 
-            g_pRenderTextureInfo->CI_Info.dwFormat == gRDP.tiles[tileno].dwFormat && 
-            g_pRenderTextureInfo->CI_Info.dwSize == gRDP.tiles[tileno].dwSize && 
-            gRDP.tiles[tileno].dwFormat == G_IM_FMT_CI && gRDP.tiles[tileno].dwSize == G_IM_SIZ_8b )
+            g_pRenderTextureInfo->CI_Info.dwFormat == gDP.tiles[tileno].format && 
+            g_pRenderTextureInfo->CI_Info.dwSize == gDP.tiles[tileno].size && 
+            gDP.tiles[tileno].format == G_IM_FMT_CI && gDP.tiles[tileno].size == G_IM_SIZ_8b )
       {
          if( options.enableHackForGames == HACK_FOR_YOSHI )
          {
@@ -1135,10 +1133,10 @@ void DLParser_TexRectFlip(Gfx *gfx)
     float fS1 = fS0 + (fDSDX * (lr_y - ul_y));
     float fT1 = fT0 + (fDTDY * (lr_x - ul_x));
     
-    float t0u0 = (fS0) * gRDP.tiles[tileno].fShiftScaleS-gRDP.tiles[tileno].sl;
-    float t0v0 = (fT0) * gRDP.tiles[tileno].fShiftScaleT-gRDP.tiles[tileno].tl;
-    float t0u1 = t0u0 + (fDSDX * (lr_y - ul_y))*gRDP.tiles[tileno].fShiftScaleS;
-    float t0v1 = t0v0 + (fDTDY * (lr_x - ul_x))*gRDP.tiles[tileno].fShiftScaleT;
+    float t0u0 = (fS0) * gRDP.tilesinfo[tileno].fShiftScaleS-gDP.tiles[tileno].lrs;
+    float t0v0 = (fT0) * gRDP.tilesinfo[tileno].fShiftScaleT-gDP.tiles[tileno].lrt;
+    float t0u1 = t0u0 + (fDSDX * (lr_y - ul_y))*gRDP.tilesinfo[tileno].fShiftScaleS;
+    float t0v1 = t0v0 + (fDTDY * (lr_x - ul_x))*gRDP.tilesinfo[tileno].fShiftScaleT;
 
     CRender::g_pRender->TexRectFlip(ul_x, ul_y, lr_x, lr_y, t0u0, t0v0, t0u1, t0v1);
     status.dwNumTrisRendered += 2;

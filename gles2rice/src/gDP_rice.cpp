@@ -374,44 +374,47 @@ void ricegDPSetEnvColor(uint32_t r, uint32_t g, uint32_t b, uint32_t a)
 void ricegDPLoadBlock( uint32_t tileno, uint32_t uls, uint32_t ult,
       uint32_t lrs, uint32_t dxt )
 {
-   Tile &tile       = gRDP.tiles[tileno];
-   tile.bForceWrapS = tile.bForceWrapT = tile.bForceClampS = tile.bForceClampT = false;
+   TileAdditionalInfo *tileinfo   = &gRDP.tilesinfo[tileno];
+   gDPTile            *tile       = &gDP.tiles[tileno];
+
+   tileinfo->bForceWrapS = tileinfo->bForceWrapT = tileinfo->bForceClampS = tileinfo->bForceClampT = false;
 
    uint32_t size     = lrs+1;
 
-   if( tile.dwSize == G_IM_SIZ_32b )
+   if( tile->size == G_IM_SIZ_32b )
       size<<=1;
 
-   SetTmemFlag(tile.dwTMem, size>>2);
+   SetTmemFlag(tile->tmem, size>>2);
 
-   TMEMLoadMapInfo &info = g_tmemLoadAddrMap[tile.dwTMem];
+   TMEMLoadMapInfo &info = g_tmemLoadAddrMap[tile->tmem];
 
    info.bSwapped = (dxt == 0? true : false);
 
-   info.sl = tile.hilite_sl = tile.sl = uls;
-   info.sh = tile.hilite_sh = tile.sh = lrs;
-   info.tl = tile.tl = ult;
-   info.th = tile.th = dxt;
-   tile.bSizeIsValid = false;
+   info.sl = tileinfo->hilite_sl = tile->lrs = uls;
+   info.sh = tileinfo->hilite_sh  = tile->uls = lrs;
+   info.tl = tile->lrt = ult;
+   info.th = tile->ult = dxt;
+
+   tileinfo->bSizeIsValid = false;
 
    for( int i=0; i<8; i++ )
    {
-      if( gRDP.tiles[i].dwTMem == tile.dwTMem )
-         tile.lastTileCmd = CMD_LOADBLOCK;
+      if( gDP.tiles[i].tmem == tile->tmem )
+         tileinfo->lastTileCmd = CMD_LOADBLOCK;
    }
 
    info.dwLoadAddress = g_TI.dwAddr;
-   info.bSetBy = CMD_LOADBLOCK;
-   info.dxt = dxt;
-   info.dwLine = tile.dwLine;
+   info.bSetBy        = CMD_LOADBLOCK;
+   info.dxt           = dxt;
+   info.dwLine        = tile->line;
 
-   info.dwFormat = g_TI.dwFormat;
-   info.dwSize = g_TI.dwSize;
-   info.dwWidth = g_TI.dwWidth;
-   info.dwTotalWords = size;
-   info.dwTmem = tile.dwTMem;
+   info.dwFormat      = g_TI.dwFormat;
+   info.dwSize        = g_TI.dwSize;
+   info.dwWidth       = g_TI.dwWidth;
+   info.dwTotalWords  = size;
+   info.dwTmem        = tile->tmem;
 
-   if( gRDP.tiles[tileno].dwTMem == 0 )
+   if( gDP.tiles[tileno].tmem == 0 )
    {
       if( size >= 1024 )
       {
@@ -425,7 +428,7 @@ void ricegDPLoadBlock( uint32_t tileno, uint32_t uls, uint32_t ult,
          g_tmemInfo1.dwTotalWords = size>>2;
       }
    }
-   else if( tile.dwTMem == 0x100 )
+   else if( tile->tmem == 0x100 )
    {
       if( size == 1024 )
       {
@@ -440,14 +443,14 @@ void ricegDPLoadBlock( uint32_t tileno, uint32_t uls, uint32_t ult,
    if( options.bUseFullTMEM )
    {
       uint8_t *rdram_u8 = (uint8_t*)gfx_info.RDRAM;
-      uint32_t bytes = (lrs + 1) << tile.dwSize >> 1;
+      uint32_t bytes = (lrs + 1) << tile->size >> 1;
       uint32_t address = g_TI.dwAddr + ult * g_TI.bpl + (uls << g_TI.dwSize >> 1);
-      if ((bytes == 0) || ((address + bytes) > g_dwRamSize) || (((tile.dwTMem << 3) + bytes) > 4096))
+      if ((bytes == 0) || ((address + bytes) > g_dwRamSize) || (((tile->tmem << 3) + bytes) > 4096))
       {
          return;
       }
       uint64_t* src = (uint64_t*)(rdram_u8 + address);
-      uint64_t* dest = &g_Tmem.g_Tmem64bit[tile.dwTMem];
+      uint64_t* dest = &g_Tmem.g_Tmem64bit[tile->tmem];
 
       if( dxt > 0)
       {
@@ -457,7 +460,7 @@ void ricegDPLoadBlock( uint32_t tileno, uint32_t uls, uint32_t ult,
          uint32_t bpl = line << 3;
          uint32_t height = bytes / bpl;
 
-         if (tile.dwSize == G_IM_SIZ_32b)
+         if (tile->size == G_IM_SIZ_32b)
             Interleave = QWordInterleave;
          else
             Interleave = DWordInterleave;
@@ -481,25 +484,29 @@ void ricegDPLoadBlock( uint32_t tileno, uint32_t uls, uint32_t ult,
 void ricegDPLoadTile(uint32_t tileno, uint32_t uls, uint32_t ult,
       uint32_t lrs, uint32_t lrt)
 {
-   Tile &tile = gRDP.tiles[tileno];
-   tile.bForceWrapS = tile.bForceWrapT = tile.bForceClampS = tile.bForceClampT = false;
+   TileAdditionalInfo *tileinfo = &gRDP.tilesinfo[tileno];
+   gDPTile                *tile = &gDP.tiles[tileno];
+   tileinfo->bForceWrapS = tileinfo->bForceWrapT = tileinfo->bForceClampS = tileinfo->bForceClampT = false;
 
-   if (lrt < ult) swapdword(&lrt, &ult);
-   if (lrs < uls) swapdword(&lrs, &uls);
+   if (lrt < ult)
+      swapdword(&lrt, &ult);
+   if (lrs < uls)
+      swapdword(&lrs, &uls);
 
-   tile.hilite_sl = tile.sl = uls;
-   tile.hilite_tl = tile.tl = ult;
-   tile.hilite_sh = tile.sh = lrs;
-   tile.hilite_th = tile.th = lrt;
-   tile.bSizeIsValid = true;
+   tileinfo->hilite_sl = tile->lrs = uls;
+   tileinfo->hilite_tl = tile->lrt = ult;
+   tileinfo->hilite_sh = tile->uls = lrs;
+   tileinfo->hilite_th = tile->ult = lrt;
+   tileinfo->bSizeIsValid = true;
 
    // compute block height, and bpl of source and destination
-   uint32_t bpl = (lrs - uls + 1) << tile.dwSize >> 1;
+   uint32_t bpl    = (lrs - uls + 1) << tile->size >> 1;
    uint32_t height = lrt - ult + 1;
-   uint32_t line = tile.dwLine;
-   if (tile.dwSize == G_IM_SIZ_32b) line <<= 1;
+   uint32_t line   = tile->line;
+   if (tile->size == G_IM_SIZ_32b)
+      line <<= 1;
 
-   if (((tile.dwTMem << 3) + line * height) > 4096)  // check destination ending point (TMEM is 4k bytes)
+   if (((tile->tmem << 3) + line * height) > 4096)  // check destination ending point (TMEM is 4k bytes)
       return;
 
    if( options.bUseFullTMEM )
@@ -519,9 +526,9 @@ void ricegDPLoadTile(uint32_t tileno, uint32_t uls, uint32_t ult,
          }
       }
 
-      uint32_t address = g_TI.dwAddr + tile.tl * g_TI.bpl + (tile.sl << g_TI.dwSize >> 1);
+      uint32_t address = g_TI.dwAddr + tile->lrt * g_TI.bpl + (tile->lrs << g_TI.dwSize >> 1);
       uint64_t* src = (uint64_t*)&rdram_u8[address];
-      uint8_t* dest = (uint8_t*)&g_Tmem.g_Tmem64bit[tile.dwTMem];
+      uint8_t* dest = (uint8_t*)&g_Tmem.g_Tmem64bit[tile->tmem];
 
       if ((address + height * bpl) > g_dwRamSize) // check source ending point
       {
@@ -530,7 +537,7 @@ void ricegDPLoadTile(uint32_t tileno, uint32_t uls, uint32_t ult,
 
       // Line given for 32-bit is half what it seems it should since they split the
       // high and low words. I'm cheating by putting them together.
-      if (tile.dwSize == G_IM_SIZ_32b)
+      if (tile->size == G_IM_SIZ_32b)
       {
          Interleave = QWordInterleave;
       }
@@ -539,9 +546,9 @@ void ricegDPLoadTile(uint32_t tileno, uint32_t uls, uint32_t ult,
          Interleave = DWordInterleave;
       }
 
-      if( tile.dwLine == 0 )
+      if( tile->line == 0 )
       {
-         //tile.dwLine = 1;
+         //tile->line = 1;
          return;
       }
 
@@ -558,14 +565,14 @@ void ricegDPLoadTile(uint32_t tileno, uint32_t uls, uint32_t ult,
 
    for( int i=0; i<8; i++ )
    {
-      if( gRDP.tiles[i].dwTMem == tile.dwTMem )
-         gRDP.tiles[i].lastTileCmd = CMD_LOADTILE;
+      if( gDP.tiles[i].tmem == tile->tmem )
+         gRDP.tilesinfo[i].lastTileCmd = CMD_LOADTILE;
    }
 
    uint32_t size = line * height;
-   SetTmemFlag(tile.dwTMem,size );
+   SetTmemFlag(tile->tmem, size );
 
-   TMEMLoadMapInfo &info = g_tmemLoadAddrMap[tile.dwTMem];
+   TMEMLoadMapInfo &info = g_tmemLoadAddrMap[tile->tmem];
 
    info.dwLoadAddress = g_TI.dwAddr;
    info.dwFormat = g_TI.dwFormat;
@@ -578,8 +585,8 @@ void ricegDPLoadTile(uint32_t tileno, uint32_t uls, uint32_t ult,
    info.th = lrt;
 
    info.dxt = 0;
-   info.dwLine = tile.dwLine;
-   info.dwTmem = tile.dwTMem;
+   info.dwLine = tile->line;
+   info.dwTmem = tile->tmem;
    info.dwTotalWords = size<<2;
 
    info.bSetBy = CMD_LOADTILE;
@@ -587,7 +594,7 @@ void ricegDPLoadTile(uint32_t tileno, uint32_t uls, uint32_t ult,
 
    g_TxtLoadBy = CMD_LOADTILE;
 
-   if( tile.dwTMem == 0 )
+   if( tile->tmem == 0 )
    {
       if( size >= 256 )
       {
@@ -601,7 +608,7 @@ void ricegDPLoadTile(uint32_t tileno, uint32_t uls, uint32_t ult,
          g_tmemInfo1.dwTotalWords = size;
       }
    }
-   else if( tile.dwTMem == 0x100 )
+   else if( tile->tmem == 0x100 )
    {
       if( size == 256 )
       {
@@ -615,20 +622,22 @@ void ricegDPLoadTLUT(uint16_t dwCount, uint32_t tileno, uint32_t uls, uint32_t u
 {
    uint8_t *rdram_u8      = (uint8_t*)gfx_info.RDRAM;
    /* Starting location in the palettes */
-   uint32_t dwTMEMOffset  = gRDP.tiles[tileno].dwTMem - 256;  
+   uint32_t dwTMEMOffset  = gDP.tiles[tileno].tmem - 256;  
    /* Number to copy */
    uint32_t dwRDRAMOffset = 0;
 
-   Tile &tile = gRDP.tiles[tileno];
-   tile.bForceWrapS = tile.bForceWrapT = tile.bForceClampS = tile.bForceClampT = false;
+   TileAdditionalInfo *tileinfo = &gRDP.tilesinfo[tileno];
+   gDPTile            *tile     = &gDP.tiles[tileno];
 
-   tile.hilite_sl = tile.sl = uls;
-   tile.hilite_tl = tile.tl = ult;
-   tile.sh = lrs;
-   tile.th = lrt;
-   tile.bSizeIsValid = true;
+   tileinfo->bForceWrapS = tileinfo->bForceWrapT = tileinfo->bForceClampS = tileinfo->bForceClampT = false;
 
-   tile.lastTileCmd = CMD_LOADTLUT;
+   tileinfo->hilite_sl = tile->lrs = uls;
+   tileinfo->hilite_tl = tile->lrt = ult;
+   tile->uls = lrs;
+   tile->ult = lrt;
+   tileinfo->bSizeIsValid = true;
+
+   tileinfo->lastTileCmd = CMD_LOADTLUT;
 
    dwCount = (lrs - uls)+1;
    dwRDRAMOffset = (uls + ult*g_TI.dwWidth )*2;
@@ -641,8 +650,8 @@ void ricegDPLoadTLUT(uint16_t dwCount, uint32_t tileno, uint32_t uls, uint32_t u
 
    if( options.bUseFullTMEM )
    {
-      for (uint32_t i=0; i<dwCount && i+tile.dwTMem<0x200; i++)
-         *(uint16_t*)(&g_Tmem.g_Tmem64bit[tile.dwTMem+i]) = srcPal[i^1];
+      for (uint32_t i=0; i<dwCount && i+tile->tmem < 0x200; i++)
+         *(uint16_t*)(&g_Tmem.g_Tmem64bit[tile->tmem + i]) = srcPal[i^1];
    }
 
    extern bool RevTlutTableNeedUpdate;

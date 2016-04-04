@@ -310,7 +310,8 @@ void DLParser_Init()
 
     for( int i=0; i<8; i++ )
     {
-        memset(&gRDP.tiles[i], 0, sizeof(Tile));
+        memset(&gRDP.tilesinfo[i], 0, sizeof(TileAdditionalInfo));
+        memset(&gDP.tiles[i], 0, sizeof(struct gDPTile));
     }
     memset(g_tmemLoadAddrMap, 0, sizeof(g_tmemLoadAddrMap));
 

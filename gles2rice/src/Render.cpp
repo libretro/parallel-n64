@@ -556,21 +556,22 @@ bool CRender::TexRect(int nX0, int nY0, int nX1, int nY1, float fS0, float fT0, 
     bool accurate = currentRomOptions.bAccurateTextureMapping;
 
     RenderTexture &tex0 = g_textures[gRSP.curTile];
-    Tile &tile0 = gRDP.tiles[gRSP.curTile];
+    TileAdditionalInfo *tile0 = &gRDP.tilesinfo[gRSP.curTile];
+    gDPTile *tile0info = &gDP.tiles[gRSP.curTile];
 
     float widthDiv = tex0.m_fTexWidth;
     float heightDiv = tex0.m_fTexHeight;
     float t0u0;
     if( options.enableHackForGames == HACK_FOR_ALL_STAR_BASEBALL || options.enableHackForGames == HACK_FOR_MLB )
-        t0u0 = (fS0 -tile0.fhilite_sl);
+        t0u0 = (fS0 -tile0->fhilite_sl);
     else
-        t0u0 = (fS0 * tile0.fShiftScaleS -tile0.fhilite_sl);
+        t0u0 = (fS0 * tile0->fShiftScaleS -tile0->fhilite_sl);
     
     float t0u1;
     if( accurate && gRDP.otherMode.cycle_type >= G_CYC_COPY )
-        t0u1 = t0u0 + (fScaleS * (nX1 - nX0 - 1))*tile0.fShiftScaleS;
+        t0u1 = t0u0 + (fScaleS * (nX1 - nX0 - 1))*tile0->fShiftScaleS;
     else
-        t0u1 = t0u0 + (fScaleS * (nX1 - nX0))*tile0.fShiftScaleS;
+        t0u1 = t0u0 + (fScaleS * (nX1 - nX0))*tile0->fShiftScaleS;
 
 
     if( status.UseLargerTile[0] )
@@ -582,25 +583,25 @@ bool CRender::TexRect(int nX0, int nY0, int nX1, int nY1, float fS0, float fT0, 
     {
         m_texRectTex1UV[0].u = t0u0/widthDiv;
         m_texRectTex1UV[1].u = t0u1/widthDiv;
-        if( accurate && !tile0.bMirrorS && RemapTextureCoordinate(t0u0, t0u1, tex0.m_dwTileWidth, tile0.dwMaskS, widthDiv, m_texRectTex1UV[0].u, m_texRectTex1UV[1].u) )
+        if( accurate && !tile0info->mirrors && RemapTextureCoordinate(t0u0, t0u1, tex0.m_dwTileWidth, tile0info->masks, widthDiv, m_texRectTex1UV[0].u, m_texRectTex1UV[1].u) )
             SetTextureUFlag(TEXTURE_UV_FLAG_CLAMP, gRSP.curTile);
     }
 
     float t0v0;
     if( options.enableHackForGames == HACK_FOR_ALL_STAR_BASEBALL || options.enableHackForGames == HACK_FOR_MLB )
-        t0v0 = (fT0 -tile0.fhilite_tl);
+        t0v0 = (fT0 -tile0->fhilite_tl);
     else
-        t0v0 = (fT0 * tile0.fShiftScaleT -tile0.fhilite_tl);
+        t0v0 = (fT0 * tile0->fShiftScaleT -tile0->fhilite_tl);
     
     float t0v1;
     if ( accurate && gRDP.otherMode.cycle_type >= G_CYC_COPY)
-        t0v1 = t0v0 + (fScaleT * (nY1 - nY0-1))*tile0.fShiftScaleT;
+        t0v1 = t0v0 + (fScaleT * (nY1 - nY0-1))*tile0->fShiftScaleT;
     else
-        t0v1 = t0v0 + (fScaleT * (nY1 - nY0))*tile0.fShiftScaleT;
+        t0v1 = t0v0 + (fScaleT * (nY1 - nY0))*tile0->fShiftScaleT;
 
     m_texRectTex1UV[0].v = t0v0/heightDiv;
     m_texRectTex1UV[1].v = t0v1/heightDiv;
-    if( accurate && !tile0.bMirrorT && RemapTextureCoordinate(t0v0, t0v1, tex0.m_dwTileHeight, tile0.dwMaskT, heightDiv, m_texRectTex1UV[0].v, m_texRectTex1UV[1].v) )
+    if( accurate && !tile0info->mirrort && RemapTextureCoordinate(t0v0, t0v1, tex0.m_dwTileHeight, tile0info->maskt, heightDiv, m_texRectTex1UV[0].v, m_texRectTex1UV[1].v) )
         SetTextureVFlag(TEXTURE_UV_FLAG_CLAMP, gRSP.curTile);
     
     COLOR speColor = PostProcessSpecularColor();
@@ -639,26 +640,25 @@ bool CRender::TexRect(int nX0, int nY0, int nX1, int nY1, float fS0, float fT0, 
     if( IsTexel1Enable() )
     {
         RenderTexture &tex1 = g_textures[(gRSP.curTile+1)&7];
-        Tile &tile1 = gRDP.tiles[(gRSP.curTile+1)&7];
+        TileAdditionalInfo *tile1 = &gRDP.tilesinfo[(gRSP.curTile+1)&7];
+        gDPTile *tile1info = &gDP.tiles[(gRSP.curTile+1)&7];
 
         widthDiv = tex1.m_fTexWidth;
         heightDiv = tex1.m_fTexHeight;
-        //if( tile1.dwMaskS == 0 )  widthDiv = tile1.dwWidth;
-        //if( tile1.dwMaskT == 0 )  heightDiv = tile1.dwHeight;
 
-        float t0u0 = fS0 * tile1.fShiftScaleS -tile1.fhilite_sl;
-        float t0v0 = fT0 * tile1.fShiftScaleT -tile1.fhilite_tl;
+        float t0u0 = fS0 * tile1->fShiftScaleS -tile1->fhilite_sl;
+        float t0v0 = fT0 * tile1->fShiftScaleT -tile1->fhilite_tl;
         float t0u1;
         float t0v1;
         if ( accurate && gRDP.otherMode.cycle_type >= G_CYC_COPY)
         {
-            t0u1 = t0u0 + (fScaleS * (nX1 - nX0 - 1))*tile1.fShiftScaleS;
-            t0v1 = t0v0 + (fScaleT * (nY1 - nY0 - 1))*tile1.fShiftScaleT;
+            t0u1 = t0u0 + (fScaleS * (nX1 - nX0 - 1))*tile1->fShiftScaleS;
+            t0v1 = t0v0 + (fScaleT * (nY1 - nY0 - 1))*tile1->fShiftScaleT;
         }
         else
         {
-            t0u1 = t0u0 + (fScaleS * (nX1 - nX0))*tile1.fShiftScaleS;
-            t0v1 = t0v0 + (fScaleT * (nY1 - nY0))*tile1.fShiftScaleT;
+            t0u1 = t0u0 + (fScaleS * (nX1 - nX0))*tile1->fShiftScaleS;
+            t0v1 = t0v0 + (fScaleT * (nY1 - nY0))*tile1->fShiftScaleT;
         }
 
         if( status.UseLargerTile[1] )
@@ -670,14 +670,14 @@ bool CRender::TexRect(int nX0, int nY0, int nX1, int nY1, float fS0, float fT0, 
         {
             m_texRectTex2UV[0].u = t0u0/widthDiv;
             m_texRectTex2UV[1].u = t0u1/widthDiv;
-            if( accurate && !tile1.bMirrorS && RemapTextureCoordinate(t0u0, t0u1, tex1.m_dwTileWidth, tile1.dwMaskS, widthDiv, m_texRectTex2UV[0].u, m_texRectTex2UV[1].u) )
+            if( accurate && !tile1info->mirrors && RemapTextureCoordinate(t0u0, t0u1, tex1.m_dwTileWidth, tile1info->masks, widthDiv, m_texRectTex2UV[0].u, m_texRectTex2UV[1].u) )
                 SetTextureUFlag(TEXTURE_UV_FLAG_CLAMP, (gRSP.curTile+1)&7);
         }
 
         m_texRectTex2UV[0].v = t0v0/heightDiv;
         m_texRectTex2UV[1].v = t0v1/heightDiv;
 
-        if( accurate && !tile1.bMirrorT && RemapTextureCoordinate(t0v0, t0v1, tex1.m_dwTileHeight, tile1.dwMaskT, heightDiv, m_texRectTex2UV[0].v, m_texRectTex2UV[1].v) )
+        if( accurate && !tile1info->mirrort && RemapTextureCoordinate(t0v0, t0v1, tex1.m_dwTileHeight, tile1info->maskt, heightDiv, m_texRectTex2UV[0].v, m_texRectTex2UV[1].v) )
             SetTextureVFlag(TEXTURE_UV_FLAG_CLAMP, (gRSP.curTile+1)&7);
 
         SetVertexTextureUVCoord(g_texRectTVtx[0], m_texRectTex1UV[0].u, m_texRectTex1UV[0].v, m_texRectTex2UV[0].u, m_texRectTex2UV[0].v);
@@ -887,36 +887,37 @@ void CRender::SetAllTexelRepeatFlag()
 
 void CRender::SetTexelRepeatFlags(uint32_t dwTile)
 {
-    Tile &tile = gRDP.tiles[dwTile];
+    TileAdditionalInfo *tile = &gRDP.tilesinfo[dwTile];
+    gDPTile        *tileinfo = &gDP.tiles[dwTile];
 
-    if( tile.bForceClampS )
+    if( tile->bForceClampS )
         SetTextureUFlag(TEXTURE_UV_FLAG_CLAMP, dwTile);
-    else if( tile.bForceWrapS )
+    else if( tile->bForceWrapS )
             SetTextureUFlag(TEXTURE_UV_FLAG_WRAP, dwTile);
-    else if( tile.dwMaskS == 0 || tile.bClampS )
+    else if( tileinfo->masks == 0 || tileinfo->clamps )
     {
         if( gRDP.otherMode.cycle_type  >= G_CYC_COPY )
             SetTextureUFlag(TEXTURE_UV_FLAG_WRAP, dwTile);  // Can not clamp in COPY/FILL mode
         else
             SetTextureUFlag(TEXTURE_UV_FLAG_CLAMP, dwTile);
     }
-    else if (tile.bMirrorS )
+    else if (tileinfo->mirrors )
         SetTextureUFlag(TEXTURE_UV_FLAG_MIRROR, dwTile);
     else                                
         SetTextureUFlag(TEXTURE_UV_FLAG_WRAP, dwTile);
     
-    if( tile.bForceClampT )
+    if( tile->bForceClampT )
         SetTextureVFlag(TEXTURE_UV_FLAG_CLAMP, dwTile);
-    else if( tile.bForceWrapT )
+    else if( tile->bForceWrapT )
         SetTextureVFlag(TEXTURE_UV_FLAG_WRAP, dwTile);
-    else if( tile.dwMaskT == 0 || tile.bClampT)
+    else if( tileinfo->maskt == 0 || tileinfo->clampt)
     {
         if( gRDP.otherMode.cycle_type  >= G_CYC_COPY )
             SetTextureVFlag(TEXTURE_UV_FLAG_WRAP, dwTile);  // Can not clamp in COPY/FILL mode
         else
             SetTextureVFlag(TEXTURE_UV_FLAG_CLAMP, dwTile);
     }
-    else if (tile.bMirrorT )
+    else if (tileinfo->mirrort )
         SetTextureVFlag(TEXTURE_UV_FLAG_MIRROR, dwTile);
     else                                
         SetTextureVFlag(TEXTURE_UV_FLAG_WRAP, dwTile);
@@ -1085,10 +1086,17 @@ bool CRender::DrawTriangles()
         }
         else
         {
-            if( ( gRDP.tiles[gRSP.curTile].dwSize == G_IM_SIZ_32b && options.enableHackForGames == HACK_FOR_RUMBLE ) ||
-                (bHalfTxtScale && g_curRomInfo.bTextureScaleHack ) ||
-                (options.enableHackForGames == HACK_FOR_POLARISSNOCROSS && gRDP.tiles[7].dwFormat == G_IM_FMT_CI && gRDP.tiles[7].dwSize == G_IM_SIZ_8b 
-                && gRDP.tiles[0].dwFormat == G_IM_FMT_CI && gRDP.tiles[0].dwSize == G_IM_SIZ_8b && gRSP.curTile == 0 ))
+           if( (    gDP.tiles[gRSP.curTile].size == G_IM_SIZ_32b && 
+                    options.enableHackForGames == HACK_FOR_RUMBLE ) ||
+                 (bHalfTxtScale && g_curRomInfo.bTextureScaleHack ) ||
+                 (
+                  options.enableHackForGames == HACK_FOR_POLARISSNOCROSS && 
+                  gDP.tiles[7].format == G_IM_FMT_CI && 
+                  gDP.tiles[7].size == G_IM_SIZ_8b   &&
+                  gDP.tiles[0].format == G_IM_FMT_CI &&
+                  gDP.tiles[0].size == G_IM_SIZ_8b   && 
+                  gRSP.curTile == 0 )
+             )
             {
                 halfscaleS = 0.5;
             }
@@ -1249,11 +1257,13 @@ void CRender::SetVertexTextureUVCoord(TLITVERTEX &v, const TexCord &fTex0_, cons
     if( (options.enableHackForGames == HACK_FOR_ZELDA||options.enableHackForGames == HACK_FOR_ZELDA_MM) && m_Mux == 0x00262a60150c937fLL && gRSP.curTile == 0 )
     {
         // Hack for Zelda Sun
-        Tile &t0 = gRDP.tiles[0];
-        Tile &t1 = gRDP.tiles[1];
-        if( t0.dwFormat == G_IM_FMT_I && t0.dwSize == G_IM_SIZ_8b && t0.dwWidth == 64 &&
-            t1.dwFormat == G_IM_FMT_I && t1.dwSize == G_IM_SIZ_8b && t1.dwWidth == 64 &&
-            t0.dwHeight == t1.dwHeight )
+        gDPTile *t0 = &gDP.tiles[0];
+        gDPTile *t1 = &gDP.tiles[1];
+        TileAdditionalInfo *t0info = &gRDP.tilesinfo[0];
+        TileAdditionalInfo *t1info = &gRDP.tilesinfo[1];
+        if( t0->format == G_IM_FMT_I && t0->size == G_IM_SIZ_8b && t0info->dwWidth == 64 &&
+            t1->format == G_IM_FMT_I && t1->size == G_IM_SIZ_8b && t1info->dwWidth == 64 &&
+            t0info->dwHeight == t1info->dwHeight )
         {
             fTex0.u /= 2;
             fTex0.v /= 2;
