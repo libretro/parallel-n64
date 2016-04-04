@@ -463,7 +463,7 @@ void glide64ProcessDList(void)
   }
 }
 
-static void yoshis_story_memrect(uint16_t ul_x, uint16_t ul_y, 
+static void colorimage_yoshis_story_memrect(uint16_t ul_x, uint16_t ul_y, 
       uint16_t lr_x, uint16_t lr_y, uint16_t tileno)
 {
   uint32_t y;
@@ -485,29 +485,27 @@ static void yoshis_story_memrect(uint16_t ul_x, uint16_t ul_y,
   }
 }
 
-static void pm_palette_mod(void)
+static void colorimage_palette_modification(void)
 {
-   int8_t i;
+   unsigned i;
 
-   uint8_t envr    = (uint8_t)(g_gdp.env_color.r * 0.0039215689f * 31.0f);
-   uint8_t envg    = (uint8_t)(g_gdp.env_color.g * 0.0039215689f * 31.0f);
-   uint8_t envb    = (uint8_t)(g_gdp.env_color.b * 0.0039215689f * 31.0f);
-   uint16_t env16  = (uint16_t)((envr<<11)|(envg<<6)|(envb<<1)|1);
-   uint16_t prmr   = (uint8_t)(g_gdp.prim_color.r * 0.0039215689f * 31.0f);
-   uint16_t prmg   = (uint8_t)(g_gdp.prim_color.g * 0.0039215689f * 31.0f);
-   uint16_t prmb   = (uint8_t)(g_gdp.prim_color.b * 0.0039215689f * 31.0f);
-   uint16_t prim16 = (uint16_t)((prmr << 11)|(prmg << 6)|(prmb << 1)|1);
-   uint16_t *dst   = (uint16_t*)(gfx_info.RDRAM + rdp.colorImage.address);
+   uint8_t envr        = (uint8_t)(g_gdp.env_color.r * 0.0039215689f * 31.0f);
+   uint8_t envg        = (uint8_t)(g_gdp.env_color.g * 0.0039215689f * 31.0f);
+   uint8_t envb        = (uint8_t)(g_gdp.env_color.b * 0.0039215689f * 31.0f);
+   uint16_t env16      = (uint16_t)((envr<<11)|(envg<<6)|(envb<<1)|1);
+   uint16_t prmr       = (uint8_t)(g_gdp.prim_color.r * 0.0039215689f * 31.0f);
+   uint16_t prmg       = (uint8_t)(g_gdp.prim_color.g * 0.0039215689f * 31.0f);
+   uint16_t prmb       = (uint8_t)(g_gdp.prim_color.b * 0.0039215689f * 31.0f);
+   uint16_t prim16     = (uint16_t)((prmr << 11)|(prmg << 6)|(prmb << 1)|1);
+   uint16_t *ptr_dst   = (uint16_t*)(gfx_info.RDRAM + rdp.colorImage.address);
 
    for (i = 0; i < 16; i++)
-      dst[i^1] = (rdp.pal_8[i]&1) ? prim16 : env16;
-
-   //LRDP("Texrect palette modification\n");
+      ptr_dst[i^1] = (rdp.pal_8[i]&1) ? prim16 : env16;
 }
 
-static void pd_zcopy(uint32_t w0, uint32_t w1)
+static void colorimage_zbuffer_copy(uint32_t w0, uint32_t w1)
 {
-   int x;
+   unsigned x;
    uint16_t      ul_x = (uint16_t)((w1 & 0x00FFF000) >> 14);
    uint16_t      lr_x = (uint16_t)((w0 & 0x00FFF000) >> 14) + 1;
    uint16_t      ul_u = (uint16_t)((__RDP.w2 & 0xFFFF0000) >> 21) + 1;
@@ -568,7 +566,7 @@ static void rdp_texrect(uint32_t w0, uint32_t w1)
    }
    if ((settings.hacks&hack_Yoshi) && settings.ucode == ucode_S2DEX)
    {
-      yoshis_story_memrect(
+      colorimage_yoshis_story_memrect(
             (uint16_t)((w1 & 0x00FFF000) >> 14),   /* ul_x */
             (uint16_t)((w1 & 0x00000FFF) >> 2),    /* ul_y */
             (uint16_t)((w0 & 0x00FFF000) >> 14),   /* lr_x */
@@ -581,14 +579,14 @@ static void rdp_texrect(uint32_t w0, uint32_t w1)
    if (rdp.skip_drawing || (!fb_emulation_enabled && (rdp.colorImage.address == g_gdp.zb_address)))
    {
       if ((settings.hacks&hack_PMario) && rdp.ci_status == CI_USELESS)
-         pm_palette_mod ();
+         colorimage_palette_modification();
       return;
    }
 
    if ((settings.ucode == ucode_PerfectDark) 
          && rdp.ci_count > 0 && (rdp.frame_buffers[rdp.ci_count-1].status == CI_ZCOPY))
    {
-      pd_zcopy(w0, w1);
+      colorimage_zbuffer_copy(w0, w1);
       LRDP("Depth buffer copied.\n");
       return;
    }
