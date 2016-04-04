@@ -524,7 +524,6 @@ void OGLRender::DrawSimple2DTexture(float x0, float y0, float x1, float y1, floa
     {
         status.bVIOriginIsUpdated=false;
         CGraphicsContext::Get()->UpdateFrame(false);
-        DEBUGGER_PAUSE_AND_DUMP_NO_UPDATE(NEXT_SET_CIMG,{DebuggerAppendMsg("Screen Update at 1st Simple2DTexture");});
     }
 
     StartDrawSimple2DTexture(x0, y0, x1, y1, u0, v0, u1, v1, dif, spe, z, rhw);
@@ -804,15 +803,11 @@ void OGLRender::TurnFogOnOff(bool flag)
 
 void OGLRender::SetFogEnable(bool bEnable)
 {
-    DEBUGGER_IF_DUMP( (gRSP.bFogEnabled != (bEnable==true) && logFog ), TRACE1("Set Fog %s", bEnable? "enable":"disable"));
-
     gRSP.bFogEnabled = bEnable;
     
     // If force fog
     if(options.fogMethod == 2)
-    {
         gRSP.bFogEnabled = true;
-    }
 
     ((COGL_FragmentProgramCombiner*)m_pColorCombiner)->SetFogState(gRSP.bFogEnabled);
 }

@@ -471,10 +471,6 @@ void riceUpdateScreen(void)
     if( currentRomOptions.screenUpdateSetting == SCREEN_UPDATE_AT_VI_UPDATE )
     {
         CGraphicsContext::Get()->UpdateFrame(false);
-
-        DEBUGGER_IF_DUMP( pauseAtNext, TRACE1("Update Screen: VIORIG=%08X", *gfx_info.VI_ORIGIN_REG));
-        DEBUGGER_PAUSE_COUNT_N_WITHOUT_UPDATE(NEXT_FRAME);
-        DEBUGGER_PAUSE_COUNT_N_WITHOUT_UPDATE(NEXT_SET_CIMG);
         return;
     }
 
@@ -483,17 +479,8 @@ void riceUpdateScreen(void)
     if( currentRomOptions.screenUpdateSetting == SCREEN_UPDATE_AT_VI_UPDATE_AND_DRAWN )
     {
         if( status.bScreenIsDrawn )
-        {
             CGraphicsContext::Get()->UpdateFrame(false);
-            DEBUGGER_IF_DUMP( pauseAtNext, TRACE1("Update Screen: VIORIG=%08X", *gfx_info.VI_ORIGIN_REG));
-        }
-        else
-        {
-            DEBUGGER_IF_DUMP( pauseAtNext, TRACE1("Skip Screen Update: VIORIG=%08X", *gfx_info.VI_ORIGIN_REG));
-        }
 
-        DEBUGGER_PAUSE_COUNT_N_WITHOUT_UPDATE(NEXT_FRAME);
-        DEBUGGER_PAUSE_COUNT_N_WITHOUT_UPDATE(NEXT_SET_CIMG);
         return;
     }
 
@@ -509,20 +496,12 @@ void riceUpdateScreen(void)
                 //status.curRenderBuffer = NULL;
 
                 CGraphicsContext::Get()->UpdateFrame(false);
-                DEBUGGER_IF_DUMP( pauseAtNext, TRACE1("Update Screen: VIORIG=%08X", *gfx_info.VI_ORIGIN_REG));
-                DEBUGGER_PAUSE_COUNT_N_WITHOUT_UPDATE(NEXT_FRAME);
-                DEBUGGER_PAUSE_COUNT_N_WITHOUT_UPDATE(NEXT_SET_CIMG);
             }
             else
             {
                 status.curDisplayBuffer = *gfx_info.VI_ORIGIN_REG;
                 status.curVIOriginReg = status.curDisplayBuffer;
-                DEBUGGER_PAUSE_AND_DUMP_NO_UPDATE(NEXT_FRAME, {DebuggerAppendMsg("Skip Screen Update, closed to the display buffer, VIORIG=%08X", *gfx_info.VI_ORIGIN_REG);});
             }
-        }
-        else
-        {
-            DEBUGGER_PAUSE_AND_DUMP_NO_UPDATE(NEXT_FRAME, {DebuggerAppendMsg("Skip Screen Update, the same VIORIG=%08X", *gfx_info.VI_ORIGIN_REG);});
         }
 
         return;
@@ -531,13 +510,8 @@ void riceUpdateScreen(void)
     if( currentRomOptions.screenUpdateSetting >= SCREEN_UPDATE_AT_1ST_CI_CHANGE )
     {
         status.bVIOriginIsUpdated=true;
-        DEBUGGER_PAUSE_AND_DUMP_NO_UPDATE(NEXT_FRAME, {DebuggerAppendMsg("VI ORIG is updated to %08X", *gfx_info.VI_ORIGIN_REG);});
         return;
     }
-
-    DEBUGGER_IF_DUMP( pauseAtNext, TRACE1("VI is updated, No screen update: VIORIG=%08X", *gfx_info.VI_ORIGIN_REG));
-    DEBUGGER_PAUSE_COUNT_N_WITHOUT_UPDATE(NEXT_FRAME);
-    DEBUGGER_PAUSE_COUNT_N_WITHOUT_UPDATE(NEXT_SET_CIMG);
 }
 
 void riceViStatusChanged(void)

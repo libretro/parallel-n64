@@ -427,13 +427,7 @@ int FrameBufferManager::CheckAddrInBackBuffers(uint32_t addr, uint32_t memsize, 
     }
 
     if (r >= 0 && status.gDlistCount - g_uRecentCIInfoPtrs[r]->lastUsedFrame <= 3  && g_uRecentCIInfoPtrs[r]->bCopied == false)
-    {
-        DEBUGGER_IF_DUMP((logTextureBuffer&&r==1),TRACE2("Hit current front buffer at %08X, size=0x%X", addr, memsize));
-        DEBUGGER_IF_DUMP((logTextureBuffer&&r==0),TRACE2("Hit current back buffer at %08X, size=0x%X", addr, memsize));
-        DEBUGGER_IF_DUMP((logTextureBuffer&&r>1),TRACE2("Hit old back buffer at %08X, size=0x%X", addr, memsize));
-
         SaveBackBuffer(r, NULL, true);
-    }
 
     return r;
 }
@@ -828,11 +822,6 @@ void FrameBufferManager::FrameBufferReadByCPU( uint32_t addr )
     TXTRBUF_OR_CI_DUMP(TRACE1("Frame Buffer read, reported by emulator, address=%08X", addr));
     uint32_t size = 0x1000 - addr%0x1000;
     CheckAddrInBackBuffers(addr, size, true);
-
-    DEBUGGER_IF_DUMP(pauseAtNext,{TRACE0("Frame Buffer read");});
-    DEBUGGER_PAUSE_AND_DUMP_NO_UPDATE(NEXT_RENDER_TEXTURE, 
-    {DebuggerAppendMsg("Paused after setting Frame Buffer read:\n Cur CI Address: 0x%08x, Format: %s Size: %s Width: %d",
-    g_CI.dwAddr, pszImgFormat[g_CI.dwFormat], pszImgSize[g_CI.dwSize], g_CI.dwWidth);});
 }
 
 
@@ -1116,8 +1105,6 @@ int FrameBufferManager::FindASlot(void)
         idx = oldestIdx;
     }
 
-    DEBUGGER_IF_DUMP((logTextureBuffer && gRenderTextureInfos[idx].pRenderTexture ),TRACE2("Delete texture buffer %d at %08X, to reuse it.", idx, gRenderTextureInfos[idx].CI_Info.dwAddr ));
-
     if (gRenderTextureInfos[idx].pRenderTexture)
        free(gRenderTextureInfos[idx].pRenderTexture);
     gRenderTextureInfos[idx].pRenderTexture = NULL;
@@ -1162,11 +1149,6 @@ void FrameBufferManager::SetRenderTexture(void)
     newRenderTextureInfo.updateAtUcodeCount = status.gUcodeCount;
 
     // Delay activation of the render_texture until the 1st rendering
-
-    TXTRBUF_DUMP(TRACE1("Set render_texture: addr=%08X", g_CI.dwAddr));
-    DEBUGGER_PAUSE_AND_DUMP_NO_UPDATE(NEXT_RENDER_TEXTURE, 
-    {DebuggerAppendMsg("Paused after setting render_texture:\nAddr: 0x%08x, Fmt: %s Size: %s Width: %d, Height:%d",
-    g_CI.dwAddr, pszImgFormat[g_CI.dwFormat], pszImgSize[g_CI.dwSize], g_CI.dwWidth, g_pRenderTextureInfo->N64Height);});
 }
 
 int FrameBufferManager::SetBackBufferAsRenderTexture(SetImgInfo &CIinfo, int ciInfoIdx)
@@ -1219,11 +1201,6 @@ int FrameBufferManager::SetBackBufferAsRenderTexture(SetImgInfo &CIinfo, int ciI
     gRenderTextureInfos[idxToUse].txtEntry.pTexture = pRenderTexture->m_pTexture;
     gRenderTextureInfos[idxToUse].txtEntry.txtrBufIdx = idxToUse+1;
 
-    TXTRBUF_DUMP(TRACE2("Set back buffer as render_texture %d, addr=%08X", idxToUse, CIinfo.dwAddr));
-    DEBUGGER_PAUSE_AND_DUMP_NO_UPDATE(NEXT_RENDER_TEXTURE, 
-    {DebuggerAppendMsg("Paused after setting render_texture:\nAddr: 0x%08x, Fmt: %s Size: %s Width: %d, Height:%d",
-    CIinfo.dwAddr, pszImgFormat[CIinfo.dwFormat], pszImgSize[CIinfo.dwSize], CIinfo.dwWidth, g_pRenderTextureInfo->N64Height);});
-
     return idxToUse;
 }
 
@@ -1273,12 +1250,6 @@ void FrameBufferManager::CloseRenderTexture(bool toSave)
     SetScreenMult(windowSetting.uDisplayWidth/windowSetting.fViWidth, windowSetting.uDisplayHeight/windowSetting.fViHeight);
     CRender::g_pRender->UpdateClipRectangle();
     CRender::g_pRender->ApplyScissorWithClipRatio(false);
-
-    DEBUGGER_PAUSE_AND_DUMP_NO_UPDATE(NEXT_RENDER_TEXTURE, 
-    {
-        DebuggerAppendMsg("Paused after saving render_texture %d:\nAddress: 0x%08x, Format: %s Size: %s Width: %d", m_curRenderTextureIndex,
-            g_pRenderTextureInfo->CI_Info.dwAddr, pszImgFormat[g_pRenderTextureInfo->CI_Info.dwFormat], pszImgSize[g_pRenderTextureInfo->CI_Info.dwSize], g_pRenderTextureInfo->CI_Info.dwWidth);
-    });
 }
 
 void FrameBufferManager::ClearN64FrameBufferToBlack(uint32_t left, uint32_t top, uint32_t width, uint32_t height)
@@ -1569,12 +1540,6 @@ void FrameBufferManager::ActiveTextureBuffer(void)
                 TRACE2("Width = %d, Height=%d", gRenderTextureInfos[idxToUse].N64Width, gRenderTextureInfos[idxToUse].N64Height);
             }
         }   
-
-
-        TXTRBUF_DUMP(TRACE2("Rendering to render_texture %d, address=%08X", idxToUse, g_CI.dwAddr));
-        DEBUGGER_PAUSE_AND_DUMP_NO_UPDATE(NEXT_RENDER_TEXTURE, 
-        {DebuggerAppendMsg("Paused after activating render_texture:\nAddr: 0x%08x, Format: %s Size: %s Width: %d, Height:%d",
-        g_CI.dwAddr, pszImgFormat[g_CI.dwFormat], pszImgSize[g_CI.dwSize], g_CI.dwWidth, g_pRenderTextureInfo->N64Height);});
     }
     else
     {
@@ -1646,7 +1611,6 @@ void FrameBufferManager::Set_CI_addr(SetImgInfo &newCI)
             status.curDisplayBuffer = status.curRenderBuffer;
             CGraphicsContext::Get()->UpdateFrame(false);
             status.curRenderBuffer = g_CI.dwAddr;
-            DEBUGGER_IF_DUMP(pauseAtNext,{DebuggerAppendMsg("Screen Update because CI change to %08X, Display Buffer=%08X", status.curRenderBuffer, status.curDisplayBuffer);});
         }
     }
 
@@ -1710,16 +1674,6 @@ void FrameBufferManager::Set_CI_addr(SetImgInfo &newCI)
         }
         break;
     }
-
-    TXTRBUF_DUMP(TRACE4("SetCImg : Address=0x%08X, Format:%s-%sb, Width=%d\n", 
-        g_CI.dwAddr, pszImgFormat[newCI.dwFormat], pszImgSize[newCI.dwSize], newCI.dwWidth));
-
-    DEBUGGER_PAUSE_AND_DUMP_NO_UPDATE(NEXT_SET_CIMG, 
-    {
-        DebuggerAppendMsg("Pause after SetCImg: Address=0x%08X, Format:%s-%sb, Width=%d\n", 
-            g_CI.dwAddr, pszImgFormat[newCI.dwFormat], pszImgSize[newCI.dwSize], newCI.dwWidth);
-    }
-    );
 }
 
 
@@ -1852,11 +1806,6 @@ void FrameBufferManager::CopyBufferToRDRAM(uint32_t addr, uint32_t fmt, uint32_t
                 }
             }
         }
-        else
-        {
-            TRACE1("Copy %sb FrameBuffer to RDRAM, not implemented", pszImgSize[siz]);
-        }
-        DEBUGGER_IF_DUMP(pauseAtNext,{DebuggerAppendMsg("Copy %sb FrameBuffer to RDRAM", pszImgSize[siz]);});
     }
     else if (siz == G_IM_SIZ_8b && fmt == G_IM_FMT_I)
     {
@@ -1886,11 +1835,6 @@ void FrameBufferManager::CopyBufferToRDRAM(uint32_t addr, uint32_t fmt, uint32_t
                 }
             }
         }
-        else
-        {
-            //DebuggerAppendMsg("Copy %sb FrameBuffer to RDRAM, not implemented", pszImgSize[siz]);
-        }
-        DEBUGGER_IF_DUMP(pauseAtNext,{DebuggerAppendMsg("Copy %sb FrameBuffer to RDRAM", pszImgSize[siz]);});
     }
 }
 
@@ -1972,11 +1916,6 @@ void FrameBufferManager::SaveBackBuffer(int ciInfoIdx, M64P_RECT* pSrcRect, bool
 
     gRenderTextureInfos[idx].crcCheckedAtFrame = status.gDlistCount;
     gRenderTextureInfos[idx].crcInRDRAM = ComputeRenderTextureCRCInRDRAM(idx);
-
-    DEBUGGER_IF_DUMP((logTextureBuffer && pSrcRect==NULL), TRACE1("SaveBackBuffer at 0x%08X", ciInfo.dwAddr));
-    DEBUGGER_IF_DUMP((logTextureBuffer && pSrcRect), TRACE5("SaveBackBuffer at 0x%08X, {%d,%d -%d,%d)", ciInfo.dwAddr,
-        pSrcRect->left, pSrcRect->top, pSrcRect->right, pSrcRect->bottom));
-    DEBUGGER_IF_DUMP(( pauseAtNext && eventToPause == NEXT_RENDER_TEXTURE),{g_pFrameBufferManager->DisplayRenderTexture(idx);});
 
     g_uRecentCIInfoPtrs[ciInfoIdx]->bCopied = true;
 }

@@ -627,10 +627,6 @@ TxtrCacheEntry * CTextureManager::GetTexture(TxtrInfo * pgti, bool fromTMEM, boo
             g_lastTextureEntry = pEntry;
             lastEntryModified = false;
 
-            DEBUGGER_IF_DUMP((pauseAtNext && loadFromTextureBuffer) ,
-            {DebuggerAppendMsg("Load cached texture from render_texture");}
-            );
-
             return pEntry;
         }
         else
@@ -686,9 +682,6 @@ TxtrCacheEntry * CTextureManager::GetTexture(TxtrInfo * pgti, bool fromTMEM, boo
           if( loadFromTextureBuffer )
           {
              g_pFrameBufferManager->LoadTextureFromRenderTexture(pEntry, txtBufIdxToLoadFrom);
-             DEBUGGER_IF_DUMP((pauseAtNext && loadFromTextureBuffer) ,
-                   {DebuggerAppendMsg("Load texture from render_texture %d", txtBufIdxToLoadFrom);}
-                   );
 
              extern void ConvertTextureRGBAtoI(TxtrCacheEntry* pEntry, bool alpha);
              if( g_pRenderTextureInfo->CI_Info.dwFormat == G_IM_FMT_I )

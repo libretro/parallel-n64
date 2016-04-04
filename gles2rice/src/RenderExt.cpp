@@ -206,16 +206,6 @@ void CRender::LoadObjBGCopy(uObjBg &info)
     gti.tileNo = -1;
     TxtrCacheEntry *pEntry = gTextureManager.GetTexture(&gti, false, true, false);
     SetCurrentTexture(0,pEntry);
-
-    DEBUGGER_IF_DUMP((pauseAtNext && (eventToPause == NEXT_OBJ_TXT_CMD||eventToPause == NEXT_FLUSH_TRI||eventToPause == NEXT_OBJ_BG)),
-    {
-        TRACE0("Load Obj BG Copy:\n");
-        DebuggerAppendMsg("Addr=0x%08X, W=%d, H=%d, Left=%d, Top=%d\n", 
-            gti.Address, gti.WidthToCreate, gti.HeightToCreate, gti.LeftToLoad, gti.TopToLoad);
-        DebuggerAppendMsg("Fmt=%s-%db, Pal=%d\n",
-            pszImgFormat[gti.Format], pnImgSize[gti.Size], gti.Palette);
-    }
-    );
 }
 
 void CRender::LoadTxtrBufIntoTexture(void)
@@ -296,15 +286,6 @@ void CRender::LoadSprite2D(Sprite2DInfo &info, uint32_t ucode)
     TxtrCacheEntry *pEntry = gTextureManager.GetTexture(&gti, false, true, false);
     SetCurrentTexture(0,pEntry);
 
-    DEBUGGER_IF_DUMP((pauseAtNext && (eventToPause == NEXT_OBJ_TXT_CMD||eventToPause == NEXT_FLUSH_TRI||eventToPause == NEXT_SPRITE_2D)),
-    {
-        TRACE0("Load Sprite 2D\n");
-        DebuggerAppendMsg("Addr=0x%08X, W=%d, H=%d, Left=%d, Top=%d\n", 
-            gti.Address, gti.WidthToCreate, gti.HeightToCreate, gti.LeftToLoad, gti.TopToLoad);
-        DebuggerAppendMsg("Fmt=%s-%db, Pal=%d, Pitch=%d\n",
-            pszImgFormat[gti.Format], pnImgSize[gti.Size], gti.Palette, gti.Pitch);
-    }
-    );
 }
 
 
@@ -608,13 +589,6 @@ void CRender::DrawObjBGCopy(uObjBg &info)
             DrawSimple2DTexture(x2, y2, x1, y1, 0, 0, u1, v1, difColor, speColor, depth, 1);
         }
     }
-
-    DEBUGGER_PAUSE_AT_COND_AND_DUMP_COUNT_N(
-        (pauseAtNext&&(eventToPause==NEXT_OBJ_BG||eventToPause==NEXT_FLUSH_TRI||eventToPause==NEXT_OBJ_TXT_CMD)),
-        {
-            TRACE0("Pause ObjBG Copy");
-        }
-    );
 }
 
 void CRender::DrawObjBG1CYC(uObjScaleBg &bg, bool scaled)   // Without Rotation
@@ -710,13 +684,6 @@ void CRender::DrawObjBG1CYC(uObjScaleBg &bg, bool scaled)   // Without Rotation
             DrawSimple2DTexture(x2, y2, x1, y1, 0, 0, u1, v1, difColor, speColor, depth, 1);
         }
     }
-
-    DEBUGGER_PAUSE_AT_COND_AND_DUMP_COUNT_N(
-        (pauseAtNext&&(eventToPause==NEXT_OBJ_BG||eventToPause==NEXT_FLUSH_TRI||eventToPause==NEXT_OBJ_TXT_CMD)),
-        {
-            DebuggerAppendMsg("Pause BG 1CYC: (%.0f,%.0f - %.0f,%.0f), \ntex (%.2f,%.2f), scale (%.2f,%.2f)",x0,y0,x1,y1,s0,t0,scaleX,scaleY);
-        }
-    );
 }
 
 
@@ -849,16 +816,6 @@ void CRender::LoadObjBG1CYC(uObjScaleBg &bg)
     gti.tileNo = -1;
     TxtrCacheEntry *pEntry = gTextureManager.GetTexture(&gti, false, true, false);
     SetCurrentTexture(0,pEntry);
-
-    DEBUGGER_IF_DUMP((pauseAtNext && (eventToPause == NEXT_OBJ_TXT_CMD||eventToPause == NEXT_FLUSH_TRI||eventToPause == NEXT_OBJ_BG)),
-        {
-            TRACE0("Load Obj BG 1CYC:\n");
-            DebuggerAppendMsg("Addr=0x%08X, W=%d, H=%d, Left=%d, Top=%d\n", 
-                gti.Address, gti.WidthToCreate, gti.HeightToCreate, gti.LeftToLoad, gti.TopToLoad);
-            DebuggerAppendMsg("Fmt=%s-%db, Pal=%d\n",
-                pszImgFormat[gti.Format], pnImgSize[gti.Size], gti.Palette);
-        }
-    );
 }
 
 void CRender::LoadObjSprite(uObjTxSprite &sprite, bool useTIAddr)

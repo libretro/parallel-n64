@@ -364,10 +364,8 @@ void ComputeLOD(void)
 
     float lod = dt/d;
     float frac = log10f(lod)/log10f(2.0f);
-    //DEBUGGER_IF_DUMP(pauseAtNext,{DebuggerAppendMsg("LOD frac = %f", frac);});
     frac = (lod / powf(2.0f,floorf(frac)));
     frac = frac - floorf(frac);
-    //DEBUGGER_IF_DUMP(pauseAtNext,{DebuggerAppendMsg("LOD = %f, frac = %f", lod, frac);});
     gRDP.LODFrac = (uint32_t)(frac*255);
     CRender::g_pRender->SetCombinerAndBlender();
 }
@@ -801,8 +799,6 @@ bool IsTriangleVisible(uint32_t dwV0, uint32_t dwV1, uint32_t dwV2)
 {
     //return true;  //fix me
 
-    DEBUGGER_ONLY_IF( (!debuggerEnableTestTris || !debuggerEnableCullFace), {return true;});
-    
 #ifdef DEBUGGER
     // Check vertices are valid!
     if (dwV0 >= MAX_VERTS || dwV1 >= MAX_VERTS || dwV2 >= MAX_VERTS)
@@ -1005,9 +1001,6 @@ void ProcessVertexDataDKR(uint32_t dwAddr, uint32_t dwV0, uint32_t dwNum)
 
         nOff += 10;
     }
-
-
-    DEBUGGER_PAUSE_AND_DUMP(NEXT_VERTEX_CMD,{DebuggerAppendMsg("Paused at DKR Vertex Command, v0=%d, vn=%d, addr=%08X", dwV0, dwNum, dwAddr);});
 }
 
 extern uint32_t dwPDCIAddr;
@@ -1242,7 +1235,6 @@ void SetLightDirection(uint32_t dwLight, float x, float y, float z, float range)
     gRSPlights[dwLight].y = y/w;
     gRSPlights[dwLight].z = z/w;
     gRSPlights[dwLight].range = range;
-    DEBUGGER_PAUSE_AND_DUMP(NEXT_SET_LIGHT,TRACE5("Set Light %d dir: %.4f, %.4f, %.4f, %.4f", dwLight, x, y, z, range));
 }
 
 static float maxS0, maxT0;
