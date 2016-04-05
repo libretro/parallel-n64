@@ -925,7 +925,7 @@ void do_triangle_stuff_2 (uint16_t linew, uint8_t no_clip, int old_interpolate)
 void do_triangle_stuff (uint16_t linew, int old_interpolate) // what else?? do the triangle stuff :P (to keep from writing code twice)
 {
    int i;
-   float maxZ = (gDP.otherMode.depthSource != 1) ? gSP.viewport.vtrans[2] + gSP.viewport.vscale[2] : g_gdp.prim_color.z;
+   float maxZ = (gDP.otherMode.depthSource != G_ZS_PRIM) ? gSP.viewport.vtrans[2] + gSP.viewport.vscale[2] : g_gdp.prim_color.z;
    uint8_t no_clip = 2;
 
    for (i=0; i< rdp.n_global; i++)
@@ -963,7 +963,7 @@ void do_triangle_stuff (uint16_t linew, int old_interpolate) // what else?? do t
          }
       }
 
-      if (gDP.otherMode.depthSource == 1)
+      if (gDP.otherMode.depthSource == G_ZS_PRIM)
          vtx->z = g_gdp.prim_color.z;
 
       // Don't remove clipping, or it will freeze
