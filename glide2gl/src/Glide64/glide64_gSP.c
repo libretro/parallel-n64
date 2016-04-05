@@ -6,7 +6,6 @@
 
 #include "glide64_gSP.h"
 
-int cur_mtx = 0;
 int vtx_last = 0;
 
 typedef struct 
@@ -1008,7 +1007,7 @@ void glide64gSPDMAMatrix(uint32_t matrix, uint8_t index, uint8_t multiply)
 {
    uint32_t address = gSP.DMAOffsets.mtx + RSP_SegmentToPhysical(matrix);
 
-   cur_mtx = index;
+   gSP.matrix.modelViewi = index;
 
    if (multiply)
    {
@@ -1037,7 +1036,7 @@ void glide64gSPDMAVertex(uint32_t v, uint32_t n, uint32_t v0)
    // ? = unknown, but used
    // 0 = unused
    
-   int prj = cur_mtx;
+   int prj = gSP.matrix.modelViewi;
 
    for (i = v0; i < n + v0; i++)
    {

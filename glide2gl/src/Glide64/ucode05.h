@@ -110,8 +110,8 @@ static void uc5_moveword(uint32_t w0, uint32_t w1)
          break;
 
       case 0x0a:  // moveword matrix select
-         cur_mtx = _SHIFTR( w1, 6, 2);
-         FRDP ("matrix select - mtx: %d\n", cur_mtx);
+         gSP.matrix.modelViewi = _SHIFTR( w1, 6, 2);
+         FRDP ("matrix select - mtx: %d\n", gSP.matrix.modelViewi);
          break;
    }
 }
