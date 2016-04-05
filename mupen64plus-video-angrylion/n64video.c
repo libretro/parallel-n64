@@ -89,11 +89,6 @@ void (*fbfill_ptr)(UINT32);
 #undef  LOG_RDP_EXECUTION
 #define DETAILED_LOGGING 0
 
-
-FILE *rdp_exec;
-
-extern FILE* zeldainfo;
-
 UINT32 internal_vi_v_current_line = 0;
 UINT32 old_vi_origin = 0;
 UINT32 oldhstart = 0;
@@ -612,10 +607,6 @@ STRICTINLINE void tcclamp_cycle_light(INT32* S, INT32* T, INT32 maxs, INT32 maxt
 void rdp_init(void)
 {
     register int i;
-
-#ifdef LOG_RDP_EXECUTION
-        rdp_exec = fopen("rdp_execute.txt", "wt");
-#endif
 
     fbread1_ptr = fbread_func[0];
     fbread2_ptr = fbread2_func[0];

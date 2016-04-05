@@ -311,7 +311,7 @@ void gdp_set_other_modes(uint32_t w0, uint32_t w1)
    /* 0 = pattern
     * 1 = ~pattern
     * 2 = noise
-    * 3 = noi dither
+    * 3 = noise dither
     */
    g_gdp.other_modes.alpha_dither_sel = (w0 & 0x00000030) >> (36 - 32);
 
