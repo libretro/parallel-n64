@@ -34,21 +34,20 @@
  * usage and speed up the caching process. */
 typedef struct
 {
-  float x, y, z, q;
-
+  float    x;
+  float    y;
+  float    z;
+  float    q;
   uint8_t  b;
   uint8_t  g;
   uint8_t  r;
   uint8_t  a;
-
-  float coord[4];
-
-  float f; //fog
+  float    coord[4];
+  float    fog;
 } VBufVertex;
 
-#define VERTEX_OFF(x) (vbuf_vbo ? (void*)offsetof(VBufVertex, x) : (void*)&vbuf_data->x)
-#define VERTEX_SIZE sizeof(VBufVertex)
-#define VERTEX_BUFFER_SIZE (1500)
+#define VERTEX_BUFFER_SIZE 1500
+
 static VBufVertex vbuf_data[VERTEX_BUFFER_SIZE];
 static GLenum     vbuf_primitive = GL_TRIANGLES;
 static unsigned   vbuf_length    = 0;
@@ -147,7 +146,7 @@ void vbo_draw(void)
    {
       glBindBuffer(GL_ARRAY_BUFFER, vbuf_vbo);
 
-      glBufferSubData(GL_ARRAY_BUFFER, 0, VERTEX_SIZE * vbuf_length, vbuf_data);
+      glBufferSubData(GL_ARRAY_BUFFER, 0, vbuf_length * sizeof(VBufVertex), vbuf_data);
 
       glDrawArrays(vbuf_primitive, 0, vbuf_length);
       glBindBuffer(GL_ARRAY_BUFFER, 0);
@@ -170,7 +169,7 @@ static void vbo_append(GLenum mode, GLsizei count, void *pointers)
 
    while (count--)
    {
-      memcpy(&vbuf_data[vbuf_length++], pointers, VERTEX_SIZE);
+      memcpy(&vbuf_data[vbuf_length++], pointers, sizeof(VBufVertex));
       pointers = (char*)pointers + sizeof(VERTEX);
    }
 
@@ -203,21 +202,31 @@ void vbo_enable(void)
    glEnableVertexAttribArray(TEXCOORD_1_ATTR);
    glEnableVertexAttribArray(FOG_ATTR);
 
-   glVertexAttribPointer(POSITION_ATTR, 4, GL_FLOAT, false, VERTEX_SIZE, VERTEX_OFF(x));
-   glVertexAttribPointer(COLOUR_ATTR, 4, GL_UNSIGNED_BYTE, true, VERTEX_SIZE, VERTEX_OFF(b));
-   glVertexAttribPointer(TEXCOORD_0_ATTR, 2, GL_FLOAT, false, VERTEX_SIZE, VERTEX_OFF(coord[2]));
-   glVertexAttribPointer(TEXCOORD_1_ATTR, 2, GL_FLOAT, false, VERTEX_SIZE, VERTEX_OFF(coord[0]));
-   glVertexAttribPointer(FOG_ATTR, 1, GL_FLOAT, false, VERTEX_SIZE, VERTEX_OFF(f));
-
    if (vbuf_vbo)
+   {
+      glVertexAttribPointer(POSITION_ATTR, 4, GL_FLOAT, false, sizeof(VBufVertex), (void*)offsetof(VBufVertex, x));
+      glVertexAttribPointer(COLOUR_ATTR, 4, GL_UNSIGNED_BYTE, true, sizeof(VBufVertex), (void*)offsetof(VBufVertex, b));
+      glVertexAttribPointer(TEXCOORD_0_ATTR, 2, GL_FLOAT, false, sizeof(VBufVertex), (void*)offsetof(VBufVertex, coord[2]));
+      glVertexAttribPointer(TEXCOORD_1_ATTR, 2, GL_FLOAT, false, sizeof(VBufVertex), (void*)offsetof(VBufVertex, coord[0]));
+      glVertexAttribPointer(FOG_ATTR, 1, GL_FLOAT, false, sizeof(VBufVertex), (void*)offsetof(VBufVertex, fog));
+
       glBindBuffer(GL_ARRAY_BUFFER, 0);
+   }
+   else
+   {
+      glVertexAttribPointer(POSITION_ATTR, 4, GL_FLOAT, false, sizeof(VBufVertex), (void*)&vbuf_data->x);
+      glVertexAttribPointer(COLOUR_ATTR, 4, GL_UNSIGNED_BYTE, true, sizeof(VBufVertex), (void*)&vbuf_data->b);
+      glVertexAttribPointer(TEXCOORD_0_ATTR, 2, GL_FLOAT, false, sizeof(VBufVertex), (void*)&vbuf_data->coord[2]);
+      glVertexAttribPointer(TEXCOORD_1_ATTR, 2, GL_FLOAT, false, sizeof(VBufVertex), (void*)&vbuf_data->coord[0]);
+      glVertexAttribPointer(FOG_ATTR, 1, GL_FLOAT, false, sizeof(VBufVertex), (void*)&vbuf_data->fog);
+   }
 
    vbuf_enabled = true;
 
    vbuf_drawing = was_drawing;
 }
 
-void vbo_disable()
+void vbo_disable(void)
 {
    vbo_draw();
    vbuf_enabled = false;
@@ -325,14 +334,6 @@ void grDepthBiasLevel( int32_t level )
    }
 }
 
-#ifdef EMSCRIPTEN
-#define buffer_struct struct draw_buffer
-#define gl_offset(x) offsetof(buffer_struct, x)
-#else
-#define buffer_struct VERTEX
-#define gl_offset(x) &v->x
-#endif
-
 void grDrawVertexArrayContiguous(uint32_t mode, uint32_t count, void *pointers)
 {
    if(need_to_compile)
@@ -340,52 +341,6 @@ void grDrawVertexArrayContiguous(uint32_t mode, uint32_t count, void *pointers)
 
    vbo_enable();
    vbo_append(mode, count, pointers);
-
-   /*
-#ifdef EMSCRIPTEN
-   unsigned i;
-#endif
-   VERTEX *v = (VERTEX*)pointers;
-
-   if(need_to_compile)
-      compile_shader();
-
-#ifdef EMSCRIPTEN
-   if (count > gli_vbo_size)
-   {
-      gli_vbo_size = count;
-      gli_vbo = realloc(gli_vbo, sizeof(struct draw_buffer) * gli_vbo_size);
-   }
-
-   for (i = 0; i < count; i++)
-   {
-      memcpy(&gli_vbo[i], &v[i], sizeof(struct draw_buffer));
-   }
-
-   glBindBuffer(GL_ARRAY_BUFFER, glitch_vbo);
-   glBufferData(GL_ARRAY_BUFFER, sizeof(buffer_struct) * count, gli_vbo, GL_DYNAMIC_DRAW);
-#endif
-
-   glEnableVertexAttribArray(POSITION_ATTR);
-   glVertexAttribPointer(POSITION_ATTR, 4, GL_FLOAT, false, sizeof(buffer_struct), gl_offset(x)); //Position
-
-   glEnableVertexAttribArray(COLOUR_ATTR);
-   glVertexAttribPointer(COLOUR_ATTR, 4, GL_UNSIGNED_BYTE, true, sizeof(buffer_struct), gl_offset(b)); //Colour
-
-   glEnableVertexAttribArray(TEXCOORD_0_ATTR);
-   glVertexAttribPointer(TEXCOORD_0_ATTR, 2, GL_FLOAT, false, sizeof(buffer_struct), gl_offset(coord[2])); //Tex0
-
-   glEnableVertexAttribArray(TEXCOORD_1_ATTR);
-   glVertexAttribPointer(TEXCOORD_1_ATTR, 2, GL_FLOAT, false, sizeof(buffer_struct), gl_offset(coord[0])); //Tex1
-
-   glEnableVertexAttribArray(FOG_ATTR);
-   glVertexAttribPointer(FOG_ATTR, 1, GL_FLOAT, false, sizeof(buffer_struct), gl_offset(f)); //Fog
-
-   glDrawArrays(mode, 0, count);
-#ifdef EMSCRIPTEN
-   glBindBuffer(GL_ARRAY_BUFFER, 0);
-#endif
-*/
 }
 
 void init_geometry()
