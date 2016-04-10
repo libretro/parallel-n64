@@ -171,10 +171,8 @@ uint32_t grTexCalcMemRequired(int32_t lodmax,
 
 static int grTexFormat2GLPackedFmt(GrTexInfo *info, int fmt, int * gltexfmt, int * glpixfmt, int * glpackfmt)
 {
-   unsigned size_tex;
-   int factor;
-   factor = -1;
-   size_tex = width * height;
+   int factor        = -1;
+   unsigned size_tex = width * height;
 
    if (fmt == GR_TEXFMT_ALPHA_INTENSITY_44)
    {
