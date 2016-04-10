@@ -91,16 +91,6 @@ uint32_t grSstWinOpen(void)
 #endif
    glViewport(0, 0, width, height);
 
-#if 0
-   if (isExtensionSupported("GL_ARB_texture_env_combine") == 0 &&
-         isExtensionSupported("GL_EXT_texture_env_combine") == 0)
-      DISPLAY_WARNING("Your video card doesn't support GL_ARB_texture_env_combine extension");
-   if (isExtensionSupported("GL_ARB_multitexture") == 0)
-      DISPLAY_WARNING("Your video card doesn't support GL_ARB_multitexture extension");
-   if (isExtensionSupported("GL_ARB_texture_mirrored_repeat") == 0)
-      DISPLAY_WARNING("Your video card doesn't support GL_ARB_texture_mirrored_repeat extension");
-#endif
-
    packed_pixels_support = 0;
    
    // we can assume that non-GLES has GL_EXT_packed_pixels
@@ -331,6 +321,7 @@ grLfbWriteRegion( int32_t dst_buffer,
       glEnable(GL_DEPTH_TEST);
       glEnable(GL_BLEND);
    }
+
    return FXTRUE;
 }
 
