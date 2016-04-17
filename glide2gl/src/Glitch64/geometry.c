@@ -182,6 +182,11 @@ static void vbo_append(GLenum mode, GLsizei count, void *pointers)
 
 void vbo_enable(void)
 {
+   const void *vp   = NULL;
+   const void *vc   = NULL;
+   const void *tc0  = NULL;
+   const void *tc1  = NULL;
+   const void *fog  = NULL;
    bool was_drawing = vbuf_drawing;
 
    if (vbuf_enabled)
@@ -194,6 +199,20 @@ void vbo_enable(void)
       glBindBuffer(GL_ARRAY_BUFFER, vbuf_vbo);
       if (vbuf_vbo_size < VERTEX_BUFFER_SIZE * sizeof(VBufVertex))
          vbo_buffer_data(NULL, VERTEX_BUFFER_SIZE * sizeof(VBufVertex));
+
+      vp  = (void*)offsetof(VBufVertex, x);
+      vc  = (void*)offsetof(VBufVertex, b);
+      tc0 = (void*)offsetof(VBufVertex, coord[2]);
+      tc1 = (void*)offsetof(VBufVertex, coord[0]);
+      fog = (void*)offsetof(VBufVertex, fog);
+   }
+   else
+   {
+      vp  = &vbuf_data->x;
+      vc  = &vbuf_data->b;
+      tc0 = &vbuf_data->coord[2];
+      tc1 = &vbuf_data->coord[0];
+      fog = &vbuf_data->fog;
    }
 
    glEnableVertexAttribArray(POSITION_ATTR);
@@ -201,25 +220,14 @@ void vbo_enable(void)
    glEnableVertexAttribArray(TEXCOORD_0_ATTR);
    glEnableVertexAttribArray(TEXCOORD_1_ATTR);
    glEnableVertexAttribArray(FOG_ATTR);
+   glVertexAttribPointer(POSITION_ATTR,   4, GL_FLOAT,         false,  sizeof(VBufVertex), (void*)vp);
+   glVertexAttribPointer(COLOUR_ATTR,     4, GL_UNSIGNED_BYTE, true,   sizeof(VBufVertex), (void*)vc);
+   glVertexAttribPointer(TEXCOORD_0_ATTR, 2, GL_FLOAT,         false, sizeof(VBufVertex), (void*)tc0);
+   glVertexAttribPointer(TEXCOORD_1_ATTR, 2, GL_FLOAT,         false, sizeof(VBufVertex), (void*)tc1);
+   glVertexAttribPointer(FOG_ATTR,        1, GL_FLOAT,         false, sizeof(VBufVertex), (void*)fog);
 
    if (vbuf_vbo)
-   {
-      glVertexAttribPointer(POSITION_ATTR, 4, GL_FLOAT, false, sizeof(VBufVertex), (void*)offsetof(VBufVertex, x));
-      glVertexAttribPointer(COLOUR_ATTR, 4, GL_UNSIGNED_BYTE, true, sizeof(VBufVertex), (void*)offsetof(VBufVertex, b));
-      glVertexAttribPointer(TEXCOORD_0_ATTR, 2, GL_FLOAT, false, sizeof(VBufVertex), (void*)offsetof(VBufVertex, coord[2]));
-      glVertexAttribPointer(TEXCOORD_1_ATTR, 2, GL_FLOAT, false, sizeof(VBufVertex), (void*)offsetof(VBufVertex, coord[0]));
-      glVertexAttribPointer(FOG_ATTR, 1, GL_FLOAT, false, sizeof(VBufVertex), (void*)offsetof(VBufVertex, fog));
-
       glBindBuffer(GL_ARRAY_BUFFER, 0);
-   }
-   else
-   {
-      glVertexAttribPointer(POSITION_ATTR, 4, GL_FLOAT, false, sizeof(VBufVertex), (void*)&vbuf_data->x);
-      glVertexAttribPointer(COLOUR_ATTR, 4, GL_UNSIGNED_BYTE, true, sizeof(VBufVertex), (void*)&vbuf_data->b);
-      glVertexAttribPointer(TEXCOORD_0_ATTR, 2, GL_FLOAT, false, sizeof(VBufVertex), (void*)&vbuf_data->coord[2]);
-      glVertexAttribPointer(TEXCOORD_1_ATTR, 2, GL_FLOAT, false, sizeof(VBufVertex), (void*)&vbuf_data->coord[0]);
-      glVertexAttribPointer(FOG_ATTR, 1, GL_FLOAT, false, sizeof(VBufVertex), (void*)&vbuf_data->fog);
-   }
 
    vbuf_enabled = true;
 
