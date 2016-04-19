@@ -279,6 +279,7 @@ ifeq ($(HAVE_GLN64),1)
 
 SOURCES_C += $(VIDEODIR_GLN64)/3DMath.c \
             $(VIDEODIR_GLN64)/glN64Config.c \
+				$(VIDEODIR_GLN64)/Combiner_gles2n64.c \
             $(VIDEODIR_GLN64)/FrameBuffer_gles2n64.c \
             $(VIDEODIR_GLN64)/Hash.c \
             $(VIDEODIR_GLN64)/DepthBuffer.c \

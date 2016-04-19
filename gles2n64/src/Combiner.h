@@ -3,6 +3,9 @@
 
 #include <stdint.h>
 
+#include "../../Graphics/RDP/gDP_state.h"
+#include "gDP.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -141,6 +144,46 @@ extern "C" {
 #define ONE             19
 #define ZERO            20
 #define UNKNOWN         21
+
+/* dmux flags: */
+#define SC_IGNORE_RGB0      (1<<0) 
+#define SC_IGNORE_ALPHA0    (1<<1)
+#define SC_IGNORE_RGB1      (1<<2)
+#define SC_IGNORE_ALPHA1    (1<<3)
+
+#define SC_FOGENABLED           0x1
+#define SC_ALPHAENABLED         0x2
+#define SC_ALPHAGREATER         0x4
+#define SC_2CYCLE               0x8
+
+struct CombineCycle
+{
+	int sa, sb, m, a;
+};
+
+typedef struct
+{
+   struct gDPCombine combine;
+   struct CombineCycle decode[4];
+   int flags;
+} DecodedMux;
+
+extern int CCEncodeA[];
+extern int CCEncodeB[];
+extern int CCEncodeC[];
+extern int CCEncodeD[];
+extern int ACEncodeA[];
+extern int ACEncodeB[];
+extern int ACEncodeC[];
+extern int ACEncodeD[];
+
+void Combiner_Init(void);
+void Combiner_Destroy(void);
+void Combiner_Set(uint64_t mux, int flags);
+
+void ShaderCombiner_Init(void);
+void ShaderCombiner_Destroy(void);
+void ShaderCombiner_Set(DecodedMux *dmux, int flags);
 
 #ifdef __cplusplus
 }

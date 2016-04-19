@@ -11,11 +11,6 @@
 extern "C" {
 #endif
 
-#define SC_FOGENABLED           0x1
-#define SC_ALPHAENABLED         0x2
-#define SC_ALPHAGREATER         0x4
-#define SC_2CYCLE               0x8
-
 #define SC_POSITION             0
 #define SC_COLOR                1
 #define SC_TEXCOORD0            2
@@ -62,42 +57,10 @@ typedef struct ShaderProgram
     uint32_t             lastUsed;
 } ShaderProgram;
 
-
-//dmux flags:
-#define SC_IGNORE_RGB0      (1<<0)
-#define SC_IGNORE_ALPHA0    (1<<1)
-#define SC_IGNORE_RGB1      (1<<2)
-#define SC_IGNORE_ALPHA1    (1<<3)
-
-struct CombineCycle
-{
-	int sa, sb, m, a;
-};
-
-typedef struct
-{
-   struct gDPCombine combine;
-   struct CombineCycle decode[4];
-   int flags;
-} DecodedMux;
-
-extern int CCEncodeA[];
-extern int CCEncodeB[];
-extern int CCEncodeC[];
-extern int CCEncodeD[];
-extern int ACEncodeA[];
-extern int ACEncodeB[];
-extern int ACEncodeC[];
-extern int ACEncodeD[];
-
 extern ShaderProgram    *scProgramRoot;
 extern ShaderProgram    *scProgramCurrent;
 extern int              scProgramChanged;
 extern int              scProgramCount;
-
-void Combiner_Init(void);
-void Combiner_Destroy(void);
-void Combiner_Set(uint64_t mux, int flags);
 
 void ShaderCombiner_UpdateBlendColor(void);
 void ShaderCombiner_UpdateEnvColor(void);
