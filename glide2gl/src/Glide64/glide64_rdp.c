@@ -1861,36 +1861,29 @@ static const uint32_t rdp_command_length[64] =
 static void rdphalf_1(uint32_t w0, uint32_t w1)
 {
    uint32_t cmd = __RSP.w1 >> 24;
-   if (cmd >= G_TRI_FILL && cmd <= G_TRI_SHADE_TXTR_ZBUFF) //triangle command
+   if (cmd >= G_TRI_FILL && cmd <= G_TRI_SHADE_TXTR_ZBUFF) /* Triangle command */
    {
       __RDP.cmd_ptr = 0;
       __RDP.cmd_cur = 0;
 
       do
       {
-         uint32_t a;
-
          __RDP.cmd_data[__RDP.cmd_ptr++] = __RSP.w1;
-
          RSP_CheckDLCounter();
 
-         /* Get the address of the next command */
-         a        = __RSP.PC[__RSP.PCi] & BMASK;
-
          /* Load the next command and its input */
-         __RSP.w0 = ((uint32_t*)gfx_info.RDRAM)[a>>2];   // \ Current command, 64 bit
-         __RSP.w1 = ((uint32_t*)gfx_info.RDRAM)[(a>>2)+1]; // /
-
-         // Go to the next instruction
-         __RSP.PC[__RSP.PCi] = (a+8) & BMASK;
-
+         __RSP.w0 = *(uint32_t*)&gfx_info.RDRAM[__RSP.PC[__RSP.PCi]];
+         __RSP.w1 = *(uint32_t*)&gfx_info.RDRAM[__RSP.PC[__RSP.PCi] + 4];
+         __RSP.cmd = _SHIFTR(w0, 24, 8);
+         /* Go to the next instruction */
+         __RSP.PC[__RSP.PCi] += 8;
       }while ((__RSP.w0 >> 24) != 0xb3);
 
       __RDP.cmd_data[__RDP.cmd_ptr++] = __RSP.w1;
-      cmd                         = (__RDP.cmd_data[__RDP.cmd_cur] >> 24) & 0x3f;
-      __RSP.w0                    = __RDP.cmd_data[__RDP.cmd_cur+0];
-      __RSP.w1                    = __RDP.cmd_data[__RDP.cmd_cur+1];
-      rdp_command_table[cmd](__RSP.w0, __RSP.w1);
+      __RSP.cmd                       = (__RDP.cmd_data[__RDP.cmd_cur] >> 24) & 0x3f;
+      __RSP.w0                        = __RDP.cmd_data[__RDP.cmd_cur+0];
+      __RSP.w1                        = __RDP.cmd_data[__RDP.cmd_cur+1];
+      rdp_command_table[__RSP.cmd](__RSP.w0, __RSP.w1);
    }
 }
 
