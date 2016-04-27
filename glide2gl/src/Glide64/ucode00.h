@@ -42,10 +42,11 @@
 /* uc0:vertex - loads vertices */
 static void uc0_vertex(uint32_t w0, uint32_t w1)
 {
-   int        v0 = _SHIFTR(w0, 16, 4);     /* Current vertex */
-   int        n  = _SHIFTR(w0, 20, 4) + 1; /* Number of vertices to copy */
-   uint32_t addr = RSP_SegmentToPhysical(__RSP.w1);
-   glide64gSPVertex(addr, n, v0);
+   glide64gSPVertex(
+         RSP_SegmentToPhysical(__RSP.w1),    /* Address */
+         _SHIFTR(w0, 20, 4) + 1,             /* Number of vertices to copy */
+         _SHIFTR(w0, 16, 4)                  /* Current vertex */
+         );
 }
 
 // ** Definitions **
