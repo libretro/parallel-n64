@@ -1,5 +1,9 @@
-#include "RDP_state.h"
+#include <boolean.h>
 
+#include "RDP_state.h"
+#include "../RSP/RSP_state.h"
+
+#include "../GBI.h"
 #include "../plugin/plugin.h"
 
 RDPInfo		      __RDP;
@@ -433,4 +437,36 @@ void gdp_set_color_image(uint32_t w0, uint32_t w1)
    g_gdp.fb_address = (w1 & 0x03FFFFFF) >> ( 0 -  0);
    ++g_gdp.fb_width;
    /* g_gdp.fb_address &= 0x00FFFFFF; */
+}
+
+bool RDP_Half1(uint32_t _c)
+{
+   uint32_t cmd = _SHIFTR( _c, 24, 8 );
+   if (cmd >= G_TRI_FILL && cmd <= G_TRI_SHADE_TXTR_ZBUFF) /* Triangle command */
+   {
+      __RDP.cmd_ptr = 0;
+      __RDP.cmd_cur = 0;
+
+      do
+      {
+         __RDP.cmd_data[__RDP.cmd_ptr++] = __RSP.w1;
+         RSP_CheckDLCounter();
+
+         /* Load the next command and its input */
+         __RSP.w0 = *(uint32_t*)&gfx_info.RDRAM[__RSP.PC[__RSP.PCi]];
+         __RSP.w1 = *(uint32_t*)&gfx_info.RDRAM[__RSP.PC[__RSP.PCi] + 4];
+         __RSP.cmd = _SHIFTR(__RSP.w0, 24, 8);
+         /* Go to the next instruction */
+         __RSP.PC[__RSP.PCi] += 8;
+      }while ((__RSP.w0 >> 24) != 0xb3);
+
+      __RDP.cmd_data[__RDP.cmd_ptr++] = __RSP.w1;
+      __RSP.cmd                       = (__RDP.cmd_data[__RDP.cmd_cur] >> 24) & 0x3f;
+      __RSP.w0                        = __RDP.cmd_data[__RDP.cmd_cur+0];
+      __RSP.w1                        = __RDP.cmd_data[__RDP.cmd_cur+1];
+
+      return true;
+   }
+
+   return false;
 }

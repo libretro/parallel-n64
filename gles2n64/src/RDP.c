@@ -542,32 +542,8 @@ const uint32_t CmdLength[64] =
 
 void RDP_Half_1( uint32_t _c )
 {
-	uint32_t w0 = 0, w1 = _c;
-	uint32_t cmd = _SHIFTR( _c, 24, 8 );
-	if (cmd >= G_TRI_FILL && cmd <= G_TRI_SHADE_TXTR_ZBUFF) /* Triangle command */
-   {
-      /* triangle command */
-		__RDP.cmd_ptr = 0;
-		__RDP.cmd_cur = 0;
-		do
-      {
-         __RDP.cmd_data[__RDP.cmd_ptr++] = w1;
-         RSP_CheckDLCounter();
-
-         /* Load the next command and its input */
-         w0 = *(uint32_t*)&gfx_info.RDRAM[__RSP.PC[__RSP.PCi]];
-         w1 = *(uint32_t*)&gfx_info.RDRAM[__RSP.PC[__RSP.PCi] + 4];
-         __RSP.cmd = _SHIFTR( w0, 24, 8 );
-         /* Go to the next instruction */
-         __RSP.PC[__RSP.PCi] += 8;
-      } while (__RSP.cmd != 0xb3);
-
-		__RDP.cmd_data[__RDP.cmd_ptr++] = w1;
-		__RSP.cmd = (__RDP.cmd_data[__RDP.cmd_cur] >> 24) & 0x3f;
-		w0 = __RDP.cmd_data[__RDP.cmd_cur+0];
-		w1 = __RDP.cmd_data[__RDP.cmd_cur+1];
-		LLEcmd[__RSP.cmd](w0, w1);
-	}
+   if (RDP_Half1(_c))
+      LLEcmd[__RSP.cmd](__RSP.w0, __RSP.w1);
 }
 
 static INLINE uint32_t GLN64_READ_RDP_DATA(uint32_t address)
