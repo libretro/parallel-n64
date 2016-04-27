@@ -97,11 +97,18 @@ static void uc1_rdphalf_1(uint32_t w0, uint32_t w1)
    rdphalf_1(w0, w1);
 }
 
+static void glide64gSPBranchLessZ(uint32_t branchdl, uint32_t vtx, float zval)
+{
+   uint32_t address = RSP_SegmentToPhysical(branchdl);
+   float zTest = fabs(rdp.vtx[vtx].z);
+
+   if(zTest > 1.0f || zTest <= zval)
+      __RSP.PC[__RSP.PCi] = address;
+}
+
 static void uc1_branch_z(uint32_t w0, uint32_t w1)
 {
-   uint32_t addr = RSP_SegmentToPhysical(gDP.half_1);
-   uint32_t vtx  = (w0 & 0xFFF) >> 1;
+   glide64gSPBranchLessZ(gDP.half_1, _SHIFTR(w0, 1, 11),
+         (int32_t)w1 / 65535.0f / 1023.0f);
 
-   if( fabs(rdp.vtx[vtx].z) <= (w1/*&0xFFFF*/) )
-      __RSP.PC[__RSP.PCi] = addr;
 }
