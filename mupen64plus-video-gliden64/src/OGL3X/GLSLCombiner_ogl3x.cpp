@@ -525,6 +525,11 @@ void ShaderCombiner::updateRenderState(bool _bForce)
 
 void ShaderCombiner::updateFogMode(bool _bForce)
 {
+   if (__RSP.bLLE)
+   {
+		m_uniforms.uFogUsage.set(0, _bForce);
+		return;
+	}
 	const uint32_t blender = (gDP.otherMode.l >> 16);
 	const int nFogBlendEnabled = gSP.fog.multiplier >= 0 && (gDP.otherMode.c1_m1a == 3 || gDP.otherMode.c1_m2a == 3 || gDP.otherMode.c2_m1a == 3 || gDP.otherMode.c2_m2a == 3) ? 256 : 0;
 	int nFogUsage = ((gSP.geometryMode & G_FOG) != 0) ? 1 : 0;
