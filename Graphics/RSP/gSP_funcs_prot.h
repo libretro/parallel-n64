@@ -34,6 +34,7 @@ void glide64gSPViewport(uint32_t v);
 void glide64gSPForceMatrix( uint32_t mptr );
 void glide64gSPObjMatrix( uint32_t mtx );
 void glide64gSPObjSubMatrix( uint32_t mtx );
+void glide64gSPBranchLessZ(uint32_t branchdl, uint32_t vtx, float zval);
 
 void glide64gSP2Triangles(
       const int32_t v00,

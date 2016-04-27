@@ -1284,3 +1284,12 @@ void glide64gSPMatrix( uint32_t matrix, uint8_t param )
          break;
    }
 }
+
+void glide64gSPBranchLessZ(uint32_t branchdl, uint32_t vtx, float zval)
+{
+   uint32_t address = RSP_SegmentToPhysical(branchdl);
+   float zTest = fabs(rdp.vtx[vtx].z);
+
+   if(zTest > 1.0f || zTest <= zval)
+      __RSP.PC[__RSP.PCi] = address;
+}
