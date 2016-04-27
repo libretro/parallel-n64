@@ -1230,28 +1230,22 @@ static void rdp_setcolorimage(uint32_t w0, uint32_t w1)
             }
             */
          case CI_AUX:
-            if (
-                  cur_fb->format != 0)
-               rdp.skip_drawing = true;
-            else
+            rdp.skip_drawing = true;
+            if (cur_fb->format == 0)
             {
                rdp.skip_drawing = false;
+               if (rdp.ci_count == 0)
                {
-                  if (cur_fb->format != 0)
-                     rdp.skip_drawing = true;
-                  if (rdp.ci_count == 0)
-                  {
-                     // if (rdp.num_of_ci > 1)
-                     // {
-                     rdp.scale_x = 1.0f;
-                     rdp.scale_y = 1.0f;
-                     // }
-                  }
-                  else if (
-                        (prev_fb->status == CI_MAIN) &&
-                        (prev_fb->width == cur_fb->width)) // for Pokemon Stadium
-                     CopyFrameBuffer (GR_BUFFER_BACKBUFFER);
+                  // if (rdp.num_of_ci > 1)
+                  // {
+                  rdp.scale_x = 1.0f;
+                  rdp.scale_y = 1.0f;
+                  // }
                }
+               else if (
+                     (prev_fb->status == CI_MAIN) &&
+                     (prev_fb->width == cur_fb->width)) // for Pokemon Stadium
+                  CopyFrameBuffer (GR_BUFFER_BACKBUFFER);
             }
             cur_fb->status = CI_AUX;
             break;
