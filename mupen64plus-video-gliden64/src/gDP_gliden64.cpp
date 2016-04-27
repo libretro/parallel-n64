@@ -547,13 +547,9 @@ void gln64gDPSetScissor( uint32_t mode, float ulx, float uly, float lrx, float l
 	frameBufferList().correctHeight();
 }
 
-const bool g_bDepthClearOnly = false;
-
 void gln64gDPFillRDRAM(uint32_t address, int32_t ulx, int32_t uly, 
       int32_t lrx, int32_t lry, uint32_t width, uint32_t size, uint32_t color, bool scissor)
 {
-	if (g_bDepthClearOnly && color != DepthClearColor)
-		return;
 	FrameBuffer * pCurrentBuffer = frameBufferList().getCurrent();
 	if (pCurrentBuffer != NULL) {
 		pCurrentBuffer->m_cleared = true;

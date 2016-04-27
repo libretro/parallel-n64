@@ -731,15 +731,11 @@ void gln64gDPSetScissor( uint32_t mode, float ulx, float uly, float lrx, float l
 #endif
 }
 
-const bool g_bDepthClearOnly = false;
-
 void gln64gDPFillRDRAM(uint32_t address, int32_t ulx, int32_t uly, int32_t lrx, int32_t lry, uint32_t width, uint32_t size, uint32_t color, bool scissor)
 {
    uint32_t y, x, stride, lowerBound, ci_width_in_dwords, *dst;
    struct FrameBuffer *pCurrentBuffer;
 
-	if (g_bDepthClearOnly && color != DepthClearColor)
-		return;
    pCurrentBuffer = (struct FrameBuffer*)FrameBuffer_GetCurrent();
    
    if (pCurrentBuffer != NULL)
