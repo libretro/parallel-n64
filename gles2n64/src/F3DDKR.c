@@ -15,21 +15,16 @@
 
 void F3DDKR_DMA_Mtx( uint32_t w0, uint32_t w1 )
 {
-   uint32_t index, multiply;
+   uint32_t multiply = 0;
+   uint32_t index    = _SHIFTR( w0, 16, 4 );
+
    if (_SHIFTR( w0, 0, 16 ) != 64)
       return;
 
-   index = _SHIFTR( w0, 16, 4 );
-
-   if (index == 0) // DKR
-   {
+   if (index == 0) /* Diddy Kong Racing */
       index = _SHIFTR( w0, 22, 2 );
-      multiply = 0;
-   }
-   else // Gemini
-   {
+   else /* Jet Force Gemini */
       multiply = _SHIFTR( w0, 23, 1 );
-   }
 
    gln64gSPDMAMatrix( w1, index, multiply );
 }

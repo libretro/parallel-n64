@@ -40,9 +40,7 @@ extern int vtx_last;
 
 static void uc5_dma_offsets(uint32_t w0, uint32_t w1)
 {
-   glide64gSPSetDMAOffsets(
-         _SHIFTR( w0, 0, 24),
-         _SHIFTR( w1, 0, 24));
+   glide64gSPSetDMAOffsets(_SHIFTR( w0, 0, 24), _SHIFTR( w1, 0, 24));
 }
 
 static void uc5_matrix(uint32_t w0, uint32_t w1)
@@ -50,10 +48,10 @@ static void uc5_matrix(uint32_t w0, uint32_t w1)
    uint8_t multiply = 0;
    uint8_t index    = _SHIFTR(w0, 16, 4);
 
-   if (index == 0) //DKR
-      index    = _SHIFTR(w0, 22, 2);
-   else //JF
-      multiply = _SHIFTR(w0, 23, 1);
+   if (index == 0) /* Diddy Kong Racing */
+      index = _SHIFTR( w0, 22, 2 );
+   else            /* Jet Force Gemini */
+      multiply = _SHIFTR( w0, 23, 1 );
 
    glide64gSPDMAMatrix(w1, index, multiply);
 
@@ -82,7 +80,6 @@ static void uc5_vertex(uint32_t w0, uint32_t w1)
 
 static void uc5_tridma(uint32_t w0, uint32_t w1)
 {
-
    glide64gSPDMATriangles(w1, _SHIFTR( w0, 4, 12));
 }
 
