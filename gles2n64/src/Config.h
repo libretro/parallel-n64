@@ -49,7 +49,6 @@ typedef struct
     } texture;
 
 	struct {
-		uint32_t enableFog;
 		uint32_t enableNoise;
 		uint32_t enableLOD;
 		uint32_t enableHWLighting;

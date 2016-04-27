@@ -34,7 +34,6 @@ bool Config_SetDefault()
 	config.texture.bilinearMode                  = 1; /* Bilinear filtering mode (0=N64 3point, 1=standard) */
 
 	/* Emulation Settings */
-	config.generalEmulation.enableFog            = 1; /* Enable fog emulation. */
 	config.generalEmulation.enableNoise          = 1; /* Enable color noise emulation. */
 	config.generalEmulation.enableLOD            = 1; /* Enable LOD emulation. */
 	config.generalEmulation.enableHWLighting     = 0; /* Enable hardware per-pixel lighting. */
