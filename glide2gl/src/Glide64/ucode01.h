@@ -43,9 +43,10 @@
 
 static void uc1_vertex(uint32_t w0, uint32_t w1)
 {
-   int32_t v0 = (w0 >> 17) & 0x7F; // Current vertex
-   int32_t n  = (w0 >> 10) & 0x3F; // Number to copy
-   rsp_vertex(v0, n);
+   int32_t    v0 = (w0 >> 17) & 0x7F; // Current vertex
+   int32_t    n  = (w0 >> 10) & 0x3F; // Number to copy
+   uint32_t addr = RSP_SegmentToPhysical(__RSP.w1);
+   glide64gSPVertex(addr, n, v0);
 }
 
 static void uc1_tri1(uint32_t w0, uint32_t w1)
