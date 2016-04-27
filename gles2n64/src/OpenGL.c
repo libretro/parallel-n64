@@ -464,7 +464,7 @@ void OGL_DrawTriangle(struct SPVertex *vertices, int v0, int v1, int v2)
 
 static void OGL_SetColorArray(void)
 {
-   if (scProgramCurrent->usesCol)
+   if (scProgramCurrent->usesCol || gDP.otherMode.c1_m1b == 2)
       glEnableVertexAttribArray(SC_COLOR);
    else
       glDisableVertexAttribArray(SC_COLOR);
