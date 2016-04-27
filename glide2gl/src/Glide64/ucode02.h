@@ -48,8 +48,6 @@ static void uc2_vertex(uint32_t w0, uint32_t w1)
       return;
    }
 
-   pre_update();
-
    addr = RSP_SegmentToPhysical(w1);
    n    = (w0 >> 12) & 0xFF;
    v0   = ((w0 >> 1) & 0x7F) - n;

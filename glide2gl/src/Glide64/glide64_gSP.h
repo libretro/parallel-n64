@@ -33,6 +33,5 @@ extern int dzdx;
 extern int deltaZ;
 
 void cull_trianglefaces(VERTEX **v, unsigned iterations, bool do_update, bool do_cull, int32_t wd);
-void pre_update(void);
 /* end forward decls */
 

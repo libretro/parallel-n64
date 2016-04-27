@@ -428,6 +428,27 @@ void glide64gSPObjLoadTxtr(uint32_t tx)
    }
 }
 
+static INLINE void pre_update(void)
+{
+   /* This is special, not handled in update(), but here
+    * Matrix Pre-multiplication idea */
+   if (g_gdp.flags & UPDATE_MULT_MAT)
+      gSPCombineMatrices();
+
+   if (g_gdp.flags & UPDATE_LIGHTS)
+   {
+      uint32_t l;
+      g_gdp.flags ^= UPDATE_LIGHTS;
+
+      /* Calculate light vectors */
+      for (l = 0; l < gSP.numLights; l++)
+      {
+         InverseTransformVector(&rdp.light[l].dir[0], rdp.light_vector[l], rdp.model);
+         NormalizeVector (rdp.light_vector[l]);
+      }
+   }
+}
+
 /*
  * Loads into the RSP vertex buffer the vertices that will be used by the 
  * gSP1Triangle commands to generate polygons.
@@ -442,6 +463,8 @@ void glide64gSPVertex(uint32_t v, uint32_t n, uint32_t v0)
    float x, y, z;
    uint32_t iter = 16;
    void   *vertex  = (void*)(gfx_info.RDRAM + v);
+
+   pre_update();
 
    for (i=0; i < (n * iter); i+= iter)
    {

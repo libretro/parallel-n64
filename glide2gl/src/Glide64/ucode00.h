@@ -42,8 +42,6 @@
 static void rsp_vertex(int v0, int n)
 {
    uint32_t addr = RSP_SegmentToPhysical(__RSP.w1);
-
-   pre_update();
    glide64gSPVertex(addr, n, v0);
 }
 

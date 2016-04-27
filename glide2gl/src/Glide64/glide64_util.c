@@ -1432,28 +1432,6 @@ static int cull_tri(VERTEX **v) // type changed to VERTEX** [Dave2001]
    return false;
 }
 
-void pre_update(void)
-{
-   // This is special, not handled in update(), but here
-   // Matrix Pre-multiplication idea by Gonetz (Gonetz@ngs.ru)
-   if (g_gdp.flags & UPDATE_MULT_MAT)
-      gSPCombineMatrices();
-
-   if (g_gdp.flags & UPDATE_LIGHTS)
-   {
-      uint32_t l;
-      g_gdp.flags ^= UPDATE_LIGHTS;
-
-      // Calculate light vectors
-      for (l = 0; l < gSP.numLights; l++)
-      {
-         InverseTransformVector(&rdp.light[l].dir[0], rdp.light_vector[l], rdp.model);
-         NormalizeVector (rdp.light_vector[l]);
-      }
-   }
-}
-
-
 static void draw_tri_uv_calculation(VERTEX **vtx, VERTEX *v)
 {
    unsigned i;
