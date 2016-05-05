@@ -209,9 +209,10 @@ endif
 
 SOURCES_C += $(LIBRETRO_DIR)/libretro.c \
 				 $(CORE_DIR)/src/plugin/emulate_game_controller_via_libretro.c \
+				 $(LIBRETRO_COMM_DIR)/memmap/memalign.c \
 				 $(AUDIO_LIBRETRO_DIR)/audio_backend_libretro.c \
 				 $(AUDIO_LIBRETRO_DIR)/audio_resampler_driver.c \
-				 $(AUDIO_LIBRETRO_DIR)/drivers_resampler/sinc.c \
+				 $(AUDIO_LIBRETRO_DIR)/drivers_resampler/sinc_resampler.c \
 				 $(AUDIO_LIBRETRO_DIR)/drivers_resampler/nearest.c \
 				 $(AUDIO_LIBRETRO_DIR)/drivers_resampler/cc_resampler.c \
 				 $(AUDIO_LIBRETRO_DIR)/audio_utils.c
@@ -313,7 +314,7 @@ endif
 
 ifeq ($(HAVE_NEON),1)
 	SOURCES_ASM	+= $(AUDIO_LIBRETRO_DIR)/audio_utils_neon.S \
-						$(AUDIO_LIBRETRO_DIR)/drivers_resampler/sinc_neon.S \
+						$(AUDIO_LIBRETRO_DIR)/drivers_resampler/sinc_resampler_neon.S \
 						$(AUDIO_LIBRETRO_DIR)/drivers_resampler/cc_resampler_neon.S
 endif
 
