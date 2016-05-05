@@ -77,7 +77,7 @@ void deinit_audio_libretro(void)
 
 void init_audio_libretro(unsigned max_audio_frames)
 {
-   rarch_resampler_realloc(&resampler_audio_data, &resampler, "CC", 1.0);
+   rarch_resampler_realloc(&resampler_audio_data, &resampler, "sinc", 1.0);
 
    MAX_AUDIO_FRAMES = max_audio_frames;
 
