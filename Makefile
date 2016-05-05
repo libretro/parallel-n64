@@ -93,9 +93,14 @@ else ifneq (,$(findstring rpi,$(platform)))
 	INCFLAGS += -I/opt/vc/include
 	ifneq (,$(findstring rpi2,$(platform)))
 		CPUFLAGS += -DNO_ASM -DARM -D__arm__ -DARM_ASM -D__NEON_OPT -DNOSSE
-		CFLAGS = -mcpu=cortex-a7 -mfloat-abi=hard
-		CXXFLAGS = -mcpu=cortex-a7 -mfloat-abi=hard
-		HAVE_NEON = 0
+		CFLAGS = -mcpu=cortex-a7 -mfpu=neon-vfpv4 -mfloat-abi=hard
+		CXXFLAGS = -mcpu=cortex-a7 -mfpu=neon-vfpv4 -mfloat-abi=hard
+		HAVE_NEON = 1
+	else ifneq (,$(findstring rpi3,$(platform)))
+		CPUFLAGS += -DNO_ASM -DARM -D__arm__ -DARM_ASM -D__NEON_OPT -DNOSSE
+		CFLAGS = -mcpu=cortex-a53 -mfpu=neon-fp-armv8 -mfloat-abi=hard
+		CXXFLAGS = -mcpu=cortex-a53 -mfpu=neon-fp-armv8 -mfloat-abi=hard
+		HAVE_NEON = 1
 	else
 		CPUFLAGS += -DARMv5_ONLY -DNO_ASM
 	endif
