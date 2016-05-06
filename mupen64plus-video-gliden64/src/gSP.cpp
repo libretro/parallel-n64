@@ -1367,7 +1367,7 @@ void gln64gSPObjRectangleR(uint32_t _sp)
 	gln64gSPDrawObjRect(objCoords);
 }
 
-#ifndef GLES2
+#ifndef HAVE_OPENGLES2
 static
 void _copyDepthBuffer()
 {
@@ -1403,7 +1403,7 @@ void _copyDepthBuffer()
 	// Set back current depth buffer
 	dbList.saveBuffer(gDP.depthImageAddress);
 }
-#endif // GLES2
+#endif // HAVE_OPENGLES2
 
 static
 void _loadBGImage(const uObjScaleBg * _bgInfo, bool _loadScale)
@@ -1448,13 +1448,13 @@ void gln64gSPBgRect1Cyc( uint32_t _bg )
 	uObjScaleBg *objScaleBg = (uObjScaleBg*)&gfx_info.RDRAM[address];
 	_loadBGImage(objScaleBg, true);
 
-#ifndef GLES2
+#ifndef HAVE_OPENGLES2
 	if (gSP.bgImage.address == gDP.depthImageAddress || depthBufferList().findBuffer(gSP.bgImage.address) != NULL)
 		_copyDepthBuffer();
 	// Zelda MM uses depth buffer copy in LoT and in pause screen.
 	// In later case depth buffer is used as temporal color buffer, and usual rendering must be used.
 	// Since both situations are hard to distinguish, do the both depth buffer copy and bg rendering.
-#endif // GLES2
+#endif // HAVE_OPENGLES2
 
 	gDP.otherMode.cycleType = G_CYC_1CYCLE;
 	gDP.changed |= CHANGED_CYCLETYPE;

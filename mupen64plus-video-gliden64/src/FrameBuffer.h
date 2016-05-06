@@ -96,7 +96,7 @@ private:
 };
 
 struct PBOBinder {
-#ifndef GLES2
+#ifndef HAVE_OPENGLES2
 	PBOBinder(GLenum _target, GLuint _PBO) : m_target(_target)
 	{
 		glBindBuffer(m_target, _PBO);
