@@ -38,7 +38,7 @@
 
 /* forward declarations */
 int InitGfx(void);
-#ifdef HAVE_OPENGL
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
 int glide64InitGfx(void);
 void gles2n64_reset(void);
 #endif
@@ -127,7 +127,7 @@ static void core_settings_autoselect_gfx_plugin(void)
    if (gfx_var.value && strcmp(gfx_var.value, "auto") != 0)
       return;
 
-#ifdef HAVE_OPENGL
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
    gfx_plugin = GFX_GLIDE64;
 #else
    gfx_plugin = GFX_ANGRYLION;
@@ -333,7 +333,7 @@ bool emu_step_render(void)
             video_cb((screen_pitch == 0) ? NULL : blitter_buf_lock, screen_width, screen_height, screen_pitch);
             break;
          default:
-#ifdef HAVE_OPENGL
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
             video_cb(RETRO_HW_FRAME_BUFFER_VALID, screen_width, screen_height, 0);
 #else
             video_cb((screen_pitch == 0) ? NULL : blitter_buf_lock, screen_width, screen_height, screen_pitch);
@@ -381,7 +381,7 @@ void reinit_gfx_plugin(void)
 #endif
     }
 
-#ifdef HAVE_OPENGL
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
     switch (gfx_plugin)
     {
        case GFX_GLIDE64:
@@ -558,7 +558,7 @@ void retro_deinit(void)
 
 #include "../mupen64plus-video-angrylion/vi.h"
 
-#ifdef HAVE_OPENGL
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
 extern void glide_set_filtering(unsigned value);
 #endif
 extern void angrylion_set_filtering(unsigned value);
@@ -653,7 +653,7 @@ void update_variables(bool startup)
      switch (gfx_plugin)
      {
         case GFX_GLIDE64:
-#ifdef HAVE_OPENGL
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
            glide_set_filtering(retro_filtering);
 #endif
            break;
@@ -823,7 +823,7 @@ static void format_saved_memory(void)
    format_mempak(saved_memory.mempack[3]);
 }
 
-#ifdef HAVE_OPENGL
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
 static void context_reset(void)
 {
    static bool first_init = true;
@@ -867,7 +867,7 @@ static bool context_framebuffer_lock(void *data)
 
 bool retro_load_game(const struct retro_game_info *game)
 {
-#ifdef HAVE_OPENGL
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
    glsm_ctx_params_t params = {0};
 #endif
    format_saved_memory();
@@ -877,13 +877,13 @@ bool retro_load_game(const struct retro_game_info *game)
 
    init_audio_libretro(audio_buffer_size);
 
-#ifdef HAVE_OPENGL
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
    if (gfx_plugin != GFX_ANGRYLION)
    {
       params.context_reset         = context_reset;
       params.context_destroy       = context_destroy;
       params.environ_cb            = environ_cb;
-      params.stencil               = false;
+      params.stencil               = true;
 
 #if 0
       if (gfx_plugin == GFX_GLIDE64)
@@ -935,7 +935,7 @@ void retro_unload_game(void)
     emu_initialized = false;
 }
 
-#ifdef HAVE_OPENGL
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
 static void glsm_exit(void)
 {
 #ifndef HAVE_SHARED_CONTEXT
@@ -993,7 +993,7 @@ void retro_run (void)
 
             switch (gfx_plugin)
             {
-#ifdef HAVE_OPENGL
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
                case GFX_GLIDE64:
                   ChangeSize();
                   break;
@@ -1009,7 +1009,7 @@ void retro_run (void)
    }
 
 #ifdef SINGLE_THREAD
-#ifdef HAVE_OPENGL
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
    switch (gfx_plugin)
    {
       case GFX_ANGRYLION:
@@ -1046,7 +1046,7 @@ void retro_run (void)
 
    do
    {
-#ifdef HAVE_OPENGL
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
       if (gfx_plugin != GFX_ANGRYLION)
          glsm_enter();
 #endif
@@ -1059,7 +1059,7 @@ void retro_run (void)
       co_switch(cpu_thread);
 #endif
 
-#ifdef HAVE_OPENGL
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
       if (gfx_plugin != GFX_ANGRYLION)
          glsm_exit();
 #endif
@@ -1145,7 +1145,7 @@ bool emu_step_render(void);
 
 int retro_return(int just_flipping)
 {
-#ifdef HAVE_OPENGL
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
    vbo_disable();
 #endif
 
@@ -1153,13 +1153,13 @@ int retro_return(int just_flipping)
 
    if (just_flipping)
    {
-#ifdef HAVE_OPENGL
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
       glsm_exit();
 #endif
 
       emu_step_render();
 
-#ifdef HAVE_OPENGL
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
       glsm_enter();
 #endif
    }
@@ -1173,7 +1173,7 @@ int retro_return(int just_flipping)
    if (stop)
       return 0;
 
-#ifdef HAVE_OPENGL
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
    vbo_disable();
 #endif
 
