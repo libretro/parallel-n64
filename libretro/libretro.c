@@ -883,7 +883,7 @@ bool retro_load_game(const struct retro_game_info *game)
       params.context_reset         = context_reset;
       params.context_destroy       = context_destroy;
       params.environ_cb            = environ_cb;
-      params.stencil               = true;
+      params.stencil               = false;
 
 #if 0
       if (gfx_plugin == GFX_GLIDE64)
