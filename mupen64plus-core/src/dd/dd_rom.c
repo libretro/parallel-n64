@@ -46,15 +46,70 @@ static const uint8_t Z64_SIGNATURE[4] = { 0x80, 0x27, 0x07, 0x40 };
 static const uint8_t V64_SIGNATURE[4] = { 0x27, 0x80, 0x40, 0x07 };
 static const uint8_t N64_SIGNATURE[4] = { 0x40, 0x07, 0x27, 0x80 };
 
+// Get the system type associated to a ROM country code.
+static m64p_system_type rom_country_code_to_system_type(char country_code)
+{
+   switch (country_code)
+   {
+      // PAL codes
+      case 0x44:
+      case 0x46:
+      case 0x49:
+      case 0x50:
+      case 0x53:
+      case 0x55:
+      case 0x58:
+      case 0x59:
+         return SYSTEM_PAL;
+
+         // NTSC codes
+      case 0x37:
+      case 0x41:
+      case 0x45:
+      case 0x4a:
+      default: // Fallback for unknown codes
+         return SYSTEM_NTSC;
+   }
+}
+
+// Get the VI (vertical interrupt) limit associated to a ROM system type.
+static int rom_system_type_to_vi_limit(m64p_system_type system_type)
+{
+   switch (system_type)
+   {
+      case SYSTEM_PAL:
+      case SYSTEM_MPAL:
+         return 50;
+
+      case SYSTEM_NTSC:
+      default:
+         return 60;
+   }
+}
+
+static int rom_system_type_to_ai_dac_rate(m64p_system_type system_type)
+{
+   switch (system_type)
+   {
+      case SYSTEM_PAL:
+         return 49656530;
+      case SYSTEM_MPAL:
+         return 48628316;
+      case SYSTEM_NTSC:
+      default:
+         return 48681812;
+   }
+}
+
 /* Tests if a file is a valid 64DD IPL rom by checking the first 4 bytes. */
 static int is_valid_rom(const unsigned char *buffer)
 {
-	if (memcmp(buffer, Z64_SIGNATURE, sizeof(Z64_SIGNATURE)) == 0
-		|| memcmp(buffer, V64_SIGNATURE, sizeof(V64_SIGNATURE)) == 0
-		|| memcmp(buffer, N64_SIGNATURE, sizeof(N64_SIGNATURE)) == 0)
-		return 1;
-	else
-		return 0;
+    if (memcmp(buffer, Z64_SIGNATURE, sizeof(Z64_SIGNATURE)) == 0
+        || memcmp(buffer, V64_SIGNATURE, sizeof(V64_SIGNATURE)) == 0
+        || memcmp(buffer, N64_SIGNATURE, sizeof(N64_SIGNATURE)) == 0)
+        return 1;
+    else
+        return 0;
 }
 
 /* Copies the source block of memory to the destination block of memory while
@@ -74,107 +129,118 @@ static int is_valid_rom(const unsigned char *buffer)
 */
 static void swap_copy_rom(void* dst, const void* src, size_t len, unsigned char* imagetype)
 {
-	if (memcmp(src, V64_SIGNATURE, sizeof(V64_SIGNATURE)) == 0)
-	{
-		size_t i;
-		const uint16_t* src16 = (const uint16_t*)src;
-		uint16_t* dst16 = (uint16_t*)dst;
+    if (memcmp(src, V64_SIGNATURE, sizeof(V64_SIGNATURE)) == 0)
+    {
+        size_t i;
+        const uint16_t* src16 = (const uint16_t*)src;
+        uint16_t* dst16 = (uint16_t*)dst;
 
-		*imagetype = V64IMAGE;
-		/* .v64 images have byte-swapped half-words (16-bit). */
-		for (i = 0; i < len; i += 2)
-		{
-			*dst16++ = m64p_swap16(*src16++);
-		}
-	}
-	else if (memcmp(src, N64_SIGNATURE, sizeof(N64_SIGNATURE)) == 0)
-	{
-		size_t i;
-		const uint32_t* src32 = (const uint32_t*)src;
-		uint32_t* dst32 = (uint32_t*)dst;
+        *imagetype = V64IMAGE;
+        /* .v64 images have byte-swapped half-words (16-bit). */
+        for (i = 0; i < len; i += 2)
+        {
+            *dst16++ = m64p_swap16(*src16++);
+        }
+    }
+    else if (memcmp(src, N64_SIGNATURE, sizeof(N64_SIGNATURE)) == 0)
+    {
+        size_t i;
+        const uint32_t* src32 = (const uint32_t*)src;
+        uint32_t* dst32 = (uint32_t*)dst;
 
-		*imagetype = N64IMAGE;
-		/* .n64 images have byte-swapped words (32-bit). */
-		for (i = 0; i < len; i += 4)
-		{
-			*dst32++ = m64p_swap32(*src32++);
-		}
-	}
-	else {
-		*imagetype = Z64IMAGE;
-		memcpy(dst, src, len);
-	}
+        *imagetype = N64IMAGE;
+        /* .n64 images have byte-swapped words (32-bit). */
+        for (i = 0; i < len; i += 4)
+        {
+            *dst32++ = m64p_swap32(*src32++);
+        }
+    }
+    else {
+        *imagetype = Z64IMAGE;
+        memcpy(dst, src, len);
+    }
 }
 
 void connect_dd_rom(struct dd_rom* dd_rom,
                     uint8_t* rom, size_t rom_size)
 {
-	dd_rom->rom = rom;
-	dd_rom->rom_size = rom_size;
+    dd_rom->rom = rom;
+    dd_rom->rom_size = rom_size;
 }
 
 m64p_error open_ddrom(const unsigned char* romimage, unsigned int size)
 {
-	unsigned char imagetype;
+    unsigned char imagetype;
 
-	/* check input requirements */
-	if (g_ddrom != NULL)
-	{
-		DebugMessage(M64MSG_ERROR, "open_ddrom(): previous ROM image was not freed");
-		return M64ERR_INTERNAL;
-	}
-	if (romimage == NULL || !is_valid_rom(romimage))
-	{
-		DebugMessage(M64MSG_ERROR, "open_ddrom(): not a valid ROM image");
-		return M64ERR_INPUT_INVALID;
-	}
+    /* check input requirements */
+    if (g_ddrom != NULL)
+    {
+        DebugMessage(M64MSG_ERROR, "open_ddrom(): previous ROM image was not freed");
+        return M64ERR_INTERNAL;
+    }
+    if (romimage == NULL || !is_valid_rom(romimage))
+    {
+        DebugMessage(M64MSG_ERROR, "open_ddrom(): not a valid ROM image");
+        return M64ERR_INPUT_INVALID;
+    }
 
-	/* Clear Byte-swapped flag, since ROM is now deleted. */
-	g_DDMemHasBeenBSwapped = 0;
-	/* allocate new buffer for ROM and copy into this buffer */
-	g_ddrom_size = size;
-	g_ddrom = (unsigned char *)malloc(size);
-	if (g_ddrom == NULL)
-		return M64ERR_NO_MEMORY;
-	swap_copy_rom(g_ddrom, romimage, size, &imagetype);
+    /* Clear Byte-swapped flag, since ROM is now deleted. */
+    g_DDMemHasBeenBSwapped = 0;
+    /* allocate new buffer for ROM and copy into this buffer */
+    g_ddrom_size = size;
+    g_ddrom = (unsigned char *)malloc(size);
+    if (g_ddrom == NULL)
+        return M64ERR_NO_MEMORY;
+    swap_copy_rom(g_ddrom, romimage, size, &imagetype);
+    
+    memcpy(&ROM_HEADER, g_ddrom, sizeof(m64p_rom_header));
+    
+    /* add some useful properties to ROM_PARAMS */
+   ROM_PARAMS.systemtype = rom_country_code_to_system_type(ROM_HEADER.destination_code);
+   ROM_PARAMS.vilimit = rom_system_type_to_vi_limit(ROM_PARAMS.systemtype);
+   ROM_PARAMS.aidacrate = rom_system_type_to_ai_dac_rate(ROM_PARAMS.systemtype);
 
-	DebugMessage(M64MSG_STATUS, "Retail 64DD IPL loaded!");
+   memcpy(ROM_PARAMS.headername, ROM_HEADER.Name, 20);
+   ROM_PARAMS.headername[20] = '\0';
+   trim(ROM_PARAMS.headername); /* Remove trailing whitespace from ROM name. */
 
-	return M64ERR_SUCCESS;
+    DebugMessage(M64MSG_STATUS, "Retail 64DD IPL loaded!");
+
+    return M64ERR_SUCCESS;
 }
 
 m64p_error close_ddrom(void)
 {
-	if (g_ddrom == NULL)
-		return M64ERR_INVALID_STATE;
+    if (g_ddrom == NULL)
+        return M64ERR_INVALID_STATE;
 
-	free(g_ddrom);
-	g_ddrom = NULL;
+    free(g_ddrom);
+    g_ddrom = NULL;
 
-	/* Clear Byte-swapped flag, since ROM is now deleted. */
-	g_DDMemHasBeenBSwapped = 0;
-	DebugMessage(M64MSG_STATUS, "Rom closed.");
+    /* Clear Byte-swapped flag, since ROM is now deleted. */
+    g_DDMemHasBeenBSwapped = 0;
+    DebugMessage(M64MSG_STATUS, "Rom closed.");
 
-	return M64ERR_SUCCESS;
+    return M64ERR_SUCCESS;
 }
 
 int read_dd_ipl(void* opaque, uint32_t address, uint32_t* value)
 {
-	struct pi_controller* pi = (struct pi_controller*)opaque;
-	uint32_t offset = address & 0x3FFFFC;
+    struct pi_controller* pi = (struct pi_controller*)opaque;
+    uint32_t offset = address & 0x3FFFFC;
 
-	if (pi->dd_rom.rom == NULL || pi->dd_rom.rom_size == 0)
+    if (pi->dd_rom.rom == NULL || pi->dd_rom.rom_size == 0)
    {
       *value = 0;
       return 0;
    }
 
-	*value = *(uint32_t*)(pi->dd_rom.rom + offset);
+    *value = *(uint32_t*)(pi->dd_rom.rom + offset);
 
-	return 0;
+    return 0;
 }
 
 int write_dd_ipl(void* opaque, uint32_t address, uint32_t value, uint32_t mask)
 {
-	return 0;
+    return 0;
 }

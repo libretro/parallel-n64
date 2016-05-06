@@ -175,8 +175,7 @@ void r4300_reset_soft(void)
    unsigned int reset_type = 0; /* 0:ColdReset, 1:NMI */
    unsigned int s7 = 0; /* ??? */
    unsigned int tv_type = get_tv_type(); /* 0:PAL, 1:NTSC, 2:MPAL */
-
-   if ((ConfigGetParamInt(g_CoreConfig, "BootDevice") != 0) && (g_ddrom != NULL) && (g_ddrom_size != 0))
+   if ((g_ddrom != NULL) && (g_ddrom_size != 0) && (g_rom == NULL) && (g_rom_size == 0))
    {
       bsd_dom1_config = *(uint32_t*)g_ddrom;
       rom_type = 1;
@@ -204,7 +203,7 @@ void r4300_reset_soft(void)
 
    g_r4300.mi.regs[MI_INTR_REG] &= ~(MI_INTR_PI | MI_INTR_VI | MI_INTR_AI | MI_INTR_SP);
 
-   if ((ConfigGetParamInt(g_CoreConfig, "BootDevice") != 0) && (g_ddrom != NULL) && (g_ddrom_size != 0))
+   if ((g_ddrom != NULL) && (g_ddrom_size != 0) && (g_rom == NULL) && (g_rom_size == 0))
       memcpy((unsigned char*)g_sp.mem+0x40, g_ddrom+0x40, 0xfc0);
    else
       memcpy((unsigned char*)g_sp.mem+0x40, g_rom+0x40, 0xfc0);
@@ -214,9 +213,6 @@ void r4300_reset_soft(void)
    reg[21] = reset_type; /* s5 */
    reg[22] = g_si.pif.cic.seed; /* s6 */
    reg[23] = s7; /* s7 */
-
-   if ((ConfigGetParamInt(g_CoreConfig, "BootDevice") != 0) && (g_ddrom != NULL) && (g_ddrom_size != 0))
-      reg[22] = 0xdd;
 
    /* required by CIC x105 */
    g_sp.mem[0x1000/4] = 0x3c0dbfc0;
