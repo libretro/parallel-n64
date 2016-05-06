@@ -19,6 +19,31 @@ void apply_shading(void *data);
 #define SSCALE(s, _w) (PERSP_EN ? (float)(PERSP(s, _w))/(1 << 10) : (float)(s)/(1<<21))
 #define TSCALE(s, w)  (PERSP_EN ? (float)(PERSP(s, w))/(1 << 10) : (float)(s)/(1<<21))
 
+static void update_scissor(bool set_scissor)
+{
+   if (!(g_gdp.flags & UPDATE_SCISSOR))
+      return;
+
+   if (set_scissor)
+   {
+      rdp.scissor.ul_x = (uint32_t)rdp.clip_min_x;
+      rdp.scissor.lr_x = (uint32_t)rdp.clip_max_x;
+      rdp.scissor.ul_y = (uint32_t)rdp.clip_min_y;
+      rdp.scissor.lr_y = (uint32_t)rdp.clip_max_y;
+   }
+   else
+   {
+      rdp.scissor.ul_x = (uint32_t)(g_gdp.__clip.xh * rdp.scale_x + rdp.offset_x);
+      rdp.scissor.lr_x = (uint32_t)(g_gdp.__clip.xl * rdp.scale_x + rdp.offset_x);
+      rdp.scissor.ul_y = (uint32_t)(g_gdp.__clip.yh * rdp.scale_y + rdp.offset_y);
+      rdp.scissor.lr_y = (uint32_t)(g_gdp.__clip.yl * rdp.scale_y + rdp.offset_y);
+   }
+
+   grClipWindow (rdp.scissor.ul_x, rdp.scissor.ul_y, rdp.scissor.lr_x, rdp.scissor.lr_y);
+
+   g_gdp.flags ^= UPDATE_SCISSOR;
+}
+
 static void glide64gDPLLETriangle(uint32_t w0, uint32_t w1, int shade, int texture, int zbuffer, uint32_t *rdp_cmd)
 {
    int j;
