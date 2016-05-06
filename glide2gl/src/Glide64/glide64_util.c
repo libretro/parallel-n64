@@ -325,7 +325,7 @@ static void CalculateLOD(VERTEX *v, int n, uint32_t lodmode)
    grTexDetailControl (GR_TMU1, cmb.dc1_lodbias, cmb.dc1_detailscale, detailmax);
 }
 
-static void clip_triangles(int interpolate_colors)
+static void clip_tri(int interpolate_colors)
 {
    int i,j,index,n=rdp.n_global;
 
@@ -722,13 +722,13 @@ static void clip_triangles(int interpolate_colors)
    rdp.n_global = n;
 }
 
-static void render_triangles(uint16_t linew, int old_interpolate)
+static void render_tri (uint16_t linew, int old_interpolate)
 {
    int i, n;
    float fog;
 
    if (rdp.clip)
-      clip_triangles(old_interpolate);
+      clip_tri(old_interpolate);
 
    n = rdp.n_global;
 
@@ -919,7 +919,7 @@ void do_triangle_stuff_2 (uint16_t linew, uint8_t no_clip, int old_interpolate)
          rdp.clip |= Y_CLIP_MIN;
    }
 
-   render_triangles(linew, old_interpolate);
+   render_tri (linew, old_interpolate);
 }
 
 void do_triangle_stuff (uint16_t linew, int old_interpolate) // what else?? do the triangle stuff :P (to keep from writing code twice)
@@ -989,6 +989,32 @@ void do_triangle_stuff (uint16_t linew, int old_interpolate) // what else?? do t
    }
 
    do_triangle_stuff_2(linew, no_clip, old_interpolate);
+}
+
+
+void update_scissor(bool set_scissor)
+{
+   if (!(g_gdp.flags & UPDATE_SCISSOR))
+      return;
+
+   if (set_scissor)
+   {
+      rdp.scissor.ul_x = (uint32_t)rdp.clip_min_x;
+      rdp.scissor.lr_x = (uint32_t)rdp.clip_max_x;
+      rdp.scissor.ul_y = (uint32_t)rdp.clip_min_y;
+      rdp.scissor.lr_y = (uint32_t)rdp.clip_max_y;
+   }
+   else
+   {
+      rdp.scissor.ul_x = (uint32_t)(g_gdp.__clip.xh * rdp.scale_x + rdp.offset_x);
+      rdp.scissor.lr_x = (uint32_t)(g_gdp.__clip.xl * rdp.scale_x + rdp.offset_x);
+      rdp.scissor.ul_y = (uint32_t)(g_gdp.__clip.yh * rdp.scale_y + rdp.offset_y);
+      rdp.scissor.lr_y = (uint32_t)(g_gdp.__clip.yl * rdp.scale_y + rdp.offset_y);
+   }
+
+   grClipWindow (rdp.scissor.ul_x, rdp.scissor.ul_y, rdp.scissor.lr_x, rdp.scissor.lr_y);
+
+   g_gdp.flags ^= UPDATE_SCISSOR;
 }
 
 static void glide64_z_compare(void)
@@ -1349,7 +1375,7 @@ static void clip_w (void)
    rdp.n_global = index;
 }
 
-static int cull_triangle(VERTEX **v) // type changed to VERTEX** [Dave2001]
+static int cull_tri(VERTEX **v) // type changed to VERTEX** [Dave2001]
 {
    int i, draw, iarea;
    unsigned int mode;
@@ -1500,7 +1526,7 @@ void cull_trianglefaces(VERTEX **v, unsigned iterations, bool do_update, bool do
    for (i = 0; i < iterations; i++, vcount += 3)
    {
       if (do_cull)
-         if (cull_triangle(v + vcount))
+         if (cull_tri(v + vcount))
             continue;
 
       deltaZ = dzdx = 0;
