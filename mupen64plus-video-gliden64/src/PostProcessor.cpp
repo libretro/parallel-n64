@@ -10,7 +10,7 @@
 
 #include "Gfx_1.3.h"
 
-#if defined(HAVE_OPENGLES31)
+#if defined(HAVE_OPENGLES_3_1)
 #define SHADER_VERSION "#version 310 es \n"
 #elif defined(HAVE_OPENGLES3)
 #define SHADER_VERSION "#version 300 es \n"

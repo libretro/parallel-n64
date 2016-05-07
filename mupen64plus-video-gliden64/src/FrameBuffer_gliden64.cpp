@@ -244,7 +244,7 @@ void FrameBuffer::init(uint32_t _address, uint32_t _endAddress, uint16_t _format
 #ifdef GL_MULTISAMPLING_SUPPORT
 	if (config.video.multisampling != 0) {
 		glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, m_pTexture->glName);
-#if defined(HAVE_OPENGLES31)
+#if defined(HAVE_OPENGLES_3_1)
 		if (_size > G_IM_SIZ_8b)
 			glTexStorage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, config.video.multisampling, GL_RGBA8, m_pTexture->realWidth, m_pTexture->realHeight, false);
 		else

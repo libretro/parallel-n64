@@ -487,7 +487,7 @@ void TextureCache::init()
 
 		glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, m_pMSDummy->glName);
 
-#if defined(HAVE_OPENGLES31)
+#if defined(HAVE_OPENGLES_3_1)
 		glTexStorage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, config.video.multisampling,
 					GL_RGBA8, m_pMSDummy->realWidth, m_pMSDummy->realHeight, false);
 #else

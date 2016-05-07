@@ -20,7 +20,7 @@
 #define GLESX
 #define GL_UNIFORMBLOCK_SUPPORT
 
-#elif defined(HAVE_OPENGLES31)
+#elif defined(HAVE_OPENGLES_3_1)
 
 #define GLESX
 #define GL_IMAGE_TEXTURES_SUPPORT

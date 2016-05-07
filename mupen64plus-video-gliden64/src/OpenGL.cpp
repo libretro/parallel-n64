@@ -1246,7 +1246,7 @@ void FBOTextureFormats::init()
 		colorType = GL_UNSIGNED_SHORT_5_6_5;
 		colorFormatBytes = 2;
 	}
-#elif defined(HAVE_OPENGLES3) || defined (HAVE_OPENGLES31)
+#elif defined(HAVE_OPENGLES3) || defined (HAVE_OPENGLES_3_1)
 	colorInternalFormat = GL_RGBA;
 	colorFormat = GL_RGBA;
 	colorType = GL_UNSIGNED_BYTE;
@@ -1324,7 +1324,7 @@ void OGLRender::_initExtensions()
 	printf("OpenGL minor version: %d\n", minorVersion);
 #ifndef GLESX
 	m_bImageTexture = (majorVersion >= 4) && (minorVersion >= 3) && (glBindImageTexture != NULL);
-#elif defined(HAVE_OPENGLES31)
+#elif defined(HAVE_OPENGLES_3_1)
 	m_bImageTexture = (majorVersion >= 3) && (minorVersion >= 1) && (glBindImageTexture != NULL);
 #else
 	m_bImageTexture = false;

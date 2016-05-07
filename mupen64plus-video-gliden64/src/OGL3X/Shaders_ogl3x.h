@@ -1,4 +1,4 @@
-#if defined(HAVE_OPENGLES31)
+#if defined(HAVE_OPENGLES_3_1)
 #define MAIN_SHADER_VERSION "#version 310 es \n"
 #define AUXILIARY_SHADER_VERSION "\n"
 #elif defined(HAVE_OPENGLES3)
