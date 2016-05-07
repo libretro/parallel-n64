@@ -26,6 +26,8 @@
 #include "../api/m64p_types.h"
 #include "../main/main.h"
 #include "../memory/memory.h"
+#include "../r4300/cp0.h"
+#include "../r4300/cp0_private.h"
 #include "../r4300/r4300_core.h"
 #include "../ri/rdram_detection_hack.h"
 #include "../ri/ri_controller.h"
@@ -56,7 +58,7 @@ static void dma_pi_read(struct pi_controller *pi)
 
    pi->regs[PI_STATUS_REG] |= 1;
    cp0_update_count();
-   add_interupt_event(PI_INT, 0x1000/* pi->regs[PI_RD_LEN_REG] */);
+   //add_interupt_event(PI_INT, 0x1000/* pi->regs[PI_RD_LEN_REG] */);
 }
 
 /* Copies data from the PI into RDRAM. */
@@ -96,7 +98,7 @@ static void dma_pi_write(struct pi_controller *pi)
             rom_address = (pi->regs[PI_CART_ADDR_REG] - 0x05000400) & 0x3fffff;
             rom = (uint8_t*)g_dd.sec_buf;
             //g_dd.regs[ASIC_CMD_STATUS] &= ~0x14000000;
-            g_dd.regs[ASIC_CMD_STATUS] &= ~0x10000000;
+            //g_dd.regs[ASIC_CMD_STATUS] &= ~0x10000000;
          }
          else if (pi->regs[PI_CART_ADDR_REG] == 0x05000000)
          {
@@ -105,7 +107,7 @@ static void dma_pi_write(struct pi_controller *pi)
             length      = (i + length) > 0x400 ? (0x400 - i) : length;
             rom         = (uint8_t*)g_dd.c2_buf;
             //g_dd.regs[ASIC_CMD_STATUS] &= ~0x44000000;
-            g_dd.regs[ASIC_CMD_STATUS] &= ~0x40000000;
+            //g_dd.regs[ASIC_CMD_STATUS] &= ~0x40000000;
          }
          else
          {
@@ -127,13 +129,15 @@ static void dma_pi_write(struct pi_controller *pi)
 
          invalidate_r4300_cached_code(0x80000000 + dram_address, length);
          invalidate_r4300_cached_code(0xa0000000 + dram_address, length);
-
+/*
          pi->regs[PI_STATUS_REG] |= 3;
          cp0_update_count();
-         add_interupt_event(PI_INT, length / 8);
+         add_interupt_event(PI_INT, length / 8);*/
+         
+         dd_update_bm(&g_dd);
 
 #if 0
-         dd_update_bm(&g_dd);
+         //dd_update_bm(&g_dd);
 #endif
       }
       else
@@ -143,9 +147,10 @@ static void dma_pi_write(struct pi_controller *pi)
 #endif
       }
 
-      pi->regs[PI_STATUS_REG] |= 1;
+      pi->regs[PI_STATUS_REG] |= 3;
       cp0_update_count();
-      add_interupt_event(PI_INT, /*pi->regs[PI_WR_LEN_REG]*/0x1000);
+      //add_interupt_event(PI_INT, /*pi->regs[PI_WR_LEN_REG]*/0x1000);
+      add_interupt_event(PI_INT, ((pi->regs[PI_WR_LEN_REG] * 63) / 25));
 
       return;
    }
@@ -268,6 +273,13 @@ int write_pi_regs(void* opaque, uint32_t address,
 
    switch (reg)
    {
+   	case PI_CART_ADDR_REG:
+   		if (value == 0x05000000 || value == 0x05000400)
+   		{
+   			g_dd.regs[ASIC_CMD_STATUS] &= ~0x5C000000;
+   			g_cp0_regs[CP0_CAUSE_REG] &= ~0x00000800;
+   		}
+   		break;
       case PI_RD_LEN_REG:
          pi->regs[PI_RD_LEN_REG] = MASKED_WRITE(&pi->regs[PI_RD_LEN_REG], value, mask);
          dma_pi_read(pi);
