@@ -842,20 +842,6 @@ static void context_reset(void)
 static void context_destroy(void)
 {
 }
-
-static bool context_imm_vbo_draw(void *data)
-{
-   (void)data;
-   vbo_draw();
-   return true;
-}
-
-static bool context_imm_vbo_disable(void *data)
-{
-   (void)data;
-   vbo_disable();
-   return true;
-}
 #endif
 
 static bool context_framebuffer_lock(void *data)
@@ -884,14 +870,6 @@ bool retro_load_game(const struct retro_game_info *game)
       params.context_destroy       = context_destroy;
       params.environ_cb            = environ_cb;
       params.stencil               = false;
-
-#if 0
-      if (gfx_plugin == GFX_GLIDE64)
-      {
-         params.imm_vbo_draw       = context_imm_vbo_draw;
-         params.imm_vbo_disable    = context_imm_vbo_disable;
-      }
-#endif
 
       params.framebuffer_lock      = context_framebuffer_lock;
 
