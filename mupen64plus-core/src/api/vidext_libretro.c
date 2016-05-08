@@ -33,7 +33,7 @@
 #include "callbacks.h"
 
 #include <libretro.h>
-#if defined(HAVE_OPENGL) || defined(HAVE_OPENGL)
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
 #include <glsm/glsmsym.h>
 #endif
 
@@ -123,7 +123,7 @@ EXPORT m64p_error CALL VidExt_SetVideoMode(int Width, int Height, int BitsPerPix
 
 EXPORT void * CALL VidExt_GL_GetProcAddress(const char* Proc)
 {
-#if defined(HAVE_OPENGL) || defined(HAVE_OPENGL)
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
    glsm_ctx_proc_address_t proc_info;
    proc_info.addr = NULL;
    if (!glsm_ctl(GLSM_CTL_PROC_ADDRESS_GET, NULL))
