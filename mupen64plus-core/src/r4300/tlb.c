@@ -20,14 +20,15 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "tlb.h"
-#include "exception.h"
 
+#include "api/m64p_types.h"
+#include "exception.h"
 #include "main/rom.h"
 
 tlb tlb_e[32];
 
-uint32_t tlb_LUT_r[0x100000];
-uint32_t tlb_LUT_w[0x100000];
+unsigned int tlb_LUT_r[0x100000];
+unsigned int tlb_LUT_w[0x100000];
 
 void tlb_unmap(tlb *entry)
 {
@@ -85,40 +86,47 @@ void tlb_map(tlb *entry)
     }
 }
 
-uint32_t virtual_to_physical_address(uint32_t address, int mode)
+uint32_t virtual_to_physical_address(uint32_t addresse, int w)
 {
-    if (address >= UINT32_C(0x7f000000) && address < UINT32_C(0x80000000) && isGoldeneyeRom)
+    if (addresse >= UINT32_C(0x7f000000) && addresse < UINT32_C(0x80000000) && isGoldeneyeRom)
     {
         /**************************************************
          GoldenEye 007 hack allows for use of TLB.
          Recoded by okaygo to support all US, J, and E ROMS.
         **************************************************/
-        switch (ROM_HEADER.destination_code)
+        switch (ROM_HEADER.destination_code & UINT16_C(0xFF))
         {
-        case 'E': /* North American */
-            return UINT32_C(0xb0034b30) + (address & UINT32_C(0xFFFFFF));
-        case 'J': /* Japanese */
-            return UINT32_C(0xb0034b70) + (address & UINT32_C(0xFFFFFF));
-        case 'P': /* European (PAL spec.) */
-            return UINT32_C(0xb00329f0) + (address & UINT32_C(0xFFFFFF));
+        case 0x45:
+            // U
+            return UINT32_C(0xb0034b30) + (addresse & UINT32_C(0xFFFFFF));
+            break;
+        case 0x4A:
+            // J
+            return UINT32_C(0xb0034b70) + (addresse & UINT32_C(0xFFFFFF));
+            break;
+        case 0x50:
+            // E
+            return UINT32_C(0xb00329f0) + (addresse & UINT32_C(0xFFFFFF));
+            break;
         default:
             // UNKNOWN COUNTRY CODE FOR GOLDENEYE USING AMERICAN VERSION HACK
-            return UINT32_C(0xb0034b30) + (address & UINT32_C(0xFFFFFF));
+            return UINT32_C(0xb0034b30) + (addresse & UINT32_C(0xFFFFFF));
+            break;
         }
     }
-
-    if (mode == TLB_WRITE)
+    if (w == 1)
     {
-        if (tlb_LUT_w[address>>12])
-            return (tlb_LUT_w[address>>12] & UINT32_C(0xFFFFF000))|(address & UINT32_C(0xFFF));
+        if (tlb_LUT_w[addresse>>12])
+            return (tlb_LUT_w[addresse>>12] & UINT32_C(0xFFFFF000)) | (addresse & UINT32_C(0xFFF));
     }
     else
     {
-        if (tlb_LUT_r[address>>12])
-            return (tlb_LUT_r[address>>12] & UINT32_C(0xFFFFF000))|(address & UINT32_C(0xFFF));
+        if (tlb_LUT_r[addresse>>12])
+            return (tlb_LUT_r[addresse>>12] & UINT32_C(0xFFFFF000)) | (addresse & UINT32_C(0xFFF));
     }
-
-    TLB_refill_exception(address, mode);
-
+    //printf("tlb exception !!! @ %x, %x, add:%x\n", addresse, w, PC->addr);
+    //getchar();
+    TLB_refill_exception(addresse,w);
+    //return 0x80000000;
     return 0x00000000;
 }

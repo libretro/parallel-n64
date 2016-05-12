@@ -18,47 +18,49 @@
  *   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.          *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include <stdio.h>
-#include <string.h>
-#include <stdarg.h>
-#include <stdlib.h>
-#include <stdint.h> //include for uint64_t
 #include <assert.h>
+#include <stdarg.h>
+#include <stdint.h> //include for uint64_t
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
-#include <sys/mman.h>
+#if defined(__APPLE__)
+#include <sys/types.h> // needed for u_int, u_char, etc
 
-#if defined(__LIBRETRO__) && (defined(IOS) || defined(__QNX__))
-typedef unsigned char u_char;
-typedef unsigned int u_int;
 #define MAP_ANONYMOUS MAP_ANON
 #endif
 
-#define EMU_MUPEN64
-
-#include "../recomp.h"
-#include "../recomph.h" //include for function prototypes
-#include "../cp0_private.h"
-#include "../cp1.h"
-#include "../r4300.h"
-#include "../ops.h"
-#include "../tlb.h"
-#include "../interupt.h"
-#include "../cached_interp.h"
-#include "new_dynarec.h"
-
-#include "../../memory/memory.h"
+#ifdef __cplusplus
+extern "C" {
+#endif
 #include "../../main/main.h"
 #include "../../main/rom.h"
+#include "../../memory/memory.h"
+#include "../../rsp/rsp_core.h"
+#include "../cached_interp.h"
+#include "../cp0_private.h"
+#include "../cp1_private.h"
+#include "../interupt.h"
+#include "../ops.h"
+#include "../r4300.h"
+#include "../recomp.h"
+#include "../recomph.h" //include for function prototypes
+#include "../tlb.h"
+#include "new_dynarec.h"
+#ifdef __cplusplus
+}
+#endif
 
-#include "rsp/rsp_core.h"
-
+#if !defined(_MSC_VER)
+#include <sys/mman.h>
+#endif
 
 #if NEW_DYNAREC == NEW_DYNAREC_X86
-#include "assem_x86.h"
-#elif NEW_DYNAREC == NEW_DYNAREC_AMD64
-#include "assem_x64.h"
+#include "x86/assem_x86.h"
 #elif NEW_DYNAREC == NEW_DYNAREC_ARM
-#include "assem_arm.h"
+#include "arm/arm_cpu_features.h"
+#include "arm/assem_arm.h"
 #else
 #error Unsupported dynarec architecture
 #endif
@@ -92,8 +94,24 @@ struct ll_entry
   struct ll_entry *next;
 };
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+extern u_char restore_candidate[512];
+extern int cycle_count;
+extern int last_count;
+extern int branch_target;
+extern uint64_t readmem_dword;
+extern struct ll_entry *jump_in[4096];
+extern struct ll_entry *jump_dirty[4096];
+extern ALIGN(16, u_int hash_table[65536][4]);
+#ifdef __cplusplus
+}
+#endif
+
 static u_int start;
 static u_int *source;
+static u_int pagelimit;
 static char insn[MAXBLOCK][10];
 static u_char itype[MAXBLOCK];
 static u_char opcode[MAXBLOCK];
@@ -120,8 +138,10 @@ static uint64_t branch_unneeded_reg_upper[MAXBLOCK];
 static uint64_t p32[MAXBLOCK];
 static uint64_t pr32[MAXBLOCK];
 static signed char regmap_pre[MAXBLOCK][HOST_REGS];
+#ifdef ASSEM_DEBUG
 static signed char regmap[MAXBLOCK][HOST_REGS];
 static signed char regmap_entry[MAXBLOCK][HOST_REGS];
+#endif
 static uint64_t constmap[MAXBLOCK][HOST_REGS];
 static struct regstat regs[MAXBLOCK];
 static struct regstat branch_regs[MAXBLOCK];
@@ -132,10 +152,10 @@ static u_int wont_dirty[MAXBLOCK];
 static u_int will_dirty[MAXBLOCK];
 static int ccadj[MAXBLOCK];
 static int slen;
-static uintptr_t instr_addr[MAXBLOCK];
-static uintptr_t link_addr[MAXBLOCK][3];
+static u_int instr_addr[MAXBLOCK];
+static u_int link_addr[MAXBLOCK][3];
 static int linkcount;
-static uintptr_t stubs[MAXBLOCK*3][8];
+static u_int stubs[MAXBLOCK*3][8];
 static int stubcount;
 static int literalcount;
 static int is_delayslot;
@@ -144,14 +164,12 @@ u_char *out;
 struct ll_entry *jump_in[4096];
 static struct ll_entry *jump_out[4096];
 struct ll_entry *jump_dirty[4096];
-u_int hash_table[65536][4]  __attribute__((aligned(16)));
-char shadow[2097152]  __attribute__((aligned(16)));
-static void *copy;
+ALIGN(16, u_int hash_table[65536][4]);
+ALIGN(16, static char shadow[2097152]);
+static char *copy;
 static int expirep;
 u_int using_tlb;
 static u_int stop_after_jal;
-extern u_char restore_candidate[512];
-extern int cycle_count;
 
   /* registers that may be allocated */
   /* 1-31 gpr */
@@ -232,23 +250,16 @@ void __clear_cache_bugfix(char* begin, char *end);
 	#define __clear_cache __clear_cache_bugfix
 #endif
 
-#ifdef __BLACKBERRY_QNX__
-#undef __clear_cache
-#define __clear_cache(start,end) msync(start, (size_t)((void*)end - (void*)start), MS_SYNC | MS_CACHE_ONLY | MS_INVALIDATE_ICACHE);
-#elif defined(__MACH__)
-#include <libkern/OSCacheControl.h>
-#define __clear_cache mach_clear_cache
-static void __clear_cache(void *start, void *end) {
-  size_t len = (char *)end - (char *)start;
-  sys_dcache_flush(start, len);
-  sys_icache_invalidate(start, len);
-}
-#endif
-
 // asm linkage
+#ifdef __cplusplus
+extern "C" {
+#endif
 int new_recompile_block(int addr);
 void *get_addr_ht(u_int vaddr);
-static void remove_hash(int vaddr);
+void *get_addr(u_int vaddr);
+void *get_addr_32(u_int vaddr,u_int flags);
+void add_link(u_int vaddr,void *src);
+void clean_blocks(u_int page);
 void dyna_linker();
 void dyna_linker_ds();
 void verify_code();
@@ -259,6 +270,10 @@ void fp_exception();
 void fp_exception_ds();
 void jump_syscall();
 void jump_eret();
+#ifdef __cplusplus
+}
+#endif
+static void remove_hash(int vaddr);
 #if NEW_DYNAREC == NEW_DYNAREC_ARM
 static void invalidate_addr(u_int addr);
 #endif
@@ -266,19 +281,25 @@ static void invalidate_addr(u_int addr);
 // TLB
 void TLBWI_new();
 void TLBWR_new();
-void read_nomem_new();
-void read_nomemb_new();
-void read_nomemh_new();
-void read_nomemd_new();
-void write_nomem_new();
-void write_nomemb_new();
-void write_nomemh_new();
-void write_nomemd_new();
-void write_rdram_new();
-void write_rdramb_new();
-void write_rdramh_new();
-void write_rdramd_new();
-extern uintptr_t memory_map[1048576];
+#ifdef __cplusplus
+extern "C" {
+#endif
+void read_nomem_new(void);
+void read_nomemb_new(void);
+void read_nomemh_new(void);
+void read_nomemd_new(void);
+void write_nomem_new(void);
+void write_nomemb_new(void);
+void write_nomemh_new(void);
+void write_nomemd_new(void);
+void write_rdram_new(void);
+void write_rdramb_new(void);
+void write_rdramh_new(void);
+void write_rdramd_new(void);
+extern u_int memory_map[1048576];
+#ifdef __cplusplus
+}
+#endif
 
 // Needed by assembler
 static void wb_register(signed char r,signed char regmap[],uint64_t dirty,uint64_t is32);
@@ -289,11 +310,11 @@ static void load_needed_regs(signed char i_regmap[],signed char next_regmap[]);
 static void load_regs_entry(int t);
 static void load_all_consts(signed char regmap[],int is32,u_int dirty,int i);
 
-static void add_stub(int type,intptr_t addr,int retaddr,int a,intptr_t b,intptr_t c,int d,int e);
-static void add_to_linker(intptr_t addr,int target,int ext);
+static void add_stub(int type,int addr,int retaddr,int a,int b,int c,int d,int e);
+static void add_to_linker(int addr,int target,int ext);
 static int verify_dirty(void *addr);
 
-static int tracedebug=0;
+//static int tracedebug=0;
 
 //#define DEBUG_CYCLE_COUNT 1
 
@@ -308,10 +329,10 @@ static int tracedebug=0;
 	int notcompiledCount = 0;
 #endif
 
-#ifndef __LIBRETRO__ // Quiet the warnings on nullf
-static void nullf() {}
+#ifdef __cplusplus
+static void nullf(...) {}
 #else
-#define nullf(...)
+static void nullf() {}
 #endif
 
 #if defined( ASSEM_DEBUG )
@@ -327,79 +348,61 @@ static void nullf() {}
 
 #define log_message(...) DebugMessage(M64MSG_VERBOSE, __VA_ARGS__)
 
-#ifndef DISABLE_TLB
-static void tlb_hacks(void)
+static void tlb_hacks()
 {
-   // Goldeneye hack
-   if (strncmp((char *) ROM_HEADER.Name, "GOLDENEYE",9) == 0)
-   {
-      u_int addr;
-      int n;
-      switch (ROM_HEADER.destination_code&0xFF) 
-      {
-         case 0x45: // U
-            addr=0x34b30;
-            break;                   
-         case 0x4A: // J 
-            addr=0x34b70;    
-            break;    
-         case 0x50: // E 
-            addr=0x329f0;
-            break;                        
-         default: 
-            // Unknown country code
-            addr=0;
-            break;
+  // Goldeneye hack
+  if (strncmp((char *) ROM_HEADER.Name, "GOLDENEYE",9) == 0)
+  {
+    u_int addr;
+    int n;
+    switch (ROM_HEADER.destination_code&0xFF) 
+    {
+      case 0x45: // U
+        addr=0x34b30;
+        break;                   
+      case 0x4A: // J 
+        addr=0x34b70;    
+        break;    
+      case 0x50: // E 
+        addr=0x329f0;
+        break;                        
+      default: 
+        // Unknown country code
+        addr=0;
+        break;
+    }
+    u_int rom_addr=(u_int)g_rom;
+    #ifdef ROM_COPY
+    // Since memory_map is 32-bit, on 64-bit systems the rom needs to be
+    // in the lower 4G of memory to use this hack.  Copy it if necessary.
+    if((void *)g_rom>(void *)0xffffffff) {
+      munmap(ROM_COPY, 67108864);
+      if(mmap(ROM_COPY, 12582912,
+              PROT_READ | PROT_WRITE,
+              MAP_FIXED | MAP_PRIVATE | MAP_ANONYMOUS,
+              -1, 0) <= 0) {DebugMessage(M64MSG_ERROR, "mmap() failed");}
+      memcpy(ROM_COPY,g_rom,12582912);
+      rom_addr=(u_int)ROM_COPY;
+    }
+    #endif
+    if(addr) {
+      for(n=0x7F000;n<0x80000;n++) {
+        memory_map[n]=(((u_int)(rom_addr+addr-0x7F000000))>>2)|0x40000000;
       }
-      u_int rom_addr=(u_int)g_rom;
-#ifdef ROM_COPY
-      // Since memory_map is 32-bit, on 64-bit systems the rom needs to be
-      // in the lower 4G of memory to use this hack.  Copy it if necessary.
-      if((void *)g_rom > (void *)0xffffffff) {
-         munmap(ROM_COPY, 67108864);
-         if(mmap(ROM_COPY, 12582912,
-                  PROT_READ | PROT_WRITE,
-                  MAP_FIXED | MAP_PRIVATE | MAP_ANONYMOUS,
-                  -1, 0) <= 0) {DebugMessage(M64MSG_ERROR, "mmap() failed");}
-         memcpy(ROM_COPY, g_rom, 12582912);
-         rom_addr=(u_int)ROM_COPY;
-      }
-#endif
-      if(addr) {
-         for(n=0x7F000;n<0x80000;n++) {
-            memory_map[n]=(((u_int)(rom_addr+addr-0x7F000000))>>2)|0x40000000;
-         }
-      }
-   }
-}
-#endif
-
-static u_int get_page(u_int vaddr)
-{
-  u_int page=(vaddr^0x80000000)>>12;
-#ifndef DISABLE_TLB
-  if(page>262143&&tlb_LUT_r[vaddr>>12]) page=(tlb_LUT_r[vaddr>>12]^0x80000000)>>12;
-#endif
-  if(page>2048) page=2048+(page&2047);
-  return page;
-}
-
-static u_int get_vpage(u_int vaddr)
-{
-  u_int vpage=(vaddr^0x80000000)>>12;
-#ifndef DISABLE_TLB
-  if(vpage>262143&&tlb_LUT_r[vaddr>>12]) vpage&=2047; // jump_dirty uses a hash of the virtual address instead
-#endif
-  if(vpage>2048) vpage=2048+(vpage&2047);
-  return vpage;
+    }
+  }
 }
 
 // Get address from virtual address
 // This is called from the recompiled JR/JALR instructions
 void *get_addr(u_int vaddr)
 {
-  u_int page  = get_page(vaddr);
-  u_int vpage = get_vpage(vaddr);
+  u_int page=(vaddr^0x80000000)>>12;
+  u_int vpage=page;
+  if(page>262143&&tlb_LUT_r[vaddr>>12]) page=(tlb_LUT_r[vaddr>>12]^0x80000000)>>12;
+  if(page>2048) page=2048+(page&2047);
+  if(vpage>262143&&tlb_LUT_r[vaddr>>12]) vpage&=2047; // jump_dirty uses a hash of the virtual address instead
+  if(vpage>2048) vpage=2048+(vpage&2047);
   struct ll_entry *head;
   //DebugMessage(M64MSG_VERBOSE, "TRACE: count=%d next=%d (get_addr %x,page %d)",g_cp0_regs[CP0_COUNT_REG],next_interupt,vaddr,page);
   head=jump_in[page];
@@ -420,40 +423,32 @@ void *get_addr(u_int vaddr)
     if(head->vaddr==vaddr&&head->reg32==0) {
       //DebugMessage(M64MSG_VERBOSE, "TRACE: count=%d next=%d (get_addr match dirty %x: %x)",g_cp0_regs[CP0_COUNT_REG],next_interupt,vaddr,(int)head->addr);
       // Don't restore blocks which are about to expire from the cache
-      if((((u_int)head->addr-(u_int)out)<<(32-TARGET_SIZE_2))>0x60000000+(MAX_OUTPUT_BLOCK_SIZE<<(32-TARGET_SIZE_2)))
-      if(verify_dirty(head->addr)) {
-        //DebugMessage(M64MSG_VERBOSE, "restore candidate: %x (%d) d=%d",vaddr,page,invalid_code[vaddr>>12]);
-        invalid_code[vaddr>>12]=0;
-#ifndef DISABLE_TLB
-        if(sizeof(*memory_map)==8)
-           memory_map[vaddr>>12]|=0x4000000000000000;
-        else
-           memory_map[vaddr>>12]|=0x40000000;
-#endif
-        if(vpage<2048) {
-#ifndef DISABLE_TLB
-          if(tlb_LUT_r[vaddr>>12]) {
-            invalid_code[tlb_LUT_r[vaddr>>12]>>12]=0;
-            if(sizeof(*memory_map)==8)
-               memory_map[tlb_LUT_r[vaddr>>12]>>12]|=0x4000000000000000;
-            else
-               memory_map[tlb_LUT_r[vaddr>>12]>>12]|=0x40000000;
+      if((((u_int)head->addr-(u_int)out)<<(32-TARGET_SIZE_2))>0x60000000+(MAX_OUTPUT_BLOCK_SIZE<<(32-TARGET_SIZE_2))) {
+        if(verify_dirty(head->addr)) {
+          //DebugMessage(M64MSG_VERBOSE, "restore candidate: %x (%d) d=%d",vaddr,page,invalid_code[vaddr>>12]);
+          invalid_code[vaddr>>12]=0;
+          memory_map[vaddr>>12]|=0x40000000;
+          if(vpage<2048) {
+            if(tlb_LUT_r[vaddr>>12]) {
+              invalid_code[tlb_LUT_r[vaddr>>12]>>12]=0;
+              memory_map[tlb_LUT_r[vaddr>>12]>>12]|=0x40000000;
+            }
+            restore_candidate[vpage>>3]|=1<<(vpage&7);
           }
-#endif
-          restore_candidate[vpage>>3]|=1<<(vpage&7);
+          else restore_candidate[page>>3]|=1<<(page&7);
+          u_int *ht_bin=hash_table[((vaddr>>16)^vaddr)&0xFFFF];
+          if(ht_bin[0]==vaddr) {
+            ht_bin[1]=(int)head->addr; // Replace existing entry
+          }
+          else
+          {
+            ht_bin[3]=ht_bin[1];
+            ht_bin[2]=ht_bin[0];
+            ht_bin[1]=(int)head->addr;
+            ht_bin[0]=vaddr;
+          }
+          return head->addr;
         }
-        else restore_candidate[page>>3]|=1<<(page&7);
-        u_int *ht_bin=hash_table[((vaddr>>16)^vaddr)&0xFFFF];
-        if(ht_bin[0]==vaddr)
-          ht_bin[1]=(int)head->addr; // Replace existing entry
-        else
-        {
-          ht_bin[3] = ht_bin[1];
-          ht_bin[2] = ht_bin[0];
-          ht_bin[1] = (int)head->addr;
-          ht_bin[0] = vaddr;
-        }
-        return head->addr;
       }
     }
     head=head->next;
@@ -462,23 +457,12 @@ void *get_addr(u_int vaddr)
   int r=new_recompile_block(vaddr);
   if(r==0) return get_addr(vaddr);
   // Execute in unmapped page, generate pagefault execption
- 
-#if defined(EMU_MUPEN64)
-  g_cp0_regs[CP0_STATUS_REG] |=2;
-  g_cp0_regs[CP0_CAUSE_REG] =(vaddr<<31)|0x8;
-  g_cp0_regs[CP0_EPC_REG] = (vaddr&1)?vaddr-5:vaddr;
+  g_cp0_regs[CP0_STATUS_REG]|=2;
+  g_cp0_regs[CP0_CAUSE_REG]=(vaddr<<31)|0x8;
+  g_cp0_regs[CP0_EPC_REG]=(vaddr&1)?vaddr-5:vaddr;
   g_cp0_regs[CP0_BADVADDR_REG]=(vaddr&~1);
-  g_cp0_regs[CP0_CONTEXT_REG] = (g_cp0_regs[CP0_CONTEXT_REG]&0xFF80000F)|((g_cp0_regs[CP0_BADVADDR_REG]>>9)&0x007FFFF0);
-  g_cp0_regs[CP0_ENTRYHI_REG] = g_cp0_regs[CP0_BADVADDR_REG]&0xFFFFE000;
-#elif defined(EMU_PCSXR)
-  Status|=2;
-  Cause=(vaddr<<31)|0x8;
-  EPC=(vaddr&1)?vaddr-5:vaddr;
-  BadVAddr=(vaddr&~1);
-  Context=(Context&0xFF80000F)|((BadVAddr>>9)&0x007FFFF0);
-  EntryHi=BadVAddr&0xFFFFE000;
-#endif
-
+  g_cp0_regs[CP0_CONTEXT_REG]=(g_cp0_regs[CP0_CONTEXT_REG]&0xFF80000F)|((g_cp0_regs[CP0_BADVADDR_REG]>>9)&0x007FFFF0);
+  g_cp0_regs[CP0_ENTRYHI_REG]=g_cp0_regs[CP0_BADVADDR_REG]&0xFFFFE000;
   return get_addr_ht(0x80000000);
 }
 // Look up address in hash table first
@@ -486,38 +470,17 @@ void *get_addr_ht(u_int vaddr)
 {
   //DebugMessage(M64MSG_VERBOSE, "TRACE: count=%d next=%d (get_addr_ht %x)",g_cp0_regs[CP0_COUNT_REG],next_interupt,vaddr);
   u_int *ht_bin=hash_table[((vaddr>>16)^vaddr)&0xFFFF];
-  if(sizeof(void *)==8)
-  {
-     if(ht_bin[0]==vaddr) return (void *)base_addr+((int)ht_bin[1]-(int)base_addr);
-     if(ht_bin[2]==vaddr) return (void *)base_addr+((int)ht_bin[3]-(int)base_addr);
-  }
-  else
-  {
-     if(ht_bin[0]==vaddr) return (void *)ht_bin[1];
-     if(ht_bin[2]==vaddr) return (void *)ht_bin[3];
-  }
-  
+  if(ht_bin[0]==vaddr) return (void *)ht_bin[1];
+  if(ht_bin[2]==vaddr) return (void *)ht_bin[3];
   return get_addr(vaddr);
 }
 
-// Some code is optimized by assuming that certain registers only contain
-// 32-bit values.  We can jump to such locations only if all such registers
-// contain 32-bit values.  This matches such blocks, based on a bitmap of
-// which registers contain values not exceeding the signed 32-bit range.
 void *get_addr_32(u_int vaddr,u_int flags)
 {
   //DebugMessage(M64MSG_VERBOSE, "TRACE: count=%d next=%d (get_addr_32 %x,flags %x)",g_cp0_regs[CP0_COUNT_REG],next_interupt,vaddr,flags);
   u_int *ht_bin=hash_table[((vaddr>>16)^vaddr)&0xFFFF];
-  if(sizeof(void *)==8)
-  {
-    if(ht_bin[0]==vaddr) return (void *)base_addr+((int)ht_bin[1]-(int)base_addr);
-    if(ht_bin[2]==vaddr) return (void *)base_addr+((int)ht_bin[3]-(int)base_addr);
-  }
-  else
-  {
-    if(ht_bin[0]==vaddr) return (void *)ht_bin[1];
-    if(ht_bin[2]==vaddr) return (void *)ht_bin[3];
-  }
+  if(ht_bin[0]==vaddr) return (void *)ht_bin[1];
+  if(ht_bin[2]==vaddr) return (void *)ht_bin[3];
   u_int page=(vaddr^0x80000000)>>12;
   u_int vpage=page;
   if(page>262143&&tlb_LUT_r[vaddr>>12]) page=(tlb_LUT_r[vaddr>>12]^0x80000000)>>12;
@@ -552,40 +515,35 @@ void *get_addr_32(u_int vaddr,u_int flags)
     if(head->vaddr==vaddr&&(head->reg32&flags)==0) {
       //DebugMessage(M64MSG_VERBOSE, "TRACE: count=%d next=%d (get_addr_32 match dirty %x: %x)",g_cp0_regs[CP0_COUNT_REG],next_interupt,vaddr,(int)head->addr);
       // Don't restore blocks which are about to expire from the cache
-      if((((u_int)head->addr-(u_int)out)<<(32-TARGET_SIZE_2))>0x60000000+(MAX_OUTPUT_BLOCK_SIZE<<(32-TARGET_SIZE_2)))
-      if(verify_dirty(head->addr)) {
-        //DebugMessage(M64MSG_VERBOSE, "restore candidate: %x (%d) d=%d",vaddr,page,invalid_code[vaddr>>12]);
-        invalid_code[vaddr>>12]=0;
-        if(sizeof(*memory_map)==8)
-           memory_map[vaddr>>12]|=0x4000000000000000;
-        else
-           memory_map[vaddr>>12]|=0x40000000;
-        if(vpage<2048) {
-          if(tlb_LUT_r[vaddr>>12]) {
-            invalid_code[tlb_LUT_r[vaddr>>12]>>12]=0;
-            if(sizeof(*memory_map)==8)
-               memory_map[tlb_LUT_r[vaddr>>12]>>12]|=0x4000000000000000;
-            else
-               memory_map[tlb_LUT_r[vaddr>>12]>>12]|=0x40000000;
+      if((((u_int)head->addr-(u_int)out)<<(32-TARGET_SIZE_2))>0x60000000+(MAX_OUTPUT_BLOCK_SIZE<<(32-TARGET_SIZE_2))) {
+        if(verify_dirty(head->addr)) {
+          //DebugMessage(M64MSG_VERBOSE, "restore candidate: %x (%d) d=%d",vaddr,page,invalid_code[vaddr>>12]);
+          invalid_code[vaddr>>12]=0;
+          memory_map[vaddr>>12]|=0x40000000;
+          if(vpage<2048) {
+            if(tlb_LUT_r[vaddr>>12]) {
+              invalid_code[tlb_LUT_r[vaddr>>12]>>12]=0;
+              memory_map[tlb_LUT_r[vaddr>>12]>>12]|=0x40000000;
+            }
+            restore_candidate[vpage>>3]|=1<<(vpage&7);
           }
-          restore_candidate[vpage>>3]|=1<<(vpage&7);
-        }
-        else restore_candidate[page>>3]|=1<<(page&7);
-        if(head->reg32==0) {
-          u_int *ht_bin=hash_table[((vaddr>>16)^vaddr)&0xFFFF];
-          if(ht_bin[0]==-1) {
-            ht_bin[1]=(int)head->addr;
-            ht_bin[0]=vaddr;
-          }else if(ht_bin[2]==-1) {
-            ht_bin[3]=(int)head->addr;
-            ht_bin[2]=vaddr;
+          else restore_candidate[page>>3]|=1<<(page&7);
+          if(head->reg32==0) {
+            u_int *ht_bin=hash_table[((vaddr>>16)^vaddr)&0xFFFF];
+            if(ht_bin[0]==-1) {
+              ht_bin[1]=(int)head->addr;
+              ht_bin[0]=vaddr;
+            }else if(ht_bin[2]==-1) {
+              ht_bin[3]=(int)head->addr;
+              ht_bin[2]=vaddr;
+            }
+            //ht_bin[3]=ht_bin[1];
+            //ht_bin[2]=ht_bin[0];
+            //ht_bin[1]=(int)head->addr;
+            //ht_bin[0]=vaddr;
           }
-          //ht_bin[3]=ht_bin[1];
-          //ht_bin[2]=ht_bin[0];
-          //ht_bin[1]=(int)head->addr;
-          //ht_bin[0]=vaddr;
+          return head->addr;
         }
-        return head->addr;
       }
     }
     head=head->next;
@@ -594,12 +552,12 @@ void *get_addr_32(u_int vaddr,u_int flags)
   int r=new_recompile_block(vaddr);
   if(r==0) return get_addr(vaddr);
   // Execute in unmapped page, generate pagefault execption
-  g_cp0_regs[CP0_STATUS_REG] |= 2;
-  g_cp0_regs[CP0_CAUSE_REG] = (vaddr<<31)|0x8;
-  g_cp0_regs[CP0_EPC_REG] = (vaddr&1)?vaddr-5:vaddr;
+  g_cp0_regs[CP0_STATUS_REG]|=2;
+  g_cp0_regs[CP0_CAUSE_REG]=(vaddr<<31)|0x8;
+  g_cp0_regs[CP0_EPC_REG]=(vaddr&1)?vaddr-5:vaddr;
   g_cp0_regs[CP0_BADVADDR_REG]=(vaddr&~1);
-  g_cp0_regs[CP0_CONTEXT_REG] = (g_cp0_regs[CP0_CONTEXT_REG]&0xFF80000F)|((g_cp0_regs[CP0_BADVADDR_REG]>>9)&0x007FFFF0);
-  g_cp0_regs[CP0_ENTRYHI_REG] = g_cp0_regs[CP0_BADVADDR_REG]&0xFFFFE000;
+  g_cp0_regs[CP0_CONTEXT_REG]=(g_cp0_regs[CP0_CONTEXT_REG]&0xFF80000F)|((g_cp0_regs[CP0_BADVADDR_REG]>>9)&0x007FFFF0);
+  g_cp0_regs[CP0_ENTRYHI_REG]=g_cp0_regs[CP0_BADVADDR_REG]&0xFFFFE000;
   return get_addr_ht(0x80000000);
 }
 
@@ -641,20 +599,18 @@ static void dirty_reg(struct regstat *cur,signed char reg)
 {
   int hr;
   if(!reg) return;
-  for (hr=0;hr<HOST_REGS;hr++)
-  {
-    if((cur->regmap[hr]&63)==reg)
-      cur->dirty|=1<<hr;
+  for (hr=0;hr<HOST_REGS;hr++) {
+    if((cur->regmap[hr]&63)==reg) {
+      cur->dirty|=(uint64_t)1<<hr;
+    }
   }
 }
 
-/* If we dirty the lower half of a 64 bit register which is now being
- * sign-extended, we need to dump the upper half.
- *
- * Note: Do this only after completion of the instruction, because
- * some instructions may need to read the full 64-bit value even if
- * overwriting it (eg SLTI, DSRA32).
- */
+// If we dirty the lower half of a 64 bit register which is now being
+// sign-extended, we need to dump the upper half.
+// Note: Do this only after completion of the instruction, because
+// some instructions may need to read the full 64-bit value even if
+// overwriting it (eg SLTI, DSRA32).
 static void flush_dirty_uppers(struct regstat *cur)
 {
   int hr,reg;
@@ -751,11 +707,11 @@ static void lsn(u_char hsn[], int i, int *preferred_reg)
       hsn[rs2[i+j]]=j;
     }
     // On some architectures stores need invc_ptr
-#if defined(HOST_IMM8) || defined(NEED_INVC_PTR)
+    #if defined(HOST_IMM8)
     if(itype[i+j]==STORE || itype[i+j]==STORELR || (opcode[i+j]&0x3b)==0x39) {
       hsn[INVCP]=j;
     }
-#endif
+    #endif
     if(i+j>=0&&(itype[i+j]==UJUMP||itype[i+j]==CJUMP||itype[i+j]==SJUMP||itype[i+j]==FJUMP))
     {
       hsn[CCREG]=j;
@@ -789,34 +745,21 @@ static void lsn(u_char hsn[], int i, int *preferred_reg)
     hsn[RHTBL]=1;
   }
   // Coprocessor load/store needs FTEMP, even if not declared
-  if(itype[i]==C1LS
-#ifdef EMU_PCSXR
-  || (itype[i] == C2LS)
-#else
-#endif
-    )
+  if(itype[i]==C1LS) {
     hsn[FTEMP]=0;
-
+  }
   // Load L/R also uses FTEMP as a temporary register
-  if(itype[i]==LOADLR)
+  if(itype[i]==LOADLR) {
     hsn[FTEMP]=0;
-
-#ifdef EMU_PCSXR
-  // Also SWL/SWR/SDL/SDR
-  if(opcode[i]==0x2a||opcode[i]==0x2e||opcode[i]==0x2c||opcode[i]==0x2d)
-#else
+  }
   // Also 64-bit SDL/SDR
-  if(opcode[i]==0x2c||opcode[i]==0x2d)
-#endif
+  if(opcode[i]==0x2c||opcode[i]==0x2d) {
     hsn[FTEMP]=0;
-
+  }
   // Don't remove the TLB registers either
-  if(itype[i]==LOAD || itype[i]==LOADLR || itype[i]==STORE || itype[i]==STORELR || itype[i]==C1LS
-#ifdef EMU_PCSXR
-        || itype[i]==C2LS
-#endif
-        )
+  if(itype[i]==LOAD || itype[i]==LOADLR || itype[i]==STORE || itype[i]==STORELR || itype[i]==C1LS ) {
     hsn[TLREG]=0;
+  }
   // Don't remove the miniht registers
   if(itype[i]==UJUMP||itype[i]==RJUMP)
   {
@@ -969,7 +912,7 @@ static void divu64(uint64_t dividend,uint64_t divisor)
   //                                     ,(int)reg[LOREG],(int)(reg[LOREG]>>32));
 }
 
-static void mult64(int64_t m1,uint64_t m2)
+static void mult64(int64_t m1,int64_t m2)
 {
    unsigned long long int op1, op2, op3, op4;
    unsigned long long int result1, result2, result3, result4;
@@ -1014,6 +957,7 @@ static void mult64(int64_t m1,uint64_t m2)
      }
 }
 
+#if NEW_DYNAREC == NEW_DYNAREC_ARM
 static void multu64(uint64_t m1,uint64_t m2)
 {
    unsigned long long int op1, op2, op3, op4;
@@ -1041,6 +985,7 @@ static void multu64(uint64_t m1,uint64_t m2)
   //DebugMessage(M64MSG_VERBOSE, "TRACE: dmultu %8x%8x %8x%8x",(int)reg[HIREG],(int)(reg[HIREG]>>32)
   //                                      ,(int)reg[LOREG],(int)(reg[LOREG]>>32));
 }
+#endif
 
 static uint64_t ldl_merge(uint64_t original,uint64_t loaded,u_int bits)
 {
@@ -1066,11 +1011,9 @@ static uint64_t ldr_merge(uint64_t original,uint64_t loaded,u_int bits)
 }
 
 #if NEW_DYNAREC == NEW_DYNAREC_X86
-#include "assem_x86.c"
-#elif NEW_DYNAREC == NEW_DYNAREC_AMD64
-#include "assem_x64.c"
+#include "x86/assem_x86.c"
 #elif NEW_DYNAREC == NEW_DYNAREC_ARM
-#include "assem_arm.c"
+#include "arm/assem_arm.c"
 #else
 #error Unsupported dynarec architecture
 #endif
@@ -1079,7 +1022,7 @@ static uint64_t ldr_merge(uint64_t original,uint64_t loaded,u_int bits)
 static void ll_add(struct ll_entry **head,int vaddr,void *addr)
 {
   struct ll_entry *new_entry;
-  new_entry=malloc(sizeof(struct ll_entry));
+  new_entry=(struct ll_entry *)malloc(sizeof(struct ll_entry));
   assert(new_entry!=NULL);
   new_entry->vaddr=vaddr;
   new_entry->reg32=0;
@@ -1092,7 +1035,7 @@ static void ll_add(struct ll_entry **head,int vaddr,void *addr)
 static void ll_add_32(struct ll_entry **head,int vaddr,u_int reg32,void *addr)
 {
   struct ll_entry *new_entry;
-  new_entry=malloc(sizeof(struct ll_entry));
+  new_entry=(struct ll_entry *)malloc(sizeof(struct ll_entry));
   assert(new_entry!=NULL);
   new_entry->vaddr=vaddr;
   new_entry->reg32=reg32;
@@ -1163,12 +1106,12 @@ static void remove_hash(int vaddr)
   }
 }
 
-static void ll_remove_matching_addrs(struct ll_entry **head, u_int addr,int shift)
+static void ll_remove_matching_addrs(struct ll_entry **head,int addr,int shift)
 {
   struct ll_entry *next;
   while(*head) {
-     if((((u_int)((*head)->addr)-(u_int)base_addr)>>shift)==((addr-(u_int)base_addr)>>shift) || 
-           (((u_int)((*head)->addr)-(u_int)base_addr-MAX_OUTPUT_BLOCK_SIZE)>>shift)==((addr-(u_int)base_addr)>>shift))
+    if((((u_int)((*head)->addr)-(u_int)base_addr)>>shift)==((addr-(u_int)base_addr)>>shift) ||
+       (((u_int)((*head)->addr)-(u_int)base_addr-MAX_OUTPUT_BLOCK_SIZE)>>shift)==((addr-(u_int)base_addr)>>shift))
     {
       inv_debug("EXP: Remove pointer to %x (%x)\n",(int)(*head)->addr,(*head)->vaddr);
       remove_hash((*head)->vaddr);
@@ -1199,32 +1142,25 @@ static void ll_clear(struct ll_entry **head)
 }
 
 // Dereference the pointers and remove if it matches
-static void ll_kill_pointers(struct ll_entry *head,u_int addr,int shift)
+static void ll_kill_pointers(struct ll_entry *head,int addr,int shift)
 {
   while(head) {
     u_int ptr=get_pointer(head->addr);
     inv_debug("EXP: Lookup pointer to %x at %x (%x)\n",(int)ptr,(int)head->addr,head->vaddr);
-#if 0
-    printf("EXP: Lookup pointer to %x at %x (%x)\n",(int)ptr,(int)head->addr,head->vaddr);
-#endif
     if((((ptr-(u_int)base_addr)>>shift)==((addr-(u_int)base_addr)>>shift)) ||
-          (((ptr-(u_int)base_addr-MAX_OUTPUT_BLOCK_SIZE)>>shift)==((addr-(u_int)base_addr)>>shift)))
+       (((ptr-(u_int)base_addr-MAX_OUTPUT_BLOCK_SIZE)>>shift)==((addr-(u_int)base_addr)>>shift)))
     {
       inv_debug("EXP: Kill pointer at %x (%x)\n",(int)head->addr,head->vaddr);
-#if 0
-      printf("EXP: Kill pointer at %x (%x)\n",(int)head->addr,head->vaddr);
-#endif
       u_int host_addr=(int)kill_pointer(head->addr);
       #if NEW_DYNAREC == NEW_DYNAREC_ARM
         needs_clear_cache[(host_addr-(u_int)base_addr)>>17]|=1<<(((host_addr-(u_int)base_addr)>>12)&31);
       #else
-      /* avoid unused variable warning */
-      (void)host_addr;
+        /* avoid unused variable warning */
+        (void)host_addr;
       #endif
     }
     head=head->next;
   }
-  fflush(stdout);
 }
 
 // This is called when we write to a compiled block (see do_invstub)
@@ -1245,7 +1181,7 @@ static void invalidate_page(u_int page)
   jump_out[page]=0;
   while(head!=NULL) {
     inv_debug("INVALIDATE: kill pointer to %x (%x)\n",head->vaddr,(int)head->addr);
-    u_int host_addr=(int)kill_pointer(head->addr);
+      u_int host_addr=(int)kill_pointer(head->addr);
     #if NEW_DYNAREC == NEW_DYNAREC_ARM
       needs_clear_cache[(host_addr-(u_int)base_addr)>>17]|=1<<(((host_addr-(u_int)base_addr)>>12)&31);
     #else
@@ -1275,7 +1211,7 @@ void invalidate_block(u_int block)
   while(head!=NULL) {
     u_int start,end;
     if(vpage>2047||(head->vaddr>>12)==block) { // Ignore vaddr hash collision
-      get_bounds((intptr_t)head->addr,&start,&end);
+      get_bounds((int)head->addr,&start,&end);
       //DebugMessage(M64MSG_VERBOSE, "start: %x end: %x",start,end);
       if(page<2048&&start>=0x80000000&&end<0x80800000) {
         if(((start-(u_int)g_rdram)>>12)<=page&&((end-1-(u_int)g_rdram)>>12)>=page) {
@@ -1314,13 +1250,12 @@ void invalidate_block(u_int block)
   if(tlb_LUT_w[block]) {
     assert(tlb_LUT_r[block]==tlb_LUT_w[block]);
     // CHECK: Is this right?
-    memory_map[block]=((tlb_LUT_w[block]&0xFFFFF000)-(block<<12)+(uintptr_t)g_rdram-0x80000000)>>2;
+    memory_map[block]=((tlb_LUT_w[block]&0xFFFFF000)-(block<<12)+(unsigned int)g_rdram-0x80000000)>>2;
     u_int real_block=tlb_LUT_w[block]>>12;
     invalid_code[real_block]=1;
-    if(real_block>=0x80000&&real_block<0x80800) memory_map[real_block]=((uintptr_t)g_rdram-0x80000000)>>2;
+    if(real_block>=0x80000&&real_block<0x80800) memory_map[real_block]=((u_int)g_rdram-0x80000000)>>2;
   }
-  else if(block>=0x80000&&block<0x80800) memory_map[block]=((uintptr_t)g_rdram-0x80000000)>>2;
-  
+  else if(block>=0x80000&&block<0x80800) memory_map[block]=((u_int)g_rdram-0x80000000)>>2;
   #ifdef USE_MINI_HT
   memset(mini_ht,-1,sizeof(mini_ht));
   #endif
@@ -1328,23 +1263,23 @@ void invalidate_block(u_int block)
 
 void invalidate_cached_code_new_dynarec(uint32_t address, size_t size)
 {
-   size_t i;
-   size_t begin;
-   size_t end;
+    size_t i;
+    size_t begin;
+    size_t end;
 
-   if (size == 0)
-   {
-      begin = 0;
-      end = 0xfffff;
-   }
-   else
-   {
-      begin = address >> 12;
-      end = (address+size-1) >> 12;
-   }
+    if (size == 0)
+    {
+        begin = 0;
+        end = 0xfffff;
+    }
+    else
+    {
+        begin = address >> 12;
+        end = (address+size-1) >> 12;
+    }
 
-   for(i = begin; i <= end; ++i)
-      invalidate_block(i);
+    for(i = begin; i <= end; ++i)
+        invalidate_block(i);
 }
 
 #if NEW_DYNAREC == NEW_DYNAREC_ARM
@@ -1358,38 +1293,34 @@ static void invalidate_addr(u_int addr)
 // Anything could have changed, so invalidate everything.
 void invalidate_all_pages()
 {
-   u_int page;
-   for(page=0;page<4096;page++)
-      invalidate_page(page);
-   for(page=0;page<1048576;page++)
-      if(!invalid_code[page]) {
-         restore_candidate[(page&2047)>>3]|=1<<(page&7);
-         restore_candidate[((page&2047)>>3)+256]|=1<<(page&7);
-      }
-#if NEW_DYNAREC == NEW_DYNAREC_ARM
-   __clear_cache((void *)base_addr,(void *)base_addr+(1<<TARGET_SIZE_2));
-   //cacheflush((void *)base_addr,(void *)base_addr+(1<<TARGET_SIZE_2),0);
-#endif
-#ifdef USE_MINI_HT
-   memset(mini_ht,-1,sizeof(mini_ht));
-#endif
-#ifndef DISABLE_TLB
-   for(page=0;page<0x100000;page++)
-   {
-      if(tlb_LUT_r[page])
-      {
-         memory_map[page]=((tlb_LUT_r[page]&0xFFFFF000)-(page<<12)+(unsigned int)g_rdram-0x80000000)>>2;
-         if(!tlb_LUT_w[page]||!invalid_code[page])
-         {
-            if(sizeof(*memory_map)==8) memory_map[page]|=0x4000000000000000; // Write protect
-            else memory_map[page]|=0x40000000; // Write protect
-         }
-      }
-      else memory_map[page]=-1L;
-      if(page==0x80000) page=0xC0000;
-   }
-   tlb_hacks();
-#endif
+  u_int page;
+  for(page=0;page<4096;page++)
+    invalidate_page(page);
+  for(page=0;page<1048576;page++)
+  {
+    if(!invalid_code[page]) {
+      restore_candidate[(page&2047)>>3]|=1<<(page&7);
+      restore_candidate[((page&2047)>>3)+256]|=1<<(page&7);
+    }
+  }
+  #if NEW_DYNAREC == NEW_DYNAREC_ARM
+  __clear_cache((void *)base_addr,(void *)base_addr+(1<<TARGET_SIZE_2));
+  //cacheflush((void *)base_addr,(void *)base_addr+(1<<TARGET_SIZE_2),0);
+  #endif
+  #ifdef USE_MINI_HT
+  memset(mini_ht,-1,sizeof(mini_ht));
+  #endif
+  // TLB
+  for(page=0;page<0x100000;page++) {
+    if(tlb_LUT_r[page]) {
+      memory_map[page]=((tlb_LUT_r[page]&0xFFFFF000)-(page<<12)+(unsigned int)g_rdram-0x80000000)>>2;
+      if(!tlb_LUT_w[page]||!invalid_code[page])
+        memory_map[page]|=0x40000000; // Write protect
+    }
+    else memory_map[page]=-1;
+    if(page==0x80000) page=0xC0000;
+  }
+  tlb_hacks();
 }
 
 // Add an entry to jump_out after making a link
@@ -1422,7 +1353,7 @@ void clean_blocks(u_int page)
           //DebugMessage(M64MSG_VERBOSE, "Possibly Restore %x (%x)",head->vaddr, (int)head->addr);
           u_int i;
           u_int inv=0;
-          get_bounds((intptr_t)head->addr,&start,&end);
+          get_bounds((int)head->addr,&start,&end);
           if(start-(u_int)g_rdram<0x800000) {
             for(i=(start-(u_int)g_rdram+0x80000000)>>12;i<=(end-1-(u_int)g_rdram+0x80000000)>>12;i++) {
               inv|=invalid_code[i];
@@ -1437,7 +1368,7 @@ void clean_blocks(u_int page)
             inv=1;
           }
           if(!inv) {
-            void * clean_addr=(void *)get_clean_addr((intptr_t)head->addr);
+            void * clean_addr=(void *)get_clean_addr((int)head->addr);
             if((((u_int)clean_addr-(u_int)out)<<(32-TARGET_SIZE_2))>0x60000000+(MAX_OUTPUT_BLOCK_SIZE<<(32-TARGET_SIZE_2))) {
               u_int ppage=page;
               if(page<2048&&tlb_LUT_r[head->vaddr>>12]) ppage=(tlb_LUT_r[head->vaddr>>12]^0x80000000)>>12;
@@ -1811,7 +1742,7 @@ static void store_alloc(struct regstat *current,int i)
   }
   // If using TLB, need a register for pointer to the mapping table
   if(using_tlb) alloc_reg(current,i,TLREG);
-  #if defined(HOST_IMM8) || defined(NEED_INVC_PTR)
+  #if defined(HOST_IMM8)
   // On CPUs without 32-bit immediates we need a pointer to invalid_code
   else alloc_reg(current,i,INVCP);
   #endif
@@ -1835,7 +1766,7 @@ static void c1ls_alloc(struct regstat *current,int i)
   }
   // If using TLB, need a register for pointer to the mapping table
   if(using_tlb) alloc_reg(current,i,TLREG);
-  #if defined(HOST_IMM8) || defined(NEED_INVC_PTR)
+  #if defined(HOST_IMM8)
   // On CPUs without 32-bit immediates we need a pointer to invalid_code
   else if((opcode[i]&0x3b)==0x39) // SWC1/SDC1
     alloc_reg(current,i,INVCP);
@@ -2117,7 +2048,7 @@ static void pagespan_alloc(struct regstat *current,int i)
   //else ...
 }
 
-static void add_stub(int type,intptr_t addr,int retaddr,int a,intptr_t b,intptr_t c,int d,int e)
+static void add_stub(int type,int addr,int retaddr,int a,int b,int c,int d,int e)
 {
   stubs[stubcount][0]=type;
   stubs[stubcount][1]=addr;
@@ -2153,7 +2084,7 @@ static void wb_register(signed char r,signed char regmap[],uint64_t dirty,uint64
   }
 }
 #if 0
-int mchecksum()
+static int mchecksum()
 {
   //if(!tracedebug) return 0;
   int i;
@@ -2193,7 +2124,7 @@ static void enabletrace()
 }
 
 
-void memdebug(int i)
+static void memdebug(int i)
 {
   //DebugMessage(M64MSG_VERBOSE, "TRACE: count=%d next=%d (checksum %x) lo=%8x%8x",g_cp0_regs[CP0_COUNT_REG],next_interupt,mchecksum(),(int)(reg[LOREG]>>32),(int)reg[LOREG]);
   //DebugMessage(M64MSG_VERBOSE, "TRACE: count=%d next=%d (rchecksum %x)",g_cp0_regs[CP0_COUNT_REG],next_interupt,rchecksum());
@@ -2273,11 +2204,23 @@ static void alu_assemble(int i,struct regstat *i_regs)
         if(rs1[i]&&rs2[i]) {
           assert(s1l>=0);
           assert(s2l>=0);
-          if(opcode2[i]&2) emit_subs(s1l,s2l,tl);
-          else emit_adds(s1l,s2l,tl);
           if(th>=0) {
-            if(opcode2[i]&2) emit_sbc(s1h,s2h,th);
-            else emit_adc(s1h,s2h,th);
+            #ifdef INVERTED_CARRY
+            if(opcode2[i]&2) emit_sub64_32(s1l,s1h,s2l,s2h,tl,th);
+            #else
+            if(opcode2[i]&2) {
+              emit_subs(s1l,s2l,tl);
+              emit_sbc(s1h,s2h,th);
+            }
+            #endif
+            else {
+              emit_adds(s1l,s2l,tl);
+              emit_adc(s1h,s2h,th);
+            }
+          }
+          else {
+            if(opcode2[i]&2) emit_subs(s1l,s2l,tl);
+            else emit_adds(s1l,s2l,tl);
           }
         }
         else if(rs1[i]) {
@@ -2890,7 +2833,7 @@ static void load_assemble(int i,struct regstat *i_regs)
 {
   int s,th,tl,addr,map=-1,cache=-1;
   int offset;
-  intptr_t jaddr=0;
+  int jaddr=0;
   int memtarget,c=0;
   u_int hr,reglist=0;
   th=get_reg(i_regs->regmap,rt1[i]|64);
@@ -2914,22 +2857,12 @@ static void load_assemble(int i,struct regstat *i_regs)
   assert(tl>=0); // Even if the load is a NOP, we must check for pagefaults and I/O
   reglist&=~(1<<tl);
   if(th>=0) reglist&=~(1<<th);
-  int dummy=(rt1[i]==0)||(tl!=get_reg(i_regs->regmap,rt1[i])); // ignore loads to r0 and unneeded reg
   if(!using_tlb) {
     if(!c) {
-#ifdef RAM_OFFSET
-       map=get_reg(i_regs->regmap,ROREG);
-#ifdef HOST_TEMPREG
-       if(map<0) if(!dummy) emit_loadreg(ROREG,map=HOST_TEMPREG);
-#else
-       if(!dummy) {
-          if(map<0) {
-             map=get_reg(i_regs->regmap,-1);
-             if(map>=0) emit_loadreg(ROREG,map);
-          }
-       }
-#endif
-#endif
+      #ifdef RAM_OFFSET
+      map=get_reg(i_regs->regmap,ROREG);
+      if(map<0) emit_loadreg(ROREG,map=HOST_TEMPREG);
+      #endif
 //#define R29_HACK 1
       #ifdef R29_HACK
       // Strmnnrmn's speed hack
@@ -2937,7 +2870,7 @@ static void load_assemble(int i,struct regstat *i_regs)
       #endif
       {
         emit_cmpimm(addr,0x800000);
-        jaddr=(intptr_t)out;
+        jaddr=(int)out;
         #ifdef CORTEX_A8_BRANCH_PREDICTION_HACK
         // Hint to branch predictor that the branch is unlikely to be taken
         if(rs1[i]>=28)
@@ -2958,6 +2891,7 @@ static void load_assemble(int i,struct regstat *i_regs)
     map=do_tlb_r(addr,tl,map,cache,x,-1,-1,c,constmap[i][s]+offset);
     do_tlb_r_branch(map,c,constmap[i][s]+offset,&jaddr);
   }
+  int dummy=(rt1[i]==0)||(tl!=get_reg(i_regs->regmap,rt1[i])); // ignore loads to r0 and unneeded reg
   if (opcode[i]==0x20) { // LB
     if(!c||memtarget) {
       if(!dummy) {
@@ -2973,15 +2907,11 @@ static void load_assemble(int i,struct regstat *i_regs)
           int x=0;
           if(!c) emit_xorimm(addr,3,tl);
           else x=((constmap[i][s]+offset)^3)-(constmap[i][s]+offset);
-#ifdef RAM_OFFSET
-          if(c) emit_movsbl_indexed(x,tl,tl);
-          else
-#endif
           emit_movsbl_indexed_tlb(x,tl,map,tl);
         }
       }
       if(jaddr)
-        add_stub(LOADB_STUB,jaddr,(int)out,i,addr,(intptr_t)i_regs,ccadj[i],reglist);
+        add_stub(LOADB_STUB,jaddr,(int)out,i,addr,(int)i_regs,ccadj[i],reglist);
     }
     else
       inline_readstub(LOADB_STUB,i,constmap[i][s]+offset,i_regs->regmap,rt1[i],ccadj[i],reglist);
@@ -3006,7 +2936,6 @@ static void load_assemble(int i,struct regstat *i_regs)
             emit_movswl_indexed(x,tl,tl);
           }else{
             #ifdef RAM_OFFSET
-             if(!c) gen_tlb_addr_r(tl,-1);
             emit_movswl_indexed(x,tl,tl);
             #else
             emit_movswl_indexed((int)g_rdram-0x80000000+x,tl,tl);
@@ -3015,7 +2944,7 @@ static void load_assemble(int i,struct regstat *i_regs)
         }
       }
       if(jaddr)
-        add_stub(LOADH_STUB,jaddr,(int)out,i,addr,(intptr_t)i_regs,ccadj[i],reglist);
+        add_stub(LOADH_STUB,jaddr,(int)out,i,addr,(int)i_regs,ccadj[i],reglist);
     }
     else
       inline_readstub(LOADH_STUB,i,constmap[i][s]+offset,i_regs->regmap,rt1[i],ccadj[i],reglist);
@@ -3177,9 +3106,7 @@ static void store_assemble(int i,struct regstat *i_regs)
   int s,th,tl,map=-1,cache=-1;
   int addr,temp;
   int offset;
-  int type;
-  intptr_t jaddr = 0;
-  intptr_t jaddr2;
+  int jaddr=0,jaddr2,type;
   int memtarget,c=0;
   int agr=AGEN1+(i&1);
   u_int hr,reglist=0;
@@ -3221,7 +3148,7 @@ static void store_assemble(int i,struct regstat *i_regs)
       if(rs1[i]!=29||start<0x80001000||start>=0x80800000)
       #endif
       {
-        jaddr=(intptr_t)out;
+        jaddr=(int)out;
         #ifdef CORTEX_A8_BRANCH_PREDICTION_HACK
         // Hint to branch predictor that the branch is unlikely to be taken
         if(rs1[i]>=28)
@@ -3309,7 +3236,7 @@ static void store_assemble(int i,struct regstat *i_regs)
       #if defined(HAVE_CONDITIONAL_CALL) && !defined(DESTRUCTIVE_SHIFT)
       emit_callne(invalidate_addr_reg[addr]);
       #else
-      jaddr2=(intptr_t)out;
+      jaddr2=(int)out;
       emit_jne(0);
       add_stub(INVCODE_STUB,jaddr2,(int)out,reglist|(1<<HOST_CCREG),addr,0,0,0);
       #endif
@@ -3369,8 +3296,7 @@ static void storelr_assemble(int i,struct regstat *i_regs)
   int temp;
   int temp2;
   int offset;
-  intptr_t jaddr2;
-  intptr_t jaddr = 0;
+  int jaddr=0,jaddr2;
   int case1,case2,case3;
   int done0,done1,done2;
   int memtarget,c=0;
@@ -3396,13 +3322,13 @@ static void storelr_assemble(int i,struct regstat *i_regs)
     if(!c) {
       emit_cmpimm(s<0||offset?temp:s,0x800000);
       if(!offset&&s!=temp) emit_mov(s,temp);
-      jaddr=(intptr_t)out;
+      jaddr=(int)out;
       emit_jno(0);
     }
     else
     {
       if(!memtarget||!rs1[i]) {
-        jaddr=(intptr_t)out;
+        jaddr=(int)out;
         emit_jmp(0);
       }
     }
@@ -3423,7 +3349,7 @@ static void storelr_assemble(int i,struct regstat *i_regs)
     if(!c&&!offset&&s>=0) emit_mov(s,temp);
     do_tlb_w_branch(map,c,constmap[i][s]+offset,&jaddr);
     if(!jaddr&&!memtarget) {
-      jaddr=(intptr_t)out;
+      jaddr=(int)out;
       emit_jmp(0);
     }
     gen_tlb_addr_w(temp,map);
@@ -3585,7 +3511,7 @@ static void storelr_assemble(int i,struct regstat *i_regs)
     #if defined(HAVE_CONDITIONAL_CALL) && !defined(DESTRUCTIVE_SHIFT)
     emit_callne(invalidate_addr_reg[temp]);
     #else
-    jaddr2=(intptr_t)out;
+    jaddr2=(int)out;
     emit_jne(0);
     add_stub(INVCODE_STUB,jaddr2,(int)out,reglist|(1<<HOST_CCREG),temp,0,0,0);
     #endif
@@ -3612,8 +3538,7 @@ static void c1ls_assemble(int i,struct regstat *i_regs)
   int map=-1;
   int offset;
   int c=0;
-  int jaddr,jaddr3,type;
-  intptr_t jaddr2 = 0;
+  int jaddr,jaddr2=0,jaddr3,type;
   int agr=AGEN1+(i&1);
   u_int hr,reglist=0;
   th=get_reg(i_regs->regmap,FTEMP|64);
@@ -3697,11 +3622,11 @@ static void c1ls_assemble(int i,struct regstat *i_regs)
   }
   if(!using_tlb) {
     if(!c) {
-      jaddr2=(intptr_t)out;
+      jaddr2=(int)out;
       emit_jno(0);
     }
     else if(((signed int)(constmap[i][s]+offset))>=(signed int)0x80800000) {
-      jaddr2=(intptr_t)out;
+      jaddr2=(int)out;
       emit_jmp(0); // inline_readstub/inline_writestub?  Very rare case
     }
     #ifdef DESTRUCTIVE_SHIFT
@@ -3905,7 +3830,7 @@ static void ds_assemble(int i,struct regstat *i_regs)
 static int internal_branch(uint64_t i_is32,int addr)
 {
   if(addr&1) return 0; // Indirect (register) jump
-  if(addr>=start && addr<start+slen*4-4)
+  if((u_int)addr>=start && (u_int)addr<start+slen*4-4)
   {
     int t=(addr-start)>>2;
     // Delay slots are not valid branch targets
@@ -4630,8 +4555,13 @@ static void load_regs_bt(signed char i_regmap[],uint64_t i_is32,uint64_t i_dirty
         }
         else if((i_is32>>(regs[t].regmap_entry[hr]&63))&1) {
           int lr=get_reg(regs[t].regmap_entry,regs[t].regmap_entry[hr]-64);
-          assert(lr>=0);
-          emit_sarimm(lr,31,hr);
+          if(lr<0) {
+            emit_loadreg(regs[t].regmap_entry[hr],hr);
+          }
+          else
+          {
+            emit_sarimm(lr,31,hr);
+          }
         }
       }
     }
@@ -4640,7 +4570,7 @@ static void load_regs_bt(signed char i_regmap[],uint64_t i_is32,uint64_t i_dirty
 
 static int match_bt(signed char i_regmap[],uint64_t i_is32,uint64_t i_dirty,int addr)
 {
-  if(addr>=start && addr<start+slen*4-4)
+  if((u_int)addr>=start && (u_int)addr<start+slen*4-4)
   {
     int t=(addr-start)>>2;
     int hr;
@@ -4788,7 +4718,7 @@ static void ds_assemble_entry(int i)
   else
     assem_debug("branch: external");
   assert(internal_branch(regs[t].is32,ba[i]+4));
-  add_to_linker((intptr_t)out,ba[i]+4,internal_branch(regs[t].is32,ba[i]+4));
+  add_to_linker((int)out,ba[i]+4,internal_branch(regs[t].is32,ba[i]+4));
   emit_jmp(0);
 }
 
@@ -4829,7 +4759,7 @@ static void do_cc(int i,signed char i_regmap[],int *adj,int addr,int taken,int i
   }
   else
   {
-    emit_cmpimm(HOST_CCREG,-CLOCK_DIVIDER*(count+2));
+    emit_cmpimm(HOST_CCREG,-(int)CLOCK_DIVIDER*(count+2));
     jaddr=(int)out;
     emit_jns(0);
   }
@@ -5044,7 +4974,7 @@ static void do_ccstub(int n)
     if(itype[i]==RJUMP)
     {
       int r=get_reg(branch_regs[i].regmap,rs1[i]);
-      if(rs1[i]==rt1[i+1]||rs1[i]==rt2[i+1]) {
+      if((rs1[i]==rt1[i+1]||rs1[i]==rt2[i+1])&&(rs1[i]!=0)) {
         r=get_reg(branch_regs[i].regmap,RTEMP);
       }
       emit_writeword(r,(int)&pcaddr);
@@ -5055,7 +4985,7 @@ static void do_ccstub(int n)
   assert(branch_regs[i].regmap[HOST_CCREG]==CCREG||branch_regs[i].regmap[HOST_CCREG]==-1);
   if(stubs[n][3]) emit_addimm(HOST_CCREG,CLOCK_DIVIDER*stubs[n][3],HOST_CCREG);
   emit_call((int)cc_interrupt);
-  if(stubs[n][3]) emit_addimm(HOST_CCREG,-CLOCK_DIVIDER*stubs[n][3],HOST_CCREG);
+  if(stubs[n][3]) emit_addimm(HOST_CCREG,-(int)CLOCK_DIVIDER*stubs[n][3],HOST_CCREG);
   if(stubs[n][6]==TAKEN) {
     if(internal_branch(branch_regs[i].is32,ba[i]))
       load_needed_regs(branch_regs[i].regmap,regs[(ba[i]-start)>>2].regmap_entry);
@@ -5106,7 +5036,7 @@ static void do_ccstub(int n)
   emit_jmpreg(EAX);*/
 }
 
-static void add_to_linker(intptr_t addr,int target,int ext)
+static void add_to_linker(int addr,int target,int ext)
 {
   link_addr[linkcount][0]=addr;
   link_addr[linkcount][1]=target;
@@ -5196,7 +5126,7 @@ static void ujump_assemble(int i,struct regstat *i_regs)
     ds_assemble_entry(i);
   }
   else {
-    add_to_linker((intptr_t)out,ba[i],internal_branch(branch_regs[i].is32,ba[i]));
+    add_to_linker((int)out,ba[i],internal_branch(branch_regs[i].is32,ba[i]));
     emit_jmp(0);
   }
 }
@@ -5210,7 +5140,7 @@ static void rjump_assemble(int i,struct regstat *i_regs)
   int rs,cc;
   rs=get_reg(branch_regs[i].regmap,rs1[i]);
   assert(rs>=0);
-  if(rs1[i]==rt1[i+1]||rs1[i]==rt2[i+1]) {
+  if((rs1[i]==rt1[i+1]||rs1[i]==rt2[i+1])&&(rs1[i]!=0)) {
     // Delay slot abuse, make a copy of the branch address register
     temp=get_reg(branch_regs[i].regmap,RTEMP);
     assert(temp>=0);
@@ -5355,7 +5285,7 @@ static void cjump_assemble(int i,struct regstat *i_regs)
   int unconditional=0,nop=0;
   int only32=0;
   int invert=0;
-  int internal=internal_branch(branch_regs[i].is32,ba[i]);
+  int branch_internal=internal_branch(branch_regs[i].is32,ba[i]);
   if(i==(ba[i]-start)>>2) assem_debug("idle loop");
   if(!match) invert=1;
   #ifdef CORTEX_A8_BRANCH_PREDICTION_HACK
@@ -5425,15 +5355,15 @@ static void cjump_assemble(int i,struct regstat *i_regs)
       if(i!=(ba[i]-start)>>2 || source[i+1]!=0) {
         if(adj) emit_addimm(cc,CLOCK_DIVIDER*(ccadj[i]+2-adj),cc);
         load_regs_bt(branch_regs[i].regmap,branch_regs[i].is32,branch_regs[i].dirty,ba[i]);
-        if(internal)
+        if(branch_internal)
           assem_debug("branch: internal");
         else
           assem_debug("branch: external");
-        if(internal&&is_ds[(ba[i]-start)>>2]) {
+        if(branch_internal&&is_ds[(ba[i]-start)>>2]) {
           ds_assemble_entry(i);
         }
         else {
-          add_to_linker((intptr_t)out,ba[i],internal);
+          add_to_linker((int)out,ba[i],branch_internal);
           emit_jmp(0);
         }
         #ifdef CORTEX_A8_BRANCH_PREDICTION_HACK
@@ -5466,14 +5396,14 @@ static void cjump_assemble(int i,struct regstat *i_regs)
           if(s2h>=0) emit_cmp(s1h,s2h);
           else emit_test(s1h,s1h);
           if(invert) taken=(int)out;
-          else add_to_linker((intptr_t)out,ba[i],internal);
+          else add_to_linker((int)out,ba[i],branch_internal);
           emit_jne(0);
         }
         if(opcode[i]==6) // BLEZ
         {
           emit_test(s1h,s1h);
           if(invert) taken=(int)out;
-          else add_to_linker((intptr_t)out,ba[i],internal);
+          else add_to_linker((int)out,ba[i],branch_internal);
           emit_js(0);
           nottaken1=(int)out;
           emit_jne(1);
@@ -5484,7 +5414,7 @@ static void cjump_assemble(int i,struct regstat *i_regs)
           nottaken1=(int)out;
           emit_js(1);
           if(invert) taken=(int)out;
-          else add_to_linker((intptr_t)out,ba[i],internal);
+          else add_to_linker((int)out,ba[i],branch_internal);
           emit_jne(0);
         }
       } // if(!only32)
@@ -5499,7 +5429,7 @@ static void cjump_assemble(int i,struct regstat *i_regs)
           nottaken=(int)out;
           emit_jne(1);
         }else{
-          add_to_linker((intptr_t)out,ba[i],internal);
+          add_to_linker((int)out,ba[i],branch_internal);
           emit_jeq(0);
         }
       }
@@ -5511,7 +5441,7 @@ static void cjump_assemble(int i,struct regstat *i_regs)
           nottaken=(int)out;
           emit_jeq(1);
         }else{
-          add_to_linker((int)out,ba[i],internal);
+          add_to_linker((int)out,ba[i],branch_internal);
           emit_jne(0);
         }
       }
@@ -5523,9 +5453,9 @@ static void cjump_assemble(int i,struct regstat *i_regs)
           if(only32) emit_jge(1);
           else emit_jae(1);
         }else{
-          add_to_linker((int)out,ba[i],internal);
+          add_to_linker((int)out,ba[i],branch_internal);
           if(only32) emit_jl(0);
-          else emit_jb(0);
+          else emit_jb(0); 
         }
       }
       if(opcode[i]==7) // BGTZ
@@ -5536,37 +5466,38 @@ static void cjump_assemble(int i,struct regstat *i_regs)
           if(only32) emit_jl(1);
           else emit_jb(1);
         }else{
-          add_to_linker((int)out,ba[i],internal);
-          emit_jae(0);
+          add_to_linker((int)out,ba[i],branch_internal);
+          if(only32) emit_jge(0);
+          else emit_jae(0);
         }
       }
       if(invert) {
         if(taken) set_jump_target(taken,(int)out);
         #ifdef CORTEX_A8_BRANCH_PREDICTION_HACK
-        if(match&&(!internal||!is_ds[(ba[i]-start)>>2])) {
+        if(match&&(!branch_internal||!is_ds[(ba[i]-start)>>2])) {
           if(adj) {
             emit_addimm(cc,-CLOCK_DIVIDER*adj,cc);
-            add_to_linker((int)out,ba[i],internal);
+            add_to_linker((int)out,ba[i],branch_internal);
           }else{
             emit_addnop(13);
-            add_to_linker((int)out,ba[i],internal*2);
+            add_to_linker((int)out,ba[i],branch_internal*2);
           }
           emit_jmp(0);
         }else
         #endif
         {
-          if(adj) emit_addimm(cc,-CLOCK_DIVIDER*adj,cc);
+          if(adj) emit_addimm(cc,-(int)CLOCK_DIVIDER*adj,cc);
           store_regs_bt(branch_regs[i].regmap,branch_regs[i].is32,branch_regs[i].dirty,ba[i]);
           load_regs_bt(branch_regs[i].regmap,branch_regs[i].is32,branch_regs[i].dirty,ba[i]);
-          if(internal)
+          if(branch_internal)
             assem_debug("branch: internal");
           else
             assem_debug("branch: external");
-          if(internal&&is_ds[(ba[i]-start)>>2]) {
+          if(branch_internal&&is_ds[(ba[i]-start)>>2]) {
             ds_assemble_entry(i);
           }
           else {
-            add_to_linker((int)out,ba[i],internal);
+            add_to_linker((int)out,ba[i],branch_internal);
             emit_jmp(0);
           }
         }
@@ -5683,15 +5614,15 @@ static void cjump_assemble(int i,struct regstat *i_regs)
       assem_debug("cycle count (adj)");
       if(adj) emit_addimm(cc,CLOCK_DIVIDER*(ccadj[i]+2-adj),cc);
       load_regs_bt(branch_regs[i].regmap,branch_regs[i].is32,branch_regs[i].dirty,ba[i]);
-      if(internal)
+      if(branch_internal)
         assem_debug("branch: internal");
       else
         assem_debug("branch: external");
-      if(internal&&is_ds[(ba[i]-start)>>2]) {
+      if(branch_internal&&is_ds[(ba[i]-start)>>2]) {
         ds_assemble_entry(i);
       }
       else {
-        add_to_linker((int)out,ba[i],internal);
+        add_to_linker((int)out,ba[i],branch_internal);
         emit_jmp(0);
       }
     }
@@ -5743,7 +5674,7 @@ static void sjump_assemble(int i,struct regstat *i_regs)
   int unconditional=0,nevertaken=0;
   int only32=0;
   int invert=0;
-  int internal=internal_branch(branch_regs[i].is32,ba[i]);
+  int branch_internal=internal_branch(branch_regs[i].is32,ba[i]);
   if(i==(ba[i]-start)>>2) assem_debug("idle loop");
   if(!match) invert=1;
   #ifdef CORTEX_A8_BRANCH_PREDICTION_HACK
@@ -5817,15 +5748,15 @@ static void sjump_assemble(int i,struct regstat *i_regs)
       if(i!=(ba[i]-start)>>2 || source[i+1]!=0) {
         if(adj) emit_addimm(cc,CLOCK_DIVIDER*(ccadj[i]+2-adj),cc);
         load_regs_bt(branch_regs[i].regmap,branch_regs[i].is32,branch_regs[i].dirty,ba[i]);
-        if(internal)
+        if(branch_internal)
           assem_debug("branch: internal");
         else
           assem_debug("branch: external");
-        if(internal&&is_ds[(ba[i]-start)>>2]) {
+        if(branch_internal&&is_ds[(ba[i]-start)>>2]) {
           ds_assemble_entry(i);
         }
         else {
-          add_to_linker((int)out,ba[i],internal);
+          add_to_linker((int)out,ba[i],branch_internal);
           emit_jmp(0);
         }
         #ifdef CORTEX_A8_BRANCH_PREDICTION_HACK
@@ -5853,7 +5784,7 @@ static void sjump_assemble(int i,struct regstat *i_regs)
             nottaken=(int)out;
             emit_jns(1);
           }else{
-            add_to_linker((int)out,ba[i],internal);
+            add_to_linker((int)out,ba[i],branch_internal);
             emit_js(0);
           }
         }
@@ -5864,7 +5795,7 @@ static void sjump_assemble(int i,struct regstat *i_regs)
             nottaken=(int)out;
             emit_js(1);
           }else{
-            add_to_linker((int)out,ba[i],internal);
+            add_to_linker((int)out,ba[i],branch_internal);
             emit_jns(0);
           }
         }
@@ -5879,7 +5810,7 @@ static void sjump_assemble(int i,struct regstat *i_regs)
             nottaken=(int)out;
             emit_jns(1);
           }else{
-            add_to_linker((int)out,ba[i],internal);
+            add_to_linker((int)out,ba[i],branch_internal);
             emit_js(0);
           }
         }
@@ -5890,7 +5821,7 @@ static void sjump_assemble(int i,struct regstat *i_regs)
             nottaken=(int)out;
             emit_js(1);
           }else{
-            add_to_linker((int)out,ba[i],internal);
+            add_to_linker((int)out,ba[i],branch_internal);
             emit_jns(0);
           }
         }
@@ -5898,30 +5829,30 @@ static void sjump_assemble(int i,struct regstat *i_regs)
           
       if(invert) {
         #ifdef CORTEX_A8_BRANCH_PREDICTION_HACK
-        if(match&&(!internal||!is_ds[(ba[i]-start)>>2])) {
+        if(match&&(!branch_internal||!is_ds[(ba[i]-start)>>2])) {
           if(adj) {
             emit_addimm(cc,-CLOCK_DIVIDER*adj,cc);
-            add_to_linker((int)out,ba[i],internal);
+            add_to_linker((int)out,ba[i],branch_internal);
           }else{
             emit_addnop(13);
-            add_to_linker((int)out,ba[i],internal*2);
+            add_to_linker((int)out,ba[i],branch_internal*2);
           }
           emit_jmp(0);
         }else
         #endif
         {
-          if(adj) emit_addimm(cc,-CLOCK_DIVIDER*adj,cc);
+          if(adj) emit_addimm(cc,-(int)CLOCK_DIVIDER*adj,cc);
           store_regs_bt(branch_regs[i].regmap,branch_regs[i].is32,branch_regs[i].dirty,ba[i]);
           load_regs_bt(branch_regs[i].regmap,branch_regs[i].is32,branch_regs[i].dirty,ba[i]);
-          if(internal)
+          if(branch_internal)
             assem_debug("branch: internal");
           else
             assem_debug("branch: external");
-          if(internal&&is_ds[(ba[i]-start)>>2]) {
+          if(branch_internal&&is_ds[(ba[i]-start)>>2]) {
             ds_assemble_entry(i);
           }
           else {
-            add_to_linker((int)out,ba[i],internal);
+            add_to_linker((int)out,ba[i],branch_internal);
             emit_jmp(0);
           }
         }
@@ -6002,15 +5933,15 @@ static void sjump_assemble(int i,struct regstat *i_regs)
       assem_debug("cycle count (adj)");
       if(adj) emit_addimm(cc,CLOCK_DIVIDER*(ccadj[i]+2-adj),cc);
       load_regs_bt(branch_regs[i].regmap,branch_regs[i].is32,branch_regs[i].dirty,ba[i]);
-      if(internal)
+      if(branch_internal)
         assem_debug("branch: internal");
       else
         assem_debug("branch: external");
-      if(internal&&is_ds[(ba[i]-start)>>2]) {
+      if(branch_internal&&is_ds[(ba[i]-start)>>2]) {
         ds_assemble_entry(i);
       }
       else {
-        add_to_linker((int)out,ba[i],internal);
+        add_to_linker((int)out,ba[i],branch_internal);
         emit_jmp(0);
       }
     }
@@ -6059,7 +5990,7 @@ static void fjump_assemble(int i,struct regstat *i_regs)
   int fs,cs;
   int eaddr;
   int invert=0;
-  int internal=internal_branch(branch_regs[i].is32,ba[i]);
+  int branch_internal=internal_branch(branch_regs[i].is32,ba[i]);
   if(i==(ba[i]-start)>>2) assem_debug("idle loop");
   if(!match) invert=1;
   #ifdef CORTEX_A8_BRANCH_PREDICTION_HACK
@@ -6116,7 +6047,7 @@ static void fjump_assemble(int i,struct regstat *i_regs)
             nottaken=(int)out;
             emit_jeq(1);
           }else{
-            add_to_linker((int)out,ba[i],internal);
+            add_to_linker((int)out,ba[i],branch_internal);
             emit_jne(0);
           }
         }
@@ -6125,7 +6056,7 @@ static void fjump_assemble(int i,struct regstat *i_regs)
             nottaken=(int)out;
             emit_jne(1);
           }else{
-            add_to_linker((int)out,ba[i],internal);
+            add_to_linker((int)out,ba[i],branch_internal);
             emit_jeq(0);
           }
         {
@@ -6133,21 +6064,21 @@ static void fjump_assemble(int i,struct regstat *i_regs)
       } // if(!only32)
           
       if(invert) {
-        if(adj) emit_addimm(cc,-CLOCK_DIVIDER*adj,cc);
+        if(adj) emit_addimm(cc,-(int)CLOCK_DIVIDER*adj,cc);
         #ifdef CORTEX_A8_BRANCH_PREDICTION_HACK
         else if(match) emit_addnop(13);
         #endif
         store_regs_bt(branch_regs[i].regmap,branch_regs[i].is32,branch_regs[i].dirty,ba[i]);
         load_regs_bt(branch_regs[i].regmap,branch_regs[i].is32,branch_regs[i].dirty,ba[i]);
-        if(internal)
+        if(branch_internal)
           assem_debug("branch: internal");
         else
           assem_debug("branch: external");
-        if(internal&&is_ds[(ba[i]-start)>>2]) {
+        if(branch_internal&&is_ds[(ba[i]-start)>>2]) {
           ds_assemble_entry(i);
         }
         else {
-          add_to_linker((int)out,ba[i],internal);
+          add_to_linker((int)out,ba[i],branch_internal);
           emit_jmp(0);
         }
         set_jump_target(nottaken,(int)out);
@@ -6208,15 +6139,15 @@ static void fjump_assemble(int i,struct regstat *i_regs)
     assem_debug("cycle count (adj)");
     if(adj) emit_addimm(cc,CLOCK_DIVIDER*(ccadj[i]+2-adj),cc);
     load_regs_bt(branch_regs[i].regmap,branch_regs[i].is32,branch_regs[i].dirty,ba[i]);
-    if(internal)
+    if(branch_internal)
       assem_debug("branch: internal");
     else
       assem_debug("branch: external");
-    if(internal&&is_ds[(ba[i]-start)>>2]) {
+    if(branch_internal&&is_ds[(ba[i]-start)>>2]) {
       ds_assemble_entry(i);
     }
     else {
-      add_to_linker((int)out,ba[i],internal);
+      add_to_linker((int)out,ba[i],branch_internal);
       emit_jmp(0);
     }
 
@@ -7715,49 +7646,32 @@ static void disassemble_inst(int i)
 }
 #endif
 
-// Fix crash with Apple LLVM version 5.0 (clang-500.2.79) (based on LLVM 3.3svn) and ARM
-// Do not make this static
-#ifdef __clang__
-__attribute__ ((noinline)) void new_dynarec_init_mem_map(u_int rdrami)
-{
-  int n;
-  for(n=0;n<524288;n++) // 0 .. 0x7FFFFFFF
-    memory_map[n]=-1;
-  for(n=524288;n<526336;n++) // 0x80000000 .. 0x807FFFFF
-    memory_map[n]=(rdrami-0x80000000)>>2;
-  for(n=526336;n<1048576;n++) // 0x80800000 .. 0xFFFFFFFF
-    memory_map[n]=-1;
-}
-#endif
-
 void new_dynarec_init()
 {
-  int n;
-
-  printf("Init new dynarec\n");
+  DebugMessage(M64MSG_INFO, "Init new dynarec");
 
 #if NEW_DYNAREC == NEW_DYNAREC_ARM
   if ((base_addr = mmap ((u_char *)BASE_ADDR, 1<<TARGET_SIZE_2,
-              PROT_READ | PROT_WRITE | PROT_EXEC,
-              MAP_FIXED | MAP_PRIVATE | MAP_ANONYMOUS,
-              -1, 0)) <= 0)
-     printf("mmap() failed");
+            PROT_READ | PROT_WRITE | PROT_EXEC,
+            MAP_FIXED | MAP_PRIVATE | MAP_ANONYMOUS,
+            -1, 0)) <= 0) {DebugMessage(M64MSG_ERROR, "mmap() failed");}
+#else
+#if defined(_MSC_VER)
+  base_addr = VirtualAlloc(NULL, 1<<TARGET_SIZE_2, MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
 #else
   if ((base_addr = mmap (NULL, 1<<TARGET_SIZE_2,
             PROT_READ | PROT_WRITE | PROT_EXEC,
             MAP_PRIVATE | MAP_ANONYMOUS,
-            -1, 0)) <= 0)
-     printf("mmap() failed\n");
+            -1, 0)) <= 0) {DebugMessage(M64MSG_ERROR, "mmap() failed");}
+#endif
 #endif
   out=(u_char *)base_addr;
 
-#ifdef EMU_MUPEN64
   rdword=&readmem_dword;
   fake_pc.f.r.rs=(long long int *)&readmem_dword;
   fake_pc.f.r.rt=(long long int *)&readmem_dword;
   fake_pc.f.r.rd=(long long int *)&readmem_dword;
-#endif
-
+  int n;
   for(n=0x80000;n<0x80800;n++)
     invalid_code[n]=1;
   for(n=0;n<65536;n++)
@@ -7774,19 +7688,13 @@ void new_dynarec_init()
 #endif
   stop_after_jal=0;
   // TLB
-#ifndef DISABLE_TLB
   using_tlb=0;
-#endif
-#ifndef __clang__
   for(n=0;n<524288;n++) // 0 .. 0x7FFFFFFF
     memory_map[n]=-1;
   for(n=524288;n<526336;n++) // 0x80000000 .. 0x807FFFFF
     memory_map[n]=((u_int)g_rdram-0x80000000)>>2;
   for(n=526336;n<1048576;n++) // 0x80800000 .. 0xFFFFFFFF
     memory_map[n]=-1;
-#else
-  new_dynarec_init_mem_map((u_int)g_rdram);
-#endif
   for(n=0;n<0x8000;n++) { // 0 .. 0x7FFFFFFF
     writemem[n] = write_nomem_new;
     writememb[n] = write_nomemb_new;
@@ -7813,35 +7721,41 @@ void new_dynarec_init()
     readmemh[n] = read_nomemh_new;
     readmemd[n] = read_nomemd_new;
   }
-#ifndef DISABLE_TLB
   tlb_hacks();
-#endif
   arch_init();
 }
 
-void new_dynarec_cleanup(void)
+void new_dynarec_cleanup()
 {
-   int n;
-   if (munmap (base_addr, 1<<TARGET_SIZE_2) < 0) {DebugMessage(M64MSG_ERROR, "munmap() failed");}
-   for(n=0;n<4096;n++) ll_clear(jump_in+n);
-   for(n=0;n<4096;n++) ll_clear(jump_out+n);
-   for(n=0;n<4096;n++) ll_clear(jump_dirty+n);
-#ifdef ROM_COPY
-   if (munmap (ROM_COPY, 67108864) < 0) {DebugMessage(M64MSG_ERROR, "munmap() failed");}
+  int n;
+#if defined(_MSC_VER)
+  VirtualFree(base_addr, 0, MEM_RELEASE);
+#else
+  if (munmap (base_addr, 1<<TARGET_SIZE_2) < 0) {DebugMessage(M64MSG_ERROR, "munmap() failed");}
 #endif
+  for(n=0;n<4096;n++) ll_clear(jump_in+n);
+  for(n=0;n<4096;n++) ll_clear(jump_out+n);
+  for(n=0;n<4096;n++) ll_clear(jump_dirty+n);
+  #ifdef ROM_COPY
+  if (munmap (ROM_COPY, 67108864) < 0) {DebugMessage(M64MSG_ERROR, "munmap() failed");}
+  #endif
 }
 
 int new_recompile_block(int addr)
 {
-   int i, j;
-  unsigned int type,op,op2;
-  int done=0;
-   u_int pagelimit = 0;
-
+/*
+  if(addr==0x800cd050) {
+    int block;
+    for(block=0x80000;block<0x80800;block++) invalidate_block(block);
+    int n;
+    for(n=0;n<=2048;n++) ll_clear(jump_dirty+n);
+  }
+*/
+  //if(g_cp0_regs[CP0_COUNT_REG]==365117028) tracedebug=1;
   assem_debug("NOTCOMPILED: addr = %x -> %x", (int)addr, (int)out);
 #if defined (COUNT_NOTCOMPILEDS )
   notcompiledCount++;
-  log_message( "notcompiledCount=%i", notcompiledCount );
+  DebugMessage(M64MSG_VERBOSE, "notcompiledCount=%i", notcompiledCount );
 #endif
   //DebugMessage(M64MSG_VERBOSE, "NOTCOMPILED: addr = %x -> %x", (int)addr, (int)out);
   //DebugMessage(M64MSG_VERBOSE, "TRACE: count=%d next=%d (compile %x)",g_cp0_regs[CP0_COUNT_REG],next_interupt,addr);
@@ -7852,47 +7766,42 @@ int new_recompile_block(int addr)
     rlist();
   }*/
   //rlist();
- 
-
   start = (u_int)addr&~3;
   //assert(((u_int)addr&1)==0);
-  if ((int)addr >= 0xa4000000 && (int)addr < 0xa4001000)
-  {
-    source = (u_int *)((u_int)g_sp.mem + start-0xa4000000);
+  if ((int)addr >= 0xa4000000 && (int)addr < 0xa4001000) {
+    source = (u_int *)((u_int)g_sp.mem+start-0xa4000000);
     pagelimit = 0xa4001000;
   }
-  else if ((int)addr >= 0x80000000 && (int)addr < 0x80800000)
-  {
+  else if ((int)addr >= 0x80000000 && (int)addr < 0x80800000) {
     source = (u_int *)((u_int)g_rdram+start-0x80000000);
     pagelimit = 0x80800000;
   }
-  else if ((signed int)addr >= (signed int)0xC0000000)
-  {
-     //DebugMessage(M64MSG_VERBOSE, "addr=%x mm=%x",(u_int)addr,(memory_map[start>>12]<<2));
-     //if(tlb_LUT_r[start>>12])
-     //source = (u_int *)(((int)g_rdram)+(tlb_LUT_r[start>>12]&0xFFFFF000)+(((int)addr)&0xFFF)-0x80000000);
-     if((signed int)memory_map[start>>12]>=0) {
-        source = (u_int *)((u_int)(start+(memory_map[start>>12]<<2)));
-        pagelimit=(start+4096)&0xFFFFF000;
-        int map=memory_map[start>>12];
-        int i;
-        for(i=0;i<5;i++) {
-           //DebugMessage(M64MSG_VERBOSE, "start: %x next: %x",map,memory_map[pagelimit>>12]);
-           if((map&0xBFFFFFFF)==(memory_map[pagelimit>>12]&0xBFFFFFFF)) pagelimit+=4096;
-        }
-        assem_debug("pagelimit=%x",pagelimit);
-        assem_debug("mapping=%x (%x)",memory_map[start>>12],(memory_map[start>>12]<<2)+start);
-     }
-     else {
-        assem_debug("Compile at unmapped memory address: %x ", (int)addr);
-        //assem_debug("start: %x next: %x",memory_map[start>>12],memory_map[(start+4096)>>12]);
-        return 1; // Caller will invoke exception handler
-     }
-     //DebugMessage(M64MSG_VERBOSE, "source= %x",(int)source);
+  else if ((signed int)addr >= (signed int)0xC0000000) {
+    //DebugMessage(M64MSG_VERBOSE, "addr=%x mm=%x",(u_int)addr,(memory_map[start>>12]<<2));
+    //if(tlb_LUT_r[start>>12])
+      //source = (u_int *)(((int)g_rdram)+(tlb_LUT_r[start>>12]&0xFFFFF000)+(((int)addr)&0xFFF)-0x80000000);
+    if((signed int)memory_map[start>>12]>=0) {
+      source = (u_int *)((u_int)(start+(memory_map[start>>12]<<2)));
+      pagelimit=(start+4096)&0xFFFFF000;
+      int map=memory_map[start>>12];
+      int i;
+      for(i=0;i<5;i++) {
+        //DebugMessage(M64MSG_VERBOSE, "start: %x next: %x",map,memory_map[pagelimit>>12]);
+        if((map&0xBFFFFFFF)==(memory_map[pagelimit>>12]&0xBFFFFFFF)) pagelimit+=4096;
+      }
+      assem_debug("pagelimit=%x",pagelimit);
+      assem_debug("mapping=%x (%x)",memory_map[start>>12],(memory_map[start>>12]<<2)+start);
+    }
+    else {
+      assem_debug("Compile at unmapped memory address: %x ", (int)addr);
+      //assem_debug("start: %x next: %x",memory_map[start>>12],memory_map[(start+4096)>>12]);
+      return 1; // Caller will invoke exception handler
+    }
+    //DebugMessage(M64MSG_VERBOSE, "source= %x",(int)source);
   }
   else {
     //DebugMessage(M64MSG_VERBOSE, "Compile at bogus memory address: %x ", (int)addr);
-    log_message("Compile at bogus memory address: %x", (int)addr);
+    DebugMessage(M64MSG_ERROR, "Compile at bogus memory address: %x", (int)addr);
     exit(1);
   }
 
@@ -7907,547 +7816,534 @@ int new_recompile_block(int addr)
   /* Pass 9: linker */
   /* Pass 10: garbage collection / free memory */
 
-  //printf("addr = %x source = %x %x", addr,source,source[0]);
+  int i,j;
+  int done=0;
+  unsigned int type,op,op2;
+
+  //DebugMessage(M64MSG_VERBOSE, "addr = %x source = %x %x", addr,source,source[0]);
   
   /* Pass 1 disassembly */
 
-  for(i=0;!done;i++)
-  {
-     bt[i]=0;likely[i]=0;ooo[i]=0;op2=0;
-     minimum_free_regs[i]=0;
-     opcode[i]=op=source[i]>>26;
-
-     switch(op)
-     {
-        case 0x00:
-           strcpy(insn[i],"special"); type=NI;
-           op2=source[i]&0x3f;
-           switch(op2)
-           {
-              case 0x00: strcpy(insn[i],"SLL"); type=SHIFTIMM; break;
-              case 0x02: strcpy(insn[i],"SRL"); type=SHIFTIMM; break;
-              case 0x03: strcpy(insn[i],"SRA"); type=SHIFTIMM; break;
-              case 0x04: strcpy(insn[i],"SLLV"); type=SHIFT; break;
-              case 0x06: strcpy(insn[i],"SRLV"); type=SHIFT; break;
-              case 0x07: strcpy(insn[i],"SRAV"); type=SHIFT; break;
-              case 0x08: strcpy(insn[i],"JR"); type=RJUMP; break;
-              case 0x09: strcpy(insn[i],"JALR"); type=RJUMP; break;
-              case 0x0C: strcpy(insn[i],"SYSCALL"); type=SYSCALL; break;
-              case 0x0D: strcpy(insn[i],"BREAK"); type=OTHER; break;
-              case 0x0F: strcpy(insn[i],"SYNC"); type=OTHER; break;
-              case 0x10: strcpy(insn[i],"MFHI"); type=MOV; break;
-              case 0x11: strcpy(insn[i],"MTHI"); type=MOV; break;
-              case 0x12: strcpy(insn[i],"MFLO"); type=MOV; break;
-              case 0x13: strcpy(insn[i],"MTLO"); type=MOV; break;
-              case 0x14: strcpy(insn[i],"DSLLV"); type=SHIFT; break;
-              case 0x16: strcpy(insn[i],"DSRLV"); type=SHIFT; break;
-              case 0x17: strcpy(insn[i],"DSRAV"); type=SHIFT; break;
-              case 0x18: strcpy(insn[i],"MULT"); type=MULTDIV; break;
-              case 0x19: strcpy(insn[i],"MULTU"); type=MULTDIV; break;
-              case 0x1A: strcpy(insn[i],"DIV"); type=MULTDIV; break;
-              case 0x1B: strcpy(insn[i],"DIVU"); type=MULTDIV; break;
-              case 0x1C: strcpy(insn[i],"DMULT"); type=MULTDIV; break;
-              case 0x1D: strcpy(insn[i],"DMULTU"); type=MULTDIV; break;
-              case 0x1E: strcpy(insn[i],"DDIV"); type=MULTDIV; break;
-              case 0x1F: strcpy(insn[i],"DDIVU"); type=MULTDIV; break;
-              case 0x20: strcpy(insn[i],"ADD"); type=ALU; break;
-              case 0x21: strcpy(insn[i],"ADDU"); type=ALU; break;
-              case 0x22: strcpy(insn[i],"SUB"); type=ALU; break;
-              case 0x23: strcpy(insn[i],"SUBU"); type=ALU; break;
-              case 0x24: strcpy(insn[i],"AND"); type=ALU; break;
-              case 0x25: strcpy(insn[i],"OR"); type=ALU; break;
-              case 0x26: strcpy(insn[i],"XOR"); type=ALU; break;
-              case 0x27: strcpy(insn[i],"NOR"); type=ALU; break;
-              case 0x2A: strcpy(insn[i],"SLT"); type=ALU; break;
-              case 0x2B: strcpy(insn[i],"SLTU"); type=ALU; break;
-              case 0x2C: strcpy(insn[i],"DADD"); type=ALU; break;
-              case 0x2D: strcpy(insn[i],"DADDU"); type=ALU; break;
-              case 0x2E: strcpy(insn[i],"DSUB"); type=ALU; break;
-              case 0x2F: strcpy(insn[i],"DSUBU"); type=ALU; break;
-              case 0x30: strcpy(insn[i],"TGE"); type=NI; break;
-              case 0x31: strcpy(insn[i],"TGEU"); type=NI; break;
-              case 0x32: strcpy(insn[i],"TLT"); type=NI; break;
-              case 0x33: strcpy(insn[i],"TLTU"); type=NI; break;
-              case 0x34: strcpy(insn[i],"TEQ"); type=NI; break;
-              case 0x36: strcpy(insn[i],"TNE"); type=NI; break;
-              case 0x38: strcpy(insn[i],"DSLL"); type=SHIFTIMM; break;
-              case 0x3A: strcpy(insn[i],"DSRL"); type=SHIFTIMM; break;
-              case 0x3B: strcpy(insn[i],"DSRA"); type=SHIFTIMM; break;
-              case 0x3C: strcpy(insn[i],"DSLL32"); type=SHIFTIMM; break;
-              case 0x3E: strcpy(insn[i],"DSRL32"); type=SHIFTIMM; break;
-              case 0x3F: strcpy(insn[i],"DSRA32"); type=SHIFTIMM; break;
-           }
-           break;
-        case 0x01:
-           strcpy(insn[i],"regimm"); type=NI;
-           op2=(source[i]>>16)&0x1f;
-           switch(op2)
-           {
-              case 0x00: strcpy(insn[i],"BLTZ"); type=SJUMP; break;
-              case 0x01: strcpy(insn[i],"BGEZ"); type=SJUMP; break;
-              case 0x02: strcpy(insn[i],"BLTZL"); type=SJUMP; break;
-              case 0x03: strcpy(insn[i],"BGEZL"); type=SJUMP; break;
-              case 0x08: strcpy(insn[i],"TGEI"); type=NI; break;
-              case 0x09: strcpy(insn[i],"TGEIU"); type=NI; break;
-              case 0x0A: strcpy(insn[i],"TLTI"); type=NI; break;
-              case 0x0B: strcpy(insn[i],"TLTIU"); type=NI; break;
-              case 0x0C: strcpy(insn[i],"TEQI"); type=NI; break;
-              case 0x0E: strcpy(insn[i],"TNEI"); type=NI; break;
-              case 0x10: strcpy(insn[i],"BLTZAL"); type=SJUMP; break;
-              case 0x11: strcpy(insn[i],"BGEZAL"); type=SJUMP; break;
-              case 0x12: strcpy(insn[i],"BLTZALL"); type=SJUMP; break;
-              case 0x13: strcpy(insn[i],"BGEZALL"); type=SJUMP; break;
-           }
-           break;
-        case 0x02: strcpy(insn[i],"J"); type=UJUMP; break;
-        case 0x03: strcpy(insn[i],"JAL"); type=UJUMP; break;
-        case 0x04: strcpy(insn[i],"BEQ"); type=CJUMP; break;
-        case 0x05: strcpy(insn[i],"BNE"); type=CJUMP; break;
-        case 0x06: strcpy(insn[i],"BLEZ"); type=CJUMP; break;
-        case 0x07: strcpy(insn[i],"BGTZ"); type=CJUMP; break;
-        case 0x08: strcpy(insn[i],"ADDI"); type=IMM16; break;
-        case 0x09: strcpy(insn[i],"ADDIU"); type=IMM16; break;
-        case 0x0A: strcpy(insn[i],"SLTI"); type=IMM16; break;
-        case 0x0B: strcpy(insn[i],"SLTIU"); type=IMM16; break;
-        case 0x0C: strcpy(insn[i],"ANDI"); type=IMM16; break;
-        case 0x0D: strcpy(insn[i],"ORI"); type=IMM16; break;
-        case 0x0E: strcpy(insn[i],"XORI"); type=IMM16; break;
-        case 0x0F: strcpy(insn[i],"LUI"); type=IMM16; break;
-        case 0x10: strcpy(insn[i],"cop0"); type=NI;
-                   op2=(source[i]>>21)&0x1f;
-                   switch(op2)
-                   {
-                      case 0x00: strcpy(insn[i],"MFC0"); type=COP0; break;
-                      case 0x04: strcpy(insn[i],"MTC0"); type=COP0; break;
-                      case 0x10: strcpy(insn[i],"tlb"); type=NI;
-                                 switch(source[i]&0x3f)
-                                 {
-                                    case 0x01: strcpy(insn[i],"TLBR"); type=COP0; break;
-                                    case 0x02: strcpy(insn[i],"TLBWI"); type=COP0; break;
-                                    case 0x06: strcpy(insn[i],"TLBWR"); type=COP0; break;
-                                    case 0x08: strcpy(insn[i],"TLBP"); type=COP0; break;
-                                    case 0x18: strcpy(insn[i],"ERET"); type=COP0; break;
-                                 }
-                   }
-                   break;
-        case 0x11: strcpy(insn[i],"cop1"); type=NI;
-                   op2=(source[i]>>21)&0x1f;
-                   switch(op2)
-                   {
-                      case 0x00: strcpy(insn[i],"MFC1"); type=COP1; break;
-                      case 0x01: strcpy(insn[i],"DMFC1"); type=COP1; break;
-                      case 0x02: strcpy(insn[i],"CFC1"); type=COP1; break;
-                      case 0x04: strcpy(insn[i],"MTC1"); type=COP1; break;
-                      case 0x05: strcpy(insn[i],"DMTC1"); type=COP1; break;
-                      case 0x06: strcpy(insn[i],"CTC1"); type=COP1; break;
-                      case 0x08: strcpy(insn[i],"BC1"); type=FJUMP;
-                                 switch((source[i]>>16)&0x3)
-                                 {
-                                    case 0x00: strcpy(insn[i],"BC1F"); break;
-                                    case 0x01: strcpy(insn[i],"BC1T"); break;
-                                    case 0x02: strcpy(insn[i],"BC1FL"); break;
-                                    case 0x03: strcpy(insn[i],"BC1TL"); break;
-                                 }
-                                 break;
-                      case 0x10: strcpy(insn[i],"C1.S"); type=NI;
-                                 switch(source[i]&0x3f)
-                                 {
-                                    case 0x00: strcpy(insn[i],"ADD.S"); type=FLOAT; break;
-                                    case 0x01: strcpy(insn[i],"SUB.S"); type=FLOAT; break;
-                                    case 0x02: strcpy(insn[i],"MUL.S"); type=FLOAT; break;
-                                    case 0x03: strcpy(insn[i],"DIV.S"); type=FLOAT; break;
-                                    case 0x04: strcpy(insn[i],"SQRT.S"); type=FLOAT; break;
-                                    case 0x05: strcpy(insn[i],"ABS.S"); type=FLOAT; break;
-                                    case 0x06: strcpy(insn[i],"MOV.S"); type=FLOAT; break;
-                                    case 0x07: strcpy(insn[i],"NEG.S"); type=FLOAT; break;
-                                    case 0x08: strcpy(insn[i],"ROUND.L.S"); type=FCONV; break;
-                                    case 0x09: strcpy(insn[i],"TRUNC.L.S"); type=FCONV; break;
-                                    case 0x0A: strcpy(insn[i],"CEIL.L.S"); type=FCONV; break;
-                                    case 0x0B: strcpy(insn[i],"FLOOR.L.S"); type=FCONV; break;
-                                    case 0x0C: strcpy(insn[i],"ROUND.W.S"); type=FCONV; break;
-                                    case 0x0D: strcpy(insn[i],"TRUNC.W.S"); type=FCONV; break;
-                                    case 0x0E: strcpy(insn[i],"CEIL.W.S"); type=FCONV; break;
-                                    case 0x0F: strcpy(insn[i],"FLOOR.W.S"); type=FCONV; break;
-                                    case 0x21: strcpy(insn[i],"CVT.D.S"); type=FCONV; break;
-                                    case 0x24: strcpy(insn[i],"CVT.W.S"); type=FCONV; break;
-                                    case 0x25: strcpy(insn[i],"CVT.L.S"); type=FCONV; break;
-                                    case 0x30: strcpy(insn[i],"C.F.S"); type=FCOMP; break;
-                                    case 0x31: strcpy(insn[i],"C.UN.S"); type=FCOMP; break;
-                                    case 0x32: strcpy(insn[i],"C.EQ.S"); type=FCOMP; break;
-                                    case 0x33: strcpy(insn[i],"C.UEQ.S"); type=FCOMP; break;
-                                    case 0x34: strcpy(insn[i],"C.OLT.S"); type=FCOMP; break;
-                                    case 0x35: strcpy(insn[i],"C.ULT.S"); type=FCOMP; break;
-                                    case 0x36: strcpy(insn[i],"C.OLE.S"); type=FCOMP; break;
-                                    case 0x37: strcpy(insn[i],"C.ULE.S"); type=FCOMP; break;
-                                    case 0x38: strcpy(insn[i],"C.SF.S"); type=FCOMP; break;
-                                    case 0x39: strcpy(insn[i],"C.NGLE.S"); type=FCOMP; break;
-                                    case 0x3A: strcpy(insn[i],"C.SEQ.S"); type=FCOMP; break;
-                                    case 0x3B: strcpy(insn[i],"C.NGL.S"); type=FCOMP; break;
-                                    case 0x3C: strcpy(insn[i],"C.LT.S"); type=FCOMP; break;
-                                    case 0x3D: strcpy(insn[i],"C.NGE.S"); type=FCOMP; break;
-                                    case 0x3E: strcpy(insn[i],"C.LE.S"); type=FCOMP; break;
-                                    case 0x3F: strcpy(insn[i],"C.NGT.S"); type=FCOMP; break;
-                                 }
-                                 break;
-                      case 0x11: strcpy(insn[i],"C1.D"); type=NI;
-                                 switch(source[i]&0x3f)
-                                 {
-                                    case 0x00: strcpy(insn[i],"ADD.D"); type=FLOAT; break;
-                                    case 0x01: strcpy(insn[i],"SUB.D"); type=FLOAT; break;
-                                    case 0x02: strcpy(insn[i],"MUL.D"); type=FLOAT; break;
-                                    case 0x03: strcpy(insn[i],"DIV.D"); type=FLOAT; break;
-                                    case 0x04: strcpy(insn[i],"SQRT.D"); type=FLOAT; break;
-                                    case 0x05: strcpy(insn[i],"ABS.D"); type=FLOAT; break;
-                                    case 0x06: strcpy(insn[i],"MOV.D"); type=FLOAT; break;
-                                    case 0x07: strcpy(insn[i],"NEG.D"); type=FLOAT; break;
-                                    case 0x08: strcpy(insn[i],"ROUND.L.D"); type=FCONV; break;
-                                    case 0x09: strcpy(insn[i],"TRUNC.L.D"); type=FCONV; break;
-                                    case 0x0A: strcpy(insn[i],"CEIL.L.D"); type=FCONV; break;
-                                    case 0x0B: strcpy(insn[i],"FLOOR.L.D"); type=FCONV; break;
-                                    case 0x0C: strcpy(insn[i],"ROUND.W.D"); type=FCONV; break;
-                                    case 0x0D: strcpy(insn[i],"TRUNC.W.D"); type=FCONV; break;
-                                    case 0x0E: strcpy(insn[i],"CEIL.W.D"); type=FCONV; break;
-                                    case 0x0F: strcpy(insn[i],"FLOOR.W.D"); type=FCONV; break;
-                                    case 0x20: strcpy(insn[i],"CVT.S.D"); type=FCONV; break;
-                                    case 0x24: strcpy(insn[i],"CVT.W.D"); type=FCONV; break;
-                                    case 0x25: strcpy(insn[i],"CVT.L.D"); type=FCONV; break;
-                                    case 0x30: strcpy(insn[i],"C.F.D"); type=FCOMP; break;
-                                    case 0x31: strcpy(insn[i],"C.UN.D"); type=FCOMP; break;
-                                    case 0x32: strcpy(insn[i],"C.EQ.D"); type=FCOMP; break;
-                                    case 0x33: strcpy(insn[i],"C.UEQ.D"); type=FCOMP; break;
-                                    case 0x34: strcpy(insn[i],"C.OLT.D"); type=FCOMP; break;
-                                    case 0x35: strcpy(insn[i],"C.ULT.D"); type=FCOMP; break;
-                                    case 0x36: strcpy(insn[i],"C.OLE.D"); type=FCOMP; break;
-                                    case 0x37: strcpy(insn[i],"C.ULE.D"); type=FCOMP; break;
-                                    case 0x38: strcpy(insn[i],"C.SF.D"); type=FCOMP; break;
-                                    case 0x39: strcpy(insn[i],"C.NGLE.D"); type=FCOMP; break;
-                                    case 0x3A: strcpy(insn[i],"C.SEQ.D"); type=FCOMP; break;
-                                    case 0x3B: strcpy(insn[i],"C.NGL.D"); type=FCOMP; break;
-                                    case 0x3C: strcpy(insn[i],"C.LT.D"); type=FCOMP; break;
-                                    case 0x3D: strcpy(insn[i],"C.NGE.D"); type=FCOMP; break;
-                                    case 0x3E: strcpy(insn[i],"C.LE.D"); type=FCOMP; break;
-                                    case 0x3F: strcpy(insn[i],"C.NGT.D"); type=FCOMP; break;
-                                 }
-                                 break;
-                      case 0x14: strcpy(insn[i],"C1.W"); type=NI;
-                                 switch(source[i]&0x3f)
-                                 {
-                                    case 0x20: strcpy(insn[i],"CVT.S.W"); type=FCONV; break;
-                                    case 0x21: strcpy(insn[i],"CVT.D.W"); type=FCONV; break;
-                                 }
-                                 break;
-                      case 0x15: strcpy(insn[i],"C1.L"); type=NI;
-                                 switch(source[i]&0x3f)
-                                 {
-                                    case 0x20: strcpy(insn[i],"CVT.S.L"); type=FCONV; break;
-                                    case 0x21: strcpy(insn[i],"CVT.D.L"); type=FCONV; break;
-                                 }
-                                 break;
-                   }
-                   break;
-        case 0x14: strcpy(insn[i],"BEQL"); type=CJUMP; break;
-        case 0x15: strcpy(insn[i],"BNEL"); type=CJUMP; break;
-        case 0x16: strcpy(insn[i],"BLEZL"); type=CJUMP; break;
-        case 0x17: strcpy(insn[i],"BGTZL"); type=CJUMP; break;
-        case 0x18: strcpy(insn[i],"DADDI"); type=IMM16; break;
-        case 0x19: strcpy(insn[i],"DADDIU"); type=IMM16; break;
-        case 0x1A: strcpy(insn[i],"LDL"); type=LOADLR; break;
-        case 0x1B: strcpy(insn[i],"LDR"); type=LOADLR; break;
-        case 0x20: strcpy(insn[i],"LB"); type=LOAD; break;
-        case 0x21: strcpy(insn[i],"LH"); type=LOAD; break;
-        case 0x22: strcpy(insn[i],"LWL"); type=LOADLR; break;
-        case 0x23: strcpy(insn[i],"LW"); type=LOAD; break;
-        case 0x24: strcpy(insn[i],"LBU"); type=LOAD; break;
-        case 0x25: strcpy(insn[i],"LHU"); type=LOAD; break;
-        case 0x26: strcpy(insn[i],"LWR"); type=LOADLR; break;
-        case 0x27: strcpy(insn[i],"LWU"); type=LOAD; break;
-        case 0x28: strcpy(insn[i],"SB"); type=STORE; break;
-        case 0x29: strcpy(insn[i],"SH"); type=STORE; break;
-        case 0x2A: strcpy(insn[i],"SWL"); type=STORELR; break;
-        case 0x2B: strcpy(insn[i],"SW"); type=STORE; break;
-        case 0x2C: strcpy(insn[i],"SDL"); type=STORELR; break;
-        case 0x2D: strcpy(insn[i],"SDR"); type=STORELR; break;
-        case 0x2E: strcpy(insn[i],"SWR"); type=STORELR; break;
-        case 0x2F: strcpy(insn[i],"CACHE"); type=NOP; break;
-        case 0x30: strcpy(insn[i],"LL"); type=NI; break;
-        case 0x31: strcpy(insn[i],"LWC1"); type=C1LS; break;
-        case 0x34: strcpy(insn[i],"LLD"); type=NI; break;
-        case 0x35: strcpy(insn[i],"LDC1"); type=C1LS; break;
-        case 0x37: strcpy(insn[i],"LD"); type=LOAD; break;
-        case 0x38: strcpy(insn[i],"SC"); type=NI; break;
-        case 0x39: strcpy(insn[i],"SWC1"); type=C1LS; break;
-        case 0x3C: strcpy(insn[i],"SCD"); type=NI; break;
-        case 0x3D: strcpy(insn[i],"SDC1"); type=C1LS; break;
-        case 0x3F: strcpy(insn[i],"SD"); type=STORE; break;
-        default: strcpy(insn[i],"???"); type=NI; break;
-     }
-
-     itype[i]=type;
-     opcode2[i]=op2;
-     /* Get registers/immediates */
-     lt1[i]=0;
-     us1[i]=0;
-     us2[i]=0;
-     dep1[i]=0;
-     dep2[i]=0;
-
-     switch(type)
-     {
-        case LOAD:
-           rs1[i]=(source[i]>>21)&0x1f;
-           rs2[i]=0;
-           rt1[i]=(source[i]>>16)&0x1f;
-           rt2[i]=0;
-           imm[i]=(short)source[i];
-           break;
-        case STORE:
-        case STORELR:
-           rs1[i]=(source[i]>>21)&0x1f;
-           rs2[i]=(source[i]>>16)&0x1f;
-           rt1[i]=0;
-           rt2[i]=0;
-           imm[i]=(short)source[i];
-           if(op==0x2c||op==0x2d||op==0x3f)
-              us1[i]=rs2[i]; // 64-bit SDL/SDR/SD
-           break;
-        case LOADLR:
-           // LWL/LWR only load part of the register,
-           // therefore the target register must be treated as a source too
-           rs1[i]=(source[i]>>21)&0x1f;
-           rs2[i]=(source[i]>>16)&0x1f;
-           rt1[i]=(source[i]>>16)&0x1f;
-           rt2[i]=0;
-           imm[i]=(short)source[i];
-           if(op==0x1a||op==0x1b)
-              us1[i]=rs2[i]; // LDR/LDL
-           if(op==0x26)
-              dep1[i]=rt1[i]; // LWR
-           break;
-        case IMM16:
-           if (op==0x0f)
-              rs1[i]=0; // LUI instruction has no source register
-           else
-              rs1[i]=(source[i]>>21)&0x1f;
-           rs2[i]=0;
-           rt1[i]=(source[i]>>16)&0x1f;
-           rt2[i]=0;
-           if(op>=0x0c&&op<=0x0e) { // ANDI/ORI/XORI
-              imm[i]=(unsigned short)source[i];
-           }else{
-              imm[i]=(short)source[i];
-           }
-           if(op==0x18||op==0x19) us1[i]=rs1[i]; // DADDI/DADDIU
-           if(op==0x0a||op==0x0b) us1[i]=rs1[i]; // SLTI/SLTIU
-           if(op==0x0d||op==0x0e) dep1[i]=rs1[i]; // ORI/XORI
-           break;
-        case UJUMP:
-           rs1[i]=0;
-           rs2[i]=0;
-           rt1[i]=0;
-           rt2[i]=0;
-           // The JAL instruction writes to r31.
-           if (op&1)
-              rt1[i]=31;
-           rs2[i]=CCREG;
-           break;
-        case RJUMP:
-           rs1[i]=(source[i]>>21)&0x1f;
-           rs2[i]=0;
-           rt1[i]=0;
-           rt2[i]=0;
-           // The JALR instruction writes to rd.
-           if (op2&1) {
-              rt1[i]=(source[i]>>11)&0x1f;
-           }
-           rs2[i]=CCREG;
-           break;
-        case CJUMP:
-           rs1[i]=(source[i]>>21)&0x1f;
-           rs2[i]=(source[i]>>16)&0x1f;
-           rt1[i]=0;
-           rt2[i]=0;
-           if(op&2) { // BGTZ/BLEZ
-              rs2[i]=0;
-           }
-           us1[i]=rs1[i];
-           us2[i]=rs2[i];
-           likely[i]=op>>4;
-           break;
-        case SJUMP:
-           rs1[i]=(source[i]>>21)&0x1f;
-           rs2[i]=CCREG;
-           rt1[i]=0;
-           rt2[i]=0;
-           us1[i]=rs1[i];
-           if(op2&0x10) { // BxxAL
-              rt1[i]=31;
-              // NOTE: If the branch is not taken, r31 is still overwritten
-           }
-           likely[i]=(op2&2)>>1;
-           break;
-        case FJUMP:
-           rs1[i]=FSREG;
-           rs2[i]=CSREG;
-           rt1[i]=0;
-           rt2[i]=0;
-           likely[i]=((source[i])>>17)&1;
-           break;
-        case ALU:
-           rs1[i]=(source[i]>>21)&0x1f; // source
-           rs2[i]=(source[i]>>16)&0x1f; // subtract amount
-           rt1[i]=(source[i]>>11)&0x1f; // destination
-           rt2[i]=0;
-           if(op2==0x2a||op2==0x2b) { // SLT/SLTU
-              us1[i]=rs1[i];us2[i]=rs2[i];
-           }
-           else if(op2>=0x24&&op2<=0x27) { // AND/OR/XOR/NOR
-              dep1[i]=rs1[i];dep2[i]=rs2[i];
-           }
-           else if(op2>=0x2c&&op2<=0x2f) { // DADD/DSUB
-              dep1[i]=rs1[i];dep2[i]=rs2[i];
-           }
-           break;
-        case MULTDIV:
-           rs1[i]=(source[i]>>21)&0x1f; // source
-           rs2[i]=(source[i]>>16)&0x1f; // divisor
-           rt1[i]=HIREG;
-           rt2[i]=LOREG;
-           if (op2>=0x1c&&op2<=0x1f) { // DMULT/DMULTU/DDIV/DDIVU
-              us1[i]=rs1[i];us2[i]=rs2[i];
-           }
-           break;
-        case MOV:
-           rs1[i]=0;
-           rs2[i]=0;
-           rt1[i]=0;
-           rt2[i]=0;
-           if(op2==0x10) rs1[i]=HIREG; // MFHI
-           if(op2==0x11) rt1[i]=HIREG; // MTHI
-           if(op2==0x12) rs1[i]=LOREG; // MFLO
-           if(op2==0x13) rt1[i]=LOREG; // MTLO
-           if((op2&0x1d)==0x10) rt1[i]=(source[i]>>11)&0x1f; // MFxx
-           if((op2&0x1d)==0x11) rs1[i]=(source[i]>>21)&0x1f; // MTxx
-           dep1[i]=rs1[i];
-           break;
-        case SHIFT:
-           rs1[i]=(source[i]>>16)&0x1f; // target of shift
-           rs2[i]=(source[i]>>21)&0x1f; // shift amount
-           rt1[i]=(source[i]>>11)&0x1f; // destination
-           rt2[i]=0;
-           // DSLLV/DSRLV/DSRAV are 64-bit
-           if(op2>=0x14&&op2<=0x17) us1[i]=rs1[i];
-           break;
-        case SHIFTIMM:
-           rs1[i]=(source[i]>>16)&0x1f;
-           rs2[i]=0;
-           rt1[i]=(source[i]>>11)&0x1f;
-           rt2[i]=0;
-           imm[i]=(source[i]>>6)&0x1f;
-           // DSxx32 instructions
-           if(op2>=0x3c) imm[i]|=0x20;
-           // DSLL/DSRL/DSRA/DSRA32/DSRL32 but not DSLL32 require 64-bit source
-           if(op2>=0x38&&op2!=0x3c) us1[i]=rs1[i];
-           break;
-        case COP0:
-           rs1[i]=0;
-           rs2[i]=0;
-           rt1[i]=0;
-           rt2[i]=0;
-           if(op2==0) rt1[i]=(source[i]>>16)&0x1F; // MFC0
-           if(op2==4) rs1[i]=(source[i]>>16)&0x1F; // MTC0
-           if(op2==4&&((source[i]>>11)&0x1f)==12) rt2[i]=CSREG; // Status
-           if(op2==16) if((source[i]&0x3f)==0x18) rs2[i]=CCREG; // ERET
-           break;
-        case COP1:
-           rs1[i]=0;
-           rs2[i]=0;
-           rt1[i]=0;
-           rt2[i]=0;
-           if(op2<3) rt1[i]=(source[i]>>16)&0x1F; // MFC1/DMFC1/CFC1
-           if(op2>3) rs1[i]=(source[i]>>16)&0x1F; // MTC1/DMTC1/CTC1
-           if(op2==5) us1[i]=rs1[i]; // DMTC1
-           rs2[i]=CSREG;
-           break;
-        case C1LS:
-           rs1[i]=(source[i]>>21)&0x1F;
-           rs2[i]=CSREG;
-           rt1[i]=0;
-           rt2[i]=0;
-           imm[i]=(short)source[i];
-           break;
-        case FLOAT:
-        case FCONV:
-           rs1[i]=0;
-           rs2[i]=CSREG;
-           rt1[i]=0;
-           rt2[i]=0;
-           break;
-        case FCOMP:
-           rs1[i]=FSREG;
-           rs2[i]=CSREG;
-           rt1[i]=FSREG;
-           rt2[i]=0;
-           break;
-        case SYSCALL:
-           rs1[i]=CCREG;
-           rs2[i]=0;
-           rt1[i]=0;
-           rt2[i]=0;
-           break;
-        default:
-           rs1[i]=0;
-           rs2[i]=0;
-           rt1[i]=0;
-           rt2[i]=0;
-     }
-
-     /* Calculate branch target addresses */
-     if(type==UJUMP)
-        ba[i]=((start+i*4+4)&0xF0000000)|(((unsigned int)source[i]<<6)>>4);
-     else if(type==CJUMP&&rs1[i]==rs2[i]&&(op&1))
-        ba[i]=start+i*4+8; // Ignore never taken branch
-     else if(type==SJUMP&&rs1[i]==0&&!(op2&1))
-        ba[i]=start+i*4+8; // Ignore never taken branch
-     else if(type==CJUMP||type==SJUMP||type==FJUMP)
-        ba[i]=start+i*4+4+((signed int)((unsigned int)source[i]<<16)>>14);
-     else
-        ba[i]=-1;
-
-     /* Is this the end of the block? */
-     if(i>0&&(itype[i-1]==UJUMP||itype[i-1]==RJUMP||(source[i-1]>>16)==0x1000))
-     {
-        if(rt1[i-1]==0) /* Continue past subroutine call (JAL) */
-        { 
-           done=1;
-           // Does the block continue due to a branch?
-           for(j=i-1;j>=0;j--)
-           {
-              if(ba[j]==start+i*4) done=j=0; // Branch into delay slot
-              if(ba[j]==start+i*4+4) done=j=0;
-              if(ba[j]==start+i*4+8) done=j=0;
-           }
-        }
-        else
+  for(i=0;!done;i++) {
+    bt[i]=0;likely[i]=0;ooo[i]=0;op2=0;
+    minimum_free_regs[i]=0;
+    opcode[i]=op=source[i]>>26;
+    switch(op)
+    {
+      case 0x00: strcpy(insn[i],"special"); type=NI;
+        op2=source[i]&0x3f;
+        switch(op2)
         {
-           if(stop_after_jal) done=1;
-           // Stop on BREAK
-           if((source[i+1]&0xfc00003f)==0x0d) done=1;
+          case 0x00: strcpy(insn[i],"SLL"); type=SHIFTIMM; break;
+          case 0x02: strcpy(insn[i],"SRL"); type=SHIFTIMM; break;
+          case 0x03: strcpy(insn[i],"SRA"); type=SHIFTIMM; break;
+          case 0x04: strcpy(insn[i],"SLLV"); type=SHIFT; break;
+          case 0x06: strcpy(insn[i],"SRLV"); type=SHIFT; break;
+          case 0x07: strcpy(insn[i],"SRAV"); type=SHIFT; break;
+          case 0x08: strcpy(insn[i],"JR"); type=RJUMP; break;
+          case 0x09: strcpy(insn[i],"JALR"); type=RJUMP; break;
+          case 0x0C: strcpy(insn[i],"SYSCALL"); type=SYSCALL; break;
+          case 0x0D: strcpy(insn[i],"BREAK"); type=OTHER; break;
+          case 0x0F: strcpy(insn[i],"SYNC"); type=OTHER; break;
+          case 0x10: strcpy(insn[i],"MFHI"); type=MOV; break;
+          case 0x11: strcpy(insn[i],"MTHI"); type=MOV; break;
+          case 0x12: strcpy(insn[i],"MFLO"); type=MOV; break;
+          case 0x13: strcpy(insn[i],"MTLO"); type=MOV; break;
+          case 0x14: strcpy(insn[i],"DSLLV"); type=SHIFT; break;
+          case 0x16: strcpy(insn[i],"DSRLV"); type=SHIFT; break;
+          case 0x17: strcpy(insn[i],"DSRAV"); type=SHIFT; break;
+          case 0x18: strcpy(insn[i],"MULT"); type=MULTDIV; break;
+          case 0x19: strcpy(insn[i],"MULTU"); type=MULTDIV; break;
+          case 0x1A: strcpy(insn[i],"DIV"); type=MULTDIV; break;
+          case 0x1B: strcpy(insn[i],"DIVU"); type=MULTDIV; break;
+          case 0x1C: strcpy(insn[i],"DMULT"); type=MULTDIV; break;
+          case 0x1D: strcpy(insn[i],"DMULTU"); type=MULTDIV; break;
+          case 0x1E: strcpy(insn[i],"DDIV"); type=MULTDIV; break;
+          case 0x1F: strcpy(insn[i],"DDIVU"); type=MULTDIV; break;
+          case 0x20: strcpy(insn[i],"ADD"); type=ALU; break;
+          case 0x21: strcpy(insn[i],"ADDU"); type=ALU; break;
+          case 0x22: strcpy(insn[i],"SUB"); type=ALU; break;
+          case 0x23: strcpy(insn[i],"SUBU"); type=ALU; break;
+          case 0x24: strcpy(insn[i],"AND"); type=ALU; break;
+          case 0x25: strcpy(insn[i],"OR"); type=ALU; break;
+          case 0x26: strcpy(insn[i],"XOR"); type=ALU; break;
+          case 0x27: strcpy(insn[i],"NOR"); type=ALU; break;
+          case 0x2A: strcpy(insn[i],"SLT"); type=ALU; break;
+          case 0x2B: strcpy(insn[i],"SLTU"); type=ALU; break;
+          case 0x2C: strcpy(insn[i],"DADD"); type=ALU; break;
+          case 0x2D: strcpy(insn[i],"DADDU"); type=ALU; break;
+          case 0x2E: strcpy(insn[i],"DSUB"); type=ALU; break;
+          case 0x2F: strcpy(insn[i],"DSUBU"); type=ALU; break;
+          case 0x30: strcpy(insn[i],"TGE"); type=NI; break;
+          case 0x31: strcpy(insn[i],"TGEU"); type=NI; break;
+          case 0x32: strcpy(insn[i],"TLT"); type=NI; break;
+          case 0x33: strcpy(insn[i],"TLTU"); type=NI; break;
+          case 0x34: strcpy(insn[i],"TEQ"); type=NI; break;
+          case 0x36: strcpy(insn[i],"TNE"); type=NI; break;
+          case 0x38: strcpy(insn[i],"DSLL"); type=SHIFTIMM; break;
+          case 0x3A: strcpy(insn[i],"DSRL"); type=SHIFTIMM; break;
+          case 0x3B: strcpy(insn[i],"DSRA"); type=SHIFTIMM; break;
+          case 0x3C: strcpy(insn[i],"DSLL32"); type=SHIFTIMM; break;
+          case 0x3E: strcpy(insn[i],"DSRL32"); type=SHIFTIMM; break;
+          case 0x3F: strcpy(insn[i],"DSRA32"); type=SHIFTIMM; break;
         }
-        /* Don't recompile stuff that's already compiled */
-        if(check_addr(start+i*4+4)) done=1;
-        /* Don't get too close to the limit */
-        if(i>MAXBLOCK/2) done=1;
-     }
-     if(i>0&&itype[i-1]==SYSCALL&&stop_after_jal) done=1;
-     assert(i<MAXBLOCK-1);
-     if(start+i*4==pagelimit-4) done=1;
-     assert(start+i*4<pagelimit);
-     if (i==MAXBLOCK-1) done=1;
-     // Stop if we're compiling junk
-     if(itype[i]==NI&&opcode[i]==0x11) {
-        done=stop_after_jal=1;
-        DebugMessage(M64MSG_VERBOSE, "Disabled speculative precompilation");
-     }
+        break;
+      case 0x01: strcpy(insn[i],"regimm"); type=NI;
+        op2=(source[i]>>16)&0x1f;
+        switch(op2)
+        {
+          case 0x00: strcpy(insn[i],"BLTZ"); type=SJUMP; break;
+          case 0x01: strcpy(insn[i],"BGEZ"); type=SJUMP; break;
+          case 0x02: strcpy(insn[i],"BLTZL"); type=SJUMP; break;
+          case 0x03: strcpy(insn[i],"BGEZL"); type=SJUMP; break;
+          case 0x08: strcpy(insn[i],"TGEI"); type=NI; break;
+          case 0x09: strcpy(insn[i],"TGEIU"); type=NI; break;
+          case 0x0A: strcpy(insn[i],"TLTI"); type=NI; break;
+          case 0x0B: strcpy(insn[i],"TLTIU"); type=NI; break;
+          case 0x0C: strcpy(insn[i],"TEQI"); type=NI; break;
+          case 0x0E: strcpy(insn[i],"TNEI"); type=NI; break;
+          case 0x10: strcpy(insn[i],"BLTZAL"); type=SJUMP; break;
+          case 0x11: strcpy(insn[i],"BGEZAL"); type=SJUMP; break;
+          case 0x12: strcpy(insn[i],"BLTZALL"); type=SJUMP; break;
+          case 0x13: strcpy(insn[i],"BGEZALL"); type=SJUMP; break;
+        }
+        break;
+      case 0x02: strcpy(insn[i],"J"); type=UJUMP; break;
+      case 0x03: strcpy(insn[i],"JAL"); type=UJUMP; break;
+      case 0x04: strcpy(insn[i],"BEQ"); type=CJUMP; break;
+      case 0x05: strcpy(insn[i],"BNE"); type=CJUMP; break;
+      case 0x06: strcpy(insn[i],"BLEZ"); type=CJUMP; break;
+      case 0x07: strcpy(insn[i],"BGTZ"); type=CJUMP; break;
+      case 0x08: strcpy(insn[i],"ADDI"); type=IMM16; break;
+      case 0x09: strcpy(insn[i],"ADDIU"); type=IMM16; break;
+      case 0x0A: strcpy(insn[i],"SLTI"); type=IMM16; break;
+      case 0x0B: strcpy(insn[i],"SLTIU"); type=IMM16; break;
+      case 0x0C: strcpy(insn[i],"ANDI"); type=IMM16; break;
+      case 0x0D: strcpy(insn[i],"ORI"); type=IMM16; break;
+      case 0x0E: strcpy(insn[i],"XORI"); type=IMM16; break;
+      case 0x0F: strcpy(insn[i],"LUI"); type=IMM16; break;
+      case 0x10: strcpy(insn[i],"cop0"); type=NI;
+        op2=(source[i]>>21)&0x1f;
+        switch(op2)
+        {
+          case 0x00: strcpy(insn[i],"MFC0"); type=COP0; break;
+          case 0x04: strcpy(insn[i],"MTC0"); type=COP0; break;
+          case 0x10: strcpy(insn[i],"tlb"); type=NI;
+          switch(source[i]&0x3f)
+          {
+            case 0x01: strcpy(insn[i],"TLBR"); type=COP0; break;
+            case 0x02: strcpy(insn[i],"TLBWI"); type=COP0; break;
+            case 0x06: strcpy(insn[i],"TLBWR"); type=COP0; break;
+            case 0x08: strcpy(insn[i],"TLBP"); type=COP0; break;
+            case 0x18: strcpy(insn[i],"ERET"); type=COP0; break;
+          }
+        }
+        break;
+      case 0x11: strcpy(insn[i],"cop1"); type=NI;
+        op2=(source[i]>>21)&0x1f;
+        switch(op2)
+        {
+          case 0x00: strcpy(insn[i],"MFC1"); type=COP1; break;
+          case 0x01: strcpy(insn[i],"DMFC1"); type=COP1; break;
+          case 0x02: strcpy(insn[i],"CFC1"); type=COP1; break;
+          case 0x04: strcpy(insn[i],"MTC1"); type=COP1; break;
+          case 0x05: strcpy(insn[i],"DMTC1"); type=COP1; break;
+          case 0x06: strcpy(insn[i],"CTC1"); type=COP1; break;
+          case 0x08: strcpy(insn[i],"BC1"); type=FJUMP;
+          switch((source[i]>>16)&0x3)
+          {
+            case 0x00: strcpy(insn[i],"BC1F"); break;
+            case 0x01: strcpy(insn[i],"BC1T"); break;
+            case 0x02: strcpy(insn[i],"BC1FL"); break;
+            case 0x03: strcpy(insn[i],"BC1TL"); break;
+          }
+          break;
+          case 0x10: strcpy(insn[i],"C1.S"); type=NI;
+          switch(source[i]&0x3f)
+          {
+            case 0x00: strcpy(insn[i],"ADD.S"); type=FLOAT; break;
+            case 0x01: strcpy(insn[i],"SUB.S"); type=FLOAT; break;
+            case 0x02: strcpy(insn[i],"MUL.S"); type=FLOAT; break;
+            case 0x03: strcpy(insn[i],"DIV.S"); type=FLOAT; break;
+            case 0x04: strcpy(insn[i],"SQRT.S"); type=FLOAT; break;
+            case 0x05: strcpy(insn[i],"ABS.S"); type=FLOAT; break;
+            case 0x06: strcpy(insn[i],"MOV.S"); type=FLOAT; break;
+            case 0x07: strcpy(insn[i],"NEG.S"); type=FLOAT; break;
+            case 0x08: strcpy(insn[i],"ROUND.L.S"); type=FCONV; break;
+            case 0x09: strcpy(insn[i],"TRUNC.L.S"); type=FCONV; break;
+            case 0x0A: strcpy(insn[i],"CEIL.L.S"); type=FCONV; break;
+            case 0x0B: strcpy(insn[i],"FLOOR.L.S"); type=FCONV; break;
+            case 0x0C: strcpy(insn[i],"ROUND.W.S"); type=FCONV; break;
+            case 0x0D: strcpy(insn[i],"TRUNC.W.S"); type=FCONV; break;
+            case 0x0E: strcpy(insn[i],"CEIL.W.S"); type=FCONV; break;
+            case 0x0F: strcpy(insn[i],"FLOOR.W.S"); type=FCONV; break;
+            case 0x21: strcpy(insn[i],"CVT.D.S"); type=FCONV; break;
+            case 0x24: strcpy(insn[i],"CVT.W.S"); type=FCONV; break;
+            case 0x25: strcpy(insn[i],"CVT.L.S"); type=FCONV; break;
+            case 0x30: strcpy(insn[i],"C.F.S"); type=FCOMP; break;
+            case 0x31: strcpy(insn[i],"C.UN.S"); type=FCOMP; break;
+            case 0x32: strcpy(insn[i],"C.EQ.S"); type=FCOMP; break;
+            case 0x33: strcpy(insn[i],"C.UEQ.S"); type=FCOMP; break;
+            case 0x34: strcpy(insn[i],"C.OLT.S"); type=FCOMP; break;
+            case 0x35: strcpy(insn[i],"C.ULT.S"); type=FCOMP; break;
+            case 0x36: strcpy(insn[i],"C.OLE.S"); type=FCOMP; break;
+            case 0x37: strcpy(insn[i],"C.ULE.S"); type=FCOMP; break;
+            case 0x38: strcpy(insn[i],"C.SF.S"); type=FCOMP; break;
+            case 0x39: strcpy(insn[i],"C.NGLE.S"); type=FCOMP; break;
+            case 0x3A: strcpy(insn[i],"C.SEQ.S"); type=FCOMP; break;
+            case 0x3B: strcpy(insn[i],"C.NGL.S"); type=FCOMP; break;
+            case 0x3C: strcpy(insn[i],"C.LT.S"); type=FCOMP; break;
+            case 0x3D: strcpy(insn[i],"C.NGE.S"); type=FCOMP; break;
+            case 0x3E: strcpy(insn[i],"C.LE.S"); type=FCOMP; break;
+            case 0x3F: strcpy(insn[i],"C.NGT.S"); type=FCOMP; break;
+          }
+          break;
+          case 0x11: strcpy(insn[i],"C1.D"); type=NI;
+          switch(source[i]&0x3f)
+          {
+            case 0x00: strcpy(insn[i],"ADD.D"); type=FLOAT; break;
+            case 0x01: strcpy(insn[i],"SUB.D"); type=FLOAT; break;
+            case 0x02: strcpy(insn[i],"MUL.D"); type=FLOAT; break;
+            case 0x03: strcpy(insn[i],"DIV.D"); type=FLOAT; break;
+            case 0x04: strcpy(insn[i],"SQRT.D"); type=FLOAT; break;
+            case 0x05: strcpy(insn[i],"ABS.D"); type=FLOAT; break;
+            case 0x06: strcpy(insn[i],"MOV.D"); type=FLOAT; break;
+            case 0x07: strcpy(insn[i],"NEG.D"); type=FLOAT; break;
+            case 0x08: strcpy(insn[i],"ROUND.L.D"); type=FCONV; break;
+            case 0x09: strcpy(insn[i],"TRUNC.L.D"); type=FCONV; break;
+            case 0x0A: strcpy(insn[i],"CEIL.L.D"); type=FCONV; break;
+            case 0x0B: strcpy(insn[i],"FLOOR.L.D"); type=FCONV; break;
+            case 0x0C: strcpy(insn[i],"ROUND.W.D"); type=FCONV; break;
+            case 0x0D: strcpy(insn[i],"TRUNC.W.D"); type=FCONV; break;
+            case 0x0E: strcpy(insn[i],"CEIL.W.D"); type=FCONV; break;
+            case 0x0F: strcpy(insn[i],"FLOOR.W.D"); type=FCONV; break;
+            case 0x20: strcpy(insn[i],"CVT.S.D"); type=FCONV; break;
+            case 0x24: strcpy(insn[i],"CVT.W.D"); type=FCONV; break;
+            case 0x25: strcpy(insn[i],"CVT.L.D"); type=FCONV; break;
+            case 0x30: strcpy(insn[i],"C.F.D"); type=FCOMP; break;
+            case 0x31: strcpy(insn[i],"C.UN.D"); type=FCOMP; break;
+            case 0x32: strcpy(insn[i],"C.EQ.D"); type=FCOMP; break;
+            case 0x33: strcpy(insn[i],"C.UEQ.D"); type=FCOMP; break;
+            case 0x34: strcpy(insn[i],"C.OLT.D"); type=FCOMP; break;
+            case 0x35: strcpy(insn[i],"C.ULT.D"); type=FCOMP; break;
+            case 0x36: strcpy(insn[i],"C.OLE.D"); type=FCOMP; break;
+            case 0x37: strcpy(insn[i],"C.ULE.D"); type=FCOMP; break;
+            case 0x38: strcpy(insn[i],"C.SF.D"); type=FCOMP; break;
+            case 0x39: strcpy(insn[i],"C.NGLE.D"); type=FCOMP; break;
+            case 0x3A: strcpy(insn[i],"C.SEQ.D"); type=FCOMP; break;
+            case 0x3B: strcpy(insn[i],"C.NGL.D"); type=FCOMP; break;
+            case 0x3C: strcpy(insn[i],"C.LT.D"); type=FCOMP; break;
+            case 0x3D: strcpy(insn[i],"C.NGE.D"); type=FCOMP; break;
+            case 0x3E: strcpy(insn[i],"C.LE.D"); type=FCOMP; break;
+            case 0x3F: strcpy(insn[i],"C.NGT.D"); type=FCOMP; break;
+          }
+          break;
+          case 0x14: strcpy(insn[i],"C1.W"); type=NI;
+          switch(source[i]&0x3f)
+          {
+            case 0x20: strcpy(insn[i],"CVT.S.W"); type=FCONV; break;
+            case 0x21: strcpy(insn[i],"CVT.D.W"); type=FCONV; break;
+          }
+          break;
+          case 0x15: strcpy(insn[i],"C1.L"); type=NI;
+          switch(source[i]&0x3f)
+          {
+            case 0x20: strcpy(insn[i],"CVT.S.L"); type=FCONV; break;
+            case 0x21: strcpy(insn[i],"CVT.D.L"); type=FCONV; break;
+          }
+          break;
+        }
+        break;
+      case 0x14: strcpy(insn[i],"BEQL"); type=CJUMP; break;
+      case 0x15: strcpy(insn[i],"BNEL"); type=CJUMP; break;
+      case 0x16: strcpy(insn[i],"BLEZL"); type=CJUMP; break;
+      case 0x17: strcpy(insn[i],"BGTZL"); type=CJUMP; break;
+      case 0x18: strcpy(insn[i],"DADDI"); type=IMM16; break;
+      case 0x19: strcpy(insn[i],"DADDIU"); type=IMM16; break;
+      case 0x1A: strcpy(insn[i],"LDL"); type=LOADLR; break;
+      case 0x1B: strcpy(insn[i],"LDR"); type=LOADLR; break;
+      case 0x20: strcpy(insn[i],"LB"); type=LOAD; break;
+      case 0x21: strcpy(insn[i],"LH"); type=LOAD; break;
+      case 0x22: strcpy(insn[i],"LWL"); type=LOADLR; break;
+      case 0x23: strcpy(insn[i],"LW"); type=LOAD; break;
+      case 0x24: strcpy(insn[i],"LBU"); type=LOAD; break;
+      case 0x25: strcpy(insn[i],"LHU"); type=LOAD; break;
+      case 0x26: strcpy(insn[i],"LWR"); type=LOADLR; break;
+      case 0x27: strcpy(insn[i],"LWU"); type=LOAD; break;
+      case 0x28: strcpy(insn[i],"SB"); type=STORE; break;
+      case 0x29: strcpy(insn[i],"SH"); type=STORE; break;
+      case 0x2A: strcpy(insn[i],"SWL"); type=STORELR; break;
+      case 0x2B: strcpy(insn[i],"SW"); type=STORE; break;
+      case 0x2C: strcpy(insn[i],"SDL"); type=STORELR; break;
+      case 0x2D: strcpy(insn[i],"SDR"); type=STORELR; break;
+      case 0x2E: strcpy(insn[i],"SWR"); type=STORELR; break;
+      case 0x2F: strcpy(insn[i],"CACHE"); type=NOP; break;
+      case 0x30: strcpy(insn[i],"LL"); type=NI; break;
+      case 0x31: strcpy(insn[i],"LWC1"); type=C1LS; break;
+      case 0x34: strcpy(insn[i],"LLD"); type=NI; break;
+      case 0x35: strcpy(insn[i],"LDC1"); type=C1LS; break;
+      case 0x37: strcpy(insn[i],"LD"); type=LOAD; break;
+      case 0x38: strcpy(insn[i],"SC"); type=NI; break;
+      case 0x39: strcpy(insn[i],"SWC1"); type=C1LS; break;
+      case 0x3C: strcpy(insn[i],"SCD"); type=NI; break;
+      case 0x3D: strcpy(insn[i],"SDC1"); type=C1LS; break;
+      case 0x3F: strcpy(insn[i],"SD"); type=STORE; break;
+      default: strcpy(insn[i],"???"); type=NI; break;
+    }
+    itype[i]=type;
+    opcode2[i]=op2;
+    /* Get registers/immediates */
+    lt1[i]=0;
+    us1[i]=0;
+    us2[i]=0;
+    dep1[i]=0;
+    dep2[i]=0;
+    switch(type) {
+      case LOAD:
+        rs1[i]=(source[i]>>21)&0x1f;
+        rs2[i]=0;
+        rt1[i]=(source[i]>>16)&0x1f;
+        rt2[i]=0;
+        imm[i]=(short)source[i];
+        break;
+      case STORE:
+      case STORELR:
+        rs1[i]=(source[i]>>21)&0x1f;
+        rs2[i]=(source[i]>>16)&0x1f;
+        rt1[i]=0;
+        rt2[i]=0;
+        imm[i]=(short)source[i];
+        if(op==0x2c||op==0x2d||op==0x3f) us1[i]=rs2[i]; // 64-bit SDL/SDR/SD
+        break;
+      case LOADLR:
+        // LWL/LWR only load part of the register,
+        // therefore the target register must be treated as a source too
+        rs1[i]=(source[i]>>21)&0x1f;
+        rs2[i]=(source[i]>>16)&0x1f;
+        rt1[i]=(source[i]>>16)&0x1f;
+        rt2[i]=0;
+        imm[i]=(short)source[i];
+        if(op==0x1a||op==0x1b) us1[i]=rs2[i]; // LDR/LDL
+        if(op==0x26) dep1[i]=rt1[i]; // LWR
+        break;
+      case IMM16:
+        if (op==0x0f) rs1[i]=0; // LUI instruction has no source register
+        else rs1[i]=(source[i]>>21)&0x1f;
+        rs2[i]=0;
+        rt1[i]=(source[i]>>16)&0x1f;
+        rt2[i]=0;
+        if(op>=0x0c&&op<=0x0e) { // ANDI/ORI/XORI
+          imm[i]=(unsigned short)source[i];
+        }else{
+          imm[i]=(short)source[i];
+        }
+        if(op==0x18||op==0x19) us1[i]=rs1[i]; // DADDI/DADDIU
+        if(op==0x0a||op==0x0b) us1[i]=rs1[i]; // SLTI/SLTIU
+        if(op==0x0d||op==0x0e) dep1[i]=rs1[i]; // ORI/XORI
+        break;
+      case UJUMP:
+        rs1[i]=0;
+        rs2[i]=0;
+        rt1[i]=0;
+        rt2[i]=0;
+        // The JAL instruction writes to r31.
+        if (op&1) {
+          rt1[i]=31;
+        }
+        rs2[i]=CCREG;
+        break;
+      case RJUMP:
+        rs1[i]=(source[i]>>21)&0x1f;
+        rs2[i]=0;
+        rt1[i]=0;
+        rt2[i]=0;
+        // The JALR instruction writes to rd.
+        if (op2&1) {
+          rt1[i]=(source[i]>>11)&0x1f;
+        }
+        rs2[i]=CCREG;
+        break;
+      case CJUMP:
+        rs1[i]=(source[i]>>21)&0x1f;
+        rs2[i]=(source[i]>>16)&0x1f;
+        rt1[i]=0;
+        rt2[i]=0;
+        if(op&2) { // BGTZ/BLEZ
+          rs2[i]=0;
+        }
+        us1[i]=rs1[i];
+        us2[i]=rs2[i];
+        likely[i]=op>>4;
+        break;
+      case SJUMP:
+        rs1[i]=(source[i]>>21)&0x1f;
+        rs2[i]=CCREG;
+        rt1[i]=0;
+        rt2[i]=0;
+        us1[i]=rs1[i];
+        if(op2&0x10) { // BxxAL
+          rt1[i]=31;
+          // NOTE: If the branch is not taken, r31 is still overwritten
+        }
+        likely[i]=(op2&2)>>1;
+        break;
+      case FJUMP:
+        rs1[i]=FSREG;
+        rs2[i]=CSREG;
+        rt1[i]=0;
+        rt2[i]=0;
+        likely[i]=((source[i])>>17)&1;
+        break;
+      case ALU:
+        rs1[i]=(source[i]>>21)&0x1f; // source
+        rs2[i]=(source[i]>>16)&0x1f; // subtract amount
+        rt1[i]=(source[i]>>11)&0x1f; // destination
+        rt2[i]=0;
+        if(op2==0x2a||op2==0x2b) { // SLT/SLTU
+          us1[i]=rs1[i];us2[i]=rs2[i];
+        }
+        else if(op2>=0x24&&op2<=0x27) { // AND/OR/XOR/NOR
+          dep1[i]=rs1[i];dep2[i]=rs2[i];
+        }
+        else if(op2>=0x2c&&op2<=0x2f) { // DADD/DSUB
+          dep1[i]=rs1[i];dep2[i]=rs2[i];
+        }
+        break;
+      case MULTDIV:
+        rs1[i]=(source[i]>>21)&0x1f; // source
+        rs2[i]=(source[i]>>16)&0x1f; // divisor
+        rt1[i]=HIREG;
+        rt2[i]=LOREG;
+        if (op2>=0x1c&&op2<=0x1f) { // DMULT/DMULTU/DDIV/DDIVU
+          us1[i]=rs1[i];us2[i]=rs2[i];
+        }
+        break;
+      case MOV:
+        rs1[i]=0;
+        rs2[i]=0;
+        rt1[i]=0;
+        rt2[i]=0;
+        if(op2==0x10) rs1[i]=HIREG; // MFHI
+        if(op2==0x11) rt1[i]=HIREG; // MTHI
+        if(op2==0x12) rs1[i]=LOREG; // MFLO
+        if(op2==0x13) rt1[i]=LOREG; // MTLO
+        if((op2&0x1d)==0x10) rt1[i]=(source[i]>>11)&0x1f; // MFxx
+        if((op2&0x1d)==0x11) rs1[i]=(source[i]>>21)&0x1f; // MTxx
+        dep1[i]=rs1[i];
+        break;
+      case SHIFT:
+        rs1[i]=(source[i]>>16)&0x1f; // target of shift
+        rs2[i]=(source[i]>>21)&0x1f; // shift amount
+        rt1[i]=(source[i]>>11)&0x1f; // destination
+        rt2[i]=0;
+        // DSLLV/DSRLV/DSRAV are 64-bit
+        if(op2>=0x14&&op2<=0x17) us1[i]=rs1[i];
+        break;
+      case SHIFTIMM:
+        rs1[i]=(source[i]>>16)&0x1f;
+        rs2[i]=0;
+        rt1[i]=(source[i]>>11)&0x1f;
+        rt2[i]=0;
+        imm[i]=(source[i]>>6)&0x1f;
+        // DSxx32 instructions
+        if(op2>=0x3c) imm[i]|=0x20;
+        // DSLL/DSRL/DSRA/DSRA32/DSRL32 but not DSLL32 require 64-bit source
+        if(op2>=0x38&&op2!=0x3c) us1[i]=rs1[i];
+        break;
+      case COP0:
+        rs1[i]=0;
+        rs2[i]=0;
+        rt1[i]=0;
+        rt2[i]=0;
+        if(op2==0) rt1[i]=(source[i]>>16)&0x1F; // MFC0
+        if(op2==4) rs1[i]=(source[i]>>16)&0x1F; // MTC0
+        if(op2==4&&((source[i]>>11)&0x1f)==12) rt2[i]=CSREG; // Status
+        if(op2==16) if((source[i]&0x3f)==0x18) rs2[i]=CCREG; // ERET
+        break;
+      case COP1:
+        rs1[i]=0;
+        rs2[i]=0;
+        rt1[i]=0;
+        rt2[i]=0;
+        if(op2<3) rt1[i]=(source[i]>>16)&0x1F; // MFC1/DMFC1/CFC1
+        if(op2>3) rs1[i]=(source[i]>>16)&0x1F; // MTC1/DMTC1/CTC1
+        if(op2==5) us1[i]=rs1[i]; // DMTC1
+        rs2[i]=CSREG;
+        break;
+      case C1LS:
+        rs1[i]=(source[i]>>21)&0x1F;
+        rs2[i]=CSREG;
+        rt1[i]=0;
+        rt2[i]=0;
+        imm[i]=(short)source[i];
+        break;
+      case FLOAT:
+      case FCONV:
+        rs1[i]=0;
+        rs2[i]=CSREG;
+        rt1[i]=0;
+        rt2[i]=0;
+        break;
+      case FCOMP:
+        rs1[i]=FSREG;
+        rs2[i]=CSREG;
+        rt1[i]=FSREG;
+        rt2[i]=0;
+        break;
+      case SYSCALL:
+        rs1[i]=CCREG;
+        rs2[i]=0;
+        rt1[i]=0;
+        rt2[i]=0;
+        break;
+      default:
+        rs1[i]=0;
+        rs2[i]=0;
+        rt1[i]=0;
+        rt2[i]=0;
+    }
+    /* Calculate branch target addresses */
+    if(type==UJUMP)
+      ba[i]=((start+i*4+4)&0xF0000000)|(((unsigned int)source[i]<<6)>>4);
+    else if(type==CJUMP&&rs1[i]==rs2[i]&&(op&1))
+      ba[i]=start+i*4+8; // Ignore never taken branch
+    else if(type==SJUMP&&rs1[i]==0&&!(op2&1))
+      ba[i]=start+i*4+8; // Ignore never taken branch
+    else if(type==CJUMP||type==SJUMP||type==FJUMP)
+      ba[i]=start+i*4+4+((signed int)((unsigned int)source[i]<<16)>>14);
+    else ba[i]=-1;
+    /* Is this the end of the block? */
+    if(i>0&&(itype[i-1]==UJUMP||itype[i-1]==RJUMP||(source[i-1]>>16)==0x1000)) {
+      if(rt1[i-1]==0) { // Continue past subroutine call (JAL)
+        done=1;
+        // Does the block continue due to a branch?
+        for(j=i-1;j>=0;j--)
+        {
+          if(ba[j]==start+i*4) done=j=0; // Branch into delay slot
+          if(ba[j]==start+i*4+4) done=j=0;
+          if(ba[j]==start+i*4+8) done=j=0;
+        }
+      }
+      else {
+        if(stop_after_jal) done=1;
+        // Stop on BREAK
+        if((source[i+1]&0xfc00003f)==0x0d) done=1;
+      }
+      // Don't recompile stuff that's already compiled
+      if(check_addr(start+i*4+4)) done=1;
+      // Don't get too close to the limit
+      if(i>MAXBLOCK/2) done=1;
+    }
+    if(i>0&&itype[i-1]==SYSCALL&&stop_after_jal) done=1;
+    assert(i<MAXBLOCK-1);
+    if(start+i*4==pagelimit-4) done=1;
+    assert(start+i*4<pagelimit);
+    if (i==MAXBLOCK-1) done=1;
+    // Stop if we're compiling junk
+    if(itype[i]==NI&&opcode[i]==0x11) {
+      done=stop_after_jal=1;
+      DebugMessage(M64MSG_VERBOSE, "Disabled speculative precompilation");
+    }
   }
   slen=i;
   if(itype[i-1]==UJUMP||itype[i-1]==CJUMP||itype[i-1]==SJUMP||itype[i-1]==RJUMP||itype[i-1]==FJUMP) {
@@ -8477,9 +8373,7 @@ int new_recompile_block(int addr)
   int cc=0;
   int hr;
   
-#ifndef FORCE32
   provisional_32bit();
-#endif
   
   if((u_int)addr&1) {
     // First instruction is delay slot
@@ -8522,8 +8416,6 @@ int new_recompile_block(int addr)
         }
       }
     }
-
-#ifndef FORCE32
     // If something jumps here with 64-bit values
     // then promote those registers to 64 bits
     if(bt[i])
@@ -8559,87 +8451,85 @@ int new_recompile_block(int addr)
         current.is32=temp_is32;
       }
     }
-#endif
-
     memcpy(regmap_pre[i],current.regmap,sizeof(current.regmap));
     regs[i].wasconst=current.isconst;
     regs[i].was32=current.is32;
     regs[i].wasdirty=current.dirty;
-#if defined(DESTRUCTIVE_WRITEBACK) && defined(FORCE32)
+    #ifdef DESTRUCTIVE_WRITEBACK
     // To change a dirty register from 32 to 64 bits, we must write
     // it out during the previous cycle (for branches, 2 cycles)
     if(i<slen-1&&bt[i+1]&&itype[i-1]!=UJUMP&&itype[i-1]!=CJUMP&&itype[i-1]!=SJUMP&&itype[i-1]!=RJUMP&&itype[i-1]!=FJUMP)
     {
-       uint64_t temp_is32=current.is32;
-       for(j=i-1;j>=0;j--)
-       {
-          if(ba[j]==start+i*4+4) 
-             temp_is32&=branch_regs[j].is32;
-       }
-       for(j=i;j<slen;j++)
-       {
-          if(ba[j]==start+i*4+4) 
-             //temp_is32=1;
-             temp_is32&=p32[j];
-       }
-       if(temp_is32!=current.is32) {
-          //DebugMessage(M64MSG_VERBOSE, "pre-dumping 32-bit regs (%x)",start+i*4);
-          for(hr=0;hr<HOST_REGS;hr++)
+      uint64_t temp_is32=current.is32;
+      for(j=i-1;j>=0;j--)
+      {
+        if(ba[j]==start+i*4+4) 
+          temp_is32&=branch_regs[j].is32;
+      }
+      for(j=i;j<slen;j++)
+      {
+        if(ba[j]==start+i*4+4) 
+          //temp_is32=1;
+          temp_is32&=p32[j];
+      }
+      if(temp_is32!=current.is32) {
+        //DebugMessage(M64MSG_VERBOSE, "pre-dumping 32-bit regs (%x)",start+i*4);
+        for(hr=0;hr<HOST_REGS;hr++)
+        {
+          int r=current.regmap[hr];
+          if(r>0)
           {
-             int r=current.regmap[hr];
-             if(r>0)
-             {
-                if((current.dirty>>hr)&((current.is32&~temp_is32)>>(r&63))&1) {
-                   if(itype[i]!=UJUMP&&itype[i]!=CJUMP&&itype[i]!=SJUMP&&itype[i]!=RJUMP&&itype[i]!=FJUMP)
-                   {
-                      if(rs1[i]!=(r&63)&&rs2[i]!=(r&63))
-                      {
-                         //DebugMessage(M64MSG_VERBOSE, "dump %d/r%d",hr,r);
-                         current.regmap[hr]=-1;
-                         if(get_reg(current.regmap,r|64)>=0) 
-                            current.regmap[get_reg(current.regmap,r|64)]=-1;
-                      }
-                   }
+            if((current.dirty>>hr)&((current.is32&~temp_is32)>>(r&63))&1) {
+              if(itype[i]!=UJUMP&&itype[i]!=CJUMP&&itype[i]!=SJUMP&&itype[i]!=RJUMP&&itype[i]!=FJUMP)
+              {
+                if(rs1[i]!=(r&63)&&rs2[i]!=(r&63))
+                {
+                  //DebugMessage(M64MSG_VERBOSE, "dump %d/r%d",hr,r);
+                  current.regmap[hr]=-1;
+                  if(get_reg(current.regmap,r|64)>=0) 
+                    current.regmap[get_reg(current.regmap,r|64)]=-1;
                 }
-             }
+              }
+            }
           }
-       }
+        }
+      }
     }
     else if(i<slen-2&&bt[i+2]&&(source[i-1]>>16)!=0x1000&&(itype[i]==CJUMP||itype[i]==SJUMP||itype[i]==FJUMP))
     {
-       uint64_t temp_is32=current.is32;
-       for(j=i-1;j>=0;j--)
-       {
-          if(ba[j]==start+i*4+8) 
-             temp_is32&=branch_regs[j].is32;
-       }
-       for(j=i;j<slen;j++)
-       {
-          if(ba[j]==start+i*4+8) 
-             //temp_is32=1;
-             temp_is32&=p32[j];
-       }
-       if(temp_is32!=current.is32) {
-          //DebugMessage(M64MSG_VERBOSE, "pre-dumping 32-bit regs (%x)",start+i*4);
-          for(hr=0;hr<HOST_REGS;hr++)
+      uint64_t temp_is32=current.is32;
+      for(j=i-1;j>=0;j--)
+      {
+        if(ba[j]==start+i*4+8) 
+          temp_is32&=branch_regs[j].is32;
+      }
+      for(j=i;j<slen;j++)
+      {
+        if(ba[j]==start+i*4+8) 
+          //temp_is32=1;
+          temp_is32&=p32[j];
+      }
+      if(temp_is32!=current.is32) {
+        //DebugMessage(M64MSG_VERBOSE, "pre-dumping 32-bit regs (%x)",start+i*4);
+        for(hr=0;hr<HOST_REGS;hr++)
+        {
+          int r=current.regmap[hr];
+          if(r>0)
           {
-             int r=current.regmap[hr];
-             if(r>0)
-             {
-                if((current.dirty>>hr)&((current.is32&~temp_is32)>>(r&63))&1) {
-                   if(rs1[i]!=(r&63)&&rs2[i]!=(r&63)&&rs1[i+1]!=(r&63)&&rs2[i+1]!=(r&63))
-                   {
-                      //DebugMessage(M64MSG_VERBOSE, "dump %d/r%d",hr,r);
-                      current.regmap[hr]=-1;
-                      if(get_reg(current.regmap,r|64)>=0) 
-                         current.regmap[get_reg(current.regmap,r|64)]=-1;
-                   }
-                }
-             }
+            if((current.dirty>>hr)&((current.is32&~temp_is32)>>(r&63))&1) {
+              if(rs1[i]!=(r&63)&&rs2[i]!=(r&63)&&rs1[i+1]!=(r&63)&&rs2[i+1]!=(r&63))
+              {
+                //DebugMessage(M64MSG_VERBOSE, "dump %d/r%d",hr,r);
+                current.regmap[hr]=-1;
+                if(get_reg(current.regmap,r|64)>=0) 
+                  current.regmap[get_reg(current.regmap,r|64)]=-1;
+              }
+            }
           }
-       }
+        }
+      }
     }
-#endif
+    #endif
     if(itype[i]!=UJUMP&&itype[i]!=CJUMP&&itype[i]!=SJUMP&&itype[i]!=RJUMP&&itype[i]!=FJUMP) {
       if(i+1<slen) {
         current.u=unneeded_reg[i+1]&~((1LL<<rs1[i])|(1LL<<rs2[i]));
@@ -8762,7 +8652,7 @@ int new_recompile_block(int addr)
           clear_const(&current,rt1[i]);
           alloc_cc(&current,i);
           dirty_reg(&current,CCREG);
-          if(rs1[i]!=rt1[i+1]&&rs1[i]!=rt2[i+1]) {
+          if((rs1[i]!=rt1[i+1]&&rs1[i]!=rt2[i+1])||(rs1[i]==0)) {
             alloc_reg(&current,i,rs1[i]);
             if (rt1[i]!=0) {
               alloc_reg(&current,i,rt1[i]);
@@ -9439,7 +9329,7 @@ int new_recompile_block(int addr)
   
   for (i=slen-1;i>=0;i--)
   {
-    int hr;
+    int hr=0;
     if(itype[i]==RJUMP||itype[i]==UJUMP||itype[i]==CJUMP||itype[i]==SJUMP||itype[i]==FJUMP)
     {
       if(ba[i]<start || ba[i]>=(start+slen*4))
@@ -9456,7 +9346,7 @@ int new_recompile_block(int addr)
         for(hr=0;hr<HOST_REGS;hr++)
         {
           if(regs[i].regmap_entry[hr]>=0) {
-            if(regs[i].regmap_entry[hr]==regs[t].regmap_entry[hr]) nr|=1<<hr;
+            if(regs[i].regmap_entry[hr]==regs[t].regmap_entry[hr]) nr|=(uint64_t)1<<hr;
           }
         }
       }
@@ -9484,25 +9374,25 @@ int new_recompile_block(int addr)
           if(rt1[i+1]&&rt1[i+1]==(regs[i].regmap[hr]&63)) nr&=~(1<<hr);
           if(rt2[i+1]&&rt2[i+1]==(regs[i].regmap[hr]&63)) nr&=~(1<<hr);
         }
-        if(us1[i+1]==(regmap_pre[i][hr]&63)) nr|=1<<hr;
-        if(us2[i+1]==(regmap_pre[i][hr]&63)) nr|=1<<hr;
-        if(rs1[i+1]==regmap_pre[i][hr]) nr|=1<<hr;
-        if(rs2[i+1]==regmap_pre[i][hr]) nr|=1<<hr;
-        if(us1[i+1]==(regs[i].regmap_entry[hr]&63)) nr|=1<<hr;
-        if(us2[i+1]==(regs[i].regmap_entry[hr]&63)) nr|=1<<hr;
-        if(rs1[i+1]==regs[i].regmap_entry[hr]) nr|=1<<hr;
-        if(rs2[i+1]==regs[i].regmap_entry[hr]) nr|=1<<hr;
+        if(us1[i+1]==(regmap_pre[i][hr]&63)) nr|=(uint64_t)1<<hr;
+        if(us2[i+1]==(regmap_pre[i][hr]&63)) nr|=(uint64_t)1<<hr;
+        if(rs1[i+1]==regmap_pre[i][hr]) nr|=(uint64_t)1<<hr;
+        if(rs2[i+1]==regmap_pre[i][hr]) nr|=(uint64_t)1<<hr;
+        if(us1[i+1]==(regs[i].regmap_entry[hr]&63)) nr|=(uint64_t)1<<hr;
+        if(us2[i+1]==(regs[i].regmap_entry[hr]&63)) nr|=(uint64_t)1<<hr;
+        if(rs1[i+1]==regs[i].regmap_entry[hr]) nr|=(uint64_t)1<<hr;
+        if(rs2[i+1]==regs[i].regmap_entry[hr]) nr|=(uint64_t)1<<hr;
         if(dep1[i+1]&&!((unneeded_reg_upper[i]>>dep1[i+1])&1)) {
-          if(dep1[i+1]==(regmap_pre[i][hr]&63)) nr|=1<<hr;
-          if(dep2[i+1]==(regmap_pre[i][hr]&63)) nr|=1<<hr;
+          if(dep1[i+1]==(regmap_pre[i][hr]&63)) nr|=(uint64_t)1<<hr;
+          if(dep2[i+1]==(regmap_pre[i][hr]&63)) nr|=(uint64_t)1<<hr;
         }
         if(dep2[i+1]&&!((unneeded_reg_upper[i]>>dep2[i+1])&1)) {
-          if(dep1[i+1]==(regs[i].regmap_entry[hr]&63)) nr|=1<<hr;
-          if(dep2[i+1]==(regs[i].regmap_entry[hr]&63)) nr|=1<<hr;
+          if(dep1[i+1]==(regs[i].regmap_entry[hr]&63)) nr|=(uint64_t)1<<hr;
+          if(dep2[i+1]==(regs[i].regmap_entry[hr]&63)) nr|=(uint64_t)1<<hr;
         }
         if(itype[i+1]==STORE || itype[i+1]==STORELR || (opcode[i+1]&0x3b)==0x39) {
-          if(regmap_pre[i][hr]==INVCP) nr|=1<<hr;
-          if(regs[i].regmap_entry[hr]==INVCP) nr|=1<<hr;
+          if(regmap_pre[i][hr]==INVCP) nr|=(uint64_t)1<<hr;
+          if(regs[i].regmap_entry[hr]==INVCP) nr|=(uint64_t)1<<hr;
         }
       }
     }
@@ -9534,25 +9424,25 @@ int new_recompile_block(int addr)
       if(rt2[i]&&rt2[i]==(regs[i].regmap[hr]&63)) nr&=~(1<<hr);
       if(FTEMP==(regs[i].regmap[hr]&63)) nr&=~(1<<hr);
       // Source registers are needed
-      if(us1[i]==(regmap_pre[i][hr]&63)) nr|=1<<hr;
-      if(us2[i]==(regmap_pre[i][hr]&63)) nr|=1<<hr;
-      if(rs1[i]==regmap_pre[i][hr]) nr|=1<<hr;
-      if(rs2[i]==regmap_pre[i][hr]) nr|=1<<hr;
-      if(us1[i]==(regs[i].regmap_entry[hr]&63)) nr|=1<<hr;
-      if(us2[i]==(regs[i].regmap_entry[hr]&63)) nr|=1<<hr;
-      if(rs1[i]==regs[i].regmap_entry[hr]) nr|=1<<hr;
-      if(rs2[i]==regs[i].regmap_entry[hr]) nr|=1<<hr;
+      if(us1[i]==(regmap_pre[i][hr]&63)) nr|=(uint64_t)1<<hr;
+      if(us2[i]==(regmap_pre[i][hr]&63)) nr|=(uint64_t)1<<hr;
+      if(rs1[i]==regmap_pre[i][hr]) nr|=(uint64_t)1<<hr;
+      if(rs2[i]==regmap_pre[i][hr]) nr|=(uint64_t)1<<hr;
+      if(us1[i]==(regs[i].regmap_entry[hr]&63)) nr|=(uint64_t)1<<hr;
+      if(us2[i]==(regs[i].regmap_entry[hr]&63)) nr|=(uint64_t)1<<hr;
+      if(rs1[i]==regs[i].regmap_entry[hr]) nr|=(uint64_t)1<<hr;
+      if(rs2[i]==regs[i].regmap_entry[hr]) nr|=(uint64_t)1<<hr;
       if(dep1[i]&&!((unneeded_reg_upper[i]>>dep1[i])&1)) {
-        if(dep1[i]==(regmap_pre[i][hr]&63)) nr|=1<<hr;
-        if(dep1[i]==(regs[i].regmap_entry[hr]&63)) nr|=1<<hr;
+        if(dep1[i]==(regmap_pre[i][hr]&63)) nr|=(uint64_t)1<<hr;
+        if(dep1[i]==(regs[i].regmap_entry[hr]&63)) nr|=(uint64_t)1<<hr;
       }
       if(dep2[i]&&!((unneeded_reg_upper[i]>>dep2[i])&1)) {
-        if(dep2[i]==(regmap_pre[i][hr]&63)) nr|=1<<hr;
-        if(dep2[i]==(regs[i].regmap_entry[hr]&63)) nr|=1<<hr;
+        if(dep2[i]==(regmap_pre[i][hr]&63)) nr|=(uint64_t)1<<hr;
+        if(dep2[i]==(regs[i].regmap_entry[hr]&63)) nr|=(uint64_t)1<<hr;
       }
       if(itype[i]==STORE || itype[i]==STORELR || (opcode[i]&0x3b)==0x39) {
-        if(regmap_pre[i][hr]==INVCP) nr|=1<<hr;
-        if(regs[i].regmap_entry[hr]==INVCP) nr|=1<<hr;
+        if(regmap_pre[i][hr]==INVCP) nr|=(uint64_t)1<<hr;
+        if(regs[i].regmap_entry[hr]==INVCP) nr|=(uint64_t)1<<hr;
       }
       // Don't store a register immediately after writing it,
       // may prevent dual-issue.
@@ -9561,13 +9451,13 @@ int new_recompile_block(int addr)
       if(i>0&&!bt[i]&&((regs[i].wasdirty>>hr)&1)) {
         if((regmap_pre[i][hr]>0&&regmap_pre[i][hr]<64&&!((unneeded_reg[i]>>regmap_pre[i][hr])&1)) ||
            (regmap_pre[i][hr]>64&&!((unneeded_reg_upper[i]>>(regmap_pre[i][hr]&63))&1)) ) {
-          if(rt1[i-1]==(regmap_pre[i][hr]&63)) nr|=1<<hr;
-          if(rt2[i-1]==(regmap_pre[i][hr]&63)) nr|=1<<hr;
+          if(rt1[i-1]==(regmap_pre[i][hr]&63)) nr|=(uint64_t)1<<hr;
+          if(rt2[i-1]==(regmap_pre[i][hr]&63)) nr|=(uint64_t)1<<hr;
         }
         if((regs[i].regmap_entry[hr]>0&&regs[i].regmap_entry[hr]<64&&!((unneeded_reg[i]>>regs[i].regmap_entry[hr])&1)) ||
            (regs[i].regmap_entry[hr]>64&&!((unneeded_reg_upper[i]>>(regs[i].regmap_entry[hr]&63))&1)) ) {
-          if(rt1[i-1]==(regs[i].regmap_entry[hr]&63)) nr|=1<<hr;
-          if(rt2[i-1]==(regs[i].regmap_entry[hr]&63)) nr|=1<<hr;
+          if(rt1[i-1]==(regs[i].regmap_entry[hr]&63)) nr|=(uint64_t)1<<hr;
+          if(rt2[i-1]==(regs[i].regmap_entry[hr]&63)) nr|=(uint64_t)1<<hr;
         }
       }
     }
@@ -9849,8 +9739,8 @@ int new_recompile_block(int addr)
                         regmap_pre[k+1][hr]=f_regmap[hr];
                         regs[k].wasdirty&=~(1<<hr);
                         regs[k].dirty&=~(1<<hr);
-                        regs[k].wasdirty|=(1<<hr)&regs[k-1].dirty;
-                        regs[k].dirty|=(1<<hr)&regs[k].wasdirty;
+                        regs[k].wasdirty|=(uint64_t)(1<<hr)&regs[k-1].dirty;
+                        regs[k].dirty|=(uint64_t)(1<<hr)&regs[k].wasdirty;
                         regs[k].wasconst&=~(1<<hr);
                         regs[k].isconst&=~(1<<hr);
                         k++;
@@ -9867,22 +9757,22 @@ int new_recompile_block(int addr)
                       regs[i].regmap[hr]=f_regmap[hr];
                       regs[i].wasdirty&=~(1<<hr);
                       regs[i].dirty&=~(1<<hr);
-                      regs[i].wasdirty|=(1<<hr)&regs[i-1].dirty;
-                      regs[i].dirty|=(1<<hr)&regs[i-1].dirty;
+                      regs[i].wasdirty|=(uint64_t)(1<<hr)&regs[i-1].dirty;
+                      regs[i].dirty|=(uint64_t)(1<<hr)&regs[i-1].dirty;
                       regs[i].wasconst&=~(1<<hr);
                       regs[i].isconst&=~(1<<hr);
                       branch_regs[i].regmap_entry[hr]=f_regmap[hr];
                       branch_regs[i].wasdirty&=~(1<<hr);
-                      branch_regs[i].wasdirty|=(1<<hr)&regs[i].dirty;
+                      branch_regs[i].wasdirty|=(uint64_t)(1<<hr)&regs[i].dirty;
                       branch_regs[i].regmap[hr]=f_regmap[hr];
                       branch_regs[i].dirty&=~(1<<hr);
-                      branch_regs[i].dirty|=(1<<hr)&regs[i].dirty;
+                      branch_regs[i].dirty|=(uint64_t)(1<<hr)&regs[i].dirty;
                       branch_regs[i].wasconst&=~(1<<hr);
                       branch_regs[i].isconst&=~(1<<hr);
                       if(itype[i]!=RJUMP&&itype[i]!=UJUMP&&(source[i]>>16)!=0x1000) {
                         regmap_pre[i+2][hr]=f_regmap[hr];
                         regs[i+2].wasdirty&=~(1<<hr);
-                        regs[i+2].wasdirty|=(1<<hr)&regs[i].dirty;
+                        regs[i+2].wasdirty|=(uint64_t)(1<<hr)&regs[i].dirty;
                         assert((branch_regs[i].is32&(1LL<<f_regmap[hr]))==
                           (regs[i+2].was32&(1LL<<f_regmap[hr])));
                       }
@@ -10241,6 +10131,10 @@ int new_recompile_block(int addr)
   // to use, which can avoid a load-use penalty on certain CPUs.
   for(i=0;i<slen-1;i++)
   {
+    // Avoid replacing an allocated temporary register
+    if(count_free_regs(regs[i].regmap)<=minimum_free_regs[i])
+      continue;
+
     if(!i||(itype[i-1]!=UJUMP&&itype[i-1]!=CJUMP&&itype[i-1]!=SJUMP&&itype[i-1]!=RJUMP&&itype[i-1]!=FJUMP))
     {
       if(!bt[i+1])
@@ -10920,7 +10814,7 @@ int new_recompile_block(int addr)
         store_regs_bt(regs[i-2].regmap,regs[i-2].is32,regs[i-2].dirty,start+i*4);
         assert(regs[i-2].regmap[HOST_CCREG]==CCREG);
       }
-      add_to_linker((intptr_t)out,start+i*4,0);
+      add_to_linker((int)out,start+i*4,0);
       emit_jmp(0);
     }
   }
@@ -10932,7 +10826,7 @@ int new_recompile_block(int addr)
     if(regs[i-1].regmap[HOST_CCREG]!=CCREG)
       emit_loadreg(CCREG,HOST_CCREG);
     emit_addimm(HOST_CCREG,CLOCK_DIVIDER*(ccadj[i-1]+1),HOST_CCREG);
-    add_to_linker((intptr_t)out,start+i*4,0);
+    add_to_linker((int)out,start+i*4,0);
     emit_jmp(0);
   }
 
@@ -10995,7 +10889,7 @@ int new_recompile_block(int addr)
     }
   }
   // External Branch Targets (jump_in)
-  if(copy+slen*4>(void *)shadow+sizeof(shadow)) copy=shadow;
+  if(copy+slen*4>shadow+sizeof(shadow)) copy=shadow;
   for(i=0;i<slen;i++)
   {
     if(bt[i]||i==0)
@@ -11058,7 +10952,7 @@ int new_recompile_block(int addr)
   #endif
   assert((u_int)out-beginning<MAX_OUTPUT_BLOCK_SIZE);
   //DebugMessage(M64MSG_VERBOSE, "shadow buffer: %x-%x",(int)copy,(int)copy+slen*4);
-  memcpy(copy,source,slen*4);
+  memcpy(copy,(char*)source,slen*4);
   copy+=slen*4;
 
   #if NEW_DYNAREC == NEW_DYNAREC_ARM
@@ -11068,11 +10962,11 @@ int new_recompile_block(int addr)
 
   // If we're within 256K of the end of the buffer,
   // start over from the beginning. (Is 256K enough?)
-  if(out > (u_char *)(base_addr+(1<<TARGET_SIZE_2)-MAX_OUTPUT_BLOCK_SIZE-JUMP_TABLE_SIZE))
+  if(out > (u_char *)((u_char *)base_addr+(1<<TARGET_SIZE_2)-MAX_OUTPUT_BLOCK_SIZE-JUMP_TABLE_SIZE))
     out=(u_char *)base_addr;
   
   // Trap writes to any of the pages we compiled
-  for(i=start>>12;i<=(start+slen*4)>>12;i++) {
+  for(i=start>>12;i<=(int)((start+slen*4)>>12);i++) {
     invalid_code[i]=0;
     memory_map[i]|=0x40000000;
     if((signed int)start>=(signed int)0xC0000000) {
@@ -11111,12 +11005,12 @@ int new_recompile_block(int addr)
         for(i=0;i<32;i++) {
           u_int *ht_bin=hash_table[((expirep&2047)<<5)+i];
           if(((ht_bin[3]-(u_int)base_addr)>>shift)==((base-(u_int)base_addr)>>shift) ||
-                ((ht_bin[3]-(u_int)base_addr-MAX_OUTPUT_BLOCK_SIZE)>>shift)==((base-(u_int)base_addr)>>shift)) {
+             ((ht_bin[3]-(u_int)base_addr-MAX_OUTPUT_BLOCK_SIZE)>>shift)==((base-(u_int)base_addr)>>shift)) {
             inv_debug("EXP: Remove hash %x -> %x\n",ht_bin[2],ht_bin[3]);
             ht_bin[2]=ht_bin[3]=-1;
           }
           if(((ht_bin[1]-(u_int)base_addr)>>shift)==((base-(u_int)base_addr)>>shift) ||
-                ((ht_bin[1]-(u_int)base_addr-MAX_OUTPUT_BLOCK_SIZE)>>shift)==((base-(u_int)base_addr)>>shift)) {
+             ((ht_bin[1]-(u_int)base_addr-MAX_OUTPUT_BLOCK_SIZE)>>shift)==((base-(u_int)base_addr)>>shift)) {
             inv_debug("EXP: Remove hash %x -> %x\n",ht_bin[0],ht_bin[1]);
             ht_bin[0]=ht_bin[2];
             ht_bin[1]=ht_bin[3];
@@ -11143,10 +11037,10 @@ void TLBWI_new(void)
 {
   unsigned int i;
   /* Remove old entries */
-  unsigned int old_start_even=tlb_e[g_cp0_regs[CP0_INDEX_REG] & 0x3F].start_even;
-  unsigned int old_end_even=tlb_e[g_cp0_regs[CP0_INDEX_REG] & 0x3F].end_even;
-  unsigned int old_start_odd=tlb_e[g_cp0_regs[CP0_INDEX_REG] & 0x3F].start_odd;
-  unsigned int old_end_odd=tlb_e[g_cp0_regs[CP0_INDEX_REG] & 0x3F].end_odd;
+  unsigned int old_start_even=tlb_e[g_cp0_regs[CP0_INDEX_REG]&0x3F].start_even;
+  unsigned int old_end_even=tlb_e[g_cp0_regs[CP0_INDEX_REG]&0x3F].end_even;
+  unsigned int old_start_odd=tlb_e[g_cp0_regs[CP0_INDEX_REG]&0x3F].start_odd;
+  unsigned int old_end_odd=tlb_e[g_cp0_regs[CP0_INDEX_REG]&0x3F].end_odd;
   for (i=old_start_even>>12; i<=old_end_even>>12; i++)
   {
     if(i<0x80000||i>0xBFFFF)
@@ -11165,11 +11059,11 @@ void TLBWI_new(void)
   }
   cached_interpreter_table.TLBWI();
   //DebugMessage(M64MSG_VERBOSE, "TLBWI: index=%d",g_cp0_regs[CP0_INDEX_REG]);
-  //DebugMessage(M64MSG_VERBOSE, "TLBWI: start_even=%x end_even=%x phys_even=%x v=%d d=%d",tlb_e[g_cp0_regs[CP0_INDEX_REG] & 0x3F].start_even,tlb_e[g_cp0_regs[CP0_INDEX_REG] & 0x3F].end_even,tlb_e[g_cp0_regs[CP0_INDEX_REG] & 0x3F].phys_even,tlb_e[g_cp0_regs[CP0_INDEX_REG]&0x3F].v_even,tlb_e[g_cp0_regs[CP0_INDEX_REG]&0x3F].d_even);
+  //DebugMessage(M64MSG_VERBOSE, "TLBWI: start_even=%x end_even=%x phys_even=%x v=%d d=%d",tlb_e[g_cp0_regs[CP0_INDEX_REG]&0x3F].start_even,tlb_e[g_cp0_regs[CP0_INDEX_REG]&0x3F].end_even,tlb_e[g_cp0_regs[CP0_INDEX_REG]&0x3F].phys_even,tlb_e[g_cp0_regs[CP0_INDEX_REG]&0x3F].v_even,tlb_e[g_cp0_regs[CP0_INDEX_REG]&0x3F].d_even);
   //DebugMessage(M64MSG_VERBOSE, "TLBWI: start_odd=%x end_odd=%x phys_odd=%x v=%d d=%d",tlb_e[g_cp0_regs[CP0_INDEX_REG]&0x3F].start_odd,tlb_e[g_cp0_regs[CP0_INDEX_REG]&0x3F].end_odd,tlb_e[g_cp0_regs[CP0_INDEX_REG]&0x3F].phys_odd,tlb_e[g_cp0_regs[CP0_INDEX_REG]&0x3F].v_odd,tlb_e[g_cp0_regs[CP0_INDEX_REG]&0x3F].d_odd);
   /* Combine tlb_LUT_r, tlb_LUT_w, and invalid_code into a single table
      for fast look up. */
-  for (i=tlb_e[g_cp0_regs[CP0_INDEX_REG] & 0x3F].start_even>>12; i<=tlb_e[g_cp0_regs[CP0_INDEX_REG] & 0x3F].end_even>>12; i++)
+  for (i=tlb_e[g_cp0_regs[CP0_INDEX_REG]&0x3F].start_even>>12; i<=tlb_e[g_cp0_regs[CP0_INDEX_REG]&0x3F].end_even>>12; i++)
   {
     //DebugMessage(M64MSG_VERBOSE, "%x: r:%8x w:%8x",i,tlb_LUT_r[i],tlb_LUT_w[i]);
     if(i<0x80000||i>0xBFFFF)
@@ -11190,7 +11084,7 @@ void TLBWI_new(void)
     }
     //DebugMessage(M64MSG_VERBOSE, "memory_map[%x]: %8x (+%8x)",i,memory_map[i],memory_map[i]<<2);
   }
-  for (i=tlb_e[g_cp0_regs[CP0_INDEX_REG] & 0x3F].start_odd>>12; i<=tlb_e[g_cp0_regs[CP0_INDEX_REG] & 0x3F].end_odd>>12; i++)
+  for (i=tlb_e[g_cp0_regs[CP0_INDEX_REG]&0x3F].start_odd>>12; i<=tlb_e[g_cp0_regs[CP0_INDEX_REG]&0x3F].end_odd>>12; i++)
   {
     //DebugMessage(M64MSG_VERBOSE, "%x: r:%8x w:%8x",i,tlb_LUT_r[i],tlb_LUT_w[i]);
     if(i<0x80000||i>0xBFFFF)
@@ -11262,7 +11156,7 @@ void TLBWR_new(void)
     }
     //DebugMessage(M64MSG_VERBOSE, "memory_map[%x]: %8x (+%8x)",i,memory_map[i],memory_map[i]<<2);
   }
-  for (i= tlb_e[g_cp0_regs[CP0_RANDOM_REG] & 0x3F].start_odd >> 12; i<= tlb_e[g_cp0_regs[CP0_RANDOM_REG]&0x3F].end_odd>>12; i++)
+  for (i=tlb_e[g_cp0_regs[CP0_RANDOM_REG]&0x3F].start_odd>>12; i<=tlb_e[g_cp0_regs[CP0_RANDOM_REG]&0x3F].end_odd>>12; i++)
   {
     //DebugMessage(M64MSG_VERBOSE, "%x: r:%8x w:%8x",i,tlb_LUT_r[i],tlb_LUT_w[i]);
     if(i<0x80000||i>0xBFFFF)

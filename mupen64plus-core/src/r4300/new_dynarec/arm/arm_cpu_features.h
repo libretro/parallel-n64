@@ -1,7 +1,7 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
- *   Mupen64plus - cp1_private.h                                           *
+ *   Mupen64plus - arm_cpu_features.h                                      *
  *   Mupen64Plus homepage: http://code.google.com/p/mupen64plus/           *
- *   Copyright (C) 2002 Hacktarux                                          *
+ *   Copyright (C) 2015 Gilles Siberlin                                    *
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
  *   it under the terms of the GNU General Public License as published by  *
@@ -19,19 +19,28 @@
  *   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.          *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef M64P_R4300_CP1_PRIVATE_H
-#define M64P_R4300_CP1_PRIVATE_H
+#ifndef ARM_CPU_FEATURES_H
+#define ARM_CPU_FEATURES_H
 
-#include <stdint.h>
+typedef struct
+{
+    unsigned char SWP;
+    unsigned char Half;
+    unsigned char Thumb;
+    unsigned char FastMult;
+    unsigned char VFP;
+    unsigned char EDSP;
+    unsigned char ThumbEE;
+    unsigned char NEON;
+    unsigned char VFPv3;
+    unsigned char TLS;
+    unsigned char VFPv4;
+    unsigned char IDIVa;
+    unsigned char IDIVt;
+}arm_cpu_features_t;
 
-#include "cp1.h"
+extern arm_cpu_features_t arm_cpu_features;
+void detect_arm_cpu_features(void);
+void print_arm_cpu_features(void);
 
-extern float *reg_cop1_simple[32];
-extern double *reg_cop1_double[32];
-extern uint32_t FCR0, FCR31;
-extern int64_t reg_cop1_fgr_64[32];
-extern uint32_t rounding_mode;
-
-#endif /* M64P_R4300_CP1_PRIVATE_H */
-
-
+#endif /* ARM_CPU_FEATURES_H */

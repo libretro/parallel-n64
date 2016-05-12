@@ -1,5 +1,5 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
- *   Mupen64plus - cp1_private.h                                           *
+ *   Mupen64plus - interpreter_regimm.def                                  *
  *   Mupen64Plus homepage: http://code.google.com/p/mupen64plus/           *
  *   Copyright (C) 2002 Hacktarux                                          *
  *                                                                         *
@@ -19,19 +19,11 @@
  *   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.          *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef M64P_R4300_CP1_PRIVATE_H
-#define M64P_R4300_CP1_PRIVATE_H
-
-#include <stdint.h>
-
-#include "cp1.h"
-
-extern float *reg_cop1_simple[32];
-extern double *reg_cop1_double[32];
-extern uint32_t FCR0, FCR31;
-extern int64_t reg_cop1_fgr_64[32];
-extern uint32_t rounding_mode;
-
-#endif /* M64P_R4300_CP1_PRIVATE_H */
-
-
+DECLARE_JUMP(BLTZ,    PCADDR + (iimmediate+1)*4, irs < 0,    &reg[0],  0, 0)
+DECLARE_JUMP(BGEZ,    PCADDR + (iimmediate+1)*4, irs >= 0,   &reg[0],  0, 0)
+DECLARE_JUMP(BLTZL,   PCADDR + (iimmediate+1)*4, irs < 0,    &reg[0],  1, 0)
+DECLARE_JUMP(BGEZL,   PCADDR + (iimmediate+1)*4, irs >= 0,   &reg[0],  1, 0)
+DECLARE_JUMP(BLTZAL,  PCADDR + (iimmediate+1)*4, irs < 0,    &reg[31], 0, 0)
+DECLARE_JUMP(BGEZAL,  PCADDR + (iimmediate+1)*4, irs >= 0,   &reg[31], 0, 0)
+DECLARE_JUMP(BLTZALL, PCADDR + (iimmediate+1)*4, irs < 0,    &reg[31], 1, 0)
+DECLARE_JUMP(BGEZALL, PCADDR + (iimmediate+1)*4, irs >= 0,   &reg[31], 1, 0)

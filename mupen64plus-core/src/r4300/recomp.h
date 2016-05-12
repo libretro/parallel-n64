@@ -51,20 +51,20 @@ typedef struct _precomp_instr
          int64_t *rs;
          int64_t *rt;
          int64_t *rd;
-         uint8_t sa;
-         uint8_t nrd;
+         unsigned char sa;
+         unsigned char nrd;
       } r;
     struct
       {
-         uint8_t base;
-         uint8_t ft;
-         int16_t offset;
+         unsigned char base;
+         unsigned char ft;
+         short offset;
       } lf;
     struct
       {
-         uint8_t ft;
-         uint8_t fs;
-         uint8_t fd;
+         unsigned char ft;
+         unsigned char fs;
+         unsigned char fd;
       } cf;
      } f;
    uint32_t addr; /* word-aligned instruction address in r4300 address space */
@@ -77,13 +77,14 @@ typedef struct _precomp_block
    precomp_instr *block;
    uint32_t start;
    uint32_t end;
-   uint8_t *code;
+   unsigned char *code;
    unsigned int code_length;
    unsigned int max_code_length;
    void *jumps_table;
    int jumps_number;
    void *riprel_table;
    int riprel_number;
+   //unsigned char md5[16];
    unsigned int adler32;
 } precomp_block;
 
@@ -106,3 +107,4 @@ extern int no_compiled_jump;
 #include "hacktarux_dynarec/regcache.h"
 
 #endif /* M64P_R4300_RECOMP_H */
+
