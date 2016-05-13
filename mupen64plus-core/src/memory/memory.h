@@ -44,10 +44,10 @@ extern uint32_t VI_REFRESH;
 #define write_hword_in_memory() writememh[address >>16]()
 #define write_dword_in_memory() writememd[address >>16]()
 
-extern uint32_t address, word;
+extern uint32_t address, cpu_word;
 extern uint8_t cpu_byte;
-extern uint16_t hword;
-extern uint64_t dword, *rdword;
+extern uint16_t cpu_hword;
+extern uint64_t cpu_dword, *rdword;
 
 extern void (*readmem[0x10000])(void);
 extern void (*readmemb[0x10000])(void);

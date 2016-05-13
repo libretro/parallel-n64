@@ -24,8 +24,8 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "api/m64p_types.h"
 #include "api/callbacks.h"
+#include "api/m64p_types.h"
 
 /* various constants */
 static char instr_name[][10] =
@@ -76,29 +76,29 @@ unsigned int instr_count[132];
 /* global function */
 void instr_counters_print(void)
 {
-   size_t i;
-   unsigned int iTypeCount[11] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-   unsigned int iTotal = 0;
-   char line[128], param[24];
-   DebugMessage(M64MSG_INFO, "Instruction counters:");
-   line[0] = 0;
-   for (i = 0; i < 131; i++)
-   {
-      sprintf(param, "%8s: %08i  ", instr_name[i], instr_count[i]);
-      strcat(line, param);
-      if (i % 5 == 4)
-      {
-         DebugMessage(M64MSG_INFO, "%s", line);
-         line[0] = 0;
-      }
-      iTypeCount[instr_type[i]] += instr_count[i];
-      iTotal += instr_count[i];
-   }
-   DebugMessage(M64MSG_INFO, "Instruction type summary (total instructions = %i)", iTotal);
-   for (i = 0; i < 11; i++)
-   {
-      DebugMessage(M64MSG_INFO, "%20s: %04.1f%% (%i)", instr_typename[i], (float) iTypeCount[i] * 100.0 / iTotal, iTypeCount[i]);
-   }
+    size_t i;
+    unsigned int iTypeCount[11] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+    unsigned int iTotal = 0;
+    char line[128], param[24];
+    DebugMessage(M64MSG_INFO, "Instruction counters:");
+    line[0] = 0;
+    for (i = 0; i < 131; i++)
+    {
+        sprintf(param, "%8s: %08i  ", instr_name[i], instr_count[i]);
+        strcat(line, param);
+        if (i % 5 == 4)
+        {
+            DebugMessage(M64MSG_INFO, "%s", line);
+            line[0] = 0;
+        }
+        iTypeCount[instr_type[i]] += instr_count[i];
+        iTotal += instr_count[i];
+    }
+    DebugMessage(M64MSG_INFO, "Instruction type summary (total instructions = %i)", iTotal);
+    for (i = 0; i < 11; i++)
+    {
+        DebugMessage(M64MSG_INFO, "%20s: %04.1f%% (%i)", instr_typename[i], (float) iTypeCount[i] * 100.0 / iTotal, iTypeCount[i]);
+    }
 }
 
 #endif /* COUNT_INSTR */

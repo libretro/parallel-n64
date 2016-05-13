@@ -18,31 +18,33 @@
  *   Free Software Foundation, Inc.,                                       *
  *   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.          *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
 #include <stdint.h>
 #include <stdlib.h>
+
 #define __STDC_FORMAT_MACROS
+#include <inttypes.h>
 #include <string.h>
 
-#include "cached_interp.h"
-
-#include "api/m64p_types.h"
 #include "api/callbacks.h"
 #include "api/debugger.h"
-#include "main/main.h"
-#include "memory/memory.h"
-
-#include "r4300.h"
+#include "api/m64p_types.h"
+#include "cached_interp.h"
 #include "cp0_private.h"
 #include "cp1_private.h"
-#include "ops.h"
 #include "exception.h"
 #include "interupt.h"
 #include "macros.h"
+#include "main/main.h"
+#include "memory/memory.h"
+#include "ops.h"
+#include "r4300.h"
 #include "recomp.h"
+#include "tlb.h"
 
 #ifdef DBG
+#include "debugger/dbg_debugger.h"
 #include "debugger/dbg_types.h"
-#include "debugger/debugger.h"
 #endif
 
 /* global variables */
@@ -50,7 +52,6 @@ char invalid_code[0x100000];
 precomp_block *blocks[0x100000];
 precomp_block *actual;
 unsigned int jump_to_address;
-uint32_t adler32(uint32_t adler, void *buf, int len);
 
 // -----------------------------------------------------------
 // Cached interpreter functions (and fallback for dynarec).
@@ -70,25 +71,28 @@ uint32_t adler32(uint32_t adler, void *buf, int len);
    { \
       const int take_jump = (condition); \
       const uint32_t jump_target = (destination); \
-      int64_t *link_register = (int64_t*)(link); \
-      if (cop1 && check_cop1_unusable()) \
-        return; \
+      int64_t *link_register = (link); \
+      if (cop1 && check_cop1_unusable()) return; \
       if (link_register != &reg[0]) \
+      { \
          *link_register = SE32(PC->addr + 8); \
-      PC++; \
+      } \
       if (!likely || take_jump) \
       { \
+         PC++; \
          delay_slot=1; \
          UPDATE_DEBUGGER(); \
          PC->ops(); \
          cp0_update_count(); \
          delay_slot=0; \
          if (take_jump && !skip_jump) \
+         { \
             PC=actual->block+((jump_target-actual->start)>>2); \
+         } \
       } \
       else \
       { \
-         PC++; \
+         PC += 2; \
          cp0_update_count(); \
       } \
       last_addr = PC->addr; \
@@ -98,25 +102,28 @@ uint32_t adler32(uint32_t adler, void *buf, int len);
    { \
       const int take_jump = (condition); \
       const uint32_t jump_target = (destination); \
-      int64_t *link_register = (int64_t*)(link); \
-      if (cop1 && check_cop1_unusable()) \
-        return; \
+      int64_t *link_register = (link); \
+      if (cop1 && check_cop1_unusable()) return; \
       if (link_register != &reg[0]) \
+      { \
          *link_register = SE32(PC->addr + 8); \
-      PC++; \
+      } \
       if (!likely || take_jump) \
       { \
+         PC++; \
          delay_slot=1; \
          UPDATE_DEBUGGER(); \
          PC->ops(); \
          cp0_update_count(); \
          delay_slot=0; \
          if (take_jump && !skip_jump) \
+         { \
             jump_to(jump_target); \
+         } \
       } \
       else \
       { \
-         PC++; \
+         PC += 2; \
          cp0_update_count(); \
       } \
       last_addr = PC->addr; \
@@ -125,10 +132,10 @@ uint32_t adler32(uint32_t adler, void *buf, int len);
    static void name##_IDLE(void) \
    { \
       const int take_jump = (condition); \
+      int skip; \
       if (cop1 && check_cop1_unusable()) return; \
       if (take_jump) \
       { \
-         int skip; \
          cp0_update_count(); \
          skip = next_interupt - g_cp0_regs[CP0_COUNT_REG]; \
          if (skip > 3) g_cp0_regs[CP0_COUNT_REG] += (skip & UINT32_C(0xFFFFFFFC)); \
@@ -150,7 +157,7 @@ uint32_t adler32(uint32_t adler, void *buf, int len);
   static void JALR_IDLE(void) __attribute__((used));
 #endif
 
-#include "interpreter.c"
+#include "interpreter.def"
 
 // -----------------------------------------------------------
 // Flow control 'fake' instructions
@@ -158,39 +165,38 @@ uint32_t adler32(uint32_t adler, void *buf, int len);
 static void FIN_BLOCK(void)
 {
    if (!delay_slot)
-   {
-      jump_to((PC-1)->addr+4);
-#if 0
-#ifdef DBG
-      if (g_DebuggerActive) update_debugger(PC->addr);
+     {
+    jump_to((PC-1)->addr+4);
+/*#ifdef DBG
+            if (g_DebuggerActive) update_debugger(PC->addr);
 #endif
-      // Used by dynarec only, check should be unnecessary
-#endif
-      PC->ops();
-      if (r4300emu == CORE_DYNAREC) dyna_jump();
-   }
+Used by dynarec only, check should be unnecessary
+*/
+    PC->ops();
+    if (r4300emu == CORE_DYNAREC) dyna_jump();
+     }
    else
-   {
-      precomp_block *blk = actual;
-      precomp_instr *inst = PC;
-      jump_to((PC-1)->addr+4);
-
-#if 0
-#ifdef DBG
-      if (g_DebuggerActive) update_debugger(PC->addr);
+     {
+    precomp_block *blk = actual;
+    precomp_instr *inst = PC;
+    jump_to((PC-1)->addr+4);
+    
+/*#ifdef DBG
+            if (g_DebuggerActive) update_debugger(PC->addr);
 #endif
-      // Used by dynarec only, check should be unnecessary
-#endif
-      PC->ops();
-      if (!skip_jump)
+Used by dynarec only, check should be unnecessary
+*/
+    if (!skip_jump)
       {
+         PC->ops();
          actual = blk;
          PC = inst+1;
       }
-
-      if (r4300emu == CORE_DYNAREC)
-         dyna_jump();
-   }
+    else
+      PC->ops();
+    
+    if (r4300emu == CORE_DYNAREC) dyna_jump();
+     }
 }
 
 static void NOTCOMPILED(void)
@@ -200,21 +206,20 @@ static void NOTCOMPILED(void)
    DebugMessage(M64MSG_INFO, "NOTCOMPILED: addr = %x ops = %lx", PC->addr, (long) PC->ops);
 #endif
 
-   if (mem)
+   if (mem != NULL)
       recompile_block(mem, blocks[PC->addr >> 12], PC->addr);
    else
       DebugMessage(M64MSG_ERROR, "not compiled exception");
 
-#if 0
-#ifdef DBG
-   if (g_DebuggerActive) update_debugger(PC->addr);
+/*#ifdef DBG
+            if (g_DebuggerActive) update_debugger(PC->addr);
 #endif
-   // The preceeding update_debugger SHOULD be unnecessary since it should have been
-   // called before NOTCOMPILED would have been executed
-#endif
+The preceeding update_debugger SHOULD be unnecessary since it should have been
+called before NOTCOMPILED would have been executed
+*/
    PC->ops();
    if (r4300emu == CORE_DYNAREC)
-      dyna_jump();
+     dyna_jump();
 }
 
 static void NOTCOMPILED2(void)
@@ -507,15 +512,15 @@ const cpu_instruction_table cached_interpreter_table = {
 static unsigned int update_invalid_addr(unsigned int addr)
 {
    if (addr >= 0x80000000 && addr < 0xc0000000)
-   {
-      if (invalid_code[addr>>12]) invalid_code[(addr^0x20000000)>>12] = 1;
-      if (invalid_code[(addr^0x20000000)>>12]) invalid_code[addr>>12] = 1;
-      return addr;
-   }
+     {
+    if (invalid_code[addr>>12]) invalid_code[(addr^0x20000000)>>12] = 1;
+    if (invalid_code[(addr^0x20000000)>>12]) invalid_code[addr>>12] = 1;
+    return addr;
+     }
    else
-   {
-      unsigned int paddr = virtual_to_physical_address(addr, TLB_FAST_READ);
-      if (paddr)
+     {
+    unsigned int paddr = virtual_to_physical_address(addr, 2);
+    if (paddr)
       {
          unsigned int beg_paddr = paddr - (addr - (addr&~0xFFF));
          update_invalid_addr(paddr);
@@ -524,8 +529,8 @@ static unsigned int update_invalid_addr(unsigned int addr)
          if (invalid_code[addr>>12]) invalid_code[(beg_paddr+0x000)>>12] = 1;
          if (invalid_code[addr>>12]) invalid_code[(beg_paddr+0xFFC)>>12] = 1;
       }
-      return paddr;
-   }
+    return paddr;
+     }
 }
 
 #define addr jump_to_address
@@ -537,8 +542,8 @@ void jump_to_func(void)
    if (!paddr) return;
    actual = blocks[addr>>12];
    if (invalid_code[addr>>12])
-   {
-      if (!blocks[addr>>12])
+     {
+    if (!blocks[addr>>12])
       {
          blocks[addr>>12] = (precomp_block *) malloc(sizeof(precomp_block));
          actual = blocks[addr>>12];
@@ -547,12 +552,12 @@ void jump_to_func(void)
          blocks[addr>>12]->jumps_table = NULL;
          blocks[addr>>12]->riprel_table = NULL;
       }
-      blocks[addr>>12]->start = addr & ~0xFFF;
-      blocks[addr>>12]->end = (addr & ~0xFFF) + 0x1000;
-      init_block(blocks[addr>>12]);
-   }
+    blocks[addr>>12]->start = addr & ~0xFFF;
+    blocks[addr>>12]->end = (addr & ~0xFFF) + 0x1000;
+    init_block(blocks[addr>>12]);
+     }
    PC=actual->block+((addr-actual->start)>>2);
-
+   
    if (r4300emu == CORE_DYNAREC) dyna_jump();
 }
 #undef addr
@@ -572,50 +577,53 @@ void free_blocks(void)
    int i;
    for (i=0; i<0x100000; i++)
    {
-      if (blocks[i])
-      {
-         free_block(blocks[i]);
-         free(blocks[i]);
-         blocks[i] = NULL;
-      }
-   }
+        if (blocks[i])
+        {
+            free_block(blocks[i]);
+            free(blocks[i]);
+            blocks[i] = NULL;
+        }
+    }
 }
 
 void invalidate_cached_code_hacktarux(uint32_t address, size_t size)
 {
+    size_t i;
+    uint32_t addr;
+    uint32_t addr_max;
 
-   if (size == 0)
-   {
-      /* invalidate everthing */
-      memset(invalid_code, 1, 0x100000);
-   }
-   else
-   {
-      uint32_t addr;
-      /* invalidate blocks (if necessary) */
-      size_t addr_max = address+size;
+    if (size == 0)
+    {
+        /* invalidate everthing */
+        memset(invalid_code, 1, 0x100000);
+    }
+    else
+    {
+        /* invalidate blocks (if necessary) */
+        addr_max = address+size;
 
-      for(addr = address; addr < addr_max; addr += 4)
-      {
-         size_t i = (addr >> 12);
+        for(addr = address; addr < addr_max; addr += 4)
+        {
+            i = (addr >> 12);
 
-         if (invalid_code[i] == 0)
-         {
-            if (blocks[i] == NULL
-                  || blocks[i]->block[(addr & 0xfff) / 4].ops != current_instruction_table.NOTCOMPILED)
+            if (invalid_code[i] == 0)
             {
-               invalid_code[i] = 1;
-               /* go directly to next i */
-               addr &= ~0xfff;
-               addr |= 0xffc;
+                if (blocks[i] == NULL
+                || blocks[i]->block[(addr & 0xfff) / 4].ops != current_instruction_table.NOTCOMPILED)
+                {
+                    invalid_code[i] = 1;
+                    /* go directly to next i */
+                    addr &= ~0xfff;
+                    addr |= 0xffc;
+                }
             }
-         }
-         else
-         {
-            /* go directly to next i */
-            addr &= ~0xfff;
-            addr |= 0xffc;
-         }
-      }
-   }
+            else
+            {
+                /* go directly to next i */
+                addr &= ~0xfff;
+                addr |= 0xffc;
+            }
+        }
+    }
 }
+

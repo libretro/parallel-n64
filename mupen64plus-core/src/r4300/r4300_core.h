@@ -22,12 +22,14 @@
 #ifndef M64P_R4300_R4300_CORE_H
 #define M64P_R4300_R4300_CORE_H
 
+#include <stddef.h>
+#include <stdint.h>
+
 #include "cp0.h"
+#include "cp1.h"
 #include "interupt.h"
 #include "mi_controller.h"
 #include "tlb.h"
-
-#include <stddef.h>
 
 struct r4300_core
 {
@@ -54,6 +56,7 @@ unsigned int get_r4300_emumode(void);
  * all cached code.
  */
 void invalidate_r4300_cached_code(uint32_t address, size_t size);
+
 
 /* Jump to the given address. This works for all r4300 emulator, but is slower.
  * Use this for common code which can be executed from any r4300 emulator. */
