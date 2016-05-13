@@ -271,7 +271,8 @@ static void setup_variables(void)
       { "mupen64-virefresh",
          "VI Refresh (Overclock); 1500|2200" },
       { "mupen64-bufferswap",
-         "Buffer Swap; on|off" },
+         "Buffer Swap; off|on"
+      },
       { "mupen64-framerate",
          "Framerate (restart); original|fullspeed" },
       { "mupen64-vcache-vbo",
