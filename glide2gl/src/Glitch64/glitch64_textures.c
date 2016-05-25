@@ -179,12 +179,13 @@ static int grTexFormat2GLPackedFmt(GrTexInfo *info, int fmt, int * gltexfmt, int
       uint16_t *texture_ptr = &((uint16_t*)info->data)[size_tex];
       uint8_t *texture_ptr8 = &((uint8_t*)info->data)[size_tex];
       //FIXME - still CPU software color conversion
-      do{
+      while(size_tex--)
+      {
          uint16_t texel = (uint16_t)*texture_ptr8--;
          // Replicate glide's ALPHA_INTENSITY_44 to match gl's LUMINANCE_ALPHA
          texel = (texel & 0x00F0) << 4 | (texel & 0x000F);
          *texture_ptr-- = (texel << 4) | texel;
-      }while(size_tex--);
+      };
       factor = 1;
       *gltexfmt = GL_LUMINANCE_ALPHA;
       *glpixfmt = GL_LUMINANCE_ALPHA;
@@ -248,72 +249,72 @@ static int grTexFormat2GLPackedFmt(GrTexInfo *info, int fmt, int * gltexfmt, int
       switch(info->format)
       {
          case GR_TEXFMT_ALPHA_8:
-            do
+            while(size_tex--)
             {
                uint16_t texel = (uint16_t)((uint8_t*)info->data)[size_tex];
 
                // Replicate glide's ALPHA_8 to match gl's LUMINANCE_ALPHA
                // This is to make up for the lack of INTENSITY in gles
                ((uint16_t*)info->data)[size_tex] = texel | (texel << 8);
-            }while(size_tex--);
+            };
             factor = 1;
             *glpixfmt = GL_LUMINANCE_ALPHA;
             *gltexfmt = GL_LUMINANCE_ALPHA;
             *glpackfmt = GL_UNSIGNED_BYTE;
             break;
          case GR_TEXFMT_INTENSITY_8: // I8 support - H.Morii
-            do
+            while(size_tex--)
             {
                unsigned int texel = (unsigned int)((uint8_t*)info->data)[size_tex];
                texel |= (0xFF000000 | (texel << 16) | (texel << 8));
                ((unsigned int*)info->data)[size_tex] = texel;
-            }while(size_tex--);
+            };
             factor = 1;
             *glpixfmt = GL_RGBA;
             *gltexfmt = GL_RGBA;
             *glpackfmt = GL_UNSIGNED_BYTE;
             break;
          case GR_TEXFMT_RGB_565:
-            do
+            while(size_tex--)
             {
                unsigned int texel = (unsigned int)((uint16_t*)info->data)[size_tex];
                unsigned int B = texel & 0x0000F800;
                unsigned int G = texel & 0x000007E0;
                unsigned int R = texel & 0x0000001F;
                ((unsigned int*)info->data)[size_tex] = 0xFF000000 | (R << 19) | (G << 5) | (B >> 8);
-            }while(size_tex--);
+            };
             factor = 2;
             *glpixfmt = GL_RGBA;
             *gltexfmt = GL_RGBA;
             *glpackfmt = GL_UNSIGNED_BYTE;
             break;
          case GR_TEXFMT_ARGB_1555:
-            do
+            while(size_tex--)
             {
                uint16_t texel = ((uint16_t*)info->data)[size_tex];
 
                // Shift-rotate glide's ARGB_1555 to match gl's RGB5_A1
                ((uint16_t*)info->data)[size_tex] = (texel << 1) | (texel >> 15);
-            }while(size_tex--);
+            };
             factor = 2;
             *glpixfmt = GL_RGBA;
             *gltexfmt = GL_RGBA;
             *glpackfmt = GL_UNSIGNED_SHORT_5_5_5_1;
             break;
          case GR_TEXFMT_ALPHA_INTENSITY_88:
-            do
+            while(size_tex--)
             {
                unsigned int AI = (unsigned int)((uint16_t*)info->data)[size_tex];
                unsigned int I = (unsigned int)(AI & 0x000000FF);
                ((unsigned int*)info->data)[size_tex] = (AI << 16) | (I << 8) | I;
-            }while(size_tex--);
+            };
             factor = 2;
             *glpixfmt = GL_RGBA;
             *gltexfmt = GL_RGBA;
             *glpackfmt = GL_UNSIGNED_BYTE;
             break;
          case GR_TEXFMT_ARGB_4444:
-            do
+            while(size_tex--)
             {
                unsigned int texel = (unsigned int)((uint16_t*)info->data)[size_tex];
                unsigned int A = texel & 0x0000F000;
@@ -321,7 +322,7 @@ static int grTexFormat2GLPackedFmt(GrTexInfo *info, int fmt, int * gltexfmt, int
                unsigned int G = texel & 0x000000F0;
                unsigned int R = texel & 0x0000000F;
                ((unsigned int*)info->data)[size_tex] = (A << 16) | (R << 20) | (G << 8) | (B >> 4);
-            }while(size_tex--);
+            };
             factor = 2;
             *glpixfmt = GL_RGBA;
             *gltexfmt = GL_RGBA;
@@ -338,7 +339,7 @@ static int grTexFormat2GLPackedFmt(GrTexInfo *info, int fmt, int * gltexfmt, int
                break;
             }
 #endif
-            do
+            while(size_tex--)
             {
                unsigned int texel = ((unsigned int*)info->data)[size_tex];
                unsigned int A = texel & 0xFF000000;
@@ -346,7 +347,7 @@ static int grTexFormat2GLPackedFmt(GrTexInfo *info, int fmt, int * gltexfmt, int
                unsigned int G = texel & 0x0000FF00;
                unsigned int R = texel & 0x000000FF;
                ((unsigned int*)info->data)[size_tex] = A | (R << 16) | G | (B >> 16);
-            }while(size_tex--);
+            };
             factor = 4;
             *glpixfmt = GL_RGBA;
             *gltexfmt = GL_RGBA;
