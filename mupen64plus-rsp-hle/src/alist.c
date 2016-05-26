@@ -656,11 +656,11 @@ void alist_resample(
    {
       const int16_t* lut = RESAMPLE_LUT + ((pitch_accu & 0xfc00) >> 8);
 
-      *sample(hle, opos++) = clamp_s16(
-            ((*sample(hle, ipos    ) * lut[0]) >> 15) +
-            ((*sample(hle, ipos + 1) * lut[1]) >> 15) +
-            ((*sample(hle, ipos + 2) * lut[2]) >> 15) +
-            ((*sample(hle, ipos + 3) * lut[3]) >> 15));
+      *sample(hle, opos++) = clamp_s16( (
+               (*sample(hle, ipos    ) * lut[0]) +
+               (*sample(hle, ipos + 1) * lut[1]) +
+               (*sample(hle, ipos + 2) * lut[2]) +
+               (*sample(hle, ipos + 3) * lut[3]) ) >> 15);
 
       pitch_accu += pitch;
       ipos += (pitch_accu >> 16);
