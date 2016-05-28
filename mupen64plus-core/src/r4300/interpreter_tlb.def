@@ -19,8 +19,8 @@
  *   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.          *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include <zlib.h> // For adler32()
-
+//#include <zlib.h> // For adler32()
+extern uint32_t adler32(uint32_t adler, void *buf, int len);
 DECLARE_INSTRUCTION(TLBR)
 {
    int index;
