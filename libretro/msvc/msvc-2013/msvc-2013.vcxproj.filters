@@ -124,6 +124,9 @@
     <Filter Include="Source Files\mupen64plus-video-gliden64">
       <UniqueIdentifier>{5128d018-01a8-4e45-9d6d-e6cbf9c3f7bd}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source Files\libretro\memalign">
+      <UniqueIdentifier>{7102790b-cd23-4a92-8882-5f4fe37ca16d}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\libretro.c">
@@ -330,9 +333,6 @@
     <ClCompile Include="..\..\..\mupen64plus-core\src\r4300\interupt.c">
       <Filter>Source Files\mupen64plus-core\src\r4300</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\mupen64plus-core\src\r4300\profile.c">
-      <Filter>Source Files\mupen64plus-core\src\r4300</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\..\mupen64plus-core\src\r4300\pure_interp.c">
       <Filter>Source Files\mupen64plus-core\src\r4300</Filter>
     </ClCompile>
@@ -409,9 +409,6 @@
       <Filter>Source Files\mupen64plus-core\src\plugin\audio_libretro\drivers_resampler</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\mupen64plus-core\src\plugin\audio_libretro\drivers_resampler\nearest.c">
-      <Filter>Source Files\mupen64plus-core\src\plugin\audio_libretro\drivers_resampler</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\mupen64plus-core\src\plugin\audio_libretro\drivers_resampler\sinc.c">
       <Filter>Source Files\mupen64plus-core\src\plugin\audio_libretro\drivers_resampler</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\mupen64plus-core\src\api\vidext_libretro.c">
@@ -806,6 +803,21 @@
     </ClCompile>
     <ClCompile Include="..\..\..\mupen64plus-video-gliden64\src\GLES2\UniformSet.cpp">
       <Filter>Source Files\mupen64plus-video-gliden64</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\Graphics\RSP\gSP_state.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\Graphics\RDP\gDP_state.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\mupen64plus-core\src\plugin\audio_libretro\drivers_resampler\sinc_resampler.c">
+      <Filter>Source Files\mupen64plus-core\src\plugin\audio_libretro\drivers_resampler</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\libretro-common\memmap\memalign.c">
+      <Filter>Source Files\libretro\memalign</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\gles2n64\src\Combiner_gles2n64.c">
+      <Filter>Source Files\gles2n64\src</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

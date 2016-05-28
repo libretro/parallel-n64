@@ -396,13 +396,13 @@ bool CalculateTileSizes_method_1(int tileno, TMEMLoadMapInfo *info, TxtrInfo &gt
     }
     else
     {
-        loadwidth = abs(tile->uls - tile->lrs) +1;
+		loadwidth = abs((int(tile->uls - tile->lrs)) + 1);
         if( tile->masks )  
         {
             loadwidth = maskwidth;
         }
 
-        loadheight = abs(tile->ult - tile->lrt) +1;
+		loadheight = abs(int(tile->ult - tile->lrt)) + 1;
         if( tile->maskt )  
         {
             loadheight = maskheight;
