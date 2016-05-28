@@ -594,7 +594,7 @@ void glide64gDPFillRectangle(uint32_t ul_x, uint32_t ul_y, uint32_t lr_x, uint32
 {
    int32_t s_ul_x, s_lr_x, s_ul_y, s_lr_y;
    int pd_multiplayer = (settings.ucode == 7)  /* ucode_PerfectDark */
-      && (gDP.otherMode.cycleType == 3)
+      && (((gDP.otherMode.h & RDP_CYCLE_TYPE) >> 20) == 3)
       && (g_gdp.fill_color.total == 0xFFFCFFFC);
 
    if (
@@ -648,7 +648,7 @@ void glide64gDPFillRectangle(uint32_t ul_x, uint32_t ul_y, uint32_t lr_x, uint32
    //if (fullscreen)
    update_scissor(false);
 
-   if (settings.decrease_fillrect_edge && gDP.otherMode.cycleType == 0)
+   if (settings.decrease_fillrect_edge && ((gDP.otherMode.h & RDP_CYCLE_TYPE) >> 20) == 0)
    {
       lr_x--; lr_y--;
    }
@@ -675,7 +675,7 @@ void glide64gDPFillRectangle(uint32_t ul_x, uint32_t ul_y, uint32_t lr_x, uint32
 
       grFogMode (GR_FOG_DISABLE, g_gdp.fog_color.total);
 
-      if (gDP.otherMode.cycleType != G_CYC_FILL)
+      if (((gDP.otherMode.h & RDP_CYCLE_TYPE) >> 20) != G_CYC_FILL)
          Z = set_sprite_combine_mode();
 
       memset(v, 0, sizeof(VERTEX) * 4);
@@ -698,7 +698,7 @@ void glide64gDPFillRectangle(uint32_t ul_x, uint32_t ul_y, uint32_t lr_x, uint32
       v[3].z = Z;
       v[3].q = 1.0f;
 
-      if (gDP.otherMode.cycleType == G_CYC_FILL)
+      if (((gDP.otherMode.h & RDP_CYCLE_TYPE) >> 20) == G_CYC_FILL)
       {
          uint32_t color = g_gdp.fill_color.total;
 

@@ -1024,7 +1024,7 @@ static void glide64_z_compare(void)
    int depthmask_val   = FXFALSE;
    g_gdp.flags ^= UPDATE_ZBUF_ENABLED;
 
-   if (((rdp.flags & ZBUF_ENABLED) || ((gDP.otherMode.depthSource == G_ZS_PRIM) && (gDP.otherMode.cycleType < G_CYC_COPY))))
+   if (((rdp.flags & ZBUF_ENABLED) || ((gDP.otherMode.depthSource == G_ZS_PRIM) && (((gDP.otherMode.h & RDP_CYCLE_TYPE) >> 20) < G_CYC_COPY))))
    {
       if (rdp.flags & ZBUF_COMPARE)
       {
@@ -1170,7 +1170,7 @@ void update(void)
             LRDP (" |- alpha compare: none\n");
          }
       }
-      if (gDP.otherMode.alphaCompare == 3 && (gDP.otherMode.cycleType < G_CYC_COPY))
+      if (gDP.otherMode.alphaCompare == 3 && ((gDP.otherMode.h & RDP_CYCLE_TYPE) >> 20) < G_CYC_COPY)
       {
          if (settings.old_style_adither || g_gdp.other_modes.alpha_dither_sel != 3)
          {
