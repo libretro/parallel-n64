@@ -248,7 +248,11 @@ static void setup_variables(void)
       { "mupen64-disable_expmem",
          "Enable Expansion Pak RAM; enabled|disabled" },
       { "mupen64-gfxplugin-accuracy",
+#if defined(IOS) || defined(ANDROID)
          "GFX Accuracy (restart); medium|high|veryhigh|low" },
+#else
+         "GFX Accuracy (restart); veryhigh|high|medium|low" },
+#endif
       { "mupen64-gfxplugin",
          "GFX Plugin; auto|glide64|gln64|rice|angrylion" },
       { "mupen64-rspplugin",
