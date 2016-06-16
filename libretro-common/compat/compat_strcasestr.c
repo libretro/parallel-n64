@@ -1,7 +1,7 @@
-/* Copyright  (C) 2010-2016 The RetroArch team
+/* Copyright  (C) 2010-2015 The RetroArch team
  *
  * ---------------------------------------------------------------------------------------
- * The following license statement only applies to this file (retro_inline.h).
+ * The following license statement only applies to this file (compat_strcasestr.c).
  * ---------------------------------------------------------------------------------------
  *
  * Permission is hereby granted, free of charge,
@@ -20,20 +20,40 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef __LIBRETRO_SDK_INLINE_H
-#define __LIBRETRO_SDK_INLINE_H
+#include <ctype.h>
 
-#ifndef INLINE
+#include <compat/strcasestr.h>
+#include <retro_assert.h>
 
-#if defined(_WIN32) || defined(__INTEL_COMPILER)
-#define INLINE __inline
-#elif defined(__STDC_VERSION__) && __STDC_VERSION__>=199901L
-#define INLINE inline
-#elif defined(__GNUC__)
-#define INLINE __inline__
-#else
-#define INLINE
-#endif
+/* Pretty much strncasecmp. */
+static int casencmp(const char *a, const char *b, size_t n)
+{
+   size_t i;
 
-#endif
-#endif
+   for (i = 0; i < n; i++)
+   {
+      int a_lower = tolower(a[i]);
+      int b_lower = tolower(b[i]);
+      if (a_lower != b_lower)
+         return a_lower - b_lower;
+   }
+
+   return 0;
+}
+
+char *strcasestr_retro__(const char *haystack, const char *needle)
+{
+   size_t i, hay_len, needle_len, search_off;
+
+   hay_len = strlen(haystack);
+   needle_len = strlen(needle);
+   if (needle_len > hay_len)
+      return NULL;
+
+   search_off = hay_len - needle_len;
+   for (i = 0; i <= search_off; i++)
+      if (!casencmp(haystack + i, needle, needle_len))
+         return (char*)haystack + i;
+
+   return NULL;
+}

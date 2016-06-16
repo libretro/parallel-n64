@@ -1,7 +1,7 @@
 /* Copyright  (C) 2010-2016 The RetroArch team
  *
  * ---------------------------------------------------------------------------------------
- * The following license statement only applies to this file (retro_inline.h).
+ * The following license statement only applies to this file (retro_assert.h).
  * ---------------------------------------------------------------------------------------
  *
  * Permission is hereby granted, free of charge,
@@ -20,20 +20,17 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef __LIBRETRO_SDK_INLINE_H
-#define __LIBRETRO_SDK_INLINE_H
+#ifndef __RETRO_ASSERT_H
+#define __RETRO_ASSERT_H
 
-#ifndef INLINE
+#include <assert.h>
 
-#if defined(_WIN32) || defined(__INTEL_COMPILER)
-#define INLINE __inline
-#elif defined(__STDC_VERSION__) && __STDC_VERSION__>=199901L
-#define INLINE inline
-#elif defined(__GNUC__)
-#define INLINE __inline__
+#ifdef RARCH_INTERNAL
+#define retro_assert(cond) do { \
+   if (!(cond)) { printf("Assertion failed at %s:%d.\n", __FILE__, __LINE__); abort(); } \
+} while(0)
 #else
-#define INLINE
+#define retro_assert(cond) assert(cond)
 #endif
 
-#endif
 #endif

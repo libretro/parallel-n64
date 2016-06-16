@@ -1,7 +1,7 @@
 /* Copyright  (C) 2010-2016 The RetroArch team
  *
  * ---------------------------------------------------------------------------------------
- * The following license statement only applies to this file (retro_inline.h).
+ * The following license statement only applies to this file (compat_fnmatch.h).
  * ---------------------------------------------------------------------------------------
  *
  * Permission is hereby granted, free of charge,
@@ -20,20 +20,11 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef __LIBRETRO_SDK_INLINE_H
-#define __LIBRETRO_SDK_INLINE_H
+#ifndef __LIBRETRO_SDK_COMPAT_FNMATCH_H__
+#define __LIBRETRO_SDK_COMPAT_FNMATCH_H__
 
-#ifndef INLINE
+#define	FNM_NOMATCH	1
 
-#if defined(_WIN32) || defined(__INTEL_COMPILER)
-#define INLINE __inline
-#elif defined(__STDC_VERSION__) && __STDC_VERSION__>=199901L
-#define INLINE inline
-#elif defined(__GNUC__)
-#define INLINE __inline__
-#else
-#define INLINE
-#endif
+int rl_fnmatch(const char *pattern, const char *string, int flags);
 
-#endif
 #endif

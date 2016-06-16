@@ -34,10 +34,12 @@
 #include <string.h>
 #include <stdarg.h>
 
+#include <conversion/float_to_s16.h>
+#include <conversion/s16_to_float.h>
+
 extern retro_audio_sample_batch_t audio_batch_cb;
 
 #include "audio_resampler_driver.h"
-#include "audio_utils.h"
 
 static unsigned MAX_AUDIO_FRAMES = 2048;
 
@@ -85,7 +87,8 @@ void init_audio_libretro(unsigned max_audio_frames)
    audio_out_buffer_float = malloc(2 * MAX_AUDIO_FRAMES * sizeof(float));
    audio_out_buffer_s16   = malloc(2 * MAX_AUDIO_FRAMES * sizeof(int16_t));
 
-   audio_convert_init_simd();
+   convert_s16_to_float_init_simd();
+   convert_float_to_s16_init_simd();
 }
 
 /* A fully compliant implementation is not really possible with just the zilmar spec.
@@ -162,9 +165,9 @@ audio_batch:
    data.input_frames = frames;
    data.ratio        = ratio;
 
-   audio_convert_s16_to_float(audio_in_buffer_float, raw_data, frames * 2, 1.0f);
+   convert_s16_to_float(audio_in_buffer_float, raw_data, frames * 2, 1.0f);
    resampler->process(resampler_audio_data, &data);
-   audio_convert_float_to_s16(audio_out_buffer_s16, audio_out_buffer_float, data.output_frames * 2);
+   convert_float_to_s16(audio_out_buffer_s16, audio_out_buffer_float, data.output_frames * 2);
 
    out                    = audio_out_buffer_s16;
 

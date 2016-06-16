@@ -1,7 +1,7 @@
 /* Copyright  (C) 2010-2016 The RetroArch team
  *
  * ---------------------------------------------------------------------------------------
- * The following license statement only applies to this file (retro_inline.h).
+ * The following license statement only applies to this file (features_cpu.h).
  * ---------------------------------------------------------------------------------------
  *
  * Permission is hereby granted, free of charge,
@@ -20,20 +20,52 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef __LIBRETRO_SDK_INLINE_H
-#define __LIBRETRO_SDK_INLINE_H
+#ifndef _LIBRETRO_SDK_CPU_INFO_H
+#define _LIBRETRO_SDK_CPU_INFO_H
 
-#ifndef INLINE
+#include <retro_common_api.h>
 
-#if defined(_WIN32) || defined(__INTEL_COMPILER)
-#define INLINE __inline
-#elif defined(__STDC_VERSION__) && __STDC_VERSION__>=199901L
-#define INLINE inline
-#elif defined(__GNUC__)
-#define INLINE __inline__
-#else
-#define INLINE
-#endif
+#include <stdint.h>
 
-#endif
+#include <libretro.h>
+
+RETRO_BEGIN_DECLS
+
+/**
+ * cpu_features_get_perf_counter:
+ *
+ * Gets performance counter.
+ *
+ * Returns: performance counter.
+ **/
+retro_perf_tick_t cpu_features_get_perf_counter(void);
+
+/**
+ * cpu_features_get_time_usec:
+ *
+ * Gets time in microseconds.  *
+ * Returns: time in microseconds.
+ **/
+retro_time_t cpu_features_get_time_usec(void);
+
+/**
+ * cpu_features_get:
+ *
+ * Gets CPU features..
+ *
+ * Returns: bitmask of all CPU features available.
+ **/
+uint64_t cpu_features_get(void);
+
+/**
+ * cpu_features_get_core_amount:
+ *
+ * Gets the amount of available CPU cores.
+ *
+ * Returns: amount of CPU cores available.
+ **/
+unsigned cpu_features_get_core_amount(void);
+
+RETRO_END_DECLS
+
 #endif
