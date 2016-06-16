@@ -504,6 +504,12 @@ void glide64gDPLoadBlock( uint32_t tile, uint32_t ul_s, uint32_t ul_t,
    if (g_gdp.tile[tile].size == 3)
       cnt <<= 1;
 
+   if (((g_gdp.tile[tile].tmem + cnt) << 3) > sizeof(g_gdp.tmem))
+   {
+      //WriteLog(M64MSG_INFO, "rdp_loadblock wanted to write %u bytes after the end of tmem", ((g_gdp.tile[tile].tmem + cnt) << 3) - sizeof(g_gdp.tmem));
+      cnt = (sizeof(g_gdp.tmem) >> 3) - (g_gdp.tile[tile].tmem);
+   }
+
    if (g_gdp.ti_size == G_IM_SIZ_32b)
       LoadBlock32b(tile, ul_s, ul_t, lr_s, dxt);
    else
