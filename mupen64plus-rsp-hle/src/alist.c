@@ -953,7 +953,7 @@ void alist_polef(
       count -= 16;
    }while(count);
 
-   dram_store_u16(hle, (uint16_t*)(dst - 4), address, 4);
+   dram_store_u32(hle, (uint32_t*)(dst - 4), address, 2);
 }
 
 void alist_iirf(
