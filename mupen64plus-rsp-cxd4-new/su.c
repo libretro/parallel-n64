@@ -1780,7 +1780,7 @@ EX:
         case 013: /* SLTIU */
             rs = (inst >> 21) & 31;
             rt = (inst >> 16) & 31;
-            SR[rt] = ((u32)(SR[rs]) < (u16)(inst));
+            SR[rt] = ((u32)(SR[rs]) < (u32)(s16)(inst));
             SR[0] = 0x00000000;
             CONTINUE;
         case 014: /* ANDI */
