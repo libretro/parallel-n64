@@ -233,7 +233,7 @@ static unsigned int run_task_opcode(uint32_t inst, const int opcode)
       case 013: /* SLTIU */
          rs = (inst >> 21) & 31;
          rt = (inst >> 16) & 31;
-         SR[rt] = ((unsigned)(SR[rs]) < (unsigned short)(inst));
+         SR[rt] = ((unsigned)(SR[rs]) < (unsigned)(short)(inst));
          SR[0] = 0x00000000;
          break;
       case 014: /* ANDI */
