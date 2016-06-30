@@ -114,22 +114,22 @@ ifneq (,$(findstring unix,$(platform)))
       GLES = 1
       GL_LIB := -lGLESv2
       CPUFLAGS += -DNO_ASM -DARM -D__arm__ -DARM_ASM -D__NEON_OPT -DNOSSE
-      CPUFLAGS += -marm -mfloat-abi=hard -mfpu=neon
+      CPUFLAGS += -marm -mfloat-abi=hard
       HAVE_NEON = 1
       WITH_DYNAREC=arm
       ifneq (,$(findstring ODROIDC,$(BOARD)))
          # ODROID-C1
-         CPUFLAGS += -mcpu=cortex-a5
+         CPUFLAGS += -mcpu=cortex-a5 -mfpu=neon
       else ifneq (,$(findstring ODROID-XU3,$(BOARD)))
-         # ODROID-XU3 & -XU3 Lite
+         # ODROID-XU4, XU3 & XU3 Lite
          ifeq "$(shell expr `gcc -dumpversion` \>= 4.9)" "1"
-            CPUFLAGS += -march=armv7ve -mcpu=cortex-a15.cortex-a7
+            CPUFLAGS += -march=armv7ve -mcpu=cortex-a15.cortex-a7 -mfpu=neon-vfpv4
          else
-            CPUFLAGS += -mcpu=cortex-a9
+            CPUFLAGS += -mcpu=cortex-a9 -mfpu=neon
          endif
       else
-         # ODROID-U2, -U3, -X & -X2
-         CPUFLAGS += -mcpu=cortex-a9
+         # ODROID-U3, U2, X2 & X
+         CPUFLAGS += -mcpu=cortex-a9 -mfpu=neon
       endif
    endif
    
