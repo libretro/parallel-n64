@@ -377,9 +377,9 @@ ifeq ($(HAVE_VULKAN),1)
 					$(VIDEODIR_PARALLEL)/rdp/vulkan_util.cpp \
 					$(VIDEODIR_PARALLEL)/rdp/frontend.cpp \
 					$(VIDEODIR_PARALLEL)/rdp/tmem.cpp \
-					$(VIDEODIR_PARALLEL)/rdp/rdp.cpp
-	SOURCES_C += $(VIDEODIR_PARALLEL)/rdp_dump.c \
-					 $(VIDEODIR_PARALLEL)/rdp/vulkan_symbol_wrapper.c
+					$(VIDEODIR_PARALLEL)/rdp/rdp.cpp \
+					$(VIDEODIR_PARALLEL)/rdp/vulkan_symbol_wrapper.cpp
+	SOURCES_C += $(VIDEODIR_PARALLEL)/rdp_dump.c
 	CFLAGS += -DHAVE_VULKAN=1
 	CXXFLAGS += -DHAVE_VULKAN=1
 	LDFLAGS += -pthread
