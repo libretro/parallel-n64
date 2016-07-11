@@ -1,0 +1,69 @@
+#version 310 es
+precision highp int;
+precision highp float;
+
+layout(local_size_x = 8, local_size_y = 8) in;
+
+layout(std430, set = 0, binding = 0) readonly buffer SSBO
+{
+   uint pixels[];
+};
+
+layout(rgba8ui, set = 0, binding = 1) uniform writeonly mediump uimage2DArray uTileAtlas;
+
+layout(std430, push_constant) uniform PushConstant
+{
+   ivec3 atlas_coord;
+   uvec2 size;
+   uint offset;
+   uint range;
+   uint stride;
+} constants;
+
+#define TRANSFER_RGBA32 0
+#define TRANSFER_RGBA16 1
+#define TRANSFER_I8 2
+#define TRANSFER_IA8 3
+#define TRANSFER_IA16 4
+
+void main()
+{
+   uvec2 id = gl_GlobalInvocationID.xy;
+   if (any(greaterThanEqual(id, constants.size)))
+      return;
+
+   uint pixel = constants.stride * id.y + id.x;
+
+   // Out-of-bounds debug color.
+   uvec4 color = uvec4(0xffu, 0x80u, 0x40, 0xffu);
+
+   if (pixel < constants.range)
+   {
+      uint data = pixels[pixel + constants.offset];
+#if TRANSFER == TRANSFER_RGBA32
+      color = (uvec4(data) >> uvec4(24u, 16u, 8u, 0u)) & uvec4(0xffu, 0xffu, 0xffu, 0x7u << 5u);
+#elif TRANSFER == TRANSFER_RGBA16
+      color = uvec4(
+         (data >> 10u) & 0xf8u,
+         (data >>  5u) & 0xf8u,
+         (data >>  0u) & 0xf8u,
+         (data & 8u) != 0u ? 0xffu : 0u);
+      color.rgb |= color.rgb >> 5u;
+#elif TRANSFER == TRANSFER_I8
+      color = uvec4((data >> 3u) & 0xffu);
+#elif TRANSFER == TRANSFER_IA8
+      uint i = (data >> 7u) & 0xfu;
+      uint a = (data >> 3u) & 0xfu;
+      i |= i << 4u;
+      a |= a << 4u;
+      color = uvec4(i, i, i, a);
+#elif TRANSFER == TRANSFER_IA16
+      uint i = (data >> 10u) & 0xffu;
+      uint a = (data >> 2u) & 0xffu;
+      color = uvec4(i, i, i, a);
+#else
+#error Unknown transfer type
+#endif
+   }
+   imageStore(uTileAtlas, constants.atlas_coord + ivec3(gl_GlobalInvocationID.xyz), color);
+}
