@@ -7,6 +7,11 @@
 #include "vi.h"
 #include "rdp.h"
 
+static int LOG_ENABLE;
+#define LOG(...) do { \
+   if (LOG_ENABLE) fprintf(stderr, __VA_ARGS__); \
+} while(0)
+
 int scfield;
 int sckeepodd;
 
@@ -1338,6 +1343,7 @@ static int blender_1cycle(UINT32* fr, UINT32* fg, UINT32* fb, int dith, UINT32 b
             *fr = r;
             *fg = g;
             *fb = b;
+
             return 1;
         }
         else 
@@ -1725,6 +1731,7 @@ static void fetch_texel_entlut(COLOR *color, int s, int t, UINT32 tilenum)
             taddr ^= ((t & 1) ? BYTE_XOR_DWORD_SWAP : BYTE_ADDR_XOR);
             c = __TMEM[taddr & 0x7ff];
             c = (s & 1) ? (c & 0xf) : (c >> 4);
+            fprintf(stderr, "TPAL: %u\n", tpal);
             c = tlut[((tpal | c) << 2) ^ WORD_ADDR_XOR];
         }
         break;
@@ -2651,6 +2658,8 @@ static void fetch_texel_entlut_quadro(COLOR *color0, COLOR *color1, COLOR *color
             taddr2 ^= xort;
             taddr3 ^= xort;
                                                             
+            if (s0 == 0 && t0 == 0)
+               fprintf(stderr, "TPAL: %u\n", tpal);
             ands = s0 & 1;
             c0 = __TMEM[taddr0 & 0x7ff];
             c0 = (ands) ? (c0 & 0xf) : (c0 >> 4);
@@ -3649,7 +3658,7 @@ void render_spans_1cycle_complete(int start, int end, int tilenum, int flip)
             texture_pipeline_cycle(&texel1_color, &texel1_color, news, newt, newtile, 0);
 
             rgbaz_correct_clip(offx, offy, sr, sg, sb, sa, &sz, curpixel_cvg);
-
+            LOG("SZ = %d\n", sz);
             get_dither_noise_ptr(x, i, &cdith, &adith);
             combiner_1cycle(adith, &curpixel_cvg);
             fbread1_ptr(curpixel, &curpixel_memcvg);
@@ -3755,7 +3764,7 @@ void render_spans_1cycle_notexel1(int start, int end, int tilenum, int flip)
         t      = span_ptr->stwz[1];
         w      = span_ptr->stwz[2];
         z      = other_modes.z_source_sel ? primitive_z : span_ptr->stwz[3];
-
+        
         x = xendsc;
         curpixel = fb_width * i + x;
         zbcur  = zb_address + 2*curpixel;
@@ -3812,21 +3821,31 @@ void render_spans_1cycle_notexel1(int start, int end, int tilenum, int flip)
 
             texture_pipeline_cycle(&texel0_color, &texel0_color, sss, sst, tile1, 0);
 
+            LOG_ENABLE = curpixel == 53 * 320 + 77;
+            LOG("Preclip SZ = %d\n", sz >> 3);
             rgbaz_correct_clip(offx, offy, sr, sg, sb, sa, &sz, curpixel_cvg);
+
+            LOG("SZ = %d\n", sz);
 
             get_dither_noise_ptr(x, i, &cdith, &adith);
             combiner_1cycle(adith, &curpixel_cvg);
                 
             fbread1_ptr(curpixel, &curpixel_memcvg);
+            LOG("Pre CVG: %d, MEMCVG: %d\n", curpixel_cvg, curpixel_memcvg);
             if (z_compare(zbcur, sz, dzpix, dzpixenc, &blend_en, &prewrap, &curpixel_cvg, curpixel_memcvg))
             {
+               LOG("Z pass\n");
                 if (blender_1cycle(&fir, &fig, &fib, cdith, blend_en, prewrap, curpixel_cvg, curpixel_cvbit))
                 {
+                   LOG("Blend pass (CVG: %d)\n", curpixel_cvg);
                     fbwrite_ptr(curpixel, fir, fig, fib, blend_en, curpixel_cvg, curpixel_memcvg);
                     if (other_modes.z_update_en)
                         z_store(zbcur, sz, dzpixenc);
                 }
             }
+            else
+               LOG("Z fail\n");
+            LOG("\n");
 
             s += dsinc;
             t += dtinc;
@@ -3836,11 +3855,12 @@ void render_spans_1cycle_notexel1(int start, int end, int tilenum, int flip)
             b += dbinc;
             a += dainc;
             z += dzinc;
-            
+
             x += xinc;
             curpixel += xinc;
             zbcur += xinc;
             zbcur &= 0x00FFFFFF >> 1;
+            LOG_ENABLE = 0;
         }
     }
 }
@@ -3950,8 +3970,10 @@ void render_spans_1cycle_notex(int start, int end, int tilenum, int flip)
 
             lookup_cvmask_derivatives(cvgbuf[x], &offx, &offy, &curpixel_cvg, &curpixel_cvbit);
 
+            LOG_ENABLE = curpixel == 53 * 320 + 77;
+            LOG("Preclip SZ = %d\n", sz >> 3);
             rgbaz_correct_clip(offx, offy, sr, sg, sb, sa, &sz, curpixel_cvg);
-
+            LOG("SZ = %d\n", sz);
             get_dither_noise_ptr(x, i, &cdith, &adith);
             combiner_1cycle(adith, &curpixel_cvg);
                 
@@ -3970,11 +3992,12 @@ void render_spans_1cycle_notex(int start, int end, int tilenum, int flip)
             b += dbinc;
             a += dainc;
             z += dzinc;
-            
+
             x += xinc;
             curpixel += xinc;
             zbcur += xinc;
             zbcur &= 0x00FFFFFF >> 1;
+            LOG_ENABLE = 0;
         }
     }
 }
@@ -4305,6 +4328,8 @@ void render_spans_2cycle_notexelnext(int start, int end, int tilenum, int flip)
             texture_pipeline_cycle(&texel0_color, &texel0_color, sss, sst, tile1, 0);
             texture_pipeline_cycle(&texel1_color, &texel0_color, sss, sst, tile2, 1);
 
+            LOG_ENABLE = curpixel == 53 * 320 + 77;
+            LOG("Preclip SZ = %d\n", sz >> 3);
             rgbaz_correct_clip(offx, offy, sr, sg, sb, sa, &sz, curpixel_cvg);
                     
             get_dither_noise_ptr(x, i, &cdith, &adith);
@@ -4337,10 +4362,14 @@ void render_spans_2cycle_notexelnext(int start, int end, int tilenum, int flip)
             curpixel += xinc;
             zbcur += xinc;
             zbcur &= 0x00FFFFFF >> 1;
+
+            LOG_ENABLE = 0;
         }
     }
 }
 
+void breakme(void)
+{}
 
 void render_spans_2cycle_notexel1(int start, int end, int tilenum, int flip)
 {
@@ -4473,7 +4502,12 @@ void render_spans_2cycle_notexel1(int start, int end, int tilenum, int flip)
             
             texture_pipeline_cycle(&texel0_color, &texel0_color, sss, sst, tile1, 0);
 
+            LOG_ENABLE = curpixel == 53 * 320 + 77;
+            if (LOG_ENABLE)
+               breakme();
+            LOG("Preclip SZ = %d\n", sz >> 3);
             rgbaz_correct_clip(offx, offy, sr, sg, sb, sa, &sz, curpixel_cvg);
+            LOG("SZ = %d\n", sz);
                     
             get_dither_noise_ptr(x, i, &cdith, &adith);
             combiner_2cycle(adith, &curpixel_cvg, &acalpha);
@@ -4484,6 +4518,12 @@ void render_spans_2cycle_notexel1(int start, int end, int tilenum, int flip)
             {
                 if (blender_2cycle(&fir, &fig, &fib, cdith, blend_en, prewrap, curpixel_cvg, curpixel_cvbit, acalpha))
                 {
+                   if (LOG_ENABLE)
+                   {
+                      fir = 0xff;
+                      fig = 0x00;
+                      fib = 0x00;
+                   }
                     fbwrite_ptr(curpixel, fir, fig, fib, blend_en, curpixel_cvg, curpixel_memcvg);
                     if (other_modes.z_update_en)
                         z_store(zbcur, sz, dzpixenc);
@@ -4505,6 +4545,7 @@ void render_spans_2cycle_notexel1(int start, int end, int tilenum, int flip)
             curpixel += xinc;
             zbcur += xinc;
             zbcur &= 0x00FFFFFF >> 1;
+            LOG_ENABLE = 0;
         }
     }
 }
@@ -4695,6 +4736,8 @@ NOINLINE void render_spans_fill(int start, int end, int flip)
             const int xstart = span[i].lx;
             const int xendsc = span[i].rx;
 
+            int pix = xendsc;
+
             if (span[i].validline == 0)
                 continue;
             curpixel = fb_width*i + xendsc;
@@ -4712,6 +4755,8 @@ NOINLINE void render_spans_fill(int start, int end, int flip)
         {
             const int xstart = span[i].lx;
             const int xendsc = span[i].rx;
+
+            int pix = xendsc;
 
             if (span[i].validline == 0)
                 continue;
@@ -5422,6 +5467,8 @@ static void blender_equation_cycle0(int* r, int* g, int* b)
 
     blend1a = *blender1b_a[0] >> 3;
     blend2a = *blender2b_a[0] >> 3;
+
+    LOG("blend1a = %d, blend2a = %d\n", blend1a, blend2a);
 
     if (other_modes.f.special_bsel0)
     {
@@ -6243,11 +6290,17 @@ static UINT32 z_compare(UINT32 zcurpixel, UINT32 sz, UINT16 dzpix, int dzpixenc,
         dznotshift = dznew;
         dznew <<= 3;
         
+        LOG("dznew = %d\n", dznew);
 
         farther = force_coplanar || ((sz + dznew) >= oz);
         
         overflow = (curpixel_memcvg + *curpixel_cvg) & 8;
         *blend_en = other_modes.force_blend || (!overflow && other_modes.antialias_en && farther);
+
+        LOG("force_blend = %d\n", other_modes.force_blend);
+        LOG("oz = %d\n", oz);
+        LOG("blend_en = %d\n", *blend_en);
+        LOG("overflow = %d\n", overflow);
         
         *prewrap = overflow;
 
@@ -6258,10 +6311,13 @@ static UINT32 z_compare(UINT32 zcurpixel, UINT32 sz, UINT16 dzpix, int dzpixenc,
             diff = (INT32)sz - (INT32)dznew;
             nearer = force_coplanar || (diff <= (INT32)oz);
             max = (oz == 0x3ffff);
+            LOG("nearer = %d\n", nearer);
+            LOG("opaque\n");
             return (max || (overflow ? infront : nearer));
             break;
         case ZMODE_INTERPENETRATING: 
             infront = sz < oz;
+            LOG("inter\n");
             if (!infront || !farther || !overflow)
             {
                 diff = (INT32)sz - (INT32)dznew;
@@ -6278,11 +6334,13 @@ static UINT32 z_compare(UINT32 zcurpixel, UINT32 sz, UINT16 dzpix, int dzpixenc,
             }
             break;
         case ZMODE_TRANSPARENT: 
+            LOG("trans\n");
             infront = sz < oz;
             max = (oz == 0x3ffff);
             return (infront || max); 
             break;
         case ZMODE_DECAL: 
+            LOG("decal\n");
             diff = (INT32)sz - (INT32)dznew;
             nearer = force_coplanar || (diff <= (INT32)oz);
             max = (oz == 0x3ffff);

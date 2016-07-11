@@ -54,6 +54,7 @@ SOURCES_C += $(RSPDIR)/src/alist.c \
     $(RSPDIR)/src/hle_plugin.c
 
 SOURCES_C += $(CXD4DIR)/rsp.c
+SOURCES_CXX += $(CXD4DIR)/rsp_dump.cpp
 CFLAGS += -DARCH_MIN_SSE2
 CXXFLAGS += -DARCH_MIN_SSE2
 

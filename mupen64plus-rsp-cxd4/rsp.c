@@ -233,7 +233,7 @@ static unsigned int run_task_opcode(uint32_t inst, const int opcode)
       case 013: /* SLTIU */
          rs = (inst >> 21) & 31;
          rt = (inst >> 16) & 31;
-         SR[rt] = ((unsigned)(SR[rs]) < (unsigned)(short)(inst));
+         SR[rt] = ((unsigned)(SR[rs]) < (unsigned short)(inst));
          SR[0] = 0x00000000;
          break;
       case 014: /* ANDI */
@@ -426,6 +426,13 @@ NOINLINE void run_task(void)
 
     while ((*RSP.SP_STATUS_REG & 0x00000001) == 0x00000000)
     {
+       if (rsp_imem_invalidate == 1)
+       {
+          fprintf(stderr, "PC: 0x%x\n", PC);
+          rsp_dump_imem(RSP.IMEM, 0x1000);
+          rsp_imem_invalidate = 0;
+       }
+
        register uint32_t inst = *(uint32_t *)(RSP.IMEM + FIT_IMEM(PC));
 #ifdef EMULATE_STATIC_PC
        PC = (PC + 0x004);
@@ -565,7 +572,9 @@ EXPORT unsigned int CALL cxd4DoRspCycles(unsigned int cycles)
 #ifdef EXTERN_COMMAND_LIST_GBI
       case 0x00000001:
          if (CFG_HLE_GFX == 0)
+         {
             break;
+         }
          if (*(unsigned int *)(RSP.DMEM + 0xFF0) == 0x00000000)
             break; /* Resident Evil 2 */
          if (rsp_info.ProcessDlistList == NULL) {/*branch next*/} else
@@ -586,7 +595,9 @@ EXPORT unsigned int CALL cxd4DoRspCycles(unsigned int cycles)
 #ifdef EXTERN_COMMAND_LIST_ABI
       case 0x00000002: /* OSTask.type == M_AUDTASK */
          if (CFG_HLE_AUD == 0)
+         {
             break;
+         }
          if (rsp_info.ProcessAlistList == 0) {} else
             rsp_info.ProcessAlistList();
          *RSP.SP_STATUS_REG |= 0x00000203;
@@ -598,6 +609,8 @@ EXPORT unsigned int CALL cxd4DoRspCycles(unsigned int cycles)
          return 0;
 #endif
    }
+
+   rsp_imem_invalidate = 1;
 
    for (i = 0; i < 32; i++)
       MFC0_count[i] = 0;

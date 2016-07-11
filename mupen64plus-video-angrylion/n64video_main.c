@@ -7,6 +7,8 @@
 #include "rdp.h"
 #include "m64p_types.h"
 #include "m64p_config.h"
+#include "../mupen64plus-video-paraLLEl/rdp_dump.h"
+#include <stdlib.h>
 
 extern unsigned int screen_width, screen_height;
 extern uint32_t screen_pitch;
@@ -19,7 +21,7 @@ int ProcessDListShown = 0;
 extern int SaveLoaded;
 extern UINT32 command_counter;
 
-int retro_return(bool just_flipping);
+int retro_return(int just_flipping);
 
 void angrylionChangeWindow (void)
 {
@@ -56,6 +58,9 @@ void angrylionSetRenderingCallback(void (*callback)(int))
 
 int angrylionInitiateGFX (GFX_INFO Gfx_Info)
 {
+   const char *env = getenv("RDP_DUMP");
+   if (env)
+      rdp_dump_init(env, 8 * 1024 * 1024);
    return true;
 }
 
@@ -83,6 +88,7 @@ void angrylionProcessRDPList(void)
 void angrylionRomClosed (void)
 {
     rdp_close();
+    rdp_dump_end();
 
     SaveLoaded = 1;
     command_counter = 0;

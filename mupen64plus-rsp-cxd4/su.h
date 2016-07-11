@@ -29,6 +29,8 @@
  */
 static int SR[32];
 
+static int rsp_imem_invalidate = 1;
+
 #include "rsp.h"
 
 NOINLINE static void res_S(void)
@@ -139,6 +141,8 @@ static void MT_DMA_DRAM(int rt)
 static void MT_DMA_READ_LENGTH(int rt)
 {
     unsigned int offC, offD; /* SP cache and dynamic DMA pointers */
+
+    rsp_imem_invalidate = 1;
 
     *RSP.SP_RD_LEN_REG = SR[rt] | 07;
     {
