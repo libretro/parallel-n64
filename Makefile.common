@@ -6,6 +6,7 @@ AUDIO_LIBRETRO_DIR = $(CORE_DIR)/src/plugin/audio_libretro
 VIDEODIR_RICE      = $(ROOT_DIR)/gles2rice/src
 VIDEODIR_GLN64     = $(ROOT_DIR)/gles2n64/src
 VIDEODIR_ANGRYLION = $(ROOT_DIR)/mupen64plus-video-angrylion
+VIDEODIR_PARALLEL  = $(ROOT_DIR)/mupen64plus-video-paraLLEl
 VIDEODIR_GLIDE     = $(ROOT_DIR)/glide2gl/src
 VIDEODIR_GLIDEN64  = $(ROOT_DIR)/mupen64plus-video-gliden64
 
@@ -53,6 +54,8 @@ SOURCES_C += $(RSPDIR)/src/alist.c \
     $(RSPDIR)/src/hle_plugin.c
 
 SOURCES_C += $(CXD4DIR)/rsp.c
+CFLAGS += -DARCH_MIN_SSE2
+CXXFLAGS += -DARCH_MIN_SSE2
 
 # Core
 SOURCES_C += \
@@ -140,7 +143,7 @@ ifeq ($(WITH_DYNAREC), arm)
 endif
 ifeq ($(WITH_DYNAREC), $(filter $(WITH_DYNAREC), i386 i686 x86 x86_64 x64))
 		DYNAREC_USED = 1
-		CPUFLAGS += -msse2 -DUSE_SSE_SUPPORT
+		CPUFLAGS += -msse -msse2 -DUSE_SSE_SUPPORT
 		SOURCES_C += $(CORE_DIR)/src/r4300/hacktarux_dynarec/assemble.c \
 						 $(CORE_DIR)/src/r4300/hacktarux_dynarec/gbc.c \
 						 $(CORE_DIR)/src/r4300/hacktarux_dynarec/gtlb.c \
@@ -363,6 +366,24 @@ SOURCES_C +=  $(VIDEODIR_ANGRYLION)/n64video_main.c \
 						  $(VIDEODIR_ANGRYLION)/n64video_vi.c \
 						  $(VIDEODIR_ANGRYLION)/n64video_rdp.c \
 						  $(VIDEODIR_ANGRYLION)/n64video.c
+
+ifeq ($(HAVE_VULKAN),1)
+### Tiny Tigers's LLE renderer ###
+	SOURCES_CXX += \
+					$(VIDEODIR_PARALLEL)/parallel.cpp \
+					$(VIDEODIR_PARALLEL)/vi.cpp \
+					$(VIDEODIR_PARALLEL)/rdp.cpp \
+					$(VIDEODIR_PARALLEL)/rdp/vulkan.cpp \
+					$(VIDEODIR_PARALLEL)/rdp/vulkan_util.cpp \
+					$(VIDEODIR_PARALLEL)/rdp/vulkan_symbol_wrapper.cpp \
+					$(VIDEODIR_PARALLEL)/rdp/frontend.cpp \
+					$(VIDEODIR_PARALLEL)/rdp/tmem.cpp \
+					$(VIDEODIR_PARALLEL)/rdp/rdp.cpp
+	SOURCES_C += $(VIDEODIR_PARALLEL)/rdp_dump.c
+	CFLAGS += -DHAVE_VULKAN=1
+	CXXFLAGS += -DHAVE_VULKAN=1
+	LDFLAGS += -pthread
+endif
 
 ifeq ($(HAVE_OPENGL),1)
 ifeq ($(GLES),1)

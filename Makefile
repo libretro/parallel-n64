@@ -5,6 +5,7 @@ SINGLE_THREAD=0
 WITH_CRC=brumme
 FORCE_GLES=0
 HAVE_OPENGL=1
+HAVE_VULKAN=1
 GLIDEN64=0
 GLIDEN64CORE=0
 GLIDEN64ES=0
@@ -335,7 +336,7 @@ ifeq ($(DEBUG), 1)
    CPUOPTS += -O0 -g
    CPUOPTS += -DOPENGL_DEBUG
 else
-   CPUOPTS += -O2 -DNDEBUG
+	CPUOPTS += -O2 -g -DNDEBUG
 endif
 
 ifeq ($(platform), qnx)
@@ -348,7 +349,7 @@ ifeq ($(GLIDEN64),1)
    CXXFLAGS += -DGLIDEN64
    CXXFLAGS += -std=c++0x -MMD
 else
-   CXXFLAGS += -std=gnu++98 -MMD
+	CXXFLAGS += -std=gnu++11 -MMD
 endif
 ifeq ($(GLIDEN64ES),1)
    CFLAGS   += -DGLIDEN64ES

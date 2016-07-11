@@ -10,7 +10,8 @@ enum gfx_plugin_type
    GFX_GLIDE64 = 0,
    GFX_RICE,
    GFX_GLN64,
-   GFX_ANGRYLION
+   GFX_ANGRYLION,
+   GFX_PARALLEL
 };
 
 enum rsp_plugin_type

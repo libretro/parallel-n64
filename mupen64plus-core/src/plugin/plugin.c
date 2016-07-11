@@ -97,6 +97,7 @@ DEFINE_GFX(angrylion);
 DEFINE_GFX(rice);
 DEFINE_GFX(gln64);
 DEFINE_GFX(glide64);
+DEFINE_GFX(parallel);
 
 gfx_plugin_functions gfx;
 GFX_INFO gfx_info;
@@ -250,6 +251,9 @@ void plugin_connect_all(enum gfx_plugin_type gfx_plugin, enum rsp_plugin_type rs
    {
       case GFX_ANGRYLION:
          gfx = gfx_angrylion;
+         break;
+      case GFX_PARALLEL:
+         gfx = gfx_parallel;
          break;
       case GFX_RICE:
 #if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
