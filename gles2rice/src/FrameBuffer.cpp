@@ -563,8 +563,8 @@ uint32_t CalculateRDRAMCRC(void *pPhysicalAddress, uint32_t left, uint32_t top, 
         if (yinc > FAST_CRC_MAX_Y_INC)
             yinc = FAST_CRC_MAX_Y_INC;
 
-        uint32_t pitch = pitchInBytes>>2;
-        register uint32_t *pStart = (uint32_t*)(pPhysicalAddress);
+        uint32_t pitch   = pitchInBytes>>2;
+        uint32_t *pStart = (uint32_t*)(pPhysicalAddress);
         pStart += (top * pitch) + (((left<<size)+1)>>3);
 
         // The original assembly code had a bug in it (it incremented pStart by 'pitch' in bytes, not in dwords)
