@@ -429,7 +429,7 @@ NOINLINE void run_task(void)
        if (rsp_imem_invalidate == 1)
        {
           fprintf(stderr, "PC: 0x%x\n", PC);
-#ifdef HAVE_VULKAN
+#ifdef HAVE_RSP_DUMP
           rsp_dump_imem(RSP.IMEM, 0x1000);
 #endif
           rsp_imem_invalidate = 0;
