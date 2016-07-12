@@ -54,9 +54,11 @@ SOURCES_C += $(RSPDIR)/src/alist.c \
     $(RSPDIR)/src/hle_plugin.c
 
 SOURCES_C += $(CXD4DIR)/rsp.c
+
+ifeq ($(HAVE_VULKAN), 1)
 SOURCES_CXX += $(CXD4DIR)/rsp_dump.cpp
-CFLAGS += -DARCH_MIN_SSE2
-CXXFLAGS += -DARCH_MIN_SSE2
+endif
+
 
 # Core
 SOURCES_C += \
@@ -127,10 +129,14 @@ ifdef WITH_DYNAREC
 
 	ifeq ($(WITH_DYNAREC), x86)
 		DYNAFLAGS += -D_M_IX86
+		CFLAGS += -DARCH_MIN_SSE2
+		CXXFLAGS += -DARCH_MIN_SSE2
 	endif
 
 	ifeq ($(WITH_DYNAREC), x86_64)
 		DYNAFLAGS += -D_M_X64
+		CFLAGS += -DARCH_MIN_SSE2
+		CXXFLAGS += -DARCH_MIN_SSE2
 	endif
 
 ifeq ($(WITH_DYNAREC), arm)

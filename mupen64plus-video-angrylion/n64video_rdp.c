@@ -1,9 +1,11 @@
 #include "z64.h"
 #include "vi.h"
 #include "rdp.h"
+#ifdef HAVE_RDP_DUMP
 #include "../mupen64plus-video-paraLLEl/rdp_dump.h"
 
 static int rdp_dump_active;
+#endif
 
 struct stepwalker_info
 {
@@ -241,6 +243,7 @@ void process_RDP_list(void)
         return;
     }
 
+#ifdef HAVE_RDP_DUMP
     /* Flush out changes in DRAM if anything has changed. */
     if (!rdp_dump_active)
     {
@@ -248,6 +251,7 @@ void process_RDP_list(void)
        rdp_dump_begin_command_list();
        rdp_dump_active = 1;
     }
+#endif
 
     --length; /* filling in cmd data in backwards order for performance */
     offset = (DP_END - sizeof(i64)) / sizeof(i64);
@@ -292,8 +296,10 @@ void process_RDP_list(void)
         if (cmd_ptr - cmd_cur - cmd_length < 0)
             goto exit_b;
 
+#ifdef HAVE_RDP_DUMP
         rdp_dump_emit_command(command,
               (const uint32_t*)(cmd_data + cmd_cur), cmd_length * 2);
+#endif
 
         rdp_command_table[command](w1, w2);
         cmd_cur += cmd_length;
@@ -813,9 +819,11 @@ static void sync_full(uint32_t w1, uint32_t w2)
     *gfx_info.MI_INTR_REG |= DP_INTERRUPT;
     gfx_info.CheckInterrupts();
 
+#ifdef HAVE_RDP_DUMP
     if (rdp_dump_active)
        rdp_dump_end_command_list();
     rdp_dump_active = 0;
+#endif
 }
 
 static void set_key_gb(uint32_t w1, uint32_t w2)
