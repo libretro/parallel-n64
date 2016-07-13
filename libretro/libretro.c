@@ -158,6 +158,9 @@ static void core_settings_set_defaults(void)
    environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &gfx_var);
    environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &rsp_var);
 
+#ifdef ONLY_VULKAN
+   gfx_plugin = GFX_PARALLEL;
+#else
    if (gfx_var.value)
    {
       if (gfx_var.value && !strcmp(gfx_var.value, "auto"))
@@ -175,6 +178,7 @@ static void core_settings_set_defaults(void)
    }
    else
       gfx_plugin = GFX_GLIDE64;
+#endif
 
    gfx_var.key = "mupen64-gfxplugin-accuracy";
    gfx_var.value = NULL;
@@ -192,7 +196,11 @@ static void core_settings_set_defaults(void)
    }
 
    /* Load RSP plugin core option */
+#ifdef ONLY_VULKAN
+   rsp_plugin = RSP_CXD4;
+#else
    rsp_plugin = RSP_HLE;
+
    if (rsp_var.value)
    {
       if (rsp_var.value && !strcmp(rsp_var.value, "auto"))
@@ -202,12 +210,14 @@ static void core_settings_set_defaults(void)
       if (rsp_var.value && !strcmp(rsp_var.value, "cxd4"))
          rsp_plugin = RSP_CXD4;
    }
+#endif
 }
 
 
 
 static void core_settings_autoselect_rsp_plugin(void)
 {
+#if !defined(ONLY_VULKAN)
    struct retro_variable rsp_var = { "mupen64-rspplugin", 0 };
 
    environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &rsp_var);
@@ -229,6 +239,7 @@ static void core_settings_autoselect_rsp_plugin(void)
 
    if (!strcmp((const char*)ROM_HEADER.Name, "CONKER BFD"))
       rsp_plugin = RSP_HLE;
+#endif
 }
 
 static void setup_variables(void)
@@ -265,9 +276,17 @@ static void setup_variables(void)
          "GFX Accuracy (restart); veryhigh|high|medium|low" },
 #endif
       { "mupen64-gfxplugin",
+#ifdef ONLY_VULKAN
+         "GFX Plugin; parallel" },
+#else
          "GFX Plugin; auto|glide64|gln64|rice|angrylion|parallel" },
+#endif
       { "mupen64-rspplugin",
+#ifdef ONLY_VULKAN
+         "RSP Plugin; cxd4" },
+#else
          "RSP Plugin; auto|hle|cxd4" },
+#endif
       { "mupen64-screensize",
          "Resolution (restart); 640x480|960x720|1280x960|1600x1200|1920x1440|2240x1680|320x240" },
       { "mupen64-aspectratiohint",
