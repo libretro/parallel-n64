@@ -124,7 +124,7 @@ const char *fragmentCopy =
 "varying lowp vec2 vTexCoord0;                              \n"\
 "void main()                                                \n"\
 "{                                                          \n"\
-"   gl_FragColor = texture2D(uTex0,vTexCoord0).bgra;        \n"\
+"   gl_FragColor = texture2D(uTex0,vTexCoord0).bgra;        \n" \
 ALPHA_TEST
 "}";
 

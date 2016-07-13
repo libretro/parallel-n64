@@ -392,10 +392,10 @@ bool OGLRender::RenderTexRect()
     float depth = -(g_texRectTVtx[3].z*2-1);
 
     GLfloat colour[] = {
-            g_texRectTVtx[3].r, g_texRectTVtx[3].g, g_texRectTVtx[3].b, g_texRectTVtx[3].a,
-            g_texRectTVtx[2].r, g_texRectTVtx[2].g, g_texRectTVtx[2].b, g_texRectTVtx[2].a,
-            g_texRectTVtx[1].r, g_texRectTVtx[1].g, g_texRectTVtx[1].b, g_texRectTVtx[1].a,
-            g_texRectTVtx[0].r, g_texRectTVtx[0].g, g_texRectTVtx[0].b, g_texRectTVtx[0].a
+            (GLfloat)g_texRectTVtx[3].r, (GLfloat)g_texRectTVtx[3].g, (GLfloat)g_texRectTVtx[3].b, (GLfloat)g_texRectTVtx[3].a,
+            (GLfloat)g_texRectTVtx[2].r, (GLfloat)g_texRectTVtx[2].g, (GLfloat)g_texRectTVtx[2].b, (GLfloat)g_texRectTVtx[2].a,
+            (GLfloat)g_texRectTVtx[1].r, (GLfloat)g_texRectTVtx[1].g, (GLfloat)g_texRectTVtx[1].b, (GLfloat)g_texRectTVtx[1].a,
+            (GLfloat)g_texRectTVtx[0].r, (GLfloat)g_texRectTVtx[0].g, (GLfloat)g_texRectTVtx[0].b, (GLfloat)g_texRectTVtx[0].a
     };
 
     GLfloat tex[] = {
