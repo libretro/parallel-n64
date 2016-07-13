@@ -520,15 +520,14 @@ void InitVertex(uint32_t dwV, uint32_t vtxIndex, bool bTexture)
 uint32_t LightVert(XVECTOR4 & norm, int vidx)
 {
     float fCosT;
-
-    // Do ambient
-    register float r = gRSP.fAmbientLightR;
-    register float g = gRSP.fAmbientLightG;
-    register float b = gRSP.fAmbientLightB;
+    /* Do ambient */
+    float r = gRSP.fAmbientLightR;
+    float g = gRSP.fAmbientLightG;
+    float b = gRSP.fAmbientLightB;
 
     if( options.enableHackForGames != HACK_FOR_ZELDA_MM )
     {
-        for (register unsigned int l=0; l < gSP.numLights; l++)
+        for (unsigned int l=0; l < gSP.numLights; l++)
         {
             fCosT = norm.x*gRSPlights[l].x + norm.y*gRSPlights[l].y + norm.z*gRSPlights[l].z; 
 
@@ -543,9 +542,10 @@ uint32_t LightVert(XVECTOR4 & norm, int vidx)
     else
     {
         XVECTOR4 v;
+        unsigned int l;
         bool transformed = false;
 
-        for (register unsigned int l=0; l < gSP.numLights; l++)
+        for (l=0; l < gSP.numLights; l++)
         {
             if( gRSPlights[l].range == 0 )
             {
@@ -600,13 +600,14 @@ uint32_t LightVert(XVECTOR4 & norm, int vidx)
 
 uint32_t LightVertNew(XVECTOR4 & norm)
 {
-    // Do ambient
-    register float r = gRSP.fAmbientLightR;
-    register float g = gRSP.fAmbientLightG;
-    register float b = gRSP.fAmbientLightB;
+    unsigned int l;
+    /* Do ambient */
+    float r = gRSP.fAmbientLightR;
+    float g = gRSP.fAmbientLightG;
+    float b = gRSP.fAmbientLightB;
 
 
-    for (register unsigned int l=0; l < gSP.numLights; l++)
+    for (l=0; l < gSP.numLights; l++)
     {
         float fCosT = norm.x*gRSPlights[l].tx + norm.y*gRSPlights[l].ty + norm.z*gRSPlights[l].tz; 
 
@@ -731,7 +732,7 @@ void ProcessVertexDataNoSSE(uint32_t dwAddr, uint32_t dwV0, uint32_t dwNum)
             }
             else
             {
-                register IColor &color = *(IColor*)&g_dwVtxDifColor[i];
+                IColor &color = *(IColor*)&g_dwVtxDifColor[i];
                 color.b = vert.rgba.r;
                 color.g = vert.rgba.g;
                 color.r = vert.rgba.b;
@@ -1195,13 +1196,15 @@ void ProcessVertexData_Rogue_Squadron(uint32_t dwXYZAddr, uint32_t dwColorAddr, 
 
 void SetLightDirection(uint32_t dwLight, float x, float y, float z, float range)
 {
+    float w = 1;
     //gRSP.bLightIsUpdated = true;
 
     //gRSPlights[dwLight].ox = x;
     //gRSPlights[dwLight].oy = y;
     //gRSPlights[dwLight].oz = z;
 
-    register float w = range == 0 ? (float)sqrt(x*x+y*y+z*z) : 1;
+    if (range == 0)
+       w = (float)sqrt(x*x+y*y+z*z);
 
     gRSPlights[dwLight].x = x/w;
     gRSPlights[dwLight].y = y/w;
