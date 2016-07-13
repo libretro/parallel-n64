@@ -332,6 +332,7 @@ bool VulkanContext::create_device(VkPhysicalDevice gpu, VkSurfaceKHR surface, co
 	}
 	else
 	{
+		vkGetDeviceQueue(device, queue_family, 0, &queue);
 		alt_queue = queue;
 		alt_queue_family = queue_family;
 	}
