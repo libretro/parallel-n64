@@ -1668,7 +1668,7 @@ static void _drawYUVImageToFrameBuffer(const struct ObjCoordinates *_objCoords)
 	if (lry > ci_height)
 		height = ci_height - uly;
 	mb = (uint32_t*)(gfx_info.RDRAM + gDP.textureImage.address); //pointer to the first macro block
-	dst = (uint16_t*)(gfx_info.RDRAM + gDP.colorImage.address);
+	dst = (uint32_t*)(gfx_info.RDRAM + gDP.colorImage.address);
 	dst += ulx + uly * ci_width;
 
 	/* YUV macro block contains 16x16 texture. 
