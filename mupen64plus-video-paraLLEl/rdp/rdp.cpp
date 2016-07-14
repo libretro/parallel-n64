@@ -182,7 +182,7 @@ void Renderer::init_centroid_lut()
 
 	staging.unmap();
 	cmd.prepare_image(*vulkan.centroid_lut);
-	cmd.copy_to_image(*vulkan.centroid_lut, staging, 0, 0, 0, 0, 256, 1, 1);
+	cmd.copy_to_image(*vulkan.centroid_lut, staging, 0, 0, 0, 0, 256, 1, 256);
 	cmd.complete_image(*vulkan.centroid_lut);
 	device.submit(cmd);
 }
@@ -1752,12 +1752,18 @@ void Renderer::flush_tile_lists()
 	}
 
 	// Upload combiner data.
+	if (!combiner_data.empty())
 	{
 		size_t combiner_size = combiner_data.size() * sizeof(BufferCombiner);
 		Buffer tmp = device.request_dynamic_buffer(vulkan.cmd, vulkan.buffer_set, Vulkan::RDP::BufferLayout::Combiners,
 		                                           combiner_size);
 		memcpy(tmp.map(), combiner_data.data(), combiner_size);
 		tmp.unmap();
+	}
+	else
+	{
+		// Make validators shut up.
+		device.request_dynamic_buffer(vulkan.cmd, vulkan.buffer_set, Vulkan::RDP::BufferLayout::Combiners, 64);
 	}
 	////
 
