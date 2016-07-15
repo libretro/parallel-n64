@@ -6,6 +6,7 @@ WITH_CRC=brumme
 FORCE_GLES=0
 HAVE_OPENGL=1
 HAVE_VULKAN=0
+HAVE_VULKAN_DEBUG=0
 GLIDEN64=0
 GLIDEN64CORE=0
 GLIDEN64ES=0
@@ -19,6 +20,11 @@ CPUFLAGS  :=
 GLFLAGS   :=
 
 UNAME=$(shell uname -a)
+
+ifeq ($(HAVE_VULKAN_DEBUG),1)
+HAVE_RSP_DUMP=1
+HAVE_RDP_DUMP=1
+endif
 
 # Dirs
 ROOT_DIR := .
@@ -75,6 +81,8 @@ endif
 
 ifeq ($(HAVE_VULKAN),1)
 TARGET_NAME := parallel
+else ifeq ($(HAVE_VULKAN_DEBUG),1)
+TARGET_NAME := parallel_debug
 else
 TARGET_NAME := mupen64plus
 endif
