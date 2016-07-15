@@ -73,7 +73,11 @@ else ifeq ($(ARCH), $(filter $(ARCH), arm))
    WITH_DYNAREC = arm
 endif
 
+ifeq ($(HAVE_VULKAN),1)
+TARGET_NAME := parallel
+else
 TARGET_NAME := mupen64plus
+endif
 CC_AS ?= $(CC)
 
 # Unix
