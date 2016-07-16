@@ -1592,14 +1592,30 @@ void Renderer::sync_full()
 	sync_gpu_to_dram(true);
 }
 
+#ifdef __LIBRETRO__
+extern "C" {
+   extern bool is_parallel_rdp_synchronous(void);
+};
+#endif
+
 void Renderer::complete_frame()
 {
-#define RDP_SYNCHRONOUS
-#ifdef RDP_SYNCHRONOUS
-	sync_full();
+#ifdef __LIBRETRO__
+   if (is_parallel_rdp_synchronous())
+      sync_full();
+   else
+   {
+      flush_tile_lists();
+      sync_gpu_to_dram(false);
+   }
 #else
-	flush_tile_lists();
-	sync_gpu_to_dram(false);
+   //#define RDP_SYNCHRONOUS
+#ifdef RDP_SYNCHRONOUS
+   sync_full();
+#else
+   flush_tile_lists();
+   sync_gpu_to_dram(false);
+#endif
 #endif
 }
 

@@ -275,6 +275,10 @@ static void setup_variables(void)
 #else
          "GFX Accuracy (restart); veryhigh|high|medium|low" },
 #endif
+#ifdef HAVE_VULKAN
+      { "mupen64-parallel-rdp-synchronous",
+         "ParaLLEl Synchronous RDP; enabled|disabled" },
+#endif
       { "mupen64-gfxplugin",
 #ifdef ONLY_VULKAN
          "GFX Plugin; parallel" },
@@ -637,9 +641,31 @@ extern void glide_set_filtering(unsigned value);
 extern void angrylion_set_filtering(unsigned value);
 extern void ChangeSize();
 
+static bool parallel_rdp_synchronous = true;
+
+bool is_parallel_rdp_synchronous(void)
+{
+   return parallel_rdp_synchronous;
+}
+
 void update_variables(bool startup)
 {
    struct retro_variable var;
+
+#if defined(HAVE_VULKAN)
+   var.key = "mupen64-parallel-rdp-synchronous";
+   var.value = NULL;
+
+   if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+   {
+      if (!strcmp(var.value, "enabled"))
+         parallel_rdp_synchronous = true;
+      else
+         parallel_rdp_synchronous = false;
+   }
+   else
+      parallel_rdp_synchronous = true;
+#endif
 
    var.key = "mupen64-screensize";
    var.value = NULL;
