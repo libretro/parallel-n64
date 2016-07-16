@@ -94,8 +94,8 @@ uint32_t *blitter_buf_lock   = NULL;
 
 uint32_t gfx_plugin_accuracy = 2;
 static enum rsp_plugin_type rsp_plugin;
-uint32_t screen_width;
-uint32_t screen_height;
+uint32_t screen_width = 640;
+uint32_t screen_height = 480;
 uint32_t screen_pitch;
 uint32_t screen_aspectmodehint;
 
@@ -127,7 +127,7 @@ extern m64p_rom_header ROM_HEADER;
 
 static void core_settings_autoselect_gfx_plugin(void)
 {
-   struct retro_variable gfx_var = { "mupen64-gfxplugin", 0 };
+   struct retro_variable gfx_var = { NAME_PREFIX "-gfxplugin", 0 };
 
    environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &gfx_var);
 
@@ -153,8 +153,8 @@ static void core_settings_autoselect_rsp_plugin(void);
 static void core_settings_set_defaults(void)
 {
    /* Load GFX plugin core option */
-   struct retro_variable gfx_var = { "mupen64-gfxplugin", 0 };
-   struct retro_variable rsp_var = { "mupen64-rspplugin", 0 };
+   struct retro_variable gfx_var = { NAME_PREFIX "-gfxplugin", 0 };
+   struct retro_variable rsp_var = { NAME_PREFIX "-rspplugin", 0 };
    environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &gfx_var);
    environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &rsp_var);
 
@@ -180,7 +180,7 @@ static void core_settings_set_defaults(void)
       gfx_plugin = GFX_GLIDE64;
 #endif
 
-   gfx_var.key = "mupen64-gfxplugin-accuracy";
+   gfx_var.key = NAME_PREFIX "-gfxplugin-accuracy";
    gfx_var.value = NULL;
 
    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &gfx_var) && gfx_var.value)
@@ -218,7 +218,7 @@ static void core_settings_set_defaults(void)
 static void core_settings_autoselect_rsp_plugin(void)
 {
 #if !defined(ONLY_VULKAN)
-   struct retro_variable rsp_var = { "mupen64-rspplugin", 0 };
+   struct retro_variable rsp_var = { NAME_PREFIX "-rspplugin", 0 };
 
    environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &rsp_var);
 
@@ -245,7 +245,7 @@ static void core_settings_autoselect_rsp_plugin(void)
 static void setup_variables(void)
 {
    struct retro_variable variables[] = {
-      { "mupen64-cpucore",
+      { NAME_PREFIX "-cpucore",
 #ifdef DYNAREC
 #if defined(IOS) || defined(ANDROID)
          "CPU Core; cached_interpreter|pure_interpreter|dynamic_recompiler" },
@@ -255,69 +255,75 @@ static void setup_variables(void)
 #else
          "CPU Core; cached_interpreter|pure_interpreter" },
 #endif
-      {"mupen64-audio-buffer-size",
+      {NAME_PREFIX "-audio-buffer-size",
          "Audio Buffer Size (restart); 2048|1024"},
-      {"mupen64-astick-deadzone",
+      {NAME_PREFIX "-astick-deadzone",
         "Analog Deadzone (percent); 15|20|25|30|0|5|10"},
-      {"mupen64-pak1",
+      {NAME_PREFIX "-pak1",
         "Player 1 Pak; none|memory|rumble"},
-      {"mupen64-pak2",
+      {NAME_PREFIX "-pak2",
         "Player 2 Pak; none|memory|rumble"},
-      {"mupen64-pak3",
+      {NAME_PREFIX "-pak3",
         "Player 3 Pak; none|memory|rumble"},
-      {"mupen64-pak4",
+      {NAME_PREFIX "-pak4",
         "Player 4 Pak; none|memory|rumble"},
-      { "mupen64-disable_expmem",
+      { NAME_PREFIX "-disable_expmem",
          "Enable Expansion Pak RAM; enabled|disabled" },
-      { "mupen64-gfxplugin-accuracy",
-#if defined(IOS) || defined(ANDROID)
+      { NAME_PREFIX "-gfxplugin-accuracy",
+#if defined(ONLY_VULKAN)
+         "GFX Accuracy; veryhigh" },
+#elif defined(IOS) || defined(ANDROID)
          "GFX Accuracy (restart); medium|high|veryhigh|low" },
 #else
          "GFX Accuracy (restart); veryhigh|high|medium|low" },
 #endif
 #ifdef HAVE_VULKAN
-      { "mupen64-parallel-rdp-synchronous",
+      { NAME_PREFIX "-parallel-rdp-synchronous",
          "ParaLLEl Synchronous RDP; enabled|disabled" },
 #endif
-      { "mupen64-gfxplugin",
+      { NAME_PREFIX "-gfxplugin",
 #ifdef ONLY_VULKAN
          "GFX Plugin; parallel" },
 #else
          "GFX Plugin; auto|glide64|gln64|rice|angrylion|parallel" },
 #endif
-      { "mupen64-rspplugin",
+      { NAME_PREFIX "-rspplugin",
 #ifdef ONLY_VULKAN
          "RSP Plugin; cxd4" },
 #else
          "RSP Plugin; auto|hle|cxd4" },
 #endif
-      { "mupen64-screensize",
+#ifndef ONLY_VULKAN
+      { NAME_PREFIX "-screensize",
          "Resolution (restart); 640x480|960x720|1280x960|1600x1200|1920x1440|2240x1680|320x240" },
-      { "mupen64-aspectratiohint",
+      { NAME_PREFIX "-aspectratiohint",
          "Aspect ratio hint (reinit); normal|widescreen" },
-      { "mupen64-filtering",
+      { NAME_PREFIX "-filtering",
 		 "Texture Filtering; automatic|N64 3-point|bilinear|nearest" },
-      { "mupen64-polyoffset-factor",
+      { NAME_PREFIX "-polyoffset-factor",
        "(Glide64) Polygon Offset Factor; -3.0|-2.5|-2.0|-1.5|-1.0|-0.5|0.0|0.5|1.0|1.5|2.0|2.5|3.0|3.5|4.0|4.5|5.0|-3.5|-4.0|-4.5|-5.0"
       },
-      { "mupen64-polyoffset-units",
+      { NAME_PREFIX "-polyoffset-units",
        "(Glide64) Polygon Offset Units; -3.0|-2.5|-2.0|-1.5|-1.0|-0.5|0.0|0.5|1.0|1.5|2.0|2.5|3.0|3.5|4.0|4.5|5.0|-3.5|-4.0|-4.5|-5.0"
       },
-      { "mupen64-angrylion-vioverlay",
+      { NAME_PREFIX "-angrylion-vioverlay",
        "(Angrylion) VI Overlay; disabled|enabled"
       },
-      { "mupen64-virefresh",
+      { NAME_PREFIX "-virefresh",
          "VI Refresh (Overclock); 1500|2200" },
-      { "mupen64-bufferswap",
+#endif
+      { NAME_PREFIX "-bufferswap",
          "Buffer Swap; off|on"
       },
-      { "mupen64-framerate",
+      { NAME_PREFIX "-framerate",
          "Framerate (restart); original|fullspeed" },
-      { "mupen64-vcache-vbo",
+#ifndef ONLY_VULKAN
+      { NAME_PREFIX "-vcache-vbo",
          "(Glide64) Vertex cache VBO (restart); off|on" },
-      { "mupen64-boot-device",
+#endif
+      { NAME_PREFIX "-boot-device",
          "Boot Device; Default|64DD IPL" },
-      { "mupen64-64dd-hardware",
+      { NAME_PREFIX "-64dd-hardware",
          "64DD Hardware; disabled|enabled" },
       { NULL, NULL },
    };
@@ -653,7 +659,7 @@ void update_variables(bool startup)
    struct retro_variable var;
 
 #if defined(HAVE_VULKAN)
-   var.key = "mupen64-parallel-rdp-synchronous";
+   var.key = NAME_PREFIX "-parallel-rdp-synchronous";
    var.value = NULL;
 
    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
@@ -667,7 +673,7 @@ void update_variables(bool startup)
       parallel_rdp_synchronous = true;
 #endif
 
-   var.key = "mupen64-screensize";
+   var.key = NAME_PREFIX "-screensize";
    var.value = NULL;
 
    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
@@ -681,16 +687,21 @@ void update_variables(bool startup)
          screen_height = 480;
       }
    }
+   else
+   {
+      screen_width  = 640;
+      screen_height = 480;
+   }
 
    if (startup)
    {
-      var.key = "mupen64-audio-buffer-size";
+      var.key = NAME_PREFIX "-audio-buffer-size";
       var.value = NULL;
 
       if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
          audio_buffer_size = atoi(var.value);
 
-      var.key = "mupen64-gfxplugin";
+      var.key = NAME_PREFIX "-gfxplugin";
       var.value = NULL;
 
       environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var);
@@ -714,7 +725,7 @@ void update_variables(bool startup)
          gfx_plugin = GFX_GLIDE64;
    }
 
-   var.key = "mupen64-angrylion-vioverlay";
+   var.key = NAME_PREFIX "-angrylion-vioverlay";
    var.value = NULL;
 
    environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var);
@@ -732,7 +743,7 @@ void update_variables(bool startup)
    CFG_HLE_GFX = (gfx_plugin != GFX_ANGRYLION) && (gfx_plugin != GFX_PARALLEL) ? 1 : 0;
    CFG_HLE_AUD = 0; /* There is no HLE audio code in libretro audio plugin. */
 
-   var.key = "mupen64-filtering";
+   var.key = NAME_PREFIX "-filtering";
    var.value = NULL;
 
    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
@@ -764,7 +775,7 @@ void update_variables(bool startup)
      }
    }
 
-   var.key = "mupen64-polyoffset-factor";
+   var.key = NAME_PREFIX "-polyoffset-factor";
    var.value = NULL;
 
    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
@@ -773,7 +784,7 @@ void update_variables(bool startup)
       polygonOffsetFactor = new_val;
    }
 
-   var.key = "mupen64-polyoffset-units";
+   var.key = NAME_PREFIX "-polyoffset-units";
    var.value = NULL;
 
    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
@@ -782,13 +793,13 @@ void update_variables(bool startup)
       polygonOffsetUnits = new_val;
    }
 
-   var.key = "mupen64-astick-deadzone";
+   var.key = NAME_PREFIX "-astick-deadzone";
    var.value = NULL;
 
    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
       astick_deadzone = (int)(atoi(var.value) * 0.01f * 0x8000);
 
-   var.key = "mupen64-gfxplugin-accuracy";
+   var.key = NAME_PREFIX "-gfxplugin-accuracy";
    var.value = NULL;
 
    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
@@ -803,7 +814,7 @@ void update_variables(bool startup)
           gfx_plugin_accuracy = 0;
    }
 
-   var.key = "mupen64-virefresh";
+   var.key = NAME_PREFIX "-virefresh";
    var.value = NULL;
 
    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
@@ -814,7 +825,7 @@ void update_variables(bool startup)
          VI_REFRESH = 2200;
    }
 
-   var.key = "mupen64-bufferswap";
+   var.key = NAME_PREFIX "-bufferswap";
    var.value = NULL;
 
    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
@@ -825,7 +836,7 @@ void update_variables(bool startup)
          BUFFERSWAP = false;
    }
 
-   var.key = "mupen64-framerate";
+   var.key = NAME_PREFIX "-framerate";
    var.value = NULL;
 
    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value && initial_boot)
@@ -838,7 +849,7 @@ void update_variables(bool startup)
 
    
    {
-      struct retro_variable pk1var = { "mupen64-pak1" };
+      struct retro_variable pk1var = { NAME_PREFIX "-pak1" };
       if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &pk1var) && pk1var.value)
       {
          int p1_pak = PLUGIN_NONE;
@@ -858,7 +869,7 @@ void update_variables(bool startup)
    }
 
    {
-      struct retro_variable pk2var = { "mupen64-pak2" };
+      struct retro_variable pk2var = { NAME_PREFIX "-pak2" };
       if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &pk2var) && pk2var.value)
       {
          int p2_pak = PLUGIN_NONE;
@@ -876,7 +887,7 @@ void update_variables(bool startup)
    }
    
    {
-      struct retro_variable pk3var = { "mupen64-pak3" };
+      struct retro_variable pk3var = { NAME_PREFIX "-pak3" };
       if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &pk3var) && pk3var.value)
       {
          int p3_pak = PLUGIN_NONE;
@@ -894,7 +905,7 @@ void update_variables(bool startup)
    }
   
    {
-      struct retro_variable pk4var = { "mupen64-pak4" };
+      struct retro_variable pk4var = { NAME_PREFIX "-pak4" };
       if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &pk4var) && pk4var.value)
       {
          int p4_pak = PLUGIN_NONE;
@@ -1077,7 +1088,7 @@ void retro_run (void)
 
       update_variables(false);
 
-      var.key = "mupen64-aspectratiohint";
+      var.key = NAME_PREFIX "-aspectratiohint";
       var.value = NULL;
 
       if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
