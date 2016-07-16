@@ -1594,7 +1594,7 @@ void Renderer::sync_full()
 
 void Renderer::complete_frame()
 {
-//#define RDP_SYNCHRONOUS
+#define RDP_SYNCHRONOUS
 #ifdef RDP_SYNCHRONOUS
 	sync_full();
 #else
