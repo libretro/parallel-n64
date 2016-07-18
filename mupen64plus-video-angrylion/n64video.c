@@ -25,6 +25,7 @@ static int LOG_ENABLE = 0;
 static int render_cycle_mode_counts[4];
 #endif
 
+static int8_t get_dither_noise_type;
 static int scfield;
 static int sckeepodd;
 
@@ -317,9 +318,7 @@ static void tclod_copy(INT32* sss, INT32* sst, INT32 s, INT32 t, INT32 w, INT32 
 STRICTINLINE void get_texel1_1cycle(INT32* s1, INT32* t1, INT32 s, INT32 t, INT32 w, INT32 dsinc, INT32 dtinc, INT32 dwinc, INT32 scanline, SPANSIGS* sigs);
 STRICTINLINE void get_nexttexel0_2cycle(INT32* s1, INT32* t1, INT32 s, INT32 t, INT32 w, INT32 dsinc, INT32 dtinc, INT32 dwinc);
 static INLINE void rgb_dither_complete(int* r, int* g, int* b, int dith);
-static void get_dither_noise_complete(int x, int y, int* cdith, int* adith);
-static void get_dither_only(int x, int y, int* cdith, int* adith);
-static void get_dither_nothing(int x, int y, int* cdith, int* adith);
+static INLINE void get_dither_noise(int x, int y, int *cdith, int *adith);
 
 #ifdef USE_SSE_SUPPORT
 static void rgbaz_correct_clip(int offx, int offy, int r, int g, int b, int a, int* z, UINT32 curpixel_cvg,
@@ -345,11 +344,6 @@ struct {UINT32 shift; UINT32 add;} z_dec_table[8] = {
      0, 0x3f800,
 };
 
-static void (*get_dither_noise_func[3])(int, int, int*, int*) = 
-{
-    get_dither_noise_complete, get_dither_only, get_dither_nothing
-};
-
 static void (*tcdiv_func[2])(INT32, INT32, INT32, INT32*, INT32*) =
 {
     tcdiv_nopersp, tcdiv_persp
@@ -369,7 +363,6 @@ static void (*render_spans_2cycle_func[4])(int, int, int, int) =
     render_spans_2cycle_notex, render_spans_2cycle_notexel1, render_spans_2cycle_notexelnext, render_spans_2cycle_complete
 };
 
-static void (*get_dither_noise_ptr)(int, int, int*, int*);
 static void (*tcdiv_ptr)(INT32, INT32, INT32, INT32*, INT32*);
 static void (*render_spans_1cycle_ptr)(int, int, int, int);
 
@@ -793,7 +786,6 @@ void rdp_init(void)
     fbread1_ptr = fbread_func[0];
     fbread2_ptr = fbread2_func[0];
     fbwrite_ptr = fbwrite_func[0];
-    get_dither_noise_ptr = get_dither_noise_func[0];
     tcdiv_ptr = tcdiv_func[0];
     render_spans_1cycle_ptr = render_spans_1cycle_func[2];
     render_spans_2cycle_ptr = render_spans_2cycle_func[1];
@@ -4111,7 +4103,7 @@ static void render_spans_1cycle_complete(int start, int end, int tilenum, int fl
 
             rgbaz_correct_clip(offx, offy, sr, sg, sb, sa, &sz, curpixel_cvg);
             LOG("SZ = %d\n", sz);
-            get_dither_noise_ptr(x, i, &cdith, &adith);
+            get_dither_noise(x, i, &cdith, &adith);
             combiner_1cycle(adith, &curpixel_cvg);
             fbread1_ptr(curpixel, &curpixel_memcvg);
             if (z_compare(zbcur, sz, dzpix, dzpixenc, &blend_en, &prewrap, &curpixel_cvg, curpixel_memcvg))
@@ -4285,7 +4277,7 @@ static void render_spans_1cycle_notexel1(int start, int end, int tilenum, int fl
 
             LOG("SZ = %d\n", sz);
 
-            get_dither_noise_ptr(x, i, &cdith, &adith);
+            get_dither_noise(x, i, &cdith, &adith);
             combiner_1cycle(adith, &curpixel_cvg);
                 
             fbread1_ptr(curpixel, &curpixel_memcvg);
@@ -4440,7 +4432,7 @@ static void render_spans_1cycle_notex(int start, int end, int tilenum, int flip)
             LOG("Preclip SZ = %d\n", sz >> 3);
             rgbaz_correct_clip(offx, offy, sr, sg, sb, sa, &sz, curpixel_cvg);
             LOG("SZ = %d\n", sz);
-            get_dither_noise_ptr(x, i, &cdith, &adith);
+            get_dither_noise(x, i, &cdith, &adith);
             combiner_1cycle(adith, &curpixel_cvg);
                 
             fbread1_ptr(curpixel, &curpixel_memcvg);
@@ -4642,7 +4634,7 @@ static void render_spans_2cycle_complete(int start, int end, int tilenum, int fl
             texture_pipeline_cycle(&nexttexel1_color, &nexttexel_color, news, newt, newtile2, 1);
 
             rgbaz_correct_clip(offx, offy, sr, sg, sb, sa, &sz, curpixel_cvg);
-            get_dither_noise_ptr(x, i, &cdith, &adith);
+            get_dither_noise(x, i, &cdith, &adith);
             combiner_2cycle(adith, &curpixel_cvg, &acalpha);
             fbread2_ptr(curpixel, &curpixel_memcvg);
             if (z_compare(zbcur, sz, dzpix, dzpixenc, &blend_en, &prewrap, &curpixel_cvg, curpixel_memcvg))
@@ -4826,7 +4818,7 @@ static void render_spans_2cycle_notexelnext(int start, int end, int tilenum, int
             rgbaz_correct_clip(offx, offy, sr, sg, sb, sa, &sz, curpixel_cvg);
 #endif
                     
-            get_dither_noise_ptr(x, i, &cdith, &adith);
+            get_dither_noise(x, i, &cdith, &adith);
             combiner_2cycle(adith, &curpixel_cvg, &acalpha);
                 
             fbread2_ptr(curpixel, &curpixel_memcvg);
@@ -5018,7 +5010,7 @@ static void render_spans_2cycle_notexel1(int start, int end, int tilenum, int fl
             rgbaz_correct_clip(offx, offy, sr, sg, sb, sa, &sz, curpixel_cvg);
             LOG("SZ = %d\n", sz);
                     
-            get_dither_noise_ptr(x, i, &cdith, &adith);
+            get_dither_noise(x, i, &cdith, &adith);
             combiner_2cycle(adith, &curpixel_cvg, &acalpha);
                 
             fbread2_ptr(curpixel, &curpixel_memcvg);
@@ -5172,7 +5164,7 @@ static void render_spans_2cycle_notex(int start, int end, int tilenum, int flip,
 
             rgbaz_correct_clip(offx, offy, sr, sg, sb, sa, &sz, curpixel_cvg);
 
-            get_dither_noise_ptr(x, i, &cdith, &adith);
+            get_dither_noise(x, i, &cdith, &adith);
             combiner_2cycle(adith, &curpixel_cvg, &acalpha);
 
             fbread2_ptr(curpixel, &curpixel_memcvg);
@@ -5316,7 +5308,7 @@ static void render_spans_2cycle_notex(int start, int end, int tilenum, int flip)
 
             rgbaz_correct_clip(offx, offy, sr, sg, sb, sa, &sz, curpixel_cvg);
                     
-            get_dither_noise_ptr(x, i, &cdith, &adith);
+            get_dither_noise(x, i, &cdith, &adith);
             combiner_2cycle(adith, &curpixel_cvg, &acalpha);
                 
             fbread2_ptr(curpixel, &curpixel_memcvg);
@@ -6180,11 +6172,11 @@ void deduce_derivatives()
     if ((other_modes.cycle_type == CYCLE_TYPE_1 && combiner_rgbsub_a_r[1] == &noise) || \
         (other_modes.cycle_type == CYCLE_TYPE_2 && (combiner_rgbsub_a_r[0] == &noise || combiner_rgbsub_a_r[1] == &noise)) || \
         other_modes.alpha_dither_sel == 2)
-        get_dither_noise_ptr = get_dither_noise_func[0];
+        get_dither_noise_type = 0;
     else if (other_modes.f.rgb_alpha_dither != 0xf)
-        get_dither_noise_ptr = get_dither_noise_func[1];
+        get_dither_noise_type= 1;
     else
-        get_dither_noise_ptr = get_dither_noise_func[2];
+        get_dither_noise_type = 2;
 
     other_modes.f.dolod = other_modes.tex_lod_en || lodfracused;
 }
@@ -7243,175 +7235,81 @@ static void rgb_dither_complete(int* r, int* g, int* b, int dith)
 	*b = *b + (ditherdiff & replacesign);
 }
 
-static void get_dither_noise_complete(int x, int y, int* cdith, int* adith)
+static void get_dither_noise(int x, int y, int* cdith, int* adith)
 {
-    int dithindex;
+   if (get_dither_noise_type < 2)
+   {
+      int dithindex = ((y & 3) << 2) | (x & 3);
 
-    noise = ((irand() & 7) << 6) | 0x20;
-    switch(other_modes.f.rgb_alpha_dither)
-    {
-    case 0:
-        dithindex = ((y & 3) << 2) | (x & 3);
-        *adith = *cdith = magic_matrix[dithindex];
-        break;
-    case 1:
-        dithindex = ((y & 3) << 2) | (x & 3);
-        *cdith = magic_matrix[dithindex];
-        *adith = (~(*cdith)) & 7;
-        break;
-    case 2:
-        dithindex = ((y & 3) << 2) | (x & 3);
-        *cdith = magic_matrix[dithindex];
-        *adith = (noise >> 6) & 7;
-        break;
-    case 3:
-        dithindex = ((y & 3) << 2) | (x & 3);
-        *cdith = magic_matrix[dithindex];
-        *adith = 0;
-        break;
-    case 4:
-        dithindex = ((y & 3) << 2) | (x & 3);
-        *adith = *cdith = bayer_matrix[dithindex];
-        break;
-    case 5:
-        dithindex = ((y & 3) << 2) | (x & 3);
-        *cdith = bayer_matrix[dithindex];
-        *adith = (~(*cdith)) & 7;
-        break;
-    case 6:
-        dithindex = ((y & 3) << 2) | (x & 3);
-        *cdith = bayer_matrix[dithindex];
-        *adith = (noise >> 6) & 7;
-        break;
-    case 7:
-        dithindex = ((y & 3) << 2) | (x & 3);
-        *cdith = bayer_matrix[dithindex];
-        *adith = 0;
-        break;
-    case 8:
-        dithindex = ((y & 3) << 2) | (x & 3);
-        *cdith = irand() & 7;
-        *adith = magic_matrix[dithindex];
-        break;
-    case 9:
-        dithindex = ((y & 3) << 2) | (x & 3);
-        *cdith = irand() & 7;
-        *adith = (~magic_matrix[dithindex]) & 7;
-        break;
-    case 10:
-        *cdith = irand() & 7;
-        *adith = (noise >> 6) & 7;
-        break;
-    case 11:
-        *cdith = irand() & 7;
-        *adith = 0;
-        break;
-    case 12:
-        dithindex = ((y & 3) << 2) | (x & 3);
-        *cdith = 7;
-        *adith = bayer_matrix[dithindex];
-        break;
-    case 13:
-        dithindex = ((y & 3) << 2) | (x & 3);
-        *cdith = 7;
-        *adith = (~bayer_matrix[dithindex]) & 7;
-        break;
-    case 14:
-        *cdith = 7;
-        *adith = (noise >> 6) & 7;
-        break;
-    case 15:
-        *cdith = 7;
-        *adith = 0;
-        break;
-    }
-}
+      if (!get_dither_noise_type)
+         noise = ((irand() & 7) << 6) | 0x20;
 
-
-static void get_dither_only(int x, int y, int* cdith, int* adith)
-{
-    int dithindex; 
-    switch(other_modes.f.rgb_alpha_dither)
-    {
-    case 0:
-        dithindex = ((y & 3) << 2) | (x & 3);
-        *adith = *cdith = magic_matrix[dithindex];
-        break;
-    case 1:
-        dithindex = ((y & 3) << 2) | (x & 3);
-        *cdith = magic_matrix[dithindex];
-        *adith = (~(*cdith)) & 7;
-        break;
-    case 2:
-        dithindex = ((y & 3) << 2) | (x & 3);
-        *cdith = magic_matrix[dithindex];
-        *adith = (noise >> 6) & 7;
-        break;
-    case 3:
-        dithindex = ((y & 3) << 2) | (x & 3);
-        *cdith = magic_matrix[dithindex];
-        *adith = 0;
-        break;
-    case 4:
-        dithindex = ((y & 3) << 2) | (x & 3);
-        *adith = *cdith = bayer_matrix[dithindex];
-        break;
-    case 5:
-        dithindex = ((y & 3) << 2) | (x & 3);
-        *cdith = bayer_matrix[dithindex];
-        *adith = (~(*cdith)) & 7;
-        break;
-    case 6:
-        dithindex = ((y & 3) << 2) | (x & 3);
-        *cdith = bayer_matrix[dithindex];
-        *adith = (noise >> 6) & 7;
-        break;
-    case 7:
-        dithindex = ((y & 3) << 2) | (x & 3);
-        *cdith = bayer_matrix[dithindex];
-        *adith = 0;
-        break;
-    case 8:
-        dithindex = ((y & 3) << 2) | (x & 3);
-        *cdith = irand() & 7;
-        *adith = magic_matrix[dithindex];
-        break;
-    case 9:
-        dithindex = ((y & 3) << 2) | (x & 3);
-        *cdith = irand() & 7;
-        *adith = (~magic_matrix[dithindex]) & 7;
-        break;
-    case 10:
-        *cdith = irand() & 7;
-        *adith = (noise >> 6) & 7;
-        break;
-    case 11:
-        *cdith = irand() & 7;
-        *adith = 0;
-        break;
-    case 12:
-        dithindex = ((y & 3) << 2) | (x & 3);
-        *cdith = 7;
-        *adith = bayer_matrix[dithindex];
-        break;
-    case 13:
-        dithindex = ((y & 3) << 2) | (x & 3);
-        *cdith = 7;
-        *adith = (~bayer_matrix[dithindex]) & 7;
-        break;
-    case 14:
-        *cdith = 7;
-        *adith = (noise >> 6) & 7;
-        break;
-    case 15:
-        *cdith = 7;
-        *adith = 0;
-        break;
-    }
-}
-
-static void get_dither_nothing(int x, int y, int* cdith, int* adith)
-{
+      switch(other_modes.f.rgb_alpha_dither)
+      {
+         case 0:
+            *adith = *cdith = magic_matrix[dithindex];
+            break;
+         case 1:
+            *cdith = magic_matrix[dithindex];
+            *adith = (~(*cdith)) & 7;
+            break;
+         case 2:
+            *cdith = magic_matrix[dithindex];
+            *adith = (noise >> 6) & 7;
+            break;
+         case 3:
+            *cdith = magic_matrix[dithindex];
+            *adith = 0;
+            break;
+         case 4:
+            *adith = *cdith = bayer_matrix[dithindex];
+            break;
+         case 5:
+            *cdith = bayer_matrix[dithindex];
+            *adith = (~(*cdith)) & 7;
+            break;
+         case 6:
+            *cdith = bayer_matrix[dithindex];
+            *adith = (noise >> 6) & 7;
+            break;
+         case 7:
+            *cdith = bayer_matrix[dithindex];
+            *adith = 0;
+            break;
+         case 8:
+            *cdith = irand();
+            *adith = magic_matrix[dithindex];
+            break;
+         case 9:
+            *cdith = irand();
+            *adith = (~magic_matrix[dithindex]) & 7;
+            break;
+         case 10:
+            *cdith = irand();
+            *adith = (noise >> 6) & 7;
+            break;
+         case 11:
+            *cdith = irand();
+            *adith = 0;
+            break;
+         case 12:
+            *cdith = 7;
+            *adith = bayer_matrix[dithindex];
+            break;
+         case 13:
+            *cdith = 7;
+            *adith = (~bayer_matrix[dithindex]) & 7;
+            break;
+         case 14:
+            *cdith = 7;
+            *adith = (noise >> 6) & 7;
+            break;
+         case 15:
+            *cdith = 7;
+            *adith = 0;
+            break;
+      }
+   }
 }
 
 #ifdef USE_SSE_SUPPORT
