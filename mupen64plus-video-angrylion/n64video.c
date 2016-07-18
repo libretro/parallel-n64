@@ -139,8 +139,12 @@ static i32 spans_d_rgba[4];
 static i32 spans_d_stwz[4];
 static u16 spans_dzpix;
 
+#ifdef USE_SSE_SUPPORT
+static int16_t spans_cdrgba_drgbady[8] __attribute__((aligned(16)));
+#else
 static i32 spans_d_rgba_dy[4];
 static i32 spans_cd_rgba[4];
+#endif
 static int spans_cdz;
 
 static i32 spans_d_stwz_dy[4];
@@ -220,6 +224,23 @@ void compute_color_index(UINT32* cidx, UINT32 readshort, UINT32 nybbleoffset, UI
 void read_tmem_copy(int s, int s1, int s2, int s3, int t, UINT32 tilenum, UINT32* sortshort, int* hibits, int* lowbits);
 void replicate_for_copy(UINT32* outbyte, UINT32 inshort, UINT32 nybbleoffset, UINT32 tilenum, UINT32 tformat, UINT32 tsize);
 void fetch_qword_copy(UINT32* hidword, UINT32* lowdword, INT32 ssss, INT32 ssst, UINT32 tilenum);
+
+#ifdef USE_SSE_SUPPORT
+static void render_spans_1cycle_complete(int start, int end, int tilenum, int flip,
+      __m128i spans_cdrgba_drgbady_v);
+static void render_spans_1cycle_notexel1(int start, int end, int tilenum, int flip,
+      __m128i spans_cdrgba_drgbady_v);
+static void render_spans_1cycle_notex(int start, int end, int tilenum, int flip,
+      __m128i spans_cdrgba_drgbady_v);
+static void render_spans_2cycle_complete(int start, int end, int tilenum, int flip,
+      __m128i spans_cdrgba_drgbady_v);
+static void render_spans_2cycle_notexelnext(int start, int end, int tilenum, int flip,
+      __m128i spans_cdrgba_drgbady_v);
+static void render_spans_2cycle_notexel1(int start, int end, int tilenum, int flip,
+      __m128i spans_cdrgba_drgbady_v);
+static void render_spans_2cycle_notex(int start, int end, int tilenum, int flip,
+      __m128i spans_cdrgba_drgbady_v);
+#else
 static void render_spans_1cycle_complete(int start, int end, int tilenum, int flip);
 static void render_spans_1cycle_notexel1(int start, int end, int tilenum, int flip);
 static void render_spans_1cycle_notex(int start, int end, int tilenum, int flip);
@@ -227,6 +248,7 @@ static void render_spans_2cycle_complete(int start, int end, int tilenum, int fl
 static void render_spans_2cycle_notexelnext(int start, int end, int tilenum, int flip);
 static void render_spans_2cycle_notexel1(int start, int end, int tilenum, int flip);
 static void render_spans_2cycle_notex(int start, int end, int tilenum, int flip);
+#endif
 static void combiner_1cycle(int adseed, UINT32* curpixel_cvg);
 static void combiner_2cycle(int adseed, UINT32* curpixel_cvg, INT32* acalpha);
 static int blender_1cycle(UINT32* fr, UINT32* fg, UINT32* fb, int dith, UINT32 blend_en, UINT32 prewrap, UINT32 curpixel_cvg, UINT32 curpixel_cvbit);
@@ -282,7 +304,13 @@ static void rgb_dither_nothing(int* r, int* g, int* b, int dith);
 static void get_dither_noise_complete(int x, int y, int* cdith, int* adith);
 static void get_dither_only(int x, int y, int* cdith, int* adith);
 static void get_dither_nothing(int x, int y, int* cdith, int* adith);
+
+#ifdef USE_SSE_SUPPORT
+static void rgbaz_correct_clip(int offx, int offy, int r, int g, int b, int a, int* z, UINT32 curpixel_cvg,
+      __m128i spans_cdrgba_drgbady_v);
+#else
 static void rgbaz_correct_clip(int offx, int offy, int r, int g, int b, int a, int* z, UINT32 curpixel_cvg);
+#endif
 int IsBadPtrW32(void *ptr, UINT32 bytes);
 UINT32 vi_integer_sqrt(UINT32 a);
 
@@ -330,7 +358,12 @@ static void (*get_dither_noise_ptr)(int, int, int*, int*);
 static void (*rgb_dither_ptr)(int*, int*, int*, int);
 static void (*tcdiv_ptr)(INT32, INT32, INT32, INT32*, INT32*);
 static void (*render_spans_1cycle_ptr)(int, int, int, int);
-static void (*render_spans_2cycle_ptr)(int, int, int, int);
+
+#ifdef USE_SSE_SUPPORT
+static void (*render_spans_2cycle_ptr)(int start, int end, int tilenum, int flip, __m128i spans_cdrgba_drgbady_v);
+#else
+static void (*render_spans_2cycle_ptr)(int start, int end, int tilenum, int flip);
+#endif
 
 UINT16 z_com_table[0x40000];
 UINT32 z_complete_dec_table[0x4000];
@@ -3542,7 +3575,12 @@ STRICTINLINE void tc_pipeline_load(INT32* sss, INT32* sst, int tilenum, int coor
     *sst = sst1;
 }
 
+#ifdef USE_SSE_SUPPORT
+static void render_spans_1cycle_complete(int start, int end, int tilenum, int flip,
+      __m128i spans_cdrgba_drgbady_v)
+#else
 static void render_spans_1cycle_complete(int start, int end, int tilenum, int flip)
+#endif
 {
     UINT8 offx, offy;
     SPANSIGS sigs;
@@ -3730,7 +3768,12 @@ static void render_spans_1cycle_complete(int start, int end, int tilenum, int fl
     }
 }
 
+#ifdef USE_SSE_SUPPORT
+static void render_spans_1cycle_notexel1(int start, int end, int tilenum, int flip,
+      __m128i spans_cdrgba_drgbady_v)
+#else
 static void render_spans_1cycle_notexel1(int start, int end, int tilenum, int flip)
+#endif
 {
     int zbcur;
     UINT8 offx, offy;
@@ -3910,7 +3953,12 @@ static void render_spans_1cycle_notexel1(int start, int end, int tilenum, int fl
     }
 }
 
+#ifdef USE_SSE_SUPPORT
+static void render_spans_1cycle_notex(int start, int end, int tilenum, int flip,
+      __m128i spans_cdrgba_drgbady_v)
+#else
 static void render_spans_1cycle_notex(int start, int end, int tilenum, int flip)
+#endif
 {
     int zbcur;
     UINT8 offx, offy;
@@ -4046,7 +4094,12 @@ static void render_spans_1cycle_notex(int start, int end, int tilenum, int flip)
     }
 }
 
+#ifdef USE_SSE_SUPPORT
+static void render_spans_2cycle_complete(int start, int end, int tilenum, int flip,
+      __m128i spans_cdrgba_drgbady_v)
+#else
 static void render_spans_2cycle_complete(int start, int end, int tilenum, int flip)
+#endif
 {
     int zbcur;
     UINT8 offx, offy;
@@ -4238,7 +4291,12 @@ static void render_spans_2cycle_complete(int start, int end, int tilenum, int fl
     }
 }
 
+#ifdef USE_SSE_SUPPORT
+static void render_spans_2cycle_notexelnext(int start, int end, int tilenum, int flip,
+      __m128i spans_cdrgba_drgbady_v)
+#else
 static void render_spans_2cycle_notexelnext(int start, int end, int tilenum, int flip)
+#endif
 {
     int zbcur;
     UINT8 offx, offy;
@@ -4372,7 +4430,12 @@ static void render_spans_2cycle_notexelnext(int start, int end, int tilenum, int
 
             LOG_ENABLE = curpixel == 53 * 320 + 77;
             LOG("Preclip SZ = %d\n", sz >> 3);
+
+#ifdef USE_SSE_SUPPORT
+            rgbaz_correct_clip(offx, offy, sr, sg, sb, sa, &sz, curpixel_cvg, spans_cdrgba_drgbady_v);
+#else
             rgbaz_correct_clip(offx, offy, sr, sg, sb, sa, &sz, curpixel_cvg);
+#endif
                     
             get_dither_noise_ptr(x, i, &cdith, &adith);
             combiner_2cycle(adith, &curpixel_cvg, &acalpha);
@@ -4413,7 +4476,12 @@ static void render_spans_2cycle_notexelnext(int start, int end, int tilenum, int
 void breakme(void)
 {}
 
+#ifdef USE_SSE_SUPPORT
+static void render_spans_2cycle_notexel1(int start, int end, int tilenum, int flip,
+      __m128i spans_cdrgba_drgbady_v)
+#else
 static void render_spans_2cycle_notexel1(int start, int end, int tilenum, int flip)
+#endif
 {
     int zbcur;
     UINT8 offx, offy;
@@ -4592,7 +4660,12 @@ static void render_spans_2cycle_notexel1(int start, int end, int tilenum, int fl
     }
 }
 
+#ifdef USE_SSE_SUPPORT
+static void render_spans_2cycle_notex(int start, int end, int tilenum, int flip,
+      __m128i spans_cdrgba_drgbady_v)
+#else
 static void render_spans_2cycle_notex(int start, int end, int tilenum, int flip)
+#endif
 {
     int zbcur;
     UINT8 offx, offy;
@@ -6715,8 +6788,19 @@ static void get_dither_nothing(int x, int y, int* cdith, int* adith)
 {
 }
 
-static void rgbaz_correct_clip(int offx, int offy, int r, int g, int b, int a, int* z, UINT32 curpixel_cvg)
+#ifdef USE_SSE_SUPPORT
+static void rgbaz_correct_clip(int offx, int offy, int r, int g, int b, int a,
+      int* z, UINT32 curpixel_cvg,
+      __m128i spans_cdrgba_drgbady_v
+      )
+#else
+static void rgbaz_correct_clip(int offx, int offy, int r, int g, int b, int a,
+      int* z, UINT32 curpixel_cvg)
+#endif
 {
+#ifdef USE_SSE_SUPPORT
+   __m128i rgba2;
+#endif
     int summand_r, summand_b, summand_g, summand_a;
     int summand_z;
     int sz = *z;
