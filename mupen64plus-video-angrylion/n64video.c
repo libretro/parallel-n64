@@ -76,16 +76,6 @@ static INT32 *blender2a_g[2];
 static INT32 *blender2a_b[2];
 static INT32 *blender2b_a[2];
 
-#ifdef USE_SSE_SUPPORT
-#define COLOR_RED(val)       (val[0])
-#define COLOR_GREEN(val)     (val[1])
-#define COLOR_BLUE(val)      (val[2])
-#define COLOR_ALPHA(val)     (val[3])
-#define COLOR_RED_PTR(val)   (val[0])
-#define COLOR_GREEN_PTR(val) (val[1])
-#define COLOR_BLUE_PTR(val)  (val[2])
-#define COLOR_ALPHA_PTR(val) (val[3])
-#else
 #define COLOR_RED(val)       (val.r)
 #define COLOR_GREEN(val)     (val.g)
 #define COLOR_BLUE(val)      (val.b)
@@ -94,7 +84,6 @@ static INT32 *blender2b_a[2];
 #define COLOR_GREEN_PTR(val) (val->g)
 #define COLOR_BLUE_PTR(val)  (val->b)
 #define COLOR_ALPHA_PTR(val) (val->a)
-#endif
 
 static INT32 k0_tf = 0, k1_tf = 0, k2_tf = 0, k3_tf = 0;
 static INT32 k4 = 0, k5 = 0;
@@ -157,12 +146,8 @@ static i32 spans_d_rgba[4];
 static i32 spans_d_stwz[4];
 static u16 spans_dzpix;
 
-#ifdef USE_SSE_SUPPORT
-static int16_t spans_cdrgba_drgbady[8] __attribute__((aligned(16)));
-#else
 static i32 spans_d_rgba_dy[4];
 static i32 spans_cd_rgba[4];
-#endif
 static int spans_cdz;
 
 static i32 spans_d_stwz_dy[4];
@@ -243,22 +228,6 @@ void read_tmem_copy(int s, int s1, int s2, int s3, int t, UINT32 tilenum, UINT32
 void replicate_for_copy(UINT32* outbyte, UINT32 inshort, UINT32 nybbleoffset, UINT32 tilenum, UINT32 tformat, UINT32 tsize);
 void fetch_qword_copy(UINT32* hidword, UINT32* lowdword, INT32 ssss, INT32 ssst, UINT32 tilenum);
 
-#ifdef USE_SSE_SUPPORT
-static void render_spans_1cycle_complete(int start, int end, int tilenum, int flip,
-      __m128i spans_cdrgba_drgbady_v);
-static void render_spans_1cycle_notexel1(int start, int end, int tilenum, int flip,
-      __m128i spans_cdrgba_drgbady_v);
-static void render_spans_1cycle_notex(int start, int end, int tilenum, int flip,
-      __m128i spans_cdrgba_drgbady_v);
-static void render_spans_2cycle_complete(int start, int end, int tilenum, int flip,
-      __m128i spans_cdrgba_drgbady_v);
-static void render_spans_2cycle_notexelnext(int start, int end, int tilenum, int flip,
-      __m128i spans_cdrgba_drgbady_v);
-static void render_spans_2cycle_notexel1(int start, int end, int tilenum, int flip,
-      __m128i spans_cdrgba_drgbady_v);
-static void render_spans_2cycle_notex(int start, int end, int tilenum, int flip,
-      __m128i spans_cdrgba_drgbady_v);
-#else
 static void render_spans_1cycle_complete(int start, int end, int tilenum, int flip);
 static void render_spans_1cycle_notexel1(int start, int end, int tilenum, int flip);
 static void render_spans_1cycle_notex(int start, int end, int tilenum, int flip);
@@ -266,7 +235,7 @@ static void render_spans_2cycle_complete(int start, int end, int tilenum, int fl
 static void render_spans_2cycle_notexelnext(int start, int end, int tilenum, int flip);
 static void render_spans_2cycle_notexel1(int start, int end, int tilenum, int flip);
 static void render_spans_2cycle_notex(int start, int end, int tilenum, int flip);
-#endif
+
 static void combiner_1cycle(int adseed, UINT32* curpixel_cvg);
 static void combiner_2cycle(int adseed, UINT32* curpixel_cvg, INT32* acalpha);
 static int blender_1cycle(UINT32* fr, UINT32* fg, UINT32* fb, int dith, UINT32 blend_en, UINT32 prewrap, UINT32 curpixel_cvg, UINT32 curpixel_cvbit);
@@ -320,12 +289,7 @@ STRICTINLINE void get_nexttexel0_2cycle(INT32* s1, INT32* t1, INT32 s, INT32 t, 
 static INLINE void rgb_dither_complete(int* r, int* g, int* b, int dith);
 static INLINE void get_dither_noise(int x, int y, int *cdith, int *adith);
 
-#ifdef USE_SSE_SUPPORT
-static void rgbaz_correct_clip(int offx, int offy, int r, int g, int b, int a, int* z, UINT32 curpixel_cvg,
-      __m128i spans_cdrgba_drgbady_v);
-#else
 static void rgbaz_correct_clip(int offx, int offy, int r, int g, int b, int a, int* z, UINT32 curpixel_cvg);
-#endif
 int IsBadPtrW32(void *ptr, UINT32 bytes);
 UINT32 vi_integer_sqrt(UINT32 a);
 
@@ -349,11 +313,7 @@ static void (*tcdiv_func[2])(INT32, INT32, INT32, INT32*, INT32*) =
     tcdiv_nopersp, tcdiv_persp
 };
 
-#ifdef USE_SSE_SUPPORT
-static void (*render_spans_1cycle_func[3])(int, int, int, int, __m128i) =
-#else
 static void (*render_spans_1cycle_func[3])(int, int, int, int) =
-#endif
 {
     render_spans_1cycle_notex, render_spans_1cycle_notexel1, render_spans_1cycle_complete
 };
@@ -366,11 +326,7 @@ static void (*render_spans_2cycle_func[4])(int, int, int, int) =
 static void (*tcdiv_ptr)(INT32, INT32, INT32, INT32*, INT32*);
 static void (*render_spans_1cycle_ptr)(int, int, int, int);
 
-#ifdef USE_SSE_SUPPORT
-static void (*render_spans_2cycle_ptr)(int start, int end, int tilenum, int flip, __m128i spans_cdrgba_drgbady_v);
-#else
 static void (*render_spans_2cycle_ptr)(int start, int end, int tilenum, int flip);
-#endif
 
 UINT16 z_com_table[0x40000];
 UINT32 z_complete_dec_table[0x4000];
@@ -1347,13 +1303,8 @@ static void combiner_2cycle(int adseed, UINT32* curpixel_cvg, INT32* acalpha)
     COLOR_GREEN(combined_color) >>= 8;
     COLOR_BLUE(combined_color)  >>= 8;
 
-#ifdef USE_SSE_SUPPORT
-    memcpy(texel0_color,  texel1_color,    sizeof(COLOR));
-    memcpy(texel1_color,  nexttexel_color, sizeof(COLOR));
-#else
     texel0_color = texel1_color;
     texel1_color = nexttexel_color;
-#endif
 
     COLOR_RED(combined_color)   = color_combiner_equation(*combiner_rgbsub_a_r[1],*combiner_rgbsub_b_r[1],*combiner_rgbmul_r[1],*combiner_rgbadd_r[1]);
     COLOR_GREEN(combined_color) = color_combiner_equation(*combiner_rgbsub_a_g[1],*combiner_rgbsub_b_g[1],*combiner_rgbmul_g[1],*combiner_rgbadd_g[1]);
@@ -1669,11 +1620,7 @@ int blender_2cycle(UINT32* fr, UINT32* fg, UINT32* fb, int dith, UINT32 blend_en
 
             blender_equation_cycle0_2(&r, &g, &b);
             
-#ifdef USE_SSE_SUPPORT
-            memcpy(memory_color, pre_memory_color, sizeof(COLOR));
-#else
             memory_color = pre_memory_color;
-#endif
 
             COLOR_RED(blended_pixel_color)   = r;
             COLOR_GREEN(blended_pixel_color) = g;
@@ -1713,21 +1660,13 @@ int blender_2cycle(UINT32* fr, UINT32* fg, UINT32* fb, int dith, UINT32 blend_en
         }
         else 
         {
-#ifdef USE_SSE_SUPPORT
-           memcpy(memory_color, pre_memory_color, sizeof(COLOR));
-#else
            memory_color = pre_memory_color;
-#endif
            return 0;
         }
     }
     else 
     {
-#ifdef USE_SSE_SUPPORT
-       memcpy(memory_color, pre_memory_color, sizeof(COLOR));
-#else
        memory_color = pre_memory_color;
-#endif
         return 0;
     }
 }
@@ -3551,9 +3490,6 @@ void angrylion_set_filtering(unsigned filter_type)
 
 static void texture_pipeline_cycle(COLOR* TEX, COLOR* prev, INT32 SSS, INT32 SST, UINT32 tilenum, UINT32 cycle)                                            
 {
-#ifdef USE_SSE_SUPPORT
-   __m128i tex_v;
-#endif
     INT32 maxs, maxt, invt0r, invt0g, invt0b, invt0a;
     INT32 sfrac, tfrac, invsf, invtf;
     int upper = 0;
@@ -3603,9 +3539,6 @@ static void texture_pipeline_cycle(COLOR* TEX, COLOR* prev, INT32 SSS, INT32 SST
         
         if (bilerp)
         {
-#ifdef USE_SSE_SUPPORT
-           __m128i t0_v, t1_v, t2_v, t3_v;
-#endif
             
             if (!other_modes.en_tlut)
                 fetch_texel_quadro(&t0, &t1, &t2, &t3, sss1, sss2, sst1, sst2, tilenum);
@@ -3624,155 +3557,73 @@ static void texture_pipeline_cycle(COLOR* TEX, COLOR* prev, INT32 SSS, INT32 SST
                COLOR_GREEN(t3) = SIGN(COLOR_GREEN(t3), 9);
             }
 
-#ifdef USE_SSE_SUPPORT
-             t0_v = _mm_load_si128(t0);
-             t1_v = _mm_load_si128(t1);
-             t2_v = _mm_load_si128(t2);
-             t3_v = _mm_load_si128(t3);
-#endif
 
             if (!other_modes.mid_texel || sfrac != 0x10 || tfrac != 0x10)
             {
                 if (!convert)
                 {
-#ifdef USE_SSE_SUPPORT
-                   __m128i cv_v = _mm_set1_epi32(0x10);
-                   __m128i prod_a, prod_b, summand;
-#endif
 
                     if (UPPER)
                     {
                         
                         invsf = 0x20 - sfrac;
                         invtf = 0x20 - tfrac;
-#ifdef USE_SSE_SUPPORT
-                        __m128i invsf_v = _mm_set1_epi32(invsf);
-                        __m128i invtf_v = _mm_set1_epi32(invtf);
-
-                        prod_a = _mm_mullo_epi32(invsf_v, _mm_sub_epi32(t2_v, t3_v));
-                        prod_b = _mm_mullo_epi32(invtf_v, _mm_sub_epi32(t1_v, t3_v));
-                        summand = t3_v;
-#else
                         COLOR_RED_PTR(TEX) = COLOR_RED(t3) + ((((invsf * (COLOR_RED(t2) - COLOR_RED(t3))) + (invtf * (COLOR_RED(t1) - COLOR_RED(t3)))) + 0x10) >> 5);    
                         COLOR_GREEN_PTR(TEX) = COLOR_GREEN(t3) + ((((invsf * (COLOR_GREEN(t2) - COLOR_GREEN(t3))) + (invtf * (COLOR_GREEN(t1) - COLOR_GREEN(t3)))) + 0x10) >> 5);                                                                        
                         COLOR_BLUE_PTR(TEX) = COLOR_BLUE(t3) + ((((invsf * (COLOR_BLUE(t2) - COLOR_BLUE(t3))) + (invtf * (COLOR_BLUE(t1) - COLOR_BLUE(t3)))) + 0x10) >> 5);                                                                
                         COLOR_ALPHA_PTR(TEX) = COLOR_ALPHA(t3) + ((((invsf * (COLOR_ALPHA(t2) - COLOR_ALPHA(t3))) + (invtf * (COLOR_ALPHA(t1) - COLOR_ALPHA(t3)))) + 0x10) >> 5);
-#endif
                     }
                     else
                     {
-#ifdef USE_SSE_SUPPORT
-                       __m128i sfrac_v = _mm_set1_epi32(sfrac);
-                       __m128i tfrac_v = _mm_set1_epi32(tfrac);
-
-                       prod_a = _mm_mullo_epi32(sfrac_v, _mm_sub_epi32(t1_v, t0_v));
-                       prod_b = _mm_mullo_epi32(tfrac_v, _mm_sub_epi32(t2_v, t0_v));
-                       summand = t0_v;
-#else
                        COLOR_RED_PTR(TEX) = COLOR_RED(t0) + ((((sfrac * (COLOR_RED(t1) - COLOR_RED(t0))) + (tfrac * (COLOR_RED(t2) - COLOR_RED(t0)))) + 0x10) >> 5);                                            
                        COLOR_GREEN_PTR(TEX) = COLOR_GREEN(t0) + ((((sfrac * (COLOR_GREEN(t1) - COLOR_GREEN(t0))) + (tfrac * (COLOR_GREEN(t2) - COLOR_GREEN(t0)))) + 0x10) >> 5);                                            
                        COLOR_BLUE_PTR(TEX) = COLOR_BLUE(t0) + ((((sfrac * (COLOR_BLUE(t1) - COLOR_BLUE(t0))) + (tfrac * (COLOR_BLUE(t2) - COLOR_BLUE(t0)))) + 0x10) >> 5);                                    
                        COLOR_ALPHA_PTR(TEX) = COLOR_ALPHA(t0) + ((((sfrac * (COLOR_ALPHA(t1) - COLOR_ALPHA(t0))) + (tfrac * (COLOR_ALPHA(t2) - COLOR_ALPHA(t0)))) + 0x10) >> 5);
-#endif
                     }
-#ifdef USE_SSE_SUPPORT
-                    __m128i sum = _mm_add_epi32(_mm_add_epi32(prod_a, prod_b), cv_v);
-                    tex_v = _mm_add_epi32(summand, _mm_srai_epi32(sum, 5));
-#endif
                 }
                 else
                 {
-#ifdef USE_SSE_SUPPORT
-                   __m128i prev0_v = _mm_set1_epi32(prev[0]);
-                   __m128i prev1_v = _mm_set1_epi32(prev[1]);
-                   __m128i prev2_v = _mm_set1_epi32(prev[2]);
-                   __m128i cv_v = _mm_set1_epi32(0x80);
-
-                   __m128i prev0_prod, prev1_prod;
-#endif
 
                     if (UPPER)
                     {
-#ifdef USE_SSE_SUPPORT
-                       prev0_prod = _mm_mullo_epi32(prev0_v, _mm_sub_epi32(t2_v, t3_v));
-                       prev1_prod = _mm_mullo_epi32(prev1_v, _mm_sub_epi32(t1_v, t3_v));
-#else
                        COLOR_RED_PTR(TEX) = COLOR_BLUE_PTR(prev) + ((((COLOR_RED_PTR(prev) * (COLOR_RED(t2) - COLOR_RED(t3))) + (COLOR_GREEN_PTR(prev) * (COLOR_RED(t1) - COLOR_RED(t3)))) + 0x80) >> 8);    
                        COLOR_GREEN_PTR(TEX) = COLOR_BLUE_PTR(prev) + ((((COLOR_RED_PTR(prev) * (COLOR_GREEN(t2) - COLOR_GREEN(t3))) + (COLOR_GREEN_PTR(prev) * (COLOR_GREEN(t1) - COLOR_GREEN(t3)))) + 0x80) >> 8);                                                                        
                        COLOR_BLUE_PTR(TEX) = COLOR_BLUE_PTR(prev) + ((((COLOR_RED_PTR(prev) * (COLOR_BLUE(t2) - COLOR_BLUE(t3))) + (COLOR_GREEN_PTR(prev) * (COLOR_BLUE(t1) - COLOR_BLUE(t3)))) + 0x80) >> 8);                                                                
                        COLOR_ALPHA_PTR(TEX) = COLOR_BLUE_PTR(prev) + ((((COLOR_RED_PTR(prev) * (COLOR_ALPHA(t2) - COLOR_ALPHA(t3))) + (COLOR_GREEN_PTR(prev) * (COLOR_ALPHA(t1) - COLOR_ALPHA(t3)))) + 0x80) >> 8);
-#endif
                     }
                     else
                     {
-#ifdef USE_SSE_SUPPORT
-                       prev0_prod = _mm_mullo_epi32(prev0_v, _mm_sub_epi32(t2_v, t3_v));
-                       prev1_prod = _mm_mullo_epi32(prev1_v, _mm_sub_epi32(t1_v, t3_v));
-#else
                         COLOR_RED_PTR(TEX) = COLOR_BLUE_PTR(prev) + ((((COLOR_RED_PTR(prev) * (COLOR_RED(t1) - COLOR_RED(t0))) + (COLOR_GREEN_PTR(prev) * (COLOR_RED(t2) - COLOR_RED(t0)))) + 0x80) >> 8);                                            
                         COLOR_GREEN_PTR(TEX) = COLOR_BLUE_PTR(prev) + ((((COLOR_RED_PTR(prev) * (COLOR_GREEN(t1) - COLOR_GREEN(t0))) + (COLOR_GREEN_PTR(prev) * (COLOR_GREEN(t2) - COLOR_GREEN(t0)))) + 0x80) >> 8);                                            
                         COLOR_BLUE_PTR(TEX) = COLOR_BLUE_PTR(prev) + ((((COLOR_RED_PTR(prev) * (COLOR_BLUE(t1) - COLOR_BLUE(t0))) + (COLOR_GREEN_PTR(prev) * (COLOR_BLUE(t2) - COLOR_BLUE(t0)))) + 0x80) >> 8);                                    
                         COLOR_ALPHA_PTR(TEX) = COLOR_BLUE_PTR(prev) + ((((COLOR_RED_PTR(prev) * (COLOR_ALPHA(t1) - COLOR_ALPHA(t0))) + (COLOR_GREEN_PTR(prev) * (COLOR_ALPHA(t2) - COLOR_ALPHA(t0)))) + 0x80) >> 8);
-#endif
                     }    
-#ifdef USE_SSE_SUPPORT
-                    __m128i sum = _mm_add_epi32(_mm_add_epi32(prev0_prod, prev1_prod), cv_v);
-                    tex_v = _mm_add_epi32(prev2_v, _mm_srai_epi32(sum, 8));
-#endif
                 }
                 
             }
             else
             {
-#ifdef USE_SSE_SUPPORT
-               __m128i invt0r_v = _mm_xor_si128(t0_v, _mm_cmpeq_epi32(_mm_setzero_si128(), _mm_setzero_si128()));
-               __m128i invt0r_shiftsum = _mm_slli_epi32(_mm_add_epi32(invt0r_v, t3_v), 6);
-               __m128i cv_v = _mm_set1_epi32(0xc0);
-               __m128i prod_a, prod_b;
-#else
                invt0r  = ~COLOR_RED(t0);
                invt0g  = ~COLOR_GREEN(t0);
                invt0b  = ~COLOR_BLUE(t0);
                invt0a  = ~COLOR_ALPHA(t0);
-#endif
 
                 if (!convert)
                 {
                     sfrac <<= 2;
                     tfrac <<= 2;
 
-#ifdef USE_SSE_SUPPORT
-                    __m128i sfrac_v = _mm_set1_epi32(sfrac);
-                    __m128i tfrac_v = _mm_set1_epi32(tfrac);
-                    prod_a = _mm_mullo_epi32(sfrac_v, _mm_sub_epi32(t1_v, t0_v));
-                    prod_b = _mm_mullo_epi32(tfrac_v, _mm_sub_epi32(t2_v, t0_v));
-#else
                     COLOR_RED_PTR(TEX) = COLOR_RED(t0) + ((((sfrac * (COLOR_RED(t1) - COLOR_RED(t0))) + (tfrac * (COLOR_RED(t2) - COLOR_RED(t0)))) + ((invt0r + COLOR_RED(t3)) << 6) + 0xc0) >> 8);                                            
                     COLOR_GREEN_PTR(TEX) = COLOR_GREEN(t0) + ((((sfrac * (COLOR_GREEN(t1) - COLOR_GREEN(t0))) + (tfrac * (COLOR_GREEN(t2) - COLOR_GREEN(t0)))) + ((invt0g + COLOR_GREEN(t3)) << 6) + 0xc0) >> 8);                                            
                     COLOR_BLUE_PTR(TEX) = COLOR_BLUE(t0) + ((((sfrac * (COLOR_BLUE(t1) - COLOR_BLUE(t0))) + (tfrac * (COLOR_BLUE(t2) - COLOR_BLUE(t0)))) + ((invt0b + COLOR_BLUE(t3)) << 6) + 0xc0) >> 8);                                    
                     COLOR_ALPHA_PTR(TEX) = COLOR_ALPHA(t0) + ((((sfrac * (COLOR_ALPHA(t1) - COLOR_ALPHA(t0))) + (tfrac * (COLOR_ALPHA(t2) - COLOR_ALPHA(t0)))) + ((invt0a + COLOR_ALPHA(t3)) << 6) + 0xc0) >> 8);
-#endif
                 }
                 else
                 {
-#ifdef USE_SSE_SUPPORT
-                   __m128i prev0_v = _mm_set1_epi32(prev[0]);
-                   __m128i prev1_v = _mm_set1_epi32(prev[1]);
-                   __m128i prev2_v = _mm_set1_epi32(prev[2]);
-
-                   prod_a = _mm_mullo_epi32(prev0_v, _mm_sub_epi32(t1_v, t0_v));
-                   prod_b = _mm_mullo_epi32(prev1_v, _mm_sub_epi32(t2_v, t0_v));
-                }
-            }
-
-            __m128i sum = _mm_add_epi32(_mm_add_epi32(_mm_add_epi32(prod_a, prod_b), invt0r_shiftsum), cv_v);
-            tex_v = _mm_add_epi32(t0_v, _mm_srai_epi32(sum, 8));
-#else
             COLOR_RED_PTR(TEX) = COLOR_BLUE_PTR(prev) + ((((COLOR_RED_PTR(prev) * (COLOR_RED(t1) - COLOR_RED(t0))) + (COLOR_GREEN_PTR(prev) * (COLOR_RED(t2) - COLOR_RED(t0)))) + ((invt0r + COLOR_RED(t3)) << 6) + 0xc0) >> 8);                                            
             COLOR_GREEN_PTR(TEX) = COLOR_BLUE_PTR(prev) + ((((COLOR_RED_PTR(prev) * (COLOR_GREEN(t1) - COLOR_GREEN(t0))) + (COLOR_GREEN_PTR(prev) * (COLOR_GREEN(t2) - COLOR_GREEN(t0)))) + ((invt0g + COLOR_GREEN(t3)) << 6) + 0xc0) >> 8);                                            
             COLOR_BLUE_PTR(TEX) = COLOR_BLUE_PTR(prev) + ((((COLOR_RED_PTR(prev) * (COLOR_BLUE(t1) - COLOR_BLUE(t0))) + (COLOR_GREEN_PTR(prev) * (COLOR_BLUE(t2) - COLOR_BLUE(t0)))) + ((invt0b + COLOR_BLUE(t3)) << 6) + 0xc0) >> 8);                                    
             COLOR_ALPHA_PTR(TEX) = COLOR_BLUE_PTR(prev) + ((((COLOR_RED_PTR(prev) * (COLOR_ALPHA(t1) - COLOR_ALPHA(t0))) + (COLOR_GREEN_PTR(prev) * (COLOR_ALPHA(t2) - COLOR_ALPHA(t0)))) + ((invt0a + COLOR_ALPHA(t3)) << 6) + 0xc0) >> 8);
-#endif
                 }
             }
             
@@ -3785,11 +3636,7 @@ static void texture_pipeline_cycle(COLOR* TEX, COLOR* prev, INT32 SSS, INT32 SST
                 fetch_texel_entlut(&t0, sss1, sst1, tilenum);
             if (convert)
             {
-#ifdef USE_SSE_SUPPORT
-                memcpy(t0, prev, sizeof(COLOR));
-#else
                 t0 = *prev;
-#endif
             }
 
             if (tile[tilenum].format == FORMAT_YUV)
@@ -3803,20 +3650,12 @@ static void texture_pipeline_cycle(COLOR* TEX, COLOR* prev, INT32 SSS, INT32 SST
             COLOR_GREEN_PTR(TEX) = COLOR_BLUE(t0) + ((k1_tf * COLOR_RED(t0) + k2_tf * COLOR_GREEN(t0) + 0x80) >> 8);
             COLOR_BLUE_PTR(TEX) = COLOR_BLUE(t0) + ((k3_tf * COLOR_RED(t0) + 0x80) >> 8);
             COLOR_ALPHA_PTR(TEX) = COLOR_BLUE(t0);
-#ifdef USE_SSE_SUPPORT
-            tex_v = _mm_load_si128(TEX);
-#endif
         }
         
-#ifdef USE_SSE_SUPPORT
-         tex_v = _mm_and_si128(tex_v, _mm_set1_epi32(0x1ff));
-         _mm_store_si128(TEX, tex_v);
-#else
         COLOR_RED_PTR(TEX) &= 0x1ff;
         COLOR_GREEN_PTR(TEX) &= 0x1ff;
         COLOR_BLUE_PTR(TEX) &= 0x1ff;
         COLOR_ALPHA_PTR(TEX) &= 0x1ff;
-#endif
     }
     else                                                                                                
     {                                                                                                        
@@ -3838,11 +3677,7 @@ static void texture_pipeline_cycle(COLOR* TEX, COLOR* prev, INT32 SSS, INT32 SST
         {
             if (!convert)
             {
-#ifdef USE_SSE_SUPPORT
-                memcpy(TEX, t0, sizeof(COLOR));
-#else
                 *TEX = t0;
-#endif
             }
             else
                 COLOR_RED_PTR(TEX) = COLOR_GREEN_PTR(TEX) = COLOR_BLUE_PTR(TEX) = COLOR_ALPHA_PTR(TEX) = COLOR_BLUE_PTR(prev);
@@ -3851,11 +3686,7 @@ static void texture_pipeline_cycle(COLOR* TEX, COLOR* prev, INT32 SSS, INT32 SST
         {
             if (convert)
             {
-#ifdef USE_SSE_SUPPORT
-                memcpy(t0, prev, sizeof(COLOR));
-#else
                 t0 = *prev;
-#endif
             }
             
             if (tile[tilenum].format == FORMAT_YUV)
@@ -3931,12 +3762,7 @@ STRICTINLINE void tc_pipeline_load(INT32* sss, INT32* sst, int tilenum, int coor
     *sst = sst1;
 }
 
-#ifdef USE_SSE_SUPPORT
-static void render_spans_1cycle_complete(int start, int end, int tilenum, int flip,
-      __m128i spans_cdrgba_drgbady_v)
-#else
 static void render_spans_1cycle_complete(int start, int end, int tilenum, int flip)
-#endif
 {
     UINT8 offx, offy;
     SPANSIGS sigs;
@@ -4073,11 +3899,7 @@ static void render_spans_1cycle_complete(int start, int end, int tilenum, int fl
 
             if (!sigs.startspan)
             {
-#ifdef USE_SSE_SUPPORT
-                memcpy(texel0_color, texel1_color, sizeof(COLOR));
-#else
                 texel0_color = texel1_color;
-#endif
                 lod_frac = prelodfrac;
             }
             else
@@ -4128,12 +3950,7 @@ static void render_spans_1cycle_complete(int start, int end, int tilenum, int fl
     }
 }
 
-#ifdef USE_SSE_SUPPORT
-static void render_spans_1cycle_notexel1(int start, int end, int tilenum, int flip,
-      __m128i spans_cdrgba_drgbady_v)
-#else
 static void render_spans_1cycle_notexel1(int start, int end, int tilenum, int flip)
-#endif
 {
     int zbcur;
     UINT8 offx, offy;
@@ -4271,8 +4088,8 @@ static void render_spans_1cycle_notexel1(int start, int end, int tilenum, int fl
 
 #ifdef EXTRALOGGING
             LOG_ENABLE = curpixel == 53 * 320 + 77;
-#endif
             LOG("Preclip SZ = %d\n", sz >> 3);
+#endif
             rgbaz_correct_clip(offx, offy, sr, sg, sb, sa, &sz, curpixel_cvg);
 
             LOG("SZ = %d\n", sz);
@@ -4317,12 +4134,7 @@ static void render_spans_1cycle_notexel1(int start, int end, int tilenum, int fl
     }
 }
 
-#ifdef USE_SSE_SUPPORT
-static void render_spans_1cycle_notex(int start, int end, int tilenum, int flip,
-      __m128i spans_cdrgba_drgbady_v)
-#else
 static void render_spans_1cycle_notex(int start, int end, int tilenum, int flip)
-#endif
 {
     int zbcur;
     UINT8 offx, offy;
@@ -4428,8 +4240,8 @@ static void render_spans_1cycle_notex(int start, int end, int tilenum, int flip)
 
 #ifdef EXTRALOGGING
             LOG_ENABLE = curpixel == 53 * 320 + 77;
-#endif
             LOG("Preclip SZ = %d\n", sz >> 3);
+#endif
             rgbaz_correct_clip(offx, offy, sr, sg, sb, sa, &sz, curpixel_cvg);
             LOG("SZ = %d\n", sz);
             get_dither_noise(x, i, &cdith, &adith);
@@ -4462,12 +4274,7 @@ static void render_spans_1cycle_notex(int start, int end, int tilenum, int flip)
     }
 }
 
-#ifdef USE_SSE_SUPPORT
-static void render_spans_2cycle_complete(int start, int end, int tilenum, int flip,
-      __m128i spans_cdrgba_drgbady_v)
-#else
 static void render_spans_2cycle_complete(int start, int end, int tilenum, int flip)
-#endif
 {
     int zbcur;
     UINT8 offx, offy;
@@ -4604,13 +4411,8 @@ static void render_spans_2cycle_complete(int start, int end, int tilenum, int fl
             if (!sigs.startspan)
             {
                 lod_frac = prelodfrac;
-#ifdef USE_SSE_SUPPORT
-                memcpy(texel0_color, nexttexel_color, sizeof(COLOR));
-                memcpy(texel1_color, nexttexel1_color, sizeof(COLOR));
-#else
                 texel0_color = nexttexel_color;
                 texel1_color = nexttexel1_color;
-#endif
             }
             else
             {
@@ -4649,11 +4451,7 @@ static void render_spans_2cycle_complete(int start, int end, int tilenum, int fl
             }
             else
             {
-#ifdef USE_SSE_SUPPORT
-               memcpy(memory_color, pre_memory_color, sizeof(COLOR));
-#else
                memory_color = pre_memory_color;
-#endif
             }
 
             r += drinc;
@@ -4670,12 +4468,7 @@ static void render_spans_2cycle_complete(int start, int end, int tilenum, int fl
     }
 }
 
-#ifdef USE_SSE_SUPPORT
-static void render_spans_2cycle_notexelnext(int start, int end, int tilenum, int flip,
-      __m128i spans_cdrgba_drgbady_v)
-#else
 static void render_spans_2cycle_notexelnext(int start, int end, int tilenum, int flip)
-#endif
 {
     int zbcur;
     UINT8 offx, offy;
@@ -4809,14 +4602,10 @@ static void render_spans_2cycle_notexelnext(int start, int end, int tilenum, int
 
 #ifdef EXTRALOGGING
             LOG_ENABLE = curpixel == 53 * 320 + 77;
-#endif
             LOG("Preclip SZ = %d\n", sz >> 3);
-
-#ifdef USE_SSE_SUPPORT
-            rgbaz_correct_clip(offx, offy, sr, sg, sb, sa, &sz, curpixel_cvg, spans_cdrgba_drgbady_v);
-#else
-            rgbaz_correct_clip(offx, offy, sr, sg, sb, sa, &sz, curpixel_cvg);
 #endif
+
+            rgbaz_correct_clip(offx, offy, sr, sg, sb, sa, &sz, curpixel_cvg);
                     
             get_dither_noise(x, i, &cdith, &adith);
             combiner_2cycle(adith, &curpixel_cvg, &acalpha);
@@ -4834,11 +4623,7 @@ static void render_spans_2cycle_notexelnext(int start, int end, int tilenum, int
             }
             else
             {
-#ifdef USE_SSE_SUPPORT
-               memcpy(memory_color, pre_memory_color, sizeof(COLOR));
-#else
                memory_color = pre_memory_color;
-#endif
             }
 
             s += dsinc;
@@ -4865,12 +4650,7 @@ static void render_spans_2cycle_notexelnext(int start, int end, int tilenum, int
 void breakme(void)
 {}
 
-#ifdef USE_SSE_SUPPORT
-static void render_spans_2cycle_notexel1(int start, int end, int tilenum, int flip,
-      __m128i spans_cdrgba_drgbady_v)
-#else
 static void render_spans_2cycle_notexel1(int start, int end, int tilenum, int flip)
-#endif
 {
     int zbcur;
     UINT8 offx, offy;
@@ -5003,10 +4783,10 @@ static void render_spans_2cycle_notexel1(int start, int end, int tilenum, int fl
 
 #ifdef EXTRALOGGING
             LOG_ENABLE = curpixel == 53 * 320 + 77;
-#endif
             if (LOG_ENABLE)
                breakme();
             LOG("Preclip SZ = %d\n", sz >> 3);
+#endif
             rgbaz_correct_clip(offx, offy, sr, sg, sb, sa, &sz, curpixel_cvg);
             LOG("SZ = %d\n", sz);
                     
@@ -5032,11 +4812,7 @@ static void render_spans_2cycle_notexel1(int start, int end, int tilenum, int fl
             }
             else
             {
-#ifdef USE_SSE_SUPPORT
-               memcpy(memory_color, pre_memory_color, sizeof(COLOR));
-#else
                memory_color = pre_memory_color;
-#endif
             }
 
             s += dsinc;
@@ -5059,149 +4835,6 @@ static void render_spans_2cycle_notexel1(int start, int end, int tilenum, int fl
     }
 }
 
-#ifdef USE_SSE_SUPPORT
-static void render_spans_2cycle_notex(int start, int end, int tilenum, int flip,
-      __m128i spans_cdrgba_drgbady_v)
-{
-   int zb = zb_address >> 1;
-   int zbcur;
-   uint8_t offx, offy;
-   int i, j;
-   uint32_t blend_en;
-   uint32_t prewrap;
-   uint32_t curpixel_cvg, curpixel_cvbit, curpixel_memcvg;
-   int32_t acalpha;
-
-   int drinc, dginc, dbinc, dainc, dzinc;
-   int xinc;
-   if (flip)
-   {
-      drinc = spans_drgba[0];
-      dginc = spans_drgba[1];
-      dbinc = spans_drgba[2];
-      dainc = spans_drgba[3];
-      dzinc = spans_dstwz[3];
-      xinc = 1;
-   }
-   else
-   {
-      drinc = -spans_drgba[0];
-      dginc = -spans_drgba[1];
-      dbinc = -spans_drgba[2];
-      dainc = -spans_drgba[3];
-      dzinc = -spans_dstwz[3];
-      xinc = -1;
-   }
-
-   int dzpix;
-   if (!other_modes.z_source_sel)
-      dzpix = spans_dzpix;
-   else
-   {
-      dzpix = primitive_delta_z;
-      dzinc = spans_cdz = spans_dstwzdy[3] = 0;
-   }
-   int dzpixenc = dz_compress(dzpix);
-
-   int cdith = 7, adith = 0;
-   int r, g, b, a, z;
-   int sr, sg, sb, sa, sz;
-   int xstart, xend, xendsc;
-   int curpixel = 0;
-
-   int x, length, scdiff;
-   uint32_t fir, fig, fib;
-
-   for (i = start; i <= end; i++)
-   {
-      if (span[i].validline)
-      {
-
-         xstart = span[i].lx;
-         xend = span[i].unscrx;
-         xendsc = span[i].rx;
-         r = span[i].rgbastwz[0];
-         g = span[i].rgbastwz[1];
-         b = span[i].rgbastwz[2];
-         a = span[i].rgbastwz[3];
-         z = other_modes.z_source_sel ? primitive_z : span[i].rgbastwz[7];
-
-         x = xendsc;
-         curpixel = fb_width * i + x;
-         zbcur = zb + curpixel;
-
-         if (!flip)
-         {
-            length = xendsc - xstart;
-            scdiff = xend - xendsc;
-            compute_cvg_noflip(i);
-         }
-         else
-         {
-            length = xstart - xendsc;
-            scdiff = xendsc - xend;
-            compute_cvg_flip(i);
-         }
-
-         if (scdiff)
-         {
-            r += (drinc * scdiff);
-            g += (dginc * scdiff);
-            b += (dbinc * scdiff);
-            a += (dainc * scdiff);
-            z += (dzinc * scdiff);
-         }
-
-         for (j = 0; j <= length; j++)
-         {
-            sr = r >> 14;
-            sg = g >> 14;
-            sb = b >> 14;
-            sa = a >> 14;
-            sz = (z >> 10) & 0x3fffff;
-
-            lookup_cvmask_derivatives(cvgbuf[x], &offx, &offy, &curpixel_cvg, &curpixel_cvbit);
-
-            rgbaz_correct_clip(offx, offy, sr, sg, sb, sa, &sz, curpixel_cvg);
-
-            get_dither_noise(x, i, &cdith, &adith);
-            combiner_2cycle(adith, &curpixel_cvg, &acalpha);
-
-            fbread2_ptr(curpixel, &curpixel_memcvg);
-
-            if (z_compare(zbcur, sz, dzpix, dzpixenc, &blend_en, &prewrap, &curpixel_cvg, curpixel_memcvg))
-            {
-               if (blender_2cycle(&fir, &fig, &fib, cdith, blend_en, prewrap, curpixel_cvg, curpixel_cvbit, acalpha))
-               {
-                  fbwrite_ptr(curpixel, fir, fig, fib, blend_en, curpixel_cvg, curpixel_memcvg);
-                  if (other_modes.z_update_en)
-                     z_store(zbcur, sz, dzpixenc);
-               }
-            }
-            else
-            {
-#ifdef USE_SSE_SUPPORT
-               memcpy(memory_color, pre_memory_color, sizeof(COLOR));
-#else
-               memory_color = pre_memory_color;
-#endif
-            }
-
-
-            r += drinc;
-            g += dginc;
-            b += dbinc;
-            a += dainc;
-            z += dzinc;
-
-            x += xinc;
-            curpixel += xinc;
-            zbcur += xinc;
-         }
-      }
-   }
-}
-#else
 static void render_spans_2cycle_notex(int start, int end, int tilenum, int flip)
 {
     int zbcur;
@@ -5324,11 +4957,7 @@ static void render_spans_2cycle_notex(int start, int end, int tilenum, int flip)
             }
             else
             {
-#ifdef USE_SSE_SUPPORT
-               memcpy(memory_color, pre_memory_color, sizeof(COLOR));
-#else
                memory_color = pre_memory_color;
-#endif
             }
 
             r += drinc;
@@ -5344,7 +4973,6 @@ static void render_spans_2cycle_notex(int start, int end, int tilenum, int flip)
         }
     }
 }
-#endif
 
 static void render_spans_fill_4(int start, int end, int flip)
 {
@@ -7312,67 +6940,6 @@ static void get_dither_noise(int x, int y, int* cdith, int* adith)
    }
 }
 
-#ifdef USE_SSE_SUPPORT
-static void rgbaz_correct_clip(int offx, int offy, int r, int g, int b, int a,
-      int* z, UINT32 curpixel_cvg,
-      __m128i spans_cdrgba_drgbady_v
-      )
-{
-   __m128i rgba2;
-   int sz = *z;
-
-   if (curpixel_cvg == 8) {
-      rgba = _mm_slli_epi32(rgba, 21);
-      sz >>= 3;
-   }
-
-   else {
-      __m128i off_v = _mm_set1_epi32(offx + (offy << 16));
-      __m128i summand_rgba = _mm_madd_epi16(off_v, spans_cdrgba_drgbady_v);
-
-      int summand_z = offx * spans_cdz + offy * spans_dstwzdy[3];
-      sz = ((sz << 2) + summand_z) >> 5;
-
-      rgba = _mm_add_epi32(_mm_slli_epi32(rgba, 2), summand_rgba);
-      rgba = _mm_slli_epi32(rgba, 19);
-   }
-
-   rgba2 = _mm_adds_epu16(rgba, rgba);
-   rgba = _mm_srai_epi16(_mm_add_epi32(rgba, rgba), 15);
-   rgba = _mm_cmpeq_epi16(rgba, rgba2);
-   rgba = _mm_andnot_si128(rgba, rgba2);
-   _mm_store_si128(shade_color, _mm_srli_epi32(rgba, 24));
-
-#if 0
-   int zanded;
-   zanded = (sz & 0x60000) >> 17;	
-
-   switch(zanded)
-   {
-      case 0: *z = sz & 0x3ffff;						break;
-      case 1:	*z = sz & 0x3ffff;						break;
-      case 2: *z = 0x3ffff;							break;
-      case 3: *z = 0;									break;
-   }
-#elif defined(__GNUC__)
-   int mask, tmp = sz;
-   __asm__ __volatile__(
-       "shr    $18,        %[tmp];" // Get sz >> 18 and populate the CF
-       "sbb    %[msk],     %[msk];" // Get either 0 or -1
-       "not    %[msk]            ;" // Toggle all bits
-       : [tmp] "+&r" (tmp), [msk] "=&r" (mask) : : "cc");
-   if(tmp & 1)     // test   $1, %[tmp]
-       sz = mask; // cmovnz %[msk], %[sz] # if CMOVcc is supported
-   *z = sz & 0x3ffff;
-#else
-   int zanded;
-   zanded = sz >> 17;
-   if(zanded & 2)
-       sz = (zanded & 1) - 1;
-   *z = sz & 0x3ffff;
-#endif
-}
-#else
 static void rgbaz_correct_clip(int offx, int offy, int r, int g, int b, int a,
       int* z, UINT32 curpixel_cvg)
 {
@@ -7426,9 +6993,6 @@ static void rgbaz_correct_clip(int offx, int offy, int r, int g, int b, int a,
         case 3: *z = 0;                                    break;
     }
 }
-#endif
-
-
 
 int IsBadPtrW32(void *ptr, UINT32 bytes)
 {
@@ -8392,7 +7956,22 @@ static NOINLINE void draw_triangle(uint32_t w1, uint32_t w2,
       int shade, int texture, int zbuffer, struct stepwalker_info *stw_info);
 void render_spans(
     int yhlimit, int yllimit, int tilenum, int flip);
-STRICTINLINE static u16 normalize_dzpix(u16 sum);
+
+static INLINE uint16_t normalize_dzpix(uint16_t sum)
+{
+    register int count;
+
+    if (sum & 0xC000)
+        return 0x8000;
+    if (sum == 0x0000)
+        return 0x0001;
+    if (sum == 0x0001)
+        return 0x0003;
+    for (count = 0x2000; count > 0; count >>= 1)
+        if (sum & count)
+            return (count << 1);
+    return 0;
+}
 
 static void (*const rdp_command_table[64])(uint32_t, uint32_t) = {
     noop              ,invalid           ,invalid           ,invalid           ,
@@ -10154,39 +9733,3 @@ no_read_zbuffer_coefficients:
     _mm_empty();
 #endif
 }
-
-
-STRICTINLINE static u16 normalize_dzpix(u16 sum)
-{
-    register int count;
-
-    if (sum & 0xC000)
-        return 0x8000;
-    if (sum == 0x0000)
-        return 0x0001;
-    if (sum == 0x0001)
-        return 0x0003;
-    for (count = 0x2000; count > 0; count >>= 1)
-        if (sum & count)
-            return (count << 1);
-    return 0;
-}
-
-#ifdef USE_SSE_SUPPORT
-INLINE __m128i mm_mullo_epi32_seh(__m128i dest, __m128i src)
-{ /* source scalar element, shift half:  src[0] == src[1] && src[2] == src[3] */
-    __m128i prod_m, prod_n;
-/* "SEH" also means "Half of the source elements are equal to each other." */
-    prod_n = _mm_srli_epi64(dest, 32);
-    prod_m = _mm_mul_epu32(dest, src);
-    prod_n = _mm_mul_epu32(prod_n, src);
-#ifdef ANOTHER_WAY_TO_UNPACK_THE_PRODUCTS
-    return mm_unpacklo_epi64_hz(prod_m, prod_n);
-#else
-    prod_m = _mm_shuffle_epi32(prod_m, _MM_SHUFFLE(3, 1, 2, 0));
-    prod_n = _mm_shuffle_epi32(prod_n, _MM_SHUFFLE(3, 1, 2, 0));
-    prod_m = _mm_unpacklo_epi32(prod_m, prod_n);
-    return (prod_m);
-#endif
-}
-#endif
