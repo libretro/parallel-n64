@@ -346,8 +346,7 @@ UINT32 command_counter = 0;
 int SaveLoaded = 0;
 
 
-STRICTINLINE void tcmask(INT32* S, INT32* T, INT32 num);
-STRICTINLINE void tcmask(INT32* S, INT32* T, INT32 num)
+static STRICTINLINE void tcmask(INT32* S, INT32* T, INT32 num)
 {
     INT32 wrap;
     
@@ -377,9 +376,7 @@ STRICTINLINE void tcmask(INT32* S, INT32* T, INT32 num)
     }
 }
 
-
-STRICTINLINE void tcmask_coupled(INT32* S, INT32* S1, INT32* T, INT32* T1, INT32 num);
-STRICTINLINE void tcmask_coupled(INT32* S, INT32* S1, INT32* T, INT32* T1, INT32 num)
+static STRICTINLINE void tcmask_coupled(INT32* S, INT32* S1, INT32* T, INT32* T1, INT32 num)
 {
     INT32 wrap;
     INT32 maskbits; 
@@ -422,9 +419,7 @@ STRICTINLINE void tcmask_coupled(INT32* S, INT32* S1, INT32* T, INT32* T1, INT32
     }
 }
 
-
-STRICTINLINE void tcmask_copy(INT32* S, INT32* S1, INT32* S2, INT32* S3, INT32* T, INT32 num);
-STRICTINLINE void tcmask_copy(INT32* S, INT32* S1, INT32* S2, INT32* S3, INT32* T, INT32 num)
+static STRICTINLINE void tcmask_copy(INT32* S, INT32* S1, INT32* S2, INT32* S3, INT32* T, INT32 num)
 {
     INT32 wrap;
     INT32 maskbits_s; 
