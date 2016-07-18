@@ -12,6 +12,17 @@ static int LOG_ENABLE;
    if (LOG_ENABLE) fprintf(stderr, __VA_ARGS__); \
 } while(0)
 
+extern void (*fbfill_ptr)(UINT32);
+
+static void fbfill_4(UINT32 curpixel);
+static void fbfill_8(UINT32 curpixel);
+static void fbfill_16(UINT32 curpixel);
+static void fbfill_32(UINT32 curpixel);
+
+static void (*fbfill_func[4])(UINT32) = {
+    fbfill_4, fbfill_8, fbfill_16, fbfill_32
+};
+
 int scfield;
 int sckeepodd;
 
@@ -5773,12 +5784,12 @@ void fbwrite_32(
     PAIRWRITE32(addr, color, g, 0);
 }
 
-void fbfill_4(UINT32 curpixel)
+static void fbfill_4(UINT32 curpixel)
 {
     rdp_pipeline_crashed = 1;
 }
 
-void fbfill_8(UINT32 curpixel)
+static void fbfill_8(UINT32 curpixel)
 {
     unsigned char source;
     register unsigned long addr;
@@ -5790,7 +5801,7 @@ void fbfill_8(UINT32 curpixel)
     PAIRWRITE8(addr, source, -(source & 1) & 3);
 }
 
-void fbfill_16(UINT32 curpixel)
+static void fbfill_16(UINT32 curpixel)
 {
     register unsigned long addr;
     register unsigned short source;
@@ -5803,7 +5814,7 @@ void fbfill_16(UINT32 curpixel)
     PAIRWRITE16(addr, source, -(source & 1) & 3);
 }
 
-void fbfill_32(UINT32 curpixel)
+static void fbfill_32(UINT32 curpixel)
 {
     register unsigned long addr;
     const unsigned short fill_color_hi = (fill_color >> 16) & 0xFFFF;
