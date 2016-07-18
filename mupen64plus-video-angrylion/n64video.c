@@ -316,8 +316,7 @@ static void tclod_2cycle_next(INT32* sss, INT32* sst, INT32 s, INT32 t, INT32 w,
 static void tclod_copy(INT32* sss, INT32* sst, INT32 s, INT32 t, INT32 w, INT32 dsinc, INT32 dtinc, INT32 dwinc, INT32 prim_tile, INT32* t1);
 STRICTINLINE void get_texel1_1cycle(INT32* s1, INT32* t1, INT32 s, INT32 t, INT32 w, INT32 dsinc, INT32 dtinc, INT32 dwinc, INT32 scanline, SPANSIGS* sigs);
 STRICTINLINE void get_nexttexel0_2cycle(INT32* s1, INT32* t1, INT32 s, INT32 t, INT32 w, INT32 dsinc, INT32 dtinc, INT32 dwinc);
-static void rgb_dither_complete(int* r, int* g, int* b, int dith);
-static void rgb_dither_nothing(int* r, int* g, int* b, int dith);
+static INLINE void rgb_dither_complete(int* r, int* g, int* b, int dith);
 static void get_dither_noise_complete(int x, int y, int* cdith, int* adith);
 static void get_dither_only(int x, int y, int* cdith, int* adith);
 static void get_dither_nothing(int x, int y, int* cdith, int* adith);
@@ -351,11 +350,6 @@ static void (*get_dither_noise_func[3])(int, int, int*, int*) =
     get_dither_noise_complete, get_dither_only, get_dither_nothing
 };
 
-static void (*rgb_dither_func[2])(int*, int*, int*, int) =
-{
-    rgb_dither_complete, rgb_dither_nothing
-};
-
 static void (*tcdiv_func[2])(INT32, INT32, INT32, INT32*, INT32*) =
 {
     tcdiv_nopersp, tcdiv_persp
@@ -376,7 +370,6 @@ static void (*render_spans_2cycle_func[4])(int, int, int, int) =
 };
 
 static void (*get_dither_noise_ptr)(int, int, int*, int*);
-static void (*rgb_dither_ptr)(int*, int*, int*, int);
 static void (*tcdiv_ptr)(INT32, INT32, INT32, INT32*, INT32*);
 static void (*render_spans_1cycle_ptr)(int, int, int, int);
 
@@ -801,7 +794,6 @@ void rdp_init(void)
     fbread2_ptr = fbread2_func[0];
     fbwrite_ptr = fbwrite_func[0];
     get_dither_noise_ptr = get_dither_noise_func[0];
-    rgb_dither_ptr = rgb_dither_func[0];
     tcdiv_ptr = tcdiv_func[0];
     render_spans_1cycle_ptr = render_spans_1cycle_func[2];
     render_spans_2cycle_ptr = render_spans_2cycle_func[1];
@@ -1656,7 +1648,9 @@ static int blender_1cycle(UINT32* fr, UINT32* fg, UINT32* fb, int dith, UINT32 b
                 b = *blender2a_b[0];
             }
 
-            rgb_dither_ptr(&r, &g, &b, dith);
+            if (other_modes.rgb_dither_sel != 3)
+               rgb_dither_complete(&r, &g, &b, dith);
+
             *fr = r;
             *fg = g;
             *fb = b;
@@ -1717,7 +1711,9 @@ int blender_2cycle(UINT32* fr, UINT32* fg, UINT32* fb, int dith, UINT32 blend_en
             }
 
             
-            rgb_dither_ptr(&r, &g, &b, dith);
+            if (other_modes.rgb_dither_sel != 3)
+               rgb_dither_complete(&r, &g, &b, dith);
+
             *fr = r;
             *fg = g;
             *fb = b;
@@ -6134,11 +6130,6 @@ void deduce_derivatives()
 
     other_modes.f.rgb_alpha_dither = (other_modes.rgb_dither_sel << 2) | other_modes.alpha_dither_sel;
 
-    if (other_modes.rgb_dither_sel == 3)
-        rgb_dither_ptr = rgb_dither_func[1];
-    else
-        rgb_dither_ptr = rgb_dither_func[0];
-
     tcdiv_ptr = tcdiv_func[other_modes.persp_tex_en];
 
     if ((combiner_rgbmul_r[1] == &lod_frac) || (combiner_alphamul[1] == &lod_frac))
@@ -7251,11 +7242,6 @@ static void rgb_dither_complete(int* r, int* g, int* b, int dith)
 	ditherdiff = newb - *b;
 	*b = *b + (ditherdiff & replacesign);
 }
-
-static void rgb_dither_nothing(int* r, int* g, int* b, int dith)
-{
-}
-
 
 static void get_dither_noise_complete(int x, int y, int* cdith, int* adith)
 {
