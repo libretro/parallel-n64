@@ -7,7 +7,15 @@
 #include "vi.h"
 #include "rdp.h"
 
-static int LOG_ENABLE;
+#if 0
+#define EXTRALOGGING
+#endif
+
+#ifdef EXTRALOGGING
+static int LOG_ENABLE = 1;
+#else
+static int LOG_ENABLE = 0;
+#endif
 #define LOG(...) do { \
    if (LOG_ENABLE) fprintf(stderr, __VA_ARGS__); \
 } while(0)
@@ -3909,7 +3917,9 @@ static void render_spans_1cycle_notexel1(int start, int end, int tilenum, int fl
 
             texture_pipeline_cycle(&texel0_color, &texel0_color, sss, sst, tile1, 0);
 
+#ifdef EXTRALOGGING
             LOG_ENABLE = curpixel == 53 * 320 + 77;
+#endif
             LOG("Preclip SZ = %d\n", sz >> 3);
             rgbaz_correct_clip(offx, offy, sr, sg, sb, sa, &sz, curpixel_cvg);
 
@@ -3948,7 +3958,9 @@ static void render_spans_1cycle_notexel1(int start, int end, int tilenum, int fl
             curpixel += xinc;
             zbcur += xinc;
             zbcur &= 0x00FFFFFF >> 1;
+#ifdef EXTRALOGGING
             LOG_ENABLE = 0;
+#endif
         }
     }
 }
@@ -4062,7 +4074,9 @@ static void render_spans_1cycle_notex(int start, int end, int tilenum, int flip)
 
             lookup_cvmask_derivatives(cvgbuf[x], &offx, &offy, &curpixel_cvg, &curpixel_cvbit);
 
+#ifdef EXTRALOGGING
             LOG_ENABLE = curpixel == 53 * 320 + 77;
+#endif
             LOG("Preclip SZ = %d\n", sz >> 3);
             rgbaz_correct_clip(offx, offy, sr, sg, sb, sa, &sz, curpixel_cvg);
             LOG("SZ = %d\n", sz);
@@ -4089,7 +4103,9 @@ static void render_spans_1cycle_notex(int start, int end, int tilenum, int flip)
             curpixel += xinc;
             zbcur += xinc;
             zbcur &= 0x00FFFFFF >> 1;
+#ifdef EXTRALOGGING
             LOG_ENABLE = 0;
+#endif
         }
     }
 }
@@ -4428,7 +4444,9 @@ static void render_spans_2cycle_notexelnext(int start, int end, int tilenum, int
             texture_pipeline_cycle(&texel0_color, &texel0_color, sss, sst, tile1, 0);
             texture_pipeline_cycle(&texel1_color, &texel0_color, sss, sst, tile2, 1);
 
+#ifdef EXTRALOGGING
             LOG_ENABLE = curpixel == 53 * 320 + 77;
+#endif
             LOG("Preclip SZ = %d\n", sz >> 3);
 
 #ifdef USE_SSE_SUPPORT
@@ -4468,7 +4486,9 @@ static void render_spans_2cycle_notexelnext(int start, int end, int tilenum, int
             zbcur += xinc;
             zbcur &= 0x00FFFFFF >> 1;
 
+#ifdef EXTRALOGGING
             LOG_ENABLE = 0;
+#endif
         }
     }
 }
@@ -4612,7 +4632,9 @@ static void render_spans_2cycle_notexel1(int start, int end, int tilenum, int fl
             
             texture_pipeline_cycle(&texel0_color, &texel0_color, sss, sst, tile1, 0);
 
+#ifdef EXTRALOGGING
             LOG_ENABLE = curpixel == 53 * 320 + 77;
+#endif
             if (LOG_ENABLE)
                breakme();
             LOG("Preclip SZ = %d\n", sz >> 3);
@@ -4655,7 +4677,9 @@ static void render_spans_2cycle_notexel1(int start, int end, int tilenum, int fl
             curpixel += xinc;
             zbcur += xinc;
             zbcur &= 0x00FFFFFF >> 1;
+#ifdef EXTRALOGGING
             LOG_ENABLE = 0;
+#endif
         }
     }
 }
@@ -4663,9 +4687,141 @@ static void render_spans_2cycle_notexel1(int start, int end, int tilenum, int fl
 #ifdef USE_SSE_SUPPORT
 static void render_spans_2cycle_notex(int start, int end, int tilenum, int flip,
       __m128i spans_cdrgba_drgbady_v)
+{
+   int zb = zb_address >> 1;
+   int zbcur;
+   uint8_t offx, offy;
+   int i, j;
+   uint32_t blend_en;
+   uint32_t prewrap;
+   uint32_t curpixel_cvg, curpixel_cvbit, curpixel_memcvg;
+   int32_t acalpha;
+
+   int drinc, dginc, dbinc, dainc, dzinc;
+   int xinc;
+   if (flip)
+   {
+      drinc = spans_drgba[0];
+      dginc = spans_drgba[1];
+      dbinc = spans_drgba[2];
+      dainc = spans_drgba[3];
+      dzinc = spans_dstwz[3];
+      xinc = 1;
+   }
+   else
+   {
+      drinc = -spans_drgba[0];
+      dginc = -spans_drgba[1];
+      dbinc = -spans_drgba[2];
+      dainc = -spans_drgba[3];
+      dzinc = -spans_dstwz[3];
+      xinc = -1;
+   }
+
+   int dzpix;
+   if (!other_modes.z_source_sel)
+      dzpix = spans_dzpix;
+   else
+   {
+      dzpix = primitive_delta_z;
+      dzinc = spans_cdz = spans_dstwzdy[3] = 0;
+   }
+   int dzpixenc = dz_compress(dzpix);
+
+   int cdith = 7, adith = 0;
+   int r, g, b, a, z;
+   int sr, sg, sb, sa, sz;
+   int xstart, xend, xendsc;
+   int curpixel = 0;
+
+   int x, length, scdiff;
+   uint32_t fir, fig, fib;
+
+   for (i = start; i <= end; i++)
+   {
+      if (span[i].validline)
+      {
+
+         xstart = span[i].lx;
+         xend = span[i].unscrx;
+         xendsc = span[i].rx;
+         r = span[i].rgbastwz[0];
+         g = span[i].rgbastwz[1];
+         b = span[i].rgbastwz[2];
+         a = span[i].rgbastwz[3];
+         z = other_modes.z_source_sel ? primitive_z : span[i].rgbastwz[7];
+
+         x = xendsc;
+         curpixel = fb_width * i + x;
+         zbcur = zb + curpixel;
+
+         if (!flip)
+         {
+            length = xendsc - xstart;
+            scdiff = xend - xendsc;
+            compute_cvg_noflip(i);
+         }
+         else
+         {
+            length = xstart - xendsc;
+            scdiff = xendsc - xend;
+            compute_cvg_flip(i);
+         }
+
+         if (scdiff)
+         {
+            r += (drinc * scdiff);
+            g += (dginc * scdiff);
+            b += (dbinc * scdiff);
+            a += (dainc * scdiff);
+            z += (dzinc * scdiff);
+         }
+
+         for (j = 0; j <= length; j++)
+         {
+            sr = r >> 14;
+            sg = g >> 14;
+            sb = b >> 14;
+            sa = a >> 14;
+            sz = (z >> 10) & 0x3fffff;
+
+            lookup_cvmask_derivatives(cvgbuf[x], &offx, &offy, &curpixel_cvg, &curpixel_cvbit);
+
+            rgbaz_correct_clip(offx, offy, sr, sg, sb, sa, &sz, curpixel_cvg);
+
+            get_dither_noise_ptr(x, i, &cdith, &adith);
+            combiner_2cycle(adith, &curpixel_cvg, &acalpha);
+
+            fbread2_ptr(curpixel, &curpixel_memcvg);
+
+            if (z_compare(zbcur, sz, dzpix, dzpixenc, &blend_en, &prewrap, &curpixel_cvg, curpixel_memcvg))
+            {
+               if (blender_2cycle(&fir, &fig, &fib, cdith, blend_en, prewrap, curpixel_cvg, curpixel_cvbit, acalpha))
+               {
+                  fbwrite_ptr(curpixel, fir, fig, fib, blend_en, curpixel_cvg, curpixel_memcvg);
+                  if (other_modes.z_update_en)
+                     z_store(zbcur, sz, dzpixenc);
+               }
+            }
+            else
+               memcpy(memory_color, pre_memory_color, sizeof(COLOR));
+
+
+            r += drinc;
+            g += dginc;
+            b += dbinc;
+            a += dainc;
+            z += dzinc;
+
+            x += xinc;
+            curpixel += xinc;
+            zbcur += xinc;
+         }
+      }
+   }
+}
 #else
 static void render_spans_2cycle_notex(int start, int end, int tilenum, int flip)
-#endif
 {
     int zbcur;
     UINT8 offx, offy;
@@ -4801,6 +4957,7 @@ static void render_spans_2cycle_notex(int start, int end, int tilenum, int flip)
         }
     }
 }
+#endif
 
 static void render_spans_fill(int start, int end, int flip)
 {
@@ -6793,14 +6950,47 @@ static void rgbaz_correct_clip(int offx, int offy, int r, int g, int b, int a,
       int* z, UINT32 curpixel_cvg,
       __m128i spans_cdrgba_drgbady_v
       )
+{
+   __m128i rgba2;
+   int sz = *z;
+   int zanded;
+
+   if (curpixel_cvg == 8) {
+      rgba = _mm_slli_epi32(rgba, 21);
+      sz >>= 3;
+   }
+
+   else {
+      __m128i off_v = _mm_set1_epi32(offx + (offy << 16));
+      __m128i summand_rgba = _mm_madd_epi16(off_v, spans_cdrgba_drgbady_v);
+
+      int summand_z = offx * spans_cdz + offy * spans_dstwzdy[3];
+      sz = ((sz << 2) + summand_z) >> 5;
+
+      rgba = _mm_add_epi32(_mm_slli_epi32(rgba, 2), summand_rgba);
+      rgba = _mm_slli_epi32(rgba, 19);
+   }
+
+   rgba2 = _mm_adds_epu16(rgba, rgba);
+   rgba = _mm_srai_epi16(_mm_add_epi32(rgba, rgba), 15);
+   rgba = _mm_cmpeq_epi16(rgba, rgba2);
+   rgba = _mm_andnot_si128(rgba, rgba2);
+   _mm_store_si128(shade_color, _mm_srli_epi32(rgba, 24));
+
+   zanded = (sz & 0x60000) >> 17;	
+
+   switch(zanded)
+   {
+      case 0: *z = sz & 0x3ffff;						break;
+      case 1:	*z = sz & 0x3ffff;						break;
+      case 2: *z = 0x3ffff;							break;
+      case 3: *z = 0;									break;
+   }
+}
 #else
 static void rgbaz_correct_clip(int offx, int offy, int r, int g, int b, int a,
       int* z, UINT32 curpixel_cvg)
-#endif
 {
-#ifdef USE_SSE_SUPPORT
-   __m128i rgba2;
-#endif
     int summand_r, summand_b, summand_g, summand_a;
     int summand_z;
     int sz = *z;
@@ -6851,6 +7041,7 @@ static void rgbaz_correct_clip(int offx, int offy, int r, int g, int b, int a,
         case 3: *z = 0;                                    break;
     }
 }
+#endif
 
 
 
@@ -8541,8 +8732,10 @@ static void sync_tile(uint32_t w1, uint32_t w2)
 
 static void sync_full(uint32_t w1, uint32_t w2)
 {
+#ifdef EXTRALOGGING
    fprintf(stderr, "Sync full\n");
    fprintf(stderr, "===================\n");
+#endif
     *gfx_info.MI_INTR_REG |= DP_INTERRUPT;
     gfx_info.CheckInterrupts();
 
