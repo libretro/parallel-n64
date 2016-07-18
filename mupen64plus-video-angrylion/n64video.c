@@ -12,7 +12,7 @@ static int LOG_ENABLE;
    if (LOG_ENABLE) fprintf(stderr, __VA_ARGS__); \
 } while(0)
 
-extern void (*fbfill_ptr)(UINT32);
+extern void (*fbfill_ptr)(uint32_t);
 
 static void fbfill_4(UINT32 curpixel);
 static void fbfill_8(UINT32 curpixel);
@@ -100,7 +100,7 @@ RECTANGLE __clip = {
 void (*fbread1_ptr)(UINT32, UINT32*);
 void (*fbread2_ptr)(UINT32, UINT32*);
 void (*fbwrite_ptr)(UINT32, UINT32, UINT32, UINT32, UINT32, UINT32, UINT32);
-void (*fbfill_ptr)(UINT32);
+void (*fbfill_ptr)(uint32_t);
 
 #undef  LOG_RDP_EXECUTION
 #define DETAILED_LOGGING 0
