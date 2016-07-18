@@ -290,7 +290,6 @@ static INLINE void rgb_dither_complete(int* r, int* g, int* b, int dith);
 static INLINE void get_dither_noise(int x, int y, int *cdith, int *adith);
 
 static void rgbaz_correct_clip(int offx, int offy, int r, int g, int b, int a, int* z, UINT32 curpixel_cvg);
-int IsBadPtrW32(void *ptr, UINT32 bytes);
 UINT32 vi_integer_sqrt(UINT32 a);
 
 static INT32 lod_frac = 0;
@@ -805,9 +804,9 @@ void rdp_init(void)
  */
     plim = 0x007FFFFFul;
 
-/* 16- and 32-bit pointer indexing limits for aliasing RDRAM reads and writes */
-    idxlim16 = (plim >> 1) & 0x00FFFFFFul;
-    idxlim32 = (plim >> 2) & 0x00FFFFFFul;
+    /* 16- and 32-bit pointer indexing limits for aliasing RDRAM reads and writes */
+	idxlim16 = 0x3fffff;
+	idxlim32 = 0x1fffff;
 
     rdram_8 = (UINT8*)gfx_info.RDRAM;
     rdram_16 = (UINT16*)gfx_info.RDRAM;
@@ -6992,11 +6991,6 @@ static void rgbaz_correct_clip(int offx, int offy, int r, int g, int b, int a,
         case 2: *z = 0x3ffff;                            break;
         case 3: *z = 0;                                    break;
     }
-}
-
-int IsBadPtrW32(void *ptr, UINT32 bytes)
-{
-    return 0;
 }
 
 UINT32 vi_integer_sqrt(UINT32 a)
