@@ -24,17 +24,6 @@ static int LOG_ENABLE = 0;
 static int render_cycle_mode_counts[4];
 #endif
 
-extern void (*fbfill_ptr)(uint32_t);
-
-static void fbfill_4(uint32_t curpixel);
-static void fbfill_8(uint32_t curpixel);
-static void fbfill_16(uint32_t curpixel);
-static void fbfill_32(uint32_t curpixel);
-
-static void (*fbfill_func[4])(uint32_t) = {
-    fbfill_4, fbfill_8, fbfill_16, fbfill_32
-};
-
 static int scfield;
 static int sckeepodd;
 
@@ -126,7 +115,6 @@ static void (*fbread2_func[4])(UINT32, UINT32*) = {
 void (*fbread1_ptr)(uint32_t, uint32_t*);
 void (*fbread2_ptr)(uint32_t, uint32_t*);
 void (*fbwrite_ptr)(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
-void (*fbfill_ptr)(uint32_t);
 
 #undef  LOG_RDP_EXECUTION
 #define DETAILED_LOGGING 0
@@ -767,7 +755,6 @@ void rdp_init(void)
     fbread1_ptr = fbread_func[0];
     fbread2_ptr = fbread2_func[0];
     fbwrite_ptr = fbwrite_func[0];
-    fbfill_ptr = fbfill_func[0];
     get_dither_noise_ptr = get_dither_noise_func[0];
     rgb_dither_ptr = rgb_dither_func[0];
     tcdiv_ptr = tcdiv_func[0];
@@ -4963,87 +4950,197 @@ static void render_spans_2cycle_notex(int start, int end, int tilenum, int flip)
 }
 #endif
 
+static void render_spans_fill_4(int start, int end, int flip)
+{
+    rdp_pipeline_crashed = 1;
+}
+
+static void render_spans_fill_8(int start, int end, int flip)
+{
+   int i, j;
+   int x, length;
+   uint32_t fb;
+   int prevxstart;
+   const int fastkillbits
+      = other_modes.image_read_en | other_modes.z_compare_en;
+   const int slowkillbits
+      = other_modes.z_update_en & ~other_modes.z_source_sel & ~fastkillbits;
+   const int xinc = (flip & 1) ? +1 : -1;
+   int xstart = 0, xendsc;
+   int curpixel = 0;
+
+   for (i = start; i <= end; i++)
+   {
+      uint16_t val;
+      uint8_t hval;
+      prevxstart = xstart;
+      xstart     = span[i].lx;
+      xendsc     = span[i].rx;
+
+      x          = xendsc;
+      curpixel   = fb_width * i + x;
+      length      = flip ? (xstart - xendsc) : (xendsc - xstart);
+
+      if (!span[i].validline)
+         continue;
+
+      if (fastkillbits && length >= 0) /* unlikely */
+      {
+         if (onetimewarnings.fillmbitcrashes == 0)
+            DisplayError("render_spans_fill:  RDP crashed");
+         onetimewarnings.fillmbitcrashes = 1;
+         rdp_pipeline_crashed = 1;
+         return;
+      }
+
+      for (j = 0, fb = fb_address + curpixel; j <= length; j++, fb += xinc)
+      {
+         uint32_t val = (fill_color >> (((fb & 3) ^ 3) << 3)) & 0xff;
+         uint8_t hval = ((val & 1) << 1) | (val & 1);
+         PAIRWRITE8(fb, val, hval);
+      }
+
+      if (slowkillbits && length >= 0) /* unlikely */
+      {
+         if (onetimewarnings.fillmbitcrashes == 0)
+            DisplayError("render_spans_fill:  RDP crashed");
+         onetimewarnings.fillmbitcrashes = 1;
+         rdp_pipeline_crashed = 1;
+         return;
+      }
+   }
+}
+
+static void render_spans_fill_16(int start, int end, int flip)
+{
+   int i, j;
+   int x, length;
+   uint32_t fb;
+   int prevxstart;
+   const int fastkillbits
+      = other_modes.image_read_en | other_modes.z_compare_en;
+   const int slowkillbits
+      = other_modes.z_update_en & ~other_modes.z_source_sel & ~fastkillbits;
+   const int xinc = (flip & 1) ? +1 : -1;
+   int xstart = 0, xendsc;
+   int curpixel = 0;
+
+   for (i = start; i <= end; i++)
+   {
+      uint16_t val;
+      uint8_t hval;
+      prevxstart = xstart;
+      xstart     = span[i].lx;
+      xendsc     = span[i].rx;
+
+      x          = xendsc;
+      curpixel   = fb_width * i + x;
+      length      = flip ? (xstart - xendsc) : (xendsc - xstart);
+
+      if (!span[i].validline)
+         continue;
+
+      if (fastkillbits && length >= 0) /* unlikely */
+      {
+         if (onetimewarnings.fillmbitcrashes == 0)
+            DisplayError("render_spans_fill:  RDP crashed");
+         onetimewarnings.fillmbitcrashes = 1;
+         rdp_pipeline_crashed = 1;
+         return;
+      }
+
+      for (j = 0, fb = (fb_address >> 1) + curpixel; j <= length; j++, fb += xinc)
+      {
+         val  = (fb & 1 ? fill_color : fill_color >> 16) & 0xffff;
+         hval = ((val & 1) << 1) | (val & 1);
+         PAIRWRITE16(fb, val, hval);
+      }
+
+      if (slowkillbits && length >= 0) /* unlikely */
+      {
+         if (onetimewarnings.fillmbitcrashes == 0)
+            DisplayError("render_spans_fill:  RDP crashed");
+         onetimewarnings.fillmbitcrashes = 1;
+         rdp_pipeline_crashed = 1;
+         return;
+      }
+   }
+}
+
+static void render_spans_fill_32(int start, int end, int flip)
+{
+   int i, j;
+   int x, length;
+   uint32_t fb;
+   int prevxstart;
+   const int fastkillbits
+      = other_modes.image_read_en | other_modes.z_compare_en;
+   const int slowkillbits
+      = other_modes.z_update_en & ~other_modes.z_source_sel & ~fastkillbits;
+   const int xinc = (flip & 1) ? +1 : -1;
+   int xstart = 0, xendsc;
+   int curpixel = 0;
+
+   for (i = start; i <= end; i++)
+   {
+      prevxstart = xstart;
+      xstart     = span[i].lx;
+      xendsc     = span[i].rx;
+
+      x          = xendsc;
+      curpixel   = fb_width * i + x;
+      length      = flip ? (xstart - xendsc) : (xendsc - xstart);
+
+      if (!span[i].validline)
+         continue;
+
+      if (fastkillbits && length >= 0) /* unlikely */
+      {
+         if (onetimewarnings.fillmbitcrashes == 0)
+            DisplayError("render_spans_fill:  RDP crashed");
+         onetimewarnings.fillmbitcrashes = 1;
+         rdp_pipeline_crashed = 1;
+         return;
+      }
+
+      for (j = 0, fb = (fb_address >> 2) + curpixel; j <= length; j++, fb += xinc)
+      {
+         PAIRWRITE32(fb, fill_color, (fill_color & 0x10000) ? 3 : 0, (fill_color & 0x1) ? 3 : 0);
+      }
+
+      if (slowkillbits && length >= 0) /* unlikely */
+      {
+         if (onetimewarnings.fillmbitcrashes == 0)
+            DisplayError("render_spans_fill:  RDP crashed");
+         onetimewarnings.fillmbitcrashes = 1;
+         rdp_pipeline_crashed = 1;
+         return;
+      }
+   }
+}
+
 static void render_spans_fill(int start, int end, int flip)
 {
-    int curpixel;
-    int length;
-    register int i, j;
-    const int xinc = (flip & 1) ? +1 : -1;
-    const int fastkillbits
-      = other_modes.image_read_en | other_modes.z_compare_en;
-    const int slowkillbits
-      = other_modes.z_update_en & ~other_modes.z_source_sel & ~fastkillbits;
-
-    flip = -(flip & 1);
-    fbfill_ptr = fbfill_func[fb_size];
-    if (fb_size == PIXEL_SIZE_4BIT)
-    {
-        rdp_pipeline_crashed = 1;
-        return;
-    }
-
-    if (fastkillbits | slowkillbits)
-    { /* branch very unlikely */
-        for (i = start; i <= end; i++)
-        {
-            length  = span[i].rx - span[i].lx; /* end - start */
-            length ^= flip;
-            length -= flip;
-
-            if (length < 0)
-                continue;
-            if (onetimewarnings.fillmbitcrashes == 0)
-                DisplayError("render_spans_fill:  RDP crashed");
-            onetimewarnings.fillmbitcrashes = 1;
-            rdp_pipeline_crashed = 1;
-            end = i; /* premature termination of render_spans */
-            if (fastkillbits) /* left out for performance */
-                DisplayError("Exact fill abort timing not implemented.");
-            break;
-        }
-    }
-
-    curpixel = 0;
-    if (flip == 0)
-    {
-        for (i = start; i <= end; i++)
-        {
-            const int xstart = span[i].lx;
-            const int xendsc = span[i].rx;
-
-            int pix = xendsc;
-
-            if (span[i].validline == 0)
-                continue;
-            curpixel = fb_width*i + xendsc;
-            length = +(xendsc - xstart);
-            for (j = 0; j <= length; j++)
-            {
-                fbfill_ptr(curpixel);
-                --curpixel;
-            }
-        }
-    }
-    else
-    {
-        for (i = start; i <= end; i++)
-        {
-            const int xstart = span[i].lx;
-            const int xendsc = span[i].rx;
-
-            int pix = xendsc;
-
-            if (span[i].validline == 0)
-                continue;
-            curpixel = fb_width*i + xendsc;
-            length = -(xendsc - xstart);
-            for (j = 0; j <= length; j++)
-            {
-                fbfill_ptr(curpixel);
-                ++curpixel;
-            }
-        }
-    }
+   if (fb_size == PIXEL_SIZE_4BIT)
+   {
+      render_spans_fill_4(start, end, flip);
+      return;
+   }
+   else if (fb_size == PIXEL_SIZE_8BIT)
+   {
+      render_spans_fill_8(start, end, flip);
+      return;
+   }
+   else if (fb_size == PIXEL_SIZE_16BIT)
+   {
+      render_spans_fill_16(start, end, flip);
+      return;
+   }
+   else if (fb_size == PIXEL_SIZE_32BIT)
+   {
+      render_spans_fill_32(start, end, flip);
+      return;
+   }
 }
 
 static void render_spans_copy(int start, int end, int tilenum, int flip)
@@ -6078,49 +6175,6 @@ static void fbwrite_32(
 
     g = -(signed)(g & 1) & 3;
     PAIRWRITE32(addr, color, g, 0);
-}
-
-static void fbfill_4(uint32_t curpixel)
-{
-    rdp_pipeline_crashed = 1;
-}
-
-static void fbfill_8(uint32_t curpixel)
-{
-    unsigned char source;
-    register unsigned long addr;
-
-    addr  = fb_address + 1*curpixel;
-    addr &= 0x00FFFFFF;
-
-    source = (fill_color >> 8*(~addr & 3)) & 0xFF;
-    PAIRWRITE8(addr, source, -(source & 1) & 3);
-}
-
-static void fbfill_16(uint32_t curpixel)
-{
-    register unsigned long addr;
-    register unsigned short source;
-
-    addr  = fb_address + 2*curpixel;
-    addr &= 0x00FFFFFF;
-    addr  = addr >> 1;
-
-    source = fill_color>>16*(~addr & 1) & 0xFFFF;
-    PAIRWRITE16(addr, source, -(source & 1) & 3);
-}
-
-static void fbfill_32(uint32_t curpixel)
-{
-    register unsigned long addr;
-    const unsigned short fill_color_hi = (fill_color >> 16) & 0xFFFF;
-    const unsigned short fill_color_lo = (fill_color >>  0) & 0xFFFF;
-
-    addr  = fb_address + 4*curpixel;
-    addr &= 0x00FFFFFF;
-    addr  = addr >> 2;
-    PAIRWRITE32(addr, fill_color,
-        -(fill_color_hi & 0x0001) & 3, -(fill_color_lo & 0x0001) & 3);
 }
 
 static void fbread_4(uint32_t curpixel, uint32_t* curpixel_memcvg)

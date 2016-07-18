@@ -259,21 +259,21 @@ typedef struct {
 } OTHER_MODES;
 
 enum {
-    PIXEL_SIZE_4BIT,
+    PIXEL_SIZE_4BIT = 0,
     PIXEL_SIZE_8BIT,
     PIXEL_SIZE_16BIT,
     PIXEL_SIZE_32BIT
 };
 
 enum {
-    CYCLE_TYPE_1,
+    CYCLE_TYPE_1 = 0,
     CYCLE_TYPE_2,
     CYCLE_TYPE_COPY,
     CYCLE_TYPE_FILL
 };
 
 enum {
-    FORMAT_RGBA,
+    FORMAT_RGBA = 0,
     FORMAT_YUV,
     FORMAT_CI,
     FORMAT_IA,
@@ -281,7 +281,7 @@ enum {
 };
 
 enum {
-    TEXEL_RGBA4,
+    TEXEL_RGBA4 = 0,
     TEXEL_RGBA8,
     TEXEL_RGBA16,
     TEXEL_RGBA32,
@@ -304,19 +304,19 @@ enum {
 };
 
 enum {
-    NO,
+    NO = 0,
     YES
 };
 enum {
-    SHADE_NO,
+    SHADE_NO = 0,
     SHADE_YES = YES
 };
 enum {
-    TEXTURE_NO,
+    TEXTURE_NO = 0,
     TEXTURE_YES = YES
 };
 enum {
-    ZBUFFER_NO,
+    ZBUFFER_NO = 0,
     ZBUFFER_YES = YES
 };
 
