@@ -14,12 +14,12 @@ static int LOG_ENABLE;
 
 extern void (*fbfill_ptr)(uint32_t);
 
-static void fbfill_4(UINT32 curpixel);
-static void fbfill_8(UINT32 curpixel);
-static void fbfill_16(UINT32 curpixel);
-static void fbfill_32(UINT32 curpixel);
+static void fbfill_4(uint32_t curpixel);
+static void fbfill_8(uint32_t curpixel);
+static void fbfill_16(uint32_t curpixel);
+static void fbfill_32(uint32_t curpixel);
 
-static void (*fbfill_func[4])(UINT32) = {
+static void (*fbfill_func[4])(uint32_t) = {
     fbfill_4, fbfill_8, fbfill_16, fbfill_32
 };
 
@@ -5784,12 +5784,12 @@ void fbwrite_32(
     PAIRWRITE32(addr, color, g, 0);
 }
 
-static void fbfill_4(UINT32 curpixel)
+static void fbfill_4(uint32_t curpixel)
 {
     rdp_pipeline_crashed = 1;
 }
 
-static void fbfill_8(UINT32 curpixel)
+static void fbfill_8(uint32_t curpixel)
 {
     unsigned char source;
     register unsigned long addr;
@@ -5801,7 +5801,7 @@ static void fbfill_8(UINT32 curpixel)
     PAIRWRITE8(addr, source, -(source & 1) & 3);
 }
 
-static void fbfill_16(UINT32 curpixel)
+static void fbfill_16(uint32_t curpixel)
 {
     register unsigned long addr;
     register unsigned short source;
@@ -5814,7 +5814,7 @@ static void fbfill_16(UINT32 curpixel)
     PAIRWRITE16(addr, source, -(source & 1) & 3);
 }
 
-static void fbfill_32(UINT32 curpixel)
+static void fbfill_32(uint32_t curpixel)
 {
     register unsigned long addr;
     const unsigned short fill_color_hi = (fill_color >> 16) & 0xFFFF;
