@@ -343,92 +343,9 @@ extern INLINE void SET_ADD_RGB_INPUT(
 extern INLINE void SET_SUB_ALPHA_INPUT(INT32 **input, int code);
 extern INLINE void SET_MUL_ALPHA_INPUT(INT32 **input, int code);
 
-#ifdef _DEBUG
-int render_cycle_mode_counts[4];
-#endif
-
-extern i32 spans_d_rgba[4];
-extern i32 spans_d_stwz[4];
-extern u16 spans_dzpix;
-extern SPAN span[1024];
-
-extern i32 spans_d_rgba_dy[4];
-extern i32 spans_cd_rgba[4];
-extern int spans_cdz;
-
-extern i32 spans_d_stwz_dy[4];
-
-extern int scfield;
-extern int sckeepodd;
-
-extern int ti_format;
-extern int ti_size;
-extern int ti_width;
-extern UINT32 ti_address;
-
-extern int fb_format;
-extern int fb_size;
-extern int fb_width;
-extern UINT32 fb_address;
-extern UINT32 zb_address;
-
 extern UINT32 internal_vi_v_current_line;
-
-extern UINT32 max_level;
-extern INT32 min_level;
-extern INT32 primitive_lod_frac;
-
-extern UINT32 primitive_z;
-extern UINT16 primitive_delta_z;
-
-extern UINT32 fill_color;
-
-extern INT32 *combiner_rgbsub_a_r[2];
-extern INT32 *combiner_rgbsub_a_g[2];
-extern INT32 *combiner_rgbsub_a_b[2];
-extern INT32 *combiner_rgbsub_b_r[2];
-extern INT32 *combiner_rgbsub_b_g[2];
-extern INT32 *combiner_rgbsub_b_b[2];
-extern INT32 *combiner_rgbmul_r[2];
-extern INT32 *combiner_rgbmul_g[2];
-extern INT32 *combiner_rgbmul_b[2];
-extern INT32 *combiner_rgbadd_r[2];
-extern INT32 *combiner_rgbadd_g[2];
-extern INT32 *combiner_rgbadd_b[2];
-
-extern INT32 *combiner_alphasub_a[2];
-extern INT32 *combiner_alphasub_b[2];
-extern INT32 *combiner_alphamul[2];
-extern INT32 *combiner_alphaadd[2];
-
-extern INT32 *blender1a_r[2];
-extern INT32 *blender1a_g[2];
-extern INT32 *blender1a_b[2];
-extern INT32 *blender1b_a[2];
-extern INT32 *blender2a_r[2];
-extern INT32 *blender2a_g[2];
-extern INT32 *blender2a_b[2];
-extern INT32 *blender2b_a[2];
-
-extern INT32 k0_tf, k1_tf, k2_tf, k3_tf;
-extern INT32 k4, k5;
-
-extern RECTANGLE __clip;
-extern TILE tile[8];
 
 extern OTHER_MODES other_modes;
 extern COMBINE_MODES combine;
-
-extern COLOR key_width;
-extern COLOR key_scale;
-extern COLOR key_center;
-extern COLOR fog_color;
-extern COLOR blend_color;
-extern COLOR prim_color;
-extern COLOR env_color;
-
-extern int rdp_pipeline_crashed;
-
-extern UINT32 z64gl_command;
 
 #endif

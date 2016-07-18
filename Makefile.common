@@ -371,7 +371,6 @@ endif
 ### Angrylion's renderer ###
 SOURCES_C +=  $(VIDEODIR_ANGRYLION)/n64video_main.c \
 						  $(VIDEODIR_ANGRYLION)/n64video_vi.c \
-						  $(VIDEODIR_ANGRYLION)/n64video_rdp.c \
 						  $(VIDEODIR_ANGRYLION)/n64video.c
 
 ifeq ($(HAVE_VULKAN),1)
