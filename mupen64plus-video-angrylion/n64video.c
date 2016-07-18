@@ -4996,8 +4996,8 @@ static void render_spans_fill_8(int start, int end, int flip)
       for (j = 0, fb = fb_address + curpixel; j <= length; j++, fb += xinc)
       {
          uint32_t val = (fill_color >> (((fb & 3) ^ 3) << 3)) & 0xff;
-         uint8_t hval = ((val & 1) << 1) | (val & 1);
-         PAIRWRITE8(fb, val, hval);
+         uint8_t hval = (val & 1);
+         hval += hval <<1; /* hval = (val & 1) * 3; # lea(%hval, %hval, 2), %hval */
       }
 
       if (slowkillbits && length >= 0) /* unlikely */
@@ -5051,8 +5051,9 @@ static void render_spans_fill_16(int start, int end, int flip)
 
       for (j = 0, fb = (fb_address >> 1) + curpixel; j <= length; j++, fb += xinc)
       {
-         val  = (fb & 1 ? fill_color : fill_color >> 16) & 0xffff;
-         hval = ((val & 1) << 1) | (val & 1);
+         val   = (fb & 1 ? fill_color : fill_color >> 16) & 0xffff;
+         hval  = (val & 1);
+         hval += hval << 1; /* hval = (val & 1) * 3; # lea(%hval, %hval, 2), %hval */
          PAIRWRITE16(fb, val, hval);
       }
 
@@ -6517,8 +6518,8 @@ static void precalc_cvmask_derivatives(void)
     int i = 0, k = 0;
     UINT16 mask = 0, maskx = 0, masky = 0;
     UINT8 offx = 0, offy = 0;
-    const UINT8 yarray[16] = {0, 0, 1, 0, 2, 0, 1, 0, 3, 0, 1, 0, 2, 0, 1, 0};
-    const UINT8 xarray[16] = {0, 3, 2, 2, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0};
+    static const UINT8 yarray[16] = {0, 0, 1, 0, 2, 0, 1, 0, 3, 0, 1, 0, 2, 0, 1, 0};
+    static const UINT8 xarray[16] = {0, 3, 2, 2, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0};
 
     
     for (; i < 0x100; i++)
@@ -7011,7 +7012,6 @@ static void rgbaz_correct_clip(int offx, int offy, int r, int g, int b, int a,
 {
    __m128i rgba2;
    int sz = *z;
-   int zanded;
 
    if (curpixel_cvg == 8) {
       rgba = _mm_slli_epi32(rgba, 21);
@@ -7035,6 +7035,8 @@ static void rgbaz_correct_clip(int offx, int offy, int r, int g, int b, int a,
    rgba = _mm_andnot_si128(rgba, rgba2);
    _mm_store_si128(shade_color, _mm_srli_epi32(rgba, 24));
 
+#if 0
+   int zanded;
    zanded = (sz & 0x60000) >> 17;	
 
    switch(zanded)
@@ -7044,6 +7046,23 @@ static void rgbaz_correct_clip(int offx, int offy, int r, int g, int b, int a,
       case 2: *z = 0x3ffff;							break;
       case 3: *z = 0;									break;
    }
+#elif defined(__GNUC__)
+   int mask, tmp = sz;
+   __asm__ __volatile__(
+       "shr    $18,        %[tmp];" // Get sz >> 18 and populate the CF
+       "sbb    %[msk],     %[msk];" // Get either 0 or -1
+       "not    %[msk]            ;" // Toggle all bits
+       : [tmp] "+&r" (tmp), [msk] "=&r" (mask) : : "cc");
+   if(tmp & 1)     // test   $1, %[tmp]
+       sz = mask; // cmovnz %[msk], %[sz] # if CMOVcc is supported
+   *z = sz & 0x3ffff;
+#else
+   int zanded;
+   zanded = sz >> 17;
+   if(zanded & 2)
+       sz = (zanded & 1) - 1;
+   *z = sz & 0x3ffff;
+#endif
 }
 #else
 static void rgbaz_correct_clip(int offx, int offy, int r, int g, int b, int a,
