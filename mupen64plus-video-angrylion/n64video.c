@@ -97,9 +97,25 @@ RECTANGLE __clip = {
     0, 0, 0x2000, 0x2000
 };
 
-void (*fbread1_ptr)(UINT32, UINT32*);
-void (*fbread2_ptr)(UINT32, UINT32*);
-void (*fbwrite_ptr)(UINT32, UINT32, UINT32, UINT32, UINT32, UINT32, UINT32);
+static void fbread_4(UINT32 num, UINT32* curpixel_memcvg);
+static void fbread_8(UINT32 num, UINT32* curpixel_memcvg);
+static void fbread_16(UINT32 num, UINT32* curpixel_memcvg);
+static void fbread_32(UINT32 num, UINT32* curpixel_memcvg);
+static void fbread2_4(UINT32 num, UINT32* curpixel_memcvg);
+static void fbread2_8(UINT32 num, UINT32* curpixel_memcvg);
+static void fbread2_16(UINT32 num, UINT32* curpixel_memcvg);
+static void fbread2_32(UINT32 num, UINT32* curpixel_memcvg);
+
+static void (*fbread_func[4])(UINT32, UINT32*) = {
+    fbread_4, fbread_8, fbread_16, fbread_32
+};
+static void (*fbread2_func[4])(UINT32, UINT32*) = {
+    fbread2_4, fbread2_8, fbread2_16, fbread2_32
+};
+
+void (*fbread1_ptr)(uint32_t, uint32_t*);
+void (*fbread2_ptr)(uint32_t, uint32_t*);
+void (*fbwrite_ptr)(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
 void (*fbfill_ptr)(uint32_t);
 
 #undef  LOG_RDP_EXECUTION
@@ -619,6 +635,22 @@ STRICTINLINE void tcclamp_cycle_light(INT32* S, INT32* T, INT32 maxs, INT32 maxt
         *T = (loct >> 5);
 }
 
+static void fbwrite_4(
+    uint32_t curpixel, uint32_t r, uint32_t g, uint32_t b, uint32_t blend_en,
+    uint32_t curpixel_cvg, uint32_t curpixel_memcvg);
+static void fbwrite_8(
+    uint32_t curpixel, uint32_t r, uint32_t g, uint32_t b, uint32_t blend_en,
+    uint32_t curpixel_cvg, uint32_t curpixel_memcvg);
+static void fbwrite_16(
+    uint32_t curpixel, uint32_t r, uint32_t g, uint32_t b, uint32_t blend_en,
+    uint32_t curpixel_cvg, uint32_t curpixel_memcvg);
+static void fbwrite_32(
+    uint32_t curpixel, uint32_t r, uint32_t g, uint32_t b, uint32_t blend_en,
+    uint32_t curpixel_cvg, uint32_t curpixel_memcvg);
+static void (*fbwrite_func[4])(
+    uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t) = {
+    fbwrite_4, fbwrite_8, fbwrite_16, fbwrite_32
+};
 
 void rdp_init(void)
 {
@@ -5732,9 +5764,9 @@ void rdp_close(void)
 {
 }
 
-void fbwrite_4(
-    UINT32 curpixel, UINT32 r, UINT32 g, UINT32 b, UINT32 blend_en,
-    UINT32 curpixel_cvg, UINT32 curpixel_memcvg)
+static void fbwrite_4(
+    uint32_t curpixel, uint32_t r, uint32_t g, uint32_t b, uint32_t blend_en,
+    uint32_t curpixel_cvg, uint32_t curpixel_memcvg)
 {
     register unsigned long addr;
 
@@ -5744,9 +5776,9 @@ void fbwrite_4(
     RWRITEADDR8(addr, 0x00);
 }
 
-void fbwrite_8(
-    UINT32 curpixel, UINT32 r, UINT32 g, UINT32 b, UINT32 blend_en,
-    UINT32 curpixel_cvg, UINT32 curpixel_memcvg)
+static void fbwrite_8(
+    uint32_t curpixel, uint32_t r, uint32_t g, uint32_t b, uint32_t blend_en,
+    uint32_t curpixel_cvg, uint32_t curpixel_memcvg)
 {
     register unsigned long addr;
 
@@ -5755,9 +5787,9 @@ void fbwrite_8(
     PAIRWRITE8(addr, r, (r & 1) ? 3 : 0);
 }
 
-void fbwrite_16(
-    UINT32 curpixel, UINT32 r, UINT32 g, UINT32 b, UINT32 blend_en,
-    UINT32 curpixel_cvg, UINT32 curpixel_memcvg)
+static void fbwrite_16(
+    uint32_t curpixel, uint32_t r, uint32_t g, uint32_t b, uint32_t blend_en,
+    uint32_t curpixel_cvg, uint32_t curpixel_memcvg)
 {
     u16 color;
     int coverage;
@@ -5791,9 +5823,9 @@ void fbwrite_16(
     PAIRWRITE16(addr, color, coverage & 3);
 }
 
-void fbwrite_32(
-    UINT32 curpixel, UINT32 r, UINT32 g, UINT32 b, UINT32 blend_en,
-    UINT32 curpixel_cvg, UINT32 curpixel_memcvg)
+static void fbwrite_32(
+    uint32_t curpixel, uint32_t r, uint32_t g, uint32_t b, uint32_t blend_en,
+    uint32_t curpixel_cvg, uint32_t curpixel_memcvg)
 {
     u32 color;
     int coverage;
@@ -5854,21 +5886,21 @@ static void fbfill_32(uint32_t curpixel)
         -(fill_color_hi & 0x0001) & 3, -(fill_color_lo & 0x0001) & 3);
 }
 
-void fbread_4(UINT32 curpixel, UINT32* curpixel_memcvg)
+static void fbread_4(uint32_t curpixel, uint32_t* curpixel_memcvg)
 {
     memory_color.r = memory_color.g = memory_color.b = 0x00;
     memory_color.a = 0xE0;
     *curpixel_memcvg = 7;
 }
 
-void fbread2_4(UINT32 curpixel, UINT32* curpixel_memcvg)
+static void fbread2_4(uint32_t curpixel, uint32_t* curpixel_memcvg)
 {
     pre_memory_color.r = pre_memory_color.g = pre_memory_color.b = 0x00;
     pre_memory_color.a = 0xE0;
     *curpixel_memcvg = 7;
 }
 
-void fbread_8(UINT32 curpixel, UINT32* curpixel_memcvg)
+static void fbread_8(uint32_t curpixel, uint32_t* curpixel_memcvg)
 {
    UINT8 mem;
    UINT32 addr = fb_address + curpixel;
@@ -5881,7 +5913,7 @@ void fbread_8(UINT32 curpixel, UINT32* curpixel_memcvg)
     *curpixel_memcvg = 7;
 }
 
-void fbread2_8(UINT32 curpixel, UINT32* curpixel_memcvg)
+static void fbread2_8(uint32_t curpixel, uint32_t* curpixel_memcvg)
 {
    UINT8 mem;
 	UINT32 addr = fb_address + curpixel;
@@ -5894,7 +5926,7 @@ void fbread2_8(UINT32 curpixel, UINT32* curpixel_memcvg)
     *curpixel_memcvg = 7;
 }
 
-INLINE void fbread_16(UINT32 curpixel, UINT32* curpixel_memcvg)
+static INLINE void fbread_16(uint32_t curpixel, uint32_t* curpixel_memcvg)
 {
 	UINT16 fword;
 	UINT8 hbyte;
@@ -5941,7 +5973,7 @@ INLINE void fbread_16(UINT32 curpixel, UINT32* curpixel_memcvg)
 	}
 }
 
-INLINE void fbread2_16(UINT32 curpixel, UINT32* curpixel_memcvg)
+static INLINE void fbread2_16(uint32_t curpixel, uint32_t* curpixel_memcvg)
 {
 	UINT16 fword;
 	UINT8 hbyte;
@@ -5988,7 +6020,7 @@ INLINE void fbread2_16(UINT32 curpixel, UINT32* curpixel_memcvg)
 	
 }
 
-void fbread_32(UINT32 curpixel, UINT32* curpixel_memcvg)
+static void fbread_32(uint32_t curpixel, uint32_t* curpixel_memcvg)
 {
     UINT32 mem, addr = (fb_address >> 2) + curpixel;
     RREADIDX32(mem, addr);
@@ -6004,7 +6036,7 @@ void fbread_32(UINT32 curpixel, UINT32* curpixel_memcvg)
     *curpixel_memcvg = (unsigned char)(memory_color.a) >> 5;
 }
 
-void fbread2_32(UINT32 curpixel, UINT32* curpixel_memcvg)
+static void fbread2_32(uint32_t curpixel, uint32_t* curpixel_memcvg)
 {
    UINT32 mem, addr = (fb_address >> 2) + curpixel; 
    RREADIDX32(mem, addr);

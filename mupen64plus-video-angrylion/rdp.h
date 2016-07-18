@@ -322,43 +322,6 @@ enum {
 
 extern void process_RDP_list(void);
 
-extern void (*fbread1_ptr)(UINT32, UINT32*);
-extern void (*fbread2_ptr)(UINT32, UINT32*);
-extern void (*fbwrite_ptr)(
-    UINT32, UINT32, UINT32, UINT32, UINT32, UINT32, UINT32);
-
-extern void fbwrite_4(
-    UINT32 curpixel, UINT32 r, UINT32 g, UINT32 b, UINT32 blend_en,
-    UINT32 curpixel_cvg, UINT32 curpixel_memcvg);
-extern void fbwrite_8(
-    UINT32 curpixel, UINT32 r, UINT32 g, UINT32 b, UINT32 blend_en,
-    UINT32 curpixel_cvg, UINT32 curpixel_memcvg);
-extern void fbwrite_16(
-    UINT32 curpixel, UINT32 r, UINT32 g, UINT32 b, UINT32 blend_en,
-    UINT32 curpixel_cvg, UINT32 curpixel_memcvg);
-extern void fbwrite_32(
-    UINT32 curpixel, UINT32 r, UINT32 g, UINT32 b, UINT32 blend_en,
-    UINT32 curpixel_cvg, UINT32 curpixel_memcvg);
-extern void fbread_4(UINT32 num, UINT32* curpixel_memcvg);
-extern void fbread_8(UINT32 num, UINT32* curpixel_memcvg);
-extern void fbread_16(UINT32 num, UINT32* curpixel_memcvg);
-extern void fbread_32(UINT32 num, UINT32* curpixel_memcvg);
-extern void fbread2_4(UINT32 num, UINT32* curpixel_memcvg);
-extern void fbread2_8(UINT32 num, UINT32* curpixel_memcvg);
-extern void fbread2_16(UINT32 num, UINT32* curpixel_memcvg);
-extern void fbread2_32(UINT32 num, UINT32* curpixel_memcvg);
-
-static void (*fbread_func[4])(UINT32, UINT32*) = {
-    fbread_4, fbread_8, fbread_16, fbread_32
-};
-static void (*fbread2_func[4])(UINT32, UINT32*) = {
-    fbread2_4, fbread2_8, fbread2_16, fbread2_32
-};
-static void (*fbwrite_func[4])(
-    UINT32, UINT32, UINT32, UINT32, UINT32, UINT32, UINT32) = {
-    fbwrite_4, fbwrite_8, fbwrite_16, fbwrite_32
-};
-
 INLINE extern void calculate_clamp_diffs(UINT32 tile);
 INLINE extern void calculate_tile_derivs(UINT32 tile);
 extern void tile_tlut_common_cs_decoder(UINT32 w1, UINT32 w2);
