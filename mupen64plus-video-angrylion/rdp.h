@@ -5,6 +5,12 @@
 
 #define OPTS_ENABLED
 
+#if 0
+#ifdef ARCH_MIN_SSE2
+#define USE_SSE_SUPPORT
+#endif
+#endif
+
 #ifdef USE_SSE_SUPPORT
 #include <emmintrin.h>
 
@@ -148,9 +154,14 @@ typedef union {
     signed char SB[8];
 } DP_FIFO;
 
-typedef struct {
-    INT32 r, g, b, a;
+#ifdef USE_SSE_SUPPORT
+typedef int32_t COLOR[4] __attribute__((aligned(16)));
+#else
+typedef struct
+{
+   int32_t r, g, b, a;
 } COLOR;
+#endif
 
 typedef struct {
     int lx, rx;

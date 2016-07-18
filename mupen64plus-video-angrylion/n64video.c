@@ -10,9 +10,6 @@
 #if 0
 #define EXTRALOGGING
 #endif
-#if 0
-#define VECTOR_SUPPORT
-#endif
 
 #ifdef EXTRALOGGING
 static int LOG_ENABLE = 1;
@@ -78,6 +75,16 @@ static INT32 *blender2a_g[2];
 static INT32 *blender2a_b[2];
 static INT32 *blender2b_a[2];
 
+#ifdef USE_SSE_SUPPORT
+#define COLOR_RED(val)       (val[0])
+#define COLOR_GREEN(val)     (val[1])
+#define COLOR_BLUE(val)      (val[2])
+#define COLOR_ALPHA(val)     (val[3])
+#define COLOR_RED_PTR(val)   (val[0])
+#define COLOR_GREEN_PTR(val) (val[1])
+#define COLOR_BLUE_PTR(val)  (val[2])
+#define COLOR_ALPHA_PTR(val) (val[3])
+#else
 #define COLOR_RED(val)       (val.r)
 #define COLOR_GREEN(val)     (val.g)
 #define COLOR_BLUE(val)      (val.b)
@@ -86,6 +93,7 @@ static INT32 *blender2b_a[2];
 #define COLOR_GREEN_PTR(val) (val->g)
 #define COLOR_BLUE_PTR(val)  (val->b)
 #define COLOR_ALPHA_PTR(val) (val->a)
+#endif
 
 static INT32 k0_tf = 0, k1_tf = 0, k2_tf = 0, k3_tf = 0;
 static INT32 k4 = 0, k5 = 0;
@@ -353,7 +361,11 @@ static void (*tcdiv_func[2])(INT32, INT32, INT32, INT32*, INT32*) =
     tcdiv_nopersp, tcdiv_persp
 };
 
+#ifdef USE_SSE_SUPPORT
+static void (*render_spans_1cycle_func[3])(int, int, int, int, __m128i) =
+#else
 static void (*render_spans_1cycle_func[3])(int, int, int, int) =
+#endif
 {
     render_spans_1cycle_notex, render_spans_1cycle_notexel1, render_spans_1cycle_complete
 };
@@ -1351,7 +1363,7 @@ static void combiner_2cycle(int adseed, UINT32* curpixel_cvg, INT32* acalpha)
     COLOR_GREEN(combined_color) >>= 8;
     COLOR_BLUE(combined_color)  >>= 8;
 
-#ifdef VECTORSUPPORT
+#ifdef USE_SSE_SUPPORT
     memcpy(texel0_color,  texel1_color,    sizeof(COLOR));
     memcpy(texel1_color,  nexttexel_color, sizeof(COLOR));
 #else
@@ -1671,7 +1683,7 @@ int blender_2cycle(UINT32* fr, UINT32* fg, UINT32* fb, int dith, UINT32 blend_en
 
             blender_equation_cycle0_2(&r, &g, &b);
             
-#ifdef VECTORSUPPORT
+#ifdef USE_SSE_SUPPORT
             memcpy(memory_color, pre_memory_color, sizeof(COLOR));
 #else
             memory_color = pre_memory_color;
@@ -1713,7 +1725,7 @@ int blender_2cycle(UINT32* fr, UINT32* fg, UINT32* fb, int dith, UINT32 blend_en
         }
         else 
         {
-#ifdef VECTORSUPPORT
+#ifdef USE_SSE_SUPPORT
            memcpy(memory_color, pre_memory_color, sizeof(COLOR));
 #else
            memory_color = pre_memory_color;
@@ -1723,7 +1735,7 @@ int blender_2cycle(UINT32* fr, UINT32* fg, UINT32* fb, int dith, UINT32 blend_en
     }
     else 
     {
-#ifdef VECTORSUPPORT
+#ifdef USE_SSE_SUPPORT
        memcpy(memory_color, pre_memory_color, sizeof(COLOR));
 #else
        memory_color = pre_memory_color;
@@ -3551,10 +3563,9 @@ void angrylion_set_filtering(unsigned filter_type)
 
 static void texture_pipeline_cycle(COLOR* TEX, COLOR* prev, INT32 SSS, INT32 SST, UINT32 tilenum, UINT32 cycle)                                            
 {
-
-
-
-
+#ifdef USE_SSE_SUPPORT
+   __m128i tex_v;
+#endif
     INT32 maxs, maxt, invt0r, invt0g, invt0b, invt0a;
     INT32 sfrac, tfrac, invsf, invtf;
     int upper = 0;
@@ -3604,6 +3615,9 @@ static void texture_pipeline_cycle(COLOR* TEX, COLOR* prev, INT32 SSS, INT32 SST
         
         if (bilerp)
         {
+#ifdef USE_SSE_SUPPORT
+           __m128i t0_v, t1_v, t2_v, t3_v;
+#endif
             
             if (!other_modes.en_tlut)
                 fetch_texel_quadro(&t0, &t1, &t2, &t3, sss1, sss2, sst1, sst2, tilenum);
@@ -3622,68 +3636,155 @@ static void texture_pipeline_cycle(COLOR* TEX, COLOR* prev, INT32 SSS, INT32 SST
                COLOR_GREEN(t3) = SIGN(COLOR_GREEN(t3), 9);
             }
 
+#ifdef USE_SSE_SUPPORT
+             t0_v = _mm_load_si128(t0);
+             t1_v = _mm_load_si128(t1);
+             t2_v = _mm_load_si128(t2);
+             t3_v = _mm_load_si128(t3);
+#endif
+
             if (!other_modes.mid_texel || sfrac != 0x10 || tfrac != 0x10)
             {
                 if (!convert)
                 {
+#ifdef USE_SSE_SUPPORT
+                   __m128i cv_v = _mm_set1_epi32(0x10);
+                   __m128i prod_a, prod_b, summand;
+#endif
+
                     if (UPPER)
                     {
                         
                         invsf = 0x20 - sfrac;
                         invtf = 0x20 - tfrac;
+#ifdef USE_SSE_SUPPORT
+                        __m128i invsf_v = _mm_set1_epi32(invsf);
+                        __m128i invtf_v = _mm_set1_epi32(invtf);
+
+                        prod_a = _mm_mullo_epi32(invsf_v, _mm_sub_epi32(t2_v, t3_v));
+                        prod_b = _mm_mullo_epi32(invtf_v, _mm_sub_epi32(t1_v, t3_v));
+                        summand = t3_v;
+#else
                         COLOR_RED_PTR(TEX) = COLOR_RED(t3) + ((((invsf * (COLOR_RED(t2) - COLOR_RED(t3))) + (invtf * (COLOR_RED(t1) - COLOR_RED(t3)))) + 0x10) >> 5);    
                         COLOR_GREEN_PTR(TEX) = COLOR_GREEN(t3) + ((((invsf * (COLOR_GREEN(t2) - COLOR_GREEN(t3))) + (invtf * (COLOR_GREEN(t1) - COLOR_GREEN(t3)))) + 0x10) >> 5);                                                                        
                         COLOR_BLUE_PTR(TEX) = COLOR_BLUE(t3) + ((((invsf * (COLOR_BLUE(t2) - COLOR_BLUE(t3))) + (invtf * (COLOR_BLUE(t1) - COLOR_BLUE(t3)))) + 0x10) >> 5);                                                                
                         COLOR_ALPHA_PTR(TEX) = COLOR_ALPHA(t3) + ((((invsf * (COLOR_ALPHA(t2) - COLOR_ALPHA(t3))) + (invtf * (COLOR_ALPHA(t1) - COLOR_ALPHA(t3)))) + 0x10) >> 5);
+#endif
                     }
                     else
                     {
-                        COLOR_RED_PTR(TEX) = COLOR_RED(t0) + ((((sfrac * (COLOR_RED(t1) - COLOR_RED(t0))) + (tfrac * (COLOR_RED(t2) - COLOR_RED(t0)))) + 0x10) >> 5);                                            
-                        COLOR_GREEN_PTR(TEX) = COLOR_GREEN(t0) + ((((sfrac * (COLOR_GREEN(t1) - COLOR_GREEN(t0))) + (tfrac * (COLOR_GREEN(t2) - COLOR_GREEN(t0)))) + 0x10) >> 5);                                            
-                        COLOR_BLUE_PTR(TEX) = COLOR_BLUE(t0) + ((((sfrac * (COLOR_BLUE(t1) - COLOR_BLUE(t0))) + (tfrac * (COLOR_BLUE(t2) - COLOR_BLUE(t0)))) + 0x10) >> 5);                                    
-                        COLOR_ALPHA_PTR(TEX) = COLOR_ALPHA(t0) + ((((sfrac * (COLOR_ALPHA(t1) - COLOR_ALPHA(t0))) + (tfrac * (COLOR_ALPHA(t2) - COLOR_ALPHA(t0)))) + 0x10) >> 5);
+#ifdef USE_SSE_SUPPORT
+                       __m128i sfrac_v = _mm_set1_epi32(sfrac);
+                       __m128i tfrac_v = _mm_set1_epi32(tfrac);
+
+                       prod_a = _mm_mullo_epi32(sfrac_v, _mm_sub_epi32(t1_v, t0_v));
+                       prod_b = _mm_mullo_epi32(tfrac_v, _mm_sub_epi32(t2_v, t0_v));
+                       summand = t0_v;
+#else
+                       COLOR_RED_PTR(TEX) = COLOR_RED(t0) + ((((sfrac * (COLOR_RED(t1) - COLOR_RED(t0))) + (tfrac * (COLOR_RED(t2) - COLOR_RED(t0)))) + 0x10) >> 5);                                            
+                       COLOR_GREEN_PTR(TEX) = COLOR_GREEN(t0) + ((((sfrac * (COLOR_GREEN(t1) - COLOR_GREEN(t0))) + (tfrac * (COLOR_GREEN(t2) - COLOR_GREEN(t0)))) + 0x10) >> 5);                                            
+                       COLOR_BLUE_PTR(TEX) = COLOR_BLUE(t0) + ((((sfrac * (COLOR_BLUE(t1) - COLOR_BLUE(t0))) + (tfrac * (COLOR_BLUE(t2) - COLOR_BLUE(t0)))) + 0x10) >> 5);                                    
+                       COLOR_ALPHA_PTR(TEX) = COLOR_ALPHA(t0) + ((((sfrac * (COLOR_ALPHA(t1) - COLOR_ALPHA(t0))) + (tfrac * (COLOR_ALPHA(t2) - COLOR_ALPHA(t0)))) + 0x10) >> 5);
+#endif
                     }
+#ifdef USE_SSE_SUPPORT
+                    __m128i sum = _mm_add_epi32(_mm_add_epi32(prod_a, prod_b), cv_v);
+                    tex_v = _mm_add_epi32(summand, _mm_srai_epi32(sum, 5));
+#endif
                 }
                 else
                 {
+#ifdef USE_SSE_SUPPORT
+                   __m128i prev0_v = _mm_set1_epi32(prev[0]);
+                   __m128i prev1_v = _mm_set1_epi32(prev[1]);
+                   __m128i prev2_v = _mm_set1_epi32(prev[2]);
+                   __m128i cv_v = _mm_set1_epi32(0x80);
+
+                   __m128i prev0_prod, prev1_prod;
+#endif
+
                     if (UPPER)
                     {
-                        COLOR_RED_PTR(TEX) = COLOR_BLUE_PTR(prev) + ((((COLOR_RED_PTR(prev) * (COLOR_RED(t2) - COLOR_RED(t3))) + (COLOR_GREEN_PTR(prev) * (COLOR_RED(t1) - COLOR_RED(t3)))) + 0x80) >> 8);    
-                        COLOR_GREEN_PTR(TEX) = COLOR_BLUE_PTR(prev) + ((((COLOR_RED_PTR(prev) * (COLOR_GREEN(t2) - COLOR_GREEN(t3))) + (COLOR_GREEN_PTR(prev) * (COLOR_GREEN(t1) - COLOR_GREEN(t3)))) + 0x80) >> 8);                                                                        
-                        COLOR_BLUE_PTR(TEX) = COLOR_BLUE_PTR(prev) + ((((COLOR_RED_PTR(prev) * (COLOR_BLUE(t2) - COLOR_BLUE(t3))) + (COLOR_GREEN_PTR(prev) * (COLOR_BLUE(t1) - COLOR_BLUE(t3)))) + 0x80) >> 8);                                                                
-                        COLOR_ALPHA_PTR(TEX) = COLOR_BLUE_PTR(prev) + ((((COLOR_RED_PTR(prev) * (COLOR_ALPHA(t2) - COLOR_ALPHA(t3))) + (COLOR_GREEN_PTR(prev) * (COLOR_ALPHA(t1) - COLOR_ALPHA(t3)))) + 0x80) >> 8);
+#ifdef USE_SSE_SUPPORT
+                       prev0_prod = _mm_mullo_epi32(prev0_v, _mm_sub_epi32(t2_v, t3_v));
+                       prev1_prod = _mm_mullo_epi32(prev1_v, _mm_sub_epi32(t1_v, t3_v));
+#else
+                       COLOR_RED_PTR(TEX) = COLOR_BLUE_PTR(prev) + ((((COLOR_RED_PTR(prev) * (COLOR_RED(t2) - COLOR_RED(t3))) + (COLOR_GREEN_PTR(prev) * (COLOR_RED(t1) - COLOR_RED(t3)))) + 0x80) >> 8);    
+                       COLOR_GREEN_PTR(TEX) = COLOR_BLUE_PTR(prev) + ((((COLOR_RED_PTR(prev) * (COLOR_GREEN(t2) - COLOR_GREEN(t3))) + (COLOR_GREEN_PTR(prev) * (COLOR_GREEN(t1) - COLOR_GREEN(t3)))) + 0x80) >> 8);                                                                        
+                       COLOR_BLUE_PTR(TEX) = COLOR_BLUE_PTR(prev) + ((((COLOR_RED_PTR(prev) * (COLOR_BLUE(t2) - COLOR_BLUE(t3))) + (COLOR_GREEN_PTR(prev) * (COLOR_BLUE(t1) - COLOR_BLUE(t3)))) + 0x80) >> 8);                                                                
+                       COLOR_ALPHA_PTR(TEX) = COLOR_BLUE_PTR(prev) + ((((COLOR_RED_PTR(prev) * (COLOR_ALPHA(t2) - COLOR_ALPHA(t3))) + (COLOR_GREEN_PTR(prev) * (COLOR_ALPHA(t1) - COLOR_ALPHA(t3)))) + 0x80) >> 8);
+#endif
                     }
                     else
                     {
+#ifdef USE_SSE_SUPPORT
+                       prev0_prod = _mm_mullo_epi32(prev0_v, _mm_sub_epi32(t2_v, t3_v));
+                       prev1_prod = _mm_mullo_epi32(prev1_v, _mm_sub_epi32(t1_v, t3_v));
+#else
                         COLOR_RED_PTR(TEX) = COLOR_BLUE_PTR(prev) + ((((COLOR_RED_PTR(prev) * (COLOR_RED(t1) - COLOR_RED(t0))) + (COLOR_GREEN_PTR(prev) * (COLOR_RED(t2) - COLOR_RED(t0)))) + 0x80) >> 8);                                            
                         COLOR_GREEN_PTR(TEX) = COLOR_BLUE_PTR(prev) + ((((COLOR_RED_PTR(prev) * (COLOR_GREEN(t1) - COLOR_GREEN(t0))) + (COLOR_GREEN_PTR(prev) * (COLOR_GREEN(t2) - COLOR_GREEN(t0)))) + 0x80) >> 8);                                            
                         COLOR_BLUE_PTR(TEX) = COLOR_BLUE_PTR(prev) + ((((COLOR_RED_PTR(prev) * (COLOR_BLUE(t1) - COLOR_BLUE(t0))) + (COLOR_GREEN_PTR(prev) * (COLOR_BLUE(t2) - COLOR_BLUE(t0)))) + 0x80) >> 8);                                    
                         COLOR_ALPHA_PTR(TEX) = COLOR_BLUE_PTR(prev) + ((((COLOR_RED_PTR(prev) * (COLOR_ALPHA(t1) - COLOR_ALPHA(t0))) + (COLOR_GREEN_PTR(prev) * (COLOR_ALPHA(t2) - COLOR_ALPHA(t0)))) + 0x80) >> 8);
+#endif
                     }    
+#ifdef USE_SSE_SUPPORT
+                    __m128i sum = _mm_add_epi32(_mm_add_epi32(prev0_prod, prev1_prod), cv_v);
+                    tex_v = _mm_add_epi32(prev2_v, _mm_srai_epi32(sum, 8));
+#endif
                 }
                 
             }
             else
             {
-                invt0r  = ~COLOR_RED(t0);
-                invt0g = ~COLOR_GREEN(t0);
-                invt0b = ~COLOR_BLUE(t0);
-                invt0a = ~COLOR_ALPHA(t0);
+#ifdef USE_SSE_SUPPORT
+               __m128i invt0r_v = _mm_xor_si128(t0_v, _mm_cmpeq_epi32(_mm_setzero_si128(), _mm_setzero_si128()));
+               __m128i invt0r_shiftsum = _mm_slli_epi32(_mm_add_epi32(invt0r_v, t3_v), 6);
+               __m128i cv_v = _mm_set1_epi32(0xc0);
+               __m128i prod_a, prod_b;
+#else
+               invt0r  = ~COLOR_RED(t0);
+               invt0g  = ~COLOR_GREEN(t0);
+               invt0b  = ~COLOR_BLUE(t0);
+               invt0a  = ~COLOR_ALPHA(t0);
+#endif
+
                 if (!convert)
                 {
                     sfrac <<= 2;
                     tfrac <<= 2;
+
+#ifdef USE_SSE_SUPPORT
+                    __m128i sfrac_v = _mm_set1_epi32(sfrac);
+                    __m128i tfrac_v = _mm_set1_epi32(tfrac);
+                    prod_a = _mm_mullo_epi32(sfrac_v, _mm_sub_epi32(t1_v, t0_v));
+                    prod_b = _mm_mullo_epi32(tfrac_v, _mm_sub_epi32(t2_v, t0_v));
+#else
                     COLOR_RED_PTR(TEX) = COLOR_RED(t0) + ((((sfrac * (COLOR_RED(t1) - COLOR_RED(t0))) + (tfrac * (COLOR_RED(t2) - COLOR_RED(t0)))) + ((invt0r + COLOR_RED(t3)) << 6) + 0xc0) >> 8);                                            
                     COLOR_GREEN_PTR(TEX) = COLOR_GREEN(t0) + ((((sfrac * (COLOR_GREEN(t1) - COLOR_GREEN(t0))) + (tfrac * (COLOR_GREEN(t2) - COLOR_GREEN(t0)))) + ((invt0g + COLOR_GREEN(t3)) << 6) + 0xc0) >> 8);                                            
                     COLOR_BLUE_PTR(TEX) = COLOR_BLUE(t0) + ((((sfrac * (COLOR_BLUE(t1) - COLOR_BLUE(t0))) + (tfrac * (COLOR_BLUE(t2) - COLOR_BLUE(t0)))) + ((invt0b + COLOR_BLUE(t3)) << 6) + 0xc0) >> 8);                                    
                     COLOR_ALPHA_PTR(TEX) = COLOR_ALPHA(t0) + ((((sfrac * (COLOR_ALPHA(t1) - COLOR_ALPHA(t0))) + (tfrac * (COLOR_ALPHA(t2) - COLOR_ALPHA(t0)))) + ((invt0a + COLOR_ALPHA(t3)) << 6) + 0xc0) >> 8);
+#endif
                 }
                 else
                 {
-                    COLOR_RED_PTR(TEX) = COLOR_BLUE_PTR(prev) + ((((COLOR_RED_PTR(prev) * (COLOR_RED(t1) - COLOR_RED(t0))) + (COLOR_GREEN_PTR(prev) * (COLOR_RED(t2) - COLOR_RED(t0)))) + ((invt0r + COLOR_RED(t3)) << 6) + 0xc0) >> 8);                                            
-                    COLOR_GREEN_PTR(TEX) = COLOR_BLUE_PTR(prev) + ((((COLOR_RED_PTR(prev) * (COLOR_GREEN(t1) - COLOR_GREEN(t0))) + (COLOR_GREEN_PTR(prev) * (COLOR_GREEN(t2) - COLOR_GREEN(t0)))) + ((invt0g + COLOR_GREEN(t3)) << 6) + 0xc0) >> 8);                                            
-                    COLOR_BLUE_PTR(TEX) = COLOR_BLUE_PTR(prev) + ((((COLOR_RED_PTR(prev) * (COLOR_BLUE(t1) - COLOR_BLUE(t0))) + (COLOR_GREEN_PTR(prev) * (COLOR_BLUE(t2) - COLOR_BLUE(t0)))) + ((invt0b + COLOR_BLUE(t3)) << 6) + 0xc0) >> 8);                                    
-                    COLOR_ALPHA_PTR(TEX) = COLOR_BLUE_PTR(prev) + ((((COLOR_RED_PTR(prev) * (COLOR_ALPHA(t1) - COLOR_ALPHA(t0))) + (COLOR_GREEN_PTR(prev) * (COLOR_ALPHA(t2) - COLOR_ALPHA(t0)))) + ((invt0a + COLOR_ALPHA(t3)) << 6) + 0xc0) >> 8);
+#ifdef USE_SSE_SUPPORT
+                   __m128i prev0_v = _mm_set1_epi32(prev[0]);
+                   __m128i prev1_v = _mm_set1_epi32(prev[1]);
+                   __m128i prev2_v = _mm_set1_epi32(prev[2]);
+
+                   prod_a = _mm_mullo_epi32(prev0_v, _mm_sub_epi32(t1_v, t0_v));
+                   prod_b = _mm_mullo_epi32(prev1_v, _mm_sub_epi32(t2_v, t0_v));
+                }
+            }
+
+            __m128i sum = _mm_add_epi32(_mm_add_epi32(_mm_add_epi32(prod_a, prod_b), invt0r_shiftsum), cv_v);
+            tex_v = _mm_add_epi32(t0_v, _mm_srai_epi32(sum, 8));
+#else
+            COLOR_RED_PTR(TEX) = COLOR_BLUE_PTR(prev) + ((((COLOR_RED_PTR(prev) * (COLOR_RED(t1) - COLOR_RED(t0))) + (COLOR_GREEN_PTR(prev) * (COLOR_RED(t2) - COLOR_RED(t0)))) + ((invt0r + COLOR_RED(t3)) << 6) + 0xc0) >> 8);                                            
+            COLOR_GREEN_PTR(TEX) = COLOR_BLUE_PTR(prev) + ((((COLOR_RED_PTR(prev) * (COLOR_GREEN(t1) - COLOR_GREEN(t0))) + (COLOR_GREEN_PTR(prev) * (COLOR_GREEN(t2) - COLOR_GREEN(t0)))) + ((invt0g + COLOR_GREEN(t3)) << 6) + 0xc0) >> 8);                                            
+            COLOR_BLUE_PTR(TEX) = COLOR_BLUE_PTR(prev) + ((((COLOR_RED_PTR(prev) * (COLOR_BLUE(t1) - COLOR_BLUE(t0))) + (COLOR_GREEN_PTR(prev) * (COLOR_BLUE(t2) - COLOR_BLUE(t0)))) + ((invt0b + COLOR_BLUE(t3)) << 6) + 0xc0) >> 8);                                    
+            COLOR_ALPHA_PTR(TEX) = COLOR_BLUE_PTR(prev) + ((((COLOR_RED_PTR(prev) * (COLOR_ALPHA(t1) - COLOR_ALPHA(t0))) + (COLOR_GREEN_PTR(prev) * (COLOR_ALPHA(t2) - COLOR_ALPHA(t0)))) + ((invt0a + COLOR_ALPHA(t3)) << 6) + 0xc0) >> 8);
+#endif
                 }
             }
             
@@ -3696,7 +3797,7 @@ static void texture_pipeline_cycle(COLOR* TEX, COLOR* prev, INT32 SSS, INT32 SST
                 fetch_texel_entlut(&t0, sss1, sst1, tilenum);
             if (convert)
             {
-#ifdef VECTORSUPPORT
+#ifdef USE_SSE_SUPPORT
                 memcpy(t0, prev, sizeof(COLOR));
 #else
                 t0 = *prev;
@@ -3714,14 +3815,20 @@ static void texture_pipeline_cycle(COLOR* TEX, COLOR* prev, INT32 SSS, INT32 SST
             COLOR_GREEN_PTR(TEX) = COLOR_BLUE(t0) + ((k1_tf * COLOR_RED(t0) + k2_tf * COLOR_GREEN(t0) + 0x80) >> 8);
             COLOR_BLUE_PTR(TEX) = COLOR_BLUE(t0) + ((k3_tf * COLOR_RED(t0) + 0x80) >> 8);
             COLOR_ALPHA_PTR(TEX) = COLOR_BLUE(t0);
+#ifdef USE_SSE_SUPPORT
+            tex_v = _mm_load_si128(TEX);
+#endif
         }
         
+#ifdef USE_SSE_SUPPORT
+         tex_v = _mm_and_si128(tex_v, _mm_set1_epi32(0x1ff));
+         _mm_store_si128(TEX, tex_v);
+#else
         COLOR_RED_PTR(TEX) &= 0x1ff;
         COLOR_GREEN_PTR(TEX) &= 0x1ff;
         COLOR_BLUE_PTR(TEX) &= 0x1ff;
         COLOR_ALPHA_PTR(TEX) &= 0x1ff;
-        
-        
+#endif
     }
     else                                                                                                
     {                                                                                                        
@@ -3743,7 +3850,7 @@ static void texture_pipeline_cycle(COLOR* TEX, COLOR* prev, INT32 SSS, INT32 SST
         {
             if (!convert)
             {
-#ifdef VECTORSUPPORT
+#ifdef USE_SSE_SUPPORT
                 memcpy(TEX, t0, sizeof(COLOR));
 #else
                 *TEX = t0;
@@ -3756,7 +3863,7 @@ static void texture_pipeline_cycle(COLOR* TEX, COLOR* prev, INT32 SSS, INT32 SST
         {
             if (convert)
             {
-#ifdef VECTORSUPPORT
+#ifdef USE_SSE_SUPPORT
                 memcpy(t0, prev, sizeof(COLOR));
 #else
                 t0 = *prev;
@@ -3978,7 +4085,7 @@ static void render_spans_1cycle_complete(int start, int end, int tilenum, int fl
 
             if (!sigs.startspan)
             {
-#ifdef VECTORSUPPORT
+#ifdef USE_SSE_SUPPORT
                 memcpy(texel0_color, texel1_color, sizeof(COLOR));
 #else
                 texel0_color = texel1_color;
@@ -4509,7 +4616,7 @@ static void render_spans_2cycle_complete(int start, int end, int tilenum, int fl
             if (!sigs.startspan)
             {
                 lod_frac = prelodfrac;
-#ifdef VECTORSUPPORT
+#ifdef USE_SSE_SUPPORT
                 memcpy(texel0_color, nexttexel_color, sizeof(COLOR));
                 memcpy(texel1_color, nexttexel1_color, sizeof(COLOR));
 #else
@@ -4554,7 +4661,7 @@ static void render_spans_2cycle_complete(int start, int end, int tilenum, int fl
             }
             else
             {
-#ifdef VECTORSUPPORT
+#ifdef USE_SSE_SUPPORT
                memcpy(memory_color, pre_memory_color, sizeof(COLOR));
 #else
                memory_color = pre_memory_color;
@@ -4739,7 +4846,7 @@ static void render_spans_2cycle_notexelnext(int start, int end, int tilenum, int
             }
             else
             {
-#ifdef VECTORSUPPORT
+#ifdef USE_SSE_SUPPORT
                memcpy(memory_color, pre_memory_color, sizeof(COLOR));
 #else
                memory_color = pre_memory_color;
@@ -4937,7 +5044,7 @@ static void render_spans_2cycle_notexel1(int start, int end, int tilenum, int fl
             }
             else
             {
-#ifdef VECTORSUPPORT
+#ifdef USE_SSE_SUPPORT
                memcpy(memory_color, pre_memory_color, sizeof(COLOR));
 #else
                memory_color = pre_memory_color;
@@ -5085,7 +5192,7 @@ static void render_spans_2cycle_notex(int start, int end, int tilenum, int flip,
             }
             else
             {
-#ifdef VECTORSUPPORT
+#ifdef USE_SSE_SUPPORT
                memcpy(memory_color, pre_memory_color, sizeof(COLOR));
 #else
                memory_color = pre_memory_color;
@@ -5229,7 +5336,7 @@ static void render_spans_2cycle_notex(int start, int end, int tilenum, int flip)
             }
             else
             {
-#ifdef VECTORSUPPORT
+#ifdef USE_SSE_SUPPORT
                memcpy(memory_color, pre_memory_color, sizeof(COLOR));
 #else
                memory_color = pre_memory_color;
