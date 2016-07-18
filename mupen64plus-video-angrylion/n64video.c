@@ -10,6 +10,9 @@
 #if 0
 #define EXTRALOGGING
 #endif
+#if 0
+#define VECTOR_SUPPORT
+#endif
 
 #ifdef EXTRALOGGING
 static int LOG_ENABLE = 1;
@@ -19,6 +22,7 @@ static int LOG_ENABLE = 0;
 #define LOG(...) do { \
    if (LOG_ENABLE) fprintf(stderr, __VA_ARGS__); \
 } while(0)
+
 
 #ifdef _DEBUG
 static int render_cycle_mode_counts[4];
@@ -73,6 +77,15 @@ static INT32 *blender2a_r[2];
 static INT32 *blender2a_g[2];
 static INT32 *blender2a_b[2];
 static INT32 *blender2b_a[2];
+
+#define COLOR_RED(val)       (val.r)
+#define COLOR_GREEN(val)     (val.g)
+#define COLOR_BLUE(val)      (val.b)
+#define COLOR_ALPHA(val)     (val.a)
+#define COLOR_RED_PTR(val)   (val->r)
+#define COLOR_GREEN_PTR(val) (val->g)
+#define COLOR_BLUE_PTR(val)  (val->b)
+#define COLOR_ALPHA_PTR(val) (val->a)
 
 static INT32 k0_tf = 0, k1_tf = 0, k2_tf = 0, k3_tf = 0;
 static INT32 k4 = 0, k5 = 0;
@@ -692,36 +705,40 @@ static INLINE void SET_BLENDER_INPUT(int cycle, int which, INT32 **input_r, INT3
         {
             if (cycle == 0)
             {
-                *input_r = &pixel_color.r;
-                *input_g = &pixel_color.g;
-                *input_b = &pixel_color.b;
+                *input_r = &COLOR_RED(pixel_color);
+                *input_g = &COLOR_GREEN(pixel_color);
+                *input_b = &COLOR_BLUE(pixel_color);
             }
             else
             {
-                *input_r = &blended_pixel_color.r;
-                *input_g = &blended_pixel_color.g;
-                *input_b = &blended_pixel_color.b;
+                *input_r = &COLOR_RED(blended_pixel_color);
+                *input_g = &COLOR_GREEN(blended_pixel_color);
+                *input_b = &COLOR_BLUE(blended_pixel_color);
             }
             break;
         }
 
         case 1:
         {
-            *input_r = &memory_color.r;
-            *input_g = &memory_color.g;
-            *input_b = &memory_color.b;
+            *input_r = &COLOR_RED(memory_color);
+            *input_g = &COLOR_GREEN(memory_color);
+            *input_b = &COLOR_BLUE(memory_color);
             break;
         }
 
         case 2:
         {
-            *input_r = &blend_color.r;        *input_g = &blend_color.g;        *input_b = &blend_color.b;
+            *input_r = &COLOR_RED(blend_color);
+            *input_g = &COLOR_GREEN(blend_color);
+            *input_b = &COLOR_BLUE(blend_color);
             break;
         }
 
         case 3:
         {
-            *input_r = &fog_color.r;        *input_g = &fog_color.g;        *input_b = &fog_color.b;
+            *input_r = &COLOR_RED(fog_color);
+            *input_g = &COLOR_GREEN(fog_color);
+            *input_b = &COLOR_BLUE(fog_color);
             break;
         }
     }
@@ -730,20 +747,36 @@ static INLINE void SET_BLENDER_INPUT(int cycle, int which, INT32 **input_r, INT3
     {
         switch (b & 0x3)
         {
-            case 0:        *input_a = &pixel_color.a; break;
-            case 1:        *input_a = &fog_color.a; break;
-            case 2:        *input_a = &shade_color.a; break;
-            case 3:        *input_a = &zero_color; break;
+           case 0:       
+              *input_a = &COLOR_ALPHA(pixel_color);
+              break;
+           case 1:
+              *input_a = &COLOR_ALPHA(fog_color);
+              break;
+           case 2:
+              *input_a = &COLOR_ALPHA(shade_color);
+              break;
+           case 3:
+              *input_a = &zero_color;
+              break;
         }
     }
     else
     {
         switch (b & 0x3)
         {
-            case 0:        *input_a = &inv_pixel_color.a; break;
-            case 1:        *input_a = &memory_color.a; break;
-            case 2:        *input_a = &blenderone; break;
-            case 3:        *input_a = &zero_color; break;
+            case 0: 
+               *input_a = &COLOR_ALPHA(inv_pixel_color);
+               break;
+            case 1:
+               *input_a = &COLOR_ALPHA(memory_color);
+               break;
+            case 2:
+               *input_a = &blenderone;
+               break;
+            case 3:
+               *input_a = &zero_color;
+               break;
         }
     }
 }
@@ -832,18 +865,58 @@ static INLINE void SET_SUBA_RGB_INPUT(INT32 **input_r, INT32 **input_g, INT32 **
 {
     switch (code & 0xf)
     {
-        case 0:        *input_r = &combined_color.r;    *input_g = &combined_color.g;    *input_b = &combined_color.b;    break;
-        case 1:        *input_r = &texel0_color.r;        *input_g = &texel0_color.g;        *input_b = &texel0_color.b;        break;
-        case 2:        *input_r = &texel1_color.r;        *input_g = &texel1_color.g;        *input_b = &texel1_color.b;        break;
-        case 3:        *input_r = &prim_color.r;        *input_g = &prim_color.g;        *input_b = &prim_color.b;        break;
-        case 4:        *input_r = &shade_color.r;        *input_g = &shade_color.g;        *input_b = &shade_color.b;        break;
-        case 5:        *input_r = &env_color.r;        *input_g = &env_color.g;        *input_b = &env_color.b;        break;
-        case 6:        *input_r = &one_color;            *input_g = &one_color;            *input_b = &one_color;        break;
-        case 7:        *input_r = &noise;                *input_g = &noise;                *input_b = &noise;                break;
-        case 8: case 9: case 10: case 11: case 12: case 13: case 14: case 15:
-        {
-            *input_r = &zero_color;        *input_g = &zero_color;        *input_b = &zero_color;        break;
-        }
+       case 0:
+          *input_r = &COLOR_RED(combined_color);
+          *input_g = &COLOR_GREEN(combined_color);
+          *input_b = &COLOR_BLUE(combined_color);
+          break;
+       case 1:
+          *input_r = &COLOR_RED(texel0_color);
+          *input_g = &COLOR_GREEN(texel0_color);
+          *input_b = &COLOR_BLUE(texel0_color);
+          break;
+       case 2:
+          *input_r = &COLOR_RED(texel1_color);
+          *input_g = &COLOR_GREEN(texel1_color);
+          *input_b = &COLOR_BLUE(texel1_color);
+          break;
+       case 3:
+          *input_r = &COLOR_RED(prim_color);
+          *input_g = &COLOR_GREEN(prim_color);
+          *input_b = &COLOR_BLUE(prim_color);
+          break;
+       case 4:
+          *input_r = &COLOR_RED(shade_color);
+          *input_g = &COLOR_GREEN(shade_color);
+          *input_b = &COLOR_BLUE(shade_color);
+          break;
+       case 5:
+          *input_r = &COLOR_RED(env_color);
+          *input_g = &COLOR_GREEN(env_color);
+          *input_b = &COLOR_BLUE(env_color);
+          break;
+       case 6:
+          *input_r = &one_color;
+          *input_g = &one_color;
+          *input_b = &one_color;
+          break;
+       case 7:
+          *input_r = &noise;
+          *input_g = &noise;
+          *input_b = &noise;
+          break;
+       case 8:
+       case 9:
+       case 10:
+       case 11:
+       case 12:
+       case 13:
+       case 14:
+       case 15:
+          *input_r = &zero_color;
+          *input_g = &zero_color;
+          *input_b = &zero_color;
+          break;
     }
 }
 
@@ -851,18 +924,58 @@ static INLINE void SET_SUBB_RGB_INPUT(INT32 **input_r, INT32 **input_g, INT32 **
 {
     switch (code & 0xf)
     {
-        case 0:        *input_r = &combined_color.r;    *input_g = &combined_color.g;    *input_b = &combined_color.b;    break;
-        case 1:        *input_r = &texel0_color.r;        *input_g = &texel0_color.g;        *input_b = &texel0_color.b;        break;
-        case 2:        *input_r = &texel1_color.r;        *input_g = &texel1_color.g;        *input_b = &texel1_color.b;        break;
-        case 3:        *input_r = &prim_color.r;        *input_g = &prim_color.g;        *input_b = &prim_color.b;        break;
-        case 4:        *input_r = &shade_color.r;        *input_g = &shade_color.g;        *input_b = &shade_color.b;        break;
-        case 5:        *input_r = &env_color.r;        *input_g = &env_color.g;        *input_b = &env_color.b;        break;
-        case 6:        *input_r = &key_center.r;        *input_g = &key_center.g;        *input_b = &key_center.b;        break;
-        case 7:        *input_r = &k4;                    *input_g = &k4;                    *input_b = &k4;                    break;
-        case 8: case 9: case 10: case 11: case 12: case 13: case 14: case 15:
-        {
-            *input_r = &zero_color;        *input_g = &zero_color;        *input_b = &zero_color;        break;
-        }
+       case 0:
+          *input_r = &COLOR_RED(combined_color);
+          *input_g = &COLOR_GREEN(combined_color);
+          *input_b = &COLOR_BLUE(combined_color);
+          break;
+       case 1:
+          *input_r = &COLOR_RED(texel0_color);
+          *input_g = &COLOR_GREEN(texel0_color);
+          *input_b = &COLOR_BLUE(texel0_color);
+          break;
+       case 2:
+          *input_r = &COLOR_RED(texel1_color);
+          *input_g = &COLOR_GREEN(texel1_color);
+          *input_b = &COLOR_BLUE(texel1_color);
+          break;
+       case 3:
+          *input_r = &COLOR_RED(prim_color);
+          *input_g = &COLOR_GREEN(prim_color);
+          *input_b = &COLOR_BLUE(prim_color);
+          break;
+       case 4:
+          *input_r = &COLOR_RED(shade_color);
+          *input_g = &COLOR_GREEN(shade_color);
+          *input_b = &COLOR_BLUE(shade_color);
+          break;
+       case 5:
+          *input_r = &COLOR_RED(env_color);
+          *input_g = &COLOR_GREEN(env_color);
+          *input_b = &COLOR_BLUE(env_color);
+          break;
+       case 6:
+          *input_r = &COLOR_RED(key_center);
+          *input_g = &COLOR_GREEN(key_center);
+          *input_b = &COLOR_BLUE(key_center);
+          break;
+       case 7:
+          *input_r = &k4;
+          *input_g = &k4;
+          *input_b = &k4;
+          break;
+       case 8:
+       case 9:
+       case 10:
+       case 11:
+       case 12:
+       case 13:
+       case 14:
+       case 15:
+          *input_r = &zero_color;
+          *input_g = &zero_color;
+          *input_b = &zero_color;
+          break;
     }
 }
 
@@ -870,55 +983,166 @@ static INLINE void SET_MUL_RGB_INPUT(INT32 **input_r, INT32 **input_g, INT32 **i
 {
     switch (code & 0x1f)
     {
-        case 0:        *input_r = &combined_color.r;    *input_g = &combined_color.g;    *input_b = &combined_color.b;    break;
-        case 1:        *input_r = &texel0_color.r;        *input_g = &texel0_color.g;        *input_b = &texel0_color.b;        break;
-        case 2:        *input_r = &texel1_color.r;        *input_g = &texel1_color.g;        *input_b = &texel1_color.b;        break;
-        case 3:        *input_r = &prim_color.r;        *input_g = &prim_color.g;        *input_b = &prim_color.b;        break;
-        case 4:        *input_r = &shade_color.r;        *input_g = &shade_color.g;        *input_b = &shade_color.b;        break;
-        case 5:        *input_r = &env_color.r;        *input_g = &env_color.g;        *input_b = &env_color.b;        break;
-        case 6:        *input_r = &key_scale.r;        *input_g = &key_scale.g;        *input_b = &key_scale.b;        break;
-        case 7:        *input_r = &combined_color.a;    *input_g = &combined_color.a;    *input_b = &combined_color.a;    break;
-        case 8:        *input_r = &texel0_color.a;        *input_g = &texel0_color.a;        *input_b = &texel0_color.a;        break;
-        case 9:        *input_r = &texel1_color.a;        *input_g = &texel1_color.a;        *input_b = &texel1_color.a;        break;
-        case 10:    *input_r = &prim_color.a;        *input_g = &prim_color.a;        *input_b = &prim_color.a;        break;
-        case 11:    *input_r = &shade_color.a;        *input_g = &shade_color.a;        *input_b = &shade_color.a;        break;
-        case 12:    *input_r = &env_color.a;        *input_g = &env_color.a;        *input_b = &env_color.a;        break;
-        case 13:    *input_r = &lod_frac;            *input_g = &lod_frac;            *input_b = &lod_frac;            break;
-        case 14:    *input_r = &primitive_lod_frac;    *input_g = &primitive_lod_frac;    *input_b = &primitive_lod_frac; break;
-        case 15:    *input_r = &k5;                    *input_g = &k5;                    *input_b = &k5;                    break;
-        case 16: case 17: case 18: case 19: case 20: case 21: case 22: case 23:
-        case 24: case 25: case 26: case 27: case 28: case 29: case 30: case 31:
-        {
-            *input_r = &zero_color;        *input_g = &zero_color;        *input_b = &zero_color;        break;
-        }
+       case 0:
+          *input_r = &COLOR_RED(combined_color);
+          *input_g = &COLOR_GREEN(combined_color);
+          *input_b = &COLOR_BLUE(combined_color);
+          break;
+       case 1:
+          *input_r = &COLOR_RED(texel0_color);
+          *input_g = &COLOR_GREEN(texel0_color);
+          *input_b = &COLOR_BLUE(texel0_color);
+          break;
+       case 2:
+          *input_r = &COLOR_RED(texel1_color);
+          *input_g = &COLOR_GREEN(texel1_color);
+          *input_b = &COLOR_BLUE(texel1_color);
+          break;
+       case 3:
+          *input_r = &COLOR_RED(prim_color);
+          *input_g = &COLOR_GREEN(prim_color);
+          *input_b = &COLOR_BLUE(prim_color);
+          break;
+       case 4:
+          *input_r = &COLOR_RED(shade_color);
+          *input_g = &COLOR_GREEN(shade_color);
+          *input_b = &COLOR_BLUE(shade_color);
+          break;
+       case 5:
+          *input_r = &COLOR_RED(env_color);
+          *input_g = &COLOR_GREEN(env_color);
+          *input_b = &COLOR_BLUE(env_color);
+          break;
+       case 6:
+          *input_r = &COLOR_RED(key_scale);
+          *input_g = &COLOR_GREEN(key_scale);
+          *input_b = &COLOR_BLUE(key_scale);
+          break;
+       case 7:
+          *input_r = &COLOR_ALPHA(combined_color);
+          *input_g = &COLOR_ALPHA(combined_color);
+          *input_b = &COLOR_ALPHA(combined_color);
+          break;
+       case 8:
+          *input_r = &COLOR_ALPHA(texel0_color);
+          *input_g = &COLOR_ALPHA(texel0_color);
+          *input_b = &COLOR_ALPHA(texel0_color);
+          break;
+       case 9:
+          *input_r = &COLOR_ALPHA(texel1_color);
+          *input_g = &COLOR_ALPHA(texel1_color);
+          *input_b = &COLOR_ALPHA(texel1_color);
+          break;
+       case 10:
+          *input_r = &COLOR_ALPHA(prim_color);
+          *input_g = &COLOR_ALPHA(prim_color);
+          *input_b = &COLOR_ALPHA(prim_color); 
+          break;
+       case 11:
+          *input_r = &COLOR_ALPHA(shade_color);
+          *input_g = &COLOR_ALPHA(shade_color);
+          *input_b = &COLOR_ALPHA(shade_color);
+          break;
+       case 12:
+          *input_r = &COLOR_ALPHA(env_color);
+          *input_g = &COLOR_ALPHA(env_color);
+          *input_b = &COLOR_ALPHA(env_color);
+          break;
+       case 13:
+          *input_r = &lod_frac;
+          *input_g = &lod_frac;
+          *input_b = &lod_frac;
+          break;
+       case 14:
+          *input_r = &primitive_lod_frac;
+          *input_g = &primitive_lod_frac;
+          *input_b = &primitive_lod_frac;
+          break;
+       case 15:
+          *input_r = &k5;
+          *input_g = &k5;
+          *input_b = &k5;
+          break;
+       case 16:
+       case 17:
+       case 18:
+       case 19:
+       case 20:
+       case 21:
+       case 22:
+       case 23:
+       case 24:
+       case 25:
+       case 26:
+       case 27:
+       case 28:
+       case 29:
+       case 30:
+       case 31:
+          *input_r = &zero_color;
+          *input_g = &zero_color;
+          *input_b = &zero_color;
+          break;
     }
 }
 
 static INLINE void SET_ADD_RGB_INPUT(INT32 **input_r, INT32 **input_g, INT32 **input_b, int code)
 {
-    switch (code & 0x7)
-    {
-        case 0:        *input_r = &combined_color.r;    *input_g = &combined_color.g;    *input_b = &combined_color.b;    break;
-        case 1:        *input_r = &texel0_color.r;        *input_g = &texel0_color.g;        *input_b = &texel0_color.b;        break;
-        case 2:        *input_r = &texel1_color.r;        *input_g = &texel1_color.g;        *input_b = &texel1_color.b;        break;
-        case 3:        *input_r = &prim_color.r;        *input_g = &prim_color.g;        *input_b = &prim_color.b;        break;
-        case 4:        *input_r = &shade_color.r;        *input_g = &shade_color.g;        *input_b = &shade_color.b;        break;
-        case 5:        *input_r = &env_color.r;        *input_g = &env_color.g;        *input_b = &env_color.b;        break;
-        case 6:        *input_r = &one_color;            *input_g = &one_color;            *input_b = &one_color;            break;
-        case 7:        *input_r = &zero_color;            *input_g = &zero_color;            *input_b = &zero_color;            break;
-    }
+   switch (code & 0x7)
+   {
+      case 0:
+         *input_r = &COLOR_RED(combined_color);
+         *input_g = &COLOR_GREEN(combined_color);
+         *input_b = &COLOR_BLUE(combined_color);
+         break;
+      case 1:
+         *input_r = &COLOR_RED(texel0_color);
+         *input_g = &COLOR_GREEN(texel0_color);
+         *input_b = &COLOR_BLUE(texel0_color);
+         break;
+      case 2:
+         *input_r = &COLOR_RED(texel1_color);
+         *input_g = &COLOR_GREEN(texel1_color);
+         *input_b = &COLOR_BLUE(texel1_color);
+         break;
+      case 3:
+         *input_r = &COLOR_RED(prim_color);
+         *input_g = &COLOR_GREEN(prim_color);
+         *input_b = &COLOR_BLUE(prim_color);
+         break;
+      case 4:
+         *input_r = &COLOR_RED(shade_color);
+         *input_g = &COLOR_GREEN(shade_color);
+         *input_b = &COLOR_BLUE(shade_color);
+         break;
+      case 5:
+         *input_r = &COLOR_RED(env_color);
+         *input_g = &COLOR_GREEN(env_color);
+         *input_b = &COLOR_BLUE(env_color);
+         break;
+      case 6:
+         *input_r = &one_color;
+         *input_g = &one_color;
+         *input_b = &one_color;
+         break;
+      case 7:
+         *input_r = &zero_color;
+         *input_g = &zero_color;
+         *input_b = &zero_color;
+         break;
+   }
 }
 
 static INLINE void SET_SUB_ALPHA_INPUT(INT32 **input, int code)
 {
     switch (code & 0x7)
     {
-        case 0:        *input = &combined_color.a; break;
-        case 1:        *input = &texel0_color.a; break;
-        case 2:        *input = &texel1_color.a; break;
-        case 3:        *input = &prim_color.a; break;
-        case 4:        *input = &shade_color.a; break;
-        case 5:        *input = &env_color.a; break;
+        case 0:        *input = &COLOR_ALPHA(combined_color); break;
+        case 1:        *input = &COLOR_ALPHA(texel0_color); break;
+        case 2:        *input = &COLOR_ALPHA(texel1_color); break;
+        case 3:        *input = &COLOR_ALPHA(prim_color); break;
+        case 4:        *input = &COLOR_ALPHA(shade_color); break;
+        case 5:        *input = &COLOR_ALPHA(env_color); break;
         case 6:        *input = &one_color; break;
         case 7:        *input = &zero_color; break;
     }
@@ -928,14 +1152,30 @@ static INLINE void SET_MUL_ALPHA_INPUT(INT32 **input, int code)
 {
     switch (code & 0x7)
     {
-        case 0:        *input = &lod_frac; break;
-        case 1:        *input = &texel0_color.a; break;
-        case 2:        *input = &texel1_color.a; break;
-        case 3:        *input = &prim_color.a; break;
-        case 4:        *input = &shade_color.a; break;
-        case 5:        *input = &env_color.a; break;
-        case 6:        *input = &primitive_lod_frac; break;
-        case 7:        *input = &zero_color; break;
+       case 0:
+          *input = &lod_frac;
+          break;
+       case 1:
+          *input = &COLOR_ALPHA(texel0_color);
+          break;
+       case 2:
+          *input = &COLOR_ALPHA(texel1_color);
+          break;
+       case 3:
+          *input = &COLOR_ALPHA(prim_color);
+          break;
+       case 4:
+          *input = &COLOR_ALPHA(shade_color);
+          break;
+       case 5:
+          *input = &COLOR_ALPHA(env_color);
+          break;
+       case 6:
+          *input = &primitive_lod_frac;
+          break;
+       case 7:
+          *input = &zero_color;
+          break;
     }
 }
 
@@ -947,68 +1187,64 @@ static void combiner_1cycle(int adseed, UINT32* curpixel_cvg)
 
     if (other_modes.key_en)
     {
-       chromabypass.r = *combiner_rgbsub_a_r[1];
-       chromabypass.g = *combiner_rgbsub_a_g[1];
-       chromabypass.b = *combiner_rgbsub_a_b[1];
+       COLOR_RED(chromabypass)   = *combiner_rgbsub_a_r[1];
+       COLOR_GREEN(chromabypass) = *combiner_rgbsub_a_g[1];
+       COLOR_BLUE(chromabypass)  = *combiner_rgbsub_a_b[1];
     }
     
+    COLOR_RED(combined_color) = color_combiner_equation(*combiner_rgbsub_a_r[1],*combiner_rgbsub_b_r[1],*combiner_rgbmul_r[1],*combiner_rgbadd_r[1]);
+    COLOR_GREEN(combined_color) = color_combiner_equation(*combiner_rgbsub_a_g[1],*combiner_rgbsub_b_g[1],*combiner_rgbmul_g[1],*combiner_rgbadd_g[1]);
+    COLOR_BLUE(combined_color) = color_combiner_equation(*combiner_rgbsub_a_b[1],*combiner_rgbsub_b_b[1],*combiner_rgbmul_b[1],*combiner_rgbadd_b[1]);
+    COLOR_ALPHA(combined_color) = alpha_combiner_equation(*combiner_alphasub_a[1],*combiner_alphasub_b[1],*combiner_alphamul[1],*combiner_alphaadd[1]);
 
-    
-    combined_color.r = color_combiner_equation(*combiner_rgbsub_a_r[1],*combiner_rgbsub_b_r[1],*combiner_rgbmul_r[1],*combiner_rgbadd_r[1]);
-    combined_color.g = color_combiner_equation(*combiner_rgbsub_a_g[1],*combiner_rgbsub_b_g[1],*combiner_rgbmul_g[1],*combiner_rgbadd_g[1]);
-    combined_color.b = color_combiner_equation(*combiner_rgbsub_a_b[1],*combiner_rgbsub_b_b[1],*combiner_rgbmul_b[1],*combiner_rgbadd_b[1]);
-    combined_color.a = alpha_combiner_equation(*combiner_alphasub_a[1],*combiner_alphasub_b[1],*combiner_alphamul[1],*combiner_alphaadd[1]);
-
-    pixel_color.a = special_9bit_clamptable[combined_color.a];
-    if (pixel_color.a == 0xff)
-        pixel_color.a = 0x100;
+    COLOR_ALPHA(pixel_color) = special_9bit_clamptable[COLOR_ALPHA(combined_color)];
+    if (COLOR_ALPHA(pixel_color) == 0xff)
+        COLOR_ALPHA(pixel_color) = 0x100;
 
     if (!other_modes.key_en)
     {
-        
-        combined_color.r >>= 8;
-        combined_color.g >>= 8;
-        combined_color.b >>= 8;
-        pixel_color.r = special_9bit_clamptable[combined_color.r];
-        pixel_color.g = special_9bit_clamptable[combined_color.g];
-        pixel_color.b = special_9bit_clamptable[combined_color.b];
+        COLOR_RED(combined_color)   >>= 8;
+        COLOR_GREEN(combined_color) >>= 8;
+        COLOR_BLUE(combined_color)  >>= 8;
+        COLOR_RED(pixel_color)        = special_9bit_clamptable[COLOR_RED(combined_color)];
+        COLOR_GREEN(pixel_color)      = special_9bit_clamptable[COLOR_GREEN(combined_color)];
+        COLOR_BLUE(pixel_color)       = special_9bit_clamptable[COLOR_BLUE(combined_color)];
     }
     else
     {
-        redkey = SIGN(combined_color.r, 17);
+        redkey = SIGN(COLOR_RED(combined_color), 17);
         if (redkey >= 0)
-            redkey = (key_width.r << 4) - redkey;
+            redkey = (COLOR_RED(key_width) << 4) - redkey;
         else
-            redkey = (key_width.r << 4) + redkey;
-        greenkey = SIGN(combined_color.g, 17);
+            redkey = (COLOR_RED(key_width) << 4) + redkey;
+        greenkey = SIGN(COLOR_GREEN(combined_color), 17);
         if (greenkey >= 0)
-            greenkey = (key_width.g << 4) - greenkey;
+            greenkey = (COLOR_GREEN(key_width) << 4) - greenkey;
         else
-            greenkey = (key_width.g << 4) + greenkey;
-        bluekey = SIGN(combined_color.b, 17);
+            greenkey = (COLOR_GREEN(key_width) << 4) + greenkey;
+        bluekey = SIGN(COLOR_BLUE(combined_color), 17);
         if (bluekey >= 0)
-            bluekey = (key_width.b << 4) - bluekey;
+            bluekey = (COLOR_BLUE(key_width) << 4) - bluekey;
         else
-            bluekey = (key_width.b << 4) + bluekey;
+            bluekey = (COLOR_BLUE(key_width) << 4) + bluekey;
         keyalpha = (redkey < greenkey) ? redkey : greenkey;
         keyalpha = (bluekey < keyalpha) ? bluekey : keyalpha;
         keyalpha = CLIP(keyalpha, 0, 0xff);
 
         
-        pixel_color.r = special_9bit_clamptable[chromabypass.r];
-        pixel_color.g = special_9bit_clamptable[chromabypass.g];
-        pixel_color.b = special_9bit_clamptable[chromabypass.b];
+        COLOR_RED(pixel_color)   = special_9bit_clamptable[COLOR_RED(chromabypass)];
+        COLOR_GREEN(pixel_color) = special_9bit_clamptable[COLOR_GREEN(chromabypass)];
+        COLOR_BLUE(pixel_color)  = special_9bit_clamptable[COLOR_BLUE(chromabypass)];
 
-        
-        combined_color.r >>= 8;
-        combined_color.g >>= 8;
-        combined_color.b >>= 8;
+        COLOR_RED(combined_color)   >>= 8;
+        COLOR_GREEN(combined_color) >>= 8;
+        COLOR_BLUE(combined_color)  >>= 8;
     }
     
     
     if (other_modes.cvg_times_alpha)
     {
-        temp = (pixel_color.a * (*curpixel_cvg) + 4) >> 3;
+        temp = (COLOR_ALPHA(pixel_color) * (*curpixel_cvg) + 4) >> 3;
         *curpixel_cvg = (temp >> 5) & 0xf;
     }
 
@@ -1016,27 +1252,26 @@ static void combiner_1cycle(int adseed, UINT32* curpixel_cvg)
     {    
         if (!other_modes.key_en)
         {
-            pixel_color.a += adseed;
-            if (pixel_color.a & 0x100)
-                pixel_color.a = 0xff;
+            COLOR_ALPHA(pixel_color) += adseed;
+            if (COLOR_ALPHA(pixel_color) & 0x100)
+                COLOR_ALPHA(pixel_color) = 0xff;
         }
         else
-            pixel_color.a = keyalpha;
+            COLOR_ALPHA(pixel_color) = keyalpha;
     }
     else
     {
         if (other_modes.cvg_times_alpha)
-            pixel_color.a = temp;
+            COLOR_ALPHA(pixel_color) = temp;
         else
-            pixel_color.a = (*curpixel_cvg) << 5;
-        if (pixel_color.a > 0xff)
-            pixel_color.a = 0xff;
+            COLOR_ALPHA(pixel_color) = (*curpixel_cvg) << 5;
+        if (COLOR_ALPHA(pixel_color) > 0xff)
+            COLOR_ALPHA(pixel_color) = 0xff;
     }
     
-
-    shade_color.a += adseed;
-    if (shade_color.a & 0x100)
-        shade_color.a = 0xff;
+    COLOR_ALPHA(shade_color) += adseed;
+    if (COLOR_ALPHA(shade_color) & 0x100)
+        COLOR_ALPHA(shade_color) = 0xff;
 }
 
 static void combiner_2cycle(int adseed, UINT32* curpixel_cvg, INT32* acalpha)
@@ -1046,42 +1281,42 @@ static void combiner_2cycle(int adseed, UINT32* curpixel_cvg, INT32* acalpha)
 
     if (other_modes.key_en)
     {
-       chromabypass.r = *combiner_rgbsub_a_r[1];
-       chromabypass.g = *combiner_rgbsub_a_g[1];
-       chromabypass.b = *combiner_rgbsub_a_b[1];
+       COLOR_RED(chromabypass)   = *combiner_rgbsub_a_r[1];
+       COLOR_GREEN(chromabypass) = *combiner_rgbsub_a_g[1];
+       COLOR_BLUE(chromabypass)  = *combiner_rgbsub_a_b[1];
     }
 
-    combined_color.r = color_combiner_equation(*combiner_rgbsub_a_r[0],*combiner_rgbsub_b_r[0],*combiner_rgbmul_r[0],*combiner_rgbadd_r[0]);
-    combined_color.g = color_combiner_equation(*combiner_rgbsub_a_g[0],*combiner_rgbsub_b_g[0],*combiner_rgbmul_g[0],*combiner_rgbadd_g[0]);
-    combined_color.b = color_combiner_equation(*combiner_rgbsub_a_b[0],*combiner_rgbsub_b_b[0],*combiner_rgbmul_b[0],*combiner_rgbadd_b[0]);
-    combined_color.a = alpha_combiner_equation(*combiner_alphasub_a[0],*combiner_alphasub_b[0],*combiner_alphamul[0],*combiner_alphaadd[0]);
+    COLOR_RED(combined_color) = color_combiner_equation(*combiner_rgbsub_a_r[0],*combiner_rgbsub_b_r[0],*combiner_rgbmul_r[0],*combiner_rgbadd_r[0]);
+    COLOR_GREEN(combined_color) = color_combiner_equation(*combiner_rgbsub_a_g[0],*combiner_rgbsub_b_g[0],*combiner_rgbmul_g[0],*combiner_rgbadd_g[0]);
+    COLOR_BLUE(combined_color) = color_combiner_equation(*combiner_rgbsub_a_b[0],*combiner_rgbsub_b_b[0],*combiner_rgbmul_b[0],*combiner_rgbadd_b[0]);
+    COLOR_ALPHA(combined_color) = alpha_combiner_equation(*combiner_alphasub_a[0],*combiner_alphasub_b[0],*combiner_alphamul[0],*combiner_alphaadd[0]);
 
     if (other_modes.alpha_compare_en)
     {
         INT32 preacalpha;
         if (other_modes.key_en)
         {
-            redkey = SIGN(combined_color.r, 17);
+            redkey = SIGN(COLOR_RED(combined_color), 17);
             if (redkey >= 0)
-                redkey = (key_width.r << 4) - redkey;
+                redkey = (COLOR_RED(key_width) << 4) - redkey;
             else
-                redkey = (key_width.r << 4) + redkey;
-            greenkey = SIGN(combined_color.g, 17);
+                redkey = (COLOR_RED(key_width) << 4) + redkey;
+            greenkey = SIGN(COLOR_GREEN(combined_color), 17);
             if (greenkey >= 0)
-                greenkey = (key_width.g << 4) - greenkey;
+                greenkey = (COLOR_GREEN(key_width) << 4) - greenkey;
             else
-                greenkey = (key_width.g << 4) + greenkey;
-            bluekey = SIGN(combined_color.b, 17);
+                greenkey = (COLOR_GREEN(key_width) << 4) + greenkey;
+            bluekey = SIGN(COLOR_BLUE(combined_color), 17);
             if (bluekey >= 0)
-                bluekey = (key_width.b << 4) - bluekey;
+                bluekey = (COLOR_BLUE(key_width) << 4) - bluekey;
             else
-                bluekey = (key_width.b << 4) + bluekey;
+                bluekey = (COLOR_BLUE(key_width) << 4) + bluekey;
             keyalpha = (redkey < greenkey) ? redkey : greenkey;
             keyalpha = (bluekey < keyalpha) ? bluekey : keyalpha;
             keyalpha = CLIP(keyalpha, 0, 0xff);
         }
 
-        preacalpha = special_9bit_clamptable[combined_color.a];
+        preacalpha = special_9bit_clamptable[COLOR_ALPHA(combined_color)];
         if (preacalpha == 0xff)
             preacalpha = 0x100;
 
@@ -1112,77 +1347,72 @@ static void combiner_2cycle(int adseed, UINT32* curpixel_cvg, INT32* acalpha)
         *acalpha = preacalpha;
     }
 
-    combined_color.r >>= 8;
-    combined_color.g >>= 8;
-    combined_color.b >>= 8;
+    COLOR_RED(combined_color)   >>= 8;
+    COLOR_GREEN(combined_color) >>= 8;
+    COLOR_BLUE(combined_color)  >>= 8;
 
-    
+#ifdef VECTORSUPPORT
+    memcpy(texel0_color,  texel1_color,    sizeof(COLOR));
+    memcpy(texel1_color,  nexttexel_color, sizeof(COLOR));
+#else
     texel0_color = texel1_color;
     texel1_color = nexttexel_color;
+#endif
 
-    
-    
-    
-    
-    
-    
-    
-
-    combined_color.r = color_combiner_equation(*combiner_rgbsub_a_r[1],*combiner_rgbsub_b_r[1],*combiner_rgbmul_r[1],*combiner_rgbadd_r[1]);
-    combined_color.g = color_combiner_equation(*combiner_rgbsub_a_g[1],*combiner_rgbsub_b_g[1],*combiner_rgbmul_g[1],*combiner_rgbadd_g[1]);
-    combined_color.b = color_combiner_equation(*combiner_rgbsub_a_b[1],*combiner_rgbsub_b_b[1],*combiner_rgbmul_b[1],*combiner_rgbadd_b[1]);
-    combined_color.a = alpha_combiner_equation(*combiner_alphasub_a[1],*combiner_alphasub_b[1],*combiner_alphamul[1],*combiner_alphaadd[1]);
+    COLOR_RED(combined_color)   = color_combiner_equation(*combiner_rgbsub_a_r[1],*combiner_rgbsub_b_r[1],*combiner_rgbmul_r[1],*combiner_rgbadd_r[1]);
+    COLOR_GREEN(combined_color) = color_combiner_equation(*combiner_rgbsub_a_g[1],*combiner_rgbsub_b_g[1],*combiner_rgbmul_g[1],*combiner_rgbadd_g[1]);
+    COLOR_BLUE(combined_color)  = color_combiner_equation(*combiner_rgbsub_a_b[1],*combiner_rgbsub_b_b[1],*combiner_rgbmul_b[1],*combiner_rgbadd_b[1]);
+    COLOR_ALPHA(combined_color) = alpha_combiner_equation(*combiner_alphasub_a[1],*combiner_alphasub_b[1],*combiner_alphamul[1],*combiner_alphaadd[1]);
 
     if (!other_modes.key_en)
     {
         
-        combined_color.r >>= 8;
-        combined_color.g >>= 8;
-        combined_color.b >>= 8;
+        COLOR_RED(combined_color)   >>= 8;
+        COLOR_GREEN(combined_color) >>= 8;
+        COLOR_BLUE(combined_color)  >>= 8;
 
-        pixel_color.r = special_9bit_clamptable[combined_color.r];
-        pixel_color.g = special_9bit_clamptable[combined_color.g];
-        pixel_color.b = special_9bit_clamptable[combined_color.b];
+        COLOR_RED(pixel_color)   = special_9bit_clamptable[COLOR_RED(combined_color)];
+        COLOR_GREEN(pixel_color) = special_9bit_clamptable[COLOR_GREEN(combined_color)];
+        COLOR_BLUE(pixel_color)  = special_9bit_clamptable[COLOR_BLUE(combined_color)];
     }
     else
     {
-        redkey = SIGN(combined_color.r, 17);
+        redkey = SIGN(COLOR_RED(combined_color), 17);
         if (redkey >= 0)
-            redkey = (key_width.r << 4) - redkey;
+            redkey = (COLOR_RED(key_width) << 4) - redkey;
         else
-            redkey = (key_width.r << 4) + redkey;
-        greenkey = SIGN(combined_color.g, 17);
+            redkey = (COLOR_RED(key_width) << 4) + redkey;
+        greenkey = SIGN(COLOR_GREEN(combined_color), 17);
         if (greenkey >= 0)
-            greenkey = (key_width.g << 4) - greenkey;
+            greenkey = (COLOR_GREEN(key_width) << 4) - greenkey;
         else
-            greenkey = (key_width.g << 4) + greenkey;
-        bluekey = SIGN(combined_color.b, 17);
+            greenkey = (COLOR_GREEN(key_width) << 4) + greenkey;
+        bluekey = SIGN(COLOR_BLUE(combined_color), 17);
         if (bluekey >= 0)
-            bluekey = (key_width.b << 4) - bluekey;
+            bluekey = (COLOR_BLUE(key_width) << 4) - bluekey;
         else
-            bluekey = (key_width.b << 4) + bluekey;
+            bluekey = (COLOR_BLUE(key_width) << 4) + bluekey;
         keyalpha = (redkey < greenkey) ? redkey : greenkey;
         keyalpha = (bluekey < keyalpha) ? bluekey : keyalpha;
         keyalpha = CLIP(keyalpha, 0, 0xff);
 
+        COLOR_RED(pixel_color)   = special_9bit_clamptable[COLOR_RED(chromabypass)];
+        COLOR_GREEN(pixel_color) = special_9bit_clamptable[COLOR_GREEN(chromabypass)];
+        COLOR_BLUE(pixel_color)  = special_9bit_clamptable[COLOR_BLUE(chromabypass)];
         
-        pixel_color.r = special_9bit_clamptable[chromabypass.r];
-        pixel_color.g = special_9bit_clamptable[chromabypass.g];
-        pixel_color.b = special_9bit_clamptable[chromabypass.b];
-        
-        combined_color.r >>= 8;
-        combined_color.g >>= 8;
-        combined_color.b >>= 8;
+        COLOR_RED(combined_color)   >>= 8;
+        COLOR_GREEN(combined_color) >>= 8;
+        COLOR_BLUE(combined_color)  >>= 8;
     }
     
-    pixel_color.a = special_9bit_clamptable[combined_color.a];
-    if (pixel_color.a == 0xff)
-        pixel_color.a = 0x100;
+    COLOR_ALPHA(pixel_color) = special_9bit_clamptable[COLOR_ALPHA(combined_color)];
+    if (COLOR_ALPHA(pixel_color) == 0xff)
+        COLOR_ALPHA(pixel_color) = 0x100;
 
     
     if (other_modes.cvg_times_alpha)
     {
-        temp = (pixel_color.a * (*curpixel_cvg) + 4) >> 3;
+        temp = (COLOR_ALPHA(pixel_color) * (*curpixel_cvg) + 4) >> 3;
         *curpixel_cvg = (temp >> 5) & 0xf;
     }
 
@@ -1190,27 +1420,28 @@ static void combiner_2cycle(int adseed, UINT32* curpixel_cvg, INT32* acalpha)
     {
         if (!other_modes.key_en)
         {
-            pixel_color.a += adseed;
-            if (pixel_color.a & 0x100)
-                pixel_color.a = 0xff;
+            COLOR_ALPHA(pixel_color) += adseed;
+            if (COLOR_ALPHA(pixel_color) & 0x100)
+                COLOR_ALPHA(pixel_color) = 0xff;
         }
         else
-            pixel_color.a = keyalpha;
+            COLOR_ALPHA(pixel_color) = keyalpha;
     }
     else
     {
         if (other_modes.cvg_times_alpha)
-            pixel_color.a = temp;
+            COLOR_ALPHA(pixel_color) = temp;
         else
-            pixel_color.a = (*curpixel_cvg) << 5;
-        if (pixel_color.a > 0xff)
-            pixel_color.a = 0xff;
+            COLOR_ALPHA(pixel_color) = (*curpixel_cvg) << 5;
+
+        if (COLOR_ALPHA(pixel_color) > 0xff)
+            COLOR_ALPHA(pixel_color) = 0xff;
     }
     
 
-    shade_color.a += adseed;
-    if (shade_color.a & 0x100)
-        shade_color.a = 0xff;
+    COLOR_ALPHA(shade_color) += adseed;
+    if (COLOR_ALPHA(shade_color) & 0x100)
+        COLOR_ALPHA(shade_color) = 0xff;
 }
 
 static void precalculate_everything(void)
@@ -1375,7 +1606,7 @@ static int blender_1cycle(UINT32* fr, UINT32* fg, UINT32* fb, int dith, UINT32 b
     int r, g, b, dontblend;
     
     
-    if (alpha_compare(pixel_color.a))
+    if (alpha_compare(COLOR_ALPHA(pixel_color)))
     {
 
         
@@ -1388,7 +1619,7 @@ static int blender_1cycle(UINT32* fr, UINT32* fg, UINT32* fb, int dith, UINT32 b
 
             if (!other_modes.color_on_cvg || prewrap)
             {
-                dontblend = (other_modes.f.partialreject_1cycle && pixel_color.a >= 0xff);
+                dontblend = (other_modes.f.partialreject_1cycle && COLOR_ALPHA(pixel_color) >= 0xff);
                 if (!blend_en || dontblend)
                 {
                     r = *blender1a_r[0];
@@ -1397,7 +1628,7 @@ static int blender_1cycle(UINT32* fr, UINT32* fg, UINT32* fb, int dith, UINT32 b
                 }
                 else
                 {
-                    inv_pixel_color.a =  (~(*blender1b_a[0])) & 0xff;
+                    COLOR_ALPHA(inv_pixel_color) =  (~(*blender1b_a[0])) & 0xff;
                     
                     
                     
@@ -1436,22 +1667,24 @@ int blender_2cycle(UINT32* fr, UINT32* fg, UINT32* fb, int dith, UINT32 blend_en
     {
         if (other_modes.antialias_en ? (curpixel_cvg) : (curpixel_cvbit))
         {
-            
-            inv_pixel_color.a =  (~(*blender1b_a[0])) & 0xff;
+            COLOR_ALPHA(inv_pixel_color) =  (~(*blender1b_a[0])) & 0xff;
 
             blender_equation_cycle0_2(&r, &g, &b);
-
             
+#ifdef VECTORSUPPORT
+            memcpy(memory_color, pre_memory_color, sizeof(COLOR));
+#else
             memory_color = pre_memory_color;
+#endif
 
-            blended_pixel_color.r = r;
-            blended_pixel_color.g = g;
-            blended_pixel_color.b = b;
-            blended_pixel_color.a = pixel_color.a;
+            COLOR_RED(blended_pixel_color)   = r;
+            COLOR_GREEN(blended_pixel_color) = g;
+            COLOR_BLUE(blended_pixel_color)  = b;
+            COLOR_ALPHA(blended_pixel_color) = COLOR_ALPHA(pixel_color);
 
             if (!other_modes.color_on_cvg || prewrap)
             {
-                dontblend = (other_modes.f.partialreject_2cycle && pixel_color.a >= 0xff);
+                dontblend = (other_modes.f.partialreject_2cycle && COLOR_ALPHA(pixel_color) >= 0xff);
                 if (!blend_en || dontblend)
                 {
                     r = *blender1a_r[1];
@@ -1460,7 +1693,7 @@ int blender_2cycle(UINT32* fr, UINT32* fg, UINT32* fb, int dith, UINT32 blend_en
                 }
                 else
                 {
-                    inv_pixel_color.a =  (~(*blender1b_a[1])) & 0xff;
+                    COLOR_ALPHA(inv_pixel_color) =  (~(*blender1b_a[1])) & 0xff;
                     blender_equation_cycle1(&r, &g, &b);
                 }
             }
@@ -1480,13 +1713,21 @@ int blender_2cycle(UINT32* fr, UINT32* fg, UINT32* fb, int dith, UINT32 blend_en
         }
         else 
         {
+#ifdef VECTORSUPPORT
+           memcpy(memory_color, pre_memory_color, sizeof(COLOR));
+#else
            memory_color = pre_memory_color;
-            return 0;
+#endif
+           return 0;
         }
     }
     else 
     {
+#ifdef VECTORSUPPORT
+       memcpy(memory_color, pre_memory_color, sizeof(COLOR));
+#else
        memory_color = pre_memory_color;
+#endif
         return 0;
     }
 }
@@ -1523,10 +1764,10 @@ static void fetch_texel(COLOR *color, int s, int t, UINT32 tilenum)
             byteval = __TMEM[taddr & 0xfff];
             c = ((s & 1)) ? (byteval & 0xf) : (byteval >> 4);
             c |= (c << 4);
-            color->r = c;
-            color->g = c;
-            color->b = c;
-            color->a = c;
+            COLOR_RED_PTR(color) = c;
+            COLOR_GREEN_PTR(color) = c;
+            COLOR_BLUE_PTR(color) = c;
+            COLOR_ALPHA_PTR(color) = c;
         }
         break;
     case TEXEL_RGBA8:
@@ -1537,10 +1778,10 @@ static void fetch_texel(COLOR *color, int s, int t, UINT32 tilenum)
             taddr ^= ((t & 1) ? BYTE_XOR_DWORD_SWAP : BYTE_ADDR_XOR);
 
             p = __TMEM[taddr & 0xfff];
-            color->r = p;
-            color->g = p;
-            color->b = p;
-            color->a = p;
+            COLOR_RED_PTR(color) = p;
+            COLOR_GREEN_PTR(color) = p;
+            COLOR_BLUE_PTR(color) = p;
+            COLOR_ALPHA_PTR(color) = p;
         }
         break;
     case TEXEL_RGBA16:
@@ -1551,10 +1792,10 @@ static void fetch_texel(COLOR *color, int s, int t, UINT32 tilenum)
             taddr ^= ((t & 1) ? WORD_XOR_DWORD_SWAP : WORD_ADDR_XOR);
 
             c = tc16[taddr & 0x7ff];
-            color->r = GET_HI_RGBA16_TMEM(c);
-            color->g = GET_MED_RGBA16_TMEM(c);
-            color->b = GET_LOW_RGBA16_TMEM(c);
-            color->a = (c & 1) ? 0xff : 0;
+            COLOR_RED_PTR(color) = GET_HI_RGBA16_TMEM(c);
+            COLOR_GREEN_PTR(color) = GET_MED_RGBA16_TMEM(c);
+            COLOR_BLUE_PTR(color) = GET_LOW_RGBA16_TMEM(c);
+            COLOR_ALPHA_PTR(color) = (c & 1) ? 0xff : 0;
         }
         break;
     case TEXEL_RGBA32:
@@ -1566,11 +1807,11 @@ static void fetch_texel(COLOR *color, int s, int t, UINT32 tilenum)
 
             taddr &= 0x3ff;
             c = tc16[taddr];
-            color->r = c >> 8;
-            color->g = c & 0xff;
+            COLOR_RED_PTR(color) = c >> 8;
+            COLOR_GREEN_PTR(color) = c & 0xff;
             c = tc16[taddr | 0x400];
-            color->b = c >> 8;
-            color->a = c & 0xff;
+            COLOR_BLUE_PTR(color) = c >> 8;
+            COLOR_ALPHA_PTR(color) = c & 0xff;
         }
         break;
     case TEXEL_YUV4:
@@ -1585,10 +1826,10 @@ static void fetch_texel(COLOR *color, int s, int t, UINT32 tilenum)
 
             u = (u - 0x80) & 0x1ff;
 
-            color->r = u;
-            color->g = u;
-            color->b = save;
-            color->a = save;
+            COLOR_RED_PTR(color) = u;
+            COLOR_GREEN_PTR(color) = u;
+            COLOR_BLUE_PTR(color) = save;
+            COLOR_ALPHA_PTR(color) = save;
         }
         break;
     case TEXEL_YUV16:
@@ -1613,10 +1854,10 @@ static void fetch_texel(COLOR *color, int s, int t, UINT32 tilenum)
             u = (u - 0x80) & 0x1ff;
             v = (v - 0x80) & 0x1ff;
 
-            color->r = u;
-            color->g = v;
-            color->b = y;
-            color->a = y;
+            COLOR_RED_PTR(color) = u;
+            COLOR_GREEN_PTR(color) = v;
+            COLOR_BLUE_PTR(color) = y;
+            COLOR_ALPHA_PTR(color) = y;
         }
         break;
     case TEXEL_CI4:
@@ -1629,7 +1870,7 @@ static void fetch_texel(COLOR *color, int s, int t, UINT32 tilenum)
             p = __TMEM[taddr & 0xfff];
             p = (s & 1) ? (p & 0xf) : (p >> 4);
             p = (tpal << 4) | p;
-            color->r = color->g = color->b = color->a = p;
+            COLOR_RED_PTR(color) = COLOR_GREEN_PTR(color) = COLOR_BLUE_PTR(color) = COLOR_ALPHA_PTR(color) = p;
         }
         break;
     case TEXEL_CI8:
@@ -1640,10 +1881,10 @@ static void fetch_texel(COLOR *color, int s, int t, UINT32 tilenum)
             taddr ^= ((t & 1) ? BYTE_XOR_DWORD_SWAP : BYTE_ADDR_XOR);
 
             p = __TMEM[taddr & 0xfff];
-            color->r = p;
-            color->g = p;
-            color->b = p;
-            color->a = p;
+            COLOR_RED_PTR(color) = p;
+            COLOR_GREEN_PTR(color) = p;
+            COLOR_BLUE_PTR(color) = p;
+            COLOR_ALPHA_PTR(color) = p;
         }
         break;
     case TEXEL_CI16:
@@ -1654,10 +1895,10 @@ static void fetch_texel(COLOR *color, int s, int t, UINT32 tilenum)
             taddr ^= ((t & 1) ? WORD_XOR_DWORD_SWAP : WORD_ADDR_XOR);
 
             c = tc16[taddr & 0x7ff];
-            color->r = c >> 8;
-            color->g = c & 0xff;
-            color->b = color->r;
-            color->a = (c & 1) ? 0xff : 0;
+            COLOR_RED_PTR(color) = c >> 8;
+            COLOR_GREEN_PTR(color) = c & 0xff;
+            COLOR_BLUE_PTR(color) = COLOR_RED_PTR(color);
+            COLOR_ALPHA_PTR(color) = (c & 1) ? 0xff : 0;
         }
         break;
     case TEXEL_CI32:
@@ -1667,10 +1908,10 @@ static void fetch_texel(COLOR *color, int s, int t, UINT32 tilenum)
             taddr = (tbase << 2) + s;
             taddr ^= ((t & 1) ? WORD_XOR_DWORD_SWAP : WORD_ADDR_XOR);
             c = tc16[taddr & 0x7ff];
-            color->r = c >> 8;
-            color->g = c & 0xff;
-            color->b = color->r;
-            color->a = (c & 1) ? 0xff : 0;
+            COLOR_RED_PTR(color) = c >> 8;
+            COLOR_GREEN_PTR(color) = c & 0xff;
+            COLOR_BLUE_PTR(color) = COLOR_RED_PTR(color);
+            COLOR_ALPHA_PTR(color) = (c & 1) ? 0xff : 0;
         }
         break;
     case TEXEL_IA4:
@@ -1683,10 +1924,10 @@ static void fetch_texel(COLOR *color, int s, int t, UINT32 tilenum)
             p = (s & 1) ? (p & 0xf) : (p >> 4);
             i = p & 0xe;
             i = (i << 4) | (i << 1) | (i >> 2);
-            color->r = i;
-            color->g = i;
-            color->b = i;
-            color->a = (p & 0x1) ? 0xff : 0;
+            COLOR_RED_PTR(color) = i;
+            COLOR_GREEN_PTR(color) = i;
+            COLOR_BLUE_PTR(color) = i;
+            COLOR_ALPHA_PTR(color) = (p & 0x1) ? 0xff : 0;
         }
         break;
     case TEXEL_IA8:
@@ -1698,10 +1939,10 @@ static void fetch_texel(COLOR *color, int s, int t, UINT32 tilenum)
             p = __TMEM[taddr & 0xfff];
             i = p & 0xf0;
             i |= (i >> 4);
-            color->r = i;
-            color->g = i;
-            color->b = i;
-            color->a = ((p & 0xf) << 4) | (p & 0xf);
+            COLOR_RED_PTR(color) = i;
+            COLOR_GREEN_PTR(color) = i;
+            COLOR_BLUE_PTR(color) = i;
+            COLOR_ALPHA_PTR(color) = ((p & 0xf) << 4) | (p & 0xf);
         }
         break;
     case TEXEL_IA16:
@@ -1711,8 +1952,8 @@ static void fetch_texel(COLOR *color, int s, int t, UINT32 tilenum)
             taddr = (tbase << 2) + s;
             taddr ^= ((t & 1) ? WORD_XOR_DWORD_SWAP : WORD_ADDR_XOR);                         
             c = tc16[taddr & 0x7ff];
-            color->r = color->g = color->b = (c >> 8);
-            color->a = c & 0xff;
+            COLOR_RED_PTR(color) = COLOR_GREEN_PTR(color) = COLOR_BLUE_PTR(color) = (c >> 8);
+            COLOR_ALPHA_PTR(color) = c & 0xff;
         }
         break;
     case TEXEL_IA32:
@@ -1722,10 +1963,10 @@ static void fetch_texel(COLOR *color, int s, int t, UINT32 tilenum)
             taddr = (tbase << 2) + s;
             taddr ^= ((t & 1) ? WORD_XOR_DWORD_SWAP : WORD_ADDR_XOR);
             c = tc16[taddr & 0x7ff];
-            color->r = c >> 8;
-            color->g = c & 0xff;
-            color->b = color->r;
-            color->a = (c & 1) ? 0xff : 0;
+            COLOR_RED_PTR(color) = c >> 8;
+            COLOR_GREEN_PTR(color) = c & 0xff;
+            COLOR_BLUE_PTR(color) = COLOR_RED_PTR(color);
+            COLOR_ALPHA_PTR(color) = (c & 1) ? 0xff : 0;
         }
         break;
     case TEXEL_I4:
@@ -1737,10 +1978,10 @@ static void fetch_texel(COLOR *color, int s, int t, UINT32 tilenum)
             byteval = __TMEM[taddr & 0xfff];
             c = (s & 1) ? (byteval & 0xf) : (byteval >> 4);
             c |= (c << 4);
-            color->r = c;
-            color->g = c;
-            color->b = c;
-            color->a = c;
+            COLOR_RED_PTR(color) = c;
+            COLOR_GREEN_PTR(color) = c;
+            COLOR_BLUE_PTR(color) = c;
+            COLOR_ALPHA_PTR(color) = c;
         }
         break;
     case TEXEL_I8:
@@ -1750,10 +1991,10 @@ static void fetch_texel(COLOR *color, int s, int t, UINT32 tilenum)
             taddr = (tbase << 3) + s;
             taddr ^= ((t & 1) ? BYTE_XOR_DWORD_SWAP : BYTE_ADDR_XOR);
             c = __TMEM[taddr & 0xfff];
-            color->r = c;
-            color->g = c;
-            color->b = c;
-            color->a = c;
+            COLOR_RED_PTR(color) = c;
+            COLOR_GREEN_PTR(color) = c;
+            COLOR_BLUE_PTR(color) = c;
+            COLOR_ALPHA_PTR(color) = c;
         }
         break;
     case TEXEL_I16:
@@ -1763,10 +2004,10 @@ static void fetch_texel(COLOR *color, int s, int t, UINT32 tilenum)
             taddr = (tbase << 2) + s;
             taddr ^= ((t & 1) ? WORD_XOR_DWORD_SWAP : WORD_ADDR_XOR);    
             c = tc16[taddr & 0x7ff];
-            color->r = c >> 8;
-            color->g = c & 0xff;
-            color->b = color->r;
-            color->a = (c & 1) ? 0xff : 0;
+            COLOR_RED_PTR(color) = c >> 8;
+            COLOR_GREEN_PTR(color) = c & 0xff;
+            COLOR_BLUE_PTR(color) = COLOR_RED_PTR(color);
+            COLOR_ALPHA_PTR(color) = (c & 1) ? 0xff : 0;
         }
         break;
     case TEXEL_I32:
@@ -1776,10 +2017,10 @@ static void fetch_texel(COLOR *color, int s, int t, UINT32 tilenum)
             taddr = (tbase << 2) + s;
             taddr ^= ((t & 1) ? WORD_XOR_DWORD_SWAP : WORD_ADDR_XOR);   
             c = tc16[taddr & 0x7ff];
-            color->r = c >> 8;
-            color->g = c & 0xff;
-            color->b = color->r;
-            color->a = (c & 1) ? 0xff : 0;
+            COLOR_RED_PTR(color) = c >> 8;
+            COLOR_GREEN_PTR(color) = c & 0xff;
+            COLOR_BLUE_PTR(color) = COLOR_RED_PTR(color);
+            COLOR_ALPHA_PTR(color) = (c & 1) ? 0xff : 0;
         }
         break;
     }
@@ -1872,15 +2113,15 @@ static void fetch_texel_entlut(COLOR *color, int s, int t, UINT32 tilenum)
 
     if (!other_modes.tlut_type)
     {
-        color->r = GET_HI_RGBA16_TMEM(c);
-        color->g = GET_MED_RGBA16_TMEM(c);
-        color->b = GET_LOW_RGBA16_TMEM(c);
-        color->a = (c & 1) ? 0xff : 0;
+        COLOR_RED_PTR(color) = GET_HI_RGBA16_TMEM(c);
+        COLOR_GREEN_PTR(color) = GET_MED_RGBA16_TMEM(c);
+        COLOR_BLUE_PTR(color) = GET_LOW_RGBA16_TMEM(c);
+        COLOR_ALPHA_PTR(color) = (c & 1) ? 0xff : 0;
     }
     else
     {
-        color->r = color->g = color->b = c >> 8;
-        color->a = c & 0xff;
+        COLOR_RED_PTR(color) = COLOR_GREEN_PTR(color) = COLOR_BLUE_PTR(color) = c >> 8;
+        COLOR_ALPHA_PTR(color) = c & 0xff;
     }
 
 }
@@ -1926,33 +2167,33 @@ static void fetch_texel_quadro(COLOR *color0, COLOR *color1, COLOR *color2, COLO
             byteval = __TMEM[taddr0];
             c = (ands) ? (byteval & 0xf) : (byteval >> 4);
             c |= (c << 4);
-            color0->r = c;
-            color0->g = c;
-            color0->b = c;
-            color0->a = c;
+            COLOR_RED_PTR(color0) = c;
+            COLOR_GREEN_PTR(color0) = c;
+            COLOR_BLUE_PTR(color0) = c;
+            COLOR_ALPHA_PTR(color0) = c;
             byteval = __TMEM[taddr2];
             c = (ands) ? (byteval & 0xf) : (byteval >> 4);
             c |= (c << 4);
-            color2->r = c;
-            color2->g = c;
-            color2->b = c;
-            color2->a = c;
+            COLOR_RED_PTR(color2) = c;
+            COLOR_GREEN_PTR(color2) = c;
+            COLOR_BLUE_PTR(color2) = c;
+            COLOR_ALPHA_PTR(color2) = c;
 
             ands = s1 & 1;
             byteval = __TMEM[taddr1];
             c = (ands) ? (byteval & 0xf) : (byteval >> 4);
             c |= (c << 4);
-            color1->r = c;
-            color1->g = c;
-            color1->b = c;
-            color1->a = c;
+            COLOR_RED_PTR(color1) = c;
+            COLOR_GREEN_PTR(color1) = c;
+            COLOR_BLUE_PTR(color1) = c;
+            COLOR_ALPHA_PTR(color1) = c;
             byteval = __TMEM[taddr3];
             c = (ands) ? (byteval & 0xf) : (byteval >> 4);
             c |= (c << 4);
-            color3->r = c;
-            color3->g = c;
-            color3->b = c;
-            color3->a = c;
+            COLOR_RED_PTR(color3) = c;
+            COLOR_GREEN_PTR(color3) = c;
+            COLOR_BLUE_PTR(color3) = c;
+            COLOR_ALPHA_PTR(color3) = c;
         }
         break;
     case TEXEL_RGBA8:
@@ -1974,25 +2215,25 @@ static void fetch_texel_quadro(COLOR *color0, COLOR *color1, COLOR *color2, COLO
             taddr2 &= 0xfff;
             taddr3 &= 0xfff;
             p = __TMEM[taddr0];
-            color0->r = p;
-            color0->g = p;
-            color0->b = p;
-            color0->a = p;
+            COLOR_RED_PTR(color0) = p;
+            COLOR_GREEN_PTR(color0) = p;
+            COLOR_BLUE_PTR(color0) = p;
+            COLOR_ALPHA_PTR(color0) = p;
             p = __TMEM[taddr2];
-            color2->r = p;
-            color2->g = p;
-            color2->b = p;
-            color2->a = p;
+            COLOR_RED_PTR(color2) = p;
+            COLOR_GREEN_PTR(color2) = p;
+            COLOR_BLUE_PTR(color2) = p;
+            COLOR_ALPHA_PTR(color2) = p;
             p = __TMEM[taddr1];
-            color1->r = p;
-            color1->g = p;
-            color1->b = p;
-            color1->a = p;
+            COLOR_RED_PTR(color1) = p;
+            COLOR_GREEN_PTR(color1) = p;
+            COLOR_BLUE_PTR(color1) = p;
+            COLOR_ALPHA_PTR(color1) = p;
             p = __TMEM[taddr3];
-            color3->r = p;
-            color3->g = p;
-            color3->b = p;
-            color3->a = p;
+            COLOR_RED_PTR(color3) = p;
+            COLOR_GREEN_PTR(color3) = p;
+            COLOR_BLUE_PTR(color3) = p;
+            COLOR_ALPHA_PTR(color3) = p;
         }
         break;
     case TEXEL_RGBA16:
@@ -2017,22 +2258,22 @@ static void fetch_texel_quadro(COLOR *color0, COLOR *color1, COLOR *color2, COLO
             c1 = tc16[taddr1];
             c2 = tc16[taddr2];
             c3 = tc16[taddr3];
-            color0->r = GET_HI_RGBA16_TMEM(c0);
-            color0->g = GET_MED_RGBA16_TMEM(c0);
-            color0->b = GET_LOW_RGBA16_TMEM(c0);
-            color0->a = (c0 & 1) ? 0xff : 0;
-            color1->r = GET_HI_RGBA16_TMEM(c1);
-            color1->g = GET_MED_RGBA16_TMEM(c1);
-            color1->b = GET_LOW_RGBA16_TMEM(c1);
-            color1->a = (c1 & 1) ? 0xff : 0;
-            color2->r = GET_HI_RGBA16_TMEM(c2);
-            color2->g = GET_MED_RGBA16_TMEM(c2);
-            color2->b = GET_LOW_RGBA16_TMEM(c2);
-            color2->a = (c2 & 1) ? 0xff : 0;
-            color3->r = GET_HI_RGBA16_TMEM(c3);
-            color3->g = GET_MED_RGBA16_TMEM(c3);
-            color3->b = GET_LOW_RGBA16_TMEM(c3);
-            color3->a = (c3 & 1) ? 0xff : 0;
+            COLOR_RED_PTR(color0) = GET_HI_RGBA16_TMEM(c0);
+            COLOR_GREEN_PTR(color0) = GET_MED_RGBA16_TMEM(c0);
+            COLOR_BLUE_PTR(color0) = GET_LOW_RGBA16_TMEM(c0);
+            COLOR_ALPHA_PTR(color0) = (c0 & 1) ? 0xff : 0;
+            COLOR_RED_PTR(color1) = GET_HI_RGBA16_TMEM(c1);
+            COLOR_GREEN_PTR(color1) = GET_MED_RGBA16_TMEM(c1);
+            COLOR_BLUE_PTR(color1) = GET_LOW_RGBA16_TMEM(c1);
+            COLOR_ALPHA_PTR(color1) = (c1 & 1) ? 0xff : 0;
+            COLOR_RED_PTR(color2) = GET_HI_RGBA16_TMEM(c2);
+            COLOR_GREEN_PTR(color2) = GET_MED_RGBA16_TMEM(c2);
+            COLOR_BLUE_PTR(color2) = GET_LOW_RGBA16_TMEM(c2);
+            COLOR_ALPHA_PTR(color2) = (c2 & 1) ? 0xff : 0;
+            COLOR_RED_PTR(color3) = GET_HI_RGBA16_TMEM(c3);
+            COLOR_GREEN_PTR(color3) = GET_MED_RGBA16_TMEM(c3);
+            COLOR_BLUE_PTR(color3) = GET_LOW_RGBA16_TMEM(c3);
+            COLOR_ALPHA_PTR(color3) = (c3 & 1) ? 0xff : 0;
         }
         break;
     case TEXEL_RGBA32:
@@ -2054,29 +2295,29 @@ static void fetch_texel_quadro(COLOR *color0, COLOR *color1, COLOR *color2, COLO
             taddr2 &= 0x3ff;
             taddr3 &= 0x3ff;
             c0 = tc16[taddr0];
-            color0->r = c0 >> 8;
-            color0->g = c0 & 0xff;
+            COLOR_RED_PTR(color0) = c0 >> 8;
+            COLOR_GREEN_PTR(color0) = c0 & 0xff;
             c0 = tc16[taddr0 | 0x400];
-            color0->b = c0 >>  8;
-            color0->a = c0 & 0xff;
+            COLOR_BLUE_PTR(color0) = c0 >>  8;
+            COLOR_ALPHA_PTR(color0) = c0 & 0xff;
             c1 = tc16[taddr1];
-            color1->r = c1 >> 8;
-            color1->g = c1 & 0xff;
+            COLOR_RED_PTR(color1) = c1 >> 8;
+            COLOR_GREEN_PTR(color1) = c1 & 0xff;
             c1 = tc16[taddr1 | 0x400];
-            color1->b = c1 >>  8;
-            color1->a = c1 & 0xff;
+            COLOR_BLUE_PTR(color1) = c1 >>  8;
+            COLOR_ALPHA_PTR(color1) = c1 & 0xff;
             c2 = tc16[taddr2];
-            color2->r = c2 >> 8;
-            color2->g = c2 & 0xff;
+            COLOR_RED_PTR(color2) = c2 >> 8;
+            COLOR_GREEN_PTR(color2) = c2 & 0xff;
             c2 = tc16[taddr2 | 0x400];
-            color2->b = c2 >>  8;
-            color2->a = c2 & 0xff;
+            COLOR_BLUE_PTR(color2) = c2 >>  8;
+            COLOR_ALPHA_PTR(color2) = c2 & 0xff;
             c3 = tc16[taddr3];
-            color3->r = c3 >> 8;
-            color3->g = c3 & 0xff;
+            COLOR_RED_PTR(color3) = c3 >> 8;
+            COLOR_GREEN_PTR(color3) = c3 & 0xff;
             c3 = tc16[taddr3 | 0x400];
-            color3->b = c3 >>  8;
-            color3->a = c3 & 0xff;
+            COLOR_BLUE_PTR(color3) = c3 >>  8;
+            COLOR_ALPHA_PTR(color3) = c3 & 0xff;
         }
         break;
     case TEXEL_YUV4:
@@ -2105,22 +2346,22 @@ static void fetch_texel_quadro(COLOR *color0, COLOR *color1, COLOR *color2, COLO
             save3 = u3 = __TMEM[taddr3 & 0x7ff];
             u3 = (u3 - 0x80) & 0x1ff;
 
-            color0->r = u0;
-            color0->g = u0;
-            color0->b = save0;
-            color0->a = save0;
-            color1->r = u1;
-            color1->g = u1;
-            color1->b = save1;
-            color1->a = save1;
-            color2->r = u2;
-            color2->g = u2;
-            color2->b = save2;
-            color2->a = save2;
-            color3->r = u3;
-            color3->g = u3;
-            color3->b = save3;
-            color3->a = save3;
+            COLOR_RED_PTR(color0) = u0;
+            COLOR_GREEN_PTR(color0) = u0;
+            COLOR_BLUE_PTR(color0) = save0;
+            COLOR_ALPHA_PTR(color0) = save0;
+            COLOR_RED_PTR(color1) = u1;
+            COLOR_GREEN_PTR(color1) = u1;
+            COLOR_BLUE_PTR(color1) = save1;
+            COLOR_ALPHA_PTR(color1) = save1;
+            COLOR_RED_PTR(color2) = u2;
+            COLOR_GREEN_PTR(color2) = u2;
+            COLOR_BLUE_PTR(color2) = save2;
+            COLOR_ALPHA_PTR(color2) = save2;
+            COLOR_RED_PTR(color3) = u3;
+            COLOR_GREEN_PTR(color3) = u3;
+            COLOR_BLUE_PTR(color3) = save3;
+            COLOR_ALPHA_PTR(color3) = save3;
         }
         break;
     case TEXEL_YUV16:
@@ -2187,22 +2428,22 @@ static void fetch_texel_quadro(COLOR *color0, COLOR *color1, COLOR *color2, COLO
             u3 = (u3 - 0x80) & 0x1ff;
             v3 = (v3 - 0x80) & 0x1ff;
 
-            color0->r = u0;
-            color0->g = v0;
-            color0->b = y0;
-            color0->a = y0;
-            color1->r = u1;
-            color1->g = v1;
-            color1->b = y1;
-            color1->a = y1;
-            color2->r = u2;
-            color2->g = v2;
-            color2->b = y2;
-            color2->a = y2;
-            color3->r = u3;
-            color3->g = v3;
-            color3->b = y3;
-            color3->a = y3;
+            COLOR_RED_PTR(color0) = u0;
+            COLOR_GREEN_PTR(color0) = v0;
+            COLOR_BLUE_PTR(color0) = y0;
+            COLOR_ALPHA_PTR(color0) = y0;
+            COLOR_RED_PTR(color1) = u1;
+            COLOR_GREEN_PTR(color1) = v1;
+            COLOR_BLUE_PTR(color1) = y1;
+            COLOR_ALPHA_PTR(color1) = y1;
+            COLOR_RED_PTR(color2) = u2;
+            COLOR_GREEN_PTR(color2) = v2;
+            COLOR_BLUE_PTR(color2) = y2;
+            COLOR_ALPHA_PTR(color2) = y2;
+            COLOR_RED_PTR(color3) = u3;
+            COLOR_GREEN_PTR(color3) = v3;
+            COLOR_BLUE_PTR(color3) = y3;
+            COLOR_ALPHA_PTR(color3) = y3;
         }
         break;
     case TEXEL_CI4:
@@ -2227,21 +2468,21 @@ static void fetch_texel_quadro(COLOR *color0, COLOR *color1, COLOR *color2, COLO
             p = __TMEM[taddr0];
             p = (ands) ? (p & 0xf) : (p >> 4);
             p = (tpal << 4) | p;
-            color0->r = color0->g = color0->b = color0->a = p;
+            COLOR_RED_PTR(color0) = COLOR_GREEN_PTR(color0) = COLOR_BLUE_PTR(color0) = COLOR_ALPHA_PTR(color0) = p;
             p = __TMEM[taddr2];
             p = (ands) ? (p & 0xf) : (p >> 4);
             p = (tpal << 4) | p;
-            color2->r = color2->g = color2->b = color2->a = p;
+            COLOR_RED_PTR(color2) = COLOR_GREEN_PTR(color2) = COLOR_BLUE_PTR(color2) = COLOR_ALPHA_PTR(color2) = p;
 
             ands = s1 & 1;
             p = __TMEM[taddr1];
             p = (ands) ? (p & 0xf) : (p >> 4);
             p = (tpal << 4) | p;
-            color1->r = color1->g = color1->b = color1->a = p;
+            COLOR_RED_PTR(color1) = COLOR_GREEN_PTR(color1) = COLOR_BLUE_PTR(color1) = COLOR_ALPHA_PTR(color1) = p;
             p = __TMEM[taddr3];
             p = (ands) ? (p & 0xf) : (p >> 4);
             p = (tpal << 4) | p;
-            color3->r = color3->g = color3->b = color3->a = p;
+            COLOR_RED_PTR(color3) = COLOR_GREEN_PTR(color3) = COLOR_BLUE_PTR(color3) = COLOR_ALPHA_PTR(color3) = p;
         }
         break;
     case TEXEL_CI8:
@@ -2264,25 +2505,25 @@ static void fetch_texel_quadro(COLOR *color0, COLOR *color1, COLOR *color2, COLO
             taddr2 &= 0xfff;
             taddr3 &= 0xfff;
             p = __TMEM[taddr0];
-            color0->r = p;
-            color0->g = p;
-            color0->b = p;
-            color0->a = p;
+            COLOR_RED_PTR(color0) = p;
+            COLOR_GREEN_PTR(color0) = p;
+            COLOR_BLUE_PTR(color0) = p;
+            COLOR_ALPHA_PTR(color0) = p;
             p = __TMEM[taddr2];
-            color2->r = p;
-            color2->g = p;
-            color2->b = p;
-            color2->a = p;
+            COLOR_RED_PTR(color2) = p;
+            COLOR_GREEN_PTR(color2) = p;
+            COLOR_BLUE_PTR(color2) = p;
+            COLOR_ALPHA_PTR(color2) = p;
             p = __TMEM[taddr1];
-            color1->r = p;
-            color1->g = p;
-            color1->b = p;
-            color1->a = p;
+            COLOR_RED_PTR(color1) = p;
+            COLOR_GREEN_PTR(color1) = p;
+            COLOR_BLUE_PTR(color1) = p;
+            COLOR_ALPHA_PTR(color1) = p;
             p = __TMEM[taddr3];
-            color3->r = p;
-            color3->g = p;
-            color3->b = p;
-            color3->a = p;
+            COLOR_RED_PTR(color3) = p;
+            COLOR_GREEN_PTR(color3) = p;
+            COLOR_BLUE_PTR(color3) = p;
+            COLOR_ALPHA_PTR(color3) = p;
         }
         break;
     case TEXEL_CI16:
@@ -2304,25 +2545,25 @@ static void fetch_texel_quadro(COLOR *color0, COLOR *color1, COLOR *color2, COLO
             taddr2 &= 0x7ff;
             taddr3 &= 0x7ff;
             c0 = tc16[taddr0];
-            color0->r = c0 >> 8;
-            color0->g = c0 & 0xff;
-            color0->b = c0 >> 8;
-            color0->a = (c0 & 1) ? 0xff : 0;
+            COLOR_RED_PTR(color0) = c0 >> 8;
+            COLOR_GREEN_PTR(color0) = c0 & 0xff;
+            COLOR_BLUE_PTR(color0) = c0 >> 8;
+            COLOR_ALPHA_PTR(color0) = (c0 & 1) ? 0xff : 0;
             c1 = tc16[taddr1];
-            color1->r = c1 >> 8;
-            color1->g = c1 & 0xff;
-            color1->b = c1 >> 8;
-            color1->a = (c1 & 1) ? 0xff : 0;
+            COLOR_RED_PTR(color1) = c1 >> 8;
+            COLOR_GREEN_PTR(color1) = c1 & 0xff;
+            COLOR_BLUE_PTR(color1) = c1 >> 8;
+            COLOR_ALPHA_PTR(color1) = (c1 & 1) ? 0xff : 0;
             c2 = tc16[taddr2];
-            color2->r = c2 >> 8;
-            color2->g = c2 & 0xff;
-            color2->b = c2 >> 8;
-            color2->a = (c2 & 1) ? 0xff : 0;
+            COLOR_RED_PTR(color2) = c2 >> 8;
+            COLOR_GREEN_PTR(color2) = c2 & 0xff;
+            COLOR_BLUE_PTR(color2) = c2 >> 8;
+            COLOR_ALPHA_PTR(color2) = (c2 & 1) ? 0xff : 0;
             c3 = tc16[taddr3];
-            color3->r = c3 >> 8;
-            color3->g = c3 & 0xff;
-            color3->b = c3 >> 8;
-            color3->a = (c3 & 1) ? 0xff : 0;
+            COLOR_RED_PTR(color3) = c3 >> 8;
+            COLOR_GREEN_PTR(color3) = c3 & 0xff;
+            COLOR_BLUE_PTR(color3) = c3 >> 8;
+            COLOR_ALPHA_PTR(color3) = (c3 & 1) ? 0xff : 0;
         }
         break;
     case TEXEL_CI32:
@@ -2344,25 +2585,25 @@ static void fetch_texel_quadro(COLOR *color0, COLOR *color1, COLOR *color2, COLO
             taddr2 &= 0x7ff;
             taddr3 &= 0x7ff;
             c0 = tc16[taddr0];
-            color0->r = c0 >> 8;
-            color0->g = c0 & 0xff;
-            color0->b = c0 >> 8;
-            color0->a = (c0 & 1) ? 0xff : 0;
+            COLOR_RED_PTR(color0) = c0 >> 8;
+            COLOR_GREEN_PTR(color0) = c0 & 0xff;
+            COLOR_BLUE_PTR(color0) = c0 >> 8;
+            COLOR_ALPHA_PTR(color0) = (c0 & 1) ? 0xff : 0;
             c1 = tc16[taddr1];
-            color1->r = c1 >> 8;
-            color1->g = c1 & 0xff;
-            color1->b = c1 >> 8;
-            color1->a = (c1 & 1) ? 0xff : 0;
+            COLOR_RED_PTR(color1) = c1 >> 8;
+            COLOR_GREEN_PTR(color1) = c1 & 0xff;
+            COLOR_BLUE_PTR(color1) = c1 >> 8;
+            COLOR_ALPHA_PTR(color1) = (c1 & 1) ? 0xff : 0;
             c2 = tc16[taddr2];
-            color2->r = c2 >> 8;
-            color2->g = c2 & 0xff;
-            color2->b = c2 >> 8;
-            color2->a = (c2 & 1) ? 0xff : 0;
+            COLOR_RED_PTR(color2) = c2 >> 8;
+            COLOR_GREEN_PTR(color2) = c2 & 0xff;
+            COLOR_BLUE_PTR(color2) = c2 >> 8;
+            COLOR_ALPHA_PTR(color2) = (c2 & 1) ? 0xff : 0;
             c3 = tc16[taddr3];
-            color3->r = c3 >> 8;
-            color3->g = c3 & 0xff;
-            color3->b = c3 >> 8;
-            color3->a = (c3 & 1) ? 0xff : 0;
+            COLOR_RED_PTR(color3) = c3 >> 8;
+            COLOR_GREEN_PTR(color3) = c3 & 0xff;
+            COLOR_BLUE_PTR(color3) = c3 >> 8;
+            COLOR_ALPHA_PTR(color3) = (c3 & 1) ? 0xff : 0;
         }
         break;
     case TEXEL_IA4:
@@ -2388,36 +2629,36 @@ static void fetch_texel_quadro(COLOR *color0, COLOR *color1, COLOR *color2, COLO
             p = ands ? (p & 0xf) : (p >> 4);
             i = p & 0xe;
             i = (i << 4) | (i << 1) | (i >> 2);
-            color0->r = i;
-            color0->g = i;
-            color0->b = i;
-            color0->a = (p & 0x1) ? 0xff : 0;
+            COLOR_RED_PTR(color0) = i;
+            COLOR_GREEN_PTR(color0) = i;
+            COLOR_BLUE_PTR(color0) = i;
+            COLOR_ALPHA_PTR(color0) = (p & 0x1) ? 0xff : 0;
             p = __TMEM[taddr2];
             p = ands ? (p & 0xf) : (p >> 4);
             i = p & 0xe;
             i = (i << 4) | (i << 1) | (i >> 2);
-            color2->r = i;
-            color2->g = i;
-            color2->b = i;
-            color2->a = (p & 0x1) ? 0xff : 0;
+            COLOR_RED_PTR(color2) = i;
+            COLOR_GREEN_PTR(color2) = i;
+            COLOR_BLUE_PTR(color2) = i;
+            COLOR_ALPHA_PTR(color2) = (p & 0x1) ? 0xff : 0;
 
             ands = s1 & 1;
             p = __TMEM[taddr1];
             p = ands ? (p & 0xf) : (p >> 4);
             i = p & 0xe;
             i = (i << 4) | (i << 1) | (i >> 2);
-            color1->r = i;
-            color1->g = i;
-            color1->b = i;
-            color1->a = (p & 0x1) ? 0xff : 0;
+            COLOR_RED_PTR(color1) = i;
+            COLOR_GREEN_PTR(color1) = i;
+            COLOR_BLUE_PTR(color1) = i;
+            COLOR_ALPHA_PTR(color1) = (p & 0x1) ? 0xff : 0;
             p = __TMEM[taddr3];
             p = ands ? (p & 0xf) : (p >> 4);
             i = p & 0xe;
             i = (i << 4) | (i << 1) | (i >> 2);
-            color3->r = i;
-            color3->g = i;
-            color3->b = i;
-            color3->a = (p & 0x1) ? 0xff : 0;
+            COLOR_RED_PTR(color3) = i;
+            COLOR_GREEN_PTR(color3) = i;
+            COLOR_BLUE_PTR(color3) = i;
+            COLOR_ALPHA_PTR(color3) = (p & 0x1) ? 0xff : 0;
         }
         break;
     case TEXEL_IA8:
@@ -2442,31 +2683,31 @@ static void fetch_texel_quadro(COLOR *color0, COLOR *color1, COLOR *color2, COLO
             p = __TMEM[taddr0];
             i = p & 0xf0;
             i |= (i >> 4);
-            color0->r = i;
-            color0->g = i;
-            color0->b = i;
-            color0->a = ((p & 0xf) << 4) | (p & 0xf);
+            COLOR_RED_PTR(color0) = i;
+            COLOR_GREEN_PTR(color0) = i;
+            COLOR_BLUE_PTR(color0) = i;
+            COLOR_ALPHA_PTR(color0) = ((p & 0xf) << 4) | (p & 0xf);
             p = __TMEM[taddr1];
             i = p & 0xf0;
             i |= (i >> 4);
-            color1->r = i;
-            color1->g = i;
-            color1->b = i;
-            color1->a = ((p & 0xf) << 4) | (p & 0xf);
+            COLOR_RED_PTR(color1) = i;
+            COLOR_GREEN_PTR(color1) = i;
+            COLOR_BLUE_PTR(color1) = i;
+            COLOR_ALPHA_PTR(color1) = ((p & 0xf) << 4) | (p & 0xf);
             p = __TMEM[taddr2];
             i = p & 0xf0;
             i |= (i >> 4);
-            color2->r = i;
-            color2->g = i;
-            color2->b = i;
-            color2->a = ((p & 0xf) << 4) | (p & 0xf);
+            COLOR_RED_PTR(color2) = i;
+            COLOR_GREEN_PTR(color2) = i;
+            COLOR_BLUE_PTR(color2) = i;
+            COLOR_ALPHA_PTR(color2) = ((p & 0xf) << 4) | (p & 0xf);
             p = __TMEM[taddr3];
             i = p & 0xf0;
             i |= (i >> 4);
-            color3->r = i;
-            color3->g = i;
-            color3->b = i;
-            color3->a = ((p & 0xf) << 4) | (p & 0xf);
+            COLOR_RED_PTR(color3) = i;
+            COLOR_GREEN_PTR(color3) = i;
+            COLOR_BLUE_PTR(color3) = i;
+            COLOR_ALPHA_PTR(color3) = ((p & 0xf) << 4) | (p & 0xf);
         }
         break;
     case TEXEL_IA16:
@@ -2488,17 +2729,17 @@ static void fetch_texel_quadro(COLOR *color0, COLOR *color1, COLOR *color2, COLO
             taddr2 &= 0x7ff;
             taddr3 &= 0x7ff;
             c0 = tc16[taddr0];
-            color0->r = color0->g = color0->b = c0 >> 8;
-            color0->a = c0 & 0xff;
+            COLOR_RED_PTR(color0) = COLOR_GREEN_PTR(color0) = COLOR_BLUE_PTR(color0) = c0 >> 8;
+            COLOR_ALPHA_PTR(color0) = c0 & 0xff;
             c1 = tc16[taddr1];
-            color1->r = color1->g = color1->b = c1 >> 8;
-            color1->a = c1 & 0xff;
+            COLOR_RED_PTR(color1) = COLOR_GREEN_PTR(color1) = COLOR_BLUE_PTR(color1) = c1 >> 8;
+            COLOR_ALPHA_PTR(color1) = c1 & 0xff;
             c2 = tc16[taddr2];
-            color2->r = color2->g = color2->b = c2 >> 8;
-            color2->a = c2 & 0xff;
+            COLOR_RED_PTR(color2) = COLOR_GREEN_PTR(color2) = COLOR_BLUE_PTR(color2) = c2 >> 8;
+            COLOR_ALPHA_PTR(color2) = c2 & 0xff;
             c3 = tc16[taddr3];
-            color3->r = color3->g = color3->b = c3 >> 8;
-            color3->a = c3 & 0xff;
+            COLOR_RED_PTR(color3) = COLOR_GREEN_PTR(color3) = COLOR_BLUE_PTR(color3) = c3 >> 8;
+            COLOR_ALPHA_PTR(color3) = c3 & 0xff;
         }
         break;
     case TEXEL_IA32:
@@ -2520,25 +2761,25 @@ static void fetch_texel_quadro(COLOR *color0, COLOR *color1, COLOR *color2, COLO
             taddr2 &= 0x7ff;
             taddr3 &= 0x7ff;
             c0 = tc16[taddr0];
-            color0->r = c0 >> 8;
-            color0->g = c0 & 0xff;
-            color0->b = c0 >> 8;
-            color0->a = (c0 & 1) ? 0xff : 0;
+            COLOR_RED_PTR(color0) = c0 >> 8;
+            COLOR_GREEN_PTR(color0) = c0 & 0xff;
+            COLOR_BLUE_PTR(color0) = c0 >> 8;
+            COLOR_ALPHA_PTR(color0) = (c0 & 1) ? 0xff : 0;
             c1 = tc16[taddr1];
-            color1->r = c1 >> 8;
-            color1->g = c1 & 0xff;
-            color1->b = c1 >> 8;
-            color1->a = (c1 & 1) ? 0xff : 0;
+            COLOR_RED_PTR(color1) = c1 >> 8;
+            COLOR_GREEN_PTR(color1) = c1 & 0xff;
+            COLOR_BLUE_PTR(color1) = c1 >> 8;
+            COLOR_ALPHA_PTR(color1) = (c1 & 1) ? 0xff : 0;
             c2 = tc16[taddr2];
-            color2->r = c2 >> 8;
-            color2->g = c2 & 0xff;
-            color2->b = c2 >> 8;
-            color2->a = (c2 & 1) ? 0xff : 0;
+            COLOR_RED_PTR(color2) = c2 >> 8;
+            COLOR_GREEN_PTR(color2) = c2 & 0xff;
+            COLOR_BLUE_PTR(color2) = c2 >> 8;
+            COLOR_ALPHA_PTR(color2) = (c2 & 1) ? 0xff : 0;
             c3 = tc16[taddr3];
-            color3->r = c3 >> 8;
-            color3->g = c3 & 0xff;
-            color3->b = c3 >> 8;
-            color3->a = (c3 & 1) ? 0xff : 0;
+            COLOR_RED_PTR(color3) = c3 >> 8;
+            COLOR_GREEN_PTR(color3) = c3 & 0xff;
+            COLOR_BLUE_PTR(color3) = c3 >> 8;
+            COLOR_ALPHA_PTR(color3) = (c3 & 1) ? 0xff : 0;
         }
         break;
     case TEXEL_I4:
@@ -2563,21 +2804,21 @@ static void fetch_texel_quadro(COLOR *color0, COLOR *color1, COLOR *color2, COLO
             p = __TMEM[taddr0];
             c0 = ands ? (p & 0xf) : (p >> 4);
             c0 |= (c0 << 4);
-            color0->r = color0->g = color0->b = color0->a = c0;
+            COLOR_RED_PTR(color0) = COLOR_GREEN_PTR(color0) = COLOR_BLUE_PTR(color0) = COLOR_ALPHA_PTR(color0) = c0;
             p = __TMEM[taddr2];
             c2 = ands ? (p & 0xf) : (p >> 4);
             c2 |= (c2 << 4);
-            color2->r = color2->g = color2->b = color2->a = c2;
+            COLOR_RED_PTR(color2) = COLOR_GREEN_PTR(color2) = COLOR_BLUE_PTR(color2) = COLOR_ALPHA_PTR(color2) = c2;
 
             ands = s1 & 1;
             p = __TMEM[taddr1];
             c1 = ands ? (p & 0xf) : (p >> 4);
             c1 |= (c1 << 4);
-            color1->r = color1->g = color1->b = color1->a = c1;
+            COLOR_RED_PTR(color1) = COLOR_GREEN_PTR(color1) = COLOR_BLUE_PTR(color1) = COLOR_ALPHA_PTR(color1) = c1;
             p = __TMEM[taddr3];
             c3 = ands ? (p & 0xf) : (p >> 4);
             c3 |= (c3 << 4);
-            color3->r = color3->g = color3->b = color3->a = c3;
+            COLOR_RED_PTR(color3) = COLOR_GREEN_PTR(color3) = COLOR_BLUE_PTR(color3) = COLOR_ALPHA_PTR(color3) = c3;
         }
         break;
     case TEXEL_I8:
@@ -2600,25 +2841,25 @@ static void fetch_texel_quadro(COLOR *color0, COLOR *color1, COLOR *color2, COLO
             taddr2 &= 0xfff;
             taddr3 &= 0xfff;
             p = __TMEM[taddr0];
-            color0->r = p;
-            color0->g = p;
-            color0->b = p;
-            color0->a = p;
+            COLOR_RED_PTR(color0) = p;
+            COLOR_GREEN_PTR(color0) = p;
+            COLOR_BLUE_PTR(color0) = p;
+            COLOR_ALPHA_PTR(color0) = p;
             p = __TMEM[taddr1];
-            color1->r = p;
-            color1->g = p;
-            color1->b = p;
-            color1->a = p;
+            COLOR_RED_PTR(color1) = p;
+            COLOR_GREEN_PTR(color1) = p;
+            COLOR_BLUE_PTR(color1) = p;
+            COLOR_ALPHA_PTR(color1) = p;
             p = __TMEM[taddr2];
-            color2->r = p;
-            color2->g = p;
-            color2->b = p;
-            color2->a = p;
+            COLOR_RED_PTR(color2) = p;
+            COLOR_GREEN_PTR(color2) = p;
+            COLOR_BLUE_PTR(color2) = p;
+            COLOR_ALPHA_PTR(color2) = p;
             p = __TMEM[taddr3];
-            color3->r = p;
-            color3->g = p;
-            color3->b = p;
-            color3->a = p;
+            COLOR_RED_PTR(color3) = p;
+            COLOR_GREEN_PTR(color3) = p;
+            COLOR_BLUE_PTR(color3) = p;
+            COLOR_ALPHA_PTR(color3) = p;
         }
         break;
     case TEXEL_I16:
@@ -2640,25 +2881,25 @@ static void fetch_texel_quadro(COLOR *color0, COLOR *color1, COLOR *color2, COLO
             taddr2 &= 0x7ff;
             taddr3 &= 0x7ff;
             c0 = tc16[taddr0];
-            color0->r = c0 >> 8;
-            color0->g = c0 & 0xff;
-            color0->b = c0 >> 8;
-            color0->a = (c0 & 1) ? 0xff : 0;
+            COLOR_RED_PTR(color0) = c0 >> 8;
+            COLOR_GREEN_PTR(color0) = c0 & 0xff;
+            COLOR_BLUE_PTR(color0) = c0 >> 8;
+            COLOR_ALPHA_PTR(color0) = (c0 & 1) ? 0xff : 0;
             c1 = tc16[taddr1];
-            color1->r = c1 >> 8;
-            color1->g = c1 & 0xff;
-            color1->b = c1 >> 8;
-            color1->a = (c1 & 1) ? 0xff : 0;
+            COLOR_RED_PTR(color1) = c1 >> 8;
+            COLOR_GREEN_PTR(color1) = c1 & 0xff;
+            COLOR_BLUE_PTR(color1) = c1 >> 8;
+            COLOR_ALPHA_PTR(color1) = (c1 & 1) ? 0xff : 0;
             c2 = tc16[taddr2];
-            color2->r = c2 >> 8;
-            color2->g = c2 & 0xff;
-            color2->b = c2 >> 8;
-            color2->a = (c2 & 1) ? 0xff : 0;
+            COLOR_RED_PTR(color2) = c2 >> 8;
+            COLOR_GREEN_PTR(color2) = c2 & 0xff;
+            COLOR_BLUE_PTR(color2) = c2 >> 8;
+            COLOR_ALPHA_PTR(color2) = (c2 & 1) ? 0xff : 0;
             c3 = tc16[taddr3];
-            color3->r = c3 >> 8;
-            color3->g = c3 & 0xff;
-            color3->b = c3 >> 8;
-            color3->a = (c3 & 1) ? 0xff : 0;
+            COLOR_RED_PTR(color3) = c3 >> 8;
+            COLOR_GREEN_PTR(color3) = c3 & 0xff;
+            COLOR_BLUE_PTR(color3) = c3 >> 8;
+            COLOR_ALPHA_PTR(color3) = (c3 & 1) ? 0xff : 0;
         }
         break;
     case TEXEL_I32:
@@ -2680,25 +2921,25 @@ static void fetch_texel_quadro(COLOR *color0, COLOR *color1, COLOR *color2, COLO
             taddr2 &= 0x7ff;
             taddr3 &= 0x7ff;
             c0 = tc16[taddr0];
-            color0->r = c0 >> 8;
-            color0->g = c0 & 0xff;
-            color0->b = c0 >> 8;
-            color0->a = (c0 & 1) ? 0xff : 0;
+            COLOR_RED_PTR(color0) = c0 >> 8;
+            COLOR_GREEN_PTR(color0) = c0 & 0xff;
+            COLOR_BLUE_PTR(color0) = c0 >> 8;
+            COLOR_ALPHA_PTR(color0) = (c0 & 1) ? 0xff : 0;
             c1 = tc16[taddr1];
-            color1->r = c1 >> 8;
-            color1->g = c1 & 0xff;
-            color1->b = c1 >> 8;
-            color1->a = (c1 & 1) ? 0xff : 0;
+            COLOR_RED_PTR(color1) = c1 >> 8;
+            COLOR_GREEN_PTR(color1) = c1 & 0xff;
+            COLOR_BLUE_PTR(color1) = c1 >> 8;
+            COLOR_ALPHA_PTR(color1) = (c1 & 1) ? 0xff : 0;
             c2 = tc16[taddr2];
-            color2->r = c2 >> 8;
-            color2->g = c2 & 0xff;
-            color2->b = c2 >> 8;
-            color2->a = (c2 & 1) ? 0xff : 0;
+            COLOR_RED_PTR(color2) = c2 >> 8;
+            COLOR_GREEN_PTR(color2) = c2 & 0xff;
+            COLOR_BLUE_PTR(color2) = c2 >> 8;
+            COLOR_ALPHA_PTR(color2) = (c2 & 1) ? 0xff : 0;
             c3 = tc16[taddr3];
-            color3->r = c3 >> 8;
-            color3->g = c3 & 0xff;
-            color3->b = c3 >> 8;
-            color3->a = (c3 & 1) ? 0xff : 0;
+            COLOR_RED_PTR(color3) = c3 >> 8;
+            COLOR_GREEN_PTR(color3) = c3 & 0xff;
+            COLOR_BLUE_PTR(color3) = c3 >> 8;
+            COLOR_ALPHA_PTR(color3) = (c3 & 1) ? 0xff : 0;
         }
         break;
     }
@@ -2911,33 +3152,33 @@ static void fetch_texel_entlut_quadro(COLOR *color0, COLOR *color1, COLOR *color
 
     if (!other_modes.tlut_type)
     {
-        color0->r = GET_HI_RGBA16_TMEM(c0);
-        color0->g = GET_MED_RGBA16_TMEM(c0);
-        color0->b = GET_LOW_RGBA16_TMEM(c0);
-        color0->a = (c0 & 1) ? 0xff : 0;
-        color1->r = GET_HI_RGBA16_TMEM(c1);
-        color1->g = GET_MED_RGBA16_TMEM(c1);
-        color1->b = GET_LOW_RGBA16_TMEM(c1);
-        color1->a = (c1 & 1) ? 0xff : 0;
-        color2->r = GET_HI_RGBA16_TMEM(c2);
-        color2->g = GET_MED_RGBA16_TMEM(c2);
-        color2->b = GET_LOW_RGBA16_TMEM(c2);
-        color2->a = (c2 & 1) ? 0xff : 0;
-        color3->r = GET_HI_RGBA16_TMEM(c3);
-        color3->g = GET_MED_RGBA16_TMEM(c3);
-        color3->b = GET_LOW_RGBA16_TMEM(c3);
-        color3->a = (c3 & 1) ? 0xff : 0;
+        COLOR_RED_PTR(color0) = GET_HI_RGBA16_TMEM(c0);
+        COLOR_GREEN_PTR(color0) = GET_MED_RGBA16_TMEM(c0);
+        COLOR_BLUE_PTR(color0) = GET_LOW_RGBA16_TMEM(c0);
+        COLOR_ALPHA_PTR(color0) = (c0 & 1) ? 0xff : 0;
+        COLOR_RED_PTR(color1) = GET_HI_RGBA16_TMEM(c1);
+        COLOR_GREEN_PTR(color1) = GET_MED_RGBA16_TMEM(c1);
+        COLOR_BLUE_PTR(color1) = GET_LOW_RGBA16_TMEM(c1);
+        COLOR_ALPHA_PTR(color1) = (c1 & 1) ? 0xff : 0;
+        COLOR_RED_PTR(color2) = GET_HI_RGBA16_TMEM(c2);
+        COLOR_GREEN_PTR(color2) = GET_MED_RGBA16_TMEM(c2);
+        COLOR_BLUE_PTR(color2) = GET_LOW_RGBA16_TMEM(c2);
+        COLOR_ALPHA_PTR(color2) = (c2 & 1) ? 0xff : 0;
+        COLOR_RED_PTR(color3) = GET_HI_RGBA16_TMEM(c3);
+        COLOR_GREEN_PTR(color3) = GET_MED_RGBA16_TMEM(c3);
+        COLOR_BLUE_PTR(color3) = GET_LOW_RGBA16_TMEM(c3);
+        COLOR_ALPHA_PTR(color3) = (c3 & 1) ? 0xff : 0;
     }
     else
     {
-        color0->r = color0->g = color0->b = c0 >> 8;
-        color0->a = c0 & 0xff;
-        color1->r = color1->g = color1->b = c1 >> 8;
-        color1->a = c1 & 0xff;
-        color2->r = color2->g = color2->b = c2 >> 8;
-        color2->a = c2 & 0xff;
-        color3->r = color3->g = color3->b = c3 >> 8;
-        color3->a = c3 & 0xff;
+        COLOR_RED_PTR(color0) = COLOR_GREEN_PTR(color0) = COLOR_BLUE_PTR(color0) = c0 >> 8;
+        COLOR_ALPHA_PTR(color0) = c0 & 0xff;
+        COLOR_RED_PTR(color1) = COLOR_GREEN_PTR(color1) = COLOR_BLUE_PTR(color1) = c1 >> 8;
+        COLOR_ALPHA_PTR(color1) = c1 & 0xff;
+        COLOR_RED_PTR(color2) = COLOR_GREEN_PTR(color2) = COLOR_BLUE_PTR(color2) = c2 >> 8;
+        COLOR_ALPHA_PTR(color2) = c2 & 0xff;
+        COLOR_RED_PTR(color3) = COLOR_GREEN_PTR(color3) = COLOR_BLUE_PTR(color3) = c3 >> 8;
+        COLOR_ALPHA_PTR(color3) = c3 & 0xff;
     }
 }
 
@@ -3371,14 +3612,14 @@ static void texture_pipeline_cycle(COLOR* TEX, COLOR* prev, INT32 SSS, INT32 SST
 
             if (tile[tilenum].format == FORMAT_YUV)
             {
-               t0.r = SIGN(t0.r, 9); 
-               t0.g = SIGN(t0.g, 9); 
-               t1.r = SIGN(t1.r, 9); 
-               t1.g = SIGN(t1.g, 9);
-               t2.r = SIGN(t2.r, 9); 
-               t2.g = SIGN(t2.g, 9);
-               t3.r = SIGN(t3.r, 9); 
-               t3.g = SIGN(t3.g, 9);
+               COLOR_RED(t0)   = SIGN(COLOR_RED(t0), 9); 
+               COLOR_GREEN(t0) = SIGN(COLOR_GREEN(t0), 9); 
+               COLOR_RED(t1)   = SIGN(COLOR_RED(t1), 9); 
+               COLOR_GREEN(t1) = SIGN(COLOR_GREEN(t1), 9);
+               COLOR_RED(t2)   = SIGN(COLOR_RED(t2), 9); 
+               COLOR_GREEN(t2) = SIGN(COLOR_GREEN(t2), 9);
+               COLOR_RED(t3)   = SIGN(COLOR_RED(t3), 9); 
+               COLOR_GREEN(t3) = SIGN(COLOR_GREEN(t3), 9);
             }
 
             if (!other_modes.mid_texel || sfrac != 0x10 || tfrac != 0x10)
@@ -3390,56 +3631,59 @@ static void texture_pipeline_cycle(COLOR* TEX, COLOR* prev, INT32 SSS, INT32 SST
                         
                         invsf = 0x20 - sfrac;
                         invtf = 0x20 - tfrac;
-                        TEX->r = t3.r + ((((invsf * (t2.r - t3.r)) + (invtf * (t1.r - t3.r))) + 0x10) >> 5);    
-                        TEX->g = t3.g + ((((invsf * (t2.g - t3.g)) + (invtf * (t1.g - t3.g))) + 0x10) >> 5);                                                                        
-                        TEX->b = t3.b + ((((invsf * (t2.b - t3.b)) + (invtf * (t1.b - t3.b))) + 0x10) >> 5);                                                                
-                        TEX->a = t3.a + ((((invsf * (t2.a - t3.a)) + (invtf * (t1.a - t3.a))) + 0x10) >> 5);
+                        COLOR_RED_PTR(TEX) = COLOR_RED(t3) + ((((invsf * (COLOR_RED(t2) - COLOR_RED(t3))) + (invtf * (COLOR_RED(t1) - COLOR_RED(t3)))) + 0x10) >> 5);    
+                        COLOR_GREEN_PTR(TEX) = COLOR_GREEN(t3) + ((((invsf * (COLOR_GREEN(t2) - COLOR_GREEN(t3))) + (invtf * (COLOR_GREEN(t1) - COLOR_GREEN(t3)))) + 0x10) >> 5);                                                                        
+                        COLOR_BLUE_PTR(TEX) = COLOR_BLUE(t3) + ((((invsf * (COLOR_BLUE(t2) - COLOR_BLUE(t3))) + (invtf * (COLOR_BLUE(t1) - COLOR_BLUE(t3)))) + 0x10) >> 5);                                                                
+                        COLOR_ALPHA_PTR(TEX) = COLOR_ALPHA(t3) + ((((invsf * (COLOR_ALPHA(t2) - COLOR_ALPHA(t3))) + (invtf * (COLOR_ALPHA(t1) - COLOR_ALPHA(t3)))) + 0x10) >> 5);
                     }
                     else
                     {
-                        TEX->r = t0.r + ((((sfrac * (t1.r - t0.r)) + (tfrac * (t2.r - t0.r))) + 0x10) >> 5);                                            
-                        TEX->g = t0.g + ((((sfrac * (t1.g - t0.g)) + (tfrac * (t2.g - t0.g))) + 0x10) >> 5);                                            
-                        TEX->b = t0.b + ((((sfrac * (t1.b - t0.b)) + (tfrac * (t2.b - t0.b))) + 0x10) >> 5);                                    
-                        TEX->a = t0.a + ((((sfrac * (t1.a - t0.a)) + (tfrac * (t2.a - t0.a))) + 0x10) >> 5);
+                        COLOR_RED_PTR(TEX) = COLOR_RED(t0) + ((((sfrac * (COLOR_RED(t1) - COLOR_RED(t0))) + (tfrac * (COLOR_RED(t2) - COLOR_RED(t0)))) + 0x10) >> 5);                                            
+                        COLOR_GREEN_PTR(TEX) = COLOR_GREEN(t0) + ((((sfrac * (COLOR_GREEN(t1) - COLOR_GREEN(t0))) + (tfrac * (COLOR_GREEN(t2) - COLOR_GREEN(t0)))) + 0x10) >> 5);                                            
+                        COLOR_BLUE_PTR(TEX) = COLOR_BLUE(t0) + ((((sfrac * (COLOR_BLUE(t1) - COLOR_BLUE(t0))) + (tfrac * (COLOR_BLUE(t2) - COLOR_BLUE(t0)))) + 0x10) >> 5);                                    
+                        COLOR_ALPHA_PTR(TEX) = COLOR_ALPHA(t0) + ((((sfrac * (COLOR_ALPHA(t1) - COLOR_ALPHA(t0))) + (tfrac * (COLOR_ALPHA(t2) - COLOR_ALPHA(t0)))) + 0x10) >> 5);
                     }
                 }
                 else
                 {
                     if (UPPER)
                     {
-                        TEX->r = prev->b + ((((prev->r * (t2.r - t3.r)) + (prev->g * (t1.r - t3.r))) + 0x80) >> 8);    
-                        TEX->g = prev->b + ((((prev->r * (t2.g - t3.g)) + (prev->g * (t1.g - t3.g))) + 0x80) >> 8);                                                                        
-                        TEX->b = prev->b + ((((prev->r * (t2.b - t3.b)) + (prev->g * (t1.b - t3.b))) + 0x80) >> 8);                                                                
-                        TEX->a = prev->b + ((((prev->r * (t2.a - t3.a)) + (prev->g * (t1.a - t3.a))) + 0x80) >> 8);
+                        COLOR_RED_PTR(TEX) = COLOR_BLUE_PTR(prev) + ((((COLOR_RED_PTR(prev) * (COLOR_RED(t2) - COLOR_RED(t3))) + (COLOR_GREEN_PTR(prev) * (COLOR_RED(t1) - COLOR_RED(t3)))) + 0x80) >> 8);    
+                        COLOR_GREEN_PTR(TEX) = COLOR_BLUE_PTR(prev) + ((((COLOR_RED_PTR(prev) * (COLOR_GREEN(t2) - COLOR_GREEN(t3))) + (COLOR_GREEN_PTR(prev) * (COLOR_GREEN(t1) - COLOR_GREEN(t3)))) + 0x80) >> 8);                                                                        
+                        COLOR_BLUE_PTR(TEX) = COLOR_BLUE_PTR(prev) + ((((COLOR_RED_PTR(prev) * (COLOR_BLUE(t2) - COLOR_BLUE(t3))) + (COLOR_GREEN_PTR(prev) * (COLOR_BLUE(t1) - COLOR_BLUE(t3)))) + 0x80) >> 8);                                                                
+                        COLOR_ALPHA_PTR(TEX) = COLOR_BLUE_PTR(prev) + ((((COLOR_RED_PTR(prev) * (COLOR_ALPHA(t2) - COLOR_ALPHA(t3))) + (COLOR_GREEN_PTR(prev) * (COLOR_ALPHA(t1) - COLOR_ALPHA(t3)))) + 0x80) >> 8);
                     }
                     else
                     {
-                        TEX->r = prev->b + ((((prev->r * (t1.r - t0.r)) + (prev->g * (t2.r - t0.r))) + 0x80) >> 8);                                            
-                        TEX->g = prev->b + ((((prev->r * (t1.g - t0.g)) + (prev->g * (t2.g - t0.g))) + 0x80) >> 8);                                            
-                        TEX->b = prev->b + ((((prev->r * (t1.b - t0.b)) + (prev->g * (t2.b - t0.b))) + 0x80) >> 8);                                    
-                        TEX->a = prev->b + ((((prev->r * (t1.a - t0.a)) + (prev->g * (t2.a - t0.a))) + 0x80) >> 8);
+                        COLOR_RED_PTR(TEX) = COLOR_BLUE_PTR(prev) + ((((COLOR_RED_PTR(prev) * (COLOR_RED(t1) - COLOR_RED(t0))) + (COLOR_GREEN_PTR(prev) * (COLOR_RED(t2) - COLOR_RED(t0)))) + 0x80) >> 8);                                            
+                        COLOR_GREEN_PTR(TEX) = COLOR_BLUE_PTR(prev) + ((((COLOR_RED_PTR(prev) * (COLOR_GREEN(t1) - COLOR_GREEN(t0))) + (COLOR_GREEN_PTR(prev) * (COLOR_GREEN(t2) - COLOR_GREEN(t0)))) + 0x80) >> 8);                                            
+                        COLOR_BLUE_PTR(TEX) = COLOR_BLUE_PTR(prev) + ((((COLOR_RED_PTR(prev) * (COLOR_BLUE(t1) - COLOR_BLUE(t0))) + (COLOR_GREEN_PTR(prev) * (COLOR_BLUE(t2) - COLOR_BLUE(t0)))) + 0x80) >> 8);                                    
+                        COLOR_ALPHA_PTR(TEX) = COLOR_BLUE_PTR(prev) + ((((COLOR_RED_PTR(prev) * (COLOR_ALPHA(t1) - COLOR_ALPHA(t0))) + (COLOR_GREEN_PTR(prev) * (COLOR_ALPHA(t2) - COLOR_ALPHA(t0)))) + 0x80) >> 8);
                     }    
                 }
                 
             }
             else
             {
-                invt0r  = ~t0.r; invt0g = ~t0.g; invt0b = ~t0.b; invt0a = ~t0.a;
+                invt0r  = ~COLOR_RED(t0);
+                invt0g = ~COLOR_GREEN(t0);
+                invt0b = ~COLOR_BLUE(t0);
+                invt0a = ~COLOR_ALPHA(t0);
                 if (!convert)
                 {
                     sfrac <<= 2;
                     tfrac <<= 2;
-                    TEX->r = t0.r + ((((sfrac * (t1.r - t0.r)) + (tfrac * (t2.r - t0.r))) + ((invt0r + t3.r) << 6) + 0xc0) >> 8);                                            
-                    TEX->g = t0.g + ((((sfrac * (t1.g - t0.g)) + (tfrac * (t2.g - t0.g))) + ((invt0g + t3.g) << 6) + 0xc0) >> 8);                                            
-                    TEX->b = t0.b + ((((sfrac * (t1.b - t0.b)) + (tfrac * (t2.b - t0.b))) + ((invt0b + t3.b) << 6) + 0xc0) >> 8);                                    
-                    TEX->a = t0.a + ((((sfrac * (t1.a - t0.a)) + (tfrac * (t2.a - t0.a))) + ((invt0a + t3.a) << 6) + 0xc0) >> 8);
+                    COLOR_RED_PTR(TEX) = COLOR_RED(t0) + ((((sfrac * (COLOR_RED(t1) - COLOR_RED(t0))) + (tfrac * (COLOR_RED(t2) - COLOR_RED(t0)))) + ((invt0r + COLOR_RED(t3)) << 6) + 0xc0) >> 8);                                            
+                    COLOR_GREEN_PTR(TEX) = COLOR_GREEN(t0) + ((((sfrac * (COLOR_GREEN(t1) - COLOR_GREEN(t0))) + (tfrac * (COLOR_GREEN(t2) - COLOR_GREEN(t0)))) + ((invt0g + COLOR_GREEN(t3)) << 6) + 0xc0) >> 8);                                            
+                    COLOR_BLUE_PTR(TEX) = COLOR_BLUE(t0) + ((((sfrac * (COLOR_BLUE(t1) - COLOR_BLUE(t0))) + (tfrac * (COLOR_BLUE(t2) - COLOR_BLUE(t0)))) + ((invt0b + COLOR_BLUE(t3)) << 6) + 0xc0) >> 8);                                    
+                    COLOR_ALPHA_PTR(TEX) = COLOR_ALPHA(t0) + ((((sfrac * (COLOR_ALPHA(t1) - COLOR_ALPHA(t0))) + (tfrac * (COLOR_ALPHA(t2) - COLOR_ALPHA(t0)))) + ((invt0a + COLOR_ALPHA(t3)) << 6) + 0xc0) >> 8);
                 }
                 else
                 {
-                    TEX->r = prev->b + ((((prev->r * (t1.r - t0.r)) + (prev->g * (t2.r - t0.r))) + ((invt0r + t3.r) << 6) + 0xc0) >> 8);                                            
-                    TEX->g = prev->b + ((((prev->r * (t1.g - t0.g)) + (prev->g * (t2.g - t0.g))) + ((invt0g + t3.g) << 6) + 0xc0) >> 8);                                            
-                    TEX->b = prev->b + ((((prev->r * (t1.b - t0.b)) + (prev->g * (t2.b - t0.b))) + ((invt0b + t3.b) << 6) + 0xc0) >> 8);                                    
-                    TEX->a = prev->b + ((((prev->r * (t1.a - t0.a)) + (prev->g * (t2.a - t0.a))) + ((invt0a + t3.a) << 6) + 0xc0) >> 8);
+                    COLOR_RED_PTR(TEX) = COLOR_BLUE_PTR(prev) + ((((COLOR_RED_PTR(prev) * (COLOR_RED(t1) - COLOR_RED(t0))) + (COLOR_GREEN_PTR(prev) * (COLOR_RED(t2) - COLOR_RED(t0)))) + ((invt0r + COLOR_RED(t3)) << 6) + 0xc0) >> 8);                                            
+                    COLOR_GREEN_PTR(TEX) = COLOR_BLUE_PTR(prev) + ((((COLOR_RED_PTR(prev) * (COLOR_GREEN(t1) - COLOR_GREEN(t0))) + (COLOR_GREEN_PTR(prev) * (COLOR_GREEN(t2) - COLOR_GREEN(t0)))) + ((invt0g + COLOR_GREEN(t3)) << 6) + 0xc0) >> 8);                                            
+                    COLOR_BLUE_PTR(TEX) = COLOR_BLUE_PTR(prev) + ((((COLOR_RED_PTR(prev) * (COLOR_BLUE(t1) - COLOR_BLUE(t0))) + (COLOR_GREEN_PTR(prev) * (COLOR_BLUE(t2) - COLOR_BLUE(t0)))) + ((invt0b + COLOR_BLUE(t3)) << 6) + 0xc0) >> 8);                                    
+                    COLOR_ALPHA_PTR(TEX) = COLOR_BLUE_PTR(prev) + ((((COLOR_RED_PTR(prev) * (COLOR_ALPHA(t1) - COLOR_ALPHA(t0))) + (COLOR_GREEN_PTR(prev) * (COLOR_ALPHA(t2) - COLOR_ALPHA(t0)))) + ((invt0a + COLOR_ALPHA(t3)) << 6) + 0xc0) >> 8);
                 }
             }
             
@@ -3451,25 +3695,31 @@ static void texture_pipeline_cycle(COLOR* TEX, COLOR* prev, INT32 SSS, INT32 SST
             else
                 fetch_texel_entlut(&t0, sss1, sst1, tilenum);
             if (convert)
+            {
+#ifdef VECTORSUPPORT
+                memcpy(t0, prev, sizeof(COLOR));
+#else
                 t0 = *prev;
+#endif
+            }
 
             if (tile[tilenum].format == FORMAT_YUV)
             {
-               t0.r = SIGN(t0.r, 9);
-               t0.g = SIGN(t0.g, 9);
+               COLOR_RED(t0)   = SIGN(COLOR_RED(t0), 9);
+               COLOR_GREEN(t0) = SIGN(COLOR_GREEN(t0), 9);
             }
 
 
-            TEX->r = t0.b + ((k0_tf * t0.g + 0x80) >> 8);
-            TEX->g = t0.b + ((k1_tf * t0.r + k2_tf * t0.g + 0x80) >> 8);
-            TEX->b = t0.b + ((k3_tf * t0.r + 0x80) >> 8);
-            TEX->a = t0.b;
+            COLOR_RED_PTR(TEX) = COLOR_BLUE(t0) + ((k0_tf * COLOR_GREEN(t0) + 0x80) >> 8);
+            COLOR_GREEN_PTR(TEX) = COLOR_BLUE(t0) + ((k1_tf * COLOR_RED(t0) + k2_tf * COLOR_GREEN(t0) + 0x80) >> 8);
+            COLOR_BLUE_PTR(TEX) = COLOR_BLUE(t0) + ((k3_tf * COLOR_RED(t0) + 0x80) >> 8);
+            COLOR_ALPHA_PTR(TEX) = COLOR_BLUE(t0);
         }
         
-        TEX->r &= 0x1ff;
-        TEX->g &= 0x1ff;
-        TEX->b &= 0x1ff;
-        TEX->a &= 0x1ff;
+        COLOR_RED_PTR(TEX) &= 0x1ff;
+        COLOR_GREEN_PTR(TEX) &= 0x1ff;
+        COLOR_BLUE_PTR(TEX) &= 0x1ff;
+        COLOR_ALPHA_PTR(TEX) &= 0x1ff;
         
         
     }
@@ -3492,29 +3742,41 @@ static void texture_pipeline_cycle(COLOR* TEX, COLOR* prev, INT32 SSS, INT32 SST
         if (bilerp)
         {
             if (!convert)
+            {
+#ifdef VECTORSUPPORT
+                memcpy(TEX, t0, sizeof(COLOR));
+#else
                 *TEX = t0;
+#endif
+            }
             else
-                TEX->r = TEX->g = TEX->b = TEX->a = prev->b;
+                COLOR_RED_PTR(TEX) = COLOR_GREEN_PTR(TEX) = COLOR_BLUE_PTR(TEX) = COLOR_ALPHA_PTR(TEX) = COLOR_BLUE_PTR(prev);
         }
         else
         {
             if (convert)
+            {
+#ifdef VECTORSUPPORT
+                memcpy(t0, prev, sizeof(COLOR));
+#else
                 t0 = *prev;
+#endif
+            }
             
             if (tile[tilenum].format == FORMAT_YUV)
             {
-               t0.r = SIGN(t0.r, 9); 
-               t0.g = SIGN(t0.g, 9);
+               COLOR_RED(t0)   = SIGN(COLOR_RED(t0), 9); 
+               COLOR_GREEN(t0) = SIGN(COLOR_GREEN(t0), 9);
             }
 
-            TEX->r = t0.b + ((k0_tf * t0.g + 0x80) >> 8);
-            TEX->g = t0.b + ((k1_tf * t0.r + k2_tf * t0.g + 0x80) >> 8);
-            TEX->b = t0.b + ((k3_tf * t0.r + 0x80) >> 8);
-            TEX->a = t0.b;
-            TEX->r &= 0x1ff;
-            TEX->g &= 0x1ff;
-            TEX->b &= 0x1ff;
-            TEX->a &= 0x1ff;
+            COLOR_RED_PTR(TEX) = COLOR_BLUE(t0) + ((k0_tf * COLOR_GREEN(t0) + 0x80) >> 8);
+            COLOR_GREEN_PTR(TEX) = COLOR_BLUE(t0) + ((k1_tf * COLOR_RED(t0) + k2_tf * COLOR_GREEN(t0) + 0x80) >> 8);
+            COLOR_BLUE_PTR(TEX) = COLOR_BLUE(t0) + ((k3_tf * COLOR_RED(t0) + 0x80) >> 8);
+            COLOR_ALPHA_PTR(TEX) = COLOR_BLUE(t0);
+            COLOR_RED_PTR(TEX) &= 0x1ff;
+            COLOR_GREEN_PTR(TEX) &= 0x1ff;
+            COLOR_BLUE_PTR(TEX) &= 0x1ff;
+            COLOR_ALPHA_PTR(TEX) &= 0x1ff;
         }
     }
                                                                                                     
@@ -3716,7 +3978,11 @@ static void render_spans_1cycle_complete(int start, int end, int tilenum, int fl
 
             if (!sigs.startspan)
             {
+#ifdef VECTORSUPPORT
+                memcpy(texel0_color, texel1_color, sizeof(COLOR));
+#else
                 texel0_color = texel1_color;
+#endif
                 lod_frac = prelodfrac;
             }
             else
@@ -4243,8 +4509,13 @@ static void render_spans_2cycle_complete(int start, int end, int tilenum, int fl
             if (!sigs.startspan)
             {
                 lod_frac = prelodfrac;
+#ifdef VECTORSUPPORT
+                memcpy(texel0_color, nexttexel_color, sizeof(COLOR));
+                memcpy(texel1_color, nexttexel1_color, sizeof(COLOR));
+#else
                 texel0_color = nexttexel_color;
                 texel1_color = nexttexel1_color;
+#endif
             }
             else
             {
@@ -4282,7 +4553,13 @@ static void render_spans_2cycle_complete(int start, int end, int tilenum, int fl
                 }
             }
             else
+            {
+#ifdef VECTORSUPPORT
+               memcpy(memory_color, pre_memory_color, sizeof(COLOR));
+#else
                memory_color = pre_memory_color;
+#endif
+            }
 
             r += drinc;
             g += dginc;
@@ -4461,7 +4738,13 @@ static void render_spans_2cycle_notexelnext(int start, int end, int tilenum, int
                 }
             }
             else
+            {
+#ifdef VECTORSUPPORT
+               memcpy(memory_color, pre_memory_color, sizeof(COLOR));
+#else
                memory_color = pre_memory_color;
+#endif
+            }
 
             s += dsinc;
             t += dtinc;
@@ -4653,7 +4936,13 @@ static void render_spans_2cycle_notexel1(int start, int end, int tilenum, int fl
                 }
             }
             else
+            {
+#ifdef VECTORSUPPORT
+               memcpy(memory_color, pre_memory_color, sizeof(COLOR));
+#else
                memory_color = pre_memory_color;
+#endif
+            }
 
             s += dsinc;
             t += dtinc;
@@ -4795,7 +5084,13 @@ static void render_spans_2cycle_notex(int start, int end, int tilenum, int flip,
                }
             }
             else
+            {
+#ifdef VECTORSUPPORT
                memcpy(memory_color, pre_memory_color, sizeof(COLOR));
+#else
+               memory_color = pre_memory_color;
+#endif
+            }
 
 
             r += drinc;
@@ -4933,7 +5228,13 @@ static void render_spans_2cycle_notex(int start, int end, int tilenum, int flip)
                 }
             }
             else
+            {
+#ifdef VECTORSUPPORT
+               memcpy(memory_color, pre_memory_color, sizeof(COLOR));
+#else
                memory_color = pre_memory_color;
+#endif
+            }
 
             r += drinc;
             g += dginc;
@@ -5239,7 +5540,7 @@ static void render_spans_copy(int start, int end, int tilenum, int flip)
             else if (fb_size == PIXEL_SIZE_8BIT)
             {
                 alphamask = 0;
-                threshold = (other_modes.dither_alpha_en) ? (irand() & 0xff) : blend_color.a;
+                threshold = (other_modes.dither_alpha_en) ? (irand() & 0xff) : COLOR_ALPHA(blend_color);
                 if (other_modes.dither_alpha_en)
                 {
                     currthreshold = threshold;
@@ -5715,11 +6016,11 @@ void deduce_derivatives()
     int lod_frac_used_in_cc1 = 0, lod_frac_used_in_cc0 = 0;
     int lodfracused = 0;
 
-    other_modes.f.partialreject_1cycle = (blender2b_a[0] == &inv_pixel_color.a && blender1b_a[0] == &pixel_color.a);
-    other_modes.f.partialreject_2cycle = (blender2b_a[1] == &inv_pixel_color.a && blender1b_a[1] == &pixel_color.a);
+    other_modes.f.partialreject_1cycle = (blender2b_a[0] == &COLOR_ALPHA(inv_pixel_color) && blender1b_a[0] == &COLOR_ALPHA(pixel_color));
+    other_modes.f.partialreject_2cycle = (blender2b_a[1] == &COLOR_ALPHA(inv_pixel_color) && blender1b_a[1] == &COLOR_ALPHA(pixel_color));
 
-    other_modes.f.special_bsel0 = (blender2b_a[0] == &memory_color.a);
-    other_modes.f.special_bsel1 = (blender2b_a[1] == &memory_color.a);
+    other_modes.f.special_bsel0 = (blender2b_a[0] == &COLOR_ALPHA(memory_color));
+    other_modes.f.special_bsel1 = (blender2b_a[1] == &COLOR_ALPHA(memory_color));
 
     other_modes.f.realblendershiftersneeded = (other_modes.f.special_bsel0 && other_modes.cycle_type == CYCLE_TYPE_1) || (other_modes.f.special_bsel1 && other_modes.cycle_type == CYCLE_TYPE_2);
     other_modes.f.interpixelblendershiftersneeded = (other_modes.f.special_bsel0 && other_modes.cycle_type == CYCLE_TYPE_2);
@@ -5738,21 +6039,21 @@ void deduce_derivatives()
     if ((combiner_rgbmul_r[0] == &lod_frac) || (combiner_alphamul[0] == &lod_frac))
         lod_frac_used_in_cc0 = 1;
 
-    if (combiner_rgbmul_r[1] == &texel1_color.r || combiner_rgbsub_a_r[1] == &texel1_color.r || combiner_rgbsub_b_r[1] == &texel1_color.r || combiner_rgbadd_r[1] == &texel1_color.r || \
-        combiner_alphamul[1] == &texel1_color.a || combiner_alphasub_a[1] == &texel1_color.a || combiner_alphasub_b[1] == &texel1_color.a || combiner_alphaadd[1] == &texel1_color.a || \
-        combiner_rgbmul_r[1] == &texel1_color.a)
+    if (combiner_rgbmul_r[1] == &COLOR_RED(texel1_color) || combiner_rgbsub_a_r[1] == &COLOR_RED(texel1_color) || combiner_rgbsub_b_r[1] == &COLOR_RED(texel1_color) || combiner_rgbadd_r[1] == &COLOR_RED(texel1_color) ||
+        combiner_alphamul[1] == &COLOR_ALPHA(texel1_color) || combiner_alphasub_a[1] == &COLOR_ALPHA(texel1_color) || combiner_alphasub_b[1] == &COLOR_ALPHA(texel1_color) || combiner_alphaadd[1] == &COLOR_ALPHA(texel1_color) || 
+        combiner_rgbmul_r[1] == &COLOR_ALPHA(texel1_color))
         texel1_used_in_cc1 = 1;
-    if (combiner_rgbmul_r[1] == &texel0_color.r || combiner_rgbsub_a_r[1] == &texel0_color.r || combiner_rgbsub_b_r[1] == &texel0_color.r || combiner_rgbadd_r[1] == &texel0_color.r || \
-        combiner_alphamul[1] == &texel0_color.a || combiner_alphasub_a[1] == &texel0_color.a || combiner_alphasub_b[1] == &texel0_color.a || combiner_alphaadd[1] == &texel0_color.a || \
-        combiner_rgbmul_r[1] == &texel0_color.a)
+    if (combiner_rgbmul_r[1] == &COLOR_RED(texel0_color) || combiner_rgbsub_a_r[1] == &COLOR_RED(texel0_color) || combiner_rgbsub_b_r[1] == &COLOR_RED(texel0_color) || combiner_rgbadd_r[1] == &COLOR_RED(texel0_color) || 
+        combiner_alphamul[1] == &COLOR_ALPHA(texel0_color) || combiner_alphasub_a[1] == &COLOR_ALPHA(texel0_color) || combiner_alphasub_b[1] == &COLOR_ALPHA(texel0_color) || combiner_alphaadd[1] == &COLOR_ALPHA(texel0_color) || 
+        combiner_rgbmul_r[1] == &COLOR_ALPHA(texel0_color))
         texel0_used_in_cc1 = 1;
-    if (combiner_rgbmul_r[0] == &texel1_color.r || combiner_rgbsub_a_r[0] == &texel1_color.r || combiner_rgbsub_b_r[0] == &texel1_color.r || combiner_rgbadd_r[0] == &texel1_color.r || \
-        combiner_alphamul[0] == &texel1_color.a || combiner_alphasub_a[0] == &texel1_color.a || combiner_alphasub_b[0] == &texel1_color.a || combiner_alphaadd[0] == &texel1_color.a || \
-        combiner_rgbmul_r[0] == &texel1_color.a)
+    if (combiner_rgbmul_r[0] == &COLOR_RED(texel1_color) || combiner_rgbsub_a_r[0] == &COLOR_RED(texel1_color) || combiner_rgbsub_b_r[0] == &COLOR_RED(texel1_color) || combiner_rgbadd_r[0] == &COLOR_RED(texel1_color) || 
+        combiner_alphamul[0] == &COLOR_ALPHA(texel1_color) || combiner_alphasub_a[0] == &COLOR_ALPHA(texel1_color) || combiner_alphasub_b[0] == &COLOR_ALPHA(texel1_color) || combiner_alphaadd[0] == &COLOR_ALPHA(texel1_color) ||
+        combiner_rgbmul_r[0] == &COLOR_ALPHA(texel1_color))
         texel1_used_in_cc0 = 1;
-    if (combiner_rgbmul_r[0] == &texel0_color.r || combiner_rgbsub_a_r[0] == &texel0_color.r || combiner_rgbsub_b_r[0] == &texel0_color.r || combiner_rgbadd_r[0] == &texel0_color.r || \
-        combiner_alphamul[0] == &texel0_color.a || combiner_alphasub_a[0] == &texel0_color.a || combiner_alphasub_b[0] == &texel0_color.a || combiner_alphaadd[0] == &texel0_color.a || \
-        combiner_rgbmul_r[0] == &texel0_color.a)
+    if (combiner_rgbmul_r[0] == &COLOR_RED(texel0_color) || combiner_rgbsub_a_r[0] == &COLOR_RED(texel0_color) || combiner_rgbsub_b_r[0] == &COLOR_RED(texel0_color) || combiner_rgbadd_r[0] == &COLOR_RED(texel0_color) || 
+        combiner_alphamul[0] == &COLOR_ALPHA(texel0_color) || combiner_alphasub_a[0] == &COLOR_ALPHA(texel0_color) || combiner_alphasub_b[0] == &COLOR_ALPHA(texel0_color) || combiner_alphaadd[0] == &COLOR_ALPHA(texel0_color) || 
+        combiner_rgbmul_r[0] == &COLOR_ALPHA(texel0_color))
         texel0_used_in_cc0 = 1;
     texels_in_cc0 = texel0_used_in_cc0 || texel1_used_in_cc0;
     texels_in_cc1 = texel0_used_in_cc1 || texel1_used_in_cc1;    
@@ -5833,7 +6134,7 @@ STRICTINLINE int alpha_compare(INT32 comb_alpha)
     else
     {
         if (!other_modes.dither_alpha_en)
-            threshold = blend_color.a;
+            threshold = COLOR_ALPHA(blend_color);
         else
             threshold = irand() & 0xff;
         if (comb_alpha >= threshold)
@@ -6180,16 +6481,20 @@ static void fbwrite_32(
 
 static void fbread_4(uint32_t curpixel, uint32_t* curpixel_memcvg)
 {
-    memory_color.r = memory_color.g = memory_color.b = 0x00;
-    memory_color.a = 0xE0;
-    *curpixel_memcvg = 7;
+    COLOR_RED(memory_color)   = 0x00;
+    COLOR_GREEN(memory_color) = 0x00;
+    COLOR_BLUE(memory_color)  = 0x00;
+    COLOR_ALPHA(memory_color) = 0xE0;
+    *curpixel_memcvg          = 7;
 }
 
 static void fbread2_4(uint32_t curpixel, uint32_t* curpixel_memcvg)
 {
-    pre_memory_color.r = pre_memory_color.g = pre_memory_color.b = 0x00;
-    pre_memory_color.a = 0xE0;
-    *curpixel_memcvg = 7;
+   COLOR_RED(pre_memory_color)   = 0x00;
+   COLOR_GREEN(pre_memory_color) = 0x00;
+   COLOR_BLUE(pre_memory_color)  = 0x00;
+   COLOR_ALPHA(pre_memory_color) = 0xE0;
+   *curpixel_memcvg              = 7;
 }
 
 static void fbread_8(uint32_t curpixel, uint32_t* curpixel_memcvg)
@@ -6198,24 +6503,24 @@ static void fbread_8(uint32_t curpixel, uint32_t* curpixel_memcvg)
    UINT32 addr = fb_address + curpixel;
    RREADADDR8(mem, addr);
 
-    memory_color.r = mem;
-    memory_color.g = mem;
-    memory_color.b = mem;
-    memory_color.a = 0xE0;
-    *curpixel_memcvg = 7;
+   COLOR_RED(memory_color)   = mem;
+   COLOR_GREEN(memory_color) = mem;
+   COLOR_BLUE(memory_color)  = mem;
+   COLOR_ALPHA(memory_color) = 0xE0;
+   *curpixel_memcvg = 7;
 }
 
 static void fbread2_8(uint32_t curpixel, uint32_t* curpixel_memcvg)
 {
    UINT8 mem;
-	UINT32 addr = fb_address + curpixel;
-	RREADADDR8(mem, addr);
+   UINT32 addr = fb_address + curpixel;
+   RREADADDR8(mem, addr);
 
-    pre_memory_color.r = mem;
-    pre_memory_color.g = mem;
-    pre_memory_color.b = mem;
-    pre_memory_color.a = 0xE0;
-    *curpixel_memcvg = 7;
+   COLOR_RED(pre_memory_color)   = mem;
+   COLOR_GREEN(pre_memory_color) = mem;
+   COLOR_BLUE(pre_memory_color)  = mem;
+   COLOR_ALPHA(pre_memory_color) = 0xE0;
+   *curpixel_memcvg = 7;
 }
 
 static INLINE void fbread_16(uint32_t curpixel, uint32_t* curpixel_memcvg)
@@ -6233,19 +6538,21 @@ static INLINE void fbread_16(uint32_t curpixel, uint32_t* curpixel_memcvg)
 
 		if (fb_format == FORMAT_RGBA)
 		{
-			memory_color.r = GET_HI(fword);
-			memory_color.g = GET_MED(fword);
-			memory_color.b = GET_LOW(fword);
+			COLOR_RED(memory_color)   = GET_HI(fword);
+			COLOR_GREEN(memory_color) = GET_MED(fword);
+			COLOR_BLUE(memory_color)  = GET_LOW(fword);
 			lowbits = ((fword & 1) << 2) | hbyte;
 		}
 		else
 		{
-			memory_color.r = memory_color.g = memory_color.b = fword >> 8;
+			COLOR_RED(memory_color)   = fword >> 8;
+         COLOR_GREEN(memory_color) = fword >> 8;
+         COLOR_BLUE(memory_color)  = fword >> 8;
 			lowbits = (fword >> 5) & 7;
 		}
 
 		*curpixel_memcvg = lowbits;
-		memory_color.a = lowbits << 5;
+		COLOR_ALPHA(memory_color) = lowbits << 5;
 	}
 	else
 	{
@@ -6253,15 +6560,19 @@ static INLINE void fbread_16(uint32_t curpixel, uint32_t* curpixel_memcvg)
 
 		if (fb_format == FORMAT_RGBA)
 		{
-			memory_color.r = GET_HI(fword);
-			memory_color.g = GET_MED(fword);
-			memory_color.b = GET_LOW(fword);
+			COLOR_RED(memory_color)   = GET_HI(fword);
+			COLOR_GREEN(memory_color) = GET_MED(fword);
+			COLOR_BLUE(memory_color)  = GET_LOW(fword);
 		}
 		else
-			memory_color.r = memory_color.g = memory_color.b = fword >> 8;
+      {
+			COLOR_RED(memory_color)   = fword >> 8;
+         COLOR_GREEN(memory_color) = fword >> 8;
+         COLOR_BLUE(memory_color)  = fword >> 8;
+      }
 
 		*curpixel_memcvg = 7;
-		memory_color.a = 0xe0;
+		COLOR_ALPHA(memory_color) = 0xe0;
 	}
 }
 
@@ -6279,19 +6590,21 @@ static INLINE void fbread2_16(uint32_t curpixel, uint32_t* curpixel_memcvg)
 
 		if (fb_format == FORMAT_RGBA)
 		{
-			pre_memory_color.r = GET_HI(fword);
-			pre_memory_color.g = GET_MED(fword);
-			pre_memory_color.b = GET_LOW(fword);
+			COLOR_RED(pre_memory_color)    = GET_HI(fword);
+			COLOR_GREEN(pre_memory_color)  = GET_MED(fword);
+			COLOR_BLUE(pre_memory_color)   = GET_LOW(fword);
 			lowbits = ((fword & 1) << 2) | hbyte;
 		}
 		else
 		{
-			pre_memory_color.r = pre_memory_color.g = pre_memory_color.b = fword >> 8;
+			COLOR_RED(pre_memory_color)     = fword >> 8;
+         COLOR_GREEN(pre_memory_color)   = fword >> 8;
+         COLOR_BLUE(pre_memory_color)    = fword >> 8;
 			lowbits = (fword >> 5) & 7;
 		}
 
-		*curpixel_memcvg = lowbits;
-		pre_memory_color.a = lowbits << 5;
+		*curpixel_memcvg              = lowbits;
+		COLOR_ALPHA(pre_memory_color) = lowbits << 5;
 	}
 	else
 	{
@@ -6299,15 +6612,19 @@ static INLINE void fbread2_16(uint32_t curpixel, uint32_t* curpixel_memcvg)
 
 		if (fb_format == FORMAT_RGBA)
 		{
-			pre_memory_color.r = GET_HI(fword);
-			pre_memory_color.g = GET_MED(fword);
-			pre_memory_color.b = GET_LOW(fword);
+			COLOR_RED(pre_memory_color)   = GET_HI(fword);
+			COLOR_GREEN(pre_memory_color) = GET_MED(fword);
+			COLOR_BLUE(pre_memory_color)  = GET_LOW(fword);
 		}
 		else
-			pre_memory_color.r = pre_memory_color.g = pre_memory_color.b = fword >> 8;
+      {
+			COLOR_RED(pre_memory_color)   = fword >> 8;
+         COLOR_GREEN(pre_memory_color) = fword >> 8;
+         COLOR_BLUE(pre_memory_color)  = fword >> 8;
+      }
 
-		*curpixel_memcvg = 7;
-		pre_memory_color.a = 0xe0;
+		*curpixel_memcvg              = 7;
+		COLOR_ALPHA(pre_memory_color) = 0xe0;
 	}
 	
 }
@@ -6317,15 +6634,15 @@ static void fbread_32(uint32_t curpixel, uint32_t* curpixel_memcvg)
     UINT32 mem, addr = (fb_address >> 2) + curpixel;
     RREADIDX32(mem, addr);
 
-    memory_color.r = (mem >> 24) & 0xFF;
-    memory_color.g = (mem >> 16) & 0xFF;
-    memory_color.b = (mem >>  8) & 0xFF;
+    COLOR_RED(memory_color)    = (mem >> 24) & 0xFF;
+    COLOR_GREEN(memory_color)  = (mem >> 16) & 0xFF;
+    COLOR_BLUE(memory_color)   = (mem >>  8) & 0xFF;
 
-    memory_color.a  = (mem >>  0) & 0xFF;
-    memory_color.a |= ~(-other_modes.image_read_en);
-    memory_color.a &= 0xE0;
+    COLOR_ALPHA(memory_color)  = (mem >>  0) & 0xFF;
+    COLOR_ALPHA(memory_color) |= ~(-other_modes.image_read_en);
+    COLOR_ALPHA(memory_color) &= 0xE0;
 
-    *curpixel_memcvg = (unsigned char)(memory_color.a) >> 5;
+    *curpixel_memcvg = (unsigned char)(COLOR_ALPHA(memory_color)) >> 5;
 }
 
 static void fbread2_32(uint32_t curpixel, uint32_t* curpixel_memcvg)
@@ -6333,15 +6650,15 @@ static void fbread2_32(uint32_t curpixel, uint32_t* curpixel_memcvg)
    UINT32 mem, addr = (fb_address >> 2) + curpixel; 
    RREADIDX32(mem, addr);
 
-    pre_memory_color.r = (mem >> 24) & 0xFF;
-    pre_memory_color.g = (mem >> 16) & 0xFF;
-    pre_memory_color.b = (mem >>  8) & 0xFF;
+   COLOR_RED(pre_memory_color)    = (mem >> 24) & 0xFF;
+   COLOR_GREEN(pre_memory_color)  = (mem >> 16) & 0xFF;
+   COLOR_BLUE(pre_memory_color)   = (mem >>  8) & 0xFF;
 
-    pre_memory_color.a  = (mem >>  0) & 0xFF;
-    pre_memory_color.a |= ~(-other_modes.image_read_en);
-    pre_memory_color.a &= 0xE0;
+   COLOR_ALPHA(pre_memory_color)  = (mem >>  0) & 0xFF;
+   COLOR_ALPHA(pre_memory_color) |= ~(-other_modes.image_read_en);
+   COLOR_ALPHA(pre_memory_color)  &= 0xE0;
 
-    *curpixel_memcvg = (unsigned char)(pre_memory_color.a) >> 5;
+   *curpixel_memcvg = (unsigned char)(COLOR_ALPHA(pre_memory_color)) >> 5;
 }
 
 STRICTINLINE UINT32 z_decompress(UINT32 zb)
@@ -7100,10 +7417,10 @@ static void rgbaz_correct_clip(int offx, int offy, int r, int g, int b, int a,
     }
 
     
-    shade_color.r = special_9bit_clamptable[r & 0x1ff];
-    shade_color.g = special_9bit_clamptable[g & 0x1ff];
-    shade_color.b = special_9bit_clamptable[b & 0x1ff];
-    shade_color.a = special_9bit_clamptable[a & 0x1ff];
+    COLOR_RED(shade_color)   = special_9bit_clamptable[r & 0x1ff];
+    COLOR_GREEN(shade_color) = special_9bit_clamptable[g & 0x1ff];
+    COLOR_BLUE(shade_color)  = special_9bit_clamptable[b & 0x1ff];
+    COLOR_ALPHA(shade_color) = special_9bit_clamptable[a & 0x1ff];
     
     
     
@@ -8825,19 +9142,19 @@ static void sync_full(uint32_t w1, uint32_t w2)
 
 static void set_key_gb(uint32_t w1, uint32_t w2)
 {
-    key_width.g  = (w1 & 0x00FFF000) >> 12;
-    key_width.b  = (w1 & 0x00000FFF) >>  0;
-    key_center.g = (w2 & 0xFF000000) >> 24;
-    key_scale.g  = (w2 & 0x00FF0000) >> 16;
-    key_center.b = (w2 & 0x0000FF00) >>  8;
-    key_scale.b  = (w2 & 0x000000FF) >>  0;
+    COLOR_GREEN(key_width)  = (w1 & 0x00FFF000) >> 12;
+    COLOR_BLUE(key_width)   = (w1 & 0x00000FFF) >>  0;
+    COLOR_GREEN(key_center) = (w2 & 0xFF000000) >> 24;
+    COLOR_GREEN(key_scale)  = (w2 & 0x00FF0000) >> 16;
+    COLOR_BLUE(key_center)  = (w2 & 0x0000FF00) >>  8;
+    COLOR_BLUE(key_scale)   = (w2 & 0x000000FF) >>  0;
 }
 
 static void set_key_r(uint32_t w1, uint32_t w2)
 {
-    key_width.r  = (w2 & 0x0FFF0000) >> 16;
-    key_center.r = (w2 & 0x0000FF00) >>  8;
-    key_scale.r  = (w2 & 0x000000FF) >>  0;
+    COLOR_RED(key_width)  = (w2 & 0x0FFF0000) >> 16;
+    COLOR_RED(key_center) = (w2 & 0x0000FF00) >>  8;
+    COLOR_RED(key_scale)  = (w2 & 0x000000FF) >>  0;
 }
 
 static void set_convert(uint32_t w1, uint32_t w2)
@@ -9164,36 +9481,36 @@ static void set_fill_color(uint32_t w1, uint32_t w2)
 
 static void set_fog_color(uint32_t w1, uint32_t w2)
 {
-    fog_color.r = (w2 & 0xFF000000) >> 24;
-    fog_color.g = (w2 & 0x00FF0000) >> 16;
-    fog_color.b = (w2 & 0x0000FF00) >>  8;
-    fog_color.a = (w2 & 0x000000FF) >>  0;
+    COLOR_RED(fog_color)   = (w2 & 0xFF000000) >> 24;
+    COLOR_GREEN(fog_color) = (w2 & 0x00FF0000) >> 16;
+    COLOR_BLUE(fog_color)  = (w2 & 0x0000FF00) >>  8;
+    COLOR_ALPHA(fog_color) = (w2 & 0x000000FF) >>  0;
 }
 
 static void set_blend_color(uint32_t w1, uint32_t w2)
 {
-    blend_color.r = (w2 & 0xFF000000) >> 24;
-    blend_color.g = (w2 & 0x00FF0000) >> 16;
-    blend_color.b = (w2 & 0x0000FF00) >>  8;
-    blend_color.a = (w2 & 0x000000FF) >>  0;
+    COLOR_RED(blend_color)   = (w2 & 0xFF000000) >> 24;
+    COLOR_GREEN(blend_color) = (w2 & 0x00FF0000) >> 16;
+    COLOR_BLUE(blend_color)  = (w2 & 0x0000FF00) >>  8;
+    COLOR_ALPHA(blend_color) = (w2 & 0x000000FF) >>  0;
 }
 
 static void set_prim_color(uint32_t w1, uint32_t w2)
 {
-    min_level          = (w1 & 0x00001F00) >>(40-32);
-    primitive_lod_frac = (w1 & 0x000000FF) >>(32-32);
-    prim_color.r       = (w2 & 0xFF000000) >> 24;
-    prim_color.g       = (w2 & 0x00FF0000) >> 16;
-    prim_color.b       = (w2 & 0x0000FF00) >>  8;
-    prim_color.a       = (w2 & 0x000000FF) >>  0;
+    min_level               = (w1 & 0x00001F00) >>(40-32);
+    primitive_lod_frac      = (w1 & 0x000000FF) >>(32-32);
+    COLOR_RED(prim_color)   = (w2 & 0xFF000000) >> 24;
+    COLOR_GREEN(prim_color) = (w2 & 0x00FF0000) >> 16;
+    COLOR_BLUE(prim_color)  = (w2 & 0x0000FF00) >>  8;
+    COLOR_ALPHA(prim_color) = (w2 & 0x000000FF) >>  0;
 }
 
 static void set_env_color(uint32_t w1, uint32_t w2)
 {
-    env_color.r = (w2 & 0xFF000000) >> 24;
-    env_color.g = (w2 & 0x00FF0000) >> 16;
-    env_color.b = (w2 & 0x0000FF00) >>  8;
-    env_color.a = (w2 & 0x000000FF) >>  0;
+    COLOR_RED(env_color)   = (w2 & 0xFF000000) >> 24;
+    COLOR_GREEN(env_color) = (w2 & 0x00FF0000) >> 16;
+    COLOR_BLUE(env_color)  = (w2 & 0x0000FF00) >>  8;
+    COLOR_ALPHA(env_color) = (w2 & 0x000000FF) >>  0;
 }
 
 static void set_combine(uint32_t w1, uint32_t w2)
