@@ -86,7 +86,7 @@ static void set_color_image(uint32_t w1, uint32_t w2);
 
 static NOINLINE void draw_triangle(uint32_t w1, uint32_t w2,
       int shade, int texture, int zbuffer, struct stepwalker_info *stw_info);
-NOINLINE static void render_spans(
+void render_spans(
     int yhlimit, int yllimit, int tilenum, int flip);
 STRICTINLINE static u16 normalize_dzpix(u16 sum);
 
@@ -1863,38 +1863,6 @@ STRICTINLINE static u16 normalize_dzpix(u16 sum)
         if (sum & count)
             return (count << 1);
     return 0;
-}
-
-NOINLINE static void render_spans(
-    int yhlimit, int yllimit, int tilenum, int flip)
-{
-    const unsigned int cycle_type = other_modes.cycle_type & 03;
-
-    if (other_modes.f.stalederivs == 0)
-        { /* branch */ }
-    else
-    {
-        deduce_derivatives();
-        other_modes.f.stalederivs = 0;
-    }
-    fbread1_ptr = fbread_func[fb_size];
-    fbread2_ptr = fbread2_func[fb_size];
-    fbwrite_ptr = fbwrite_func[fb_size];
-
-#ifdef _DEBUG
-    ++render_cycle_mode_counts[cycle_type];
-#endif
-
-    if (cycle_type & 02)
-        if (cycle_type & 01)
-            render_spans_fill(yhlimit, yllimit, flip);
-        else
-            render_spans_copy(yhlimit, yllimit, tilenum, flip);
-    else
-        if (cycle_type & 01)
-            render_spans_2cycle_ptr(yhlimit, yllimit, tilenum, flip);
-        else
-            render_spans_1cycle_ptr(yhlimit, yllimit, tilenum, flip);
 }
 
 #ifdef USE_SSE_SUPPORT

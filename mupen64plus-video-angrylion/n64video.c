@@ -202,13 +202,13 @@ void compute_color_index(UINT32* cidx, UINT32 readshort, UINT32 nybbleoffset, UI
 void read_tmem_copy(int s, int s1, int s2, int s3, int t, UINT32 tilenum, UINT32* sortshort, int* hibits, int* lowbits);
 void replicate_for_copy(UINT32* outbyte, UINT32 inshort, UINT32 nybbleoffset, UINT32 tilenum, UINT32 tformat, UINT32 tsize);
 void fetch_qword_copy(UINT32* hidword, UINT32* lowdword, INT32 ssss, INT32 ssst, UINT32 tilenum);
-void render_spans_1cycle_complete(int start, int end, int tilenum, int flip);
-void render_spans_1cycle_notexel1(int start, int end, int tilenum, int flip);
-void render_spans_1cycle_notex(int start, int end, int tilenum, int flip);
-void render_spans_2cycle_complete(int start, int end, int tilenum, int flip);
-void render_spans_2cycle_notexelnext(int start, int end, int tilenum, int flip);
-void render_spans_2cycle_notexel1(int start, int end, int tilenum, int flip);
-void render_spans_2cycle_notex(int start, int end, int tilenum, int flip);
+static void render_spans_1cycle_complete(int start, int end, int tilenum, int flip);
+static void render_spans_1cycle_notexel1(int start, int end, int tilenum, int flip);
+static void render_spans_1cycle_notex(int start, int end, int tilenum, int flip);
+static void render_spans_2cycle_complete(int start, int end, int tilenum, int flip);
+static void render_spans_2cycle_notexelnext(int start, int end, int tilenum, int flip);
+static void render_spans_2cycle_notexel1(int start, int end, int tilenum, int flip);
+static void render_spans_2cycle_notex(int start, int end, int tilenum, int flip);
 static void combiner_1cycle(int adseed, UINT32* curpixel_cvg);
 static void combiner_2cycle(int adseed, UINT32* curpixel_cvg, INT32* acalpha);
 static int blender_1cycle(UINT32* fr, UINT32* fg, UINT32* fb, int dith, UINT32 blend_en, UINT32 prewrap, UINT32 curpixel_cvg, UINT32 curpixel_cvbit);
@@ -311,8 +311,8 @@ static void (*render_spans_2cycle_func[4])(int, int, int, int) =
 static void (*get_dither_noise_ptr)(int, int, int*, int*);
 static void (*rgb_dither_ptr)(int*, int*, int*, int);
 static void (*tcdiv_ptr)(INT32, INT32, INT32, INT32*, INT32*);
-void (*render_spans_1cycle_ptr)(int, int, int, int);
-void (*render_spans_2cycle_ptr)(int, int, int, int);
+static void (*render_spans_1cycle_ptr)(int, int, int, int);
+static void (*render_spans_2cycle_ptr)(int, int, int, int);
 
 UINT16 z_com_table[0x40000];
 UINT32 z_complete_dec_table[0x4000];
@@ -3507,7 +3507,7 @@ STRICTINLINE void tc_pipeline_load(INT32* sss, INT32* sst, int tilenum, int coor
     *sst = sst1;
 }
 
-void render_spans_1cycle_complete(int start, int end, int tilenum, int flip)
+static void render_spans_1cycle_complete(int start, int end, int tilenum, int flip)
 {
     UINT8 offx, offy;
     SPANSIGS sigs;
@@ -3695,8 +3695,7 @@ void render_spans_1cycle_complete(int start, int end, int tilenum, int flip)
     }
 }
 
-
-void render_spans_1cycle_notexel1(int start, int end, int tilenum, int flip)
+static void render_spans_1cycle_notexel1(int start, int end, int tilenum, int flip)
 {
     int zbcur;
     UINT8 offx, offy;
@@ -3876,8 +3875,7 @@ void render_spans_1cycle_notexel1(int start, int end, int tilenum, int flip)
     }
 }
 
-
-void render_spans_1cycle_notex(int start, int end, int tilenum, int flip)
+static void render_spans_1cycle_notex(int start, int end, int tilenum, int flip)
 {
     int zbcur;
     UINT8 offx, offy;
@@ -4013,7 +4011,7 @@ void render_spans_1cycle_notex(int start, int end, int tilenum, int flip)
     }
 }
 
-void render_spans_2cycle_complete(int start, int end, int tilenum, int flip)
+static void render_spans_2cycle_complete(int start, int end, int tilenum, int flip)
 {
     int zbcur;
     UINT8 offx, offy;
@@ -4205,9 +4203,7 @@ void render_spans_2cycle_complete(int start, int end, int tilenum, int flip)
     }
 }
 
-
-
-void render_spans_2cycle_notexelnext(int start, int end, int tilenum, int flip)
+static void render_spans_2cycle_notexelnext(int start, int end, int tilenum, int flip)
 {
     int zbcur;
     UINT8 offx, offy;
@@ -4382,7 +4378,7 @@ void render_spans_2cycle_notexelnext(int start, int end, int tilenum, int flip)
 void breakme(void)
 {}
 
-void render_spans_2cycle_notexel1(int start, int end, int tilenum, int flip)
+static void render_spans_2cycle_notexel1(int start, int end, int tilenum, int flip)
 {
     int zbcur;
     UINT8 offx, offy;
@@ -4561,8 +4557,7 @@ void render_spans_2cycle_notexel1(int start, int end, int tilenum, int flip)
     }
 }
 
-
-void render_spans_2cycle_notex(int start, int end, int tilenum, int flip)
+static void render_spans_2cycle_notex(int start, int end, int tilenum, int flip)
 {
     int zbcur;
     UINT8 offx, offy;
@@ -4699,7 +4694,7 @@ void render_spans_2cycle_notex(int start, int end, int tilenum, int flip)
     }
 }
 
-NOINLINE void render_spans_fill(int start, int end, int flip)
+static void render_spans_fill(int start, int end, int flip)
 {
     int curpixel;
     int length;
@@ -4782,7 +4777,7 @@ NOINLINE void render_spans_fill(int start, int end, int flip)
     }
 }
 
-NOINLINE void render_spans_copy(int start, int end, int tilenum, int flip)
+static void render_spans_copy(int start, int end, int tilenum, int flip)
 {
     int i, j, k;
     
@@ -4926,6 +4921,38 @@ NOINLINE void render_spans_copy(int start, int end, int tilenum, int flip)
             fbptr &= 0x00FFFFFF;
         }
     }
+}
+
+void render_spans(
+    int yhlimit, int yllimit, int tilenum, int flip)
+{
+    const unsigned int cycle_type = other_modes.cycle_type & 03;
+
+    if (other_modes.f.stalederivs == 0)
+        { /* branch */ }
+    else
+    {
+        deduce_derivatives();
+        other_modes.f.stalederivs = 0;
+    }
+    fbread1_ptr = fbread_func[fb_size];
+    fbread2_ptr = fbread2_func[fb_size];
+    fbwrite_ptr = fbwrite_func[fb_size];
+
+#ifdef _DEBUG
+    ++render_cycle_mode_counts[cycle_type];
+#endif
+
+    if (cycle_type & 02)
+        if (cycle_type & 01)
+            render_spans_fill(yhlimit, yllimit, flip);
+        else
+            render_spans_copy(yhlimit, yllimit, tilenum, flip);
+    else
+        if (cycle_type & 01)
+            render_spans_2cycle_ptr(yhlimit, yllimit, tilenum, flip);
+        else
+            render_spans_1cycle_ptr(yhlimit, yllimit, tilenum, flip);
 }
 
 NOINLINE void loading_pipeline(

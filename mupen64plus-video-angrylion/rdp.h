@@ -364,15 +364,7 @@ INLINE extern void calculate_tile_derivs(UINT32 tile);
 extern void tile_tlut_common_cs_decoder(UINT32 w1, UINT32 w2);
 extern void deduce_derivatives(void);
 
-extern void render_spans_1cycle(int start, int end, int tilenum, int flip);
-extern void render_spans_2cycle(int start, int end, int tilenum, int flip);
-extern NOINLINE void render_spans_copy(
-    int start, int end, int tilenum, int flip);
-extern NOINLINE void render_spans_fill(int start, int end, int flip);
-
 NOINLINE extern void edgewalker_for_loads(INT32* lewdata);
-extern void (*render_spans_1cycle_ptr)(int, int, int, int);
-extern void (*render_spans_2cycle_ptr)(int, int, int, int);
 
 extern INLINE void SET_BLENDER_INPUT(
     int cycle, int which, INT32 **input_r, INT32 **input_g, INT32 **input_b,
