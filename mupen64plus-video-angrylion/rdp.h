@@ -329,23 +329,6 @@ extern void deduce_derivatives(void);
 
 NOINLINE extern void edgewalker_for_loads(INT32* lewdata);
 
-extern INLINE void SET_BLENDER_INPUT(
-    int cycle, int which, INT32 **input_r, INT32 **input_g, INT32 **input_b,
-    INT32 **input_a, int a, int b);
-extern INLINE void SET_SUBA_RGB_INPUT(
-    INT32 **input_r, INT32 **input_g, INT32 **input_b, int code);
-extern INLINE void SET_SUBB_RGB_INPUT(
-    INT32 **input_r, INT32 **input_g, INT32 **input_b, int code);
-extern INLINE void SET_MUL_RGB_INPUT(
-    INT32 **input_r, INT32 **input_g, INT32 **input_b, int code);
-extern INLINE void SET_ADD_RGB_INPUT(
-    INT32 **input_r, INT32 **input_g, INT32 **input_b, int code);
-extern INLINE void SET_SUB_ALPHA_INPUT(INT32 **input, int code);
-extern INLINE void SET_MUL_ALPHA_INPUT(INT32 **input, int code);
-
 extern UINT32 internal_vi_v_current_line;
-
-extern OTHER_MODES other_modes;
-extern COMBINE_MODES combine;
 
 #endif

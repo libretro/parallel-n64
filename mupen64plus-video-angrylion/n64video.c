@@ -82,8 +82,8 @@ static INT32 k4 = 0, k5 = 0;
 
 static TILE tile[8];
 
-OTHER_MODES other_modes;
-COMBINE_MODES combine;
+static OTHER_MODES other_modes;
+static COMBINE_MODES combine;
 
 static COLOR key_width;
 static COLOR key_scale;
@@ -654,6 +654,71 @@ static void (*fbwrite_func[4])(
     fbwrite_4, fbwrite_8, fbwrite_16, fbwrite_32
 };
 
+static INLINE void SET_BLENDER_INPUT(int cycle, int which, INT32 **input_r, INT32 **input_g, INT32 **input_b, INT32 **input_a, int a, int b)
+{
+
+    switch (a & 0x3)
+    {
+        case 0:
+        {
+            if (cycle == 0)
+            {
+                *input_r = &pixel_color.r;
+                *input_g = &pixel_color.g;
+                *input_b = &pixel_color.b;
+            }
+            else
+            {
+                *input_r = &blended_pixel_color.r;
+                *input_g = &blended_pixel_color.g;
+                *input_b = &blended_pixel_color.b;
+            }
+            break;
+        }
+
+        case 1:
+        {
+            *input_r = &memory_color.r;
+            *input_g = &memory_color.g;
+            *input_b = &memory_color.b;
+            break;
+        }
+
+        case 2:
+        {
+            *input_r = &blend_color.r;        *input_g = &blend_color.g;        *input_b = &blend_color.b;
+            break;
+        }
+
+        case 3:
+        {
+            *input_r = &fog_color.r;        *input_g = &fog_color.g;        *input_b = &fog_color.b;
+            break;
+        }
+    }
+
+    if (which == 0)
+    {
+        switch (b & 0x3)
+        {
+            case 0:        *input_a = &pixel_color.a; break;
+            case 1:        *input_a = &fog_color.a; break;
+            case 2:        *input_a = &shade_color.a; break;
+            case 3:        *input_a = &zero_color; break;
+        }
+    }
+    else
+    {
+        switch (b & 0x3)
+        {
+            case 0:        *input_a = &inv_pixel_color.a; break;
+            case 1:        *input_a = &memory_color.a; break;
+            case 2:        *input_a = &blenderone; break;
+            case 3:        *input_a = &zero_color; break;
+        }
+    }
+}
+
 void rdp_init(void)
 {
     register int i;
@@ -735,7 +800,7 @@ void rdp_init(void)
     rdram_16 = (UINT16*)gfx_info.RDRAM;
 }
 
-INLINE void SET_SUBA_RGB_INPUT(INT32 **input_r, INT32 **input_g, INT32 **input_b, int code)
+static INLINE void SET_SUBA_RGB_INPUT(INT32 **input_r, INT32 **input_g, INT32 **input_b, int code)
 {
     switch (code & 0xf)
     {
@@ -754,7 +819,7 @@ INLINE void SET_SUBA_RGB_INPUT(INT32 **input_r, INT32 **input_g, INT32 **input_b
     }
 }
 
-INLINE void SET_SUBB_RGB_INPUT(INT32 **input_r, INT32 **input_g, INT32 **input_b, int code)
+static INLINE void SET_SUBB_RGB_INPUT(INT32 **input_r, INT32 **input_g, INT32 **input_b, int code)
 {
     switch (code & 0xf)
     {
@@ -773,7 +838,7 @@ INLINE void SET_SUBB_RGB_INPUT(INT32 **input_r, INT32 **input_g, INT32 **input_b
     }
 }
 
-INLINE void SET_MUL_RGB_INPUT(INT32 **input_r, INT32 **input_g, INT32 **input_b, int code)
+static INLINE void SET_MUL_RGB_INPUT(INT32 **input_r, INT32 **input_g, INT32 **input_b, int code)
 {
     switch (code & 0x1f)
     {
@@ -801,7 +866,7 @@ INLINE void SET_MUL_RGB_INPUT(INT32 **input_r, INT32 **input_g, INT32 **input_b,
     }
 }
 
-INLINE void SET_ADD_RGB_INPUT(INT32 **input_r, INT32 **input_g, INT32 **input_b, int code)
+static INLINE void SET_ADD_RGB_INPUT(INT32 **input_r, INT32 **input_g, INT32 **input_b, int code)
 {
     switch (code & 0x7)
     {
@@ -816,7 +881,7 @@ INLINE void SET_ADD_RGB_INPUT(INT32 **input_r, INT32 **input_g, INT32 **input_b,
     }
 }
 
-INLINE void SET_SUB_ALPHA_INPUT(INT32 **input, int code)
+static INLINE void SET_SUB_ALPHA_INPUT(INT32 **input, int code)
 {
     switch (code & 0x7)
     {
@@ -831,7 +896,7 @@ INLINE void SET_SUB_ALPHA_INPUT(INT32 **input, int code)
     }
 }
 
-INLINE void SET_MUL_ALPHA_INPUT(INT32 **input, int code)
+static INLINE void SET_MUL_ALPHA_INPUT(INT32 **input, int code)
 {
     switch (code & 0x7)
     {
@@ -1263,70 +1328,6 @@ static void precalculate_everything(void)
     }
 }
 
-INLINE void SET_BLENDER_INPUT(int cycle, int which, INT32 **input_r, INT32 **input_g, INT32 **input_b, INT32 **input_a, int a, int b)
-{
-
-    switch (a & 0x3)
-    {
-        case 0:
-        {
-            if (cycle == 0)
-            {
-                *input_r = &pixel_color.r;
-                *input_g = &pixel_color.g;
-                *input_b = &pixel_color.b;
-            }
-            else
-            {
-                *input_r = &blended_pixel_color.r;
-                *input_g = &blended_pixel_color.g;
-                *input_b = &blended_pixel_color.b;
-            }
-            break;
-        }
-
-        case 1:
-        {
-            *input_r = &memory_color.r;
-            *input_g = &memory_color.g;
-            *input_b = &memory_color.b;
-            break;
-        }
-
-        case 2:
-        {
-            *input_r = &blend_color.r;        *input_g = &blend_color.g;        *input_b = &blend_color.b;
-            break;
-        }
-
-        case 3:
-        {
-            *input_r = &fog_color.r;        *input_g = &fog_color.g;        *input_b = &fog_color.b;
-            break;
-        }
-    }
-
-    if (which == 0)
-    {
-        switch (b & 0x3)
-        {
-            case 0:        *input_a = &pixel_color.a; break;
-            case 1:        *input_a = &fog_color.a; break;
-            case 2:        *input_a = &shade_color.a; break;
-            case 3:        *input_a = &zero_color; break;
-        }
-    }
-    else
-    {
-        switch (b & 0x3)
-        {
-            case 0:        *input_a = &inv_pixel_color.a; break;
-            case 1:        *input_a = &memory_color.a; break;
-            case 2:        *input_a = &blenderone; break;
-            case 3:        *input_a = &zero_color; break;
-        }
-    }
-}
 
 static unsigned char bayer_matrix[16] = {
     00, 04, 01, 05,
