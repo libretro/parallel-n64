@@ -1818,7 +1818,9 @@ static void fetch_texel_entlut(COLOR *color, int s, int t, UINT32 tilenum)
             taddr ^= ((t & 1) ? BYTE_XOR_DWORD_SWAP : BYTE_ADDR_XOR);
             c = __TMEM[taddr & 0x7ff];
             c = (s & 1) ? (c & 0xf) : (c >> 4);
+#ifdef EXTRALOGGING
             fprintf(stderr, "TPAL: %u\n", tpal);
+#endif
             c = tlut[((tpal | c) << 2) ^ WORD_ADDR_XOR];
         }
         break;
@@ -2745,8 +2747,10 @@ static void fetch_texel_entlut_quadro(COLOR *color0, COLOR *color1, COLOR *color
             taddr2 ^= xort;
             taddr3 ^= xort;
                                                             
+#ifdef EXTRALOGGING
             if (s0 == 0 && t0 == 0)
                fprintf(stderr, "TPAL: %u\n", tpal);
+#endif
             ands = s0 & 1;
             c0 = __TMEM[taddr0 & 0x7ff];
             c0 = (ands) ? (c0 & 0xf) : (c0 >> 4);
@@ -8926,8 +8930,10 @@ static void set_tile(uint32_t w1, uint32_t w2)
     tile[tilenum].tmem    = (w1 & 0x000001FF) >> (32 - 32);
  /* tilenum               = (cmd_fifo.UW & 0x0000000007000000) >> 24; */
     tile[tilenum].palette = (w2 & 0x00F00000) >> (20 -  0);
+#ifdef EXTRALOGGING
     if (tile[tilenum].palette)
        fprintf(stderr, "Tile %d: Palette: %u\n", tilenum, tile[tilenum].palette);
+#endif
     tile[tilenum].ct      = (w2 & 0x00080000) >> (19 -  0);
     tile[tilenum].mt      = (w2 & 0x00040000) >> (18 -  0);
     tile[tilenum].mask_t  = (w2 & 0x0003C000) >> (14 -  0);
