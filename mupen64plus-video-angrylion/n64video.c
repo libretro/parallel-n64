@@ -7071,11 +7071,17 @@ static void rgbaz_correct_clip(int offx, int offy, int r, int g, int b, int a,
     
     switch(zanded)
     {
-        case 0: *z = sz & 0x3ffff;                        break;
-        case 1:    *z = sz & 0x3ffff;                        break;
-        case 2: *z = 0x3ffff;                            break;
-        case 3: *z = 0;                                    break;
+        case 0:
+        case 1:
+           *z = sz;
+           break;
+        case 2:
+        case 3:
+           *z = (0x3FFFD + zanded);
+           break;
     }
+
+    *z &= 0x3FFFF;
 }
 
 UINT32 vi_integer_sqrt(UINT32 a)
