@@ -290,8 +290,6 @@ static UINT32 z_compare(UINT32 zcurpixel, UINT32 sz, UINT16 dzpix, int dzpixenc,
 STRICTINLINE int finalize_spanalpha(
     UINT32 blend_en, UINT32 curpixel_cvg, UINT32 curpixel_memcvg);
 STRICTINLINE INT32 CLIP(INT32 value,INT32 min,INT32 max);
-static void tcdiv_persp(INT32 ss, INT32 st, INT32 sw, INT32* sss, INT32* sst);
-static void tcdiv_nopersp(INT32 ss, INT32 st, INT32 sw, INT32* sss, INT32* sst);
 STRICTINLINE void tclod_4x17_to_15(INT32 scurr, INT32 snext, INT32 tcurr, INT32 tnext, INT32 previous, INT32* lod);
 STRICTINLINE void tclod_tcclamp(INT32* sss, INT32* sst);
 STRICTINLINE void lodfrac_lodtile_signals(int lodclamp, INT32 lod, UINT32* l_tile, UINT32* magnify, UINT32* distant);
@@ -326,11 +324,6 @@ struct {UINT32 shift; UINT32 add;} z_dec_table[8] = {
      0, 0x3f800,
 };
 
-static void (*tcdiv_func[2])(INT32, INT32, INT32, INT32*, INT32*) =
-{
-    tcdiv_nopersp, tcdiv_persp
-};
-
 static void (*render_spans_1cycle_func[3])(int, int, int, int) =
 {
     render_spans_1cycle_notex, render_spans_1cycle_notexel1, render_spans_1cycle_complete
@@ -341,7 +334,6 @@ static void (*render_spans_2cycle_func[4])(int, int, int, int) =
     render_spans_2cycle_notex, render_spans_2cycle_notexel1, render_spans_2cycle_notexelnext, render_spans_2cycle_complete
 };
 
-static void (*tcdiv_ptr)(INT32, INT32, INT32, INT32*, INT32*);
 static void (*render_spans_1cycle_ptr)(int, int, int, int);
 
 static void (*render_spans_2cycle_ptr)(int start, int end, int tilenum, int flip);
@@ -751,7 +743,6 @@ void rdp_init(void)
     fbread1_ptr = fbread_func[0];
     fbread2_ptr = fbread2_func[0];
     fbwrite_ptr = fbwrite_func[0];
-    tcdiv_ptr = tcdiv_func[0];
     render_spans_1cycle_ptr = render_spans_1cycle_func[2];
     render_spans_2cycle_ptr = render_spans_2cycle_func[1];
 
@@ -3767,6 +3758,96 @@ STRICTINLINE void tc_pipeline_load(INT32* sss, INT32* sst, int tilenum, int coor
     *sst = sst1;
 }
 
+static INLINE void tcdiv_nopersp(INT32 ss, INT32 st, INT32 sw, INT32* sss, INT32* sst)
+{
+    *sss = (SIGN16(ss)) & 0x1ffff;
+    *sst = (SIGN16(st)) & 0x1ffff;
+}
+
+static INLINE void tcdiv_persp(INT32 ss, INT32 st, INT32 sw, INT32* sss, INT32* sst)
+{
+    int w_carry = 0;
+    int shift; 
+    int tlu_rcp;
+    int sprod, tprod;
+    int outofbounds_s, outofbounds_t;
+    int tempmask;
+    int shift_value;
+    INT32 temps, tempt;
+
+    
+    
+    int overunder_s = 0, overunder_t = 0;
+    
+    
+    if (SIGN16(sw) <= 0)
+        w_carry = 1;
+
+    sw &= 0x7fff;
+
+    
+    
+    shift = tcdiv_table[sw];
+    tlu_rcp = shift >> 4;
+    shift &= 0xf;
+
+    sprod = SIGN16(ss) * tlu_rcp;
+    tprod = SIGN16(st) * tlu_rcp;
+
+    
+    
+    
+    tempmask = ((1 << 30) - 1) & -((1 << 29) >> shift);
+    
+    outofbounds_s = sprod & tempmask;
+    outofbounds_t = tprod & tempmask;
+    
+    if (shift != 0xe)
+    {
+        shift_value = 13 - shift;
+        temps = sprod = (sprod >> shift_value);
+        tempt = tprod = (tprod >> shift_value);
+    }
+    else
+    {
+        temps = sprod << 1;
+        tempt = tprod << 1;
+    }
+    
+    if (outofbounds_s != tempmask && outofbounds_s != 0)
+    {
+        if (!(sprod & (1 << 29)))
+            overunder_s = 2 << 17;
+        else
+            overunder_s = 1 << 17;
+    }
+
+    if (outofbounds_t != tempmask && outofbounds_t != 0)
+    {
+        if (!(tprod & (1 << 29)))
+            overunder_t = 2 << 17;
+        else
+            overunder_t = 1 << 17;
+    }
+
+    if (w_carry)
+    {
+        overunder_s |= (2 << 17);
+        overunder_t |= (2 << 17);
+    }
+
+    *sss = (temps & 0x1ffff) | overunder_s;
+    *sst = (tempt & 0x1ffff) | overunder_t;
+}
+
+static INLINE void tcdiv(INT32 ss, INT32 st, INT32 sw, INT32* sss, INT32* sst)
+{
+   if (other_modes.persp_tex_en)
+      tcdiv_persp(ss, st, sw, sss, sst);
+   else
+      tcdiv_nopersp(ss, st, sw, sss, sst);
+}
+
 static void render_spans_1cycle_complete(int start, int end, int tilenum, int flip)
 {
     UINT8 offx, offy;
@@ -3909,7 +3990,7 @@ static void render_spans_1cycle_complete(int start, int end, int tilenum, int fl
             }
             else
             {
-                tcdiv_ptr(ss, st, sw, &sss, &sst);
+                tcdiv(ss, st, sw, &sss, &sst);
 
                 tclod_1cycle_current(&sss, &sst, news, newt, s, t, w, dsinc, dtinc, dwinc, i, prim_tile, &tile1, &sigs);
                 texture_pipeline_cycle(&texel0_color, &texel0_color, sss, sst, tile1, 0);
@@ -4085,7 +4166,7 @@ static void render_spans_1cycle_notexel1(int start, int end, int tilenum, int fl
 
             lookup_cvmask_derivatives(cvgbuf[x], &offx, &offy, &curpixel_cvg, &curpixel_cvbit);
 
-            tcdiv_ptr(ss, st, sw, &sss, &sst);
+            tcdiv(ss, st, sw, &sss, &sst);
 
             tclod_1cycle_current_simple(&sss, &sst, s, t, w, dsinc, dtinc, dwinc, i, prim_tile, &tile1, &sigs);
 
@@ -4421,7 +4502,7 @@ static void render_spans_2cycle_complete(int start, int end, int tilenum, int fl
             }
             else
             {
-                tcdiv_ptr(ss, st, sw, &sss, &sst);
+                tcdiv(ss, st, sw, &sss, &sst);
 
                 tclod_2cycle_current(&sss, &sst, news, newt, s, t, w, dsinc, dtinc, dwinc, prim_tile, &tile1, &tile2);
 
@@ -4598,7 +4679,7 @@ static void render_spans_2cycle_notexelnext(int start, int end, int tilenum, int
 
             lookup_cvmask_derivatives(cvgbuf[x], &offx, &offy, &curpixel_cvg, &curpixel_cvbit);
             
-            tcdiv_ptr(ss, st, sw, &sss, &sst);
+            tcdiv(ss, st, sw, &sss, &sst);
 
             tclod_2cycle_current_simple(&sss, &sst, s, t, w, dsinc, dtinc, dwinc, prim_tile, &tile1, &tile2);
                 
@@ -4779,7 +4860,7 @@ static void render_spans_2cycle_notexel1(int start, int end, int tilenum, int fl
 
             lookup_cvmask_derivatives(cvgbuf[x], &offx, &offy, &curpixel_cvg, &curpixel_cvbit);
             
-            tcdiv_ptr(ss, st, sw, &sss, &sst);
+            tcdiv(ss, st, sw, &sss, &sst);
 
             tclod_2cycle_current_notexel1(&sss, &sst, s, t, w, dsinc, dtinc, dwinc, prim_tile, &tile1);
             
@@ -5247,7 +5328,7 @@ static void render_spans_copy(int start, int end, int tilenum, int flip)
             st = t >> 16;
             sw = w >> 16;
 
-            tcdiv_ptr(ss, st, sw, &sss, &sst);
+            tcdiv(ss, st, sw, &sss, &sst);
             tclod_copy(&sss, &sst, s, t, w, dsinc, dtinc, dwinc, prim_tile, &tile1);
             fetch_qword_copy(&hidword, &lowdword, sss, sst, tile1);
 
@@ -5754,8 +5835,6 @@ void deduce_derivatives()
     other_modes.f.interpixelblendershiftersneeded = (other_modes.f.special_bsel0 && other_modes.cycle_type == CYCLE_TYPE_2);
 
     other_modes.f.rgb_alpha_dither = (other_modes.rgb_dither_sel << 2) | other_modes.alpha_dither_sel;
-
-    tcdiv_ptr = tcdiv_func[other_modes.persp_tex_en];
 
     if ((combiner_rgbmul_r[1] == &lod_frac) || (combiner_alphamul[1] == &lod_frac))
         lod_frac_used_in_cc1 = 1;
@@ -7019,92 +7098,6 @@ UINT32 vi_integer_sqrt(UINT32 a)
     return res;
 }
 
-static void tcdiv_nopersp(INT32 ss, INT32 st, INT32 sw, INT32* sss, INT32* sst)
-{
-
-
-
-    *sss = (SIGN16(ss)) & 0x1ffff;
-    *sst = (SIGN16(st)) & 0x1ffff;
-}
-
-static void tcdiv_persp(INT32 ss, INT32 st, INT32 sw, INT32* sss, INT32* sst)
-{
-
-
-    int w_carry = 0;
-    int shift; 
-    int tlu_rcp;
-    int sprod, tprod;
-    int outofbounds_s, outofbounds_t;
-    int tempmask;
-    int shift_value;
-    INT32 temps, tempt;
-
-    
-    
-    int overunder_s = 0, overunder_t = 0;
-    
-    
-    if (SIGN16(sw) <= 0)
-        w_carry = 1;
-
-    sw &= 0x7fff;
-
-    
-    
-    shift = tcdiv_table[sw];
-    tlu_rcp = shift >> 4;
-    shift &= 0xf;
-
-    sprod = SIGN16(ss) * tlu_rcp;
-    tprod = SIGN16(st) * tlu_rcp;
-
-    
-    
-    
-    tempmask = ((1 << 30) - 1) & -((1 << 29) >> shift);
-    
-    outofbounds_s = sprod & tempmask;
-    outofbounds_t = tprod & tempmask;
-    
-    if (shift != 0xe)
-    {
-        shift_value = 13 - shift;
-        temps = sprod = (sprod >> shift_value);
-        tempt = tprod = (tprod >> shift_value);
-    }
-    else
-    {
-        temps = sprod << 1;
-        tempt = tprod << 1;
-    }
-    
-    if (outofbounds_s != tempmask && outofbounds_s != 0)
-    {
-        if (!(sprod & (1 << 29)))
-            overunder_s = 2 << 17;
-        else
-            overunder_s = 1 << 17;
-    }
-
-    if (outofbounds_t != tempmask && outofbounds_t != 0)
-    {
-        if (!(tprod & (1 << 29)))
-            overunder_t = 2 << 17;
-        else
-            overunder_t = 1 << 17;
-    }
-
-    if (w_carry)
-    {
-        overunder_s |= (2 << 17);
-        overunder_t |= (2 << 17);
-    }
-
-    *sss = (temps & 0x1ffff) | overunder_s;
-    *sst = (tempt & 0x1ffff) | overunder_t;
-}
 
 static void tclod_2cycle_current(INT32* sss, INT32* sst, INT32 nexts, INT32 nextt, INT32 s, INT32 t, INT32 w, INT32 dsinc, INT32 dtinc, INT32 dwinc, INT32 prim_tile, INT32* t1, INT32* t2)
 {
@@ -7138,7 +7131,7 @@ static void tclod_2cycle_current(INT32* sss, INT32* sst, INT32 nexts, INT32 next
         nextyt = (t + spans_d_stwz_dy[1]) >> 16;
         nextysw = (w + spans_d_stwz_dy[2]) >> 16;
 
-        tcdiv_ptr(nextys, nextyt, nextysw, &nextys, &nextyt);
+        tcdiv(nextys, nextyt, nextysw, &nextys, &nextyt);
 
         lodclamp = (initt & 0x60000) || (nextt & 0x60000) || (inits & 0x60000) || (nexts & 0x60000) || (nextys & 0x60000) || (nextyt & 0x60000);
         
@@ -7201,8 +7194,8 @@ static void tclod_2cycle_current_simple(INT32* sss, INT32* sst, INT32 s, INT32 t
         nextyt = (t + spans_d_stwz_dy[1]) >> 16;
         nextysw = (w + spans_d_stwz_dy[2]) >> 16;
 
-        tcdiv_ptr(nexts, nextt, nextsw, &nexts, &nextt);
-        tcdiv_ptr(nextys, nextyt, nextysw, &nextys, &nextyt);
+        tcdiv(nexts, nextt, nextsw, &nexts, &nextt);
+        tcdiv(nextys, nextyt, nextysw, &nextys, &nextyt);
 
         lodclamp = (initt & 0x60000) || (nextt & 0x60000) || (inits & 0x60000) || (nexts & 0x60000) || (nextys & 0x60000) || (nextyt & 0x60000);
 
@@ -7261,8 +7254,8 @@ static void tclod_2cycle_current_notexel1(INT32* sss, INT32* sst, INT32 s, INT32
         nextyt = (t + spans_d_stwz_dy[1]) >> 16;
         nextysw = (w + spans_d_stwz_dy[2]) >> 16;
 
-        tcdiv_ptr(nexts, nextt, nextsw, &nexts, &nextt);
-        tcdiv_ptr(nextys, nextyt, nextysw, &nextys, &nextyt);
+        tcdiv(nexts, nextt, nextsw, &nexts, &nextt);
+        tcdiv(nextys, nextyt, nextysw, &nextys, &nextyt);
 
         lodclamp = (initt & 0x60000) || (nextt & 0x60000) || (inits & 0x60000) || (nexts & 0x60000) || (nextys & 0x60000) || (nextyt & 0x60000);
 
@@ -7305,8 +7298,8 @@ static void tclod_2cycle_next(INT32* sss, INT32* sst, INT32 s, INT32 t, INT32 w,
         nextyt = (t + spans_d_stwz_dy[1]) >> 16;
         nextysw = (w + spans_d_stwz_dy[2]) >> 16;
 
-        tcdiv_ptr(nexts, nextt, nextsw, &nexts, &nextt);
-        tcdiv_ptr(nextys, nextyt, nextysw, &nextys, &nextyt);
+        tcdiv(nexts, nextt, nextsw, &nexts, &nextt);
+        tcdiv(nextys, nextyt, nextysw, &nextys, &nextyt);
     
         lodclamp = (initt & 0x60000) || (nextt & 0x60000) || (inits & 0x60000) || (nexts & 0x60000) || (nextys & 0x60000) || (nextyt & 0x60000);
 
@@ -7428,7 +7421,7 @@ static void tclod_1cycle_current(INT32* sss, INT32* sst, INT32 nexts, INT32 next
             fart = (t + (dtinc << 1)) >> 16;
         }
 
-        tcdiv_ptr(fars, fart, farsw, &fars, &fart);
+        tcdiv(fars, fart, farsw, &fars, &fart);
 
         lodclamp = (fart & 0x60000) || (nextt & 0x60000) || (fars & 0x60000) || (nexts & 0x60000);
         
@@ -7512,8 +7505,8 @@ static void tclod_1cycle_current_simple(INT32* sss, INT32* sst, INT32 s, INT32 t
             fart = (t + (dtinc << 1)) >> 16;
         }
 
-        tcdiv_ptr(nexts, nextt, nextsw, &nexts, &nextt);
-        tcdiv_ptr(fars, fart, farsw, &fars, &fart);
+        tcdiv(nexts, nextt, nextsw, &nexts, &nextt);
+        tcdiv(fars, fart, farsw, &fars, &fart);
 
         lodclamp = (fart & 0x60000) || (nextt & 0x60000) || (fars & 0x60000) || (nexts & 0x60000);
 
@@ -7618,8 +7611,8 @@ static void tclod_1cycle_next(INT32* sss, INT32* sst, INT32 s, INT32 t, INT32 w,
             fart = (t + (dtinc << 1)) >> 16;
         }
 
-        tcdiv_ptr(nexts, nextt, nextsw, &nexts, &nextt);
-        tcdiv_ptr(fars, fart, farsw, &fars, &fart);
+        tcdiv(nexts, nextt, nextsw, &nexts, &nextt);
+        tcdiv(fars, fart, farsw, &fars, &fart);
 
         lodclamp = (fart & 0x60000) || (nextt & 0x60000) || (fars & 0x60000) || (nexts & 0x60000);
         
@@ -7692,8 +7685,8 @@ static void tclod_copy(INT32* sss, INT32* sst, INT32 s, INT32 t, INT32 w, INT32 
         fars = (s + (dsinc << 1)) >> 16;
         fart = (t + (dtinc << 1)) >> 16;
     
-        tcdiv_ptr(nexts, nextt, nextsw, &nexts, &nextt);
-        tcdiv_ptr(fars, fart, farsw, &fars, &fart);
+        tcdiv(nexts, nextt, nextsw, &nexts, &nextt);
+        tcdiv(fars, fart, farsw, &fars, &fart);
 
         lodclamp = (fart & 0x60000) || (nextt & 0x60000) || (fars & 0x60000) || (nexts & 0x60000);
 
@@ -7740,7 +7733,7 @@ STRICTINLINE void get_texel1_1cycle(INT32* s1, INT32* t1, INT32 s, INT32 t, INT3
         nextt  = stwz_ptr[1] >> 16;
         nextsw = stwz_ptr[2] >> 16;
     }
-    tcdiv_ptr(nexts, nextt, nextsw, s1, t1);
+    tcdiv(nexts, nextt, nextsw, s1, t1);
 }
 
 STRICTINLINE void get_nexttexel0_2cycle(INT32* s1, INT32* t1, INT32 s, INT32 t, INT32 w, INT32 dsinc, INT32 dtinc, INT32 dwinc)
@@ -7750,7 +7743,7 @@ STRICTINLINE void get_nexttexel0_2cycle(INT32* s1, INT32* t1, INT32 s, INT32 t, 
     nexts = (s + dsinc) >> 16;
     nextt = (t + dtinc) >> 16;
 
-    tcdiv_ptr(nexts, nextt, nextsw, s1, t1);
+    tcdiv(nexts, nextt, nextsw, s1, t1);
 }
 
 
