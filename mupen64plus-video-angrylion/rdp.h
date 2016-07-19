@@ -72,27 +72,11 @@ typedef __int8              i8;
 typedef __int16             i16;
 typedef __int32             i32;
 typedef __int64             i64;
-typedef signed __int8       s8;
-typedef signed __int16      s16;
-typedef signed __int32      s32;
-typedef signed __int64      s64;
-typedef unsigned __int8     u8;
-typedef unsigned __int16    u16;
-typedef unsigned __int32    u32;
-typedef unsigned __int64    u64;
 #else
 typedef char                    i8;
 typedef short                   i16;
 typedef int                     i32;
 typedef long long               i64;
-typedef signed char             s8;
-typedef signed short            s16;
-typedef signed int              s32;
-typedef signed long long        s64;
-typedef unsigned char           u8;
-typedef unsigned short          u16;
-typedef unsigned int            u32;
-typedef unsigned long long      u64;
 #endif
 
 #ifdef USE_SSE_SUPPORT
@@ -105,8 +89,8 @@ typedef short*      v16;
 typedef int*        v32;
 #endif
 
-#define SIGN16(x)       (s16)(x)
-#define SIGN8(x)        (s8)(x)
+#define SIGN16(x)       (int16_t)(x)
+#define SIGN8(x)        (int8_t)(x)
 
 #if (~0 >> 1 < 0)
 #define SRA(exp, sa)    ((signed)(exp) >> (sa))
@@ -133,21 +117,21 @@ typedef int*        v32;
 
 #define GET_LOW_RGBA16_TMEM(x)      replicated_rgba[((x) & 0x003F) >>  1]
 #define GET_MED_RGBA16_TMEM(x)      replicated_rgba[((x) & 0x07FF) >>  6]
-#define GET_HI_RGBA16_TMEM(x)       replicated_rgba[(u16)(x) >> 11]
+#define GET_HI_RGBA16_TMEM(x)       replicated_rgba[(uint16_t)(x) >> 11]
 
 #define f_BYTE_H(B) (!!(B&0xFF)*8 | !!(B&0xF0)*4 | !!(B&0xCC)*2 | !!(B&0xAA))
 #define f_BYTE_L(B) (!!(B&0xFF)*0 | !!(B&0xF0)*4 | !!(B&0xCC)*2 | !!(B&0xAA))
 
 typedef union {
     i64 W;
-    s64 SW;
-    u64 UW;
+    int64_t SW;
+    uint64_t UW;
     i32 W32[2];
-    s32 SW32[2];
-    u32 UW32[2];
+    int32_t SW32[2];
+    uint32_t UW32[2];
     i16 W16[4];
-    s16 SW16[4];
-    u16 UW16[4];
+    int16_t SW16[4];
+    uint16_t UW16[4];
     unsigned char B[8];
     signed char SB[8];
 } DP_FIFO;

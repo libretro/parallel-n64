@@ -162,7 +162,7 @@ uint8_t cvgbuf[1024];
 
 static i32 spans_d_rgba[4];
 static i32 spans_d_stwz[4];
-static u16 spans_dzpix;
+static uint16_t spans_dzpix;
 
 static i32 spans_d_rgba_dy[4];
 static i32 spans_cd_rgba[4];
@@ -6224,7 +6224,7 @@ static void fbwrite_16(
     uint32_t curpixel, uint32_t r, uint32_t g, uint32_t b, uint32_t blend_en,
     uint32_t curpixel_cvg, uint32_t curpixel_memcvg)
 {
-    u16 color;
+    uint16_t color;
     int coverage;
     register unsigned long addr;
 
@@ -6260,7 +6260,7 @@ static void fbwrite_32(
     uint32_t curpixel, uint32_t r, uint32_t g, uint32_t b, uint32_t blend_en,
     uint32_t curpixel_cvg, uint32_t curpixel_memcvg)
 {
-    u32 color;
+    uint32_t color;
     int coverage;
     register unsigned long addr;
 
@@ -7895,7 +7895,7 @@ struct stepwalker_info
    i32 d_stwz_dxh[4];
    i32 d_rgba_diff[4], d_stwz_diff[4];
    i32 xlr[2], xlr_inc[2];
-   u8 xfrac;
+   uint8_t xfrac;
 #ifdef USE_SSE_SUPPORT
    __m128i xmm_d_rgba_de, xmm_d_stwz_de;
 #endif
@@ -8105,8 +8105,8 @@ void process_RDP_list(void)
 {
     int length;
     unsigned int offset;
-    const u32 DP_CURRENT = *GET_GFX_INFO(DPC_CURRENT_REG) & 0x00FFFFF8;
-    const u32 DP_END     = *GET_GFX_INFO(DPC_END_REG)     & 0x00FFFFF8;
+    const uint32_t DP_CURRENT = *GET_GFX_INFO(DPC_CURRENT_REG) & 0x00FFFFF8;
+    const uint32_t DP_END     = *GET_GFX_INFO(DPC_END_REG)     & 0x00FFFFF8;
 
     *GET_GFX_INFO(DPC_STATUS_REG) &= ~DP_STATUS_FREEZE;
 
@@ -8302,7 +8302,7 @@ static void tex_rect(uint32_t w1, uint32_t w2)
     i32 d_stwz_dy[4];
     i32 d_stwz_dxh[4];
     i32 xleft, xright;
-    u8 xfrac;
+    uint8_t xfrac;
     const i32 clipxlshift = __clip.xl << 1;
     const i32 clipxhshift = __clip.xh << 1;
     uint32_t w3 = cmd_data[cmd_cur + 1].UW32[0]; /* Load RDP Command Word 3 */
@@ -8399,7 +8399,7 @@ static void tex_rect(uint32_t w1, uint32_t w2)
             { /* branch */ }
         else
         {
-            invaly = (u32)(k - yhlimit)>>31 | (u32)~(k - yllimit)>>31;
+            invaly = (uint32_t)(k - yhlimit)>>31 | (uint32_t)~(k - yllimit)>>31;
             j = k >> 2;
             if (spix == 0)
             {
@@ -8410,28 +8410,28 @@ static void tex_rect(uint32_t w1, uint32_t w2)
             }
 
             stickybit = (xright & 0x00003FFF) - 1; /* xright/2 & 0x1FFF */
-            stickybit = (u32)~(stickybit) >> 31; /* (stickybit >= 0) */
+            stickybit = (uint32_t)~(stickybit) >> 31; /* (stickybit >= 0) */
             xrsc = (xright >> 13)&0x1FFE | stickybit;
             curunder = !!(xright & 0x08000000);
-            curunder = curunder | (u32)(xrsc - clipxhshift)>>31;
+            curunder = curunder | (uint32_t)(xrsc - clipxhshift)>>31;
             xrsc = curunder ? clipxhshift : (xright>>13)&0x3FFE | stickybit;
             curover  = !!(xrsc & 0x00002000);
             xrsc = xrsc & 0x1FFF;
-            curover |= (u32)~(xrsc - clipxlshift) >> 31;
+            curover |= (uint32_t)~(xrsc - clipxlshift) >> 31;
             xrsc = curover ? clipxlshift : xrsc;
             span[j].majorx[spix] = xrsc & 0x1FFF;
             allover &= curover;
             allunder &= curunder;
 
             stickybit = (xleft & 0x00003FFF) - 1; /* xleft/2 & 0x1FFF */
-            stickybit = (u32)~(stickybit) >> 31; /* (stickybit >= 0) */
+            stickybit = (uint32_t)~(stickybit) >> 31; /* (stickybit >= 0) */
             xlsc = (xleft >> 13)&0x1FFE | stickybit;
             curunder = !!(xleft & 0x08000000);
-            curunder = curunder | (u32)(xlsc - clipxhshift)>>31;
+            curunder = curunder | (uint32_t)(xlsc - clipxhshift)>>31;
             xlsc = curunder ? clipxhshift : (xleft>>13)&0x3FFE | stickybit;
             curover  = !!(xlsc & 0x00002000);
             xlsc &= 0x1FFF;
-            curover |= (u32)~(xlsc - clipxlshift) >> 31;
+            curover |= (uint32_t)~(xlsc - clipxlshift) >> 31;
             xlsc = curover ? clipxlshift : xlsc;
             span[j].minorx[spix] = xlsc & 0x1FFF;
             allover &= curover;
@@ -8495,7 +8495,7 @@ static void tex_rect_flip(uint32_t w1, uint32_t w2)
     i32 d_stwz_dy[4];
     i32 d_stwz_dxh[4];
     i32 xleft, xright;
-    u8 xfrac;
+    uint8_t xfrac;
     const i32 clipxlshift = __clip.xl << 1;
     const i32 clipxhshift = __clip.xh << 1;
     uint32_t w3 = cmd_data[cmd_cur + 1].UW32[0];
@@ -8599,7 +8599,7 @@ static void tex_rect_flip(uint32_t w1, uint32_t w2)
             { /* branch */ }
         else
         {
-            invaly = (u32)(k - yhlimit)>>31 | (u32)~(k - yllimit)>>31;
+            invaly = (uint32_t)(k - yhlimit)>>31 | (uint32_t)~(k - yllimit)>>31;
             j = k >> 2;
             if (spix == 0)
             {
@@ -8610,28 +8610,28 @@ static void tex_rect_flip(uint32_t w1, uint32_t w2)
             }
 
             stickybit = (xright & 0x00003FFF) - 1; /* xright/2 & 0x1FFF */
-            stickybit = (u32)~(stickybit) >> 31; /* (stickybit >= 0) */
+            stickybit = (uint32_t)~(stickybit) >> 31; /* (stickybit >= 0) */
             xrsc = (xright >> 13)&0x1FFE | stickybit;
             curunder = !!(xright & 0x08000000);
-            curunder = curunder | (u32)(xrsc - clipxhshift)>>31;
+            curunder = curunder | (uint32_t)(xrsc - clipxhshift)>>31;
             xrsc = curunder ? clipxhshift : (xright>>13)&0x3FFE | stickybit;
             curover  = !!(xrsc & 0x00002000);
             xrsc = xrsc & 0x1FFF;
-            curover |= (u32)~(xrsc - clipxlshift) >> 31;
+            curover |= (uint32_t)~(xrsc - clipxlshift) >> 31;
             xrsc = curover ? clipxlshift : xrsc;
             span[j].majorx[spix] = xrsc & 0x1FFF;
             allover &= curover;
             allunder &= curunder;
 
             stickybit = (xleft & 0x00003FFF) - 1; /* xleft/2 & 0x1FFF */
-            stickybit = (u32)~(stickybit) >> 31; /* (stickybit >= 0) */
+            stickybit = (uint32_t)~(stickybit) >> 31; /* (stickybit >= 0) */
             xlsc = (xleft >> 13)&0x1FFE | stickybit;
             curunder = !!(xleft & 0x08000000);
-            curunder = curunder | (u32)(xlsc - clipxhshift)>>31;
+            curunder = curunder | (uint32_t)(xlsc - clipxhshift)>>31;
             xlsc = curunder ? clipxhshift : (xleft>>13)&0x3FFE | stickybit;
             curover  = !!(xlsc & 0x00002000);
             xlsc &= 0x1FFF;
-            curover |= (u32)~(xlsc - clipxlshift) >> 31;
+            curover |= (uint32_t)~(xlsc - clipxlshift) >> 31;
             xlsc = curover ? clipxlshift : xlsc;
             span[j].minorx[spix] = xlsc & 0x1FFF;
             allover &= curover;
@@ -8975,7 +8975,7 @@ static void fill_rect(uint32_t w1, uint32_t w2)
 
         if (k < yhclose)
             continue;
-        invaly = (u32)(k - yhlimit)>>31 | (u32)~(k - yllimit)>>31;
+        invaly = (uint32_t)(k - yhlimit)>>31 | (uint32_t)~(k - yllimit)>>31;
         j = k >> 2;
         if (spix == 0)
         {
@@ -8986,28 +8986,28 @@ static void fill_rect(uint32_t w1, uint32_t w2)
         }
 
         stickybit = (xright & 0x00003FFF) - 1; /* xright/2 & 0x1FFF */
-        stickybit = (u32)~(stickybit) >> 31; /* (stickybit >= 0) */
+        stickybit = (uint32_t)~(stickybit) >> 31; /* (stickybit >= 0) */
         xrsc = (xright >> 13)&0x1FFE | stickybit;
         curunder = !!(xright & 0x08000000);
-        curunder = curunder | (u32)(xrsc - clipxhshift)>>31;
+        curunder = curunder | (uint32_t)(xrsc - clipxhshift)>>31;
         xrsc = curunder ? clipxhshift : (xright>>13)&0x3FFE | stickybit;
         curover  = !!(xrsc & 0x00002000);
         xrsc = xrsc & 0x1FFF;
-        curover |= (u32)~(xrsc - clipxlshift) >> 31;
+        curover |= (uint32_t)~(xrsc - clipxlshift) >> 31;
         xrsc = curover ? clipxlshift : xrsc;
         span[j].majorx[spix] = xrsc & 0x1FFF;
         allover &= curover;
         allunder &= curunder;
 
         stickybit = (xleft & 0x00003FFF) - 1; /* xleft/2 & 0x1FFF */
-        stickybit = (u32)~(stickybit) >> 31; /* (stickybit >= 0) */
+        stickybit = (uint32_t)~(stickybit) >> 31; /* (stickybit >= 0) */
         xlsc = (xleft >> 13)&0x1FFE | stickybit;
         curunder = !!(xleft & 0x08000000);
-        curunder = curunder | (u32)(xlsc - clipxhshift)>>31;
+        curunder = curunder | (uint32_t)(xlsc - clipxhshift)>>31;
         xlsc = curunder ? clipxhshift : (xleft>>13)&0x3FFE | stickybit;
         curover  = !!(xlsc & 0x00002000);
         xlsc &= 0x1FFF;
-        curover |= (u32)~(xlsc - clipxlshift) >> 31;
+        curover |= (uint32_t)~(xlsc - clipxlshift) >> 31;
         xlsc = curover ? clipxlshift : xlsc;
         span[j].minorx[spix] = xlsc & 0x1FFF;
         allover &= curover;
@@ -9192,17 +9192,17 @@ static NOINLINE void draw_triangle(uint32_t w1, uint32_t w2,
     int tilenum = tile;
 
     /* Triangle edge Y-coordinates */
-    s32      yl = (w1 & 0x0000FFFF) >> (32 - 32); /* & 0x3FFF */
-    s32      ym = (w2 & 0xFFFF0000) >> (16 -  0); /* & 0x3FFF */
-    s32      yh = (w2 & 0x0000FFFF) >> ( 0 -  0); /* & 0x3FFF */
+    int32_t      yl = (w1 & 0x0000FFFF) >> (32 - 32); /* & 0x3FFF */
+    int32_t      ym = (w2 & 0xFFFF0000) >> (16 -  0); /* & 0x3FFF */
+    int32_t      yh = (w2 & 0x0000FFFF) >> ( 0 -  0); /* & 0x3FFF */
     /* Triangle edge X-coordinates */
-    s32      xl = cmd_data[stw_info->base + 1].UW32[0];
-    s32      xh = cmd_data[stw_info->base + 2].UW32[0];
-    s32      xm = cmd_data[stw_info->base + 3].UW32[0];
+    int32_t      xl = cmd_data[stw_info->base + 1].UW32[0];
+    int32_t      xh = cmd_data[stw_info->base + 2].UW32[0];
+    int32_t      xm = cmd_data[stw_info->base + 3].UW32[0];
     /* Triangle edge inverse-slopes */
-    s32   DxLDy = cmd_data[stw_info->base + 1].UW32[1];
-    s32   DxHDy = cmd_data[stw_info->base + 2].UW32[1];
-    s32   DxMDy = cmd_data[stw_info->base + 3].UW32[1];
+    int32_t   DxLDy = cmd_data[stw_info->base + 1].UW32[1];
+    int32_t   DxHDy = cmd_data[stw_info->base + 2].UW32[1];
+    int32_t   DxMDy = cmd_data[stw_info->base + 3].UW32[1];
 
     yl = SIGN(yl, 14);
     ym = SIGN(ym, 14);
@@ -9287,22 +9287,22 @@ no_read_shade_coefficients:
     *(__m64 *)(stw_info->d_rgba_dy + (2 ^ 2))
       = _mm_unpacklo_pi16(*(__m64 *)stw_info->d_rgba_dy_frac, *(__m64 *)stw_info->d_rgba_dy_int);
 #else
-    stw_info->rgba[0]      = (stw_info->rgba_int[0] << 16) | (u16)(stw_info->rgba_frac[0]);
-    stw_info->rgba[1]      = (stw_info->rgba_int[1] << 16) | (u16)(stw_info->rgba_frac[1]);
-    stw_info->rgba[2]      = (stw_info->rgba_int[2] << 16) | (u16)(stw_info->rgba_frac[2]);
-    stw_info->rgba[3]      = (stw_info->rgba_int[3] << 16) | (u16)(stw_info->rgba_frac[3]);
-    stw_info->d_rgba_dx[0] = (stw_info->d_rgba_dx_int[0] << 16) | (u16)(stw_info->d_rgba_dx_frac[0]);
-    stw_info->d_rgba_dx[1] = (stw_info->d_rgba_dx_int[1] << 16) | (u16)(stw_info->d_rgba_dx_frac[1]);
-    stw_info->d_rgba_dx[2] = (stw_info->d_rgba_dx_int[2] << 16) | (u16)(stw_info->d_rgba_dx_frac[2]);
-    stw_info->d_rgba_dx[3] = (stw_info->d_rgba_dx_int[3] << 16) | (u16)(stw_info->d_rgba_dx_frac[3]);
-    stw_info->d_rgba_de[0] = (stw_info->d_rgba_de_int[0] << 16) | (u16)(stw_info->d_rgba_de_frac[0]);
-    stw_info->d_rgba_de[1] = (stw_info->d_rgba_de_int[1] << 16) | (u16)(stw_info->d_rgba_de_frac[1]);
-    stw_info->d_rgba_de[2] = (stw_info->d_rgba_de_int[2] << 16) | (u16)(stw_info->d_rgba_de_frac[2]);
-    stw_info->d_rgba_de[3] = (stw_info->d_rgba_de_int[3] << 16) | (u16)(stw_info->d_rgba_de_frac[3]);
-    stw_info->d_rgba_dy[0] = (stw_info->d_rgba_dy_int[0] << 16) | (u16)(stw_info->d_rgba_dy_frac[0]);
-    stw_info->d_rgba_dy[1] = (stw_info->d_rgba_dy_int[1] << 16) | (u16)(stw_info->d_rgba_dy_frac[1]);
-    stw_info->d_rgba_dy[2] = (stw_info->d_rgba_dy_int[2] << 16) | (u16)(stw_info->d_rgba_dy_frac[2]);
-    stw_info->d_rgba_dy[3] = (stw_info->d_rgba_dy_int[3] << 16) | (u16)(stw_info->d_rgba_dy_frac[3]);
+    stw_info->rgba[0]      = (stw_info->rgba_int[0] << 16) | (uint16_t)(stw_info->rgba_frac[0]);
+    stw_info->rgba[1]      = (stw_info->rgba_int[1] << 16) | (uint16_t)(stw_info->rgba_frac[1]);
+    stw_info->rgba[2]      = (stw_info->rgba_int[2] << 16) | (uint16_t)(stw_info->rgba_frac[2]);
+    stw_info->rgba[3]      = (stw_info->rgba_int[3] << 16) | (uint16_t)(stw_info->rgba_frac[3]);
+    stw_info->d_rgba_dx[0] = (stw_info->d_rgba_dx_int[0] << 16) | (uint16_t)(stw_info->d_rgba_dx_frac[0]);
+    stw_info->d_rgba_dx[1] = (stw_info->d_rgba_dx_int[1] << 16) | (uint16_t)(stw_info->d_rgba_dx_frac[1]);
+    stw_info->d_rgba_dx[2] = (stw_info->d_rgba_dx_int[2] << 16) | (uint16_t)(stw_info->d_rgba_dx_frac[2]);
+    stw_info->d_rgba_dx[3] = (stw_info->d_rgba_dx_int[3] << 16) | (uint16_t)(stw_info->d_rgba_dx_frac[3]);
+    stw_info->d_rgba_de[0] = (stw_info->d_rgba_de_int[0] << 16) | (uint16_t)(stw_info->d_rgba_de_frac[0]);
+    stw_info->d_rgba_de[1] = (stw_info->d_rgba_de_int[1] << 16) | (uint16_t)(stw_info->d_rgba_de_frac[1]);
+    stw_info->d_rgba_de[2] = (stw_info->d_rgba_de_int[2] << 16) | (uint16_t)(stw_info->d_rgba_de_frac[2]);
+    stw_info->d_rgba_de[3] = (stw_info->d_rgba_de_int[3] << 16) | (uint16_t)(stw_info->d_rgba_de_frac[3]);
+    stw_info->d_rgba_dy[0] = (stw_info->d_rgba_dy_int[0] << 16) | (uint16_t)(stw_info->d_rgba_dy_frac[0]);
+    stw_info->d_rgba_dy[1] = (stw_info->d_rgba_dy_int[1] << 16) | (uint16_t)(stw_info->d_rgba_dy_frac[1]);
+    stw_info->d_rgba_dy[2] = (stw_info->d_rgba_dy_int[2] << 16) | (uint16_t)(stw_info->d_rgba_dy_frac[2]);
+    stw_info->d_rgba_dy[3] = (stw_info->d_rgba_dy_int[3] << 16) | (uint16_t)(stw_info->d_rgba_dy_frac[3]);
 #endif
 
     /* Texture Coefficients */
@@ -9403,22 +9403,22 @@ no_read_zbuffer_coefficients:
       = _mm_unpacklo_pi16(*(__m64 *)stw_info->d_stwz_dy_frac,
             *(__m64 *)stw_info->d_stwz_dy_int);
 #else
-    stw_info->stwz[0]      = (stw_info->stwz_int[0] << 16)      | (u16)(stw_info->stwz_frac[0]);
-    stw_info->stwz[1]      = (stw_info->stwz_int[1] << 16)      | (u16)(stw_info->stwz_frac[1]);
-    stw_info->stwz[2]      = (stw_info->stwz_int[2] << 16)      | (u16)(stw_info->stwz_frac[2]);
-    stw_info->stwz[3]      = (stw_info->stwz_int[3] << 16)      | (u16)(stw_info->stwz_frac[3]);
-    stw_info->d_stwz_dx[0] = (stw_info->d_stwz_dx_int[0] << 16) | (u16)(stw_info->d_stwz_dx_frac[0]);
-    stw_info->d_stwz_dx[1] = (stw_info->d_stwz_dx_int[1] << 16) | (u16)(stw_info->d_stwz_dx_frac[1]);
-    stw_info->d_stwz_dx[2] = (stw_info->d_stwz_dx_int[2] << 16) | (u16)(stw_info->d_stwz_dx_frac[2]);
-    stw_info->d_stwz_dx[3] = (stw_info->d_stwz_dx_int[3] << 16) | (u16)(stw_info->d_stwz_dx_frac[3]);
-    stw_info->d_stwz_de[0] = (stw_info->d_stwz_de_int[0] << 16) | (u16)(stw_info->d_stwz_de_frac[0]);
-    stw_info->d_stwz_de[1] = (stw_info->d_stwz_de_int[1] << 16) | (u16)(stw_info->d_stwz_de_frac[1]);
-    stw_info->d_stwz_de[2] = (stw_info->d_stwz_de_int[2] << 16) | (u16)(stw_info->d_stwz_de_frac[2]);
-    stw_info->d_stwz_de[3] = (stw_info->d_stwz_de_int[3] << 16) | (u16)(stw_info->d_stwz_de_frac[3]);
-    stw_info->d_stwz_dy[0] = (stw_info->d_stwz_dy_int[0] << 16) | (u16)(stw_info->d_stwz_dy_frac[0]);
-    stw_info->d_stwz_dy[1] = (stw_info->d_stwz_dy_int[1] << 16) | (u16)(stw_info->d_stwz_dy_frac[1]);
-    stw_info->d_stwz_dy[2] = (stw_info->d_stwz_dy_int[2] << 16) | (u16)(stw_info->d_stwz_dy_frac[2]);
-    stw_info->d_stwz_dy[3] = (stw_info->d_stwz_dy_int[3] << 16) | (u16)(stw_info->d_stwz_dy_frac[3]);
+    stw_info->stwz[0]      = (stw_info->stwz_int[0] << 16)      | (uint16_t)(stw_info->stwz_frac[0]);
+    stw_info->stwz[1]      = (stw_info->stwz_int[1] << 16)      | (uint16_t)(stw_info->stwz_frac[1]);
+    stw_info->stwz[2]      = (stw_info->stwz_int[2] << 16)      | (uint16_t)(stw_info->stwz_frac[2]);
+    stw_info->stwz[3]      = (stw_info->stwz_int[3] << 16)      | (uint16_t)(stw_info->stwz_frac[3]);
+    stw_info->d_stwz_dx[0] = (stw_info->d_stwz_dx_int[0] << 16) | (uint16_t)(stw_info->d_stwz_dx_frac[0]);
+    stw_info->d_stwz_dx[1] = (stw_info->d_stwz_dx_int[1] << 16) | (uint16_t)(stw_info->d_stwz_dx_frac[1]);
+    stw_info->d_stwz_dx[2] = (stw_info->d_stwz_dx_int[2] << 16) | (uint16_t)(stw_info->d_stwz_dx_frac[2]);
+    stw_info->d_stwz_dx[3] = (stw_info->d_stwz_dx_int[3] << 16) | (uint16_t)(stw_info->d_stwz_dx_frac[3]);
+    stw_info->d_stwz_de[0] = (stw_info->d_stwz_de_int[0] << 16) | (uint16_t)(stw_info->d_stwz_de_frac[0]);
+    stw_info->d_stwz_de[1] = (stw_info->d_stwz_de_int[1] << 16) | (uint16_t)(stw_info->d_stwz_de_frac[1]);
+    stw_info->d_stwz_de[2] = (stw_info->d_stwz_de_int[2] << 16) | (uint16_t)(stw_info->d_stwz_de_frac[2]);
+    stw_info->d_stwz_de[3] = (stw_info->d_stwz_de_int[3] << 16) | (uint16_t)(stw_info->d_stwz_de_frac[3]);
+    stw_info->d_stwz_dy[0] = (stw_info->d_stwz_dy_int[0] << 16) | (uint16_t)(stw_info->d_stwz_dy_frac[0]);
+    stw_info->d_stwz_dy[1] = (stw_info->d_stwz_dy_int[1] << 16) | (uint16_t)(stw_info->d_stwz_dy_frac[1]);
+    stw_info->d_stwz_dy[2] = (stw_info->d_stwz_dy_int[2] << 16) | (uint16_t)(stw_info->d_stwz_dy_frac[2]);
+    stw_info->d_stwz_dy[3] = (stw_info->d_stwz_dy_int[3] << 16) | (uint16_t)(stw_info->d_stwz_dy_frac[3]);
 #endif
 #ifdef USE_SSE_SUPPORT
     stw_info->xmm_d_rgba_de = _mm_load_si128((__m128i *)stw_info->d_rgba_de);
@@ -9572,7 +9572,7 @@ no_read_zbuffer_coefficients:
             { /* branch */ }
         else
         {
-            invaly = (u32)(k - yhlimit)>>31 | (u32)~(k - yllimit)>>31;
+            invaly = (uint32_t)(k - yhlimit)>>31 | (uint32_t)~(k - yllimit)>>31;
             j = k >> 2;
             if (spix == 0)
             {
@@ -9583,29 +9583,29 @@ no_read_zbuffer_coefficients:
             }
 
             stickybit = (stw_info->xlr[1] & 0x00003FFF) - 1;
-            stickybit = (u32)~(stickybit) >> 31; /* (stickybit >= 0) */
+            stickybit = (uint32_t)~(stickybit) >> 31; /* (stickybit >= 0) */
             xlrsc[1] = (stw_info->xlr[1] >> 13)&0x1FFE | stickybit;
             curunder = !!(stw_info->xlr[1] & 0x08000000);
-            curunder = curunder | (u32)(xlrsc[1] - clipxhshift)>>31;
+            curunder = curunder | (uint32_t)(xlrsc[1] - clipxhshift)>>31;
             xlrsc[1] = curunder ? clipxhshift : (stw_info->xlr[1]>>13)&0x3FFE | stickybit;
 
             curover  = !!(xlrsc[1] & 0x00002000);
             xlrsc[1] = xlrsc[1] & 0x1FFF;
-            curover |= (u32)~(xlrsc[1] - clipxlshift) >> 31;
+            curover |= (uint32_t)~(xlrsc[1] - clipxlshift) >> 31;
             xlrsc[1] = curover ? clipxlshift : xlrsc[1];
             span[j].majorx[spix] = xlrsc[1] & 0x1FFF;
             allover &= curover;
             allunder &= curunder;
 
             stickybit = (stw_info->xlr[0] & 0x00003FFF) - 1; /* xleft/2 & 0x1FFF */
-            stickybit = (u32)~(stickybit) >> 31; /* (stickybit >= 0) */
+            stickybit = (uint32_t)~(stickybit) >> 31; /* (stickybit >= 0) */
             xlrsc[0] = (stw_info->xlr[0] >> 13)&0x1FFE | stickybit;
             curunder = !!(stw_info->xlr[0] & 0x08000000);
-            curunder = curunder | (u32)(xlrsc[0] - clipxhshift)>>31;
+            curunder = curunder | (uint32_t)(xlrsc[0] - clipxhshift)>>31;
             xlrsc[0] = curunder ? clipxhshift : (stw_info->xlr[0]>>13)&0x3FFE | stickybit;
             curover  = !!(xlrsc[0] & 0x00002000);
             xlrsc[0] &= 0x1FFF;
-            curover |= (u32)~(xlrsc[0] - clipxlshift) >> 31;
+            curover |= (uint32_t)~(xlrsc[0] - clipxlshift) >> 31;
             xlrsc[0] = curover ? clipxlshift : xlrsc[0];
             span[j].minorx[spix] = xlrsc[0] & 0x1FFF;
             allover &= curover;
