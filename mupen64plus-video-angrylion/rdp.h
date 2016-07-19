@@ -24,12 +24,6 @@ _mm_sub_epi32(_mm_xor_si128(m1, SIGND(m2)), SIGND(m2))
 #define mm_unpacklo_epi64_hz(m, n) \
 _mm_unpacklo_epi64(_mm_unpacklo_epi32(m, n), _mm_unpackhi_epi32(m, n))
 
-#if 1
-#ifndef USE_MMX_DECODES
-#define USE_MMX_DECODES
-#endif
-#endif
-
 INLINE extern __m128i mm_mullo_epi32_seh(__m128i dest, __m128i src);
 
 #else
@@ -37,24 +31,13 @@ INLINE extern __m128i mm_mullo_epi32_seh(__m128i dest, __m128i src);
     { ((i64 *)buf)[0] = ((i64 *)buf)[1] = 0x0000000000000000; }
 #endif
 
-#ifdef USE_MMX_DECODES
-#include <xmmintrin.h>
-#define setzero_si64(buffer) { \
-    *(__m64 *)(buffer) = _mm_setzero_si64(); \
-}
-#else
 #define setzero_si64(buffer) { \
     *(i64 *)(buffer) = 0x0000000000000000; \
 }
-#endif
 
 #if defined(_AMD64_) || defined(_IA64_) || defined(__x86_64__)
 #define BUFFERFIFO(word, base, offset) { \
     *(i64 *)&cmd_data[word] = *(i64 *)((base) + 8*(offset)); \
-}
-#elif defined(USE_MMX_DECODES)
-#define BUFFERFIFO(word, base, offset) { \
-    *(__m64 *)&cmd_data[word] = *(__m64 *)((base) + 8*(offset)); \
 }
 #else
 /*
