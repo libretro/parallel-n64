@@ -292,13 +292,6 @@ enum {
 
 extern void process_RDP_list(void);
 
-INLINE extern void calculate_clamp_diffs(uint32_t tile);
-INLINE extern void calculate_tile_derivs(uint32_t tile);
-extern void tile_tlut_common_cs_decoder(uint32_t w1, uint32_t w2);
-extern void deduce_derivatives(void);
-
-NOINLINE extern void edgewalker_for_loads(int32_t* lewdata);
-
 extern uint32_t internal_vi_v_current_line;
 
 #endif

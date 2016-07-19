@@ -728,6 +728,23 @@ static INLINE void SET_BLENDER_INPUT(int cycle, int which, int32_t **input_r, in
     }
 }
 
+static INLINE void calculate_clamp_diffs(uint32_t i)
+{
+    tile[i].f.clampdiffs = ((tile[i].sh >> 2) - (tile[i].sl >> 2)) & 0x3ff;
+    tile[i].f.clampdifft = ((tile[i].th >> 2) - (tile[i].tl >> 2)) & 0x3ff;
+}
+
+
+static INLINE void calculate_tile_derivs(uint32_t i)
+{
+    tile[i].f.clampens = tile[i].cs || !tile[i].mask_s;
+    tile[i].f.clampent = tile[i].ct || !tile[i].mask_t;
+    tile[i].f.masksclamped = tile[i].mask_s <= 10 ? tile[i].mask_s : 10;
+    tile[i].f.masktclamped = tile[i].mask_t <= 10 ? tile[i].mask_t : 10;
+    tile[i].f.notlutswitch = (tile[i].format << 2) | tile[i].size;
+    tile[i].f.tlutswitch = (tile[i].size << 2) | ((tile[i].format + 2) & 3);
+}
+
 void rdp_init(void)
 {
     register int i;
@@ -5392,6 +5409,8 @@ static void render_spans_copy(int start, int end, int tilenum, int flip)
     }
 }
 
+static void deduce_derivatives(void);
+
 void render_spans(
     int yhlimit, int yllimit, int tilenum, int flip)
 {
@@ -5673,7 +5692,7 @@ NOINLINE void loading_pipeline(
     }
 }
 
-void edgewalker_for_loads(int32_t* lewdata)
+static void edgewalker_for_loads(int32_t* lewdata)
 {
     int j = 0;
     int xleft = 0, xright = 0;
@@ -5813,7 +5832,7 @@ void edgewalker_for_loads(int32_t* lewdata)
 static const char *const image_format[] = { "RGBA", "YUV", "CI", "IA", "I", "???", "???", "???" };
 static const char *const image_size[] = { "4-bit", "8-bit", "16-bit", "32-bit" };
 
-void deduce_derivatives()
+static void deduce_derivatives(void)
 {
     int texel1_used_in_cc1 = 0, texel0_used_in_cc1 = 0, texel0_used_in_cc0 = 0, texel1_used_in_cc0 = 0;
     int texels_in_cc0 = 0, texels_in_cc1 = 0;
@@ -5888,7 +5907,7 @@ void deduce_derivatives()
     other_modes.f.dolod = other_modes.tex_lod_en || lodfracused;
 }
 
-void tile_tlut_common_cs_decoder(uint32_t w1, uint32_t w2)
+static void tile_tlut_common_cs_decoder(uint32_t w1, uint32_t w2)
 {
     int32_t lewdata[10];
     int tilenum = (w2 >> 24) & 0x7;
@@ -6883,22 +6902,6 @@ STRICTINLINE int32_t CLIP(int32_t value,int32_t min,int32_t max)
         return value;
 }
 
-INLINE void calculate_clamp_diffs(uint32_t i)
-{
-    tile[i].f.clampdiffs = ((tile[i].sh >> 2) - (tile[i].sl >> 2)) & 0x3ff;
-    tile[i].f.clampdifft = ((tile[i].th >> 2) - (tile[i].tl >> 2)) & 0x3ff;
-}
-
-
-INLINE void calculate_tile_derivs(uint32_t i)
-{
-    tile[i].f.clampens = tile[i].cs || !tile[i].mask_s;
-    tile[i].f.clampent = tile[i].ct || !tile[i].mask_t;
-    tile[i].f.masksclamped = tile[i].mask_s <= 10 ? tile[i].mask_s : 10;
-    tile[i].f.masktclamped = tile[i].mask_t <= 10 ? tile[i].mask_t : 10;
-    tile[i].f.notlutswitch = (tile[i].format << 2) | tile[i].size;
-    tile[i].f.tlutswitch = (tile[i].size << 2) | ((tile[i].format + 2) & 3);
-}
 
 static void rgb_dither_complete(int* r, int* g, int* b, int dith)
 {
