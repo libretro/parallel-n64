@@ -161,15 +161,15 @@ typedef struct {
     int lx, rx;
     int unscrx;
     int validline;
-    ALIGNED INT32 rgba[4];
-    ALIGNED INT32 stwz[4];
-    INT32 majorx[4];
-    INT32 minorx[4];
-    INT32 invalyscan[4];
+    ALIGNED int32_t rgba[4];
+    ALIGNED int32_t stwz[4];
+    int32_t majorx[4];
+    int32_t minorx[4];
+    int32_t invalyscan[4];
 } SPAN;
 
 typedef struct {
-    INT32 xl, yl, xh, yh;
+    int32_t xl, yl, xh, yh;
 } RECTANGLE;
 
 typedef struct {
@@ -308,13 +308,13 @@ enum {
 
 extern void process_RDP_list(void);
 
-INLINE extern void calculate_clamp_diffs(UINT32 tile);
-INLINE extern void calculate_tile_derivs(UINT32 tile);
-extern void tile_tlut_common_cs_decoder(UINT32 w1, UINT32 w2);
+INLINE extern void calculate_clamp_diffs(uint32_t tile);
+INLINE extern void calculate_tile_derivs(uint32_t tile);
+extern void tile_tlut_common_cs_decoder(uint32_t w1, uint32_t w2);
 extern void deduce_derivatives(void);
 
-NOINLINE extern void edgewalker_for_loads(INT32* lewdata);
+NOINLINE extern void edgewalker_for_loads(int32_t* lewdata);
 
-extern UINT32 internal_vi_v_current_line;
+extern uint32_t internal_vi_v_current_line;
 
 #endif

@@ -17,10 +17,9 @@ extern uint32_t screen_pitch;
 
 int res;
 RECT __dst, __src;
-INT32 pitchindwords;
+int32_t pitchindwords;
 
 int ProcessDListShown = 0;
-extern int SaveLoaded;
 
 int retro_return(int just_flipping);
 

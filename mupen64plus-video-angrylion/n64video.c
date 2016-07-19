@@ -51,49 +51,49 @@ static int sckeepodd;
 static int ti_format;
 static int ti_size;
 static int ti_width;
-static UINT32 ti_address;
+static uint32_t ti_address;
 
 static int fb_format;
 static int fb_size;
 static int fb_width;
-static UINT32 fb_address;
-static UINT32 zb_address;
+static uint32_t fb_address;
+static uint32_t zb_address;
 
-static UINT32 max_level;
-static INT32 min_level;
-static INT32 primitive_lod_frac;
+static uint32_t max_level;
+static int32_t min_level;
+static int32_t primitive_lod_frac;
 
-static UINT32 primitive_z;
-static UINT16 primitive_delta_z;
+static uint32_t primitive_z;
+static uint16_t primitive_delta_z;
 
-static UINT32 fill_color;
+static uint32_t fill_color;
 
-static INT32 *combiner_rgbsub_a_r[2];
-static INT32 *combiner_rgbsub_a_g[2];
-static INT32 *combiner_rgbsub_a_b[2];
-static INT32 *combiner_rgbsub_b_r[2];
-static INT32 *combiner_rgbsub_b_g[2];
-static INT32 *combiner_rgbsub_b_b[2];
-static INT32 *combiner_rgbmul_r[2];
-static INT32 *combiner_rgbmul_g[2];
-static INT32 *combiner_rgbmul_b[2];
-static INT32 *combiner_rgbadd_r[2];
-static INT32 *combiner_rgbadd_g[2];
-static INT32 *combiner_rgbadd_b[2];
+static int32_t *combiner_rgbsub_a_r[2];
+static int32_t *combiner_rgbsub_a_g[2];
+static int32_t *combiner_rgbsub_a_b[2];
+static int32_t *combiner_rgbsub_b_r[2];
+static int32_t *combiner_rgbsub_b_g[2];
+static int32_t *combiner_rgbsub_b_b[2];
+static int32_t *combiner_rgbmul_r[2];
+static int32_t *combiner_rgbmul_g[2];
+static int32_t *combiner_rgbmul_b[2];
+static int32_t *combiner_rgbadd_r[2];
+static int32_t *combiner_rgbadd_g[2];
+static int32_t *combiner_rgbadd_b[2];
 
-static INT32 *combiner_alphasub_a[2];
-static INT32 *combiner_alphasub_b[2];
-static INT32 *combiner_alphamul[2];
-static INT32 *combiner_alphaadd[2];
+static int32_t *combiner_alphasub_a[2];
+static int32_t *combiner_alphasub_b[2];
+static int32_t *combiner_alphamul[2];
+static int32_t *combiner_alphaadd[2];
 
-static INT32 *blender1a_r[2];
-static INT32 *blender1a_g[2];
-static INT32 *blender1a_b[2];
-static INT32 *blender1b_a[2];
-static INT32 *blender2a_r[2];
-static INT32 *blender2a_g[2];
-static INT32 *blender2a_b[2];
-static INT32 *blender2b_a[2];
+static int32_t *blender1a_r[2];
+static int32_t *blender1a_g[2];
+static int32_t *blender1a_b[2];
+static int32_t *blender1b_a[2];
+static int32_t *blender2a_r[2];
+static int32_t *blender2a_g[2];
+static int32_t *blender2a_b[2];
+static int32_t *blender2b_a[2];
 
 #define COLOR_RED(val)       (val.r)
 #define COLOR_GREEN(val)     (val.g)
@@ -104,8 +104,8 @@ static INT32 *blender2b_a[2];
 #define COLOR_BLUE_PTR(val)  (val->b)
 #define COLOR_ALPHA_PTR(val) (val->a)
 
-static INT32 k0_tf = 0, k1_tf = 0, k2_tf = 0, k3_tf = 0;
-static INT32 k4 = 0, k5 = 0;
+static int32_t k0_tf = 0, k1_tf = 0, k2_tf = 0, k3_tf = 0;
+static int32_t k4 = 0, k5 = 0;
 
 static TILE tile[8];
 
@@ -126,19 +126,19 @@ static RECTANGLE __clip = {
     0, 0, 0x2000, 0x2000
 };
 
-static void fbread_4(UINT32 num, UINT32* curpixel_memcvg);
-static void fbread_8(UINT32 num, UINT32* curpixel_memcvg);
-static void fbread_16(UINT32 num, UINT32* curpixel_memcvg);
-static void fbread_32(UINT32 num, UINT32* curpixel_memcvg);
-static void fbread2_4(UINT32 num, UINT32* curpixel_memcvg);
-static void fbread2_8(UINT32 num, UINT32* curpixel_memcvg);
-static void fbread2_16(UINT32 num, UINT32* curpixel_memcvg);
-static void fbread2_32(UINT32 num, UINT32* curpixel_memcvg);
+static void fbread_4(uint32_t num, uint32_t* curpixel_memcvg);
+static void fbread_8(uint32_t num, uint32_t* curpixel_memcvg);
+static void fbread_16(uint32_t num, uint32_t* curpixel_memcvg);
+static void fbread_32(uint32_t num, uint32_t* curpixel_memcvg);
+static void fbread2_4(uint32_t num, uint32_t* curpixel_memcvg);
+static void fbread2_8(uint32_t num, uint32_t* curpixel_memcvg);
+static void fbread2_16(uint32_t num, uint32_t* curpixel_memcvg);
+static void fbread2_32(uint32_t num, uint32_t* curpixel_memcvg);
 
-static void (*fbread_func[4])(UINT32, UINT32*) = {
+static void (*fbread_func[4])(uint32_t, uint32_t*) = {
     fbread_4, fbread_8, fbread_16, fbread_32
 };
-static void (*fbread2_func[4])(UINT32, UINT32*) = {
+static void (*fbread2_func[4])(uint32_t, uint32_t*) = {
     fbread2_4, fbread2_8, fbread2_16, fbread2_32
 };
 
@@ -149,16 +149,16 @@ void (*fbwrite_ptr)(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, 
 #undef  LOG_RDP_EXECUTION
 #define DETAILED_LOGGING 0
 
-UINT32 internal_vi_v_current_line = 0;
-UINT32 old_vi_origin = 0;
-UINT32 oldhstart = 0;
-UINT32 oldsomething = 0;
+uint32_t internal_vi_v_current_line = 0;
+uint32_t old_vi_origin = 0;
+uint32_t oldhstart = 0;
+uint32_t oldsomething = 0;
 int blshifta = 0, blshiftb = 0, pastblshifta = 0, pastblshiftb = 0;
-INT32 pastrawdzmem = 0;
-INT32 iseed = 1;
+int32_t pastrawdzmem = 0;
+int32_t iseed = 1;
 
 static SPAN span[1024];
-UINT8 cvgbuf[1024];
+uint8_t cvgbuf[1024];
 
 static i32 spans_d_rgba[4];
 static i32 spans_d_stwz[4];
@@ -172,16 +172,16 @@ static i32 spans_d_stwz_dy[4];
 
 typedef struct
 {
-    UINT8 r, g, b;
+    uint8_t r, g, b;
 } FBCOLOR;
 
 typedef struct
 {
     int tilenum;
-    UINT16 xl, yl, xh, yh;        
-    INT16 s, t;                    
-    INT16 dsdx, dtdy;            
-    UINT32 flip;    
+    uint16_t xl, yl, xh, yh;        
+    int16_t s, t;                    
+    int16_t dsdx, dtdy;            
+    uint32_t flip;    
 } TEX_RECTANGLE;
 
 
@@ -201,13 +201,13 @@ COLOR texel0_color;
 COLOR texel1_color;
 COLOR nexttexel_color;
 COLOR shade_color;
-static INT32 noise = 0;
-static INT32 one_color = 0x100;
-static INT32 zero_color = 0x00;
+static int32_t noise = 0;
+static int32_t one_color = 0x100;
+static int32_t zero_color = 0x00;
 
-INT32 keyalpha;
+int32_t keyalpha;
 
-static INT32 blenderone    = 0xff;
+static int32_t blenderone    = 0xff;
 
 COLOR pixel_color;
 COLOR inv_pixel_color;
@@ -217,9 +217,9 @@ COLOR pre_memory_color;
 
 int oldscyl = 0;
 
-UINT8 __TMEM[0x1000]; 
+uint8_t __TMEM[0x1000]; 
 
-#define tlut ((UINT16*)(&__TMEM[0x800]))
+#define tlut ((uint16_t*)(&__TMEM[0x800]))
 
 #define PIXELS_TO_BYTES(pix, siz) (((pix) << (siz)) >> 1)
 
@@ -233,18 +233,18 @@ typedef struct{
     int onelessthanmid;
 }SPANSIGS;
 
-static void fetch_texel(COLOR *color, int s, int t, UINT32 tilenum);
-static void fetch_texel_entlut(COLOR *color, int s, int t, UINT32 tilenum);
-static void fetch_texel_quadro(COLOR *color0, COLOR *color1, COLOR *color2, COLOR *color3, int s0, int s1, int t0, int t1, UINT32 tilenum);
-static void fetch_texel_entlut_quadro(COLOR *color0, COLOR *color1, COLOR *color2, COLOR *color3, int s0, int s1, int t0, int t1, UINT32 tilenum);
+static void fetch_texel(COLOR *color, int s, int t, uint32_t tilenum);
+static void fetch_texel_entlut(COLOR *color, int s, int t, uint32_t tilenum);
+static void fetch_texel_quadro(COLOR *color0, COLOR *color1, COLOR *color2, COLOR *color3, int s0, int s1, int t0, int t1, uint32_t tilenum);
+static void fetch_texel_entlut_quadro(COLOR *color0, COLOR *color1, COLOR *color2, COLOR *color3, int s0, int s1, int t0, int t1, uint32_t tilenum);
 void loading_pipeline(int start, int end, int tilenum, int coord_quad, int ltlut);
-void get_tmem_idx(int s, int t, UINT32 tilenum, UINT32* idx0, UINT32* idx1, UINT32* idx2, UINT32* idx3, UINT32* bit3flipped, UINT32* hibit);
-void sort_tmem_idx(UINT32 *idx, UINT32 idxa, UINT32 idxb, UINT32 idxc, UINT32 idxd, UINT32 bankno);
-void sort_tmem_shorts_lowhalf(UINT32* bindshort, UINT32 short0, UINT32 short1, UINT32 short2, UINT32 short3, UINT32 bankno);
-void compute_color_index(UINT32* cidx, UINT32 readshort, UINT32 nybbleoffset, UINT32 tilenum);
-void read_tmem_copy(int s, int s1, int s2, int s3, int t, UINT32 tilenum, UINT32* sortshort, int* hibits, int* lowbits);
-void replicate_for_copy(UINT32* outbyte, UINT32 inshort, UINT32 nybbleoffset, UINT32 tilenum, UINT32 tformat, UINT32 tsize);
-void fetch_qword_copy(UINT32* hidword, UINT32* lowdword, INT32 ssss, INT32 ssst, UINT32 tilenum);
+void get_tmem_idx(int s, int t, uint32_t tilenum, uint32_t* idx0, uint32_t* idx1, uint32_t* idx2, uint32_t* idx3, uint32_t* bit3flipped, uint32_t* hibit);
+void sort_tmem_idx(uint32_t *idx, uint32_t idxa, uint32_t idxb, uint32_t idxc, uint32_t idxd, uint32_t bankno);
+void sort_tmem_shorts_lowhalf(uint32_t* bindshort, uint32_t short0, uint32_t short1, uint32_t short2, uint32_t short3, uint32_t bankno);
+void compute_color_index(uint32_t* cidx, uint32_t readshort, uint32_t nybbleoffset, uint32_t tilenum);
+void read_tmem_copy(int s, int s1, int s2, int s3, int t, uint32_t tilenum, uint32_t* sortshort, int* hibits, int* lowbits);
+void replicate_for_copy(uint32_t* outbyte, uint32_t inshort, uint32_t nybbleoffset, uint32_t tilenum, uint32_t tformat, uint32_t tsize);
+void fetch_qword_copy(uint32_t* hidword, uint32_t* lowdword, int32_t ssss, int32_t ssst, uint32_t tilenum);
 
 static void render_spans_1cycle_complete(int start, int end, int tilenum, int flip);
 static void render_spans_1cycle_notexel1(int start, int end, int tilenum, int flip);
@@ -254,62 +254,62 @@ static void render_spans_2cycle_notexelnext(int start, int end, int tilenum, int
 static void render_spans_2cycle_notexel1(int start, int end, int tilenum, int flip);
 static void render_spans_2cycle_notex(int start, int end, int tilenum, int flip);
 
-static void combiner_1cycle(int adseed, UINT32* curpixel_cvg);
-static void combiner_2cycle(int adseed, UINT32* curpixel_cvg, INT32* acalpha);
-static int blender_1cycle(UINT32* fr, UINT32* fg, UINT32* fb, int dith, UINT32 blend_en, UINT32 prewrap, UINT32 curpixel_cvg, UINT32 curpixel_cvbit);
-int blender_2cycle(UINT32* fr, UINT32* fg, UINT32* fb, int dith, UINT32 blend_en, UINT32 prewrap, UINT32 curpixel_cvg, UINT32 curpixel_cvbit, INT32 acalpha);
-static void texture_pipeline_cycle(COLOR* TEX, COLOR* prev, INT32 SSS, INT32 SST, UINT32 tilenum, UINT32 cycle);
-static void tc_pipeline_copy(INT32* sss0, INT32* sss1, INT32* sss2, INT32* sss3, INT32* sst, int tilenum);
-STRICTINLINE void tc_pipeline_load(INT32* sss, INT32* sst, int tilenum, int coord_quad);
-STRICTINLINE void tcclamp_generic(INT32* S, INT32* T, INT32* SFRAC, INT32* TFRAC, INT32 maxs, INT32 maxt, INT32 num);
-STRICTINLINE void tcclamp_cycle(INT32* S, INT32* T, INT32* SFRAC, INT32* TFRAC, INT32 maxs, INT32 maxt, INT32 num);
-STRICTINLINE void tcclamp_cycle_light(INT32* S, INT32* T, INT32 maxs, INT32 maxt, INT32 num);
-STRICTINLINE void tcshift_cycle(INT32* S, INT32* T, INT32* maxs, INT32* maxt, UINT32 num);
-STRICTINLINE void tcshift_copy(INT32* S, INT32* T, UINT32 num);
+static void combiner_1cycle(int adseed, uint32_t* curpixel_cvg);
+static void combiner_2cycle(int adseed, uint32_t* curpixel_cvg, int32_t* acalpha);
+static int blender_1cycle(uint32_t* fr, uint32_t* fg, uint32_t* fb, int dith, uint32_t blend_en, uint32_t prewrap, uint32_t curpixel_cvg, uint32_t curpixel_cvbit);
+int blender_2cycle(uint32_t* fr, uint32_t* fg, uint32_t* fb, int dith, uint32_t blend_en, uint32_t prewrap, uint32_t curpixel_cvg, uint32_t curpixel_cvbit, int32_t acalpha);
+static void texture_pipeline_cycle(COLOR* TEX, COLOR* prev, int32_t SSS, int32_t SST, uint32_t tilenum, uint32_t cycle);
+static void tc_pipeline_copy(int32_t* sss0, int32_t* sss1, int32_t* sss2, int32_t* sss3, int32_t* sst, int tilenum);
+STRICTINLINE void tc_pipeline_load(int32_t* sss, int32_t* sst, int tilenum, int coord_quad);
+STRICTINLINE void tcclamp_generic(int32_t* S, int32_t* T, int32_t* SFRAC, int32_t* TFRAC, int32_t maxs, int32_t maxt, int32_t num);
+STRICTINLINE void tcclamp_cycle(int32_t* S, int32_t* T, int32_t* SFRAC, int32_t* TFRAC, int32_t maxs, int32_t maxt, int32_t num);
+STRICTINLINE void tcclamp_cycle_light(int32_t* S, int32_t* T, int32_t maxs, int32_t maxt, int32_t num);
+STRICTINLINE void tcshift_cycle(int32_t* S, int32_t* T, int32_t* maxs, int32_t* maxt, uint32_t num);
+STRICTINLINE void tcshift_copy(int32_t* S, int32_t* T, uint32_t num);
 static void precalculate_everything(void);
-STRICTINLINE int alpha_compare(INT32 comb_alpha);
-STRICTINLINE INT32 color_combiner_equation(INT32 a, INT32 b, INT32 c, INT32 d);
-STRICTINLINE INT32 alpha_combiner_equation(INT32 a, INT32 b, INT32 c, INT32 d);
+STRICTINLINE int alpha_compare(int32_t comb_alpha);
+STRICTINLINE int32_t color_combiner_equation(int32_t a, int32_t b, int32_t c, int32_t d);
+STRICTINLINE int32_t alpha_combiner_equation(int32_t a, int32_t b, int32_t c, int32_t d);
 static void blender_equation_cycle0(int* r, int* g, int* b);
 STRICTINLINE void blender_equation_cycle0_2(int* r, int* g, int* b);
 static  void blender_equation_cycle1(int* r, int* g, int* b);
-STRICTINLINE UINT32 rightcvghex(UINT32 x, UINT32 fmask); 
-STRICTINLINE UINT32 leftcvghex(UINT32 x, UINT32 fmask);
-static void compute_cvg_noflip(INT32 scanline);
-static void compute_cvg_flip(INT32 scanline);
-STRICTINLINE UINT32 z_decompress(UINT32 rawz);
-STRICTINLINE UINT32 dz_decompress(UINT32 compresseddz);
-STRICTINLINE UINT32 dz_compress(UINT32 value);
+STRICTINLINE uint32_t rightcvghex(uint32_t x, uint32_t fmask); 
+STRICTINLINE uint32_t leftcvghex(uint32_t x, uint32_t fmask);
+static void compute_cvg_noflip(int32_t scanline);
+static void compute_cvg_flip(int32_t scanline);
+STRICTINLINE uint32_t z_decompress(uint32_t rawz);
+STRICTINLINE uint32_t dz_decompress(uint32_t compresseddz);
+STRICTINLINE uint32_t dz_compress(uint32_t value);
 INLINE void z_build_com_table(void);
 static void precalc_cvmask_derivatives(void);
-STRICTINLINE UINT16 decompress_cvmask_frombyte(UINT8 byte);
-STRICTINLINE void lookup_cvmask_derivatives(UINT32 mask, UINT8* offx, UINT8* offy, UINT32* curpixel_cvg, UINT32* curpixel_cvbit);
-STRICTINLINE void z_store(UINT32 zcurpixel, UINT32 z, int dzpixenc);
-static UINT32 z_compare(UINT32 zcurpixel, UINT32 sz, UINT16 dzpix, int dzpixenc, UINT32* blend_en, UINT32* prewrap, UINT32* curpixel_cvg, UINT32 curpixel_memcvg);
+STRICTINLINE uint16_t decompress_cvmask_frombyte(uint8_t byte);
+STRICTINLINE void lookup_cvmask_derivatives(uint32_t mask, uint8_t* offx, uint8_t* offy, uint32_t* curpixel_cvg, uint32_t* curpixel_cvbit);
+STRICTINLINE void z_store(uint32_t zcurpixel, uint32_t z, int dzpixenc);
+static uint32_t z_compare(uint32_t zcurpixel, uint32_t sz, uint16_t dzpix, int dzpixenc, uint32_t* blend_en, uint32_t* prewrap, uint32_t* curpixel_cvg, uint32_t curpixel_memcvg);
 STRICTINLINE int finalize_spanalpha(
-    UINT32 blend_en, UINT32 curpixel_cvg, UINT32 curpixel_memcvg);
-STRICTINLINE INT32 CLIP(INT32 value,INT32 min,INT32 max);
-STRICTINLINE void tclod_4x17_to_15(INT32 scurr, INT32 snext, INT32 tcurr, INT32 tnext, INT32 previous, INT32* lod);
-STRICTINLINE void tclod_tcclamp(INT32* sss, INT32* sst);
-STRICTINLINE void lodfrac_lodtile_signals(int lodclamp, INT32 lod, UINT32* l_tile, UINT32* magnify, UINT32* distant);
-static void tclod_1cycle_current(INT32* sss, INT32* sst, INT32 nexts, INT32 nextt, INT32 s, INT32 t, INT32 w, INT32 dsinc, INT32 dtinc, INT32 dwinc, INT32 scanline, INT32 prim_tile, INT32* t1, SPANSIGS* sigs);
-static void tclod_1cycle_current_simple(INT32* sss, INT32* sst, INT32 s, INT32 t, INT32 w, INT32 dsinc, INT32 dtinc, INT32 dwinc, INT32 scanline, INT32 prim_tile, INT32* t1, SPANSIGS* sigs);
-static void tclod_1cycle_next(INT32* sss, INT32* sst, INT32 s, INT32 t, INT32 w, INT32 dsinc, INT32 dtinc, INT32 dwinc, INT32 scanline, INT32 prim_tile, INT32* t1, SPANSIGS* sigs, INT32* prelodfrac);
-static void tclod_2cycle_current(INT32* sss, INT32* sst, INT32 nexts, INT32 nextt, INT32 s, INT32 t, INT32 w, INT32 dsinc, INT32 dtinc, INT32 dwinc, INT32 prim_tile, INT32* t1, INT32* t2);
-static void tclod_2cycle_current_simple(INT32* sss, INT32* sst, INT32 s, INT32 t, INT32 w, INT32 dsinc, INT32 dtinc, INT32 dwinc, INT32 prim_tile, INT32* t1, INT32* t2);
-static void tclod_2cycle_current_notexel1(INT32* sss, INT32* sst, INT32 s, INT32 t, INT32 w, INT32 dsinc, INT32 dtinc, INT32 dwinc, INT32 prim_tile, INT32* t1);
-static void tclod_2cycle_next(INT32* sss, INT32* sst, INT32 s, INT32 t, INT32 w, INT32 dsinc, INT32 dtinc, INT32 dwinc, INT32 prim_tile, INT32* t1, INT32* t2, INT32* prelodfrac);
-static void tclod_copy(INT32* sss, INT32* sst, INT32 s, INT32 t, INT32 w, INT32 dsinc, INT32 dtinc, INT32 dwinc, INT32 prim_tile, INT32* t1);
-STRICTINLINE void get_texel1_1cycle(INT32* s1, INT32* t1, INT32 s, INT32 t, INT32 w, INT32 dsinc, INT32 dtinc, INT32 dwinc, INT32 scanline, SPANSIGS* sigs);
-STRICTINLINE void get_nexttexel0_2cycle(INT32* s1, INT32* t1, INT32 s, INT32 t, INT32 w, INT32 dsinc, INT32 dtinc, INT32 dwinc);
+    uint32_t blend_en, uint32_t curpixel_cvg, uint32_t curpixel_memcvg);
+STRICTINLINE int32_t CLIP(int32_t value,int32_t min,int32_t max);
+STRICTINLINE void tclod_4x17_to_15(int32_t scurr, int32_t snext, int32_t tcurr, int32_t tnext, int32_t previous, int32_t* lod);
+STRICTINLINE void tclod_tcclamp(int32_t* sss, int32_t* sst);
+STRICTINLINE void lodfrac_lodtile_signals(int lodclamp, int32_t lod, uint32_t* l_tile, uint32_t* magnify, uint32_t* distant);
+static void tclod_1cycle_current(int32_t* sss, int32_t* sst, int32_t nexts, int32_t nextt, int32_t s, int32_t t, int32_t w, int32_t dsinc, int32_t dtinc, int32_t dwinc, int32_t scanline, int32_t prim_tile, int32_t* t1, SPANSIGS* sigs);
+static void tclod_1cycle_current_simple(int32_t* sss, int32_t* sst, int32_t s, int32_t t, int32_t w, int32_t dsinc, int32_t dtinc, int32_t dwinc, int32_t scanline, int32_t prim_tile, int32_t* t1, SPANSIGS* sigs);
+static void tclod_1cycle_next(int32_t* sss, int32_t* sst, int32_t s, int32_t t, int32_t w, int32_t dsinc, int32_t dtinc, int32_t dwinc, int32_t scanline, int32_t prim_tile, int32_t* t1, SPANSIGS* sigs, int32_t* prelodfrac);
+static void tclod_2cycle_current(int32_t* sss, int32_t* sst, int32_t nexts, int32_t nextt, int32_t s, int32_t t, int32_t w, int32_t dsinc, int32_t dtinc, int32_t dwinc, int32_t prim_tile, int32_t* t1, int32_t* t2);
+static void tclod_2cycle_current_simple(int32_t* sss, int32_t* sst, int32_t s, int32_t t, int32_t w, int32_t dsinc, int32_t dtinc, int32_t dwinc, int32_t prim_tile, int32_t* t1, int32_t* t2);
+static void tclod_2cycle_current_notexel1(int32_t* sss, int32_t* sst, int32_t s, int32_t t, int32_t w, int32_t dsinc, int32_t dtinc, int32_t dwinc, int32_t prim_tile, int32_t* t1);
+static void tclod_2cycle_next(int32_t* sss, int32_t* sst, int32_t s, int32_t t, int32_t w, int32_t dsinc, int32_t dtinc, int32_t dwinc, int32_t prim_tile, int32_t* t1, int32_t* t2, int32_t* prelodfrac);
+static void tclod_copy(int32_t* sss, int32_t* sst, int32_t s, int32_t t, int32_t w, int32_t dsinc, int32_t dtinc, int32_t dwinc, int32_t prim_tile, int32_t* t1);
+STRICTINLINE void get_texel1_1cycle(int32_t* s1, int32_t* t1, int32_t s, int32_t t, int32_t w, int32_t dsinc, int32_t dtinc, int32_t dwinc, int32_t scanline, SPANSIGS* sigs);
+STRICTINLINE void get_nexttexel0_2cycle(int32_t* s1, int32_t* t1, int32_t s, int32_t t, int32_t w, int32_t dsinc, int32_t dtinc, int32_t dwinc);
 static INLINE void rgb_dither_complete(int* r, int* g, int* b, int dith);
 static INLINE void get_dither_noise(int x, int y, int *cdith, int *adith);
 
-static void rgbaz_correct_clip(int offx, int offy, int r, int g, int b, int a, int* z, UINT32 curpixel_cvg);
-UINT32 vi_integer_sqrt(UINT32 a);
+static void rgbaz_correct_clip(int offx, int offy, int r, int g, int b, int a, int* z, uint32_t curpixel_cvg);
+uint32_t vi_integer_sqrt(uint32_t a);
 
-static INT32 lod_frac = 0;
-struct {UINT32 shift; UINT32 add;} z_dec_table[8] = {
+static int32_t lod_frac = 0;
+struct {uint32_t shift; uint32_t add;} z_dec_table[8] = {
      6, 0x00000,
      5, 0x20000,
      4, 0x30000,
@@ -334,20 +334,20 @@ static void (*render_spans_1cycle_ptr)(int, int, int, int);
 
 static void (*render_spans_2cycle_ptr)(int start, int end, int tilenum, int flip);
 
-UINT16 z_com_table[0x40000];
-UINT32 z_complete_dec_table[0x4000];
-UINT8 replicated_rgba[32];
+uint16_t z_com_table[0x40000];
+uint32_t z_complete_dec_table[0x4000];
+uint8_t replicated_rgba[32];
 uint8_t special_9bit_clamptable[512];
 int16_t special_9bit_exttable[512];
 int8_t log2table[256];
-INT32 tcdiv_table[0x8000];
-UINT8 bldiv_hwaccurate_table[0x8000];
-UINT16 deltaz_comparator_lut[0x10000];
+int32_t tcdiv_table[0x8000];
+uint8_t bldiv_hwaccurate_table[0x8000];
+uint16_t deltaz_comparator_lut[0x10000];
 CVtcmaskDERIVATIVE cvarray[0x100];
 
-static STRICTINLINE void tcmask(INT32* S, INT32* T, INT32 num)
+static STRICTINLINE void tcmask(int32_t* S, int32_t* T, int32_t num)
 {
-    INT32 wrap;
+    int32_t wrap;
     
     
 
@@ -375,11 +375,11 @@ static STRICTINLINE void tcmask(INT32* S, INT32* T, INT32 num)
     }
 }
 
-static STRICTINLINE void tcmask_coupled(INT32* S, INT32* S1, INT32* T, INT32* T1, INT32 num)
+static STRICTINLINE void tcmask_coupled(int32_t* S, int32_t* S1, int32_t* T, int32_t* T1, int32_t num)
 {
-    INT32 wrap;
-    INT32 maskbits; 
-    INT32 wrapthreshold; 
+    int32_t wrap;
+    int32_t maskbits; 
+    int32_t wrapthreshold; 
 
 
     if (tile[num].mask_s)
@@ -418,11 +418,11 @@ static STRICTINLINE void tcmask_coupled(INT32* S, INT32* S1, INT32* T, INT32* T1
     }
 }
 
-static STRICTINLINE void tcmask_copy(INT32* S, INT32* S1, INT32* S2, INT32* S3, INT32* T, INT32 num)
+static STRICTINLINE void tcmask_copy(int32_t* S, int32_t* S1, int32_t* S2, int32_t* S3, int32_t* T, int32_t num)
 {
-    INT32 wrap;
-    INT32 maskbits_s; 
-    INT32 swrapthreshold; 
+    int32_t wrap;
+    int32_t maskbits_s; 
+    int32_t swrapthreshold; 
 
     if (tile[num].mask_s)
     {
@@ -464,13 +464,13 @@ static STRICTINLINE void tcmask_copy(INT32* S, INT32* S1, INT32* S2, INT32* S3, 
 }
 
 
-STRICTINLINE void tcshift_cycle(INT32* S, INT32* T, INT32* maxs, INT32* maxt, UINT32 num)
+STRICTINLINE void tcshift_cycle(int32_t* S, int32_t* T, int32_t* maxs, int32_t* maxt, uint32_t num)
 {
 
 
 
-    INT32 coord = *S;
-    INT32 shifter = tile[num].shift_s;
+    int32_t coord = *S;
+    int32_t shifter = tile[num].shift_s;
 
     if (shifter < 11)
     {
@@ -509,10 +509,10 @@ STRICTINLINE void tcshift_cycle(INT32* S, INT32* T, INT32* maxs, INT32* maxt, UI
 }    
 
 
-STRICTINLINE void tcshift_copy(INT32* S, INT32* T, UINT32 num)
+STRICTINLINE void tcshift_copy(int32_t* S, int32_t* T, uint32_t num)
 {
-    INT32 coord = *S;
-    INT32 shifter = tile[num].shift_s;
+    int32_t coord = *S;
+    int32_t shifter = tile[num].shift_s;
 
     if (shifter < 11)
     {
@@ -544,10 +544,10 @@ STRICTINLINE void tcshift_copy(INT32* S, INT32* T, UINT32 num)
 }
 
 
-STRICTINLINE void tcclamp_cycle(INT32* S, INT32* T, INT32* SFRAC, INT32* TFRAC, INT32 maxs, INT32 maxt, INT32 num)
+STRICTINLINE void tcclamp_cycle(int32_t* S, int32_t* T, int32_t* SFRAC, int32_t* TFRAC, int32_t maxs, int32_t maxt, int32_t num)
 {
 
-    INT32 locs = *S, loct = *T;
+    int32_t locs = *S, loct = *T;
     if (tile[num].f.clampens)
     {
         if (!(locs & 0x10000))
@@ -592,9 +592,9 @@ STRICTINLINE void tcclamp_cycle(INT32* S, INT32* T, INT32* SFRAC, INT32* TFRAC, 
 }
 
 
-STRICTINLINE void tcclamp_cycle_light(INT32* S, INT32* T, INT32 maxs, INT32 maxt, INT32 num)
+STRICTINLINE void tcclamp_cycle_light(int32_t* S, int32_t* T, int32_t maxs, int32_t maxt, int32_t num)
 {
-    INT32 locs = *S, loct = *T;
+    int32_t locs = *S, loct = *T;
     if (tile[num].f.clampens)
     {
         if (!(locs & 0x10000))
@@ -643,7 +643,7 @@ static void (*fbwrite_func[4])(
     fbwrite_4, fbwrite_8, fbwrite_16, fbwrite_32
 };
 
-static INLINE void SET_BLENDER_INPUT(int cycle, int which, INT32 **input_r, INT32 **input_g, INT32 **input_b, INT32 **input_a, int a, int b)
+static INLINE void SET_BLENDER_INPUT(int cycle, int which, int32_t **input_r, int32_t **input_g, int32_t **input_b, int32_t **input_a, int a, int b)
 {
 
     switch (a & 0x3)
@@ -801,11 +801,11 @@ void rdp_init(void)
 	idxlim16 = 0x3fffff;
 	idxlim32 = 0x1fffff;
 
-    rdram_8 = (UINT8*)gfx_info.RDRAM;
-    rdram_16 = (UINT16*)gfx_info.RDRAM;
+    rdram_8 = (uint8_t*)gfx_info.RDRAM;
+    rdram_16 = (uint16_t*)gfx_info.RDRAM;
 }
 
-static INLINE void SET_SUBA_RGB_INPUT(INT32 **input_r, INT32 **input_g, INT32 **input_b, int code)
+static INLINE void SET_SUBA_RGB_INPUT(int32_t **input_r, int32_t **input_g, int32_t **input_b, int code)
 {
     switch (code & 0xf)
     {
@@ -864,7 +864,7 @@ static INLINE void SET_SUBA_RGB_INPUT(INT32 **input_r, INT32 **input_g, INT32 **
     }
 }
 
-static INLINE void SET_SUBB_RGB_INPUT(INT32 **input_r, INT32 **input_g, INT32 **input_b, int code)
+static INLINE void SET_SUBB_RGB_INPUT(int32_t **input_r, int32_t **input_g, int32_t **input_b, int code)
 {
     switch (code & 0xf)
     {
@@ -923,7 +923,7 @@ static INLINE void SET_SUBB_RGB_INPUT(INT32 **input_r, INT32 **input_g, INT32 **
     }
 }
 
-static INLINE void SET_MUL_RGB_INPUT(INT32 **input_r, INT32 **input_g, INT32 **input_b, int code)
+static INLINE void SET_MUL_RGB_INPUT(int32_t **input_r, int32_t **input_g, int32_t **input_b, int code)
 {
     switch (code & 0x1f)
     {
@@ -1030,7 +1030,7 @@ static INLINE void SET_MUL_RGB_INPUT(INT32 **input_r, INT32 **input_g, INT32 **i
     }
 }
 
-static INLINE void SET_ADD_RGB_INPUT(INT32 **input_r, INT32 **input_g, INT32 **input_b, int code)
+static INLINE void SET_ADD_RGB_INPUT(int32_t **input_r, int32_t **input_g, int32_t **input_b, int code)
 {
    switch (code & 0x7)
    {
@@ -1077,7 +1077,7 @@ static INLINE void SET_ADD_RGB_INPUT(INT32 **input_r, INT32 **input_g, INT32 **i
    }
 }
 
-static INLINE void SET_SUB_ALPHA_INPUT(INT32 **input, int code)
+static INLINE void SET_SUB_ALPHA_INPUT(int32_t **input, int code)
 {
     switch (code & 0x7)
     {
@@ -1092,7 +1092,7 @@ static INLINE void SET_SUB_ALPHA_INPUT(INT32 **input, int code)
     }
 }
 
-static INLINE void SET_MUL_ALPHA_INPUT(INT32 **input, int code)
+static INLINE void SET_MUL_ALPHA_INPUT(int32_t **input, int code)
 {
     switch (code & 0x7)
     {
@@ -1123,10 +1123,10 @@ static INLINE void SET_MUL_ALPHA_INPUT(INT32 **input, int code)
     }
 }
 
-static void combiner_1cycle(int adseed, UINT32* curpixel_cvg)
+static void combiner_1cycle(int adseed, uint32_t* curpixel_cvg)
 {
 
-    INT32 redkey, greenkey, bluekey, temp;
+    int32_t redkey, greenkey, bluekey, temp;
     COLOR chromabypass;
 
     if (other_modes.key_en)
@@ -1218,9 +1218,9 @@ static void combiner_1cycle(int adseed, UINT32* curpixel_cvg)
         COLOR_ALPHA(shade_color) = 0xff;
 }
 
-static void combiner_2cycle(int adseed, UINT32* curpixel_cvg, INT32* acalpha)
+static void combiner_2cycle(int adseed, uint32_t* curpixel_cvg, int32_t* acalpha)
 {
-    INT32 redkey, greenkey, bluekey, temp;
+    int32_t redkey, greenkey, bluekey, temp;
     COLOR chromabypass;
 
     if (other_modes.key_en)
@@ -1237,7 +1237,7 @@ static void combiner_2cycle(int adseed, UINT32* curpixel_cvg, INT32* acalpha)
 
     if (other_modes.alpha_compare_en)
     {
-        INT32 preacalpha;
+        int32_t preacalpha;
         if (other_modes.key_en)
         {
             redkey = SIGN(COLOR_RED(combined_color), 17);
@@ -1386,8 +1386,8 @@ static void combiner_2cycle(int adseed, UINT32* curpixel_cvg, INT32* acalpha)
 static void precalculate_everything(void)
 {
     int ps[9];
-    UINT32 exponent;
-    UINT32 mantissa;
+    uint32_t exponent;
+    uint32_t mantissa;
     int temppoint, tempslope; 
     int normout;
     int wnorm;
@@ -1536,7 +1536,7 @@ static unsigned char magic_matrix[16] = {
     07, 01, 06, 00
 };
 
-static int blender_1cycle(UINT32* fr, UINT32* fg, UINT32* fb, int dith, UINT32 blend_en, UINT32 prewrap, UINT32 curpixel_cvg, UINT32 curpixel_cvbit)
+static int blender_1cycle(uint32_t* fr, uint32_t* fg, uint32_t* fb, int dith, uint32_t blend_en, uint32_t prewrap, uint32_t curpixel_cvg, uint32_t curpixel_cvbit)
 {
     int r, g, b, dontblend;
     
@@ -1595,7 +1595,7 @@ static int blender_1cycle(UINT32* fr, UINT32* fg, UINT32* fb, int dith, UINT32 b
         return 0;
 }
 
-int blender_2cycle(UINT32* fr, UINT32* fg, UINT32* fb, int dith, UINT32 blend_en, UINT32 prewrap, UINT32 curpixel_cvg, UINT32 curpixel_cvbit, INT32 acalpha)
+int blender_2cycle(uint32_t* fr, uint32_t* fg, uint32_t* fb, int dith, uint32_t blend_en, uint32_t prewrap, uint32_t curpixel_cvg, uint32_t curpixel_cvbit, int32_t acalpha)
 {
     int r, g, b, dontblend;
 
@@ -1659,12 +1659,12 @@ int blender_2cycle(UINT32* fr, UINT32* fg, UINT32* fb, int dith, UINT32 blend_en
     }
 }
 
-static void fetch_texel(COLOR *color, int s, int t, UINT32 tilenum)
+static void fetch_texel(COLOR *color, int s, int t, uint32_t tilenum)
 {
-    UINT32 tbase = tile[tilenum].line * t + tile[tilenum].tmem;
+    uint32_t tbase = tile[tilenum].line * t + tile[tilenum].tmem;
     
 
-    UINT32 tpal    = tile[tilenum].palette;
+    uint32_t tpal    = tile[tilenum].palette;
 
     
     
@@ -1673,8 +1673,8 @@ static void fetch_texel(COLOR *color, int s, int t, UINT32 tilenum)
     
     
     
-    UINT16 *tc16 = (UINT16*)__TMEM;
-    UINT32 taddr = 0;
+    uint16_t *tc16 = (uint16_t*)__TMEM;
+    uint32_t taddr = 0;
 
     
 
@@ -1684,7 +1684,7 @@ static void fetch_texel(COLOR *color, int s, int t, UINT32 tilenum)
     {
     case TEXEL_RGBA4:
         {
-            UINT8 byteval, c; 
+            uint8_t byteval, c; 
             taddr = ((tbase << 4) + s) >> 1;
             taddr ^= ((t & 1) ? BYTE_XOR_DWORD_SWAP : BYTE_ADDR_XOR);
 
@@ -1699,7 +1699,7 @@ static void fetch_texel(COLOR *color, int s, int t, UINT32 tilenum)
         break;
     case TEXEL_RGBA8:
         {
-            UINT8 p;
+            uint8_t p;
 
             taddr = (tbase << 3) + s;
             taddr ^= ((t & 1) ? BYTE_XOR_DWORD_SWAP : BYTE_ADDR_XOR);
@@ -1713,7 +1713,7 @@ static void fetch_texel(COLOR *color, int s, int t, UINT32 tilenum)
         break;
     case TEXEL_RGBA16:
         {         
-            UINT16 c;
+            uint16_t c;
 
             taddr = (tbase << 2) + s;
             taddr ^= ((t & 1) ? WORD_XOR_DWORD_SWAP : WORD_ADDR_XOR);
@@ -1727,7 +1727,7 @@ static void fetch_texel(COLOR *color, int s, int t, UINT32 tilenum)
         break;
     case TEXEL_RGBA32:
         {
-            UINT16 c;
+            uint16_t c;
 
             taddr = (tbase << 2) + s;
             taddr ^= ((t & 1) ? WORD_XOR_DWORD_SWAP : WORD_ADDR_XOR);
@@ -1744,7 +1744,7 @@ static void fetch_texel(COLOR *color, int s, int t, UINT32 tilenum)
     case TEXEL_YUV4:
     case TEXEL_YUV8:
         {
-            INT32 u, save;
+            int32_t u, save;
 
             taddr = (tbase << 3) + s;
             taddr ^= ((t & 1) ? BYTE_XOR_DWORD_SWAP : BYTE_ADDR_XOR);
@@ -1762,8 +1762,8 @@ static void fetch_texel(COLOR *color, int s, int t, UINT32 tilenum)
     case TEXEL_YUV16:
     case TEXEL_YUV32:
         {
-            UINT16 c;
-            INT32 y, u, v;
+            uint16_t c;
+            int32_t y, u, v;
             int taddrlow;
 
             taddr = (tbase << 3) + s;
@@ -1789,7 +1789,7 @@ static void fetch_texel(COLOR *color, int s, int t, UINT32 tilenum)
         break;
     case TEXEL_CI4:
         {
-            UINT8 p;
+            uint8_t p;
 
             taddr = ((tbase << 4) + s) >> 1;
             taddr ^= ((t & 1) ? BYTE_XOR_DWORD_SWAP : BYTE_ADDR_XOR);
@@ -1802,7 +1802,7 @@ static void fetch_texel(COLOR *color, int s, int t, UINT32 tilenum)
         break;
     case TEXEL_CI8:
         {
-            UINT8 p;
+            uint8_t p;
 
             taddr = (tbase << 3) + s;
             taddr ^= ((t & 1) ? BYTE_XOR_DWORD_SWAP : BYTE_ADDR_XOR);
@@ -1816,7 +1816,7 @@ static void fetch_texel(COLOR *color, int s, int t, UINT32 tilenum)
         break;
     case TEXEL_CI16:
         {         
-            UINT16 c;
+            uint16_t c;
 
             taddr = (tbase << 2) + s;
             taddr ^= ((t & 1) ? WORD_XOR_DWORD_SWAP : WORD_ADDR_XOR);
@@ -1830,7 +1830,7 @@ static void fetch_texel(COLOR *color, int s, int t, UINT32 tilenum)
         break;
     case TEXEL_CI32:
         {
-            UINT16 c;
+            uint16_t c;
 
             taddr = (tbase << 2) + s;
             taddr ^= ((t & 1) ? WORD_XOR_DWORD_SWAP : WORD_ADDR_XOR);
@@ -1843,7 +1843,7 @@ static void fetch_texel(COLOR *color, int s, int t, UINT32 tilenum)
         break;
     case TEXEL_IA4:
         {
-            UINT8 p, i;
+            uint8_t p, i;
 
             taddr = ((tbase << 4) + s) >> 1;
             taddr ^= ((t & 1) ? BYTE_XOR_DWORD_SWAP : BYTE_ADDR_XOR);
@@ -1859,7 +1859,7 @@ static void fetch_texel(COLOR *color, int s, int t, UINT32 tilenum)
         break;
     case TEXEL_IA8:
         {
-            UINT8 p, i;
+            uint8_t p, i;
 
             taddr = (tbase << 3) + s;
             taddr ^= ((t & 1) ? BYTE_XOR_DWORD_SWAP : BYTE_ADDR_XOR);
@@ -1874,7 +1874,7 @@ static void fetch_texel(COLOR *color, int s, int t, UINT32 tilenum)
         break;
     case TEXEL_IA16:
         {
-            UINT16 c;
+            uint16_t c;
 
             taddr = (tbase << 2) + s;
             taddr ^= ((t & 1) ? WORD_XOR_DWORD_SWAP : WORD_ADDR_XOR);                         
@@ -1885,7 +1885,7 @@ static void fetch_texel(COLOR *color, int s, int t, UINT32 tilenum)
         break;
     case TEXEL_IA32:
         {
-            UINT16 c;
+            uint16_t c;
 
             taddr = (tbase << 2) + s;
             taddr ^= ((t & 1) ? WORD_XOR_DWORD_SWAP : WORD_ADDR_XOR);
@@ -1898,7 +1898,7 @@ static void fetch_texel(COLOR *color, int s, int t, UINT32 tilenum)
         break;
     case TEXEL_I4:
         {
-            UINT8 byteval, c;
+            uint8_t byteval, c;
 
             taddr = ((tbase << 4) + s) >> 1;
             taddr ^= ((t & 1) ? BYTE_XOR_DWORD_SWAP : BYTE_ADDR_XOR);
@@ -1913,7 +1913,7 @@ static void fetch_texel(COLOR *color, int s, int t, UINT32 tilenum)
         break;
     case TEXEL_I8:
         {
-            UINT8 c;
+            uint8_t c;
 
             taddr = (tbase << 3) + s;
             taddr ^= ((t & 1) ? BYTE_XOR_DWORD_SWAP : BYTE_ADDR_XOR);
@@ -1926,7 +1926,7 @@ static void fetch_texel(COLOR *color, int s, int t, UINT32 tilenum)
         break;
     case TEXEL_I16:
         {        
-            UINT16 c;
+            uint16_t c;
 
             taddr = (tbase << 2) + s;
             taddr ^= ((t & 1) ? WORD_XOR_DWORD_SWAP : WORD_ADDR_XOR);    
@@ -1939,7 +1939,7 @@ static void fetch_texel(COLOR *color, int s, int t, UINT32 tilenum)
         break;
     case TEXEL_I32:
         {
-            UINT16 c;
+            uint16_t c;
 
             taddr = (tbase << 2) + s;
             taddr ^= ((t & 1) ? WORD_XOR_DWORD_SWAP : WORD_ADDR_XOR);   
@@ -1953,13 +1953,13 @@ static void fetch_texel(COLOR *color, int s, int t, UINT32 tilenum)
     }
 }
 
-static void fetch_texel_entlut(COLOR *color, int s, int t, UINT32 tilenum)
+static void fetch_texel_entlut(COLOR *color, int s, int t, uint32_t tilenum)
 {
-    UINT32 tbase = tile[tilenum].line * t + tile[tilenum].tmem;
-    UINT32 tpal    = tile[tilenum].palette << 4;
-    UINT16 *tc16 = (UINT16*)__TMEM;
-    UINT32 taddr = 0;
-    UINT32 c;
+    uint32_t tbase = tile[tilenum].line * t + tile[tilenum].tmem;
+    uint32_t tpal    = tile[tilenum].palette << 4;
+    uint16_t *tc16 = (uint16_t*)__TMEM;
+    uint32_t taddr = 0;
+    uint32_t c;
 
     
     
@@ -2055,26 +2055,26 @@ static void fetch_texel_entlut(COLOR *color, int s, int t, UINT32 tilenum)
 
 
 
-static void fetch_texel_quadro(COLOR *color0, COLOR *color1, COLOR *color2, COLOR *color3, int s0, int s1, int t0, int t1, UINT32 tilenum)
+static void fetch_texel_quadro(COLOR *color0, COLOR *color1, COLOR *color2, COLOR *color3, int s0, int s1, int t0, int t1, uint32_t tilenum)
 {
 
-    UINT32 tbase0 = tile[tilenum].line * t0 + tile[tilenum].tmem;
-    UINT32 tbase2 = tile[tilenum].line * t1 + tile[tilenum].tmem;
-    UINT32 tpal    = tile[tilenum].palette;
-    UINT32 xort = 0, ands = 0;
+    uint32_t tbase0 = tile[tilenum].line * t0 + tile[tilenum].tmem;
+    uint32_t tbase2 = tile[tilenum].line * t1 + tile[tilenum].tmem;
+    uint32_t tpal    = tile[tilenum].palette;
+    uint32_t xort = 0, ands = 0;
 
     
     
 
-    UINT16 *tc16 = (UINT16*)__TMEM;
-    UINT32 taddr0 = 0, taddr1 = 0, taddr2 = 0, taddr3 = 0;
-    UINT32 taddrlow0 = 0, taddrlow1 = 0, taddrlow2 = 0, taddrlow3 = 0;
+    uint16_t *tc16 = (uint16_t*)__TMEM;
+    uint32_t taddr0 = 0, taddr1 = 0, taddr2 = 0, taddr3 = 0;
+    uint32_t taddrlow0 = 0, taddrlow1 = 0, taddrlow2 = 0, taddrlow3 = 0;
 
     switch (tile[tilenum].f.notlutswitch)
     {
     case TEXEL_RGBA4:
         {
-            UINT32 byteval, c;
+            uint32_t byteval, c;
 
             taddr0 = ((tbase0 << 4) + s0) >> 1;
             taddr1 = ((tbase0 << 4) + s1) >> 1;
@@ -2125,7 +2125,7 @@ static void fetch_texel_quadro(COLOR *color0, COLOR *color1, COLOR *color2, COLO
         break;
     case TEXEL_RGBA8:
         {
-            UINT32 p;
+            uint32_t p;
 
             taddr0 = ((tbase0 << 3) + s0);
             taddr1 = ((tbase0 << 3) + s1);
@@ -2165,7 +2165,7 @@ static void fetch_texel_quadro(COLOR *color0, COLOR *color1, COLOR *color2, COLO
         break;
     case TEXEL_RGBA16:
         {
-            UINT32 c0, c1, c2, c3;
+            uint32_t c0, c1, c2, c3;
 
             taddr0 = ((tbase0 << 2) + s0);
             taddr1 = ((tbase0 << 2) + s1);
@@ -2205,7 +2205,7 @@ static void fetch_texel_quadro(COLOR *color0, COLOR *color1, COLOR *color2, COLO
         break;
     case TEXEL_RGBA32:
         {
-            UINT16 c0, c1, c2, c3;
+            uint16_t c0, c1, c2, c3;
 
             taddr0 = ((tbase0 << 2) + s0);
             taddr1 = ((tbase0 << 2) + s1);
@@ -2250,7 +2250,7 @@ static void fetch_texel_quadro(COLOR *color0, COLOR *color1, COLOR *color2, COLO
     case TEXEL_YUV4:
     case TEXEL_YUV8:
         {
-            INT32 u0, u1, u2, u3, save0, save1, save2, save3;
+            int32_t u0, u1, u2, u3, save0, save1, save2, save3;
 
             taddr0 = (tbase0 << 3) + s0;
             taddr1 = (tbase0 << 3) + s1;
@@ -2294,8 +2294,8 @@ static void fetch_texel_quadro(COLOR *color0, COLOR *color1, COLOR *color2, COLO
     case TEXEL_YUV16:
     case TEXEL_YUV32:
         {
-            UINT16 c0, c1, c2, c3;
-            INT32 y0, y1, y2, y3, u0, u1, u2, u3, v0, v1, v2, v3;
+            uint16_t c0, c1, c2, c3;
+            int32_t y0, y1, y2, y3, u0, u1, u2, u3, v0, v1, v2, v3;
 
             taddr0 = ((tbase0 << 3) + s0);
             taddr1 = ((tbase0 << 3) + s1);
@@ -2375,7 +2375,7 @@ static void fetch_texel_quadro(COLOR *color0, COLOR *color1, COLOR *color2, COLO
         break;
     case TEXEL_CI4:
         {
-            UINT32 p;
+            uint32_t p;
 
             taddr0 = ((tbase0 << 4) + s0) >> 1;
             taddr1 = ((tbase0 << 4) + s1) >> 1;
@@ -2414,7 +2414,7 @@ static void fetch_texel_quadro(COLOR *color0, COLOR *color1, COLOR *color2, COLO
         break;
     case TEXEL_CI8:
         {
-            UINT32 p;
+            uint32_t p;
 
             taddr0 = ((tbase0 << 3) + s0);
             taddr1 = ((tbase0 << 3) + s1);
@@ -2455,7 +2455,7 @@ static void fetch_texel_quadro(COLOR *color0, COLOR *color1, COLOR *color2, COLO
         break;
     case TEXEL_CI16:
         {
-            UINT16 c0, c1, c2, c3;
+            uint16_t c0, c1, c2, c3;
 
             taddr0 = ((tbase0 << 2) + s0);
             taddr1 = ((tbase0 << 2) + s1);
@@ -2495,7 +2495,7 @@ static void fetch_texel_quadro(COLOR *color0, COLOR *color1, COLOR *color2, COLO
         break;
     case TEXEL_CI32:
         {
-            UINT16 c0, c1, c2, c3;
+            uint16_t c0, c1, c2, c3;
 
             taddr0 = ((tbase0 << 2) + s0);
             taddr1 = ((tbase0 << 2) + s1);
@@ -2535,7 +2535,7 @@ static void fetch_texel_quadro(COLOR *color0, COLOR *color1, COLOR *color2, COLO
         break;
     case TEXEL_IA4:
         {
-            UINT32 p, i;
+            uint32_t p, i;
 
             taddr0 = ((tbase0 << 4) + s0) >> 1;
             taddr1 = ((tbase0 << 4) + s1) >> 1;
@@ -2590,7 +2590,7 @@ static void fetch_texel_quadro(COLOR *color0, COLOR *color1, COLOR *color2, COLO
         break;
     case TEXEL_IA8:
         {
-            UINT32 p, i;
+            uint32_t p, i;
 
             taddr0 = ((tbase0 << 3) + s0);
             taddr1 = ((tbase0 << 3) + s1);
@@ -2639,7 +2639,7 @@ static void fetch_texel_quadro(COLOR *color0, COLOR *color1, COLOR *color2, COLO
         break;
     case TEXEL_IA16:
         {
-            UINT16 c0, c1, c2, c3;
+            uint16_t c0, c1, c2, c3;
 
             taddr0 = ((tbase0 << 2) + s0);
             taddr1 = ((tbase0 << 2) + s1);
@@ -2671,7 +2671,7 @@ static void fetch_texel_quadro(COLOR *color0, COLOR *color1, COLOR *color2, COLO
         break;
     case TEXEL_IA32:
         {
-            UINT16 c0, c1, c2, c3;
+            uint16_t c0, c1, c2, c3;
 
             taddr0 = ((tbase0 << 2) + s0);
             taddr1 = ((tbase0 << 2) + s1);
@@ -2711,7 +2711,7 @@ static void fetch_texel_quadro(COLOR *color0, COLOR *color1, COLOR *color2, COLO
         break;
     case TEXEL_I4:
         {
-            UINT32 p, c0, c1, c2, c3;
+            uint32_t p, c0, c1, c2, c3;
 
             taddr0 = ((tbase0 << 4) + s0) >> 1;
             taddr1 = ((tbase0 << 4) + s1) >> 1;
@@ -2750,7 +2750,7 @@ static void fetch_texel_quadro(COLOR *color0, COLOR *color1, COLOR *color2, COLO
         break;
     case TEXEL_I8:
         {
-            UINT32 p;
+            uint32_t p;
 
             taddr0 = ((tbase0 << 3) + s0);
             taddr1 = ((tbase0 << 3) + s1);
@@ -2791,7 +2791,7 @@ static void fetch_texel_quadro(COLOR *color0, COLOR *color1, COLOR *color2, COLO
         break;
     case TEXEL_I16:
         {
-            UINT16 c0, c1, c2, c3;
+            uint16_t c0, c1, c2, c3;
 
             taddr0 = ((tbase0 << 2) + s0);
             taddr1 = ((tbase0 << 2) + s1);
@@ -2831,7 +2831,7 @@ static void fetch_texel_quadro(COLOR *color0, COLOR *color1, COLOR *color2, COLO
         break;
     case TEXEL_I32:
         {
-            UINT16 c0, c1, c2, c3;
+            uint16_t c0, c1, c2, c3;
 
             taddr0 = ((tbase0 << 2) + s0);
             taddr1 = ((tbase0 << 2) + s1);
@@ -2872,16 +2872,16 @@ static void fetch_texel_quadro(COLOR *color0, COLOR *color1, COLOR *color2, COLO
     }
 }
 
-static void fetch_texel_entlut_quadro(COLOR *color0, COLOR *color1, COLOR *color2, COLOR *color3, int s0, int s1, int t0, int t1, UINT32 tilenum)
+static void fetch_texel_entlut_quadro(COLOR *color0, COLOR *color1, COLOR *color2, COLOR *color3, int s0, int s1, int t0, int t1, uint32_t tilenum)
 {
-    UINT32 tbase0 = tile[tilenum].line * t0 + tile[tilenum].tmem;
-    UINT32 tbase2 = tile[tilenum].line * t1 + tile[tilenum].tmem;
-    UINT32 tpal    = tile[tilenum].palette << 4;
-    UINT32 xort = 0, ands = 0;
+    uint32_t tbase0 = tile[tilenum].line * t0 + tile[tilenum].tmem;
+    uint32_t tbase2 = tile[tilenum].line * t1 + tile[tilenum].tmem;
+    uint32_t tpal    = tile[tilenum].palette << 4;
+    uint32_t xort = 0, ands = 0;
 
-    UINT16 *tc16 = (UINT16*)__TMEM;
-    UINT32 taddr0 = 0, taddr1 = 0, taddr2 = 0, taddr3 = 0;
-    UINT16 c0, c1, c2, c3;
+    uint16_t *tc16 = (uint16_t*)__TMEM;
+    uint32_t taddr0 = 0, taddr1 = 0, taddr2 = 0, taddr3 = 0;
+    uint16_t c0, c1, c2, c3;
 
     
     
@@ -3110,12 +3110,12 @@ static void fetch_texel_entlut_quadro(COLOR *color0, COLOR *color1, COLOR *color
 }
 
 
-void get_tmem_idx(int s, int t, UINT32 tilenum, UINT32* idx0, UINT32* idx1, UINT32* idx2, UINT32* idx3, UINT32* bit3flipped, UINT32* hibit)
+void get_tmem_idx(int s, int t, uint32_t tilenum, uint32_t* idx0, uint32_t* idx1, uint32_t* idx2, uint32_t* idx3, uint32_t* bit3flipped, uint32_t* hibit)
 {
-    UINT32 tbase;
-    UINT32 tsize;
-    UINT32 tformat;
-    UINT32 sshorts;
+    uint32_t tbase;
+    uint32_t tsize;
+    uint32_t tformat;
+    uint32_t sshorts;
     int tidx_a, tidx_b, tidx_c, tidx_d;
 
     tbase  = (tile[tilenum].line * t) & 0x000001FF;
@@ -3155,16 +3155,16 @@ void get_tmem_idx(int s, int t, UINT32 tilenum, UINT32* idx0, UINT32* idx1, UINT
     sort_tmem_idx(idx3, tidx_a, tidx_b, tidx_c, tidx_d, 3);
 }
 
-void read_tmem_copy(int s, int s1, int s2, int s3, int t, UINT32 tilenum, UINT32* sortshort, int* hibits, int* lowbits)
+void read_tmem_copy(int s, int s1, int s2, int s3, int t, uint32_t tilenum, uint32_t* sortshort, int* hibits, int* lowbits)
 {
-    UINT32 sortidx[8];
-    UINT32 tbase;
-    UINT32 tsize;
-    UINT32 tformat;
-    UINT32 shbytes, shbytes1, shbytes2, shbytes3;
-    INT32 delta;
-    UINT16* tmem16;
-    UINT32 short0, short1, short2, short3;
+    uint32_t sortidx[8];
+    uint32_t tbase;
+    uint32_t tsize;
+    uint32_t tformat;
+    uint32_t shbytes, shbytes1, shbytes2, shbytes3;
+    int32_t delta;
+    uint16_t* tmem16;
+    uint32_t short0, short1, short2, short3;
     int tidx_a, tidx_blow, tidx_bhi, tidx_c, tidx_dlow, tidx_dhi;
 
     delta = 0;
@@ -3241,7 +3241,7 @@ void read_tmem_copy(int s, int s1, int s2, int s3, int t, UINT32 tilenum, UINT32
     lowbits[4] = tidx_dlow & 0xf;
     lowbits[5] = tidx_dhi & 0xf;
 
-    tmem16 = (UINT16 *)__TMEM;
+    tmem16 = (uint16_t *)__TMEM;
 
     tidx_a >>= 2;
     tidx_blow >>= 2;
@@ -3310,7 +3310,7 @@ void read_tmem_copy(int s, int s1, int s2, int s3, int t, UINT32 tilenum, UINT32
     }
 }
 
-void sort_tmem_idx(UINT32 *idx, UINT32 idxa, UINT32 idxb, UINT32 idxc, UINT32 idxd, UINT32 bankno)
+void sort_tmem_idx(uint32_t *idx, uint32_t idxa, uint32_t idxb, uint32_t idxc, uint32_t idxd, uint32_t bankno)
 {
     if ((idxa & 3) == bankno)
         *idx = idxa & 0x3ff;
@@ -3325,7 +3325,7 @@ void sort_tmem_idx(UINT32 *idx, UINT32 idxa, UINT32 idxb, UINT32 idxc, UINT32 id
 }
 
 
-void sort_tmem_shorts_lowhalf(UINT32* bindshort, UINT32 short0, UINT32 short1, UINT32 short2, UINT32 short3, UINT32 bankno)
+void sort_tmem_shorts_lowhalf(uint32_t* bindshort, uint32_t short0, uint32_t short1, uint32_t short2, uint32_t short3, uint32_t bankno)
 {
     switch(bankno)
     {
@@ -3346,9 +3346,9 @@ void sort_tmem_shorts_lowhalf(UINT32* bindshort, UINT32 short0, UINT32 short1, U
 
 
 
-void compute_color_index(UINT32* cidx, UINT32 readshort, UINT32 nybbleoffset, UINT32 tilenum)
+void compute_color_index(uint32_t* cidx, uint32_t readshort, uint32_t nybbleoffset, uint32_t tilenum)
 {
-    UINT32 lownib, hinib;
+    uint32_t lownib, hinib;
     if (tile[tilenum].size == PIXEL_SIZE_4BIT)
     {
         lownib = (nybbleoffset ^ 3) << 2;
@@ -3364,9 +3364,9 @@ void compute_color_index(UINT32* cidx, UINT32 readshort, UINT32 nybbleoffset, UI
 }
 
 
-void replicate_for_copy(UINT32* outbyte, UINT32 inshort, UINT32 nybbleoffset, UINT32 tilenum, UINT32 tformat, UINT32 tsize)
+void replicate_for_copy(uint32_t* outbyte, uint32_t inshort, uint32_t nybbleoffset, uint32_t tilenum, uint32_t tformat, uint32_t tsize)
 {
-    UINT32 lownib, hinib;
+    uint32_t lownib, hinib;
     switch(tsize)
     {
     case PIXEL_SIZE_4BIT:
@@ -3404,16 +3404,16 @@ void replicate_for_copy(UINT32* outbyte, UINT32 inshort, UINT32 nybbleoffset, UI
     }
 }
 
-void fetch_qword_copy(UINT32* hidword, UINT32* lowdword, INT32 ssss, INT32 ssst, UINT32 tilenum)
+void fetch_qword_copy(uint32_t* hidword, uint32_t* lowdword, int32_t ssss, int32_t ssst, uint32_t tilenum)
 {
-    UINT32 shorta, shortb, shortc, shortd;
-    UINT32 sortshort[8];
+    uint32_t shorta, shortb, shortc, shortd;
+    uint32_t sortshort[8];
     int hibits[6];
     int lowbits[6];
-    INT32 sss = ssss, sst = ssst, sss1 = 0, sss2 = 0, sss3 = 0;
+    int32_t sss = ssss, sst = ssst, sss1 = 0, sss2 = 0, sss3 = 0;
     int largetex = 0;
 
-    UINT32 tformat, tsize;
+    uint32_t tformat, tsize;
     if (other_modes.en_tlut)
     {
         tsize = PIXEL_SIZE_16BIT;
@@ -3476,10 +3476,10 @@ void angrylion_set_filtering(unsigned filter_type)
 #define TRELATIVE(x, y)     ((x) - ((y) << 3));
 #define UPPER ((sfrac + tfrac) & 0x20)
 
-static void texture_pipeline_cycle(COLOR* TEX, COLOR* prev, INT32 SSS, INT32 SST, UINT32 tilenum, UINT32 cycle)                                            
+static void texture_pipeline_cycle(COLOR* TEX, COLOR* prev, int32_t SSS, int32_t SST, uint32_t tilenum, uint32_t cycle)                                            
 {
-    INT32 maxs, maxt, invt0r, invt0g, invt0b, invt0a;
-    INT32 sfrac, tfrac, invsf, invtf;
+    int32_t maxs, maxt, invt0r, invt0g, invt0b, invt0a;
+    int32_t sfrac, tfrac, invsf, invtf;
     int upper = 0;
     int bilerp = cycle ? other_modes.bi_lerp1 : other_modes.bi_lerp0;
     int convert = other_modes.convert_one && cycle;
@@ -3697,7 +3697,7 @@ static void texture_pipeline_cycle(COLOR* TEX, COLOR* prev, INT32 SSS, INT32 SST
 }
 
 
-static void tc_pipeline_copy(INT32* sss0, INT32* sss1, INT32* sss2, INT32* sss3, INT32* sst, int tilenum)                                            
+static void tc_pipeline_copy(int32_t* sss0, int32_t* sss1, int32_t* sss2, int32_t* sss3, int32_t* sst, int tilenum)                                            
 {
     int ss0 = *sss0, ss1 = 0, ss2 = 0, ss3 = 0, st = *sst;
 
@@ -3723,7 +3723,7 @@ static void tc_pipeline_copy(INT32* sss0, INT32* sss1, INT32* sss2, INT32* sss3,
     *sst = st;
 }
 
-STRICTINLINE void tc_pipeline_load(INT32* sss, INT32* sst, int tilenum, int coord_quad)
+STRICTINLINE void tc_pipeline_load(int32_t* sss, int32_t* sst, int tilenum, int coord_quad)
 {
     int sss1 = *sss, sst1 = *sst;
     sss1 = SIGN16(sss1);
@@ -3750,13 +3750,13 @@ STRICTINLINE void tc_pipeline_load(INT32* sss, INT32* sst, int tilenum, int coor
     *sst = sst1;
 }
 
-static INLINE void tcdiv_nopersp(INT32 ss, INT32 st, INT32 sw, INT32* sss, INT32* sst)
+static INLINE void tcdiv_nopersp(int32_t ss, int32_t st, int32_t sw, int32_t* sss, int32_t* sst)
 {
     *sss = (SIGN16(ss)) & 0x1ffff;
     *sst = (SIGN16(st)) & 0x1ffff;
 }
 
-static INLINE void tcdiv_persp(INT32 ss, INT32 st, INT32 sw, INT32* sss, INT32* sst)
+static INLINE void tcdiv_persp(int32_t ss, int32_t st, int32_t sw, int32_t* sss, int32_t* sst)
 {
     int w_carry = 0;
     int shift; 
@@ -3765,7 +3765,7 @@ static INLINE void tcdiv_persp(INT32 ss, INT32 st, INT32 sw, INT32* sss, INT32* 
     int outofbounds_s, outofbounds_t;
     int tempmask;
     int shift_value;
-    INT32 temps, tempt;
+    int32_t temps, tempt;
 
     
     
@@ -3832,7 +3832,7 @@ static INLINE void tcdiv_persp(INT32 ss, INT32 st, INT32 sw, INT32* sss, INT32* 
     *sst = (tempt & 0x1ffff) | overunder_t;
 }
 
-static INLINE void tcdiv(INT32 ss, INT32 st, INT32 sw, INT32* sss, INT32* sst)
+static INLINE void tcdiv(int32_t ss, int32_t st, int32_t sw, int32_t* sss, int32_t* sst)
 {
    if (other_modes.persp_tex_en)
       tcdiv_persp(ss, st, sw, sss, sst);
@@ -3842,11 +3842,11 @@ static INLINE void tcdiv(INT32 ss, INT32 st, INT32 sw, INT32* sss, INT32* sst)
 
 static void render_spans_1cycle_complete(int start, int end, int tilenum, int flip)
 {
-    UINT8 offx, offy;
+    uint8_t offx, offy;
     SPANSIGS sigs;
-    UINT32 blend_en;
-    UINT32 prewrap;
-    UINT32 curpixel_cvg, curpixel_cvbit, curpixel_memcvg;
+    uint32_t blend_en;
+    uint32_t prewrap;
+    uint32_t curpixel_cvg, curpixel_cvbit, curpixel_memcvg;
     unsigned long zbcur;
 
     int prim_tile = tilenum;
@@ -3866,10 +3866,10 @@ static void render_spans_1cycle_complete(int start, int end, int tilenum, int fl
     int sr, sg, sb, sa, sz, ss, st, sw;
     int xstart, xend, xendsc;
     int sss = 0, sst = 0;
-    INT32 prelodfrac;
+    int32_t prelodfrac;
     int curpixel = 0;
     int x, length, scdiff;
-    UINT32 fir, fig, fib;
+    uint32_t fir, fig, fib;
 
     if (flip)
     {
@@ -4031,11 +4031,11 @@ static void render_spans_1cycle_complete(int start, int end, int tilenum, int fl
 static void render_spans_1cycle_notexel1(int start, int end, int tilenum, int flip)
 {
     int zbcur;
-    UINT8 offx, offy;
+    uint8_t offx, offy;
     SPANSIGS sigs;
-    UINT32 blend_en;
-    UINT32 prewrap;
-    UINT32 curpixel_cvg, curpixel_cvbit, curpixel_memcvg;
+    uint32_t blend_en;
+    uint32_t prewrap;
+    uint32_t curpixel_cvg, curpixel_cvbit, curpixel_memcvg;
 
     int prim_tile = tilenum;
     int tile1 = tilenum;
@@ -4055,7 +4055,7 @@ static void render_spans_1cycle_notexel1(int start, int end, int tilenum, int fl
     int sss = 0, sst = 0;
     int curpixel = 0;
     int x, length, scdiff;
-    UINT32 fir, fig, fib;
+    uint32_t fir, fig, fib;
 
     if (flip)
     {
@@ -4215,10 +4215,10 @@ static void render_spans_1cycle_notexel1(int start, int end, int tilenum, int fl
 static void render_spans_1cycle_notex(int start, int end, int tilenum, int flip)
 {
     int zbcur;
-    UINT8 offx, offy;
-    UINT32 blend_en;
-    UINT32 prewrap;
-    UINT32 curpixel_cvg, curpixel_cvbit, curpixel_memcvg;
+    uint8_t offx, offy;
+    uint32_t blend_en;
+    uint32_t prewrap;
+    uint32_t curpixel_cvg, curpixel_cvbit, curpixel_memcvg;
 
     int i, j;
 
@@ -4234,7 +4234,7 @@ static void render_spans_1cycle_notex(int start, int end, int tilenum, int flip)
     int xstart, xend, xendsc;
     int curpixel = 0;
     int x, length, scdiff;
-    UINT32 fir, fig, fib;
+    uint32_t fir, fig, fib;
 
     if (flip)
     {
@@ -4355,14 +4355,14 @@ static void render_spans_1cycle_notex(int start, int end, int tilenum, int flip)
 static void render_spans_2cycle_complete(int start, int end, int tilenum, int flip)
 {
     int zbcur;
-    UINT8 offx, offy;
+    uint8_t offx, offy;
     SPANSIGS sigs;
-    INT32 prelodfrac;
+    int32_t prelodfrac;
     COLOR nexttexel1_color;
-    UINT32 blend_en;
-    UINT32 prewrap;
-    UINT32 curpixel_cvg, curpixel_cvbit, curpixel_memcvg;
-    INT32 acalpha;
+    uint32_t blend_en;
+    uint32_t prewrap;
+    uint32_t curpixel_cvg, curpixel_cvbit, curpixel_memcvg;
+    int32_t acalpha;
 
     int tile2 = (tilenum + 1) & 7;
     int tile1 = tilenum;
@@ -4385,7 +4385,7 @@ static void render_spans_2cycle_complete(int start, int end, int tilenum, int fl
     int curpixel = 0;
     
     int x, length, scdiff;
-    UINT32 fir, fig, fib;
+    uint32_t fir, fig, fib;
 
     int dzpix;
     int dzpixenc;
@@ -4549,11 +4549,11 @@ static void render_spans_2cycle_complete(int start, int end, int tilenum, int fl
 static void render_spans_2cycle_notexelnext(int start, int end, int tilenum, int flip)
 {
     int zbcur;
-    UINT8 offx, offy;
-    UINT32 blend_en;
-    UINT32 prewrap;
-    UINT32 curpixel_cvg, curpixel_cvbit, curpixel_memcvg;
-    INT32 acalpha;
+    uint8_t offx, offy;
+    uint32_t blend_en;
+    uint32_t prewrap;
+    uint32_t curpixel_cvg, curpixel_cvbit, curpixel_memcvg;
+    int32_t acalpha;
 
     int tile2 = (tilenum + 1) & 7;
     int tile1 = tilenum;
@@ -4572,7 +4572,7 @@ static void render_spans_2cycle_notexelnext(int start, int end, int tilenum, int
     int curpixel = 0;
     
     int x, length, scdiff;
-    UINT32 fir, fig, fib;
+    uint32_t fir, fig, fib;
 
     int dzpix;
     int dzpixenc;
@@ -4731,11 +4731,11 @@ void breakme(void)
 static void render_spans_2cycle_notexel1(int start, int end, int tilenum, int flip)
 {
     int zbcur;
-    UINT8 offx, offy;
-    UINT32 blend_en;
-    UINT32 prewrap;
-    UINT32 curpixel_cvg, curpixel_cvbit, curpixel_memcvg;
-    INT32 acalpha;
+    uint8_t offx, offy;
+    uint32_t blend_en;
+    uint32_t prewrap;
+    uint32_t curpixel_cvg, curpixel_cvbit, curpixel_memcvg;
+    int32_t acalpha;
 
     int tile1 = tilenum;
     int prim_tile = tilenum;
@@ -4753,7 +4753,7 @@ static void render_spans_2cycle_notexel1(int start, int end, int tilenum, int fl
     int curpixel = 0;
     
     int x, length, scdiff;
-    UINT32 fir, fig, fib;
+    uint32_t fir, fig, fib;
 
     int dzpix;
     int dzpixenc;
@@ -4916,12 +4916,12 @@ static void render_spans_2cycle_notexel1(int start, int end, int tilenum, int fl
 static void render_spans_2cycle_notex(int start, int end, int tilenum, int flip)
 {
     int zbcur;
-    UINT8 offx, offy;
+    uint8_t offx, offy;
     int i, j;
-    UINT32 blend_en;
-    UINT32 prewrap;
-    UINT32 curpixel_cvg, curpixel_cvbit, curpixel_memcvg;
-    INT32 acalpha;
+    uint32_t blend_en;
+    uint32_t prewrap;
+    uint32_t curpixel_cvg, curpixel_cvbit, curpixel_memcvg;
+    int32_t acalpha;
 
     int drinc, dginc, dbinc, dainc, dzinc;
     int xinc;
@@ -4933,7 +4933,7 @@ static void render_spans_2cycle_notex(int start, int end, int tilenum, int flip)
     int curpixel = 0;
     
     int x, length, scdiff;
-    UINT32 fir, fig, fib;
+    uint32_t fir, fig, fib;
 
     int dzpix;
     int dzpixenc;
@@ -5261,17 +5261,17 @@ static void render_spans_copy(int start, int end, int tilenum, int flip)
     int fb_index, length;
     int diff = 0;
 
-    UINT32 hidword = 0, lowdword = 0;
-    UINT32 hidword1 = 0, lowdword1 = 0;
+    uint32_t hidword = 0, lowdword = 0;
+    uint32_t hidword1 = 0, lowdword1 = 0;
     int fbadvance = (fb_size == PIXEL_SIZE_4BIT) ? 8 : 16 >> fb_size;
-    UINT32 fbptr = 0;
+    uint32_t fbptr = 0;
     int fbptr_advance = flip ? 8 : -8;
-    UINT64 copyqword = 0;
-    UINT32 tempdword = 0, tempbyte = 0;
+    uint64_t copyqword = 0;
+    uint32_t tempdword = 0, tempbyte = 0;
     int copywmask = 0, alphamask = 0;
     int bytesperpixel = (fb_size == PIXEL_SIZE_4BIT) ? 1 : (1 << (fb_size - 1));
-    UINT32 fbendptr = 0;
-    INT32 threshold, currthreshold;
+    uint32_t fbendptr = 0;
+    int32_t threshold, currthreshold;
 
     if (fb_size == PIXEL_SIZE_32BIT)
     {
@@ -5325,7 +5325,7 @@ static void render_spans_copy(int start, int end, int tilenum, int flip)
             fetch_qword_copy(&hidword, &lowdword, sss, sst, tile1);
 
             if (fb_size == PIXEL_SIZE_16BIT || fb_size == PIXEL_SIZE_8BIT)
-                copyqword = ((UINT64)hidword << 32) | ((UINT64)lowdword);
+                copyqword = ((uint64_t)hidword << 32) | ((uint64_t)lowdword);
             else
                 copyqword = 0;
             if (!other_modes.alpha_compare_en)
@@ -5374,7 +5374,7 @@ static void render_spans_copy(int start, int end, int tilenum, int flip)
             k = 7;
             while (copywmask > 0)
             {
-                tempbyte = (UINT32)((copyqword >> (k << 3)) & 0xff);
+                tempbyte = (uint32_t)((copyqword >> (k << 3)) & 0xff);
                 if (alphamask & (1 << k))
                 {
                     PAIRWRITE8(tempdword, tempbyte, (tempbyte & 1) ? 3 : 0);
@@ -5441,15 +5441,15 @@ NOINLINE void loading_pipeline(
     int sss = 0, sst = 0;
     int ti_index, length;
 
-    UINT32 tmemidx0 = 0, tmemidx1 = 0, tmemidx2 = 0, tmemidx3 = 0;
+    uint32_t tmemidx0 = 0, tmemidx1 = 0, tmemidx2 = 0, tmemidx3 = 0;
     int dswap = 0;
-    UINT16* tmem16 = (UINT16*)__TMEM;
-    UINT32 readval0, readval1, readval2, readval3;
-    UINT32 readidx32;
-    UINT64 loadqword;
-    UINT16 tempshort;
+    uint16_t* tmem16 = (uint16_t*)__TMEM;
+    uint32_t readval0, readval1, readval2, readval3;
+    uint32_t readidx32;
+    uint64_t loadqword;
+    uint16_t tempshort;
     int tmem_formatting = 0;
-    UINT32 bit3fl = 0, hibit = 0;
+    uint32_t bit3fl = 0, hibit = 0;
 
     int tiadvance = 0, spanadvance = 0;
     unsigned long tiptr;
@@ -5538,51 +5538,51 @@ NOINLINE void loading_pipeline(
             {
             case 0:
                 if (!ltlut)
-                    loadqword = ((UINT64)readval0 << 32) | readval1;
+                    loadqword = ((uint64_t)readval0 << 32) | readval1;
                 else
                 {
                     tempshort = readval0 >> 16;
-                    loadqword = ((UINT64)tempshort << 48) | ((UINT64) tempshort << 32) | ((UINT64) tempshort << 16) | tempshort;
+                    loadqword = ((uint64_t)tempshort << 48) | ((uint64_t) tempshort << 32) | ((uint64_t) tempshort << 16) | tempshort;
                 }
                 break;
             case 1:
-                loadqword = ((UINT64)readval0 << 40) | ((UINT64)readval1 << 8) | (readval2 >> 24);
+                loadqword = ((uint64_t)readval0 << 40) | ((uint64_t)readval1 << 8) | (readval2 >> 24);
                 break;
             case 2:
                 if (!ltlut)
-                    loadqword = ((UINT64)readval0 << 48) | ((UINT64)readval1 << 16) | (readval2 >> 16);
+                    loadqword = ((uint64_t)readval0 << 48) | ((uint64_t)readval1 << 16) | (readval2 >> 16);
                 else
                 {
                     tempshort = readval0 & 0xffff;
-                    loadqword = ((UINT64)tempshort << 48) | ((UINT64) tempshort << 32) | ((UINT64) tempshort << 16) | tempshort;
+                    loadqword = ((uint64_t)tempshort << 48) | ((uint64_t) tempshort << 32) | ((uint64_t) tempshort << 16) | tempshort;
                 }
                 break;
             case 3:
-                loadqword = ((UINT64)readval0 << 56) | ((UINT64)readval1 << 24) | (readval2 >> 8);
+                loadqword = ((uint64_t)readval0 << 56) | ((uint64_t)readval1 << 24) | (readval2 >> 8);
                 break;
             case 4:
                 if (!ltlut)
-                    loadqword = ((UINT64)readval1 << 32) | readval2;
+                    loadqword = ((uint64_t)readval1 << 32) | readval2;
                 else
                 {
                     tempshort = readval1 >> 16;
-                    loadqword = ((UINT64)tempshort << 48) | ((UINT64) tempshort << 32) | ((UINT64) tempshort << 16) | tempshort;
+                    loadqword = ((uint64_t)tempshort << 48) | ((uint64_t) tempshort << 32) | ((uint64_t) tempshort << 16) | tempshort;
                 }
                 break;
             case 5:
-                loadqword = ((UINT64)readval1 << 40) | ((UINT64)readval2 << 8) | (readval3 >> 24);
+                loadqword = ((uint64_t)readval1 << 40) | ((uint64_t)readval2 << 8) | (readval3 >> 24);
                 break;
             case 6:
                 if (!ltlut)
-                    loadqword = ((UINT64)readval1 << 48) | ((UINT64)readval2 << 16) | (readval3 >> 16);
+                    loadqword = ((uint64_t)readval1 << 48) | ((uint64_t)readval2 << 16) | (readval3 >> 16);
                 else
                 {
                     tempshort = readval1 & 0xffff;
-                    loadqword = ((UINT64)tempshort << 48) | ((UINT64) tempshort << 32) | ((UINT64) tempshort << 16) | tempshort;
+                    loadqword = ((uint64_t)tempshort << 48) | ((uint64_t) tempshort << 32) | ((uint64_t) tempshort << 16) | tempshort;
                 }
                 break;
             case 7:
-                loadqword = ((UINT64)readval1 << 56) | ((UINT64)readval2 << 24) | (readval3 >> 8);
+                loadqword = ((uint64_t)readval1 << 56) | ((uint64_t)readval2 << 24) | (readval3 >> 8);
                 break;
             }
 
@@ -5590,40 +5590,40 @@ NOINLINE void loading_pipeline(
             switch(tmem_formatting)
             {
             case 0:
-                readval0 = (UINT32)((((loadqword >> 56) & 0xff) << 24) | (((loadqword >> 40) & 0xff) << 16) | (((loadqword >> 24) & 0xff) << 8) | (((loadqword >> 8) & 0xff) << 0));
-                readval1 = (UINT32)((((loadqword >> 48) & 0xff) << 24) | (((loadqword >> 32) & 0xff) << 16) | (((loadqword >> 16) & 0xff) << 8) | (((loadqword >> 0) & 0xff) << 0));
+                readval0 = (uint32_t)((((loadqword >> 56) & 0xff) << 24) | (((loadqword >> 40) & 0xff) << 16) | (((loadqword >> 24) & 0xff) << 8) | (((loadqword >> 8) & 0xff) << 0));
+                readval1 = (uint32_t)((((loadqword >> 48) & 0xff) << 24) | (((loadqword >> 32) & 0xff) << 16) | (((loadqword >> 16) & 0xff) << 8) | (((loadqword >> 0) & 0xff) << 0));
                 if (bit3fl)
                 {
-                    tmem16[tmemidx2 ^ WORD_ADDR_XOR] = (UINT16)(readval0 >> 16);
-                    tmem16[tmemidx3 ^ WORD_ADDR_XOR] = (UINT16)(readval0 & 0xffff);
-                    tmem16[(tmemidx2 | 0x400) ^ WORD_ADDR_XOR] = (UINT16)(readval1 >> 16);
-                    tmem16[(tmemidx3 | 0x400) ^ WORD_ADDR_XOR] = (UINT16)(readval1 & 0xffff);
+                    tmem16[tmemidx2 ^ WORD_ADDR_XOR] = (uint16_t)(readval0 >> 16);
+                    tmem16[tmemidx3 ^ WORD_ADDR_XOR] = (uint16_t)(readval0 & 0xffff);
+                    tmem16[(tmemidx2 | 0x400) ^ WORD_ADDR_XOR] = (uint16_t)(readval1 >> 16);
+                    tmem16[(tmemidx3 | 0x400) ^ WORD_ADDR_XOR] = (uint16_t)(readval1 & 0xffff);
                 }
                 else
                 {
-                    tmem16[tmemidx0 ^ WORD_ADDR_XOR] = (UINT16)(readval0 >> 16);
-                    tmem16[tmemidx1 ^ WORD_ADDR_XOR] = (UINT16)(readval0 & 0xffff);
-                    tmem16[(tmemidx0 | 0x400) ^ WORD_ADDR_XOR] = (UINT16)(readval1 >> 16);
-                    tmem16[(tmemidx1 | 0x400) ^ WORD_ADDR_XOR] = (UINT16)(readval1 & 0xffff);
+                    tmem16[tmemidx0 ^ WORD_ADDR_XOR] = (uint16_t)(readval0 >> 16);
+                    tmem16[tmemidx1 ^ WORD_ADDR_XOR] = (uint16_t)(readval0 & 0xffff);
+                    tmem16[(tmemidx0 | 0x400) ^ WORD_ADDR_XOR] = (uint16_t)(readval1 >> 16);
+                    tmem16[(tmemidx1 | 0x400) ^ WORD_ADDR_XOR] = (uint16_t)(readval1 & 0xffff);
                 }
                 break;
             case 1:
-                readval0 = (UINT32)(((loadqword >> 48) << 16) | ((loadqword >> 16) & 0xffff));
-                readval1 = (UINT32)((((loadqword >> 32) & 0xffff) << 16) | (loadqword & 0xffff));
+                readval0 = (uint32_t)(((loadqword >> 48) << 16) | ((loadqword >> 16) & 0xffff));
+                readval1 = (uint32_t)((((loadqword >> 32) & 0xffff) << 16) | (loadqword & 0xffff));
 
                 if (bit3fl)
                 {
-                    tmem16[tmemidx2 ^ WORD_ADDR_XOR] = (UINT16)(readval0 >> 16);
-                    tmem16[tmemidx3 ^ WORD_ADDR_XOR] = (UINT16)(readval0 & 0xffff);
-                    tmem16[(tmemidx2 | 0x400) ^ WORD_ADDR_XOR] = (UINT16)(readval1 >> 16);
-                    tmem16[(tmemidx3 | 0x400) ^ WORD_ADDR_XOR] = (UINT16)(readval1 & 0xffff);
+                    tmem16[tmemidx2 ^ WORD_ADDR_XOR] = (uint16_t)(readval0 >> 16);
+                    tmem16[tmemidx3 ^ WORD_ADDR_XOR] = (uint16_t)(readval0 & 0xffff);
+                    tmem16[(tmemidx2 | 0x400) ^ WORD_ADDR_XOR] = (uint16_t)(readval1 >> 16);
+                    tmem16[(tmemidx3 | 0x400) ^ WORD_ADDR_XOR] = (uint16_t)(readval1 & 0xffff);
                 }
                 else
                 {
-                    tmem16[tmemidx0 ^ WORD_ADDR_XOR] = (UINT16)(readval0 >> 16);
-                    tmem16[tmemidx1 ^ WORD_ADDR_XOR] = (UINT16)(readval0 & 0xffff);
-                    tmem16[(tmemidx0 | 0x400) ^ WORD_ADDR_XOR] = (UINT16)(readval1 >> 16);
-                    tmem16[(tmemidx1 | 0x400) ^ WORD_ADDR_XOR] = (UINT16)(readval1 & 0xffff);
+                    tmem16[tmemidx0 ^ WORD_ADDR_XOR] = (uint16_t)(readval0 >> 16);
+                    tmem16[tmemidx1 ^ WORD_ADDR_XOR] = (uint16_t)(readval0 & 0xffff);
+                    tmem16[(tmemidx0 | 0x400) ^ WORD_ADDR_XOR] = (uint16_t)(readval1 >> 16);
+                    tmem16[(tmemidx1 | 0x400) ^ WORD_ADDR_XOR] = (uint16_t)(readval1 & 0xffff);
                 }
                 break;
             case 2:
@@ -5631,34 +5631,34 @@ NOINLINE void loading_pipeline(
                 {
                     if (!hibit)
                     {
-                        tmem16[tmemidx0 ^ WORD_ADDR_XOR] = (UINT16)(loadqword >> 48);
-                        tmem16[tmemidx1 ^ WORD_ADDR_XOR] = (UINT16)(loadqword >> 32);
-                        tmem16[tmemidx2 ^ WORD_ADDR_XOR] = (UINT16)(loadqword >> 16);
-                        tmem16[tmemidx3 ^ WORD_ADDR_XOR] = (UINT16)(loadqword & 0xffff);
+                        tmem16[tmemidx0 ^ WORD_ADDR_XOR] = (uint16_t)(loadqword >> 48);
+                        tmem16[tmemidx1 ^ WORD_ADDR_XOR] = (uint16_t)(loadqword >> 32);
+                        tmem16[tmemidx2 ^ WORD_ADDR_XOR] = (uint16_t)(loadqword >> 16);
+                        tmem16[tmemidx3 ^ WORD_ADDR_XOR] = (uint16_t)(loadqword & 0xffff);
                     }
                     else
                     {
-                        tmem16[(tmemidx0 | 0x400) ^ WORD_ADDR_XOR] = (UINT16)(loadqword >> 48);
-                        tmem16[(tmemidx1 | 0x400) ^ WORD_ADDR_XOR] = (UINT16)(loadqword >> 32);
-                        tmem16[(tmemidx2 | 0x400) ^ WORD_ADDR_XOR] = (UINT16)(loadqword >> 16);
-                        tmem16[(tmemidx3 | 0x400) ^ WORD_ADDR_XOR] = (UINT16)(loadqword & 0xffff);
+                        tmem16[(tmemidx0 | 0x400) ^ WORD_ADDR_XOR] = (uint16_t)(loadqword >> 48);
+                        tmem16[(tmemidx1 | 0x400) ^ WORD_ADDR_XOR] = (uint16_t)(loadqword >> 32);
+                        tmem16[(tmemidx2 | 0x400) ^ WORD_ADDR_XOR] = (uint16_t)(loadqword >> 16);
+                        tmem16[(tmemidx3 | 0x400) ^ WORD_ADDR_XOR] = (uint16_t)(loadqword & 0xffff);
                     }
                 }
                 else
                 {
                     if (!hibit)
                     {
-                        tmem16[tmemidx0 ^ WORD_ADDR_XOR] = (UINT16)(loadqword >> 16);
-                        tmem16[tmemidx1 ^ WORD_ADDR_XOR] = (UINT16)(loadqword & 0xffff);
-                        tmem16[tmemidx2 ^ WORD_ADDR_XOR] = (UINT16)(loadqword >> 48);
-                        tmem16[tmemidx3 ^ WORD_ADDR_XOR] = (UINT16)(loadqword >> 32);
+                        tmem16[tmemidx0 ^ WORD_ADDR_XOR] = (uint16_t)(loadqword >> 16);
+                        tmem16[tmemidx1 ^ WORD_ADDR_XOR] = (uint16_t)(loadqword & 0xffff);
+                        tmem16[tmemidx2 ^ WORD_ADDR_XOR] = (uint16_t)(loadqword >> 48);
+                        tmem16[tmemidx3 ^ WORD_ADDR_XOR] = (uint16_t)(loadqword >> 32);
                     }
                     else
                     {
-                        tmem16[(tmemidx0 | 0x400) ^ WORD_ADDR_XOR] = (UINT16)(loadqword >> 16);
-                        tmem16[(tmemidx1 | 0x400) ^ WORD_ADDR_XOR] = (UINT16)(loadqword & 0xffff);
-                        tmem16[(tmemidx2 | 0x400) ^ WORD_ADDR_XOR] = (UINT16)(loadqword >> 48);
-                        tmem16[(tmemidx3 | 0x400) ^ WORD_ADDR_XOR] = (UINT16)(loadqword >> 32);
+                        tmem16[(tmemidx0 | 0x400) ^ WORD_ADDR_XOR] = (uint16_t)(loadqword >> 16);
+                        tmem16[(tmemidx1 | 0x400) ^ WORD_ADDR_XOR] = (uint16_t)(loadqword & 0xffff);
+                        tmem16[(tmemidx2 | 0x400) ^ WORD_ADDR_XOR] = (uint16_t)(loadqword >> 48);
+                        tmem16[(tmemidx3 | 0x400) ^ WORD_ADDR_XOR] = (uint16_t)(loadqword >> 32);
                     }
                 }
             break;
@@ -5673,7 +5673,7 @@ NOINLINE void loading_pipeline(
     }
 }
 
-void edgewalker_for_loads(INT32* lewdata)
+void edgewalker_for_loads(int32_t* lewdata)
 {
     int j = 0;
     int xleft = 0, xright = 0;
@@ -5688,10 +5688,10 @@ void edgewalker_for_loads(INT32* lewdata)
     int ycur;
     int ylfar;
 
-    INT32 maxxmx, minxhx;
-    INT32 yl = 0, ym = 0, yh = 0;
-    INT32 xl = 0, xm = 0, xh = 0;
-    INT32 dxldy = 0, dxhdy = 0, dxmdy = 0;
+    int32_t maxxmx, minxhx;
+    int32_t yl = 0, ym = 0, yh = 0;
+    int32_t xl = 0, xm = 0, xh = 0;
+    int32_t dxldy = 0, dxhdy = 0, dxmdy = 0;
 
     int commandcode = (lewdata[0] >> 24) & 0x3f;
     int ltlut = (commandcode == 0x30);
@@ -5704,9 +5704,9 @@ void edgewalker_for_loads(INT32* lewdata)
 
     int valid_y = 1;
     int length = 0;
-    INT32 xrsc = 0, xlsc = 0, stickybit = 0;
-    INT32 yllimit;
-    INT32 yhlimit;
+    int32_t xrsc = 0, xlsc = 0, stickybit = 0;
+    int32_t yllimit;
+    int32_t yhlimit;
 
     flip = 1;
     max_level = 0;
@@ -5888,9 +5888,9 @@ void deduce_derivatives()
     other_modes.f.dolod = other_modes.tex_lod_en || lodfracused;
 }
 
-void tile_tlut_common_cs_decoder(UINT32 w1, UINT32 w2)
+void tile_tlut_common_cs_decoder(uint32_t w1, uint32_t w2)
 {
-    INT32 lewdata[10];
+    int32_t lewdata[10];
     int tilenum = (w2 >> 24) & 0x7;
     int sl, tl, sh, th;
 
@@ -5915,16 +5915,16 @@ void tile_tlut_common_cs_decoder(UINT32 w1, UINT32 w2)
     edgewalker_for_loads(lewdata);
 }
 
-STRICTINLINE INT32 irand(void)
+STRICTINLINE int32_t irand(void)
 {
     iseed *= 0x343fd;
     iseed += 0x269ec3;
     return ((iseed >> 16) & 0x7fff);
 }
 
-STRICTINLINE int alpha_compare(INT32 comb_alpha)
+STRICTINLINE int alpha_compare(int32_t comb_alpha)
 {
-    INT32 threshold;
+    int32_t threshold;
 
     if (!other_modes.alpha_compare_en)
         return 1;
@@ -5941,7 +5941,7 @@ STRICTINLINE int alpha_compare(INT32 comb_alpha)
     }
 }
 
-STRICTINLINE INT32 color_combiner_equation(INT32 a, INT32 b, INT32 c, INT32 d)
+STRICTINLINE int32_t color_combiner_equation(int32_t a, int32_t b, int32_t c, int32_t d)
 {
     a = special_9bit_exttable[a];
     b = special_9bit_exttable[b];
@@ -5951,7 +5951,7 @@ STRICTINLINE INT32 color_combiner_equation(INT32 a, INT32 b, INT32 c, INT32 d)
     return (a & 0x1ffff);
 }
 
-STRICTINLINE INT32 alpha_combiner_equation(INT32 a, INT32 b, INT32 c, INT32 d)
+STRICTINLINE int32_t alpha_combiner_equation(int32_t a, int32_t b, int32_t c, int32_t d)
 {
     a = special_9bit_exttable[a];
     b = special_9bit_exttable[b];
@@ -6050,27 +6050,27 @@ static void blender_equation_cycle1(int* r, int* g, int* b)
     }
 }
 
-STRICTINLINE UINT32 rightcvghex(UINT32 x, UINT32 fmask)
+STRICTINLINE uint32_t rightcvghex(uint32_t x, uint32_t fmask)
 {
-    UINT32 covered = ((x & 7) + 1) >> 1;
+    uint32_t covered = ((x & 7) + 1) >> 1;
 
     covered = 0xf0 >> covered;
     return (covered & fmask);
 }
 
-STRICTINLINE UINT32 leftcvghex(UINT32 x, UINT32 fmask) 
+STRICTINLINE uint32_t leftcvghex(uint32_t x, uint32_t fmask) 
 {
-    UINT32 covered = ((x & 7) + 1) >> 1;
+    uint32_t covered = ((x & 7) + 1) >> 1;
 
     covered = 0xf >> covered;
     return (covered & fmask);
 }
 
-STRICTINLINE void compute_cvg_flip(INT32 scanline)
+STRICTINLINE void compute_cvg_flip(int32_t scanline)
 {
-   INT32 purgestart, purgeend;
+   int32_t purgestart, purgeend;
    int i, length, fmask, maskshift, fmaskshifted;
-   INT32 minorcur, majorcur, minorcurint, majorcurint, samecvg;
+   int32_t minorcur, majorcur, minorcurint, majorcurint, samecvg;
 
    purgestart = span[scanline].rx;
    purgeend = span[scanline].lx;
@@ -6138,11 +6138,11 @@ STRICTINLINE void compute_cvg_flip(INT32 scanline)
    }
 }
 
-STRICTINLINE void compute_cvg_noflip(INT32 scanline)
+STRICTINLINE void compute_cvg_noflip(int32_t scanline)
 {
-	INT32 purgestart, purgeend;
+	int32_t purgestart, purgeend;
 	int i, length, fmask, maskshift, fmaskshifted;
-	INT32 minorcur, majorcur, minorcurint, majorcurint, samecvg;
+	int32_t minorcur, majorcur, minorcurint, majorcurint, samecvg;
 	
 	purgestart = span[scanline].lx;
 	purgeend = span[scanline].rx;
@@ -6296,8 +6296,8 @@ static void fbread2_4(uint32_t curpixel, uint32_t* curpixel_memcvg)
 
 static void fbread_8(uint32_t curpixel, uint32_t* curpixel_memcvg)
 {
-   UINT8 mem;
-   UINT32 addr = fb_address + curpixel;
+   uint8_t mem;
+   uint32_t addr = fb_address + curpixel;
    RREADADDR8(mem, addr);
 
    COLOR_RED(memory_color)   = mem;
@@ -6309,8 +6309,8 @@ static void fbread_8(uint32_t curpixel, uint32_t* curpixel_memcvg)
 
 static void fbread2_8(uint32_t curpixel, uint32_t* curpixel_memcvg)
 {
-   UINT8 mem;
-   UINT32 addr = fb_address + curpixel;
+   uint8_t mem;
+   uint32_t addr = fb_address + curpixel;
    RREADADDR8(mem, addr);
 
    COLOR_RED(pre_memory_color)   = mem;
@@ -6322,11 +6322,11 @@ static void fbread2_8(uint32_t curpixel, uint32_t* curpixel_memcvg)
 
 static INLINE void fbread_16(uint32_t curpixel, uint32_t* curpixel_memcvg)
 {
-	UINT16 fword;
-	UINT8 hbyte;
-	UINT32 addr = (fb_address >> 1) + curpixel;
+	uint16_t fword;
+	uint8_t hbyte;
+	uint32_t addr = (fb_address >> 1) + curpixel;
 	
-	UINT8 lowbits;
+	uint8_t lowbits;
 
 	
 	if (other_modes.image_read_en)
@@ -6375,11 +6375,11 @@ static INLINE void fbread_16(uint32_t curpixel, uint32_t* curpixel_memcvg)
 
 static INLINE void fbread2_16(uint32_t curpixel, uint32_t* curpixel_memcvg)
 {
-	UINT16 fword;
-	UINT8 hbyte;
-	UINT32 addr = (fb_address >> 1) + curpixel;
+	uint16_t fword;
+	uint8_t hbyte;
+	uint32_t addr = (fb_address >> 1) + curpixel;
 	
-	UINT8 lowbits;
+	uint8_t lowbits;
 
 	if (other_modes.image_read_en)
 	{
@@ -6428,7 +6428,7 @@ static INLINE void fbread2_16(uint32_t curpixel, uint32_t* curpixel_memcvg)
 
 static void fbread_32(uint32_t curpixel, uint32_t* curpixel_memcvg)
 {
-    UINT32 mem, addr = (fb_address >> 2) + curpixel;
+    uint32_t mem, addr = (fb_address >> 2) + curpixel;
     RREADIDX32(mem, addr);
 
     COLOR_RED(memory_color)    = (mem >> 24) & 0xFF;
@@ -6444,7 +6444,7 @@ static void fbread_32(uint32_t curpixel, uint32_t* curpixel_memcvg)
 
 static void fbread2_32(uint32_t curpixel, uint32_t* curpixel_memcvg)
 {
-   UINT32 mem, addr = (fb_address >> 2) + curpixel; 
+   uint32_t mem, addr = (fb_address >> 2) + curpixel; 
    RREADIDX32(mem, addr);
 
    COLOR_RED(pre_memory_color)    = (mem >> 24) & 0xFF;
@@ -6458,7 +6458,7 @@ static void fbread2_32(uint32_t curpixel, uint32_t* curpixel_memcvg)
    *curpixel_memcvg = (unsigned char)(COLOR_ALPHA(pre_memory_color)) >> 5;
 }
 
-STRICTINLINE UINT32 z_decompress(UINT32 zb)
+STRICTINLINE uint32_t z_decompress(uint32_t zb)
 {
     zb &= 0x0000FFFF;
     return (z_complete_dec_table[zb >> 2]);
@@ -6467,7 +6467,7 @@ STRICTINLINE UINT32 z_decompress(UINT32 zb)
 INLINE void z_build_com_table(void)
 {
     register int z;
-    UINT16 altmem = 0;
+    uint16_t altmem = 0;
 
     for (z = 0; z < 0x40000; z++)
     {
@@ -6630,10 +6630,10 @@ INLINE void z_build_com_table(void)
 static void precalc_cvmask_derivatives(void)
 {
     int i = 0, k = 0;
-    UINT16 mask = 0, maskx = 0, masky = 0;
-    UINT8 offx = 0, offy = 0;
-    static const UINT8 yarray[16] = {0, 0, 1, 0, 2, 0, 1, 0, 3, 0, 1, 0, 2, 0, 1, 0};
-    static const UINT8 xarray[16] = {0, 3, 2, 2, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0};
+    uint16_t mask = 0, maskx = 0, masky = 0;
+    uint8_t offx = 0, offy = 0;
+    static const uint8_t yarray[16] = {0, 0, 1, 0, 2, 0, 1, 0, 3, 0, 1, 0, 2, 0, 1, 0};
+    static const uint8_t xarray[16] = {0, 3, 2, 2, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0};
 
     
     for (; i < 0x100; i++)
@@ -6661,14 +6661,14 @@ static void precalc_cvmask_derivatives(void)
     }
 }
 
-STRICTINLINE UINT16 decompress_cvmask_frombyte(UINT8 x)
+STRICTINLINE uint16_t decompress_cvmask_frombyte(uint8_t x)
 {
-    UINT16 y = (x & 1) | ((x & 2) << 4) | (x & 4) | ((x & 8) << 4) |
+    uint16_t y = (x & 1) | ((x & 2) << 4) | (x & 4) | ((x & 8) << 4) |
         ((x & 0x10) << 4) | ((x & 0x20) << 8) | ((x & 0x40) << 4) | ((x & 0x80) << 8);
     return y;
 }
 
-STRICTINLINE void lookup_cvmask_derivatives(UINT32 mask, UINT8* offx, UINT8* offy, UINT32* curpixel_cvg, UINT32* curpixel_cvbit)
+STRICTINLINE void lookup_cvmask_derivatives(uint32_t mask, uint8_t* offx, uint8_t* offy, uint32_t* curpixel_cvg, uint32_t* curpixel_cvbit)
 {
     CVtcmaskDERIVATIVE temp = cvarray[mask];
     *curpixel_cvg = temp.cvg;
@@ -6677,19 +6677,19 @@ STRICTINLINE void lookup_cvmask_derivatives(UINT32 mask, UINT8* offx, UINT8* off
     *offy = temp.yoff;
 }
 
-STRICTINLINE void z_store(UINT32 zcurpixel, UINT32 z, int dzpixenc)
+STRICTINLINE void z_store(uint32_t zcurpixel, uint32_t z, int dzpixenc)
 {
-    UINT16 zval = z_com_table[z & 0x3ffff]|(dzpixenc >> 2);
-    UINT8 hval = dzpixenc & 3;
+    uint16_t zval = z_com_table[z & 0x3ffff]|(dzpixenc >> 2);
+    uint8_t hval = dzpixenc & 3;
     PAIRWRITE16(zcurpixel, zval, hval);
 }
 
-STRICTINLINE UINT32 dz_decompress(UINT32 dz_compressed)
+STRICTINLINE uint32_t dz_decompress(uint32_t dz_compressed)
 {
     return (1 << dz_compressed);
 }
 
-STRICTINLINE UINT32 dz_compress(UINT32 value)
+STRICTINLINE uint32_t dz_compress(uint32_t value)
 {
     int j = 0;
     if (value & 0xff00)
@@ -6703,25 +6703,25 @@ STRICTINLINE UINT32 dz_compress(UINT32 value)
     return j;
 }
 
-static UINT32 z_compare(UINT32 zcurpixel, UINT32 sz, UINT16 dzpix, int dzpixenc, UINT32* blend_en, UINT32* prewrap, UINT32* curpixel_cvg, UINT32 curpixel_memcvg)
+static uint32_t z_compare(uint32_t zcurpixel, uint32_t sz, uint16_t dzpix, int dzpixenc, uint32_t* blend_en, uint32_t* prewrap, uint32_t* curpixel_cvg, uint32_t curpixel_memcvg)
 {
     int cvgcoeff = 0;
-    UINT32 dzenc = 0;
+    uint32_t dzenc = 0;
     
-    INT32 diff;
-    UINT32 nearer, max, infront;
+    int32_t diff;
+    uint32_t nearer, max, infront;
     int force_coplanar = 0;
 
-    UINT32 oz, dzmem, zval, hval;
-    INT32 rawdzmem;
+    uint32_t oz, dzmem, zval, hval;
+    int32_t rawdzmem;
 
     sz &= 0x3ffff;
     if (other_modes.z_compare_en)
     {
-        UINT32 dznew;
-        UINT32 dznotshift;
-        UINT32 dzmemmodifier;
-        UINT32 farther;
+        uint32_t dznew;
+        uint32_t dznotshift;
+        uint32_t dzmemmodifier;
+        uint32_t farther;
         int overflow;
         int precision_factor;
 
@@ -6762,7 +6762,7 @@ static UINT32 z_compare(UINT32 zcurpixel, UINT32 sz, UINT16 dzpix, int dzpixenc,
             
         }
 
-        dznew = (UINT32)deltaz_comparator_lut[dzpix | dzmem];
+        dznew = (uint32_t)deltaz_comparator_lut[dzpix | dzmem];
         dznotshift = dznew;
         dznew <<= 3;
         
@@ -6784,8 +6784,8 @@ static UINT32 z_compare(UINT32 zcurpixel, UINT32 sz, UINT16 dzpix, int dzpixenc,
         {
         case ZMODE_OPAQUE: 
             infront = sz < oz;
-            diff = (INT32)sz - (INT32)dznew;
-            nearer = force_coplanar || (diff <= (INT32)oz);
+            diff = (int32_t)sz - (int32_t)dznew;
+            nearer = force_coplanar || (diff <= (int32_t)oz);
             max = (oz == 0x3ffff);
             LOG("nearer = %d\n", nearer);
             LOG("opaque\n");
@@ -6796,8 +6796,8 @@ static UINT32 z_compare(UINT32 zcurpixel, UINT32 sz, UINT16 dzpix, int dzpixenc,
             LOG("inter\n");
             if (!infront || !farther || !overflow)
             {
-                diff = (INT32)sz - (INT32)dznew;
-                nearer = force_coplanar || (diff <= (INT32)oz);
+                diff = (int32_t)sz - (int32_t)dznew;
+                nearer = force_coplanar || (diff <= (int32_t)oz);
                 max = (oz == 0x3ffff);
                 return (max || (overflow ? infront : nearer)); 
             }
@@ -6817,8 +6817,8 @@ static UINT32 z_compare(UINT32 zcurpixel, UINT32 sz, UINT16 dzpix, int dzpixenc,
             break;
         case ZMODE_DECAL: 
             LOG("decal\n");
-            diff = (INT32)sz - (INT32)dznew;
-            nearer = force_coplanar || (diff <= (INT32)oz);
+            diff = (int32_t)sz - (int32_t)dznew;
+            nearer = force_coplanar || (diff <= (int32_t)oz);
             max = (oz == 0x3ffff);
             return (farther && nearer && !max); 
             break;
@@ -6857,7 +6857,7 @@ static UINT32 z_compare(UINT32 zcurpixel, UINT32 sz, UINT16 dzpix, int dzpixenc,
 }
 
 STRICTINLINE int finalize_spanalpha(
-    UINT32 blend_en, UINT32 curpixel_cvg, UINT32 curpixel_memcvg)
+    uint32_t blend_en, uint32_t curpixel_cvg, uint32_t curpixel_memcvg)
 {
     int possibilities[4];
 
@@ -6873,7 +6873,7 @@ STRICTINLINE int finalize_spanalpha(
     return (possibilities[other_modes.cvg_dest] & 7);
 }
 
-STRICTINLINE INT32 CLIP(INT32 value,INT32 min,INT32 max)
+STRICTINLINE int32_t CLIP(int32_t value,int32_t min,int32_t max)
 {
     if (value < min)
         return min;
@@ -6883,14 +6883,14 @@ STRICTINLINE INT32 CLIP(INT32 value,INT32 min,INT32 max)
         return value;
 }
 
-INLINE void calculate_clamp_diffs(UINT32 i)
+INLINE void calculate_clamp_diffs(uint32_t i)
 {
     tile[i].f.clampdiffs = ((tile[i].sh >> 2) - (tile[i].sl >> 2)) & 0x3ff;
     tile[i].f.clampdifft = ((tile[i].th >> 2) - (tile[i].tl >> 2)) & 0x3ff;
 }
 
 
-INLINE void calculate_tile_derivs(UINT32 i)
+INLINE void calculate_tile_derivs(uint32_t i)
 {
     tile[i].f.clampens = tile[i].cs || !tile[i].mask_s;
     tile[i].f.clampent = tile[i].ct || !tile[i].mask_t;
@@ -6902,9 +6902,9 @@ INLINE void calculate_tile_derivs(UINT32 i)
 
 static void rgb_dither_complete(int* r, int* g, int* b, int dith)
 {
-   INT32 replacesign, ditherdiff;
-   INT32 newr = *r, newg = *g, newb = *b;
-	INT32 rcomp = dith, gcomp, bcomp;
+   int32_t replacesign, ditherdiff;
+   int32_t newr = *r, newg = *g, newb = *b;
+	int32_t rcomp = dith, gcomp, bcomp;
 
 	
 	if (newr > 247)
@@ -7020,7 +7020,7 @@ static void get_dither_noise(int x, int y, int* cdith, int* adith)
 }
 
 static void rgbaz_correct_clip(int offx, int offy, int r, int g, int b, int a,
-      int* z, UINT32 curpixel_cvg)
+      int* z, uint32_t curpixel_cvg)
 {
     int summand_r, summand_b, summand_g, summand_a;
     int summand_z;
@@ -7079,7 +7079,7 @@ static void rgbaz_correct_clip(int offx, int offy, int r, int g, int b, int a,
     *z &= 0x3FFFF;
 }
 
-UINT32 vi_integer_sqrt(UINT32 a)
+uint32_t vi_integer_sqrt(uint32_t a)
 {
     unsigned long op = a, res = 0, one = 1 << 30;
 
@@ -7100,7 +7100,7 @@ UINT32 vi_integer_sqrt(UINT32 a)
 }
 
 
-static void tclod_2cycle_current(INT32* sss, INT32* sst, INT32 nexts, INT32 nextt, INT32 s, INT32 t, INT32 w, INT32 dsinc, INT32 dtinc, INT32 dwinc, INT32 prim_tile, INT32* t1, INT32* t2)
+static void tclod_2cycle_current(int32_t* sss, int32_t* sst, int32_t nexts, int32_t nextt, int32_t s, int32_t t, int32_t w, int32_t dsinc, int32_t dtinc, int32_t dwinc, int32_t prim_tile, int32_t* t1, int32_t* t2)
 {
 
 
@@ -7112,10 +7112,10 @@ static void tclod_2cycle_current(INT32* sss, INT32* sst, INT32 nexts, INT32 next
 
     int nextys, nextyt, nextysw;
     int lodclamp = 0;
-    INT32 lod = 0;
-    UINT32 l_tile;
-    UINT32 magnify = 0;
-    UINT32 distant = 0;
+    int32_t lod = 0;
+    uint32_t l_tile;
+    uint32_t magnify = 0;
+    uint32_t distant = 0;
     int inits = *sss, initt = *sst;
 
     tclod_tcclamp(sss, sst);
@@ -7174,14 +7174,14 @@ static void tclod_2cycle_current(INT32* sss, INT32* sst, INT32 nexts, INT32 next
 }
 
 
-static void tclod_2cycle_current_simple(INT32* sss, INT32* sst, INT32 s, INT32 t, INT32 w, INT32 dsinc, INT32 dtinc, INT32 dwinc, INT32 prim_tile, INT32* t1, INT32* t2)
+static void tclod_2cycle_current_simple(int32_t* sss, int32_t* sst, int32_t s, int32_t t, int32_t w, int32_t dsinc, int32_t dtinc, int32_t dwinc, int32_t prim_tile, int32_t* t1, int32_t* t2)
 {
     int nextys, nextyt, nextysw, nexts, nextt, nextsw;
     int lodclamp = 0;
-    INT32 lod = 0;
-    UINT32 l_tile;
-    UINT32 magnify = 0;
-    UINT32 distant = 0;
+    int32_t lod = 0;
+    uint32_t l_tile;
+    uint32_t magnify = 0;
+    uint32_t distant = 0;
     int inits = *sss, initt = *sst;
 
     tclod_tcclamp(sss, sst);
@@ -7234,14 +7234,14 @@ static void tclod_2cycle_current_simple(INT32* sss, INT32* sst, INT32 s, INT32 t
 }
 
 
-static void tclod_2cycle_current_notexel1(INT32* sss, INT32* sst, INT32 s, INT32 t, INT32 w, INT32 dsinc, INT32 dtinc, INT32 dwinc, INT32 prim_tile, INT32* t1)
+static void tclod_2cycle_current_notexel1(int32_t* sss, int32_t* sst, int32_t s, int32_t t, int32_t w, int32_t dsinc, int32_t dtinc, int32_t dwinc, int32_t prim_tile, int32_t* t1)
 {
     int nextys, nextyt, nextysw, nexts, nextt, nextsw;
     int lodclamp = 0;
-    INT32 lod = 0;
-    UINT32 l_tile;
-    UINT32 magnify = 0;
-    UINT32 distant = 0;
+    int32_t lod = 0;
+    uint32_t l_tile;
+    uint32_t magnify = 0;
+    uint32_t distant = 0;
     int inits = *sss, initt = *sst;
 
     tclod_tcclamp(sss, sst);
@@ -7278,14 +7278,14 @@ static void tclod_2cycle_current_notexel1(INT32* sss, INT32* sst, INT32 s, INT32
     }
 }
 
-static void tclod_2cycle_next(INT32* sss, INT32* sst, INT32 s, INT32 t, INT32 w, INT32 dsinc, INT32 dtinc, INT32 dwinc, INT32 prim_tile, INT32* t1, INT32* t2, INT32* prelodfrac)
+static void tclod_2cycle_next(int32_t* sss, int32_t* sst, int32_t s, int32_t t, int32_t w, int32_t dsinc, int32_t dtinc, int32_t dwinc, int32_t prim_tile, int32_t* t1, int32_t* t2, int32_t* prelodfrac)
 {
     int nexts, nextt, nextsw, nextys, nextyt, nextysw;
     int lodclamp = 0;
-    INT32 lod = 0;
-    UINT32 l_tile;
-    UINT32 magnify = 0;
-    UINT32 distant = 0;
+    int32_t lod = 0;
+    uint32_t l_tile;
+    uint32_t magnify = 0;
+    uint32_t distant = 0;
     int inits = *sss, initt = *sst;
 
     tclod_tcclamp(sss, sst);
@@ -7367,7 +7367,7 @@ static void tclod_2cycle_next(INT32* sss, INT32* sst, INT32 s, INT32 t, INT32 w,
     }
 }
 
-static void tclod_1cycle_current(INT32* sss, INT32* sst, INT32 nexts, INT32 nextt, INT32 s, INT32 t, INT32 w, INT32 dsinc, INT32 dtinc, INT32 dwinc, INT32 scanline, INT32 prim_tile, INT32* t1, SPANSIGS* sigs)
+static void tclod_1cycle_current(int32_t* sss, int32_t* sst, int32_t nexts, int32_t nextt, int32_t s, int32_t t, int32_t w, int32_t dsinc, int32_t dtinc, int32_t dwinc, int32_t scanline, int32_t prim_tile, int32_t* t1, SPANSIGS* sigs)
 {
 
 
@@ -7380,8 +7380,8 @@ static void tclod_1cycle_current(INT32* sss, INT32* sst, INT32 nexts, INT32 next
 
     int fars, fart, farsw;
     int lodclamp = 0;
-    INT32 lod = 0;
-    UINT32 l_tile = 0, magnify = 0, distant = 0;
+    int32_t lod = 0;
+    uint32_t l_tile = 0, magnify = 0, distant = 0;
     
     tclod_tcclamp(sss, sst);
 
@@ -7409,7 +7409,7 @@ static void tclod_1cycle_current(INT32* sss, INT32* sst, INT32 nexts, INT32 next
             }
             else
             {
-               ALIGNED INT32 *stwz_ptr = (ALIGNED INT32*)&span[nextscan].stwz[0];
+               ALIGNED int32_t *stwz_ptr = (ALIGNED int32_t*)&span[nextscan].stwz[0];
                 fars =  (stwz_ptr[0] + dsinc) >> 16;
                 fart =  (stwz_ptr[1] + dtinc) >> 16;
                 farsw = (stwz_ptr[2] + dwinc) >> 16;
@@ -7450,12 +7450,12 @@ static void tclod_1cycle_current(INT32* sss, INT32* sst, INT32 nexts, INT32 next
 
 
 
-static void tclod_1cycle_current_simple(INT32* sss, INT32* sst, INT32 s, INT32 t, INT32 w, INT32 dsinc, INT32 dtinc, INT32 dwinc, INT32 scanline, INT32 prim_tile, INT32* t1, SPANSIGS* sigs)
+static void tclod_1cycle_current_simple(int32_t* sss, int32_t* sst, int32_t s, int32_t t, int32_t w, int32_t dsinc, int32_t dtinc, int32_t dwinc, int32_t scanline, int32_t prim_tile, int32_t* t1, SPANSIGS* sigs)
 {
     int fars, fart, farsw, nexts, nextt, nextsw;
     int lodclamp = 0;
-    INT32 lod = 0;
-    UINT32 l_tile = 0, magnify = 0, distant = 0;
+    int32_t lod = 0;
+    uint32_t l_tile = 0, magnify = 0, distant = 0;
     
     tclod_tcclamp(sss, sst);
 
@@ -7486,7 +7486,7 @@ static void tclod_1cycle_current_simple(INT32* sss, INT32* sst, INT32 s, INT32 t
             }
             else
             {
-               ALIGNED INT32 *stwz_ptr = (ALIGNED INT32*)&span[nextscan].stwz[0];
+               ALIGNED int32_t *stwz_ptr = (ALIGNED int32_t*)&span[nextscan].stwz[0];
 
                 nexts  = stwz_ptr[0] >> 16;
                 nextt  = stwz_ptr[1] >> 16;
@@ -7527,12 +7527,12 @@ static void tclod_1cycle_current_simple(INT32* sss, INT32* sst, INT32 s, INT32 t
     }
 }
 
-static void tclod_1cycle_next(INT32* sss, INT32* sst, INT32 s, INT32 t, INT32 w, INT32 dsinc, INT32 dtinc, INT32 dwinc, INT32 scanline, INT32 prim_tile, INT32* t1, SPANSIGS* sigs, INT32* prelodfrac)
+static void tclod_1cycle_next(int32_t* sss, int32_t* sst, int32_t s, int32_t t, int32_t w, int32_t dsinc, int32_t dtinc, int32_t dwinc, int32_t scanline, int32_t prim_tile, int32_t* t1, SPANSIGS* sigs, int32_t* prelodfrac)
 {
     int nexts, nextt, nextsw, fars, fart, farsw;
     int lodclamp = 0;
-    INT32 lod = 0;
-    UINT32 l_tile = 0, magnify = 0, distant = 0;
+    int32_t lod = 0;
+    uint32_t l_tile = 0, magnify = 0, distant = 0;
     
     tclod_tcclamp(sss, sst);
 
@@ -7661,7 +7661,7 @@ static void tclod_1cycle_next(INT32* sss, INT32* sst, INT32 s, INT32 t, INT32 w,
     }
 }
 
-static void tclod_copy(INT32* sss, INT32* sst, INT32 s, INT32 t, INT32 w, INT32 dsinc, INT32 dtinc, INT32 dwinc, INT32 prim_tile, INT32* t1)
+static void tclod_copy(int32_t* sss, int32_t* sst, int32_t s, int32_t t, int32_t w, int32_t dsinc, int32_t dtinc, int32_t dwinc, int32_t prim_tile, int32_t* t1)
 {
 
 
@@ -7669,8 +7669,8 @@ static void tclod_copy(INT32* sss, INT32* sst, INT32 s, INT32 t, INT32 w, INT32 
 
     int nexts, nextt, nextsw, fars, fart, farsw;
     int lodclamp = 0;
-    INT32 lod = 0;
-    UINT32 l_tile = 0, magnify = 0, distant = 0;
+    int32_t lod = 0;
+    uint32_t l_tile = 0, magnify = 0, distant = 0;
 
     tclod_tcclamp(sss, sst);
 
@@ -7713,9 +7713,9 @@ static void tclod_copy(INT32* sss, INT32* sst, INT32 s, INT32 t, INT32 w, INT32 
 
 }
 
-STRICTINLINE void get_texel1_1cycle(INT32* s1, INT32* t1, INT32 s, INT32 t, INT32 w, INT32 dsinc, INT32 dtinc, INT32 dwinc, INT32 scanline, SPANSIGS* sigs)
+STRICTINLINE void get_texel1_1cycle(int32_t* s1, int32_t* t1, int32_t s, int32_t t, int32_t w, int32_t dsinc, int32_t dtinc, int32_t dwinc, int32_t scanline, SPANSIGS* sigs)
 {
-    INT32 nexts, nextt, nextsw;
+    int32_t nexts, nextt, nextsw;
     
     if (!sigs->endspan || !sigs->longspan || !span[scanline + 1].validline)
     {
@@ -7727,8 +7727,8 @@ STRICTINLINE void get_texel1_1cycle(INT32* s1, INT32* t1, INT32 s, INT32 t, INT3
     }
     else
     {
-        INT32 nextscan = scanline + 1;
-        ALIGNED INT32 *stwz_ptr = (ALIGNED INT32*)&span[nextscan].stwz[0];
+        int32_t nextscan = scanline + 1;
+        ALIGNED int32_t *stwz_ptr = (ALIGNED int32_t*)&span[nextscan].stwz[0];
 
         nexts  = stwz_ptr[0] >> 16;
         nextt  = stwz_ptr[1] >> 16;
@@ -7737,9 +7737,9 @@ STRICTINLINE void get_texel1_1cycle(INT32* s1, INT32* t1, INT32 s, INT32 t, INT3
     tcdiv(nexts, nextt, nextsw, s1, t1);
 }
 
-STRICTINLINE void get_nexttexel0_2cycle(INT32* s1, INT32* t1, INT32 s, INT32 t, INT32 w, INT32 dsinc, INT32 dtinc, INT32 dwinc)
+STRICTINLINE void get_nexttexel0_2cycle(int32_t* s1, int32_t* t1, int32_t s, int32_t t, int32_t w, int32_t dsinc, int32_t dtinc, int32_t dwinc)
 {
-    INT32 nexts, nextt, nextsw;
+    int32_t nexts, nextt, nextsw;
     nextsw = (w + dwinc) >> 16;
     nexts = (s + dsinc) >> 16;
     nextt = (t + dtinc) >> 16;
@@ -7749,7 +7749,7 @@ STRICTINLINE void get_nexttexel0_2cycle(INT32* s1, INT32* t1, INT32 s, INT32 t, 
 
 
 
-STRICTINLINE void tclod_4x17_to_15(INT32 scurr, INT32 snext, INT32 tcurr, INT32 tnext, INT32 previous, INT32* lod)
+STRICTINLINE void tclod_4x17_to_15(int32_t scurr, int32_t snext, int32_t tcurr, int32_t tnext, int32_t previous, int32_t* lod)
 {
     int dels = SIGN(snext, 17) - SIGN(scurr, 17);
     int delt = SIGN(tnext, 17) - SIGN(tcurr, 17);
@@ -7766,9 +7766,9 @@ STRICTINLINE void tclod_4x17_to_15(INT32 scurr, INT32 snext, INT32 tcurr, INT32 
         *lod |= 0x4000;
 }
 
-STRICTINLINE void tclod_tcclamp(INT32* sss, INT32* sst)
+STRICTINLINE void tclod_tcclamp(int32_t* sss, int32_t* sst)
 {
-    INT32 tempanded, temps = *sss, tempt = *sst;
+    int32_t tempanded, temps = *sss, tempt = *sst;
 
     
     
@@ -7819,10 +7819,10 @@ STRICTINLINE void tclod_tcclamp(INT32* sss, INT32* sst)
 }
 
 
-STRICTINLINE void lodfrac_lodtile_signals(int lodclamp, INT32 lod, UINT32* l_tile, UINT32* magnify, UINT32* distant)
+STRICTINLINE void lodfrac_lodtile_signals(int lodclamp, int32_t lod, uint32_t* l_tile, uint32_t* magnify, uint32_t* distant)
 {
-    UINT32 ltil, dis, mag;
-    INT32 lf;
+    uint32_t ltil, dis, mag;
+    int32_t lf;
 
     
     if ((lod & 0x4000) || lodclamp)
@@ -8723,10 +8723,10 @@ static void set_key_r(uint32_t w1, uint32_t w2)
 
 static void set_convert(uint32_t w1, uint32_t w2)
 {
-   INT32 k0 = (w1 >> 13) & 0x1ff;
-   INT32 k1 = (w1 >> 4) & 0x1ff;
-   INT32 k2 = ((w1 & 0xf) << 5) | ((w2 >> 27) & 0x1f);
-   INT32 k3 = (w2 >> 18) & 0x1ff;
+   int32_t k0 = (w1 >> 13) & 0x1ff;
+   int32_t k1 = (w1 >> 4) & 0x1ff;
+   int32_t k2 = ((w1 & 0xf) << 5) | ((w2 >> 27) & 0x1f);
+   int32_t k3 = (w2 >> 18) & 0x1ff;
    k0_tf = (SIGN(k0, 9) << 1) + 1;
    k1_tf = (SIGN(k1, 9) << 1) + 1;
    k2_tf = (SIGN(k2, 9) << 1) + 1;
@@ -8830,7 +8830,7 @@ static void set_tile_size(uint32_t w1, uint32_t w2)
 
 static void load_block(uint32_t w1, uint32_t w2)
 {
-    INT32 lewdata[10];
+    int32_t lewdata[10];
     const int command = (w1 & 0xFF000000) >> (56-32);
     const int sl      = (w1 & 0x00FFF000) >> (44-32);
     const int tl      = (w1 & 0x00000FFF) >> (32-32);
