@@ -5395,8 +5395,6 @@ static void render_spans_copy(int start, int end, int tilenum, int flip)
 void render_spans(
     int yhlimit, int yllimit, int tilenum, int flip)
 {
-    const unsigned int cycle_type = other_modes.cycle_type & 03;
-
     if (other_modes.f.stalederivs == 0)
         { /* branch */ }
     else
@@ -5409,19 +5407,24 @@ void render_spans(
     fbwrite_ptr = fbwrite_func[fb_size];
 
 #ifdef _DEBUG
-    ++render_cycle_mode_counts[cycle_type];
+    ++render_cycle_mode_counts[other_modes.cycle_type];
 #endif
 
-    if (cycle_type & 02)
-        if (cycle_type & 01)
-            render_spans_fill(yhlimit, yllimit, flip);
-        else
-            render_spans_copy(yhlimit, yllimit, tilenum, flip);
-    else
-        if (cycle_type & 01)
-            render_spans_2cycle_ptr(yhlimit, yllimit, tilenum, flip);
-        else
-            render_spans_1cycle_ptr(yhlimit, yllimit, tilenum, flip);
+    switch (other_modes.cycle_type)
+    {
+       case CYCLE_TYPE_1:
+          render_spans_1cycle_ptr(yhlimit, yllimit, tilenum, flip);
+          break;
+       case CYCLE_TYPE_2:
+          render_spans_2cycle_ptr(yhlimit, yllimit, tilenum, flip);
+          break;
+       case CYCLE_TYPE_COPY:
+          render_spans_copy(yhlimit, yllimit, tilenum, flip);
+          break;
+       case CYCLE_TYPE_FILL:
+          render_spans_fill(yhlimit, yllimit, flip);
+          break;
+    }
 }
 
 NOINLINE void loading_pipeline(
