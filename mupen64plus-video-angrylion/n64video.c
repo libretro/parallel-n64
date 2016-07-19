@@ -5069,6 +5069,30 @@ static void render_spans_2cycle_notex(int start, int end, int tilenum, int flip)
     }
 }
 
+#define PAIRWRITE16(in, rval, hval) {            \
+   (in) &= (RDRAM_MASK >> 1);	                   \
+    if ((in) <= idxlim16) {                      \
+        rdram_16[(in) ^ WORD_ADDR_XOR] = (rval); \
+        hidden_bits[(in)] = (hval);              \
+    }                                            \
+}
+#define PAIRWRITE32(in, rval, hval0, hval1) {    \
+   (in) &= (RDRAM_MASK >> 2);                    \
+    if ((in) <= idxlim32) {                      \
+        rdram[(in)] = (rval);                    \
+        hidden_bits[(in) << 1] = (hval0);        \
+        hidden_bits[((in) << 1) + 1] = (hval1);  \
+    }                                            \
+}
+#define PAIRWRITE8(in, rval, hval) {             \
+   (in) &= RDRAM_MASK;                           \
+    if ((in) <= plim) {                          \
+        rdram_8[(in) ^ BYTE_ADDR_XOR] = (rval);  \
+        if ((in) & 1)                            \
+            hidden_bits[(in) >> 1] = (hval);     \
+    }                                            \
+}
+
 static void render_spans_fill_4(int start, int end, int flip)
 {
     rdp_pipeline_crashed = 1;

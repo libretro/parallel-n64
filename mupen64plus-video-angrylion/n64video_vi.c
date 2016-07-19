@@ -5,6 +5,71 @@
 #include "vi.h"
 #include "api/libretro.h"
 
+#define VI_ANDER(x) {                                 \
+    PAIRREAD16(pix, hidval, x);                       \
+    if (hidval == 3 && (pix & 1)) {                   \
+        backr[numoffull] = GET_HI(pix);               \
+        backg[numoffull] = GET_MED(pix);              \
+        backb[numoffull] = GET_LOW(pix);              \
+       numoffull++;                                      \
+    }                                                 \
+}
+#define VI_ANDER32(x) {                               \
+   RREADIDX32(pix, (x));                              \
+    pixcvg = (pix >> 5) & 7;                          \
+    if (pixcvg == 7) {                                \
+        backr[numoffull] = (pix >> 24) & 0xFF;        \
+        backg[numoffull] = (pix >> 16) & 0xFF;        \
+        backb[numoffull] = (pix >>  8) & 0xFF;        \
+       numoffull++;                                      \
+    }                                           \
+}
+#define VI_COMPARE(x) {                      \
+   addr = (x);                               \
+   RREADIDX16(pix, addr);                    \
+   tempr = (pix >> 11) & 0x1f;										\
+	tempg = (pix >> 6) & 0x1f;										\
+	tempb = (pix >> 1) & 0x1f;										\
+	rend += redptr[tempr];											\
+	gend += greenptr[tempg];										\
+	bend += blueptr[tempb];                               \
+}
+
+#define VI_COMPARE_OPT(x)											\
+{																	\
+	addr = (x);														\
+	pix = rdram_16[addr ^ WORD_ADDR_XOR];							\
+	tempr = (pix >> 11) & 0x1f;										\
+	tempg = (pix >> 6) & 0x1f;										\
+	tempb = (pix >> 1) & 0x1f;										\
+	rend += redptr[tempr];											\
+	gend += greenptr[tempg];										\
+	bend += blueptr[tempb];											\
+}
+
+#define VI_COMPARE32(x) {                    \
+   addr = (x);                               \
+   RREADIDX32(pix, addr);                    \
+   tempr = (pix >> 27) & 0x1f;											\
+	tempg = (pix >> 19) & 0x1f;											\
+	tempb = (pix >> 11) & 0x1f;											\
+	rend += redptr[tempr];												\
+	gend += greenptr[tempg];											\
+	bend += blueptr[tempb];                                  \
+}
+
+#define VI_COMPARE32_OPT(x)													\
+{																		\
+	addr = (x);															\
+	pix = rdram[addr];												\
+	tempr = (pix >> 27) & 0x1f;											\
+	tempg = (pix >> 19) & 0x1f;											\
+	tempb = (pix >> 11) & 0x1f;											\
+	rend += redptr[tempr];												\
+	gend += greenptr[tempg];											\
+	bend += blueptr[tempb];												\
+}
+
 extern retro_log_printf_t log_cb;
 extern retro_environment_t environ_cb;
 
