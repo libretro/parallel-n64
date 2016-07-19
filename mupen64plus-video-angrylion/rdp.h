@@ -173,25 +173,6 @@ typedef struct {
 } RECTANGLE;
 
 typedef struct {
-    int clampdiffs, clampdifft;
-    int clampens, clampent;
-    int masksclamped, masktclamped;
-    int notlutswitch, tlutswitch;
-} FAKETILE;
-
-typedef struct {
-    int format;
-    int size;
-    int line;
-    int tmem;
-    int palette;
-    int ct, mt, cs, ms;
-    int mask_t, shift_t, mask_s, shift_s;
-    INT32 sl, tl, sh, th;
-    FAKETILE f;
-} TILE;
-
-typedef struct {
     int stalederivs;
     int dolod;
     int partialreject_1cycle; 
