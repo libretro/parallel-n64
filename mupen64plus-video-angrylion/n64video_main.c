@@ -21,7 +21,6 @@ INT32 pitchindwords;
 
 int ProcessDListShown = 0;
 extern int SaveLoaded;
-extern UINT32 command_counter;
 
 int retro_return(int just_flipping);
 
@@ -95,9 +94,6 @@ void angrylionRomClosed (void)
 #ifdef HAVE_RDP_DUMP
     rdp_dump_end();
 #endif
-
-    SaveLoaded = 1;
-    command_counter = 0;
 }
 
 static m64p_handle l_ConfigAngrylion;

@@ -349,10 +349,6 @@ UINT8 bldiv_hwaccurate_table[0x8000];
 UINT16 deltaz_comparator_lut[0x10000];
 CVtcmaskDERIVATIVE cvarray[0x100];
 
-UINT32 command_counter = 0;
-int SaveLoaded = 0;
-
-
 static STRICTINLINE void tcmask(INT32* S, INT32* T, INT32 num)
 {
     INT32 wrap;
