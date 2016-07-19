@@ -153,7 +153,6 @@ UINT32 internal_vi_v_current_line = 0;
 UINT32 old_vi_origin = 0;
 UINT32 oldhstart = 0;
 UINT32 oldsomething = 0;
-UINT32 double_stretch = 0;
 int blshifta = 0, blshiftb = 0, pastblshifta = 0, pastblshiftb = 0;
 INT32 pastrawdzmem = 0;
 INT32 iseed = 1;
@@ -310,9 +309,6 @@ static void rgbaz_correct_clip(int offx, int offy, int r, int g, int b, int a, i
 UINT32 vi_integer_sqrt(UINT32 a);
 
 static INT32 lod_frac = 0;
-UINT32 DebugMode = 0, DebugMode2 = 0;
-INT32 DebugMode3 = 0;
-int debugcolor = 0;
 struct {UINT32 shift; UINT32 add;} z_dec_table[8] = {
      6, 0x00000,
      5, 0x20000,
