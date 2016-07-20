@@ -146,8 +146,29 @@ void (*fbread1_ptr)(uint32_t, uint32_t*);
 void (*fbread2_ptr)(uint32_t, uint32_t*);
 void (*fbwrite_ptr)(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
 
-#undef  LOG_RDP_EXECUTION
-#define DETAILED_LOGGING 0
+#define PAIRWRITE16(in, rval, hval) {            \
+   (in) &= (RDRAM_MASK >> 1);	                   \
+    if ((in) <= idxlim16) {                      \
+        rdram_16[(in) ^ WORD_ADDR_XOR] = (rval); \
+        hidden_bits[(in)] = (hval);              \
+    }                                            \
+}
+#define PAIRWRITE32(in, rval, hval0, hval1) {    \
+   (in) &= (RDRAM_MASK >> 2);                    \
+    if ((in) <= idxlim32) {                      \
+        rdram[(in)] = (rval);                    \
+        hidden_bits[(in) << 1] = (hval0);        \
+        hidden_bits[((in) << 1) + 1] = (hval1);  \
+    }                                            \
+}
+#define PAIRWRITE8(in, rval, hval) {             \
+   (in) &= RDRAM_MASK;                           \
+    if ((in) <= plim) {                          \
+        rdram_8[(in) ^ BYTE_ADDR_XOR] = (rval);  \
+        if ((in) & 1)                            \
+            hidden_bits[(in) >> 1] = (hval);     \
+    }                                            \
+}
 
 uint32_t internal_vi_v_current_line = 0;
 uint32_t old_vi_origin = 0;
@@ -233,19 +254,6 @@ typedef struct{
     int onelessthanmid;
 }SPANSIGS;
 
-static void fetch_texel(COLOR *color, int s, int t, uint32_t tilenum);
-static void fetch_texel_entlut(COLOR *color, int s, int t, uint32_t tilenum);
-static void fetch_texel_quadro(COLOR *color0, COLOR *color1, COLOR *color2, COLOR *color3, int s0, int s1, int t0, int t1, uint32_t tilenum);
-static void fetch_texel_entlut_quadro(COLOR *color0, COLOR *color1, COLOR *color2, COLOR *color3, int s0, int s1, int t0, int t1, uint32_t tilenum);
-void loading_pipeline(int start, int end, int tilenum, int coord_quad, int ltlut);
-void get_tmem_idx(int s, int t, uint32_t tilenum, uint32_t* idx0, uint32_t* idx1, uint32_t* idx2, uint32_t* idx3, uint32_t* bit3flipped, uint32_t* hibit);
-void sort_tmem_idx(uint32_t *idx, uint32_t idxa, uint32_t idxb, uint32_t idxc, uint32_t idxd, uint32_t bankno);
-void sort_tmem_shorts_lowhalf(uint32_t* bindshort, uint32_t short0, uint32_t short1, uint32_t short2, uint32_t short3, uint32_t bankno);
-void compute_color_index(uint32_t* cidx, uint32_t readshort, uint32_t nybbleoffset, uint32_t tilenum);
-void read_tmem_copy(int s, int s1, int s2, int s3, int t, uint32_t tilenum, uint32_t* sortshort, int* hibits, int* lowbits);
-void replicate_for_copy(uint32_t* outbyte, uint32_t inshort, uint32_t nybbleoffset, uint32_t tilenum, uint32_t tformat, uint32_t tsize);
-void fetch_qword_copy(uint32_t* hidword, uint32_t* lowdword, int32_t ssss, int32_t ssst, uint32_t tilenum);
-
 static void render_spans_1cycle_complete(int start, int end, int tilenum, int flip);
 static void render_spans_1cycle_notexel1(int start, int end, int tilenum, int flip);
 static void render_spans_1cycle_notex(int start, int end, int tilenum, int flip);
@@ -254,43 +262,8 @@ static void render_spans_2cycle_notexelnext(int start, int end, int tilenum, int
 static void render_spans_2cycle_notexel1(int start, int end, int tilenum, int flip);
 static void render_spans_2cycle_notex(int start, int end, int tilenum, int flip);
 
-static void combiner_1cycle(int adseed, uint32_t* curpixel_cvg);
-static void combiner_2cycle(int adseed, uint32_t* curpixel_cvg, int32_t* acalpha);
-static int blender_1cycle(uint32_t* fr, uint32_t* fg, uint32_t* fb, int dith, uint32_t blend_en, uint32_t prewrap, uint32_t curpixel_cvg, uint32_t curpixel_cvbit);
-int blender_2cycle(uint32_t* fr, uint32_t* fg, uint32_t* fb, int dith, uint32_t blend_en, uint32_t prewrap, uint32_t curpixel_cvg, uint32_t curpixel_cvbit, int32_t acalpha);
 static void texture_pipeline_cycle(COLOR* TEX, COLOR* prev, int32_t SSS, int32_t SST, uint32_t tilenum, uint32_t cycle);
 static void tc_pipeline_copy(int32_t* sss0, int32_t* sss1, int32_t* sss2, int32_t* sss3, int32_t* sst, int tilenum);
-STRICTINLINE void tc_pipeline_load(int32_t* sss, int32_t* sst, int tilenum, int coord_quad);
-STRICTINLINE void tcclamp_generic(int32_t* S, int32_t* T, int32_t* SFRAC, int32_t* TFRAC, int32_t maxs, int32_t maxt, int32_t num);
-STRICTINLINE void tcclamp_cycle(int32_t* S, int32_t* T, int32_t* SFRAC, int32_t* TFRAC, int32_t maxs, int32_t maxt, int32_t num);
-STRICTINLINE void tcclamp_cycle_light(int32_t* S, int32_t* T, int32_t maxs, int32_t maxt, int32_t num);
-STRICTINLINE void tcshift_cycle(int32_t* S, int32_t* T, int32_t* maxs, int32_t* maxt, uint32_t num);
-STRICTINLINE void tcshift_copy(int32_t* S, int32_t* T, uint32_t num);
-static void precalculate_everything(void);
-STRICTINLINE int alpha_compare(int32_t comb_alpha);
-STRICTINLINE int32_t color_combiner_equation(int32_t a, int32_t b, int32_t c, int32_t d);
-STRICTINLINE int32_t alpha_combiner_equation(int32_t a, int32_t b, int32_t c, int32_t d);
-static void blender_equation_cycle0(int* r, int* g, int* b);
-STRICTINLINE void blender_equation_cycle0_2(int* r, int* g, int* b);
-static  void blender_equation_cycle1(int* r, int* g, int* b);
-STRICTINLINE uint32_t rightcvghex(uint32_t x, uint32_t fmask); 
-STRICTINLINE uint32_t leftcvghex(uint32_t x, uint32_t fmask);
-static void compute_cvg_noflip(int32_t scanline);
-static void compute_cvg_flip(int32_t scanline);
-STRICTINLINE uint32_t z_decompress(uint32_t rawz);
-STRICTINLINE uint32_t dz_decompress(uint32_t compresseddz);
-STRICTINLINE uint32_t dz_compress(uint32_t value);
-INLINE void z_build_com_table(void);
-static void precalc_cvmask_derivatives(void);
-STRICTINLINE uint16_t decompress_cvmask_frombyte(uint8_t byte);
-STRICTINLINE void lookup_cvmask_derivatives(uint32_t mask, uint8_t* offx, uint8_t* offy, uint32_t* curpixel_cvg, uint32_t* curpixel_cvbit);
-STRICTINLINE void z_store(uint32_t zcurpixel, uint32_t z, int dzpixenc);
-static uint32_t z_compare(uint32_t zcurpixel, uint32_t sz, uint16_t dzpix, int dzpixenc, uint32_t* blend_en, uint32_t* prewrap, uint32_t* curpixel_cvg, uint32_t curpixel_memcvg);
-STRICTINLINE int finalize_spanalpha(
-    uint32_t blend_en, uint32_t curpixel_cvg, uint32_t curpixel_memcvg);
-STRICTINLINE int32_t CLIP(int32_t value,int32_t min,int32_t max);
-STRICTINLINE void tclod_4x17_to_15(int32_t scurr, int32_t snext, int32_t tcurr, int32_t tnext, int32_t previous, int32_t* lod);
-STRICTINLINE void tclod_tcclamp(int32_t* sss, int32_t* sst);
 STRICTINLINE void lodfrac_lodtile_signals(int lodclamp, int32_t lod, uint32_t* l_tile, uint32_t* magnify, uint32_t* distant);
 static void tclod_1cycle_current(int32_t* sss, int32_t* sst, int32_t nexts, int32_t nextt, int32_t s, int32_t t, int32_t w, int32_t dsinc, int32_t dtinc, int32_t dwinc, int32_t scanline, int32_t prim_tile, int32_t* t1, SPANSIGS* sigs);
 static void tclod_1cycle_current_simple(int32_t* sss, int32_t* sst, int32_t s, int32_t t, int32_t w, int32_t dsinc, int32_t dtinc, int32_t dwinc, int32_t scanline, int32_t prim_tile, int32_t* t1, SPANSIGS* sigs);
@@ -302,11 +275,8 @@ static void tclod_2cycle_next(int32_t* sss, int32_t* sst, int32_t s, int32_t t, 
 static void tclod_copy(int32_t* sss, int32_t* sst, int32_t s, int32_t t, int32_t w, int32_t dsinc, int32_t dtinc, int32_t dwinc, int32_t prim_tile, int32_t* t1);
 STRICTINLINE void get_texel1_1cycle(int32_t* s1, int32_t* t1, int32_t s, int32_t t, int32_t w, int32_t dsinc, int32_t dtinc, int32_t dwinc, int32_t scanline, SPANSIGS* sigs);
 STRICTINLINE void get_nexttexel0_2cycle(int32_t* s1, int32_t* t1, int32_t s, int32_t t, int32_t w, int32_t dsinc, int32_t dtinc, int32_t dwinc);
-static INLINE void rgb_dither_complete(int* r, int* g, int* b, int dith);
-static INLINE void get_dither_noise(int x, int y, int *cdith, int *adith);
 
 static void rgbaz_correct_clip(int offx, int offy, int r, int g, int b, int a, int* z, uint32_t curpixel_cvg);
-uint32_t vi_integer_sqrt(uint32_t a);
 
 static int32_t lod_frac = 0;
 struct {uint32_t shift; uint32_t add;} z_dec_table[8] = {
@@ -543,8 +513,7 @@ STRICTINLINE void tcshift_copy(int32_t* S, int32_t* T, uint32_t num)
     
 }
 
-
-STRICTINLINE void tcclamp_cycle(int32_t* S, int32_t* T, int32_t* SFRAC, int32_t* TFRAC, int32_t maxs, int32_t maxt, int32_t num)
+static STRICTINLINE void tcclamp_cycle(int32_t* S, int32_t* T, int32_t* SFRAC, int32_t* TFRAC, int32_t maxs, int32_t maxt, int32_t num)
 {
 
     int32_t locs = *S, loct = *T;
@@ -591,8 +560,7 @@ STRICTINLINE void tcclamp_cycle(int32_t* S, int32_t* T, int32_t* SFRAC, int32_t*
         *T = (loct >> 5);
 }
 
-
-STRICTINLINE void tcclamp_cycle_light(int32_t* S, int32_t* T, int32_t maxs, int32_t maxt, int32_t num)
+static STRICTINLINE void tcclamp_cycle_light(int32_t* S, int32_t* T, int32_t maxs, int32_t maxt, int32_t num)
 {
     int32_t locs = *S, loct = *T;
     if (tile[num].f.clampens)
@@ -743,6 +711,368 @@ static INLINE void calculate_tile_derivs(uint32_t i)
     tile[i].f.masktclamped = tile[i].mask_t <= 10 ? tile[i].mask_t : 10;
     tile[i].f.notlutswitch = (tile[i].format << 2) | tile[i].size;
     tile[i].f.tlutswitch = (tile[i].size << 2) | ((tile[i].format + 2) & 3);
+}
+
+static INLINE void z_build_com_table(void)
+{
+   register int z;
+   uint16_t altmem = 0;
+
+   for (z = 0; z < 0x40000; z++)
+   {
+      switch((z >> 11) & 0x7f)
+      {
+         case 0x00:
+         case 0x01:
+         case 0x02:
+         case 0x03:
+         case 0x04:
+         case 0x05:
+         case 0x06:
+         case 0x07:
+         case 0x08:
+         case 0x09:
+         case 0x0a:
+         case 0x0b:
+         case 0x0c:
+         case 0x0d:
+         case 0x0e:
+         case 0x0f:
+         case 0x10:
+         case 0x11:
+         case 0x12:
+         case 0x13:
+         case 0x14:
+         case 0x15:
+         case 0x16:
+         case 0x17:
+         case 0x18:
+         case 0x19:
+         case 0x1a:
+         case 0x1b:
+         case 0x1c:
+         case 0x1d:
+         case 0x1e:
+         case 0x1f:
+         case 0x20:
+         case 0x21:
+         case 0x22:
+         case 0x23:
+         case 0x24:
+         case 0x25:
+         case 0x26:
+         case 0x27:
+         case 0x28:
+         case 0x29:
+         case 0x2a:
+         case 0x2b:
+         case 0x2c:
+         case 0x2d:
+         case 0x2e:
+         case 0x2f:
+         case 0x30:
+         case 0x31:
+         case 0x32:
+         case 0x33:
+         case 0x34:
+         case 0x35:
+         case 0x36:
+         case 0x37:
+         case 0x38:
+         case 0x39:
+         case 0x3a:
+         case 0x3b:
+         case 0x3c:
+         case 0x3d:
+         case 0x3e:
+         case 0x3f:
+            altmem = (z >> 4) & 0x1ffc;
+            break;
+         case 0x40:
+         case 0x41:
+         case 0x42:
+         case 0x43:
+         case 0x44:
+         case 0x45:
+         case 0x46:
+         case 0x47:
+         case 0x48:
+         case 0x49:
+         case 0x4a:
+         case 0x4b:
+         case 0x4c:
+         case 0x4d:
+         case 0x4e:
+         case 0x4f:
+         case 0x50:
+         case 0x51:
+         case 0x52:
+         case 0x53:
+         case 0x54:
+         case 0x55:
+         case 0x56:
+         case 0x57:
+         case 0x58:
+         case 0x59:
+         case 0x5a:
+         case 0x5b:
+         case 0x5c:
+         case 0x5d:
+         case 0x5e:
+         case 0x5f:
+            altmem = ((z >> 3) & 0x1ffc) | 0x2000;
+            break;
+         case 0x60:
+         case 0x61:
+         case 0x62:
+         case 0x63:
+         case 0x64:
+         case 0x65:
+         case 0x66:
+         case 0x67:
+         case 0x68:
+         case 0x69:
+         case 0x6a:
+         case 0x6b:
+         case 0x6c:
+         case 0x6d:
+         case 0x6e:
+         case 0x6f:
+            altmem = ((z >> 2) & 0x1ffc) | 0x4000;
+            break;
+         case 0x70:
+         case 0x71:
+         case 0x72:
+         case 0x73:
+         case 0x74:
+         case 0x75:
+         case 0x76:
+         case 0x77:
+            altmem = ((z >> 1) & 0x1ffc) | 0x6000;
+            break;
+         case 0x78:
+         case 0x79:
+         case 0x7a:
+         case 0x7b:
+            altmem = (z & 0x1ffc) | 0x8000;
+            break;
+         case 0x7c:
+         case 0x7d:
+            altmem = ((z << 1) & 0x1ffc) | 0xa000;
+            break;
+         case 0x7e:
+            altmem = ((z << 2) & 0x1ffc) | 0xc000;
+            break;
+         case 0x7f:
+            altmem = ((z << 2) & 0x1ffc) | 0xe000;
+            break;
+         default:
+            DisplayError("z_build_com_table failed");
+            break;
+      }
+
+      z_com_table[z] = altmem;
+   }
+}
+
+static STRICTINLINE uint16_t decompress_cvmask_frombyte(uint8_t x)
+{
+    uint16_t y = (x & 1) | ((x & 2) << 4) | (x & 4) | ((x & 8) << 4) |
+        ((x & 0x10) << 4) | ((x & 0x20) << 8) | ((x & 0x40) << 4) | ((x & 0x80) << 8);
+    return y;
+}
+
+static void precalc_cvmask_derivatives(void)
+{
+    int i = 0, k = 0;
+    uint16_t mask = 0, maskx = 0, masky = 0;
+    uint8_t offx = 0, offy = 0;
+    static const uint8_t yarray[16] = {0, 0, 1, 0, 2, 0, 1, 0, 3, 0, 1, 0, 2, 0, 1, 0};
+    static const uint8_t xarray[16] = {0, 3, 2, 2, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0};
+
+    
+    for (; i < 0x100; i++)
+    {
+        mask = decompress_cvmask_frombyte(i);
+        cvarray[i].cvg = cvarray[i].cvbit = 0;
+        cvarray[i].cvbit = (i >> 7) & 1;
+        for (k = 0; k < 8; k++)
+            cvarray[i].cvg += ((i >> k) & 1);
+
+        
+        masky = maskx = offx = offy = 0;
+        for (k = 0; k < 4; k++)
+            masky |= ((mask & (0xf000 >> (k << 2))) > 0) << k;
+
+        offy = yarray[masky];
+        
+        maskx = (mask & (0xf000 >> (offy << 2))) >> ((offy ^ 3) << 2);
+        
+        
+        offx = xarray[maskx];
+        
+        cvarray[i].xoff = offx;
+        cvarray[i].yoff = offy;
+    }
+}
+
+static uint32_t vi_integer_sqrt(uint32_t a)
+{
+    unsigned long op = a, res = 0, one = 1 << 30;
+
+    while (one > op) 
+        one >>= 2;
+
+    while (one != 0) 
+    {
+        if (op >= res + one) 
+        {
+            op -= res + one;
+            res += one << 1;
+        }
+        res >>= 1;
+        one >>= 2;
+    }
+    return res;
+}
+
+static void precalculate_everything(void)
+{
+    int ps[9];
+    uint32_t exponent;
+    uint32_t mantissa;
+    int temppoint, tempslope; 
+    int normout;
+    int wnorm;
+    int shift, tlu_rcp;
+    int d = 0, n = 0, temp = 0, res = 0, invd = 0, nbit = 0;
+    int i = 0, k = 0, j = 0;
+
+    for (i = 0; i < 256; i++)
+    {
+        gamma_table[i] = vi_integer_sqrt(i << 6);
+        gamma_table[i] <<= 1;
+    }
+    for (i = 0; i < 0x4000; i++)
+    {
+        gamma_dither_table[i] = vi_integer_sqrt(i);
+        gamma_dither_table[i] <<= 1;
+    }
+
+    z_build_com_table();
+
+    for (i = 0; i < 0x4000; i++)
+    {
+        exponent = (i >> 11) & 7;
+        mantissa = i & 0x7ff;
+        z_complete_dec_table[i] = ((mantissa << z_dec_table[exponent].shift) + z_dec_table[exponent].add) & 0x3ffff;
+    }
+
+    precalc_cvmask_derivatives();
+
+    i = 0;
+    log2table[0] = log2table[1] = 0;
+    for (i = 2; i < 256; i++)
+    {
+        for (k = 7; k > 0; k--)
+        {
+            if((i >> k) & 1)
+            {
+                log2table[i] = k;
+                break;
+            }
+        }
+    }
+
+    for (i = 0; i < 0x400; i++)
+    {
+        if (((i >> 5) & 0x1f) < (i & 0x1f))
+            vi_restore_table[i] = 1;
+        else if (((i >> 5) & 0x1f) > (i & 0x1f))
+            vi_restore_table[i] = -1;
+        else
+            vi_restore_table[i] = 0;
+    }
+
+    for (i = 0; i < 32; i++)
+        replicated_rgba[i] = (i << 3) | ((i >> 2) & 7); 
+
+    for(i = 0; i < 0x200; i++)
+    {
+        switch((i >> 7) & 3)
+        {
+        case 0:
+        case 1:
+            special_9bit_clamptable[i] = i & 0xff;
+            break;
+        case 2:
+            special_9bit_clamptable[i] = 0xff;
+            break;
+        case 3:
+            special_9bit_clamptable[i] = 0;
+            break;
+        }
+    }
+
+    for(i = 0; i < 0x200; i++)
+    {
+        special_9bit_exttable[i] = ((i & 0x180) == 0x180) ? (i | ~0x1ff) : (i & 0x1ff);
+    }
+
+    for (i = 0; i < 0x8000; i++)
+    {
+        for (k = 1; k <= 14 && !((i << k) & 0x8000); k++) 
+            ;
+        shift = k - 1;
+        normout = (i << shift) & 0x3fff;
+        wnorm = (normout & 0xff) << 2;
+        normout >>= 8;
+
+        temppoint = norm_point_table[normout];
+        tempslope = norm_slope_table[normout];
+
+        tempslope = (tempslope | ~0x3ff) + 1;
+        
+        tlu_rcp = (((tempslope * wnorm) >> 10) + temppoint) & 0x7fff;
+        
+        tcdiv_table[i] = shift | (tlu_rcp << 4);
+    }
+
+    for (i = 0; i < 0x8000; i++)
+    {
+        res = 0;
+        d = (i >> 11) & 0xf;
+        n = i & 0x7ff;
+        invd = (~d) & 0xf;
+
+        temp = invd + (n >> 8) + 1;
+        ps[0] = temp & 7;
+        for (k = 0; k < 8; k++)
+        {
+            nbit = (n >> (7 - k)) & 1;
+            if (res & (0x100 >> k))
+                temp = invd + (ps[k] << 1) + nbit + 1;
+            else
+                temp = d + (ps[k] << 1) + nbit;
+            ps[k + 1] = temp & 7;
+            if (temp & 0x10)
+                res |= (1 << (7 - k));
+        }
+        bldiv_hwaccurate_table[i] = res;
+    }
+
+    deltaz_comparator_lut[0] = 0;
+    for (i = 1; i < 0x10000; i++)
+    {
+       for (k = 15; k >= 0; k--)
+       {
+          if (i & (1 << k))
+          {
+             deltaz_comparator_lut[i] = 1 << k;
+             break;
+          }
+       }
+    }
 }
 
 void rdp_init(void)
@@ -1140,6 +1470,54 @@ static INLINE void SET_MUL_ALPHA_INPUT(int32_t **input, int code)
     }
 }
 
+static STRICTINLINE int alpha_compare(int32_t comb_alpha)
+{
+    int32_t threshold;
+
+    if (!other_modes.alpha_compare_en)
+        return 1;
+    else
+    {
+        if (!other_modes.dither_alpha_en)
+            threshold = COLOR_ALPHA(blend_color);
+        else
+            threshold = irand() & 0xff;
+        if (comb_alpha >= threshold)
+            return 1;
+        else
+            return 0;
+    }
+}
+
+static STRICTINLINE int32_t color_combiner_equation(int32_t a, int32_t b, int32_t c, int32_t d)
+{
+    a = special_9bit_exttable[a];
+    b = special_9bit_exttable[b];
+    c = SIGNF(c, 9);
+    d = special_9bit_exttable[d];
+    a = ((a - b) * c) + (d << 8) + 0x80;
+    return (a & 0x1ffff);
+}
+
+static STRICTINLINE int32_t alpha_combiner_equation(int32_t a, int32_t b, int32_t c, int32_t d)
+{
+    a = special_9bit_exttable[a];
+    b = special_9bit_exttable[b];
+    c = SIGNF(c, 9);
+    d = special_9bit_exttable[d];
+    a = (((a - b) * c) + (d << 8) + 0x80) >> 8;
+    return (a & 0x1ff);
+}
+
+static STRICTINLINE int32_t CLIP(int32_t value,int32_t min,int32_t max)
+{
+    if (value < min)
+        return min;
+    else if (value > max)
+        return max;
+    return value;
+}
+
 static void combiner_1cycle(int adseed, uint32_t* curpixel_cvg)
 {
 
@@ -1400,146 +1778,6 @@ static void combiner_2cycle(int adseed, uint32_t* curpixel_cvg, int32_t* acalpha
         COLOR_ALPHA(shade_color) = 0xff;
 }
 
-static void precalculate_everything(void)
-{
-    int ps[9];
-    uint32_t exponent;
-    uint32_t mantissa;
-    int temppoint, tempslope; 
-    int normout;
-    int wnorm;
-    int shift, tlu_rcp;
-    int d = 0, n = 0, temp = 0, res = 0, invd = 0, nbit = 0;
-    int i = 0, k = 0, j = 0;
-
-    for (i = 0; i < 256; i++)
-    {
-        gamma_table[i] = vi_integer_sqrt(i << 6);
-        gamma_table[i] <<= 1;
-    }
-    for (i = 0; i < 0x4000; i++)
-    {
-        gamma_dither_table[i] = vi_integer_sqrt(i);
-        gamma_dither_table[i] <<= 1;
-    }
-
-    z_build_com_table();
-
-    for (i = 0; i < 0x4000; i++)
-    {
-        exponent = (i >> 11) & 7;
-        mantissa = i & 0x7ff;
-        z_complete_dec_table[i] = ((mantissa << z_dec_table[exponent].shift) + z_dec_table[exponent].add) & 0x3ffff;
-    }
-
-    precalc_cvmask_derivatives();
-
-    i = 0;
-    log2table[0] = log2table[1] = 0;
-    for (i = 2; i < 256; i++)
-    {
-        for (k = 7; k > 0; k--)
-        {
-            if((i >> k) & 1)
-            {
-                log2table[i] = k;
-                break;
-            }
-        }
-    }
-
-    for (i = 0; i < 0x400; i++)
-    {
-        if (((i >> 5) & 0x1f) < (i & 0x1f))
-            vi_restore_table[i] = 1;
-        else if (((i >> 5) & 0x1f) > (i & 0x1f))
-            vi_restore_table[i] = -1;
-        else
-            vi_restore_table[i] = 0;
-    }
-
-    for (i = 0; i < 32; i++)
-        replicated_rgba[i] = (i << 3) | ((i >> 2) & 7); 
-
-    for(i = 0; i < 0x200; i++)
-    {
-        switch((i >> 7) & 3)
-        {
-        case 0:
-        case 1:
-            special_9bit_clamptable[i] = i & 0xff;
-            break;
-        case 2:
-            special_9bit_clamptable[i] = 0xff;
-            break;
-        case 3:
-            special_9bit_clamptable[i] = 0;
-            break;
-        }
-    }
-
-    for(i = 0; i < 0x200; i++)
-    {
-        special_9bit_exttable[i] = ((i & 0x180) == 0x180) ? (i | ~0x1ff) : (i & 0x1ff);
-    }
-
-    for (i = 0; i < 0x8000; i++)
-    {
-        for (k = 1; k <= 14 && !((i << k) & 0x8000); k++) 
-            ;
-        shift = k - 1;
-        normout = (i << shift) & 0x3fff;
-        wnorm = (normout & 0xff) << 2;
-        normout >>= 8;
-
-        temppoint = norm_point_table[normout];
-        tempslope = norm_slope_table[normout];
-
-        tempslope = (tempslope | ~0x3ff) + 1;
-        
-        tlu_rcp = (((tempslope * wnorm) >> 10) + temppoint) & 0x7fff;
-        
-        tcdiv_table[i] = shift | (tlu_rcp << 4);
-    }
-
-    for (i = 0; i < 0x8000; i++)
-    {
-        res = 0;
-        d = (i >> 11) & 0xf;
-        n = i & 0x7ff;
-        invd = (~d) & 0xf;
-
-        temp = invd + (n >> 8) + 1;
-        ps[0] = temp & 7;
-        for (k = 0; k < 8; k++)
-        {
-            nbit = (n >> (7 - k)) & 1;
-            if (res & (0x100 >> k))
-                temp = invd + (ps[k] << 1) + nbit + 1;
-            else
-                temp = d + (ps[k] << 1) + nbit;
-            ps[k + 1] = temp & 7;
-            if (temp & 0x10)
-                res |= (1 << (7 - k));
-        }
-        bldiv_hwaccurate_table[i] = res;
-    }
-
-    deltaz_comparator_lut[0] = 0;
-    for (i = 1; i < 0x10000; i++)
-    {
-       for (k = 15; k >= 0; k--)
-       {
-          if (i & (1 << k))
-          {
-             deltaz_comparator_lut[i] = 1 << k;
-             break;
-          }
-       }
-    }
-}
-
-
 static unsigned char bayer_matrix[16] = {
     00, 04, 01, 05,
     04, 00, 05, 01,
@@ -1552,6 +1790,136 @@ static unsigned char magic_matrix[16] = {
     03, 05, 02, 04,
     07, 01, 06, 00
 };
+
+static void rgb_dither_complete(int* r, int* g, int* b, int dith)
+{
+   int32_t replacesign, ditherdiff;
+   int32_t newr = *r, newg = *g, newb = *b;
+	int32_t rcomp = dith, gcomp, bcomp;
+
+	
+	if (newr > 247)
+		newr = 255;
+	else
+		newr = (newr & 0xf8) + 8;
+	if (newg > 247)
+		newg = 255;
+	else
+		newg = (newg & 0xf8) + 8;
+	if (newb > 247)
+		newb = 255;
+	else
+		newb = (newb & 0xf8) + 8;
+
+	if (other_modes.rgb_dither_sel != 2)
+		gcomp = bcomp = dith;
+	else
+	{
+		gcomp = (dith + 3) & 7;
+		bcomp = (dith + 5) & 7;
+	}
+
+	replacesign = (rcomp - (*r & 7)) >> 31;
+	ditherdiff = newr - *r;
+
+	*r = *r + (ditherdiff & replacesign);
+
+	replacesign = (gcomp - (*g & 7)) >> 31;
+	ditherdiff = newg - *g;
+	*g = *g + (ditherdiff & replacesign);
+
+	replacesign = (bcomp - (*b & 7)) >> 31;
+	ditherdiff = newb - *b;
+	*b = *b + (ditherdiff & replacesign);
+}
+
+static void blender_equation_cycle0(int* r, int* g, int* b)
+{
+    int blend1a, blend2a;
+    int blr, blg, blb, sum;
+    int mulb;
+
+    blend1a = *blender1b_a[0] >> 3;
+    blend2a = *blender2b_a[0] >> 3;
+
+    LOG("blend1a = %d, blend2a = %d\n", blend1a, blend2a);
+
+    if (other_modes.f.special_bsel0)
+    {
+        blend1a = (blend1a >> blshifta) & 0x3C;
+        blend2a = (blend2a >> blshiftb) | 3;
+    }
+    mulb = blend2a + 1;
+
+    blr = (*blender1a_r[0]) * blend1a + (*blender2a_r[0]) * mulb;
+    blg = (*blender1a_g[0]) * blend1a + (*blender2a_g[0]) * mulb;
+    blb = (*blender1a_b[0]) * blend1a + (*blender2a_b[0]) * mulb;
+
+    if (!other_modes.force_blend)
+    {
+        sum = ((blend1a & ~3) + (blend2a & ~3) + 4) << 9;
+        *r = bldiv_hwaccurate_table[sum | ((blr >> 2) & 0x7ff)];
+        *g = bldiv_hwaccurate_table[sum | ((blg >> 2) & 0x7ff)];
+        *b = bldiv_hwaccurate_table[sum | ((blb >> 2) & 0x7ff)];
+    }
+    else
+    {
+        *r = (blr >> 5) & 0xff;    
+        *g = (blg >> 5) & 0xff; 
+        *b = (blb >> 5) & 0xff;
+    }    
+}
+
+static STRICTINLINE void blender_equation_cycle0_2(int* r, int* g, int* b)
+{
+    int blend1a, blend2a;
+    blend1a = *blender1b_a[0] >> 3;
+    blend2a = *blender2b_a[0] >> 3;
+
+    if (other_modes.f.special_bsel0)
+    {
+        blend1a = (blend1a >> pastblshifta) & 0x3C;
+        blend2a = (blend2a >> pastblshiftb) | 3;
+    }
+    blend2a += 1;
+    *r = (((*blender1a_r[0]) * blend1a + (*blender2a_r[0]) * blend2a) >> 5) & 0xff;
+    *g = (((*blender1a_g[0]) * blend1a + (*blender2a_g[0]) * blend2a) >> 5) & 0xff;
+    *b = (((*blender1a_b[0]) * blend1a + (*blender2a_b[0]) * blend2a) >> 5) & 0xff;
+}
+
+static void blender_equation_cycle1(int* r, int* g, int* b)
+{
+    int blend1a, blend2a;
+    int blr, blg, blb, sum;
+    int mulb;
+
+    blend1a = *blender1b_a[1] >> 3;
+    blend2a = *blender2b_a[1] >> 3;
+
+    if (other_modes.f.special_bsel1)
+    {
+        blend1a = (blend1a >> blshifta) & 0x3C;
+        blend2a = (blend2a >> blshiftb) | 3;
+    }
+    mulb = blend2a + 1;
+    blr = (*blender1a_r[1]) * blend1a + (*blender2a_r[1]) * mulb;
+    blg = (*blender1a_g[1]) * blend1a + (*blender2a_g[1]) * mulb;
+    blb = (*blender1a_b[1]) * blend1a + (*blender2a_b[1]) * mulb;
+
+    if (!other_modes.force_blend)
+    {
+        sum = ((blend1a & ~3) + (blend2a & ~3) + 4) << 9;
+        *r = bldiv_hwaccurate_table[sum | ((blr >> 2) & 0x7ff)];
+        *g = bldiv_hwaccurate_table[sum | ((blg >> 2) & 0x7ff)];
+        *b = bldiv_hwaccurate_table[sum | ((blb >> 2) & 0x7ff)];
+    }
+    else
+    {
+        *r = (blr >> 5) & 0xff;    
+        *g = (blg >> 5) & 0xff; 
+        *b = (blb >> 5) & 0xff;
+    }
+}
 
 static int blender_1cycle(uint32_t* fr, uint32_t* fg, uint32_t* fb, int dith, uint32_t blend_en, uint32_t prewrap, uint32_t curpixel_cvg, uint32_t curpixel_cvbit)
 {
@@ -3126,8 +3494,21 @@ static void fetch_texel_entlut_quadro(COLOR *color0, COLOR *color1, COLOR *color
     }
 }
 
+void sort_tmem_idx(uint32_t *idx, uint32_t idxa, uint32_t idxb, uint32_t idxc, uint32_t idxd, uint32_t bankno)
+{
+    if ((idxa & 3) == bankno)
+        *idx = idxa & 0x3ff;
+    else if ((idxb & 3) == bankno)
+        *idx = idxb & 0x3ff;
+    else if ((idxc & 3) == bankno)
+        *idx = idxc & 0x3ff;
+    else if ((idxd & 3) == bankno)
+        *idx = idxd & 0x3ff;
+    else
+        *idx = 0;
+}
 
-void get_tmem_idx(int s, int t, uint32_t tilenum, uint32_t* idx0, uint32_t* idx1, uint32_t* idx2, uint32_t* idx3, uint32_t* bit3flipped, uint32_t* hibit)
+static void get_tmem_idx(int s, int t, uint32_t tilenum, uint32_t* idx0, uint32_t* idx1, uint32_t* idx2, uint32_t* idx3, uint32_t* bit3flipped, uint32_t* hibit)
 {
     uint32_t tbase;
     uint32_t tsize;
@@ -3172,7 +3553,43 @@ void get_tmem_idx(int s, int t, uint32_t tilenum, uint32_t* idx0, uint32_t* idx1
     sort_tmem_idx(idx3, tidx_a, tidx_b, tidx_c, tidx_d, 3);
 }
 
-void read_tmem_copy(int s, int s1, int s2, int s3, int t, uint32_t tilenum, uint32_t* sortshort, int* hibits, int* lowbits)
+static void compute_color_index(uint32_t* cidx, uint32_t readshort, uint32_t nybbleoffset, uint32_t tilenum)
+{
+    uint32_t lownib, hinib;
+    if (tile[tilenum].size == PIXEL_SIZE_4BIT)
+    {
+        lownib = (nybbleoffset ^ 3) << 2;
+        hinib = tile[tilenum].palette;
+    }
+    else
+    {
+        lownib = ((nybbleoffset & 2) ^ 2) << 2;
+        hinib = lownib ? ((readshort >> 12) & 0xf) : ((readshort >> 4) & 0xf);
+    }
+    lownib = (readshort >> lownib) & 0xf;
+    *cidx = (hinib << 4) | lownib;
+}
+
+static void sort_tmem_shorts_lowhalf(uint32_t* bindshort, uint32_t short0, uint32_t short1, uint32_t short2, uint32_t short3, uint32_t bankno)
+{
+    switch(bankno)
+    {
+    case 0:
+        *bindshort = short0;
+        break;
+    case 1:
+        *bindshort = short1;
+        break;
+    case 2:
+        *bindshort = short2;
+        break;
+    case 3:
+        *bindshort = short3;
+        break;
+    }
+}
+
+static void read_tmem_copy(int s, int s1, int s2, int s3, int t, uint32_t tilenum, uint32_t* sortshort, int* hibits, int* lowbits)
 {
     uint32_t sortidx[8];
     uint32_t tbase;
@@ -3327,61 +3744,14 @@ void read_tmem_copy(int s, int s1, int s2, int s3, int t, uint32_t tilenum, uint
     }
 }
 
-void sort_tmem_idx(uint32_t *idx, uint32_t idxa, uint32_t idxb, uint32_t idxc, uint32_t idxd, uint32_t bankno)
-{
-    if ((idxa & 3) == bankno)
-        *idx = idxa & 0x3ff;
-    else if ((idxb & 3) == bankno)
-        *idx = idxb & 0x3ff;
-    else if ((idxc & 3) == bankno)
-        *idx = idxc & 0x3ff;
-    else if ((idxd & 3) == bankno)
-        *idx = idxd & 0x3ff;
-    else
-        *idx = 0;
-}
-
-
-void sort_tmem_shorts_lowhalf(uint32_t* bindshort, uint32_t short0, uint32_t short1, uint32_t short2, uint32_t short3, uint32_t bankno)
-{
-    switch(bankno)
-    {
-    case 0:
-        *bindshort = short0;
-        break;
-    case 1:
-        *bindshort = short1;
-        break;
-    case 2:
-        *bindshort = short2;
-        break;
-    case 3:
-        *bindshort = short3;
-        break;
-    }
-}
 
 
 
-void compute_color_index(uint32_t* cidx, uint32_t readshort, uint32_t nybbleoffset, uint32_t tilenum)
-{
-    uint32_t lownib, hinib;
-    if (tile[tilenum].size == PIXEL_SIZE_4BIT)
-    {
-        lownib = (nybbleoffset ^ 3) << 2;
-        hinib = tile[tilenum].palette;
-    }
-    else
-    {
-        lownib = ((nybbleoffset & 2) ^ 2) << 2;
-        hinib = lownib ? ((readshort >> 12) & 0xf) : ((readshort >> 4) & 0xf);
-    }
-    lownib = (readshort >> lownib) & 0xf;
-    *cidx = (hinib << 4) | lownib;
-}
 
 
-void replicate_for_copy(uint32_t* outbyte, uint32_t inshort, uint32_t nybbleoffset, uint32_t tilenum, uint32_t tformat, uint32_t tsize)
+
+
+static void replicate_for_copy(uint32_t* outbyte, uint32_t inshort, uint32_t nybbleoffset, uint32_t tilenum, uint32_t tformat, uint32_t tsize)
 {
     uint32_t lownib, hinib;
     switch(tsize)
@@ -3421,7 +3791,7 @@ void replicate_for_copy(uint32_t* outbyte, uint32_t inshort, uint32_t nybbleoffs
     }
 }
 
-void fetch_qword_copy(uint32_t* hidword, uint32_t* lowdword, int32_t ssss, int32_t ssst, uint32_t tilenum)
+static void fetch_qword_copy(uint32_t* hidword, uint32_t* lowdword, int32_t ssss, int32_t ssst, uint32_t tilenum)
 {
     uint32_t shorta, shortb, shortc, shortd;
     uint32_t sortshort[8];
@@ -3713,7 +4083,6 @@ static void texture_pipeline_cycle(COLOR* TEX, COLOR* prev, int32_t SSS, int32_t
                                                                                                     
 }
 
-
 static void tc_pipeline_copy(int32_t* sss0, int32_t* sss1, int32_t* sss2, int32_t* sss3, int32_t* sst, int tilenum)                                            
 {
     int ss0 = *sss0, ss1 = 0, ss2 = 0, ss3 = 0, st = *sst;
@@ -3740,7 +4109,7 @@ static void tc_pipeline_copy(int32_t* sss0, int32_t* sss1, int32_t* sss2, int32_
     *sst = st;
 }
 
-STRICTINLINE void tc_pipeline_load(int32_t* sss, int32_t* sst, int tilenum, int coord_quad)
+static STRICTINLINE void tc_pipeline_load(int32_t* sss, int32_t* sst, int tilenum, int coord_quad)
 {
     int sss1 = *sss, sst1 = *sst;
     sss1 = SIGN16(sss1);
@@ -3855,6 +4224,419 @@ static INLINE void tcdiv(int32_t ss, int32_t st, int32_t sw, int32_t* sss, int32
       tcdiv_persp(ss, st, sw, sss, sst);
    else
       tcdiv_nopersp(ss, st, sw, sss, sst);
+}
+
+static STRICTINLINE uint32_t rightcvghex(uint32_t x, uint32_t fmask)
+{
+    uint32_t covered = ((x & 7) + 1) >> 1;
+
+    covered = 0xf0 >> covered;
+    return (covered & fmask);
+}
+
+static STRICTINLINE uint32_t leftcvghex(uint32_t x, uint32_t fmask) 
+{
+    uint32_t covered = ((x & 7) + 1) >> 1;
+
+    covered = 0xf >> covered;
+    return (covered & fmask);
+}
+
+static STRICTINLINE void compute_cvg_flip(int32_t scanline)
+{
+   int32_t purgestart, purgeend;
+   int i, length, fmask, maskshift, fmaskshifted;
+   int32_t minorcur, majorcur, minorcurint, majorcurint, samecvg;
+
+   purgestart = span[scanline].rx;
+   purgeend = span[scanline].lx;
+   length = purgeend - purgestart;
+   if (length >= 0)
+   {
+
+
+
+
+
+
+      memset(&cvgbuf[purgestart], 0xff, length + 1);
+      for(i = 0; i < 4; i++)
+      {
+         int k;
+         fmask = 0xa >> (i & 1);
+
+
+
+
+         maskshift = (i - 2) & 4;
+         fmaskshifted = fmask << maskshift;
+
+         if (!span[scanline].invalyscan[i])
+         {
+
+            minorcur = span[scanline].minorx[i];
+            majorcur = span[scanline].majorx[i];
+            minorcurint = minorcur >> 3;
+            majorcurint = majorcur >> 3;
+
+
+            for (k = purgestart; k <= majorcurint; k++)
+               cvgbuf[k] &= ~fmaskshifted;
+            for (k = minorcurint; k <= purgeend; k++)
+               cvgbuf[k] &= ~fmaskshifted;
+
+
+
+
+
+
+
+
+
+            if (minorcurint > majorcurint)
+            {
+               cvgbuf[minorcurint] |= (rightcvghex(minorcur, fmask) << maskshift);
+               cvgbuf[majorcurint] |= (leftcvghex(majorcur, fmask) << maskshift);
+            }
+            else if (minorcurint == majorcurint)
+            {
+               samecvg = rightcvghex(minorcur, fmask) & leftcvghex(majorcur, fmask);
+               cvgbuf[majorcurint] |= (samecvg << maskshift);
+            }
+         }
+         else
+         {
+            for (k = purgestart; k <= purgeend; k++)
+               cvgbuf[k] &= ~fmaskshifted;
+         }
+
+      }
+   }
+}
+
+static STRICTINLINE void compute_cvg_noflip(int32_t scanline)
+{
+	int32_t purgestart, purgeend;
+	int i, length, fmask, maskshift, fmaskshifted;
+	int32_t minorcur, majorcur, minorcurint, majorcurint, samecvg;
+	
+	purgestart = span[scanline].lx;
+	purgeend = span[scanline].rx;
+	length = purgeend - purgestart;
+
+	if (length >= 0)
+	{
+		memset(&cvgbuf[purgestart], 0xff, length + 1);
+
+		for(i = 0; i < 4; i++)
+		{
+         int k;
+
+			fmask = 0xa >> (i & 1);
+			maskshift = (i - 2) & 4;
+			fmaskshifted = fmask << maskshift;
+
+			if (!span[scanline].invalyscan[i])
+			{
+				minorcur = span[scanline].minorx[i];
+				majorcur = span[scanline].majorx[i];
+				minorcurint = minorcur >> 3;
+				majorcurint = majorcur >> 3;
+								
+				for (k = purgestart; k <= minorcurint; k++)
+					cvgbuf[k] &= ~fmaskshifted;
+				for (k = majorcurint; k <= purgeend; k++)
+					cvgbuf[k] &= ~fmaskshifted;
+
+				if (majorcurint > minorcurint)
+				{
+					cvgbuf[minorcurint] |= (leftcvghex(minorcur, fmask) << maskshift);
+					cvgbuf[majorcurint] |= (rightcvghex(majorcur, fmask) << maskshift);
+				}
+				else if (minorcurint == majorcurint)
+				{
+					samecvg = leftcvghex(minorcur, fmask) & rightcvghex(majorcur, fmask);
+					cvgbuf[majorcurint] |= (samecvg << maskshift);
+				}
+			}
+			else
+			{
+				for (k = purgestart; k <= purgeend; k++)
+					cvgbuf[k] &= ~fmaskshifted;
+			}
+		}
+	}
+}
+
+static STRICTINLINE uint32_t dz_compress(uint32_t value)
+{
+    int j = 0;
+    if (value & 0xff00)
+        j |= 8;
+    if (value & 0xf0f0)
+        j |= 4;
+    if (value & 0xcccc)
+        j |= 2;
+    if (value & 0xaaaa)
+        j |= 1;
+    return j;
+}
+
+static STRICTINLINE void lookup_cvmask_derivatives(uint32_t mask, uint8_t* offx, uint8_t* offy, uint32_t* curpixel_cvg, uint32_t* curpixel_cvbit)
+{
+    CVtcmaskDERIVATIVE temp = cvarray[mask];
+    *curpixel_cvg = temp.cvg;
+    *curpixel_cvbit = temp.cvbit;
+    *offx = temp.xoff;
+    *offy = temp.yoff;
+}
+
+static STRICTINLINE void z_store(uint32_t zcurpixel, uint32_t z, int dzpixenc)
+{
+    uint16_t zval = z_com_table[z & 0x3ffff]|(dzpixenc >> 2);
+    uint8_t hval = dzpixenc & 3;
+    PAIRWRITE16(zcurpixel, zval, hval);
+}
+
+static STRICTINLINE uint32_t z_decompress(uint32_t zb)
+{
+    zb &= 0x0000FFFF;
+    return (z_complete_dec_table[zb >> 2]);
+}
+
+static STRICTINLINE uint32_t dz_decompress(uint32_t dz_compressed)
+{
+    return (1 << dz_compressed);
+}
+
+static uint32_t z_compare(uint32_t zcurpixel, uint32_t sz, uint16_t dzpix, int dzpixenc, uint32_t* blend_en, uint32_t* prewrap, uint32_t* curpixel_cvg, uint32_t curpixel_memcvg)
+{
+    int cvgcoeff = 0;
+    uint32_t dzenc = 0;
+    
+    int32_t diff;
+    uint32_t nearer, max, infront;
+    int force_coplanar = 0;
+
+    uint32_t oz, dzmem, zval, hval;
+    int32_t rawdzmem;
+
+    sz &= 0x3ffff;
+    if (other_modes.z_compare_en)
+    {
+        uint32_t dznew;
+        uint32_t dznotshift;
+        uint32_t dzmemmodifier;
+        uint32_t farther;
+        int overflow;
+        int precision_factor;
+
+        PAIRREAD16(zval, hval, zcurpixel);
+        oz = z_decompress(zval);
+        rawdzmem = ((zval & 3) << 2) | hval;
+        dzmem = dz_decompress(rawdzmem);
+
+        if (other_modes.f.realblendershiftersneeded)
+        {
+           blshifta = CLIP(dzpixenc - rawdzmem, 0, 4);
+           blshiftb = CLIP(rawdzmem - dzpixenc, 0, 4);
+        }
+
+        if (other_modes.f.interpixelblendershiftersneeded)
+        {
+           pastblshifta = CLIP(dzpixenc - pastrawdzmem, 0, 4);
+           pastblshiftb = CLIP(pastrawdzmem - dzpixenc, 0, 4);
+        }
+        pastrawdzmem = rawdzmem;
+
+        precision_factor = (zval >> 13) & 0xf;
+
+        if (precision_factor < 3)
+        {
+            if (dzmem != 0x8000)
+            {
+                dzmemmodifier = 16 >> precision_factor;
+                dzmem <<= 1;
+                if (dzmem < dzmemmodifier)
+                    dzmem = dzmemmodifier;
+            }
+            else
+            {
+                force_coplanar = 1;
+                dzmem = 0xffff;
+            }
+            
+        }
+
+        dznew = (uint32_t)deltaz_comparator_lut[dzpix | dzmem];
+        dznotshift = dznew;
+        dznew <<= 3;
+        
+        LOG("dznew = %d\n", dznew);
+
+        farther = force_coplanar || ((sz + dznew) >= oz);
+        
+        overflow = (curpixel_memcvg + *curpixel_cvg) & 8;
+        *blend_en = other_modes.force_blend || (!overflow && other_modes.antialias_en && farther);
+
+        LOG("force_blend = %d\n", other_modes.force_blend);
+        LOG("oz = %d\n", oz);
+        LOG("blend_en = %d\n", *blend_en);
+        LOG("overflow = %d\n", overflow);
+        
+        *prewrap = overflow;
+
+        switch(other_modes.z_mode)
+        {
+        case ZMODE_OPAQUE: 
+            infront = sz < oz;
+            diff = (int32_t)sz - (int32_t)dznew;
+            nearer = force_coplanar || (diff <= (int32_t)oz);
+            max = (oz == 0x3ffff);
+            LOG("nearer = %d\n", nearer);
+            LOG("opaque\n");
+            return (max || (overflow ? infront : nearer));
+            break;
+        case ZMODE_INTERPENETRATING: 
+            infront = sz < oz;
+            LOG("inter\n");
+            if (!infront || !farther || !overflow)
+            {
+                diff = (int32_t)sz - (int32_t)dznew;
+                nearer = force_coplanar || (diff <= (int32_t)oz);
+                max = (oz == 0x3ffff);
+                return (max || (overflow ? infront : nearer)); 
+            }
+            else
+            {
+                dzenc = dz_compress(dznotshift & 0xffff);
+                cvgcoeff = ((oz >> dzenc) - (sz >> dzenc)) & 0xf;
+                *curpixel_cvg = ((cvgcoeff * (*curpixel_cvg)) >> 3) & 0xf;
+                return 1;
+            }
+            break;
+        case ZMODE_TRANSPARENT: 
+            LOG("trans\n");
+            infront = sz < oz;
+            max = (oz == 0x3ffff);
+            return (infront || max); 
+            break;
+        case ZMODE_DECAL: 
+            LOG("decal\n");
+            diff = (int32_t)sz - (int32_t)dznew;
+            nearer = force_coplanar || (diff <= (int32_t)oz);
+            max = (oz == 0x3ffff);
+            return (farther && nearer && !max); 
+            break;
+        }
+        return 0;
+    }
+    else
+    {
+       int overflow;
+
+       if (other_modes.f.realblendershiftersneeded)
+       {
+          blshifta = 0;
+          if (dzpixenc < 0xb)
+             blshiftb = 4;
+          else
+             blshiftb = 0xf - dzpixenc;
+       }
+
+       if (other_modes.f.interpixelblendershiftersneeded)
+       {
+          pastblshifta = 0;
+          if (dzpixenc < 0xb)
+             pastblshiftb = 4;
+          else
+             pastblshiftb = 0xf - dzpixenc;
+       }
+       pastrawdzmem = 0xf;
+
+       overflow  = (curpixel_memcvg + *curpixel_cvg) & 8;
+       *blend_en = other_modes.force_blend || (!overflow && other_modes.antialias_en);
+       *prewrap  = overflow;
+
+       return 1;
+    }
+}
+
+static void get_dither_noise(int x, int y, int* cdith, int* adith)
+{
+   if (get_dither_noise_type < 2)
+   {
+      int dithindex = ((y & 3) << 2) | (x & 3);
+
+      if (!get_dither_noise_type)
+         noise = ((irand() & 7) << 6) | 0x20;
+
+      switch(other_modes.f.rgb_alpha_dither)
+      {
+         case 0:
+            *adith = *cdith = magic_matrix[dithindex];
+            break;
+         case 1:
+            *cdith = magic_matrix[dithindex];
+            *adith = (~(*cdith)) & 7;
+            break;
+         case 2:
+            *cdith = magic_matrix[dithindex];
+            *adith = (noise >> 6) & 7;
+            break;
+         case 3:
+            *cdith = magic_matrix[dithindex];
+            *adith = 0;
+            break;
+         case 4:
+            *adith = *cdith = bayer_matrix[dithindex];
+            break;
+         case 5:
+            *cdith = bayer_matrix[dithindex];
+            *adith = (~(*cdith)) & 7;
+            break;
+         case 6:
+            *cdith = bayer_matrix[dithindex];
+            *adith = (noise >> 6) & 7;
+            break;
+         case 7:
+            *cdith = bayer_matrix[dithindex];
+            *adith = 0;
+            break;
+         case 8:
+            *cdith = irand();
+            *adith = magic_matrix[dithindex];
+            break;
+         case 9:
+            *cdith = irand();
+            *adith = (~magic_matrix[dithindex]) & 7;
+            break;
+         case 10:
+            *cdith = irand();
+            *adith = (noise >> 6) & 7;
+            break;
+         case 11:
+            *cdith = irand();
+            *adith = 0;
+            break;
+         case 12:
+            *cdith = 7;
+            *adith = bayer_matrix[dithindex];
+            break;
+         case 13:
+            *cdith = 7;
+            *adith = (~bayer_matrix[dithindex]) & 7;
+            break;
+         case 14:
+            *cdith = 7;
+            *adith = (noise >> 6) & 7;
+            break;
+         case 15:
+            *cdith = 7;
+            *adith = 0;
+            break;
+      }
+   }
 }
 
 static void render_spans_1cycle_complete(int start, int end, int tilenum, int flip)
@@ -5069,29 +5851,6 @@ static void render_spans_2cycle_notex(int start, int end, int tilenum, int flip)
     }
 }
 
-#define PAIRWRITE16(in, rval, hval) {            \
-   (in) &= (RDRAM_MASK >> 1);	                   \
-    if ((in) <= idxlim16) {                      \
-        rdram_16[(in) ^ WORD_ADDR_XOR] = (rval); \
-        hidden_bits[(in)] = (hval);              \
-    }                                            \
-}
-#define PAIRWRITE32(in, rval, hval0, hval1) {    \
-   (in) &= (RDRAM_MASK >> 2);                    \
-    if ((in) <= idxlim32) {                      \
-        rdram[(in)] = (rval);                    \
-        hidden_bits[(in) << 1] = (hval0);        \
-        hidden_bits[((in) << 1) + 1] = (hval1);  \
-    }                                            \
-}
-#define PAIRWRITE8(in, rval, hval) {             \
-   (in) &= RDRAM_MASK;                           \
-    if ((in) <= plim) {                          \
-        rdram_8[(in) ^ BYTE_ADDR_XOR] = (rval);  \
-        if ((in) & 1)                            \
-            hidden_bits[(in) >> 1] = (hval);     \
-    }                                            \
-}
 
 static void render_spans_fill_4(int start, int end, int flip)
 {
@@ -5470,7 +6229,7 @@ void render_spans(
     }
 }
 
-NOINLINE void loading_pipeline(
+static NOINLINE void loading_pipeline(
     int start, int end, int tilenum, int coord_quad, int ltlut)
 {
     int localdebugmode = 0, cnt = 0;
@@ -5965,279 +6724,29 @@ STRICTINLINE int32_t irand(void)
     return ((iseed >> 16) & 0x7fff);
 }
 
-STRICTINLINE int alpha_compare(int32_t comb_alpha)
-{
-    int32_t threshold;
-
-    if (!other_modes.alpha_compare_en)
-        return 1;
-    else
-    {
-        if (!other_modes.dither_alpha_en)
-            threshold = COLOR_ALPHA(blend_color);
-        else
-            threshold = irand() & 0xff;
-        if (comb_alpha >= threshold)
-            return 1;
-        else
-            return 0;
-    }
-}
-
-STRICTINLINE int32_t color_combiner_equation(int32_t a, int32_t b, int32_t c, int32_t d)
-{
-    a = special_9bit_exttable[a];
-    b = special_9bit_exttable[b];
-    c = SIGNF(c, 9);
-    d = special_9bit_exttable[d];
-    a = ((a - b) * c) + (d << 8) + 0x80;
-    return (a & 0x1ffff);
-}
-
-STRICTINLINE int32_t alpha_combiner_equation(int32_t a, int32_t b, int32_t c, int32_t d)
-{
-    a = special_9bit_exttable[a];
-    b = special_9bit_exttable[b];
-    c = SIGNF(c, 9);
-    d = special_9bit_exttable[d];
-    a = (((a - b) * c) + (d << 8) + 0x80) >> 8;
-    return (a & 0x1ff);
-}
 
 
-static void blender_equation_cycle0(int* r, int* g, int* b)
-{
-    int blend1a, blend2a;
-    int blr, blg, blb, sum;
-    int mulb;
-
-    blend1a = *blender1b_a[0] >> 3;
-    blend2a = *blender2b_a[0] >> 3;
-
-    LOG("blend1a = %d, blend2a = %d\n", blend1a, blend2a);
-
-    if (other_modes.f.special_bsel0)
-    {
-        blend1a = (blend1a >> blshifta) & 0x3C;
-        blend2a = (blend2a >> blshiftb) | 3;
-    }
-    mulb = blend2a + 1;
-
-    blr = (*blender1a_r[0]) * blend1a + (*blender2a_r[0]) * mulb;
-    blg = (*blender1a_g[0]) * blend1a + (*blender2a_g[0]) * mulb;
-    blb = (*blender1a_b[0]) * blend1a + (*blender2a_b[0]) * mulb;
-
-    if (!other_modes.force_blend)
-    {
-        sum = ((blend1a & ~3) + (blend2a & ~3) + 4) << 9;
-        *r = bldiv_hwaccurate_table[sum | ((blr >> 2) & 0x7ff)];
-        *g = bldiv_hwaccurate_table[sum | ((blg >> 2) & 0x7ff)];
-        *b = bldiv_hwaccurate_table[sum | ((blb >> 2) & 0x7ff)];
-    }
-    else
-    {
-        *r = (blr >> 5) & 0xff;    
-        *g = (blg >> 5) & 0xff; 
-        *b = (blb >> 5) & 0xff;
-    }    
-}
-
-STRICTINLINE void blender_equation_cycle0_2(int* r, int* g, int* b)
-{
-    int blend1a, blend2a;
-    blend1a = *blender1b_a[0] >> 3;
-    blend2a = *blender2b_a[0] >> 3;
-
-    if (other_modes.f.special_bsel0)
-    {
-        blend1a = (blend1a >> pastblshifta) & 0x3C;
-        blend2a = (blend2a >> pastblshiftb) | 3;
-    }
-    blend2a += 1;
-    *r = (((*blender1a_r[0]) * blend1a + (*blender2a_r[0]) * blend2a) >> 5) & 0xff;
-    *g = (((*blender1a_g[0]) * blend1a + (*blender2a_g[0]) * blend2a) >> 5) & 0xff;
-    *b = (((*blender1a_b[0]) * blend1a + (*blender2a_b[0]) * blend2a) >> 5) & 0xff;
-}
-
-static void blender_equation_cycle1(int* r, int* g, int* b)
-{
-    int blend1a, blend2a;
-    int blr, blg, blb, sum;
-    int mulb;
-
-    blend1a = *blender1b_a[1] >> 3;
-    blend2a = *blender2b_a[1] >> 3;
-
-    if (other_modes.f.special_bsel1)
-    {
-        blend1a = (blend1a >> blshifta) & 0x3C;
-        blend2a = (blend2a >> blshiftb) | 3;
-    }
-    mulb = blend2a + 1;
-    blr = (*blender1a_r[1]) * blend1a + (*blender2a_r[1]) * mulb;
-    blg = (*blender1a_g[1]) * blend1a + (*blender2a_g[1]) * mulb;
-    blb = (*blender1a_b[1]) * blend1a + (*blender2a_b[1]) * mulb;
-
-    if (!other_modes.force_blend)
-    {
-        sum = ((blend1a & ~3) + (blend2a & ~3) + 4) << 9;
-        *r = bldiv_hwaccurate_table[sum | ((blr >> 2) & 0x7ff)];
-        *g = bldiv_hwaccurate_table[sum | ((blg >> 2) & 0x7ff)];
-        *b = bldiv_hwaccurate_table[sum | ((blb >> 2) & 0x7ff)];
-    }
-    else
-    {
-        *r = (blr >> 5) & 0xff;    
-        *g = (blg >> 5) & 0xff; 
-        *b = (blb >> 5) & 0xff;
-    }
-}
-
-STRICTINLINE uint32_t rightcvghex(uint32_t x, uint32_t fmask)
-{
-    uint32_t covered = ((x & 7) + 1) >> 1;
-
-    covered = 0xf0 >> covered;
-    return (covered & fmask);
-}
-
-STRICTINLINE uint32_t leftcvghex(uint32_t x, uint32_t fmask) 
-{
-    uint32_t covered = ((x & 7) + 1) >> 1;
-
-    covered = 0xf >> covered;
-    return (covered & fmask);
-}
-
-STRICTINLINE void compute_cvg_flip(int32_t scanline)
-{
-   int32_t purgestart, purgeend;
-   int i, length, fmask, maskshift, fmaskshifted;
-   int32_t minorcur, majorcur, minorcurint, majorcurint, samecvg;
-
-   purgestart = span[scanline].rx;
-   purgeend = span[scanline].lx;
-   length = purgeend - purgestart;
-   if (length >= 0)
-   {
-
-
-
-
-
-
-      memset(&cvgbuf[purgestart], 0xff, length + 1);
-      for(i = 0; i < 4; i++)
-      {
-         int k;
-         fmask = 0xa >> (i & 1);
-
-
-
-
-         maskshift = (i - 2) & 4;
-         fmaskshifted = fmask << maskshift;
-
-         if (!span[scanline].invalyscan[i])
-         {
-
-            minorcur = span[scanline].minorx[i];
-            majorcur = span[scanline].majorx[i];
-            minorcurint = minorcur >> 3;
-            majorcurint = majorcur >> 3;
-
-
-            for (k = purgestart; k <= majorcurint; k++)
-               cvgbuf[k] &= ~fmaskshifted;
-            for (k = minorcurint; k <= purgeend; k++)
-               cvgbuf[k] &= ~fmaskshifted;
-
-
-
-
-
-
-
-
-
-            if (minorcurint > majorcurint)
-            {
-               cvgbuf[minorcurint] |= (rightcvghex(minorcur, fmask) << maskshift);
-               cvgbuf[majorcurint] |= (leftcvghex(majorcur, fmask) << maskshift);
-            }
-            else if (minorcurint == majorcurint)
-            {
-               samecvg = rightcvghex(minorcur, fmask) & leftcvghex(majorcur, fmask);
-               cvgbuf[majorcurint] |= (samecvg << maskshift);
-            }
-         }
-         else
-         {
-            for (k = purgestart; k <= purgeend; k++)
-               cvgbuf[k] &= ~fmaskshifted;
-         }
-
-      }
-   }
-}
-
-STRICTINLINE void compute_cvg_noflip(int32_t scanline)
-{
-	int32_t purgestart, purgeend;
-	int i, length, fmask, maskshift, fmaskshifted;
-	int32_t minorcur, majorcur, minorcurint, majorcurint, samecvg;
-	
-	purgestart = span[scanline].lx;
-	purgeend = span[scanline].rx;
-	length = purgeend - purgestart;
-
-	if (length >= 0)
-	{
-		memset(&cvgbuf[purgestart], 0xff, length + 1);
-
-		for(i = 0; i < 4; i++)
-		{
-         int k;
-
-			fmask = 0xa >> (i & 1);
-			maskshift = (i - 2) & 4;
-			fmaskshifted = fmask << maskshift;
-
-			if (!span[scanline].invalyscan[i])
-			{
-				minorcur = span[scanline].minorx[i];
-				majorcur = span[scanline].majorx[i];
-				minorcurint = minorcur >> 3;
-				majorcurint = majorcur >> 3;
-								
-				for (k = purgestart; k <= minorcurint; k++)
-					cvgbuf[k] &= ~fmaskshifted;
-				for (k = majorcurint; k <= purgeend; k++)
-					cvgbuf[k] &= ~fmaskshifted;
-
-				if (majorcurint > minorcurint)
-				{
-					cvgbuf[minorcurint] |= (leftcvghex(minorcur, fmask) << maskshift);
-					cvgbuf[majorcurint] |= (rightcvghex(majorcur, fmask) << maskshift);
-				}
-				else if (minorcurint == majorcurint)
-				{
-					samecvg = leftcvghex(minorcur, fmask) & rightcvghex(majorcur, fmask);
-					cvgbuf[majorcurint] |= (samecvg << maskshift);
-				}
-			}
-			else
-			{
-				for (k = purgestart; k <= purgeend; k++)
-					cvgbuf[k] &= ~fmaskshifted;
-			}
-		}
-	}
-}
 
 
 void rdp_close(void)
 {
+}
+
+static STRICTINLINE int finalize_spanalpha(
+    uint32_t blend_en, uint32_t curpixel_cvg, uint32_t curpixel_memcvg)
+{
+    int possibilities[4];
+
+    possibilities[CVG_WRAP] = curpixel_memcvg;
+    possibilities[CVG_SAVE] = curpixel_memcvg;
+    possibilities[CVG_ZAP] = 7;
+    possibilities[CVG_CLAMP]  = curpixel_memcvg;
+    possibilities[CVG_CLAMP] |= -(signed)(blend_en) ^ ~0;
+    possibilities[CVG_CLAMP] += curpixel_cvg;
+    possibilities[CVG_WRAP] += curpixel_cvg;
+    possibilities[CVG_CLAMP] |= -(possibilities[CVG_CLAMP]>>3 & 1);
+
+    return (possibilities[other_modes.cvg_dest] & 7);
 }
 
 static void fbwrite_4(
@@ -6501,550 +7010,19 @@ static void fbread2_32(uint32_t curpixel, uint32_t* curpixel_memcvg)
    *curpixel_memcvg = (unsigned char)(COLOR_ALPHA(pre_memory_color)) >> 5;
 }
 
-STRICTINLINE uint32_t z_decompress(uint32_t zb)
-{
-    zb &= 0x0000FFFF;
-    return (z_complete_dec_table[zb >> 2]);
-}
-
-INLINE void z_build_com_table(void)
-{
-    register int z;
-    uint16_t altmem = 0;
-
-    for (z = 0; z < 0x40000; z++)
-    {
-    switch((z >> 11) & 0x7f)
-    {
-    case 0x00:
-    case 0x01:
-    case 0x02:
-    case 0x03:
-    case 0x04:
-    case 0x05:
-    case 0x06:
-    case 0x07:
-    case 0x08:
-    case 0x09:
-    case 0x0a:
-    case 0x0b:
-    case 0x0c:
-    case 0x0d:
-    case 0x0e:
-    case 0x0f:
-    case 0x10:
-    case 0x11:
-    case 0x12:
-    case 0x13:
-    case 0x14:
-    case 0x15:
-    case 0x16:
-    case 0x17:
-    case 0x18:
-    case 0x19:
-    case 0x1a:
-    case 0x1b:
-    case 0x1c:
-    case 0x1d:
-    case 0x1e:
-    case 0x1f:
-    case 0x20:
-    case 0x21:
-    case 0x22:
-    case 0x23:
-    case 0x24:
-    case 0x25:
-    case 0x26:
-    case 0x27:
-    case 0x28:
-    case 0x29:
-    case 0x2a:
-    case 0x2b:
-    case 0x2c:
-    case 0x2d:
-    case 0x2e:
-    case 0x2f:
-    case 0x30:
-    case 0x31:
-    case 0x32:
-    case 0x33:
-    case 0x34:
-    case 0x35:
-    case 0x36:
-    case 0x37:
-    case 0x38:
-    case 0x39:
-    case 0x3a:
-    case 0x3b:
-    case 0x3c:
-    case 0x3d:
-    case 0x3e:
-    case 0x3f:
-        altmem = (z >> 4) & 0x1ffc;
-        break;
-    case 0x40:
-    case 0x41:
-    case 0x42:
-    case 0x43:
-    case 0x44:
-    case 0x45:
-    case 0x46:
-    case 0x47:
-    case 0x48:
-    case 0x49:
-    case 0x4a:
-    case 0x4b:
-    case 0x4c:
-    case 0x4d:
-    case 0x4e:
-    case 0x4f:
-    case 0x50:
-    case 0x51:
-    case 0x52:
-    case 0x53:
-    case 0x54:
-    case 0x55:
-    case 0x56:
-    case 0x57:
-    case 0x58:
-    case 0x59:
-    case 0x5a:
-    case 0x5b:
-    case 0x5c:
-    case 0x5d:
-    case 0x5e:
-    case 0x5f:
-        altmem = ((z >> 3) & 0x1ffc) | 0x2000;
-        break;
-    case 0x60:
-    case 0x61:
-    case 0x62:
-    case 0x63:
-    case 0x64:
-    case 0x65:
-    case 0x66:
-    case 0x67:
-    case 0x68:
-    case 0x69:
-    case 0x6a:
-    case 0x6b:
-    case 0x6c:
-    case 0x6d:
-    case 0x6e:
-    case 0x6f:
-        altmem = ((z >> 2) & 0x1ffc) | 0x4000;
-        break;
-    case 0x70:
-    case 0x71:
-    case 0x72:
-    case 0x73:
-    case 0x74:
-    case 0x75:
-    case 0x76:
-    case 0x77:
-        altmem = ((z >> 1) & 0x1ffc) | 0x6000;
-        break;
-    case 0x78:
-    case 0x79:
-    case 0x7a:
-    case 0x7b:
-        altmem = (z & 0x1ffc) | 0x8000;
-        break;
-    case 0x7c:
-    case 0x7d:
-        altmem = ((z << 1) & 0x1ffc) | 0xa000;
-        break;
-    case 0x7e:
-        altmem = ((z << 2) & 0x1ffc) | 0xc000;
-        break;
-    case 0x7f:
-        altmem = ((z << 2) & 0x1ffc) | 0xe000;
-        break;
-    default:
-        DisplayError("z_build_com_table failed");
-        break;
-    }
-
-    z_com_table[z] = altmem;
-
-    }
-}
-
-static void precalc_cvmask_derivatives(void)
-{
-    int i = 0, k = 0;
-    uint16_t mask = 0, maskx = 0, masky = 0;
-    uint8_t offx = 0, offy = 0;
-    static const uint8_t yarray[16] = {0, 0, 1, 0, 2, 0, 1, 0, 3, 0, 1, 0, 2, 0, 1, 0};
-    static const uint8_t xarray[16] = {0, 3, 2, 2, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0};
-
-    
-    for (; i < 0x100; i++)
-    {
-        mask = decompress_cvmask_frombyte(i);
-        cvarray[i].cvg = cvarray[i].cvbit = 0;
-        cvarray[i].cvbit = (i >> 7) & 1;
-        for (k = 0; k < 8; k++)
-            cvarray[i].cvg += ((i >> k) & 1);
-
-        
-        masky = maskx = offx = offy = 0;
-        for (k = 0; k < 4; k++)
-            masky |= ((mask & (0xf000 >> (k << 2))) > 0) << k;
-
-        offy = yarray[masky];
-        
-        maskx = (mask & (0xf000 >> (offy << 2))) >> ((offy ^ 3) << 2);
-        
-        
-        offx = xarray[maskx];
-        
-        cvarray[i].xoff = offx;
-        cvarray[i].yoff = offy;
-    }
-}
-
-STRICTINLINE uint16_t decompress_cvmask_frombyte(uint8_t x)
-{
-    uint16_t y = (x & 1) | ((x & 2) << 4) | (x & 4) | ((x & 8) << 4) |
-        ((x & 0x10) << 4) | ((x & 0x20) << 8) | ((x & 0x40) << 4) | ((x & 0x80) << 8);
-    return y;
-}
-
-STRICTINLINE void lookup_cvmask_derivatives(uint32_t mask, uint8_t* offx, uint8_t* offy, uint32_t* curpixel_cvg, uint32_t* curpixel_cvbit)
-{
-    CVtcmaskDERIVATIVE temp = cvarray[mask];
-    *curpixel_cvg = temp.cvg;
-    *curpixel_cvbit = temp.cvbit;
-    *offx = temp.xoff;
-    *offy = temp.yoff;
-}
-
-STRICTINLINE void z_store(uint32_t zcurpixel, uint32_t z, int dzpixenc)
-{
-    uint16_t zval = z_com_table[z & 0x3ffff]|(dzpixenc >> 2);
-    uint8_t hval = dzpixenc & 3;
-    PAIRWRITE16(zcurpixel, zval, hval);
-}
-
-STRICTINLINE uint32_t dz_decompress(uint32_t dz_compressed)
-{
-    return (1 << dz_compressed);
-}
-
-STRICTINLINE uint32_t dz_compress(uint32_t value)
-{
-    int j = 0;
-    if (value & 0xff00)
-        j |= 8;
-    if (value & 0xf0f0)
-        j |= 4;
-    if (value & 0xcccc)
-        j |= 2;
-    if (value & 0xaaaa)
-        j |= 1;
-    return j;
-}
-
-static uint32_t z_compare(uint32_t zcurpixel, uint32_t sz, uint16_t dzpix, int dzpixenc, uint32_t* blend_en, uint32_t* prewrap, uint32_t* curpixel_cvg, uint32_t curpixel_memcvg)
-{
-    int cvgcoeff = 0;
-    uint32_t dzenc = 0;
-    
-    int32_t diff;
-    uint32_t nearer, max, infront;
-    int force_coplanar = 0;
-
-    uint32_t oz, dzmem, zval, hval;
-    int32_t rawdzmem;
-
-    sz &= 0x3ffff;
-    if (other_modes.z_compare_en)
-    {
-        uint32_t dznew;
-        uint32_t dznotshift;
-        uint32_t dzmemmodifier;
-        uint32_t farther;
-        int overflow;
-        int precision_factor;
-
-        PAIRREAD16(zval, hval, zcurpixel);
-        oz = z_decompress(zval);
-        rawdzmem = ((zval & 3) << 2) | hval;
-        dzmem = dz_decompress(rawdzmem);
-
-        if (other_modes.f.realblendershiftersneeded)
-        {
-           blshifta = CLIP(dzpixenc - rawdzmem, 0, 4);
-           blshiftb = CLIP(rawdzmem - dzpixenc, 0, 4);
-        }
-
-        if (other_modes.f.interpixelblendershiftersneeded)
-        {
-           pastblshifta = CLIP(dzpixenc - pastrawdzmem, 0, 4);
-           pastblshiftb = CLIP(pastrawdzmem - dzpixenc, 0, 4);
-        }
-        pastrawdzmem = rawdzmem;
-
-        precision_factor = (zval >> 13) & 0xf;
-
-        if (precision_factor < 3)
-        {
-            if (dzmem != 0x8000)
-            {
-                dzmemmodifier = 16 >> precision_factor;
-                dzmem <<= 1;
-                if (dzmem < dzmemmodifier)
-                    dzmem = dzmemmodifier;
-            }
-            else
-            {
-                force_coplanar = 1;
-                dzmem = 0xffff;
-            }
-            
-        }
-
-        dznew = (uint32_t)deltaz_comparator_lut[dzpix | dzmem];
-        dznotshift = dznew;
-        dznew <<= 3;
-        
-        LOG("dznew = %d\n", dznew);
-
-        farther = force_coplanar || ((sz + dznew) >= oz);
-        
-        overflow = (curpixel_memcvg + *curpixel_cvg) & 8;
-        *blend_en = other_modes.force_blend || (!overflow && other_modes.antialias_en && farther);
-
-        LOG("force_blend = %d\n", other_modes.force_blend);
-        LOG("oz = %d\n", oz);
-        LOG("blend_en = %d\n", *blend_en);
-        LOG("overflow = %d\n", overflow);
-        
-        *prewrap = overflow;
-
-        switch(other_modes.z_mode)
-        {
-        case ZMODE_OPAQUE: 
-            infront = sz < oz;
-            diff = (int32_t)sz - (int32_t)dznew;
-            nearer = force_coplanar || (diff <= (int32_t)oz);
-            max = (oz == 0x3ffff);
-            LOG("nearer = %d\n", nearer);
-            LOG("opaque\n");
-            return (max || (overflow ? infront : nearer));
-            break;
-        case ZMODE_INTERPENETRATING: 
-            infront = sz < oz;
-            LOG("inter\n");
-            if (!infront || !farther || !overflow)
-            {
-                diff = (int32_t)sz - (int32_t)dznew;
-                nearer = force_coplanar || (diff <= (int32_t)oz);
-                max = (oz == 0x3ffff);
-                return (max || (overflow ? infront : nearer)); 
-            }
-            else
-            {
-                dzenc = dz_compress(dznotshift & 0xffff);
-                cvgcoeff = ((oz >> dzenc) - (sz >> dzenc)) & 0xf;
-                *curpixel_cvg = ((cvgcoeff * (*curpixel_cvg)) >> 3) & 0xf;
-                return 1;
-            }
-            break;
-        case ZMODE_TRANSPARENT: 
-            LOG("trans\n");
-            infront = sz < oz;
-            max = (oz == 0x3ffff);
-            return (infront || max); 
-            break;
-        case ZMODE_DECAL: 
-            LOG("decal\n");
-            diff = (int32_t)sz - (int32_t)dznew;
-            nearer = force_coplanar || (diff <= (int32_t)oz);
-            max = (oz == 0x3ffff);
-            return (farther && nearer && !max); 
-            break;
-        }
-        return 0;
-    }
-    else
-    {
-       int overflow;
-
-       if (other_modes.f.realblendershiftersneeded)
-       {
-          blshifta = 0;
-          if (dzpixenc < 0xb)
-             blshiftb = 4;
-          else
-             blshiftb = 0xf - dzpixenc;
-       }
-
-       if (other_modes.f.interpixelblendershiftersneeded)
-       {
-          pastblshifta = 0;
-          if (dzpixenc < 0xb)
-             pastblshiftb = 4;
-          else
-             pastblshiftb = 0xf - dzpixenc;
-       }
-       pastrawdzmem = 0xf;
-
-       overflow  = (curpixel_memcvg + *curpixel_cvg) & 8;
-       *blend_en = other_modes.force_blend || (!overflow && other_modes.antialias_en);
-       *prewrap  = overflow;
-
-       return 1;
-    }
-}
-
-STRICTINLINE int finalize_spanalpha(
-    uint32_t blend_en, uint32_t curpixel_cvg, uint32_t curpixel_memcvg)
-{
-    int possibilities[4];
-
-    possibilities[CVG_WRAP] = curpixel_memcvg;
-    possibilities[CVG_SAVE] = curpixel_memcvg;
-    possibilities[CVG_ZAP] = 7;
-    possibilities[CVG_CLAMP]  = curpixel_memcvg;
-    possibilities[CVG_CLAMP] |= -(signed)(blend_en) ^ ~0;
-    possibilities[CVG_CLAMP] += curpixel_cvg;
-    possibilities[CVG_WRAP] += curpixel_cvg;
-    possibilities[CVG_CLAMP] |= -(possibilities[CVG_CLAMP]>>3 & 1);
-
-    return (possibilities[other_modes.cvg_dest] & 7);
-}
-
-STRICTINLINE int32_t CLIP(int32_t value,int32_t min,int32_t max)
-{
-    if (value < min)
-        return min;
-    else if (value > max)
-        return max;
-    else
-        return value;
-}
 
 
-static void rgb_dither_complete(int* r, int* g, int* b, int dith)
-{
-   int32_t replacesign, ditherdiff;
-   int32_t newr = *r, newg = *g, newb = *b;
-	int32_t rcomp = dith, gcomp, bcomp;
 
-	
-	if (newr > 247)
-		newr = 255;
-	else
-		newr = (newr & 0xf8) + 8;
-	if (newg > 247)
-		newg = 255;
-	else
-		newg = (newg & 0xf8) + 8;
-	if (newb > 247)
-		newb = 255;
-	else
-		newb = (newb & 0xf8) + 8;
 
-	if (other_modes.rgb_dither_sel != 2)
-		gcomp = bcomp = dith;
-	else
-	{
-		gcomp = (dith + 3) & 7;
-		bcomp = (dith + 5) & 7;
-	}
 
-	replacesign = (rcomp - (*r & 7)) >> 31;
-	ditherdiff = newr - *r;
 
-	*r = *r + (ditherdiff & replacesign);
 
-	replacesign = (gcomp - (*g & 7)) >> 31;
-	ditherdiff = newg - *g;
-	*g = *g + (ditherdiff & replacesign);
 
-	replacesign = (bcomp - (*b & 7)) >> 31;
-	ditherdiff = newb - *b;
-	*b = *b + (ditherdiff & replacesign);
-}
 
-static void get_dither_noise(int x, int y, int* cdith, int* adith)
-{
-   if (get_dither_noise_type < 2)
-   {
-      int dithindex = ((y & 3) << 2) | (x & 3);
 
-      if (!get_dither_noise_type)
-         noise = ((irand() & 7) << 6) | 0x20;
 
-      switch(other_modes.f.rgb_alpha_dither)
-      {
-         case 0:
-            *adith = *cdith = magic_matrix[dithindex];
-            break;
-         case 1:
-            *cdith = magic_matrix[dithindex];
-            *adith = (~(*cdith)) & 7;
-            break;
-         case 2:
-            *cdith = magic_matrix[dithindex];
-            *adith = (noise >> 6) & 7;
-            break;
-         case 3:
-            *cdith = magic_matrix[dithindex];
-            *adith = 0;
-            break;
-         case 4:
-            *adith = *cdith = bayer_matrix[dithindex];
-            break;
-         case 5:
-            *cdith = bayer_matrix[dithindex];
-            *adith = (~(*cdith)) & 7;
-            break;
-         case 6:
-            *cdith = bayer_matrix[dithindex];
-            *adith = (noise >> 6) & 7;
-            break;
-         case 7:
-            *cdith = bayer_matrix[dithindex];
-            *adith = 0;
-            break;
-         case 8:
-            *cdith = irand();
-            *adith = magic_matrix[dithindex];
-            break;
-         case 9:
-            *cdith = irand();
-            *adith = (~magic_matrix[dithindex]) & 7;
-            break;
-         case 10:
-            *cdith = irand();
-            *adith = (noise >> 6) & 7;
-            break;
-         case 11:
-            *cdith = irand();
-            *adith = 0;
-            break;
-         case 12:
-            *cdith = 7;
-            *adith = bayer_matrix[dithindex];
-            break;
-         case 13:
-            *cdith = 7;
-            *adith = (~bayer_matrix[dithindex]) & 7;
-            break;
-         case 14:
-            *cdith = 7;
-            *adith = (noise >> 6) & 7;
-            break;
-         case 15:
-            *cdith = 7;
-            *adith = 0;
-            break;
-      }
-   }
-}
+
+
 
 static void rgbaz_correct_clip(int offx, int offy, int r, int g, int b, int a,
       int* z, uint32_t curpixel_cvg)
@@ -7106,26 +7084,75 @@ static void rgbaz_correct_clip(int offx, int offy, int r, int g, int b, int a,
     *z &= 0x3FFFF;
 }
 
-uint32_t vi_integer_sqrt(uint32_t a)
+
+static STRICTINLINE void tclod_4x17_to_15(int32_t scurr, int32_t snext, int32_t tcurr, int32_t tnext, int32_t previous, int32_t* lod)
 {
-    unsigned long op = a, res = 0, one = 1 << 30;
+    int dels = SIGN(snext, 17) - SIGN(scurr, 17);
+    int delt = SIGN(tnext, 17) - SIGN(tcurr, 17);
 
-    while (one > op) 
-        one >>= 2;
+    if (dels & 0x20000)
+        dels = ~dels & 0x1ffff;
+    if (delt & 0x20000)
+        delt = ~delt & 0x1ffff;
 
-    while (one != 0) 
-    {
-        if (op >= res + one) 
-        {
-            op -= res + one;
-            res += one << 1;
-        }
-        res >>= 1;
-        one >>= 2;
-    }
-    return res;
+    dels = (dels > delt) ? dels : delt;
+    dels = (previous > dels) ? previous : dels;
+    *lod = dels & 0x7fff;
+    if (dels & 0x1c000)
+        *lod |= 0x4000;
 }
 
+static STRICTINLINE void tclod_tcclamp(int32_t* sss, int32_t* sst)
+{
+    int32_t tempanded, temps = *sss, tempt = *sst;
+
+    
+    
+    
+    
+    if (!(temps & 0x40000))
+    {
+        if (!(temps & 0x20000))
+        {
+            tempanded = temps & 0x18000;
+            if (tempanded != 0x8000)
+            {
+                if (tempanded != 0x10000)
+                    *sss &= 0xffff;
+                else
+                    *sss = 0x8000;
+            }
+            else
+                *sss = 0x7fff;
+        }
+        else
+            *sss = 0x8000;
+    }
+    else
+        *sss = 0x7fff;
+
+    if (!(tempt & 0x40000))
+    {
+        if (!(tempt & 0x20000))
+        {
+            tempanded = tempt & 0x18000;
+            if (tempanded != 0x8000)
+            {
+                if (tempanded != 0x10000)
+                    *sst &= 0xffff;
+                else
+                    *sst = 0x8000;
+            }
+            else
+                *sst = 0x7fff;
+        }
+        else
+            *sst = 0x8000;
+    }
+    else
+        *sst = 0x7fff;
+
+}
 
 static void tclod_2cycle_current(int32_t* sss, int32_t* sst, int32_t nexts, int32_t nextt, int32_t s, int32_t t, int32_t w, int32_t dsinc, int32_t dtinc, int32_t dwinc, int32_t prim_tile, int32_t* t1, int32_t* t2)
 {
@@ -7776,74 +7803,7 @@ STRICTINLINE void get_nexttexel0_2cycle(int32_t* s1, int32_t* t1, int32_t s, int
 
 
 
-STRICTINLINE void tclod_4x17_to_15(int32_t scurr, int32_t snext, int32_t tcurr, int32_t tnext, int32_t previous, int32_t* lod)
-{
-    int dels = SIGN(snext, 17) - SIGN(scurr, 17);
-    int delt = SIGN(tnext, 17) - SIGN(tcurr, 17);
 
-    if (dels & 0x20000)
-        dels = ~dels & 0x1ffff;
-    if (delt & 0x20000)
-        delt = ~delt & 0x1ffff;
-
-    dels = (dels > delt) ? dels : delt;
-    dels = (previous > dels) ? previous : dels;
-    *lod = dels & 0x7fff;
-    if (dels & 0x1c000)
-        *lod |= 0x4000;
-}
-
-STRICTINLINE void tclod_tcclamp(int32_t* sss, int32_t* sst)
-{
-    int32_t tempanded, temps = *sss, tempt = *sst;
-
-    
-    
-    
-    
-    if (!(temps & 0x40000))
-    {
-        if (!(temps & 0x20000))
-        {
-            tempanded = temps & 0x18000;
-            if (tempanded != 0x8000)
-            {
-                if (tempanded != 0x10000)
-                    *sss &= 0xffff;
-                else
-                    *sss = 0x8000;
-            }
-            else
-                *sss = 0x7fff;
-        }
-        else
-            *sss = 0x8000;
-    }
-    else
-        *sss = 0x7fff;
-
-    if (!(tempt & 0x40000))
-    {
-        if (!(tempt & 0x20000))
-        {
-            tempanded = tempt & 0x18000;
-            if (tempanded != 0x8000)
-            {
-                if (tempanded != 0x10000)
-                    *sst &= 0xffff;
-                else
-                    *sst = 0x8000;
-            }
-            else
-                *sst = 0x7fff;
-        }
-        else
-            *sst = 0x8000;
-    }
-    else
-        *sst = 0x7fff;
-
-}
 
 
 STRICTINLINE void lodfrac_lodtile_signals(int lodclamp, int32_t lod, uint32_t* l_tile, uint32_t* magnify, uint32_t* distant)

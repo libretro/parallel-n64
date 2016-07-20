@@ -64,7 +64,6 @@ extern int32_t oldvstart;
 
 extern NOINLINE void DisplayError(char * error);
 
-extern STRICTINLINE int32_t irand(void);
 extern void rdp_init(void);
 extern void rdp_close(void);
 extern void rdp_update(void);
