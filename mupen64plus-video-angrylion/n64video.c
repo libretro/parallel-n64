@@ -8460,97 +8460,84 @@ static void tex_rect(uint32_t w1, uint32_t w2)
     render_spans(yhlimit >> 2, yllimit >> 2, tilenum, 1);
 }
 
-static void tex_rect_flip(uint32_t w1, uint32_t w2)
+static NOINLINE void draw_texture_rectangle(
+    const int rect_flip, int tilenum,
+    int32_t xl, int32_t yl, int32_t xh, int32_t yh,
+    i32 s, i32 t, int16_t dsdx, int16_t dtdy
+)
 {
-    int s, t, dsdx, dtdy;
-    int dd_swap;
-    int xlint, xhint;
+    int32_t xm, ym;
+    int32_t yllimit, yhlimit;
 
-    int ycur, ylfar;
-    int yllimit, yhlimit;
-    int invaly;
-    int curcross;
-    int allover, allunder, curover, curunder;
-    int allinval;
-    register int j, k;
     i32 stwz[4];
-    i32 d_stwz_dx[4];
-    i32 d_stwz_de[4];
-    i32 d_stwz_dy[4];
+    i32 d_stwz_dx[2], d_stwz_dy[2];
+
     i32 d_stwz_dxh[4];
     i32 xleft, xright;
     uint8_t xfrac;
+
+    int maxxmx, minxhx;
+    int curcross;
+    int allover, allunder, curover, curunder;
+    int allinval;
+    int ycur, ylfar;
+    int invaly;
+    register int j, k;
     const i32 clipxlshift = __clip.xl << 1;
     const i32 clipxhshift = __clip.xh << 1;
-    uint32_t w3 = cmd_data[cmd_cur + 1].UW32[0];
-    uint32_t w4 = cmd_data[cmd_cur + 1].UW32[1];
 
-    int xl      = (w1 & 0x00FFF000) >> 12;
-    int yl      = (w1 & 0x00000FFF) >>  0;
-    int tilenum = (w2 & 0x07000000) >> 24;
-    int xh      = (w2 & 0x00FFF000) >> 12;
-    int yh      = (w2 & 0x00000FFF) >>  0;
+    max_level = 0;
+    maxxmx = 0;
+    minxhx = 0;
 
-    yl |= (other_modes.cycle_type & 2) ? 3 : 0; /* FILL OR COPY */
-
-    s    = (w3 & 0xFFFF0000) >> 16;
-    t    = (w3 & 0x0000FFFF) >>  0;
-    dsdx = (w4 & 0xFFFF0000) >> 16;
-    dtdy = (w4 & 0x0000FFFF) >>  0;
-    
-    dsdx = SIGN16(dsdx);
-    dtdy = SIGN16(dtdy);
+    xl = xl << 14;
+    xh = xh << 14;
+    xm = xl;
+    ym = yl;
 
 /*
- * unique work to tex_rect_flip
+ * texture coefficients
  */
-    dd_swap = dsdx;
-    dsdx = dtdy;
-    dtdy = dd_swap;
+    stwz[0] = (s << 16) | 0;
+    stwz[1] = (t << 16) | 0;
 
-    xlint = (unsigned)(xl) >> 2;
-    xhint = (unsigned)(xh) >> 2;
-
- /* edgewalker for primitives */
-    max_level = 0;
-    xl = (xlint << 16) | (xl & 3)<<14;
-    xl = SIGN(xl, 30);
-    xh = (xhint << 16) | (xh & 3)<<14;
-    xh = SIGN(xh, 30);
-
-    stwz[0] = s << 16;
-    stwz[1] = t << 16;
-    d_stwz_dx[0] = dsdx << 11;
-    d_stwz_dx[1] = 0x00000000;
-    d_stwz_de[0] = 0x00000000;
-    d_stwz_de[1] = dtdy << 11;
-    d_stwz_dy[0] = 0x00000000;
-    d_stwz_dy[1] = dtdy << 11;
+    setzero_si64(d_stwz_dx);
+    setzero_si64(d_stwz_dy);
+    if (rect_flip != 0) /* TEXTURE_FLIP_NO */
+    {
+        d_stwz_dx[1] = (i32)dtdy << 11;
+        d_stwz_dy[0] = (i32)dsdx << 11;
+    }
+    else
+    {
+        d_stwz_dx[0] = (i32)dsdx << 11;
+        d_stwz_dy[1] = (i32)dtdy << 11;
+    }
 
     setzero_si128(spans_d_rgba);
+    setzero_si128(spans_d_stwz);
     spans_d_stwz[0] = d_stwz_dx[0] & ~0x0000001F;
     spans_d_stwz[1] = d_stwz_dx[1] & ~0x0000001F;
-    spans_d_stwz[2] = 0x00000000;
-    spans_d_stwz[3] = 0x00000000;
 
     setzero_si128(spans_d_rgba_dy);
+    setzero_si128(spans_cd_rgba);
+    spans_cdz = 0;
+
+    setzero_si128(spans_d_stwz_dy);
     spans_d_stwz_dy[0] = d_stwz_dy[0] & ~0x00007FFF;
     spans_d_stwz_dy[1] = d_stwz_dy[1] & ~0x00007FFF;
-    spans_d_stwz_dy[2] = 0x00000000;
-    spans_d_stwz_dy[3] = 0x00000000;
-
-    setzero_si128(spans_cd_rgba);
-    spans_cdz = 0x00000000;
     spans_dzpix = normalize_dzpix(0);
 
-    d_stwz_dxh[1] = 0x00000000;
-    if (other_modes.cycle_type == CYCLE_TYPE_COPY)
-        d_stwz_dxh[0] = 0x00000000;
-    else
+    setzero_si128(d_stwz_dxh);
+    if (other_modes.cycle_type != CYCLE_TYPE_COPY)
+    {
         d_stwz_dxh[0] = (d_stwz_dx[0] >> 8) & ~0x00000001;
+        d_stwz_dxh[1] = (d_stwz_dx[1] >> 8) & ~0x00000001;
+    }
 
     invaly = 1;
-    yllimit = (yl < __clip.yl) ? yl : __clip.yl;
+    yllimit = (yl <  __clip.yl) ? yl : __clip.yl;
+    yhlimit = (yh >= __clip.yh) ? yh : __clip.yh;
 
     ycur = yh & ~3;
     ylfar = yllimit | 3;
@@ -8559,14 +8546,10 @@ static void tex_rect_flip(uint32_t w1, uint32_t w2)
     else if ((yllimit >> 2) >= 0 && (yllimit >> 2) < 1023)
         span[(yllimit >> 2) + 1].validline = 0;
 
-    yhlimit = (yh >= __clip.yh) ? yh : __clip.yh;
-
-    xleft = xl & ~0x00000001;
-    xright = xh & ~0x00000001;
+    xleft = xm/* & ~0x00000001 // never needed because xm <<= 14 */;
+    xright = xh/* & ~0x00000001 // never needed because xh <<= 14 */;
     xfrac = (xright >> 8) & 0xFF;
 
-    stwz[0] &= ~0x000001FF;
-    stwz[1] &= ~0x000001FF;
     allover = 1;
     allunder = 1;
     curover = 0;
@@ -8574,10 +8557,9 @@ static void tex_rect_flip(uint32_t w1, uint32_t w2)
     allinval = 1;
     for (k = ycur; k <= ylfar; k++)
     {
-        static int maxxmx, minxhx;
         int xrsc, xlsc, stickybit;
-        const int yhclose = yhlimit & ~3;
         const int spix = k & 3;
+        const int yhclose = yhlimit & ~3;
 
         if (k < yhclose)
             { /* branch */ }
@@ -8639,25 +8621,67 @@ static void tex_rect_flip(uint32_t w1, uint32_t w2)
             if (spix == 0)
             {
                 span[j].unscrx = xright >> 16;
+             /* xfrac = (xright >> 8) & 0xFF; // xfrac never changes. */
                 setzero_si128(span[j].rgba);
                 span[j].stwz[0] = (stwz[0] - xfrac*d_stwz_dxh[0]) & ~0x000003FF;
-                span[j].stwz[1] = stwz[1];
-                span[j].stwz[2] = 0x00000000;
-                span[j].stwz[3] = 0x00000000;
+                span[j].stwz[1] = (stwz[1] - xfrac*d_stwz_dxh[1]) & ~0x000003FF;
+                span[j].stwz[2] = 0 & ~0x000003FF;
+                span[j].stwz[3] = 0 & ~0x000003FF;
             }
-            else if (spix == 3)
+            if (spix == 3)
             {
                 const int invalidline = (sckeepodd ^ j) & scfield
                                       | (allinval | allover | allunder);
                 span[j].lx = maxxmx;
                 span[j].rx = minxhx;
                 span[j].validline = invalidline ^ 1;
-             /* stwz[0] = (stwz[0] + 0x00000000) & ~0x000001FF; */
-                stwz[1] = (stwz[1] + d_stwz_de[1]) & ~0x000003FF;
             }
         }
+        if (spix == 3)
+        {
+            stwz[0] = (stwz[0] + d_stwz_dy[0]) & ~0x000001FF;
+            stwz[1] = (stwz[1] + d_stwz_dy[1]) & ~0x000001FF;
+        }
+    }
+
+    if (other_modes.f.stalederivs)
+    {
+        deduce_derivatives();
+        other_modes.f.stalederivs = 0;
     }
     render_spans(yhlimit >> 2, yllimit >> 2, tilenum, 1);
+}
+
+static void tex_rect_flip(uint32_t w1, uint32_t w2)
+{
+    int tilenum;
+    int16_t dsdx, dtdy;
+    int32_t xl, yl, xh, yh;
+    int32_t s, t;
+
+    xl      = (cmd_data[cmd_cur + 0].UW32[0] & 0x00FFF000) >> 12;
+    yl      = (cmd_data[cmd_cur + 0].UW32[0] & 0x00000FFF) >>  0;
+    tilenum = (cmd_data[cmd_cur + 0].UW32[1] & 0x07000000) >> 24;
+    xh      = (cmd_data[cmd_cur + 0].UW32[1] & 0x00FFF000) >> 12;
+    yh      = (cmd_data[cmd_cur + 0].UW32[1] & 0x00000FFF) >>  0;
+
+    yl |= (other_modes.cycle_type & 2) ? 3 : 0; /* FILL OR COPY */
+
+    s    = (cmd_data[cmd_cur + 1].UW32[0] & 0xFFFF0000) >> 16;
+    t    = (cmd_data[cmd_cur + 1].UW32[0] & 0x0000FFFF) >>  0;
+    dsdx = (cmd_data[cmd_cur + 1].UW32[1] & 0xFFFF0000) >> 16;
+    dtdy = (cmd_data[cmd_cur + 1].UW32[1] & 0x0000FFFF) >>  0;
+    
+    dsdx = SIGN16(dsdx);
+    dtdy = SIGN16(dtdy);
+
+    draw_texture_rectangle(
+        0, tilenum,
+        xl, yl, xh, yh,
+        s, t,
+        dsdx, dtdy
+    );
+    return;
 }
 
 static void sync_load(uint32_t w1, uint32_t w2)
