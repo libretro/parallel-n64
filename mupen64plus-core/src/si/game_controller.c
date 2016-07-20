@@ -112,7 +112,9 @@ static void controller_read_buttons_command(struct game_controller* cont, uint8_
 static void controller_read_pak_command(struct game_controller* cont, uint8_t* cmd)
 {
     enum pak_type pak;
-    int connected = game_controller_is_connected(cont, &pak);
+    uint16_t address;
+    uint8_t *data    = NULL;
+    int connected    = game_controller_is_connected(cont, &pak);
 
     if (!connected)
     {
@@ -120,23 +122,36 @@ static void controller_read_pak_command(struct game_controller* cont, uint8_t* c
         return;
     }
 
+    address = (cmd[3] << 8) | (cmd[4] & 0xe0);
+    data = &cmd[5];
+
     switch (pak)
     {
-    case PAK_NONE: memset(&cmd[5], 0, 0x20); break;
-    case PAK_MEM: mempak_read_command(&cont->mempak, cmd); break;
-    case PAK_RUMBLE: rumblepak_read_command(&cont->rumblepak, cmd); break;
-    case PAK_TRANSFER: /* TODO */ break;
-    default:
-        DebugMessage(M64MSG_WARNING, "Unknown plugged pak %d", (int)pak);
+       case PAK_NONE:
+          memset(data, 0, 0x20);
+          break;
+       case PAK_MEM:
+          mempak_read_command(&cont->mempak, address, data);
+          break;
+       case PAK_RUMBLE:
+          rumblepak_read_command(&cont->rumblepak, address, data);
+          break;
+       case PAK_TRANSFER:
+          /* TODO */
+          break;
+       default:
+          DebugMessage(M64MSG_WARNING, "Unknown plugged pak %d", (int)pak);
     }
 
-    cmd[0x25] = pak_data_crc(&cmd[5]);
+    cmd[0x25] = pak_data_crc(data);
 }
 
 static void controller_write_pak_command(struct game_controller* cont, uint8_t* cmd)
 {
     enum pak_type pak;
-    int connected = game_controller_is_connected(cont, &pak);
+    uint16_t address;
+    const uint8_t *data = NULL;
+    int       connected = game_controller_is_connected(cont, &pak);
 
     if (!connected)
     {
@@ -144,17 +159,28 @@ static void controller_write_pak_command(struct game_controller* cont, uint8_t* 
         return;
     }
 
+    address = (cmd[3] << 8) | (cmd[4] & 0xe0);
+    data    = &cmd[5];
+
     switch (pak)
     {
-    case PAK_NONE: /* do nothing */ break;
-    case PAK_MEM: mempak_write_command(&cont->mempak, cmd); break;
-    case PAK_RUMBLE: rumblepak_write_command(&cont->rumblepak, cmd); break;
-    case PAK_TRANSFER: /* TODO */ break;
-    default:
-        DebugMessage(M64MSG_WARNING, "Unknown plugged pak %d", (int)pak);
+       case PAK_NONE:
+          /* do nothing */
+          break;
+       case PAK_MEM:
+          mempak_write_command(&cont->mempak, address, data);
+          break;
+       case PAK_RUMBLE:
+          rumblepak_write_command(&cont->rumblepak, address, data);
+          break;
+       case PAK_TRANSFER:
+          /* TODO */
+          break;
+       default:
+          DebugMessage(M64MSG_WARNING, "Unknown plugged pak %d", (int)pak);
     }
 
-    cmd[0x25] = pak_data_crc(&cmd[5]);
+    cmd[0x25] = pak_data_crc(data);
 }
 
 int game_controller_is_connected(struct game_controller* cont, enum pak_type* pak)
