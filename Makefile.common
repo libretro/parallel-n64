@@ -76,6 +76,7 @@ SOURCES_C += \
 	$(CORE_DIR)/src/main/savestates.c \
 	$(CORE_DIR)/src/main/util.c \
 	$(CORE_DIR)/src/memory/m64p_memory.c \
+	$(CORE_DIR)/src/gb/gb_cart.c \
 	$(CORE_DIR)/src/si/n64_cic_nus_6105.c \
 	$(CORE_DIR)/src/si/pif.c \
 	$(CORE_DIR)/src/si/af_rtc.c \
@@ -84,6 +85,7 @@ SOURCES_C += \
 	$(CORE_DIR)/src/si/game_controller.c \
 	$(CORE_DIR)/src/si/mempak.c \
 	$(CORE_DIR)/src/si/rumblepak.c \
+	$(CORE_DIR)/src/si/transferpak.c \
 	$(CORE_DIR)/src/plugin/plugin.c \
 	$(CORE_DIR)/src/plugin/get_time_using_C_localtime.c \
 	$(CORE_DIR)/src/plugin/rumble_via_input_plugin.c \

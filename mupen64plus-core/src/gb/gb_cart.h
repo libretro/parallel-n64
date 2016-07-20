@@ -1,7 +1,7 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
- *   Mupen64plus - game_controller.h                                       *
+ *   Mupen64plus - gb_cart.h                                               *
  *   Mupen64Plus homepage: http://code.google.com/p/mupen64plus/           *
- *   Copyright (C) 2014 Bobby Smiles                                       *
+ *   Copyright (C) 2015 Bobby Smiles                                       *
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
  *   it under the terms of the GNU General Public License as published by  *
@@ -19,39 +19,32 @@
  *   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.          *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef M64P_SI_GAME_CONTROLLER_H
-#define M64P_SI_GAME_CONTROLLER_H
+#ifndef M64P_GB_GB_CART_H
+#define M64P_GB_GB_CART_H
 
+#include <stddef.h>
 #include <stdint.h>
 
-#include "mempak.h"
-#include "rumblepak.h"
-#include "transferpak.h"
-
-enum pak_type
+struct gb_cart
 {
-    PAK_NONE,
-    PAK_MEM,
-    PAK_RUMBLE,
-    PAK_TRANSFER
+    uint8_t* rom;
+    uint8_t* ram;
+
+    size_t rom_size;
+    size_t ram_size;
+
+    unsigned int rom_bank;
+    unsigned int ram_bank;
+    unsigned int has_rtc;
+
+    int (*read_gb_cart)(struct gb_cart* gb_cart, uint16_t address, uint8_t* data);
+    int (*write_gb_cart)(struct gb_cart* gb_cart, uint16_t address, const uint8_t* data);
 };
 
-struct game_controller
-{
-    /* external controller input */
-    void* user_data;
-    int (*is_connected)(void*,enum pak_type*);
-    uint32_t (*get_input)(void*);
+int init_gb_cart(struct gb_cart* gb_cart, uint8_t *rom, size_t rom_size);
+void release_gb_cart(struct gb_cart* gb_cart);
 
-    struct mempak mempak;
-    struct rumblepak rumblepak;
-    struct transferpak transferpak;
-};
-
-int game_controller_is_connected(struct game_controller* cont, enum pak_type* pak);
-uint32_t game_controller_get_input(struct game_controller* cont);
-
-void process_controller_command(struct game_controller* cont, uint8_t* cmd);
-void read_controller(struct game_controller* cont, uint8_t* cmd);
+int read_gb_cart(struct gb_cart* gb_cart, uint16_t address, uint8_t* data);
+int write_gb_cart(struct gb_cart* gb_cart, uint16_t address, const uint8_t* data);
 
 #endif

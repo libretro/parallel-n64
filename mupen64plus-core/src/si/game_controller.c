@@ -137,7 +137,7 @@ static void controller_read_pak_command(struct game_controller* cont, uint8_t* c
           rumblepak_read_command(&cont->rumblepak, address, data);
           break;
        case PAK_TRANSFER:
-          /* TODO */
+          transferpak_read_command(&cont->transferpak, address, data);
           break;
        default:
           DebugMessage(M64MSG_WARNING, "Unknown plugged pak %d", (int)pak);
@@ -174,7 +174,7 @@ static void controller_write_pak_command(struct game_controller* cont, uint8_t* 
           rumblepak_write_command(&cont->rumblepak, address, data);
           break;
        case PAK_TRANSFER:
-          /* TODO */
+          transferpak_write_command(&cont->transferpak, address, data);
           break;
        default:
           DebugMessage(M64MSG_WARNING, "Unknown plugged pak %d", (int)pak);

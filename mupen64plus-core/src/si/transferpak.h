@@ -1,5 +1,5 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
- *   Mupen64plus - game_controller.h                                       *
+ *   Mupen64plus - transferpak.h                                           *
  *   Mupen64Plus homepage: http://code.google.com/p/mupen64plus/           *
  *   Copyright (C) 2014 Bobby Smiles                                       *
  *                                                                         *
@@ -19,39 +19,34 @@
  *   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.          *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef M64P_SI_GAME_CONTROLLER_H
-#define M64P_SI_GAME_CONTROLLER_H
+#ifndef M64P_SI_TRANSFERPAK_H
+#define M64P_SI_TRANSFERPAK_H
 
 #include <stdint.h>
 
-#include "mempak.h"
-#include "rumblepak.h"
-#include "transferpak.h"
+#include "gb/gb_cart.h"
 
-enum pak_type
+enum cart_access_mode
 {
-    PAK_NONE,
-    PAK_MEM,
-    PAK_RUMBLE,
-    PAK_TRANSFER
+    CART_NOT_INSERTED = 0x40,
+    CART_ACCESS_MODE_0 = 0x80,
+    CART_ACCESS_MODE_1 = 0x89
 };
 
-struct game_controller
+struct transferpak
 {
-    /* external controller input */
-    void* user_data;
-    int (*is_connected)(void*,enum pak_type*);
-    uint32_t (*get_input)(void*);
+    unsigned int enabled;
+    unsigned int bank;
+    unsigned int access_mode;
+    unsigned int access_mode_changed;
 
-    struct mempak mempak;
-    struct rumblepak rumblepak;
-    struct transferpak transferpak;
+    struct gb_cart gb_cart;
 };
 
-int game_controller_is_connected(struct game_controller* cont, enum pak_type* pak);
-uint32_t game_controller_get_input(struct game_controller* cont);
+int init_transferpak(struct transferpak* tpk, uint8_t *rom, size_t rom_size);
+void release_transferpak(struct transferpak* tpk);
 
-void process_controller_command(struct game_controller* cont, uint8_t* cmd);
-void read_controller(struct game_controller* cont, uint8_t* cmd);
+void transferpak_read_command(struct transferpak* tpk, uint16_t address, uint8_t* data);
+void transferpak_write_command(struct transferpak* tpk, uint16_t address, const uint8_t* data);
 
 #endif
