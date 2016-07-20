@@ -8268,197 +8268,6 @@ static void tri_texshade_z(uint32_t w1, uint32_t w2)
    draw_triangle(w1, w2, SHADE_YES, TEXTURE_YES, ZBUFFER_YES, &stw_info);
 }
 
-static void tex_rect(uint32_t w1, uint32_t w2)
-{
-    int s, t, dsdx, dtdy;
-    int xlint, xhint;
-
-    int ycur, ylfar;
-    int yllimit, yhlimit;
-    int invaly;
-    int curcross;
-    int allover, allunder, curover, curunder;
-    int allinval;
-    register int j, k;
-    i32 stwz[4];
-    i32 d_stwz_dx[4];
-    i32 d_stwz_de[4];
-    i32 d_stwz_dy[4];
-    i32 d_stwz_dxh[4];
-    i32 xleft, xright;
-    uint8_t xfrac;
-    const i32 clipxlshift = __clip.xl << 1;
-    const i32 clipxhshift = __clip.xh << 1;
-    uint32_t w3 = cmd_data[cmd_cur + 1].UW32[0]; /* Load RDP Command Word 3 */
-    uint32_t w4 = cmd_data[cmd_cur + 1].UW32[1]; /* Load RDP Command Word 4 */
-
-    int xl      = (w1 & 0x00FFF000) >> 12;
-    int yl      = (w1 & 0x00000FFF) >>  0;
-    int tilenum = (w2 & 0x07000000) >> 24;
-    int xh      = (w2 & 0x00FFF000) >> 12;
-    int yh      = (w2 & 0x00000FFF) >>  0;
-
-    yl |= (other_modes.cycle_type & 2) ? 3 : 0; /* FILL OR COPY */
-
-    s    = (w3 & 0xFFFF0000) >> 16; /* Load S Sign Portion */
-    t    = (w3 & 0x0000FFFF) >>  0; /* Load T SIgn Portion */
-    dsdx = (w4 & 0xFFFF0000) >> 16; /* Load DsDx Sign Portion */
-    dtdy = (w4 & 0x0000FFFF) >>  0; /* Load DsDy Sign Portion */
-    
-    dsdx = SIGN16(dsdx);
-    dtdy = SIGN16(dtdy);
-
-    xlint = (unsigned)(xl) >> 2;
-    xhint = (unsigned)(xh) >> 2;
-
- /* edgewalker for primitives */
-    max_level = 0;
-    xl = (xlint << 16) | (xl & 3)<<14;
-    xl = SIGN(xl, 30);
-    xh = (xhint << 16) | (xh & 3)<<14;
-    xh = SIGN(xh, 30);
-
-    stwz[0] = s << 16;
-    stwz[1] = t << 16;
-    d_stwz_dx[0] = dsdx << 11;
-    d_stwz_dx[1] = 0x00000000;
-    d_stwz_de[0] = 0x00000000;
-    d_stwz_de[1] = dtdy << 11;
-    d_stwz_dy[0] = 0x00000000;
-    d_stwz_dy[1] = dtdy << 11;
-
-    setzero_si128(spans_d_rgba);
-    spans_d_stwz[0] = d_stwz_dx[0] & ~0x0000001F;
-    spans_d_stwz[1] = d_stwz_dx[1] & ~0x0000001F;
-    spans_d_stwz[2] = 0x00000000;
-    spans_d_stwz[3] = 0x00000000;
-
-    setzero_si128(spans_d_rgba_dy);
-    spans_d_stwz_dy[0] = d_stwz_dy[0] & ~0x00007FFF;
-    spans_d_stwz_dy[1] = d_stwz_dy[1] & ~0x00007FFF;
-    spans_d_stwz_dy[2] = 0x00000000;
-    spans_d_stwz_dy[3] = 0x00000000;
-
-    setzero_si128(spans_cd_rgba);
-    spans_cdz = 0x00000000;
-    spans_dzpix = normalize_dzpix(0);
-
-    d_stwz_dxh[1] = 0x00000000;
-    if (other_modes.cycle_type == CYCLE_TYPE_COPY)
-        d_stwz_dxh[0] = 0x00000000;
-    else
-        d_stwz_dxh[0] = (d_stwz_dx[0] >> 8) & ~0x00000001;
-
-    invaly = 1;
-    yllimit = (yl < __clip.yl) ? yl : __clip.yl;
-
-    ycur = yh & ~3;
-    ylfar = yllimit | 3;
-    if ((yl >> 2) > (ylfar >> 2))
-        ylfar += 4;
-    else if ((yllimit >> 2) >= 0 && (yllimit >> 2) < 1023)
-        span[(yllimit >> 2) + 1].validline = 0;
-
-    yhlimit = (yh >= __clip.yh) ? yh : __clip.yh;
-
-    xleft = xl & ~0x00000001;
-    xright = xh & ~0x00000001;
-    xfrac = (xright >> 8) & 0xFF;
-
-    stwz[0] &= ~0x000001FF;
-    stwz[1] &= ~0x000001FF;
-    allover = 1;
-    allunder = 1;
-    curover = 0;
-    curunder = 0;
-    allinval = 1;
-    for (k = ycur; k <= ylfar; k++)
-    {
-        static int maxxmx, minxhx;
-        int xrsc, xlsc, stickybit;
-        const int yhclose = yhlimit & ~3;
-        const int spix = k & 3;
-
-        if (k < yhclose)
-            { /* branch */ }
-        else
-        {
-            invaly = (uint32_t)(k - yhlimit)>>31 | (uint32_t)~(k - yllimit)>>31;
-            j = k >> 2;
-            if (spix == 0)
-            {
-                maxxmx = 0x000;
-                minxhx = 0xFFF;
-                allover = allunder = 1;
-                allinval = 1;
-            }
-
-            stickybit = (xright & 0x00003FFF) - 1; /* xright/2 & 0x1FFF */
-            stickybit = (uint32_t)~(stickybit) >> 31; /* (stickybit >= 0) */
-            xrsc = (xright >> 13)&0x1FFE | stickybit;
-            curunder = !!(xright & 0x08000000);
-            curunder = curunder | (uint32_t)(xrsc - clipxhshift)>>31;
-            xrsc = curunder ? clipxhshift : (xright>>13)&0x3FFE | stickybit;
-            curover  = !!(xrsc & 0x00002000);
-            xrsc = xrsc & 0x1FFF;
-            curover |= (uint32_t)~(xrsc - clipxlshift) >> 31;
-            xrsc = curover ? clipxlshift : xrsc;
-            span[j].majorx[spix] = xrsc & 0x1FFF;
-            allover &= curover;
-            allunder &= curunder;
-
-            stickybit = (xleft & 0x00003FFF) - 1; /* xleft/2 & 0x1FFF */
-            stickybit = (uint32_t)~(stickybit) >> 31; /* (stickybit >= 0) */
-            xlsc = (xleft >> 13)&0x1FFE | stickybit;
-            curunder = !!(xleft & 0x08000000);
-            curunder = curunder | (uint32_t)(xlsc - clipxhshift)>>31;
-            xlsc = curunder ? clipxhshift : (xleft>>13)&0x3FFE | stickybit;
-            curover  = !!(xlsc & 0x00002000);
-            xlsc &= 0x1FFF;
-            curover |= (uint32_t)~(xlsc - clipxlshift) >> 31;
-            xlsc = curover ? clipxlshift : xlsc;
-            span[j].minorx[spix] = xlsc & 0x1FFF;
-            allover &= curover;
-            allunder &= curunder;
-
-            curcross = ((xleft&0x0FFFC000 ^ 0x08000000)
-                     < (xright&0x0FFFC000 ^ 0x08000000));
-            invaly |= curcross;
-            span[j].invalyscan[spix] = invaly;
-            allinval &= invaly;
-            if (invaly != 0)
-                { /* branch */ }
-            else
-            {
-                xlsc = (xlsc >> 3) & 0xFFF;
-                xrsc = (xrsc >> 3) & 0xFFF;
-                maxxmx = (xlsc > maxxmx) ? xlsc : maxxmx;
-                minxhx = (xrsc < minxhx) ? xrsc : minxhx;
-            }
-
-            if (spix == 0)
-            {
-                span[j].unscrx = xright >> 16;
-                setzero_si128(span[j].rgba);
-                span[j].stwz[0] = (stwz[0] - xfrac*d_stwz_dxh[0]) & ~0x000003FF;
-                span[j].stwz[1] = stwz[1];
-                span[j].stwz[2] = 0x00000000;
-                span[j].stwz[3] = 0x00000000;
-            }
-            else if (spix == 3)
-            {
-                const int invalidline = (sckeepodd ^ j) & scfield
-                                      | (allinval | allover | allunder);
-                span[j].lx = maxxmx;
-                span[j].rx = minxhx;
-                span[j].validline = invalidline ^ 1;
-             /* stwz[0] = (stwz[0] + 0x00000000) & ~0x000001FF; */
-                stwz[1] = (stwz[1] + d_stwz_de[1]) & ~0x000003FF;
-            }
-        }
-    }
-    render_spans(yhlimit >> 2, yllimit >> 2, tilenum, 1);
-}
 
 static NOINLINE void draw_texture_rectangle(
     const int rect_flip, int tilenum,
@@ -8652,7 +8461,7 @@ static NOINLINE void draw_texture_rectangle(
     render_spans(yhlimit >> 2, yllimit >> 2, tilenum, 1);
 }
 
-static void tex_rect_flip(uint32_t w1, uint32_t w2)
+static void tex_rect(uint32_t w1, uint32_t w2)
 {
     int tilenum;
     int16_t dsdx, dtdy;
@@ -8682,6 +8491,37 @@ static void tex_rect_flip(uint32_t w1, uint32_t w2)
         dsdx, dtdy
     );
     return;
+}
+
+static void tex_rect_flip(uint32_t w1, uint32_t w2)
+{
+    int tilenum;
+    int16_t dsdx, dtdy;
+    int32_t xl, yl, xh, yh;
+    int32_t s, t;
+
+    xl      = (cmd_data[cmd_cur + 0].UW32[0] & 0x00FFF000) >> 12;
+    yl      = (cmd_data[cmd_cur + 0].UW32[0] & 0x00000FFF) >>  0;
+    tilenum = (cmd_data[cmd_cur + 0].UW32[1] & 0x07000000) >> 24;
+    xh      = (cmd_data[cmd_cur + 0].UW32[1] & 0x00FFF000) >> 12;
+    yh      = (cmd_data[cmd_cur + 0].UW32[1] & 0x00000FFF) >>  0;
+
+    yl |= (other_modes.cycle_type & 2) ? 3 : 0; /* FILL OR COPY */
+
+    s    = (cmd_data[cmd_cur + 1].UW32[0] & 0xFFFF0000) >> 16;
+    t    = (cmd_data[cmd_cur + 1].UW32[0] & 0x0000FFFF) >>  0;
+    dsdx = (cmd_data[cmd_cur + 1].UW32[1] & 0xFFFF0000) >> 16;
+    dtdy = (cmd_data[cmd_cur + 1].UW32[1] & 0x0000FFFF) >>  0;
+    
+    dsdx = SIGN16(dsdx);
+    dtdy = SIGN16(dtdy);
+
+    draw_texture_rectangle(
+        TEXTURE_FLIP_YES, tilenum,
+        xl, yl, xh, yh,
+        s, t,
+        dsdx, dtdy
+    );
 }
 
 static void sync_load(uint32_t w1, uint32_t w2)
