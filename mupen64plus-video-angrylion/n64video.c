@@ -5139,8 +5139,8 @@ static void render_spans_fill_8(int start, int end, int flip)
       for (j = 0, fb = fb_address + curpixel; j <= length; j++, fb += xinc)
       {
          uint32_t val = (fill_color >> (((fb & 3) ^ 3) << 3)) & 0xff;
-         uint8_t hval = (val & 1);
-         hval += hval <<1; /* hval = (val & 1) * 3; # lea(%hval, %hval, 2), %hval */
+	      uint8_t hval = ((val & 1) << 1) | (val & 1);
+         PAIRWRITE8(fb, val, hval);
       }
 
       if (slowkillbits && length >= 0) /* unlikely */
