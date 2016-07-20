@@ -212,6 +212,11 @@ typedef struct {
 } OTHER_MODES;
 
 enum {
+   TEXTURE_FLIP_NO = 0,
+   TEXTURE_FLIP_YES
+};
+
+enum {
     PIXEL_SIZE_4BIT = 0,
     PIXEL_SIZE_8BIT,
     PIXEL_SIZE_16BIT,

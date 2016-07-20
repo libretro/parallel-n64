@@ -8503,7 +8503,7 @@ static NOINLINE void draw_texture_rectangle(
 
     setzero_si64(d_stwz_dx);
     setzero_si64(d_stwz_dy);
-    if (rect_flip != 0) /* TEXTURE_FLIP_NO */
+    if (rect_flip != TEXTURE_FLIP_NO)
     {
         d_stwz_dx[1] = (i32)dtdy << 11;
         d_stwz_dy[0] = (i32)dsdx << 11;
@@ -8676,7 +8676,7 @@ static void tex_rect_flip(uint32_t w1, uint32_t w2)
     dtdy = SIGN16(dtdy);
 
     draw_texture_rectangle(
-        0, tilenum,
+        TEXTURE_FLIP_NO, tilenum,
         xl, yl, xh, yh,
         s, t,
         dsdx, dtdy
