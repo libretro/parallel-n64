@@ -4231,13 +4231,12 @@ static STRICTINLINE uint32_t leftcvghex(uint32_t x, uint32_t fmask)
 
 static STRICTINLINE void compute_cvg_flip(int32_t scanline)
 {
-   int32_t purgestart, purgeend;
-   int i, length, fmask, maskshift, fmaskshifted;
+   int i, fmask, maskshift, fmaskshifted;
    int32_t minorcur, majorcur, minorcurint, majorcurint, samecvg;
+   int32_t purgestart = span[scanline].rx;
+   int32_t   purgeend = span[scanline].lx;
+   int         length = purgeend - purgestart;
 
-   purgestart = span[scanline].rx;
-   purgeend = span[scanline].lx;
-   length = purgeend - purgestart;
    if (length >= 0)
    {
 
@@ -4303,13 +4302,11 @@ static STRICTINLINE void compute_cvg_flip(int32_t scanline)
 
 static STRICTINLINE void compute_cvg_noflip(int32_t scanline)
 {
-	int32_t purgestart, purgeend;
-	int i, length, fmask, maskshift, fmaskshifted;
+	int i, fmask, maskshift, fmaskshifted;
 	int32_t minorcur, majorcur, minorcurint, majorcurint, samecvg;
-	
-	purgestart = span[scanline].lx;
-	purgeend = span[scanline].rx;
-	length = purgeend - purgestart;
+	int32_t purgestart = span[scanline].lx;
+	int32_t purgeend   = span[scanline].rx;
+	int         length = purgeend - purgestart;
 
 	if (length >= 0)
 	{
@@ -4398,15 +4395,13 @@ static STRICTINLINE uint32_t dz_decompress(uint32_t dz_compressed)
 
 static uint32_t z_compare(uint32_t zcurpixel, uint32_t sz, uint16_t dzpix, int dzpixenc, uint32_t* blend_en, uint32_t* prewrap, uint32_t* curpixel_cvg, uint32_t curpixel_memcvg)
 {
-    int cvgcoeff = 0;
-    uint32_t dzenc = 0;
-    
     int32_t diff;
-    uint32_t nearer, max, infront;
-    int force_coplanar = 0;
-
-    uint32_t oz, dzmem, zval, hval;
     int32_t rawdzmem;
+    uint32_t oz, dzmem, zval, hval;
+    uint32_t nearer, max, infront;
+    int cvgcoeff       = 0;
+    uint32_t dzenc     = 0;
+    int force_coplanar = 0;
 
     sz &= 0x3ffff;
     if (other_modes.z_compare_en)
