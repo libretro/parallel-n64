@@ -643,7 +643,9 @@ void Frontend::noop(const uint32_t *)
 
 void Frontend::invalid(const uint32_t *)
 {
+#ifndef ANDROID
 	abort();
+#endif
 }
 
 const Frontend::rdp_func_t Frontend::rdp_commands[64] = {
