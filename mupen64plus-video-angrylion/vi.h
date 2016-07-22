@@ -43,8 +43,6 @@ extern uint32_t idxlim32;
 extern uint8_t hidden_bits[0x400000];
 
 extern int overlay;
-extern int skip;
-extern int step;
 
 extern onetime onetimewarnings;
 extern uint32_t gamma_table[0x100];
