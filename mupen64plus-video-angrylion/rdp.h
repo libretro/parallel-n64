@@ -28,16 +28,16 @@ INLINE extern __m128i mm_mullo_epi32_seh(__m128i dest, __m128i src);
 
 #else
 #define setzero_si128(buf) \
-    { ((i64 *)buf)[0] = ((i64 *)buf)[1] = 0x0000000000000000; }
+    { ((int64_t *)buf)[0] = ((in64_t *)buf)[1] = 0x0000000000000000; }
 #endif
 
 #define setzero_si64(buffer) { \
-    *(i64 *)(buffer) = 0x0000000000000000; \
+    *(int64_t *)(buffer) = 0x0000000000000000; \
 }
 
 #if defined(_AMD64_) || defined(_IA64_) || defined(__x86_64__)
 #define BUFFERFIFO(word, base, offset) { \
-    *(i64 *)&cmd_data[word] = *(i64 *)((base) + 8*(offset)); \
+    *(int64_t *)&cmd_data[word] = *(int64_t *)((base) + 8*(offset)); \
 }
 #else
 /*
@@ -45,21 +45,9 @@ INLINE extern __m128i mm_mullo_epi32_seh(__m128i dest, __m128i src);
  * specifications (reading unions per 32 bits when 64 bits were just written)
  */
 #define BUFFERFIFO(word, base, offset) { \
-    cmd_data[word].W32[0] = *(i32 *)((base) + 8*(offset) + 0); \
-    cmd_data[word].W32[1] = *(i32 *)((base) + 8*(offset) + 4); \
+    cmd_data[word].W32[0] = *(int32_t *)((base) + 8*(offset) + 0); \
+    cmd_data[word].W32[1] = *(int32_t *)((base) + 8*(offset) + 4); \
 }
-#endif
-
-#ifdef _MSC_VER
-typedef __int8              i8;
-typedef __int16             i16;
-typedef __int32             i32;
-typedef __int64             i64;
-#else
-typedef char                    i8;
-typedef short                   i16;
-typedef int                     i32;
-typedef long long               i64;
 #endif
 
 #ifdef USE_SSE_SUPPORT
@@ -106,13 +94,13 @@ typedef int*        v32;
 #define f_BYTE_L(B) (!!(B&0xFF)*0 | !!(B&0xF0)*4 | !!(B&0xCC)*2 | !!(B&0xAA))
 
 typedef union {
-    i64 W;
+    int64_t W;
     int64_t SW;
     uint64_t UW;
-    i32 W32[2];
+    int32_t W32[2];
     int32_t SW32[2];
     uint32_t UW32[2];
-    i16 W16[4];
+    int16_t W16[4];
     int16_t SW16[4];
     uint16_t UW16[4];
     unsigned char B[8];

@@ -184,15 +184,15 @@ int32_t iseed = 1;
 static SPAN span[1024];
 uint8_t cvgbuf[1024];
 
-static i32 spans_d_rgba[4];
-static i32 spans_d_stwz[4];
+static int32_t spans_d_rgba[4];
+static int32_t spans_d_stwz[4];
 static uint16_t spans_dzpix;
 
-static i32 spans_d_rgba_dy[4];
-static i32 spans_cd_rgba[4];
+static int32_t spans_d_rgba_dy[4];
+static int32_t spans_cd_rgba[4];
 static int spans_cdz;
 
-static i32 spans_d_stwz_dy[4];
+static int32_t spans_d_stwz_dy[4];
 
 typedef struct
 {
@@ -7838,28 +7838,28 @@ struct stepwalker_info
 {
    int base;
 
-   i32 rgba[4]; /* RGBA color components */
-   i32 d_rgba_dx[4]; /* RGBA delda per x-coordinate delta */
-   i32 d_rgba_de[4]; /* RGBA delta along the edge */
-   i32 d_rgba_dy[4]; /* RGBA delta per y-coordinate delta */
-   i16 rgba_int[4], rgba_frac[4];
-   i16 d_rgba_dx_int[4], d_rgba_dx_frac[4];
-   i16 d_rgba_de_int[4], d_rgba_de_frac[4];
-   i16 d_rgba_dy_int[4], d_rgba_dy_frac[4];
+   int32_t rgba[4]; /* RGBA color components */
+   int32_t d_rgba_dx[4]; /* RGBA delda per x-coordinate delta */
+   int32_t d_rgba_de[4]; /* RGBA delta along the edge */
+   int32_t d_rgba_dy[4]; /* RGBA delta per y-coordinate delta */
+   int16_t rgba_int[4], rgba_frac[4];
+   int16_t d_rgba_dx_int[4], d_rgba_dx_frac[4];
+   int16_t d_rgba_de_int[4], d_rgba_de_frac[4];
+   int16_t d_rgba_dy_int[4], d_rgba_dy_frac[4];
 
-   i32 stwz[4];
-   i32 d_stwz_dx[4];
-   i32 d_stwz_de[4];
-   i32 d_stwz_dy[4];
-   i16 stwz_int[4], stwz_frac[4];
-   i16 d_stwz_dx_int[4], d_stwz_dx_frac[4];
-   i16 d_stwz_de_int[4], d_stwz_de_frac[4];
-   i16 d_stwz_dy_int[4], d_stwz_dy_frac[4];
+   int32_t stwz[4];
+   int32_t d_stwz_dx[4];
+   int32_t d_stwz_de[4];
+   int32_t d_stwz_dy[4];
+   int16_t stwz_int[4], stwz_frac[4];
+   int16_t d_stwz_dx_int[4], d_stwz_dx_frac[4];
+   int16_t d_stwz_de_int[4], d_stwz_de_frac[4];
+   int16_t d_stwz_dy_int[4], d_stwz_dy_frac[4];
 
-   i32 d_rgba_dxh[4];
-   i32 d_stwz_dxh[4];
-   i32 d_rgba_diff[4], d_stwz_diff[4];
-   i32 xlr[2], xlr_inc[2];
+   int32_t d_rgba_dxh[4];
+   int32_t d_stwz_dxh[4];
+   int32_t d_rgba_diff[4], d_stwz_diff[4];
+   int32_t xlr[2], xlr_inc[2];
    uint8_t xfrac;
 #ifdef USE_SSE_SUPPORT
    __m128i xmm_d_rgba_de, xmm_d_stwz_de;
@@ -7870,7 +7870,7 @@ static int cmd_cur;
 static int cmd_ptr; /* for 64-bit elements, always <= +0x7FFF */
 
 /* static DP_FIFO cmd_fifo; */
-static DP_FIFO cmd_data[0x0003FFFF/sizeof(i64) + 1];
+static DP_FIFO cmd_data[0x0003FFFF/sizeof(int64_t) + 1];
 
 static void invalid(uint32_t w1, uint32_t w2);
 static void noop(uint32_t w1, uint32_t w2);
@@ -8072,8 +8072,8 @@ void process_RDP_list(void)
     length = DP_END - DP_CURRENT;
     if (length <= 0)
         return;
-    length = (unsigned)(length) / sizeof(i64);
-    if ((cmd_ptr + length) & ~(0x0003FFFF / sizeof(i64)))
+    length = (unsigned)(length) / sizeof(int64_t);
+    if ((cmd_ptr + length) & ~(0x0003FFFF / sizeof(int64_t)))
     {
         DisplayError("ProcessRDPList\nOut of command cache memory.");
         return;
@@ -8090,13 +8090,13 @@ void process_RDP_list(void)
 #endif
 
     --length; /* filling in cmd data in backwards order for performance */
-    offset = (DP_END - sizeof(i64)) / sizeof(i64);
+    offset = (DP_END - sizeof(int64_t)) / sizeof(int64_t);
     if (*GET_GFX_INFO(DPC_STATUS_REG) & DP_STATUS_XBUS_DMA)
         do
         {
-            offset &= 0xFFF / sizeof(i64);
+            offset &= 0xFFF / sizeof(int64_t);
             BUFFERFIFO(cmd_ptr + length, SP_DMEM, offset);
-            offset -= 0x001 * sizeof(i8);
+            offset -= 0x001 * sizeof(int8_t);
         } while (--length >= 0);
     else
         if (DP_END > plim || DP_CURRENT > plim)
@@ -8108,12 +8108,12 @@ void process_RDP_list(void)
         {
             do
             {
-                offset &= 0xFFFFFF / sizeof(i64);
+                offset &= 0xFFFFFF / sizeof(int64_t);
                 BUFFERFIFO(cmd_ptr + length, DRAM, offset);
-                offset -= 0x000001 * sizeof(i8);
+                offset -= 0x000001 * sizeof(int8_t);
             } while (--length >= 0);
         }
-    cmd_ptr += (DP_END - DP_CURRENT) / sizeof(i64); /* += length */
+    cmd_ptr += (DP_END - DP_CURRENT) / sizeof(int64_t); /* += length */
     if (rdp_pipeline_crashed != 0)
         goto exit_a;
 
@@ -8122,7 +8122,7 @@ void process_RDP_list(void)
         uint32_t w1    = cmd_data[cmd_cur + 0].UW32[0];
         uint32_t w2    = cmd_data[cmd_cur + 0].UW32[1];
         int command    = (w1 >> 24) % 64;
-        int cmd_length = sizeof(i64)/sizeof(i64) * DP_CMD_LEN_W[command];
+        int cmd_length = sizeof(int64_t)/sizeof(int64_t) * DP_CMD_LEN_W[command];
 #ifdef TRACE_DP_COMMANDS
         ++cmd_count[command];
 #endif
@@ -8196,8 +8196,8 @@ static NOINLINE void draw_triangle(uint32_t w1, uint32_t w2,
     int allover, allunder, curover, curunder;
     int allinval;
     int j, k;
-    const i32 clipxlshift = __clip.xl << 1;
-    const i32 clipxhshift = __clip.xh << 1;
+    const int32_t clipxlshift = __clip.xl << 1;
+    const int32_t clipxhshift = __clip.xh << 1;
 
     stepwalker_info_init(stw_info);
 
@@ -8408,8 +8408,8 @@ no_read_zbuffer_coefficients:
     }
     else
     {
-        i32 d_rgba_deh[4], d_stwz_deh[4];
-        i32 d_rgba_dyh[4], d_stwz_dyh[4];
+        int32_t d_rgba_deh[4], d_stwz_deh[4];
+        int32_t d_rgba_dyh[4], d_stwz_dyh[4];
 
         d_rgba_deh[0]             = stw_info->d_rgba_de[0] & ~0x000001FF;
         d_rgba_deh[1]             = stw_info->d_rgba_de[1] & ~0x000001FF;
@@ -8720,17 +8720,17 @@ static void tri_texshade_z(uint32_t w1, uint32_t w2)
 static NOINLINE void draw_texture_rectangle(
     const int rect_flip, int tilenum,
     int32_t xl, int32_t yl, int32_t xh, int32_t yh,
-    i32 s, i32 t, int16_t dsdx, int16_t dtdy
+    int32_t s, int32_t t, int16_t dsdx, int16_t dtdy
 )
 {
     int32_t xm, ym;
     int32_t yllimit, yhlimit;
 
-    i32 stwz[4];
-    i32 d_stwz_dx[2], d_stwz_dy[2];
+    int32_t stwz[4];
+    int32_t d_stwz_dx[2], d_stwz_dy[2];
 
-    i32 d_stwz_dxh[4];
-    i32 xleft, xright;
+    int32_t d_stwz_dxh[4];
+    int32_t xleft, xright;
     uint8_t xfrac;
 
     int maxxmx, minxhx;
@@ -8740,8 +8740,8 @@ static NOINLINE void draw_texture_rectangle(
     int ycur, ylfar;
     int invaly;
     int j, k;
-    const i32 clipxlshift = __clip.xl << 1;
-    const i32 clipxhshift = __clip.xh << 1;
+    const int32_t clipxlshift = __clip.xl << 1;
+    const int32_t clipxhshift = __clip.xh << 1;
 
     max_level = 0;
     maxxmx = 0;
@@ -8762,13 +8762,13 @@ static NOINLINE void draw_texture_rectangle(
     setzero_si64(d_stwz_dy);
     if (rect_flip != TEXTURE_FLIP_NO)
     {
-        d_stwz_dx[1] = (i32)dtdy << 11;
-        d_stwz_dy[0] = (i32)dsdx << 11;
+        d_stwz_dx[1] = (int32_t)dtdy << 11;
+        d_stwz_dy[0] = (int32_t)dsdx << 11;
     }
     else
     {
-        d_stwz_dx[0] = (i32)dsdx << 11;
-        d_stwz_dy[1] = (i32)dtdy << 11;
+        d_stwz_dx[0] = (int32_t)dsdx << 11;
+        d_stwz_dy[1] = (int32_t)dtdy << 11;
     }
 
     setzero_si128(spans_d_rgba);
@@ -9214,8 +9214,8 @@ static void fill_rect(uint32_t w1, uint32_t w2)
     int allover, allunder, curover, curunder;
     int allinval;
     int j, k;
-    const i32 clipxlshift = __clip.xl << 1;
-    const i32 clipxhshift = __clip.xh << 1;
+    const int32_t clipxlshift = __clip.xl << 1;
+    const int32_t clipxhshift = __clip.xh << 1;
 
     int xl = (w1 & 0x00FFF000) >> (44 - 32); /* Load XL Integer Portion */
     int yl = (w1 & 0x00000FFF) >> (32 - 32); /* Load YL Integer Portion */
@@ -9264,7 +9264,7 @@ static void fill_rect(uint32_t w1, uint32_t w2)
     {
         static int maxxmx, minxhx;
         int xrsc, xlsc, stickybit;
-        const i32 xleft = xl & ~0x00000001, xright = xh & ~0x00000001;
+        const int32_t xleft = xl & ~0x00000001, xright = xh & ~0x00000001;
         const int yhclose = yhlimit & ~3;
         const int spix = k & 3;
 
