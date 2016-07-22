@@ -703,7 +703,7 @@ static INLINE void calculate_tile_derivs(uint32_t i)
 
 static INLINE void z_build_com_table(void)
 {
-   register int z;
+   int z;
    uint16_t altmem = 0;
 
    for (z = 0; z < 0x40000; z++)
@@ -1065,7 +1065,7 @@ static void precalculate_everything(void)
 
 void rdp_init(void)
 {
-    register int i;
+    int i;
 
     fbread1_ptr = fbread_func[0];
     fbread2_ptr = fbread2_func[0];
@@ -6769,25 +6769,20 @@ static void render_spans_fill_32(int start, int end, int flip)
 
 static void render_spans_fill(int start, int end, int flip)
 {
-   if (fb_size == PIXEL_SIZE_4BIT)
+   switch (fb_size)
    {
-      render_spans_fill_4(start, end, flip);
-      return;
-   }
-   else if (fb_size == PIXEL_SIZE_8BIT)
-   {
-      render_spans_fill_8(start, end, flip);
-      return;
-   }
-   else if (fb_size == PIXEL_SIZE_16BIT)
-   {
-      render_spans_fill_16(start, end, flip);
-      return;
-   }
-   else if (fb_size == PIXEL_SIZE_32BIT)
-   {
-      render_spans_fill_32(start, end, flip);
-      return;
+      case PIXEL_SIZE_4BIT:
+         render_spans_fill_4(start, end, flip);
+         break;
+      case PIXEL_SIZE_8BIT:
+         render_spans_fill_8(start, end, flip);
+         break;
+      case PIXEL_SIZE_16BIT:
+         render_spans_fill_16(start, end, flip);
+         break;
+      case PIXEL_SIZE_32BIT:
+         render_spans_fill_32(start, end, flip);
+         break;
    }
 }
 
@@ -6989,18 +6984,90 @@ static void render_spans_copy(int start, int end, int tilenum, int flip)
     }
 }
 
-static void deduce_derivatives(void);
+static void deduce_derivatives(void)
+{
+    int texel1_used_in_cc1 = 0, texel0_used_in_cc1 = 0, texel0_used_in_cc0 = 0, texel1_used_in_cc0 = 0;
+    int texels_in_cc0 = 0, texels_in_cc1 = 0;
+    int lod_frac_used_in_cc1 = 0, lod_frac_used_in_cc0 = 0;
+    int lodfracused = 0;
 
-void render_spans(
+    other_modes.f.partialreject_1cycle = (blender2b_a[0] == &COLOR_ALPHA(inv_pixel_color) && blender1b_a[0] == &COLOR_ALPHA(pixel_color));
+    other_modes.f.partialreject_2cycle = (blender2b_a[1] == &COLOR_ALPHA(inv_pixel_color) && blender1b_a[1] == &COLOR_ALPHA(pixel_color));
+
+    other_modes.f.special_bsel0 = (blender2b_a[0] == &COLOR_ALPHA(memory_color));
+    other_modes.f.special_bsel1 = (blender2b_a[1] == &COLOR_ALPHA(memory_color));
+
+    other_modes.f.realblendershiftersneeded = (other_modes.f.special_bsel0 && other_modes.cycle_type == CYCLE_TYPE_1) || (other_modes.f.special_bsel1 && other_modes.cycle_type == CYCLE_TYPE_2);
+    other_modes.f.interpixelblendershiftersneeded = (other_modes.f.special_bsel0 && other_modes.cycle_type == CYCLE_TYPE_2);
+
+    other_modes.f.rgb_alpha_dither = (other_modes.rgb_dither_sel << 2) | other_modes.alpha_dither_sel;
+
+    if ((combiner_rgbmul_r[1] == &lod_frac) || (combiner_alphamul[1] == &lod_frac))
+        lod_frac_used_in_cc1 = 1;
+    if ((combiner_rgbmul_r[0] == &lod_frac) || (combiner_alphamul[0] == &lod_frac))
+        lod_frac_used_in_cc0 = 1;
+
+    if (combiner_rgbmul_r[1] == &COLOR_RED(texel1_color) || combiner_rgbsub_a_r[1] == &COLOR_RED(texel1_color) || combiner_rgbsub_b_r[1] == &COLOR_RED(texel1_color) || combiner_rgbadd_r[1] == &COLOR_RED(texel1_color) ||
+        combiner_alphamul[1] == &COLOR_ALPHA(texel1_color) || combiner_alphasub_a[1] == &COLOR_ALPHA(texel1_color) || combiner_alphasub_b[1] == &COLOR_ALPHA(texel1_color) || combiner_alphaadd[1] == &COLOR_ALPHA(texel1_color) || 
+        combiner_rgbmul_r[1] == &COLOR_ALPHA(texel1_color))
+        texel1_used_in_cc1 = 1;
+    if (combiner_rgbmul_r[1] == &COLOR_RED(texel0_color) || combiner_rgbsub_a_r[1] == &COLOR_RED(texel0_color) || combiner_rgbsub_b_r[1] == &COLOR_RED(texel0_color) || combiner_rgbadd_r[1] == &COLOR_RED(texel0_color) || 
+        combiner_alphamul[1] == &COLOR_ALPHA(texel0_color) || combiner_alphasub_a[1] == &COLOR_ALPHA(texel0_color) || combiner_alphasub_b[1] == &COLOR_ALPHA(texel0_color) || combiner_alphaadd[1] == &COLOR_ALPHA(texel0_color) || 
+        combiner_rgbmul_r[1] == &COLOR_ALPHA(texel0_color))
+        texel0_used_in_cc1 = 1;
+    if (combiner_rgbmul_r[0] == &COLOR_RED(texel1_color) || combiner_rgbsub_a_r[0] == &COLOR_RED(texel1_color) || combiner_rgbsub_b_r[0] == &COLOR_RED(texel1_color) || combiner_rgbadd_r[0] == &COLOR_RED(texel1_color) || 
+        combiner_alphamul[0] == &COLOR_ALPHA(texel1_color) || combiner_alphasub_a[0] == &COLOR_ALPHA(texel1_color) || combiner_alphasub_b[0] == &COLOR_ALPHA(texel1_color) || combiner_alphaadd[0] == &COLOR_ALPHA(texel1_color) ||
+        combiner_rgbmul_r[0] == &COLOR_ALPHA(texel1_color))
+        texel1_used_in_cc0 = 1;
+    if (combiner_rgbmul_r[0] == &COLOR_RED(texel0_color) || combiner_rgbsub_a_r[0] == &COLOR_RED(texel0_color) || combiner_rgbsub_b_r[0] == &COLOR_RED(texel0_color) || combiner_rgbadd_r[0] == &COLOR_RED(texel0_color) || 
+        combiner_alphamul[0] == &COLOR_ALPHA(texel0_color) || combiner_alphasub_a[0] == &COLOR_ALPHA(texel0_color) || combiner_alphasub_b[0] == &COLOR_ALPHA(texel0_color) || combiner_alphaadd[0] == &COLOR_ALPHA(texel0_color) || 
+        combiner_rgbmul_r[0] == &COLOR_ALPHA(texel0_color))
+        texel0_used_in_cc0 = 1;
+    texels_in_cc0 = texel0_used_in_cc0 || texel1_used_in_cc0;
+    texels_in_cc1 = texel0_used_in_cc1 || texel1_used_in_cc1;    
+
+    
+    if (texel1_used_in_cc1)
+        render_spans_1cycle_ptr = render_spans_1cycle_func[2];
+    else if (texel0_used_in_cc1 || lod_frac_used_in_cc1)
+        render_spans_1cycle_ptr = render_spans_1cycle_func[1];
+    else
+        render_spans_1cycle_ptr = render_spans_1cycle_func[0];
+
+    if (texel1_used_in_cc1)
+        render_spans_2cycle_ptr = render_spans_2cycle_func[3];
+    else if (texel1_used_in_cc0 || texel0_used_in_cc1)
+        render_spans_2cycle_ptr = render_spans_2cycle_func[2];
+    else if (texel0_used_in_cc0 || lod_frac_used_in_cc0 || lod_frac_used_in_cc1)
+        render_spans_2cycle_ptr = render_spans_2cycle_func[1];
+    else
+        render_spans_2cycle_ptr = render_spans_2cycle_func[0];
+
+    if ((other_modes.cycle_type == CYCLE_TYPE_2 && (lod_frac_used_in_cc0 || lod_frac_used_in_cc1)) || \
+        (other_modes.cycle_type == CYCLE_TYPE_1 && lod_frac_used_in_cc1))
+        lodfracused = 1;
+
+    if ((other_modes.cycle_type == CYCLE_TYPE_1 && combiner_rgbsub_a_r[1] == &noise) || \
+        (other_modes.cycle_type == CYCLE_TYPE_2 && (combiner_rgbsub_a_r[0] == &noise || combiner_rgbsub_a_r[1] == &noise)) || \
+        other_modes.alpha_dither_sel == 2)
+        get_dither_noise_type = 0;
+    else if (other_modes.f.rgb_alpha_dither != 0xf)
+        get_dither_noise_type= 1;
+    else
+        get_dither_noise_type = 2;
+
+    other_modes.f.dolod = other_modes.tex_lod_en || lodfracused;
+}
+
+static void render_spans(
     int yhlimit, int yllimit, int tilenum, int flip)
 {
-    if (other_modes.f.stalederivs == 0)
-        { /* branch */ }
-    else
+    if (other_modes.f.stalederivs)
     {
         deduce_derivatives();
         other_modes.f.stalederivs = 0;
     }
+
     fbread1_ptr = fbread_func[fb_size];
     fbread2_ptr = fbread2_func[fb_size];
     fbwrite_ptr = fbwrite_func[fb_size];
@@ -7071,29 +7138,29 @@ static NOINLINE void loading_pipeline(
 
     switch (ti_size)
     {
-    case PIXEL_SIZE_4BIT:
-        rdp_pipeline_crashed = 1;
-        return;
-    case PIXEL_SIZE_8BIT:
-        tiadvance = 8;
-        spanadvance = 8;
-        break;
-    case PIXEL_SIZE_16BIT:
-        if (!ltlut)
-        {
-            tiadvance = 8;
-            spanadvance = 4;
-        }
-        else
-        {
-            tiadvance = 2;
-            spanadvance = 1;
-        }
-        break;
-    case PIXEL_SIZE_32BIT:
-        tiadvance = 8;
-        spanadvance = 2;
-        break;
+       case PIXEL_SIZE_4BIT:
+          rdp_pipeline_crashed = 1;
+          return;
+       case PIXEL_SIZE_8BIT:
+          tiadvance = 8;
+          spanadvance = 8;
+          break;
+       case PIXEL_SIZE_16BIT:
+          if (!ltlut)
+          {
+             tiadvance = 8;
+             spanadvance = 4;
+          }
+          else
+          {
+             tiadvance = 2;
+             spanadvance = 1;
+          }
+          break;
+       case PIXEL_SIZE_32BIT:
+          tiadvance = 8;
+          spanadvance = 2;
+          break;
     }
 
     for (i = start; i <= end; i++)
@@ -7412,80 +7479,6 @@ static void edgewalker_for_loads(int32_t* lewdata)
 static const char *const image_format[] = { "RGBA", "YUV", "CI", "IA", "I", "???", "???", "???" };
 static const char *const image_size[] = { "4-bit", "8-bit", "16-bit", "32-bit" };
 
-static void deduce_derivatives(void)
-{
-    int texel1_used_in_cc1 = 0, texel0_used_in_cc1 = 0, texel0_used_in_cc0 = 0, texel1_used_in_cc0 = 0;
-    int texels_in_cc0 = 0, texels_in_cc1 = 0;
-    int lod_frac_used_in_cc1 = 0, lod_frac_used_in_cc0 = 0;
-    int lodfracused = 0;
-
-    other_modes.f.partialreject_1cycle = (blender2b_a[0] == &COLOR_ALPHA(inv_pixel_color) && blender1b_a[0] == &COLOR_ALPHA(pixel_color));
-    other_modes.f.partialreject_2cycle = (blender2b_a[1] == &COLOR_ALPHA(inv_pixel_color) && blender1b_a[1] == &COLOR_ALPHA(pixel_color));
-
-    other_modes.f.special_bsel0 = (blender2b_a[0] == &COLOR_ALPHA(memory_color));
-    other_modes.f.special_bsel1 = (blender2b_a[1] == &COLOR_ALPHA(memory_color));
-
-    other_modes.f.realblendershiftersneeded = (other_modes.f.special_bsel0 && other_modes.cycle_type == CYCLE_TYPE_1) || (other_modes.f.special_bsel1 && other_modes.cycle_type == CYCLE_TYPE_2);
-    other_modes.f.interpixelblendershiftersneeded = (other_modes.f.special_bsel0 && other_modes.cycle_type == CYCLE_TYPE_2);
-
-    other_modes.f.rgb_alpha_dither = (other_modes.rgb_dither_sel << 2) | other_modes.alpha_dither_sel;
-
-    if ((combiner_rgbmul_r[1] == &lod_frac) || (combiner_alphamul[1] == &lod_frac))
-        lod_frac_used_in_cc1 = 1;
-    if ((combiner_rgbmul_r[0] == &lod_frac) || (combiner_alphamul[0] == &lod_frac))
-        lod_frac_used_in_cc0 = 1;
-
-    if (combiner_rgbmul_r[1] == &COLOR_RED(texel1_color) || combiner_rgbsub_a_r[1] == &COLOR_RED(texel1_color) || combiner_rgbsub_b_r[1] == &COLOR_RED(texel1_color) || combiner_rgbadd_r[1] == &COLOR_RED(texel1_color) ||
-        combiner_alphamul[1] == &COLOR_ALPHA(texel1_color) || combiner_alphasub_a[1] == &COLOR_ALPHA(texel1_color) || combiner_alphasub_b[1] == &COLOR_ALPHA(texel1_color) || combiner_alphaadd[1] == &COLOR_ALPHA(texel1_color) || 
-        combiner_rgbmul_r[1] == &COLOR_ALPHA(texel1_color))
-        texel1_used_in_cc1 = 1;
-    if (combiner_rgbmul_r[1] == &COLOR_RED(texel0_color) || combiner_rgbsub_a_r[1] == &COLOR_RED(texel0_color) || combiner_rgbsub_b_r[1] == &COLOR_RED(texel0_color) || combiner_rgbadd_r[1] == &COLOR_RED(texel0_color) || 
-        combiner_alphamul[1] == &COLOR_ALPHA(texel0_color) || combiner_alphasub_a[1] == &COLOR_ALPHA(texel0_color) || combiner_alphasub_b[1] == &COLOR_ALPHA(texel0_color) || combiner_alphaadd[1] == &COLOR_ALPHA(texel0_color) || 
-        combiner_rgbmul_r[1] == &COLOR_ALPHA(texel0_color))
-        texel0_used_in_cc1 = 1;
-    if (combiner_rgbmul_r[0] == &COLOR_RED(texel1_color) || combiner_rgbsub_a_r[0] == &COLOR_RED(texel1_color) || combiner_rgbsub_b_r[0] == &COLOR_RED(texel1_color) || combiner_rgbadd_r[0] == &COLOR_RED(texel1_color) || 
-        combiner_alphamul[0] == &COLOR_ALPHA(texel1_color) || combiner_alphasub_a[0] == &COLOR_ALPHA(texel1_color) || combiner_alphasub_b[0] == &COLOR_ALPHA(texel1_color) || combiner_alphaadd[0] == &COLOR_ALPHA(texel1_color) ||
-        combiner_rgbmul_r[0] == &COLOR_ALPHA(texel1_color))
-        texel1_used_in_cc0 = 1;
-    if (combiner_rgbmul_r[0] == &COLOR_RED(texel0_color) || combiner_rgbsub_a_r[0] == &COLOR_RED(texel0_color) || combiner_rgbsub_b_r[0] == &COLOR_RED(texel0_color) || combiner_rgbadd_r[0] == &COLOR_RED(texel0_color) || 
-        combiner_alphamul[0] == &COLOR_ALPHA(texel0_color) || combiner_alphasub_a[0] == &COLOR_ALPHA(texel0_color) || combiner_alphasub_b[0] == &COLOR_ALPHA(texel0_color) || combiner_alphaadd[0] == &COLOR_ALPHA(texel0_color) || 
-        combiner_rgbmul_r[0] == &COLOR_ALPHA(texel0_color))
-        texel0_used_in_cc0 = 1;
-    texels_in_cc0 = texel0_used_in_cc0 || texel1_used_in_cc0;
-    texels_in_cc1 = texel0_used_in_cc1 || texel1_used_in_cc1;    
-
-    
-    if (texel1_used_in_cc1)
-        render_spans_1cycle_ptr = render_spans_1cycle_func[2];
-    else if (texel0_used_in_cc1 || lod_frac_used_in_cc1)
-        render_spans_1cycle_ptr = render_spans_1cycle_func[1];
-    else
-        render_spans_1cycle_ptr = render_spans_1cycle_func[0];
-
-    if (texel1_used_in_cc1)
-        render_spans_2cycle_ptr = render_spans_2cycle_func[3];
-    else if (texel1_used_in_cc0 || texel0_used_in_cc1)
-        render_spans_2cycle_ptr = render_spans_2cycle_func[2];
-    else if (texel0_used_in_cc0 || lod_frac_used_in_cc0 || lod_frac_used_in_cc1)
-        render_spans_2cycle_ptr = render_spans_2cycle_func[1];
-    else
-        render_spans_2cycle_ptr = render_spans_2cycle_func[0];
-
-    if ((other_modes.cycle_type == CYCLE_TYPE_2 && (lod_frac_used_in_cc0 || lod_frac_used_in_cc1)) || \
-        (other_modes.cycle_type == CYCLE_TYPE_1 && lod_frac_used_in_cc1))
-        lodfracused = 1;
-
-    if ((other_modes.cycle_type == CYCLE_TYPE_1 && combiner_rgbsub_a_r[1] == &noise) || \
-        (other_modes.cycle_type == CYCLE_TYPE_2 && (combiner_rgbsub_a_r[0] == &noise || combiner_rgbsub_a_r[1] == &noise)) || \
-        other_modes.alpha_dither_sel == 2)
-        get_dither_noise_type = 0;
-    else if (other_modes.f.rgb_alpha_dither != 0xf)
-        get_dither_noise_type= 1;
-    else
-        get_dither_noise_type = 2;
-
-    other_modes.f.dolod = other_modes.tex_lod_en || lodfracused;
-}
 
 static void tile_tlut_common_cs_decoder(uint32_t w1, uint32_t w2)
 {
@@ -7550,9 +7543,7 @@ static void fbwrite_4(
     uint32_t curpixel, uint32_t r, uint32_t g, uint32_t b, uint32_t blend_en,
     uint32_t curpixel_cvg, uint32_t curpixel_memcvg)
 {
-    register unsigned long addr;
-
-    addr  = fb_address + curpixel*1;
+    unsigned long addr  = fb_address + curpixel*1;
     addr &= 0x00FFFFFF;
 
     RWRITEADDR8(addr, 0x00);
@@ -7562,9 +7553,7 @@ static void fbwrite_8(
     uint32_t curpixel, uint32_t r, uint32_t g, uint32_t b, uint32_t blend_en,
     uint32_t curpixel_cvg, uint32_t curpixel_memcvg)
 {
-    register unsigned long addr;
-
-    addr  = fb_address + 1*curpixel;
+    unsigned long addr  = fb_address + 1*curpixel;
     addr &= 0x00FFFFFF;
     PAIRWRITE8(addr, r, (r & 1) ? 3 : 0);
 }
@@ -7574,10 +7563,8 @@ static void fbwrite_16(
     uint32_t curpixel_cvg, uint32_t curpixel_memcvg)
 {
     uint16_t color;
-    int coverage;
-    register unsigned long addr;
-
-    coverage = finalize_spanalpha(blend_en, curpixel_cvg, curpixel_memcvg);
+    unsigned long addr;
+    int coverage = finalize_spanalpha(blend_en, curpixel_cvg, curpixel_memcvg);
 #undef CVG_DRAW
 #ifdef CVG_DRAW
     const int covdraw = (curpixel_cvg - 1) << 5;
@@ -7611,9 +7598,7 @@ static void fbwrite_32(
 {
     uint32_t color;
     int coverage;
-    register unsigned long addr;
-
-    addr  = fb_address + 4*curpixel;
+    unsigned long addr  = fb_address + 4*curpixel;
     addr &= 0x00FFFFFF;
     addr  = addr >> 2;
 
@@ -7926,14 +7911,9 @@ static void set_texture_image(uint32_t w1, uint32_t w2);
 static void set_mask_image(uint32_t w1, uint32_t w2);
 static void set_color_image(uint32_t w1, uint32_t w2);
 
-static NOINLINE void draw_triangle(uint32_t w1, uint32_t w2,
-      int shade, int texture, int zbuffer, struct stepwalker_info *stw_info);
-void render_spans(
-    int yhlimit, int yllimit, int tilenum, int flip);
-
 static INLINE uint16_t normalize_dzpix(uint16_t sum)
 {
-    register int count;
+    int count;
 
     if (sum & 0xC000)
         return 0x8000;
@@ -8063,11 +8043,10 @@ static const char DP_command_names[64][18] = {
 
 static void count_DP_commands(void)
 {
+    int i;
     FILE * stream;
-    long total;
-    register int i;
+    long total = 0;
 
-    total = 0;
     for (i = 0; i < 64; i++)
         total += cmd_count[i];
     stream = fopen("dp_count.txt", "w");
@@ -8182,802 +8161,6 @@ static void noop(uint32_t w1, uint32_t w2)
 {
 }
 
-
-static void tri_noshade(uint32_t w1, uint32_t w2)
-{
-   struct stepwalker_info stw_info;
-   draw_triangle(w1, w2, SHADE_NO, TEXTURE_NO, ZBUFFER_NO, &stw_info);
-}
-
-static void tri_noshade_z(uint32_t w1, uint32_t w2)
-{
-   struct stepwalker_info stw_info;
-   draw_triangle(w1, w2, SHADE_NO, TEXTURE_NO, ZBUFFER_YES, &stw_info);
-}
-
-static void tri_tex(uint32_t w1, uint32_t w2)
-{
-   struct stepwalker_info stw_info;
-   draw_triangle(w1, w2, SHADE_NO, TEXTURE_YES, ZBUFFER_NO, &stw_info);
-}
-
-static void tri_tex_z(uint32_t w1, uint32_t w2)
-{
-   struct stepwalker_info stw_info;
-   draw_triangle(w1, w2, SHADE_NO, TEXTURE_YES, ZBUFFER_YES, &stw_info);
-}
-
-static void tri_shade(uint32_t w1, uint32_t w2)
-{
-   struct stepwalker_info stw_info;
-   draw_triangle(w1, w2, SHADE_YES, TEXTURE_NO, ZBUFFER_NO, &stw_info);
-}
-
-static void tri_shade_z(uint32_t w1, uint32_t w2)
-{
-   struct stepwalker_info stw_info;
-   draw_triangle(w1, w2, SHADE_YES, TEXTURE_NO, ZBUFFER_YES, &stw_info);
-}
-
-static void tri_texshade(uint32_t w1, uint32_t w2)
-{
-   struct stepwalker_info stw_info;
-   draw_triangle(w1, w2, SHADE_YES, TEXTURE_YES, ZBUFFER_NO, &stw_info);
-}
-
-static void tri_texshade_z(uint32_t w1, uint32_t w2)
-{
-   struct stepwalker_info stw_info;
-   draw_triangle(w1, w2, SHADE_YES, TEXTURE_YES, ZBUFFER_YES, &stw_info);
-}
-
-
-static NOINLINE void draw_texture_rectangle(
-    const int rect_flip, int tilenum,
-    int32_t xl, int32_t yl, int32_t xh, int32_t yh,
-    i32 s, i32 t, int16_t dsdx, int16_t dtdy
-)
-{
-    int32_t xm, ym;
-    int32_t yllimit, yhlimit;
-
-    i32 stwz[4];
-    i32 d_stwz_dx[2], d_stwz_dy[2];
-
-    i32 d_stwz_dxh[4];
-    i32 xleft, xright;
-    uint8_t xfrac;
-
-    int maxxmx, minxhx;
-    int curcross;
-    int allover, allunder, curover, curunder;
-    int allinval;
-    int ycur, ylfar;
-    int invaly;
-    register int j, k;
-    const i32 clipxlshift = __clip.xl << 1;
-    const i32 clipxhshift = __clip.xh << 1;
-
-    max_level = 0;
-    maxxmx = 0;
-    minxhx = 0;
-
-    xl = xl << 14;
-    xh = xh << 14;
-    xm = xl;
-    ym = yl;
-
-/*
- * texture coefficients
- */
-    stwz[0] = (s << 16) | 0;
-    stwz[1] = (t << 16) | 0;
-
-    setzero_si64(d_stwz_dx);
-    setzero_si64(d_stwz_dy);
-    if (rect_flip != TEXTURE_FLIP_NO)
-    {
-        d_stwz_dx[1] = (i32)dtdy << 11;
-        d_stwz_dy[0] = (i32)dsdx << 11;
-    }
-    else
-    {
-        d_stwz_dx[0] = (i32)dsdx << 11;
-        d_stwz_dy[1] = (i32)dtdy << 11;
-    }
-
-    setzero_si128(spans_d_rgba);
-    setzero_si128(spans_d_stwz);
-    spans_d_stwz[0] = d_stwz_dx[0] & ~0x0000001F;
-    spans_d_stwz[1] = d_stwz_dx[1] & ~0x0000001F;
-
-    setzero_si128(spans_d_rgba_dy);
-    setzero_si128(spans_cd_rgba);
-    spans_cdz = 0;
-
-    setzero_si128(spans_d_stwz_dy);
-    spans_d_stwz_dy[0] = d_stwz_dy[0] & ~0x00007FFF;
-    spans_d_stwz_dy[1] = d_stwz_dy[1] & ~0x00007FFF;
-    spans_dzpix = normalize_dzpix(0);
-
-    setzero_si128(d_stwz_dxh);
-    if (other_modes.cycle_type != CYCLE_TYPE_COPY)
-    {
-        d_stwz_dxh[0] = (d_stwz_dx[0] >> 8) & ~0x00000001;
-        d_stwz_dxh[1] = (d_stwz_dx[1] >> 8) & ~0x00000001;
-    }
-
-    invaly = 1;
-    yllimit = (yl <  __clip.yl) ? yl : __clip.yl;
-    yhlimit = (yh >= __clip.yh) ? yh : __clip.yh;
-
-    ycur = yh & ~3;
-    ylfar = yllimit | 3;
-    if ((yl >> 2) > (ylfar >> 2))
-        ylfar += 4;
-    else if ((yllimit >> 2) >= 0 && (yllimit >> 2) < 1023)
-        span[(yllimit >> 2) + 1].validline = 0;
-
-    xleft = xm/* & ~0x00000001 // never needed because xm <<= 14 */;
-    xright = xh/* & ~0x00000001 // never needed because xh <<= 14 */;
-    xfrac = (xright >> 8) & 0xFF;
-
-    allover = 1;
-    allunder = 1;
-    curover = 0;
-    curunder = 0;
-    allinval = 1;
-    for (k = ycur; k <= ylfar; k++)
-    {
-        int xrsc, xlsc, stickybit;
-        const int spix = k & 3;
-        const int yhclose = yhlimit & ~3;
-
-        if (k < yhclose)
-            { /* branch */ }
-        else
-        {
-            invaly = (uint32_t)(k - yhlimit)>>31 | (uint32_t)~(k - yllimit)>>31;
-            j = k >> 2;
-            if (spix == 0)
-            {
-                maxxmx = 0x000;
-                minxhx = 0xFFF;
-                allover = allunder = 1;
-                allinval = 1;
-            }
-
-            stickybit = (xright & 0x00003FFF) - 1; /* xright/2 & 0x1FFF */
-            stickybit = (uint32_t)~(stickybit) >> 31; /* (stickybit >= 0) */
-            xrsc = (xright >> 13)&0x1FFE | stickybit;
-            curunder = !!(xright & 0x08000000);
-            curunder = curunder | (uint32_t)(xrsc - clipxhshift)>>31;
-            xrsc = curunder ? clipxhshift : (xright>>13)&0x3FFE | stickybit;
-            curover  = !!(xrsc & 0x00002000);
-            xrsc = xrsc & 0x1FFF;
-            curover |= (uint32_t)~(xrsc - clipxlshift) >> 31;
-            xrsc = curover ? clipxlshift : xrsc;
-            span[j].majorx[spix] = xrsc & 0x1FFF;
-            allover &= curover;
-            allunder &= curunder;
-
-            stickybit = (xleft & 0x00003FFF) - 1; /* xleft/2 & 0x1FFF */
-            stickybit = (uint32_t)~(stickybit) >> 31; /* (stickybit >= 0) */
-            xlsc = (xleft >> 13)&0x1FFE | stickybit;
-            curunder = !!(xleft & 0x08000000);
-            curunder = curunder | (uint32_t)(xlsc - clipxhshift)>>31;
-            xlsc = curunder ? clipxhshift : (xleft>>13)&0x3FFE | stickybit;
-            curover  = !!(xlsc & 0x00002000);
-            xlsc &= 0x1FFF;
-            curover |= (uint32_t)~(xlsc - clipxlshift) >> 31;
-            xlsc = curover ? clipxlshift : xlsc;
-            span[j].minorx[spix] = xlsc & 0x1FFF;
-            allover &= curover;
-            allunder &= curunder;
-
-            curcross = ((xleft&0x0FFFC000 ^ 0x08000000)
-                     < (xright&0x0FFFC000 ^ 0x08000000));
-            invaly |= curcross;
-            span[j].invalyscan[spix] = invaly;
-            allinval &= invaly;
-            if (invaly != 0)
-                { /* branch */ }
-            else
-            {
-                xlsc = (xlsc >> 3) & 0xFFF;
-                xrsc = (xrsc >> 3) & 0xFFF;
-                maxxmx = (xlsc > maxxmx) ? xlsc : maxxmx;
-                minxhx = (xrsc < minxhx) ? xrsc : minxhx;
-            }
-
-            if (spix == 0)
-            {
-                span[j].unscrx = xright >> 16;
-             /* xfrac = (xright >> 8) & 0xFF; // xfrac never changes. */
-                setzero_si128(span[j].rgba);
-                span[j].stwz[0] = (stwz[0] - xfrac*d_stwz_dxh[0]) & ~0x000003FF;
-                span[j].stwz[1] = (stwz[1] - xfrac*d_stwz_dxh[1]) & ~0x000003FF;
-                span[j].stwz[2] = 0 & ~0x000003FF;
-                span[j].stwz[3] = 0 & ~0x000003FF;
-            }
-            if (spix == 3)
-            {
-                const int invalidline = (sckeepodd ^ j) & scfield
-                                      | (allinval | allover | allunder);
-                span[j].lx = maxxmx;
-                span[j].rx = minxhx;
-                span[j].validline = invalidline ^ 1;
-            }
-        }
-        if (spix == 3)
-        {
-            stwz[0] = (stwz[0] + d_stwz_dy[0]) & ~0x000001FF;
-            stwz[1] = (stwz[1] + d_stwz_dy[1]) & ~0x000001FF;
-        }
-    }
-
-    if (other_modes.f.stalederivs)
-    {
-        deduce_derivatives();
-        other_modes.f.stalederivs = 0;
-    }
-    render_spans(yhlimit >> 2, yllimit >> 2, tilenum, 1);
-}
-
-static void tex_rect(uint32_t w1, uint32_t w2)
-{
-    int tilenum;
-    int16_t dsdx, dtdy;
-    int32_t xl, yl, xh, yh;
-    int32_t s, t;
-
-    xl      = (cmd_data[cmd_cur + 0].UW32[0] & 0x00FFF000) >> 12;
-    yl      = (cmd_data[cmd_cur + 0].UW32[0] & 0x00000FFF) >>  0;
-    tilenum = (cmd_data[cmd_cur + 0].UW32[1] & 0x07000000) >> 24;
-    xh      = (cmd_data[cmd_cur + 0].UW32[1] & 0x00FFF000) >> 12;
-    yh      = (cmd_data[cmd_cur + 0].UW32[1] & 0x00000FFF) >>  0;
-
-    yl |= (other_modes.cycle_type & 2) ? 3 : 0; /* FILL OR COPY */
-
-    s    = (cmd_data[cmd_cur + 1].UW32[0] & 0xFFFF0000) >> 16;
-    t    = (cmd_data[cmd_cur + 1].UW32[0] & 0x0000FFFF) >>  0;
-    dsdx = (cmd_data[cmd_cur + 1].UW32[1] & 0xFFFF0000) >> 16;
-    dtdy = (cmd_data[cmd_cur + 1].UW32[1] & 0x0000FFFF) >>  0;
-    
-    dsdx = SIGN16(dsdx);
-    dtdy = SIGN16(dtdy);
-
-    draw_texture_rectangle(
-        TEXTURE_FLIP_NO, tilenum,
-        xl, yl, xh, yh,
-        s, t,
-        dsdx, dtdy
-    );
-    return;
-}
-
-static void tex_rect_flip(uint32_t w1, uint32_t w2)
-{
-    int tilenum;
-    int16_t dsdx, dtdy;
-    int32_t xl, yl, xh, yh;
-    int32_t s, t;
-
-    xl      = (cmd_data[cmd_cur + 0].UW32[0] & 0x00FFF000) >> 12;
-    yl      = (cmd_data[cmd_cur + 0].UW32[0] & 0x00000FFF) >>  0;
-    tilenum = (cmd_data[cmd_cur + 0].UW32[1] & 0x07000000) >> 24;
-    xh      = (cmd_data[cmd_cur + 0].UW32[1] & 0x00FFF000) >> 12;
-    yh      = (cmd_data[cmd_cur + 0].UW32[1] & 0x00000FFF) >>  0;
-
-    yl |= (other_modes.cycle_type & 2) ? 3 : 0; /* FILL OR COPY */
-
-    s    = (cmd_data[cmd_cur + 1].UW32[0] & 0xFFFF0000) >> 16;
-    t    = (cmd_data[cmd_cur + 1].UW32[0] & 0x0000FFFF) >>  0;
-    dsdx = (cmd_data[cmd_cur + 1].UW32[1] & 0xFFFF0000) >> 16;
-    dtdy = (cmd_data[cmd_cur + 1].UW32[1] & 0x0000FFFF) >>  0;
-    
-    dsdx = SIGN16(dsdx);
-    dtdy = SIGN16(dtdy);
-
-    draw_texture_rectangle(
-        TEXTURE_FLIP_YES, tilenum,
-        xl, yl, xh, yh,
-        s, t,
-        dsdx, dtdy
-    );
-}
-
-static void sync_load(uint32_t w1, uint32_t w2)
-{
-}
-
-static void sync_pipe(uint32_t w1, uint32_t w2)
-{
-}
-
-static void sync_tile(uint32_t w1, uint32_t w2)
-{
-}
-
-static void sync_full(uint32_t w1, uint32_t w2)
-{
-#ifdef EXTRALOGGING
-   fprintf(stderr, "Sync full\n");
-   fprintf(stderr, "===================\n");
-#endif
-    *gfx_info.MI_INTR_REG |= DP_INTERRUPT;
-    gfx_info.CheckInterrupts();
-
-#ifdef HAVE_RDP_DUMP
-    if (rdp_dump_active)
-       rdp_dump_end_command_list();
-    rdp_dump_active = 0;
-#endif
-}
-
-static void set_key_gb(uint32_t w1, uint32_t w2)
-{
-    COLOR_GREEN(key_width)  = (w1 & 0x00FFF000) >> 12;
-    COLOR_BLUE(key_width)   = (w1 & 0x00000FFF) >>  0;
-    COLOR_GREEN(key_center) = (w2 & 0xFF000000) >> 24;
-    COLOR_GREEN(key_scale)  = (w2 & 0x00FF0000) >> 16;
-    COLOR_BLUE(key_center)  = (w2 & 0x0000FF00) >>  8;
-    COLOR_BLUE(key_scale)   = (w2 & 0x000000FF) >>  0;
-}
-
-static void set_key_r(uint32_t w1, uint32_t w2)
-{
-    COLOR_RED(key_width)  = (w2 & 0x0FFF0000) >> 16;
-    COLOR_RED(key_center) = (w2 & 0x0000FF00) >>  8;
-    COLOR_RED(key_scale)  = (w2 & 0x000000FF) >>  0;
-}
-
-static void set_convert(uint32_t w1, uint32_t w2)
-{
-   int32_t k0 = (w1 >> 13) & 0x1ff;
-   int32_t k1 = (w1 >> 4) & 0x1ff;
-   int32_t k2 = ((w1 & 0xf) << 5) | ((w2 >> 27) & 0x1f);
-   int32_t k3 = (w2 >> 18) & 0x1ff;
-   k0_tf = (SIGN(k0, 9) << 1) + 1;
-   k1_tf = (SIGN(k1, 9) << 1) + 1;
-   k2_tf = (SIGN(k2, 9) << 1) + 1;
-   k3_tf = (SIGN(k3, 9) << 1) + 1;
-   k4 = (w2 >> 9) & 0x1ff;
- 	k5 = w2 & 0x1ff;
-}
-
-static void set_scissor(uint32_t w1, uint32_t w2)
-{
-    __clip.xh   = (w1 & 0x00FFF000) >> (44 - 32);
-    __clip.yh   = (w1 & 0x00000FFF) >> (32 - 32);
-    scfield     = (w2 & 0x02000000) >> (25 -  0);
-    sckeepodd   = (w2 & 0x01000000) >> (24 -  0);
-    __clip.xl   = (w2 & 0x00FFF000) >> (12 -  0);
-    __clip.yl   = (w2 & 0x00000FFF) >> ( 0 -  0);
-}
-
-static void set_prim_depth(uint32_t w1, uint32_t w2)
-{
-    primitive_z       = (w2 & 0xFFFF0000) >> 16;
-    primitive_delta_z = (w2 & 0x0000FFFF) >>  0;
-    primitive_z = (primitive_z & 0x7FFF) << 16; /* angrylion does this why? */
-}
-
-static void set_other_modes(uint32_t w1, uint32_t w2)
-{
-    const DP_FIFO cmd_fifo = cmd_data[cmd_cur + 0];
-
- /* K:  atomic_prim              = (cmd_fifo.UW & 0x0080000000000000) >> 55; */
- /* j:  reserved for future use -- (cmd_fifo.UW & 0x0040000000000000) >> 54 */
-    other_modes.cycle_type       = (cmd_fifo.UW32[0] & 0x00300000) >> (52 - 32);
-    other_modes.persp_tex_en     = !!(cmd_fifo.UW32[0] & 0x00080000); /* 51 */
-    other_modes.detail_tex_en    = !!(cmd_fifo.UW32[0] & 0x00040000); /* 50 */
-    other_modes.sharpen_tex_en   = !!(cmd_fifo.UW32[0] & 0x00020000); /* 49 */
-    other_modes.tex_lod_en       = !!(cmd_fifo.UW32[0] & 0x00010000); /* 48 */
-    other_modes.en_tlut          = !!(cmd_fifo.UW32[0] & 0x00008000); /* 47 */
-    other_modes.tlut_type        = !!(cmd_fifo.UW32[0] & 0x00004000); /* 46 */
-    other_modes.sample_type      = !!(cmd_fifo.UW32[0] & 0x00002000); /* 45 */
-    other_modes.mid_texel        = !!(cmd_fifo.UW32[0] & 0x00001000); /* 44 */
-    other_modes.bi_lerp0         = !!(cmd_fifo.UW32[0] & 0x00000800); /* 43 */
-    other_modes.bi_lerp1         = !!(cmd_fifo.UW32[0] & 0x00000400); /* 42 */
-    other_modes.convert_one      = !!(cmd_fifo.UW32[0] & 0x00000200); /* 41 */
-    other_modes.key_en           = !!(cmd_fifo.UW32[0] & 0x00000100); /* 40 */
-    other_modes.rgb_dither_sel   = (cmd_fifo.UW32[0] & 0x000000C0) >> (38 - 32);
-    other_modes.alpha_dither_sel = (cmd_fifo.UW32[0] & 0x00000030) >> (36 - 32);
- /* reserved for future, def:15 -- (cmd_fifo.UW & 0x0000000F00000000) >> 32 */
-    other_modes.blend_m1a_0      = (cmd_fifo.UW32[1] & 0xC0000000) >> (30 -  0);
-    other_modes.blend_m1a_1      = (cmd_fifo.UW32[1] & 0x30000000) >> (28 -  0);
-    other_modes.blend_m1b_0      = (cmd_fifo.UW32[1] & 0x0C000000) >> (26 -  0);
-    other_modes.blend_m1b_1      = (cmd_fifo.UW32[1] & 0x03000000) >> (24 -  0);
-    other_modes.blend_m2a_0      = (cmd_fifo.UW32[1] & 0x00C00000) >> (22 -  0);
-    other_modes.blend_m2a_1      = (cmd_fifo.UW32[1] & 0x00300000) >> (20 -  0);
-    other_modes.blend_m2b_0      = (cmd_fifo.UW32[1] & 0x000C0000) >> (18 -  0);
-    other_modes.blend_m2b_1      = (cmd_fifo.UW32[1] & 0x00030000) >> (16 -  0);
- /* N:  reserved for future use -- (cmd_fifo.UW & 0x0000000000008000) >> 15 */
-    other_modes.force_blend      = !!(cmd_fifo.UW32[1] & 0x00004000); /* 14 */
-    other_modes.alpha_cvg_select = !!(cmd_fifo.UW32[1] & 0x00002000); /* 13 */
-    other_modes.cvg_times_alpha  = !!(cmd_fifo.UW32[1] & 0x00001000); /* 12 */
-    other_modes.z_mode           = (cmd_fifo.UW32[1] & 0x00000C00) >> (10 -  0);
-    other_modes.cvg_dest         = (cmd_fifo.UW32[1] & 0x00000300) >> ( 8 -  0);
-    other_modes.color_on_cvg     = !!(cmd_fifo.UW32[1] & 0x00000080); /*  7 */
-    other_modes.image_read_en    = !!(cmd_fifo.UW32[1] & 0x00000040); /*  6 */
-    other_modes.z_update_en      = !!(cmd_fifo.UW32[1] & 0x00000020); /*  5 */
-    other_modes.z_compare_en     = !!(cmd_fifo.UW32[1] & 0x00000010); /*  4 */
-    other_modes.antialias_en     = !!(cmd_fifo.UW32[1] & 0x00000008); /*  3 */
-    other_modes.z_source_sel     = !!(cmd_fifo.UW32[1] & 0x00000004); /*  2 */
-    other_modes.dither_alpha_en  = !!(cmd_fifo.UW32[1] & 0x00000002); /*  1 */
-    other_modes.alpha_compare_en = !!(cmd_fifo.UW32[1] & 0x00000001); /*  0 */
-
-    SET_BLENDER_INPUT(
-        0, 0, &blender1a_r[0], &blender1a_g[0], &blender1a_b[0],
-        &blender1b_a[0], other_modes.blend_m1a_0, other_modes.blend_m1b_0);
-    SET_BLENDER_INPUT(
-        0, 1, &blender2a_r[0], &blender2a_g[0], &blender2a_b[0],
-        &blender2b_a[0], other_modes.blend_m2a_0, other_modes.blend_m2b_0);
-    SET_BLENDER_INPUT(
-        1, 0, &blender1a_r[1], &blender1a_g[1], &blender1a_b[1],
-        &blender1b_a[1], other_modes.blend_m1a_1, other_modes.blend_m1b_1);
-    SET_BLENDER_INPUT(
-        1, 1, &blender2a_r[1], &blender2a_g[1], &blender2a_b[1],
-        &blender2b_a[1], other_modes.blend_m2a_1, other_modes.blend_m2b_1);
-
-    other_modes.f.stalederivs = 1;
-}
-
-static void set_tile_size(uint32_t w1, uint32_t w2)
-{
-    int sl      = (w1 & 0x00FFF000) >> (44 - 32);
-    int tl      = (w1 & 0x00000FFF) >> (32 - 32);
-    int tilenum = (w2 & 0x07000000) >> (24 -  0);
-    int sh      = (w2 & 0x00FFF000) >> (12 -  0);
-    int th      = (w2 & 0x00000FFF) >> ( 0 -  0);
-
-    tile[tilenum].sl = sl;
-    tile[tilenum].tl = tl;
-    tile[tilenum].sh = sh;
-    tile[tilenum].th = th;
-    calculate_clamp_diffs(tilenum);
-}
-
-static void load_block(uint32_t w1, uint32_t w2)
-{
-    int32_t lewdata[10];
-    const int command = (w1 & 0xFF000000) >> (56-32);
-    const int sl      = (w1 & 0x00FFF000) >> (44-32);
-    const int tl      = (w1 & 0x00000FFF) >> (32-32);
-    const int tilenum = (w2 & 0x07000000) >> (24- 0);
-    const int sh      = (w2 & 0x00FFF000) >> (12- 0);
-    const int dxt     = (w2 & 0x00000FFF) >> ( 0- 0);
-    const int tlclamped = tl & 0x3FF;
-
-    tile[tilenum].sl = sl;
-    tile[tilenum].tl = tl;
-    tile[tilenum].sh = sh;
-    tile[tilenum].th = dxt;
-
-    calculate_clamp_diffs(tilenum);
-
-    lewdata[0] =
-        (command << 24)
-      | (0x10 << 19)
-      | (tilenum << 16)
-      | ((tlclamped << 2) | 3);
-    lewdata[1] = (((tlclamped << 2) | 3) << 16) | (tlclamped << 2);
-    lewdata[2] = sh << 16;
-    lewdata[3] = sl << 16;
-    lewdata[4] = sh << 16;
-    lewdata[5] = ((sl << 3) << 16) | (tl << 3);
-    lewdata[6] = (dxt & 0xff) << 8;
-    lewdata[7] = ((0x80 >> ti_size) << 16) | (dxt >> 8);
-    lewdata[8] = 0x20;
-    lewdata[9] = 0x20;
-
-    edgewalker_for_loads(lewdata);
-}
-
-static void load_tlut(uint32_t w1, uint32_t w2)
-{
-    tile_tlut_common_cs_decoder(w1, w2);
-}
-
-static void load_tile(uint32_t w1, uint32_t w2)
-{
-    tile_tlut_common_cs_decoder(w1, w2);
-}
-
-static void set_tile(uint32_t w1, uint32_t w2)
-{
-    const int tilenum     = (w2 & 0x07000000) >> 24;
-    
-    tile[tilenum].format  = (w1 & 0x00E00000) >> (53 - 32);
-    tile[tilenum].size    = (w1 & 0x00180000) >> (51 - 32);
-    tile[tilenum].line    = (w1 & 0x0003FE00) >> (41 - 32);
-    tile[tilenum].tmem    = (w1 & 0x000001FF) >> (32 - 32);
- /* tilenum               = (cmd_fifo.UW & 0x0000000007000000) >> 24; */
-    tile[tilenum].palette = (w2 & 0x00F00000) >> (20 -  0);
-#ifdef EXTRALOGGING
-    if (tile[tilenum].palette)
-       fprintf(stderr, "Tile %d: Palette: %u\n", tilenum, tile[tilenum].palette);
-#endif
-    tile[tilenum].ct      = (w2 & 0x00080000) >> (19 -  0);
-    tile[tilenum].mt      = (w2 & 0x00040000) >> (18 -  0);
-    tile[tilenum].mask_t  = (w2 & 0x0003C000) >> (14 -  0);
-    tile[tilenum].shift_t = (w2 & 0x00003C00) >> (10 -  0);
-    tile[tilenum].cs      = (w2 & 0x00000200) >> ( 9 -  0);
-    tile[tilenum].ms      = (w2 & 0x00000100) >> ( 8 -  0);
-    tile[tilenum].mask_s  = (w2 & 0x000000F0) >> ( 4 -  0);
-    tile[tilenum].shift_s = (w2 & 0x0000000F) >> ( 0 -  0);
-
-    tile[tilenum].mask_s_maskbits = tile[tilenum].mask_s != 0
-       ? ((uint16_t)(0xffff) >> (16 - tile[tilenum].mask_s)) & 0x3ff
-       : 0x3ff;
-
-    tile[tilenum].mask_t_maskbits = tile[tilenum].mask_t != 0
-       ? ((uint16_t)(0xffff) >> (16 - tile[tilenum].mask_t)) & 0x3ff
-       : 0x3ff;
-
-    calculate_tile_derivs(tilenum);
-}
-
-static void fill_rect(uint32_t w1, uint32_t w2)
-{
-    int xlint, xhint;
-
-    int ycur, ylfar;
-    int yllimit, yhlimit;
-    int invaly;
-    int curcross;
-    int allover, allunder, curover, curunder;
-    int allinval;
-    register int j, k;
-    const i32 clipxlshift = __clip.xl << 1;
-    const i32 clipxhshift = __clip.xh << 1;
-
-    int xl = (w1 & 0x00FFF000) >> (44 - 32); /* Load XL Integer Portion */
-    int yl = (w1 & 0x00000FFF) >> (32 - 32); /* Load YL Integer Portion */
-    int xh = (w2 & 0x00FFF000) >> (12 -  0); /* Load XH Integer Portion */
-    int yh = (w2 & 0x00000FFF) >> ( 0 -  0); /* Load YH Integer Portion */
-
-    yl |= (other_modes.cycle_type & 2) ? 3 : 0; /* FILL or COPY */
-
-    xlint = (unsigned)(xl) >> 2;
-    xhint = (unsigned)(xh) >> 2;
-
-    max_level = 0;
-    xl = (xlint << 16) | (xl & 3)<<14;
-    xl = SIGN(xl, 30);
-    xh = (xhint << 16) | (xh & 3)<<14;
-    xh = SIGN(xh, 30);
-
-    setzero_si128(spans_d_rgba);
-    setzero_si128(spans_d_stwz);
-
-    setzero_si128(spans_d_rgba_dy);
-    setzero_si128(spans_d_stwz_dy);
-
-    setzero_si128(spans_cd_rgba);
-    spans_cdz = 0;
-
-    spans_dzpix = normalize_dzpix(0);
-
-    invaly = 1;
-    yllimit = (yl < __clip.yl) ? yl : __clip.yl;
-
-    ycur = yh & ~3;
-    ylfar = yllimit | 3;
-    if (yl >> 2 > ylfar >> 2)
-        ylfar += 4;
-    else if (yllimit >> 2 >= 0 && yllimit>>2 < 1023)
-        span[(yllimit >> 2) + 1].validline = 0;
-    yhlimit = (yh >= __clip.yh) ? yh : __clip.yh;
-
-    allover = 1;
-    allunder = 1;
-    curover = 0;
-    curunder = 0;
-    allinval = 1;
-    for (k = ycur; k <= ylfar; k++)
-    {
-        static int maxxmx, minxhx;
-        int xrsc, xlsc, stickybit;
-        const i32 xleft = xl & ~0x00000001, xright = xh & ~0x00000001;
-        const int yhclose = yhlimit & ~3;
-        const int spix = k & 3;
-
-        if (k < yhclose)
-            continue;
-        invaly = (uint32_t)(k - yhlimit)>>31 | (uint32_t)~(k - yllimit)>>31;
-        j = k >> 2;
-        if (spix == 0)
-        {
-            maxxmx = 0x000;
-            minxhx = 0xFFF;
-            allover = allunder = 1;
-            allinval = 1;
-        }
-
-        stickybit = (xright & 0x00003FFF) - 1; /* xright/2 & 0x1FFF */
-        stickybit = (uint32_t)~(stickybit) >> 31; /* (stickybit >= 0) */
-        xrsc = (xright >> 13)&0x1FFE | stickybit;
-        curunder = !!(xright & 0x08000000);
-        curunder = curunder | (uint32_t)(xrsc - clipxhshift)>>31;
-        xrsc = curunder ? clipxhshift : (xright>>13)&0x3FFE | stickybit;
-        curover  = !!(xrsc & 0x00002000);
-        xrsc = xrsc & 0x1FFF;
-        curover |= (uint32_t)~(xrsc - clipxlshift) >> 31;
-        xrsc = curover ? clipxlshift : xrsc;
-        span[j].majorx[spix] = xrsc & 0x1FFF;
-        allover &= curover;
-        allunder &= curunder;
-
-        stickybit = (xleft & 0x00003FFF) - 1; /* xleft/2 & 0x1FFF */
-        stickybit = (uint32_t)~(stickybit) >> 31; /* (stickybit >= 0) */
-        xlsc = (xleft >> 13)&0x1FFE | stickybit;
-        curunder = !!(xleft & 0x08000000);
-        curunder = curunder | (uint32_t)(xlsc - clipxhshift)>>31;
-        xlsc = curunder ? clipxhshift : (xleft>>13)&0x3FFE | stickybit;
-        curover  = !!(xlsc & 0x00002000);
-        xlsc &= 0x1FFF;
-        curover |= (uint32_t)~(xlsc - clipxlshift) >> 31;
-        xlsc = curover ? clipxlshift : xlsc;
-        span[j].minorx[spix] = xlsc & 0x1FFF;
-        allover &= curover;
-        allunder &= curunder;
-
-        curcross = ((xleft&0x0FFFC000 ^ 0x08000000)
-                 < (xright&0x0FFFC000 ^ 0x08000000));
-        invaly |= curcross;
-        span[j].invalyscan[spix] = invaly;
-        allinval &= invaly;
-        if (invaly != 0)
-            { /* branch */ }
-        else
-        {
-            xlsc = (xlsc >> 3) & 0xFFF;
-            xrsc = (xrsc >> 3) & 0xFFF;
-            maxxmx = (xlsc > maxxmx) ? xlsc : maxxmx;
-            minxhx = (xrsc < minxhx) ? xrsc : minxhx;
-        }
-
-        if (spix == 0)
-        {
-            span[j].unscrx = xright >> 16;
-            setzero_si128(span[j].rgba);
-            setzero_si128(span[j].stwz);
-        }
-        else if (spix == 3)
-        {
-            const int invalidline = (sckeepodd ^ j) & scfield
-                                  | (allinval | allover | allunder);
-            span[j].lx = maxxmx;
-            span[j].rx = minxhx;
-            span[j].validline = invalidline ^ 1;
-        }
-    }
-    render_spans(yhlimit >> 2, yllimit >> 2, 0, 1);
-}
-
-static void set_fill_color(uint32_t w1, uint32_t w2)
-{
-    fill_color = w2;
-}
-
-static void set_fog_color(uint32_t w1, uint32_t w2)
-{
-    COLOR_RED(fog_color)   = (w2 & 0xFF000000) >> 24;
-    COLOR_GREEN(fog_color) = (w2 & 0x00FF0000) >> 16;
-    COLOR_BLUE(fog_color)  = (w2 & 0x0000FF00) >>  8;
-    COLOR_ALPHA(fog_color) = (w2 & 0x000000FF) >>  0;
-}
-
-static void set_blend_color(uint32_t w1, uint32_t w2)
-{
-    COLOR_RED(blend_color)   = (w2 & 0xFF000000) >> 24;
-    COLOR_GREEN(blend_color) = (w2 & 0x00FF0000) >> 16;
-    COLOR_BLUE(blend_color)  = (w2 & 0x0000FF00) >>  8;
-    COLOR_ALPHA(blend_color) = (w2 & 0x000000FF) >>  0;
-}
-
-static void set_prim_color(uint32_t w1, uint32_t w2)
-{
-    min_level               = (w1 & 0x00001F00) >>(40-32);
-    primitive_lod_frac      = (w1 & 0x000000FF) >>(32-32);
-    COLOR_RED(prim_color)   = (w2 & 0xFF000000) >> 24;
-    COLOR_GREEN(prim_color) = (w2 & 0x00FF0000) >> 16;
-    COLOR_BLUE(prim_color)  = (w2 & 0x0000FF00) >>  8;
-    COLOR_ALPHA(prim_color) = (w2 & 0x000000FF) >>  0;
-}
-
-static void set_env_color(uint32_t w1, uint32_t w2)
-{
-    COLOR_RED(env_color)   = (w2 & 0xFF000000) >> 24;
-    COLOR_GREEN(env_color) = (w2 & 0x00FF0000) >> 16;
-    COLOR_BLUE(env_color)  = (w2 & 0x0000FF00) >>  8;
-    COLOR_ALPHA(env_color) = (w2 & 0x000000FF) >>  0;
-}
-
-static void set_combine(uint32_t w1, uint32_t w2)
-{
-    combine.sub_a_rgb0 = (w1 & 0x00F00000) >>(52-32);
-    combine.mul_rgb0   = (w1 & 0x000F8000) >>(47-32);
-    combine.sub_a_a0   = (w1 & 0x00007000) >>(44-32);
-    combine.mul_a0     = (w1 & 0x00000E00) >>(41-32);
-    combine.sub_a_rgb1 = (w1 & 0x000001E0) >>(37-32);
-    combine.mul_rgb1   = (w1 & 0x0000001F) >>(32-32);
-    combine.sub_b_rgb0 = (w2 & 0xF0000000) >> 28;
-    combine.sub_b_rgb1 = (w2 & 0x0F000000) >> 24;
-    combine.sub_a_a1   = (w2 & 0x00E00000) >> 21;
-    combine.mul_a1     = (w2 & 0x001C0000) >> 18;
-    combine.add_rgb0   = (w2 & 0x00038000) >> 15;
-    combine.sub_b_a0   = (w2 & 0x00007000) >> 12;
-    combine.add_a0     = (w2 & 0x00000E00) >>  9;
-    combine.add_rgb1   = (w2 & 0x000001C0) >>  6;
-    combine.sub_b_a1   = (w2 & 0x00000038) >>  3;
-    combine.add_a1     = (w2 & 0x00000007) >>  0;
-
-    SET_SUBA_RGB_INPUT(
-        &combiner_rgbsub_a_r[0], &combiner_rgbsub_a_g[0],
-        &combiner_rgbsub_a_b[0], combine.sub_a_rgb0);
-    SET_SUBB_RGB_INPUT(
-        &combiner_rgbsub_b_r[0], &combiner_rgbsub_b_g[0],
-        &combiner_rgbsub_b_b[0], combine.sub_b_rgb0);
-    SET_MUL_RGB_INPUT(
-        &combiner_rgbmul_r[0], &combiner_rgbmul_g[0], &combiner_rgbmul_b[0],
-        combine.mul_rgb0);
-    SET_ADD_RGB_INPUT(
-        &combiner_rgbadd_r[0], &combiner_rgbadd_g[0], &combiner_rgbadd_b[0],
-        combine.add_rgb0);
-    SET_SUB_ALPHA_INPUT(&combiner_alphasub_a[0], combine.sub_a_a0);
-    SET_SUB_ALPHA_INPUT(&combiner_alphasub_b[0], combine.sub_b_a0);
-    SET_MUL_ALPHA_INPUT(&combiner_alphamul[0], combine.mul_a0);
-    SET_SUB_ALPHA_INPUT(&combiner_alphaadd[0], combine.add_a0);
-
-    SET_SUBA_RGB_INPUT(
-        &combiner_rgbsub_a_r[1], &combiner_rgbsub_a_g[1],
-        &combiner_rgbsub_a_b[1], combine.sub_a_rgb1);
-    SET_SUBB_RGB_INPUT(
-        &combiner_rgbsub_b_r[1], &combiner_rgbsub_b_g[1],
-        &combiner_rgbsub_b_b[1], combine.sub_b_rgb1);
-    SET_MUL_RGB_INPUT(
-        &combiner_rgbmul_r[1], &combiner_rgbmul_g[1], &combiner_rgbmul_b[1],
-        combine.mul_rgb1);
-    SET_ADD_RGB_INPUT(
-        &combiner_rgbadd_r[1], &combiner_rgbadd_g[1], &combiner_rgbadd_b[1],
-        combine.add_rgb1);
-    SET_SUB_ALPHA_INPUT(&combiner_alphasub_a[1], combine.sub_a_a1);
-    SET_SUB_ALPHA_INPUT(&combiner_alphasub_b[1], combine.sub_b_a1);
-    SET_MUL_ALPHA_INPUT(&combiner_alphamul[1], combine.mul_a1);
-    SET_SUB_ALPHA_INPUT(&combiner_alphaadd[1], combine.add_a1);
-
-    other_modes.f.stalederivs = 1;
-}
-
-static void set_texture_image(uint32_t w1, uint32_t w2)
-{
-    ti_format  = (w1 & 0x00E00000) >> (53 - 32);
-    ti_size    = (w1 & 0x00180000) >> (51 - 32);
-    ti_width   = (w1 & 0x000003FF) >> (32 - 32);
-    ti_address = (w2 & 0x03FFFFFF) >> ( 0 -  0);
- /* ti_address &= 0x00FFFFFF; // physical memory limit, enforced later */
-    ++ti_width;
-}
-
-static void set_mask_image(uint32_t w1, uint32_t w2)
-{
-    zb_address = w2 & 0x03FFFFFF;
- /* zb_address &= 0x00FFFFFF; */
-}
-
-static void set_color_image(uint32_t w1, uint32_t w2)
-{
-    fb_format  = (w1 & 0x00E00000) >> (53 - 32);
-    fb_size    = (w1 & 0x00180000) >> (51 - 32);
-    fb_width   = (w1 & 0x000003FF) >> (32 - 32);
-    fb_address = (w2 & 0x03FFFFFF) >> ( 0 -  0);
-    ++fb_width;
- /* fb_address &= 0x00FFFFFF; */
-}
-
 static INLINE void stepwalker_info_init(struct stepwalker_info *stw_info)
 {
    stw_info->base = cmd_cur + 0;
@@ -9012,7 +8195,7 @@ static NOINLINE void draw_triangle(uint32_t w1, uint32_t w2,
     int curcross;
     int allover, allunder, curover, curunder;
     int allinval;
-    register int j, k;
+    int j, k;
     const i32 clipxlshift = __clip.xl << 1;
     const i32 clipxhshift = __clip.xh << 1;
 
@@ -9484,3 +8667,799 @@ no_read_zbuffer_coefficients:
     }
     render_spans(yhlimit >> 2, yllimit >> 2, tilenum, flip);
 }
+
+static void tri_noshade(uint32_t w1, uint32_t w2)
+{
+   struct stepwalker_info stw_info;
+   draw_triangle(w1, w2, SHADE_NO, TEXTURE_NO, ZBUFFER_NO, &stw_info);
+}
+
+static void tri_noshade_z(uint32_t w1, uint32_t w2)
+{
+   struct stepwalker_info stw_info;
+   draw_triangle(w1, w2, SHADE_NO, TEXTURE_NO, ZBUFFER_YES, &stw_info);
+}
+
+static void tri_tex(uint32_t w1, uint32_t w2)
+{
+   struct stepwalker_info stw_info;
+   draw_triangle(w1, w2, SHADE_NO, TEXTURE_YES, ZBUFFER_NO, &stw_info);
+}
+
+static void tri_tex_z(uint32_t w1, uint32_t w2)
+{
+   struct stepwalker_info stw_info;
+   draw_triangle(w1, w2, SHADE_NO, TEXTURE_YES, ZBUFFER_YES, &stw_info);
+}
+
+static void tri_shade(uint32_t w1, uint32_t w2)
+{
+   struct stepwalker_info stw_info;
+   draw_triangle(w1, w2, SHADE_YES, TEXTURE_NO, ZBUFFER_NO, &stw_info);
+}
+
+static void tri_shade_z(uint32_t w1, uint32_t w2)
+{
+   struct stepwalker_info stw_info;
+   draw_triangle(w1, w2, SHADE_YES, TEXTURE_NO, ZBUFFER_YES, &stw_info);
+}
+
+static void tri_texshade(uint32_t w1, uint32_t w2)
+{
+   struct stepwalker_info stw_info;
+   draw_triangle(w1, w2, SHADE_YES, TEXTURE_YES, ZBUFFER_NO, &stw_info);
+}
+
+static void tri_texshade_z(uint32_t w1, uint32_t w2)
+{
+   struct stepwalker_info stw_info;
+   draw_triangle(w1, w2, SHADE_YES, TEXTURE_YES, ZBUFFER_YES, &stw_info);
+}
+
+
+static NOINLINE void draw_texture_rectangle(
+    const int rect_flip, int tilenum,
+    int32_t xl, int32_t yl, int32_t xh, int32_t yh,
+    i32 s, i32 t, int16_t dsdx, int16_t dtdy
+)
+{
+    int32_t xm, ym;
+    int32_t yllimit, yhlimit;
+
+    i32 stwz[4];
+    i32 d_stwz_dx[2], d_stwz_dy[2];
+
+    i32 d_stwz_dxh[4];
+    i32 xleft, xright;
+    uint8_t xfrac;
+
+    int maxxmx, minxhx;
+    int curcross;
+    int allover, allunder, curover, curunder;
+    int allinval;
+    int ycur, ylfar;
+    int invaly;
+    int j, k;
+    const i32 clipxlshift = __clip.xl << 1;
+    const i32 clipxhshift = __clip.xh << 1;
+
+    max_level = 0;
+    maxxmx = 0;
+    minxhx = 0;
+
+    xl = xl << 14;
+    xh = xh << 14;
+    xm = xl;
+    ym = yl;
+
+/*
+ * texture coefficients
+ */
+    stwz[0] = (s << 16) | 0;
+    stwz[1] = (t << 16) | 0;
+
+    setzero_si64(d_stwz_dx);
+    setzero_si64(d_stwz_dy);
+    if (rect_flip != TEXTURE_FLIP_NO)
+    {
+        d_stwz_dx[1] = (i32)dtdy << 11;
+        d_stwz_dy[0] = (i32)dsdx << 11;
+    }
+    else
+    {
+        d_stwz_dx[0] = (i32)dsdx << 11;
+        d_stwz_dy[1] = (i32)dtdy << 11;
+    }
+
+    setzero_si128(spans_d_rgba);
+    setzero_si128(spans_d_stwz);
+    spans_d_stwz[0] = d_stwz_dx[0] & ~0x0000001F;
+    spans_d_stwz[1] = d_stwz_dx[1] & ~0x0000001F;
+
+    setzero_si128(spans_d_rgba_dy);
+    setzero_si128(spans_cd_rgba);
+    spans_cdz = 0;
+
+    setzero_si128(spans_d_stwz_dy);
+    spans_d_stwz_dy[0] = d_stwz_dy[0] & ~0x00007FFF;
+    spans_d_stwz_dy[1] = d_stwz_dy[1] & ~0x00007FFF;
+    spans_dzpix = normalize_dzpix(0);
+
+    setzero_si128(d_stwz_dxh);
+    if (other_modes.cycle_type != CYCLE_TYPE_COPY)
+    {
+        d_stwz_dxh[0] = (d_stwz_dx[0] >> 8) & ~0x00000001;
+        d_stwz_dxh[1] = (d_stwz_dx[1] >> 8) & ~0x00000001;
+    }
+
+    invaly = 1;
+    yllimit = (yl <  __clip.yl) ? yl : __clip.yl;
+    yhlimit = (yh >= __clip.yh) ? yh : __clip.yh;
+
+    ycur = yh & ~3;
+    ylfar = yllimit | 3;
+    if ((yl >> 2) > (ylfar >> 2))
+        ylfar += 4;
+    else if ((yllimit >> 2) >= 0 && (yllimit >> 2) < 1023)
+        span[(yllimit >> 2) + 1].validline = 0;
+
+    xleft = xm/* & ~0x00000001 // never needed because xm <<= 14 */;
+    xright = xh/* & ~0x00000001 // never needed because xh <<= 14 */;
+    xfrac = (xright >> 8) & 0xFF;
+
+    allover = 1;
+    allunder = 1;
+    curover = 0;
+    curunder = 0;
+    allinval = 1;
+    for (k = ycur; k <= ylfar; k++)
+    {
+        int xrsc, xlsc, stickybit;
+        const int spix = k & 3;
+        const int yhclose = yhlimit & ~3;
+
+        if (k < yhclose)
+            { /* branch */ }
+        else
+        {
+            invaly = (uint32_t)(k - yhlimit)>>31 | (uint32_t)~(k - yllimit)>>31;
+            j = k >> 2;
+            if (spix == 0)
+            {
+                maxxmx = 0x000;
+                minxhx = 0xFFF;
+                allover = allunder = 1;
+                allinval = 1;
+            }
+
+            stickybit = (xright & 0x00003FFF) - 1; /* xright/2 & 0x1FFF */
+            stickybit = (uint32_t)~(stickybit) >> 31; /* (stickybit >= 0) */
+            xrsc = (xright >> 13)&0x1FFE | stickybit;
+            curunder = !!(xright & 0x08000000);
+            curunder = curunder | (uint32_t)(xrsc - clipxhshift)>>31;
+            xrsc = curunder ? clipxhshift : (xright>>13)&0x3FFE | stickybit;
+            curover  = !!(xrsc & 0x00002000);
+            xrsc = xrsc & 0x1FFF;
+            curover |= (uint32_t)~(xrsc - clipxlshift) >> 31;
+            xrsc = curover ? clipxlshift : xrsc;
+            span[j].majorx[spix] = xrsc & 0x1FFF;
+            allover &= curover;
+            allunder &= curunder;
+
+            stickybit = (xleft & 0x00003FFF) - 1; /* xleft/2 & 0x1FFF */
+            stickybit = (uint32_t)~(stickybit) >> 31; /* (stickybit >= 0) */
+            xlsc = (xleft >> 13)&0x1FFE | stickybit;
+            curunder = !!(xleft & 0x08000000);
+            curunder = curunder | (uint32_t)(xlsc - clipxhshift)>>31;
+            xlsc = curunder ? clipxhshift : (xleft>>13)&0x3FFE | stickybit;
+            curover  = !!(xlsc & 0x00002000);
+            xlsc &= 0x1FFF;
+            curover |= (uint32_t)~(xlsc - clipxlshift) >> 31;
+            xlsc = curover ? clipxlshift : xlsc;
+            span[j].minorx[spix] = xlsc & 0x1FFF;
+            allover &= curover;
+            allunder &= curunder;
+
+            curcross = ((xleft&0x0FFFC000 ^ 0x08000000)
+                     < (xright&0x0FFFC000 ^ 0x08000000));
+            invaly |= curcross;
+            span[j].invalyscan[spix] = invaly;
+            allinval &= invaly;
+            if (invaly != 0)
+                { /* branch */ }
+            else
+            {
+                xlsc = (xlsc >> 3) & 0xFFF;
+                xrsc = (xrsc >> 3) & 0xFFF;
+                maxxmx = (xlsc > maxxmx) ? xlsc : maxxmx;
+                minxhx = (xrsc < minxhx) ? xrsc : minxhx;
+            }
+
+            if (spix == 0)
+            {
+                span[j].unscrx = xright >> 16;
+             /* xfrac = (xright >> 8) & 0xFF; // xfrac never changes. */
+                setzero_si128(span[j].rgba);
+                span[j].stwz[0] = (stwz[0] - xfrac*d_stwz_dxh[0]) & ~0x000003FF;
+                span[j].stwz[1] = (stwz[1] - xfrac*d_stwz_dxh[1]) & ~0x000003FF;
+                span[j].stwz[2] = 0 & ~0x000003FF;
+                span[j].stwz[3] = 0 & ~0x000003FF;
+            }
+            if (spix == 3)
+            {
+                const int invalidline = (sckeepodd ^ j) & scfield
+                                      | (allinval | allover | allunder);
+                span[j].lx = maxxmx;
+                span[j].rx = minxhx;
+                span[j].validline = invalidline ^ 1;
+            }
+        }
+        if (spix == 3)
+        {
+            stwz[0] = (stwz[0] + d_stwz_dy[0]) & ~0x000001FF;
+            stwz[1] = (stwz[1] + d_stwz_dy[1]) & ~0x000001FF;
+        }
+    }
+
+    if (other_modes.f.stalederivs)
+    {
+        deduce_derivatives();
+        other_modes.f.stalederivs = 0;
+    }
+    render_spans(yhlimit >> 2, yllimit >> 2, tilenum, 1);
+}
+
+static void tex_rect(uint32_t w1, uint32_t w2)
+{
+    int tilenum;
+    int16_t dsdx, dtdy;
+    int32_t xl, yl, xh, yh;
+    int32_t s, t;
+
+    xl      = (cmd_data[cmd_cur + 0].UW32[0] & 0x00FFF000) >> 12;
+    yl      = (cmd_data[cmd_cur + 0].UW32[0] & 0x00000FFF) >>  0;
+    tilenum = (cmd_data[cmd_cur + 0].UW32[1] & 0x07000000) >> 24;
+    xh      = (cmd_data[cmd_cur + 0].UW32[1] & 0x00FFF000) >> 12;
+    yh      = (cmd_data[cmd_cur + 0].UW32[1] & 0x00000FFF) >>  0;
+
+    yl |= (other_modes.cycle_type & 2) ? 3 : 0; /* FILL OR COPY */
+
+    s    = (cmd_data[cmd_cur + 1].UW32[0] & 0xFFFF0000) >> 16;
+    t    = (cmd_data[cmd_cur + 1].UW32[0] & 0x0000FFFF) >>  0;
+    dsdx = (cmd_data[cmd_cur + 1].UW32[1] & 0xFFFF0000) >> 16;
+    dtdy = (cmd_data[cmd_cur + 1].UW32[1] & 0x0000FFFF) >>  0;
+    
+    dsdx = SIGN16(dsdx);
+    dtdy = SIGN16(dtdy);
+
+    draw_texture_rectangle(
+        TEXTURE_FLIP_NO, tilenum,
+        xl, yl, xh, yh,
+        s, t,
+        dsdx, dtdy
+    );
+}
+
+static void tex_rect_flip(uint32_t w1, uint32_t w2)
+{
+    int tilenum;
+    int16_t dsdx, dtdy;
+    int32_t xl, yl, xh, yh;
+    int32_t s, t;
+
+    xl      = (cmd_data[cmd_cur + 0].UW32[0] & 0x00FFF000) >> 12;
+    yl      = (cmd_data[cmd_cur + 0].UW32[0] & 0x00000FFF) >>  0;
+    tilenum = (cmd_data[cmd_cur + 0].UW32[1] & 0x07000000) >> 24;
+    xh      = (cmd_data[cmd_cur + 0].UW32[1] & 0x00FFF000) >> 12;
+    yh      = (cmd_data[cmd_cur + 0].UW32[1] & 0x00000FFF) >>  0;
+
+    yl |= (other_modes.cycle_type & 2) ? 3 : 0; /* FILL OR COPY */
+
+    s    = (cmd_data[cmd_cur + 1].UW32[0] & 0xFFFF0000) >> 16;
+    t    = (cmd_data[cmd_cur + 1].UW32[0] & 0x0000FFFF) >>  0;
+    dsdx = (cmd_data[cmd_cur + 1].UW32[1] & 0xFFFF0000) >> 16;
+    dtdy = (cmd_data[cmd_cur + 1].UW32[1] & 0x0000FFFF) >>  0;
+    
+    dsdx = SIGN16(dsdx);
+    dtdy = SIGN16(dtdy);
+
+    draw_texture_rectangle(
+        TEXTURE_FLIP_YES, tilenum,
+        xl, yl, xh, yh,
+        s, t,
+        dsdx, dtdy
+    );
+}
+
+static void sync_load(uint32_t w1, uint32_t w2)
+{
+}
+
+static void sync_pipe(uint32_t w1, uint32_t w2)
+{
+}
+
+static void sync_tile(uint32_t w1, uint32_t w2)
+{
+}
+
+static void sync_full(uint32_t w1, uint32_t w2)
+{
+#ifdef EXTRALOGGING
+   fprintf(stderr, "Sync full\n");
+   fprintf(stderr, "===================\n");
+#endif
+    *gfx_info.MI_INTR_REG |= DP_INTERRUPT;
+    gfx_info.CheckInterrupts();
+
+#ifdef HAVE_RDP_DUMP
+    if (rdp_dump_active)
+       rdp_dump_end_command_list();
+    rdp_dump_active = 0;
+#endif
+}
+
+static void set_key_gb(uint32_t w1, uint32_t w2)
+{
+    COLOR_GREEN(key_width)  = (w1 & 0x00FFF000) >> 12;
+    COLOR_BLUE(key_width)   = (w1 & 0x00000FFF) >>  0;
+    COLOR_GREEN(key_center) = (w2 & 0xFF000000) >> 24;
+    COLOR_GREEN(key_scale)  = (w2 & 0x00FF0000) >> 16;
+    COLOR_BLUE(key_center)  = (w2 & 0x0000FF00) >>  8;
+    COLOR_BLUE(key_scale)   = (w2 & 0x000000FF) >>  0;
+}
+
+static void set_key_r(uint32_t w1, uint32_t w2)
+{
+    COLOR_RED(key_width)  = (w2 & 0x0FFF0000) >> 16;
+    COLOR_RED(key_center) = (w2 & 0x0000FF00) >>  8;
+    COLOR_RED(key_scale)  = (w2 & 0x000000FF) >>  0;
+}
+
+static void set_convert(uint32_t w1, uint32_t w2)
+{
+   int32_t k0 = (w1 >> 13) & 0x1ff;
+   int32_t k1 = (w1 >> 4) & 0x1ff;
+   int32_t k2 = ((w1 & 0xf) << 5) | ((w2 >> 27) & 0x1f);
+   int32_t k3 = (w2 >> 18) & 0x1ff;
+   k0_tf = (SIGN(k0, 9) << 1) + 1;
+   k1_tf = (SIGN(k1, 9) << 1) + 1;
+   k2_tf = (SIGN(k2, 9) << 1) + 1;
+   k3_tf = (SIGN(k3, 9) << 1) + 1;
+   k4 = (w2 >> 9) & 0x1ff;
+ 	k5 = w2 & 0x1ff;
+}
+
+static void set_scissor(uint32_t w1, uint32_t w2)
+{
+    __clip.xh   = (w1 & 0x00FFF000) >> (44 - 32);
+    __clip.yh   = (w1 & 0x00000FFF) >> (32 - 32);
+    scfield     = (w2 & 0x02000000) >> (25 -  0);
+    sckeepodd   = (w2 & 0x01000000) >> (24 -  0);
+    __clip.xl   = (w2 & 0x00FFF000) >> (12 -  0);
+    __clip.yl   = (w2 & 0x00000FFF) >> ( 0 -  0);
+}
+
+static void set_prim_depth(uint32_t w1, uint32_t w2)
+{
+    primitive_z       = (w2 & 0xFFFF0000) >> 16;
+    primitive_delta_z = (w2 & 0x0000FFFF) >>  0;
+    primitive_z = (primitive_z & 0x7FFF) << 16; /* angrylion does this why? */
+}
+
+static void set_other_modes(uint32_t w1, uint32_t w2)
+{
+    const DP_FIFO cmd_fifo = cmd_data[cmd_cur + 0];
+
+ /* K:  atomic_prim              = (cmd_fifo.UW & 0x0080000000000000) >> 55; */
+ /* j:  reserved for future use -- (cmd_fifo.UW & 0x0040000000000000) >> 54 */
+    other_modes.cycle_type       = (cmd_fifo.UW32[0] & 0x00300000) >> (52 - 32);
+    other_modes.persp_tex_en     = !!(cmd_fifo.UW32[0] & 0x00080000); /* 51 */
+    other_modes.detail_tex_en    = !!(cmd_fifo.UW32[0] & 0x00040000); /* 50 */
+    other_modes.sharpen_tex_en   = !!(cmd_fifo.UW32[0] & 0x00020000); /* 49 */
+    other_modes.tex_lod_en       = !!(cmd_fifo.UW32[0] & 0x00010000); /* 48 */
+    other_modes.en_tlut          = !!(cmd_fifo.UW32[0] & 0x00008000); /* 47 */
+    other_modes.tlut_type        = !!(cmd_fifo.UW32[0] & 0x00004000); /* 46 */
+    other_modes.sample_type      = !!(cmd_fifo.UW32[0] & 0x00002000); /* 45 */
+    other_modes.mid_texel        = !!(cmd_fifo.UW32[0] & 0x00001000); /* 44 */
+    other_modes.bi_lerp0         = !!(cmd_fifo.UW32[0] & 0x00000800); /* 43 */
+    other_modes.bi_lerp1         = !!(cmd_fifo.UW32[0] & 0x00000400); /* 42 */
+    other_modes.convert_one      = !!(cmd_fifo.UW32[0] & 0x00000200); /* 41 */
+    other_modes.key_en           = !!(cmd_fifo.UW32[0] & 0x00000100); /* 40 */
+    other_modes.rgb_dither_sel   = (cmd_fifo.UW32[0] & 0x000000C0) >> (38 - 32);
+    other_modes.alpha_dither_sel = (cmd_fifo.UW32[0] & 0x00000030) >> (36 - 32);
+ /* reserved for future, def:15 -- (cmd_fifo.UW & 0x0000000F00000000) >> 32 */
+    other_modes.blend_m1a_0      = (cmd_fifo.UW32[1] & 0xC0000000) >> (30 -  0);
+    other_modes.blend_m1a_1      = (cmd_fifo.UW32[1] & 0x30000000) >> (28 -  0);
+    other_modes.blend_m1b_0      = (cmd_fifo.UW32[1] & 0x0C000000) >> (26 -  0);
+    other_modes.blend_m1b_1      = (cmd_fifo.UW32[1] & 0x03000000) >> (24 -  0);
+    other_modes.blend_m2a_0      = (cmd_fifo.UW32[1] & 0x00C00000) >> (22 -  0);
+    other_modes.blend_m2a_1      = (cmd_fifo.UW32[1] & 0x00300000) >> (20 -  0);
+    other_modes.blend_m2b_0      = (cmd_fifo.UW32[1] & 0x000C0000) >> (18 -  0);
+    other_modes.blend_m2b_1      = (cmd_fifo.UW32[1] & 0x00030000) >> (16 -  0);
+ /* N:  reserved for future use -- (cmd_fifo.UW & 0x0000000000008000) >> 15 */
+    other_modes.force_blend      = !!(cmd_fifo.UW32[1] & 0x00004000); /* 14 */
+    other_modes.alpha_cvg_select = !!(cmd_fifo.UW32[1] & 0x00002000); /* 13 */
+    other_modes.cvg_times_alpha  = !!(cmd_fifo.UW32[1] & 0x00001000); /* 12 */
+    other_modes.z_mode           = (cmd_fifo.UW32[1] & 0x00000C00) >> (10 -  0);
+    other_modes.cvg_dest         = (cmd_fifo.UW32[1] & 0x00000300) >> ( 8 -  0);
+    other_modes.color_on_cvg     = !!(cmd_fifo.UW32[1] & 0x00000080); /*  7 */
+    other_modes.image_read_en    = !!(cmd_fifo.UW32[1] & 0x00000040); /*  6 */
+    other_modes.z_update_en      = !!(cmd_fifo.UW32[1] & 0x00000020); /*  5 */
+    other_modes.z_compare_en     = !!(cmd_fifo.UW32[1] & 0x00000010); /*  4 */
+    other_modes.antialias_en     = !!(cmd_fifo.UW32[1] & 0x00000008); /*  3 */
+    other_modes.z_source_sel     = !!(cmd_fifo.UW32[1] & 0x00000004); /*  2 */
+    other_modes.dither_alpha_en  = !!(cmd_fifo.UW32[1] & 0x00000002); /*  1 */
+    other_modes.alpha_compare_en = !!(cmd_fifo.UW32[1] & 0x00000001); /*  0 */
+
+    SET_BLENDER_INPUT(
+        0, 0, &blender1a_r[0], &blender1a_g[0], &blender1a_b[0],
+        &blender1b_a[0], other_modes.blend_m1a_0, other_modes.blend_m1b_0);
+    SET_BLENDER_INPUT(
+        0, 1, &blender2a_r[0], &blender2a_g[0], &blender2a_b[0],
+        &blender2b_a[0], other_modes.blend_m2a_0, other_modes.blend_m2b_0);
+    SET_BLENDER_INPUT(
+        1, 0, &blender1a_r[1], &blender1a_g[1], &blender1a_b[1],
+        &blender1b_a[1], other_modes.blend_m1a_1, other_modes.blend_m1b_1);
+    SET_BLENDER_INPUT(
+        1, 1, &blender2a_r[1], &blender2a_g[1], &blender2a_b[1],
+        &blender2b_a[1], other_modes.blend_m2a_1, other_modes.blend_m2b_1);
+
+    other_modes.f.stalederivs = 1;
+}
+
+static void set_tile_size(uint32_t w1, uint32_t w2)
+{
+    int sl      = (w1 & 0x00FFF000) >> (44 - 32);
+    int tl      = (w1 & 0x00000FFF) >> (32 - 32);
+    int tilenum = (w2 & 0x07000000) >> (24 -  0);
+    int sh      = (w2 & 0x00FFF000) >> (12 -  0);
+    int th      = (w2 & 0x00000FFF) >> ( 0 -  0);
+
+    tile[tilenum].sl = sl;
+    tile[tilenum].tl = tl;
+    tile[tilenum].sh = sh;
+    tile[tilenum].th = th;
+    calculate_clamp_diffs(tilenum);
+}
+
+static void load_block(uint32_t w1, uint32_t w2)
+{
+    int32_t lewdata[10];
+    const int command = (w1 & 0xFF000000) >> (56-32);
+    const int sl      = (w1 & 0x00FFF000) >> (44-32);
+    const int tl      = (w1 & 0x00000FFF) >> (32-32);
+    const int tilenum = (w2 & 0x07000000) >> (24- 0);
+    const int sh      = (w2 & 0x00FFF000) >> (12- 0);
+    const int dxt     = (w2 & 0x00000FFF) >> ( 0- 0);
+    const int tlclamped = tl & 0x3FF;
+
+    tile[tilenum].sl = sl;
+    tile[tilenum].tl = tl;
+    tile[tilenum].sh = sh;
+    tile[tilenum].th = dxt;
+
+    calculate_clamp_diffs(tilenum);
+
+    lewdata[0] =
+        (command << 24)
+      | (0x10 << 19)
+      | (tilenum << 16)
+      | ((tlclamped << 2) | 3);
+    lewdata[1] = (((tlclamped << 2) | 3) << 16) | (tlclamped << 2);
+    lewdata[2] = sh << 16;
+    lewdata[3] = sl << 16;
+    lewdata[4] = sh << 16;
+    lewdata[5] = ((sl << 3) << 16) | (tl << 3);
+    lewdata[6] = (dxt & 0xff) << 8;
+    lewdata[7] = ((0x80 >> ti_size) << 16) | (dxt >> 8);
+    lewdata[8] = 0x20;
+    lewdata[9] = 0x20;
+
+    edgewalker_for_loads(lewdata);
+}
+
+static void load_tlut(uint32_t w1, uint32_t w2)
+{
+    tile_tlut_common_cs_decoder(w1, w2);
+}
+
+static void load_tile(uint32_t w1, uint32_t w2)
+{
+    tile_tlut_common_cs_decoder(w1, w2);
+}
+
+static void set_tile(uint32_t w1, uint32_t w2)
+{
+    const int tilenum     = (w2 & 0x07000000) >> 24;
+    
+    tile[tilenum].format  = (w1 & 0x00E00000) >> (53 - 32);
+    tile[tilenum].size    = (w1 & 0x00180000) >> (51 - 32);
+    tile[tilenum].line    = (w1 & 0x0003FE00) >> (41 - 32);
+    tile[tilenum].tmem    = (w1 & 0x000001FF) >> (32 - 32);
+ /* tilenum               = (cmd_fifo.UW & 0x0000000007000000) >> 24; */
+    tile[tilenum].palette = (w2 & 0x00F00000) >> (20 -  0);
+#ifdef EXTRALOGGING
+    if (tile[tilenum].palette)
+       fprintf(stderr, "Tile %d: Palette: %u\n", tilenum, tile[tilenum].palette);
+#endif
+    tile[tilenum].ct      = (w2 & 0x00080000) >> (19 -  0);
+    tile[tilenum].mt      = (w2 & 0x00040000) >> (18 -  0);
+    tile[tilenum].mask_t  = (w2 & 0x0003C000) >> (14 -  0);
+    tile[tilenum].shift_t = (w2 & 0x00003C00) >> (10 -  0);
+    tile[tilenum].cs      = (w2 & 0x00000200) >> ( 9 -  0);
+    tile[tilenum].ms      = (w2 & 0x00000100) >> ( 8 -  0);
+    tile[tilenum].mask_s  = (w2 & 0x000000F0) >> ( 4 -  0);
+    tile[tilenum].shift_s = (w2 & 0x0000000F) >> ( 0 -  0);
+
+    tile[tilenum].mask_s_maskbits = tile[tilenum].mask_s != 0
+       ? ((uint16_t)(0xffff) >> (16 - tile[tilenum].mask_s)) & 0x3ff
+       : 0x3ff;
+
+    tile[tilenum].mask_t_maskbits = tile[tilenum].mask_t != 0
+       ? ((uint16_t)(0xffff) >> (16 - tile[tilenum].mask_t)) & 0x3ff
+       : 0x3ff;
+
+    calculate_tile_derivs(tilenum);
+}
+
+static void fill_rect(uint32_t w1, uint32_t w2)
+{
+    int xlint, xhint;
+
+    int ycur, ylfar;
+    int yllimit, yhlimit;
+    int invaly;
+    int curcross;
+    int allover, allunder, curover, curunder;
+    int allinval;
+    int j, k;
+    const i32 clipxlshift = __clip.xl << 1;
+    const i32 clipxhshift = __clip.xh << 1;
+
+    int xl = (w1 & 0x00FFF000) >> (44 - 32); /* Load XL Integer Portion */
+    int yl = (w1 & 0x00000FFF) >> (32 - 32); /* Load YL Integer Portion */
+    int xh = (w2 & 0x00FFF000) >> (12 -  0); /* Load XH Integer Portion */
+    int yh = (w2 & 0x00000FFF) >> ( 0 -  0); /* Load YH Integer Portion */
+
+    yl |= (other_modes.cycle_type & 2) ? 3 : 0; /* FILL or COPY */
+
+    xlint = (unsigned)(xl) >> 2;
+    xhint = (unsigned)(xh) >> 2;
+
+    max_level = 0;
+    xl = (xlint << 16) | (xl & 3)<<14;
+    xl = SIGN(xl, 30);
+    xh = (xhint << 16) | (xh & 3)<<14;
+    xh = SIGN(xh, 30);
+
+    setzero_si128(spans_d_rgba);
+    setzero_si128(spans_d_stwz);
+
+    setzero_si128(spans_d_rgba_dy);
+    setzero_si128(spans_d_stwz_dy);
+
+    setzero_si128(spans_cd_rgba);
+    spans_cdz = 0;
+
+    spans_dzpix = normalize_dzpix(0);
+
+    invaly = 1;
+    yllimit = (yl < __clip.yl) ? yl : __clip.yl;
+
+    ycur = yh & ~3;
+    ylfar = yllimit | 3;
+    if (yl >> 2 > ylfar >> 2)
+        ylfar += 4;
+    else if (yllimit >> 2 >= 0 && yllimit>>2 < 1023)
+        span[(yllimit >> 2) + 1].validline = 0;
+    yhlimit = (yh >= __clip.yh) ? yh : __clip.yh;
+
+    allover = 1;
+    allunder = 1;
+    curover = 0;
+    curunder = 0;
+    allinval = 1;
+    for (k = ycur; k <= ylfar; k++)
+    {
+        static int maxxmx, minxhx;
+        int xrsc, xlsc, stickybit;
+        const i32 xleft = xl & ~0x00000001, xright = xh & ~0x00000001;
+        const int yhclose = yhlimit & ~3;
+        const int spix = k & 3;
+
+        if (k < yhclose)
+            continue;
+        invaly = (uint32_t)(k - yhlimit)>>31 | (uint32_t)~(k - yllimit)>>31;
+        j = k >> 2;
+        if (spix == 0)
+        {
+            maxxmx = 0x000;
+            minxhx = 0xFFF;
+            allover = allunder = 1;
+            allinval = 1;
+        }
+
+        stickybit = (xright & 0x00003FFF) - 1; /* xright/2 & 0x1FFF */
+        stickybit = (uint32_t)~(stickybit) >> 31; /* (stickybit >= 0) */
+        xrsc = (xright >> 13)&0x1FFE | stickybit;
+        curunder = !!(xright & 0x08000000);
+        curunder = curunder | (uint32_t)(xrsc - clipxhshift)>>31;
+        xrsc = curunder ? clipxhshift : (xright>>13)&0x3FFE | stickybit;
+        curover  = !!(xrsc & 0x00002000);
+        xrsc = xrsc & 0x1FFF;
+        curover |= (uint32_t)~(xrsc - clipxlshift) >> 31;
+        xrsc = curover ? clipxlshift : xrsc;
+        span[j].majorx[spix] = xrsc & 0x1FFF;
+        allover &= curover;
+        allunder &= curunder;
+
+        stickybit = (xleft & 0x00003FFF) - 1; /* xleft/2 & 0x1FFF */
+        stickybit = (uint32_t)~(stickybit) >> 31; /* (stickybit >= 0) */
+        xlsc = (xleft >> 13)&0x1FFE | stickybit;
+        curunder = !!(xleft & 0x08000000);
+        curunder = curunder | (uint32_t)(xlsc - clipxhshift)>>31;
+        xlsc = curunder ? clipxhshift : (xleft>>13)&0x3FFE | stickybit;
+        curover  = !!(xlsc & 0x00002000);
+        xlsc &= 0x1FFF;
+        curover |= (uint32_t)~(xlsc - clipxlshift) >> 31;
+        xlsc = curover ? clipxlshift : xlsc;
+        span[j].minorx[spix] = xlsc & 0x1FFF;
+        allover &= curover;
+        allunder &= curunder;
+
+        curcross = ((xleft&0x0FFFC000 ^ 0x08000000)
+                 < (xright&0x0FFFC000 ^ 0x08000000));
+        invaly |= curcross;
+        span[j].invalyscan[spix] = invaly;
+        allinval &= invaly;
+        if (invaly != 0)
+            { /* branch */ }
+        else
+        {
+            xlsc = (xlsc >> 3) & 0xFFF;
+            xrsc = (xrsc >> 3) & 0xFFF;
+            maxxmx = (xlsc > maxxmx) ? xlsc : maxxmx;
+            minxhx = (xrsc < minxhx) ? xrsc : minxhx;
+        }
+
+        if (spix == 0)
+        {
+            span[j].unscrx = xright >> 16;
+            setzero_si128(span[j].rgba);
+            setzero_si128(span[j].stwz);
+        }
+        else if (spix == 3)
+        {
+            const int invalidline = (sckeepodd ^ j) & scfield
+                                  | (allinval | allover | allunder);
+            span[j].lx = maxxmx;
+            span[j].rx = minxhx;
+            span[j].validline = invalidline ^ 1;
+        }
+    }
+    render_spans(yhlimit >> 2, yllimit >> 2, 0, 1);
+}
+
+static void set_fill_color(uint32_t w1, uint32_t w2)
+{
+    fill_color = w2;
+}
+
+static void set_fog_color(uint32_t w1, uint32_t w2)
+{
+    COLOR_RED(fog_color)   = (w2 & 0xFF000000) >> 24;
+    COLOR_GREEN(fog_color) = (w2 & 0x00FF0000) >> 16;
+    COLOR_BLUE(fog_color)  = (w2 & 0x0000FF00) >>  8;
+    COLOR_ALPHA(fog_color) = (w2 & 0x000000FF) >>  0;
+}
+
+static void set_blend_color(uint32_t w1, uint32_t w2)
+{
+    COLOR_RED(blend_color)   = (w2 & 0xFF000000) >> 24;
+    COLOR_GREEN(blend_color) = (w2 & 0x00FF0000) >> 16;
+    COLOR_BLUE(blend_color)  = (w2 & 0x0000FF00) >>  8;
+    COLOR_ALPHA(blend_color) = (w2 & 0x000000FF) >>  0;
+}
+
+static void set_prim_color(uint32_t w1, uint32_t w2)
+{
+    min_level               = (w1 & 0x00001F00) >>(40-32);
+    primitive_lod_frac      = (w1 & 0x000000FF) >>(32-32);
+    COLOR_RED(prim_color)   = (w2 & 0xFF000000) >> 24;
+    COLOR_GREEN(prim_color) = (w2 & 0x00FF0000) >> 16;
+    COLOR_BLUE(prim_color)  = (w2 & 0x0000FF00) >>  8;
+    COLOR_ALPHA(prim_color) = (w2 & 0x000000FF) >>  0;
+}
+
+static void set_env_color(uint32_t w1, uint32_t w2)
+{
+    COLOR_RED(env_color)   = (w2 & 0xFF000000) >> 24;
+    COLOR_GREEN(env_color) = (w2 & 0x00FF0000) >> 16;
+    COLOR_BLUE(env_color)  = (w2 & 0x0000FF00) >>  8;
+    COLOR_ALPHA(env_color) = (w2 & 0x000000FF) >>  0;
+}
+
+static void set_combine(uint32_t w1, uint32_t w2)
+{
+    combine.sub_a_rgb0 = (w1 & 0x00F00000) >>(52-32);
+    combine.mul_rgb0   = (w1 & 0x000F8000) >>(47-32);
+    combine.sub_a_a0   = (w1 & 0x00007000) >>(44-32);
+    combine.mul_a0     = (w1 & 0x00000E00) >>(41-32);
+    combine.sub_a_rgb1 = (w1 & 0x000001E0) >>(37-32);
+    combine.mul_rgb1   = (w1 & 0x0000001F) >>(32-32);
+    combine.sub_b_rgb0 = (w2 & 0xF0000000) >> 28;
+    combine.sub_b_rgb1 = (w2 & 0x0F000000) >> 24;
+    combine.sub_a_a1   = (w2 & 0x00E00000) >> 21;
+    combine.mul_a1     = (w2 & 0x001C0000) >> 18;
+    combine.add_rgb0   = (w2 & 0x00038000) >> 15;
+    combine.sub_b_a0   = (w2 & 0x00007000) >> 12;
+    combine.add_a0     = (w2 & 0x00000E00) >>  9;
+    combine.add_rgb1   = (w2 & 0x000001C0) >>  6;
+    combine.sub_b_a1   = (w2 & 0x00000038) >>  3;
+    combine.add_a1     = (w2 & 0x00000007) >>  0;
+
+    SET_SUBA_RGB_INPUT(
+        &combiner_rgbsub_a_r[0], &combiner_rgbsub_a_g[0],
+        &combiner_rgbsub_a_b[0], combine.sub_a_rgb0);
+    SET_SUBB_RGB_INPUT(
+        &combiner_rgbsub_b_r[0], &combiner_rgbsub_b_g[0],
+        &combiner_rgbsub_b_b[0], combine.sub_b_rgb0);
+    SET_MUL_RGB_INPUT(
+        &combiner_rgbmul_r[0], &combiner_rgbmul_g[0], &combiner_rgbmul_b[0],
+        combine.mul_rgb0);
+    SET_ADD_RGB_INPUT(
+        &combiner_rgbadd_r[0], &combiner_rgbadd_g[0], &combiner_rgbadd_b[0],
+        combine.add_rgb0);
+    SET_SUB_ALPHA_INPUT(&combiner_alphasub_a[0], combine.sub_a_a0);
+    SET_SUB_ALPHA_INPUT(&combiner_alphasub_b[0], combine.sub_b_a0);
+    SET_MUL_ALPHA_INPUT(&combiner_alphamul[0], combine.mul_a0);
+    SET_SUB_ALPHA_INPUT(&combiner_alphaadd[0], combine.add_a0);
+
+    SET_SUBA_RGB_INPUT(
+        &combiner_rgbsub_a_r[1], &combiner_rgbsub_a_g[1],
+        &combiner_rgbsub_a_b[1], combine.sub_a_rgb1);
+    SET_SUBB_RGB_INPUT(
+        &combiner_rgbsub_b_r[1], &combiner_rgbsub_b_g[1],
+        &combiner_rgbsub_b_b[1], combine.sub_b_rgb1);
+    SET_MUL_RGB_INPUT(
+        &combiner_rgbmul_r[1], &combiner_rgbmul_g[1], &combiner_rgbmul_b[1],
+        combine.mul_rgb1);
+    SET_ADD_RGB_INPUT(
+        &combiner_rgbadd_r[1], &combiner_rgbadd_g[1], &combiner_rgbadd_b[1],
+        combine.add_rgb1);
+    SET_SUB_ALPHA_INPUT(&combiner_alphasub_a[1], combine.sub_a_a1);
+    SET_SUB_ALPHA_INPUT(&combiner_alphasub_b[1], combine.sub_b_a1);
+    SET_MUL_ALPHA_INPUT(&combiner_alphamul[1], combine.mul_a1);
+    SET_SUB_ALPHA_INPUT(&combiner_alphaadd[1], combine.add_a1);
+
+    other_modes.f.stalederivs = 1;
+}
+
+static void set_texture_image(uint32_t w1, uint32_t w2)
+{
+    ti_format  = (w1 & 0x00E00000) >> (53 - 32);
+    ti_size    = (w1 & 0x00180000) >> (51 - 32);
+    ti_width   = (w1 & 0x000003FF) >> (32 - 32);
+    ti_address = (w2 & 0x03FFFFFF) >> ( 0 -  0);
+ /* ti_address &= 0x00FFFFFF; // physical memory limit, enforced later */
+    ++ti_width;
+}
+
+static void set_mask_image(uint32_t w1, uint32_t w2)
+{
+    zb_address = w2 & 0x03FFFFFF;
+ /* zb_address &= 0x00FFFFFF; */
+}
+
+static void set_color_image(uint32_t w1, uint32_t w2)
+{
+    fb_format  = (w1 & 0x00E00000) >> (53 - 32);
+    fb_size    = (w1 & 0x00180000) >> (51 - 32);
+    fb_width   = (w1 & 0x000003FF) >> (32 - 32);
+    fb_address = (w2 & 0x03FFFFFF) >> ( 0 -  0);
+    ++fb_width;
+ /* fb_address &= 0x00FFFFFF; */
+}
+
+
