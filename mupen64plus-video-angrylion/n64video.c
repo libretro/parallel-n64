@@ -22,11 +22,7 @@ static int LOG_ENABLE = 0;
 
 typedef struct
 {
-#ifdef USE_SSE_SUPPORT
-  int32_t col[4] ALIGNED;
-#else
-  int32_t col[4];
-#endif
+  int16_t col[4];
 } COLOR;
 
 typedef struct {
@@ -153,39 +149,39 @@ static uint32_t zb_address;
 
 static uint32_t max_level;
 static int32_t min_level;
-static int32_t primitive_lod_frac;
+static int16_t primitive_lod_frac;
 
 static uint32_t primitive_z;
 static uint16_t primitive_delta_z;
 
 static uint32_t fill_color;
 
-static int32_t *combiner_rgbsub_a_r[2];
-static int32_t *combiner_rgbsub_a_g[2];
-static int32_t *combiner_rgbsub_a_b[2];
-static int32_t *combiner_rgbsub_b_r[2];
-static int32_t *combiner_rgbsub_b_g[2];
-static int32_t *combiner_rgbsub_b_b[2];
-static int32_t *combiner_rgbmul_r[2];
-static int32_t *combiner_rgbmul_g[2];
-static int32_t *combiner_rgbmul_b[2];
-static int32_t *combiner_rgbadd_r[2];
-static int32_t *combiner_rgbadd_g[2];
-static int32_t *combiner_rgbadd_b[2];
+static int16_t *combiner_rgbsub_a_r[2];
+static int16_t *combiner_rgbsub_a_g[2];
+static int16_t *combiner_rgbsub_a_b[2];
+static int16_t *combiner_rgbsub_b_r[2];
+static int16_t *combiner_rgbsub_b_g[2];
+static int16_t *combiner_rgbsub_b_b[2];
+static int16_t *combiner_rgbmul_r[2];
+static int16_t *combiner_rgbmul_g[2];
+static int16_t *combiner_rgbmul_b[2];
+static int16_t *combiner_rgbadd_r[2];
+static int16_t *combiner_rgbadd_g[2];
+static int16_t *combiner_rgbadd_b[2];
 
-static int32_t *combiner_alphasub_a[2];
-static int32_t *combiner_alphasub_b[2];
-static int32_t *combiner_alphamul[2];
-static int32_t *combiner_alphaadd[2];
+static int16_t *combiner_alphasub_a[2];
+static int16_t *combiner_alphasub_b[2];
+static int16_t *combiner_alphamul[2];
+static int16_t *combiner_alphaadd[2];
 
-static int32_t *blender1a_r[2];
-static int32_t *blender1a_g[2];
-static int32_t *blender1a_b[2];
-static int32_t *blender1b_a[2];
-static int32_t *blender2a_r[2];
-static int32_t *blender2a_g[2];
-static int32_t *blender2a_b[2];
-static int32_t *blender2b_a[2];
+static int16_t *blender1a_r[2];
+static int16_t *blender1a_g[2];
+static int16_t *blender1a_b[2];
+static int16_t *blender1b_a[2];
+static int16_t *blender2a_r[2];
+static int16_t *blender2a_g[2];
+static int16_t *blender2a_b[2];
+static int16_t *blender2b_a[2];
 
 #define COLOR_RED(val)       (val.col[0])
 #define COLOR_GREEN(val)     (val.col[1])
@@ -202,7 +198,7 @@ static int32_t *blender2b_a[2];
 #define UPPER ((sfrac + tfrac) & 0x20)
 
 static int32_t k0_tf = 0, k1_tf = 0, k2_tf = 0, k3_tf = 0;
-static int32_t k4 = 0, k5 = 0;
+static int16_t k4 = 0, k5 = 0;
 
 static TILE tile[8];
 
@@ -314,13 +310,11 @@ COLOR texel0_color;
 COLOR texel1_color;
 COLOR nexttexel_color;
 COLOR shade_color;
-static int32_t noise = 0;
-static int32_t one_color = 0x100;
-static int32_t zero_color = 0x00;
+static int16_t noise = 0;
+static int16_t one_color = 0x100;
+static int16_t zero_color = 0x00;
 
-int32_t keyalpha;
-
-static int32_t blenderone    = 0xff;
+static int16_t blenderone    = 0xff;
 
 COLOR pixel_color;
 COLOR inv_pixel_color;
@@ -346,7 +340,7 @@ typedef struct{
     int onelessthanmid;
 }SPANSIGS;
 
-static int32_t lod_frac = 0;
+static int16_t lod_frac = 0;
 struct {uint32_t shift; uint32_t add;} z_dec_table[8] = {
      6, 0x00000,
      5, 0x20000,
@@ -687,7 +681,7 @@ static void (*fbwrite_func[4])(
     fbwrite_4, fbwrite_8, fbwrite_16, fbwrite_32
 };
 
-static INLINE void SET_BLENDER_INPUT(int cycle, int which, int32_t **input_r, int32_t **input_g, int32_t **input_b, int32_t **input_a, int a, int b)
+static INLINE void SET_BLENDER_INPUT(int cycle, int which, int16_t **input_r, int16_t **input_g, int16_t **input_b, int16_t **input_a, int a, int b)
 {
 
     switch (a & 0x3)
@@ -1187,7 +1181,7 @@ void rdp_init(void)
     rdram_16 = (uint16_t*)gfx_info.RDRAM;
 }
 
-static INLINE void SET_SUBA_RGB_INPUT(int32_t **input_r, int32_t **input_g, int32_t **input_b, int code)
+static INLINE void SET_SUBA_RGB_INPUT(int16_t **input_r, int16_t **input_g, int16_t **input_b, int code)
 {
     switch (code & 0xf)
     {
@@ -1246,7 +1240,7 @@ static INLINE void SET_SUBA_RGB_INPUT(int32_t **input_r, int32_t **input_g, int3
     }
 }
 
-static INLINE void SET_SUBB_RGB_INPUT(int32_t **input_r, int32_t **input_g, int32_t **input_b, int code)
+static INLINE void SET_SUBB_RGB_INPUT(int16_t **input_r, int16_t **input_g, int16_t **input_b, int code)
 {
     switch (code & 0xf)
     {
@@ -1305,7 +1299,7 @@ static INLINE void SET_SUBB_RGB_INPUT(int32_t **input_r, int32_t **input_g, int3
     }
 }
 
-static INLINE void SET_MUL_RGB_INPUT(int32_t **input_r, int32_t **input_g, int32_t **input_b, int code)
+static INLINE void SET_MUL_RGB_INPUT(int16_t **input_r, int16_t **input_g, int16_t **input_b, int code)
 {
     switch (code & 0x1f)
     {
@@ -1412,7 +1406,7 @@ static INLINE void SET_MUL_RGB_INPUT(int32_t **input_r, int32_t **input_g, int32
     }
 }
 
-static INLINE void SET_ADD_RGB_INPUT(int32_t **input_r, int32_t **input_g, int32_t **input_b, int code)
+static INLINE void SET_ADD_RGB_INPUT(int16_t **input_r, int16_t **input_g, int16_t **input_b, int code)
 {
    switch (code & 0x7)
    {
@@ -1459,7 +1453,7 @@ static INLINE void SET_ADD_RGB_INPUT(int32_t **input_r, int32_t **input_g, int32
    }
 }
 
-static INLINE void SET_SUB_ALPHA_INPUT(int32_t **input, int code)
+static INLINE void SET_SUB_ALPHA_INPUT(int16_t **input, int code)
 {
     switch (code & 0x7)
     {
@@ -1474,7 +1468,7 @@ static INLINE void SET_SUB_ALPHA_INPUT(int32_t **input, int code)
     }
 }
 
-static INLINE void SET_MUL_ALPHA_INPUT(int32_t **input, int code)
+static INLINE void SET_MUL_ALPHA_INPUT(int16_t **input, int code)
 {
     switch (code & 0x7)
     {
@@ -1555,9 +1549,10 @@ static STRICTINLINE int32_t CLIP(int32_t value,int32_t min,int32_t max)
 
 static void combiner_1cycle(int adseed, uint32_t* curpixel_cvg)
 {
-
+    int32_t temp_combined_color[3];
     int32_t redkey, greenkey, bluekey, temp;
     COLOR chromabypass;
+    int32_t keyalpha;
 
     if (other_modes.key_en)
     {
@@ -1566,9 +1561,9 @@ static void combiner_1cycle(int adseed, uint32_t* curpixel_cvg)
        COLOR_BLUE(chromabypass)  = *combiner_rgbsub_a_b[1];
     }
     
-    COLOR_RED(combined_color) = color_combiner_equation(*combiner_rgbsub_a_r[1],*combiner_rgbsub_b_r[1],*combiner_rgbmul_r[1],*combiner_rgbadd_r[1]);
-    COLOR_GREEN(combined_color) = color_combiner_equation(*combiner_rgbsub_a_g[1],*combiner_rgbsub_b_g[1],*combiner_rgbmul_g[1],*combiner_rgbadd_g[1]);
-    COLOR_BLUE(combined_color) = color_combiner_equation(*combiner_rgbsub_a_b[1],*combiner_rgbsub_b_b[1],*combiner_rgbmul_b[1],*combiner_rgbadd_b[1]);
+    temp_combined_color[0] = color_combiner_equation(*combiner_rgbsub_a_r[1],*combiner_rgbsub_b_r[1],*combiner_rgbmul_r[1],*combiner_rgbadd_r[1]);
+    temp_combined_color[1] = color_combiner_equation(*combiner_rgbsub_a_g[1],*combiner_rgbsub_b_g[1],*combiner_rgbmul_g[1],*combiner_rgbadd_g[1]);
+    temp_combined_color[2] = color_combiner_equation(*combiner_rgbsub_a_b[1],*combiner_rgbsub_b_b[1],*combiner_rgbmul_b[1],*combiner_rgbadd_b[1]);
     COLOR_ALPHA(combined_color) = alpha_combiner_equation(*combiner_alphasub_a[1],*combiner_alphasub_b[1],*combiner_alphamul[1],*combiner_alphaadd[1]);
 
     COLOR_ALPHA(pixel_color) = special_9bit_clamptable[COLOR_ALPHA(combined_color)];
@@ -1577,26 +1572,26 @@ static void combiner_1cycle(int adseed, uint32_t* curpixel_cvg)
 
     if (!other_modes.key_en)
     {
-        COLOR_RED(combined_color)   >>= 8;
-        COLOR_GREEN(combined_color) >>= 8;
-        COLOR_BLUE(combined_color)  >>= 8;
+        COLOR_RED(combined_color)     = temp_combined_color[0] >> 8;
+        COLOR_GREEN(combined_color)   = temp_combined_color[1] >> 8;
+        COLOR_BLUE(combined_color)    = temp_combined_color[2] >> 8;
         COLOR_RED(pixel_color)        = special_9bit_clamptable[COLOR_RED(combined_color)];
         COLOR_GREEN(pixel_color)      = special_9bit_clamptable[COLOR_GREEN(combined_color)];
         COLOR_BLUE(pixel_color)       = special_9bit_clamptable[COLOR_BLUE(combined_color)];
     }
     else
     {
-        redkey = SIGN(COLOR_RED(combined_color), 17);
+        redkey = SIGN(temp_combined_color[0], 17);
         if (redkey >= 0)
             redkey = (COLOR_RED(key_width) << 4) - redkey;
         else
             redkey = (COLOR_RED(key_width) << 4) + redkey;
-        greenkey = SIGN(COLOR_GREEN(combined_color), 17);
+        greenkey = SIGN(temp_combined_color[1], 17);
         if (greenkey >= 0)
             greenkey = (COLOR_GREEN(key_width) << 4) - greenkey;
         else
             greenkey = (COLOR_GREEN(key_width) << 4) + greenkey;
-        bluekey = SIGN(COLOR_BLUE(combined_color), 17);
+        bluekey = SIGN(temp_combined_color[2], 17);
         if (bluekey >= 0)
             bluekey = (COLOR_BLUE(key_width) << 4) - bluekey;
         else
@@ -1610,9 +1605,9 @@ static void combiner_1cycle(int adseed, uint32_t* curpixel_cvg)
         COLOR_GREEN(pixel_color) = special_9bit_clamptable[COLOR_GREEN(chromabypass)];
         COLOR_BLUE(pixel_color)  = special_9bit_clamptable[COLOR_BLUE(chromabypass)];
 
-        COLOR_RED(combined_color)   >>= 8;
-        COLOR_GREEN(combined_color) >>= 8;
-        COLOR_BLUE(combined_color)  >>= 8;
+        COLOR_RED(combined_color)   = temp_combined_color[0] >> 8;
+        COLOR_GREEN(combined_color) = temp_combined_color[1] >> 8;
+        COLOR_BLUE(combined_color)  = temp_combined_color[2] >> 8;
     }
     
     
@@ -1650,8 +1645,10 @@ static void combiner_1cycle(int adseed, uint32_t* curpixel_cvg)
 
 static void combiner_2cycle(int adseed, uint32_t* curpixel_cvg, int32_t* acalpha)
 {
+    int32_t temp_combined_color[3];
     int32_t redkey, greenkey, bluekey, temp;
     COLOR chromabypass;
+    int32_t keyalpha;
 
     if (other_modes.key_en)
     {
@@ -1660,9 +1657,9 @@ static void combiner_2cycle(int adseed, uint32_t* curpixel_cvg, int32_t* acalpha
        COLOR_BLUE(chromabypass)  = *combiner_rgbsub_a_b[1];
     }
 
-    COLOR_RED(combined_color) = color_combiner_equation(*combiner_rgbsub_a_r[0],*combiner_rgbsub_b_r[0],*combiner_rgbmul_r[0],*combiner_rgbadd_r[0]);
-    COLOR_GREEN(combined_color) = color_combiner_equation(*combiner_rgbsub_a_g[0],*combiner_rgbsub_b_g[0],*combiner_rgbmul_g[0],*combiner_rgbadd_g[0]);
-    COLOR_BLUE(combined_color) = color_combiner_equation(*combiner_rgbsub_a_b[0],*combiner_rgbsub_b_b[0],*combiner_rgbmul_b[0],*combiner_rgbadd_b[0]);
+    temp_combined_color[0] = color_combiner_equation(*combiner_rgbsub_a_r[0],*combiner_rgbsub_b_r[0],*combiner_rgbmul_r[0],*combiner_rgbadd_r[0]);
+    temp_combined_color[1] = color_combiner_equation(*combiner_rgbsub_a_g[0],*combiner_rgbsub_b_g[0],*combiner_rgbmul_g[0],*combiner_rgbadd_g[0]);
+    temp_combined_color[2] = color_combiner_equation(*combiner_rgbsub_a_b[0],*combiner_rgbsub_b_b[0],*combiner_rgbmul_b[0],*combiner_rgbadd_b[0]);
     COLOR_ALPHA(combined_color) = alpha_combiner_equation(*combiner_alphasub_a[0],*combiner_alphasub_b[0],*combiner_alphamul[0],*combiner_alphaadd[0]);
 
     if (other_modes.alpha_compare_en)
@@ -1670,17 +1667,17 @@ static void combiner_2cycle(int adseed, uint32_t* curpixel_cvg, int32_t* acalpha
         int32_t preacalpha;
         if (other_modes.key_en)
         {
-            redkey = SIGN(COLOR_RED(combined_color), 17);
+            redkey = SIGN(temp_combined_color[0], 17);
             if (redkey >= 0)
                 redkey = (COLOR_RED(key_width) << 4) - redkey;
             else
                 redkey = (COLOR_RED(key_width) << 4) + redkey;
-            greenkey = SIGN(COLOR_GREEN(combined_color), 17);
+            greenkey = SIGN(temp_combined_color[1], 17);
             if (greenkey >= 0)
                 greenkey = (COLOR_GREEN(key_width) << 4) - greenkey;
             else
                 greenkey = (COLOR_GREEN(key_width) << 4) + greenkey;
-            bluekey = SIGN(COLOR_BLUE(combined_color), 17);
+            bluekey = SIGN(temp_combined_color[2], 17);
             if (bluekey >= 0)
                 bluekey = (COLOR_BLUE(key_width) << 4) - bluekey;
             else
@@ -1721,24 +1718,24 @@ static void combiner_2cycle(int adseed, uint32_t* curpixel_cvg, int32_t* acalpha
         *acalpha = preacalpha;
     }
 
-    COLOR_RED(combined_color)   >>= 8;
-    COLOR_GREEN(combined_color) >>= 8;
-    COLOR_BLUE(combined_color)  >>= 8;
+    COLOR_RED(combined_color)   = temp_combined_color[0]  >> 8;
+    COLOR_GREEN(combined_color) = temp_combined_color[1]  >> 8;
+    COLOR_BLUE(combined_color)  = temp_combined_color[2]  >> 8;
 
     COLOR_ASSIGN(texel0_color, texel1_color);
     COLOR_ASSIGN(texel1_color, nexttexel_color);
 
-    COLOR_RED(combined_color)   = color_combiner_equation(*combiner_rgbsub_a_r[1],*combiner_rgbsub_b_r[1],*combiner_rgbmul_r[1],*combiner_rgbadd_r[1]);
-    COLOR_GREEN(combined_color) = color_combiner_equation(*combiner_rgbsub_a_g[1],*combiner_rgbsub_b_g[1],*combiner_rgbmul_g[1],*combiner_rgbadd_g[1]);
-    COLOR_BLUE(combined_color)  = color_combiner_equation(*combiner_rgbsub_a_b[1],*combiner_rgbsub_b_b[1],*combiner_rgbmul_b[1],*combiner_rgbadd_b[1]);
+    temp_combined_color[0]   = color_combiner_equation(*combiner_rgbsub_a_r[1],*combiner_rgbsub_b_r[1],*combiner_rgbmul_r[1],*combiner_rgbadd_r[1]);
+    temp_combined_color[1] = color_combiner_equation(*combiner_rgbsub_a_g[1],*combiner_rgbsub_b_g[1],*combiner_rgbmul_g[1],*combiner_rgbadd_g[1]);
+    temp_combined_color[2]  = color_combiner_equation(*combiner_rgbsub_a_b[1],*combiner_rgbsub_b_b[1],*combiner_rgbmul_b[1],*combiner_rgbadd_b[1]);
     COLOR_ALPHA(combined_color) = alpha_combiner_equation(*combiner_alphasub_a[1],*combiner_alphasub_b[1],*combiner_alphamul[1],*combiner_alphaadd[1]);
 
     if (!other_modes.key_en)
     {
         
-        COLOR_RED(combined_color)   >>= 8;
-        COLOR_GREEN(combined_color) >>= 8;
-        COLOR_BLUE(combined_color)  >>= 8;
+        COLOR_RED(combined_color)   = temp_combined_color[0]   >> 8;
+        COLOR_GREEN(combined_color) = temp_combined_color[1] >> 8;
+        COLOR_BLUE(combined_color)  = temp_combined_color[2] >> 8;
 
         COLOR_RED(pixel_color)   = special_9bit_clamptable[COLOR_RED(combined_color)];
         COLOR_GREEN(pixel_color) = special_9bit_clamptable[COLOR_GREEN(combined_color)];
@@ -1746,17 +1743,17 @@ static void combiner_2cycle(int adseed, uint32_t* curpixel_cvg, int32_t* acalpha
     }
     else
     {
-        redkey = SIGN(COLOR_RED(combined_color), 17);
+        redkey = SIGN(temp_combined_color[0], 17);
         if (redkey >= 0)
             redkey = (COLOR_RED(key_width) << 4) - redkey;
         else
             redkey = (COLOR_RED(key_width) << 4) + redkey;
-        greenkey = SIGN(COLOR_GREEN(combined_color), 17);
+        greenkey = SIGN(temp_combined_color[1], 17);
         if (greenkey >= 0)
             greenkey = (COLOR_GREEN(key_width) << 4) - greenkey;
         else
             greenkey = (COLOR_GREEN(key_width) << 4) + greenkey;
-        bluekey = SIGN(COLOR_BLUE(combined_color), 17);
+        bluekey = SIGN(temp_combined_color[2], 17);
         if (bluekey >= 0)
             bluekey = (COLOR_BLUE(key_width) << 4) - bluekey;
         else
@@ -1769,9 +1766,9 @@ static void combiner_2cycle(int adseed, uint32_t* curpixel_cvg, int32_t* acalpha
         COLOR_GREEN(pixel_color) = special_9bit_clamptable[COLOR_GREEN(chromabypass)];
         COLOR_BLUE(pixel_color)  = special_9bit_clamptable[COLOR_BLUE(chromabypass)];
         
-        COLOR_RED(combined_color)   >>= 8;
-        COLOR_GREEN(combined_color) >>= 8;
-        COLOR_BLUE(combined_color)  >>= 8;
+        COLOR_RED(combined_color)   = temp_combined_color[0] >> 8;
+        COLOR_GREEN(combined_color) = temp_combined_color[1] >> 8;
+        COLOR_BLUE(combined_color)  = temp_combined_color[2] >> 8;
     }
     
     COLOR_ALPHA(pixel_color) = special_9bit_clamptable[COLOR_ALPHA(combined_color)];
