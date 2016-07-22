@@ -5435,8 +5435,9 @@ static void render_spans_1cycle_notexel1(int start, int end, int tilenum, int fl
             LOG("Preclip SZ = %d\n", sz >> 3);
 #endif
             rgbaz_correct_clip(offx, offy, sr, sg, sb, sa, &sz, curpixel_cvg);
-
+#ifdef EXTRALOGGING
             LOG("SZ = %d\n", sz);
+#endif
 
             get_dither_noise(x, i, &cdith, &adith);
             combiner_1cycle(adith, &curpixel_cvg);
@@ -6421,12 +6422,14 @@ static void render_spans_2cycle_notexel1(int start, int end, int tilenum, int fl
             {
                 if (blender_2cycle(&fir, &fig, &fib, cdith, blend_en, prewrap, curpixel_cvg, curpixel_cvbit, acalpha))
                 {
+#ifdef EXTRALOGGING
                    if (LOG_ENABLE)
                    {
                       fir = 0xff;
                       fig = 0x00;
                       fib = 0x00;
                    }
+#endif
                     fbwrite_ptr(curpixel, fir, fig, fib, blend_en, curpixel_cvg, curpixel_memcvg);
                     if (other_modes.z_update_en)
                         z_store(zbcur, sz, dzpixenc);
