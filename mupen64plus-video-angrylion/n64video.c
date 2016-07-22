@@ -192,6 +192,8 @@ static int32_t *blender2b_a[2];
 #define COLOR_BLUE_PTR(val)  (val->b)
 #define COLOR_ALPHA_PTR(val) (val->a)
 
+#define COLOR_ASSIGN(col0, col1) col0 = col1
+
 #define TRELATIVE(x, y)     ((x) - ((y) << 3));
 #define UPPER ((sfrac + tfrac) & 0x20)
 
@@ -1724,8 +1726,8 @@ static void combiner_2cycle(int adseed, uint32_t* curpixel_cvg, int32_t* acalpha
     COLOR_GREEN(combined_color) >>= 8;
     COLOR_BLUE(combined_color)  >>= 8;
 
-    texel0_color = texel1_color;
-    texel1_color = nexttexel_color;
+    COLOR_ASSIGN(texel0_color, texel1_color);
+    COLOR_ASSIGN(texel1_color, nexttexel_color);
 
     COLOR_RED(combined_color)   = color_combiner_equation(*combiner_rgbsub_a_r[1],*combiner_rgbsub_b_r[1],*combiner_rgbmul_r[1],*combiner_rgbadd_r[1]);
     COLOR_GREEN(combined_color) = color_combiner_equation(*combiner_rgbsub_a_g[1],*combiner_rgbsub_b_g[1],*combiner_rgbmul_g[1],*combiner_rgbadd_g[1]);
@@ -2027,7 +2029,7 @@ int blender_2cycle(uint32_t* fr, uint32_t* fg, uint32_t* fb, int dith, uint32_t 
 
             blender_equation_cycle0_2(&r, &g, &b);
             
-            memory_color = pre_memory_color;
+            COLOR_ASSIGN(memory_color, pre_memory_color);
 
             COLOR_RED(blended_pixel_color)   = r;
             COLOR_GREEN(blended_pixel_color) = g;
@@ -2067,13 +2069,13 @@ int blender_2cycle(uint32_t* fr, uint32_t* fg, uint32_t* fb, int dith, uint32_t 
         }
         else 
         {
-           memory_color = pre_memory_color;
+           COLOR_ASSIGN(memory_color, pre_memory_color);
            return 0;
         }
     }
     else 
     {
-       memory_color = pre_memory_color;
+       COLOR_ASSIGN(memory_color, pre_memory_color);
         return 0;
     }
 }
@@ -5267,7 +5269,7 @@ static void render_spans_1cycle_complete(int start, int end, int tilenum, int fl
 
             if (!sigs.startspan)
             {
-                texel0_color = texel1_color;
+                COLOR_ASSIGN(texel0_color, texel1_color);
                 lod_frac = prelodfrac;
             }
             else
@@ -6058,8 +6060,8 @@ static void render_spans_2cycle_complete(int start, int end, int tilenum, int fl
             if (!sigs.startspan)
             {
                 lod_frac = prelodfrac;
-                texel0_color = nexttexel_color;
-                texel1_color = nexttexel1_color;
+                COLOR_ASSIGN(texel0_color, nexttexel_color);
+                COLOR_ASSIGN(texel1_color, nexttexel1_color);
             }
             else
             {
@@ -6098,7 +6100,7 @@ static void render_spans_2cycle_complete(int start, int end, int tilenum, int fl
             }
             else
             {
-               memory_color = pre_memory_color;
+               COLOR_ASSIGN(memory_color, pre_memory_color);
             }
 
             r += drinc;
@@ -6270,7 +6272,7 @@ static void render_spans_2cycle_notexelnext(int start, int end, int tilenum, int
             }
             else
             {
-               memory_color = pre_memory_color;
+               COLOR_ASSIGN(memory_color, pre_memory_color);
             }
 
             s += dsinc;
@@ -6461,7 +6463,7 @@ static void render_spans_2cycle_notexel1(int start, int end, int tilenum, int fl
             }
             else
             {
-               memory_color = pre_memory_color;
+               COLOR_ASSIGN(memory_color, pre_memory_color);
             }
 
             s += dsinc;
@@ -6606,7 +6608,7 @@ static void render_spans_2cycle_notex(int start, int end, int tilenum, int flip)
             }
             else
             {
-               memory_color = pre_memory_color;
+               COLOR_ASSIGN(memory_color, pre_memory_color);
             }
 
             r += drinc;
