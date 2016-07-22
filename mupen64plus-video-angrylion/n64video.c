@@ -22,7 +22,11 @@ static int LOG_ENABLE = 0;
 
 typedef struct
 {
-   int32_t r, g, b, a;
+#ifdef USE_SSE_SUPPORT
+  int32_t col[4] ALIGNED;
+#else
+  int32_t col[4];
+#endif
 } COLOR;
 
 typedef struct {
@@ -183,14 +187,14 @@ static int32_t *blender2a_g[2];
 static int32_t *blender2a_b[2];
 static int32_t *blender2b_a[2];
 
-#define COLOR_RED(val)       (val.r)
-#define COLOR_GREEN(val)     (val.g)
-#define COLOR_BLUE(val)      (val.b)
-#define COLOR_ALPHA(val)     (val.a)
-#define COLOR_RED_PTR(val)   (val->r)
-#define COLOR_GREEN_PTR(val) (val->g)
-#define COLOR_BLUE_PTR(val)  (val->b)
-#define COLOR_ALPHA_PTR(val) (val->a)
+#define COLOR_RED(val)       (val.col[0])
+#define COLOR_GREEN(val)     (val.col[1])
+#define COLOR_BLUE(val)      (val.col[2])
+#define COLOR_ALPHA(val)     (val.col[3])
+#define COLOR_RED_PTR(val)   (val->col[0])
+#define COLOR_GREEN_PTR(val) (val->col[1])
+#define COLOR_BLUE_PTR(val)  (val->col[2])
+#define COLOR_ALPHA_PTR(val) (val->col[3])
 
 #define COLOR_ASSIGN(col0, col1) col0 = col1
 
