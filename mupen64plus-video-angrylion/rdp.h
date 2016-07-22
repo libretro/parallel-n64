@@ -3,6 +3,7 @@
 
 #include "z64.h"
 
+
 #define OPTS_ENABLED
 
 #ifdef ARCH_MIN_SSE2
@@ -28,7 +29,7 @@ INLINE extern __m128i mm_mullo_epi32_seh(__m128i dest, __m128i src);
 
 #else
 #define setzero_si128(buf) \
-    { ((int64_t *)buf)[0] = ((in64_t *)buf)[1] = 0x0000000000000000; }
+    { ((int64_t *)buf)[0] = ((int64_t *)buf)[1] = 0x0000000000000000; }
 #endif
 
 #define setzero_si64(buffer) { \
