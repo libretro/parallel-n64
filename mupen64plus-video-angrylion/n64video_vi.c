@@ -5,6 +5,19 @@
 #include "vi.h"
 #include "api/libretro.h"
 
+typedef struct {
+    uint8_t r, g, b, cvg;
+} CCVG;
+
+typedef struct {
+    uint8_t cvg;
+    uint8_t cvbit;
+    uint8_t xoff;
+    uint8_t yoff;
+} CVtcmaskDERIVATIVE;
+
+static CVtcmaskDERIVATIVE cvarray[0x100];
+
 #define VI_ANDER(x) {                                 \
     PAIRREAD16(pix, hidval, x);                       \
     if (hidval == 3 && (pix & 1)) {                   \
@@ -135,6 +148,56 @@ static void (*vi_fetch_filter_func[2])(
     CCVG*, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t) = {
     vi_fetch_filter16, vi_fetch_filter32
 };
+
+static STRICTINLINE uint16_t decompress_cvmask_frombyte(uint8_t x)
+{
+    uint16_t y = (x & 1) | ((x & 2) << 4) | (x & 4) | ((x & 8) << 4) |
+        ((x & 0x10) << 4) | ((x & 0x20) << 8) | ((x & 0x40) << 4) | ((x & 0x80) << 8);
+    return y;
+}
+
+void precalc_cvmask_derivatives(void)
+{
+    int i = 0, k = 0;
+    uint16_t mask = 0, maskx = 0, masky = 0;
+    uint8_t offx = 0, offy = 0;
+    static const uint8_t yarray[16] = {0, 0, 1, 0, 2, 0, 1, 0, 3, 0, 1, 0, 2, 0, 1, 0};
+    static const uint8_t xarray[16] = {0, 3, 2, 2, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0};
+
+    
+    for (; i < 0x100; i++)
+    {
+        mask = decompress_cvmask_frombyte(i);
+        cvarray[i].cvg = cvarray[i].cvbit = 0;
+        cvarray[i].cvbit = (i >> 7) & 1;
+        for (k = 0; k < 8; k++)
+            cvarray[i].cvg += ((i >> k) & 1);
+
+        
+        masky = maskx = offx = offy = 0;
+        for (k = 0; k < 4; k++)
+            masky |= ((mask & (0xf000 >> (k << 2))) > 0) << k;
+
+        offy = yarray[masky];
+        
+        maskx = (mask & (0xf000 >> (offy << 2))) >> ((offy ^ 3) << 2);
+        
+        
+        offx = xarray[maskx];
+        
+        cvarray[i].xoff = offx;
+        cvarray[i].yoff = offy;
+    }
+}
+
+void lookup_cvmask_derivatives(uint32_t mask, uint8_t* offx, uint8_t* offy, uint32_t* curpixel_cvg, uint32_t* curpixel_cvbit)
+{
+    CVtcmaskDERIVATIVE temp = cvarray[mask];
+    *curpixel_cvg = temp.cvg;
+    *curpixel_cvbit = temp.cvbit;
+    *offx = temp.xoff;
+    *offy = temp.yoff;
+}
 
 void rdp_update(void)
 {

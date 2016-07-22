@@ -389,7 +389,6 @@ int8_t log2table[256];
 int32_t tcdiv_table[0x8000];
 uint8_t bldiv_hwaccurate_table[0x8000];
 uint16_t deltaz_comparator_lut[0x10000];
-CVtcmaskDERIVATIVE cvarray[0x100];
 
 static STRICTINLINE void tcmask(int32_t* S, int32_t* T, int32_t num)
 {
@@ -949,47 +948,6 @@ static INLINE void z_build_com_table(void)
 
       z_com_table[z] = altmem;
    }
-}
-
-static STRICTINLINE uint16_t decompress_cvmask_frombyte(uint8_t x)
-{
-    uint16_t y = (x & 1) | ((x & 2) << 4) | (x & 4) | ((x & 8) << 4) |
-        ((x & 0x10) << 4) | ((x & 0x20) << 8) | ((x & 0x40) << 4) | ((x & 0x80) << 8);
-    return y;
-}
-
-static void precalc_cvmask_derivatives(void)
-{
-    int i = 0, k = 0;
-    uint16_t mask = 0, maskx = 0, masky = 0;
-    uint8_t offx = 0, offy = 0;
-    static const uint8_t yarray[16] = {0, 0, 1, 0, 2, 0, 1, 0, 3, 0, 1, 0, 2, 0, 1, 0};
-    static const uint8_t xarray[16] = {0, 3, 2, 2, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0};
-
-    
-    for (; i < 0x100; i++)
-    {
-        mask = decompress_cvmask_frombyte(i);
-        cvarray[i].cvg = cvarray[i].cvbit = 0;
-        cvarray[i].cvbit = (i >> 7) & 1;
-        for (k = 0; k < 8; k++)
-            cvarray[i].cvg += ((i >> k) & 1);
-
-        
-        masky = maskx = offx = offy = 0;
-        for (k = 0; k < 4; k++)
-            masky |= ((mask & (0xf000 >> (k << 2))) > 0) << k;
-
-        offy = yarray[masky];
-        
-        maskx = (mask & (0xf000 >> (offy << 2))) >> ((offy ^ 3) << 2);
-        
-        
-        offx = xarray[maskx];
-        
-        cvarray[i].xoff = offx;
-        cvarray[i].yoff = offy;
-    }
 }
 
 static uint32_t vi_integer_sqrt(uint32_t a)
@@ -4439,15 +4397,6 @@ static STRICTINLINE uint32_t dz_compress(uint32_t value)
     if (value & 0xaaaa)
         j |= 1;
     return j;
-}
-
-static STRICTINLINE void lookup_cvmask_derivatives(uint32_t mask, uint8_t* offx, uint8_t* offy, uint32_t* curpixel_cvg, uint32_t* curpixel_cvbit)
-{
-    CVtcmaskDERIVATIVE temp = cvarray[mask];
-    *curpixel_cvg = temp.cvg;
-    *curpixel_cvbit = temp.cvbit;
-    *offx = temp.xoff;
-    *offy = temp.yoff;
 }
 
 static STRICTINLINE void z_store(uint32_t zcurpixel, uint32_t z, int dzpixenc)

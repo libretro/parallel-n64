@@ -6,10 +6,6 @@
 #include "z64.h"
 
 typedef struct {
-    uint8_t r, g, b, cvg;
-} CCVG;
-
-typedef struct {
     int ntscnolerp;
     int copymstrangecrashes;
     int fillmcrashes;
@@ -17,12 +13,6 @@ typedef struct {
     int syncfullcrash;
 } onetime;
 
-typedef struct {
-    uint8_t cvg;
-    uint8_t cvbit;
-    uint8_t xoff;
-    uint8_t yoff;
-} CVtcmaskDERIVATIVE;
 
 #ifdef _WIN32
 #include <windows.h>
@@ -63,6 +53,10 @@ extern int32_t vi_restore_table[0x400];
 extern int32_t oldvstart;
 
 extern NOINLINE void DisplayError(char * error);
+
+void precalc_cvmask_derivatives(void);
+
+void lookup_cvmask_derivatives(uint32_t mask, uint8_t* offx, uint8_t* offy, uint32_t* curpixel_cvg, uint32_t* curpixel_cvbit);
 
 extern void rdp_init(void);
 extern void rdp_close(void);
