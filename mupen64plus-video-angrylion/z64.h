@@ -82,8 +82,6 @@
 
 #define RDRAM_MASK 0x00ffffff
 
-typedef unsigned int offs_t;
-
 #define GET_GFX_INFO(member)    (gfx_info.member)
 
 #define DRAM        GET_GFX_INFO(RDRAM)
