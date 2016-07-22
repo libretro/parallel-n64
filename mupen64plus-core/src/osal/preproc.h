@@ -27,13 +27,6 @@
 #if defined(WIN32) && !defined(__MINGW32__)
 
   /* macros */
-#ifdef _WIN64
- /* Have not implemented interrupt in x64 on MSVC. */
-  #define OSAL_BREAKPOINT_INTERRUPT
-#else
-  #define OSAL_BREAKPOINT_INTERRUPT __asm int 3
-#endif
-
   #define ALIGN(BYTES,DATA) __declspec(align(BYTES)) DATA
 
   /* string functions */
@@ -51,7 +44,6 @@
 #else  /* Not WIN32 */
 
   // macros
-  #define OSAL_BREAKPOINT_INTERRUPT __asm__(" int $3; ");
   #define ALIGN(BYTES,DATA) DATA __attribute__((aligned(BYTES)))
 
   // string functions
