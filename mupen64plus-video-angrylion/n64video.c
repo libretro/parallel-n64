@@ -2426,6 +2426,23 @@ static void fetch_texel_entlut(COLOR *color, int s, int t, uint32_t tilenum)
 
 }
 
+#define fetch_texel_quadro_rgba16(color0, color1, color2, color3, c0, c1, c2, c3) \
+   COLOR_RED_PTR(color0) = GET_HI_RGBA16_TMEM(c0); \
+   COLOR_GREEN_PTR(color0) = GET_MED_RGBA16_TMEM(c0); \
+   COLOR_BLUE_PTR(color0) = GET_LOW_RGBA16_TMEM(c0); \
+   COLOR_ALPHA_PTR(color0) = (c0 & 1) ? 0xff : 0; \
+   COLOR_RED_PTR(color1) = GET_HI_RGBA16_TMEM(c1); \
+   COLOR_GREEN_PTR(color1) = GET_MED_RGBA16_TMEM(c1); \
+   COLOR_BLUE_PTR(color1) = GET_LOW_RGBA16_TMEM(c1); \
+   COLOR_ALPHA_PTR(color1) = (c1 & 1) ? 0xff : 0; \
+   COLOR_RED_PTR(color2) = GET_HI_RGBA16_TMEM(c2); \
+   COLOR_GREEN_PTR(color2) = GET_MED_RGBA16_TMEM(c2); \
+   COLOR_BLUE_PTR(color2) = GET_LOW_RGBA16_TMEM(c2); \
+   COLOR_ALPHA_PTR(color2) = (c2 & 1) ? 0xff : 0; \
+   COLOR_RED_PTR(color3) = GET_HI_RGBA16_TMEM(c3); \
+   COLOR_GREEN_PTR(color3) = GET_MED_RGBA16_TMEM(c3); \
+   COLOR_BLUE_PTR(color3) = GET_LOW_RGBA16_TMEM(c3); \
+   COLOR_ALPHA_PTR(color3) = (c3 & 1) ? 0xff : 0
 
 
 static void fetch_texel_quadro(COLOR *color0, COLOR *color1, COLOR *color2, COLOR *color3, int s0, int s1, int t0, int t1, uint32_t tilenum)
@@ -2558,22 +2575,7 @@ static void fetch_texel_quadro(COLOR *color0, COLOR *color1, COLOR *color2, COLO
             c1 = tc16[taddr1];
             c2 = tc16[taddr2];
             c3 = tc16[taddr3];
-            COLOR_RED_PTR(color0) = GET_HI_RGBA16_TMEM(c0);
-            COLOR_GREEN_PTR(color0) = GET_MED_RGBA16_TMEM(c0);
-            COLOR_BLUE_PTR(color0) = GET_LOW_RGBA16_TMEM(c0);
-            COLOR_ALPHA_PTR(color0) = (c0 & 1) ? 0xff : 0;
-            COLOR_RED_PTR(color1) = GET_HI_RGBA16_TMEM(c1);
-            COLOR_GREEN_PTR(color1) = GET_MED_RGBA16_TMEM(c1);
-            COLOR_BLUE_PTR(color1) = GET_LOW_RGBA16_TMEM(c1);
-            COLOR_ALPHA_PTR(color1) = (c1 & 1) ? 0xff : 0;
-            COLOR_RED_PTR(color2) = GET_HI_RGBA16_TMEM(c2);
-            COLOR_GREEN_PTR(color2) = GET_MED_RGBA16_TMEM(c2);
-            COLOR_BLUE_PTR(color2) = GET_LOW_RGBA16_TMEM(c2);
-            COLOR_ALPHA_PTR(color2) = (c2 & 1) ? 0xff : 0;
-            COLOR_RED_PTR(color3) = GET_HI_RGBA16_TMEM(c3);
-            COLOR_GREEN_PTR(color3) = GET_MED_RGBA16_TMEM(c3);
-            COLOR_BLUE_PTR(color3) = GET_LOW_RGBA16_TMEM(c3);
-            COLOR_ALPHA_PTR(color3) = (c3 & 1) ? 0xff : 0;
+            fetch_texel_quadro_rgba16(color0, color1, color2, color3, c0, c1, c2, c3);
         }
         break;
     case TEXEL_RGBA32:
@@ -3452,22 +3454,7 @@ static void fetch_texel_entlut_quadro(COLOR *color0, COLOR *color1, COLOR *color
 
     if (!other_modes.tlut_type)
     {
-        COLOR_RED_PTR(color0) = GET_HI_RGBA16_TMEM(c0);
-        COLOR_GREEN_PTR(color0) = GET_MED_RGBA16_TMEM(c0);
-        COLOR_BLUE_PTR(color0) = GET_LOW_RGBA16_TMEM(c0);
-        COLOR_ALPHA_PTR(color0) = (c0 & 1) ? 0xff : 0;
-        COLOR_RED_PTR(color1) = GET_HI_RGBA16_TMEM(c1);
-        COLOR_GREEN_PTR(color1) = GET_MED_RGBA16_TMEM(c1);
-        COLOR_BLUE_PTR(color1) = GET_LOW_RGBA16_TMEM(c1);
-        COLOR_ALPHA_PTR(color1) = (c1 & 1) ? 0xff : 0;
-        COLOR_RED_PTR(color2) = GET_HI_RGBA16_TMEM(c2);
-        COLOR_GREEN_PTR(color2) = GET_MED_RGBA16_TMEM(c2);
-        COLOR_BLUE_PTR(color2) = GET_LOW_RGBA16_TMEM(c2);
-        COLOR_ALPHA_PTR(color2) = (c2 & 1) ? 0xff : 0;
-        COLOR_RED_PTR(color3) = GET_HI_RGBA16_TMEM(c3);
-        COLOR_GREEN_PTR(color3) = GET_MED_RGBA16_TMEM(c3);
-        COLOR_BLUE_PTR(color3) = GET_LOW_RGBA16_TMEM(c3);
-        COLOR_ALPHA_PTR(color3) = (c3 & 1) ? 0xff : 0;
+        fetch_texel_quadro_rgba16(color0, color1, color2, color3, c0, c1, c2, c3);
     }
     else
     {
