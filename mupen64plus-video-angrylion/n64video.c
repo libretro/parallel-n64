@@ -290,11 +290,6 @@ static int32_t spans_d_stwz_dy[4];
 
 typedef struct
 {
-    uint8_t r, g, b;
-} FBCOLOR;
-
-typedef struct
-{
     int tilenum;
     uint16_t xl, yl, xh, yh;        
     int16_t s, t;                    
