@@ -2154,7 +2154,7 @@ static void fetch_texel(COLOR *color, int s, int t, uint32_t tilenum)
             c = tc16[taddr];
             COLOR_RED_PTR(color) = c >> 8;
             COLOR_GREEN_PTR(color) = c & 0xff;
-            c = tc16[taddr | 0x400];
+            c = tc16[taddr + 0x400];
             COLOR_BLUE_PTR(color) = c >> 8;
             COLOR_ALPHA_PTR(color) = c & 0xff;
         }
@@ -2182,17 +2182,12 @@ static void fetch_texel(COLOR *color, int s, int t, uint32_t tilenum)
         {
             uint16_t c;
             int32_t y, u, v;
-            int taddrlow;
 
             taddr = (tbase << 3) + s;
-            taddrlow = taddr >> 1;
-
             taddr ^= ((t & 1) ? BYTE_XOR_DWORD_SWAP : BYTE_ADDR_XOR);
-            taddrlow ^= ((t & 1) ? WORD_XOR_DWORD_SWAP : WORD_ADDR_XOR);
             taddr &= 0x7ff;
-            taddrlow &= 0x3ff;
-            c = tc16[taddrlow];
-            y = __TMEM[taddr | 0x800];
+			c = tc16[taddr >> 1];
+            y = __TMEM[taddr + 0x800];
             u = c >> 8;
             v = c & 0xff;
 
@@ -2394,7 +2389,7 @@ static void fetch_texel_entlut(COLOR *color, int s, int t, uint32_t tilenum)
 #ifdef EXTRALOGGING
             fprintf(stderr, "TPAL: %u\n", tpal);
 #endif
-            c = tlut[((tpal | c) << 2) ^ WORD_ADDR_XOR];
+            c = tlut[((tpal + c) << 2) + WORD_ADDR_XOR];
         }
         break;
     case 3:
@@ -2403,7 +2398,7 @@ static void fetch_texel_entlut(COLOR *color, int s, int t, uint32_t tilenum)
             taddr ^= ((t & 1) ? BYTE_XOR_DWORD_SWAP : BYTE_ADDR_XOR);
             c = __TMEM[taddr & 0x7ff];
             c = (s & 1) ? (c & 0xf) : (c >> 4);
-            c = tlut[((tpal | c) << 2) ^ WORD_ADDR_XOR];
+            c = tlut[((tpal + c) << 2) + WORD_ADDR_XOR];
         }
         break;
     case 4:
@@ -2414,7 +2409,7 @@ static void fetch_texel_entlut(COLOR *color, int s, int t, uint32_t tilenum)
             taddr = (tbase << 3) + s;
             taddr ^= ((t & 1) ? BYTE_XOR_DWORD_SWAP : BYTE_ADDR_XOR);
             c = __TMEM[taddr & 0x7ff];
-            c = tlut[(c << 2) ^ WORD_ADDR_XOR];
+            c = tlut[(c << 2) + WORD_ADDR_XOR];
         }
         break;
     case 8:
@@ -2424,7 +2419,7 @@ static void fetch_texel_entlut(COLOR *color, int s, int t, uint32_t tilenum)
             taddr = (tbase << 2) + s;
             taddr ^= ((t & 1) ? WORD_XOR_DWORD_SWAP : WORD_ADDR_XOR);
             c = tc16[taddr & 0x3ff];
-            c = tlut[((c >> 6) & ~3) ^ WORD_ADDR_XOR];
+            c = tlut[((c >> 6) & ~3) + WORD_ADDR_XOR];
             
         }
         break;
@@ -2433,7 +2428,7 @@ static void fetch_texel_entlut(COLOR *color, int s, int t, uint32_t tilenum)
             taddr = (tbase << 3) + s;
             taddr ^= ((t & 1) ? BYTE_XOR_DWORD_SWAP : BYTE_ADDR_XOR);
             c = __TMEM[taddr & 0x7ff];
-            c = tlut[(c << 2) ^ WORD_ADDR_XOR];
+            c = tlut[(c << 2) + WORD_ADDR_XOR];
         }
         break;
     case 12:
@@ -2443,7 +2438,7 @@ static void fetch_texel_entlut(COLOR *color, int s, int t, uint32_t tilenum)
             taddr = (tbase << 2) + s;
             taddr ^= ((t & 1) ? WORD_XOR_DWORD_SWAP : WORD_ADDR_XOR);
             c = tc16[taddr & 0x3ff];
-            c = tlut[((c >> 6) & ~3) ^ WORD_ADDR_XOR];
+            c = tlut[((c >> 6) & ~3) + WORD_ADDR_XOR];
         }
         break;
     case 15:
@@ -2451,7 +2446,7 @@ static void fetch_texel_entlut(COLOR *color, int s, int t, uint32_t tilenum)
             taddr = (tbase << 3) + s;
             taddr ^= ((t & 1) ? BYTE_XOR_DWORD_SWAP : BYTE_ADDR_XOR);
             c = __TMEM[taddr & 0x7ff];
-            c = tlut[(c << 2) ^ WORD_ADDR_XOR];
+            c = tlut[(c << 2) + WORD_ADDR_XOR];
         }
         break;
     }
@@ -2503,7 +2498,6 @@ static void fetch_texel_quadro(COLOR *color0, COLOR *color1, COLOR *color2, COLO
 
     uint16_t *tc16 = (uint16_t*)__TMEM;
     uint32_t taddr0 = 0, taddr1 = 0, taddr2 = 0, taddr3 = 0;
-    uint32_t taddrlow0 = 0, taddrlow1 = 0, taddrlow2 = 0, taddrlow3 = 0;
 
     switch (tile[tilenum].f.notlutswitch)
     {
@@ -2644,25 +2638,25 @@ static void fetch_texel_quadro(COLOR *color0, COLOR *color1, COLOR *color2, COLO
             c0 = tc16[taddr0];
             COLOR_RED_PTR(color0) = c0 >> 8;
             COLOR_GREEN_PTR(color0) = c0 & 0xff;
-            c0 = tc16[taddr0 | 0x400];
+            c0 = tc16[taddr0 + 0x400];
             COLOR_BLUE_PTR(color0) = c0 >>  8;
             COLOR_ALPHA_PTR(color0) = c0 & 0xff;
             c1 = tc16[taddr1];
             COLOR_RED_PTR(color1) = c1 >> 8;
             COLOR_GREEN_PTR(color1) = c1 & 0xff;
-            c1 = tc16[taddr1 | 0x400];
+            c1 = tc16[taddr1 + 0x400];
             COLOR_BLUE_PTR(color1) = c1 >>  8;
             COLOR_ALPHA_PTR(color1) = c1 & 0xff;
             c2 = tc16[taddr2];
             COLOR_RED_PTR(color2) = c2 >> 8;
             COLOR_GREEN_PTR(color2) = c2 & 0xff;
-            c2 = tc16[taddr2 | 0x400];
+            c2 = tc16[taddr2 + 0x400];
             COLOR_BLUE_PTR(color2) = c2 >>  8;
             COLOR_ALPHA_PTR(color2) = c2 & 0xff;
             c3 = tc16[taddr3];
             COLOR_RED_PTR(color3) = c3 >> 8;
             COLOR_GREEN_PTR(color3) = c3 & 0xff;
-            c3 = tc16[taddr3 | 0x400];
+            c3 = tc16[taddr3 + 0x400];
             COLOR_BLUE_PTR(color3) = c3 >>  8;
             COLOR_ALPHA_PTR(color3) = c3 & 0xff;
         }
@@ -2721,10 +2715,6 @@ static void fetch_texel_quadro(COLOR *color0, COLOR *color1, COLOR *color2, COLO
             taddr1 = ((tbase0 << 3) + s1);
             taddr2 = ((tbase2 << 3) + s0);
             taddr3 = ((tbase2 << 3) + s1);
-            taddrlow0 = taddr0 >> 1;
-            taddrlow1 = taddr1 >> 1;
-            taddrlow2 = taddr2 >> 1;
-            taddrlow3 = taddr3 >> 1;
 
             xort = (t0 & 1) ? BYTE_XOR_DWORD_SWAP : BYTE_ADDR_XOR;
             taddr0 ^= xort;
@@ -2732,37 +2722,27 @@ static void fetch_texel_quadro(COLOR *color0, COLOR *color1, COLOR *color2, COLO
             xort = (t1 & 1) ? BYTE_XOR_DWORD_SWAP : BYTE_ADDR_XOR;
             taddr2 ^= xort;
             taddr3 ^= xort;
-            xort = (t0 & 1) ? WORD_XOR_DWORD_SWAP : WORD_ADDR_XOR;
-            taddrlow0 ^= xort;
-            taddrlow1 ^= xort;
-            xort = (t1 & 1) ? WORD_XOR_DWORD_SWAP : WORD_ADDR_XOR;
-            taddrlow2 ^= xort;
-            taddrlow3 ^= xort;
 
             taddr0 &= 0x7ff;
             taddr1 &= 0x7ff;
             taddr2 &= 0x7ff;
             taddr3 &= 0x7ff;
-            taddrlow0 &= 0x3ff;
-            taddrlow1 &= 0x3ff;
-            taddrlow2 &= 0x3ff;
-            taddrlow3 &= 0x3ff;
 
-            c0 = tc16[taddrlow0];
-            c1 = tc16[taddrlow1];
-            c2 = tc16[taddrlow2];
-            c3 = tc16[taddrlow3];                    
+            c0 = tc16[taddr0 >> 1];
+            c1 = tc16[taddr1 >> 1];
+            c2 = tc16[taddr2 >> 1];
+            c3 = tc16[taddr3 >> 1];                    
             
-            y0 = __TMEM[taddr0 | 0x800];
+            y0 = __TMEM[taddr0 + 0x800];
             u0 = c0 >> 8;
             v0 = c0 & 0xff;
-            y1 = __TMEM[taddr1 | 0x800];
+            y1 = __TMEM[taddr1 + 0x800];
             u1 = c1 >> 8;
             v1 = c1 & 0xff;
-            y2 = __TMEM[taddr2 | 0x800];
+            y2 = __TMEM[taddr2 + 0x800];
             u2 = c2 >> 8;
             v2 = c2 & 0xff;
-            y3 = __TMEM[taddr3 | 0x800];
+            y3 = __TMEM[taddr3 + 0x800];
             u3 = c3 >> 8;
             v3 = c3 & 0xff;
 
@@ -3329,18 +3309,18 @@ static void fetch_texel_entlut_quadro(COLOR *color0, COLOR *color1, COLOR *color
             ands = s0 & 1;
             c0 = __TMEM[taddr0 & 0x7ff];
             c0 = (ands) ? (c0 & 0xf) : (c0 >> 4);
-            c0 = tlut[((tpal | c0) << 2) ^ WORD_ADDR_XOR];
+            c0 = tlut[((tpal + c0) << 2) + WORD_ADDR_XOR];
             c2 = __TMEM[taddr2 & 0x7ff];
             c2 = (ands) ? (c2 & 0xf) : (c2 >> 4);
-            c2 = tlut[((tpal | c2) << 2) ^ WORD_ADDR_XOR];
+            c2 = tlut[((tpal + c2) << 2) + WORD_ADDR_XOR];
 
             ands = s1 & 1;
             c1 = __TMEM[taddr1 & 0x7ff];
             c1 = (ands) ? (c1 & 0xf) : (c1 >> 4);
-            c1 = tlut[((tpal | c1) << 2) ^ WORD_ADDR_XOR];
+            c1 = tlut[((tpal + c1) << 2) + WORD_ADDR_XOR];
             c3 = __TMEM[taddr3 & 0x7ff];
             c3 = (ands) ? (c3 & 0xf) : (c3 >> 4);
-            c3 = tlut[((tpal | c3) << 2) ^ WORD_ADDR_XOR];
+            c3 = tlut[((tpal + c3) << 2) + WORD_ADDR_XOR];
         }
         break;
     case 3:
@@ -3359,18 +3339,18 @@ static void fetch_texel_entlut_quadro(COLOR *color0, COLOR *color1, COLOR *color
             ands = s0 & 1;
             c0 = __TMEM[taddr0 & 0x7ff];
             c0 = (ands) ? (c0 & 0xf) : (c0 >> 4);
-            c0 = tlut[((tpal | c0) << 2) ^ WORD_ADDR_XOR];
+            c0 = tlut[((tpal + c0) << 2) + WORD_ADDR_XOR];
             c2 = __TMEM[taddr2 & 0x7ff];
             c2 = (ands) ? (c2 & 0xf) : (c2 >> 4);
-            c2 = tlut[((tpal | c2) << 2) ^ WORD_ADDR_XOR];
+            c2 = tlut[((tpal + c2) << 2) + WORD_ADDR_XOR];
 
             ands = s1 & 1;
             c1 = __TMEM[taddr1 & 0x7ff];
             c1 = (ands) ? (c1 & 0xf) : (c1 >> 4);
-            c1 = tlut[((tpal | c1) << 2) ^ WORD_ADDR_XOR];
+            c1 = tlut[((tpal + c1) << 2) + WORD_ADDR_XOR];
             c3 = __TMEM[taddr3 & 0x7ff];
             c3 = (ands) ? (c3 & 0xf) : (c3 >> 4);
-            c3 = tlut[((tpal | c3) << 2) ^ WORD_ADDR_XOR];
+            c3 = tlut[((tpal + c3) << 2) + WORD_ADDR_XOR];
         }
         break;
     case 4:
@@ -3390,13 +3370,13 @@ static void fetch_texel_entlut_quadro(COLOR *color0, COLOR *color1, COLOR *color
             taddr3 ^= xort;
             
             c0 = __TMEM[taddr0 & 0x7ff];
-            c0 = tlut[(c0 << 2) ^ WORD_ADDR_XOR];
+            c0 = tlut[(c0 << 2) + WORD_ADDR_XOR];
             c2 = __TMEM[taddr2 & 0x7ff];
-            c2 = tlut[(c2 << 2) ^ WORD_ADDR_XOR];
+            c2 = tlut[(c2 << 2) + WORD_ADDR_XOR];
             c1 = __TMEM[taddr1 & 0x7ff];
-            c1 = tlut[(c1 << 2) ^ WORD_ADDR_XOR];
+            c1 = tlut[(c1 << 2) + WORD_ADDR_XOR];
             c3 = __TMEM[taddr3 & 0x7ff];
-            c3 = tlut[(c3 << 2) ^ WORD_ADDR_XOR];
+            c3 = tlut[(c3 << 2) + WORD_ADDR_XOR];
         }
         break;
     case 8:
@@ -3415,13 +3395,13 @@ static void fetch_texel_entlut_quadro(COLOR *color0, COLOR *color1, COLOR *color
             taddr3 ^= xort;
                     
             c0 = tc16[taddr0 & 0x3ff];
-            c0 = tlut[((c0 >> 6) & ~3) ^ WORD_ADDR_XOR];
+            c0 = tlut[((c0 >> 6) & ~3) + WORD_ADDR_XOR];
             c1 = tc16[taddr1 & 0x3ff];
-            c1 = tlut[((c1 >> 6) & ~3) ^ WORD_ADDR_XOR];
+            c1 = tlut[((c1 >> 6) & ~3) + WORD_ADDR_XOR];
             c2 = tc16[taddr2 & 0x3ff];
-            c2 = tlut[((c2 >> 6) & ~3) ^ WORD_ADDR_XOR];
+            c2 = tlut[((c2 >> 6) & ~3) + WORD_ADDR_XOR];
             c3 = tc16[taddr3 & 0x3ff];
-            c3 = tlut[((c3 >> 6) & ~3) ^ WORD_ADDR_XOR];
+            c3 = tlut[((c3 >> 6) & ~3) + WORD_ADDR_XOR];
         }
         break;
     case 11:
@@ -3438,13 +3418,13 @@ static void fetch_texel_entlut_quadro(COLOR *color0, COLOR *color1, COLOR *color
             taddr3 ^= xort;
             
             c0 = __TMEM[taddr0 & 0x7ff];
-            c0 = tlut[(c0 << 2) ^ WORD_ADDR_XOR];
+            c0 = tlut[(c0 << 2) + WORD_ADDR_XOR];
             c2 = __TMEM[taddr2 & 0x7ff];
-            c2 = tlut[(c2 << 2) ^ WORD_ADDR_XOR];
+            c2 = tlut[(c2 << 2) + WORD_ADDR_XOR];
             c1 = __TMEM[taddr1 & 0x7ff];
-            c1 = tlut[(c1 << 2) ^ WORD_ADDR_XOR];
+            c1 = tlut[(c1 << 2) + WORD_ADDR_XOR];
             c3 = __TMEM[taddr3 & 0x7ff];
-            c3 = tlut[(c3 << 2) ^ WORD_ADDR_XOR];
+            c3 = tlut[(c3 << 2) + WORD_ADDR_XOR];
         }
         break;
     case 12:
@@ -3463,13 +3443,13 @@ static void fetch_texel_entlut_quadro(COLOR *color0, COLOR *color1, COLOR *color
             taddr3 ^= xort;
                                 
             c0 = tc16[taddr0 & 0x3ff];
-            c0 = tlut[((c0 >> 6) & ~3) ^ WORD_ADDR_XOR];
+            c0 = tlut[((c0 >> 6) & ~3) + WORD_ADDR_XOR];
             c1 = tc16[taddr1 & 0x3ff];
-            c1 = tlut[((c1 >> 6) & ~3) ^ WORD_ADDR_XOR];
+            c1 = tlut[((c1 >> 6) & ~3) + WORD_ADDR_XOR];
             c2 = tc16[taddr2 & 0x3ff];
-            c2 = tlut[((c2 >> 6) & ~3) ^ WORD_ADDR_XOR];
+            c2 = tlut[((c2 >> 6) & ~3) + WORD_ADDR_XOR];
             c3 = tc16[taddr3 & 0x3ff];
-            c3 = tlut[((c3 >> 6) & ~3) ^ WORD_ADDR_XOR];
+            c3 = tlut[((c3 >> 6) & ~3) + WORD_ADDR_XOR];
         }
         break;
     case 15:
@@ -3486,13 +3466,13 @@ static void fetch_texel_entlut_quadro(COLOR *color0, COLOR *color1, COLOR *color
             taddr3 ^= xort;
             
             c0 = __TMEM[taddr0 & 0x7ff];
-            c0 = tlut[(c0 << 2) ^ WORD_ADDR_XOR];
+            c0 = tlut[(c0 << 2) + WORD_ADDR_XOR];
             c2 = __TMEM[taddr2 & 0x7ff];
-            c2 = tlut[(c2 << 2) ^ WORD_ADDR_XOR];
+            c2 = tlut[(c2 << 2) + WORD_ADDR_XOR];
             c1 = __TMEM[taddr1 & 0x7ff];
-            c1 = tlut[(c1 << 2) ^ WORD_ADDR_XOR];
+            c1 = tlut[(c1 << 2) + WORD_ADDR_XOR];
             c3 = __TMEM[taddr3 & 0x7ff];
-            c3 = tlut[(c3 << 2) ^ WORD_ADDR_XOR];
+            c3 = tlut[(c3 << 2) + WORD_ADDR_XOR];
         }
         break;
     }
