@@ -6622,6 +6622,26 @@ static void render_spans_fill_8(int start, int end, int flip)
    int xstart = 0, xendsc;
    int curpixel = 0;
 
+   if (fastkillbits | slowkillbits)
+   { /* branch very unlikely */
+      for (i = start; i <= end; i++)
+	  {
+         length = span[i].rx - span[i].lx; /* end - start */
+         length ^= flip;
+         length -= flip;
+         if (length < 0)
+            continue;
+         if (onetimewarnings.fillmbitcrashes == 0)
+            DisplayError("render_spans_fill:  RDP crashed");
+         onetimewarnings.fillmbitcrashes = 1;
+         rdp_pipeline_crashed = 1;
+         end = i; /* premature termination of render_spans */
+         if (fastkillbits) /* left out for performance */
+            DisplayError("Exact fill abort timing not implemented.");
+         break;
+      }
+   }
+
    for (i = start; i <= end; i++)
    {
       uint16_t val;
@@ -6637,29 +6657,11 @@ static void render_spans_fill_8(int start, int end, int flip)
       if (!span[i].validline)
          continue;
 
-      if (fastkillbits && length >= 0) /* unlikely */
-      {
-         if (onetimewarnings.fillmbitcrashes == 0)
-            DisplayError("render_spans_fill:  RDP crashed");
-         onetimewarnings.fillmbitcrashes = 1;
-         rdp_pipeline_crashed = 1;
-         return;
-      }
-
       for (j = 0, fb = fb_address + curpixel; j <= length; j++, fb += xinc)
       {
          uint32_t val = (fill_color >> (((fb & 3) ^ 3) << 3)) & 0xff;
-	      uint8_t hval = ((val & 1) << 1) | (val & 1);
+         uint8_t hval = ((val & 1) << 1) | (val & 1);
          PAIRWRITE8(fb, val, hval);
-      }
-
-      if (slowkillbits && length >= 0) /* unlikely */
-      {
-         if (onetimewarnings.fillmbitcrashes == 0)
-            DisplayError("render_spans_fill:  RDP crashed");
-         onetimewarnings.fillmbitcrashes = 1;
-         rdp_pipeline_crashed = 1;
-         return;
       }
    }
 }
@@ -6678,6 +6680,26 @@ static void render_spans_fill_16(int start, int end, int flip)
    int xstart = 0, xendsc;
    int curpixel = 0;
 
+   if (fastkillbits | slowkillbits)
+   { /* branch very unlikely */
+      for (i = start; i <= end; i++)
+      {
+         length = span[i].rx - span[i].lx; /* end - start */
+         length ^= flip;
+         length -= flip;
+         if (length < 0)
+            continue;
+         if (onetimewarnings.fillmbitcrashes == 0)
+            DisplayError("render_spans_fill:  RDP crashed");
+         onetimewarnings.fillmbitcrashes = 1;
+         rdp_pipeline_crashed = 1;
+         end = i; /* premature termination of render_spans */
+         if (fastkillbits) /* left out for performance */
+            DisplayError("Exact fill abort timing not implemented.");
+         break;
+	  }
+   }
+
    for (i = start; i <= end; i++)
    {
       uint16_t val;
@@ -6688,19 +6710,10 @@ static void render_spans_fill_16(int start, int end, int flip)
 
       x          = xendsc;
       curpixel   = fb_width * i + x;
-      length      = flip ? (xstart - xendsc) : (xendsc - xstart);
+      length     = flip ? (xstart - xendsc) : (xendsc - xstart);
 
       if (!span[i].validline)
          continue;
-
-      if (fastkillbits && length >= 0) /* unlikely */
-      {
-         if (onetimewarnings.fillmbitcrashes == 0)
-            DisplayError("render_spans_fill:  RDP crashed");
-         onetimewarnings.fillmbitcrashes = 1;
-         rdp_pipeline_crashed = 1;
-         return;
-      }
 
       for (j = 0, fb = (fb_address >> 1) + curpixel; j <= length; j++, fb += xinc)
       {
@@ -6708,15 +6721,6 @@ static void render_spans_fill_16(int start, int end, int flip)
          hval  = (val & 1);
          hval += hval << 1; /* hval = (val & 1) * 3; # lea(%hval, %hval, 2), %hval */
          PAIRWRITE16(fb, val, hval);
-      }
-
-      if (slowkillbits && length >= 0) /* unlikely */
-      {
-         if (onetimewarnings.fillmbitcrashes == 0)
-            DisplayError("render_spans_fill:  RDP crashed");
-         onetimewarnings.fillmbitcrashes = 1;
-         rdp_pipeline_crashed = 1;
-         return;
       }
    }
 }
@@ -6735,6 +6739,26 @@ static void render_spans_fill_32(int start, int end, int flip)
    int xstart = 0, xendsc;
    int curpixel = 0;
 
+   if (fastkillbits | slowkillbits)
+   { /* branch very unlikely */
+      for (i = start; i <= end; i++)
+      {
+         length = span[i].rx - span[i].lx; /* end - start */
+         length ^= flip;
+         length -= flip;
+         if (length < 0)
+            continue;
+         if (onetimewarnings.fillmbitcrashes == 0)
+            DisplayError("render_spans_fill:  RDP crashed");
+         onetimewarnings.fillmbitcrashes = 1;
+         rdp_pipeline_crashed = 1;
+         end = i; /* premature termination of render_spans */
+         if (fastkillbits) /* left out for performance */
+            DisplayError("Exact fill abort timing not implemented.");
+         break;
+      }
+   }
+
    for (i = start; i <= end; i++)
    {
       prevxstart = xstart;
@@ -6743,32 +6767,14 @@ static void render_spans_fill_32(int start, int end, int flip)
 
       x          = xendsc;
       curpixel   = fb_width * i + x;
-      length      = flip ? (xstart - xendsc) : (xendsc - xstart);
+      length     = flip ? (xstart - xendsc) : (xendsc - xstart);
 
       if (!span[i].validline)
          continue;
 
-      if (fastkillbits && length >= 0) /* unlikely */
-      {
-         if (onetimewarnings.fillmbitcrashes == 0)
-            DisplayError("render_spans_fill:  RDP crashed");
-         onetimewarnings.fillmbitcrashes = 1;
-         rdp_pipeline_crashed = 1;
-         return;
-      }
-
       for (j = 0, fb = (fb_address >> 2) + curpixel; j <= length; j++, fb += xinc)
       {
          PAIRWRITE32(fb, fill_color, (fill_color & 0x10000) ? 3 : 0, (fill_color & 0x1) ? 3 : 0);
-      }
-
-      if (slowkillbits && length >= 0) /* unlikely */
-      {
-         if (onetimewarnings.fillmbitcrashes == 0)
-            DisplayError("render_spans_fill:  RDP crashed");
-         onetimewarnings.fillmbitcrashes = 1;
-         rdp_pipeline_crashed = 1;
-         return;
       }
    }
 }
