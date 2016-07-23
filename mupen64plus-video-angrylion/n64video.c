@@ -7835,8 +7835,9 @@ static int rdp_dump_active;
 
 struct stepwalker_info
 {
-   int base;
-
+#ifdef USE_SSE_SUPPORT
+   __m128i xmm_d_rgba_de, xmm_d_stwz_de;
+#endif
    int32_t rgba[4]; /* RGBA color components */
    int32_t d_rgba_dx[4]; /* RGBA delda per x-coordinate delta */
    int32_t d_rgba_de[4]; /* RGBA delta along the edge */
@@ -7859,10 +7860,8 @@ struct stepwalker_info
    int32_t d_stwz_dxh[4];
    int32_t d_rgba_diff[4], d_stwz_diff[4];
    int32_t xlr[2], xlr_inc[2];
+   int base;
    uint8_t xfrac;
-#ifdef USE_SSE_SUPPORT
-   __m128i xmm_d_rgba_de, xmm_d_stwz_de;
-#endif
 };
 
 static int cmd_cur;
