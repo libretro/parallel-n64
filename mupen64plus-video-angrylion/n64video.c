@@ -2154,7 +2154,7 @@ static void fetch_texel(COLOR *color, int s, int t, uint32_t tilenum)
             c = tc16[taddr];
             COLOR_RED_PTR(color) = c >> 8;
             COLOR_GREEN_PTR(color) = c & 0xff;
-            c = tc16[taddr | 0x400];
+            c = tc16[taddr + 0x400];
             COLOR_BLUE_PTR(color) = c >> 8;
             COLOR_ALPHA_PTR(color) = c & 0xff;
         }
@@ -2182,17 +2182,12 @@ static void fetch_texel(COLOR *color, int s, int t, uint32_t tilenum)
         {
             uint16_t c;
             int32_t y, u, v;
-            int taddrlow;
 
             taddr = (tbase << 3) + s;
-            taddrlow = taddr >> 1;
-
             taddr ^= ((t & 1) ? BYTE_XOR_DWORD_SWAP : BYTE_ADDR_XOR);
-            taddrlow ^= ((t & 1) ? WORD_XOR_DWORD_SWAP : WORD_ADDR_XOR);
             taddr &= 0x7ff;
-            taddrlow &= 0x3ff;
-            c = tc16[taddrlow];
-            y = __TMEM[taddr | 0x800];
+			c = tc16[taddr >> 1];
+            y = __TMEM[taddr + 0x800];
             u = c >> 8;
             v = c & 0xff;
 
