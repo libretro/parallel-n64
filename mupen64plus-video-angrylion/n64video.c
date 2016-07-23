@@ -2679,13 +2679,13 @@ static void fetch_texel_quadro(COLOR *color0, COLOR *color1, COLOR *color2, COLO
             taddr3 ^= xort;
 
             save0 = u0 = __TMEM[taddr0 & 0x7ff];
-            u0 = (u0 - 0x80) & 0x1ff;
+            u0 = u0 - 0x80;
             save1 = u1 = __TMEM[taddr1 & 0x7ff];
-            u1 = (u1 - 0x80) & 0x1ff;
+            u1 = u1 - 0x80;
             save2 = u2 = __TMEM[taddr2 & 0x7ff];
-            u2 = (u2 - 0x80) & 0x1ff;
+            u2 = u2 - 0x80;
             save3 = u3 = __TMEM[taddr3 & 0x7ff];
-            u3 = (u3 - 0x80) & 0x1ff;
+            u3 = u3 - 0x80;
 
             COLOR_RED_PTR(color0) = u0;
             COLOR_GREEN_PTR(color0) = u0;
@@ -2746,14 +2746,14 @@ static void fetch_texel_quadro(COLOR *color0, COLOR *color1, COLOR *color2, COLO
             u3 = c3 >> 8;
             v3 = c3 & 0xff;
 
-            u0 = (u0 - 0x80) & 0x1ff;
-            v0 = (v0 - 0x80) & 0x1ff;
-            u1 = (u1 - 0x80) & 0x1ff;
-            v1 = (v1 - 0x80) & 0x1ff;
-            u2 = (u2 - 0x80) & 0x1ff;
-            v2 = (v2 - 0x80) & 0x1ff;
-            u3 = (u3 - 0x80) & 0x1ff;
-            v3 = (v3 - 0x80) & 0x1ff;
+            u0 = u0 - 0x80;
+            v0 = v0 - 0x80;
+            u1 = u1 - 0x80;
+            v1 = v1 - 0x80;
+            u2 = u2 - 0x80;
+            v2 = v2 - 0x80;
+            u3 = u3 - 0x80;
+            v3 = v3 - 0x80;
 
             COLOR_RED_PTR(color0) = u0;
             COLOR_GREEN_PTR(color0) = v0;
@@ -3943,19 +3943,6 @@ static void texture_pipeline_cycle(COLOR* TEX, COLOR* prev, int32_t SSS, int32_t
                 fetch_texel_quadro(&t0, &t1, &t2, &t3, sss1, sss2, sst1, sst2, tilenum);
             else
                 fetch_texel_entlut_quadro(&t0, &t1, &t2, &t3, sss1, sss2, sst1, sst2, tilenum);
-
-            if (tile[tilenum].format == FORMAT_YUV)
-            {
-               COLOR_RED(t0)   = SIGN(COLOR_RED(t0), 9); 
-               COLOR_GREEN(t0) = SIGN(COLOR_GREEN(t0), 9); 
-               COLOR_RED(t1)   = SIGN(COLOR_RED(t1), 9); 
-               COLOR_GREEN(t1) = SIGN(COLOR_GREEN(t1), 9);
-               COLOR_RED(t2)   = SIGN(COLOR_RED(t2), 9); 
-               COLOR_GREEN(t2) = SIGN(COLOR_GREEN(t2), 9);
-               COLOR_RED(t3)   = SIGN(COLOR_RED(t3), 9); 
-               COLOR_GREEN(t3) = SIGN(COLOR_GREEN(t3), 9);
-            }
-
 
             if (!other_modes.mid_texel || sfrac != 0x10 || tfrac != 0x10)
             {
