@@ -643,7 +643,7 @@ EXPORT unsigned int CALL cxd4DoRspCycles(unsigned int cycles)
 
       uint16_t VCO = get_VCO();
       rsp_dump_block("VCO  END", &VCO, sizeof(VCO));
-      uint16_t VCC = get_VCO();
+      uint16_t VCC = get_VCC();
       rsp_dump_block("VCC  END", &VCC, sizeof(VCC));
       uint16_t VCE = get_VCE();
       rsp_dump_block("VCE  END", &VCE, sizeof(VCE));
@@ -714,7 +714,8 @@ EXPORT void CALL cxd4InitiateRSP(RSP_INFO Rsp_Info, unsigned int *CycleCount)
     stale_signals = 0;
 
 #ifdef HAVE_RSP_DUMP
-    rsp_open_trace("/tmp/dump.rsp");
+    const char *path = getenv("RSP_DUMP");
+    rsp_open_trace(path ? path : "/tmp/dump.rsp");
 #endif
 
     return;
