@@ -29,8 +29,6 @@
  */
 static int SR[32];
 
-static int rsp_imem_invalidate = 1;
-
 #include "rsp.h"
 
 NOINLINE static void res_S(void)
@@ -142,7 +140,9 @@ static void MT_DMA_READ_LENGTH(int rt)
 {
     unsigned int offC, offD; /* SP cache and dynamic DMA pointers */
 
-    rsp_imem_invalidate = 1;
+#ifdef HAVE_RSP_DUMP
+    rsp_dump_begin_read_dma();
+#endif
 
     *RSP.SP_RD_LEN_REG = SR[rt] | 07;
     {
@@ -166,8 +166,14 @@ static void MT_DMA_READ_LENGTH(int rt)
                 *(int64_t*)(RSP.RDRAM + offD)
                 & (offD & ~MAX_DRAM_DMA_ADDR ? 0 : ~0) /* 0 if (addr > limit) */
                 ;
+
+#ifdef HAVE_RSP_DUMP
+             rsp_dump_poke_mem(offC, RSP.DMEM + offC, sizeof(uint64_t));
+#endif
+
              i += 0x008;
           } while (i < length);
+
        } while (count);
 
        if ((offC & 0x1000) ^ (*RSP.SP_MEM_ADDR_REG & 0x1000))
@@ -175,6 +181,9 @@ static void MT_DMA_READ_LENGTH(int rt)
        *RSP.SP_DMA_BUSY_REG = 0x00000000;
        *RSP.SP_STATUS_REG &= ~SP_STATUS_DMA_BUSY;
     }
+#ifdef HAVE_RSP_DUMP
+    rsp_dump_end_read_dma();
+#endif
 }
 static void MT_DMA_WRITE_LENGTH(int rt)
 {

@@ -57,6 +57,8 @@ SOURCES_C += $(CXD4DIR)/rsp.c
 
 ifeq ($(HAVE_RSP_DUMP), 1)
 SOURCES_CXX += $(CXD4DIR)/rsp_dump.cpp
+CFLAGS += -DHAVE_RSP_DUMP
+CXXFLAGS += -DHAVE_RSP_DUMP
 endif
 
 

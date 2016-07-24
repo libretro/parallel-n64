@@ -1,35 +1,89 @@
 #include "rsp_dump.h"
-#include <unordered_set>
+#include <stdio.h>
+#include <stdint.h>
+#include <string.h>
+#include <assert.h>
 
-static std::unordered_set<uint64_t> seen_ucodes;
+static FILE *file;
+static bool in_trace;
 
-static inline uint64_t hash64(const void *data_, size_t size)
+void rsp_open_trace(const char *path)
 {
-	// FNV-1.
-	const uint8_t *data = static_cast<const uint8_t *>(data_);
-	uint64_t h = 0xcbf29ce484222325ull;
-	for (size_t i = 0; i < size; i++)
-		h = (h * 0x100000001b3ull) ^ data[i];
-	return h;
+   file = fopen(path, "wb");
+   fwrite("RSPDUMP1", 1, 8, file);
 }
 
-void rsp_dump_imem(const void *imem, size_t size)
+void rsp_close_trace(void)
 {
-   uint64_t hash = hash64(imem, size);
-   auto itr = seen_ucodes.find(hash);
-   if (itr == end(seen_ucodes))
-   {
-      char path[128];
-      sprintf(path, "/tmp/%05zu.imem", seen_ucodes.size());
-      fprintf(stderr, "Dumping RSP IMEM to %s.\n", path);
-#if 0
-      FILE *file = fopen(path, "wb");
-      if (file)
-      {
-         fwrite(imem, size, 1, file);
-         fclose(file);
-      }
-#endif
-      seen_ucodes.insert(hash);
-   }
+   if (file)
+      fclose(file);
+
+   fwrite("EOF     ", 1, 8, file);
+   file = nullptr;
 }
+
+void rsp_dump_begin_trace(void)
+{
+   if (!file)
+      return;
+
+   fwrite("BEGIN   ", 1, 8, file);
+   in_trace = true;
+}
+
+int rsp_dump_recording_trace(void)
+{
+   return in_trace;
+}
+
+void rsp_dump_end_trace(void)
+{
+   if (!file)
+      return;
+
+   fwrite("END     ", 1, 8, file);
+   in_trace = false;
+}
+
+void rsp_dump_block(const char *tag, const void *data, size_t size)
+{
+   if (!file)
+      return;
+
+   uint32_t size_data = size;
+
+   assert(strlen(tag) == 8);
+   fwrite(tag, 1, strlen(tag), file);
+   fwrite(&size_data, sizeof(size_data), 1, file);
+   fwrite(data, size, 1, file);
+}
+
+void rsp_dump_begin_read_dma(void)
+{
+   if (!file)
+      return;
+
+   fwrite("BEGINDMA", 1, 8, file);
+}
+
+void rsp_dump_poke_mem(unsigned base, const void *data, size_t size)
+{
+   if (!file)
+      return;
+   uint32_t size_data = size;
+   uint32_t base_data = base;
+
+   fwrite("POKE    ", 1, 8, file);
+   fwrite(&base_data, sizeof(base_data), 1, file);
+   fwrite(&size_data, sizeof(size_data), 1, file);
+   fwrite(data, size, 1, file);
+}
+
+void rsp_dump_end_read_dma(void)
+{
+   if (!file)
+      return;
+
+   fwrite("ENDDMA  ", 1, 8, file);
+}
+

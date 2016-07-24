@@ -424,17 +424,27 @@ NOINLINE void run_task(void)
 
     stale_signals = 0;
 
+#ifdef HAVE_RSP_DUMP
+    if ((*RSP.SP_STATUS_REG & 1) == 0)
+    {
+       rsp_dump_begin_trace();
+       rsp_dump_block("DMEM    ", RSP.DMEM, 0x1000);
+       rsp_dump_block("IMEM    ", RSP.IMEM, 0x1000);
+       rsp_dump_block("SR32    ", SR, sizeof(SR));
+       rsp_dump_block("VR32    ", VR, sizeof(VR));
+       rsp_dump_block("PC      ", &PC, sizeof(PC));
+
+       uint16_t VCO = get_VCO();
+       rsp_dump_block("VCO     ", &VCO, sizeof(VCO));
+       uint16_t VCC = get_VCO();
+       rsp_dump_block("VCC     ", &VCC, sizeof(VCC));
+       uint16_t VCE = get_VCE();
+       rsp_dump_block("VCE     ", &VCE, sizeof(VCE));
+    }
+#endif
+
     while ((*RSP.SP_STATUS_REG & 0x00000001) == 0x00000000)
     {
-       if (rsp_imem_invalidate == 1)
-       {
-#ifdef HAVE_RSP_DUMP
-          fprintf(stderr, "PC: 0x%x\n", PC);
-          rsp_dump_imem(RSP.IMEM, 0x1000);
-#endif
-          rsp_imem_invalidate = 0;
-       }
-
        register uint32_t inst = *(uint32_t *)(RSP.IMEM + FIT_IMEM(PC));
 #ifdef EMULATE_STATIC_PC
        PC = (PC + 0x004);
@@ -612,11 +622,28 @@ EXPORT unsigned int CALL cxd4DoRspCycles(unsigned int cycles)
 #endif
    }
 
-   rsp_imem_invalidate = 1;
-
    for (i = 0; i < 32; i++)
       MFC0_count[i] = 0;
    run_task();
+
+#ifdef HAVE_RSP_DUMP
+   if (rsp_dump_recording_trace())
+   {
+      rsp_dump_block("DMEM END", RSP.DMEM, 0x1000);
+      rsp_dump_block("IMEM END", RSP.IMEM, 0x1000);
+      rsp_dump_block("SR32 END", SR, sizeof(SR));
+      rsp_dump_block("VR32 END", VR, sizeof(VR));
+
+      uint16_t VCO = get_VCO();
+      rsp_dump_block("VCO  END", &VCO, sizeof(VCO));
+      uint16_t VCC = get_VCO();
+      rsp_dump_block("VCC  END", &VCC, sizeof(VCC));
+      uint16_t VCE = get_VCE();
+      rsp_dump_block("VCE  END", &VCE, sizeof(VCE));
+
+      rsp_dump_end_trace();
+   }
+#endif
 
    if (*RSP.SP_STATUS_REG & SP_STATUS_BROKE) /* normal exit, from executing BREAK */
       return (cycles);
