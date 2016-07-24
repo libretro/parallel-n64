@@ -439,7 +439,7 @@ NOINLINE void run_task(void)
 
        uint16_t VCO = get_VCO();
        rsp_dump_block("VCO     ", &VCO, sizeof(VCO));
-       uint16_t VCC = get_VCO();
+       uint16_t VCC = get_VCC();
        rsp_dump_block("VCC     ", &VCC, sizeof(VCC));
        uint16_t VCE = get_VCE();
        rsp_dump_block("VCE     ", &VCE, sizeof(VCE));
