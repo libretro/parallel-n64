@@ -16,9 +16,11 @@ void rsp_open_trace(const char *path)
 void rsp_close_trace(void)
 {
    if (file)
+   {
+      fwrite("EOF     ", 1, 8, file);
       fclose(file);
+   }
 
-   fwrite("EOF     ", 1, 8, file);
    file = nullptr;
 }
 

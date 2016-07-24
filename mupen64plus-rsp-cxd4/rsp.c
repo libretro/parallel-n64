@@ -432,6 +432,9 @@ NOINLINE void run_task(void)
        rsp_dump_block("IMEM    ", RSP.IMEM, 0x1000);
        rsp_dump_block("SR32    ", SR, sizeof(SR));
        rsp_dump_block("VR32    ", VR, sizeof(VR));
+       rsp_dump_block("VLO     ", VACC[LO], sizeof(VACC[LO]));
+       rsp_dump_block("VMD     ", VACC[MD], sizeof(VACC[MD]));
+       rsp_dump_block("VHI     ", VACC[HI], sizeof(VACC[HI]));
        rsp_dump_block("PC      ", &PC, sizeof(PC));
 
        uint16_t VCO = get_VCO();
@@ -568,6 +571,7 @@ EXPORT int CALL RomOpen(void)
     CFG_HLE_AUD = ConfigGetParamBool(l_ConfigRsp, "AudioListToAudioPlugin");
     CFG_WAIT_FOR_CPU_HOST = ConfigGetParamBool(l_ConfigRsp, "WaitForCPUHost");
     CFG_MEND_SEMAPHORE_LOCK = ConfigGetParamBool(l_ConfigRsp, "SupportCPUSemaphoreLock");
+
     return 1;
 }
 
@@ -633,6 +637,9 @@ EXPORT unsigned int CALL cxd4DoRspCycles(unsigned int cycles)
       rsp_dump_block("IMEM END", RSP.IMEM, 0x1000);
       rsp_dump_block("SR32 END", SR, sizeof(SR));
       rsp_dump_block("VR32 END", VR, sizeof(VR));
+      rsp_dump_block("VLO  END", VACC[LO], sizeof(VACC[LO]));
+      rsp_dump_block("VMD  END", VACC[MD], sizeof(VACC[MD]));
+      rsp_dump_block("VHI  END", VACC[HI], sizeof(VACC[HI]));
 
       uint16_t VCO = get_VCO();
       rsp_dump_block("VCO  END", &VCO, sizeof(VCO));
@@ -705,10 +712,20 @@ EXPORT void CALL cxd4InitiateRSP(RSP_INFO Rsp_Info, unsigned int *CycleCount)
     CR[0xF] = RSP.DPC_TMEM_REG;
     MF_SP_STATUS_TIMEOUT = 16384;
     stale_signals = 0;
+
+#ifdef HAVE_RSP_DUMP
+    rsp_open_trace("/tmp/dump.rsp");
+#endif
+
     return;
 }
 EXPORT void CALL cxd4RomClosed(void)
 {
     *RSP.SP_PC_REG = 0x00000000;
+
+#ifdef HAVE_RSP_DUMP
+    rsp_close_trace();
+#endif
+
     return;
 }
