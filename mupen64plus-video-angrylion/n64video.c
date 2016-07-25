@@ -3335,6 +3335,8 @@ static void fetch_texel_entlut_quadro(COLOR *color0, COLOR *color1, COLOR *color
     case 5:
     case 6:
     case 7:
+    case 11:
+    case 15:
         {
             taddr0 = ((tbase0 << 3) + s0);
             taddr1 = ((tbase0 << 3) + s1);
@@ -3346,7 +3348,7 @@ static void fetch_texel_entlut_quadro(COLOR *color0, COLOR *color1, COLOR *color
             xort = (t1 & 1) ? BYTE_XOR_DWORD_SWAP : BYTE_ADDR_XOR;
             taddr2 ^= xort;
             taddr3 ^= xort;
-            
+
             c0 = __TMEM[taddr0 & 0x7ff];
             c0 = tlut[(c0 << 2) + WORD_ADDR_XOR];
             c2 = __TMEM[taddr2 & 0x7ff];
@@ -3360,51 +3362,6 @@ static void fetch_texel_entlut_quadro(COLOR *color0, COLOR *color1, COLOR *color
     case 8:
     case 9:
     case 10:
-        {
-            taddr0 = ((tbase0 << 2) + s0);
-            taddr1 = ((tbase0 << 2) + s1);
-            taddr2 = ((tbase2 << 2) + s0);
-            taddr3 = ((tbase2 << 2) + s1);
-            xort = (t0 & 1) ? WORD_XOR_DWORD_SWAP : WORD_ADDR_XOR;
-            taddr0 ^= xort;
-            taddr1 ^= xort;
-            xort = (t1 & 1) ? WORD_XOR_DWORD_SWAP : WORD_ADDR_XOR;
-            taddr2 ^= xort;
-            taddr3 ^= xort;
-                    
-            c0 = tc16[taddr0 & 0x3ff];
-            c0 = tlut[((c0 >> 6) & ~3) + WORD_ADDR_XOR];
-            c1 = tc16[taddr1 & 0x3ff];
-            c1 = tlut[((c1 >> 6) & ~3) + WORD_ADDR_XOR];
-            c2 = tc16[taddr2 & 0x3ff];
-            c2 = tlut[((c2 >> 6) & ~3) + WORD_ADDR_XOR];
-            c3 = tc16[taddr3 & 0x3ff];
-            c3 = tlut[((c3 >> 6) & ~3) + WORD_ADDR_XOR];
-        }
-        break;
-    case 11:
-        {
-            taddr0 = ((tbase0 << 3) + s0);
-            taddr1 = ((tbase0 << 3) + s1);
-            taddr2 = ((tbase2 << 3) + s0);
-            taddr3 = ((tbase2 << 3) + s1);
-            xort = (t0 & 1) ? BYTE_XOR_DWORD_SWAP : BYTE_ADDR_XOR;
-            taddr0 ^= xort;
-            taddr1 ^= xort;
-            xort = (t1 & 1) ? BYTE_XOR_DWORD_SWAP : BYTE_ADDR_XOR;
-            taddr2 ^= xort;
-            taddr3 ^= xort;
-            
-            c0 = __TMEM[taddr0 & 0x7ff];
-            c0 = tlut[(c0 << 2) + WORD_ADDR_XOR];
-            c2 = __TMEM[taddr2 & 0x7ff];
-            c2 = tlut[(c2 << 2) + WORD_ADDR_XOR];
-            c1 = __TMEM[taddr1 & 0x7ff];
-            c1 = tlut[(c1 << 2) + WORD_ADDR_XOR];
-            c3 = __TMEM[taddr3 & 0x7ff];
-            c3 = tlut[(c3 << 2) + WORD_ADDR_XOR];
-        }
-        break;
     case 12:
     case 13:
     case 14:
@@ -3419,7 +3376,7 @@ static void fetch_texel_entlut_quadro(COLOR *color0, COLOR *color1, COLOR *color
             xort = (t1 & 1) ? WORD_XOR_DWORD_SWAP : WORD_ADDR_XOR;
             taddr2 ^= xort;
             taddr3 ^= xort;
-                                
+
             c0 = tc16[taddr0 & 0x3ff];
             c0 = tlut[((c0 >> 6) & ~3) + WORD_ADDR_XOR];
             c1 = tc16[taddr1 & 0x3ff];
@@ -3428,29 +3385,6 @@ static void fetch_texel_entlut_quadro(COLOR *color0, COLOR *color1, COLOR *color
             c2 = tlut[((c2 >> 6) & ~3) + WORD_ADDR_XOR];
             c3 = tc16[taddr3 & 0x3ff];
             c3 = tlut[((c3 >> 6) & ~3) + WORD_ADDR_XOR];
-        }
-        break;
-    case 15:
-        {
-            taddr0 = ((tbase0 << 3) + s0);
-            taddr1 = ((tbase0 << 3) + s1);
-            taddr2 = ((tbase2 << 3) + s0);
-            taddr3 = ((tbase2 << 3) + s1);
-            xort = (t0 & 1) ? BYTE_XOR_DWORD_SWAP : BYTE_ADDR_XOR;
-            taddr0 ^= xort;
-            taddr1 ^= xort;
-            xort = (t1 & 1) ? BYTE_XOR_DWORD_SWAP : BYTE_ADDR_XOR;
-            taddr2 ^= xort;
-            taddr3 ^= xort;
-            
-            c0 = __TMEM[taddr0 & 0x7ff];
-            c0 = tlut[(c0 << 2) + WORD_ADDR_XOR];
-            c2 = __TMEM[taddr2 & 0x7ff];
-            c2 = tlut[(c2 << 2) + WORD_ADDR_XOR];
-            c1 = __TMEM[taddr1 & 0x7ff];
-            c1 = tlut[(c1 << 2) + WORD_ADDR_XOR];
-            c3 = __TMEM[taddr3 & 0x7ff];
-            c3 = tlut[(c3 << 2) + WORD_ADDR_XOR];
         }
         break;
     }
