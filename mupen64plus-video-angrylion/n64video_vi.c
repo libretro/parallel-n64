@@ -143,9 +143,9 @@ static void (*do_frame_buffer[2])(uint32_t, int, int, int, int, int) = {
 };
 
 static void (*vi_fetch_filter_ptr)(
-    CCVG*, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
+    CCVG*, uint32_t, uint32_t, uint32_t, uint32_t);
 static void (*vi_fetch_filter_func[2])(
-    CCVG*, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t) = {
+    CCVG*, uint32_t, uint32_t, uint32_t, uint32_t) = {
     vi_fetch_filter16, vi_fetch_filter32
 };
 
@@ -519,30 +519,30 @@ static void do_frame_buffer_proper(
             {
                 vi_fetch_filter_func[vitype & 1](
                     &viaa_cache[prev_line_x], frame_buffer, prev_x, fsaa,
-                    dither_filter, vres);
+                    dither_filter);
                 vi_fetch_filter_func[vitype & 1](
                     &viaa_cache[line_x], frame_buffer, cur_x, fsaa,
-                    dither_filter, vres);
+                    dither_filter);
                 vi_fetch_filter_func[vitype & 1](
                     &viaa_cache[next_line_x], frame_buffer, next_x, fsaa,
-                    dither_filter, vres);
+                    dither_filter);
                 cache_marker = next_line_x;
             }
             else if (line_x > cache_marker)
             {
                 vi_fetch_filter_func[vitype & 1](
                     &viaa_cache[line_x], frame_buffer, cur_x, fsaa,
-                    dither_filter, vres);
+                    dither_filter);
                 vi_fetch_filter_func[vitype & 1](
                     &viaa_cache[next_line_x], frame_buffer, next_x, fsaa,
-                    dither_filter, vres);
+                    dither_filter);
                 cache_marker = next_line_x;
             }
             else if (next_line_x > cache_marker)
             {
                 vi_fetch_filter_func[vitype & 1](
                     &viaa_cache[next_line_x], frame_buffer, next_x, fsaa,
-                    dither_filter, vres);
+                    dither_filter);
                 cache_marker = next_line_x;
             }
 
@@ -550,30 +550,30 @@ static void do_frame_buffer_proper(
             {
                 vi_fetch_filter_func[vitype & 1](
                     &viaa_cache_next[prev_line_x], frame_buffer, prev_scan_x,
-                    fsaa, dither_filter, vres);
+                    fsaa, dither_filter);
                 vi_fetch_filter_func[vitype & 1](
                     &viaa_cache_next[line_x], frame_buffer, scan_x, fsaa,
-                    dither_filter, vres);
+                    dither_filter);
                 vi_fetch_filter_func[vitype & 1](
                     &viaa_cache_next[next_line_x], frame_buffer, next_scan_x,
-                    fsaa, dither_filter, vres);
+                    fsaa, dither_filter);
                 cache_next_marker = next_line_x;
             }
             else if (line_x > cache_next_marker)
             {
                 vi_fetch_filter_func[vitype & 1](
                     &viaa_cache_next[line_x], frame_buffer, scan_x, fsaa,
-                    dither_filter, vres);
+                    dither_filter);
                 vi_fetch_filter_func[vitype & 1](
                     &viaa_cache_next[next_line_x], frame_buffer, next_scan_x,
-                    fsaa, dither_filter, vres);
+                    fsaa, dither_filter);
                 cache_next_marker = next_line_x;
             }
             else if (next_line_x > cache_next_marker)
             {
                 vi_fetch_filter_func[vitype & 1](
                     &viaa_cache_next[next_line_x], frame_buffer, next_scan_x,
-                    fsaa, dither_filter, vres);
+                    fsaa, dither_filter);
                 cache_next_marker = next_line_x;
             }
 
@@ -585,7 +585,7 @@ static void do_frame_buffer_proper(
                 {
                     vi_fetch_filter_func[vitype & 1](
                         &viaa_cache[far_line_x], frame_buffer, far_x, fsaa,
-                        dither_filter, vres);
+                        dither_filter);
                     cache_marker = far_line_x;
                 }
 
@@ -593,7 +593,7 @@ static void do_frame_buffer_proper(
                 {
                     vi_fetch_filter_func[vitype & 1](
                         &viaa_cache_next[far_line_x], frame_buffer, far_scan_x,
-                        fsaa, dither_filter, vres);
+                        fsaa, dither_filter);
                     cache_next_marker = far_line_x;
                 }
 
@@ -796,8 +796,7 @@ static void do_frame_buffer_raw(
 }
 
 STRICTINLINE static void vi_fetch_filter16(
-    CCVG* res, uint32_t fboffset, uint32_t cur_x, uint32_t fsaa, uint32_t dither_filter,
-    uint32_t vres)
+    CCVG* res, uint32_t fboffset, uint32_t cur_x, uint32_t fsaa, uint32_t dither_filter)
 {
     int r, g, b;
     uint32_t pix, hval;
@@ -836,8 +835,7 @@ STRICTINLINE static void vi_fetch_filter16(
 }
 
 STRICTINLINE static void vi_fetch_filter32(
-    CCVG* res, uint32_t fboffset, uint32_t cur_x, uint32_t fsaa, uint32_t dither_filter,
-    uint32_t vres)
+    CCVG* res, uint32_t fboffset, uint32_t cur_x, uint32_t fsaa, uint32_t dither_filter)
 {
     int r, g, b;
     uint32_t cur_cvg;
