@@ -6543,8 +6543,6 @@ static void render_spans_fill_8(int start, int end, int flip)
 
    for (i = start; i <= end; i++)
    {
-      uint16_t val;
-      uint8_t hval;
       prevxstart = xstart;
       xstart     = span[i].lx;
       xendsc     = span[i].rx;
