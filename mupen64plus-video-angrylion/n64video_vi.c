@@ -126,11 +126,9 @@ STRICTINLINE static void vi_vl_lerp(CCVG* up, CCVG down, uint32_t frac);
 STRICTINLINE static void video_max_optimized(uint32_t* Pixels, uint32_t* penumin, uint32_t* penumax, int numofels);
 
 STRICTINLINE static void vi_fetch_filter16(
-    CCVG* res, uint32_t fboffset, uint32_t cur_x, uint32_t fsaa, uint32_t dither_filter,
-    uint32_t vres);
+    CCVG* res, uint32_t fboffset, uint32_t cur_x, uint32_t fsaa, uint32_t dither_filter);
 STRICTINLINE static void vi_fetch_filter32(
-    CCVG* res, uint32_t fboffset, uint32_t cur_x, uint32_t fsaa, uint32_t dither_filter,
-    uint32_t vres);
+    CCVG* res, uint32_t fboffset, uint32_t cur_x, uint32_t fsaa, uint32_t dither_filter);
 
 static void do_frame_buffer_proper(
     uint32_t prescale_ptr, int hres, int vres, int x_start, int vitype,
