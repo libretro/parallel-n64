@@ -206,7 +206,10 @@ static void core_settings_set_defaults(void)
 
    /* Load RSP plugin core option */
 #ifdef ONLY_VULKAN
-   rsp_plugin = RSP_CXD4;
+   if (rsp_var.value && !strcmp(rsp_var.value, "parallel"))
+      rsp_plugin = RSP_PARALLEL;
+   else
+      rsp_plugin = RSP_CXD4;
 #else
    rsp_plugin = RSP_HLE;
 
@@ -218,6 +221,8 @@ static void core_settings_set_defaults(void)
          rsp_plugin = RSP_HLE;
       if (rsp_var.value && !strcmp(rsp_var.value, "cxd4"))
          rsp_plugin = RSP_CXD4;
+      if (rsp_var.value && !strcmp(rsp_var.value, "parallel"))
+         rsp_plugin = RSP_PARALLEL;
    }
 #endif
 }
@@ -298,9 +303,9 @@ static void setup_variables(void)
 #endif
       { NAME_PREFIX "-rspplugin",
 #ifdef ONLY_VULKAN
-         "RSP Plugin; cxd4" },
+         "RSP Plugin; parallel|cxd4" },
 #else
-         "RSP Plugin; auto|hle|cxd4" },
+         "RSP Plugin; auto|hle|parallel|cxd4" },
 #endif
 #ifndef ONLY_VULKAN
       { NAME_PREFIX "-screensize",

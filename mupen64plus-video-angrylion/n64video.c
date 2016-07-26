@@ -4185,13 +4185,6 @@ static STRICTINLINE void compute_cvg_flip(int32_t scanline)
                cvgbuf[k] &= ~fmaskshifted;
 
 
-
-
-
-
-
-
-
             if (minorcurint > majorcurint)
             {
                cvgbuf[minorcurint] |= (rightcvghex(minorcur, fmask) << maskshift);

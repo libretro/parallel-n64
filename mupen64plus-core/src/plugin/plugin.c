@@ -206,6 +206,9 @@ static m64p_error plugin_start_input(void)
 
 DEFINE_RSP(hle);
 DEFINE_RSP(cxd4);
+#ifdef HAVE_PARALLEL_RSP
+DEFINE_RSP(parallelRSP);
+#endif
 
 rsp_plugin_functions rsp;
 RSP_INFO rsp_info;
@@ -283,6 +286,11 @@ void plugin_connect_all(enum gfx_plugin_type gfx_plugin, enum rsp_plugin_type rs
       case RSP_CXD4:
          rsp = rsp_cxd4;
          break;
+#ifdef HAVE_PARALLEL_RSP
+      case RSP_PARALLEL:
+         rsp = rsp_parallelRSP;
+         break;
+#endif
       default:
          rsp = rsp_hle;
          break;

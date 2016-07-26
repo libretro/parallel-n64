@@ -208,7 +208,6 @@ void RSP_LHV(RSP::CPUState *rsp, unsigned rt, unsigned e, int offset, unsigned b
    if (addr & 0xe)
       return;
 
-   addr ^= MES(0);
    auto *reg = rsp->cp2.regs[rt].e;
    for (unsigned i = 0; i < 8; i++)
       reg[i] = READ_MEM_U8(rsp->dmem, addr + 2 * i) << 7;
@@ -218,7 +217,7 @@ void RSP_SHV(RSP::CPUState *rsp, unsigned rt, unsigned e, int offset, unsigned b
 {
    if (e != 0)
       return;
-   unsigned addr = (rsp->sr[base] + offset * 8) & 0xfff;
+   unsigned addr = (rsp->sr[base] + offset * 16) & 0xfff;
    auto *reg = rsp->cp2.regs[rt].e;
    for (unsigned i = 0; i < 8; i++)
       WRITE_MEM_U8(rsp->dmem, (addr + 2 * i) & 0xfff, int16_t(reg[i]) >> 7);

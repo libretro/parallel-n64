@@ -17,7 +17,8 @@ enum gfx_plugin_type
 enum rsp_plugin_type
 {
    RSP_HLE = 0,
-   RSP_CXD4
+   RSP_CXD4,
+   RSP_PARALLEL
 };
 
 extern enum gfx_plugin_type gfx_plugin;

@@ -744,6 +744,7 @@ EXPORT unsigned int CALL cxd4DoRspCycles(unsigned int cycles)
       fprintf(stderr, "CHECK IRQ\n");
 #endif
       RSP.CheckInterrupts();
+   }
    else if (*RSP.SP_SEMAPHORE_REG != 0x00000000) /* semaphore lock fixes */
    {}
 #ifdef WAIT_FOR_CPU_HOST

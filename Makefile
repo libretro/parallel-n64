@@ -92,7 +92,10 @@ CC_AS ?= $(CC)
 # Unix
 ifneq (,$(findstring unix,$(platform)))
    TARGET := $(TARGET_NAME)_libretro.so
-   LDFLAGS += -shared -Wl,--version-script=$(LIBRETRO_DIR)/link.T -Wl,--no-undefined
+   LDFLAGS += -shared -Wl,--no-undefined
+	ifeq ($(DEBUG_JIT),)
+	   LDFLAGS += -Wl,--version-script=$(LIBRETRO_DIR)/link.T 
+	endif
    fpic = -fPIC
    
    ifeq ($(FORCE_GLES),1)

@@ -7,6 +7,7 @@ VIDEODIR_RICE      = $(ROOT_DIR)/gles2rice/src
 VIDEODIR_GLN64     = $(ROOT_DIR)/gles2n64/src
 VIDEODIR_ANGRYLION = $(ROOT_DIR)/mupen64plus-video-angrylion
 VIDEODIR_PARALLEL  = $(ROOT_DIR)/mupen64plus-video-paraLLEl
+RSPDIR_PARALLEL    = $(ROOT_DIR)/mupen64plus-rsp-paraLLEl
 VIDEODIR_GLIDE     = $(ROOT_DIR)/glide2gl/src
 VIDEODIR_GLIDEN64  = $(ROOT_DIR)/mupen64plus-video-gliden64
 
@@ -451,7 +452,6 @@ LDFLAGS += $(shell llvm-config --ldflags --libs --system-libs)
 
 endif
 
->>>>>>> d80ded1... Update RSP.
 ifeq ($(ONLY_VULKAN),1)
 CFLAGS   += -DONLY_VULKAN
 CXXFLAGS += -DONLY_VULKAN

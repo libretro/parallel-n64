@@ -109,6 +109,7 @@ static void SP_CP0_MF(int rt, int rd)
             return;
         if (CFG_HLE_GFX | CFG_HLE_AUD)
             return;
+
         *RSP.SP_SEMAPHORE_REG = 0x00000001;
         *RSP.SP_STATUS_REG |= SP_STATUS_HALT; /* temporary bit to break CPU */
         return;
@@ -160,8 +161,8 @@ static void MT_DMA_READ_LENGTH(int rt)
 
 #ifdef INTENSE_DEBUG
        fprintf(stderr, "DMA READ: (0x%x <- 0x%x) len %u, count %u, skip %u\n",
-             *RSP.SP_MEM_ADDR_REG,
-             *RSP.SP_DRAM_ADDR_REG,
+             *RSP.SP_MEM_ADDR_REG & 0x1ffc,
+             *RSP.SP_DRAM_ADDR_REG & 0x7ffffc,
              length, count, skip);
 #endif
 
@@ -217,8 +218,8 @@ static void MT_DMA_WRITE_LENGTH(int rt)
 
 #ifdef INTENSE_DEBUG
        fprintf(stderr, "DMA WRITE: (0x%x <- 0x%x) len %u, count %u, skip %u\n",
-             *RSP.SP_DRAM_ADDR_REG,
-             *RSP.SP_MEM_ADDR_REG,
+             *RSP.SP_DRAM_ADDR_REG & 0x7ffffc,
+             *RSP.SP_MEM_ADDR_REG & 0x1ffc,
              length, count, skip);
 #endif
 

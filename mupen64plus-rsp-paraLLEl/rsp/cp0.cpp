@@ -126,7 +126,7 @@ static int rsp_dma_read(RSP::CPUState *rsp)
 
 #ifdef INTENSE_DEBUG
    fprintf(stderr, "DMA READ: (0x%x <- 0x%x) len %u, count %u, skip %u\n",
-         dest, source,
+         dest & 0x1ffc, source & 0x7ffffc,
          length, count + 1, skip);
 #endif
 
@@ -187,7 +187,7 @@ static void rsp_dma_write(RSP::CPUState *rsp)
 
 #ifdef INTENSE_DEBUG
    fprintf(stderr, "DMA WRITE: (0x%x <- 0x%x) len %u, count %u, skip %u\n",
-         dest, source,
+         dest & 0x7ffffc, source & 0x1ffc,
          length, count + 1, skip);
 #endif
 
