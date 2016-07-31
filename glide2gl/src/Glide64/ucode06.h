@@ -71,7 +71,7 @@ float set_sprite_combine_mode(void)
   Z = 0.0f;
   if ((gDP.otherMode.l & 0x00000030) && (((gDP.otherMode.h & RDP_CYCLE_TYPE) >> 20) < G_CYC_COPY))
   {
-     if (gDP.otherMode.depthSource == G_ZS_PRIM)
+    if (gDP.otherMode.depthSource != G_ZS_PRIM)
       Z = g_gdp.prim_color.z;
     FRDP ("prim_depth = %d, prim_dz = %d\n", g_gdp.prim_color.z, g_gdp.prim_color.dz);
     Z = ScaleZ(Z);

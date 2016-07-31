@@ -361,9 +361,6 @@ void gdp_set_other_modes(uint32_t w0, uint32_t w1)
    /* If not force blend, allow blend enable - use cvg bits */
    g_gdp.other_modes.antialias_en     = !!(w1 & 0x00000008); /*  3 */
 
-   /* Choose between Primitive Z and pixel Z. */
-   g_gdp.other_modes.z_source_sel     = !!(w1 & 0x00000004); /*  2 */
-
    /* Use random noise in alpha compare, otherwise use blend alpha
     * in alpha compare. */
    g_gdp.other_modes.dither_alpha_en  = !!(w1 & 0x00000002); /*  1 */

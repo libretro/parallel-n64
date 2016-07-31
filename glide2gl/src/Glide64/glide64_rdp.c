@@ -371,7 +371,6 @@ void glide64ProcessDList(void)
   fbreads_back                        = 0;
   gSP.fog.multiplier                  = 0;
   gSP.fog.offset                      = 0;
-  g_gdp.other_modes.z_source_sel      = 0;
 
   rdp.scissor_set                     = false;
   gSP.DMAOffsets.tex_offset           = 0;
@@ -1901,7 +1900,6 @@ static void glide64ProcessRDPList_restorestate(void)
    fbreads_front = fbreads_back   = 0;
    gSP.fog.multiplier             = 0;
    gSP.fog.offset                 = 0;
-   g_gdp.other_modes.z_source_sel = 0;
 
    rdp.scissor_set      = false;
    gSP.DMAOffsets.tex_offset  = 0;
