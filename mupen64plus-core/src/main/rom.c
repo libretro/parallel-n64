@@ -47,6 +47,7 @@
 unsigned char* g_rom = NULL;
 /* Global loaded rom size. */
 int g_rom_size = 0;
+unsigned alternate_vi_timing = 0;
 
 uint8_t isGoldeneyeRom = 0;
 extern unsigned int frame_dupe;
@@ -54,6 +55,7 @@ extern unsigned int frame_dupe;
 m64p_rom_header   ROM_HEADER;
 rom_params        ROM_PARAMS;
 m64p_rom_settings ROM_SETTINGS;
+
 
 static const uint8_t Z64_SIGNATURE[4] = { 0x80, 0x37, 0x12, 0x40 };
 static const uint8_t V64_SIGNATURE[4] = { 0x37, 0x80, 0x40, 0x12 };
@@ -191,6 +193,7 @@ m64p_error open_rom(const unsigned char* romimage, unsigned int size)
    /* allocate new buffer for ROM and copy into this buffer */
    g_rom_size = size;
    g_rom = (unsigned char *) malloc(size);
+   alternate_vi_timing = 0;
    if (g_rom == NULL)
       return M64ERR_NO_MEMORY;
    memcpy(g_rom, romimage, size);
@@ -224,6 +227,31 @@ m64p_error open_rom(const unsigned char* romimage, unsigned int size)
       {
          strcpy(ROM_SETTINGS.goodname, ROM_PARAMS.headername);
          ROM_SETTINGS.savetype = EEPROM_16KB;
+         DebugMessage(M64MSG_INFO, "%s INI patches applied.", ROM_PARAMS.headername);
+
+         patch_applied = 1;
+         break;
+      }
+   }
+
+   for (i = 0; i < sizeof(lut_alternate_vi)/sizeof(lut_alternate_vi[0]); ++i)
+   {
+      if (lut_alternate_vi[i] == lut_id)
+      {
+         strcpy(ROM_SETTINGS.goodname, ROM_PARAMS.headername);
+         alternate_vi_timing = 1;
+         DebugMessage(M64MSG_INFO, "%s INI patches applied.", ROM_PARAMS.headername);
+
+         patch_applied = 1;
+         break;
+      }
+   }
+
+   for (i = 0; i < sizeof(lut_vi_clock_1500)/sizeof(lut_vi_clock_1500[0]); ++i)
+   {
+      if (lut_vi_clock_1500[i] == lut_id)
+      {
+         strcpy(ROM_SETTINGS.goodname, ROM_PARAMS.headername);
          DebugMessage(M64MSG_INFO, "%s INI patches applied.", ROM_PARAMS.headername);
 
          patch_applied = 1;
