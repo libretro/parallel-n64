@@ -32,6 +32,24 @@ struct gl_cached_state
       GLuint *ids;
    } bind_textures;
 
+   struct
+   {
+      bool used[MAX_ATTRIB];
+      GLint size[MAX_ATTRIB];
+      GLenum type[MAX_ATTRIB];
+      GLboolean normalized[MAX_ATTRIB];
+      GLsizei stride[MAX_ATTRIB];
+      const GLvoid *pointer[MAX_ATTRIB];
+   } attrib_pointer;
+
+   struct
+   {
+      GLint param1[128000];
+      GLint param2[128000];
+      GLint param3[128000];
+      GLint param4[128000];
+   } tex_param;
+
 #ifndef HAVE_OPENGLES
    GLenum colorlogicop;
 #endif
@@ -108,7 +126,6 @@ struct gl_cached_state
       bool used;
       GLenum func;
    } depthfunc;
-
 
    struct
    {
@@ -292,14 +309,15 @@ void rglReadBuffer(GLenum mode)
  */
 void rglClearDepth(GLdouble depth)
 {
-   glsm_ctl(GLSM_CTL_IMM_VBO_DRAW, NULL);
-#ifdef HAVE_OPENGLES
-   glClearDepthf(depth);
-#else
-   glClearDepth(depth);
-#endif
    gl_state.cleardepth.used  = true;
-   gl_state.cleardepth.depth = depth;
+   if (gl_state.cleardepth.depth != depth) {
+#ifdef HAVE_OPENGLES
+      glClearDepthf(depth);
+#else
+      glClearDepth(depth);
+#endif
+      gl_state.cleardepth.depth = depth;
+   }
 }
 
 /*
@@ -309,9 +327,11 @@ void rglClearDepth(GLdouble depth)
  */
 void rglPixelStorei(GLenum pname, GLint param)
 {
-   glPixelStorei(pname, param);
-   gl_state.pixelstore_i.pname = pname;
-   gl_state.pixelstore_i.param = param;
+   if (gl_state.pixelstore_i.pname != pname || gl_state.pixelstore_i.param != param) {
+      glPixelStorei(pname, param);
+      gl_state.pixelstore_i.pname = pname;
+      gl_state.pixelstore_i.param = param;
+   }
 }
 
 /*
@@ -321,14 +341,16 @@ void rglPixelStorei(GLenum pname, GLint param)
  */
 void rglDepthRange(GLclampd zNear, GLclampd zFar)
 {
-#ifdef HAVE_OPENGLES
-   glDepthRangef(zNear, zFar);
-#else
-   glDepthRange(zNear, zFar);
-#endif
    gl_state.depthrange.used  = true;
-   gl_state.depthrange.zNear = zNear;
-   gl_state.depthrange.zFar  = zFar;
+   if (gl_state.depthrange.zNear != zNear || gl_state.depthrange.zFar  != zFar) {
+#ifdef HAVE_OPENGLES
+      glDepthRangef(zNear, zFar);
+#else
+      glDepthRange(zNear, zFar);
+#endif
+      gl_state.depthrange.zNear = zNear;
+      gl_state.depthrange.zFar  = zFar;
+   }
 }
 
 /*
@@ -338,10 +360,11 @@ void rglDepthRange(GLclampd zNear, GLclampd zFar)
  */
 void rglFrontFace(GLenum mode)
 {
-   glsm_ctl(GLSM_CTL_IMM_VBO_DRAW, NULL);
-   glFrontFace(mode);
    gl_state.frontface.used = true;
-   gl_state.frontface.mode = mode; 
+   if (gl_state.frontface.mode != mode) {
+      glFrontFace(mode);
+      gl_state.frontface.mode = mode; 
+   }
 }
 
 /*
@@ -351,10 +374,11 @@ void rglFrontFace(GLenum mode)
  */
 void rglDepthFunc(GLenum func)
 {
-   glsm_ctl(GLSM_CTL_IMM_VBO_DRAW, NULL);
    gl_state.depthfunc.used = true;
-   gl_state.depthfunc.func = func;
-   glDepthFunc(func);
+   if (gl_state.depthfunc.func != func) {
+      gl_state.depthfunc.func = func;
+      glDepthFunc(func);
+   }
 }
 
 /*
@@ -365,13 +389,14 @@ void rglDepthFunc(GLenum func)
 void rglColorMask(GLboolean red, GLboolean green,
       GLboolean blue, GLboolean alpha)
 {
-   glsm_ctl(GLSM_CTL_IMM_VBO_DRAW, NULL);
-   glColorMask(red, green, blue, alpha);
-   gl_state.colormask.red   = red;
-   gl_state.colormask.green = green;
-   gl_state.colormask.blue  = blue;
-   gl_state.colormask.alpha = alpha;
    gl_state.colormask.used  = true;
+   if (gl_state.colormask.red != red || gl_state.colormask.green != green || gl_state.colormask.blue != blue || gl_state.colormask.alpha != alpha) {
+       glColorMask(red, green, blue, alpha);
+       gl_state.colormask.red   = red;
+       gl_state.colormask.green = green;
+       gl_state.colormask.blue  = blue;
+       gl_state.colormask.alpha = alpha;
+   }
 }
 
 /*
@@ -381,10 +406,11 @@ void rglColorMask(GLboolean red, GLboolean green,
  */
 void rglCullFace(GLenum mode)
 {
-   glsm_ctl(GLSM_CTL_IMM_VBO_DRAW, NULL);
-   glCullFace(mode);
    gl_state.cullface.used = true;
-   gl_state.cullface.mode = mode;
+   if (gl_state.cullface.mode != mode) {
+      glCullFace(mode);
+      gl_state.cullface.mode = mode;
+   }
 }
 
 /*
@@ -394,11 +420,13 @@ void rglCullFace(GLenum mode)
  */
 void rglStencilOp(GLenum sfail, GLenum dpfail, GLenum dppass)
 {
-   glStencilOp(sfail, dpfail, dppass);
    gl_state.stencilop.used   = true;
-   gl_state.stencilop.sfail  = sfail;
-   gl_state.stencilop.dpfail = dpfail;
-   gl_state.stencilop.dppass = dppass;
+   if (gl_state.stencilop.sfail != sfail || gl_state.stencilop.dpfail != dpfail || gl_state.stencilop.dppass != dppass) {
+      glStencilOp(sfail, dpfail, dppass);
+      gl_state.stencilop.sfail  = sfail;
+      gl_state.stencilop.dpfail = dpfail;
+      gl_state.stencilop.dppass = dppass;
+   }
 }
 
 /*
@@ -408,11 +436,13 @@ void rglStencilOp(GLenum sfail, GLenum dpfail, GLenum dppass)
  */
 void rglStencilFunc(GLenum func, GLint ref, GLuint mask)
 {
-   glStencilFunc(func, ref, mask);
    gl_state.stencilfunc.used = true;
-   gl_state.stencilfunc.func = func;
-   gl_state.stencilfunc.ref  = ref;
-   gl_state.stencilfunc.mask = mask;
+   if (gl_state.stencilfunc.func != func || gl_state.stencilfunc.ref != ref || gl_state.stencilfunc.mask != mask) {
+      glStencilFunc(func, ref, mask);
+      gl_state.stencilfunc.func = func;
+      gl_state.stencilfunc.ref  = ref;
+      gl_state.stencilfunc.mask = mask;
+   }
 }
 
 /*
@@ -433,12 +463,13 @@ GLboolean rglIsEnabled(GLenum cap)
 void rglClearColor(GLclampf red, GLclampf green,
       GLclampf blue, GLclampf alpha)
 {
-   glsm_ctl(GLSM_CTL_IMM_VBO_DRAW, NULL);
-   glClearColor(red, green, blue, alpha);
-   gl_state.clear_color.r = red;
-   gl_state.clear_color.g = green;
-   gl_state.clear_color.b = blue;
-   gl_state.clear_color.a = alpha;
+   if (gl_state.clear_color.r != red || gl_state.clear_color.g != green || gl_state.clear_color.b != blue || gl_state.clear_color.a != alpha) {
+      glClearColor(red, green, blue, alpha);
+      gl_state.clear_color.r = red;
+      gl_state.clear_color.g = green;
+      gl_state.clear_color.b = blue;
+      gl_state.clear_color.a = alpha;
+   }
 }
 
 /*
@@ -448,13 +479,14 @@ void rglClearColor(GLclampf red, GLclampf green,
  */
 void rglScissor(GLint x, GLint y, GLsizei width, GLsizei height)
 {
-   glsm_ctl(GLSM_CTL_IMM_VBO_DRAW, NULL);
-   glScissor(x, y, width, height);
    gl_state.scissor.used = true;
-   gl_state.scissor.x    = x;
-   gl_state.scissor.y    = y;
-   gl_state.scissor.w    = width;
-   gl_state.scissor.h    = height;
+   if (gl_state.scissor.x != x || gl_state.scissor.y != y || gl_state.scissor.w != width || gl_state.scissor.h != height) {
+      glScissor(x, y, width, height);
+      gl_state.scissor.x = x;
+      gl_state.scissor.y = y;
+      gl_state.scissor.w = width;
+      gl_state.scissor.h = height;
+   }
 }
 
 /*
@@ -464,21 +496,23 @@ void rglScissor(GLint x, GLint y, GLsizei width, GLsizei height)
  */
 void rglViewport(GLint x, GLint y, GLsizei width, GLsizei height)
 {
-   glsm_ctl(GLSM_CTL_IMM_VBO_DRAW, NULL);
-   glViewport(x, y, width, height);
-   gl_state.viewport.x = x;
-   gl_state.viewport.y = y;
-   gl_state.viewport.w = width;
-   gl_state.viewport.h = height;
+   if (gl_state.viewport.x != x || gl_state.viewport.y != y || gl_state.viewport.w != width || gl_state.viewport.h != height) {
+      glViewport(x, y, width, height);
+      gl_state.viewport.x = x;
+      gl_state.viewport.y = y;
+      gl_state.viewport.w = width;
+      gl_state.viewport.h = height;
+   }
 }
 
 void rglBlendFunc(GLenum sfactor, GLenum dfactor)
 {
-   glsm_ctl(GLSM_CTL_IMM_VBO_DRAW, NULL);
-   gl_state.blendfunc.used    = true;
-   gl_state.blendfunc.sfactor = sfactor;
-   gl_state.blendfunc.dfactor = dfactor;
-   glBlendFunc(sfactor, dfactor);
+   gl_state.blendfunc.used = true;
+   if (gl_state.blendfunc.sfactor != sfactor || gl_state.blendfunc.dfactor != dfactor) {
+      gl_state.blendfunc.sfactor = sfactor;
+      gl_state.blendfunc.dfactor = dfactor;
+      glBlendFunc(sfactor, dfactor);
+   }
 }
 
 /*
@@ -487,15 +521,16 @@ void rglBlendFunc(GLenum sfactor, GLenum dfactor)
  * Core in:
  * OpenGL    : 1.4
  */
-void rglBlendFuncSeparate(GLenum sfactor, GLenum dfactor)
+void rglBlendFuncSeparate(GLenum srcRGB, GLenum dstRGB, GLenum srcAlpha, GLenum dstAlpha)
 {
-   glsm_ctl(GLSM_CTL_IMM_VBO_DRAW, NULL);
    gl_state.blendfunc_separate.used     = true;
-   gl_state.blendfunc_separate.srcRGB   = sfactor;
-   gl_state.blendfunc_separate.dstRGB   = dfactor;
-   gl_state.blendfunc_separate.srcAlpha = sfactor;
-   gl_state.blendfunc_separate.dstAlpha = dfactor;
-   glBlendFunc(sfactor, dfactor);
+   if (gl_state.blendfunc_separate.srcRGB != srcRGB || gl_state.blendfunc_separate.dstRGB != dstRGB || gl_state.blendfunc_separate.srcAlpha != srcAlpha || gl_state.blendfunc_separate.dstAlpha != dstAlpha) {
+      gl_state.blendfunc_separate.srcRGB   = srcRGB;
+      gl_state.blendfunc_separate.dstRGB   = dstRGB;
+      gl_state.blendfunc_separate.srcAlpha = srcAlpha;
+      gl_state.blendfunc_separate.dstAlpha = dstAlpha;
+      glBlendFuncSeparate(srcRGB, dstRGB, srcAlpha, dstAlpha);
+   }
 }
 
 /*
@@ -506,9 +541,10 @@ void rglBlendFuncSeparate(GLenum sfactor, GLenum dfactor)
  */
 void rglActiveTexture(GLenum texture)
 {
-   glsm_ctl(GLSM_CTL_IMM_VBO_DRAW, NULL);
-   glActiveTexture(texture);
-   gl_state.active_texture = texture - GL_TEXTURE0;
+   if (gl_state.active_texture != texture - GL_TEXTURE0) {
+      glActiveTexture(texture);
+      gl_state.active_texture = texture - GL_TEXTURE0;
+   }
 }
 
 /*
@@ -518,9 +554,10 @@ void rglActiveTexture(GLenum texture)
  */
 void rglBindTexture(GLenum target, GLuint texture)
 {
-   glsm_ctl(GLSM_CTL_IMM_VBO_DRAW, NULL);
-   glBindTexture(target, texture);
-   gl_state.bind_textures.ids[gl_state.active_texture] = texture;
+   if (gl_state.bind_textures.ids[gl_state.active_texture] != texture) {
+      glBindTexture(target, texture);
+      gl_state.bind_textures.ids[gl_state.active_texture] = texture;
+   }
 }
 
 /*
@@ -530,9 +567,10 @@ void rglBindTexture(GLenum target, GLuint texture)
  */
 void rglDisable(GLenum cap)
 {
-   glsm_ctl(GLSM_CTL_IMM_VBO_DRAW, NULL);
-   glDisable(gl_state.cap_translate[cap]);
-   gl_state.cap_state[cap] = 0;
+   if (gl_state.cap_state[cap] != 0) {
+      glDisable(gl_state.cap_translate[cap]);
+      gl_state.cap_state[cap] = 0;
+   }
 }
 
 /*
@@ -542,9 +580,10 @@ void rglDisable(GLenum cap)
  */
 void rglEnable(GLenum cap)
 {
-   glsm_ctl(GLSM_CTL_IMM_VBO_DRAW, NULL);
-   glEnable(gl_state.cap_translate[cap]);
-   gl_state.cap_state[cap] = 1;
+   if (gl_state.cap_state[cap] != 1) {
+      glEnable(gl_state.cap_translate[cap]);
+      gl_state.cap_state[cap] = 1;
+   }
 }
 
 /*
@@ -555,9 +594,10 @@ void rglEnable(GLenum cap)
  */
 void rglUseProgram(GLuint program)
 {
-   glsm_ctl(GLSM_CTL_IMM_VBO_DRAW, NULL);
-   gl_state.program = program;
-   glUseProgram(program);
+   if (gl_state.program != program) {
+      gl_state.program = program;
+      glUseProgram(program);
+   }
 }
 
 /*
@@ -567,10 +607,11 @@ void rglUseProgram(GLuint program)
  */
 void rglDepthMask(GLboolean flag)
 {
-   glsm_ctl(GLSM_CTL_IMM_VBO_DRAW, NULL);
-   glDepthMask(flag);
    gl_state.depthmask.used = true;
-   gl_state.depthmask.mask = flag;
+   if (gl_state.depthmask.mask != flag) {
+      glDepthMask(flag);
+      gl_state.depthmask.mask = flag;
+   }
 }
 
 /*
@@ -580,9 +621,11 @@ void rglDepthMask(GLboolean flag)
  */
 void rglStencilMask(GLenum mask)
 {
-   glStencilMask(mask);
    gl_state.stencilmask.used = true;
-   gl_state.stencilmask.mask = mask;
+   if (gl_state.stencilmask.mask != mask) {
+      glStencilMask(mask);
+      gl_state.stencilmask.mask = mask;
+   }
 }
 
 /*
@@ -1140,6 +1183,35 @@ void rglTexCoord2f(GLfloat s, GLfloat t)
 #endif
 }
 
+void rglTexParameteri(GLenum target, GLenum pname, GLint param)
+{
+   GLuint active = gl_state.bind_textures.ids[gl_state.active_texture];
+   if (pname == GL_TEXTURE_MIN_FILTER) {
+      if (gl_state.tex_param.param1[active] != param) {
+         glTexParameteri(target, pname, param);
+         gl_state.tex_param.param1[active] = param;
+      }
+   }
+   else if (pname == GL_TEXTURE_MAG_FILTER) {
+      if (gl_state.tex_param.param2[active] != param) {
+         glTexParameteri(target, pname, param);
+         gl_state.tex_param.param2[active] = param;
+      }
+   }
+   else if (pname == GL_TEXTURE_WRAP_S) {
+      if (gl_state.tex_param.param3[active] != param) {
+         glTexParameteri(target, pname, param);
+         gl_state.tex_param.param3[active] = param;
+      }
+   }
+   else if (pname == GL_TEXTURE_WRAP_T) {
+      if (gl_state.tex_param.param4[active] != param) {
+         glTexParameteri(target, pname, param);
+         gl_state.tex_param.param4[active] = param;
+      }
+   }
+}
+
 /*
  * Category: Generic vertex attributes
  *
@@ -1149,8 +1221,10 @@ void rglTexCoord2f(GLfloat s, GLfloat t)
  */
 void rglDisableVertexAttribArray(GLuint index)
 {
-   gl_state.vertex_attrib_pointer.enabled[index] = 0;
-   glDisableVertexAttribArray(index);
+   if (gl_state.vertex_attrib_pointer.enabled[index] != 0) {
+      gl_state.vertex_attrib_pointer.enabled[index] = 0;
+      glDisableVertexAttribArray(index);
+   }
 }
 
 /*
@@ -1161,9 +1235,10 @@ void rglDisableVertexAttribArray(GLuint index)
  */
 void rglEnableVertexAttribArray(GLuint index)
 {
-   glsm_ctl(GLSM_CTL_IMM_VBO_DRAW, NULL);
-   gl_state.vertex_attrib_pointer.enabled[index] = 1;
-   glEnableVertexAttribArray(index);
+   if (gl_state.vertex_attrib_pointer.enabled[index] != 1) {
+      gl_state.vertex_attrib_pointer.enabled[index] = 1;
+      glEnableVertexAttribArray(index);
+   }
 }
 
 /*
@@ -1206,7 +1281,15 @@ void rglVertexAttribPointer(GLuint name, GLint size,
       GLenum type, GLboolean normalized, GLsizei stride,
       const GLvoid* pointer)
 {
-   glVertexAttribPointer(name, size, type, normalized, stride, pointer);
+   gl_state.attrib_pointer.used[name] = true;
+   if (gl_state.attrib_pointer.size[name] != size || gl_state.attrib_pointer.type[name] != type || gl_state.attrib_pointer.normalized[name] != normalized || gl_state.attrib_pointer.stride[name] != stride || gl_state.attrib_pointer.pointer[name] != pointer) {
+      gl_state.attrib_pointer.size[name] = size;
+      gl_state.attrib_pointer.type[name] = type;
+      gl_state.attrib_pointer.normalized[name] = normalized;
+      gl_state.attrib_pointer.stride[name] = stride;
+      gl_state.attrib_pointer.pointer[name] = pointer;
+      glVertexAttribPointer(name, size, type, normalized, stride, pointer);
+   }
 }
 
 /*
@@ -1505,11 +1588,12 @@ void rglUniform4fv(GLint location, GLsizei count, const GLfloat *value)
  */
 void rglPolygonOffset(GLfloat factor, GLfloat units)
 {
-   glsm_ctl(GLSM_CTL_IMM_VBO_DRAW, NULL);
-   glPolygonOffset(factor, units);
    gl_state.polygonoffset.used   = true;
-   gl_state.polygonoffset.factor = factor;
-   gl_state.polygonoffset.units  = units;
+   if (gl_state.polygonoffset.factor != factor || gl_state.polygonoffset.units != units) {
+      glPolygonOffset(factor, units);
+      gl_state.polygonoffset.factor = factor;
+      gl_state.polygonoffset.units  = units;
+   }
 }
 
 /*
@@ -1531,9 +1615,13 @@ void rglGenFramebuffers(GLsizei n, GLuint *ids)
  */
 void rglBindFramebuffer(GLenum target, GLuint framebuffer)
 {
-   glsm_ctl(GLSM_CTL_IMM_VBO_DRAW, NULL);
-   glBindFramebuffer(target, framebuffer);
-   gl_state.framebuf = framebuffer;
+   if (framebuffer == 0)
+      framebuffer = hw_render.get_current_framebuffer();
+
+   if (gl_state.framebuf != framebuffer) {
+      glBindFramebuffer(target, framebuffer);
+      gl_state.framebuf = framebuffer;
+   }
 }
 
 /*
@@ -1848,15 +1936,17 @@ static void glsm_state_setup(void)
 {
    unsigned i;
 
-   gl_state.cap_translate[SGL_DEPTH_TEST]           = GL_DEPTH_TEST;
-   gl_state.cap_translate[SGL_BLEND]                = GL_BLEND;
-   gl_state.cap_translate[SGL_POLYGON_OFFSET_FILL]  = GL_POLYGON_OFFSET_FILL;
-   gl_state.cap_translate[SGL_FOG]                  = GL_FOG;
-   gl_state.cap_translate[SGL_CULL_FACE]            = GL_CULL_FACE;
-   gl_state.cap_translate[SGL_ALPHA_TEST]           = GL_ALPHA_TEST;
-   gl_state.cap_translate[SGL_SCISSOR_TEST]         = GL_SCISSOR_TEST;
-   gl_state.cap_translate[SGL_STENCIL_TEST]         = GL_STENCIL_TEST;
-
+   gl_state.cap_translate[SGL_DEPTH_TEST]               = GL_DEPTH_TEST;
+   gl_state.cap_translate[SGL_BLEND]                    = GL_BLEND;
+   gl_state.cap_translate[SGL_POLYGON_OFFSET_FILL]      = GL_POLYGON_OFFSET_FILL;
+   gl_state.cap_translate[SGL_FOG]                      = GL_FOG;
+   gl_state.cap_translate[SGL_CULL_FACE]                = GL_CULL_FACE;
+   gl_state.cap_translate[SGL_ALPHA_TEST]               = GL_ALPHA_TEST;
+   gl_state.cap_translate[SGL_SCISSOR_TEST]             = GL_SCISSOR_TEST;
+   gl_state.cap_translate[SGL_STENCIL_TEST]             = GL_STENCIL_TEST;
+   gl_state.cap_translate[SGL_DITHER]                   = GL_DITHER;
+   gl_state.cap_translate[SGL_SAMPLE_ALPHA_TO_COVERAGE] = GL_SAMPLE_ALPHA_TO_COVERAGE;
+   gl_state.cap_translate[SGL_SAMPLE_COVERAGE]          = GL_SAMPLE_COVERAGE;
 #ifndef HAVE_OPENGLES
    gl_state.cap_translate[SGL_COLOR_LOGIC_OP]       = GL_COLOR_LOGIC_OP;
    gl_state.cap_translate[SGL_CLIP_DISTANCE0]       = GL_CLIP_DISTANCE0;
@@ -1867,12 +1957,14 @@ static void glsm_state_setup(void)
       gl_state.vertex_attrib_pointer.enabled[i] = 0;
 
    glGetIntegerv(GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS, &glsm_max_textures);
+   if (glsm_max_textures > 32)
+      glsm_max_textures = 32;
 
    gl_state.bind_textures.ids           = (GLuint*)calloc(glsm_max_textures, sizeof(GLuint));
 
    gl_state.framebuf                    = hw_render.get_current_framebuffer();
    gl_state.cullface.mode               = GL_BACK;
-   gl_state.frontface.mode              = GL_CCW; 
+   gl_state.frontface.mode              = GL_CCW;
 
    gl_state.blendfunc_separate.used     = false;
    gl_state.blendfunc_separate.srcRGB   = GL_ONE;
@@ -1903,6 +1995,8 @@ static void glsm_state_setup(void)
 
 static void glsm_state_bind(void)
 {
+   glBindBuffer(GL_ARRAY_BUFFER, 0);
+
    unsigned i;
 
    for (i = 0; i < MAX_ATTRIB; i++)
@@ -1911,22 +2005,30 @@ static void glsm_state_bind(void)
          glEnableVertexAttribArray(i);
       else
          glDisableVertexAttribArray(i);
+
+      if (gl_state.attrib_pointer.used[i]){
+         glVertexAttribPointer(
+            i,
+            gl_state.attrib_pointer.size[i],
+            gl_state.attrib_pointer.type[i],
+            gl_state.attrib_pointer.normalized[i],
+            gl_state.attrib_pointer.stride[i],
+            gl_state.attrib_pointer.pointer[i]);
+      }
    }
 
-   glBindFramebuffer(RARCH_GL_FRAMEBUFFER, hw_render.get_current_framebuffer());
+   for(i = 0; i < SGL_CAP_MAX; i ++)
+   {
+      if (gl_state.cap_state[i])
+         glEnable(gl_state.cap_translate[i]);
+   }
+
+   glBindFramebuffer(RARCH_GL_FRAMEBUFFER, gl_state.framebuf);
 
    if (gl_state.blendfunc.used)
       glBlendFunc(
             gl_state.blendfunc.sfactor,
             gl_state.blendfunc.dfactor);
-
-   if (gl_state.blendfunc_separate.used)
-      glBlendFuncSeparate(
-            gl_state.blendfunc_separate.srcRGB,
-            gl_state.blendfunc_separate.dstRGB,
-            gl_state.blendfunc_separate.srcAlpha,
-            gl_state.blendfunc_separate.dstAlpha
-            );
 
    glClearColor(
          gl_state.clear_color.r,
@@ -1936,13 +2038,6 @@ static void glsm_state_bind(void)
 
    if (gl_state.depthfunc.used)
       glDepthFunc(gl_state.depthfunc.func);
-
-   if (gl_state.colormask.used)
-      glColorMask(
-            gl_state.colormask.red,
-            gl_state.colormask.green,
-            gl_state.colormask.blue,
-            gl_state.colormask.alpha);
 
    if (gl_state.cullface.used)
       glCullFace(gl_state.cullface.mode);
@@ -1969,31 +2064,6 @@ static void glsm_state_bind(void)
          gl_state.viewport.y,
          gl_state.viewport.w,
          gl_state.viewport.h);
-#ifdef CORE
-   glBindVertexArray(gl_state.vao);
-#endif
-   for(i = 0; i < SGL_CAP_MAX; i ++)
-   {
-      if (gl_state.cap_state[i])
-         glEnable(gl_state.cap_translate[i]);
-   }
-
-   if (gl_state.frontface.used)
-      glFrontFace(gl_state.frontface.mode);
-
-   if (gl_state.stencilmask.used)
-      glStencilMask(gl_state.stencilmask.mask);
-
-   if (gl_state.stencilop.used)
-      glStencilOp(gl_state.stencilop.sfail,
-            gl_state.stencilop.dpfail,
-            gl_state.stencilop.dppass);
-
-   if (gl_state.stencilfunc.used)
-      glStencilFunc(
-            gl_state.stencilfunc.func,
-            gl_state.stencilfunc.ref,
-            gl_state.stencilfunc.mask);
 
    for (i = 0; i < glsm_max_textures; i ++)
    {
@@ -2002,67 +2072,18 @@ static void glsm_state_bind(void)
    }
 
    glActiveTexture(GL_TEXTURE0 + gl_state.active_texture);
-
-   glBindBuffer(GL_ARRAY_BUFFER, 0);
 }
 
 static void glsm_state_unbind(void)
 {
    unsigned i;
-#ifdef CORE
-   glBindVertexArray(0);
-#endif
+
    for (i = 0; i < SGL_CAP_MAX; i ++)
    {
       if (gl_state.cap_state[i])
          glDisable(gl_state.cap_translate[i]);
    }
-
-   glBlendFunc(GL_ONE, GL_ZERO);
-
-   if (gl_state.colormask.used)
-      glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
-   if (gl_state.blendfunc_separate.used)
-      glBlendFuncSeparate(GL_ONE, GL_ZERO, GL_ONE, GL_ZERO);
-
-   if (gl_state.cullface.used)
-      glCullFace(GL_BACK);
-
-   if (gl_state.depthmask.used)
-      glDepthMask(GL_TRUE);
-
-   if (gl_state.polygonoffset.used)
-      glPolygonOffset(0, 0);
-
-   glUseProgram(0);
-   glClearColor(0,0,0,0.0f);
-
-   if (gl_state.depthrange.used)
-      rglDepthRange(0, 1);
-
-   glStencilMask(1);
-   glFrontFace(GL_CCW);
-   if (gl_state.depthfunc.used)
-      glDepthFunc(GL_LESS);
-
-   if (gl_state.stencilop.used)
-      glStencilOp(GL_KEEP,GL_KEEP, GL_KEEP);
-
-   if (gl_state.stencilfunc.used)
-      glStencilFunc(GL_ALWAYS,0,1);
-
-   /* Clear textures */
-   for (i = 0; i < glsm_max_textures; i ++)
-   {
-      glActiveTexture(GL_TEXTURE0 + i);
-      glBindTexture(GL_TEXTURE_2D, 0);
-   }
    glActiveTexture(GL_TEXTURE0);
-
-   for (i = 0; i < MAX_ATTRIB; i ++)
-      glDisableVertexAttribArray(i);
-
-   glBindFramebuffer(RARCH_GL_FRAMEBUFFER, 0);
 }
 
 static bool glsm_state_ctx_destroy(void *data)
