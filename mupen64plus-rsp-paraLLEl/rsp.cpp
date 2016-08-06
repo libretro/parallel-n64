@@ -277,9 +277,11 @@ Func CPU::jit_region(uint64_t hash, unsigned pc, unsigned count)
             IMEM_SIZE - 1, ((pc + i + 1) << 2) & (IMEM_SIZE - 1)); \
       APPEND("}\n"); \
    } else if (pending_return && !pipe_pending_local_branch_delay && !pipe_pending_branch_delay) { \
-      APPEND("if (RSP_RETURN(opaque, (branch_delay << 2) & %u)) return;\n", IMEM_SIZE - 1); \
-      APPEND("STATE->pc = (branch_delay << 2) & %u;\n", IMEM_SIZE - 1); \
-      APPEND("EXIT(MODE_CONTINUE);\n"); \
+      APPEND("if (LIKELY(branch)) {\n"); \
+      APPEND("  if (RSP_RETURN(opaque, (branch_delay << 2) & %u)) return;\n", IMEM_SIZE - 1); \
+      APPEND("  STATE->pc = (branch_delay << 2) & %u;\n", IMEM_SIZE - 1); \
+      APPEND("  EXIT(MODE_CONTINUE);\n"); \
+      APPEND("}\n"); \
    } else if (pending_local_branch_delay) { \
       if (pipe_pending_local_branch_delay || pipe_pending_branch_delay) { \
          APPEND("if (branch && pipe_branch) {\n"); \
