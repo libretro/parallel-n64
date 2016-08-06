@@ -89,6 +89,13 @@ static INLINE unsigned SPECIAL(uint32_t inst, uint32_t PC)
          SR[0] = 0x00000000;
       case 010: /* JR */
          SET_PC(SR[rs = inst >> 21]);
+
+         {
+            uint64_t hash = hash_imem((const uint8_t*)VR, sizeof(VR));
+            fprintf(stderr, "JR (PC: %u): 0, %llu\n", temp_PC & 0xfff, hash);
+            fprintf(stderr, "  DMEM HASH: 0x%016llx\n", hash_imem(RSP.DMEM, 0x1000));
+         }
+
          return 1;
       case 015: /* BREAK */
          *RSP.SP_STATUS_REG |= SP_STATUS_BROKE | SP_STATUS_HALT;
@@ -147,6 +154,7 @@ static INLINE unsigned SPECIAL(uint32_t inst, uint32_t PC)
 }
 
 static int PC;
+static int CPC;
 
 /* Allocate the RSP CPU loop to its own functional space. */
 static unsigned int run_task_opcode(uint32_t inst, const int opcode)
@@ -398,6 +406,13 @@ static unsigned int run_task_opcode(uint32_t inst, const int opcode)
 #endif
          base = (inst >> 21) & 31;
          LWC2_op[rd = (inst & 0xF800u) >> 11](rt, element, offset, base);
+
+         {
+            uint64_t hash = hash_imem((const uint8_t*)VR, sizeof(VR));
+            fprintf(stderr, "LWC2 (PC: %u): %u, %llu\n", CPC + 4, inst, hash);
+            fprintf(stderr, "  DMEM HASH: 0x%016llx\n", hash_imem(RSP.DMEM, 0x1000));
+         }
+
          break;
       case 072: /* SWC2 */
          rt = (inst >> 16) % (1 << 5);
@@ -410,6 +425,13 @@ static unsigned int run_task_opcode(uint32_t inst, const int opcode)
 #endif
          base = (inst >> 21) & 31;
          SWC2_op[rd = (inst & 0xF800u) >> 11](rt, element, offset, base);
+
+         {
+            uint64_t hash = hash_imem((const uint8_t*)VR, sizeof(VR));
+            fprintf(stderr, "SWC2 (PC: %u): %u, %llu\n", CPC + 4, inst, hash);
+            fprintf(stderr, "  DMEM HASH: 0x%016llx\n", hash_imem(RSP.DMEM, 0x1000));
+         }
+
          break;
       default:
          res_S();
@@ -449,6 +471,7 @@ NOINLINE void run_task(void)
     while ((*RSP.SP_STATUS_REG & 0x00000001) == 0x00000000)
     {
        register uint32_t inst = *(uint32_t *)(RSP.IMEM + FIT_IMEM(PC));
+       CPC = FIT_IMEM(PC);
 #ifdef EMULATE_STATIC_PC
        PC = (PC + 0x004);
 EX:
@@ -468,6 +491,7 @@ EX:
        {
 #ifdef EMULATE_STATIC_PC
           inst = *(uint32_t *)(RSP.IMEM + FIT_IMEM(PC));
+          CPC = FIT_IMEM(PC);
           PC = temp_PC & 0x00000FFC;
           goto EX;
 #else

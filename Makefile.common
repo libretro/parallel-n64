@@ -406,6 +406,48 @@ CXXFLAGS += -DHAVE_PARALLEL
 	LDFLAGS += -pthread
 endif
 
+ifeq ($(HAVE_PARALLEL_RSP), 1)
+### Tiny Tiger's LLE RSP JIT ###
+   PARALLEL_RSP_ARCH := x86_64
+   SOURCES_CXX += \
+				$(RSPDIR_PARALLEL)/parallel.cpp \
+				$(RSPDIR_PARALLEL)/rsp.cpp \
+				$(wildcard $(RSPDIR_PARALLEL)/rsp/*.cpp) \
+				$(wildcard $(RSPDIR_PARALLEL)/arch/$(PARALLEL_RSP_ARCH)/rsp/*.cpp)
+	CXXFLAGS += -I$(RSPDIR_PARALLEL)/arch/$(PARALLEL_RSP_ARCH)/rsp
+	CFLAGS += -DHAVE_PARALLEL_RSP -DPARALLEL_INTEGRATION
+	CXXFLAGS += -DHAVE_PARALLEL_RSP -DPARALLEL_INTEGRATION
+ifeq ($(DEBUG_JIT), 1)
+	CXXFLAGS += -DDEBUG_JIT
+	SOURCES_CXX += $(RSPDIR_PARALLEL)/debug_jit.cpp
+else
+	SOURCES_CXX += $(RSPDIR_PARALLEL)/jit.cpp
+endif
+ifeq ($(INTENSE_DEBUG), 1)
+	CFLAGS += -DINTENSE_DEBUG
+	CXXFLAGS += -DINTENSE_DEBUG
+endif
+LDFLAGS += -lclangFrontend \
+			  -lclangSerialization \
+			  -lclangDriver \
+			  -lclangCodeGen \
+			  -lclangParse \
+			  -lclangSema \
+			  -lclangStaticAnalyzerFrontend \
+			  -lclangStaticAnalyzerCheckers \
+			  -lclangStaticAnalyzerCore \
+			  -lclangAnalysis \
+			  -lclangRewriteFrontend \
+			  -lclangRewrite \
+			  -lclangEdit \
+			  -lclangAST \
+			  -lclangLex \
+			  -lclangBasic
+LDFLAGS += $(shell llvm-config --ldflags --libs --system-libs)
+
+endif
+
+>>>>>>> d80ded1... Update RSP.
 ifeq ($(ONLY_VULKAN),1)
 CFLAGS   += -DONLY_VULKAN
 CXXFLAGS += -DONLY_VULKAN
