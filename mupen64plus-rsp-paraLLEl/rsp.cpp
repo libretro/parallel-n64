@@ -156,10 +156,9 @@ void CPU::init_symbol_table()
 
 void CPU::invalidate_imem()
 {
-   //for (unsigned i = 0; i < CODE_BLOCKS; i++)
-   //   if (memcmp(cached_imem + i * CODE_BLOCK_WORDS, state.imem + i * CODE_BLOCK_WORDS, CODE_BLOCK_SIZE))
-   //      state.dirty_blocks |= (0x3 << i) >> 1;
-   state.dirty_blocks = ~0u;
+   for (unsigned i = 0; i < CODE_BLOCKS; i++)
+      if (memcmp(cached_imem + i * CODE_BLOCK_WORDS, state.imem + i * CODE_BLOCK_WORDS, CODE_BLOCK_SIZE))
+         state.dirty_blocks |= (0x3 << i) >> 1;
 }
 
 void CPU::invalidate_code()
