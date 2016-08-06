@@ -93,7 +93,6 @@ static INLINE unsigned SPECIAL(uint32_t inst, uint32_t PC)
          {
             uint64_t hash = hash_imem((const uint8_t*)VR, sizeof(VR));
             fprintf(stderr, "JR (PC: %u): 0, %llu\n", temp_PC & 0xfff, hash);
-            fprintf(stderr, "  DMEM HASH: 0x%016llx\n", hash_imem(RSP.DMEM, 0x1000));
          }
 
          return 1;
@@ -486,6 +485,10 @@ EX:
           const int e  = (inst >> 21) & 0xF; /* rs & 0xF */
 
           COP2_C2[opcode](vd, vs, vt, e);
+          {
+             uint64_t hash = hash_imem((const uint8_t*)VR, sizeof(VR));
+             fprintf(stderr, "CP2 (PC: %u): 0, %llu\n", opcode, hash);
+          }
        }
        else if (run_task_opcode(inst, inst >> 26))
        {

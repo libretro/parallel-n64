@@ -18,7 +18,8 @@ void RSP_DEBUG(RSP::CPUState *rsp, const char *tag, unsigned pc, unsigned value)
 {
    uint64_t hash = hash_imem((const uint8_t*)rsp->cp2.regs, sizeof(rsp->cp2.regs));
    fprintf(stderr, "%s (PC: %u): %u, %llu\n", tag, pc, value, hash);
-   fprintf(stderr, "  DMEM HASH: 0x%016llx\n", hash_imem((const uint8_t*)rsp->dmem, 0x1000));
+   if (value)
+      fprintf(stderr, "  DMEM HASH: 0x%016llx\n", hash_imem((const uint8_t*)rsp->dmem, 0x1000));
 }
 #endif
 }
@@ -413,6 +414,10 @@ Func CPU::jit_region(uint64_t hash, unsigned pc, unsigned count)
             DISASM("RSP_RESERVED v%u, v%u, v%u[%u]\n", vd, vs, vt, e);
             //fprintf(stderr, "Unimplemented COP2 op %u.\n", op);
          }
+
+#ifdef INTENSE_DEBUG
+         APPEND("RSP_DEBUG(STATE, \"CP2\", %u, 0);\n", op);
+#endif
       }
       else
       {
@@ -475,7 +480,9 @@ Func CPU::jit_region(uint64_t hash, unsigned pc, unsigned count)
                         set_pc_indirect(rs);
                         pipe_pending_return = true;
                         DISASM("jr %s\n", NAME(rs));
+#ifdef INTENSE_DEBUG
                         APPEND("RSP_DEBUG(STATE, \"JR\", pipe_branch_delay * 4, 0);\n");
+#endif
                         break;
 
                      case 015: // BREAK
