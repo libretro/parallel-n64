@@ -10,6 +10,7 @@ static inline __m128i rsp_vmadn_vmudn(__m128i vs, __m128i vt,
   __m128i zero, __m128i *acc_lo, __m128i *acc_md, __m128i *acc_hi) {
   __m128i lo, hi, sign, overflow_mask;
 
+#ifdef INTENSE_DEBUG
   if (VMADN)
   {
      for (unsigned i = 0; i < 8; i++)
@@ -23,6 +24,7 @@ static inline __m128i rsp_vmadn_vmudn(__m128i vs, __m128i vt,
      for (unsigned i = 0; i < 8; i++)
         fprintf(stderr, "VT[%u] = %d\n", i, reinterpret_cast<int16_t*>(&vt)[i]);
   }
+#endif
 
   lo = _mm_mullo_epi16(vs, vt); 
   hi = _mm_mulhi_epu16(vs, vt); 
@@ -63,11 +65,14 @@ static inline __m128i rsp_vmadn_vmudn(__m128i vs, __m128i vt,
     // Finish up the accumulation of the... accumulator.
     *acc_hi = _mm_add_epi16(*acc_hi, _mm_srai_epi16(hi, 15));
     *acc_hi = _mm_sub_epi16(*acc_hi, overflow_mask);
-    //return rsp_uclamp_acc(*acc_lo, *acc_md, *acc_hi, zero);
+#ifdef INTENSE_DEBUG
     auto ret = rsp_uclamp_acc(*acc_lo, *acc_md, *acc_hi, zero);
     for (unsigned i = 0; i < 8; i++)
        fprintf(stderr, "VD[%u] = %d\n", i, reinterpret_cast<int16_t*>(&ret)[i]);
     return ret;
+#else
+    return rsp_uclamp_acc(*acc_lo, *acc_md, *acc_hi, zero);
+#endif
   }
 
   // VMUDN

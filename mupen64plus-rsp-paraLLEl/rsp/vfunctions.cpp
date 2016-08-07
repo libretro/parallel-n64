@@ -136,9 +136,11 @@ void RSP_VCR(RSP::CPUState *rsp, unsigned vd, unsigned vs, unsigned vt, unsigned
 
    rsp_vect_t result = rsp_vcr(LOAD_VS(), LOAD_VT(), rsp_vzero(), &ge, &le);
 
+#ifdef INTENSE_DEBUG
    for (unsigned i = 0; i < 8; i++)
       fprintf(stderr, "VD[%d] = %d\n", i,
             reinterpret_cast<int16_t*>(&result)[i]);
+#endif
 
    write_vcc_hi(rsp->cp2.flags[RSP::RSP_VCC].e, ge);
    write_vcc_lo(rsp->cp2.flags[RSP::RSP_VCC].e, le);
@@ -218,9 +220,11 @@ void RSP_VNE(RSP::CPUState *rsp, unsigned vd, unsigned vs, unsigned vt, unsigned
    sign = read_vco_lo(rsp->cp2.flags[RSP::RSP_VCO].e);
 
    rsp_vect_t result = rsp_vne(LOAD_VS(), LOAD_VT(), rsp_vzero(), &le, eq, sign);
+#ifdef INTENSE_DEBUG
    for (unsigned i = 0; i < 8; i++)
       fprintf(stderr, "VD[%d] = %d\n", i,
             reinterpret_cast<int16_t*>(&result)[i]);
+#endif
 
    write_vcc_hi(rsp->cp2.flags[RSP::RSP_VCC].e, rsp_vzero());
    write_vcc_lo(rsp->cp2.flags[RSP::RSP_VCC].e, le);

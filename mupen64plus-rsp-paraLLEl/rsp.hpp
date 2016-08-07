@@ -95,6 +95,8 @@ namespace RSP
 #define CALL_STACK_SIZE 32
          uint32_t call_stack[CALL_STACK_SIZE] = {};
          unsigned call_stack_ptr = 0;
+
+         unsigned analyze_static_end(unsigned pc, unsigned end);
    };
 }
 

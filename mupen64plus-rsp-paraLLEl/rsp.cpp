@@ -194,6 +194,120 @@ uint64_t CPU::hash_imem(unsigned pc, unsigned count) const
    return h;
 }
 
+unsigned CPU::analyze_static_end(unsigned pc, unsigned end)
+{
+   // Scans through IMEM and finds the logical "end" of the instruction stream.
+   unsigned max_static_pc = pc;
+   unsigned count = end - pc;
+
+   for (unsigned i = 0; i < count; i++)
+   {
+      uint32_t instr = state.imem[pc + i];
+      uint32_t type = instr >> 26;
+      uint32_t target;
+
+      bool forward_goto;
+      if (pc + i + 1 >= max_static_pc)
+      {
+         forward_goto = false;
+         max_static_pc = pc + i + 1;
+      }
+      else
+         forward_goto = true;
+
+      // VU
+      if ((instr >> 25) == 0x25)
+         continue;
+
+      switch (type)
+      {
+         case 000:
+            switch (instr & 63)
+            {
+               case 010:
+                  // JR always terminates either by returning or exiting.
+                  // We execute the next instruction via delay slot and exit.
+                  // Unless we can branch past the JR
+                  // (max_static_pc will be higher than expected),
+                  // this will be the static end.
+                  if (!forward_goto)
+                  {
+                     max_static_pc = max(pc + i + 2, max_static_pc);
+                     goto end;
+                  }
+                  break;
+
+               case 015:
+                  // BREAK always terminates.
+                  if (!forward_goto)
+                     goto end;
+                  break;
+
+               default:
+                  break;
+            }
+            break;
+
+         case 001: // REGIMM
+            switch ((instr >> 16) & 31)
+            {
+               case 000: // BLTZ
+               case 001: // BGEZ
+               case 021: // BGEZAL
+               case 020: // BLTZAL
+                  target = (pc + i + 1 + instr) & 0x3ff;
+                  if (target >= pc && target < end) // goto
+                     max_static_pc = max(max_static_pc, target + 1);
+                  break;
+
+               default:
+                  break;
+            }
+
+         case 002:
+            // J is resolved by goto.
+            target = instr & 0x3ff;
+            if (target >= pc && target < end) // goto
+            {
+               // J is a static jump, so if we aren't branching
+               // past this instruction and we're branching backwards,
+               // we can end the block here.
+               if (!forward_goto && target < end)
+               {
+                  max_static_pc = max(pc + i + 2, max_static_pc);
+                  goto end;
+               }
+               else
+                  max_static_pc = max(max_static_pc, target + 1);
+            }
+            else if (!forward_goto)
+            {
+               // If we have static branch outside our block,
+               // we terminate the block.
+               max_static_pc = max(pc + i + 2, max_static_pc);
+               goto end;
+            }
+            break;
+
+         case 004: // BEQ
+         case 005: // BNE
+         case 006: // BLEZ
+         case 007: // BGTZ
+            target = (pc + i + 1 + instr) & 0x3ff;
+            if (target >= pc && target < end) // goto
+               max_static_pc = max(max_static_pc, target + 1);
+            break;
+
+         default:
+            break;
+      }
+   }
+
+end:
+   unsigned ret = min(max_static_pc, end);
+   return ret;
+}
+
 Func CPU::jit_region(uint64_t hash, unsigned pc, unsigned count)
 {
    full_code.clear();
@@ -1217,6 +1331,7 @@ void CPU::enter(uint32_t pc)
       unsigned end = (pc + (CODE_BLOCK_SIZE * 2)) >> CODE_BLOCK_SIZE_LOG2;
       end <<= CODE_BLOCK_SIZE_LOG2 - 2;
       end = min(end, unsigned(IMEM_SIZE >> 2));
+      end = analyze_static_end(word_pc, end);
 
       uint64_t hash = hash_imem(word_pc, end - word_pc);
       auto itr = cached_blocks[word_pc].find(hash);

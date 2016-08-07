@@ -65,12 +65,14 @@ static inline __m128i rsp_vne(__m128i vs, __m128i vt,
    *le = _mm_and_si128(eq, equal);
    *le = _mm_or_si128(*le, nequal);
 
+#ifdef INTENSE_DEBUG
    for (unsigned i = 0; i < 8; i++)
       fprintf(stderr, "VS[%d] = %d\n", i,
             reinterpret_cast<int16_t*>(&vs)[i]);
    for (unsigned i = 0; i < 8; i++)
       fprintf(stderr, "VS[%d] = %d\n", i,
             reinterpret_cast<int16_t*>(&vt)[i]);
+#endif
 
 #ifdef __SSE4_1__
    return _mm_blendv_epi8(vt, vs, *le);

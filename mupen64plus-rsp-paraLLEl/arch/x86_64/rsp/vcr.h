@@ -10,6 +10,7 @@ static inline __m128i rsp_vcr(__m128i vs, __m128i vt,
   __m128i diff_sel_mask, diff_gez, diff_lez;
   __m128i sign, sign_notvt;
 
+#ifdef INTENSE_DEBUG
   for (unsigned i = 0; i < 8; i++)
      fprintf(stderr, "VS[%d] = %d\n", i,
            reinterpret_cast<int16_t*>(&vs)[i]);
@@ -17,6 +18,7 @@ static inline __m128i rsp_vcr(__m128i vs, __m128i vt,
   for (unsigned i = 0; i < 8; i++)
      fprintf(stderr, "VT[%d] = %d\n", i,
            reinterpret_cast<int16_t*>(&vt)[i]);
+#endif
 
   // sign = (vs ^ vt) < 0
   sign = _mm_xor_si128(vs, vt);
