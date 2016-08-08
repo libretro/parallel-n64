@@ -575,7 +575,7 @@ void retro_get_system_av_info(struct retro_system_av_info *info)
    info->geometry.max_width    = screen_width;
    info->geometry.max_height   = screen_height;
    info->geometry.aspect_ratio = 4.0 / 3.0;
-   info->timing.fps = (region == SYSTEM_PAL) ? 50.0 : (60/1.001);                // TODO: Actual timing 
+   info->timing.fps = (region == SYSTEM_PAL) ? 50.0 : (60.13);                // TODO: Actual timing 
    info->timing.sample_rate = 44100.0;
 }
 
