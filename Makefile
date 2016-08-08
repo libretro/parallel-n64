@@ -314,6 +314,25 @@ else ifeq ($(platform), emscripten)
    PLATFORM_EXT := unix
    #HAVE_SHARED_CONTEXT := 1
 
+# PlayStation Vita
+else ifneq (,$(findstring vita,$(platform)))
+   TARGET:= $(TARGET_NAME)_libretro_vita.o
+   CPUFLAGS += -DNO_ASM  -DARM -D__arm__ -DARM_ASM -D__NEON_OPT
+   CPUFLAGS += -w -marm -mcpu=cortex-a9 -mfpu=neon -mfloat-abi=hard -D__arm__ -DARM_ASM -D__NEON_OPT
+   HAVE_NEON = 1
+
+   PREFIX = arm-vita-eabi
+   CC = $(PREFIX)-gcc
+   CXX = $(PREFIX)-g++
+   WITH_DYNAREC = arm
+   GLES = 0
+   HAVE_OPENGL = 0
+   PLATCFLAGS += -DVITA
+   CPUCFLAGS += -DNO_ASM
+   CFLAGS += -DVITA
+
+   PLATFORM_EXT := unix
+
 # Windows
 else ifneq (,$(findstring win,$(platform)))
    TARGET := $(TARGET_NAME)_libretro.dll

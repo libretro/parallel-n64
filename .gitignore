@@ -5,3 +5,17 @@
 *.d
 *.js
 *.bc
+**/*.elf
+**/*.velf
+**/*.bin
+**/*.sfo
+**/*.vpk
+
+# ==========================
+# Visual Studio files
+# ==========================
+Debug/
+Release/
+**/*.sln
+**/*.vcxproj
+**/*.vcxproj.filters
