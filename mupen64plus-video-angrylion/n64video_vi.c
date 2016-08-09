@@ -740,7 +740,9 @@ static void do_frame_buffer_raw(
             {
                 unsigned long pix;
                 unsigned long addr;
+#ifdef MSB_FIRST
                 unsigned char argb[4];
+#endif
 
                 line_x = x_start >> 10;
                 cur_x = pixels + line_x;
@@ -750,11 +752,15 @@ static void do_frame_buffer_raw(
                 if (plim - addr < 0)
                     continue;
                 pix = *(int32_t *)(DRAM + addr);
+#ifdef MSB_FIRST
                 argb[1 ^ BYTE_ADDR_XOR] = (unsigned char)(pix >> 24);
                 argb[2 ^ BYTE_ADDR_XOR] = (unsigned char)(pix >> 16);
                 argb[3 ^ BYTE_ADDR_XOR] = (unsigned char)(pix >>  8);
                 argb[0 ^ BYTE_ADDR_XOR] = (unsigned char)(pix >>  0);
                 scanline[i] = *(int32_t *)(argb);
+#else
+				scanline[i] = (pix >> 8) | (pix << 24);
+#endif
             }
             y_start += y_add;
         }
