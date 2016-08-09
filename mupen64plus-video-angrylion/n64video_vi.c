@@ -738,7 +738,9 @@ static void do_frame_buffer_raw(
             {
                 unsigned long pix;
                 unsigned long addr;
+#ifdef MSB_FIRST
                 unsigned char argb[4];
+#endif
 
                 line_x = x_start >> 10;
                 cur_x = pixels + line_x;
@@ -748,11 +750,15 @@ static void do_frame_buffer_raw(
                 if (plim - addr < 0)
                     continue;
                 pix = *(int32_t *)(DRAM + addr);
+#ifdef MSB_FIRST
                 argb[1 ^ BYTE_ADDR_XOR] = (unsigned char)(pix >> 24);
                 argb[2 ^ BYTE_ADDR_XOR] = (unsigned char)(pix >> 16);
                 argb[3 ^ BYTE_ADDR_XOR] = (unsigned char)(pix >>  8);
                 argb[0 ^ BYTE_ADDR_XOR] = (unsigned char)(pix >>  0);
                 scanline[i] = *(int32_t *)(argb);
+#else
+				scanline[i] = (pix >> 8) | (pix << 24);
+#endif
             }
             y_start += y_add;
         }
@@ -772,7 +778,11 @@ static void do_frame_buffer_raw(
             {
                 unsigned short pix;
                 unsigned long addr;
+#ifdef MSB_FIRST
                 unsigned char argb[4];
+#else
+                uint32_t argb;
+#endif
 
                 line_x = x_start >> 10;
                 cur_x = pixels + line_x;
@@ -783,10 +793,19 @@ static void do_frame_buffer_raw(
                     continue;
                 addr = addr ^ (WORD_ADDR_XOR << 1);
                 pix = *(int16_t *)(DRAM + addr);
+
+#ifdef MSB_FIRST
                 argb[1 ^ BYTE_ADDR_XOR] = (unsigned char)(pix >> 8);
                 argb[2 ^ BYTE_ADDR_XOR] = (unsigned char)(pix >> 3) & ~7;
                 argb[3 ^ BYTE_ADDR_XOR] = (unsigned char)(pix & ~1) << 2;
                 scanline[i] = *(int32_t *)(argb);
+#else
+                argb = (pix << 8) & 0x00F80000;
+                argb |= (pix << 5) & 0x0000F800;
+                argb |= (pix & 0x3E) << 2;
+                argb += 0xFF000000;
+                scanline[i] = argb;
+#endif
             }
             y_start += y_add;
         }
