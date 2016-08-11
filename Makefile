@@ -325,11 +325,14 @@ else ifneq (,$(findstring vita,$(platform)))
    CC = $(PREFIX)-gcc
    CXX = $(PREFIX)-g++
    WITH_DYNAREC = 
+   DYNAREC_USED = 0
    GLES = 0
    HAVE_OPENGL = 0
    PLATCFLAGS += -DVITA
    CPUCFLAGS += -DNO_ASM
    CFLAGS += -DVITA -lm
+   VITA = 1
+   SOURCES_C += $(CORE_DIR)/src/r4300/empty_dynarec.c
 
    PLATFORM_EXT := unix
 

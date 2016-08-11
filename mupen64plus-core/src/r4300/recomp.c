@@ -2661,6 +2661,9 @@ static void free_exec(void *ptr, size_t length)
 {
 #if defined(WIN32)
    VirtualFree(ptr, 0, MEM_RELEASE);
+#elif defined(VITA)
+    SceUID block = sceKernelFindMemBlockByAddr(ptr, length);
+    sceKernelFreeMemBlock(block);
 #elif defined(__GNUC__)
    munmap(ptr, length);
 #else

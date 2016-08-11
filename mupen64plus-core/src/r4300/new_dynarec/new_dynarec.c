@@ -7652,13 +7652,17 @@ void new_dynarec_init()
 {
   DebugMessage(M64MSG_INFO, "Init new dynarec");
 
-#if NEW_DYNAREC == NEW_DYNAREC_ARM
+#if defined(VITA)
+  sceKernelOpenVMDomain();
+  SceUID block = sceKernelAllocMemBlockForVM("code", 1 << TARGET_SIZE_2);
+  sceKernelGetMemBlockBase(block, &base_addr);
+  sceKernelCloseVMDomain();
+#elif NEW_DYNAREC == NEW_DYNAREC_ARM
   if ((base_addr = mmap ((u_char *)BASE_ADDR, 1<<TARGET_SIZE_2,
             PROT_READ | PROT_WRITE | PROT_EXEC,
             MAP_FIXED | MAP_PRIVATE | MAP_ANONYMOUS,
             -1, 0)) <= 0) {DebugMessage(M64MSG_ERROR, "mmap() failed");}
-#else
-#if defined(_MSC_VER)
+#elif defined(_MSC_VER)
   base_addr = VirtualAlloc(NULL, 1<<TARGET_SIZE_2, MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
 #else
   if ((base_addr = mmap (NULL, 1<<TARGET_SIZE_2,
@@ -7666,7 +7670,7 @@ void new_dynarec_init()
             MAP_PRIVATE | MAP_ANONYMOUS,
             -1, 0)) <= 0) {DebugMessage(M64MSG_ERROR, "mmap() failed");}
 #endif
-#endif
+
   out=(u_char *)base_addr;
 
   rdword=&readmem_dword;
