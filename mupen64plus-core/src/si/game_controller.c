@@ -180,7 +180,7 @@ static void controller_write_pak_command(struct game_controller* cont, uint8_t* 
           DebugMessage(M64MSG_WARNING, "Unknown plugged pak %d", (int)pak);
     }
 
-    cmd[0x25] = pak_data_crc(data);
+    cmd[0x25] = pak_data_crc((uint8_t*)data);
 }
 
 int game_controller_is_connected(struct game_controller* cont, enum pak_type* pak)

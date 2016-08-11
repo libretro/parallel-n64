@@ -96,6 +96,13 @@ void GSPLightColorC(uint32_t lightNum, uint32_t packedColor )
          gln64gSPLightColor(lightNum, packedColor);
 #endif
          break;
+      case GFX_RICE:
+         /* TODO/FIXME */
+         break;
+      case GFX_ANGRYLION:
+      case GFX_PARALLEL:
+         /* Stub, not HLE */
+         break;
    }
 }
 

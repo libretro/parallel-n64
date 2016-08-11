@@ -56,5 +56,12 @@ void GDPLoadBlockC(uint32_t tile, uint32_t ul_s, uint32_t ul_t,
          gln64gDPLoadBlock(tile, ul_s, ul_t, lr_s, dxt);
 #endif
          break;
+      case GFX_RICE:
+         /* TODO/FIXME */
+         break;
+      case GFX_ANGRYLION:
+      case GFX_PARALLEL:
+         /* Stub, not HLE */
+         break;
    }
 }
