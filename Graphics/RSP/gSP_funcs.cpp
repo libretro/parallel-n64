@@ -11,6 +11,13 @@ void GSPCombineMatrices(void)
       case GFX_GLN64:
          gln64gSPCombineMatrices();
          break;
+      case GFX_RICE:
+         /* TODO/FIXME */
+         break;
+      case GFX_ANGRYLION:
+      case GFX_PARALLEL:
+         /* Stub, not HLE */
+         break;
    }
 }
 
@@ -23,6 +30,13 @@ void GSPClipVertex(uint32_t v)
          break;
       case GFX_GLN64:
          gln64gSPClipVertex(v);
+         break;
+      case GFX_RICE:
+         /* TODO/FIXME */
+         break;
+      case GFX_ANGRYLION:
+      case GFX_PARALLEL:
+         /* Stub, not HLE */
          break;
    }
 }
@@ -42,6 +56,13 @@ void GSPLookAt(uint32_t l, uint32_t n)
       case GFX_GLN64:
          gln64gSPLookAt(l, n);
          break;
+      case GFX_RICE:
+         /* TODO/FIXME */
+         break;
+      case GFX_ANGRYLION:
+      case GFX_PARALLEL:
+         /* Stub, not HLE */
+         break;
    }
 }
 
@@ -59,6 +80,13 @@ void GSPLight(uint32_t l, int32_t n)
          break;
       case GFX_GLN64:
          gln64gSPLight(l, n);
+         break;
+      case GFX_RICE:
+         /* TODO/FIXME */
+         break;
+      case GFX_ANGRYLION:
+      case GFX_PARALLEL:
+         /* Stub, not HLE */
          break;
    }
 }
@@ -85,6 +113,13 @@ void GSPLightColor(uint32_t lightNum, uint32_t packedColor )
       case GFX_GLN64:
          gln64gSPLightColor(lightNum, packedColor);
          break;
+      case GFX_RICE:
+         /* TODO/FIXME */
+         break;
+      case GFX_ANGRYLION:
+      case GFX_PARALLEL:
+         /* Stub, not HLE */
+         break;
    }
 }
 
@@ -103,6 +138,13 @@ void GSPViewport(uint32_t v)
       case GFX_GLN64:
          gln64gSPViewport(v);
          break;
+      case GFX_RICE:
+         /* TODO/FIXME */
+         break;
+      case GFX_ANGRYLION:
+      case GFX_PARALLEL:
+         /* Stub, not HLE */
+         break;
    }
 }
 
@@ -115,6 +157,13 @@ void GSPForceMatrix(uint32_t mptr)
          break;
       case GFX_GLN64:
          gln64gSPForceMatrix(mptr);
+         break;
+      case GFX_RICE:
+         /* TODO/FIXME */
+         break;
+      case GFX_ANGRYLION:
+      case GFX_PARALLEL:
+         /* Stub, not HLE */
          break;
    }
 }
