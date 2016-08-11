@@ -28,7 +28,9 @@
 
 #if defined(__GNUC__)
 #include <unistd.h>
-#ifndef __MINGW32__
+#ifdef VITA
+#include <psp2/kernel/sysmem.h>
+#elif !defined(__MINGW32__)
 #include <sys/mman.h>
 #endif
 #endif
@@ -2605,6 +2607,16 @@ static void *malloc_exec(size_t size)
 {
 #if defined(WIN32)
    return VirtualAlloc(NULL, size, MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
+#elif defined(VITA)
+    sceKernelOpenVMDomain();
+
+    SceUID block = sceKernelAllocMemBlockForVM("code", size);
+    void* res;
+    sceKernelGetMemBlockBase(block, &res);
+
+    sceKernelCloseVMDomain();
+
+    return res;
 #elif defined(__GNUC__)
 
    #ifndef  MAP_ANONYMOUS

@@ -329,7 +329,7 @@ else ifneq (,$(findstring vita,$(platform)))
    HAVE_OPENGL = 0
    PLATCFLAGS += -DVITA
    CPUCFLAGS += -DNO_ASM
-   CFLAGS += -DVITA
+   CFLAGS += -DVITA -lm
 
    PLATFORM_EXT := unix
 
