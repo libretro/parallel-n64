@@ -14,6 +14,13 @@ void GSPCombineMatricesC(void)
          gln64gSPCombineMatrices();
 #endif
          break;
+      case GFX_RICE:
+         /* TODO/FIXME */
+         break;
+      case GFX_ANGRYLION:
+      case GFX_PARALLEL:
+         /* Stub, not HLE */
+         break;
    }
 }
 
@@ -28,6 +35,13 @@ void GSPClipVertexC(uint32_t v)
 #ifndef GLIDEN64
          gln64gSPClipVertex(v);
 #endif
+         break;
+      case GFX_RICE:
+         /* TODO/FIXME */
+         break;
+      case GFX_ANGRYLION:
+      case GFX_PARALLEL:
+         /* Stub, not HLE */
          break;
    }
 }
@@ -49,6 +63,13 @@ void GSPLookAtC(uint32_t l, uint32_t n)
          gln64gSPLookAt(l, n);
 #endif
          break;
+      case GFX_RICE:
+         /* TODO/FIXME */
+         break;
+      case GFX_ANGRYLION:
+      case GFX_PARALLEL:
+         /* Stub, not HLE */
+         break;
    }
 }
 
@@ -68,6 +89,13 @@ void GSPLightC(uint32_t l, int32_t n)
 #ifndef GLIDEN64
          gln64gSPLight(l, n);
 #endif
+         break;
+      case GFX_RICE:
+         /* TODO/FIXME */
+         break;
+      case GFX_ANGRYLION:
+      case GFX_PARALLEL:
+         /* Stub, not HLE */
          break;
    }
 }
@@ -123,6 +151,13 @@ void GSPViewportC(uint32_t v)
          gln64gSPViewport(v);
 #endif
          break;
+      case GFX_RICE:
+         /* TODO/FIXME */
+         break;
+      case GFX_ANGRYLION:
+      case GFX_PARALLEL:
+         /* Stub, not HLE */
+         break;
    }
 }
 
@@ -137,6 +172,13 @@ void GSPForceMatrixC(uint32_t mptr)
 #ifndef GLIDEN64
          gln64gSPForceMatrix(mptr);
 #endif
+         break;
+      case GFX_RICE:
+         /* TODO/FIXME */
+         break;
+      case GFX_ANGRYLION:
+      case GFX_PARALLEL:
+         /* Stub, not HLE */
          break;
    }
 }
