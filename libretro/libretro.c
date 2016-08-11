@@ -457,6 +457,13 @@ void reinit_gfx_plugin(void)
        case GFX_GLN64:
           gles2n64_reset();
           break;
+       case GFX_RICE:
+          /* TODO/FIXME */
+          break;
+       case GFX_ANGRYLION:
+       case GFX_PARALLEL:
+          /* Stub */
+          break;
     }
 #endif
 }
@@ -771,6 +778,12 @@ void update_variables(bool startup)
            break;
         case GFX_ANGRYLION:
            angrylion_set_filtering(retro_filtering);
+           break;
+        case GFX_RICE:
+           /* TODO/FIXME */
+           break;
+        case GFX_PARALLEL:
+           /* Stub */
            break;
      }
    }
