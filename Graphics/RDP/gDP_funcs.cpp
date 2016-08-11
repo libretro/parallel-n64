@@ -24,6 +24,13 @@ void GDPSetScissor(uint32_t mode,
       case GFX_GLN64:
          gln64gDPSetScissor(mode, ulx, uly, lrx, lry);
          break;
+      case GFX_RICE:
+         /* TODO/FIXME */
+         break;
+      case GFX_ANGRYLION:
+      case GFX_PARALLEL:
+         /* Stub, no HLE */
+         break;
    }
 }
 
@@ -49,6 +56,13 @@ void GDPLoadBlock(uint32_t tile, uint32_t ul_s, uint32_t ul_t,
          break;
       case GFX_GLN64:
          gln64gDPLoadBlock(tile, ul_s, ul_t, lr_s, dxt);
+         break;
+      case GFX_RICE:
+         /* TODO/FIXME */
+         break;
+      case GFX_ANGRYLION:
+      case GFX_PARALLEL:
+         /* Stub, no HLE */
          break;
    }
 }
