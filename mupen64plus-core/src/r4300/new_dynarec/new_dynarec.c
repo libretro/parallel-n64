@@ -52,7 +52,9 @@ extern "C" {
 }
 #endif
 
-#if !defined(_MSC_VER)
+#if defined(VITA)
+#include <psp2/kernel/sysmem.h>
+#elif !defined(_MSC_VER)
 #include <sys/mman.h>
 #endif
 

@@ -62,21 +62,12 @@ M64P_FPU_INLINE void set_rounding(void)
 {
 // TODO skogaby: fix this for real
 #ifdef VITA
-    switch (FCR31 & 3) {
-    case 0: /* Round to nearest, or to even if equidistant */
-        fesetround(0);
-        break;
-    case 1: /* Truncate (toward 0) */
-        fesetround(1);
-        break;
-    case 2: /* Round up (toward +Inf) */
-        fesetround(2);
-        break;
-    case 3: /* Round down (toward -Inf) */
-        fesetround(3);
-        break;
-    }
-#else
+#define FE_TONEAREST 0
+#define FE_TOWARDZERO 1
+#define FE_UPWARD 2
+#define FE_DOWNWARD 3
+#endif
+
   switch(FCR31 & 3) {
   case 0: /* Round to nearest, or to even if equidistant */
     fesetround(FE_TONEAREST);
@@ -91,7 +82,6 @@ M64P_FPU_INLINE void set_rounding(void)
     fesetround(FE_DOWNWARD);
     break;
   }
-#endif
 }
 
 M64P_FPU_INLINE void cvt_s_w(const int32_t *source,float *dest)

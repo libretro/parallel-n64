@@ -27,8 +27,8 @@
 
 tlb tlb_e[32];
 
-unsigned int tlb_LUT_r[0x100000];
-unsigned int tlb_LUT_w[0x100000];
+uint32_t tlb_LUT_r[0x100000];
+uint32_t tlb_LUT_w[0x100000];
 
 void tlb_unmap(tlb *entry)
 {

@@ -324,7 +324,7 @@ else ifneq (,$(findstring vita,$(platform)))
    PREFIX = arm-vita-eabi
    CC = $(PREFIX)-gcc
    CXX = $(PREFIX)-g++
-   WITH_DYNAREC = arm
+   WITH_DYNAREC = 
    GLES = 0
    HAVE_OPENGL = 0
    PLATCFLAGS += -DVITA

@@ -99,7 +99,7 @@ uint32_t screen_height = 480;
 uint32_t screen_pitch;
 uint32_t screen_aspectmodehint;
 
-extern unsigned int VI_REFRESH;
+extern uint32_t VI_REFRESH;
 unsigned int BUFFERSWAP;
 unsigned int FAKE_SDL_TICKS;
 

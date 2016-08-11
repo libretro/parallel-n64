@@ -133,6 +133,8 @@ typedef struct {
 static int render_cycle_mode_counts[4];
 #endif
 
+STRICTINLINE int32_t irand(void);
+
 static int8_t get_dither_noise_type;
 static int scfield;
 static int sckeepodd;
