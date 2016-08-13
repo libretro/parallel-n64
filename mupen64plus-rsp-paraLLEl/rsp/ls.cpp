@@ -177,15 +177,26 @@ void RSP_SPV(RSP::CPUState *rsp, unsigned rt, unsigned e, int offset, unsigned b
 // saturation, but weird nonetheless.
 void RSP_LUV(RSP::CPUState *rsp, unsigned rt, unsigned e, int offset, unsigned base)
 {
-   if (e != 0)
-      return;
-
-   // CXD4 has a special path here.
-
    unsigned addr = (rsp->sr[base] + offset * 8) & 0xfff;
    auto *reg = rsp->cp2.regs[rt].e;
-   for (unsigned i = 0; i < 8; i++)
-      reg[i] = READ_MEM_U8(rsp->dmem, (addr + i) & 0xfff) << 7;
+
+   if (e != 0)
+   {
+      // Special path for Mia Hamm soccer.
+      addr += -e & 0xf;
+      for (unsigned b = 0; b < 8; b++)
+      {
+         reg[b] = READ_MEM_U8(rsp->dmem, addr) << 7;
+         --e;
+         addr -= e ? 0 : 16;
+         ++addr;
+      }
+   }
+   else
+   {
+      for (unsigned i = 0; i < 8; i++)
+         reg[i] = READ_MEM_U8(rsp->dmem, (addr + i) & 0xfff) << 7;
+   }
 }
 
 void RSP_SUV(RSP::CPUState *rsp, unsigned rt, unsigned e, int offset, unsigned base)
@@ -284,9 +295,10 @@ void RSP_SQV(RSP::CPUState *rsp, unsigned rt, unsigned e, int offset, unsigned b
 
    if (e != 0)
    {
-      for (unsigned i = b; i < 16; i++, e++, addr++)
+      // Mia Hamm Soccer
+      for (unsigned i = 0; i < 16 - b; i++, addr++)
       {
-         WRITE_MEM_U16(rsp->dmem, addr & 0xfff,
+         WRITE_MEM_U8(rsp->dmem, addr & 0xfff,
                reinterpret_cast<const uint8_t*>(reg)[MES((e + i) & 0xf)]);
       }
    }
