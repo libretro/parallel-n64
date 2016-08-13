@@ -636,8 +636,8 @@ void retro_init(void)
 
 void retro_deinit(void)
 {
-   main_stop();
-   main_exit();
+   mupen_main_stop();
+   mupen_main_exit();
 
    if (blitter_buf)
       free(blitter_buf);

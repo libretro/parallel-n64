@@ -73,8 +73,8 @@ void main_message(m64p_msg_level level, unsigned int osd_corner, const char *for
 
 m64p_error main_init(void);
 m64p_error main_run(void);
-void main_exit(void);
-void main_stop(void);
+void mupen_main_exit(void);
+void mupen_main_stop(void);
 void main_toggle_pause(void);
 void main_advance_one(void);
 void main_check_inputs(void);

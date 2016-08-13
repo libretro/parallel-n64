@@ -208,7 +208,7 @@ m64p_error main_core_state_set(m64p_core_param param, int val)
          if (val == M64EMU_STOPPED)
          {        
             /* this stop function is asynchronous.  The emulator may not terminate until later */
-            main_stop();
+             mupen_main_stop();
             return M64ERR_SUCCESS;
          }
          else if (val == M64EMU_RUNNING)
@@ -252,7 +252,7 @@ void new_frame(void)
       (*g_FrameCallback)(l_CurrentFrame++);
 }
 
-void main_exit(void)
+void mupen_main_exit(void)
 {
    /* now begin to shut down */
 #ifdef DBG
@@ -467,7 +467,7 @@ m64p_error main_run(void)
    return M64ERR_SUCCESS;
 }
 
-void main_stop(void)
+void mupen_main_stop(void)
 {
    /* note: this operation is asynchronous.  It may be called from a thread other than the
       main emulator thread, and may return before the emulator is completely stopped */
