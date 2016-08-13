@@ -539,7 +539,7 @@ Func CPU::jit_region(uint64_t hash, unsigned pc, unsigned count)
          }
 
 #ifdef INTENSE_DEBUG
-         //APPEND("RSP_DEBUG(STATE, \"CP2\", %u, 0);\n", op);
+         APPEND("RSP_DEBUG(STATE, \"CP2\", %u, 0);\n", op);
 #endif
       }
       else
@@ -1001,7 +1001,7 @@ Func CPU::jit_region(uint64_t hash, unsigned pc, unsigned count)
                }
 
 #ifdef INTENSE_DEBUG
-               //APPEND("RSP_DEBUG(STATE, \"LWC2\", %u, %u);\n", (pc + i + 1) << 2, instr);
+               APPEND("RSP_DEBUG(STATE, \"LWC2\", %u, %u);\n", (pc + i + 1) << 2, instr);
 #endif
                break;
             }
