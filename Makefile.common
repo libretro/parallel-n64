@@ -177,6 +177,10 @@ else
 endif
 endif
 
+ifeq ($(NATIVE_MARCH), 1)
+	CPUFLAGS += -march=native
+endif
+
 ### VIDEO PLUGINS ###
 
 # Rice

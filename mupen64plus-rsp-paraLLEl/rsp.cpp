@@ -1356,7 +1356,11 @@ void CPU::enter(uint32_t pc)
       if (itr != cached_blocks[word_pc].end())
          block = itr->second->get_func();
       else
+      {
+         //static unsigned count;
+         //fprintf(stderr, "JIT region #%u\n", ++count);
          block = jit_region(hash, word_pc, end - word_pc);
+      }
    }
    block(this, &state);
 }
