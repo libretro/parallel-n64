@@ -317,7 +317,7 @@ else ifeq ($(platform), emscripten)
 
 # PlayStation Vita
 else ifneq (,$(findstring vita,$(platform)))
-   TARGET:= $(TARGET_NAME)_libretro_vita.o
+   TARGET:= $(TARGET_NAME)_libretro_$(platform).a
    CPUFLAGS += -DNO_ASM  -DARM -D__arm__ -DARM_ASM -D__NEON_OPT
    CPUFLAGS += -w -marm -mcpu=cortex-a9 -mfpu=neon -mfloat-abi=hard -D__arm__ -DARM_ASM -D__NEON_OPT
    HAVE_NEON = 1
@@ -325,6 +325,7 @@ else ifneq (,$(findstring vita,$(platform)))
    PREFIX = arm-vita-eabi
    CC = $(PREFIX)-gcc
    CXX = $(PREFIX)-g++
+	AR  = $(PREFIX)-ar
    WITH_DYNAREC = 
    DYNAREC_USED = 0
    GLES = 0
@@ -336,6 +337,7 @@ else ifneq (,$(findstring vita,$(platform)))
    SOURCES_C += $(CORE_DIR)/src/r4300/empty_dynarec.c
 
    PLATFORM_EXT := unix
+	STATIC_LINKING=1
 
 # Windows
 else ifneq (,$(findstring win,$(platform)))
@@ -421,7 +423,11 @@ include $(THEOS_MAKE_PATH)/library.mk
 else
 all: $(TARGET)
 $(TARGET): $(OBJECTS)
+ifeq ($(STATIC_LINKING), 1)
+	$(AR) rcs $@ $(OBJECTS)
+else
 	$(CXX) -o $@ $(OBJECTS) $(LDFLAGS) $(GL_LIB)
+endif
 
 %.o: %.S
 	$(CC_AS) $(CFLAGS) -c $< -o $@

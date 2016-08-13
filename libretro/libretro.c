@@ -476,14 +476,16 @@ void reinit_gfx_plugin(void)
 
 void deinit_gfx_plugin(void)
 {
-#if defined(HAVE_VULKAN)
     switch (gfx_plugin)
     {
        case GFX_PARALLEL:
+#if defined(HAVE_VULKAN) && defined(HAVE_PARALLEL)
           parallel_deinit();
+#endif
+          break;
+       default:
           break;
     }
-#endif
 }
 
 #ifndef SINGLE_THREAD
@@ -719,14 +721,9 @@ void update_variables(bool startup)
 
       environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var);
 
-#ifdef HAVE_GLIDE64
-      gfx_plugin = GFX_GLIDE64;
-#endif
-
       if (var.value)
       {
          if (!strcmp(var.value, "auto"))
-            core_settings_autoselect_gfx_plugin();
 #if defined(HAVE_GLN64) || defined(HAVE_GLIDEN64)
          if (!strcmp(var.value, "gln64"))
             gfx_plugin = GFX_GLN64;
@@ -745,6 +742,10 @@ void update_variables(bool startup)
          if(!strcmp(var.value, "parallel"))
             gfx_plugin = GFX_PARALLEL;
 #endif
+      }
+      else
+      {
+         core_settings_autoselect_gfx_plugin();
       }
    }
 
@@ -1038,9 +1039,7 @@ bool retro_load_game(const struct retro_game_info *game)
          hw_render.context_reset = context_reset;
          hw_render.context_destroy = context_destroy;
          if (!environ_cb(RETRO_ENVIRONMENT_SET_HW_RENDER, &hw_render))
-         {
             log_cb(RETRO_LOG_ERROR, "mupen64plus: libretro frontend doesn't have Vulkan support.");
-         }
 
          hw_context_negotiation.interface_type = RETRO_HW_RENDER_CONTEXT_NEGOTIATION_INTERFACE_VULKAN;
          hw_context_negotiation.interface_version = RETRO_HW_RENDER_CONTEXT_NEGOTIATION_INTERFACE_VULKAN_VERSION;
@@ -1048,9 +1047,7 @@ bool retro_load_game(const struct retro_game_info *game)
          hw_context_negotiation.create_device = parallel_create_device;
          hw_context_negotiation.destroy_device = NULL;
          if (!environ_cb(RETRO_ENVIRONMENT_SET_HW_RENDER_CONTEXT_NEGOTIATION_INTERFACE, &hw_context_negotiation))
-         {
             log_cb(RETRO_LOG_ERROR, "mupen64plus: libretro frontend doesn't have context negotiation support.");
-         }
 #endif
          break;
       case GFX_GLIDE64:
