@@ -182,6 +182,8 @@ endif
 # Rice
 
 ifeq ($(HAVE_RICE),1)
+CFLAGS   += -DHAVE_RICE
+CXXFLAGS += -DHAVE_RICE
 SOURCES_CXX += $(VIDEODIR_RICE)/Blender.cpp \
 				$(VIDEODIR_RICE)/gSP_rice.cpp \
 				$(VIDEODIR_RICE)/gDP_rice.cpp \
@@ -242,6 +244,8 @@ else
 endif
 
 ifeq ($(HAVE_GLIDEN64),1)
+CFLAGS   += -DHAVE_GLIDEN64
+CXXFLAGS += -DHAVE_GLIDEN64
 SOURCES_C     += $(VIDEODIR_GLN64)/3DMath.c
 SOURCES_CXX   += \
 					 $(VIDEODIR_GLIDEN64)/src/mupenplus/CommonAPIImpl_mupenplus.cpp \
@@ -295,6 +299,8 @@ SOURCES_CXX +=  $(VIDEODIR_GLIDEN64)/src/CommonPluginAPI.cpp
 endif
 
 ifeq ($(HAVE_GLN64),1)
+CFLAGS   += -DHAVE_GLN64
+CXXFLAGS += -DHAVE_GLN64
 
 SOURCES_C += $(VIDEODIR_GLN64)/3DMath.c \
             $(VIDEODIR_GLN64)/glN64Config.c \
@@ -351,6 +357,8 @@ SOURCES_C   += $(ROOT_DIR)/Graphics/RSP/gSP_funcs_C.c \
 					$(ROOT_DIR)/Graphics/plugins.c
 
 ifeq ($(HAVE_GLIDE64),1)
+CFLAGS   += -DHAVE_GLIDE64
+CXXFLAGS += -DHAVE_GLIDE64
 SOURCES_C += $(VIDEODIR_GLIDE)/Glide64/glide64_3dmath.c \
             $(VIDEODIR_GLIDE)/Glide64/Framebuffer_glide64.c \
             $(VIDEODIR_GLIDE)/Glide64/Glide64_Ini.c \
@@ -378,6 +386,8 @@ SOURCES_C +=  $(VIDEODIR_ANGRYLION)/n64video_main.c \
 						  $(VIDEODIR_ANGRYLION)/n64video.c
 
 ifeq ($(HAVE_VULKAN),1)
+CFLAGS   += -DHAVE_PARALLEL
+CXXFLAGS += -DHAVE_PARALLEL
 ### Tiny Tigers's LLE renderer ###
 	SOURCES_CXX += \
 					$(VIDEODIR_PARALLEL)/parallel.cpp \

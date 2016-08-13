@@ -19,11 +19,18 @@ void GDPSetScissorC(uint32_t mode,
    switch (gfx_plugin)
    {
       case GFX_GLIDE64:
+#if defined(HAVE_GLIDE64)
          glide64gDPSetScissor(mode, ulx, uly, lrx, lry);
+#endif
          break;
       case GFX_GLN64:
-#ifndef GLIDEN64
+#if !defined(HAVE_GLIDEN64) && defined(HAVE_GLN64)
          gln64gDPSetScissor(mode, ulx, uly, lrx, lry);
+#endif
+         break;
+      case GFX_RICE:
+#ifdef HAVE_RICE
+         /* TODO/FIXME */
 #endif
          break;
       default:
@@ -49,15 +56,19 @@ void GDPLoadBlockC(uint32_t tile, uint32_t ul_s, uint32_t ul_t,
    switch (gfx_plugin)
    {
       case GFX_GLIDE64:
+#ifdef HAVE_GLIDE64
          glide64gDPLoadBlock(tile, ul_s, ul_t, lr_s, dxt);
+#endif
          break;
       case GFX_GLN64:
-#ifndef GLIDEN64
+#ifndef HAVE_GLIDEN64
          gln64gDPLoadBlock(tile, ul_s, ul_t, lr_s, dxt);
 #endif
          break;
       case GFX_RICE:
+#ifdef HAVE_RICE
          /* TODO/FIXME */
+#endif
          break;
       case GFX_ANGRYLION:
       case GFX_PARALLEL:
