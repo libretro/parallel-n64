@@ -1,5 +1,7 @@
 #include "../rsp.hpp"
 
+#undef INTENSE_DEBUG
+
 extern "C" {
 
 // Using mostly CXD4 implementation as a base here since it's easier to follow.

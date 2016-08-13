@@ -87,14 +87,18 @@ static INLINE unsigned SPECIAL(uint32_t inst, uint32_t PC)
       case 011: /* JALR */
          SR[rd] = (PC + LINK_OFF) & 0x00000FFC;
          SR[0] = 0x00000000;
-      case 010: /* JR */
          SET_PC(SR[rs = inst >> 21]);
-
          {
             uint64_t hash = hash_imem((const uint8_t*)VR, sizeof(VR));
             fprintf(stderr, "JR (PC: %u): 0, %llu\n", temp_PC & 0xfff, hash);
          }
-
+         return 1;
+      case 010: /* JR */
+         SET_PC(SR[rs = inst >> 21]);
+         {
+            uint64_t hash = hash_imem((const uint8_t*)VR, sizeof(VR));
+            fprintf(stderr, "JR (PC: %u): 0, %llu\n", temp_PC & 0xfff, hash);
+         }
          return 1;
       case 015: /* BREAK */
          *RSP.SP_STATUS_REG |= SP_STATUS_BROKE | SP_STATUS_HALT;
@@ -197,6 +201,13 @@ static unsigned int run_task_opcode(uint32_t inst, const int opcode)
          break;
       case 003: /* JAL */
          SR[31] = (PC + LINK_OFF) & 0x00000FFC;
+         SET_PC(4*inst);
+         {
+            uint64_t hash = hash_imem((const uint8_t*)VR, sizeof(VR));
+            fprintf(stderr, "JAL (PC: %u): 0, %llu\n", temp_PC & 0xfff, hash);
+         }
+         return 1;
+
       case 002: /* J */
          SET_PC(4*inst);
          return 1;

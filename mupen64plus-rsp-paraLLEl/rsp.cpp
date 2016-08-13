@@ -3,6 +3,11 @@
 
 using namespace std;
 
+#define BREAKVAL 0xc07210e5e34d4157ull
+static void breakme()
+{
+}
+
 extern "C" {
 #ifdef INTENSE_DEBUG
 static uint64_t hash_imem(const uint8_t *data, size_t size)
@@ -11,6 +16,10 @@ static uint64_t hash_imem(const uint8_t *data, size_t size)
    size_t i;
    for (i = 0; i < size; i++)
       h = (h * 0x100000001b3ull) ^ data[i];
+
+   if (h == BREAKVAL)
+      breakme();
+
    return h;
 }
 
@@ -365,7 +374,7 @@ Func CPU::jit_region(uint64_t hash, unsigned pc, unsigned count)
 #define PROMOTE_LOCAL_DELAY_SLOT() do { \
    APPEND("if (pipe_branch) {\n"); \
    APPEND("  STATE->has_delay_slot = 1;\n"); \
-   APPEND("  STATE->branch_target = %u;\n", branch_delay * 4); \
+   APPEND("  STATE->branch_target = %u;\n", pipe_branch_delay * 4); \
    APPEND("}\n"); \
 } while(0)
 
@@ -530,7 +539,7 @@ Func CPU::jit_region(uint64_t hash, unsigned pc, unsigned count)
          }
 
 #ifdef INTENSE_DEBUG
-         APPEND("RSP_DEBUG(STATE, \"CP2\", %u, 0);\n", op);
+         //APPEND("RSP_DEBUG(STATE, \"CP2\", %u, 0);\n", op);
 #endif
       }
       else
@@ -589,6 +598,9 @@ Func CPU::jit_region(uint64_t hash, unsigned pc, unsigned count)
                         set_pc_indirect(rs);
                         pipe_pending_indirect_call = true;
                         DISASM("jalr %s\n", NAME(rs));
+#ifdef INTENSE_DEBUG
+                        APPEND("RSP_DEBUG(STATE, \"JALR\", pipe_branch_delay * 4, 0);\n");
+#endif
                         break;
                      case 010: // JR
                         set_pc_indirect(rs);
@@ -698,6 +710,9 @@ Func CPU::jit_region(uint64_t hash, unsigned pc, unsigned count)
                pipe_pending_call = true;
                APPEND("BRANCH();\n");
                DISASM("jal 0x%x\n", (instr & 0x3ff) << 2);
+#ifdef INTENSE_DEBUG
+               APPEND("RSP_DEBUG(STATE, \"JAL\", %u, 0);\n", pipe_branch_delay * 4);
+#endif
                break;
 
             case 002: // J
@@ -986,7 +1001,7 @@ Func CPU::jit_region(uint64_t hash, unsigned pc, unsigned count)
                }
 
 #ifdef INTENSE_DEBUG
-               APPEND("RSP_DEBUG(STATE, \"LWC2\", %u, %u);\n", (pc + i + 1) << 2, instr);
+               //APPEND("RSP_DEBUG(STATE, \"LWC2\", %u, %u);\n", (pc + i + 1) << 2, instr);
 #endif
                break;
             }
@@ -1079,7 +1094,7 @@ enum ReturnMode {
 #define PROMOTE_DELAY_SLOT() do { \
    if (pipe_branch) { \
       STATE->has_delay_slot = 1; \
-      STATE->branch_target = pipe_branch_delay; \
+      STATE->branch_target = pipe_branch_delay * 4; \
    } \
 } while(0)
 
