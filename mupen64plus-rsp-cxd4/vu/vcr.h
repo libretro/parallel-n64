@@ -46,7 +46,9 @@ INLINE static void do_cr(short* VD, short* VS, short* VT)
 #endif
     for (i = 0; i < N; i++)
         VC[i] ^= sn[i]; /* if (sn == ~0) {VT = ~VT;} else {VT =  VT;} */
-    merge(VACC_L, le, VC, VS);
+    for (i = 0; i < N; i++)
+        cmp[i] = sn[i] ? le[i] : ge[i];
+    merge(VACC_L, cmp, VC, VS);
     vector_copy(VD, VACC_L);
 
     for (i = 0; i < N; i++)
