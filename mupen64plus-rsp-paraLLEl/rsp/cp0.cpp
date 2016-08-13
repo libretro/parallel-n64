@@ -143,8 +143,8 @@ static int rsp_dma_read(RSP::CPUState *rsp)
          {
             // Invalidate IMEM.
             unsigned block = (dest_addr & 0xfff) / CODE_BLOCK_SIZE;
-            //rsp->dirty_blocks |= (0x3 << block) >> 1;
-            rsp->dirty_blocks = ~0u;
+            rsp->dirty_blocks |= (0x3 << block) >> 1;
+            //rsp->dirty_blocks = ~0u;
             rsp->imem[(dest_addr & 0xfff) >> 2] = word;
          }
          else
