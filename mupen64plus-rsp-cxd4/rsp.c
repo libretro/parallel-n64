@@ -36,6 +36,24 @@ unsigned char rsp_conf[32];
 #define CONFIG_API_VERSION       0x020100
 #define CONFIG_PARAM_VERSION     1.00
 
+#ifdef INTENSE_DEBUG
+// Need super-fast hash here.
+static uint64_t hash_imem(const uint8_t *data, size_t size)
+{
+   uint64_t h = 0xcbf29ce484222325ull;
+   size_t i;
+   for (i = 0; i < size; i++)
+      h = (h * 0x100000001b3ull) ^ data[i];
+   return h;
+}
+
+void log_rsp_mem(void)
+{
+    fprintf(stderr, "IMEM HASH: 0x%016llx\n", hash_imem(RSP.IMEM, 0x1000));
+    fprintf(stderr, "DMEM HASH: 0x%016llx\n", hash_imem(RSP.DMEM, 0x1000));
+}
+#endif
+
 static void (*l_DebugCallback)(void *, int, const char *) = NULL;
 static void *l_DebugCallContext = NULL;
 static int l_PluginInit = 0;
@@ -88,23 +106,32 @@ static INLINE unsigned SPECIAL(uint32_t inst, uint32_t PC)
          SR[rd] = (PC + LINK_OFF) & 0x00000FFC;
          SR[0] = 0x00000000;
          SET_PC(SR[rs = inst >> 21]);
+
+#ifdef INTENSE_DEBUG
          {
             uint64_t hash = hash_imem((const uint8_t*)VR, sizeof(VR));
             fprintf(stderr, "JR (PC: %u): 0, %llu\n", temp_PC & 0xfff, hash);
          }
+#endif
+
          return 1;
       case 010: /* JR */
          SET_PC(SR[rs = inst >> 21]);
+#ifdef INTENSE_DEBUG
          {
             uint64_t hash = hash_imem((const uint8_t*)VR, sizeof(VR));
             fprintf(stderr, "JR (PC: %u): 0, %llu\n", temp_PC & 0xfff, hash);
          }
+#endif
          return 1;
       case 015: /* BREAK */
          *RSP.SP_STATUS_REG |= SP_STATUS_BROKE | SP_STATUS_HALT;
          if (*RSP.SP_STATUS_REG & SP_STATUS_INTR_BREAK)
          { /* SP_STATUS_INTR_BREAK */
             *RSP.MI_INTR_REG |= 0x00000001;
+#ifdef INTENSE_DEBUG
+            fprintf(stderr, "CHECK IRQ\n");
+#endif
             RSP.CheckInterrupts();
          }
          break;
@@ -202,10 +229,12 @@ static unsigned int run_task_opcode(uint32_t inst, const int opcode)
       case 003: /* JAL */
          SR[31] = (PC + LINK_OFF) & 0x00000FFC;
          SET_PC(4*inst);
+#ifdef INTENSE_DEBUG
          {
             uint64_t hash = hash_imem((const uint8_t*)VR, sizeof(VR));
             fprintf(stderr, "JAL (PC: %u): 0, %llu\n", temp_PC & 0xfff, hash);
          }
+#endif
          return 1;
 
       case 002: /* J */
@@ -306,10 +335,12 @@ static unsigned int run_task_opcode(uint32_t inst, const int opcode)
                break;
             case 004: /* MTC2 */
                MTC2(rt, rd, element);
+#ifdef INTENSE_DEBUG
                {
                   uint64_t hash = hash_imem((const uint8_t*)VR, sizeof(VR));
                   fprintf(stderr, "MTC2 (PC: %u): 0, %llu\n", 0, hash);
                }
+#endif
                break;
             case 006: /* CTC2 */
                CTC2(rt, rd);
@@ -421,11 +452,13 @@ static unsigned int run_task_opcode(uint32_t inst, const int opcode)
          base = (inst >> 21) & 31;
          LWC2_op[rd = (inst & 0xF800u) >> 11](rt, element, offset, base);
 
+#ifdef INTENSE_DEBUG
          {
             uint64_t hash = hash_imem((const uint8_t*)VR, sizeof(VR));
             fprintf(stderr, "LWC2 (PC: %u): %u, %llu\n", CPC + 4, inst, hash);
             fprintf(stderr, "  DMEM HASH: 0x%016llx\n", hash_imem(RSP.DMEM, 0x1000));
          }
+#endif
 
          break;
       case 072: /* SWC2 */
@@ -440,11 +473,13 @@ static unsigned int run_task_opcode(uint32_t inst, const int opcode)
          base = (inst >> 21) & 31;
          SWC2_op[rd = (inst & 0xF800u) >> 11](rt, element, offset, base);
 
+#ifdef INTENSE_DEBUG
          {
             uint64_t hash = hash_imem((const uint8_t*)VR, sizeof(VR));
             fprintf(stderr, "SWC2 (PC: %u): %u, %llu\n", CPC + 4, inst, hash);
             fprintf(stderr, "  DMEM HASH: 0x%016llx\n", hash_imem(RSP.DMEM, 0x1000));
          }
+#endif
 
          break;
       default:
@@ -457,6 +492,11 @@ static unsigned int run_task_opcode(uint32_t inst, const int opcode)
 NOINLINE void run_task(void)
 {
     PC = FIT_IMEM(*RSP.SP_PC_REG);
+
+#ifdef INTENSE_DEBUG
+    fprintf(stderr, "RUN TASK: %u\n", PC);
+    log_rsp_mem();
+#endif
 
     stale_signals = 0;
 
@@ -500,10 +540,12 @@ EX:
           const int e  = (inst >> 21) & 0xF; /* rs & 0xF */
 
           COP2_C2[opcode](vd, vs, vt, e);
+#ifdef INTENSE_DEBUG
           {
              uint64_t hash = hash_imem((const uint8_t*)VR, sizeof(VR));
              fprintf(stderr, "CP2 (PC: %u): 0, %llu\n", opcode, hash);
           }
+#endif
        }
        else if (run_task_opcode(inst, inst >> 26))
        {
@@ -697,6 +739,10 @@ EXPORT unsigned int CALL cxd4DoRspCycles(unsigned int cycles)
    if (*RSP.SP_STATUS_REG & SP_STATUS_BROKE) /* normal exit, from executing BREAK */
       return (cycles);
    else if (*RSP.MI_INTR_REG & 0x00000001) /* interrupt set by MTC0 to break */
+   {
+#ifdef INTENSE_DEBUG
+      fprintf(stderr, "CHECK IRQ\n");
+#endif
       RSP.CheckInterrupts();
    else if (*RSP.SP_SEMAPHORE_REG != 0x00000000) /* semaphore lock fixes */
    {}

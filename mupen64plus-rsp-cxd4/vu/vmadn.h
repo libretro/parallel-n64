@@ -15,6 +15,7 @@
 
 INLINE static void do_madn(short* VD, short* VS, short* VT)
 {
+#ifdef INTENSE_DEBUG
    unsigned i;
   for (i = 0; i < 8; i++)
      fprintf(stderr, "ACC LO[%u] = %d\n", i, VACC_L[i]);
@@ -26,6 +27,7 @@ INLINE static void do_madn(short* VD, short* VS, short* VT)
      fprintf(stderr, "VS[%u] = %d\n", i, VS[i]);
   for (i = 0; i < 8; i++)
      fprintf(stderr, "VT[%u] = %d\n", i, VT[i]);
+#endif
 
 #ifdef ARCH_MIN_SSE2
     __m128i acc_hi, acc_md, acc_lo;
@@ -88,8 +90,10 @@ INLINE static void do_madn(short* VD, short* VS, short* VT)
     vs = _mm_xor_si128(vs, acc_md); /* Stupid unsigned-clamp-ish adjustment. */
 
     _mm_storeu_si128((__m128i *)VD, vs);
+#ifdef INTENSE_DEBUG
     for (i = 0; i < 8; i++)
        fprintf(stderr, "VD[%u] = %d\n", i, VD[i]);
+#endif
 #else
     uint32_t addend[N];
     register int i;

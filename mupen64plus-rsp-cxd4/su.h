@@ -136,6 +136,11 @@ static void MT_DMA_DRAM(int rt)
     *RSP.SP_DRAM_ADDR_REG = SR[rt] & 0xFFFFFFF8; /* & 0x00FFFFF8 */
     /* Let the reserved bits get sent, but the pointer is 24-bit. */
 }
+
+#ifdef INTENSE_DEBUG
+void log_rsp_mem(void);
+#endif
+
 static void MT_DMA_READ_LENGTH(int rt)
 {
     unsigned int offC, offD; /* SP cache and dynamic DMA pointers */
@@ -152,6 +157,14 @@ static void MT_DMA_READ_LENGTH(int rt)
 
        ++length;
        ++count;
+
+#ifdef INTENSE_DEBUG
+       fprintf(stderr, "DMA READ: (0x%x <- 0x%x) len %u, count %u, skip %u\n",
+             *RSP.SP_MEM_ADDR_REG,
+             *RSP.SP_DRAM_ADDR_REG,
+             length, count, skip);
+#endif
+
        skip += length;
        do
        { /* `count` always starts > 0, so we begin with `do` instead of `while`. */
@@ -184,6 +197,10 @@ static void MT_DMA_READ_LENGTH(int rt)
 #ifdef HAVE_RSP_DUMP
     rsp_dump_end_read_dma();
 #endif
+
+#ifdef INTENSE_DEBUG
+    log_rsp_mem();
+#endif
 }
 static void MT_DMA_WRITE_LENGTH(int rt)
 {
@@ -197,6 +214,16 @@ static void MT_DMA_WRITE_LENGTH(int rt)
        /* length |= 07; // already corrected by mtc0 */
        ++length;
        ++count;
+
+#ifdef INTENSE_DEBUG
+       fprintf(stderr, "DMA WRITE: (0x%x <- 0x%x) len %u, count %u, skip %u\n",
+             *RSP.SP_DRAM_ADDR_REG,
+             *RSP.SP_MEM_ADDR_REG,
+             length, count, skip);
+#endif
+
+       unsigned src = *RSP.SP_MEM_ADDR_REG;
+
        skip += length;
        do
        { /* `count` always starts > 0, so we begin with `do` instead of `while`. */
@@ -217,6 +244,10 @@ static void MT_DMA_WRITE_LENGTH(int rt)
        *RSP.SP_DMA_BUSY_REG = 0x00000000;
        *RSP.SP_STATUS_REG &= ~SP_STATUS_DMA_BUSY;
     }
+
+#ifdef INTENSE_DEBUG
+    log_rsp_mem();
+#endif
 }
 static void MT_SP_STATUS(int rt)
 {
@@ -266,6 +297,9 @@ static void MT_CMD_START(int rt)
         message("MTC0\nCMD_START", 0);
 #endif
     *RSP.DPC_END_REG = *RSP.DPC_CURRENT_REG = *RSP.DPC_START_REG = source;
+#ifdef INTENSE_DEBUG
+    fprintf(stderr, "CMD_START 0x%x\n", source);
+#endif
 }
 static void MT_CMD_END(int rt)
 {
@@ -276,6 +310,9 @@ static void MT_CMD_END(int rt)
     *RSP.DPC_END_REG = SR[rt] & 0xFFFFFFF8;
     if (RSP.ProcessRdpList == NULL) /* zilmar GFX #1.2 */
         return;
+#ifdef INTENSE_DEBUG
+    fprintf(stderr, "CMD_END 0x%x\n", *RSP.DPC_END_REG);
+#endif
     RSP.ProcessRdpList();
 }
 static void MT_CMD_STATUS(int rt)
@@ -414,8 +451,10 @@ static void MFC2(int rt, int vs, int e)
 
 static void MTC2(int rt, int vd, int e)
 {
+#ifdef INTENSE_DEBUG
    fprintf(stderr, "MTC2, rt = %u, [rt] = 0x%x, rd = %u, e = %u\n",
          rt, SR[rt], vd, e);
+#endif
 
     VR_B(vd, e+0x0) = SR_B(rt, 2);
     VR_B(vd, e+0x1) = SR_B(rt, 3);
@@ -572,6 +611,12 @@ static void SBV(int vt, int element, int offset, int base)
 {
    const unsigned int e   = element;
    register uint32_t addr = (SR[base] + 1*offset) & 0x00000FFF;
+
+#ifdef INTENSE_DEBUG
+   fprintf(stderr, "SBV: 0x%x (0x%x)\n", addr,
+         VR_B(vt, (e + 0x0)));
+#endif
+
    RSP.DMEM[BES(addr)] = VR_B(vt, e);
 }
 
@@ -579,6 +624,12 @@ static void SSV(int vt, int element, int offset, int base)
 {
    const unsigned int e   = element;
    register uint32_t addr = (SR[base] + 2*offset) & 0x00000FFF;
+
+#ifdef INTENSE_DEBUG
+   fprintf(stderr, "SSV: 0x%x (0x%x, 0x%x)\n", addr,
+         VR_B(vt, (e + 0x0)), VR_B(vt, (e + 0x1) & 0xf));
+#endif
+
    RSP.DMEM[BES(addr)] = VR_B(vt, (e + 0x0));
    addr = (addr + 0x00000001) & 0x00000FFF;
    RSP.DMEM[BES(addr)] = VR_B(vt, (e + 0x1) & 0xF);
@@ -596,6 +647,10 @@ static void SLV(int vt, int element, int offset, int base)
       return;
    }
    addr = (SR[base] + 4*offset) & 0x00000FFF;
+#ifdef INTENSE_DEBUG
+   fprintf(stderr, "SLV 0x%x, e = %u\n", addr, e);
+#endif
+
    if (addr & 0x00000001)
    {
       message("SLV\nOdd addr.", 3);
@@ -613,6 +668,10 @@ static void SDV(int vt, int element, int offset, int base)
     const int e = element;
 
     addr = (SR[base] + 8*offset) & 0x00000FFF;
+#ifdef INTENSE_DEBUG
+    fprintf(stderr, "SDV 0x%x, e = %u\n", addr, e);
+#endif
+
     if (e > 0x8 || (e & 0x1))
     { /* Illegal elements with Boss Game Studios publications. */
         register int i;
@@ -1186,7 +1245,9 @@ static void LQV(int vt, int element, int offset, int base)
     }
     addr = (SR[base] + 16*offset) & 0x00000FFF;
 
+#ifdef INTENSE_DEBUG
     fprintf(stderr, "LQV: 0x%x, e = %u, vt = %u, base = %u\n", addr, element, vt, base);
+#endif
 
     if (addr & 0x00000001)
     {
