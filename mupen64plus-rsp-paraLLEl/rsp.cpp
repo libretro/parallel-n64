@@ -409,18 +409,18 @@ Func CPU::jit_region(uint64_t hash, unsigned pc, unsigned count)
       } else { \
          APPEND("if (branch) goto pc_%03x;\n", branch_delay * 4); \
       } \
-      pending_local_branch_delay = false; \
    } else if (pending_branch_delay) { \
       APPEND("if (branch) {\n"); \
       APPEND("  STATE->pc = (branch_delay << 2) & %u;\n", IMEM_SIZE - 1); \
       PROMOTE_DELAY_SLOT(); \
       APPEND("  EXIT(MODE_CONTINUE);\n"); \
       APPEND("}\n"); \
-      pending_branch_delay = false; \
    } \
    pending_call = false; \
    pending_indirect_call = false; \
    pending_return = false; \
+   pending_branch_delay = false; \
+   pending_local_branch_delay = false; \
 } while(0)
 
 #define CHECK_INHERIT_BRANCH_DELAY() do { \
