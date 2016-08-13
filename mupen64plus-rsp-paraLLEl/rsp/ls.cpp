@@ -360,7 +360,7 @@ void RSP_STV(RSP::CPUState *rsp, unsigned rt, unsigned e, int offset, unsigned b
    for (unsigned i = 0; i < 8; i++)
    {
       WRITE_MEM_U16(rsp->dmem, addr + 2 * i,
-            rsp->cp2.regs[rt + i].e[(-e / 2 + i) & 7]);
+            rsp->cp2.regs[rt + ((e / 2 + i) & 7)].e[i]);
    }
 }
 
