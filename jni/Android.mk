@@ -136,6 +136,9 @@ SOURCES_ASM :=
 INCFLAGS    :=
 
 HAVE_OPENGL = 1
+HAVE_GLIDE64=1
+HAVE_GLN64=1
+HAVE_RICE=1
 
 include $(ROOT_DIR)/Makefile.common
 
