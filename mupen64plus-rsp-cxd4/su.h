@@ -414,6 +414,9 @@ static void MFC2(int rt, int vs, int e)
 
 static void MTC2(int rt, int vd, int e)
 {
+   fprintf(stderr, "MTC2, rt = %u, [rt] = 0x%x, rd = %u, e = %u\n",
+         rt, SR[rt], vd, e);
+
     VR_B(vd, e+0x0) = SR_B(rt, 2);
     VR_B(vd, e+0x1) = SR_B(rt, 3);
     /* If element == 0xF, it does not matter; loads do not wrap over. */
@@ -1182,6 +1185,9 @@ static void LQV(int vt, int element, int offset, int base)
         return;
     }
     addr = (SR[base] + 16*offset) & 0x00000FFF;
+
+    fprintf(stderr, "LQV: 0x%x, e = %u, vt = %u, base = %u\n", addr, element, vt, base);
+
     if (addr & 0x00000001)
     {
         message("LQV\nOdd addr.", 3);

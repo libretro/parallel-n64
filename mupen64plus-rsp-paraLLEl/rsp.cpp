@@ -846,6 +846,9 @@ Func CPU::jit_region(uint64_t hash, unsigned pc, unsigned count)
                   case 004: // MTC2
                      APPEND("RSP_MTC2(STATE, %u, %u, %u);\n", rt, rd, imm);
                      DISASM("mtc2 %u, %u, %u\n", rt, rd, imm);
+#ifdef INTENSE_DEBUG
+                     APPEND("RSP_DEBUG(STATE, \"MTC2\", %u, 0);\n", 0);
+#endif
                      break;
 
                   case 006: // CTC2

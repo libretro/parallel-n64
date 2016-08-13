@@ -295,6 +295,10 @@ static unsigned int run_task_opcode(uint32_t inst, const int opcode)
                break;
             case 004: /* MTC2 */
                MTC2(rt, rd, element);
+               {
+                  uint64_t hash = hash_imem((const uint8_t*)VR, sizeof(VR));
+                  fprintf(stderr, "MTC2 (PC: %u): 0, %llu\n", 0, hash);
+               }
                break;
             case 006: /* CTC2 */
                CTC2(rt, rd);

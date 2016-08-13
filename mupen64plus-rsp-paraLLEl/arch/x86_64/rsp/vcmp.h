@@ -70,7 +70,7 @@ static inline __m128i rsp_vne(__m128i vs, __m128i vt,
       fprintf(stderr, "VS[%d] = %d\n", i,
             reinterpret_cast<int16_t*>(&vs)[i]);
    for (unsigned i = 0; i < 8; i++)
-      fprintf(stderr, "VS[%d] = %d\n", i,
+      fprintf(stderr, "VT[%d] = %d\n", i,
             reinterpret_cast<int16_t*>(&vt)[i]);
 #endif
 
