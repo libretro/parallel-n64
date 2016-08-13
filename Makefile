@@ -330,6 +330,10 @@ else ifneq (,$(findstring vita,$(platform)))
    DYNAREC_USED = 0
    GLES = 0
    HAVE_OPENGL = 0
+	HAVE_GLIDE64=0
+	HAVE_GLN64=0
+	HAVE_GLIDEN64=0
+	HAVE_RICE=0
    PLATCFLAGS += -DVITA
    CPUCFLAGS += -DNO_ASM
    CFLAGS += -DVITA -lm
