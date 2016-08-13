@@ -319,7 +319,7 @@ else ifeq ($(platform), emscripten)
 else ifneq (,$(findstring vita,$(platform)))
    TARGET:= $(TARGET_NAME)_libretro_$(platform).a
    CPUFLAGS += -DNO_ASM  -DARM -D__arm__ -DARM_ASM -D__NEON_OPT
-   CPUFLAGS += -w -marm -mcpu=cortex-a9 -mfpu=neon -mfloat-abi=hard -D__arm__ -DARM_ASM -D__NEON_OPT
+   CPUFLAGS += -w -marm -mcpu=cortex-a9 -mfpu=neon -mfloat-abi=hard -D__arm__ -DARM_ASM -D__NEON_OPT -g
    HAVE_NEON = 1
 
    PREFIX = arm-vita-eabi
