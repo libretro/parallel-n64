@@ -77,7 +77,7 @@ uint32_t* r4300_cp1_fcr31(void)
 */
 void shuffle_fpr_data(uint32_t oldStatus, uint32_t newStatus)
 {
-#if defined(M64P_BIG_ENDIAN)
+#ifdef MSB_FIRST
     const int isBigEndian = 1;
 #else
     const int isBigEndian = 0;
@@ -130,7 +130,7 @@ void shuffle_fpr_data(uint32_t oldStatus, uint32_t newStatus)
 void set_fpr_pointers(uint32_t newStatus)
 {
     int i;
-#if defined(M64P_BIG_ENDIAN)
+#ifdef MSB_FIRST
     const int isBigEndian = 1;
 #else
     const int isBigEndian = 0;
