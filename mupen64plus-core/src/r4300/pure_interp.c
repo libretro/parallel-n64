@@ -171,7 +171,7 @@ static void InterpretOpcode(void);
   static void JALR_IDLE(uint32_t) __attribute__((used));
 #endif
 
-#include "interpreter.def"
+#include "interpreter.c"
 
 void InterpretOpcode()
 {
