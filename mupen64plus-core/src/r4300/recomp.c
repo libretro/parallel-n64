@@ -50,28 +50,26 @@
 static void *malloc_exec(size_t size);
 static void free_exec(void *ptr, size_t length);
 
-// global variables :
-precomp_instr *dst; // destination structure for the recompiled instruction
-int code_length; // current real recompiled code length
-int max_code_length; // current recompiled code's buffer length
-unsigned char **inst_pointer; // output buffer for recompiled code
-precomp_block *dst_block; // the current block that we are recompiling
-uint32_t src; // the current recompiled instruction
+/* global variables : */
+precomp_instr *dst           = NULL; /* destination structure for the recompiled instruction */
+unsigned char **inst_pointer = NULL; /* output buffer for recompiled code */
+precomp_block *dst_block     = NULL; /* the current block that we are recompiling */
+int no_compiled_jump = 0;            /* use cached interpreter instead of recompiler for jumps */
+int code_length;                     /* current real recompiled code length */
+int max_code_length;                 /* current recompiled code's buffer length */
+uint32_t src;                        /* the current recompiled instruction */
 int fast_memory;
-int no_compiled_jump = 0; /* use cached interpreter instead of recompiler for jumps */
 
-static void (*recomp_func)(void); // pointer to the dynarec's generator
-                                  // function for the latest decoded opcode
+static void (*recomp_func)(void); /* pointer to the dynarec's generator
+                                   * function for the latest decoded opcode */
 
 #if defined(PROFILE_R4300)
 FILE *pfProfile;
 #endif
 
-static const uint32_t *SRC; // currently recompiled instruction in the input stream
-static int check_nop; // next instruction is nop ?
+static const uint32_t *SRC  = NULL;  /* currently recompiled instruction in the input stream */
 static int delay_slot_compiled = 0;
-
-
+static int check_nop;                /* next instruction is NOP ? */
 
 static void RSV(void)
 {
