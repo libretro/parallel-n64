@@ -605,7 +605,7 @@ void Renderer::draw_primitive(const Primitive &prim, const Attribute *attr, uint
 		span_stride = 1;
 
 	// Fiddle with max_x to account for splatted coverage.
-	max_x = ((max_x - min_x + 1) & ~(span_stride - 1)) + min_x - 1;
+	max_x = ((max_x - min_x + span_stride) & ~(span_stride - 1)) + min_x - 1;
 
 	int min_tile_x = min_x / TILE_SIZE_X;
 	int min_tile_y = min_y / TILE_SIZE_Y;
