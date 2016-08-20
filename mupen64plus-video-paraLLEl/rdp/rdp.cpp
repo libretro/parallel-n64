@@ -595,6 +595,18 @@ void Renderer::draw_primitive(const Primitive &prim, const Attribute *attr, uint
                               int min_y, int max_y)
 {
 	clip_scissor(min_x, max_x, min_y, max_y);
+
+	// When computing coverage in copy pipe,
+	// we make the decisions a certain number of 64-bits worth of pixels at a time.
+	unsigned span_stride;
+	if (((prim.flags >> RDP_FLAG_CYCLE_TYPE_SHIFT) & 3) == CYCLE_TYPE_COPY)
+		span_stride = 16 >> max(framebuffer.pixel_size, 1u);
+	else
+		span_stride = 1;
+
+	// Fiddle with max_x to account for splatted coverage.
+	max_x = ((max_x - min_x + 1) & ~(span_stride - 1)) + min_x - 1;
+
 	int min_tile_x = min_x / TILE_SIZE_X;
 	int min_tile_y = min_y / TILE_SIZE_Y;
 	int max_tile_x = max_x / TILE_SIZE_X;
@@ -730,8 +742,8 @@ void Renderer::draw_primitive(const Primitive &prim, const Attribute *attr, uint
 
 			if (itr != end(state.combiner_map))
 			{
-				buffer_prim.combiner = itr->second;
-				state.last_combiner = buffer_prim.combiner;
+				buffer_prim.span_stride_combiner = itr->second;
+				state.last_combiner = buffer_prim.span_stride_combiner;
 			}
 			else
 			{
@@ -742,16 +754,18 @@ void Renderer::draw_primitive(const Primitive &prim, const Attribute *attr, uint
 					flush = true;
 				}
 
-				buffer_prim.combiner = combiner_data.size() - 1;
-				state.last_combiner = buffer_prim.combiner;
+				buffer_prim.span_stride_combiner = combiner_data.size() - 1;
+				state.last_combiner = buffer_prim.span_stride_combiner;
 				state.combiner_map.emplace(hash, state.last_combiner);
 			}
 		}
 		else
-			buffer_prim.combiner = state.last_combiner;
+			buffer_prim.span_stride_combiner = state.last_combiner;
 
-		assert(buffer_prim.combiner < combiner_data.size());
+		assert(buffer_prim.span_stride_combiner < combiner_data.size());
 	}
+
+	buffer_prim.span_stride_combiner |= (~(span_stride - 1) & 0xffffu) << 16u;
 
 	// Push primitive to buffer.
 	primitive_data.push_back(buffer_prim);

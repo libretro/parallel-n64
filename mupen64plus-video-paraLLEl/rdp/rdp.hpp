@@ -229,7 +229,7 @@ private:
 		int32_t xl, xm, xh;
 		uint32_t primitive_z;
 		int32_t yl, ym, yh;
-		uint32_t combiner;
+		uint32_t span_stride_combiner;
 		int32_t DxLDy, DxMDy, DxHDy;
 		uint32_t blend_color;
 		uint32_t flags, scissor_x, scissor_y, fill_color_blend;

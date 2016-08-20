@@ -34,7 +34,7 @@ void main()
 
    // Run combiner.
    ivec4 sub_a, sub_b, mul, add;
-   uint combiner_instance = primitive_data.data[prim_id].combiner;
+   uint combiner_instance = primitive_data.data[prim_id].span_stride_combiner & 0xffffu;
 
    ivec4 combined = ivec4(0);
    ivec4 sampled0 = ivec4(unpack_rgba8(SAMPLED0(tile_buffer_index, local)));

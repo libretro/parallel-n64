@@ -57,7 +57,7 @@ struct RDPPrimitive
 {
    // 64 bytes, should be aligned to cache line.
    int xl, xm, xh, primitive_z;
-   int yl, ym, yh; uint combiner;
+   int yl, ym, yh; uint span_stride_combiner;
    int DxLDy, DxMDy, DxHDy; uint blend_color;
    uint flags, scissor_x, scissor_y, fill_color_blend;
 
