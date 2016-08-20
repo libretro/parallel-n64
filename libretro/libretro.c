@@ -667,13 +667,6 @@ extern void glide_set_filtering(unsigned value);
 extern void angrylion_set_filtering(unsigned value);
 extern void ChangeSize();
 
-static bool parallel_rdp_synchronous = true;
-
-bool is_parallel_rdp_synchronous(void)
-{
-   return parallel_rdp_synchronous;
-}
-
 void update_variables(bool startup)
 {
    struct retro_variable var;
@@ -682,15 +675,17 @@ void update_variables(bool startup)
    var.key = NAME_PREFIX "-parallel-rdp-synchronous";
    var.value = NULL;
 
+   bool rdp_sync;
    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
    {
       if (!strcmp(var.value, "enabled"))
-         parallel_rdp_synchronous = true;
+         rdp_sync = true;
       else
-         parallel_rdp_synchronous = false;
+         rdp_sync = false;
    }
    else
-      parallel_rdp_synchronous = true;
+      rdp_sync = true;
+   parallel_set_synchronous_rdp(rdp_sync);
 #endif
 
    var.key = NAME_PREFIX "-screensize";

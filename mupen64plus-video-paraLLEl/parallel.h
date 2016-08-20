@@ -15,6 +15,7 @@ bool parallel_frame_is_valid(void);
 unsigned parallel_frame_width(void);
 unsigned parallel_frame_height(void);
 void parallel_begin_frame(void);
+void parallel_set_synchronous_rdp(bool enable);
 
 const VkApplicationInfo *parallel_get_application_info(void);
 bool parallel_create_device(struct retro_vulkan_context *context,

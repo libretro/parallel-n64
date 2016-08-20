@@ -1,9 +1,9 @@
-#include <string.h>
-#include <stdlib.h>
-#include <stdbool.h>
-#include "m64p_types.h"
-#include "m64p_config.h"
 #include "Gfx #1.3.h"
+#include "m64p_config.h"
+#include "m64p_types.h"
+#include <stdbool.h>
+#include <stdlib.h>
+#include <string.h>
 
 #include <stdlib.h>
 
@@ -15,7 +15,7 @@ extern "C" {
 
 extern int retro_return(int just_flipping);
 
-void parallelChangeWindow (void)
+void parallelChangeWindow(void)
 {
 }
 
@@ -23,17 +23,17 @@ void parallelReadScreen2(void *dest, int *width, int *height, int front)
 {
 }
 
-void parallelDrawScreen (void)
+void parallelDrawScreen(void)
 {
 }
 
-void parallelGetDllInfo(PLUGIN_INFO* PluginInfo)
+void parallelGetDllInfo(PLUGIN_INFO *PluginInfo)
 {
-   PluginInfo->Version = 0x0001;
-   PluginInfo->Type = 2;
-   strcpy(PluginInfo->Name, "Tiny Tiger's RDP");
-   PluginInfo->NormalMemory = true;
-   PluginInfo->MemoryBswaped = true;
+	PluginInfo->Version = 0x0001;
+	PluginInfo->Type = 2;
+	strcpy(PluginInfo->Name, "Tiny Tiger's RDP");
+	PluginInfo->NormalMemory = true;
+	PluginInfo->MemoryBswaped = true;
 }
 
 void parallelSetRenderingCallback(void (*callback)(int))
@@ -42,11 +42,11 @@ void parallelSetRenderingCallback(void (*callback)(int))
 
 int parallelInitiateGFX(GFX_INFO Gfx_Info)
 {
-   const char *env = getenv("RDP_DUMP");
-   if (env)
-      rdp_dump_init(env, 8 * 1024 * 1024);
+	const char *env = getenv("RDP_DUMP");
+	if (env)
+		rdp_dump_init(env, 8 * 1024 * 1024);
 
-   return true;
+	return true;
 }
 
 void parallelMoveScreen(int xpos, int ypos)
@@ -59,35 +59,35 @@ void parallelProcessDList(void)
 
 void parallelProcessRDPList(void)
 {
-   RDP::process_commands();
+	RDP::process_commands();
 }
 
-void parallelRomClosed (void)
+void parallelRomClosed(void)
 {
-   rdp_dump_end();
+	rdp_dump_end();
 }
 
-int parallelRomOpen (void)
+int parallelRomOpen(void)
 {
-   return 1;
+	return 1;
 }
 
 void parallelUpdateScreen(void)
 {
-   VI::complete_frame();
-   retro_return(true);
+	VI::complete_frame();
+	retro_return(true);
 }
 
-void parallelShowCFB (void)
+void parallelShowCFB(void)
 {
-   parallelUpdateScreen();
+	parallelUpdateScreen();
 }
 
-void parallelViStatusChanged (void)
+void parallelViStatusChanged(void)
 {
 }
 
-void parallelViWidthChanged (void)
+void parallelViWidthChanged(void)
 {
 }
 
@@ -103,57 +103,57 @@ void parallelFBGetFrameBufferInfo(void *pinfo)
 {
 }
 
-m64p_error parallelPluginGetVersion(m64p_plugin_type *PluginType, int *PluginVersion, int *APIVersion, const char **PluginNamePtr, int *Capabilities)
+m64p_error parallelPluginGetVersion(m64p_plugin_type *PluginType, int *PluginVersion, int *APIVersion,
+                                    const char **PluginNamePtr, int *Capabilities)
 {
-   /* set version info */
-   if (PluginType != NULL)
-      *PluginType = M64PLUGIN_GFX;
+	/* set version info */
+	if (PluginType != NULL)
+		*PluginType = M64PLUGIN_GFX;
 
-   if (PluginVersion != NULL)
-      *PluginVersion = 0x016304;
+	if (PluginVersion != NULL)
+		*PluginVersion = 0x016304;
 
-   if (APIVersion != NULL)
-      *APIVersion = 0x020100;
+	if (APIVersion != NULL)
+		*APIVersion = 0x020100;
 
-   if (PluginNamePtr != NULL)
-      *PluginNamePtr = "Tiny Tiger Vulkan LLE RDP Plugin";
+	if (PluginNamePtr != NULL)
+		*PluginNamePtr = "Tiny Tiger Vulkan LLE RDP Plugin";
 
-   if (Capabilities != NULL)
-      *Capabilities = 0;
+	if (Capabilities != NULL)
+		*Capabilities = 0;
 
-   return M64ERR_SUCCESS;
+	return M64ERR_SUCCESS;
 }
 
 int parallel_init(const struct retro_hw_render_interface_vulkan *vulkan)
 {
-   RDP::vulkan = vulkan;
-   return RDP::init();
+	RDP::vulkan = vulkan;
+	return RDP::init();
 }
 
 void parallel_deinit()
 {
-   RDP::deinit();
-   RDP::vulkan = nullptr;
+	RDP::deinit();
+	RDP::vulkan = nullptr;
 }
 
 unsigned parallel_frame_width()
 {
-   return VI::width;
+	return VI::width;
 }
 
 unsigned parallel_frame_height()
 {
-   return VI::height;
+	return VI::height;
 }
 
 bool parallel_frame_is_valid()
 {
-   return VI::valid;
+	return VI::valid;
 }
 
 void parallel_begin_frame()
 {
-   RDP::begin_frame();
+	RDP::begin_frame();
 }
-
 }

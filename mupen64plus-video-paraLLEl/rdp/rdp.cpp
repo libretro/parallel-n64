@@ -541,6 +541,8 @@ void Renderer::clip_scissor(int &min_x, int &max_x, int &min_y, int &max_y)
 
 void Renderer::fill_rect_cpu(int xmin, int xmax, int ymin, int ymax)
 {
+	auto base = framebuffer_data();
+
 	// If we are clearing the framebuffer on CPU,
 	// we don't want any pending readbacks to this framebuffer to happen after we wrote CPU, so just invalidate them.
 	// We should make sure we're clearing the whole region and track by sub-region (uggggh), but this should suffice.
@@ -581,13 +583,13 @@ void Renderer::fill_rect_cpu(int xmin, int xmax, int ymin, int ymax)
 	{
 		for (int y = ymin; y <= ymax; y++, addr += stride)
 			for (int x = xmin; x <= xmax; x++)
-				WRITE_DRAM_U32_NOWRAP(rdram.base, addr + 4 * x, fill);
+				WRITE_DRAM_U32_NOWRAP(base, addr + 4 * x, fill);
 	}
 	else
 	{
 		for (int y = ymin; y <= ymax; y++, addr += stride)
 			for (int x = xmin; x <= xmax; x++)
-				WRITE_DRAM_U32(rdram.base, addr + 4 * x, fill);
+				WRITE_DRAM_U32(base, addr + 4 * x, fill);
 	}
 }
 
@@ -1250,6 +1252,8 @@ void Renderer::sync_color_dram_to_gpu()
 	}
 	else
 	{
+		auto base = framebuffer_data();
+
 		begin_framebuffer();
 		unsigned pixels = framebuffer.allocated_width * framebuffer.allocated_height;
 		auto *dst = static_cast<uint32_t *>(vulkan.framebuffer.map());
@@ -1259,12 +1263,12 @@ void Renderer::sync_color_dram_to_gpu()
 			assert((framebuffer.addr & 3) == 0);
 			if (max_addr <= RDRAM_SIZE)
 			{
-				memcpy(dst, rdram.base + framebuffer.addr, pixels * sizeof(uint32_t));
+				memcpy(dst, base + framebuffer.addr, pixels * sizeof(uint32_t));
 			}
 			else
 			{
 				for (unsigned i = 0; i < pixels; i++)
-					dst[i] = READ_DRAM_U32(rdram.base, framebuffer.addr + 4 * i);
+					dst[i] = READ_DRAM_U32(base, framebuffer.addr + 4 * i);
 			}
 		}
 		else if (framebuffer.pixel_size == PIXEL_SIZE_16BPP)
@@ -1276,7 +1280,7 @@ void Renderer::sync_color_dram_to_gpu()
 				for (unsigned i = 0; i < pixels; i++)
 				{
 					// Estimate the hidden bits based on the alpha bit.
-					uint32_t c = READ_DRAM_U16_NOWRAP(rdram.base, framebuffer.addr + 2 * i);
+					uint32_t c = READ_DRAM_U16_NOWRAP(base, framebuffer.addr + 2 * i);
 					dst[i] = (c << 2) | ((c & 1) * 3);
 				}
 			}
@@ -1285,7 +1289,7 @@ void Renderer::sync_color_dram_to_gpu()
 				for (unsigned i = 0; i < pixels; i++)
 				{
 					// Estimate the hidden bits based on the alpha bit.
-					uint32_t c = READ_DRAM_U16(rdram.base, framebuffer.addr + 2 * i);
+					uint32_t c = READ_DRAM_U16(base, framebuffer.addr + 2 * i);
 					dst[i] = (c << 2) | ((c & 1) * 3);
 				}
 			}
@@ -1298,7 +1302,7 @@ void Renderer::sync_color_dram_to_gpu()
 				for (unsigned i = 0; i < pixels; i++)
 				{
 					// Estimate the hidden bits based on the alpha bit.
-					uint32_t c = READ_DRAM_U8_NOWRAP(rdram.base, framebuffer.addr + 1 * i);
+					uint32_t c = READ_DRAM_U8_NOWRAP(base, framebuffer.addr + 1 * i);
 					dst[i] = (c << 3) | ((c & 1) * 7);
 				}
 			}
@@ -1307,7 +1311,7 @@ void Renderer::sync_color_dram_to_gpu()
 				for (unsigned i = 0; i < pixels; i++)
 				{
 					// Estimate the hidden bits based on the alpha bit.
-					uint32_t c = READ_DRAM_U8(rdram.base, framebuffer.addr + 1 * i);
+					uint32_t c = READ_DRAM_U8(base, framebuffer.addr + 1 * i);
 					dst[i] = (c << 3) | ((c & 1) * 7);
 				}
 			}
@@ -1325,6 +1329,7 @@ void Renderer::sync_depth_dram_to_gpu()
 		return;
 
 	fprintf(stderr, "sync_depth_dram_to_gpu()\n");
+	auto base = framebuffer_data();
 
 	// Check if the last writer to this region was actually the GPU. In this case, we can copy from GPU -> GPU.
 	// This usually happens when clear screen happens with CYCLE1 pipeline instead of FILL, which
@@ -1374,7 +1379,7 @@ void Renderer::sync_depth_dram_to_gpu()
 		auto *dst = static_cast<uint32_t *>(vulkan.framebuffer_depth.map());
 
 		for (unsigned i = 0; i < pixels; i++)
-			dst[i] = READ_DRAM_U16(rdram.base, framebuffer.depth_addr + 2 * i) << 2;
+			dst[i] = READ_DRAM_U16(base, framebuffer.depth_addr + 2 * i) << 2;
 
 		vulkan.framebuffer_depth.unmap();
 		vulkan.cmd.sync_buffer_to_gpu(vulkan.framebuffer_depth);
@@ -1406,6 +1411,11 @@ void Renderer::sync_framebuffer_to_cpu(AsyncFramebuffer &async)
 	device.wait(async.fence);
 	auto &framebuffer = async.framebuffer;
 
+	// A bit hacky, but if we reading back framebuffers async, we cannot safely write
+	// to normal RDRAM since that might have been recycled with other critical data.
+	// Instead, we maintain a shadowed RDRAM which contains GPU rendered data only.
+	auto base = framebuffer_data();
+
 	// Reads back GPU buffer and updates DRAM with newly rendered data.
 	// For now, just make every call synchronous, but we really
 	// want async readbacks for content which does not need FB emulation and forward GPU -> FB -> GPU when
@@ -1422,12 +1432,12 @@ void Renderer::sync_framebuffer_to_cpu(AsyncFramebuffer &async)
 			uint32_t max_addr = framebuffer.addr + 4 * pixels;
 			if (max_addr <= RDRAM_SIZE)
 			{
-				memcpy(rdram.base + framebuffer.addr, src, pixels * sizeof(uint32_t));
+				memcpy(base + framebuffer.addr, src, pixels * sizeof(uint32_t));
 			}
 			else
 			{
 				for (unsigned i = 0; i < pixels; i++)
-					WRITE_DRAM_U32(rdram.base, framebuffer.addr + 4 * i, src[i]);
+					WRITE_DRAM_U32(base, framebuffer.addr + 4 * i, src[i]);
 			}
 		}
 		else if (framebuffer.pixel_size == PIXEL_SIZE_16BPP)
@@ -1438,12 +1448,12 @@ void Renderer::sync_framebuffer_to_cpu(AsyncFramebuffer &async)
 			if (max_addr <= RDRAM_SIZE)
 			{
 				for (unsigned i = 0; i < pixels; i++)
-					WRITE_DRAM_U16_NOWRAP(rdram.base, framebuffer.addr + 2 * i, src[i] >> 2);
+					WRITE_DRAM_U16_NOWRAP(base, framebuffer.addr + 2 * i, src[i] >> 2);
 			}
 			else
 			{
 				for (unsigned i = 0; i < pixels; i++)
-					WRITE_DRAM_U16(rdram.base, framebuffer.addr + 2 * i, src[i] >> 2);
+					WRITE_DRAM_U16(base, framebuffer.addr + 2 * i, src[i] >> 2);
 			}
 		}
 		else if (framebuffer.pixel_size == PIXEL_SIZE_8BPP)
@@ -1453,12 +1463,12 @@ void Renderer::sync_framebuffer_to_cpu(AsyncFramebuffer &async)
 			if (max_addr <= RDRAM_SIZE)
 			{
 				for (unsigned i = 0; i < pixels; i++)
-					WRITE_DRAM_U8_NOWRAP(rdram.base, framebuffer.addr + 1 * i, src[i] >> 3);
+					WRITE_DRAM_U8_NOWRAP(base, framebuffer.addr + 1 * i, src[i] >> 3);
 			}
 			else
 			{
 				for (unsigned i = 0; i < pixels; i++)
-					WRITE_DRAM_U8(rdram.base, framebuffer.addr + 1 * i, src[i] >> 3);
+					WRITE_DRAM_U8(base, framebuffer.addr + 1 * i, src[i] >> 3);
 			}
 		}
 		async.color_buffer.unmap();
@@ -1473,12 +1483,12 @@ void Renderer::sync_framebuffer_to_cpu(AsyncFramebuffer &async)
 		if (max_addr <= RDRAM_SIZE)
 		{
 			for (unsigned i = 0; i < pixels; i++)
-				WRITE_DRAM_U16_NOWRAP(rdram.base, framebuffer.depth_addr + 2 * i, src[i] >> 2);
+				WRITE_DRAM_U16_NOWRAP(base, framebuffer.depth_addr + 2 * i, src[i] >> 2);
 		}
 		else
 		{
 			for (unsigned i = 0; i < pixels; i++)
-				WRITE_DRAM_U16(rdram.base, framebuffer.depth_addr + 2 * i, src[i] >> 2);
+				WRITE_DRAM_U16(base, framebuffer.depth_addr + 2 * i, src[i] >> 2);
 		}
 		async.depth_buffer.unmap();
 	}
@@ -1561,6 +1571,10 @@ void Renderer::sync_gpu_to_dram(bool blocking)
 	// If we're blocking, wait immediately and read back buffers.
 	if (blocking)
 	{
+		// Make sure we read to RDRAM here.
+		auto old_sync = true;
+		swap(old_sync, synchronous);
+
 		AsyncFramebuffer async;
 		async.sync_index = current_sync_index;
 		async.framebuffer = framebuffer;
@@ -1572,11 +1586,12 @@ void Renderer::sync_gpu_to_dram(bool blocking)
 		if (framebuffer.color_state == FRAMEBUFFER_GPU)
 			device.submit_alt_queue(alt_cmd, &sem, nullptr);
 		sync_framebuffer_to_cpu(async);
+
+		swap(old_sync, synchronous);
 	}
 	else
 	{
 		// If we're completing frame async, just queue up a transfer back to client memory.
-		// (and in the future a conversion to VI input texture).
 		AsyncFramebuffer async;
 		async.sync_index = current_sync_index;
 		async.framebuffer = framebuffer;
@@ -1606,31 +1621,15 @@ void Renderer::sync_full()
 	sync_gpu_to_dram(true);
 }
 
-#ifdef __LIBRETRO__
-extern "C" {
-   extern bool is_parallel_rdp_synchronous(void);
-};
-#endif
-
 void Renderer::complete_frame()
 {
-#ifdef __LIBRETRO__
-   if (is_parallel_rdp_synchronous())
-      sync_full();
-   else
-   {
-      flush_tile_lists();
-      sync_gpu_to_dram(false);
-   }
-#else
-   //#define RDP_SYNCHRONOUS
-#ifdef RDP_SYNCHRONOUS
-   sync_full();
-#else
-   flush_tile_lists();
-   sync_gpu_to_dram(false);
-#endif
-#endif
+	if (synchronous)
+		sync_full();
+	else
+	{
+		flush_tile_lists();
+		sync_gpu_to_dram(false);
+	}
 }
 
 void Renderer::allocate_tiles()

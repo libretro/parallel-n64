@@ -130,6 +130,15 @@ public:
 		tmem.set_rdram(dram, size);
 	}
 
+	void set_synchronous(bool enable)
+	{
+		// Make sure we don't end up with a situation where we inadvertently write old data to RDRAM.
+		if (enable && !synchronous)
+			async_transfers.clear();
+
+		synchronous = enable;
+	}
+
 	struct VIOutput
 	{
 		Framebuffer framebuffer;
@@ -342,10 +351,18 @@ private:
 		unsigned last_combiner;
 	} state;
 
-	struct
+	struct RDRAM
 	{
+		RDRAM()
+		{
+			shadow_base.resize(RDRAM_SIZE);
+			hidden_bits.resize(RDRAM_SIZE);
+		}
+
 		uint8_t *base = nullptr;
 		size_t size = 0;
+		std::vector<uint8_t> shadow_base;
+		std::vector<uint8_t> hidden_bits;
 	} rdram;
 
 	Framebuffer framebuffer;
@@ -374,6 +391,12 @@ private:
 	                                const Primitive &prim) const;
 	uint64_t raster_tile_count = 0;
 	uint64_t reject_tile_count = 0;
+	bool synchronous = false;
+
+	uint8_t *framebuffer_data()
+	{
+		return synchronous ? rdram.base : rdram.shadow_base.data();
+	}
 };
 }
 
