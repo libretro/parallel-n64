@@ -1232,12 +1232,19 @@ void Renderer::sync_color_dram_to_gpu()
 	// This usually happens when clear screen happens with CYCLE1 pipeline instead of FILL, which
 	// blocks us from using CPU-side fill optimization.
 	int old_index = -1;
+	bool matches_depth = false;
+	bool matches_color = false;
+
 	for (int i = async_transfers.size() - 1; i >= 0; i--)
 	{
 		auto &async = async_transfers[i];
-		if (async.framebuffer.addr == framebuffer.addr && async.framebuffer.pixel_size == framebuffer.pixel_size &&
-		    async.framebuffer.allocated_width == framebuffer.allocated_width &&
-		    async.framebuffer.allocated_height == framebuffer.allocated_height && async.color_buffer.staging.block)
+		matches_depth = async.framebuffer.depth_addr == framebuffer.addr && async.depth_buffer.staging.block &&
+		                framebuffer.pixel_size == PIXEL_SIZE_16BPP;
+		matches_color = async.framebuffer.addr == framebuffer.addr && async.color_buffer.staging.block &&
+		                async.framebuffer.pixel_size == framebuffer.pixel_size;
+
+		if ((matches_depth || matches_color) && async.framebuffer.allocated_width == framebuffer.allocated_width &&
+		    async.framebuffer.allocated_height == framebuffer.allocated_height)
 		{
 			old_index = i;
 			break;
@@ -1250,7 +1257,10 @@ void Renderer::sync_color_dram_to_gpu()
 		{
 			// We have already waited for earlier compute to complete when we called sync_gpu_to_dram().
 			begin_framebuffer();
-			vulkan.cmd.copy_buffer(vulkan.framebuffer, async_transfers[old_index].color_buffer);
+			if (matches_color)
+				vulkan.cmd.copy_buffer(vulkan.framebuffer, async_transfers[old_index].color_buffer);
+			else if (matches_depth)
+				vulkan.cmd.copy_buffer(vulkan.framebuffer, async_transfers[old_index].depth_buffer);
 		}
 	}
 	else
@@ -1579,7 +1589,8 @@ void Renderer::sync_gpu_to_dram(bool blocking)
 	if (framebuffer.color_state == FRAMEBUFFER_GPU)
 	{
 		alt_cmd = device.request_alt_command_buffer();
-		sync_gpu_to_vi(alt_cmd);
+		if (!depth_is_aliased)
+			sync_gpu_to_vi(alt_cmd);
 	}
 
 	// If we're blocking, wait immediately and read back buffers.
