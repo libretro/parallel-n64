@@ -55,7 +55,11 @@ void main()
 #endif
 
 #if Z_BUFFER
+#if COLOR_DEPTH_ALIAS
+   uvec2 pixel_z = unpack_depth(framebuffer.data[framebuffer_offset]);
+#else
    uvec2 pixel_z = unpack_depth(framebuffer_depth.data[framebuffer_offset]);
+#endif
 #endif
 
    uvec2 node = uvec2(head);
@@ -195,6 +199,12 @@ void main()
       // Coverage in 8-bpp always seems to be max.
       pixel.a = 7u;
 #endif
+
+#if COLOR_DEPTH_ALIAS
+      // In this mode, we're writing to color along with read-only depth testing.
+      // After writing color, make sure to re-decode depth.
+      pixel_z = unpack_depth((pixel.r << 10u) | (pixel.g << 5u) | (pixel.b << 0u) | (pixel.a));
+#endif
    } while (node.y != -1u);
 
    // Write back framebuffer.
@@ -210,7 +220,7 @@ void main()
    framebuffer.data[framebuffer_offset] = ((pixel.r & 0xffu) << 3u) | ((pixel.r & 1u) * 7u);
 #endif
 
-#if Z_BUFFER
+#if Z_BUFFER && !COLOR_DEPTH_ALIAS
    framebuffer_depth.data[framebuffer_offset] = pack_depth(pixel_z);
 #endif
 }

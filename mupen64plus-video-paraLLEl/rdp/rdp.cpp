@@ -734,6 +734,7 @@ void Renderer::draw_primitive(const Primitive &prim, const Attribute *attr, uint
 
 	// Create a new combiner instance if necessary.
 	bool flush = false;
+
 	if (cycle_type == CYCLE_TYPE_1 || cycle_type == CYCLE_TYPE_2)
 	{
 		if (state.combiners_dirty)
@@ -766,6 +767,8 @@ void Renderer::draw_primitive(const Primitive &prim, const Attribute *attr, uint
 
 		assert(buffer_prim.span_stride_combiner < combiner_data.size());
 	}
+	else
+		buffer_prim.span_stride_combiner = 0;
 
 	buffer_prim.span_stride_combiner |= (~(span_stride - 1) & 0xffffu) << 16u;
 
@@ -1328,6 +1331,14 @@ void Renderer::sync_depth_dram_to_gpu()
 	if (framebuffer.depth_state != FRAMEBUFFER_STALE_GPU)
 		return;
 
+	// If color buffer and depth buffer alias each other, we won't use a depth buffer per-se, as
+	// we'll do the aliasing internally.
+	if (framebuffer.addr == framebuffer.depth_addr)
+	{
+		framebuffer.depth_state = FRAMEBUFFER_GPU;
+		return;
+	}
+
 	fprintf(stderr, "sync_depth_dram_to_gpu()\n");
 	auto base = framebuffer_data();
 
@@ -1474,7 +1485,8 @@ void Renderer::sync_framebuffer_to_cpu(AsyncFramebuffer &async)
 		async.color_buffer.unmap();
 	}
 
-	if (framebuffer.depth_state == FRAMEBUFFER_GPU)
+	// Don't read back the depth buffer if it shares the address with color buffer.
+	if (framebuffer.depth_state == FRAMEBUFFER_GPU && framebuffer.addr != framebuffer.depth_addr)
 	{
 		const auto *src = static_cast<const uint32_t *>(async.depth_buffer.map());
 		uint32_t max_addr = framebuffer.depth_addr + 2 * pixels;
@@ -1552,10 +1564,12 @@ void Renderer::sync_gpu_to_dram(bool blocking)
 
 	fprintf(stderr, "sync_gpu_to_dram()\n");
 
+	bool depth_is_aliased = framebuffer.depth_state == FRAMEBUFFER_GPU && framebuffer.addr == framebuffer.depth_addr;
+
 	vulkan.cmd.begin_readback();
 	if (framebuffer.color_state == FRAMEBUFFER_GPU)
 		vulkan.cmd.sync_buffer_to_cpu(vulkan.framebuffer);
-	if (framebuffer.depth_state == FRAMEBUFFER_GPU)
+	if (framebuffer.depth_state == FRAMEBUFFER_GPU && !depth_is_aliased)
 		vulkan.cmd.sync_buffer_to_cpu(vulkan.framebuffer_depth);
 	vulkan.cmd.end_readback();
 
@@ -1579,7 +1593,7 @@ void Renderer::sync_gpu_to_dram(bool blocking)
 		async.sync_index = current_sync_index;
 		async.framebuffer = framebuffer;
 		async.color_buffer = vulkan.framebuffer;
-		if (framebuffer.depth_state == FRAMEBUFFER_GPU)
+		if (framebuffer.depth_state == FRAMEBUFFER_GPU && !depth_is_aliased)
 			async.depth_buffer = vulkan.framebuffer_depth;
 
 		async.fence = submit(&sem);
@@ -1597,7 +1611,7 @@ void Renderer::sync_gpu_to_dram(bool blocking)
 		async.framebuffer = framebuffer;
 
 		async.color_buffer = vulkan.framebuffer;
-		if (framebuffer.depth_state == FRAMEBUFFER_GPU)
+		if (framebuffer.depth_state == FRAMEBUFFER_GPU && !depth_is_aliased)
 			async.depth_buffer = vulkan.framebuffer_depth;
 
 		async.fence = submit(&sem);
@@ -1712,7 +1726,8 @@ void Renderer::flush_tile_lists()
 	// avoid uploading DRAM to GPU every frame.
 	sync_color_dram_to_gpu();
 	sync_depth_dram_to_gpu();
-	bool pass_uses_depth = framebuffer.depth_state == FRAMEBUFFER_GPU;
+	bool depth_is_aliased = framebuffer.depth_state == FRAMEBUFFER_GPU && framebuffer.addr == framebuffer.depth_addr;
+	bool pass_uses_depth = framebuffer.depth_state == FRAMEBUFFER_GPU && !depth_is_aliased;
 
 	// Primitive data.
 	{
@@ -1940,29 +1955,39 @@ void Renderer::flush_tile_lists()
 	vulkan.cmd.dispatch(tile_count, 1, 1);
 	vulkan.cmd.flush_barrier();
 
-	// Framebuffer pipeline.
-	switch (framebuffer.pixel_size)
+	if (depth_is_aliased)
 	{
-	case 3:
-		if (pass_uses_depth)
-			vulkan.cmd.bind_pipeline(device.get_rdp_pipeline(Vulkan::RDP::PipelineType::Z_32bit));
-		else
-			vulkan.cmd.bind_pipeline(device.get_rdp_pipeline(Vulkan::RDP::PipelineType::NoZ_32bit));
-		break;
+		if (framebuffer.pixel_size != PIXEL_SIZE_16BPP)
+			assert(0 && "Trying to alias depth and 16-bit color, but this does not make any sense.");
 
-	case 2:
-		if (pass_uses_depth)
-			vulkan.cmd.bind_pipeline(device.get_rdp_pipeline(Vulkan::RDP::PipelineType::Z_16bit));
-		else
-			vulkan.cmd.bind_pipeline(device.get_rdp_pipeline(Vulkan::RDP::PipelineType::NoZ_16bit));
-		break;
+		vulkan.cmd.bind_pipeline(device.get_rdp_pipeline(Vulkan::RDP::PipelineType::ColorDepthAlias_16bit));
+	}
+	else
+	{
+		// Framebuffer pipeline.
+		switch (framebuffer.pixel_size)
+		{
+		case 3:
+			if (pass_uses_depth)
+				vulkan.cmd.bind_pipeline(device.get_rdp_pipeline(Vulkan::RDP::PipelineType::Z_32bit));
+			else
+				vulkan.cmd.bind_pipeline(device.get_rdp_pipeline(Vulkan::RDP::PipelineType::NoZ_32bit));
+			break;
 
-	case 1:
-		if (pass_uses_depth)
-			vulkan.cmd.bind_pipeline(device.get_rdp_pipeline(Vulkan::RDP::PipelineType::Z_8bit));
-		else
-			vulkan.cmd.bind_pipeline(device.get_rdp_pipeline(Vulkan::RDP::PipelineType::NoZ_8bit));
-		break;
+		case 2:
+			if (pass_uses_depth)
+				vulkan.cmd.bind_pipeline(device.get_rdp_pipeline(Vulkan::RDP::PipelineType::Z_16bit));
+			else
+				vulkan.cmd.bind_pipeline(device.get_rdp_pipeline(Vulkan::RDP::PipelineType::NoZ_16bit));
+			break;
+
+		case 1:
+			if (pass_uses_depth)
+				vulkan.cmd.bind_pipeline(device.get_rdp_pipeline(Vulkan::RDP::PipelineType::Z_8bit));
+			else
+				vulkan.cmd.bind_pipeline(device.get_rdp_pipeline(Vulkan::RDP::PipelineType::NoZ_8bit));
+			break;
+		}
 	}
 
 	vulkan.cmd.dispatch(tiles_x, tiles_y, 1);

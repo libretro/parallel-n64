@@ -493,8 +493,8 @@ void Frontend::set_other_modes(const uint32_t *args)
 	bool sharpen = !!(args[0] & 0x00020000);
 	bool detail = !!(args[0] & 0x00040000);
 	bool convert_one = !!(args[0] & 0x00000200);
-	assert(!sharpen);
-	assert(!detail);
+	//assert(!sharpen);
+	//assert(!detail);
 	assert(!convert_one);
 
 	bool enable_tlut = (args[0] & 0x00008000) != 0;

@@ -30,9 +30,10 @@ enum class PipelineType
 	Z_8bit = 3,
 	Z_16bit = 4,
 	Z_32bit = 5,
-	Varying = 6,
-	Texture = 7,
-	Combiner = 8,
+	ColorDepthAlias_16bit = 6,
+	Varying = 7,
+	Texture = 8,
+	Combiner = 9,
 	Count
 };
 

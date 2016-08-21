@@ -390,6 +390,14 @@ SOURCES_C +=  $(VIDEODIR_ANGRYLION)/n64video_main.c \
 						  $(VIDEODIR_ANGRYLION)/n64video_vi.c \
 						  $(VIDEODIR_ANGRYLION)/n64video.c
 
+ifeq ($(HAVE_RDP_DUMP), 1)
+	ifneq ($(HAVE_VULKAN),1)
+		SOURCES_C += $(VIDEODIR_PARALLEL)/rdp_dump.c
+	endif
+	CFLAGS += -DHAVE_RDP_DUMP
+	CXXFLAGS += -DHAVE_RDP_DUMP
+endif
+
 ifeq ($(HAVE_VULKAN),1)
 CFLAGS   += -DHAVE_PARALLEL
 CXXFLAGS += -DHAVE_PARALLEL
