@@ -95,6 +95,9 @@ static void *l_DebugCallContext = NULL;
 
 static void _ChangeSize(void)
 {
+   if (!gfx_info.VI_H_START_REG)
+      return;
+
    float res_scl_y      = (float)settings.res_y / 240.0f;
    uint32_t dwHStartReg = *gfx_info.VI_H_START_REG;
    uint32_t dwVStartReg = *gfx_info.VI_V_START_REG;

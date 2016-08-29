@@ -274,6 +274,9 @@ void rdp_reset(void)
    int i;
    reset                = 1;
 
+   if (!rdp.vtx)
+      return;
+
    // set all vertex numbers
    for (i = 0; i < MAX_VTX; i++)
       rdp.vtx[i].number = i;
