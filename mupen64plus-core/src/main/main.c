@@ -260,9 +260,9 @@ void mupen_main_exit(void)
       destroy_debugger();
 #endif
 
-   rsp.romClosed();
-   input.romClosed();
-   gfx.romClosed();
+   if (rsp.romClosed) rsp.romClosed();
+   if (input.romClosed) input.romClosed();
+   if (gfx.romClosed) gfx.romClosed();
 
    // clean up
    g_EmulatorRunning = 0;
