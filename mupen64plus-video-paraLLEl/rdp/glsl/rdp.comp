@@ -176,7 +176,7 @@ void main()
                   if (blend_en)
                      pixel.a = clamp(newcvg, 0u, 7u);
                   else
-                     pixel.a = post_alpha_coverage - 1u;
+                     pixel.a = (post_alpha_coverage - 1u) & 7u;
                }
                else if (cvg_mode == CVG_MODE_WRAP)
                   pixel.a = newcvg & 7u;
