@@ -1,3 +1,4 @@
+#include <stdint.h>
 #include "vulkan_util.hpp"
 #include "common.hpp"
 #include <assert.h>
