@@ -4,7 +4,7 @@
 struct WorkDescriptor
 {
    uvec2 base;
-   uint primitive;
+   uint lod_info_primitive;
    // This really shouldn't be here, but we had 4 bytes to spare and RDPPrimitive is full ...
    uint fog_color;
 };

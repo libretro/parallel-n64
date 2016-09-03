@@ -95,9 +95,9 @@ int dither_alpha(uint blendword)
    else
    {
       uint full_dither = FULL_DITHER_SEL(blendword);
-      return textureLod(uDitherLUT,
+      return int(textureLod(uDitherLUT,
             vec3((vec2(gl_GlobalInvocationID.xy) + 0.5) * 0.25,
-               float(full_dither)), 0.0).y;
+               float(full_dither)), 0.0).y);
    }
 }
 

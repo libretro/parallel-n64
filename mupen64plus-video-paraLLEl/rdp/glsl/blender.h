@@ -121,7 +121,7 @@ bool blender(uint flags,
       if (dither_sel == 2)
          cdith = noise8(1) & 0x7;
       else
-         cdith = textureLod(uDitherLUT, vec3((vec2(gl_GlobalInvocationID.xy) + 0.5) * 0.25, float(FULL_DITHER_SEL(blendword))), 0.0).x;
+         cdith = int(textureLod(uDitherLUT, vec3((vec2(gl_GlobalInvocationID.xy) + 0.5) * 0.25, float(FULL_DITHER_SEL(blendword))), 0.0).x);
       result = rgb_dither(result, cdith, dither_sel);
    }
 

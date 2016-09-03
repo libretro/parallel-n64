@@ -197,7 +197,7 @@ void Renderer::init_dither_lut()
 		0, 4, 1, 5, 4, 0, 5, 1, 3, 7, 2, 6, 7, 3, 6, 2,
 	};
 
-	vulkan.dither_lut = device.create_image_2d_array(VK_FORMAT_R8G8_SINT, 4, 4, 16);
+	vulkan.dither_lut = device.create_image_2d_array(VK_FORMAT_R8G8_UINT, 4, 4, 16);
 	CommandBuffer cmd = device.request_command_buffer();
 	Buffer staging = device.request_buffer(BufferType::Staging, (16 * 2) * 16);
 	cmd.begin_stream();
@@ -791,7 +791,7 @@ void Renderer::draw_primitive(const Primitive &prim, const Attribute *attr, uint
 				auto &tile = tile_lists[y * tiles_x + x];
 				append_tile_list(tile, num_tris, tile_count);
 
-				work_data.push_back({ { uint32_t(x), uint32_t(y) }, num_tris, state.fog_color });
+				work_data.push_back({ { uint32_t(x), uint32_t(y) }, num_tris | state.lod_flags, state.fog_color });
 				tile_count++;
 
 				if (tile_count > FlushBufferTileCount)
@@ -878,11 +878,22 @@ bool Renderer::coarse_conservative_raster(int x, int y, int min_x, int max_x, in
 	return !cull_m || !cull_l;
 }
 
+void Renderer::set_lod_modes(bool detail, bool sharpen)
+{
+	state.lod_flags &= ~(LOD_INFO_PRIMITIVE_DETAIL | LOD_INFO_PRIMITIVE_SHARPEN);
+	state.lod_flags |= detail ? LOD_INFO_PRIMITIVE_DETAIL : 0;
+	state.lod_flags |= sharpen ? LOD_INFO_PRIMITIVE_SHARPEN : 0;
+}
+
 void Renderer::set_prim_color(uint32_t w1, uint32_t w2)
 {
 	state.prim_color = w2;
 	state.prim_lod_frac = w1 & 0xff;
 	state.combiners_dirty = true;
+
+	uint32_t min_lod = (w1 & 0x1f00) >> 8;
+	state.lod_flags &= ~LOD_INFO_PRIMITIVE_MIN_LOD_MASK;
+	state.lod_flags |= min_lod << LOD_INFO_PRIMITIVE_MIN_LOD_SHIFT;
 }
 
 void Renderer::set_env_color(uint32_t w2)
@@ -1905,7 +1916,7 @@ void Renderer::flush_tile_lists()
 	{
 		// Make validators shut up.
 		device.request_dynamic_buffer(vulkan.cmd, vulkan.buffer_set, Vulkan::RDP::BufferLayout::TileDescriptor, 64);
-		vulkan.buffer_set.set_image(static_cast<unsigned>(Vulkan::RDP::BufferLayout::TileAtlas), *vulkan.centroid_lut);
+		vulkan.buffer_set.set_image(static_cast<unsigned>(Vulkan::RDP::BufferLayout::TileAtlas), *vulkan.dither_lut);
 	}
 
 	// Work Descriptors.

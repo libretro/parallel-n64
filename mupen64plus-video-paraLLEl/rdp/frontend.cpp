@@ -175,7 +175,12 @@ void Frontend::tri_fill_tile(Primitive *prim, uint32_t *tile_mask, uint32_t mips
 		}
 	}
 	else
+	{
 		prim->flags |= RDP_FLAG_SAMPLE_TEX_LOD;
+		// Detail mip-chains have an extra LOD level.
+		if (other_modes.lod_detail)
+			mips = min(mips + 1u, 8u);
+	}
 
 	if (other_modes.cycle_type == CYCLE_TYPE_2)
 	{
@@ -488,13 +493,13 @@ void Frontend::set_other_modes(const uint32_t *args)
 	other_modes.z_source_sel = !!(args[1] & 0x00000004);
 	other_modes.alpha_noise = !!(args[1] & 0x00000002);
 	other_modes.alphatest = !!(args[1] & 0x00000001);
-	other_modes.lod_enable = !!(args[0] & 0x00010000);
 
-	bool sharpen = !!(args[0] & 0x00020000);
-	bool detail = !!(args[0] & 0x00040000);
+	other_modes.lod_enable = !!(args[0] & 0x00010000);
+	other_modes.lod_sharpen = !!(args[0] & 0x00020000);
+	other_modes.lod_detail = !!(args[0] & 0x00040000);
+	renderer->set_lod_modes(other_modes.lod_detail, other_modes.lod_sharpen);
+
 	bool convert_one = !!(args[0] & 0x00000200);
-	//assert(!sharpen);
-	//assert(!detail);
 	assert(!convert_one);
 
 	bool enable_tlut = (args[0] & 0x00008000) != 0;

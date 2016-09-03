@@ -42,6 +42,11 @@
 
 #define BLENDMODE_FLAG_DITHER_SEL 16
 
+#define LOD_INFO_PRIMITIVE_DETAIL (1 << 16)
+#define LOD_INFO_PRIMITIVE_SHARPEN (1 << 17)
+#define LOD_INFO_PRIMITIVE_MIN_LOD_SHIFT 18
+#define LOD_INFO_PRIMITIVE_MIN_LOD_MASK (31 << 18)
+
 #define SEXT(x, bits) (int32_t((x) << (32 - (bits))) >> (32 - (bits)))
 
 namespace RDP
@@ -90,6 +95,7 @@ public:
 	void set_fog_color(uint32_t w2);
 	void set_convert(uint32_t w1, uint32_t w2);
 	void set_primitive_z(uint32_t w2);
+	void set_lod_modes(bool detail, bool sharpen);
 
 	bool combiner_reads_secondary_tile(unsigned cycle) const;
 	bool combiner_reads_pipelined_tile() const;
@@ -348,7 +354,8 @@ private:
 		bool combiner_reads_pipelined_tile = false;
 
 		std::unordered_map<size_t, unsigned> combiner_map;
-		unsigned last_combiner;
+		unsigned last_combiner = 0;
+		uint32_t lod_flags = 0;
 	} state;
 
 	struct RDRAM

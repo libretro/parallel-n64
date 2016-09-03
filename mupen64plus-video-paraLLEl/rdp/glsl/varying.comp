@@ -25,7 +25,7 @@ void main()
    uint tile = gl_WorkGroupID.x;
 
    uvec2 coord = work.desc[tile].base * uvec2(TILE_SIZE_X, TILE_SIZE_Y) + local;
-   uint prim_id = work.desc[tile].primitive;
+   uint prim_id = LOD_INFO_PRIMITIVE(work.desc[tile].lod_info_primitive);
    uint flags = prim.flags;
 
    int y = int(coord.y) * 4;

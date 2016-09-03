@@ -52,4 +52,9 @@
 #define CVG_MODE_ZAP 2u
 #define CVG_MODE_SAVE 3u
 
+#define LOD_INFO_PRIMITIVE_DETAIL(flags) TEST_FLAG(flags, 16)
+#define LOD_INFO_PRIMITIVE_SHARPEN(flags) TEST_FLAG(flags, 17)
+#define LOD_INFO_PRIMITIVE(flags) ((flags) & 0xffffu)
+#define LOD_INFO_PRIMITIVE_MIN_LOD(flags) int((flags) >> 18u)
+
 #endif
