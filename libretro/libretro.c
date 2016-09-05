@@ -206,9 +206,11 @@ static void core_settings_set_defaults(void)
 
    /* Load RSP plugin core option */
 #ifdef ONLY_VULKAN
+#ifdef HAVE_PARALLEL_RSP
    if (rsp_var.value && !strcmp(rsp_var.value, "parallel"))
       rsp_plugin = RSP_PARALLEL;
    else
+#endif
       rsp_plugin = RSP_CXD4;
 #else
    rsp_plugin = RSP_HLE;
