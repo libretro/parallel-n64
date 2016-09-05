@@ -1,10 +1,13 @@
-#include <stdint.h>
 #include "vulkan_util.hpp"
 #include "common.hpp"
 #include <assert.h>
 
 #include <future>
 #include <time.h>
+
+#ifndef UINT64_MAX
+#define UINT64_MAX		(__UINT64_C(18446744073709551615))
+#endif
 
 using namespace std;
 
