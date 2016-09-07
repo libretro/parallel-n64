@@ -1126,6 +1126,7 @@ void OGL_SwapBuffers(void)
    // if emulator defined a render callback function, call it before
    // buffer swap
    if (renderCallback) (*renderCallback)();
+   void retro_return(bool a);
    retro_return(true);
 
    scProgramChanged = 0;

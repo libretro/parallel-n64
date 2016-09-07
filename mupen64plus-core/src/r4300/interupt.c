@@ -32,6 +32,7 @@
 #include "api/m64p_types.h"
 #include "cached_interp.h"
 #include "cp0_private.h"
+#include "dd/dd_controller.h"
 #include "exception.h"
 #include "main/main.h"
 #include "main/savestates.h"

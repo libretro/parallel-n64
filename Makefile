@@ -275,7 +275,7 @@ else ifneq (,$(findstring android,$(platform)))
 # QNX
 else ifeq ($(platform), qnx)
    fpic = -fPIC
-   TARGET := $(TARGET_NAME)_libretro_qnx.so
+   TARGET := $(TARGET_NAME)_libretro_$(platform).so
    LDFLAGS += -shared -Wl,--version-script=$(LIBRETRO_DIR)/link.T -Wl,--no-undefined -Wl,--warn-common
    GL_LIB := -lGLESv2
 
@@ -295,7 +295,7 @@ else ifeq ($(platform), qnx)
 
 # emscripten
 else ifeq ($(platform), emscripten)
-   TARGET := $(TARGET_NAME)_libretro_emscripten.bc
+   TARGET := $(TARGET_NAME)_libretro_$(platform).bc
    GLES := 1
    WITH_DYNAREC :=
    CPUFLAGS += -Dasm=asmerror -D__asm__=asmerror -DNO_ASM -DNOSSE
@@ -317,6 +317,7 @@ else ifeq ($(platform), emscripten)
 
    HAVE_NEON = 0
    PLATFORM_EXT := unix
+	STATIC_LINKING=1
    #HAVE_SHARED_CONTEXT := 1
 
 # PlayStation Vita

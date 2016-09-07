@@ -1367,6 +1367,7 @@ bool emu_step_render(void);
 int retro_return(int just_flipping)
 {
 #if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
+   void vbo_disable(void);
    vbo_disable();
 #endif
 
