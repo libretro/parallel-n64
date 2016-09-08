@@ -46,6 +46,8 @@
 
 #include "Gfx_1.3.h"
 
+#include "../Glitch64/glide.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -83,6 +85,7 @@ void ZLUT_init(void);
 void ZLUT_release(void);
 
 void DrawDepthBufferFog(void);
+void DrawDepthBuffer(VERTEX * vtx, int n);
 
 void copyWhiteToRDRAM(void);
 

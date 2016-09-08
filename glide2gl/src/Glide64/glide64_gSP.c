@@ -1,9 +1,11 @@
 #include <stdint.h>
 
+#include "3dmath.h"
 #include "../../../Graphics/3dmath.h"
 #include "../../../Graphics/RDP/gDP_state.h"
 #include "../../../Graphics/RSP/gSP_state.h"
 
+#include "glide64_gDP.h"
 #include "glide64_gSP.h"
 
 int vtx_last = 0;

@@ -42,14 +42,21 @@ void gln64gDPSetColorImage( uint32_t format, uint32_t size, uint32_t width, uint
 void gDPSetColorImage( uint32_t format, uint32_t size, uint32_t width, uint32_t address );
 void gln64gDPSetTextureImage( uint32_t format, uint32_t size, uint32_t width, uint32_t address );
 void gDPSetTextureImage( uint32_t format, uint32_t size, uint32_t width, uint32_t address );
+void gln64gDPSetDepthSource(uint32_t source);
 void gln64gDPSetDepthImage( uint32_t address );
 void gDPSetDepthImage( uint32_t address );
 void gln64gDPSetEnvColor( uint32_t r, uint32_t g, uint32_t b, uint32_t a );
 void gDPSetEnvColor( uint32_t r, uint32_t g, uint32_t b, uint32_t a );
 void gln64gDPSetBlendColor( uint32_t r, uint32_t g, uint32_t b, uint32_t a );
 void gDPSetBlendColor( uint32_t r, uint32_t g, uint32_t b, uint32_t a );
+void gln64gDPSetFogColor( uint32_t r, uint32_t g, uint32_t b, uint32_t a );
 void gDPSetFogColor( uint32_t r, uint32_t g, uint32_t b, uint32_t a );
+void gln64gDPSetRenderMode(uint32_t mode1, uint32_t mode2);
+void gln64gDPSetFillColor( uint32_t c );
+void gln64gDPSetAlphaDither(uint32_t type);
 void gDPSetFillColor( uint32_t c );
+void gln64gDPSetTextureFilter(uint32_t type);
+void gln64gDPSetTextureLOD(uint32_t mode);
 void gln64gDPSetPrimColor( uint32_t m, uint32_t l, uint32_t r, uint32_t g, uint32_t b, uint32_t a );
 void gDPSetPrimColor( uint32_t m, uint32_t l, uint32_t r, uint32_t g, uint32_t b, uint32_t a );
 void gln64gDPSetTile(

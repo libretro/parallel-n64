@@ -53,6 +53,7 @@
 #include "../../../Graphics/RDP/gDP_state.h"
 #include "../../../Graphics/image_convert.h"
 
+int GetTexAddrUMA(int tmu, int texsize);
 static void LoadTex (int id, int tmu);
 
 uint8_t tex1[2048*2048*4];		// temporary texture

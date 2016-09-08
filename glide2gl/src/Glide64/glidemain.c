@@ -619,6 +619,8 @@ output:   none
 *******************************************************************/
 uint32_t update_screen_count = 0;
 
+void retro_return(bool a);
+
 void glide64UpdateScreen (void)
 {
    bool forced_update = false;

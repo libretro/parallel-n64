@@ -13,6 +13,7 @@
 #include "RDP.h"
 
 #include "../../Graphics/RSP/gSP_state.h"
+#include "../../Graphics/RDP/RDP_state.h"
 
 enum
 {

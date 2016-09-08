@@ -133,7 +133,7 @@ typedef struct {
 static int render_cycle_mode_counts[4];
 #endif
 
-STRICTINLINE int32_t irand(void);
+int32_t irand(void);
 
 static int8_t get_dither_noise_type;
 static int scfield;
@@ -7411,16 +7411,12 @@ static void tile_tlut_common_cs_decoder(uint32_t w1, uint32_t w2)
     edgewalker_for_loads(lewdata);
 }
 
-STRICTINLINE int32_t irand(void)
+int32_t irand(void)
 {
     iseed *= 0x343fd;
     iseed += 0x269ec3;
     return ((iseed >> 16) & 0x7fff);
 }
-
-
-
-
 
 void rdp_close(void)
 {
