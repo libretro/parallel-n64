@@ -1864,6 +1864,56 @@ void rglWaitSync(void *sync, GLbitfield flags, uint64_t timeout)
 #endif
 }
 
+/*
+ *
+ * Core in:
+ * OpenGL    : 4.4
+ * OpenGLES  : Not available
+ */
+void rglBufferStorage(GLenum target, GLsizeiptr size, const GLvoid *data, GLbitfield flags) {
+#if defined(HAVE_OPENGL)
+  glBufferStorage(target, size, data, flags);
+#endif
+}
+
+/*
+ *
+ * Core in:
+ * OpenGL    : 3.0
+ * OpenGLES  : 3.0
+ */
+void rglFlushMappedBufferRange(GLenum target, GLintptr offset, GLsizeiptr length) {
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES) && defined(HAVE_OPENGLES3)
+  glFlushMappedBufferRange(target, offset, length);
+#endif
+}
+
+/*
+ *
+ * Core in:
+ * OpenGL    : 3.2
+ * OpenGLES  : 3.0
+ */
+GLenum rglClientWaitSync(void *sync, GLbitfield flags, uint64_t timeout)
+{
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES) && defined(HAVE_OPENGLES3)
+  return glClientWaitSync((GLsync)sync, flags, (GLuint64)timeout);
+#endif
+}
+
+/*
+ *
+ * Core in:
+ * OpenGL    : 3.2
+ * OpenGLES  : Not available
+ */
+void rglDrawElementsBaseVertex(GLenum mode, GLsizei count, GLenum type,
+			       GLvoid *indices, GLint basevertex) {
+#if defined(HAVE_OPENGL)
+  glDrawElementsBaseVertex(mode, count, type, indices, basevertex);
+#endif
+}
+
 /* GLSM-side */
 
 static void glsm_state_setup(void)
@@ -1885,7 +1935,8 @@ static void glsm_state_setup(void)
    gl_state.cap_translate[SGL_DEPTH_CLAMP]          = GL_DEPTH_CLAMP;
 #endif
 
-   for (i = 0; i < MAX_ATTRIB; i++) {
+   for (i = 0; i < MAX_ATTRIB; i++)
+   {
       gl_state.vertex_attrib_pointer.enabled[i] = 0;
       gl_state.attrib_pointer.used[i] = 0;
    }
@@ -1936,14 +1987,15 @@ static void glsm_state_bind(void)
       else
          glDisableVertexAttribArray(i);
 
-      if (gl_state.attrib_pointer.used[i]){
+      if (gl_state.attrib_pointer.used[i])
+      {
          glVertexAttribPointer(
-            i,
-            gl_state.attrib_pointer.size[i],
-            gl_state.attrib_pointer.type[i],
-            gl_state.attrib_pointer.normalized[i],
-            gl_state.attrib_pointer.stride[i],
-            gl_state.attrib_pointer.pointer[i]);
+               i,
+               gl_state.attrib_pointer.size[i],
+               gl_state.attrib_pointer.type[i],
+               gl_state.attrib_pointer.normalized[i],
+               gl_state.attrib_pointer.stride[i],
+               gl_state.attrib_pointer.pointer[i]);
       }
    }
 
@@ -2104,6 +2156,8 @@ static bool glsm_state_ctx_destroy(void *data)
    if (gl_state.bind_textures.ids)
       free(gl_state.bind_textures.ids);
    gl_state.bind_textures.ids = NULL;
+
+   return true;
 }
 
 static bool glsm_state_ctx_init(void *data)
