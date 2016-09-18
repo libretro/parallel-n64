@@ -359,6 +359,12 @@ else ifneq (,$(findstring win,$(platform)))
 
 endif
 
+ifneq ($(SANITIZER),)
+    CFLAGS   += -fsanitize=$(SANITIZER)
+    CXXFLAGS += -fsanitize=$(SANITIZER)
+    LDFLAGS  += -fsanitize=$(SANITIZER)
+endif
+
 include Makefile.common
 
 ifeq ($(HAVE_NEON), 1)
