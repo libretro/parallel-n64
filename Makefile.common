@@ -231,6 +231,7 @@ endif
 SOURCES_C += $(LIBRETRO_DIR)/libretro.c \
 				 $(CORE_DIR)/src/plugin/emulate_game_controller_via_libretro.c \
 				 $(LIBRETRO_COMM_DIR)/memmap/memalign.c \
+				 $(LIBRETRO_COMM_DIR)/encodings/encoding_crc32.c \
 				 $(AUDIO_LIBRETRO_DIR)/audio_backend_libretro.c \
 				 $(AUDIO_LIBRETRO_DIR)/audio_resampler_driver.c \
 				 $(AUDIO_LIBRETRO_DIR)/drivers_resampler/sinc_resampler.c \
