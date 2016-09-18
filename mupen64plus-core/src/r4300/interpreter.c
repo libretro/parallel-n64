@@ -1781,7 +1781,7 @@ DECLARE_INSTRUCTION(DSRA32)
 }
 
 /* TLB */
-#include <encodings/crc32.h>
+extern uint32_t adler32(uint32_t adler, void *buf, int len);
 
 DECLARE_INSTRUCTION(TLBR)
 {
@@ -1822,7 +1822,7 @@ static void TLBWrite(unsigned int idx)
                 md5_finish(&state, digest);
                 for (j=0; j<16; j++) blocks[i]->md5[j] = digest[j];*/
                 
-                blocks[i]->adler32 = encoding_crc32(0, (void*)&g_rdram[(tlb_LUT_r[i]&0x7FF000)/4], 0x1000);
+                blocks[i]->adler32 = adler32(0, (void*)&g_rdram[(tlb_LUT_r[i]&0x7FF000)/4], 0x1000);
                 
                 invalid_code[i] = 1;
             }
@@ -1853,7 +1853,7 @@ static void TLBWrite(unsigned int idx)
                md5_finish(&state, digest);
                for (j=0; j<16; j++) blocks[i]->md5[j] = digest[j];*/
                 
-               blocks[i]->adler32 = encoding_crc32(0, (void*)&g_rdram[(tlb_LUT_r[i]&0x7FF000)/4], 0x1000);
+               blocks[i]->adler32 = adler32(0, (void*)&g_rdram[(tlb_LUT_r[i]&0x7FF000)/4], 0x1000);
                 
                invalid_code[i] = 1;
             }
@@ -1922,7 +1922,7 @@ static void TLBWrite(unsigned int idx)
                }*/
                if(blocks[i] && blocks[i]->adler32)
                {
-                  if(blocks[i]->adler32 == encoding_crc32(0,(void*)&g_rdram[(tlb_LUT_r[i]&0x7FF000)/4],0x1000))
+                  if(blocks[i]->adler32 == adler32(0,(void*)&g_rdram[(tlb_LUT_r[i]&0x7FF000)/4],0x1000))
                      invalid_code[i] = 0;
                }
          }
@@ -1951,7 +1951,7 @@ static void TLBWrite(unsigned int idx)
             }*/
             if(blocks[i] && blocks[i]->adler32)
             {
-               if(blocks[i]->adler32 == encoding_crc32(0,(void*)&g_rdram[(tlb_LUT_r[i]&0x7FF000)/4],0x1000))
+               if(blocks[i]->adler32 == adler32(0,(void*)&g_rdram[(tlb_LUT_r[i]&0x7FF000)/4],0x1000))
                   invalid_code[i] = 0;
             }
          }

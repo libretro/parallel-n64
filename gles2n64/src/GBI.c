@@ -7,8 +7,6 @@
 #include <unistd.h>
 #endif
 
-#include <encodings/crc32.h>
-
 #include "gles2N64.h"
 #include "GBI.h"
 #include "RDP.h"
@@ -225,7 +223,7 @@ MicrocodeInfo *GBI_DetectMicrocode( uint32_t uc_start, uint32_t uc_dstart, uint1
    current->type = NONE;
 
    // See if we can identify it by CRC
-   uc_crc = encoding_crc32(0xffffffff, &gfx_info.RDRAM[uc_start & 0x1FFFFFFF], 4096);
+   uc_crc = CRC_Calculate(&gfx_info.RDRAM[uc_start & 0x1FFFFFFF], 4096);
    LOG(LOG_MINIMAL, "UCODE CRC=0x%x\n", uc_crc);
 
    for (i = 0; i < sizeof( specialMicrocodes ) / sizeof( SpecialMicrocodeInfo ); i++)

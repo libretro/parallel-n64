@@ -37,7 +37,6 @@
 //****************************************************************
 
 #include <math.h>
-#include <encodings/crc32.h>
 #include "Gfx_1.3.h"
 #include "3dmath.h"
 #include "Util.h"
@@ -970,8 +969,8 @@ void load_palette (uint32_t addr, uint16_t start, uint16_t count)
    if (end == start) // it can be if count < 16
       end = start + 1;
    for (p = start; p < end; p++)
-      rdp.pal_8_crc[p] = encoding_crc32( 0xFFFFFFFF, (const uint8_t*)&rdp.pal_8[(p << 4)], 32 );
-   gDP.paletteCRC256   = encoding_crc32( 0xFFFFFFFF, (const uint8_t*)rdp.pal_8_crc, 64 );
+      rdp.pal_8_crc[p] = CRC32( 0xFFFFFFFF, &rdp.pal_8[(p << 4)], 32 );
+   gDP.paletteCRC256 = CRC32( 0xFFFFFFFF, rdp.pal_8_crc, 64 );
 }
 
 static void rdp_loadtlut(uint32_t w0, uint32_t w1)

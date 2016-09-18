@@ -48,7 +48,6 @@
 #include "CRC.h"
 
 #include <clamping.h>
-#include <encodings/crc32.h>
 
 #include "../../../Graphics/GBI.h"
 #include "../../../Graphics/RDP/gDP_state.h"
@@ -141,7 +140,7 @@ static uint32_t textureCRC(uint32_t crc, uint8_t *addr, int width, int height, i
 
    while (height--)
    {
-      crc = encoding_crc32(crc, addr, len);
+      crc = CRC32(crc, addr, len);
       addr += len + line;
    }
 

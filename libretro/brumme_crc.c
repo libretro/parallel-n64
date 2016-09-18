@@ -5,7 +5,7 @@
  * implementations and a test programs that we are not interested in.
  *
  *
- * crc32_4bytes and crc32_16bytes are based/derived from Intel's
+ * crc32_4bytes, crc32_8bytes and crc32_16bytes are based/derived from Intel's
  * Slicing-by-4 algorithm available at http://sourceforge.net/projects/slicing-by-8/
  *
  * See http://create.stephan-brumme.com/crc32/ for more information.
@@ -43,6 +43,7 @@
  *    if running on an embedded system, you might consider shrinking the
  *    big Crc32Lookup table:
  *    - crc32_4bytes   needs only Crc32Lookup[0..3]
+ *    - crc32_8bytes   needs only Crc32Lookup[0..7]
  *    - crc32_16bytes  needs all of Crc32Lookup
  */
 
@@ -51,8 +52,6 @@
 
 #include <retro_inline.h>
 #include <boolean.h>
-
-#include <encodings/crc32.h>
 
 #ifdef _MSC_VER
 typedef unsigned __int8  uint8_t;
@@ -88,6 +87,7 @@ static INLINE uint32_t swap(uint32_t x)
 
 static uint32_t crc32_1byte(const void* data, size_t length, uint32_t previousCrc32);
 static uint32_t crc32_4bytes(const void* data, size_t length, uint32_t previousCrc32);
+static uint32_t crc32_8bytes(const void* data, size_t length, uint32_t previousCrc32);
 static uint32_t crc32_16bytes(const void* data, size_t length, uint32_t previousCrc32);
 
 void CRC_BuildTable(void)
@@ -110,6 +110,21 @@ void CRC_BuildTable(void)
    for (slice = 1; slice < MaxSlice; slice++)
       for (i = 0; i <= 0xFF; i++)
          Crc32Lookup[slice][i] = (Crc32Lookup[slice - 1][i] >> 8) ^ Crc32Lookup[0][Crc32Lookup[slice - 1][i] & 0xFF];
+}
+
+unsigned int CRC32(unsigned int crc, void *buffer, unsigned int count)
+{
+   return crc32_8bytes(buffer, count, crc);
+}
+
+uint32_t CRC_Calculate(void *buffer, uint32_t count)
+{
+   return CRC32(0xffffffff, buffer, count);
+}
+
+uint32_t adler32(uint32_t adler, void *buf, int len)
+{
+   return CRC32(adler, buf, len);
 }
 
 /// compute CRC32 (standard algorithm)
@@ -152,6 +167,50 @@ static uint32_t crc32_4bytes(const void* data, size_t length, uint32_t previousC
 
    const uint8_t* currentChar = (const uint8_t*) current;
    // remaining 1 to 3 bytes (standard algorithm)
+   while (length-- != 0)
+      crc = (crc >> 8) ^ Crc32Lookup[0][(crc & 0xFF) ^ *currentChar++];
+
+   return ~crc; // same as crc ^ 0xFFFFFFFF
+}
+
+/// compute CRC32 (Slicing-by-8 algorithm)
+static uint32_t crc32_8bytes(const void* data, size_t length, uint32_t previousCrc32)
+{
+   uint32_t crc = ~previousCrc32; // same as previousCrc32 ^ 0xFFFFFFFF
+   const uint32_t* current = (const uint32_t*) data;
+
+   // process eight bytes at once (Slicing-by-8)
+   while (length >= 8)
+   {
+#ifdef MSB_FIRST
+      uint32_t one = *current++ ^ swap(crc);
+      uint32_t two = *current++;
+      crc = Crc32Lookup[0][ two      & 0xFF] ^
+            Crc32Lookup[1][(two>> 8) & 0xFF] ^
+            Crc32Lookup[2][(two>>16) & 0xFF] ^
+            Crc32Lookup[3][(two>>24) & 0xFF] ^
+            Crc32Lookup[4][ one      & 0xFF] ^
+            Crc32Lookup[5][(one>> 8) & 0xFF] ^
+            Crc32Lookup[6][(one>>16) & 0xFF] ^
+            Crc32Lookup[7][(one>>24) & 0xFF];
+#else
+      uint32_t one = *current++ ^ crc;
+      uint32_t two = *current++;
+      crc = Crc32Lookup[0][(two>>24) & 0xFF] ^
+            Crc32Lookup[1][(two>>16) & 0xFF] ^
+            Crc32Lookup[2][(two>> 8) & 0xFF] ^
+            Crc32Lookup[3][ two      & 0xFF] ^
+            Crc32Lookup[4][(one>>24) & 0xFF] ^
+            Crc32Lookup[5][(one>>16) & 0xFF] ^
+            Crc32Lookup[6][(one>> 8) & 0xFF] ^
+            Crc32Lookup[7][ one      & 0xFF];
+#endif
+
+      length -= 8;
+   }
+
+   const uint8_t* currentChar = (const uint8_t*) current;
+   // remaining 1 to 7 bytes (standard algorithm)
    while (length-- != 0)
       crc = (crc >> 8) ^ Crc32Lookup[0][(crc & 0xFF) ^ *currentChar++];
 
