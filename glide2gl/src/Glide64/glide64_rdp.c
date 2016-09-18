@@ -1623,12 +1623,15 @@ void DetectFrameBufferUsage(void)
    if (rdp.black_ci_index > 0 && rdp.black_ci_index < rdp.copy_ci_index)
       rdp.frame_buffers[rdp.black_ci_index].status = CI_MAIN;
 
-   if (rdp.frame_buffers[rdp.ci_count-1].status == CI_UNKNOWN)
+   if ((rdp.ci_count-1) >= 0)
    {
-      if (rdp.ci_count > 1)
-         rdp.frame_buffers[rdp.ci_count-1].status = CI_AUX;
-      else
-         rdp.frame_buffers[rdp.ci_count-1].status = CI_MAIN;
+      if (rdp.frame_buffers[rdp.ci_count-1].status == CI_UNKNOWN)
+      {
+         if (rdp.ci_count > 1)
+            rdp.frame_buffers[rdp.ci_count-1].status = CI_AUX;
+         else
+            rdp.frame_buffers[rdp.ci_count-1].status = CI_MAIN;
+      }
    }
 
    if ((rdp.ci_count > 0 && rdp.frame_buffers[rdp.ci_count-1].status == CI_AUX) &&
