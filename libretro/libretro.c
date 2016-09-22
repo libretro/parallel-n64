@@ -4,7 +4,11 @@
 
 #include "api/libretro.h"
 #ifndef SINGLE_THREAD
+#if defined(EMSCRIPTEN)
+#include <emscripten.h>
+#else
 #include <libco.h>
+#endif
 #endif
 
 #if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
@@ -65,8 +69,12 @@ struct retro_rumble_interface rumble;
 save_memory_data saved_memory;
 
 #ifndef SINGLE_THREAD
+#ifdef EMSCRIPTEN
+static emscripten_coroutine game_thread;
+#else
 cothread_t main_thread;
-static cothread_t cpu_thread;
+static cothread_t game_thread;
+#endif
 #endif
 
 float polygonOffsetFactor;
@@ -445,8 +453,10 @@ void reinit_gfx_plugin(void)
         first_context_reset = false;
 #ifdef SINGLE_THREAD
         emu_step_initialize();
+#elif defined(EMSCRIPTEN)
+        emscripten_coroutine_next(game_thread);
 #else
-        co_switch(cpu_thread);
+        co_switch(game_thread);
 #endif
     }
 
@@ -496,24 +506,40 @@ void deinit_gfx_plugin(void)
 }
 
 #ifndef SINGLE_THREAD
+#ifdef EMSCRIPTEN
+static void EmuThreadFunction(void *arg)
+#else
 static void EmuThreadFunction(void)
+#endif
 {
     if (!emu_step_load_data())
        goto load_fail;
 
     //ROM is loaded, switch back to main thread so retro_load_game can return (returning failure if needed).
     //We'll continue here once the context is reset.
+#ifdef EMSCRIPTEN
+   emscripten_yield();
+#else
     co_switch(main_thread);
+#endif
 
     emu_step_initialize();
 
     //Context is reset too, everything is safe to use. Now back to main thread so we don't start pushing frames outside retro_run.
+#ifdef EMSCRIPTEN
+   emscripten_yield();
+#else
     co_switch(main_thread);
+#endif
 
     main_run();
     log_cb(RETRO_LOG_INFO, "EmuThread: co_switch main_thread. \n");
 
+#ifdef EMSCRIPTEN
+   emscripten_yield();
+#else
     co_switch(main_thread);
+#endif
 
 load_fail:
     //NEVER RETURN! That's how libco rolls
@@ -521,7 +547,11 @@ load_fail:
     {
        if (log_cb)
           log_cb(RETRO_LOG_ERROR, "Running Dead N64 Emulator");
+#ifdef EMSCRIPTEN
+       emscripten_yield();
+#else
        co_switch(main_thread);
+#endif
     }
 }
 #endif
@@ -636,8 +666,12 @@ void retro_init(void)
    polygonOffsetFactor =  -3.0f;
 
 #ifndef SINGLE_THREAD
+#ifdef EMSCRIPTEN
+   game_thread = emscripten_coroutine_create(EmuThreadFunction, NULL, 65536 * sizeof(void*) * 16);
+#else
    main_thread = co_active();
-   cpu_thread = co_create(65536 * sizeof(void*) * 16, EmuThreadFunction);
+   game_thread = co_create(65536 * sizeof(void*) * 16, EmuThreadFunction);
+#endif
 #endif
 } 
 
@@ -652,7 +686,9 @@ void retro_deinit(void)
    blitter_buf_lock = NULL;
 
 #ifndef SINGLE_THREAD
-   co_delete(cpu_thread);
+#ifndef EMSCRIPTEN
+   co_delete(game_thread);
+#endif
 #endif
 
    deinit_audio_libretro();
@@ -1085,7 +1121,11 @@ bool retro_load_game(const struct retro_game_info *game)
 #else
    stop = false;
    //Finish ROM load before doing anything funny, so we can return failure if needed.
-   co_switch(cpu_thread);
+#if defined(EMSCRIPTEN)
+   emscripten_coroutine_next(game_thread);
+#else
+   co_switch(game_thread);
+#endif
    if (stop) return false;
 #endif
 
@@ -1099,7 +1139,11 @@ void retro_unload_game(void)
     stop = 1;
 
 #ifndef SINGLE_THREAD
-    co_switch(cpu_thread);
+#if defined(EMSCRIPTEN)
+   emscripten_coroutine_next(game_thread);
+#else
+    co_switch(game_thread);
+#endif
 #endif
 
     CoreDoCommand(M64CMD_ROM_CLOSE, 0, NULL);
@@ -1267,8 +1311,10 @@ void retro_run (void)
       stop = 0;
       main_run();
       stop = 0;
+#elif defined(EMSCRIPTEN)
+      emscripten_coroutine_next(game_thread);
 #else
-      co_switch(cpu_thread);
+      co_switch(game_thread);
 #endif
 
       switch (gfx_plugin)
@@ -1361,13 +1407,14 @@ bool retro_load_game_special(unsigned game_type, const struct retro_game_info *i
 void retro_cheat_reset(void) { }
 void retro_cheat_set(unsigned unused, bool unused1, const char* unused2) { }
 
+void vbo_disable(void);
+
 #ifdef SINGLE_THREAD
 bool emu_step_render(void);
 
 int retro_return(int just_flipping)
 {
 #if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
-   void vbo_disable(void);
    vbo_disable();
 #endif
 
@@ -1401,7 +1448,11 @@ int retro_return(int just_flipping)
 
    flip_only = just_flipping;
 
+#ifdef EMSCRIPTEN
+   emscripten_yield();
+#else
    co_switch(main_thread);
+#endif
 
    return 0;
 }

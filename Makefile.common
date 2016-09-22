@@ -39,7 +39,9 @@ INCFLAGS += \
 	-I$(LIBRETRO_DIR)
 
 # libco
+ifneq ($(platform), emscripten)
 SOURCES_C += $(LIBRETRO_COMM_DIR)/libco/libco.c
+endif
 
 SOURCES_C += $(RSPDIR)/src/alist.c \
     $(RSPDIR)/src/alist_audio.c \
@@ -238,10 +240,14 @@ SOURCES_C += $(LIBRETRO_DIR)/libretro.c \
 				 $(AUDIO_LIBRETRO_DIR)/drivers_resampler/nearest.c \
 				 $(AUDIO_LIBRETRO_DIR)/drivers_resampler/cc_resampler.c \
 				 $(LIBRETRO_COMM_DIR)/compat/compat_strl.c \
-				 $(LIBRETRO_COMM_DIR)/streams/file_stream.c \
 				 $(LIBRETRO_COMM_DIR)/conversion/float_to_s16.c \
 				 $(LIBRETRO_COMM_DIR)/conversion/s16_to_float.c \
 				 $(LIBRETRO_COMM_DIR)/features/features_cpu.c
+
+ifeq ($(STATIC_LINKING),1)
+else
+SOURCES_C += $(LIBRETRO_COMM_DIR)/streams/file_stream.c
+endif
 
 ifeq ($(WITH_CRC),brumme)
    SOURCES_C += $(LIBRETRO_DIR)/brumme_crc.c

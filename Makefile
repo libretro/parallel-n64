@@ -298,23 +298,37 @@ else ifeq ($(platform), emscripten)
    TARGET := $(TARGET_NAME)_libretro_$(platform).bc
    GLES := 1
    WITH_DYNAREC :=
-   CPUFLAGS += -Dasm=asmerror -D__asm__=asmerror -DNO_ASM -DNOSSE
-   SINGLE_THREAD := 1
-   PLATCFLAGS += -Drglgen_symbol_map=mupen_rglgen_symbol_map \
-                 -Dmain_exit=mupen_main_exit \
-                 -Dadler32=mupen_adler32 \
-                 -Drglgen_resolve_symbols_custom=mupen_rglgen_resolve_symbols_custom \
-                 -Drglgen_resolve_symbols=mupen_rglgen_resolve_symbols \
-                 -Dsinc_resampler=mupen_sinc_resampler \
-                 -Dnearest_resampler=mupen_nearest_resampler \
-                 -DCC_resampler=mupen_CC_resampler \
-                 -Daudio_resampler_driver_find_handle=mupen_audio_resampler_driver_find_handle \
-                 -Daudio_resampler_driver_find_ident=mupen_audio_resampler_driver_find_ident \
-                 -Drarch_resampler_realloc=mupen_rarch_resampler_realloc \
-                 -Daudio_convert_s16_to_float_C=mupen_audio_convert_s16_to_float_C \
-                 -Daudio_convert_float_to_s16_C=mupen_audio_convert_float_to_s16_C \
-                 -Daudio_convert_init_simd=mupen_audio_convert_init_simd
 
+   CPUFLAGS += -DNOSSE
+   CPUFLAGS += -DEMSCRIPTEN -DNO_ASM -s USE_ZLIB=1
+   PLATCFLAGS += \
+      -Dsinc_resampler=mupen_sinc_resampler \
+      -DCC_resampler=mupen_CC_resampler \
+      -Drglgen_symbol_map=mupen_rglgen_symbol_map \
+      -Drglgen_resolve_symbols_custom=mupen_rglgen_resolve_symbols_custom \
+      -Drglgen_resolve_symbols=mupen_rglgen_resolve_symbols \
+      -Dmemalign_alloc=mupen_memalign_alloc \
+      -Dmemalign_free=mupen_memalign_free \
+      -Dmemalign_alloc_aligned=mupen_memalign_alloc_aligned \
+      -Daudio_resampler_driver_find_handle=mupen_audio_resampler_driver_find_handle \
+      -Daudio_resampler_driver_find_ident=mupen_audio_resampler_driver_find_ident \
+      -Drarch_resampler_realloc=mupen_rarch_resampler_realloc \
+      -Dconvert_float_to_s16_C=mupen_convert_float_to_s16_C \
+      -Dconvert_float_to_s16_init_simd=mupen_convert_float_to_s16_init_simd \
+      -Dconvert_s16_to_float_C=mupen_convert_s16_to_float_C \
+      -Dconvert_s16_to_float_init_simd=mupen_convert_s16_to_float_init_simd \
+      -Dcpu_features_get_perf_counter=mupen_cpu_features_get_perf_counter \
+      -Dcpu_features_get_time_usec=mupen_cpu_features_get_time_usec \
+      -Dcpu_features_get_core_amount=mupen_cpu_features_get_core_amount \
+      -Dcpu_features_get=mupen_cpu_features_get \
+      -Dffs=mupen_ffs \
+      -Dstrlcpy_retro__=mupen_strlcpy_retro__ \
+      -Dstrlcat_retro__=mupen_strlcat_retro__
+
+
+   WITH_DYNAREC = 
+	CC = emcc
+   CXX = em++
    HAVE_NEON = 0
    PLATFORM_EXT := unix
 	STATIC_LINKING=1
@@ -397,7 +411,11 @@ ifeq ($(platform), qnx)
    CFLAGS   += -Wp,-MMD
    CXXFLAGS += -Wp,-MMD
 else
+ifeq ($(platform), emscripten)
+   CFLAGS   += -std=gnu99 -MMD
+else
    CFLAGS   += -std=gnu89 -MMD
+endif
 ifeq ($(GLIDEN64),1)
    CFLAGS   += -DGLIDEN64
    CXXFLAGS += -DGLIDEN64
