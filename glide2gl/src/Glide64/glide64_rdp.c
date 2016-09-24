@@ -533,6 +533,7 @@ enum rdp_tex_rect_mode
 
 static void rdp_getTexRectParams(uint32_t *w2, uint32_t *w3)
 {
+   enum rdp_tex_rect_mode texRectMode = GDP_TEX_RECT;
    uint32_t a, cmdHalf1, cmdHalf2;
    if (__RSP.bLLE)
    {
@@ -551,22 +552,30 @@ static void rdp_getTexRectParams(uint32_t *w2, uint32_t *w3)
          (cmdHalf1 == 0xB3 && cmdHalf2 == 0xB2)
       )
    {
-      //gSPTextureRectangle
-      *w2 = ((uint32_t*)gfx_info.RDRAM)[a+1];
-      __RSP.PC[__RSP.PCi] += 8;
-
-      *w3 = ((uint32_t*)gfx_info.RDRAM)[a+3];
-      __RSP.PC[__RSP.PCi] += 8;
+      texRectMode = GSP_TEX_RECT;
    }
-   else
+
+   switch (texRectMode)
    {
-      //gDPTextureRectangle
-      if (settings.hacks&hack_ASB)
-         *w2 = 0;
-      else
-         *w2 = ((uint32_t*)gfx_info.RDRAM)[a+0];
-      *w3 = ((uint32_t*)gfx_info.RDRAM)[a+1];
-      __RSP.PC[__RSP.PCi] += 8;
+      case GSP_TEX_RECT:
+         //gSPTextureRectangle
+         *w2 = ((uint32_t*)gfx_info.RDRAM)[a+1];
+         __RSP.PC[__RSP.PCi] += 8;
+
+         *w3 = ((uint32_t*)gfx_info.RDRAM)[a+3];
+         __RSP.PC[__RSP.PCi] += 8;
+         break;
+      case GDP_TEX_RECT:
+         //gDPTextureRectangle
+         if (settings.hacks&hack_ASB)
+            *w2 = 0;
+         else
+            *w2 = ((uint32_t*)gfx_info.RDRAM)[a+0];
+         *w3 = ((uint32_t*)gfx_info.RDRAM)[a+1];
+         __RSP.PC[__RSP.PCi] += 8;
+         break;
+      case HALF_TEX_RECT:
+         break;
    }
 }
 
