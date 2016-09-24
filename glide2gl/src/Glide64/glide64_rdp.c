@@ -525,6 +525,42 @@ static void colorimage_zbuffer_copy(uint32_t w0, uint32_t w1)
 }
 
 
+static void rdp_getTexRectParams(uint32_t *w2, uint32_t *w3)
+{
+   uint32_t a, cmdHalf1, cmdHalf2;
+   if (__RSP.bLLE)
+   {
+      *w2 = __RDP.w2;
+      *w3 = __RDP.w3;
+      return;
+   }
+
+   a = __RSP.PC[__RSP.PCi];
+   cmdHalf1 = gfx_info.RDRAM[a+3];
+   cmdHalf2 = gfx_info.RDRAM[a+11];
+   a >>= 2;
+
+   if (  (cmdHalf1 == 0xE1 && cmdHalf2 == 0xF1) || 
+         (cmdHalf1 == 0xB4 && cmdHalf2 == 0xB3) || 
+         (cmdHalf1 == 0xB3 && cmdHalf2 == 0xB2)
+      )
+   {
+      //gSPTextureRectangle
+      __RDP.w2 = ((uint32_t*)gfx_info.RDRAM)[a+1];
+      __RDP.w3 = ((uint32_t*)gfx_info.RDRAM)[a+3];
+      __RSP.PC[__RSP.PCi] += 16;
+   }
+   else
+   {
+      //gDPTextureRectangle
+      if (settings.hacks&hack_ASB)
+         __RDP.w2 = 0;
+      else
+         __RDP.w2 = ((uint32_t*)gfx_info.RDRAM)[a+0];
+      __RDP.w3 = ((uint32_t*)gfx_info.RDRAM)[a+1];
+      __RSP.PC[__RSP.PCi] += 8;
+   }
+}
 
 static void rdp_texrect(uint32_t w0, uint32_t w1)
 {
@@ -538,35 +574,9 @@ static void rdp_texrect(uint32_t w0, uint32_t w1)
       float ul_u, ul_v, lr_u, lr_v;
    } texUV[2]; //struct for texture coordinates
    VERTEX *vptr = NULL, vstd[4];
+   
+   rdp_getTexRectParams(&__RDP.w2, &__RDP.w3);
 
-   if (!__RSP.bLLE)
-   {
-      uint32_t       a = __RSP.PC[__RSP.PCi];
-      uint8_t cmdHalf1 = gfx_info.RDRAM[a+3];
-      uint8_t cmdHalf2 = gfx_info.RDRAM[a+11];
-      a >>= 2;
-
-      if (  (cmdHalf1 == 0xE1 && cmdHalf2 == 0xF1) || 
-            (cmdHalf1 == 0xB4 && cmdHalf2 == 0xB3) || 
-            (cmdHalf1 == 0xB3 && cmdHalf2 == 0xB2)
-         )
-      {
-         //gSPTextureRectangle
-         __RDP.w2 = ((uint32_t*)gfx_info.RDRAM)[a+1];
-         __RDP.w3 = ((uint32_t*)gfx_info.RDRAM)[a+3];
-         __RSP.PC[__RSP.PCi] += 16;
-      }
-      else
-      {
-         //gDPTextureRectangle
-         if (settings.hacks&hack_ASB)
-            __RDP.w2 = 0;
-         else
-            __RDP.w2 = ((uint32_t*)gfx_info.RDRAM)[a+0];
-         __RDP.w3 = ((uint32_t*)gfx_info.RDRAM)[a+1];
-         __RSP.PC[__RSP.PCi] += 8;
-      }
-   }
    if ((settings.hacks&hack_Yoshi) && settings.ucode == ucode_S2DEX)
    {
       colorimage_yoshis_story_memrect(
