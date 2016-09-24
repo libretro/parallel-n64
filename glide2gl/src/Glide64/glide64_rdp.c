@@ -524,6 +524,12 @@ static void colorimage_zbuffer_copy(uint32_t w0, uint32_t w1)
    }
 }
 
+enum rdp_tex_rect_mode
+{
+   GSP_TEX_RECT = 0,
+   GDP_TEX_RECT,
+   HALF_TEX_RECT
+};
 
 static void rdp_getTexRectParams(uint32_t *w2, uint32_t *w3)
 {
