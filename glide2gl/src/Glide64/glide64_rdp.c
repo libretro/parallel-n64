@@ -553,8 +553,10 @@ static void rdp_getTexRectParams(uint32_t *w2, uint32_t *w3)
    {
       //gSPTextureRectangle
       *w2 = ((uint32_t*)gfx_info.RDRAM)[a+1];
+      __RSP.PC[__RSP.PCi] += 8;
+
       *w3 = ((uint32_t*)gfx_info.RDRAM)[a+3];
-      __RSP.PC[__RSP.PCi] += 16;
+      __RSP.PC[__RSP.PCi] += 8;
    }
    else
    {
