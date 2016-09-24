@@ -546,18 +546,18 @@ static void rdp_getTexRectParams(uint32_t *w2, uint32_t *w3)
       )
    {
       //gSPTextureRectangle
-      __RDP.w2 = ((uint32_t*)gfx_info.RDRAM)[a+1];
-      __RDP.w3 = ((uint32_t*)gfx_info.RDRAM)[a+3];
+      *w2 = ((uint32_t*)gfx_info.RDRAM)[a+1];
+      *w3 = ((uint32_t*)gfx_info.RDRAM)[a+3];
       __RSP.PC[__RSP.PCi] += 16;
    }
    else
    {
       //gDPTextureRectangle
       if (settings.hacks&hack_ASB)
-         __RDP.w2 = 0;
+         *w2 = 0;
       else
-         __RDP.w2 = ((uint32_t*)gfx_info.RDRAM)[a+0];
-      __RDP.w3 = ((uint32_t*)gfx_info.RDRAM)[a+1];
+         *w2 = ((uint32_t*)gfx_info.RDRAM)[a+0];
+      *w3 = ((uint32_t*)gfx_info.RDRAM)[a+1];
       __RSP.PC[__RSP.PCi] += 8;
    }
 }
