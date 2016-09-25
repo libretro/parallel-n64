@@ -3,12 +3,10 @@
 #include <string.h>
 
 #include "api/libretro.h"
-#ifndef SINGLE_THREAD
 #if defined(EMSCRIPTEN)
 #include <emscripten.h>
 #else
 #include <libco.h>
-#endif
 #endif
 
 #if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
@@ -68,13 +66,11 @@ struct retro_rumble_interface rumble;
 
 save_memory_data saved_memory;
 
-#ifndef SINGLE_THREAD
 #ifdef EMSCRIPTEN
 static emscripten_coroutine game_thread;
 #else
 cothread_t main_thread;
 static cothread_t game_thread;
-#endif
 #endif
 
 float polygonOffsetFactor;
@@ -451,9 +447,7 @@ void reinit_gfx_plugin(void)
     if(first_context_reset)
     {
         first_context_reset = false;
-#ifdef SINGLE_THREAD
-        emu_step_initialize();
-#elif defined(EMSCRIPTEN)
+#if defined(EMSCRIPTEN)
         emscripten_coroutine_next(game_thread);
 #else
         co_switch(game_thread);
@@ -505,7 +499,6 @@ void deinit_gfx_plugin(void)
     }
 }
 
-#ifndef SINGLE_THREAD
 #ifdef EMSCRIPTEN
 static void EmuThreadFunction(void *arg)
 #else
@@ -554,7 +547,6 @@ load_fail:
 #endif
     }
 }
-#endif
 
 const char* retro_get_system_directory(void)
 {
@@ -665,13 +657,11 @@ void retro_init(void)
    polygonOffsetUnits = -3.0f;
    polygonOffsetFactor =  -3.0f;
 
-#ifndef SINGLE_THREAD
 #ifdef EMSCRIPTEN
    game_thread = emscripten_coroutine_create(EmuThreadFunction, NULL, 65536 * sizeof(void*) * 16);
 #else
    main_thread = co_active();
    game_thread = co_create(65536 * sizeof(void*) * 16, EmuThreadFunction);
-#endif
 #endif
 } 
 
@@ -685,10 +675,8 @@ void retro_deinit(void)
    blitter_buf      = NULL;
    blitter_buf_lock = NULL;
 
-#ifndef SINGLE_THREAD
 #ifndef EMSCRIPTEN
    co_delete(game_thread);
-#endif
 #endif
 
    deinit_audio_libretro();
@@ -1115,10 +1103,6 @@ bool retro_load_game(const struct retro_game_info *game)
    memcpy(game_data, game->data, game->size);
    game_size = game->size;
 
-#ifdef SINGLE_THREAD
-   if (!emu_step_load_data())
-      return false;
-#else
    stop = false;
    //Finish ROM load before doing anything funny, so we can return failure if needed.
 #if defined(EMSCRIPTEN)
@@ -1126,8 +1110,8 @@ bool retro_load_game(const struct retro_game_info *game)
 #else
    co_switch(game_thread);
 #endif
-   if (stop) return false;
-#endif
+   if (stop)
+      return false;
 
    first_context_reset = true;
 
@@ -1138,12 +1122,10 @@ void retro_unload_game(void)
 {
     stop = 1;
 
-#ifndef SINGLE_THREAD
 #if defined(EMSCRIPTEN)
    emscripten_coroutine_next(game_thread);
 #else
     co_switch(game_thread);
-#endif
 #endif
 
     CoreDoCommand(M64CMD_ROM_CLOSE, 0, NULL);
@@ -1251,21 +1233,6 @@ void retro_run (void)
       }
    }
 
-#ifdef SINGLE_THREAD
-   switch (gfx_plugin)
-   {
-#ifdef HAVE_PARALLEL
-      case GFX_PARALLEL:
-#endif
-      case GFX_ANGRYLION:
-         if (!emu_initialized)
-            emu_step_initialize();
-         break;
-      default:
-         break;
-   }
-#endif
-
    FAKE_SDL_TICKS += 16;
    pushed_frame = false;
 
@@ -1307,11 +1274,7 @@ void retro_run (void)
             break;
       }
 
-#ifdef SINGLE_THREAD
-      stop = 0;
-      main_run();
-      stop = 0;
-#elif defined(EMSCRIPTEN)
+#if defined(EMSCRIPTEN)
       emscripten_coroutine_next(game_thread);
 #else
       co_switch(game_thread);
@@ -1409,34 +1372,6 @@ void retro_cheat_set(unsigned unused, bool unused1, const char* unused2) { }
 
 void vbo_disable(void);
 
-#ifdef SINGLE_THREAD
-bool emu_step_render(void);
-
-int retro_return(int just_flipping)
-{
-#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
-   vbo_disable();
-#endif
-
-   flip_only = just_flipping;
-
-   if (just_flipping)
-   {
-#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
-      glsm_exit();
-#endif
-
-      emu_step_render();
-
-#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
-      glsm_enter();
-#endif
-   }
-
-   stop = 1;
-   return 0;
-}
-#else
 int retro_return(int just_flipping)
 {
    if (stop)
@@ -1456,4 +1391,3 @@ int retro_return(int just_flipping)
 
    return 0;
 }
-#endif
