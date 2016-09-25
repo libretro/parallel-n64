@@ -278,11 +278,17 @@ void r4300_execute(void)
             return;
 
         last_addr = PC->addr;
-        while (!stop)
-            PC->ops();
+
+        r4300_step();
 
         free_blocks();
     }
 
     DebugMessage(M64MSG_INFO, "R4300 emulator finished.");
+}
+
+void r4300_step(void)
+{
+   while (!stop)
+      PC->ops();
 }

@@ -47,6 +47,7 @@ extern cpu_instruction_table current_instruction_table;
 void r4300_reset_hard(void);
 void r4300_reset_soft(void);
 void r4300_execute(void);
+void r4300_step(void);
 
 // r4300 emulators
 #define CORE_PURE_INTERPRETER 0
