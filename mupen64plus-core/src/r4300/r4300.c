@@ -232,10 +232,6 @@ static void dynarec_setup_code(void)
 
 void r4300_execute(void)
 {
-#if (defined(DYNAREC) && defined(PROFILE_R4300))
-    unsigned int i;
-#endif
-
     current_instruction_table = cached_interpreter_table;
 
     delay_slot=0;
