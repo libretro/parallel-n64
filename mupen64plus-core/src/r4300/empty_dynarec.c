@@ -436,12 +436,6 @@ void genlink_subblock()
 {
 }
 
-#ifdef COMPARE_CORE
-void gendebug()
-{
-}
-#endif
-
 void genni()
 {
 }

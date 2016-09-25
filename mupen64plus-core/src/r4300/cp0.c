@@ -27,10 +27,6 @@
 #include "r4300.h"
 #include "recomp.h"
 
-#ifdef COMPARE_CORE
-#include "api/debugger.h"
-#endif
-
 #ifdef DBG
 #include "debugger/dbg_debugger.h"
 #include "debugger/dbg_types.h"
@@ -70,11 +66,6 @@ void cp0_update_count(void)
       last_addr = PC->addr;
 #ifdef NEW_DYNAREC
    }
-#endif
-
-#ifdef COMPARE_CORE
-   if (delay_slot)
-      CoreCompareCallback();
 #endif
 
 #if 0

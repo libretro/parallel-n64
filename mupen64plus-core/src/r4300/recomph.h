@@ -288,9 +288,5 @@ void gentestl_out(void);
 void gencheck_cop1_unusable(void);
 void genll(void);
 
-#ifdef COMPARE_CORE
-void gendebug(void);
-#endif
-
 #endif /* M64P_R4300_RECOMPH_H */
 

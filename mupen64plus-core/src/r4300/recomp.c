@@ -2229,9 +2229,6 @@ void init_block(precomp_block *block)
       dst->addr = block->start + i*4;
       dst->reg_cache_infos.need_map = 0;
       dst->local_addr = code_length;
-#ifdef COMPARE_CORE
-      if (r4300emu == CORE_DYNAREC) gendebug();
-#endif
       RNOTCOMPILED();
       if (r4300emu == CORE_DYNAREC) recomp_func();
     }
@@ -2371,9 +2368,6 @@ void recompile_block(const uint32_t *source, precomp_block *block, uint32_t func
     dst->addr = block->start + i*4;
     dst->reg_cache_infos.need_map = 0;
     dst->local_addr = code_length;
-#ifdef COMPARE_CORE
-    if (r4300emu == CORE_DYNAREC) gendebug();
-#endif
     recomp_func = NULL;
     recomp_ops[((src >> 26) & 0x3F)]();
     if (r4300emu == CORE_DYNAREC) recomp_func();
@@ -2411,9 +2405,6 @@ void recompile_block(const uint32_t *source, precomp_block *block, uint32_t func
     dst->addr = block->start + i*4;
     dst->reg_cache_infos.need_map = 0;
     dst->local_addr = code_length;
-#ifdef COMPARE_CORE
-    if (r4300emu == CORE_DYNAREC) gendebug();
-#endif
     RFIN_BLOCK();
     if (r4300emu == CORE_DYNAREC) recomp_func();
     i++;
@@ -2423,9 +2414,6 @@ void recompile_block(const uint32_t *source, precomp_block *block, uint32_t func
          dst->addr = block->start + i*4;
          dst->reg_cache_infos.need_map = 0;
          dst->local_addr = code_length;
-#ifdef COMPARE_CORE
-         if (r4300emu == CORE_DYNAREC) gendebug();
-#endif
          RFIN_BLOCK();
          if (r4300emu == CORE_DYNAREC) recomp_func();
          i++;

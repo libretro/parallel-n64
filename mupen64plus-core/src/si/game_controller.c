@@ -25,10 +25,6 @@
 #include "api/m64p_types.h"
 #include "api/callbacks.h"
 
-#ifdef COMPARE_CORE
-#include "api/debugger.h"
-#endif
-
 #include <stdint.h>
 #include <string.h>
 
@@ -60,10 +56,6 @@ static void read_controller_read_buttons(struct game_controller* cont, uint8_t* 
         return;
 
     *((uint32_t*)(cmd + 3)) = game_controller_get_input(cont);
-
-#ifdef COMPARE_CORE
-    CoreCompareDataSync(4, cmd + 3);
-#endif
 }
 
 

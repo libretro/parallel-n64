@@ -730,9 +730,6 @@ void pure_interpreter(void)
 
    while (!stop)
    {
-#ifdef COMPARE_CORE
-     CoreCompareCallback();
-#endif
 #ifdef DBG
      if (g_DebuggerActive) update_debugger(PC->addr);
 #endif
