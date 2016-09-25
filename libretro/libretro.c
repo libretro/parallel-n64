@@ -3,9 +3,7 @@
 #include <string.h>
 
 #include "api/libretro.h"
-#if defined(EMSCRIPTEN)
-#include <emscripten.h>
-#else
+#ifndef EMSCRIPTEN
 #include <libco.h>
 #endif
 
@@ -66,9 +64,7 @@ struct retro_rumble_interface rumble;
 
 save_memory_data saved_memory;
 
-#ifdef EMSCRIPTEN
-static emscripten_coroutine game_thread;
-#else
+#ifndef EMSCRIPTEN
 cothread_t main_thread;
 static cothread_t game_thread;
 #endif
@@ -447,9 +443,7 @@ void reinit_gfx_plugin(void)
     if(first_context_reset)
     {
         first_context_reset = false;
-#if defined(EMSCRIPTEN)
-        emscripten_coroutine_next(game_thread);
-#else
+#ifndef EMSCRIPTEN
         co_switch(game_thread);
 #endif
     }
@@ -499,38 +493,28 @@ void deinit_gfx_plugin(void)
     }
 }
 
-#ifdef EMSCRIPTEN
-static void EmuThreadFunction(void *arg)
-#else
 static void EmuThreadFunction(void)
-#endif
 {
     if (!emu_step_load_data())
        goto load_fail;
 
     //ROM is loaded, switch back to main thread so retro_load_game can return (returning failure if needed).
     //We'll continue here once the context is reset.
-#ifdef EMSCRIPTEN
-   emscripten_yield();
-#else
+#ifndef EMSCRIPTEN
     co_switch(main_thread);
 #endif
 
     emu_step_initialize();
 
     //Context is reset too, everything is safe to use. Now back to main thread so we don't start pushing frames outside retro_run.
-#ifdef EMSCRIPTEN
-   emscripten_yield();
-#else
+#ifndef EMSCRIPTEN
     co_switch(main_thread);
 #endif
 
     main_run();
     log_cb(RETRO_LOG_INFO, "EmuThread: co_switch main_thread. \n");
 
-#ifdef EMSCRIPTEN
-   emscripten_yield();
-#else
+#ifndef EMSCRIPTEN
     co_switch(main_thread);
 #endif
 
@@ -540,9 +524,7 @@ load_fail:
     {
        if (log_cb)
           log_cb(RETRO_LOG_ERROR, "Running Dead N64 Emulator");
-#ifdef EMSCRIPTEN
-       emscripten_yield();
-#else
+#ifndef EMSCRIPTEN
        co_switch(main_thread);
 #endif
     }
@@ -657,9 +639,7 @@ void retro_init(void)
    polygonOffsetUnits = -3.0f;
    polygonOffsetFactor =  -3.0f;
 
-#ifdef EMSCRIPTEN
-   game_thread = emscripten_coroutine_create(EmuThreadFunction, NULL, 65536 * sizeof(void*) * 16);
-#else
+#ifndef EMSCRIPTEN
    main_thread = co_active();
    game_thread = co_create(65536 * sizeof(void*) * 16, EmuThreadFunction);
 #endif
@@ -1105,9 +1085,7 @@ bool retro_load_game(const struct retro_game_info *game)
 
    stop = false;
    //Finish ROM load before doing anything funny, so we can return failure if needed.
-#if defined(EMSCRIPTEN)
-   emscripten_coroutine_next(game_thread);
-#else
+#ifndef EMSCRIPTEN
    co_switch(game_thread);
 #endif
    if (stop)
@@ -1122,9 +1100,7 @@ void retro_unload_game(void)
 {
     stop = 1;
 
-#if defined(EMSCRIPTEN)
-   emscripten_coroutine_next(game_thread);
-#else
+#ifndef EMSCRIPTEN
     co_switch(game_thread);
 #endif
 
@@ -1274,9 +1250,7 @@ void retro_run (void)
             break;
       }
 
-#if defined(EMSCRIPTEN)
-      emscripten_coroutine_next(game_thread);
-#else
+#ifndef EMSCRIPTEN
       co_switch(game_thread);
 #endif
 
@@ -1383,9 +1357,7 @@ int retro_return(int just_flipping)
 
    flip_only = just_flipping;
 
-#ifdef EMSCRIPTEN
-   emscripten_yield();
-#else
+#ifndef EMSCRIPTEN
    co_switch(main_thread);
 #endif
 
