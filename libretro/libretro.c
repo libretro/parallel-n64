@@ -73,6 +73,7 @@ float polygonOffsetFactor;
 float polygonOffsetUnits;
 
 int astick_deadzone;
+int first_time = 1;
 bool flip_only;
 
 static uint8_t* game_data = NULL;
@@ -432,10 +433,6 @@ static void emu_step_initialize(void)
    core_settings_autoselect_rsp_plugin();
 
    plugin_connect_all(gfx_plugin, rsp_plugin);
-
-   log_cb(RETRO_LOG_INFO, "EmuThread: M64CMD_EXECUTE. \n");
-
-   CoreDoCommand(M64CMD_EXECUTE, 0, NULL);
 }
 
 void reinit_gfx_plugin(void)
@@ -1099,6 +1096,7 @@ bool retro_load_game(const struct retro_game_info *game)
 void retro_unload_game(void)
 {
     stop = 1;
+    first_time = 1;
 
 #ifndef EMSCRIPTEN
     co_switch(game_thread);
@@ -1248,6 +1246,12 @@ void retro_run (void)
             break;
          case GFX_ANGRYLION:
             break;
+      }
+
+      if (first_time)
+      {
+         first_time = 0;
+         CoreDoCommand(M64CMD_EXECUTE, 0, NULL);
       }
 
 #ifndef EMSCRIPTEN
