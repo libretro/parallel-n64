@@ -55,12 +55,10 @@ unsigned int* r4300_llbit(void)
 uint32_t* r4300_pc(void)
 {
 #ifdef NEW_DYNAREC
-    return (r4300emu == CORE_DYNAREC)
-        ? (uint32_t*)&pcaddr
-        : &PC->addr;
-#else
-    return &PC->addr;
+   if (r4300emu == CORE_DYNAREC)
+      return (uint32_t*)&pcaddr;
 #endif
+   return &PC->addr;
 }
 
 uint32_t* r4300_last_addr(void)
@@ -78,23 +76,17 @@ unsigned int get_r4300_emumode(void)
     return r4300emu;
 }
 
-
-
 void invalidate_r4300_cached_code(uint32_t address, size_t size)
 {
-    if (r4300emu != CORE_PURE_INTERPRETER)
-    {
+   if (r4300emu == CORE_PURE_INTERPRETER)
+      return;
+
 #ifdef NEW_DYNAREC
-        if (r4300emu == CORE_DYNAREC)
-        {
-            invalidate_cached_code_new_dynarec(address, size);
-        }
-        else
+   if (r4300emu == CORE_DYNAREC)
+      invalidate_cached_code_new_dynarec(address, size);
+   else
 #endif
-        {
-            invalidate_cached_code_hacktarux(address, size);
-        }
-    }
+      invalidate_cached_code_hacktarux(address, size);
 }
 
 /* XXX: not really a good interface but it gets the job done... */
