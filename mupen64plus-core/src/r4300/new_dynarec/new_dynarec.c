@@ -24,6 +24,17 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#ifdef __MACH__
+#include <libkern/OSCacheControl.h>
+#endif
+#ifdef _3DS
+#include <3ds_utils.h>
+#endif
+#ifdef VITA
+#include <psp2/kernel/sysmem.h>
+static int sceBlock;
+int getVMBlock();
+#endif
 
 #if defined(__APPLE__)
 #include <sys/types.h> // needed for u_int, u_char, etc
@@ -7747,6 +7758,66 @@ void new_dynarec_cleanup()
   #endif
 }
 
+static void mprotect_w_x(void *start, void *end, int is_x)
+{
+#ifdef NO_WRITE_EXEC
+  #if defined(VITA)
+  // *Open* enables write on all memory that was
+  // allocated by sceKernelAllocMemBlockForVM()?
+  if (is_x)
+    sceKernelCloseVMDomain();
+  else
+    sceKernelOpenVMDomain();
+  #else
+  u_long mstart = (u_long)start & ~4095ul;
+  u_long mend = (u_long)end;
+  if (mprotect((void *)mstart, mend - mstart,
+               PROT_READ | (is_x ? PROT_EXEC : PROT_WRITE)) != 0)
+    SysPrintf("mprotect(%c) failed: %s\n", is_x ? 'x' : 'w', strerror(errno));
+  #endif
+#endif
+}
+
+static void start_tcache_write(void *start, void *end)
+{
+  mprotect_w_x(start, end, 0);
+}
+
+static void end_tcache_write(void *start, void *end)
+{
+#ifdef __arm__
+  size_t len = (char *)end - (char *)start;
+  #if   defined(__BLACKBERRY_QNX__)
+  msync(start, len, MS_SYNC | MS_CACHE_ONLY | MS_INVALIDATE_ICACHE);
+  #elif defined(__MACH__)
+  sys_cache_control(kCacheFunctionPrepareForExecution, start, len);
+  #elif defined(VITA)
+  sceKernelSyncVMDomain(sceBlock, start, len);
+  #elif defined(_3DS)
+  ctr_flush_invalidate_cache();
+  #else
+  __clear_cache(start, end);
+  #endif
+  (void)len;
+#endif
+
+  mprotect_w_x(start, end, 1);
+}
+
+static void *start_block(void)
+{
+  u_char *end = out + MAX_OUTPUT_BLOCK_SIZE;
+  if (end > (u_char *)BASE_ADDR + (1<<TARGET_SIZE_2))
+    end = (u_char *)BASE_ADDR + (1<<TARGET_SIZE_2);
+  start_tcache_write(out, end);
+  return out;
+}
+
+static void end_block(void *start)
+{
+  end_tcache_write(start, out);
+}
+
 int new_recompile_block(int addr)
 {
 /*
@@ -10670,7 +10741,7 @@ int new_recompile_block(int addr)
   uint64_t is32_pre=0;
   u_int dirty_pre=0;
   #endif
-  u_int beginning=(u_int)out;
+  void *beginning=start_block();
   if((u_int)addr&1) {
     ds=1;
     pagespan_ds();
@@ -10956,19 +11027,16 @@ int new_recompile_block(int addr)
   // Align code
   if(((u_int)out)&7) emit_addnop(13);
   #endif
-  assert((u_int)out-beginning<MAX_OUTPUT_BLOCK_SIZE);
+  assert((u_int)out-(u_int)beginning<MAX_OUTPUT_BLOCK_SIZE);
   //DebugMessage(M64MSG_VERBOSE, "shadow buffer: %x-%x",(int)copy,(int)copy+slen*4);
   memcpy(copy,(char*)source,slen*4);
   copy+=slen*4;
 
-  #if NEW_DYNAREC == NEW_DYNAREC_ARM
-  __clear_cache((void *)beginning,out);
-  //cacheflush((void *)beginning,out,0);
-  #endif
+  end_block(beginning);
 
   // If we're within 256K of the end of the buffer,
   // start over from the beginning. (Is 256K enough?)
-  if(out > (u_char *)((u_char *)base_addr+(1<<TARGET_SIZE_2)-MAX_OUTPUT_BLOCK_SIZE-JUMP_TABLE_SIZE))
+  if((u_int)out > (u_char *)((u_char *)base_addr+(1<<TARGET_SIZE_2)-MAX_OUTPUT_BLOCK_SIZE-JUMP_TABLE_SIZE))
     out=(u_char *)base_addr;
   
   // Trap writes to any of the pages we compiled
