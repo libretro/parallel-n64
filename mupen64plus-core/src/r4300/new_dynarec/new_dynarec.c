@@ -1951,62 +1951,63 @@ static void syscall_alloc(struct regstat *current,int i)
 
 static void delayslot_alloc(struct regstat *current,int i)
 {
-  switch(itype[i]) {
-    case UJUMP:
-    case CJUMP:
-    case SJUMP:
-    case RJUMP:
-    case FJUMP:
-    case SYSCALL:
-    case SPAN:
-      assem_debug("jump in the delay slot.  this shouldn't happen.");//exit(1);
-      DebugMessage(M64MSG_VERBOSE, "Disabled speculative precompilation");
-      stop_after_jal=1;
-      break;
-    case IMM16:
-      imm16_alloc(current,i);
-      break;
-    case LOAD:
-    case LOADLR:
-      load_alloc(current,i);
-      break;
-    case STORE:
-    case STORELR:
-      store_alloc(current,i);
-      break;
-    case ALU:
-      alu_alloc(current,i);
-      break;
-    case SHIFT:
-      shift_alloc(current,i);
-      break;
-    case MULTDIV:
-      multdiv_alloc(current,i);
-      break;
-    case SHIFTIMM:
-      shiftimm_alloc(current,i);
-      break;
-    case MOV:
-      mov_alloc(current,i);
-      break;
-    case COP0:
-      cop0_alloc(current,i);
-      break;
-    case COP1:
-      cop1_alloc(current,i);
-      break;
-    case C1LS:
-      c1ls_alloc(current,i);
-      break;
-    case FCONV:
-      fconv_alloc(current,i);
-      break;
-    case FLOAT:
-      float_alloc(current,i);
-      break;
-    case FCOMP:
-      fcomp_alloc(current,i);
-      break;
+  switch(itype[i])
+  {
+     case UJUMP:
+     case CJUMP:
+     case SJUMP:
+     case RJUMP:
+     case FJUMP:
+     case SYSCALL:
+     case SPAN:
+        assem_debug("jump in the delay slot.  this shouldn't happen.");//exit(1);
+        DebugMessage(M64MSG_VERBOSE, "Disabled speculative precompilation");
+        stop_after_jal=1;
+        break;
+     case IMM16:
+        imm16_alloc(current,i);
+        break;
+     case LOAD:
+     case LOADLR:
+        load_alloc(current,i);
+        break;
+     case STORE:
+     case STORELR:
+        store_alloc(current,i);
+        break;
+     case ALU:
+        alu_alloc(current,i);
+        break;
+     case SHIFT:
+        shift_alloc(current,i);
+        break;
+     case MULTDIV:
+        multdiv_alloc(current,i);
+        break;
+     case SHIFTIMM:
+        shiftimm_alloc(current,i);
+        break;
+     case MOV:
+        mov_alloc(current,i);
+        break;
+     case COP0:
+        cop0_alloc(current,i);
+        break;
+     case COP1:
+        cop1_alloc(current,i);
+        break;
+     case C1LS:
+        c1ls_alloc(current,i);
+        break;
+     case FCONV:
+        fconv_alloc(current,i);
+        break;
+     case FLOAT:
+        float_alloc(current,i);
+        break;
+     case FCOMP:
+        fcomp_alloc(current,i);
+        break;
   }
 }
 
