@@ -318,7 +318,7 @@ void *dynamic_linker(void * src, u_int vaddr)
   head=jump_in[page];
 
   while(head!=NULL) {
-    if(head->vaddr==vaddr&&head->reg32==0) {
+    if(head->vaddr==vaddr&&head->reg_sv_flags ==0) {
       int *ptr=(int*)src;
       assert((*ptr&0x0f000000)==0x0a000000); //jmp
       int offset=(int)(((u_int)*ptr+2)<<8)>>6;
@@ -350,7 +350,7 @@ void *dynamic_linker(void * src, u_int vaddr)
 
   head=jump_dirty[vpage];
   while(head!=NULL) {
-    if(head->vaddr==vaddr&&head->reg32==0) {
+    if(head->vaddr==vaddr&&head->reg_sv_flags==0) {
       //DebugMessage(M64MSG_VERBOSE, "TRACE: count=%d next=%d (get_addr match dirty %x: %x)",g_cp0_regs[CP0_COUNT_REG],next_interupt,vaddr,(int)head->addr);
       // Don't restore blocks which are about to expire from the cache
       if((((u_int)head->addr-(u_int)out)<<(32-TARGET_SIZE_2))>0x60000000+(MAX_OUTPUT_BLOCK_SIZE<<(32-TARGET_SIZE_2))) {
@@ -408,7 +408,7 @@ void *dynamic_linker_ds(void * src, u_int vaddr)
   head=jump_in[page];
 
   while(head!=NULL) {
-    if(head->vaddr==vaddr&&head->reg32==0) {
+    if(head->vaddr==vaddr&&head->reg_sv_flags==0) {
       int *ptr=(int*)src;
       assert((*ptr&0x0f000000)==0x0a000000); //jmp
       int offset=(int)(((u_int)*ptr+2)<<8)>>6;
@@ -440,7 +440,7 @@ void *dynamic_linker_ds(void * src, u_int vaddr)
 
   head=jump_dirty[vpage];
   while(head!=NULL) {
-    if(head->vaddr==vaddr&&head->reg32==0) {
+    if(head->vaddr==vaddr&&head->reg_sv_flags==0) {
       //DebugMessage(M64MSG_VERBOSE, "TRACE: count=%d next=%d (get_addr match dirty %x: %x)",g_cp0_regs[CP0_COUNT_REG],next_interupt,vaddr,(int)head->addr);
       // Don't restore blocks which are about to expire from the cache
       if((((u_int)head->addr-(u_int)out)<<(32-TARGET_SIZE_2))>0x60000000+(MAX_OUTPUT_BLOCK_SIZE<<(32-TARGET_SIZE_2))) {

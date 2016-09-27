@@ -102,7 +102,7 @@ struct regstat
 struct ll_entry
 {
   u_int vaddr;
-  u_int reg32;
+  u_int reg_sv_flags;
   void *addr;
   struct ll_entry *next;
 };
@@ -420,7 +420,7 @@ void *get_addr(u_int vaddr)
   //DebugMessage(M64MSG_VERBOSE, "TRACE: count=%d next=%d (get_addr %x,page %d)",g_cp0_regs[CP0_COUNT_REG],next_interupt,vaddr,page);
   head=jump_in[page];
   while(head!=NULL) {
-    if(head->vaddr==vaddr&&head->reg32==0) {
+    if(head->vaddr==vaddr&&head->reg_sv_flags ==0) {
   //DebugMessage(M64MSG_VERBOSE, "TRACE: count=%d next=%d (get_addr match %x: %x)",g_cp0_regs[CP0_COUNT_REG],next_interupt,vaddr,(int)head->addr);
       u_int *ht_bin=hash_table[((vaddr>>16)^vaddr)&0xFFFF];
       ht_bin[3]=ht_bin[1];
@@ -433,7 +433,7 @@ void *get_addr(u_int vaddr)
   }
   head=jump_dirty[vpage];
   while(head!=NULL) {
-    if(head->vaddr==vaddr&&head->reg32==0) {
+    if(head->vaddr==vaddr&&head->reg_sv_flags ==0) {
       //DebugMessage(M64MSG_VERBOSE, "TRACE: count=%d next=%d (get_addr match dirty %x: %x)",g_cp0_regs[CP0_COUNT_REG],next_interupt,vaddr,(int)head->addr);
       // Don't restore blocks which are about to expire from the cache
       if((((u_int)head->addr-(u_int)out)<<(32-TARGET_SIZE_2))>0x60000000+(MAX_OUTPUT_BLOCK_SIZE<<(32-TARGET_SIZE_2))) {
@@ -503,9 +503,9 @@ void *get_addr_32(u_int vaddr,u_int flags)
   struct ll_entry *head;
   head=jump_in[page];
   while(head!=NULL) {
-    if(head->vaddr==vaddr&&(head->reg32&flags)==0) {
+    if(head->vaddr==vaddr&&(head->reg_sv_flags &flags)==0) {
       //DebugMessage(M64MSG_VERBOSE, "TRACE: count=%d next=%d (get_addr_32 match %x: %x)",g_cp0_regs[CP0_COUNT_REG],next_interupt,vaddr,(int)head->addr);
-      if(head->reg32==0) {
+      if(head->reg_sv_flags ==0) {
         u_int *ht_bin=hash_table[((vaddr>>16)^vaddr)&0xFFFF];
         if(ht_bin[0]==-1) {
           ht_bin[1]=(int)head->addr;
@@ -525,7 +525,7 @@ void *get_addr_32(u_int vaddr,u_int flags)
   }
   head=jump_dirty[vpage];
   while(head!=NULL) {
-    if(head->vaddr==vaddr&&(head->reg32&flags)==0) {
+    if(head->vaddr==vaddr&&(head->reg_sv_flags &flags)==0) {
       //DebugMessage(M64MSG_VERBOSE, "TRACE: count=%d next=%d (get_addr_32 match dirty %x: %x)",g_cp0_regs[CP0_COUNT_REG],next_interupt,vaddr,(int)head->addr);
       // Don't restore blocks which are about to expire from the cache
       if((((u_int)head->addr-(u_int)out)<<(32-TARGET_SIZE_2))>0x60000000+(MAX_OUTPUT_BLOCK_SIZE<<(32-TARGET_SIZE_2))) {
@@ -541,7 +541,7 @@ void *get_addr_32(u_int vaddr,u_int flags)
             restore_candidate[vpage>>3]|=1<<(vpage&7);
           }
           else restore_candidate[page>>3]|=1<<(page&7);
-          if(head->reg32==0) {
+          if(head->reg_sv_flags ==0) {
             u_int *ht_bin=hash_table[((vaddr>>16)^vaddr)&0xFFFF];
             if(ht_bin[0]==-1) {
               ht_bin[1]=(int)head->addr;
@@ -1038,7 +1038,7 @@ static void ll_add(struct ll_entry **head,int vaddr,void *addr)
   new_entry=(struct ll_entry *)malloc(sizeof(struct ll_entry));
   assert(new_entry!=NULL);
   new_entry->vaddr=vaddr;
-  new_entry->reg32=0;
+  new_entry->reg_sv_flags =0;
   new_entry->addr=addr;
   new_entry->next=*head;
   *head=new_entry;
@@ -1051,7 +1051,7 @@ static void ll_add_32(struct ll_entry **head,int vaddr,u_int reg32,void *addr)
   new_entry=(struct ll_entry *)malloc(sizeof(struct ll_entry));
   assert(new_entry!=NULL);
   new_entry->vaddr=vaddr;
-  new_entry->reg32=reg32;
+  new_entry->reg_sv_flags=reg32;
   new_entry->addr=addr;
   new_entry->next=*head;
   *head=new_entry;
@@ -1076,7 +1076,7 @@ static void *check_addr(u_int vaddr)
   struct ll_entry *head;
   head=jump_in[page];
   while(head!=NULL) {
-    if(head->vaddr==vaddr&&head->reg32==0) {
+    if(head->vaddr==vaddr&&head->reg_sv_flags==0) {
       if((((u_int)head->addr-(u_int)out)<<(32-TARGET_SIZE_2))>0x60000000+(MAX_OUTPUT_BLOCK_SIZE<<(32-TARGET_SIZE_2))) {
         // Update existing entry with current address
         if(ht_bin[0]==vaddr) {
@@ -1388,9 +1388,9 @@ void clean_blocks(u_int page)
               inv_debug("INV: Restored %x (%x/%x)\n",head->vaddr, (int)head->addr, (int)clean_addr);
               //DebugMessage(M64MSG_VERBOSE, "page=%x, addr=%x",page,head->vaddr);
               //assert(head->vaddr>>12==(page|0x80000));
-              ll_add_32(jump_in+ppage,head->vaddr,head->reg32,clean_addr);
+              ll_add_32(jump_in+ppage,head->vaddr,head->reg_sv_flags,clean_addr);
               u_int *ht_bin=hash_table[((head->vaddr>>16)^head->vaddr)&0xFFFF];
-              if(!head->reg32) {
+              if(!head->reg_sv_flags) {
                 if(ht_bin[0]==head->vaddr) {
                   ht_bin[1]=(int)clean_addr; // Replace existing entry
                 }
