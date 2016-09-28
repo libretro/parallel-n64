@@ -48,7 +48,6 @@ int getVMBlock();
 extern "C" {
 #endif
 #include "../../main/main.h"
-#include "../../main/rom.h"
 #include "../../memory/memory.h"
 #include "../../rsp/rsp_core.h"
 #include "../cached_interp.h"
@@ -1261,7 +1260,7 @@ static void invalidate_addr(u_int addr)
 
 // This is called when loading a save state.
 // Anything could have changed, so invalidate everything.
-void invalidate_all_pages()
+void invalidate_all_pages(void)
 {
   u_int page;
   for(page=0;page<4096;page++)
@@ -7617,7 +7616,7 @@ static void disassemble_inst(int i)
 }
 #endif
 
-void new_dynarec_init()
+void new_dynarec_init(void)
 {
   DebugMessage(M64MSG_INFO, "Init new dynarec");
 
@@ -7700,7 +7699,7 @@ void new_dynarec_init()
   arch_init();
 }
 
-void new_dynarec_cleanup()
+void new_dynarec_cleanup(void)
 {
   int n;
 #if defined(_MSC_VER)
