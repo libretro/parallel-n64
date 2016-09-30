@@ -433,6 +433,10 @@ static void emu_step_initialize(void)
    core_settings_autoselect_rsp_plugin();
 
    plugin_connect_all(gfx_plugin, rsp_plugin);
+
+   log_cb(RETRO_LOG_INFO, "EmuThread: M64CMD_EXECUTE. \n");
+
+   CoreDoCommand(M64CMD_EXECUTE, 0, NULL);
 }
 
 void reinit_gfx_plugin(void)
@@ -1255,7 +1259,7 @@ void retro_run (void)
       if (first_time)
       {
          first_time = 0;
-         CoreDoCommand(M64CMD_EXECUTE, 0, NULL);
+         emu_step_initialize();
       }
 
 #ifndef EMSCRIPTEN
