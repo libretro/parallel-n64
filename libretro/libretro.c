@@ -624,7 +624,7 @@ void retro_init(void)
    struct retro_log_callback log;
    unsigned colorMode = RETRO_PIXEL_FORMAT_XRGB8888;
    screen_pitch = 0;
-   uint32_t serialization_quirks = RETRO_SERIALIZATION_QUIRK_MUST_INITIALIZE;
+   uint64_t serialization_quirks = RETRO_SERIALIZATION_QUIRK_MUST_INITIALIZE;
 
    if (environ_cb(RETRO_ENVIRONMENT_GET_LOG_INTERFACE, &log))
       log_cb = log.log;
