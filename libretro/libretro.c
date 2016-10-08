@@ -104,6 +104,8 @@ extern uint32_t VI_REFRESH;
 unsigned int BUFFERSWAP;
 unsigned int FAKE_SDL_TICKS;
 
+static bool initializing = true;
+
 // after the controller's CONTROL* member has been assigned we can update
 // them straight from here...
 extern struct
@@ -512,6 +514,7 @@ static void EmuThreadFunction(void)
     co_switch(main_thread);
 #endif
 
+    initializing = false;
     main_run();
     log_cb(RETRO_LOG_INFO, "EmuThread: co_switch main_thread. \n");
 
@@ -621,6 +624,7 @@ void retro_init(void)
    struct retro_log_callback log;
    unsigned colorMode = RETRO_PIXEL_FORMAT_XRGB8888;
    screen_pitch = 0;
+   uint32_t serialization_quirks = RETRO_SERIALIZATION_QUIRK_MUST_INITIALIZE;
 
    if (environ_cb(RETRO_ENVIRONMENT_GET_LOG_INTERFACE, &log))
       log_cb = log.log;
@@ -634,6 +638,9 @@ void retro_init(void)
 
    environ_cb(RETRO_ENVIRONMENT_SET_PIXEL_FORMAT, &colorMode);
    environ_cb(RETRO_ENVIRONMENT_GET_RUMBLE_INTERFACE, &rumble);
+
+   environ_cb(RETRO_ENVIRONMENT_SET_SERIALIZATION_QUIRKS, &serialization_quirks);
+   initializing = true;
 
    blitter_buf = (uint32_t*)calloc(
          PRESCALE_WIDTH * PRESCALE_HEIGHT, sizeof(uint32_t)
@@ -1306,6 +1313,9 @@ size_t retro_serialize_size (void)
 
 bool retro_serialize(void *data, size_t size)
 {
+    if (initializing)
+       return false;
+
     if (savestates_save_m64p(data, size))
         return true;
 
@@ -1314,6 +1324,9 @@ bool retro_serialize(void *data, size_t size)
 
 bool retro_unserialize(const void * data, size_t size)
 {
+    if (initializing)
+       return false;
+
     if (savestates_load_m64p(data, size))
         return true;
 
