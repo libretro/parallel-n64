@@ -1363,7 +1363,16 @@ int init_memory(void)
 
    fast_memory = 1;
 
-   init_cic_using_ipl3(&g_si.pif.cic, g_rom + 0x40);
+   if ((g_ddrom != NULL) && (g_ddrom_size != 0) && (g_rom == NULL) && (g_rom_size == 0))
+   {
+      //Init from 64DD IPL ROM
+      init_cic_using_ipl3(&g_si.pif.cic, g_ddrom + 0x40);
+   }
+   else
+   {
+      //Init from N64 ROM
+      init_cic_using_ipl3(&g_si.pif.cic, g_rom + 0x40);
+   }
 
    init_r4300(&g_r4300);
    init_rdp(&g_dp);

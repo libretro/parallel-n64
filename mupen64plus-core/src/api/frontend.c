@@ -129,7 +129,7 @@ EXPORT m64p_error CALL CoreDoCommand(m64p_command Command, int ParamInt, void *P
             l_ROMOpen = 0;
             return close_rom();
         case M64CMD_ROM_GET_HEADER:
-            if (!l_ROMOpen)
+            if (!l_ROMOpen && !l_DDROMOpen)
                 return M64ERR_INVALID_STATE;
             if (ParamPtr == NULL)
                 return M64ERR_INPUT_ASSERT;
@@ -154,7 +154,7 @@ EXPORT m64p_error CALL CoreDoCommand(m64p_command Command, int ParamInt, void *P
             memcpy(ParamPtr, &ROM_SETTINGS, ParamInt);
             return M64ERR_SUCCESS;
         case M64CMD_EXECUTE:
-            if (g_EmulatorRunning || !l_ROMOpen)
+            if (g_EmulatorRunning || !l_ROMOpen && !l_DDROMOpen)
                 return M64ERR_INVALID_STATE;
             /* the main_run() function will not return until the player has quit the game */
             return main_init();
