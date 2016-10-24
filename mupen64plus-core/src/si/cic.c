@@ -40,7 +40,8 @@ void init_cic_using_ipl3(struct cic* cic, const void* ipl3)
         { CIC_X103, 0x78 },
         { CIC_X105, 0x91 },
         { CIC_X106, 0x85 },
-        { CIC_5167, 0xdd }
+        { CIC_5167, 0xdd },
+        { CIC_8303, 0xdd }
     };
 
     for (i = 0; i < 0xfc0/4; i++)
@@ -69,6 +70,9 @@ void init_cic_using_ipl3(struct cic* cic, const void* ipl3)
           break;
        case UINT64_C(0x000001053BC19870): /* CIC_5167 */
           i = 5;
+          break;
+       case UINT64_C(0x000000D2E53EF008): /* CIC_8303 */
+          i = 6;
           break;
     }
 
