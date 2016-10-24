@@ -353,30 +353,126 @@ static void setup_variables(void)
 
 static bool emu_step_load_data()
 {
+   const char *dir;
+   char slash;
+   
+   #if defined(_WIN32)
+      slash = '\\';
+   #else
+      slash = '/';
+   #endif
+
    if(CoreStartup(FRONTEND_API_VERSION, ".", ".", "Core", n64DebugCallback, 0, 0) && log_cb)
        log_cb(RETRO_LOG_ERROR, "mupen64plus: Failed to initialize core\n");
 
-   log_cb(RETRO_LOG_INFO, "EmuThread: M64CMD_ROM_OPEN\n");
-
-   if(CoreDoCommand(M64CMD_ROM_OPEN, game_size, (void*)game_data))
+   if (*((uint32_t *)game_data) != 0x16D348E8 && *((uint32_t *)game_data) != 0x56EE6322)
    {
-      if (log_cb)
-         log_cb(RETRO_LOG_ERROR, "mupen64plus: Failed to load ROM\n");
-       goto load_fail;
+      //Regular N64 ROM
+      log_cb(RETRO_LOG_INFO, "EmuThread: M64CMD_ROM_OPEN\n");
+
+      if(CoreDoCommand(M64CMD_ROM_OPEN, game_size, (void*)game_data))
+      {
+         if (log_cb)
+            log_cb(RETRO_LOG_ERROR, "mupen64plus: Failed to load ROM\n");
+         goto load_fail;
+      }
+
+      free(game_data);
+      game_data = NULL;
+
+      log_cb(RETRO_LOG_INFO, "EmuThread: M64CMD_ROM_GET_HEADER\n");
+
+      if(CoreDoCommand(M64CMD_ROM_GET_HEADER, sizeof(ROM_HEADER), &ROM_HEADER))
+      {
+         if (log_cb)
+            log_cb(RETRO_LOG_ERROR, "mupen64plus; Failed to query ROM header information\n");
+         goto load_fail;
+      }
    }
-
-   free(game_data);
-   game_data = NULL;
-
-   log_cb(RETRO_LOG_INFO, "EmuThread: M64CMD_ROM_GET_HEADER\n");
-
-   if(CoreDoCommand(M64CMD_ROM_GET_HEADER, sizeof(ROM_HEADER), &ROM_HEADER))
+   else
    {
-      if (log_cb)
-         log_cb(RETRO_LOG_ERROR, "mupen64plus; Failed to query ROM header information\n");
-      goto load_fail;
-   }
+   	  //64DD Disk loading
+   	  if (!environ_cb(RETRO_ENVIRONMENT_GET_SYSTEM_DIRECTORY, &dir) || !dir)
+         goto load_fail;
+      
+      log_cb(RETRO_LOG_INFO, "EmuThread: M64CMD_DISK_OPEN\n");
+      printf("M64CMD_DISK_OPEN\n");
 
+      if(CoreDoCommand(M64CMD_DISK_OPEN, game_size, (void*)game_data))
+      {
+         if (log_cb)
+            log_cb(RETRO_LOG_ERROR, "mupen64plus: Failed to load DISK\n");
+         goto load_fail;
+      }
+
+      free(game_data);
+      game_data = NULL;
+      
+      
+      //64DD IPL LOAD - assumes "64DD_IPL.bin" is in system folder
+      char disk_ipl_path[256];
+      snprintf(disk_ipl_path, sizeof(disk_ipl_path), "%s%c64DD_IPL.bin", dir, slash);
+      
+      if (log_cb)
+         log_cb(RETRO_LOG_INFO, "64DD_IPL.bin path: %s\n", disk_ipl_path);
+      
+      FILE *fPtr = fopen(disk_ipl_path, "rb");
+      if (fPtr == NULL)
+      {
+         if (log_cb)
+            log_cb(RETRO_LOG_ERROR, "mupen64plus: Failed to load DISK IPL\n");
+         goto load_fail;
+      }
+      
+      long romlength = 0;
+      fseek(fPtr, 0L, SEEK_END);
+      romlength = ftell(fPtr);
+      fseek(fPtr, 0L, SEEK_SET);
+      
+      uint8_t* ipl_data = NULL;
+      ipl_data = malloc(romlength);
+      if (ipl_data == NULL)
+      {
+         if (log_cb)
+            log_cb(RETRO_LOG_ERROR, "mupen64plus: couldn't allocate DISK IPL buffer\n");
+         fclose(fPtr);
+         free(ipl_data);
+         ipl_data = NULL;
+          goto load_fail;
+      }
+      
+      if (fread(ipl_data, 1, romlength, fPtr) != romlength)
+      {
+         if (log_cb)
+            log_cb(RETRO_LOG_ERROR, "mupen64plus: couldn't read DISK IPL file to buffer\n");
+         fclose(fPtr);
+         free(ipl_data);
+         ipl_data = NULL;
+         goto load_fail;
+      }
+      fclose(fPtr);
+      
+      log_cb(RETRO_LOG_INFO, "EmuThread: M64CMD_DDROM_OPEN\n");
+      printf("M64CMD_DDROM_OPEN\n");
+        
+      if(CoreDoCommand(M64CMD_DDROM_OPEN, romlength, (void*)ipl_data))
+      {
+         if (log_cb)
+            log_cb(RETRO_LOG_ERROR, "mupen64plus: Failed to load DDROM\n");
+         free(ipl_data);
+         ipl_data = NULL;
+         goto load_fail;
+      }
+      
+      log_cb(RETRO_LOG_INFO, "EmuThread: M64CMD_ROM_GET_HEADER\n");
+
+      if(CoreDoCommand(M64CMD_ROM_GET_HEADER, sizeof(ROM_HEADER), &ROM_HEADER))
+      {
+         if (log_cb)
+            log_cb(RETRO_LOG_ERROR, "mupen64plus; Failed to query ROM header information\n");
+         goto load_fail;
+      }
+   }
    return true;
 
 load_fail:

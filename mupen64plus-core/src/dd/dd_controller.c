@@ -31,6 +31,8 @@
 #include "api/m64p_types.h"
 #include "main/main.h"
 #include "memory/memory.h"
+#include "r4300/cp0.h"
+#include "r4300/cp0_private.h"
 #include "r4300/r4300_core.h"
 #include "si/pif.h"
 #include "si/si_controller.h"
@@ -38,6 +40,7 @@
 int dd_bm_mode_read;
 int CUR_BLOCK;
 int dd_sector55;
+int dd_bm_reset_hold;
 struct tm* timeinfo;
 
 static unsigned char byte2bcd(int n)
@@ -63,8 +66,10 @@ void init_dd(struct dd_controller* dd)
     memset(dd->sec_buf, 0, 0x100);
     memset(dd->mseq_buf, 0, 0x40);
 
+    dd_bm_reset_hold = 0;
+
     dd->regs[ASIC_CMD_STATUS] =
-        (ConfigGetParamBool(g_CoreConfig, "64DD") == 1) ? 0x01000000 : 0xffffffff;
+        (ConfigGetParamBool(g_CoreConfig, "64DD") == 1) ? 0x01400000 : 0xffffffff;
     dd->regs[ASIC_ID_REG] = 0x00030000;
 }
 
@@ -84,9 +89,10 @@ int read_dd_regs(void* opaque, uint32_t address, uint32_t* value)
     if (Cur_Sector >= 0x5A)
         Cur_Sector -= 0x5A;
 
-    if ((dd->regs[ASIC_CMD_STATUS] & 0x04000000) && (85 < dd->regs[ASIC_CUR_SECTOR]))
+    if ((reg == ASIC_CMD_STATUS) && (dd->regs[ASIC_CMD_STATUS] & 0x04000000) && (85 < Cur_Sector))
     {
         dd->regs[ASIC_CMD_STATUS] &= ~0x04000000;
+        g_cp0_regs[CP0_CAUSE_REG] &= ~0x00000800;
         dd_update_bm(dd);
     }
 
@@ -139,6 +145,10 @@ int write_dd_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mask)
             break;
 
         case ASIC_BM_STATUS_CTL:
+            //SET SECTOR
+            dd->regs[ASIC_CUR_SECTOR] = value & 0x00FF0000;
+            CUR_BLOCK = ((dd->regs[ASIC_CUR_SECTOR] >> 16) < 0x5A) ? 0 : 1;
+
             if (value & 0x01000000)
             {
                 //MECHA INT RESET
@@ -150,19 +160,25 @@ int write_dd_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mask)
                 //BLOCK TRANSFER
                 dd->regs[ASIC_BM_STATUS_CTL] |= 0x01000000;
             }
-            else
-                dd->regs[ASIC_BM_STATUS_CTL] &= ~0x01000000;
 
             if (value & 0x10000000)
             {
                 //BM RESET
+                dd_bm_reset_hold = 1;
+            }
+            
+            if (!(value & 0x10000000) && dd_bm_reset_hold)
+            {
+                //BM RESET
+                dd_bm_reset_hold = 0;
                 dd->regs[ASIC_CMD_STATUS] &= ~0x5C000000;
                 dd->regs[ASIC_BM_STATUS_CTL] = 0x00000000;
+                CUR_BLOCK = 0;
+                dd->regs[ASIC_CUR_SECTOR] = 0;
             }
 
-            //SET SECTOR
-            dd->regs[ASIC_CUR_SECTOR] = value & 0x00FF0000;
-            CUR_BLOCK = ((dd->regs[ASIC_CUR_SECTOR] >> 16) < 0x5A) ? 0 : 1;
+            if ((dd->regs[ASIC_CMD_STATUS] & 0x06000000) == 0)
+                g_cp0_regs[CP0_CAUSE_REG] &= ~0x00000800;
 
             if (value & 0x80000000)
             {
@@ -238,13 +254,13 @@ int write_dd_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mask)
 
                 case 0x1b:
                     //Feature Inquiry
-                    dd->regs[ASIC_DATA] = 0x00010000;
+                    dd->regs[ASIC_DATA] = 0x00000000;
                     break;
             }
 
             dd->regs[ASIC_CMD_STATUS] |= 0x02000000;
             cp0_update_count();
-            add_interupt_event(CART_INT, 100);
+            add_interupt_event(CART_INT, 1000);
             break;
 
         case ASIC_HARD_RESET:
@@ -258,9 +274,9 @@ int write_dd_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mask)
 int dd_end_of_dma_event(struct dd_controller* dd)
 {
     //Insert clear CART INT here or something
-    dd_update_bm(dd);
+    //dd_update_bm(dd);
 
-    if ((dd->regs[ASIC_CMD_STATUS] & 0x06000000) == 0)
+    if ((dd->regs[ASIC_CMD_STATUS] & 0x04000000) == 0)
         return 1;
 
     return 0;

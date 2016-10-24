@@ -38,6 +38,7 @@
 
 #include "main/main.h"
 #include "main/rom.h"
+#include "dd/dd_rom.h"
 #include "main/version.h"
 #include "memory/memory.h"
 
@@ -107,7 +108,16 @@ GFX_INFO gfx_info;
 static m64p_error plugin_start_gfx(void)
 {
    /* fill in the GFX_INFO data structure */
-   gfx_info.HEADER = (unsigned char *) g_rom;
+   if ((g_ddrom != NULL) && (g_ddrom_size != 0) && (g_rom == NULL) && (g_rom_size == 0))
+   {
+      //fill in 64DD IPL header
+      gfx_info.HEADER = (unsigned char *) g_ddrom;
+   }
+   else
+   {
+      //fill in regular N64 ROM header
+      gfx_info.HEADER = (unsigned char *) g_rom;
+   }
    gfx_info.RDRAM = (unsigned char *) g_rdram;
    gfx_info.DMEM = (unsigned char *) g_sp.mem;
    gfx_info.IMEM = (unsigned char *) g_sp.mem + 0x1000;

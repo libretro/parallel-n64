@@ -64,7 +64,10 @@ enum
     CIC_NUS_6103,
     CIC_NUS_6105,
     CIC_NUS_6106,
-    CIC_NUS_5167
+    CIC_NUS_5167,
+    CIC_NUS_8303,
+    CIC_NUS_USDD,
+    CIC_NUS_DVDD
 };
 
 /* Supported save types. */
