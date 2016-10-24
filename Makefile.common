@@ -228,8 +228,7 @@ endif
 # Libretro
 
 ifeq ($(HAVE_OPENGL),1)
-SOURCES_C += $(LIBRETRO_COMM_DIR)/glsm/glsm.c \
-				 $(LIBRETRO_COMM_DIR)/gfx/gl_capabilities.c
+SOURCES_C += $(LIBRETRO_COMM_DIR)/glsm/glsm.c
 endif
 
 SOURCES_C += $(LIBRETRO_DIR)/libretro.c \
@@ -249,6 +248,10 @@ SOURCES_C += $(LIBRETRO_DIR)/libretro.c \
 ifeq ($(STATIC_LINKING),1)
 else
 SOURCES_C += $(LIBRETRO_COMM_DIR)/streams/file_stream.c
+
+ifeq ($(HAVE_OPENGL),1)
+SOURCES_C += $(LIBRETRO_COMM_DIR)/gfx/gl_capabilities.c
+endif
 endif
 
 ifeq ($(WITH_CRC),brumme)
