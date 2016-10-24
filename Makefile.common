@@ -228,7 +228,8 @@ endif
 # Libretro
 
 ifeq ($(HAVE_OPENGL),1)
-SOURCES_C += $(LIBRETRO_COMM_DIR)/glsm/glsm.c
+SOURCES_C += $(LIBRETRO_COMM_DIR)/glsm/glsm.c \
+				 $(LIBRETRO_COMM_DIR)/gfx/gl_capabilities.c
 endif
 
 SOURCES_C += $(LIBRETRO_DIR)/libretro.c \

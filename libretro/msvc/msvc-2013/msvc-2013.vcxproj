@@ -733,6 +733,7 @@
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='GlideN64release|x64'">CompileAsC</CompileAs>
     </ClCompile>
     <ClCompile Include="..\..\..\libretro-common\compat\compat_strl.c" />
+    <ClCompile Include="..\..\..\libretro-common\gfx\gl_capabilities.c" />
     <ClCompile Include="..\..\..\libretro-common\conversion\float_to_s16.c" />
     <ClCompile Include="..\..\..\libretro-common\conversion\s16_to_float.c" />
     <ClCompile Include="..\..\..\libretro-common\features\features_cpu.c" />
