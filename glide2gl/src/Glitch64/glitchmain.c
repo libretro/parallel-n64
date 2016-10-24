@@ -95,6 +95,7 @@ uint32_t grSstWinOpen(void)
 
    packed_pixels_support = 0;
    npot_support          = 0;
+   bgra8888_support      = 0;
    
    // we can assume that non-GLES has GL_EXT_packed_pixels
    // support -it's included since OpenGL 1.2
@@ -107,15 +108,10 @@ uint32_t grSstWinOpen(void)
       npot_support = 1;
    }
 
-   if (isExtensionSupported("GL_EXT_texture_format_BGRA8888"))
+   if (gl_check_capability(GL_CAPS_BGRA8888))
    {
       printf("GL_EXT_texture_format_BGRA8888 supported.\n");
       bgra8888_support = 1;
-   }
-   else
-   {
-      //DISPLAY_WARNING("GL_EXT_texture_format_BGRA8888 not supported.\n");
-      bgra8888_support = 0;
    }
 
    FindBestDepthBias();
