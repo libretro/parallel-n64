@@ -26,6 +26,8 @@
 #include "../api/m64p_types.h"
 #include "../main/main.h"
 #include "../memory/memory.h"
+#include "../r4300/cp0.h"
+#include "../r4300/cp0_private.h"
 #include "../r4300/r4300_core.h"
 #include "../ri/rdram_detection_hack.h"
 #include "../ri/ri_controller.h"
@@ -96,7 +98,7 @@ static void dma_pi_write(struct pi_controller *pi)
             rom_address = (pi->regs[PI_CART_ADDR_REG] - 0x05000400) & 0x3fffff;
             rom = (uint8_t*)g_dd.sec_buf;
             //g_dd.regs[ASIC_CMD_STATUS] &= ~0x14000000;
-            g_dd.regs[ASIC_CMD_STATUS] &= ~0x10000000;
+            //g_dd.regs[ASIC_CMD_STATUS] &= ~0x10000000;
          }
          else if (pi->regs[PI_CART_ADDR_REG] == 0x05000000)
          {
@@ -105,7 +107,7 @@ static void dma_pi_write(struct pi_controller *pi)
             length      = (i + length) > 0x400 ? (0x400 - i) : length;
             rom         = (uint8_t*)g_dd.c2_buf;
             //g_dd.regs[ASIC_CMD_STATUS] &= ~0x44000000;
-            g_dd.regs[ASIC_CMD_STATUS] &= ~0x40000000;
+            //g_dd.regs[ASIC_CMD_STATUS] &= ~0x40000000;
          }
          else
          {
@@ -128,13 +130,7 @@ static void dma_pi_write(struct pi_controller *pi)
          invalidate_r4300_cached_code(0x80000000 + dram_address, length);
          invalidate_r4300_cached_code(0xa0000000 + dram_address, length);
 
-         pi->regs[PI_STATUS_REG] |= 3;
-         cp0_update_count();
-         add_interupt_event(PI_INT, length / 8);
-
-#if 0
          dd_update_bm(&g_dd);
-#endif
       }
       else
       {
@@ -143,9 +139,10 @@ static void dma_pi_write(struct pi_controller *pi)
 #endif
       }
 
-      pi->regs[PI_STATUS_REG] |= 1;
+      pi->regs[PI_STATUS_REG] |= 3;
       cp0_update_count();
-      add_interupt_event(PI_INT, /*pi->regs[PI_WR_LEN_REG]*/0x1000);
+      //add_interupt_event(PI_INT, /*pi->regs[PI_WR_LEN_REG]*/0x1000);
+      add_interupt_event(PI_INT, ((pi->regs[PI_WR_LEN_REG] * 63) / 25));
 
       return;
    }
