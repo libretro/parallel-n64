@@ -55,9 +55,9 @@ enum dd_registers
 struct dd_controller
 {
     uint32_t regs[ASIC_REGS_COUNT];
-    uint32_t c2_buf[0x400/4];
-    uint32_t sec_buf[0x100/4];
-    uint32_t mseq_buf[0x40/4];
+    uint8_t c2_buf[0x400];
+    uint8_t sec_buf[0x100];
+    uint8_t mseq_buf[0x40];
 
     struct r4300_core* r4300;
     struct dd_disk disk;

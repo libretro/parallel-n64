@@ -96,7 +96,7 @@ static void dma_pi_write(struct pi_controller *pi)
             i -= 0x400;
             length = (i + length) > 0x100 ? (0x100 - i) : length;
             rom_address = (pi->regs[PI_CART_ADDR_REG] - 0x05000400) & 0x3fffff;
-            rom = (uint8_t*)g_dd.sec_buf;
+            rom = g_dd.sec_buf;
             //g_dd.regs[ASIC_CMD_STATUS] &= ~0x14000000;
             //g_dd.regs[ASIC_CMD_STATUS] &= ~0x10000000;
          }
@@ -105,7 +105,7 @@ static void dma_pi_write(struct pi_controller *pi)
             //C2 BUFFER
             rom_address = (pi->regs[PI_CART_ADDR_REG] - 0x05000000) & 0x3fffff;
             length      = (i + length) > 0x400 ? (0x400 - i) : length;
-            rom         = (uint8_t*)g_dd.c2_buf;
+            rom         = g_dd.c2_buf;
             //g_dd.regs[ASIC_CMD_STATUS] &= ~0x44000000;
             //g_dd.regs[ASIC_CMD_STATUS] &= ~0x40000000;
          }

@@ -284,6 +284,4 @@ void dd_read_sector(void *opaque)
 
 	for (i = 0; i <= (int)(dd->regs[ASIC_HOST_SECBYTE] >> 16); i++)
 		dd->sec_buf[i] = g_dd_disk[offset + i];
-
-	printf("READ SECTOR 0x%08X - %02X%02X%02X%02X\n", offset, dd->sec_buf[0], dd->sec_buf[1], dd->sec_buf[2], dd->sec_buf[3]);
 }
