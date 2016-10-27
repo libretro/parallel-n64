@@ -267,12 +267,12 @@ int write_pi_regs(void* opaque, uint32_t address,
    {
       case PI_CART_ADDR_REG:
       {
-         if (pi->regs[PI_CART_ADDR_REG] == 0x05000000)
+         if (value == 0x05000000)
          {
             g_dd.regs[ASIC_CMD_STATUS] &= ~0x1C000000;
             dd_pi_test();
          }
-         else if (pi->regs[PI_CART_ADDR_REG] == 0x05000400)
+         else if (value == 0x05000400)
          {
             g_dd.regs[ASIC_CMD_STATUS] &= ~0x4C000000;
             dd_pi_test();
