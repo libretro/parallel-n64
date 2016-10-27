@@ -48,7 +48,6 @@ int g_dd_disk_size = 0;
 
 int dd_bm_mode_read;	//BM MODE 0 = WRITE, MODE 1 = READ
 int CUR_BLOCK;			//Current Block
-int dd_sector55;
 int dd_zone;			//Current Zone
 int dd_track_offset;	//Offset to Track
 
@@ -261,7 +260,7 @@ void dd_write_sector(void *opaque)
 	offset += (Cur_Sector - 1) * ddZoneSecSize[dd_zone];
 
 	for (i = 0; i <= (int)(dd->regs[ASIC_HOST_SECBYTE] >> 16); i++)
-		dd->disk.disk[offset + i] = dd->sec_buf[i];
+		g_dd_disk[offset + i] = dd->sec_buf[i];
 }
 
 void dd_read_sector(void *opaque)
@@ -284,5 +283,7 @@ void dd_read_sector(void *opaque)
 #endif
 
 	for (i = 0; i <= (int)(dd->regs[ASIC_HOST_SECBYTE] >> 16); i++)
-		dd->sec_buf[i] = dd->disk.disk[offset + i];
+		dd->sec_buf[i] = g_dd_disk[offset + i];
+
+	printf("READ SECTOR 0x%08X - %02X%02X%02X%02X\n", offset, dd->sec_buf[0], dd->sec_buf[1], dd->sec_buf[2], dd->sec_buf[3]);
 }

@@ -59,8 +59,8 @@ struct dd_controller
     uint32_t sec_buf[0x100/4];
     uint32_t mseq_buf[0x40/4];
 
-	struct r4300_core* r4300;
-   struct dd_disk disk;
+    struct r4300_core* r4300;
+    struct dd_disk disk;
 };
 
 static uint32_t dd_reg(uint32_t address)

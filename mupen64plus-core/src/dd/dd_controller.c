@@ -40,7 +40,6 @@
 
 int dd_bm_mode_read;
 int CUR_BLOCK;
-int dd_sector55;
 int dd_bm_reset_hold;
 struct tm* timeinfo;
 
@@ -197,7 +196,6 @@ int write_dd_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mask)
             {
                 //BM START
                 dd->regs[ASIC_BM_STATUS_CTL] |= 0x80000000;
-                dd_sector55 = 0;
                 printf("--DD UPDATE BM CONTEXT - BM START\n");
                 dd_update_bm(dd);
             }
@@ -281,6 +279,10 @@ int write_dd_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mask)
 
         case ASIC_HARD_RESET:
             dd->regs[ASIC_CMD_STATUS] |= 0x00400000;
+            break;
+
+        case ASIC_HOST_SECBYTE:
+            dd->regs[ASIC_HOST_SECBYTE] = value;
             break;
     }
 
