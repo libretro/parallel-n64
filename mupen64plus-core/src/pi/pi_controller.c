@@ -130,7 +130,7 @@ static void dma_pi_write(struct pi_controller *pi)
          invalidate_r4300_cached_code(0x80000000 + dram_address, length);
          invalidate_r4300_cached_code(0xa0000000 + dram_address, length);
 
-         dd_update_bm(&g_dd);
+         //dd_update_bm(&g_dd);
       }
       else
       {
@@ -265,6 +265,20 @@ int write_pi_regs(void* opaque, uint32_t address,
 
    switch (reg)
    {
+      case PI_CART_ADDR_REG:
+      {
+         if (pi->regs[PI_CART_ADDR_REG] == 0x05000000)
+         {
+            g_dd.regs[ASIC_CMD_STATUS] &= ~0x1C000000;
+            dd_pi_test();
+         }
+         else if (pi->regs[PI_CART_ADDR_REG] == 0x05000400)
+         {
+            g_dd.regs[ASIC_CMD_STATUS] &= ~0x4C000000;
+            dd_pi_test();
+         }
+         break;
+      }
       case PI_RD_LEN_REG:
          pi->regs[PI_RD_LEN_REG] = MASKED_WRITE(&pi->regs[PI_RD_LEN_REG], value, mask);
          dma_pi_read(pi);
@@ -301,4 +315,10 @@ void pi_end_of_dma_event(struct pi_controller* pi)
 {
    pi->regs[PI_STATUS_REG] &= ~3;
    raise_rcp_interrupt(pi->r4300, MI_INTR_PI);
+
+   if ((pi->regs[PI_CART_ADDR_REG] == 0x05000000) || (pi->regs[PI_CART_ADDR_REG] == 0x05000400))
+   {
+      printf("--DD UPDATE BM CONTEXT - PI EVENT\n");
+      dd_update_bm(&g_dd);
+   }
 }

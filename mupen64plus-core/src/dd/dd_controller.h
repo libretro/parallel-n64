@@ -83,5 +83,6 @@ int read_dd_regs(void* opaque, uint32_t address, uint32_t* value);
 int write_dd_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mask);
 
 int dd_end_of_dma_event(struct dd_controller* dd);
+void dd_pi_test();
 
 #endif

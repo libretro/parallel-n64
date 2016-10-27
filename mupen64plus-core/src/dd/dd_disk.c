@@ -169,7 +169,7 @@ void dd_update_bm(void *opaque)
 
 		if (!dd_bm_mode_read)		//WRITE MODE
 		{
-			//printf("--DD_UPDATE_BM WRITE Block %d Sector %X\n", ((dd->regs[ASIC_CUR_TK] & 0x0FFF0000U) >> 15) + CUR_BLOCK, Cur_Sector);
+			//printf("--DD_UPDATE_BM WRITE Block %d Sector %X\n", ((dd->regs[ASIC_CUR_TK] & 0x1FFF0000U) >> 15) + CUR_BLOCK, Cur_Sector);
 
 			if (Cur_Sector < SECTORS_PER_BLOCK)
 			{
@@ -239,7 +239,9 @@ void dd_update_bm(void *opaque)
 
 		dd->regs[ASIC_CMD_STATUS] |= 0x04000000;
 		cp0_update_count();
-		add_interupt_event(CART_INT, 1000);
+		//add_interupt_event(CART_INT, 1000);
+		g_cp0_regs[CP0_CAUSE_REG] |= 0x00000800;
+        check_interupt();
 	}
 }
 
