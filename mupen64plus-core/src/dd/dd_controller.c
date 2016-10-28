@@ -85,8 +85,6 @@ int read_dd_regs(void* opaque, uint32_t address, uint32_t* value)
     if (reg < ASIC_REGS_COUNT)
         *value = dd->regs[reg];
 
-    printf("--DD REG READ %08X:%08X ---- %08X\n", address, *value, g_cp0_regs[CP0_CAUSE_REG]);
-
     int Cur_Sector = dd->regs[ASIC_CUR_SECTOR] >> 16;
     if (Cur_Sector >= 0x5A)
         Cur_Sector -= 0x5A;
@@ -97,7 +95,6 @@ int read_dd_regs(void* opaque, uint32_t address, uint32_t* value)
         cp0_update_count();
         g_cp0_regs[CP0_CAUSE_REG] &= ~0x00000800;
         check_interupt();
-        printf("--DD UPDATE BM CONTEXT - READ REG %08X\n", Cur_Sector);
         dd_update_bm(dd);
     }
 
@@ -143,8 +140,6 @@ int write_dd_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mask)
     if (!ConfigGetParamBool(g_CoreConfig, "64DD"))
         return 0;
 
-    printf("--DD REG WRITE %08X:%08X --- %08X\n", address, value, g_cp0_regs[CP0_CAUSE_REG]);
-
     switch (reg)
     {
         case ASIC_DATA:
@@ -182,7 +177,6 @@ int write_dd_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mask)
                 dd->regs[ASIC_BM_STATUS_CTL] = 0x00000000;
                 CUR_BLOCK = 0;
                 dd->regs[ASIC_CUR_SECTOR] = 0;
-                printf("--DD BM RESET\n");
             }
 
             if ((dd->regs[ASIC_CMD_STATUS] & 0x06000000) == 0)
@@ -196,7 +190,6 @@ int write_dd_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mask)
             {
                 //BM START
                 dd->regs[ASIC_BM_STATUS_CTL] |= 0x80000000;
-                printf("--DD UPDATE BM CONTEXT - BM START\n");
                 dd_update_bm(dd);
             }
 
