@@ -58,6 +58,13 @@ static void dma_pi_read(struct pi_controller *pi)
          rom_address = (pi->regs[PI_CART_ADDR_REG] - 0x05000400) & 0x3fffff;
          rom = g_dd.sec_buf;
       }
+      else
+      {
+         pi->regs[PI_STATUS_REG] |= 1;
+         cp0_update_count();
+         add_interupt_event(PI_INT, 0x1000/* pi->regs[PI_RD_LEN_REG] */);
+         return;
+      }
 
       length = (pi->regs[PI_DRAM_ADDR_REG] + length) > 0x7FFFFF ?
          (0x7FFFFF - pi->regs[PI_DRAM_ADDR_REG]) : length;
