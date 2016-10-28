@@ -463,62 +463,6 @@ static bool emu_step_load_data()
          ipl_data = NULL;
          goto load_fail;
       }
-
-      //LEOULX CODE START
-      char leoulx_path[256];
-      snprintf(leoulx_path, sizeof(leoulx_path), "%s%cleoulx.z64", dir, slash);
-      
-      if (log_cb)
-         log_cb(RETRO_LOG_INFO, "leoulx.z64 path: %s\n", leoulx_path);
-      
-      FILE *fPtr_ulx = fopen(leoulx_path, "rb");
-      if (fPtr_ulx == NULL)
-      {
-         if (log_cb)
-            log_cb(RETRO_LOG_ERROR, "mupen64plus: Failed to load LEOULX\n");
-         goto load_fail;
-      }
-      
-      romlength = 0;
-      fseek(fPtr_ulx, 0L, SEEK_END);
-      romlength = ftell(fPtr_ulx);
-      fseek(fPtr_ulx, 0L, SEEK_SET);
-      
-      uint8_t* ulx_data = NULL;
-      ulx_data = malloc(romlength);
-      if (ulx_data == NULL)
-      {
-         if (log_cb)
-            log_cb(RETRO_LOG_ERROR, "mupen64plus: couldn't allocate LEOULX buffer\n");
-         fclose(fPtr_ulx);
-         free(ulx_data);
-         ulx_data = NULL;
-          goto load_fail;
-      }
-      
-      if (fread(ulx_data, 1, romlength, fPtr_ulx) != romlength)
-      {
-         if (log_cb)
-            log_cb(RETRO_LOG_ERROR, "mupen64plus: couldn't read LEOULX file to buffer\n");
-         fclose(fPtr_ulx);
-         free(ulx_data);
-         ulx_data = NULL;
-         goto load_fail;
-      }
-      fclose(fPtr_ulx);
-      
-      log_cb(RETRO_LOG_INFO, "EmuThread: M64CMD_ROM_OPEN\n");
-      printf("M64CMD_ROM_OPEN\n");
-        
-      if(CoreDoCommand(M64CMD_ROM_OPEN, romlength, (void*)ulx_data))
-      {
-         if (log_cb)
-            log_cb(RETRO_LOG_ERROR, "mupen64plus: Failed to load ROM\n");
-         free(ulx_data);
-         ulx_data = NULL;
-         goto load_fail;
-      }
-      //END
       
       log_cb(RETRO_LOG_INFO, "EmuThread: M64CMD_ROM_GET_HEADER\n");
 

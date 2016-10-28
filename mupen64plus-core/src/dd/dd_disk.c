@@ -260,7 +260,7 @@ void dd_write_sector(void *opaque)
 	offset += (Cur_Sector - 1) * ddZoneSecSize[dd_zone];
 
 	for (i = 0; i <= (int)(dd->regs[ASIC_HOST_SECBYTE] >> 16); i++)
-		g_dd_disk[offset + i] = dd->sec_buf[i];
+		g_dd_disk[offset + i] = dd->sec_buf[i ^ 3];
 }
 
 void dd_read_sector(void *opaque)
@@ -283,5 +283,5 @@ void dd_read_sector(void *opaque)
 #endif
 
 	for (i = 0; i <= (int)(dd->regs[ASIC_HOST_SECBYTE] >> 16); i++)
-		dd->sec_buf[i] = g_dd_disk[offset + i];
+		dd->sec_buf[i ^ 3] = g_dd_disk[offset + i];
 }
