@@ -38,7 +38,44 @@
 /* Copies data from the PI into RDRAM */
 static void dma_pi_read(struct pi_controller *pi)
 {
-   if (pi->regs[PI_CART_ADDR_REG] >= 0x08000000
+   uint32_t length, i;
+   uint32_t dram_address;
+   uint32_t rom_address;
+   const uint8_t* dram;
+   uint8_t* rom;
+
+   if (pi->regs[PI_CART_ADDR_REG] >= 0x05000000 && pi->regs[PI_CART_ADDR_REG] < 0x06000000)
+   {
+      //64DD BUFFER WRITES
+      length = (pi->regs[PI_RD_LEN_REG] & 0xFFFFFF) + 1;
+      i = (pi->regs[PI_CART_ADDR_REG] - 0x05000000) & 0x1FFFFFF;
+
+      if (pi->regs[PI_CART_ADDR_REG] == 0x05000400)
+      {
+         //SECTOR BUFFER
+         i -= 0x400;
+         length = (i + length) > 0x100 ? (0x100 - i) : length;
+         rom_address = (pi->regs[PI_CART_ADDR_REG] - 0x05000400) & 0x3fffff;
+         rom = g_dd.sec_buf;
+      }
+      else
+      {
+         pi->regs[PI_STATUS_REG] |= 1;
+         cp0_update_count();
+         add_interupt_event(PI_INT, 0x1000/* pi->regs[PI_RD_LEN_REG] */);
+         return;
+      }
+
+      length = (pi->regs[PI_DRAM_ADDR_REG] + length) > 0x7FFFFF ?
+         (0x7FFFFF - pi->regs[PI_DRAM_ADDR_REG]) : length;
+
+      dram_address = pi->regs[PI_DRAM_ADDR_REG];
+      dram = (uint8_t*)pi->ri->rdram.dram;
+
+      for (i = 0; i < length; ++i)
+         rom[(rom_address + i) ^ S8] = dram[(dram_address + i) ^ S8];
+   }
+   else if (pi->regs[PI_CART_ADDR_REG] >= 0x08000000
          && pi->regs[PI_CART_ADDR_REG] < 0x08010000)
    {
       if (pi->use_flashram != 1)
