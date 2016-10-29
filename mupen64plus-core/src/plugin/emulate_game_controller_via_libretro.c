@@ -700,12 +700,40 @@ static void inputGetKeys_RR64( int Control, BUTTONS *Keys )
    inputGetKeys_reuse(analogX, analogY, Control, Keys);
 }
 
+static void inputGetKeys_mouse( int Control, BUTTONS *Keys )
+{
+   int mouseX = 0;
+   int mouseY = 0;
+   Keys->A_BUTTON = input_cb(Control, RETRO_DEVICE_MOUSE, 0, RETRO_DEVICE_ID_MOUSE_LEFT);
+   Keys->B_BUTTON = input_cb(Control, RETRO_DEVICE_MOUSE, 0, RETRO_DEVICE_ID_MOUSE_RIGHT);
+   mouseX = input_cb(Control, RETRO_DEVICE_MOUSE, 0, RETRO_DEVICE_ID_MOUSE_X);
+   mouseY = -input_cb(Control, RETRO_DEVICE_MOUSE, 0, RETRO_DEVICE_ID_MOUSE_Y);
+
+   if (mouseX > 127)
+      mouseX = 127;
+   if (mouseY > 127)
+      mouseY = 127;
+   if (mouseX < -128)
+      mouseX = -128;
+   if (mouseY < -128)
+      mouseY = -128;
+
+   Keys->X_AXIS = mouseX;
+   Keys->Y_AXIS = mouseY;
+}
+
 static void inputGetKeys_default( int Control, BUTTONS *Keys )
 {
    bool hold_cstick = false;
    int16_t analogX = 0;
    int16_t analogY = 0;
    Keys->Value = 0;
+
+   if (controller[Control].control->Present == 2)
+   {
+      inputGetKeys_mouse(Control, Keys);
+      return;
+   }
 
    Keys->R_DPAD = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_RIGHT);
    Keys->L_DPAD = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_LEFT);

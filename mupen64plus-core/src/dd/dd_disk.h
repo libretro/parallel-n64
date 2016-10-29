@@ -43,7 +43,7 @@
 
 extern int dd_bm_mode_read;	    /* BM MODE 0 = WRITE, MODE 1 = READ */
 extern int CUR_BLOCK;			/* Current Block */
-extern int disk_format;
+extern int disk_format;			/* Disk Dump Format */
 
 struct dd_disk
 {

@@ -73,7 +73,10 @@ static void controller_status_command(struct game_controller* cont, uint8_t* cmd
         return;
     }
 
-    cmd[3] = 0x05;
+    if (connected == CONT_JOYPAD)
+      cmd[3] = 0x05;
+    else if (connected == CONT_MOUSE)
+      cmd[3] = 0x02;
     cmd[4] = 0x00;
 
     switch(pak)

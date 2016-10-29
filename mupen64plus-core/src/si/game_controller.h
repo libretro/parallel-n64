@@ -36,6 +36,13 @@ enum pak_type
     PAK_TRANSFER
 };
 
+enum cont_type
+{
+    CONT_NONE = 0,
+    CONT_JOYPAD = 1,
+    CONT_MOUSE = 2
+};
+
 struct game_controller
 {
     /* external controller input */
