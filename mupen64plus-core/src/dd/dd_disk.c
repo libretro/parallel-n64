@@ -45,12 +45,12 @@
 unsigned char* g_dd_disk = NULL;
 /* Global loaded disk size. */
 int g_dd_disk_size = 0;
-int disk_format;
 
 int dd_bm_mode_read;	/* BM MODE 0 = WRITE, MODE 1 = READ */
 int CUR_BLOCK;			/* Current Block */
 int dd_zone;			/* Current Zone */
 int dd_track_offset;	/* Offset to Track */
+int disk_format;		/* Disk Dump Format */
 
 const unsigned int ddZoneSecSize[16] = { 232, 216, 208, 192, 176, 160, 144, 128,
                                        216, 208, 192, 176, 160, 144, 128, 112 };
@@ -302,7 +302,7 @@ void dd_read_sector(void *opaque)
    int offset, Cur_Sector;
 	struct dd_controller *dd = (struct dd_controller *) opaque;
 
-	/*READ SECTOR */
+	/* READ SECTOR */
 	Cur_Sector = dd->regs[ASIC_CUR_SECTOR] >> 16;
 	if (Cur_Sector >= 0x5A)
 		Cur_Sector -= 0x5A;
@@ -372,25 +372,24 @@ void dd_convert_to_mame(const unsigned char* diskimage)
 
     disktype = SystemData[5] & 0xF;
 
-    //Prepare Input Offsets
+    /* Prepare Input Offsets */
     for (zone = 1; zone < 16; zone++)
     {
         InStart[zone] = InStart[zone - 1] +
             VZONESIZE(DiskTypeZones[disktype][zone - 1]);
     }
 
-    //Prepare Output Offsets
+    /* Prepare Output Offsets */
     for (zone = 1; zone < 16; zone++)
     {
         OutStart[zone] = OutStart[zone - 1] + ZONESIZE(zone - 1);
     }
 
-    //Copy Head 0
+    /* Copy Head 0 */
     for (zone = 0; zone < 8; zone++)
     {
         OutOffset = OutStart[zone];
         InOffset = InStart[RevDiskTypeZones[disktype][zone]];
-        //m_DiskFile.Seek(InOffset, CFileBase::begin);
         cur_offset = InOffset;
         block = StartBlock[disktype][zone];
         atrack = 0;
@@ -407,19 +406,15 @@ void dd_convert_to_mame(const unsigned char* diskimage)
                 if ((block % 2) == 1)
                 {
                 	memcpy(BlockData1, diskimage + cur_offset, BLOCKSIZE(zone));
-                    //m_DiskFile.Read(&BlockData1, BLOCKSIZE(zone));
                     cur_offset += BLOCKSIZE(zone);
                     memcpy(BlockData0, diskimage + cur_offset, BLOCKSIZE(zone));
-                    //m_DiskFile.Read(&BlockData0, BLOCKSIZE(zone));
                     cur_offset += BLOCKSIZE(zone);
                 }
                 else
                 {
                     memcpy(BlockData0, diskimage + cur_offset, BLOCKSIZE(zone));
-                    //m_DiskFile.Read(&BlockData0, BLOCKSIZE(zone));
                     cur_offset += BLOCKSIZE(zone);
                     memcpy(BlockData1, diskimage + cur_offset, BLOCKSIZE(zone));
-                    //m_DiskFile.Read(&BlockData1, BLOCKSIZE(zone));
                     cur_offset += BLOCKSIZE(zone);
                 }
                 block = 1 - block;
@@ -431,12 +426,10 @@ void dd_convert_to_mame(const unsigned char* diskimage)
         }
     }
 
-    //Copy Head 1
+    /* Copy Head 1 */
     for (zone = 8; zone < 16; zone++)
     {
-        //OutOffset = OutStart[zone];
         InOffset = InStart[RevDiskTypeZones[disktype][zone]];
-        //m_DiskFile.Seek(InOffset, CFileBase::begin);
         cur_offset = InOffset;
         block = StartBlock[disktype][zone];
         atrack = 0xB;
@@ -453,19 +446,15 @@ void dd_convert_to_mame(const unsigned char* diskimage)
                 if ((block % 2) == 1)
                 {
                     memcpy(BlockData1, diskimage + cur_offset, BLOCKSIZE(zone));
-                    //m_DiskFile.Read(&BlockData1, BLOCKSIZE(zone));
                     cur_offset += BLOCKSIZE(zone);
                     memcpy(BlockData0, diskimage + cur_offset, BLOCKSIZE(zone));
-                    //m_DiskFile.Read(&BlockData0, BLOCKSIZE(zone));
                     cur_offset += BLOCKSIZE(zone);
                 }
                 else
                 {
                     memcpy(BlockData0, diskimage + cur_offset, BLOCKSIZE(zone));
-                    //m_DiskFile.Read(&BlockData0, BLOCKSIZE(zone));
                     cur_offset += BLOCKSIZE(zone);
                     memcpy(BlockData1, diskimage + cur_offset, BLOCKSIZE(zone));
-                    //m_DiskFile.Read(&BlockData1, BLOCKSIZE(zone));
                     cur_offset += BLOCKSIZE(zone);
                 }
                 block = 1 - block;
