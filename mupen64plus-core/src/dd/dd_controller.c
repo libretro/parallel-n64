@@ -98,16 +98,16 @@ int read_dd_regs(void* opaque, uint32_t address, uint32_t* value)
         dd_update_bm(dd);
     }
 
-    /*
-    //BUFFERS
+#if 0
+    /* BUFFERS */
     switch (address & 0x00000c00)
     {
         case 0x000:
-            //C2 BUFFER
+            /* C2 BUFFER */
             *value = dd->c2_buf[offset/4];
             break;
         case 0x400:
-            //SECTOR BUFFER
+            /* SECTOR BUFFER */
             offset -= 0x400;
             *value = dd->sec_buf[offset/4];
             break;
@@ -115,18 +115,18 @@ int read_dd_regs(void* opaque, uint32_t address, uint32_t* value)
 
     if ((address & 0x00000f00) == 0x500)
     {
-        //REGS
+        /* REGS */
         if (reg < ASIC_REGS_COUNT)
             *value = dd->regs[reg];
 
         if (((address & 0x00000FFF) >= 0x580) || ((address & 0x00000FFF) < 0x5C0))
         {
-            //MSEQ
+            /* MSEQ */
             offset -= 0x580;
             *value = dd->mseq_buf[offset/4];
         }
     }
-    */
+#endif
     return 0;
 }
 
@@ -147,31 +147,31 @@ int write_dd_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mask)
             break;
 
         case ASIC_BM_STATUS_CTL:
-            //SET SECTOR
+            /* SET SECTOR */
             dd->regs[ASIC_CUR_SECTOR] = value & 0x00FF0000;
             CUR_BLOCK = ((dd->regs[ASIC_CUR_SECTOR] >> 16) < 0x5A) ? 0 : 1;
 
             if (value & 0x01000000)
             {
-                //MECHA INT RESET
+                /* MECHA INT RESET */
                 dd->regs[ASIC_CMD_STATUS] &= ~0x02000000;
             }
 
             if (value & 0x02000000)
             {
-                //BLOCK TRANSFER
+                /* BLOCK TRANSFER */
                 dd->regs[ASIC_BM_STATUS_CTL] |= 0x01000000;
             }
 
             if (value & 0x10000000)
             {
-                //BM RESET
+                /* BM RESET */
                 dd_bm_reset_hold = 1;
             }
             
             if (!(value & 0x10000000) && dd_bm_reset_hold)
             {
-                //BM RESET
+                /* BM RESET */
                 dd_bm_reset_hold = 0;
                 dd->regs[ASIC_CMD_STATUS] &= ~0x5C000000;
                 dd->regs[ASIC_BM_STATUS_CTL] = 0x00000000;
@@ -188,7 +188,7 @@ int write_dd_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mask)
 
             if (value & 0x80000000)
             {
-                //BM START
+                /* BM START */
                 dd->regs[ASIC_BM_STATUS_CTL] |= 0x80000000;
                 dd_update_bm(dd);
             }
@@ -196,14 +196,14 @@ int write_dd_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mask)
             break;
 
         case ASIC_CMD_STATUS:
-            //ASIC Commands
+            /* ASIC Commands */
             timeinfo = (struct tm*)af_rtc_get_time(&g_si.pif.af_rtc);
             uint8_t year, month, hour, day, min, sec;
 
             switch (value >> 16)
             {
                 case 0x01:
-                    //SEEK READ TRACK
+                    /* SEEK READ TRACK */
                     dd->regs[ASIC_CUR_TK] = dd->regs[ASIC_DATA] | 0x60000000;
                     dd->regs[ASIC_CMD_STATUS] &= ~0x00180000;
                     dd_bm_mode_read = 1;
@@ -211,7 +211,7 @@ int write_dd_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mask)
                     break;
 
                 case 0x02:
-                    //SEEK WRITE TRACK
+                    /* SEEK WRITE TRACK */
                     dd->regs[ASIC_CUR_TK] = dd->regs[ASIC_DATA] | 0x60000000;
                     dd->regs[ASIC_CMD_STATUS] &= ~0x00180000;
                     dd_bm_mode_read = 0;
@@ -219,19 +219,19 @@ int write_dd_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mask)
                     break;
 
                 case 0x08:
-                    //CLEAR DISK CHANGE FLAG
+                    /* CLEAR DISK CHANGE FLAG */
                     dd->regs[ASIC_CMD_STATUS] &= ~0x00010000;
                     break;
 
                 case 0x09:
-                    //CLEAR RESET FLAG
+                    /* CLEAR RESET FLAG */
                     dd->regs[ASIC_CMD_STATUS] &= ~0x00400000;
                     break;
 
                 case 0x12:
-                    //Get Year/Month
+                    /* Get Year/Month */
 
-                    //Put time in DATA as BCD
+                    /* Put time in DATA as BCD */
                     year = (uint8_t)byte2bcd(timeinfo->tm_year);
                     month = (uint8_t)byte2bcd((timeinfo->tm_mon + 1));
 
@@ -239,18 +239,18 @@ int write_dd_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mask)
                     break;
 
                 case 0x13:
-                    //Get Day/Hour
+                    /* Get Day/Hour */
 
-                    //Put time in DATA as BCD
+                    /* Put time in DATA as BCD */
                     hour = (uint8_t)byte2bcd(timeinfo->tm_hour);
                     day = (uint8_t)byte2bcd(timeinfo->tm_mday);
 
                     dd->regs[ASIC_DATA] = (day << 24) | (hour << 16);
                     break;
                 case 0x14:
-                    //Get Min/Sec
+                    /* Get Min/Sec */
 
-                    //Put time in DATA as BCD
+                    /* Put time in DATA as BCD */
                     min = (uint8_t)byte2bcd(timeinfo->tm_min);
                     sec = (uint8_t)byte2bcd(timeinfo->tm_sec);
 
@@ -258,7 +258,7 @@ int write_dd_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mask)
                     break;
 
                 case 0x1b:
-                    //Feature Inquiry
+                    /* Feature Inquiry */
                     dd->regs[ASIC_DATA] = 0x00000000;
                     break;
             }
@@ -267,7 +267,9 @@ int write_dd_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mask)
             cp0_update_count();
             g_cp0_regs[CP0_CAUSE_REG] |= 0x00000800;
             check_interupt();
-            //add_interupt_event(CART_INT, 1000);
+#if 0
+            add_interupt_event(CART_INT, 1000);
+#endif
             break;
 
         case ASIC_HARD_RESET:
@@ -284,11 +286,13 @@ int write_dd_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mask)
 
 int dd_end_of_dma_event(struct dd_controller* dd)
 {
-    //Insert clear CART INT here or something
-    //dd_update_bm(dd);
+#if 0
+    Insert clear CART INT here or something
+    dd_update_bm(dd);
 
-    //if ((dd->regs[ASIC_CMD_STATUS] & 0x04000000) == 0)
-        //return 1;
+    if ((dd->regs[ASIC_CMD_STATUS] & 0x04000000) == 0)
+        return 1;
+#endif
 
     return 0;
 }

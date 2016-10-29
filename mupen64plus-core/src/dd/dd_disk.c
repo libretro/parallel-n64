@@ -46,10 +46,10 @@ unsigned char* g_dd_disk = NULL;
 /* Global loaded disk size. */
 int g_dd_disk_size = 0;
 
-int dd_bm_mode_read;	//BM MODE 0 = WRITE, MODE 1 = READ
-int CUR_BLOCK;			//Current Block
-int dd_zone;			//Current Zone
-int dd_track_offset;	//Offset to Track
+int dd_bm_mode_read;	/* BM MODE 0 = WRITE, MODE 1 = READ */
+int CUR_BLOCK;			/* Current Block */
+int dd_zone;			/* Current Zone */
+int dd_track_offset;	/* Offset to Track */
 
 const unsigned int ddZoneSecSize[16] = { 232, 216, 208, 192, 176, 160, 144, 128,
                                        216, 208, 192, 176, 160, 144, 128, 112 };
@@ -100,7 +100,7 @@ void dd_set_zone_and_track_offset(void *opaque)
 	int tr_off;
 	struct dd_controller *dd = (struct dd_controller *) opaque;
 
-	int head = ((dd->regs[ASIC_CUR_TK] & 0x10000000U) >> 25);	//Head * 8
+	int head = ((dd->regs[ASIC_CUR_TK] & 0x10000000U) >> 25);	/* Head * 8 */
 	int track = ((dd->regs[ASIC_CUR_TK] & 0x0FFF0000U) >> 16);
 
 	if (track >= 0x425)
@@ -166,9 +166,12 @@ void dd_update_bm(void *opaque)
 			CUR_BLOCK = 0;
 		}
 
-		if (!dd_bm_mode_read)		//WRITE MODE
+		if (!dd_bm_mode_read)		/* WRITE MODE */
 		{
-			//printf("--DD_UPDATE_BM WRITE Block %d Sector %X\n", ((dd->regs[ASIC_CUR_TK] & 0x1FFF0000U) >> 15) + CUR_BLOCK, Cur_Sector);
+#if 0
+			printf("--DD_UPDATE_BM WRITE Block %d Sector %X\n",
+               ((dd->regs[ASIC_CUR_TK] & 0x1FFF0000U) >> 15) + CUR_BLOCK, Cur_Sector);
+#endif
 
 			if (Cur_Sector < SECTORS_PER_BLOCK)
 			{
@@ -183,7 +186,8 @@ void dd_update_bm(void *opaque)
 					CUR_BLOCK = 1 - CUR_BLOCK;
 					Cur_Sector = 0;
 					dd_write_sector(dd);
-					//next block
+
+					/* next block */
 					Cur_Sector += 1;
 					dd->regs[ASIC_BM_STATUS_CTL] &= ~0x01000000;
 					dd->regs[ASIC_CMD_STATUS] |= 0x40000000;
@@ -195,33 +199,38 @@ void dd_update_bm(void *opaque)
 				}
 			}
 		}
-		else						//READ MODE
+		else						/* READ MODE */
 		{
 			int Cur_Track = (dd->regs[ASIC_CUR_TK] & 0x1FFF0000U) >> 16;
 
-			//printf("--DD_UPDATE_BM READ Block %d Sector %X\n", ((dd->regs[ASIC_CUR_TK] & 0x1FFF0000U) >> 15) + CUR_BLOCK, Cur_Sector);
+#if 0
+			printf("--DD_UPDATE_BM READ Block %d Sector %X\n",
+               ((dd->regs[ASIC_CUR_TK] & 0x1FFF0000U) >> 15) + CUR_BLOCK, Cur_Sector);
+#endif
 
 			if (Cur_Track == 6 && CUR_BLOCK == 0)
 			{
 				dd->regs[ASIC_CMD_STATUS] &= ~0x40000000;
 				dd->regs[ASIC_BM_STATUS_CTL] |= 0x02000000;
 			}
-			else if (Cur_Sector < SECTORS_PER_BLOCK)		//user sector
+			else if (Cur_Sector < SECTORS_PER_BLOCK)		/* user sector */
 			{
 				dd_read_sector(dd);
 				Cur_Sector++;
 				dd->regs[ASIC_CMD_STATUS] |= 0x40000000;
 			}
-			else if (Cur_Sector < SECTORS_PER_BLOCK + 4)	//C2
+			else if (Cur_Sector < SECTORS_PER_BLOCK + 4)	/* C2 */
 			{
 				Cur_Sector++;
 				if (Cur_Sector == SECTORS_PER_BLOCK + 4)
 				{
-					//dd_read_C2(opaque);
+#if 0
+					dd_read_C2(opaque);
+#endif
 					dd->regs[ASIC_CMD_STATUS] |= 0x10000000;
 				}
 			}
-			else if (Cur_Sector == SECTORS_PER_BLOCK + 4)	//Gap
+			else if (Cur_Sector == SECTORS_PER_BLOCK + 4)	/* Gap */
 			{
 				if (dd->regs[ASIC_BM_STATUS_CTL] & 0x01000000)
 				{

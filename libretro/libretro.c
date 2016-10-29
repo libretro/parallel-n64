@@ -106,15 +106,16 @@ unsigned int FAKE_SDL_TICKS;
 
 static bool initializing = true;
 
-// after the controller's CONTROL* member has been assigned we can update
-// them straight from here...
+/* after the controller's CONTROL* member has been assigned we can update
+ * them straight from here... */
 extern struct
 {
     CONTROL *control;
     BUTTONS buttons;
 } controller[4];
-// ...but it won't be at least the first time we're called, in that case set
-// these instead for input_plugin to read.
+
+/* ...but it won't be at least the first time we're called, in that case set
+ * these instead for input_plugin to read. */
 int pad_pak_types[4];
 int pad_present[4] = {1, 1, 1, 1};
 
@@ -367,7 +368,7 @@ static bool emu_step_load_data()
 
    if (*((uint32_t *)game_data) != 0x16D348E8 && *((uint32_t *)game_data) != 0x56EE6322)
    {
-      //Regular N64 ROM
+      /* Regular N64 ROM */
       log_cb(RETRO_LOG_INFO, "EmuThread: M64CMD_ROM_OPEN\n");
 
       if(CoreDoCommand(M64CMD_ROM_OPEN, game_size, (void*)game_data))
@@ -391,7 +392,7 @@ static bool emu_step_load_data()
    }
    else
    {
-   	  //64DD Disk loading
+   	  /* 64DD Disk loading */
    	  if (!environ_cb(RETRO_ENVIRONMENT_GET_SYSTEM_DIRECTORY, &dir) || !dir)
          goto load_fail;
       
@@ -409,7 +410,7 @@ static bool emu_step_load_data()
       game_data = NULL;
       
       
-      //64DD IPL LOAD - assumes "64DD_IPL.bin" is in system folder
+      /* 64DD IPL LOAD - assumes "64DD_IPL.bin" is in system folder */
       char disk_ipl_path[256];
       snprintf(disk_ipl_path, sizeof(disk_ipl_path), "%s%c64DD_IPL.bin", dir, slash);
       
@@ -513,7 +514,7 @@ bool emu_step_render(void)
       return true;
    }
 
-   if (!pushed_frame && frame_dupe) // Dupe. Not duping violates libretro API, consider it a speedhack.
+   if (!pushed_frame && frame_dupe) /* Dupe. Not duping violates libretro API, consider it a speedhack. */
       video_cb(NULL, screen_width, screen_height, screen_pitch);
 
    return false;
@@ -597,15 +598,18 @@ static void EmuThreadFunction(void)
     if (!emu_step_load_data())
        goto load_fail;
 
-    //ROM is loaded, switch back to main thread so retro_load_game can return (returning failure if needed).
-    //We'll continue here once the context is reset.
+    /* ROM is loaded, switch back to main thread 
+     * so retro_load_game can return (returning failure if needed).
+     * We'll continue here once the context is reset. */
 #ifndef EMSCRIPTEN
     co_switch(main_thread);
 #endif
 
     emu_step_initialize();
 
-    //Context is reset too, everything is safe to use. Now back to main thread so we don't start pushing frames outside retro_run.
+    /*Context is reset too, everything is safe to use. 
+     * Now back to main thread so we don't start pushing 
+     * frames outside retro_run. */
 #ifndef EMSCRIPTEN
     co_switch(main_thread);
 #endif
@@ -619,7 +623,7 @@ static void EmuThreadFunction(void)
 #endif
 
 load_fail:
-    //NEVER RETURN! That's how libco rolls
+    /*NEVER RETURN! That's how libco rolls */
     while(1)
     {
        if (log_cb)
@@ -670,12 +674,12 @@ void retro_get_system_info(struct retro_system_info *info)
    info->block_extract = false;
 }
 
-// Get the system type associated to a ROM country code.
+/* Get the system type associated to a ROM country code. */
 static m64p_system_type rom_country_code_to_system_type(char country_code)
 {
     switch (country_code)
     {
-        // PAL codes
+        /* PAL codes */
         case 0x44:
         case 0x46:
         case 0x49:
@@ -686,12 +690,12 @@ static m64p_system_type rom_country_code_to_system_type(char country_code)
         case 0x59:
             return SYSTEM_PAL;
 
-        // NTSC codes
+        /* NTSC codes */
         case 0x37:
         case 0x41:
         case 0x45:
         case 0x4a:
-        default: // Fallback for unknown codes
+        default: /* Fallback for unknown codes */
             return SYSTEM_NTSC;
     }
 }
@@ -705,7 +709,7 @@ void retro_get_system_av_info(struct retro_system_av_info *info)
    info->geometry.max_width    = screen_width;
    info->geometry.max_height   = screen_height;
    info->geometry.aspect_ratio = 4.0 / 3.0;
-   info->timing.fps = (region == SYSTEM_PAL) ? 50.0 : (60.13);                // TODO: Actual timing 
+   info->timing.fps = (region == SYSTEM_PAL) ? 50.0 : (60.13);                /* TODO: Actual timing  */
    info->timing.sample_rate = 44100.0;
 }
 
@@ -743,7 +747,7 @@ void retro_init(void)
          );
    blitter_buf_lock = blitter_buf;
 
-   //hacky stuff for Glide64
+   /* hacky stuff for Glide64 */
    polygonOffsetUnits = -3.0f;
    polygonOffsetFactor =  -3.0f;
 
@@ -1011,8 +1015,8 @@ void update_variables(bool startup)
          else if (!strcmp(pk1var.value, "memory"))
             p1_pak = PLUGIN_MEMPAK;
          
-         // If controller struct is not initialised yet, set pad_pak_types instead
-         // which will be looked at when initialising the controllers.
+         /* If controller struct is not initialised yet, set pad_pak_types instead
+          * which will be looked at when initialising the controllers. */
          if (controller[0].control)
             controller[0].control->Plugin = p1_pak;
          else
@@ -1192,7 +1196,8 @@ bool retro_load_game(const struct retro_game_info *game)
    game_size = game->size;
 
    stop = false;
-   //Finish ROM load before doing anything funny, so we can return failure if needed.
+   /* Finish ROM load before doing anything funny, 
+    * so we can return failure if needed. */
 #ifndef EMSCRIPTEN
    co_switch(game_thread);
 #endif
@@ -1404,7 +1409,7 @@ size_t retro_get_memory_size(unsigned type)
 
 size_t retro_serialize_size (void)
 {
-    return 16788288 + 1024; // < 16MB and some change... ouch
+    return 16788288 + 1024; /* < 16MB and some change... ouch */
 }
 
 bool retro_serialize(void *data, size_t size)
@@ -1429,35 +1434,41 @@ bool retro_unserialize(const void * data, size_t size)
     return false;
 }
 
-//Needed to be able to detach controllers for Lylat Wars multiplayer
-//Only sets if controller struct is initialised as addon paks do.
-void retro_set_controller_port_device(unsigned in_port, unsigned device) {
-    if (in_port < 4){
-        switch(device)
-        {
-            case RETRO_DEVICE_NONE:
-                if (controller[in_port].control){
-                    controller[in_port].control->Present = 0;
-                    break;
-                } else {
-                    pad_present[in_port] = 0;
-                    break;
-                }
-                
-            case RETRO_DEVICE_JOYPAD:
-            default:
-                if (controller[in_port].control){
-                    controller[in_port].control->Present = 1;
-                    break;
-                } else {
-                    pad_present[in_port] = 1;
-                    break;
-                }
-        }
-    }
+/*Needed to be able to detach controllers 
+ * for Lylat Wars multiplayer
+ *
+ * Only sets if controller struct is 
+ * initialised as addon paks do.
+ */
+void retro_set_controller_port_device(unsigned in_port, unsigned device)
+{
+   if (in_port < 4)
+   {
+      switch(device)
+      {
+         case RETRO_DEVICE_NONE:
+            if (controller[in_port].control){
+               controller[in_port].control->Present = 0;
+               break;
+            } else {
+               pad_present[in_port] = 0;
+               break;
+            }
+
+         case RETRO_DEVICE_JOYPAD:
+         default:
+            if (controller[in_port].control){
+               controller[in_port].control->Present = 1;
+               break;
+            } else {
+               pad_present[in_port] = 1;
+               break;
+            }
+      }
+   }
 }
 
-// Stubs
+/* Stubs */
 unsigned retro_api_version(void) { return RETRO_API_VERSION; }
 
 bool retro_load_game_special(unsigned game_type, const struct retro_game_info *info, size_t num_info) { return false; }

@@ -444,7 +444,7 @@ static void compare_int_handler(void)
 
 static void hw2_int_handler(void)
 {
-    // Hardware Interrupt 2 -- remove interrupt event from queue
+    /* Hardware Interrupt 2 -- remove interrupt event from queue */
     remove_interupt_event();
 
     g_cp0_regs[CP0_STATUS_REG] = (g_cp0_regs[CP0_STATUS_REG] & ~UINT32_C(0x00380000)) | UINT32_C(0x1000);
@@ -455,36 +455,36 @@ static void hw2_int_handler(void)
 
 static void nmi_int_handler(void)
 {
-    // Non Maskable Interrupt -- remove interrupt event from queue
+    /* Non Maskable Interrupt -- remove interrupt event from queue */
     remove_interupt_event();
-    // setup r4300 Status flags: reset TS and SR, set BEV, ERL, and SR
+    /* setup r4300 Status flags: reset TS and SR, set BEV, ERL, and SR */
     g_cp0_regs[CP0_STATUS_REG] = (g_cp0_regs[CP0_STATUS_REG] & ~UINT32_C(0x00380000)) | UINT32_C(0x00500004);
     g_cp0_regs[CP0_CAUSE_REG]  = 0x00000000;
-    // simulate the soft reset code which would run from the PIF ROM
+    /* simulate the soft reset code which would run from the PIF ROM */
     r4300_reset_soft();
-    // clear all interrupts, reset interrupt counters back to 0
+    /* clear all interrupts, reset interrupt counters back to 0 */
     g_cp0_regs[CP0_COUNT_REG] = 0;
     g_gs_vi_counter = 0;
     init_interupt();
-    // clear the audio status register so that subsequent write_ai() calls will work properly
+    /* clear the audio status register so that subsequent write_ai() calls will work properly */
     g_ai.regs[AI_STATUS_REG] = 0;
-    // set ErrorEPC with the last instruction address
+    /* set ErrorEPC with the last instruction address */
     g_cp0_regs[CP0_ERROREPC_REG] = PC->addr;
-    // reset the r4300 internal state
+    /* reset the r4300 internal state */
     if (r4300emu != CORE_PURE_INTERPRETER)
     {
-        // clear all the compiled instruction blocks and re-initialize
+        /* clear all the compiled instruction blocks and re-initialize */
         free_blocks();
         init_blocks();
     }
-    // adjust ErrorEPC if we were in a delay slot, and clear the delay_slot and dyna_interp flags
+    /* adjust ErrorEPC if we were in a delay slot, and clear the delay_slot and dyna_interp flags */
     if(delay_slot==1 || delay_slot==3)
     {
         g_cp0_regs[CP0_ERROREPC_REG]-=4;
     }
     delay_slot = 0;
     dyna_interp = 0;
-    // set next instruction address to reset vector
+    /* set next instruction address to reset vector */
     last_addr = UINT32_C(0xa4000040);
     generic_jump_to(UINT32_C(0xa4000040));
 }
@@ -494,7 +494,7 @@ void gen_interupt(void)
 {
     if (stop == 1)
     {
-        g_gs_vi_counter = 0; // debug
+        g_gs_vi_counter = 0; /* debug */
         dyna_stop();
     }
 
@@ -582,11 +582,13 @@ void gen_interupt(void)
             g_cp0_regs[CP0_CAUSE_REG] &= 0xFFFFFF83; /* mask out old exception code */
             remove_interupt_event();
 
-            //if (dd_end_of_dma_event(&g_dd) == 1)
-            //{
-               //remove_interupt_event();
-               //g_cp0_regs[CP0_CAUSE_REG] &= ~0x00000800;
-            //}
+#if 0
+            if (dd_end_of_dma_event(&g_dd) == 1)
+            {
+               remove_interupt_event();
+               g_cp0_regs[CP0_CAUSE_REG] &= ~0x00000800;
+            }
+#endif
             break;
 
         default:

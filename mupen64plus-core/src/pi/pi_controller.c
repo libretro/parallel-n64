@@ -86,13 +86,13 @@ static void dma_pi_write(struct pi_controller *pi)
       }
       else if (pi->regs[PI_CART_ADDR_REG] >= 0x05000000 && pi->regs[PI_CART_ADDR_REG] < 0x06000000)
       {
-         //64DD REG/BUFFER
+         /* 64DD REG/BUFFER */
          length = (pi->regs[PI_WR_LEN_REG] & 0xFFFFFF) + 1;
          i = (pi->regs[PI_CART_ADDR_REG] - 0x05000000) & 0x1FFFFFF;
 
          if (pi->regs[PI_CART_ADDR_REG] == 0x05000400)
          {
-            //SECTOR BUFFER
+            /* SECTOR BUFFER */
             i -= 0x400;
             length = (i + length) > 0x100 ? (0x100 - i) : length;
             rom_address = (pi->regs[PI_CART_ADDR_REG] - 0x05000400) & 0x3fffff;
@@ -100,7 +100,7 @@ static void dma_pi_write(struct pi_controller *pi)
          }
          else if (pi->regs[PI_CART_ADDR_REG] == 0x05000000)
          {
-            //C2 BUFFER
+            /* C2 BUFFER */
             rom_address = (pi->regs[PI_CART_ADDR_REG] - 0x05000000) & 0x3fffff;
             length      = (i + length) > 0x400 ? (0x400 - i) : length;
             rom         = g_dd.c2_buf;
@@ -135,13 +135,16 @@ static void dma_pi_write(struct pi_controller *pi)
 
       pi->regs[PI_STATUS_REG] |= 3;
       cp0_update_count();
-      //add_interupt_event(PI_INT, /*pi->regs[PI_WR_LEN_REG]*/0x1000);
+#if 0
+      add_interupt_event(PI_INT, /*pi->regs[PI_WR_LEN_REG]*/0x1000);
+#else
       add_interupt_event(PI_INT, ((pi->regs[PI_WR_LEN_REG] * 63) / 25));
+#endif
 
       return;
    }
 
-   if (pi->regs[PI_CART_ADDR_REG] >= 0x1fc00000) // for paper mario
+   if (pi->regs[PI_CART_ADDR_REG] >= 0x1fc00000) /* for paper mario */
    {
       pi->regs[PI_STATUS_REG] |= 1;
       cp0_update_count();
