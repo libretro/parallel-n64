@@ -348,7 +348,22 @@ static void setup_variables(void)
       { NULL, NULL },
    };
 
+   static const struct retro_controller_description port[] = {
+      { "Controller", RETRO_DEVICE_JOYPAD },
+      { "Mouse", RETRO_DEVICE_MOUSE },
+      { "RetroPad", RETRO_DEVICE_JOYPAD },
+   };
+
+   static const struct retro_controller_info ports[] = {
+      { port, 3 },
+      { port, 3 },
+      { port, 3 },
+      { port, 3 },
+      { 0, 0 }
+   };
+
    environ_cb(RETRO_ENVIRONMENT_SET_VARIABLES, variables);
+   environ_cb(RETRO_ENVIRONMENT_SET_CONTROLLER_INFO, (void*)ports);
 }
 
 
@@ -1452,6 +1467,15 @@ void retro_set_controller_port_device(unsigned in_port, unsigned device)
                break;
             } else {
                pad_present[in_port] = 0;
+               break;
+            }
+
+         case RETRO_DEVICE_MOUSE:
+            if (controller[in_port].control){
+               controller[in_port].control->Present = 2;
+               break;
+            } else {
+               pad_present[in_port] = 2;
                break;
             }
 

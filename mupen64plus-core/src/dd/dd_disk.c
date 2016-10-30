@@ -50,6 +50,7 @@ int dd_bm_mode_read;	/* BM MODE 0 = WRITE, MODE 1 = READ */
 int CUR_BLOCK;			/* Current Block */
 int dd_zone;			/* Current Zone */
 int dd_track_offset;	/* Offset to Track */
+int disk_format;		/* Disk Dump Format */
 
 const unsigned int ddZoneSecSize[16] = { 232, 216, 208, 192, 176, 160, 144, 128,
                                        216, 208, 192, 176, 160, 144, 128, 112 };
@@ -71,11 +72,35 @@ void connect_dd_disk(struct dd_disk* dd_disk,
 m64p_error open_dd_disk(const unsigned char* diskimage, unsigned int size)
 {
 	/* allocate new buffer for ROM and copy into this buffer */
-	g_dd_disk_size = size;
-	g_dd_disk = (unsigned char *)malloc(size);
-	if (g_dd_disk == NULL)
-		return M64ERR_NO_MEMORY;
-	memcpy(g_dd_disk, diskimage, size);
+	if (size == MAME_FORMAT_DUMP_SIZE)
+	{
+		DebugMessage(M64MSG_STATUS, "64DD Disk Format: MAME");
+		disk_format = MAME_FORMAT_DUMP;
+
+		g_dd_disk_size = size;
+		g_dd_disk = (unsigned char *)malloc(size);
+		if (g_dd_disk == NULL)
+			return M64ERR_NO_MEMORY;
+		memcpy(g_dd_disk, diskimage, size);
+	}
+	else if (size == SDK_FORMAT_DUMP_SIZE)
+	{
+		DebugMessage(M64MSG_STATUS, "64DD Disk Format: SDK");
+		disk_format = SDK_FORMAT_DUMP;
+
+		g_dd_disk_size = MAME_FORMAT_DUMP_SIZE;
+		g_dd_disk = (unsigned char *)malloc(MAME_FORMAT_DUMP_SIZE);
+		if (g_dd_disk == NULL)
+			return M64ERR_NO_MEMORY;
+
+		/* CONVERSION NEEDED INTERNALLY */
+		dd_convert_to_mame(diskimage);
+	}
+	else
+	{
+		DebugMessage(M64MSG_STATUS, "64DD Disk Format: Unknown, don't load.");
+		return M64ERR_FILES;
+	}
 
 	DebugMessage(M64MSG_STATUS, "64DD Disk loaded!");
 
@@ -277,7 +302,7 @@ void dd_read_sector(void *opaque)
    int offset, Cur_Sector;
 	struct dd_controller *dd = (struct dd_controller *) opaque;
 
-	/*READ SECTOR */
+	/* READ SECTOR */
 	Cur_Sector = dd->regs[ASIC_CUR_SECTOR] >> 16;
 	if (Cur_Sector >= 0x5A)
 		Cur_Sector -= 0x5A;
@@ -288,4 +313,157 @@ void dd_read_sector(void *opaque)
 
 	for (i = 0; i <= (int)(dd->regs[ASIC_HOST_SECBYTE] >> 16); i++)
 		dd->sec_buf[i ^ 3] = g_dd_disk[offset + i];
+}
+
+/* CONVERSION */
+void dd_convert_to_mame(const unsigned char* diskimage)
+{
+    /* Original code by Happy_ */
+    const uint32_t ZoneSecSize[16] = { 232, 216, 208, 192, 176, 160, 144, 128,
+        216, 208, 192, 176, 160, 144, 128, 112 };
+    const uint32_t ZoneTracks[16] = { 158, 158, 149, 149, 149, 149, 149, 114,
+        158, 158, 149, 149, 149, 149, 149, 114 };
+    const uint32_t DiskTypeZones[7][16] = {
+        { 0, 1, 2, 9, 8, 3, 4, 5, 6, 7, 15, 14, 13, 12, 11, 10 },
+        { 0, 1, 2, 3, 10, 9, 8, 4, 5, 6, 7, 15, 14, 13, 12, 11 },
+        { 0, 1, 2, 3, 4, 11, 10, 9, 8, 5, 6, 7, 15, 14, 13, 12 },
+        { 0, 1, 2, 3, 4, 5, 12, 11, 10, 9, 8, 6, 7, 15, 14, 13 },
+        { 0, 1, 2, 3, 4, 5, 6, 13, 12, 11, 10, 9, 8, 7, 15, 14 },
+        { 0, 1, 2, 3, 4, 5, 6, 7, 14, 13, 12, 11, 10, 9, 8, 15 },
+        { 0, 1, 2, 3, 4, 5, 6, 7, 15, 14, 13, 12, 11, 10, 9, 8 }
+    };
+    const uint32_t RevDiskTypeZones[7][16] = {
+        { 0, 1, 2, 5, 6, 7, 8, 9, 4, 3, 15, 14, 13, 12, 11, 10 },
+        { 0, 1, 2, 3, 7, 8, 9, 10, 6, 5, 4, 15, 14, 13, 12, 11 },
+        { 0, 1, 2, 3, 4, 9, 10, 11, 8, 7, 6, 5, 15, 14, 13, 12 },
+        { 0, 1, 2, 3, 4, 5, 11, 12, 10, 9, 8, 7, 6, 15, 14, 13 },
+        { 0, 1, 2, 3, 4, 5, 6, 13, 12, 11, 10, 9, 8, 7, 15, 14 },
+        { 0, 1, 2, 3, 4, 5, 6, 7, 14, 13, 12, 11, 10, 9, 8, 15 },
+        { 0, 1, 2, 3, 4, 5, 6, 7, 15, 14, 13, 12, 11, 10, 9, 8 }
+    };
+    const uint32_t StartBlock[7][16] = {
+        { 0, 0, 0, 1, 0, 1, 0, 1, 1, 1, 1, 0, 1, 0, 1, 1 },
+        { 0, 0, 0, 1, 1, 0, 1, 0, 1, 1, 0, 1, 0, 1, 0, 0 },
+        { 0, 0, 0, 1, 0, 1, 0, 1, 1, 1, 0, 1, 1, 0, 1, 1 },
+        { 0, 0, 0, 1, 0, 1, 1, 0, 1, 1, 0, 1, 0, 1, 0, 0 },
+        { 0, 0, 0, 1, 0, 1, 0, 1, 1, 1, 0, 1, 0, 1, 1, 1 },
+        { 0, 0, 0, 1, 0, 1, 0, 1, 0, 0, 1, 0, 1, 0, 1, 0 },
+        { 0, 0, 0, 1, 0, 1, 0, 1, 0, 0, 1, 0, 1, 0, 1, 1 }
+    };
+
+    uint32_t disktype = 0;
+    uint32_t zone, track = 0;
+    int32_t atrack = 0;
+    int32_t block = 0;
+    uint8_t SystemData[0xE8];
+    uint8_t BlockData0[0x100 * SECTORS_PER_BLOCK];
+    uint8_t BlockData1[0x100 * SECTORS_PER_BLOCK];
+    uint32_t InOffset, OutOffset = 0;
+    uint32_t InStart[16];
+    uint32_t OutStart[16];
+
+    int cur_offset = 0;
+
+    InStart[0] = 0;
+    OutStart[0] = 0;
+
+    /* Read System Area */
+    memcpy(SystemData, diskimage, 0xE8);
+
+    disktype = SystemData[5] & 0xF;
+
+    /* Prepare Input Offsets */
+    for (zone = 1; zone < 16; zone++)
+    {
+        InStart[zone] = InStart[zone - 1] +
+            VZONESIZE(DiskTypeZones[disktype][zone - 1]);
+    }
+
+    /* Prepare Output Offsets */
+    for (zone = 1; zone < 16; zone++)
+    {
+        OutStart[zone] = OutStart[zone - 1] + ZONESIZE(zone - 1);
+    }
+
+    /* Copy Head 0 */
+    for (zone = 0; zone < 8; zone++)
+    {
+        OutOffset = OutStart[zone];
+        InOffset = InStart[RevDiskTypeZones[disktype][zone]];
+        cur_offset = InOffset;
+        block = StartBlock[disktype][zone];
+        atrack = 0;
+        for (track = 0; track < ZoneTracks[zone]; track++)
+        {
+            if (atrack < 0xC && track == SystemData[0x20 + zone * 0xC + atrack])
+            {
+                memset((void *)(&BlockData0), 0, BLOCKSIZE(zone));
+                memset((void *)(&BlockData1), 0, BLOCKSIZE(zone));
+                atrack += 1;
+            }
+            else
+            {
+                if ((block % 2) == 1)
+                {
+                	memcpy(BlockData1, diskimage + cur_offset, BLOCKSIZE(zone));
+                    cur_offset += BLOCKSIZE(zone);
+                    memcpy(BlockData0, diskimage + cur_offset, BLOCKSIZE(zone));
+                    cur_offset += BLOCKSIZE(zone);
+                }
+                else
+                {
+                    memcpy(BlockData0, diskimage + cur_offset, BLOCKSIZE(zone));
+                    cur_offset += BLOCKSIZE(zone);
+                    memcpy(BlockData1, diskimage + cur_offset, BLOCKSIZE(zone));
+                    cur_offset += BLOCKSIZE(zone);
+                }
+                block = 1 - block;
+            }
+            memcpy(g_dd_disk + OutOffset, &BlockData0, BLOCKSIZE(zone));
+            OutOffset += BLOCKSIZE(zone);
+            memcpy(g_dd_disk + OutOffset, &BlockData1, BLOCKSIZE(zone));
+            OutOffset += BLOCKSIZE(zone);
+        }
+    }
+
+    /* Copy Head 1 */
+    for (zone = 8; zone < 16; zone++)
+    {
+        InOffset = InStart[RevDiskTypeZones[disktype][zone]];
+        cur_offset = InOffset;
+        block = StartBlock[disktype][zone];
+        atrack = 0xB;
+        for (track = 1; track < ZoneTracks[zone] + 1; track++)
+        {
+            if (atrack > -1 && (ZoneTracks[zone] - track) == SystemData[0x20 + (zone)* 0xC + atrack])
+            {
+                memset((void *)(&BlockData0), 0, BLOCKSIZE(zone));
+                memset((void *)(&BlockData1), 0, BLOCKSIZE(zone));
+                atrack -= 1;
+            }
+            else
+            {
+                if ((block % 2) == 1)
+                {
+                    memcpy(BlockData1, diskimage + cur_offset, BLOCKSIZE(zone));
+                    cur_offset += BLOCKSIZE(zone);
+                    memcpy(BlockData0, diskimage + cur_offset, BLOCKSIZE(zone));
+                    cur_offset += BLOCKSIZE(zone);
+                }
+                else
+                {
+                    memcpy(BlockData0, diskimage + cur_offset, BLOCKSIZE(zone));
+                    cur_offset += BLOCKSIZE(zone);
+                    memcpy(BlockData1, diskimage + cur_offset, BLOCKSIZE(zone));
+                    cur_offset += BLOCKSIZE(zone);
+                }
+                block = 1 - block;
+            }
+            OutOffset = OutStart[zone] + (ZoneTracks[zone] - track) * TRACKSIZE(zone);
+            memcpy(g_dd_disk + OutOffset, &BlockData0, BLOCKSIZE(zone));
+            OutOffset += BLOCKSIZE(zone);
+            memcpy(g_dd_disk + OutOffset, &BlockData1, BLOCKSIZE(zone));
+            OutOffset += BLOCKSIZE(zone);
+        }
+    }
 }
