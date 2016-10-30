@@ -98,6 +98,8 @@ static void glide64gDPLLETriangle(uint32_t w0, uint32_t w1, int shade, int textu
 
    uint32_t w2, w3, w4, w5, w6, w7;
 
+   gDP.otherMode.textureDetail = _SHIFTR(w1, 19, 3);
+
    int r = 0xff;
    int g = 0xff;
    int b = 0xff;
