@@ -69,6 +69,11 @@ void connect_dd_disk(struct dd_disk* dd_disk,
 	dd_disk->disk_size = disk_size;
 }
 
+void format_disk(uint8_t* disk)
+{
+	memset(disk, 0, MAME_FORMAT_DUMP_SIZE);
+}
+
 m64p_error open_dd_disk(const unsigned char* diskimage, unsigned int size)
 {
 	/* allocate new buffer for ROM and copy into this buffer */
@@ -78,10 +83,13 @@ m64p_error open_dd_disk(const unsigned char* diskimage, unsigned int size)
 		disk_format = MAME_FORMAT_DUMP;
 
 		g_dd_disk_size = size;
-		g_dd_disk = (unsigned char *)malloc(size);
+		/* g_dd_disk = (unsigned char *)malloc(size); */
 		if (g_dd_disk == NULL)
 			return M64ERR_NO_MEMORY;
-		memcpy(g_dd_disk, diskimage, size);
+
+		/* Load Disk only if it's not saved */
+		if (*((uint32_t *)g_dd_disk) != 0x16D348E8 && *((uint32_t *)g_dd_disk) != 0x56EE6322)
+			memcpy(g_dd_disk, diskimage, size);
 	}
 	else if (size == SDK_FORMAT_DUMP_SIZE)
 	{
@@ -89,12 +97,14 @@ m64p_error open_dd_disk(const unsigned char* diskimage, unsigned int size)
 		disk_format = SDK_FORMAT_DUMP;
 
 		g_dd_disk_size = MAME_FORMAT_DUMP_SIZE;
-		g_dd_disk = (unsigned char *)malloc(MAME_FORMAT_DUMP_SIZE);
+		/* g_dd_disk = (unsigned char *)malloc(MAME_FORMAT_DUMP_SIZE); */
 		if (g_dd_disk == NULL)
 			return M64ERR_NO_MEMORY;
 
 		/* CONVERSION NEEDED INTERNALLY */
-		dd_convert_to_mame(diskimage);
+		/* Load Disk only if it's not saved */
+		if (*((uint32_t *)g_dd_disk) != 0x16D348E8 && *((uint32_t *)g_dd_disk) != 0x56EE6322)
+			dd_convert_to_mame(diskimage);
 	}
 	else
 	{
@@ -111,9 +121,11 @@ m64p_error close_dd_disk(void)
 {
 	if (g_dd_disk == NULL)
 		return M64ERR_INVALID_STATE;
-
+	
+#if 0
 	free(g_dd_disk);
 	g_dd_disk = NULL;
+#endif
 
 	DebugMessage(M64MSG_STATUS, "64DD Disk closed.");
 
