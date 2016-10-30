@@ -142,7 +142,9 @@ void Device::begin_index(unsigned index)
 		V(vkWaitForFences(context.get_device(), fences.count, fences.fences.data(), true, UINT64_MAX));
 		vkResetFences(context.get_device(), fences.count, fences.fences.data());
 		double end = gettime();
+#ifdef ENABLE_LOGS
 		fprintf(stderr, "Waited for fences for %.3f ms\n", 1000.0 * (end - current));
+#endif
 	}
 	fences.count = 0;
 
@@ -527,8 +529,10 @@ void Device::wait(const Fence &fence)
 
 	double current = gettime();
 	V(vkWaitForFences(context.get_device(), 1, &fence.fence, true, UINT64_MAX));
+#ifdef ENABLE_LOGS
 	double end = gettime();
 	fprintf(stderr, "Waiting for explicit fence: %.3f ms.\n", 1000.0 * (end - current));
+#endif
 }
 
 ImageHandle Device::create_image_2d(VkFormat format, unsigned width, unsigned height)

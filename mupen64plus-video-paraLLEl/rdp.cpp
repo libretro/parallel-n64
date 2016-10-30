@@ -109,7 +109,9 @@ void process_commands()
 		// sync_full
 		if (command == 0x29)
 		{
+#ifdef ENABLE_LOGS
 			fprintf(stderr, "Signalling RDP IRQ\n");
+#endif
 			*gfx_info.MI_INTR_REG |= DP_INTERRUPT;
 			gfx_info.CheckInterrupts();
 

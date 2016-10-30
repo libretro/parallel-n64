@@ -4,7 +4,10 @@
 #include <assert.h>
 #include <string.h>
 
-//#define TMEM_DEBUG
+#if 0
+#define TMEM_DEBUG
+#define ENABLE_LOGS
+#endif
 
 #ifdef TMEM_DEBUG
 #include "stb/stb_image_write.h"
@@ -46,7 +49,9 @@ void Renderer::check_tmem_feedback()
 		bool within = wrap < framebuffer.color_size();
 		if (within)
 		{
+#ifdef ENABLE_LOGS
 			fprintf(stderr, "TMEM feedback detected.\n");
+#endif
 			complete_frame();
 			return;
 		}
@@ -58,7 +63,9 @@ void Renderer::check_tmem_feedback()
 		bool within = wrap < framebuffer.depth_size();
 		if (within)
 		{
+#ifdef ENABLE_LOGS
 			fprintf(stderr, "TMEM feedback detected.\n");
+#endif
 			complete_frame();
 			return;
 		}
@@ -365,6 +372,7 @@ void Renderer::set_combine(uint32_t w1, uint32_t w2)
 
 void Renderer::log_combiner() const
 {
+#ifdef ENABLE_LOGS
 	for (unsigned i = 0; i < 2; i++)
 	{
 		fprintf(stderr, "Cycle %u:\n", i);
@@ -373,6 +381,7 @@ void Renderer::log_combiner() const
 		fprintf(stderr, "  Alpha: (%2u - %2u) * %2u + %2u\n", state.combiners.alpha[i].sub_a,
 		        state.combiners.alpha[i].sub_b, state.combiners.alpha[i].mul, state.combiners.alpha[i].add);
 	}
+#endif
 }
 
 bool Renderer::combiner_reads_secondary_tile(unsigned cycle) const
@@ -482,7 +491,9 @@ void Renderer::update_tiles(uint32_t tile_mask)
 					unsigned start, end;
 					if (range && sscanf(range, "%u-%u", &start, &end) == 2 && start <= tile_count && end >= tile_count)
 					{
+#ifdef ENABLE_LOGS
 						fprintf(stderr, "Skipping tile %u.\n", tile_count);
+#endif
 						memset(tile_data.data() + tile.offset, 0xff, required_size);
 						blank_tile.insert(v);
 						tile_count++;
@@ -549,8 +560,10 @@ void Renderer::fill_rect_cpu(int xmin, int xmax, int ymin, int ymax)
 	auto itr = remove_if(begin(async_transfers), end(async_transfers), [this](const AsyncFramebuffer &async) {
 		return async.framebuffer.addr == framebuffer.addr || async.framebuffer.depth_addr == framebuffer.addr;
 	});
+#ifdef ENABLE_LOGS
 	if (itr != end(async_transfers))
 		fprintf(stderr, "Invalidating old frames.\n");
+#endif
 	async_transfers.erase(itr, end(async_transfers));
 
 	clip_scissor(xmin, xmax, ymin, ymax);
@@ -753,7 +766,9 @@ void Renderer::draw_primitive(const Primitive &prim, const Attribute *attr, uint
 				combiner_data.push_back(state.combiners);
 				if (combiner_data.size() >= RDP_MAX_COMBINERS)
 				{
+#ifdef ENABLE_LOGS
 					fprintf(stderr, "Flushing due to combiners.\n");
+#endif
 					flush = true;
 				}
 
@@ -776,7 +791,9 @@ void Renderer::draw_primitive(const Primitive &prim, const Attribute *attr, uint
 	primitive_data.push_back(buffer_prim);
 	if (primitive_data.size() >= RDP_MAX_PRIMITIVES)
 	{
+#ifdef ENABLE_LOGS
 		fprintf(stderr, "Flushing due to primitives.\n");
+#endif
 		flush = true;
 	}
 
@@ -796,7 +813,9 @@ void Renderer::draw_primitive(const Primitive &prim, const Attribute *attr, uint
 
 				if (tile_count > FlushBufferTileCount)
 				{
+#ifdef ENABLE_LOGS
 					fprintf(stderr, "Flushing due to tile memory.\n");
+#endif
 					flush = true;
 				}
 			}
@@ -807,7 +826,9 @@ void Renderer::draw_primitive(const Primitive &prim, const Attribute *attr, uint
 
 	if (flush)
 	{
+#ifdef ENABLE_LOGS
 		fprintf(stderr, "Flushing!\n");
+#endif
 		flush_tile_lists();
 	}
 }
@@ -1237,7 +1258,9 @@ void Renderer::sync_color_dram_to_gpu()
 	if (framebuffer.color_state != FRAMEBUFFER_STALE_GPU)
 		return;
 
+#ifdef ENABLE_LOGS
 	fprintf(stderr, "sync_color_dram_to_gpu()\n");
+#endif
 
 	// Check if the last writer to this region was actually the GPU. In this case, we can copy from GPU -> GPU.
 	// This usually happens when clear screen happens with CYCLE1 pipeline instead of FILL, which
@@ -1360,7 +1383,9 @@ void Renderer::sync_depth_dram_to_gpu()
 		return;
 	}
 
+#ifdef ENABLE_LOGS
 	fprintf(stderr, "sync_depth_dram_to_gpu()\n");
+#endif
 	auto base = framebuffer_data();
 
 	// Check if the last writer to this region was actually the GPU. In this case, we can copy from GPU -> GPU.
@@ -1583,7 +1608,9 @@ void Renderer::sync_gpu_to_dram(bool blocking)
 	assert(framebuffer.color_state != FRAMEBUFFER_STALE_GPU);
 	assert(framebuffer.depth_state != FRAMEBUFFER_STALE_GPU);
 
+#ifdef ENABLE_LOGS
 	fprintf(stderr, "sync_gpu_to_dram()\n");
+#endif
 
 	bool depth_is_aliased = framebuffer.depth_state == FRAMEBUFFER_GPU && framebuffer.addr == framebuffer.depth_addr;
 
@@ -1689,7 +1716,9 @@ void Renderer::allocate_tiles()
 	unsigned width, height, layers;
 	atlas.get_atlas_size(&width, &height, &layers);
 
+#ifdef ENABLE_LOGS
 	fprintf(stderr, "Atlas: %u x %u x %u\n", width, height, layers);
+#endif
 
 	float inv_width = 1.0f / width;
 	float inv_height = 1.0f / height;
@@ -1730,9 +1759,11 @@ void Renderer::flush_tile_lists()
 	if (primitive_data.empty() || work_data.empty())
 		return;
 
+#ifdef ENABLE_LOGS
 	fprintf(stderr, "Flushing %u primitives.\n", unsigned(primitive_data.size()));
 	fprintf(stderr, "Rejection rate: %.3f %%\n",
 	        100.0 * double(reject_tile_count) / double(reject_tile_count + raster_tile_count));
+#endif
 	begin_command_buffer();
 
 	// Allocate descriptor sets.
@@ -1921,7 +1952,9 @@ void Renderer::flush_tile_lists()
 
 	// Work Descriptors.
 	{
+#ifdef ENABLE_LOGS
 		fprintf(stderr, "Rendering 8x8 tiles: %u\n", unsigned(work_data.size()));
+#endif
 		size_t work_data_size = work_data.size() * sizeof(BufferWorkDescriptor);
 		Buffer tmp = device.request_dynamic_buffer(vulkan.cmd, vulkan.buffer_set,
 		                                           Vulkan::RDP::BufferLayout::WorkDescriptor, work_data_size);
