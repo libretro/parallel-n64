@@ -53,6 +53,7 @@ struct dd_disk
 
 void connect_dd_disk(struct dd_disk* dd_disk,
                      uint8_t* disk, size_t disk_size);
+void format_disk(uint8_t* disk);
 
 /* Disk Loading and Saving functions */
 m64p_error open_dd_disk(const unsigned char* diskimage, unsigned int size);

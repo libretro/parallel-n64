@@ -19,6 +19,7 @@
 #include "main/main.h"
 #include "main/version.h"
 #include "main/savestates.h"
+#include "dd/dd_disk.h"
 #include "pi/pi_controller.h"
 #include "si/pif.h"
 #include "libretro_memory.h"
@@ -410,6 +411,9 @@ static bool emu_step_load_data()
    	  /* 64DD Disk loading */
    	  if (!environ_cb(RETRO_ENVIRONMENT_GET_SYSTEM_DIRECTORY, &dir) || !dir)
          goto load_fail;
+
+      /* connect saved_memory.disk to disk */
+      g_dd_disk = saved_memory.disk;
       
       log_cb(RETRO_LOG_INFO, "EmuThread: M64CMD_DISK_OPEN\n");
       printf("M64CMD_DISK_OPEN\n");
@@ -1105,6 +1109,7 @@ static void format_saved_memory(void)
    format_mempak(saved_memory.mempack[1]);
    format_mempak(saved_memory.mempack[2]);
    format_mempak(saved_memory.mempack[3]);
+   format_disk(saved_memory.disk);
 }
 
 #if defined(HAVE_VULKAN) || defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
