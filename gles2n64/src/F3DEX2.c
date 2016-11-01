@@ -84,12 +84,6 @@ void F3DEX2_MoveWord( uint32_t w0, uint32_t w1 )
 {
    switch (_SHIFTR( w0, 16, 8 ))
    {
-      case G_MW_FORCEMTX:
-         /* Handled in movemem */
-         break;
-      case G_MW_MATRIX:
-         gln64gSPInsertMatrix( _SHIFTR( w0, 0, 16 ), w1 );
-         break;
       case G_MW_NUMLIGHT:
          gln64gSPNumLights( w1 / 24 );
          break;
