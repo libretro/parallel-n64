@@ -60,6 +60,8 @@ void glide64gSPCIVertex(uint32_t v, uint32_t n, uint32_t v0);
 void glide64gSPSetVertexColorBase(uint32_t base);
 void glide64gSPSetDMATexOffset(uint32_t addr);
 
+void gln64gSPDlistCount(uint32_t count, uint32_t v);
+
 #ifdef __cplusplus
 }
 #endif

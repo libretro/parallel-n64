@@ -27,6 +27,32 @@ void GSPCombineMatrices(void)
    }
 }
 
+void GSPDlistCount(uint32_t count, uint32_t v)
+{
+   switch (gfx_plugin)
+   {
+      case GFX_GLIDE64:
+#ifdef HAVE_GLIDE64
+         glide64gSPDlistCount(count, v);
+#endif
+         break;
+      case GFX_GLN64:
+#if defined(HAVE_GLN64) || defined(HAVE_GLIDEN64)
+         gln64gSPDlistCount(count, v);
+#endif
+         break;
+      case GFX_RICE:
+#ifdef HAVE_RICE
+         /* TODO/FIXME */
+#endif
+         break;
+      case GFX_ANGRYLION:
+      case GFX_PARALLEL:
+         /* Stub, not HLE */
+         break;
+   }
+}
+
 void GSPClipVertex(uint32_t v)
 {
    switch (gfx_plugin)
