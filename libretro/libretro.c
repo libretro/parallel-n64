@@ -103,6 +103,8 @@ extern unsigned int VI_REFRESH;
 unsigned int BUFFERSWAP;
 unsigned int FAKE_SDL_TICKS;
 
+bool alternate_mapping;
+
 // after the controller's CONTROL* member has been assigned we can update
 // them straight from here...
 extern struct
@@ -317,6 +319,8 @@ static void setup_variables(void)
       },
       { NAME_PREFIX "-framerate",
          "Framerate (restart); original|fullspeed" },
+      { NAME_PREFIX "-alt-map",
+        "Digital C-button Config; disabled|enabled" },
 #ifndef ONLY_VULKAN
       { NAME_PREFIX "-vcache-vbo",
          "(Glide64) Vertex cache VBO (restart); off|on" },
@@ -845,6 +849,17 @@ void update_variables(bool startup)
          frame_dupe = false;
       else if (!strcmp(var.value, "fullspeed"))
          frame_dupe = true;
+   }
+
+   var.key = NAME_PREFIX "-alt-map";
+   var.value = NULL;
+
+   if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value && startup)
+   {
+      if (!strcmp(var.value, "disabled"))
+         alternate_mapping = false;
+      else if (!strcmp(var.value, "enabled"))
+         alternate_mapping = true;
    }
 
    
