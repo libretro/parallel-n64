@@ -295,6 +295,43 @@ static void uc2_moveword(uint32_t w0, uint32_t w1)
 
    switch (_SHIFTR( w0, 16, 8))
    {
+      case G_MW_MATRIX:
+         // NOTE: right now it's assuming that it sets the integer part first. This could
+         // be easily fixed, but only if i had something to test with.
+         
+         // do matrix pre-mult so it's re-updated next time
+         if (g_gdp.flags & UPDATE_MULT_MAT)
+         {
+            g_gdp.flags ^= UPDATE_MULT_MAT;
+            MulMatrices(rdp.model, rdp.proj, rdp.combined);
+         }
+
+         if (w0 & 0x20) // fractional part
+         {
+            float fpart;
+            int index_x = (w0 & 0x1F) >> 1;
+            int index_y = index_x >> 2;
+            index_x &= 3;
+
+            fpart = (w1>>16)/65536.0f;
+            rdp.combined[index_y][index_x] = (float)(int)rdp.combined[index_y][index_x];
+            rdp.combined[index_y][index_x] += fpart;
+
+            fpart = (w1&0xFFFF)/65536.0f;
+            rdp.combined[index_y][index_x+1] = (float)(int)rdp.combined[index_y][index_x+1];
+            rdp.combined[index_y][index_x+1] += fpart;
+         }
+         else
+         {
+            int index_x = (w0 & 0x1F) >> 1;
+            int index_y = index_x >> 2;
+            index_x &= 3;
+
+            rdp.combined[index_y][index_x] = (short)(w1>>16);
+            rdp.combined[index_y][index_x+1] = (short)(w1&0xFFFF);
+         }
+         break;
+
       case G_MW_NUMLIGHT:
          glide64gSPNumLights( w1 / 24);
          break;
@@ -312,6 +349,10 @@ static void uc2_moveword(uint32_t w0, uint32_t w1)
 
       case G_MW_LIGHTCOL:
          gSPLightColor((_SHIFTR( w0, 0, 16 ) / 24) + 1, w1 );
+         break;
+
+      case G_MW_FORCEMTX:
+         /* Handled in movemem */
          break;
       case G_MW_PERSPNORM:
          /* implement something here? */
