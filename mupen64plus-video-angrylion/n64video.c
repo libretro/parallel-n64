@@ -3956,7 +3956,10 @@ static void texture_pipeline_cycle(COLOR* TEX, COLOR* prev, int32_t SSS, int32_t
         {
             if (!convert)
             {
-                *TEX = t0;
+               COLOR_RED_PTR(TEX)   = COLOR_RED(t0)   & 0x1ff;
+               COLOR_GREEN_PTR(TEX) = COLOR_GREEN(t0) & 0x1ff;
+               COLOR_BLUE_PTR(TEX)  = COLOR_BLUE(t0);
+               COLOR_ALPHA_PTR(TEX) = COLOR_ALPHA(t0);
             }
             else
                 COLOR_RED_PTR(TEX) = COLOR_GREEN_PTR(TEX) = COLOR_BLUE_PTR(TEX) = COLOR_ALPHA_PTR(TEX) = COLOR_BLUE_PTR(prev);
