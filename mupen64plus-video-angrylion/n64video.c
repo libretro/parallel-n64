@@ -2081,7 +2081,7 @@ int blender_2cycle(uint32_t* fr, uint32_t* fg, uint32_t* fb, int dith, uint32_t 
 
 static void fetch_texel(COLOR *color, int s, int t, uint32_t tilenum)
 {
-    uint32_t tbase = tile[tilenum].line * t + tile[tilenum].tmem;
+    uint32_t tbase = tile[tilenum].line * (t & 0xff) + tile[tilenum].tmem;
     
 
     uint32_t tpal    = tile[tilenum].palette;
@@ -2370,7 +2370,7 @@ static void fetch_texel(COLOR *color, int s, int t, uint32_t tilenum)
 
 static void fetch_texel_entlut(COLOR *color, int s, int t, uint32_t tilenum)
 {
-    uint32_t tbase = tile[tilenum].line * t + tile[tilenum].tmem;
+    uint32_t tbase = tile[tilenum].line * (t & 0xff) + tile[tilenum].tmem;
     uint32_t tpal    = tile[tilenum].palette << 4;
     uint16_t *tc16 = (uint16_t*)__TMEM;
     uint32_t taddr = 0;
@@ -2468,8 +2468,8 @@ static void fetch_texel_entlut(COLOR *color, int s, int t, uint32_t tilenum)
 static void fetch_texel_quadro(COLOR *color0, COLOR *color1, COLOR *color2, COLOR *color3, int s0, int s1, int t0, int t1, uint32_t tilenum)
 {
 
-    uint32_t tbase0 = tile[tilenum].line * t0 + tile[tilenum].tmem;
-    uint32_t tbase2 = tile[tilenum].line * t1 + tile[tilenum].tmem;
+    uint32_t tbase0 = tile[tilenum].line * (t0 & 0xff) + tile[tilenum].tmem;
+    uint32_t tbase2 = tile[tilenum].line * (t1 & 0xff) + tile[tilenum].tmem;
     uint32_t tpal    = tile[tilenum].palette;
     uint32_t xort = 0, ands = 0;
 
@@ -3254,8 +3254,8 @@ static void fetch_texel_quadro(COLOR *color0, COLOR *color1, COLOR *color2, COLO
 
 static void fetch_texel_entlut_quadro(COLOR *color0, COLOR *color1, COLOR *color2, COLOR *color3, int s0, int s1, int t0, int t1, uint32_t tilenum)
 {
-    uint32_t tbase0 = tile[tilenum].line * t0 + tile[tilenum].tmem;
-    uint32_t tbase2 = tile[tilenum].line * t1 + tile[tilenum].tmem;
+    uint32_t tbase0 = tile[tilenum].line * (t0 & 0xff) + tile[tilenum].tmem;
+    uint32_t tbase2 = tile[tilenum].line * (t1 & 0xff) + tile[tilenum].tmem;
     uint32_t tpal    = tile[tilenum].palette << 4;
     uint32_t xort = 0, ands = 0;
 
