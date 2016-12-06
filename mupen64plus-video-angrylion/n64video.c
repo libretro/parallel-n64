@@ -8324,20 +8324,27 @@ no_read_zbuffer_coefficients:
         d_stwz_dyh[3]             = stw_info->d_stwz_dy[3] & ~0x000001FF;
 
         stw_info->d_rgba_diff[0]  = d_rgba_deh[0] - d_rgba_dyh[0];
-        stw_info->d_rgba_diff[1]  = d_rgba_deh[1] - d_rgba_dyh[1];
-        stw_info->d_rgba_diff[2]  = d_rgba_deh[2] - d_rgba_dyh[2];
-        stw_info->d_rgba_diff[3]  = d_rgba_deh[3] - d_rgba_dyh[3];
         stw_info->d_rgba_diff[0] -= (stw_info->d_rgba_diff[0] >> 2);
+
+        stw_info->d_rgba_diff[1]  = d_rgba_deh[1] - d_rgba_dyh[1];
         stw_info->d_rgba_diff[1] -= (stw_info->d_rgba_diff[1] >> 2);
+
+        stw_info->d_rgba_diff[2]  = d_rgba_deh[2] - d_rgba_dyh[2];
         stw_info->d_rgba_diff[2] -= (stw_info->d_rgba_diff[2] >> 2);
+
+        stw_info->d_rgba_diff[3]  = d_rgba_deh[3] - d_rgba_dyh[3];
         stw_info->d_rgba_diff[3] -= (stw_info->d_rgba_diff[3] >> 2);
+
         stw_info->d_stwz_diff[0]  = d_stwz_deh[0] - d_stwz_dyh[0];
-        stw_info->d_stwz_diff[1]  = d_stwz_deh[1] - d_stwz_dyh[1];
-        stw_info->d_stwz_diff[2]  = d_stwz_deh[2] - d_stwz_dyh[2];
-        stw_info->d_stwz_diff[3]  = d_stwz_deh[3] - d_stwz_dyh[3];
         stw_info->d_stwz_diff[0] -= (stw_info->d_stwz_diff[0] >> 2);
+
+        stw_info->d_stwz_diff[1]  = d_stwz_deh[1] - d_stwz_dyh[1];
         stw_info->d_stwz_diff[1] -= (stw_info->d_stwz_diff[1] >> 2);
+
+        stw_info->d_stwz_diff[2]  = d_stwz_deh[2] - d_stwz_dyh[2];
         stw_info->d_stwz_diff[2] -= (stw_info->d_stwz_diff[2] >> 2);
+
+        stw_info->d_stwz_diff[3]  = d_stwz_deh[3] - d_stwz_dyh[3];
         stw_info->d_stwz_diff[3] -= (stw_info->d_stwz_diff[3] >> 2);
     }
 
