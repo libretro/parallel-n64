@@ -197,7 +197,7 @@ static int16_t *blender2b_a[2];
 
 #define COLOR_ASSIGN(col0, col1) col0 = col1
 
-#define TRELATIVE(x, y)     ((x) - ((y) << 3));
+#define TRELATIVE(x, y) 	((x) - ((y) << 3))
 #define UPPER ((sfrac + tfrac) & 0x20)
 
 static int32_t k0_tf = 0, k1_tf = 0, k2_tf = 0, k3_tf = 0;
@@ -592,42 +592,36 @@ static STRICTINLINE void tcclamp_cycle(int32_t* S, int32_t* T, int32_t* SFRAC, i
     int32_t locs = *S, loct = *T;
     if (tile[num].f.clampens)
     {
-        if (!(locs & 0x10000))
-        {
-            if (!maxs)
-                *S = (locs >> 5);
-            else
-            {
-                *S = tile[num].f.clampdiffs;
-                *SFRAC = 0;
-            }
-        }
-        else
-        {
-            *S = 0;
-            *SFRAC = 0;
-        }
+       if (maxs)
+       {
+          *S = tile[num].f.clampdiffs;
+          *SFRAC = 0;
+       }
+       else if (!(locs & 0x10000))
+          *S = locs >> 5;
+       else
+       {
+          *S = 0;
+          *SFRAC = 0;
+       }
     }
     else
         *S = (locs >> 5);
 
     if (tile[num].f.clampent)
     {
-        if (!(loct & 0x10000))
-        {
-            if (!maxt)
-                *T = (loct >> 5);
-            else
-            {
-                *T = tile[num].f.clampdifft;
-                *TFRAC = 0;
-            }
-        }
-        else
-        {
-            *T = 0;
-            *TFRAC = 0;
-        }
+       if (maxt)
+       {
+          *T = tile[num].f.clampdifft;
+          *TFRAC = 0;
+       }
+       else if (!(loct & 0x10000))
+          *T = loct >> 5;
+       else
+       {
+          *T = 0;
+          *TFRAC = 0;
+       }
     }
     else
         *T = (loct >> 5);
@@ -638,30 +632,24 @@ static STRICTINLINE void tcclamp_cycle_light(int32_t* S, int32_t* T, int32_t max
     int32_t locs = *S, loct = *T;
     if (tile[num].f.clampens)
     {
-        if (!(locs & 0x10000))
-        {
-            if (!maxs)
-                *S = (locs >> 5);
-            else
-                *S = tile[num].f.clampdiffs;
-        }
-        else
-            *S = 0;
+       if (maxs)
+          *S = tile[num].f.clampdiffs;
+       else if (!(locs & 0x10000))
+          *S = locs >> 5;
+       else
+          *S = 0;
     }
     else
         *S = (locs >> 5);
 
     if (tile[num].f.clampent)
     {
-        if (!(loct & 0x10000))
-        {
-            if (!maxt)
-                *T = (loct >> 5);
-            else
-                *T = tile[num].f.clampdifft;
-        }
-        else
-            *T = 0;
+       if (maxt)
+          *T = tile[num].f.clampdifft;
+       else if (!(loct & 0x10000))
+          *T = loct >> 5;
+       else
+          *T = 0;
     }
     else
         *T = (loct >> 5);
