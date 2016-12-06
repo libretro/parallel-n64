@@ -4837,8 +4837,8 @@ static void tclod_1cycle_next(int32_t* sss, int32_t* sst, int32_t s, int32_t t, 
             {
                if (!sigs->onelessthanmid)
                 {
-                    nexts = span[nextscan].stwz[0] + dsinc;
                     nextt = span[nextscan].stwz[1] + dtinc;
+                    nexts = span[nextscan].stwz[0] + dsinc;
                     nextsw = span[nextscan].stwz[2] + dwinc;
                     fart = (nextt + dtinc) >> 16;
                     fars = (nexts + dsinc) >> 16;
