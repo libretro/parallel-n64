@@ -5097,6 +5097,7 @@ static void render_spans_1cycle_complete(int start, int end, int tilenum, int fl
 
         if (scdiff)
         {
+           scdiff &= 0xfff;
             r += (drinc * scdiff);
             g += (dginc * scdiff);
             b += (dbinc * scdiff);
@@ -5283,6 +5284,7 @@ static void render_spans_1cycle_notexel1(int start, int end, int tilenum, int fl
 
         if (scdiff)
         {
+           scdiff &= 0xfff;
             r += (drinc * scdiff);
             g += (dginc * scdiff);
             b += (dbinc * scdiff);
@@ -5451,6 +5453,7 @@ static void render_spans_1cycle_notex(int start, int end, int tilenum, int flip)
 
         if (scdiff)
         {
+           scdiff &= 0xfff;
             r += (drinc * scdiff);
             g += (dginc * scdiff);
             b += (dbinc * scdiff);
@@ -5891,6 +5894,7 @@ static void render_spans_2cycle_complete(int start, int end, int tilenum, int fl
 
         if (scdiff)
         {
+           scdiff &= 0xfff;
             r += (drinc * scdiff);
             g += (dginc * scdiff);
             b += (dbinc * scdiff);
@@ -6078,6 +6082,7 @@ static void render_spans_2cycle_notexelnext(int start, int end, int tilenum, int
 
         if (scdiff)
         {
+           scdiff &= 0xfff;
             r += (drinc * scdiff);
             g += (dginc * scdiff);
             b += (dbinc * scdiff);
@@ -6259,6 +6264,7 @@ static void render_spans_2cycle_notexel1(int start, int end, int tilenum, int fl
 
         if (scdiff)
         {
+           scdiff &= 0xfff;
             r += (drinc * scdiff);
             g += (dginc * scdiff);
             b += (dbinc * scdiff);
@@ -6432,6 +6438,7 @@ static void render_spans_2cycle_notex(int start, int end, int tilenum, int flip)
 
         if (scdiff)
         {
+           scdiff &= 0xfff;
             r += (drinc * scdiff);
             g += (dginc * scdiff);
             b += (dbinc * scdiff);
@@ -8498,7 +8505,7 @@ no_read_zbuffer_coefficients:
                result = _mm_slli_epi32(result, 10);
                _mm_store_si128((__m128i *)span[j].stwz, result);
 #else
-               span[j].unscrx  = (stw_info->xlr[1] >> 16);
+               span[j].unscrx  = SIGN(stw_info->xlr[1] >> 16, 12);
                stw_info->xfrac = (stw_info->xlr[1] >> 8) & 0xFF;
                span[j].rgba[0]
                   = ((stw_info->rgba[0] & ~0x1FF) + stw_info->d_rgba_diff[0] - stw_info->xfrac * stw_info->d_rgba_dxh[0])
