@@ -3923,16 +3923,7 @@ static void texture_pipeline_cycle(COLOR* TEX, COLOR* prev, int32_t SSS, int32_t
             else
                 fetch_texel_entlut(&t0, sss1, sst1, tilenum);
             if (convert)
-            {
                 t0 = *prev;
-            }
-
-            if (tile[tilenum].format == FORMAT_YUV)
-            {
-               COLOR_RED(t0)   = SIGN(COLOR_RED(t0), 9);
-               COLOR_GREEN(t0) = SIGN(COLOR_GREEN(t0), 9);
-            }
-
 
             COLOR_RED_PTR(TEX) = COLOR_BLUE(t0) + ((k0_tf * COLOR_GREEN(t0) + 0x80) >> 8);
             COLOR_GREEN_PTR(TEX) = COLOR_BLUE(t0) + ((k1_tf * COLOR_RED(t0) + k2_tf * COLOR_GREEN(t0) + 0x80) >> 8);
@@ -3973,16 +3964,8 @@ static void texture_pipeline_cycle(COLOR* TEX, COLOR* prev, int32_t SSS, int32_t
         else
         {
             if (convert)
-            {
                 t0 = *prev;
-            }
             
-            if (tile[tilenum].format == FORMAT_YUV)
-            {
-               COLOR_RED(t0)   = SIGN(COLOR_RED(t0), 9); 
-               COLOR_GREEN(t0) = SIGN(COLOR_GREEN(t0), 9);
-            }
-
             COLOR_RED_PTR(TEX) = COLOR_BLUE(t0) + ((k0_tf * COLOR_GREEN(t0) + 0x80) >> 8);
             COLOR_GREEN_PTR(TEX) = COLOR_BLUE(t0) + ((k1_tf * COLOR_RED(t0) + k2_tf * COLOR_GREEN(t0) + 0x80) >> 8);
             COLOR_BLUE_PTR(TEX) = COLOR_BLUE(t0) + ((k3_tf * COLOR_RED(t0) + 0x80) >> 8);
