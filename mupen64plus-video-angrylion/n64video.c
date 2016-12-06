@@ -8451,83 +8451,82 @@ no_read_zbuffer_coefficients:
             }
 
             if (spix == ldflag)
+            {
 #ifdef USE_SSE_SUPPORT
-            {
-                __m128i xmm_frac;
-                __m128i delta_x_high, delta_diff;
-                __m128i prod_hi, prod_lo;
-                __m128i result;
+               __m128i xmm_frac;
+               __m128i delta_x_high, delta_diff;
+               __m128i prod_hi, prod_lo;
+               __m128i result;
 
-                span[j].unscrx  =  (stw_info->xlr[1]) >> 16;
-                stw_info->xfrac = (stw_info->xlr[1] >> 8) & 0xFF;
-                xmm_frac        = _mm_set1_epi32(stw_info->xfrac);
+               span[j].unscrx  =  (stw_info->xlr[1]) >> 16;
+               stw_info->xfrac = (stw_info->xlr[1] >> 8) & 0xFF;
+               xmm_frac        = _mm_set1_epi32(stw_info->xfrac);
 
-                delta_x_high = _mm_load_si128((__m128i *)stw_info->d_rgba_dxh);
-                prod_lo = _mm_mul_epu32(delta_x_high, xmm_frac);
-                delta_x_high = _mm_srli_epi64(delta_x_high, 32);
-                prod_hi = _mm_mul_epu32(delta_x_high, xmm_frac);
-                prod_lo = _mm_shuffle_epi32(prod_lo, _MM_SHUFFLE(3, 1, 2, 0));
-                prod_hi = _mm_shuffle_epi32(prod_hi, _MM_SHUFFLE(3, 1, 2, 0));
-                delta_x_high = _mm_unpacklo_epi32(prod_lo, prod_hi);
+               delta_x_high = _mm_load_si128((__m128i *)stw_info->d_rgba_dxh);
+               prod_lo = _mm_mul_epu32(delta_x_high, xmm_frac);
+               delta_x_high = _mm_srli_epi64(delta_x_high, 32);
+               prod_hi = _mm_mul_epu32(delta_x_high, xmm_frac);
+               prod_lo = _mm_shuffle_epi32(prod_lo, _MM_SHUFFLE(3, 1, 2, 0));
+               prod_hi = _mm_shuffle_epi32(prod_hi, _MM_SHUFFLE(3, 1, 2, 0));
+               delta_x_high = _mm_unpacklo_epi32(prod_lo, prod_hi);
 
-                delta_diff = _mm_load_si128((__m128i *)stw_info->d_rgba_diff);
-                result = _mm_load_si128((__m128i *)stw_info->rgba);
-                result = _mm_srli_epi32(result, 9);
-                result = _mm_slli_epi32(result, 9);
-                result = _mm_add_epi32(result, delta_diff);
-                result = _mm_sub_epi32(result, delta_x_high);
-                result = _mm_srli_epi32(result, 10);
-                result = _mm_slli_epi32(result, 10);
-                _mm_store_si128((__m128i *)span[j].rgba, result);
+               delta_diff = _mm_load_si128((__m128i *)stw_info->d_rgba_diff);
+               result = _mm_load_si128((__m128i *)stw_info->rgba);
+               result = _mm_srli_epi32(result, 9);
+               result = _mm_slli_epi32(result, 9);
+               result = _mm_add_epi32(result, delta_diff);
+               result = _mm_sub_epi32(result, delta_x_high);
+               result = _mm_srli_epi32(result, 10);
+               result = _mm_slli_epi32(result, 10);
+               _mm_store_si128((__m128i *)span[j].rgba, result);
 
-                delta_x_high = _mm_load_si128((__m128i *)stw_info->d_stwz_dxh);
-                prod_lo      = _mm_mul_epu32(delta_x_high, xmm_frac);
-                delta_x_high = _mm_srli_epi64(delta_x_high, 32);
-                prod_hi      = _mm_mul_epu32(delta_x_high, xmm_frac);
-                prod_lo      = _mm_shuffle_epi32(prod_lo, _MM_SHUFFLE(3, 1, 2, 0));
-                prod_hi      = _mm_shuffle_epi32(prod_hi, _MM_SHUFFLE(3, 1, 2, 0));
-                delta_x_high = _mm_unpacklo_epi32(prod_lo, prod_hi);
+               delta_x_high = _mm_load_si128((__m128i *)stw_info->d_stwz_dxh);
+               prod_lo      = _mm_mul_epu32(delta_x_high, xmm_frac);
+               delta_x_high = _mm_srli_epi64(delta_x_high, 32);
+               prod_hi      = _mm_mul_epu32(delta_x_high, xmm_frac);
+               prod_lo      = _mm_shuffle_epi32(prod_lo, _MM_SHUFFLE(3, 1, 2, 0));
+               prod_hi      = _mm_shuffle_epi32(prod_hi, _MM_SHUFFLE(3, 1, 2, 0));
+               delta_x_high = _mm_unpacklo_epi32(prod_lo, prod_hi);
 
-                delta_diff   = _mm_load_si128((__m128i *)stw_info->d_stwz_diff);
-                result = _mm_load_si128((__m128i *)stw_info->stwz);
-                result = _mm_srli_epi32(result, 9);
-                result = _mm_slli_epi32(result, 9);
-                result = _mm_add_epi32(result, delta_diff);
-                result = _mm_sub_epi32(result, delta_x_high);
-                result = _mm_srli_epi32(result, 10);
-                result = _mm_slli_epi32(result, 10);
-                _mm_store_si128((__m128i *)span[j].stwz, result);
-            }
+               delta_diff   = _mm_load_si128((__m128i *)stw_info->d_stwz_diff);
+               result = _mm_load_si128((__m128i *)stw_info->stwz);
+               result = _mm_srli_epi32(result, 9);
+               result = _mm_slli_epi32(result, 9);
+               result = _mm_add_epi32(result, delta_diff);
+               result = _mm_sub_epi32(result, delta_x_high);
+               result = _mm_srli_epi32(result, 10);
+               result = _mm_slli_epi32(result, 10);
+               _mm_store_si128((__m128i *)span[j].stwz, result);
 #else
-            {
-                span[j].unscrx  = (stw_info->xlr[1] >> 16);
-                stw_info->xfrac = (stw_info->xlr[1] >> 8) & 0xFF;
-                span[j].rgba[0]
+               span[j].unscrx  = (stw_info->xlr[1] >> 16);
+               stw_info->xfrac = (stw_info->xlr[1] >> 8) & 0xFF;
+               span[j].rgba[0]
                   = ((stw_info->rgba[0] & ~0x1FF) + stw_info->d_rgba_diff[0] - stw_info->xfrac * stw_info->d_rgba_dxh[0])
                   & ~0x000003FF;
-                span[j].rgba[1]
+               span[j].rgba[1]
                   = ((stw_info->rgba[1] & ~0x1FF) + stw_info->d_rgba_diff[1] - stw_info->xfrac * stw_info->d_rgba_dxh[1])
                   & ~0x000003FF;
-                span[j].rgba[2]
+               span[j].rgba[2]
                   = ((stw_info->rgba[2] & ~0x1FF) + stw_info->d_rgba_diff[2] - stw_info->xfrac * stw_info->d_rgba_dxh[2])
                   & ~0x000003FF;
-                span[j].rgba[3]
+               span[j].rgba[3]
                   = ((stw_info->rgba[3] & ~0x1FF) + stw_info->d_rgba_diff[3] - stw_info->xfrac * stw_info->d_rgba_dxh[3])
                   & ~0x000003FF;
-                span[j].stwz[0]
+               span[j].stwz[0]
                   = ((stw_info->stwz[0] & ~0x1FF) + stw_info->d_stwz_diff[0] - stw_info->xfrac * stw_info->d_stwz_dxh[0])
                   & ~0x000003FF;
-                span[j].stwz[1]
+               span[j].stwz[1]
                   = ((stw_info->stwz[1] & ~0x1FF) + stw_info->d_stwz_diff[1] - stw_info->xfrac * stw_info->d_stwz_dxh[1])
                   & ~0x000003FF;
-                span[j].stwz[2]
+               span[j].stwz[2]
                   = ((stw_info->stwz[2] & ~0x1FF) + stw_info->d_stwz_diff[2] - stw_info->xfrac * stw_info->d_stwz_dxh[2])
                   & ~0x000003FF;
-                span[j].stwz[3]
+               span[j].stwz[3]
                   = ((stw_info->stwz[3] & ~0x1FF) + stw_info->d_stwz_diff[3] - stw_info->xfrac * stw_info->d_stwz_dxh[3])
                   & ~0x000003FF;
-            }
 #endif
+            }
+
             if (spix == 3)
             {
                 const int invalidline = (sckeepodd ^ j) & scfield
