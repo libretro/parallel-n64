@@ -2,6 +2,7 @@ RSPDIR             = $(ROOT_DIR)/mupen64plus-rsp-hle
 CXD4DIR            = $(ROOT_DIR)/mupen64plus-rsp-cxd4
 CORE_DIR           = $(ROOT_DIR)/mupen64plus-core
 LIBRETRO_COMM_DIR  = $(ROOT_DIR)/libretro-common
+LIBRETRO_DIR       = $(ROOT_DIR)/libretro
 AUDIO_LIBRETRO_DIR = $(CORE_DIR)/src/plugin/audio_libretro
 VIDEODIR_RICE      = $(ROOT_DIR)/gles2rice/src
 VIDEODIR_GLN64     = $(ROOT_DIR)/gles2n64/src
@@ -12,6 +13,12 @@ VIDEODIR_GLIDE     = $(ROOT_DIR)/glide2gl/src
 VIDEODIR_GLIDEN64  = $(ROOT_DIR)/mupen64plus-video-gliden64
 
 DYNAREC_USED := 0
+
+ifeq ($(HAVE_PARALLEL_ONLY),1)
+HAVE_PARALLEL=1
+CFLAGS +=   -DHAVE_PARALLEL_ONLY
+CXXFLAGS += -DHAVE_PARALLEL_ONLY
+endif
 
 ifeq ($(HAVE_OPENGL),0)
 	HAVE_GLN64    =0
@@ -403,14 +410,14 @@ SOURCES_C +=  $(VIDEODIR_ANGRYLION)/n64video_main.c \
 						  $(VIDEODIR_ANGRYLION)/n64video.c
 
 ifeq ($(HAVE_RDP_DUMP), 1)
-	ifneq ($(HAVE_VULKAN),1)
+	ifneq ($(HAVE_PARALLEL),1)
 		SOURCES_C += $(VIDEODIR_PARALLEL)/rdp_dump.c
 	endif
 	CFLAGS += -DHAVE_RDP_DUMP
 	CXXFLAGS += -DHAVE_RDP_DUMP
 endif
 
-ifeq ($(HAVE_VULKAN),1)
+ifeq ($(HAVE_PARALLEL),1)
 CFLAGS   += -DHAVE_PARALLEL
 CXXFLAGS += -DHAVE_PARALLEL
 ### Tiny Tigers's LLE renderer ###
@@ -425,9 +432,6 @@ CXXFLAGS += -DHAVE_PARALLEL
 					$(VIDEODIR_PARALLEL)/rdp/rdp.cpp \
 					$(VIDEODIR_PARALLEL)/rdp/vulkan_symbol_wrapper.cpp
 	SOURCES_C += $(VIDEODIR_PARALLEL)/rdp_dump.c
-	ONLY_VULKAN=1
-	CFLAGS += -DHAVE_VULKAN=1
-	CXXFLAGS += -DHAVE_VULKAN=1
 	LDFLAGS += -pthread
 endif
 
@@ -470,11 +474,6 @@ LDFLAGS += -lclangFrontend \
 			  -lclangBasic
 LDFLAGS += $(shell llvm-config --ldflags --libs --system-libs)
 
-endif
-
-ifeq ($(ONLY_VULKAN),1)
-CFLAGS   += -DONLY_VULKAN
-CXXFLAGS += -DONLY_VULKAN
 endif
 
 ifeq ($(HAVE_OPENGL),1)

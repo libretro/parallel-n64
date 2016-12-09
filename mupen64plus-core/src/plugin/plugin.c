@@ -98,7 +98,7 @@ DEFINE_GFX(angrylion);
 DEFINE_GFX(rice);
 DEFINE_GFX(gln64);
 DEFINE_GFX(glide64);
-#ifdef HAVE_VULKAN
+#ifdef HAVE_PARALLEL
 DEFINE_GFX(parallel);
 #endif
 
@@ -268,7 +268,7 @@ void plugin_connect_all(enum gfx_plugin_type gfx_plugin, enum rsp_plugin_type rs
          gfx = gfx_angrylion;
          break;
       case GFX_PARALLEL:
-#ifdef HAVE_VULKAN
+#ifdef HAVE_PARALLEL
          gfx = gfx_parallel;
 #endif
          break;

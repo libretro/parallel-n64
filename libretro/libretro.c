@@ -43,7 +43,8 @@ int InitGfx(void);
 int glide64InitGfx(void);
 void gles2n64_reset(void);
 #endif
-#if defined(HAVE_VULKAN)
+
+#if defined(HAVE_PARALLEL)
 #include "../mupen64plus-video-paraLLEl/parallel.h"
 
 static struct retro_hw_render_callback hw_render;
@@ -139,7 +140,7 @@ static void core_settings_autoselect_gfx_plugin(void)
    if (gfx_var.value && strcmp(gfx_var.value, "auto") != 0)
       return;
 
-#if defined(HAVE_VULKAN) && defined(HAVE_PARALLEL)
+#if defined(HAVE_PARALLEL) || defined(HAVE_PARALLEL_ONLY)
    gfx_plugin = GFX_PARALLEL;
 #elif (defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)) && defined(HAVE_GLIDE64)
    gfx_plugin = GFX_GLIDE64;
@@ -163,7 +164,7 @@ static void core_settings_set_defaults(void)
    environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &gfx_var);
    environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &rsp_var);
 
-#ifdef ONLY_VULKAN
+#ifdef HAVE_PARALLEL_ONLY
    gfx_plugin = GFX_PARALLEL;
 #else
 #ifdef HAVE_GLIDE64
@@ -210,7 +211,7 @@ static void core_settings_set_defaults(void)
    }
 
    /* Load RSP plugin core option */
-#ifdef ONLY_VULKAN
+#ifdef HAVE_PARALLEL_ONLY
 #ifdef HAVE_PARALLEL_RSP
    if (rsp_var.value && !strcmp(rsp_var.value, "parallel"))
       rsp_plugin = RSP_PARALLEL;
@@ -238,7 +239,7 @@ static void core_settings_set_defaults(void)
 
 static void core_settings_autoselect_rsp_plugin(void)
 {
-#if !defined(ONLY_VULKAN)
+#if !defined(HAVE_PARALLEL_ONLY)
    struct retro_variable rsp_var = { NAME_PREFIX "-rspplugin", 0 };
 
    environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &rsp_var);
@@ -291,30 +292,30 @@ static void setup_variables(void)
       { NAME_PREFIX "-disable_expmem",
          "Enable Expansion Pak RAM; enabled|disabled" },
       { NAME_PREFIX "-gfxplugin-accuracy",
-#if defined(ONLY_VULKAN)
+#if defined(HAVE_PARALLEL_ONLY)
          "GFX Accuracy; veryhigh" },
 #elif defined(IOS) || defined(ANDROID)
          "GFX Accuracy (restart); medium|high|veryhigh|low" },
 #else
          "GFX Accuracy (restart); veryhigh|high|medium|low" },
 #endif
-#ifdef HAVE_VULKAN
+#ifdef HAVE_PARALLEL
       { NAME_PREFIX "-parallel-rdp-synchronous",
          "ParaLLEl Synchronous RDP; enabled|disabled" },
 #endif
       { NAME_PREFIX "-gfxplugin",
-#ifdef ONLY_VULKAN
+#ifdef HAVE_PARALLEL_ONLY
          "GFX Plugin; parallel" },
 #else
          "GFX Plugin; auto|glide64|gln64|rice|angrylion|parallel" },
 #endif
       { NAME_PREFIX "-rspplugin",
-#ifdef ONLY_VULKAN
+#ifdef HAVE_PARALLEL_ONLY
          "RSP Plugin; parallel|cxd4" },
 #else
          "RSP Plugin; auto|hle|parallel|cxd4" },
 #endif
-#ifndef ONLY_VULKAN
+#ifndef HAVE_PARALLEL_ONLY
       { NAME_PREFIX "-screensize",
          "Resolution (restart); 640x480|960x720|1280x960|1600x1200|1920x1440|2240x1680|320x240" },
       { NAME_PREFIX "-aspectratiohint",
@@ -338,7 +339,7 @@ static void setup_variables(void)
       },
       { NAME_PREFIX "-framerate",
          "Framerate (restart); original|fullspeed" },
-#ifndef ONLY_VULKAN
+#ifndef HAVE_PARALLEL
       { NAME_PREFIX "-vcache-vbo",
          "(Glide64) Vertex cache VBO (restart); off|on" },
 #endif
@@ -513,12 +514,12 @@ bool emu_step_render(void)
             video_cb((screen_pitch == 0) ? NULL : blitter_buf_lock, screen_width, screen_height, screen_pitch);
             break;
 
-#if defined(HAVE_VULKAN)
          case GFX_PARALLEL:
+#if defined(HAVE_PARALLEL)
             video_cb(parallel_frame_is_valid() ? RETRO_HW_FRAME_BUFFER_VALID : NULL,
                   parallel_frame_width(), parallel_frame_height(), 0);
-            break;
 #endif
+            break;
 
          default:
 #if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
@@ -603,7 +604,7 @@ void deinit_gfx_plugin(void)
     switch (gfx_plugin)
     {
        case GFX_PARALLEL:
-#if defined(HAVE_VULKAN) && defined(HAVE_PARALLEL)
+#if defined(HAVE_PARALLEL)
           parallel_deinit();
 #endif
           break;
@@ -678,7 +679,7 @@ void retro_set_environment(retro_environment_t cb)
 
 void retro_get_system_info(struct retro_system_info *info)
 {
-#ifdef ONLY_VULKAN
+#ifdef HAVE_PARALLEL_ONLY
    info->library_name = "ParaLLEl";
 #else
    info->library_name = "Mupen64Plus";
@@ -808,7 +809,7 @@ void update_variables(bool startup)
 {
    struct retro_variable var;
 
-#if defined(HAVE_VULKAN)
+#if defined(HAVE_PARALLEL)
    var.key = NAME_PREFIX "-parallel-rdp-synchronous";
    var.value = NULL;
 
@@ -1112,7 +1113,7 @@ static void format_saved_memory(void)
    format_disk(saved_memory.disk);
 }
 
-#if defined(HAVE_VULKAN) || defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
+#if defined(HAVE_PARALLEL) || defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
 static void context_reset(void)
 {
    switch (gfx_plugin)
@@ -1153,11 +1154,53 @@ static bool context_framebuffer_lock(void *data)
    return true;
 }
 
-bool retro_load_game(const struct retro_game_info *game)
+static bool retro_load_game_vulkan(const struct retro_game_info *game)
+{
+#if defined(HAVE_PARALLEL)
+   hw_render.context_type = RETRO_HW_CONTEXT_VULKAN;
+   hw_render.version_major = VK_MAKE_VERSION(1, 0, 12);
+   hw_render.context_reset = context_reset;
+   hw_render.context_destroy = context_destroy;
+   if (!environ_cb(RETRO_ENVIRONMENT_SET_HW_RENDER, &hw_render))
+      log_cb(RETRO_LOG_ERROR, "mupen64plus: libretro frontend doesn't have Vulkan support.");
+
+   hw_context_negotiation.interface_type = RETRO_HW_RENDER_CONTEXT_NEGOTIATION_INTERFACE_VULKAN;
+   hw_context_negotiation.interface_version = RETRO_HW_RENDER_CONTEXT_NEGOTIATION_INTERFACE_VULKAN_VERSION;
+   hw_context_negotiation.get_application_info = parallel_get_application_info;
+   hw_context_negotiation.create_device = parallel_create_device;
+   hw_context_negotiation.destroy_device = NULL;
+   if (!environ_cb(RETRO_ENVIRONMENT_SET_HW_RENDER_CONTEXT_NEGOTIATION_INTERFACE, &hw_context_negotiation))
+      log_cb(RETRO_LOG_ERROR, "mupen64plus: libretro frontend doesn't have context negotiation support.");
+#endif
+
+   return true;
+}
+
+static bool retro_load_game_gl(const struct retro_game_info *game)
 {
 #if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
    glsm_ctx_params_t params = {0};
+
+   params.context_reset         = context_reset;
+   params.context_destroy       = context_destroy;
+   params.environ_cb            = environ_cb;
+   params.stencil               = false;
+
+   params.framebuffer_lock      = context_framebuffer_lock;
+
+   if (!glsm_ctl(GLSM_CTL_STATE_CONTEXT_INIT, &params))
+   {
+      if (log_cb)
+         log_cb(RETRO_LOG_ERROR, "mupen64plus: libretro frontend doesn't have OpenGL support.");
+      return false;
+   }
 #endif
+
+   return true;
+}
+
+bool retro_load_game(const struct retro_game_info *game)
+{
    format_saved_memory();
 
    update_variables(true);
@@ -1165,57 +1208,29 @@ bool retro_load_game(const struct retro_game_info *game)
 
    init_audio_libretro(audio_buffer_size);
 
+#ifdef HAVE_PARALLEL_ONLY
+   gfx_plugin = GFX_PARALLEL;
+#endif
    switch (gfx_plugin)
    {
       case GFX_ANGRYLION:
          /* Stub */
          break;
       case GFX_PARALLEL:
-#if defined(HAVE_VULKAN) && defined(HAVE_PARALLEL)
-         hw_render.context_type = RETRO_HW_CONTEXT_VULKAN;
-         hw_render.version_major = VK_MAKE_VERSION(1, 0, 12);
-         hw_render.context_reset = context_reset;
-         hw_render.context_destroy = context_destroy;
-         if (!environ_cb(RETRO_ENVIRONMENT_SET_HW_RENDER, &hw_render))
-            log_cb(RETRO_LOG_ERROR, "mupen64plus: libretro frontend doesn't have Vulkan support.");
-
-         hw_context_negotiation.interface_type = RETRO_HW_RENDER_CONTEXT_NEGOTIATION_INTERFACE_VULKAN;
-         hw_context_negotiation.interface_version = RETRO_HW_RENDER_CONTEXT_NEGOTIATION_INTERFACE_VULKAN_VERSION;
-         hw_context_negotiation.get_application_info = parallel_get_application_info;
-         hw_context_negotiation.create_device = parallel_create_device;
-         hw_context_negotiation.destroy_device = NULL;
-         if (!environ_cb(RETRO_ENVIRONMENT_SET_HW_RENDER_CONTEXT_NEGOTIATION_INTERFACE, &hw_context_negotiation))
-            log_cb(RETRO_LOG_ERROR, "mupen64plus: libretro frontend doesn't have context negotiation support.");
-#endif
+         retro_load_game_vulkan(game);
          break;
       case GFX_GLIDE64:
       case GFX_GLN64:
       case GFX_RICE:
-#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
-         {
-            params.context_reset         = context_reset;
-            params.context_destroy       = context_destroy;
-            params.environ_cb            = environ_cb;
-            params.stencil               = false;
-
-            params.framebuffer_lock      = context_framebuffer_lock;
-
-            if (!glsm_ctl(GLSM_CTL_STATE_CONTEXT_INIT, &params))
-            {
-               if (log_cb)
-                  log_cb(RETRO_LOG_ERROR, "mupen64plus: libretro frontend doesn't have OpenGL support.");
-               return false;
-            }
-         }
-#endif
+         retro_load_game_gl(game);
          break;
    }
 
    game_data = malloc(game->size);
-   memcpy(game_data, game->data, game->size);
    game_size = game->size;
+   memcpy(game_data, game->data, game->size);
 
-   stop = false;
+   stop      = false;
    /* Finish ROM load before doing anything funny, 
     * so we can return failure if needed. */
 #ifndef EMSCRIPTEN
@@ -1376,7 +1391,7 @@ void retro_run (void)
 #endif
             break;
          case GFX_PARALLEL:
-#if defined(HAVE_VULKAN) && defined(HAVE_PARALLEL)
+#if defined(HAVE_PARALLEL)
             parallel_begin_frame();
 #endif
             break;

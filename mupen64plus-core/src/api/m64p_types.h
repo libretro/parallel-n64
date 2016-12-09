@@ -26,7 +26,7 @@
 #include <stdint.h>
 #include <stddef.h>
 
-#ifdef ONLY_VULKAN
+#ifdef HAVE_PARALLEL_ONLY
 #define NAME_PREFIX "parallel"
 #else
 #define NAME_PREFIX "mupen64"

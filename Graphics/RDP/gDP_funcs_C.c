@@ -61,7 +61,7 @@ void GDPLoadBlockC(uint32_t tile, uint32_t ul_s, uint32_t ul_t,
 #endif
          break;
       case GFX_GLN64:
-#ifndef HAVE_GLIDEN64
+#if !defined(HAVE_GLIDEN64) && defined(HAVE_GLN64)
          gln64gDPLoadBlock(tile, ul_s, ul_t, lr_s, dxt);
 #endif
          break;
