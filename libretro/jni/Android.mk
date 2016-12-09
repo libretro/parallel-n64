@@ -7,7 +7,7 @@ HAVE_PARALLEL_ONLY :=1
 
 include $(CLEAR_VARS)
 
-LOCAL_MODULE := parallel_retro
+LOCAL_MODULE := retro
 
 ROOT_DIR := ../..
 LIBRETRO_DIR = ../libretro

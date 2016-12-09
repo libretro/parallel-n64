@@ -370,15 +370,19 @@ endif
 SOURCES_CXX += $(ROOT_DIR)/Graphics/RSP/gSP_funcs.cpp \
 				 $(ROOT_DIR)/Graphics/RDP/gDP_funcs.cpp
 
+ifeq ($(HAVE_PARALLEL_ONLY),1)
+else
 SOURCES_C   += $(ROOT_DIR)/Graphics/RSP/gSP_funcs_C.c \
 					$(ROOT_DIR)/Graphics/RSP/gSP_state.c \
 				 	$(ROOT_DIR)/Graphics/RDP/gDP_funcs_C.c \
 					$(ROOT_DIR)/Graphics/RDP/gDP_state.c \
 					$(ROOT_DIR)/Graphics/RDP/RDP_state.c \
 					$(ROOT_DIR)/Graphics/RSP/RSP_state.c \
-					$(ROOT_DIR)/Graphics/HLE/Microcode/Fast3D.c \
 					$(ROOT_DIR)/Graphics/3dmaths.c \
-					$(ROOT_DIR)/Graphics/plugins.c
+					$(ROOT_DIR)/Graphics/HLE/Microcode/Fast3D.c
+endif
+
+SOURCES_C += $(ROOT_DIR)/Graphics/plugins.c
 
 ifeq ($(HAVE_GLIDE64),1)
 CFLAGS   += -DHAVE_GLIDE64

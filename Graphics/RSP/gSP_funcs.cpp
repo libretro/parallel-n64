@@ -240,5 +240,7 @@ extern "C" void GSPEndDisplayListC(void);
 
 void GSPEndDisplayList(void)
 {
+#ifndef HAVE_PARALLEL_ONLY
    GSPEndDisplayListC();
+#endif
 }
