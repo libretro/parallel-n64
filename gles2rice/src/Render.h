@@ -89,7 +89,6 @@ public:
     
     virtual void SetFogEnable(bool bEnable) 
     { 
-        DEBUGGER_IF_DUMP( (gRSP.bFogEnabled != bEnable && logFog ), TRACE1("Set Fog %s", bEnable? "enable":"disable"));
         gRSP.bFogEnabled = bEnable;
     }
     virtual void SetFogMinMax(float fMin, float fMax) = 0;
@@ -251,9 +250,6 @@ protected:
 };
 
 #define ffloor(a) (((int(a))<=(a))?(float)(int(a)):((float)(int(a))-1))
-
-bool SaveRGBBufferToFile(char *filename, unsigned char *buf, int width, int height, int pitch);
-bool SaveRGBABufferToPNGFile(char *filename, unsigned char *buf, int width, int height, int pitch);
 
 #endif  //_RICE_RENDER_H
 

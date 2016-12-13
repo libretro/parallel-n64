@@ -25,10 +25,6 @@
 #include "api/m64p_types.h"
 #include "api/callbacks.h"
 
-#ifdef COMPARE_CORE
-#include "api/debugger.h"
-#endif
-
 #include <stdint.h>
 #include <string.h>
 
@@ -60,10 +56,6 @@ static void read_controller_read_buttons(struct game_controller* cont, uint8_t* 
         return;
 
     *((uint32_t*)(cmd + 3)) = game_controller_get_input(cont);
-
-#ifdef COMPARE_CORE
-    CoreCompareDataSync(4, cmd + 3);
-#endif
 }
 
 
@@ -81,7 +73,10 @@ static void controller_status_command(struct game_controller* cont, uint8_t* cmd
         return;
     }
 
-    cmd[3] = 0x05;
+    if (connected == CONT_JOYPAD)
+      cmd[3] = 0x05;
+    else if (connected == CONT_MOUSE)
+      cmd[3] = 0x02;
     cmd[4] = 0x00;
 
     switch(pak)
@@ -112,7 +107,9 @@ static void controller_read_buttons_command(struct game_controller* cont, uint8_
 static void controller_read_pak_command(struct game_controller* cont, uint8_t* cmd)
 {
     enum pak_type pak;
-    int connected = game_controller_is_connected(cont, &pak);
+    uint16_t address;
+    uint8_t *data    = NULL;
+    int connected    = game_controller_is_connected(cont, &pak);
 
     if (!connected)
     {
@@ -120,23 +117,36 @@ static void controller_read_pak_command(struct game_controller* cont, uint8_t* c
         return;
     }
 
+    address = (cmd[3] << 8) | (cmd[4] & 0xe0);
+    data = &cmd[5];
+
     switch (pak)
     {
-    case PAK_NONE: memset(&cmd[5], 0, 0x20); break;
-    case PAK_MEM: mempak_read_command(&cont->mempak, cmd); break;
-    case PAK_RUMBLE: rumblepak_read_command(&cont->rumblepak, cmd); break;
-    case PAK_TRANSFER: /* TODO */ break;
-    default:
-        DebugMessage(M64MSG_WARNING, "Unknown plugged pak %d", (int)pak);
+       case PAK_NONE:
+          memset(data, 0, 0x20);
+          break;
+       case PAK_MEM:
+          mempak_read_command(&cont->mempak, address, data);
+          break;
+       case PAK_RUMBLE:
+          rumblepak_read_command(&cont->rumblepak, address, data);
+          break;
+       case PAK_TRANSFER:
+          transferpak_read_command(&cont->transferpak, address, data);
+          break;
+       default:
+          DebugMessage(M64MSG_WARNING, "Unknown plugged pak %d", (int)pak);
     }
 
-    cmd[0x25] = pak_data_crc(&cmd[5]);
+    cmd[0x25] = pak_data_crc(data);
 }
 
 static void controller_write_pak_command(struct game_controller* cont, uint8_t* cmd)
 {
     enum pak_type pak;
-    int connected = game_controller_is_connected(cont, &pak);
+    uint16_t address;
+    const uint8_t *data = NULL;
+    int       connected = game_controller_is_connected(cont, &pak);
 
     if (!connected)
     {
@@ -144,17 +154,28 @@ static void controller_write_pak_command(struct game_controller* cont, uint8_t* 
         return;
     }
 
+    address = (cmd[3] << 8) | (cmd[4] & 0xe0);
+    data    = &cmd[5];
+
     switch (pak)
     {
-    case PAK_NONE: /* do nothing */ break;
-    case PAK_MEM: mempak_write_command(&cont->mempak, cmd); break;
-    case PAK_RUMBLE: rumblepak_write_command(&cont->rumblepak, cmd); break;
-    case PAK_TRANSFER: /* TODO */ break;
-    default:
-        DebugMessage(M64MSG_WARNING, "Unknown plugged pak %d", (int)pak);
+       case PAK_NONE:
+          /* do nothing */
+          break;
+       case PAK_MEM:
+          mempak_write_command(&cont->mempak, address, data);
+          break;
+       case PAK_RUMBLE:
+          rumblepak_write_command(&cont->rumblepak, address, data);
+          break;
+       case PAK_TRANSFER:
+          transferpak_write_command(&cont->transferpak, address, data);
+          break;
+       default:
+          DebugMessage(M64MSG_WARNING, "Unknown plugged pak %d", (int)pak);
     }
 
-    cmd[0x25] = pak_data_crc(&cmd[5]);
+    cmd[0x25] = pak_data_crc((uint8_t*)data);
 }
 
 int game_controller_is_connected(struct game_controller* cont, enum pak_type* pak)
@@ -170,19 +191,22 @@ uint32_t game_controller_get_input(struct game_controller* cont)
 
 void process_controller_command(struct game_controller* cont, uint8_t* cmd)
 {
-    switch (cmd[2])
-    {
-    case PIF_CMD_STATUS:
-    case PIF_CMD_RESET:
-        controller_status_command(cont, cmd); break;
-    case PIF_CMD_CONTROLLER_READ:
-        controller_read_buttons_command(cont, cmd); break;
-    case PIF_CMD_PAK_READ:
-        controller_read_pak_command(cont, cmd); break;
-    case PIF_CMD_PAK_WRITE:
-        controller_write_pak_command(cont, cmd); break;
-        break;
-    }
+   switch (cmd[2])
+   {
+      case PIF_CMD_STATUS:
+      case PIF_CMD_RESET:
+         controller_status_command(cont, cmd);
+         break;
+      case PIF_CMD_CONTROLLER_READ:
+         controller_read_buttons_command(cont, cmd);
+         break;
+      case PIF_CMD_PAK_READ:
+         controller_read_pak_command(cont, cmd);
+         break;
+      case PIF_CMD_PAK_WRITE:
+         controller_write_pak_command(cont, cmd);
+         break;
+   }
 }
 
 void read_controller(struct game_controller* cont, uint8_t* cmd)

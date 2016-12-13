@@ -18,7 +18,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
 
 #include "osal_opengl.h"
-#include "OGLDebug.h"
 #include "FrameBuffer.h"
 #include "Render.h"
 
@@ -37,7 +36,7 @@ void CRender::LoadFrameBuffer(bool useVIreg, uint32_t left, uint32_t top, uint32
     gti.clampS = gti.clampT = 0;
     gti.maskS = gti.maskT = gti.mirrorS = gti.mirrorT = 0;
     gti.TLutFmt = TLUT_FMT_RGBA16;  //RGBA16
-    gti.bSwapped    = FALSE;
+    gti.bSwapped    = false;
     gti.Palette = 0;
 
     if( useVIreg && *gfx_info.VI_ORIGIN_REG > VIwidth*2 )
@@ -87,14 +86,10 @@ void CRender::LoadFrameBuffer(bool useVIreg, uint32_t left, uint32_t top, uint32
             gti.HeightToCreate  = height;
         }
 
-        if( gti.Size == TXT_SIZE_4b )
-        {
+        if( gti.Size == G_IM_SIZ_4b )
             gti.Pitch = g_CI.dwWidth >> 1;
-        }
         else
-        {
             gti.Pitch = g_CI.dwWidth << (gti.Size-1);
-        }
     }
 
 
@@ -132,7 +127,7 @@ void CRender::LoadTextureFromMemory(void *buf, uint32_t left, uint32_t top, uint
     gti.Palette = 0;
     gti.TLutFmt = TLUT_FMT_RGBA16;  //RGBA16
     gti.PalAddress = 0;
-    gti.bSwapped = FALSE;
+    gti.bSwapped = false;
     gti.Address = 0;
     gti.LeftToLoad = 0;
     gti.TopToLoad = 0;
@@ -178,7 +173,7 @@ void CRender::LoadObjBGCopy(uObjBg &info)
     gti.Palette     = info.imagePal;
 
     gti.PalAddress  = (uint8_t *) &g_wRDPTlut[0];
-    gti.bSwapped    = FALSE;
+    gti.bSwapped    = false;
     gti.TLutFmt     = TLUT_FMT_RGBA16;  //RGBA16
 
     gti.WidthToCreate   = info.imageW/4;
@@ -211,16 +206,6 @@ void CRender::LoadObjBGCopy(uObjBg &info)
     gti.tileNo = -1;
     TxtrCacheEntry *pEntry = gTextureManager.GetTexture(&gti, false, true, false);
     SetCurrentTexture(0,pEntry);
-
-    DEBUGGER_IF_DUMP((pauseAtNext && (eventToPause == NEXT_OBJ_TXT_CMD||eventToPause == NEXT_FLUSH_TRI||eventToPause == NEXT_OBJ_BG)),
-    {
-        TRACE0("Load Obj BG Copy:\n");
-        DebuggerAppendMsg("Addr=0x%08X, W=%d, H=%d, Left=%d, Top=%d\n", 
-            gti.Address, gti.WidthToCreate, gti.HeightToCreate, gti.LeftToLoad, gti.TopToLoad);
-        DebuggerAppendMsg("Fmt=%s-%db, Pal=%d\n",
-            pszImgFormat[gti.Format], pnImgSize[gti.Size], gti.Palette);
-    }
-    );
 }
 
 void CRender::LoadTxtrBufIntoTexture(void)
@@ -237,7 +222,7 @@ void CRender::LoadTxtrBufIntoTexture(void)
     gti.Palette = 0;
 
     gti.PalAddress = (uint8_t *) &g_wRDPTlut[0];
-    gti.bSwapped    = FALSE;
+    gti.bSwapped    = false;
 
     gti.WidthToCreate       = g_pRenderTextureInfo->N64Width;
     gti.HeightToCreate      = g_pRenderTextureInfo->N64Height;
@@ -294,22 +279,13 @@ void CRender::LoadSprite2D(Sprite2DInfo &info, uint32_t ucode)
     gti.WidthToLoad = gti.WidthToCreate;
 
     gti.TLutFmt     = TLUT_FMT_RGBA16;  //RGBA16
-    gti.bSwapped    = FALSE;
+    gti.bSwapped    = false;
 
     gti.pPhysicalAddress = ((uint8_t*)rdram_u32) + gti.Address;
     gti.tileNo = -1;
     TxtrCacheEntry *pEntry = gTextureManager.GetTexture(&gti, false, true, false);
     SetCurrentTexture(0,pEntry);
 
-    DEBUGGER_IF_DUMP((pauseAtNext && (eventToPause == NEXT_OBJ_TXT_CMD||eventToPause == NEXT_FLUSH_TRI||eventToPause == NEXT_SPRITE_2D)),
-    {
-        TRACE0("Load Sprite 2D\n");
-        DebuggerAppendMsg("Addr=0x%08X, W=%d, H=%d, Left=%d, Top=%d\n", 
-            gti.Address, gti.WidthToCreate, gti.HeightToCreate, gti.LeftToLoad, gti.TopToLoad);
-        DebuggerAppendMsg("Fmt=%s-%db, Pal=%d, Pitch=%d\n",
-            pszImgFormat[gti.Format], pnImgSize[gti.Size], gti.Palette, gti.Pitch);
-    }
-    );
 }
 
 
@@ -473,12 +449,12 @@ void CRender::DrawFrameBuffer(bool useVIreg, uint32_t left, uint32_t top, uint32
 
     m_pColorCombiner->InitCombinerBlenderForSimpleTextureDraw(0);
 
-    ZBufferEnable(FALSE);
-    SetZUpdate(FALSE);
+    ZBufferEnable(false);
+    SetZUpdate(false);
     if( left == 0 )
-        SetAlphaTestEnable(FALSE);
+        SetAlphaTestEnable(false);
     else
-        SetAlphaTestEnable(TRUE);   // use Alpha Test for partial frame buffer draw, for Dr. Mario 64
+        SetAlphaTestEnable(true);   // use Alpha Test for partial frame buffer draw, for Dr. Mario 64
 
     m_pAlphaBlender->Disable();
 
@@ -613,13 +589,6 @@ void CRender::DrawObjBGCopy(uObjBg &info)
             DrawSimple2DTexture(x2, y2, x1, y1, 0, 0, u1, v1, difColor, speColor, depth, 1);
         }
     }
-
-    DEBUGGER_PAUSE_AT_COND_AND_DUMP_COUNT_N(
-        (pauseAtNext&&(eventToPause==NEXT_OBJ_BG||eventToPause==NEXT_FLUSH_TRI||eventToPause==NEXT_OBJ_TXT_CMD)),
-        {
-            TRACE0("Pause ObjBG Copy");
-        }
-    );
 }
 
 void CRender::DrawObjBG1CYC(uObjScaleBg &bg, bool scaled)   // Without Rotation
@@ -671,7 +640,7 @@ void CRender::DrawObjBG1CYC(uObjScaleBg &bg, bool scaled)   // Without Rotation
     COLOR speColor = PostProcessSpecularColor();
     COLOR difColor = PostProcessDiffuseColor(0xffffffff);
 
-    SetAlphaTestEnable(FALSE);
+    SetAlphaTestEnable(false);
 
     if( options.enableHackForGames != HACK_FOR_YOSHI )
     {
@@ -715,13 +684,6 @@ void CRender::DrawObjBG1CYC(uObjScaleBg &bg, bool scaled)   // Without Rotation
             DrawSimple2DTexture(x2, y2, x1, y1, 0, 0, u1, v1, difColor, speColor, depth, 1);
         }
     }
-
-    DEBUGGER_PAUSE_AT_COND_AND_DUMP_COUNT_N(
-        (pauseAtNext&&(eventToPause==NEXT_OBJ_BG||eventToPause==NEXT_FLUSH_TRI||eventToPause==NEXT_OBJ_TXT_CMD)),
-        {
-            DebuggerAppendMsg("Pause BG 1CYC: (%.0f,%.0f - %.0f,%.0f), \ntex (%.2f,%.2f), scale (%.2f,%.2f)",x0,y0,x1,y1,s0,t0,scaleX,scaleY);
-        }
-    );
 }
 
 
@@ -796,14 +758,10 @@ void CRender::DrawSprite(uObjTxSprite &sprite, bool rectR)  // Without Rotation
     // save the current clamp type
     GLint iClampS, iClampT;
     glGetTexParameteriv(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, &iClampS);
-    OPENGL_CHECK_ERRORS;
     glGetTexParameteriv(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, &iClampT);
-    OPENGL_CHECK_ERRORS;
     // force clamp type to CLAMP_EDGE (experiments show sometimes this is set to hex 0x2901 - invalid value)
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    OPENGL_CHECK_ERRORS;
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    OPENGL_CHECK_ERRORS;
     // draw the 2D sprite as 2 triangles
     float depth = (gRDP.otherMode.depth_source == 1 ? gRDP.fPrimitiveDepth : 0.0f);
     CTexture *pTexture = g_textures[0].m_pCTexture;
@@ -811,9 +769,7 @@ void CRender::DrawSprite(uObjTxSprite &sprite, bool rectR)  // Without Rotation
         difColor, speColor, depth, 1);
     // return clamp type to original setting
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, iClampS);
-    OPENGL_CHECK_ERRORS;
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, iClampT);
-    OPENGL_CHECK_ERRORS;
 }
 
 
@@ -852,7 +808,7 @@ void CRender::LoadObjBG1CYC(uObjScaleBg &bg)
     }
 
     gti.TLutFmt = TLUT_FMT_RGBA16;  //RGBA16
-    gti.bSwapped = FALSE;
+    gti.bSwapped = false;
 
     gti.HeightToLoad = gti.HeightToCreate;
     gti.WidthToLoad = gti.WidthToCreate;
@@ -860,16 +816,6 @@ void CRender::LoadObjBG1CYC(uObjScaleBg &bg)
     gti.tileNo = -1;
     TxtrCacheEntry *pEntry = gTextureManager.GetTexture(&gti, false, true, false);
     SetCurrentTexture(0,pEntry);
-
-    DEBUGGER_IF_DUMP((pauseAtNext && (eventToPause == NEXT_OBJ_TXT_CMD||eventToPause == NEXT_FLUSH_TRI||eventToPause == NEXT_OBJ_BG)),
-        {
-            TRACE0("Load Obj BG 1CYC:\n");
-            DebuggerAppendMsg("Addr=0x%08X, W=%d, H=%d, Left=%d, Top=%d\n", 
-                gti.Address, gti.WidthToCreate, gti.HeightToCreate, gti.LeftToLoad, gti.TopToLoad);
-            DebuggerAppendMsg("Fmt=%s-%db, Pal=%d\n",
-                pszImgFormat[gti.Format], pnImgSize[gti.Size], gti.Palette);
-        }
-    );
 }
 
 void CRender::LoadObjSprite(uObjTxSprite &sprite, bool useTIAddr)
@@ -912,7 +858,7 @@ void CRender::LoadObjSprite(uObjTxSprite &sprite, bool useTIAddr)
         gti.WidthToCreate       = ((sprite.txtr.tile.twidth+1)>>2)<<(4-gti.Size);
         gti.HeightToCreate  = (sprite.txtr.tile.theight+1)>>2;
 
-        if( gti.Size == TXT_SIZE_4b )
+        if( gti.Size == G_IM_SIZ_4b )
         {
             gti.Pitch = gti.WidthToCreate >> 1;
         }
@@ -930,7 +876,7 @@ void CRender::LoadObjSprite(uObjTxSprite &sprite, bool useTIAddr)
     }
 
     gti.TLutFmt = TLUT_FMT_RGBA16;  //RGBA16
-    gti.bSwapped    = FALSE;
+    gti.bSwapped    = false;
 
     gti.HeightToLoad = gti.HeightToCreate;
     gti.WidthToLoad = gti.WidthToCreate;

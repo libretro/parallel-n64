@@ -18,7 +18,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "osal_opengl.h"
 
-#include "OGLDebug.h"
 #include "OGLExtRender.h"
 #include "OGLTexture.h"
 
@@ -28,7 +27,6 @@ void COGLExtRender::Initialize(void)
 
     // Initialize multitexture
     glGetIntegerv(GL_MAX_TEXTURE_UNITS,&m_maxTexUnits);
-    OPENGL_CHECK_ERRORS;
 
     for( int i=0; i<8; i++ )
         m_textureUnitMap[i] = -1;
@@ -45,10 +43,8 @@ void COGLExtRender::BindTexture(GLuint texture, int unitno)
         {
             if( m_curBoundTex[unitno] != texture )
             {
-                pglActiveTexture(GL_TEXTURE0 + unitno);
-                OPENGL_CHECK_ERRORS;
+                glActiveTexture(GL_TEXTURE0 + unitno);
                 glBindTexture(GL_TEXTURE_2D,texture);
-                OPENGL_CHECK_ERRORS;
                 m_curBoundTex[unitno] = texture;
             }
         }
@@ -63,10 +59,8 @@ void COGLExtRender::DisBindTexture(GLuint texture, int unitno)
 {
     if( m_bEnableMultiTexture )
     {
-        pglActiveTexture(GL_TEXTURE0 + unitno);
-        OPENGL_CHECK_ERRORS;
+        glActiveTexture(GL_TEXTURE0 + unitno);
         glBindTexture(GL_TEXTURE_2D, 0);    //Not to bind any texture
-        OPENGL_CHECK_ERRORS;
     }
     else
         OGLRender::DisBindTexture(texture, unitno);
@@ -87,12 +81,10 @@ void COGLExtRender::SetTexWrapS(int unitno,GLuint flag)
     static GLuint mtex[8];
     if( m_curBoundTex[unitno] != mtex[unitno] || mflag[unitno] != flag )
     {
-        pglActiveTexture(GL_TEXTURE0+unitno);
-        OPENGL_CHECK_ERRORS;
+        glActiveTexture(GL_TEXTURE0+unitno);
         mtex[unitno] = m_curBoundTex[0];
         mflag[unitno] = flag;
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, flag);
-        OPENGL_CHECK_ERRORS;
     }
 }
 void COGLExtRender::SetTexWrapT(int unitno,GLuint flag)
@@ -104,7 +96,6 @@ void COGLExtRender::SetTexWrapT(int unitno,GLuint flag)
         mtex[unitno] = m_curBoundTex[0];
         mflag[unitno] = flag;
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, flag);
-        OPENGL_CHECK_ERRORS;
     }
 }
 
@@ -197,15 +188,14 @@ void COGLExtRender::EnableTexUnit(int unitno, bool flag)
     if( m_texUnitEnabled[unitno] != flag )
     {
         m_texUnitEnabled[unitno] = flag;
-        pglActiveTexture(GL_TEXTURE0 + unitno);
-        OPENGL_CHECK_ERRORS;
+        glActiveTexture(GL_TEXTURE0 + unitno);
     }
 }
 
 void COGLExtRender::ApplyTextureFilter()
 {
-    static uint32_t minflag[8], magflag[8];
-    static uint32_t mtex[8];
+    static uint32_t minflag[32], magflag[32];
+    static uint32_t mtex[32];
 
     int iMinFilter, iMagFilter;
 
@@ -253,32 +243,25 @@ void COGLExtRender::ApplyTextureFilter()
             if( mtex[i] != m_curBoundTex[i] )
             {
                 mtex[i] = m_curBoundTex[i];
-                pglActiveTexture(GL_TEXTURE0 + i);
-                OPENGL_CHECK_ERRORS;
+                glActiveTexture(GL_TEXTURE0 + i);
                 minflag[i] = m_dwMinFilter;
                 magflag[i] = m_dwMagFilter;
                 glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, iMinFilter);
-                OPENGL_CHECK_ERRORS;
                 glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, iMagFilter);
-                OPENGL_CHECK_ERRORS;
             }
             else
             {
                 if( minflag[i] != (unsigned int)m_dwMinFilter )
                 {
                     minflag[i] = m_dwMinFilter;
-                    pglActiveTexture(GL_TEXTURE0 + i);
-                    OPENGL_CHECK_ERRORS;
+                    glActiveTexture(GL_TEXTURE0 + i);
                     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, iMinFilter);
-                    OPENGL_CHECK_ERRORS;
                 }
                 if( magflag[i] != (unsigned int)m_dwMagFilter )
                 {
                     magflag[i] = m_dwMagFilter;
-                    pglActiveTexture(GL_TEXTURE0 + i);
-                    OPENGL_CHECK_ERRORS;
+                    glActiveTexture(GL_TEXTURE0 + i);
                     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, iMagFilter);
-                    OPENGL_CHECK_ERRORS;
                 }
             }
         }

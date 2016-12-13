@@ -22,7 +22,6 @@
 #ifndef M64P_R4300_RECOMPH_H
 #define M64P_R4300_RECOMPH_H
 
-#include <stdint.h>
 #include "recomp.h"
 
 extern int code_length;
@@ -32,28 +31,11 @@ extern precomp_block* dst_block;
 extern int fast_memory;
 extern uint32_t src;   /* opcode of r4300 instruction being recompiled */
 
-#if defined(PROFILE_R4300)
-  #include <stdio.h>
-  extern FILE *pfProfile;
-#endif
-
 void passe2(precomp_instr *dest, int start, int end, precomp_block* block);
 void init_assembler(void *block_jumps_table, int block_jumps_number, void *block_riprel_table, int block_riprel_number);
 void free_assembler(void **block_jumps_table, int *block_jumps_number, void **block_riprel_table, int *block_riprel_number);
 
-/*
- * Since "recomp.h" is included by both the 32- and 64-bit dynamic recompiler
- * modules in Mupen64Plus, we need to fix a particular build error on GCC
- * when targeting a 32-bit system and building with 32-bit dynarec.
- *
- * Preferably, we'll start off by checking only for __i386__ on GCC, as the
- * libretro fork of Mupen64Plus does not yet have a tested 32-bit recompiler.
- */
-#if defined(__i386__)
-void gencallinterp(uint32_t addr, int jump);
-#else
-void gencallinterp(uint64_t addr, int jump);
-#endif
+void gencallinterp(uintptr_t addr, int jump);
 
 void genupdate_system(int type);
 void genbnel(void);
@@ -306,8 +288,5 @@ void gentestl_out(void);
 void gencheck_cop1_unusable(void);
 void genll(void);
 
-#ifdef COMPARE_CORE
-void gendebug(void);
-#endif
-
 #endif /* M64P_R4300_RECOMPH_H */
+

@@ -80,9 +80,9 @@ typedef unsigned char uint8_t;
 
 #define HASH_FIND(hh,head,keyptr,keylen,out)                                     \
 do {                                                                             \
-  unsigned _hf_bkt,_hf_hashv;                                                    \
   out=NULL;                                                                      \
   if (head) {                                                                    \
+     unsigned _hf_bkt, _hf_hashv;                                                \
      HASH_FCN(keyptr,keylen, (head)->hh.tbl->num_buckets, _hf_hashv, _hf_bkt);   \
      HASH_FIND_IN_BKT((head)->hh.tbl, hh, (head)->hh.tbl->buckets[ _hf_bkt ],  \
            keyptr,keylen,out);                                      \
@@ -160,13 +160,13 @@ do {                                                                            
  */
 #define HASH_DELETE(hh,head,delptr)                                              \
 do {                                                                             \
-    unsigned _hd_bkt;                                                            \
     struct UT_hash_handle *_hd_hh_del;                                           \
     if ( ((delptr)->hh.prev == NULL) && ((delptr)->hh.next == NULL) )  {         \
         free((head)->hh.tbl->buckets); \
         free((head)->hh.tbl);                      \
         head = NULL;                                                             \
     } else {                                                                     \
+        unsigned _hd_bkt;                                                        \
         _hd_hh_del = &((delptr)->hh);                                            \
         if ((delptr) == ELMT_FROM_HH((head)->hh.tbl,(head)->hh.tbl->tail)) {     \
             (head)->hh.tbl->tail =                                               \
@@ -338,7 +338,7 @@ do {                                                                            
 #define MUR_PLUS2_ALIGNED(p) (((unsigned long)p & 0x3) == 2)
 #define MUR_PLUS3_ALIGNED(p) (((unsigned long)p & 0x3) == 3)
 #define WP(p) ((uint32_t*)((unsigned long)(p) & ~3UL))
-#if (defined(__BIG_ENDIAN__) || defined(SPARC) || defined(__ppc__) || defined(__ppc64__))
+#if (defined(MSB_FIRST) || defined(SPARC) || defined(__ppc__) || defined(__ppc64__))
 #define MUR_THREE_ONE(p) ((((*WP(p))&0x00ffffff) << 8) | (((*(WP(p)+1))&0xff000000) >> 24))
 #define MUR_TWO_TWO(p)   ((((*WP(p))&0x0000ffff) <<16) | (((*(WP(p)+1))&0xffff0000) >> 16))
 #define MUR_ONE_THREE(p) ((((*WP(p))&0x000000ff) <<24) | (((*(WP(p)+1))&0xffffff00) >>  8))

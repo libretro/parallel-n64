@@ -112,10 +112,9 @@ void free_assembler(void **block_jumps_table, int *block_jumps_number, void **bl
 {
    *block_jumps_table   = jumps_table;
    *block_jumps_number  = jumps_number;
+   *block_riprel_table  = NULL;  /* RIP-relative addressing is only for x86-64 */
 #ifdef __x86_64__
    *block_riprel_table  = riprel_table;
-#else
-   *block_riprel_table  = NULL;  /* RIP-relative addressing is only for x86-64 */
 #endif
    *block_riprel_number = 0;
 }
@@ -124,8 +123,14 @@ void add_jump(unsigned int pc_addr, unsigned int mi_addr, unsigned int absolute6
 {
    if (jumps_number == max_jumps_number)
    {
+      jump_table *new_ptr = NULL;
+
       max_jumps_number += JUMP_TABLE_SIZE;
-      jumps_table = (jump_table *) realloc(jumps_table, max_jumps_number*sizeof(jump_table));
+      new_ptr           = (jump_table *)
+         realloc(jumps_table, max_jumps_number*sizeof(jump_table));
+      if (!new_ptr)
+         return;
+      jumps_table = new_ptr;
    }
    jumps_table[jumps_number].pc_addr = pc_addr;
    jumps_table[jumps_number].mi_addr = mi_addr;
@@ -137,7 +142,7 @@ void add_jump(unsigned int pc_addr, unsigned int mi_addr, unsigned int absolute6
 
 void passe2(precomp_instr *dest, int start, int end, precomp_block *block)
 {
-   unsigned int real_code_length, addr_dest;
+   unsigned int real_code_length;
    int i;
    build_wrappers(dest, start, end, block);
 
@@ -203,12 +208,12 @@ void passe2(precomp_instr *dest, int start, int end, precomp_block *block)
       code_length = jumps_table[i].pc_addr;
       if (dest[(jumps_table[i].mi_addr - dest[0].addr)/4].reg_cache_infos.need_map)
       {
-         addr_dest = (unsigned int)dest[(jumps_table[i].mi_addr - dest[0].addr)/4].reg_cache_infos.jump_wrapper;
+         unsigned int addr_dest = (unsigned int)dest[(jumps_table[i].mi_addr - dest[0].addr)/4].reg_cache_infos.jump_wrapper;
          put32(addr_dest-((unsigned int)block->code+code_length)-4);
       }
       else
       {
-         addr_dest = dest[(jumps_table[i].mi_addr - dest[0].addr)/4].local_addr;
+         unsigned int addr_dest = dest[(jumps_table[i].mi_addr - dest[0].addr)/4].local_addr;
          put32(addr_dest-code_length-4);
       }
    }

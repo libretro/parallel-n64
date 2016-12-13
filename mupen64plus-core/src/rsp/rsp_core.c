@@ -32,16 +32,9 @@
 #include <stdio.h>
 #include <string.h>
 
-static void dma_sp_write(struct rsp_core* sp)
+static void dma_sp_write(struct rsp_core* sp, unsigned length, unsigned count, unsigned skip)
 {
     unsigned int i,j;
-
-    unsigned int l        = sp->regs[SP_RD_LEN_REG];
-
-    unsigned int length   = ((l & 0xfff) | 7) + 1;
-    unsigned int count    = ((l >> 12) & 0xff) + 1;
-    unsigned int skip     = ((l >> 20) & 0xfff);
- 
     unsigned int memaddr  = sp->regs[SP_MEM_ADDR_REG] & 0xfff;
     unsigned int dramaddr = sp->regs[SP_DRAM_ADDR_REG] & 0xffffff;
 
@@ -60,16 +53,9 @@ static void dma_sp_write(struct rsp_core* sp)
     }
 }
 
-static void dma_sp_read(struct rsp_core* sp)
+static void dma_sp_read(struct rsp_core* sp, unsigned length, unsigned count, unsigned skip)
 {
     unsigned int i,j;
-
-    unsigned int l        = sp->regs[SP_WR_LEN_REG];
-
-    unsigned int length   = ((l & 0xfff) | 7) + 1;
-    unsigned int count    = ((l >> 12) & 0xff) + 1;
-    unsigned int skip     = ((l >> 20) & 0xfff);
-
     unsigned int memaddr  = sp->regs[SP_MEM_ADDR_REG] & 0xfff;
     unsigned int dramaddr = sp->regs[SP_DRAM_ADDR_REG] & 0xffffff;
 
@@ -176,7 +162,7 @@ void init_rsp(struct rsp_core* sp)
 int read_rsp_mem(void* opaque, uint32_t address, uint32_t* value)
 {
     struct rsp_core* sp = (struct rsp_core*)opaque;
-    uint32_t addr       = rsp_mem_address(address);
+    uint32_t addr       = RSP_MEM_ADDR(address);
 
     *value = sp->mem[addr];
 
@@ -186,9 +172,9 @@ int read_rsp_mem(void* opaque, uint32_t address, uint32_t* value)
 int write_rsp_mem(void* opaque, uint32_t address, uint32_t value, uint32_t mask)
 {
     struct rsp_core* sp = (struct rsp_core*)opaque;
-    uint32_t addr       = rsp_mem_address(address);
+    uint32_t addr       = RSP_MEM_ADDR(address);
 
-    masked_write(&sp->mem[addr], value, mask);
+    sp->mem[addr] = MASKED_WRITE(&sp->mem[addr], value, mask);
 
     return 0;
 }
@@ -197,7 +183,7 @@ int write_rsp_mem(void* opaque, uint32_t address, uint32_t value, uint32_t mask)
 int read_rsp_regs(void* opaque, uint32_t address, uint32_t* value)
 {
     struct rsp_core* sp = (struct rsp_core*)opaque;
-    uint32_t reg        = rsp_reg(address);
+    uint32_t reg        = RSP_REG(address);
 
     *value = sp->regs[reg];
 
@@ -209,8 +195,9 @@ int read_rsp_regs(void* opaque, uint32_t address, uint32_t* value)
 
 int write_rsp_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mask)
 {
-    struct rsp_core* sp = (struct rsp_core*)opaque;
-    uint32_t reg        = rsp_reg(address);
+   unsigned l, length, count, skip;
+   struct rsp_core* sp = (struct rsp_core*)opaque;
+   uint32_t reg        = RSP_REG(address);
 
     switch(reg)
     {
@@ -221,15 +208,24 @@ int write_rsp_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mask
           return 0;
     }
 
-    masked_write(&sp->regs[reg], value, mask);
+    sp->regs[reg] = MASKED_WRITE(&sp->regs[reg], value, mask);
 
     switch(reg)
     {
        case SP_RD_LEN_REG:
-          dma_sp_write(sp);
+          l        = sp->regs[SP_RD_LEN_REG];
+          length   = ((l & 0xfff) | 7) + 1;
+          count    = ((l >> 12) & 0xff) + 1;
+          skip     = ((l >> 20) & 0xfff);
+
+          dma_sp_write(sp, length, count, skip);
           break;
        case SP_WR_LEN_REG:
-          dma_sp_read(sp);
+          l        = sp->regs[SP_WR_LEN_REG];
+          length   = ((l & 0xfff)) + 1;
+          count    = ((l >> 12) & 0xff) + 1;
+          skip     = ((l >> 20) & 0xfff);
+          dma_sp_read(sp, length, count, skip);
           break;
        case SP_SEMAPHORE_REG:
           sp->regs[SP_SEMAPHORE_REG] = 0;
@@ -243,7 +239,7 @@ int write_rsp_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mask
 int read_rsp_regs2(void* opaque, uint32_t address, uint32_t* value)
 {
     struct rsp_core* sp = (struct rsp_core*)opaque;
-    uint32_t reg        = rsp_reg2(address);
+    uint32_t reg        = RSP_REG2(address);
 
     *value = sp->regs2[reg];
 
@@ -253,9 +249,9 @@ int read_rsp_regs2(void* opaque, uint32_t address, uint32_t* value)
 int write_rsp_regs2(void* opaque, uint32_t address, uint32_t value, uint32_t mask)
 {
     struct rsp_core* sp = (struct rsp_core*)opaque;
-    uint32_t reg        = rsp_reg2(address);
+    uint32_t reg        = RSP_REG2(address);
 
-    masked_write(&sp->regs2[reg], value, mask);
+    sp->regs2[reg] = MASKED_WRITE(&sp->regs2[reg], value, mask);
 
     return 0;
 }
@@ -266,6 +262,7 @@ void do_SP_Task(struct rsp_core* sp)
 
     if (sp->mem[0xfc0/4] == 1)
     {
+       /* Display list */
         if (sp->dp->dpc_regs[DPC_STATUS_REG] & 0x2) // DP frozen (DK64, BC)
         {
             // don't do the task now
@@ -282,25 +279,26 @@ void do_SP_Task(struct rsp_core* sp)
         sp->regs2[SP_PC_REG] |= save_pc;
         new_frame();
 
-        update_count();
+        cp0_update_count();
         if (sp->r4300->mi.regs[MI_INTR_REG] & MI_INTR_SP)
             add_interupt_event(SP_INT, 1000);
         if (sp->r4300->mi.regs[MI_INTR_REG] & MI_INTR_DP)
             add_interupt_event(DP_INT, 1000);
         sp->r4300->mi.regs[MI_INTR_REG] &= ~(MI_INTR_SP | MI_INTR_DP);
-        sp->regs[SP_STATUS_REG] &= ~0x300; /* task done && yielded */
+        sp->regs[SP_STATUS_REG] &= ~0x200; /* task done && yielded */
 
         protect_framebuffers(sp->dp);
     }
     else if (sp->mem[0xfc0/4] == 2)
     {
+       /* Audio List */
         sp->regs2[SP_PC_REG] &= 0xfff;
         timed_section_start(TIMED_SECTION_AUDIO);
         rsp.doRspCycles(0xffffffff);
         timed_section_end(TIMED_SECTION_AUDIO);
         sp->regs2[SP_PC_REG] |= save_pc;
 
-        update_count();
+        cp0_update_count();
         if (sp->r4300->mi.regs[MI_INTR_REG] & MI_INTR_SP)
             add_interupt_event(SP_INT, 4000/*500*/);
         sp->r4300->mi.regs[MI_INTR_REG] &= ~MI_INTR_SP;
@@ -308,11 +306,12 @@ void do_SP_Task(struct rsp_core* sp)
     }
     else
     {
+       /* Unknown list */
         sp->regs2[SP_PC_REG] &= 0xfff;
         rsp.doRspCycles(0xffffffff);
         sp->regs2[SP_PC_REG] |= save_pc;
 
-        update_count();
+        cp0_update_count();
         if (sp->r4300->mi.regs[MI_INTR_REG] & MI_INTR_SP)
             add_interupt_event(SP_INT, 0/*100*/);
         sp->r4300->mi.regs[MI_INTR_REG] &= ~MI_INTR_SP;
@@ -321,12 +320,14 @@ void do_SP_Task(struct rsp_core* sp)
 
     if ((sp->regs[SP_STATUS_REG] & 0x00000001) == 0x00000000)
     { /* needed for games like "Stunt Racer 64" with CPU-RSP timer sync fails */
-        printf(
+        /* printf(
             "To do:  early RSP exit and task resume (SP_STATUS_REG = %08X)\n",
             sp->regs[SP_STATUS_REG]
-        );
+        ); */
         if (sp->regs[SP_STATUS_REG] & 0x00000002)
             fputs("(...Why is SP_STATUS_BROKE set?)\n", stderr);
+
+        add_interupt_event(SP_INT, 0x200);
     }
     sp->regs[SP_STATUS_REG] &= ~0x00000003; /* Clear BROKE and HALT. */
 }

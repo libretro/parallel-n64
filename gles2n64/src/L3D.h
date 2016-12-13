@@ -5,11 +5,11 @@
 extern "C" {
 #endif
 
-#include "Types.h"
+#include <stdint.h>
 
 #define L3D_LINE3D              0xB5
 
-void L3D_Line3D( u32 w0, u32 w1 );
+void L3D_Line3D( uint32_t w0, uint32_t w1 );
 void L3D_Init(void);
 
 #ifdef __cplusplus

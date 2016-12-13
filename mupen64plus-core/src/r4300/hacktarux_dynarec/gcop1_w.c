@@ -37,9 +37,9 @@ void gencvt_s_w(void)
 #else
    gencheck_cop1_unusable();
 #ifdef __x86_64__
-   mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_simple[dst->f.cf.fs]));
+   mov_xreg64_m64rel(RAX, (uint64_t *)(&reg_cop1_simple[dst->f.cf.fs]));
    fild_preg64_dword(RAX);
-   mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_simple[dst->f.cf.fd]));
+   mov_xreg64_m64rel(RAX, (uint64_t *)(&reg_cop1_simple[dst->f.cf.fd]));
    fstp_preg64_dword(RAX);
 #else
    mov_eax_memoffs32((unsigned int*)(&reg_cop1_simple[dst->f.cf.fs]));
@@ -57,9 +57,9 @@ void gencvt_d_w(void)
 #else
    gencheck_cop1_unusable();
 #ifdef __x86_64__
-   mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_simple[dst->f.cf.fs]));
+   mov_xreg64_m64rel(RAX, (uint64_t *)(&reg_cop1_simple[dst->f.cf.fs]));
    fild_preg64_dword(RAX);
-   mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_double[dst->f.cf.fd]));
+   mov_xreg64_m64rel(RAX, (uint64_t *)(&reg_cop1_double[dst->f.cf.fd]));
    fstp_preg64_qword(RAX);
 #else
    mov_eax_memoffs32((unsigned int*)(&reg_cop1_simple[dst->f.cf.fs]));

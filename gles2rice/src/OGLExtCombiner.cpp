@@ -19,7 +19,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include <algorithm>
 #include "osal_opengl.h"
 
-#include "OGLDebug.h"
 #include "OGLExtCombiner.h"
 #include "OGLExtRender.h"
 #include "OGLDecodedMux.h"
@@ -33,8 +32,6 @@ COGLColorCombiner4::COGLColorCombiner4(CRender *pRender)
         :COGLColorCombiner(pRender), m_maxTexUnits(0), m_lastIndex(-1),
         m_dwLastMux0(0), m_dwLastMux1(0)
 {
-    m_bSupportModAdd_ATI = false;
-    m_bSupportModSub_ATI = false;
     delete m_pDecodedMux;
     m_pDecodedMux = new COGLExtDecodedMux;
 }
@@ -42,8 +39,6 @@ COGLColorCombiner4::COGLColorCombiner4(CRender *pRender)
 //////////////////////////////////////////////////////////////////////////
 bool COGLColorCombiner4::Initialize(void)
 {
-    m_bSupportModAdd_ATI = false;
-    m_bSupportModSub_ATI = false;
     m_maxTexUnits = 1;
 
     return true;
@@ -54,8 +49,7 @@ void COGLColorCombiner4::InitCombinerCycleFill(void)
 {
     for( int i=0; i<m_supportedStages; i++ )
     {
-        pglActiveTexture(GL_TEXTURE0+i);
-        OPENGL_CHECK_ERRORS;
+        glActiveTexture(GL_TEXTURE0+i);
         m_pOGLRender->EnableTexUnit(i, false);
     }
 }
@@ -337,9 +331,9 @@ void COGLColorCombiner4::GenerateCombinerSetting(int index)
     COGLTexture* pTexture = NULL;
     COGLTexture* pTexture1 = NULL;
 
-    if( m_bTex0Enabled || m_bTex1Enabled || gRDP.otherMode.cycle_type  == CYCLE_TYPE_COPY )
+    if( m_bTex0Enabled || m_bTex1Enabled || gRDP.otherMode.cycle_type  == G_CYC_COPY )
     {
-        if( m_bTex0Enabled || gRDP.otherMode.cycle_type  == CYCLE_TYPE_COPY )
+        if( m_bTex0Enabled || gRDP.otherMode.cycle_type  == G_CYC_COPY )
         {
             pTexture = g_textures[gRSP.curTile].m_pCOGLTexture;
             if( pTexture )  m_pOGLRender->BindTexture(pTexture->m_dwTextureName, 0);
@@ -355,11 +349,9 @@ void COGLColorCombiner4::GenerateCombinerSetting(int index)
 
     for( int i=0; i<res.numOfUnits; i++ )
     {
-        pglActiveTexture(GL_TEXTURE0 + i);
-        OPENGL_CHECK_ERRORS;
+        glActiveTexture(GL_TEXTURE0 + i);
         m_pOGLRender->EnableTexUnit(i, true);
         glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_COMBINE);
-        OPENGL_CHECK_ERRORS;
         ApplyFor1Unit(res.units[i]);
     }
 
@@ -367,8 +359,7 @@ void COGLColorCombiner4::GenerateCombinerSetting(int index)
     {
         for( int i=res.numOfUnits; i<m_maxTexUnits; i++ )
         {
-            pglActiveTexture(GL_TEXTURE0 + i);
-            OPENGL_CHECK_ERRORS;
+            glActiveTexture(GL_TEXTURE0 + i);
             m_pOGLRender->DisBindTexture(0, i);
             m_pOGLRender->EnableTexUnit(i, false);
         }
@@ -408,10 +399,8 @@ void COGLColorCombiner4::GenerateCombinerSettingConstants(int index)
     {
         for( int i=0; i<res.numOfUnits; i++ )
         {
-            pglActiveTexture(GL_TEXTURE0 + i);
-            OPENGL_CHECK_ERRORS;
+            glActiveTexture(GL_TEXTURE0 + i);
             glTexEnvfv(GL_TEXTURE_ENV, GL_TEXTURE_ENV_COLOR,fv);
-            OPENGL_CHECK_ERRORS;
         }
     }
 }

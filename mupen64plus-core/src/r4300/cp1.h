@@ -37,3 +37,4 @@ void set_fpr_pointers(uint32_t newStatus);
 void update_x86_rounding_mode(uint32_t FCR31);
 
 #endif /* M64P_R4300_CP1_H */
+

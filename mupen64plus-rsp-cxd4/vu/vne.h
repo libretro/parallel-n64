@@ -17,6 +17,13 @@ INLINE static void do_ne(short* VD, short* VS, short* VT)
 {
     register int i;
 
+#ifdef INTENSE_DEBUG
+    for (i = 0; i < 8; i++)
+       fprintf(stderr, "VS[%d] = %d\n", i, VS[i]);
+    for (i = 0; i < 8; i++)
+       fprintf(stderr, "VT[%d] = %d\n", i, VT[i]);
+#endif
+
     for (i = 0; i < N; i++)
         clip[i] = 0;
     for (i = 0; i < N; i++)
@@ -34,6 +41,11 @@ INLINE static void do_ne(short* VD, short* VS, short* VT)
         ne[i] = 0;
     for (i = 0; i < N; i++)
         co[i] = 0;
+
+#ifdef INTENSE_DEBUG
+    for (i = 0; i < 8; i++)
+       fprintf(stderr, "VD[%d] = %d\n", i, VD[i]);
+#endif
     return;
 }
 

@@ -18,36 +18,33 @@
  *   Free Software Foundation, Inc.,                                       *
  *   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.          *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
 #include <stdint.h>
 
-#include "r4300.h"
 #include "cp0_private.h"
 #include "exception.h"
-
 #include "new_dynarec/new_dynarec.h"
-
-#ifdef COMPARE_CORE
-#include "api/debugger.h"
-#endif
+#include "r4300.h"
+#include "recomp.h"
 
 #ifdef DBG
+#include "debugger/dbg_debugger.h"
 #include "debugger/dbg_types.h"
-#include "debugger/debugger.h"
 #endif
 
 /* global variable */
 #if NEW_DYNAREC != NEW_DYNAREC_ARM
 /* ARM backend requires a different memory layout
  * and therefore manually allocate that variable */
-uint32_t g_cp0_regs[32];
+uint32_t g_cp0_regs[CP0_REGS_COUNT];
 #endif
 
+/* global functions */
 uint32_t* r4300_cp0_regs(void)
 {
     return g_cp0_regs;
 }
 
-/* global functions */
 int check_cop1_unusable(void)
 {
    if (!(g_cp0_regs[CP0_STATUS_REG] & UINT32_C(0x20000000)))
@@ -59,7 +56,7 @@ int check_cop1_unusable(void)
    return 0;
 }
 
-void update_count(void)
+void cp0_update_count(void)
 {
 #ifdef NEW_DYNAREC
    if (r4300emu != CORE_DYNAREC)
@@ -71,12 +68,9 @@ void update_count(void)
    }
 #endif
 
-#ifdef COMPARE_CORE
-   if (delay_slot)
-      CoreCompareCallback();
+#if 0
+#ifdef DBG
+   if (g_DebuggerActive && !delay_slot) update_debugger(PC->addr);
 #endif
-   /*#ifdef DBG
-     if (g_DebuggerActive && !delay_slot) update_debugger(PC->addr);
 #endif
-*/
 }

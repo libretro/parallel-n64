@@ -37,40 +37,26 @@
 //
 //****************************************************************
 
-#include "TexLoad4b.h"
-#include "TexLoad8b.h"
-#include "TexLoad16b.h"
-#include "TexLoad32b.h"
+#ifndef TEXLOAD_H
+#define TEXLOAD_H
 
-uint32_t LoadNone (uintptr_t dst, uintptr_t src, int wid_64, int height, int line, int real_width, int tile)
-{
-   return GR_TEXFMT_ARGB_1555;
-}
+#include <stdint.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 typedef uint32_t (*texfunc)(uintptr_t, uintptr_t, int, int, int, int, int);
-texfunc load_table [4][5] =
-{	// [size][format]
-   {	Load4bSelect,
-      LoadNone,
-      Load4bCI,
-      Load4bIA,
-      Load4bI  },
+extern texfunc load_table[4][5];
 
-   {	Load8bCI,
-      LoadNone,
-      Load8bCI,
-      Load8bIA,
-      Load8bI  },
+void LoadBlock32b(uint32_t tile, uint32_t ul_s, uint32_t ul_t, uint32_t lr_s, uint32_t dxt);
+void LoadTile32b(uint32_t tile, uint32_t ul_s, uint32_t ul_t, uint32_t width, uint32_t height);
+void loadBlock(uint32_t *src, uint32_t *dst, uint32_t off, int dxt, int cnt);
 
-   {	Load16bRGBA,
-      Load16bYUV,
-      Load16bRGBA,
-      Load16bIA,
-      LoadNone },
+void loadTile(uint32_t *src, uint32_t *dst, int width, int height, int line, int off, uint32_t *end);
 
-   {	Load32bRGBA,
-      LoadNone,
-      LoadNone,
-      LoadNone,
-      LoadNone }
-};
+#ifdef __cplusplus
+}
+#endif
+
+#endif

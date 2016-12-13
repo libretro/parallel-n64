@@ -36,44 +36,29 @@
 // * Do NOT send me the whole project or file that you modified.  Take out your modified code sections, and tell me where to put them.  If people sent the whole thing, I would have many different versions, but no idea how to combine them all.
 //
 //****************************************************************
+#ifndef _GLIDE64_3DMATH_H
+#define _GLIDE64_3DMATH_H
 
-void calc_light (VERTEX *v);
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#include "../Glitch64/glide.h"
+
+#include "../../Graphics/3dmath.h"
+
 void calc_linear (VERTEX *v);
-void calc_sphere (VERTEX *v);
-
-#define CopyMatrix(m0, m1, size) memcpy(m0, m1, size)
+void calc_sphere (VERTEX *v); 
 
 void math_init(void);
 
-typedef void (*GLIDE64MULMATRIX)(float m1[4][4],float m2[4][4],float r[4][4]); 
-extern GLIDE64MULMATRIX glide64MulMatrices;
+void MulMatrices(float m1[4][4], float m2[4][4], float r[4][4]);
 
-typedef void (*GLIDE64TRANSFORMVECTOR)(float *src,float *dst,float mat[4][4]); 
-extern GLIDE64TRANSFORMVECTOR glide64TransformVector;
-extern GLIDE64TRANSFORMVECTOR glide64InverseTransformVector;
+void InverseTransformVector(float *src, float *dst, float mat[4][4]);
+void  NormalizeVector(float *v);
 
-typedef float (*GLIDE64DOTPRODUCT)(register float *v1, register float *v2);
-extern GLIDE64DOTPRODUCT glide64DotProduct;
-
-typedef void (*GLIDE64NORMALIZEVECTOR)(float *v);
-extern GLIDE64NORMALIZEVECTOR glide64NormalizeVector;
-
-#ifndef MulMatrices
-#define MulMatrices glide64MulMatrices
+#ifdef __cplusplus
+}
 #endif
 
-#ifndef TransformVector
-#define TransformVector glide64TransformVector
-#endif
-
-#ifndef InverseTransformVector
-#define InverseTransformVector glide64InverseTransformVector
-#endif
-
-#ifndef DotProduct
-#define DotProduct glide64DotProduct
-#endif
-
-#ifndef NormalizeVector
-#define NormalizeVector glide64NormalizeVector
 #endif

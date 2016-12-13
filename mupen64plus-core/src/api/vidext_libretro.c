@@ -26,6 +26,10 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <boolean.h>
+
+void retro_return(bool a);
+
 #define M64P_CORE_PROTOTYPES 1
 #include "m64p_types.h"
 #include "m64p_vidext.h"
@@ -33,9 +37,9 @@
 #include "callbacks.h"
 
 #include <libretro.h>
-#include <opengl_state_machine.h>
-
-extern struct retro_hw_render_callback hw_render;
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
+#include <glsm/glsmsym.h>
+#endif
 
 /* local variables */
 static m64p_video_extension_functions l_ExternalVideoFuncTable = {10, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL};
@@ -123,9 +127,15 @@ EXPORT m64p_error CALL VidExt_SetVideoMode(int Width, int Height, int BitsPerPix
 
 EXPORT void * CALL VidExt_GL_GetProcAddress(const char* Proc)
 {
-   if (hw_render.get_proc_address)
-      return hw_render.get_proc_address;
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
+   glsm_ctx_proc_address_t proc_info;
+   proc_info.addr = NULL;
+   if (!glsm_ctl(GLSM_CTL_PROC_ADDRESS_GET, NULL))
+      return NULL;
+   return proc_info.addr(Proc);
+#else
    return NULL;
+#endif
 }
 
 EXPORT m64p_error CALL VidExt_GL_SwapBuffers(void)

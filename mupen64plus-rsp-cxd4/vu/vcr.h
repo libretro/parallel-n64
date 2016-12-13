@@ -20,6 +20,13 @@ INLINE static void do_cr(short* VD, short* VS, short* VT)
     short cmp[N];
     register int i;
 
+#ifdef INTENSE_DEBUG
+    for (i = 0; i < 8; i++)
+       fprintf(stderr, "VS[%d] = %d\n", i, VS[i]);
+    for (i = 0; i < 8; i++)
+       fprintf(stderr, "VT[%d] = %d\n", i, VT[i]);
+#endif
+
     for (i = 0; i < N; i++)
         VC[i] = VT[i];
     for (i = 0; i < N; i++)
@@ -41,7 +48,9 @@ INLINE static void do_cr(short* VD, short* VS, short* VT)
 #endif
     for (i = 0; i < N; i++)
         VC[i] ^= sn[i]; /* if (sn == ~0) {VT = ~VT;} else {VT =  VT;} */
-    merge(VACC_L, le, VC, VS);
+    for (i = 0; i < N; i++)
+        cmp[i] = sn[i] ? le[i] : ge[i];
+    merge(VACC_L, cmp, VC, VS);
     vector_copy(VD, VACC_L);
 
     for (i = 0; i < N; i++)
@@ -54,6 +63,12 @@ INLINE static void do_cr(short* VD, short* VS, short* VT)
         co[i] = 0;
     for (i = 0; i < N; i++)
         vce[i] = 0;
+
+#ifdef INTENSE_DEBUG
+    for (i = 0; i < 8; i++)
+       fprintf(stderr, "VD[%d] = %d\n", i, VD[i]);
+#endif
+
     return;
 }
 

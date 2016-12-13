@@ -35,10 +35,15 @@
 
 /* that's where the dynarec will restart when going back from a C function */
 #if defined(__x86_64__)
+#ifdef _MSC_VER
+uint64_t *return_address;
+int64_t save_rsp = 0;
+int64_t save_rip = 0;
+ #else
 static uint64_t *return_address;
-
 static int64_t save_rsp = 0;
 static int64_t save_rip = 0;
+#endif
 #else
 #ifdef __GNUC__
 # define ASM_NAME(name) __asm(name)
@@ -46,13 +51,13 @@ static int64_t save_rip = 0;
 # define ASM_NAME(name)
 #endif
 
-static long save_ebp ASM_NAME("save_ebp") = 0;
-static long save_ebx ASM_NAME("save_ebx") = 0;
-static long save_esi ASM_NAME("save_esi") = 0;
-static long save_edi ASM_NAME("save_edi") = 0;
-static long save_esp ASM_NAME("save_esp") = 0;
-static long save_eip ASM_NAME("save_eip") = 0;
-static unsigned long *return_address ASM_NAME("return_address");
+static int32_t save_ebp ASM_NAME("save_ebp") = 0;
+static int32_t save_ebx ASM_NAME("save_ebx") = 0;
+static int32_t save_esi ASM_NAME("save_esi") = 0;
+static int32_t save_edi ASM_NAME("save_edi") = 0;
+static int32_t save_esp ASM_NAME("save_esp") = 0;
+static int32_t save_eip ASM_NAME("save_eip") = 0;
+static uint32_t *return_address ASM_NAME("return_address");
 #endif
 
 void dyna_jump(void)
@@ -69,12 +74,8 @@ void dyna_jump(void)
         *return_address = (native_type)(actual->code + PC->local_addr);
 }
 
-#if !defined(__x86_64__)
-#if defined(WIN32) && !defined(__GNUC__) /* this warning disable only works if placed outside of the scope of a function */
-#pragma warning(disable:4731) /* frame pointer register 'ebp' modified by inline assembly code */
-#endif
-#endif
-
+#if defined(__x86_64__) && defined(_WIN32) && defined(_MSC_VER)
+#else
 void dyna_start(void *code)
 {
   /* save the base and stack pointers */
@@ -218,6 +219,7 @@ void dyna_start(void *code)
     save_eip=0;
 #endif
 }
+#endif
 
 void dyna_stop(void)
 {

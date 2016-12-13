@@ -19,8 +19,6 @@
  *   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.          *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include "../audio_backend_compat.h"
-
 #include "api/m64p_types.h"
 #include "api/libretro.h"
 #include "ai/ai_controller.h"
@@ -29,23 +27,29 @@
 #include "plugin/plugin.h"
 #include "ri/ri_controller.h"
 
+#include <stdio.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdarg.h>
 
+#include <conversion/float_to_s16.h>
+#include <conversion/s16_to_float.h>
+
 extern retro_audio_sample_batch_t audio_batch_cb;
 
 #include "audio_resampler_driver.h"
-#include "audio_utils.h"
 
-#ifndef MAX_AUDIO_FRAMES
-#define MAX_AUDIO_FRAMES 2048
-#endif
+static unsigned MAX_AUDIO_FRAMES = 2048;
+
+#define VI_INTR_TIME 500000
 
 /* Read header for type definition */
 static int GameFreq = 33600;
+static unsigned CountsPerSecond;
+static unsigned BytesPerSecond;
+static unsigned CountsPerByte;
 
 bool no_audio;
 
@@ -73,21 +77,24 @@ void deinit_audio_libretro(void)
    }
 }
 
-void init_audio_libretro(void)
+void init_audio_libretro(unsigned max_audio_frames)
 {
-   rarch_resampler_realloc(&resampler_audio_data, &resampler, "CC", 1.0);
+   rarch_resampler_realloc(&resampler_audio_data, &resampler, "sinc", 1.0);
 
-   audio_in_buffer_float = malloc(2 * MAX_AUDIO_FRAMES * sizeof(float));
+   MAX_AUDIO_FRAMES = max_audio_frames;
+
+   audio_in_buffer_float  = malloc(2 * MAX_AUDIO_FRAMES * sizeof(float));
    audio_out_buffer_float = malloc(2 * MAX_AUDIO_FRAMES * sizeof(float));
-   audio_out_buffer_s16 = malloc(2 * MAX_AUDIO_FRAMES * sizeof(int16_t));
+   audio_out_buffer_s16   = malloc(2 * MAX_AUDIO_FRAMES * sizeof(int16_t));
 
-   audio_convert_init_simd();
+   convert_s16_to_float_init_simd();
+   convert_float_to_s16_init_simd();
 }
 
 /* A fully compliant implementation is not really possible with just the zilmar spec.
  * We assume bits == 16 (assumption compatible with audio-sdl plugin implementation)
  */
-static void set_audio_format_via_libretro(void* user_data,
+void set_audio_format_via_libretro(void* user_data,
       unsigned int frequency, unsigned int bits)
 {
    uint32_t saved_ai_dacrate = g_ai.regs[AI_DACRATE_REG];
@@ -95,23 +102,29 @@ static void set_audio_format_via_libretro(void* user_data,
    /* notify plugin of the new frequency (can't do the same for bits) */
    g_ai.regs[AI_DACRATE_REG] = (ROM_PARAMS.aidacrate / frequency) - 1;
 
-   GameFreq = frequency;
+   GameFreq        = frequency;
+   BytesPerSecond  = frequency * 4;
+   CountsPerSecond = VI_INTR_TIME * 60 /* TODO/FIXME - dehardcode */;
+   CountsPerByte   = CountsPerSecond / BytesPerSecond;
+
+#if 0
+   printf("CountsPerByte: %d, GameFreq: %d\n", CountsPerByte, GameFreq);
+#endif
 
    /* restore original registers values */
    g_ai.regs[AI_DACRATE_REG] = saved_ai_dacrate;
 }
 
 /* Abuse core & audio plugin implementation details to obtain the desired effect. */
-static void push_audio_samples_via_libretro(void* user_data, const void* buffer, size_t size)
+void push_audio_samples_via_libretro(void* user_data, const void* buffer, size_t size)
 {
    int16_t *out;
    size_t max_frames, remain_frames;
    uint32_t i;
    double ratio;
    struct resampler_data data = {0};
-   uint32_t len      = size;
    int16_t *raw_data = (int16_t*)buffer;
-   size_t frames     = len / 4;
+   size_t frames     = size / 4;
    uint8_t *p        = (uint8_t*)buffer;
 
    /* save registers values */
@@ -123,7 +136,7 @@ static void push_audio_samples_via_libretro(void* user_data, const void* buffer,
    g_ai.regs[AI_DRAM_ADDR_REG] = (uint8_t*)buffer - (uint8_t*)g_rdram;
    g_ai.regs[AI_LEN_REG] = size;
 
-   for (i = 0; i < len; i += 4)
+   for (i = 0; i < size; i += 4)
    {
       p[i ] ^= p[i + 2];
       p[i + 2] ^= p[i ];
@@ -152,9 +165,9 @@ audio_batch:
    data.input_frames = frames;
    data.ratio        = ratio;
 
-   audio_convert_s16_to_float(audio_in_buffer_float, raw_data, frames * 2, 1.0f);
+   convert_s16_to_float(audio_in_buffer_float, raw_data, frames * 2, 1.0f);
    resampler->process(resampler_audio_data, &data);
-   audio_convert_float_to_s16(audio_out_buffer_s16, audio_out_buffer_float, data.output_frames * 2);
+   convert_float_to_s16(audio_out_buffer_s16, audio_out_buffer_float, data.output_frames * 2);
 
    out                    = audio_out_buffer_s16;
 
@@ -172,13 +185,6 @@ audio_batch:
    }
 
    /* restore original registers vlaues */
-   g_ai.regs[AI_LEN_REG] = saved_ai_length;
+   g_ai.regs[AI_LEN_REG]       = saved_ai_length;
    g_ai.regs[AI_DRAM_ADDR_REG] = saved_ai_dram;
 }
-
-const struct m64p_audio_backend AUDIO_BACKEND_COMPAT =
-{
-   NULL,
-   set_audio_format_via_libretro,
-   push_audio_samples_via_libretro
-};

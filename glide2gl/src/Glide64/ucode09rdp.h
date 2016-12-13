@@ -40,7 +40,7 @@
 // December 2008 Created by Gonetz (Gonetz@ngs.ru)
 //
 //****************************************************************
-#include "GBI.h"
+#include "../../../Graphics/GBI.h"
 
 void uc9_rpdcmd(uint32_t w0, uint32_t w1)
 {
@@ -50,26 +50,26 @@ void uc9_rpdcmd(uint32_t w0, uint32_t w1)
    if (a)
    {
       uint32_t cmd;
-      rdp.LLE = 1;
+      __RSP.bLLE = 1;
       cmd = 0;
 
       do
       {
-         rdp.cmd0 = ((uint32_t*)gfx_info.RDRAM)[a++];   
-         cmd = rdp.cmd0>>24; 
+         __RSP.w0 = ((uint32_t*)gfx_info.RDRAM)[a++];   
+         cmd      = __RSP.w0 >> 24; 
          if (cmd == F3DEX2_ENDDL)
             break;
-         rdp.cmd1 = ((uint32_t*)gfx_info.RDRAM)[a++]; 
+         __RSP.w1 = ((uint32_t*)gfx_info.RDRAM)[a++]; 
 
          if (cmd == G_TEXRECT || cmd == G_TEXRECTFLIP)
          {
             a++;
-            rdp.cmd2 = ((uint32_t*)gfx_info.RDRAM)[a++]; 
+            __RDP.w2 = ((uint32_t*)gfx_info.RDRAM)[a++]; 
             a++;
-            rdp.cmd3 = ((uint32_t*)gfx_info.RDRAM)[a++];
+            __RDP.w3 = ((uint32_t*)gfx_info.RDRAM)[a++];
          }
          gfx_instruction[ucode_zSort][cmd](w0, w1);
       }while(1);
-      rdp.LLE = 0;
+      __RSP.bLLE = 0;
    }
 }

@@ -62,31 +62,19 @@ void format_mempak(uint8_t* mpk_data)
    }
 }
 
-void mempak_read_command(struct mempak* mpk, uint8_t* cmd)
+void mempak_read_command(struct mempak* mpk, uint16_t address, uint8_t *data)
 {
-   uint16_t address = (cmd[3] << 8) | (cmd[4] & 0xe0);
-
    if (address < 0x8000)
-   {
-      memcpy(&cmd[5], &mpk->data[address], 0x20);
-   }
+      memcpy(data, &mpk->data[address], 0x20);
    else
-   {
-      memset(&cmd[5], 0x00, 0x20);
-   }
+      memset(data, 0x00, 0x20);
 }
 
-void mempak_write_command(struct mempak* mpk, uint8_t* cmd)
+void mempak_write_command(struct mempak* mpk, uint16_t address, const uint8_t *data)
 {
-   uint16_t address = (cmd[3] << 8) | (cmd[4] & 0xe0);
-
    if (address < 0x8000)
    {
-      memcpy(&mpk->data[address], &cmd[5], 0x20);
+      memcpy(&mpk->data[address], data, 0x20);
       mempak_save(mpk);
-   }
-   else
-   {
-      /* do nothing */
    }
 }

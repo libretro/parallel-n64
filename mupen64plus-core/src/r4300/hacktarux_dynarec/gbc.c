@@ -34,28 +34,28 @@
 static void genbc1f_test(void)
 {
 #if defined(__x86_64__)
-   test_m32rel_imm32((unsigned int*)&FCR31, 0x800000);
-   sete_m8rel((unsigned char *) &branch_taken);
+   test_m32rel_imm32((uint32_t*)&FCR31, 0x800000);
+   sete_m8rel((uint8_t *) &branch_taken);
 #else
-   test_m32_imm32((unsigned int*)&FCR31, 0x800000);
+   test_m32_imm32((uint32_t*)&FCR31, 0x800000);
    jne_rj(12);
-   mov_m32_imm32((unsigned int*)(&branch_taken), 1); // 10
+   mov_m32_imm32((uint32_t*)(&branch_taken), 1); // 10
    jmp_imm_short(10); // 2
-   mov_m32_imm32((unsigned int*)(&branch_taken), 0); // 10
+   mov_m32_imm32((uint32_t*)(&branch_taken), 0); // 10
 #endif
 }
 
 static void genbc1t_test(void)
 {
 #if defined(__x86_64__)
-   test_m32rel_imm32((unsigned int*)&FCR31, 0x800000);
-   setne_m8rel((unsigned char *) &branch_taken);
+   test_m32rel_imm32((uint32_t*)&FCR31, 0x800000);
+   setne_m8rel((uint8_t *) &branch_taken);
 #else
-   test_m32_imm32((unsigned int*)&FCR31, 0x800000);
+   test_m32_imm32((uint32_t*)&FCR31, 0x800000);
    je_rj(12);
-   mov_m32_imm32((unsigned int*)(&branch_taken), 1); // 10
+   mov_m32_imm32((uint32_t*)(&branch_taken), 1); // 10
    jmp_imm_short(10); // 2
-   mov_m32_imm32((unsigned int*)(&branch_taken), 0); // 10
+   mov_m32_imm32((uint32_t*)(&branch_taken), 0); // 10
 #endif
 }
 
@@ -252,15 +252,15 @@ void genbc1tl(void)
 void genbc1tl_out(void)
 {
 #ifdef INTERPRET_BC1TL_OUT
-   gencallinterp((uint64_t)cached_interpreter_table.BC1TL_OUT, 1);
+   gencallinterp((native_type)cached_interpreter_table.BC1TL_OUT, 1);
 #else
    if (((dst->addr & 0xFFF) == 0xFFC &&
-       (dst->addr < 0x80000000 || dst->addr >= 0xC0000000))||no_compiled_jump)
-     {
-    gencallinterp((uint64_t)cached_interpreter_table.BC1TL_OUT, 1);
-    return;
-     }
-   
+            (dst->addr < 0x80000000 || dst->addr >= 0xC0000000))||no_compiled_jump)
+   {
+      gencallinterp((native_type)cached_interpreter_table.BC1TL_OUT, 1);
+      return;
+   }
+
    gencheck_cop1_unusable();
    genbc1t_test();
    free_all_registers();

@@ -24,13 +24,10 @@
 #include <m64p_types.h>
 #include <m64p_config.h>
 #include <libretro.h>
-#include "boolean.h"
+#include <boolean.h>
 
 extern retro_log_printf_t log_cb;
 
-//#define DEBUGLOG
-//#define TEXTUREMANAGEMENT_LOG
-//#define LOG_TO_STDERR
 #define LOG_TO_STDOUT
 
 #if defined(LOG_TO_STDERR)
@@ -66,11 +63,13 @@ void set_depth_shader(void);
 
 #include <stdio.h>
 #define GL_GLEXT_PROTOTYPES
-#include <SDL_opengles2.h>
-#include "../glide_funcs.h"
+#include <glsm/glsmsym.h>
 
 void init_textures(void);
 void free_textures(void);
+
+void init_geometry(void);
+void free_geometry(void);
 
 void set_lambda(void);
 

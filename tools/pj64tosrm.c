@@ -180,7 +180,7 @@ static void change_extension(char *dst, const char *src, const char *newext)
 	else
 		strcpy(dst, src);
 
-	sprintf(dst + strlen(dst), newext);
+	strcat(dst, newext);
 }
 
 int main(int argc, char *argv[])

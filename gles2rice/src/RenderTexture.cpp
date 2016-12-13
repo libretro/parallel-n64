@@ -33,7 +33,9 @@ COGLRenderTexture::COGLRenderTexture(int width, int height, RenderTextureInfo* p
         if( !m_pTexture )
         {
             TRACE0("Error to create OGL render_texture");
-            SAFE_DELETE(m_pTexture);
+            if (m_pTexture)
+               free(m_pTexture);
+            m_pTexture = NULL;
         }
     }
 
@@ -51,8 +53,10 @@ COGLRenderTexture::~COGLRenderTexture()
     }
 
     ShutdownPBuffer();
-    SAFE_DELETE(m_pTexture);
-    m_pOGLTexture = NULL;
+    if (m_pTexture)
+       free(m_pTexture);
+    m_pTexture      = NULL;
+    m_pOGLTexture   = NULL;
     m_beingRendered = false;
 }
 

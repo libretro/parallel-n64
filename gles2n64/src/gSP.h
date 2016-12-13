@@ -1,10 +1,13 @@
 #ifndef GSP_H
 #define GSP_H
 
+#include <stdint.h>
 #include <boolean.h>
-#include "Types.h"
 #include "GBI.h"
 #include "gDP.h"
+
+#include "../../Graphics/RSP/RSP_state.h"
+#include "../../Graphics/RSP/gSP_funcs_C.h"
 
 #define CHANGED_VIEWPORT        0x01
 #define CHANGED_MATRIX          0x02
@@ -27,175 +30,78 @@
 
 #define CLIP_ALL    0x1F // CLIP_NEGX|CLIP_POSX|CLIP_NEGY|CLIP_POSY|CLIP_Z
 
-typedef struct
-{
-    f32     x, y, z, w;
-    f32     nx, ny, nz, __pad0;
-    f32     r, g, b, a;
-    f32 flat_r, flat_g, flat_b, flat_a;
-    f32     s, t;
-    u8 HWLight;
-    s16     flag;
-    u32     clip;
-} SPVertex;
+void gln64gSPLoadUcodeEx( uint32_t uc_start, uint32_t uc_dstart, uint16_t uc_dsize );
+void gln64gSPNoOp();
+void gln64gSPMatrix( uint32_t matrix, uint8_t param );
+void gln64gSPDMAMatrix( uint32_t matrix, uint8_t index, uint8_t multiply );
+void gln64gSPLight( uint32_t l, int32_t n );
+void gln64gSPLightCBFD( uint32_t l, int32_t n );
+void gln64gSPVertex( uint32_t v, uint32_t n, uint32_t v0 );
+void gln64gSPCIVertex( uint32_t v, uint32_t n, uint32_t v0 );
+void gln64gSPDMAVertex( uint32_t v, uint32_t n, uint32_t v0 );
+void gln64gSPCBFDVertex( uint32_t v, uint32_t n, uint32_t v0 );
+void gln64gSPDisplayList( uint32_t dl );
+void gln64gSPDMADisplayList( uint32_t dl, uint32_t n );
+void gln64gSPBranchList( uint32_t dl );
+void gln64gSPBranchLessZ( uint32_t branchdl, uint32_t vtx, float zval );
+void gln64gSPDlistCount(uint32_t count, uint32_t v);
+void gln64gSPSprite2DBase( uint32_t base );
+void gln64gSPDMATriangles( uint32_t tris, uint32_t n );
+void gln64gSP1Quadrangle( int32_t v0, int32_t v1, int32_t v2, int32_t v3 );
+void gln64gSPCullDisplayList( uint32_t v0, uint32_t vn );
+void gln64gSPPopMatrix( uint32_t param );
+void gln64gSPPopMatrixN( uint32_t param, uint32_t num );
+void gln64gSPSegment( int32_t seg, int32_t base );
+void gln64gSPClipRatio( uint32_t r );
+void gln64gSPInsertMatrix( uint32_t where, uint32_t num );
+void gln64gSPModifyVertex( uint32_t vtx, uint32_t where, uint32_t val );
+void gln64gSPNumLights( int32_t n );
+void gln64gSPFogFactor( int16_t fm, int16_t fo );
+void gln64gSPPerspNormalize( uint16_t scale );
+void gln64gSPTexture( float sc, float tc, int32_t level, int32_t tile, int32_t on );
+void gln64gSPEndDisplayList();
+void gln64gSPGeometryMode( uint32_t clear, uint32_t set );
+void gln64gSPSetGeometryMode( uint32_t mode );
+void gln64gSPClearGeometryMode( uint32_t mode );
+void gln64gSPSetOtherMode_H(uint32_t _length, uint32_t _shift, uint32_t _data);
+void gln64gSPSetOtherMode_L(uint32_t _length, uint32_t _shift, uint32_t _data);
+void gln64gSPLine3D( int32_t v0, int32_t v1, int32_t flag );
+void gln64gSPLineW3D( int32_t v0, int32_t v1, int32_t wd, int32_t flag );
+void gln64gSPObjRectangle( uint32_t sp );
+void gln64gSPObjRectangleR(uint32_t _sp);
+void gln64gSPObjSprite( uint32_t sp );
+void gln64gSPObjLoadTxtr( uint32_t tx );
+void gln64gSPObjLoadTxSprite( uint32_t txsp );
+void gln64gSPObjLoadTxRectR( uint32_t txsp );
+void gln64gSPBgRect1Cyc( uint32_t bg );
+void gln64gSPBgRectCopy( uint32_t bg );
+void gln64gSPObjMatrix( uint32_t mtx );
+void gln64gSPObjSubMatrix( uint32_t mtx );
+void gln64gSPObjRendermode(uint32_t _mode);
+void gln64gSPSetDMAOffsets( uint32_t mtxoffset, uint32_t vtxoffset );
+void gln64gSPSetVertexColorBase( uint32_t base );
 
-typedef struct SPLight
-{
-	f32 r, g, b;
-	f32 x, y, z;
-	f32 posx, posy, posz, posw;
-	f32 ca, la, qa;
-} SPLight;
+void gln64gSPSetVertexNormaleBase( uint32_t base );
+void gln64gSPProcessVertex(uint32_t v);
+void gln64gSPCoordMod(uint32_t _w0, uint32_t _w1);
 
-typedef struct
-{
-    u32 segment[16];
+void gln64gSPTriangleUnknown(void);
 
-    struct
-    {
-        u32 modelViewi, stackSize, billboard;
-        f32 modelView[32][4][4];
-        f32 projection[4][4];
-        f32 combined[4][4];
-    } matrix;
-
-    struct
-    {
-        f32 A, B, C, D;
-        f32 X, Y;
-        f32 baseScaleX, baseScaleY;
-    } objMatrix;
-
-    u32 objRendermode;
-
-    u32 vertexColorBase;
-    u32 vertexi;
-
-    struct SPLight lights[12];
-    SPLight lookat[2];
-    bool lookatEnable;
-
-    struct
-    {
-        f32 scales, scalet;
-        s32 level, on, tile;
-    } texture;
-
-    gDPTile *textureTile[2];
-
-    struct
-    {
-        f32 vscale[4];
-        f32 vtrans[4];
-        f32 x, y, width, height;
-        f32 nearz, farz;
-    } viewport;
-
-    struct
-    {
-        s16 multiplier, offset;
-    } fog;
-
-    struct
-    {
-        u32 address, width, height, format, size, palette;
-        f32 imageX, imageY, scaleW, scaleH;
-    } bgImage;
-
-    u32 geometryMode;
-    s32 numLights;
-
-    u32 changed;
-
-    u32 status[4];
-
-    struct
-    {
-       u32 vtx, mtx, tex_offset, tex_shift, tex_count;
-    } DMAOffsets;
-
-	// CBFD
-	u32 vertexNormalBase;
-	f32 vertexCoordMod[16];
-} gSPInfo;
-
-extern gSPInfo gSP;
-
-void gSPLoadUcodeEx( u32 uc_start, u32 uc_dstart, u16 uc_dsize );
-void gSPNoOp();
-void gSPMatrix( u32 matrix, u8 param );
-void gSPDMAMatrix( u32 matrix, u8 index, u8 multiply );
-void gSPViewport( u32 v );
-void gSPForceMatrix( u32 mptr );
-void gSPLight( u32 l, s32 n );
-void gSPLightCBFD( u32 l, s32 n );
-void gSPLookAt( u32 _l, u32 _n );
-void gSPVertex( u32 v, u32 n, u32 v0 );
-void gSPCIVertex( u32 v, u32 n, u32 v0 );
-void gSPDMAVertex( u32 v, u32 n, u32 v0 );
-void gSPCBFDVertex( u32 v, u32 n, u32 v0 );
-void gSPDisplayList( u32 dl );
-void gSPDMADisplayList( u32 dl, u32 n );
-void gSPBranchList( u32 dl );
-void gSPBranchLessZ( u32 branchdl, u32 vtx, f32 zval );
-void gSPDlistCount(u32 count, u32 v);
-void gSPSprite2DBase( u32 base );
-void gSPDMATriangles( u32 tris, u32 n );
-void gSP1Quadrangle( s32 v0, s32 v1, s32 v2, s32 v3 );
-void gSPCullDisplayList( u32 v0, u32 vn );
-void gSPPopMatrix( u32 param );
-void gSPPopMatrixN( u32 param, u32 num );
-void gSPSegment( s32 seg, s32 base );
-void gSPClipRatio( u32 r );
-void gSPInsertMatrix( u32 where, u32 num );
-void gSPModifyVertex( u32 vtx, u32 where, u32 val );
-void gSPNumLights( s32 n );
-void gSPLightColor( u32 lightNum, u32 packedColor );
-void gSPFogFactor( s16 fm, s16 fo );
-void gSPPerspNormalize( u16 scale );
-void gSPTexture( f32 sc, f32 tc, s32 level, s32 tile, s32 on );
-void gSPEndDisplayList();
-void gSPGeometryMode( u32 clear, u32 set );
-void gSPSetGeometryMode( u32 mode );
-void gSPClearGeometryMode( u32 mode );
-void gSPSetOtherMode_H(u32 _length, u32 _shift, u32 _data);
-void gSPSetOtherMode_L(u32 _length, u32 _shift, u32 _data);
-void gSPLine3D( s32 v0, s32 v1, s32 flag );
-void gSPLineW3D( s32 v0, s32 v1, s32 wd, s32 flag );
-void gSPObjRectangle( u32 sp );
-void gSPObjRectangleR(u32 _sp);
-void gSPObjSprite( u32 sp );
-void gSPObjLoadTxtr( u32 tx );
-void gSPObjLoadTxSprite( u32 txsp );
-void gSPObjLoadTxRectR( u32 txsp );
-void gSPBgRect1Cyc( u32 bg );
-void gSPBgRectCopy( u32 bg );
-void gSPObjMatrix( u32 mtx );
-void gSPObjSubMatrix( u32 mtx );
-void gSPObjRendermode(u32 _mode);
-void gSPSetDMAOffsets( u32 mtxoffset, u32 vtxoffset );
-void gSPSetVertexColorBase( u32 base );
-void gSPSetVertexNormaleBase( u32 base );
-void gSPProcessVertex(u32 v);
-void gSPCoordMod(u32 _w0, u32 _w1);
-
-void gSPTriangleUnknown(void);
-
-void gSPTriangle(s32 v0, s32 v1, s32 v2);
-void gSP1Triangle(s32 v0, s32 v1, s32 v2);
-void gSP2Triangles(const s32 v00, const s32 v01, const s32 v02, const s32 flag0,
-                    const s32 v10, const s32 v11, const s32 v12, const s32 flag1 );
-void gSP4Triangles(const s32 v00, const s32 v01, const s32 v02,
-                    const s32 v10, const s32 v11, const s32 v12,
-                    const s32 v20, const s32 v21, const s32 v22,
-                    const s32 v30, const s32 v31, const s32 v32 );
+void gln64gSPTriangle(int32_t v0, int32_t v1, int32_t v2);
+void gln64gSP2Triangles(const int32_t v00, const int32_t v01, const int32_t v02, const int32_t flag0,
+                    const int32_t v10, const int32_t v11, const int32_t v12, const int32_t flag1 );
+void gln64gSP4Triangles(const int32_t v00, const int32_t v01, const int32_t v02,
+                    const int32_t v10, const int32_t v11, const int32_t v12,
+                    const int32_t v20, const int32_t v21, const int32_t v22,
+                    const int32_t v30, const int32_t v31, const int32_t v32 );
 
 
-extern void (*gSPTransformVertex)(float vtx[4], float mtx[4][4]);
-extern void (*gSPLightVertex)(SPVertex * _vtx);
-extern void (*gSPPointLightVertex)(SPVertex *_vtx, float * _vPos);
-extern void (*gSPBillboardVertex)(u32 v, u32 i);
+extern void (*gln64gSPTransformVertex)(float vtx[4], float mtx[4][4]);
+extern void (*gln64gSPPointLightVertex)(void *_vtx, float * _vPos);
+extern void (*gln64gSPBillboardVertex)(uint32_t v, uint32_t i);
+void gln64gSPSetupFunctions(void);
 void gSPSetupFunctions(void);
+void gln64gSPSetDMATexOffset(uint32_t _addr);
 
 #endif
 

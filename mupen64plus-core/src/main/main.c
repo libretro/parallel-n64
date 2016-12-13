@@ -66,16 +66,18 @@
 #include "../ri/ri_controller.h"
 #include "../si/si_controller.h"
 #include "../vi/vi_controller.h"
+#include "../dd/dd_controller.h"
+#include "../dd/dd_rom.h"
+#include "../dd/dd_disk.h"
 
 #ifdef DBG
 #include "../debugger/dbg_types.h"
 #include "../debugger/debugger.h"
 #endif
 
-#ifdef __LIBRETRO__
 #include "api/libretro.h"
+
 extern retro_input_poll_t poll_cb;
-#endif
 
 /* version number for Core config section */
 #define CONFIG_PARAM_VERSION 1.01
@@ -85,8 +87,9 @@ m64p_handle g_CoreConfig = NULL;
 
 m64p_frame_callback g_FrameCallback = NULL;
 
-int         g_MemHasBeenBSwapped = 0;   // store byte-swapped flag so we don't swap twice when re-playing game
-int         g_EmulatorRunning = 0;      // need separate boolean to tell if emulator is running, since --nogui doesn't use a thread
+int         g_MemHasBeenBSwapped = 0;   /* store byte-swapped flag so we don't swap twice when re-playing game */
+int        g_DDMemHasBeenBSwapped = 0; /* store byte-swapped flag so we don't swap twice when re-playing game */
+int         g_EmulatorRunning = 0;      /* need separate boolean to tell if emulator is running, since --nogui doesn't use a thread */
 
 ALIGN(16, uint32_t g_rdram[RDRAM_MAX_SIZE/4]);
 struct ai_controller g_ai;
@@ -94,6 +97,7 @@ struct pi_controller g_pi;
 struct ri_controller g_ri;
 struct si_controller g_si;
 struct vi_controller g_vi;
+struct dd_controller g_dd;
 struct r4300_core g_r4300;
 struct rdp_core g_dp;
 struct rsp_core g_sp;
@@ -204,7 +208,7 @@ m64p_error main_core_state_set(m64p_core_param param, int val)
          if (val == M64EMU_STOPPED)
          {        
             /* this stop function is asynchronous.  The emulator may not terminate until later */
-            main_stop();
+             mupen_main_stop();
             return M64ERR_SUCCESS;
          }
          else if (val == M64EMU_RUNNING)
@@ -216,8 +220,10 @@ m64p_error main_core_state_set(m64p_core_param param, int val)
          event_set_gameshark(val);
          return M64ERR_SUCCESS;
       default:
-         return M64ERR_INPUT_INVALID;
+         break;
    }
+
+   return M64ERR_INPUT_INVALID;
 }
 
 m64p_error main_read_screen(void *pixels, int bFront)
@@ -246,7 +252,7 @@ void new_frame(void)
       (*g_FrameCallback)(l_CurrentFrame++);
 }
 
-void main_exit(void)
+void mupen_main_exit(void)
 {
    /* now begin to shut down */
 #ifdef DBG
@@ -254,9 +260,9 @@ void main_exit(void)
       destroy_debugger();
 #endif
 
-   rsp.romClosed();
-   input.romClosed();
-   gfx.romClosed();
+   if (rsp.romClosed) rsp.romClosed();
+   if (input.romClosed) input.romClosed();
+   if (gfx.romClosed) gfx.romClosed();
 
    // clean up
    g_EmulatorRunning = 0;
@@ -304,18 +310,25 @@ static void connect_all(
       struct ri_controller* ri,
       struct si_controller* si,
       struct vi_controller* vi,
+      struct dd_controller* dd,
       uint32_t* dram,
       size_t dram_size,
       uint8_t *rom,
-      size_t rom_size)
+      size_t rom_size,
+      uint8_t *ddrom,
+      size_t ddrom_size,
+      uint8_t *dd_disk,
+      size_t dd_disk_size
+      )
 {
    connect_rdp(dp, r4300, sp, ri);
    connect_rsp(sp, r4300, dp, ri);
    connect_ai(ai, r4300, ri, vi);
-   connect_pi(pi, r4300, ri, rom, rom_size);
+   connect_pi(pi, r4300, ri, rom, rom_size, ddrom, ddrom_size);
    connect_ri(ri, dram, dram_size);
    connect_si(si, r4300, ri);
    connect_vi(vi, r4300);
+   connect_dd(dd, r4300, dd_disk, dd_disk_size);
 }
 
 static void dummy_save(void *user_data)
@@ -346,14 +359,20 @@ m64p_error main_init(void)
    /* do byte-swapping if it's not been done yet */
    if (g_MemHasBeenBSwapped == 0)
    {
-      swap_buffer(g_rom, 4, g_rom_size/4);
+      swap_buffer(g_rom, 4, g_rom_size / 4);
       g_MemHasBeenBSwapped = 1;
    }
 
+   if (g_DDMemHasBeenBSwapped == 0)
+   {
+      swap_buffer(g_ddrom, 4, g_ddrom_size / 4);
+      g_DDMemHasBeenBSwapped = 1;
+   }
+
    connect_all(&g_r4300, &g_dp, &g_sp,
-         &g_ai, &g_pi, &g_ri, &g_si, &g_vi,
+         &g_ai, &g_pi, &g_ri, &g_si, &g_vi, &g_dd,
          g_rdram, (disable_extra_mem == 0) ? 0x800000 : 0x400000,
-         g_rom, g_rom_size);
+         g_rom, g_rom_size, g_ddrom, g_ddrom_size, g_dd_disk, g_dd_disk_size);
 
    init_memory();
 
@@ -437,8 +456,6 @@ m64p_error main_init(void)
    /* call r4300 CPU core and run the game */
    r4300_reset_hard();
    r4300_reset_soft();
-   r4300_init();
-
 
    return M64ERR_SUCCESS;
 }
@@ -450,7 +467,7 @@ m64p_error main_run(void)
    return M64ERR_SUCCESS;
 }
 
-void main_stop(void)
+void mupen_main_stop(void)
 {
    /* note: this operation is asynchronous.  It may be called from a thread other than the
       main emulator thread, and may return before the emulator is completely stopped */
@@ -463,13 +480,9 @@ void main_stop(void)
    if(g_DebuggerActive)
       debugger_step();
 #endif        
-
-   r4300_deinit();
 }
 
 void main_check_inputs(void)
 {
-#ifdef __LIBRETRO__
    poll_cb();
-#endif
 }

@@ -165,7 +165,7 @@ EXPORT void CALL DllTest(HWND hParent);
             should have performed.
             (this value is ignored if the RSP is stopped)
 *******************************************************************/ 
-EXPORT unsigned int CALL DoRspCycles(unsigned int Cycles);
+EXPORT uint32_t CALL DoRspCycles(uint32_t Cycles);
 
 /******************************************************************
   Function: GetDllInfo
@@ -198,7 +198,7 @@ EXPORT void CALL GetDllInfo(PLUGIN_INFO *PluginInfo);
             control between the RSP and r4300i core.
   output:   none
 *******************************************************************/ 
-EXPORT void CALL InitiateRSP(RSP_INFO Rsp_Info, unsigned int *CycleCount);
+EXPORT void CALL InitiateRSP(RSP_INFO Rsp_Info, uint32_t *CycleCount);
 
 /*
  * `InitiateRSPDebugger` -- customarily deprecated by cxd4

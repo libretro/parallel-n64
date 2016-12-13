@@ -22,11 +22,11 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "m64p_plugin.h"
 #include "Config.h"
 #include "Debugger.h"
-#include "OGLDebug.h"
 #include "OGLGraphicsContext.h"
 #include "TextureManager.h"
 #include "Video.h"
 #include "version.h"
+#include "../../libretro/libretro_private.h"
 
 COGLGraphicsContext::COGLGraphicsContext() :
     m_bSupportLODBias(false),
@@ -80,9 +80,6 @@ bool COGLGraphicsContext::ResizeInitialize(uint32_t dwWidth, uint32_t dwHeight)
     if (options.colorQuality == TEXTURE_FMT_A4R4G4B4)
         colorBufferDepth = 16;
 
-    /* Hard-coded attribute values */
-    const int iDOUBLEBUFFER = 1;
-
     InitState();
 
     Clear(CLEAR_COLOR_AND_DEPTH_BUFFER, 0xFF000000, 1.0f);    // Clear buffers
@@ -99,35 +96,21 @@ void COGLGraphicsContext::InitState(void)
     m_pExtensionStr = glGetString(GL_EXTENSIONS);
     m_pVersionStr = glGetString(GL_VERSION);
     m_pVendorStr = glGetString(GL_VENDOR);
-    glMatrixMode(GL_PROJECTION);
-    OPENGL_CHECK_ERRORS;
-    glLoadIdentity();
-    OPENGL_CHECK_ERRORS;
 
     glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
-    OPENGL_CHECK_ERRORS;
     glClearDepth(1.0f);
-    OPENGL_CHECK_ERRORS;
 
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    OPENGL_CHECK_ERRORS;
     glDisable(GL_BLEND);
-    OPENGL_CHECK_ERRORS;
 
     glFrontFace(GL_CCW);
-    OPENGL_CHECK_ERRORS;
     glDisable(GL_CULL_FACE);
-    OPENGL_CHECK_ERRORS;
 
     glDepthFunc(GL_LEQUAL);
-    OPENGL_CHECK_ERRORS;
     glEnable(GL_DEPTH_TEST);
-    OPENGL_CHECK_ERRORS;
 
     glEnable(GL_BLEND);
-    OPENGL_CHECK_ERRORS;
     glDepthRange(-1.0f, 1.0f);
-    OPENGL_CHECK_ERRORS;
 }
 
 void COGLGraphicsContext::InitOGLExtension(void)
@@ -136,29 +119,15 @@ void COGLGraphicsContext::InitOGLExtension(void)
 
 bool COGLGraphicsContext::IsExtensionSupported(const char* pExtName)
 {
-    if (strstr((const char*)m_pExtensionStr, pExtName) != NULL)
-    {
-        DebugMessage(M64MSG_VERBOSE, "OpenGL Extension '%s' is supported.", pExtName);
-        return true;
-    }
-    else
-    {
-        DebugMessage(M64MSG_VERBOSE, "OpenGL Extension '%s' is NOT supported.", pExtName);
-        return false;
-    }
+   if (strstr((const char*)m_pExtensionStr, pExtName) != NULL)
+   {
+      DebugMessage(M64MSG_VERBOSE, "OpenGL Extension '%s' is supported.", pExtName);
+      return true;
+   }
+
+   DebugMessage(M64MSG_VERBOSE, "OpenGL Extension '%s' is NOT supported.", pExtName);
+   return false;
 }
-
-bool COGLGraphicsContext::IsWglExtensionSupported(const char* pExtName)
-{
-    if (m_pWglExtensionStr == NULL)
-        return false;
-
-    if (strstr((const char*)m_pWglExtensionStr, pExtName) != NULL)
-        return true;
-    else
-        return false;
-}
-
 
 void COGLGraphicsContext::CleanUp()
 {
@@ -167,20 +136,20 @@ void COGLGraphicsContext::CleanUp()
 
 void COGLGraphicsContext::Clear(ClearFlag dwFlags, uint32_t color, float depth)
 {
-    uint32_t flag=0;
-    if (dwFlags & CLEAR_COLOR_BUFFER) flag |= GL_COLOR_BUFFER_BIT;
-    if (dwFlags & CLEAR_DEPTH_BUFFER) flag |= GL_DEPTH_BUFFER_BIT;
+    uint32_t flag = 0;
+    float r       = ((color>>16)&0xFF)/255.0f;
+    float g       = ((color>> 8)&0xFF)/255.0f;
+    float b       = ((color    )&0xFF)/255.0f;
+    float a       = ((color>>24)&0xFF)/255.0f;
 
-    float r = ((color>>16)&0xFF)/255.0f;
-    float g = ((color>> 8)&0xFF)/255.0f;
-    float b = ((color    )&0xFF)/255.0f;
-    float a = ((color>>24)&0xFF)/255.0f;
+    if (dwFlags & CLEAR_COLOR_BUFFER)
+       flag |= GL_COLOR_BUFFER_BIT;
+    if (dwFlags & CLEAR_DEPTH_BUFFER)
+       flag |= GL_DEPTH_BUFFER_BIT;
+
     glClearColor(r, g, b, a);
-    OPENGL_CHECK_ERRORS;
     glClearDepth(depth);
-    OPENGL_CHECK_ERRORS;
     glClear(flag);  //Clear color buffer and depth buffer
-    OPENGL_CHECK_ERRORS;
 }
 
 void COGLGraphicsContext::UpdateFrame(bool swapOnly)
@@ -188,7 +157,6 @@ void COGLGraphicsContext::UpdateFrame(bool swapOnly)
     status.gFrameCount++;
 
     glFlush();
-    OPENGL_CHECK_ERRORS;
 
     // if emulator defined a render callback function, call it before buffer swap
     if (renderCallback)
@@ -197,18 +165,11 @@ void COGLGraphicsContext::UpdateFrame(bool swapOnly)
    retro_return(true);
    
     glDepthMask(GL_TRUE);
-    OPENGL_CHECK_ERRORS;
     glClearDepth(1.0f);
-    OPENGL_CHECK_ERRORS;
     if (!g_curRomInfo.bForceScreenClear)
-    {
         glClear(GL_DEPTH_BUFFER_BIT);
-        OPENGL_CHECK_ERRORS;
-    }
     else
-    {
         needCleanScene = true;
-    }
 
     status.bScreenIsDrawn = false;
 }

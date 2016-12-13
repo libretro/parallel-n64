@@ -1,0 +1,114 @@
+#version 310 es
+
+#ifndef TILE_SIZE_X
+#define TILE_SIZE_X 8u
+#endif
+
+#ifndef TILE_SIZE_Y
+#define TILE_SIZE_Y 8u
+#endif
+
+layout(local_size_x = TILE_SIZE_X, local_size_y = TILE_SIZE_Y) in;
+
+#include "structs.h"
+#include "flags.h"
+#include "buffers.h"
+#include "util.h"
+#include "combiner.h"
+#include "blender.h"
+
+void main()
+{
+   uvec2 local = gl_LocalInvocationID.xy;
+   uint tile_buffer_index = gl_WorkGroupID.x;
+   uint prim_id = LOD_INFO_PRIMITIVE(work.desc[tile_buffer_index].lod_info_primitive);
+   uint flags = primitive_data.data[prim_id].flags;
+
+   uint cycle_type = PRIMITIVE_CYCLE_TYPE(flags);
+   uint coverage_bits = COVERAGE(tile_buffer_index, local);
+
+   if ((coverage_bits & 0xffu) == 0u)
+      return;
+   if (cycle_type != CYCLE_TYPE_1 && cycle_type != CYCLE_TYPE_2)
+      return;
+
+   // Run combiner.
+   ivec4 sub_a, sub_b, mul, add;
+   uint combiner_instance = primitive_data.data[prim_id].span_stride_combiner & 0xffffu;
+
+   ivec4 combined = ivec4(0);
+   ivec4 sampled0 = ivec4(unpack_rgba8(SAMPLED0(tile_buffer_index, local)));
+   ivec4 sampled1 = ivec4(unpack_rgba8(SAMPLED1(tile_buffer_index, local)));
+   ivec4 sampled2 = ivec4(unpack_rgba8(SAMPLED2(tile_buffer_index, local)));
+   ivec4 shade = ivec4(unpack_rgba8(RGBA(tile_buffer_index, local)));
+
+   // 9-bit signed, will be sign-extended in combiner.
+   int lodfrac = int(coverage_bits >> 10u) & 0x1ff;
+
+   // First combiner stage.
+   // Only run in 2-cycle mode.
+   if (cycle_type == CYCLE_TYPE_2)
+   {
+      combiner_mux(sub_a, sub_b, mul, add, combiner_instance, 0u, sampled0, sampled1, shade, lodfrac, ivec4(0));
+      combined = combiner(sub_a, sub_b, mul, add);
+
+      // Next pipeline stage.
+      sampled0 = sampled1;
+      sampled1 = sampled2;
+   }
+   else
+      sampled1 = sampled2;
+
+   // Second combiner stage that can read previous combiner stage.
+   // TODO: Would be interesting to optimize cases where one combiner stage is "no-op" so we can use cycle 1 mode.
+   combiner_mux(sub_a, sub_b, mul, add, combiner_instance, 1u, sampled0, sampled1, shade, lodfrac, combined);
+   combined = combiner(sub_a, sub_b, mul, add);
+
+#if 0
+   ivec4 mux = combiner_data.combiners[combiner_instance].color[1u];
+   if (all(equal(mux, ivec4(15, 15, 31, 4))))
+      combined = ivec4(0xff, 0, 0, 0x00);
+#endif
+
+   // Get AA coverage.
+   uint coverage = uint(bitCount(coverage_bits & 0xffu));
+
+   // Deal with alpha-to-coverage and coverage-to-alpha.
+   combined.a = combined.a == 0xff ? 0x100 : combined.a;
+   uint alpha_times_coverage = (uint(combined.a) * coverage + 4u) >> 3u;
+   if (PRIMITIVE_ALPHA_TO_CVG(flags))
+      coverage = (alpha_times_coverage >> 5u) & 0xfu;
+   if (PRIMITIVE_CVG_TO_ALPHA(flags))
+      combined.a = int(PRIMITIVE_ALPHA_TO_CVG(flags) ? alpha_times_coverage : (coverage << 5u));
+
+   // Dither alpha
+   int adith = dither_alpha(primitive_data.data[prim_id].fill_color_blend);
+   combined.a += adith;
+
+   // Clamp alpha
+   combined.a = clamp(combined.a, 0, 0xff);
+   shade.a = clamp(shade.a + adith, 0, 0xff);
+
+   // Apply pre-blend step here.
+   if (cycle_type == CYCLE_TYPE_2)
+   {
+      combined.rgb = pre_blender(flags,
+            primitive_data.data[prim_id].fill_color_blend,
+            primitive_data.data[prim_id].blend_color,
+            work.desc[tile_buffer_index].fog_color,
+            shade.a, combined);
+   }
+
+   // We probably can't pack to 8 bits.
+   COMBINED(tile_buffer_index, local) = pack_rgba8(uvec4(clamp(combined, ivec4(0), ivec4(0xff))));
+
+   // Add post-alpha coverage.
+   COVERAGE(tile_buffer_index, local) = coverage_bits | (coverage << 24u);
+
+   if (adith != 0)
+   {
+      // Update shade alpha, but only if we need to.
+      RGBA(tile_buffer_index, local) = pack_rgba8(uvec4(shade));
+   }
+}
+

@@ -20,11 +20,13 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "mi_controller.h"
-#include "r4300.h"
-#include "r4300_core.h"
-#include "cp0_private.h"
 
 #include <string.h>
+
+#include "cp0.h"
+#include "interupt.h"
+#include "r4300.h"
+#include "r4300_core.h"
 
 static int update_mi_init_mode(uint32_t* mi_init_mode, uint32_t w)
 {
@@ -85,19 +87,21 @@ int write_mi_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mask)
 {
     struct r4300_core* r4300 = (struct r4300_core*)opaque;
     uint32_t reg = mi_reg(address);
-    const uint32_t *cp0_regs = r4300_cp0_regs();
+    const uint32_t* cp0_regs = r4300_cp0_regs();
 
     switch(reg)
     {
     case MI_INIT_MODE_REG:
         if (update_mi_init_mode(&r4300->mi.regs[MI_INIT_MODE_REG], value & mask) != 0)
-           clear_rcp_interrupt(r4300, MI_INTR_DP);
+        {
+            clear_rcp_interrupt(r4300, MI_INTR_DP);
+        }
         break;
     case MI_INTR_MASK_REG:
         update_mi_intr_mask(&r4300->mi.regs[MI_INTR_MASK_REG], value & mask);
 
         check_interupt();
-        update_count();
+        cp0_update_count();
         if (next_interupt <= cp0_regs[CP0_COUNT_REG]) gen_interupt();
         break;
     }
@@ -108,20 +112,22 @@ int write_mi_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mask)
 /* interrupt execution is immediate (if not masked) */
 void raise_rcp_interrupt(struct r4300_core* r4300, uint32_t mi_intr)
 {
-   r4300->mi.regs[MI_INTR_REG] |= mi_intr;
+    r4300->mi.regs[MI_INTR_REG] |= mi_intr;
 
-   if (r4300->mi.regs[MI_INTR_REG] & r4300->mi.regs[MI_INTR_MASK_REG])
-      raise_maskable_interrupt(0x400);
+    if (r4300->mi.regs[MI_INTR_REG] & r4300->mi.regs[MI_INTR_MASK_REG])
+        raise_maskable_interrupt(0x400);
 }
 
-void signal_rcp_interrupt(struct r4300_core* r4300, uint32_t intr)
+/* interrupt execution is scheduled (if not masked) */
+void signal_rcp_interrupt(struct r4300_core* r4300, uint32_t mi_intr)
 {
-   r4300->mi.regs[MI_INTR_REG] |= intr;
-   check_interupt();
+    r4300->mi.regs[MI_INTR_REG] |= mi_intr;
+    check_interupt();
 }
 
 void clear_rcp_interrupt(struct r4300_core* r4300, uint32_t mi_intr)
 {
-   r4300->mi.regs[MI_INTR_REG] &= ~mi_intr;
-   check_interupt();
+    r4300->mi.regs[MI_INTR_REG] &= ~mi_intr;
+    check_interupt();
 }
+

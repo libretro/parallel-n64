@@ -22,7 +22,6 @@
 #include "osal_opengl.h"
 
 #include "OGLCombiner.h"
-#include "OGLDebug.h"
 #include "OGLRender.h"
 #include "OGLGraphicsContext.h"
 #include "OGLDecodedMux.h"
@@ -72,14 +71,10 @@ bool COGLColorCombiner::Initialize(void)
 
     COGLGraphicsContext *pcontext = (COGLGraphicsContext *)(CGraphicsContext::g_pGraphicsContext);
     if( pcontext->IsExtensionSupported(OSAL_GL_ARB_TEXTURE_ENV_ADD) || pcontext->IsExtensionSupported("GL_EXT_texture_env_add") )
-    {
         m_bSupportAdd = true;
-    }
 
     if( pcontext->IsExtensionSupported("GL_EXT_blend_subtract") )
-    {
         m_bSupportSubtract = true;
-    }
 
     return true;
 }
@@ -88,9 +83,7 @@ void COGLColorCombiner::DisableCombiner(void)
 {
     m_pOGLRender->DisableMultiTexture();
     glEnable(GL_BLEND);
-    OPENGL_CHECK_ERRORS;
     glBlendFunc(GL_ONE, GL_ZERO);
-    OPENGL_CHECK_ERRORS;
     
     if( m_bTexelsEnable )
     {
@@ -100,20 +93,12 @@ void COGLColorCombiner::DisableCombiner(void)
             m_pOGLRender->EnableTexUnit(0, true);
             m_pOGLRender->BindTexture(pTexture->m_dwTextureName, 0);
             glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
-            OPENGL_CHECK_ERRORS;
             m_pOGLRender->SetAllTexelRepeatFlag();
         }
-#ifdef DEBUGGER
-        else
-        {
-            DebuggerAppendMsg("Check me, texture is NULL but it is enabled");
-        }
-#endif
     }
     else
     {
         glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
-        OPENGL_CHECK_ERRORS;
         m_pOGLRender->EnableTexUnit(0, false);
     }
 }
@@ -128,15 +113,8 @@ void COGLColorCombiner::InitCombinerCycleCopy(void)
         m_pOGLRender->BindTexture(pTexture->m_dwTextureName, 0);
         m_pOGLRender->SetTexelRepeatFlags(gRSP.curTile);
     }
-#ifdef DEBUGGER
-    else
-    {
-        DebuggerAppendMsg("Check me, texture is NULL");
-    }
-#endif
 
     glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
-    OPENGL_CHECK_ERRORS;
 }
 
 void COGLColorCombiner::InitCombinerCycleFill(void)
@@ -152,7 +130,6 @@ void COGLColorCombiner::InitCombinerCycle12(void)
     if (!m_bTexelsEnable)
     {
         glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
-        OPENGL_CHECK_ERRORS;
         m_pOGLRender->EnableTexUnit(0, false);
         return;
     }
@@ -161,36 +138,29 @@ void COGLColorCombiner::InitCombinerCycle12(void)
 void COGLBlender::NormalAlphaBlender(void)
 {
     glEnable(GL_BLEND);
-    OPENGL_CHECK_ERRORS;
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    OPENGL_CHECK_ERRORS;
 }
 
 void COGLBlender::DisableAlphaBlender(void)
 {
     glEnable(GL_BLEND);
-    OPENGL_CHECK_ERRORS;
     glBlendFunc(GL_ONE, GL_ZERO);
-    OPENGL_CHECK_ERRORS;
 }
 
 
 void COGLBlender::BlendFunc(uint32_t srcFunc, uint32_t desFunc)
 {
     glBlendFunc(DirectX_OGL_BlendFuncMaps[srcFunc], DirectX_OGL_BlendFuncMaps[desFunc]);
-    OPENGL_CHECK_ERRORS;
 }
 
 void COGLBlender::Enable()
 {
     glEnable(GL_BLEND);
-    OPENGL_CHECK_ERRORS;
 }
 
 void COGLBlender::Disable()
 {
     glDisable(GL_BLEND);
-    OPENGL_CHECK_ERRORS;
 }
 
 void COGLColorCombiner::InitCombinerBlenderForSimpleTextureDraw(uint32_t tile)
@@ -200,22 +170,16 @@ void COGLColorCombiner::InitCombinerBlenderForSimpleTextureDraw(uint32_t tile)
     {
         m_pOGLRender->EnableTexUnit(0, true);
         glBindTexture(GL_TEXTURE_2D, ((COGLTexture*)(g_textures[tile].m_pCTexture))->m_dwTextureName);
-        OPENGL_CHECK_ERRORS;
     }
     m_pOGLRender->SetAllTexelRepeatFlag();
 
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
-    OPENGL_CHECK_ERRORS;
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
-    OPENGL_CHECK_ERRORS;
     glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_LINEAR); // Linear Filtering
-    OPENGL_CHECK_ERRORS;
     glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_LINEAR); // Linear Filtering
-    OPENGL_CHECK_ERRORS;
 
     glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
-    OPENGL_CHECK_ERRORS;
-    m_pOGLRender->SetAlphaTestEnable(FALSE);
+    m_pOGLRender->SetAlphaTestEnable(false);
 }
 
 #ifdef DEBUGGER

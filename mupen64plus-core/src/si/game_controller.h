@@ -26,6 +26,7 @@
 
 #include "mempak.h"
 #include "rumblepak.h"
+#include "transferpak.h"
 
 enum pak_type
 {
@@ -33,6 +34,13 @@ enum pak_type
     PAK_MEM,
     PAK_RUMBLE,
     PAK_TRANSFER
+};
+
+enum cont_type
+{
+    CONT_NONE = 0,
+    CONT_JOYPAD = 1,
+    CONT_MOUSE = 2
 };
 
 struct game_controller
@@ -44,6 +52,7 @@ struct game_controller
 
     struct mempak mempak;
     struct rumblepak rumblepak;
+    struct transferpak transferpak;
 };
 
 int game_controller_is_connected(struct game_controller* cont, enum pak_type* pak);

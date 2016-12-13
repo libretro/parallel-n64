@@ -1,0 +1,141 @@
+#version 310 es
+
+#ifndef TILE_SIZE_X
+#define TILE_SIZE_X 8u
+#endif
+
+#ifndef TILE_SIZE_Y
+#define TILE_SIZE_Y 8u
+#endif
+
+layout(local_size_x = TILE_SIZE_X, local_size_y = TILE_SIZE_Y) in;
+
+#include "structs.h"
+#include "flags.h"
+#include "buffers.h"
+#include "util.h"
+#include "textures.h"
+
+int compute_lod(ivec2 uv, ivec2 uv_next, ivec2 uv_prev_y)
+{
+   ivec2 x = abs(uv_next - uv);
+   ivec2 y = abs(uv_prev_y - uv);
+   int lodx = max(x.x, x.y);
+   int lody = max(y.x, y.y);
+   int max_lod = max(lodx, lody);
+   int lod = max_lod & 0x7fff;
+   if ((max_lod & 0x1c000) != 0)
+      lod |= 0x4000;
+
+   return lod;
+}
+
+void main()
+{
+   uvec2 local = gl_LocalInvocationID.xy;
+   uint tile_buffer_index = gl_WorkGroupID.x;
+   uint lod_info_primitive = work.desc[tile_buffer_index].lod_info_primitive;
+   uint prim_id = LOD_INFO_PRIMITIVE(lod_info_primitive);
+   uint flags = primitive_data.data[prim_id].flags;
+
+   uint coverage_bits = COVERAGE(tile_buffer_index, local);
+   if ((coverage_bits & 0xffu) == 0u || !PRIMITIVE_SAMPLE_TEX(flags))
+      return;
+
+   ivec2 uv = unpack_s16(UV(tile_buffer_index, local));
+   ivec2 uv_next = unpack_s16(UV_NEXT(tile_buffer_index, local));
+
+   int primitive_tile = int(PRIMITIVE_TILE(flags));
+   int l_tile = 0;
+   int l_tile_1 = 1;
+   int lodfrac = 0xff;
+   int mips = int(PRIMITIVE_LEVELS(flags));
+
+   if (PRIMITIVE_SAMPLE_TEX_LOD(flags))
+   {
+      bool detail = LOD_INFO_PRIMITIVE_DETAIL(lod_info_primitive);
+      bool sharpen = LOD_INFO_PRIMITIVE_SHARPEN(lod_info_primitive);
+      int min_lod_base = LOD_INFO_PRIMITIVE_MIN_LOD(lod_info_primitive);
+      int min_lod = (detail || sharpen) ? min_lod_base : 32;
+
+      // Detail mip chains have an extra level. The actual mip-chain starts at 1.
+      // The first mip-level is a special mip-level.
+      int real_mips = mips - (detail ? 1 : 0);
+
+      ivec2 uv_prev_y = unpack_s16(UV_PREV_Y(tile_buffer_index, local));
+      int lod = compute_lod(uv, uv_next, uv_prev_y);
+
+      // Uncertain what lodclamp is supposed to achieve here, probably related
+      // to wrapping behavior.
+      //
+      // Need to understand this better.
+      // It is causing glitches in JFG intro because negative UV coordinates trigger this with mipmaps.
+      // However, tcdiv_ptr masks out the first 17-bits and only adds back bits if w <= 0,
+      // so it seems extremely unlikely to ever matter in practice ...
+#if 0
+      ivec2 mask = uv | uv_next | uv_prev_y;
+      ivec2 mask = uv;
+      ivec2 mask = ivec2(0);
+      bool lodclamp = ((mask.x | mask.y) & 0x60000) != 0;
+      if ((lod & 0x4000) != 0 || lodclamp)
+         lod = 0x7fff;
+#else
+      if ((lod & 0x4000) != 0)
+         lod = 0x7fff;
+#endif
+
+      bool magnify = lod < 32;
+      // min_lod is maximum 31 for detail/sharpen,
+      // so applying min lod after magnify test is fine.
+      lod = max(lod, min_lod);
+
+      // Compute the LOD fraction.
+      l_tile = findMSB(max(uint(lod >> 5) & 0xffu, 1u));
+      bool distant = ((lod & 0x6000) != 0) || (l_tile >= int(real_mips));
+
+      if (distant && !detail && !sharpen)
+         lodfrac = 0xff;
+      else
+         lodfrac = ((lod << 3) >> l_tile) & 0xff;
+
+      // Negative lerp factor to sharpen.
+      if (sharpen && magnify)
+         lodfrac |= 0x100;
+
+      // Clamp LOD.
+      if (distant)
+         l_tile = int(mips) - 1;
+
+      if (detail)
+      {
+         // If we're magnifying, pull in mip-levels 0 and 1.
+         // If distant, pull in the two last mip-levels.
+         // In the middle, pull in L + 1, L + 2.
+         l_tile += magnify ? 0 : 1;
+         l_tile_1 = l_tile + (!distant ? 1 : 0);
+      }
+      else
+      {
+         bool clamped = distant || (!sharpen && magnify);
+         l_tile_1 = l_tile + (clamped ? 0 : 1);
+      }
+   }
+
+   // Encode in lodfrac as combiner needs it.
+   coverage_bits |= uint(lodfrac & 0x1ff) << 10u;
+   COVERAGE(tile_buffer_index, local) = coverage_bits;
+
+   uint tile = primitive_data.data[prim_id].attr.tile_descriptor[(primitive_tile + l_tile) & 7];
+
+   // This will need to be 16-bit eventually ...
+   SAMPLED0(tile_buffer_index, local) = pack_rgba8(uvec4(sample_tile(tile, uv, int(PRIMITIVE_BILERP0(flags)))));
+   if (PRIMITIVE_SAMPLE_TEX_PIPELINED(flags))
+      SAMPLED2(tile_buffer_index, local) = pack_rgba8(uvec4(sample_tile(tile, uv_next, int(PRIMITIVE_BILERP0(flags)))));
+
+   if (mips > 1 || PRIMITIVE_SAMPLE_TEX_LOD(flags))
+   {
+      uint next_tile = primitive_data.data[prim_id].attr.tile_descriptor[(primitive_tile + l_tile_1) & 7];
+      SAMPLED1(tile_buffer_index, local) = pack_rgba8(uvec4(sample_tile(next_tile, uv, int(PRIMITIVE_BILERP1(flags)))));
+   }
+}
+

@@ -38,6 +38,7 @@
 #include "../ri/ri_controller.h"
 #include "../si/si_controller.h"
 #include "../vi/vi_controller.h"
+#include "../dd/dd_controller.h"
 
 #ifdef DBG
 #include "../debugger/dbg_types.h"
@@ -59,10 +60,10 @@ uint32_t address = 0;
 
 // values that are being written are stored in these variables
 #if NEW_DYNAREC != NEW_DYNAREC_ARM
-uint32_t word;
+uint32_t cpu_word;
 uint8_t cpu_byte;
-uint16_t hword;
-uint64_t dword;
+uint16_t cpu_hword;
+uint64_t cpu_dword;
 #endif
 
 // address where the read value will be stored
@@ -85,21 +86,27 @@ uint32_t VI_REFRESH = 1500;
 typedef int (*readfn)(void*,uint32_t,uint32_t*);
 typedef int (*writefn)(void*,uint32_t,uint32_t,uint32_t);
 
-static INLINE unsigned int bshift(uint32_t address)
-{
-   return ((address & 3) ^ 3) << 3;
-}
+#ifndef BYTE4_XOR_BE
+#ifdef MSB_FIRST
+#define BYTE4_XOR_BE(a) (a)
+#else
+#define BYTE4_XOR_BE(a) ((a) ^ 3)
+#endif
+#endif
 
-static INLINE unsigned int hshift(uint32_t address)
-{
-   return ((address & 2) ^ 2) << 3;
-}
+#ifndef BSHIFT
+#define BSHIFT(a) (BYTE4_XOR_BE((a & 3)) << 3)
+#endif
+
+#ifndef HSHIFT
+#define HSHIFT(a) (((a & 2) ^ 2) << 3)
+#endif
 
 static int readb(readfn read_word, void* opaque, uint32_t address, uint64_t* value)
 {
    uint32_t w;
-   unsigned shift = bshift(address);
-   int result = read_word(opaque, address, &w);
+   unsigned shift = BSHIFT(address);
+   int     result = read_word(opaque, address, &w);
    *value = (w >> shift) & 0xff;
    return result;
 }
@@ -107,8 +114,8 @@ static int readb(readfn read_word, void* opaque, uint32_t address, uint64_t* val
 static int readh(readfn read_word, void* opaque, uint32_t address, uint64_t* value)
 {
    uint32_t w;
-   unsigned shift = hshift(address);
-   int result = read_word(opaque, address, &w);
+   unsigned shift = HSHIFT(address);
+   int result     = read_word(opaque, address, &w);
    *value = (w >> shift) & 0xffff;
    return result;
 }
@@ -133,7 +140,7 @@ static int readd(readfn read_word, void* opaque, uint32_t address, uint64_t* val
 
 static int writeb(writefn write_word, void *opaque, uint32_t address, uint8_t value)
 {
-   unsigned int shift = bshift(address);
+   unsigned int shift = BSHIFT(address);
    uint32_t w         = (uint32_t)value << shift;
    uint32_t mask      = (uint32_t)0xff << shift;
    return write_word(opaque, address, w, mask);
@@ -141,7 +148,7 @@ static int writeb(writefn write_word, void *opaque, uint32_t address, uint8_t va
 
 static int writeh(writefn write_word, void *opaque, uint32_t address, uint16_t value)
 {
-   unsigned int shift = hshift(address);
+   unsigned int shift = HSHIFT(address);
    uint32_t w         = (uint32_t)value << shift;
    uint32_t mask      = (uint32_t)0xffff << shift;
    return write_word(opaque, address, w, mask);
@@ -284,7 +291,7 @@ void read_rdramd(void)
 
 void write_rdram(void)
 {
-    writew(write_rdram_dram, &g_ri, address, word);
+    writew(write_rdram_dram, &g_ri, address, cpu_word);
 }
 
 void write_rdramb(void)
@@ -294,12 +301,12 @@ void write_rdramb(void)
 
 void write_rdramh(void)
 {
-    writeh(write_rdram_dram, &g_ri, address, hword);
+    writeh(write_rdram_dram, &g_ri, address, cpu_hword);
 }
 
 void write_rdramd(void)
 {
-    writed(write_rdram_dram, &g_ri, address, dword);
+    writed(write_rdram_dram, &g_ri, address, cpu_dword);
 }
 
 
@@ -325,7 +332,7 @@ void read_rdramFBd(void)
 
 void write_rdramFB(void)
 {
-    writew(write_rdram_fb, &g_dp, address, word);
+    writew(write_rdram_fb, &g_dp, address, cpu_word);
 }
 
 void write_rdramFBb(void)
@@ -335,12 +342,12 @@ void write_rdramFBb(void)
 
 void write_rdramFBh(void)
 {
-    writeh(write_rdram_fb, &g_dp, address, hword);
+    writeh(write_rdram_fb, &g_dp, address, cpu_hword);
 }
 
 void write_rdramFBd(void)
 {
-    writed(write_rdram_fb, &g_dp, address, dword);
+    writed(write_rdram_fb, &g_dp, address, cpu_dword);
 }
 
 
@@ -366,7 +373,7 @@ static void read_rdramregd(void)
 
 static void write_rdramreg(void)
 {
-    writew(write_rdram_regs, &g_ri, address, word);
+    writew(write_rdram_regs, &g_ri, address, cpu_word);
 }
 
 static void write_rdramregb(void)
@@ -376,12 +383,12 @@ static void write_rdramregb(void)
 
 static void write_rdramregh(void)
 {
-    writeh(write_rdram_regs, &g_ri, address, hword);
+    writeh(write_rdram_regs, &g_ri, address, cpu_hword);
 }
 
 static void write_rdramregd(void)
 {
-    writed(write_rdram_regs, &g_ri, address, dword);
+    writed(write_rdram_regs, &g_ri, address, cpu_dword);
 }
 
 
@@ -407,7 +414,7 @@ static void read_rspmemd(void)
 
 static void write_rspmem(void)
 {
-    writew(write_rsp_mem, &g_sp, address, word);
+    writew(write_rsp_mem, &g_sp, address, cpu_word);
 }
 
 static void write_rspmemb(void)
@@ -417,12 +424,12 @@ static void write_rspmemb(void)
 
 static void write_rspmemh(void)
 {
-    writeh(write_rsp_mem, &g_sp, address, hword);
+    writeh(write_rsp_mem, &g_sp, address, cpu_hword);
 }
 
 static void write_rspmemd(void)
 {
-    writed(write_rsp_mem, &g_sp, address, dword);
+    writed(write_rsp_mem, &g_sp, address, cpu_dword);
 }
 
 
@@ -448,7 +455,7 @@ static void read_rspregd(void)
 
 static void write_rspreg(void)
 {
-    writew(write_rsp_regs, &g_sp, address, word);
+    writew(write_rsp_regs, &g_sp, address, cpu_word);
 }
 
 static void write_rspregb(void)
@@ -458,12 +465,12 @@ static void write_rspregb(void)
 
 static void write_rspregh(void)
 {
-    writeh(write_rsp_regs, &g_sp, address, hword);
+    writeh(write_rsp_regs, &g_sp, address, cpu_hword);
 }
 
 static void write_rspregd(void)
 {
-    writed(write_rsp_regs, &g_sp, address, dword);
+    writed(write_rsp_regs, &g_sp, address, cpu_dword);
 }
 
 
@@ -489,7 +496,7 @@ static void read_rspreg2d(void)
 
 static void write_rspreg2(void)
 {
-    writew(write_rsp_regs2, &g_sp, address, word);
+    writew(write_rsp_regs2, &g_sp, address, cpu_word);
 }
 
 static void write_rspreg2b(void)
@@ -499,12 +506,12 @@ static void write_rspreg2b(void)
 
 static void write_rspreg2h(void)
 {
-    writeh(write_rsp_regs2, &g_sp, address, hword);
+    writeh(write_rsp_regs2, &g_sp, address, cpu_hword);
 }
 
 static void write_rspreg2d(void)
 {
-    writed(write_rsp_regs2, &g_sp, address, dword);
+    writed(write_rsp_regs2, &g_sp, address, cpu_dword);
 }
 
 
@@ -530,7 +537,7 @@ static void read_dpd(void)
 
 static void write_dp(void)
 {
-    writew(write_dpc_regs, &g_dp, address, word);
+    writew(write_dpc_regs, &g_dp, address, cpu_word);
 }
 
 static void write_dpb(void)
@@ -540,12 +547,12 @@ static void write_dpb(void)
 
 static void write_dph(void)
 {
-    writeh(write_dpc_regs, &g_dp, address, hword);
+    writeh(write_dpc_regs, &g_dp, address, cpu_hword);
 }
 
 static void write_dpd(void)
 {
-    writed(write_dpc_regs, &g_dp, address, dword);
+    writed(write_dpc_regs, &g_dp, address, cpu_dword);
 }
 
 
@@ -571,7 +578,7 @@ static void read_dpsd(void)
 
 static void write_dps(void)
 {
-    writew(write_dps_regs, &g_dp, address, word);
+    writew(write_dps_regs, &g_dp, address, cpu_word);
 }
 
 static void write_dpsb(void)
@@ -581,12 +588,12 @@ static void write_dpsb(void)
 
 static void write_dpsh(void)
 {
-    writeh(write_dps_regs, &g_dp, address, hword);
+    writeh(write_dps_regs, &g_dp, address, cpu_hword);
 }
 
 static void write_dpsd(void)
 {
-    writed(write_dps_regs, &g_dp, address, dword);
+    writed(write_dps_regs, &g_dp, address, cpu_dword);
 }
 
 
@@ -612,7 +619,7 @@ static void read_mid(void)
 
 static void write_mi(void)
 {
-    writew(write_mi_regs, &g_r4300, address, word);
+    writew(write_mi_regs, &g_r4300, address, cpu_word);
 }
 
 static void write_mib(void)
@@ -622,12 +629,12 @@ static void write_mib(void)
 
 static void write_mih(void)
 {
-    writeh(write_mi_regs, &g_r4300, address, hword);
+    writeh(write_mi_regs, &g_r4300, address, cpu_hword);
 }
 
 static void write_mid(void)
 {
-    writed(write_mi_regs, &g_r4300, address, dword);
+    writed(write_mi_regs, &g_r4300, address, cpu_dword);
 }
 
 
@@ -653,7 +660,7 @@ static void read_vid(void)
 
 static void write_vi(void)
 {
-    writew(write_vi_regs, &g_vi, address, word);
+    writew(write_vi_regs, &g_vi, address, cpu_word);
 }
 
 static void write_vib(void)
@@ -663,12 +670,12 @@ static void write_vib(void)
 
 static void write_vih(void)
 {
-    writeh(write_vi_regs, &g_vi, address, hword);
+    writeh(write_vi_regs, &g_vi, address, cpu_hword);
 }
 
 static void write_vid(void)
 {
-    writed(write_vi_regs, &g_vi, address, dword);
+    writed(write_vi_regs, &g_vi, address, cpu_dword);
 }
 
 
@@ -694,7 +701,7 @@ static void read_aid(void)
 
 static void write_ai(void)
 {
-    writew(write_ai_regs, &g_ai, address, word);
+    writew(write_ai_regs, &g_ai, address, cpu_word);
 }
 
 static void write_aib(void)
@@ -704,12 +711,12 @@ static void write_aib(void)
 
 static void write_aih(void)
 {
-    writeh(write_ai_regs, &g_ai, address, hword);
+    writeh(write_ai_regs, &g_ai, address, cpu_hword);
 }
 
 static void write_aid(void)
 {
-    writed(write_ai_regs, &g_ai, address, dword);
+    writed(write_ai_regs, &g_ai, address, cpu_dword);
 }
 
 
@@ -735,7 +742,7 @@ static void read_pid(void)
 
 static void write_pi(void)
 {
-    writew(write_pi_regs, &g_pi, address, word);
+    writew(write_pi_regs, &g_pi, address, cpu_word);
 }
 
 static void write_pib(void)
@@ -745,12 +752,12 @@ static void write_pib(void)
 
 static void write_pih(void)
 {
-    writeh(write_pi_regs, &g_pi, address, hword);
+    writeh(write_pi_regs, &g_pi, address, cpu_hword);
 }
 
 static void write_pid(void)
 {
-    writed(write_pi_regs, &g_pi, address, dword);
+    writed(write_pi_regs, &g_pi, address, cpu_dword);
 }
 
 
@@ -776,7 +783,7 @@ static void read_rid(void)
 
 static void write_ri(void)
 {
-    writew(write_ri_regs, &g_ri, address, word);
+    writew(write_ri_regs, &g_ri, address, cpu_word);
 }
 
 static void write_rib(void)
@@ -786,12 +793,12 @@ static void write_rib(void)
 
 static void write_rih(void)
 {
-    writeh(write_ri_regs, &g_ri, address, hword);
+    writeh(write_ri_regs, &g_ri, address, cpu_hword);
 }
 
 static void write_rid(void)
 {
-    writed(write_ri_regs, &g_ri, address, dword);
+    writed(write_ri_regs, &g_ri, address, cpu_dword);
 }
 
 
@@ -817,7 +824,7 @@ static void read_sid(void)
 
 static void write_si(void)
 {
-    writew(write_si_regs, &g_si, address, word);
+    writew(write_si_regs, &g_si, address, cpu_word);
 }
 
 static void write_sib(void)
@@ -827,12 +834,12 @@ static void write_sib(void)
 
 static void write_sih(void)
 {
-    writeh(write_si_regs, &g_si, address, hword);
+    writeh(write_si_regs, &g_si, address, cpu_hword);
 }
 
 static void write_sid(void)
 {
-    writed(write_si_regs, &g_si, address, dword);
+    writed(write_si_regs, &g_si, address, cpu_dword);
 }
 
 static void read_pi_flashram_status(void)
@@ -857,7 +864,7 @@ static void read_pi_flashram_statusd(void)
 
 static void write_pi_flashram_command(void)
 {
-    writew(write_flashram_command, &g_pi, address, word);
+    writew(write_flashram_command, &g_pi, address, cpu_word);
 }
 
 static void write_pi_flashram_commandb(void)
@@ -867,12 +874,12 @@ static void write_pi_flashram_commandb(void)
 
 static void write_pi_flashram_commandh(void)
 {
-    writeh(write_flashram_command, &g_pi, address, hword);
+    writeh(write_flashram_command, &g_pi, address, cpu_hword);
 }
 
 static void write_pi_flashram_commandd(void)
 {
-    writed(write_flashram_command, &g_pi, address, dword);
+    writed(write_flashram_command, &g_pi, address, cpu_dword);
 }
 
 
@@ -898,7 +905,7 @@ static void read_romd(void)
 
 static void write_rom(void)
 {
-    writew(write_cart_rom, &g_pi, address, word);
+    writew(write_cart_rom, &g_pi, address, cpu_word);
 }
 
 
@@ -924,7 +931,7 @@ static void read_pifd(void)
 
 static void write_pif(void)
 {
-    writew(write_pif_ram, &g_si, address, word);
+    writew(write_pif_ram, &g_si, address, cpu_word);
 }
 
 static void write_pifb(void)
@@ -934,69 +941,77 @@ static void write_pifb(void)
 
 static void write_pifh(void)
 {
-    writeh(write_pif_ram, &g_si, address, hword);
+    writeh(write_pif_ram, &g_si, address, cpu_hword);
 }
 
 static void write_pifd(void)
 {
-    writed(write_pif_ram, &g_si, address, dword);
-}
-
-/* HACK: just to get F-Zero to boot
- * TODO: implement a real DD module
- */
-static int read_dd_regs(void* opaque, uint32_t address, uint32_t* value)
-{
-    *value = (address == 0xa5000508)
-           ? 0xffffffff
-           : 0x00000000;
-
-    return 0;
-}
-
-static int write_dd_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mask)
-{
-    return 0;
+    writed(write_pif_ram, &g_si, address, cpu_dword);
 }
 
 static void read_dd(void)
 {
-    readw(read_dd_regs, NULL, address, rdword);
+    readw(read_dd_regs, &g_dd, address, rdword);
 }
 
 static void read_ddb(void)
 {
-    readb(read_dd_regs, NULL, address, rdword);
+    readb(read_dd_regs, &g_dd, address, rdword);
 }
 
 static void read_ddh(void)
 {
-    readh(read_dd_regs, NULL, address, rdword);
+    readh(read_dd_regs, &g_dd, address, rdword);
 }
 
 static void read_ddd(void)
 {
-    readd(read_dd_regs, NULL, address, rdword);
+    readd(read_dd_regs, &g_dd, address, rdword);
 }
 
 static void write_dd(void)
 {
-    writew(write_dd_regs, NULL, address, word);
+    writew(write_dd_regs, &g_dd, address, cpu_word);
 }
 
 static void write_ddb(void)
 {
-    writeb(write_dd_regs, NULL, address, cpu_byte);
+    writeb(write_dd_regs, &g_dd, address, cpu_byte);
 }
 
 static void write_ddh(void)
 {
-    writeh(write_dd_regs, NULL, address, hword);
+    writeh(write_dd_regs, &g_dd, address, cpu_hword);
 }
 
 static void write_ddd(void)
 {
-    writed(write_dd_regs, NULL, address, dword);
+    writed(write_dd_regs, &g_dd, address, cpu_dword);
+}
+
+static void read_ddipl(void)
+{
+   readw(read_dd_ipl, &g_pi, address, rdword);
+}
+
+static void read_ddiplb(void)
+{
+   readb(read_dd_ipl, &g_pi, address, rdword);
+}
+
+static void read_ddiplh(void)
+{
+   readh(read_dd_ipl, &g_pi, address, rdword);
+}
+
+static void read_ddipld(void)
+{
+   readd(read_dd_ipl, &g_pi, address, rdword);
+}
+
+static void write_ddipl(void)
+{
+   writew(write_dd_ipl, &g_pi, address, cpu_word);
 }
 
 #ifdef DBG
@@ -1292,12 +1307,24 @@ int init_memory(void)
    }
 
    /* map DD registers */
-   map_region(0x8500, M64P_MEM_NOTHING, RW(dd));
-   map_region(0xa500, M64P_MEM_NOTHING, RW(dd));
-   for(i = 0x501; i < 0x800; ++i)
+   map_region(0x8500, M64P_MEM_DD, RW(dd));
+   map_region(0xa500, M64P_MEM_DD, RW(dd));
+   for(i = 0x501; i < 0x600; ++i)
    {
       map_region(0x8000+i, M64P_MEM_NOTHING, RW(nothing));
       map_region(0xa000+i, M64P_MEM_NOTHING, RW(nothing));
+   }
+
+   /* map DD IPL ROM */
+   for (i = 0x600; i < 0x640; ++i)
+   {
+      map_region(0x8000 + i, M64P_MEM_DD, R(ddipl), W(nothing));
+      map_region(0xa000 + i, M64P_MEM_DD, R(ddipl), W(nothing));
+   }
+   for (i = 0x640; i < 0x800; ++i)
+   {
+      map_region(0x8000 + i, M64P_MEM_NOTHING, RW(nothing));
+      map_region(0xa000 + i, M64P_MEM_NOTHING, RW(nothing));
    }
 
    /* map flashram/sram */
@@ -1336,7 +1363,16 @@ int init_memory(void)
 
    fast_memory = 1;
 
-   init_cic_using_ipl3(&g_si.pif.cic, g_rom + 0x40);
+   if ((g_ddrom != NULL) && (g_ddrom_size != 0) && (g_rom == NULL) && (g_rom_size == 0))
+   {
+      //Init from 64DD IPL ROM
+      init_cic_using_ipl3(&g_si.pif.cic, g_ddrom + 0x40);
+   }
+   else
+   {
+      //Init from N64 ROM
+      init_cic_using_ipl3(&g_si.pif.cic, g_rom + 0x40);
+   }
 
    init_r4300(&g_r4300);
    init_rdp(&g_dp);
@@ -1346,6 +1382,7 @@ int init_memory(void)
    init_ri(&g_ri);
    init_si(&g_si);
    init_vi(&g_vi);
+   init_dd(&g_dd);
 
    DebugMessage(M64MSG_VERBOSE, "Memory initialized");
    return 0;

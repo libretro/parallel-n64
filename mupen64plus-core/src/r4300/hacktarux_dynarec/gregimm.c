@@ -72,7 +72,7 @@ static void genbltz_test(void)
    else
    {
 #ifdef __x86_64__
-      int rs = allocate_register_64((unsigned long long *)dst->f.i.rs);
+      int rs = allocate_register_64((uint64_t*)dst->f.i.rs);
 
       cmp_reg64_imm8(rs, 0);
       setl_m8rel((unsigned char *) &branch_taken);
@@ -177,7 +177,7 @@ static void genbgez_test(void)
    else
    {
 #ifdef __x86_64__
-      int rs = allocate_register_64((unsigned long long *)dst->f.i.rs);
+      int rs = allocate_register_64((uint64_t*)dst->f.i.rs);
       cmp_reg64_imm8(rs, 0);
       setge_m8rel((unsigned char *) &branch_taken);
 #else
@@ -389,7 +389,7 @@ static void genbranchlink(void)
    else
    {
 #ifdef __x86_64__
-      int r31 = allocate_register_64_w((unsigned long long *)&reg[31]);
+      int r31 = allocate_register_64_w((uint64_t*)&reg[31]);
 
       mov_reg32_imm32(r31, dst->addr+8);
       movsxd_reg64_reg32(r31, r31);

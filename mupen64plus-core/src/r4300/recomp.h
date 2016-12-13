@@ -38,8 +38,8 @@ typedef struct _precomp_instr
      {
     struct
       {
-         long long int *rs;
-         long long int *rt;
+         int64_t *rs;
+         int64_t *rt;
          int16_t immediate;
       } i;
     struct
@@ -48,9 +48,9 @@ typedef struct _precomp_instr
       } j;
     struct
       {
-         long long int *rs;
-         long long int *rt;
-         long long int *rd;
+         int64_t *rs;
+         int64_t *rt;
+         int64_t *rd;
          unsigned char sa;
          unsigned char nrd;
       } r;
@@ -84,6 +84,7 @@ typedef struct _precomp_block
    int jumps_number;
    void *riprel_table;
    int riprel_number;
+   //unsigned char md5[16];
    unsigned int adler32;
 } precomp_block;
 
@@ -100,7 +101,10 @@ extern precomp_instr *dst; /* precomp_instr structure for instruction being reco
 
 extern int no_compiled_jump;
 
+#ifdef DYNAREC
 #include "hacktarux_dynarec/assemble.h"
+#endif
 #include "hacktarux_dynarec/regcache.h"
 
 #endif /* M64P_R4300_RECOMP_H */
+

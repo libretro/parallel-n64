@@ -1,5 +1,5 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
- *   Mupen64plus - recomp.h                                                *
+ *   Mupen64plus - recomp.c                                                *
  *   Mupen64Plus homepage: http://code.google.com/p/mupen64plus/           *
  *   Copyright (C) 2002 Hacktarux                                          *
  *                                                                         *
@@ -19,53 +19,53 @@
  *   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.          *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 
+#define __STDC_FORMAT_MACROS
+#include <inttypes.h>
+
 #if defined(__GNUC__)
 #include <unistd.h>
-#ifndef __MINGW32__
+#ifdef VITA
+#include <psp2/kernel/sysmem.h>
+#elif !defined(__MINGW32__)
 #include <sys/mman.h>
 #endif
 #endif
 
-#include "api/m64p_types.h"
 #include "api/callbacks.h"
-#include "memory/memory.h"
-
+#include "api/m64p_types.h"
 #include "cached_interp.h"
+#include "cp0_private.h"
+#include "main/profile.h"
+#include "memory/memory.h"
+#include "ops.h"
+#include "r4300.h"
 #include "recomp.h"
 #include "recomph.h" //include for function prototypes
-#include "cp0_private.h"
-#include "r4300.h"
-#include "ops.h"
 #include "tlb.h"
 
 static void *malloc_exec(size_t size);
 static void free_exec(void *ptr, size_t length);
 
-// global variables :
-precomp_instr *dst; // destination structure for the recompiled instruction
-int code_length; // current real recompiled code length
-int max_code_length; // current recompiled code's buffer length
-unsigned char **inst_pointer; // output buffer for recompiled code
-precomp_block *dst_block; // the current block that we are recompiling
-uint32_t src; // the current recompiled instruction
+/* global variables : */
+precomp_instr *dst           = NULL; /* destination structure for the recompiled instruction */
+unsigned char **inst_pointer = NULL; /* output buffer for recompiled code */
+precomp_block *dst_block     = NULL; /* the current block that we are recompiling */
+int no_compiled_jump = 0;            /* use cached interpreter instead of recompiler for jumps */
+int code_length;                     /* current real recompiled code length */
+int max_code_length;                 /* current recompiled code's buffer length */
+uint32_t src;                        /* the current recompiled instruction */
 int fast_memory;
-int no_compiled_jump = 0; /* use cached interpreter instead of recompiler for jumps */
 
-static void (*recomp_func)(void); // pointer to the dynarec's generator
-                                  // function for the latest decoded opcode
+static void (*recomp_func)(void); /* pointer to the dynarec's generator
+                                   * function for the latest decoded opcode */
 
-#if defined(PROFILE_R4300)
-FILE *pfProfile;
-#endif
-
-static const uint32_t *SRC; // currently recompiled instruction in the input stream
-static int check_nop; // next instruction is nop ?
+static const uint32_t *SRC  = NULL;  /* currently recompiled instruction in the input stream */
 static int delay_slot_compiled = 0;
-
-
+static int check_nop;                /* next instruction is NOP ? */
 
 static void RSV(void)
 {
@@ -89,7 +89,7 @@ static void recompile_standard_i_type(void)
 {
    dst->f.i.rs = reg + ((src >> 21) & 0x1F);
    dst->f.i.rt = reg + ((src >> 16) & 0x1F);
-   dst->f.i.immediate = (int16_t)src;
+   dst->f.i.immediate = (int16_t) src;
 }
 
 static void recompile_standard_j_type(void)
@@ -807,7 +807,7 @@ static void RMFC0(void)
    dst->ops = current_instruction_table.MFC0;
    recomp_func = genmfc0;
    recompile_standard_r_type();
-   dst->f.r.rd = (long long*)(g_cp0_regs + ((src >> 11) & 0x1F));
+   dst->f.r.rd = (int64_t*) (g_cp0_regs + ((src >> 11) & 0x1F));
    dst->f.r.nrd = (src >> 11) & 0x1F;
    if (dst->f.r.rt == reg) RNOP();
 }
@@ -2163,9 +2163,9 @@ void init_block(precomp_block *block)
 {
   int i, length, already_exist = 1;
   static int init_length;
-  start_section(COMPILER_SECTION);
+  timed_section_start(TIMED_SECTION_COMPILER);
 #ifdef CORE_DBG
-  DebugMessage(M64MSG_INFO, "init block %x - %x", (int) block->start, (int) block->end);
+  DebugMessage(M64MSG_INFO, "init block %" PRIX32 " - %" PRIX32, block->start, block->end);
 #endif
 
   length = get_block_length(block);
@@ -2196,12 +2196,7 @@ void init_block(precomp_block *block)
   {
     if (!block->code)
     {
-#if defined(PROFILE_R4300)
-      max_code_length = 524288; /* allocate so much code space that we'll never have to realloc(), because this may */
-                                /* cause instruction locations to move, and break our profiling data                */
-#else
       max_code_length = 32768;
-#endif
       block->code = (unsigned char *) malloc_exec(max_code_length);
     }
     else
@@ -2227,14 +2222,6 @@ void init_block(precomp_block *block)
    
   if (!already_exist)
   {
-#if defined(PROFILE_R4300)
-    pfProfile = fopen("instructionaddrs.dat", "ab");
-    long x86addr = (long) block->code;
-    int mipsop = -2; /* -2 == NOTCOMPILED block at beginning of x86 code */
-    if (fwrite(&mipsop, 1, 4, pfProfile) != 4 || // write 4-byte MIPS opcode
-        fwrite(&x86addr, 1, sizeof(char *), pfProfile) != sizeof(char *)) // write pointer to dynamically generated x86 code for this MIPS instruction
-        DebugMessage(M64MSG_ERROR, "Error writing R4300 instruction address profiling data");
-#endif
 
     for (i=0; i<length; i++)
     {
@@ -2242,25 +2229,14 @@ void init_block(precomp_block *block)
       dst->addr = block->start + i*4;
       dst->reg_cache_infos.need_map = 0;
       dst->local_addr = code_length;
-#ifdef COMPARE_CORE
-      if (r4300emu == CORE_DYNAREC) gendebug();
-#endif
       RNOTCOMPILED();
       if (r4300emu == CORE_DYNAREC) recomp_func();
     }
-#if defined(PROFILE_R4300)
-  fclose(pfProfile);
-  pfProfile = NULL;
-#endif
   init_length = code_length;
   }
   else
   {
-#if defined(PROFILE_R4300)
-    code_length = block->code_length; /* leave old instructions in their place */
-#else
     code_length = init_length; /* recompile everything, overwrite old recompiled instructions */
-#endif
     for (i=0; i<length; i++)
     {
       dst = block->block + i;
@@ -2286,7 +2262,7 @@ void init_block(precomp_block *block)
   invalid_code[block->start>>12] = 0;
   if (block->end < UINT32_C(0x80000000) || block->start >= UINT32_C(0xc0000000))
   { 
-    uint32_t paddr  = virtual_to_physical_address(block->start, 2);
+    uint32_t paddr = virtual_to_physical_address(block->start, 2);
     invalid_code[paddr>>12] = 0;
     if (!blocks[paddr>>12])
     {
@@ -2318,22 +2294,22 @@ void init_block(precomp_block *block)
   {
     uint32_t alt_addr = block->start ^ UINT32_C(0x20000000);
 
-    if (invalid_code[alt_addr >> 12])
+    if (invalid_code[alt_addr>>12])
     {
-      if (!blocks[alt_addr >> 12])
+      if (!blocks[alt_addr>>12])
       {
-        blocks[alt_addr >> 12] = (precomp_block *) malloc(sizeof(precomp_block));
-        blocks[alt_addr >> 12]->code = NULL;
-        blocks[alt_addr >> 12]->block = NULL;
-        blocks[alt_addr >> 12]->jumps_table = NULL;
-        blocks[alt_addr >> 12]->riprel_table = NULL;
-        blocks[alt_addr >> 12]->start = alt_addr & ~UINT32_C(0xFFF);
-        blocks[alt_addr >> 12]->end = (alt_addr & ~UINT32_C(0xFFF)) + UINT32_C(0x1000);
+        blocks[alt_addr>>12] = (precomp_block *) malloc(sizeof(precomp_block));
+        blocks[alt_addr>>12]->code = NULL;
+        blocks[alt_addr>>12]->block = NULL;
+        blocks[alt_addr>>12]->jumps_table = NULL;
+        blocks[alt_addr>>12]->riprel_table = NULL;
+        blocks[alt_addr>>12]->start = alt_addr & ~UINT32_C(0xFFF);
+        blocks[alt_addr>>12]->end = (alt_addr & ~UINT32_C(0xFFF)) + UINT32_C(0x1000);
       }
-      init_block(blocks[alt_addr >> 12]);
+      init_block(blocks[alt_addr>>12]);
     }
   }
-  end_section(COMPILER_SECTION);
+  timed_section_end(TIMED_SECTION_COMPILER);
 }
 
 void free_block(precomp_block *block)
@@ -2355,14 +2331,15 @@ void free_block(precomp_block *block)
 /**********************************************************************
  ********************* recompile a block of code **********************
  **********************************************************************/
-void recompile_block(const uint32_t *source, precomp_block *block, unsigned int func)
+void recompile_block(const uint32_t *source, precomp_block *block, uint32_t func)
 {
    uint32_t i;
    int length, finished=0;
-   start_section(COMPILER_SECTION);
+   timed_section_start(TIMED_SECTION_COMPILER);
    length = (block->end-block->start)/4;
    dst_block = block;
    
+   //for (i=0; i<16; i++) block->md5[i] = 0;
    block->adler32 = 0;
    
    if (r4300emu == CORE_DYNAREC)
@@ -2374,18 +2351,14 @@ void recompile_block(const uint32_t *source, precomp_block *block, unsigned int 
     init_cache(block->block + (func & 0xFFF) / 4);
      }
 
-#if defined(PROFILE_R4300)
-   pfProfile = fopen("instructionaddrs.dat", "ab");
-#endif
-
    for (i = (func & 0xFFF) / 4; finished != 2; i++)
      {
-    if(block->start < UINT32_C(0x80000000) || block->start >= UINT32_C(0xc0000000))
+    if(block->start < UINT32_C(0x80000000) || UINT32_C(block->start >= 0xc0000000))
       {
-         uint32_t address2 =
+          uint32_t address2 =
            virtual_to_physical_address(block->start + i*4, 0);
-         if(blocks[address2>>12]->block[(address2 & UINT32_C(0xFFF))/4].ops == current_instruction_table.NOTCOMPILED)
-           blocks[address2>>12]->block[(address2 & UINT32_C(0xFFF))/4].ops = current_instruction_table.NOTCOMPILED2;
+         if(blocks[address2>>12]->block[(address2&UINT32_C(0xFFF))/4].ops == current_instruction_table.NOTCOMPILED)
+           blocks[address2>>12]->block[(address2&UINT32_C(0xFFF))/4].ops = current_instruction_table.NOTCOMPILED2;
       }
     
     SRC = source + i;
@@ -2395,15 +2368,6 @@ void recompile_block(const uint32_t *source, precomp_block *block, unsigned int 
     dst->addr = block->start + i*4;
     dst->reg_cache_infos.need_map = 0;
     dst->local_addr = code_length;
-#ifdef COMPARE_CORE
-    if (r4300emu == CORE_DYNAREC) gendebug();
-#endif
-#if defined(PROFILE_R4300)
-    long x86addr = (long) (block->code + block->block[i].local_addr);
-    if (fwrite(source + i, 1, 4, pfProfile) != 4 || // write 4-byte MIPS opcode
-        fwrite(&x86addr, 1, sizeof(char *), pfProfile) != sizeof(char *)) // write pointer to dynamically generated x86 code for this MIPS instruction
-        DebugMessage(M64MSG_ERROR, "Error writing R4300 instruction address profiling data");
-#endif
     recomp_func = NULL;
     recomp_ops[((src >> 26) & 0x3F)]();
     if (r4300emu == CORE_DYNAREC) recomp_func();
@@ -2435,23 +2399,12 @@ void recompile_block(const uint32_t *source, precomp_block *block, unsigned int 
       finished = 1;
      }
 
-#if defined(PROFILE_R4300)
-    long x86addr = (long) (block->code + code_length);
-    int mipsop = -3; /* -3 == block-postfix */
-    if (fwrite(&mipsop, 1, 4, pfProfile) != 4 || // write 4-byte MIPS opcode
-        fwrite(&x86addr, 1, sizeof(char *), pfProfile) != sizeof(char *)) // write pointer to dynamically generated x86 code for this MIPS instruction
-        DebugMessage(M64MSG_ERROR, "Error writing R4300 instruction address profiling data");
-#endif
-
    if (i >= length)
      {
     dst = block->block + i;
     dst->addr = block->start + i*4;
     dst->reg_cache_infos.need_map = 0;
     dst->local_addr = code_length;
-#ifdef COMPARE_CORE
-    if (r4300emu == CORE_DYNAREC) gendebug();
-#endif
     RFIN_BLOCK();
     if (r4300emu == CORE_DYNAREC) recomp_func();
     i++;
@@ -2461,9 +2414,6 @@ void recompile_block(const uint32_t *source, precomp_block *block, unsigned int 
          dst->addr = block->start + i*4;
          dst->reg_cache_infos.need_map = 0;
          dst->local_addr = code_length;
-#ifdef COMPARE_CORE
-         if (r4300emu == CORE_DYNAREC) gendebug();
-#endif
          RFIN_BLOCK();
          if (r4300emu == CORE_DYNAREC) recomp_func();
          i++;
@@ -2480,13 +2430,9 @@ void recompile_block(const uint32_t *source, precomp_block *block, unsigned int 
     free_assembler(&block->jumps_table, &block->jumps_number, &block->riprel_table, &block->riprel_number);
      }
 #ifdef CORE_DBG
-   DebugMessage(M64MSG_INFO, "block recompiled (%x-%x)", (int)func, (int)(block->start+i*4));
+   DebugMessage(M64MSG_INFO, "block recompiled (%" PRIX32 "-%" PRIX32 ")", func, block->start+i*4);
 #endif
-#if defined(PROFILE_R4300)
-   fclose(pfProfile);
-   pfProfile = NULL;
-#endif
-   end_section(COMPILER_SECTION);
+   timed_section_end(TIMED_SECTION_COMPILER);
 }
 
 static int is_jump(void)
@@ -2575,12 +2521,6 @@ void recompile_opcode(void)
    dst->reg_cache_infos.need_map = 0;
    if(!is_jump())
    {
-#if defined(PROFILE_R4300)
-     long x86addr = (long) ((*inst_pointer) + code_length);
-     if (fwrite(&src, 1, 4, pfProfile) != 4 || // write 4-byte MIPS opcode
-         fwrite(&x86addr, 1, sizeof(char *), pfProfile) != sizeof(char *)) // write pointer to dynamically generated x86 code for this MIPS instruction
-        DebugMessage(M64MSG_ERROR, "Error writing R4300 instruction address profiling data");
-#endif
      recomp_func = NULL;
      recomp_ops[((src >> 26) & 0x3F)]();
      if (r4300emu == CORE_DYNAREC) recomp_func();
@@ -2600,6 +2540,16 @@ static void *malloc_exec(size_t size)
 {
 #if defined(WIN32)
    return VirtualAlloc(NULL, size, MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
+#elif defined(VITA)
+    sceKernelOpenVMDomain();
+
+    SceUID block = sceKernelAllocMemBlockForVM("code", size);
+    void* res;
+    sceKernelGetMemBlockBase(block, &res);
+
+    sceKernelCloseVMDomain();
+
+    return res;
 #elif defined(__GNUC__)
 
    #ifndef  MAP_ANONYMOUS
@@ -2644,6 +2594,9 @@ static void free_exec(void *ptr, size_t length)
 {
 #if defined(WIN32)
    VirtualFree(ptr, 0, MEM_RELEASE);
+#elif defined(VITA)
+    SceUID block = sceKernelFindMemBlockByAddr(ptr, length);
+    sceKernelFreeMemBlock(block);
 #elif defined(__GNUC__)
    munmap(ptr, length);
 #else

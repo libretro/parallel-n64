@@ -38,7 +38,7 @@ void init_cart_rom(struct cart_rom* cart_rom)
 int read_cart_rom(void* opaque, uint32_t address, uint32_t* value)
 {
     struct pi_controller* pi    = (struct pi_controller*)opaque;
-    uint32_t addr               = rom_address(address);
+    uint32_t addr               = ROM_ADDR(address);
 
     if (pi->cart_rom.last_write != 0)
     {

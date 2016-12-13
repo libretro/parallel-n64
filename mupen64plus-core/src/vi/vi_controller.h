@@ -24,6 +24,10 @@
 
 #include <stdint.h>
 
+#ifndef VI_REG
+#define VI_REG(a) ((a & 0xFFFF) >> 2)
+#endif
+
 struct r4300_core;
 
 enum vi_registers
@@ -55,11 +59,6 @@ struct vi_controller
 
     struct r4300_core* r4300;
 };
-
-static INLINE uint32_t vi_reg(uint32_t address)
-{
-    return (address & 0xffff) >> 2;
-}
 
 void connect_vi(struct vi_controller* vi,
                 struct r4300_core* r4300);

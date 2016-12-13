@@ -66,7 +66,7 @@ void init_pif(struct pif* pif)
 int read_pif_ram(void* opaque, uint32_t address, uint32_t* value)
 {
    struct si_controller* si = (struct si_controller*)opaque;
-   uint32_t addr            = pif_ram_address(address);
+   uint32_t addr            = PIF_RAM_ADDR(address);
 
    if (addr >= PIF_RAM_SIZE)
    {
@@ -83,7 +83,7 @@ int read_pif_ram(void* opaque, uint32_t address, uint32_t* value)
 int write_pif_ram(void* opaque, uint32_t address, uint32_t value, uint32_t mask)
 {
    struct si_controller* si = (struct si_controller*)opaque;
-   uint32_t addr            = pif_ram_address(address);
+   uint32_t addr            = PIF_RAM_ADDR(address);
 
    if (addr >= PIF_RAM_SIZE)
    {
@@ -91,14 +91,14 @@ int write_pif_ram(void* opaque, uint32_t address, uint32_t value, uint32_t mask)
       return -1;
    }
 
-   masked_write((uint32_t*)(&si->pif.ram[addr]), sl(value), sl(mask));
+   si->pif.ram[addr] = MASKED_WRITE((uint32_t*)(&si->pif.ram[addr]), sl(value), sl(mask));
 
    if ((addr == 0x3c) && (mask & 0xff))
    {
       if (si->pif.ram[0x3f] == 0x08)
       {
          si->pif.ram[0x3f] = 0;
-         update_count();
+         cp0_update_count();
          add_interupt_event(SI_INT, /*0x100*/0x900);
       }
       else
@@ -111,13 +111,13 @@ int write_pif_ram(void* opaque, uint32_t address, uint32_t value, uint32_t mask)
 
 void update_pif_write(struct si_controller *si)
 {
-   int8_t challenge[30], response[30];
    int i=0, channel=0;
-
    struct pif* pif = &si->pif;
 
    if (pif->ram[0x3F] > 1)
    {
+      int8_t challenge[30], response[30];
+
       switch (pif->ram[0x3F])
       {
          case 0x02:

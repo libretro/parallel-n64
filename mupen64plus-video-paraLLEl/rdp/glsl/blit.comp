@@ -1,0 +1,42 @@
+#version 310 es
+precision highp int;
+precision highp float;
+
+layout(local_size_x = 8, local_size_y = 8) in;
+
+layout(std430, set = 0, binding = 0) readonly buffer SSBO
+{
+   uint pixels[];
+};
+
+layout(rgba8, set = 0, binding = 1) uniform writeonly mediump image2D uOutput;
+
+layout(std430, push_constant) uniform PushConstant
+{
+   ivec2 FramebufferSize;
+} constants;
+
+void main()
+{
+   ivec2 ident = ivec2(gl_GlobalInvocationID.xy);
+   if (all(lessThan(ident, constants.FramebufferSize)))
+   {
+      uint c = pixels[constants.FramebufferSize.x * ident.y + ident.x];
+#if COLOR_BPP == 32
+      uvec4 color = (uvec4(c) >> uvec4(24u, 16u, 8u, 5u)) & uvec4(0xffu, 0xffu, 0xffu, 0x7u);
+      imageStore(uOutput, ident, vec4(color) / 255.0);
+#elif COLOR_BPP == 16
+      // Angrylion VI intentionally doesn't pad out to the last 3 bits, so I assume there's a reason.
+      uvec4 color = uvec4(
+         (c >> 10u) & 0xf8u,
+         (c >> 5u) & 0xf8u,
+         (c >> 0u) & 0xf8u,
+         (c & 7u));
+      imageStore(uOutput, ident, vec4(color) / 255.0);
+#elif COLOR_BPP == 8
+      uvec4 color = uvec4(uvec3((c >> 3u) & 0xffu), c & 7u);
+      imageStore(uOutput, ident, vec4(color) / 255.0);
+#endif
+   }
+}
+

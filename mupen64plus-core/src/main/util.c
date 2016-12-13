@@ -276,9 +276,9 @@ int parse_hex(const char *str, unsigned char *output, size_t output_size)
 
 char *formatstr(const char *fmt, ...)
 {
-   int size = 128, ret;
-   char *str = (char *)malloc(size), *newstr;
    va_list args;
+   int  size = 128;
+   char *str = (char *)malloc(size), *newstr;
 
    /* There are two implementations of vsnprintf we have to deal with:
     * C99 version: Returns the number of characters which would have been written
@@ -289,6 +289,8 @@ char *formatstr(const char *fmt, ...)
     */
    while (str != NULL)
    {
+      int ret;
+
       va_start(args, fmt);
       ret = vsnprintf(str, size, fmt, args);
       va_end(args);

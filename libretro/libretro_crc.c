@@ -35,14 +35,6 @@ void CRC_BuildTable(void)
    }
 }
 
-unsigned int CRC32( unsigned int crc, void *buffer, unsigned int count )
-{
-   uint8_t *p = (uint8_t*) buffer;
-   while (count--)
-      crc = (crc >> 8) ^ CRCTable[(crc & 0xFF) ^ *p++];
-   return ~crc;
-}
-
 uint32_t CRC_Calculate(void *buffer, uint32_t count)
 {
    uint32_t crc = 0xffffffff;

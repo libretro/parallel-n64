@@ -93,7 +93,7 @@
 void n64_cic_nus_6105(int8_t chl[], int8_t rsp[], int len)
 {
    char key, *lut;
-   int i, sgn, mag, mod;
+   int i;
    static char lut0[0x10] = {
       0x4, 0x7, 0xA, 0x7, 0xE, 0x5, 0xE, 0x1, 
       0xC, 0xF, 0x8, 0xF, 0x6, 0x3, 0x6, 0x9
@@ -105,6 +105,7 @@ void n64_cic_nus_6105(int8_t chl[], int8_t rsp[], int len)
 
    for (key = 0xB, lut = lut0, i = 0; i < len; i++)
    {
+      int mag, mod, sgn;
       rsp[i] = (key + 5 * chl[i]) & 0xF;
       key    = lut[(int) rsp[i]];
       sgn    = (rsp[i] >> 3) & 0x1;

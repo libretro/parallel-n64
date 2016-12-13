@@ -44,7 +44,7 @@ static void dma_si_write(struct si_controller* si)
       *((uint32_t*)(&si->pif.ram[i])) = sl(si->ri->rdram.dram[(si->regs[SI_DRAM_ADDR_REG]+i)/4]);
 
    update_pif_write(si);
-   update_count();
+   cp0_update_count();
 
    if (g_delay_si)
       add_interupt_event(SI_INT, /*0x100*/0x900);
@@ -69,7 +69,7 @@ static void dma_si_read(struct si_controller* si)
 
    for (i = 0; i < PIF_RAM_SIZE; i += 4)
       si->ri->rdram.dram[(si->regs[SI_DRAM_ADDR_REG]+i)/4] = sl(*(uint32_t*)(&si->pif.ram[i]));
-   update_count();
+   cp0_update_count();
 
    if (g_delay_si)
       add_interupt_event(SI_INT, /*0x100*/0x900);
@@ -99,7 +99,7 @@ void init_si(struct si_controller* si)
 int read_si_regs(void* opaque, uint32_t address, uint32_t* value)
 {
     struct si_controller* si = (struct si_controller*)opaque;
-    uint32_t reg             = si_reg(address);
+    uint32_t reg             = SI_REG(address);
 
     *value                   = si->regs[reg];
 
@@ -109,21 +109,21 @@ int read_si_regs(void* opaque, uint32_t address, uint32_t* value)
 int write_si_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mask)
 {
     struct si_controller* si = (struct si_controller*)opaque;
-    uint32_t reg             = si_reg(address);
+    uint32_t reg             = SI_REG(address);
 
     switch (reg)
     {
        case SI_DRAM_ADDR_REG:
-          masked_write(&si->regs[SI_DRAM_ADDR_REG], value, mask);
+          si->regs[SI_DRAM_ADDR_REG] = MASKED_WRITE(&si->regs[SI_DRAM_ADDR_REG], value, mask);
           break;
 
        case SI_PIF_ADDR_RD64B_REG:
-          masked_write(&si->regs[SI_PIF_ADDR_RD64B_REG], value, mask);
+          si->regs[SI_PIF_ADDR_RD64B_REG] = MASKED_WRITE(&si->regs[SI_PIF_ADDR_RD64B_REG], value, mask);
           dma_si_read(si);
           break;
 
        case SI_PIF_ADDR_WR64B_REG:
-          masked_write(&si->regs[SI_PIF_ADDR_WR64B_REG], value, mask);
+          si->regs[SI_PIF_ADDR_WR64B_REG] = MASKED_WRITE(&si->regs[SI_PIF_ADDR_WR64B_REG], value, mask);
           dma_si_write(si);
           break;
 

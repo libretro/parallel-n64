@@ -88,20 +88,10 @@ const char *audio_resampler_driver_find_ident(int idx)
  **/
 static const rarch_resampler_t *find_resampler_driver(const char *ident)
 {
-   unsigned d;
    int i = find_resampler_driver_index(ident);
 
    if (i >= 0)
       return resampler_drivers[i];
-
-#ifdef RARCH_INTERNAL
-   RARCH_ERR("Couldn't find any resampler driver named \"%s\"\n", ident);
-   RARCH_LOG_OUTPUT("Available resampler drivers are:\n");
-   for (d = 0; resampler_drivers[d]; d++)
-      RARCH_LOG_OUTPUT("\t%s\n", resampler_drivers[d]->ident);
-
-   RARCH_WARN("Going to default to first resampler driver ...\n");
-#endif
 
    return resampler_drivers[0];
 }
@@ -109,7 +99,7 @@ static const rarch_resampler_t *find_resampler_driver(const char *ident)
 #ifndef RARCH_INTERNAL
 
 #ifdef __cplusplus
-extern "C" 
+extern "C" {
 #endif
 retro_get_cpu_features_t perf_get_cpu_features_cb;
 
@@ -124,7 +114,8 @@ resampler_simd_mask_t resampler_get_cpu_features(void)
 #ifdef RARCH_INTERNAL
    return rarch_get_cpu_features();
 #else
-   return perf_get_cpu_features_cb();
+/* no features if interface isn't implemented */
+   return perf_get_cpu_features_cb ? perf_get_cpu_features_cb() : 0;
 #endif
 }
 

@@ -155,8 +155,6 @@ protected:
     COGLColorCombiner4(CRender *pRender);
     ~COGLColorCombiner4() {};
 
-    bool m_bSupportModAdd_ATI;
-    bool m_bSupportModSub_ATI;
     GLint m_maxTexUnits;
     int m_lastIndex;
     uint32_t m_dwLastMux0;

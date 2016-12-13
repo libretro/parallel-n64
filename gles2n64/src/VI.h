@@ -1,6 +1,7 @@
 #ifndef VI_H
 #define VI_H
-#include "Types.h"
+
+#include <stdint.h>
 #include <boolean.h>
 
 #ifdef __cplusplus
@@ -9,19 +10,19 @@ extern "C" {
 
 typedef struct
 {
-    u32 width, widthPrev, height, real_height;
-    f32 rwidth, rheight;
-    u32 lastOrigin;
+    uint32_t width, widthPrev, height, real_height;
+    float rwidth, rheight;
+    uint32_t lastOrigin;
 
-    u32 realWidth, realHeight;
+    uint32_t realWidth, realHeight;
     bool interlaced;
     bool PAL;
 
     struct{
-        u32 start, end;
+        uint32_t start, end;
     } display[16];
 
-    u32 displayNum;
+    uint32_t displayNum;
 
 } VIInfo;
 

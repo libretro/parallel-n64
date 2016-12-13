@@ -140,25 +140,25 @@ void ConvertRGBA32_16(CTexture *pTexture, const TxtrInfo &tinfo)
 
     if( options.bUseFullTMEM )
     {
-        Tile &tile = gRDP.tiles[tinfo.tileNo];
+        gDPTile *tile = &gDP.tiles[tinfo.tileNo];
 
         uint32_t *pWordSrc;
         if( tinfo.tileNo >= 0 )
         {
-            pWordSrc = (uint32_t*)&g_Tmem.g_Tmem64bit[tile.dwTMem];
+            pWordSrc = (uint32_t*)&g_Tmem.g_Tmem64bit[tile->tmem];
 
             for (uint32_t y = 0; y < tinfo.HeightToLoad; y++)
             {
                 uint16_t * dwDst = (uint16_t *)((uint8_t *)dInfo.lpSurface + y*dInfo.lPitch);
 
                 uint32_t nFiddle = ( y&1 )? 0x2 : 0;
-                int idx = tile.dwLine*4*y;
+                int idx = tile->line * 4 * y;
 
                 for (uint32_t x = 0; x < tinfo.WidthToLoad; x++, idx++)
                 {
-                    uint32_t w = pWordSrc[idx^nFiddle];
+                    uint32_t w   = pWordSrc[idx^nFiddle];
                     uint8_t* psw = (uint8_t*)&w;
-                    dwDst[x] = R4G4B4A4_MAKE( (psw[0]>>4), (psw[1]>>4), (psw[2]>>4), (psw[3]>>4));
+                    dwDst[x]     = PAL8toR4G4B4A4( (psw[0]>>4), (psw[1]>>4), (psw[2]>>4), (psw[3]>>4));
                 }
             }
         }
@@ -177,7 +177,7 @@ void ConvertRGBA32_16(CTexture *pTexture, const TxtrInfo &tinfo)
                     for (uint32_t x = 0; x < tinfo.WidthToLoad; x++)
                     {
 
-                        *pDst++ = R4G4B4A4_MAKE((pS[3]>>4),  // Red
+                        *pDst++ = PAL8toR4G4B4A4((pS[3]>>4),  // Red
                                                 (pS[2]>>4),  // Green
                                                 (pS[1]>>4),  // Blue
                                                 (pS[0]>>4)); // Alpha
@@ -193,7 +193,7 @@ void ConvertRGBA32_16(CTexture *pTexture, const TxtrInfo &tinfo)
                     n = 0;
                     for (uint32_t x = 0; x < tinfo.WidthToLoad; x++)
                     {
-                        *pDst++ = R4G4B4A4_MAKE((pS[(n^0x8) + 3]>>4),   // Red
+                        *pDst++ = PAL8toR4G4B4A4((pS[(n^0x8) + 3]>>4),   // Red
                                                 (pS[(n^0x8) + 2]>>4),   // Green
                                                 (pS[(n^0x8) + 1]>>4),   // Blue
                                                 (pS[(n^0x8) + 0]>>4));  // Alpha
@@ -212,7 +212,7 @@ void ConvertRGBA32_16(CTexture *pTexture, const TxtrInfo &tinfo)
 
                 for (uint32_t x = 0; x < tinfo.WidthToLoad; x++)
                 {
-                    *pDst++ = R4G4B4A4_MAKE((pS[3]>>4),     // Red
+                    *pDst++ = PAL8toR4G4B4A4((pS[3]>>4),     // Red
                                             (pS[2]>>4),     // Green
                                             (pS[1]>>4),     // Blue
                                             (pS[0]>>4));    // Alpha
@@ -260,13 +260,13 @@ void ConvertIA4_16(CTexture *pTexture, const TxtrInfo &tinfo)
                 uint8_t b = pSrc[dwByteOffset ^ nFiddle];
 
                 // Even
-                *pDst++ = R4G4B4A4_MAKE(ThreeToFour[(b & 0xE0) >> 5],
+                *pDst++ = PAL8toR4G4B4A4(ThreeToFour[(b & 0xE0) >> 5],
                                         ThreeToFour[(b & 0xE0) >> 5],
                                         ThreeToFour[(b & 0xE0) >> 5],
                                         OneToFour[(b & 0x10) >> 4]);
     
                 // Odd
-                *pDst++ = R4G4B4A4_MAKE(ThreeToFour[(b & 0x0E) >> 1],
+                *pDst++ = PAL8toR4G4B4A4(ThreeToFour[(b & 0x0E) >> 1],
                                         ThreeToFour[(b & 0x0E) >> 1],
                                         ThreeToFour[(b & 0x0E) >> 1],
                                         OneToFour[(b & 0x01)]     );
@@ -290,13 +290,13 @@ void ConvertIA4_16(CTexture *pTexture, const TxtrInfo &tinfo)
                 uint8_t b = pSrc[dwByteOffset ^ 0x3];
 
                 // Even
-                *pDst++ = R4G4B4A4_MAKE(ThreeToFour[(b & 0xE0) >> 5],
+                *pDst++ = PAL8toR4G4B4A4(ThreeToFour[(b & 0xE0) >> 5],
                                         ThreeToFour[(b & 0xE0) >> 5],
                                         ThreeToFour[(b & 0xE0) >> 5],
                                         OneToFour[(b & 0x10) >> 4]);
     
                 // Odd
-                *pDst++ = R4G4B4A4_MAKE(ThreeToFour[(b & 0x0E) >> 1],
+                *pDst++ = PAL8toR4G4B4A4(ThreeToFour[(b & 0x0E) >> 1],
                                         ThreeToFour[(b & 0x0E) >> 1],
                                         ThreeToFour[(b & 0x0E) >> 1],
                                         OneToFour[(b & 0x01)]     );
@@ -339,7 +339,7 @@ void ConvertIA8_16(CTexture *pTexture, const TxtrInfo &tinfo)
             {
                 uint8_t b = pSrc[dwByteOffset ^ nFiddle];
 
-                *pDst++ = R4G4B4A4_MAKE( ((b&0xf0)>>4),((b&0xf0)>>4),((b&0xf0)>>4),(b&0x0f));
+                *pDst++ = PAL8toR4G4B4A4( ((b&0xf0)>>4),((b&0xf0)>>4),((b&0xf0)>>4),(b&0x0f));
 
                 dwByteOffset++;
             }
@@ -357,8 +357,7 @@ void ConvertIA8_16(CTexture *pTexture, const TxtrInfo &tinfo)
             for (uint32_t x = 0; x < tinfo.WidthToLoad; x++)
             {
                 uint8_t b = pSrc[dwByteOffset ^ 0x3];
-
-                *pDst++ = R4G4B4A4_MAKE(((b&0xf0)>>4),((b&0xf0)>>4),((b&0xf0)>>4),(b&0x0f));
+                *pDst++   = PAL8toR4G4B4A4(((b&0xf0)>>4),((b&0xf0)>>4),((b&0xf0)>>4),(b&0x0f));
 
                 dwByteOffset++;
             }
@@ -390,13 +389,10 @@ void ConvertIA16_16(CTexture *pTexture, const TxtrInfo &tinfo)
 
         for (uint32_t x = 0; x < tinfo.WidthToLoad; x++)
         {
-            uint16_t w = *(uint16_t *)&pByteSrc[dwWordOffset^0x2];
-
-            uint8_t i = (uint8_t)(w >> 12);
-            uint8_t a = (uint8_t)(w & 0xFF);
-
-            *pDst++ = R4G4B4A4_MAKE(i, i, i, (a>>4));
-
+            uint16_t w    = *(uint16_t *)&pByteSrc[dwWordOffset^0x2];
+            uint8_t i     = (uint8_t)(w >> 12);
+            uint8_t a     = (uint8_t)(w & 0xFF);
+            *pDst++       = PAL8toR4G4B4A4(i, i, i, (a>>4));
             dwWordOffset += 2;
         }
     }
@@ -447,10 +443,10 @@ void ConvertI4_16(CTexture *pTexture, const TxtrInfo &tinfo)
                 uint8_t b = pSrc[dwByteOffset ^ nFiddle];
 
                 // Even
-                //*pDst++ = R4G4B4A4_MAKE(b>>4, b>>4, b>>4, b>>4);
-                *pDst++ = FourToSixteen[(b & 0xF0)>>4];
+                //*pDst++ = PAL8toR4G4B4A4(b>>4, b>>4, b>>4, b>>4);
+                *pDst++   = FourToSixteen[(b & 0xF0)>>4];
                 // Odd
-                //*pDst++ = R4G4B4A4_MAKE(b & 0x0f, b & 0x0f, b & 0x0f, b & 0x0f);
+                //*pDst++ = PAL8toR4G4B4A4(b & 0x0f, b & 0x0f, b & 0x0f, b & 0x0f);
                 *pDst++ = FourToSixteen[b & 0x0f];
 
                 dwByteOffset++;
@@ -471,11 +467,11 @@ void ConvertI4_16(CTexture *pTexture, const TxtrInfo &tinfo)
                 uint8_t b = pSrc[dwByteOffset ^ 0x3];
 
                 // Even
-                //*pDst++ = R4G4B4A4_MAKE(b>>4, b>>4, b>>4, b>>4);
+                //*pDst++ = PAL8toR4G4B4A4(b>>4, b>>4, b>>4, b>>4);
                 *pDst++ = FourToEight[(b & 0xF0)>>4];
 
                 // Odd
-                //*pDst++ = R4G4B4A4_MAKE(b & 0x0f, b & 0x0f, b & 0x0f, b & 0x0f);
+                //*pDst++ = PAL8toR4G4B4A4(b & 0x0f, b & 0x0f, b & 0x0f, b & 0x0f);
                 *pDst++ = FourToEight[b & 0x0f];
 
                 dwByteOffset++;
@@ -514,7 +510,7 @@ void ConvertI8_16(CTexture *pTexture, const TxtrInfo &tinfo)
             {
                 uint8_t b = *(uint8_t*)((pSrc+dwByteOffset)^nFiddle);
 
-                *pDst++ = R4G4B4A4_MAKE(b>>4,
+                *pDst++ = PAL8toR4G4B4A4(b>>4,
                                         b>>4,
                                         b>>4,
                                         b>>4);
@@ -535,7 +531,7 @@ void ConvertI8_16(CTexture *pTexture, const TxtrInfo &tinfo)
             {
                 uint8_t b = *(uint8_t*)((pSrc+dwByteOffset)^0x3);
 
-                *pDst++ = R4G4B4A4_MAKE(b>>4,
+                *pDst++ = PAL8toR4G4B4A4(b>>4,
                                         b>>4,
                                         b>>4,
                                         b>>4);
@@ -845,11 +841,11 @@ void ConvertYUV_16(CTexture *pTexture, const TxtrInfo &tinfo)
 
     if( options.bUseFullTMEM )
     {
-        Tile &tile = gRDP.tiles[tinfo.tileNo];
+        gDPTile *tile = &gDP.tiles[tinfo.tileNo];
 
         uint16_t * pSrc;
         if( tinfo.tileNo >= 0 )
-            pSrc = (uint16_t*)&g_Tmem.g_Tmem64bit[tile.dwTMem];
+            pSrc = (uint16_t*)&g_Tmem.g_Tmem64bit[tile->tmem];
         else
             pSrc = (uint16_t*)(tinfo.pPhysicalAddress);
 
@@ -857,7 +853,7 @@ void ConvertYUV_16(CTexture *pTexture, const TxtrInfo &tinfo)
         for (y = 0; y < tinfo.HeightToLoad; y++)
         {
             nFiddle = ( y&1 )? 0x4 : 0;
-            int dwWordOffset = tinfo.tileNo>=0? tile.dwLine*8*y : ((y+tinfo.TopToLoad) * tinfo.Pitch) + (tinfo.LeftToLoad * 2);
+            int dwWordOffset = tinfo.tileNo>=0? tile->line * 8 * y : ((y+tinfo.TopToLoad) * tinfo.Pitch) + (tinfo.LeftToLoad * 2);
             uint16_t * wDst = (uint16_t *)((uint8_t *)dInfo.lpSurface + y*dInfo.lPitch);
 
             for (x = 0; x < tinfo.WidthToLoad/2; x++)
@@ -951,7 +947,7 @@ uint16_t ConvertYUV16ToR4G4B4(int Y, int U, int V)
     uint32_t R = (R1 - g_convk4) * g_convk5 + R1;
     uint32_t G = (G1 - g_convk4) * g_convk5 + G1;
     uint32_t B = (B1 - g_convk4) * g_convk5 + B1;
-    return (uint16_t)R4G4B4A4_MAKE((R>>4), (G>>4), (B>>4), 0xF*A);
+    return (uint16_t)PAL8toR4G4B4A4((R>>4), (G>>4), (B>>4), 0xF*A);
 }
 
 
@@ -965,11 +961,11 @@ void Convert4b_16(CTexture *pTexture, const TxtrInfo &tinfo)
 
     uint16_t * pPal = (uint16_t *)tinfo.PalAddress;
     bool bIgnoreAlpha = (tinfo.TLutFmt==TLUT_FMT_UNKNOWN);
-    if( tinfo.Format <= TXT_FMT_CI ) bIgnoreAlpha = (tinfo.TLutFmt==TLUT_FMT_NONE);
+    if( tinfo.Format <= G_IM_FMT_CI ) bIgnoreAlpha = (tinfo.TLutFmt==TLUT_FMT_NONE);
 
-    Tile &tile = gRDP.tiles[tinfo.tileNo];
+    gDPTile *tile = &gDP.tiles[tinfo.tileNo];
 
-    uint8_t *pByteSrc = tinfo.tileNo >= 0 ? (uint8_t*)&g_Tmem.g_Tmem64bit[tile.dwTMem] : (uint8_t*)(tinfo.pPhysicalAddress);
+    uint8_t *pByteSrc = tinfo.tileNo >= 0 ? (uint8_t*)&g_Tmem.g_Tmem64bit[tile->tmem] : (uint8_t*)(tinfo.pPhysicalAddress);
 
     for (uint32_t y = 0; y < tinfo.HeightToLoad; y++)
     {
@@ -995,7 +991,7 @@ void Convert4b_16(CTexture *pTexture, const TxtrInfo &tinfo)
             nFiddle = ( y&1 )? 0x4 : 0;
         }
 
-        int idx = tinfo.tileNo>=0 ? tile.dwLine*8*y : ((y+tinfo.TopToLoad) * tinfo.Pitch) + (tinfo.LeftToLoad / 2);
+        int idx = tinfo.tileNo>=0 ? tile->line * 8 * y : ((y+tinfo.TopToLoad) * tinfo.Pitch) + (tinfo.LeftToLoad / 2);
 
         for (uint32_t x = 0; x < tinfo.WidthToLoad; x+=2, idx++)
         {
@@ -1003,7 +999,7 @@ void Convert4b_16(CTexture *pTexture, const TxtrInfo &tinfo)
             uint8_t bhi = (b&0xf0)>>4;
             uint8_t blo = (b&0x0f);
 
-            if( gRDP.otherMode.text_tlut>=2 || ( tinfo.Format != TXT_FMT_IA && tinfo.Format != TXT_FMT_I) )
+            if( gRDP.otherMode.text_tlut>=2 || ( tinfo.Format != G_IM_FMT_IA && tinfo.Format != G_IM_FMT_I) )
             {
                 if( tinfo.TLutFmt == TLUT_FMT_IA16 )
                 {
@@ -1032,12 +1028,12 @@ void Convert4b_16(CTexture *pTexture, const TxtrInfo &tinfo)
                     }
                 }
             }
-            else if( tinfo.Format == TXT_FMT_IA )
+            else if( tinfo.Format == G_IM_FMT_IA )
             {
                 pDst[0] = ConvertIA4ToR4G4B4A4(b>>4);
                 pDst[1] = ConvertIA4ToR4G4B4A4(b&0xF);
             }
-            else //if( tinfo.Format == TXT_FMT_I )
+            else //if( tinfo.Format == G_IM_FMT_I )
             {
                 pDst[0] = ConvertI4ToR4G4B4A4(b>>4);
                 pDst[1] = ConvertI4ToR4G4B4A4(b&0xF);
@@ -1065,13 +1061,13 @@ void Convert8b_16(CTexture *pTexture, const TxtrInfo &tinfo)
 
     uint16_t * pPal = (uint16_t *)tinfo.PalAddress;
     bool bIgnoreAlpha = (tinfo.TLutFmt==TLUT_FMT_UNKNOWN);
-    if( tinfo.Format <= TXT_FMT_CI ) bIgnoreAlpha = (tinfo.TLutFmt==TLUT_FMT_NONE);
+    if( tinfo.Format <= G_IM_FMT_CI ) bIgnoreAlpha = (tinfo.TLutFmt==TLUT_FMT_NONE);
 
-    Tile &tile = gRDP.tiles[tinfo.tileNo];
+    gDPTile *tile = &gDP.tiles[tinfo.tileNo];
 
     uint8_t *pByteSrc;
     if( tinfo.tileNo >= 0 )
-        pByteSrc = (uint8_t*)&g_Tmem.g_Tmem64bit[tile.dwTMem];
+        pByteSrc = (uint8_t*)&g_Tmem.g_Tmem64bit[tile->tmem];
     else
         pByteSrc = (uint8_t*)(tinfo.pPhysicalAddress);
 
@@ -1091,22 +1087,18 @@ void Convert8b_16(CTexture *pTexture, const TxtrInfo &tinfo)
                     nFiddle = 0x7;
             }
             else
-            {
                 nFiddle = 3;
-            }
         }
         else
-        {
             nFiddle = ( y&1 )? 0x4 : 0;
-        }
 
-        int idx = tinfo.tileNo>=0? tile.dwLine*8*y : ((y+tinfo.TopToLoad) * tinfo.Pitch) + tinfo.LeftToLoad;
+        int idx = tinfo.tileNo>=0? tile->line * 8 * y : ((y+tinfo.TopToLoad) * tinfo.Pitch) + tinfo.LeftToLoad;
 
         for (uint32_t x = 0; x < tinfo.WidthToLoad; x++, idx++)
         {
             uint8_t b = pByteSrc[idx^nFiddle];
 
-            if( gRDP.otherMode.text_tlut>=2 || ( tinfo.Format != TXT_FMT_IA && tinfo.Format != TXT_FMT_I) )
+            if( gRDP.otherMode.text_tlut>=2 || ( tinfo.Format != G_IM_FMT_IA && tinfo.Format != G_IM_FMT_I) )
             {
                 if( tinfo.TLutFmt == TLUT_FMT_IA16 )
                 {
@@ -1123,13 +1115,13 @@ void Convert8b_16(CTexture *pTexture, const TxtrInfo &tinfo)
                         *pDst = Convert555ToR4G4B4A4(pPal[b^1]);
                 }
             }
-            else if( tinfo.Format == TXT_FMT_IA )
+            else if( tinfo.Format == G_IM_FMT_IA )
             {
-                *pDst = R4G4B4A4_MAKE( ((b&0xf0)>>4),((b&0xf0)>>4),((b&0xf0)>>4),(b&0x0f));
+                *pDst = PAL8toR4G4B4A4( ((b&0xf0)>>4),((b&0xf0)>>4),((b&0xf0)>>4),(b&0x0f));
             }
-            else //if( tinfo.Format == TXT_FMT_I )
+            else //if( tinfo.Format == G_IM_FMT_I )
             {
-                *pDst = R4G4B4A4_MAKE(b>>4, b>>4, b>>4, b>>4);
+                *pDst = PAL8toR4G4B4A4(b>>4, b>>4, b>>4, b>>4);
             }
 
             if( bIgnoreAlpha )
@@ -1151,11 +1143,11 @@ void Convert16b_16(CTexture *pTexture, const TxtrInfo &tinfo)
     if (!pTexture->StartUpdate(&dInfo)) 
         return;
 
-    Tile &tile = gRDP.tiles[tinfo.tileNo];
+    gDPTile *tile = &gDP.tiles[tinfo.tileNo];
 
     uint16_t *pWordSrc;
     if( tinfo.tileNo >= 0 )
-        pWordSrc = (uint16_t*)&g_Tmem.g_Tmem64bit[tile.dwTMem];
+        pWordSrc = (uint16_t*)&g_Tmem.g_Tmem64bit[tile->tmem];
     else
         pWordSrc = (uint16_t*)(tinfo.pPhysicalAddress);
 
@@ -1175,34 +1167,32 @@ void Convert16b_16(CTexture *pTexture, const TxtrInfo &tinfo)
                     nFiddle = 0x3;
             }
             else
-            {
                 nFiddle = 0x1;
-            }
         }
         else
         {
             nFiddle = ( y&1 )? 0x2 : 0;
         }
 
-        int idx = tinfo.tileNo>=0? tile.dwLine*4*y : (((y+tinfo.TopToLoad) * tinfo.Pitch)>>1) + tinfo.LeftToLoad;
+        int idx = tinfo.tileNo>=0? tile->line * 4 * y : (((y+tinfo.TopToLoad) * tinfo.Pitch)>>1) + tinfo.LeftToLoad;
 
         for (uint32_t x = 0; x < tinfo.WidthToLoad; x++, idx++)
         {
             uint16_t w = pWordSrc[idx^nFiddle];
             uint16_t w2 = tinfo.tileNo>=0? ((w>>8)|(w<<8)) : w;
 
-            if( tinfo.Format == TXT_FMT_RGBA )
+            if( tinfo.Format == G_IM_FMT_RGBA )
             {
                 dwDst[x] = Convert555ToR4G4B4A4(w2);
             }
-            else if( tinfo.Format == TXT_FMT_YUV )
+            else if( tinfo.Format == G_IM_FMT_YUV )
             {
             }
-            else if( tinfo.Format >= TXT_FMT_IA )
+            else if( tinfo.Format >= G_IM_FMT_IA )
             {
                 uint8_t i = (uint8_t)(w2 >> 12);
                 uint8_t a = (uint8_t)(w2 & 0xFF);
-                dwDst[x] = R4G4B4A4_MAKE(i, i, i, (a>>4));
+                dwDst[x] = PAL8toR4G4B4A4(i, i, i, (a>>4));
             }
         }
     }

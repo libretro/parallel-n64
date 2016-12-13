@@ -18,12 +18,8 @@
 * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 */
 
-#ifdef _WIN32
-#include <windows.h>
-#else // _WIN32
-#include <stdlib.h>
-#endif // _WIN32
 #include <stdint.h>
+#include <stdlib.h>
 #include "glide.h"
 #include "glitchmain.h"
 #include "uthash.h"
@@ -70,7 +66,12 @@ static void remove_tex(unsigned int idmin, unsigned int idmax)
    unsigned int n = 0;
    texlist *current, *tmp;
 
-   t = (GLuint*)malloc(HASH_COUNT(list) * sizeof(GLuint));
+   unsigned count = HASH_COUNT(list);
+
+   if (!count)
+       return;
+
+   t = (GLuint*)malloc(count * sizeof(GLuint));
    HASH_ITER(hh, list, current, tmp)
    {
       if (current->id >= idmin && current->id < idmax)
@@ -104,7 +105,6 @@ static void add_tex(unsigned int id)
    }
 
 #ifdef LOG_TEXTUREMEM
-addtex_log:
   if (log_cb)
      log_cb(RETRO_LOG_DEBUG, "ADDTEX nbtex is now %d (%06x)\n", HASH_COUNT(list), id);
 #endif
@@ -155,26 +155,22 @@ uint32_t grTexCalcMemRequired(int32_t lodmax,
       case GR_TEXFMT_INTENSITY_8: // I8 support - H.Morii
       case GR_TEXFMT_ALPHA_INTENSITY_44:
          return width*height;
-         break;
       case GR_TEXFMT_ARGB_1555:
       case GR_TEXFMT_ARGB_4444:
       case GR_TEXFMT_ALPHA_INTENSITY_88:
       case GR_TEXFMT_RGB_565:
          return (width*height)<<1;
-         break;
       case GR_TEXFMT_ARGB_8888:
          return (width*height)<<2;
-         break;
    }
+
    return 0;
 }
 
 static int grTexFormat2GLPackedFmt(GrTexInfo *info, int fmt, int * gltexfmt, int * glpixfmt, int * glpackfmt)
 {
-   unsigned size_tex;
-   int factor;
-   factor = -1;
-   size_tex = width * height;
+   int factor        = -1;
+   unsigned size_tex = width * height;
 
    if (fmt == GR_TEXFMT_ALPHA_INTENSITY_44)
    {
@@ -413,33 +409,21 @@ grtexsource:
 }
 
 
-void 
-grTexDetailControl(
+void grTexDetailControl(
       int32_t tmu,
       int lod_bias,
       uint8_t detail_scale,
       float detail_max
       )
 {
-#if 0
-   LOG("grTexDetailControl(%d,%d,%d,%d)\r\n", tmu, lod_bias, detail_scale, detail_max);
-#endif
    if (lod_bias != 31 && detail_scale != 7)
    {
       if (!lod_bias && !detail_scale && !detail_max)
          return;
-#if 0
-      else
-         DISPLAY_WARNING("grTexDetailControl : %d, %d, %f", lod_bias, detail_scale, detail_max);
-#endif
    }
    lambda = detail_max;
    if(lambda > 1.0f)
       lambda = 1.0f - (255.0f - lambda);
-#if 0
-   if(lambda > 1.0f)
-      DISPLAY_WARNING("lambda:%f", lambda);
-#endif
 
    set_lambda();
 }

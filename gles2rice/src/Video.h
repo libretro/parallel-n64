@@ -159,9 +159,7 @@ extern WindowSettingStruct windowSetting;
 
 extern uint32_t   g_dwRamSize;
 
-#ifdef __LIBRETRO__ // Prefix symbol
 #define renderCallback ricerenderCallback
-#endif
 
 /* global functions provided by Video.cpp */
 extern char generalText[];

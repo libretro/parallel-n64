@@ -24,6 +24,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "Render.h"
 #include "Timing.h"
 
+#include "../../Graphics/RSP/RSP_state.h"
+
 uObjTxtr *gObjTxtr = NULL;
 uObjTxtrTLUT *gObjTlut = NULL;
 uint32_t gObjTlutAddr = 0;
@@ -68,22 +70,6 @@ void RSP_S2DEX_OBJ_RECTANGLE(Gfx *gfx)
         PrepareTextures();
     }
     CRender::g_pRender->DrawSprite(objtx, false);
-
-#ifdef DEBUGGER
-    if( (pauseAtNext && (eventToPause == NEXT_OBJ_TXT_CMD||eventToPause == NEXT_FLUSH_TRI)) || logTextures )
-    {
-        if( debuggerPauseCount > 0 ) 
-            debuggerPauseCount--; 
-        if( debuggerPauseCount == 0 )
-        {
-            eventToPause = false;
-            debuggerPause = true;
-            TRACE3("Paused at RSP_S2DEX_OBJ_RECTANGLE\nptr=%08X, img=%08X, TMEM=%08X",
-                dwAddr,objtx.txtr.block.image, ptr->imageAdrs);
-            CGraphicsContext::g_pGraphicsContext->UpdateFrame(false);
-        }
-    }
-#endif
 }
 
 // Yoshi's Story uses this - 0x04
@@ -101,16 +87,6 @@ void RSP_S2DEX_OBJ_SPRITE(Gfx *gfx)
     uObjTxSprite drawinfo;
     memcpy( &(drawinfo.sprite), info, sizeof(uObjSprite));
     CRender::g_pRender->DrawSpriteR(drawinfo, false, dwTile, 0, 0, drawinfo.sprite.imageW/32, drawinfo.sprite.imageH/32);
-
-#ifdef DEBUGGER
-    if( (pauseAtNext && (eventToPause == NEXT_OBJ_TXT_CMD||eventToPause == NEXT_FLUSH_TRI)) || logTextures )
-    {   
-        eventToPause = false;
-        debuggerPause = true;
-        TRACE0("Paused at RSP_S2DEX_OBJ_SPRITE");
-        CGraphicsContext::g_pGraphicsContext->UpdateFrame(false);
-    }
-#endif
 }
 
 // Yoshi's Story uses this - 0xb0
@@ -122,8 +98,6 @@ void RSP_S2DEX_SELECT_DL(Gfx *gfx)
         RSP_RDP_NOIMPL("RDP: RSP_S2DEX_SELECT_DL (0x%08x 0x%08x)", (gfx->words.w0), (gfx->words.w1));
         //bWarned = TRUE;
     }
-
-    DEBUGGER_PAUSE_AND_DUMP_COUNT_N(NEXT_OBJ_TXT_CMD, {DebuggerAppendMsg("Paused at RSP_S2DEX_SELECT_DL");});
 }
 
 void RSP_S2DEX_OBJ_RENDERMODE(Gfx *gfx)
@@ -151,80 +125,6 @@ void RSP_S2DEX_OBJ_RENDERMODE_2(Gfx *gfx)
 
     RSP_S2DEX_OBJ_RENDERMODE(gfx);
 }
-
-#ifdef DEBUGGER
-void DumpBlockParameters(uObjTxtrBlock &ptr)
-{
-   uint8_t *rdram_u8 = (uint8_t*)gfx_info.RDRAM;
-    DebuggerAppendMsg("uObjTxtrBlock Header in RDRAM: 0x%08X", (uint32_t) ((char *) &ptr - (int8_t*)rdram_u8));
-    DebuggerAppendMsg("ImgAddr=0x%08X(0x%08X), tsize=0x%X, \nTMEM=0x%X, sid=%d, tline=%d, flag=0x%X, mask=0x%X\n\n",
-        RSPSegmentAddr(ptr.image), ptr.image, ptr.tsize, ptr.tmem, ptr.sid/4, ptr.tline, ptr.flag, ptr.mask);
-}
-
-void DumpSpriteParameters(uObjSprite &ptr)
-{
-    if( logTextures || (pauseAtNext && eventToPause == NEXT_OBJ_TXT_CMD) )
-    {
-       uint8_t *rdram_u8 = (uint8_t*)gfx_info.RDRAM;
-        DebuggerAppendMsg("uObjSprite Header in RDRAM: 0x%08X", (uint32_t) ((char *) &ptr - (int8_t*)rdram_u8));
-        DebuggerAppendMsg("X=%d, Y=%d, W=%d, H=%d, scaleW=%f, scaleH=%f\n"
-            "TAddr=0x%X, Stride=%d, Flag=0x%X, Pal=%d, Fmt=%s-%db\n\n", 
-            ptr.objX/4, ptr.objY/4, ptr.imageW/32, ptr.imageH/32, ptr.scaleW/1024.0f, ptr.scaleH/1024.0f,
-            ptr.imageAdrs, ptr.imageStride, ptr.imageFlags, ptr.imagePal, pszImgFormat[ptr.imageFmt], pnImgSize[ptr.imageSiz]);
-    }
-}
-
-void DumpTileParameters(uObjTxtrTile &tile)
-{
-}
-
-void DumpTlutParameters(uObjTxtrTLUT &tlut)
-{
-    DebuggerAppendMsg("ImgAddr=0x%08X(0x%08X), pnum=%d, phead=%d, sid=%d, flag=0x%X, mask=0x%X\n\n",
-        RSPSegmentAddr(tlut.image), tlut.image, tlut.pnum+1, tlut.phead, tlut.sid/4, tlut.flag, tlut.mask);
-}
-
-
-void DumpTxtrInfo(uObjTxtr *ptr)
-{
-    if( logTextures || (pauseAtNext && eventToPause == NEXT_OBJ_TXT_CMD) )
-    {
-       uint8_t *rdram_u8 = (uint8_t*)gfx_info.RDRAM;
-        DebuggerAppendMsg("uObjTxtr Header in RDRAM: 0x%08X", (uint32_t) ((char *) ptr - (char *) rdram_u8));
-        switch( ptr->block.type )
-        {
-        case S2DEX_OBJLT_TXTRBLOCK:
-            TRACE0("Loading ObjTxtr: type=BLOCK");
-            DumpBlockParameters(ptr->block);
-            break;
-        case S2DEX_OBJLT_TXTRTILE:
-            TRACE0("Loading ObjTxtr: type=TILE");
-            DumpTileParameters(ptr->tile);
-            break;
-        case S2DEX_OBJLT_TLUT:
-            TRACE0("Loading ObjTxtr: type=TLUT");
-            DumpTlutParameters(ptr->tlut);
-            break;
-        }
-    }
-}
-
-void DumpObjMtx(bool fullmtx = true)
-{
-    if( logTextures || (pauseAtNext && eventToPause == NEXT_OBJ_TXT_CMD) )
-    {
-        if( fullmtx )
-        DebuggerAppendMsg("A=%X, B=%X, C=%X, D=%X, X=%X, Y=%X, BaseX=%X, BaseY=%X",
-            gObjMtx->A, gObjMtx->B, gObjMtx->C, gObjMtx->D, gObjMtx->X, gObjMtx->Y, gObjMtx->BaseScaleX, gObjMtx->BaseScaleY);
-        else
-            DebuggerAppendMsg("SubMatrix: X=%X, Y=%X, BaseX=%X, BaseY=%X", gSubObjMtx->X, gSubObjMtx->Y, gSubObjMtx->BaseScaleX, gSubObjMtx->BaseScaleY);
-        
-        DebuggerAppendMsg("A=%f, B=%f, C=%f, D=%f, X=%f, Y=%f, BaseX=%f, BaseY=%f",
-            gObjMtxReal.A, gObjMtxReal.B, gObjMtxReal.C, gObjMtxReal.D, gObjMtxReal.X, gObjMtxReal.Y, gObjMtxReal.BaseScaleX, gObjMtxReal.BaseScaleY);
-    }
-}
-
-#endif
 
 void ObjMtxTranslate(float &x, float &y)
 {
@@ -266,13 +166,6 @@ void RSP_S2DEX_SPObjLoadTxtr(Gfx *gfx)
         // Loading ObjSprite
         g_TxtLoadBy = CMD_LOAD_OBJ_TXTR;
     }
-
-    DEBUGGER_PAUSE_AT_COND_AND_DUMP_COUNT_N((eventToPause == NEXT_OBJ_TXT_CMD||eventToPause == NEXT_FLUSH_TRI),
-        {
-            DumpTxtrInfo(gObjTxtr);
-            TRACE0("Paused at RSP_S2DEX_SPObjLoadTxtr");
-        }
-    );
 }
 
 // Yoshi's Story uses this - 0xc2
@@ -285,14 +178,6 @@ void RSP_S2DEX_SPObjLoadTxSprite(Gfx *gfx)
     //Now draw the sprite
     CRender::g_pRender->LoadObjSprite(*ptr, false);
     CRender::g_pRender->DrawSpriteR(*ptr, true, 0, 0, 0, 0, 0);
-
-    DEBUGGER_PAUSE_AT_COND_AND_DUMP_COUNT_N((eventToPause == NEXT_OBJ_TXT_CMD||eventToPause == NEXT_FLUSH_TRI),
-        {
-            DumpTxtrInfo(gObjTxtr);
-            DumpSpriteParameters(ptr->sprite);
-            TRACE0("Paused at RSP_S2DEX_SPObjLoadTxSprite");
-        }
-    );
 }
 
 
@@ -306,14 +191,6 @@ void RSP_S2DEX_SPObjLoadTxRect(Gfx *gfx)
     //Now draw the sprite
     CRender::g_pRender->LoadObjSprite(*ptr, false);
     CRender::g_pRender->DrawSprite(*ptr, false);
-
-    DEBUGGER_PAUSE_AT_COND_AND_DUMP_COUNT_N((eventToPause == NEXT_OBJ_TXT_CMD||eventToPause == NEXT_FLUSH_TRI),
-        {
-            DumpTxtrInfo(gObjTxtr);
-            DumpSpriteParameters(ptr->sprite);
-            TRACE0("Paused at RSP_S2DEX_SPObjLoadTxRect");
-        }
-    );
 }
 
 // Yoshi's Story uses this - 0xc4
@@ -326,14 +203,6 @@ void RSP_S2DEX_SPObjLoadTxRectR(Gfx *gfx)
     //Now draw the sprite
     CRender::g_pRender->LoadObjSprite(*ptr, false);
     CRender::g_pRender->DrawSprite(*ptr, true);
-
-    DEBUGGER_PAUSE_AT_COND_AND_DUMP_COUNT_N((eventToPause == NEXT_OBJ_TXT_CMD||eventToPause == NEXT_FLUSH_TRI),
-        {
-            DumpTxtrInfo(gObjTxtr);
-            DumpSpriteParameters(ptr->sprite);
-            TRACE0("Paused at RSP_S2DEX_SPObjLoadTxRect");
-        }
-    );
 }
 
 void DLParser_TexRect(Gfx *gfx);
@@ -345,17 +214,15 @@ void RSP_S2DEX_RDPHALF_0(Gfx *gfx)
     //0x001d3c90: b4000000 00000000 RSP_RDPHALF_1
     //0x001d3c98: b3000000 04000400 RSP_RDPHALF_2
 
-   uint8_t *rdram_u8 = (uint8_t*)gfx_info.RDRAM;
-    uint32_t dwPC = gDlistStack[gDlistStackPointer].pc;       // This points to the next instruction
+   uint8_t *rdram_u8     = (uint8_t*)gfx_info.RDRAM;
+    uint32_t dwPC        = __RSP.PC[__RSP.PCi];       // This points to the next instruction
     uint32_t dwNextUcode = *(uint32_t *)(rdram_u8 + dwPC);
 
     if( (dwNextUcode>>24) != S2DEX_SELECT_DL )
     {
-        // Pokemom Puzzle League
+        // Pokemon Puzzle League
         if( (dwNextUcode>>24) == 0xB4 )
-        {
             DLParser_TexRect(gfx);
-        }
         else
         {
             RSP_RDP_NOIMPL("RDP: RSP_S2DEX_RDPHALF_0 (0x%08x 0x%08x)", (gfx->words.w0), (gfx->words.w1));
@@ -364,7 +231,6 @@ void RSP_S2DEX_RDPHALF_0(Gfx *gfx)
     else
     {
         RSP_RDP_NOIMPL("RDP: RSP_S2DEX_RDPHALF_0 (0x%08x 0x%08x)", (gfx->words.w0), (gfx->words.w1));
-        DEBUGGER_PAUSE_COUNT_N(NEXT_OBJ_TXT_CMD);
     }
 }
 
@@ -392,10 +258,6 @@ void RSP_S2DEX_OBJ_MOVEMEM(Gfx *gfx)
         gObjMtxReal.Y = float(gObjMtx->Y>>2);
         gObjMtxReal.BaseScaleX = gObjMtx->BaseScaleX/1024.0f;
         gObjMtxReal.BaseScaleY = gObjMtx->BaseScaleY/1024.0f;
-
-#ifdef DEBUGGER
-        DumpObjMtx();
-#endif
     }
     else if( dwLength == 2 && dwCommand == 7 )
     {
@@ -405,10 +267,6 @@ void RSP_S2DEX_OBJ_MOVEMEM(Gfx *gfx)
         gObjMtxReal.Y = float(gSubObjMtx->Y>>2);
         gObjMtxReal.BaseScaleX = gSubObjMtx->BaseScaleX/1024.0f;
         gObjMtxReal.BaseScaleY = gSubObjMtx->BaseScaleY/1024.0f;
-
-#ifdef DEBUGGER
-        DumpObjMtx(false);
-#endif
     }
 
     g_MtxReal._11 = gObjMtxReal.A;
@@ -430,8 +288,6 @@ void RSP_S2DEX_OBJ_MOVEMEM(Gfx *gfx)
     g_MtxReal._42 = gObjMtxReal.Y;
     g_MtxReal._43 = 0;
     g_MtxReal._44 = 1.0;
-
-    DEBUGGER_PAUSE_COUNT_N(NEXT_OBJ_TXT_CMD);
 }
 
 // Yoshi's Story uses this - 0x01
@@ -447,13 +303,6 @@ void RSP_S2DEX_BG_1CYC(Gfx *gfx)
     uObjScaleBg *sbgPtr = (uObjScaleBg *)(rdram_u8 + dwAddr);
     CRender::g_pRender->LoadObjBG1CYC(*sbgPtr);
     CRender::g_pRender->DrawObjBG1CYC(*sbgPtr, true);
-
-    DEBUGGER_PAUSE_AT_COND_AND_DUMP_COUNT_N((eventToPause == NEXT_OBJ_TXT_CMD||eventToPause == NEXT_FLUSH_TRI||eventToPause == NEXT_OBJ_BG),
-        {
-            DebuggerAppendMsg("S2DEX BG 1CYC: %08X-%08X\n", (gfx->words.w0), (gfx->words.w1) );     
-            TRACE0("Paused at RSP_S2DEX_BG_1CYC");
-        }
-    );
 }
 
 void RSP_S2DEX_BG_1CYC_2(Gfx *gfx)
@@ -491,13 +340,5 @@ void RSP_S2DEX_OBJ_RECTANGLE_R(Gfx *gfx)
     }
     //CRender::g_pRender->DrawSprite(*ptr, true);
     CRender::g_pRender->DrawSprite(objtx, true);
-
-    DEBUGGER_PAUSE_AT_COND_AND_DUMP_COUNT_N((eventToPause == NEXT_OBJ_TXT_CMD||eventToPause == NEXT_FLUSH_TRI),
-        {
-            DumpTxtrInfo(gObjTxtr);
-            DumpSpriteParameters(*ptr);
-            TRACE0("Paused at RSP_S2DEX_OBJ_RECTANGLE_R");
-        }
-    );
 }
 

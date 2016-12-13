@@ -37,11 +37,11 @@ void genadd_d(void)
 #else
    gencheck_cop1_unusable();
 #ifdef __x86_64__
-   mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_double[dst->f.cf.fs]));
+   mov_xreg64_m64rel(RAX, (uint64_t *)(&reg_cop1_double[dst->f.cf.fs]));
    fld_preg64_qword(RAX);
-   mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_double[dst->f.cf.ft]));
+   mov_xreg64_m64rel(RAX, (uint64_t *)(&reg_cop1_double[dst->f.cf.ft]));
    fadd_preg64_qword(RAX);
-   mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_double[dst->f.cf.fd]));
+   mov_xreg64_m64rel(RAX, (uint64_t *)(&reg_cop1_double[dst->f.cf.fd]));
    fstp_preg64_qword(RAX);
 #else
    mov_eax_memoffs32((unsigned int *)(&reg_cop1_double[dst->f.cf.fs]));
@@ -61,11 +61,11 @@ void gensub_d(void)
 #else
    gencheck_cop1_unusable();
 #ifdef __x86_64__
-   mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_double[dst->f.cf.fs]));
+   mov_xreg64_m64rel(RAX, (uint64_t *)(&reg_cop1_double[dst->f.cf.fs]));
    fld_preg64_qword(RAX);
-   mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_double[dst->f.cf.ft]));
+   mov_xreg64_m64rel(RAX, (uint64_t *)(&reg_cop1_double[dst->f.cf.ft]));
    fsub_preg64_qword(RAX);
-   mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_double[dst->f.cf.fd]));
+   mov_xreg64_m64rel(RAX, (uint64_t *)(&reg_cop1_double[dst->f.cf.fd]));
    fstp_preg64_qword(RAX);
 #else
    mov_eax_memoffs32((unsigned int *)(&reg_cop1_double[dst->f.cf.fs]));
@@ -85,11 +85,11 @@ void genmul_d(void)
 #else
    gencheck_cop1_unusable();
 #ifdef __x86_64__
-   mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_double[dst->f.cf.fs]));
+   mov_xreg64_m64rel(RAX, (uint64_t *)(&reg_cop1_double[dst->f.cf.fs]));
    fld_preg64_qword(RAX);
-   mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_double[dst->f.cf.ft]));
+   mov_xreg64_m64rel(RAX, (uint64_t *)(&reg_cop1_double[dst->f.cf.ft]));
    fmul_preg64_qword(RAX);
-   mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_double[dst->f.cf.fd]));
+   mov_xreg64_m64rel(RAX, (uint64_t *)(&reg_cop1_double[dst->f.cf.fd]));
    fstp_preg64_qword(RAX);
 #else
    mov_eax_memoffs32((unsigned int *)(&reg_cop1_double[dst->f.cf.fs]));
@@ -109,11 +109,11 @@ void gendiv_d(void)
 #else
    gencheck_cop1_unusable();
 #ifdef __x86_64__
-   mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_double[dst->f.cf.fs]));
+   mov_xreg64_m64rel(RAX, (uint64_t *)(&reg_cop1_double[dst->f.cf.fs]));
    fld_preg64_qword(RAX);
-   mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_double[dst->f.cf.ft]));
+   mov_xreg64_m64rel(RAX, (uint64_t *)(&reg_cop1_double[dst->f.cf.ft]));
    fdiv_preg64_qword(RAX);
-   mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_double[dst->f.cf.fd]));
+   mov_xreg64_m64rel(RAX, (uint64_t *)(&reg_cop1_double[dst->f.cf.fd]));
    fstp_preg64_qword(RAX);
 #else
    mov_eax_memoffs32((unsigned int *)(&reg_cop1_double[dst->f.cf.fs]));
@@ -133,10 +133,10 @@ void gensqrt_d(void)
 #else
    gencheck_cop1_unusable();
 #ifdef __x86_64__
-   mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_double[dst->f.cf.fs]));
+   mov_xreg64_m64rel(RAX, (uint64_t *)(&reg_cop1_double[dst->f.cf.fs]));
    fld_preg64_qword(RAX);
    fsqrt();
-   mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_double[dst->f.cf.fd]));
+   mov_xreg64_m64rel(RAX, (uint64_t *)(&reg_cop1_double[dst->f.cf.fd]));
    fstp_preg64_qword(RAX);
 #else
    mov_eax_memoffs32((unsigned int *)(&reg_cop1_double[dst->f.cf.fs]));
@@ -155,10 +155,10 @@ void genabs_d(void)
 #else
    gencheck_cop1_unusable();
 #ifdef __x86_64__
-   mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_double[dst->f.cf.fs]));
+   mov_xreg64_m64rel(RAX, (uint64_t *)(&reg_cop1_double[dst->f.cf.fs]));
    fld_preg64_qword(RAX);
    fabs_();
-   mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_double[dst->f.cf.fd]));
+   mov_xreg64_m64rel(RAX, (uint64_t *)(&reg_cop1_double[dst->f.cf.fd]));
    fstp_preg64_qword(RAX);
 #else
    mov_eax_memoffs32((unsigned int *)(&reg_cop1_double[dst->f.cf.fs]));
@@ -177,10 +177,10 @@ void genmov_d(void)
 #else
    gencheck_cop1_unusable();
 #ifdef __x86_64__
-   mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_double[dst->f.cf.fs]));
+   mov_xreg64_m64rel(RAX, (uint64_t *)(&reg_cop1_double[dst->f.cf.fs]));
    mov_reg32_preg64(EBX, RAX);
    mov_reg32_preg64pimm32(ECX, RAX, 4);
-   mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_double[dst->f.cf.fd]));
+   mov_xreg64_m64rel(RAX, (uint64_t *)(&reg_cop1_double[dst->f.cf.fd]));
    mov_preg64_reg32(RAX, EBX);
    mov_preg64pimm32_reg32(RAX, 4, ECX);
 #else
@@ -201,10 +201,10 @@ void genneg_d(void)
 #else
    gencheck_cop1_unusable();
 #ifdef __x86_64__
-   mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_double[dst->f.cf.fs]));
+   mov_xreg64_m64rel(RAX, (uint64_t *)(&reg_cop1_double[dst->f.cf.fs]));
    fld_preg64_qword(RAX);
    fchs();
-   mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_double[dst->f.cf.fd]));
+   mov_xreg64_m64rel(RAX, (uint64_t *)(&reg_cop1_double[dst->f.cf.fd]));
    fstp_preg64_qword(RAX);
 #else
    mov_eax_memoffs32((unsigned int *)(&reg_cop1_double[dst->f.cf.fs]));
@@ -223,19 +223,19 @@ void genround_l_d(void)
 #else
    gencheck_cop1_unusable();
 #ifdef __x86_64__
-   fldcw_m16rel((unsigned short*)&round_mode);
-   mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_double[dst->f.cf.fs]));
+   fldcw_m16rel((uint16_t*)&round_mode);
+   mov_xreg64_m64rel(RAX, (uint64_t *)(&reg_cop1_double[dst->f.cf.fs]));
    fld_preg64_qword(RAX);
-   mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_double[dst->f.cf.fd]));
+   mov_xreg64_m64rel(RAX, (uint64_t *)(&reg_cop1_double[dst->f.cf.fd]));
    fistp_preg64_qword(RAX);
-   fldcw_m16rel((unsigned short*)&rounding_mode);
+   fldcw_m16rel((uint16_t*)&rounding_mode);
 #else
-   fldcw_m16((unsigned short*)&round_mode);
+   fldcw_m16((uint16_t*)&round_mode);
    mov_eax_memoffs32((unsigned int*)(&reg_cop1_double[dst->f.cf.fs]));
    fld_preg32_qword(EAX);
    mov_eax_memoffs32((unsigned int*)(&reg_cop1_double[dst->f.cf.fd]));
    fistp_preg32_qword(EAX);
-   fldcw_m16((unsigned short*)&rounding_mode);
+   fldcw_m16((uint16_t*)&rounding_mode);
 #endif
 #endif
 }
@@ -247,19 +247,19 @@ void gentrunc_l_d(void)
 #else
    gencheck_cop1_unusable();
 #ifdef __x86_64__
-   fldcw_m16rel((unsigned short*)&trunc_mode);
-   mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_double[dst->f.cf.fs]));
+   fldcw_m16rel((uint16_t*)&trunc_mode);
+   mov_xreg64_m64rel(RAX, (uint64_t *)(&reg_cop1_double[dst->f.cf.fs]));
    fld_preg64_qword(RAX);
-   mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_double[dst->f.cf.fd]));
+   mov_xreg64_m64rel(RAX, (uint64_t *)(&reg_cop1_double[dst->f.cf.fd]));
    fistp_preg64_qword(RAX);
-   fldcw_m16rel((unsigned short*)&rounding_mode);
+   fldcw_m16rel((uint16_t*)&rounding_mode);
 #else
-   fldcw_m16((unsigned short*)&trunc_mode);
+   fldcw_m16((uint16_t*)&trunc_mode);
    mov_eax_memoffs32((unsigned int*)(&reg_cop1_double[dst->f.cf.fs]));
    fld_preg32_qword(EAX);
    mov_eax_memoffs32((unsigned int*)(&reg_cop1_double[dst->f.cf.fd]));
    fistp_preg32_qword(EAX);
-   fldcw_m16((unsigned short*)&rounding_mode);
+   fldcw_m16((uint16_t*)&rounding_mode);
 #endif
 #endif
 }
@@ -271,19 +271,19 @@ void genceil_l_d(void)
 #else
    gencheck_cop1_unusable();
 #ifdef __x86_64__
-   fldcw_m16rel((unsigned short*)&ceil_mode);
-   mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_double[dst->f.cf.fs]));
+   fldcw_m16rel((uint16_t*)&ceil_mode);
+   mov_xreg64_m64rel(RAX, (uint64_t *)(&reg_cop1_double[dst->f.cf.fs]));
    fld_preg64_qword(RAX);
-   mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_double[dst->f.cf.fd]));
+   mov_xreg64_m64rel(RAX, (uint64_t *)(&reg_cop1_double[dst->f.cf.fd]));
    fistp_preg64_qword(RAX);
-   fldcw_m16rel((unsigned short*)&rounding_mode);
+   fldcw_m16rel((uint16_t*)&rounding_mode);
 #else
-   fldcw_m16((unsigned short*)&ceil_mode);
+   fldcw_m16((uint16_t*)&ceil_mode);
    mov_eax_memoffs32((unsigned int*)(&reg_cop1_double[dst->f.cf.fs]));
    fld_preg32_qword(EAX);
    mov_eax_memoffs32((unsigned int*)(&reg_cop1_double[dst->f.cf.fd]));
    fistp_preg32_qword(EAX);
-   fldcw_m16((unsigned short*)&rounding_mode);
+   fldcw_m16((uint16_t*)&rounding_mode);
 #endif
 #endif
 }
@@ -295,19 +295,19 @@ void genfloor_l_d(void)
 #else
    gencheck_cop1_unusable();
 #ifdef __x86_64__
-   fldcw_m16rel((unsigned short*)&floor_mode);
-   mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_double[dst->f.cf.fs]));
+   fldcw_m16rel((uint16_t*)&floor_mode);
+   mov_xreg64_m64rel(RAX, (uint64_t *)(&reg_cop1_double[dst->f.cf.fs]));
    fld_preg64_qword(RAX);
-   mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_double[dst->f.cf.fd]));
+   mov_xreg64_m64rel(RAX, (uint64_t *)(&reg_cop1_double[dst->f.cf.fd]));
    fistp_preg64_qword(RAX);
-   fldcw_m16rel((unsigned short*)&rounding_mode);
+   fldcw_m16rel((uint16_t*)&rounding_mode);
 #else
-   fldcw_m16((unsigned short*)&floor_mode);
+   fldcw_m16((uint16_t*)&floor_mode);
    mov_eax_memoffs32((unsigned int*)(&reg_cop1_double[dst->f.cf.fs]));
    fld_preg32_qword(EAX);
    mov_eax_memoffs32((unsigned int*)(&reg_cop1_double[dst->f.cf.fd]));
    fistp_preg32_qword(EAX);
-   fldcw_m16((unsigned short*)&rounding_mode);
+   fldcw_m16((uint16_t*)&rounding_mode);
 #endif
 #endif
 }
@@ -319,19 +319,19 @@ void genround_w_d(void)
 #else
    gencheck_cop1_unusable();
 #ifdef __x86_64__
-   fldcw_m16rel((unsigned short*)&round_mode);
-   mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_double[dst->f.cf.fs]));
+   fldcw_m16rel((uint16_t*)&round_mode);
+   mov_xreg64_m64rel(RAX, (uint64_t *)(&reg_cop1_double[dst->f.cf.fs]));
    fld_preg64_qword(RAX);
-   mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_simple[dst->f.cf.fd]));
+   mov_xreg64_m64rel(RAX, (uint64_t *)(&reg_cop1_simple[dst->f.cf.fd]));
    fistp_preg64_dword(RAX);
-   fldcw_m16rel((unsigned short*)&rounding_mode);
+   fldcw_m16rel((uint16_t*)&rounding_mode);
 #else
-   fldcw_m16((unsigned short*)&round_mode);
+   fldcw_m16((uint16_t*)&round_mode);
    mov_eax_memoffs32((unsigned int*)(&reg_cop1_double[dst->f.cf.fs]));
    fld_preg32_qword(EAX);
    mov_eax_memoffs32((unsigned int*)(&reg_cop1_simple[dst->f.cf.fd]));
    fistp_preg32_dword(EAX);
-   fldcw_m16((unsigned short*)&rounding_mode);
+   fldcw_m16((uint16_t*)&rounding_mode);
 #endif
 #endif
 }
@@ -343,19 +343,19 @@ void gentrunc_w_d(void)
 #else
    gencheck_cop1_unusable();
 #ifdef __x86_64__
-   fldcw_m16rel((unsigned short*)&trunc_mode);
-   mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_double[dst->f.cf.fs]));
+   fldcw_m16rel((uint16_t*)&trunc_mode);
+   mov_xreg64_m64rel(RAX, (uint64_t *)(&reg_cop1_double[dst->f.cf.fs]));
    fld_preg64_qword(RAX);
-   mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_simple[dst->f.cf.fd]));
+   mov_xreg64_m64rel(RAX, (uint64_t *)(&reg_cop1_simple[dst->f.cf.fd]));
    fistp_preg64_dword(RAX);
-   fldcw_m16rel((unsigned short*)&rounding_mode);
+   fldcw_m16rel((uint16_t*)&rounding_mode);
 #else
-   fldcw_m16((unsigned short*)&trunc_mode);
+   fldcw_m16((uint16_t*)&trunc_mode);
    mov_eax_memoffs32((unsigned int*)(&reg_cop1_double[dst->f.cf.fs]));
    fld_preg32_qword(EAX);
    mov_eax_memoffs32((unsigned int*)(&reg_cop1_simple[dst->f.cf.fd]));
    fistp_preg32_dword(EAX);
-   fldcw_m16((unsigned short*)&rounding_mode);
+   fldcw_m16((uint16_t*)&rounding_mode);
 #endif
 #endif
 }
@@ -367,19 +367,19 @@ void genceil_w_d(void)
 #else
    gencheck_cop1_unusable();
 #ifdef __x86_64__
-   fldcw_m16rel((unsigned short*)&ceil_mode);
-   mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_double[dst->f.cf.fs]));
+   fldcw_m16rel((uint16_t*)&ceil_mode);
+   mov_xreg64_m64rel(RAX, (uint64_t *)(&reg_cop1_double[dst->f.cf.fs]));
    fld_preg64_qword(RAX);
-   mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_simple[dst->f.cf.fd]));
+   mov_xreg64_m64rel(RAX, (uint64_t *)(&reg_cop1_simple[dst->f.cf.fd]));
    fistp_preg64_dword(RAX);
-   fldcw_m16rel((unsigned short*)&rounding_mode);
+   fldcw_m16rel((uint16_t*)&rounding_mode);
 #else
-   fldcw_m16((unsigned short*)&ceil_mode);
+   fldcw_m16((uint16_t*)&ceil_mode);
    mov_eax_memoffs32((unsigned int*)(&reg_cop1_double[dst->f.cf.fs]));
    fld_preg32_qword(EAX);
    mov_eax_memoffs32((unsigned int*)(&reg_cop1_simple[dst->f.cf.fd]));
    fistp_preg32_dword(EAX);
-   fldcw_m16((unsigned short*)&rounding_mode);
+   fldcw_m16((uint16_t*)&rounding_mode);
 #endif
 #endif
 }
@@ -391,19 +391,19 @@ void genfloor_w_d(void)
 #else
    gencheck_cop1_unusable();
 #ifdef __x86_64__
-   fldcw_m16rel((unsigned short*)&floor_mode);
-   mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_double[dst->f.cf.fs]));
+   fldcw_m16rel((uint16_t*)&floor_mode);
+   mov_xreg64_m64rel(RAX, (uint64_t *)(&reg_cop1_double[dst->f.cf.fs]));
    fld_preg64_qword(RAX);
-   mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_simple[dst->f.cf.fd]));
+   mov_xreg64_m64rel(RAX, (uint64_t *)(&reg_cop1_simple[dst->f.cf.fd]));
    fistp_preg64_dword(RAX);
-   fldcw_m16rel((unsigned short*)&rounding_mode);
+   fldcw_m16rel((uint16_t*)&rounding_mode);
 #else
-   fldcw_m16((unsigned short*)&floor_mode);
+   fldcw_m16((uint16_t*)&floor_mode);
    mov_eax_memoffs32((unsigned int*)(&reg_cop1_double[dst->f.cf.fs]));
    fld_preg32_qword(EAX);
    mov_eax_memoffs32((unsigned int*)(&reg_cop1_simple[dst->f.cf.fd]));
    fistp_preg32_dword(EAX);
-   fldcw_m16((unsigned short*)&rounding_mode);
+   fldcw_m16((uint16_t*)&rounding_mode);
 #endif
 #endif
 }
@@ -415,9 +415,9 @@ void gencvt_s_d(void)
 #else
    gencheck_cop1_unusable();
 #ifdef __x86_64__
-   mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_double[dst->f.cf.fs]));
+   mov_xreg64_m64rel(RAX, (uint64_t *)(&reg_cop1_double[dst->f.cf.fs]));
    fld_preg64_qword(RAX);
-   mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_simple[dst->f.cf.fd]));
+   mov_xreg64_m64rel(RAX, (uint64_t *)(&reg_cop1_simple[dst->f.cf.fd]));
    fstp_preg64_dword(RAX);
 #else
    mov_eax_memoffs32((unsigned int*)(&reg_cop1_double[dst->f.cf.fs]));
@@ -435,9 +435,9 @@ void gencvt_w_d(void)
 #else
    gencheck_cop1_unusable();
 #ifdef __x86_64__
-   mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_double[dst->f.cf.fs]));
+   mov_xreg64_m64rel(RAX, (uint64_t *)(&reg_cop1_double[dst->f.cf.fs]));
    fld_preg64_qword(RAX);
-   mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_simple[dst->f.cf.fd]));
+   mov_xreg64_m64rel(RAX, (uint64_t *)(&reg_cop1_simple[dst->f.cf.fd]));
    fistp_preg64_dword(RAX);
 #else
    mov_eax_memoffs32((unsigned int*)(&reg_cop1_double[dst->f.cf.fs]));
@@ -455,9 +455,9 @@ void gencvt_l_d(void)
 #else
    gencheck_cop1_unusable();
 #ifdef __x86_64__
-   mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_double[dst->f.cf.fs]));
+   mov_xreg64_m64rel(RAX, (uint64_t *)(&reg_cop1_double[dst->f.cf.fs]));
    fld_preg64_qword(RAX);
-   mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_double[dst->f.cf.fd]));
+   mov_xreg64_m64rel(RAX, (uint64_t *)(&reg_cop1_double[dst->f.cf.fd]));
    fistp_preg64_qword(RAX);
 #else
    mov_eax_memoffs32((unsigned int*)(&reg_cop1_double[dst->f.cf.fs]));
@@ -489,9 +489,9 @@ void genc_un_d(void)
 #else
    gencheck_cop1_unusable();
 #ifdef __x86_64__
-   mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_double[dst->f.cf.ft]));
+   mov_xreg64_m64rel(RAX, (uint64_t *)(&reg_cop1_double[dst->f.cf.ft]));
    fld_preg64_qword(RAX);
-   mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_double[dst->f.cf.fs]));
+   mov_xreg64_m64rel(RAX, (uint64_t *)(&reg_cop1_double[dst->f.cf.fs]));
    fld_preg64_qword(RAX);
    fucomip_fpreg(1);
    ffree_fpreg(0);
@@ -521,9 +521,9 @@ void genc_eq_d(void)
 #else
    gencheck_cop1_unusable();
 #ifdef __x86_64__
-   mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_double[dst->f.cf.ft]));
+   mov_xreg64_m64rel(RAX, (uint64_t *)(&reg_cop1_double[dst->f.cf.ft]));
    fld_preg64_qword(RAX);
-   mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_double[dst->f.cf.fs]));
+   mov_xreg64_m64rel(RAX, (uint64_t *)(&reg_cop1_double[dst->f.cf.fs]));
    fld_preg64_qword(RAX);
    fucomip_fpreg(1);
    ffree_fpreg(0);
@@ -553,9 +553,9 @@ void genc_ueq_d(void)
 #else
    gencheck_cop1_unusable();
 #ifdef __x86_64__
-   mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_double[dst->f.cf.ft]));
+   mov_xreg64_m64rel(RAX, (uint64_t *)(&reg_cop1_double[dst->f.cf.ft]));
    fld_preg64_qword(RAX);
-   mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_double[dst->f.cf.fs]));
+   mov_xreg64_m64rel(RAX, (uint64_t *)(&reg_cop1_double[dst->f.cf.fs]));
    fld_preg64_qword(RAX);
    fucomip_fpreg(1);
    ffree_fpreg(0);
@@ -587,9 +587,9 @@ void genc_olt_d(void)
 #else
    gencheck_cop1_unusable();
 #ifdef __x86_64__
-   mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_double[dst->f.cf.ft]));
+   mov_xreg64_m64rel(RAX, (uint64_t *)(&reg_cop1_double[dst->f.cf.ft]));
    fld_preg64_qword(RAX);
-   mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_double[dst->f.cf.fs]));
+   mov_xreg64_m64rel(RAX, (uint64_t *)(&reg_cop1_double[dst->f.cf.fs]));
    fld_preg64_qword(RAX);
    fucomip_fpreg(1);
    ffree_fpreg(0);
@@ -619,9 +619,9 @@ void genc_ult_d(void)
 #else
    gencheck_cop1_unusable();
 #ifdef __x86_64__
-   mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_double[dst->f.cf.ft]));
+   mov_xreg64_m64rel(RAX, (uint64_t *)(&reg_cop1_double[dst->f.cf.ft]));
    fld_preg64_qword(RAX);
-   mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_double[dst->f.cf.fs]));
+   mov_xreg64_m64rel(RAX, (uint64_t *)(&reg_cop1_double[dst->f.cf.fs]));
    fld_preg64_qword(RAX);
    fucomip_fpreg(1);
    ffree_fpreg(0);
@@ -653,9 +653,9 @@ void genc_ole_d(void)
 #else
    gencheck_cop1_unusable();
 #ifdef __x86_64__
-   mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_double[dst->f.cf.ft]));
+   mov_xreg64_m64rel(RAX, (uint64_t *)(&reg_cop1_double[dst->f.cf.ft]));
    fld_preg64_qword(RAX);
-   mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_double[dst->f.cf.fs]));
+   mov_xreg64_m64rel(RAX, (uint64_t *)(&reg_cop1_double[dst->f.cf.fs]));
    fld_preg64_qword(RAX);
    fucomip_fpreg(1);
    ffree_fpreg(0);
@@ -685,9 +685,9 @@ void genc_ule_d(void)
 #else
    gencheck_cop1_unusable();
 #ifdef __x86_64__
-   mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_double[dst->f.cf.ft]));
+   mov_xreg64_m64rel(RAX, (uint64_t *)(&reg_cop1_double[dst->f.cf.ft]));
    fld_preg64_qword(RAX);
-   mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_double[dst->f.cf.fs]));
+   mov_xreg64_m64rel(RAX, (uint64_t *)(&reg_cop1_double[dst->f.cf.fs]));
    fld_preg64_qword(RAX);
    fucomip_fpreg(1);
    ffree_fpreg(0);
@@ -719,9 +719,9 @@ void genc_sf_d(void)
 #else
    gencheck_cop1_unusable();
 #ifdef __x86_64__
-   mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_double[dst->f.cf.ft]));
+   mov_xreg64_m64rel(RAX, (uint64_t *)(&reg_cop1_double[dst->f.cf.ft]));
    fld_preg64_qword(RAX);
-   mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_double[dst->f.cf.fs]));
+   mov_xreg64_m64rel(RAX, (uint64_t *)(&reg_cop1_double[dst->f.cf.fs]));
    fld_preg64_qword(RAX);
    fcomip_fpreg(1);
    ffree_fpreg(0);
@@ -745,9 +745,9 @@ void genc_ngle_d(void)
 #else
    gencheck_cop1_unusable();
 #ifdef __x86_64__
-   mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_double[dst->f.cf.ft]));
+   mov_xreg64_m64rel(RAX, (uint64_t *)(&reg_cop1_double[dst->f.cf.ft]));
    fld_preg64_qword(RAX);
-   mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_double[dst->f.cf.fs]));
+   mov_xreg64_m64rel(RAX, (uint64_t *)(&reg_cop1_double[dst->f.cf.fs]));
    fld_preg64_qword(RAX);
    fcomip_fpreg(1);
    ffree_fpreg(0);
@@ -777,9 +777,9 @@ void genc_seq_d(void)
 #else
    gencheck_cop1_unusable();
 #ifdef __x86_64__
-   mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_double[dst->f.cf.ft]));
+   mov_xreg64_m64rel(RAX, (uint64_t *)(&reg_cop1_double[dst->f.cf.ft]));
    fld_preg64_qword(RAX);
-   mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_double[dst->f.cf.fs]));
+   mov_xreg64_m64rel(RAX, (uint64_t *)(&reg_cop1_double[dst->f.cf.fs]));
    fld_preg64_qword(RAX);
    fcomip_fpreg(1);
    ffree_fpreg(0);
@@ -809,9 +809,9 @@ void genc_ngl_d(void)
 #else
    gencheck_cop1_unusable();
 #ifdef __x86_64__
-   mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_double[dst->f.cf.ft]));
+   mov_xreg64_m64rel(RAX, (uint64_t *)(&reg_cop1_double[dst->f.cf.ft]));
    fld_preg64_qword(RAX);
-   mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_double[dst->f.cf.fs]));
+   mov_xreg64_m64rel(RAX, (uint64_t *)(&reg_cop1_double[dst->f.cf.fs]));
    fld_preg64_qword(RAX);
    fcomip_fpreg(1);
    ffree_fpreg(0);
@@ -843,9 +843,9 @@ void genc_lt_d(void)
 #else
    gencheck_cop1_unusable();
 #ifdef __x86_64__
-   mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_double[dst->f.cf.ft]));
+   mov_xreg64_m64rel(RAX, (uint64_t *)(&reg_cop1_double[dst->f.cf.ft]));
    fld_preg64_qword(RAX);
-   mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_double[dst->f.cf.fs]));
+   mov_xreg64_m64rel(RAX, (uint64_t *)(&reg_cop1_double[dst->f.cf.fs]));
    fld_preg64_qword(RAX);
    fcomip_fpreg(1);
    ffree_fpreg(0);
@@ -875,9 +875,9 @@ void genc_nge_d(void)
 #else
    gencheck_cop1_unusable();
 #ifdef __x86_64__
-   mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_double[dst->f.cf.ft]));
+   mov_xreg64_m64rel(RAX, (uint64_t *)(&reg_cop1_double[dst->f.cf.ft]));
    fld_preg64_qword(RAX);
-   mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_double[dst->f.cf.fs]));
+   mov_xreg64_m64rel(RAX, (uint64_t *)(&reg_cop1_double[dst->f.cf.fs]));
    fld_preg64_qword(RAX);
    fcomip_fpreg(1);
    ffree_fpreg(0);
@@ -909,9 +909,9 @@ void genc_le_d(void)
 #else
    gencheck_cop1_unusable();
 #ifdef __x86_64__
-   mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_double[dst->f.cf.ft]));
+   mov_xreg64_m64rel(RAX, (uint64_t *)(&reg_cop1_double[dst->f.cf.ft]));
    fld_preg64_qword(RAX);
-   mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_double[dst->f.cf.fs]));
+   mov_xreg64_m64rel(RAX, (uint64_t *)(&reg_cop1_double[dst->f.cf.fs]));
    fld_preg64_qword(RAX);
    fcomip_fpreg(1);
    ffree_fpreg(0);
@@ -941,9 +941,9 @@ void genc_ngt_d(void)
 #else
    gencheck_cop1_unusable();
 #ifdef __x86_64__
-   mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_double[dst->f.cf.ft]));
+   mov_xreg64_m64rel(RAX, (uint64_t *)(&reg_cop1_double[dst->f.cf.ft]));
    fld_preg64_qword(RAX);
-   mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_double[dst->f.cf.fs]));
+   mov_xreg64_m64rel(RAX, (uint64_t *)(&reg_cop1_double[dst->f.cf.fs]));
    fld_preg64_qword(RAX);
    fcomip_fpreg(1);
    ffree_fpreg(0);

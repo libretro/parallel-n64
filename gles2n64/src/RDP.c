@@ -1,67 +1,74 @@
+#include <stdint.h>
+#include <string.h>
+
+#include <retro_inline.h>
+
 #include "N64.h"
 #include "RSP.h"
 #include "GBI.h"
 #include "gDP.h"
-#include "Types.h"
 #include "Debug.h"
 #include "Common.h"
 #include "gSP.h"
 #include "RDP.h"
-#include <string.h>
 
-RDPInfo __RDP;
+#include "../../Graphics/RSP/gSP_state.h"
+#include "../../Graphics/RDP/RDP_state.h"
 
-void RDP_Unknown( u32 w0, u32 w1 )
+enum
 {
-#ifdef DEBUG
-	DebugMsg( DEBUG_UNKNOWN, "RDP_Unknown\r\n" );
-	DebugMsg( DEBUG_UNKNOWN, "\tUnknown RDP opcode %02X\r\n", _SHIFTR( w0, 24, 8 ) );
-#endif
+   gspTexRect = 0,
+   gdpTexRect,
+   halfTexRect
+};
+
+void RDP_Unknown( uint32_t w0, uint32_t w1 )
+{
 }
 
-void RDP_NoOp( u32 w0, u32 w1 )
+void RDP_NoOp( uint32_t w0, uint32_t w1 )
 {
-    gSPNoOp();
+    gln64gSPNoOp();
 }
 
-void RDP_SetCImg( u32 w0, u32 w1 )
+void RDP_SetCImg( uint32_t w0, uint32_t w1 )
 {
-    gDPSetColorImage( _SHIFTR( w0, 21,  3 ),        // fmt
+    gln64gDPSetColorImage( _SHIFTR( w0, 21,  3 ),        // fmt
                       _SHIFTR( w0, 19,  2 ),        // siz
                       _SHIFTR( w0,  0, 12 ) + 1,    // width
                       w1 );                         // img
 }
 
-void RDP_SetZImg( u32 w0, u32 w1 )
+void RDP_SetZImg( uint32_t w0, uint32_t w1 )
 {
-    gDPSetDepthImage( w1 ); // img
+    gln64gDPSetDepthImage( w1 ); // img
 }
 
-void RDP_SetTImg( u32 w0, u32 w1 )
+void RDP_SetTImg( uint32_t w0, uint32_t w1 )
 {
-    gDPSetTextureImage( _SHIFTR( w0, 21,  3),       // fmt
+    gln64gDPSetTextureImage( _SHIFTR( w0, 21,  3),       // fmt
                         _SHIFTR( w0, 19,  2 ),      // siz
                         _SHIFTR( w0,  0, 12 ) + 1,  // width
                         w1 );                       // img
 }
 
-void RDP_SetCombine( u32 w0, u32 w1 )
+void RDP_SetCombine( uint32_t w0, uint32_t w1 )
 {
-    gDPSetCombine( _SHIFTR( w0, 0, 24 ),    // muxs0
+    gln64gDPSetCombine( _SHIFTR( w0, 0, 24 ),    // muxs0
                    w1 );                    // muxs1
 }
 
-void RDP_SetEnvColor( u32 w0, u32 w1 )
+void RDP_SetEnvColor( uint32_t w0, uint32_t w1 )
 {
-    gDPSetEnvColor( _SHIFTR( w1, 24, 8 ),       // r
+    gln64gDPSetEnvColor( _SHIFTR( w1, 24, 8 ),       // r
                     _SHIFTR( w1, 16, 8 ),       // g
                     _SHIFTR( w1,  8, 8 ),       // b
                     _SHIFTR( w1,  0, 8 ) );     // a
 }
 
-void RDP_SetPrimColor( u32 w0, u32 w1 )
+void RDP_SetPrimColor( uint32_t w0, uint32_t w1 )
 {
-    gDPSetPrimColor( _SHIFTL( w0,  8, 8 ),      // m
+    gln64gDPSetPrimColor( _SHIFTL( w0,  8, 5 ),      // m
                      _SHIFTL( w0,  0, 8 ),      // l
                      _SHIFTR( w1, 24, 8 ),      // r
                      _SHIFTR( w1, 16, 8 ),      // g
@@ -70,42 +77,42 @@ void RDP_SetPrimColor( u32 w0, u32 w1 )
 
 }
 
-void RDP_SetBlendColor( u32 w0, u32 w1 )
+void RDP_SetBlendColor( uint32_t w0, uint32_t w1 )
 {
-    gDPSetBlendColor( _SHIFTR( w1, 24, 8 ),     // r
+    gln64gDPSetBlendColor( _SHIFTR( w1, 24, 8 ),     // r
                       _SHIFTR( w1, 16, 8 ),     // g
                       _SHIFTR( w1,  8, 8 ),     // b
                       _SHIFTR( w1,  0, 8 ) );   // a
 }
 
-void RDP_SetFogColor( u32 w0, u32 w1 )
+void RDP_SetFogColor( uint32_t w0, uint32_t w1 )
 {
-    gDPSetFogColor( _SHIFTR( w1, 24, 8 ),       // r
+    gln64gDPSetFogColor( _SHIFTR( w1, 24, 8 ),       // r
                     _SHIFTR( w1, 16, 8 ),       // g
                     _SHIFTR( w1,  8, 8 ),       // b
                     _SHIFTR( w1,  0, 8 ) );     // a
 }
 
-void RDP_SetFillColor( u32 w0, u32 w1 )
+void RDP_SetFillColor( uint32_t w0, uint32_t w1 )
 {
-    gDPSetFillColor( w1 );
+    gln64gDPSetFillColor( w1 );
 }
 
-void RDP_FillRect( u32 w0, u32 w1 )
+void RDP_FillRect( uint32_t w0, uint32_t w1 )
 {
-	const u32 ulx = _SHIFTR(w1, 14, 10);
-	const u32 uly = _SHIFTR(w1, 2, 10);
-	const u32 lrx = _SHIFTR(w0, 14, 10);
-	const u32 lry = _SHIFTR(w0, 2, 10);
+	const uint32_t ulx = _SHIFTR(w1, 14, 10);
+	const uint32_t uly = _SHIFTR(w1, 2, 10);
+	const uint32_t lrx = _SHIFTR(w0, 14, 10);
+	const uint32_t lry = _SHIFTR(w0, 2, 10);
 	if (lrx < ulx || lry < uly)
 		return;
-	gDPFillRectangle(ulx, uly, lrx, lry);
+	gln64gDPFillRectangle(ulx, uly, lrx, lry);
 }
 
-void RDP_SetTile( u32 w0, u32 w1 )
+void RDP_SetTile( uint32_t w0, uint32_t w1 )
 {
 
-    gDPSetTile( _SHIFTR( w0, 21, 3 ),   // fmt
+    gln64gDPSetTile( _SHIFTR( w0, 21, 3 ),   // fmt
                 _SHIFTR( w0, 19, 2 ),   // siz
                 _SHIFTR( w0,  9, 9 ),   // line
                 _SHIFTR( w0,  0, 9 ),   // tmem
@@ -119,21 +126,22 @@ void RDP_SetTile( u32 w0, u32 w1 )
                 _SHIFTR( w1,  0, 4 ) ); // shifts
 }
 
-void RDP_LoadTile( u32 w0, u32 w1 )
+void RDP_LoadTile( uint32_t w0, uint32_t w1 )
 {
-    gDPLoadTile( _SHIFTR( w1, 24,  3 ),     // tile
+    gln64gDPLoadTile( _SHIFTR( w1, 24,  3 ),     // tile
                  _SHIFTR( w0, 12, 12 ),     // uls
                  _SHIFTR( w0,  0, 12 ),     // ult
                  _SHIFTR( w1, 12, 12 ),     // lrs
                  _SHIFTR( w1,  0, 12 ) );   // lrt
 }
 
-static u32 lbw0, lbw1;
-void RDP_LoadBlock( u32 w0, u32 w1 )
+static uint32_t lbw0, lbw1;
+void RDP_LoadBlock( uint32_t w0, uint32_t w1 )
 {
 	lbw0 = w0;
 	lbw1 = w1;
-    gDPLoadBlock( _SHIFTR( w1, 24,  3 ),    // tile
+
+   gln64gDPLoadBlock( _SHIFTR( w1, 24,  3 ),    // tile
                   _SHIFTR( w0, 12, 12 ),    // uls
                   _SHIFTR( w0,  0, 12 ),    // ult
                   _SHIFTR( w1, 12, 12 ),    // lrs
@@ -145,48 +153,48 @@ void RDP_RepeatLastLoadBlock()
 	RDP_LoadBlock(lbw0, lbw1);
 }
 
-void RDP_SetTileSize( u32 w0, u32 w1 )
+void RDP_SetTileSize( uint32_t w0, uint32_t w1 )
 {
-    gDPSetTileSize( _SHIFTR( w1, 24,  3 ),      // tile
+   gln64gDPSetTileSize( _SHIFTR( w1, 24,  3 ),      // tile
                     _SHIFTR( w0, 12, 12 ),      // uls
                     _SHIFTR( w0,  0, 12 ),      // ult
                     _SHIFTR( w1, 12, 12 ),      // lrs
                     _SHIFTR( w1,  0, 12 ) );    // lrt
 }
 
-void RDP_LoadTLUT( u32 w0, u32 w1 )
+void RDP_LoadTLUT( uint32_t w0, uint32_t w1 )
 {
-    gDPLoadTLUT(  _SHIFTR( w1, 24,  3 ),    // tile
+    gln64gDPLoadTLUT(  _SHIFTR( w1, 24,  3 ),    // tile
                   _SHIFTR( w0, 12, 12 ),    // uls
                   _SHIFTR( w0,  0, 12 ),    // ult
                   _SHIFTR( w1, 12, 12 ),    // lrs
                   _SHIFTR( w1,  0, 12 ) );  // lrt
 }
 
-void RDP_SetOtherMode( u32 w0, u32 w1 )
+void RDP_SetOtherMode( uint32_t w0, uint32_t w1 )
 {
-    gDPSetOtherMode( _SHIFTR( w0, 0, 24 ),  // mode0
+    gln64gDPSetOtherMode( _SHIFTR( w0, 0, 24 ),  // mode0
                      w1 );                  // mode1
 }
 
-void RDP_SetPrimDepth( u32 w0, u32 w1 )
+void RDP_SetPrimDepth( uint32_t w0, uint32_t w1 )
 {
-    gDPSetPrimDepth( _SHIFTR( w1, 16, 16 ),     // z
+    gln64gDPSetPrimDepth( _SHIFTR( w1, 16, 16 ),     // z
                      _SHIFTR( w1,  0, 16 ) );   // dz
 }
 
-void RDP_SetScissor( u32 w0, u32 w1 )
+void RDP_SetScissor( uint32_t w0, uint32_t w1 )
 {
-    gDPSetScissor( _SHIFTR( w1, 24, 2 ),                        // mode
+    gln64gDPSetScissor( _SHIFTR( w1, 24, 2 ),                        // mode
                    _FIXED2FLOAT( _SHIFTR( w0, 12, 12 ), 2 ),    // ulx
                    _FIXED2FLOAT( _SHIFTR( w0,  0, 12 ), 2 ),    // uly
                    _FIXED2FLOAT( _SHIFTR( w1, 12, 12 ), 2 ),    // lrx
                    _FIXED2FLOAT( _SHIFTR( w1,  0, 12 ), 2 ) );  // lry
 }
 
-void RDP_SetConvert( u32 w0, u32 w1 )
+void RDP_SetConvert( uint32_t w0, uint32_t w1 )
 {
-    gDPSetConvert( _SHIFTR( w0, 13, 9 ),    // k0
+    gln64gDPSetConvert( _SHIFTR( w0, 13, 9 ),    // k0
                    _SHIFTR( w0,  4, 9 ),    // k1
                    _SHIFTL( w0,  5, 4 ) | _SHIFTR( w1, 27, 5 ), // k2
                    _SHIFTR( w1, 18, 9 ),    // k3
@@ -194,16 +202,16 @@ void RDP_SetConvert( u32 w0, u32 w1 )
                    _SHIFTR( w1,  0, 9 ) );  // k5
 }
 
-void RDP_SetKeyR( u32 w0, u32 w1 )
+void RDP_SetKeyR( uint32_t w0, uint32_t w1 )
 {
-    gDPSetKeyR( _SHIFTR( w1,  8,  8 ),      // cR
+    gln64gDPSetKeyR( _SHIFTR( w1,  8,  8 ),      // cR
                 _SHIFTR( w1,  0,  8 ),      // sR
                 _SHIFTR( w1, 16, 12 ) );    // wR
 }
 
-void RDP_SetKeyGB( u32 w0, u32 w1 )
+void RDP_SetKeyGB( uint32_t w0, uint32_t w1 )
 {
-    gDPSetKeyGB( _SHIFTR( w1, 24,  8 ),     // cG
+    gln64gDPSetKeyGB( _SHIFTR( w1, 24,  8 ),     // cG
                  _SHIFTR( w1, 16,  8 ),     // sG
                  _SHIFTR( w0, 12, 12 ),     // wG
                  _SHIFTR( w1,  8,  8 ),     // cB
@@ -211,28 +219,32 @@ void RDP_SetKeyGB( u32 w0, u32 w1 )
                  _SHIFTR( w0,  0, 12 ) );   // wB
 }
 
-void RDP_FullSync( u32 w0, u32 w1 )
+void RDP_FullSync( uint32_t w0, uint32_t w1 )
 {
-    gDPFullSync();
+   gln64gDPFullSync();
 }
 
-void RDP_TileSync( u32 w0, u32 w1 )
+void RDP_TileSync( uint32_t w0, uint32_t w1 )
 {
-   gDPTileSync();
+   gln64gDPTileSync();
 }
 
-void RDP_PipeSync( u32 w0, u32 w1 )
+void RDP_PipeSync( uint32_t w0, uint32_t w1 )
 {
-    gDPPipeSync();
+   gln64gDPPipeSync();
 }
 
-void RDP_LoadSync( u32 w0, u32 w1 )
+void RDP_LoadSync( uint32_t w0, uint32_t w1 )
 {
-    gDPLoadSync();
+   gln64gDPLoadSync();
 }
 
-static void _getTexRectParams(u32 *w2, u32 *w3)
+
+static void _getTexRectParams(uint32_t *w2, uint32_t *w3)
 {
+   unsigned texRectMode;
+   uint32_t cmd1, cmd2;
+
    if (__RSP.bLLE)
    {
       *w2 = __RDP.w2;
@@ -240,14 +252,10 @@ static void _getTexRectParams(u32 *w2, u32 *w3)
       return;
    }
 
-   enum {
-      gspTexRect,
-      gdpTexRect,
-      halfTexRect
-   } texRectMode = gdpTexRect;
+   texRectMode = gdpTexRect;
+   cmd1        = (*(uint32_t*)&gfx_info.RDRAM[__RSP.PC[__RSP.PCi] + 0]) >> 24;
+   cmd2        = (*(uint32_t*)&gfx_info.RDRAM[__RSP.PC[__RSP.PCi] + 8]) >> 24;
 
-   const u32 cmd1 = (*(u32*)&gfx_info.RDRAM[__RSP.PC[__RSP.PCi] + 0]) >> 24;
-   const u32 cmd2 = (*(u32*)&gfx_info.RDRAM[__RSP.PC[__RSP.PCi] + 8]) >> 24;
    if (cmd1 == G_RDPHALF_1)
    {
       if (cmd2 == G_RDPHALF_2)
@@ -266,20 +274,20 @@ static void _getTexRectParams(u32 *w2, u32 *w3)
    switch (texRectMode)
    {
       case gspTexRect:
-         *w2 = *(u32*)&gfx_info.RDRAM[__RSP.PC[__RSP.PCi] + 4];
+         *w2 = *(uint32_t*)&gfx_info.RDRAM[__RSP.PC[__RSP.PCi] + 4];
          __RSP.PC[__RSP.PCi] += 8;
 
-         *w3 = *(u32*)&gfx_info.RDRAM[__RSP.PC[__RSP.PCi] + 4];
+         *w3 = *(uint32_t*)&gfx_info.RDRAM[__RSP.PC[__RSP.PCi] + 4];
          __RSP.PC[__RSP.PCi] += 8;
          break;
       case gdpTexRect:
-         *w2 = *(u32*)&gfx_info.RDRAM[__RSP.PC[__RSP.PCi] + 0];
-         *w3 = *(u32*)&gfx_info.RDRAM[__RSP.PC[__RSP.PCi] + 4];
+         *w2 = *(uint32_t*)&gfx_info.RDRAM[__RSP.PC[__RSP.PCi] + 0];
+         *w3 = *(uint32_t*)&gfx_info.RDRAM[__RSP.PC[__RSP.PCi] + 4];
          __RSP.PC[__RSP.PCi] += 8;
          break;
       case halfTexRect:
          *w2 = 0;
-         *w3 = *(u32*)&gfx_info.RDRAM[__RSP.PC[__RSP.PCi] + 4];
+         *w3 = *(uint32_t*)&gfx_info.RDRAM[__RSP.PC[__RSP.PCi] + 4];
          __RSP.PC[__RSP.PCi] += 8;
          break;
       default:
@@ -290,10 +298,10 @@ static void _getTexRectParams(u32 *w2, u32 *w3)
    }
 }
 
-void RDP_TexRectFlip( u32 w0, u32 w1 )
+void RDP_TexRectFlip( uint32_t w0, uint32_t w1 )
 {
-   u32 ulx, uly, lrx, lry;
-	u32 w2, w3;
+   uint32_t ulx, uly, lrx, lry;
+	uint32_t w2, w3;
 	_getTexRectParams(&w2, &w3);
 	ulx = _SHIFTR(w1, 12, 12);
 	uly = _SHIFTR(w1, 0, 12);
@@ -301,22 +309,23 @@ void RDP_TexRectFlip( u32 w0, u32 w1 )
 	lry = _SHIFTR(w0, 0, 12);
 	if ((lrx >> 2) < (ulx >> 2) || (lry >> 2) < (uly >> 2))
 		return;
-	gDPTextureRectangleFlip(
+
+	gln64gDPTextureRectangleFlip(
 		_FIXED2FLOAT(ulx, 2),
 		_FIXED2FLOAT(uly, 2),
 		_FIXED2FLOAT(lrx, 2),
 		_FIXED2FLOAT(lry, 2),
 		_SHIFTR(w1, 24, 3),							// tile
-		_FIXED2FLOAT((s16)_SHIFTR(w2, 16, 16), 5),	// s
-		_FIXED2FLOAT((s16)_SHIFTR(w2, 0, 16), 5),	// t
-		_FIXED2FLOAT((s16)_SHIFTR(w3, 16, 16), 10),	// dsdx
-		_FIXED2FLOAT((s16)_SHIFTR(w3, 0, 16), 10));	// dsdy
+		_FIXED2FLOAT((int16_t)_SHIFTR(w2, 16, 16), 5),	// s
+		_FIXED2FLOAT((int16_t)_SHIFTR(w2, 0, 16), 5),	// t
+		_FIXED2FLOAT((int16_t)_SHIFTR(w3, 16, 16), 10),	// dsdx
+		_FIXED2FLOAT((int16_t)_SHIFTR(w3, 0, 16), 10));	// dsdy
 }
 
-void RDP_TexRect( u32 w0, u32 w1 )
+void RDP_TexRect( uint32_t w0, uint32_t w1 )
 {
-   u32 ulx, uly, lrx, lry;
-	u32 w2, w3;
+   uint32_t ulx, uly, lrx, lry;
+	uint32_t w2, w3;
 	_getTexRectParams(&w2, &w3);
 	ulx = _SHIFTR(w1, 12, 12);
 	uly = _SHIFTR(w1,  0, 12);
@@ -324,73 +333,74 @@ void RDP_TexRect( u32 w0, u32 w1 )
 	lry = _SHIFTR(w0,  0, 12);
 	if ((lrx >> 2) < (ulx >> 2) || (lry >> 2) < (uly >> 2))
 		return;
-	gDPTextureRectangle(
+
+	gln64gDPTextureRectangle(
 		_FIXED2FLOAT(ulx, 2),
 		_FIXED2FLOAT(uly, 2),
 		_FIXED2FLOAT(lrx, 2),
 		_FIXED2FLOAT(lry, 2),
 		_SHIFTR(w1, 24, 3),							// tile
-		_FIXED2FLOAT((s16)_SHIFTR(w2, 16, 16), 5),	// s
-		_FIXED2FLOAT((s16)_SHIFTR(w2, 0, 16), 5),	// t
-		_FIXED2FLOAT((s16)_SHIFTR(w3, 16, 16), 10),	// dsdx
-		_FIXED2FLOAT((s16)_SHIFTR(w3, 0, 16), 10));	// dsdy
+		_FIXED2FLOAT((int16_t)_SHIFTR(w2, 16, 16), 5),	// s
+		_FIXED2FLOAT((int16_t)_SHIFTR(w2, 0, 16), 5),	// t
+		_FIXED2FLOAT((int16_t)_SHIFTR(w3, 16, 16), 10),	// dsdx
+		_FIXED2FLOAT((int16_t)_SHIFTR(w3, 0, 16), 10));	// dsdy
 }
 
 
 //Low Level RDP Drawing Commands:
-void RDP_TriFill(u32 _w0, u32 _w1)
+void RDP_TriFill(uint32_t _w0, uint32_t _w1)
 {
-	gDPTriFill(_w0, _w1);
+	gln64gDPTriFill(_w0, _w1);
 }
 
-void RDP_TriTxtr(u32 _w0, u32 _w1)
+void RDP_TriTxtr(uint32_t _w0, uint32_t _w1)
 {
-	gDPTriTxtr(_w0, _w1);
+	gln64gDPTriTxtr(_w0, _w1);
 }
 
-void RDP_TriTxtrZBuff(u32 w0, u32 w1)
+void RDP_TriTxtrZBuff(uint32_t w0, uint32_t w1)
 {
     LOG(LOG_VERBOSE, "RSP_TRI_TXTR_ZBUFF Command\n");
 }
 
-void RDP_TriShade(u32 _w0, u32 _w1)
+void RDP_TriShade(uint32_t _w0, uint32_t _w1)
 {
-	gDPTriShadeZ(_w0, _w1);
+	gln64gDPTriShadeZ(_w0, _w1);
 }
 
-void RDP_TriShadeZBuff(u32 w0, u32 w1)
+void RDP_TriShadeZBuff(uint32_t w0, uint32_t w1)
 {
     LOG(LOG_VERBOSE, "RSP_TRI_SHADE_ZBUFF Command\n");
 }
 
-void RDP_TriShadeTxtr(u32 _w0, u32 _w1)
+void RDP_TriShadeTxtr(uint32_t _w0, uint32_t _w1)
 {
-	gDPTriShadeTxtr(_w0, _w1);
+	gln64gDPTriShadeTxtr(_w0, _w1);
 }
 
-void RDP_TriFillZ( u32 _w0, u32 _w1 )
+void RDP_TriFillZ( uint32_t _w0, uint32_t _w1 )
 {
-	gDPTriFillZ(_w0, _w1);
+	gln64gDPTriFillZ(_w0, _w1);
 }
 
-void RDP_TriShadeTxtrZBuff(u32 _w0, u32 _w1)
+void RDP_TriShadeTxtrZBuff(uint32_t _w0, uint32_t _w1)
 {
-	gDPTriShadeTxtrZ(_w0, _w1);
+	gln64gDPTriShadeTxtrZ(_w0, _w1);
 }
 
-void RDP_TriShadeZ( u32 _w0, u32 _w1 )
+void RDP_TriShadeZ( uint32_t _w0, uint32_t _w1 )
 {
-	gDPTriShadeZ(_w0, _w1);
+	gln64gDPTriShadeZ(_w0, _w1);
 }
 
-void RDP_TriTxtrZ( u32 _w0, u32 _w1 )
+void RDP_TriTxtrZ( uint32_t _w0, uint32_t _w1 )
 {
-	gDPTriTxtrZ(_w0, _w1);
+	gln64gDPTriTxtrZ(_w0, _w1);
 }
 
-void RDP_TriShadeTxtrZ( u32 _w0, u32 _w1 )
+void RDP_TriShadeTxtrZ( uint32_t _w0, uint32_t _w1 )
 {
-	gDPTriShadeTxtrZ(_w0, _w1);
+	gln64gDPTriShadeTxtrZ(_w0, _w1);
 }
 
 void RDP_Init(void)
@@ -463,7 +473,7 @@ GBIFunc LLEcmd[64] = {
 };
 
 static
-const u32 CmdLength[64] =
+const uint32_t CmdLength[64] =
 {
 	8,                      // 0x00, No Op
 	8,                      // 0x01, ???
@@ -531,66 +541,26 @@ const u32 CmdLength[64] =
 	8                       // 0x3f, Set_Color_Image
 };
 
-void RDP_Half_1( u32 _c )
+void RDP_Half_1( uint32_t _c )
 {
-	u32 w0 = 0, w1 = _c;
-	u32 cmd = _SHIFTR( _c, 24, 8 );
-	if (cmd >= 0xc8 && cmd <=0xcf)
-   {
-      /* triangle command */
-#ifdef DEBUG
-		DebugMsg( DEBUG_HIGH | DEBUG_HANDLED, "gDPHalf_1 LLE Triangle\n");
-#endif
-		__RDP.cmd_ptr = 0;
-		__RDP.cmd_cur = 0;
-		do
-      {
-         __RDP.cmd_data[__RDP.cmd_ptr++] = w1;
-         RSP_CheckDLCounter();
-
-         w0 = *(u32*)&gfx_info.RDRAM[__RSP.PC[__RSP.PCi]];
-         w1 = *(u32*)&gfx_info.RDRAM[__RSP.PC[__RSP.PCi] + 4];
-         __RSP.cmd = _SHIFTR( w0, 24, 8 );
-
-#ifdef DEBUG
-         DebugRSPState( __RSP.PCi, __RSP.PC[__RSP.PCi], _SHIFTR( w0, 24, 8 ), w0, w1 );
-         DebugMsg( DEBUG_LOW | DEBUG_HANDLED, "0x%08lX: CMD=0x%02lX W0=0x%08lX W1=0x%08lX\n", RSP.PC[RSP.PCi], _SHIFTR( w0, 24, 8 ), w0, w1 );
-#endif
-
-         __RSP.PC[__RSP.PCi] += 8;
-         // RSP.nextCmd = _SHIFTR( *(u32*)&gfx_info.RDRAM[RSP.PC[RSP.PCi]], 24, 8 );
-      } while (__RSP.cmd != 0xb3);
-		__RDP.cmd_data[__RDP.cmd_ptr++] = w1;
-		__RSP.cmd = (__RDP.cmd_data[__RDP.cmd_cur] >> 24) & 0x3f;
-		w0 = __RDP.cmd_data[__RDP.cmd_cur+0];
-		w1 = __RDP.cmd_data[__RDP.cmd_cur+1];
-		LLEcmd[__RSP.cmd](w0, w1);
-	}
-#ifdef DEBUG
-   else
-   {
-		DebugMsg( DEBUG_HIGH | DEBUG_IGNORED, "gDPHalf_1()\n" );
-	}
-#endif
+   if (RDP_Half1(_c))
+      LLEcmd[__RSP.cmd](__RSP.w0, __RSP.w1);
 }
 
-static inline u32 GLN64_READ_RDP_DATA(u32 address)
+static INLINE uint32_t GLN64_READ_RDP_DATA(uint32_t address)
 {
-	if ((*(u32*)gfx_info.DPC_STATUS_REG) & 0x1)          // XBUS_DMEM_DMA enabled
+	if ((*(uint32_t*)gfx_info.DPC_STATUS_REG) & 0x1)          // XBUS_DMEM_DMA enabled
 		return gfx_info.DMEM[(address & 0xfff)>>2];
    return gfx_info.RDRAM[address>>2];
 }
 
-EXPORT void CALL gln64ProcessRDPList(void)
+void gln64ProcessRDPList(void)
 {
-   u32 i;
-   const u32 length = gfx_info.DPC_END_REG - gfx_info.DPC_CURRENT_REG;
+   uint32_t i;
+   bool set_zero = true;
+   const uint32_t length = gfx_info.DPC_END_REG - gfx_info.DPC_CURRENT_REG;
 
-#ifdef DEBUG
-   DebugMsg(DEBUG_HIGH | DEBUG_HANDLED, "ProcessRDPList()\n");
-#endif
-
-   (*(u32*)gfx_info.DPC_STATUS_REG) &= ~0x0002;
+   (*(uint32_t*)gfx_info.DPC_STATUS_REG) &= ~0x0002;
 
    if (gfx_info.DPC_END_REG <= gfx_info.DPC_CURRENT_REG)
       return;
@@ -600,18 +570,18 @@ EXPORT void CALL gln64ProcessRDPList(void)
    /* load command data */
    for (i = 0; i < length; i += 4)
    {
-      __RDP.cmd_data[__RDP.cmd_ptr] = GLN64_READ_RDP_DATA(*gfx_info.DPC_CURRENT_REG + i);
+      __RDP.cmd_data[__RDP.cmd_ptr] = rdp_read_data(*gfx_info.DPC_CURRENT_REG + i);
       __RDP.cmd_ptr = (__RDP.cmd_ptr + 1) & maxCMDMask;
    }
 
-   bool setZero = true;
    while (__RDP.cmd_cur != __RDP.cmd_ptr)
    {
-      u32 cmd = (__RDP.cmd_data[__RDP.cmd_cur] >> 24) & 0x3f;
+      uint32_t w0, w1;
+      uint32_t cmd = (__RDP.cmd_data[__RDP.cmd_cur] >> 24) & 0x3f;
 
       if ((((__RDP.cmd_ptr - __RDP.cmd_cur)&maxCMDMask) * 4) < CmdLength[cmd])
       {
-         setZero = false;
+         set_zero = false;
          break;
       }
 
@@ -619,8 +589,8 @@ EXPORT void CALL gln64ProcessRDPList(void)
          memcpy(__RDP.cmd_data + MAXCMD, __RDP.cmd_data, CmdLength[cmd] - (MAXCMD - __RDP.cmd_cur) * 4);
 
       // execute the command
-      u32 w0 = __RDP.cmd_data[__RDP.cmd_cur+0];
-      u32 w1 = __RDP.cmd_data[__RDP.cmd_cur+1];
+      w0 = __RDP.cmd_data[__RDP.cmd_cur+0];
+      w1 = __RDP.cmd_data[__RDP.cmd_cur+1];
       __RDP.w2 = __RDP.cmd_data[__RDP.cmd_cur+2];
       __RDP.w3 = __RDP.cmd_data[__RDP.cmd_cur + 3];
       __RSP.cmd = cmd;
@@ -629,7 +599,8 @@ EXPORT void CALL gln64ProcessRDPList(void)
       __RDP.cmd_cur = (__RDP.cmd_cur + CmdLength[cmd] / 4) & maxCMDMask;
    }
 
-   if (setZero) {
+   if (set_zero)
+   {
       __RDP.cmd_ptr = 0;
       __RDP.cmd_cur = 0;
    }

@@ -28,7 +28,8 @@ extern "C" {
 #endif
 
 #include <string.h>
-#include "osal/preproc.h"
+
+#include <retro_inline.h>
 
 /**********************
    Byte swap utilities
@@ -37,46 +38,48 @@ extern "C" {
 #include <stdlib.h>
 #endif
 
-/* GCC has also byte swap intrinsics (__builtin_bswap32, etc.), but they were
- * added in relatively recent versions. In addition, GCC can detect the byte
- * swap code and optimize it with a high enough optimization level. */
+#if defined(_MSC_VER)
+#define BUILTIN_BSWAP16 _byteswap_ushort
+#define BUILTIN_BSWAP32 _byteswap_ulong
+#define BUILTIN_BSWAP64 _byteswap_uint64
+#endif
 
-static osal_inline unsigned short m64p_swap16(unsigned short x)
+static INLINE unsigned short m64p_swap16(unsigned short x)
 {
-    #ifdef _MSC_VER
-    return _byteswap_ushort(x);
-    #else
-    return ((x & 0x00FF) << 8) |
-           ((x & 0xFF00) >> 8);
-    #endif
+#ifdef BUILTIN_BSWAP16
+   return BUILTIN_BSWAP16(x);
+#else
+   return ((x & 0x00FF) << 8) |
+      ((x & 0xFF00) >> 8);
+#endif
 }
 
-static osal_inline unsigned int m64p_swap32(unsigned int x)
+static INLINE unsigned int m64p_swap32(unsigned int x)
 {
-    #ifdef _MSC_VER
-    return _byteswap_ulong(x); // long is always 32-bit in Windows
-    #else
-    return ((x & 0x000000FF) << 24) |
-           ((x & 0x0000FF00) << 8) |
-           ((x & 0x00FF0000) >> 8) |
-           ((x & 0xFF000000) >> 24);
-    #endif
+#ifdef BUILTIN_BSWAP32
+   return BUILTIN_BSWAP32(x); // long is always 32-bit in Windows
+#else
+   return ((x & 0x000000FF) << 24) |
+      ((x & 0x0000FF00) << 8) |
+      ((x & 0x00FF0000) >> 8) |
+      ((x & 0xFF000000) >> 24);
+#endif
 }
 
-static osal_inline unsigned long long int m64p_swap64(unsigned long long int x)
+static INLINE unsigned long long int m64p_swap64(unsigned long long int x)
 {
-    #ifdef _MSC_VER
-    return _byteswap_uint64(x);
-    #else
-    return ((x & 0x00000000000000FFULL) << 56) |
-           ((x & 0x000000000000FF00ULL) << 40) |
-           ((x & 0x0000000000FF0000ULL) << 24) |
-           ((x & 0x00000000FF000000ULL) << 8) |
-           ((x & 0x000000FF00000000ULL) >> 8) |
-           ((x & 0x0000FF0000000000ULL) >> 24) |
-           ((x & 0x00FF000000000000ULL) >> 40) |
-           ((x & 0xFF00000000000000ULL) >> 56);
-    #endif
+#ifdef BUILTIN_BSWAP64
+   return BUILTIN_BSWAP64(x);
+#else
+   return ((x & 0x00000000000000FFULL) << 56) |
+      ((x & 0x000000000000FF00ULL) << 40) |
+      ((x & 0x0000000000FF0000ULL) << 24) |
+      ((x & 0x00000000FF000000ULL) << 8) |
+      ((x & 0x000000FF00000000ULL) >> 8) |
+      ((x & 0x0000FF0000000000ULL) >> 24) |
+      ((x & 0x00FF000000000000ULL) >> 40) |
+      ((x & 0xFF00000000000000ULL) >> 56);
+#endif
 }
 
 #ifdef MSB_FIRST

@@ -5,8 +5,8 @@
 extern "C" {
 #endif
 
-#include "Types.h"
 #include <stdio.h>
+#include <stdint.h>
 
 // Microcode Types
 #define F3D         0
@@ -31,27 +31,6 @@ extern "C" {
 #define F3DCBFD_MV_LIGHT        10
 #define F3DCBFD_MV_NORMAL       14
 
-#ifdef MAINDEF
-const char *MicrocodeTypes[] =
-{
-    "Fast3D",
-    "F3DEX",
-    "F3DEX2",
-    "Line3D",
-    "L3DEX",
-    "L3DEX2",
-    "S2DEX",
-    "S2DEX2",
-    "Perfect Dark",
-    "DKR/JFG",
-    "Waverace US",
-    "Conker's Bad Fur Day",
-    "None",
-};
-#else
-extern const char *MicrocodeTypes[];
-#endif
-
 static const int numMicrocodeTypes = 11;
 
 // Fixed point conversion factors
@@ -72,14 +51,11 @@ static const int numMicrocodeTypes = 11;
 #define FIXED2FLOATRECIP15  3.0517578e-05f
 #define FIXED2FLOATRECIP16  1.5258789e-05f
 
-#define _FIXED2FLOAT( v, b ) \
-    ((f32)v * FIXED2FLOATRECIP##b)
+#define _FIXED2FLOAT( v, b ) ((float)v * FIXED2FLOATRECIP##b)
 
 // Useful macros for decoding GBI command's parameters
-#define _SHIFTL( v, s, w )  \
-    (((u32)v & ((0x01 << w) - 1)) << s)
-#define _SHIFTR( v, s, w )  \
-    (((u32)v >> s) & ((0x01 << w) - 1))
+#define _SHIFTL( v, s, w )  (((uint32_t)v & ((0x01 << w) - 1)) << s)
+#define _SHIFTR( v, s, w )  (((uint32_t)v >> s) & ((0x01 << w) - 1))
 
 // BG flags
 #define G_BGLT_LOADBLOCK    0x0033
@@ -221,32 +197,32 @@ static const char *MWOMatrixText[] =
 #endif
 
 // These flags change between ucodes
-extern u32 G_MTX_STACKSIZE;
+extern uint32_t G_MTX_STACKSIZE;
 
-extern u32 G_MTX_MODELVIEW;
-extern u32 G_MTX_PROJECTION;
-extern u32 G_MTX_MUL;
-extern u32 G_MTX_LOAD;
-extern u32 G_MTX_NOPUSH;
-extern u32 G_MTX_PUSH;
+extern uint32_t G_MTX_MODELVIEW;
+extern uint32_t G_MTX_PROJECTION;
+extern uint32_t G_MTX_MUL;
+extern uint32_t G_MTX_LOAD;
+extern uint32_t G_MTX_NOPUSH;
+extern uint32_t G_MTX_PUSH;
 
-extern u32 G_TEXTURE_ENABLE;
-extern u32 G_SHADING_SMOOTH;
-extern u32 G_CULL_FRONT;
-extern u32 G_CULL_BACK;
-extern u32 G_CULL_BOTH;
-extern u32 G_CLIPPING;
+extern uint32_t G_TEXTURE_ENABLE;
+extern uint32_t G_SHADING_SMOOTH;
+extern uint32_t G_CULL_FRONT;
+extern uint32_t G_CULL_BACK;
+extern uint32_t G_CULL_BOTH;
+extern uint32_t G_CLIPPING;
 
-extern u32 G_MV_VIEWPORT;
+extern uint32_t G_MV_VIEWPORT;
 
-extern u32 G_MWO_aLIGHT_1, G_MWO_bLIGHT_1;
-extern u32 G_MWO_aLIGHT_2, G_MWO_bLIGHT_2;
-extern u32 G_MWO_aLIGHT_3, G_MWO_bLIGHT_3;
-extern u32 G_MWO_aLIGHT_4, G_MWO_bLIGHT_4;
-extern u32 G_MWO_aLIGHT_5, G_MWO_bLIGHT_5;
-extern u32 G_MWO_aLIGHT_6, G_MWO_bLIGHT_6;
-extern u32 G_MWO_aLIGHT_7, G_MWO_bLIGHT_7;
-extern u32 G_MWO_aLIGHT_8, G_MWO_bLIGHT_8;
+extern uint32_t G_MWO_aLIGHT_1, G_MWO_bLIGHT_1;
+extern uint32_t G_MWO_aLIGHT_2, G_MWO_bLIGHT_2;
+extern uint32_t G_MWO_aLIGHT_3, G_MWO_bLIGHT_3;
+extern uint32_t G_MWO_aLIGHT_4, G_MWO_bLIGHT_4;
+extern uint32_t G_MWO_aLIGHT_5, G_MWO_bLIGHT_5;
+extern uint32_t G_MWO_aLIGHT_6, G_MWO_bLIGHT_6;
+extern uint32_t G_MWO_aLIGHT_7, G_MWO_bLIGHT_7;
+extern uint32_t G_MWO_aLIGHT_8, G_MWO_bLIGHT_8;
 
 // Image formats
 #define G_IM_FMT_RGBA   0
@@ -639,27 +615,27 @@ static const char *aAText[] =
 };
 #endif
 
-extern u32 G_RDPHALF_1, G_RDPHALF_2, G_RDPHALF_CONT;
-extern u32 G_SPNOOP;
-extern u32 G_SETOTHERMODE_H, G_SETOTHERMODE_L;
-extern u32 G_DL, G_ENDDL, G_CULLDL, G_BRANCH_Z;
-extern u32 G_LOAD_UCODE;
-extern u32 G_MOVEMEM, G_MOVEWORD;
-extern u32 G_MTX, G_POPMTX;
-extern u32 G_GEOMETRYMODE, G_SETGEOMETRYMODE, G_CLEARGEOMETRYMODE;
-extern u32 G_TEXTURE;
-extern u32 G_DMA_IO, G_DMA_DL, G_DMA_TRI, G_DMA_MTX, G_DMA_VTX, G_DMA_TEX_OFFSET, G_DMA_OFFSETS;
-extern u32 G_SPECIAL_1, G_SPECIAL_2, G_SPECIAL_3;
-extern u32 G_VTX, G_MODIFYVTX, G_VTXCOLORBASE;
-extern u32 G_TRI1, G_TRI2, G_TRI4;
-extern u32 G_QUAD, G_LINE3D;
-extern u32 G_RESERVED0, G_RESERVED1, G_RESERVED2, G_RESERVED3;
-extern u32 G_SPRITE2D_BASE;
-extern u32 G_BG_1CYC, G_BG_COPY;
-extern u32 G_OBJ_RECTANGLE, G_OBJ_SPRITE, G_OBJ_MOVEMEM;
-extern u32 G_SELECT_DL, G_OBJ_RENDERMODE, G_OBJ_RECTANGLE_R;
-extern u32 G_OBJ_LOADTXTR, G_OBJ_LDTX_SPRITE, G_OBJ_LDTX_RECT, G_OBJ_LDTX_RECT_R;
-extern u32 G_RDPHALF_0, G_TRI_UNKNOWN;
+extern uint32_t G_RDPHALF_1, G_RDPHALF_2, G_RDPHALF_CONT;
+extern uint32_t G_SPNOOP;
+extern uint32_t G_SETOTHERMODE_H, G_SETOTHERMODE_L;
+extern uint32_t G_DL, G_ENDDL, G_CULLDL, G_BRANCH_Z;
+extern uint32_t G_LOAD_UCODE;
+extern uint32_t G_MOVEMEM, G_MOVEWORD;
+extern uint32_t G_MTX, G_POPMTX;
+extern uint32_t G_GEOMETRYMODE, G_SETGEOMETRYMODE, G_CLEARGEOMETRYMODE;
+extern uint32_t G_TEXTURE;
+extern uint32_t G_DMA_IO, G_DMA_DL, G_DMA_TRI, G_DMA_MTX, G_DMA_VTX, G_DMA_TEX_OFFSET, G_DMA_OFFSETS;
+extern uint32_t G_SPECIAL_1, G_SPECIAL_2, G_SPECIAL_3;
+extern uint32_t G_VTX, G_MODIFYVTX, G_VTXCOLORBASE;
+extern uint32_t G_TRI1, G_TRI2, G_TRI4;
+extern uint32_t G_QUAD, G_LINE3D;
+extern uint32_t G_RESERVED0, G_RESERVED1, G_RESERVED2, G_RESERVED3;
+extern uint32_t G_SPRITE2D_BASE;
+extern uint32_t G_BG_1CYC, G_BG_COPY;
+extern uint32_t G_OBJ_RECTANGLE, G_OBJ_SPRITE, G_OBJ_MOVEMEM;
+extern uint32_t G_SELECT_DL, G_OBJ_RENDERMODE, G_OBJ_RECTANGLE_R;
+extern uint32_t G_OBJ_LOADTXTR, G_OBJ_LDTX_SPRITE, G_OBJ_LDTX_RECT, G_OBJ_LDTX_RECT_R;
+extern uint32_t G_RDPHALF_0, G_TRI_UNKNOWN;
 
 #define LIGHT_1 1
 #define LIGHT_2 2
@@ -675,77 +651,77 @@ extern u32 G_RDPHALF_0, G_TRI_UNKNOWN;
 
 typedef struct
 {
-    s16 y;
-    s16 x;
+    int16_t y;
+    int16_t x;
 
-    u16 flag;
-    s16 z;
+    uint16_t flag;
+    int16_t z;
 
-    s16 t;
-    s16 s;
+    int16_t t;
+    int16_t s;
 
     union {
         struct
         {
-            u8 a;
-            u8 b;
-            u8 g;
-            u8 r;
+            uint8_t a;
+            uint8_t b;
+            uint8_t g;
+            uint8_t r;
         } color;
         struct
         {
-            s8 a;
-            s8 z;   // b
-            s8 y;   //g
-            s8 x;   //r
+            int8_t a;
+            int8_t z;   // b
+            int8_t y;   //g
+            int8_t x;   //r
         } normal;
     };
 } Vertex;
 
 typedef struct
 {
-    s16 y, x;
-    u16 ci;
-    s16 z;
-    s16 t, s;
+    int16_t y, x;
+    uint16_t ci;
+    int16_t z;
+    int16_t t, s;
 } PDVertex;
 
 
 typedef struct
 {
-    u8      v2, v1, v0, flag;
-    s16     t0, s0;
-    s16     t1, s1;
-    s16     t2, s2;
+    uint8_t      v2, v1, v0, flag;
+    int16_t     t0, s0;
+    int16_t     t1, s1;
+    int16_t     t2, s2;
 } DKRTriangle;
 
 typedef struct
 {
-    u8 pad0, b, g, r;
-    u8 pad1, b2, g2, r2;
-    s8 pad2, z, y, x;
+    uint8_t pad0, b, g, r;
+    uint8_t pad1, b2, g2, r2;
+    int8_t pad2, z, y, x;
 } Light;
 
 // GBI commands
-typedef void (*GBIFunc)( u32 w0, u32 w1 );
+typedef void (*GBIFunc)( uint32_t w0, uint32_t w1 );
 
 
 typedef struct
 {
-    u32 type;
-    u32 NoN;
-    u32 crc;
+    uint32_t type;
+    uint32_t NoN;
+    uint32_t crc;
     const char *text;
 } SpecialMicrocodeInfo;
 
 typedef struct MicrocodeInfo
 {
-    u32 address, dataAddress;
-    u16 dataSize;
-    u32 type;
-    u32 NoN;
-    u32 crc;
-    u32 *text;
+    uint32_t address, dataAddress;
+    uint16_t dataSize;
+    uint32_t type;
+    uint32_t NoN;
+    uint32_t crc;
+    uint32_t *text;
 
     struct MicrocodeInfo *higher, *lower;
 } MicrocodeInfo;
@@ -754,16 +730,16 @@ typedef struct
 {
     GBIFunc cmd[256];
 
-    u32 PCStackSize, numMicrocodes;
+    uint32_t PCStackSize, numMicrocodes;
     MicrocodeInfo *current, *top, *bottom;
 } GBIInfo;
 
 extern GBIInfo GBI;
 
-u32 GBI_GetCurrentMicrocodeType(void);
+uint32_t GBI_GetCurrentMicrocodeType(void);
 void GBI_MakeCurrent( MicrocodeInfo *current );
-MicrocodeInfo *GBI_DetectMicrocode( u32 uc_start, u32 uc_dstart, u16 uc_dsize );
-extern u32 last_good_ucode;
+MicrocodeInfo *GBI_DetectMicrocode( uint32_t uc_start, uint32_t uc_dstart, uint16_t uc_dsize );
+extern uint32_t last_good_ucode;
 void GBI_Init(void);
 void GBI_Destroy(void);
 
