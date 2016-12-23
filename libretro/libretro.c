@@ -1517,8 +1517,42 @@ unsigned retro_api_version(void) { return RETRO_API_VERSION; }
 
 bool retro_load_game_special(unsigned game_type, const struct retro_game_info *info, size_t num_info) { return false; }
 
-void retro_cheat_reset(void) { }
-void retro_cheat_set(unsigned unused, bool unused1, const char* unused2) { }
+void retro_cheat_reset(void)
+{
+	cheat_delete_all();
+}
+
+void retro_cheat_set(unsigned index, bool enabled, const char* code)
+{
+	char name[256];
+	m64p_cheat_code mupenCode;
+	char address_raw[11];
+	char value_raw[7];
+	uint32_t address;
+	int value;
+	
+	//Generate a name
+	sprintf(name, "cheat_%u",index);
+	
+	//Split code into address and value
+	//Prepend split items with 0x
+	snprintf (address_raw,11,"0x%s",code);
+	snprintf (value_raw,7,"0x%s",code+9);
+	
+	printf("%s\n",address_raw);
+	printf("%s\n",value_raw);
+	
+	//strtoul and atoi
+	address=strtoul(address_raw,NULL,0);
+	value=strtol(value_raw,NULL,0);
+	
+	//Assign to mupenCode
+	mupenCode.address=address;
+	mupenCode.value=value;
+	cheat_add_new(name,&mupenCode,1);
+	cheat_set_enabled(name,enabled);
+}
+
 
 void vbo_disable(void);
 
