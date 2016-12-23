@@ -121,12 +121,15 @@ EXPORT m64p_error CALL CoreDoCommand(m64p_command Command, int ParamInt, void *P
             if (rval == M64ERR_SUCCESS)
             {
                 l_ROMOpen = 1;
+                cheat_init();
             }
             return rval;
         case M64CMD_ROM_CLOSE:
             if (g_EmulatorRunning || !l_ROMOpen)
                 return M64ERR_INVALID_STATE;
             l_ROMOpen = 0;
+            cheat_delete_all();
+            cheat_uninit();
             return close_rom();
         case M64CMD_ROM_GET_HEADER:
             if (!l_ROMOpen && !l_DDROMOpen)
