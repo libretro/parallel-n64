@@ -52,6 +52,8 @@ static struct retro_hw_render_context_negotiation_interface_vulkan hw_context_ne
 static const struct retro_hw_render_interface_vulkan *vulkan;
 #endif
 
+#define ISHEXDEC ((codeLine[cursor]>='0') && (codeLine[cursor]<='9')) || ((codeLine[cursor]>='a') && (codeLine[cursor]<='f')) || ((codeLine[cursor]>='A') && (codeLine[cursor]<='F'))
+
 struct retro_perf_callback perf_cb;
 retro_get_cpu_features_t perf_get_cpu_features_cb = NULL;
 
@@ -1528,12 +1530,13 @@ void retro_cheat_set(unsigned index, bool enabled, const char* codeLine)
 	m64p_cheat_code mupenCode[256];
 	int matchLength=0,partCount=0;
 	int codeParts[256];
+	int cursor;
 	
 	//Generate a name
 	sprintf(name, "cheat_%u",index);
 	
 	//Break the code into Parts
-	for (int cursor=0;;cursor++)
+	for (cursor=0;;cursor++)
 	{
 		if (ISHEXDEC){
 			matchLength++;
@@ -1552,9 +1555,9 @@ void retro_cheat_set(unsigned index, bool enabled, const char* codeLine)
 	}
 	
 	//Assign the parts to mupenCode
-	for (int i=0;2*i+1<partCount;i++){
-		mupenCode[i].address=codeParts[2*i];
-		mupenCode[i].value=codeParts[2*i+1];
+	for (cursor=0;2*cursor+1<partCount;cursor++){
+		mupenCode[cursor].address=codeParts[2*cursor];
+		mupenCode[cursor].value=codeParts[2*cursor+1];
 	}
 	
 	//Assign to mupenCode
