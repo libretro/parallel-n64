@@ -52,6 +52,8 @@ static struct retro_hw_render_context_negotiation_interface_vulkan hw_context_ne
 static const struct retro_hw_render_interface_vulkan *vulkan;
 #endif
 
+#define ISHEXDEC ((codeLine[cursor]>='0') && (codeLine[cursor]<='9')) || ((codeLine[cursor]>='a') && (codeLine[cursor]<='f')) || ((codeLine[cursor]>='A') && (codeLine[cursor]<='F'))
+
 struct retro_perf_callback perf_cb;
 retro_get_cpu_features_t perf_get_cpu_features_cb = NULL;
 
@@ -1522,34 +1524,44 @@ void retro_cheat_reset(void)
 	cheat_delete_all();
 }
 
-void retro_cheat_set(unsigned index, bool enabled, const char* code)
+void retro_cheat_set(unsigned index, bool enabled, const char* codeLine)
 {
 	char name[256];
-	m64p_cheat_code mupenCode;
-	char address_raw[11];
-	char value_raw[7];
-	uint32_t address;
-	int value;
+	m64p_cheat_code mupenCode[256];
+	int matchLength=0,partCount=0;
+	int codeParts[256];
+	int cursor;
 	
 	//Generate a name
 	sprintf(name, "cheat_%u",index);
 	
-	//Split code into address and value
-	//Prepend split items with 0x
-	snprintf (address_raw,11,"0x%s",code);
-	snprintf (value_raw,7,"0x%s",code+9);
+	//Break the code into Parts
+	for (cursor=0;;cursor++)
+	{
+		if (ISHEXDEC){
+			matchLength++;
+		} else {
+			if (matchLength){
+				char codePartS[matchLength];
+				strncpy(codePartS,codeLine+cursor-matchLength,matchLength);
+				codePartS[matchLength]=0;
+				codeParts[partCount++]=strtol(codePartS,NULL,16);
+				matchLength=0;
+			}
+		}
+		if (!codeLine[cursor]){
+			break;
+		}
+	}
 	
-	printf("%s\n",address_raw);
-	printf("%s\n",value_raw);
-	
-	//strtoul and atoi
-	address=strtoul(address_raw,NULL,0);
-	value=strtol(value_raw,NULL,0);
+	//Assign the parts to mupenCode
+	for (cursor=0;2*cursor+1<partCount;cursor++){
+		mupenCode[cursor].address=codeParts[2*cursor];
+		mupenCode[cursor].value=codeParts[2*cursor+1];
+	}
 	
 	//Assign to mupenCode
-	mupenCode.address=address;
-	mupenCode.value=value;
-	cheat_add_new(name,&mupenCode,1);
+	cheat_add_new(name,mupenCode,partCount/2);
 	cheat_set_enabled(name,enabled);
 }
 
