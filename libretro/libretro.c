@@ -1439,7 +1439,7 @@ void *retro_get_memory_data(unsigned type)
 
 size_t retro_get_memory_size(unsigned type)
 {
-   return (type == RETRO_MEMORY_SAVE_RAM) ? sizeof(saved_memory) : 0;
+   return (type == RETRO_MEMORY_SAVE_RAM) ? sizeof(saved_memory) - (0x0435B0C0 * (g_dd_disk == NULL)) : 0;
 }
 
 
