@@ -1832,6 +1832,8 @@ void ReadSpecialSettings (const char * name)
       settings.hacks |= hack_Blastcorps;
    //else if (strstr(name, (const char *)"PUZZLE LEAGUE"))
       //settings.hacks |= hack_PPL;
+   else if (strstr(name, (const char *)"WIN BACK") || strstr(name, (const char *)"OPERATION WINBACK"))
+      settings.hacks |= hack_Winback;
 
    switch (gfx_plugin_accuracy)
    {

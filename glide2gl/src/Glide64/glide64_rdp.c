@@ -567,11 +567,17 @@ static void rdp_getTexRectParams(uint32_t *w2, uint32_t *w3)
          break;
       case GDP_TEX_RECT:
          //gDPTextureRectangle
-         if (settings.hacks&hack_ASB)
+         if (settings.hacks&hack_ASB ||
+               settings.hacks & hack_Winback
+               )
             *w2 = 0;
          else
             *w2 = ((uint32_t*)gfx_info.RDRAM)[a+0];
-         *w3 = ((uint32_t*)gfx_info.RDRAM)[a+1];
+
+         if (settings.hacks & hack_Winback)
+            *w3 = 0;
+         else
+            *w3 = ((uint32_t*)gfx_info.RDRAM)[a+1];
          __RSP.PC[__RSP.PCi] += 8;
          break;
       case HALF_TEX_RECT:
@@ -606,7 +612,7 @@ static void rdp_texrect(uint32_t w0, uint32_t w1)
       return;
    }
 
-   if (rdp.skip_drawing || (!fb_emulation_enabled && (gDP.colorImage.address == g_gdp.zb_address)))
+   if (rdp.skip_drawing || (!fb_emulation_enabled && (gDP.colorImage.address == g_gdp.zb_address)) || __RDP.w3 == 0)
    {
       if ((settings.hacks&hack_PMario) && rdp.ci_status == CI_USELESS)
          colorimage_palette_modification();
