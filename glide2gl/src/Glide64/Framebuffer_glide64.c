@@ -976,13 +976,20 @@ void DrawWholeFrameBufferToScreen(void)
 
 void CopyFrameBuffer(int32_t buffer)
 {
-   uint32_t height = rdp.ci_lower_bound;
+   uint32_t height = 0;
    uint32_t width  = gDP.colorImage.width;//*gfx_info.VI_WIDTH_REG;
 
-   if (fb_emulation_enabled)
+   if (fb_emulation_enabled && !(settings.hacks&hack_PPL))
    {
       int ind = (rdp.ci_count > 0) ? (rdp.ci_count-1) : 0;
       height = rdp.frame_buffers[ind].height;
+   }
+   else
+   {
+      height = rdp.ci_lower_bound;
+
+      if (settings.hacks&hack_PPL)
+         height -= rdp.ci_upper_bound;
    }
 
    if (rdp.scale_x < 1.1f)

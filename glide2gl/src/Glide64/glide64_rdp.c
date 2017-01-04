@@ -1316,6 +1316,41 @@ static void rdp_setcolorimage(uint32_t w0, uint32_t w1)
             RestoreScale();
       }
 
+      if (cur_fb->status == CI_AUX)
+      {
+         if (cur_fb->format == 0)
+         {
+            if ((settings.hacks & hack_PPL) && (rdp.scale_x < 1.1f))  //need to put current image back to frame buffer
+            {
+               unsigned x, y;
+               uint16_t c;
+               int width         = cur_fb->width;
+               int height        = cur_fb->height;
+               uint16_t *ptr_dst = calloc(width * height, sizeof(uint16_t));
+               uint16_t *ptr_src = (uint16_t*)(gfx_info.RDRAM + cur_fb->addr);
+
+               for (y = 0; y < height; y++)
+               {
+                  for (x = 0; x < width; x++)
+                  {
+                     c = ((ptr_src[(x + y * width) ^ 1]) >> 1) | 0x8000;
+                     ptr_dst[x + y * width] = c;
+                  }
+               }
+               grLfbWriteRegion(GR_BUFFER_BACKBUFFER,
+                     (uint32_t)rdp.offset_x,
+                     (uint32_t)rdp.offset_y,
+                     GR_LFB_SRC_FMT_555,
+                     width,
+                     height,
+                     FXFALSE,
+                     width << 1,
+                     ptr_dst);
+               free(ptr_dst);
+            }
+         }
+      }
+
       if ((cur_fb->status == CI_MAIN) && (rdp.ci_count > 0))
       {
          int i;

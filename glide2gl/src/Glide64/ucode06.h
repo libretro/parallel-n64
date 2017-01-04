@@ -178,14 +178,12 @@ static void DrawImage (DRAWIMAGE *d)
       }
    }
 
-#if 0
    if ((settings.hacks&hack_PPL) > 0)
    {
       if (d->imageY > d->imageH)
          d->imageY = (d->imageY % d->imageH);
    }
    else
-#endif
    if ((settings.hacks&hack_Starcraft) > 0)
    {
       if (d->imageH%2 == 1)
@@ -491,7 +489,7 @@ static void uc6_bg(bool first_cycle)
 
    uc6_read_background_data(&d, first_cycle);
 
-   if (settings.ucode == ucode_F3DEX2/* || (settings.hacks&hack_PPL)*/)
+   if (settings.ucode == ucode_F3DEX2 || (settings.hacks&hack_PPL))
    {
       /* can't draw from framebuffer */
       if (d.imagePtr == gDP.colorImage.address || d.imagePtr == rdp.ocimg)

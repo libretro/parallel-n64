@@ -695,7 +695,7 @@ void newSwapBuffers(void)
    {
       grBufferSwap (settings.vsync);
 
-      if  (settings.buff_clear)
+      if  (settings.buff_clear || (settings.hacks & hack_PPL && settings.ucode == 6))
       {
          grDepthMask (FXTRUE);
          grBufferClear (0, 0, 0xFFFF);
