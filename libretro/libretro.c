@@ -1529,7 +1529,7 @@ void retro_cheat_set(unsigned index, bool enabled, const char* codeLine)
 	char name[256];
 	m64p_cheat_code mupenCode[256];
 	int matchLength=0,partCount=0;
-	unsigned int codeParts[256];
+	uint32_t codeParts[256];
 	int cursor;
 	
 	//Generate a name
