@@ -83,6 +83,7 @@ else ifeq ($(ARCH), $(filter $(ARCH), arm))
 endif
 
 ifeq ($(HAVE_PARALLEL_ONLY),1)
+HAVE_OPENGL=0
 TARGET_NAME := parallel
 else ifeq ($(HAVE_VULKAN_DEBUG),1)
 TARGET_NAME := parallel_debug
@@ -352,10 +353,6 @@ else ifneq (,$(findstring vita,$(platform)))
    DYNAREC_USED = 0
    GLES = 0
    HAVE_OPENGL = 0
-	HAVE_GLIDE64=0
-	HAVE_GLN64=0
-	HAVE_GLIDEN64=0
-	HAVE_RICE=0
    PLATCFLAGS += -DVITA
    CPUCFLAGS += -DNO_ASM
    CFLAGS += -DVITA -lm
@@ -380,6 +377,13 @@ ifneq ($(SANITIZER),)
     CFLAGS   += -fsanitize=$(SANITIZER)
     CXXFLAGS += -fsanitize=$(SANITIZER)
     LDFLAGS  += -fsanitize=$(SANITIZER)
+endif
+
+ifeq ($(HAVE_OPENGL),0)
+	HAVE_GLIDE64=0
+	HAVE_GLN64=0
+	HAVE_GLIDEN64=0
+	HAVE_RICE=0
 endif
 
 include Makefile.common
