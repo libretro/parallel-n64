@@ -17,6 +17,7 @@
 #include "r4300/r4300.h"
 #include "memory/memory.h"
 #include "main/main.h"
+#include "main/cheat.h"
 #include "main/version.h"
 #include "main/savestates.h"
 #include "dd/dd_disk.h"
