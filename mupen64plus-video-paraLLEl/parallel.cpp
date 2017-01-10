@@ -11,7 +11,9 @@
 
 extern "C" {
 
+#ifdef HAVE_RDP_DUMP
 #include "rdp_dump.h"
+#endif
 
 extern int retro_return(int just_flipping);
 
@@ -42,9 +44,11 @@ void parallelSetRenderingCallback(void (*callback)(int))
 
 int parallelInitiateGFX(GFX_INFO Gfx_Info)
 {
+#ifdef HAVE_RDP_DUMP
 	const char *env = getenv("RDP_DUMP");
 	if (env)
 		rdp_dump_init(env, 8 * 1024 * 1024);
+#endif
 
 	return true;
 }
@@ -64,7 +68,9 @@ void parallelProcessRDPList(void)
 
 void parallelRomClosed(void)
 {
+#ifdef HAVE_RDP_DUMP
 	rdp_dump_end();
+#endif
 }
 
 int parallelRomOpen(void)
