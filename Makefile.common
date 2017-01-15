@@ -243,14 +243,19 @@ SOURCES_C += $(LIBRETRO_DIR)/libretro.c \
 				 $(LIBRETRO_COMM_DIR)/memmap/memalign.c \
 				 $(LIBRETRO_COMM_DIR)/encodings/encoding_crc32.c \
 				 $(AUDIO_LIBRETRO_DIR)/audio_backend_libretro.c \
-				 $(AUDIO_LIBRETRO_DIR)/audio_resampler_driver.c \
-				 $(AUDIO_LIBRETRO_DIR)/drivers_resampler/sinc_resampler.c \
-				 $(AUDIO_LIBRETRO_DIR)/drivers_resampler/nearest.c \
-				 $(AUDIO_LIBRETRO_DIR)/drivers_resampler/cc_resampler.c \
 				 $(LIBRETRO_COMM_DIR)/compat/compat_strl.c \
 				 $(LIBRETRO_COMM_DIR)/conversion/float_to_s16.c \
 				 $(LIBRETRO_COMM_DIR)/conversion/s16_to_float.c \
 				 $(LIBRETRO_COMM_DIR)/features/features_cpu.c
+
+ifeq ($(STATIC_LINKING),1)
+else
+SOURCES_C += \
+				 $(AUDIO_LIBRETRO_DIR)/audio_resampler_driver.c \
+				 $(AUDIO_LIBRETRO_DIR)/drivers_resampler/sinc_resampler.c \
+				 $(AUDIO_LIBRETRO_DIR)/drivers_resampler/nearest.c \
+				 $(AUDIO_LIBRETRO_DIR)/drivers_resampler/cc_resampler.c
+endif
 
 ifeq ($(STATIC_LINKING),1)
 else
