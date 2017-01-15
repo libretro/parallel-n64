@@ -376,7 +376,7 @@ endif
 ifeq ($(HAVE_NEON),1)
 	SOURCES_ASM	+= $(LIBRETRO_COMM_DIR)/conversion/float_to_s16_neon.S \
 						$(LIBRETRO_COMM_DIR)/conversion/s16_to_float_neon.S \
-						$(LIBRETRO_COMM_DIR)/audio/resamplers/drivers/sinc_resampler_neon.S
+						$(LIBRETRO_COMM_DIR)/audio/resampler/drivers/sinc_resampler_neon.S
 endif
 
 
