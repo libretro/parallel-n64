@@ -1,16 +1,23 @@
-/*  RetroArch - A frontend for libretro.
- *  Copyright (C) 2010-2014 - Hans-Kristian Arntzen
- * 
- *  RetroArch is free software: you can redistribute it and/or modify it under the terms
- *  of the GNU General Public License as published by the Free Software Found-
- *  ation, either version 3 of the License, or (at your option) any later version.
+/* Copyright  (C) 2010-2016 The RetroArch team
  *
- *  RetroArch is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
- *  without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
- *  PURPOSE.  See the GNU General Public License for more details.
+ * ---------------------------------------------------------------------------------------
+ * The following license statement only applies to this file (sinc_resampler.c).
+ * ---------------------------------------------------------------------------------------
  *
- *  You should have received a copy of the GNU General Public License along with RetroArch.
- *  If not, see <http://www.gnu.org/licenses/>.
+ * Permission is hereby granted, free of charge,
+ * to any person obtaining a copy of this software and associated documentation files (the "Software"),
+ * to deal in the Software without restriction, including without limitation the rights to
+ * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software,
+ * and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+ * IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+ * WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
 /* Bog-standard windowed SINC implementation. */
@@ -28,7 +35,7 @@
 #include <filters.h>
 #include <memalign.h>
 
-#include "../audio_resampler_driver.h"
+#include <audio/audio_resampler.h>
 
 /* Rough SNR values for upsampling:
  * LOWEST: 40 dB
@@ -141,10 +148,9 @@ static void init_sinc_table(rarch_sinc_resampler_t *resamp, double cutoff,
          float val;
          int               n = j * phases + i;
          double window_phase = (double)n / (phases * taps); /* [0, 1). */
-         window_phase = 2.0 * window_phase - 1.0; /* [-1, 1) */
-         sinc_phase = sidelobes * window_phase;
-
-         val = cutoff * sinc(M_PI * sinc_phase * cutoff) * 
+         window_phase        = 2.0 * window_phase - 1.0; /* [-1, 1) */
+         sinc_phase          = sidelobes * window_phase;
+         val                 = cutoff * sinc(M_PI * sinc_phase * cutoff) * 
             window_function(window_phase) / window_mod;
          phase_table[i * stride * taps + j] = val;
       }
@@ -170,12 +176,12 @@ static void init_sinc_table(rarch_sinc_resampler_t *resamp, double cutoff,
       {
          float val, delta;
          double sinc_phase;
-         int n = j * phases + (phase + 1);
+         int n               = j * phases + (phase + 1);
          double window_phase = (double)n / (phases * taps); /* (0, 1]. */
-         window_phase = 2.0 * window_phase - 1.0; /* (-1, 1] */
-         sinc_phase = sidelobes * window_phase;
+         window_phase        = 2.0 * window_phase - 1.0; /* (-1, 1] */
+         sinc_phase          = sidelobes * window_phase;
 
-         val = cutoff * sinc(M_PI * sinc_phase * cutoff) * 
+         val                 = cutoff * sinc(M_PI * sinc_phase * cutoff) * 
             window_function(window_phase) / window_mod;
          delta = (val - phase_table[phase * stride * taps + j]);
          phase_table[(phase * stride + 1) * taps + j] = delta;
@@ -335,7 +341,7 @@ static void process_sinc(rarch_sinc_resampler_t *resamp, float *out_buffer)
    /* movehl { X, R, X, L } == { X, R, X, R } */
    _mm_store_ss(out_buffer + 1, _mm_movehl_ps(sum, sum));
 }
-#elif defined(__ARM_NEON__) && !defined(VITA)
+#elif defined(__ARM_NEON__)
 
 #if SINC_COEFF_LERP
 #error "NEON asm does not support SINC lerp."
@@ -416,8 +422,8 @@ static void resampler_sinc_free(void *re)
 static void *resampler_sinc_new(const struct resampler_config *config,
       double bandwidth_mod, resampler_simd_mask_t mask)
 {
-   size_t phase_elems, elems;
    double cutoff;
+   size_t phase_elems, elems;
    rarch_sinc_resampler_t *re = (rarch_sinc_resampler_t*)
       calloc(1, sizeof(*re));
 
@@ -438,30 +444,30 @@ static void *resampler_sinc_new(const struct resampler_config *config,
    }
 
    /* Be SIMD-friendly. */
-#if (defined(__AVX__) && ENABLE_AVX) || (defined(__ARM_NEON__)&& !defined(VITA))
-   re->taps = (re->taps + 7) & ~7;
+#if (defined(__AVX__) && ENABLE_AVX) || (defined(__ARM_NEON__))
+   re->taps     = (re->taps + 7) & ~7;
 #else
-   re->taps = (re->taps + 3) & ~3;
+   re->taps     = (re->taps + 3) & ~3;
 #endif
 
-   phase_elems = (1 << PHASE_BITS) * re->taps;
+   phase_elems  = (1 << PHASE_BITS) * re->taps;
 #if SINC_COEFF_LERP
    phase_elems *= 2;
 #endif
-   elems = phase_elems + 4 * re->taps;
+   elems        = phase_elems + 4 * re->taps;
 
    re->main_buffer = (float*)memalign_alloc(128, sizeof(float) * elems);
    if (!re->main_buffer)
       goto error;
 
    re->phase_table = re->main_buffer;
-   re->buffer_l = re->main_buffer + phase_elems;
-   re->buffer_r = re->buffer_l + 2 * re->taps;
+   re->buffer_l    = re->main_buffer + phase_elems;
+   re->buffer_r    = re->buffer_l + 2 * re->taps;
 
    init_sinc_table(re, cutoff, re->phase_table,
          1 << PHASE_BITS, re->taps, SINC_COEFF_LERP);
 
-#if defined(__ARM_NEON__) && !defined(VITA)
+#if defined(__ARM_NEON__) 
    process_sinc_func = mask & RESAMPLER_SIMD_NEON 
       ? process_sinc_neon : process_sinc_C;
 #endif
@@ -473,7 +479,7 @@ error:
    return NULL;
 }
 
-rarch_resampler_t sinc_resampler = {
+retro_resampler_t sinc_resampler = {
    resampler_sinc_new,
    resampler_sinc_process,
    resampler_sinc_free,

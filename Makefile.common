@@ -243,23 +243,31 @@ SOURCES_C += $(LIBRETRO_DIR)/libretro.c \
 				 $(LIBRETRO_COMM_DIR)/memmap/memalign.c \
 				 $(LIBRETRO_COMM_DIR)/encodings/encoding_crc32.c \
 				 $(AUDIO_LIBRETRO_DIR)/audio_backend_libretro.c \
-				 $(LIBRETRO_COMM_DIR)/compat/compat_strl.c \
-				 $(LIBRETRO_COMM_DIR)/conversion/float_to_s16.c \
-				 $(LIBRETRO_COMM_DIR)/conversion/s16_to_float.c \
-				 $(LIBRETRO_COMM_DIR)/features/features_cpu.c
 
 ifeq ($(STATIC_LINKING),1)
 else
 SOURCES_C += \
-				 $(AUDIO_LIBRETRO_DIR)/audio_resampler_driver.c \
-				 $(AUDIO_LIBRETRO_DIR)/drivers_resampler/sinc_resampler.c \
-				 $(AUDIO_LIBRETRO_DIR)/drivers_resampler/nearest.c \
-				 $(AUDIO_LIBRETRO_DIR)/drivers_resampler/cc_resampler.c
+				 $(LIBRETRO_COMM_DIR)/file/config_file.c \
+				 $(LIBRETRO_COMM_DIR)/file/config_file_userdata.c \
+				 $(LIBRETRO_COMM_DIR)/audio/resampler/audio_resampler.c \
+				 $(LIBRETRO_COMM_DIR)/audio/resampler/drivers/null_resampler.c \
+				 $(LIBRETRO_COMM_DIR)/audio/resampler/drivers/sinc_resampler.c \
+				 $(LIBRETRO_COMM_DIR)/audio/resampler/drivers/nearest_resampler.c \
+				 $(LIBRETRO_COMM_DIR)/compat/compat_strl.c \
+				 $(LIBRETRO_COMM_DIR)/compat/compat_strcasestr.c \
+				 $(LIBRETRO_COMM_DIR)/conversion/float_to_s16.c \
+				 $(LIBRETRO_COMM_DIR)/conversion/s16_to_float.c \
+				 $(LIBRETRO_COMM_DIR)/features/features_cpu.c
 endif
 
 ifeq ($(STATIC_LINKING),1)
 else
-SOURCES_C += $(LIBRETRO_COMM_DIR)/streams/file_stream.c
+SOURCES_C += $(LIBRETRO_COMM_DIR)/streams/file_stream.c \
+				 $(LIBRETRO_COMM_DIR)/hash/rhash.c \
+				 $(LIBRETRO_COMM_DIR)/lists/string_list.c \
+				 $(LIBRETRO_COMM_DIR)/file/retro_stat.c \
+				 $(LIBRETRO_COMM_DIR)/string/stdstring.c \
+				 $(LIBRETRO_COMM_DIR)/file/file_path.c
 
 ifeq ($(HAVE_OPENGL),1)
 SOURCES_C += $(LIBRETRO_COMM_DIR)/gfx/gl_capabilities.c
@@ -368,8 +376,7 @@ endif
 ifeq ($(HAVE_NEON),1)
 	SOURCES_ASM	+= $(LIBRETRO_COMM_DIR)/conversion/float_to_s16_neon.S \
 						$(LIBRETRO_COMM_DIR)/conversion/s16_to_float_neon.S \
-						$(AUDIO_LIBRETRO_DIR)/drivers_resampler/sinc_resampler_neon.S \
-						$(AUDIO_LIBRETRO_DIR)/drivers_resampler/cc_resampler_neon.S
+						$(LIBRETRO_COMM_DIR)/audio/resamplers/drivers/sinc_resampler_neon.S
 endif
 
 

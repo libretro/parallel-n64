@@ -1,7 +1,7 @@
 /* Copyright  (C) 2010-2015 The RetroArch team
  *
  * ---------------------------------------------------------------------------------------
- * The following license statement only applies to this file (compat_strcasestr.c).
+ * The following license statement only applies to this file (stdstring.h).
  * ---------------------------------------------------------------------------------------
  *
  * Permission is hereby granted, free of charge,
@@ -20,40 +20,42 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include <ctype.h>
+#ifndef __LIBRETRO_SDK_STDSTRING_H
+#define __LIBRETRO_SDK_STDSTRING_H
 
-#include <compat/strcasestr.h>
-#include <retro_assert.h>
+#include <stdlib.h>
+#include <stddef.h>
+#include <string.h>
+#include <boolean.h>
 
-/* Pretty much strncasecmp. */
-static int casencmp(const char *a, const char *b, size_t n)
-{
-   size_t i;
+#include <retro_common_api.h>
 
-   for (i = 0; i < n; i++)
-   {
-      int a_lower = tolower(a[i]);
-      int b_lower = tolower(b[i]);
-      if (a_lower != b_lower)
-         return a_lower - b_lower;
-   }
+RETRO_BEGIN_DECLS
 
-   return 0;
-}
+bool string_is_empty(const char *data);
 
-char *strcasestr_retro__(const char *haystack, const char *needle)
-{
-   size_t i, search_off;
-   size_t hay_len    = strlen(haystack);
-   size_t needle_len = strlen(needle);
+bool string_is_equal(const char *a, const char *b);
 
-   if (needle_len > hay_len)
-      return NULL;
+bool string_is_equal_noncase(const char *a, const char *b);
 
-   search_off = hay_len - needle_len;
-   for (i = 0; i <= search_off; i++)
-      if (!casencmp(haystack + i, needle, needle_len))
-         return (char*)haystack + i;
+char *string_to_upper(char *s);
 
-   return NULL;
-}
+char *string_to_lower(char *s);
+
+char *string_ucwords(char* s);
+
+char *string_replace_substring(const char *in, const char *pattern,
+      const char *by);
+
+/* Remove leading whitespaces */
+char *string_trim_whitespace_left(char *const s);
+
+/* Remove trailing whitespaces */
+char *string_trim_whitespace_right(char *const s);
+
+/* Remove leading and trailing whitespaces */
+char *string_trim_whitespace(char *const s);
+
+RETRO_END_DECLS
+
+#endif

@@ -1,35 +1,35 @@
-/*  RetroArch - A frontend for libretro.
- *  Copyright (C) 2010-2014 - Hans-Kristian Arntzen
- *  Copyright (C) 2011-2015 - Daniel De Matteis
- * 
- *  RetroArch is free software: you can redistribute it and/or modify it under the terms
- *  of the GNU General Public License as published by the Free Software Found-
- *  ation, either version 3 of the License, or (at your option) any later version.
+/* Copyright  (C) 2010-2016 The RetroArch team
  *
- *  RetroArch is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
- *  without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
- *  PURPOSE.  See the GNU General Public License for more details.
+ * ---------------------------------------------------------------------------------------
+ * The following license statement only applies to this file (audio_resampler.h).
+ * ---------------------------------------------------------------------------------------
  *
- *  You should have received a copy of the GNU General Public License along with RetroArch.
- *  If not, see <http://www.gnu.org/licenses/>.
+ * Permission is hereby granted, free of charge,
+ * to any person obtaining a copy of this software and associated documentation files (the "Software"),
+ * to deal in the Software without restriction, including without limitation the rights to
+ * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software,
+ * and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+ * IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+ * WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+#ifndef __LIBRETRO_SDK_AUDIO_RESAMPLER_DRIVER_H
+#define __LIBRETRO_SDK_AUDIO_RESAMPLER_DRIVER_H
 
-#ifndef __AUDIO_RESAMPLER_DRIVER_H
-#define __AUDIO_RESAMPLER_DRIVER_H
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-#include <stddef.h>
 #include <stdint.h>
-#include <math.h>
-#include <boolean.h>
+#include <stddef.h>
 
-#ifndef M_PI
-#define M_PI 3.14159265358979323846264338327
-#endif
+#include <boolean.h>
+#include <retro_common_api.h>
+
+RETRO_BEGIN_DECLS
 
 #define RESAMPLER_SIMD_SSE      (1 << 0)
 #define RESAMPLER_SIMD_SSE2     (1 << 1)
@@ -116,7 +116,7 @@ typedef void (*resampler_free_t)(void *data);
 /* Processes input data. */
 typedef void (*resampler_process_t)(void *_data, struct resampler_data *data);
 
-typedef struct rarch_resampler
+typedef struct retro_resampler
 {
    resampler_init_t     init;
    resampler_process_t  process;
@@ -131,7 +131,7 @@ typedef struct rarch_resampler
    /* Computer-friendly short version of ident.
     * Lower case, no spaces and special characters, etc. */
    const char *short_ident; 
-} rarch_resampler_t;
+} retro_resampler_t;
 
 typedef struct audio_frame_float
 {
@@ -139,20 +139,12 @@ typedef struct audio_frame_float
    float r;
 } audio_frame_float_t;
 
-extern rarch_resampler_t sinc_resampler;
-extern rarch_resampler_t CC_resampler;
-extern rarch_resampler_t nearest_resampler;
-
-#ifndef DONT_HAVE_STRING_LIST
-/**
- * config_get_audio_resampler_driver_options:
- *
- * Get an enumerated list of all resampler driver names, separated by '|'.
- *
- * Returns: string listing of all resampler driver names, separated by '|'.
- **/
-const char* config_get_audio_resampler_driver_options(void);
+extern retro_resampler_t sinc_resampler;
+#ifdef HAVE_CC_RESAMPLER
+extern retro_resampler_t CC_resampler;
 #endif
+extern retro_resampler_t nearest_resampler;
+extern retro_resampler_t null_resampler;
 
 /**
  * audio_resampler_driver_find_handle:
@@ -173,7 +165,7 @@ const void *audio_resampler_driver_find_handle(int index);
 const char *audio_resampler_driver_find_ident(int index);
 
 /**
- * rarch_resampler_realloc:
+ * retro_resampler_realloc:
  * @re                         : Resampler handle
  * @backend                    : Resampler backend that is about to be set.
  * @ident                      : Identifier name for resampler we want.
@@ -184,31 +176,9 @@ const char *audio_resampler_driver_find_ident(int index);
  *
  * Returns: true (1) if successful, otherwise false (0).
  **/
-bool rarch_resampler_realloc(void **re, const rarch_resampler_t **backend,
+bool retro_resampler_realloc(void **re, const retro_resampler_t **backend,
       const char *ident, double bw_ratio);
 
-/* Convenience macros.
- * freep makes sure to set handles to NULL to avoid double-free 
- * in rarch_resampler_realloc. */
-#define rarch_resampler_freep(backend, handle) do { \
-   if (*(backend) && *(handle)) \
-      (*backend)->free(*handle); \
-   *backend = NULL; \
-   *handle = NULL; \
-} while(0)
-
-#define rarch_resampler_process(backend, handle, data) do { \
-   (backend)->process(handle, data); \
-} while(0)
-
-#ifndef RARCH_INTERNAL
-#include "libretro.h"
-extern retro_get_cpu_features_t perf_get_cpu_features_cb;
-#endif
-
-#ifdef __cplusplus
-}
-#endif
+RETRO_END_DECLS
 
 #endif
-

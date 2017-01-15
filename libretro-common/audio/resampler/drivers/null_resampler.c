@@ -1,7 +1,7 @@
-/* Copyright  (C) 2010-2015 The RetroArch team
+/* Copyright  (C) 2010-2016 The RetroArch team
  *
  * ---------------------------------------------------------------------------------------
- * The following license statement only applies to this file (compat_strcasestr.c).
+ * The following license statement only applies to this file (null_resampler.c).
  * ---------------------------------------------------------------------------------------
  *
  * Permission is hereby granted, free of charge,
@@ -20,40 +20,37 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include <ctype.h>
+#include <stdint.h>
+#include <stdlib.h>
+#include <math.h>
+ 
+#include <audio/audio_resampler.h>
 
-#include <compat/strcasestr.h>
-#include <retro_assert.h>
-
-/* Pretty much strncasecmp. */
-static int casencmp(const char *a, const char *b, size_t n)
+typedef struct rarch_null_resampler
 {
-   size_t i;
-
-   for (i = 0; i < n; i++)
-   {
-      int a_lower = tolower(a[i]);
-      int b_lower = tolower(b[i]);
-      if (a_lower != b_lower)
-         return a_lower - b_lower;
-   }
-
-   return 0;
-}
-
-char *strcasestr_retro__(const char *haystack, const char *needle)
+   void *empty;
+} rarch_null_resampler_t;
+ 
+static void resampler_null_process(
+      void *re_, struct resampler_data *data)
 {
-   size_t i, search_off;
-   size_t hay_len    = strlen(haystack);
-   size_t needle_len = strlen(needle);
-
-   if (needle_len > hay_len)
-      return NULL;
-
-   search_off = hay_len - needle_len;
-   for (i = 0; i <= search_off; i++)
-      if (!casencmp(haystack + i, needle, needle_len))
-         return (char*)haystack + i;
-
-   return NULL;
 }
+ 
+static void resampler_null_free(void *re_)
+{
+}
+ 
+static void *resampler_null_init(const struct resampler_config *config,
+      double bandwidth_mod, resampler_simd_mask_t mask)
+{
+   return (void*)0;
+}
+ 
+retro_resampler_t null_resampler = {
+   resampler_null_init,
+   resampler_null_process,
+   resampler_null_free,
+   RESAMPLER_API_VERSION,
+   "null",
+   "null"
+};

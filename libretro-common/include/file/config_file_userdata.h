@@ -1,7 +1,7 @@
-/* Copyright  (C) 2010-2015 The RetroArch team
+/* Copyright  (C) 2010-2016 The RetroArch team
  *
  * ---------------------------------------------------------------------------------------
- * The following license statement only applies to this file (compat_strcasestr.c).
+ * The following license statement only applies to this file (config_file_userdata.h).
  * ---------------------------------------------------------------------------------------
  *
  * Permission is hereby granted, free of charge,
@@ -20,40 +20,36 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include <ctype.h>
+#ifndef _LIBRETRO_SDK_CONFIG_FILE_USERDATA_H
+#define _LIBRETRO_SDK_CONFIG_FILE_USERDATA_H
 
-#include <compat/strcasestr.h>
-#include <retro_assert.h>
+#include <string.h>
 
-/* Pretty much strncasecmp. */
-static int casencmp(const char *a, const char *b, size_t n)
+#include <file/config_file.h>
+
+struct config_file_userdata
 {
-   size_t i;
+   config_file_t *conf;
+   const char *prefix[2];
+};
 
-   for (i = 0; i < n; i++)
-   {
-      int a_lower = tolower(a[i]);
-      int b_lower = tolower(b[i]);
-      if (a_lower != b_lower)
-         return a_lower - b_lower;
-   }
+int config_userdata_get_float(void *userdata, const char *key_str,
+      float *value, float default_value);
 
-   return 0;
-}
+int config_userdata_get_int(void *userdata, const char *key_str,
+      int *value, int default_value);
 
-char *strcasestr_retro__(const char *haystack, const char *needle)
-{
-   size_t i, search_off;
-   size_t hay_len    = strlen(haystack);
-   size_t needle_len = strlen(needle);
+int config_userdata_get_float_array(void *userdata, const char *key_str,
+      float **values, unsigned *out_num_values,
+      const float *default_values, unsigned num_default_values);
 
-   if (needle_len > hay_len)
-      return NULL;
+int config_userdata_get_int_array(void *userdata, const char *key_str,
+      int **values, unsigned *out_num_values,
+      const int *default_values, unsigned num_default_values);
 
-   search_off = hay_len - needle_len;
-   for (i = 0; i <= search_off; i++)
-      if (!casencmp(haystack + i, needle, needle_len))
-         return (char*)haystack + i;
+int config_userdata_get_string(void *userdata, const char *key_str,
+      char **output, const char *default_output);
 
-   return NULL;
-}
+void config_userdata_free(void *ptr);
+
+#endif

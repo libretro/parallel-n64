@@ -1,7 +1,7 @@
-/* Copyright  (C) 2010-2015 The RetroArch team
+/* Copyright  (C) 2010-2016 The RetroArch team
  *
  * ---------------------------------------------------------------------------------------
- * The following license statement only applies to this file (compat_strcasestr.c).
+ * The following license statement only applies to this file (sinc_resampler_neon.S).
  * ---------------------------------------------------------------------------------------
  *
  * Permission is hereby granted, free of charge,
@@ -20,40 +20,55 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include <ctype.h>
+#if defined(__ARM_NEON__)
 
-#include <compat/strcasestr.h>
-#include <retro_assert.h>
+#ifndef __MACH__
+.arm
+#endif
+.align 4
+.globl process_sinc_neon_asm
+#ifndef __MACH__
+.type process_sinc_neon_asm, %function
+#endif
+.globl _process_sinc_neon_asm
+#ifndef __MACH__
+.type _process_sinc_neon_asm, %function
+#endif
+# void process_sinc_neon(float *out, const float *left, const float *right, const float *coeff, unsigned taps)
+# Assumes taps is >= 8, and a multiple of 8.
+process_sinc_neon_asm:
+_process_sinc_neon_asm:
 
-/* Pretty much strncasecmp. */
-static int casencmp(const char *a, const char *b, size_t n)
-{
-   size_t i;
+   push {r4, lr}   
+   vmov.f32 q0, #0.0
+   vmov.f32 q8, #0.0
 
-   for (i = 0; i < n; i++)
-   {
-      int a_lower = tolower(a[i]);
-      int b_lower = tolower(b[i]);
-      if (a_lower != b_lower)
-         return a_lower - b_lower;
-   }
+   # Taps argument (r4) goes on stack in armeabi.
+   ldr r4, [sp, #8]
 
-   return 0;
-}
+1:
+   # Left
+   vld1.f32 {q2-q3}, [r1]!
+   # Right
+   vld1.f32 {q10-q11}, [r2]!
+   # Coeff
+   vld1.f32 {q12-q13}, [r3, :128]!
 
-char *strcasestr_retro__(const char *haystack, const char *needle)
-{
-   size_t i, search_off;
-   size_t hay_len    = strlen(haystack);
-   size_t needle_len = strlen(needle);
+   # Left / Right
+   vmla.f32 q0, q2, q12
+   vmla.f32 q8, q10, q12
+   vmla.f32 q0, q3, q13
+   vmla.f32 q8, q11, q13
 
-   if (needle_len > hay_len)
-      return NULL;
+   subs r4, r4, #8
+   bne 1b
 
-   search_off = hay_len - needle_len;
-   for (i = 0; i <= search_off; i++)
-      if (!casencmp(haystack + i, needle, needle_len))
-         return (char*)haystack + i;
+   # Add everything together
+   vadd.f32 d0, d0, d1
+   vadd.f32 d16, d16, d17
+   vpadd.f32 d0, d0, d16
+   vst1.f32 d0, [r0]
+   
+   pop {r4, pc}
 
-   return NULL;
-}
+#endif

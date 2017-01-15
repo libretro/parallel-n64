@@ -1,31 +1,50 @@
-/*  RetroArch - A frontend for libretro.
- *  Copyright (C) 2010-2014 - Hans-Kristian Arntzen
- *  Copyright (C) 2011-2015 - Daniel De Matteis
- * 
- *  RetroArch is free software: you can redistribute it and/or modify it under the terms
- *  of the GNU General Public License as published by the Free Software Found-
- *  ation, either version 3 of the License, or (at your option) any later version.
+/* Copyright  (C) 2010-2016 The RetroArch team
  *
- *  RetroArch is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
- *  without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
- *  PURPOSE.  See the GNU General Public License for more details.
+ * ---------------------------------------------------------------------------------------
+ * The following license statement only applies to this file (audio_resampler.c).
+ * ---------------------------------------------------------------------------------------
  *
- *  You should have received a copy of the GNU General Public License along with RetroArch.
- *  If not, see <http://www.gnu.org/licenses/>.
+ * Permission is hereby granted, free of charge,
+ * to any person obtaining a copy of this software and associated documentation files (the "Software"),
+ * to deal in the Software without restriction, including without limitation the rights to
+ * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software,
+ * and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+ * IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+ * WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include "audio_resampler_driver.h"
-#include "api/libretro.h"
 #include <string.h>
 
-/* strcasecmp not implemented in MSVC */
-#include "api/msvc_compat.h"
+#include <string/stdstring.h>
+#include <features/features_cpu.h>
+#include <file/config_file_userdata.h>
 
-static const rarch_resampler_t *resampler_drivers[] = {
-   &CC_resampler,
+#include <audio/audio_resampler.h>
+
+static const retro_resampler_t *resampler_drivers[] = {
    &sinc_resampler,
+#ifdef HAVE_CC_RESAMPLER
+   &CC_resampler,
+#endif
    &nearest_resampler,
+   &null_resampler,
    NULL,
+};
+
+static const struct resampler_config resampler_config = {
+   config_userdata_get_float,
+   config_userdata_get_int,
+   config_userdata_get_float_array,
+   config_userdata_get_int_array,
+   config_userdata_get_string,
+   config_userdata_free,
 };
 
 /**
@@ -42,7 +61,7 @@ static int find_resampler_driver_index(const char *ident)
    unsigned i;
 
    for (i = 0; resampler_drivers[i]; i++)
-      if (strcasecmp(ident, resampler_drivers[i]->ident) == 0)
+      if (string_is_equal_noncase(ident, resampler_drivers[i]->ident))
          return i;
    return -1;
 }
@@ -71,7 +90,7 @@ const void *audio_resampler_driver_find_handle(int idx)
  **/
 const char *audio_resampler_driver_find_ident(int idx)
 {
-   const rarch_resampler_t *drv = resampler_drivers[idx];
+   const retro_resampler_t *drv = resampler_drivers[idx];
    if (!drv)
       return NULL;
    return drv->ident;
@@ -86,7 +105,7 @@ const char *audio_resampler_driver_find_ident(int idx)
  * Returns: resampler driver if resampler driver was found, otherwise
  * NULL.
  **/
-static const rarch_resampler_t *find_resampler_driver(const char *ident)
+static const retro_resampler_t *find_resampler_driver(const char *ident)
 {
    int i = find_resampler_driver_index(ident);
 
@@ -94,29 +113,6 @@ static const rarch_resampler_t *find_resampler_driver(const char *ident)
       return resampler_drivers[i];
 
    return resampler_drivers[0];
-}
-
-#ifndef RARCH_INTERNAL
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-retro_get_cpu_features_t perf_get_cpu_features_cb;
-
-#ifdef __cplusplus
-}
-#endif
-
-#endif
-
-resampler_simd_mask_t resampler_get_cpu_features(void)
-{
-#ifdef RARCH_INTERNAL
-   return rarch_get_cpu_features();
-#else
-/* no features if interface isn't implemented */
-   return perf_get_cpu_features_cb ? perf_get_cpu_features_cb() : 0;
-#endif
 }
 
 /**
@@ -130,12 +126,12 @@ resampler_simd_mask_t resampler_get_cpu_features(void)
  * Returns: true (1) if successfully initialized, otherwise false (0).
  **/
 static bool resampler_append_plugs(void **re,
-      const rarch_resampler_t **backend,
+      const retro_resampler_t **backend,
       double bw_ratio)
 {
-   resampler_simd_mask_t mask = resampler_get_cpu_features();
+   resampler_simd_mask_t mask = cpu_features_get();
 
-   *re = (*backend)->init(NULL, bw_ratio, mask);
+   *re = (*backend)->init(&resampler_config, bw_ratio, mask);
 
    if (!*re)
       return false;
@@ -143,7 +139,7 @@ static bool resampler_append_plugs(void **re,
 }
 
 /**
- * rarch_resampler_realloc:
+ * retro_resampler_realloc:
  * @re                         : Resampler handle
  * @backend                    : Resampler backend that is about to be set.
  * @ident                      : Identifier name for resampler we want.
@@ -154,7 +150,7 @@ static bool resampler_append_plugs(void **re,
  *
  * Returns: true (1) if successful, otherwise false (0).
  **/
-bool rarch_resampler_realloc(void **re, const rarch_resampler_t **backend,
+bool retro_resampler_realloc(void **re, const retro_resampler_t **backend,
       const char *ident, double bw_ratio)
 {
    if (*re && *backend)
@@ -164,12 +160,11 @@ bool rarch_resampler_realloc(void **re, const rarch_resampler_t **backend,
    *backend = find_resampler_driver(ident);
 
    if (!resampler_append_plugs(re, backend, bw_ratio))
-      goto error;
+   {
+      if (!*re)
+         *backend = NULL;
+      return false;
+   }
 
    return true;
-
-error:
-   if (!*re)
-      *backend = NULL;
-   return false;
 }
