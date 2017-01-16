@@ -120,11 +120,10 @@ static int a_combiner_ext = 0;
 
 #define SHADER_HEADER \
 "#version " GLSL_VERSION          "\n" \
-"#define gl_Color vFrontColor      \n" \
-"#define gl_FrontColor vFrontColor \n"
+"#define gl_Color vFrontColor      \n"
 
 #define SHADER_VARYING \
-"varying highp vec4 gl_FrontColor;  \n" \
+"varying highp vec4 vFrontColor;  \n" \
 "varying highp vec4 vTexCoord[4]; \n"
 
 static const char* fragment_shader_header =
@@ -233,7 +232,7 @@ SHADER_VARYING
 "  gl_Position.z = aPosition.z / Z_MAX;                                       \n"
 "  gl_Position.w = 1.0;                                                     \n"
 "  gl_Position /= q;                                                        \n"
-"  gl_FrontColor = aColor.bgra;                                             \n"
+"  vFrontColor = aColor.bgra;                                             \n"
 "\n"
 "  vTexCoord[0] = vec4(aMultiTexCoord0.xy / q / textureSizes.xy,0,1);     \n"
 "  vTexCoord[1] = vec4(aMultiTexCoord1.xy / q / textureSizes.zw,0,1);     \n"
