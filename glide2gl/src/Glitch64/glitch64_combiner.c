@@ -119,8 +119,7 @@ static int a_combiner_ext = 0;
 #endif
 
 #define SHADER_HEADER \
-"#version " GLSL_VERSION          "\n" \
-"#define gl_Color vFrontColor      \n"
+"#version " GLSL_VERSION          "\n"
 
 #define SHADER_VARYING \
 "varying highp vec4 vFrontColor;  \n" \
@@ -431,7 +430,7 @@ static void compile_chroma_shader(void)
    switch(chroma_other_alpha)
    {
       case GR_COMBINE_OTHER_ITERATED:
-         strcat(fragment_shader_chroma, "float alpha = gl_Color.a; \n");
+         strcat(fragment_shader_chroma, "float alpha = vFrontColor.a; \n");
          break;
       case GR_COMBINE_OTHER_TEXTURE:
          strcat(fragment_shader_chroma, "float alpha = ctexture1.a; \n");
@@ -444,7 +443,7 @@ static void compile_chroma_shader(void)
    switch(chroma_other_color)
    {
       case GR_COMBINE_OTHER_ITERATED:
-         strcat(fragment_shader_chroma, "vec4 color = vec4(vec3(gl_Color),alpha); \n");
+         strcat(fragment_shader_chroma, "vec4 color = vec4(vec3(vFrontColor),alpha); \n");
          break;
       case GR_COMBINE_OTHER_TEXTURE:
          strcat(fragment_shader_chroma, "vec4 color = vec4(vec3(ctexture1),alpha); \n");
@@ -644,7 +643,7 @@ static void writeGLSLColorOther(int other)
    switch(other)
    {
       case GR_COMBINE_OTHER_ITERATED:
-         strcat(fragment_shader_color_combiner, "vec4 color_other = gl_Color; \n");
+         strcat(fragment_shader_color_combiner, "vec4 color_other = vFrontColor; \n");
          break;
       case GR_COMBINE_OTHER_TEXTURE:
          strcat(fragment_shader_color_combiner, "vec4 color_other = ctexture1; \n");
@@ -660,7 +659,7 @@ static void writeGLSLColorLocal(int local)
    switch(local)
    {
       case GR_COMBINE_LOCAL_ITERATED:
-         strcat(fragment_shader_color_combiner, "vec4 color_local = gl_Color; \n");
+         strcat(fragment_shader_color_combiner, "vec4 color_local = vFrontColor; \n");
          break;
       case GR_COMBINE_LOCAL_CONSTANT:
          strcat(fragment_shader_color_combiner, "vec4 color_local = constant_color; \n");
@@ -809,7 +808,7 @@ static void writeGLSLAlphaOther(int other)
    switch(other)
    {
       case GR_COMBINE_OTHER_ITERATED:
-         strcat(fragment_shader_alpha_combiner, "float alpha_other = gl_Color.a; \n");
+         strcat(fragment_shader_alpha_combiner, "float alpha_other = vFrontColor.a; \n");
          break;
       case GR_COMBINE_OTHER_TEXTURE:
          strcat(fragment_shader_alpha_combiner, "float alpha_other = ctexture1.a; \n");
@@ -825,7 +824,7 @@ static void writeGLSLAlphaLocal(int local)
    switch(local)
    {
       case GR_COMBINE_LOCAL_ITERATED:
-         strcat(fragment_shader_alpha_combiner, "float alpha_local = gl_Color.a; \n");
+         strcat(fragment_shader_alpha_combiner, "float alpha_local = vFrontColor.a; \n");
          break;
       case GR_COMBINE_LOCAL_CONSTANT:
          strcat(fragment_shader_alpha_combiner, "float alpha_local = constant_color.a; \n");
@@ -1483,10 +1482,10 @@ void  grColorCombineExt(uint32_t a, uint32_t a_mode,
          strcat(fragment_shader_color_combiner, "vec4 cs_a = constant_color; \n");
          break;
       case GR_CMBX_ITALPHA:
-         strcat(fragment_shader_color_combiner, "vec4 cs_a = vec4(gl_Color.a); \n");
+         strcat(fragment_shader_color_combiner, "vec4 cs_a = vec4(vFrontColor.a); \n");
          break;
       case GR_CMBX_ITRGB:
-         strcat(fragment_shader_color_combiner, "vec4 cs_a = gl_Color; \n");
+         strcat(fragment_shader_color_combiner, "vec4 cs_a = vFrontColor; \n");
          break;
       case GR_CMBX_TEXTURE_RGB:
          strcat(fragment_shader_color_combiner, "vec4 cs_a = ctexture1; \n");
@@ -1528,10 +1527,10 @@ void  grColorCombineExt(uint32_t a, uint32_t a_mode,
          strcat(fragment_shader_color_combiner, "vec4 cs_b = constant_color; \n");
          break;
       case GR_CMBX_ITALPHA:
-         strcat(fragment_shader_color_combiner, "vec4 cs_b = vec4(gl_Color.a); \n");
+         strcat(fragment_shader_color_combiner, "vec4 cs_b = vec4(vFrontColor.a); \n");
          break;
       case GR_CMBX_ITRGB:
-         strcat(fragment_shader_color_combiner, "vec4 cs_b = gl_Color; \n");
+         strcat(fragment_shader_color_combiner, "vec4 cs_b = vFrontColor; \n");
          break;
       case GR_CMBX_TEXTURE_RGB:
          strcat(fragment_shader_color_combiner, "vec4 cs_b = ctexture1; \n");
@@ -1582,10 +1581,10 @@ void  grColorCombineExt(uint32_t a, uint32_t a_mode,
          strcat(fragment_shader_color_combiner, "vec4 c_c = constant_color; \n");
          break;
       case GR_CMBX_ITALPHA:
-         strcat(fragment_shader_color_combiner, "vec4 c_c = vec4(gl_Color.a); \n");
+         strcat(fragment_shader_color_combiner, "vec4 c_c = vec4(vFrontColor.a); \n");
          break;
       case GR_CMBX_ITRGB:
-         strcat(fragment_shader_color_combiner, "vec4 c_c = gl_Color; \n");
+         strcat(fragment_shader_color_combiner, "vec4 c_c = vFrontColor; \n");
          break;
       case GR_CMBX_TEXTURE_RGB:
          strcat(fragment_shader_color_combiner, "vec4 c_c = ctexture1; \n");
@@ -1612,7 +1611,7 @@ void  grColorCombineExt(uint32_t a, uint32_t a_mode,
          strcat(fragment_shader_color_combiner, "vec4 c_d = ctexture1; \n");
          break;
       case GR_CMBX_ITRGB:
-         strcat(fragment_shader_color_combiner, "vec4 c_d = gl_Color; \n");
+         strcat(fragment_shader_color_combiner, "vec4 c_d = vFrontColor; \n");
          break;
       default:
          strcat(fragment_shader_color_combiner, "vec4 c_d = vec4(0.0); \n");
@@ -1651,7 +1650,7 @@ void grAlphaCombineExt(uint32_t a, uint32_t a_mode,
          strcat(fragment_shader_alpha_combiner, "float as_a = constant_color.a; \n");
          break;
       case GR_CMBX_ITALPHA:
-         strcat(fragment_shader_alpha_combiner, "float as_a = gl_Color.a; \n");
+         strcat(fragment_shader_alpha_combiner, "float as_a = vFrontColor.a; \n");
          break;
       default:
          strcat(fragment_shader_alpha_combiner, "float as_a = 0.0; \n");
@@ -1687,7 +1686,7 @@ void grAlphaCombineExt(uint32_t a, uint32_t a_mode,
          strcat(fragment_shader_alpha_combiner, "float as_b = constant_color.a; \n");
          break;
       case GR_CMBX_ITALPHA:
-         strcat(fragment_shader_alpha_combiner, "float as_b = gl_Color.a; \n");
+         strcat(fragment_shader_alpha_combiner, "float as_b = vFrontColor.a; \n");
          break;
       default:
          strcat(fragment_shader_alpha_combiner, "float as_b = 0.0; \n");
@@ -1732,7 +1731,7 @@ void grAlphaCombineExt(uint32_t a, uint32_t a_mode,
          strcat(fragment_shader_alpha_combiner, "float a_c = constant_color.a; \n");
          break;
       case GR_CMBX_ITALPHA:
-         strcat(fragment_shader_alpha_combiner, "float a_c = gl_Color.a; \n");
+         strcat(fragment_shader_alpha_combiner, "float a_c = vFrontColor.a; \n");
          break;
       default:
          strcat(fragment_shader_alpha_combiner, "float a_c = 0.0; \n");
@@ -1795,10 +1794,10 @@ grTexColorCombineExt(int32_t       tmu,
             strcat(fragment_shader_texture0, "vec4 ctex0s_a = vec4(0.0); \n");
             break;
          case GR_CMBX_ITALPHA:
-            strcat(fragment_shader_texture0, "vec4 ctex0s_a = vec4(gl_Color.a); \n");
+            strcat(fragment_shader_texture0, "vec4 ctex0s_a = vec4(vFrontColor.a); \n");
             break;
          case GR_CMBX_ITRGB:
-            strcat(fragment_shader_texture0, "vec4 ctex0s_a = gl_Color; \n");
+            strcat(fragment_shader_texture0, "vec4 ctex0s_a = vFrontColor; \n");
             break;
          case GR_CMBX_LOCAL_TEXTURE_ALPHA:
             strcat(fragment_shader_texture0, "vec4 ctex0s_a = vec4(readtex0.a); \n");
@@ -1846,10 +1845,10 @@ grTexColorCombineExt(int32_t       tmu,
             strcat(fragment_shader_texture0, "vec4 ctex0s_b = vec4(0.0); \n");
             break;
          case GR_CMBX_ITALPHA:
-            strcat(fragment_shader_texture0, "vec4 ctex0s_b = vec4(gl_Color.a); \n");
+            strcat(fragment_shader_texture0, "vec4 ctex0s_b = vec4(vFrontColor.a); \n");
             break;
          case GR_CMBX_ITRGB:
-            strcat(fragment_shader_texture0, "vec4 ctex0s_b = gl_Color; \n");
+            strcat(fragment_shader_texture0, "vec4 ctex0s_b = vFrontColor; \n");
             break;
          case GR_CMBX_LOCAL_TEXTURE_ALPHA:
             strcat(fragment_shader_texture0, "vec4 ctex0s_b = vec4(readtex0.a); \n");
@@ -1903,10 +1902,10 @@ grTexColorCombineExt(int32_t       tmu,
             strcat(fragment_shader_texture0, "vec4 ctex0_c = vec4(lambda); \n");
             break;
          case GR_CMBX_ITRGB:
-            strcat(fragment_shader_texture0, "vec4 ctex0_c = gl_Color; \n");
+            strcat(fragment_shader_texture0, "vec4 ctex0_c = vFrontColor; \n");
             break;
          case GR_CMBX_ITALPHA:
-            strcat(fragment_shader_texture0, "vec4 ctex0_c = vec4(gl_Color.a); \n");
+            strcat(fragment_shader_texture0, "vec4 ctex0_c = vec4(vFrontColor.a); \n");
             break;
          case GR_CMBX_LOCAL_TEXTURE_ALPHA:
             strcat(fragment_shader_texture0, "vec4 ctex0_c = vec4(readtex0.a); \n");
@@ -1942,7 +1941,7 @@ grTexColorCombineExt(int32_t       tmu,
             strcat(fragment_shader_texture0, "vec4 ctex0_d = ctex0s_b; \n");
             break;
          case GR_CMBX_ITRGB:
-            strcat(fragment_shader_texture0, "vec4 ctex0_d = gl_Color; \n");
+            strcat(fragment_shader_texture0, "vec4 ctex0_d = vFrontColor; \n");
             break;
          case GR_CMBX_LOCAL_TEXTURE_ALPHA:
             strcat(fragment_shader_texture0, "vec4 ctex0_d = vec4(readtex0.a); \n");
@@ -1971,10 +1970,10 @@ grTexColorCombineExt(int32_t       tmu,
             strcat(fragment_shader_texture1, "vec4 ctex1s_a = vec4(0.0); \n");
             break;
          case GR_CMBX_ITALPHA:
-            strcat(fragment_shader_texture1, "vec4 ctex1s_a = vec4(gl_Color.a); \n");
+            strcat(fragment_shader_texture1, "vec4 ctex1s_a = vec4(vFrontColor.a); \n");
             break;
          case GR_CMBX_ITRGB:
-            strcat(fragment_shader_texture1, "vec4 ctex1s_a = gl_Color; \n");
+            strcat(fragment_shader_texture1, "vec4 ctex1s_a = vFrontColor; \n");
             break;
          case GR_CMBX_LOCAL_TEXTURE_ALPHA:
             strcat(fragment_shader_texture1, "vec4 ctex1s_a = vec4(readtex1.a); \n");
@@ -2022,10 +2021,10 @@ grTexColorCombineExt(int32_t       tmu,
             strcat(fragment_shader_texture1, "vec4 ctex1s_b = vec4(0.0); \n");
             break;
          case GR_CMBX_ITALPHA:
-            strcat(fragment_shader_texture1, "vec4 ctex1s_b = vec4(gl_Color.a); \n");
+            strcat(fragment_shader_texture1, "vec4 ctex1s_b = vec4(vFrontColor.a); \n");
             break;
          case GR_CMBX_ITRGB:
-            strcat(fragment_shader_texture1, "vec4 ctex1s_b = gl_Color; \n");
+            strcat(fragment_shader_texture1, "vec4 ctex1s_b = vFrontColor; \n");
             break;
          case GR_CMBX_LOCAL_TEXTURE_ALPHA:
             strcat(fragment_shader_texture1, "vec4 ctex1s_b = vec4(readtex1.a); \n");
@@ -2079,10 +2078,10 @@ grTexColorCombineExt(int32_t       tmu,
             strcat(fragment_shader_texture1, "vec4 ctex1_c = vec4(lambda); \n");
             break;
          case GR_CMBX_ITRGB:
-            strcat(fragment_shader_texture1, "vec4 ctex1_c = gl_Color; \n");
+            strcat(fragment_shader_texture1, "vec4 ctex1_c = vFrontColor; \n");
             break;
          case GR_CMBX_ITALPHA:
-            strcat(fragment_shader_texture1, "vec4 ctex1_c = vec4(gl_Color.a); \n");
+            strcat(fragment_shader_texture1, "vec4 ctex1_c = vec4(vFrontColor.a); \n");
             break;
          case GR_CMBX_LOCAL_TEXTURE_ALPHA:
             strcat(fragment_shader_texture1, "vec4 ctex1_c = vec4(readtex1.a); \n");
@@ -2118,7 +2117,7 @@ grTexColorCombineExt(int32_t       tmu,
             strcat(fragment_shader_texture1, "vec4 ctex1_d = ctex1s_b; \n");
             break;
          case GR_CMBX_ITRGB:
-            strcat(fragment_shader_texture1, "vec4 ctex1_d = gl_Color; \n");
+            strcat(fragment_shader_texture1, "vec4 ctex1_d = vFrontColor; \n");
             break;
          case GR_CMBX_LOCAL_TEXTURE_ALPHA:
             strcat(fragment_shader_texture1, "vec4 ctex1_d = vec4(readtex1.a); \n");
@@ -2165,7 +2164,7 @@ grTexAlphaCombineExt(int32_t       tmu,
       switch(a)
       {
          case GR_CMBX_ITALPHA:
-            strcat(fragment_shader_texture0, "ctex0s_a.a = gl_Color.a; \n");
+            strcat(fragment_shader_texture0, "ctex0s_a.a = vFrontColor.a; \n");
             break;
          case GR_CMBX_LOCAL_TEXTURE_ALPHA:
             strcat(fragment_shader_texture0, "ctex0s_a.a = readtex0.a; \n");
@@ -2201,7 +2200,7 @@ grTexAlphaCombineExt(int32_t       tmu,
       switch(b)
       {
          case GR_CMBX_ITALPHA:
-            strcat(fragment_shader_texture0, "ctex0s_b.a = gl_Color.a; \n");
+            strcat(fragment_shader_texture0, "ctex0s_b.a = vFrontColor.a; \n");
             break;
          case GR_CMBX_LOCAL_TEXTURE_ALPHA:
             strcat(fragment_shader_texture0, "ctex0s_b.a = readtex0.a; \n");
@@ -2246,7 +2245,7 @@ grTexAlphaCombineExt(int32_t       tmu,
             strcat(fragment_shader_texture0, "ctex0_c.a = lambda; \n");
             break;
          case GR_CMBX_ITALPHA:
-            strcat(fragment_shader_texture0, "ctex0_c.a = gl_Color.a; \n");
+            strcat(fragment_shader_texture0, "ctex0_c.a = vFrontColor.a; \n");
             break;
          case GR_CMBX_LOCAL_TEXTURE_ALPHA:
             strcat(fragment_shader_texture0, "ctex0_c.a = readtex0.a; \n");
@@ -2270,10 +2269,10 @@ grTexAlphaCombineExt(int32_t       tmu,
             strcat(fragment_shader_texture0, "ctex0_d.a = ctex0s_b.a; \n");
             break;
          case GR_CMBX_ITALPHA:
-            strcat(fragment_shader_texture0, "ctex0_d.a = gl_Color.a; \n");
+            strcat(fragment_shader_texture0, "ctex0_d.a = vFrontColor.a; \n");
             break;
          case GR_CMBX_ITRGB:
-            strcat(fragment_shader_texture0, "ctex0_d.a = gl_Color.a; \n");
+            strcat(fragment_shader_texture0, "ctex0_d.a = vFrontColor.a; \n");
             break;
          case GR_CMBX_LOCAL_TEXTURE_ALPHA:
             strcat(fragment_shader_texture0, "ctex0_d.a = readtex0.a; \n");
@@ -2302,7 +2301,7 @@ grTexAlphaCombineExt(int32_t       tmu,
       switch(a)
       {
          case GR_CMBX_ITALPHA:
-            strcat(fragment_shader_texture1, "ctex1s_a.a = gl_Color.a; \n");
+            strcat(fragment_shader_texture1, "ctex1s_a.a = vFrontColor.a; \n");
             break;
          case GR_CMBX_LOCAL_TEXTURE_ALPHA:
             strcat(fragment_shader_texture1, "ctex1s_a.a = readtex1.a; \n");
@@ -2338,7 +2337,7 @@ grTexAlphaCombineExt(int32_t       tmu,
       switch(b)
       {
          case GR_CMBX_ITALPHA:
-            strcat(fragment_shader_texture1, "ctex1s_b.a = gl_Color.a; \n");
+            strcat(fragment_shader_texture1, "ctex1s_b.a = vFrontColor.a; \n");
             break;
          case GR_CMBX_LOCAL_TEXTURE_ALPHA:
             strcat(fragment_shader_texture1, "ctex1s_b.a = readtex1.a; \n");
@@ -2383,7 +2382,7 @@ grTexAlphaCombineExt(int32_t       tmu,
             strcat(fragment_shader_texture1, "ctex1_c.a = lambda; \n");
             break;
          case GR_CMBX_ITALPHA:
-            strcat(fragment_shader_texture1, "ctex1_c.a = gl_Color.a; \n");
+            strcat(fragment_shader_texture1, "ctex1_c.a = vFrontColor.a; \n");
             break;
          case GR_CMBX_LOCAL_TEXTURE_ALPHA:
             strcat(fragment_shader_texture1, "ctex1_c.a = readtex1.a; \n");
@@ -2407,10 +2406,10 @@ grTexAlphaCombineExt(int32_t       tmu,
             strcat(fragment_shader_texture1, "ctex1_d.a = ctex1s_b.a; \n");
             break;
          case GR_CMBX_ITALPHA:
-            strcat(fragment_shader_texture1, "ctex1_d.a = gl_Color.a; \n");
+            strcat(fragment_shader_texture1, "ctex1_d.a = vFrontColor.a; \n");
             break;
          case GR_CMBX_ITRGB:
-            strcat(fragment_shader_texture1, "ctex1_d.a = gl_Color.a; \n");
+            strcat(fragment_shader_texture1, "ctex1_d.a = vFrontColor.a; \n");
             break;
          case GR_CMBX_LOCAL_TEXTURE_ALPHA:
             strcat(fragment_shader_texture1, "ctex1_d.a = readtex1.a; \n");
