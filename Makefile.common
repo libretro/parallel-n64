@@ -255,6 +255,7 @@ SOURCES_C += \
 				 $(LIBRETRO_COMM_DIR)/audio/resampler/drivers/nearest_resampler.c \
 				 $(LIBRETRO_COMM_DIR)/compat/compat_strl.c \
 				 $(LIBRETRO_COMM_DIR)/compat/compat_strcasestr.c \
+				 $(LIBRETRO_COMM_DIR)/compat/compat_posix_string.c \
 				 $(LIBRETRO_COMM_DIR)/conversion/float_to_s16.c \
 				 $(LIBRETRO_COMM_DIR)/conversion/s16_to_float.c \
 				 $(LIBRETRO_COMM_DIR)/features/features_cpu.c
