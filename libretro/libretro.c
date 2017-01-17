@@ -150,6 +150,10 @@ static void core_settings_autoselect_gfx_plugin(void)
 #else
    gfx_plugin = GFX_ANGRYLION;
 #endif
+
+#if defined(VITA)
+   gfx_plugin = GFX_ANGRYLION;
+#endif
 }
 
 unsigned libretro_get_gfx_plugin(void)
@@ -376,7 +380,7 @@ static bool emu_step_load_data()
 {
    const char *dir;
    char slash;
-   
+
    #if defined(_WIN32)
       slash = '\\';
    #else
@@ -418,7 +422,7 @@ static bool emu_step_load_data()
 
       /* connect saved_memory.disk to disk */
       g_dd_disk = saved_memory.disk;
-      
+
       log_cb(RETRO_LOG_INFO, "EmuThread: M64CMD_DISK_OPEN\n");
       printf("M64CMD_DISK_OPEN\n");
 
@@ -431,15 +435,15 @@ static bool emu_step_load_data()
 
       free(game_data);
       game_data = NULL;
-      
-      
+
+
       /* 64DD IPL LOAD - assumes "64DD_IPL.bin" is in system folder */
       char disk_ipl_path[256];
       snprintf(disk_ipl_path, sizeof(disk_ipl_path), "%s%c64DD_IPL.bin", dir, slash);
-      
+
       if (log_cb)
          log_cb(RETRO_LOG_INFO, "64DD_IPL.bin path: %s\n", disk_ipl_path);
-      
+
       FILE *fPtr = fopen(disk_ipl_path, "rb");
       if (fPtr == NULL)
       {
@@ -447,12 +451,12 @@ static bool emu_step_load_data()
             log_cb(RETRO_LOG_ERROR, "mupen64plus: Failed to load DISK IPL\n");
          goto load_fail;
       }
-      
+
       long romlength = 0;
       fseek(fPtr, 0L, SEEK_END);
       romlength = ftell(fPtr);
       fseek(fPtr, 0L, SEEK_SET);
-      
+
       uint8_t* ipl_data = NULL;
       ipl_data = malloc(romlength);
       if (ipl_data == NULL)
@@ -464,7 +468,7 @@ static bool emu_step_load_data()
          ipl_data = NULL;
           goto load_fail;
       }
-      
+
       if (fread(ipl_data, 1, romlength, fPtr) != romlength)
       {
          if (log_cb)
@@ -475,10 +479,10 @@ static bool emu_step_load_data()
          goto load_fail;
       }
       fclose(fPtr);
-      
+
       log_cb(RETRO_LOG_INFO, "EmuThread: M64CMD_DDROM_OPEN\n");
       printf("M64CMD_DDROM_OPEN\n");
-        
+
       if(CoreDoCommand(M64CMD_DDROM_OPEN, romlength, (void*)ipl_data))
       {
          if (log_cb)
@@ -487,7 +491,7 @@ static bool emu_step_load_data()
          ipl_data = NULL;
          goto load_fail;
       }
-      
+
       log_cb(RETRO_LOG_INFO, "EmuThread: M64CMD_ROM_GET_HEADER\n");
 
       if(CoreDoCommand(M64CMD_ROM_GET_HEADER, sizeof(ROM_HEADER), &ROM_HEADER))
@@ -621,7 +625,7 @@ static void EmuThreadFunction(void)
     if (!emu_step_load_data())
        goto load_fail;
 
-    /* ROM is loaded, switch back to main thread 
+    /* ROM is loaded, switch back to main thread
      * so retro_load_game can return (returning failure if needed).
      * We'll continue here once the context is reset. */
 #ifndef EMSCRIPTEN
@@ -630,8 +634,8 @@ static void EmuThreadFunction(void)
 
     emu_step_initialize();
 
-    /*Context is reset too, everything is safe to use. 
-     * Now back to main thread so we don't start pushing 
+    /*Context is reset too, everything is safe to use.
+     * Now back to main thread so we don't start pushing
      * frames outside retro_run. */
 #ifndef EMSCRIPTEN
     co_switch(main_thread);
@@ -778,7 +782,7 @@ void retro_init(void)
    main_thread = co_active();
    game_thread = co_create(65536 * sizeof(void*) * 16, EmuThreadFunction);
 #endif
-} 
+}
 
 void retro_deinit(void)
 {
@@ -1027,7 +1031,7 @@ void update_variables(bool startup)
          frame_dupe = true;
    }
 
-   
+
    {
       struct retro_variable pk1var = { NAME_PREFIX "-pak1" };
       if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &pk1var) && pk1var.value)
@@ -1037,14 +1041,14 @@ void update_variables(bool startup)
             p1_pak = PLUGIN_RAW;
          else if (!strcmp(pk1var.value, "memory"))
             p1_pak = PLUGIN_MEMPAK;
-         
+
          /* If controller struct is not initialised yet, set pad_pak_types instead
           * which will be looked at when initialising the controllers. */
          if (controller[0].control)
             controller[0].control->Plugin = p1_pak;
          else
             pad_pak_types[0] = p1_pak;
-         
+
       }
    }
 
@@ -1057,15 +1061,15 @@ void update_variables(bool startup)
             p2_pak = PLUGIN_RAW;
          else if (!strcmp(pk2var.value, "memory"))
             p2_pak = PLUGIN_MEMPAK;
-            
+
          if (controller[1].control)
             controller[1].control->Plugin = p2_pak;
          else
             pad_pak_types[1] = p2_pak;
-         
+
       }
    }
-   
+
    {
       struct retro_variable pk3var = { NAME_PREFIX "-pak3" };
       if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &pk3var) && pk3var.value)
@@ -1075,15 +1079,15 @@ void update_variables(bool startup)
             p3_pak = PLUGIN_RAW;
          else if (!strcmp(pk3var.value, "memory"))
             p3_pak = PLUGIN_MEMPAK;
-            
+
          if (controller[2].control)
             controller[2].control->Plugin = p3_pak;
          else
             pad_pak_types[2] = p3_pak;
-         
+
       }
    }
-  
+
    {
       struct retro_variable pk4var = { NAME_PREFIX "-pak4" };
       if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &pk4var) && pk4var.value)
@@ -1093,7 +1097,7 @@ void update_variables(bool startup)
             p4_pak = PLUGIN_RAW;
          else if (!strcmp(pk4var.value, "memory"))
             p4_pak = PLUGIN_MEMPAK;
-            
+
          if (controller[3].control)
             controller[3].control->Plugin = p4_pak;
          else
@@ -1234,7 +1238,7 @@ bool retro_load_game(const struct retro_game_info *game)
    memcpy(game_data, game->data, game->size);
 
    stop      = false;
-   /* Finish ROM load before doing anything funny, 
+   /* Finish ROM load before doing anything funny,
     * so we can return failure if needed. */
 #ifndef EMSCRIPTEN
    co_switch(game_thread);
@@ -1477,10 +1481,10 @@ bool retro_unserialize(const void * data, size_t size)
     return false;
 }
 
-/*Needed to be able to detach controllers 
+/*Needed to be able to detach controllers
  * for Lylat Wars multiplayer
  *
- * Only sets if controller struct is 
+ * Only sets if controller struct is
  * initialised as addon paks do.
  */
 void retro_set_controller_port_device(unsigned in_port, unsigned device)
@@ -1537,10 +1541,10 @@ void retro_cheat_set(unsigned index, bool enabled, const char* codeLine)
 	int matchLength=0,partCount=0;
 	uint32_t codeParts[256];
 	int cursor;
-	
+
 	//Generate a name
 	sprintf(name, "cheat_%u",index);
-	
+
 	//Break the code into Parts
 	for (cursor=0;;cursor++)
 	{
@@ -1559,13 +1563,13 @@ void retro_cheat_set(unsigned index, bool enabled, const char* codeLine)
 			break;
 		}
 	}
-	
+
 	//Assign the parts to mupenCode
 	for (cursor=0;2*cursor+1<partCount;cursor++){
 		mupenCode[cursor].address=codeParts[2*cursor];
 		mupenCode[cursor].value=codeParts[2*cursor+1];
 	}
-	
+
 	//Assign to mupenCode
 	cheat_add_new(name,mupenCode,partCount/2);
 	cheat_set_enabled(name,enabled);
