@@ -7711,10 +7711,12 @@ void new_dynarec_init(void)
 void new_dynarec_cleanup(void)
 {
   int n;
+#ifndef VITA
 #if defined(_MSC_VER)
   VirtualFree(base_addr, 0, MEM_RELEASE);
 #else
   if (munmap (base_addr, 1<<TARGET_SIZE_2) < 0) {DebugMessage(M64MSG_ERROR, "munmap() failed");}
+#endif
 #endif
   for(n=0;n<4096;n++) ll_clear(jump_in+n);
   for(n=0;n<4096;n++) ll_clear(jump_out+n);
