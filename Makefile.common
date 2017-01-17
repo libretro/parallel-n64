@@ -264,8 +264,8 @@ SOURCES_C += \
 				 $(LIBRETRO_COMM_DIR)/compat/compat_strl.c \
 				 $(LIBRETRO_COMM_DIR)/compat/compat_strcasestr.c \
 				 $(LIBRETRO_COMM_DIR)/compat/compat_posix_string.c \
-				 $(LIBRETRO_COMM_DIR)/conversion/float_to_s16.c \
-				 $(LIBRETRO_COMM_DIR)/conversion/s16_to_float.c \
+				 $(LIBRETRO_COMM_DIR)/audio/conversion/float_to_s16.c \
+				 $(LIBRETRO_COMM_DIR)/audio/conversion/s16_to_float.c \
 				 $(LIBRETRO_COMM_DIR)/features/features_cpu.c
 endif
 
@@ -383,8 +383,8 @@ SOURCES_C += $(VIDEODIR_GLN64)/3DMath.c \
 endif
 
 ifeq ($(HAVE_NEON),1)
-	SOURCES_ASM	+= $(LIBRETRO_COMM_DIR)/conversion/float_to_s16_neon.S \
-						$(LIBRETRO_COMM_DIR)/conversion/s16_to_float_neon.S \
+	SOURCES_ASM	+= $(LIBRETRO_COMM_DIR)/audio/conversion/float_to_s16_neon.S \
+						$(LIBRETRO_COMM_DIR)/audio/conversion/s16_to_float_neon.S \
 						$(LIBRETRO_COMM_DIR)/audio/resampler/drivers/sinc_resampler_neon.S
 endif
 

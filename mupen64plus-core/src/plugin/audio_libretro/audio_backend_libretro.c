@@ -34,8 +34,8 @@
 #include <string.h>
 #include <stdarg.h>
 
-#include <conversion/float_to_s16.h>
-#include <conversion/s16_to_float.h>
+#include <audio/conversion/float_to_s16.h>
+#include <audio/conversion/s16_to_float.h>
 #include <audio/audio_resampler.h>
 
 extern retro_audio_sample_batch_t audio_batch_cb;
