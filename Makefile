@@ -97,10 +97,10 @@ ifneq (,$(findstring unix,$(platform)))
    TARGET := $(TARGET_NAME)_libretro.so
    LDFLAGS += -shared -Wl,--no-undefined
 	ifeq ($(DEBUG_JIT),)
-	   LDFLAGS += -Wl,--version-script=$(LIBRETRO_DIR)/link.T 
+	   LDFLAGS += -Wl,--version-script=$(LIBRETRO_DIR)/link.T
 	endif
    fpic = -fPIC
-   
+
    ifeq ($(FORCE_GLES),1)
       GLES = 1
       GL_LIB := -lGLESv2
@@ -110,7 +110,7 @@ ifneq (,$(findstring unix,$(platform)))
    else
       GL_LIB := -lGL
    endif
-   
+
    # Raspberry Pi
    ifneq (,$(findstring rpi,$(platform)))
       GLES = 1
@@ -129,7 +129,7 @@ ifneq (,$(findstring unix,$(platform)))
          CPUFLAGS += -DARMv5_ONLY -DNO_ASM
       endif
    endif
-   
+
    # ODROIDs
    ifneq (,$(findstring odroid,$(platform)))
       BOARD := $(shell cat /proc/cpuinfo | grep -i odroid | awk '{print $$3}')
@@ -154,7 +154,7 @@ ifneq (,$(findstring unix,$(platform)))
          CPUFLAGS += -mcpu=cortex-a9 -mfpu=neon
       endif
    endif
-   
+
    # Generic ARM
    ifneq (,$(findstring armv,$(platform)))
       CPUFLAGS += -DNO_ASM -DARM -D__arm__ -DARM_ASM -DNOSSE
@@ -164,7 +164,7 @@ ifneq (,$(findstring unix,$(platform)))
          HAVE_NEON = 1
       endif
    endif
-   
+
    PLATFORM_EXT := unix
 
 # i.MX6
@@ -330,7 +330,7 @@ else ifeq ($(platform), emscripten)
       -Dstrlcat_retro__=mupen_strlcat_retro__
 
 
-   WITH_DYNAREC = 
+   WITH_DYNAREC =
 	CC = emcc
    CXX = em++
    HAVE_NEON = 0
@@ -348,8 +348,8 @@ else ifneq (,$(findstring vita,$(platform)))
    PREFIX = arm-vita-eabi
    CC = $(PREFIX)-gcc
    CXX = $(PREFIX)-g++
-	AR  = $(PREFIX)-ar
-   WITH_DYNAREC = 
+   AR  = $(PREFIX)-ar
+   WITH_DYNAREC = arm
    DYNAREC_USED = 0
    GLES = 0
    HAVE_OPENGL = 0
@@ -360,7 +360,7 @@ else ifneq (,$(findstring vita,$(platform)))
    SOURCES_C += $(CORE_DIR)/src/r4300/empty_dynarec.c
 
    PLATFORM_EXT := unix
-	STATIC_LINKING=1
+   STATIC_LINKING=1
 
 # Windows
 else ifneq (,$(findstring win,$(platform)))
