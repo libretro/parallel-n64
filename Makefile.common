@@ -26,6 +26,7 @@ ifeq ($(HAVE_OPENGL),0)
 	HAVE_GLIDEN64 =0
 	HAVE_RICE     =0
 else
+ifneq ($(platform), vita)
 	HAVE_GLIDE64 = 1
 ifeq ($(GLIDEN64),1)
 	HAVE_GLIDEN64 =1
@@ -35,6 +36,13 @@ else
 	HAVE_GLIDEN64 =0
 endif
 	HAVE_RICE     = 1
+else
+	HAVE_GLIDE64 = 0
+	HAVE_GLN64    = 0
+	HAVE_GLIDEN64 = 0
+	HAVE_RICE     = 0
+endif
+
 INCFLAGS += -I$(VIDEODIR_GLIDE)/Glitch64/inc
 endif
 
@@ -333,7 +341,7 @@ SOURCES_CXX  += $(VIDEODIR_GLIDEN64)/src/OGL3X/GLSLCombiner_ogl3x.cpp \
 					 $(VIDEODIR_GLIDEN64)/src/OGL3X/UniformBlock.cpp
 endif
 
-SOURCES_CXX +=  $(VIDEODIR_GLIDEN64)/src/CommonPluginAPI.cpp 
+SOURCES_CXX +=  $(VIDEODIR_GLIDEN64)/src/CommonPluginAPI.cpp
 endif
 
 ifeq ($(HAVE_GLN64),1)
