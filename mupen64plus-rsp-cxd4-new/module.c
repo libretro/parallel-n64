@@ -43,6 +43,13 @@ static m64p_handle l_ConfigRsp;
 
 #define VERSION_PRINTF_SPLIT(x) (((x) >> 16) & 0xffff), (((x) >> 8) & 0xff), ((x) & 0xff)
 
+#ifdef LIBRETRO
+#define API_PREFIX(x) cxd4##x
+#else
+#define API_PREFIX(x) x
+#endif
+
+#ifndef LIBRETRO
 ptr_ConfigOpenSection      ConfigOpenSection = NULL;
 ptr_ConfigDeleteSection    ConfigDeleteSection = NULL;
 ptr_ConfigSaveSection      ConfigSaveSection = NULL;
@@ -51,17 +58,23 @@ ptr_ConfigGetParameter     ConfigGetParameter = NULL;
 ptr_ConfigSetDefaultFloat  ConfigSetDefaultFloat;
 ptr_ConfigSetDefaultBool   ConfigSetDefaultBool = NULL;
 ptr_ConfigGetParamBool     ConfigGetParamBool = NULL;
+#endif
 
 NOINLINE void update_conf(const char* source)
 {
     memset(conf, 0, sizeof(conf));
-
+#ifndef LIBRETRO
+    //yomoma: do not override config settings if running under libretro
     CFG_HLE_GFX = ConfigGetParamBool(l_ConfigRsp, "DisplayListToGraphicsPlugin");
     CFG_HLE_AUD = ConfigGetParamBool(l_ConfigRsp, "AudioListToAudioPlugin");
     CFG_WAIT_FOR_CPU_HOST = ConfigGetParamBool(l_ConfigRsp, "WaitForCPUHost");
     CFG_MEND_SEMAPHORE_LOCK = ConfigGetParamBool(l_ConfigRsp, "SupportCPUSemaphoreLock");
+#endif
 }
 
+#ifdef LIBRETRO
+extern void DebugMessage(int level, const char *message, ...);
+#else
 static void DebugMessage(int level, const char *message, ...)
 {
   char msgbuf[1024];
@@ -77,6 +90,7 @@ static void DebugMessage(int level, const char *message, ...)
 
   va_end(args);
 }
+#endif
 
 EXPORT m64p_error CALL PluginStartup(m64p_dynlib_handle CoreLibHandle, void *Context,
                                      void (*DebugCallback)(void *, int, const char *))
@@ -92,7 +106,7 @@ EXPORT m64p_error CALL PluginStartup(m64p_dynlib_handle CoreLibHandle, void *Con
     /* first thing is to set the callback function for debug info */
     l_DebugCallback = DebugCallback;
     l_DebugCallContext = Context;
-
+#ifndef LIBRETRO
     /* attach and call the CoreGetAPIVersions function, check Config API version for compatibility */
     CoreAPIVersionFunc = (ptr_CoreGetAPIVersions) osal_dynlib_getproc(CoreLibHandle, "CoreGetAPIVersions");
     if (CoreAPIVersionFunc == NULL)
@@ -158,7 +172,7 @@ EXPORT m64p_error CALL PluginStartup(m64p_dynlib_handle CoreLibHandle, void *Con
         DebugMessage(M64MSG_INFO, "Updating parameter set version in 'rsp-cxd4' config section to %.2f", fVersion);
         bSaveConfig = 1;
     }
-
+#endif
     /* set the default values for this plugin */
     ConfigSetDefaultFloat(l_ConfigRsp, "Version", CONFIG_PARAM_VERSION,  "Mupen64Plus cxd4 RSP Plugin config parameter version number");
     ConfigSetDefaultBool(l_ConfigRsp, "DisplayListToGraphicsPlugin", 0, "Send display lists to the graphics plugin");
@@ -182,7 +196,7 @@ EXPORT m64p_error CALL PluginShutdown(void)
     return M64ERR_SUCCESS;
 }
 
-EXPORT m64p_error CALL PluginGetVersion(m64p_plugin_type *PluginType, int *PluginVersion, int *APIVersion, const char **PluginNamePtr, int *Capabilities)
+EXPORT m64p_error CALL API_PREFIX(PluginGetVersion)(m64p_plugin_type *PluginType, int *PluginVersion, int *APIVersion, const char **PluginNamePtr, int *Capabilities)
 {
     /* set version info */
     if (PluginType != NULL)
@@ -253,7 +267,7 @@ EXPORT void CALL DllConfig(p_void hParent)
 
 #endif
 
-EXPORT u32 CALL DoRspCycles(u32 cycles)
+EXPORT u32 CALL API_PREFIX(DoRspCycles)(u32 cycles)
 {
     OSTask_type task_type;
     register unsigned int i;
@@ -379,7 +393,7 @@ EXPORT void CALL GetDllInfo(PLUGIN_INFO *PluginInfo)
     return;
 }
 
-EXPORT void CALL InitiateRSP(RSP_INFO Rsp_Info, pu32 CycleCount)
+EXPORT void CALL API_PREFIX(InitiateRSP)(RSP_INFO Rsp_Info, pu32 CycleCount)
 {
     if (CycleCount != NULL) /* cycle-accuracy not doable with today's hosts */
         *CycleCount = 0;
@@ -417,7 +431,7 @@ EXPORT void CALL InitiateRSP(RSP_INFO Rsp_Info, pu32 CycleCount)
     return;
 }
 
-EXPORT void CALL RomClosed(void)
+EXPORT void CALL API_PREFIX(RomClosed)(void)
 {
     FILE* stream;
 

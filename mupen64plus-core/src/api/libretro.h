@@ -48,6 +48,8 @@ extern "C" {
 #    define RETRO_CALLCONV __attribute__((cdecl))
 #  elif defined(_MSC_VER) && defined(_M_X86) && !defined(_M_X64)
 #    define RETRO_CALLCONV __cdecl
+#  elif defined(__GNUC__) && defined(__ANDROID__) && defined(__ARM_ARCH_7A__)
+#    define RETRO_CALLCONV __attribute__((pcs("aapcs"))) /* softfp */
 #  else
 #    define RETRO_CALLCONV /* all other platforms only have one calling convention each */
 #  endif

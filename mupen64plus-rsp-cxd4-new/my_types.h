@@ -361,7 +361,9 @@ typedef void(*p_func)(void);
 #include "m64p_config.h"
 #include "m64p_plugin.h"
 #include "m64p_types.h"
+#if !defined(LIBRETRO)
 #include "osal_dynamiclib.h"
+#endif
 #else
 #if defined(_WIN32)
 #define EXPORT      __declspec(dllexport)
@@ -492,6 +494,12 @@ typedef struct {
     unsigned opcode   :   6;
     unsigned long target; /* If `int' can't store 26 bits, `long' can. */
 } MIPS_type_J;
+#endif
+
+#if defined(__arm__) && defined(__GNUC__)
+#define COMPILER_FENCE()     __asm__ __volatile__("":::"memory")
+#else
+#define COMPILER_FENCE()
 #endif
 
 #endif

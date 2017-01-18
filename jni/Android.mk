@@ -27,6 +27,17 @@ LOCAL_ARM_NEON := true
 HAVE_NEON := 1
 endif
 
+ifeq ($(TARGET_ARCH_ABI), armeabi-v7a-hard)
+LOCAL_ARM_NEON := true
+HAVE_NEON := 1
+endif
+
+ifeq ($(HAVE_NEON), 1)
+ifeq ($(USE_SSE2NEON), 1)
+COMMON_FLAGS += -DUSE_SSE2NEON
+endif
+endif
+
 endif
 
 ifeq ($(TARGET_ARCH),x86)
