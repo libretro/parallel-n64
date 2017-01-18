@@ -15,21 +15,6 @@
 extern "C" {
 #endif
 
-#ifdef USE_SSE_SUPPORT
-#define ARCH_MIN_SSE2
-#endif
-
-/*
- * Streaming SIMD Extensions version import management
- */
-#ifdef ARCH_MIN_SSSE3
-#define ARCH_MIN_SSE2
-#include <tmmintrin.h>
-#endif
-#ifdef ARCH_MIN_SSE2
-#include <emmintrin.h>
-#endif
-
 #define PLUGIN_TYPE_RSP             1
 #define PLUGIN_TYPE_GFX             2
 #define PLUGIN_TYPE_AUDIO           3

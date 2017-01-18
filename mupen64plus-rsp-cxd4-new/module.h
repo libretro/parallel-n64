@@ -1,7 +1,7 @@
 /******************************************************************************\
 * Project:  Module Subsystem Interface to SP Interpreter Core                  *
 * Authors:  Iconoclast                                                         *
-* Release:  2014.12.08                                                         *
+* Release:  2015.11.14                                                         *
 * License:  CC0 Public Domain Dedication                                       *
 *                                                                              *
 * To the extent possible under law, the author(s) have dedicated all copyright *
@@ -18,6 +18,16 @@
 
 #include <stdio.h>
 #include "rsp.h"
+
+typedef enum {
+    M_GFXTASK   = 1,
+    M_AUDTASK   = 2,
+    M_VIDTASK   = 3,
+    M_NJPEGTASK = 4,
+    M_NULTASK   = 5,
+    M_HVQTASK   = 6,
+    M_HVQMTASK  = 7
+} OSTask_type;
 
 #define CFG_FILE    "rsp_conf.bin"
 
@@ -62,21 +72,30 @@
 
 NOINLINE extern void update_conf(const char* source);
 
-NOINLINE extern void message(const char* body);
+NOINLINE extern void export_data_cache(void);
+NOINLINE extern void export_instruction_cache(void);
 
 #ifdef SP_EXECUTE_LOG
 static FILE *output_log;
 extern void step_SP_commands(u32 inst);
 #endif
+extern void export_SP_memory(void);
 
 /*
  * low-level recreations of the C standard library functions for operating
- * systems that define a C run-time or dependency on top of fixed OS calls
+ * systems that provide an inconvenient C run-time ecosystem, like Windows
  */
 NOINLINE extern p_void my_calloc(size_t count, size_t size);
 NOINLINE extern void my_free(p_void ptr);
 NOINLINE extern size_t my_strlen(const char* str);
 NOINLINE extern char* my_strcpy(char* destination, const char* source);
 NOINLINE extern char* my_strcat(char* destination, const char* source);
+NOINLINE extern int my_system(char* command);
+NOINLINE extern FILE* my_fopen(const char * filename, const char* mode);
+NOINLINE extern int my_fclose(FILE* stream);
+NOINLINE extern size_t my_fread(
+    p_void ptr, size_t size, size_t count, FILE* stream);
+NOINLINE extern size_t my_fwrite(
+    p_void ptr, size_t size, size_t count, FILE* stream);
 
 #endif
