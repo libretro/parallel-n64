@@ -1,4 +1,3 @@
-GIT_VERSION := "GIT ($(shell git describe --abbrev=4 --dirty --always --tags))"
 DEBUG=0
 PERF_TEST=0
 HAVE_SHARED_CONTEXT=0
@@ -92,6 +91,11 @@ else
 TARGET_NAME := mupen64plus
 endif
 CC_AS ?= $(CC)
+
+GIT_VERSION ?= " $(shell git rev-parse --short HEAD || echo unknown)"
+ifneq ($(GIT_VERSION)," unknown")
+	CFLAGS += -DGIT_VERSION=\"$(GIT_VERSION)\"
+endif
 
 # Unix
 ifneq (,$(findstring unix,$(platform)))
@@ -470,10 +474,10 @@ endif
 	$(CC_AS) $(CFLAGS) -c $< -o $@
 
 %.o: %.c
-	$(CC) $(CFLAGS) -c $< -o $@
+	$(CC) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
 
 %.o: %.cpp
-	$(CXX) $(CXXFLAGS) -c $< -o $@
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -c $< -o $@
 
 
 clean:
