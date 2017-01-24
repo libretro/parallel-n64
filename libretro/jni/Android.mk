@@ -1,5 +1,4 @@
 LOCAL_PATH := $(call my-dir)
-GIT_VERSION := "Git ($(shell git describe --abbrev=4 --dirty --always --tags))"
 PERFTEST = 0
 HAVE_OPENGL=0
 HAVE_PARALLEL :=1
@@ -9,6 +8,11 @@ HAVE_RSP_DUMP=0
 USE_CXD4_NEW=1
 
 include $(CLEAR_VARS)
+
+GIT_VERSION := " $(shell git rev-parse --short HEAD || echo unknown)"
+ifneq ($(GIT_VERSION)," unknown")
+	LOCAL_CFLAGS += -DGIT_VERSION=\"$(GIT_VERSION)\"
+endif
 
 LOCAL_MODULE := retro
 
