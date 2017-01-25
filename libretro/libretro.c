@@ -390,7 +390,7 @@ static bool emu_step_load_data()
    if(CoreStartup(FRONTEND_API_VERSION, ".", ".", "Core", n64DebugCallback, 0, 0) && log_cb)
        log_cb(RETRO_LOG_ERROR, "mupen64plus: Failed to initialize core\n");
 
-   if (*((uint32_t *)game_data) != 0x16D348E8 && *((uint32_t *)game_data) != 0x56EE6322)
+   if (game_data != NULL && *((uint32_t *)game_data) != 0x16D348E8 && *((uint32_t *)game_data) != 0x56EE6322)
    {
       /* Regular N64 ROM */
       log_cb(RETRO_LOG_INFO, "EmuThread: M64CMD_ROM_OPEN\n");
