@@ -1207,9 +1207,6 @@ static bool retro_load_game_gl(const struct retro_game_info *game)
 
 bool retro_load_game(const struct retro_game_info *game)
 {
-   if (!game)
-      return false;
-
    format_saved_memory();
 
    update_variables(true);
