@@ -9,7 +9,7 @@ USE_CXD4_NEW=1
 
 include $(CLEAR_VARS)
 
-GIT_VERSION := " $(shell git rev-parse --short HEAD || echo unknown)"
+GIT_VERSION ?= " $(shell git rev-parse --short HEAD || echo unknown)"
 ifneq ($(GIT_VERSION)," unknown")
 	LOCAL_CFLAGS += -DGIT_VERSION=\"$(GIT_VERSION)\"
 endif
