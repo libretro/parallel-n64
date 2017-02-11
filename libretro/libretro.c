@@ -342,13 +342,13 @@ static void setup_variables(void)
          "VI Refresh (Overclock); 1500|2200" },
 #endif
       { NAME_PREFIX "-bufferswap",
-         "Buffer Swap; off|on"
+         "Buffer Swap; disabled|enabled"
       },
       { NAME_PREFIX "-framerate",
          "Framerate (restart); original|fullspeed" },
 #ifndef HAVE_PARALLEL
       { NAME_PREFIX "-vcache-vbo",
-         "(Glide64) Vertex cache VBO (restart); off|on" },
+         "(Glide64) Vertex cache VBO (restart); disabled|enabled" },
 #endif
       { NAME_PREFIX "-boot-device",
          "Boot Device; Default|64DD IPL" },
@@ -1013,9 +1013,9 @@ void update_variables(bool startup)
 
    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
    {
-      if (!strcmp(var.value, "on"))
+      if (!strcmp(var.value, "enabled"))
          BUFFERSWAP = true;
-      else if (!strcmp(var.value, "off"))
+      else if (!strcmp(var.value, "disabled"))
          BUFFERSWAP = false;
    }
 
