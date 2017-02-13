@@ -39,7 +39,7 @@ float set_sprite_combine_mode(void)
   Z = 0.0f;
   if ((gDP.otherMode.l & 0x00000030) && (((gDP.otherMode.h & RDP_CYCLE_TYPE) >> 20) < G_CYC_COPY))
   {
-    if (gDP.otherMode.depthSource == G_ZS_PRIM)
+    if (g_gdp.other_modes.z_source_sel == G_ZS_PRIM)
       Z = g_gdp.prim_color.z;
     FRDP ("prim_depth = %d, prim_dz = %d\n", g_gdp.prim_color.z, g_gdp.prim_color.dz);
     Z = ScaleZ(Z);
@@ -76,7 +76,7 @@ float set_sprite_combine_mode(void)
 
 #define XSCALE(x) ((float)(x)/(1<<18))
 #define YSCALE(y) ((float)(y)/(1<<2))
-#define ZSCALE(z) ((gDP.otherMode.depthSource == G_ZS_PRIM) ? (float)(g_gdp.prim_color.z) : (float)((uint32_t)(z))/0xffff0000)
+#define ZSCALE(z) ((g_gdp.other_modes.z_source_sel == G_ZS_PRIM) ? (float)(g_gdp.prim_color.z) : (float)((uint32_t)(z))/0xffff0000)
 #define PERSP_EN  ((gDP.otherMode.texturePersp))
 #define WSCALE(z) 1.0f/(PERSP_EN? ((float)((uint32_t)(z) + 0x10000)/0xffff0000) : 1.0f)
 #define CSCALE(c) (((c)>0x3ff0000? 0x3ff0000:((c)<0? 0 : (c)))>>18)
