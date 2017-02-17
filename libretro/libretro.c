@@ -58,12 +58,12 @@ static const struct retro_hw_render_interface_vulkan *vulkan;
 struct retro_perf_callback perf_cb;
 retro_get_cpu_features_t perf_get_cpu_features_cb = NULL;
 
-retro_log_printf_t log_cb           = NULL;
-retro_video_refresh_t video_cb      = NULL;
-retro_input_poll_t poll_cb          = NULL;
-retro_input_state_t input_cb        = NULL;
-retro_audio_sample_batch_t audio_batch_cb = NULL;
-retro_environment_t environ_cb      = NULL;
+retro_log_printf_t log_cb                         = NULL;
+retro_video_refresh_t video_cb                    = NULL;
+retro_input_poll_t poll_cb                        = NULL;
+retro_input_state_t input_cb                      = NULL;
+retro_audio_sample_batch_t audio_batch_cb         = NULL;
+retro_environment_t environ_cb                    = NULL;
 
 struct retro_rumble_interface rumble;
 
@@ -149,16 +149,22 @@ static void core_settings_autoselect_gfx_plugin(void)
       return;
 
 #if defined(HAVE_PARALLEL)
-   gfx_plugin = GFX_PARALLEL;
-#elif (defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)) && defined(HAVE_GLIDE64)
-   gfx_plugin = GFX_GLIDE64;
-#else
-   gfx_plugin = GFX_ANGRYLION;
+   if (vulkan_inited)
+   {
+      gfx_plugin = GFX_PARALLEL;
+      return;
+   }
 #endif
 
-#if defined(VITA)
-   gfx_plugin = GFX_ANGRYLION;
+#if (defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)) && defined(HAVE_GLIDE64)
+   if (gl_inited)
+   {
+      gfx_plugin = GFX_GLIDE64;
+      return;
+   }
 #endif
+
+   gfx_plugin = GFX_ANGRYLION;
 }
 
 unsigned libretro_get_gfx_plugin(void)
@@ -176,29 +182,27 @@ static void core_settings_set_defaults(void)
    environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &gfx_var);
    environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &rsp_var);
 
-#ifdef HAVE_GLIDE64
-   gfx_plugin = GFX_GLIDE64;
-#endif
    if (gfx_var.value)
    {
       if (gfx_var.value && !strcmp(gfx_var.value, "auto"))
          core_settings_autoselect_gfx_plugin();
 #if defined(HAVE_GLN64) || defined(HAVE_GLIDEN64)
-      if (gfx_var.value && !strcmp(gfx_var.value, "gln64"))
+      if (gfx_var.value && !strcmp(gfx_var.value, "gln64") && gl_inited)
          gfx_plugin = GFX_GLN64;
 #endif
+
 #ifdef HAVE_RICE
-      if (gfx_var.value && !strcmp(gfx_var.value, "rice"))
+      if (gfx_var.value && !strcmp(gfx_var.value, "rice") && gl_inited)
          gfx_plugin = GFX_RICE;
 #endif
 #ifdef HAVE_GLIDE64
-      if(gfx_var.value && !strcmp(gfx_var.value, "glide64"))
+      if(gfx_var.value && !strcmp(gfx_var.value, "glide64") && gl_inited)
          gfx_plugin = GFX_GLIDE64;
 #endif
 	  if(gfx_var.value && !strcmp(gfx_var.value, "angrylion"))
          gfx_plugin = GFX_ANGRYLION;
 #ifdef HAVE_PARALLEL
-	  if(gfx_var.value && !strcmp(gfx_var.value, "parallel"))
+	  if(gfx_var.value && !strcmp(gfx_var.value, "parallel") && vulkan_inited)
          gfx_plugin = GFX_PARALLEL;
 #endif
    }
@@ -219,17 +223,16 @@ static void core_settings_set_defaults(void)
    }
 
    /* Load RSP plugin core option */
-   rsp_plugin = RSP_HLE;
 
    if (rsp_var.value)
    {
       if (rsp_var.value && !strcmp(rsp_var.value, "auto"))
          core_settings_autoselect_rsp_plugin();
-      if (rsp_var.value && !strcmp(rsp_var.value, "hle"))
+      if (rsp_var.value && !strcmp(rsp_var.value, "hle") && !vulkan_inited)
          rsp_plugin = RSP_HLE;
       if (rsp_var.value && !strcmp(rsp_var.value, "cxd4"))
          rsp_plugin = RSP_CXD4;
-      if (rsp_var.value && !strcmp(rsp_var.value, "parallel"))
+      if (rsp_var.value && !strcmp(rsp_var.value, "parallel") && !gl_inited)
          rsp_plugin = RSP_PARALLEL;
    }
 }
@@ -259,6 +262,15 @@ static void core_settings_autoselect_rsp_plugin(void)
 
    if (!strcmp((const char*)ROM_HEADER.Name, "CONKER BFD"))
       rsp_plugin = RSP_HLE;
+
+   if (vulkan_inited)
+   {
+#if defined(HAVE_PARALLEL_RSP)
+      rsp_plugin = RSP_PARALLEL;
+#else
+      rsp_plugin = RSP_CXD4;
+#endif
+   }
 }
 
 static void setup_variables(void)
@@ -960,21 +972,21 @@ void update_variables(bool startup)
       {
          if (!strcmp(var.value, "auto"))
 #if defined(HAVE_GLN64) || defined(HAVE_GLIDEN64)
-         if (!strcmp(var.value, "gln64"))
+         if (!strcmp(var.value, "gln64") && gl_inited)
             gfx_plugin = GFX_GLN64;
 #endif
 #ifdef HAVE_RICE
-         if (!strcmp(var.value, "rice"))
+         if (!strcmp(var.value, "rice") && gl_inited)
             gfx_plugin = GFX_RICE;
 #endif
 #ifdef HAVE_GLIDE64
-         if(!strcmp(var.value, "glide64"))
+         if(!strcmp(var.value, "glide64") && gl_inited)
             gfx_plugin = GFX_GLIDE64;
 #endif
          if(!strcmp(var.value, "angrylion"))
             gfx_plugin = GFX_ANGRYLION;
 #ifdef HAVE_PARALLEL
-         if(!strcmp(var.value, "parallel"))
+         if(!strcmp(var.value, "parallel") && vulkan_inited)
             gfx_plugin = GFX_PARALLEL;
 #endif
       }
@@ -1219,17 +1231,50 @@ bool retro_load_game(const struct retro_game_info *game)
 
    init_audio_libretro(audio_buffer_size);
 
-   switch (gfx_plugin)
+   if (vulkan_inited)
    {
-      case GFX_ANGRYLION:
-         /* Stub */
-         break;
-      case GFX_PARALLEL:
-         break;
-      case GFX_GLIDE64:
-      case GFX_GLN64:
-      case GFX_RICE:
-         break;
+      switch (gfx_plugin)
+      {
+         case GFX_GLIDE64:
+         case GFX_GLN64:
+         case GFX_RICE:
+            gfx_plugin = GFX_PARALLEL;
+            break;
+         default:
+            break;
+      }
+
+      switch (rsp_plugin)
+      {
+         case RSP_HLE:
+#if defined(HAVE_PARALLEL_RSP)
+            rsp_plugin = RSP_PARALLEL;
+#else
+            rsp_plugin = RSP_CXD4;
+#endif
+            break;
+         default:
+            break;
+      }
+   }
+   else if (gl_inited)
+   {
+      switch (gfx_plugin)
+      {
+         case GFX_PARALLEL:
+            gfx_plugin = GFX_GLIDE64;
+            break;
+         default:
+            break;
+      }
+
+      switch (rsp_plugin)
+      {
+         case RSP_PARALLEL:
+            rsp_plugin = RSP_HLE;
+         default:
+            break;
+      }
    }
 
    game_data = malloc(game->size);

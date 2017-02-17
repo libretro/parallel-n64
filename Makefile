@@ -11,7 +11,7 @@ GLIDEN64ES=0
 HAVE_RSP_DUMP=0
 HAVE_RDP_DUMP=0
 HAVE_RICE=1
-HAVE_PARALLEL=0
+HAVE_PARALLEL=1
 HAVE_PARALLEL_RSP=0
 
 DYNAFLAGS :=
@@ -83,7 +83,7 @@ endif
 ifeq ($(HAVE_VULKAN_DEBUG),1)
 TARGET_NAME := parallel_n64_debug
 else
-TARGET_NAME := parallel_n64 
+TARGET_NAME := parallel_n64
 endif
 
 CC_AS ?= $(CC)
@@ -358,6 +358,7 @@ else ifneq (,$(findstring vita,$(platform)))
    CPUCFLAGS += -DNO_ASM
    CFLAGS += -DVITA -lm
    VITA = 1
+	HAVE_PARALLEL=0
    SOURCES_C += $(CORE_DIR)/src/r4300/empty_dynarec.c
 
    PLATFORM_EXT := unix
