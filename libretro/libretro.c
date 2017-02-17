@@ -727,6 +727,100 @@ unsigned retro_get_region (void)
    return ((region == SYSTEM_PAL) ? RETRO_REGION_PAL : RETRO_REGION_NTSC);
 }
 
+#if defined(HAVE_PARALLEL) || defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
+static void context_reset(void)
+{
+   switch (gfx_plugin)
+   {
+      case GFX_ANGRYLION:
+      case GFX_PARALLEL:
+         break;
+      default:
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
+         {
+            static bool first_init = true;
+            printf("context_reset.\n");
+            glsm_ctl(GLSM_CTL_STATE_CONTEXT_RESET, NULL);
+
+            if (first_init)
+            {
+               glsm_ctl(GLSM_CTL_STATE_SETUP, NULL);
+               first_init = false;
+            }
+         }
+#endif
+         break;
+   }
+
+   reinit_gfx_plugin();
+}
+
+static void context_destroy(void)
+{
+   deinit_gfx_plugin();
+}
+#endif
+
+static bool retro_init_vulkan(void)
+{
+#if defined(HAVE_PARALLEL)
+   hw_render.context_type    = RETRO_HW_CONTEXT_VULKAN;
+   hw_render.version_major   = VK_MAKE_VERSION(1, 0, 12);
+   hw_render.context_reset   = context_reset;
+   hw_render.context_destroy = context_destroy;
+
+   if (!environ_cb(RETRO_ENVIRONMENT_SET_HW_RENDER, &hw_render))
+   {
+      log_cb(RETRO_LOG_ERROR, "mupen64plus: libretro frontend doesn't have Vulkan support.");
+      return false;
+   }
+
+   hw_context_negotiation.interface_type = RETRO_HW_RENDER_CONTEXT_NEGOTIATION_INTERFACE_VULKAN;
+   hw_context_negotiation.interface_version = RETRO_HW_RENDER_CONTEXT_NEGOTIATION_INTERFACE_VULKAN_VERSION;
+   hw_context_negotiation.get_application_info = parallel_get_application_info;
+   hw_context_negotiation.create_device = parallel_create_device;
+   hw_context_negotiation.destroy_device = NULL;
+   if (!environ_cb(RETRO_ENVIRONMENT_SET_HW_RENDER_CONTEXT_NEGOTIATION_INTERFACE, &hw_context_negotiation))
+      log_cb(RETRO_LOG_ERROR, "mupen64plus: libretro frontend doesn't have context negotiation support.");
+
+   return true;
+#else
+   return false;
+#endif
+}
+
+static bool context_framebuffer_lock(void *data)
+{
+   if (!stop)
+      return false;
+   return true;
+}
+
+static bool retro_init_gl(void)
+{
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
+   glsm_ctx_params_t params     = {0};
+
+   params.context_reset         = context_reset;
+   params.context_destroy       = context_destroy;
+   params.environ_cb            = environ_cb;
+   params.stencil               = false;
+
+   params.framebuffer_lock      = context_framebuffer_lock;
+
+   if (!glsm_ctl(GLSM_CTL_STATE_CONTEXT_INIT, &params))
+   {
+      if (log_cb)
+         log_cb(RETRO_LOG_ERROR, "mupen64plus: libretro frontend doesn't have OpenGL support.");
+      return false;
+   }
+
+   return true;
+#else
+   return false;
+#endif
+}
+
 void retro_init(void)
 {
    struct retro_log_callback log;
@@ -763,6 +857,18 @@ void retro_init(void)
    main_thread = co_active();
    game_thread = co_create(65536 * sizeof(void*) * 16, EmuThreadFunction);
 #endif
+
+   if (retro_init_vulkan())
+   {
+      vulkan_inited = true;
+      return;
+   }
+
+   if (retro_init_gl())
+   {
+      gl_inited = true;
+      return;
+   }
 }
 
 void retro_deinit(void)
@@ -783,6 +889,9 @@ void retro_deinit(void)
 
    if (perf_cb.perf_log)
       perf_cb.perf_log();
+
+   vulkan_inited     = false;
+   gl_inited         = false;
 }
 
 #include "../mupen64plus-video-angrylion/vi.h"
@@ -1101,92 +1210,6 @@ static void format_saved_memory(void)
    format_disk(saved_memory.disk);
 }
 
-#if defined(HAVE_PARALLEL) || defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
-static void context_reset(void)
-{
-   switch (gfx_plugin)
-   {
-      case GFX_ANGRYLION:
-      case GFX_PARALLEL:
-         break;
-      default:
-#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
-         {
-            static bool first_init = true;
-            printf("context_reset.\n");
-            glsm_ctl(GLSM_CTL_STATE_CONTEXT_RESET, NULL);
-
-            if (first_init)
-            {
-               glsm_ctl(GLSM_CTL_STATE_SETUP, NULL);
-               first_init = false;
-            }
-         }
-#endif
-         break;
-   }
-
-   reinit_gfx_plugin();
-}
-
-static void context_destroy(void)
-{
-   deinit_gfx_plugin();
-}
-#endif
-
-static bool context_framebuffer_lock(void *data)
-{
-   if (!stop)
-      return false;
-   return true;
-}
-
-static bool retro_load_game_vulkan(const struct retro_game_info *game)
-{
-#if defined(HAVE_PARALLEL)
-   hw_render.context_type = RETRO_HW_CONTEXT_VULKAN;
-   hw_render.version_major = VK_MAKE_VERSION(1, 0, 12);
-   hw_render.context_reset = context_reset;
-   hw_render.context_destroy = context_destroy;
-   if (!environ_cb(RETRO_ENVIRONMENT_SET_HW_RENDER, &hw_render))
-      log_cb(RETRO_LOG_ERROR, "mupen64plus: libretro frontend doesn't have Vulkan support.");
-
-   hw_context_negotiation.interface_type = RETRO_HW_RENDER_CONTEXT_NEGOTIATION_INTERFACE_VULKAN;
-   hw_context_negotiation.interface_version = RETRO_HW_RENDER_CONTEXT_NEGOTIATION_INTERFACE_VULKAN_VERSION;
-   hw_context_negotiation.get_application_info = parallel_get_application_info;
-   hw_context_negotiation.create_device = parallel_create_device;
-   hw_context_negotiation.destroy_device = NULL;
-   if (!environ_cb(RETRO_ENVIRONMENT_SET_HW_RENDER_CONTEXT_NEGOTIATION_INTERFACE, &hw_context_negotiation))
-      log_cb(RETRO_LOG_ERROR, "mupen64plus: libretro frontend doesn't have context negotiation support.");
-#endif
-
-   return true;
-}
-
-static bool retro_load_game_gl(const struct retro_game_info *game)
-{
-#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
-   glsm_ctx_params_t params = {0};
-
-   params.context_reset         = context_reset;
-   params.context_destroy       = context_destroy;
-   params.environ_cb            = environ_cb;
-   params.stencil               = false;
-
-   params.framebuffer_lock      = context_framebuffer_lock;
-
-   if (!glsm_ctl(GLSM_CTL_STATE_CONTEXT_INIT, &params))
-   {
-      if (log_cb)
-         log_cb(RETRO_LOG_ERROR, "mupen64plus: libretro frontend doesn't have OpenGL support.");
-      return false;
-   }
-#endif
-
-   return true;
-}
-
 bool retro_load_game(const struct retro_game_info *game)
 {
    format_saved_memory();
@@ -1202,12 +1225,10 @@ bool retro_load_game(const struct retro_game_info *game)
          /* Stub */
          break;
       case GFX_PARALLEL:
-         retro_load_game_vulkan(game);
          break;
       case GFX_GLIDE64:
       case GFX_GLN64:
       case GFX_RICE:
-         retro_load_game_gl(game);
          break;
    }
 
