@@ -73,7 +73,6 @@ CFLAGS   += -DHAVE_RSP_DUMP
 CXXFLAGS += -DHAVE_RSP_DUMP
 endif
 
-
 # Core
 SOURCES_C += \
 	$(CORE_DIR)/src/api/callbacks.c \
