@@ -143,7 +143,7 @@ static void core_settings_autoselect_gfx_plugin(void)
    if (gfx_var.value && strcmp(gfx_var.value, "auto") != 0)
       return;
 
-#if defined(HAVE_PARALLEL) || defined(HAVE_PARALLEL_ONLY)
+#if defined(HAVE_PARALLEL)
    gfx_plugin = GFX_PARALLEL;
 #elif (defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)) && defined(HAVE_GLIDE64)
    gfx_plugin = GFX_GLIDE64;
@@ -171,9 +171,6 @@ static void core_settings_set_defaults(void)
    environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &gfx_var);
    environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &rsp_var);
 
-#ifdef HAVE_PARALLEL_ONLY
-   gfx_plugin = GFX_PARALLEL;
-#else
 #ifdef HAVE_GLIDE64
    gfx_plugin = GFX_GLIDE64;
 #endif
@@ -200,7 +197,6 @@ static void core_settings_set_defaults(void)
          gfx_plugin = GFX_PARALLEL;
 #endif
    }
-#endif
 
    gfx_var.key = NAME_PREFIX "-gfxplugin-accuracy";
    gfx_var.value = NULL;
@@ -218,14 +214,6 @@ static void core_settings_set_defaults(void)
    }
 
    /* Load RSP plugin core option */
-#ifdef HAVE_PARALLEL_ONLY
-#ifdef HAVE_PARALLEL_RSP
-   if (rsp_var.value && !strcmp(rsp_var.value, "parallel"))
-      rsp_plugin = RSP_PARALLEL;
-   else
-#endif
-      rsp_plugin = RSP_CXD4;
-#else
    rsp_plugin = RSP_HLE;
 
    if (rsp_var.value)
@@ -239,14 +227,12 @@ static void core_settings_set_defaults(void)
       if (rsp_var.value && !strcmp(rsp_var.value, "parallel"))
          rsp_plugin = RSP_PARALLEL;
    }
-#endif
 }
 
 
 
 static void core_settings_autoselect_rsp_plugin(void)
 {
-#if !defined(HAVE_PARALLEL_ONLY)
    struct retro_variable rsp_var = { NAME_PREFIX "-rspplugin", 0 };
 
    environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &rsp_var);
@@ -268,7 +254,6 @@ static void core_settings_autoselect_rsp_plugin(void)
 
    if (!strcmp((const char*)ROM_HEADER.Name, "CONKER BFD"))
       rsp_plugin = RSP_HLE;
-#endif
 }
 
 static void setup_variables(void)
@@ -299,9 +284,7 @@ static void setup_variables(void)
       { NAME_PREFIX "-disable_expmem",
          "Enable Expansion Pak RAM; enabled|disabled" },
       { NAME_PREFIX "-gfxplugin-accuracy",
-#if defined(HAVE_PARALLEL_ONLY)
-         "GFX Accuracy; veryhigh" },
-#elif defined(IOS) || defined(ANDROID)
+#if defined(IOS) || defined(ANDROID)
          "GFX Accuracy (restart); medium|high|veryhigh|low" },
 #else
          "GFX Accuracy (restart); veryhigh|high|medium|low" },
@@ -311,18 +294,17 @@ static void setup_variables(void)
          "ParaLLEl Synchronous RDP; enabled|disabled" },
 #endif
       { NAME_PREFIX "-gfxplugin",
-#ifdef HAVE_PARALLEL_ONLY
-         "GFX Plugin; parallel" },
-#else
-         "GFX Plugin; auto|glide64|gln64|rice|angrylion|parallel" },
+         "GFX Plugin; auto|glide64|gln64|rice|angrylion" 
+#if defined(HAVE_PARALLEL)
+            "|parallel"
 #endif
+      },
       { NAME_PREFIX "-rspplugin",
-#ifdef HAVE_PARALLEL_ONLY
-         "RSP Plugin; parallel|cxd4" },
-#else
-         "RSP Plugin; auto|hle|parallel|cxd4" },
+         "RSP Plugin; auto|hle|cxd4" 
+#ifdef HAVE_PARALLEL_RSP
+         "|parallel"
 #endif
-#ifndef HAVE_PARALLEL_ONLY
+         },
       { NAME_PREFIX "-screensize",
          "Resolution (restart); 640x480|960x720|1280x960|1600x1200|1920x1440|2240x1680|320x240" },
       { NAME_PREFIX "-aspectratiohint",
@@ -340,7 +322,6 @@ static void setup_variables(void)
       },
       { NAME_PREFIX "-virefresh",
          "VI Refresh (Overclock); 1500|2200" },
-#endif
       { NAME_PREFIX "-bufferswap",
          "Buffer Swap; disabled|enabled"
       },
@@ -686,11 +667,7 @@ void retro_set_environment(retro_environment_t cb)
 
 void retro_get_system_info(struct retro_system_info *info)
 {
-#ifdef HAVE_PARALLEL_ONLY
-   info->library_name = "ParaLLEl";
-#else
-   info->library_name = "Mupen64Plus";
-#endif
+   info->library_name = "ParaLLEl N64";
 #ifndef GIT_VERSION
 #define GIT_VERSION ""
 #endif
@@ -1214,9 +1191,6 @@ bool retro_load_game(const struct retro_game_info *game)
 
    init_audio_libretro(audio_buffer_size);
 
-#ifdef HAVE_PARALLEL_ONLY
-   gfx_plugin = GFX_PARALLEL;
-#endif
    switch (gfx_plugin)
    {
       case GFX_ANGRYLION:

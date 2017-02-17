@@ -13,7 +13,6 @@ HAVE_RDP_DUMP=0
 HAVE_RICE=1
 HAVE_PARALLEL=0
 HAVE_PARALLEL_RSP=0
-HAVE_PARALLEL_ONLY=0
 
 DYNAFLAGS :=
 INCFLAGS  :=
@@ -81,14 +80,12 @@ else ifeq ($(ARCH), $(filter $(ARCH), arm))
    WITH_DYNAREC = arm
 endif
 
-ifeq ($(HAVE_PARALLEL_ONLY),1)
-HAVE_OPENGL=0
-TARGET_NAME := parallel
-else ifeq ($(HAVE_VULKAN_DEBUG),1)
-TARGET_NAME := parallel_debug
+ifeq ($(HAVE_VULKAN_DEBUG),1)
+TARGET_NAME := parallel_n64_debug
 else
-TARGET_NAME := mupen64plus
+TARGET_NAME := parallel_n64 
 endif
+
 CC_AS ?= $(CC)
 
 GIT_VERSION ?= " $(shell git rev-parse --short HEAD || echo unknown)"

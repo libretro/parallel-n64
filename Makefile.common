@@ -14,14 +14,6 @@ VIDEODIR_GLIDEN64  = $(ROOT_DIR)/mupen64plus-video-gliden64
 
 DYNAREC_USED := 0
 
-ifeq ($(HAVE_PARALLEL_ONLY),1)
-HAVE_PARALLEL=1
-CFLAGS +=   -DHAVE_PARALLEL_ONLY
-CXXFLAGS += -DHAVE_PARALLEL_ONLY -std=c++11
-override HAVE_OPENGL := 0
-override GLES := 0
-endif
-
 ifeq ($(HAVE_OPENGL),0)
 	HAVE_GLN64    =0
 	HAVE_GLIDE64  =0
@@ -391,8 +383,6 @@ ifeq ($(HAVE_NEON),1)
 endif
 
 
-ifeq ($(HAVE_PARALLEL_ONLY),1)
-else
 SOURCES_C   += $(ROOT_DIR)/Graphics/RSP/gSP_funcs_C.c \
 					$(ROOT_DIR)/Graphics/RSP/gSP_state.c \
 				 	$(ROOT_DIR)/Graphics/RDP/gDP_funcs_C.c \
@@ -403,7 +393,6 @@ SOURCES_C   += $(ROOT_DIR)/Graphics/RSP/gSP_funcs_C.c \
 					$(ROOT_DIR)/Graphics/HLE/Microcode/Fast3D.c
 SOURCES_CXX += $(ROOT_DIR)/Graphics/RSP/gSP_funcs.cpp \
 				 $(ROOT_DIR)/Graphics/RDP/gDP_funcs.cpp
-endif
 
 SOURCES_C += $(ROOT_DIR)/Graphics/plugins.c
 

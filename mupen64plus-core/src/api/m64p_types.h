@@ -26,11 +26,7 @@
 #include <stdint.h>
 #include <stddef.h>
 
-#ifdef HAVE_PARALLEL_ONLY
-#define NAME_PREFIX "parallel"
-#else
-#define NAME_PREFIX "mupen64"
-#endif
+#define NAME_PREFIX "parallel_n64"
 
 /* ----------------------------------------- */
 /* Platform-specific stuff                   */
