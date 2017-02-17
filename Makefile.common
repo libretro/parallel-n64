@@ -12,10 +12,6 @@ RSPDIR_PARALLEL    = $(ROOT_DIR)/mupen64plus-rsp-paraLLEl
 VIDEODIR_GLIDE     = $(ROOT_DIR)/glide2gl/src
 VIDEODIR_GLIDEN64  = $(ROOT_DIR)/mupen64plus-video-gliden64
 
-ifeq ($(USE_CXD4_NEW),1)
-CXD4DIR            = $(ROOT_DIR)/mupen64plus-rsp-cxd4-new
-endif
-
 DYNAREC_USED := 0
 
 ifeq ($(HAVE_PARALLEL_ONLY),1)
