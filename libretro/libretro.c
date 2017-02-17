@@ -58,12 +58,12 @@ static const struct retro_hw_render_interface_vulkan *vulkan;
 struct retro_perf_callback perf_cb;
 retro_get_cpu_features_t perf_get_cpu_features_cb = NULL;
 
-retro_log_printf_t log_cb = NULL;
-retro_video_refresh_t video_cb = NULL;
-retro_input_poll_t poll_cb = NULL;
-retro_input_state_t input_cb = NULL;
+retro_log_printf_t log_cb           = NULL;
+retro_video_refresh_t video_cb      = NULL;
+retro_input_poll_t poll_cb          = NULL;
+retro_input_state_t input_cb        = NULL;
 retro_audio_sample_batch_t audio_batch_cb = NULL;
-retro_environment_t environ_cb = NULL;
+retro_environment_t environ_cb      = NULL;
 
 struct retro_rumble_interface rumble;
 
@@ -74,15 +74,18 @@ cothread_t main_thread;
 static cothread_t game_thread;
 #endif
 
-float polygonOffsetFactor;
-float polygonOffsetUnits;
+float polygonOffsetFactor           = 0.0f;
+float polygonOffsetUnits            = 0.0f;
 
-int astick_deadzone;
-int first_time = 1;
-bool flip_only;
+static bool vulkan_inited           = false;
+static bool gl_inited               = false;
 
-static uint8_t* game_data = NULL;
-static uint32_t game_size = 0;
+int astick_deadzone                 = 0;
+int first_time                      = 1;
+bool flip_only                      = false;
+
+static uint8_t* game_data           = NULL;
+static uint32_t game_size           = 0;
 
 static bool     emu_initialized     = false;
 static unsigned initial_boot        = true;
@@ -93,23 +96,25 @@ static bool     reinit_screen       = false;
 static bool     first_context_reset = false;
 static bool     pushed_frame        = false;
 
-unsigned frame_dupe = false;
+unsigned frame_dupe                 = false;
 
-uint32_t *blitter_buf;
-uint32_t *blitter_buf_lock   = NULL;
+uint32_t *blitter_buf               = NULL;
+uint32_t *blitter_buf_lock          = NULL;
 
-uint32_t gfx_plugin_accuracy = 2;
-static enum rsp_plugin_type rsp_plugin;
-uint32_t screen_width = 640;
-uint32_t screen_height = 480;
-uint32_t screen_pitch;
+uint32_t gfx_plugin_accuracy        = 2;
+static enum rsp_plugin_type 
+                 rsp_plugin;
+uint32_t screen_width               = 640;
+uint32_t screen_height              = 480;
+uint32_t screen_pitch               = 0;
 uint32_t screen_aspectmodehint;
 
-extern uint32_t VI_REFRESH;
-unsigned int BUFFERSWAP;
-unsigned int FAKE_SDL_TICKS;
+unsigned int BUFFERSWAP             = 0;
+unsigned int FAKE_SDL_TICKS         = 0;
 
-static bool initializing = true;
+static bool initializing            = true;
+
+extern uint32_t VI_REFRESH;
 
 /* after the controller's CONTROL* member has been assigned we can update
  * them straight from here... */
@@ -1417,15 +1422,14 @@ void *retro_get_memory_data(unsigned type)
 
 size_t retro_get_memory_size(unsigned type)
 {
-   if (type == RETRO_MEMORY_SAVE_RAM)
-   {
-      if (g_dd_disk == NULL) return sizeof(saved_memory)-sizeof(saved_memory.disk);
-      else return sizeof(saved_memory);
-   }
-   return NULL;
+   if (type != RETRO_MEMORY_SAVE_RAM)
+      return 0;
+
+   if (g_dd_disk)
+      return sizeof(saved_memory);
+
+   return sizeof(saved_memory)-sizeof(saved_memory.disk);
 }
-
-
 
 size_t retro_serialize_size (void)
 {
