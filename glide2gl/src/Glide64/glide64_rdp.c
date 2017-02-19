@@ -1694,7 +1694,10 @@ void glide64FBGetFrameBufferInfo(void *p)
    int i;
    FrameBufferInfo * pinfo = (FrameBufferInfo *)p;
 
-   memset(pinfo,0,sizeof(FrameBufferInfo)*6);
+   pinfo->addr   = 0;
+   pinfo->size   = 0;
+   pinfo->width  = 0;
+   pinfo->height = 0;
 
    if (!(settings.frame_buffer&fb_get_info))
       return;
