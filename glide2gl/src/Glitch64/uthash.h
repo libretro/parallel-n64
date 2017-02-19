@@ -479,12 +479,10 @@ do {                                                                            
     unsigned _he_bkt;                                                            \
     unsigned _he_bkt_i;                                                          \
     struct UT_hash_handle *_he_thh, *_he_hh_nxt;                                 \
-    UT_hash_bucket *_he_new_buckets, *_he_newbkt;                                \
-    _he_new_buckets = (UT_hash_bucket*)malloc(                            \
-             2 * tbl->num_buckets * sizeof(struct UT_hash_bucket));              \
+    UT_hash_bucket *_he_newbkt      = NULL;                                      \
+    UT_hash_bucket *_he_new_buckets = (UT_hash_bucket*)calloc(                   \
+          2 * tbl->num_buckets, sizeof(UT_hash_bucket));                         \
     if (!_he_new_buckets) { uthash_fatal( "out of memory"); }                    \
-    memset(_he_new_buckets, 0,                                                   \
-            2 * tbl->num_buckets * sizeof(struct UT_hash_bucket));               \
     tbl->ideal_chain_maxlen =                                                    \
        (tbl->num_items >> (tbl->log2_num_buckets+1)) +                           \
        ((tbl->num_items & ((tbl->num_buckets*2)-1)) ? 1 : 0);                    \
