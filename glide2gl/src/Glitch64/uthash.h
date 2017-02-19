@@ -91,19 +91,21 @@ do {                                                                            
 
 #define HASH_MAKE_TABLE(hh,head)                                                 \
 do {                                                                             \
-  (head)->hh.tbl = (UT_hash_table*)malloc(                                \
+  (head)->hh.tbl = (UT_hash_table*)malloc(                                       \
                   sizeof(UT_hash_table));                                        \
   if (!((head)->hh.tbl))  { uthash_fatal( "out of memory"); }                    \
-  memset((head)->hh.tbl, 0, sizeof(UT_hash_table));                              \
-  (head)->hh.tbl->tail = &((head)->hh);                                          \
   (head)->hh.tbl->num_buckets = HASH_INITIAL_NUM_BUCKETS;                        \
   (head)->hh.tbl->log2_num_buckets = HASH_INITIAL_NUM_BUCKETS_LOG2;              \
+  (head)->hh.tbl->num_items = 0;                                                 \
+  (head)->hh.tbl->tail = &((head)->hh);                                          \
   (head)->hh.tbl->hho = (char*)(&(head)->hh) - (char*)(head);                    \
-  (head)->hh.tbl->buckets = (UT_hash_bucket*)malloc(                      \
-          HASH_INITIAL_NUM_BUCKETS*sizeof(struct UT_hash_bucket));               \
+  (head)->hh.tbl->ideal_chain_maxlen = 0;                                        \
+  (head)->hh.tbl->nonideal_items = 0;                                            \
+  (head)->hh.tbl->ineff_expands = 0;                                             \
+  (head)->hh.tbl->noexpand = 0;                                                  \
+  (head)->hh.tbl->buckets = (UT_hash_bucket*)calloc(                             \
+          HASH_INITIAL_NUM_BUCKETS, sizeof(struct UT_hash_bucket));              \
   if (! (head)->hh.tbl->buckets) { uthash_fatal( "out of memory"); }             \
-  memset((head)->hh.tbl->buckets, 0,                                             \
-          HASH_INITIAL_NUM_BUCKETS*sizeof(struct UT_hash_bucket));               \
 } while(0)
 
 #define HASH_ADD(hh,head,fieldname,keylen_in,add)                                \
