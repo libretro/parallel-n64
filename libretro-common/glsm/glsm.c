@@ -21,40 +21,21 @@
  */
 
 #include <stdio.h>
-#include <string.h>
 #include <stdlib.h>
 #include <glsym/glsym.h>
 #include <glsm/glsm.h>
 
-#if 0
-#define HAVE_GLIDEN64
-#endif
-
-#define MAX_FRAMEBUFFERS 128000
-#define MAX_UNIFORMS 1024
-
-#ifdef HAVE_OPENGLES
-#include <EGL/egl.h>
-typedef void (GL_APIENTRYP PFNGLDRAWRANGEELEMENTSBASEVERTEXPROC) (GLenum mode, GLuint start, GLuint end, GLsizei count, GLenum type, const void *indices, GLint basevertex);
-typedef void (GL_APIENTRYP PFNGLBUFFERSTORAGEEXTPROC) (GLenum target, GLsizeiptr size, const void *data, GLbitfield flags);
-typedef void (GL_APIENTRYP PFNGLMEMORYBARRIERPROC) (GLbitfield barriers);
-typedef void (GL_APIENTRYP PFNGLBINDIMAGETEXTUREPROC) (GLuint unit, GLuint texture, GLint level, GLboolean layered, GLint layer, GLenum access, GLenum format);
-typedef void (GL_APIENTRYP PFNGLTEXSTORAGE2DMULTISAMPLEPROC) (GLenum target, GLsizei samples, GLenum internalformat, GLsizei width, GLsizei height, GLboolean fixedsamplelocations);
-typedef void (GL_APIENTRYP PFNGLCOPYIMAGESUBDATAPROC) (GLuint srcName, GLenum srcTarget, GLint srcLevel, GLint srcX, GLint srcY, GLint srcZ, GLuint dstName, GLenum dstTarget, GLint dstLevel, GLint dstX, GLint dstY, GLint dstZ, GLsizei srcWidth, GLsizei srcHeight, GLsizei srcDepth);
-PFNGLDRAWRANGEELEMENTSBASEVERTEXPROC m_glDrawRangeElementsBaseVertex;
-PFNGLBUFFERSTORAGEEXTPROC m_glBufferStorage;
-PFNGLMEMORYBARRIERPROC m_glMemoryBarrier;
-PFNGLBINDIMAGETEXTUREPROC m_glBindImageTexture;
-PFNGLTEXSTORAGE2DMULTISAMPLEPROC m_glTexStorage2DMultisample;
-PFNGLCOPYIMAGESUBDATAPROC m_glCopyImageSubData;
+#ifndef GL_DEPTH_CLAMP
+#define GL_DEPTH_CLAMP                    0x864F
+#define GL_RASTERIZER_DISCARD             0x8C89
+#define GL_SAMPLE_MASK                    0x8E51
 #endif
 
 struct gl_cached_state
 {
    struct
    {
-      GLuint ids[32];
-      GLenum target[32];
+      GLuint *ids;
    } bind_textures;
 
    struct
@@ -79,8 +60,9 @@ struct gl_cached_state
 
    struct
    {
-      GLuint array;
-   } bindvertex;
+      GLenum pname;
+      GLint param;
+   } pixelstore_i;
 
    struct
    {
@@ -144,6 +126,7 @@ struct gl_cached_state
       GLenum func;
    } depthfunc;
 
+
    struct
    {
       bool used;
@@ -180,7 +163,7 @@ struct gl_cached_state
       GLenum mode;
    } frontface;
 
-   struct
+   struct 
    {
       bool used;
       GLenum mode;
@@ -200,87 +183,21 @@ struct gl_cached_state
 
    struct
    {
-     GLint pack;
-     GLint unpack;
-   } pixelstore;
-
-   struct
-   {
       GLenum mode;
    } readbuffer;
 
-   struct
-   {
-      GLuint location;
-      GLuint desired_location;
-   } framebuf[2];
-
-   GLuint array_buffer;
-   GLuint index_buffer;
    GLuint vao;
-   GLuint program;
+   GLuint framebuf;
+   GLuint array_buffer;
+   GLuint program; 
+   GLenum active_texture;
    int cap_state[SGL_CAP_MAX];
    int cap_translate[SGL_CAP_MAX];
 };
 
-struct gl_program_uniforms
-{
-   GLfloat uniform1f;
-   GLfloat uniform2f[2];
-   GLfloat uniform3f[3];
-   GLfloat uniform4f[4];
-   GLint uniform1i;
-   GLint uniform2i[2];
-   GLint uniform3i[3];
-   GLint uniform4i[4];
-};
-
-struct gl_framebuffers
-{
-   int draw_buf_set;
-   GLuint color_attachment;
-   GLuint depth_attachment;
-   GLenum target;
-};
-
-static struct gl_program_uniforms program_uniforms[MAX_UNIFORMS][MAX_UNIFORMS];
-static struct gl_framebuffers* framebuffers[MAX_FRAMEBUFFERS];
-static GLenum active_texture;
-static GLuint default_framebuffer;
 static GLint glsm_max_textures;
-static bool copy_image_support = 0;
 static struct retro_hw_render_callback hw_render;
 static struct gl_cached_state gl_state;
-static int window_first = 0;
-static int resetting_context = 0;
-
-static void on_gl_error(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const char* message, void *userParam)
-{
-   printf("%s\n", message);
-}
-
-void bindFBO(GLenum target)
-{
-#ifdef HAVE_OPENGLES2
-   if (target == GL_FRAMEBUFFER && (gl_state.framebuf[0].desired_location != gl_state.framebuf[0].location || gl_state.framebuf[1].desired_location != gl_state.framebuf[1].location))
-   {
-      glBindFramebuffer(GL_FRAMEBUFFER, gl_state.framebuf[0].desired_location);
-      gl_state.framebuf[0].location = gl_state.framebuf[0].desired_location;
-      gl_state.framebuf[1].location = gl_state.framebuf[1].desired_location;
-   }
-#else
-   if ((target == GL_FRAMEBUFFER || target == GL_DRAW_FRAMEBUFFER) && gl_state.framebuf[0].desired_location != gl_state.framebuf[0].location)
-   {
-      glBindFramebuffer(GL_DRAW_FRAMEBUFFER, gl_state.framebuf[0].desired_location);
-      gl_state.framebuf[0].location = gl_state.framebuf[0].desired_location;
-   }
-   else if (target == GL_READ_FRAMEBUFFER && gl_state.framebuf[1].desired_location != gl_state.framebuf[1].location)
-   {
-      glBindFramebuffer(GL_READ_FRAMEBUFFER, gl_state.framebuf[1].desired_location);
-      gl_state.framebuf[1].location = gl_state.framebuf[1].desired_location;
-   }
-#endif
-}
 
 /* GL wrapper-side */
 
@@ -301,7 +218,6 @@ GLenum rglGetError(void)
  */
 void rglClear(GLbitfield mask)
 {
-   bindFBO(GL_FRAMEBUFFER);
    glClear(mask);
 }
 
@@ -326,20 +242,6 @@ void rglPolygonMode(GLenum face, GLenum mode)
 #ifndef HAVE_OPENGLES
    glPolygonMode(face, mode);
 #endif
-}
-
-void rglTexImage2D(
-	GLenum target,
- 	GLint level,
- 	GLint internalformat,
- 	GLsizei width,
- 	GLsizei height,
- 	GLint border,
- 	GLenum format,
- 	GLenum type,
- 	const GLvoid * data)
-{
-   glTexImage2D(target, level, internalformat, width, height, border, format, type, data);
 }
 
 void rglTexSubImage2D(
@@ -368,63 +270,6 @@ void rglLineWidth(GLfloat width)
 }
 
 /*
- *
- * Core in:
- * OpenGL    : 2.0
- * OpenGLES  : 3.2
- */
-void rglCopyImageSubData( 	GLuint srcName,
-	GLenum srcTarget,
-	GLint srcLevel,
-	GLint srcX,
-	GLint srcY,
-	GLint srcZ,
-	GLuint dstName,
-	GLenum dstTarget,
-	GLint dstLevel,
-	GLint dstX,
-	GLint dstY,
-	GLint dstZ,
-	GLsizei srcWidth,
-	GLsizei srcHeight,
-	GLsizei srcDepth)
-{
-#ifndef HAVE_OPENGLES
-   glCopyImageSubData(srcName,
-         srcTarget,
-         srcLevel,
-         srcX,
-         srcY,
-         srcZ,
-         dstName,
-         dstTarget,
-         dstLevel,
-         dstX,
-         dstY,
-         dstZ,
-         srcWidth,
-         srcHeight,
-         srcDepth);
-#else
-   m_glCopyImageSubData(srcName,
-         srcTarget,
-         srcLevel,
-         srcX,
-         srcY,
-         srcZ,
-         dstName,
-         dstTarget,
-         dstLevel,
-         dstX,
-         dstY,
-         dstZ,
-         srcWidth,
-         srcHeight,
-         srcDepth);
-#endif
-}
-
-/*
  * Category: FBO
  *
  * Core in:
@@ -438,29 +283,10 @@ void rglBlitFramebuffer(
       GLint dstX1, GLint dstY1,
       GLbitfield mask, GLenum filter)
 {
-#ifndef HAVE_OPENGLES2
-   GLuint src_attachment;
-   GLuint dst_attachment;
-   const bool good_pointer = gl_state.framebuf[0].desired_location < MAX_FRAMEBUFFERS && gl_state.framebuf[1].desired_location < MAX_FRAMEBUFFERS;
-   const bool good_target = framebuffers[gl_state.framebuf[0].desired_location]->target == framebuffers[gl_state.framebuf[1].desired_location]->target;
-   const bool sameSize = dstX1 - dstX0 == srcX1 - srcX0 && dstY1 - dstY0 == srcY1 - srcY0;
-   if (sameSize && copy_image_support && good_pointer && good_target) {
-      if (mask == GL_COLOR_BUFFER_BIT) {
-         src_attachment = framebuffers[gl_state.framebuf[1].desired_location]->color_attachment;
-         dst_attachment = framebuffers[gl_state.framebuf[0].desired_location]->color_attachment;
-      } else if (mask == GL_DEPTH_BUFFER_BIT) {
-         src_attachment = framebuffers[gl_state.framebuf[1].desired_location]->depth_attachment;
-         dst_attachment = framebuffers[gl_state.framebuf[0].desired_location]->depth_attachment;
-      }
-      rglCopyImageSubData(src_attachment, framebuffers[gl_state.framebuf[1].desired_location]->target, 0, srcX0, srcY0, 0,
-         dst_attachment, framebuffers[gl_state.framebuf[0].desired_location]->target, 0, dstX0, dstY0, 0, srcX1 - srcX0, srcY1 - srcY0, 1);
-   } else {
-      bindFBO(GL_DRAW_FRAMEBUFFER);
-      bindFBO(GL_READ_FRAMEBUFFER);
-      glBlitFramebuffer(srcX0, srcY0, srcX1, srcY1,
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES) && defined(HAVE_OPENGLES3)
+   glBlitFramebuffer(srcX0, srcY0, srcX1, srcY1,
          dstX0, dstY0, dstX1, dstY1,
          mask, filter);
-   }
 #endif
 }
 
@@ -471,7 +297,7 @@ void rglBlitFramebuffer(
  */
 void rglReadBuffer(GLenum mode)
 {
-#ifndef HAVE_OPENGLES2
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES) && defined(HAVE_OPENGLES3)
    glReadBuffer(mode);
    gl_state.readbuffer.mode = mode;
 #endif
@@ -494,28 +320,6 @@ void rglClearDepth(GLdouble depth)
    gl_state.cleardepth.depth = depth;
 }
 
-void rglReadPixels(	GLint x,
- 	GLint y,
- 	GLsizei width,
- 	GLsizei height,
- 	GLenum format,
- 	GLenum type,
- 	GLvoid * data)
-{
-#ifdef HAVE_OPENGLES2
-   bindFBO(GL_FRAMEBUFFER);
-#else
-   bindFBO(GL_READ_FRAMEBUFFER);
-#endif
-   glReadPixels(x, y, width, height, format, type, data);
-}
-
-/*
- *
- * Core in:
- * OpenGLES  : 2.0
- */
-
 /*
  *
  * Core in:
@@ -523,36 +327,9 @@ void rglReadPixels(	GLint x,
  */
 void rglPixelStorei(GLenum pname, GLint param)
 {
-   if (pname == GL_UNPACK_ALIGNMENT)
-   {
-      if (param != gl_state.pixelstore.unpack)
-      {
-         glPixelStorei(pname, param);
-         gl_state.pixelstore.unpack = param;
-      }
-   }
-   else if (pname == GL_PACK_ALIGNMENT)
-   {
-      if (param != gl_state.pixelstore.pack)
-      {
-         glPixelStorei(pname, param);
-         gl_state.pixelstore.pack = param;
-      }
-   }
-   else
-      glPixelStorei(pname, param);
-}
-
-/*
- *
- * Core in:
- * OpenGLES  : 2.0
- */
-GLboolean rglUnmapBuffer(GLenum target)
-{
-#ifndef HAVE_OPENGLES2
-   return glUnmapBuffer(target);
-#endif
+   glPixelStorei(pname, param);
+   gl_state.pixelstore_i.pname = pname;
+   gl_state.pixelstore_i.param = param;
 }
 
 /*
@@ -579,11 +356,10 @@ void rglDepthRange(GLclampd zNear, GLclampd zFar)
  */
 void rglFrontFace(GLenum mode)
 {
+   glsm_ctl(GLSM_CTL_IMM_VBO_DRAW, NULL);
+   glFrontFace(mode);
    gl_state.frontface.used = true;
-   if (gl_state.frontface.mode != mode) {
-      glFrontFace(mode);
-      gl_state.frontface.mode = mode;
-   }
+   gl_state.frontface.mode = mode; 
 }
 
 /*
@@ -593,11 +369,10 @@ void rglFrontFace(GLenum mode)
  */
 void rglDepthFunc(GLenum func)
 {
+   glsm_ctl(GLSM_CTL_IMM_VBO_DRAW, NULL);
    gl_state.depthfunc.used = true;
-   if (gl_state.depthfunc.func != func) {
-      glDepthFunc(func);
-      gl_state.depthfunc.func = func;
-   }
+   gl_state.depthfunc.func = func;
+   glDepthFunc(func);
 }
 
 /*
@@ -608,14 +383,13 @@ void rglDepthFunc(GLenum func)
 void rglColorMask(GLboolean red, GLboolean green,
       GLboolean blue, GLboolean alpha)
 {
+   glsm_ctl(GLSM_CTL_IMM_VBO_DRAW, NULL);
+   glColorMask(red, green, blue, alpha);
+   gl_state.colormask.red   = red;
+   gl_state.colormask.green = green;
+   gl_state.colormask.blue  = blue;
+   gl_state.colormask.alpha = alpha;
    gl_state.colormask.used  = true;
-   if (gl_state.colormask.red != red || gl_state.colormask.green != green || gl_state.colormask.blue != blue || gl_state.colormask.alpha != alpha) {
-       glColorMask(red, green, blue, alpha);
-       gl_state.colormask.red   = red;
-       gl_state.colormask.green = green;
-       gl_state.colormask.blue  = blue;
-       gl_state.colormask.alpha = alpha;
-   }
 }
 
 /*
@@ -625,12 +399,10 @@ void rglColorMask(GLboolean red, GLboolean green,
  */
 void rglCullFace(GLenum mode)
 {
+   glsm_ctl(GLSM_CTL_IMM_VBO_DRAW, NULL);
+   glCullFace(mode);
    gl_state.cullface.used = true;
-   if (gl_state.cullface.mode != mode)
-   {
-      glCullFace(mode);
-      gl_state.cullface.mode = mode;
-   }
+   gl_state.cullface.mode = mode;
 }
 
 /*
@@ -640,13 +412,11 @@ void rglCullFace(GLenum mode)
  */
 void rglStencilOp(GLenum sfail, GLenum dpfail, GLenum dppass)
 {
+   glStencilOp(sfail, dpfail, dppass);
    gl_state.stencilop.used   = true;
-   if (gl_state.stencilop.sfail != sfail || gl_state.stencilop.dpfail != dpfail || gl_state.stencilop.dppass != dppass) {
-      glStencilOp(sfail, dpfail, dppass);
-      gl_state.stencilop.sfail  = sfail;
-      gl_state.stencilop.dpfail = dpfail;
-      gl_state.stencilop.dppass = dppass;
-   }
+   gl_state.stencilop.sfail  = sfail;
+   gl_state.stencilop.dpfail = dpfail;
+   gl_state.stencilop.dppass = dppass;
 }
 
 /*
@@ -656,14 +426,11 @@ void rglStencilOp(GLenum sfail, GLenum dpfail, GLenum dppass)
  */
 void rglStencilFunc(GLenum func, GLint ref, GLuint mask)
 {
+   glStencilFunc(func, ref, mask);
    gl_state.stencilfunc.used = true;
-   if (gl_state.stencilfunc.func != func || gl_state.stencilfunc.ref != ref || gl_state.stencilfunc.mask != mask)
-   {
-      glStencilFunc(func, ref, mask);
-      gl_state.stencilfunc.func = func;
-      gl_state.stencilfunc.ref  = ref;
-      gl_state.stencilfunc.mask = mask;
-   }
+   gl_state.stencilfunc.func = func;
+   gl_state.stencilfunc.ref  = ref;
+   gl_state.stencilfunc.mask = mask;
 }
 
 /*
@@ -684,14 +451,12 @@ GLboolean rglIsEnabled(GLenum cap)
 void rglClearColor(GLclampf red, GLclampf green,
       GLclampf blue, GLclampf alpha)
 {
-   if (gl_state.clear_color.r != red || gl_state.clear_color.g != green || gl_state.clear_color.b != blue || gl_state.clear_color.a != alpha)
-   {
-      glClearColor(red, green, blue, alpha);
-      gl_state.clear_color.r = red;
-      gl_state.clear_color.g = green;
-      gl_state.clear_color.b = blue;
-      gl_state.clear_color.a = alpha;
-   }
+   glsm_ctl(GLSM_CTL_IMM_VBO_DRAW, NULL);
+   glClearColor(red, green, blue, alpha);
+   gl_state.clear_color.r = red;
+   gl_state.clear_color.g = green;
+   gl_state.clear_color.b = blue;
+   gl_state.clear_color.a = alpha;
 }
 
 /*
@@ -701,15 +466,13 @@ void rglClearColor(GLclampf red, GLclampf green,
  */
 void rglScissor(GLint x, GLint y, GLsizei width, GLsizei height)
 {
+   glsm_ctl(GLSM_CTL_IMM_VBO_DRAW, NULL);
+   glScissor(x, y, width, height);
    gl_state.scissor.used = true;
-   if (gl_state.scissor.x != x || gl_state.scissor.y != y || gl_state.scissor.w != width || gl_state.scissor.h != height)
-   {
-      glScissor(x, y, width, height);
-      gl_state.scissor.x = x;
-      gl_state.scissor.y = y;
-      gl_state.scissor.w = width;
-      gl_state.scissor.h = height;
-   }
+   gl_state.scissor.x    = x;
+   gl_state.scissor.y    = y;
+   gl_state.scissor.w    = width;
+   gl_state.scissor.h    = height;
 }
 
 /*
@@ -719,25 +482,21 @@ void rglScissor(GLint x, GLint y, GLsizei width, GLsizei height)
  */
 void rglViewport(GLint x, GLint y, GLsizei width, GLsizei height)
 {
-   if (gl_state.viewport.x != x || gl_state.viewport.y != y || gl_state.viewport.w != width || gl_state.viewport.h != height)
-   {
-      glViewport(x, y, width, height);
-      gl_state.viewport.x = x;
-      gl_state.viewport.y = y;
-      gl_state.viewport.w = width;
-      gl_state.viewport.h = height;
-   }
+   glsm_ctl(GLSM_CTL_IMM_VBO_DRAW, NULL);
+   glViewport(x, y, width, height);
+   gl_state.viewport.x = x;
+   gl_state.viewport.y = y;
+   gl_state.viewport.w = width;
+   gl_state.viewport.h = height;
 }
 
 void rglBlendFunc(GLenum sfactor, GLenum dfactor)
 {
-   gl_state.blendfunc.used = true;
-   if (gl_state.blendfunc.sfactor != sfactor || gl_state.blendfunc.dfactor != dfactor)
-   {
-      glBlendFunc(sfactor, dfactor);
-      gl_state.blendfunc.sfactor = sfactor;
-      gl_state.blendfunc.dfactor = dfactor;
-   }
+   glsm_ctl(GLSM_CTL_IMM_VBO_DRAW, NULL);
+   gl_state.blendfunc.used    = true;
+   gl_state.blendfunc.sfactor = sfactor;
+   gl_state.blendfunc.dfactor = dfactor;
+   glBlendFunc(sfactor, dfactor);
 }
 
 /*
@@ -746,32 +505,28 @@ void rglBlendFunc(GLenum sfactor, GLenum dfactor)
  * Core in:
  * OpenGL    : 1.4
  */
-void rglBlendFuncSeparate(GLenum srcRGB, GLenum dstRGB, GLenum srcAlpha, GLenum dstAlpha)
+void rglBlendFuncSeparate(GLenum sfactor, GLenum dfactor)
 {
+   glsm_ctl(GLSM_CTL_IMM_VBO_DRAW, NULL);
    gl_state.blendfunc_separate.used     = true;
-   if (gl_state.blendfunc_separate.srcRGB != srcRGB || gl_state.blendfunc_separate.dstRGB != dstRGB || gl_state.blendfunc_separate.srcAlpha != srcAlpha || gl_state.blendfunc_separate.dstAlpha != dstAlpha)
-   {
-      glBlendFuncSeparate(srcRGB, dstRGB, srcAlpha, dstAlpha);
-      gl_state.blendfunc_separate.srcRGB   = srcRGB;
-      gl_state.blendfunc_separate.dstRGB   = dstRGB;
-      gl_state.blendfunc_separate.srcAlpha = srcAlpha;
-      gl_state.blendfunc_separate.dstAlpha = dstAlpha;
-   }
+   gl_state.blendfunc_separate.srcRGB   = sfactor;
+   gl_state.blendfunc_separate.dstRGB   = dfactor;
+   gl_state.blendfunc_separate.srcAlpha = sfactor;
+   gl_state.blendfunc_separate.dstAlpha = dfactor;
+   glBlendFunc(sfactor, dfactor);
 }
 
 /*
  * Category: Textures
  *
  * Core in:
- * OpenGL    : 1.3
+ * OpenGL    : 1.3 
  */
 void rglActiveTexture(GLenum texture)
 {
-   if (active_texture != texture - GL_TEXTURE0)
-   {
-      glActiveTexture(texture);
-      active_texture = texture - GL_TEXTURE0;
-   }
+   glsm_ctl(GLSM_CTL_IMM_VBO_DRAW, NULL);
+   glActiveTexture(texture);
+   gl_state.active_texture = texture - GL_TEXTURE0;
 }
 
 /*
@@ -781,12 +536,9 @@ void rglActiveTexture(GLenum texture)
  */
 void rglBindTexture(GLenum target, GLuint texture)
 {
-   if (gl_state.bind_textures.ids[active_texture] != texture || gl_state.bind_textures.target[active_texture] != target)
-   {
-      glBindTexture(target, texture);
-      gl_state.bind_textures.ids[active_texture] = texture;
-      gl_state.bind_textures.target[active_texture] = target;
-   }
+   glsm_ctl(GLSM_CTL_IMM_VBO_DRAW, NULL);
+   glBindTexture(target, texture);
+   gl_state.bind_textures.ids[gl_state.active_texture] = texture;
 }
 
 /*
@@ -796,11 +548,9 @@ void rglBindTexture(GLenum target, GLuint texture)
  */
 void rglDisable(GLenum cap)
 {
-   if (gl_state.cap_state[cap] != 0)
-   {
-      glDisable(gl_state.cap_translate[cap]);
-      gl_state.cap_state[cap] = 0;
-   }
+   glsm_ctl(GLSM_CTL_IMM_VBO_DRAW, NULL);
+   glDisable(gl_state.cap_translate[cap]);
+   gl_state.cap_state[cap] = 0;
 }
 
 /*
@@ -810,26 +560,22 @@ void rglDisable(GLenum cap)
  */
 void rglEnable(GLenum cap)
 {
-   if (gl_state.cap_state[cap] != 1)
-   {
-      glEnable(gl_state.cap_translate[cap]);
-      gl_state.cap_state[cap] = 1;
-   }
+   glsm_ctl(GLSM_CTL_IMM_VBO_DRAW, NULL);
+   glEnable(gl_state.cap_translate[cap]);
+   gl_state.cap_state[cap] = 1;
 }
 
 /*
  * Category: Shaders
  *
  * Core in:
- * OpenGL    : 2.0
+ * OpenGL    : 2.0 
  */
 void rglUseProgram(GLuint program)
 {
-   if (gl_state.program != program)
-   {
-      glUseProgram(program);
-      gl_state.program = program;
-   }
+   glsm_ctl(GLSM_CTL_IMM_VBO_DRAW, NULL);
+   gl_state.program = program;
+   glUseProgram(program);
 }
 
 /*
@@ -839,12 +585,10 @@ void rglUseProgram(GLuint program)
  */
 void rglDepthMask(GLboolean flag)
 {
+   glsm_ctl(GLSM_CTL_IMM_VBO_DRAW, NULL);
+   glDepthMask(flag);
    gl_state.depthmask.used = true;
-   if (gl_state.depthmask.mask != flag)
-   {
-      glDepthMask(flag);
-      gl_state.depthmask.mask = flag;
-   }
+   gl_state.depthmask.mask = flag;
 }
 
 /*
@@ -854,12 +598,9 @@ void rglDepthMask(GLboolean flag)
  */
 void rglStencilMask(GLenum mask)
 {
+   glStencilMask(mask);
    gl_state.stencilmask.used = true;
-   if (gl_state.stencilmask.mask != mask)
-   {
-      glStencilMask(mask);
-      gl_state.stencilmask.mask = mask;
-   }
+   gl_state.stencilmask.mask = mask;
 }
 
 /*
@@ -892,23 +633,9 @@ void rglBufferSubData(GLenum target, GLintptr offset,
 void rglBindBuffer(GLenum target, GLuint buffer)
 {
    if (target == GL_ARRAY_BUFFER)
-   {
-      if (gl_state.array_buffer != buffer)
-      {
-         gl_state.array_buffer = buffer;
-         glBindBuffer(target, buffer);
-      }
-   }
-   else if (target == GL_ELEMENT_ARRAY_BUFFER)
-   {
-      if (gl_state.index_buffer != buffer)
-      {
-         gl_state.index_buffer = buffer;
-         glBindBuffer(target, buffer);
-      }
-   }
-   else
-      glBindBuffer(target, buffer);
+      gl_state.array_buffer = buffer;
+   glsm_ctl(GLSM_CTL_IMM_VBO_DRAW, NULL);
+   glBindBuffer(target, buffer);
 }
 
 /*
@@ -926,48 +653,13 @@ void rglLinkProgram(GLuint program)
  * Category: FBO
  *
  * Core in:
- * OpenGL    : 3.0
+ * OpenGL    : 3.0 
  * OpenGLES  : 2.0
  */
 void rglFramebufferTexture2D(GLenum target, GLenum attachment,
       GLenum textarget, GLuint texture, GLint level)
 {
-   int type;
-   if (target == GL_FRAMEBUFFER)
-      type = 0;
-#ifndef HAVE_OPENGLES2
-   else if (target == GL_DRAW_FRAMEBUFFER)
-      type = 0;
-   else if (target == GL_READ_FRAMEBUFFER)
-      type = 1;
-#endif
-   if (gl_state.framebuf[type].desired_location < MAX_FRAMEBUFFERS)
-   {
-      framebuffers[gl_state.framebuf[type].desired_location]->target = textarget;
-      if (attachment == GL_COLOR_ATTACHMENT0)
-      {
-         if (framebuffers[gl_state.framebuf[type].desired_location]->color_attachment != texture)
-         {
-            bindFBO(target);
-            glFramebufferTexture2D(target, attachment, textarget, texture, level);
-            framebuffers[gl_state.framebuf[type].location]->color_attachment = texture;
-         }
-      }
-      else if (attachment == GL_DEPTH_ATTACHMENT)
-      {
-         if (framebuffers[gl_state.framebuf[type].desired_location]->depth_attachment != texture)
-         {
-            bindFBO(target);
-            glFramebufferTexture2D(target, attachment, textarget, texture, level);
-            framebuffers[gl_state.framebuf[type].location]->depth_attachment = texture;
-         }
-      }
-   }
-   else
-   {
-      bindFBO(target);
-      glFramebufferTexture2D(target, attachment, textarget, texture, level);
-   }
+   glFramebufferTexture2D(target, attachment, textarget, texture, level);
 }
 
 /*
@@ -980,7 +672,6 @@ void rglFramebufferTexture2D(GLenum target, GLenum attachment,
 void rglFramebufferTexture(GLenum target, GLenum attachment,
   	GLuint texture, GLint level)
 {
-   bindFBO(target);
 #if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES) && defined(HAVE_OPENGLES_3_2)
    glFramebufferTexture(target, attachment, texture, level);
 #endif
@@ -993,7 +684,6 @@ void rglFramebufferTexture(GLenum target, GLenum attachment,
  */
 void rglDrawArrays(GLenum mode, GLint first, GLsizei count)
 {
-   bindFBO(GL_FRAMEBUFFER);
    glDrawArrays(mode, first, count);
 }
 
@@ -1005,76 +695,32 @@ void rglDrawArrays(GLenum mode, GLint first, GLsizei count)
 void rglDrawElements(GLenum mode, GLsizei count, GLenum type,
                            const GLvoid * indices)
 {
-   bindFBO(GL_FRAMEBUFFER);
    glDrawElements(mode, count, type, indices);
-}
-
-void rglDrawRangeElementsBaseVertex(GLenum mode, GLuint start, GLuint end, GLsizei count, GLenum type, GLvoid *indices, GLint basevertex)
-{
-   bindFBO(GL_FRAMEBUFFER);
-#ifdef HAVE_OPENGLES
-   m_glDrawRangeElementsBaseVertex(mode, start, end, count, type, indices, basevertex);
-#else
-   glDrawRangeElementsBaseVertex(mode, start, end, count, type, indices, basevertex);
-#endif
 }
 
 void rglCompressedTexImage2D(GLenum target, GLint level,
       GLenum internalformat, GLsizei width, GLsizei height,
       GLint border, GLsizei imageSize, const GLvoid *data)
 {
-   glCompressedTexImage2D(target, level, internalformat,
+   glCompressedTexImage2D(target, level, internalformat, 
          width, height, border, imageSize, data);
 }
 
 
-void rglDeleteFramebuffers(GLsizei n, const GLuint *_framebuffers)
+void rglDeleteFramebuffers(GLsizei n, const GLuint *framebuffers)
 {
-   int i, p;
-   for (i = 0; i < n; ++i)
-   {
-      if (_framebuffers[i] < MAX_FRAMEBUFFERS)
-      {
-         free(framebuffers[_framebuffers[i]]);
-         framebuffers[_framebuffers[i]] = NULL;
-      }
-      for (p = 0; p < 2; ++p)
-      {
-         if (_framebuffers[i] == gl_state.framebuf[p].location)
-            gl_state.framebuf[p].location = 0;
-      }
-   }
-   glDeleteFramebuffers(n, _framebuffers);
+   glDeleteFramebuffers(n, framebuffers);
 }
 
 void rglDeleteTextures(GLsizei n, const GLuint *textures)
 {
-   int i, p;
-   for (i = 0; i < n; ++i)
-   {
-      if (textures[i] == gl_state.bind_textures.ids[active_texture])
-      {
-         gl_state.bind_textures.ids[active_texture] = 0;
-         gl_state.bind_textures.target[active_texture] = GL_TEXTURE_2D;
-      }
-      for (p = 0; p < MAX_FRAMEBUFFERS; ++p)
-      {
-         if (framebuffers[p] != NULL)
-         {
-            if (framebuffers[p]->color_attachment == textures[i])
-               framebuffers[p]->color_attachment = 0;
-            if (framebuffers[p]->depth_attachment == textures[i])
-               framebuffers[p]->depth_attachment = 0;
-         }
-      }
-   }
    glDeleteTextures(n, textures);
 }
 
 /*
  *
  * Core in:
- * OpenGLES    : 2.0
+ * OpenGLES    : 2.0 
  */
 void rglRenderbufferStorage(GLenum target, GLenum internalFormat,
       GLsizei width, GLsizei height)
@@ -1082,24 +728,12 @@ void rglRenderbufferStorage(GLenum target, GLenum internalFormat,
    glRenderbufferStorage(target, internalFormat, width, height);
 }
 
-void rglBufferStorage(GLenum target,
-                       GLsizeiptr size,
-                       const GLvoid * data,
-                       GLbitfield flags)
-{
-#ifndef HAVE_OPENGLES
-   glBufferStorage(target, size, data, flags);
-#else
-   m_glBufferStorage(target, size, data, flags);
-#endif
-}
-
 /*
  *
  * Core in:
  *
  * OpenGL      : 3.0
- * OpenGLES    : 2.0
+ * OpenGLES    : 2.0 
  */
 void rglBindRenderbuffer(GLenum target, GLuint renderbuffer)
 {
@@ -1110,7 +744,7 @@ void rglBindRenderbuffer(GLenum target, GLuint renderbuffer)
  *
  * Core in:
  *
- * OpenGLES    : 2.0
+ * OpenGLES    : 2.0 
  */
 void rglDeleteRenderbuffers(GLsizei n, GLuint *renderbuffers)
 {
@@ -1122,7 +756,7 @@ void rglDeleteRenderbuffers(GLsizei n, GLuint *renderbuffers)
  * Core in:
  *
  * OpenGL      : 3.0
- * OpenGLES    : 2.0
+ * OpenGLES    : 2.0 
  */
 void rglGenRenderbuffers(GLsizei n, GLuint *renderbuffers)
 {
@@ -1134,7 +768,7 @@ void rglGenRenderbuffers(GLsizei n, GLuint *renderbuffers)
  * Core in:
  *
  * OpenGL      : 3.0
- * OpenGLES    : 2.0
+ * OpenGLES    : 2.0 
  */
 void rglGenerateMipmap(GLenum target)
 {
@@ -1145,11 +779,10 @@ void rglGenerateMipmap(GLenum target)
  * Category: FBO
  *
  * Core in:
- * OpenGL    : 3.0
+ * OpenGL    : 3.0 
  */
 GLenum rglCheckFramebufferStatus(GLenum target)
 {
-   bindFBO(target);
    return glCheckFramebufferStatus(target);
 }
 
@@ -1157,88 +790,53 @@ GLenum rglCheckFramebufferStatus(GLenum target)
  * Category: FBO
  *
  * Core in:
- * OpenGL    : 3.0
+ * OpenGL    : 3.0 
  * OpenGLES  : 2.0
  */
 void rglFramebufferRenderbuffer(GLenum target, GLenum attachment,
       GLenum renderbuffertarget, GLuint renderbuffer)
 {
-   int type;
-   if (target == GL_FRAMEBUFFER)
-      type = 0;
-#ifndef HAVE_OPENGLES2
-   else if (target == GL_DRAW_FRAMEBUFFER)
-      type = 0;
-   else if (target == GL_READ_FRAMEBUFFER)
-      type = 1;
-#endif
-   if (gl_state.framebuf[type].desired_location < MAX_FRAMEBUFFERS) {
-      framebuffers[gl_state.framebuf[type].desired_location]->target = renderbuffertarget;
-      if (attachment == GL_COLOR_ATTACHMENT0) {
-         if (framebuffers[gl_state.framebuf[type].desired_location]->color_attachment != renderbuffer) {
-            bindFBO(target);
-            glFramebufferRenderbuffer(target, attachment, renderbuffertarget, renderbuffer);
-            framebuffers[gl_state.framebuf[type].location]->color_attachment = renderbuffer;
-         }
-      }
-      else if (attachment == GL_DEPTH_ATTACHMENT) {
-         if (framebuffers[gl_state.framebuf[type].desired_location]->depth_attachment != renderbuffer) {
-            bindFBO(target);
-            glFramebufferRenderbuffer(target, attachment, renderbuffertarget, renderbuffer);
-            framebuffers[gl_state.framebuf[type].location]->depth_attachment = renderbuffer;
-         }
-      }
-   } else {
-      bindFBO(target);
-      glFramebufferRenderbuffer(target, attachment, renderbuffertarget, renderbuffer);
-   }
+   glFramebufferRenderbuffer(target, attachment, renderbuffertarget, renderbuffer);
 }
 
 /*
  * Category: Shaders
  *
  * Core in:
- * OpenGL    : 3.0
+ * OpenGL    : 3.0 
  */
+void rglBindFragDataLocation(GLuint program, GLuint colorNumber,
+                                   const char * name)
+{
+#if !defined(HAVE_OPENGLES2)
+   glBindFragDataLocation(program, colorNumber, name);
+#endif
+}
 
 
 /*
  * Category: Shaders
  *
  * Core in:
- * OpenGL    : 2.0
+ * OpenGL    : 2.0 
  */
 void rglGetProgramiv(GLuint shader, GLenum pname, GLint *params)
 {
    glGetProgramiv(shader, pname, params);
 }
 
-void rglGetIntegerv(GLenum pname, GLint * data)
-{
-   glGetIntegerv(pname, data);
-}
-
-void rglGetFloatv(GLenum pname, GLfloat * params)
-{
-   glGetFloatv(pname, params);
-}
-
-const GLubyte* rglGetString(GLenum name)
-{
-   return glGetString(name);
-}
 /*
  * Category: Shaders
  *
  * Core in:
- * OpenGL    : 4.1
+ * OpenGL    : 4.1 
  * OpenGLES  : 3.0
  */
 void rglProgramParameteri( 	GLuint program,
   	GLenum pname,
   	GLint value)
 {
-#ifndef HAVE_OPENGLES2
+#if !defined(HAVE_OPENGLES) || defined(HAVE_OPENGLES) && (defined(HAVE_OPENGLES3) || defined(HAVE_OPENGLES_3_1))
    glProgramParameteri(program, pname, value);
 #else
    printf("WARNING! Not implemented.\n");
@@ -1248,7 +846,7 @@ void rglProgramParameteri( 	GLuint program,
 /*
  *
  * Core in:
- * OpenGL    : 2.0
+ * OpenGL    : 2.0 
  */
 void rglGetActiveUniform(GLuint program, GLuint index, GLsizei bufsize,
       GLsizei *length, GLint *size, GLenum *type, GLchar *name)
@@ -1261,7 +859,7 @@ void rglGetActiveUniform(GLuint program, GLuint index, GLsizei bufsize,
  *
  * Core in:
  *
- * OpenGL    : 2.0
+ * OpenGL    : 2.0 
  * OpenGLES  : 3.0
  */
 void rglGetActiveUniformBlockiv(GLuint program,
@@ -1269,8 +867,9 @@ void rglGetActiveUniformBlockiv(GLuint program,
   	GLenum pname,
   	GLint *params)
 {
-#ifndef HAVE_OPENGLES2
-   glGetActiveUniformBlockiv(program, uniformBlockIndex, pname, params);
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES) && defined(HAVE_OPENGLES3)
+   glGetActiveUniformBlockiv(program, uniformBlockIndex,
+         pname, params);
 #else
    printf("WARNING! Not implemented.\n");
 #endif
@@ -1288,8 +887,9 @@ void rglGetActiveUniformsiv( 	GLuint program,
   	GLenum pname,
   	GLint *params)
 {
-#ifndef HAVE_OPENGLES2
-   glGetActiveUniformsiv(program, uniformCount, uniformIndices, pname, params);
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES) && defined(HAVE_OPENGLES3)
+   glGetActiveUniformsiv(program, uniformCount,
+         uniformIndices, pname, params);
 #else
    printf("WARNING! Not implemented.\n");
 #endif
@@ -1306,8 +906,9 @@ void rglGetUniformIndices(GLuint program,
   	const GLchar **uniformNames,
   	GLuint *uniformIndices)
 {
-#ifndef HAVE_OPENGLES2
-   glGetUniformIndices(program, uniformCount, uniformNames, uniformIndices);
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES) && defined(HAVE_OPENGLES3)
+   glGetUniformIndices(program, uniformCount,
+         uniformNames, uniformIndices);
 #else
    printf("WARNING! Not implemented.\n");
 #endif
@@ -1324,7 +925,7 @@ void rglBindBufferBase( 	GLenum target,
   	GLuint index,
   	GLuint buffer)
 {
-#ifndef HAVE_OPENGLES2
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES) && defined(HAVE_OPENGLES3)
    glBindBufferBase(target, index, buffer);
 #else
    printf("WARNING! Not implemented.\n");
@@ -1342,7 +943,7 @@ void rglBindBufferBase( 	GLenum target,
 GLuint rglGetUniformBlockIndex( 	GLuint program,
   	const GLchar *uniformBlockName)
 {
-#ifndef HAVE_OPENGLES2
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES) && defined(HAVE_OPENGLES3)
    return glGetUniformBlockIndex(program, uniformBlockName);
 #else
    printf("WARNING! Not implemented.\n");
@@ -1361,8 +962,9 @@ void rglUniformBlockBinding( 	GLuint program,
   	GLuint uniformBlockIndex,
   	GLuint uniformBlockBinding)
 {
-#ifndef HAVE_OPENGLES2
-   glUniformBlockBinding(program, uniformBlockIndex, uniformBlockBinding);
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES) && defined(HAVE_OPENGLES3)
+   glUniformBlockBinding(program, uniformBlockIndex,
+         uniformBlockBinding);
 #else
    printf("WARNING! Not implemented.\n");
 #endif
@@ -1371,12 +973,12 @@ void rglUniformBlockBinding( 	GLuint program,
 /*
  *
  * Core in:
- * OpenGL    : 2.0
+ * OpenGL    : 2.0 
  * OpenGLES  : 3.0
  */
 void rglUniform1ui(GLint location, GLuint v)
 {
-#ifndef HAVE_OPENGLES2
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES) && defined(HAVE_OPENGLES3)
    glUniform1ui(location ,v);
 #endif
 }
@@ -1384,12 +986,12 @@ void rglUniform1ui(GLint location, GLuint v)
 /*
  *
  * Core in:
- * OpenGL    : 2.0
+ * OpenGL    : 2.0 
  * OpenGLES  : 3.0
  */
 void rglUniform2ui(GLint location, GLuint v0, GLuint v1)
 {
-#ifndef HAVE_OPENGLES2
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES) && defined(HAVE_OPENGLES3)
    glUniform2ui(location, v0, v1);
 #endif
 }
@@ -1397,12 +999,12 @@ void rglUniform2ui(GLint location, GLuint v0, GLuint v1)
 /*
  *
  * Core in:
- * OpenGL    : 2.0
+ * OpenGL    : 2.0 
  * OpenGLES  : 3.0
  */
 void rglUniform3ui(GLint location, GLuint v0, GLuint v1, GLuint v2)
 {
-#ifndef HAVE_OPENGLES2
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES) && defined(HAVE_OPENGLES3)
    glUniform3ui(location, v0, v1, v2);
 #endif
 }
@@ -1410,12 +1012,12 @@ void rglUniform3ui(GLint location, GLuint v0, GLuint v1, GLuint v2)
 /*
  *
  * Core in:
- * OpenGL    : 2.0
+ * OpenGL    : 2.0 
  * OpenGLES  : 3.0
  */
 void rglUniform4ui(GLint location, GLuint v0, GLuint v1, GLuint v2, GLuint v3)
 {
-#ifndef HAVE_OPENGLES2
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES) && defined(HAVE_OPENGLES3)
    glUniform4ui(location, v0, v1, v2, v3);
 #endif
 }
@@ -1423,7 +1025,7 @@ void rglUniform4ui(GLint location, GLuint v0, GLuint v1, GLuint v2, GLuint v3)
 /*
  *
  * Core in:
- * OpenGL    : 2.0
+ * OpenGL    : 2.0 
  */
 void rglUniformMatrix4fv(GLint location, GLsizei count, GLboolean transpose,
       const GLfloat *value)
@@ -1435,7 +1037,7 @@ void rglUniformMatrix4fv(GLint location, GLsizei count, GLboolean transpose,
  * Category: Shaders
  *
  * Core in:
- * OpenGL    : 2.0
+ * OpenGL    : 2.0 
  */
 void rglDetachShader(GLuint program, GLuint shader)
 {
@@ -1446,7 +1048,7 @@ void rglDetachShader(GLuint program, GLuint shader)
  * Category: Shaders
  *
  * Core in:
- * OpenGL    : 2.0
+ * OpenGL    : 2.0 
  */
 void rglGetShaderiv(GLuint shader, GLenum pname, GLint *params)
 {
@@ -1457,7 +1059,7 @@ void rglGetShaderiv(GLuint shader, GLenum pname, GLint *params)
  * Category: Shaders
  *
  * Core in:
- * OpenGL    : 2.0
+ * OpenGL    : 2.0 
  */
 void rglAttachShader(GLuint program, GLuint shader)
 {
@@ -1467,7 +1069,7 @@ void rglAttachShader(GLuint program, GLuint shader)
 /*
  *
  * Core in:
- * OpenGL    : 2.0
+ * OpenGL    : 2.0 
  */
 GLint rglGetAttribLocation(GLuint program, const GLchar *name)
 {
@@ -1478,20 +1080,19 @@ GLint rglGetAttribLocation(GLuint program, const GLchar *name)
  * Category: Shaders
  *
  * Core in:
- * OpenGL    : 2.0
+ * OpenGL    : 2.0 
  */
-
 void rglShaderSource(GLuint shader, GLsizei count,
       const GLchar **string, const GLint *length)
 {
-   glShaderSource(shader, count, string, length);
+   return glShaderSource(shader, count, string, length);
 }
 
 /*
  * Category: Shaders
  *
  * Core in:
- * OpenGL    : 2.0
+ * OpenGL    : 2.0 
  */
 void rglCompileShader(GLuint shader)
 {
@@ -1502,21 +1103,17 @@ void rglCompileShader(GLuint shader)
  * Category: Shaders
  *
  * Core in:
- * OpenGL    : 2.0
+ * OpenGL    : 2.0 
  */
 GLuint rglCreateProgram(void)
 {
-   GLuint temp = glCreateProgram();
-   int i;
-   for (i = 0; i < MAX_UNIFORMS; ++i)
-      memset(&program_uniforms[temp][i], 0, sizeof(struct gl_program_uniforms));
-   return temp;
+   return glCreateProgram();
 }
 
 /*
  *
  * Core in:
- * OpenGL    : 1.1
+ * OpenGL    : 1.1 
  */
 void rglGenTextures(GLsizei n, GLuint *textures)
 {
@@ -1526,7 +1123,7 @@ void rglGenTextures(GLsizei n, GLuint *textures)
 /*
  *
  * Core in:
- * OpenGL    : 2.0
+ * OpenGL    : 2.0 
  */
 void rglGetShaderInfoLog(GLuint shader, GLsizei maxLength,
       GLsizei *length, GLchar *infoLog)
@@ -1537,7 +1134,7 @@ void rglGetShaderInfoLog(GLuint shader, GLsizei maxLength,
 /*
  *
  * Core in:
- * OpenGL    : 2.0
+ * OpenGL    : 2.0 
  */
 void rglGetProgramInfoLog(GLuint shader, GLsizei maxLength,
       GLsizei *length, GLchar *infoLog)
@@ -1548,7 +1145,7 @@ void rglGetProgramInfoLog(GLuint shader, GLsizei maxLength,
 /*
  *
  * Core in:
- * OpenGL    : 2.0
+ * OpenGL    : 2.0 
  */
 GLboolean rglIsProgram(GLuint program)
 {
@@ -1563,50 +1160,37 @@ void rglTexCoord2f(GLfloat s, GLfloat t)
 #endif
 }
 
-void rglTexParameteri(GLenum target, GLenum pname, GLint param)
-{
-   glTexParameteri(target, pname, param);
-}
-
-void rglTexParameterf(GLenum target, GLenum pname, GLfloat param)
-{
-   glTexParameterf(target, pname, param);
-}
-
 /*
  * Category: Generic vertex attributes
  *
  * Core in:
- * OpenGL    : 2.0
+ * OpenGL    : 2.0 
  *
  */
 void rglDisableVertexAttribArray(GLuint index)
 {
-   if (gl_state.vertex_attrib_pointer.enabled[index] != 0) {
-      gl_state.vertex_attrib_pointer.enabled[index] = 0;
-      glDisableVertexAttribArray(index);
-   }
+   gl_state.vertex_attrib_pointer.enabled[index] = 0;
+   glDisableVertexAttribArray(index);
 }
 
 /*
  * Category: Generic vertex attributes
  *
  * Core in:
- * OpenGL    : 2.0
+ * OpenGL    : 2.0 
  */
 void rglEnableVertexAttribArray(GLuint index)
 {
-   if (gl_state.vertex_attrib_pointer.enabled[index] != 1) {
-      gl_state.vertex_attrib_pointer.enabled[index] = 1;
-      glEnableVertexAttribArray(index);
-   }
+   glsm_ctl(GLSM_CTL_IMM_VBO_DRAW, NULL);
+   gl_state.vertex_attrib_pointer.enabled[index] = 1;
+   glEnableVertexAttribArray(index);
 }
 
 /*
  * Category: Shaders
  *
  * Core in:
- * OpenGL    : 2.0
+ * OpenGL    : 2.0 
  */
 void rglVertexAttribIPointer(
       GLuint index,
@@ -1615,7 +1199,7 @@ void rglVertexAttribIPointer(
       GLsizei stride,
       const GLvoid * pointer)
 {
-#ifndef HAVE_OPENGLES2
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES) && defined(HAVE_OPENGLES3)
    glVertexAttribIPointer(index, size, type, stride, pointer);
 #endif
 }
@@ -1636,29 +1220,27 @@ void rglVertexAttribLPointer(
  * Category: Generic vertex attributes
  *
  * Core in:
- * OpenGL    : 2.0
+ * OpenGL    : 2.0 
  */
 void rglVertexAttribPointer(GLuint name, GLint size,
       GLenum type, GLboolean normalized, GLsizei stride,
       const GLvoid* pointer)
 {
-   if (gl_state.attrib_pointer.size[name] != size || gl_state.attrib_pointer.type[name] != type || gl_state.attrib_pointer.normalized[name] != normalized || gl_state.attrib_pointer.stride[name] != stride || gl_state.attrib_pointer.pointer[name] != pointer || gl_state.attrib_pointer.buffer[name] != gl_state.array_buffer) {
-      gl_state.attrib_pointer.used[name] = 1;
-      gl_state.attrib_pointer.size[name] = size;
-      gl_state.attrib_pointer.type[name] = type;
-      gl_state.attrib_pointer.normalized[name] = normalized;
-      gl_state.attrib_pointer.stride[name] = stride;
-      gl_state.attrib_pointer.pointer[name] = pointer;
-      gl_state.attrib_pointer.buffer[name] = gl_state.array_buffer;
-      glVertexAttribPointer(name, size, type, normalized, stride, pointer);
-   }
+   gl_state.attrib_pointer.used[name] = 1;
+   gl_state.attrib_pointer.size[name] = size;
+   gl_state.attrib_pointer.type[name] = type;
+   gl_state.attrib_pointer.normalized[name] = normalized;
+   gl_state.attrib_pointer.stride[name] = stride;
+   gl_state.attrib_pointer.pointer[name] = pointer;
+   gl_state.attrib_pointer.buffer[name] = gl_state.array_buffer;
+   glVertexAttribPointer(name, size, type, normalized, stride, pointer);
 }
 
 /*
  * Category: Generic vertex attributes
  *
  * Core in:
- * OpenGL    : 2.0
+ * OpenGL    : 2.0 
  */
 void rglBindAttribLocation(GLuint program, GLuint index, const GLchar *name)
 {
@@ -1668,29 +1250,29 @@ void rglBindAttribLocation(GLuint program, GLuint index, const GLchar *name)
 /*
  *
  * Core in:
- * OpenGL    : 2.0
+ * OpenGL    : 2.0 
  */
 void rglVertexAttrib4f(GLuint name, GLfloat x, GLfloat y,
       GLfloat z, GLfloat w)
 {
-   glVertexAttrib4f(name, x, y, z, w);
+    glVertexAttrib4f(name, x, y, z, w);
 }
 
 /*
  *
  * Core in:
- * OpenGL    : 2.0
+ * OpenGL    : 2.0 
  */
 void rglVertexAttrib4fv(GLuint name, GLfloat* v)
 {
-   glVertexAttrib4fv(name, v);
+    glVertexAttrib4fv(name, v);
 }
 
 /*
  * Category: Shaders
  *
  * Core in:
- * OpenGL    : 2.0
+ * OpenGL    : 2.0 
  */
 GLuint rglCreateShader(GLenum shaderType)
 {
@@ -1701,31 +1283,29 @@ GLuint rglCreateShader(GLenum shaderType)
  * Category: Shaders
  *
  * Core in:
- * OpenGL    : 2.0
+ * OpenGL    : 2.0 
  */
 void rglDeleteProgram(GLuint program)
 {
-   if (!resetting_context)
-      glDeleteProgram(program);
+   glDeleteProgram(program);
 }
 
 /*
  * Category: Shaders
  *
  * Core in:
- * OpenGL    : 2.0
+ * OpenGL    : 2.0 
  */
 void rglDeleteShader(GLuint shader)
 {
-   if (!resetting_context)
-      glDeleteShader(shader);
+   glDeleteShader(shader);
 }
 
 /*
  * Category: Shaders
  *
  * Core in:
- * OpenGL    : 2.0
+ * OpenGL    : 2.0 
  */
 GLint rglGetUniformLocation(GLuint program, const GLchar *name)
 {
@@ -1736,7 +1316,7 @@ GLint rglGetUniformLocation(GLuint program, const GLchar *name)
  * Category: VBO and PBO
  *
  * Core in:
- * OpenGL    : 1.5
+ * OpenGL    : 1.5 
  */
 void rglDeleteBuffers(GLsizei n, const GLuint *buffers)
 {
@@ -1747,7 +1327,7 @@ void rglDeleteBuffers(GLsizei n, const GLuint *buffers)
  * Category: VBO and PBO
  *
  * Core in:
- * OpenGL    : 1.5
+ * OpenGL    : 1.5 
  */
 void rglGenBuffers(GLsizei n, GLuint *buffers)
 {
@@ -1758,49 +1338,40 @@ void rglGenBuffers(GLsizei n, GLuint *buffers)
  * Category: Shaders
  *
  * Core in:
- * OpenGL    : 2.0
+ * OpenGL    : 2.0 
  */
 void rglUniform1f(GLint location, GLfloat v0)
 {
-   if (program_uniforms[gl_state.program][location].uniform1f != v0) {
-      glUniform1f(location, v0);
-      program_uniforms[gl_state.program][location].uniform1f = v0;
-   }
+   glUniform1f(location, v0);
 }
 
 /*
  * Category: Shaders
  *
  * Core in:
- * OpenGL    : 2.0
+ * OpenGL    : 2.0 
  */
 void rglUniform1fv(GLint location,  GLsizei count,  const GLfloat *value)
 {
-   if (program_uniforms[gl_state.program][location].uniform1f != value[0]) {
-      glUniform1fv(location, count, value);
-      program_uniforms[gl_state.program][location].uniform1f = value[0];
-   }
+   glUniform1fv(location, count, value);
 }
 
 /*
  * Category: Shaders
  *
  * Core in:
- * OpenGL    : 2.0
+ * OpenGL    : 2.0 
  */
 void rglUniform1iv(GLint location,  GLsizei count,  const GLint *value)
 {
-   if (program_uniforms[gl_state.program][location].uniform1i != value[0]) {
-      glUniform1iv(location, count, value);
-      program_uniforms[gl_state.program][location].uniform1i = value[0];
-   }
+   glUniform1iv(location, count, value);
 }
 
 void rglClearBufferfv( 	GLenum buffer,
   	GLint drawBuffer,
   	const GLfloat * value)
 {
-#ifndef HAVE_OPENGLES2
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES) && defined(HAVE_OPENGLES_3)
    glClearBufferfv(buffer, drawBuffer, value);
 #endif
 }
@@ -1815,12 +1386,12 @@ void rglTexBuffer(GLenum target, GLenum internalFormat, GLuint buffer)
 /*
  *
  * Core in:
- * OpenGL    : 2.0
+ * OpenGL    : 2.0 
  * OpenGLES  : 3.0
  */
 const GLubyte* rglGetStringi(GLenum name, GLuint index)
 {
-#ifndef HAVE_OPENGLES2
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES) && defined(HAVE_OPENGLES_3)
    return glGetStringi(name, index);
 #else
    return NULL;
@@ -1832,7 +1403,7 @@ void rglClearBufferfi( 	GLenum buffer,
   	GLfloat depth,
   	GLint stencil)
 {
-#ifndef HAVE_OPENGLES2
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES) && defined(HAVE_OPENGLES_3)
    glClearBufferfi(buffer, drawBuffer, depth, stencil);
 #endif
 }
@@ -1840,7 +1411,7 @@ void rglClearBufferfi( 	GLenum buffer,
 /*
  *
  * Core in:
- * OpenGL    : 3.0
+ * OpenGL    : 3.0 
  * OpenGLES  : 3.0
  */
 void rglRenderbufferStorageMultisample( 	GLenum target,
@@ -1849,7 +1420,7 @@ void rglRenderbufferStorageMultisample( 	GLenum target,
   	GLsizei width,
   	GLsizei height)
 {
-#ifndef HAVE_OPENGLES2
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES) && defined(HAVE_OPENGLES_3)
    glRenderbufferStorageMultisample(target, samples, internalformat, width, height);
 #endif
 }
@@ -1858,100 +1429,66 @@ void rglRenderbufferStorageMultisample( 	GLenum target,
  * Category: Shaders
  *
  * Core in:
- * OpenGL    : 2.0
+ * OpenGL    : 2.0 
  */
 void rglUniform1i(GLint location, GLint v0)
 {
-   if (program_uniforms[gl_state.program][location].uniform1i != v0) {
-      glUniform1i(location, v0);
-      program_uniforms[gl_state.program][location].uniform1i = v0;
-   }
+   glUniform1i(location, v0);
 }
 
 /*
  * Category: Shaders
  *
  * Core in:
- * OpenGL    : 2.0
+ * OpenGL    : 2.0 
  */
 void rglUniform2f(GLint location, GLfloat v0, GLfloat v1)
 {
-   if (program_uniforms[gl_state.program][location].uniform2f[0] != v0 || program_uniforms[gl_state.program][location].uniform2f[1] != v1) {
-      glUniform2f(location, v0, v1);
-      program_uniforms[gl_state.program][location].uniform2f[0] = v0;
-      program_uniforms[gl_state.program][location].uniform2f[1] = v1;
-   }
+   glUniform2f(location, v0, v1);
 }
 
 /*
  * Category: Shaders
  *
  * Core in:
- * OpenGL    : 2.0
+ * OpenGL    : 2.0 
  */
 void rglUniform2i(GLint location, GLint v0, GLint v1)
 {
-   if (program_uniforms[gl_state.program][location].uniform2i[0] != v0 || program_uniforms[gl_state.program][location].uniform2i[1] != v1) {
-      glUniform2i(location, v0, v1);
-      program_uniforms[gl_state.program][location].uniform2i[0] = v0;
-      program_uniforms[gl_state.program][location].uniform2i[1] = v1;
-   }
-}
-
-void rglUniform3i(GLint location, GLint v0, GLint v1, GLint v2)
-{
-   if (program_uniforms[gl_state.program][location].uniform3i[0] != v0 || program_uniforms[gl_state.program][location].uniform3i[1] != v1) {
-      glUniform3i(location, v0, v1, v2);
-      program_uniforms[gl_state.program][location].uniform3i[0] = v0;
-      program_uniforms[gl_state.program][location].uniform3i[1] = v1;
-   }
+   glUniform2i(location, v0, v1);
 }
 
 /*
  * Category: Shaders
  *
  * Core in:
- * OpenGL    : 2.0
+ * OpenGL    : 2.0 
  */
 void rglUniform2fv(GLint location, GLsizei count, const GLfloat *value)
 {
-   if (program_uniforms[gl_state.program][location].uniform2f[0] != value[0] || program_uniforms[gl_state.program][location].uniform2f[1] != value[1]) {
-      glUniform2fv(location, count, value);
-      program_uniforms[gl_state.program][location].uniform2f[0] = value[0];
-      program_uniforms[gl_state.program][location].uniform2f[1] = value[1];
-   }
+   glUniform2fv(location, count, value);
 }
 
 /*
  * Category: Shaders
  *
  * Core in:
- * OpenGL    : 2.0
+ * OpenGL    : 2.0 
  */
 void rglUniform3f(GLint location, GLfloat v0, GLfloat v1, GLfloat v2)
 {
-   if (program_uniforms[gl_state.program][location].uniform3f[0] != v0 || program_uniforms[gl_state.program][location].uniform3f[1] != v1 || program_uniforms[gl_state.program][location].uniform3f[2] != v2) {
-      glUniform3f(location, v0, v1, v2);
-      program_uniforms[gl_state.program][location].uniform3f[0] = v0;
-      program_uniforms[gl_state.program][location].uniform3f[1] = v1;
-      program_uniforms[gl_state.program][location].uniform3f[2] = v2;
-   }
+   glUniform3f(location, v0, v1, v2);
 }
 
 /*
  * Category: Shaders
  *
  * Core in:
- * OpenGL    : 2.0
+ * OpenGL    : 2.0 
  */
 void rglUniform3fv(GLint location, GLsizei count, const GLfloat *value)
 {
-   if (program_uniforms[gl_state.program][location].uniform3f[0] != value[0] || program_uniforms[gl_state.program][location].uniform3f[1] != value[1] || program_uniforms[gl_state.program][location].uniform3f[2] != value[2]) {
-      glUniform3fv(location, count, value);
-      program_uniforms[gl_state.program][location].uniform3f[0] = value[0];
-      program_uniforms[gl_state.program][location].uniform3f[1] = value[1];
-      program_uniforms[gl_state.program][location].uniform3f[2] = value[2];
-   }
+   glUniform3fv(location, count, value);
 }
 
 /*
@@ -1962,127 +1499,81 @@ void rglUniform3fv(GLint location, GLsizei count, const GLfloat *value)
  */
 void rglUniform4i(GLint location, GLint v0, GLint v1, GLint v2, GLint v3)
 {
-   if (program_uniforms[gl_state.program][location].uniform4i[0] != v0 || program_uniforms[gl_state.program][location].uniform4i[1] != v1 || program_uniforms[gl_state.program][location].uniform4i[2] != v2 || program_uniforms[gl_state.program][location].uniform4i[3] != v3) {
-      glUniform4i(location, v0, v1, v2, v3);
-      program_uniforms[gl_state.program][location].uniform4i[0] = v0;
-      program_uniforms[gl_state.program][location].uniform4i[1] = v1;
-      program_uniforms[gl_state.program][location].uniform4i[2] = v2;
-      program_uniforms[gl_state.program][location].uniform4i[3] = v3;
-   }
+   glUniform4i(location, v0, v1, v2, v3);
 }
 
 /*
  * Category: Shaders
  *
  * Core in:
- * OpenGL    : 2.0
+ * OpenGL    : 2.0 
  */
 void rglUniform4f(GLint location, GLfloat v0, GLfloat v1, GLfloat v2, GLfloat v3)
 {
-   if (program_uniforms[gl_state.program][location].uniform4f[0] != v0 || program_uniforms[gl_state.program][location].uniform4f[1] != v1 || program_uniforms[gl_state.program][location].uniform4f[2] != v2 || program_uniforms[gl_state.program][location].uniform4f[3] != v3) {
-      glUniform4f(location, v0, v1, v2, v3);
-      program_uniforms[gl_state.program][location].uniform4f[0] = v0;
-      program_uniforms[gl_state.program][location].uniform4f[1] = v1;
-      program_uniforms[gl_state.program][location].uniform4f[2] = v2;
-      program_uniforms[gl_state.program][location].uniform4f[3] = v3;
-   }
+   glUniform4f(location, v0, v1, v2, v3);
 }
 
 /*
  * Category: Shaders
  *
  * Core in:
- * OpenGL    : 2.0
+ * OpenGL    : 2.0 
  */
 void rglUniform4fv(GLint location, GLsizei count, const GLfloat *value)
 {
-   if (program_uniforms[gl_state.program][location].uniform4f[0] != value[0] || program_uniforms[gl_state.program][location].uniform4f[1] != value[1] || program_uniforms[gl_state.program][location].uniform4f[2] != value[2] || program_uniforms[gl_state.program][location].uniform4f[3] != value[3]) {
-      glUniform4fv(location, count, value);
-      program_uniforms[gl_state.program][location].uniform4f[0] = value[0];
-      program_uniforms[gl_state.program][location].uniform4f[1] = value[1];
-      program_uniforms[gl_state.program][location].uniform4f[2] = value[2];
-      program_uniforms[gl_state.program][location].uniform4f[3] = value[3];
-   }
+   glUniform4fv(location, count, value);
 }
 
 
 /*
  *
  * Core in:
- * OpenGL    : 1.0
+ * OpenGL    : 1.0 
  */
 void rglPolygonOffset(GLfloat factor, GLfloat units)
 {
-   gl_state.polygonoffset.used = true;
-   if (gl_state.polygonoffset.factor != factor || gl_state.polygonoffset.units != units) {
-      glPolygonOffset(factor, units);
-      gl_state.polygonoffset.factor = factor;
-      gl_state.polygonoffset.units  = units;
-   }
+   glsm_ctl(GLSM_CTL_IMM_VBO_DRAW, NULL);
+   glPolygonOffset(factor, units);
+   gl_state.polygonoffset.used   = true;
+   gl_state.polygonoffset.factor = factor;
+   gl_state.polygonoffset.units  = units;
 }
 
 /*
  * Category: FBO
  *
  * Core in:
- * OpenGL    : 3.0
+ * OpenGL    : 3.0 
  */
 void rglGenFramebuffers(GLsizei n, GLuint *ids)
 {
    glGenFramebuffers(n, ids);
-   int i;
-   for (i = 0; i < n; ++i) {
-      if (ids[i] < MAX_FRAMEBUFFERS)
-         framebuffers[ids[i]] = (struct gl_framebuffers*)calloc(1, sizeof(struct gl_framebuffers));
-   }
 }
 
 /*
  * Category: FBO
  *
  * Core in:
- * OpenGL    : 3.0
+ * OpenGL    : 3.0 
  */
 void rglBindFramebuffer(GLenum target, GLuint framebuffer)
 {
-   if (framebuffer == 0)
-      framebuffer = default_framebuffer;
-
-   if (target == GL_FRAMEBUFFER) {
-         gl_state.framebuf[0].desired_location = framebuffer;
-         gl_state.framebuf[1].desired_location = framebuffer;
-   }
-#ifndef HAVE_OPENGLES2
-   else if (target == GL_DRAW_FRAMEBUFFER) {
-         gl_state.framebuf[0].desired_location = framebuffer;
-   }
-   else if (target == GL_READ_FRAMEBUFFER) {
-         gl_state.framebuf[1].desired_location = framebuffer;
-   }
-#endif
+   glsm_ctl(GLSM_CTL_IMM_VBO_DRAW, NULL);
+   glBindFramebuffer(target, framebuffer);
+   gl_state.framebuf = framebuffer;
 }
 
 /*
  * Category: FBO
  *
  * Core in:
- * OpenGL    : 2.0
+ * OpenGL    : 2.0 
  * OpenGLES  : 3.0
  */
 void rglDrawBuffers(GLsizei n, const GLenum *bufs)
 {
-#ifndef HAVE_OPENGLES2
-   if (gl_state.framebuf[0].desired_location < MAX_FRAMEBUFFERS) {
-      if (framebuffers[gl_state.framebuf[0].desired_location]->draw_buf_set == 0)
-      {
-         bindFBO(GL_DRAW_FRAMEBUFFER);
-         glDrawBuffers(n, bufs);
-         framebuffers[gl_state.framebuf[0].location]->draw_buf_set = 1;
-      }
-   } else {
-      bindFBO(GL_DRAW_FRAMEBUFFER);
-      glDrawBuffers(n, bufs);
-   }
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES) && defined(HAVE_OPENGLES3)
+   glDrawBuffers(n, bufs);
 #endif
 }
 
@@ -2090,7 +1581,7 @@ void rglDrawBuffers(GLsizei n, const GLenum *bufs)
  * Category: FBO
  *
  * Core in:
- * OpenGL    : 2.0
+ * OpenGL    : 2.0 
  * OpenGLES  : 3.0
  */
 void *rglMapBufferRange( 	GLenum target,
@@ -2098,15 +1589,11 @@ void *rglMapBufferRange( 	GLenum target,
   	GLsizeiptr length,
   	GLbitfield access)
 {
-#ifndef HAVE_OPENGLES2
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES) && defined(HAVE_OPENGLES3)
    return glMapBufferRange(target, offset, length, access);
-#endif
-}
-
-void rglFlushMappedBufferRange(GLenum target, GLintptr offset, GLsizeiptr length)
-{
-#ifndef HAVE_OPENGLES2
-   glFlushMappedBufferRange(target, offset, length);
+#else
+   printf("WARNING! Not implemented.\n");
+   return NULL;
 #endif
 }
 
@@ -2120,11 +1607,8 @@ void rglTexStorage2DMultisample(GLenum target, GLsizei samples,
       GLenum internalformat, GLsizei width, GLsizei height,
       GLboolean fixedsamplelocations)
 {
-#ifndef HAVE_OPENGLES
+#if defined(HAVE_OPENGLES) && defined(HAVE_OPENGLES_3_1)
    glTexStorage2DMultisample(target, samples, internalformat,
-         width, height, fixedsamplelocations);
-#else
-   m_glTexStorage2DMultisample(target, samples, internalformat,
          width, height, fixedsamplelocations);
 #endif
 }
@@ -2137,8 +1621,21 @@ void rglTexStorage2DMultisample(GLenum target, GLsizei samples,
 void rglTexStorage2D(GLenum target, GLsizei levels, GLenum internalFormat,
       GLsizei width, GLsizei height)
 {
-#ifndef HAVE_OPENGLES2
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES) && defined(HAVE_OPENGLES3)
    glTexStorage2D(target, levels, internalFormat, width, height);
+#endif
+}
+
+/*
+ *
+ * Core in:
+ * OpenGL    : 4.2 
+ * OpenGLES  : 3.1
+ */
+void rglMemoryBarrier( 	GLbitfield barriers)
+{
+#if !defined(HAVE_OPENGLES) || defined(HAVE_OPENGLES3) && defined(HAVE_OPENGLES_3_1)
+   glMemoryBarrier(barriers);
 #else
    printf("WARNING! Not implemented.\n");
 #endif
@@ -2147,25 +1644,10 @@ void rglTexStorage2D(GLenum target, GLsizei levels, GLenum internalFormat,
 /*
  *
  * Core in:
- * OpenGL    : 4.2
+ * OpenGL    : 4.2 
  * OpenGLES  : 3.1
  */
-void rglMemoryBarrier(GLbitfield barriers)
-{
-#ifndef HAVE_OPENGLES
-   glMemoryBarrier(barriers);
-#else
-   m_glMemoryBarrier(barriers);
-#endif
-}
-
-/*
- *
- * Core in:
- * OpenGL    : 4.2
- * OpenGLES  : 3.1
- */
-void rglBindImageTexture(GLuint unit,
+void rglBindImageTexture( 	GLuint unit,
   	GLuint texture,
   	GLint level,
   	GLboolean layered,
@@ -2173,10 +1655,10 @@ void rglBindImageTexture(GLuint unit,
   	GLenum access,
   	GLenum format)
 {
-#ifndef HAVE_OPENGLES
+#if !defined(HAVE_OPENGLES) || defined(HAVE_OPENGLES3) && defined(HAVE_OPENGLES_3_1)
    glBindImageTexture(unit, texture, level, layered, layer, access, format);
 #else
-   m_glBindImageTexture(unit, texture, level, layered, layer, access, format);
+   printf("WARNING! Not implemented.\n");
 #endif
 }
 
@@ -2192,7 +1674,7 @@ void rglGetProgramBinary( 	GLuint program,
   	GLenum *binaryFormat,
   	void *binary)
 {
-#ifndef HAVE_OPENGLES2
+#if !defined(HAVE_OPENGLES) || defined(HAVE_OPENGLES) && defined(HAVE_OPENGLES3)
    glGetProgramBinary(program, bufsize, length, binaryFormat, binary);
 #else
    printf("WARNING! Not implemented.\n");
@@ -2210,7 +1692,7 @@ void rglProgramBinary(GLuint program,
   	const void *binary,
   	GLsizei length)
 {
-#ifndef HAVE_OPENGLES2
+#if !defined(HAVE_OPENGLES) || defined(HAVE_OPENGLES) && defined(HAVE_OPENGLES_3_1)
    glProgramBinary(program, binaryFormat, binary, length);
 #else
    printf("WARNING! Not implemented.\n");
@@ -2232,14 +1714,30 @@ void rglTexImage2DMultisample( 	GLenum target,
 /*
  *
  * Core in:
- * OpenGL    : 1.5
+ * OpenGL    : 1.5 
  */
+void * rglMapBuffer(	GLenum target, GLenum access)
+{
+#if defined(HAVE_OPENGLES)
+   return glMapBufferOES(target, access);
+#else
+   return glMapBuffer(target, access);
+#endif
+}
 
 /*
  *
  * Core in:
- * OpenGL    : 1.5
+ * OpenGL    : 1.5 
  */
+GLboolean rglUnmapBuffer( 	GLenum target)
+{
+#if defined(HAVE_OPENGLES)
+   return glUnmapBufferOES(target);
+#else
+   return glUnmapBuffer(target);
+#endif
+}
 
 void rglBlendEquation(GLenum mode)
 {
@@ -2255,7 +1753,7 @@ void rglBlendColor(GLfloat red, GLfloat green, GLfloat blue, GLfloat alpha)
  * Category: Blending
  *
  * Core in:
- * OpenGL    : 2.0
+ * OpenGL    : 2.0 
  */
 void rglBlendEquationSeparate(GLenum modeRGB, GLenum modeAlpha)
 {
@@ -2263,16 +1761,56 @@ void rglBlendEquationSeparate(GLenum modeRGB, GLenum modeAlpha)
 }
 
 /*
+ *
+ * Core in:
+ * OpenGL    : 2.0 
+ * OpenGLES  : 3.2
+ */
+void rglCopyImageSubData( 	GLuint srcName,
+  	GLenum srcTarget,
+  	GLint srcLevel,
+  	GLint srcX,
+  	GLint srcY,
+  	GLint srcZ,
+  	GLuint dstName,
+  	GLenum dstTarget,
+  	GLint dstLevel,
+  	GLint dstX,
+  	GLint dstY,
+  	GLint dstZ,
+  	GLsizei srcWidth,
+  	GLsizei srcHeight,
+  	GLsizei srcDepth)
+{
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES) && defined(HAVE_OPENGLES_3_2)
+   glCopyImageSubData(srcName,
+         srcTarget,
+         srcLevel,
+         srcX,
+         srcY,
+         srcZ,
+         dstName,
+         dstTarget,
+         dstLevel,
+         dstX,
+         dstY,
+         dstZ,
+         srcWidth,
+         srcHeight,
+         srcDepth);
+#endif
+}
+
+/*
  * Category: VAO
  *
  * Core in:
- * OpenGL    : 3.0
+ * OpenGL    : 3.0 
  * OpenGLES  : 3.0
  */
 void rglBindVertexArray(GLuint array)
 {
-#ifndef HAVE_OPENGLES2
-   gl_state.bindvertex.array = array;
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES) && defined(HAVE_OPENGLES3)
    glBindVertexArray(array);
 #endif
 }
@@ -2281,12 +1819,12 @@ void rglBindVertexArray(GLuint array)
  * Category: VAO
  *
  * Core in:
- * OpenGL    : 3.0
+ * OpenGL    : 3.0 
  * OpenGLES  : 3.0
  */
 void rglGenVertexArrays(GLsizei n, GLuint *arrays)
 {
-#ifndef HAVE_OPENGLES2
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES) && defined(HAVE_OPENGLES3)
    glGenVertexArrays(n, arrays);
 #endif
 }
@@ -2295,12 +1833,12 @@ void rglGenVertexArrays(GLsizei n, GLuint *arrays)
  * Category: VAO
  *
  * Core in:
- * OpenGL    : 3.0
+ * OpenGL    : 3.0 
  * OpenGLES  : 3.0
  */
 void rglDeleteVertexArrays(GLsizei n, const GLuint *arrays)
 {
-#ifndef HAVE_OPENGLES2
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES) && defined(HAVE_OPENGLES3)
    glDeleteVertexArrays(n, arrays);
 #endif
 }
@@ -2311,11 +1849,28 @@ void rglDeleteVertexArrays(GLsizei n, const GLuint *arrays)
  * OpenGL    : 3.2
  * OpenGLES  : 3.0
  */
-#ifndef HAVE_OPENGLES2
-GLsync rglFenceSync(GLenum condition, GLbitfield flags)
+void *rglFenceSync(GLenum condition, GLbitfield flags)
 {
-   return glFenceSync(condition, flags);
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES) && defined(HAVE_OPENGLES3)
+   return (GLsync)glFenceSync(condition, flags);
+#else
+   return NULL;
+#endif
 }
+
+/*
+ *
+ * Core in:
+ * OpenGL    : 3.2
+ * OpenGLES  : 3.0
+ */
+void rglDeleteSync(void * sync)
+{
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES) && defined(HAVE_OPENGLES3)
+  glDeleteSync((GLsync)sync);
+#endif
+}
+
 /*
  *
  * Core in:
@@ -2324,154 +1879,101 @@ GLsync rglFenceSync(GLenum condition, GLbitfield flags)
  */
 void rglWaitSync(void *sync, GLbitfield flags, uint64_t timeout)
 {
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES) && defined(HAVE_OPENGLES3)
    glWaitSync((GLsync)sync, flags, (GLuint64)timeout);
-}
-
-void rglDeleteSync(GLsync sync)
-{
-   glDeleteSync(sync);
-}
-
-GLenum rglClientWaitSync(GLsync sync, GLbitfield flags, GLuint64 timeout)
-{
-   return glClientWaitSync(sync, flags, timeout);
-}
 #endif
-/* GLSM-side */
-
-bool isExtensionSupported(const char *extension)
-{
-#ifdef GL_NUM_EXTENSIONS
-   int i;
-	GLint count = 0;
-	glGetIntegerv(GL_NUM_EXTENSIONS, &count);
-
-	for (i = 0; i < count; ++i)
-   {
-		const char* name = (const char*)glGetStringi(GL_EXTENSIONS, i);
-		if (name == NULL)
-			continue;
-		if (strcmp(extension, name) == 0)
-			return true;
-	}
-#else
-	GLubyte *where = (GLubyte *)strchr(extension, ' ');
-	if (where || *extension == '\0')
-		return false;
-
-	const GLubyte *extensions = glGetString(GL_EXTENSIONS);
-
-	const GLubyte *start = extensions;
-	for (;;)
-   {
-		where = (GLubyte *)strstr((const char *)start, extension);
-		if (where == NULL)
-			break;
-
-		GLubyte *terminator = where + strlen(extension);
-		if (where == start || *(where - 1) == ' ')
-		if (*terminator == ' ' || *terminator == '\0')
-			return true;
-
-		start = terminator;
-	}
-#endif // GL_NUM_EXTENSIONS
-	return false;
 }
+
+/*
+ *
+ * Core in:
+ * OpenGL    : 4.4
+ * OpenGLES  : Not available
+ */
+void rglBufferStorage(GLenum target, GLsizeiptr size, const GLvoid *data, GLbitfield flags) {
+#if defined(HAVE_OPENGL)
+  glBufferStorage(target, size, data, flags);
+#endif
+}
+
+/*
+ *
+ * Core in:
+ * OpenGL    : 3.0
+ * OpenGLES  : 3.0
+ */
+void rglFlushMappedBufferRange(GLenum target, GLintptr offset, GLsizeiptr length) {
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES) && defined(HAVE_OPENGLES3)
+  glFlushMappedBufferRange(target, offset, length);
+#endif
+}
+
+#ifndef GL_WAIT_FAILED
+#define GL_WAIT_FAILED                                   0x911D
+#endif
+
+/*
+ *
+ * Core in:
+ * OpenGL    : 3.2
+ * OpenGLES  : 3.0
+ */
+GLenum rglClientWaitSync(void *sync, GLbitfield flags, uint64_t timeout)
+{
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES) && defined(HAVE_OPENGLES3)
+  return glClientWaitSync((GLsync)sync, flags, (GLuint64)timeout);
+#else
+  return GL_WAIT_FAILED;
+#endif
+}
+
+/*
+ *
+ * Core in:
+ * OpenGL    : 3.2
+ * OpenGLES  : Not available
+ */
+void rglDrawElementsBaseVertex(GLenum mode, GLsizei count, GLenum type,
+			       GLvoid *indices, GLint basevertex) {
+#if defined(HAVE_OPENGL)
+  glDrawElementsBaseVertex(mode, count, type, indices, basevertex);
+#endif
+}
+
+/* GLSM-side */
 
 static void glsm_state_setup(void)
 {
-   glsm_ctx_proc_address_t proc_info;
-   proc_info.addr = NULL;
-   if (!glsm_ctl(GLSM_CTL_PROC_ADDRESS_GET, NULL))
-      return;
+   unsigned i;
 
-   GLint majorVersion = 0;
-   GLint minorVersion = 0;
-   bool copy_image_support_version = 0;
-#ifndef HAVE_OPENGLES2
-   glGetIntegerv(GL_MAJOR_VERSION, &majorVersion);
-   glGetIntegerv(GL_MINOR_VERSION, &minorVersion);
-#endif
-#ifdef HAVE_OPENGLES
-   if (majorVersion >= 3 && minorVersion >= 2)
-      copy_image_support_version = 1;
-#else
-   if (majorVersion >= 4 && minorVersion >= 3)
-      copy_image_support_version = 1;
-#endif
-   copy_image_support = isExtensionSupported("GL_ARB_copy_image") || isExtensionSupported("GL_EXT_copy_image") || copy_image_support_version;
-#ifdef HAVE_OPENGLES
-   m_glDrawRangeElementsBaseVertex = (PFNGLDRAWRANGEELEMENTSBASEVERTEXPROC)proc_info.addr("glDrawRangeElementsBaseVertex");
-   m_glBufferStorage = (PFNGLBUFFERSTORAGEEXTPROC)proc_info.addr("glBufferStorageEXT");
-   m_glMemoryBarrier = (PFNGLMEMORYBARRIERPROC)proc_info.addr("glMemoryBarrier");
-   m_glBindImageTexture = (PFNGLBINDIMAGETEXTUREPROC)proc_info.addr("glBindImageTexture");
-   m_glTexStorage2DMultisample = (PFNGLTEXSTORAGE2DMULTISAMPLEPROC)proc_info.addr("glTexStorage2DMultisample");
-   m_glCopyImageSubData = (PFNGLCOPYIMAGESUBDATAPROC)proc_info.addr("glCopyImageSubData");
-   if (m_glCopyImageSubData == NULL)
-      m_glCopyImageSubData = (PFNGLCOPYIMAGESUBDATAPROC)proc_info.addr("glCopyImageSubDataEXT");
-#endif
+   gl_state.cap_translate[SGL_DEPTH_TEST]           = GL_DEPTH_TEST;
+   gl_state.cap_translate[SGL_BLEND]                = GL_BLEND;
+   gl_state.cap_translate[SGL_POLYGON_OFFSET_FILL]  = GL_POLYGON_OFFSET_FILL;
+   gl_state.cap_translate[SGL_FOG]                  = GL_FOG;
+   gl_state.cap_translate[SGL_CULL_FACE]            = GL_CULL_FACE;
+   gl_state.cap_translate[SGL_ALPHA_TEST]           = GL_ALPHA_TEST;
+   gl_state.cap_translate[SGL_SCISSOR_TEST]         = GL_SCISSOR_TEST;
+   gl_state.cap_translate[SGL_STENCIL_TEST]         = GL_STENCIL_TEST;
 
-#ifdef OPENGL_DEBUG
-#ifdef HAVE_OPENGLES
-   glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS_KHR);
-   glDebugMessageCallbackKHR(on_gl_error, NULL);
-#else
-   glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
-   glDebugMessageCallback(on_gl_error, NULL);
-#endif
-#endif
-
-   memset(&gl_state, 0, sizeof(struct gl_cached_state));
-
-   gl_state.cap_translate[SGL_DEPTH_TEST]               = GL_DEPTH_TEST;
-   gl_state.cap_translate[SGL_BLEND]                    = GL_BLEND;
-   gl_state.cap_translate[SGL_POLYGON_OFFSET_FILL]      = GL_POLYGON_OFFSET_FILL;
-   gl_state.cap_translate[SGL_FOG]                      = GL_FOG;
-   gl_state.cap_translate[SGL_CULL_FACE]                = GL_CULL_FACE;
-   gl_state.cap_translate[SGL_ALPHA_TEST]               = GL_ALPHA_TEST;
-   gl_state.cap_translate[SGL_SCISSOR_TEST]             = GL_SCISSOR_TEST;
-   gl_state.cap_translate[SGL_STENCIL_TEST]             = GL_STENCIL_TEST;
-   gl_state.cap_translate[SGL_DITHER]                   = GL_DITHER;
-   gl_state.cap_translate[SGL_SAMPLE_ALPHA_TO_COVERAGE] = GL_SAMPLE_ALPHA_TO_COVERAGE;
-   gl_state.cap_translate[SGL_SAMPLE_COVERAGE]          = GL_SAMPLE_COVERAGE;
 #ifndef HAVE_OPENGLES
    gl_state.cap_translate[SGL_COLOR_LOGIC_OP]       = GL_COLOR_LOGIC_OP;
    gl_state.cap_translate[SGL_CLIP_DISTANCE0]       = GL_CLIP_DISTANCE0;
    gl_state.cap_translate[SGL_DEPTH_CLAMP]          = GL_DEPTH_CLAMP;
 #endif
 
-   glGetIntegerv(GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS, &glsm_max_textures);
-   if (glsm_max_textures > 32)
-      glsm_max_textures = 32;
-
-   int i;
-   for (i = 0; i < glsm_max_textures; ++i) {
-      gl_state.bind_textures.target[i] = GL_TEXTURE_2D;
-      gl_state.bind_textures.ids[i] = 0;
+   for (i = 0; i < MAX_ATTRIB; i++)
+   {
+      gl_state.vertex_attrib_pointer.enabled[i] = 0;
+      gl_state.attrib_pointer.used[i] = 0;
    }
 
-   gl_state.pixelstore.pack             = 4;
-   gl_state.pixelstore.unpack           = 4;
-   gl_state.array_buffer                = 0;
-   gl_state.index_buffer                = 0;
-   gl_state.bindvertex.array            = 0;
-   default_framebuffer                  = hw_render.get_current_framebuffer();
-   gl_state.framebuf[0].location        = default_framebuffer;
-   gl_state.framebuf[1].location        = default_framebuffer;
-   gl_state.framebuf[0].desired_location        = default_framebuffer;
-   gl_state.framebuf[1].desired_location        = default_framebuffer;
-   glBindFramebuffer(GL_FRAMEBUFFER, default_framebuffer);
-   GLint params;
-   if (!resetting_context)
-      framebuffers[default_framebuffer] = (struct gl_framebuffers*)calloc(1, sizeof(struct gl_framebuffers));
-   glGetFramebufferAttachmentParameteriv(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_FRAMEBUFFER_ATTACHMENT_OBJECT_NAME, &params);
-   framebuffers[default_framebuffer]->color_attachment = params;
-   glGetFramebufferAttachmentParameteriv(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_FRAMEBUFFER_ATTACHMENT_OBJECT_NAME, &params);
-   framebuffers[default_framebuffer]->depth_attachment = params;
-   framebuffers[default_framebuffer]->target = GL_TEXTURE_2D;
+   glGetIntegerv(GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS, &glsm_max_textures);
+
+   gl_state.bind_textures.ids           = (GLuint*)calloc(glsm_max_textures, sizeof(GLuint));
+
+   gl_state.framebuf                    = hw_render.get_current_framebuffer();
    gl_state.cullface.mode               = GL_BACK;
-   gl_state.frontface.mode              = GL_CCW;
+   gl_state.frontface.mode              = GL_CCW; 
 
    gl_state.blendfunc_separate.used     = false;
    gl_state.blendfunc_separate.srcRGB   = GL_ONE;
@@ -2480,7 +1982,7 @@ static void glsm_state_setup(void)
    gl_state.blendfunc_separate.dstAlpha = GL_ZERO;
 
    gl_state.depthfunc.used              = false;
-
+   
    gl_state.colormask.used              = false;
    gl_state.colormask.red               = GL_TRUE;
    gl_state.colormask.green             = GL_TRUE;
@@ -2488,45 +1990,59 @@ static void glsm_state_setup(void)
    gl_state.colormask.alpha             = GL_TRUE;
 
    gl_state.polygonoffset.used          = false;
-   gl_state.polygonoffset.factor        = 0;
-   gl_state.polygonoffset.units         = 0;
 
    gl_state.depthfunc.func              = GL_LESS;
 
 #ifndef HAVE_OPENGLES
    gl_state.colorlogicop                = GL_COPY;
 #endif
+
+#ifdef CORE
+   glGenVertexArrays(1, &gl_state.vao);
+#endif
 }
 
 static void glsm_state_bind(void)
 {
    unsigned i;
-#ifndef HAVE_OPENGLES2
-   if (gl_state.bindvertex.array != 0) {
-      glBindVertexArray(gl_state.bindvertex.array);
-      gl_state.array_buffer = 0;
-   } else
+#ifdef CORE
+   glBindVertexArray(gl_state.vao);
 #endif
-   {
-      for (i = 0; i < MAX_ATTRIB; i++)
-      {
-         if (gl_state.vertex_attrib_pointer.enabled[i])
-            glEnableVertexAttribArray(i);
+   glBindBuffer(GL_ARRAY_BUFFER, gl_state.array_buffer);
 
-         if (gl_state.attrib_pointer.used[i]) {
-            glVertexAttribPointer(
+   for (i = 0; i < MAX_ATTRIB; i++)
+   {
+      if (gl_state.vertex_attrib_pointer.enabled[i])
+         glEnableVertexAttribArray(i);
+      else
+         glDisableVertexAttribArray(i);
+
+      if (gl_state.attrib_pointer.used[i] && gl_state.attrib_pointer.buffer[i] == gl_state.array_buffer)
+      {
+         glVertexAttribPointer(
                i,
                gl_state.attrib_pointer.size[i],
                gl_state.attrib_pointer.type[i],
                gl_state.attrib_pointer.normalized[i],
                gl_state.attrib_pointer.stride[i],
                gl_state.attrib_pointer.pointer[i]);
-         }
       }
    }
 
-   glPixelStorei(GL_UNPACK_ALIGNMENT, gl_state.pixelstore.unpack);
-   glPixelStorei(GL_PACK_ALIGNMENT, gl_state.pixelstore.pack);
+   glBindFramebuffer(RARCH_GL_FRAMEBUFFER, hw_render.get_current_framebuffer());
+
+   if (gl_state.blendfunc.used)
+      glBlendFunc(
+            gl_state.blendfunc.sfactor,
+            gl_state.blendfunc.dfactor);
+
+   if (gl_state.blendfunc_separate.used)
+      glBlendFuncSeparate(
+            gl_state.blendfunc_separate.srcRGB,
+            gl_state.blendfunc_separate.dstRGB,
+            gl_state.blendfunc_separate.srcAlpha,
+            gl_state.blendfunc_separate.dstAlpha
+            );
 
    glClearColor(
          gl_state.clear_color.r,
@@ -2534,30 +2050,33 @@ static void glsm_state_bind(void)
          gl_state.clear_color.b,
          gl_state.clear_color.a);
 
-#ifdef HAVE_GLIDEN64
-   if (EnableFBEmulation)
-   {
-      gl_state.framebuf[0].location = 0;
-      gl_state.framebuf[1].location = 0;
-   }
-   else
-#endif
-   {
-      glBindFramebuffer(GL_FRAMEBUFFER, default_framebuffer);
-      gl_state.framebuf[0].location = default_framebuffer;
-      gl_state.framebuf[1].location = default_framebuffer;
-   }
+   if (gl_state.depthfunc.used)
+      glDepthFunc(gl_state.depthfunc.func);
 
-   for(i = 0; i < SGL_CAP_MAX; i ++)
-   {
-      if (gl_state.cap_state[i])
-         glEnable(gl_state.cap_translate[i]);
-   }
+   if (gl_state.colormask.used)
+      glColorMask(
+            gl_state.colormask.red,
+            gl_state.colormask.green,
+            gl_state.colormask.blue,
+            gl_state.colormask.alpha);
 
-   if (gl_state.blendfunc.used)
-      glBlendFunc(
-            gl_state.blendfunc.sfactor,
-            gl_state.blendfunc.dfactor);
+   if (gl_state.cullface.used)
+      glCullFace(gl_state.cullface.mode);
+
+   if (gl_state.depthmask.used)
+      glDepthMask(gl_state.depthmask.mask);
+
+   if (gl_state.polygonoffset.used)
+      glPolygonOffset(
+            gl_state.polygonoffset.factor,
+            gl_state.polygonoffset.units);
+
+   if (gl_state.scissor.used)
+      glScissor(
+            gl_state.scissor.x,
+            gl_state.scissor.y,
+            gl_state.scissor.w,
+            gl_state.scissor.h);
 
    glUseProgram(gl_state.program);
 
@@ -2567,38 +2086,103 @@ static void glsm_state_bind(void)
          gl_state.viewport.w,
          gl_state.viewport.h);
 
-   glActiveTexture(GL_TEXTURE0);
-   glBindTexture(gl_state.bind_textures.target[0], gl_state.bind_textures.ids[0]);
-   glActiveTexture(GL_TEXTURE0 + active_texture);
+   for(i = 0; i < SGL_CAP_MAX; i ++)
+   {
+      if (gl_state.cap_state[i])
+         glEnable(gl_state.cap_translate[i]);
+   }
+
+   if (gl_state.frontface.used)
+      glFrontFace(gl_state.frontface.mode);
+
+   if (gl_state.stencilmask.used)
+      glStencilMask(gl_state.stencilmask.mask);
+
+   if (gl_state.stencilop.used)
+      glStencilOp(gl_state.stencilop.sfail,
+            gl_state.stencilop.dpfail,
+            gl_state.stencilop.dppass);
+
+   if (gl_state.stencilfunc.used)
+      glStencilFunc(
+            gl_state.stencilfunc.func,
+            gl_state.stencilfunc.ref,
+            gl_state.stencilfunc.mask);
+
+   for (i = 0; i < glsm_max_textures; i ++)
+   {
+      glActiveTexture(GL_TEXTURE0 + i);
+      glBindTexture(GL_TEXTURE_2D, gl_state.bind_textures.ids[i]);
+   }
+
+   glActiveTexture(GL_TEXTURE0 + gl_state.active_texture);
 }
 
 static void glsm_state_unbind(void)
 {
    unsigned i;
-
+#ifdef CORE
+   glBindVertexArray(0);
+#endif
    for (i = 0; i < SGL_CAP_MAX; i ++)
    {
       if (gl_state.cap_state[i])
          glDisable(gl_state.cap_translate[i]);
    }
 
-#ifndef HAVE_OPENGLES2
-   if (gl_state.bindvertex.array != 0)
-      glBindVertexArray(0);
-   else
-#endif
+   glBlendFunc(GL_ONE, GL_ZERO);
+
+   if (gl_state.colormask.used)
+      glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+   if (gl_state.blendfunc_separate.used)
+      glBlendFuncSeparate(GL_ONE, GL_ZERO, GL_ONE, GL_ZERO);
+
+   if (gl_state.cullface.used)
+      glCullFace(GL_BACK);
+
+   if (gl_state.depthmask.used)
+      glDepthMask(GL_TRUE);
+
+   if (gl_state.polygonoffset.used)
+      glPolygonOffset(0, 0);
+
+   glUseProgram(0);
+   glClearColor(0,0,0,0.0f);
+
+   if (gl_state.depthrange.used)
+      rglDepthRange(0, 1);
+
+   glStencilMask(1);
+   glFrontFace(GL_CCW);
+   if (gl_state.depthfunc.used)
+      glDepthFunc(GL_LESS);
+
+   if (gl_state.stencilop.used)
+      glStencilOp(GL_KEEP,GL_KEEP, GL_KEEP);
+
+   if (gl_state.stencilfunc.used)
+      glStencilFunc(GL_ALWAYS,0,1);
+
+   /* Clear textures */
+   for (i = 0; i < glsm_max_textures; i ++)
    {
-      for (i = 0; i < MAX_ATTRIB; i++)
-      {
-         if (gl_state.vertex_attrib_pointer.enabled[i])
-            glDisableVertexAttribArray(i);
-      }
+      glActiveTexture(GL_TEXTURE0 + i);
+      glBindTexture(GL_TEXTURE_2D, 0);
    }
    glActiveTexture(GL_TEXTURE0);
+
+   for (i = 0; i < MAX_ATTRIB; i ++)
+      glDisableVertexAttribArray(i);
+
+   glBindFramebuffer(RARCH_GL_FRAMEBUFFER, 0);
 }
 
 static bool glsm_state_ctx_destroy(void *data)
 {
+   if (gl_state.bind_textures.ids)
+      free(gl_state.bind_textures.ids);
+   gl_state.bind_textures.ids = NULL;
+
    return true;
 }
 
@@ -2623,7 +2207,7 @@ static bool glsm_state_ctx_init(void *data)
 #ifdef CORE
    hw_render.context_type       = RETRO_HW_CONTEXT_OPENGL_CORE;
    hw_render.version_major      = 3;
-   hw_render.version_minor      = 3;
+   hw_render.version_minor      = 1;
 #else
    hw_render.context_type       = RETRO_HW_CONTEXT_OPENGL;
 #endif
@@ -2634,9 +2218,6 @@ static bool glsm_state_ctx_init(void *data)
    hw_render.depth              = true;
    hw_render.bottom_left_origin = true;
    hw_render.cache_context      = true;
-#ifdef OPENGL_DEBUG
-   hw_render.debug_context      = true;
-#endif
 
    if (!params->environ_cb(RETRO_ENVIRONMENT_SET_HW_RENDER, &hw_render))
       return false;
@@ -2648,10 +2229,6 @@ GLuint glsm_get_current_framebuffer(void)
 {
    return hw_render.get_current_framebuffer();
 }
-
-#ifdef HAVE_GLIDEN64
-extern void retroChangeWindow(void);
-#endif
 
 bool glsm_ctl(enum glsm_state_ctl state, void *data)
 {
@@ -2677,18 +2254,6 @@ bool glsm_ctl(enum glsm_state_ctl state, void *data)
          break;
       case GLSM_CTL_STATE_CONTEXT_RESET:
          rglgen_resolve_symbols(hw_render.get_proc_address);
-         if (window_first > 0)
-         {
-            resetting_context = 1;
-            glsm_state_setup();
-#ifdef HAVE_GLIDEN64
-            retroChangeWindow();
-#endif
-            glsm_state_unbind();
-            resetting_context = 0;
-         }
-         else
-            window_first = 1;
          break;
       case GLSM_CTL_STATE_CONTEXT_DESTROY:
          glsm_state_ctx_destroy(data);
