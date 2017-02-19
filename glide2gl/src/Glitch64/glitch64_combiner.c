@@ -536,19 +536,31 @@ void compile_shader(void)
       }
    }
 
-   memset(&shader, 0, sizeof(shader));
-
-   shader.color_combiner = color_combiner_key;
-   shader.alpha_combiner = alpha_combiner_key;
-   shader.texture0_combiner = texture0_combiner_key;
-   shader.texture1_combiner = texture1_combiner_key;
-   shader.texture0_combinera = texture0_combinera_key;
-   shader.texture1_combinera = texture1_combinera_key;
-   shader.fog_enabled    = fog_enabled;
-   shader.chroma_enabled = chroma_enabled;
-   shader.dither_enabled = dither_enabled;
-   shader.three_point_filter0 = three_point_filter[0];
-   shader.three_point_filter1 = three_point_filter[1];
+   shader.color_combiner        = color_combiner_key;
+   shader.alpha_combiner        = alpha_combiner_key;
+   shader.texture0_combiner     = texture0_combiner_key;
+   shader.texture1_combiner     = texture1_combiner_key;
+   shader.texture0_combinera    = texture0_combinera_key;
+   shader.texture1_combinera    = texture1_combinera_key;
+   shader.fog_enabled           = fog_enabled;
+   shader.chroma_enabled        = chroma_enabled;
+   shader.dither_enabled        = dither_enabled;
+   shader.three_point_filter0   = three_point_filter[0];
+   shader.three_point_filter1   = three_point_filter[1];
+   shader.program_object        = 0;
+   shader.texture0_location     = 0;
+   shader.texture1_location     = 0;
+   shader.vertexOffset_location = 0;
+   shader.textureSizes_location = 0;
+   shader.exactSizes_location   = 0;
+   shader.fogModeEndScale_location   = 0;
+   shader.fogColor_location     = 0;
+   shader.alphaRef_location     = 0;
+   shader.chroma_color_location = 0;
+   shader.lambda_location       = 0;
+   shader.constant_color_location = 0;
+   shader.ccolor0_location      = 0;
+   shader.ccolor1_location      = 0;
 
    strcpy(fragment_shader, fragment_shader_header);
 
