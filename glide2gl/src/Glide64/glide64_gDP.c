@@ -753,6 +753,7 @@ void glide64gDPFillRectangle(uint32_t ul_x, uint32_t ul_y, uint32_t lr_x, uint32
          Z = set_sprite_combine_mode();
 
       // Draw the vertices
+      v[0].x = (float)s_ul_x;
       v[0].y = (float)s_ul_y;
       v[0].z = Z;
       v[0].q = 1.0f;
@@ -764,7 +765,7 @@ void glide64gDPFillRectangle(uint32_t ul_x, uint32_t ul_y, uint32_t lr_x, uint32
       v[0].coord[1] = 0;
       v[0].coord[2] = 0;
       v[0].coord[3] = 0;
-      v[0].f        = 255.0f;
+      v[0].f        = 0.0f;
       v[0].u[0]     = 0.0f;
       v[0].u[1]     = 0.0f;
       v[0].v[0]     = 0.0f;
@@ -809,7 +810,7 @@ void glide64gDPFillRectangle(uint32_t ul_x, uint32_t ul_y, uint32_t lr_x, uint32
       v[1].coord[1] = 0;
       v[1].coord[2] = 0;
       v[1].coord[3] = 0;
-      v[1].f        = 255.0f;
+      v[1].f        = 0.0f;
       v[1].u[0]     = 0.0f;
       v[1].u[1]     = 0.0f;
       v[1].v[0]     = 0.0f;
@@ -854,7 +855,7 @@ void glide64gDPFillRectangle(uint32_t ul_x, uint32_t ul_y, uint32_t lr_x, uint32
       v[2].coord[1] = 0;
       v[2].coord[2] = 0;
       v[2].coord[3] = 0;
-      v[2].f        = 255.0f;
+      v[2].f        = 0.0f;
       v[2].u[0]     = 0.0f;
       v[2].u[1]     = 0.0f;
       v[2].v[0]     = 0.0f;
@@ -899,7 +900,7 @@ void glide64gDPFillRectangle(uint32_t ul_x, uint32_t ul_y, uint32_t lr_x, uint32
       v[3].coord[1] = 0;
       v[3].coord[2] = 0;
       v[3].coord[3] = 0;
-      v[3].f        = 255.0f;
+      v[3].f        = 0.0f;
       v[3].u[0]     = 0.0f;
       v[3].u[1]     = 0.0f;
       v[3].v[0]     = 0.0f;
