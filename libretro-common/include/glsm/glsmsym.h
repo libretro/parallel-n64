@@ -38,7 +38,6 @@ RETRO_BEGIN_DECLS
 #define glVertexAttrib4fv           rglVertexAttrib4fv
 #define glDrawArrays                rglDrawArrays
 #define glDrawElements              rglDrawElements
-#define glDrawRangeElementsBaseVertex rglDrawRangeElementsBaseVertex
 #define glCompressedTexImage2D      rglCompressedTexImage2D
 #define glBindTexture               rglBindTexture
 #define glActiveTexture             rglActiveTexture
@@ -168,15 +167,6 @@ RETRO_BEGIN_DECLS
 #define glClientWaitSync            rglClientWaitSync
 #define glDrawElementsBaseVertex    rglDrawElementsBaseVertex
 
-#define GL_MAP_PERSISTENT_BIT         0x0040
-#define GL_MAP_COHERENT_BIT           0x0080
-#define GL_MAP_UNSYNCHRONIZED_BIT     0x0020
-#define GL_MAP_FLUSH_EXPLICIT_BIT     0x0010
-#define GL_TEXTURE_2D_MULTISAMPLE     0x9100
-#define GL_READ_WRITE                 0x88BA
-#define GL_READ_ONLY                  0x88B8
-#define GL_SHADER_IMAGE_ACCESS_BARRIER_BIT 0x00000020
-
 const GLubyte* rglGetStringi(GLenum name, GLuint index);
 void rglTexBuffer(GLenum target, GLenum internalFormat, GLuint buffer);
 void rglClearBufferfv( 	GLenum buffer,
@@ -248,13 +238,6 @@ void rglPixelStorei(GLenum pname, GLint param);
 void rglTexCoord2f(GLfloat s, GLfloat t);
 void rglDrawElements(GLenum mode, GLsizei count, GLenum type,
                            const GLvoid * indices);
-void rglDrawRangeElementsBaseVertex(GLenum mode,
-	GLuint start,
-	GLuint end,
-	GLsizei count,
-	GLenum type,
-	GLvoid *indices,
-	GLint basevertex);
 void rglTexStorage2D(GLenum target, GLsizei levels, GLenum internalFormat,
       GLsizei width, GLsizei height);
 void rglCompressedTexImage2D(GLenum target, GLint level,

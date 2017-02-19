@@ -27,7 +27,6 @@
 #include <glsm/glsm.h>
 
 #if 0
-#include <GLideN64_libretro.h>
 #define HAVE_GLIDEN64
 #endif
 
@@ -2658,7 +2657,7 @@ GLuint glsm_get_current_framebuffer(void)
 }
 
 #ifdef HAVE_GLIDEN64
-void retroChangeWindow(void);
+extern void retroChangeWindow(void);
 #endif
 
 bool glsm_ctl(enum glsm_state_ctl state, void *data)
