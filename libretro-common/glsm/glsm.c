@@ -1200,6 +1200,13 @@ void rglFramebufferRenderbuffer(GLenum target, GLenum attachment,
  * Core in:
  * OpenGL    : 3.0
  */
+void rglBindFragDataLocation(GLuint program, GLuint colorNumber,
+      const char * name)
+{
+#if !defined(HAVE_OPENGLES2)
+   glBindFragDataLocation(program, colorNumber, name);
+#endif
+}
 
 
 /*
