@@ -306,6 +306,7 @@ else ifeq ($(platform), emscripten)
    GLES := 1
    WITH_DYNAREC :=
 
+   HAVE_PARALLEL=0
    CPUFLAGS += -DNOSSE
    CPUFLAGS += -DEMSCRIPTEN -DNO_ASM -s USE_ZLIB=1
    PLATCFLAGS += \
