@@ -190,6 +190,7 @@ else ifneq (,$(findstring osx,$(platform)))
    LDFLAGS += -stdlib=libc++
    fpic = -fPIC
 
+   HAVE_PARALLEL=0
    PLATCFLAGS += -D__MACOSX__ -DOSX
    GL_LIB := -framework OpenGL
    PLATFORM_EXT := unix
@@ -213,6 +214,7 @@ else ifneq (,$(findstring ios,$(platform)))
    endif
    PLATFORM_EXT := unix
 
+   HAVE_PARALLEL=0
    PLATCFLAGS += -DHAVE_POSIX_MEMALIGN -DNO_ASM
    PLATCFLAGS += -DIOS -marm
    CPUFLAGS += -DNO_ASM  -DARM -D__arm__ -DARM_ASM -D__NEON_OPT
