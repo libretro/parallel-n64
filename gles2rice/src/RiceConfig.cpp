@@ -385,7 +385,7 @@ bool isMMXSupported()
 
 static void ReadConfiguration(void)
 {
-   struct retro_variable var = { "mupen64-screensize", 0 };
+   struct retro_variable var = { NAME_PREFIX "-screensize", 0 };
    bool ret = environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var);
 
    if (ret && var.value)
