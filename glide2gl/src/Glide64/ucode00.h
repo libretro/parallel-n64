@@ -217,8 +217,14 @@ static void uc0_setothermode_h(uint32_t w0, uint32_t w1)
    __RSP.w1        &= mask;
    gDP.otherMode.h  = (gDP.otherMode.h & ~mask) | __RSP.w1;
 
-   if (mask & 0x00003000) // filter mode
+   if (mask & 0x00003000) /* filter mode */
       g_gdp.flags |= UPDATE_TEXTURE;
+
+   if (mask & 0x0000C000) /* tlut mode	*/
+   {		
+      rdp.tlut_mode = (uint8_t)((gDP.otherMode.h & 0x0000C000) >> 14);		
+      FRDP ("tlut mode: %s\n", str_tlut[rdp.tlut_mode]);		
+   }
 
    if (mask & 0x00300000) // cycle type
       g_gdp.flags |= UPDATE_ZBUF_ENABLED;

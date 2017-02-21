@@ -376,6 +376,9 @@ void glide64ProcessDList(void)
   gSP.fog.multiplier                  = 0;
   gSP.fog.offset                      = 0;
 
+  if (rdp.vi_org_reg != *gfx_info.VI_ORIGIN_REG)		
+     rdp.tlut_mode     = 0; /* is it correct? */
+
   rdp.scissor_set                     = false;
   gSP.DMAOffsets.tex_offset           = 0;
   gSP.DMAOffsets.tex_count            = 0;
@@ -2100,6 +2103,9 @@ static void glide64ProcessRDPList_restorestate(void)
    fbreads_front = fbreads_back   = 0;
    gSP.fog.multiplier             = 0;
    gSP.fog.offset                 = 0;
+
+   if (rdp.vi_org_reg != *gfx_info.VI_ORIGIN_REG)		
+      rdp.tlut_mode                     = 0; /* is it correct? */
 
    rdp.scissor_set      = false;
    gSP.DMAOffsets.tex_offset  = 0;
