@@ -56,8 +56,6 @@ static int isExtensionSupported(const char *extension)
    return 0;
 }
 
-void FindBestDepthBias();
-
 uint32_t grSstWinOpen(void)
 {
    bool ret;
@@ -113,8 +111,6 @@ uint32_t grSstWinOpen(void)
       printf("GL_EXT_texture_format_BGRA8888 supported.\n");
       bgra8888_support = 1;
    }
-
-   FindBestDepthBias();
 
    init_geometry();
    init_combiner();
