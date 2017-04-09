@@ -102,6 +102,10 @@ ifneq (,$(findstring unix,$(platform)))
 	endif
    fpic = -fPIC
 
+ifeq ($(HAVE_PARALLEL), 1)
+	HAVE_PARALLEL_RSP=1
+endif
+
    ifeq ($(FORCE_GLES),1)
       GLES = 1
       GL_LIB := -lGLESv2
@@ -375,6 +379,10 @@ else ifneq (,$(findstring win,$(platform)))
    PLATFORM_EXT := win32
    CC = gcc
    CXX = g++
+
+ifeq ($(HAVE_PARALLEL), 1)
+	HAVE_PARALLEL_RSP=1
+endif
 
 endif
 
