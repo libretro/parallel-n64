@@ -385,6 +385,7 @@ else ifneq (,$(findstring win,$(platform)))
 ifeq ($(WITH_DYNAREC), $(filter $(WITH_DYNAREC), x86_64 x64))
 ifeq ($(HAVE_PARALLEL), 1)
 	HAVE_PARALLEL_RSP=1
+   CPUFLAGS += -D_POSIX_SOURCE
 endif
 endif
 
