@@ -102,7 +102,7 @@ uint32_t *blitter_buf               = NULL;
 uint32_t *blitter_buf_lock          = NULL;
 
 uint32_t gfx_plugin_accuracy        = 2;
-static enum rsp_plugin_type 
+static enum rsp_plugin_type
                  rsp_plugin;
 uint32_t screen_width               = 640;
 uint32_t screen_height              = 480;
@@ -111,6 +111,8 @@ uint32_t screen_aspectmodehint;
 
 unsigned int BUFFERSWAP             = 0;
 unsigned int FAKE_SDL_TICKS         = 0;
+
+bool alternate_mapping;
 
 static bool initializing            = true;
 
@@ -311,13 +313,13 @@ static void setup_variables(void)
          "ParaLLEl Synchronous RDP; enabled|disabled" },
 #endif
       { NAME_PREFIX "-gfxplugin",
-         "GFX Plugin; auto|glide64|gln64|rice|angrylion" 
+         "GFX Plugin; auto|glide64|gln64|rice|angrylion"
 #if defined(HAVE_PARALLEL)
             "|parallel"
 #endif
       },
       { NAME_PREFIX "-rspplugin",
-         "RSP Plugin; auto|hle|cxd4" 
+         "RSP Plugin; auto|hle|cxd4"
 #ifdef HAVE_PARALLEL_RSP
          "|parallel"
 #endif
@@ -344,6 +346,10 @@ static void setup_variables(void)
       },
       { NAME_PREFIX "-framerate",
          "Framerate (restart); original|fullspeed" },
+
+      { NAME_PREFIX "-alt-map",
+        "Digital C-button Config; disabled|enabled" },
+
 #ifndef HAVE_PARALLEL
       { NAME_PREFIX "-vcache-vbo",
          "(Glide64) Vertex cache VBO (restart); disabled|enabled" },
@@ -1131,6 +1137,17 @@ void update_variables(bool startup)
          frame_dupe = false;
       else if (!strcmp(var.value, "fullspeed"))
          frame_dupe = true;
+   }
+
+   var.key = NAME_PREFIX "-alt-map";
+   var.value = NULL;
+
+   if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value && startup)
+   {
+      if (!strcmp(var.value, "disabled"))
+         alternate_mapping = false;
+      else if (!strcmp(var.value, "enabled"))
+         alternate_mapping = true;
    }
 
 
