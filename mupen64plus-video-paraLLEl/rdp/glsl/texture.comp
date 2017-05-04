@@ -34,7 +34,8 @@ void main()
 {
    uvec2 local = gl_LocalInvocationID.xy;
    uint tile_buffer_index = gl_WorkGroupID.x;
-   uint prim_id = work.desc[tile_buffer_index].primitive;
+   uint lod_info_primitive = work.desc[tile_buffer_index].lod_info_primitive;
+   uint prim_id = LOD_INFO_PRIMITIVE(lod_info_primitive);
    uint flags = primitive_data.data[prim_id].flags;
 
    uint coverage_bits = COVERAGE(tile_buffer_index, local);
@@ -46,11 +47,21 @@ void main()
 
    int primitive_tile = int(PRIMITIVE_TILE(flags));
    int l_tile = 0;
+   int l_tile_1 = 1;
    int lodfrac = 0xff;
    int mips = int(PRIMITIVE_LEVELS(flags));
 
    if (PRIMITIVE_SAMPLE_TEX_LOD(flags))
    {
+      bool detail = LOD_INFO_PRIMITIVE_DETAIL(lod_info_primitive);
+      bool sharpen = LOD_INFO_PRIMITIVE_SHARPEN(lod_info_primitive);
+      int min_lod_base = LOD_INFO_PRIMITIVE_MIN_LOD(lod_info_primitive);
+      int min_lod = (detail || sharpen) ? min_lod_base : 32;
+
+      // Detail mip chains have an extra level. The actual mip-chain starts at 1.
+      // The first mip-level is a special mip-level.
+      int real_mips = mips - (detail ? 1 : 0);
+
       ivec2 uv_prev_y = unpack_s16(UV_PREV_Y(tile_buffer_index, local));
       int lod = compute_lod(uv, uv_next, uv_prev_y);
 
@@ -74,19 +85,40 @@ void main()
 #endif
 
       bool magnify = lod < 32;
+      // min_lod is maximum 31 for detail/sharpen,
+      // so applying min lod after magnify test is fine.
+      lod = max(lod, min_lod);
+
+      // Compute the LOD fraction.
       l_tile = findMSB(max(uint(lod >> 5) & 0xffu, 1u));
-      bool distant = ((lod & 0x6000) != 0) || (l_tile >= int(mips));
+      bool distant = ((lod & 0x6000) != 0) || (l_tile >= int(real_mips));
 
-      lodfrac = ((lod << 3) >> l_tile) & 0xff;
-      if (distant)
-      {
+      if (distant && !detail && !sharpen)
          lodfrac = 0xff;
-         l_tile = int(mips) - 1;
-      }
-      else if (magnify)
-         lodfrac = 0;
+      else
+         lodfrac = ((lod << 3) >> l_tile) & 0xff;
 
-      // TODO: Handle detail and sharpen LOD.
+      // Negative lerp factor to sharpen.
+      if (sharpen && magnify)
+         lodfrac |= 0x100;
+
+      // Clamp LOD.
+      if (distant)
+         l_tile = int(mips) - 1;
+
+      if (detail)
+      {
+         // If we're magnifying, pull in mip-levels 0 and 1.
+         // If distant, pull in the two last mip-levels.
+         // In the middle, pull in L + 1, L + 2.
+         l_tile += magnify ? 0 : 1;
+         l_tile_1 = l_tile + (!distant ? 1 : 0);
+      }
+      else
+      {
+         bool clamped = distant || (!sharpen && magnify);
+         l_tile_1 = l_tile + (clamped ? 0 : 1);
+      }
    }
 
    // Encode in lodfrac as combiner needs it.
@@ -102,8 +134,7 @@ void main()
 
    if (mips > 1 || PRIMITIVE_SAMPLE_TEX_LOD(flags))
    {
-      int next_lod = min(l_tile + 1, mips - 1);
-      uint next_tile = primitive_data.data[prim_id].attr.tile_descriptor[(primitive_tile + next_lod) & 7];
+      uint next_tile = primitive_data.data[prim_id].attr.tile_descriptor[(primitive_tile + l_tile_1) & 7];
       SAMPLED1(tile_buffer_index, local) = pack_rgba8(uvec4(sample_tile(next_tile, uv, int(PRIMITIVE_BILERP1(flags)))));
    }
 }

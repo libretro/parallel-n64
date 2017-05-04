@@ -5,6 +5,7 @@ OUTPUT := \
 	rdp.8.z.spv \
 	rdp.16.z.spv \
 	rdp.32.z.spv \
+	rdp.color.depth.alias.16.spv \
 	blit.8.spv \
 	blit.16.spv \
 	blit.32.spv \
@@ -26,22 +27,25 @@ all: $(OUTPUT_INC)
 -include $(DEPS)
 
 rdp.8.z.inc: rdp.comp
-	glslc -o $@ $< -DZ_BUFFER=1 -DCOLOR_BPP=8 $(GLSLFLAGS)
+	glslc -o $@ $< -DZ_BUFFER=1 -DCOLOR_BPP=8 -DCOLOR_DEPTH_ALIAS=0 $(GLSLFLAGS)
 
 rdp.16.z.inc: rdp.comp
-	glslc -o $@ $< -DZ_BUFFER=1 -DCOLOR_BPP=16 $(GLSLFLAGS)
+	glslc -o $@ $< -DZ_BUFFER=1 -DCOLOR_BPP=16 -DCOLOR_DEPTH_ALIAS=0 $(GLSLFLAGS)
 
 rdp.32.z.inc: rdp.comp
-	glslc -o $@ $< -DZ_BUFFER=1 -DCOLOR_BPP=32 $(GLSLFLAGS)
+	glslc -o $@ $< -DZ_BUFFER=1 -DCOLOR_BPP=32 -DCOLOR_DEPTH_ALIAS=0 $(GLSLFLAGS)
 
 rdp.8.noz.inc: rdp.comp
-	glslc -o $@ $< -DZ_BUFFER=0 -DCOLOR_BPP=8 $(GLSLFLAGS)
+	glslc -o $@ $< -DZ_BUFFER=0 -DCOLOR_BPP=8 -DCOLOR_DEPTH_ALIAS=0 $(GLSLFLAGS)
 
 rdp.16.noz.inc: rdp.comp
-	glslc -o $@ $< -DZ_BUFFER=0 -DCOLOR_BPP=16 $(GLSLFLAGS)
+	glslc -o $@ $< -DZ_BUFFER=0 -DCOLOR_BPP=16 -DCOLOR_DEPTH_ALIAS=0 $(GLSLFLAGS)
 
 rdp.32.noz.inc: rdp.comp
-	glslc -o $@ $< -DZ_BUFFER=0 -DCOLOR_BPP=32 $(GLSLFLAGS)
+	glslc -o $@ $< -DZ_BUFFER=0 -DCOLOR_BPP=32 -DCOLOR_DEPTH_ALIAS=0 $(GLSLFLAGS)
+
+rdp.color.depth.alias.16.inc: rdp.comp
+	glslc -o $@ $< -DZ_BUFFER=1 -DCOLOR_BPP=16 -DCOLOR_DEPTH_ALIAS=1 $(GLSLFLAGS)
 
 blit.8.inc: blit.comp
 	glslc -o $@ $< -DCOLOR_BPP=8 $(GLSLFLAGS)

@@ -6,7 +6,7 @@
 #define MAX_PRIMITIVES_LOG2 12u
 
 // A large 2D array texture holding all arrays.
-layout(set = 0, binding = 0) uniform mediump isampler2DArray uDitherLUT;
+layout(set = 0, binding = 0) uniform mediump usampler2DArray uDitherLUT;
 layout(set = 0, binding = 1) uniform mediump usampler2D uCentroidLUT;
 layout(set = 0, binding = 2, std140) uniform ZLUT
 {

@@ -1,17 +1,18 @@
 DEBUG=0
 PERF_TEST=0
 HAVE_SHARED_CONTEXT=0
-SINGLE_THREAD=0
 WITH_CRC=brumme
 FORCE_GLES=0
 HAVE_OPENGL=1
-HAVE_VULKAN=0
 HAVE_VULKAN_DEBUG=0
 GLIDEN64=0
 GLIDEN64CORE=0
 GLIDEN64ES=0
 HAVE_RSP_DUMP=0
 HAVE_RDP_DUMP=0
+HAVE_RICE=1
+HAVE_PARALLEL=1
+HAVE_PARALLEL_RSP=0
 
 DYNAFLAGS :=
 INCFLAGS  :=
@@ -79,21 +80,34 @@ else ifeq ($(ARCH), $(filter $(ARCH), arm))
    WITH_DYNAREC = arm
 endif
 
-ifeq ($(HAVE_VULKAN),1)
-TARGET_NAME := parallel
-else ifeq ($(HAVE_VULKAN_DEBUG),1)
-TARGET_NAME := parallel_debug
+ifeq ($(HAVE_VULKAN_DEBUG),1)
+TARGET_NAME := parallel_n64_debug
 else
-TARGET_NAME := mupen64plus
+TARGET_NAME := parallel_n64
 endif
+
 CC_AS ?= $(CC)
+
+GIT_VERSION ?= " $(shell git rev-parse --short HEAD || echo unknown)"
+ifneq ($(GIT_VERSION)," unknown")
+	COREFLAGS += -DGIT_VERSION=\"$(GIT_VERSION)\"
+endif
 
 # Unix
 ifneq (,$(findstring unix,$(platform)))
    TARGET := $(TARGET_NAME)_libretro.so
-   LDFLAGS += -shared -Wl,--version-script=$(LIBRETRO_DIR)/link.T -Wl,--no-undefined
+   LDFLAGS += -shared -Wl,--no-undefined
+	ifeq ($(DEBUG_JIT),)
+	   LDFLAGS += -Wl,--version-script=$(LIBRETRO_DIR)/link.T
+	endif
    fpic = -fPIC
-   
+
+ifeq ($(WITH_DYNAREC), $(filter $(WITH_DYNAREC), x86_64 x64))
+ifeq ($(HAVE_PARALLEL), 1)
+	HAVE_PARALLEL_RSP=1
+endif
+endif
+
    ifeq ($(FORCE_GLES),1)
       GLES = 1
       GL_LIB := -lGLESv2
@@ -103,7 +117,7 @@ ifneq (,$(findstring unix,$(platform)))
    else
       GL_LIB := -lGL
    endif
-   
+
    # Raspberry Pi
    ifneq (,$(findstring rpi,$(platform)))
       GLES = 1
@@ -122,7 +136,7 @@ ifneq (,$(findstring unix,$(platform)))
          CPUFLAGS += -DARMv5_ONLY -DNO_ASM
       endif
    endif
-   
+
    # ODROIDs
    ifneq (,$(findstring odroid,$(platform)))
       BOARD := $(shell cat /proc/cpuinfo | grep -i odroid | awk '{print $$3}')
@@ -147,7 +161,7 @@ ifneq (,$(findstring unix,$(platform)))
          CPUFLAGS += -mcpu=cortex-a9 -mfpu=neon
       endif
    endif
-   
+
    # Generic ARM
    ifneq (,$(findstring armv,$(platform)))
       CPUFLAGS += -DNO_ASM -DARM -D__arm__ -DARM_ASM -DNOSSE
@@ -157,7 +171,7 @@ ifneq (,$(findstring unix,$(platform)))
          HAVE_NEON = 1
       endif
    endif
-   
+
    PLATFORM_EXT := unix
 
 # i.MX6
@@ -182,6 +196,7 @@ else ifneq (,$(findstring osx,$(platform)))
    LDFLAGS += -stdlib=libc++
    fpic = -fPIC
 
+   HAVE_PARALLEL=0
    PLATCFLAGS += -D__MACOSX__ -DOSX
    GL_LIB := -framework OpenGL
    PLATFORM_EXT := unix
@@ -200,9 +215,12 @@ else ifneq (,$(findstring ios,$(platform)))
    TARGET := $(TARGET_NAME)_libretro_ios.dylib
    DEFINES += -DIOS
    GLES = 1
-   WITH_DYNAREC=arm
+   ifneq ($(platform),ios9)
+      WITH_DYNAREC=arm
+   endif
    PLATFORM_EXT := unix
 
+   HAVE_PARALLEL=0
    PLATCFLAGS += -DHAVE_POSIX_MEMALIGN -DNO_ASM
    PLATCFLAGS += -DIOS -marm
    CPUFLAGS += -DNO_ASM  -DARM -D__arm__ -DARM_ASM -D__NEON_OPT
@@ -270,7 +288,7 @@ else ifneq (,$(findstring android,$(platform)))
 # QNX
 else ifeq ($(platform), qnx)
    fpic = -fPIC
-   TARGET := $(TARGET_NAME)_libretro_qnx.so
+   TARGET := $(TARGET_NAME)_libretro_$(platform).so
    LDFLAGS += -shared -Wl,--version-script=$(LIBRETRO_DIR)/link.T -Wl,--no-undefined -Wl,--warn-common
    GL_LIB := -lGLESv2
 
@@ -290,29 +308,70 @@ else ifeq ($(platform), qnx)
 
 # emscripten
 else ifeq ($(platform), emscripten)
-   TARGET := $(TARGET_NAME)_libretro_emscripten.bc
+   TARGET := $(TARGET_NAME)_libretro_$(platform).bc
    GLES := 1
    WITH_DYNAREC :=
-   CPUFLAGS += -Dasm=asmerror -D__asm__=asmerror -DNO_ASM -DNOSSE
-   SINGLE_THREAD := 1
-   PLATCFLAGS += -Drglgen_symbol_map=mupen_rglgen_symbol_map \
-                 -Dmain_exit=mupen_main_exit \
-                 -Dadler32=mupen_adler32 \
-                 -Drglgen_resolve_symbols_custom=mupen_rglgen_resolve_symbols_custom \
-                 -Drglgen_resolve_symbols=mupen_rglgen_resolve_symbols \
-                 -Dsinc_resampler=mupen_sinc_resampler \
-                 -Dnearest_resampler=mupen_nearest_resampler \
-                 -DCC_resampler=mupen_CC_resampler \
-                 -Daudio_resampler_driver_find_handle=mupen_audio_resampler_driver_find_handle \
-                 -Daudio_resampler_driver_find_ident=mupen_audio_resampler_driver_find_ident \
-                 -Drarch_resampler_realloc=mupen_rarch_resampler_realloc \
-                 -Daudio_convert_s16_to_float_C=mupen_audio_convert_s16_to_float_C \
-                 -Daudio_convert_float_to_s16_C=mupen_audio_convert_float_to_s16_C \
-                 -Daudio_convert_init_simd=mupen_audio_convert_init_simd
 
+   HAVE_PARALLEL=0
+   CPUFLAGS += -DNOSSE
+   CPUFLAGS += -DEMSCRIPTEN -DNO_ASM -s USE_ZLIB=1
+   PLATCFLAGS += \
+      -Dsinc_resampler=mupen_sinc_resampler \
+      -DCC_resampler=mupen_CC_resampler \
+      -Drglgen_symbol_map=mupen_rglgen_symbol_map \
+      -Drglgen_resolve_symbols_custom=mupen_rglgen_resolve_symbols_custom \
+      -Drglgen_resolve_symbols=mupen_rglgen_resolve_symbols \
+      -Dmemalign_alloc=mupen_memalign_alloc \
+      -Dmemalign_free=mupen_memalign_free \
+      -Dmemalign_alloc_aligned=mupen_memalign_alloc_aligned \
+      -Daudio_resampler_driver_find_handle=mupen_audio_resampler_driver_find_handle \
+      -Daudio_resampler_driver_find_ident=mupen_audio_resampler_driver_find_ident \
+      -Drarch_resampler_realloc=mupen_rarch_resampler_realloc \
+      -Dconvert_float_to_s16_C=mupen_convert_float_to_s16_C \
+      -Dconvert_float_to_s16_init_simd=mupen_convert_float_to_s16_init_simd \
+      -Dconvert_s16_to_float_C=mupen_convert_s16_to_float_C \
+      -Dconvert_s16_to_float_init_simd=mupen_convert_s16_to_float_init_simd \
+      -Dcpu_features_get_perf_counter=mupen_cpu_features_get_perf_counter \
+      -Dcpu_features_get_time_usec=mupen_cpu_features_get_time_usec \
+      -Dcpu_features_get_core_amount=mupen_cpu_features_get_core_amount \
+      -Dcpu_features_get=mupen_cpu_features_get \
+      -Dffs=mupen_ffs \
+      -Dstrlcpy_retro__=mupen_strlcpy_retro__ \
+      -Dstrlcat_retro__=mupen_strlcat_retro__
+
+
+   WITH_DYNAREC =
+	CC = emcc
+   CXX = em++
    HAVE_NEON = 0
    PLATFORM_EXT := unix
+	STATIC_LINKING=1
    #HAVE_SHARED_CONTEXT := 1
+
+# PlayStation Vita
+else ifneq (,$(findstring vita,$(platform)))
+   TARGET:= $(TARGET_NAME)_libretro_$(platform).a
+   CPUFLAGS += -DNO_ASM  -DARM -D__arm__ -DARM_ASM -D__NEON_OPT
+   CPUFLAGS += -w -mthumb -mcpu=cortex-a9 -mfpu=neon -mfloat-abi=hard -D__arm__ -DARM_ASM -D__NEON_OPT -g
+   HAVE_NEON = 1
+
+   PREFIX = arm-vita-eabi
+   CC = $(PREFIX)-gcc
+   CXX = $(PREFIX)-g++
+   AR  = $(PREFIX)-ar
+   WITH_DYNAREC = arm
+   DYNAREC_USED = 0
+   GLES = 0
+   HAVE_OPENGL = 0
+   PLATCFLAGS += -DVITA
+   CPUCFLAGS += -DNO_ASM
+   CFLAGS += -DVITA -lm
+   VITA = 1
+	HAVE_PARALLEL=0
+   SOURCES_C += $(CORE_DIR)/src/r4300/empty_dynarec.c
+
+   PLATFORM_EXT := unix
+   STATIC_LINKING=1
 
 # Windows
 else ifneq (,$(findstring win,$(platform)))
@@ -323,6 +382,26 @@ else ifneq (,$(findstring win,$(platform)))
    CC = gcc
    CXX = g++
 
+ifeq ($(WITH_DYNAREC), $(filter $(WITH_DYNAREC), x86_64 x64))
+ifeq ($(HAVE_PARALLEL), 1)
+	HAVE_PARALLEL_RSP=1
+   CPUFLAGS += -D_POSIX_SOURCE
+endif
+endif
+
+endif
+
+ifneq ($(SANITIZER),)
+    CFLAGS   += -fsanitize=$(SANITIZER)
+    CXXFLAGS += -fsanitize=$(SANITIZER)
+    LDFLAGS  += -fsanitize=$(SANITIZER)
+endif
+
+ifeq ($(HAVE_OPENGL),0)
+	HAVE_GLIDE64=0
+	HAVE_GLN64=0
+	HAVE_GLIDEN64=0
+	HAVE_RICE=0
 endif
 
 include Makefile.common
@@ -339,10 +418,6 @@ ifeq ($(HAVE_SHARED_CONTEXT), 1)
    COREFLAGS += -DHAVE_SHARED_CONTEXT
 endif
 
-ifeq ($(SINGLE_THREAD), 1)
-   COREFLAGS += -DSINGLE_THREAD
-endif
-
 COREFLAGS += -D__LIBRETRO__ -DM64P_PLUGIN_API -DM64P_CORE_PROTOTYPES -D_ENDUSER_RELEASE -DSINC_LOWER_QUALITY
 
 
@@ -357,7 +432,11 @@ ifeq ($(platform), qnx)
    CFLAGS   += -Wp,-MMD
    CXXFLAGS += -Wp,-MMD
 else
+ifeq ($(platform), emscripten)
+   CFLAGS   += -std=gnu99 -MMD
+else
    CFLAGS   += -std=gnu89 -MMD
+endif
 ifeq ($(GLIDEN64),1)
    CFLAGS   += -DGLIDEN64
    CXXFLAGS += -DGLIDEN64
@@ -398,16 +477,20 @@ include $(THEOS_MAKE_PATH)/library.mk
 else
 all: $(TARGET)
 $(TARGET): $(OBJECTS)
+ifeq ($(STATIC_LINKING), 1)
+	$(AR) rcs $@ $(OBJECTS)
+else
 	$(CXX) -o $@ $(OBJECTS) $(LDFLAGS) $(GL_LIB)
+endif
 
 %.o: %.S
 	$(CC_AS) $(CFLAGS) -c $< -o $@
 
 %.o: %.c
-	$(CC) $(CFLAGS) -c $< -o $@
+	$(CC) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
 
 %.o: %.cpp
-	$(CXX) $(CXXFLAGS) -c $< -o $@
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -c $< -o $@
 
 
 clean:

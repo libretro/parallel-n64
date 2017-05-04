@@ -1,4 +1,4 @@
-/* Copyright (C) 2010-2016 The RetroArch team
+/* Copyright (C) 2010-2017 The RetroArch team
  *
  * ---------------------------------------------------------------------------------------
  * The following license statement only applies to this libretro SDK code part (glsm).
@@ -25,12 +25,29 @@
 #include <glsym/glsym.h>
 #include <glsm/glsm.h>
 
+#ifndef GL_DEPTH_CLAMP
+#define GL_DEPTH_CLAMP                    0x864F
+#define GL_RASTERIZER_DISCARD             0x8C89
+#define GL_SAMPLE_MASK                    0x8E51
+#endif
+
 struct gl_cached_state
 {
    struct
    {
       GLuint *ids;
    } bind_textures;
+
+   struct
+   {
+      bool used[MAX_ATTRIB];
+      GLint size[MAX_ATTRIB];
+      GLenum type[MAX_ATTRIB];
+      GLboolean normalized[MAX_ATTRIB];
+      GLsizei stride[MAX_ATTRIB];
+      const GLvoid *pointer[MAX_ATTRIB];
+      GLuint buffer[MAX_ATTRIB];
+   } attrib_pointer;
 
 #ifndef HAVE_OPENGLES
    GLenum colorlogicop;
@@ -171,6 +188,7 @@ struct gl_cached_state
 
    GLuint vao;
    GLuint framebuf;
+   GLuint array_buffer;
    GLuint program; 
    GLenum active_texture;
    int cap_state[SGL_CAP_MAX];
@@ -614,6 +632,8 @@ void rglBufferSubData(GLenum target, GLintptr offset,
  */
 void rglBindBuffer(GLenum target, GLuint buffer)
 {
+   if (target == GL_ARRAY_BUFFER)
+      gl_state.array_buffer = buffer;
    glsm_ctl(GLSM_CTL_IMM_VBO_DRAW, NULL);
    glBindBuffer(target, buffer);
 }
@@ -1206,6 +1226,13 @@ void rglVertexAttribPointer(GLuint name, GLint size,
       GLenum type, GLboolean normalized, GLsizei stride,
       const GLvoid* pointer)
 {
+   gl_state.attrib_pointer.used[name] = 1;
+   gl_state.attrib_pointer.size[name] = size;
+   gl_state.attrib_pointer.type[name] = type;
+   gl_state.attrib_pointer.normalized[name] = normalized;
+   gl_state.attrib_pointer.stride[name] = stride;
+   gl_state.attrib_pointer.pointer[name] = pointer;
+   gl_state.attrib_pointer.buffer[name] = gl_state.array_buffer;
    glVertexAttribPointer(name, size, type, normalized, stride, pointer);
 }
 
@@ -1826,6 +1853,21 @@ void *rglFenceSync(GLenum condition, GLbitfield flags)
 {
 #if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES) && defined(HAVE_OPENGLES3)
    return (GLsync)glFenceSync(condition, flags);
+#else
+   return NULL;
+#endif
+}
+
+/*
+ *
+ * Core in:
+ * OpenGL    : 3.2
+ * OpenGLES  : 3.0
+ */
+void rglDeleteSync(void * sync)
+{
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES) && defined(HAVE_OPENGLES3)
+  glDeleteSync((GLsync)sync);
 #endif
 }
 
@@ -1839,6 +1881,62 @@ void rglWaitSync(void *sync, GLbitfield flags, uint64_t timeout)
 {
 #if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES) && defined(HAVE_OPENGLES3)
    glWaitSync((GLsync)sync, flags, (GLuint64)timeout);
+#endif
+}
+
+/*
+ *
+ * Core in:
+ * OpenGL    : 4.4
+ * OpenGLES  : Not available
+ */
+void rglBufferStorage(GLenum target, GLsizeiptr size, const GLvoid *data, GLbitfield flags) {
+#if defined(HAVE_OPENGL)
+  glBufferStorage(target, size, data, flags);
+#endif
+}
+
+/*
+ *
+ * Core in:
+ * OpenGL    : 3.0
+ * OpenGLES  : 3.0
+ */
+void rglFlushMappedBufferRange(GLenum target, GLintptr offset, GLsizeiptr length) {
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES) && defined(HAVE_OPENGLES3)
+  glFlushMappedBufferRange(target, offset, length);
+#endif
+}
+
+#ifndef GL_WAIT_FAILED
+#define GL_WAIT_FAILED                                   0x911D
+#endif
+
+/*
+ *
+ * Core in:
+ * OpenGL    : 3.2
+ * OpenGLES  : 3.0
+ */
+GLenum rglClientWaitSync(void *sync, GLbitfield flags, uint64_t timeout)
+{
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES) && defined(HAVE_OPENGLES3)
+  return glClientWaitSync((GLsync)sync, flags, (GLuint64)timeout);
+#else
+  return GL_WAIT_FAILED;
+#endif
+}
+
+/*
+ *
+ * Core in:
+ * OpenGL    : 3.2
+ * OpenGLES  : Not available
+ */
+void rglDrawElementsBaseVertex(GLenum mode, GLsizei count, GLenum type,
+			       GLvoid *indices, GLint basevertex) {
+#if defined(HAVE_OPENGL)
+  glDrawElementsBaseVertex(mode, count, type, indices, basevertex);
 #endif
 }
 
@@ -1864,7 +1962,10 @@ static void glsm_state_setup(void)
 #endif
 
    for (i = 0; i < MAX_ATTRIB; i++)
+   {
       gl_state.vertex_attrib_pointer.enabled[i] = 0;
+      gl_state.attrib_pointer.used[i] = 0;
+   }
 
    glGetIntegerv(GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS, &glsm_max_textures);
 
@@ -1904,6 +2005,10 @@ static void glsm_state_setup(void)
 static void glsm_state_bind(void)
 {
    unsigned i;
+#ifdef CORE
+   glBindVertexArray(gl_state.vao);
+#endif
+   glBindBuffer(GL_ARRAY_BUFFER, gl_state.array_buffer);
 
    for (i = 0; i < MAX_ATTRIB; i++)
    {
@@ -1911,6 +2016,17 @@ static void glsm_state_bind(void)
          glEnableVertexAttribArray(i);
       else
          glDisableVertexAttribArray(i);
+
+      if (gl_state.attrib_pointer.used[i] && gl_state.attrib_pointer.buffer[i] == gl_state.array_buffer)
+      {
+         glVertexAttribPointer(
+               i,
+               gl_state.attrib_pointer.size[i],
+               gl_state.attrib_pointer.type[i],
+               gl_state.attrib_pointer.normalized[i],
+               gl_state.attrib_pointer.stride[i],
+               gl_state.attrib_pointer.pointer[i]);
+      }
    }
 
    glBindFramebuffer(RARCH_GL_FRAMEBUFFER, hw_render.get_current_framebuffer());
@@ -1969,9 +2085,7 @@ static void glsm_state_bind(void)
          gl_state.viewport.y,
          gl_state.viewport.w,
          gl_state.viewport.h);
-#ifdef CORE
-   glBindVertexArray(gl_state.vao);
-#endif
+
    for(i = 0; i < SGL_CAP_MAX; i ++)
    {
       if (gl_state.cap_state[i])
@@ -2002,8 +2116,6 @@ static void glsm_state_bind(void)
    }
 
    glActiveTexture(GL_TEXTURE0 + gl_state.active_texture);
-
-   glBindBuffer(GL_ARRAY_BUFFER, 0);
 }
 
 static void glsm_state_unbind(void)
@@ -2070,6 +2182,8 @@ static bool glsm_state_ctx_destroy(void *data)
    if (gl_state.bind_textures.ids)
       free(gl_state.bind_textures.ids);
    gl_state.bind_textures.ids = NULL;
+
+   return true;
 }
 
 static bool glsm_state_ctx_init(void *data)

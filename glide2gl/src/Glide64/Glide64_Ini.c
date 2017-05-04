@@ -19,7 +19,7 @@ extern void glide_set_filtering(unsigned value);
 
 void ReadSettings(void)
 {
-   struct retro_variable var = { "mupen64-screensize", 0 };
+   struct retro_variable var = { NAME_PREFIX "-screensize", 0 };
    unsigned screen_width = 640;
    unsigned screen_height = 480;
 
@@ -1830,8 +1830,10 @@ void ReadSpecialSettings (const char * name)
       settings.hacks |= hack_GoldenEye;
    else if (strstr(name, (const char *)"Blast Corps") || strstr(name, (const char *)"Blastdozer"))
       settings.hacks |= hack_Blastcorps;
-   //else if (strstr(name, (const char *)"PUZZLE LEAGUE"))
-      //settings.hacks |= hack_PPL;
+   else if (strstr(name, (const char *)"PUZZLE LEAGUE"))
+      settings.hacks |= hack_PPL;
+   else if (strstr(name, (const char *)"WIN BACK") || strstr(name, (const char *)"OPERATION WINBACK"))
+      settings.hacks |= hack_Winback;
 
    switch (gfx_plugin_accuracy)
    {

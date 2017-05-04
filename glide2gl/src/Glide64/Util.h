@@ -125,6 +125,8 @@ static INLINE uint16_t ror16(uint16_t value, uint16_t amount)
     return (value << (-(int16_t)amount & 15)) | (value >> amount);
 }
 
+void apply_shading(void *data);
+
 #ifdef __cplusplus
 }
 #endif

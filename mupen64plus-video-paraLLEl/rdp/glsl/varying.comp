@@ -25,7 +25,7 @@ void main()
    uint tile = gl_WorkGroupID.x;
 
    uvec2 coord = work.desc[tile].base * uvec2(TILE_SIZE_X, TILE_SIZE_Y) + local;
-   uint prim_id = work.desc[tile].primitive;
+   uint prim_id = LOD_INFO_PRIMITIVE(work.desc[tile].lod_info_primitive);
    uint flags = prim.flags;
 
    int y = int(coord.y) * 4;
@@ -103,15 +103,23 @@ void main()
    xrsc = mix(xrsc, ivec4(0x7fff), clipped);
    xlsc = mix(xlsc, ivec4(0), clipped);
 
-   // Find multisampled coverage.
-   int xbase = int(coord.x);
-   uint coverage = compute_coverage(xrsc, xlsc, xbase);
-
    // Don't include invalid subsample scanlines in min/max.
    int lx = horizontalMin(xrsc >> 3);
    int rx = horizontalMax(xlsc >> 3);
+
+   // Find multisampled coverage.
+   // For copy pipe, we compute coverage for 64-bits of data at a time, so splat
+   // coverage information across those pixels.
+   // Angrylion reads 64-bits of data at a time starting at span start.
+   int xbase = int(coord.x);
+
+   // FIXME: Do we snap from left or right?
+   // Probably won't really matter in practice.
+   int copy_xbase = ((xbase - lx) & int(prim.span_stride_combiner >> 16u)) + lx;
+
+   uint coverage = compute_coverage(xrsc, xlsc, copy_xbase);
    // Extra coverage for fill mode, conservative.
-   if (xbase >= lx && xbase <= rx)
+   if (copy_xbase >= lx && copy_xbase <= rx)
       coverage |= 0x100u;
 
    COVERAGE(tile, local) = coverage;
@@ -150,7 +158,12 @@ void main()
    int xoff = xbase - (xlr >> 16);
 
    // The N64 clips interpolation inside the coverage region.
+#if 0
    ivec2 centroid_offsets = ivec2(texelFetch(uCentroidLUT, ivec2(int(coverage & 0xffu), 0), 0).xy);
+#else
+   // Workaround broken nVidia driver.
+   ivec2 centroid_offsets = ivec2(textureLod(uCentroidLUT, vec2((float(coverage & 0xffu) + 0.5) / 256.0, 0.5), 0.0).xy);
+#endif
 
    // RGBA
    // Lerp Edge

@@ -26,6 +26,10 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <boolean.h>
+
+void retro_return(bool a);
+
 #define M64P_CORE_PROTOTYPES 1
 #include "m64p_types.h"
 #include "m64p_vidext.h"

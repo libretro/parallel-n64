@@ -46,6 +46,61 @@ static const uint8_t Z64_SIGNATURE[4] = { 0x80, 0x27, 0x07, 0x40 };
 static const uint8_t V64_SIGNATURE[4] = { 0x27, 0x80, 0x40, 0x07 };
 static const uint8_t N64_SIGNATURE[4] = { 0x40, 0x07, 0x27, 0x80 };
 
+// Get the system type associated to a ROM country code.
+static m64p_system_type rom_country_code_to_system_type(char country_code)
+{
+   switch (country_code)
+   {
+      // PAL codes
+      case 0x44:
+      case 0x46:
+      case 0x49:
+      case 0x50:
+      case 0x53:
+      case 0x55:
+      case 0x58:
+      case 0x59:
+         return SYSTEM_PAL;
+
+         // NTSC codes
+      case 0x37:
+      case 0x41:
+      case 0x45:
+      case 0x4a:
+      default: // Fallback for unknown codes
+         return SYSTEM_NTSC;
+   }
+}
+
+// Get the VI (vertical interrupt) limit associated to a ROM system type.
+static int rom_system_type_to_vi_limit(m64p_system_type system_type)
+{
+   switch (system_type)
+   {
+      case SYSTEM_PAL:
+      case SYSTEM_MPAL:
+         return 50;
+
+      case SYSTEM_NTSC:
+      default:
+         return 60;
+   }
+}
+
+static int rom_system_type_to_ai_dac_rate(m64p_system_type system_type)
+{
+   switch (system_type)
+   {
+      case SYSTEM_PAL:
+         return 49656530;
+      case SYSTEM_MPAL:
+         return 48628316;
+      case SYSTEM_NTSC:
+      default:
+         return 48681812;
+   }
+}
+
 /* Tests if a file is a valid 64DD IPL rom by checking the first 4 bytes. */
 static int is_valid_rom(const unsigned char *buffer)
 {
@@ -138,7 +193,16 @@ m64p_error open_ddrom(const unsigned char* romimage, unsigned int size)
 		return M64ERR_NO_MEMORY;
 	swap_copy_rom(g_ddrom, romimage, size, &imagetype);
 
-	DebugMessage(M64MSG_STATUS, "Retail 64DD IPL loaded!");
+	/* add some useful properties to ROM_PARAMS */
+    ROM_PARAMS.systemtype = rom_country_code_to_system_type(ROM_HEADER.destination_code);
+    ROM_PARAMS.vilimit = rom_system_type_to_vi_limit(ROM_PARAMS.systemtype);
+    ROM_PARAMS.aidacrate = rom_system_type_to_ai_dac_rate(ROM_PARAMS.systemtype);
+
+    memcpy(ROM_PARAMS.headername, ROM_HEADER.Name, 20);
+    ROM_PARAMS.headername[20] = '\0';
+    trim(ROM_PARAMS.headername); /* Remove trailing whitespace from ROM name. */
+
+	DebugMessage(M64MSG_STATUS, "64DD IPL loaded!");
 
 	return M64ERR_SUCCESS;
 }
@@ -146,7 +210,7 @@ m64p_error open_ddrom(const unsigned char* romimage, unsigned int size)
 m64p_error close_ddrom(void)
 {
 	if (g_ddrom == NULL)
-		return M64ERR_INVALID_STATE;
+	   return M64ERR_INVALID_STATE;
 
 	free(g_ddrom);
 	g_ddrom = NULL;

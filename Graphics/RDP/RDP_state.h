@@ -374,6 +374,8 @@ static INLINE uint32_t rdp_read_data(uint32_t address)
    return ((uint32_t*)gfx_info.RDRAM)[address >> 2];
 }
 
+bool RDP_Half1(uint32_t _c);
+
 extern struct gdp_global g_gdp;
 
 #ifdef __cplusplus

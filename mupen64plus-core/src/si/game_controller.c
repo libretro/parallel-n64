@@ -25,10 +25,6 @@
 #include "api/m64p_types.h"
 #include "api/callbacks.h"
 
-#ifdef COMPARE_CORE
-#include "api/debugger.h"
-#endif
-
 #include <stdint.h>
 #include <string.h>
 
@@ -60,10 +56,6 @@ static void read_controller_read_buttons(struct game_controller* cont, uint8_t* 
         return;
 
     *((uint32_t*)(cmd + 3)) = game_controller_get_input(cont);
-
-#ifdef COMPARE_CORE
-    CoreCompareDataSync(4, cmd + 3);
-#endif
 }
 
 
@@ -81,7 +73,10 @@ static void controller_status_command(struct game_controller* cont, uint8_t* cmd
         return;
     }
 
-    cmd[3] = 0x05;
+    if (connected == CONT_JOYPAD)
+      cmd[3] = 0x05;
+    else if (connected == CONT_MOUSE)
+      cmd[3] = 0x02;
     cmd[4] = 0x00;
 
     switch(pak)
@@ -180,7 +175,7 @@ static void controller_write_pak_command(struct game_controller* cont, uint8_t* 
           DebugMessage(M64MSG_WARNING, "Unknown plugged pak %d", (int)pak);
     }
 
-    cmd[0x25] = pak_data_crc(data);
+    cmd[0x25] = pak_data_crc((uint8_t*)data);
 }
 
 int game_controller_is_connected(struct game_controller* cont, enum pak_type* pak)

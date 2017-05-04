@@ -6,10 +6,7 @@
 #include <time.h>
 
 #ifndef UINT64_MAX
-#ifndef UINT64_C
-#define UINT64_C(c)     c ## UL
-#endif
-#define UINT64_MAX       (UINT64_C(18446744073709551615))
+#define UINT64_MAX		(__UINT64_C(18446744073709551615))
 #endif
 
 using namespace std;
@@ -145,7 +142,9 @@ void Device::begin_index(unsigned index)
 		V(vkWaitForFences(context.get_device(), fences.count, fences.fences.data(), true, UINT64_MAX));
 		vkResetFences(context.get_device(), fences.count, fences.fences.data());
 		double end = gettime();
+#ifdef ENABLE_LOGS
 		fprintf(stderr, "Waited for fences for %.3f ms\n", 1000.0 * (end - current));
+#endif
 	}
 	fences.count = 0;
 
@@ -530,8 +529,10 @@ void Device::wait(const Fence &fence)
 
 	double current = gettime();
 	V(vkWaitForFences(context.get_device(), 1, &fence.fence, true, UINT64_MAX));
+#ifdef ENABLE_LOGS
 	double end = gettime();
 	fprintf(stderr, "Waiting for explicit fence: %.3f ms.\n", 1000.0 * (end - current));
+#endif
 }
 
 ImageHandle Device::create_image_2d(VkFormat format, unsigned width, unsigned height)
@@ -866,6 +867,10 @@ void Device::init_rdp_pipelines()
 #include "glsl/rdp.32.z.inc"
 	    ;
 
+	static const uint32_t rdp_color_depth_alias[] =
+#include "glsl/rdp.color.depth.alias.16.inc"
+	    ;
+
 	static const uint32_t varying[] =
 #include "glsl/varying.inc"
 	    ;
@@ -879,12 +884,21 @@ void Device::init_rdp_pipelines()
 	    ;
 
 	static const uint32_t *shaders[] = {
-		rdp_8_noz, rdp_16_noz, rdp_32_noz, rdp_8_z, rdp_16_z, rdp_32_z, varying, texture, combiner,
+		rdp_8_noz, rdp_16_noz, rdp_32_noz, rdp_8_z, rdp_16_z, rdp_32_z, rdp_color_depth_alias,
+		varying,   texture,    combiner,
 	};
 
 	static const size_t shader_sizes[] = {
-		sizeof(rdp_8_noz), sizeof(rdp_16_noz), sizeof(rdp_32_noz), sizeof(rdp_8_z),  sizeof(rdp_16_z),
-		sizeof(rdp_32_z),  sizeof(varying),    sizeof(texture),    sizeof(combiner),
+		sizeof(rdp_8_noz),
+		sizeof(rdp_16_noz),
+		sizeof(rdp_32_noz),
+		sizeof(rdp_8_z),
+		sizeof(rdp_16_z),
+		sizeof(rdp_32_z),
+		sizeof(rdp_color_depth_alias),
+		sizeof(varying),
+		sizeof(texture),
+		sizeof(combiner),
 	};
 
 	std::future<void> compilations[RDP::PipelineCount];

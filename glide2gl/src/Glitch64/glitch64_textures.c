@@ -155,17 +155,15 @@ uint32_t grTexCalcMemRequired(int32_t lodmax,
       case GR_TEXFMT_INTENSITY_8: // I8 support - H.Morii
       case GR_TEXFMT_ALPHA_INTENSITY_44:
          return width*height;
-         break;
       case GR_TEXFMT_ARGB_1555:
       case GR_TEXFMT_ARGB_4444:
       case GR_TEXFMT_ALPHA_INTENSITY_88:
       case GR_TEXFMT_RGB_565:
          return (width*height)<<1;
-         break;
       case GR_TEXFMT_ARGB_8888:
          return (width*height)<<2;
-         break;
    }
+
    return 0;
 }
 

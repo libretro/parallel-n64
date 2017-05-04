@@ -100,6 +100,7 @@ extern void (*gln64gSPTransformVertex)(float vtx[4], float mtx[4][4]);
 extern void (*gln64gSPPointLightVertex)(void *_vtx, float * _vPos);
 extern void (*gln64gSPBillboardVertex)(uint32_t v, uint32_t i);
 void gln64gSPSetupFunctions(void);
+void gSPSetupFunctions(void);
 void gln64gSPSetDMATexOffset(uint32_t _addr);
 
 #endif

@@ -8,9 +8,75 @@
 
 void apply_shading(void *data);
 
+// STANDARD DRAWIMAGE - draws a 2d image based on the following structure
+
+float set_sprite_combine_mode(void)
+{
+  float Z;
+  if (((gDP.otherMode.h & RDP_CYCLE_TYPE) >> 20) == G_CYC_COPY)
+  {
+    int32_t color_source;
+
+    rdp.tex           = 1;
+    rdp.allow_combine = 0;
+
+    /* Now actually combine ! */
+    color_source      = GR_COMBINE_FUNCTION_LOCAL;
+    cmb.tmu1_func     = cmb.tmu0_func = color_source;
+    cmb.tmu1_fac      = cmb.tmu0_fac = GR_COMBINE_FACTOR_NONE;
+    cmb.tmu1_a_func   = cmb.tmu0_a_func = GR_COMBINE_FUNCTION_LOCAL;
+    cmb.tmu1_a_fac    = cmb.tmu0_a_fac = GR_COMBINE_FACTOR_NONE;
+    cmb.tmu1_invert   = cmb.tmu0_invert = FXFALSE;
+    cmb.tmu1_a_invert = cmb.tmu0_a_invert = FXFALSE;
+  }
+
+  g_gdp.flags |= UPDATE_COMBINE;
+  update ();
+
+  rdp.allow_combine = 1;
+
+  // set z buffer mode
+  Z = 0.0f;
+  if ((gDP.otherMode.l & 0x00000030) && (((gDP.otherMode.h & RDP_CYCLE_TYPE) >> 20) < G_CYC_COPY))
+  {
+    if (g_gdp.other_modes.z_source_sel == G_ZS_PRIM)
+      Z = g_gdp.prim_color.z;
+    FRDP ("prim_depth = %d, prim_dz = %d\n", g_gdp.prim_color.z, g_gdp.prim_color.dz);
+    Z = ScaleZ(Z);
+
+    if (gDP.otherMode.l & 0x00000400)
+      grDepthBiasLevel(g_gdp.prim_color.dz);
+  }
+
+  grCullMode (GR_CULL_DISABLE);
+  grFogMode (GR_FOG_DISABLE, g_gdp.fog_color.total);
+  g_gdp.flags |= UPDATE_CULL_MODE | UPDATE_FOG_ENABLED;
+
+  if (((gDP.otherMode.h & RDP_CYCLE_TYPE) >> 20) == G_CYC_COPY)
+  {
+    grColorCombine (GR_COMBINE_FUNCTION_SCALE_OTHER,
+      GR_COMBINE_FACTOR_ONE,
+      GR_COMBINE_LOCAL_NONE,
+      GR_COMBINE_OTHER_TEXTURE,
+      FXFALSE);
+    grAlphaCombine (GR_COMBINE_FUNCTION_SCALE_OTHER,
+      GR_COMBINE_FACTOR_ONE,
+      GR_COMBINE_LOCAL_NONE,
+      GR_COMBINE_OTHER_TEXTURE,
+      FXFALSE);
+    grAlphaBlendFunction (GR_BLEND_ONE,
+      GR_BLEND_ZERO,
+      GR_BLEND_ZERO,
+      GR_BLEND_ZERO);
+    grAlphaTestFunction ((gDP.otherMode.l & 1) ? GR_CMP_GEQUAL : GR_CMP_ALWAYS, 0x80, (gDP.otherMode.l & 1) ? 1 : 0);
+    g_gdp.flags |= UPDATE_ALPHA_COMPARE | UPDATE_COMBINE;
+  }
+  return Z;
+}
+
 #define XSCALE(x) ((float)(x)/(1<<18))
 #define YSCALE(y) ((float)(y)/(1<<2))
-#define ZSCALE(z) ((gDP.otherMode.depthSource == G_ZS_PRIM) ? (float)(g_gdp.prim_color.z) : (float)((uint32_t)(z))/0xffff0000)
+#define ZSCALE(z) ((g_gdp.other_modes.z_source_sel == G_ZS_PRIM) ? (float)(g_gdp.prim_color.z) : (float)((uint32_t)(z))/0xffff0000)
 #define PERSP_EN  ((gDP.otherMode.texturePersp))
 #define WSCALE(z) 1.0f/(PERSP_EN? ((float)((uint32_t)(z) + 0x10000)/0xffff0000) : 1.0f)
 #define CSCALE(c) (((c)>0x3ff0000? 0x3ff0000:((c)<0? 0 : (c)))>>18)
@@ -31,6 +97,8 @@ static void glide64gDPLLETriangle(uint32_t w0, uint32_t w1, int shade, int textu
    int32_t dxldy, dxhdy, dxmdy; /* triangle edge inverse-slopes */
 
    uint32_t w2, w3, w4, w5, w6, w7;
+
+   gDP.otherMode.textureDetail = _SHIFTR(w1, 19, 3);
 
    int r = 0xff;
    int g = 0xff;
@@ -684,25 +752,186 @@ void glide64gDPFillRectangle(uint32_t ul_x, uint32_t ul_y, uint32_t lr_x, uint32
       if (((gDP.otherMode.h & RDP_CYCLE_TYPE) >> 20) != G_CYC_FILL)
          Z = set_sprite_combine_mode();
 
-      memset(v, 0, sizeof(VERTEX) * 4);
-
       // Draw the vertices
       v[0].x = (float)s_ul_x;
       v[0].y = (float)s_ul_y;
       v[0].z = Z;
       v[0].q = 1.0f;
+      v[0].b        = 0;
+      v[0].g        = 0;
+      v[0].r        = 0;
+      v[0].a        = 0;
+      v[0].coord[0] = 0;
+      v[0].coord[1] = 0;
+      v[0].coord[2] = 0;
+      v[0].coord[3] = 0;
+      v[0].f        = 0.0f;
+      v[0].u[0]     = 0.0f;
+      v[0].u[1]     = 0.0f;
+      v[0].v[0]     = 0.0f;
+      v[0].v[1]     = 0.0f;
+      v[0].w        = 0.0f;
+      v[0].flags    = 0;
+      v[0].vec[0]   = 0.0f;
+      v[0].vec[1]   = 0.0f;
+      v[0].vec[2]   = 0.0f;
+      v[0].sx       = 0.0f;
+      v[0].sy       = 0.0f;
+      v[0].sz       = 0.0f;
+      v[0].x_w      = 0.0f;
+      v[0].y_w      = 0.0f;
+      v[0].z_w      = 0.0f;
+      v[0].oow      = 0.0f;
+      v[0].u_w[0]   = 0.0f;
+      v[0].u_w[1]   = 0.0f;
+      v[0].v_w[0]            = 0.0f;
+      v[0].v_w[1]            = 0.0f;
+      v[0].not_zclipped      = 0;
+      v[0].screen_translated = 0;
+      v[0].uv_scaled         = 0;
+      v[0].uv_calculated     = 0;
+      v[0].shade_mod         = 0;
+      v[0].color_backup      = 0;
+      v[0].ou                = 0.0f;
+      v[0].ov                = 0.0f;
+      v[0].number            = 0;
+      v[0].scr_off           = 0;
+      v[0].z_off             = 0;
+
       v[1].x = (float)s_lr_x;
       v[1].y = (float)s_ul_y;
       v[1].z = Z;
       v[1].q = 1.0f;
+      v[1].b        = 0;
+      v[1].g        = 0;
+      v[1].r        = 0;
+      v[1].a        = 0;
+      v[1].coord[0] = 0;
+      v[1].coord[1] = 0;
+      v[1].coord[2] = 0;
+      v[1].coord[3] = 0;
+      v[1].f        = 0.0f;
+      v[1].u[0]     = 0.0f;
+      v[1].u[1]     = 0.0f;
+      v[1].v[0]     = 0.0f;
+      v[1].v[1]     = 0.0f;
+      v[1].w        = 0.0f;
+      v[1].flags    = 0;
+      v[1].vec[0]   = 0.0f;
+      v[1].vec[1]   = 0.0f;
+      v[1].vec[2]   = 0.0f;
+      v[1].sx       = 0.0f;
+      v[1].sy       = 0.0f;
+      v[1].sz       = 0.0f;
+      v[1].x_w      = 0.0f;
+      v[1].y_w      = 0.0f;
+      v[1].z_w      = 0.0f;
+      v[1].oow      = 0.0f;
+      v[1].u_w[0]   = 0.0f;
+      v[1].u_w[1]   = 0.0f;
+      v[1].v_w[0]            = 0.0f;
+      v[1].v_w[1]            = 0.0f;
+      v[1].not_zclipped      = 0;
+      v[1].screen_translated = 0;
+      v[1].uv_scaled         = 0;
+      v[1].uv_calculated     = 0;
+      v[1].shade_mod         = 0;
+      v[1].color_backup      = 0;
+      v[1].ou                = 0.0f;
+      v[1].ov                = 0.0f;
+      v[1].number            = 0;
+      v[1].scr_off           = 0;
+      v[1].z_off             = 0;
+
       v[2].x = (float)s_ul_x;
       v[2].y = (float)s_lr_y;
       v[2].z = Z;
       v[2].q = 1.0f;
+      v[2].b        = 0;
+      v[2].g        = 0;
+      v[2].r        = 0;
+      v[2].a        = 0;
+      v[2].coord[0] = 0;
+      v[2].coord[1] = 0;
+      v[2].coord[2] = 0;
+      v[2].coord[3] = 0;
+      v[2].f        = 0.0f;
+      v[2].u[0]     = 0.0f;
+      v[2].u[1]     = 0.0f;
+      v[2].v[0]     = 0.0f;
+      v[2].v[1]     = 0.0f;
+      v[2].w        = 0.0f;
+      v[2].flags    = 0;
+      v[2].vec[0]   = 0.0f;
+      v[2].vec[1]   = 0.0f;
+      v[2].vec[2]   = 0.0f;
+      v[2].sx       = 0.0f;
+      v[2].sy       = 0.0f;
+      v[2].sz       = 0.0f;
+      v[2].x_w      = 0.0f;
+      v[2].y_w      = 0.0f;
+      v[2].z_w      = 0.0f;
+      v[2].oow      = 0.0f;
+      v[2].u_w[0]   = 0.0f;
+      v[2].u_w[1]   = 0.0f;
+      v[2].v_w[0]            = 0.0f;
+      v[2].v_w[1]            = 0.0f;
+      v[2].not_zclipped      = 0;
+      v[2].screen_translated = 0;
+      v[2].uv_scaled         = 0;
+      v[2].uv_calculated     = 0;
+      v[2].shade_mod         = 0;
+      v[2].color_backup      = 0;
+      v[2].ou                = 0.0f;
+      v[2].ov                = 0.0f;
+      v[2].number            = 0;
+      v[2].scr_off           = 0;
+      v[2].z_off             = 0;
+      
       v[3].x = (float)s_lr_x;
       v[3].y = (float)s_lr_y;
       v[3].z = Z;
       v[3].q = 1.0f;
+      v[3].b        = 0;
+      v[3].g        = 0;
+      v[3].r        = 0;
+      v[3].a        = 0;
+      v[3].coord[0] = 0;
+      v[3].coord[1] = 0;
+      v[3].coord[2] = 0;
+      v[3].coord[3] = 0;
+      v[3].f        = 0.0f;
+      v[3].u[0]     = 0.0f;
+      v[3].u[1]     = 0.0f;
+      v[3].v[0]     = 0.0f;
+      v[3].v[1]     = 0.0f;
+      v[3].w        = 0.0f;
+      v[3].flags    = 0;
+      v[3].vec[0]   = 0.0f;
+      v[3].vec[1]   = 0.0f;
+      v[3].vec[2]   = 0.0f;
+      v[3].sx       = 0.0f;
+      v[3].sy       = 0.0f;
+      v[3].sz       = 0.0f;
+      v[3].x_w      = 0.0f;
+      v[3].y_w      = 0.0f;
+      v[3].z_w      = 0.0f;
+      v[3].oow      = 0.0f;
+      v[3].u_w[0]   = 0.0f;
+      v[3].u_w[1]   = 0.0f;
+      v[3].v_w[0]            = 0.0f;
+      v[3].v_w[1]            = 0.0f;
+      v[3].not_zclipped      = 0;
+      v[3].screen_translated = 0;
+      v[3].uv_scaled         = 0;
+      v[3].uv_calculated     = 0;
+      v[3].shade_mod         = 0;
+      v[3].color_backup      = 0;
+      v[3].ou                = 0.0f;
+      v[3].ov                = 0.0f;
+      v[3].number            = 0;
+      v[3].scr_off           = 0;
+      v[3].z_off             = 0;
 
       if (((gDP.otherMode.h & RDP_CYCLE_TYPE) >> 20) == G_CYC_FILL)
       {

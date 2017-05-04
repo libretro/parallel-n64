@@ -27,10 +27,6 @@
 #include "r4300.h"
 #include "recomp.h"
 
-#ifdef COMPARE_CORE
-#include "api/debugger.h"
-#endif
-
 #ifdef DBG
 #include "debugger/dbg_debugger.h"
 #include "debugger/dbg_types.h"
@@ -52,33 +48,29 @@ uint32_t* r4300_cp0_regs(void)
 int check_cop1_unusable(void)
 {
    if (!(g_cp0_regs[CP0_STATUS_REG] & UINT32_C(0x20000000)))
-     {
-    g_cp0_regs[CP0_CAUSE_REG] = (UINT32_C(11) << 2) | UINT32_C(0x10000000);
-    exception_general();
-    return 1;
-     }
+   {
+      g_cp0_regs[CP0_CAUSE_REG] = (UINT32_C(11) << 2) | UINT32_C(0x10000000);
+      exception_general();
+      return 1;
+   }
    return 0;
 }
 
 void cp0_update_count(void)
 {
 #ifdef NEW_DYNAREC
-    if (r4300emu != CORE_DYNAREC)
-    {
+   if (r4300emu != CORE_DYNAREC)
+   {
 #endif
-        g_cp0_regs[CP0_COUNT_REG] += ((PC->addr - last_addr) >> 2) * count_per_op;
-        last_addr = PC->addr;
+      g_cp0_regs[CP0_COUNT_REG] += ((PC->addr - last_addr) >> 2) * count_per_op;
+      last_addr = PC->addr;
 #ifdef NEW_DYNAREC
-    }
+   }
 #endif
 
-#ifdef COMPARE_CORE
-   if (delay_slot)
-     CoreCompareCallback();
-#endif
-/*#ifdef DBG
+#if 0
+#ifdef DBG
    if (g_DebuggerActive && !delay_slot) update_debugger(PC->addr);
 #endif
-*/
+#endif
 }
-

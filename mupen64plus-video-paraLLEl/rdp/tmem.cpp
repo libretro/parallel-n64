@@ -549,8 +549,7 @@ void TMEM::load_tlut(uint32_t w1, uint32_t w2)
 	uint32_t th = (w2 >> 0) & 0xfff;
 
 	// No idea how this works.
-	assert(tl == 0);
-	assert(th == 0);
+	assert(tl == th);
 
 	// Do we offset based on tmem or use sl/sh directly?
 	assert(tile.tmem & 0x100);
@@ -563,7 +562,7 @@ void TMEM::load_tlut(uint32_t w1, uint32_t w2)
 	unsigned length = ((sh - sl) & 0xff) + 1;
 	auto tlut = &tmem[0x100];
 
-	uint32_t addr = texture.offset + sl * 2;
+	uint32_t addr = texture.offset + (sl + (tl >> 2)) * texture.pixel_size;
 	//fprintf(stderr, "TLUT, TMEM: %u, ADDR: %u, LENGTH: %u, SL: %u\n", tile.tmem, addr, length, sl);
 
 	for (unsigned i = 0; i < length; i++)

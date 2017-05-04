@@ -88,4 +88,3 @@ void rsp_dump_end_read_dma(void)
 
    fwrite("ENDDMA  ", 1, 8, file);
 }
-

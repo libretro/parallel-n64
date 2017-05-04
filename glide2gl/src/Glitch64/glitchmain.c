@@ -29,6 +29,8 @@
 #include "../Glide64/rdp.h"
 #include "../../libretro/libretro_private.h"
 
+#include <gfx/gl_capabilities.h>
+
 extern retro_environment_t environ_cb;
 
 int width, height;
@@ -54,12 +56,10 @@ static int isExtensionSupported(const char *extension)
    return 0;
 }
 
-void FindBestDepthBias();
-
 uint32_t grSstWinOpen(void)
 {
    bool ret;
-   struct retro_variable var = { "mupen64-screensize", 0 };
+   struct retro_variable var = { NAME_PREFIX "-screensize", 0 };
 
    if (frameBuffer)
       grSstWinClose(0);
@@ -92,41 +92,25 @@ uint32_t grSstWinOpen(void)
    glViewport(0, 0, width, height);
 
    packed_pixels_support = 0;
+   npot_support          = 0;
+   bgra8888_support      = 0;
    
    // we can assume that non-GLES has GL_EXT_packed_pixels
    // support -it's included since OpenGL 1.2
    if (isExtensionSupported("GL_EXT_packed_pixels") != 0)
       packed_pixels_support = 1;
 
-   if (isExtensionSupported("GL_ARB_texture_non_power_of_two") == 0)
-   {
-      //DISPLAY_WARNING("GL_ARB_texture_non_power_of_two supported.\n");
-      npot_support = 0;
-   }
-   else
+   if (gl_check_capability(GL_CAPS_FULL_NPOT_SUPPORT))
    {
       printf("GL_ARB_texture_non_power_of_two supported.\n");
       npot_support = 1;
    }
 
-   if (isExtensionSupported("GL_ARB_shading_language_100") &&
-         isExtensionSupported("GL_ARB_shader_objects") &&
-         isExtensionSupported("GL_ARB_fragment_shader") &&
-         isExtensionSupported("GL_ARB_vertex_shader"))
-   {}
-
-   if (isExtensionSupported("GL_EXT_texture_format_BGRA8888"))
+   if (gl_check_capability(GL_CAPS_BGRA8888))
    {
       printf("GL_EXT_texture_format_BGRA8888 supported.\n");
       bgra8888_support = 1;
    }
-   else
-   {
-      //DISPLAY_WARNING("GL_EXT_texture_format_BGRA8888 not supported.\n");
-      bgra8888_support = 0;
-   }
-
-   FindBestDepthBias();
 
    init_geometry();
    init_combiner();

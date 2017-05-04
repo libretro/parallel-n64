@@ -150,8 +150,8 @@ void calc_linear (VERTEX *v)
    if (rdp.cur_cache[0])
    {
       // scale >> 6 is size to map to
-      v->ou     = (acosf(x)/3.141592654f) * (gSP.texture.org_scales >> 6);
-      v->ov     = (acosf(y)/3.141592654f) * (gSP.texture.org_scalet >> 6);
+      v->ou     = (acosf(-x)/3.141592654f) * (gSP.texture.org_scales >> 6);
+      v->ov     = (acosf(-y)/3.141592654f) * (gSP.texture.org_scalet >> 6);
    }
    v->uv_scaled = 1;
 }

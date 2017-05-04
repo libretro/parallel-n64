@@ -2,11 +2,13 @@ RSPDIR             = $(ROOT_DIR)/mupen64plus-rsp-hle
 CXD4DIR            = $(ROOT_DIR)/mupen64plus-rsp-cxd4
 CORE_DIR           = $(ROOT_DIR)/mupen64plus-core
 LIBRETRO_COMM_DIR  = $(ROOT_DIR)/libretro-common
+LIBRETRO_DIR       = $(ROOT_DIR)/libretro
 AUDIO_LIBRETRO_DIR = $(CORE_DIR)/src/plugin/audio_libretro
 VIDEODIR_RICE      = $(ROOT_DIR)/gles2rice/src
 VIDEODIR_GLN64     = $(ROOT_DIR)/gles2n64/src
 VIDEODIR_ANGRYLION = $(ROOT_DIR)/mupen64plus-video-angrylion
 VIDEODIR_PARALLEL  = $(ROOT_DIR)/mupen64plus-video-paraLLEl
+RSPDIR_PARALLEL    = $(ROOT_DIR)/mupen64plus-rsp-paraLLEl
 VIDEODIR_GLIDE     = $(ROOT_DIR)/glide2gl/src
 VIDEODIR_GLIDEN64  = $(ROOT_DIR)/mupen64plus-video-gliden64
 
@@ -18,6 +20,7 @@ ifeq ($(HAVE_OPENGL),0)
 	HAVE_GLIDEN64 =0
 	HAVE_RICE     =0
 else
+ifneq ($(platform), vita)
 	HAVE_GLIDE64 = 1
 ifeq ($(GLIDEN64),1)
 	HAVE_GLIDEN64 =1
@@ -27,6 +30,13 @@ else
 	HAVE_GLIDEN64 =0
 endif
 	HAVE_RICE     = 1
+else
+	HAVE_GLIDE64 = 0
+	HAVE_GLN64    = 0
+	HAVE_GLIDEN64 = 0
+	HAVE_RICE     = 0
+endif
+
 INCFLAGS += -I$(VIDEODIR_GLIDE)/Glitch64/inc
 endif
 
@@ -38,7 +48,9 @@ INCFLAGS += \
 	-I$(LIBRETRO_DIR)
 
 # libco
+ifneq ($(platform), emscripten)
 SOURCES_C += $(LIBRETRO_COMM_DIR)/libco/libco.c
+endif
 
 SOURCES_C += $(RSPDIR)/src/alist.c \
     $(RSPDIR)/src/alist_audio.c \
@@ -57,10 +69,9 @@ SOURCES_C += $(CXD4DIR)/rsp.c
 
 ifeq ($(HAVE_RSP_DUMP), 1)
 SOURCES_CXX += $(CXD4DIR)/rsp_dump.cpp
-CFLAGS += -DHAVE_RSP_DUMP
+CFLAGS   += -DHAVE_RSP_DUMP
 CXXFLAGS += -DHAVE_RSP_DUMP
 endif
-
 
 # Core
 SOURCES_C += \
@@ -146,8 +157,9 @@ ifdef WITH_DYNAREC
 ifeq ($(WITH_DYNAREC), arm)
 		DYNAREC_USED = 1
 		SOURCES_C += $(CORE_DIR)/src/r4300/new_dynarec/new_dynarec.c \
-		$(CORE_DIR)/src/r4300/empty_dynarec.c \
-		$(CORE_DIR)/src/r4300/new_dynarec/arm/arm_cpu_features.c
+						 $(CORE_DIR)/src/r4300/new_dynarec/arm/arm_cpu_features.c \
+						 $(CORE_DIR)/src/r4300/new_dynarec/backends/n64/n64.c \
+						 $(CORE_DIR)/src/r4300/empty_dynarec.c
 
 		SOURCES_ASM += \
 			$(CORE_DIR)/src/r4300/new_dynarec/arm/linkage_$(WITH_DYNAREC).S
@@ -177,11 +189,17 @@ else
 endif
 endif
 
+ifeq ($(NATIVE_MARCH), 1)
+	CPUFLAGS += -march=native
+endif
+
 ### VIDEO PLUGINS ###
 
 # Rice
 
 ifeq ($(HAVE_RICE),1)
+CFLAGS   += -DHAVE_RICE
+CXXFLAGS += -DHAVE_RICE
 SOURCES_CXX += $(VIDEODIR_RICE)/Blender.cpp \
 				$(VIDEODIR_RICE)/gSP_rice.cpp \
 				$(VIDEODIR_RICE)/gDP_rice.cpp \
@@ -224,16 +242,39 @@ endif
 SOURCES_C += $(LIBRETRO_DIR)/libretro.c \
 				 $(CORE_DIR)/src/plugin/emulate_game_controller_via_libretro.c \
 				 $(LIBRETRO_COMM_DIR)/memmap/memalign.c \
+				 $(LIBRETRO_COMM_DIR)/encodings/encoding_crc32.c \
 				 $(AUDIO_LIBRETRO_DIR)/audio_backend_libretro.c \
-				 $(AUDIO_LIBRETRO_DIR)/audio_resampler_driver.c \
-				 $(AUDIO_LIBRETRO_DIR)/drivers_resampler/sinc_resampler.c \
-				 $(AUDIO_LIBRETRO_DIR)/drivers_resampler/nearest.c \
-				 $(AUDIO_LIBRETRO_DIR)/drivers_resampler/cc_resampler.c \
+
+ifeq ($(STATIC_LINKING),1)
+else
+SOURCES_C += \
+				 $(LIBRETRO_COMM_DIR)/file/config_file.c \
+				 $(LIBRETRO_COMM_DIR)/file/config_file_userdata.c \
+				 $(LIBRETRO_COMM_DIR)/audio/resampler/audio_resampler.c \
+				 $(LIBRETRO_COMM_DIR)/audio/resampler/drivers/null_resampler.c \
+				 $(LIBRETRO_COMM_DIR)/audio/resampler/drivers/sinc_resampler.c \
+				 $(LIBRETRO_COMM_DIR)/audio/resampler/drivers/nearest_resampler.c \
 				 $(LIBRETRO_COMM_DIR)/compat/compat_strl.c \
-				 $(LIBRETRO_COMM_DIR)/streams/file_stream.c \
-				 $(LIBRETRO_COMM_DIR)/conversion/float_to_s16.c \
-				 $(LIBRETRO_COMM_DIR)/conversion/s16_to_float.c \
+				 $(LIBRETRO_COMM_DIR)/compat/compat_strcasestr.c \
+				 $(LIBRETRO_COMM_DIR)/compat/compat_posix_string.c \
+				 $(LIBRETRO_COMM_DIR)/audio/conversion/float_to_s16.c \
+				 $(LIBRETRO_COMM_DIR)/audio/conversion/s16_to_float.c \
 				 $(LIBRETRO_COMM_DIR)/features/features_cpu.c
+endif
+
+ifeq ($(STATIC_LINKING),1)
+else
+SOURCES_C += $(LIBRETRO_COMM_DIR)/streams/file_stream.c \
+				 $(LIBRETRO_COMM_DIR)/hash/rhash.c \
+				 $(LIBRETRO_COMM_DIR)/lists/string_list.c \
+				 $(LIBRETRO_COMM_DIR)/file/retro_stat.c \
+				 $(LIBRETRO_COMM_DIR)/string/stdstring.c \
+				 $(LIBRETRO_COMM_DIR)/file/file_path.c
+
+ifeq ($(HAVE_OPENGL),1)
+SOURCES_C += $(LIBRETRO_COMM_DIR)/gfx/gl_capabilities.c
+endif
+endif
 
 ifeq ($(WITH_CRC),brumme)
    SOURCES_C += $(LIBRETRO_DIR)/brumme_crc.c
@@ -242,6 +283,8 @@ else
 endif
 
 ifeq ($(HAVE_GLIDEN64),1)
+CFLAGS   += -DHAVE_GLIDEN64
+CXXFLAGS += -DHAVE_GLIDEN64
 SOURCES_C     += $(VIDEODIR_GLN64)/3DMath.c
 SOURCES_CXX   += \
 					 $(VIDEODIR_GLIDEN64)/src/mupenplus/CommonAPIImpl_mupenplus.cpp \
@@ -291,10 +334,12 @@ SOURCES_CXX  += $(VIDEODIR_GLIDEN64)/src/OGL3X/GLSLCombiner_ogl3x.cpp \
 					 $(VIDEODIR_GLIDEN64)/src/OGL3X/UniformBlock.cpp
 endif
 
-SOURCES_CXX +=  $(VIDEODIR_GLIDEN64)/src/CommonPluginAPI.cpp 
+SOURCES_CXX +=  $(VIDEODIR_GLIDEN64)/src/CommonPluginAPI.cpp
 endif
 
 ifeq ($(HAVE_GLN64),1)
+CFLAGS   += -DHAVE_GLN64
+CXXFLAGS += -DHAVE_GLN64
 
 SOURCES_C += $(VIDEODIR_GLN64)/3DMath.c \
             $(VIDEODIR_GLN64)/glN64Config.c \
@@ -331,14 +376,11 @@ SOURCES_C += $(VIDEODIR_GLN64)/3DMath.c \
 endif
 
 ifeq ($(HAVE_NEON),1)
-	SOURCES_ASM	+= $(LIBRETRO_COMM_DIR)/conversion/float_to_s16_neon.S \
-						$(LIBRETRO_COMM_DIR)/conversion/s16_to_float_neon.S \
-						$(AUDIO_LIBRETRO_DIR)/drivers_resampler/sinc_resampler_neon.S \
-						$(AUDIO_LIBRETRO_DIR)/drivers_resampler/cc_resampler_neon.S
+	SOURCES_ASM	+= $(LIBRETRO_COMM_DIR)/audio/conversion/float_to_s16_neon.S \
+						$(LIBRETRO_COMM_DIR)/audio/conversion/s16_to_float_neon.S \
+						$(LIBRETRO_COMM_DIR)/audio/resampler/drivers/sinc_resampler_neon.S
 endif
 
-SOURCES_CXX += $(ROOT_DIR)/Graphics/RSP/gSP_funcs.cpp \
-				 $(ROOT_DIR)/Graphics/RDP/gDP_funcs.cpp
 
 SOURCES_C   += $(ROOT_DIR)/Graphics/RSP/gSP_funcs_C.c \
 					$(ROOT_DIR)/Graphics/RSP/gSP_state.c \
@@ -346,11 +388,16 @@ SOURCES_C   += $(ROOT_DIR)/Graphics/RSP/gSP_funcs_C.c \
 					$(ROOT_DIR)/Graphics/RDP/gDP_state.c \
 					$(ROOT_DIR)/Graphics/RDP/RDP_state.c \
 					$(ROOT_DIR)/Graphics/RSP/RSP_state.c \
-					$(ROOT_DIR)/Graphics/HLE/Microcode/Fast3D.c \
 					$(ROOT_DIR)/Graphics/3dmaths.c \
-					$(ROOT_DIR)/Graphics/plugins.c
+					$(ROOT_DIR)/Graphics/HLE/Microcode/Fast3D.c
+SOURCES_CXX += $(ROOT_DIR)/Graphics/RSP/gSP_funcs.cpp \
+				 $(ROOT_DIR)/Graphics/RDP/gDP_funcs.cpp
+
+SOURCES_C += $(ROOT_DIR)/Graphics/plugins.c
 
 ifeq ($(HAVE_GLIDE64),1)
+CFLAGS   += -DHAVE_GLIDE64
+CXXFLAGS += -DHAVE_GLIDE64
 SOURCES_C += $(VIDEODIR_GLIDE)/Glide64/glide64_3dmath.c \
             $(VIDEODIR_GLIDE)/Glide64/Framebuffer_glide64.c \
             $(VIDEODIR_GLIDE)/Glide64/Glide64_Ini.c \
@@ -377,7 +424,9 @@ SOURCES_C +=  $(VIDEODIR_ANGRYLION)/n64video_main.c \
 						  $(VIDEODIR_ANGRYLION)/n64video_vi.c \
 						  $(VIDEODIR_ANGRYLION)/n64video.c
 
-ifeq ($(HAVE_VULKAN),1)
+ifeq ($(HAVE_PARALLEL),1)
+CFLAGS   += -DHAVE_PARALLEL
+CXXFLAGS += -DHAVE_PARALLEL
 ### Tiny Tigers's LLE renderer ###
 	SOURCES_CXX += \
 					$(VIDEODIR_PARALLEL)/parallel.cpp \
@@ -389,16 +438,55 @@ ifeq ($(HAVE_VULKAN),1)
 					$(VIDEODIR_PARALLEL)/rdp/tmem.cpp \
 					$(VIDEODIR_PARALLEL)/rdp/rdp.cpp \
 					$(VIDEODIR_PARALLEL)/rdp/vulkan_symbol_wrapper.cpp
+
+ifeq ($(HAVE_RDP_DUMP), 1)
 	SOURCES_C += $(VIDEODIR_PARALLEL)/rdp_dump.c
-	ONLY_VULKAN=1
-	CFLAGS += -DHAVE_VULKAN=1
-	CXXFLAGS += -DHAVE_VULKAN=1
+	CFLAGS   += -DHAVE_RDP_DUMP
+	CXXFLAGS += -DHAVE_RDP_DUMP
+endif
+
 	LDFLAGS += -pthread
 endif
 
-ifeq ($(ONLY_VULKAN),1)
-CFLAGS   += -DONLY_VULKAN
-CXXFLAGS += -DONLY_VULKAN
+ifeq ($(HAVE_PARALLEL_RSP), 1)
+### Tiny Tiger's LLE RSP JIT ###
+   PARALLEL_RSP_ARCH := x86_64
+   SOURCES_CXX += \
+				$(RSPDIR_PARALLEL)/parallel.cpp \
+				$(RSPDIR_PARALLEL)/rsp.cpp \
+				$(wildcard $(RSPDIR_PARALLEL)/rsp/*.cpp) \
+				$(wildcard $(RSPDIR_PARALLEL)/arch/$(PARALLEL_RSP_ARCH)/rsp/*.cpp)
+	CXXFLAGS += -I$(RSPDIR_PARALLEL)/arch/$(PARALLEL_RSP_ARCH)/rsp
+	CFLAGS += -DHAVE_PARALLEL_RSP -DPARALLEL_INTEGRATION
+	CXXFLAGS += -DHAVE_PARALLEL_RSP -DPARALLEL_INTEGRATION
+ifeq ($(DEBUG_JIT), 1)
+	CXXFLAGS += -DDEBUG_JIT
+	SOURCES_CXX += $(RSPDIR_PARALLEL)/debug_jit.cpp
+else
+	SOURCES_CXX += $(RSPDIR_PARALLEL)/jit.cpp
+endif
+ifeq ($(INTENSE_DEBUG), 1)
+	CFLAGS += -DINTENSE_DEBUG
+	CXXFLAGS += -DINTENSE_DEBUG
+endif
+LDFLAGS += -lclangFrontend \
+			  -lclangSerialization \
+			  -lclangDriver \
+			  -lclangCodeGen \
+			  -lclangParse \
+			  -lclangSema \
+			  -lclangStaticAnalyzerFrontend \
+			  -lclangStaticAnalyzerCheckers \
+			  -lclangStaticAnalyzerCore \
+			  -lclangAnalysis \
+			  -lclangRewriteFrontend \
+			  -lclangRewrite \
+			  -lclangEdit \
+			  -lclangAST \
+			  -lclangLex \
+			  -lclangBasic
+LDFLAGS += $(shell llvm-config --ldflags --libs --system-libs)
+
 endif
 
 ifeq ($(HAVE_OPENGL),1)

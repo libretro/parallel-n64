@@ -29,6 +29,8 @@ struct OtherModes
 	bool alpha_cvg_select;
 	bool sample_type;
 	bool lod_enable;
+	bool lod_sharpen;
+	bool lod_detail;
 };
 
 class Frontend

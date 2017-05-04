@@ -50,7 +50,9 @@
   #define isnan _isnan
 #else
   #define M64P_FPU_INLINE static inline
+#ifndef VITA
   #include <fenv.h>
+#endif
 #endif
 
 #define FCR31_CMP_BIT UINT32_C(0x800000)
@@ -58,20 +60,24 @@
 
 M64P_FPU_INLINE void set_rounding(void)
 {
-  switch(FCR31 & 3) {
-  case 0: /* Round to nearest, or to even if equidistant */
-    fesetround(FE_TONEAREST);
-    break;
-  case 1: /* Truncate (toward 0) */
-    fesetround(FE_TOWARDZERO);
-    break;
-  case 2: /* Round up (toward +Inf) */
-    fesetround(FE_UPWARD);
-    break;
-  case 3: /* Round down (toward -Inf) */
-    fesetround(FE_DOWNWARD);
-    break;
-  }
+   /* TODO skogaby: fix this for real */
+#ifndef VITA
+   switch(FCR31 & 3)
+   {
+      case 0: /* Round to nearest, or to even if equidistant */
+         fesetround(FE_TONEAREST);
+         break;
+      case 1: /* Truncate (toward 0) */
+         fesetround(FE_TOWARDZERO);
+         break;
+      case 2: /* Round up (toward +Inf) */
+         fesetround(FE_UPWARD);
+         break;
+      case 3: /* Round down (toward -Inf) */
+         fesetround(FE_DOWNWARD);
+         break;
+   }
+#endif
 }
 
 M64P_FPU_INLINE void cvt_s_w(const int32_t *source,float *dest)

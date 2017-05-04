@@ -133,6 +133,8 @@ typedef struct {
 static int render_cycle_mode_counts[4];
 #endif
 
+int32_t irand(void);
+
 static int8_t get_dither_noise_type;
 static int scfield;
 static int sckeepodd;
@@ -195,7 +197,7 @@ static int16_t *blender2b_a[2];
 
 #define COLOR_ASSIGN(col0, col1) col0 = col1
 
-#define TRELATIVE(x, y)     ((x) - ((y) << 3));
+#define TRELATIVE(x, y) 	((x) - ((y) << 3))
 #define UPPER ((sfrac + tfrac) & 0x20)
 
 static int32_t k0_tf = 0, k1_tf = 0, k2_tf = 0, k3_tf = 0;
@@ -590,42 +592,36 @@ static STRICTINLINE void tcclamp_cycle(int32_t* S, int32_t* T, int32_t* SFRAC, i
     int32_t locs = *S, loct = *T;
     if (tile[num].f.clampens)
     {
-        if (!(locs & 0x10000))
-        {
-            if (!maxs)
-                *S = (locs >> 5);
-            else
-            {
-                *S = tile[num].f.clampdiffs;
-                *SFRAC = 0;
-            }
-        }
-        else
-        {
-            *S = 0;
-            *SFRAC = 0;
-        }
+       if (maxs)
+       {
+          *S = tile[num].f.clampdiffs;
+          *SFRAC = 0;
+       }
+       else if (!(locs & 0x10000))
+          *S = locs >> 5;
+       else
+       {
+          *S = 0;
+          *SFRAC = 0;
+       }
     }
     else
         *S = (locs >> 5);
 
     if (tile[num].f.clampent)
     {
-        if (!(loct & 0x10000))
-        {
-            if (!maxt)
-                *T = (loct >> 5);
-            else
-            {
-                *T = tile[num].f.clampdifft;
-                *TFRAC = 0;
-            }
-        }
-        else
-        {
-            *T = 0;
-            *TFRAC = 0;
-        }
+       if (maxt)
+       {
+          *T = tile[num].f.clampdifft;
+          *TFRAC = 0;
+       }
+       else if (!(loct & 0x10000))
+          *T = loct >> 5;
+       else
+       {
+          *T = 0;
+          *TFRAC = 0;
+       }
     }
     else
         *T = (loct >> 5);
@@ -636,30 +632,24 @@ static STRICTINLINE void tcclamp_cycle_light(int32_t* S, int32_t* T, int32_t max
     int32_t locs = *S, loct = *T;
     if (tile[num].f.clampens)
     {
-        if (!(locs & 0x10000))
-        {
-            if (!maxs)
-                *S = (locs >> 5);
-            else
-                *S = tile[num].f.clampdiffs;
-        }
-        else
-            *S = 0;
+       if (maxs)
+          *S = tile[num].f.clampdiffs;
+       else if (!(locs & 0x10000))
+          *S = locs >> 5;
+       else
+          *S = 0;
     }
     else
         *S = (locs >> 5);
 
     if (tile[num].f.clampent)
     {
-        if (!(loct & 0x10000))
-        {
-            if (!maxt)
-                *T = (loct >> 5);
-            else
-                *T = tile[num].f.clampdifft;
-        }
-        else
-            *T = 0;
+       if (maxt)
+          *T = tile[num].f.clampdifft;
+       else if (!(loct & 0x10000))
+          *T = loct >> 5;
+       else
+          *T = 0;
     }
     else
         *T = (loct >> 5);
@@ -2079,7 +2069,7 @@ int blender_2cycle(uint32_t* fr, uint32_t* fg, uint32_t* fb, int dith, uint32_t 
 
 static void fetch_texel(COLOR *color, int s, int t, uint32_t tilenum)
 {
-    uint32_t tbase = tile[tilenum].line * t + tile[tilenum].tmem;
+    uint32_t tbase = tile[tilenum].line * (t & 0xff) + tile[tilenum].tmem;
     
 
     uint32_t tpal    = tile[tilenum].palette;
@@ -2368,7 +2358,7 @@ static void fetch_texel(COLOR *color, int s, int t, uint32_t tilenum)
 
 static void fetch_texel_entlut(COLOR *color, int s, int t, uint32_t tilenum)
 {
-    uint32_t tbase = tile[tilenum].line * t + tile[tilenum].tmem;
+    uint32_t tbase = tile[tilenum].line * (t & 0xff) + tile[tilenum].tmem;
     uint32_t tpal    = tile[tilenum].palette << 4;
     uint16_t *tc16 = (uint16_t*)__TMEM;
     uint32_t taddr = 0;
@@ -2466,8 +2456,8 @@ static void fetch_texel_entlut(COLOR *color, int s, int t, uint32_t tilenum)
 static void fetch_texel_quadro(COLOR *color0, COLOR *color1, COLOR *color2, COLOR *color3, int s0, int s1, int t0, int t1, uint32_t tilenum)
 {
 
-    uint32_t tbase0 = tile[tilenum].line * t0 + tile[tilenum].tmem;
-    uint32_t tbase2 = tile[tilenum].line * t1 + tile[tilenum].tmem;
+    uint32_t tbase0 = tile[tilenum].line * (t0 & 0xff) + tile[tilenum].tmem;
+    uint32_t tbase2 = tile[tilenum].line * (t1 & 0xff) + tile[tilenum].tmem;
     uint32_t tpal    = tile[tilenum].palette;
     uint32_t xort = 0, ands = 0;
 
@@ -3252,8 +3242,8 @@ static void fetch_texel_quadro(COLOR *color0, COLOR *color1, COLOR *color2, COLO
 
 static void fetch_texel_entlut_quadro(COLOR *color0, COLOR *color1, COLOR *color2, COLOR *color3, int s0, int s1, int t0, int t1, uint32_t tilenum)
 {
-    uint32_t tbase0 = tile[tilenum].line * t0 + tile[tilenum].tmem;
-    uint32_t tbase2 = tile[tilenum].line * t1 + tile[tilenum].tmem;
+    uint32_t tbase0 = tile[tilenum].line * (t0 & 0xff) + tile[tilenum].tmem;
+    uint32_t tbase2 = tile[tilenum].line * (t1 & 0xff) + tile[tilenum].tmem;
     uint32_t tpal    = tile[tilenum].palette << 4;
     uint32_t xort = 0, ands = 0;
 
@@ -3933,16 +3923,7 @@ static void texture_pipeline_cycle(COLOR* TEX, COLOR* prev, int32_t SSS, int32_t
             else
                 fetch_texel_entlut(&t0, sss1, sst1, tilenum);
             if (convert)
-            {
                 t0 = *prev;
-            }
-
-            if (tile[tilenum].format == FORMAT_YUV)
-            {
-               COLOR_RED(t0)   = SIGN(COLOR_RED(t0), 9);
-               COLOR_GREEN(t0) = SIGN(COLOR_GREEN(t0), 9);
-            }
-
 
             COLOR_RED_PTR(TEX) = COLOR_BLUE(t0) + ((k0_tf * COLOR_GREEN(t0) + 0x80) >> 8);
             COLOR_GREEN_PTR(TEX) = COLOR_BLUE(t0) + ((k1_tf * COLOR_RED(t0) + k2_tf * COLOR_GREEN(t0) + 0x80) >> 8);
@@ -3975,7 +3956,10 @@ static void texture_pipeline_cycle(COLOR* TEX, COLOR* prev, int32_t SSS, int32_t
         {
             if (!convert)
             {
-                *TEX = t0;
+               COLOR_RED_PTR(TEX)   = COLOR_RED(t0)   & 0x1ff;
+               COLOR_GREEN_PTR(TEX) = COLOR_GREEN(t0) & 0x1ff;
+               COLOR_BLUE_PTR(TEX)  = COLOR_BLUE(t0);
+               COLOR_ALPHA_PTR(TEX) = COLOR_ALPHA(t0);
             }
             else
                 COLOR_RED_PTR(TEX) = COLOR_GREEN_PTR(TEX) = COLOR_BLUE_PTR(TEX) = COLOR_ALPHA_PTR(TEX) = COLOR_BLUE_PTR(prev);
@@ -3983,16 +3967,8 @@ static void texture_pipeline_cycle(COLOR* TEX, COLOR* prev, int32_t SSS, int32_t
         else
         {
             if (convert)
-            {
                 t0 = *prev;
-            }
             
-            if (tile[tilenum].format == FORMAT_YUV)
-            {
-               COLOR_RED(t0)   = SIGN(COLOR_RED(t0), 9); 
-               COLOR_GREEN(t0) = SIGN(COLOR_GREEN(t0), 9);
-            }
-
             COLOR_RED_PTR(TEX) = COLOR_BLUE(t0) + ((k0_tf * COLOR_GREEN(t0) + 0x80) >> 8);
             COLOR_GREEN_PTR(TEX) = COLOR_BLUE(t0) + ((k1_tf * COLOR_RED(t0) + k2_tf * COLOR_GREEN(t0) + 0x80) >> 8);
             COLOR_BLUE_PTR(TEX) = COLOR_BLUE(t0) + ((k3_tf * COLOR_RED(t0) + 0x80) >> 8);
@@ -4181,13 +4157,6 @@ static STRICTINLINE void compute_cvg_flip(int32_t scanline)
                cvgbuf[k] &= ~fmaskshifted;
             for (k = minorcurint; k <= purgeend; k++)
                cvgbuf[k] &= ~fmaskshifted;
-
-
-
-
-
-
-
 
 
             if (minorcurint > majorcurint)
@@ -4549,40 +4518,78 @@ static STRICTINLINE void get_texel1_1cycle(int32_t* s1, int32_t* t1, int32_t s, 
 
 STRICTINLINE void lodfrac_lodtile_signals(int lodclamp, int32_t lod, uint32_t* l_tile, uint32_t* magnify, uint32_t* distant)
 {
-    uint32_t ltil, dis, mag;
-    int32_t lf;
+   uint32_t ltil, dis, mag;
+   int32_t lf;
 
-    
-    if ((lod & 0x4000) || lodclamp)
-        lod = 0x7fff;
-    else if (lod < min_level)
-        lod = min_level;
-                        
-    mag = (lod < 32) ? 1: 0;
-    ltil=  log2table[(lod >> 5) & 0xff];
-    dis = ((lod & 0x6000) || (ltil >= max_level)) ? 1 : 0;
-                        
-    lf = ((lod << 3) >> ltil) & 0xff;
+   if ((lod & 0x4000) || lodclamp)
+   {
+      mag = 0;
+      ltil = 7;
+      dis = 1;
+      lf = 0xff;
+   }
+   else if (lod < min_level)
+   {
+      mag = 1;
+      ltil = 0;
+      dis = max_level ? 0 : 1;
 
-    
-    if(!other_modes.sharpen_tex_en && !other_modes.detail_tex_en)
-    {
-        if (dis)
+      if(!other_modes.sharpen_tex_en && !other_modes.detail_tex_en)
+      {
+         if (dis)
             lf = 0xff;
-        else if (mag)
+         else
             lf = 0;
-    }
+      }
+      else
+      {
+         lf = min_level << 3;
+         if (other_modes.sharpen_tex_en)
+            lf |= 0x100;
+      }
+   }
+   else if (lod < 32)
+   {
+      mag = 1;
+      ltil = 0;
+      dis = max_level ? 0 : 1;
 
-    
-    
+      if(!other_modes.sharpen_tex_en && !other_modes.detail_tex_en)
+      {
+         if (dis)
+            lf = 0xff;
+         else
+            lf = 0;
+      }
+      else
+      {
+         lf = lod << 3;
+         if (other_modes.sharpen_tex_en)
+            lf |= 0x100;
+      }
+   }
+   else
+   {
+      mag = 0;
+      ltil =  log2table[(lod >> 5) & 0xff];
 
-    if(other_modes.sharpen_tex_en && mag)
-        lf |= 0x100;
+      if (max_level)
+         dis = ((lod & 0x6000) || (ltil >= max_level)) ? 1 : 0;
+      else
+         dis = 1;
 
-    *distant = dis;
-    *l_tile = ltil;
-    *magnify = mag;
-    lod_frac = lf;
+
+      if(!other_modes.sharpen_tex_en && !other_modes.detail_tex_en && dis)
+         lf = 0xff;
+      else
+         lf = ((lod << 3) >> ltil) & 0xff;
+   }
+
+   *distant = dis;
+   *l_tile = ltil;
+   *magnify = mag;
+   /* TODO/FIXME - needs to be changed to lfdst param */
+   lod_frac = lf;
 }
 
 static STRICTINLINE void tclod_4x17_to_15(int32_t scurr, int32_t snext, int32_t tcurr, int32_t tnext, int32_t previous, int32_t* lod)
@@ -4713,10 +4720,8 @@ static void tclod_1cycle_current(int32_t* sss, int32_t* sst, int32_t nexts, int3
 
         lodclamp = (fart & 0x60000) || (nextt & 0x60000) || (fars & 0x60000) || (nexts & 0x60000);
         
-        
-
-        
-        tclod_4x17_to_15(nexts, fars, nextt, fart, 0, &lod);
+        if (!lodclamp)
+           tclod_4x17_to_15(nexts, fars, nextt, fart, 0, &lod);
 
         lodfrac_lodtile_signals(lodclamp, lod, &l_tile, &magnify, &distant);
     
@@ -4798,7 +4803,8 @@ static void tclod_1cycle_current_simple(int32_t* sss, int32_t* sst, int32_t s, i
 
         lodclamp = (fart & 0x60000) || (nextt & 0x60000) || (fars & 0x60000) || (nexts & 0x60000);
 
-        tclod_4x17_to_15(nexts, fars, nextt, fart, 0, &lod);
+        if (!lodclamp)
+           tclod_4x17_to_15(nexts, fars, nextt, fart, 0, &lod);
 
         lodfrac_lodtile_signals(lodclamp, lod, &l_tile, &magnify, &distant);
     
@@ -4866,27 +4872,42 @@ static void tclod_1cycle_next(int32_t* sss, int32_t* sst, int32_t s, int32_t t, 
             }
             else
             {
-               if (!sigs->onelessthanmid)
-                {
-                    nexts = span[nextscan].stwz[0] + dsinc;
-                    nextt = span[nextscan].stwz[1] + dtinc;
-                    nextsw = span[nextscan].stwz[2] + dwinc;
-                    fart = (nextt + dtinc) >> 16;
-                    fars = (nexts + dsinc) >> 16;
-                    farsw = (nextsw + dwinc) >> 16;
-                    nextt >>= 16;
-                    nexts >>= 16;
-                    nextsw >>= 16;
-                }
-                else
-                {
-                    nextsw = (w + dwinc) >> 16;
-                    nexts = (s + dsinc) >> 16;
-                    nextt = (t + dtinc) >> 16;
-                    farsw = (w - dwinc) >> 16;
-                    fars = (s - dsinc) >> 16;
-                    fart = (t - dtinc) >> 16;
-                }
+               if (sigs->longspan)
+               {
+                  nextt  = (span[nextscan].stwz[1] + dtinc) >> 16;
+                  nexts  = (span[nextscan].stwz[0] + dsinc) >> 16;
+                  nextsw = (span[nextscan].stwz[2] + dwinc) >> 16;
+                  fart   = (span[nextscan].stwz[1] + (dtinc << 1)) >> 16;
+                  fars   = (span[nextscan].stwz[0] + (dsinc << 1)) >> 16;
+                  farsw  = (span[nextscan].stwz[2] + (dwinc << 1)) >> 16;
+               }
+               else if (sigs->midspan)
+               {
+                  nextt  = span[nextscan].stwz[1] >> 16;
+                  nexts  = span[nextscan].stwz[0] >> 16;
+                  nextsw = span[nextscan].stwz[2] >> 16;
+                  fart   = (span[nextscan].stwz[1] + dtinc) >> 16;
+                  fars   = (span[nextscan].stwz[0] + dsinc) >> 16;
+                  farsw  = (span[nextscan].stwz[2] + dwinc) >> 16;
+               }
+               else if (sigs->onelessthanmid)
+               {
+                  nextsw = (w + dwinc) >> 16;
+                  nexts = (s + dsinc) >> 16;
+                  nextt = (t + dtinc) >> 16;
+                  farsw = (w - dwinc) >> 16;
+                  fars = (s - dsinc) >> 16;
+                  fart = (t - dtinc) >> 16;
+               }
+               else
+               {
+                  nextt  = (t + dtinc) >> 16;
+                  nexts  = (s + dsinc) >> 16;
+                  nextsw = (w + dwinc) >> 16;
+                  fart   = (t + (dtinc << 1)) >> 16;
+                  fars   = (s + (dsinc << 1)) >> 16;
+                  farsw  = (w + (dwinc << 1)) >> 16;
+               }
             }
         }
         else
@@ -4904,8 +4925,8 @@ static void tclod_1cycle_next(int32_t* sss, int32_t* sst, int32_t s, int32_t t, 
 
         lodclamp = (fart & 0x60000) || (nextt & 0x60000) || (fars & 0x60000) || (nexts & 0x60000);
         
-        
-        tclod_4x17_to_15(nexts, fars, nextt, fart, 0, &lod);
+        if (!lodclamp)
+           tclod_4x17_to_15(nexts, fars, nextt, fart, 0, &lod);
 
         
         if ((lod & 0x4000) || lodclamp)
@@ -5114,6 +5135,7 @@ static void render_spans_1cycle_complete(int start, int end, int tilenum, int fl
 
         if (scdiff)
         {
+           scdiff &= 0xfff;
             r += (drinc * scdiff);
             g += (dginc * scdiff);
             b += (dbinc * scdiff);
@@ -5300,6 +5322,7 @@ static void render_spans_1cycle_notexel1(int start, int end, int tilenum, int fl
 
         if (scdiff)
         {
+           scdiff &= 0xfff;
             r += (drinc * scdiff);
             g += (dginc * scdiff);
             b += (dbinc * scdiff);
@@ -5468,6 +5491,7 @@ static void render_spans_1cycle_notex(int start, int end, int tilenum, int flip)
 
         if (scdiff)
         {
+           scdiff &= 0xfff;
             r += (drinc * scdiff);
             g += (dginc * scdiff);
             b += (dbinc * scdiff);
@@ -5567,11 +5591,11 @@ static void tclod_2cycle_current(int32_t* sss, int32_t* sst, int32_t nexts, int3
 
         lodclamp = (initt & 0x60000) || (nextt & 0x60000) || (inits & 0x60000) || (nexts & 0x60000) || (nextys & 0x60000) || (nextyt & 0x60000);
         
-        
-
-        
-        tclod_4x17_to_15(inits, nexts, initt, nextt, 0, &lod);
-        tclod_4x17_to_15(inits, nextys, initt, nextyt, lod, &lod);
+        if (!lodclamp)
+        {
+           tclod_4x17_to_15(inits, nexts, initt, nextt, 0, &lod);
+           tclod_4x17_to_15(inits, nextys, initt, nextyt, lod, &lod);
+        }
 
         lodfrac_lodtile_signals(lodclamp, lod, &l_tile, &magnify, &distant);
 
@@ -5631,8 +5655,11 @@ static void tclod_2cycle_current_simple(int32_t* sss, int32_t* sst, int32_t s, i
 
         lodclamp = (initt & 0x60000) || (nextt & 0x60000) || (inits & 0x60000) || (nexts & 0x60000) || (nextys & 0x60000) || (nextyt & 0x60000);
 
-        tclod_4x17_to_15(inits, nexts, initt, nextt, 0, &lod);
-        tclod_4x17_to_15(inits, nextys, initt, nextyt, lod, &lod);
+        if (!lodclamp)
+        {
+           tclod_4x17_to_15(inits, nexts, initt, nextt, 0, &lod);
+           tclod_4x17_to_15(inits, nextys, initt, nextyt, lod, &lod);
+        }
 
         lodfrac_lodtile_signals(lodclamp, lod, &l_tile, &magnify, &distant);
     
@@ -5691,8 +5718,11 @@ static void tclod_2cycle_current_notexel1(int32_t* sss, int32_t* sst, int32_t s,
 
         lodclamp = (initt & 0x60000) || (nextt & 0x60000) || (inits & 0x60000) || (nexts & 0x60000) || (nextys & 0x60000) || (nextyt & 0x60000);
 
-        tclod_4x17_to_15(inits, nexts, initt, nextt, 0, &lod);
-        tclod_4x17_to_15(inits, nextys, initt, nextyt, lod, &lod);
+        if (!lodclamp)
+        {
+           tclod_4x17_to_15(inits, nexts, initt, nextt, 0, &lod);
+           tclod_4x17_to_15(inits, nextys, initt, nextyt, lod, &lod);
+        }
 
         lodfrac_lodtile_signals(lodclamp, lod, &l_tile, &magnify, &distant);
     
@@ -5736,8 +5766,11 @@ static void tclod_2cycle_next(int32_t* sss, int32_t* sst, int32_t s, int32_t t, 
     
         lodclamp = (initt & 0x60000) || (nextt & 0x60000) || (inits & 0x60000) || (nexts & 0x60000) || (nextys & 0x60000) || (nextyt & 0x60000);
 
-        tclod_4x17_to_15(inits, nexts, initt, nextt, 0, &lod);
-        tclod_4x17_to_15(inits, nextys, initt, nextyt, lod, &lod);
+        if (!lodclamp)
+        {
+           tclod_4x17_to_15(inits, nexts, initt, nextt, 0, &lod);
+           tclod_4x17_to_15(inits, nextys, initt, nextyt, lod, &lod);
+        }
 
         
         if ((lod & 0x4000) || lodclamp)
@@ -5908,6 +5941,7 @@ static void render_spans_2cycle_complete(int start, int end, int tilenum, int fl
 
         if (scdiff)
         {
+           scdiff &= 0xfff;
             r += (drinc * scdiff);
             g += (dginc * scdiff);
             b += (dbinc * scdiff);
@@ -6095,6 +6129,7 @@ static void render_spans_2cycle_notexelnext(int start, int end, int tilenum, int
 
         if (scdiff)
         {
+           scdiff &= 0xfff;
             r += (drinc * scdiff);
             g += (dginc * scdiff);
             b += (dbinc * scdiff);
@@ -6276,6 +6311,7 @@ static void render_spans_2cycle_notexel1(int start, int end, int tilenum, int fl
 
         if (scdiff)
         {
+           scdiff &= 0xfff;
             r += (drinc * scdiff);
             g += (dginc * scdiff);
             b += (dbinc * scdiff);
@@ -6449,6 +6485,7 @@ static void render_spans_2cycle_notex(int start, int end, int tilenum, int flip)
 
         if (scdiff)
         {
+           scdiff &= 0xfff;
             r += (drinc * scdiff);
             g += (dginc * scdiff);
             b += (dbinc * scdiff);
@@ -6725,7 +6762,8 @@ static void tclod_copy(int32_t* sss, int32_t* sst, int32_t s, int32_t t, int32_t
 
         lodclamp = (fart & 0x60000) || (nextt & 0x60000) || (fars & 0x60000) || (nexts & 0x60000);
 
-        tclod_4x17_to_15(nexts, fars, nextt, fart, 0, &lod);
+        if (!lodclamp)
+           tclod_4x17_to_15(nexts, fars, nextt, fart, 0, &lod);
 
         if ((lod & 0x4000) || lodclamp)
             lod = 0x7fff;
@@ -7416,16 +7454,12 @@ static void tile_tlut_common_cs_decoder(uint32_t w1, uint32_t w2)
     edgewalker_for_loads(lewdata);
 }
 
-STRICTINLINE int32_t irand(void)
+int32_t irand(void)
 {
     iseed *= 0x343fd;
     iseed += 0x269ec3;
     return ((iseed >> 16) & 0x7fff);
 }
-
-
-
-
 
 void rdp_close(void)
 {
@@ -8337,22 +8371,29 @@ no_read_zbuffer_coefficients:
         d_stwz_dyh[2]             = stw_info->d_stwz_dy[2] & ~0x000001FF;
         d_stwz_dyh[3]             = stw_info->d_stwz_dy[3] & ~0x000001FF;
 
-        stw_info->d_rgba_diff[0]  = d_rgba_deh[0] - d_rgba_dyh[0];
-        stw_info->d_rgba_diff[1]  = d_rgba_deh[1] - d_rgba_dyh[1];
-        stw_info->d_rgba_diff[2]  = d_rgba_deh[2] - d_rgba_dyh[2];
-        stw_info->d_rgba_diff[3]  = d_rgba_deh[3] - d_rgba_dyh[3];
-        stw_info->d_rgba_diff[0] -= (stw_info->d_rgba_diff[0] >> 2);
-        stw_info->d_rgba_diff[1] -= (stw_info->d_rgba_diff[1] >> 2);
-        stw_info->d_rgba_diff[2] -= (stw_info->d_rgba_diff[2] >> 2);
-        stw_info->d_rgba_diff[3] -= (stw_info->d_rgba_diff[3] >> 2);
-        stw_info->d_stwz_diff[0]  = d_stwz_deh[0] - d_stwz_dyh[0];
-        stw_info->d_stwz_diff[1]  = d_stwz_deh[1] - d_stwz_dyh[1];
-        stw_info->d_stwz_diff[2]  = d_stwz_deh[2] - d_stwz_dyh[2];
-        stw_info->d_stwz_diff[3]  = d_stwz_deh[3] - d_stwz_dyh[3];
-        stw_info->d_stwz_diff[0] -= (stw_info->d_stwz_diff[0] >> 2);
-        stw_info->d_stwz_diff[1] -= (stw_info->d_stwz_diff[1] >> 2);
-        stw_info->d_stwz_diff[2] -= (stw_info->d_stwz_diff[2] >> 2);
-        stw_info->d_stwz_diff[3] -= (stw_info->d_stwz_diff[3] >> 2);
+        stw_info->d_rgba_diff[0]  = d_rgba_deh[0] - (d_rgba_deh[0] >> 2) -
+           d_rgba_dyh[0] + (d_rgba_dyh[0] >> 2);
+
+        stw_info->d_rgba_diff[1]  = d_rgba_deh[1] - (d_rgba_deh[1] >> 2) -
+           d_rgba_dyh[1] + (d_rgba_dyh[1] >> 2);
+
+        stw_info->d_rgba_diff[2]  = d_rgba_deh[2] - (d_rgba_deh[2] >> 2) -
+           d_rgba_dyh[2] + (d_rgba_dyh[2] >> 2);
+
+        stw_info->d_rgba_diff[3]  = d_rgba_deh[3] - (d_rgba_deh[3] >> 2) -
+           d_rgba_dyh[3] + (d_rgba_dyh[3] >> 2);
+
+        stw_info->d_stwz_diff[0]  = d_stwz_deh[0] - (d_stwz_deh[0] >> 2) -
+           d_stwz_dyh[0] + (d_stwz_dyh[0] >> 2);
+
+        stw_info->d_stwz_diff[1]  = d_stwz_deh[1] - (d_stwz_deh[1] >> 2) -
+           d_stwz_dyh[1] + (d_stwz_dyh[1] >> 2);
+
+        stw_info->d_stwz_diff[2]  = d_stwz_deh[2] - (d_stwz_deh[2] >> 2) -
+           d_stwz_dyh[2] + (d_stwz_dyh[2] >> 2);
+
+        stw_info->d_stwz_diff[3]  = d_stwz_deh[3] - (d_stwz_deh[3] >> 2) -
+           d_stwz_dyh[3] + (d_stwz_dyh[3] >> 2);
     }
 
     if (other_modes.cycle_type == CYCLE_TYPE_COPY)
@@ -8472,83 +8513,82 @@ no_read_zbuffer_coefficients:
             }
 
             if (spix == ldflag)
+            {
 #ifdef USE_SSE_SUPPORT
-            {
-                __m128i xmm_frac;
-                __m128i delta_x_high, delta_diff;
-                __m128i prod_hi, prod_lo;
-                __m128i result;
+               __m128i xmm_frac;
+               __m128i delta_x_high, delta_diff;
+               __m128i prod_hi, prod_lo;
+               __m128i result;
 
-                span[j].unscrx  =  (stw_info->xlr[1]) >> 16;
-                stw_info->xfrac = (stw_info->xlr[1] >> 8) & 0xFF;
-                xmm_frac        = _mm_set1_epi32(stw_info->xfrac);
+               span[j].unscrx  =  (stw_info->xlr[1]) >> 16;
+               stw_info->xfrac = (stw_info->xlr[1] >> 8) & 0xFF;
+               xmm_frac        = _mm_set1_epi32(stw_info->xfrac);
 
-                delta_x_high = _mm_load_si128((__m128i *)stw_info->d_rgba_dxh);
-                prod_lo = _mm_mul_epu32(delta_x_high, xmm_frac);
-                delta_x_high = _mm_srli_epi64(delta_x_high, 32);
-                prod_hi = _mm_mul_epu32(delta_x_high, xmm_frac);
-                prod_lo = _mm_shuffle_epi32(prod_lo, _MM_SHUFFLE(3, 1, 2, 0));
-                prod_hi = _mm_shuffle_epi32(prod_hi, _MM_SHUFFLE(3, 1, 2, 0));
-                delta_x_high = _mm_unpacklo_epi32(prod_lo, prod_hi);
+               delta_x_high = _mm_load_si128((__m128i *)stw_info->d_rgba_dxh);
+               prod_lo = _mm_mul_epu32(delta_x_high, xmm_frac);
+               delta_x_high = _mm_srli_epi64(delta_x_high, 32);
+               prod_hi = _mm_mul_epu32(delta_x_high, xmm_frac);
+               prod_lo = _mm_shuffle_epi32(prod_lo, _MM_SHUFFLE(3, 1, 2, 0));
+               prod_hi = _mm_shuffle_epi32(prod_hi, _MM_SHUFFLE(3, 1, 2, 0));
+               delta_x_high = _mm_unpacklo_epi32(prod_lo, prod_hi);
 
-                delta_diff = _mm_load_si128((__m128i *)stw_info->d_rgba_diff);
-                result = _mm_load_si128((__m128i *)stw_info->rgba);
-                result = _mm_srli_epi32(result, 9);
-                result = _mm_slli_epi32(result, 9);
-                result = _mm_add_epi32(result, delta_diff);
-                result = _mm_sub_epi32(result, delta_x_high);
-                result = _mm_srli_epi32(result, 10);
-                result = _mm_slli_epi32(result, 10);
-                _mm_store_si128((__m128i *)span[j].rgba, result);
+               delta_diff = _mm_load_si128((__m128i *)stw_info->d_rgba_diff);
+               result = _mm_load_si128((__m128i *)stw_info->rgba);
+               result = _mm_srli_epi32(result, 9);
+               result = _mm_slli_epi32(result, 9);
+               result = _mm_add_epi32(result, delta_diff);
+               result = _mm_sub_epi32(result, delta_x_high);
+               result = _mm_srli_epi32(result, 10);
+               result = _mm_slli_epi32(result, 10);
+               _mm_store_si128((__m128i *)span[j].rgba, result);
 
-                delta_x_high = _mm_load_si128((__m128i *)stw_info->d_stwz_dxh);
-                prod_lo      = _mm_mul_epu32(delta_x_high, xmm_frac);
-                delta_x_high = _mm_srli_epi64(delta_x_high, 32);
-                prod_hi      = _mm_mul_epu32(delta_x_high, xmm_frac);
-                prod_lo      = _mm_shuffle_epi32(prod_lo, _MM_SHUFFLE(3, 1, 2, 0));
-                prod_hi      = _mm_shuffle_epi32(prod_hi, _MM_SHUFFLE(3, 1, 2, 0));
-                delta_x_high = _mm_unpacklo_epi32(prod_lo, prod_hi);
+               delta_x_high = _mm_load_si128((__m128i *)stw_info->d_stwz_dxh);
+               prod_lo      = _mm_mul_epu32(delta_x_high, xmm_frac);
+               delta_x_high = _mm_srli_epi64(delta_x_high, 32);
+               prod_hi      = _mm_mul_epu32(delta_x_high, xmm_frac);
+               prod_lo      = _mm_shuffle_epi32(prod_lo, _MM_SHUFFLE(3, 1, 2, 0));
+               prod_hi      = _mm_shuffle_epi32(prod_hi, _MM_SHUFFLE(3, 1, 2, 0));
+               delta_x_high = _mm_unpacklo_epi32(prod_lo, prod_hi);
 
-                delta_diff   = _mm_load_si128((__m128i *)stw_info->d_stwz_diff);
-                result = _mm_load_si128((__m128i *)stw_info->stwz);
-                result = _mm_srli_epi32(result, 9);
-                result = _mm_slli_epi32(result, 9);
-                result = _mm_add_epi32(result, delta_diff);
-                result = _mm_sub_epi32(result, delta_x_high);
-                result = _mm_srli_epi32(result, 10);
-                result = _mm_slli_epi32(result, 10);
-                _mm_store_si128((__m128i *)span[j].stwz, result);
-            }
+               delta_diff   = _mm_load_si128((__m128i *)stw_info->d_stwz_diff);
+               result = _mm_load_si128((__m128i *)stw_info->stwz);
+               result = _mm_srli_epi32(result, 9);
+               result = _mm_slli_epi32(result, 9);
+               result = _mm_add_epi32(result, delta_diff);
+               result = _mm_sub_epi32(result, delta_x_high);
+               result = _mm_srli_epi32(result, 10);
+               result = _mm_slli_epi32(result, 10);
+               _mm_store_si128((__m128i *)span[j].stwz, result);
 #else
-            {
-                span[j].unscrx  = (stw_info->xlr[1] >> 16);
-                stw_info->xfrac = (stw_info->xlr[1] >> 8) & 0xFF;
-                span[j].rgba[0]
+               span[j].unscrx  = SIGN(stw_info->xlr[1] >> 16, 12);
+               stw_info->xfrac = (stw_info->xlr[1] >> 8) & 0xFF;
+               span[j].rgba[0]
                   = ((stw_info->rgba[0] & ~0x1FF) + stw_info->d_rgba_diff[0] - stw_info->xfrac * stw_info->d_rgba_dxh[0])
                   & ~0x000003FF;
-                span[j].rgba[1]
+               span[j].rgba[1]
                   = ((stw_info->rgba[1] & ~0x1FF) + stw_info->d_rgba_diff[1] - stw_info->xfrac * stw_info->d_rgba_dxh[1])
                   & ~0x000003FF;
-                span[j].rgba[2]
+               span[j].rgba[2]
                   = ((stw_info->rgba[2] & ~0x1FF) + stw_info->d_rgba_diff[2] - stw_info->xfrac * stw_info->d_rgba_dxh[2])
                   & ~0x000003FF;
-                span[j].rgba[3]
+               span[j].rgba[3]
                   = ((stw_info->rgba[3] & ~0x1FF) + stw_info->d_rgba_diff[3] - stw_info->xfrac * stw_info->d_rgba_dxh[3])
                   & ~0x000003FF;
-                span[j].stwz[0]
+               span[j].stwz[0]
                   = ((stw_info->stwz[0] & ~0x1FF) + stw_info->d_stwz_diff[0] - stw_info->xfrac * stw_info->d_stwz_dxh[0])
                   & ~0x000003FF;
-                span[j].stwz[1]
+               span[j].stwz[1]
                   = ((stw_info->stwz[1] & ~0x1FF) + stw_info->d_stwz_diff[1] - stw_info->xfrac * stw_info->d_stwz_dxh[1])
                   & ~0x000003FF;
-                span[j].stwz[2]
+               span[j].stwz[2]
                   = ((stw_info->stwz[2] & ~0x1FF) + stw_info->d_stwz_diff[2] - stw_info->xfrac * stw_info->d_stwz_dxh[2])
                   & ~0x000003FF;
-                span[j].stwz[3]
+               span[j].stwz[3]
                   = ((stw_info->stwz[3] & ~0x1FF) + stw_info->d_stwz_diff[3] - stw_info->xfrac * stw_info->d_stwz_dxh[3])
                   & ~0x000003FF;
-            }
 #endif
+            }
+
             if (spix == 3)
             {
                 const int invalidline = (sckeepodd ^ j) & scfield

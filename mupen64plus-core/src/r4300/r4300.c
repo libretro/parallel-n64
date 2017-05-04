@@ -53,10 +53,6 @@
 #include "debugger/dbg_types.h"
 #endif
 
-#if defined(COUNT_INSTR)
-#include "instr_counters.h"
-#endif
-
 unsigned int r4300emu = 0;
 unsigned int count_per_op = COUNT_PER_OP_DEFAULT;
 int rompause;
@@ -158,10 +154,10 @@ static unsigned int get_tv_type(void)
 {
     switch(ROM_PARAMS.systemtype)
     {
-    default:
-    case SYSTEM_NTSC: return 1;
-    case SYSTEM_PAL: return 0;
-    case SYSTEM_MPAL: return 2;
+       default:
+       case SYSTEM_NTSC: return 1;
+       case SYSTEM_PAL: return 0;
+       case SYSTEM_MPAL: return 2;
     }
 }
 
@@ -172,7 +168,20 @@ void r4300_reset_soft(void)
     unsigned int reset_type = 0;            /* 0:ColdReset, 1:NMI */
     unsigned int s7 = 0;                    /* ??? */
     unsigned int tv_type = get_tv_type();   /* 0:PAL, 1:NTSC, 2:MPAL */
-    uint32_t bsd_dom1_config = *(uint32_t*)g_rom;
+    
+    uint32_t bsd_dom1_config;
+    
+    if ((g_ddrom != NULL) && (g_ddrom_size != 0) && (g_rom == NULL) && (g_rom_size == 0))
+    {
+      //64DD IPL
+      bsd_dom1_config = *(uint32_t*)g_ddrom;
+      rom_type = 1;
+    }
+    else
+    {
+      //N64 ROM
+      bsd_dom1_config = *(uint32_t*)g_rom;
+    }
 
     g_cp0_regs[CP0_STATUS_REG] = 0x34000000;
     g_cp0_regs[CP0_CONFIG_REG] = 0x0006e463;
@@ -195,7 +204,16 @@ void r4300_reset_soft(void)
 
     g_r4300.mi.regs[MI_INTR_REG] &= ~(MI_INTR_PI | MI_INTR_VI | MI_INTR_AI | MI_INTR_SP);
 
-    memcpy((unsigned char*)g_sp.mem+0x40, g_rom+0x40, 0xfc0);
+    if ((g_ddrom != NULL) && (g_ddrom_size != 0) && (g_rom == NULL) && (g_rom_size == 0))
+    {
+      //64DD IPL
+      memcpy((unsigned char*)g_sp.mem+0x40, g_ddrom+0x40, 0xfc0);
+    }
+    else
+    {
+      //N64 ROM
+      memcpy((unsigned char*)g_sp.mem+0x40, g_rom+0x40, 0xfc0);
+    }
 
     reg[19] = rom_type;     /* s3 */
     reg[20] = tv_type;      /* s4 */
@@ -236,20 +254,11 @@ static void dynarec_setup_code(void)
 
 void r4300_execute(void)
 {
-#if (defined(DYNAREC) && defined(PROFILE_R4300))
-    unsigned int i;
-#endif
-
     current_instruction_table = cached_interpreter_table;
 
     delay_slot=0;
     stop = 0;
     rompause = 0;
-
-    /* clear instruction counters */
-#if defined(COUNT_INSTR)
-    memset(instr_count, 0, 131*sizeof(instr_count[0]));
-#endif
 
     last_addr = 0xa4000040;
     next_interupt = 624999;
@@ -276,23 +285,6 @@ void r4300_execute(void)
         dyna_start(dynarec_setup_code);
         PC++;
 #endif
-#if defined(PROFILE_R4300)
-        pfProfile = fopen("instructionaddrs.dat", "ab");
-        for (i=0; i<0x100000; i++)
-            if (invalid_code[i] == 0 && blocks[i] != NULL && blocks[i]->code != NULL && blocks[i]->block != NULL)
-            {
-                unsigned char *x86addr;
-                int mipsop;
-                // store final code length for this block
-                mipsop = -1; /* -1 == end of x86 code block */
-                x86addr = blocks[i]->code + blocks[i]->code_length;
-                if (fwrite(&mipsop, 1, 4, pfProfile) != 4 ||
-                    fwrite(&x86addr, 1, sizeof(char *), pfProfile) != sizeof(char *))
-                    DebugMessage(M64MSG_ERROR, "Error writing R4300 instruction address profiling data");
-            }
-        fclose(pfProfile);
-        pfProfile = NULL;
-#endif
         free_blocks();
     }
 #endif
@@ -308,27 +300,17 @@ void r4300_execute(void)
             return;
 
         last_addr = PC->addr;
-        while (!stop)
-        {
-#ifdef COMPARE_CORE
-            if (PC->ops == cached_interpreter_table.FIN_BLOCK && (PC->addr < 0x80000000 || PC->addr >= 0xc0000000))
-                virtual_to_physical_address(PC->addr, 2);
-            CoreCompareCallback();
-#endif
-#ifdef DBG
-            if (g_DebuggerActive) update_debugger(PC->addr);
-#endif
-            PC->ops();
-        }
+
+        r4300_step();
 
         free_blocks();
     }
 
     DebugMessage(M64MSG_INFO, "R4300 emulator finished.");
+}
 
-    /* print instruction counts */
-#if defined(COUNT_INSTR)
-    if (r4300emu == CORE_DYNAREC)
-        instr_counters_print();
-#endif
+void r4300_step(void)
+{
+   while (!stop)
+      PC->ops();
 }

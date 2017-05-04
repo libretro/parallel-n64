@@ -6,35 +6,35 @@
 #include <memory>
 #include <vector>
 
-#include "rdp/rdp.hpp"
 #include "rdp/frontend.hpp"
+#include "rdp/rdp.hpp"
 #include "rdp/vulkan.hpp"
 #include "rdp/vulkan_util.hpp"
 
 namespace RDP
 {
-   bool init();
-   void deinit();
-   void begin_frame();
+bool init();
+void deinit();
+void begin_frame();
 
-   void process_commands();
-   extern const struct retro_hw_render_interface_vulkan *vulkan;
+void process_commands();
+extern const struct retro_hw_render_interface_vulkan *vulkan;
 
-   extern std::unique_ptr<Frontend> frontend;
-   extern std::unique_ptr<Renderer> renderer;
-   extern std::unique_ptr<Vulkan::Device> device;
-   extern std::unique_ptr<Vulkan::VulkanContext> context;
+extern std::unique_ptr<Frontend> frontend;
+extern std::unique_ptr<Renderer> renderer;
+extern std::unique_ptr<Vulkan::Device> device;
+extern std::unique_ptr<Vulkan::VulkanContext> context;
 }
 
 namespace VI
 {
-   extern unsigned width;
-   extern unsigned height;
-   extern bool valid;
+extern unsigned width;
+extern unsigned height;
+extern bool valid;
 
-   void complete_frame();
-   void set_num_frames(unsigned count);
-   void deinit();
+void complete_frame();
+void set_num_frames(unsigned count);
+void deinit();
 }
 
 #endif

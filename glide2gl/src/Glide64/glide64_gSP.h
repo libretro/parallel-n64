@@ -33,5 +33,15 @@ extern int dzdx;
 extern int deltaZ;
 
 void cull_trianglefaces(VERTEX **v, unsigned iterations, bool do_update, bool do_cull, int32_t wd);
+void glide64gSPLightVertex(void *data);
+void glide64gSPDMATriangles(uint32_t tris, uint32_t n);
+void glide64gSPSetDMAOffsets(uint32_t mtxoffset, uint32_t vtxoffset);
+void glide64gSPDMAMatrix(uint32_t matrix, uint8_t index, uint8_t multiply);
+void glide64gSPDMAVertex(uint32_t v, uint32_t n, uint32_t v0);
+void glide64gSPCBFDVertex(uint32_t a, uint32_t n, uint32_t v0);
+void glide64gSPObjLoadTxtr(uint32_t tx);
+void glide64gSPCoordMod(uint32_t w0, uint32_t w1);
+void glide64gSPLightCBFD(uint32_t l, int32_t n);
+void glide64gSPSetVertexNormaleBase(uint32_t base);
 /* end forward decls */
 

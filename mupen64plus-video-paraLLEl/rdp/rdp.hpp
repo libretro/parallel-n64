@@ -42,6 +42,11 @@
 
 #define BLENDMODE_FLAG_DITHER_SEL 16
 
+#define LOD_INFO_PRIMITIVE_DETAIL (1 << 16)
+#define LOD_INFO_PRIMITIVE_SHARPEN (1 << 17)
+#define LOD_INFO_PRIMITIVE_MIN_LOD_SHIFT 18
+#define LOD_INFO_PRIMITIVE_MIN_LOD_MASK (31 << 18)
+
 #define SEXT(x, bits) (int32_t((x) << (32 - (bits))) >> (32 - (bits)))
 
 namespace RDP
@@ -90,6 +95,7 @@ public:
 	void set_fog_color(uint32_t w2);
 	void set_convert(uint32_t w1, uint32_t w2);
 	void set_primitive_z(uint32_t w2);
+	void set_lod_modes(bool detail, bool sharpen);
 
 	bool combiner_reads_secondary_tile(unsigned cycle) const;
 	bool combiner_reads_pipelined_tile() const;
@@ -128,6 +134,15 @@ public:
 		rdram.base = dram;
 		rdram.size = size;
 		tmem.set_rdram(dram, size);
+	}
+
+	void set_synchronous(bool enable)
+	{
+		// Make sure we don't end up with a situation where we inadvertently write old data to RDRAM.
+		if (enable && !synchronous)
+			async_transfers.clear();
+
+		synchronous = enable;
 	}
 
 	struct VIOutput
@@ -229,7 +244,7 @@ private:
 		int32_t xl, xm, xh;
 		uint32_t primitive_z;
 		int32_t yl, ym, yh;
-		uint32_t combiner;
+		uint32_t span_stride_combiner;
 		int32_t DxLDy, DxMDy, DxHDy;
 		uint32_t blend_color;
 		uint32_t flags, scissor_x, scissor_y, fill_color_blend;
@@ -339,13 +354,22 @@ private:
 		bool combiner_reads_pipelined_tile = false;
 
 		std::unordered_map<size_t, unsigned> combiner_map;
-		unsigned last_combiner;
+		unsigned last_combiner = 0;
+		uint32_t lod_flags = 0;
 	} state;
 
-	struct
+	struct RDRAM
 	{
+		RDRAM()
+		{
+			shadow_base.resize(RDRAM_SIZE);
+			hidden_bits.resize(RDRAM_SIZE);
+		}
+
 		uint8_t *base = nullptr;
 		size_t size = 0;
+		std::vector<uint8_t> shadow_base;
+		std::vector<uint8_t> hidden_bits;
 	} rdram;
 
 	Framebuffer framebuffer;
@@ -374,6 +398,12 @@ private:
 	                                const Primitive &prim) const;
 	uint64_t raster_tile_count = 0;
 	uint64_t reject_tile_count = 0;
+	bool synchronous = false;
+
+	uint8_t *framebuffer_data()
+	{
+		return synchronous ? rdram.base : rdram.shadow_base.data();
+	}
 };
 }
 

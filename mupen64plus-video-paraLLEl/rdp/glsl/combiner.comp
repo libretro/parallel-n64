@@ -21,7 +21,7 @@ void main()
 {
    uvec2 local = gl_LocalInvocationID.xy;
    uint tile_buffer_index = gl_WorkGroupID.x;
-   uint prim_id = work.desc[tile_buffer_index].primitive;
+   uint prim_id = LOD_INFO_PRIMITIVE(work.desc[tile_buffer_index].lod_info_primitive);
    uint flags = primitive_data.data[prim_id].flags;
 
    uint cycle_type = PRIMITIVE_CYCLE_TYPE(flags);
@@ -34,7 +34,7 @@ void main()
 
    // Run combiner.
    ivec4 sub_a, sub_b, mul, add;
-   uint combiner_instance = primitive_data.data[prim_id].combiner;
+   uint combiner_instance = primitive_data.data[prim_id].span_stride_combiner & 0xffffu;
 
    ivec4 combined = ivec4(0);
    ivec4 sampled0 = ivec4(unpack_rgba8(SAMPLED0(tile_buffer_index, local)));

@@ -755,7 +755,10 @@ void alist_adpcm(
    assert((count & 0x1f) == 0);
 
    if (init)
-      memset(last_frame, 0, 16*sizeof(last_frame[0]));
+   {
+      for (i = 0; i < 16; i++)
+         last_frame[i] = 0;
+   }
    else
       dram_load_u16(hle, (uint16_t*)last_frame, (loop) ? loop_address : last_frame_address, 16);
 

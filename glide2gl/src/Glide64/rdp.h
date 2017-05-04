@@ -165,6 +165,7 @@ extern uint32_t gfx_plugin_accuracy;
 #define  hack_Zelda       (1<<28)  //zeldas hacks
 #define  hack_Blastcorps  (1<<29)  /* Blast Corps */
 #define  hack_OOT         (1<<30)  /* Zelda OOT hacks */
+#define  hack_Winback     (1<<31)  //WinBack - Covert Operations
 
 #define FBCRCMODE_NONE  0
 #define FBCRCMODE_FAST  1
@@ -387,6 +388,7 @@ struct RDP
    // Texture palette
    uint16_t pal_8[256];
    uint32_t pal_8_crc[16];
+   uint8_t tlut_mode;
    int force_wrap;
 
    // Lighting

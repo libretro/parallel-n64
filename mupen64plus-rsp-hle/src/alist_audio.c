@@ -39,7 +39,23 @@ enum
 /* helper functions */
 #define get_address(hle, so)  (alist_get_address((hle), (so), (hle)->alist_audio.segments, N_SEGMENTS))
 #define set_address(hle, so)  alist_set_address((hle), (so), (hle)->alist_audio.segments, N_SEGMENTS)
-#define clear_segments(hle)   memset((hle)->alist_audio.segments, 0, N_SEGMENTS*sizeof((hle)->alist_audio.segments[0]))
+#define clear_segments(hle)   \
+   (hle)->alist_audio.segments[0] = 0; \
+   (hle)->alist_audio.segments[1] = 0; \
+   (hle)->alist_audio.segments[2] = 0; \
+   (hle)->alist_audio.segments[3] = 0; \
+   (hle)->alist_audio.segments[4] = 0; \
+   (hle)->alist_audio.segments[5] = 0; \
+   (hle)->alist_audio.segments[6] = 0; \
+   (hle)->alist_audio.segments[7] = 0; \
+   (hle)->alist_audio.segments[8] = 0; \
+   (hle)->alist_audio.segments[9] = 0; \
+   (hle)->alist_audio.segments[10] = 0; \
+   (hle)->alist_audio.segments[11] = 0; \
+   (hle)->alist_audio.segments[12] = 0; \
+   (hle)->alist_audio.segments[13] = 0; \
+   (hle)->alist_audio.segments[14] = 0; \
+   (hle)->alist_audio.segments[15] = 0
 
 /* audio commands definition */
 static void SPNOOP(struct hle_t* UNUSED(hle), uint32_t UNUSED(w1), uint32_t UNUSED(w2))

@@ -41,13 +41,6 @@
 #endif
 
 static precomp_instr fake_instr;
-#ifdef COMPARE_CORE
-#ifdef __x86_64__
-static int64_t debug_reg_storage[8];
-#else
-static int eax, ebx, ecx, edx, esp, ebp, esi, edi;
-#endif
-#endif
 
 int branch_taken = 0;
 
@@ -55,7 +48,7 @@ int branch_taken = 0;
 
 static void genupdate_count(unsigned int addr)
 {
-#if !defined(COMPARE_CORE) && !defined(DBG)
+#ifndef DBG
    mov_reg32_imm32(EAX, addr);
 #ifdef __x86_64__
    sub_xreg32_m32rel(EAX, (unsigned int*)(&last_addr));
@@ -456,10 +449,6 @@ static void ld_register_alloc(int *pGpr1, int *pGpr2, int *pBase1, int *pBase2)
 {
    int gpr1, gpr2, base1, base2 = 0;
 
-#ifdef COMPARE_CORE
-   free_registers_move_start(); // to maintain parity with 32-bit core
-#endif
-
    if (dst->f.i.rs == dst->f.i.rt)
    {
       allocate_register_32((unsigned int*)dst->f.r.rs);          // tell regcache we need to read RS register here
@@ -521,67 +510,6 @@ void genlink_subblock(void)
    free_all_registers();
    jmp(dst->addr+4);
 }
-
-#ifdef COMPARE_CORE
-extern unsigned int op_R4300; /* api/debugger.c */
-
-void gendebug(void)
-{
-   free_all_registers();
-
-#ifdef __x86_64__
-   mov_memoffs64_rax((uint64_t *) &debug_reg_storage);
-   mov_reg64_imm64(RAX, (uint64_t) &debug_reg_storage);
-   mov_preg64pimm8_reg64(RAX,  8, RBX);
-   mov_preg64pimm8_reg64(RAX, 16, RCX);
-   mov_preg64pimm8_reg64(RAX, 24, RDX);
-   mov_preg64pimm8_reg64(RAX, 32, RSP);
-   mov_preg64pimm8_reg64(RAX, 40, RBP);
-   mov_preg64pimm8_reg64(RAX, 48, RSI);
-   mov_preg64pimm8_reg64(RAX, 56, RDI);
-
-   mov_reg64_imm64(RAX, (uint64_t) dst);
-   mov_memoffs64_rax((uint64_t *) &PC);
-   mov_reg32_imm32(EAX, (unsigned int) src);
-   mov_memoffs32_eax((unsigned int *) &op);
-   mov_reg64_imm64(RAX, (uint64_t) CoreCompareCallback);
-   call_reg64(RAX);
-
-   mov_reg64_imm64(RAX, (uint64_t) &debug_reg_storage);
-   mov_reg64_preg64pimm8(RDI, RAX, 56);
-   mov_reg64_preg64pimm8(RSI, RAX, 48);
-   mov_reg64_preg64pimm8(RBP, RAX, 40);
-   mov_reg64_preg64pimm8(RSP, RAX, 32);
-   mov_reg64_preg64pimm8(RDX, RAX, 24);
-   mov_reg64_preg64pimm8(RCX, RAX, 16);
-   mov_reg64_preg64pimm8(RBX, RAX,  8);
-   mov_reg64_preg64(RAX, RAX);
-#else
-   mov_m32_reg32((unsigned int*)&eax, EAX);
-   mov_m32_reg32((unsigned int*)&ebx, EBX);
-   mov_m32_reg32((unsigned int*)&ecx, ECX);
-   mov_m32_reg32((unsigned int*)&edx, EDX);
-   mov_m32_reg32((unsigned int*)&esp, ESP);
-   mov_m32_reg32((unsigned int*)&ebp, EBP);
-   mov_m32_reg32((unsigned int*)&esi, ESI);
-   mov_m32_reg32((unsigned int*)&edi, EDI);
-
-   mov_m32_imm32((unsigned int*)(&PC), (unsigned int)(dst));
-   mov_m32_imm32((unsigned int*)(&op), (unsigned int)(src));
-   mov_reg32_imm32(EAX, (unsigned int) CoreCompareCallback);
-   call_reg32(EAX);
-
-   mov_reg32_m32(EAX, (unsigned int*)&eax);
-   mov_reg32_m32(EBX, (unsigned int*)&ebx);
-   mov_reg32_m32(ECX, (unsigned int*)&ecx);
-   mov_reg32_m32(EDX, (unsigned int*)&edx);
-   mov_reg32_m32(ESP, (unsigned int*)&esp);
-   mov_reg32_m32(EBP, (unsigned int*)&ebp);
-   mov_reg32_m32(ESI, (unsigned int*)&esi);
-   mov_reg32_m32(EDI, (unsigned int*)&edi);
-#endif
-}
-#endif
 
 void gencallinterp(uintptr_t addr, int jump)
 {

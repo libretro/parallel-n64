@@ -348,6 +348,9 @@ static int rdp_dump_main(RDP::Renderer *renderer, Vulkan::Device *device, int ar
 	RDRAM.resize(dump.dram_size);
 	renderer->set_rdram(RDRAM.data(), RDRAM.size());
 
+	if (args.trace || args.video)
+		renderer->set_synchronous(true);
+
 	unsigned begin_index = 0;
 	double start_time = gettime();
 

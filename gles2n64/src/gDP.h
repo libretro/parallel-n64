@@ -38,14 +38,30 @@ void gln64gDPSetTextureLUT( uint32_t mode );
 void gln64gDPSetCombineKey( uint32_t type );
 void gln64gDPSetAlphaCompare( uint32_t mode );
 void gln64gDPSetCombine( int32_t muxs0, int32_t muxs1 );
+void gln64gDPSetColorImage( uint32_t format, uint32_t size, uint32_t width, uint32_t address );
 void gDPSetColorImage( uint32_t format, uint32_t size, uint32_t width, uint32_t address );
+void gln64gDPSetTextureImage( uint32_t format, uint32_t size, uint32_t width, uint32_t address );
 void gDPSetTextureImage( uint32_t format, uint32_t size, uint32_t width, uint32_t address );
+void gln64gDPSetDepthSource(uint32_t source);
+void gln64gDPSetDepthImage( uint32_t address );
 void gDPSetDepthImage( uint32_t address );
+void gln64gDPSetEnvColor( uint32_t r, uint32_t g, uint32_t b, uint32_t a );
 void gDPSetEnvColor( uint32_t r, uint32_t g, uint32_t b, uint32_t a );
+void gln64gDPSetBlendColor( uint32_t r, uint32_t g, uint32_t b, uint32_t a );
 void gDPSetBlendColor( uint32_t r, uint32_t g, uint32_t b, uint32_t a );
+void gln64gDPSetFogColor( uint32_t r, uint32_t g, uint32_t b, uint32_t a );
 void gDPSetFogColor( uint32_t r, uint32_t g, uint32_t b, uint32_t a );
+void gln64gDPSetRenderMode(uint32_t mode1, uint32_t mode2);
+void gln64gDPSetFillColor( uint32_t c );
+void gln64gDPSetAlphaDither(uint32_t type);
 void gDPSetFillColor( uint32_t c );
+void gln64gDPSetTextureFilter(uint32_t type);
+void gln64gDPSetTextureLOD(uint32_t mode);
+void gln64gDPSetPrimColor( uint32_t m, uint32_t l, uint32_t r, uint32_t g, uint32_t b, uint32_t a );
 void gDPSetPrimColor( uint32_t m, uint32_t l, uint32_t r, uint32_t g, uint32_t b, uint32_t a );
+void gln64gDPSetTile(
+    uint32_t format, uint32_t size, uint32_t line, uint32_t tmem, uint32_t tile, uint32_t palette, uint32_t cmt,
+    uint32_t cms, uint32_t maskt, uint32_t masks, uint32_t shiftt, uint32_t shifts );
 void gDPSetTile(
     uint32_t format, uint32_t size, uint32_t line, uint32_t tmem, uint32_t tile, uint32_t palette, uint32_t cmt,
     uint32_t cms, uint32_t maskt, uint32_t masks, uint32_t shiftt, uint32_t shifts );
@@ -72,6 +88,8 @@ void gln64gDPTriTxtrZ(uint32_t w0, uint32_t w1);
 void gln64gDPTriTxtr(uint32_t w0, uint32_t w1);
 void gln64gDPTriShadeTxtrZ(uint32_t w0, uint32_t w1);
 void gln64gDPTriShadeTxtr(uint32_t w0, uint32_t w1);
+
+void gln64gDPLoadBlock(uint32_t tile, uint32_t uls, uint32_t ult, uint32_t lrs, uint32_t dxt);
 
 #ifdef __cplusplus
 }

@@ -149,29 +149,29 @@ static void InterpretOpcode(void);
 #define cffs FS_OF(op)
 #define cffd FD_OF(op)
 
-// 32 bits macros
-#ifndef M64P_BIG_ENDIAN
-#define rrt32 *((int32_t*) &reg[RT_OF(op)])
-#define rrd32 *((int32_t*) &reg[RD_OF(op)])
-#define rrs32 *((int32_t*) &reg[RS_OF(op)])
-#define irs32 *((int32_t*) &reg[RS_OF(op)])
-#define irt32 *((int32_t*) &reg[RT_OF(op)])
-#else
+/* 32 bits macros */
+#ifdef MSB_FIRST
 #define rrt32 *((int32_t*) &reg[RT_OF(op)] + 1)
 #define rrd32 *((int32_t*) &reg[RD_OF(op)] + 1)
 #define rrs32 *((int32_t*) &reg[RS_OF(op)] + 1)
 #define irs32 *((int32_t*) &reg[RS_OF(op)] + 1)
 #define irt32 *((int32_t*) &reg[RT_OF(op)] + 1)
+#else
+#define rrt32 *((int32_t*) &reg[RT_OF(op)])
+#define rrd32 *((int32_t*) &reg[RD_OF(op)])
+#define rrs32 *((int32_t*) &reg[RS_OF(op)])
+#define irs32 *((int32_t*) &reg[RS_OF(op)])
+#define irt32 *((int32_t*) &reg[RT_OF(op)])
 #endif
 
-// two functions are defined from the macros above but never used
-// these prototype declarations will prevent a warning
+/* two functions are defined from the macros above but never used
+ * these prototype declarations will prevent a warning */
 #if defined(__GNUC__)
   static void JR_IDLE(uint32_t) __attribute__((used));
   static void JALR_IDLE(uint32_t) __attribute__((used));
 #endif
 
-#include "interpreter.def"
+#include "interpreter.c"
 
 void InterpretOpcode()
 {
@@ -730,9 +730,6 @@ void pure_interpreter(void)
 
    while (!stop)
    {
-#ifdef COMPARE_CORE
-     CoreCompareCallback();
-#endif
 #ifdef DBG
      if (g_DebuggerActive) update_debugger(PC->addr);
 #endif

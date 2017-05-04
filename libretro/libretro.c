@@ -3,7 +3,7 @@
 #include <string.h>
 
 #include "api/libretro.h"
-#ifndef SINGLE_THREAD
+#ifndef EMSCRIPTEN
 #include <libco.h>
 #endif
 
@@ -17,8 +17,10 @@
 #include "r4300/r4300.h"
 #include "memory/memory.h"
 #include "main/main.h"
+#include "main/cheat.h"
 #include "main/version.h"
 #include "main/savestates.h"
+#include "dd/dd_disk.h"
 #include "pi/pi_controller.h"
 #include "si/pif.h"
 #include "libretro_memory.h"
@@ -42,7 +44,8 @@ int InitGfx(void);
 int glide64InitGfx(void);
 void gles2n64_reset(void);
 #endif
-#if defined(HAVE_VULKAN)
+
+#if defined(HAVE_PARALLEL)
 #include "../mupen64plus-video-paraLLEl/parallel.h"
 
 static struct retro_hw_render_callback hw_render;
@@ -50,33 +53,39 @@ static struct retro_hw_render_context_negotiation_interface_vulkan hw_context_ne
 static const struct retro_hw_render_interface_vulkan *vulkan;
 #endif
 
+#define ISHEXDEC ((codeLine[cursor]>='0') && (codeLine[cursor]<='9')) || ((codeLine[cursor]>='a') && (codeLine[cursor]<='f')) || ((codeLine[cursor]>='A') && (codeLine[cursor]<='F'))
+
 struct retro_perf_callback perf_cb;
 retro_get_cpu_features_t perf_get_cpu_features_cb = NULL;
 
-retro_log_printf_t log_cb = NULL;
-retro_video_refresh_t video_cb = NULL;
-retro_input_poll_t poll_cb = NULL;
-retro_input_state_t input_cb = NULL;
-retro_audio_sample_batch_t audio_batch_cb = NULL;
-retro_environment_t environ_cb = NULL;
+retro_log_printf_t log_cb                         = NULL;
+retro_video_refresh_t video_cb                    = NULL;
+retro_input_poll_t poll_cb                        = NULL;
+retro_input_state_t input_cb                      = NULL;
+retro_audio_sample_batch_t audio_batch_cb         = NULL;
+retro_environment_t environ_cb                    = NULL;
 
 struct retro_rumble_interface rumble;
 
 save_memory_data saved_memory;
 
-#ifndef SINGLE_THREAD
+#ifndef EMSCRIPTEN
 cothread_t main_thread;
-static cothread_t cpu_thread;
+static cothread_t game_thread;
 #endif
 
-float polygonOffsetFactor;
-float polygonOffsetUnits;
+float polygonOffsetFactor           = 0.0f;
+float polygonOffsetUnits            = 0.0f;
 
-int astick_deadzone;
-bool flip_only;
+static bool vulkan_inited           = false;
+static bool gl_inited               = false;
 
-static uint8_t* game_data = NULL;
-static uint32_t game_size = 0;
+int astick_deadzone                 = 0;
+int first_time                      = 1;
+bool flip_only                      = false;
+
+static uint8_t* game_data           = NULL;
+static uint32_t game_size           = 0;
 
 static bool     emu_initialized     = false;
 static unsigned initial_boot        = true;
@@ -87,33 +96,40 @@ static bool     reinit_screen       = false;
 static bool     first_context_reset = false;
 static bool     pushed_frame        = false;
 
-unsigned frame_dupe = false;
+unsigned frame_dupe                 = false;
 
-uint32_t *blitter_buf;
-uint32_t *blitter_buf_lock   = NULL;
+uint32_t *blitter_buf               = NULL;
+uint32_t *blitter_buf_lock          = NULL;
 
-uint32_t gfx_plugin_accuracy = 2;
-static enum rsp_plugin_type rsp_plugin;
-uint32_t screen_width = 640;
-uint32_t screen_height = 480;
-uint32_t screen_pitch;
+uint32_t gfx_plugin_accuracy        = 2;
+static enum rsp_plugin_type 
+                 rsp_plugin;
+uint32_t screen_width               = 640;
+uint32_t screen_height              = 480;
+uint32_t screen_pitch               = 0;
 uint32_t screen_aspectmodehint;
 
-extern unsigned int VI_REFRESH;
-unsigned int BUFFERSWAP;
-unsigned int FAKE_SDL_TICKS;
+unsigned int BUFFERSWAP             = 0;
+unsigned int FAKE_SDL_TICKS         = 0;
+
 
 bool alternate_mapping;
 
-// after the controller's CONTROL* member has been assigned we can update
-// them straight from here...
+static bool initializing            = true;
+
+extern uint32_t VI_REFRESH;
+
+/* after the controller's CONTROL* member has been assigned we can update
+ * them straight from here... */
+
 extern struct
 {
     CONTROL *control;
     BUTTONS buttons;
 } controller[4];
-// ...but it won't be at least the first time we're called, in that case set
-// these instead for input_plugin to read.
+
+/* ...but it won't be at least the first time we're called, in that case set
+ * these instead for input_plugin to read. */
 int pad_pak_types[4];
 int pad_present[4] = {1, 1, 1, 1};
 
@@ -136,13 +152,23 @@ static void core_settings_autoselect_gfx_plugin(void)
    if (gfx_var.value && strcmp(gfx_var.value, "auto") != 0)
       return;
 
-#if defined(HAVE_VULKAN)
-   gfx_plugin = GFX_PARALLEL;
-#elif defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
-   gfx_plugin = GFX_GLIDE64;
-#else
-   gfx_plugin = GFX_ANGRYLION;
+#if defined(HAVE_PARALLEL)
+   if (vulkan_inited)
+   {
+      gfx_plugin = GFX_PARALLEL;
+      return;
+   }
 #endif
+
+#if (defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)) && defined(HAVE_GLIDE64)
+   if (gl_inited)
+   {
+      gfx_plugin = GFX_GLIDE64;
+      return;
+   }
+#endif
+
+   gfx_plugin = GFX_ANGRYLION;
 }
 
 unsigned libretro_get_gfx_plugin(void)
@@ -160,27 +186,30 @@ static void core_settings_set_defaults(void)
    environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &gfx_var);
    environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &rsp_var);
 
-#ifdef ONLY_VULKAN
-   gfx_plugin = GFX_PARALLEL;
-#else
    if (gfx_var.value)
    {
       if (gfx_var.value && !strcmp(gfx_var.value, "auto"))
          core_settings_autoselect_gfx_plugin();
-      if (gfx_var.value && !strcmp(gfx_var.value, "gln64"))
+#if defined(HAVE_GLN64) || defined(HAVE_GLIDEN64)
+      if (gfx_var.value && !strcmp(gfx_var.value, "gln64") && gl_inited)
          gfx_plugin = GFX_GLN64;
-      if (gfx_var.value && !strcmp(gfx_var.value, "rice"))
+#endif
+
+#ifdef HAVE_RICE
+      if (gfx_var.value && !strcmp(gfx_var.value, "rice") && gl_inited)
          gfx_plugin = GFX_RICE;
-      if(gfx_var.value && !strcmp(gfx_var.value, "glide64"))
+#endif
+#ifdef HAVE_GLIDE64
+      if(gfx_var.value && !strcmp(gfx_var.value, "glide64") && gl_inited)
          gfx_plugin = GFX_GLIDE64;
+#endif
 	  if(gfx_var.value && !strcmp(gfx_var.value, "angrylion"))
          gfx_plugin = GFX_ANGRYLION;
-	  if(gfx_var.value && !strcmp(gfx_var.value, "parallel"))
+#ifdef HAVE_PARALLEL
+	  if(gfx_var.value && !strcmp(gfx_var.value, "parallel") && vulkan_inited)
          gfx_plugin = GFX_PARALLEL;
-   }
-   else
-      gfx_plugin = GFX_GLIDE64;
 #endif
+   }
 
    gfx_var.key = NAME_PREFIX "-gfxplugin-accuracy";
    gfx_var.value = NULL;
@@ -198,28 +227,24 @@ static void core_settings_set_defaults(void)
    }
 
    /* Load RSP plugin core option */
-#ifdef ONLY_VULKAN
-   rsp_plugin = RSP_CXD4;
-#else
-   rsp_plugin = RSP_HLE;
 
    if (rsp_var.value)
    {
       if (rsp_var.value && !strcmp(rsp_var.value, "auto"))
          core_settings_autoselect_rsp_plugin();
-      if (rsp_var.value && !strcmp(rsp_var.value, "hle"))
+      if (rsp_var.value && !strcmp(rsp_var.value, "hle") && !vulkan_inited)
          rsp_plugin = RSP_HLE;
       if (rsp_var.value && !strcmp(rsp_var.value, "cxd4"))
          rsp_plugin = RSP_CXD4;
+      if (rsp_var.value && !strcmp(rsp_var.value, "parallel") && !gl_inited)
+         rsp_plugin = RSP_PARALLEL;
    }
-#endif
 }
 
 
 
 static void core_settings_autoselect_rsp_plugin(void)
 {
-#if !defined(ONLY_VULKAN)
    struct retro_variable rsp_var = { NAME_PREFIX "-rspplugin", 0 };
 
    environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &rsp_var);
@@ -241,7 +266,15 @@ static void core_settings_autoselect_rsp_plugin(void)
 
    if (!strcmp((const char*)ROM_HEADER.Name, "CONKER BFD"))
       rsp_plugin = RSP_HLE;
+
+   if (vulkan_inited)
+   {
+#if defined(HAVE_PARALLEL_RSP)
+      rsp_plugin = RSP_PARALLEL;
+#else
+      rsp_plugin = RSP_CXD4;
 #endif
+   }
 }
 
 static void setup_variables(void)
@@ -272,30 +305,27 @@ static void setup_variables(void)
       { NAME_PREFIX "-disable_expmem",
          "Enable Expansion Pak RAM; enabled|disabled" },
       { NAME_PREFIX "-gfxplugin-accuracy",
-#if defined(ONLY_VULKAN)
-         "GFX Accuracy; veryhigh" },
-#elif defined(IOS) || defined(ANDROID)
+#if defined(IOS) || defined(ANDROID)
          "GFX Accuracy (restart); medium|high|veryhigh|low" },
 #else
          "GFX Accuracy (restart); veryhigh|high|medium|low" },
 #endif
-#ifdef HAVE_VULKAN
+#ifdef HAVE_PARALLEL
       { NAME_PREFIX "-parallel-rdp-synchronous",
          "ParaLLEl Synchronous RDP; enabled|disabled" },
 #endif
       { NAME_PREFIX "-gfxplugin",
-#ifdef ONLY_VULKAN
-         "GFX Plugin; parallel" },
-#else
-         "GFX Plugin; auto|glide64|gln64|rice|angrylion|parallel" },
+         "GFX Plugin; auto|glide64|gln64|rice|angrylion" 
+#if defined(HAVE_PARALLEL)
+            "|parallel"
 #endif
+      },
       { NAME_PREFIX "-rspplugin",
-#ifdef ONLY_VULKAN
-         "RSP Plugin; cxd4" },
-#else
-         "RSP Plugin; auto|hle|cxd4" },
+         "RSP Plugin; auto|hle|cxd4" 
+#ifdef HAVE_PARALLEL_RSP
+         "|parallel"
 #endif
-#ifndef ONLY_VULKAN
+         },
       { NAME_PREFIX "-screensize",
          "Resolution (restart); 640x480|960x720|1280x960|1600x1200|1920x1440|2240x1680|320x240" },
       { NAME_PREFIX "-aspectratiohint",
@@ -313,17 +343,18 @@ static void setup_variables(void)
       },
       { NAME_PREFIX "-virefresh",
          "VI Refresh (Overclock); 1500|2200" },
-#endif
       { NAME_PREFIX "-bufferswap",
-         "Buffer Swap; off|on"
+         "Buffer Swap; disabled|enabled"
       },
       { NAME_PREFIX "-framerate",
          "Framerate (restart); original|fullspeed" },
+
       { NAME_PREFIX "-alt-map",
         "Digital C-button Config; disabled|enabled" },
-#ifndef ONLY_VULKAN
+
+#ifndef HAVE_PARALLEL
       { NAME_PREFIX "-vcache-vbo",
-         "(Glide64) Vertex cache VBO (restart); off|on" },
+         "(Glide64) Vertex cache VBO (restart); disabled|enabled" },
 #endif
       { NAME_PREFIX "-boot-device",
          "Boot Device; Default|64DD IPL" },
@@ -332,36 +363,150 @@ static void setup_variables(void)
       { NULL, NULL },
    };
 
+   static const struct retro_controller_description port[] = {
+      { "Controller", RETRO_DEVICE_JOYPAD },
+      { "Mouse", RETRO_DEVICE_MOUSE },
+      { "RetroPad", RETRO_DEVICE_JOYPAD },
+   };
+
+   static const struct retro_controller_info ports[] = {
+      { port, 3 },
+      { port, 3 },
+      { port, 3 },
+      { port, 3 },
+      { 0, 0 }
+   };
+
    environ_cb(RETRO_ENVIRONMENT_SET_VARIABLES, variables);
+   environ_cb(RETRO_ENVIRONMENT_SET_CONTROLLER_INFO, (void*)ports);
 }
 
 
 static bool emu_step_load_data()
 {
+   const char *dir;
+   char slash;
+
+   #if defined(_WIN32)
+      slash = '\\';
+   #else
+      slash = '/';
+   #endif
+
    if(CoreStartup(FRONTEND_API_VERSION, ".", ".", "Core", n64DebugCallback, 0, 0) && log_cb)
        log_cb(RETRO_LOG_ERROR, "mupen64plus: Failed to initialize core\n");
 
-   log_cb(RETRO_LOG_INFO, "EmuThread: M64CMD_ROM_OPEN\n");
-
-   if(CoreDoCommand(M64CMD_ROM_OPEN, game_size, (void*)game_data))
+   if (game_data != NULL && *((uint32_t *)game_data) != 0x16D348E8 && *((uint32_t *)game_data) != 0x56EE6322)
    {
-      if (log_cb)
-         log_cb(RETRO_LOG_ERROR, "mupen64plus: Failed to load ROM\n");
-       goto load_fail;
+      /* Regular N64 ROM */
+      log_cb(RETRO_LOG_INFO, "EmuThread: M64CMD_ROM_OPEN\n");
+
+      if(CoreDoCommand(M64CMD_ROM_OPEN, game_size, (void*)game_data))
+      {
+         if (log_cb)
+            log_cb(RETRO_LOG_ERROR, "mupen64plus: Failed to load ROM\n");
+         goto load_fail;
+      }
+
+      free(game_data);
+      game_data = NULL;
+
+      log_cb(RETRO_LOG_INFO, "EmuThread: M64CMD_ROM_GET_HEADER\n");
+
+      if(CoreDoCommand(M64CMD_ROM_GET_HEADER, sizeof(ROM_HEADER), &ROM_HEADER))
+      {
+         if (log_cb)
+            log_cb(RETRO_LOG_ERROR, "mupen64plus; Failed to query ROM header information\n");
+         goto load_fail;
+      }
    }
-
-   free(game_data);
-   game_data = NULL;
-
-   log_cb(RETRO_LOG_INFO, "EmuThread: M64CMD_ROM_GET_HEADER\n");
-
-   if(CoreDoCommand(M64CMD_ROM_GET_HEADER, sizeof(ROM_HEADER), &ROM_HEADER))
+   else
    {
-      if (log_cb)
-         log_cb(RETRO_LOG_ERROR, "mupen64plus; Failed to query ROM header information\n");
-      goto load_fail;
-   }
+   	  /* 64DD Disk loading */
+   	  if (!environ_cb(RETRO_ENVIRONMENT_GET_SYSTEM_DIRECTORY, &dir) || !dir)
+         goto load_fail;
 
+      /* connect saved_memory.disk to disk */
+      g_dd_disk = saved_memory.disk;
+
+      log_cb(RETRO_LOG_INFO, "EmuThread: M64CMD_DISK_OPEN\n");
+      printf("M64CMD_DISK_OPEN\n");
+
+      if(CoreDoCommand(M64CMD_DISK_OPEN, game_size, (void*)game_data))
+      {
+         if (log_cb)
+            log_cb(RETRO_LOG_ERROR, "mupen64plus: Failed to load DISK\n");
+         goto load_fail;
+      }
+
+      free(game_data);
+      game_data = NULL;
+
+
+      /* 64DD IPL LOAD - assumes "64DD_IPL.bin" is in system folder */
+      char disk_ipl_path[256];
+      snprintf(disk_ipl_path, sizeof(disk_ipl_path), "%s%c64DD_IPL.bin", dir, slash);
+
+      if (log_cb)
+         log_cb(RETRO_LOG_INFO, "64DD_IPL.bin path: %s\n", disk_ipl_path);
+
+      FILE *fPtr = fopen(disk_ipl_path, "rb");
+      if (fPtr == NULL)
+      {
+         if (log_cb)
+            log_cb(RETRO_LOG_ERROR, "mupen64plus: Failed to load DISK IPL\n");
+         goto load_fail;
+      }
+
+      long romlength = 0;
+      fseek(fPtr, 0L, SEEK_END);
+      romlength = ftell(fPtr);
+      fseek(fPtr, 0L, SEEK_SET);
+
+      uint8_t* ipl_data = NULL;
+      ipl_data = malloc(romlength);
+      if (ipl_data == NULL)
+      {
+         if (log_cb)
+            log_cb(RETRO_LOG_ERROR, "mupen64plus: couldn't allocate DISK IPL buffer\n");
+         fclose(fPtr);
+         free(ipl_data);
+         ipl_data = NULL;
+          goto load_fail;
+      }
+
+      if (fread(ipl_data, 1, romlength, fPtr) != romlength)
+      {
+         if (log_cb)
+            log_cb(RETRO_LOG_ERROR, "mupen64plus: couldn't read DISK IPL file to buffer\n");
+         fclose(fPtr);
+         free(ipl_data);
+         ipl_data = NULL;
+         goto load_fail;
+      }
+      fclose(fPtr);
+
+      log_cb(RETRO_LOG_INFO, "EmuThread: M64CMD_DDROM_OPEN\n");
+      printf("M64CMD_DDROM_OPEN\n");
+
+      if(CoreDoCommand(M64CMD_DDROM_OPEN, romlength, (void*)ipl_data))
+      {
+         if (log_cb)
+            log_cb(RETRO_LOG_ERROR, "mupen64plus: Failed to load DDROM\n");
+         free(ipl_data);
+         ipl_data = NULL;
+         goto load_fail;
+      }
+
+      log_cb(RETRO_LOG_INFO, "EmuThread: M64CMD_ROM_GET_HEADER\n");
+
+      if(CoreDoCommand(M64CMD_ROM_GET_HEADER, sizeof(ROM_HEADER), &ROM_HEADER))
+      {
+         if (log_cb)
+            log_cb(RETRO_LOG_ERROR, "mupen64plus; Failed to query ROM header information\n");
+         goto load_fail;
+      }
+   }
    return true;
 
 load_fail:
@@ -382,12 +527,12 @@ bool emu_step_render(void)
             video_cb((screen_pitch == 0) ? NULL : blitter_buf_lock, screen_width, screen_height, screen_pitch);
             break;
 
-#if defined(HAVE_VULKAN)
          case GFX_PARALLEL:
+#if defined(HAVE_PARALLEL)
             video_cb(parallel_frame_is_valid() ? RETRO_HW_FRAME_BUFFER_VALID : NULL,
                   parallel_frame_width(), parallel_frame_height(), 0);
-            break;
 #endif
+            break;
 
          default:
 #if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
@@ -402,7 +547,7 @@ bool emu_step_render(void)
       return true;
    }
 
-   if (!pushed_frame && frame_dupe) // Dupe. Not duping violates libretro API, consider it a speedhack.
+   if (!pushed_frame && frame_dupe) /* Dupe. Not duping violates libretro API, consider it a speedhack. */
       video_cb(NULL, screen_width, screen_height, screen_pitch);
 
    return false;
@@ -431,82 +576,96 @@ void reinit_gfx_plugin(void)
     if(first_context_reset)
     {
         first_context_reset = false;
-#ifdef SINGLE_THREAD
-        emu_step_initialize();
-#else
-        co_switch(cpu_thread);
+#ifndef EMSCRIPTEN
+        co_switch(game_thread);
 #endif
     }
 
-#if defined(HAVE_VULKAN)
     switch (gfx_plugin)
     {
+       case GFX_GLIDE64:
+#ifdef HAVE_GLIDE64
+          glide64InitGfx();
+#endif
+          break;
+       case GFX_GLN64:
+#if defined(HAVE_GLN64) || defined(HAVE_GLIDEN64)
+          gles2n64_reset();
+#endif
+          break;
+       case GFX_RICE:
+#ifdef HAVE_RICE
+          /* TODO/FIXME */
+#endif
+          break;
+       case GFX_ANGRYLION:
+          /* Stub */
+          break;
        case GFX_PARALLEL:
-       {
+#ifdef HAVE_PARALLEL
           if (!environ_cb(RETRO_ENVIRONMENT_GET_HW_RENDER_INTERFACE, &vulkan) || !vulkan)
              log_cb(RETRO_LOG_ERROR, "Failed to obtain Vulkan interface.");
           else
              parallel_init(vulkan);
-          break;
-       }
-    }
 #endif
-
-#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
-    switch (gfx_plugin)
-    {
-       case GFX_GLIDE64:
-          glide64InitGfx();
-          break;
-       case GFX_GLN64:
-          gles2n64_reset();
           break;
     }
-#endif
 }
 
 void deinit_gfx_plugin(void)
 {
-#if defined(HAVE_VULKAN)
     switch (gfx_plugin)
     {
        case GFX_PARALLEL:
+#if defined(HAVE_PARALLEL)
           parallel_deinit();
+#endif
+          break;
+       default:
           break;
     }
-#endif
 }
 
-#ifndef SINGLE_THREAD
 static void EmuThreadFunction(void)
 {
     if (!emu_step_load_data())
        goto load_fail;
 
-    //ROM is loaded, switch back to main thread so retro_load_game can return (returning failure if needed).
-    //We'll continue here once the context is reset.
+    /* ROM is loaded, switch back to main thread
+     * so retro_load_game can return (returning failure if needed).
+     * We'll continue here once the context is reset. */
+#ifndef EMSCRIPTEN
     co_switch(main_thread);
+#endif
 
     emu_step_initialize();
 
-    //Context is reset too, everything is safe to use. Now back to main thread so we don't start pushing frames outside retro_run.
+    /*Context is reset too, everything is safe to use.
+     * Now back to main thread so we don't start pushing
+     * frames outside retro_run. */
+#ifndef EMSCRIPTEN
     co_switch(main_thread);
+#endif
 
+    initializing = false;
     main_run();
     log_cb(RETRO_LOG_INFO, "EmuThread: co_switch main_thread. \n");
 
+#ifndef EMSCRIPTEN
     co_switch(main_thread);
+#endif
 
 load_fail:
-    //NEVER RETURN! That's how libco rolls
+    /*NEVER RETURN! That's how libco rolls */
     while(1)
     {
        if (log_cb)
           log_cb(RETRO_LOG_ERROR, "Running Dead N64 Emulator");
+#ifndef EMSCRIPTEN
        co_switch(main_thread);
+#endif
     }
 }
-#endif
 
 const char* retro_get_system_directory(void)
 {
@@ -533,23 +692,22 @@ void retro_set_environment(retro_environment_t cb)
 
 void retro_get_system_info(struct retro_system_info *info)
 {
-#ifdef ONLY_VULKAN
-   info->library_name = "ParaLLEl";
-#else
-   info->library_name = "Mupen64Plus";
+   info->library_name = "ParaLLEl N64";
+#ifndef GIT_VERSION
+#define GIT_VERSION ""
 #endif
-   info->library_version = "2.0-rc2";
+   info->library_version = "2.0-rc2" GIT_VERSION;
    info->valid_extensions = "n64|v64|z64|bin|u1|ndd";
    info->need_fullpath = false;
    info->block_extract = false;
 }
 
-// Get the system type associated to a ROM country code.
+/* Get the system type associated to a ROM country code. */
 static m64p_system_type rom_country_code_to_system_type(char country_code)
 {
     switch (country_code)
     {
-        // PAL codes
+        /* PAL codes */
         case 0x44:
         case 0x46:
         case 0x49:
@@ -560,12 +718,12 @@ static m64p_system_type rom_country_code_to_system_type(char country_code)
         case 0x59:
             return SYSTEM_PAL;
 
-        // NTSC codes
+        /* NTSC codes */
         case 0x37:
         case 0x41:
         case 0x45:
         case 0x4a:
-        default: // Fallback for unknown codes
+        default: /* Fallback for unknown codes */
             return SYSTEM_NTSC;
     }
 }
@@ -579,7 +737,7 @@ void retro_get_system_av_info(struct retro_system_av_info *info)
    info->geometry.max_width    = screen_width;
    info->geometry.max_height   = screen_height;
    info->geometry.aspect_ratio = 4.0 / 3.0;
-   info->timing.fps = (region == SYSTEM_PAL) ? 50.0 : (60/1.001);                // TODO: Actual timing 
+   info->timing.fps = (region == SYSTEM_PAL) ? 50.0 : (60.13);                /* TODO: Actual timing  */
    info->timing.sample_rate = 44100.0;
 }
 
@@ -589,11 +747,106 @@ unsigned retro_get_region (void)
    return ((region == SYSTEM_PAL) ? RETRO_REGION_PAL : RETRO_REGION_NTSC);
 }
 
+#if defined(HAVE_PARALLEL) || defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
+static void context_reset(void)
+{
+   switch (gfx_plugin)
+   {
+      case GFX_ANGRYLION:
+      case GFX_PARALLEL:
+         break;
+      default:
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
+         {
+            static bool first_init = true;
+            printf("context_reset.\n");
+            glsm_ctl(GLSM_CTL_STATE_CONTEXT_RESET, NULL);
+
+            if (first_init)
+            {
+               glsm_ctl(GLSM_CTL_STATE_SETUP, NULL);
+               first_init = false;
+            }
+         }
+#endif
+         break;
+   }
+
+   reinit_gfx_plugin();
+}
+
+static void context_destroy(void)
+{
+   deinit_gfx_plugin();
+}
+#endif
+
+static bool retro_init_vulkan(void)
+{
+#if defined(HAVE_PARALLEL)
+   hw_render.context_type    = RETRO_HW_CONTEXT_VULKAN;
+   hw_render.version_major   = VK_MAKE_VERSION(1, 0, 12);
+   hw_render.context_reset   = context_reset;
+   hw_render.context_destroy = context_destroy;
+
+   if (!environ_cb(RETRO_ENVIRONMENT_SET_HW_RENDER, &hw_render))
+   {
+      log_cb(RETRO_LOG_ERROR, "mupen64plus: libretro frontend doesn't have Vulkan support.");
+      return false;
+   }
+
+   hw_context_negotiation.interface_type = RETRO_HW_RENDER_CONTEXT_NEGOTIATION_INTERFACE_VULKAN;
+   hw_context_negotiation.interface_version = RETRO_HW_RENDER_CONTEXT_NEGOTIATION_INTERFACE_VULKAN_VERSION;
+   hw_context_negotiation.get_application_info = parallel_get_application_info;
+   hw_context_negotiation.create_device = parallel_create_device;
+   hw_context_negotiation.destroy_device = NULL;
+   if (!environ_cb(RETRO_ENVIRONMENT_SET_HW_RENDER_CONTEXT_NEGOTIATION_INTERFACE, &hw_context_negotiation))
+      log_cb(RETRO_LOG_ERROR, "mupen64plus: libretro frontend doesn't have context negotiation support.");
+
+   return true;
+#else
+   return false;
+#endif
+}
+
+static bool context_framebuffer_lock(void *data)
+{
+   if (!stop)
+      return false;
+   return true;
+}
+
+static bool retro_init_gl(void)
+{
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
+   glsm_ctx_params_t params     = {0};
+
+   params.context_reset         = context_reset;
+   params.context_destroy       = context_destroy;
+   params.environ_cb            = environ_cb;
+   params.stencil               = false;
+
+   params.framebuffer_lock      = context_framebuffer_lock;
+
+   if (!glsm_ctl(GLSM_CTL_STATE_CONTEXT_INIT, &params))
+   {
+      if (log_cb)
+         log_cb(RETRO_LOG_ERROR, "mupen64plus: libretro frontend doesn't have OpenGL support.");
+      return false;
+   }
+
+   return true;
+#else
+   return false;
+#endif
+}
+
 void retro_init(void)
 {
    struct retro_log_callback log;
    unsigned colorMode = RETRO_PIXEL_FORMAT_XRGB8888;
    screen_pitch = 0;
+   uint64_t serialization_quirks = RETRO_SERIALIZATION_QUIRK_MUST_INITIALIZE;
 
    if (environ_cb(RETRO_ENVIRONMENT_GET_LOG_INTERFACE, &log))
       log_cb = log.log;
@@ -608,39 +861,57 @@ void retro_init(void)
    environ_cb(RETRO_ENVIRONMENT_SET_PIXEL_FORMAT, &colorMode);
    environ_cb(RETRO_ENVIRONMENT_GET_RUMBLE_INTERFACE, &rumble);
 
+   environ_cb(RETRO_ENVIRONMENT_SET_SERIALIZATION_QUIRKS, &serialization_quirks);
+   initializing = true;
+
    blitter_buf = (uint32_t*)calloc(
          PRESCALE_WIDTH * PRESCALE_HEIGHT, sizeof(uint32_t)
          );
    blitter_buf_lock = blitter_buf;
 
-   //hacky stuff for Glide64
+   /* hacky stuff for Glide64 */
    polygonOffsetUnits = -3.0f;
    polygonOffsetFactor =  -3.0f;
 
-#ifndef SINGLE_THREAD
+#ifndef EMSCRIPTEN
    main_thread = co_active();
-   cpu_thread = co_create(65536 * sizeof(void*) * 16, EmuThreadFunction);
+   game_thread = co_create(65536 * sizeof(void*) * 16, EmuThreadFunction);
 #endif
-} 
+
+   if (retro_init_vulkan())
+   {
+      vulkan_inited = true;
+      return;
+   }
+
+   if (retro_init_gl())
+   {
+      gl_inited = true;
+      return;
+   }
+}
 
 void retro_deinit(void)
 {
-   main_stop();
-   main_exit();
+   mupen_main_stop();
+   mupen_main_exit();
 
    if (blitter_buf)
       free(blitter_buf);
    blitter_buf      = NULL;
    blitter_buf_lock = NULL;
 
-#ifndef SINGLE_THREAD
-   co_delete(cpu_thread);
+#ifndef EMSCRIPTEN
+   co_delete(game_thread);
 #endif
 
    deinit_audio_libretro();
 
    if (perf_cb.perf_log)
       perf_cb.perf_log();
+
+   vulkan_inited     = false;
+   gl_inited         = false;
 }
 
 #include "../mupen64plus-video-angrylion/vi.h"
@@ -651,30 +922,25 @@ extern void glide_set_filtering(unsigned value);
 extern void angrylion_set_filtering(unsigned value);
 extern void ChangeSize();
 
-static bool parallel_rdp_synchronous = true;
-
-bool is_parallel_rdp_synchronous(void)
-{
-   return parallel_rdp_synchronous;
-}
-
 void update_variables(bool startup)
 {
    struct retro_variable var;
 
-#if defined(HAVE_VULKAN)
+#if defined(HAVE_PARALLEL)
    var.key = NAME_PREFIX "-parallel-rdp-synchronous";
    var.value = NULL;
 
+   bool rdp_sync;
    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
    {
       if (!strcmp(var.value, "enabled"))
-         parallel_rdp_synchronous = true;
+         rdp_sync = true;
       else
-         parallel_rdp_synchronous = false;
+         rdp_sync = false;
    }
    else
-      parallel_rdp_synchronous = true;
+      rdp_sync = true;
+   parallel_set_synchronous_rdp(rdp_sync);
 #endif
 
    var.key = NAME_PREFIX "-screensize";
@@ -713,20 +979,29 @@ void update_variables(bool startup)
       if (var.value)
       {
          if (!strcmp(var.value, "auto"))
-            core_settings_autoselect_gfx_plugin();
-         if (!strcmp(var.value, "gln64"))
+#if defined(HAVE_GLN64) || defined(HAVE_GLIDEN64)
+         if (!strcmp(var.value, "gln64") && gl_inited)
             gfx_plugin = GFX_GLN64;
-         if (!strcmp(var.value, "rice"))
+#endif
+#ifdef HAVE_RICE
+         if (!strcmp(var.value, "rice") && gl_inited)
             gfx_plugin = GFX_RICE;
-         if(!strcmp(var.value, "glide64"))
+#endif
+#ifdef HAVE_GLIDE64
+         if(!strcmp(var.value, "glide64") && gl_inited)
             gfx_plugin = GFX_GLIDE64;
+#endif
          if(!strcmp(var.value, "angrylion"))
             gfx_plugin = GFX_ANGRYLION;
-         if(!strcmp(var.value, "parallel"))
+#ifdef HAVE_PARALLEL
+         if(!strcmp(var.value, "parallel") && vulkan_inited)
             gfx_plugin = GFX_PARALLEL;
+#endif
       }
       else
-         gfx_plugin = GFX_GLIDE64;
+      {
+         core_settings_autoselect_gfx_plugin();
+      }
    }
 
    var.key = NAME_PREFIX "-angrylion-vioverlay";
@@ -769,12 +1044,27 @@ void update_variables(bool startup)
      switch (gfx_plugin)
      {
         case GFX_GLIDE64:
-#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
+#ifdef HAVE_GLIDE64
            glide_set_filtering(retro_filtering);
 #endif
            break;
         case GFX_ANGRYLION:
            angrylion_set_filtering(retro_filtering);
+           break;
+        case GFX_RICE:
+#ifdef HAVE_RICE
+           /* TODO/FIXME */
+#endif
+           break;
+        case GFX_PARALLEL:
+#ifdef HAVE_PARALLEL
+           /* Stub */
+#endif
+           break;
+        case GFX_GLN64:
+#if defined(HAVE_GLN64) || defined(HAVE_GLIDEN64)
+           /* Stub */
+#endif
            break;
      }
    }
@@ -834,9 +1124,9 @@ void update_variables(bool startup)
 
    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
    {
-      if (!strcmp(var.value, "on"))
+      if (!strcmp(var.value, "enabled"))
          BUFFERSWAP = true;
-      else if (!strcmp(var.value, "off"))
+      else if (!strcmp(var.value, "disabled"))
          BUFFERSWAP = false;
    }
 
@@ -862,7 +1152,7 @@ void update_variables(bool startup)
          alternate_mapping = true;
    }
 
-   
+
    {
       struct retro_variable pk1var = { NAME_PREFIX "-pak1" };
       if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &pk1var) && pk1var.value)
@@ -872,14 +1162,14 @@ void update_variables(bool startup)
             p1_pak = PLUGIN_RAW;
          else if (!strcmp(pk1var.value, "memory"))
             p1_pak = PLUGIN_MEMPAK;
-         
-         // If controller struct is not initialised yet, set pad_pak_types instead
-         // which will be looked at when initialising the controllers.
+
+         /* If controller struct is not initialised yet, set pad_pak_types instead
+          * which will be looked at when initialising the controllers. */
          if (controller[0].control)
             controller[0].control->Plugin = p1_pak;
          else
             pad_pak_types[0] = p1_pak;
-         
+
       }
    }
 
@@ -892,15 +1182,15 @@ void update_variables(bool startup)
             p2_pak = PLUGIN_RAW;
          else if (!strcmp(pk2var.value, "memory"))
             p2_pak = PLUGIN_MEMPAK;
-            
+
          if (controller[1].control)
             controller[1].control->Plugin = p2_pak;
          else
             pad_pak_types[1] = p2_pak;
-         
+
       }
    }
-   
+
    {
       struct retro_variable pk3var = { NAME_PREFIX "-pak3" };
       if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &pk3var) && pk3var.value)
@@ -910,15 +1200,15 @@ void update_variables(bool startup)
             p3_pak = PLUGIN_RAW;
          else if (!strcmp(pk3var.value, "memory"))
             p3_pak = PLUGIN_MEMPAK;
-            
+
          if (controller[2].control)
             controller[2].control->Plugin = p3_pak;
          else
             pad_pak_types[2] = p3_pak;
-         
+
       }
    }
-  
+
    {
       struct retro_variable pk4var = { NAME_PREFIX "-pak4" };
       if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &pk4var) && pk4var.value)
@@ -928,7 +1218,7 @@ void update_variables(bool startup)
             p4_pak = PLUGIN_RAW;
          else if (!strcmp(pk4var.value, "memory"))
             p4_pak = PLUGIN_MEMPAK;
-            
+
          if (controller[3].control)
             controller[3].control->Plugin = p4_pak;
          else
@@ -948,47 +1238,11 @@ static void format_saved_memory(void)
    format_mempak(saved_memory.mempack[1]);
    format_mempak(saved_memory.mempack[2]);
    format_mempak(saved_memory.mempack[3]);
-}
-
-#if defined(HAVE_VULKAN) || defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
-static void context_reset(void)
-{
-#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
-   if (gfx_plugin != GFX_ANGRYLION && gfx_plugin != GFX_PARALLEL)
-   {
-      static bool first_init = true;
-      printf("context_reset.\n");
-      glsm_ctl(GLSM_CTL_STATE_CONTEXT_RESET, NULL);
-
-      if (first_init)
-      {
-         glsm_ctl(GLSM_CTL_STATE_SETUP, NULL);
-         first_init = false;
-      }
-   }
-#endif
-
-   reinit_gfx_plugin();
-}
-
-static void context_destroy(void)
-{
-   deinit_gfx_plugin();
-}
-#endif
-
-static bool context_framebuffer_lock(void *data)
-{
-   if (!stop)
-      return false;
-   return true;
+   format_disk(saved_memory.disk);
 }
 
 bool retro_load_game(const struct retro_game_info *game)
 {
-#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
-   glsm_ctx_params_t params = {0};
-#endif
    format_saved_memory();
 
    update_variables(true);
@@ -996,62 +1250,64 @@ bool retro_load_game(const struct retro_game_info *game)
 
    init_audio_libretro(audio_buffer_size);
 
-#if defined(HAVE_VULKAN)
-   if (gfx_plugin == GFX_PARALLEL)
+   if (vulkan_inited)
    {
-      hw_render.context_type = RETRO_HW_CONTEXT_VULKAN;
-      hw_render.version_major = VK_MAKE_VERSION(1, 0, 12);
-      hw_render.context_reset = context_reset;
-      hw_render.context_destroy = context_destroy;
-      if (!environ_cb(RETRO_ENVIRONMENT_SET_HW_RENDER, &hw_render))
+      switch (gfx_plugin)
       {
-         log_cb(RETRO_LOG_ERROR, "mupen64plus: libretro frontend doesn't have Vulkan support.");
+         case GFX_GLIDE64:
+         case GFX_GLN64:
+         case GFX_RICE:
+            gfx_plugin = GFX_PARALLEL;
+            break;
+         default:
+            break;
       }
 
-      hw_context_negotiation.interface_type = RETRO_HW_RENDER_CONTEXT_NEGOTIATION_INTERFACE_VULKAN;
-      hw_context_negotiation.interface_version = RETRO_HW_RENDER_CONTEXT_NEGOTIATION_INTERFACE_VULKAN_VERSION;
-      hw_context_negotiation.get_application_info = parallel_get_application_info;
-      hw_context_negotiation.create_device = parallel_create_device;
-      hw_context_negotiation.destroy_device = NULL;
-      if (!environ_cb(RETRO_ENVIRONMENT_SET_HW_RENDER_CONTEXT_NEGOTIATION_INTERFACE, &hw_context_negotiation))
+      switch (rsp_plugin)
       {
-         log_cb(RETRO_LOG_ERROR, "mupen64plus: libretro frontend doesn't have context negotiation support.");
+         case RSP_HLE:
+#if defined(HAVE_PARALLEL_RSP)
+            rsp_plugin = RSP_PARALLEL;
+#else
+            rsp_plugin = RSP_CXD4;
+#endif
+            break;
+         default:
+            break;
       }
    }
-#endif
-
-#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
-   if (gfx_plugin != GFX_ANGRYLION && gfx_plugin != GFX_PARALLEL)
+   else if (gl_inited)
    {
-      params.context_reset         = context_reset;
-      params.context_destroy       = context_destroy;
-      params.environ_cb            = environ_cb;
-      params.stencil               = false;
-
-      params.framebuffer_lock      = context_framebuffer_lock;
-
-      if (!glsm_ctl(GLSM_CTL_STATE_CONTEXT_INIT, &params))
+      switch (gfx_plugin)
       {
-         if (log_cb)
-            log_cb(RETRO_LOG_ERROR, "mupen64plus: libretro frontend doesn't have OpenGL support.");
-         return false;
+         case GFX_PARALLEL:
+            gfx_plugin = GFX_GLIDE64;
+            break;
+         default:
+            break;
+      }
+
+      switch (rsp_plugin)
+      {
+         case RSP_PARALLEL:
+            rsp_plugin = RSP_HLE;
+         default:
+            break;
       }
    }
-#endif
 
    game_data = malloc(game->size);
-   memcpy(game_data, game->data, game->size);
    game_size = game->size;
+   memcpy(game_data, game->data, game->size);
 
-#ifdef SINGLE_THREAD
-   if (!emu_step_load_data())
-      return false;
-#else
-   stop = false;
-   //Finish ROM load before doing anything funny, so we can return failure if needed.
-   co_switch(cpu_thread);
-   if (stop) return false;
+   stop      = false;
+   /* Finish ROM load before doing anything funny,
+    * so we can return failure if needed. */
+#ifndef EMSCRIPTEN
+   co_switch(game_thread);
 #endif
+   if (stop)
+      return false;
 
    first_context_reset = true;
 
@@ -1061,9 +1317,10 @@ bool retro_load_game(const struct retro_game_info *game)
 void retro_unload_game(void)
 {
     stop = 1;
+    first_time = 1;
 
-#ifndef SINGLE_THREAD
-    co_switch(cpu_thread);
+#ifndef EMSCRIPTEN
+    co_switch(game_thread);
 #endif
 
     CoreDoCommand(M64CMD_ROM_CLOSE, 0, NULL);
@@ -1074,8 +1331,14 @@ void retro_unload_game(void)
 static void glsm_exit(void)
 {
 #ifndef HAVE_SHARED_CONTEXT
-   if (gfx_plugin == GFX_ANGRYLION || gfx_plugin == GFX_PARALLEL || stop)
+   if (stop)
       return;
+   if (gfx_plugin == GFX_ANGRYLION)
+      return;
+#ifdef HAVE_PARALLEL
+   if (gfx_plugin == GFX_PARALLEL)
+      return;
+#endif
    glsm_ctl(GLSM_CTL_STATE_UNBIND, NULL);
 #endif
 }
@@ -1083,8 +1346,14 @@ static void glsm_exit(void)
 static void glsm_enter(void)
 {
 #ifndef HAVE_SHARED_CONTEXT
-   if (gfx_plugin == GFX_ANGRYLION || gfx_plugin == GFX_PARALLEL || stop)
+   if (stop)
       return;
+   if (gfx_plugin == GFX_ANGRYLION)
+      return;
+#ifdef HAVE_PARALLEL
+   if (gfx_plugin == GFX_PARALLEL)
+      return;
+#endif
    glsm_ctl(GLSM_CTL_STATE_BIND, NULL);
 #endif
 }
@@ -1128,12 +1397,28 @@ void retro_run (void)
 
             switch (gfx_plugin)
             {
-#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
                case GFX_GLIDE64:
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
                   ChangeSize();
-                  break;
 #endif
-               default:
+                  break;
+               case GFX_RICE:
+#ifdef HAVE_RICE
+                  /* Stub */
+#endif
+                  break;
+               case GFX_GLN64:
+#ifdef HAVE_GLN64
+                  /* Stub */
+#endif
+                  break;
+               case GFX_PARALLEL:
+#ifdef HAVE_PARALLEL
+                  /* Stub */
+#endif
+                  break;
+               case GFX_ANGRYLION:
+                  /* Stub */
                   break;
             }
 
@@ -1142,22 +1427,6 @@ void retro_run (void)
          }
       }
    }
-
-#ifdef SINGLE_THREAD
-#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES) || defined(HAVE_VULKAN)
-   switch (gfx_plugin)
-   {
-      case GFX_PARALLEL:
-      case GFX_ANGRYLION:
-         if (!emu_initialized)
-            emu_step_initialize();
-         break;
-   }
-#else
-   if (!emu_initialized)
-      emu_step_initialize();
-#endif
-#endif
 
    FAKE_SDL_TICKS += 16;
    pushed_frame = false;
@@ -1182,28 +1451,47 @@ void retro_run (void)
 
    do
    {
+      switch (gfx_plugin)
+      {
+         case GFX_GLIDE64:
+         case GFX_GLN64:
+         case GFX_RICE:
 #if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
-      if (gfx_plugin != GFX_ANGRYLION && gfx_plugin != GFX_PARALLEL)
-         glsm_enter();
+            glsm_enter();
+#endif
+            break;
+         case GFX_PARALLEL:
+#if defined(HAVE_PARALLEL)
+            parallel_begin_frame();
+#endif
+            break;
+         case GFX_ANGRYLION:
+            break;
+      }
+
+      if (first_time)
+      {
+         first_time = 0;
+         emu_step_initialize();
+      }
+
+#ifndef EMSCRIPTEN
+      co_switch(game_thread);
 #endif
 
-#if defined(HAVE_VULKAN)
-      if (gfx_plugin == GFX_PARALLEL)
-         parallel_begin_frame();
-#endif
-
-#ifdef SINGLE_THREAD
-      stop = 0;
-      main_run();
-      stop = 0;
-#else
-      co_switch(cpu_thread);
-#endif
-
+      switch (gfx_plugin)
+      {
+         case GFX_GLIDE64:
+         case GFX_GLN64:
+         case GFX_RICE:
 #if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
-      if (gfx_plugin != GFX_ANGRYLION && gfx_plugin != GFX_PARALLEL)
-         glsm_exit();
+            glsm_exit();
 #endif
+            break;
+         case GFX_PARALLEL:
+         case GFX_ANGRYLION:
+            break;
+      }
    } while (emu_step_render());
 }
 
@@ -1219,18 +1507,25 @@ void *retro_get_memory_data(unsigned type)
 
 size_t retro_get_memory_size(unsigned type)
 {
-   return (type == RETRO_MEMORY_SAVE_RAM) ? sizeof(saved_memory) : 0;
+   if (type != RETRO_MEMORY_SAVE_RAM)
+      return 0;
+
+   if (g_dd_disk)
+      return sizeof(saved_memory);
+
+   return sizeof(saved_memory)-sizeof(saved_memory.disk);
 }
-
-
 
 size_t retro_serialize_size (void)
 {
-    return 16788288 + 1024; // < 16MB and some change... ouch
+    return 16788288 + 1024; /* < 16MB and some change... ouch */
 }
 
 bool retro_serialize(void *data, size_t size)
 {
+    if (initializing)
+       return false;
+
     if (savestates_save_m64p(data, size))
         return true;
 
@@ -1239,76 +1534,112 @@ bool retro_serialize(void *data, size_t size)
 
 bool retro_unserialize(const void * data, size_t size)
 {
+    if (initializing)
+       return false;
+
     if (savestates_load_m64p(data, size))
         return true;
 
     return false;
 }
 
-//Needed to be able to detach controllers for Lylat Wars multiplayer
-//Only sets if controller struct is initialised as addon paks do.
-void retro_set_controller_port_device(unsigned in_port, unsigned device) {
-    if (in_port < 4){
-        switch(device)
-        {
-            case RETRO_DEVICE_NONE:
-                if (controller[in_port].control){
-                    controller[in_port].control->Present = 0;
-                    break;
-                } else {
-                    pad_present[in_port] = 0;
-                    break;
-                }
-                
-            case RETRO_DEVICE_JOYPAD:
-            default:
-                if (controller[in_port].control){
-                    controller[in_port].control->Present = 1;
-                    break;
-                } else {
-                    pad_present[in_port] = 1;
-                    break;
-                }
-        }
-    }
+/*Needed to be able to detach controllers
+ * for Lylat Wars multiplayer
+ *
+ * Only sets if controller struct is
+ * initialised as addon paks do.
+ */
+void retro_set_controller_port_device(unsigned in_port, unsigned device)
+{
+   if (in_port < 4)
+   {
+      switch(device)
+      {
+         case RETRO_DEVICE_NONE:
+            if (controller[in_port].control){
+               controller[in_port].control->Present = 0;
+               break;
+            } else {
+               pad_present[in_port] = 0;
+               break;
+            }
+
+         case RETRO_DEVICE_MOUSE:
+            if (controller[in_port].control){
+               controller[in_port].control->Present = 2;
+               break;
+            } else {
+               pad_present[in_port] = 2;
+               break;
+            }
+
+         case RETRO_DEVICE_JOYPAD:
+         default:
+            if (controller[in_port].control){
+               controller[in_port].control->Present = 1;
+               break;
+            } else {
+               pad_present[in_port] = 1;
+               break;
+            }
+      }
+   }
 }
 
-// Stubs
+/* Stubs */
 unsigned retro_api_version(void) { return RETRO_API_VERSION; }
 
 bool retro_load_game_special(unsigned game_type, const struct retro_game_info *info, size_t num_info) { return false; }
 
-void retro_cheat_reset(void) { }
-void retro_cheat_set(unsigned unused, bool unused1, const char* unused2) { }
-
-#ifdef SINGLE_THREAD
-bool emu_step_render(void);
-
-int retro_return(int just_flipping)
+void retro_cheat_reset(void)
 {
-#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
-   vbo_disable();
-#endif
-
-   flip_only = just_flipping;
-
-   if (just_flipping)
-   {
-#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
-      glsm_exit();
-#endif
-
-      emu_step_render();
-
-#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
-      glsm_enter();
-#endif
-   }
-
-   stop = 1;
-   return 0;
+	cheat_delete_all();
 }
-#else
+
+void retro_cheat_set(unsigned index, bool enabled, const char* codeLine)
+{
+	char name[256];
+	m64p_cheat_code mupenCode[256];
+	int matchLength=0,partCount=0;
+	uint32_t codeParts[256];
+	int cursor;
+
+	//Generate a name
+	sprintf(name, "cheat_%u",index);
+
+	//Break the code into Parts
+	for (cursor=0;;cursor++)
+	{
+		if (ISHEXDEC){
+			matchLength++;
+		} else {
+			if (matchLength){
+				char codePartS[matchLength];
+				strncpy(codePartS,codeLine+cursor-matchLength,matchLength);
+				codePartS[matchLength]=0;
+				codeParts[partCount++]=strtoul(codePartS,NULL,16);
+				matchLength=0;
+			}
+		}
+		if (!codeLine[cursor]){
+			break;
+		}
+	}
+
+	//Assign the parts to mupenCode
+	for (cursor=0;2*cursor+1<partCount;cursor++){
+		mupenCode[cursor].address=codeParts[2*cursor];
+		mupenCode[cursor].value=codeParts[2*cursor+1];
+	}
+
+	//Assign to mupenCode
+	cheat_add_new(name,mupenCode,partCount/2);
+	cheat_set_enabled(name,enabled);
+}
+
+
+void vbo_disable(void);
+
 int retro_return(int just_flipping)
 {
    if (stop)
@@ -1320,8 +1651,9 @@ int retro_return(int just_flipping)
 
    flip_only = just_flipping;
 
+#ifndef EMSCRIPTEN
    co_switch(main_thread);
+#endif
 
    return 0;
 }
-#endif

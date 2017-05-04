@@ -181,6 +181,8 @@ enum {
 
 extern void process_RDP_list(void);
 
+int32_t irand(void);
+
 extern uint32_t internal_vi_v_current_line;
 
 #endif

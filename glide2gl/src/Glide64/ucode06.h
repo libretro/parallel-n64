@@ -40,71 +40,6 @@
 #include "../../Graphics/HLE/Microcode/S2DEX.h"
 #include "../../Graphics/image_convert.h"
 
-// STANDARD DRAWIMAGE - draws a 2d image based on the following structure
-
-float set_sprite_combine_mode(void)
-{
-  float Z;
-  if (((gDP.otherMode.h & RDP_CYCLE_TYPE) >> 20) == G_CYC_COPY)
-  {
-    int32_t color_source;
-
-    rdp.tex           = 1;
-    rdp.allow_combine = 0;
-
-    /* Now actually combine ! */
-    color_source      = GR_COMBINE_FUNCTION_LOCAL;
-    cmb.tmu1_func     = cmb.tmu0_func = color_source;
-    cmb.tmu1_fac      = cmb.tmu0_fac = GR_COMBINE_FACTOR_NONE;
-    cmb.tmu1_a_func   = cmb.tmu0_a_func = GR_COMBINE_FUNCTION_LOCAL;
-    cmb.tmu1_a_fac    = cmb.tmu0_a_fac = GR_COMBINE_FACTOR_NONE;
-    cmb.tmu1_invert   = cmb.tmu0_invert = FXFALSE;
-    cmb.tmu1_a_invert = cmb.tmu0_a_invert = FXFALSE;
-  }
-
-  g_gdp.flags |= UPDATE_COMBINE;
-  update ();
-
-  rdp.allow_combine = 1;
-
-  // set z buffer mode
-  Z = 0.0f;
-  if ((gDP.otherMode.l & 0x00000030) && (((gDP.otherMode.h & RDP_CYCLE_TYPE) >> 20) < G_CYC_COPY))
-  {
-    if (gDP.otherMode.depthSource == G_ZS_PRIM)
-      Z = g_gdp.prim_color.z;
-    FRDP ("prim_depth = %d, prim_dz = %d\n", g_gdp.prim_color.z, g_gdp.prim_color.dz);
-    Z = ScaleZ(Z);
-
-    if (gDP.otherMode.l & 0x00000400)
-      grDepthBiasLevel(g_gdp.prim_color.dz);
-  }
-
-  grCullMode (GR_CULL_DISABLE);
-  grFogMode (GR_FOG_DISABLE, g_gdp.fog_color.total);
-  g_gdp.flags |= UPDATE_CULL_MODE | UPDATE_FOG_ENABLED;
-
-  if (((gDP.otherMode.h & RDP_CYCLE_TYPE) >> 20) == G_CYC_COPY)
-  {
-    grColorCombine (GR_COMBINE_FUNCTION_SCALE_OTHER,
-      GR_COMBINE_FACTOR_ONE,
-      GR_COMBINE_LOCAL_NONE,
-      GR_COMBINE_OTHER_TEXTURE,
-      FXFALSE);
-    grAlphaCombine (GR_COMBINE_FUNCTION_SCALE_OTHER,
-      GR_COMBINE_FACTOR_ONE,
-      GR_COMBINE_LOCAL_NONE,
-      GR_COMBINE_OTHER_TEXTURE,
-      FXFALSE);
-    grAlphaBlendFunction (GR_BLEND_ONE,
-      GR_BLEND_ZERO,
-      GR_BLEND_ZERO,
-      GR_BLEND_ZERO);
-    grAlphaTestFunction ((gDP.otherMode.l & 1) ? GR_CMP_GEQUAL : GR_CMP_ALWAYS, 0x80, (gDP.otherMode.l & 1) ? 1 : 0);
-    g_gdp.flags |= UPDATE_ALPHA_COMPARE | UPDATE_COMBINE;
-  }
-  return Z;
-}
 
 typedef struct DRAWIMAGE_t
 {
@@ -188,7 +123,7 @@ static void DrawImage (DRAWIMAGE *d)
       case 0:
          y_size  = 32;
          y_shift = 5;
-         if (gDP.otherMode.textureLUT < G_TT_RGBA16)
+         if (rdp.tlut_mode < G_TT_RGBA16)
          {
             y_size  = 64;
             y_shift = 6;
@@ -200,7 +135,7 @@ static void DrawImage (DRAWIMAGE *d)
       case 1:
          y_size  = 32;
          y_shift = 5;
-         if (gDP.otherMode.textureLUT < G_TT_RGBA16)
+         if (rdp.tlut_mode < G_TT_RGBA16)
          {
             y_size  = 64;
             y_shift = 6;
@@ -243,14 +178,12 @@ static void DrawImage (DRAWIMAGE *d)
       }
    }
 
-#if 0
    if ((settings.hacks&hack_PPL) > 0)
    {
       if (d->imageY > d->imageH)
          d->imageY = (d->imageY % d->imageH);
    }
    else
-#endif
    if ((settings.hacks&hack_Starcraft) > 0)
    {
       if (d->imageH%2 == 1)
@@ -556,7 +489,7 @@ static void uc6_bg(bool first_cycle)
 
    uc6_read_background_data(&d, first_cycle);
 
-   if (settings.ucode == ucode_F3DEX2/* || (settings.hacks&hack_PPL)*/)
+   if (settings.ucode == ucode_F3DEX2 || (settings.hacks&hack_PPL))
    {
       /* can't draw from framebuffer */
       if (d.imagePtr == gDP.colorImage.address || d.imagePtr == rdp.ocimg)
@@ -1196,6 +1129,23 @@ static void uc6_sprite2d(uint32_t w0, uint32_t w1)
    d.imageY   = (((uint16_t *)gfx_info.RDRAM)[(addr+9)^1]); // 9
    tlut       = ((uint32_t*)gfx_info.RDRAM)[(addr + 2) >> 1]; // 2, 3
 
+   /*low-level implementation of sprite2d apparently calls setothermode command to set tlut mode		
+    *However, description of sprite2d microcode just says that		
+    *TlutPointer should be Null when CI images will not be used.		
+    *HLE implementation sets rdp.tlut_mode=2 if TlutPointer is not null, and rdp.tlut_mode=0 otherwise		
+    *Alas, it is not sufficient, since WCW Nitro uses non-Null TlutPointer for rgba textures.		
+    *So, additional check added.		
+    */
+   rdp.tlut_mode = 0;		
+   if (tlut)		
+   {		
+      load_palette (RSP_SegmentToPhysical(tlut), 0, 256);		
+      if (d.imageFmt > G_IM_FMT_RGBA)		
+         rdp.tlut_mode = 2;		
+      else		
+         rdp.tlut_mode = 0;		
+   }
+
    if (d.imageW == 0)
       return;// d.imageW = stride;
 
@@ -1250,7 +1200,7 @@ static void uc6_sprite2d(uint32_t w0, uint32_t w1)
          return;
  
       texsize = (d.imageW * d.imageH) << d.imageSiz >> 1;
-      maxTexSize = gDP.otherMode.textureLUT < G_TT_RGBA16 ? 4096 : 2048;
+      maxTexSize = rdp.tlut_mode < G_TT_RGBA16 ? 4096 : 2048;
 
       if (texsize > maxTexSize)
       {

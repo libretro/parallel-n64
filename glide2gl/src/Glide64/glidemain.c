@@ -95,6 +95,9 @@ static void *l_DebugCallContext = NULL;
 
 static void _ChangeSize(void)
 {
+   if (!gfx_info.VI_H_START_REG)
+      return;
+
    float res_scl_y      = (float)settings.res_y / 240.0f;
    uint32_t dwHStartReg = *gfx_info.VI_H_START_REG;
    uint32_t dwVStartReg = *gfx_info.VI_V_START_REG;
@@ -616,6 +619,8 @@ output:   none
 *******************************************************************/
 uint32_t update_screen_count = 0;
 
+void retro_return(bool a);
+
 void glide64UpdateScreen (void)
 {
    bool forced_update = false;
@@ -690,7 +695,7 @@ void newSwapBuffers(void)
    {
       grBufferSwap (settings.vsync);
 
-      if  (settings.buff_clear)
+      if  (settings.buff_clear || (settings.hacks & hack_PPL && settings.ucode == 6))
       {
          grDepthMask (FXTRUE);
          grBufferClear (0, 0, 0xFFFF);

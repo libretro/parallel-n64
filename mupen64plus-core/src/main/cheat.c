@@ -216,7 +216,8 @@ void cheat_apply_cheats(int entry)
 #endif
 
     // If game is Pokemon Snap, apply controller fix
-    if (strncmp((char *)ROM_HEADER.Name, "POKEMON SNAP", 12) == 0 && entry == ENTRY_VI) {
+    if (strncmp((char *)ROM_HEADER.Name, "POKEMON SNAP", 12) == 0 && entry == ENTRY_VI)
+    {
        if (sl(ROM_HEADER.CRC1) == 0xCA12B547 && sl(ROM_HEADER.CRC2) == 0x71FA4EE4) {
           // Pokemon Snap (U)
           execute_cheat(0xD1382D1C, 0x0002, NULL);
@@ -251,6 +252,34 @@ void cheat_apply_cheats(int entry)
           // Pokemon Snap (E) + (F) + (I) + (S)
           execute_cheat(0xD1381BFC, 0x802C, NULL);
           execute_cheat(0x80381BEF, 0x0000, NULL);
+       }
+    }
+    else if (!strcmp((char *)ROM_HEADER.Name, "DONKEY KONG 64"))
+    {
+       switch (ROM_HEADER.destination_code)
+       {
+          case 'J': /* Japan */
+             execute_cheat(0x806170A2, 0x0000, NULL);
+             break;
+          case 'A': /* Japan / USA */
+          case 'E': /* USA */
+             execute_cheat(0x80619632, 0x0000, NULL);
+             break;
+          case 'D': /* Germany */
+          case 'F': /* France */
+          case 'I': /* Italy */
+          case 'S': /* Spain */
+          case 0x50:
+          case 0x58:
+          case 0x20:
+          case 0x21:
+          case 0x38:
+          case 0x70:
+             execute_cheat(0x806128E2, 0x0000, NULL);
+             break;
+          default:
+             break;
+
        }
     }
     

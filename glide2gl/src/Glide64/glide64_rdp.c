@@ -37,6 +37,7 @@
 //****************************************************************
 
 #include <math.h>
+#include <encodings/crc32.h>
 #include "Gfx_1.3.h"
 #include "3dmath.h"
 #include "Util.h"
@@ -274,6 +275,9 @@ void rdp_reset(void)
    int i;
    reset                = 1;
 
+   if (!rdp.vtx)
+      return;
+
    // set all vertex numbers
    for (i = 0; i < MAX_VTX; i++)
       rdp.vtx[i].number = i;
@@ -371,6 +375,9 @@ void glide64ProcessDList(void)
   fbreads_back                        = 0;
   gSP.fog.multiplier                  = 0;
   gSP.fog.offset                      = 0;
+
+  if (rdp.vi_org_reg != *gfx_info.VI_ORIGIN_REG)		
+     rdp.tlut_mode     = 0; /* is it correct? */
 
   rdp.scissor_set                     = false;
   gSP.DMAOffsets.tex_offset           = 0;
@@ -520,7 +527,66 @@ static void colorimage_zbuffer_copy(uint32_t w0, uint32_t w1)
    }
 }
 
+enum rdp_tex_rect_mode
+{
+   GSP_TEX_RECT = 0,
+   GDP_TEX_RECT,
+   HALF_TEX_RECT
+};
 
+static void rdp_getTexRectParams(uint32_t *w2, uint32_t *w3)
+{
+   enum rdp_tex_rect_mode texRectMode = GDP_TEX_RECT;
+   uint32_t a, cmdHalf1, cmdHalf2;
+   if (__RSP.bLLE)
+   {
+      *w2 = __RDP.w2;
+      *w3 = __RDP.w3;
+      return;
+   }
+
+   a = __RSP.PC[__RSP.PCi];
+   cmdHalf1 = gfx_info.RDRAM[a+3];
+   cmdHalf2 = gfx_info.RDRAM[a+11];
+   a >>= 2;
+
+   if (  (cmdHalf1 == 0xE1 && cmdHalf2 == 0xF1) || 
+         (cmdHalf1 == 0xB4 && cmdHalf2 == 0xB3) || 
+         (cmdHalf1 == 0xB3 && cmdHalf2 == 0xB2)
+      )
+   {
+      texRectMode = GSP_TEX_RECT;
+   }
+
+   switch (texRectMode)
+   {
+      case GSP_TEX_RECT:
+         //gSPTextureRectangle
+         *w2 = ((uint32_t*)gfx_info.RDRAM)[a+1];
+         __RSP.PC[__RSP.PCi] += 8;
+
+         *w3 = ((uint32_t*)gfx_info.RDRAM)[a+3];
+         __RSP.PC[__RSP.PCi] += 8;
+         break;
+      case GDP_TEX_RECT:
+         //gDPTextureRectangle
+         if (settings.hacks&hack_ASB ||
+               settings.hacks & hack_Winback
+               )
+            *w2 = 0;
+         else
+            *w2 = ((uint32_t*)gfx_info.RDRAM)[a+0];
+
+         if (settings.hacks & hack_Winback)
+            *w3 = 0;
+         else
+            *w3 = ((uint32_t*)gfx_info.RDRAM)[a+1];
+         __RSP.PC[__RSP.PCi] += 8;
+         break;
+      case HALF_TEX_RECT:
+         break;
+   }
+}
 
 static void rdp_texrect(uint32_t w0, uint32_t w1)
 {
@@ -534,35 +600,9 @@ static void rdp_texrect(uint32_t w0, uint32_t w1)
       float ul_u, ul_v, lr_u, lr_v;
    } texUV[2]; //struct for texture coordinates
    VERTEX *vptr = NULL, vstd[4];
+   
+   rdp_getTexRectParams(&__RDP.w2, &__RDP.w3);
 
-   if (!__RSP.bLLE)
-   {
-      uint32_t       a = __RSP.PC[__RSP.PCi];
-      uint8_t cmdHalf1 = gfx_info.RDRAM[a+3];
-      uint8_t cmdHalf2 = gfx_info.RDRAM[a+11];
-      a >>= 2;
-
-      if (  (cmdHalf1 == 0xE1 && cmdHalf2 == 0xF1) || 
-            (cmdHalf1 == 0xB4 && cmdHalf2 == 0xB3) || 
-            (cmdHalf1 == 0xB3 && cmdHalf2 == 0xB2)
-         )
-      {
-         //gSPTextureRectangle
-         __RDP.w2 = ((uint32_t*)gfx_info.RDRAM)[a+1];
-         __RDP.w3 = ((uint32_t*)gfx_info.RDRAM)[a+3];
-         __RSP.PC[__RSP.PCi] += 16;
-      }
-      else
-      {
-         //gDPTextureRectangle
-         if (settings.hacks&hack_ASB)
-            __RDP.w2 = 0;
-         else
-            __RDP.w2 = ((uint32_t*)gfx_info.RDRAM)[a+0];
-         __RDP.w3 = ((uint32_t*)gfx_info.RDRAM)[a+1];
-         __RSP.PC[__RSP.PCi] += 8;
-      }
-   }
    if ((settings.hacks&hack_Yoshi) && settings.ucode == ucode_S2DEX)
    {
       colorimage_yoshis_story_memrect(
@@ -575,7 +615,7 @@ static void rdp_texrect(uint32_t w0, uint32_t w1)
       return;
    }
 
-   if (rdp.skip_drawing || (!fb_emulation_enabled && (gDP.colorImage.address == g_gdp.zb_address)))
+   if (rdp.skip_drawing || (!fb_emulation_enabled && (gDP.colorImage.address == g_gdp.zb_address)) || __RDP.w3 == 0)
    {
       if ((settings.hacks&hack_PMario) && rdp.ci_status == CI_USELESS)
          colorimage_palette_modification();
@@ -796,63 +836,185 @@ static void rdp_texrect(uint32_t w0, uint32_t w1)
    CCLIP2 (s_ul_x, s_lr_x, texUV[0].ul_u, texUV[0].lr_u, texUV[1].ul_u, texUV[1].lr_u, (float)rdp.scissor.ul_x, (float)rdp.scissor.lr_x);
    CCLIP2 (s_ul_y, s_lr_y, texUV[0].ul_v, texUV[0].lr_v, texUV[1].ul_v, texUV[1].lr_v, (float)rdp.scissor.ul_y, (float)rdp.scissor.lr_y);
 
-   memset(vstd, 0, sizeof(VERTEX) * 4);
-
-   vstd[0].x = s_ul_x;
-   vstd[0].y = s_ul_y;
-   vstd[0].z = Z;
-   vstd[0].q = 1.0f;
-   vstd[0].u[0] = texUV[0].ul_u;
-   vstd[0].v[0] = texUV[0].ul_v;
-   vstd[0].u[1] = texUV[1].ul_u;
-   vstd[0].v[1] = texUV[1].ul_v;
+   vstd[0].x        = s_ul_x;
+   vstd[0].y        = s_ul_y;
+   vstd[0].z        = Z;
+   vstd[0].q        = 1.0f;
+   vstd[0].b        = 0;
+   vstd[0].g        = 0;
+   vstd[0].r        = 0;
+   vstd[0].a        = 0;
    vstd[0].coord[0] = 0;
    vstd[0].coord[1] = 0;
    vstd[0].coord[2] = 0;
    vstd[0].coord[3] = 0;
-   vstd[0].f = 255.0f;
+   vstd[0].f        = 255.0f;
+   vstd[0].u[0]     = texUV[0].ul_u;
+   vstd[0].u[1]     = texUV[1].ul_u;
+   vstd[0].v[0]     = texUV[0].ul_v;
+   vstd[0].v[1]     = texUV[1].ul_v;
+   vstd[0].w        = 0.0f;
+   vstd[0].flags    = 0;
+   vstd[0].vec[0]   = 0.0f;
+   vstd[0].vec[1]   = 0.0f;
+   vstd[0].vec[2]   = 0.0f;
+   vstd[0].sx       = 0.0f;
+   vstd[0].sy       = 0.0f;
+   vstd[0].sz       = 0.0f;
+   vstd[0].x_w      = 0.0f;
+   vstd[0].y_w      = 0.0f;
+   vstd[0].z_w      = 0.0f;
+   vstd[0].oow      = 0.0f;
+   vstd[0].u_w[0]   = 0.0f;
+   vstd[0].u_w[1]   = 0.0f;
+   vstd[0].v_w[0]            = 0.0f;
+   vstd[0].v_w[1]            = 0.0f;
+   vstd[0].not_zclipped      = 0;
+   vstd[0].screen_translated = 0;
+   vstd[0].uv_scaled         = 0;
+   vstd[0].uv_calculated     = 0;
+   vstd[0].shade_mod         = 0;
+   vstd[0].color_backup      = 0;
+   vstd[0].ou                = 0.0f;
+   vstd[0].ov                = 0.0f;
+   vstd[0].number            = 0;
+   vstd[0].scr_off           = 0;
+   vstd[0].z_off             = 0;
 
    vstd[1].x = s_lr_x;
    vstd[1].y = s_ul_y;
    vstd[1].z = Z;
    vstd[1].q = 1.0f;
-   vstd[1].u[0] = texUV[0].lr_u;
-   vstd[1].v[0] = texUV[0].ul_v;
-   vstd[1].u[1] = texUV[1].lr_u;
-   vstd[1].v[1] = texUV[1].ul_v;
+   vstd[1].b        = 0.0f;
+   vstd[1].g        = 0.0f;
+   vstd[1].r        = 0.0f;
+   vstd[1].a        = 0.0f;
    vstd[1].coord[0] = 0;
    vstd[1].coord[1] = 0;
    vstd[1].coord[2] = 0;
    vstd[1].coord[3] = 0;
-   vstd[1].f = 255.0f;
+   vstd[1].f        = 255.0f;
+   vstd[1].u[0]     = texUV[0].lr_u;
+   vstd[1].u[1]     = texUV[1].lr_u;
+   vstd[1].v[0]     = texUV[0].ul_v;
+   vstd[1].v[1]     = texUV[1].ul_v;
+   vstd[1].w        = 0.0f;
+   vstd[1].flags    = 0;
+   vstd[1].vec[0]   = 0.0f;
+   vstd[1].vec[1]   = 0.0f;
+   vstd[1].vec[2]   = 0.0f;
+   vstd[1].sx       = 0.0f;
+   vstd[1].sy       = 0.0f;
+   vstd[1].sz       = 0.0f;
+   vstd[1].x_w      = 0.0f;
+   vstd[1].y_w      = 0.0f;
+   vstd[1].z_w      = 0.0f;
+   vstd[1].oow      = 0.0f;
+   vstd[1].u_w[0]   = 0.0f;
+   vstd[1].u_w[1]   = 0.0f;
+   vstd[1].v_w[0]            = 0.0f;
+   vstd[1].v_w[1]            = 0.0f;
+   vstd[1].not_zclipped      = 0;
+   vstd[1].screen_translated = 0;
+   vstd[1].uv_scaled         = 0;
+   vstd[1].uv_calculated     = 0;
+   vstd[1].shade_mod         = 0;
+   vstd[1].color_backup      = 0;
+   vstd[1].ou                = 0.0f;
+   vstd[1].ov                = 0.0f;
+   vstd[1].number            = 0;
+   vstd[1].scr_off           = 0;
+   vstd[1].z_off             = 0;
 
    vstd[2].x = s_ul_x;
    vstd[2].y = s_lr_y;
    vstd[2].z = Z;
    vstd[2].q = 1.0f;
-   vstd[2].u[0] = texUV[0].ul_u;
-   vstd[2].v[0] = texUV[0].lr_v;
-   vstd[2].u[1] = texUV[1].ul_u;
-   vstd[2].v[1] = texUV[1].lr_v;
+   vstd[2].b        = 0.0f;
+   vstd[2].g        = 0.0f;
+   vstd[2].r        = 0.0f;
+   vstd[2].a        = 0.0f;
    vstd[2].coord[0] = 0;
    vstd[2].coord[1] = 0;
    vstd[2].coord[2] = 0;
    vstd[2].coord[3] = 0;
    vstd[2].f = 255.0f;
+   vstd[2].u[0] = texUV[0].ul_u;
+   vstd[2].v[0] = texUV[0].lr_v;
+   vstd[2].u[1] = texUV[1].ul_u;
+   vstd[2].v[1] = texUV[1].lr_v;
+   vstd[2].w        = 0.0f;
+   vstd[2].flags    = 0;
+   vstd[2].vec[0]   = 0.0f;
+   vstd[2].vec[1]   = 0.0f;
+   vstd[2].vec[2]   = 0.0f;
+   vstd[2].sx       = 0.0f;
+   vstd[2].sy       = 0.0f;
+   vstd[2].sz       = 0.0f;
+   vstd[2].x_w      = 0.0f;
+   vstd[2].y_w      = 0.0f;
+   vstd[2].z_w      = 0.0f;
+   vstd[2].oow      = 0.0f;
+   vstd[2].u_w[0]   = 0.0f;
+   vstd[2].u_w[1]   = 0.0f;
+   vstd[2].v_w[0]            = 0.0f;
+   vstd[2].v_w[1]            = 0.0f;
+   vstd[2].not_zclipped      = 0;
+   vstd[2].screen_translated = 0;
+   vstd[2].uv_scaled         = 0;
+   vstd[2].uv_calculated     = 0;
+   vstd[2].shade_mod         = 0;
+   vstd[2].color_backup      = 0;
+   vstd[2].ou                = 0.0f;
+   vstd[2].ov                = 0.0f;
+   vstd[2].number            = 0;
+   vstd[2].scr_off           = 0;
+   vstd[2].z_off             = 0;
 
    vstd[3].x = s_lr_x;
    vstd[3].y = s_lr_y;
    vstd[3].z = Z;
    vstd[3].q = 1.0f;
-   vstd[3].u[0] = texUV[0].lr_u;
-   vstd[3].v[0] = texUV[0].lr_v;
-   vstd[3].u[1] = texUV[1].lr_u;
-   vstd[3].v[1] = texUV[1].lr_v;
+   vstd[3].b        = 0.0f;
+   vstd[3].g        = 0.0f;
+   vstd[3].r        = 0.0f;
+   vstd[3].a        = 0.0f;
    vstd[3].coord[0] = 0;
    vstd[3].coord[1] = 0;
    vstd[3].coord[2] = 0;
    vstd[3].coord[3] = 0;
    vstd[3].f = 255.0f;
+   vstd[3].u[0] = texUV[0].lr_u;
+   vstd[3].v[0] = texUV[0].lr_v;
+   vstd[3].u[1] = texUV[1].lr_u;
+   vstd[3].v[1] = texUV[1].lr_v;
+   vstd[3].w        = 0.0f;
+   vstd[3].flags    = 0;
+   vstd[3].vec[0]   = 0.0f;
+   vstd[3].vec[1]   = 0.0f;
+   vstd[3].vec[2]   = 0.0f;
+   vstd[3].sx       = 0.0f;
+   vstd[3].sy       = 0.0f;
+   vstd[3].sz       = 0.0f;
+   vstd[3].x_w      = 0.0f;
+   vstd[3].y_w      = 0.0f;
+   vstd[3].z_w      = 0.0f;
+   vstd[3].oow      = 0.0f;
+   vstd[3].u_w[0]   = 0.0f;
+   vstd[3].u_w[1]   = 0.0f;
+   vstd[3].v_w[0]            = 0.0f;
+   vstd[3].v_w[1]            = 0.0f;
+   vstd[3].not_zclipped      = 0;
+   vstd[3].screen_translated = 0;
+   vstd[3].uv_scaled         = 0;
+   vstd[3].uv_calculated     = 0;
+   vstd[3].shade_mod         = 0;
+   vstd[3].color_backup      = 0;
+   vstd[3].ou                = 0.0f;
+   vstd[3].ov                = 0.0f;
+   vstd[3].number            = 0;
+   vstd[3].scr_off           = 0;
+   vstd[3].z_off             = 0;
 
    if ( ((__RSP.w0 >> 24)&0xFF) == G_TEXRECTFLIP )
    {
@@ -966,8 +1128,8 @@ void load_palette (uint32_t addr, uint16_t start, uint16_t count)
    if (end == start) // it can be if count < 16
       end = start + 1;
    for (p = start; p < end; p++)
-      rdp.pal_8_crc[p] = CRC32( 0xFFFFFFFF, &rdp.pal_8[(p << 4)], 32 );
-   gDP.paletteCRC256 = CRC32( 0xFFFFFFFF, rdp.pal_8_crc, 64 );
+      rdp.pal_8_crc[p] = encoding_crc32( 0xFFFFFFFF, (const uint8_t*)&rdp.pal_8[(p << 4)], 32 );
+   gDP.paletteCRC256   = encoding_crc32( 0xFFFFFFFF, (const uint8_t*)rdp.pal_8_crc, 64 );
 }
 
 static void rdp_loadtlut(uint32_t w0, uint32_t w1)
@@ -1279,6 +1441,41 @@ static void rdp_setcolorimage(uint32_t w0, uint32_t w1)
             RestoreScale();
       }
 
+      if (cur_fb->status == CI_AUX)
+      {
+         if (cur_fb->format == 0)
+         {
+            if ((settings.hacks & hack_PPL) && (rdp.scale_x < 1.1f))  //need to put current image back to frame buffer
+            {
+               unsigned x, y;
+               uint16_t c;
+               int width         = cur_fb->width;
+               int height        = cur_fb->height;
+               uint16_t *ptr_dst = calloc(width * height, sizeof(uint16_t));
+               uint16_t *ptr_src = (uint16_t*)(gfx_info.RDRAM + cur_fb->addr);
+
+               for (y = 0; y < height; y++)
+               {
+                  for (x = 0; x < width; x++)
+                  {
+                     c = ((ptr_src[(x + y * width) ^ 1]) >> 1) | 0x8000;
+                     ptr_dst[x + y * width] = c;
+                  }
+               }
+               grLfbWriteRegion(GR_BUFFER_BACKBUFFER,
+                     (uint32_t)rdp.offset_x,
+                     (uint32_t)rdp.offset_y,
+                     GR_LFB_SRC_FMT_555,
+                     width,
+                     height,
+                     FXFALSE,
+                     width << 1,
+                     ptr_dst);
+               free(ptr_dst);
+            }
+         }
+      }
+
       if ((cur_fb->status == CI_MAIN) && (rdp.ci_count > 0))
       {
          int i;
@@ -1500,7 +1697,10 @@ void glide64FBGetFrameBufferInfo(void *p)
    int i;
    FrameBufferInfo * pinfo = (FrameBufferInfo *)p;
 
-   memset(pinfo,0,sizeof(FrameBufferInfo)*6);
+   pinfo->addr   = 0;
+   pinfo->size   = 0;
+   pinfo->width  = 0;
+   pinfo->height = 0;
 
    if (!(settings.frame_buffer&fb_get_info))
       return;
@@ -1620,12 +1820,15 @@ void DetectFrameBufferUsage(void)
    if (rdp.black_ci_index > 0 && rdp.black_ci_index < rdp.copy_ci_index)
       rdp.frame_buffers[rdp.black_ci_index].status = CI_MAIN;
 
-   if (rdp.frame_buffers[rdp.ci_count-1].status == CI_UNKNOWN)
+   if ((rdp.ci_count-1) >= 0)
    {
-      if (rdp.ci_count > 1)
-         rdp.frame_buffers[rdp.ci_count-1].status = CI_AUX;
-      else
-         rdp.frame_buffers[rdp.ci_count-1].status = CI_MAIN;
+      if (rdp.frame_buffers[rdp.ci_count-1].status == CI_UNKNOWN)
+      {
+         if (rdp.ci_count > 1)
+            rdp.frame_buffers[rdp.ci_count-1].status = CI_AUX;
+         else
+            rdp.frame_buffers[rdp.ci_count-1].status = CI_MAIN;
+      }
    }
 
    if ((rdp.ci_count > 0 && rdp.frame_buffers[rdp.ci_count-1].status == CI_AUX) &&
@@ -1900,6 +2103,9 @@ static void glide64ProcessRDPList_restorestate(void)
    fbreads_front = fbreads_back   = 0;
    gSP.fog.multiplier             = 0;
    gSP.fog.offset                 = 0;
+
+   if (rdp.vi_org_reg != *gfx_info.VI_ORIGIN_REG)		
+      rdp.tlut_mode                     = 0; /* is it correct? */
 
    rdp.scissor_set      = false;
    gSP.DMAOffsets.tex_offset  = 0;
