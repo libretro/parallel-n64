@@ -2,6 +2,7 @@
 #define VULKAN_UTIL_HPP
 
 #include "vulkan.hpp"
+#include <functional>
 #include <stack>
 #include <stddef.h>
 #include <vector>
