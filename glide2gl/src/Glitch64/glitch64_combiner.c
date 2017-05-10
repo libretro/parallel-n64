@@ -54,7 +54,7 @@ typedef struct _shader_program_key
    int texture0_location;
    int texture1_location;
    int vertexOffset_location;
-   int textureSizes_location;   
+   int textureSizes_location;
    int exactSizes_location;
    int fogModeEndScale_location;
    int fogColor_location;
@@ -150,6 +150,50 @@ SHADER_HEADER
 "#define TEX1             texture2D(texture1, vTexCoord[1].xy) \n" \
 "#define TEX1_OFFSET(off) texture2D(texture1, vTexCoord[1].xy - off/exactSizes.zw) \n" \
 
+"// START JINC2 CONSTANTS AND FUNCTIONS // \n"
+"#define JINC2_WINDOW_SINC 0.44 \n"
+"#define JINC2_SINC 0.82 \n"
+"#define JINC2_AR_STRENGTH 0.8 \n"
+"const   float halfpi            = 1.5707963267948966192313216916398;   \n"
+"const   float pi                = 3.1415926535897932384626433832795;   \n"
+"const   float wa                = JINC2_WINDOW_SINC*pi;    \n"
+"const   float wb                = JINC2_SINC*pi;       \n"
+
+"// Calculates the distance between two points  \n"
+"float d(vec2 pt1, vec2 pt2)    \n"
+"{  \n"
+"  vec2 v = pt2 - pt1;  \n"
+"  return sqrt(dot(v,v));   \n"
+"}  \n"
+
+"vec3 min4(vec3 a, vec3 b, vec3 c, vec3 d)  \n"
+"{  \n"
+"    return min(a, min(b, min(c, d)));  \n"
+"}  \n"
+
+"vec3 max4(vec3 a, vec3 b, vec3 c, vec3 d)  \n"
+"{  \n"
+ "   return max(a, max(b, max(c, d)));  \n"
+"}  \n"
+
+"vec4 min4(vec4 a, vec4 b, vec4 c, vec4 d)  \n"
+"{  \n"
+"    return min(a, min(b, min(c, d)));  \n"
+"}  \n"
+
+"vec4 max4(vec4 a, vec4 b, vec4 c, vec4 d)  \n"
+"{  \n"
+ "   return max(a, max(b, max(c, d)));  \n"
+"}  \n"
+
+"vec4 resampler(vec4 x) \n"
+"{  \n"
+"   vec4 res;   \n"
+"   res = (x==vec4(0.0, 0.0, 0.0, 0.0)) ?  vec4(wa*wb)  :  sin(x*wa)*sin(x*wb)/(x*x);   \n"
+"   return res; \n"
+"}  \n"
+"// END JINC2 CONSTANTS AND FUNCTIONS // \n"
+
 SHADER_VARYING
 "\n"
 "void test_chroma(vec4 ctexture1); \n"
@@ -158,7 +202,7 @@ SHADER_VARYING
 "void main()\n"
 "{\n"
 "  vec2 offset; \n"
-"  vec4 c0,c1,c2; \n"		
+"  vec4 c0,c1,c2; \n"
 ;
 
 // using gl_FragCoord is terribly slow on ATI and varying variables don't work for some unknown
@@ -183,6 +227,62 @@ static const char* fragment_shader_readtex0color_3point =
 "  vec4 readtex0 =c0+abs(offset.x)*(c1-c0)+abs(offset.y)*(c2-c0); \n"
 ;
 
+static const char* fragment_shader_readtex0color_jinc2 =
+"    vec4 color;    \n"
+"    vec4 weights[4];   \n"
+
+"    vec2 dx = vec2(1.0, 0.0);  \n"
+"    vec2 dy = vec2(0.0, 1.0);  \n"
+
+"    vec2 pc = vTexCoord[0].xy * exactSizes.xy;    \n"
+
+"    vec2 tc = (floor(pc-vec2(0.5,0.5))+vec2(0.5,0.5)); \n"
+
+"    weights[0] = resampler(vec4(d(pc, tc    -dx    -dy), d(pc, tc           -dy), d(pc, tc    +dx    -dy), d(pc, tc+2.0*dx    -dy)));  \n"
+"    weights[1] = resampler(vec4(d(pc, tc    -dx       ), d(pc, tc              ), d(pc, tc    +dx       ), d(pc, tc+2.0*dx       )));  \n"
+"    weights[2] = resampler(vec4(d(pc, tc    -dx    +dy), d(pc, tc           +dy), d(pc, tc    +dx    +dy), d(pc, tc+2.0*dx    +dy)));  \n"
+"    weights[3] = resampler(vec4(d(pc, tc    -dx+2.0*dy), d(pc, tc       +2.0*dy), d(pc, tc    +dx+2.0*dy), d(pc, tc+2.0*dx+2.0*dy)));  \n"
+
+"    dx = dx/exactSizes.xy;   \n"
+"    dy = dy/exactSizes.xy;   \n"
+"    tc = tc/exactSizes.xy;   \n"
+
+"    vec4 c00 = texture2D(texture0, tc    -dx    -dy).xyzw;  \n"
+"    vec4 c10 = texture2D(texture0, tc           -dy).xyzw;  \n"
+"    vec4 c20 = texture2D(texture0, tc    +dx    -dy).xyzw;  \n"
+"    vec4 c30 = texture2D(texture0, tc+2.0*dx    -dy).xyzw;  \n"
+"    vec4 c01 = texture2D(texture0, tc    -dx       ).xyzw;  \n"
+"    vec4 c11 = texture2D(texture0, tc              ).xyzw;  \n"
+"    vec4 c21 = texture2D(texture0, tc    +dx       ).xyzw;  \n"
+"    vec4 c31 = texture2D(texture0, tc+2.0*dx       ).xyzw;  \n"
+"    vec4 c02 = texture2D(texture0, tc    -dx    +dy).xyzw;  \n"
+"    vec4 c12 = texture2D(texture0, tc           +dy).xyzw;  \n"
+"    vec4 c22 = texture2D(texture0, tc    +dx    +dy).xyzw;  \n"
+"    vec4 c32 = texture2D(texture0, tc+2.0*dx    +dy).xyzw;  \n"
+"    vec4 c03 = texture2D(texture0, tc    -dx+2.0*dy).xyzw;  \n"
+"    vec4 c13 = texture2D(texture0, tc       +2.0*dy).xyzw;  \n"
+"    vec4 c23 = texture2D(texture0, tc    +dx+2.0*dy).xyzw;  \n"
+"    vec4 c33 = texture2D(texture0, tc+2.0*dx+2.0*dy).xyzw;  \n"
+
+"    //  Get min/max samples    \n"
+"    vec4 min_sample = min4(c11, c21, c12, c22);    \n"
+"    vec4 max_sample = max4(c11, c21, c12, c22);    \n"
+
+"    color = vec4(dot(weights[0], vec4(c00.x, c10.x, c20.x, c30.x)), dot(weights[0], vec4(c00.y, c10.y, c20.y, c30.y)), dot(weights[0], vec4(c00.z, c10.z, c20.z, c30.z)), dot(weights[0], vec4(c00.w, c10.w, c20.w, c30.w))); \n"
+"    color+= vec4(dot(weights[1], vec4(c01.x, c11.x, c21.x, c31.x)), dot(weights[1], vec4(c01.y, c11.y, c21.y, c31.y)), dot(weights[1], vec4(c01.z, c11.z, c21.z, c31.z)), dot(weights[1], vec4(c01.w, c11.w, c21.w, c31.w))); \n"
+"    color+= vec4(dot(weights[2], vec4(c02.x, c12.x, c22.x, c32.x)), dot(weights[2], vec4(c02.y, c12.y, c22.y, c32.y)), dot(weights[2], vec4(c02.z, c12.z, c22.z, c32.z)), dot(weights[2], vec4(c02.w, c12.w, c22.w, c32.w))); \n"
+"    color+= vec4(dot(weights[3], vec4(c03.x, c13.x, c23.x, c33.x)), dot(weights[3], vec4(c03.y, c13.y, c23.y, c33.y)), dot(weights[3], vec4(c03.z, c13.z, c23.z, c33.z)), dot(weights[3], vec4(c03.w, c13.w, c23.w, c33.w))); \n"
+"    color = color/(dot(weights[0], vec4(1,1,1,1)) + dot(weights[1], vec4(1,1,1,1)) + dot(weights[2], vec4(1,1,1,1)) + dot(weights[3], vec4(1,1,1,1))); \n"
+
+"    // Anti-ringing    \n"
+"    vec4 aux = color;  \n"
+"    color = clamp(color, min_sample, max_sample);  \n"
+"    color = mix(aux, color, JINC2_AR_STRENGTH);    \n"
+
+"    // final sum and weight normalization  \n"
+"    vec4 readtex1 = vec4(color); \n"
+;
+
 static const char* fragment_shader_readtex1color =
 "  vec4 readtex1 = TEX1; \n"
 ;
@@ -194,6 +294,62 @@ static const char* fragment_shader_readtex1color_3point =
 "  c1=TEX1_OFFSET(vec2(offset.x-sign(offset.x),offset.y)); \n"
 "  c2=TEX1_OFFSET(vec2(offset.x,offset.y-sign(offset.y))); \n"
 "  vec4 readtex1 =c0+abs(offset.x)*(c1-c0)+abs(offset.y)*(c2-c0); \n";
+
+static const char* fragment_shader_readtex1color_jinc2 =
+"    vec4 color;    \n"
+"    vec4 weights[4];   \n"
+
+"    vec2 dx = vec2(1.0, 0.0);  \n"
+"    vec2 dy = vec2(0.0, 1.0);  \n"
+
+"    vec2 pc = vTexCoord[1].xy * exactSizes.zw;    \n"
+
+"    vec2 tc = (floor(pc-vec2(0.5,0.5))+vec2(0.5,0.5)); \n"
+
+"    weights[0] = resampler(vec4(d(pc, tc    -dx    -dy), d(pc, tc           -dy), d(pc, tc    +dx    -dy), d(pc, tc+2.0*dx    -dy)));  \n"
+"    weights[1] = resampler(vec4(d(pc, tc    -dx       ), d(pc, tc              ), d(pc, tc    +dx       ), d(pc, tc+2.0*dx       )));  \n"
+"    weights[2] = resampler(vec4(d(pc, tc    -dx    +dy), d(pc, tc           +dy), d(pc, tc    +dx    +dy), d(pc, tc+2.0*dx    +dy)));  \n"
+"    weights[3] = resampler(vec4(d(pc, tc    -dx+2.0*dy), d(pc, tc       +2.0*dy), d(pc, tc    +dx+2.0*dy), d(pc, tc+2.0*dx+2.0*dy)));  \n"
+
+"    dx = dx/exactSizes.zw;   \n"
+"    dy = dy/exactSizes.zw;   \n"
+"    tc = tc/exactSizes.zw;   \n"
+
+"    vec4 c00 = texture2D(texture1, tc    -dx    -dy).xyzw;  \n"
+"    vec4 c10 = texture2D(texture1, tc           -dy).xyzw;  \n"
+"    vec4 c20 = texture2D(texture1, tc    +dx    -dy).xyzw;  \n"
+"    vec4 c30 = texture2D(texture1, tc+2.0*dx    -dy).xyzw;  \n"
+"    vec4 c01 = texture2D(texture1, tc    -dx       ).xyzw;  \n"
+"    vec4 c11 = texture2D(texture1, tc              ).xyzw;  \n"
+"    vec4 c21 = texture2D(texture1, tc    +dx       ).xyzw;  \n"
+"    vec4 c31 = texture2D(texture1, tc+2.0*dx       ).xyzw;  \n"
+"    vec4 c02 = texture2D(texture1, tc    -dx    +dy).xyzw;  \n"
+"    vec4 c12 = texture2D(texture1, tc           +dy).xyzw;  \n"
+"    vec4 c22 = texture2D(texture1, tc    +dx    +dy).xyzw;  \n"
+"    vec4 c32 = texture2D(texture1, tc+2.0*dx    +dy).xyzw;  \n"
+"    vec4 c03 = texture2D(texture1, tc    -dx+2.0*dy).xyzw;  \n"
+"    vec4 c13 = texture2D(texture1, tc       +2.0*dy).xyzw;  \n"
+"    vec4 c23 = texture2D(texture1, tc    +dx+2.0*dy).xyzw;  \n"
+"    vec4 c33 = texture2D(texture1, tc+2.0*dx+2.0*dy).xyzw;  \n"
+
+"    //  Get min/max samples    \n"
+"    vec4 min_sample = min4(c11, c21, c12, c22);    \n"
+"    vec4 max_sample = max4(c11, c21, c12, c22);    \n"
+
+"    color = vec4(dot(weights[0], vec4(c00.x, c10.x, c20.x, c30.x)), dot(weights[0], vec4(c00.y, c10.y, c20.y, c30.y)), dot(weights[0], vec4(c00.z, c10.z, c20.z, c30.z)), dot(weights[0], vec4(c00.w, c10.w, c20.w, c30.w))); \n"
+"    color+= vec4(dot(weights[1], vec4(c01.x, c11.x, c21.x, c31.x)), dot(weights[1], vec4(c01.y, c11.y, c21.y, c31.y)), dot(weights[1], vec4(c01.z, c11.z, c21.z, c31.z)), dot(weights[1], vec4(c01.w, c11.w, c21.w, c31.w))); \n"
+"    color+= vec4(dot(weights[2], vec4(c02.x, c12.x, c22.x, c32.x)), dot(weights[2], vec4(c02.y, c12.y, c22.y, c32.y)), dot(weights[2], vec4(c02.z, c12.z, c22.z, c32.z)), dot(weights[2], vec4(c02.w, c12.w, c22.w, c32.w))); \n"
+"    color+= vec4(dot(weights[3], vec4(c03.x, c13.x, c23.x, c33.x)), dot(weights[3], vec4(c03.y, c13.y, c23.y, c33.y)), dot(weights[3], vec4(c03.z, c13.z, c23.z, c33.z)), dot(weights[3], vec4(c03.w, c13.w, c23.w, c33.w))); \n"
+"    color = color/(dot(weights[0], vec4(1,1,1,1)) + dot(weights[1], vec4(1,1,1,1)) + dot(weights[2], vec4(1,1,1,1)) + dot(weights[3], vec4(1,1,1,1))); \n"
+
+"    // Anti-ringing    \n"
+"    vec4 aux = color;  \n"
+"    color = clamp(color, min_sample, max_sample);  \n"
+"    color = mix(aux, color, JINC2_AR_STRENGTH);    \n"
+
+"    // final sum and weight normalization  \n"
+"    vec4 readtex1 = vec4(color); \n"
+;
 
 static const char* fragment_shader_fog =
 "  float fog;  \n"
@@ -218,7 +374,7 @@ SHADER_HEADER
 "attribute highp vec4 aMultiTexCoord1; \n"
 "attribute float aFog;                 \n"
 "uniform vec3 vertexOffset;            \n" //Moved some calculations from grDrawXXX to shader
-"uniform vec4 textureSizes;            \n" 
+"uniform vec4 textureSizes;            \n"
 "uniform vec3 fogModeEndScale;         \n" //0 = Mode, 1 = gl_Fog.end, 2 = gl_Fog.scale
 SHADER_VARYING
 "\n"
@@ -244,9 +400,9 @@ SHADER_VARYING
 "  float f = (fogModeEndScale[1] - fogV) * fogModeEndScale[2];              \n"
 "  f = clamp(f, 0.0, 1.0);                                                  \n"
 "  vTexCoord[0].b = f;                                                    \n"
-"  vTexCoord[2].b = aPosition.x;                                            \n" 
-"  vTexCoord[2].a = aPosition.y;                                            \n" 
-"}                                                                          \n" 
+"  vTexCoord[2].b = aPosition.x;                                            \n"
+"  vTexCoord[2].a = aPosition.y;                                            \n"
+"}                                                                          \n"
 ;
 
 static char fragment_shader_color_combiner[1024*2];
@@ -1124,11 +1280,11 @@ static void writeGLSLTextureAlphaFactorTMU1(int num_tex, int factor)
    }
 }
 
-void  
+void
 grTexCombine(
              int32_t tmu,
              int32_t rgb_function,
-             int32_t rgb_factor, 
+             int32_t rgb_factor,
              int32_t alpha_function,
              int32_t alpha_factor,
              int32_t rgb_invert,
@@ -1161,8 +1317,8 @@ grTexCombine(
       last_afunction = alpha_function;
       last_afactor = alpha_factor;
       last_rgb_invert= rgb_invert;
-      texture0_combiner_key = rgb_function | (rgb_factor << 4) | 
-         (alpha_function << 8) | (alpha_factor << 12) | 
+      texture0_combiner_key = rgb_function | (rgb_factor << 4) |
+         (alpha_function << 8) | (alpha_factor << 12) |
          (rgb_invert << 16);
       texture0_combinera_key = 0;
       strcpy(fragment_shader_texture0, "");
@@ -1289,7 +1445,7 @@ grTexCombine(
       last_afactor = alpha_factor;
       last_rgb_invert = rgb_invert;
 
-      texture1_combiner_key = rgb_function | (rgb_factor << 4) | 
+      texture1_combiner_key = rgb_function | (rgb_factor << 4) |
          (alpha_function << 8) | (alpha_factor << 12) |
          (rgb_invert << 16);
       texture1_combinera_key = 0;
@@ -1344,7 +1500,7 @@ grTexCombine(
 
       if (rgb_invert)
          strcat(fragment_shader_texture1, "ctexture1 = vec4(1.0) - ctexture1; \n");
-      
+
       switch(alpha_function)
       {
          case GR_COMBINE_FACTOR_ZERO:
@@ -1472,7 +1628,7 @@ void  grColorCombineExt(uint32_t a, uint32_t a_mode,
       uint32_t d, int32_t d_invert,
       uint32_t shift, int32_t invert)
 {
-   color_combiner_key = 0x80000000 | (a & 0x1F) | ((a_mode & 3) << 5) | 
+   color_combiner_key = 0x80000000 | (a & 0x1F) | ((a_mode & 3) << 5) |
       ((b & 0x1F) << 7) | ((b_mode & 3) << 12) |
       ((c & 0x1F) << 14) | ((c_invert & 1) << 19) |
       ((d & 0x1F) << 20) | ((d_invert & 1) << 25);
@@ -1643,7 +1799,7 @@ void grAlphaCombineExt(uint32_t a, uint32_t a_mode,
       uint32_t d, int32_t d_invert,
       uint32_t shift, int32_t invert)
 {
-   alpha_combiner_key = 0x80000000 | (a & 0x1F) | ((a_mode & 3) << 5) | 
+   alpha_combiner_key = 0x80000000 | (a & 0x1F) | ((a_mode & 3) << 5) |
       ((b & 0x1F) << 7) | ((b_mode & 3) << 12) |
       ((c & 0x1F) << 14) | ((c_invert & 1) << 19) |
       ((d & 0x1F) << 20) | ((d_invert & 1) << 25);
@@ -1778,7 +1934,7 @@ void grAlphaCombineExt(uint32_t a, uint32_t a_mode,
    need_to_compile = 1;
 }
 
-void  
+void
 grTexColorCombineExt(int32_t       tmu,
       uint32_t a, uint32_t a_mode,
       uint32_t b, uint32_t b_mode,
@@ -1793,7 +1949,7 @@ grTexColorCombineExt(int32_t       tmu,
 
    if(num_tex == 0)
    {
-      texture0_combiner_key = 0x80000000 | (a & 0x1F) | ((a_mode & 3) << 5) | 
+      texture0_combiner_key = 0x80000000 | (a & 0x1F) | ((a_mode & 3) << 5) |
          ((b & 0x1F) << 7) | ((b_mode & 3) << 12) |
          ((c & 0x1F) << 14) | ((c_invert & 1) << 19) |
          ((d & 0x1F) << 20) | ((d_invert & 1) << 25);
@@ -1969,7 +2125,7 @@ grTexColorCombineExt(int32_t       tmu,
    }
    else
    {
-      texture1_combiner_key = 0x80000000 | (a & 0x1F) | ((a_mode & 3) << 5) | 
+      texture1_combiner_key = 0x80000000 | (a & 0x1F) | ((a_mode & 3) << 5) |
          ((b & 0x1F) << 7) | ((b_mode & 3) << 12) |
          ((c & 0x1F) << 14) | ((c_invert & 1) << 19) |
          ((d & 0x1F) << 20) | ((d_invert & 1) << 25);
@@ -2147,7 +2303,7 @@ grTexColorCombineExt(int32_t       tmu,
    need_to_compile = 1;
 }
 
-void  
+void
 grTexAlphaCombineExt(int32_t       tmu,
       uint32_t a, uint32_t a_mode,
       uint32_t b, uint32_t b_mode,
@@ -2168,7 +2324,7 @@ grTexAlphaCombineExt(int32_t       tmu,
 
    if(num_tex == 0)
    {
-      texture0_combinera_key = 0x80000000 | (a & 0x1F) | ((a_mode & 3) << 5) | 
+      texture0_combinera_key = 0x80000000 | (a & 0x1F) | ((a_mode & 3) << 5) |
          ((b & 0x1F) << 7) | ((b_mode & 3) << 12) |
          ((c & 0x1F) << 14) | ((c_invert & 1) << 19) |
          ((d & 0x1F) << 20) | ((d_invert & 1) << 25);
@@ -2305,7 +2461,7 @@ grTexAlphaCombineExt(int32_t       tmu,
    }
    else
    {
-      texture1_combinera_key = 0x80000000 | (a & 0x1F) | ((a_mode & 3) << 5) | 
+      texture1_combinera_key = 0x80000000 | (a & 0x1F) | ((a_mode & 3) << 5) |
          ((b & 0x1F) << 7) | ((b_mode & 3) << 12) |
          ((c & 0x1F) << 14) | ((c_invert & 1) << 19) |
          ((d & 0x1F) << 20) | ((d_invert & 1) << 25);
