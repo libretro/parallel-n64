@@ -31,13 +31,6 @@
 #include "r4300/recomp.h"
 #include "r4300/r4300.h"
 
-/* (64-bit x86_64 only)
- * Placeholder for RIP-relative offsets is maximum 32-bit signed value.
- * So, if recompiled code is run without running passe2() first, it will
- * cause an exception.
-*/
-#define REL_PLACEHOLDER 0x7fffffff
-
 /* (64-bit x86_64 only) */
 typedef struct _riprelative_table
 {
