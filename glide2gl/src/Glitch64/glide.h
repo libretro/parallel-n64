@@ -247,13 +247,6 @@ typedef struct {
 #define GR_LOD_LOG2_2           0x1
 #define GR_LOD_LOG2_1           0x0
 
-enum gr_special_texture_filter
-{
-   GR_SPECIAL_TEXTUREFILTER_NONE = 0,
-   GR_SPECIAL_TEXTUREFILTER_3POINT,
-   GR_SPECIAL_TEXTUREFILTER_JINC2
-};
-
 #define GR_MIPMAP_DISABLE               0x0 /* no mip mapping  */
 #define GR_MIPMAP_NEAREST               0x1 /* use nearest mipmap */
 #define GR_MIPMAP_NEAREST_DITHER        0x2 /* GR_MIPMAP_NEAREST + LOD dith */
@@ -268,7 +261,6 @@ enum gr_special_texture_filter
 #define GR_TEXTUREFILTER_POINT_SAMPLED  0x0
 #define GR_TEXTUREFILTER_3POINT_LINEAR  0x1
 #define GR_TEXTUREFILTER_BILINEAR       0x2
-#define GR_TEXTUREFILTER_JINC2          0x3
 
 /* KoolSmoky - */
 #define GR_TEXFMT_8BIT                  0x0

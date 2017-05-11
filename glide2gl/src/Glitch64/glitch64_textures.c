@@ -39,7 +39,7 @@ int packed_pixels_support = -1;
 
 int tex_width[2], tex_height[2];
 int tex_exactWidth[2],tex_exactHeight[2];
-int special_filter[2];
+int three_point_filter[2];
 float lambda;
 
 static int min_filter[2] = { GL_NEAREST, GL_NEAREST },
@@ -449,47 +449,19 @@ void grTexFilterClampMode(
 
    wrap_s[index] = s_clampmode;
    wrap_t[index] = t_clampmode;
-
-   switch (minfilter_mode)
-   {
-      case GR_TEXTUREFILTER_POINT_SAMPLED:
-         min_filter[index] = GL_NEAREST;
-         break;
-      default:
-         min_filter[index] = GL_LINEAR;
-         break;
-   }
-
-   switch (magfilter_mode)
-   {
-      case GR_TEXTUREFILTER_POINT_SAMPLED:
-         mag_filter[index] = GL_NEAREST;
-         break;
-      default:
-         mag_filter[index] = GL_LINEAR;
-         break;
-   }
+   min_filter[index] = (minfilter_mode == GR_TEXTUREFILTER_POINT_SAMPLED) ? GL_NEAREST : GL_LINEAR;
+   mag_filter[index] = (magfilter_mode == GR_TEXTUREFILTER_POINT_SAMPLED) ? GL_NEAREST : GL_LINEAR;
 
    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, wrap_s[index]);
    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, wrap_t[index]);
    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, min_filter[index]);
    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, mag_filter[index]);
 
-   switch (magfilter_mode)
-   {
-      case GR_TEXTUREFILTER_JINC2:
-         special_filter[index] = GR_SPECIAL_TEXTUREFILTER_JINC2;
-         break;
-      case GR_TEXTUREFILTER_3POINT_LINEAR:
-#ifndef DISABLE_3POINT
-         special_filter[index] = GR_SPECIAL_TEXTUREFILTER_3POINT;
-         break;
+#ifdef DISABLE_3POINT
+   three_point_filter[index] =false;
+#else
+   three_point_filter[index] = (magfilter_mode == GR_TEXTUREFILTER_3POINT_LINEAR);
 #endif
-      case GR_TEXTUREFILTER_POINT_SAMPLED:
-      default:
-         special_filter[index] = GR_SPECIAL_TEXTUREFILTER_NONE;
-         break;
-   }
 
    need_to_compile = 1;
 }

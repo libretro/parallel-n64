@@ -99,7 +99,7 @@ extern int need_lambda[2];
 extern float lambda_color[2][4];
 extern int culling_mode;
 extern int need_to_compile;
-extern int special_filter[2];
+extern int three_point_filter[2];
 
 extern int bgra8888_support;
 extern int glsl_support;

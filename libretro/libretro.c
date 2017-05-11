@@ -327,7 +327,7 @@ static void setup_variables(void)
       { NAME_PREFIX "-aspectratiohint",
          "Aspect ratio hint (reinit); normal|widescreen" },
       { NAME_PREFIX "-filtering",
-		 "Texture Filtering; automatic|N64 3-point|bilinear|nearest|jinc2" },
+		 "Texture Filtering; automatic|N64 3-point|bilinear|nearest" },
       { NAME_PREFIX "-polyoffset-factor",
        "(Glide64) Polygon Offset Factor; -3.0|-2.5|-2.0|-1.5|-1.0|-0.5|0.0|0.5|1.0|1.5|2.0|2.5|3.0|3.5|4.0|4.5|5.0|-3.5|-4.0|-4.5|-5.0"
       },
@@ -1031,8 +1031,6 @@ void update_variables(bool startup)
 		  retro_filtering = 2;
 	  else if (!strcmp(var.value, "bilinear"))
 		  retro_filtering = 3;
-	  else if (!strcmp(var.value, "jinc2"))
-		  retro_filtering = 4;
 
      log_cb(RETRO_LOG_DEBUG, "set filtering mode...\n");
      switch (gfx_plugin)
