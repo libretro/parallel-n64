@@ -168,19 +168,8 @@ ifeq ($(WITH_DYNAREC), $(filter $(WITH_DYNAREC), i386 i686 x86 x86_64 x64))
 		DYNAREC_USED = 1
 		CPUFLAGS += -msse -msse2
 		SOURCES_C += $(CORE_DIR)/src/r4300/hacktarux_dynarec/assemble.c \
-						 $(CORE_DIR)/src/r4300/hacktarux_dynarec/gbc.c \
-						 $(CORE_DIR)/src/r4300/hacktarux_dynarec/gtlb.c \
-						 $(CORE_DIR)/src/r4300/hacktarux_dynarec/gcop0.c \
-						 $(CORE_DIR)/src/r4300/hacktarux_dynarec/gcop1.c \
-						 $(CORE_DIR)/src/r4300/hacktarux_dynarec/gcop1_d.c \
-						 $(CORE_DIR)/src/r4300/hacktarux_dynarec/gcop1_l.c \
-						 $(CORE_DIR)/src/r4300/hacktarux_dynarec/gcop1_s.c \
-						 $(CORE_DIR)/src/r4300/hacktarux_dynarec/gcop1_w.c \
-						 $(CORE_DIR)/src/r4300/hacktarux_dynarec/gr4300.c \
-						 $(CORE_DIR)/src/r4300/hacktarux_dynarec/grspecial.c \
-						 $(CORE_DIR)/src/r4300/hacktarux_dynarec/gregimm.c \
 						 $(CORE_DIR)/src/r4300/hacktarux_dynarec/regcache.c \
-						 $(CORE_DIR)/src/r4300/hacktarux_dynarec/rjump.c
+						 $(CORE_DIR)/src/r4300/hacktarux_dynarec/hacktarux_dynarec.c
 endif
 ifeq ($(DYNAREC_USED),0)
 	SOURCES_C += $(CORE_DIR)/src/r4300/empty_dynarec.c
