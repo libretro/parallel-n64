@@ -1934,16 +1934,18 @@ void ReadSpecialSettings (const char * name)
 
    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
    {
-	  if (strcmp(var.value, "N64 3-point") == 0)
+	  if (!strcmp(var.value, "N64 3-point"))
 #ifdef DISABLE_3POINT
 		 glide_set_filtering(3);
 #else
 		 glide_set_filtering(1);
 #endif
-	  else if (strcmp(var.value, "nearest") == 0)
+	  else if (!strcmp(var.value, "nearest"))
 		 glide_set_filtering(2);
-	  else if (strcmp(var.value, "bilinear") == 0)
+	  else if (!strcmp(var.value, "bilinear"))
 		 glide_set_filtering(3);
+	  else if (!strcmp(var.value, "jinc2"))
+		 glide_set_filtering(4);
    }
 
    /* this has to be done here. */

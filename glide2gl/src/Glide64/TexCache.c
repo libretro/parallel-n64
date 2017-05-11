@@ -717,10 +717,33 @@ void TexCache(void)
             else if (g_gdp.tile[tile].mt)
                mode_t = GR_TEXTURECLAMP_MIRROR_EXT;
 
-            if (settings.filtering == 0)
-               filter = (gDP.otherMode.textureFilter == 2)? GR_TEXTUREFILTER_3POINT_LINEAR : GR_TEXTUREFILTER_POINT_SAMPLED;
+            if (settings.filtering == 0) /* automatic */
+            {
+               if (gDP.otherMode.textureFilter == 2)
+                  filter = GR_TEXTUREFILTER_3POINT_LINEAR;
+               else
+                  filter = GR_TEXTUREFILTER_POINT_SAMPLED;
+            }
             else
-               filter = (settings.filtering==1)? GR_TEXTUREFILTER_3POINT_LINEAR : (settings.filtering==2)?GR_TEXTUREFILTER_POINT_SAMPLED:GR_TEXTUREFILTER_BILINEAR;
+            {
+               switch (settings.filtering)
+               {
+                  case 1: /* 3point */
+                     filter = GR_TEXTUREFILTER_3POINT_LINEAR;
+                     break;
+                  case 2: /* nearest  */
+                     filter = GR_TEXTUREFILTER_POINT_SAMPLED;
+                     break;
+                  case 4: /* jinc2 */
+                     filter = GR_TEXTUREFILTER_JINC2;
+                     break;
+                  case 0: /* automatic */
+                  case 3: /* bilinear */
+                  default:
+                     filter = GR_TEXTUREFILTER_BILINEAR;
+                     break;
+               }
+            }
             grTexFilterClampMode (tmu, mode_s, mode_t, filter, filter);
          }
       }

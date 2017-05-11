@@ -48,8 +48,8 @@ typedef struct _shader_program_key
    int fog_enabled;
    int chroma_enabled;
    int dither_enabled;
-   int three_point_filter0;
-   int three_point_filter1;
+   int special_filter0;
+   int special_filter1;
    GLuint program_object;
    int texture0_location;
    int texture1_location;
@@ -683,8 +683,8 @@ void compile_shader(void)
             program->fog_enabled == fog_enabled &&
             program->chroma_enabled == chroma_enabled &&
             program->dither_enabled == dither_enabled &&
-            program->three_point_filter0 == three_point_filter[0] &&
-            program->three_point_filter1 == three_point_filter[1])
+            program->special_filter0 == special_filter[0] &&
+            program->special_filter1 == special_filter[1])
       {
          use_shader_program(program);
          update_uniforms(program);
@@ -701,8 +701,8 @@ void compile_shader(void)
    shader.fog_enabled           = fog_enabled;
    shader.chroma_enabled        = chroma_enabled;
    shader.dither_enabled        = dither_enabled;
-   shader.three_point_filter0   = three_point_filter[0];
-   shader.three_point_filter1   = three_point_filter[1];
+   shader.special_filter0       = special_filter[0];
+   shader.special_filter1       = special_filter[1];
    shader.program_object        = 0;
    shader.texture0_location     = 0;
    shader.texture1_location     = 0;
@@ -723,8 +723,22 @@ void compile_shader(void)
    if (dither_enabled)
       strcat(fragment_shader, fragment_shader_dither);
 
-   strcat(fragment_shader, three_point_filter[0] ? fragment_shader_readtex0color_3point : fragment_shader_readtex0color);
-   strcat(fragment_shader, three_point_filter[1] ? fragment_shader_readtex1color_3point : fragment_shader_readtex1color);
+   switch (shader.special_filter0)
+   {
+      case GR_SPECIAL_TEXTUREFILTER_JINC2:
+         strcat(fragment_shader, fragment_shader_readtex0color_jinc2);
+         strcat(fragment_shader, fragment_shader_readtex1color_jinc2);
+         break;
+      case GR_SPECIAL_TEXTUREFILTER_3POINT:
+         strcat(fragment_shader, fragment_shader_readtex0color_3point);
+         strcat(fragment_shader, fragment_shader_readtex1color_3point);
+         break;
+      case GR_SPECIAL_TEXTUREFILTER_NONE:
+      default:
+         strcat(fragment_shader, fragment_shader_readtex0color);
+         strcat(fragment_shader, fragment_shader_readtex1color);
+         break;
+   }
    strcat(fragment_shader, fragment_shader_texture0);
    strcat(fragment_shader, fragment_shader_texture1);
    strcat(fragment_shader, fragment_shader_color_combiner);
