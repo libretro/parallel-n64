@@ -112,12 +112,16 @@ uint32_t screen_aspectmodehint;
 unsigned int BUFFERSWAP             = 0;
 unsigned int FAKE_SDL_TICKS         = 0;
 
+
+bool alternate_mapping;
+
 static bool initializing            = true;
 
 extern uint32_t VI_REFRESH;
 
 /* after the controller's CONTROL* member has been assigned we can update
  * them straight from here... */
+
 extern struct
 {
     CONTROL *control;
@@ -344,6 +348,10 @@ static void setup_variables(void)
       },
       { NAME_PREFIX "-framerate",
          "Framerate (restart); original|fullspeed" },
+
+      { NAME_PREFIX "-alt-map",
+        "Digital C-button Config; disabled|enabled" },
+
 #ifndef HAVE_PARALLEL
       { NAME_PREFIX "-vcache-vbo",
          "(Glide64) Vertex cache VBO (restart); disabled|enabled" },
@@ -1131,6 +1139,17 @@ void update_variables(bool startup)
          frame_dupe = false;
       else if (!strcmp(var.value, "fullspeed"))
          frame_dupe = true;
+   }
+
+   var.key = NAME_PREFIX "-alt-map";
+   var.value = NULL;
+
+   if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value && startup)
+   {
+      if (!strcmp(var.value, "disabled"))
+         alternate_mapping = false;
+      else if (!strcmp(var.value, "enabled"))
+         alternate_mapping = true;
    }
 
 
