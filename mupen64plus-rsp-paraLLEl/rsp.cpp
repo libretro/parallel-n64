@@ -1302,7 +1302,11 @@ void CPU::print_registers()
 
 void CPU::exit(ReturnMode mode)
 {
+#ifdef _WIN32
+   longjmp(env, mode);
+#else
    siglongjmp(env, mode);
+#endif
 }
 
 void CPU::call(uint32_t target, uint32_t ret)
@@ -1371,7 +1375,11 @@ ReturnMode CPU::run()
    {
       invalidate_code();
       call_stack_ptr = 0;
+#ifdef _WIN32
+      auto ret = static_cast<ReturnMode>(setjmp(env, 0));
+#else
       auto ret = static_cast<ReturnMode>(sigsetjmp(env, 0));
+#endif
 
       switch (ret)
       {

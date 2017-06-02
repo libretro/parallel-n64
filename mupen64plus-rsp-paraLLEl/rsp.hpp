@@ -90,7 +90,11 @@ namespace RSP
          uint32_t cached_imem[IMEM_WORDS] alignas(64) = {};
 
          // Platform specific.
+#ifdef _WIN32
+         jmp_buf env;
+#else
          sigjmp_buf env;
+#endif
 
 #define CALL_STACK_SIZE 32
          uint32_t call_stack[CALL_STACK_SIZE] = {};
