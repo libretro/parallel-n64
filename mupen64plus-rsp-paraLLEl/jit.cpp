@@ -1,6 +1,5 @@
 #include "jit.hpp"
 
-#include <clang/Basic/DiagnosticOptions.h>
 #include <clang/CodeGen/CodeGenAction.h>
 #include <clang/Driver/Compilation.h>
 #include <clang/Driver/Driver.h>
