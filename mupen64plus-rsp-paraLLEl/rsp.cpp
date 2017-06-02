@@ -1376,7 +1376,7 @@ ReturnMode CPU::run()
       invalidate_code();
       call_stack_ptr = 0;
 #ifdef _WIN32
-      auto ret = static_cast<ReturnMode>(setjmp(env, 0));
+      auto ret = static_cast<ReturnMode>(setjmp(env));
 #else
       auto ret = static_cast<ReturnMode>(sigsetjmp(env, 0));
 #endif
