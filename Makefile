@@ -102,11 +102,11 @@ ifneq (,$(findstring unix,$(platform)))
 	endif
    fpic = -fPIC
 
-ifeq ($(WITH_DYNAREC), $(filter $(WITH_DYNAREC), x86_64 x64))
-ifeq ($(HAVE_PARALLEL), 1)
-	HAVE_PARALLEL_RSP=1
-endif
-endif
+#ifeq ($(WITH_DYNAREC), $(filter $(WITH_DYNAREC), x86_64 x64))
+#ifeq ($(HAVE_PARALLEL), 1)
+	#HAVE_PARALLEL_RSP=1
+#endif
+#endif
 
    ifeq ($(FORCE_GLES),1)
       GLES = 1
@@ -382,12 +382,12 @@ else ifneq (,$(findstring win,$(platform)))
    CC = gcc
    CXX = g++
 
-ifeq ($(WITH_DYNAREC), $(filter $(WITH_DYNAREC), x86_64 x64))
-ifeq ($(HAVE_PARALLEL), 1)
-	HAVE_PARALLEL_RSP=1
-   CPUFLAGS += -D_POSIX_SOURCE
-endif
-endif
+#ifeq ($(WITH_DYNAREC), $(filter $(WITH_DYNAREC), x86_64 x64))
+#ifeq ($(HAVE_PARALLEL), 1)
+	#HAVE_PARALLEL_RSP=1
+   #CPUFLAGS += -D_POSIX_SOURCE
+#endif
+#endif
 
 endif
 
