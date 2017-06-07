@@ -395,10 +395,13 @@ static void wrapped_exception_general(void)
 {
 #ifdef NEW_DYNAREC
     if (r4300emu == CORE_DYNAREC) {
-        g_cp0_regs[CP0_EPC_REG] = pcaddr;
+        g_cp0_regs[CP0_EPC_REG] = (pcaddr&~3)-(pcaddr&1)*4;
         pcaddr = 0x80000180;
         g_cp0_regs[CP0_STATUS_REG] |= UINT32_C(2);
-        g_cp0_regs[CP0_CAUSE_REG] &= UINT32_C(0x7FFFFFFF);
+        if(pcaddr&1)
+           g_cp0_regs[CP0_CAUSE_REG] |= CP0_CAUSE_BD;
+         else
+           g_cp0_regs[CP0_CAUSE_REG] &= ~CP0_CAUSE_BD;
         pending_exception=1;
     } else {
         exception_general();
@@ -487,6 +490,16 @@ static void nmi_int_handler(void)
     /* set next instruction address to reset vector */
     last_addr = UINT32_C(0xa4000040);
     generic_jump_to(UINT32_C(0xa4000040));
+
+#ifdef NEW_DYNAREC
+    if (r4300emu == CORE_DYNAREC)
+    {
+       g_cp0_regs[CP0_ERROREPC_REG]=(pcaddr&~3)-(pcaddr&1)*4;
+       pcaddr = 0xa4000040;
+       pending_exception = 1;
+       invalidate_all_pages();
+    }
+#endif
 }
 
 

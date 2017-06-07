@@ -308,6 +308,7 @@ static void set_jump_target_fillslot(int addr,u_int target,int copy)
 
 void *dynamic_linker(void * src, u_int vaddr)
 {
+  assert((vaddr&1)==0);
   u_int page=(vaddr^0x80000000)>>12;
   u_int vpage=page;
   if(page>262143&&tlb_LUT_r[vaddr>>12]) page=(tlb_LUT_r[vaddr>>12]^0x80000000)>>12;
@@ -318,7 +319,7 @@ void *dynamic_linker(void * src, u_int vaddr)
   head=jump_in[page];
 
   while(head!=NULL) {
-    if(head->vaddr==vaddr&&head->reg_sv_flags ==0) {
+    if(head->vaddr==vaddr&&head->reg32==0) {
       int *ptr=(int*)src;
       assert((*ptr&0x0f000000)==0x0a000000); //jmp
       int offset=(int)(((u_int)*ptr+2)<<8)>>6;
@@ -350,7 +351,7 @@ void *dynamic_linker(void * src, u_int vaddr)
 
   head=jump_dirty[vpage];
   while(head!=NULL) {
-    if(head->vaddr==vaddr&&head->reg_sv_flags==0) {
+    if(head->vaddr==vaddr&&head->reg32==0) {
       //DebugMessage(M64MSG_VERBOSE, "TRACE: count=%d next=%d (get_addr match dirty %x: %x)",g_cp0_regs[CP0_COUNT_REG],next_interupt,vaddr,(int)head->addr);
       // Don't restore blocks which are about to expire from the cache
       if((((u_int)head->addr-(u_int)out)<<(32-TARGET_SIZE_2))>0x60000000+(MAX_OUTPUT_BLOCK_SIZE<<(32-TARGET_SIZE_2))) {
@@ -377,7 +378,7 @@ void *dynamic_linker(void * src, u_int vaddr)
             ht_bin[1]=(int)head->addr;
             ht_bin[0]=vaddr;
           }
-          return head->addr;
+          return (void*)get_clean_addr((int)head->addr);
         }
       }
     }
@@ -387,13 +388,7 @@ void *dynamic_linker(void * src, u_int vaddr)
   int r=new_recompile_block(vaddr);
   if(r==0) return dynamic_linker(src, vaddr);
   // Execute in unmapped page, generate pagefault exception
-  g_cp0_regs[CP0_STATUS_REG]|=2;
-  g_cp0_regs[CP0_CAUSE_REG]=0x8;
-  g_cp0_regs[CP0_EPC_REG]=vaddr;
-  g_cp0_regs[CP0_BADVADDR_REG]=vaddr;
-  g_cp0_regs[CP0_CONTEXT_REG]=(g_cp0_regs[CP0_CONTEXT_REG]&0xFF80000F)|((g_cp0_regs[CP0_BADVADDR_REG]>>9)&0x007FFFF0);
-  g_cp0_regs[CP0_ENTRYHI_REG]=g_cp0_regs[CP0_BADVADDR_REG]&0xFFFFE000;
-  return get_addr_ht(0x80000000);
+  return TLB_refill_exception_new(vaddr,vaddr&~1,0);
 }
 
 void *dynamic_linker_ds(void * src, u_int vaddr)
@@ -408,7 +403,7 @@ void *dynamic_linker_ds(void * src, u_int vaddr)
   head=jump_in[page];
 
   while(head!=NULL) {
-    if(head->vaddr==vaddr&&head->reg_sv_flags==0) {
+    if(head->vaddr==vaddr&&head->reg32==0) {
       int *ptr=(int*)src;
       assert((*ptr&0x0f000000)==0x0a000000); //jmp
       int offset=(int)(((u_int)*ptr+2)<<8)>>6;
@@ -440,7 +435,7 @@ void *dynamic_linker_ds(void * src, u_int vaddr)
 
   head=jump_dirty[vpage];
   while(head!=NULL) {
-    if(head->vaddr==vaddr&&head->reg_sv_flags==0) {
+    if(head->vaddr==vaddr&&head->reg32==0) {
       //DebugMessage(M64MSG_VERBOSE, "TRACE: count=%d next=%d (get_addr match dirty %x: %x)",g_cp0_regs[CP0_COUNT_REG],next_interupt,vaddr,(int)head->addr);
       // Don't restore blocks which are about to expire from the cache
       if((((u_int)head->addr-(u_int)out)<<(32-TARGET_SIZE_2))>0x60000000+(MAX_OUTPUT_BLOCK_SIZE<<(32-TARGET_SIZE_2))) {
@@ -467,7 +462,7 @@ void *dynamic_linker_ds(void * src, u_int vaddr)
             ht_bin[1]=(int)head->addr;
             ht_bin[0]=vaddr;
           }
-          return head->addr;
+          return (void*)get_clean_addr((int)head->addr);
         }
       }
     }
@@ -477,13 +472,7 @@ void *dynamic_linker_ds(void * src, u_int vaddr)
   int r=new_recompile_block((vaddr&0xFFFFFFF8)+1);
   if(r==0) return dynamic_linker_ds(src, vaddr);
   // Execute in unmapped page, generate pagefault exception
-  g_cp0_regs[CP0_STATUS_REG]|=2;
-  g_cp0_regs[CP0_CAUSE_REG]=0x80000008;
-  g_cp0_regs[CP0_EPC_REG]=(vaddr&0xFFFFFFF8)-4;
-  g_cp0_regs[CP0_BADVADDR_REG]=vaddr&0xFFFFFFF8;
-  g_cp0_regs[CP0_CONTEXT_REG]=(g_cp0_regs[CP0_CONTEXT_REG]&0xFF80000F)|((g_cp0_regs[CP0_BADVADDR_REG]>>9)&0x007FFFF0);
-  g_cp0_regs[CP0_ENTRYHI_REG]=g_cp0_regs[CP0_BADVADDR_REG]&0xFFFFE000;
-  return get_addr_ht(0x80000000);
+  return TLB_refill_exception_new(vaddr,vaddr&~1,0);
 }
 
 /* Literal pool */
@@ -593,6 +582,28 @@ static int verify_dirty(void *addr)
   }
   //DebugMessage(M64MSG_VERBOSE, "verify_dirty: %x %x %x",source,copy,len);
   return !memcmp((void *)source,(void *)copy,len);
+}
+
+static void get_copy_addr(void *addr, u_int *copy, u_int *length)
+{
+  u_int *ptr=(u_int *)addr;
+  #ifdef ARMv5_ONLY
+  // get from literal pool
+  assert((*ptr&0xFFF00000)==0xe5900000);
+  u_int offset=*ptr&0xfff;
+  u_int *l_ptr=(void *)ptr+offset+8;
+  *copy=l_ptr[1];
+  *length=l_ptr[2];
+  ptr+=4;
+  #else
+  // ARMv7 movw/movt
+  assert((*ptr&0xFFF00000)==0xe3000000);
+  *copy=(ptr[1]&0xFFF)+((ptr[1]>>4)&0xF000)+((ptr[3]<<16)&0xFFF0000)+((ptr[3]<<12)&0xF0000000);
+  *length=(ptr[4]&0xFFF)+((ptr[4]>>4)&0xF000);
+  ptr+=6;
+  #endif
+  if((*ptr&0xFF000000)!=0xeb000000) ptr++;
+  assert((*ptr&0xFF000000)==0xeb000000); // bl instruction
 }
 
 // This doesn't necessarily find all clean entry points, just
@@ -3151,7 +3162,7 @@ static void inline_writestub(int type, int i, u_int addr, signed char regmap[], 
   }
   //emit_pusha();
   save_regs(reglist);
-  if((signed int)addr>=(signed int)0xC0000000) {
+  if(((signed int)addr>=(signed int)0xC0000000)||((addr>>16)==0xa430)||((addr>>16)==0x8430)) {
     // Theoretically we can have a pagefault here, if the TLB has never
     // been enabled and the address is outside the range 80000000..BFFFFFFF
     // Write out the registers so the pagefault can be handled.  This is
@@ -3170,7 +3181,7 @@ static void inline_writestub(int type, int i, u_int addr, signed char regmap[], 
   emit_movimm(((u_int *)ftable)[addr>>16],0);
   //emit_readword((int)&last_count,12);
   emit_addimm(cc<0?2:cc,CLOCK_DIVIDER*(adj+1),2);
-  if((signed int)addr>=(signed int)0xC0000000) {
+  if(((signed int)addr>=(signed int)0xC0000000)||((addr>>16)==0xa430)||((addr>>16)==0x8430)) {
     // Pagefault address
     int ds=regmap!=regs[i].regmap;
     emit_movimm(start+i*4+(((regs[i].was32>>rs1[i])&1)<<1)+ds,3);
@@ -3566,7 +3577,7 @@ static void loadlr_assemble_arm(int i,struct regstat *i_regs)
   }
   if (opcode[i]==0x22||opcode[i]==0x26) { // LWL/LWR
     if(!c||memtarget) {
-      //emit_readword_indexed((int)g_rdram-0x80000000,temp2,temp2);
+      //emit_readword_indexed((int)g_dev.ri.rdram.dram-0x80000000,temp2,temp2);
       emit_readword_indexed_tlb(0,temp2,map,temp2);
       if(jaddr) add_stub(LOADW_STUB,jaddr,(int)out,i,temp2,(int)i_regs,ccadj[i],reglist);
     }
@@ -3591,8 +3602,8 @@ static void loadlr_assemble_arm(int i,struct regstat *i_regs)
   if (opcode[i]==0x1A||opcode[i]==0x1B) { // LDL/LDR
     int temp2h=get_reg(i_regs->regmap,FTEMP|64);
     if(!c||memtarget) {
-      //if(th>=0) emit_readword_indexed((int)g_rdram-0x80000000,temp2,temp2h);
-      //emit_readword_indexed((int)g_rdram-0x7FFFFFFC,temp2,temp2);
+      //if(th>=0) emit_readword_indexed((int)g_dev.ri.rdram.dram-0x80000000,temp2,temp2h);
+      //emit_readword_indexed((int)g_dev.ri.rdram.dram-0x7FFFFFFC,temp2,temp2);
       emit_readdword_indexed_tlb(0,temp2,map,temp2h,temp2);
       if(jaddr) add_stub(LOADD_STUB,jaddr,(int)out,i,temp2,(int)i_regs,ccadj[i],reglist);
     }
@@ -3679,8 +3690,8 @@ static void cop0_assemble(int i,struct regstat *i_regs)
     // so needs a special case to handle a pending interrupt.
     // The interrupt must be taken immediately, because a subsequent
     // instruction might disable interrupts again.
-    if(copr==12&&!is_delayslot) {
-      emit_movimm(start+i*4+4,0);
+    if((copr==12||copr==9)&&!is_delayslot) {
+      emit_movimm(start+i*4+(copr==12)*4,0);
       emit_movimm(0,1);
       emit_writeword(0,(int)&pcaddr);
       emit_writeword(1,(int)&pending_exception);
@@ -3696,14 +3707,14 @@ static void cop0_assemble(int i,struct regstat *i_regs)
       emit_writeword(ECX,(int)&last_count);
       emit_storereg(CCREG,HOST_CCREG);
     }
-    if(copr==12) {
+    if(copr==12||copr==9) {
       assert(!is_delayslot);
       emit_readword((int)&pending_exception,14);
     }
     emit_loadreg(rs1[i],s);
     if(get_reg(i_regs->regmap,rs1[i]|64)>=0)
       emit_loadreg(rs1[i]|64,get_reg(i_regs->regmap,rs1[i]|64));
-    if(copr==12) {
+    if(copr==12||copr==9) {
       emit_test(14,14);
       emit_jne((int)&do_interrupt);
     }
@@ -3730,6 +3741,7 @@ static void cop0_assemble(int i,struct regstat *i_regs)
       emit_call((int)cached_interpreter_table.TLBP);
     if((source[i]&0x3f)==0x18) // ERET
     {
+      assert(!is_delayslot);
       int count=ccadj[i];
       if(i_regs->regmap[HOST_CCREG]!=CCREG) emit_loadreg(CCREG,HOST_CCREG);
       emit_addimm(HOST_CCREG,CLOCK_DIVIDER*count,HOST_CCREG); // TODO: Should there be an extra cycle here?
@@ -4805,7 +4817,7 @@ static void arch_init() {
   jump_table_symbols[18] = (int) cached_interpreter_table.TLBP;
 
   #ifdef RAM_OFFSET
-  ram_offset=((int)g_rdram-(int)0x80000000)>>2;
+  ram_offset=((int)g_dev.ri.rdram.dram-(int)0x80000000)>>2;
   #endif
 
   // Trampolines for jumps >32M
