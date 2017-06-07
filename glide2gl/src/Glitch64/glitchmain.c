@@ -59,7 +59,7 @@ static int isExtensionSupported(const char *extension)
 uint32_t grSstWinOpen(void)
 {
    bool ret;
-   struct retro_variable var = { NAME_PREFIX "-screensize", 0 };
+   struct retro_variable var = { "parallel-n64-screensize", 0 };
 
    if (frameBuffer)
       grSstWinClose(0);

@@ -1014,8 +1014,8 @@ EXPORT int CALL ConfigGetParamInt(m64p_handle ConfigSectionHandle, const char *P
       const value_pair Values[32];
    }   libretro_translate[] =
    {
-      { "R4300Emulator", NAME_PREFIX "-cpucore", { { 0, "pure_interpreter" }, { 1, "cached_interpreter" }, { 2, "dynamic_recompiler" }, { 3, "neb_dynamic_recompiler" }, { 0, 0 } } },
-      { "ScreenWidth", NAME_PREFIX "-screensize", { 
+      { "R4300Emulator", "parallel-n64-cpucore", { { 0, "pure_interpreter" }, { 1, "cached_interpreter" }, { 2, "dynamic_recompiler" }, { 3, "neb_dynamic_recompiler" }, { 0, 0 } } },
+      { "ScreenWidth", "parallel-n64-screensize", { 
                                                 { 320, "320x200" },
                                                 { 320, "320x240" },
                                                 { 400, "400x256" },
@@ -1041,7 +1041,7 @@ EXPORT int CALL ConfigGetParamInt(m64p_handle ConfigSectionHandle, const char *P
                                                 { 0, 0 } 
                                              }
       },
-      { "ScreenHeight", NAME_PREFIX "-screensize", { 
+      { "ScreenHeight", "parallel-n64-screensize", { 
                                                  { 200, "320x200" },
                                                  { 240, "320x240" },
                                                  { 256, "400x256" },
@@ -1067,13 +1067,13 @@ EXPORT int CALL ConfigGetParamInt(m64p_handle ConfigSectionHandle, const char *P
                                                  { 0, 0 } 
                                               } 
       },
-      { "DisableExtraMem", NAME_PREFIX "-disable_expmem", {
+      { "DisableExtraMem", "parallel-n64-disable_expmem", {
                                                         { 0, "enabled" },
                                                         { 1, "disabled" },
                                                      }
       },
       {
-         "BootDevice", NAME_PREFIX "-boot-device",
+         "BootDevice", "parallel-n64-boot-device",
          {
             { 0, "Default" },
             { 1, "64DD IPL" },
@@ -1200,7 +1200,7 @@ EXPORT int CALL ConfigGetParamBool(m64p_handle ConfigSectionHandle, const char *
       const value_pair Values[32];
    }   libretro_translate[] =
    {
-      { "64DD", NAME_PREFIX "-64dd-hardware",
+      { "64DD", "parallel-n64-64dd-hardware",
          {
             { 0, "disabled" }, { 1, "enabled" }
          }

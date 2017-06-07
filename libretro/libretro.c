@@ -143,7 +143,7 @@ extern m64p_rom_header ROM_HEADER;
 
 static void core_settings_autoselect_gfx_plugin(void)
 {
-   struct retro_variable gfx_var = { NAME_PREFIX "-gfxplugin", 0 };
+   struct retro_variable gfx_var = { "parallel-n64-gfxplugin", 0 };
 
    environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &gfx_var);
 
@@ -179,8 +179,8 @@ static void core_settings_autoselect_rsp_plugin(void);
 static void core_settings_set_defaults(void)
 {
    /* Load GFX plugin core option */
-   struct retro_variable gfx_var = { NAME_PREFIX "-gfxplugin", 0 };
-   struct retro_variable rsp_var = { NAME_PREFIX "-rspplugin", 0 };
+   struct retro_variable gfx_var = { "parallel-n64-gfxplugin", 0 };
+   struct retro_variable rsp_var = { "parallel-n64-rspplugin", 0 };
    environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &gfx_var);
    environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &rsp_var);
 
@@ -209,7 +209,7 @@ static void core_settings_set_defaults(void)
 #endif
    }
 
-   gfx_var.key = NAME_PREFIX "-gfxplugin-accuracy";
+   gfx_var.key = "parallel-n64-gfxplugin-accuracy";
    gfx_var.value = NULL;
 
    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &gfx_var) && gfx_var.value)
@@ -243,7 +243,7 @@ static void core_settings_set_defaults(void)
 
 static void core_settings_autoselect_rsp_plugin(void)
 {
-   struct retro_variable rsp_var = { NAME_PREFIX "-rspplugin", 0 };
+   struct retro_variable rsp_var = { "parallel-n64-rspplugin", 0 };
 
    environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &rsp_var);
 
@@ -275,7 +275,7 @@ static void core_settings_autoselect_rsp_plugin(void)
 static void setup_variables(void)
 {
    struct retro_variable variables[] = {
-      { NAME_PREFIX "-cpucore",
+      { "parallel-n64-cpucore",
 #ifdef DYNAREC
 #if defined(IOS)
          "CPU Core; cached_interpreter|pure_interpreter|dynamic_recompiler" },
@@ -285,75 +285,75 @@ static void setup_variables(void)
 #else
          "CPU Core; cached_interpreter|pure_interpreter" },
 #endif
-      {NAME_PREFIX "-audio-buffer-size",
+      {"parallel-n64-audio-buffer-size",
          "Audio Buffer Size (restart); 2048|1024"},
-      {NAME_PREFIX "-astick-deadzone",
+      {"parallel-n64-astick-deadzone",
         "Analog Deadzone (percent); 15|20|25|30|0|5|10"},
-      {NAME_PREFIX "-pak1",
+      {"parallel-n64-pak1",
         "Player 1 Pak; none|memory|rumble"},
-      {NAME_PREFIX "-pak2",
+      {"parallel-n64-pak2",
         "Player 2 Pak; none|memory|rumble"},
-      {NAME_PREFIX "-pak3",
+      {"parallel-n64-pak3",
         "Player 3 Pak; none|memory|rumble"},
-      {NAME_PREFIX "-pak4",
+      {"parallel-n64-pak4",
         "Player 4 Pak; none|memory|rumble"},
-      { NAME_PREFIX "-disable_expmem",
+      { "parallel-n64-disable_expmem",
          "Enable Expansion Pak RAM; enabled|disabled" },
-      { NAME_PREFIX "-gfxplugin-accuracy",
+      { "parallel-n64-gfxplugin-accuracy",
 #if defined(IOS) || defined(ANDROID)
          "GFX Accuracy (restart); medium|high|veryhigh|low" },
 #else
          "GFX Accuracy (restart); veryhigh|high|medium|low" },
 #endif
 #ifdef HAVE_PARALLEL
-      { NAME_PREFIX "-parallel-rdp-synchronous",
+      { "parallel-n64-parallel-rdp-synchronous",
          "ParaLLEl Synchronous RDP; enabled|disabled" },
 #endif
-      { NAME_PREFIX "-gfxplugin",
+      { "parallel-n64-gfxplugin",
          "GFX Plugin; auto|glide64|gln64|rice|angrylion"
 #if defined(HAVE_PARALLEL)
             "|parallel"
 #endif
       },
-      { NAME_PREFIX "-rspplugin",
+      { "parallel-n64-rspplugin",
          "RSP Plugin; auto|hle|cxd4"
 #ifdef HAVE_PARALLEL_RSP
          "|parallel"
 #endif
          },
-      { NAME_PREFIX "-screensize",
+      { "parallel-n64-screensize",
          "Resolution (restart); 640x480|960x720|1280x960|1600x1200|1920x1440|2240x1680|320x240" },
-      { NAME_PREFIX "-aspectratiohint",
+      { "parallel-n64-aspectratiohint",
          "Aspect ratio hint (reinit); normal|widescreen" },
-      { NAME_PREFIX "-filtering",
+      { "parallel-n64-filtering",
 		 "Texture Filtering; automatic|N64 3-point|bilinear|nearest" },
-      { NAME_PREFIX "-polyoffset-factor",
+      { "parallel-n64-polyoffset-factor",
        "(Glide64) Polygon Offset Factor; -3.0|-2.5|-2.0|-1.5|-1.0|-0.5|0.0|0.5|1.0|1.5|2.0|2.5|3.0|3.5|4.0|4.5|5.0|-3.5|-4.0|-4.5|-5.0"
       },
-      { NAME_PREFIX "-polyoffset-units",
+      { "parallel-n64-polyoffset-units",
        "(Glide64) Polygon Offset Units; -3.0|-2.5|-2.0|-1.5|-1.0|-0.5|0.0|0.5|1.0|1.5|2.0|2.5|3.0|3.5|4.0|4.5|5.0|-3.5|-4.0|-4.5|-5.0"
       },
-      { NAME_PREFIX "-angrylion-vioverlay",
+      { "parallel-n64-angrylion-vioverlay",
        "(Angrylion) VI Overlay; disabled|enabled"
       },
-      { NAME_PREFIX "-virefresh",
+      { "parallel-n64-virefresh",
          "VI Refresh (Overclock); 1500|2200" },
-      { NAME_PREFIX "-bufferswap",
+      { "parallel-n64-bufferswap",
          "Buffer Swap; disabled|enabled"
       },
-      { NAME_PREFIX "-framerate",
+      { "parallel-n64-framerate",
          "Framerate (restart); original|fullspeed" },
 
-      { NAME_PREFIX "-alt-map",
+      { "parallel-n64-alt-map",
         "Digital C-button Config; disabled|enabled" },
 
 #ifndef HAVE_PARALLEL
-      { NAME_PREFIX "-vcache-vbo",
+      { "parallel-n64-vcache-vbo",
          "(Glide64) Vertex cache VBO (restart); disabled|enabled" },
 #endif
-      { NAME_PREFIX "-boot-device",
+      { "parallel-n64-boot-device",
          "Boot Device; Default|64DD IPL" },
-      { NAME_PREFIX "-64dd-hardware",
+      { "parallel-n64-64dd-hardware",
          "64DD Hardware; disabled|enabled" },
       { NULL, NULL },
    };
@@ -519,7 +519,7 @@ bool emu_step_render(void)
       switch (gfx_plugin)
       {
          case GFX_ANGRYLION:
-            video_cb((screen_pitch == 0) ? NULL : blitter_buf_lock, screen_width, screen_height, screen_pitch);
+            video_cb(blitter_buf_lock, screen_width, screen_height, screen_pitch);
             break;
 
          case GFX_PARALLEL:
@@ -922,7 +922,7 @@ void update_variables(bool startup)
    struct retro_variable var;
 
 #if defined(HAVE_PARALLEL)
-   var.key = NAME_PREFIX "-parallel-rdp-synchronous";
+   var.key = "parallel-n64-parallel-rdp-synchronous";
    var.value = NULL;
 
    bool rdp_sync;
@@ -938,7 +938,7 @@ void update_variables(bool startup)
    parallel_set_synchronous_rdp(rdp_sync);
 #endif
 
-   var.key = NAME_PREFIX "-screensize";
+   var.key = "parallel-n64-screensize";
    var.value = NULL;
 
    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
@@ -960,13 +960,13 @@ void update_variables(bool startup)
 
    if (startup)
    {
-      var.key = NAME_PREFIX "-audio-buffer-size";
+      var.key = "parallel-n64-audio-buffer-size";
       var.value = NULL;
 
       if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
          audio_buffer_size = atoi(var.value);
 
-      var.key = NAME_PREFIX "-gfxplugin";
+      var.key = "parallel-n64-gfxplugin";
       var.value = NULL;
 
       environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var);
@@ -999,7 +999,7 @@ void update_variables(bool startup)
       }
    }
 
-   var.key = NAME_PREFIX "-angrylion-vioverlay";
+   var.key = "parallel-n64-angrylion-vioverlay";
    var.value = NULL;
 
    environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var);
@@ -1017,7 +1017,7 @@ void update_variables(bool startup)
    CFG_HLE_GFX = (gfx_plugin != GFX_ANGRYLION) && (gfx_plugin != GFX_PARALLEL) ? 1 : 0;
    CFG_HLE_AUD = 0; /* There is no HLE audio code in libretro audio plugin. */
 
-   var.key = NAME_PREFIX "-filtering";
+   var.key = "parallel-n64-filtering";
    var.value = NULL;
 
    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
@@ -1064,7 +1064,7 @@ void update_variables(bool startup)
      }
    }
 
-   var.key = NAME_PREFIX "-polyoffset-factor";
+   var.key = "parallel-n64-polyoffset-factor";
    var.value = NULL;
 
    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
@@ -1073,7 +1073,7 @@ void update_variables(bool startup)
       polygonOffsetFactor = new_val;
    }
 
-   var.key = NAME_PREFIX "-polyoffset-units";
+   var.key = "parallel-n64-polyoffset-units";
    var.value = NULL;
 
    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
@@ -1082,13 +1082,13 @@ void update_variables(bool startup)
       polygonOffsetUnits = new_val;
    }
 
-   var.key = NAME_PREFIX "-astick-deadzone";
+   var.key = "parallel-n64-astick-deadzone";
    var.value = NULL;
 
    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
       astick_deadzone = (int)(atoi(var.value) * 0.01f * 0x8000);
 
-   var.key = NAME_PREFIX "-gfxplugin-accuracy";
+   var.key = "parallel-n64-gfxplugin-accuracy";
    var.value = NULL;
 
    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
@@ -1103,7 +1103,7 @@ void update_variables(bool startup)
           gfx_plugin_accuracy = 0;
    }
 
-   var.key = NAME_PREFIX "-virefresh";
+   var.key = "parallel-n64-virefresh";
    var.value = NULL;
 
    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
@@ -1114,7 +1114,7 @@ void update_variables(bool startup)
          VI_REFRESH = 2200;
    }
 
-   var.key = NAME_PREFIX "-bufferswap";
+   var.key = "parallel-n64-bufferswap";
    var.value = NULL;
 
    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
@@ -1125,7 +1125,7 @@ void update_variables(bool startup)
          BUFFERSWAP = false;
    }
 
-   var.key = NAME_PREFIX "-framerate";
+   var.key = "parallel-n64-framerate";
    var.value = NULL;
 
    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value && initial_boot)
@@ -1136,7 +1136,7 @@ void update_variables(bool startup)
          frame_dupe = true;
    }
 
-   var.key = NAME_PREFIX "-alt-map";
+   var.key = "parallel-n64-alt-map";
    var.value = NULL;
 
    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value && startup)
@@ -1149,7 +1149,7 @@ void update_variables(bool startup)
 
 
    {
-      struct retro_variable pk1var = { NAME_PREFIX "-pak1" };
+      struct retro_variable pk1var = { "parallel-n64-pak1" };
       if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &pk1var) && pk1var.value)
       {
          int p1_pak = PLUGIN_NONE;
@@ -1169,7 +1169,7 @@ void update_variables(bool startup)
    }
 
    {
-      struct retro_variable pk2var = { NAME_PREFIX "-pak2" };
+      struct retro_variable pk2var = { "parallel-n64-pak2" };
       if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &pk2var) && pk2var.value)
       {
          int p2_pak = PLUGIN_NONE;
@@ -1187,7 +1187,7 @@ void update_variables(bool startup)
    }
 
    {
-      struct retro_variable pk3var = { NAME_PREFIX "-pak3" };
+      struct retro_variable pk3var = { "parallel-n64-pak3" };
       if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &pk3var) && pk3var.value)
       {
          int p3_pak = PLUGIN_NONE;
@@ -1205,7 +1205,7 @@ void update_variables(bool startup)
    }
 
    {
-      struct retro_variable pk4var = { NAME_PREFIX "-pak4" };
+      struct retro_variable pk4var = { "parallel-n64-pak4" };
       if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &pk4var) && pk4var.value)
       {
          int p4_pak = PLUGIN_NONE;
@@ -1367,7 +1367,7 @@ void retro_run (void)
 
       update_variables(false);
 
-      var.key = NAME_PREFIX "-aspectratiohint";
+      var.key = "parallel-n64-aspectratiohint";
       var.value = NULL;
 
       if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)

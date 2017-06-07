@@ -28,8 +28,6 @@ RSP_INFO RSP_INFO_NAME;
 
 #define RSP_CXD4_VERSION 0x0101
 
-#if defined(M64P_PLUGIN_API)
-
 #include <stdarg.h>
 
 #define RSP_PLUGIN_API_VERSION 0x020000
@@ -43,229 +41,23 @@ static m64p_handle l_ConfigRsp;
 
 #define VERSION_PRINTF_SPLIT(x) (((x) >> 16) & 0xffff), (((x) >> 8) & 0xff), ((x) & 0xff)
 
-#ifdef LIBRETRO
 #define API_PREFIX(x) cxd4##x
-#else
-#define API_PREFIX(x) x
-#endif
-
-#ifndef LIBRETRO
-ptr_ConfigOpenSection      ConfigOpenSection = NULL;
-ptr_ConfigDeleteSection    ConfigDeleteSection = NULL;
-ptr_ConfigSaveSection      ConfigSaveSection = NULL;
-ptr_ConfigSetParameter     ConfigSetParameter = NULL;
-ptr_ConfigGetParameter     ConfigGetParameter = NULL;
-ptr_ConfigSetDefaultFloat  ConfigSetDefaultFloat;
-ptr_ConfigSetDefaultBool   ConfigSetDefaultBool = NULL;
-ptr_ConfigGetParamBool     ConfigGetParamBool = NULL;
-#endif
 
 NOINLINE void update_conf(const char* source)
 {
     memset(conf, 0, sizeof(conf));
-#ifndef LIBRETRO
+#if 0
+#ifndef __LIBRETRO__
     //yomoma: do not override config settings if running under libretro
     CFG_HLE_GFX = ConfigGetParamBool(l_ConfigRsp, "DisplayListToGraphicsPlugin");
     CFG_HLE_AUD = ConfigGetParamBool(l_ConfigRsp, "AudioListToAudioPlugin");
     CFG_WAIT_FOR_CPU_HOST = ConfigGetParamBool(l_ConfigRsp, "WaitForCPUHost");
     CFG_MEND_SEMAPHORE_LOCK = ConfigGetParamBool(l_ConfigRsp, "SupportCPUSemaphoreLock");
 #endif
+#endif
 }
 
-#ifdef LIBRETRO
 extern void DebugMessage(int level, const char *message, ...);
-#else
-static void DebugMessage(int level, const char *message, ...)
-{
-  char msgbuf[1024];
-  va_list args;
-
-  if (l_DebugCallback == NULL)
-      return;
-
-  va_start(args, message);
-  vsprintf(msgbuf, message, args);
-
-  (*l_DebugCallback)(l_DebugCallContext, level, msgbuf);
-
-  va_end(args);
-}
-#endif
-
-EXPORT m64p_error CALL PluginStartup(m64p_dynlib_handle CoreLibHandle, void *Context,
-                                     void (*DebugCallback)(void *, int, const char *))
-{
-    ptr_CoreGetAPIVersions CoreAPIVersionFunc;
-
-    int ConfigAPIVersion, DebugAPIVersion, VidextAPIVersion, bSaveConfig;
-    float fConfigParamsVersion = 0.0f;
-
-    if (l_PluginInit)
-        return M64ERR_ALREADY_INIT;
-
-    /* first thing is to set the callback function for debug info */
-    l_DebugCallback = DebugCallback;
-    l_DebugCallContext = Context;
-#ifndef LIBRETRO
-    /* attach and call the CoreGetAPIVersions function, check Config API version for compatibility */
-    CoreAPIVersionFunc = (ptr_CoreGetAPIVersions) osal_dynlib_getproc(CoreLibHandle, "CoreGetAPIVersions");
-    if (CoreAPIVersionFunc == NULL)
-    {
-        DebugMessage(M64MSG_ERROR, "Core emulator broken; no CoreAPIVersionFunc() function found.");
-        return M64ERR_INCOMPATIBLE;
-    }
-
-    (*CoreAPIVersionFunc)(&ConfigAPIVersion, &DebugAPIVersion, &VidextAPIVersion, NULL);
-    if ((ConfigAPIVersion & 0xffff0000) != (CONFIG_API_VERSION & 0xffff0000))
-    {
-        DebugMessage(M64MSG_ERROR, "Emulator core Config API (v%i.%i.%i) incompatible with plugin (v%i.%i.%i)",
-                VERSION_PRINTF_SPLIT(ConfigAPIVersion), VERSION_PRINTF_SPLIT(CONFIG_API_VERSION));
-        return M64ERR_INCOMPATIBLE;
-    }
-
-    /* Get the core config function pointers from the library handle */
-    ConfigOpenSection = (ptr_ConfigOpenSection) osal_dynlib_getproc(CoreLibHandle, "ConfigOpenSection");
-    ConfigDeleteSection = (ptr_ConfigDeleteSection) osal_dynlib_getproc(CoreLibHandle, "ConfigDeleteSection");
-    ConfigSaveSection = (ptr_ConfigSaveSection) osal_dynlib_getproc(CoreLibHandle, "ConfigSaveSection");
-    ConfigSetParameter = (ptr_ConfigSetParameter) osal_dynlib_getproc(CoreLibHandle, "ConfigSetParameter");
-    ConfigGetParameter = (ptr_ConfigGetParameter) osal_dynlib_getproc(CoreLibHandle, "ConfigGetParameter");
-    ConfigSetDefaultFloat = (ptr_ConfigSetDefaultFloat) osal_dynlib_getproc(CoreLibHandle, "ConfigSetDefaultFloat");
-    ConfigSetDefaultBool = (ptr_ConfigSetDefaultBool) osal_dynlib_getproc(CoreLibHandle, "ConfigSetDefaultBool");
-    ConfigGetParamBool = (ptr_ConfigGetParamBool) osal_dynlib_getproc(CoreLibHandle, "ConfigGetParamBool");
-
-    if (!ConfigOpenSection || !ConfigDeleteSection || !ConfigSetParameter || !ConfigGetParameter ||
-        !ConfigSetDefaultBool || !ConfigGetParamBool || !ConfigSetDefaultFloat)
-        return M64ERR_INCOMPATIBLE;
-
-    /* ConfigSaveSection was added in Config API v2.1.0 */
-    if (ConfigAPIVersion >= 0x020100 && !ConfigSaveSection)
-        return M64ERR_INCOMPATIBLE;
-
-    /* get a configuration section handle */
-    if (ConfigOpenSection("rsp-cxd4", &l_ConfigRsp) != M64ERR_SUCCESS)
-    {
-        DebugMessage(M64MSG_ERROR, "Couldn't open config section 'rsp-cxd4'");
-        return M64ERR_INPUT_NOT_FOUND;
-    }
-
-    /* check the section version number */
-    bSaveConfig = 0;
-    if (ConfigGetParameter(l_ConfigRsp, "Version", M64TYPE_FLOAT, &fConfigParamsVersion, sizeof(float)) != M64ERR_SUCCESS)
-    {
-        DebugMessage(M64MSG_WARNING, "No version number in 'rsp-cxd4' config section. Setting defaults.");
-        ConfigDeleteSection("rsp-cxd4");
-        ConfigOpenSection("rsp-cxd4", &l_ConfigRsp);
-        bSaveConfig = 1;
-    }
-    else if (((int) fConfigParamsVersion) != ((int) CONFIG_PARAM_VERSION))
-    {
-        DebugMessage(M64MSG_WARNING, "Incompatible version %.2f in 'rsp-cxd4' config section: current is %.2f. Setting defaults.", fConfigParamsVersion, (float) CONFIG_PARAM_VERSION);
-        ConfigDeleteSection("rsp-cxd4");
-        ConfigOpenSection("rsp-cxd4", &l_ConfigRsp);
-        bSaveConfig = 1;
-    }
-    else if ((CONFIG_PARAM_VERSION - fConfigParamsVersion) >= 0.0001f)
-    {
-        /* handle upgrades */
-        float fVersion = CONFIG_PARAM_VERSION;
-        ConfigSetParameter(l_ConfigRsp, "Version", M64TYPE_FLOAT, &fVersion);
-        DebugMessage(M64MSG_INFO, "Updating parameter set version in 'rsp-cxd4' config section to %.2f", fVersion);
-        bSaveConfig = 1;
-    }
-#endif
-    /* set the default values for this plugin */
-    ConfigSetDefaultFloat(l_ConfigRsp, "Version", CONFIG_PARAM_VERSION,  "Mupen64Plus cxd4 RSP Plugin config parameter version number");
-    ConfigSetDefaultBool(l_ConfigRsp, "DisplayListToGraphicsPlugin", 0, "Send display lists to the graphics plugin");
-    ConfigSetDefaultBool(l_ConfigRsp, "AudioListToAudioPlugin", 0, "Send audio lists to the audio plugin");
-    ConfigSetDefaultBool(l_ConfigRsp, "WaitForCPUHost", 0, "Force CPU-RSP signals synchronization");
-    ConfigSetDefaultBool(l_ConfigRsp, "SupportCPUSemaphoreLock", 0, "Support CPU-RSP semaphore lock");
-
-    if (bSaveConfig && ConfigAPIVersion >= 0x020100)
-        ConfigSaveSection("rsp-cxd4");
-
-    l_PluginInit = 1;
-    return M64ERR_SUCCESS;
-}
-
-EXPORT m64p_error CALL PluginShutdown(void)
-{
-    if (!l_PluginInit)
-        return M64ERR_NOT_INIT;
-
-    l_PluginInit = 0;
-    return M64ERR_SUCCESS;
-}
-
-EXPORT m64p_error CALL API_PREFIX(PluginGetVersion)(m64p_plugin_type *PluginType, int *PluginVersion, int *APIVersion, const char **PluginNamePtr, int *Capabilities)
-{
-    /* set version info */
-    if (PluginType != NULL)
-        *PluginType = M64PLUGIN_RSP;
-
-    if (PluginVersion != NULL)
-        *PluginVersion = RSP_CXD4_VERSION;
-
-    if (APIVersion != NULL)
-        *APIVersion = RSP_PLUGIN_API_VERSION;
-
-    if (PluginNamePtr != NULL)
-        *PluginNamePtr = "Static Interpreter";
-
-    if (Capabilities != NULL)
-    {
-        *Capabilities = 0;
-    }
-
-    return M64ERR_SUCCESS;
-}
-
-EXPORT int CALL RomOpen(void)
-{
-    if (!l_PluginInit)
-        return 0;
-
-    update_conf(CFG_FILE);
-    return 1;
-}
-
-#else
-
-static const char DLL_about[] =
-    "RSP Interpreter by Iconoclast\n"\
-    "Thanks for test RDP:  Jabo, ziggy, angrylion\n"\
-    "RSP driver examples:  bpoint, zilmar, Ville Linde";
-
-EXPORT void CALL CloseDLL(void)
-{
-    DRAM = NULL; /* so DllTest benchmark doesn't think ROM is still open */
-    return;
-}
-
-EXPORT void CALL DllAbout(p_void hParent)
-{
-    message(DLL_about);
-    hParent = NULL;
-    if (hParent == NULL)
-        return; /* -Wunused-but-set-parameter */
-    return;
-}
-
-EXPORT void CALL DllConfig(p_void hParent)
-{
-    my_system("sp_cfgui");
-    update_conf(CFG_FILE);
-
-    if (DMEM == IMEM || GET_RCP_REG(SP_PC_REG) % 4096 == 0x00000000)
-        return;
-    export_SP_memory();
-
-    hParent = NULL;
-    if (hParent == NULL)
-        return; /* -Wunused-but-set-parameter */
-    return;
-}
-
-#endif
 
 EXPORT u32 CALL API_PREFIX(DoRspCycles)(u32 cycles)
 {
@@ -383,7 +175,7 @@ EXPORT u32 CALL API_PREFIX(DoRspCycles)(u32 cycles)
     return (cycles);
 }
 
-EXPORT void CALL GetDllInfo(PLUGIN_INFO *PluginInfo)
+EXPORT void CALL API_PREFIX(GetDllInfo)(PLUGIN_INFO *PluginInfo)
 {
     PluginInfo -> Version = PLUGIN_API_VERSION;
     PluginInfo -> Type = PLUGIN_TYPE_RSP;
@@ -392,6 +184,30 @@ EXPORT void CALL GetDllInfo(PLUGIN_INFO *PluginInfo)
     PluginInfo -> MemoryBswaped = USE_CLIENT_ENDIAN;
     return;
 }
+
+EXPORT m64p_error CALL API_PREFIX(PluginGetVersion)(m64p_plugin_type *PluginType, int *PluginVersion, int *APIVersion, const char **PluginNamePtr, int *Capabilities)
+{
+    /* set version info */
+    if (PluginType != NULL)
+        *PluginType = M64PLUGIN_RSP;
+
+    if (PluginVersion != NULL)
+        *PluginVersion = RSP_CXD4_VERSION;
+
+    if (APIVersion != NULL)
+        *APIVersion = RSP_PLUGIN_API_VERSION;
+
+    if (PluginNamePtr != NULL)
+        *PluginNamePtr = "Static Interpreter";
+
+    if (Capabilities != NULL)
+    {
+        *Capabilities = 0;
+    }
+
+    return M64ERR_SUCCESS;
+}
+
 
 EXPORT void CALL API_PREFIX(InitiateRSP)(RSP_INFO Rsp_Info, pu32 CycleCount)
 {

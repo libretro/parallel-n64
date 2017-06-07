@@ -73,7 +73,7 @@ static get_keys_t getKeys = inputGetKeys_default;
 static void setup_control_variables(void)
 {
    struct retro_variable variables[] = {
-      { NAME_PREFIX "-alt-map",
+      { "parallel-n64-alt-map",
         "Digital C-button Config; disabled|enabled" },
       { NULL, NULL },
    };
@@ -85,7 +85,7 @@ void update_control_variables(bool startup)
 {
    struct retro_variable var;
 
-   var.key = NAME_PREFIX "-alt-map";
+   var.key = "parallel-n64-alt-map";
    var.value = NULL;
 
    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value && startup)

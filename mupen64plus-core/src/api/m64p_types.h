@@ -26,8 +26,6 @@
 #include <stdint.h>
 #include <stddef.h>
 
-#define NAME_PREFIX "parallel_n64"
-
 /* ----------------------------------------- */
 /* Platform-specific stuff                   */
 /* ----------------------------------------- */
