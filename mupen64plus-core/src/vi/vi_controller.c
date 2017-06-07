@@ -29,6 +29,10 @@
 
 #include <string.h>
 
+/* XXX: timing hacks */
+enum { DEFAULT_CPU_COUNT_PER_SCANLINE = 1500 };
+enum { NTSC_VERTICAL_RESOLUTION = 525 };
+
 extern unsigned alternate_vi_timing;
 
 void connect_vi(struct vi_controller* vi,
@@ -57,7 +61,7 @@ int read_vi_regs(void* opaque, uint32_t address, uint32_t *word)
     {
         cp0_update_count();
         if (alternate_vi_timing)
-           vi->regs[VI_CURRENT_REG] = (vi->delay - (vi->next_vi - cp0_regs[CP0_COUNT_REG])) % 0x20E;
+           vi->regs[VI_CURRENT_REG] = (vi->delay - (vi->next_vi - cp0_regs[CP0_COUNT_REG])) % (NTSC_VERTICAL_RESOLUTION + 1);
         else
            vi->regs[VI_CURRENT_REG] = (vi->delay - (vi->next_vi - cp0_regs[CP0_COUNT_REG])) / VI_REFRESH;
         vi->regs[VI_CURRENT_REG] = (vi->regs[VI_CURRENT_REG] & (~1)) | vi->field;
