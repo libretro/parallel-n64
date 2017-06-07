@@ -1419,12 +1419,16 @@ void Renderer::sync_depth_dram_to_gpu()
 			// We have already waited for earlier compute to complete when we called sync_gpu_to_dram().
 			if (matches_depth)
 			{
+#ifdef ENABLE_LOGS
 				fprintf(stderr, "Reusing old depth buffer.\n");
+#endif
 				vulkan.cmd.copy_buffer(vulkan.framebuffer_depth, async_transfers[old_index].depth_buffer);
 			}
 			else if (matches_color)
 			{
+#ifdef ENABLE_LOGS
 				fprintf(stderr, "Reusing old color buffer.\n");
+#endif
 				vulkan.cmd.copy_buffer(vulkan.framebuffer_depth, async_transfers[old_index].color_buffer);
 			}
 		}
