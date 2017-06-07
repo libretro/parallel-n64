@@ -24,6 +24,8 @@
 
 #include <stdint.h>
 
+#include "api/m64p_types.h"
+
 #ifndef VI_REG
 #define VI_REG(a) ((a & 0xFFFF) >> 2)
 #endif
@@ -54,6 +56,9 @@ struct vi_controller
     uint32_t regs[VI_REGS_COUNT];
     unsigned int field;
 
+    unsigned int clock;
+    unsigned int expected_refresh_rate;
+
     unsigned int delay;
     unsigned int next_vi;
 
@@ -63,7 +68,10 @@ struct vi_controller
 void connect_vi(struct vi_controller* vi,
                 struct r4300_core* r4300);
 
-void init_vi(struct vi_controller* vi);
+unsigned int vi_clock_from_tv_standard(m64p_system_type tv_standard);
+unsigned int vi_expected_refresh_rate_from_tv_standard(m64p_system_type tv_standard);
+
+void init_vi(struct vi_controller* vi, unsigned int clock, unsigned int expected_refresh_rate);
 
 int read_vi_regs(void* opaque, uint32_t address, uint32_t* value);
 int write_vi_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mask);

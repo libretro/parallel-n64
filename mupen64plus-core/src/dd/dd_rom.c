@@ -195,8 +195,6 @@ m64p_error open_ddrom(const unsigned char* romimage, unsigned int size)
 
 	/* add some useful properties to ROM_PARAMS */
     ROM_PARAMS.systemtype = rom_country_code_to_system_type(ROM_HEADER.destination_code);
-    ROM_PARAMS.vilimit = rom_system_type_to_vi_limit(ROM_PARAMS.systemtype);
-    ROM_PARAMS.aidacrate = rom_system_type_to_ai_dac_rate(ROM_PARAMS.systemtype);
 
     memcpy(ROM_PARAMS.headername, ROM_HEADER.Name, 20);
     ROM_PARAMS.headername[20] = '\0';

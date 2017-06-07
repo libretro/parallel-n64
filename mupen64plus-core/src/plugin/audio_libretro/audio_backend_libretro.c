@@ -26,6 +26,7 @@
 #include "main/rom.h"
 #include "plugin/plugin.h"
 #include "ri/ri_controller.h"
+#include "vi/vi_controller.h"
 
 #include <stdio.h>
 #include <stddef.h>
@@ -99,7 +100,7 @@ void set_audio_format_via_libretro(void* user_data,
    uint32_t saved_ai_dacrate = g_ai.regs[AI_DACRATE_REG];
 
    /* notify plugin of the new frequency (can't do the same for bits) */
-   g_ai.regs[AI_DACRATE_REG] = (ROM_PARAMS.aidacrate / frequency) - 1;
+   g_ai.regs[AI_DACRATE_REG] = g_vi.clock / frequency - 1;
 
    GameFreq        = frequency;
    BytesPerSecond  = frequency * 4;

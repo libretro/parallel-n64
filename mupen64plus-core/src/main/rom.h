@@ -39,8 +39,6 @@ extern unsigned char isGoldeneyeRom;
 typedef struct _rom_params
 {
    m64p_system_type systemtype;
-   int vilimit;
-   int aidacrate;
    char headername[21];  /* ROM Name as in the header, removing trailing whitespace */
 } rom_params;
 
