@@ -680,10 +680,10 @@ DECLARE_INSTRUCTION(MTC0)
       remove_event(COMPARE_INT);
       add_interupt_event_count(COMPARE_INT, rrt32);
       g_cp0_regs[CP0_COMPARE_REG] = rrt32;
-      g_cp0_regs[CP0_CAUSE_REG] &= UINT32_C(0xFFFF7FFF); //Timer interupt is clear
+      g_cp0_regs[CP0_CAUSE_REG] &= ~CP0_CAUSE_IP7;
       break;
     case CP0_STATUS_REG:
-      if((rrt32 & UINT32_C(0x04000000)) != (g_cp0_regs[CP0_STATUS_REG] & UINT32_C(0x04000000)))
+      if((rrt32 & CP0_STATUS_FR) != (g_cp0_regs[CP0_STATUS_REG] & CP0_STATUS_FR))
       {
           shuffle_fpr_data(g_cp0_regs[CP0_STATUS_REG], rrt32);
           set_fpr_pointers(rrt32);
@@ -1461,7 +1461,7 @@ DECLARE_JUMP(JALR, irs32, 1, &rrd,    0, 0)
 
 DECLARE_INSTRUCTION(SYSCALL)
 {
-   g_cp0_regs[CP0_CAUSE_REG] = UINT32_C(8) << 2;
+   g_cp0_regs[CP0_CAUSE_REG] = CP0_CAUSE_EXCCODE_SYS;
    exception_general();
 }
 
@@ -1995,14 +1995,14 @@ DECLARE_INSTRUCTION(TLBP)
 DECLARE_INSTRUCTION(ERET)
 {
    cp0_update_count();
-   if (g_cp0_regs[CP0_STATUS_REG] & UINT32_C(0x4))
+   if (g_cp0_regs[CP0_STATUS_REG] & CP0_STATUS_ERL)
    {
      DebugMessage(M64MSG_ERROR, "error in ERET");
      stop=1;
    }
    else
    {
-     g_cp0_regs[CP0_STATUS_REG] &= ~UINT32_C(0x2);
+     g_cp0_regs[CP0_STATUS_REG] &= ~CP0_STATUS_EXL;
      generic_jump_to(g_cp0_regs[CP0_EPC_REG]);
    }
    llbit = 0;
