@@ -35,6 +35,18 @@
 
 #include <string.h>
 
+enum
+{
+   /* PI_STATUS - read */
+   PI_STATUS_DMA_BUSY  = 0x01,
+   PI_STATUS_IO_BUSY   = 0x02,
+   PI_STATUS_ERROR     = 0x04,
+
+   /* PI_STATUS - write */
+   PI_STATUS_RESET     = 0x01,
+   PI_STATUS_CLR_INTR  = 0x02
+};
+
 /* Copies data from the PI into RDRAM */
 static void dma_pi_read(struct pi_controller *pi)
 {
@@ -44,6 +56,7 @@ static void dma_pi_read(struct pi_controller *pi)
    const uint8_t* dram;
    uint8_t* rom;
 
+   /* XXX: end of domain is wrong ? */
    if (pi->regs[PI_CART_ADDR_REG] >= 0x05000000 && pi->regs[PI_CART_ADDR_REG] < 0x06000000)
    {
       //64DD BUFFER WRITES
@@ -93,9 +106,13 @@ static void dma_pi_read(struct pi_controller *pi)
       DebugMessage(M64MSG_WARNING, "Unknown dma read at 0x%08X in dma_pi_read()", pi->regs[PI_CART_ADDR_REG]);
    }
 
-   pi->regs[PI_STATUS_REG] |= 1;
+   /* Mark DMA as busy */
+   pi->regs[PI_STATUS_REG] |= PI_STATUS_DMA_BUSY;
+
+   /* schedule end of dma interrupt event */
+
    cp0_update_count();
-   add_interupt_event(PI_INT, 0x1000/* pi->regs[PI_RD_LEN_REG] */);
+   add_interupt_event(PI_INT, /*pi->regs[PI_WR_LEN_REG]*/0x1000); /* XXX: 0x1000 ??? */
 }
 
 /* Copies data from the PI into RDRAM. */
@@ -109,6 +126,7 @@ static void dma_pi_write(struct pi_controller *pi)
 
    if (pi->regs[PI_CART_ADDR_REG] < 0x10000000 && !(pi->regs[PI_CART_ADDR_REG] >= 0x06000000 && pi->regs[PI_CART_ADDR_REG] < 0x08000000))
    {
+      /* XXX: end of domain is wrong ? */
       if (pi->regs[PI_CART_ADDR_REG] >= 0x08000000 && pi->regs[PI_CART_ADDR_REG] < 0x08010000)
       {
          if (pi->use_flashram != 1)
@@ -144,7 +162,11 @@ static void dma_pi_write(struct pi_controller *pi)
          }
          else
          {
-            pi->regs[PI_STATUS_REG] |= 3;
+            /* mark both DMA and IO as busy */
+            pi->regs[PI_STATUS_REG] |=
+               PI_STATUS_DMA_BUSY | PI_STATUS_IO_BUSY;
+
+            /* schedule end of dma interrupt event */
             cp0_update_count();
             add_interupt_event(PI_INT, length / 8);
 
@@ -170,7 +192,11 @@ static void dma_pi_write(struct pi_controller *pi)
 #endif
       }
 
-      pi->regs[PI_STATUS_REG] |= 3;
+      /* mark both DMA and IO as busy */
+      pi->regs[PI_STATUS_REG] |=
+         PI_STATUS_DMA_BUSY | PI_STATUS_IO_BUSY;
+
+      /* schedule end of dma interrupt event */
       cp0_update_count();
 #if 0
       add_interupt_event(PI_INT, /*pi->regs[PI_WR_LEN_REG]*/0x1000);
@@ -181,11 +207,15 @@ static void dma_pi_write(struct pi_controller *pi)
       return;
    }
 
+   /* XXX: why need special treatment ? */
    if (pi->regs[PI_CART_ADDR_REG] >= 0x1fc00000) /* for paper mario */
    {
-      pi->regs[PI_STATUS_REG] |= 1;
+      /* mark DMA as busy */
+      pi->regs[PI_STATUS_REG] |= PI_STATUS_DMA_BUSY;
+
+      /* schedule end of dma interrupt event */
       cp0_update_count();
-      add_interupt_event(PI_INT, 0x1000);
+      add_interupt_event(PI_INT, 0x1000); /* XXX: 0x1000 ??? */
 
       return;
    }
@@ -226,7 +256,11 @@ static void dma_pi_write(struct pi_controller *pi)
 
       if (i > pi->cart_rom.rom_size || pi->regs[PI_DRAM_ADDR_REG] > 0x7FFFFF)
       {
-         pi->regs[PI_STATUS_REG] |= 3;
+         /* mark both DMA and IO as busy */
+         pi->regs[PI_STATUS_REG] |=
+            PI_STATUS_DMA_BUSY | PI_STATUS_IO_BUSY;
+
+         /* schedule end of dma interrupt event */
          cp0_update_count();
          add_interupt_event(PI_INT, length / 8);
 
@@ -251,7 +285,12 @@ static void dma_pi_write(struct pi_controller *pi)
    {
       force_detected_rdram_size_hack();
    }
-   pi->regs[PI_STATUS_REG] |= 3;
+
+   /* mark both DMA and IO as busy */
+   pi->regs[PI_STATUS_REG] |=
+      PI_STATUS_DMA_BUSY | PI_STATUS_IO_BUSY;
+
+   /* schedule end of dma interrupt event */
    cp0_update_count();
    add_interupt_event(PI_INT, length / 8);
 }
@@ -347,7 +386,7 @@ int write_pi_regs(void* opaque, uint32_t address,
 
 void pi_end_of_dma_event(struct pi_controller* pi)
 {
-   pi->regs[PI_STATUS_REG] &= ~3;
+   pi->regs[PI_STATUS_REG] &= ~(PI_STATUS_DMA_BUSY | PI_STATUS_IO_BUSY);
    raise_rcp_interrupt(pi->r4300, MI_INTR_PI);
 
    if ((pi->regs[PI_CART_ADDR_REG] == 0x05000000) || (pi->regs[PI_CART_ADDR_REG] == 0x05000400))
