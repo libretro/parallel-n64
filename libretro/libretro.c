@@ -873,17 +873,6 @@ void retro_init(void)
    game_thread = co_create(65536 * sizeof(void*) * 16, EmuThreadFunction);
 #endif
 
-   if (retro_init_vulkan())
-   {
-      vulkan_inited = true;
-      return;
-   }
-
-   if (retro_init_gl())
-   {
-      gl_inited = true;
-      return;
-   }
 }
 
 void retro_deinit(void)
@@ -1244,6 +1233,14 @@ bool retro_load_game(const struct retro_game_info *game)
    initial_boot = false;
 
    init_audio_libretro(audio_buffer_size);
+
+   if (gfx_plugin != GFX_ANGRYLION)
+   {
+      if (retro_init_vulkan())
+         vulkan_inited = true;
+      else if (retro_init_gl())
+         gl_inited = true;
+   }
 
    if (vulkan_inited)
    {
