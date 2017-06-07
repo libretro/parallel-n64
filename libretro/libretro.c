@@ -116,7 +116,7 @@ bool alternate_mapping;
 
 static bool initializing            = true;
 
-extern uint32_t VI_REFRESH;
+extern int g_count_per_scanline;
 
 /* after the controller's CONTROL* member has been assigned we can update
  * them straight from here... */
@@ -1098,9 +1098,9 @@ void update_variables(bool startup)
    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
    {
       if (!strcmp(var.value, "1500"))
-         VI_REFRESH = 1500;
+         g_count_per_scanline = 1500;
       else if (!strcmp(var.value, "2200"))
-         VI_REFRESH = 2200;
+         g_count_per_scanline = 2200;
    }
 
    var.key = "parallel-n64-bufferswap";

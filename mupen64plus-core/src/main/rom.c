@@ -43,11 +43,15 @@
 
 #define DEFAULT 16
 
+/* Amount of cpu cycles per vi scanline - empirically determined */
+enum { DEFAULT_COUNT_PER_SCANLINE = 1500 };
+
 /* Global loaded rom memory space. */
 unsigned char* g_rom = NULL;
 /* Global loaded rom size. */
 int g_rom_size = 0;
 unsigned alternate_vi_timing = 0;
+int           g_count_per_scanline = DEFAULT_COUNT_PER_SCANLINE;
 
 uint8_t isGoldeneyeRom = 0;
 extern unsigned int frame_dupe;
@@ -165,6 +169,7 @@ m64p_error open_rom(const unsigned char* romimage, unsigned int size)
    g_rom_size = size;
    g_rom = (unsigned char *) malloc(size);
    alternate_vi_timing = 0;
+   g_count_per_scanline = DEFAULT_COUNT_PER_SCANLINE;
    if (g_rom == NULL)
       return M64ERR_NO_MEMORY;
    memcpy(g_rom, romimage, size);

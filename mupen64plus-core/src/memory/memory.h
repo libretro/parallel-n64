@@ -33,8 +33,6 @@
 #define AI_STATUS_FIFO_FULL	0x80000000		/* Bit 31: full */
 #define AI_STATUS_DMA_BUSY	   0x40000000		/* Bit 30: busy */
 
-extern uint32_t VI_REFRESH;
-
 #define read_word_in_memory() readmem[address>>16]()
 #define read_byte_in_memory() readmemb[address>>16]()
 #define read_hword_in_memory() readmemh[address>>16]()

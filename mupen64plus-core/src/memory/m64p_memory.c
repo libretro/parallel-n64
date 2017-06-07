@@ -81,8 +81,6 @@ void (*writememb[0x10000])(void);
 void (*writememd[0x10000])(void);
 void (*writememh[0x10000])(void);
 
-uint32_t VI_REFRESH = 1500;
-
 typedef int (*readfn)(void*,uint32_t,uint32_t*);
 typedef int (*writefn)(void*,uint32_t,uint32_t,uint32_t);
 

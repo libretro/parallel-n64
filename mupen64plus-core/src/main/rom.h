@@ -33,6 +33,7 @@ m64p_error close_rom(void);
 
 extern unsigned char* g_rom;
 extern int g_rom_size;
+extern int g_count_per_scanline;
 
 extern unsigned char isGoldeneyeRom;
 
