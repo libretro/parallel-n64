@@ -47,8 +47,8 @@ static void swap(int16_t **a, int16_t **b)
     *a = tmp;
 }
 
-#define sample(hle, pos)      ((int16_t*)(hle)->alist_buffer + ((pos) ^ S))
-#define alist_u8(hle, dmem)   (u8((hle)->alist_buffer, (dmem)))
+#define sample(hle, pos)      ((int16_t*)(hle)->alist_buffer + ((pos ^ S) & 0xfff))
+#define alist_u8(hle, dmem)   ((uint8_t*)((hle)->alist_buffer + ((dmem ^ S8) & 0xfff)))
 #define alist_s16(hle, dmem)  ((int16_t*)u16((hle)->alist_buffer, (dmem)))
 #define sample_mix(dst, src, gain)  (clamp_s16(*(dst) + (((src) * (gain)) >> 15)))
 

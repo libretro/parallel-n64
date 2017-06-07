@@ -62,9 +62,10 @@ static void SPNOOP(struct hle_t* UNUSED(hle), uint32_t UNUSED(w1), uint32_t UNUS
 {
 }
 
-static void CLEARBUFF(struct hle_t* hle, uint32_t w1, uint32_t count)
+static void CLEARBUFF(struct hle_t* hle, uint32_t w1, uint32_t w2)
 {
    uint16_t dmem  = w1 + DMEM_BASE;
+   uint16_t count = w2 & 0xfff;
 
    if (count != 0)
       alist_clear(hle, dmem, align(count, 16));
