@@ -635,7 +635,9 @@ bool TMEM::load_tile_framebuffer(const Tile &tile, uint32_t sl, uint32_t tl)
 			fbe.offset_pixels = fb.framebuffer.bytes_to_pixels(wrap);
 			fbe.tmem_base = tile.tmem;
 
+#ifdef ENABLE_LOGS
 			fprintf(stderr, "HW FBE detected!\n");
+#endif
 			break;
 		}
 	}

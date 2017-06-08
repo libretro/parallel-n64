@@ -634,7 +634,9 @@ void Renderer::draw_primitive(const Primitive &prim, const Attribute *attr, uint
 		// While building a render pass, this is not in use.
 		set_framebuffer_size(framebuffer.allocated_width, max_y + 1);
 
+#ifdef ENABLE_LOGS
 		fprintf(stderr, "RESIZING FRAMEBUFFER!\n");
+#endif
 	}
 
 	update_tiles(tile_mask);

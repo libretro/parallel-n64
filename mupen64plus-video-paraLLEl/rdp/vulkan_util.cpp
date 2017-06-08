@@ -204,7 +204,9 @@ CommandBuffer Device::request_command_buffer(CommandPool &pool)
 		info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
 		info.commandBufferCount = 1;
 		V(vkAllocateCommandBuffers(context.get_device(), &info, &cmd));
+#ifdef ENABLE_LOGS
 		fprintf(stderr, "ALLOCATING COMMAND BUFFER\n");
+#endif
 
 		pool.buffers.push_back(cmd);
 		pool.count++;
@@ -478,7 +480,9 @@ AllocatedBlock Device::allocate_block(BufferAllocator &alloc, size_t size)
 	alloc_info.memoryTypeIndex = type_index;
 
 	VkDeviceMemory memory;
+#ifdef ENABLE_LOGS
 	fprintf(stderr, "ALLOCATING MEMORY!\n");
+#endif
 	V(vkAllocateMemory(context.get_device(), &alloc_info, nullptr, &memory));
 	V(vkBindBufferMemory(context.get_device(), buffer, memory, 0));
 
@@ -593,7 +597,9 @@ AllocatedMemory Device::allocate_memory(Internal::MemoryAllocator &alloc, const 
 	alloc_info.allocationSize = MaxBlockSize;
 
 	VkDeviceMemory memory;
+#ifdef ENABLE_LOGS
 	fprintf(stderr, "ALLOCATING MEMORY!\n");
+#endif
 	V(vkAllocateMemory(context.get_device(), &alloc_info, nullptr, &memory));
 
 	current = shared_ptr<Memory>(new Memory{ context.get_device(), memory, 0, size_t(alloc_info.allocationSize) },
