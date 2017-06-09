@@ -87,7 +87,7 @@ static void dma_si_read(struct si_controller* si)
    }
 }
 
-void connect_si(struct si_controller* si,
+void init_si(struct si_controller* si,
                 struct r4300_core* r4300,
                 struct ri_controller *ri)
 {
@@ -95,11 +95,11 @@ void connect_si(struct si_controller* si,
     si->ri    = ri;
 }
 
-void init_si(struct si_controller* si)
+void poweron_si(struct si_controller* si)
 {
     memset(si->regs, 0, SI_REGS_COUNT*sizeof(uint32_t));
 
-    init_pif(&si->pif);
+    poweron_pif(&si->pif);
 }
 
 

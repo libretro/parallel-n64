@@ -1373,12 +1373,12 @@ void poweron_memory(void)
    }
 
    poweron_r4300(&g_r4300);
-   init_rdp(&g_dp);
-   init_rsp(&g_sp);
+   poweron_rdp(&g_dp);
+   poweron_rsp(&g_sp);
    poweron_ai(&g_ai);
    init_pi(&g_pi);
    poweron_ri(&g_ri);
-   init_si(&g_si);
+   poweron_si(&g_si);
    {
       unsigned int vi_clock = vi_clock_from_tv_standard(ROM_PARAMS.systemtype);
       unsigned int vi_expected_refresh_rate = vi_expected_refresh_rate_from_tv_standard(ROM_PARAMS.systemtype);

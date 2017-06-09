@@ -66,12 +66,12 @@ void connect_rdp(struct rdp_core* dp,
     dp->ri    = ri;
 }
 
-void init_rdp(struct rdp_core* dp)
+void poweron_rdp(struct rdp_core* dp)
 {
     memset(dp->dpc_regs, 0, DPC_REGS_COUNT*sizeof(uint32_t));
     memset(dp->dps_regs, 0, DPS_REGS_COUNT*sizeof(uint32_t));
 
-    init_fb(&dp->fb);
+    poweron_fb(&dp->fb);
 }
 
 

@@ -58,7 +58,7 @@ static void process_cart_command(struct pif* pif, uint8_t* cmd)
    }
 }
 
-void init_pif(struct pif* pif)
+void poweron_pif(struct pif* pif)
 {
    memset(pif->ram, 0, PIF_RAM_SIZE);
 }

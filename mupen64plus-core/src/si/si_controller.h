@@ -57,11 +57,11 @@ struct si_controller
 
 
 
-void connect_si(struct si_controller* si,
+void init_si(struct si_controller* si,
                 struct r4300_core* r4300,
                 struct ri_controller *ri);
 
-void init_si(struct si_controller* si);
+void poweron_si(struct si_controller* si);
 
 int read_si_regs(void* opaque, uint32_t address, uint32_t* value);
 int write_si_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mask);

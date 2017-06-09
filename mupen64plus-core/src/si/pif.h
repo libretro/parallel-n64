@@ -71,7 +71,7 @@ struct pif
    struct cic cic;
 };
 
-void init_pif(struct pif* pif);
+void poweron_pif(struct pif* pif);
 
 int read_pif_ram(void* opaque, uint32_t address, uint32_t* value);
 int write_pif_ram(void* opaque, uint32_t address, uint32_t value, uint32_t mask);

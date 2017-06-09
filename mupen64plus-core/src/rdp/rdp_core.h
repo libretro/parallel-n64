@@ -94,7 +94,7 @@ void connect_rdp(struct rdp_core* dp,
                  struct rsp_core* sp,
                  struct ri_controller* ri);
 
-void init_rdp(struct rdp_core* dp);
+void poweron_rdp(struct rdp_core* dp);
 
 int read_dpc_regs(void* opaque, uint32_t address, uint32_t* value);
 int write_dpc_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mask);
