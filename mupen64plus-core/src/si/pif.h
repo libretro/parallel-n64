@@ -78,7 +78,8 @@ void init_pif(struct pif *pif,
       size_t eeprom_size,
       uint16_t eeprom_id,
       void* af_rtc_user_data,
-      const struct tm* (*af_rtc_get_time)(void*)
+      const struct tm* (*af_rtc_get_time)(void*),
+      const uint8_t *ipl3
       );
 
 void poweron_pif(struct pif* pif);

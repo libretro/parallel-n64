@@ -401,7 +401,9 @@ m64p_error main_init(void)
          ROM_SETTINGS.savetype != EEPROM_16KB ? 0x200  : 0x800,   /* eeprom_size */
          ROM_SETTINGS.savetype != EEPROM_16KB ? 0x8000 : 0xc000,  /* eeprom_id   */
          NULL,                                                    /* af_rtc_userdata */
-         get_time_using_C_localtime                               /* af_rtc_get_time */
+         get_time_using_C_localtime,                              /* af_rtc_get_time */
+         ((g_ddrom != NULL) && (g_ddrom_size != 0) && (g_rom == NULL) && (g_rom_size == 0)) ?
+         (g_ddrom + 0x40) : (g_rom + 0x40)                        /* ipl3 */
          );
 
 #ifdef DBG
