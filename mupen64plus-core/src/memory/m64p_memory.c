@@ -1165,29 +1165,6 @@ int get_memory_type(uint32_t address)
 #define W(x) write_ ## x ## b, write_ ## x ## h, write_ ## x, write_ ## x ## d
 #define RW(x) R(x), W(x)
 
-static void poweron_device(
-         struct r4300_core* r4300,
-         struct rdp_core* dp,
-         struct rsp_core* sp,
-         struct ai_controller* ai,
-         struct pi_controller* pi,
-         struct ri_controller* ri,
-         struct si_controller* si,
-         struct vi_controller* vi,
-         struct dd_controller* dd
-         )
-{
-   poweron_r4300(r4300);
-   poweron_rdp(dp);
-   poweron_rsp(sp);
-   poweron_ai(ai);
-   poweron_pi(pi);
-   poweron_ri(ri);
-   poweron_si(si);
-   poweron_vi(vi);
-   poweron_dd(dd);
-}
-
 void poweron_memory(void)
 {
    int i;
@@ -1383,17 +1360,6 @@ void poweron_memory(void)
    }
 
    fast_memory = 1;
-
-   poweron_device(
-         &g_r4300,
-         &g_dp,
-         &g_sp,
-         &g_ai,
-         &g_pi,
-         &g_ri,
-         &g_si,
-         &g_vi,
-         &g_dd);
 
    DebugMessage(M64MSG_VERBOSE, "Memory initialized");
 }

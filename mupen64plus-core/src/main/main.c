@@ -342,6 +342,29 @@ static void init_device(
    init_dd(dd, r4300, dd_disk, dd_disk_size);
 }
 
+void poweron_device(
+      struct r4300_core* r4300,
+      struct rdp_core* dp,
+      struct rsp_core* sp,
+      struct ai_controller* ai,
+      struct pi_controller* pi,
+      struct ri_controller* ri,
+      struct si_controller* si,
+      struct vi_controller* vi,
+      struct dd_controller* dd
+      )
+{
+   poweron_r4300(r4300);
+   poweron_rdp(dp);
+   poweron_rsp(sp);
+   poweron_ai(ai);
+   poweron_pi(pi);
+   poweron_ri(ri);
+   poweron_si(si);
+   poweron_vi(vi);
+   poweron_dd(dd);
+   poweron_memory();
+}
 
 /*********************************************************************************************************
 * emulation thread - runs the core
@@ -384,16 +407,6 @@ m64p_error main_init(void)
          g_rdram, (disable_extra_mem == 0) ? 0x800000 : 0x400000,
          g_rom, g_rom_size, g_ddrom, g_ddrom_size, g_dd_disk, g_dd_disk_size);
 
-   poweron_memory();
-
-   // Attach rom to plugins
-   printf("Gfx RomOpen.\n");
-   if (!gfx.romOpen())
-   {
-      printf("Gfx RomOpen failed.\n");
-      return M64ERR_PLUGIN_FAIL;
-   }
-
    init_pif(&g_si.pif,
          NULL,                                                    /* eeprom_userdata */
          dummy_save,                                              /* eeprom cb */
@@ -406,6 +419,14 @@ m64p_error main_init(void)
          (g_ddrom + 0x40) : (g_rom + 0x40)                        /* ipl3 */
          );
 
+   // Attach rom to plugins
+   printf("Gfx RomOpen.\n");
+   if (!gfx.romOpen())
+   {
+      printf("Gfx RomOpen failed.\n");
+      return M64ERR_PLUGIN_FAIL;
+   }
+
 #ifdef DBG
    if (ConfigGetParamBool(g_CoreConfig, "EnableDebugger"))
       init_debugger();
@@ -415,6 +436,15 @@ m64p_error main_init(void)
    StateChanged(M64CORE_EMU_STATE, M64EMU_RUNNING);
 
    /* call r4300 CPU core and run the game */
+   poweron_device(&g_r4300,
+         &g_dp,
+         &g_sp,
+         &g_ai,
+         &g_pi,
+         &g_ri,
+         &g_si,
+         &g_vi,
+         &g_dd);
    r4300_reset_soft();
 
    return M64ERR_SUCCESS;

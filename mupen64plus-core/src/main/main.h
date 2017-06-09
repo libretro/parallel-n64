@@ -81,6 +81,18 @@ void main_check_inputs(void);
 
 void new_vi(void);
 
+void poweron_device(
+      struct r4300_core* r4300,
+      struct rdp_core* dp,
+      struct rsp_core* sp,
+      struct ai_controller* ai,
+      struct pi_controller* pi,
+      struct ri_controller* ri,
+      struct si_controller* si,
+      struct vi_controller* vi,
+      struct dd_controller* dd
+      );
+
 m64p_error main_core_state_query(m64p_core_param param, int *rval);
 m64p_error main_core_state_set(m64p_core_param param, int val);
 
