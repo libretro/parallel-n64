@@ -29,7 +29,7 @@ void connect_ri(struct ri_controller* ri,
       uint32_t* dram,
       size_t dram_size)
 {
-   connect_rdram(&ri->rdram, dram, dram_size);
+   init_rdram(&ri->rdram, dram, dram_size);
 }
 
 /* Initializes the RI. */
@@ -37,7 +37,7 @@ void init_ri(struct ri_controller* ri)
 {
     memset(ri->regs, 0, RI_REGS_COUNT*sizeof(uint32_t));
 
-    init_rdram(&ri->rdram);
+   poweron_rdram(&ri->rdram);
 
     /* MESS uses these, so we will too? (backported from CEN64) */
     ri->regs[RI_MODE_REG]    = 0xE;
