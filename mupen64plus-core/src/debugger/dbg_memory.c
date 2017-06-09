@@ -30,6 +30,7 @@
 #include "../api/m64p_types.h"
 #include "../api/callbacks.h"
 #include "../main/main.h"
+#include "../main/device.h"
 #include "../main/rom.h"
 #include "../memory/memory.h"
 #include "../pi/pi_controller.h"
@@ -293,28 +294,28 @@ uint32 read_memory_32(uint32 addr){
     case M64P_MEM_RDRAM:
       return g_rdram[rdram_dram_address(addr)];
     case M64P_MEM_RSPMEM:
-      return g_sp.mem[rsp_mem_address(addr)];
+      return g_dev.sp.mem[rsp_mem_address(addr)];
     case M64P_MEM_ROM:
       return *((uint32 *)(g_rom + rom_address(addr)));
     case M64P_MEM_RDRAMREG:
       offset = RDRAM_REG(addr);
       if (offset < RDRAM_REGS_COUNT)
-         return g_ri.rdram.regs[offset];
+         return g_dev.ri.rdram.regs[offset];
       break;
     case M64P_MEM_RSPREG:
       offset = RSP_REG(addr);
       if (offset < SP_REGS_COUNT)
-         return g_sp.regs[offset];
+         return g_dev.sp.regs[offset];
       break;
     case M64P_MEM_RSP:
       offset = rsp_reg2(addr);
       if (offset < SP_REGS2_COUNT)
-         return g_sp.regs2[offset];
+         return g_dev.sp.regs2[offset];
       break;
     case M64P_MEM_DP:
       offset = DPC_REG(addr);
       if (offset < DPC_REGS_COUNT)
-         return g_dpc.regs[offset];
+         return g_dev.dpc.regs[offset];
       break;
     case M64P_MEM_DPS:
       if (addrlow < 0x10)
@@ -323,37 +324,37 @@ uint32 read_memory_32(uint32 addr){
     case M64P_MEM_VI:
       offset = VI_REG(addr);
       if (offset < VI_REGS_COUNT)
-         return g_vi.regs[offset];
+         return g_dev.vi.regs[offset];
       break;
     case M64P_MEM_AI:
       offset = AI_REG((addr);
       if (offset < AI_REGS_COUNT)
-         return g_ai.regs[offset];
+         return g_dev.ai.regs[offset];
       break;
     case M64P_MEM_PI:
       offset = PI_REG((addr);
       if (offset < PI_REGS_COUNT)
-         return g_pi.regs[offset];
+         return g_dev.pi.regs[offset];
       break;
     case M64P_MEM_RI:
       offset = RI_REG(addr);
       if (offset < RI_REGS_COUNT)
-         return g_ri.regs[offset];
+         return g_dev.ri.regs[offset];
       break;
     case M64P_MEM_SI:
       offset = SI_REG(addr);
       if (offset < SI_REGS_COUNT)
-         return g_si.regs[offset];
+         return g_dev.si.regs[offset];
       break;
     case M64P_MEM_PIF:
       offset = pif_ram_address(addr);
       if (offset < PIF_RAM_SIZE)
-         return sl((*((uint32_t*)&g_si.pif.ram[offset])));
+         return sl((*((uint32_t*)&g_dev.si.pif.ram[offset])));
       break;
     case M64P_MEM_MI:
       offset = MI_REG(addr);
       if (offset < MI_REGS_COUNT)
-         return g_r4300.mi.regs[offset];
+         return g_dev.r4300.mi.regs[offset];
       break;
     default:
       break;
