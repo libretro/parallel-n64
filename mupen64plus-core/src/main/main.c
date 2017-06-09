@@ -394,9 +394,12 @@ m64p_error main_init(void)
    g_si.pif.af_rtc.user_data = NULL;
    g_si.pif.af_rtc.get_time = get_time_using_C_localtime;
 
-   init_pif(&g_si.pif, NULL, dummy_save, saved_memory.eeprom, 
-         ROM_SETTINGS.savetype != EEPROM_16KB ? 0x200  : 0x800,
-         ROM_SETTINGS.savetype != EEPROM_16KB ? 0x8000 : 0xc000
+   init_pif(&g_si.pif,
+         NULL,                                                    /* eeprom_userdata */
+         dummy_save,                                              /* eeprom cb */
+         saved_memory.eeprom,                                     /* eeprom_data */
+         ROM_SETTINGS.savetype != EEPROM_16KB ? 0x200  : 0x800,   /* eeprom_size */
+         ROM_SETTINGS.savetype != EEPROM_16KB ? 0x8000 : 0xc000   /* eeprom_id   */
          );
 
    /* connect saved_memory.flashram to flashram */
