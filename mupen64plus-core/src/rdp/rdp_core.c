@@ -56,7 +56,7 @@ static int update_dpc_status(struct rdp_core* dp, uint32_t w)
 }
 
 
-void connect_rdp(struct rdp_core* dp,
+void init_rdp(struct rdp_core* dp,
                  struct r4300_core* r4300,
                  struct rsp_core* sp,
                  struct ri_controller *ri)

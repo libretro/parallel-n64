@@ -51,7 +51,7 @@ struct dd_disk
 	size_t disk_size;
 };
 
-void connect_dd_disk(struct dd_disk* dd_disk,
+void init_dd_disk(struct dd_disk* dd_disk,
                      uint8_t* disk, size_t disk_size);
 void format_disk(uint8_t* disk);
 

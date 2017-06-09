@@ -161,7 +161,7 @@ static void swap_copy_rom(void* dst, const void* src, size_t len, unsigned char*
 	}
 }
 
-void connect_dd_rom(struct dd_rom* dd_rom,
+void init_dd_rom(struct dd_rom* dd_rom,
                     uint8_t* rom, size_t rom_size)
 {
 	dd_rom->rom = rom;

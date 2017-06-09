@@ -72,12 +72,12 @@ static uint32_t dd_reg(uint32_t address)
     return temp >> 2;
 }
 
-void connect_dd(struct dd_controller* dd,
+void init_dd(struct dd_controller* dd,
                 struct r4300_core* r4300,
                 uint8_t *dd_disk,
                 size_t dd_disk_size);
 
-void init_dd(struct dd_controller* dd);
+void poweron_dd(struct dd_controller* dd);
 
 int read_dd_regs(void* opaque, uint32_t address, uint32_t* value);
 int write_dd_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mask);

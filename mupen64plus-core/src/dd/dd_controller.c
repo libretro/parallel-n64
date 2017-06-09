@@ -49,17 +49,17 @@ static unsigned char byte2bcd(int n)
     return ((n / 10) << 4) | (n % 10);
 }
 
-void connect_dd(struct dd_controller* dd,
+void init_dd(struct dd_controller* dd,
                 struct r4300_core* r4300,
                 uint8_t* dd_disk,
                 size_t dd_disk_size)
 {
     dd->r4300 = r4300;
 
-    connect_dd_disk(&dd->disk, dd_disk, dd_disk_size);
+    init_dd_disk(&dd->disk, dd_disk, dd_disk_size);
 }
 
-void init_dd(struct dd_controller* dd)
+void poweron_dd(struct dd_controller* dd)
 {
     memset(dd->regs, 0, ASIC_REGS_COUNT*sizeof(uint32_t));
     memset(dd->c2_buf, 0, 0x400);

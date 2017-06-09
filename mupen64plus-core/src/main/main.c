@@ -321,14 +321,14 @@ static void init_device(
       size_t dd_disk_size
       )
 {
-   connect_rdp(dp, r4300, sp, ri);
+   init_rdp(dp, r4300, sp, ri);
    init_rsp(sp, r4300, dp, ri);
    init_ai(ai, r4300, ri, vi);
    init_pi(pi, r4300, ri, rom, rom_size, ddrom, ddrom_size);
    init_ri(ri, dram, dram_size);
    init_si(si, r4300, ri);
    init_vi(vi, r4300);
-   connect_dd(dd, r4300, dd_disk, dd_disk_size);
+   init_dd(dd, r4300, dd_disk, dd_disk_size);
 }
 
 static void dummy_save(void *user_data)

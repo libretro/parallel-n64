@@ -32,7 +32,7 @@ struct dd_rom
 	size_t rom_size;
 };
 
-void connect_dd_rom(struct dd_rom* dd_rom,
+void init_dd_rom(struct dd_rom* dd_rom,
                     uint8_t* rom, size_t rom_size);
 
 /* ROM Loading and Saving functions */

@@ -1384,7 +1384,7 @@ void poweron_memory(void)
       unsigned int vi_expected_refresh_rate = vi_expected_refresh_rate_from_tv_standard(ROM_PARAMS.systemtype);
       poweron_vi(&g_vi, vi_clock, vi_expected_refresh_rate);
    }
-   init_dd(&g_dd);
+   poweron_dd(&g_dd);
 
    DebugMessage(M64MSG_VERBOSE, "Memory initialized");
 }

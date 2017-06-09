@@ -89,7 +89,7 @@ struct rdp_core
     struct ri_controller* ri;
 };
 
-void connect_rdp(struct rdp_core* dp,
+void init_rdp(struct rdp_core* dp,
                  struct r4300_core* r4300,
                  struct rsp_core* sp,
                  struct ri_controller* ri);
