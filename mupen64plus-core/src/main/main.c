@@ -315,17 +315,18 @@ static void init_device(
       struct rdp_core* dp,
       struct rsp_core* sp,
       struct ai_controller* ai,
+      void * ai_user_data, void (*ai_set_audio_format)(void*,unsigned int, unsigned int), void (*ai_push_audio_samples)(void*,const void*,size_t),
       struct pi_controller* pi,
+      uint8_t *rom,
+      size_t rom_size,
       struct ri_controller* ri,
+      uint32_t* dram,
+      size_t dram_size,
       struct si_controller* si,
       struct vi_controller* vi,
       unsigned int vi_clock,
       unsigned int expected_refresh_rate,
       struct dd_controller* dd,
-      uint32_t* dram,
-      size_t dram_size,
-      uint8_t *rom,
-      size_t rom_size,
       uint8_t *ddrom,
       size_t ddrom_size,
       uint8_t *dd_disk,
@@ -334,9 +335,9 @@ static void init_device(
 {
    init_rdp(dp, r4300, sp, ri);
    init_rsp(sp, r4300, dp, ri);
-   init_ai(ai, NULL,
-         set_audio_format_via_libretro,
-         push_audio_samples_via_libretro,
+   init_ai(ai, ai_user_data,
+         ai_set_audio_format,
+         ai_push_audio_samples,
          r4300, ri, vi);
    init_pi(pi,
          rom, rom_size,
@@ -419,12 +420,19 @@ m64p_error main_init(void)
    }
 
    init_device(&g_r4300, &g_dp, &g_sp,
-         &g_ai, &g_pi, &g_ri, &g_si, &g_vi,
+         &g_ai,
+         NULL,
+         set_audio_format_via_libretro,
+         push_audio_samples_via_libretro,
+         &g_pi,
+         g_rom, g_rom_size, 
+         &g_ri,
+         g_rdram, (disable_extra_mem == 0) ? 0x800000 : 0x400000,
+         &g_si, &g_vi,
          vi_clock_from_tv_standard(ROM_PARAMS.systemtype),
          vi_expected_refresh_rate_from_tv_standard(ROM_PARAMS.systemtype),
          &g_dd,
-         g_rdram, (disable_extra_mem == 0) ? 0x800000 : 0x400000,
-         g_rom, g_rom_size, g_ddrom, g_ddrom_size, g_dd_disk, g_dd_disk_size);
+         g_ddrom, g_ddrom_size, g_dd_disk, g_dd_disk_size);
 
 
    // Attach rom to plugins
