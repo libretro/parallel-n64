@@ -54,6 +54,8 @@ extern "C" {
 #include "../cached_interp.h"
 #include "../cp0_private.h"
 #include "../cp1_private.h"
+#include "../main/main.h"
+#include "../main/rom.h"
 #include "../interupt.h"
 #include "../ops.h"
 #include "../r4300.h"
