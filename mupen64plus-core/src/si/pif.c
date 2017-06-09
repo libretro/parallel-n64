@@ -58,7 +58,13 @@ static void process_cart_command(struct pif* pif, uint8_t* cmd)
    }
 }
 
-void init_pif(void)
+void init_pif(struct pif *pif,
+      void *eeprom_user_data,
+      void (*eeprom_save)(void*),
+      uint8_t *eeprom_data,
+      size_t eeprom_size,
+      uint16_t eeprom_id
+      )
 {
    size_t i;
 
@@ -66,6 +72,10 @@ void init_pif(void)
    {
       init_game_controller(i);
    }
+
+   init_eeprom(&pif->eeprom,
+         eeprom_user_data, eeprom_save, eeprom_data, eeprom_size, eeprom_id);
+
 }
 
 void poweron_pif(struct pif* pif)

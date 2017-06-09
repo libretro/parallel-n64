@@ -71,6 +71,14 @@ struct pif
    struct cic cic;
 };
 
+void init_pif(struct pif *pif,
+      void *eeprom_user_data,
+      void (*eeprom_save)(void*),
+      uint8_t *eeprom_data,
+      size_t eeprom_size,
+      uint16_t eeprom_id
+      );
+
 void poweron_pif(struct pif* pif);
 
 int read_pif_ram(void* opaque, uint32_t address, uint32_t* value);
