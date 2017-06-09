@@ -382,13 +382,6 @@ m64p_error main_init(void)
       printf("Gfx RomOpen failed.\n");
       return M64ERR_PLUGIN_FAIL;
    }
-   printf("Input RomOpen.\n");
-   if (!input.romOpen())
-   {
-      printf("Input RomOpen failed.\n");
-      gfx.romClosed();
-      return M64ERR_PLUGIN_FAIL;
-   }
 
    init_pif(&g_si.pif,
          NULL,                                                    /* eeprom_userdata */
