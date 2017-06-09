@@ -109,7 +109,7 @@ void r4300_reset_soft(void)
     
     uint32_t bsd_dom1_config;
     
-    if ((g_ddrom != NULL) && (g_ddrom_size != 0) && (g_rom == NULL) && (g_rom_size == 0))
+    if ((g_ddrom != NULL) && (g_ddrom_size != 0) && (g_dev.pi.cart_rom.rom == NULL) && (g_dev.pi.cart_rom.rom_size == 0))
     {
       //64DD IPL
       bsd_dom1_config = *(uint32_t*)g_ddrom;
@@ -118,7 +118,7 @@ void r4300_reset_soft(void)
     else
     {
       //N64 ROM
-      bsd_dom1_config = *(uint32_t*)g_rom;
+      bsd_dom1_config = *(uint32_t*)g_dev.pi.cart_rom.rom;
     }
 
     g_cp0_regs[CP0_STATUS_REG] = 0x34000000;
@@ -142,7 +142,7 @@ void r4300_reset_soft(void)
 
     g_dev.r4300.mi.regs[MI_INTR_REG] &= ~(MI_INTR_PI | MI_INTR_VI | MI_INTR_AI | MI_INTR_SP);
 
-    if ((g_ddrom != NULL) && (g_ddrom_size != 0) && (g_rom == NULL) && (g_rom_size == 0))
+    if ((g_ddrom != NULL) && (g_ddrom_size != 0) && (g_dev.pi.cart_rom.rom == NULL) && (g_dev.pi.cart_rom.rom_size == 0))
     {
       //64DD IPL
       memcpy((unsigned char*)g_dev.sp.mem+0x40, g_ddrom+0x40, 0xfc0);
@@ -150,7 +150,7 @@ void r4300_reset_soft(void)
     else
     {
       //N64 ROM
-      memcpy((unsigned char*)g_dev.sp.mem+0x40, g_rom+0x40, 0xfc0);
+      memcpy((unsigned char*)g_dev.sp.mem+0x40, g_dev.pi.cart_rom.rom+0x40, 0xfc0);
     }
 
     reg[19] = rom_type;     /* s3 */
