@@ -308,6 +308,8 @@ void init_pi(struct pi_controller* pi,
    init_flashram(&pi->flashram, flashram_user_data, flashram_save, flashram_data);
    init_sram(&pi->sram, sram_user_data, sram_save, sram_data);
 
+   pi->use_flashram = 0;
+
    pi->r4300 = r4300;
    pi->ri    = ri;
 }
@@ -321,7 +323,6 @@ void poweron_pi(struct pi_controller* pi)
     poweron_dd_rom(&pi->dd_rom);
     poweron_flashram(&pi->flashram);
 
-    pi->use_flashram = 0;
 }
 
 /* Reads a word from the PI MMIO register space. */
