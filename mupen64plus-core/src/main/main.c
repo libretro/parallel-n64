@@ -301,7 +301,7 @@ void new_vi(void)
 #endif
 }
 
-static void connect_all(
+static void init_device(
       struct r4300_core *r4300,
       struct rdp_core* dp,
       struct rsp_core* sp,
@@ -369,7 +369,7 @@ m64p_error main_init(void)
       g_DDMemHasBeenBSwapped = 1;
    }
 
-   connect_all(&g_r4300, &g_dp, &g_sp,
+   init_device(&g_r4300, &g_dp, &g_sp,
          &g_ai, &g_pi, &g_ri, &g_si, &g_vi, &g_dd,
          g_rdram, (disable_extra_mem == 0) ? 0x800000 : 0x400000,
          g_rom, g_rom_size, g_ddrom, g_ddrom_size, g_dd_disk, g_dd_disk_size);

@@ -1375,7 +1375,7 @@ int init_memory(void)
    init_r4300(&g_r4300);
    init_rdp(&g_dp);
    init_rsp(&g_sp);
-   init_ai(&g_ai);
+   poweron_ai(&g_ai);
    init_pi(&g_pi);
    init_ri(&g_ri);
    init_si(&g_si);

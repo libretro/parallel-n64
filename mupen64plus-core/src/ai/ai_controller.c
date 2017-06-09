@@ -45,6 +45,15 @@ void connect_ai(struct ai_controller* ai,
                 struct ri_controller *ri,
                 struct vi_controller* vi)
 {
+   /* TODO/FIXME */
+#if 0
+   ai->user_data          = user_data;
+#else
+   ai->user_data          = NULL;
+#endif
+   ai->set_audio_format   = set_audio_format_via_libretro;
+   ai->push_audio_samples = push_audio_samples_via_libretro;
+
     ai->r4300 = r4300;
     ai->ri    = ri;
     ai->vi    = vi;
@@ -154,7 +163,7 @@ static void fifo_pop(struct ai_controller* ai)
 }
 
 /* Initializes the AI. */
-void init_ai(struct ai_controller* ai)
+void poweron_ai(struct ai_controller* ai)
 {
     memset(ai->regs, 0, AI_REGS_COUNT*sizeof(uint32_t));
     memset(ai->fifo, 0, AI_DMA_FIFO_SIZE*sizeof(struct ai_dma));
