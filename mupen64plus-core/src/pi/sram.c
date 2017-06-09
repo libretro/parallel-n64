@@ -30,6 +30,13 @@
 #include <stdint.h>
 #include <string.h>
 
+void init_sram(struct sram* sram, void* user_data, void (*save)(void*), uint8_t* data)
+{
+   sram->user_data = user_data;
+   sram->save      = save;
+   sram->data      = data;
+}
+
 void sram_save(struct sram* sram)
 {
    sram->save(sram->user_data);

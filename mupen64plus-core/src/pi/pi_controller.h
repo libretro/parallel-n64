@@ -71,10 +71,12 @@ struct pi_controller
 };
 
 void init_pi(struct pi_controller* pi,
-                struct r4300_core* r4300,
-                struct ri_controller *ri,
                 uint8_t* rom, size_t rom_size,
-                uint8_t* ddrom, size_t ddrom_size);
+                uint8_t* ddrom, size_t ddrom_size,
+                void* flashram_user_data, void (*flashram_save)(void*), uint8_t* flashram_data,
+                void* sram_user_data, void (*sram_save)(void*), uint8_t* sram_data,
+                struct r4300_core* r4300,
+                struct ri_controller *ri);
 
 void poweron_pi(struct pi_controller* pi);
 

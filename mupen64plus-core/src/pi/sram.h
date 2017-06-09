@@ -36,6 +36,8 @@ struct sram
    uint8_t* data;
 };
 
+void init_sram(struct sram* sram, void* user_data, void (*save)(void*), uint8_t* data);
+
 void sram_save(struct sram* sram);
 
 void format_sram(uint8_t* sram);

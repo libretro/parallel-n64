@@ -43,6 +43,8 @@ m64p_error close_ddrom(void);
 extern unsigned char* g_ddrom;
 extern int g_ddrom_size;
 
+void poweron_dd_rom(struct dd_rom *dd_rom);
+
 int read_dd_ipl(void* opaque, uint32_t address, uint32_t* value);
 int write_dd_ipl(void* opaque, uint32_t address, uint32_t value, uint32_t mask);
 

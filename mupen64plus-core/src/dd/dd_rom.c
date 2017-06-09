@@ -168,6 +168,10 @@ void init_dd_rom(struct dd_rom* dd_rom,
 	dd_rom->rom_size = rom_size;
 }
 
+void poweron_dd_rom(struct dd_rom *dd_rom)
+{
+}
+
 m64p_error open_ddrom(const unsigned char* romimage, unsigned int size)
 {
 	unsigned char imagetype;

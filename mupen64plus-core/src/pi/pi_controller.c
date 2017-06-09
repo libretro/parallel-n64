@@ -296,13 +296,17 @@ static void dma_pi_write(struct pi_controller *pi)
 }
 
 void init_pi(struct pi_controller* pi,
-                struct r4300_core* r4300,
-                struct ri_controller *ri,
                 uint8_t *rom, size_t rom_size,
-                uint8_t *ddrom, size_t ddrom_size)
+                uint8_t *ddrom, size_t ddrom_size,
+                void* flashram_user_data, void (*flashram_save)(void*), uint8_t* flashram_data,
+                void* sram_user_data, void (*sram_save)(void*), uint8_t* sram_data,
+                struct r4300_core* r4300,
+                struct ri_controller *ri)
 {
    init_cart_rom(&pi->cart_rom, rom, rom_size);
    init_dd_rom(&pi->dd_rom, ddrom, ddrom_size);
+   init_flashram(&pi->flashram, flashram_user_data, flashram_save, flashram_data);
+   init_sram(&pi->sram, sram_user_data, sram_save, sram_data);
 
    pi->r4300 = r4300;
    pi->ri    = ri;
@@ -313,7 +317,9 @@ void poweron_pi(struct pi_controller* pi)
 {
     memset(pi->regs, 0, PI_REGS_COUNT*sizeof(uint32_t));
 
-    init_flashram(&pi->flashram);
+    poweron_cart_rom(&pi->cart_rom);
+    poweron_dd_rom(&pi->dd_rom);
+    poweron_flashram(&pi->flashram);
 
     pi->use_flashram = 0;
 }

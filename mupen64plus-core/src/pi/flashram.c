@@ -29,6 +29,16 @@
 
 #include <string.h>
 
+void init_flashram(struct flashram* flashram,
+      void* user_data,
+      void (*save)(void*),
+      uint8_t* data)
+{
+   flashram->user_data = user_data;
+   flashram->save = save;
+   flashram->data = data;
+}
+
 static void flashram_command(struct pi_controller *pi, uint32_t command)
 {
    unsigned int i;
@@ -93,11 +103,11 @@ static void flashram_command(struct pi_controller *pi, uint32_t command)
    }
 }
 
-void init_flashram(struct flashram* flashram)
+void poweron_flashram(struct flashram* flashram)
 {
-   flashram->mode = FLASHRAM_MODE_NOPES;
-   flashram->status = 0;
-   flashram->erase_offset = 0;
+   flashram->mode          = FLASHRAM_MODE_NOPES;
+   flashram->status        = 0;
+   flashram->erase_offset  = 0;
    flashram->write_pointer = 0;
 }
 

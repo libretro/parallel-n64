@@ -301,6 +301,10 @@ void new_vi(void)
 #endif
 }
 
+static void dummy_save(void *user_data)
+{
+}
+
 static void init_device(
       struct r4300_core *r4300,
       struct rdp_core* dp,
@@ -324,16 +328,18 @@ static void init_device(
    init_rdp(dp, r4300, sp, ri);
    init_rsp(sp, r4300, dp, ri);
    init_ai(ai, r4300, ri, vi);
-   init_pi(pi, r4300, ri, rom, rom_size, ddrom, ddrom_size);
+   init_pi(pi,
+         rom, rom_size,
+         ddrom, ddrom_size,
+         NULL, dummy_save, saved_memory.flashram,
+         NULL, dummy_save, saved_memory.sram,
+         r4300, ri);
    init_ri(ri, dram, dram_size);
    init_si(si, r4300, ri);
    init_vi(vi, r4300);
    init_dd(dd, r4300, dd_disk, dd_disk_size);
 }
 
-static void dummy_save(void *user_data)
-{
-}
 
 /*********************************************************************************************************
 * emulation thread - runs the core
@@ -392,16 +398,6 @@ m64p_error main_init(void)
          NULL,                                                    /* af_rtc_userdata */
          get_time_using_C_localtime                               /* af_rtc_get_time */
          );
-
-   /* connect saved_memory.flashram to flashram */
-   g_pi.flashram.user_data = NULL;
-   g_pi.flashram.save = dummy_save;
-   g_pi.flashram.data = saved_memory.flashram;
-
-   /* connect saved_memory.sram to SRAM */
-   g_pi.sram.user_data = NULL;
-   g_pi.sram.save = dummy_save;
-   g_pi.sram.data = saved_memory.sram;
 
 #ifdef DBG
    if (ConfigGetParamBool(g_CoreConfig, "EnableDebugger"))
