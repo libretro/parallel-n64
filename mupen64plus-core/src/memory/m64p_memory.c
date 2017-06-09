@@ -1184,11 +1184,7 @@ static void poweron_device(
    poweron_pi(pi);
    poweron_ri(ri);
    poweron_si(si);
-   {
-      unsigned int vi_clock = vi_clock_from_tv_standard(ROM_PARAMS.systemtype);
-      unsigned int vi_expected_refresh_rate = vi_expected_refresh_rate_from_tv_standard(ROM_PARAMS.systemtype);
-      poweron_vi(vi, vi_clock, vi_expected_refresh_rate);
-   }
+   poweron_vi(vi);
    poweron_dd(dd);
 }
 

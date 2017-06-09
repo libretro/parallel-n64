@@ -336,7 +336,11 @@ static void init_device(
          r4300, ri);
    init_ri(ri, dram, dram_size);
    init_si(si, r4300, ri);
-   init_vi(vi, r4300);
+   {
+      unsigned int vi_clock = vi_clock_from_tv_standard(ROM_PARAMS.systemtype);
+      unsigned int expected_refresh_rate = vi_expected_refresh_rate_from_tv_standard(ROM_PARAMS.systemtype);
+      init_vi(vi, vi_clock, expected_refresh_rate, r4300);
+   }
    init_dd(dd, r4300, dd_disk, dd_disk_size);
 }
 
