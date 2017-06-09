@@ -42,8 +42,6 @@ int getVMBlock();
 #define MAP_ANONYMOUS MAP_ANON
 #endif
 
-#include "backends/n64/n64.h"
-
 #ifdef __cplusplus
 extern "C" {
 #endif
