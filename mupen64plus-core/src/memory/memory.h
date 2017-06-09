@@ -75,8 +75,7 @@ extern void (*writememd[0x10000])(void);
 #define Sh16 1
 #endif
 
-
-int init_memory(void);
+void poweron_memory(void);
 
 void map_region(uint16_t region,
       int type,

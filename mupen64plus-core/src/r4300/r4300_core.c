@@ -27,9 +27,9 @@
 #include "r4300.h"
 #include "recomp.h"
 
-void init_r4300(struct r4300_core* r4300)
+void poweron_r4300(struct r4300_core* r4300)
 {
-    init_mi(&r4300->mi);
+    poweron_mi(&r4300->mi);
 }
 
 int64_t* r4300_regs(void)

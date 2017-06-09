@@ -374,7 +374,7 @@ m64p_error main_init(void)
          g_rdram, (disable_extra_mem == 0) ? 0x800000 : 0x400000,
          g_rom, g_rom_size, g_ddrom, g_ddrom_size, g_dd_disk, g_dd_disk_size);
 
-   init_memory();
+   poweron_memory();
 
    // Attach rom to plugins
    printf("Gfx RomOpen.\n");

@@ -301,7 +301,7 @@ void connect_pi(struct pi_controller* pi,
                 uint8_t *rom, size_t rom_size,
                 uint8_t *ddrom, size_t ddrom_size)
 {
-   connect_cart_rom(&pi->cart_rom, rom, rom_size);
+   init_cart_rom(&pi->cart_rom, rom, rom_size);
    connect_dd_rom(&pi->dd_rom, ddrom, ddrom_size);
 
    pi->r4300 = r4300;

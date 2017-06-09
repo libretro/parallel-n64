@@ -1165,7 +1165,7 @@ int get_memory_type(uint32_t address)
 #define W(x) write_ ## x ## b, write_ ## x ## h, write_ ## x, write_ ## x ## d
 #define RW(x) R(x), W(x)
 
-int init_memory(void)
+void poweron_memory(void)
 {
    int i;
 
@@ -1372,7 +1372,7 @@ int init_memory(void)
       init_cic_using_ipl3(&g_si.pif.cic, g_rom + 0x40);
    }
 
-   init_r4300(&g_r4300);
+   poweron_r4300(&g_r4300);
    init_rdp(&g_dp);
    init_rsp(&g_sp);
    poweron_ai(&g_ai);
@@ -1387,7 +1387,6 @@ int init_memory(void)
    init_dd(&g_dd);
 
    DebugMessage(M64MSG_VERBOSE, "Memory initialized");
-   return 0;
 }
 
 static void map_region_t(uint16_t region, int type)
