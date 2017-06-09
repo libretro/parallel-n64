@@ -21,6 +21,7 @@
 
 #include "pif.h"
 #include "n64_cic_nus_6105.h"
+#include "game_controller.h"
 #include "si_controller.h"
 
 #include "../api/m64p_types.h"
@@ -28,6 +29,9 @@
 #include "../memory/memory.h"
 #include "../plugin/plugin.h"
 #include "r4300/r4300_core.h"
+
+#include "../plugin/emulate_game_controller_via_input_plugin.h"
+#include "../plugin/rumble_via_input_plugin.h"
 
 #include <string.h>
 
@@ -58,6 +62,10 @@ static void process_cart_command(struct pif* pif, uint8_t* cmd)
    }
 }
 
+static void game_controller_dummy_save(void *user_data)
+{
+}
+
 void init_pif(struct pif *pif,
       void *eeprom_user_data,
       void (*eeprom_save)(void*),
@@ -73,7 +81,18 @@ void init_pif(struct pif *pif,
 
    for (i = 0; i < GAME_CONTROLLERS_COUNT; ++i)
    {
-      init_game_controller(i);
+      static  channels[] = { 0, 1, 2, 3 };
+      init_game_controller(
+            &pif->controllers[i], 
+            (void*)&channels[i],
+            egcvip_is_connected,
+            egcvip_get_input,
+            NULL,
+            &game_controller_dummy_save,
+            &saved_memory.mempack[i][0],
+            &channels[i],
+            rvip_rumble
+            );
    }
 
    init_eeprom(&pif->eeprom,

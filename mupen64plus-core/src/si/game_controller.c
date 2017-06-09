@@ -26,9 +26,6 @@
 #include "api/m64p_types.h"
 #include "api/callbacks.h"
 
-#include "../plugin/emulate_game_controller_via_input_plugin.h"
-#include "../plugin/rumble_via_input_plugin.h"
-
 #include "../../libretro/libretro_memory.h"
 
 #include <stdint.h>
@@ -184,29 +181,31 @@ static void controller_write_pak_command(struct game_controller* cont, uint8_t* 
     cmd[0x25] = pak_data_crc((uint8_t*)data);
 }
 
-static void game_controller_dummy_save(void *user_data)
-{
-}
-
 extern struct si_controller g_si;
 
-void init_game_controller(unsigned i)
+void init_game_controller(struct game_controller *cont,
+      void *cont_user_data,
+      int (*cont_is_connected)(void*,enum pak_type*),
+      uint32_t (*cont_get_input)(void*),
+      void* mpk_user_data,
+      void (*mpk_save)(void*),
+      uint8_t* mpk_data,
+      void* rpk_user_data,
+      void (*rpk_rumble)(void*,enum rumble_action))
 {
-   static int channels[] = { 0, 1, 2, 3 };
-
    /* connect external game controllers */
-   g_si.pif.controllers[i].user_data = &channels[i];
-   g_si.pif.controllers[i].is_connected = egcvip_is_connected;
-   g_si.pif.controllers[i].get_input = egcvip_get_input;
+   cont->user_data    = cont_user_data;
+   cont->is_connected = cont_is_connected;
+   cont->get_input    = cont_get_input;
 
    /* connect external rumblepaks */
-   g_si.pif.controllers[i].rumblepak.user_data = &channels[i];
-   g_si.pif.controllers[i].rumblepak.rumble = rvip_rumble;
+   cont->rumblepak.user_data = rpk_user_data;
+   cont->rumblepak.rumble    = rpk_rumble;
 
    /* connect saved_memory.mempacks to mempaks */
-   g_si.pif.controllers[i].mempak.user_data = NULL;
-   g_si.pif.controllers[i].mempak.save = game_controller_dummy_save;
-   g_si.pif.controllers[i].mempak.data = &saved_memory.mempack[i][0];
+   cont->mempak.user_data = mpk_user_data;
+   cont->mempak.save      = mpk_save;
+   cont->mempak.data      = mpk_data;
 }
 
 int game_controller_is_connected(struct game_controller* cont, enum pak_type* pak)

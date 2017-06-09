@@ -55,7 +55,15 @@ struct game_controller
     struct transferpak transferpak;
 };
 
-void init_game_controller(unsigned i);
+void init_game_controller(struct game_controller *cont,
+      void *cont_user_data,
+      int (*cont_is_connected)(void*,enum pak_type*),
+      uint32_t (*cont_get_input)(void*),
+      void* mpk_user_data,
+      void (*mpk_save)(void*),
+      uint8_t* mpk_data,
+      void* rpk_user_data,
+      void (*rpk_rumble)(void*,enum rumble_action));
 
 int game_controller_is_connected(struct game_controller* cont, enum pak_type* pak);
 uint32_t game_controller_get_input(struct game_controller* cont);
