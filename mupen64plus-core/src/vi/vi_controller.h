@@ -65,13 +65,13 @@ struct vi_controller
     struct r4300_core* r4300;
 };
 
-void connect_vi(struct vi_controller* vi,
+void init_vi(struct vi_controller* vi,
                 struct r4300_core* r4300);
 
 unsigned int vi_clock_from_tv_standard(m64p_system_type tv_standard);
 unsigned int vi_expected_refresh_rate_from_tv_standard(m64p_system_type tv_standard);
 
-void init_vi(struct vi_controller* vi, unsigned int clock, unsigned int expected_refresh_rate);
+void poweron_vi(struct vi_controller* vi, unsigned int clock, unsigned int expected_refresh_rate);
 
 int read_vi_regs(void* opaque, uint32_t address, uint32_t* value);
 int write_vi_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mask);

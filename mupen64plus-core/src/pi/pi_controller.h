@@ -70,13 +70,13 @@ struct pi_controller
     struct ri_controller *ri;
 };
 
-void connect_pi(struct pi_controller* pi,
+void init_pi(struct pi_controller* pi,
                 struct r4300_core* r4300,
                 struct ri_controller *ri,
                 uint8_t* rom, size_t rom_size,
                 uint8_t* ddrom, size_t ddrom_size);
 
-void init_pi(struct pi_controller* pi);
+void poweron_pi(struct pi_controller* pi);
 
 int read_pi_regs(void* opaque, uint32_t address, uint32_t* value);
 int write_pi_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mask);

@@ -40,7 +40,7 @@ enum
    AI_STATUS_FULL = 0x80000000
 };
 
-void connect_ai(struct ai_controller* ai,
+void init_ai(struct ai_controller* ai,
                 struct r4300_core* r4300,
                 struct ri_controller *ri,
                 struct vi_controller* vi)

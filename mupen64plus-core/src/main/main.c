@@ -323,11 +323,11 @@ static void init_device(
 {
    connect_rdp(dp, r4300, sp, ri);
    init_rsp(sp, r4300, dp, ri);
-   connect_ai(ai, r4300, ri, vi);
-   connect_pi(pi, r4300, ri, rom, rom_size, ddrom, ddrom_size);
+   init_ai(ai, r4300, ri, vi);
+   init_pi(pi, r4300, ri, rom, rom_size, ddrom, ddrom_size);
    init_ri(ri, dram, dram_size);
    init_si(si, r4300, ri);
-   connect_vi(vi, r4300);
+   init_vi(vi, r4300);
    connect_dd(dd, r4300, dd_disk, dd_disk_size);
 }
 

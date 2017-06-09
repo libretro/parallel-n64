@@ -295,7 +295,7 @@ static void dma_pi_write(struct pi_controller *pi)
    add_interupt_event(PI_INT, length / 8);
 }
 
-void connect_pi(struct pi_controller* pi,
+void init_pi(struct pi_controller* pi,
                 struct r4300_core* r4300,
                 struct ri_controller *ri,
                 uint8_t *rom, size_t rom_size,
@@ -309,7 +309,7 @@ void connect_pi(struct pi_controller* pi,
 }
 
 /* Initializes the PI. */
-void init_pi(struct pi_controller* pi)
+void poweron_pi(struct pi_controller* pi)
 {
     memset(pi->regs, 0, PI_REGS_COUNT*sizeof(uint32_t));
 

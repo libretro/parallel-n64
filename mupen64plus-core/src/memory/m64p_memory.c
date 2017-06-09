@@ -1376,13 +1376,13 @@ void poweron_memory(void)
    poweron_rdp(&g_dp);
    poweron_rsp(&g_sp);
    poweron_ai(&g_ai);
-   init_pi(&g_pi);
+   poweron_pi(&g_pi);
    poweron_ri(&g_ri);
    poweron_si(&g_si);
    {
       unsigned int vi_clock = vi_clock_from_tv_standard(ROM_PARAMS.systemtype);
       unsigned int vi_expected_refresh_rate = vi_expected_refresh_rate_from_tv_standard(ROM_PARAMS.systemtype);
-      init_vi(&g_vi, vi_clock, vi_expected_refresh_rate);
+      poweron_vi(&g_vi, vi_clock, vi_expected_refresh_rate);
    }
    init_dd(&g_dd);
 
