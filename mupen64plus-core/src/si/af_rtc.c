@@ -80,3 +80,11 @@ void af_rtc_write_command(struct af_rtc *rtc, uint8_t* cmd)
    /* write RTC block */
    DebugMessage(M64MSG_ERROR, "AF-RTC write command: not yet implemented");
 }
+
+void init_af_rtc(struct af_rtc* rtc,
+      void* user_data,
+      const struct tm* (*get_time)(void*))
+{
+   rtc->user_data = user_data;
+   rtc->get_time = get_time;
+}
