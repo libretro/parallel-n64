@@ -45,6 +45,7 @@
 
 #include "main.h"
 #include "cheat.h"
+#include "device.h"
 #include "eventloop.h"
 #include "rom.h"
 #include "savestates.h"
@@ -97,15 +98,8 @@ int        g_DDMemHasBeenBSwapped = 0; /* store byte-swapped flag so we don't sw
 int         g_EmulatorRunning = 0;      /* need separate boolean to tell if emulator is running, since --nogui doesn't use a thread */
 
 ALIGN(16, uint32_t g_rdram[RDRAM_MAX_SIZE/4]);
-struct ai_controller g_ai;
-struct pi_controller g_pi;
-struct ri_controller g_ri;
-struct si_controller g_si;
-struct vi_controller g_vi;
-struct dd_controller g_dd;
+struct device g_dev;
 struct r4300_core g_r4300;
-struct rdp_core g_dp;
-struct rsp_core g_sp;
 
 int g_delay_si = 0;
 
@@ -310,85 +304,6 @@ static void dummy_save(void *user_data)
 {
 }
 
-static void init_device(
-      struct r4300_core *r4300,
-      struct rdp_core* dp,
-      struct rsp_core* sp,
-      struct ai_controller* ai,
-      void * ai_user_data, void (*ai_set_audio_format)(void*,unsigned int, unsigned int), void (*ai_push_audio_samples)(void*,const void*,size_t),
-      struct pi_controller* pi,
-      uint8_t *rom,
-      size_t rom_size,
-      void* flashram_user_data, void (*flashram_save)(void*), uint8_t* flashram_data,
-      void* sram_user_data, void (*sram_save)(void*), uint8_t* sram_data,
-      struct ri_controller* ri,
-      uint32_t* dram, size_t dram_size,
-      struct si_controller* si,
-      void* eeprom_user_data, void (*eeprom_save)(void*), uint8_t* eeprom_data, size_t eeprom_size, uint16_t eeprom_id,
-      void* af_rtc_user_data, const struct tm* (*af_rtc_get_time)(void*),
-      struct vi_controller* vi,
-      unsigned int vi_clock,
-      unsigned int expected_refresh_rate,
-      struct dd_controller* dd,
-      uint8_t *ddrom,
-      size_t ddrom_size,
-      uint8_t *dd_disk,
-      size_t dd_disk_size
-      )
-{
-   init_rdp(dp, r4300, sp, ri);
-   init_rsp(sp, r4300, dp, ri);
-   init_ai(ai, ai_user_data,
-         ai_set_audio_format,
-         ai_push_audio_samples,
-         r4300, ri, vi);
-   init_pi(pi,
-         rom, rom_size,
-         ddrom, ddrom_size,
-         flashram_user_data, flashram_save, flashram_data,
-         sram_user_data, sram_save, sram_data,
-         r4300, ri);
-   init_ri(ri, dram, dram_size);
-   init_si(si,
-         eeprom_user_data,
-         eeprom_save,
-         eeprom_data,
-         eeprom_size,
-         eeprom_id,
-         af_rtc_user_data,
-         af_rtc_get_time,
-         ((g_ddrom != NULL) && (g_ddrom_size != 0) && (g_rom == NULL) && (g_rom_size == 0)) ?
-         (g_ddrom + 0x40) : (g_rom + 0x40),                       /* ipl3 */
-         r4300, ri);
-
-   init_vi(vi, vi_clock, expected_refresh_rate, r4300);
-   init_dd(dd, r4300, dd_disk, dd_disk_size);
-}
-
-void poweron_device(
-      struct r4300_core* r4300,
-      struct rdp_core* dp,
-      struct rsp_core* sp,
-      struct ai_controller* ai,
-      struct pi_controller* pi,
-      struct ri_controller* ri,
-      struct si_controller* si,
-      struct vi_controller* vi,
-      struct dd_controller* dd
-      )
-{
-   poweron_r4300(r4300);
-   poweron_rdp(dp);
-   poweron_rsp(sp);
-   poweron_ai(ai);
-   poweron_pi(pi);
-   poweron_ri(ri);
-   poweron_si(si);
-   poweron_vi(vi);
-   poweron_dd(dd);
-   poweron_memory();
-}
-
 /*********************************************************************************************************
 * emulation thread - runs the core
 */
@@ -423,29 +338,21 @@ m64p_error main_init(void)
    }
 
    init_device(
-         &g_r4300,
-         &g_dp,
-         &g_sp,
-         &g_ai,
+         &g_dev,
          NULL,
          set_audio_format_via_libretro,
          push_audio_samples_via_libretro,
-         &g_pi,
          g_rom, g_rom_size, 
          NULL, dummy_save, saved_memory.flashram,
          NULL, dummy_save, saved_memory.sram,
-         &g_ri,
          g_rdram, (disable_extra_mem == 0) ? 0x800000 : 0x400000,
-         &g_si,
          NULL,dummy_save,saved_memory.eeprom,
          ROM_SETTINGS.savetype != EEPROM_16KB ? 0x200  : 0x800,   /* eeprom_size */
          ROM_SETTINGS.savetype != EEPROM_16KB ? 0x8000 : 0xc000,  /* eeprom_id   */
          NULL,                                                    /* af_rtc_userdata */
          get_time_using_C_localtime,                              /* af_rtc_get_time */
-         &g_vi,
          vi_clock_from_tv_standard(ROM_PARAMS.systemtype),
          vi_expected_refresh_rate_from_tv_standard(ROM_PARAMS.systemtype),
-         &g_dd,
          g_ddrom, g_ddrom_size, g_dd_disk, g_dd_disk_size);
 
 
@@ -466,15 +373,7 @@ m64p_error main_init(void)
    StateChanged(M64CORE_EMU_STATE, M64EMU_RUNNING);
 
    /* call r4300 CPU core and run the game */
-   poweron_device(&g_r4300,
-         &g_dp,
-         &g_sp,
-         &g_ai,
-         &g_pi,
-         &g_ri,
-         &g_si,
-         &g_vi,
-         &g_dd);
+   poweron_device(&g_dev);
    r4300_reset_soft();
 
    return M64ERR_SUCCESS;

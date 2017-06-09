@@ -25,6 +25,7 @@
 #include "../api/callbacks.h"
 #include "../api/m64p_types.h"
 #include "../main/main.h"
+#include "../main/device.h"
 #include "../memory/memory.h"
 #include "../r4300/cp0.h"
 #include "../r4300/cp0_private.h"
@@ -69,7 +70,7 @@ static void dma_pi_read(struct pi_controller *pi)
          i -= 0x400;
          length = (i + length) > 0x100 ? (0x100 - i) : length;
          rom_address = (pi->regs[PI_CART_ADDR_REG] - 0x05000400) & 0x3fffff;
-         rom = g_dd.sec_buf;
+         rom = g_dev.dd.sec_buf;
       }
       else
       {
@@ -151,14 +152,14 @@ static void dma_pi_write(struct pi_controller *pi)
             i -= 0x400;
             length = (i + length) > 0x100 ? (0x100 - i) : length;
             rom_address = (pi->regs[PI_CART_ADDR_REG] - 0x05000400) & 0x3fffff;
-            rom = g_dd.sec_buf;
+            rom = g_dev.dd.sec_buf;
          }
          else if (pi->regs[PI_CART_ADDR_REG] == 0x05000000)
          {
             /* C2 BUFFER */
             rom_address = (pi->regs[PI_CART_ADDR_REG] - 0x05000000) & 0x3fffff;
             length      = (i + length) > 0x400 ? (0x400 - i) : length;
-            rom         = g_dd.c2_buf;
+            rom         = g_dev.dd.c2_buf;
          }
          else
          {
@@ -349,12 +350,12 @@ int write_pi_regs(void* opaque, uint32_t address,
       {
          if (value == 0x05000000)
          {
-            g_dd.regs[ASIC_CMD_STATUS] &= ~0x1C000000;
+            g_dev.dd.regs[ASIC_CMD_STATUS] &= ~0x1C000000;
             dd_pi_test();
          }
          else if (value == 0x05000400)
          {
-            g_dd.regs[ASIC_CMD_STATUS] &= ~0x4C000000;
+            g_dev.dd.regs[ASIC_CMD_STATUS] &= ~0x4C000000;
             dd_pi_test();
          }
          break;
@@ -398,6 +399,6 @@ void pi_end_of_dma_event(struct pi_controller* pi)
 
    if ((pi->regs[PI_CART_ADDR_REG] == 0x05000000) || (pi->regs[PI_CART_ADDR_REG] == 0x05000400))
    {
-      dd_update_bm(&g_dd);
+      dd_update_bm(&g_dev.dd);
    }
 }

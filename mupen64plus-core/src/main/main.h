@@ -28,15 +28,6 @@
 
 #include <stdint.h>
 
-struct r4300_core;
-struct rsp_core;
-struct ai_controller;
-struct pi_controller;
-struct ri_controller;
-struct si_controller;
-struct vi_controller;
-struct dd_controller;
-
 enum { RDRAM_MAX_SIZE = 0x800000 };
 
 /* globals */
@@ -48,17 +39,7 @@ extern int g_EmulatorRunning;
 
 extern ALIGN(16, uint32_t g_rdram[RDRAM_MAX_SIZE/4]);
 
-extern struct ai_controller g_ai;
-extern struct pi_controller g_pi;
-extern struct ri_controller g_ri;
-extern struct si_controller g_si;
-extern struct vi_controller g_vi;
-extern struct dd_controller g_dd;
-
-extern struct r4300_core g_r4300;
-extern struct rdp_core g_dp;
-extern struct rsp_core g_sp;
-
+extern struct device g_dev;
 
 extern m64p_frame_callback g_FrameCallback;
 
@@ -80,18 +61,6 @@ void main_advance_one(void);
 void main_check_inputs(void);
 
 void new_vi(void);
-
-void poweron_device(
-      struct r4300_core* r4300,
-      struct rdp_core* dp,
-      struct rsp_core* sp,
-      struct ai_controller* ai,
-      struct pi_controller* pi,
-      struct ri_controller* ri,
-      struct si_controller* si,
-      struct vi_controller* vi,
-      struct dd_controller* dd
-      );
 
 m64p_error main_core_state_query(m64p_core_param param, int *rval);
 m64p_error main_core_state_set(m64p_core_param param, int val);

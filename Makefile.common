@@ -84,6 +84,7 @@ SOURCES_C += \
 	$(CORE_DIR)/src/main/cheat.c \
 	$(CORE_DIR)/src/main/eventloop.c \
 	$(CORE_DIR)/src/main/main.c \
+	$(CORE_DIR)/src/main/device.c \
 	$(CORE_DIR)/src/main/profile.c \
 	$(CORE_DIR)/src/main/md5.c \
 	$(CORE_DIR)/src/main/rom.c \

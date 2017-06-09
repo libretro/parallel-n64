@@ -30,6 +30,7 @@
 #include "api/m64p_config.h"
 #include "api/m64p_types.h"
 #include "main/main.h"
+#include "main/device.h"
 #include "memory/memory.h"
 #include "r4300/cp0.h"
 #include "r4300/cp0_private.h"
@@ -197,7 +198,7 @@ int write_dd_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mask)
 
         case ASIC_CMD_STATUS:
             /* ASIC Commands */
-            timeinfo = (struct tm*)af_rtc_get_time(&g_si.pif.af_rtc);
+            timeinfo = (struct tm*)af_rtc_get_time(&g_dev.si.pif.af_rtc);
             uint8_t year, month, hour, day, min, sec;
 
             switch (value >> 16)
