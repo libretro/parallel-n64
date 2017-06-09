@@ -337,7 +337,18 @@ static void init_device(
          NULL, dummy_save, saved_memory.sram,
          r4300, ri);
    init_ri(ri, dram, dram_size);
-   init_si(si, r4300, ri);
+   init_si(si,
+         NULL,                                                    /* eeprom_userdata */
+         dummy_save,                                              /* eeprom cb */
+         saved_memory.eeprom,                                     /* eeprom_data */
+         ROM_SETTINGS.savetype != EEPROM_16KB ? 0x200  : 0x800,   /* eeprom_size */
+         ROM_SETTINGS.savetype != EEPROM_16KB ? 0x8000 : 0xc000,  /* eeprom_id   */
+         NULL,                                                    /* af_rtc_userdata */
+         get_time_using_C_localtime,                              /* af_rtc_get_time */
+         ((g_ddrom != NULL) && (g_ddrom_size != 0) && (g_rom == NULL) && (g_rom_size == 0)) ?
+         (g_ddrom + 0x40) : (g_rom + 0x40),                       /* ipl3 */
+         r4300, ri);
+
    init_vi(vi, vi_clock, expected_refresh_rate, r4300);
    init_dd(dd, r4300, dd_disk, dd_disk_size);
 }
@@ -407,17 +418,6 @@ m64p_error main_init(void)
          g_rdram, (disable_extra_mem == 0) ? 0x800000 : 0x400000,
          g_rom, g_rom_size, g_ddrom, g_ddrom_size, g_dd_disk, g_dd_disk_size);
 
-   init_pif(&g_si.pif,
-         NULL,                                                    /* eeprom_userdata */
-         dummy_save,                                              /* eeprom cb */
-         saved_memory.eeprom,                                     /* eeprom_data */
-         ROM_SETTINGS.savetype != EEPROM_16KB ? 0x200  : 0x800,   /* eeprom_size */
-         ROM_SETTINGS.savetype != EEPROM_16KB ? 0x8000 : 0xc000,  /* eeprom_id   */
-         NULL,                                                    /* af_rtc_userdata */
-         get_time_using_C_localtime,                              /* af_rtc_get_time */
-         ((g_ddrom != NULL) && (g_ddrom_size != 0) && (g_rom == NULL) && (g_rom_size == 0)) ?
-         (g_ddrom + 0x40) : (g_rom + 0x40)                        /* ipl3 */
-         );
 
    // Attach rom to plugins
    printf("Gfx RomOpen.\n");

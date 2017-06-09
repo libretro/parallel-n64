@@ -88,11 +88,24 @@ static void dma_si_read(struct si_controller* si)
 }
 
 void init_si(struct si_controller* si,
-                struct r4300_core* r4300,
-                struct ri_controller *ri)
+      void* eeprom_user_data,
+      void (*eeprom_save)(void*),
+      uint8_t* eeprom_data,
+      size_t eeprom_size,
+      uint16_t eeprom_id,
+      void* af_rtc_user_data,
+      const struct tm* (*af_rtc_get_time)(void*),
+      const uint8_t* ipl3,
+      struct r4300_core* r4300,
+      struct ri_controller *ri)
 {
-    si->r4300 = r4300;
-    si->ri    = ri;
+   si->r4300 = r4300;
+   si->ri    = ri;
+
+   init_pif(&si->pif,
+         eeprom_user_data, eeprom_save, eeprom_data, eeprom_size, eeprom_id,
+         af_rtc_user_data, af_rtc_get_time, ipl3 
+         );
 }
 
 void poweron_si(struct si_controller* si)
