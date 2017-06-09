@@ -1377,7 +1377,7 @@ int init_memory(void)
    init_rsp(&g_sp);
    poweron_ai(&g_ai);
    init_pi(&g_pi);
-   init_ri(&g_ri);
+   poweron_ri(&g_ri);
    init_si(&g_si);
    {
       unsigned int vi_clock = vi_clock_from_tv_standard(ROM_PARAMS.systemtype);

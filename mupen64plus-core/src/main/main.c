@@ -325,7 +325,7 @@ static void init_device(
    connect_rsp(sp, r4300, dp, ri);
    connect_ai(ai, r4300, ri, vi);
    connect_pi(pi, r4300, ri, rom, rom_size, ddrom, ddrom_size);
-   connect_ri(ri, dram, dram_size);
+   init_ri(ri, dram, dram_size);
    connect_si(si, r4300, ri);
    connect_vi(vi, r4300);
    connect_dd(dd, r4300, dd_disk, dd_disk_size);
