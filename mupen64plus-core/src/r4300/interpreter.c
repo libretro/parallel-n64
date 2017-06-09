@@ -46,6 +46,7 @@
  *                 The memory address of the store is in the 'address' global.
  */
 
+#include "../main/device.h"
 #include "fpu.h"
 
 DECLARE_INSTRUCTION(NI)
@@ -1817,12 +1818,12 @@ static void TLBWrite(unsigned int idx)
                 md5_byte_t digest[16];
                 md5_init(&state);
                 md5_append(&state, 
-                       (const md5_byte_t*)&g_rdram[(tlb_LUT_r[i]&0x7FF000)/4],
+                       (const md5_byte_t*)&g_dev.ri.rdram.dram[(tlb_LUT_r[i]&0x7FF000)/4],
                        0x1000);
                 md5_finish(&state, digest);
                 for (j=0; j<16; j++) blocks[i]->md5[j] = digest[j];*/
                 
-                blocks[i]->adler32 = encoding_crc32(0, (void*)&g_rdram[(tlb_LUT_r[i]&0x7FF000)/4], 0x1000);
+                blocks[i]->adler32 = encoding_crc32(0, (void*)&g_dev.ri.rdram.dram[(tlb_LUT_r[i]&0x7FF000)/4], 0x1000);
                 
                 invalid_code[i] = 1;
             }
@@ -1848,12 +1849,12 @@ static void TLBWrite(unsigned int idx)
                md5_byte_t digest[16];
                md5_init(&state);
                md5_append(&state, 
-                      (const md5_byte_t*)&g_rdram[(tlb_LUT_r[i]&0x7FF000)/4],
+                      (const md5_byte_t*)&g_dev.ri.rdram.dram[(tlb_LUT_r[i]&0x7FF000)/4],
                       0x1000);
                md5_finish(&state, digest);
                for (j=0; j<16; j++) blocks[i]->md5[j] = digest[j];*/
                 
-               blocks[i]->adler32 = encoding_crc32(0, (void*)&g_rdram[(tlb_LUT_r[i]&0x7FF000)/4], 0x1000);
+               blocks[i]->adler32 = encoding_crc32(0, (void*)&g_dev.ri.rdram.dram[(tlb_LUT_r[i]&0x7FF000)/4], 0x1000);
                 
                invalid_code[i] = 1;
             }
@@ -1912,7 +1913,7 @@ static void TLBWrite(unsigned int idx)
                md5_byte_t digest[16];
                md5_init(&state);
                md5_append(&state, 
-                  (const md5_byte_t*)&g_rdram[(tlb_LUT_r[i]&0x7FF000)/4],
+                  (const md5_byte_t*)&g_dev.ri.rdram.dram[(tlb_LUT_r[i]&0x7FF000)/4],
                   0x1000);
                md5_finish(&state, digest);
                for (j=0; j<16; j++)
@@ -1922,7 +1923,7 @@ static void TLBWrite(unsigned int idx)
                }*/
                if(blocks[i] && blocks[i]->adler32)
                {
-                  if(blocks[i]->adler32 == encoding_crc32(0,(void*)&g_rdram[(tlb_LUT_r[i]&0x7FF000)/4],0x1000))
+                  if(blocks[i]->adler32 == encoding_crc32(0,(void*)&g_dev.ri.rdram.dram[(tlb_LUT_r[i]&0x7FF000)/4],0x1000))
                      invalid_code[i] = 0;
                }
          }
@@ -1941,7 +1942,7 @@ static void TLBWrite(unsigned int idx)
             md5_byte_t digest[16];
             md5_init(&state);
             md5_append(&state, 
-                   (const md5_byte_t*)&g_rdram[(tlb_LUT_r[i]&0x7FF000)/4],
+                   (const md5_byte_t*)&g_dev.ri.rdram.dram[(tlb_LUT_r[i]&0x7FF000)/4],
                    0x1000);
             md5_finish(&state, digest);
             for (j=0; j<16; j++)
@@ -1951,7 +1952,7 @@ static void TLBWrite(unsigned int idx)
             }*/
             if(blocks[i] && blocks[i]->adler32)
             {
-               if(blocks[i]->adler32 == encoding_crc32(0,(void*)&g_rdram[(tlb_LUT_r[i]&0x7FF000)/4],0x1000))
+               if(blocks[i]->adler32 == encoding_crc32(0,(void*)&g_dev.ri.rdram.dram[(tlb_LUT_r[i]&0x7FF000)/4],0x1000))
                   invalid_code[i] = 0;
             }
          }

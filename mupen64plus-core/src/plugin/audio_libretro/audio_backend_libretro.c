@@ -133,8 +133,8 @@ void push_audio_samples_via_libretro(void* user_data, const void* buffer, size_t
    uint32_t saved_ai_dram = g_dev.ai.regs[AI_DRAM_ADDR_REG];
 
    /* notify plugin of new samples to play.
-    * Exploit the fact that buffer points in g_rdram to retreive dram_addr_reg value */
-   g_dev.ai.regs[AI_DRAM_ADDR_REG] = (uint8_t*)buffer - (uint8_t*)g_rdram;
+    * Exploit the fact that buffer points in g_dev.ri.rdram.dram to retrieve dram_addr_reg value */
+   g_dev.ai.regs[AI_DRAM_ADDR_REG] = (uint8_t*)buffer - (uint8_t*)g_dev.ri.rdram.dram;
    g_dev.ai.regs[AI_LEN_REG] = size;
 
    for (i = 0; i < size; i += 4)

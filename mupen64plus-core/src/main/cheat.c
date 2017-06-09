@@ -29,6 +29,7 @@
 #include "memory/memory.h"
 #include "cheat.h"
 #include "main.h"
+#include "device.h"
 #include "rom.h"
 #include "list.h"
 #include "eventloop.h"
@@ -65,35 +66,35 @@ extern unsigned int frame_dupe;
 /* Private functions */
 static uint16_t read_address_16bit(unsigned int address)
 {
-    return *(uint16_t*)(((uint8_t*)g_rdram + ((address & 0xFFFFFF)^S16)));
+    return *(uint16_t*)(((uint8_t*)g_dev.ri.rdram.dram + ((address & 0xFFFFFF)^S16)));
 }
 
 static uint8_t read_address_8bit(unsigned int address)
 {
-    return *(unsigned char *)(((unsigned char*)g_rdram + ((address & 0xFFFFFF)^S8)));
+    return *(unsigned char *)(((unsigned char*)g_dev.ri.rdram.dram + ((address & 0xFFFFFF)^S8)));
 }
 
 static void update_address_16bit(unsigned int address, unsigned short new_value)
 {
-    *(uint16_t *)(((uint8_t*)g_rdram + ((address & 0xFFFFFF)^S16))) = new_value;
+    *(uint16_t *)(((uint8_t*)g_dev.ri.rdram.dram + ((address & 0xFFFFFF)^S16))) = new_value;
 }
 
 static void update_address_8bit(unsigned int address, unsigned char new_value)
 {
-     *(uint8_t *)(((uint8_t*)g_rdram + ((address & 0xFFFFFF)^S8))) = new_value;
+     *(uint8_t *)(((uint8_t*)g_dev.ri.rdram.dram + ((address & 0xFFFFFF)^S8))) = new_value;
 }
 
 static int address_equal_to_8bit(unsigned int address, unsigned char value)
 {
     unsigned char value_read;
-    value_read = *(unsigned char *)(((unsigned char*)g_rdram + ((address & 0xFFFFFF)^S8)));
+    value_read = *(unsigned char *)(((unsigned char*)g_dev.ri.rdram.dram + ((address & 0xFFFFFF)^S8)));
     return value_read == value;
 }
 
 static int address_equal_to_16bit(unsigned int address, unsigned short value)
 {
     unsigned short value_read;
-    value_read = *(unsigned short *)(((unsigned char*)g_rdram + ((address & 0xFFFFFF)^S16)));
+    value_read = *(unsigned short *)(((unsigned char*)g_dev.ri.rdram.dram + ((address & 0xFFFFFF)^S16)));
     return value_read == value;
 }
 
