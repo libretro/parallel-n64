@@ -29,11 +29,6 @@
 
 #include <string.h>
 
-void set_audio_format_via_libretro(void* user_data,
-      unsigned int frequency, unsigned int bits);
-
-void push_audio_samples_via_libretro(void* user_data, const void* buffer, size_t size);
-
 enum
 {
    AI_STATUS_BUSY = 0x40000000,
@@ -41,22 +36,20 @@ enum
 };
 
 void init_ai(struct ai_controller* ai,
-                struct r4300_core* r4300,
-                struct ri_controller *ri,
-                struct vi_controller* vi)
+      void * user_data,
+      void (*set_audio_format)(void*,unsigned int, unsigned int),
+      void (*push_audio_samples)(void*,const void*,size_t),
+      struct r4300_core* r4300,
+      struct ri_controller *ri,
+      struct vi_controller* vi)
 {
-   /* TODO/FIXME */
-#if 0
    ai->user_data          = user_data;
-#else
-   ai->user_data          = NULL;
-#endif
-   ai->set_audio_format   = set_audio_format_via_libretro;
-   ai->push_audio_samples = push_audio_samples_via_libretro;
+   ai->set_audio_format   = set_audio_format;
+   ai->push_audio_samples = push_audio_samples;
 
-    ai->r4300 = r4300;
-    ai->ri    = ri;
-    ai->vi    = vi;
+   ai->r4300 = r4300;
+   ai->ri    = ri;
+   ai->vi    = vi;
 }
 
 
@@ -106,13 +99,13 @@ static void do_dma(struct ai_controller* ai, const struct ai_dma* dma)
          ? 16 /* default bit rate */
          : 1 + ai->regs[AI_BITRATE_REG];
 
-      set_audio_format_via_libretro(&ai->backend, frequency, bits);
+      ai->set_audio_format(&ai->backend, frequency, bits);
 
       ai->samples_format_changed = 0;
    }
 
    /* push audio samples to audio backend */
-   push_audio_samples_via_libretro(&ai->backend,
+   ai->push_audio_samples(&ai->backend,
          &ai->ri->rdram.dram[dma->address/4], dma->length);
 
    /* schedule end of dma event */

@@ -77,6 +77,11 @@
 
 #include "api/libretro.h"
 
+void set_audio_format_via_libretro(void* user_data,
+      unsigned int frequency, unsigned int bits);
+
+void push_audio_samples_via_libretro(void* user_data, const void* buffer, size_t size);
+
 extern retro_input_poll_t poll_cb;
 
 /* version number for Core config section */
@@ -329,7 +334,10 @@ static void init_device(
 {
    init_rdp(dp, r4300, sp, ri);
    init_rsp(sp, r4300, dp, ri);
-   init_ai(ai, r4300, ri, vi);
+   init_ai(ai, NULL,
+         set_audio_format_via_libretro,
+         push_audio_samples_via_libretro,
+         r4300, ri, vi);
    init_pi(pi,
          rom, rom_size,
          ddrom, ddrom_size,

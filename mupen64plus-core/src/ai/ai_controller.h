@@ -75,9 +75,12 @@ struct ai_controller
 
 
 void init_ai(struct ai_controller* ai,
-                struct r4300_core* r4300,
-                struct ri_controller* ri,
-                struct vi_controller* vi);
+      void * user_data,
+      void (*set_audio_format)(void*,unsigned int, unsigned int),
+      void (*push_audio_samples)(void*,const void*,size_t),
+      struct r4300_core* r4300,
+      struct ri_controller *ri,
+      struct vi_controller* vi);
 
 void poweron_ai(struct ai_controller* ai);
 
