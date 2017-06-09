@@ -160,7 +160,6 @@ ifeq ($(WITH_DYNAREC), arm)
 		DYNAREC_USED = 1
 		SOURCES_C += $(CORE_DIR)/src/r4300/new_dynarec/new_dynarec.c \
 						 $(CORE_DIR)/src/r4300/new_dynarec/arm/arm_cpu_features.c \
-						 $(CORE_DIR)/src/r4300/new_dynarec/backends/n64/n64.c \
 						 $(CORE_DIR)/src/r4300/empty_dynarec.c
 
 		SOURCES_ASM += \
