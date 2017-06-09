@@ -342,7 +342,6 @@ m64p_error main_init(void)
 {
    size_t i;
    unsigned int disable_extra_mem;
-   static int channels[] = { 0, 1, 2, 3 };
    /* take the r4300 emulator mode from the config file at this point and cache it in a global variable */
    r4300emu = ConfigGetParamInt(g_CoreConfig, "R4300Emulator");
 
@@ -395,28 +394,7 @@ m64p_error main_init(void)
    g_si.pif.af_rtc.user_data = NULL;
    g_si.pif.af_rtc.get_time = get_time_using_C_localtime;
 
-   /* connect external game controllers */
-   for(i = 0; i < GAME_CONTROLLERS_COUNT; ++i)
-   {
-      g_si.pif.controllers[i].user_data = &channels[i];
-      g_si.pif.controllers[i].is_connected = egcvip_is_connected;
-      g_si.pif.controllers[i].get_input = egcvip_get_input;
-   }
-
-   /* connect external rumblepaks */
-   for(i = 0; i < GAME_CONTROLLERS_COUNT; ++i)
-   {
-      g_si.pif.controllers[i].rumblepak.user_data = &channels[i];
-      g_si.pif.controllers[i].rumblepak.rumble = rvip_rumble;
-   }
-
-   /* connect saved_memory.mempacks to mempaks */
-   for(i = 0; i < GAME_CONTROLLERS_COUNT; ++i)
-   {
-      g_si.pif.controllers[i].mempak.user_data = NULL;
-      g_si.pif.controllers[i].mempak.save = dummy_save;
-      g_si.pif.controllers[i].mempak.data = &saved_memory.mempack[i][0];
-   }
+   init_pif();
 
    /* connect saved_memory.eeprom to eeprom */
    g_si.pif.eeprom.user_data = NULL;

@@ -58,6 +58,16 @@ static void process_cart_command(struct pif* pif, uint8_t* cmd)
    }
 }
 
+void init_pif(void)
+{
+   size_t i;
+
+   for (i = 0; i < GAME_CONTROLLERS_COUNT; ++i)
+   {
+      init_game_controller(i);
+   }
+}
+
 void poweron_pif(struct pif* pif)
 {
    memset(pif->ram, 0, PIF_RAM_SIZE);

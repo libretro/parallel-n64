@@ -55,6 +55,8 @@ struct game_controller
     struct transferpak transferpak;
 };
 
+void init_game_controller(unsigned i);
+
 int game_controller_is_connected(struct game_controller* cont, enum pak_type* pak);
 uint32_t game_controller_get_input(struct game_controller* cont);
 
