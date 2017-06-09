@@ -34,6 +34,8 @@ struct mempak
 
 enum { MEMPAK_SIZE = 0x8000 };
 
+void init_mempak(struct mempak* mpk, void* user_data, void (*save)(void*), uint8_t* data);
+
 void mempak_save(struct mempak* mpk);
 
 void format_mempak(uint8_t* mempak);

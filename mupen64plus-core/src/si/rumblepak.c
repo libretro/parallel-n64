@@ -23,6 +23,12 @@
 
 #include <string.h>
 
+void init_rumblepak(struct rumblepak* rpk, void* user_data, void (*rumble)(void*,enum rumble_action))
+{
+   rpk->user_data = user_data;
+   rpk->rumble = rumble;
+}
+
 void rumblepak_rumble(struct rumblepak* rpk, enum rumble_action action)
 {
     rpk->rumble(rpk->user_data, action);

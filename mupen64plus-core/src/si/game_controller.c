@@ -198,14 +198,8 @@ void init_game_controller(struct game_controller *cont,
    cont->is_connected = cont_is_connected;
    cont->get_input    = cont_get_input;
 
-   /* connect external rumblepaks */
-   cont->rumblepak.user_data = rpk_user_data;
-   cont->rumblepak.rumble    = rpk_rumble;
-
-   /* connect saved_memory.mempacks to mempaks */
-   cont->mempak.user_data = mpk_user_data;
-   cont->mempak.save      = mpk_save;
-   cont->mempak.data      = mpk_data;
+   init_mempak(&cont->mempak, mpk_user_data, mpk_save, mpk_data);
+   init_rumblepak(&cont->rumblepak, rpk_user_data, rpk_rumble);
 }
 
 int game_controller_is_connected(struct game_controller* cont, enum pak_type* pak)

@@ -23,6 +23,13 @@
 #include <stdint.h>
 #include <string.h>
 
+void init_mempak(struct mempak* mpk, void* user_data, void (*save)(void*), uint8_t* data)
+{
+   mpk->user_data = user_data;
+   mpk->save = save;
+   mpk->data = data;
+}
+
 void mempak_save(struct mempak* mpk)
 {
    mpk->save(mpk->user_data);
