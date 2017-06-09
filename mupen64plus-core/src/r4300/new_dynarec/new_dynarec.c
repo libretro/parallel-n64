@@ -340,7 +340,7 @@ static void load_all_consts(signed char regmap[],int is32,u_int dirty,int i);
 static void add_stub(int type,int addr,int retaddr,int a,int b,int c,int d,int e);
 static void add_to_linker(int addr,int target,int ext);
 static int verify_dirty(void *addr);
-
+static u_int get_clean_addr(int addr);
 void *TLB_refill_exception_new(u_int inst_addr, u_int mem_addr, int w);
 
 //static int tracedebug=0;
