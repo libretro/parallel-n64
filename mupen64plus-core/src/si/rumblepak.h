@@ -23,6 +23,7 @@
 #define M64P_SI_RUMBLEPAK_H
 
 #include <stdint.h>
+#include <stddef.h>
 
 enum rumble_action
 {
@@ -41,7 +42,7 @@ void init_rumblepak(struct rumblepak* rpk, void* user_data, void (*rumble)(void*
 
 void rumblepak_rumble(struct rumblepak* rpk, enum rumble_action action);
 
-void rumblepak_read_command(struct rumblepak* rpk, uint16_t address, uint8_t* data);
-void rumblepak_write_command(struct rumblepak* rpk, uint16_t address, const uint8_t* data);
+void rumblepak_read_command(struct rumblepak* rpk, uint16_t address, uint8_t* data, size_t size);
+void rumblepak_write_command(struct rumblepak* rpk, uint16_t address, const uint8_t* data, size_t size);
 
 #endif

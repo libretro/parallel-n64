@@ -52,7 +52,7 @@ void release_transferpak(struct transferpak* tpk)
     release_gb_cart(&tpk->gb_cart);
 }
 
-void transferpak_read_command(struct transferpak* tpk, uint16_t address, uint8_t* data)
+void transferpak_read_command(struct transferpak* tpk, uint16_t address, uint8_t* data, size_t size)
 {
     uint8_t value;
 
@@ -67,7 +67,7 @@ void transferpak_read_command(struct transferpak* tpk, uint16_t address, uint8_t
               : 0x00;
 
         DebugMessage(M64MSG_WARNING, "tpak get cart state: %02x", value);
-        memset(data, value, 0x20);
+        memset(data, value, size);
         break;
 
     case 0xb:
@@ -75,7 +75,7 @@ void transferpak_read_command(struct transferpak* tpk, uint16_t address, uint8_t
         if (tpk->enabled)
         {
             DebugMessage(M64MSG_WARNING, "tpak get access mode: %02x", tpk->access_mode);
-            memset(data, tpk->access_mode, 0x20);
+            memset(data, tpk->access_mode, size);
             if (tpk->access_mode != CART_NOT_INSERTED)
             {
                 data[0] |= tpk->access_mode_changed;
@@ -101,7 +101,7 @@ void transferpak_read_command(struct transferpak* tpk, uint16_t address, uint8_t
     }
 }
 
-void transferpak_write_command(struct transferpak* tpk, uint16_t address, const uint8_t* data)
+void transferpak_write_command(struct transferpak* tpk, uint16_t address, const uint8_t* data, size_t size)
 {
     DebugMessage(M64MSG_WARNING, "tpak write: %04x <- %02x", address, *data);
 

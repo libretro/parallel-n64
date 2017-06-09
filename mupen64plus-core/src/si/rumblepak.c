@@ -34,17 +34,17 @@ void rumblepak_rumble(struct rumblepak* rpk, enum rumble_action action)
     rpk->rumble(rpk->user_data, action);
 }
 
-void rumblepak_read_command(struct rumblepak* rpk, uint16_t address, uint8_t *data)
+void rumblepak_read_command(struct rumblepak* rpk, uint16_t address, uint8_t *data, size_t size)
 {
    uint8_t value = 0x00;
 
    if ((address >= 0x8000) && (address < 0x9000))
       value = 0x80;
 
-   memset(data, value, 0x20);
+   memset(data, value, size);
 }
 
-void rumblepak_write_command(struct rumblepak* rpk, uint16_t address, const uint8_t* data)
+void rumblepak_write_command(struct rumblepak* rpk, uint16_t address, const uint8_t* data, size_t size)
 {
    if (address == 0xc000)
    {

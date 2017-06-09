@@ -23,6 +23,7 @@
 #define M64P_SI_GAME_CONTROLLER_H
 
 #include <stdint.h>
+#include <stddef.h>
 
 #include "mempak.h"
 #include "rumblepak.h"

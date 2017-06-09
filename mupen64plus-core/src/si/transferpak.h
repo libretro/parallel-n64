@@ -46,7 +46,7 @@ struct transferpak
 int init_transferpak(struct transferpak* tpk, uint8_t *rom, size_t rom_size);
 void release_transferpak(struct transferpak* tpk);
 
-void transferpak_read_command(struct transferpak* tpk, uint16_t address, uint8_t* data);
-void transferpak_write_command(struct transferpak* tpk, uint16_t address, const uint8_t* data);
+void transferpak_read_command(struct transferpak* tpk, uint16_t address, uint8_t* data, size_t size);
+void transferpak_write_command(struct transferpak* tpk, uint16_t address, const uint8_t* data, size_t size);
 
 #endif
