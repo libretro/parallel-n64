@@ -215,9 +215,7 @@ else ifneq (,$(findstring ios,$(platform)))
    TARGET := $(TARGET_NAME)_libretro_ios.dylib
    DEFINES += -DIOS
    GLES = 1
-   ifneq ($(platform),ios9)
-      WITH_DYNAREC=arm
-   endif
+	WITH_DYNAREC=arm
    PLATFORM_EXT := unix
 
    HAVE_PARALLEL=0
