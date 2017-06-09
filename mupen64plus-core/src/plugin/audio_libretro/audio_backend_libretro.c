@@ -98,10 +98,11 @@ void init_audio_libretro(unsigned max_audio_frames)
 void set_audio_format_via_libretro(void* user_data,
       unsigned int frequency, unsigned int bits)
 {
-   uint32_t saved_ai_dacrate = g_dev.ai.regs[AI_DACRATE_REG];
+   struct ai_controller* ai = (struct ai_controller*)user_data;
+   uint32_t saved_ai_dacrate = ai->regs[AI_DACRATE_REG];
 
    /* notify plugin of the new frequency (can't do the same for bits) */
-   g_dev.ai.regs[AI_DACRATE_REG] = g_dev.vi.clock / frequency - 1;
+   ai->regs[AI_DACRATE_REG] = ai->vi->clock / frequency - 1;
 
    GameFreq        = frequency;
    BytesPerSecond  = frequency * 4;
@@ -113,7 +114,7 @@ void set_audio_format_via_libretro(void* user_data,
 #endif
 
    /* restore original registers values */
-   g_dev.ai.regs[AI_DACRATE_REG] = saved_ai_dacrate;
+   ai->regs[AI_DACRATE_REG] = saved_ai_dacrate;
 }
 
 /* Abuse core & audio plugin implementation details to obtain the desired effect. */
@@ -127,15 +128,16 @@ void push_audio_samples_via_libretro(void* user_data, const void* buffer, size_t
    int16_t *raw_data = (int16_t*)buffer;
    size_t frames     = size / 4;
    uint8_t *p        = (uint8_t*)buffer;
+   struct ai_controller* ai = (struct ai_controller*)user_data;
 
    /* save registers values */
-   uint32_t saved_ai_length = g_dev.ai.regs[AI_LEN_REG];
-   uint32_t saved_ai_dram = g_dev.ai.regs[AI_DRAM_ADDR_REG];
+   uint32_t saved_ai_length = ai->regs[AI_LEN_REG];
+   uint32_t saved_ai_dram = ai->regs[AI_DRAM_ADDR_REG];
 
    /* notify plugin of new samples to play.
     * Exploit the fact that buffer points in g_dev.ri.rdram.dram to retrieve dram_addr_reg value */
-   g_dev.ai.regs[AI_DRAM_ADDR_REG] = (uint8_t*)buffer - (uint8_t*)g_dev.ri.rdram.dram;
-   g_dev.ai.regs[AI_LEN_REG] = size;
+   ai->regs[AI_DRAM_ADDR_REG] = (uint8_t*)buffer - (uint8_t*)g_dev.ri.rdram.dram;
+   ai->regs[AI_LEN_REG] = size;
 
    for (i = 0; i < size; i += 4)
    {
@@ -186,6 +188,6 @@ audio_batch:
    }
 
    /* restore original registers vlaues */
-   g_dev.ai.regs[AI_LEN_REG]       = saved_ai_length;
-   g_dev.ai.regs[AI_DRAM_ADDR_REG] = saved_ai_dram;
+   ai->regs[AI_LEN_REG]       = saved_ai_length;
+   ai->regs[AI_DRAM_ADDR_REG] = saved_ai_dram;
 }
