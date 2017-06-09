@@ -319,10 +319,13 @@ static void init_device(
       struct pi_controller* pi,
       uint8_t *rom,
       size_t rom_size,
+      void* flashram_user_data, void (*flashram_save)(void*), uint8_t* flashram_data,
+      void* sram_user_data, void (*sram_save)(void*), uint8_t* sram_data,
       struct ri_controller* ri,
-      uint32_t* dram,
-      size_t dram_size,
+      uint32_t* dram, size_t dram_size,
       struct si_controller* si,
+      void* eeprom_user_data, void (*eeprom_save)(void*), uint8_t* eeprom_data, size_t eeprom_size, uint16_t eeprom_id,
+      void* af_rtc_user_data, const struct tm* (*af_rtc_get_time)(void*),
       struct vi_controller* vi,
       unsigned int vi_clock,
       unsigned int expected_refresh_rate,
@@ -342,18 +345,18 @@ static void init_device(
    init_pi(pi,
          rom, rom_size,
          ddrom, ddrom_size,
-         NULL, dummy_save, saved_memory.flashram,
-         NULL, dummy_save, saved_memory.sram,
+         flashram_user_data, flashram_save, flashram_data,
+         sram_user_data, sram_save, sram_data,
          r4300, ri);
    init_ri(ri, dram, dram_size);
    init_si(si,
-         NULL,                                                    /* eeprom_userdata */
-         dummy_save,                                              /* eeprom cb */
-         saved_memory.eeprom,                                     /* eeprom_data */
-         ROM_SETTINGS.savetype != EEPROM_16KB ? 0x200  : 0x800,   /* eeprom_size */
-         ROM_SETTINGS.savetype != EEPROM_16KB ? 0x8000 : 0xc000,  /* eeprom_id   */
-         NULL,                                                    /* af_rtc_userdata */
-         get_time_using_C_localtime,                              /* af_rtc_get_time */
+         eeprom_user_data,
+         eeprom_save,
+         eeprom_data,
+         eeprom_size,
+         eeprom_id,
+         af_rtc_user_data,
+         af_rtc_get_time,
          ((g_ddrom != NULL) && (g_ddrom_size != 0) && (g_rom == NULL) && (g_rom_size == 0)) ?
          (g_ddrom + 0x40) : (g_rom + 0x40),                       /* ipl3 */
          r4300, ri);
@@ -419,16 +422,27 @@ m64p_error main_init(void)
       g_DDMemHasBeenBSwapped = 1;
    }
 
-   init_device(&g_r4300, &g_dp, &g_sp,
+   init_device(
+         &g_r4300,
+         &g_dp,
+         &g_sp,
          &g_ai,
          NULL,
          set_audio_format_via_libretro,
          push_audio_samples_via_libretro,
          &g_pi,
          g_rom, g_rom_size, 
+         NULL, dummy_save, saved_memory.flashram,
+         NULL, dummy_save, saved_memory.sram,
          &g_ri,
          g_rdram, (disable_extra_mem == 0) ? 0x800000 : 0x400000,
-         &g_si, &g_vi,
+         &g_si,
+         NULL,dummy_save,saved_memory.eeprom,
+         ROM_SETTINGS.savetype != EEPROM_16KB ? 0x200  : 0x800,   /* eeprom_size */
+         ROM_SETTINGS.savetype != EEPROM_16KB ? 0x8000 : 0xc000,  /* eeprom_id   */
+         NULL,                                                    /* af_rtc_userdata */
+         get_time_using_C_localtime,                              /* af_rtc_get_time */
+         &g_vi,
          vi_clock_from_tv_standard(ROM_PARAMS.systemtype),
          vi_expected_refresh_rate_from_tv_standard(ROM_PARAMS.systemtype),
          &g_dd,
