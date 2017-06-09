@@ -36,7 +36,6 @@ int reset_hard_job = 0;
 void reset_hard(void)
 {
     poweron_memory();
-    r4300_reset_hard();
     r4300_reset_soft();
     last_addr = UINT32_C(0xa4000040);
     next_interupt = 624999;

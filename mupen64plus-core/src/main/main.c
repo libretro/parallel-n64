@@ -421,7 +421,6 @@ m64p_error main_init(void)
    StateChanged(M64CORE_EMU_STATE, M64EMU_RUNNING);
 
    /* call r4300 CPU core and run the game */
-   r4300_reset_hard();
    r4300_reset_soft();
 
    return M64ERR_SUCCESS;
