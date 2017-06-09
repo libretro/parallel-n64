@@ -314,6 +314,8 @@ static void init_device(
       struct ri_controller* ri,
       struct si_controller* si,
       struct vi_controller* vi,
+      unsigned int vi_clock,
+      unsigned int expected_refresh_rate,
       struct dd_controller* dd,
       uint32_t* dram,
       size_t dram_size,
@@ -336,11 +338,7 @@ static void init_device(
          r4300, ri);
    init_ri(ri, dram, dram_size);
    init_si(si, r4300, ri);
-   {
-      unsigned int vi_clock = vi_clock_from_tv_standard(ROM_PARAMS.systemtype);
-      unsigned int expected_refresh_rate = vi_expected_refresh_rate_from_tv_standard(ROM_PARAMS.systemtype);
-      init_vi(vi, vi_clock, expected_refresh_rate, r4300);
-   }
+   init_vi(vi, vi_clock, expected_refresh_rate, r4300);
    init_dd(dd, r4300, dd_disk, dd_disk_size);
 }
 
@@ -379,7 +377,10 @@ m64p_error main_init(void)
    }
 
    init_device(&g_r4300, &g_dp, &g_sp,
-         &g_ai, &g_pi, &g_ri, &g_si, &g_vi, &g_dd,
+         &g_ai, &g_pi, &g_ri, &g_si, &g_vi,
+         vi_clock_from_tv_standard(ROM_PARAMS.systemtype),
+         vi_expected_refresh_rate_from_tv_standard(ROM_PARAMS.systemtype),
+         &g_dd,
          g_rdram, (disable_extra_mem == 0) ? 0x800000 : 0x400000,
          g_rom, g_rom_size, g_ddrom, g_ddrom_size, g_dd_disk, g_dd_disk_size);
 
