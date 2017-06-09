@@ -1,4 +1,4 @@
-/* Copyright (C) 2010-2016 The RetroArch team
+/* Copyright (C) 2010-2017 The RetroArch team
  *
  * ---------------------------------------------------------------------------------------
  * The following license statement only applies to this libretro API header (libretro.h).
@@ -48,8 +48,6 @@ extern "C" {
 #    define RETRO_CALLCONV __attribute__((cdecl))
 #  elif defined(_MSC_VER) && defined(_M_X86) && !defined(_M_X64)
 #    define RETRO_CALLCONV __cdecl
-#  elif defined(__GNUC__) && defined(__ANDROID__) && defined(__ARM_ARCH_7A__)
-#    define RETRO_CALLCONV __attribute__((pcs("aapcs"))) /* softfp */
 #  else
 #    define RETRO_CALLCONV /* all other platforms only have one calling convention each */
 #  endif
@@ -232,20 +230,22 @@ extern "C" {
 /* Id values for LANGUAGE */
 enum retro_language
 {
-   RETRO_LANGUAGE_ENGLISH             =  0,
-   RETRO_LANGUAGE_JAPANESE            =  1,
-   RETRO_LANGUAGE_FRENCH              =  2,
-   RETRO_LANGUAGE_SPANISH             =  3,
-   RETRO_LANGUAGE_GERMAN              =  4,
-   RETRO_LANGUAGE_ITALIAN             =  5,
-   RETRO_LANGUAGE_DUTCH               =  6,
-   RETRO_LANGUAGE_PORTUGUESE          =  7,
-   RETRO_LANGUAGE_RUSSIAN             =  8,
-   RETRO_LANGUAGE_KOREAN              =  9,
-   RETRO_LANGUAGE_CHINESE_TRADITIONAL = 10,
-   RETRO_LANGUAGE_CHINESE_SIMPLIFIED  = 11,
-   RETRO_LANGUAGE_ESPERANTO           = 12,
-   RETRO_LANGUAGE_POLISH              = 13,
+   RETRO_LANGUAGE_ENGLISH             = 0,
+   RETRO_LANGUAGE_JAPANESE            = 1,
+   RETRO_LANGUAGE_FRENCH              = 2,
+   RETRO_LANGUAGE_SPANISH             = 3,
+   RETRO_LANGUAGE_GERMAN              = 4,
+   RETRO_LANGUAGE_ITALIAN             = 5,
+   RETRO_LANGUAGE_DUTCH               = 6,
+   RETRO_LANGUAGE_PORTUGUESE_BRAZIL   = 7,
+   RETRO_LANGUAGE_PORTUGUESE_PORTUGAL = 8,
+   RETRO_LANGUAGE_RUSSIAN             = 9,
+   RETRO_LANGUAGE_KOREAN              = 10,
+   RETRO_LANGUAGE_CHINESE_TRADITIONAL = 11,
+   RETRO_LANGUAGE_CHINESE_SIMPLIFIED  = 12,
+   RETRO_LANGUAGE_ESPERANTO           = 13,
+   RETRO_LANGUAGE_POLISH              = 14,
+   RETRO_LANGUAGE_VIETNAMESE          = 15,
    RETRO_LANGUAGE_LAST,
 
    /* Ensure sizeof(enum) == sizeof(int) */
@@ -1318,6 +1318,7 @@ struct retro_log_callback
 #define RETRO_SIMD_POPCNT   (1 << 18)
 #define RETRO_SIMD_MOVBE    (1 << 19)
 #define RETRO_SIMD_CMOV     (1 << 20)
+#define RETRO_SIMD_ASIMD    (1 << 21)
 
 typedef uint64_t retro_perf_tick_t;
 typedef int64_t retro_time_t;
@@ -1691,7 +1692,8 @@ struct retro_hw_render_callback
     * be providing preallocated framebuffers. */
    retro_hw_get_current_framebuffer_t get_current_framebuffer;
 
-   /* Set by frontend. */
+   /* Set by frontend.
+    * Can return all relevant functions, including glClear on Windows. */
    retro_hw_get_proc_address_t get_proc_address;
 
    /* Set if render buffers should have depth component attached.
@@ -1974,10 +1976,12 @@ struct retro_variable
 struct retro_game_info
 {
    const char *path;       /* Path to game, UTF-8 encoded.
-                            * Usually used as a reference.
-                            * May be NULL if rom was loaded from stdin
-                            * or similar. 
-                            * retro_system_info::need_fullpath guaranteed 
+                            * Sometimes used as a reference for building other paths.
+                            * May be NULL if game was loaded from stdin or similar,
+                            * but in this case some cores will be unable to load `data`.
+                            * So, it is preferable to fabricate something here instead
+                            * of passing NULL, which will help more cores to succeed.
+                            * retro_system_info::need_fullpath requires
                             * that this path is valid. */
    const void *data;       /* Memory buffer of loaded game. Will be NULL 
                             * if need_fullpath was set. */
