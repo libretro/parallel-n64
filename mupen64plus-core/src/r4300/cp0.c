@@ -67,10 +67,4 @@ void cp0_update_count(void)
 #ifdef NEW_DYNAREC
    }
 #endif
-
-#if 0
-#ifdef DBG
-   if (g_DebuggerActive && !delay_slot) update_debugger(PC->addr);
-#endif
-#endif
 }

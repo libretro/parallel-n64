@@ -33,7 +33,9 @@
 
 struct r4300_core
 {
-    struct mi_controller mi;
+   unsigned int delay_slot;
+
+   struct mi_controller mi;
 };
 
 void poweron_r4300(struct r4300_core* r4300);

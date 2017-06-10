@@ -70,9 +70,12 @@ void poweron_r4300(struct r4300_core* r4300)
       tlb_LUT_r[i] = 0;
       tlb_LUT_w[i] = 0;
    }
-   llbit=0;
    hi=0;
    lo=0;
+   llbit=0;
+
+   r4300->delay_slot = 0;
+
    FCR0 = UINT32_C(0x511);
    FCR31=0;
 

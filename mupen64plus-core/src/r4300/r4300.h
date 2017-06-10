@@ -34,7 +34,6 @@ extern int stop, rompause;
 extern unsigned int llbit;
 extern int64_t reg[32], hi, lo;
 extern long long int local_rs;
-extern unsigned int delay_slot;
 extern uint32_t skip_jump;
 extern unsigned int dyna_interp;
 extern unsigned int r4300emu;

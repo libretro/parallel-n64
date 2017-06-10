@@ -80,11 +80,11 @@ uint32_t jump_to_address;
       if (!likely || take_jump) \
       { \
          PC++; \
-         delay_slot=1; \
+         g_dev.r4300.delay_slot=1; \
          UPDATE_DEBUGGER(); \
          PC->ops(); \
          cp0_update_count(); \
-         delay_slot=0; \
+         g_dev.r4300.delay_slot=0; \
          if (take_jump && !skip_jump) \
          { \
             PC=actual->block+((jump_target-actual->start)>>2); \
@@ -111,11 +111,11 @@ uint32_t jump_to_address;
       if (!likely || take_jump) \
       { \
          PC++; \
-         delay_slot=1; \
+         g_dev.r4300.delay_slot=1; \
          UPDATE_DEBUGGER(); \
          PC->ops(); \
          cp0_update_count(); \
-         delay_slot=0; \
+         g_dev.r4300.delay_slot=0; \
          if (take_jump && !skip_jump) \
          { \
             jump_to(jump_target); \
@@ -164,7 +164,7 @@ uint32_t jump_to_address;
 // -----------------------------------------------------------
 static void FIN_BLOCK(void)
 {
-   if (!delay_slot)
+   if (!g_dev.r4300.delay_slot)
    {
       jump_to((PC-1)->addr+4);
 #if 0
