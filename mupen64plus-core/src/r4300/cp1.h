@@ -24,6 +24,8 @@
 
 #include <stdint.h>
 
+void poweron_cp1(void);
+
 int64_t* r4300_cp1_regs(void);
 float** r4300_cp1_regs_simple(void);
 double** r4300_cp1_regs_double(void);

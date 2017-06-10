@@ -33,12 +33,12 @@ void poweron_r4300(struct r4300_core* r4300)
 {
    unsigned int i;
 
+
    /* clear r4300 registers and TLB entries */
    for (i = 0; i < 32; i++)
    {
       reg[i]=0;
       g_cp0_regs[i]=0;
-      reg_cop1_fgr_64[i]=0;
 
       /* --------------tlb------------------------ */
       tlb_e[i].mask=0;
@@ -76,8 +76,6 @@ void poweron_r4300(struct r4300_core* r4300)
 
    r4300->delay_slot = 0;
 
-   FCR0 = UINT32_C(0x511);
-   FCR31=0;
 
    /* set COP0 registers */
    g_cp0_regs[CP0_RANDOM_REG] = UINT32_C(31);
@@ -92,7 +90,9 @@ void poweron_r4300(struct r4300_core* r4300)
    g_cp0_regs[CP0_BADVADDR_REG] = UINT32_C(0xFFFFFFFF);
    g_cp0_regs[CP0_ERROREPC_REG] = UINT32_C(0xFFFFFFFF);
 
-   update_x86_rounding_mode(FCR31);
+   /* setup CP1 registers */
+   poweron_cp1();
+
    poweron_mi(&r4300->mi);
 }
 

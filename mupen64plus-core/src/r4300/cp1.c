@@ -20,6 +20,7 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include <stdint.h>
+#include <string.h>
 
 #include "cp0.h"
 
@@ -46,6 +47,35 @@ int64_t reg_cop1_fgr_64[32];
  * using 32-bit stores. */
 uint32_t rounding_mode = UINT32_C(0x33F);
 
+/* XXX: This shouldn't really be here, but rounding_mode is used by the
+ * Hacktarux JIT and updated by CTC1 and saved states. Figure out a better
+ * place for this. */
+void update_x86_rounding_mode(uint32_t FCR31)
+{
+   switch (FCR31 & 3)
+   {
+      case 0: /* Round to nearest, or to even if equidistant */
+         rounding_mode = UINT32_C(0x33F);
+         break;
+      case 1: /* Truncate (toward 0) */
+         rounding_mode = UINT32_C(0xF3F);
+         break;
+      case 2: /* Round up (toward +Inf) */
+         rounding_mode = UINT32_C(0xB3F);
+         break;
+      case 3: /* Round down (toward -Inf) */
+         rounding_mode = UINT32_C(0x73F);
+         break;
+   }
+}
+
+void poweron_cp1(void)
+{
+   memset(reg_cop1_fgr_64, 0, 32 * sizeof(reg_cop1_fgr_64[0]));
+   FCR0 = UINT32_C(0x511);
+   FCR31=0;
+   update_x86_rounding_mode(FCR31);
+}
 
 int64_t* r4300_cp1_regs(void)
 {
@@ -172,24 +202,3 @@ void set_fpr_pointers(uint32_t newStatus)
    }
 }
 
-/* XXX: This shouldn't really be here, but rounding_mode is used by the
- * Hacktarux JIT and updated by CTC1 and saved states. Figure out a better
- * place for this. */
-void update_x86_rounding_mode(uint32_t FCR31)
-{
-   switch (FCR31 & 3)
-   {
-      case 0: /* Round to nearest, or to even if equidistant */
-         rounding_mode = UINT32_C(0x33F);
-         break;
-      case 1: /* Truncate (toward 0) */
-         rounding_mode = UINT32_C(0xF3F);
-         break;
-      case 2: /* Round up (toward +Inf) */
-         rounding_mode = UINT32_C(0xB3F);
-         break;
-      case 3: /* Round down (toward -Inf) */
-         rounding_mode = UINT32_C(0x73F);
-         break;
-   }
-}
