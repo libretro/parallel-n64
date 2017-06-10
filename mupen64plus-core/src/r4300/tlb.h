@@ -23,6 +23,7 @@
 #define M64P_R4300_TLB_H
 
 #include <stdint.h>
+#include <string.h>
 
 typedef struct _tlb
 {
@@ -52,6 +53,8 @@ typedef struct _tlb
 extern tlb tlb_e[32];
 extern uint32_t tlb_LUT_r[0x100000];
 extern uint32_t tlb_LUT_w[0x100000];
+
+void poweron_tlb(void);
 
 void tlb_unmap(tlb *entry);
 void tlb_map(tlb *entry);

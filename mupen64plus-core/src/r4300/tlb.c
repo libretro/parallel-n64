@@ -30,6 +30,14 @@ tlb tlb_e[32];
 uint32_t tlb_LUT_r[0x100000];
 uint32_t tlb_LUT_w[0x100000];
 
+void poweron_tlb(void)
+{
+   /* clear TLB entries */		
+   memset(tlb_e, 0, 32 * sizeof(tlb_e[0]));		
+   memset(tlb_LUT_r, 0, 0x100000 * sizeof(tlb_LUT_r[0]));		
+   memset(tlb_LUT_w, 0, 0x100000 * sizeof(tlb_LUT_w[0]));
+}
+
 void tlb_unmap(tlb *entry)
 {
     unsigned int i;

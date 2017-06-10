@@ -132,6 +132,8 @@ enum r4300_cp0_registers
     CP0_REGS_COUNT = 32
 };
 
+void poweron_cp0(void);
+
 uint32_t* r4300_cp0_regs(void);
 
 void cp0_update_count(void);

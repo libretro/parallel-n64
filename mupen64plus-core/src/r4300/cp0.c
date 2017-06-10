@@ -20,6 +20,7 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include <stdint.h>
+#include <string.h>
 
 #include "cp0_private.h"
 #include "exception.h"
@@ -38,6 +39,24 @@
  * and therefore manually allocate that variable */
 uint32_t g_cp0_regs[CP0_REGS_COUNT];
 #endif
+
+void poweron_cp0(void)
+{
+   memset(g_cp0_regs, 0, CP0_REGS_COUNT * sizeof(g_cp0_regs[0]));
+   g_cp0_regs[CP0_RANDOM_REG] = UINT32_C(31);
+   g_cp0_regs[CP0_STATUS_REG]= UINT32_C(0x34000000);
+   set_fpr_pointers(g_cp0_regs[CP0_STATUS_REG]);
+   g_cp0_regs[CP0_CONFIG_REG]= UINT32_C(0x6e463);
+   g_cp0_regs[CP0_PREVID_REG] = UINT32_C(0xb00);
+   g_cp0_regs[CP0_COUNT_REG] = UINT32_C(0x5000);
+   g_cp0_regs[CP0_CAUSE_REG] = UINT32_C(0x5C);
+   g_cp0_regs[CP0_CONTEXT_REG] = UINT32_C(0x7FFFF0);
+   g_cp0_regs[CP0_EPC_REG] = UINT32_C(0xFFFFFFFF);
+   g_cp0_regs[CP0_BADVADDR_REG] = UINT32_C(0xFFFFFFFF);
+   g_cp0_regs[CP0_ERROREPC_REG] = UINT32_C(0xFFFFFFFF);
+
+   poweron_tlb();
+}
 
 /* global functions */
 uint32_t* r4300_cp0_regs(void)
