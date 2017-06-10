@@ -33,9 +33,7 @@
 
 void init_r4300(struct r4300_core* r4300, unsigned int emumode, unsigned int count_per_op)
 {
-#if 0
-    r4300->emumode = emumode;
-#endif
+    r4300emu = emumode;
 
     init_cp0(count_per_op);
 }

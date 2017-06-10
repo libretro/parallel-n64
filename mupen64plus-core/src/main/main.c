@@ -313,7 +313,7 @@ m64p_error main_init(void)
    size_t i;
    unsigned int disable_extra_mem;
    /* take the r4300 emulator mode from the config file at this point and cache it in a global variable */
-   r4300emu = ConfigGetParamInt(g_CoreConfig, "R4300Emulator");
+   unsigned int emumode = ConfigGetParamInt(g_CoreConfig, "R4300Emulator");
 
    /* set some other core parameters based on the config file values */
    no_compiled_jump = ConfigGetParamBool(g_CoreConfig, "NoCompiledJump");
@@ -340,6 +340,8 @@ m64p_error main_init(void)
 
    init_device(
          &g_dev,
+         emumode,
+         count_per_op,
          NULL,
          set_audio_format_via_libretro,
          push_audio_samples_via_libretro,

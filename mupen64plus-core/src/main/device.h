@@ -55,6 +55,8 @@ struct device
 /* Setup device "static" properties.  */
 void init_device(
       struct device *dev,
+      unsigned int emumode,
+      unsigned int count_per_op,
       /* ai */
       void * ai_user_data, void (*ai_set_audio_format)(void*,unsigned int, unsigned int), void (*ai_push_audio_samples)(void*,const void*,size_t),
       /* pi */

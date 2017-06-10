@@ -34,14 +34,22 @@
 
 void init_device(
       struct device *dev,
+      /* r4300 */
+      unsigned int emumode,
+      unsigned int count_per_op,
+      /* ai */
       void * ai_user_data, void (*ai_set_audio_format)(void*,unsigned int, unsigned int), void (*ai_push_audio_samples)(void*,const void*,size_t),
+      /* pi */
       uint8_t *rom,
       size_t rom_size,
       void* flashram_user_data, void (*flashram_save)(void*), uint8_t* flashram_data,
       void* sram_user_data, void (*sram_save)(void*), uint8_t* sram_data,
+      /* ri */
       uint32_t* dram, size_t dram_size,
+      /* si */
       void* eeprom_user_data, void (*eeprom_save)(void*), uint8_t* eeprom_data, size_t eeprom_size, uint16_t eeprom_id,
       void* af_rtc_user_data, const struct tm* (*af_rtc_get_time)(void*),
+      /* vi */
       unsigned int vi_clock,
       unsigned int expected_refresh_rate,
       uint8_t *ddrom,
@@ -50,7 +58,7 @@ void init_device(
       size_t dd_disk_size
       )
 {
-   init_r4300(&dev->r4300, 0 /* emumode */, 0 /* count_per_op */);
+   init_r4300(&dev->r4300, emumode, count_per_op);
    init_rdp(&dev->dp, &dev->r4300, &dev->sp, &dev->ri);
    init_rsp(&dev->sp, &dev->r4300, &dev->dp, &dev->ri);
    init_ai(&dev->ai, ai_user_data,
