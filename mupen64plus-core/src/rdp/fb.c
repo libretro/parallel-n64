@@ -143,6 +143,7 @@ void protect_framebuffers(struct rdp_core* dp)
                    fb->dirty_page[j] = 0;
              }
 
+             /* disable "fast memory" if framebuffer handlers are used */
              if (fb->once != 0)
              {
                 fb->once = 0;
