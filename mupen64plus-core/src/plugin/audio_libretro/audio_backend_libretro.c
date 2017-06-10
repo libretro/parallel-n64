@@ -22,6 +22,7 @@
 #include "api/m64p_types.h"
 #include "api/libretro.h"
 #include "ai/ai_controller.h"
+#include "main/main.h"
 #include "main/device.h"
 #include "main/rom.h"
 #include "plugin/plugin.h"
@@ -135,7 +136,7 @@ void push_audio_samples_via_libretro(void* user_data, const void* buffer, size_t
 
    /* notify plugin of new samples to play.
     * Exploit the fact that buffer points in ai->ri->rdram.dram to retrieve dram_addr_reg value */
-   ai->regs[AI_DRAM_ADDR_REG] = (uint8_t*)buffer - (uint8_t*)ai->ri->rdram.dram;
+   ai->regs[AI_DRAM_ADDR_REG] = (uint8_t*)buffer - (uint8_t*)g_dev.ri.rdram.dram;
    ai->regs[AI_LEN_REG] = size;
 
    for (i = 0; i < size; i += 4)
