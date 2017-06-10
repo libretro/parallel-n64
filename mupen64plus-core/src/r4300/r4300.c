@@ -56,7 +56,6 @@
 
 unsigned int r4300emu = 0;
 unsigned int count_per_op = COUNT_PER_OP_DEFAULT;
-int rompause;
 unsigned int llbit;
 #if NEW_DYNAREC != NEW_DYNAREC_ARM
 int stop;
@@ -194,7 +193,6 @@ void r4300_execute(void)
     current_instruction_table = cached_interpreter_table;
 
     stop = 0;
-    rompause = 0;
 
     last_addr = 0xa4000040;
     next_interupt = 624999;

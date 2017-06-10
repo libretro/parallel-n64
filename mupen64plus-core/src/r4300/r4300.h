@@ -30,7 +30,7 @@
 
 extern precomp_instr *PC;
 
-extern int stop, rompause;
+extern int stop;
 extern unsigned int llbit;
 extern int64_t reg[32], hi, lo;
 extern long long int local_rs;
