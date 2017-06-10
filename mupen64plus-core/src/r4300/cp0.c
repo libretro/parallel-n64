@@ -40,6 +40,13 @@
 uint32_t g_cp0_regs[CP0_REGS_COUNT];
 #endif
 
+void init_cp0(unsigned int _count_per_op)
+{
+#if 0
+   count_per_op = _count_per_op;
+#endif
+}
+
 void poweron_cp0(void)
 {
    memset(g_cp0_regs, 0, CP0_REGS_COUNT * sizeof(g_cp0_regs[0]));

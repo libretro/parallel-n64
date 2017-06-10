@@ -50,6 +50,7 @@ void init_device(
       size_t dd_disk_size
       )
 {
+   init_r4300(&dev->r4300, 0 /* emumode */, 0 /* count_per_op */);
    init_rdp(&dev->dp, &dev->r4300, &dev->sp, &dev->ri);
    init_rsp(&dev->sp, &dev->r4300, &dev->dp, &dev->ri);
    init_ai(&dev->ai, ai_user_data,

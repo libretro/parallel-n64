@@ -31,6 +31,15 @@
 #include "r4300.h"
 #include "recomp.h"
 
+void init_r4300(struct r4300_core* r4300, unsigned int emumode, unsigned int count_per_op)
+{
+#if 0
+    r4300->emumode = emumode;
+#endif
+
+    init_cp0(count_per_op);
+}
+
 void poweron_r4300(struct r4300_core* r4300)
 {
    unsigned int i;
