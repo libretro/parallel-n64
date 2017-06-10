@@ -1,6 +1,5 @@
 LOCAL_PATH := $(call my-dir)
 PERFTEST = 0
-HAVE_PARALLEL :=1
 HAVE_RDP_DUMP=0
 HAVE_RSP_DUMP=0
 HAVE_HWFBE = 0
@@ -31,11 +30,13 @@ WITH_DYNAREC := arm
 
 ifeq ($(TARGET_ARCH_ABI), armeabi-v7a)
 LOCAL_ARM_NEON := true
+HAVE_PARALLEL :=1
 HAVE_NEON := 1
 endif
 
 ifeq ($(TARGET_ARCH_ABI), armeabi-v7a-hard)
 LOCAL_ARM_NEON := true
+HAVE_PARALLEL :=1
 HAVE_NEON := 1
 endif
 
@@ -48,6 +49,7 @@ endif
 endif
 
 ifeq ($(TARGET_ARCH),x86)
+HAVE_PARALLEL :=1
 COMMON_FLAGS := -DANDROID_X86 -DDYNAREC -D__SSE2__ -D__SSE__ -D__SOFTFP__
 WITH_DYNAREC := x86
 endif
