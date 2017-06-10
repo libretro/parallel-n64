@@ -36,6 +36,10 @@ void init_r4300(struct r4300_core* r4300, unsigned int emumode, unsigned int cou
     r4300emu = emumode;
 
     init_cp0(count_per_op);
+
+#if 0
+    r4300->recomp.no_compiled_jump = no_compiled_jump;
+#endif
 }
 
 void poweron_r4300(struct r4300_core* r4300)
@@ -48,6 +52,9 @@ void poweron_r4300(struct r4300_core* r4300)
    llbit=0;
 
    r4300->delay_slot = 0;
+
+   r4300->recomp.fast_memory = 1;
+   r4300->recomp.delay_slot_compiled = 0;
 
    /* set COP0 registers */
    poweron_cp0();

@@ -27,8 +27,6 @@
 #include "../r4300/r4300_core.h"
 #include "../ri/ri_controller.h"
 
-extern int fast_memory;
-
 #include <string.h>
 
 void poweron_fb(struct fb* fb)
@@ -148,7 +146,7 @@ void protect_framebuffers(struct rdp_core* dp)
              if (fb->once != 0)
              {
                 fb->once = 0;
-                fast_memory = 0;
+                dp->r4300->recomp.fast_memory = 0;
                 invalidate_r4300_cached_code(0, 0);
              }
           }

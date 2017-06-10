@@ -891,7 +891,7 @@ static void ld_register_alloc(int *pGpr1, int *pGpr2, int *pBase1, int *pBase2)
       lock_register(gpr2);                                       // lock the freed gpr2 it so it doesn't get returned in the lru query
    }
    base1 = lock_register(lru_base_register());                  // get another lru register
-   if (!fast_memory)
+   if (!g_dev.r4300.recomp.fast_memory)
    {
       base2 = lock_register(lru_base_register());                // and another one if necessary
       unlock_register(base2);
@@ -2134,7 +2134,7 @@ void genldl(void)
    mov_eax_memoffs32((unsigned int *)dst->f.i.rs);
    add_eax_imm32((int)dst->f.i.immediate);
    mov_reg32_reg32(EBX, EAX);
-   if(fast_memory)
+   if(g_dev.r4300.recomp.fast_memory)
    {
       and_eax_imm32(0xDF800000);
       cmp_eax_imm32(0x80000000);
@@ -2185,7 +2185,7 @@ void genlb(void)
    ld_register_alloc(&gpr1, &gpr2, &base1, &base2);
 
    mov_reg64_imm64(base1, (uint64_t) readmemb);
-   if(fast_memory)
+   if(g_dev.r4300.recomp.fast_memory)
    {
       and_reg32_imm32(gpr1, 0xDF800000);
       cmp_reg32_imm32(gpr1, 0x80000000);
@@ -2224,7 +2224,7 @@ void genlb(void)
    mov_eax_memoffs32((unsigned int *)dst->f.i.rs);
    add_eax_imm32((int)dst->f.i.immediate);
    mov_reg32_reg32(EBX, EAX);
-   if(fast_memory)
+   if(g_dev.r4300.recomp.fast_memory)
    {
       and_eax_imm32(0xDF800000);
       cmp_eax_imm32(0x80000000);
@@ -2267,7 +2267,7 @@ void genlh(void)
    ld_register_alloc(&gpr1, &gpr2, &base1, &base2);
 
    mov_reg64_imm64(base1, (uint64_t) readmemh);
-   if(fast_memory)
+   if(g_dev.r4300.recomp.fast_memory)
    {
       and_reg32_imm32(gpr1, 0xDF800000);
       cmp_reg32_imm32(gpr1, 0x80000000);
@@ -2306,7 +2306,7 @@ void genlh(void)
    mov_eax_memoffs32((unsigned int *)dst->f.i.rs);
    add_eax_imm32((int)dst->f.i.immediate);
    mov_reg32_reg32(EBX, EAX);
-   if(fast_memory)
+   if(g_dev.r4300.recomp.fast_memory)
    {
       and_eax_imm32(0xDF800000);
       cmp_eax_imm32(0x80000000);
@@ -2354,7 +2354,7 @@ void genlw(void)
    ld_register_alloc(&gpr1, &gpr2, &base1, &base2);
 
    mov_reg64_imm64(base1, (uint64_t) readmem);
-   if(fast_memory)
+   if(g_dev.r4300.recomp.fast_memory)
    {
       and_reg32_imm32(gpr1, 0xDF800000);
       cmp_reg32_imm32(gpr1, 0x80000000);
@@ -2393,7 +2393,7 @@ void genlw(void)
    mov_eax_memoffs32((unsigned int *)dst->f.i.rs);
    add_eax_imm32((int)dst->f.i.immediate);
    mov_reg32_reg32(EBX, EAX);
-   if(fast_memory)
+   if(g_dev.r4300.recomp.fast_memory)
    {
       and_eax_imm32(0xDF800000);
       cmp_eax_imm32(0x80000000);
@@ -2435,7 +2435,7 @@ void genlbu(void)
    ld_register_alloc(&gpr1, &gpr2, &base1, &base2);
 
    mov_reg64_imm64(base1, (uint64_t) readmemb);
-   if(fast_memory)
+   if(g_dev.r4300.recomp.fast_memory)
    {
       and_reg32_imm32(gpr1, 0xDF800000);
       cmp_reg32_imm32(gpr1, 0x80000000);
@@ -2475,7 +2475,7 @@ void genlbu(void)
    mov_eax_memoffs32((unsigned int *)dst->f.i.rs);
    add_eax_imm32((int)dst->f.i.immediate);
    mov_reg32_reg32(EBX, EAX);
-   if(fast_memory)
+   if(g_dev.r4300.recomp.fast_memory)
    {
       and_eax_imm32(0xDF800000);
       cmp_eax_imm32(0x80000000);
@@ -2520,7 +2520,7 @@ void genlhu(void)
    ld_register_alloc(&gpr1, &gpr2, &base1, &base2);
 
    mov_reg64_imm64(base1, (uint64_t) readmemh);
-   if(fast_memory)
+   if(g_dev.r4300.recomp.fast_memory)
    {
       and_reg32_imm32(gpr1, 0xDF800000);
       cmp_reg32_imm32(gpr1, 0x80000000);
@@ -2560,7 +2560,7 @@ void genlhu(void)
    mov_eax_memoffs32((unsigned int *)dst->f.i.rs);
    add_eax_imm32((int)dst->f.i.immediate);
    mov_reg32_reg32(EBX, EAX);
-   if(fast_memory)
+   if(g_dev.r4300.recomp.fast_memory)
    {
       and_eax_imm32(0xDF800000);
       cmp_eax_imm32(0x80000000);
@@ -2610,7 +2610,7 @@ void genlwu(void)
    ld_register_alloc(&gpr1, &gpr2, &base1, &base2);
 
    mov_reg64_imm64(base1, (uint64_t) readmem);
-   if(fast_memory)
+   if(g_dev.r4300.recomp.fast_memory)
    {
       and_reg32_imm32(gpr1, 0xDF800000);
       cmp_reg32_imm32(gpr1, 0x80000000);
@@ -2648,7 +2648,7 @@ void genlwu(void)
    mov_eax_memoffs32((unsigned int *)dst->f.i.rs);
    add_eax_imm32((int)dst->f.i.immediate);
    mov_reg32_reg32(EBX, EAX);
-   if(fast_memory)
+   if(g_dev.r4300.recomp.fast_memory)
    {
       and_eax_imm32(0xDF800000);
       cmp_eax_imm32(0x80000000);
@@ -2693,7 +2693,7 @@ void gensb(void)
    add_eax_imm32((int)dst->f.i.immediate);
    mov_reg32_reg32(EBX, EAX);
    mov_reg64_imm64(RSI, (uint64_t) writememb);
-   if(fast_memory)
+   if(g_dev.r4300.recomp.fast_memory)
    {
       and_eax_imm32(0xDF800000);
       cmp_eax_imm32(0x80000000);
@@ -2749,7 +2749,7 @@ void gensb(void)
    mov_eax_memoffs32((unsigned int *)dst->f.i.rs);
    add_eax_imm32((int)dst->f.i.immediate);
    mov_reg32_reg32(EBX, EAX);
-   if(fast_memory)
+   if(g_dev.r4300.recomp.fast_memory)
    {
       and_eax_imm32(0xDF800000);
       cmp_eax_imm32(0x80000000);
@@ -2809,7 +2809,7 @@ void gensh(void)
    add_eax_imm32((int)dst->f.i.immediate);
    mov_reg32_reg32(EBX, EAX);
    mov_reg64_imm64(RSI, (uint64_t) writememh);
-   if(fast_memory)
+   if(g_dev.r4300.recomp.fast_memory)
    {
       and_eax_imm32(0xDF800000);
       cmp_eax_imm32(0x80000000);
@@ -2865,7 +2865,7 @@ void gensh(void)
    mov_eax_memoffs32((unsigned int *)dst->f.i.rs);
    add_eax_imm32((int)dst->f.i.immediate);
    mov_reg32_reg32(EBX, EAX);
-   if(fast_memory)
+   if(g_dev.r4300.recomp.fast_memory)
    {
       and_eax_imm32(0xDF800000);
       cmp_eax_imm32(0x80000000);
@@ -2930,7 +2930,7 @@ void gensw(void)
    add_eax_imm32((int)dst->f.i.immediate);
    mov_reg32_reg32(EBX, EAX);
    mov_reg64_imm64(RSI, (uint64_t) writemem);
-   if(fast_memory)
+   if(g_dev.r4300.recomp.fast_memory)
    {
       and_eax_imm32(0xDF800000);
       cmp_eax_imm32(0x80000000);
@@ -2985,7 +2985,7 @@ void gensw(void)
    mov_eax_memoffs32((unsigned int *)dst->f.i.rs);
    add_eax_imm32((int)dst->f.i.immediate);
    mov_reg32_reg32(EBX, EAX);
-   if(fast_memory)
+   if(g_dev.r4300.recomp.fast_memory)
    {
       and_eax_imm32(0xDF800000);
       cmp_eax_imm32(0x80000000);
@@ -3058,7 +3058,7 @@ void genlwc1(void)
    add_eax_imm32((int)dst->f.lf.offset);
    mov_reg32_reg32(EBX, EAX);
    mov_reg64_imm64(RSI, (uint64_t) readmem);
-   if(fast_memory)
+   if(g_dev.r4300.recomp.fast_memory)
    {
       and_eax_imm32(0xDF800000);
       cmp_eax_imm32(0x80000000);
@@ -3091,7 +3091,7 @@ void genlwc1(void)
    mov_eax_memoffs32((unsigned int *)(&reg[dst->f.lf.base]));
    add_eax_imm32((int)dst->f.lf.offset);
    mov_reg32_reg32(EBX, EAX);
-   if(fast_memory)
+   if(g_dev.r4300.recomp.fast_memory)
    {
       and_eax_imm32(0xDF800000);
       cmp_eax_imm32(0x80000000);
@@ -3133,7 +3133,7 @@ void genldc1(void)
    add_eax_imm32((int)dst->f.lf.offset);
    mov_reg32_reg32(EBX, EAX);
    mov_reg64_imm64(RSI, (uint64_t) readmemd);
-   if(fast_memory)
+   if(g_dev.r4300.recomp.fast_memory)
    {
       and_eax_imm32(0xDF800000);
       cmp_eax_imm32(0x80000000);
@@ -3168,7 +3168,7 @@ void genldc1(void)
    mov_eax_memoffs32((unsigned int *)(&reg[dst->f.lf.base]));
    add_eax_imm32((int)dst->f.lf.offset);
    mov_reg32_reg32(EBX, EAX);
-   if(fast_memory)
+   if(g_dev.r4300.recomp.fast_memory)
    {
       and_eax_imm32(0xDF800000);
       cmp_eax_imm32(0x80000000);
@@ -3211,7 +3211,7 @@ void genld(void)
    add_eax_imm32((int)dst->f.i.immediate);
    mov_reg32_reg32(EBX, EAX);
    mov_reg64_imm64(RSI, (uint64_t) readmemd);
-   if(fast_memory)
+   if(g_dev.r4300.recomp.fast_memory)
    {
       and_eax_imm32(0xDF800000);
       cmp_eax_imm32(0x80000000);
@@ -3262,7 +3262,7 @@ void genswc1(void)
    add_eax_imm32((int)dst->f.lf.offset);
    mov_reg32_reg32(EBX, EAX);
    mov_reg64_imm64(RSI, (uint64_t) writemem);
-   if(fast_memory)
+   if(g_dev.r4300.recomp.fast_memory)
    {
       and_eax_imm32(0xDF800000);
       cmp_eax_imm32(0x80000000);
@@ -3316,7 +3316,7 @@ void genswc1(void)
    mov_eax_memoffs32((unsigned int *)(&reg[dst->f.lf.base]));
    add_eax_imm32((int)dst->f.lf.offset);
    mov_reg32_reg32(EBX, EAX);
-   if(fast_memory)
+   if(g_dev.r4300.recomp.fast_memory)
    {
       and_eax_imm32(0xDF800000);
       cmp_eax_imm32(0x80000000);
@@ -3377,7 +3377,7 @@ void gensdc1(void)
    add_eax_imm32((int)dst->f.lf.offset);
    mov_reg32_reg32(EBX, EAX);
    mov_reg64_imm64(RSI, (uint64_t) writememd);
-   if(fast_memory)
+   if(g_dev.r4300.recomp.fast_memory)
    {
       and_eax_imm32(0xDF800000);
       cmp_eax_imm32(0x80000000);
@@ -3434,7 +3434,7 @@ void gensdc1(void)
    mov_eax_memoffs32((unsigned int *)(&reg[dst->f.lf.base]));
    add_eax_imm32((int)dst->f.lf.offset);
    mov_reg32_reg32(EBX, EAX);
-   if(fast_memory)
+   if(g_dev.r4300.recomp.fast_memory)
    {
       and_eax_imm32(0xDF800000);
       cmp_eax_imm32(0x80000000);
@@ -3497,7 +3497,7 @@ void gensd(void)
    add_eax_imm32((int)dst->f.i.immediate);
    mov_reg32_reg32(EBX, EAX);
    mov_reg64_imm64(RSI, (uint64_t) writememd);
-   if(fast_memory)
+   if(g_dev.r4300.recomp.fast_memory)
    {
       and_eax_imm32(0xDF800000);
       cmp_eax_imm32(0x80000000);
@@ -3556,7 +3556,7 @@ void gensd(void)
    mov_eax_memoffs32((unsigned int *)dst->f.i.rs);
    add_eax_imm32((int)dst->f.i.immediate);
    mov_reg32_reg32(EBX, EAX);
-   if(fast_memory)
+   if(g_dev.r4300.recomp.fast_memory)
    {
       and_eax_imm32(0xDF800000);
       cmp_eax_imm32(0x80000000);

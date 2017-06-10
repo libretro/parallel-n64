@@ -51,8 +51,6 @@
 #include <stddef.h>
 #include <stdint.h>
 
-extern int fast_memory;
-
 #if NEW_DYNAREC != NEW_DYNAREC_ARM
 // address : address of the read/write operation being done
 uint32_t address = 0;
@@ -1358,10 +1356,6 @@ void poweron_memory(void)
       map_region(0x9000+i, M64P_MEM_NOTHING, RW(nothing));
       map_region(0xb000+i, M64P_MEM_NOTHING, RW(nothing));
    }
-
-   fast_memory = 1;
-
-   DebugMessage(M64MSG_VERBOSE, "Memory initialized");
 }
 
 static void map_region_t(uint16_t region, int type)

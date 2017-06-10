@@ -28,7 +28,6 @@ extern int code_length;
 extern int max_code_length;
 extern unsigned char **inst_pointer;
 extern precomp_block* dst_block;
-extern int fast_memory;
 extern uint32_t src;   /* opcode of r4300 instruction being recompiled */
 
 void passe2(precomp_instr *dest, int start, int end, precomp_block* block);

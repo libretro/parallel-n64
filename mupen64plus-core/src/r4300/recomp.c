@@ -58,7 +58,6 @@ int no_compiled_jump = 0;            /* use cached interpreter instead of recomp
 int code_length;                     /* current real recompiled code length */
 int max_code_length;                 /* current recompiled code's buffer length */
 uint32_t src;                        /* the current recompiled instruction */
-int fast_memory;
 
 static void (*recomp_func)(void); /* pointer to the dynarec's generator
                                    * function for the latest decoded opcode */
