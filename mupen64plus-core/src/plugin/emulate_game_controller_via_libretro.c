@@ -649,8 +649,6 @@ static void inputGetKeys_default( int Control, BUTTONS *Keys )
       Keys->R_TRIG = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_R2);
       Keys->Z_TRIG = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_L2);
       Keys->L_TRIG = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_SELECT);
-
-      inputGetKeys_reuse(analogX, analogY, Control, Keys);
    }
    else
    {
@@ -671,19 +669,19 @@ static void inputGetKeys_default( int Control, BUTTONS *Keys )
          Keys->B_BUTTON = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_Y);
          Keys->A_BUTTON = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_B);
       }
-
-      // C buttons
-      analogX = input_cb(Control, RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_RIGHT, RETRO_DEVICE_ID_ANALOG_X);
-      analogY = input_cb(Control, RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_RIGHT, RETRO_DEVICE_ID_ANALOG_Y);
-
-      if (abs(analogX) > CSTICK_DEADZONE)
-         Keys->Value |= (analogX < 0) ? CSTICK_RIGHT : CSTICK_LEFT;
-
-      if (abs(analogY) > CSTICK_DEADZONE)
-         Keys->Value |= (analogY < 0) ? CSTICK_UP : CSTICK_DOWN;
-
-      inputGetKeys_reuse(analogX, analogY, Control, Keys);
    }
+
+   // C buttons
+   analogX = input_cb(Control, RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_RIGHT, RETRO_DEVICE_ID_ANALOG_X);
+   analogY = input_cb(Control, RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_RIGHT, RETRO_DEVICE_ID_ANALOG_Y);
+
+   if (abs(analogX) > CSTICK_DEADZONE)
+      Keys->Value |= (analogX < 0) ? CSTICK_RIGHT : CSTICK_LEFT;
+
+   if (abs(analogY) > CSTICK_DEADZONE)
+      Keys->Value |= (analogY < 0) ? CSTICK_UP : CSTICK_DOWN;
+
+   inputGetKeys_reuse(analogX, analogY, Control, Keys);
 }
 
 void inputInitiateCallback(const char *headername)
