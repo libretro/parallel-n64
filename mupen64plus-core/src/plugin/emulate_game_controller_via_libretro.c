@@ -74,7 +74,7 @@ static void setup_control_variables(void)
 {
    struct retro_variable variables[] = {
       { "parallel-n64-alt-map",
-        "Digital C-button Config; disabled|enabled" },
+        "Independent C-button Controls; disabled|enabled" },
       { NULL, NULL },
    };
 
