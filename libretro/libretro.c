@@ -345,7 +345,7 @@ static void setup_variables(void)
          "Framerate (restart); original|fullspeed" },
 
       { "parallel-n64-alt-map",
-        "Digital C-button Config; disabled|enabled" },
+        "Independent C-button Controls; disabled|enabled" },
 
 #ifndef HAVE_PARALLEL
       { "parallel-n64-vcache-vbo",
