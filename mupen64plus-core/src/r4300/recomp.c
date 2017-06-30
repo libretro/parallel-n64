@@ -2436,7 +2436,6 @@ void recompile_block(const uint32_t *source, struct precomp_block *block, uint32
 
 static int is_jump(void)
 {
-   recomp_ops[((src >> 26) & 0x3F)]();
    return
       (dst->ops == current_instruction_table.J ||
        dst->ops == current_instruction_table.J_OUT ||
@@ -2518,6 +2517,7 @@ void recompile_opcode(void)
    dst++;
    dst->addr = (dst-1)->addr + 4;
    dst->reg_cache_infos.need_map = 0;
+   recomp_ops[((src >> 26) & 0x3F)]();
    if(!is_jump())
    {
       recomp_func = NULL;
