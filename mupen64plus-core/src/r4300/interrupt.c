@@ -131,28 +131,32 @@ static int SPECIAL_done = 0;
 
 static int before_event(unsigned int evt1, unsigned int evt2, int type2)
 {
-   if(evt1 - g_cp0_regs[CP0_COUNT_REG] < UINT32_C(0x80000000))
+   uint32_t count = g_cp0_regs[CP0_COUNT_REG];
+
+   if(evt1 - count < UINT32_C(0x80000000))
    {
-      if(evt2 - g_cp0_regs[CP0_COUNT_REG] < UINT32_C(0x80000000))
+      if(evt2 - count < UINT32_C(0x80000000))
       {
-         if((evt1 - g_cp0_regs[CP0_COUNT_REG]) < (evt2 - g_cp0_regs[CP0_COUNT_REG])) return 1;
-         else return 0;
+         if((evt1 - count) < (evt2 - count))
+            return 1;
+         return 0;
       }
       else
       {
-         if((g_cp0_regs[CP0_COUNT_REG] - evt2) < UINT32_C(0x10000000))
+         if((count - evt2) < UINT32_C(0x10000000))
          {
             switch(type2)
             {
                case SPECIAL_INT:
-                  if(SPECIAL_done) return 1;
-                  else return 0;
+                  if(SPECIAL_done)
+                     return 1;
                   break;
                default:
-                  return 0;
+                  break;
             }
+            return 0;
          }
-         else return 1;
+         return 1;
       }
    }
    else return 0;
@@ -230,15 +234,16 @@ void add_interrupt_event_count(int type, unsigned int count)
 
 static void remove_interrupt_event(void)
 {
-   struct node* e;
+   struct node* e = q.first;
+   uint32_t count = g_cp0_regs[CP0_COUNT_REG];
 
-   e = q.first;
    q.first = e->next;
+
    free_node(&q.pool, e);
 
    next_interrupt = (q.first != NULL
-         && (q.first->data.count > g_cp0_regs[CP0_COUNT_REG]
-            || (g_cp0_regs[CP0_COUNT_REG] - q.first->data.count) < UINT32_C(0x80000000)))
+         && (q.first->data.count >count 
+            || (count - q.first->data.count) < UINT32_C(0x80000000)))
       ? q.first->data.count
       : 0;
 }
@@ -520,11 +525,12 @@ void gen_interrupt(void)
 
    if (skip_jump)
    {
-      uint32_t dest = skip_jump;
+      uint32_t dest  = skip_jump;
+      uint32_t count = g_cp0_regs[CP0_COUNT_REG];
       skip_jump = 0;
 
-      next_interrupt = (q.first->data.count > g_cp0_regs[CP0_COUNT_REG]
-            || (g_cp0_regs[CP0_COUNT_REG] - q.first->data.count) < UINT32_C(0x80000000))
+      next_interrupt = (q.first->data.count > count 
+            || (count - q.first->data.count) < UINT32_C(0x80000000))
          ? q.first->data.count
          : 0;
 
