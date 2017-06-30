@@ -515,7 +515,7 @@ static void RDSRA32(void)
    if (dst->f.r.rd == reg) RNOP();
 }
 
-static void (*recomp_special[64])(void) =
+static void (*const recomp_special[64])(void) =
 {
    RSLL , RSV   , RSRL , RSRA , RSLLV   , RSV    , RSRLV  , RSRAV  ,
    RJR  , RJALR , RSV  , RSV  , RSYSCALL, RBREAK , RSV    , RSYNC  ,
@@ -743,7 +743,7 @@ static void RBGEZALL(void)
    }
 }
 
-static void (*recomp_regimm[32])(void) =
+static void (*const recomp_regimm[32])(void) =
 {
    RBLTZ  , RBGEZ  , RBLTZL  , RBGEZL  , RSV  , RSV, RSV  , RSV,
    RTGEI  , RTGEIU , RTLTI   , RTLTIU  , RTEQI, RSV, RTNEI, RSV,
@@ -785,7 +785,7 @@ static void RERET(void)
    recomp_func = generet;
 }
 
-static void (*recomp_tlb[64])(void) =
+static void (*const recomp_tlb[64])(void) =
 {
    RSV  , RTLBR, RTLBWI, RSV, RSV, RSV, RTLBWR, RSV, 
    RTLBP, RSV  , RSV   , RSV, RSV, RSV, RSV   , RSV, 
@@ -824,7 +824,7 @@ static void RTLB(void)
    recomp_tlb[(src & 0x3F)]();
 }
 
-static void (*recomp_cop0[32])(void) =
+static void (*const recomp_cop0[32])(void) =
 {
    RMFC0, RSV, RSV, RSV, RMTC0, RSV, RSV, RSV,
    RSV  , RSV, RSV, RSV, RSV  , RSV, RSV, RSV,
@@ -924,7 +924,7 @@ static void RBC1TL(void)
    }
 }
 
-static void (*recomp_bc[4])(void) =
+static void (*const recomp_bc[4])(void) =
 {
    RBC1F , RBC1T ,
    RBC1FL, RBC1TL
@@ -1179,7 +1179,7 @@ static void RC_NGT_S(void)
    recompile_standard_cf_type();
 }
 
-static void (*recomp_s[64])(void) =
+static void (*const recomp_s[64])(void) =
 {
    RADD_S    , RSUB_S    , RMUL_S   , RDIV_S    , RSQRT_S   , RABS_S    , RMOV_S   , RNEG_S    , 
    RROUND_L_S, RTRUNC_L_S, RCEIL_L_S, RFLOOR_L_S, RROUND_W_S, RTRUNC_W_S, RCEIL_W_S, RFLOOR_W_S, 
@@ -1470,7 +1470,7 @@ static void RCVT_D_W(void)
    recompile_standard_cf_type();
 }
 
-static void (*recomp_w[64])(void) =
+static void (*const recomp_w[64])(void) =
 {
    RSV     , RSV     , RSV, RSV, RSV, RSV, RSV, RSV, 
    RSV     , RSV     , RSV, RSV, RSV, RSV, RSV, RSV, 
@@ -1500,7 +1500,7 @@ static void RCVT_D_L(void)
    recompile_standard_cf_type();
 }
 
-static void (*recomp_l[64])(void) =
+static void (*const recomp_l[64])(void) =
 {
    RSV     , RSV     , RSV, RSV, RSV, RSV, RSV, RSV, 
    RSV     , RSV     , RSV, RSV, RSV, RSV, RSV, RSV, 
@@ -1592,7 +1592,7 @@ static void RL(void)
    recomp_l[(src & 0x3F)]();
 }
 
-static void (*recomp_cop1[32])(void) =
+static void (*const recomp_cop1[32])(void) =
 {
    RMFC1, RDMFC1, RCFC1, RSV, RMTC1, RDMTC1, RCTC1, RSV,
    RBC  , RSV   , RSV  , RSV, RSV  , RSV   , RSV  , RSV,
@@ -2132,7 +2132,7 @@ static void RSD(void)
    recompile_standard_i_type();
 }
 
-static void (*recomp_ops[64])(void) =
+static void (*const recomp_ops[64])(void) =
 {
    RSPECIAL, RREGIMM, RJ   , RJAL  , RBEQ , RBNE , RBLEZ , RBGTZ ,
    RADDI   , RADDIU , RSLTI, RSLTIU, RANDI, RORI , RXORI , RLUI  ,
