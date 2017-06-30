@@ -157,7 +157,7 @@ uint32_t jump_to_address;
   static void JALR_IDLE(void) __attribute__((used));
 #endif
 
-#include "interpreter.c"
+#include "mips_instructions.def"
 
 // -----------------------------------------------------------
 // Flow control 'fake' instructions

@@ -171,9 +171,9 @@ static void InterpretOpcode(void);
   static void JALR_IDLE(uint32_t) __attribute__((used));
 #endif
 
-#include "interpreter.c"
+#include "mips_instructions.def"
 
-void InterpretOpcode()
+void InterpretOpcode(void)
 {
 	uint32_t op = *fast_mem_access(PC->addr);
 	switch ((op >> 26) & 0x3F) {
