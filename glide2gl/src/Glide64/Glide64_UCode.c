@@ -273,6 +273,14 @@ void microcheck(void)
       if (log_cb)
          log_cb(RETRO_LOG_INFO, "Microcode -1 - Unknown Microcode.\n");
    }
+   else if (
+         uc_crc == 0xef54ee35
+         )
+   {
+      settings.ucode = 10;
+      if (log_cb)
+         log_cb(RETRO_LOG_INFO, "Microcode 10 - F3DTEXA (64 de Hakken).\n");
+   }
 
    if (log_cb)
       log_cb(RETRO_LOG_INFO, "microcheck: old ucode: %d,  new ucode: %d\n", old_ucode, settings.ucode);

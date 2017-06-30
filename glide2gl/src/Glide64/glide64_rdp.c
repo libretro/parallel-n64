@@ -184,6 +184,7 @@ uint32_t uc_crc;
 #include "ucode07.h"
 #include "ucode08.h"
 #include "ucode09.h"
+#include "ucode_f3dtexa.h"
 #include "ucode09rdp.h"
 #include "turbo3D.h"
 

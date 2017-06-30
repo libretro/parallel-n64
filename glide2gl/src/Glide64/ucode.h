@@ -51,7 +51,8 @@
 #define ucode_PerfectDark 7   // ** F3DPD   **
 #define ucode_CBFD 8          // ** F3DCBFD **
 #define ucode_zSort 9         // ** ZSORT   **
-#define ucode_Turbo3d 21      // ** TURBO3D **
+#define ucode_F3DTEXA 10      /* F3DTEXA    */
+#define ucode_Turbo3d 21      /* TURBO3D    */
 
 #include "../../Graphics/RDP/gDP_state.h"
 #include "../../Graphics/GBI.h"
@@ -65,6 +66,9 @@ void projection_load (float m[4][4]);
 void projection_mul (float m[4][4]);
 
 // ** RDP graphics functions **
+
+static void f3dttexa_loadtex(uint32_t w0, uint32_t w1);
+static void f3dttexa_settilesize(uint32_t w0, uint32_t w1);
 
 static void rdp_texrect(uint32_t w0, uint32_t w1);
 static void rdp_setscissor(uint32_t w0, uint32_t w1);
@@ -214,7 +218,7 @@ typedef void (*rdp_instr)(uint32_t w1, uint32_t w2);
 
 // RDP graphic instructions pointer table
 
-static rdp_instr gfx_instruction[10][256] =
+static rdp_instr gfx_instruction[11][256] =
 {
    {
       // uCode 0 - RSP SW 2.0X
@@ -961,6 +965,83 @@ static rdp_instr gfx_instruction[10][256] =
       rdp_loadtile,           rdp_settile,            rdp_fillrect,           gdp_set_fill_color,
       gdp_set_fog_color,        gdp_set_blend_color,      rdp_setprimcolor,       gdp_set_env_color,
       rdp_setcombine,         rdp_settextureimage,    rdp_setdepthimage,      rdp_setcolorimage
+   },
+
+   {
+      // uCode 10 - F3DTEXA
+      // games: 64 de Hakken 
+      // 00-3f
+      gdp_no_op, uc0_matrix, F3D_Reserved0, F3D_MoveMem,
+      uc1_vertex, F3D_Reserved1, uc0_displaylist, F3D_Reserved2,
+      F3D_Reserved3, uc6_sprite2d, gdp_invalid, gdp_invalid,
+      gdp_invalid, gdp_invalid, gdp_invalid, gdp_invalid,
+
+      gdp_invalid, gdp_invalid, gdp_invalid, gdp_invalid,
+      gdp_invalid, gdp_invalid, gdp_invalid, gdp_invalid,
+      gdp_invalid, gdp_invalid, gdp_invalid, gdp_invalid,
+      gdp_invalid, gdp_invalid, gdp_invalid, gdp_invalid,
+      gdp_invalid, gdp_invalid, gdp_invalid, gdp_invalid,
+      gdp_invalid, gdp_invalid, gdp_invalid, gdp_invalid,
+      gdp_invalid, gdp_invalid, gdp_invalid, gdp_invalid,
+      gdp_invalid, gdp_invalid, gdp_invalid, gdp_invalid,
+      gdp_invalid, gdp_invalid, gdp_invalid, gdp_invalid,
+      gdp_invalid, gdp_invalid, gdp_invalid, gdp_invalid,
+      gdp_invalid, gdp_invalid, gdp_invalid, gdp_invalid,
+      gdp_invalid, gdp_invalid, gdp_invalid, gdp_invalid,
+      // 40-7f: unused
+      gdp_invalid, gdp_invalid, gdp_invalid, gdp_invalid,
+      gdp_invalid, gdp_invalid, gdp_invalid, gdp_invalid,
+      gdp_invalid, gdp_invalid, gdp_invalid, gdp_invalid,
+      gdp_invalid, gdp_invalid, gdp_invalid, gdp_invalid,
+      gdp_invalid, gdp_invalid, gdp_invalid, gdp_invalid,
+      gdp_invalid, gdp_invalid, gdp_invalid, gdp_invalid,
+      gdp_invalid, gdp_invalid, gdp_invalid, gdp_invalid,
+      gdp_invalid, gdp_invalid, gdp_invalid, gdp_invalid,
+      gdp_invalid, gdp_invalid, gdp_invalid, gdp_invalid,
+      gdp_invalid, gdp_invalid, gdp_invalid, gdp_invalid,
+      gdp_invalid, gdp_invalid, gdp_invalid, gdp_invalid,
+      gdp_invalid, gdp_invalid, gdp_invalid, gdp_invalid,
+      gdp_invalid, gdp_invalid, gdp_invalid, gdp_invalid,
+      gdp_invalid, gdp_invalid, gdp_invalid, gdp_invalid,
+      gdp_invalid, gdp_invalid, gdp_invalid, gdp_invalid,
+      gdp_invalid, gdp_invalid, gdp_invalid, gdp_invalid,
+      // 80-bf
+      gdp_invalid, gdp_invalid, gdp_invalid, gdp_invalid,
+      gdp_invalid, gdp_invalid, gdp_invalid, gdp_invalid,
+      gdp_invalid, gdp_invalid, gdp_invalid, gdp_invalid,
+      gdp_invalid, gdp_invalid, gdp_invalid, gdp_invalid,
+      gdp_invalid, gdp_invalid, gdp_invalid, gdp_invalid,
+      gdp_invalid, gdp_invalid, gdp_invalid, gdp_invalid,
+      gdp_invalid, gdp_invalid, gdp_invalid, gdp_invalid,
+      gdp_invalid, gdp_invalid, gdp_invalid, gdp_invalid,
+      gdp_invalid, gdp_invalid, gdp_invalid, gdp_invalid,
+      gdp_invalid, gdp_invalid, gdp_invalid, gdp_invalid,
+      gdp_invalid, gdp_invalid, gdp_invalid, gdp_invalid,
+      gdp_invalid, gdp_invalid, gdp_invalid, uc2_load_ucode,
+
+      uc1_branch_z, uc2_quad, uc2_modifyvtx, rdphalf_2,
+      rdphalf_1, f3dttexa_loadtex, uc0_cleargeometrymode, uc0_setgeometrymode,
+      F3D_EndDL, uc0_setothermode_l, uc0_setothermode_h, uc0_texture,
+      uc0_moveword, uc0_popmatrix, f3dttexa_settilesize, uc1_tri1,
+      // c0-ff: RDP commands
+      gdp_invalid, gdp_invalid, gdp_invalid, gdp_invalid,
+      gdp_invalid, gdp_invalid, gdp_invalid, gdp_invalid,
+      gdp_invalid, gdp_invalid, gdp_invalid, gdp_invalid,
+      gdp_invalid, gdp_invalid, gdp_invalid, gdp_invalid,
+      gdp_invalid, gdp_invalid, gdp_invalid, gdp_invalid,
+      gdp_invalid, gdp_invalid, gdp_invalid, gdp_invalid,
+      gdp_invalid, gdp_invalid, gdp_invalid, gdp_invalid,
+      gdp_invalid, gdp_invalid, gdp_invalid, gdp_invalid,
+
+      gdp_invalid, gdp_invalid, gdp_invalid, gdp_invalid,
+      rdp_texrect, rdp_texrect, gdp_load_sync, gdp_pipe_sync,
+      gdp_tile_sync, gdp_full_sync, gdp_set_key_gb, gdp_set_key_r,
+      gdp_set_convert, rdp_setscissor, gdp_set_prim_depth, rdp_setothermode,
+
+      rdp_loadtlut, gdp_invalid, rdp_settilesize, rdp_loadblock,
+      rdp_loadtile, rdp_settile, rdp_fillrect, gdp_set_fill_color,
+      gdp_set_fog_color, gdp_set_blend_color, rdp_setprimcolor, gdp_set_env_color,
+      rdp_setcombine, rdp_settextureimage, rdp_setdepthimage, rdp_setcolorimage
    },
 };
 
