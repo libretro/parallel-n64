@@ -31,7 +31,7 @@ extern int pending_exception;
 extern int branch_target;
 extern int ram_offset;
 extern uint64_t readmem_dword;
-extern precomp_instr fake_pc;
+extern struct precomp_instr fake_pc;
 extern void *dynarec_local;
 extern u_int memory_map[1048576];
 extern u_int mini_ht[32][2];
