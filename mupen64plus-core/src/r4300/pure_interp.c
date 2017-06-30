@@ -45,7 +45,7 @@
 #include "debugger/dbg_types.h"
 #endif
 
-static precomp_instr interp_PC;
+static struct precomp_instr interp_PC;
 
 static void InterpretOpcode(void);
 

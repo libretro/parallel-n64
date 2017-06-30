@@ -61,7 +61,7 @@ unsigned int llbit;
 int stop;
 int64_t reg[32], hi, lo;
 uint32_t next_interupt;
-precomp_instr *PC;
+struct precomp_instr *PC;
 #endif
 long long int local_rs;
 uint32_t skip_jump = 0;

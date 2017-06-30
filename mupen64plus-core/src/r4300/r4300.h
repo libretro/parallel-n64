@@ -28,7 +28,7 @@
 #include "r4300_core.h"
 #include "recomp.h"
 
-extern precomp_instr *PC;
+extern struct precomp_instr *PC;
 
 extern int stop;
 extern unsigned int llbit;

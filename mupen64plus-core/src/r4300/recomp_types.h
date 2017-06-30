@@ -1,5 +1,5 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
- *   Mupen64plus - cached_interp.h                                         *
+ *   Mupen64plus - recomp_types.h                                          *
  *   Mupen64Plus homepage: http://code.google.com/p/mupen64plus/           *
  *   Copyright (C) 2002 Hacktarux                                          *
  *                                                                         *
@@ -19,29 +19,69 @@
  *   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.          *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef M64P_R4300_CACHED_INTERP_H
-#define M64P_R4300_CACHED_INTERP_H
+#ifndef M64P_R4300_RECOMP_TYPES_H
+#define M64P_R4300_RECOMP_TYPES_H
 
 #include <stddef.h>
 #include <stdint.h>
 
-#include "ops.h"
-/* FIXME: use forward declaration for precomp_block */
-#include "recomp.h"
+#include "hacktarux_dynarec/assemble_struct.h"
 
-extern char invalid_code[0x100000];
-extern struct precomp_block *blocks[0x100000];
-extern struct precomp_block *actual;
-extern uint32_t jump_to_address;
-extern const cpu_instruction_table cached_interpreter_table;
+struct precomp_instr
+{
+   void (*ops)(void);
+   union
+     {
+    struct
+      {
+         int64_t *rs;
+         int64_t *rt;
+         int16_t immediate;
+      } i;
+    struct
+      {
+         uint32_t inst_index;
+      } j;
+    struct
+      {
+         int64_t *rs;
+         int64_t *rt;
+         int64_t *rd;
+         unsigned char sa;
+         unsigned char nrd;
+      } r;
+    struct
+      {
+         unsigned char base;
+         unsigned char ft;
+         short offset;
+      } lf;
+    struct
+      {
+         unsigned char ft;
+         unsigned char fs;
+         unsigned char fd;
+      } cf;
+     } f;
+   uint32_t addr; /* word-aligned instruction address in r4300 address space */
+   unsigned int local_addr; /* byte offset to start of corresponding x86_64 instructions, from start of code block */
+   reg_cache_struct reg_cache_infos;
+};
 
-void init_blocks(void);
-void free_blocks(void);
-void jump_to_func(void);
+struct precomp_block
+{
+   struct precomp_instr *block;
+   uint32_t start;
+   uint32_t end;
+   unsigned char *code;
+   unsigned int code_length;
+   unsigned int max_code_length;
+   void *jumps_table;
+   int jumps_number;
+   void *riprel_table;
+   int riprel_number;
+   //unsigned char md5[16];
+   unsigned int adler32;
+};
 
-void invalidate_cached_code_hacktarux(uint32_t address, size_t size);
-
-/* Jumps to the given address. This is for the cached interpreter / dynarec. */
-#define jump_to(a) { jump_to_address = a; jump_to_func(); }
-
-#endif /* M64P_R4300_CACHED_INTERP_H */
+#endif

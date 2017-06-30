@@ -51,9 +51,9 @@ static void *malloc_exec(size_t size);
 static void free_exec(void *ptr, size_t length);
 
 /* global variables : */
-precomp_instr *dst           = NULL; /* destination structure for the recompiled instruction */
-unsigned char **inst_pointer = NULL; /* output buffer for recompiled code */
-precomp_block *dst_block     = NULL; /* the current block that we are recompiling */
+struct precomp_instr *dst           = NULL; /* destination structure for the recompiled instruction */
+unsigned char **inst_pointer        = NULL; /* output buffer for recompiled code */
+struct precomp_block *dst_block     = NULL; /* the current block that we are recompiling */
 int no_compiled_jump = 0;            /* use cached interpreter instead of recompiler for jumps */
 int code_length;                     /* current real recompiled code length */
 int max_code_length;                 /* current recompiled code's buffer length */
@@ -2144,21 +2144,21 @@ static void (*const recomp_ops[64])(void) =
    RSC     , RSWC1  , RSV  , RSV   , RSCD , RSDC1, RSV   , RSD
 };
 
-static int get_block_length(const precomp_block *block)
+static int get_block_length(const struct precomp_block *block)
 {
   return (block->end-block->start)/4;
 }
 
-static size_t get_block_memsize(const precomp_block *block)
+static size_t get_block_memsize(const struct precomp_block *block)
 {
   int length = get_block_length(block);
-  return ((length+1)+(length>>2)) * sizeof(precomp_instr);
+  return ((length+1)+(length>>2)) * sizeof(struct precomp_instr);
 }
 
 /**********************************************************************
  ******************** initialize an empty block ***********************
  **********************************************************************/
-void init_block(precomp_block *block)
+void init_block(struct precomp_block *block)
 {
   int i, length, already_exist = 1;
   static int init_length;
@@ -2173,14 +2173,14 @@ void init_block(precomp_block *block)
   {
     size_t memsize = get_block_memsize(block);
     if (r4300emu == CORE_DYNAREC) {
-        block->block = (precomp_instr *) malloc_exec(memsize);
+        block->block = (struct precomp_instr *) malloc_exec(memsize);
         if (!block->block) {
             DebugMessage(M64MSG_ERROR, "Memory error: couldn't allocate executable memory for dynamic recompiler. Try to use an interpreter mode.");
             return;
         }
     }
     else {
-        block->block = (precomp_instr *) malloc(memsize);
+        block->block = (struct precomp_instr *) malloc(memsize);
         if (!block->block) {
             DebugMessage(M64MSG_ERROR, "Memory error: couldn't allocate memory for cached interpreter.");
             return;
@@ -2265,7 +2265,7 @@ void init_block(precomp_block *block)
     invalid_code[paddr>>12] = 0;
     if (!blocks[paddr>>12])
     {
-      blocks[paddr>>12] = (precomp_block *) malloc(sizeof(precomp_block));
+      blocks[paddr>>12] = (struct precomp_block *) malloc(sizeof(struct precomp_block));
       blocks[paddr>>12]->code = NULL;
       blocks[paddr>>12]->block = NULL;
       blocks[paddr>>12]->jumps_table = NULL;
@@ -2279,7 +2279,7 @@ void init_block(precomp_block *block)
     invalid_code[paddr>>12] = 0;
     if (!blocks[paddr>>12])
     {
-      blocks[paddr>>12] = (precomp_block *) malloc(sizeof(precomp_block));
+      blocks[paddr>>12] = (struct precomp_block *) malloc(sizeof(struct precomp_block));
       blocks[paddr>>12]->code = NULL;
       blocks[paddr>>12]->block = NULL;
       blocks[paddr>>12]->jumps_table = NULL;
@@ -2297,7 +2297,7 @@ void init_block(precomp_block *block)
     {
       if (!blocks[alt_addr>>12])
       {
-        blocks[alt_addr>>12] = (precomp_block *) malloc(sizeof(precomp_block));
+        blocks[alt_addr>>12] = (struct precomp_block *) malloc(sizeof(struct precomp_block));
         blocks[alt_addr>>12]->code = NULL;
         blocks[alt_addr>>12]->block = NULL;
         blocks[alt_addr>>12]->jumps_table = NULL;
@@ -2311,7 +2311,7 @@ void init_block(precomp_block *block)
   timed_section_end(TIMED_SECTION_COMPILER);
 }
 
-void free_block(precomp_block *block)
+void free_block(struct precomp_block *block)
 {
     size_t memsize = get_block_memsize(block);
 
@@ -2330,7 +2330,7 @@ void free_block(precomp_block *block)
 /**********************************************************************
  ********************* recompile a block of code **********************
  **********************************************************************/
-void recompile_block(const uint32_t *source, precomp_block *block, uint32_t func)
+void recompile_block(const uint32_t *source, struct precomp_block *block, uint32_t func)
 {
    uint32_t i;
    int length, finished=0;

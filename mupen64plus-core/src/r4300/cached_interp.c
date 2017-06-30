@@ -49,8 +49,8 @@
 
 /* global variables */
 char invalid_code[0x100000];
-precomp_block *blocks[0x100000];
-precomp_block *actual;
+struct precomp_block *blocks[0x100000];
+struct precomp_block *actual           = NULL;
 uint32_t jump_to_address;
 
 // -----------------------------------------------------------
@@ -178,8 +178,8 @@ static void FIN_BLOCK(void)
    }
    else
    {
-      precomp_block *blk = actual;
-      precomp_instr *inst = PC;
+      struct precomp_block *blk = actual;
+      struct precomp_instr *inst = PC;
       jump_to((PC-1)->addr+4);
 
 #if 0
@@ -548,7 +548,7 @@ void jump_to_func(void)
    {
       if (!blocks[addr>>12])
       {
-         blocks[addr>>12] = (precomp_block *) malloc(sizeof(precomp_block));
+         blocks[addr>>12] = (struct precomp_block *) malloc(sizeof(struct precomp_block));
          actual = blocks[addr>>12];
          blocks[addr>>12]->code = NULL;
          blocks[addr>>12]->block = NULL;

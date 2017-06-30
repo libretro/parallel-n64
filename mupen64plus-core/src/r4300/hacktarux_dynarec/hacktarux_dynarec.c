@@ -51,7 +51,7 @@
 #define offsetof(TYPE,MEMBER) ((unsigned int) &((TYPE*)0)->MEMBER)
 #endif
 
-static precomp_instr fake_instr;
+static struct precomp_instr fake_instr;
 
 int branch_taken = 0;
 
@@ -2732,13 +2732,13 @@ void gensb(void)
    mov_reg64_imm64(RDI, (uint64_t) blocks); // 10
    mov_reg32_reg32(ECX, EBX); // 2
    mov_reg64_preg64x8preg64(RBX, RBX, RDI);  // 4
-   mov_reg64_preg64pimm32(RBX, RBX, (int) offsetof(precomp_block, block)); // 7
+   mov_reg64_preg64pimm32(RBX, RBX, (int) offsetof(struct precomp_block, block)); // 7
    mov_reg64_imm64(RDI, (uint64_t) cached_interpreter_table.NOTCOMPILED); // 10
    and_eax_imm32(0xFFF); // 5
    shr_reg32_imm8(EAX, 2); // 3
-   mov_reg32_imm32(EDX, sizeof(precomp_instr)); // 5
+   mov_reg32_imm32(EDX, sizeof(struct precomp_instr)); // 5
    mul_reg32(EDX); // 2
-   mov_reg64_preg64preg64pimm32(RAX, RAX, RBX, (int) offsetof(precomp_instr, ops)); // 8
+   mov_reg64_preg64preg64pimm32(RAX, RAX, RBX, (int) offsetof(struct precomp_instr, ops)); // 8
    cmp_reg64_reg64(RAX, RDI); // 3
    je_rj(4); // 2
    mov_preg64preg64_imm8(RCX, RSI, 1); // 4
@@ -2786,7 +2786,7 @@ void gensb(void)
    mov_reg32_preg32pimm32(EBX, EBX, (int)&actual->block - (int)actual); // 6
    and_eax_imm32(0xFFF); // 5
    shr_reg32_imm8(EAX, 2); // 3
-   mov_reg32_imm32(EDX, sizeof(precomp_instr)); // 5
+   mov_reg32_imm32(EDX, sizeof(struct precomp_instr)); // 5
    mul_reg32(EDX); // 2
    mov_reg32_preg32preg32pimm32(EAX, EAX, EBX, (int)&dst->ops - (int)dst); // 7
    cmp_reg32_imm32(EAX, (unsigned int)cached_interpreter_table.NOTCOMPILED); // 6
@@ -2848,13 +2848,13 @@ void gensh(void)
    mov_reg64_imm64(RDI, (uint64_t) blocks); // 10
    mov_reg32_reg32(ECX, EBX); // 2
    mov_reg64_preg64x8preg64(RBX, RBX, RDI);  // 4
-   mov_reg64_preg64pimm32(RBX, RBX, (int) offsetof(precomp_block, block)); // 7
+   mov_reg64_preg64pimm32(RBX, RBX, (int) offsetof(struct precomp_block, block)); // 7
    mov_reg64_imm64(RDI, (uint64_t) cached_interpreter_table.NOTCOMPILED); // 10
    and_eax_imm32(0xFFF); // 5
    shr_reg32_imm8(EAX, 2); // 3
-   mov_reg32_imm32(EDX, sizeof(precomp_instr)); // 5
+   mov_reg32_imm32(EDX, sizeof(struct precomp_instr)); // 5
    mul_reg32(EDX); // 2
-   mov_reg64_preg64preg64pimm32(RAX, RAX, RBX, (int) offsetof(precomp_instr, ops)); // 8
+   mov_reg64_preg64preg64pimm32(RAX, RAX, RBX, (int) offsetof(struct precomp_instr, ops)); // 8
    cmp_reg64_reg64(RAX, RDI); // 3
    je_rj(4); // 2
    mov_preg64preg64_imm8(RCX, RSI, 1); // 4
@@ -2902,7 +2902,7 @@ void gensh(void)
    mov_reg32_preg32pimm32(EBX, EBX, (int)&actual->block - (int)actual); // 6
    and_eax_imm32(0xFFF); // 5
    shr_reg32_imm8(EAX, 2); // 3
-   mov_reg32_imm32(EDX, sizeof(precomp_instr)); // 5
+   mov_reg32_imm32(EDX, sizeof(struct precomp_instr)); // 5
    mul_reg32(EDX); // 2
    mov_reg32_preg32preg32pimm32(EAX, EAX, EBX, (int)&dst->ops - (int)dst); // 7
    cmp_reg32_imm32(EAX, (unsigned int)cached_interpreter_table.NOTCOMPILED); // 6
@@ -2968,13 +2968,13 @@ void gensw(void)
    mov_reg64_imm64(RDI, (uint64_t) blocks); // 10
    mov_reg32_reg32(ECX, EBX); // 2
    mov_reg64_preg64x8preg64(RBX, RBX, RDI);  // 4
-   mov_reg64_preg64pimm32(RBX, RBX, (int) offsetof(precomp_block, block)); // 7
+   mov_reg64_preg64pimm32(RBX, RBX, (int) offsetof(struct precomp_block, block)); // 7
    mov_reg64_imm64(RDI, (uint64_t) cached_interpreter_table.NOTCOMPILED); // 10
    and_eax_imm32(0xFFF); // 5
    shr_reg32_imm8(EAX, 2); // 3
-   mov_reg32_imm32(EDX, sizeof(precomp_instr)); // 5
+   mov_reg32_imm32(EDX, sizeof(struct precomp_instr)); // 5
    mul_reg32(EDX); // 2
-   mov_reg64_preg64preg64pimm32(RAX, RAX, RBX, (int) offsetof(precomp_instr, ops)); // 8
+   mov_reg64_preg64preg64pimm32(RAX, RAX, RBX, (int) offsetof(struct precomp_instr, ops)); // 8
    cmp_reg64_reg64(RAX, RDI); // 3
    je_rj(4); // 2
    mov_preg64preg64_imm8(RCX, RSI, 1); // 4
@@ -3021,7 +3021,7 @@ void gensw(void)
    mov_reg32_preg32pimm32(EBX, EBX, (int)&actual->block - (int)actual); // 6
    and_eax_imm32(0xFFF); // 5
    shr_reg32_imm8(EAX, 2); // 3
-   mov_reg32_imm32(EDX, sizeof(precomp_instr)); // 5
+   mov_reg32_imm32(EDX, sizeof(struct precomp_instr)); // 5
    mul_reg32(EDX); // 2
    mov_reg32_preg32preg32pimm32(EAX, EAX, EBX, (int)&dst->ops - (int)dst); // 7
    cmp_reg32_imm32(EAX, (unsigned int)cached_interpreter_table.NOTCOMPILED); // 6
@@ -3300,13 +3300,13 @@ void genswc1(void)
    mov_reg64_imm64(RDI, (uint64_t) blocks); // 10
    mov_reg32_reg32(ECX, EBX); // 2
    mov_reg64_preg64x8preg64(RBX, RBX, RDI);  // 4
-   mov_reg64_preg64pimm32(RBX, RBX, (int) offsetof(precomp_block, block)); // 7
+   mov_reg64_preg64pimm32(RBX, RBX, (int) offsetof(struct precomp_block, block)); // 7
    mov_reg64_imm64(RDI, (uint64_t) cached_interpreter_table.NOTCOMPILED); // 10
    and_eax_imm32(0xFFF); // 5
    shr_reg32_imm8(EAX, 2); // 3
-   mov_reg32_imm32(EDX, sizeof(precomp_instr)); // 5
+   mov_reg32_imm32(EDX, sizeof(struct precomp_instr)); // 5
    mul_reg32(EDX); // 2
-   mov_reg64_preg64preg64pimm32(RAX, RAX, RBX, (int) offsetof(precomp_instr, ops)); // 8
+   mov_reg64_preg64preg64pimm32(RAX, RAX, RBX, (int) offsetof(struct precomp_instr, ops)); // 8
    cmp_reg64_reg64(RAX, RDI); // 3
    je_rj(4); // 2
    mov_preg64preg64_imm8(RCX, RSI, 1); // 4
@@ -3352,7 +3352,7 @@ void genswc1(void)
    mov_reg32_preg32pimm32(EBX, EBX, (int)&actual->block - (int)actual); // 6
    and_eax_imm32(0xFFF); // 5
    shr_reg32_imm8(EAX, 2); // 3
-   mov_reg32_imm32(EDX, sizeof(precomp_instr)); // 5
+   mov_reg32_imm32(EDX, sizeof(struct precomp_instr)); // 5
    mul_reg32(EDX); // 2
    mov_reg32_preg32preg32pimm32(EAX, EAX, EBX, (int)&dst->ops - (int)dst); // 7
    cmp_reg32_imm32(EAX, (unsigned int)cached_interpreter_table.NOTCOMPILED); // 6
@@ -3417,13 +3417,13 @@ void gensdc1(void)
    mov_reg64_imm64(RDI, (uint64_t) blocks); // 10
    mov_reg32_reg32(ECX, EBX); // 2
    mov_reg64_preg64x8preg64(RBX, RBX, RDI);  // 4
-   mov_reg64_preg64pimm32(RBX, RBX, (int) offsetof(precomp_block, block)); // 7
+   mov_reg64_preg64pimm32(RBX, RBX, (int) offsetof(struct precomp_block, block)); // 7
    mov_reg64_imm64(RDI, (uint64_t) cached_interpreter_table.NOTCOMPILED); // 10
    and_eax_imm32(0xFFF); // 5
    shr_reg32_imm8(EAX, 2); // 3
-   mov_reg32_imm32(EDX, sizeof(precomp_instr)); // 5
+   mov_reg32_imm32(EDX, sizeof(struct precomp_instr)); // 5
    mul_reg32(EDX); // 2
-   mov_reg64_preg64preg64pimm32(RAX, RAX, RBX, (int) offsetof(precomp_instr, ops)); // 8
+   mov_reg64_preg64preg64pimm32(RAX, RAX, RBX, (int) offsetof(struct precomp_instr, ops)); // 8
    cmp_reg64_reg64(RAX, RDI); // 3
    je_rj(4); // 2
    mov_preg64preg64_imm8(RCX, RSI, 1); // 4
@@ -3472,7 +3472,7 @@ void gensdc1(void)
    mov_reg32_preg32pimm32(EBX, EBX, (int)&actual->block - (int)actual); // 6
    and_eax_imm32(0xFFF); // 5
    shr_reg32_imm8(EAX, 2); // 3
-   mov_reg32_imm32(EDX, sizeof(precomp_instr)); // 5
+   mov_reg32_imm32(EDX, sizeof(struct precomp_instr)); // 5
    mul_reg32(EDX); // 2
    mov_reg32_preg32preg32pimm32(EAX, EAX, EBX, (int)&dst->ops - (int)dst); // 7
    cmp_reg32_imm32(EAX, (unsigned int)cached_interpreter_table.NOTCOMPILED); // 6
@@ -3537,13 +3537,13 @@ void gensd(void)
    mov_reg64_imm64(RDI, (uint64_t) blocks); // 10
    mov_reg32_reg32(ECX, EBX); // 2
    mov_reg64_preg64x8preg64(RBX, RBX, RDI);  // 4
-   mov_reg64_preg64pimm32(RBX, RBX, (int) offsetof(precomp_block, block)); // 7
+   mov_reg64_preg64pimm32(RBX, RBX, (int) offsetof(struct precomp_block, block)); // 7
    mov_reg64_imm64(RDI, (uint64_t) cached_interpreter_table.NOTCOMPILED); // 10
    and_eax_imm32(0xFFF); // 5
    shr_reg32_imm8(EAX, 2); // 3
-   mov_reg32_imm32(EDX, sizeof(precomp_instr)); // 5
+   mov_reg32_imm32(EDX, sizeof(struct precomp_instr)); // 5
    mul_reg32(EDX); // 2
-   mov_reg64_preg64preg64pimm32(RAX, RAX, RBX, (int) offsetof(precomp_instr, ops)); // 8
+   mov_reg64_preg64preg64pimm32(RAX, RAX, RBX, (int) offsetof(struct precomp_instr, ops)); // 8
    cmp_reg64_reg64(RAX, RDI); // 3
    je_rj(4); // 2
    mov_preg64preg64_imm8(RCX, RSI, 1); // 4
@@ -3594,7 +3594,7 @@ void gensd(void)
    mov_reg32_preg32pimm32(EBX, EBX, (int)&actual->block - (int)actual); // 6
    and_eax_imm32(0xFFF); // 5
    shr_reg32_imm8(EAX, 2); // 3
-   mov_reg32_imm32(EDX, sizeof(precomp_instr)); // 5
+   mov_reg32_imm32(EDX, sizeof(struct precomp_instr)); // 5
    mul_reg32(EDX); // 2
    mov_reg32_preg32preg32pimm32(EAX, EAX, EBX, (int)&dst->ops - (int)dst); // 7
    cmp_reg32_imm32(EAX, (unsigned int)cached_interpreter_table.NOTCOMPILED); // 6
@@ -3614,7 +3614,7 @@ void gensc(void)
    gencallinterp((native_type)cached_interpreter_table.SC, 0);
 }
 
-static const unsigned int precomp_instr_size = sizeof(precomp_instr);
+static const unsigned int precomp_instr_size = sizeof(struct precomp_instr);
 
 /* Multiply/Divide instructions */
 
@@ -3780,9 +3780,9 @@ void genjr(void)
    gencallinterp((native_type)cached_interpreter_table.JR, 1);
 #else
 #ifdef __x86_64__
-   unsigned int diff = (unsigned int) offsetof(precomp_instr, local_addr);
-   unsigned int diff_need = (unsigned int) offsetof(precomp_instr, reg_cache_infos.need_map);
-   unsigned int diff_wrap = (unsigned int) offsetof(precomp_instr, reg_cache_infos.jump_wrapper);
+   unsigned int diff = (unsigned int) offsetof(struct precomp_instr, local_addr);
+   unsigned int diff_need = (unsigned int) offsetof(struct precomp_instr, reg_cache_infos.need_map);
+   unsigned int diff_wrap = (unsigned int) offsetof(struct precomp_instr, reg_cache_infos.jump_wrapper);
 
    if (((dst->addr & 0xFFF) == 0xFFC && 
             (dst->addr < 0x80000000 || dst->addr >= 0xC0000000))||no_compiled_jump)
@@ -3905,9 +3905,9 @@ void genjalr(void)
    gencallinterp((native_type)cached_interpreter_table.JALR, 0);
 #else
 #ifdef __x86_64__
-   unsigned int diff = (unsigned int) offsetof(precomp_instr, local_addr);
-   unsigned int diff_need = (unsigned int) offsetof(precomp_instr, reg_cache_infos.need_map);
-   unsigned int diff_wrap = (unsigned int) offsetof(precomp_instr, reg_cache_infos.jump_wrapper);
+   unsigned int diff = (unsigned int) offsetof(struct precomp_instr, local_addr);
+   unsigned int diff_need = (unsigned int) offsetof(struct precomp_instr, reg_cache_infos.need_map);
+   unsigned int diff_wrap = (unsigned int) offsetof(struct precomp_instr, reg_cache_infos.jump_wrapper);
 
    if (((dst->addr & 0xFFF) == 0xFFC && 
             (dst->addr < 0x80000000 || dst->addr >= 0xC0000000))||no_compiled_jump)

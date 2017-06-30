@@ -26,7 +26,7 @@
 #include "r4300/recomp.h"
 
 void free_register(int reg);
-void init_cache(precomp_instr* start);
+void init_cache(struct precomp_instr* start);
 #if defined(__x86_64__)
 void free_registers_move_start(void);
 int allocate_register_32(uint32_t *addr);
@@ -59,7 +59,7 @@ int lru_base_register(void);
 void set_register_state(int reg, uint32_t *addr, int dirty, int is64bits);
 int lock_register(int reg);
 void unlock_register(int reg);
-void build_wrappers(precomp_instr*, int, int, precomp_block*);
+void build_wrappers(struct precomp_instr*, int, int, struct precomp_block*);
 
 #endif /* __REGCACHE_H__ */
 
