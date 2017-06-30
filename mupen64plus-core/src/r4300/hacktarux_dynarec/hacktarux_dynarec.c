@@ -3614,6 +3614,8 @@ void gensc(void)
    gencallinterp((native_type)cached_interpreter_table.SC, 0);
 }
 
+static const unsigned int precomp_instr_size = sizeof(precomp_instr);
+
 /* Multiply/Divide instructions */
 
 void gensll(void)
@@ -3778,7 +3780,6 @@ void genjr(void)
    gencallinterp((native_type)cached_interpreter_table.JR, 1);
 #else
 #ifdef __x86_64__
-   static unsigned int precomp_instr_size = sizeof(precomp_instr);
    unsigned int diff = (unsigned int) offsetof(precomp_instr, local_addr);
    unsigned int diff_need = (unsigned int) offsetof(precomp_instr, reg_cache_infos.need_map);
    unsigned int diff_wrap = (unsigned int) offsetof(precomp_instr, reg_cache_infos.jump_wrapper);
@@ -3837,7 +3838,6 @@ void genjr(void)
    add_reg64_reg64(RAX, RBX);
    jmp_reg64(RAX);
 #else
-   static unsigned int precomp_instr_size = sizeof(precomp_instr);
    unsigned int diff =
       (unsigned int)(&dst->local_addr) - (unsigned int)(dst);
    unsigned int diff_need =
@@ -3905,7 +3905,6 @@ void genjalr(void)
    gencallinterp((native_type)cached_interpreter_table.JALR, 0);
 #else
 #ifdef __x86_64__
-   static unsigned int precomp_instr_size = sizeof(precomp_instr);
    unsigned int diff = (unsigned int) offsetof(precomp_instr, local_addr);
    unsigned int diff_need = (unsigned int) offsetof(precomp_instr, reg_cache_infos.need_map);
    unsigned int diff_wrap = (unsigned int) offsetof(precomp_instr, reg_cache_infos.jump_wrapper);
@@ -3970,7 +3969,6 @@ void genjalr(void)
    add_reg64_reg64(RAX, RBX);
    jmp_reg64(RAX);
 #else
-   static unsigned int precomp_instr_size = sizeof(precomp_instr);
    unsigned int diff =
       (unsigned int)(&dst->local_addr) - (unsigned int)(dst);
    unsigned int diff_need =
