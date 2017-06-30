@@ -2146,13 +2146,13 @@ static void (*const recomp_ops[64])(void) =
 
 static int get_block_length(const struct precomp_block *block)
 {
-  return (block->end-block->start)/4;
+   return (block->end-block->start)/4;
 }
 
 static size_t get_block_memsize(const struct precomp_block *block)
 {
-  int length = get_block_length(block);
-  return ((length+1)+(length>>2)) * sizeof(struct precomp_instr);
+   int length = get_block_length(block);
+   return ((length+1)+(length>>2)) * sizeof(struct precomp_instr);
 }
 
 /**********************************************************************
@@ -2160,171 +2160,171 @@ static size_t get_block_memsize(const struct precomp_block *block)
  **********************************************************************/
 void init_block(struct precomp_block *block)
 {
-  int i, length, already_exist = 1;
-  static int init_length;
-  timed_section_start(TIMED_SECTION_COMPILER);
+   int i, length, already_exist = 1;
+   static int init_length;
+   timed_section_start(TIMED_SECTION_COMPILER);
 #ifdef CORE_DBG
-  DebugMessage(M64MSG_INFO, "init block %" PRIX32 " - %" PRIX32, block->start, block->end);
+   DebugMessage(M64MSG_INFO, "init block %" PRIX32 " - %" PRIX32, block->start, block->end);
 #endif
 
-  length = get_block_length(block);
-   
-  if (!block->block)
-  {
-    size_t memsize = get_block_memsize(block);
-    if (r4300emu == CORE_DYNAREC) {
-        block->block = (struct precomp_instr *) malloc_exec(memsize);
-        if (!block->block) {
+   length = get_block_length(block);
+
+   if (!block->block)
+   {
+      size_t memsize = get_block_memsize(block);
+      if (r4300emu == CORE_DYNAREC) {
+         block->block = (struct precomp_instr *) malloc_exec(memsize);
+         if (!block->block) {
             DebugMessage(M64MSG_ERROR, "Memory error: couldn't allocate executable memory for dynamic recompiler. Try to use an interpreter mode.");
             return;
-        }
-    }
-    else {
-        block->block = (struct precomp_instr *) malloc(memsize);
-        if (!block->block) {
+         }
+      }
+      else {
+         block->block = (struct precomp_instr *) malloc(memsize);
+         if (!block->block) {
             DebugMessage(M64MSG_ERROR, "Memory error: couldn't allocate memory for cached interpreter.");
             return;
-        }
-    }
-
-    memset(block->block, 0, memsize);
-    already_exist = 0;
-  }
-
-  if (r4300emu == CORE_DYNAREC)
-  {
-    if (!block->code)
-    {
-      max_code_length = 32768;
-      block->code = (unsigned char *) malloc_exec(max_code_length);
-    }
-    else
-    {
-      max_code_length = block->max_code_length;
-    }
-    code_length = 0;
-    inst_pointer = &block->code;
-    
-    if (block->jumps_table)
-    {
-      free(block->jumps_table);
-      block->jumps_table = NULL;
-    }
-    if (block->riprel_table)
-    {
-      free(block->riprel_table);
-      block->riprel_table = NULL;
-    }
-    init_assembler(NULL, 0, NULL, 0);
-    init_cache(block->block);
-  }
-   
-  if (!already_exist)
-  {
-
-    for (i=0; i<length; i++)
-    {
-      dst = block->block + i;
-      dst->addr = block->start + i*4;
-      dst->reg_cache_infos.need_map = 0;
-      dst->local_addr = code_length;
-      RNOTCOMPILED();
-      if (r4300emu == CORE_DYNAREC) recomp_func();
-    }
-  init_length = code_length;
-  }
-  else
-  {
-    code_length = init_length; /* recompile everything, overwrite old recompiled instructions */
-    for (i=0; i<length; i++)
-    {
-      dst = block->block + i;
-      dst->reg_cache_infos.need_map = 0;
-      dst->local_addr = i * (init_length / length);
-      dst->ops = current_instruction_table.NOTCOMPILED;
-    }
-  }
-   
-  if (r4300emu == CORE_DYNAREC)
-  {
-    free_all_registers();
-    /* calling pass2 of the assembler is not necessary here because all of the code emitted by
-       gennotcompiled() and gendebug() is position-independent and contains no jumps . */
-    block->code_length = code_length;
-    block->max_code_length = max_code_length;
-    free_assembler(&block->jumps_table, &block->jumps_number, &block->riprel_table, &block->riprel_number);
-  }
-   
-  /* here we're marking the block as a valid code even if it's not compiled
-   * yet as the game should have already set up the code correctly.
-   */
-  invalid_code[block->start>>12] = 0;
-  if (block->end < UINT32_C(0x80000000) || block->start >= UINT32_C(0xc0000000))
-  { 
-    uint32_t paddr = virtual_to_physical_address(block->start, 2);
-    invalid_code[paddr>>12] = 0;
-    if (!blocks[paddr>>12])
-    {
-      blocks[paddr>>12] = (struct precomp_block *) malloc(sizeof(struct precomp_block));
-      blocks[paddr>>12]->code = NULL;
-      blocks[paddr>>12]->block = NULL;
-      blocks[paddr>>12]->jumps_table = NULL;
-      blocks[paddr>>12]->riprel_table = NULL;
-      blocks[paddr>>12]->start = paddr & ~UINT32_C(0xFFF);
-      blocks[paddr>>12]->end = (paddr & ~UINT32_C(0xFFF)) + UINT32_C(0x1000);
-    }
-    init_block(blocks[paddr>>12]);
-    
-    paddr += block->end - block->start - 4;
-    invalid_code[paddr>>12] = 0;
-    if (!blocks[paddr>>12])
-    {
-      blocks[paddr>>12] = (struct precomp_block *) malloc(sizeof(struct precomp_block));
-      blocks[paddr>>12]->code = NULL;
-      blocks[paddr>>12]->block = NULL;
-      blocks[paddr>>12]->jumps_table = NULL;
-      blocks[paddr>>12]->riprel_table = NULL;
-      blocks[paddr>>12]->start = paddr & ~UINT32_C(0xFFF);
-      blocks[paddr>>12]->end = (paddr & ~UINT32_C(0xFFF)) + UINT32_C(0x1000);
-    }
-    init_block(blocks[paddr>>12]);
-  }
-  else
-  {
-    uint32_t alt_addr = block->start ^ UINT32_C(0x20000000);
-
-    if (invalid_code[alt_addr>>12])
-    {
-      if (!blocks[alt_addr>>12])
-      {
-        blocks[alt_addr>>12] = (struct precomp_block *) malloc(sizeof(struct precomp_block));
-        blocks[alt_addr>>12]->code = NULL;
-        blocks[alt_addr>>12]->block = NULL;
-        blocks[alt_addr>>12]->jumps_table = NULL;
-        blocks[alt_addr>>12]->riprel_table = NULL;
-        blocks[alt_addr>>12]->start = alt_addr & ~UINT32_C(0xFFF);
-        blocks[alt_addr>>12]->end = (alt_addr & ~UINT32_C(0xFFF)) + UINT32_C(0x1000);
+         }
       }
-      init_block(blocks[alt_addr>>12]);
-    }
-  }
-  timed_section_end(TIMED_SECTION_COMPILER);
+
+      memset(block->block, 0, memsize);
+      already_exist = 0;
+   }
+
+   if (r4300emu == CORE_DYNAREC)
+   {
+      if (!block->code)
+      {
+         max_code_length = 32768;
+         block->code = (unsigned char *) malloc_exec(max_code_length);
+      }
+      else
+      {
+         max_code_length = block->max_code_length;
+      }
+      code_length = 0;
+      inst_pointer = &block->code;
+
+      if (block->jumps_table)
+      {
+         free(block->jumps_table);
+         block->jumps_table = NULL;
+      }
+      if (block->riprel_table)
+      {
+         free(block->riprel_table);
+         block->riprel_table = NULL;
+      }
+      init_assembler(NULL, 0, NULL, 0);
+      init_cache(block->block);
+   }
+
+   if (!already_exist)
+   {
+
+      for (i=0; i<length; i++)
+      {
+         dst = block->block + i;
+         dst->addr = block->start + i*4;
+         dst->reg_cache_infos.need_map = 0;
+         dst->local_addr = code_length;
+         RNOTCOMPILED();
+         if (r4300emu == CORE_DYNAREC) recomp_func();
+      }
+      init_length = code_length;
+   }
+   else
+   {
+      code_length = init_length; /* recompile everything, overwrite old recompiled instructions */
+      for (i=0; i<length; i++)
+      {
+         dst = block->block + i;
+         dst->reg_cache_infos.need_map = 0;
+         dst->local_addr = i * (init_length / length);
+         dst->ops = current_instruction_table.NOTCOMPILED;
+      }
+   }
+
+   if (r4300emu == CORE_DYNAREC)
+   {
+      free_all_registers();
+      /* calling pass2 of the assembler is not necessary here because all of the code emitted by
+         gennotcompiled() and gendebug() is position-independent and contains no jumps . */
+      block->code_length = code_length;
+      block->max_code_length = max_code_length;
+      free_assembler(&block->jumps_table, &block->jumps_number, &block->riprel_table, &block->riprel_number);
+   }
+
+   /* here we're marking the block as a valid code even if it's not compiled
+    * yet as the game should have already set up the code correctly.
+    */
+   invalid_code[block->start>>12] = 0;
+   if (block->end < UINT32_C(0x80000000) || block->start >= UINT32_C(0xc0000000))
+   { 
+      uint32_t paddr = virtual_to_physical_address(block->start, 2);
+      invalid_code[paddr>>12] = 0;
+      if (!blocks[paddr>>12])
+      {
+         blocks[paddr>>12] = (struct precomp_block *) malloc(sizeof(struct precomp_block));
+         blocks[paddr>>12]->code = NULL;
+         blocks[paddr>>12]->block = NULL;
+         blocks[paddr>>12]->jumps_table = NULL;
+         blocks[paddr>>12]->riprel_table = NULL;
+         blocks[paddr>>12]->start = paddr & ~UINT32_C(0xFFF);
+         blocks[paddr>>12]->end = (paddr & ~UINT32_C(0xFFF)) + UINT32_C(0x1000);
+      }
+      init_block(blocks[paddr>>12]);
+
+      paddr += block->end - block->start - 4;
+      invalid_code[paddr>>12] = 0;
+      if (!blocks[paddr>>12])
+      {
+         blocks[paddr>>12] = (struct precomp_block *) malloc(sizeof(struct precomp_block));
+         blocks[paddr>>12]->code = NULL;
+         blocks[paddr>>12]->block = NULL;
+         blocks[paddr>>12]->jumps_table = NULL;
+         blocks[paddr>>12]->riprel_table = NULL;
+         blocks[paddr>>12]->start = paddr & ~UINT32_C(0xFFF);
+         blocks[paddr>>12]->end = (paddr & ~UINT32_C(0xFFF)) + UINT32_C(0x1000);
+      }
+      init_block(blocks[paddr>>12]);
+   }
+   else
+   {
+      uint32_t alt_addr = block->start ^ UINT32_C(0x20000000);
+
+      if (invalid_code[alt_addr>>12])
+      {
+         if (!blocks[alt_addr>>12])
+         {
+            blocks[alt_addr>>12] = (struct precomp_block *) malloc(sizeof(struct precomp_block));
+            blocks[alt_addr>>12]->code = NULL;
+            blocks[alt_addr>>12]->block = NULL;
+            blocks[alt_addr>>12]->jumps_table = NULL;
+            blocks[alt_addr>>12]->riprel_table = NULL;
+            blocks[alt_addr>>12]->start = alt_addr & ~UINT32_C(0xFFF);
+            blocks[alt_addr>>12]->end = (alt_addr & ~UINT32_C(0xFFF)) + UINT32_C(0x1000);
+         }
+         init_block(blocks[alt_addr>>12]);
+      }
+   }
+   timed_section_end(TIMED_SECTION_COMPILER);
 }
 
 void free_block(struct precomp_block *block)
 {
-    size_t memsize = get_block_memsize(block);
+   size_t memsize = get_block_memsize(block);
 
-    if (block->block) {
-        if (r4300emu == CORE_DYNAREC)
-            free_exec(block->block, memsize);
-        else
-            free(block->block);
-        block->block = NULL;
-    }
-    if (block->code) { free_exec(block->code, block->max_code_length); block->code = NULL; }
-    if (block->jumps_table) { free(block->jumps_table); block->jumps_table = NULL; }
-    if (block->riprel_table) { free(block->riprel_table); block->riprel_table = NULL; }
+   if (block->block) {
+      if (r4300emu == CORE_DYNAREC)
+         free_exec(block->block, memsize);
+      else
+         free(block->block);
+      block->block = NULL;
+   }
+   if (block->code) { free_exec(block->code, block->max_code_length); block->code = NULL; }
+   if (block->jumps_table) { free(block->jumps_table); block->jumps_table = NULL; }
+   if (block->riprel_table) { free(block->riprel_table); block->riprel_table = NULL; }
 }
 
 /**********************************************************************
@@ -2337,77 +2337,77 @@ void recompile_block(const uint32_t *source, struct precomp_block *block, uint32
    timed_section_start(TIMED_SECTION_COMPILER);
    length = (block->end-block->start)/4;
    dst_block = block;
-   
+
    //for (i=0; i<16; i++) block->md5[i] = 0;
    block->adler32 = 0;
-   
+
    if (r4300emu == CORE_DYNAREC)
-     {
-    code_length = block->code_length;
-    max_code_length = block->max_code_length;
-    inst_pointer = &block->code;
-    init_assembler(block->jumps_table, block->jumps_number, block->riprel_table, block->riprel_number);
-    init_cache(block->block + (func & 0xFFF) / 4);
-     }
+   {
+      code_length = block->code_length;
+      max_code_length = block->max_code_length;
+      inst_pointer = &block->code;
+      init_assembler(block->jumps_table, block->jumps_number, block->riprel_table, block->riprel_number);
+      init_cache(block->block + (func & 0xFFF) / 4);
+   }
 
    for (i = (func & 0xFFF) / 4; finished != 2; i++)
-     {
-    if(block->start < UINT32_C(0x80000000) || UINT32_C(block->start >= 0xc0000000))
+   {
+      if(block->start < UINT32_C(0x80000000) || UINT32_C(block->start >= 0xc0000000))
       {
-          uint32_t address2 =
-           virtual_to_physical_address(block->start + i*4, 0);
+         uint32_t address2 =
+            virtual_to_physical_address(block->start + i*4, 0);
          if(blocks[address2>>12]->block[(address2&UINT32_C(0xFFF))/4].ops == current_instruction_table.NOTCOMPILED)
-           blocks[address2>>12]->block[(address2&UINT32_C(0xFFF))/4].ops = current_instruction_table.NOTCOMPILED2;
+            blocks[address2>>12]->block[(address2&UINT32_C(0xFFF))/4].ops = current_instruction_table.NOTCOMPILED2;
       }
-    
-    SRC = source + i;
-    src = source[i];
-    check_nop = source[i+1] == 0;
-    dst = block->block + i;
-    dst->addr = block->start + i*4;
-    dst->reg_cache_infos.need_map = 0;
-    dst->local_addr = code_length;
-    recomp_func = NULL;
-    recomp_ops[((src >> 26) & 0x3F)]();
-    if (r4300emu == CORE_DYNAREC) recomp_func();
-    dst = block->block + i;
 
-    /*if ((dst+1)->ops != NOTCOMPILED && !delay_slot_compiled &&
+      SRC = source + i;
+      src = source[i];
+      check_nop = source[i+1] == 0;
+      dst = block->block + i;
+      dst->addr = block->start + i*4;
+      dst->reg_cache_infos.need_map = 0;
+      dst->local_addr = code_length;
+      recomp_func = NULL;
+      recomp_ops[((src >> 26) & 0x3F)]();
+      if (r4300emu == CORE_DYNAREC) recomp_func();
+      dst = block->block + i;
+
+      /*if ((dst+1)->ops != NOTCOMPILED && !delay_slot_compiled &&
         i < length)
-      {
-         if (r4300emu == CORE_DYNAREC) genlink_subblock();
-         finished = 2;
-      }*/
-    if (delay_slot_compiled) 
+        {
+        if (r4300emu == CORE_DYNAREC) genlink_subblock();
+        finished = 2;
+        }*/
+      if (delay_slot_compiled) 
       {
          delay_slot_compiled--;
          free_all_registers();
       }
-    
-    if (i >= length-2+(length>>2)) finished = 2;
-    if (i >= (length-1) && (block->start == UINT32_C(0xa4000000) ||
-                block->start >= UINT32_C(0xc0000000) ||
-                block->end   <  UINT32_C(0x80000000))) finished = 2;
-    if (dst->ops == current_instruction_table.ERET || finished == 1) finished = 2;
-    if (/*i >= length &&*/ 
-        (dst->ops == current_instruction_table.J ||
-         dst->ops == current_instruction_table.J_OUT ||
-         dst->ops == current_instruction_table.JR) &&
-        !(i >= (length-1) && (block->start >= UINT32_C(0xc0000000) ||
+
+      if (i >= length-2+(length>>2)) finished = 2;
+      if (i >= (length-1) && (block->start == UINT32_C(0xa4000000) ||
+               block->start >= UINT32_C(0xc0000000) ||
+               block->end   <  UINT32_C(0x80000000))) finished = 2;
+      if (dst->ops == current_instruction_table.ERET || finished == 1) finished = 2;
+      if (/*i >= length &&*/ 
+            (dst->ops == current_instruction_table.J ||
+             dst->ops == current_instruction_table.J_OUT ||
+             dst->ops == current_instruction_table.JR) &&
+            !(i >= (length-1) && (block->start >= UINT32_C(0xc0000000) ||
                   block->end   <  UINT32_C(0x80000000))))
-      finished = 1;
-     }
+         finished = 1;
+   }
 
    if (i >= length)
-     {
-    dst = block->block + i;
-    dst->addr = block->start + i*4;
-    dst->reg_cache_infos.need_map = 0;
-    dst->local_addr = code_length;
-    RFIN_BLOCK();
-    if (r4300emu == CORE_DYNAREC) recomp_func();
-    i++;
-    if (i < length-1+(length>>2)) // useful when last opcode is a jump
+   {
+      dst = block->block + i;
+      dst->addr = block->start + i*4;
+      dst->reg_cache_infos.need_map = 0;
+      dst->local_addr = code_length;
+      RFIN_BLOCK();
+      if (r4300emu == CORE_DYNAREC) recomp_func();
+      i++;
+      if (i < length-1+(length>>2)) // useful when last opcode is a jump
       {
          dst = block->block + i;
          dst->addr = block->start + i*4;
@@ -2417,17 +2417,17 @@ void recompile_block(const uint32_t *source, struct precomp_block *block, uint32
          if (r4300emu == CORE_DYNAREC) recomp_func();
          i++;
       }
-     }
+   }
    else if (r4300emu == CORE_DYNAREC) genlink_subblock();
 
    if (r4300emu == CORE_DYNAREC)
-     {
-    free_all_registers();
-    passe2(block->block, (func&0xFFF)/4, i, block);
-    block->code_length = code_length;
-    block->max_code_length = max_code_length;
-    free_assembler(&block->jumps_table, &block->jumps_number, &block->riprel_table, &block->riprel_number);
-     }
+   {
+      free_all_registers();
+      passe2(block->block, (func&0xFFF)/4, i, block);
+      block->code_length = code_length;
+      block->max_code_length = max_code_length;
+      free_assembler(&block->jumps_table, &block->jumps_number, &block->riprel_table, &block->riprel_number);
+   }
 #ifdef CORE_DBG
    DebugMessage(M64MSG_INFO, "block recompiled (%" PRIX32 "-%" PRIX32 ")", func, block->start+i*4);
 #endif
@@ -2520,14 +2520,14 @@ void recompile_opcode(void)
    dst->reg_cache_infos.need_map = 0;
    if(!is_jump())
    {
-     recomp_func = NULL;
-     recomp_ops[((src >> 26) & 0x3F)]();
-     if (r4300emu == CORE_DYNAREC) recomp_func();
+      recomp_func = NULL;
+      recomp_ops[((src >> 26) & 0x3F)]();
+      if (r4300emu == CORE_DYNAREC) recomp_func();
    }
    else
    {
-     RNOP();
-     if (r4300emu == CORE_DYNAREC) recomp_func();
+      RNOP();
+      if (r4300emu == CORE_DYNAREC) recomp_func();
    }
    delay_slot_compiled = 2;
 }
@@ -2540,26 +2540,26 @@ static void *malloc_exec(size_t size)
 #if defined(WIN32)
    return VirtualAlloc(NULL, size, MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
 #elif defined(VITA)
-    sceKernelOpenVMDomain();
+   sceKernelOpenVMDomain();
 
-    SceUID block = sceKernelAllocMemBlockForVM("code", size);
-    void* res;
-    sceKernelGetMemBlockBase(block, &res);
+   SceUID block = sceKernelAllocMemBlockForVM("code", size);
+   void* res;
+   sceKernelGetMemBlockBase(block, &res);
 
-    sceKernelCloseVMDomain();
+   sceKernelCloseVMDomain();
 
-    return res;
+   return res;
 #elif defined(__GNUC__)
 
-   #ifndef  MAP_ANONYMOUS
-      #ifdef MAP_ANON
-         #define MAP_ANONYMOUS MAP_ANON
-      #endif
-   #endif
+#ifndef  MAP_ANONYMOUS
+#ifdef MAP_ANON
+#define MAP_ANONYMOUS MAP_ANON
+#endif
+#endif
 
    void *block = mmap(NULL, size, PROT_READ | PROT_WRITE | PROT_EXEC, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
    if (block == MAP_FAILED)
-       { DebugMessage(M64MSG_ERROR, "Memory error: couldn't allocate %zi byte block of aligned RWX memory.", size); return NULL; }
+   { DebugMessage(M64MSG_ERROR, "Memory error: couldn't allocate %zi byte block of aligned RWX memory.", size); return NULL; }
 
    return block;
 #else
@@ -2594,8 +2594,8 @@ static void free_exec(void *ptr, size_t length)
 #if defined(WIN32)
    VirtualFree(ptr, 0, MEM_RELEASE);
 #elif defined(VITA)
-    SceUID block = sceKernelFindMemBlockByAddr(ptr, length);
-    sceKernelFreeMemBlock(block);
+   SceUID block = sceKernelFindMemBlockByAddr(ptr, length);
+   sceKernelFreeMemBlock(block);
 #elif defined(__GNUC__)
    munmap(ptr, length);
 #else
