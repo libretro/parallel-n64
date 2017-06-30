@@ -180,7 +180,8 @@ void add_interrupt_event_count(int type, unsigned int count)
 
    if(g_cp0_regs[CP0_COUNT_REG] > UINT32_C(0x80000000)) SPECIAL_done = 0;
 
-   if (get_event(type)) {
+   if (get_event(type))
+   {
       DebugMessage(M64MSG_WARNING, "two events of type 0x%x in interrupt queue", type);
       /* FIXME: hack-fix for freezing in Perfect Dark
        * http://code.google.com/p/mupen64plus/issues/detail?id=553
@@ -395,7 +396,8 @@ void check_interrupt(void)
 static void wrapped_exception_general(void)
 {
 #ifdef NEW_DYNAREC
-   if (r4300emu == CORE_DYNAREC) {
+   if (r4300emu == CORE_DYNAREC)
+   {
       g_cp0_regs[CP0_EPC_REG] = (pcaddr&~3)-(pcaddr&1)*4;
       pcaddr = 0x80000180;
       g_cp0_regs[CP0_STATUS_REG] |= CP0_STATUS_EXL;
@@ -404,7 +406,9 @@ static void wrapped_exception_general(void)
       else
          g_cp0_regs[CP0_CAUSE_REG] &= ~CP0_CAUSE_BD;
       pending_exception=1;
-   } else {
+   }
+   else
+   {
       exception_general();
    }
 #else
@@ -429,7 +433,6 @@ static void special_int_handler(void)
 {
    if (g_cp0_regs[CP0_COUNT_REG] > UINT32_C(0x10000000))
       return;
-
 
    SPECIAL_done = 1;
    remove_interrupt_event();
