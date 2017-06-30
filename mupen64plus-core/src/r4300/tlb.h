@@ -28,14 +28,14 @@
 typedef struct _tlb
 {
    short mask;
-   int vpn2;
+   unsigned int vpn2;
    char g;
    unsigned char asid;
-   int pfn_even;
+   unsigned int pfn_even;
    char c_even;
    char d_even;
    char v_even;
-   int pfn_odd;
+   unsigned int pfn_odd;
    char c_odd;
    char d_odd;
    char v_odd;

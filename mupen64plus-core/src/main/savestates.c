@@ -249,18 +249,18 @@ int savestates_load_m64p(const unsigned char *data, size_t size)
       tlb_e[i].mask       = GETDATA(curr, short);
       curr += 2;
 
-      tlb_e[i].vpn2       = GETDATA(curr, int);
+      tlb_e[i].vpn2       = GETDATA(curr, unsigned int);
       tlb_e[i].g          = GETDATA(curr, char);
       tlb_e[i].asid       = GETDATA(curr, unsigned char);
       curr += 2;
 
-      tlb_e[i].pfn_even   = GETDATA(curr, int);
+      tlb_e[i].pfn_even   = GETDATA(curr, unsigned int);
       tlb_e[i].c_even     = GETDATA(curr, char);
       tlb_e[i].d_even     = GETDATA(curr, char);
       tlb_e[i].v_even     = GETDATA(curr, char);
       curr++;
 
-      tlb_e[i].pfn_odd    = GETDATA(curr, int);
+      tlb_e[i].pfn_odd    = GETDATA(curr, unsigned int);
       tlb_e[i].c_odd      = GETDATA(curr, char);
       tlb_e[i].d_odd      = GETDATA(curr, char);
       tlb_e[i].v_odd      = GETDATA(curr, char);
@@ -489,16 +489,16 @@ int savestates_save_m64p(unsigned char *data, size_t size)
    {
       PUTDATA(curr, short, tlb_e[i].mask);
       PUTDATA(curr, short, 0);
-      PUTDATA(curr, int, tlb_e[i].vpn2);
+      PUTDATA(curr, unsigned int, tlb_e[i].vpn2);
       PUTDATA(curr, char, tlb_e[i].g);
       PUTDATA(curr, unsigned char, tlb_e[i].asid);
       PUTDATA(curr, short, 0);
-      PUTDATA(curr, int, tlb_e[i].pfn_even);
+      PUTDATA(curr, unsigned int, tlb_e[i].pfn_even);
       PUTDATA(curr, char, tlb_e[i].c_even);
       PUTDATA(curr, char, tlb_e[i].d_even);
       PUTDATA(curr, char, tlb_e[i].v_even);
       PUTDATA(curr, char, 0);
-      PUTDATA(curr, int, tlb_e[i].pfn_odd);
+      PUTDATA(curr, unsigned int, tlb_e[i].pfn_odd);
       PUTDATA(curr, char, tlb_e[i].c_odd);
       PUTDATA(curr, char, tlb_e[i].d_odd);
       PUTDATA(curr, char, tlb_e[i].v_odd);
