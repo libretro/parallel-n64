@@ -80,11 +80,6 @@ struct pool
    size_t index;
 };
 
-static struct node* alloc_node(struct pool* p);
-static void free_node(struct pool* p, struct node* node);
-static void clear_pool(struct pool* p);
-
-
 /* node allocation/deallocation on a given pool */
 static struct node* alloc_node(struct pool* p)
 {
@@ -126,13 +121,11 @@ struct interrupt_queue
 
 static struct interrupt_queue q;
 
-
-static void clear_queue(void)
+static void clear_queue(struct interrupt_queue *_q)
 {
-   q.first = NULL;
-   clear_pool(&q.pool);
+   _q->first = NULL;
+   clear_pool(&_q->pool);
 }
-
 
 static int SPECIAL_done = 0;
 
@@ -336,7 +329,7 @@ int save_eventqueue_infos(char *buf)
 void load_eventqueue_infos(char *buf)
 {
    int len = 0;
-   clear_queue();
+   clear_queue(&q);
    while (*((unsigned int*)&buf[len]) != 0xFFFFFFFF)
    {
       int type = *((unsigned int*)&buf[len]);
@@ -352,7 +345,7 @@ void init_interrupt(void)
 
    g_dev.vi.delay = g_dev.vi.next_vi = 5000;
 
-   clear_queue();
+   clear_queue(&q);
    add_interrupt_event_count(VI_INT, g_dev.vi.next_vi);
    add_interrupt_event_count(SPECIAL_INT, 0);
 }
