@@ -620,15 +620,16 @@ DECLARE_INSTRUCTION(MFC0)
    switch(rfs)
    {
       case CP0_RANDOM_REG:
-        DebugMessage(M64MSG_ERROR, "MFC0 instruction reading un-implemented Random register");
-        stop=1;
-        break;
+         cp0_update_count();
+         g_cp0_regs[CP0_RANDOM_REG] = (g_cp0_regs[CP0_COUNT_REG]/2 % (32 - g_cp0_regs[CP0_WIRED_REG]))
+            + g_cp0_regs[CP0_WIRED_REG];
+         break;
       case CP0_COUNT_REG:
-        cp0_update_count();
-        /* fall through */
-      default:
-        rrt = SE32(g_cp0_regs[rfs]);
+         cp0_update_count();
+         break;
    }
+
+   rrt = SE32(g_cp0_regs[rfs]);
    ADD_TO_PC(1);
 }
 
