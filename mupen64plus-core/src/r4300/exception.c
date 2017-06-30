@@ -107,7 +107,7 @@ void TLB_refill_exception(uint32_t address, int w)
       if (g_dev.r4300.delay_slot)
       {
          skip_jump = PC->addr;
-         next_interupt = 0;
+         next_interrupt = 0;
       }
    }
 }
@@ -141,7 +141,7 @@ void exception_general(void)
       if (g_dev.r4300.delay_slot)
       {
          skip_jump = PC->addr;
-         next_interupt = 0;
+         next_interrupt = 0;
       }
    }
 }

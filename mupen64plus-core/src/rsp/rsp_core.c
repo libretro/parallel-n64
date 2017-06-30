@@ -281,9 +281,9 @@ void do_SP_Task(struct rsp_core* sp)
 
         cp0_update_count();
         if (sp->r4300->mi.regs[MI_INTR_REG] & MI_INTR_SP)
-            add_interupt_event(SP_INT, 1000);
+            add_interrupt_event(SP_INT, 1000);
         if (sp->r4300->mi.regs[MI_INTR_REG] & MI_INTR_DP)
-            add_interupt_event(DP_INT, 1000);
+            add_interrupt_event(DP_INT, 1000);
         sp->r4300->mi.regs[MI_INTR_REG] &= ~(MI_INTR_SP | MI_INTR_DP);
         sp->regs[SP_STATUS_REG] &= ~SP_STATUS_TASKDONE;
 
@@ -300,7 +300,7 @@ void do_SP_Task(struct rsp_core* sp)
 
         cp0_update_count();
         if (sp->r4300->mi.regs[MI_INTR_REG] & MI_INTR_SP)
-            add_interupt_event(SP_INT, 4000/*500*/);
+            add_interrupt_event(SP_INT, 4000/*500*/);
         sp->r4300->mi.regs[MI_INTR_REG] &= ~MI_INTR_SP;
         sp->regs[SP_STATUS_REG] &= ~(SP_STATUS_TASKDONE | SP_STATUS_YIELDED);
     }
@@ -313,7 +313,7 @@ void do_SP_Task(struct rsp_core* sp)
 
         cp0_update_count();
         if (sp->r4300->mi.regs[MI_INTR_REG] & MI_INTR_SP)
-            add_interupt_event(SP_INT, 0/*100*/);
+            add_interrupt_event(SP_INT, 0/*100*/);
         sp->r4300->mi.regs[MI_INTR_REG] &= ~MI_INTR_SP;
         sp->regs[SP_STATUS_REG] &= ~SP_STATUS_TASKDONE;
     }
@@ -327,7 +327,7 @@ void do_SP_Task(struct rsp_core* sp)
         if (sp->regs[SP_STATUS_REG] & 0x00000002)
             fputs("(...Why is SP_STATUS_BROKE set?)\n", stderr);
 
-        add_interupt_event(SP_INT, 0x200);
+        add_interrupt_event(SP_INT, 0x200);
     }
     sp->regs[SP_STATUS_REG] &= ~0x00000003; /* Clear BROKE and HALT. */
 }

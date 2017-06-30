@@ -26,7 +26,7 @@
 #include "memory/memory.h"
 #include "plugin/plugin.h"
 #include "r4300/r4300_core.h"
-#include "r4300/interupt.h"
+#include "r4300/interrupt.h"
 
 #include <string.h>
 
@@ -162,7 +162,7 @@ void vi_vertical_interrupt_event(struct vi_controller* vi)
 
    vi->next_vi += vi->delay;
 
-   add_interupt_event_count(VI_INT, vi->next_vi);
+   add_interrupt_event_count(VI_INT, vi->next_vi);
 
    /* trigger interrupt */
    raise_rcp_interrupt(vi->r4300, MI_INTR_VI);

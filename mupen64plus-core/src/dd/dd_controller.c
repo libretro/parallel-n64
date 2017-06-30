@@ -34,7 +34,7 @@
 #include "memory/memory.h"
 #include "r4300/cp0.h"
 #include "r4300/cp0_private.h"
-#include "r4300/interupt.h"
+#include "r4300/interrupt.h"
 #include "r4300/r4300_core.h"
 #include "si/pif.h"
 #include "si/si_controller.h"
@@ -95,7 +95,7 @@ int read_dd_regs(void* opaque, uint32_t address, uint32_t* value)
         dd->regs[ASIC_CMD_STATUS] &= ~0x04000000;
         cp0_update_count();
         g_cp0_regs[CP0_CAUSE_REG] &= ~0x00000800;
-        check_interupt();
+        check_interrupt();
         dd_update_bm(dd);
     }
 
@@ -184,7 +184,7 @@ int write_dd_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mask)
             {
                 g_cp0_regs[CP0_CAUSE_REG] &= ~0x00000800;
                 cp0_update_count();
-                check_interupt();
+                check_interrupt();
             }
 
             if (value & 0x80000000)
@@ -267,9 +267,9 @@ int write_dd_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mask)
             dd->regs[ASIC_CMD_STATUS] |= 0x02000000;
             cp0_update_count();
             g_cp0_regs[CP0_CAUSE_REG] |= 0x00000800;
-            check_interupt();
+            check_interrupt();
 #if 0
-            add_interupt_event(CART_INT, 1000);
+            add_interrupt_event(CART_INT, 1000);
 #endif
             break;
 
@@ -302,5 +302,5 @@ void dd_pi_test()
 {
     g_cp0_regs[CP0_CAUSE_REG] &= ~0x00000800;
     cp0_update_count();
-    check_interupt();
+    check_interrupt();
 }

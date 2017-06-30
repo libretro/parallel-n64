@@ -30,7 +30,7 @@
 #include "cached_interp.h"
 #include "cp0_private.h"
 #include "cp1_private.h"
-#include "interupt.h"
+#include "interrupt.h"
 #include "main/main.h"
 #include "main/device.h"
 #include "main/rom.h"
@@ -60,7 +60,7 @@ unsigned int llbit;
 #if NEW_DYNAREC != NEW_DYNAREC_ARM
 int stop;
 int64_t reg[32], hi, lo;
-uint32_t next_interupt;
+uint32_t next_interrupt;
 struct precomp_instr *PC;
 #endif
 long long int local_rs;
@@ -195,8 +195,8 @@ void r4300_execute(void)
     stop = 0;
 
     last_addr = 0xa4000040;
-    next_interupt = 624999;
-    init_interupt();
+    next_interrupt = 624999;
+    init_interrupt();
 
     if (r4300emu == CORE_PURE_INTERPRETER)
     {

@@ -285,7 +285,7 @@ void dd_update_bm(void *opaque)
 		dd->regs[ASIC_CMD_STATUS] |= 0x04000000;
 		cp0_update_count();
 		g_cp0_regs[CP0_CAUSE_REG] |= 0x00000800;
-        check_interupt();
+        check_interrupt();
 	}
 }
 

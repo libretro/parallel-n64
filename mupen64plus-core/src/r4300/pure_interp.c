@@ -33,7 +33,7 @@
 #include "cp0_private.h"
 #include "cp1_private.h"
 #include "exception.h"
-#include "interupt.h"
+#include "interrupt.h"
 #include "main/main.h"
 #include "memory/memory.h"
 #include "osal/preproc.h"
@@ -81,7 +81,7 @@ static void InterpretOpcode(void);
          cp0_update_count(); \
       } \
       last_addr = interp_PC.addr; \
-      if (next_interupt <= g_cp0_regs[CP0_COUNT_REG]) gen_interupt(); \
+      if (next_interrupt <= g_cp0_regs[CP0_COUNT_REG]) gen_interrupt(); \
    } \
    static void name##_IDLE(uint32_t op) \
    { \
@@ -91,7 +91,7 @@ static void InterpretOpcode(void);
       if (take_jump) \
       { \
          cp0_update_count(); \
-         skip = next_interupt - g_cp0_regs[CP0_COUNT_REG]; \
+         skip = next_interrupt - g_cp0_regs[CP0_COUNT_REG]; \
          if (skip > 3) g_cp0_regs[CP0_COUNT_REG] += (skip & UINT32_C(0xFFFFFFFC)); \
          else name(op); \
       } \

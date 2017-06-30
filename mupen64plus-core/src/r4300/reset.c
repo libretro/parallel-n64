@@ -25,7 +25,7 @@
 #include <stdint.h>
 
 #include "cached_interp.h"
-#include "interupt.h"
+#include "interrupt.h"
 #include "main/device.h"
 #include "main/main.h"
 #include "r4300.h"
@@ -40,8 +40,8 @@ void reset_hard(void)
 
     r4300_reset_soft();
     last_addr = UINT32_C(0xa4000040);
-    next_interupt = 624999;
-    init_interupt();
+    next_interrupt = 624999;
+    init_interrupt();
     if(r4300emu != CORE_PURE_INTERPRETER)
     {
         free_blocks();
@@ -52,6 +52,6 @@ void reset_hard(void)
 
 void reset_soft(void)
 {
-    add_interupt_event(HW2_INT, 0);  /* Hardware 2 Interrupt immediately */
-    add_interupt_event(NMI_INT, 50000000);  /* Non maskable Interrupt after 1/2 second */
+    add_interrupt_event(HW2_INT, 0);  /* Hardware 2 Interrupt immediately */
+    add_interrupt_event(NMI_INT, 50000000);  /* Non maskable Interrupt after 1/2 second */
 }

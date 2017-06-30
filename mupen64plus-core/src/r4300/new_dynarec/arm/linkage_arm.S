@@ -73,7 +73,7 @@ BSS_SECTION
     .align   12
     GLOBAL_VARIABLE(extra_memory, 33554432)
     GLOBAL_VARIABLE(dynarec_local, 64)
-    GLOBAL_VARIABLE(next_interupt, 4)
+    GLOBAL_VARIABLE(next_interrupt, 4)
     GLOBAL_VARIABLE(cycle_count, 4)
     GLOBAL_VARIABLE(last_count, 4)
     GLOBAL_VARIABLE(pending_exception, 4)
@@ -107,8 +107,8 @@ extra_memory:
     .space    33554432+64+4+4+4+4+4+4+4+4+8+8+4+2+2+4+4+256+8+8+128+128+128+16+4+4+132+4+256+512+4194304
 
     dynarec_local     = extra_memory      + 33554432
-    next_interupt     = dynarec_local     + 64
-    cycle_count       = next_interupt     + 4
+    next_interrupt     = dynarec_local     + 64
+    cycle_count       = next_interrupt     + 4
     last_count        = cycle_count       + 4
     pending_exception = last_count        + 4
     pcaddr            = pending_exception + 4
@@ -538,10 +538,10 @@ GLOBAL_FUNCTION(cc_interrupt):
     tst    r4, r4
     bne    .E4
 .E1:
-    bl     gen_interupt
+    bl     gen_interrupt
     mov    lr, r10
     ldr    r10, [fp, #g_cp0_regs+36-dynarec_local] /* Count */
-    ldr    r0, [fp, #next_interupt-dynarec_local]
+    ldr    r0, [fp, #next_interrupt-dynarec_local]
     ldr    r1, [fp, #pending_exception-dynarec_local]
     ldr    r2, [fp, #stop-dynarec_local]
     str    r0, [fp, #last_count-dynarec_local]
@@ -574,7 +574,7 @@ GLOBAL_FUNCTION(cc_interrupt):
 GLOBAL_FUNCTION(do_interrupt):
     ldr    r0, [fp, #pcaddr-dynarec_local]
     bl     get_addr_ht
-    ldr    r1, [fp, #next_interupt-dynarec_local]
+    ldr    r1, [fp, #next_interrupt-dynarec_local]
     ldr    r10, [fp, #g_cp0_regs+36-dynarec_local] /* Count */
     str    r1, [fp, #last_count-dynarec_local]
     sub    r10, r10, r1
@@ -627,8 +627,8 @@ GLOBAL_FUNCTION(jump_eret):
     add    r10, r0, r10
     str    r1, [fp, #g_cp0_regs+48-dynarec_local] /* Status */
     str    r10, [fp, #g_cp0_regs+36-dynarec_local] /* Count */
-    bl     check_interupt
-    ldr    r1, [fp, #next_interupt-dynarec_local]
+    bl     check_interrupt
+    ldr    r1, [fp, #next_interrupt-dynarec_local]
     ldr    r0, [fp, #g_cp0_regs+56-dynarec_local] /* EPC */
     str    r1, [fp, #last_count-dynarec_local]
     subs   r10, r10, r1
@@ -674,7 +674,7 @@ GLOBAL_FUNCTION(new_dyna_start):
     ldr    r4, [r1]
     add    r0, r0, #0x40
     bl     new_recompile_block
-    ldr    r0, [fp, #next_interupt-dynarec_local]
+    ldr    r0, [fp, #next_interrupt-dynarec_local]
     ldr    r10, [fp, #g_cp0_regs+36-dynarec_local] /* Count */
     str    r0, [fp, #last_count-dynarec_local]
     sub    r10, r10, r0
@@ -992,7 +992,7 @@ LOCAL_FUNCTION(tlb_exception):
     bl     wb_base_reg
     mov    r0, r3
     bl     TLB_refill_exception_new
-    ldr    r1, [fp, #next_interupt-dynarec_local]
+    ldr    r1, [fp, #next_interrupt-dynarec_local]
     ldr    r10, [fp, #g_cp0_regs+36-dynarec_local] /* Count */
     str    r1, [fp, #last_count-dynarec_local]
     sub    r10, r10, r1

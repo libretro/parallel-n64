@@ -336,7 +336,7 @@
     <ClCompile Include="..\..\..\mupen64plus-core\src\r4300\exception.c">
       <Filter>Source Files\mupen64plus-core\src\r4300</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\mupen64plus-core\src\r4300\interupt.c">
+    <ClCompile Include="..\..\..\mupen64plus-core\src\r4300\interrupt.c">
       <Filter>Source Files\mupen64plus-core\src\r4300</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\mupen64plus-core\src\r4300\pure_interp.c">

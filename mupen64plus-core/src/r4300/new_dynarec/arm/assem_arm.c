@@ -352,7 +352,7 @@ void *dynamic_linker(void * src, u_int vaddr)
   head=jump_dirty[vpage];
   while(head!=NULL) {
     if(head->vaddr==vaddr&&head->reg_sv_flags==0) {
-      //DebugMessage(M64MSG_VERBOSE, "TRACE: count=%d next=%d (get_addr match dirty %x: %x)",g_cp0_regs[CP0_COUNT_REG],next_interupt,vaddr,(int)head->addr);
+      //DebugMessage(M64MSG_VERBOSE, "TRACE: count=%d next=%d (get_addr match dirty %x: %x)",g_cp0_regs[CP0_COUNT_REG],next_interrupt,vaddr,(int)head->addr);
       // Don't restore blocks which are about to expire from the cache
       if((((u_int)head->addr-(u_int)out)<<(32-TARGET_SIZE_2))>0x60000000+(MAX_OUTPUT_BLOCK_SIZE<<(32-TARGET_SIZE_2))) {
         if(verify_dirty(head->addr)) {
@@ -436,7 +436,7 @@ void *dynamic_linker_ds(void * src, u_int vaddr)
   head=jump_dirty[vpage];
   while(head!=NULL) {
     if(head->vaddr==vaddr&&head->reg_sv_flags==0) {
-      //DebugMessage(M64MSG_VERBOSE, "TRACE: count=%d next=%d (get_addr match dirty %x: %x)",g_cp0_regs[CP0_COUNT_REG],next_interupt,vaddr,(int)head->addr);
+      //DebugMessage(M64MSG_VERBOSE, "TRACE: count=%d next=%d (get_addr match dirty %x: %x)",g_cp0_regs[CP0_COUNT_REG],next_interrupt,vaddr,(int)head->addr);
       // Don't restore blocks which are about to expire from the cache
       if((((u_int)head->addr-(u_int)out)<<(32-TARGET_SIZE_2))>0x60000000+(MAX_OUTPUT_BLOCK_SIZE<<(32-TARGET_SIZE_2))) {
         if(verify_dirty(head->addr)) {
@@ -2858,7 +2858,7 @@ static void emit_extjump2(int addr, int target, int linker)
 #ifdef DEBUG_CYCLE_COUNT
   emit_readword((int)&last_count,ECX);
   emit_add(HOST_CCREG,ECX,HOST_CCREG);
-  emit_readword((int)&next_interupt,ECX);
+  emit_readword((int)&next_interrupt,ECX);
   emit_writeword(HOST_CCREG,(int)&g_cp0_regs[CP0_COUNT_REG]);
   emit_sub(HOST_CCREG,ECX,HOST_CCREG);
   emit_writeword(ECX,(int)&last_count);
@@ -2938,7 +2938,7 @@ static void do_readstub(int n)
   // We really shouldn't need to update the count here,
   // but not doing so causes random crashes...
   emit_readword((int)&g_cp0_regs[CP0_COUNT_REG],HOST_TEMPREG);
-  emit_readword((int)&next_interupt,2);
+  emit_readword((int)&next_interrupt,2);
   emit_addimm(HOST_TEMPREG,-2*stubs[n][6]-2,HOST_TEMPREG);
   emit_writeword(2,(int)&last_count);
   emit_sub(HOST_TEMPREG,2,cc<0?HOST_TEMPREG:cc);
@@ -3019,7 +3019,7 @@ static void inline_readstub(int type, int i, u_int addr, signed char regmap[], i
   // We really shouldn't need to update the count here,
   // but not doing so causes random crashes...
   emit_readword((int)&g_cp0_regs[CP0_COUNT_REG],HOST_TEMPREG);
-  emit_readword((int)&next_interupt,2);
+  emit_readword((int)&next_interrupt,2);
   emit_addimm(HOST_TEMPREG,-CLOCK_DIVIDER*(adj+1),HOST_TEMPREG);
   emit_writeword(2,(int)&last_count);
   emit_sub(HOST_TEMPREG,2,cc<0?HOST_TEMPREG:cc);
@@ -3116,7 +3116,7 @@ static void do_writestub(int n)
   emit_call((int)&indirect_jump_indexed);
   //emit_callreg(rs);
   emit_readword((int)&g_cp0_regs[CP0_COUNT_REG],HOST_TEMPREG);
-  emit_readword((int)&next_interupt,2);
+  emit_readword((int)&next_interrupt,2);
   emit_addimm(HOST_TEMPREG,-2*stubs[n][6]-2,HOST_TEMPREG);
   emit_writeword(2,(int)&last_count);
   emit_sub(HOST_TEMPREG,2,cc<0?HOST_TEMPREG:cc);
@@ -3191,7 +3191,7 @@ static void inline_writestub(int type, int i, u_int addr, signed char regmap[], 
   //emit_call(((u_int *)ftable)[addr>>16]);
   emit_call((int)&indirect_jump);
   emit_readword((int)&g_cp0_regs[CP0_COUNT_REG],HOST_TEMPREG);
-  emit_readword((int)&next_interupt,2);
+  emit_readword((int)&next_interrupt,2);
   emit_addimm(HOST_TEMPREG,-CLOCK_DIVIDER*(adj+1),HOST_TEMPREG);
   emit_writeword(2,(int)&last_count);
   emit_sub(HOST_TEMPREG,2,cc<0?HOST_TEMPREG:cc);
@@ -3701,7 +3701,7 @@ static void cop0_assemble(int i,struct regstat *i_regs)
     emit_call((int)cached_interpreter_table.MTC0);
     if(copr==9||copr==11||copr==12) {
       emit_readword((int)&g_cp0_regs[CP0_COUNT_REG],HOST_CCREG);
-      emit_readword((int)&next_interupt,ECX);
+      emit_readword((int)&next_interrupt,ECX);
       emit_addimm(HOST_CCREG,-CLOCK_DIVIDER*ccadj[i],HOST_CCREG);
       emit_sub(HOST_CCREG,ECX,HOST_CCREG);
       emit_writeword(ECX,(int)&last_count);

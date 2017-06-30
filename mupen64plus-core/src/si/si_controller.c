@@ -54,7 +54,7 @@ static void dma_si_write(struct si_controller* si)
    cp0_update_count();
 
    if (g_delay_si)
-      add_interupt_event(SI_INT, /*0x100*/0x900);
+      add_interrupt_event(SI_INT, /*0x100*/0x900);
    else
    {
       si->regs[SI_STATUS_REG] |= SI_STATUS_INTERRUPT;
@@ -79,7 +79,7 @@ static void dma_si_read(struct si_controller* si)
    cp0_update_count();
 
    if (g_delay_si)
-      add_interupt_event(SI_INT, /*0x100*/0x900);
+      add_interrupt_event(SI_INT, /*0x100*/0x900);
    else
    {
       si->regs[SI_STATUS_REG] |= SI_STATUS_INTERRUPT;

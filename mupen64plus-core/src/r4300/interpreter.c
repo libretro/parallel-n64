@@ -667,9 +667,9 @@ DECLARE_INSTRUCTION(MTC0)
       break;
     case CP0_COUNT_REG:
       cp0_update_count();
-      interupt_unsafe_state = 1;
-      if (next_interupt <= g_cp0_regs[CP0_COUNT_REG]) gen_interupt();
-      interupt_unsafe_state = 0;
+      interrupt_unsafe_state = 1;
+      if (next_interrupt <= g_cp0_regs[CP0_COUNT_REG]) gen_interrupt();
+      interrupt_unsafe_state = 0;
       translate_event_queue(rrt32);
       g_cp0_regs[CP0_COUNT_REG] = rrt32;
       break;
@@ -679,7 +679,7 @@ DECLARE_INSTRUCTION(MTC0)
     case CP0_COMPARE_REG:
       cp0_update_count();
       remove_event(COMPARE_INT);
-      add_interupt_event_count(COMPARE_INT, rrt32);
+      add_interrupt_event_count(COMPARE_INT, rrt32);
       g_cp0_regs[CP0_COMPARE_REG] = rrt32;
       g_cp0_regs[CP0_CAUSE_REG] &= ~CP0_CAUSE_IP7;
       break;
@@ -692,10 +692,10 @@ DECLARE_INSTRUCTION(MTC0)
       g_cp0_regs[CP0_STATUS_REG] = rrt32;
       cp0_update_count();
       ADD_TO_PC(1);
-      check_interupt();
-      interupt_unsafe_state = 1;
-      if (next_interupt <= g_cp0_regs[CP0_COUNT_REG]) gen_interupt();
-      interupt_unsafe_state = 0;
+      check_interrupt();
+      interrupt_unsafe_state = 1;
+      if (next_interrupt <= g_cp0_regs[CP0_COUNT_REG]) gen_interrupt();
+      interrupt_unsafe_state = 0;
       ADD_TO_PC(-1);
       break;
     case CP0_CAUSE_REG:
@@ -2007,8 +2007,8 @@ DECLARE_INSTRUCTION(ERET)
      generic_jump_to(g_cp0_regs[CP0_EPC_REG]);
    }
    llbit = 0;
-   check_interupt();
+   check_interrupt();
    last_addr = PCADDR;
-   if (next_interupt <= g_cp0_regs[CP0_COUNT_REG]) gen_interupt();
+   if (next_interrupt <= g_cp0_regs[CP0_COUNT_REG]) gen_interrupt();
 }
 

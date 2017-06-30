@@ -101,7 +101,7 @@ uint32_t* r4300_last_addr(void)
 
 unsigned int* r4300_next_interrupt(void)
 {
-    return &next_interupt;
+    return &next_interrupt;
 }
 
 unsigned int get_r4300_emumode(void)

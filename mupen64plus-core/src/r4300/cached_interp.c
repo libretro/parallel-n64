@@ -33,7 +33,7 @@
 #include "cp0_private.h"
 #include "cp1_private.h"
 #include "exception.h"
-#include "interupt.h"
+#include "interrupt.h"
 #include "macros.h"
 #include "main/main.h"
 #include "memory/memory.h"
@@ -96,7 +96,7 @@ uint32_t jump_to_address;
          cp0_update_count(); \
       } \
       last_addr = PC->addr; \
-      if (next_interupt <= g_cp0_regs[CP0_COUNT_REG]) gen_interupt(); \
+      if (next_interrupt <= g_cp0_regs[CP0_COUNT_REG]) gen_interrupt(); \
    } \
    static void name##_OUT(void) \
    { \
@@ -127,7 +127,7 @@ uint32_t jump_to_address;
          cp0_update_count(); \
       } \
       last_addr = PC->addr; \
-      if (next_interupt <= g_cp0_regs[CP0_COUNT_REG]) gen_interupt(); \
+      if (next_interrupt <= g_cp0_regs[CP0_COUNT_REG]) gen_interrupt(); \
    } \
    static void name##_IDLE(void) \
    { \
@@ -137,7 +137,7 @@ uint32_t jump_to_address;
       if (take_jump) \
       { \
          cp0_update_count(); \
-         skip = next_interupt - g_cp0_regs[CP0_COUNT_REG]; \
+         skip = next_interrupt - g_cp0_regs[CP0_COUNT_REG]; \
          if (skip > 3) g_cp0_regs[CP0_COUNT_REG] += (skip & UINT32_C(0xFFFFFFFC)); \
          else name(); \
       } \

@@ -94,8 +94,8 @@ cextern branch_target
 cextern memory_map
 cextern pending_exception
 cextern restore_candidate
-cextern gen_interupt
-cextern next_interupt
+cextern gen_interrupt
+cextern next_interrupt
 cextern stop
 cextern last_count
 cextern pcaddr
@@ -112,7 +112,7 @@ cextern cpu_word
 cextern cpu_dword
 cextern invalid_code
 cextern readmem_dword
-cextern check_interupt
+cextern check_interrupt
 cextern get_addr_32
 cextern write_mi
 cextern write_mib
@@ -466,9 +466,9 @@ cc_interrupt:
     cmp     DWORD [restore_candidate+esi],    0
     jne     _E4
 _E1:
-    call    gen_interupt
+    call    gen_interrupt
     mov     esi,    [g_cp0_regs+36]
-    mov     eax,    [next_interupt]
+    mov     eax,    [next_interrupt]
     mov     ebx,    [pending_exception]
     mov     ecx,    [stop]
     add     esp,    28
@@ -522,7 +522,7 @@ do_interrupt:
     call    get_addr_ht
     add     esp,    16
     mov     esi,    [g_cp0_regs+36]
-    mov     ebx,    [next_interupt]
+    mov     ebx,    [next_interrupt]
     mov     [last_count],    ebx
     sub     esi,    ebx
     add     esi,    2
@@ -565,8 +565,8 @@ jump_eret:
     and     ebx,    0FFFFFFFDh
     mov     [g_cp0_regs+36],    esi        ;Count
     mov     [g_cp0_regs+48],    ebx        ;Status
-    call    check_interupt
-    mov     eax,    [next_interupt]
+    call    check_interrupt
+    mov     eax,    [next_interrupt]
     mov     esi,    [g_cp0_regs+36]
     mov     [last_count],    eax
     sub     esi,    eax
@@ -618,7 +618,7 @@ new_dyna_start:
     add     esp,    -8    ;align stack
     push    0a4000040h
     call    new_recompile_block
-    mov     edi,    DWORD [next_interupt]
+    mov     edi,    DWORD [next_interrupt]
     mov     esi,    DWORD [g_cp0_regs+36]
     mov     DWORD [last_count],    edi
     sub     esi,    edi
@@ -884,7 +884,7 @@ tlb_exception:
     push    ebp
     call    TLB_refill_exception_new
     add     esp,    16
-    mov     edi,    DWORD [next_interupt]
+    mov     edi,    DWORD [next_interrupt]
     mov     esi,    DWORD [g_cp0_regs+36]    ;Count
     mov     DWORD [last_count],    edi
     sub     esi,    edi
