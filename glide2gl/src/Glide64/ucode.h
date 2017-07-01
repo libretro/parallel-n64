@@ -52,6 +52,7 @@
 #define ucode_CBFD 8          // ** F3DCBFD **
 #define ucode_zSort 9         // ** ZSORT   **
 #define ucode_F3DTEXA 10      /* F3DTEXA    */
+#define ucode_F3DEX2ACCLAIM 11/* F3DEX2ACCLAIM */
 #define ucode_Turbo3d 21      /* TURBO3D    */
 
 #include "../../Graphics/RDP/gDP_state.h"
@@ -67,6 +68,7 @@ void projection_mul (float m[4][4]);
 
 // ** RDP graphics functions **
 
+static void F3DEX2ACCLAIM_MoveMem(uint32_t w0, uint32_t w1);
 static void f3dttexa_loadtex(uint32_t w0, uint32_t w1);
 static void f3dttexa_settilesize(uint32_t w0, uint32_t w1);
 
@@ -218,7 +220,7 @@ typedef void (*rdp_instr)(uint32_t w1, uint32_t w2);
 
 // RDP graphic instructions pointer table
 
-static rdp_instr gfx_instruction[11][256] =
+static rdp_instr gfx_instruction[12][256] =
 {
    {
       // uCode 0 - RSP SW 2.0X
@@ -1042,6 +1044,81 @@ static rdp_instr gfx_instruction[11][256] =
       rdp_loadtile, rdp_settile, rdp_fillrect, gdp_set_fill_color,
       gdp_set_fog_color, gdp_set_blend_color, rdp_setprimcolor, gdp_set_env_color,
       rdp_setcombine, rdp_settextureimage, rdp_setdepthimage, rdp_setcolorimage
+   },
+   // uCode 12 - F3DEX2ACCLAIM
+   // games: Turok2 & 3, Armories and South park
+   {
+      // 00-3f
+      gdp_no_op,                                 uc2_vertex,                             uc2_modifyvtx,                  uc2_culldl,
+      uc1_branch_z,                   uc2_tri1,                               uc2_quad,                           uc2_quad,
+      uc2_line3d,                             uc6_bg_1cyc,                    uc6_bg_copy,                    uc6_obj_rendermode/*gdp_invalid*/,
+      gdp_invalid,                                  gdp_invalid,                                  gdp_invalid,                                  gdp_invalid,
+      uc0_tri4,                               uc0_tri4,                               uc0_tri4,                               uc0_tri4,
+      uc0_tri4,                               uc0_tri4,                               uc0_tri4,                               uc0_tri4,
+      uc0_tri4,                               uc0_tri4,                               uc0_tri4,                               uc0_tri4,
+      uc0_tri4,                               uc0_tri4,                               uc0_tri4,                               uc0_tri4,
+      gdp_invalid,                                  gdp_invalid,                                  gdp_invalid,                                  gdp_invalid,
+      gdp_invalid,                                  gdp_invalid,                                  gdp_invalid,                                  gdp_invalid,
+      gdp_invalid,                                  gdp_invalid,                                  gdp_invalid,                                  gdp_invalid,
+      gdp_invalid,                                  gdp_invalid,                                  gdp_invalid,                                  gdp_invalid,
+      gdp_invalid,                                  gdp_invalid,                                  gdp_invalid,                                  gdp_invalid,
+      gdp_invalid,                                  gdp_invalid,                                  gdp_invalid,                                  gdp_invalid,
+      gdp_invalid,                                  gdp_invalid,                                  gdp_invalid,                                  gdp_invalid,
+      gdp_invalid,                                  gdp_invalid,                                  gdp_invalid,                                  gdp_invalid,
+
+      // 40-7f: unused
+      gdp_invalid,                                  gdp_invalid,                                  gdp_invalid,                                  gdp_invalid,
+      gdp_invalid,                                  gdp_invalid,                                  gdp_invalid,                                  gdp_invalid,
+      gdp_invalid,                                  gdp_invalid,                                  gdp_invalid,                                  gdp_invalid,
+      gdp_invalid,                                  gdp_invalid,                                  gdp_invalid,                                  gdp_invalid,
+      gdp_invalid,                                  gdp_invalid,                                  gdp_invalid,                                  gdp_invalid,
+      gdp_invalid,                                  gdp_invalid,                                  gdp_invalid,                                  gdp_invalid,
+      gdp_invalid,                                  gdp_invalid,                                  gdp_invalid,                                  gdp_invalid,
+      gdp_invalid,                                  gdp_invalid,                                  gdp_invalid,                                  gdp_invalid,
+      gdp_invalid,                                  gdp_invalid,                                  gdp_invalid,                                  gdp_invalid,
+      gdp_invalid,                                  gdp_invalid,                                  gdp_invalid,                                  gdp_invalid,
+      gdp_invalid,                                  gdp_invalid,                                  gdp_invalid,                                  gdp_invalid,
+      gdp_invalid,                                  gdp_invalid,                                  gdp_invalid,                                  gdp_invalid,
+      gdp_invalid,                                  gdp_invalid,                                  gdp_invalid,                                  gdp_invalid,
+      gdp_invalid,                                  gdp_invalid,                                  gdp_invalid,                                  gdp_invalid,
+      gdp_invalid,                                  gdp_invalid,                                  gdp_invalid,                                  gdp_invalid,
+      gdp_invalid,                                  gdp_invalid,                                  gdp_invalid,                                  gdp_invalid,
+
+      // 80-bf: unused
+      gdp_invalid,                                  gdp_invalid,                                  gdp_invalid,                                  gdp_invalid,
+      gdp_invalid,                                  gdp_invalid,                                  gdp_invalid,                                  gdp_invalid,
+      gdp_invalid,                                  gdp_invalid,                                  gdp_invalid,                                  gdp_invalid,
+      gdp_invalid,                                  gdp_invalid,                                  gdp_invalid,                                  gdp_invalid,
+      gdp_invalid,                                  gdp_invalid,                                  gdp_invalid,                                  gdp_invalid,
+      gdp_invalid,                                  gdp_invalid,                                  gdp_invalid,                                  gdp_invalid,
+      gdp_invalid,                                  gdp_invalid,                                  gdp_invalid,                                  gdp_invalid,
+      gdp_invalid,                                  gdp_invalid,                                  gdp_invalid,                                  gdp_invalid,
+      gdp_invalid,                                  gdp_invalid,                                  gdp_invalid,                                  gdp_invalid,
+      gdp_invalid,                                  gdp_invalid,                                  gdp_invalid,                                  gdp_invalid,
+      gdp_invalid,                                  gdp_invalid,                                  gdp_invalid,                                  gdp_invalid,
+      gdp_invalid,                                  gdp_invalid,                                  gdp_invalid,                                  gdp_invalid,
+      gdp_invalid,                                  gdp_invalid,                                  gdp_invalid,                                  gdp_invalid,
+      gdp_invalid,                                  gdp_invalid,                                  gdp_invalid,                                  gdp_invalid,
+      gdp_invalid,                                  gdp_invalid,                                  gdp_invalid,                                  gdp_invalid,
+      gdp_invalid,                                  gdp_invalid,                                  gdp_invalid,                                  gdp_invalid,
+
+      // c0-ff: RDP commands mixed with uc2 commands
+      gdp_no_op,               gdp_invalid,                  gdp_invalid,                  gdp_invalid,    
+      gdp_invalid,                  gdp_invalid,                  gdp_invalid,                  gdp_invalid,    
+      rdp_trifill,            rdp_trifillz,           rdp_tritxtr,            rdp_tritxtrz,
+      rdp_trishade,           rdp_trishadez,          rdp_trishadetxtr,       rdp_trishadetxtrz,
+      gdp_invalid,                  gdp_invalid,                  gdp_invalid,                  uc2_special3,
+      uc2_special2,           uc2_dlist_cnt,          uc2_dma_io,             uc0_texture,
+      uc2_pop_matrix,         uc2_geom_mode,          uc2_matrix,             uc2_moveword,
+      F3DEX2ACCLAIM_MoveMem,  uc2_load_ucode,         uc0_displaylist,        F3D_EndDL,
+      gdp_no_op,                 uc1_rdphalf_1,          uc0_setothermode_l,     uc0_setothermode_h,
+      rdp_texrect,            rdp_texrect,            gdp_load_sync,           gdp_pipe_sync,
+      gdp_tile_sync,           gdp_full_sync,           gdp_set_key_gb,         gdp_set_key_r,
+      gdp_set_convert,         rdp_setscissor,         gdp_set_prim_depth,       rdp_setothermode,
+      rdp_loadtlut,           uc2_rdphalf_2,          rdp_settilesize,        rdp_loadblock,
+      rdp_loadtile,           rdp_settile,            rdp_fillrect,           gdp_set_fill_color,
+      gdp_set_fog_color,        gdp_set_blend_color,      rdp_setprimcolor,       gdp_set_env_color,
+      rdp_setcombine,         rdp_settextureimage,    rdp_setdepthimage,      rdp_setcolorimage
    },
 };
 

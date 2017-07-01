@@ -187,6 +187,7 @@ uint32_t uc_crc;
 #include "ucode_f3dtexa.h"
 #include "ucode09rdp.h"
 #include "turbo3D.h"
+#include "ucode_f3dex2acclaim.h"
 
 static int reset = 0;
 int old_ucode = -1;

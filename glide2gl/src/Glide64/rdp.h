@@ -107,6 +107,8 @@ extern uint32_t gfx_plugin_accuracy;
 #define CMB_MULT_OWN_ALPHA  0x00000400
 #define CMB_COL_SUB_OWN  0x00000800
 
+#define G_ACCLAIM_LIGHTING		0x00000080
+
 #if defined _MSC_VER
 #define DECLAREALIGN16VAR(var) __declspec(align(16)) float (var)
 #else

@@ -528,6 +528,12 @@ void glide64gSPVertex(uint32_t v, uint32_t n, uint32_t v0)
          }
 
       }
+#if 0
+      else if (gSP.geometryMode & G_ACCLAIM_LIGHTING)
+      {
+         glide64gSPPointLightVertex_Acclaim(vtx);
+      }
+#endif
       else
       {
          vtx->r = color[3];
