@@ -76,59 +76,60 @@ void poweron_dd(struct dd_controller* dd)
 
 int read_dd_regs(void* opaque, uint32_t address, uint32_t* value)
 {
-    struct dd_controller* dd = (struct dd_controller*)opaque;
-    uint32_t reg = dd_reg(address);
+   int Cur_Sector;
+   struct dd_controller* dd = (struct dd_controller*)opaque;
+   uint32_t reg = dd_reg(address);
 
-    uint32_t offset = address & 0x00000fff;
+   uint32_t offset = address & 0x00000fff;
 
-    *value = 0x00000000;
+   *value = 0x00000000;
 
-    if (reg < ASIC_REGS_COUNT)
-        *value = dd->regs[reg];
+   if (reg < ASIC_REGS_COUNT)
+      *value = dd->regs[reg];
 
-    int Cur_Sector = dd->regs[ASIC_CUR_SECTOR] >> 16;
-    if (Cur_Sector >= 0x5A)
-        Cur_Sector -= 0x5A;
+   Cur_Sector = dd->regs[ASIC_CUR_SECTOR] >> 16;
+   if (Cur_Sector >= 0x5A)
+      Cur_Sector -= 0x5A;
 
-    if ((reg == ASIC_CMD_STATUS) && (dd->regs[ASIC_CMD_STATUS] & 0x04000000) && (85 < Cur_Sector))
-    {
-        dd->regs[ASIC_CMD_STATUS] &= ~0x04000000;
-        cp0_update_count();
-        g_cp0_regs[CP0_CAUSE_REG] &= ~0x00000800;
-        check_interrupt();
-        dd_update_bm(dd);
-    }
+   if ((reg == ASIC_CMD_STATUS) && (dd->regs[ASIC_CMD_STATUS] & 0x04000000) && (85 < Cur_Sector))
+   {
+      dd->regs[ASIC_CMD_STATUS] &= ~0x04000000;
+      cp0_update_count();
+      g_cp0_regs[CP0_CAUSE_REG] &= ~0x00000800;
+      check_interrupt();
+      dd_update_bm(dd);
+   }
 
 #if 0
-    /* BUFFERS */
-    switch (address & 0x00000c00)
-    {
-        case 0x000:
-            /* C2 BUFFER */
-            *value = dd->c2_buf[offset/4];
-            break;
-        case 0x400:
-            /* SECTOR BUFFER */
-            offset -= 0x400;
-            *value = dd->sec_buf[offset/4];
-            break;
-    }
+   /* BUFFERS */
+   switch (address & 0x00000c00)
+   {
+      case 0x000:
+         /* C2 BUFFER */
+         *value = dd->c2_buf[offset/4];
+         break;
+      case 0x400:
+         /* SECTOR BUFFER */
+         offset -= 0x400;
+         *value = dd->sec_buf[offset/4];
+         break;
+   }
 
-    if ((address & 0x00000f00) == 0x500)
-    {
-        /* REGS */
-        if (reg < ASIC_REGS_COUNT)
-            *value = dd->regs[reg];
+   if ((address & 0x00000f00) == 0x500)
+   {
+      /* REGS */
+      if (reg < ASIC_REGS_COUNT)
+         *value = dd->regs[reg];
 
-        if (((address & 0x00000FFF) >= 0x580) || ((address & 0x00000FFF) < 0x5C0))
-        {
-            /* MSEQ */
-            offset -= 0x580;
-            *value = dd->mseq_buf[offset/4];
-        }
-    }
+      if (((address & 0x00000FFF) >= 0x580) || ((address & 0x00000FFF) < 0x5C0))
+      {
+         /* MSEQ */
+         offset -= 0x580;
+         *value = dd->mseq_buf[offset/4];
+      }
+   }
 #endif
-    return 0;
+   return 0;
 }
 
 int write_dd_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mask)
