@@ -484,7 +484,7 @@ ifeq ($(platform), qnx)
    CFLAGS   += -Wp,-MMD
    CXXFLAGS += -Wp,-MMD
 else
-   CFLAGS   += -std=c89 -MMD
+   CFLAGS   += -MMD
 ifeq ($(GLIDEN64),1)
    CFLAGS   += -DGLIDEN64
    CXXFLAGS += -DGLIDEN64
@@ -533,7 +533,7 @@ ifneq (,$(findstring msvc,$(platform)))
 	LINKOUT = -out:
 	LD = link.exe
 else
-	LD = $(CC)
+	LD = $(CXX)
 endif
 
 ifeq ($(platform), theos_ios)
