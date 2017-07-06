@@ -273,6 +273,7 @@ void ZSort_MTXRNSP(uint32_t a, uint32_t b)
 
 void ZSort_MTXCAT(uint32_t _w0, uint32_t _w1)
 {
+   float m[4][4];
    M44 *s = NULL;
    M44 *t = NULL;
    uint32_t S = _SHIFTR(_w0, 0, 4);
@@ -304,7 +305,6 @@ void ZSort_MTXCAT(uint32_t _w0, uint32_t _w1)
          break;
    }
    assert(s != NULL && t != NULL);
-   float m[4][4];
    MultMatrix(*s, *t, m);
 
    switch (D) {
