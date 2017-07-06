@@ -61,6 +61,7 @@ void Turbo3D_LoadGlobState(uint32_t pgstate)
 static
 void Turbo3D_LoadObject(uint32_t pstate, uint32_t pvtx, uint32_t ptri)
 {
+   uint32_t w0, w1;
 	uint32_t addr           = RSP_SegmentToPhysical(pstate);
 	struct T3DState *ostate = (struct T3DState*)&gfx_info.RDRAM[addr];
 	const uint32_t tile = (ostate->textureState)&7;
@@ -70,8 +71,8 @@ void Turbo3D_LoadObject(uint32_t pstate, uint32_t pvtx, uint32_t ptri)
 	gSP.texture.scales  = 1.0f;
 	gSP.texture.scalet  = 1.0f;
 
-	const uint32_t w0   = ostate->othermode0;
-	const uint32_t w1   = ostate->othermode1;
+	w0   = ostate->othermode0;
+	w1   = ostate->othermode1;
 	gln64gDPSetOtherMode( _SHIFTR( w0, 0, 24 ),	// mode0
 					 w1 );					// mode1
 
