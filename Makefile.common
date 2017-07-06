@@ -43,7 +43,7 @@ endif
 INCFLAGS += \
 	-I$(CORE_DIR)/src \
 	-I$(CORE_DIR)/src/api \
-	-I$(CORE_DIR)/include \
+	-I$(ROOT_DIR)/include \
 	-I$(AUDIO_LIBRETRO_DIR) \
 	-I$(LIBRETRO_COMM_DIR)/include \
 	-I$(LIBRETRO_DIR)
