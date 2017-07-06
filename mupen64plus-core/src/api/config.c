@@ -35,8 +35,6 @@
 
 #include "main/util.h"
 
-#include "osal/preproc.h"
-
 /* Cxd4 RSP */
 #include "../../../mupen64plus-rsp-cxd4/config.h"
 
@@ -110,7 +108,7 @@ static config_section **find_section_link(config_list *list, const char *ParamNa
     config_section **curr_sec_link;
     for (curr_sec_link = list; *curr_sec_link != NULL; curr_sec_link = &(*curr_sec_link)->next)
     {
-        if (osal_insensitive_strcmp(ParamName, (*curr_sec_link)->name) == 0)
+        if (strcasecmp(ParamName, (*curr_sec_link)->name) == 0)
             break;
     }
 
@@ -128,7 +126,7 @@ static config_section **find_alpha_section_link(config_list *list, const char *P
     config_section **curr_sec_link;
     for (curr_sec_link = list; *curr_sec_link != NULL; curr_sec_link = &(*curr_sec_link)->next)
     {
-        if (osal_insensitive_strcmp((*curr_sec_link)->name, ParamName) >= 0)
+        if (strcasecmp((*curr_sec_link)->name, ParamName) >= 0)
             break;
     }
 
@@ -182,7 +180,7 @@ static config_var *find_section_var(config_section *section, const char *ParamNa
     config_var *curr_var;
     for (curr_var = section->first_var; curr_var != NULL; curr_var = curr_var->next)
     {
-        if (osal_insensitive_strcmp(ParamName, curr_var->name) == 0)
+        if (strcasecmp(ParamName, curr_var->name) == 0)
             return curr_var;
     }
 
@@ -440,7 +438,7 @@ EXPORT m64p_error CALL ConfigOpenSection(const char *SectionName, m64p_handle *C
 
     /* walk through the section list, looking for a case-insensitive name match */
     curr_section = find_alpha_section_link(&l_ConfigListActive, SectionName);
-    if (*curr_section != NULL && osal_insensitive_strcmp(SectionName, (*curr_section)->name) == 0)
+    if (*curr_section != NULL && strcasecmp(SectionName, (*curr_section)->name) == 0)
     {
         *ConfigSectionHandle = *curr_section;
         return M64ERR_SUCCESS;
@@ -1284,7 +1282,7 @@ EXPORT int CALL ConfigGetParamBool(m64p_handle ConfigSectionHandle, const char *
       case M64TYPE_BOOL:
          return var->val.integer;
       case M64TYPE_STRING:
-         return (osal_insensitive_strcmp(var->val.string, "true") == 0);
+         return (strcasecmp(var->val.string, "true") == 0);
       default:
          DebugMessage(M64MSG_ERROR, "ConfigGetParamBool(): invalid internal parameter type for '%s'", ParamName);
          return 0;

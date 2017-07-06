@@ -1,4 +1,4 @@
-/* Copyright  (C) 2010-2015 The RetroArch team
+/* Copyright  (C) 2010-2017 The RetroArch team
  *
  * ---------------------------------------------------------------------------------------
  * The following license statement only applies to this file (compat_snprintf.c).
@@ -21,6 +21,7 @@
  */
 
 /* THIS FILE HAS NOT BEEN VALIDATED ON PLATFORMS BESIDES MSVC */
+#ifdef _MSC_VER
 
 #include <retro_common.h>
 
@@ -34,7 +35,11 @@ int c99_vsnprintf_retro__(char *outBuf, size_t size, const char *format, va_list
    int count = -1;
 
    if (size != 0)
+#if (_MSC_VER <= 1310)
+       count = _vsnprintf(outBuf, size, format, ap);
+#else
        count = _vsnprintf_s(outBuf, size, _TRUNCATE, format, ap);
+#endif
    if (count == -1)
        count = _vscprintf(format, ap);
 
@@ -52,3 +57,4 @@ int c99_snprintf_retro__(char *outBuf, size_t size, const char *format, ...)
 
    return count;
 }
+#endif
