@@ -417,8 +417,13 @@ static bool emu_step_load_data()
    }
    else
    {
-   	  /* 64DD Disk loading */
-   	  if (!environ_cb(RETRO_ENVIRONMENT_GET_SYSTEM_DIRECTORY, &dir) || !dir)
+      char disk_ipl_path[256];
+      FILE *fPtr;
+      long romlength = 0;
+      uint8_t* ipl_data = NULL;
+
+      /* 64DD Disk loading */
+      if (!environ_cb(RETRO_ENVIRONMENT_GET_SYSTEM_DIRECTORY, &dir) || !dir)
          goto load_fail;
 
       /* connect saved_memory.disk to disk */
@@ -439,13 +444,12 @@ static bool emu_step_load_data()
 
 
       /* 64DD IPL LOAD - assumes "64DD_IPL.bin" is in system folder */
-      char disk_ipl_path[256];
       snprintf(disk_ipl_path, sizeof(disk_ipl_path), "%s%c64DD_IPL.bin", dir, slash);
 
       if (log_cb)
          log_cb(RETRO_LOG_INFO, "64DD_IPL.bin path: %s\n", disk_ipl_path);
 
-      FILE *fPtr = fopen(disk_ipl_path, "rb");
+      fPtr = fopen(disk_ipl_path, "rb");
       if (fPtr == NULL)
       {
          if (log_cb)
@@ -453,12 +457,10 @@ static bool emu_step_load_data()
          goto load_fail;
       }
 
-      long romlength = 0;
       fseek(fPtr, 0L, SEEK_END);
       romlength = ftell(fPtr);
       fseek(fPtr, 0L, SEEK_SET);
 
-      uint8_t* ipl_data = NULL;
       ipl_data = malloc(romlength);
       if (ipl_data == NULL)
       {
@@ -467,7 +469,7 @@ static bool emu_step_load_data()
          fclose(fPtr);
          free(ipl_data);
          ipl_data = NULL;
-          goto load_fail;
+         goto load_fail;
       }
 
       if (fread(ipl_data, 1, romlength, fPtr) != romlength)
