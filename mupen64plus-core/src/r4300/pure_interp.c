@@ -22,7 +22,12 @@
 #include <stdint.h>
 
 #define __STDC_FORMAT_MACROS
+#ifdef _MSC_VER
+#define PRIx32 "x"
+#define PRIX32 "X"
+#else
 #include <inttypes.h>
+#endif
 
 #include "api/callbacks.h"
 #include "api/debugger.h"
