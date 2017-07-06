@@ -127,6 +127,7 @@ static uint32_t crc32_1byte(const void* data, size_t length, uint32_t previousCr
 /// compute CRC32 (Slicing-by-4 algorithm)
 static uint32_t crc32_4bytes(const void* data, size_t length, uint32_t previousCrc32)
 {
+   const uint8_t *currentChar;
    uint32_t  crc = ~previousCrc32; // same as previousCrc32 ^ 0xFFFFFFFF
    const uint32_t* current = (const uint32_t*) data;
 
@@ -150,7 +151,7 @@ static uint32_t crc32_4bytes(const void* data, size_t length, uint32_t previousC
       length -= 4;
    }
 
-   const uint8_t* currentChar = (const uint8_t*) current;
+   currentChar = (const uint8_t*) current;
    // remaining 1 to 3 bytes (standard algorithm)
    while (length-- != 0)
       crc = (crc >> 8) ^ Crc32Lookup[0][(crc & 0xFF) ^ *currentChar++];
