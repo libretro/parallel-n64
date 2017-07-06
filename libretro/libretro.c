@@ -1604,30 +1604,33 @@ void retro_cheat_set(unsigned index, bool enabled, const char* codeLine)
 
 	//Break the code into Parts
 	for (cursor=0;;cursor++)
-	{
-		if (ISHEXDEC)
-			matchLength++;
-		else
+   {
+      if (ISHEXDEC)
+         matchLength++;
+      else
       {
          if (matchLength)
          {
-            char codePartS[matchLength];
+            char *codePartS = (char*)calloc(matchLength, sizeof(*codePartS));
+
             strncpy(codePartS,codeLine+cursor-matchLength,matchLength);
             codePartS[matchLength]=0;
             codeParts[partCount++]=strtoul(codePartS,NULL,16);
             matchLength=0;
+
+            free(codePartS);
          }
       }
-		if (!codeLine[cursor]){
-			break;
-		}
-	}
+      if (!codeLine[cursor])
+         break;
+   }
 
 	//Assign the parts to mupenCode
-	for (cursor=0;2*cursor+1<partCount;cursor++){
-		mupenCode[cursor].address=codeParts[2*cursor];
-		mupenCode[cursor].value=codeParts[2*cursor+1];
-	}
+	for (cursor=0;2*cursor+1<partCount;cursor++)
+   {
+      mupenCode[cursor].address=codeParts[2*cursor];
+      mupenCode[cursor].value=codeParts[2*cursor+1];
+   }
 
 	//Assign to mupenCode
 	cheat_add_new(name,mupenCode,partCount/2);
