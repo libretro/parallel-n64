@@ -27,6 +27,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <retro_miscellaneous.h>
+
 #define M64P_CORE_PROTOTYPES 1
 #include "m64p_types.h"
 #include "m64p_config.h"
@@ -1349,10 +1351,10 @@ extern const char* retro_get_system_directory();
 
 EXPORT const char * CALL ConfigGetSharedDataFilepath(const char *filename)
 {
-  static char configpath[PATH_MAX];
+  static char configpath[PATH_MAX_LENGTH];
   if (filename == NULL) return NULL;
 
-  snprintf(configpath, PATH_MAX, "%s/%s", retro_get_system_directory(), filename);
+  snprintf(configpath, PATH_MAX_LENGTH, "%s/%s", retro_get_system_directory(), filename);
 
   /* TODO: Return NULL if file does not exist */
 
