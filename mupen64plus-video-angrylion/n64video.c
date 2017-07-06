@@ -8138,32 +8138,34 @@ static NOINLINE void draw_triangle(uint32_t w1, uint32_t w2,
     int allover, allunder, curover, curunder;
     int allinval;
     int j, k;
+    int lft, level, tile, flip, tilenum;
+    int yl, ym, yh, xl, xh, xm, DxLDy, DxHDy, DxMDy;
     const int32_t clipxlshift = __clip.xl << 1;
     const int32_t clipxhshift = __clip.xh << 1;
 
     stepwalker_info_init(stw_info);
 
     /* Edge Coefficients */
-    int lft     = (w1 & 0x00800000) >> (55 - 32);
+    lft     = (w1 & 0x00800000) >> (55 - 32);
     /* unused  (w1 & 0x00400000) >> (54 - 32) */
-    int level   = (w1 & 0x00380000) >> (51 - 32);
-    int tile    = (w1 & 0x00070000) >> (48 - 32);
-    int flip    = lft;
+    level   = (w1 & 0x00380000) >> (51 - 32);
+     tile    = (w1 & 0x00070000) >> (48 - 32);
+    flip    = lft;
     max_level   = level;
-    int tilenum = tile;
+    tilenum = tile;
 
     /* Triangle edge Y-coordinates */
-    int32_t      yl = (w1 & 0x0000FFFF) >> (32 - 32); /* & 0x3FFF */
-    int32_t      ym = (w2 & 0xFFFF0000) >> (16 -  0); /* & 0x3FFF */
-    int32_t      yh = (w2 & 0x0000FFFF) >> ( 0 -  0); /* & 0x3FFF */
+    yl = (w1 & 0x0000FFFF) >> (32 - 32); /* & 0x3FFF */
+    ym = (w2 & 0xFFFF0000) >> (16 -  0); /* & 0x3FFF */
+    yh = (w2 & 0x0000FFFF) >> ( 0 -  0); /* & 0x3FFF */
     /* Triangle edge X-coordinates */
-    int32_t      xl = cmd_data[stw_info->base + 1].UW32[0];
-    int32_t      xh = cmd_data[stw_info->base + 2].UW32[0];
-    int32_t      xm = cmd_data[stw_info->base + 3].UW32[0];
+    xl = cmd_data[stw_info->base + 1].UW32[0];
+    xh = cmd_data[stw_info->base + 2].UW32[0];
+    xm = cmd_data[stw_info->base + 3].UW32[0];
     /* Triangle edge inverse-slopes */
-    int32_t   DxLDy = cmd_data[stw_info->base + 1].UW32[1];
-    int32_t   DxHDy = cmd_data[stw_info->base + 2].UW32[1];
-    int32_t   DxMDy = cmd_data[stw_info->base + 3].UW32[1];
+    DxLDy = cmd_data[stw_info->base + 1].UW32[1];
+    DxHDy = cmd_data[stw_info->base + 2].UW32[1];
+    DxMDy = cmd_data[stw_info->base + 3].UW32[1];
 
     yl = SIGN(yl, 14);
     ym = SIGN(ym, 14);
