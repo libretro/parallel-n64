@@ -24,7 +24,9 @@
 #include <string.h>
 
 #define __STDC_FORMAT_MACROS
+#ifdef CORE_DBG
 #include <inttypes.h>
+#endif
 
 #if defined(__GNUC__)
 #include <unistd.h>
