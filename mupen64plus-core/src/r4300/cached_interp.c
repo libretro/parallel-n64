@@ -23,7 +23,6 @@
 #include <stdlib.h>
 
 #define __STDC_FORMAT_MACROS
-#include <inttypes.h>
 #include <string.h>
 
 #include "api/callbacks.h"
