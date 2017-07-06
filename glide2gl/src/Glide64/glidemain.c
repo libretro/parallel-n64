@@ -95,21 +95,24 @@ static void *l_DebugCallContext = NULL;
 
 static void _ChangeSize(void)
 {
-   if (!gfx_info.VI_H_START_REG)
-      return;
-
-   float res_scl_y      = (float)settings.res_y / 240.0f;
-   uint32_t dwHStartReg = *gfx_info.VI_H_START_REG;
-   uint32_t dwVStartReg = *gfx_info.VI_V_START_REG;
+   float res_scl_y;
+   uint32_t dwHStartReg, dwVStartReg;
+   uint32_t hstart, hend, vstart, vend, scale_y, scale_x;
    float fscale_x       = 0.0;
    float fscale_y       = 0.0;
    float aspect         = 0.0;
-   uint32_t hstart      = dwHStartReg >> 16;
-   uint32_t hend        = dwHStartReg & 0xFFFF;
-   uint32_t vstart      = dwVStartReg >> 16;
-   uint32_t vend        = dwVStartReg & 0xFFFF;
-   uint32_t scale_x     = *gfx_info.VI_X_SCALE_REG & 0xFFF;
-   uint32_t scale_y     = *gfx_info.VI_Y_SCALE_REG & 0xFFF;
+   if (!gfx_info.VI_H_START_REG)
+      return;
+
+   res_scl_y      = (float)settings.res_y / 240.0f;
+   dwHStartReg = *gfx_info.VI_H_START_REG;
+   dwVStartReg = *gfx_info.VI_V_START_REG;
+   hstart      = dwHStartReg >> 16;
+   hend        = dwHStartReg & 0xFFFF;
+   vstart      = dwVStartReg >> 16;
+   vend        = dwVStartReg & 0xFFFF;
+   scale_x     = *gfx_info.VI_X_SCALE_REG & 0xFFF;
+   scale_y     = *gfx_info.VI_Y_SCALE_REG & 0xFFF;
 
    if (!scale_x || !scale_y)
       return;
