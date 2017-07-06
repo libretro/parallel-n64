@@ -394,7 +394,7 @@ export LIB := $(LIB);$(WindowsSdkDir)
 TARGET := $(TARGET_NAME)_libretro.dll
 PSS_STYLE :=2
 LDFLAGS += -DLL
-GL_LIB = -lopengl32
+GL_LIB = opengl32.lib
 HAVE_PARALLEL=0
 HAVE_PARALLEL_RSP=0
 # Windows MSVC 2010 x86
@@ -420,7 +420,7 @@ export LIB := $(LIB);$(WindowsSdkDir)
 TARGET := $(TARGET_NAME)_libretro.dll
 PSS_STYLE :=2
 LDFLAGS += -DLL
-GL_LIB = -lopengl32
+GL_LIB = opengl32.lib
 HAVE_PARALLEL=0
 HAVE_PARALLEL_RSP=0
 
