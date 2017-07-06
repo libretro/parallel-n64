@@ -21,10 +21,10 @@
                        
 /* this header file is for system-dependent #defines, #includes, and typedefs */
 
-#if !defined (OSAL_PREPROC_H)
+#ifndef OSAL_PREPROC_H
 #define OSAL_PREPROC_H
 
-#if defined(WIN32) && !defined(__MINGW32__)
+#if defined(_WIN32) && !defined(__MINGW32__)
 
   /* macros */
   #define ALIGN(BYTES,DATA) __declspec(align(BYTES)) DATA
@@ -41,7 +41,7 @@
   #define OSAL_DIR_SEPARATORS           "\\/"
   #define PATH_MAX _MAX_PATH
 
-#else  /* Not WIN32 */
+#else  /* Not _WIN32 */
 
   // macros
   #define ALIGN(BYTES,DATA) DATA __attribute__((aligned(BYTES)))
