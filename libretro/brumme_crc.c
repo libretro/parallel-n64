@@ -164,7 +164,7 @@ static uint32_t crc32_16bytes(const void* data, size_t length, uint32_t previous
 {
    uint32_t crc = ~previousCrc32; // same as previousCrc32 ^ 0xFFFFFFFF
    const uint32_t* current = (const uint32_t*) data;
-
+   const uint8_t* currentChar = NULL;
    // enabling optimization (at least -O2) automatically unrolls the inner for-loop
    const size_t Unroll = 4;
    const size_t BytesAtOnce = 16 * Unroll;
@@ -222,7 +222,7 @@ static uint32_t crc32_16bytes(const void* data, size_t length, uint32_t previous
       length -= BytesAtOnce;
    }
 
-   const uint8_t* currentChar = (const uint8_t*) current;
+   currentChar = (const uint8_t*) current;
    // remaining 1 to 63 bytes (standard algorithm)
    while (length-- != 0)
       crc = (crc >> 8) ^ Crc32Lookup[0][(crc & 0xFF) ^ *currentChar++];
