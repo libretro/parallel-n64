@@ -395,6 +395,8 @@ TARGET := $(TARGET_NAME)_libretro.dll
 PSS_STYLE :=2
 LDFLAGS += -DLL
 LIBS =
+HAVE_PARALLEL=0
+HAVE_PARALLEL_RSP=0
 # Windows MSVC 2010 x86
 else ifeq ($(platform), windows_msvc2010_x86)
 	CC  = cl.exe
@@ -419,6 +421,8 @@ TARGET := $(TARGET_NAME)_libretro.dll
 PSS_STYLE :=2
 LDFLAGS += -DLL
 LIBS =
+HAVE_PARALLEL=0
+HAVE_PARALLEL_RSP=0
 
 
 # Windows
