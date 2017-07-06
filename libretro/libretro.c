@@ -134,7 +134,7 @@ int pad_present[4] = {1, 1, 1, 1};
 static void n64DebugCallback(void* aContext, int aLevel, const char* aMessage)
 {
     char buffer[1024];
-    snprintf(buffer, 1024, "mupen64plus: %s\n", aMessage);
+    sprintf(buffer, "mupen64plus: %s\n", aMessage);
     if (log_cb)
        log_cb(RETRO_LOG_INFO, buffer);
 }
