@@ -24,11 +24,12 @@ void ZSort_RDPCMD( uint32_t a, uint32_t _w1)
       __RSP.bLLE = true;
       while(true)
       {
+         uint32_t w1;
          uint32_t w0 = ((uint32_t*)gfx_info.RDRAM)[addr++];
          __RSP.cmd = _SHIFTR( w0, 24, 8 );
          if (__RSP.cmd == 0xDF)
             break;
-         uint32_t w1 = ((uint32_t*)gfx_info.RDRAM)[addr++];
+         w1 = ((uint32_t*)gfx_info.RDRAM)[addr++];
          if (__RSP.cmd == 0xE4 || __RSP.cmd == 0xE5)
          {
             addr++;
