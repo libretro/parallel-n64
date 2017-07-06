@@ -16,10 +16,13 @@ static void Turbo3D_ProcessRDP(uint32_t _cmds)
    uint32_t addr = RSP_SegmentToPhysical(_cmds) >> 2;
    if (addr != 0)
    {
+      uint32_t w0, w1;
+
       __RSP.bLLE = true;
-      uint32_t w0 = ((uint32_t*)gfx_info.RDRAM)[addr++];
-      uint32_t w1 = ((uint32_t*)gfx_info.RDRAM)[addr++];
-      __RSP.cmd = _SHIFTR( w0, 24, 8 );
+      w0         = ((uint32_t*)gfx_info.RDRAM)[addr++];
+      w1         = ((uint32_t*)gfx_info.RDRAM)[addr++];
+      __RSP.cmd  = _SHIFTR( w0, 24, 8 );
+
       while (w0 + w1 != 0)
       {
          GBI.cmd[__RSP.cmd]( w0, w1 );
