@@ -97,9 +97,6 @@ static void glide64gDPLLETriangle(uint32_t w0, uint32_t w1, int shade, int textu
    int32_t dxldy, dxhdy, dxmdy; /* triangle edge inverse-slopes */
 
    uint32_t w2, w3, w4, w5, w6, w7;
-
-   gDP.otherMode.textureDetail = _SHIFTR(w1, 19, 3);
-
    int r = 0xff;
    int g = 0xff;
    int b = 0xff;
@@ -108,13 +105,14 @@ static void glide64gDPLLETriangle(uint32_t w0, uint32_t w1, int shade, int textu
    int s = 0;
    int t = 0;
    int w = 0x30000;
-
    int drdx = 0, dgdx = 0, dbdx = 0, dadx = 0, dzdx = 0, dsdx = 0, dtdx = 0, dwdx = 0;
    int drde = 0, dgde = 0, dbde = 0, dade = 0, dzde = 0, dsde = 0, dtde = 0, dwde = 0;
    int flip = (w0 & 0x800000) ? 1 : 0;
    uint32_t * shade_base = rdp_cmd + 8;
    uint32_t * texture_base = rdp_cmd + 8;
    uint32_t * zbuffer_base = rdp_cmd + 8;
+
+   gDP.otherMode.textureDetail = _SHIFTR(w1, 19, 3);
 
    if (shade)
    {
