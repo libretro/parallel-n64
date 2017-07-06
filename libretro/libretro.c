@@ -444,7 +444,7 @@ static bool emu_step_load_data()
 
 
       /* 64DD IPL LOAD - assumes "64DD_IPL.bin" is in system folder */
-      snprintf(disk_ipl_path, sizeof(disk_ipl_path), "%s%c64DD_IPL.bin", dir, slash);
+      sprintf(disk_ipl_path, "%s%c64DD_IPL.bin", dir, slash);
 
       if (log_cb)
          log_cb(RETRO_LOG_INFO, "64DD_IPL.bin path: %s\n", disk_ipl_path);
