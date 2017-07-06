@@ -842,8 +842,9 @@ void retro_init(void)
 {
    struct retro_log_callback log;
    unsigned colorMode = RETRO_PIXEL_FORMAT_XRGB8888;
-   screen_pitch = 0;
    uint64_t serialization_quirks = RETRO_SERIALIZATION_QUIRK_MUST_INITIALIZE;
+
+   screen_pitch = 0;
 
    if (environ_cb(RETRO_ENVIRONMENT_GET_LOG_INTERFACE, &log))
       log_cb = log.log;
@@ -1604,17 +1605,19 @@ void retro_cheat_set(unsigned index, bool enabled, const char* codeLine)
 	//Break the code into Parts
 	for (cursor=0;;cursor++)
 	{
-		if (ISHEXDEC){
+		if (ISHEXDEC)
 			matchLength++;
-		} else {
-			if (matchLength){
-				char codePartS[matchLength];
-				strncpy(codePartS,codeLine+cursor-matchLength,matchLength);
-				codePartS[matchLength]=0;
-				codeParts[partCount++]=strtoul(codePartS,NULL,16);
-				matchLength=0;
-			}
-		}
+		else
+      {
+         if (matchLength)
+         {
+            char codePartS[matchLength];
+            strncpy(codePartS,codeLine+cursor-matchLength,matchLength);
+            codePartS[matchLength]=0;
+            codeParts[partCount++]=strtoul(codePartS,NULL,16);
+            matchLength=0;
+         }
+      }
 		if (!codeLine[cursor]){
 			break;
 		}
