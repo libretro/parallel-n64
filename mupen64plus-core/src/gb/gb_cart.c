@@ -18,6 +18,9 @@
  *   Free Software Foundation, Inc.,                                       *
  *   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.          *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+#include <stdlib.h>
+#include <stddef.h>
+#include <string.h>
 
 #include "gb_cart.h"
 
@@ -25,8 +28,6 @@
 #include "api/callbacks.h"
 #include "main/util.h"
 
-#include <stdlib.h>
-#include <string.h>
 
 static int read_gb_cart_normal(struct gb_cart* gb_cart, uint16_t address, uint8_t* data)
 {
