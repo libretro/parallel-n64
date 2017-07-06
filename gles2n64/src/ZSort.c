@@ -172,10 +172,10 @@ void ZSort_Interpolate( uint32_t a , uint32_t b)
 
 void ZSort_XFMLight( uint32_t _w0, uint32_t _w1 )
 {
-   uint32_t i;
+   uint32_t i, addr;
    int mid = _SHIFTR(_w0, 0, 8);
    gln64gSPNumLights(1 + _SHIFTR(_w1, 12, 8));
-   uint32_t addr = -1024 + _SHIFTR(_w1, 0, 12);
+   addr = -1024 + _SHIFTR(_w1, 0, 12);
 
    assert(mid == GZM_MMTX);
 
