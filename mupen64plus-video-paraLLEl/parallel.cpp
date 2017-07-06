@@ -1,9 +1,9 @@
 #include "Gfx #1.3.h"
 #include "m64p_config.h"
 #include "m64p_types.h"
-#include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
+#include <boolean.h>
 
 #include "rdp.hpp"
 

@@ -1,6 +1,6 @@
 #include <string.h>
 #include <stdlib.h>
-#include <stdbool.h>
+#include <boolean.h>
 #include "z64.h"
 #include "Gfx #1.3.h"
 #include "vi.h"
@@ -10,7 +10,6 @@
 #ifdef HAVE_RDP_DUMP
 #include "../mupen64plus-video-paraLLEl/rdp_dump.h"
 #endif
-#include <stdlib.h>
 
 extern unsigned int screen_width, screen_height;
 extern uint32_t screen_pitch;

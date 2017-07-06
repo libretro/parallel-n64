@@ -18,7 +18,7 @@ extern "C" {
 
 #define config gln64config
 
-#include <stdbool.h>
+#include <boolean.h>
 
 #define BILINEAR_3POINT   0
 #define BILINEAR_STANDARD 1

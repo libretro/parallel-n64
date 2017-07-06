@@ -1,8 +1,8 @@
 #ifndef RDP_DUMP_H
 #define RDP_DUMP_H
 
-#include <stdbool.h>
 #include <stdint.h>
+#include <boolean.h>
 
 bool rdp_dump_init(const char *path, uint32_t dram_size);
 void rdp_dump_end(void);

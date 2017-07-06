@@ -60,8 +60,8 @@ the plugin
 #define _GFX_H_INCLUDED__
 
 #include <stdint.h>
-#include <stdbool.h>
 #include <stdio.h>
+#include <boolean.h>
 #include "m64p_types.h"
 #include "m64p_plugin.h"
 #include "m64p_config.h"
