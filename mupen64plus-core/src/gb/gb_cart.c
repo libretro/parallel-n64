@@ -548,6 +548,7 @@ int init_gb_cart(struct gb_cart* gb_cart, uint8_t *rom, size_t rom_size)
 {
    int err;
    const struct parsed_cart_type* type;
+   uint8_t cart_type;
    uint8_t* ram = NULL;
    size_t ram_size = 0;
 
@@ -560,8 +561,8 @@ int init_gb_cart(struct gb_cart* gb_cart, uint8_t *rom, size_t rom_size)
    }
 
    /* get and parse cart type */
-   uint8_t cart_type = rom[0x147];
-   type = parse_cart_type(cart_type);
+   cart_type = rom[0x147];
+   type      = parse_cart_type(cart_type);
    if (type == NULL)
    {
       DebugMessage(M64MSG_ERROR, "Invalid GB cart type (%02x)", cart_type);
