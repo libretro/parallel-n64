@@ -484,16 +484,18 @@ ifeq ($(platform), qnx)
    CFLAGS   += -Wp,-MMD
    CXXFLAGS += -Wp,-MMD
 else
-   CFLAGS   += -MMD
 ifeq ($(GLIDEN64),1)
    CFLAGS   += -DGLIDEN64
    CXXFLAGS += -DGLIDEN64
+	CFLAGS   += -MMD
    CXXFLAGS += -std=c++0x -MMD
 else ifeq ($(HAVE_PARALLEL), 1)
+	CFLAGS   += -MMD
 	CXXFLAGS += -std=gnu++11 -MMD
 else ifneq (,$(findstring msvc,$(platform)))
 	CXXFLAGS +=
 else
+	CFLAGS   += -MMD
 	CXXFLAGS += -std=c++98 -MMD
 endif
 ifeq ($(GLIDEN64ES),1)
