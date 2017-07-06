@@ -23,6 +23,12 @@
 #include <stdlib.h>
 
 #define __STDC_FORMAT_MACROS
+#ifdef _MSC_VER
+#define PRIx32 "x"
+#define PRIX32 "X"
+#else
+#include <inttypes.h>
+#endif
 #include <string.h>
 
 #include "api/callbacks.h"
