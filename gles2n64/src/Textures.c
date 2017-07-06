@@ -859,10 +859,16 @@ static INLINE void TextureCache_getTextureDestData(CachedTexture *tmptex, uint32
             j += 2;
          }
       }
-   } else {
+   }
+   else
+   {
+      uint32_t tMemMask;
+
       j = 0;
-      const uint32_t tMemMask = gDP.otherMode.textureLUT == G_TT_NONE ? 0x1FF : 0xFF;
-      for (y = 0; y < tmptex->realHeight; ++y) {
+      tMemMask = gDP.otherMode.textureLUT == G_TT_NONE ? 0x1FF : 0xFF;
+
+      for (y = 0; y < tmptex->realHeight; ++y)
+      {
          ty = MIN(y, clampTClamp) & maskTMask;
 
          if (y & mirrorTBit)

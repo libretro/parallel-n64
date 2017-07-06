@@ -224,6 +224,8 @@ void ZSort_Lighting( uint32_t _w0, uint32_t _w1 )
 
    for (i = 0; i < num; i++)
    {
+      float x, y;
+      float fLightDir[3];
       struct SPVertex *vtx = (struct SPVertex*)&OGL.triangles.vertices[i];
 
       vtx->nx = ((int8_t*)gfx_info.DMEM)[(nsrs++)^3];
@@ -231,9 +233,10 @@ void ZSort_Lighting( uint32_t _w0, uint32_t _w1 )
       vtx->nz = ((int8_t*)gfx_info.DMEM)[(nsrs++)^3];
       TransformVectorNormalize( &vtx->nx, gSP.matrix.modelView[gSP.matrix.modelViewi] );
       gln64gSPLightVertex(vtx);
-      float fLightDir[3] = {vtx->nx, vtx->ny, vtx->nz};
+      fLightDir[0] = vtx->nx;
+      fLightDir[1] = vtx->ny;
+      fLightDir[2] = vtx->nz;
       TransformVectorNormalize(fLightDir, gSP.matrix.projection);
-      float x, y;
       if (gSP.lookatEnable) {
          x = DotProduct(&gSP.lookat[0].x, fLightDir);
          y = DotProduct(&gSP.lookat[1].x, fLightDir);
