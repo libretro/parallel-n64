@@ -282,17 +282,18 @@ void SP_DMA_WRITE(void)
 
 /*** scalar, R4000 control flow manipulation ***/
 
-PROFILE_MODE void J(u32 inst)
+static INLINE void J(u32 inst)
 {
     set_PC(4 * inst);
 }
-PROFILE_MODE void JAL(u32 inst, u32 PC)
+
+static INLINE void JAL(u32 inst, u32 PC)
 {
     SR[ra] = FIT_IMEM(PC + LINK_OFF);
     set_PC(4 * inst);
 }
 
-PROFILE_MODE int BEQ(u32 inst, u32 PC)
+static INLINE int BEQ(u32 inst, u32 PC)
 {
     const unsigned int rs = (inst >> 21) % (1 << 5);
     const unsigned int rt = (inst >> 16) % (1 << 5);
@@ -302,7 +303,7 @@ PROFILE_MODE int BEQ(u32 inst, u32 PC)
     set_PC(PC + 4*inst + SLOT_OFF);
     return 1;
 }
-PROFILE_MODE int BNE(u32 inst, u32 PC)
+static INLINE int BNE(u32 inst, u32 PC)
 {
     const unsigned int rs = (inst >> 21) % (1 << 5);
     const unsigned int rt = (inst >> 16) % (1 << 5);
@@ -312,7 +313,7 @@ PROFILE_MODE int BNE(u32 inst, u32 PC)
     set_PC(PC + 4*inst + SLOT_OFF);
     return 1;
 }
-PROFILE_MODE int BLEZ(u32 inst, u32 PC)
+static INLINE int BLEZ(u32 inst, u32 PC)
 {
     const unsigned int rs = (inst >> 21) % (1 << 5);
 
@@ -321,7 +322,7 @@ PROFILE_MODE int BLEZ(u32 inst, u32 PC)
     set_PC(PC + 4*inst + SLOT_OFF);
     return 1;
 }
-PROFILE_MODE int BGTZ(u32 inst, u32 PC)
+static INLINE int BGTZ(u32 inst, u32 PC)
 {
     const unsigned int rs = (inst >> 21) % (1 << 5);
 
@@ -333,7 +334,7 @@ PROFILE_MODE int BGTZ(u32 inst, u32 PC)
 
 /*** scalar, R4000 bit-wise logical operations ***/
 
-PROFILE_MODE void ANDI(u32 inst)
+static INLINE void ANDI(u32 inst)
 {
     const u16 immediate = (u16)(inst & 0x0000FFFFu);
     const unsigned int rs = (inst >> 21) % (1 << 5);
@@ -342,7 +343,7 @@ PROFILE_MODE void ANDI(u32 inst)
     SR[rt] = SR[rs] & immediate;
     SR[zero] = 0x00000000;
 }
-PROFILE_MODE void ORI(u32 inst)
+static INLINE void ORI(u32 inst)
 {
     const u16 immediate = (u16)(inst & 0x0000FFFFu);
     const unsigned int rs = (inst >> 21) % (1 << 5);
@@ -351,7 +352,7 @@ PROFILE_MODE void ORI(u32 inst)
     SR[rt] = SR[rs] | immediate;
     SR[zero] = 0x00000000;
 }
-PROFILE_MODE void XORI(u32 inst)
+static INLINE void XORI(u32 inst)
 {
     const u16 immediate = (u16)(inst & 0x0000FFFFu);
     const unsigned int rs = (inst >> 21) % (1 << 5);
@@ -360,7 +361,7 @@ PROFILE_MODE void XORI(u32 inst)
     SR[rt] = SR[rs] ^ immediate;
     SR[zero] = 0x00000000;
 }
-PROFILE_MODE void LUI(u32 inst)
+static INLINE void LUI(u32 inst)
 {
     const u16 immediate = (u16)(inst & 0x0000FFFFu);
     const unsigned int rt = (inst >> 16) % (1 << 5);
@@ -371,7 +372,7 @@ PROFILE_MODE void LUI(u32 inst)
 
 /*** scalar, R4000 arithmetic operations ***/
 
-PROFILE_MODE void ADDIU(u32 inst)
+static INLINE void ADDIU(u32 inst)
 {
     const u16 immediate = (u16)(inst & 0x0000FFFFu);
     const unsigned int rs = (inst >> 21) % (1 << 5);
@@ -380,7 +381,7 @@ PROFILE_MODE void ADDIU(u32 inst)
     SR[rt] = SR[rs] + (s16)(immediate);
     SR[zero] = 0x00000000;
 }
-PROFILE_MODE void SLTI(u32 inst)
+static INLINE void SLTI(u32 inst)
 {
     const u16 immediate = (u16)(inst & 0x0000FFFFu);
     const unsigned int rs = (inst >> 21) % (1 << 5);
@@ -389,7 +390,7 @@ PROFILE_MODE void SLTI(u32 inst)
     SR[rt] = ((s32)(SR[rs]) < (s16)(immediate)) ? 1 : 0;
     SR[zero] = 0x00000000;
 }
-PROFILE_MODE void SLTIU(u32 inst)
+static INLINE void SLTIU(u32 inst)
 {
     const u16 immediate = (u16)(inst & 0x0000FFFFu);
     const unsigned int rs = (inst >> 21) % (1 << 5);
@@ -401,7 +402,7 @@ PROFILE_MODE void SLTIU(u32 inst)
 
 /*** scalar, R4000 memory loads and stores ***/
 
-PROFILE_MODE void LB(u32 inst)
+static INLINE void LB(u32 inst)
 {
     u32 addr;
     const s16 offset = (s16)(inst & 0x0000FFFFul);
@@ -413,7 +414,7 @@ PROFILE_MODE void LB(u32 inst)
     SR[rt] = (s8)SR[rt];
     SR[zero] = 0x00000000;
 }
-PROFILE_MODE void LH(u32 inst)
+static INLINE void LH(u32 inst)
 {
     u32 addr;
     const s16 offset = (s16)(inst & 0x0000FFFFul);
@@ -428,7 +429,7 @@ PROFILE_MODE void LH(u32 inst)
     SR[rt] = (s16)SR[rt];
     SR[zero] = 0x00000000;
 }
-PROFILE_MODE void LW(u32 inst)
+static INLINE void LW(u32 inst)
 {
     u32 addr;
     const s16 offset = (s16)(inst & 0x0000FFFFul);
@@ -442,7 +443,7 @@ PROFILE_MODE void LW(u32 inst)
     SR_B(rt, 3) = DMEM[BES(addr + 3) & 0x00000FFFul];
     SR[zero] = 0x00000000;
 }
-PROFILE_MODE void LBU(u32 inst)
+static INLINE void LBU(u32 inst)
 {
     u32 addr;
     const s16 offset = (s16)(inst & 0x0000FFFFul);
@@ -453,7 +454,7 @@ PROFILE_MODE void LBU(u32 inst)
     SR[rt] = DMEM[BES(addr) & 0x00000FFFul];
     SR[zero] = 0x00000000;
 }
-PROFILE_MODE void LHU(u32 inst)
+static INLINE void LHU(u32 inst)
 {
     u32 addr;
     const s16 offset = (s16)(inst & 0x0000FFFFul);
@@ -468,7 +469,7 @@ PROFILE_MODE void LHU(u32 inst)
     SR[zero] = 0x00000000;
 }
 
-PROFILE_MODE void SB(u32 inst)
+static INLINE void SB(u32 inst)
 {
     u32 addr;
     const s16 offset = (s16)(inst & 0x0000FFFFul);
@@ -478,7 +479,7 @@ PROFILE_MODE void SB(u32 inst)
     addr = SR[base] + offset;
     DMEM[BES(addr) & 0x00000FFFul] = (u8)(SR[rt] & 0xFFu);
 }
-PROFILE_MODE void SH(u32 inst)
+static INLINE void SH(u32 inst)
 {
     u32 addr;
     const s16 offset = (s16)(inst & 0x0000FFFFul);
@@ -489,7 +490,7 @@ PROFILE_MODE void SH(u32 inst)
     DMEM[BES(addr + 0) & 0x00000FFFul] = SR_B(rt, 2);
     DMEM[BES(addr + 1) & 0x00000FFFul] = SR_B(rt, 3);
 }
-PROFILE_MODE void SW(u32 inst)
+static INLINE void SW(u32 inst)
 {
     u32 addr;
     const s16 offset = (s16)(inst & 0x0000FFFFul);
@@ -1694,7 +1695,7 @@ static const unsigned char ei[1 << 4][N] = {
 };
 #endif
 
-PROFILE_MODE int SPECIAL(u32 inst, u32 PC)
+static INLINE int SPECIAL(u32 inst, u32 PC)
 {
     unsigned int rd, rs, rt;
 
@@ -1792,7 +1793,7 @@ PROFILE_MODE int SPECIAL(u32 inst, u32 PC)
     return 0;
 }
 
-PROFILE_MODE int REGIMM(u32 inst, u32 PC)
+static INLINE int REGIMM(u32 inst, u32 PC)
 {
     const unsigned int base = (inst >> 21) % (1 << 5);
     const unsigned int rt   = (inst >> 16) % (1 << 5);
@@ -1820,7 +1821,7 @@ PROFILE_MODE int REGIMM(u32 inst, u32 PC)
     return 1;
 }
 
-PROFILE_MODE void MWC2_load(u32 inst)
+static INLINE void MWC2_load(u32 inst)
 {
     s16 offset;
     const unsigned int base    = (inst >> 21) % (1 << 5);
@@ -1836,7 +1837,7 @@ PROFILE_MODE void MWC2_load(u32 inst)
 #endif
     LWC2[IW_RD(inst)](vt, element, offset, base);
 }
-PROFILE_MODE void MWC2_store(u32 inst)
+static INLINE void MWC2_store(u32 inst)
 {
     s16 offset;
     const unsigned int base    = (inst >> 21) % (1 << 5);
@@ -1853,7 +1854,7 @@ PROFILE_MODE void MWC2_store(u32 inst)
     SWC2[IW_RD(inst)](vt, element, offset, base);
 }
 
-PROFILE_MODE void COP0(u32 inst)
+static INLINE void COP0(u32 inst)
 {
     const unsigned int rd = IW_RD(inst);
     const unsigned int rs = (inst >> 21) % (1 << 5);
@@ -1871,7 +1872,7 @@ PROFILE_MODE void COP0(u32 inst)
     }
 }
 
-PROFILE_MODE void COP2(u32 inst)
+static INLINE void COP2(u32 inst)
 {
     const unsigned int op = (inst >> 21) % (1 << 5); /* inst.R.rs */
     const unsigned int vt = (inst >> 16) % (1 << 5); /* inst.R.rt */

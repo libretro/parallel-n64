@@ -71,12 +71,6 @@
 #define EMULATE_STATIC_PC
 #endif
 
-#if (0 != 0)
-#define PROFILE_MODE    static NOINLINE
-#else
-#define PROFILE_MODE    static INLINE
-#endif
-
 typedef enum {
     zero = 0,
     at =  1,

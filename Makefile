@@ -484,11 +484,7 @@ ifeq ($(platform), qnx)
    CFLAGS   += -Wp,-MMD
    CXXFLAGS += -Wp,-MMD
 else
-ifeq ($(platform), emscripten)
-   CFLAGS   += -std=gnu99 -MMD
-else
-   CFLAGS   += -std=gnu89 -MMD
-endif
+   CFLAGS   += -std=c89 -MMD
 ifeq ($(GLIDEN64),1)
    CFLAGS   += -DGLIDEN64
    CXXFLAGS += -DGLIDEN64
@@ -506,6 +502,14 @@ ifeq ($(GLIDEN64CORE),1)
    CFLAGS += -DCORE
    CXXFLAGS += -DCORE
 endif
+endif
+
+ifneq (,$(findstring msvc,$(platform)))
+CFLAGS += -DINLINE="_inline"
+CXXFLAGS += -DINLINE="_inline"
+else
+CFLAGS += -DINLINE="inline"
+CXXFLAGS += -DINLINE="inline"
 endif
 
 ### Finalize ###
