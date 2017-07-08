@@ -1497,18 +1497,33 @@ void retro_reset (void)
 
 void *retro_get_memory_data(unsigned type)
 {
-   return (type == RETRO_MEMORY_SAVE_RAM) ? &saved_memory : 0;
+   switch (type)
+   {
+   case RETRO_MEMORY_SYSTEM_RAM: return g_rdram;
+   case RETRO_MEMORY_SAVE_RAM:   return &saved_memory;
+   }
+
+   return NULL;
 }
 
 size_t retro_get_memory_size(unsigned type)
 {
-   if (type != RETRO_MEMORY_SAVE_RAM)
-      return 0;
+   switch (type)
+   {
+   case RETRO_MEMORY_SYSTEM_RAM:
+      return RDRAM_MAX_SIZE;
 
-   if (g_dd_disk)
-      return sizeof(saved_memory);
+   case RETRO_MEMORY_SAVE_RAM:
+      if (type != RETRO_MEMORY_SAVE_RAM)
+            return 0;
 
-   return sizeof(saved_memory)-sizeof(saved_memory.disk);
+      if (g_dd_disk)
+            return sizeof(saved_memory);
+
+      return sizeof(saved_memory)-sizeof(saved_memory.disk);
+   }
+
+   return 0;
 }
 
 size_t retro_serialize_size (void)
