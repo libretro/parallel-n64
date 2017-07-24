@@ -16,6 +16,7 @@ namespace RDP
 bool init();
 void deinit();
 void begin_frame();
+void set_dithering(unsigned type);
 
 void process_commands();
 extern const struct retro_hw_render_interface_vulkan *vulkan;
@@ -24,6 +25,7 @@ extern std::unique_ptr<Frontend> frontend;
 extern std::unique_ptr<Renderer> renderer;
 extern std::unique_ptr<Vulkan::Device> device;
 extern std::unique_ptr<Vulkan::VulkanContext> context;
+extern unsigned parallel_dithering;
 }
 
 namespace VI

@@ -92,6 +92,7 @@ static unsigned initial_boot        = true;
 static unsigned audio_buffer_size   = 2048;
 
 static unsigned retro_filtering     = 0;
+static unsigned retro_dithering     = 0;
 static bool     reinit_screen       = false;
 static bool     first_context_reset = false;
 static bool     pushed_frame        = false;
@@ -327,6 +328,8 @@ static void setup_variables(void)
          "Aspect ratio hint (reinit); normal|widescreen" },
       { "parallel-n64-filtering",
 		 "Texture Filtering; automatic|N64 3-point|bilinear|nearest" },
+      { "parallel-n64-dithering",
+		 "Dithering; enabled|disabled" },
       { "parallel-n64-polyoffset-factor",
        "(Glide64) Polygon Offset Factor; -3.0|-2.5|-2.0|-1.5|-1.0|-0.5|0.0|0.5|1.0|1.5|2.0|2.5|3.0|3.5|4.0|4.5|5.0|-3.5|-4.0|-4.5|-5.0"
       },
@@ -907,7 +910,72 @@ void retro_deinit(void)
 extern void glide_set_filtering(unsigned value);
 #endif
 extern void angrylion_set_filtering(unsigned value);
+extern void angrylion_set_dithering(unsigned value);
+extern void parallel_set_dithering(unsigned value);
 extern void ChangeSize();
+
+static void gfx_set_filtering(void)
+{
+     log_cb(RETRO_LOG_DEBUG, "set filtering mode...\n");
+     switch (gfx_plugin)
+     {
+        case GFX_GLIDE64:
+#ifdef HAVE_GLIDE64
+           glide_set_filtering(retro_filtering);
+#endif
+           break;
+        case GFX_ANGRYLION:
+           angrylion_set_filtering(retro_filtering);
+           break;
+        case GFX_RICE:
+#ifdef HAVE_RICE
+           /* TODO/FIXME */
+#endif
+           break;
+        case GFX_PARALLEL:
+#ifdef HAVE_PARALLEL
+           /* Stub */
+#endif
+           break;
+        case GFX_GLN64:
+#if defined(HAVE_GLN64) || defined(HAVE_GLIDEN64)
+           /* Stub */
+#endif
+           break;
+     }
+}
+
+static void gfx_set_dithering(void)
+{
+   log_cb(RETRO_LOG_DEBUG, "set dithering mode...\n");
+
+   switch (gfx_plugin)
+   {
+      case GFX_GLIDE64:
+#ifdef HAVE_GLIDE64
+         /* Stub */
+#endif
+         break;
+      case GFX_ANGRYLION:
+         angrylion_set_dithering(retro_dithering);
+         break;
+      case GFX_RICE:
+#ifdef HAVE_RICE
+         /* Stub */
+#endif
+         break;
+      case GFX_PARALLEL:
+#ifdef HAVE_PARALLEL
+         parallel_set_dithering(retro_dithering);
+#endif
+         break;
+      case GFX_GLN64:
+#if defined(HAVE_GLN64) || defined(HAVE_GLIDEN64)
+         /* Stub */
+#endif
+         break;
+     }
+}
 
 void update_variables(bool startup)
 {
@@ -1014,46 +1082,46 @@ void update_variables(bool startup)
 
    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
    {
-	  if (!strcmp(var.value, "automatic"))
-		  retro_filtering = 0;
-	  else if (!strcmp(var.value, "N64 3-point"))
+      static signed old_filtering = -1;
+      if (!strcmp(var.value, "automatic"))
+         retro_filtering = 0;
+      else if (!strcmp(var.value, "N64 3-point"))
 #ifdef DISABLE_3POINT
-		  retro_filtering = 3;
+         retro_filtering = 3;
 #else
-		  retro_filtering = 1;
+         retro_filtering = 1;
 #endif
-	  else if (!strcmp(var.value, "nearest"))
-		  retro_filtering = 2;
-	  else if (!strcmp(var.value, "bilinear"))
-		  retro_filtering = 3;
+      else if (!strcmp(var.value, "nearest"))
+         retro_filtering = 2;
+      else if (!strcmp(var.value, "bilinear"))
+         retro_filtering = 3;
 
-     log_cb(RETRO_LOG_DEBUG, "set filtering mode...\n");
-     switch (gfx_plugin)
-     {
-        case GFX_GLIDE64:
-#ifdef HAVE_GLIDE64
-           glide_set_filtering(retro_filtering);
-#endif
-           break;
-        case GFX_ANGRYLION:
-           angrylion_set_filtering(retro_filtering);
-           break;
-        case GFX_RICE:
-#ifdef HAVE_RICE
-           /* TODO/FIXME */
-#endif
-           break;
-        case GFX_PARALLEL:
-#ifdef HAVE_PARALLEL
-           /* Stub */
-#endif
-           break;
-        case GFX_GLN64:
-#if defined(HAVE_GLN64) || defined(HAVE_GLIDEN64)
-           /* Stub */
-#endif
-           break;
-     }
+      if (retro_filtering != old_filtering)
+	gfx_set_filtering(); 
+
+      old_filtering      = retro_filtering;
+   }
+
+   var.key = "parallel-n64-dithering";
+   var.value = NULL;
+
+   if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+   {
+      static signed old_dithering = -1;
+
+      if (!strcmp(var.value, "enabled"))
+         retro_dithering = 1;
+      else if (!strcmp(var.value, "disabled"))
+         retro_dithering = 0;
+
+      gfx_set_dithering();
+
+      old_dithering      = retro_dithering;
+   }
+   else
+   {
+      retro_dithering = 1;
+      gfx_set_dithering();
    }
 
    var.key = "parallel-n64-polyoffset-factor";

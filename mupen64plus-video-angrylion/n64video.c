@@ -3763,12 +3763,17 @@ static void fetch_qword_copy(uint32_t* hidword, uint32_t* lowdword, int32_t ssss
 }
 
 static unsigned angrylion_filtering = 0;
+static unsigned angrylion_dithering = 1;
 
 void angrylion_set_filtering(unsigned filter_type)
 {
    angrylion_filtering = filter_type;
 }
 
+void angrylion_set_dithering(unsigned dither_type)
+{
+   angrylion_dithering = dither_type;
+}
 
 static void texture_pipeline_cycle(COLOR* TEX, COLOR* prev, int32_t SSS, int32_t SST, uint32_t tilenum, uint32_t cycle)                                            
 {
@@ -4398,6 +4403,9 @@ static uint32_t z_compare(uint32_t zcurpixel, uint32_t sz, uint16_t dzpix, int d
 
 static void get_dither_noise(int x, int y, int* cdith, int* adith)
 {
+   if (angrylion_dithering == 0)
+      return;
+
    if (get_dither_noise_type < 2)
    {
       int dithindex = ((y & 3) << 2) | (x & 3);

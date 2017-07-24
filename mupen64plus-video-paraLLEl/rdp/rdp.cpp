@@ -39,6 +39,11 @@ static uint16_t decompress_from_byte(uint8_t x)
 	return y;
 }
 
+void Renderer::set_dithering(unsigned type)
+{
+   rdp_dithering = type;
+}
+
 void Renderer::check_tmem_feedback()
 {
 	uint32_t addr = tmem.get_texture_image_offset();
@@ -1763,7 +1768,7 @@ Vulkan::Fence Renderer::submit(const Vulkan::Semaphore *sem)
 void Renderer::flush_tile_lists()
 {
 	if (primitive_data.empty() || work_data.empty())
-		return;
+	   return;
 
 #ifdef ENABLE_LOGS
 	fprintf(stderr, "Flushing %u primitives.\n", unsigned(primitive_data.size()));
@@ -1775,7 +1780,8 @@ void Renderer::flush_tile_lists()
 	// Allocate descriptor sets.
 	vulkan.lut_set = device.request_rdp_descriptor_set(Vulkan::RDP::DescriptorSetType::LUT);
 	vulkan.buffer_set = device.request_rdp_descriptor_set(Vulkan::RDP::DescriptorSetType::Buffers);
-	vulkan.lut_set.set_image(0, *vulkan.dither_lut);
+	if (rdp_dithering)
+	   vulkan.lut_set.set_image(0, *vulkan.dither_lut);
 	vulkan.lut_set.set_image(1, *vulkan.centroid_lut);
 	vulkan.lut_set.set_uniform_buffer(2, vulkan.z_lut);
 

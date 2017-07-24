@@ -136,6 +136,12 @@ void process_commands()
 	*GET_GFX_INFO(DPC_START_REG) = *GET_GFX_INFO(DPC_CURRENT_REG) = *GET_GFX_INFO(DPC_END_REG);
 }
 
+void set_dithering(unsigned type)
+{
+   if (::RDP::renderer)
+      ::RDP::renderer->set_dithering(type);
+}
+
 void begin_frame()
 {
 	unsigned index = vulkan->get_sync_index(vulkan->handle);

@@ -131,33 +131,39 @@ m64p_error parallelPluginGetVersion(m64p_plugin_type *PluginType, int *PluginVer
 
 int parallel_init(const struct retro_hw_render_interface_vulkan *vulkan)
 {
-	RDP::vulkan = vulkan;
-	return RDP::init();
+   RDP::vulkan = vulkan;
+   return RDP::init();
 }
 
 void parallel_deinit()
 {
-	RDP::deinit();
-	RDP::vulkan = nullptr;
+   RDP::deinit();
+   RDP::vulkan = nullptr;
 }
 
 unsigned parallel_frame_width()
 {
-	return VI::width;
+   return VI::width;
 }
 
 unsigned parallel_frame_height()
 {
-	return VI::height;
+   return VI::height;
 }
 
 bool parallel_frame_is_valid()
 {
-	return VI::valid;
+   return VI::valid;
 }
 
 void parallel_begin_frame()
 {
-	RDP::begin_frame();
+   RDP::begin_frame();
 }
+
+void parallel_set_dithering(unsigned type)
+{
+   RDP::set_dithering(type);
+}
+
 }

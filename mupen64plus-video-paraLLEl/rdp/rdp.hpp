@@ -89,6 +89,7 @@ public:
 		state.blend_word = word | (dither_sel << BLENDMODE_FLAG_DITHER_SEL);
 	}
 
+	void set_dithering(unsigned type);
 	void set_combine(uint32_t w1, uint32_t w2);
 	void set_prim_color(uint32_t w1, uint32_t w2);
 	void set_env_color(uint32_t w2);
@@ -177,6 +178,7 @@ private:
 	std::vector<VIOutput> vi_outputs;
 	void sync_framebuffer_to_cpu(AsyncFramebuffer &async);
 	unsigned current_sync_index = 0;
+	unsigned rdp_dithering = 1;
 
 	struct
 	{
