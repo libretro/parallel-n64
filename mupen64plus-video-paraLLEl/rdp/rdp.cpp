@@ -24,19 +24,19 @@ namespace RDP
 Renderer::Renderer(Vulkan::Device &device)
     : device(device)
 {
-	reset_buffers();
-	init_dither_lut();
-	init_centroid_lut();
-	init_z_lut();
+   reset_buffers();
+   init_dither_lut();
+   init_centroid_lut();
+   init_z_lut();
 
-	tmem.set_async_framebuffers(&async_transfers);
+   tmem.set_async_framebuffers(&async_transfers);
 }
 
 static uint16_t decompress_from_byte(uint8_t x)
 {
-	uint16_t y = (x & 1) | ((x & 2) << 4) | (x & 4) | ((x & 8) << 4) | ((x & 0x10) << 4) | ((x & 0x20) << 8) |
+   uint16_t y = (x & 1) | ((x & 2) << 4) | (x & 4) | ((x & 8) << 4) | ((x & 0x10) << 4) | ((x & 0x20) << 8) |
 	             ((x & 0x40) << 4) | ((x & 0x80) << 8);
-	return y;
+   return y;
 }
 
 void Renderer::set_dithering(unsigned type)
@@ -46,35 +46,35 @@ void Renderer::set_dithering(unsigned type)
 
 void Renderer::check_tmem_feedback()
 {
-	uint32_t addr = tmem.get_texture_image_offset();
+   uint32_t addr = tmem.get_texture_image_offset();
 
-	if (framebuffer.color_state != FRAMEBUFFER_CPU)
-	{
-		uint32_t wrap = WRAP_ADDR(addr - framebuffer.addr);
-		bool within = wrap < framebuffer.color_size();
-		if (within)
-		{
+   if (framebuffer.color_state != FRAMEBUFFER_CPU)
+   {
+	   uint32_t wrap = WRAP_ADDR(addr - framebuffer.addr);
+	   bool within = wrap < framebuffer.color_size();
+	   if (within)
+	   {
 #ifdef ENABLE_LOGS
-			fprintf(stderr, "TMEM feedback detected.\n");
+		   fprintf(stderr, "TMEM feedback detected.\n");
 #endif
-			complete_frame();
-			return;
-		}
-	}
+		   complete_frame();
+		   return;
+	   }
+   }
 
-	if (framebuffer.depth_state != FRAMEBUFFER_CPU)
-	{
-		uint32_t wrap = WRAP_ADDR(addr - framebuffer.depth_addr);
-		bool within = wrap < framebuffer.depth_size();
-		if (within)
-		{
+   if (framebuffer.depth_state != FRAMEBUFFER_CPU)
+   {
+	   uint32_t wrap = WRAP_ADDR(addr - framebuffer.depth_addr);
+	   bool within = wrap < framebuffer.depth_size();
+	   if (within)
+	   {
 #ifdef ENABLE_LOGS
-			fprintf(stderr, "TMEM feedback detected.\n");
+		   fprintf(stderr, "TMEM feedback detected.\n");
 #endif
-			complete_frame();
-			return;
-		}
-	}
+		   complete_frame();
+		   return;
+	   }
+   }
 }
 
 void Renderer::init_z_lut()
@@ -159,11 +159,11 @@ void Renderer::init_z_lut()
 
 void Renderer::init_centroid_lut()
 {
-	// Use texture here instead of UBO or LUT inside shader since we can get format expansion for free and have tight packing.
-	// Could use texture buffer, but it's not that well supported, and we don't need the large buffers.
-	vulkan.centroid_lut = device.create_image_2d(VK_FORMAT_R8G8_UINT, 256, 1);
-	Buffer staging = device.request_buffer(BufferType::Staging, 0x200);
-	auto *offsets = static_cast<uint8_t *>(staging.map());
+   /* Use texture here instead of UBO or LUT inside shader since we can get format expansion for free and have tight packing. */
+   /* Could use texture buffer, but it's not that well supported, and we don't need the large buffers. */
+   vulkan.centroid_lut = device.create_image_2d(VK_FORMAT_R8G8_UINT, 256, 1);
+   Buffer staging = device.request_buffer(BufferType::Staging, 0x200);
+   auto *offsets = static_cast<uint8_t *>(staging.map());
 
 	for (unsigned i = 0; i < 0x100; i++)
 	{
@@ -278,9 +278,7 @@ void Renderer::set_framebuffer_size(unsigned width, unsigned height)
 {
 	// If we change framebuffer size mid-frame, we have no choice but to sync up ...
 	if (framebuffer.color_state == FRAMEBUFFER_GPU || framebuffer.depth_state == FRAMEBUFFER_GPU)
-	{
 		sync_full();
-	}
 
 	framebuffer.allocated_width = width;
 	framebuffer.allocated_height = height;
@@ -304,255 +302,261 @@ void Renderer::set_framebuffer_size(unsigned width, unsigned height)
 
 void Renderer::set_scissor(int xh, int yh, int xl, int yl)
 {
-	scissor.xh = xh;
-	scissor.yh = yh;
-	scissor.xl = xl;
-	scissor.yl = yl;
+   scissor.xh = xh;
+   scissor.yh = yh;
+   scissor.xl = xl;
+   scissor.yl = yl;
 }
 
 void Renderer::set_combine(uint32_t w1, uint32_t w2)
 {
-	state.combiners.color[0].sub_a = (w1 & 0x00f00000) >> (52 - 32);
-	state.combiners.color[0].mul = (w1 & 0x000f8000) >> (47 - 32);
-	state.combiners.alpha[0].sub_a = (w1 & 0x00007000) >> (44 - 32);
-	state.combiners.alpha[0].mul = (w1 & 0x00000e00) >> (41 - 32);
-	state.combiners.color[1].sub_a = (w1 & 0x000001e0) >> (37 - 32);
-	state.combiners.color[1].mul = (w1 & 0x0000001f) >> (32 - 32);
-	state.combiners.color[0].sub_b = (w2 & 0xf0000000) >> (28 - 0);
-	state.combiners.color[1].sub_b = (w2 & 0x0f000000) >> (24 - 0);
-	state.combiners.alpha[1].sub_a = (w2 & 0x00e00000) >> (21 - 0);
-	state.combiners.alpha[1].mul = (w2 & 0x001c0000) >> (18 - 0);
-	state.combiners.color[0].add = (w2 & 0x00038000) >> (15 - 0);
-	state.combiners.alpha[0].sub_b = (w2 & 0x00007000) >> (12 - 0);
-	state.combiners.alpha[0].add = (w2 & 0x00000e00) >> (9 - 0);
-	state.combiners.color[1].add = (w2 & 0x000001c0) >> (6 - 0);
-	state.combiners.alpha[1].sub_b = (w2 & 0x00000038) >> (3 - 0);
-	state.combiners.alpha[1].add = (w2 & 0x00000007) >> (0 - 0);
-	state.combiners_dirty = true;
+   state.combiners.color[0].sub_a = (w1 & 0x00f00000) >> (52 - 32);
+   state.combiners.color[0].mul = (w1 & 0x000f8000) >> (47 - 32);
+   state.combiners.alpha[0].sub_a = (w1 & 0x00007000) >> (44 - 32);
+   state.combiners.alpha[0].mul = (w1 & 0x00000e00) >> (41 - 32);
+   state.combiners.color[1].sub_a = (w1 & 0x000001e0) >> (37 - 32);
+   state.combiners.color[1].mul = (w1 & 0x0000001f) >> (32 - 32);
+   state.combiners.color[0].sub_b = (w2 & 0xf0000000) >> (28 - 0);
+   state.combiners.color[1].sub_b = (w2 & 0x0f000000) >> (24 - 0);
+   state.combiners.alpha[1].sub_a = (w2 & 0x00e00000) >> (21 - 0);
+   state.combiners.alpha[1].mul = (w2 & 0x001c0000) >> (18 - 0);
+   state.combiners.color[0].add = (w2 & 0x00038000) >> (15 - 0);
+   state.combiners.alpha[0].sub_b = (w2 & 0x00007000) >> (12 - 0);
+   state.combiners.alpha[0].add = (w2 & 0x00000e00) >> (9 - 0);
+   state.combiners.color[1].add = (w2 & 0x000001c0) >> (6 - 0);
+   state.combiners.alpha[1].sub_b = (w2 & 0x00000038) >> (3 - 0);
+   state.combiners.alpha[1].add = (w2 & 0x00000007) >> (0 - 0);
+   state.combiners_dirty = true;
 
-	// RDP 2-cycle combiner is pipelined so texel 0 becomes texel 1 in second cycle.
-	// Similarly, texel 1 becomes the next texel for the neighbor pixel (ouch).
-	// Of course, this depends on the winding direction ... Argh :v
-	auto color_is_secondary = [](uint32_t c, uint32_t cycle) { return c == (2 - cycle) || c == (9 - cycle); };
-	auto alpha_is_secondary = [](uint32_t c, uint32_t cycle) { return c == (2 - cycle); };
-	auto color_is_pipelined = [](uint32_t c) { return c == 2 || c == 9; };
-	auto alpha_is_pipelined = [](uint32_t c) { return c == 2; };
+   // RDP 2-cycle combiner is pipelined so texel 0 becomes texel 1 in second cycle.
+   // Similarly, texel 1 becomes the next texel for the neighbor pixel (ouch).
+   // Of course, this depends on the winding direction ... Argh :v
+   auto color_is_secondary = [](uint32_t c, uint32_t cycle) { return c == (2 - cycle) || c == (9 - cycle); };
+   auto alpha_is_secondary = [](uint32_t c, uint32_t cycle) { return c == (2 - cycle); };
+   auto color_is_pipelined = [](uint32_t c) { return c == 2 || c == 9; };
+   auto alpha_is_pipelined = [](uint32_t c) { return c == 2; };
 
-	auto color_is_tex = [](uint32_t c) { return c == 2 || c == 1 || c == 9 || c == 8; };
-	auto alpha_is_tex = [](uint32_t c) { return c == 2 || c == 1; };
+   auto color_is_tex = [](uint32_t c) { return c == 2 || c == 1 || c == 9 || c == 8; };
+   auto alpha_is_tex = [](uint32_t c) { return c == 2 || c == 1; };
 
-	// FIXME: This is silly. Broadcast bools based on c directly instead.
-	state.combiner_reads_tile[0] =
-	    color_is_tex(state.combiners.color[0].sub_a) || color_is_tex(state.combiners.color[0].sub_b) ||
-	    color_is_tex(state.combiners.color[0].mul) || color_is_tex(state.combiners.color[0].add) ||
-	    alpha_is_tex(state.combiners.alpha[0].sub_a) || alpha_is_tex(state.combiners.alpha[0].sub_b) ||
-	    alpha_is_tex(state.combiners.alpha[0].mul) || alpha_is_tex(state.combiners.alpha[0].add);
+   // FIXME: This is silly. Broadcast bools based on c directly instead.
+   state.combiner_reads_tile[0] =
+	   color_is_tex(state.combiners.color[0].sub_a) || color_is_tex(state.combiners.color[0].sub_b) ||
+	   color_is_tex(state.combiners.color[0].mul) || color_is_tex(state.combiners.color[0].add) ||
+	   alpha_is_tex(state.combiners.alpha[0].sub_a) || alpha_is_tex(state.combiners.alpha[0].sub_b) ||
+	   alpha_is_tex(state.combiners.alpha[0].mul) || alpha_is_tex(state.combiners.alpha[0].add);
 
-	state.combiner_reads_tile[1] =
-	    color_is_tex(state.combiners.color[1].sub_a) || color_is_tex(state.combiners.color[1].sub_b) ||
-	    color_is_tex(state.combiners.color[1].mul) || color_is_tex(state.combiners.color[1].add) ||
-	    alpha_is_tex(state.combiners.alpha[1].sub_a) || alpha_is_tex(state.combiners.alpha[1].sub_b) ||
-	    alpha_is_tex(state.combiners.alpha[1].mul) || alpha_is_tex(state.combiners.alpha[1].add);
+   state.combiner_reads_tile[1] =
+	   color_is_tex(state.combiners.color[1].sub_a) || color_is_tex(state.combiners.color[1].sub_b) ||
+	   color_is_tex(state.combiners.color[1].mul) || color_is_tex(state.combiners.color[1].add) ||
+	   alpha_is_tex(state.combiners.alpha[1].sub_a) || alpha_is_tex(state.combiners.alpha[1].sub_b) ||
+	   alpha_is_tex(state.combiners.alpha[1].mul) || alpha_is_tex(state.combiners.alpha[1].add);
 
-	state.combiner_reads_secondary_tile[0] =
-	    color_is_secondary(state.combiners.color[0].sub_a, 0) ||
-	    color_is_secondary(state.combiners.color[0].sub_b, 0) || color_is_secondary(state.combiners.color[0].mul, 0) ||
-	    color_is_secondary(state.combiners.color[0].add, 0) || alpha_is_secondary(state.combiners.alpha[0].sub_a, 0) ||
-	    alpha_is_secondary(state.combiners.alpha[0].sub_b, 0) || alpha_is_secondary(state.combiners.alpha[0].mul, 0) ||
-	    alpha_is_secondary(state.combiners.alpha[0].add, 0);
+   state.combiner_reads_secondary_tile[0] =
+	   color_is_secondary(state.combiners.color[0].sub_a, 0) ||
+	   color_is_secondary(state.combiners.color[0].sub_b, 0) || color_is_secondary(state.combiners.color[0].mul, 0) ||
+	   color_is_secondary(state.combiners.color[0].add, 0) || alpha_is_secondary(state.combiners.alpha[0].sub_a, 0) ||
+	   alpha_is_secondary(state.combiners.alpha[0].sub_b, 0) || alpha_is_secondary(state.combiners.alpha[0].mul, 0) ||
+	   alpha_is_secondary(state.combiners.alpha[0].add, 0);
 
-	state.combiner_reads_secondary_tile[1] =
-	    color_is_secondary(state.combiners.color[1].sub_a, 1) ||
-	    color_is_secondary(state.combiners.color[1].sub_b, 1) || color_is_secondary(state.combiners.color[1].mul, 1) ||
-	    color_is_secondary(state.combiners.color[1].add, 1) || alpha_is_secondary(state.combiners.alpha[1].sub_a, 1) ||
-	    alpha_is_secondary(state.combiners.alpha[1].sub_b, 1) || alpha_is_secondary(state.combiners.alpha[1].mul, 1) ||
-	    alpha_is_secondary(state.combiners.alpha[1].add, 1);
+   state.combiner_reads_secondary_tile[1] =
+	   color_is_secondary(state.combiners.color[1].sub_a, 1) ||
+	   color_is_secondary(state.combiners.color[1].sub_b, 1) || color_is_secondary(state.combiners.color[1].mul, 1) ||
+	   color_is_secondary(state.combiners.color[1].add, 1) || alpha_is_secondary(state.combiners.alpha[1].sub_a, 1) ||
+	   alpha_is_secondary(state.combiners.alpha[1].sub_b, 1) || alpha_is_secondary(state.combiners.alpha[1].mul, 1) ||
+	   alpha_is_secondary(state.combiners.alpha[1].add, 1);
 
-	state.combiner_reads_pipelined_tile =
-	    color_is_pipelined(state.combiners.color[1].sub_a) || color_is_pipelined(state.combiners.color[1].sub_b) ||
-	    color_is_pipelined(state.combiners.color[1].mul) || color_is_pipelined(state.combiners.color[1].add) ||
-	    alpha_is_pipelined(state.combiners.alpha[1].sub_a) || alpha_is_pipelined(state.combiners.alpha[1].sub_b) ||
-	    alpha_is_pipelined(state.combiners.alpha[1].mul) || alpha_is_pipelined(state.combiners.alpha[1].add);
+   state.combiner_reads_pipelined_tile =
+	   color_is_pipelined(state.combiners.color[1].sub_a) || color_is_pipelined(state.combiners.color[1].sub_b) ||
+	   color_is_pipelined(state.combiners.color[1].mul) || color_is_pipelined(state.combiners.color[1].add) ||
+	   alpha_is_pipelined(state.combiners.alpha[1].sub_a) || alpha_is_pipelined(state.combiners.alpha[1].sub_b) ||
+	   alpha_is_pipelined(state.combiners.alpha[1].mul) || alpha_is_pipelined(state.combiners.alpha[1].add);
 }
 
 void Renderer::log_combiner() const
 {
 #ifdef ENABLE_LOGS
-	for (unsigned i = 0; i < 2; i++)
-	{
-		fprintf(stderr, "Cycle %u:\n", i);
-		fprintf(stderr, "  Color: (%2u - %2u) * %2u + %2u\n", state.combiners.color[i].sub_a,
-		        state.combiners.color[i].sub_b, state.combiners.color[i].mul, state.combiners.color[i].add);
-		fprintf(stderr, "  Alpha: (%2u - %2u) * %2u + %2u\n", state.combiners.alpha[i].sub_a,
-		        state.combiners.alpha[i].sub_b, state.combiners.alpha[i].mul, state.combiners.alpha[i].add);
-	}
+   unsigned i;
+   for (i = 0; i < 2; i++)
+   {
+      fprintf(stderr, "Cycle %u:\n", i);
+      fprintf(stderr, "  Color: (%2u - %2u) * %2u + %2u\n", state.combiners.color[i].sub_a,
+		      state.combiners.color[i].sub_b, state.combiners.color[i].mul, state.combiners.color[i].add);
+      fprintf(stderr, "  Alpha: (%2u - %2u) * %2u + %2u\n", state.combiners.alpha[i].sub_a,
+		      state.combiners.alpha[i].sub_b, state.combiners.alpha[i].mul, state.combiners.alpha[i].add);
+   }
 #endif
 }
 
 bool Renderer::combiner_reads_secondary_tile(unsigned cycle) const
 {
-	return state.combiner_reads_secondary_tile[cycle];
+   return state.combiner_reads_secondary_tile[cycle];
 }
 
 bool Renderer::combiner_reads_pipelined_tile() const
 {
-	return state.combiner_reads_pipelined_tile;
+   return state.combiner_reads_pipelined_tile;
 }
 
 bool Renderer::combiner_reads_tile(CycleType type) const
 {
-	switch (type)
-	{
-	case CYCLE_TYPE_1:
-		return state.combiner_reads_tile[1];
-	case CYCLE_TYPE_2:
-		return state.combiner_reads_tile[0] || state.combiner_reads_tile[1];
-	default:
-		return false;
-	}
+   switch (type)
+   {
+      case CYCLE_TYPE_1:
+         return state.combiner_reads_tile[1];
+      case CYCLE_TYPE_2:
+         return state.combiner_reads_tile[0] || state.combiner_reads_tile[1];
+      default:
+         break;
+   }
+
+   return false;
 }
 
 void Renderer::set_primitive_z(uint32_t w2)
 {
-	// Top 15 bits => Primitive Z, lower 16 are dZ.
-	// We should encode it appropriately ahead of time.
-	state.primitive_z = w2 & 0x7fffffff;
+   /* Top 15 bits => Primitive Z, lower 16 are dZ.
+    * We should encode it appropriately ahead of time. */
+   state.primitive_z = w2 & 0x7fffffff;
 }
 
 void Renderer::update_tiles(uint32_t tile_mask)
 {
-	uint32_t dirty_tiles = tmem.get_dirty_tiles();
-	uint32_t needs_update = dirty_tiles & tile_mask;
-	if (!needs_update)
-		return;
+   unsigned i;
+   uint32_t dirty_tiles = tmem.get_dirty_tiles();
+   uint32_t needs_update = dirty_tiles & tile_mask;
+   if (!needs_update)
+      return;
 
-	for (unsigned i = 0; i < TMEM_TILES; i++)
-	{
-		if (!(needs_update & (1 << i)))
-			continue;
+   for (i = 0; i < TMEM_TILES; i++)
+   {
+	   if (!(needs_update & (1 << i)))
+		   continue;
 
-		//fprintf(stderr, "Updating tile #%u.\n", i);
+	   //fprintf(stderr, "Updating tile #%u.\n", i);
 
-		// Allocate new tile descriptor.
-		tile_instances[i] = tile_descriptors.size();
-		tile_descriptors.emplace_back();
-		auto &tile = tile_descriptors.back();
+	   // Allocate new tile descriptor.
+	   tile_instances[i] = tile_descriptors.size();
+	   tile_descriptors.emplace_back();
+	   auto &tile = tile_descriptors.back();
 
-		// Build descriptors.
-		tmem.get_effective_size(i, &tile.width, &tile.height);
-		tmem.build_tile_descriptor(i, &tile.desc);
+	   // Build descriptors.
+	   tmem.get_effective_size(i, &tile.width, &tile.height);
+	   tmem.build_tile_descriptor(i, &tile.desc);
 
-		// Decode into pixel buffer.
-		tile.hw_fbe = false;
-		if (tmem.tmem_is_framebuffer())
-		{
-			if (tmem.get_framebuffer_transfer(i, &tile.hw_fbe_info))
-				tile.hw_fbe = true;
-			else
-				fprintf(stderr, "WARNING: Attempted HWFBE transfer, but found incompatibility.\n");
-		}
+	   // Decode into pixel buffer.
+	   tile.hw_fbe = false;
+	   if (tmem.tmem_is_framebuffer())
+	   {
+		   if (tmem.get_framebuffer_transfer(i, &tile.hw_fbe_info))
+			   tile.hw_fbe = true;
+		   else
+			   fprintf(stderr, "WARNING: Attempted HWFBE transfer, but found incompatibility.\n");
+	   }
 
-		if (!tile.hw_fbe)
-		{
-			size_t required_size = tile.width * tile.height * 4;
-			tile.offset = tile_data.size();
-			tile_data.insert(end(tile_data), required_size, uint8_t(0));
-			tmem.decode_tile(i, tile_data.data() + tile.offset, tile.width * 4);
-		}
-		else
-		{
-			// We're doing at least one image load store compute job, so
-			// we need to keep the image in general layout.
-			tile_hw_fbe = true;
-		}
+	   if (!tile.hw_fbe)
+	   {
+		   size_t required_size = tile.width * tile.height * 4;
+		   tile.offset = tile_data.size();
+		   tile_data.insert(end(tile_data), required_size, uint8_t(0));
+		   tmem.decode_tile(i, tile_data.data() + tile.offset, tile.width * 4);
+	   }
+	   else
+	   {
+		   // We're doing at least one image load store compute job, so
+		   // we need to keep the image in general layout.
+		   tile_hw_fbe = true;
+	   }
 
 #ifdef TMEM_DEBUG
-		if (!tile.hw_fbe)
-		{
-			size_t required_size = tile.width * tile.height * 4;
-			static unordered_set<size_t> seen_tile;
-			static unordered_set<size_t> blank_tile;
+	   if (!tile.hw_fbe)
+	   {
+		   size_t required_size = tile.width * tile.height * 4;
+		   static unordered_set<size_t> seen_tile;
+		   static unordered_set<size_t> blank_tile;
 
-			hash<uint8_t> hasher;
-			hash<uint32_t> hasher32;
-			size_t v = 0xdeadbeef;
-			for (unsigned i = 0; i < required_size; i++)
-				v = (v * 12515) ^ hasher(tile_data[tile.offset + i]);
-			v = (v * 1241251) ^ hasher32(tile.width);
-			v = (v * 12314) ^ hasher32(tile.height);
+		   hash<uint8_t> hasher;
+		   hash<uint32_t> hasher32;
+		   size_t v = 0xdeadbeef;
+		   for (unsigned i = 0; i < required_size; i++)
+			   v = (v * 12515) ^ hasher(tile_data[tile.offset + i]);
+		   v = (v * 1241251) ^ hasher32(tile.width);
+		   v = (v * 12314) ^ hasher32(tile.height);
 
-			if (blank_tile.find(v) != end(blank_tile))
-			{
-				memset(tile_data.data() + tile.offset, 0xff, required_size);
-			}
-			else
-			{
-				auto itr = seen_tile.find(v);
-				if (itr == end(seen_tile))
-				{
-					static unsigned tile_count;
+		   if (blank_tile.find(v) != end(blank_tile))
+		   {
+			   memset(tile_data.data() + tile.offset, 0xff, required_size);
+		   }
+		   else
+		   {
+			   auto itr = seen_tile.find(v);
+			   if (itr == end(seen_tile))
+			   {
+				   static unsigned tile_count;
 
-					const char *range = getenv("SKIP_TILE_RANGE");
-					unsigned start, end;
-					if (range && sscanf(range, "%u-%u", &start, &end) == 2 && start <= tile_count && end >= tile_count)
-					{
+				   const char *range = getenv("SKIP_TILE_RANGE");
+				   unsigned start, end;
+				   if (range && sscanf(range, "%u-%u", &start, &end) == 2 && start <= tile_count && end >= tile_count)
+				   {
 #ifdef ENABLE_LOGS
-						fprintf(stderr, "Skipping tile %u.\n", tile_count);
+					   fprintf(stderr, "Skipping tile %u.\n", tile_count);
 #endif
-						memset(tile_data.data() + tile.offset, 0xff, required_size);
-						blank_tile.insert(v);
-						tile_count++;
-					}
-					else
-					{
-						char tile_path[512];
-						fprintf(stderr, "Dumping tile: %u\n", tile_count);
+					   memset(tile_data.data() + tile.offset, 0xff, required_size);
+					   blank_tile.insert(v);
+					   tile_count++;
+				   }
+				   else
+				   {
+					   char tile_path[512];
+					   fprintf(stderr, "Dumping tile: %u\n", tile_count);
 
-						snprintf(tile_path, sizeof(tile_path),
-						         "/tmp/tile_%04u_%ux%u_format%u_pixelsize%u_shift%u_%u_tmem_0x%04x_line%u.png",
-						         tile_count++, tile.width, tile.height, tmem.get_tile(i).format,
-						         tmem.get_tile(i).pixel_size, tmem.get_tile(i).shift[0], tmem.get_tile(i).shift[1],
-						         tmem.get_tile(i).tmem, tmem.get_tile(i).line);
+					   snprintf(tile_path, sizeof(tile_path),
+							   "/tmp/tile_%04u_%ux%u_format%u_pixelsize%u_shift%u_%u_tmem_0x%04x_line%u.png",
+							   tile_count++, tile.width, tile.height, tmem.get_tile(i).format,
+							   tmem.get_tile(i).pixel_size, tmem.get_tile(i).shift[0], tmem.get_tile(i).shift[1],
+							   tmem.get_tile(i).tmem, tmem.get_tile(i).line);
 
-						if (!stbi_write_png(tile_path, tile.width, tile.height, 4, tile_data.data() + tile.offset,
-						                    tile.width * 4))
-							fprintf(stderr, "Failed to write image file: %s\n", tile_path);
-						seen_tile.insert(v);
-					}
-				}
-			}
-		}
+					   if (!stbi_write_png(tile_path, tile.width, tile.height, 4, tile_data.data() + tile.offset,
+								   tile.width * 4))
+						   fprintf(stderr, "Failed to write image file: %s\n", tile_path);
+					   seen_tile.insert(v);
+				   }
+			   }
+		   }
+	   }
 #endif
-	}
+   }
 
-	tmem.clear_dirty_tiles(needs_update);
+   tmem.clear_dirty_tiles(needs_update);
 }
 
-// Angrylion does this, seems like it's rounding up to nearest POT, with some weird
-// rules thrown in.
+/* Angrylion does this, seems like it's 
+ * rounding up to nearest POT, with some weird
+ * rules thrown in. */
 static uint16_t normalize_dz(uint16_t dz)
 {
-	if (dz & 0xc000)
-		return 0x8000;
-	if (dz == 0)
-		return 1;
-	if (dz == 1)
-		return 3;
-	for (unsigned count = 0x2000; count > 0; count >>= 1)
-		if (dz & count)
-			return count << 1;
-	return 0;
+   unsigned count;
+   if (dz & 0xc000)
+      return 0x8000;
+   if (dz == 0)
+      return 1;
+   if (dz == 1)
+      return 3;
+   for (count = 0x2000; count > 0; count >>= 1)
+      if (dz & count)
+         return count << 1;
+   return 0;
 }
 
 void Renderer::clip_scissor(int &min_x, int &max_x, int &min_y, int &max_y)
 {
-	// Clip to scissor box.
-	min_x = max(min_x, scissor.xh >> 2);
-	max_x = min(max_x, scissor.xl >> 2);
-	min_y = max(min_y, scissor.yh >> 2);
+   /* Clip to scissor box. */
+   min_x = max(min_x, scissor.xh >> 2);
+   max_x = min(max_x, scissor.xl >> 2);
+   min_y = max(min_y, scissor.yh >> 2);
 
-	// y < clip is used to test scissor, so if scissor Y == 240, make sure we don't include that line.
-	max_y = min(max_y, (scissor.yl - 1) >> 2);
+   /* y < clip is used to test scissor, so if scissor Y == 240, make sure we don't include that line. */
+   max_y = min(max_y, (scissor.yl - 1) >> 2);
 }
 
 void Renderer::fill_rect_cpu(int xmin, int xmax, int ymin, int ymax)
@@ -908,274 +912,273 @@ bool Renderer::coarse_conservative_raster(int x, int y, int min_x, int max_x, in
 
 void Renderer::set_lod_modes(bool detail, bool sharpen)
 {
-	state.lod_flags &= ~(LOD_INFO_PRIMITIVE_DETAIL | LOD_INFO_PRIMITIVE_SHARPEN);
-	state.lod_flags |= detail ? LOD_INFO_PRIMITIVE_DETAIL : 0;
-	state.lod_flags |= sharpen ? LOD_INFO_PRIMITIVE_SHARPEN : 0;
+   state.lod_flags &= ~(LOD_INFO_PRIMITIVE_DETAIL | LOD_INFO_PRIMITIVE_SHARPEN);
+   state.lod_flags |= detail ? LOD_INFO_PRIMITIVE_DETAIL : 0;
+   state.lod_flags |= sharpen ? LOD_INFO_PRIMITIVE_SHARPEN : 0;
 }
 
 void Renderer::set_prim_color(uint32_t w1, uint32_t w2)
 {
-	state.prim_color = w2;
-	state.prim_lod_frac = w1 & 0xff;
-	state.combiners_dirty = true;
+   uint32_t min_lod       = (w1 & 0x1f00) >> 8;
 
-	uint32_t min_lod = (w1 & 0x1f00) >> 8;
-	state.lod_flags &= ~LOD_INFO_PRIMITIVE_MIN_LOD_MASK;
-	state.lod_flags |= min_lod << LOD_INFO_PRIMITIVE_MIN_LOD_SHIFT;
+   state.prim_color       = w2;
+   state.prim_lod_frac    = w1 & 0xff;
+   state.combiners_dirty  = true;
+
+   state.lod_flags       &= ~LOD_INFO_PRIMITIVE_MIN_LOD_MASK;
+   state.lod_flags       |= min_lod << LOD_INFO_PRIMITIVE_MIN_LOD_SHIFT;
 }
 
 void Renderer::set_env_color(uint32_t w2)
 {
-	state.env_color = w2;
-	state.combiners_dirty = true;
+   state.env_color = w2;
+   state.combiners_dirty = true;
 }
 
 void Renderer::set_fog_color(uint32_t w2)
 {
-	state.fog_color = w2;
+   state.fog_color = w2;
 }
 
 void Renderer::set_convert(uint32_t /*w1*/, uint32_t w2)
 {
-	// Ignore texture filter converts for now ...
-	state.k4 = (w2 >> 9) & 0x1ff;
-	state.k5 = w2 & 0x1ff;
-	state.combiners_dirty = true;
+   // Ignore texture filter converts for now ...
+   state.k4 = (w2 >> 9) & 0x1ff;
+   state.k5 = w2 & 0x1ff;
+   state.combiners_dirty = true;
 }
 
 uint64_t Renderer::update_static_combiner()
 {
-	auto &c = state.combiners;
-	for (unsigned base = 0; base < 2; base++)
-	{
-		auto &cycle = c.cycle[base];
-		auto &color = c.color[base];
-		auto &alpha = c.alpha[base];
+   auto &c = state.combiners;
+   for (unsigned base = 0; base < 2; base++)
+   {
+	   auto &cycle = c.cycle[base];
+	   auto &color = c.color[base];
+	   auto &alpha = c.alpha[base];
 
-		// Pre-resolve color inputs.
-		switch (color.sub_a)
-		{
-		case 3:
-			cycle.sub_a[0] = uint8_t(state.prim_color >> 24);
-			cycle.sub_a[1] = uint8_t(state.prim_color >> 16);
-			cycle.sub_a[2] = uint8_t(state.prim_color >> 8);
-			break;
+	   // Pre-resolve color inputs.
+	   switch (color.sub_a)
+	   {
+		   case 3:
+			   cycle.sub_a[0] = uint8_t(state.prim_color >> 24);
+			   cycle.sub_a[1] = uint8_t(state.prim_color >> 16);
+			   cycle.sub_a[2] = uint8_t(state.prim_color >> 8);
+			   break;
 
-		case 5:
-			cycle.sub_a[0] = uint8_t(state.env_color >> 24);
-			cycle.sub_a[1] = uint8_t(state.env_color >> 16);
-			cycle.sub_a[2] = uint8_t(state.env_color >> 8);
-			break;
+		   case 5:
+			   cycle.sub_a[0] = uint8_t(state.env_color >> 24);
+			   cycle.sub_a[1] = uint8_t(state.env_color >> 16);
+			   cycle.sub_a[2] = uint8_t(state.env_color >> 8);
+			   break;
 
-		case 6:
-			cycle.sub_a[0] = 0x100;
-			cycle.sub_a[1] = 0x100;
-			cycle.sub_a[2] = 0x100;
-			break;
+		   case 6:
+			   cycle.sub_a[0] = 0x100;
+			   cycle.sub_a[1] = 0x100;
+			   cycle.sub_a[2] = 0x100;
+			   break;
 
-		default:
-			cycle.sub_a[0] = 0x0;
-			cycle.sub_a[1] = 0x0;
-			cycle.sub_a[2] = 0x0;
-			break;
-		}
+		   default:
+			   cycle.sub_a[0] = 0x0;
+			   cycle.sub_a[1] = 0x0;
+			   cycle.sub_a[2] = 0x0;
+			   break;
+	   }
 
-		switch (color.sub_b)
-		{
-		case 3:
-			cycle.sub_b[0] = uint8_t(state.prim_color >> 24);
-			cycle.sub_b[1] = uint8_t(state.prim_color >> 16);
-			cycle.sub_b[2] = uint8_t(state.prim_color >> 8);
-			break;
+	   switch (color.sub_b)
+	   {
+		   case 3:
+			   cycle.sub_b[0] = uint8_t(state.prim_color >> 24);
+			   cycle.sub_b[1] = uint8_t(state.prim_color >> 16);
+			   cycle.sub_b[2] = uint8_t(state.prim_color >> 8);
+			   break;
 
-		case 5:
-			cycle.sub_b[0] = uint8_t(state.env_color >> 24);
-			cycle.sub_b[1] = uint8_t(state.env_color >> 16);
-			cycle.sub_b[2] = uint8_t(state.env_color >> 8);
-			break;
+		   case 5:
+			   cycle.sub_b[0] = uint8_t(state.env_color >> 24);
+			   cycle.sub_b[1] = uint8_t(state.env_color >> 16);
+			   cycle.sub_b[2] = uint8_t(state.env_color >> 8);
+			   break;
 
-		case 6:
-			fprintf(stderr, "UNIMPLEMENTED SUB_B 6.\n");
-			/* Key center */
-			break;
+		   case 6:
+			   fprintf(stderr, "UNIMPLEMENTED SUB_B 6.\n");
+			   /* Key center */
+			   break;
 
-		case 7:
-			cycle.sub_b[0] = state.k4;
-			cycle.sub_b[1] = state.k4;
-			cycle.sub_b[2] = state.k4;
-			break;
+		   case 7:
+			   cycle.sub_b[0] = state.k4;
+			   cycle.sub_b[1] = state.k4;
+			   cycle.sub_b[2] = state.k4;
+			   break;
 
-		default:
-			cycle.sub_b[0] = 0x0;
-			cycle.sub_b[1] = 0x0;
-			cycle.sub_b[2] = 0x0;
-			break;
-		}
+		   default:
+			   cycle.sub_b[0] = 0x0;
+			   cycle.sub_b[1] = 0x0;
+			   cycle.sub_b[2] = 0x0;
+			   break;
+	   }
 
-		switch (color.mul)
-		{
-		case 3:
-			cycle.mul[0] = uint8_t(state.prim_color >> 24);
-			cycle.mul[1] = uint8_t(state.prim_color >> 16);
-			cycle.mul[2] = uint8_t(state.prim_color >> 8);
-			break;
+	   switch (color.mul)
+	   {
+		   case 3:
+			   cycle.mul[0] = uint8_t(state.prim_color >> 24);
+			   cycle.mul[1] = uint8_t(state.prim_color >> 16);
+			   cycle.mul[2] = uint8_t(state.prim_color >> 8);
+			   break;
 
-		case 5:
-			cycle.mul[0] = uint8_t(state.env_color >> 24);
-			cycle.mul[1] = uint8_t(state.env_color >> 16);
-			cycle.mul[2] = uint8_t(state.env_color >> 8);
-			break;
+		   case 5:
+			   cycle.mul[0] = uint8_t(state.env_color >> 24);
+			   cycle.mul[1] = uint8_t(state.env_color >> 16);
+			   cycle.mul[2] = uint8_t(state.env_color >> 8);
+			   break;
 
-		case 6:
-			/* Key scale */
-			fprintf(stderr, "UNIMPLEMENTED MUL KEY SCALE.\n");
-			break;
+		   case 6:
+			   /* Key scale */
+			   fprintf(stderr, "UNIMPLEMENTED MUL KEY SCALE.\n");
+			   break;
 
-		case 10:
-			cycle.mul[0] = cycle.mul[1] = cycle.mul[2] = uint8_t(state.prim_color >> 0);
-			break;
+		   case 10:
+			   cycle.mul[0] = cycle.mul[1] = cycle.mul[2] = uint8_t(state.prim_color >> 0);
+			   break;
 
-		case 12:
-			cycle.mul[0] = cycle.mul[1] = cycle.mul[2] = uint8_t(state.env_color >> 0);
-			break;
+		   case 12:
+			   cycle.mul[0] = cycle.mul[1] = cycle.mul[2] = uint8_t(state.env_color >> 0);
+			   break;
 
-		case 14:
-			cycle.mul[0] = cycle.mul[1] = cycle.mul[2] = state.prim_lod_frac;
-			break;
+		   case 14:
+			   cycle.mul[0] = cycle.mul[1] = cycle.mul[2] = state.prim_lod_frac;
+			   break;
 
-		case 15:
-			cycle.mul[0] = state.k5;
-			cycle.mul[1] = state.k5;
-			cycle.mul[2] = state.k5;
-			break;
+		   case 15:
+			   cycle.mul[0] = state.k5;
+			   cycle.mul[1] = state.k5;
+			   cycle.mul[2] = state.k5;
+			   break;
 
-		default:
-			cycle.mul[0] = 0;
-			cycle.mul[1] = 0;
-			cycle.mul[2] = 0;
-			break;
-		}
+		   default:
+			   cycle.mul[0] = 0;
+			   cycle.mul[1] = 0;
+			   cycle.mul[2] = 0;
+			   break;
+	   }
 
-		switch (color.add)
-		{
-		case 3:
-			cycle.add[0] = uint8_t(state.prim_color >> 24);
-			cycle.add[1] = uint8_t(state.prim_color >> 16);
-			cycle.add[2] = uint8_t(state.prim_color >> 8);
-			break;
+	   switch (color.add)
+	   {
+		   case 3:
+			   cycle.add[0] = uint8_t(state.prim_color >> 24);
+			   cycle.add[1] = uint8_t(state.prim_color >> 16);
+			   cycle.add[2] = uint8_t(state.prim_color >> 8);
+			   break;
 
-		case 5:
-			cycle.add[0] = uint8_t(state.env_color >> 24);
-			cycle.add[1] = uint8_t(state.env_color >> 16);
-			cycle.add[2] = uint8_t(state.env_color >> 8);
-			break;
+		   case 5:
+			   cycle.add[0] = uint8_t(state.env_color >> 24);
+			   cycle.add[1] = uint8_t(state.env_color >> 16);
+			   cycle.add[2] = uint8_t(state.env_color >> 8);
+			   break;
 
-		case 6:
-			cycle.add[0] = 0x100;
-			cycle.add[1] = 0x100;
-			cycle.add[2] = 0x100;
-			break;
+		   case 6:
+			   cycle.add[0] = 0x100;
+			   cycle.add[1] = 0x100;
+			   cycle.add[2] = 0x100;
+			   break;
 
-		default:
-			cycle.add[0] = 0x0;
-			cycle.add[1] = 0x0;
-			cycle.add[2] = 0x0;
-			break;
-		}
+		   default:
+			   cycle.add[0] = 0x0;
+			   cycle.add[1] = 0x0;
+			   cycle.add[2] = 0x0;
+			   break;
+	   }
 
-		// Alpha
-		switch (alpha.sub_a)
-		{
-		case 3:
-			cycle.sub_a[3] = uint8_t(state.prim_color >> 0);
-			break;
+	   // Alpha
+	   switch (alpha.sub_a)
+	   {
+		   case 3:
+			   cycle.sub_a[3] = uint8_t(state.prim_color >> 0);
+			   break;
 
-		case 5:
-			cycle.sub_a[3] = uint8_t(state.env_color >> 0);
-			break;
+		   case 5:
+			   cycle.sub_a[3] = uint8_t(state.env_color >> 0);
+			   break;
 
-		case 6:
-			cycle.sub_a[3] = 0x100;
-			break;
+		   case 6:
+			   cycle.sub_a[3] = 0x100;
+			   break;
 
-		default:
-			cycle.sub_a[3] = 0;
-			break;
-		}
+		   default:
+			   cycle.sub_a[3] = 0;
+			   break;
+	   }
 
-		switch (alpha.sub_b)
-		{
-		case 3:
-			cycle.sub_b[3] = uint8_t(state.prim_color >> 0);
-			break;
+	   switch (alpha.sub_b)
+	   {
+		   case 3:
+			   cycle.sub_b[3] = uint8_t(state.prim_color >> 0);
+			   break;
 
-		case 5:
-			cycle.sub_b[3] = uint8_t(state.env_color >> 0);
-			break;
+		   case 5:
+			   cycle.sub_b[3] = uint8_t(state.env_color >> 0);
+			   break;
 
-		case 6:
-			cycle.sub_b[3] = 0x100;
-			break;
+		   case 6:
+			   cycle.sub_b[3] = 0x100;
+			   break;
 
-		default:
-			cycle.sub_b[3] = 0;
-			break;
-		}
+		   default:
+			   cycle.sub_b[3] = 0;
+			   break;
+	   }
 
-		switch (alpha.mul)
-		{
-		case 3:
-			cycle.mul[3] = uint8_t(state.prim_color >> 0);
-			break;
+	   switch (alpha.mul)
+	   {
+		   case 3:
+			   cycle.mul[3] = uint8_t(state.prim_color >> 0);
+			   break;
 
-		case 5:
-			cycle.mul[3] = uint8_t(state.env_color >> 0);
-			break;
+		   case 5:
+			   cycle.mul[3] = uint8_t(state.env_color >> 0);
+			   break;
 
-		case 6:
-			cycle.mul[3] = state.prim_lod_frac;
-			break;
+		   case 6:
+			   cycle.mul[3] = state.prim_lod_frac;
+			   break;
 
-		default:
-			cycle.mul[3] = 0;
-			break;
-		}
+		   default:
+			   cycle.mul[3] = 0;
+			   break;
+	   }
 
-		switch (alpha.add)
-		{
-		case 3:
-			cycle.add[3] = uint8_t(state.prim_color >> 0);
-			break;
+	   switch (alpha.add)
+	   {
+		   case 3:
+			   cycle.add[3] = uint8_t(state.prim_color >> 0);
+			   break;
 
-		case 5:
-			cycle.add[3] = uint8_t(state.env_color >> 0);
-			break;
+		   case 5:
+			   cycle.add[3] = uint8_t(state.env_color >> 0);
+			   break;
 
-		case 6:
-			cycle.add[3] = 0x100;
-			break;
+		   case 6:
+			   cycle.add[3] = 0x100;
+			   break;
 
-		default:
-			cycle.add[3] = 0;
-			break;
-		}
-	}
+		   default:
+			   cycle.add[3] = 0;
+			   break;
+	   }
+   }
 
-	return hash64(&c, sizeof(c));
+   return hash64(&c, sizeof(c));
 }
 
 void Renderer::set_depth_image(uint32_t addr)
 {
-	if (framebuffer.depth_addr == addr)
-		return;
+   if (framebuffer.depth_addr == addr)
+      return;
 
-	if (framebuffer.depth_state == FRAMEBUFFER_GPU)
-	{
-		// Keep the async frame around and update it when it's done.
-		complete_frame();
-	}
+   // Keep the async frame around and update it when it's done.
+   if (framebuffer.depth_state == FRAMEBUFFER_GPU)
+      complete_frame();
 
-	framebuffer.depth_addr = addr;
+   framebuffer.depth_addr = addr;
 }
 
 void Renderer::set_color_image(uint32_t addr, unsigned format, unsigned pixel_size, unsigned width)
@@ -1686,24 +1689,24 @@ void Renderer::sync_gpu_to_dram(bool blocking)
 
 void Renderer::sync_full()
 {
-	// Flush out all async framebuffers and synchronize with DRAM.
-	for (auto &async : async_transfers)
-		sync_framebuffer_to_cpu(async);
-	async_transfers.clear();
+   /* Flush out all async framebuffers and synchronize with DRAM. */
+   for (auto &async : async_transfers)
+      sync_framebuffer_to_cpu(async);
+   async_transfers.clear();
 
-	flush_tile_lists();
-	sync_gpu_to_dram(true);
+   flush_tile_lists();
+   sync_gpu_to_dram(true);
 }
 
 void Renderer::complete_frame()
 {
-	if (synchronous)
-		sync_full();
-	else
-	{
-		flush_tile_lists();
-		sync_gpu_to_dram(false);
-	}
+   if (synchronous)
+      sync_full();
+   else
+   {
+      flush_tile_lists();
+      sync_gpu_to_dram(false);
+   }
 }
 
 void Renderer::allocate_tiles()
@@ -1749,20 +1752,20 @@ void Renderer::allocate_tiles()
 
 void Renderer::begin_command_buffer()
 {
-	if (vulkan.cmd.cmd == VK_NULL_HANDLE)
-		vulkan.cmd = device.request_command_buffer();
+   if (vulkan.cmd.cmd == VK_NULL_HANDLE)
+      vulkan.cmd = device.request_command_buffer();
 }
 
 Vulkan::Fence Renderer::submit(const Vulkan::Semaphore *sem)
 {
-	assert(vulkan.cmd.cmd != VK_NULL_HANDLE);
-	auto fence = device.submit(vulkan.cmd, nullptr, sem);
+   assert(vulkan.cmd.cmd != VK_NULL_HANDLE);
+   auto fence = device.submit(vulkan.cmd, nullptr, sem);
 
-	vulkan.cmd = {};
-	vulkan.framebuffer = {};
-	vulkan.framebuffer_depth = {};
+   vulkan.cmd = {};
+   vulkan.framebuffer = {};
+   vulkan.framebuffer_depth = {};
 
-	return fence;
+   return fence;
 }
 
 void Renderer::flush_tile_lists()
