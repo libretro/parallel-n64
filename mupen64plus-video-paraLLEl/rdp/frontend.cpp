@@ -223,13 +223,13 @@ void Frontend::tri_fill_novarying_tile(Primitive *prim, Attribute *attr, uint32_
    /* Make sure attributes are cleared to zero. */
    if (attr)
    {
-      int i;
-      for (i = 0; i < 4; i++)
+      unsigned i;
+      for (i = 0; i < 3; i++)
       {
-         attr->stwz[i]      = 0;
-	 attr->d_stwz_dx[i] = 0;
-	 attr->d_stwz_dy[i] = 0;
-	 attr->d_stwz_de[i] = 0;
+	      attr->stwz[i]      = 0;
+	      attr->d_stwz_dx[i] = 0;
+	      attr->d_stwz_dy[i] = 0;
+	      attr->d_stwz_de[i] = 0;
       }
    }
 }
