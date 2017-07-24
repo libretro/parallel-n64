@@ -1303,12 +1303,11 @@ void Renderer::sync_color_dram_to_gpu()
    else
    {
       unsigned pixels;
-      auto *dst = NULL;
       auto base = framebuffer_data();
 
       begin_framebuffer();
       pixels = framebuffer.allocated_width * framebuffer.allocated_height;
-      dst = static_cast<uint32_t *>(vulkan.framebuffer.map());
+      auto *dst = static_cast<uint32_t *>(vulkan.framebuffer.map());
 
       if (framebuffer.pixel_size == PIXEL_SIZE_32BPP)
       {
@@ -1609,7 +1608,6 @@ void Renderer::sync_gpu_to_vi(CommandBuffer &cmd)
 
 void Renderer::sync_gpu_to_dram(bool blocking)
 {
-   auto sem;
    CommandBuffer alt_cmd;
    bool depth_is_aliased           = false;
 
@@ -1632,7 +1630,7 @@ void Renderer::sync_gpu_to_dram(bool blocking)
 
    vulkan.cmd.end_readback();
 
-   sem = device.request_semaphore();
+   auto sem = device.request_semaphore();
 
    if (framebuffer.color_state == FRAMEBUFFER_GPU)
    {
