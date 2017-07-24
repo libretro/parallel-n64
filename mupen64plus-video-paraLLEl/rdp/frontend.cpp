@@ -24,6 +24,17 @@ static int32_t maximum(int32_t x0, int32_t x1, int32_t x2, int32_t x3, int32_t x
 	return max(x0, x4);
 }
 
+void Frontend::invalid(const uint32_t *)
+{
+#ifndef ANDROID
+	abort();
+#endif
+}
+
+void Frontend::noop(const uint32_t *)
+{
+}
+
 void Frontend::tri_fill_tex_coeffs(Attribute *attr, const uint32_t *args)
 {
 	attr->stwz[0] = ((args[0] << 0) & 0xffff0000u) | ((args[4] >> 16) & 0xffffu);
@@ -76,12 +87,12 @@ void Frontend::tri_fill_shade_coeffs(Attribute *attr, const uint32_t *args)
 
 void Frontend::tri_fill_coeffs(Primitive *prim, const uint32_t *args, int32_t *xmin, int32_t *xmax)
 {
-	uint32_t right_major = (args[0] >> (55 - 32)) & 1;
+   uint32_t right_major = (args[0] >> (55 - 32)) & 1;
 
-	// 11.2 fixed point
-	int32_t yl = SEXT((args[0] >> 0) & 0xffff, 14);
-	int32_t ym = SEXT((args[1] >> 16) & 0xffff, 14);
-	int32_t yh = SEXT((args[1] >> 0) & 0xffff, 14);
+   // 11.2 fixed point
+   int32_t yl = SEXT((args[0] >> 0) & 0xffff, 14);
+   int32_t ym = SEXT((args[1] >> 16) & 0xffff, 14);
+   int32_t yh = SEXT((args[1] >> 0) & 0xffff, 14);
 
 	// 14.16 fixed point
 	int32_t xl = SEXT(args[2], 30) & ~1;
@@ -237,14 +248,15 @@ void Frontend::tri_fill_flags(Primitive *prim, const uint32_t *args, uint32_t *t
 
 void Frontend::tri_noshade(const uint32_t *args)
 {
-	int xmin, xmax;
-	Primitive prim;
-	tri_fill_coeffs(&prim, args, &xmin, &xmax);
-	tri_fill_flags(&prim, args, nullptr, false, false);
+   int xmin, xmax;
+   Primitive prim;
+   uint32_t tile_mask = 0;
 
-	uint32_t tile_mask = 0;
-	tri_fill_novarying_tile(&prim, nullptr, &tile_mask);
-	renderer->draw_primitive(prim, nullptr, tile_mask, xmin, xmax, prim.yh >> 2, prim.yl >> 2);
+   tri_fill_coeffs(&prim, args, &xmin, &xmax);
+   tri_fill_flags(&prim, args, nullptr, false, false);
+
+   tri_fill_novarying_tile(&prim, nullptr, &tile_mask);
+   renderer->draw_primitive(prim, nullptr, tile_mask, xmin, xmax, prim.yh >> 2, prim.yl >> 2);
 }
 
 void Frontend::tri_noshade_z(const uint32_t *args)
@@ -263,16 +275,16 @@ void Frontend::tri_noshade_z(const uint32_t *args)
 
 void Frontend::tri_tex(const uint32_t *args)
 {
-	int xmin, xmax;
-	uint32_t tile_mask;
-	Primitive prim;
-	Attribute attr;
+   int xmin, xmax;
+   uint32_t tile_mask;
+   Primitive prim;
+   Attribute attr;
 
-	tri_fill_coeffs(&prim, args, &xmin, &xmax);
-	tri_fill_tex_coeffs(&attr, args + 8);
-	tri_fill_flags(&prim, args, &tile_mask, false, false);
+   tri_fill_coeffs(&prim, args, &xmin, &xmax);
+   tri_fill_tex_coeffs(&attr, args + 8);
+   tri_fill_flags(&prim, args, &tile_mask, false, false);
 
-	renderer->draw_primitive(prim, &attr, tile_mask, xmin, xmax, prim.yh >> 2, prim.yl >> 2);
+   renderer->draw_primitive(prim, &attr, tile_mask, xmin, xmax, prim.yh >> 2, prim.yl >> 2);
 }
 
 void Frontend::tri_tex_z(const uint32_t *args)
@@ -337,140 +349,158 @@ void Frontend::tri_shade_tex(const uint32_t *args)
 
 void Frontend::tri_shade_tex_z(const uint32_t *args)
 {
-	int xmin, xmax;
-	uint32_t tile_mask;
-	Primitive prim;
-	Attribute attr;
+   int xmin, xmax;
+   uint32_t tile_mask;
+   Primitive prim;
+   Attribute attr;
 
-	tri_fill_coeffs(&prim, args, &xmin, &xmax);
-	tri_fill_shade_coeffs(&attr, args + 8);
-	tri_fill_tex_coeffs(&attr, args + 24);
-	tri_fill_z_coeffs(&attr, args + 40);
-	tri_fill_flags(&prim, args, &tile_mask, true, true);
+   tri_fill_coeffs(&prim, args, &xmin, &xmax);
+   tri_fill_shade_coeffs(&attr, args + 8);
+   tri_fill_tex_coeffs(&attr, args + 24);
+   tri_fill_z_coeffs(&attr, args + 40);
+   tri_fill_flags(&prim, args, &tile_mask, true, true);
 
-	renderer->draw_primitive(prim, &attr, tile_mask, xmin, xmax, prim.yh >> 2, prim.yl >> 2);
+   renderer->draw_primitive(prim, &attr, tile_mask, xmin, xmax, prim.yh >> 2, prim.yl >> 2);
 }
 
 void Frontend::tex_rect_common(const uint32_t *args, bool flipped)
 {
-	int xl = (args[0] & 0xfff000u) >> (44 - 32);
-	int yl = (args[0] & 0x000fffu) >> (32 - 32);
-	int xh = (args[1] & 0xfff000u) >> (12 - 0);
-	int yh = (args[1] & 0x000fffu) >> (0 - 0);
+   Primitive prim;
+   Attribute attr;
+   int32_t s, t, dsdx, dtdy;
+   uint32_t tile_mask = 0;
+   int xl             = (args[0] & 0xfff000u) >> (44 - 32);
+   int yl             = (args[0] & 0x000fffu) >> (32 - 32);
+   unsigned tile      = (args[1] & 0x07000000) >> 24;
+   int xh             = (args[1] & 0xfff000u) >> (12 - 0);
+   int yh             = (args[1] & 0x000fffu) >> (0 - 0);
 
-	int xmin = xh >> 2;
-	int xmax = xl >> 2;
+   int xmin           = xh >> 2;
+   int xmax           = xl >> 2;
 
-	// Convert qpel to 16.16 fixed point format.
-	xl <<= 14;
-	xh <<= 14;
+   /* Convert qpel to 16.16 fixed point format. */
+   xl <<= 14;
+   xh <<= 14;
 
-	unsigned tile = (args[1] & 0x07000000) >> 24;
+   yl |= (other_modes.cycle_type & 2) ? 3 : 0; // FILL or COPY.
 
-	yl |= (other_modes.cycle_type & 2) ? 3 : 0; // FILL or COPY.
+   prim.xl = xl;
+   prim.xm = xl;
+   prim.xh = xh;
 
-	Primitive prim;
-	prim.xl = xl;
-	prim.xm = xl;
-	prim.xh = xh;
+   prim.yl = yl;
+   prim.ym = yl;
+   prim.yh = yh;
 
-	prim.yl = yl;
-	prim.ym = yl;
-	prim.yh = yh;
+   // Rect, so keep these as 0.
+   prim.DxLDy = 0;
+   prim.DxHDy = 0;
+   prim.DxMDy = 0;
+   prim.flags = RDP_FLAG_FLIP;
 
-	// Rect, so keep these as 0.
-	prim.DxLDy = 0;
-	prim.DxHDy = 0;
-	prim.DxMDy = 0;
-	prim.flags = RDP_FLAG_FLIP;
+   memset(&attr, 0, sizeof(attr));
 
-	Attribute attr;
-	memset(&attr, 0, sizeof(attr));
+   s    = SEXT((args[2] & 0xffff0000u) >> 16, 16);
+   t    = SEXT((args[2] & 0x0000ffffu) >> 0, 16);
+   dsdx = SEXT((args[3] & 0xffff0000u) >> 16, 16);
+   dtdy = SEXT((args[3] & 0x0000ffffu) >> 0, 16);
 
-	int32_t s = SEXT((args[2] & 0xffff0000u) >> 16, 16);
-	int32_t t = SEXT((args[2] & 0x0000ffffu) >> 0, 16);
-	int32_t dsdx = SEXT((args[3] & 0xffff0000u) >> 16, 16);
-	int32_t dtdy = SEXT((args[3] & 0x0000ffffu) >> 0, 16);
+   if (flipped)
+   {
+      attr.stwz[0] = s << 16;
+      attr.stwz[1] = t << 16;
+      attr.d_stwz_dx[1] = dtdy << 11;
+      attr.d_stwz_de[0] = dsdx << 11;
+      attr.d_stwz_dy[0] = dsdx << 11;
+   }
+   else
+   {
+      attr.stwz[0] = s << 16;
+      attr.stwz[1] = t << 16;
+      attr.d_stwz_dx[0] = dsdx << 11;
+      attr.d_stwz_de[1] = dtdy << 11;
+      attr.d_stwz_dy[1] = dtdy << 11;
+   }
 
-	if (flipped)
-	{
-		attr.stwz[0] = s << 16;
-		attr.stwz[1] = t << 16;
-		attr.d_stwz_dx[1] = dtdy << 11;
-		attr.d_stwz_de[0] = dsdx << 11;
-		attr.d_stwz_dy[0] = dsdx << 11;
-	}
-	else
-	{
-		attr.stwz[0] = s << 16;
-		attr.stwz[1] = t << 16;
-		attr.d_stwz_dx[0] = dsdx << 11;
-		attr.d_stwz_de[1] = dtdy << 11;
-		attr.d_stwz_dy[1] = dtdy << 11;
-	}
+   tri_fill_flags(&prim, args, nullptr, false, false);
+   tri_fill_tile(&prim, &tile_mask, 1, tile);
 
-	tri_fill_flags(&prim, args, nullptr, false, false);
+   if (other_modes.cycle_type == CYCLE_TYPE_COPY)
+   {
+      // No texture filtering allowed in copy mode.
 
-	uint32_t tile_mask = 0;
-	tri_fill_tile(&prim, &tile_mask, 1, tile);
+      prim.flags &= ~RDP_FLAG_BILERP0;
+      prim.flags &= ~RDP_FLAG_BILERP1;
 
-	if (other_modes.cycle_type == CYCLE_TYPE_COPY)
-	{
-		// No texture filtering allowed in copy mode.
-		prim.flags &= ~RDP_FLAG_BILERP0;
-		prim.flags &= ~RDP_FLAG_BILERP1;
-		// Copy mode jumps 4 pixels at a time, so instead of implementing that, just shift dSdx by 2 instead.
-		// Technically, very awkward use of texture rectangle can break this, but we'll deal with it if needed.
-		attr.d_stwz_dx[0] >>= 2;
-	}
+      // Copy mode jumps 4 pixels at a time, so instead of implementing that, just shift dSdx by 2 instead.
+      // Technically, very awkward use of texture rectangle can break this, but we'll deal with it if needed.
+      attr.d_stwz_dx[0] >>= 2;
+   }
 
-	renderer->draw_primitive(prim, &attr, tile_mask, xmin, xmax, yh >> 2, yl >> 2);
+   renderer->draw_primitive(prim, &attr, tile_mask, xmin, xmax, yh >> 2, yl >> 2);
 }
 
 void Frontend::tex_rect(const uint32_t *args)
 {
-	tex_rect_common(args, false);
+   tex_rect_common(args, false);
 }
 
 void Frontend::tex_rect_flip(const uint32_t *args)
 {
-	tex_rect_common(args, true);
+   tex_rect_common(args, true);
+}
+
+void Frontend::sync_load(const uint32_t *)
+{
+}
+
+void Frontend::sync_pipe(const uint32_t *)
+{
+}
+
+void Frontend::sync_tile(const uint32_t *)
+{
+}
+
+void Frontend::sync_full(const uint32_t *)
+{
+   renderer->complete_frame();
 }
 
 void Frontend::fill_rect(const uint32_t *args)
 {
-	int xl = (args[0] & 0xfff000u) >> (44 - 32);
-	int yl = (args[0] & 0x000fffu) >> (32 - 32);
-	int xh = (args[1] & 0xfff000u) >> (12 - 0);
-	int yh = (args[1] & 0x000fffu) >> (0 - 0);
+   Primitive prim;
+   int xl = (args[0] & 0xfff000u) >> (44 - 32);
+   int yl = (args[0] & 0x000fffu) >> (32 - 32);
+   int xh = (args[1] & 0xfff000u) >> (12 - 0);
+   int yh = (args[1] & 0x000fffu) >> (0 - 0);
 
-	int xmin = xh >> 2;
-	int xmax = xl >> 2;
+   int xmin = xh >> 2;
+   int xmax = xl >> 2;
 
-	// Convert qpel to 16.16 fixed point format.
-	xl <<= 14;
-	xh <<= 14;
+   // Convert qpel to 16.16 fixed point format.
+   xl <<= 14;
+   xh <<= 14;
 
-	yl |= (other_modes.cycle_type & 2) ? 3 : 0; // FILL or COPY.
+   yl |= (other_modes.cycle_type & 2) ? 3 : 0; // FILL or COPY.
 
-	Primitive prim;
-	prim.xl = xl;
-	prim.xm = xl;
-	prim.xh = xh;
+   prim.xl = xl;
+   prim.xm = xl;
+   prim.xh = xh;
 
-	prim.yl = yl;
-	prim.ym = yl;
-	prim.yh = yh;
+   prim.yl = yl;
+   prim.ym = yl;
+   prim.yh = yh;
 
-	// Rect, so keep these as 0.
-	prim.DxLDy = 0;
-	prim.DxHDy = 0;
-	prim.DxMDy = 0;
-	prim.flags = RDP_FLAG_FLIP;
+   // Rect, so keep these as 0.
+   prim.DxLDy = 0;
+   prim.DxHDy = 0;
+   prim.DxMDy = 0;
+   prim.flags = RDP_FLAG_FLIP;
 
-	tri_fill_flags(&prim, args, nullptr, false, false);
+   tri_fill_flags(&prim, args, nullptr, false, false);
 
-	renderer->draw_primitive(prim, nullptr, 0, xmin, xmax, yh >> 2, yl >> 2);
+   renderer->draw_primitive(prim, nullptr, 0, xmin, xmax, yh >> 2, yl >> 2);
 }
 
 void Frontend::set_other_modes(const uint32_t *args)
@@ -520,138 +550,113 @@ void Frontend::set_other_modes(const uint32_t *args)
 
 void Frontend::set_combine(const uint32_t *args)
 {
-	renderer->set_combine(args[0], args[1]);
+   renderer->set_combine(args[0], args[1]);
 }
 
 void Frontend::set_convert(const uint32_t *args)
 {
-	renderer->set_convert(args[0], args[1]);
+   renderer->set_convert(args[0], args[1]);
 }
 
 void Frontend::set_scissor(const uint32_t *args)
 {
-	int xh = (args[0] & 0x00fff000) >> (44 - 32);
-	int yh = (args[0] & 0x00000fff) >> (32 - 32);
-	// TODO: Interlacing
-	int xl = (args[1] & 0x00fff000) >> (12 - 0);
-	int yl = (args[1] & 0x00000fff) >> (0 - 0);
+   int xh = (args[0] & 0x00fff000) >> (44 - 32);
+   int yh = (args[0] & 0x00000fff) >> (32 - 32);
+   // TODO: Interlacing
+   int xl = (args[1] & 0x00fff000) >> (12 - 0);
+   int yl = (args[1] & 0x00000fff) >> (0 - 0);
 
-	renderer->set_scissor(xh, yh, xl, yl);
+   renderer->set_scissor(xh, yh, xl, yl);
 }
 
 void Frontend::set_prim_depth(const uint32_t *args)
 {
-	renderer->set_primitive_z(args[1]);
+   renderer->set_primitive_z(args[1]);
 }
 
 void Frontend::set_fill_color(const uint32_t *args)
 {
-	renderer->set_fill_color(args[1]);
+   renderer->set_fill_color(args[1]);
 }
 
 void Frontend::set_blend_color(const uint32_t *args)
 {
-	renderer->set_blend_color(args[1]);
+   renderer->set_blend_color(args[1]);
 }
 
 void Frontend::set_prim_color(const uint32_t *args)
 {
-	renderer->set_prim_color(args[0], args[1]);
+   renderer->set_prim_color(args[0], args[1]);
 }
 
 void Frontend::set_env_color(const uint32_t *args)
 {
-	renderer->set_env_color(args[1]);
+   renderer->set_env_color(args[1]);
 }
 
 void Frontend::set_fog_color(const uint32_t *args)
 {
-	renderer->set_fog_color(args[1]);
+   renderer->set_fog_color(args[1]);
 }
 
 void Frontend::load_tile(const uint32_t *args)
 {
-	renderer->check_tmem_feedback();
-	renderer->get_tmem().load_tile(args[0], args[1]);
-}
-
-void Frontend::load_block(const uint32_t *args)
-{
-	renderer->check_tmem_feedback();
-	renderer->get_tmem().load_block(args[0], args[1]);
-}
-
-void Frontend::load_tlut(const uint32_t *args)
-{
-	renderer->check_tmem_feedback();
-	renderer->get_tmem().load_tlut(args[0], args[1]);
-}
-
-void Frontend::set_tile(const uint32_t *args)
-{
-	renderer->get_tmem().set_tile(args[0], args[1]);
-}
-
-void Frontend::set_texture_image(const uint32_t *args)
-{
-	unsigned format = (args[0] & 0x00e00000) >> (53 - 32);
-	unsigned pixel_size = (args[0] & 0x00180000) >> (51 - 32);
-	unsigned width = (args[0] & 0x000003ff) >> (32 - 32);
-	unsigned addr = (args[1] & 0x03ffffff) >> (0 - 0);
-	width++;
-
-	renderer->get_tmem().set_texture_image(addr, format, pixel_size, width);
-}
-
-void Frontend::set_color_image(const uint32_t *args)
-{
-	unsigned format = (args[0] & 0x00e00000) >> (53 - 32);
-	unsigned pixel_size = (args[0] & 0x00180000) >> (51 - 32);
-	unsigned width = (args[0] & 0x000003ff) >> (32 - 32);
-	unsigned addr = (args[1] & 0x03ffffff) >> (0 - 0);
-	width++;
-
-	renderer->set_color_image(addr, format, pixel_size, width);
-}
-
-void Frontend::set_mask_image(const uint32_t *args)
-{
-	unsigned addr = args[1] & 0x00ffffff;
-	renderer->set_depth_image(addr);
+   renderer->check_tmem_feedback();
+   renderer->get_tmem().load_tile(args[0], args[1]);
 }
 
 void Frontend::set_tile_size(const uint32_t *args)
 {
-	renderer->get_tmem().set_tile_size(args[0], args[1]);
+   renderer->get_tmem().set_tile_size(args[0], args[1]);
 }
 
-void Frontend::sync_full(const uint32_t *)
+void Frontend::load_block(const uint32_t *args)
 {
-	renderer->complete_frame();
+   renderer->check_tmem_feedback();
+   renderer->get_tmem().load_block(args[0], args[1]);
 }
 
-void Frontend::sync_load(const uint32_t *)
+void Frontend::load_tlut(const uint32_t *args)
 {
+   renderer->check_tmem_feedback();
+   renderer->get_tmem().load_tlut(args[0], args[1]);
 }
 
-void Frontend::sync_pipe(const uint32_t *)
+void Frontend::set_tile(const uint32_t *args)
 {
+   renderer->get_tmem().set_tile(args[0], args[1]);
 }
 
-void Frontend::sync_tile(const uint32_t *)
+void Frontend::set_texture_image(const uint32_t *args)
 {
+   unsigned format = (args[0] & 0x00e00000) >> (53 - 32);
+   unsigned pixel_size = (args[0] & 0x00180000) >> (51 - 32);
+   unsigned width = (args[0] & 0x000003ff) >> (32 - 32);
+   unsigned addr = (args[1] & 0x03ffffff) >> (0 - 0);
+
+   width++;
+
+   renderer->get_tmem().set_texture_image(addr, format, pixel_size, width);
 }
 
-void Frontend::noop(const uint32_t *)
+void Frontend::set_mask_image(const uint32_t *args)
 {
+   unsigned addr = args[1] & 0x00ffffff;
+   renderer->set_depth_image(addr);
 }
 
-void Frontend::invalid(const uint32_t *)
+void Frontend::set_color_image(const uint32_t *args)
 {
-#ifndef ANDROID
-	abort();
-#endif
+   unsigned format = (args[0] & 0x00e00000) >> (53 - 32);
+   unsigned pixel_size = (args[0] & 0x00180000) >> (51 - 32);
+   unsigned width = (args[0] & 0x000003ff) >> (32 - 32);
+   unsigned addr = (args[1] & 0x03ffffff) >> (0 - 0);
+
+   width++;
+
+   renderer->set_color_image(addr, format, pixel_size, width);
 }
+
 
 const Frontend::rdp_func_t Frontend::rdp_commands[64] = {
 	&Frontend::noop,

@@ -506,12 +506,8 @@ static STRICTINLINE void tcmask_copy(int32_t* S, int32_t* S1, int32_t* S2, int32
     }
 }
 
-
-STRICTINLINE void tcshift_cycle(int32_t* S, int32_t* T, int32_t* maxs, int32_t* maxt, uint32_t num)
+static INLINE void tcshift_cycle(int32_t* S, int32_t* T, int32_t* maxs, int32_t* maxt, uint32_t num)
 {
-
-
-
     int32_t coord = *S;
     int32_t shifter = tile[num].shift_s;
 
@@ -552,7 +548,7 @@ STRICTINLINE void tcshift_cycle(int32_t* S, int32_t* T, int32_t* maxs, int32_t* 
 }    
 
 
-STRICTINLINE void tcshift_copy(int32_t* S, int32_t* T, uint32_t num)
+static INLINE void tcshift_copy(int32_t* S, int32_t* T, uint32_t num)
 {
     int32_t coord = *S;
     int32_t shifter = tile[num].shift_s;
@@ -4516,7 +4512,7 @@ static STRICTINLINE void get_texel1_1cycle(int32_t* s1, int32_t* t1, int32_t s, 
     tcdiv(nexts, nextt, nextsw, s1, t1);
 }
 
-STRICTINLINE void lodfrac_lodtile_signals(int lodclamp, int32_t lod, uint32_t* l_tile, uint32_t* magnify, uint32_t* distant)
+static INLINE void lodfrac_lodtile_signals(int lodclamp, int32_t lod, uint32_t* l_tile, uint32_t* magnify, uint32_t* distant)
 {
    uint32_t ltil, dis, mag;
    int32_t lf;
@@ -5545,12 +5541,11 @@ static void render_spans_1cycle_notex(int start, int end, int tilenum, int flip)
     }
 }
 
-STRICTINLINE void get_nexttexel0_2cycle(int32_t* s1, int32_t* t1, int32_t s, int32_t t, int32_t w, int32_t dsinc, int32_t dtinc, int32_t dwinc)
+static INLINE void get_nexttexel0_2cycle(int32_t* s1, int32_t* t1, int32_t s, int32_t t, int32_t w, int32_t dsinc, int32_t dtinc, int32_t dwinc)
 {
-    int32_t nexts, nextt, nextsw;
-    nextsw = (w + dwinc) >> 16;
-    nexts = (s + dsinc) >> 16;
-    nextt = (t + dtinc) >> 16;
+    int32_t nextsw = (w + dwinc) >> 16;
+    int32_t nexts = (s + dsinc) >> 16;
+    int32_t nextt = (t + dtinc) >> 16;
 
     tcdiv(nexts, nextt, nextsw, s1, t1);
 }
@@ -8861,16 +8856,14 @@ static NOINLINE void draw_texture_rectangle(
 
 static void tex_rect(uint32_t w1, uint32_t w2)
 {
-    int tilenum;
     int16_t dsdx, dtdy;
-    int32_t xl, yl, xh, yh;
     int32_t s, t;
 
-    xl      = (cmd_data[cmd_cur + 0].UW32[0] & 0x00FFF000) >> 12;
-    yl      = (cmd_data[cmd_cur + 0].UW32[0] & 0x00000FFF) >>  0;
-    tilenum = (cmd_data[cmd_cur + 0].UW32[1] & 0x07000000) >> 24;
-    xh      = (cmd_data[cmd_cur + 0].UW32[1] & 0x00FFF000) >> 12;
-    yh      = (cmd_data[cmd_cur + 0].UW32[1] & 0x00000FFF) >>  0;
+    int32_t xl      = (cmd_data[cmd_cur + 0].UW32[0] & 0x00FFF000) >> 12;
+    int32_t yl      = (cmd_data[cmd_cur + 0].UW32[0] & 0x00000FFF) >>  0;
+    int32_t tilenum = (cmd_data[cmd_cur + 0].UW32[1] & 0x07000000) >> 24;
+    int32_t xh      = (cmd_data[cmd_cur + 0].UW32[1] & 0x00FFF000) >> 12;
+    int32_t yh      = (cmd_data[cmd_cur + 0].UW32[1] & 0x00000FFF) >>  0;
 
     yl |= (other_modes.cycle_type & 2) ? 3 : 0; /* FILL OR COPY */
 
@@ -8892,16 +8885,14 @@ static void tex_rect(uint32_t w1, uint32_t w2)
 
 static void tex_rect_flip(uint32_t w1, uint32_t w2)
 {
-    int tilenum;
     int16_t dsdx, dtdy;
-    int32_t xl, yl, xh, yh;
     int32_t s, t;
 
-    xl      = (cmd_data[cmd_cur + 0].UW32[0] & 0x00FFF000) >> 12;
-    yl      = (cmd_data[cmd_cur + 0].UW32[0] & 0x00000FFF) >>  0;
-    tilenum = (cmd_data[cmd_cur + 0].UW32[1] & 0x07000000) >> 24;
-    xh      = (cmd_data[cmd_cur + 0].UW32[1] & 0x00FFF000) >> 12;
-    yh      = (cmd_data[cmd_cur + 0].UW32[1] & 0x00000FFF) >>  0;
+    int32_t xl      = (cmd_data[cmd_cur + 0].UW32[0] & 0x00FFF000) >> 12;
+    int32_t yl      = (cmd_data[cmd_cur + 0].UW32[0] & 0x00000FFF) >>  0;
+    int32_t tilenum = (cmd_data[cmd_cur + 0].UW32[1] & 0x07000000) >> 24;
+    int32_t xh      = (cmd_data[cmd_cur + 0].UW32[1] & 0x00FFF000) >> 12;
+    int32_t yh      = (cmd_data[cmd_cur + 0].UW32[1] & 0x00000FFF) >>  0;
 
     yl |= (other_modes.cycle_type & 2) ? 3 : 0; /* FILL OR COPY */
 
