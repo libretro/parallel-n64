@@ -185,7 +185,7 @@ void Renderer::init_centroid_lut()
 		offsets[2 * i + 1] = off_y;
 	}
 
-	// Make sure that offsets for full coverage is zero.
+	/* Make sure that offsets for full coverage is zero. */
 	offsets[0x1fe] = 0;
 	offsets[0x1ff] = 0;
 
@@ -201,11 +201,11 @@ void Renderer::init_centroid_lut()
 
 void Renderer::init_dither_lut()
 {
-	static const int8_t magic[16] = {
+   static const int8_t magic[16] = {
 		0, 6, 1, 7, 4, 2, 5, 3, 3, 5, 2, 4, 7, 1, 6, 0,
 	};
 
-	static const int8_t bayer[16] = {
+   static const int8_t bayer[16] = {
 		0, 4, 1, 5, 4, 0, 5, 1, 3, 7, 2, 6, 7, 3, 6, 2,
 	};
 
@@ -218,7 +218,7 @@ void Renderer::init_dither_lut()
 
 	for (unsigned i = 0; i < 16; i++, built += 16 * 2)
 	{
-		// Get RGB dither.
+		/* Get RGB dither. */
 		switch ((i >> 2) & 3)
 		{
 		case 0:
@@ -227,7 +227,7 @@ void Renderer::init_dither_lut()
 			break;
 
 		case 1:
-		case 2: // Should be noise, but just use bayer for now.
+		case 2: /* Should be noise, but just use bayer for now. */
 			for (unsigned x = 0; x < 16; x++)
 				built[2 * x] = bayer[x];
 			break;
@@ -235,29 +235,29 @@ void Renderer::init_dither_lut()
 		case 3:
 			for (unsigned x = 0; x < 16; x++)
 				built[2 * x] =
-				    7; // Apparently so that inv pattern alpha becomes 0 here, we won't actually dither with this value.
+				    7; /* Apparently so that inv pattern alpha becomes 0 here, we won't actually dither with this value. */
 			break;
 		}
 
-		// Create alpha dither
+		/* Create alpha dither */
 		switch ((i >> 0) & 3)
 		{
-		case 0: // Same pattern as RGB
+		case 0: /* Same pattern as RGB */
 			for (unsigned x = 0; x < 16; x++)
 				built[2 * x + 1] = built[2 * x];
 			break;
 
-		case 1: // Inverse pattern as RGB
+		case 1: /* Inverse pattern as RGB */
 			for (unsigned x = 0; x < 16; x++)
 				built[2 * x + 1] = (~built[2 * x]) & 7;
 			break;
 
-		case 2: // Noise, just use bayer for now.
+		case 2: /* Noise, just use bayer for now. */
 			for (unsigned x = 0; x < 16; x++)
 				built[2 * x + 1] = bayer[x];
 			break;
 
-		case 3: // No noise.
+		case 3: /* No noise. */
 			for (unsigned x = 0; x < 16; x++)
 				built[2 * x + 1] = 0;
 			break;
@@ -276,28 +276,29 @@ void Renderer::init_dither_lut()
 
 void Renderer::set_framebuffer_size(unsigned width, unsigned height)
 {
-	// If we change framebuffer size mid-frame, we have no choice but to sync up ...
-	if (framebuffer.color_state == FRAMEBUFFER_GPU || framebuffer.depth_state == FRAMEBUFFER_GPU)
-		sync_full();
+   unsigned old_tiles_x;
 
-	framebuffer.allocated_width = width;
-	framebuffer.allocated_height = height;
+   /* If we change framebuffer size mid-frame, we have no choice but to sync up ... */
+   if (framebuffer.color_state == FRAMEBUFFER_GPU || framebuffer.depth_state == FRAMEBUFFER_GPU)
+      sync_full();
 
-	// Cannot change framebuffer sizes while GPU has outstanding writes in flight.
-	assert(framebuffer.color_state != FRAMEBUFFER_GPU && framebuffer.depth_state != FRAMEBUFFER_GPU);
+   framebuffer.allocated_width = width;
+   framebuffer.allocated_height = height;
 
-	unsigned old_tiles_x = tiles_x;
+   /* Cannot change framebuffer sizes while GPU has outstanding writes in flight. */
+   assert(framebuffer.color_state != FRAMEBUFFER_GPU && framebuffer.depth_state != FRAMEBUFFER_GPU);
 
-	tiles_x = (width + TILE_SIZE_X - 1) / TILE_SIZE_X;
-	tiles_y = (height + TILE_SIZE_Y - 1) / TILE_SIZE_Y;
+   old_tiles_x = tiles_x;
+   tiles_x     = (width + TILE_SIZE_X - 1) / TILE_SIZE_X;
+   tiles_y     = (height + TILE_SIZE_Y - 1) / TILE_SIZE_Y;
 
-	// If we're outside a render pass or we did a full flush (only way we can have changed tiles_x),
-	// it's okay to clear out tile list data.
-	if ((framebuffer.color_state == FRAMEBUFFER_CPU && framebuffer.depth_state == FRAMEBUFFER_CPU) ||
-	    tiles_x != old_tiles_x)
-		tile_lists.clear();
+   /* If we're outside a render pass or we did a full flush (only way we can have changed tiles_x),
+    * it's okay to clear out tile list data. */
+   if ((framebuffer.color_state == FRAMEBUFFER_CPU && framebuffer.depth_state == FRAMEBUFFER_CPU) ||
+		   tiles_x != old_tiles_x)
+	   tile_lists.clear();
 
-	tile_lists.resize(tiles_x * tiles_y);
+   tile_lists.resize(tiles_x * tiles_y);
 }
 
 void Renderer::set_scissor(int xh, int yh, int xl, int yl)
@@ -561,303 +562,303 @@ void Renderer::clip_scissor(int &min_x, int &max_x, int &min_y, int &max_y)
 
 void Renderer::fill_rect_cpu(int xmin, int xmax, int ymin, int ymax)
 {
-	auto base = framebuffer_data();
+   int y, x;
+   int shift = 0;
+   auto base = framebuffer_data();
 
-	// If we are clearing the framebuffer on CPU,
-	// we don't want any pending readbacks to this framebuffer to happen after we wrote CPU, so just invalidate them.
-	// We should make sure we're clearing the whole region and track by sub-region (uggggh), but this should suffice.
-	auto itr = remove_if(begin(async_transfers), end(async_transfers), [this](const AsyncFramebuffer &async) {
-		return async.framebuffer.addr == framebuffer.addr || async.framebuffer.depth_addr == framebuffer.addr;
-	});
+   /* If we are clearing the framebuffer on CPU,
+    * we don't want any pending readbacks to this framebuffer to happen after we wrote CPU, so just invalidate them.
+    * We should make sure we're clearing the whole region and track by sub-region (uggggh), but this should suffice. */
+   auto itr = remove_if(begin(async_transfers), end(async_transfers), [this](const AsyncFramebuffer &async) {
+		   return async.framebuffer.addr == framebuffer.addr || async.framebuffer.depth_addr == framebuffer.addr;
+		   });
 #ifdef ENABLE_LOGS
-	if (itr != end(async_transfers))
-		fprintf(stderr, "Invalidating old frames.\n");
+   if (itr != end(async_transfers))
+	   fprintf(stderr, "Invalidating old frames.\n");
 #endif
-	async_transfers.erase(itr, end(async_transfers));
+   async_transfers.erase(itr, end(async_transfers));
 
-	clip_scissor(xmin, xmax, ymin, ymax);
-	xmin = max(0, xmin);
-	xmax = min(int(framebuffer.width - 1), xmax);
+   clip_scissor(xmin, xmax, ymin, ymax);
+   xmin = max(0, xmin);
+   xmax = min(int(framebuffer.width - 1), xmax);
 
-	int shift = 0;
-	switch (framebuffer.pixel_size)
-	{
-	case 1:
-		shift = 2;
-		break;
+   switch (framebuffer.pixel_size)
+   {
+      case 1:
+         shift = 2;
+	 break;
+      case 2:
+         shift = 1;
+	 break;
+   }
 
-	case 2:
-		shift = 1;
-		break;
-	}
+   // Not sure how correct this is, would only matter if we clear at less than 32-bit alignment.
+   xmin >>= shift;
+   xmax >>= shift;
+   uint32_t stride = framebuffer.width << (2 - shift);
 
-	// Not sure how correct this is, would only matter if we clear at less than 32-bit alignment.
-	xmin >>= shift;
-	xmax >>= shift;
-	uint32_t stride = framebuffer.width << (2 - shift);
+   uint32_t fill = state.fill_color;
+   uint32_t addr = framebuffer.addr + ymin * stride;
+   assert((addr & 3) == 0);
 
-	uint32_t fill = state.fill_color;
-	uint32_t addr = framebuffer.addr + ymin * stride;
-	assert((addr & 3) == 0);
+   uint32_t max_addr = addr + (ymax + ymin - 1) * stride + 4 * xmax;
 
-	uint32_t max_addr = addr + (ymax + ymin - 1) * stride + 4 * xmax;
-	if (max_addr <= RDRAM_SIZE) // No wrapping case.
-	{
-		for (int y = ymin; y <= ymax; y++, addr += stride)
-			for (int x = xmin; x <= xmax; x++)
-				WRITE_DRAM_U32_NOWRAP(base, addr + 4 * x, fill);
-	}
-	else
-	{
-		for (int y = ymin; y <= ymax; y++, addr += stride)
-			for (int x = xmin; x <= xmax; x++)
-				WRITE_DRAM_U32(base, addr + 4 * x, fill);
-	}
+   if (max_addr <= RDRAM_SIZE) /* No wrapping case. */
+   {
+      for (y = ymin; y <= ymax; y++, addr += stride)
+         for (x = xmin; x <= xmax; x++)
+            WRITE_DRAM_U32_NOWRAP(base, addr + 4 * x, fill);
+   }
+   else
+   {
+      for (y = ymin; y <= ymax; y++, addr += stride)
+         for (x = xmin; x <= xmax; x++)
+            WRITE_DRAM_U32(base, addr + 4 * x, fill);
+   }
 }
 
 void Renderer::draw_primitive(const Primitive &prim, const Attribute *attr, uint32_t tile_mask, int min_x, int max_x,
                               int min_y, int max_y)
 {
-	clip_scissor(min_x, max_x, min_y, max_y);
+   BufferPrimitive buffer_prim;
+   unsigned span_stride = 1;
 
-	// When computing coverage in copy pipe,
-	// we make the decisions a certain number of 64-bits worth of pixels at a time.
-	unsigned span_stride;
-	if (((prim.flags >> RDP_FLAG_CYCLE_TYPE_SHIFT) & 3) == CYCLE_TYPE_COPY)
-		span_stride = 16 >> max(framebuffer.pixel_size, 1u);
-	else
-		span_stride = 1;
+   clip_scissor(min_x, max_x, min_y, max_y);
 
-	// Fiddle with max_x to account for splatted coverage.
-	max_x = ((max_x - min_x + span_stride) & ~(span_stride - 1)) + min_x - 1;
+   // When computing coverage in copy pipe,
+   // we make the decisions a certain number of 64-bits worth of pixels at a time.
+   if (((prim.flags >> RDP_FLAG_CYCLE_TYPE_SHIFT) & 3) == CYCLE_TYPE_COPY)
+      span_stride = 16 >> max(framebuffer.pixel_size, 1u);
 
-	int min_tile_x = min_x / TILE_SIZE_X;
-	int min_tile_y = min_y / TILE_SIZE_Y;
-	int max_tile_x = max_x / TILE_SIZE_X;
-	int max_tile_y = max_y / TILE_SIZE_Y;
+   // Fiddle with max_x to account for splatted coverage.
+   max_x = ((max_x - min_x + span_stride) & ~(span_stride - 1)) + min_x - 1;
 
-	// :( Expand the buffer.
-	if (max_y >= int(framebuffer.allocated_height))
-	{
-		// Resize the framebuffer.
-		// While building a render pass, this is not in use.
-		set_framebuffer_size(framebuffer.allocated_width, max_y + 1);
+   int min_tile_x = min_x / TILE_SIZE_X;
+   int min_tile_y = min_y / TILE_SIZE_Y;
+   int max_tile_x = max_x / TILE_SIZE_X;
+   int max_tile_y = max_y / TILE_SIZE_Y;
+
+   // :( Expand the buffer.
+   if (max_y >= int(framebuffer.allocated_height))
+   {
+      // Resize the framebuffer.
+      // While building a render pass, this is not in use.
+      set_framebuffer_size(framebuffer.allocated_width, max_y + 1);
 
 #ifdef ENABLE_LOGS
-		fprintf(stderr, "RESIZING FRAMEBUFFER!\n");
+      fprintf(stderr, "RESIZING FRAMEBUFFER!\n");
 #endif
-	}
+   }
 
-	update_tiles(tile_mask);
+   update_tiles(tile_mask);
 
-	min_tile_x = max(min_tile_x, 0);
-	max_tile_x = min(max_tile_x, int(tiles_x) - 1);
+   min_tile_x = max(min_tile_x, 0);
+   max_tile_x = min(max_tile_x, int(tiles_x) - 1);
 
-	// Can we render at negative Y? Assume not ...
-	// Would get pretty funky.
-	assert(min_tile_y >= 0);
+   // Can we render at negative Y? Assume not ...
+   // Would get pretty funky.
+   assert(min_tile_y >= 0);
 
-	// We cannot clamp rendering in Y blindly,
-	// we should have allocated enough size.
-	assert(max_tile_y < int(tiles_y));
+   // We cannot clamp rendering in Y blindly,
+   // we should have allocated enough size.
+   assert(max_tile_y < int(tiles_y));
 
-	unsigned num_tris = primitive_data.size();
+   unsigned num_tris = primitive_data.size();
 
-	// Push out data to buffer.
-	BufferPrimitive buffer_prim;
-	buffer_prim.xl = prim.xl;
-	buffer_prim.xm = prim.xm;
-	buffer_prim.xh = prim.xh;
-	buffer_prim.yl = prim.yl;
-	buffer_prim.ym = prim.ym;
-	buffer_prim.yh = prim.yh;
-	buffer_prim.DxLDy = prim.DxLDy;
-	buffer_prim.DxMDy = prim.DxMDy;
-	buffer_prim.DxHDy = prim.DxHDy;
-	buffer_prim.flags = prim.flags;
+   // Push out data to buffer.
+   buffer_prim.xl = prim.xl;
+   buffer_prim.xm = prim.xm;
+   buffer_prim.xh = prim.xh;
+   buffer_prim.yl = prim.yl;
+   buffer_prim.ym = prim.ym;
+   buffer_prim.yh = prim.yh;
+   buffer_prim.DxLDy = prim.DxLDy;
+   buffer_prim.DxMDy = prim.DxMDy;
+   buffer_prim.DxHDy = prim.DxHDy;
+   buffer_prim.flags = prim.flags;
 
-	// Add in extra data.
-	buffer_prim.scissor_x = scissor.xh | (scissor.xl << 16);
-	buffer_prim.scissor_y = scissor.yh | (scissor.yl << 16);
+   // Add in extra data.
+   buffer_prim.scissor_x = scissor.xh | (scissor.xl << 16);
+   buffer_prim.scissor_y = scissor.yh | (scissor.yl << 16);
 
-	unsigned cycle_type = (prim.flags >> RDP_FLAG_CYCLE_TYPE_SHIFT) & 3;
-	if (cycle_type == CYCLE_TYPE_FILL)
-		buffer_prim.fill_color_blend = state.fill_color;
-	else
-		buffer_prim.fill_color_blend = state.blend_word;
+   unsigned cycle_type = (prim.flags >> RDP_FLAG_CYCLE_TYPE_SHIFT) & 3;
+   if (cycle_type == CYCLE_TYPE_FILL)
+	   buffer_prim.fill_color_blend = state.fill_color;
+   else
+	   buffer_prim.fill_color_blend = state.blend_word;
 
-	buffer_prim.blend_color = state.blend_color;
-	buffer_prim.primitive_z = state.primitive_z;
+   buffer_prim.blend_color = state.blend_color;
+   buffer_prim.primitive_z = state.primitive_z;
 
-	if (attr)
-	{
-		memcpy(buffer_prim.attr.rgba, attr->rgba, 4 * sizeof(int32_t));
-		memcpy(buffer_prim.attr.d_rgba_dx, attr->d_rgba_dx, 4 * sizeof(int32_t));
-		memcpy(buffer_prim.attr.d_rgba_de, attr->d_rgba_de, 4 * sizeof(int32_t));
-		memcpy(buffer_prim.attr.d_rgba_dy, attr->d_rgba_dy, 4 * sizeof(int32_t));
+   if (attr)
+   {
+	   memcpy(buffer_prim.attr.rgba, attr->rgba, 4 * sizeof(int32_t));
+	   memcpy(buffer_prim.attr.d_rgba_dx, attr->d_rgba_dx, 4 * sizeof(int32_t));
+	   memcpy(buffer_prim.attr.d_rgba_de, attr->d_rgba_de, 4 * sizeof(int32_t));
+	   memcpy(buffer_prim.attr.d_rgba_dy, attr->d_rgba_dy, 4 * sizeof(int32_t));
 
-		memcpy(buffer_prim.attr.stwz, attr->stwz, 4 * sizeof(int32_t));
-		memcpy(buffer_prim.attr.d_stwz_dx, attr->d_stwz_dx, 4 * sizeof(int32_t));
-		memcpy(buffer_prim.attr.d_stwz_de, attr->d_stwz_de, 4 * sizeof(int32_t));
-		memcpy(buffer_prim.attr.d_stwz_dy, attr->d_stwz_dy, 4 * sizeof(int32_t));
+	   memcpy(buffer_prim.attr.stwz, attr->stwz, 4 * sizeof(int32_t));
+	   memcpy(buffer_prim.attr.d_stwz_dx, attr->d_stwz_dx, 4 * sizeof(int32_t));
+	   memcpy(buffer_prim.attr.d_stwz_de, attr->d_stwz_de, 4 * sizeof(int32_t));
+	   memcpy(buffer_prim.attr.d_stwz_dy, attr->d_stwz_dy, 4 * sizeof(int32_t));
 
-		uint32_t sign = !!(prim.DxHDy < 0) ^ !!(prim.flags & RDP_FLAG_FLIP);
-		if (sign)
-		{
-			memset(buffer_prim.attr.d_rgba_diff, 0, 4 * sizeof(int32_t));
-			memset(buffer_prim.attr.d_stwz_diff, 0, 4 * sizeof(int32_t));
-		}
-		else
-		{
-			// Apply 3/4th pixel offset.
-			for (unsigned i = 0; i < 4; i++)
-			{
-				int32_t d_rgba_deh = attr->d_rgba_de[i] & ~0x1ff;
-				int32_t d_rgba_dyh = attr->d_rgba_dy[i] & ~0x1ff;
-				buffer_prim.attr.d_rgba_diff[i] = d_rgba_deh - d_rgba_dyh;
-				buffer_prim.attr.d_rgba_diff[i] -= buffer_prim.attr.d_rgba_diff[i] >> 2;
+	   uint32_t sign = !!(prim.DxHDy < 0) ^ !!(prim.flags & RDP_FLAG_FLIP);
+	   if (sign)
+	   {
+		   memset(buffer_prim.attr.d_rgba_diff, 0, 4 * sizeof(int32_t));
+		   memset(buffer_prim.attr.d_stwz_diff, 0, 4 * sizeof(int32_t));
+	   }
+	   else
+	   {
+		   // Apply 3/4th pixel offset.
+		   for (unsigned i = 0; i < 4; i++)
+		   {
+			   int32_t d_rgba_deh = attr->d_rgba_de[i] & ~0x1ff;
+			   int32_t d_rgba_dyh = attr->d_rgba_dy[i] & ~0x1ff;
+			   buffer_prim.attr.d_rgba_diff[i] = d_rgba_deh - d_rgba_dyh;
+			   buffer_prim.attr.d_rgba_diff[i] -= buffer_prim.attr.d_rgba_diff[i] >> 2;
 
-				int32_t d_stwz_deh = attr->d_stwz_de[i] & ~0x1ff;
-				int32_t d_stwz_dyh = attr->d_stwz_dy[i] & ~0x1ff;
-				buffer_prim.attr.d_stwz_diff[i] = d_stwz_deh - d_stwz_dyh;
-				buffer_prim.attr.d_stwz_diff[i] -= buffer_prim.attr.d_stwz_diff[i] >> 2;
-			}
+			   int32_t d_stwz_deh = attr->d_stwz_de[i] & ~0x1ff;
+			   int32_t d_stwz_dyh = attr->d_stwz_dy[i] & ~0x1ff;
+			   buffer_prim.attr.d_stwz_diff[i] = d_stwz_deh - d_stwz_dyh;
+			   buffer_prim.attr.d_stwz_diff[i] -= buffer_prim.attr.d_stwz_diff[i] >> 2;
+		   }
 
-			buffer_prim.flags |= RDP_FLAG_DO_OFFSET;
-		}
+		   buffer_prim.flags |= RDP_FLAG_DO_OFFSET;
+	   }
 
-		if (buffer_prim.flags & RDP_FLAG_INTERPOLATE_Z)
-		{
-			// Compute dZ and replace it.
+	   if (buffer_prim.flags & RDP_FLAG_INTERPOLATE_Z)
+	   {
+		   // Compute dZ and replace it.
 
-			int32_t dzdx = buffer_prim.attr.d_stwz_dx[3] >> 16;
-			int32_t dzdy = buffer_prim.attr.d_stwz_dy[3] >> 16;
+		   int32_t dzdx = buffer_prim.attr.d_stwz_dx[3] >> 16;
+		   int32_t dzdy = buffer_prim.attr.d_stwz_dy[3] >> 16;
 
-			// Angrylion does this, but why not just abs()?
-			// This will be off by one, but who knows, there's a reason for everything.
-			dzdx ^= dzdx >> 31;
-			dzdy ^= dzdy >> 31;
+		   // Angrylion does this, but why not just abs()?
+		   // This will be off by one, but who knows, there's a reason for everything.
+		   dzdx ^= dzdx >> 31;
+		   dzdy ^= dzdy >> 31;
 
-			uint16_t dz = normalize_dz(dzdx + dzdy);
+		   uint16_t dz = normalize_dz(dzdx + dzdy);
 
-			buffer_prim.primitive_z &= 0x7fff0000u;
-			buffer_prim.primitive_z |= dz;
-		}
-	}
-	else
-		memset(&buffer_prim.attr, 0, sizeof(buffer_prim.attr));
+		   buffer_prim.primitive_z &= 0x7fff0000u;
+		   buffer_prim.primitive_z |= dz;
+	   }
+   }
+   else
+	   memset(&buffer_prim.attr, 0, sizeof(buffer_prim.attr));
 
-	// Only emit Z buffer variant if we need it.
-	// Also, only go into PENDING_GPU state if we came from SYNCED state.
-	if (framebuffer.color_state == FRAMEBUFFER_CPU)
-		framebuffer.color_state = FRAMEBUFFER_STALE_GPU;
-	if (framebuffer.depth_state == FRAMEBUFFER_CPU && (buffer_prim.flags & (RDP_FLAG_Z_UPDATE | RDP_FLAG_Z_COMPARE)))
-		framebuffer.depth_state = FRAMEBUFFER_STALE_GPU;
+   // Only emit Z buffer variant if we need it.
+   // Also, only go into PENDING_GPU state if we came from SYNCED state.
+   if (framebuffer.color_state == FRAMEBUFFER_CPU)
+	   framebuffer.color_state = FRAMEBUFFER_STALE_GPU;
+   if (framebuffer.depth_state == FRAMEBUFFER_CPU && (buffer_prim.flags & (RDP_FLAG_Z_UPDATE | RDP_FLAG_Z_COMPARE)))
+	   framebuffer.depth_state = FRAMEBUFFER_STALE_GPU;
 
-	memcpy(buffer_prim.attr.tile_descriptors, tile_instances, sizeof(tile_instances));
+   memcpy(buffer_prim.attr.tile_descriptors, tile_instances, sizeof(tile_instances));
 
-	// Create a new combiner instance if necessary.
-	bool flush = false;
+   // Create a new combiner instance if necessary.
+   bool flush = false;
 
-	if (cycle_type == CYCLE_TYPE_1 || cycle_type == CYCLE_TYPE_2)
-	{
-		if (state.combiners_dirty)
-		{
-			state.combiners_dirty = false;
-			size_t hash = update_static_combiner();
-			auto itr = state.combiner_map.find(hash);
+   if (cycle_type == CYCLE_TYPE_1 || cycle_type == CYCLE_TYPE_2)
+   {
+	   if (state.combiners_dirty)
+	   {
+		   state.combiners_dirty = false;
+		   size_t hash = update_static_combiner();
+		   auto itr = state.combiner_map.find(hash);
 
-			if (itr != end(state.combiner_map))
-			{
-				buffer_prim.span_stride_combiner = itr->second;
-				state.last_combiner = buffer_prim.span_stride_combiner;
-			}
-			else
-			{
-				combiner_data.push_back(state.combiners);
-				if (combiner_data.size() >= RDP_MAX_COMBINERS)
-				{
+		   if (itr != end(state.combiner_map))
+		   {
+			   buffer_prim.span_stride_combiner = itr->second;
+			   state.last_combiner = buffer_prim.span_stride_combiner;
+		   }
+		   else
+		   {
+			   combiner_data.push_back(state.combiners);
+			   if (combiner_data.size() >= RDP_MAX_COMBINERS)
+			   {
 #ifdef ENABLE_LOGS
-					fprintf(stderr, "Flushing due to combiners.\n");
+				   fprintf(stderr, "Flushing due to combiners.\n");
 #endif
-					flush = true;
-				}
+				   flush = true;
+			   }
 
-				buffer_prim.span_stride_combiner = combiner_data.size() - 1;
-				state.last_combiner = buffer_prim.span_stride_combiner;
-				state.combiner_map.emplace(hash, state.last_combiner);
-			}
-		}
-		else
-			buffer_prim.span_stride_combiner = state.last_combiner;
+			   buffer_prim.span_stride_combiner = combiner_data.size() - 1;
+			   state.last_combiner = buffer_prim.span_stride_combiner;
+			   state.combiner_map.emplace(hash, state.last_combiner);
+		   }
+	   }
+	   else
+		   buffer_prim.span_stride_combiner = state.last_combiner;
 
-		assert(buffer_prim.span_stride_combiner < combiner_data.size());
-	}
-	else
-		buffer_prim.span_stride_combiner = 0;
+	   assert(buffer_prim.span_stride_combiner < combiner_data.size());
+   }
+   else
+	   buffer_prim.span_stride_combiner = 0;
 
-	buffer_prim.span_stride_combiner |= (~(span_stride - 1) & 0xffffu) << 16u;
+   buffer_prim.span_stride_combiner |= (~(span_stride - 1) & 0xffffu) << 16u;
 
-	// Push primitive to buffer.
-	primitive_data.push_back(buffer_prim);
-	if (primitive_data.size() >= RDP_MAX_PRIMITIVES)
-	{
+   // Push primitive to buffer.
+   primitive_data.push_back(buffer_prim);
+   if (primitive_data.size() >= RDP_MAX_PRIMITIVES)
+   {
 #ifdef ENABLE_LOGS
-		fprintf(stderr, "Flushing due to primitives.\n");
+	   fprintf(stderr, "Flushing due to primitives.\n");
 #endif
-		flush = true;
-	}
+	   flush = true;
+   }
 
-	// Bin to tiles.
-	for (int y = min_tile_y; y <= max_tile_y; y++)
-	{
-		for (int x = min_tile_x; x <= max_tile_x; x++)
-		{
-			if (coarse_conservative_raster(x, y, min_x, max_x, min_y, max_y, prim))
-			{
-				raster_tile_count++;
-				auto &tile = tile_lists[y * tiles_x + x];
-				append_tile_list(tile, num_tris, tile_count);
+   // Bin to tiles.
+   for (int y = min_tile_y; y <= max_tile_y; y++)
+   {
+	   for (int x = min_tile_x; x <= max_tile_x; x++)
+	   {
+		   if (coarse_conservative_raster(x, y, min_x, max_x, min_y, max_y, prim))
+		   {
+			   raster_tile_count++;
+			   auto &tile = tile_lists[y * tiles_x + x];
+			   append_tile_list(tile, num_tris, tile_count);
 
-				work_data.push_back({ { uint32_t(x), uint32_t(y) }, num_tris | state.lod_flags, state.fog_color });
-				tile_count++;
+			   work_data.push_back({ { uint32_t(x), uint32_t(y) }, num_tris | state.lod_flags, state.fog_color });
+			   tile_count++;
 
-				if (tile_count > FlushBufferTileCount)
-				{
+			   if (tile_count > FlushBufferTileCount)
+			   {
 #ifdef ENABLE_LOGS
-					fprintf(stderr, "Flushing due to tile memory.\n");
+				   fprintf(stderr, "Flushing due to tile memory.\n");
 #endif
-					flush = true;
-				}
-			}
-			else
-				reject_tile_count++;
-		}
-	}
+				   flush = true;
+			   }
+		   }
+		   else
+			   reject_tile_count++;
+	   }
+   }
 
-	if (flush)
-	{
+   if (flush)
+   {
 #ifdef ENABLE_LOGS
-		fprintf(stderr, "Flushing!\n");
+	   fprintf(stderr, "Flushing!\n");
 #endif
-		flush_tile_lists();
-	}
+	   flush_tile_lists();
+   }
 }
 
 void Renderer::append_tile_list(TileInfo &tile_info, unsigned primitive, unsigned tile)
 {
-	if (tile_info.head == -1u)
-	{
-		tile_info.head = tile_nodes.size();
-		tile_info.tail = tile_nodes.size();
-	}
-	else
-	{
-		unsigned next = tile_nodes.size();
-		tile_nodes[tile_info.tail].next = next;
-		tile_info.tail = next;
-	}
-	tile_nodes.emplace_back(primitive | (tile << RDP_MAX_PRIMITIVES_LOG2), -1u);
+   if (tile_info.head == -1u)
+   {
+      tile_info.head = tile_nodes.size();
+      tile_info.tail = tile_nodes.size();
+   }
+   else
+   {
+      unsigned next = tile_nodes.size();
+      tile_nodes[tile_info.tail].next = next;
+      tile_info.tail = next;
+   }
+   tile_nodes.emplace_back(primitive | (tile << RDP_MAX_PRIMITIVES_LOG2), -1u);
 }
 
 bool Renderer::coarse_conservative_raster(int x, int y, int min_x, int max_x, int min_y, int max_y,
@@ -1183,39 +1184,34 @@ void Renderer::set_depth_image(uint32_t addr)
 
 void Renderer::set_color_image(uint32_t addr, unsigned format, unsigned pixel_size, unsigned width)
 {
-	if (framebuffer.addr == addr && framebuffer.format == format && framebuffer.width == width &&
-	    framebuffer.pixel_size == pixel_size)
-	{
-		return;
-	}
+   unsigned max_height    = width;
 
-	// Keep the async frame around and update it when it's done.
-	complete_frame();
+   if (framebuffer.addr == addr && framebuffer.format == format && framebuffer.width == width &&
+      framebuffer.pixel_size == pixel_size)
+      return;
 
-	framebuffer.addr = addr;
-	framebuffer.format = format;
-	framebuffer.width = width;
-	framebuffer.pixel_size = pixel_size;
+   /* Keep the async frame around and update it when it's done. */
+   complete_frame();
 
-	// Unfortunately, the N64 RDP doesn't *need* to know the framebuffer
-	// height since it's implied by the scissor box.
-	// It only renders scanlines.
-	// We will need to estimate the real height and potentially flush out
-	// everything if we guess wrong.
-	// Just employ some crappy heuristic to make this sort of work.
-	unsigned max_height;
-	if (width > 320)
-		max_height = 480;
-	else if (width == 320)
-		max_height = 240;
-	else
-		max_height = width;
+   framebuffer.addr       = addr;
+   framebuffer.format     = format;
+   framebuffer.width      = width;
+   framebuffer.pixel_size = pixel_size;
 
-	// Allocate new framebuffer if needed.
-	if (framebuffer.allocated_width != width || framebuffer.allocated_height != max_height)
-	{
-		set_framebuffer_size(width, max_height);
-	}
+   // Unfortunately, the N64 RDP doesn't *need* to know the framebuffer
+   // height since it's implied by the scissor box.
+   // It only renders scanlines.
+   // We will need to estimate the real height and potentially flush out
+   // everything if we guess wrong.
+   // Just employ some crappy heuristic to make this sort of work.
+   if (width > 320)
+      max_height = 480;
+   else if (width == 320)
+      max_height = 240;
+
+   // Allocate new framebuffer if needed.
+   if (framebuffer.allocated_width != width || framebuffer.allocated_height != max_height)
+      set_framebuffer_size(width, max_height);
 }
 
 void Renderer::reset_buffers()
@@ -1265,215 +1261,213 @@ void Renderer::begin_framebuffer_depth()
 
 void Renderer::sync_color_dram_to_gpu()
 {
-	if (framebuffer.color_state != FRAMEBUFFER_STALE_GPU)
-		return;
-
 #ifdef ENABLE_LOGS
-	fprintf(stderr, "sync_color_dram_to_gpu()\n");
+   fprintf(stderr, "sync_color_dram_to_gpu()\n");
 #endif
 
-	// Check if the last writer to this region was actually the GPU. In this case, we can copy from GPU -> GPU.
-	// This usually happens when clear screen happens with CYCLE1 pipeline instead of FILL, which
-	// blocks us from using CPU-side fill optimization.
-	int old_index = -1;
-	bool matches_depth = false;
-	bool matches_color = false;
+   // Check if the last writer to this region was actually the GPU. In this case, we can copy from GPU -> GPU.
+   // This usually happens when clear screen happens with CYCLE1 pipeline instead of FILL, which
+   // blocks us from using CPU-side fill optimization.
+   int old_index = -1;
+   bool matches_depth = false;
+   bool matches_color = false;
 
-	for (int i = async_transfers.size() - 1; i >= 0; i--)
-	{
-		auto &async = async_transfers[i];
-		matches_depth = async.framebuffer.depth_addr == framebuffer.addr && async.depth_buffer.staging.block &&
-		                framebuffer.pixel_size == PIXEL_SIZE_16BPP;
-		matches_color = async.framebuffer.addr == framebuffer.addr && async.color_buffer.staging.block &&
-		                async.framebuffer.pixel_size == framebuffer.pixel_size;
+   for (int i = async_transfers.size() - 1; i >= 0; i--)
+   {
+      auto &async = async_transfers[i];
+      matches_depth = async.framebuffer.depth_addr == framebuffer.addr && async.depth_buffer.staging.block &&
+	      framebuffer.pixel_size == PIXEL_SIZE_16BPP;
+      matches_color = async.framebuffer.addr == framebuffer.addr && async.color_buffer.staging.block &&
+	      async.framebuffer.pixel_size == framebuffer.pixel_size;
 
-		if ((matches_depth || matches_color) && async.framebuffer.allocated_width == framebuffer.allocated_width &&
-		    async.framebuffer.allocated_height == framebuffer.allocated_height)
-		{
-			old_index = i;
-			break;
-		}
-	}
+      if ((matches_depth || matches_color) && async.framebuffer.allocated_width == framebuffer.allocated_width &&
+		      async.framebuffer.allocated_height == framebuffer.allocated_height)
+      {
+	      old_index = i;
+	      break;
+      }
+   }
 
-	if (old_index >= 0)
-	{
-		if (!vulkan.framebuffer.staging.block)
-		{
-			// We have already waited for earlier compute to complete when we called sync_gpu_to_dram().
-			begin_framebuffer();
-			if (matches_color)
-				vulkan.cmd.copy_buffer(vulkan.framebuffer, async_transfers[old_index].color_buffer);
-			else if (matches_depth)
-				vulkan.cmd.copy_buffer(vulkan.framebuffer, async_transfers[old_index].depth_buffer);
-		}
-	}
-	else
-	{
-		auto base = framebuffer_data();
+   if (old_index >= 0)
+   {
+      if (!vulkan.framebuffer.staging.block)
+      {
+         // We have already waited for earlier compute to complete when we called sync_gpu_to_dram().
+         begin_framebuffer();
+	 if (matches_color)
+		 vulkan.cmd.copy_buffer(vulkan.framebuffer, async_transfers[old_index].color_buffer);
+	 else if (matches_depth)
+		 vulkan.cmd.copy_buffer(vulkan.framebuffer, async_transfers[old_index].depth_buffer);
+      }
+   }
+   else
+   {
+      unsigned pixels;
+      auto *dst = NULL;
+      auto base = framebuffer_data();
 
-		begin_framebuffer();
-		unsigned pixels = framebuffer.allocated_width * framebuffer.allocated_height;
-		auto *dst = static_cast<uint32_t *>(vulkan.framebuffer.map());
-		if (framebuffer.pixel_size == PIXEL_SIZE_32BPP)
-		{
-			uint32_t max_addr = framebuffer.addr + 4 * pixels;
-			assert((framebuffer.addr & 3) == 0);
-			if (max_addr <= RDRAM_SIZE)
-			{
-				memcpy(dst, base + framebuffer.addr, pixels * sizeof(uint32_t));
-			}
-			else
-			{
-				for (unsigned i = 0; i < pixels; i++)
-					dst[i] = READ_DRAM_U32(base, framebuffer.addr + 4 * i);
-			}
-		}
-		else if (framebuffer.pixel_size == PIXEL_SIZE_16BPP)
-		{
-			uint32_t max_addr = framebuffer.addr + 2 * pixels;
-			assert((framebuffer.addr & 1) == 0);
-			if (max_addr <= RDRAM_SIZE)
-			{
-				for (unsigned i = 0; i < pixels; i++)
-				{
-					// Estimate the hidden bits based on the alpha bit.
-					uint32_t c = READ_DRAM_U16_NOWRAP(base, framebuffer.addr + 2 * i);
-					dst[i] = (c << 2) | ((c & 1) * 3);
-				}
-			}
-			else
-			{
-				for (unsigned i = 0; i < pixels; i++)
-				{
-					// Estimate the hidden bits based on the alpha bit.
-					uint32_t c = READ_DRAM_U16(base, framebuffer.addr + 2 * i);
-					dst[i] = (c << 2) | ((c & 1) * 3);
-				}
-			}
-		}
-		else if (framebuffer.pixel_size == PIXEL_SIZE_8BPP)
-		{
-			uint32_t max_addr = framebuffer.addr + 1 * pixels;
-			if (max_addr <= RDRAM_SIZE)
-			{
-				for (unsigned i = 0; i < pixels; i++)
-				{
-					// Estimate the hidden bits based on the alpha bit.
-					uint32_t c = READ_DRAM_U8_NOWRAP(base, framebuffer.addr + 1 * i);
-					dst[i] = (c << 3) | ((c & 1) * 7);
-				}
-			}
-			else
-			{
-				for (unsigned i = 0; i < pixels; i++)
-				{
-					// Estimate the hidden bits based on the alpha bit.
-					uint32_t c = READ_DRAM_U8(base, framebuffer.addr + 1 * i);
-					dst[i] = (c << 3) | ((c & 1) * 7);
-				}
-			}
-		}
-		vulkan.framebuffer.unmap();
-		vulkan.cmd.sync_buffer_to_gpu(vulkan.framebuffer);
-	}
+      begin_framebuffer();
+      pixels = framebuffer.allocated_width * framebuffer.allocated_height;
+      dst = static_cast<uint32_t *>(vulkan.framebuffer.map());
 
-	framebuffer.color_state = FRAMEBUFFER_GPU;
+      if (framebuffer.pixel_size == PIXEL_SIZE_32BPP)
+      {
+	      uint32_t max_addr = framebuffer.addr + 4 * pixels;
+	      assert((framebuffer.addr & 3) == 0);
+	      if (max_addr <= RDRAM_SIZE)
+		      memcpy(dst, base + framebuffer.addr, pixels * sizeof(uint32_t));
+	      else
+	      {
+		      for (unsigned i = 0; i < pixels; i++)
+			      dst[i] = READ_DRAM_U32(base, framebuffer.addr + 4 * i);
+	      }
+      }
+      else if (framebuffer.pixel_size == PIXEL_SIZE_16BPP)
+      {
+	      uint32_t max_addr = framebuffer.addr + 2 * pixels;
+	      assert((framebuffer.addr & 1) == 0);
+	      if (max_addr <= RDRAM_SIZE)
+	      {
+		      for (unsigned i = 0; i < pixels; i++)
+		      {
+			      // Estimate the hidden bits based on the alpha bit.
+			      uint32_t c = READ_DRAM_U16_NOWRAP(base, framebuffer.addr + 2 * i);
+			      dst[i] = (c << 2) | ((c & 1) * 3);
+		      }
+	      }
+	      else
+	      {
+		      for (unsigned i = 0; i < pixels; i++)
+		      {
+			      // Estimate the hidden bits based on the alpha bit.
+			      uint32_t c = READ_DRAM_U16(base, framebuffer.addr + 2 * i);
+			      dst[i] = (c << 2) | ((c & 1) * 3);
+		      }
+	      }
+      }
+      else if (framebuffer.pixel_size == PIXEL_SIZE_8BPP)
+      {
+	      uint32_t max_addr = framebuffer.addr + 1 * pixels;
+	      if (max_addr <= RDRAM_SIZE)
+	      {
+		      for (unsigned i = 0; i < pixels; i++)
+		      {
+			      // Estimate the hidden bits based on the alpha bit.
+			      uint32_t c = READ_DRAM_U8_NOWRAP(base, framebuffer.addr + 1 * i);
+			      dst[i] = (c << 3) | ((c & 1) * 7);
+		      }
+	      }
+	      else
+	      {
+		      for (unsigned i = 0; i < pixels; i++)
+		      {
+			      // Estimate the hidden bits based on the alpha bit.
+			      uint32_t c = READ_DRAM_U8(base, framebuffer.addr + 1 * i);
+			      dst[i] = (c << 3) | ((c & 1) * 7);
+		      }
+	      }
+      }
+
+      vulkan.framebuffer.unmap();
+      vulkan.cmd.sync_buffer_to_gpu(vulkan.framebuffer);
+   }
+
+   framebuffer.color_state = FRAMEBUFFER_GPU;
 }
 
 void Renderer::sync_depth_dram_to_gpu()
 {
-	if (framebuffer.depth_state != FRAMEBUFFER_STALE_GPU)
-		return;
-
-	// If color buffer and depth buffer alias each other, we won't use a depth buffer per-se, as
-	// we'll do the aliasing internally.
-	if (framebuffer.addr == framebuffer.depth_addr)
-	{
-		framebuffer.depth_state = FRAMEBUFFER_GPU;
-		return;
-	}
+   // If color buffer and depth buffer alias each other, we won't use a depth buffer per-se, as
+   // we'll do the aliasing internally.
+   
+   if (framebuffer.addr == framebuffer.depth_addr)
+   {
+      framebuffer.depth_state = FRAMEBUFFER_GPU;
+      return;
+   }
 
 #ifdef ENABLE_LOGS
-	fprintf(stderr, "sync_depth_dram_to_gpu()\n");
+   fprintf(stderr, "sync_depth_dram_to_gpu()\n");
 #endif
-	auto base = framebuffer_data();
+   auto base = framebuffer_data();
 
-	// Check if the last writer to this region was actually the GPU. In this case, we can copy from GPU -> GPU.
-	// This usually happens when clear screen happens with CYCLE1 pipeline instead of FILL, which
-	// blocks us from using CPU-side fill optimization.
-	int old_index = -1;
-	bool matches_depth = false, matches_color = false;
+   // Check if the last writer to this region was actually the GPU. In this case, we can copy from GPU -> GPU.
+   // This usually happens when clear screen happens with CYCLE1 pipeline instead of FILL, which
+   // blocks us from using CPU-side fill optimization.
+   int old_index = -1;
+   bool matches_depth = false, matches_color = false;
 
-	for (int i = async_transfers.size() - 1; i >= 0; i--)
-	{
-		auto &async = async_transfers[i];
+   for (int i = async_transfers.size() - 1; i >= 0; i--)
+   {
+	   auto &async = async_transfers[i];
 
-		matches_depth = async.framebuffer.depth_addr == framebuffer.depth_addr && async.depth_buffer.staging.block;
+	   matches_depth = async.framebuffer.depth_addr == framebuffer.depth_addr && async.depth_buffer.staging.block;
 
-		matches_color = async.framebuffer.addr == framebuffer.depth_addr && async.color_buffer.staging.block &&
-		                async.framebuffer.pixel_size == PIXEL_SIZE_16BPP;
+	   matches_color = async.framebuffer.addr == framebuffer.depth_addr && async.color_buffer.staging.block &&
+		   async.framebuffer.pixel_size == PIXEL_SIZE_16BPP;
 
-		if ((matches_depth || matches_color) && async.framebuffer.allocated_width == framebuffer.allocated_width &&
-		    async.framebuffer.allocated_height == framebuffer.allocated_height)
-		{
-			old_index = i;
-			break;
-		}
-	}
+	   if ((matches_depth || matches_color) && async.framebuffer.allocated_width == framebuffer.allocated_width &&
+			   async.framebuffer.allocated_height == framebuffer.allocated_height)
+	   {
+		   old_index = i;
+		   break;
+	   }
+   }
 
-	if (old_index >= 0)
-	{
-		if (!vulkan.framebuffer_depth.staging.block)
-		{
-			begin_framebuffer_depth();
-			// We have already waited for earlier compute to complete when we called sync_gpu_to_dram().
-			if (matches_depth)
-			{
+   if (old_index >= 0)
+   {
+	   if (!vulkan.framebuffer_depth.staging.block)
+	   {
+		   begin_framebuffer_depth();
+		   // We have already waited for earlier compute to complete when we called sync_gpu_to_dram().
+		   if (matches_depth)
+		   {
 #ifdef ENABLE_LOGS
-				fprintf(stderr, "Reusing old depth buffer.\n");
+			   fprintf(stderr, "Reusing old depth buffer.\n");
 #endif
-				vulkan.cmd.copy_buffer(vulkan.framebuffer_depth, async_transfers[old_index].depth_buffer);
-			}
-			else if (matches_color)
-			{
+			   vulkan.cmd.copy_buffer(vulkan.framebuffer_depth, async_transfers[old_index].depth_buffer);
+		   }
+		   else if (matches_color)
+		   {
 #ifdef ENABLE_LOGS
-				fprintf(stderr, "Reusing old color buffer.\n");
+			   fprintf(stderr, "Reusing old color buffer.\n");
 #endif
-				vulkan.cmd.copy_buffer(vulkan.framebuffer_depth, async_transfers[old_index].color_buffer);
-			}
-		}
-	}
-	else
-	{
-		begin_framebuffer_depth();
-		unsigned pixels = framebuffer.allocated_width * framebuffer.allocated_height;
-		auto *dst = static_cast<uint32_t *>(vulkan.framebuffer_depth.map());
+			   vulkan.cmd.copy_buffer(vulkan.framebuffer_depth, async_transfers[old_index].color_buffer);
+		   }
+	   }
+   }
+   else
+   {
+	   begin_framebuffer_depth();
+	   unsigned pixels = framebuffer.allocated_width * framebuffer.allocated_height;
+	   auto *dst = static_cast<uint32_t *>(vulkan.framebuffer_depth.map());
 
-		for (unsigned i = 0; i < pixels; i++)
-			dst[i] = READ_DRAM_U16(base, framebuffer.depth_addr + 2 * i) << 2;
+	   for (unsigned i = 0; i < pixels; i++)
+		   dst[i] = READ_DRAM_U16(base, framebuffer.depth_addr + 2 * i) << 2;
 
-		vulkan.framebuffer_depth.unmap();
-		vulkan.cmd.sync_buffer_to_gpu(vulkan.framebuffer_depth);
-	}
+	   vulkan.framebuffer_depth.unmap();
+	   vulkan.cmd.sync_buffer_to_gpu(vulkan.framebuffer_depth);
+   }
 
-	framebuffer.depth_state = FRAMEBUFFER_GPU;
+   framebuffer.depth_state = FRAMEBUFFER_GPU;
 }
 
 void Renderer::begin_index(unsigned index)
 {
-	// Complete async transfers which are complete.
-	unsigned end = 0;
-	for (unsigned i = 0; i < async_transfers.size(); i++)
-		if (async_transfers[i].sync_index == index)
-			end = i + 1;
+   /* Complete async transfers which are complete. */
+   unsigned end = 0;
 
-	for (unsigned i = 0; i < end; i++)
-		sync_framebuffer_to_cpu(async_transfers[i]);
+   for (unsigned i = 0; i < async_transfers.size(); i++)
+      if (async_transfers[i].sync_index == index)
+         end = i + 1;
 
-	if (end)
-		async_transfers.erase(begin(async_transfers), begin(async_transfers) + end);
+   for (unsigned i = 0; i < end; i++)
+      sync_framebuffer_to_cpu(async_transfers[i]);
 
-	current_sync_index = index;
+   if (end)
+      async_transfers.erase(begin(async_transfers), begin(async_transfers) + end);
+
+   current_sync_index = index;
 }
 
 void Renderer::sync_framebuffer_to_cpu(AsyncFramebuffer &async)
@@ -1615,76 +1609,87 @@ void Renderer::sync_gpu_to_vi(CommandBuffer &cmd)
 
 void Renderer::sync_gpu_to_dram(bool blocking)
 {
-	if (vulkan.cmd.cmd == VK_NULL_HANDLE)
-		return;
+   auto sem;
+   CommandBuffer alt_cmd;
+   bool depth_is_aliased           = false;
 
-	// We cannot be in a transient state when doing this.
-	assert(framebuffer.color_state != FRAMEBUFFER_STALE_GPU);
-	assert(framebuffer.depth_state != FRAMEBUFFER_STALE_GPU);
+   /* We cannot be in a transient state when doing this. */
+   assert(framebuffer.color_state != FRAMEBUFFER_STALE_GPU);
+   assert(framebuffer.depth_state != FRAMEBUFFER_STALE_GPU);
 
 #ifdef ENABLE_LOGS
-	fprintf(stderr, "sync_gpu_to_dram()\n");
+   fprintf(stderr, "sync_gpu_to_dram()\n");
 #endif
 
-	bool depth_is_aliased = framebuffer.depth_state == FRAMEBUFFER_GPU && framebuffer.addr == framebuffer.depth_addr;
+   depth_is_aliased = framebuffer.depth_state == FRAMEBUFFER_GPU && framebuffer.addr == framebuffer.depth_addr;
 
-	vulkan.cmd.begin_readback();
-	if (framebuffer.color_state == FRAMEBUFFER_GPU)
-		vulkan.cmd.sync_buffer_to_cpu(vulkan.framebuffer);
-	if (framebuffer.depth_state == FRAMEBUFFER_GPU && !depth_is_aliased)
-		vulkan.cmd.sync_buffer_to_cpu(vulkan.framebuffer_depth);
-	vulkan.cmd.end_readback();
+   vulkan.cmd.begin_readback();
 
-	auto sem = device.request_semaphore();
-	CommandBuffer alt_cmd;
+   if (framebuffer.color_state == FRAMEBUFFER_GPU)
+	   vulkan.cmd.sync_buffer_to_cpu(vulkan.framebuffer);
+   if (framebuffer.depth_state == FRAMEBUFFER_GPU && !depth_is_aliased)
+	   vulkan.cmd.sync_buffer_to_cpu(vulkan.framebuffer_depth);
 
-	if (framebuffer.color_state == FRAMEBUFFER_GPU)
-	{
-		alt_cmd = device.request_alt_command_buffer();
-		if (!depth_is_aliased)
-			sync_gpu_to_vi(alt_cmd);
-	}
+   vulkan.cmd.end_readback();
 
-	// If we're blocking, wait immediately and read back buffers.
-	if (blocking)
-	{
-		// Make sure we read to RDRAM here.
-		auto old_sync = true;
-		swap(old_sync, synchronous);
+   sem = device.request_semaphore();
 
-		AsyncFramebuffer async;
-		async.sync_index = current_sync_index;
-		async.framebuffer = framebuffer;
-		async.color_buffer = vulkan.framebuffer;
-		if (framebuffer.depth_state == FRAMEBUFFER_GPU && !depth_is_aliased)
-			async.depth_buffer = vulkan.framebuffer_depth;
+   if (framebuffer.color_state == FRAMEBUFFER_GPU)
+   {
+      alt_cmd = device.request_alt_command_buffer();
+      if (!depth_is_aliased)
+         sync_gpu_to_vi(alt_cmd);
+   }
 
-		async.fence = submit(&sem);
-		if (framebuffer.color_state == FRAMEBUFFER_GPU)
-			device.submit_alt_queue(alt_cmd, &sem, nullptr);
-		sync_framebuffer_to_cpu(async);
+   /* If we're blocking, wait immediately and read back buffers. */
+   if (blocking)
+   {
+      /* Make sure we read to RDRAM here. */
+      AsyncFramebuffer async;
+      bool old_sync = true;
 
-		swap(old_sync, synchronous);
-	}
-	else
-	{
-		// If we're completing frame async, just queue up a transfer back to client memory.
-		AsyncFramebuffer async;
-		async.sync_index = current_sync_index;
-		async.framebuffer = framebuffer;
+      swap(old_sync, synchronous);
 
-		async.color_buffer = vulkan.framebuffer;
-		if (framebuffer.depth_state == FRAMEBUFFER_GPU && !depth_is_aliased)
-			async.depth_buffer = vulkan.framebuffer_depth;
+      async.sync_index   = current_sync_index;
+      async.framebuffer  = framebuffer;
+      async.color_buffer = vulkan.framebuffer;
 
-		async.fence = submit(&sem);
-		if (framebuffer.color_state == FRAMEBUFFER_GPU)
-			device.submit_alt_queue(alt_cmd, &sem, nullptr);
-		async_transfers.push_back(move(async));
-	}
+      if (framebuffer.depth_state == FRAMEBUFFER_GPU && !depth_is_aliased)
+         async.depth_buffer = vulkan.framebuffer_depth;
 
-	framebuffer.color_state = FRAMEBUFFER_CPU;
-	framebuffer.depth_state = FRAMEBUFFER_CPU;
+      async.fence        = submit(&sem);
+
+      if (framebuffer.color_state == FRAMEBUFFER_GPU)
+	      device.submit_alt_queue(alt_cmd, &sem, nullptr);
+
+      sync_framebuffer_to_cpu(async);
+
+      swap(old_sync, synchronous);
+   }
+   else
+   {
+      /* If we're completing frame async, just queue up 
+       * a transfer back to client memory. */
+      AsyncFramebuffer async;
+
+      async.sync_index   = current_sync_index;
+      async.framebuffer  = framebuffer;
+
+      async.color_buffer = vulkan.framebuffer;
+
+      if (framebuffer.depth_state == FRAMEBUFFER_GPU && !depth_is_aliased)
+         async.depth_buffer = vulkan.framebuffer_depth;
+
+      async.fence        = submit(&sem);
+
+      if (framebuffer.color_state == FRAMEBUFFER_GPU)
+         device.submit_alt_queue(alt_cmd, &sem, nullptr);
+
+      async_transfers.push_back(move(async));
+   }
+
+   framebuffer.color_state = FRAMEBUFFER_CPU;
+   framebuffer.depth_state = FRAMEBUFFER_CPU;
 }
 
 void Renderer::sync_full()
@@ -1695,7 +1700,8 @@ void Renderer::sync_full()
    async_transfers.clear();
 
    flush_tile_lists();
-   sync_gpu_to_dram(true);
+   if (vulkan.cmd.cmd != VK_NULL_HANDLE)
+      sync_gpu_to_dram(true);
 }
 
 void Renderer::complete_frame()
@@ -1705,49 +1711,50 @@ void Renderer::complete_frame()
    else
    {
       flush_tile_lists();
-      sync_gpu_to_dram(false);
+      if (vulkan.cmd.cmd != VK_NULL_HANDLE)
+         sync_gpu_to_dram(false);
    }
 }
 
 void Renderer::allocate_tiles()
 {
-	TileAtlasAllocator atlas;
-	atlas.reset();
+   TileAtlasAllocator atlas;
+   unsigned width, height, layers;
+   float inv_width, inv_height;
 
-	// Find max tile size, this will become the size of array layer.
-	for (auto &tile : tile_descriptors)
-		atlas.add_size(tile.width, tile.height);
+   atlas.reset();
 
-	// Allocate space in 2D array for all tiles.
-	atlas.begin_allocator();
-	for (auto &tile : tile_descriptors)
-	{
-		atlas.allocate(&tile.off_x, &tile.off_y, &tile.off_z, tile.width, tile.height);
-	}
-	atlas.end_allocator();
+   // Find max tile size, this will become the size of array layer.
+   for (auto &tile : tile_descriptors)
+	   atlas.add_size(tile.width, tile.height);
 
-	// Get the final size.
-	unsigned width, height, layers;
-	atlas.get_atlas_size(&width, &height, &layers);
+   // Allocate space in 2D array for all tiles.
+   atlas.begin_allocator();
+   for (auto &tile : tile_descriptors)
+	   atlas.allocate(&tile.off_x, &tile.off_y, &tile.off_z, tile.width, tile.height);
+   atlas.end_allocator();
+
+   // Get the final size.
+   atlas.get_atlas_size(&width, &height, &layers);
 
 #ifdef ENABLE_LOGS
-	fprintf(stderr, "Atlas: %u x %u x %u\n", width, height, layers);
+   fprintf(stderr, "Atlas: %u x %u x %u\n", width, height, layers);
 #endif
 
-	float inv_width = 1.0f / width;
-	float inv_height = 1.0f / height;
+   inv_width  = 1.0f / width;
+   inv_height = 1.0f / height;
 
-	// Set correct UV offsets for the tiles.
-	for (auto &tile : tile_descriptors)
-	{
-		tile.desc.offset[0] = (tile.off_x + 0.5f) * inv_width;
-		tile.desc.offset[1] = (tile.off_y + 0.5f) * inv_height;
-		tile.desc.layer = float(tile.off_z);
-	}
+   /* Set correct UV offsets for the tiles. */
+   for (auto &tile : tile_descriptors)
+   {
+      tile.desc.offset[0] = (tile.off_x + 0.5f) * inv_width;
+      tile.desc.offset[1] = (tile.off_y + 0.5f) * inv_height;
+      tile.desc.layer     = float(tile.off_z);
+   }
 
-	vulkan.tile_map.width = width;
-	vulkan.tile_map.height = height;
-	vulkan.tile_map.layers = layers;
+   vulkan.tile_map.width  = width;
+   vulkan.tile_map.height = height;
+   vulkan.tile_map.layers = layers;
 }
 
 void Renderer::begin_command_buffer()
@@ -1770,299 +1777,295 @@ Vulkan::Fence Renderer::submit(const Vulkan::Semaphore *sem)
 
 void Renderer::flush_tile_lists()
 {
-	if (primitive_data.empty() || work_data.empty())
-	   return;
+   if (primitive_data.empty() || work_data.empty())
+      return;
 
 #ifdef ENABLE_LOGS
-	fprintf(stderr, "Flushing %u primitives.\n", unsigned(primitive_data.size()));
-	fprintf(stderr, "Rejection rate: %.3f %%\n",
-	        100.0 * double(reject_tile_count) / double(reject_tile_count + raster_tile_count));
+   fprintf(stderr, "Flushing %u primitives.\n", unsigned(primitive_data.size()));
+   fprintf(stderr, "Rejection rate: %.3f %%\n",
+		   100.0 * double(reject_tile_count) / double(reject_tile_count + raster_tile_count));
 #endif
-	begin_command_buffer();
+   begin_command_buffer();
 
-	// Allocate descriptor sets.
-	vulkan.lut_set = device.request_rdp_descriptor_set(Vulkan::RDP::DescriptorSetType::LUT);
-	vulkan.buffer_set = device.request_rdp_descriptor_set(Vulkan::RDP::DescriptorSetType::Buffers);
-	if (rdp_dithering)
+   /* Allocate descriptor sets. */
+   vulkan.lut_set = device.request_rdp_descriptor_set(Vulkan::RDP::DescriptorSetType::LUT);
+   vulkan.buffer_set = device.request_rdp_descriptor_set(Vulkan::RDP::DescriptorSetType::Buffers);
+   if (rdp_dithering)
 	   vulkan.lut_set.set_image(0, *vulkan.dither_lut);
-	vulkan.lut_set.set_image(1, *vulkan.centroid_lut);
-	vulkan.lut_set.set_uniform_buffer(2, vulkan.z_lut);
+   vulkan.lut_set.set_image(1, *vulkan.centroid_lut);
+   vulkan.lut_set.set_uniform_buffer(2, vulkan.z_lut);
 
-	vulkan.cmd.begin_stream();
+   vulkan.cmd.begin_stream();
 
-	// TODO: We could detect if we have a typical clear screen scenario and
-	// avoid uploading DRAM to GPU every frame.
-	sync_color_dram_to_gpu();
-	sync_depth_dram_to_gpu();
-	bool depth_is_aliased = framebuffer.depth_state == FRAMEBUFFER_GPU && framebuffer.addr == framebuffer.depth_addr;
-	bool pass_uses_depth = framebuffer.depth_state == FRAMEBUFFER_GPU && !depth_is_aliased;
+   /* TODO: We could detect if we have a typical clear screen scenario and
+    * avoid uploading DRAM to GPU every frame. */
+   if (framebuffer.color_state == FRAMEBUFFER_STALE_GPU)
+	   sync_color_dram_to_gpu();
+   if (framebuffer.depth_state == FRAMEBUFFER_STALE_GPU)
+	   sync_depth_dram_to_gpu();
+   bool depth_is_aliased = framebuffer.depth_state == FRAMEBUFFER_GPU && framebuffer.addr == framebuffer.depth_addr;
+   bool pass_uses_depth = framebuffer.depth_state == FRAMEBUFFER_GPU && !depth_is_aliased;
 
-	// Primitive data.
-	{
-		size_t primitive_data_size = primitive_data.size() * sizeof(BufferPrimitive);
-		Buffer tmp = device.request_dynamic_buffer(vulkan.cmd, vulkan.buffer_set,
-		                                           Vulkan::RDP::BufferLayout::PrimitiveData, primitive_data_size);
+   /* Primitive data. */
+   {
+	   size_t primitive_data_size = primitive_data.size() * sizeof(BufferPrimitive);
+	   Buffer tmp = device.request_dynamic_buffer(vulkan.cmd, vulkan.buffer_set,
+			   Vulkan::RDP::BufferLayout::PrimitiveData, primitive_data_size);
 
-		memcpy(tmp.map(), primitive_data.data(), primitive_data_size);
-		tmp.unmap();
-	}
-	////
+	   memcpy(tmp.map(), primitive_data.data(), primitive_data_size);
+	   tmp.unmap();
+   }
 
-	// Upload tile list headers
-	{
-		size_t tile_list_header_size = sizeof(uint32_t) * tiles_x * tiles_y;
-		Buffer tmp = device.request_dynamic_buffer(vulkan.cmd, vulkan.buffer_set,
-		                                           Vulkan::RDP::BufferLayout::TileListHeader, tile_list_header_size);
+   /* Upload tile list headers */
+   {
+	   size_t tile_list_header_size = sizeof(uint32_t) * tiles_x * tiles_y;
+	   Buffer tmp = device.request_dynamic_buffer(vulkan.cmd, vulkan.buffer_set,
+			   Vulkan::RDP::BufferLayout::TileListHeader, tile_list_header_size);
 
-		auto *header = static_cast<uint32_t *>(tmp.map());
-		for (auto &tile : tile_lists)
-			*header++ = tile.head;
+	   auto *header = static_cast<uint32_t *>(tmp.map());
+	   for (auto &tile : tile_lists)
+		   *header++ = tile.head;
 
-		tmp.unmap();
-	}
-	////
+	   tmp.unmap();
+   }
 
-	// Upload tile list.
-	{
-		size_t tile_node_size = tile_nodes.size() * sizeof(TileNode);
-		Buffer tmp = device.request_dynamic_buffer(vulkan.cmd, vulkan.buffer_set, Vulkan::RDP::BufferLayout::TileList,
-		                                           tile_node_size);
+   /* Upload tile list. */
+   {
+	   size_t tile_node_size = tile_nodes.size() * sizeof(TileNode);
+	   Buffer tmp = device.request_dynamic_buffer(vulkan.cmd, vulkan.buffer_set, Vulkan::RDP::BufferLayout::TileList,
+			   tile_node_size);
 
-		memcpy(tmp.map(), tile_nodes.data(), tile_node_size);
-		tmp.unmap();
-	}
-	////
+	   memcpy(tmp.map(), tile_nodes.data(), tile_node_size);
+	   tmp.unmap();
+   }
 
-	vulkan.buffer_set.set_storage_buffer(static_cast<unsigned>(Vulkan::RDP::BufferLayout::Color), vulkan.framebuffer);
+   vulkan.buffer_set.set_storage_buffer(static_cast<unsigned>(Vulkan::RDP::BufferLayout::Color), vulkan.framebuffer);
 
-	if (pass_uses_depth)
-	{
-		vulkan.buffer_set.set_storage_buffer(static_cast<unsigned>(Vulkan::RDP::BufferLayout::Depth),
-		                                     vulkan.framebuffer_depth);
-	}
-	else
-	{
-		// Avoid tripping assertions.
-		vulkan.buffer_set.set_storage_buffer(static_cast<unsigned>(Vulkan::RDP::BufferLayout::Depth),
-		                                     vulkan.framebuffer);
-	}
+   if (pass_uses_depth)
+   {
+	   vulkan.buffer_set.set_storage_buffer(static_cast<unsigned>(Vulkan::RDP::BufferLayout::Depth),
+			   vulkan.framebuffer_depth);
+   }
+   else
+   {
+	   /* Avoid tripping assertions. */
+	   vulkan.buffer_set.set_storage_buffer(static_cast<unsigned>(Vulkan::RDP::BufferLayout::Depth),
+			   vulkan.framebuffer);
+   }
 
-	// Upload combiner data.
-	if (!combiner_data.empty())
-	{
-		size_t combiner_size = combiner_data.size() * sizeof(BufferCombiner);
-		Buffer tmp = device.request_dynamic_buffer(vulkan.cmd, vulkan.buffer_set, Vulkan::RDP::BufferLayout::Combiners,
-		                                           combiner_size);
-		memcpy(tmp.map(), combiner_data.data(), combiner_size);
-		tmp.unmap();
-	}
-	else
-	{
-		// Make validators shut up.
-		device.request_dynamic_buffer(vulkan.cmd, vulkan.buffer_set, Vulkan::RDP::BufferLayout::Combiners, 64);
-	}
-	////
+   /* Upload combiner data. */
+   if (!combiner_data.empty())
+   {
+	   size_t combiner_size = combiner_data.size() * sizeof(BufferCombiner);
+	   Buffer tmp = device.request_dynamic_buffer(vulkan.cmd, vulkan.buffer_set, Vulkan::RDP::BufferLayout::Combiners,
+			   combiner_size);
+	   memcpy(tmp.map(), combiner_data.data(), combiner_size);
+	   tmp.unmap();
+   }
+   else
+   {
+	   /* Make validators shut up. */
+	   device.request_dynamic_buffer(vulkan.cmd, vulkan.buffer_set, Vulkan::RDP::BufferLayout::Combiners, 64);
+   }
 
-	if (!tile_descriptors.empty())
-	{
-		allocate_tiles();
+   if (!tile_descriptors.empty())
+   {
+	   allocate_tiles();
 
-		// Upload tile descriptors.
-		{
-			size_t tile_descriptor_size = tile_descriptors.size() * sizeof(TileDescriptor);
-			Buffer tmp = device.request_dynamic_buffer(vulkan.cmd, vulkan.buffer_set,
-			                                           Vulkan::RDP::BufferLayout::TileDescriptor, tile_descriptor_size);
-			auto *desc = static_cast<TileDescriptor *>(tmp.map());
-			for (auto &tile : tile_descriptors)
-				*desc++ = tile.desc;
-			tmp.unmap();
-		}
+	   /* Upload tile descriptors. */
+	   {
+		   size_t tile_descriptor_size = tile_descriptors.size() * sizeof(TileDescriptor);
+		   Buffer tmp = device.request_dynamic_buffer(vulkan.cmd, vulkan.buffer_set,
+				   Vulkan::RDP::BufferLayout::TileDescriptor, tile_descriptor_size);
+		   auto *desc = static_cast<TileDescriptor *>(tmp.map());
+		   for (auto &tile : tile_descriptors)
+			   *desc++ = tile.desc;
+		   tmp.unmap();
+	   }
 
-		// Upload tile atlas.
-		auto image = device.create_image_2d_array(VK_FORMAT_R8G8B8A8_UINT, vulkan.tile_map.width,
-		                                          vulkan.tile_map.height, vulkan.tile_map.layers);
+	   /* Upload tile atlas. */
+	   auto image = device.create_image_2d_array(VK_FORMAT_R8G8B8A8_UINT, vulkan.tile_map.width,
+			   vulkan.tile_map.height, vulkan.tile_map.layers);
 
-		Buffer staging = device.request_buffer(BufferType::Staging, tile_data.size());
-		memcpy(staging.map(), tile_data.data(), tile_data.size());
-		staging.unmap();
+	   Buffer staging = device.request_buffer(BufferType::Staging, tile_data.size());
+	   memcpy(staging.map(), tile_data.data(), tile_data.size());
+	   staging.unmap();
 
-		if (tile_hw_fbe)
-			vulkan.cmd.prepare_mixed_image(*image);
-		else
-			vulkan.cmd.prepare_image(*image);
+	   if (tile_hw_fbe)
+		   vulkan.cmd.prepare_mixed_image(*image);
+	   else
+		   vulkan.cmd.prepare_image(*image);
 
-		for (auto &tile : tile_descriptors)
-		{
-			if (tile.hw_fbe)
-			{
-				auto set = device.request_blit_descriptor_set(Vulkan::Blit::DescriptorSetType::Buffers);
-				set.set_storage_buffer(static_cast<unsigned>(Vulkan::Blit::BufferLayout::Color),
-				                       tile.hw_fbe_info.buffer);
-				set.set_storage_image(static_cast<unsigned>(Vulkan::Blit::BufferLayout::Image), *image);
+	   for (auto &tile : tile_descriptors)
+	   {
+		   if (tile.hw_fbe)
+		   {
+			   auto set = device.request_blit_descriptor_set(Vulkan::Blit::DescriptorSetType::Buffers);
+			   set.set_storage_buffer(static_cast<unsigned>(Vulkan::Blit::BufferLayout::Color),
+					   tile.hw_fbe_info.buffer);
+			   set.set_storage_image(static_cast<unsigned>(Vulkan::Blit::BufferLayout::Image), *image);
 
-				switch (tile.hw_fbe_info.transfer)
-				{
-				case TMEM::TRANSFER_RGBA32:
-					vulkan.cmd.bind_pipeline(device.get_blit_pipeline(Vulkan::Blit::PipelineType::TMEM_RGBA32));
-					break;
-				case TMEM::TRANSFER_RGBA16:
-					vulkan.cmd.bind_pipeline(device.get_blit_pipeline(Vulkan::Blit::PipelineType::TMEM_RGBA16));
-					break;
-				case TMEM::TRANSFER_I8:
-					vulkan.cmd.bind_pipeline(device.get_blit_pipeline(Vulkan::Blit::PipelineType::TMEM_I8));
-					break;
-				case TMEM::TRANSFER_IA8:
-					vulkan.cmd.bind_pipeline(device.get_blit_pipeline(Vulkan::Blit::PipelineType::TMEM_IA8));
-					break;
-				case TMEM::TRANSFER_IA16:
-					vulkan.cmd.bind_pipeline(device.get_blit_pipeline(Vulkan::Blit::PipelineType::TMEM_IA16));
-					break;
-				default:
-					break;
-				}
+			   switch (tile.hw_fbe_info.transfer)
+			   {
+				   case TMEM::TRANSFER_RGBA32:
+					   vulkan.cmd.bind_pipeline(device.get_blit_pipeline(Vulkan::Blit::PipelineType::TMEM_RGBA32));
+					   break;
+				   case TMEM::TRANSFER_RGBA16:
+					   vulkan.cmd.bind_pipeline(device.get_blit_pipeline(Vulkan::Blit::PipelineType::TMEM_RGBA16));
+					   break;
+				   case TMEM::TRANSFER_I8:
+					   vulkan.cmd.bind_pipeline(device.get_blit_pipeline(Vulkan::Blit::PipelineType::TMEM_I8));
+					   break;
+				   case TMEM::TRANSFER_IA8:
+					   vulkan.cmd.bind_pipeline(device.get_blit_pipeline(Vulkan::Blit::PipelineType::TMEM_IA8));
+					   break;
+				   case TMEM::TRANSFER_IA16:
+					   vulkan.cmd.bind_pipeline(device.get_blit_pipeline(Vulkan::Blit::PipelineType::TMEM_IA16));
+					   break;
+				   default:
+					   break;
+			   }
 
-				struct PushConstant
-				{
-					uint32_t off[4];
-					uint32_t size[2];
-					uint32_t offset;
-					uint32_t range;
-					uint32_t stride;
-				};
+			   struct PushConstant
+			   {
+				   uint32_t off[4];
+				   uint32_t size[2];
+				   uint32_t offset;
+				   uint32_t range;
+				   uint32_t stride;
+			   };
 
-				const PushConstant push = {
-					{ tile.off_x, tile.off_y, tile.off_z, 0u },
-					{ tile.width, tile.height },
-					tile.hw_fbe_info.offset_pixels,
-					tile.hw_fbe_info.range_pixels,
-					tile.hw_fbe_info.stride_pixels,
-				};
+			   const PushConstant push = {
+				   { tile.off_x, tile.off_y, tile.off_z, 0u },
+				   { tile.width, tile.height },
+				   tile.hw_fbe_info.offset_pixels,
+				   tile.hw_fbe_info.range_pixels,
+				   tile.hw_fbe_info.stride_pixels,
+			   };
 
-				vulkan.cmd.push_constants(&push, sizeof(push));
-				vulkan.cmd.bind_descriptor_set(static_cast<unsigned>(Vulkan::Blit::DescriptorSetType::Buffers), set);
-				vulkan.cmd.dispatch((tile.width + 7) / 8, (tile.height + 7) / 8, 1);
-			}
-			else
-			{
-				vulkan.cmd.copy_to_image(*image, staging, tile.offset, tile.off_x, tile.off_y, tile.off_z, tile.width,
-				                         tile.height, tile.width);
-			}
-		}
+			   vulkan.cmd.push_constants(&push, sizeof(push));
+			   vulkan.cmd.bind_descriptor_set(static_cast<unsigned>(Vulkan::Blit::DescriptorSetType::Buffers), set);
+			   vulkan.cmd.dispatch((tile.width + 7) / 8, (tile.height + 7) / 8, 1);
+		   }
+		   else
+		   {
+			   vulkan.cmd.copy_to_image(*image, staging, tile.offset, tile.off_x, tile.off_y, tile.off_z, tile.width,
+					   tile.height, tile.width);
+		   }
+	   }
 
-		if (tile_hw_fbe)
-			vulkan.cmd.complete_mixed_image(*image);
-		else
-			vulkan.cmd.complete_image(*image);
+	   if (tile_hw_fbe)
+		   vulkan.cmd.complete_mixed_image(*image);
+	   else
+		   vulkan.cmd.complete_image(*image);
 
-		// Image is deleted here,
-		// but it's fine since the deletion is deferred.
-		vulkan.buffer_set.set_image(static_cast<unsigned>(Vulkan::RDP::BufferLayout::TileAtlas), *image);
-	}
-	else
-	{
-		// Make validators shut up.
-		device.request_dynamic_buffer(vulkan.cmd, vulkan.buffer_set, Vulkan::RDP::BufferLayout::TileDescriptor, 64);
-		vulkan.buffer_set.set_image(static_cast<unsigned>(Vulkan::RDP::BufferLayout::TileAtlas), *vulkan.dither_lut);
-	}
+	   /* Image is deleted here,
+	    * but it's fine since the deletion is deferred. */
+	   vulkan.buffer_set.set_image(static_cast<unsigned>(Vulkan::RDP::BufferLayout::TileAtlas), *image);
+   }
+   else
+   {
+	   /* Make validators shut up. */
+	   device.request_dynamic_buffer(vulkan.cmd, vulkan.buffer_set, Vulkan::RDP::BufferLayout::TileDescriptor, 64);
+	   vulkan.buffer_set.set_image(static_cast<unsigned>(Vulkan::RDP::BufferLayout::TileAtlas), *vulkan.dither_lut);
+   }
 
-	// Work Descriptors.
-	{
+   /* Work Descriptors. */
+   {
 #ifdef ENABLE_LOGS
-		fprintf(stderr, "Rendering 8x8 tiles: %u\n", unsigned(work_data.size()));
+	   fprintf(stderr, "Rendering 8x8 tiles: %u\n", unsigned(work_data.size()));
 #endif
-		size_t work_data_size = work_data.size() * sizeof(BufferWorkDescriptor);
-		Buffer tmp = device.request_dynamic_buffer(vulkan.cmd, vulkan.buffer_set,
-		                                           Vulkan::RDP::BufferLayout::WorkDescriptor, work_data_size);
+	   size_t work_data_size = work_data.size() * sizeof(BufferWorkDescriptor);
+	   Buffer tmp = device.request_dynamic_buffer(vulkan.cmd, vulkan.buffer_set,
+			   Vulkan::RDP::BufferLayout::WorkDescriptor, work_data_size);
 
-		memcpy(tmp.map(), work_data.data(), work_data_size);
-		tmp.unmap();
-	}
-	////
+	   memcpy(tmp.map(), work_data.data(), work_data_size);
+	   tmp.unmap();
+   }
 
-	// Tile Buffer.
-	// Lives solely on device.
-	{
-		size_t tile_buffer_size = sizeof(BufferTile) * tile_count;
-		Buffer tmp = device.request_buffer(BufferType::Device, tile_buffer_size);
-		vulkan.buffer_set.set_storage_buffer(static_cast<unsigned>(Vulkan::RDP::BufferLayout::TileBuffer), tmp);
-	}
-	////
+   /* Tile Buffer.
+    * Lives solely on device. */
+   {
+	   size_t tile_buffer_size = sizeof(BufferTile) * tile_count;
+	   Buffer tmp = device.request_buffer(BufferType::Device, tile_buffer_size);
+	   vulkan.buffer_set.set_storage_buffer(static_cast<unsigned>(Vulkan::RDP::BufferLayout::TileBuffer), tmp);
+   }
 
-	vulkan.cmd.end_stream();
+   vulkan.cmd.end_stream();
 
-	struct PushConstant
-	{
-		uint32_t framebuffer[2];
-		float inv_size_tilemap[2];
-		uint32_t tiles_x;
-		int32_t seed;
-	};
+   struct PushConstant
+   {
+	   uint32_t framebuffer[2];
+	   float inv_size_tilemap[2];
+	   uint32_t tiles_x;
+	   int32_t seed;
+   };
 
-	PushConstant push = {
-		{ framebuffer.allocated_width, framebuffer.allocated_height },
-		{ 1.0f / vulkan.tile_map.width, 1.0f / vulkan.tile_map.height },
-		tiles_x,
-		rng_frame_count++,
-	};
+   PushConstant push = {
+	   { framebuffer.allocated_width, framebuffer.allocated_height },
+	   { 1.0f / vulkan.tile_map.width, 1.0f / vulkan.tile_map.height },
+	   tiles_x,
+	   rng_frame_count++,
+   };
 
-	// Rasterize + Varying stage.
-	vulkan.cmd.bind_pipeline(device.get_rdp_pipeline(Vulkan::RDP::PipelineType::Varying));
-	vulkan.cmd.push_constants(&push, sizeof(push));
+   /* Rasterize + Varying stage. */
+   vulkan.cmd.bind_pipeline(device.get_rdp_pipeline(Vulkan::RDP::PipelineType::Varying));
+   vulkan.cmd.push_constants(&push, sizeof(push));
 
-	vulkan.cmd.bind_descriptor_set(static_cast<unsigned>(Vulkan::RDP::DescriptorSetType::LUT), vulkan.lut_set);
-	vulkan.cmd.bind_descriptor_set(static_cast<unsigned>(Vulkan::RDP::DescriptorSetType::Buffers), vulkan.buffer_set);
+   vulkan.cmd.bind_descriptor_set(static_cast<unsigned>(Vulkan::RDP::DescriptorSetType::LUT), vulkan.lut_set);
+   vulkan.cmd.bind_descriptor_set(static_cast<unsigned>(Vulkan::RDP::DescriptorSetType::Buffers), vulkan.buffer_set);
 
-	vulkan.cmd.dispatch(tile_count, 1, 1);
-	vulkan.cmd.flush_barrier();
+   vulkan.cmd.dispatch(tile_count, 1, 1);
+   vulkan.cmd.flush_barrier();
 
-	// Texture stage.
-	vulkan.cmd.bind_pipeline(device.get_rdp_pipeline(Vulkan::RDP::PipelineType::Texture));
-	vulkan.cmd.dispatch(tile_count, 1, 1);
-	vulkan.cmd.flush_barrier();
+   /* Texture stage. */
+   vulkan.cmd.bind_pipeline(device.get_rdp_pipeline(Vulkan::RDP::PipelineType::Texture));
+   vulkan.cmd.dispatch(tile_count, 1, 1);
+   vulkan.cmd.flush_barrier();
 
-	// Combiners + Pre-Blender for 2-cycle mode.
-	vulkan.cmd.bind_pipeline(device.get_rdp_pipeline(Vulkan::RDP::PipelineType::Combiner));
-	vulkan.cmd.dispatch(tile_count, 1, 1);
-	vulkan.cmd.flush_barrier();
+   /* Combiners + Pre-Blender for 2-cycle mode. */
+   vulkan.cmd.bind_pipeline(device.get_rdp_pipeline(Vulkan::RDP::PipelineType::Combiner));
+   vulkan.cmd.dispatch(tile_count, 1, 1);
+   vulkan.cmd.flush_barrier();
 
-	if (depth_is_aliased)
-	{
-		if (framebuffer.pixel_size != PIXEL_SIZE_16BPP)
-			assert(0 && "Trying to alias depth and 16-bit color, but this does not make any sense.");
+   if (depth_is_aliased)
+   {
+	   if (framebuffer.pixel_size != PIXEL_SIZE_16BPP)
+		   assert(0 && "Trying to alias depth and 16-bit color, but this does not make any sense.");
 
-		vulkan.cmd.bind_pipeline(device.get_rdp_pipeline(Vulkan::RDP::PipelineType::ColorDepthAlias_16bit));
-	}
-	else
-	{
-		// Framebuffer pipeline.
-		switch (framebuffer.pixel_size)
-		{
-		case 3:
-			if (pass_uses_depth)
-				vulkan.cmd.bind_pipeline(device.get_rdp_pipeline(Vulkan::RDP::PipelineType::Z_32bit));
-			else
-				vulkan.cmd.bind_pipeline(device.get_rdp_pipeline(Vulkan::RDP::PipelineType::NoZ_32bit));
-			break;
+	   vulkan.cmd.bind_pipeline(device.get_rdp_pipeline(Vulkan::RDP::PipelineType::ColorDepthAlias_16bit));
+   }
+   else
+   {
+	   /* Framebuffer pipeline. */
+	   switch (framebuffer.pixel_size)
+	   {
+		   case 3:
+			   if (pass_uses_depth)
+				   vulkan.cmd.bind_pipeline(device.get_rdp_pipeline(Vulkan::RDP::PipelineType::Z_32bit));
+			   else
+				   vulkan.cmd.bind_pipeline(device.get_rdp_pipeline(Vulkan::RDP::PipelineType::NoZ_32bit));
+			   break;
 
-		case 2:
-			if (pass_uses_depth)
-				vulkan.cmd.bind_pipeline(device.get_rdp_pipeline(Vulkan::RDP::PipelineType::Z_16bit));
-			else
-				vulkan.cmd.bind_pipeline(device.get_rdp_pipeline(Vulkan::RDP::PipelineType::NoZ_16bit));
-			break;
+		   case 2:
+			   if (pass_uses_depth)
+				   vulkan.cmd.bind_pipeline(device.get_rdp_pipeline(Vulkan::RDP::PipelineType::Z_16bit));
+			   else
+				   vulkan.cmd.bind_pipeline(device.get_rdp_pipeline(Vulkan::RDP::PipelineType::NoZ_16bit));
+			   break;
 
-		case 1:
-			if (pass_uses_depth)
-				vulkan.cmd.bind_pipeline(device.get_rdp_pipeline(Vulkan::RDP::PipelineType::Z_8bit));
-			else
-				vulkan.cmd.bind_pipeline(device.get_rdp_pipeline(Vulkan::RDP::PipelineType::NoZ_8bit));
-			break;
-		}
-	}
+		   case 1:
+			   if (pass_uses_depth)
+				   vulkan.cmd.bind_pipeline(device.get_rdp_pipeline(Vulkan::RDP::PipelineType::Z_8bit));
+			   else
+				   vulkan.cmd.bind_pipeline(device.get_rdp_pipeline(Vulkan::RDP::PipelineType::NoZ_8bit));
+			   break;
+	   }
+   }
 
-	vulkan.cmd.dispatch(tiles_x, tiles_y, 1);
-	// We want to be able to overlap raster in next batch with Z/blend.
+   vulkan.cmd.dispatch(tiles_x, tiles_y, 1);
+   /* We want to be able to overlap raster in next batch with Z/blend. */
 
-	reset_buffers();
+   reset_buffers();
 }
 }
