@@ -214,21 +214,25 @@ void Frontend::tri_fill_tile(Primitive *prim, uint32_t *tile_mask, uint32_t mips
 
 void Frontend::tri_fill_novarying_tile(Primitive *prim, Attribute *attr, uint32_t *tile_mask)
 {
-	if (renderer->combiner_reads_tile(static_cast<CycleType>(other_modes.cycle_type)))
-	{
-		// It is possible for some bizarro reason to read a texture even though we don't have varyings for it.
-		// In this case, we end up passing down 0 for s, t and w. To work around this, we just enable sampling.
-		tri_fill_tile(prim, tile_mask, 1, 0);
+   if (renderer->combiner_reads_tile(static_cast<CycleType>(other_modes.cycle_type)))
+   {
+      // It is possible for some bizarro reason to read a texture even though we don't have varyings for it.
+      // In this case, we end up passing down 0 for s, t and w. To work around this, we just enable sampling.
+      tri_fill_tile(prim, tile_mask, 1, 0);
 
-		// Make sure attributes are cleared to zero.
-		if (attr)
-		{
-			memset(attr->stwz, 0, sizeof(int32_t) * 3);
-			memset(attr->d_stwz_dx, 0, sizeof(int32_t) * 3);
-			memset(attr->d_stwz_dy, 0, sizeof(int32_t) * 3);
-			memset(attr->d_stwz_de, 0, sizeof(int32_t) * 3);
-		}
-	}
+      // Make sure attributes are cleared to zero.
+      if (attr)
+      {
+         int i;
+	 for (i = 0; i < 4; i++)
+	 {
+            attr->stwz[i]      = 0;
+	    attr->d_stwz_dx[i] = 0;
+	    attr->d_stwz_dy[i] = 0;
+	    attr->d_stwz_de[i] = 0;
+	 }
+      }
+   }
 }
 
 void Frontend::tri_fill_flags(Primitive *prim, const uint32_t *args, uint32_t *tile_mask, bool zbuffer, bool shade)
@@ -261,24 +265,25 @@ void Frontend::tri_noshade(const uint32_t *args)
 
 void Frontend::tri_noshade_z(const uint32_t *args)
 {
-	int xmin, xmax;
-	Primitive prim;
-	Attribute attr;
-	tri_fill_coeffs(&prim, args, &xmin, &xmax);
-	tri_fill_z_coeffs(&attr, args + 8);
-	tri_fill_flags(&prim, args, nullptr, true, false);
+   int xmin, xmax;
+   Primitive prim;
+   Attribute attr;
+   uint32_t tile_mask = 0;
 
-	uint32_t tile_mask = 0;
-	tri_fill_novarying_tile(&prim, &attr, &tile_mask);
-	renderer->draw_primitive(prim, &attr, tile_mask, xmin, xmax, prim.yh >> 2, prim.yl >> 2);
+   tri_fill_coeffs(&prim, args, &xmin, &xmax);
+   tri_fill_z_coeffs(&attr, args + 8);
+   tri_fill_flags(&prim, args, nullptr, true, false);
+
+   tri_fill_novarying_tile(&prim, &attr, &tile_mask);
+   renderer->draw_primitive(prim, &attr, tile_mask, xmin, xmax, prim.yh >> 2, prim.yl >> 2);
 }
 
 void Frontend::tri_tex(const uint32_t *args)
 {
    int xmin, xmax;
-   uint32_t tile_mask;
    Primitive prim;
    Attribute attr;
+   uint32_t tile_mask = 0;
 
    tri_fill_coeffs(&prim, args, &xmin, &xmax);
    tri_fill_tex_coeffs(&attr, args + 8);
@@ -427,7 +432,7 @@ void Frontend::tex_rect_common(const uint32_t *args, bool flipped)
 
    if (other_modes.cycle_type == CYCLE_TYPE_COPY)
    {
-      // No texture filtering allowed in copy mode.
+      /* No texture filtering allowed in copy mode. */
 
       prim.flags &= ~RDP_FLAG_BILERP0;
       prim.flags &= ~RDP_FLAG_BILERP1;
@@ -629,10 +634,10 @@ void Frontend::set_tile(const uint32_t *args)
 
 void Frontend::set_texture_image(const uint32_t *args)
 {
-   unsigned format = (args[0] & 0x00e00000) >> (53 - 32);
+   unsigned format     = (args[0] & 0x00e00000) >> (53 - 32);
    unsigned pixel_size = (args[0] & 0x00180000) >> (51 - 32);
-   unsigned width = (args[0] & 0x000003ff) >> (32 - 32);
-   unsigned addr = (args[1] & 0x03ffffff) >> (0 - 0);
+   unsigned width      = (args[0] & 0x000003ff) >> (32 - 32);
+   unsigned addr       = (args[1] & 0x03ffffff) >> (0 - 0);
 
    width++;
 
@@ -647,10 +652,10 @@ void Frontend::set_mask_image(const uint32_t *args)
 
 void Frontend::set_color_image(const uint32_t *args)
 {
-   unsigned format = (args[0] & 0x00e00000) >> (53 - 32);
+   unsigned format     = (args[0] & 0x00e00000) >> (53 - 32);
    unsigned pixel_size = (args[0] & 0x00180000) >> (51 - 32);
-   unsigned width = (args[0] & 0x000003ff) >> (32 - 32);
-   unsigned addr = (args[1] & 0x03ffffff) >> (0 - 0);
+   unsigned width      = (args[0] & 0x000003ff) >> (32 - 32);
+   unsigned addr       = (args[1] & 0x03ffffff) >> (0 - 0);
 
    width++;
 

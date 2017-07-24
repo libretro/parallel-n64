@@ -36,40 +36,41 @@
 
 static inline uint64_t hash64(const void *data_, size_t size)
 {
-	// FNV-1.
-	const uint8_t *data = static_cast<const uint8_t *>(data_);
-	uint64_t h = 0xcbf29ce484222325ull;
-	for (size_t i = 0; i < size; i++)
-		h = (h * 0x100000001b3ull) ^ data[i];
-	return h;
+   /* FNV-1. */
+   size_t i;
+   const uint8_t *data = static_cast<const uint8_t *>(data_);
+   uint64_t h = 0xcbf29ce484222325ull;
+   for (i = 0; i < size; i++)
+      h = (h * 0x100000001b3ull) ^ data[i];
+   return h;
 }
 
 static inline uint32_t next_pow2(uint32_t v)
 {
-	v--;
-	v |= v >> 16;
-	v |= v >> 8;
-	v |= v >> 4;
-	v |= v >> 2;
-	v |= v >> 1;
-	return v + 1;
+   v--;
+   v |= v >> 16;
+   v |= v >> 8;
+   v |= v >> 4;
+   v |= v >> 2;
+   v |= v >> 1;
+   return v + 1;
 }
 
 static inline double gettime()
 {
-	timespec tv;
-	clock_gettime(CLOCK_MONOTONIC, &tv);
-	return tv.tv_sec + 1e-9 * tv.tv_nsec;
+   timespec tv;
+   clock_gettime(CLOCK_MONOTONIC, &tv);
+   return tv.tv_sec + 1e-9 * tv.tv_nsec;
 }
 
 namespace RDP
 {
 enum CycleType
 {
-	CYCLE_TYPE_1 = 0,
-	CYCLE_TYPE_2 = 1,
-	CYCLE_TYPE_COPY = 2,
-	CYCLE_TYPE_FILL = 3
+   CYCLE_TYPE_1    = 0,
+   CYCLE_TYPE_2    = 1,
+   CYCLE_TYPE_COPY = 2,
+   CYCLE_TYPE_FILL = 3
 };
 
 enum FramebufferState
@@ -98,31 +99,29 @@ struct Framebuffer
 
 	inline uint32_t bytes_to_pixels(uint32_t bytes) const
 	{
-		assert(pixel_size > 0);
-		return bytes >> (pixel_size - 1);
+	   assert(pixel_size > 0);
+	   return bytes >> (pixel_size - 1);
 	}
 
 	inline uint32_t color_size() const
 	{
-		if (color_state != FRAMEBUFFER_CPU)
-		{
-			uint32_t size = allocated_width * allocated_height;
-			assert(pixel_size > 0);
-			return size << (pixel_size - 1);
-		}
-		else
-			return 0;
+	   if (color_state != FRAMEBUFFER_CPU)
+	   {
+	      uint32_t size = allocated_width * allocated_height;
+	      assert(pixel_size > 0);
+	      return size << (pixel_size - 1);
+	   }
+	   return 0;
 	}
 
 	inline uint32_t depth_size() const
 	{
-		if (depth_state != FRAMEBUFFER_CPU)
-		{
-			uint32_t size = allocated_width * allocated_height;
-			return size << 1;
-		}
-		else
-			return 0;
+	   if (depth_state != FRAMEBUFFER_CPU)
+	   {
+	      uint32_t size = allocated_width * allocated_height;
+	      return size << 1;
+	   }
+	   return 0;
 	}
 };
 
