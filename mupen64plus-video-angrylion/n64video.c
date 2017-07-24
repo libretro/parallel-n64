@@ -1908,12 +1908,11 @@ static STRICTINLINE void blender_equation_cycle0_2(int* r, int* g, int* b)
 
 static void blender_equation_cycle1(int* r, int* g, int* b)
 {
-    int blend1a, blend2a;
     int blr, blg, blb, sum;
     int mulb;
 
-    blend1a = *blender1b_a[1] >> 3;
-    blend2a = *blender2b_a[1] >> 3;
+    int blend1a = *blender1b_a[1] >> 3;
+    int blend2a = *blender2b_a[1] >> 3;
 
     if (other_modes.f.special_bsel1)
     {
@@ -2354,65 +2353,52 @@ static void fetch_texel(COLOR *color, int s, int t, uint32_t tilenum)
 
 static void fetch_texel_entlut(COLOR *color, int s, int t, uint32_t tilenum)
 {
-    uint32_t tbase = tile[tilenum].line * (t & 0xff) + tile[tilenum].tmem;
-    uint32_t tpal    = tile[tilenum].palette << 4;
-    uint16_t *tc16 = (uint16_t*)__TMEM;
-    uint32_t taddr = 0;
-    uint32_t c;
-
+   uint32_t c;
+   uint32_t tbase = tile[tilenum].line * (t & 0xff) + tile[tilenum].tmem;
+   uint32_t tpal    = tile[tilenum].palette << 4;
+   uint16_t *tc16 = (uint16_t*)__TMEM;
+   uint32_t taddr = 0;
     
-    
-    switch(tile[tilenum].f.tlutswitch)
-    {
-    case 0:
-    case 1:
-    case 2:
-        {
-            taddr = ((tbase << 4) + s) >> 1;
-            taddr ^= ((t & 1) ? BYTE_XOR_DWORD_SWAP : BYTE_ADDR_XOR);
-            c = __TMEM[taddr & 0x7ff];
-            c = (s & 1) ? (c & 0xf) : (c >> 4);
-#ifdef EXTRALOGGING
-            fprintf(stderr, "TPAL: %u\n", tpal);
-#endif
-            c = tlut[((tpal + c) << 2) + WORD_ADDR_XOR];
-        }
-        break;
-    case 3:
-        {
-            taddr = (tbase << 3) + s;
-            taddr ^= ((t & 1) ? BYTE_XOR_DWORD_SWAP : BYTE_ADDR_XOR);
-            c = __TMEM[taddr & 0x7ff];
-            c = (s & 1) ? (c & 0xf) : (c >> 4);
-            c = tlut[((tpal + c) << 2) + WORD_ADDR_XOR];
-        }
-        break;
-    case 4:
-    case 5:
-    case 6:
-    case 7:
-    case 11:
-    case 15:
-        {
-            taddr = (tbase << 3) + s;
-            taddr ^= ((t & 1) ? BYTE_XOR_DWORD_SWAP : BYTE_ADDR_XOR);
-            c = __TMEM[taddr & 0x7ff];
-            c = tlut[(c << 2) + WORD_ADDR_XOR];
-        }
-        break;
-    case 8:
-    case 9:
-    case 10:
-    case 12:
-    case 13:
-    case 14:
-        {
-            taddr = (tbase << 2) + s;
-            taddr ^= ((t & 1) ? WORD_XOR_DWORD_SWAP : WORD_ADDR_XOR);
-            c = tc16[taddr & 0x3ff];
-            c = tlut[((c >> 6) & ~3) + WORD_ADDR_XOR];
-        }
-        break;
+   switch(tile[tilenum].f.tlutswitch)
+   {
+      case 0:
+      case 1:
+      case 2:
+         taddr = ((tbase << 4) + s) >> 1;
+         taddr ^= ((t & 1) ? BYTE_XOR_DWORD_SWAP : BYTE_ADDR_XOR);
+         c = __TMEM[taddr & 0x7ff];
+         c = (s & 1) ? (c & 0xf) : (c >> 4);
+         c = tlut[((tpal + c) << 2) + WORD_ADDR_XOR];
+         break;
+      case 3:
+         taddr = (tbase << 3) + s;
+         taddr ^= ((t & 1) ? BYTE_XOR_DWORD_SWAP : BYTE_ADDR_XOR);
+         c = __TMEM[taddr & 0x7ff];
+         c = (s & 1) ? (c & 0xf) : (c >> 4);
+         c = tlut[((tpal + c) << 2) + WORD_ADDR_XOR];
+         break;
+      case 4:
+      case 5:
+      case 6:
+      case 7:
+      case 11:
+      case 15:
+         taddr = (tbase << 3) + s;
+         taddr ^= ((t & 1) ? BYTE_XOR_DWORD_SWAP : BYTE_ADDR_XOR);
+         c = __TMEM[taddr & 0x7ff];
+         c = tlut[(c << 2) + WORD_ADDR_XOR];
+         break;
+      case 8:
+      case 9:
+      case 10:
+      case 12:
+      case 13:
+      case 14:
+         taddr = (tbase << 2) + s;
+         taddr ^= ((t & 1) ? WORD_XOR_DWORD_SWAP : WORD_ADDR_XOR);
+         c = tc16[taddr & 0x3ff];
+         c = tlut[((c >> 6) & ~3) + WORD_ADDR_XOR];
+         break;
     }
 
     if (!other_modes.tlut_type)
@@ -2427,7 +2413,6 @@ static void fetch_texel_entlut(COLOR *color, int s, int t, uint32_t tilenum)
         COLOR_RED_PTR(color) = COLOR_GREEN_PTR(color) = COLOR_BLUE_PTR(color) = c >> 8;
         COLOR_ALPHA_PTR(color) = c & 0xff;
     }
-
 }
 
 #define fetch_texel_quadro_rgba16(color0, color1, color2, color3, c0, c1, c2, c3) \
@@ -6536,7 +6521,7 @@ static void render_spans_2cycle_notex(int start, int end, int tilenum, int flip)
 
 static void render_spans_fill_4(int start, int end, int flip)
 {
-    rdp_pipeline_crashed = 1;
+   rdp_pipeline_crashed = 1;
 }
 
 static void render_spans_fill_8(int start, int end, int flip)
@@ -6610,7 +6595,8 @@ static void render_spans_fill_16(int start, int end, int flip)
    int curpixel = 0;
 
    if (fastkillbits | slowkillbits)
-   { /* branch very unlikely */
+   {
+      /* branch very unlikely */
       for (i = start; i <= end; i++)
       {
          length = span[i].rx - span[i].lx; /* end - start */
@@ -6626,7 +6612,7 @@ static void render_spans_fill_16(int start, int end, int flip)
          if (fastkillbits) /* left out for performance */
             DisplayError("Exact fill abort timing not implemented.");
          break;
-	  }
+      }
    }
 
    for (i = start; i <= end; i++)
@@ -6669,7 +6655,8 @@ static void render_spans_fill_32(int start, int end, int flip)
    int curpixel = 0;
 
    if (fastkillbits | slowkillbits)
-   { /* branch very unlikely */
+   {
+      /* branch very unlikely */
       for (i = start; i <= end; i++)
       {
          length = span[i].rx - span[i].lx; /* end - start */
@@ -6729,10 +6716,6 @@ static void render_spans_fill(int start, int end, int flip)
 
 static void tclod_copy(int32_t* sss, int32_t* sst, int32_t s, int32_t t, int32_t w, int32_t dsinc, int32_t dtinc, int32_t dwinc, int32_t prim_tile, int32_t* t1)
 {
-
-
-
-
     int nexts, nextt, nextsw, fars, fart, farsw;
     int lodclamp = 0;
     int32_t lod = 0;
@@ -6742,9 +6725,6 @@ static void tclod_copy(int32_t* sss, int32_t* sst, int32_t s, int32_t t, int32_t
 
     if (other_modes.tex_lod_en)
     {
-        
-        
-        
         nextsw = (w + dwinc) >> 16;
         nexts = (s + dsinc) >> 16;
         nextt = (t + dtinc) >> 16;
@@ -6777,7 +6757,6 @@ static void tclod_copy(int32_t* sss, int32_t* sst, int32_t s, int32_t t, int32_t
         else
             *t1 = (prim_tile + l_tile + 1) & 7;
     }
-
 }
 
 static void render_spans_copy(int start, int end, int tilenum, int flip)
@@ -7040,49 +7019,32 @@ static NOINLINE void loading_pipeline(
 {
     int localdebugmode = 0, cnt = 0;
     int i, j;
-
-    int dsinc, dtinc;
-
     int s, t;
     int ss, st;
     int xstart, xend, xendsc;
-    int sss = 0, sst = 0;
+    unsigned long tiptr;
+    uint32_t readidx32;
+    uint64_t loadqword;
+    uint16_t tempshort;
     int ti_index, length;
-
+    int sss = 0, sst = 0;
     uint32_t tmemidx0 = 0, tmemidx1 = 0, tmemidx2 = 0, tmemidx3 = 0;
     int dswap = 0;
     uint16_t* tmem16 = (uint16_t*)__TMEM;
     uint32_t readval0, readval1, readval2, readval3;
-    uint32_t readidx32;
-    uint64_t loadqword;
-    uint16_t tempshort;
-    int tmem_formatting = 0;
     uint32_t bit3fl = 0, hibit = 0;
-
     int tiadvance = 0, spanadvance = 0;
-    unsigned long tiptr;
-
-    dsinc = spans_d_stwz[0];
-    dtinc = spans_d_stwz[1];
-
-    if (end > start && ltlut)
-    {
-        rdp_pipeline_crashed = 1;
-        return;
-    }
+    int dsinc = spans_d_stwz[0];
+    int dtinc = spans_d_stwz[1];
+    int tmem_formatting = 2;
 
     if (tile[tilenum].format == FORMAT_YUV)
         tmem_formatting = 0;
     else if (tile[tilenum].format == FORMAT_RGBA && tile[tilenum].size == PIXEL_SIZE_32BIT)
         tmem_formatting = 1;
-    else
-        tmem_formatting = 2;
 
     switch (ti_size)
     {
-       case PIXEL_SIZE_4BIT:
-          rdp_pipeline_crashed = 1;
-          return;
        case PIXEL_SIZE_8BIT:
           tiadvance = 8;
           spanadvance = 8;
@@ -7103,27 +7065,28 @@ static NOINLINE void loading_pipeline(
           tiadvance = 8;
           spanadvance = 2;
           break;
+       default:
+	  break;
     }
 
     for (i = start; i <= end; i++)
     {
-        xstart = span[i].lx;
-        xend = span[i].unscrx;
-        xendsc = span[i].rx;
-        s = span[i].stwz[0];
-        t = span[i].stwz[1];
+        xstart   = span[i].lx;
+        xend     = span[i].unscrx;
+        xendsc   = span[i].rx;
+        s        = span[i].stwz[0];
+        t        = span[i].stwz[1];
 
         ti_index = ti_width * i + xend;
-        tiptr = ti_address + PIXELS_TO_BYTES(ti_index, ti_size);
-        tiptr = tiptr & 0x00FFFFFF;
+        tiptr    = ti_address + PIXELS_TO_BYTES(ti_index, ti_size);
+        tiptr    = tiptr & 0x00FFFFFF;
 
-        length = (xstart - xend + 1) & 0xfff;
+        length   = (xstart - xend + 1) & 0xfff;
 
         for (j = 0; j < length; j+= spanadvance)
         {
-            ss = s >> 16;
-            st = t >> 16;
-
+            ss  = s >> 16;
+            st  = t >> 16;
             sss = ss & 0xffff;
             sst = st & 0xffff;
 
@@ -7281,76 +7244,6 @@ static NOINLINE void loading_pipeline(
     }
 }
 
-static void edgewalker_for_loads(int32_t* lewdata)
-{
-    int j = 0;
-    int xleft = 0, xright = 0;
-    int xstart = 0, xend = 0;
-    int s = 0, t = 0, w = 0;
-    int dsdx = 0, dtdx = 0;
-    int dsdy = 0, dtdy = 0;
-    int dsde = 0, dtde = 0;
-    int tilenum = 0, flip = 0;
-
-    int spix;
-    int ycur;
-    int ylfar;
-
-    int32_t maxxmx, minxhx;
-    int32_t yl = 0, ym = 0, yh = 0;
-    int32_t xl = 0, xm = 0, xh = 0;
-    int32_t dxldy = 0, dxhdy = 0, dxmdy = 0;
-
-    int commandcode = (lewdata[0] >> 24) & 0x3f;
-    int ltlut = (commandcode == 0x30);
-    int coord_quad = ltlut || (commandcode == 0x33);
-        
-    int k = 0;
-    int sign_dxhdy = 0;
-    int do_offset = 0;
-    int xfrac = 0;
-
-    int valid_y = 1;
-    int length = 0;
-    int32_t xrsc = 0, xlsc = 0, stickybit = 0;
-    int32_t yllimit;
-    int32_t yhlimit;
-
-    flip = 1;
-    max_level = 0;
-    tilenum = (lewdata[0] >> 16) & 7;
-
-    
-    yl = SIGN(lewdata[0], 14); 
-    ym = lewdata[1] >> 16;
-    ym = SIGN(ym, 14);
-    yh = SIGN(lewdata[1], 14); 
-    
-    xl = SIGN(lewdata[2], 30);
-    xh = SIGN(lewdata[3], 30);
-    xm = SIGN(lewdata[4], 30);
-    
-    dxldy = 0;
-    dxhdy = 0;
-    dxmdy = 0;
-
-    s    = lewdata[5] & 0xffff0000;
-    t    = (lewdata[5] & 0xffff) << 16;
-    w    = 0;
-    dsdx = (lewdata[7] & 0xffff0000) | ((lewdata[6] >> 16) & 0xffff);
-    dtdx = ((lewdata[7] << 16) & 0xffff0000)    | (lewdata[6] & 0xffff);
-    dsde = 0;
-    dtde = (lewdata[9] & 0xffff) << 16;
-    dsdy = 0;
-    dtdy = (lewdata[8] & 0xffff) << 16;
-
-    spans_d_stwz[0] = dsdx & ~0x1f;
-    spans_d_stwz[1] = dtdx & ~0x1f;
-    spans_d_stwz[2] = 0;
-
-    xright = xh & ~0x1;
-    xleft = xm & ~0x1;
-
 #define ADJUST_ATTR_LOAD() {           \
     span[j].stwz[0] = s & ~0x000003FF; \
     span[j].stwz[1] = t & ~0x000003FF; \
@@ -7360,34 +7253,73 @@ static void edgewalker_for_loads(int32_t* lewdata)
     t += dtde; \
 }
 
-    spix = 0;
-    ycur = yh & ~3;
-    ylfar = yl | 3;
-    yllimit = yl;
-    yhlimit = yh;
+static void edgewalker_for_loads(int32_t* lewdata)
+{
+    int32_t maxxmx, minxhx;
+    int j           = 0;
+    int w           = 0;
+    int k           = 0;
+    int xfrac       = 0;
 
-    xfrac = 0;
-    xend = xright >> 16;
+    int commandcode = (lewdata[0] >> 24) & 0x3f;
+    int ltlut       = (commandcode == 0x30);
+    int coord_quad  = ltlut || (commandcode == 0x33);
+
+    int tilenum     = (lewdata[0] >> 16) & 7;
+
+    int32_t yl      = SIGN(lewdata[0], 14); 
+    int32_t ym      = lewdata[1] >> 16;
+    int32_t yh      = SIGN(lewdata[1], 14); 
+    int32_t xl      = SIGN(lewdata[2], 30);
+    int32_t xh      = SIGN(lewdata[3], 30);
+    int32_t xm      = SIGN(lewdata[4], 30);
+    int32_t s       = lewdata[5] & 0xffff0000;
+    int32_t t       = (lewdata[5] & 0xffff) << 16;
+    int32_t dsdx    = (lewdata[7] & 0xffff0000) | ((lewdata[6] >> 16) & 0xffff);
+    int32_t dtdx    = ((lewdata[7] << 16) & 0xffff0000)    | (lewdata[6] & 0xffff);
+    int32_t dtde    = (lewdata[9] & 0xffff) << 16;
+    int32_t dtdy    = (lewdata[8] & 0xffff) << 16;
+    int xright      = xh & ~0x1;
+    int xleft       = xm & ~0x1;
+    int ycur        = yh & ~3;
+    int ylfar       = yl | 3;
+    int32_t yllimit = yl;
+    int32_t yhlimit = yh;
+    int xend        = xright >> 16;
+    int start       = yhlimit >> 2;
+    int end         = yllimit >> 2;
+
+    ym              = SIGN(ym, 14);
+
+    spans_d_stwz[0] = dsdx & ~0x1f;
+    spans_d_stwz[1] = dtdx & ~0x1f;
+    spans_d_stwz[2] = 0;
+
+    max_level       = 0;
+
+    if ((end > start && ltlut) || ti_size == PIXEL_SIZE_4BIT)
+    {
+       rdp_pipeline_crashed = 1;
+       return;
+    }
 
     for (k = ycur; k <= ylfar; k++)
     {
+        int spix = k & 3;
         if (k == ym)
             xleft = xl & ~1;
-        spix = k & 3;
         if (!(k & ~0xfff))
         {
-            j = k >> 2;
-            valid_y = !(k < yhlimit || k >= yllimit);
+            int valid_y  = !(k < yhlimit || k >= yllimit);
+            int32_t xrsc = (xright >> 13) & 0x7ffe;
+            int32_t xlsc = (xleft >> 13) & 0x7ffe;
+            j            = k >> 2;
 
             if (spix == 0)
             {
                 maxxmx = 0;
                 minxhx = 0xfff;
             }
-
-            xrsc = (xright >> 13) & 0x7ffe;
-
-            xlsc = (xleft >> 13) & 0x7ffe;
 
             if (valid_y)
             {
@@ -7414,7 +7346,7 @@ static void edgewalker_for_loads(int32_t* lewdata)
         }
     }
 
-    loading_pipeline(yhlimit >> 2, yllimit >> 2, tilenum, coord_quad, ltlut);
+    loading_pipeline(start, end, tilenum, coord_quad, ltlut);
 }
 
 
@@ -7425,13 +7357,16 @@ static const char *const image_size[] = { "4-bit", "8-bit", "16-bit", "32-bit" }
 static void tile_tlut_common_cs_decoder(uint32_t w1, uint32_t w2)
 {
     int32_t lewdata[10];
-    int tilenum = (w2 >> 24) & 0x7;
-    int sl, tl, sh, th;
+    int tilenum      = (w2 >> 24) & 0x7;
+    int sl           = ((w1 >> 12) & 0xfff);
+    int tl           = ((w1 >>  0) & 0xfff);
+    int sh           = ((w2 >> 12) & 0xfff);
+    int th           = ((w2 >>  0) & 0xfff);
 
-    tile[tilenum].sl = sl = ((w1 >> 12) & 0xfff);
-    tile[tilenum].tl = tl = ((w1 >>  0) & 0xfff);
-    tile[tilenum].sh = sh = ((w2 >> 12) & 0xfff);
-    tile[tilenum].th = th = ((w2 >>  0) & 0xfff);
+    tile[tilenum].sl = sl;
+    tile[tilenum].tl = tl;
+    tile[tilenum].sh = sh;
+    tile[tilenum].th = th;
 
     calculate_clamp_diffs(tilenum);
 
@@ -7465,13 +7400,13 @@ static STRICTINLINE int finalize_spanalpha(
 {
     int possibilities[4];
 
-    possibilities[CVG_WRAP] = curpixel_memcvg;
-    possibilities[CVG_SAVE] = curpixel_memcvg;
-    possibilities[CVG_ZAP] = 7;
+    possibilities[CVG_WRAP]   = curpixel_memcvg;
+    possibilities[CVG_SAVE]   = curpixel_memcvg;
+    possibilities[CVG_ZAP]    = 7;
     possibilities[CVG_CLAMP]  = curpixel_memcvg;
     possibilities[CVG_CLAMP] |= -(signed)(blend_en) ^ ~0;
     possibilities[CVG_CLAMP] += curpixel_cvg;
-    possibilities[CVG_WRAP] += curpixel_cvg;
+    possibilities[CVG_WRAP]  += curpixel_cvg;
     possibilities[CVG_CLAMP] |= -(possibilities[CVG_CLAMP]>>3 & 1);
 
     return (possibilities[other_modes.cvg_dest] & 7);
@@ -7594,108 +7529,104 @@ static void fbread2_8(uint32_t curpixel, uint32_t* curpixel_memcvg)
 
 static INLINE void fbread_16(uint32_t curpixel, uint32_t* curpixel_memcvg)
 {
-	uint16_t fword;
-	uint8_t hbyte;
-	uint32_t addr = (fb_address >> 1) + curpixel;
+   uint16_t fword;
+   uint8_t hbyte;
+   uint8_t lowbits;
+   uint32_t addr = (fb_address >> 1) + curpixel;
 	
-	uint8_t lowbits;
+   if (other_modes.image_read_en)
+   {
+      PAIRREAD16(fword, hbyte, addr);
 
-	
-	if (other_modes.image_read_en)
-	{
-		PAIRREAD16(fword, hbyte, addr);
-
-		if (fb_format == FORMAT_RGBA)
-		{
-			COLOR_RED(memory_color)   = GET_HI(fword);
-			COLOR_GREEN(memory_color) = GET_MED(fword);
-			COLOR_BLUE(memory_color)  = GET_LOW(fword);
-			lowbits = ((fword & 1) << 2) | hbyte;
-		}
-		else
-		{
-			COLOR_RED(memory_color)   = fword >> 8;
-         COLOR_GREEN(memory_color) = fword >> 8;
-         COLOR_BLUE(memory_color)  = fword >> 8;
-			lowbits = (fword >> 5) & 7;
-		}
-
-		*curpixel_memcvg = lowbits;
-		COLOR_ALPHA(memory_color) = lowbits << 5;
-	}
-	else
-	{
-		RREADIDX16(fword, addr);
-
-		if (fb_format == FORMAT_RGBA)
-		{
-			COLOR_RED(memory_color)   = GET_HI(fword);
-			COLOR_GREEN(memory_color) = GET_MED(fword);
-			COLOR_BLUE(memory_color)  = GET_LOW(fword);
-		}
-		else
+      if (fb_format == FORMAT_RGBA)
       {
-			COLOR_RED(memory_color)   = fword >> 8;
-         COLOR_GREEN(memory_color) = fword >> 8;
-         COLOR_BLUE(memory_color)  = fword >> 8;
+         COLOR_RED(memory_color)   = GET_HI(fword);
+	 COLOR_GREEN(memory_color) = GET_MED(fword);
+	 COLOR_BLUE(memory_color)  = GET_LOW(fword);
+	 lowbits = ((fword & 1) << 2) | hbyte;
+      }
+      else
+      {
+         COLOR_RED(memory_color)   = fword >> 8;
+	 COLOR_GREEN(memory_color) = fword >> 8;
+	 COLOR_BLUE(memory_color)  = fword >> 8;
+	 lowbits = (fword >> 5) & 7;
       }
 
-		*curpixel_memcvg = 7;
-		COLOR_ALPHA(memory_color) = 0xe0;
-	}
+      *curpixel_memcvg = lowbits;
+      COLOR_ALPHA(memory_color) = lowbits << 5;
+   }
+   else
+   {
+      RREADIDX16(fword, addr);
+
+      if (fb_format == FORMAT_RGBA)
+      {
+         COLOR_RED(memory_color)   = GET_HI(fword);
+	 COLOR_GREEN(memory_color) = GET_MED(fword);
+	 COLOR_BLUE(memory_color)  = GET_LOW(fword);
+      }
+      else
+      {
+         COLOR_RED(memory_color)   = fword >> 8;
+	 COLOR_GREEN(memory_color) = fword >> 8;
+	 COLOR_BLUE(memory_color)  = fword >> 8;
+      }
+
+      *curpixel_memcvg = 7;
+      COLOR_ALPHA(memory_color) = 0xe0;
+   }
 }
 
 static INLINE void fbread2_16(uint32_t curpixel, uint32_t* curpixel_memcvg)
 {
-	uint16_t fword;
-	uint8_t hbyte;
-	uint32_t addr = (fb_address >> 1) + curpixel;
-	
-	uint8_t lowbits;
+   uint16_t fword;
+   uint8_t hbyte;
+   uint8_t lowbits;
+   uint32_t addr = (fb_address >> 1) + curpixel;
 
-	if (other_modes.image_read_en)
-	{
-		PAIRREAD16(fword, hbyte, addr);
+   if (other_modes.image_read_en)
+   {
+      PAIRREAD16(fword, hbyte, addr);
 
-		if (fb_format == FORMAT_RGBA)
-		{
-			COLOR_RED(pre_memory_color)    = GET_HI(fword);
-			COLOR_GREEN(pre_memory_color)  = GET_MED(fword);
-			COLOR_BLUE(pre_memory_color)   = GET_LOW(fword);
-			lowbits = ((fword & 1) << 2) | hbyte;
-		}
-		else
-		{
-			COLOR_RED(pre_memory_color)     = fword >> 8;
-         COLOR_GREEN(pre_memory_color)   = fword >> 8;
-         COLOR_BLUE(pre_memory_color)    = fword >> 8;
-			lowbits = (fword >> 5) & 7;
-		}
-
-		*curpixel_memcvg              = lowbits;
-		COLOR_ALPHA(pre_memory_color) = lowbits << 5;
-	}
-	else
-	{
-		RREADIDX16(fword, addr);
-
-		if (fb_format == FORMAT_RGBA)
-		{
-			COLOR_RED(pre_memory_color)   = GET_HI(fword);
-			COLOR_GREEN(pre_memory_color) = GET_MED(fword);
-			COLOR_BLUE(pre_memory_color)  = GET_LOW(fword);
-		}
-		else
+      if (fb_format == FORMAT_RGBA)
       {
-			COLOR_RED(pre_memory_color)   = fword >> 8;
-         COLOR_GREEN(pre_memory_color) = fword >> 8;
-         COLOR_BLUE(pre_memory_color)  = fword >> 8;
+         COLOR_RED(pre_memory_color)    = GET_HI(fword);
+	 COLOR_GREEN(pre_memory_color)  = GET_MED(fword);
+	 COLOR_BLUE(pre_memory_color)   = GET_LOW(fword);
+	 lowbits = ((fword & 1) << 2) | hbyte;
+      }
+      else
+      {
+         COLOR_RED(pre_memory_color)     = fword >> 8;
+	 COLOR_GREEN(pre_memory_color)   = fword >> 8;
+	 COLOR_BLUE(pre_memory_color)    = fword >> 8;
+	 lowbits = (fword >> 5) & 7;
       }
 
-		*curpixel_memcvg              = 7;
-		COLOR_ALPHA(pre_memory_color) = 0xe0;
-	}
-	
+      *curpixel_memcvg              = lowbits;
+      COLOR_ALPHA(pre_memory_color) = lowbits << 5;
+   }
+   else
+   {
+      RREADIDX16(fword, addr);
+
+      if (fb_format == FORMAT_RGBA)
+      {
+         COLOR_RED(pre_memory_color)   = GET_HI(fword);
+	 COLOR_GREEN(pre_memory_color) = GET_MED(fword);
+	 COLOR_BLUE(pre_memory_color)  = GET_LOW(fword);
+      }
+      else
+      {
+         COLOR_RED(pre_memory_color)   = fword >> 8;
+	 COLOR_GREEN(pre_memory_color) = fword >> 8;
+	 COLOR_BLUE(pre_memory_color)  = fword >> 8;
+      }
+
+      *curpixel_memcvg              = 7;
+      COLOR_ALPHA(pre_memory_color) = 0xe0;
+   }
 }
 
 static void fbread_32(uint32_t curpixel, uint32_t* curpixel_memcvg)
