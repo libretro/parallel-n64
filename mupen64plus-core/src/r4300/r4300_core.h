@@ -57,9 +57,11 @@ struct r4300_core
    } recomp;
 
    struct mi_controller mi;
+
+   uint32_t special_rom;
 };
 
-void init_r4300(struct r4300_core* r4300, unsigned int emumode, unsigned int count_per_op);
+void init_r4300(struct r4300_core* r4300, unsigned int emumode, unsigned int count_per_op, int special_rom);
 
 void poweron_r4300(struct r4300_core* r4300);
 

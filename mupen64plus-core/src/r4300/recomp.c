@@ -41,10 +41,13 @@
 #include "api/m64p_types.h"
 #include "cached_interp.h"
 #include "cp0_private.h"
+#include "main/main.h"
+#include "main/device.h"
 #include "main/profile.h"
 #include "memory/memory.h"
 #include "ops.h"
 #include "r4300.h"
+#include "r4300_core.h"
 #include "recomp.h"
 #include "recomph.h" //include for function prototypes
 #include "tlb.h"
@@ -2263,7 +2266,7 @@ void init_block(struct precomp_block *block)
    invalid_code[block->start>>12] = 0;
    if (block->end < UINT32_C(0x80000000) || block->start >= UINT32_C(0xc0000000))
    { 
-      uint32_t paddr = virtual_to_physical_address(block->start, 2);
+      uint32_t paddr = virtual_to_physical_address(&g_dev.r4300, block->start, 2);
       invalid_code[paddr>>12] = 0;
       if (!blocks[paddr>>12])
       {
@@ -2357,7 +2360,7 @@ void recompile_block(const uint32_t *source, struct precomp_block *block, uint32
       if(block->start < UINT32_C(0x80000000) || UINT32_C(block->start >= 0xc0000000))
       {
          uint32_t address2 =
-            virtual_to_physical_address(block->start + i*4, 0);
+            virtual_to_physical_address(&g_dev.r4300, block->start + i*4, 0);
          if(blocks[address2>>12]->block[(address2&UINT32_C(0xFFF))/4].ops == current_instruction_table.NOTCOMPILED)
             blocks[address2>>12]->block[(address2&UINT32_C(0xFFF))/4].ops = current_instruction_table.NOTCOMPILED2;
       }

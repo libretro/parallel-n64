@@ -94,9 +94,9 @@ void tlb_map(tlb *entry)
     }
 }
 
-uint32_t virtual_to_physical_address(uint32_t addresse, int w)
+uint32_t virtual_to_physical_address(struct r4300_core *r4300, uint32_t addresse, int w)
 {
-    if (addresse >= UINT32_C(0x7f000000) && addresse < UINT32_C(0x80000000) && isGoldeneyeRom)
+    if (addresse >= UINT32_C(0x7f000000) && addresse < UINT32_C(0x80000000) && r4300->special_rom == GOLDEN_EYE)
     {
         /**************************************************
          GoldenEye 007 hack allows for use of TLB.
@@ -133,7 +133,8 @@ uint32_t virtual_to_physical_address(uint32_t addresse, int w)
 
     //printf("tlb exception !!! @ %x, %x, add:%x\n", addresse, w, PC->addr);
     //getchar();
-    TLB_refill_exception(addresse,w);
+    if (r4300->special_rom != RAT_ATTACK)
+       TLB_refill_exception(addresse,w);
     //return 0x80000000;
     return 0x00000000;
 }

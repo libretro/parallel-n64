@@ -344,6 +344,7 @@ m64p_error main_init(void)
          &g_dev,
          emumode,
          count_per_op,
+	 ROM_PARAMS.special_rom,
          NULL,
          set_audio_format_via_libretro,
          push_audio_samples_via_libretro,

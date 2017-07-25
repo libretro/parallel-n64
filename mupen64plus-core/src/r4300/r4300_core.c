@@ -31,7 +31,7 @@
 #include "r4300.h"
 #include "recomp.h"
 
-void init_r4300(struct r4300_core* r4300, unsigned int emumode, unsigned int count_per_op)
+void init_r4300(struct r4300_core* r4300, unsigned int emumode, unsigned int count_per_op, int special_rom)
 {
     r4300emu = emumode;
 
@@ -40,6 +40,7 @@ void init_r4300(struct r4300_core* r4300, unsigned int emumode, unsigned int cou
 #if 0
     r4300->recomp.no_compiled_jump = no_compiled_jump;
 #endif
+    r4300->special_rom = special_rom;
 }
 
 void poweron_r4300(struct r4300_core* r4300)

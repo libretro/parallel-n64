@@ -57,7 +57,6 @@ int g_rom_size = 0;
 unsigned alternate_vi_timing = 0;
 int           g_vi_refresh_rate = DEFAULT_COUNT_PER_SCANLINE;
 
-uint8_t isGoldeneyeRom = 0;
 extern unsigned int frame_dupe;
 
 m64p_rom_header   ROM_HEADER;
@@ -360,10 +359,12 @@ m64p_error open_rom(const unsigned char* romimage, unsigned int size)
    DebugMessage(M64MSG_VERBOSE, "PC = %x", sl((unsigned int)ROM_HEADER.PC));
    DebugMessage(M64MSG_VERBOSE, "Save type: %d", ROM_SETTINGS.savetype);
 
-   //Prepare Hack for GOLDENEYE
-   isGoldeneyeRom = 0;
-   if(strcmp(ROM_PARAMS.headername, "GOLDENEYE") == 0)
-      isGoldeneyeRom = 1;
+   if (!strcmp(ROM_PARAMS.headername, "GOLDENEYE"))
+      ROM_PARAMS.special_rom = GOLDEN_EYE;
+   else if (!strcmp(ROM_PARAMS.headername, "RAT ATTACK"))
+      ROM_PARAMS.special_rom = RAT_ATTACK;
+   else
+      ROM_PARAMS.special_rom = NORMAL_ROM;
 
    return M64ERR_SUCCESS;
 }

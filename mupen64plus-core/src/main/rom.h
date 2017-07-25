@@ -36,13 +36,12 @@ extern int g_rom_size;
 extern int g_vi_refresh_rate;
 extern unsigned char g_fixed_audio_pos;
 
-extern unsigned char isGoldeneyeRom;
-
 typedef struct _rom_params
 {
    m64p_system_type systemtype;
    char headername[21];  /* ROM Name as in the header, removing trailing whitespace */
    int fixedaudiopos;
+   int special_rom;
 } rom_params;
 
 extern m64p_rom_header   ROM_HEADER;
@@ -80,6 +79,14 @@ enum
     FLASH_RAM,
     CONTROLLER_PACK,
     NONE
+};
+
+/*ROM specific hacks */
+enum
+{
+    NORMAL_ROM,
+    GOLDEN_EYE,
+    RAT_ATTACK
 };
 
 #endif /* __ROM_H__ */

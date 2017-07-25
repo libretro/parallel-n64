@@ -37,6 +37,7 @@ void init_device(
       /* r4300 */
       unsigned int emumode,
       unsigned int count_per_op,
+      int special_rom,
       /* ai */
       void * ai_user_data, void (*ai_set_audio_format)(void*,unsigned int, unsigned int),
       void (*ai_push_audio_samples)(void*,const void*,size_t),
@@ -60,7 +61,7 @@ void init_device(
       size_t dd_disk_size
       )
 {
-   init_r4300(&dev->r4300, emumode, count_per_op);
+   init_r4300(&dev->r4300, emumode, count_per_op, special_rom);
    init_rdp(&dev->dp, &dev->r4300, &dev->sp, &dev->ri);
    init_rsp(&dev->sp, &dev->r4300, &dev->dp, &dev->ri);
    init_ai(&dev->ai, ai_user_data,
