@@ -159,44 +159,46 @@ void Renderer::init_z_lut()
 
 void Renderer::init_centroid_lut()
 {
+   unsigned i;
    /* Use texture here instead of UBO or LUT inside shader since we can get format expansion for free and have tight packing. */
    /* Could use texture buffer, but it's not that well supported, and we don't need the large buffers. */
    vulkan.centroid_lut = device.create_image_2d(VK_FORMAT_R8G8_UINT, 256, 1);
    Buffer staging = device.request_buffer(BufferType::Staging, 0x200);
    auto *offsets = static_cast<uint8_t *>(staging.map());
 
-	for (unsigned i = 0; i < 0x100; i++)
-	{
-		uint16_t mask = decompress_from_byte(i);
-		uint16_t mask_y = 0;
-		uint16_t mask_x = 0;
-		uint8_t off_x = 0;
-		uint8_t off_y = 0;
+   for (i = 0; i < 0x100; i++)
+   {
+      unsigned k;
+      uint16_t mask = decompress_from_byte(i);
+      uint16_t mask_y = 0;
+      uint16_t mask_x = 0;
+      uint8_t off_x = 0;
+      uint8_t off_y = 0;
 
-		static const uint8_t xarray[16] = { 0, 3, 2, 2, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0 };
-		static const uint8_t yarray[16] = { 0, 0, 1, 0, 2, 0, 1, 0, 3, 0, 1, 0, 2, 0, 1, 0 };
-		for (unsigned k = 0; k < 4; k++)
-			mask_y |= ((mask & (0xf000 >> (k << 2))) > 0) << k;
+      static const uint8_t xarray[16] = { 0, 3, 2, 2, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0 };
+      static const uint8_t yarray[16] = { 0, 0, 1, 0, 2, 0, 1, 0, 3, 0, 1, 0, 2, 0, 1, 0 };
+      for (k = 0; k < 4; k++)
+         mask_y |= ((mask & (0xf000 >> (k << 2))) > 0) << k;
 
-		off_y = yarray[mask_y];
-		mask_x = (mask & (0xf000 >> (off_y << 2))) >> ((off_y ^ 3) << 2);
-		off_x = xarray[mask_x];
-		offsets[2 * i + 0] = off_x;
-		offsets[2 * i + 1] = off_y;
-	}
+      off_y = yarray[mask_y];
+      mask_x = (mask & (0xf000 >> (off_y << 2))) >> ((off_y ^ 3) << 2);
+      off_x = xarray[mask_x];
+      offsets[2 * i + 0] = off_x;
+      offsets[2 * i + 1] = off_y;
+   }
 
-	/* Make sure that offsets for full coverage is zero. */
-	offsets[0x1fe] = 0;
-	offsets[0x1ff] = 0;
+   /* Make sure that offsets for full coverage is zero. */
+   offsets[0x1fe] = 0;
+   offsets[0x1ff] = 0;
 
-	CommandBuffer cmd = device.request_command_buffer();
-	cmd.begin_stream();
+   CommandBuffer cmd = device.request_command_buffer();
+   cmd.begin_stream();
 
-	staging.unmap();
-	cmd.prepare_image(*vulkan.centroid_lut);
-	cmd.copy_to_image(*vulkan.centroid_lut, staging, 0, 0, 0, 0, 256, 1, 256);
-	cmd.complete_image(*vulkan.centroid_lut);
-	device.submit(cmd);
+   staging.unmap();
+   cmd.prepare_image(*vulkan.centroid_lut);
+   cmd.copy_to_image(*vulkan.centroid_lut, staging, 0, 0, 0, 0, 256, 1, 256);
+   cmd.complete_image(*vulkan.centroid_lut);
+   device.submit(cmd);
 }
 
 void Renderer::init_dither_lut()
@@ -1216,47 +1218,47 @@ void Renderer::set_color_image(uint32_t addr, unsigned format, unsigned pixel_si
 
 void Renderer::reset_buffers()
 {
-	primitive_data.clear();
-	combiner_data.clear();
-	tile_descriptors.clear();
-	tile_data.clear();
-	work_data.clear();
-	state.combiner_map.clear();
-	state.last_combiner = 0;
-	tile_count = 0;
-	tile_hw_fbe = false;
+   primitive_data.clear();
+   combiner_data.clear();
+   tile_descriptors.clear();
+   tile_data.clear();
+   work_data.clear();
+   state.combiner_map.clear();
+   state.last_combiner = 0;
+   tile_count = 0;
+   tile_hw_fbe = false;
 
-	memset(tile_instances, 0, sizeof(tile_instances));
+   memset(tile_instances, 0, sizeof(tile_instances));
 
-	for (auto &tile : tile_lists)
-	{
-		tile.head = -1u;
-		tile.tail = -1u;
-	}
-	tile_nodes.clear();
+   for (auto &tile : tile_lists)
+   {
+      tile.head = -1u;
+      tile.tail = -1u;
+   }
+   tile_nodes.clear();
 
-	// Invalidate state that is flushed out when needed.
-	tmem.invalidate();
-	state.combiners_dirty = true;
+   // Invalidate state that is flushed out when needed.
+   tmem.invalidate();
+   state.combiners_dirty = true;
 }
 
 void Renderer::begin_framebuffer()
 {
-	if (!vulkan.framebuffer.staging.block)
-	{
-		unsigned pixels = framebuffer.allocated_width * framebuffer.allocated_height;
-		// Needs to be dynamic shared since we will do VI uploads from alt_queue concurrently.
-		vulkan.framebuffer = device.request_buffer(BufferType::DynamicShared, pixels * sizeof(uint32_t));
-	}
+   if (!vulkan.framebuffer.staging.block)
+   {
+      unsigned pixels = framebuffer.allocated_width * framebuffer.allocated_height;
+      // Needs to be dynamic shared since we will do VI uploads from alt_queue concurrently.
+      vulkan.framebuffer = device.request_buffer(BufferType::DynamicShared, pixels * sizeof(uint32_t));
+   }
 }
 
 void Renderer::begin_framebuffer_depth()
 {
-	if (!vulkan.framebuffer_depth.staging.block)
-	{
-		unsigned pixels = framebuffer.allocated_width * framebuffer.allocated_height;
-		vulkan.framebuffer_depth = device.request_buffer(BufferType::Dynamic, pixels * sizeof(uint32_t));
-	}
+   if (!vulkan.framebuffer_depth.staging.block)
+   {
+      unsigned pixels = framebuffer.allocated_width * framebuffer.allocated_height;
+      vulkan.framebuffer_depth = device.request_buffer(BufferType::Dynamic, pixels * sizeof(uint32_t));
+   }
 }
 
 void Renderer::sync_color_dram_to_gpu()
@@ -1453,14 +1455,15 @@ void Renderer::sync_depth_dram_to_gpu()
 
 void Renderer::begin_index(unsigned index)
 {
+   unsigned i;
    /* Complete async transfers which are complete. */
    unsigned end = 0;
 
-   for (unsigned i = 0; i < async_transfers.size(); i++)
+   for (i = 0; i < async_transfers.size(); i++)
       if (async_transfers[i].sync_index == index)
          end = i + 1;
 
-   for (unsigned i = 0; i < end; i++)
+   for (i = 0; i < end; i++)
       sync_framebuffer_to_cpu(async_transfers[i]);
 
    if (end)
@@ -1559,51 +1562,50 @@ void Renderer::sync_framebuffer_to_cpu(AsyncFramebuffer &async)
 	}
 }
 
+struct PushConstant
+{
+   uint32_t width, height;
+};
+
 void Renderer::sync_gpu_to_vi(CommandBuffer &cmd)
 {
-	// Remove now stale VI outputs.
-	vi_outputs.erase(remove_if(begin(vi_outputs), end(vi_outputs),
-	                           [this](VIOutput &output) { return output.framebuffer.addr == framebuffer.addr; }),
-	                 end(vi_outputs));
+   VIOutput output;
+   // Remove now stale VI outputs.
+   vi_outputs.erase(remove_if(begin(vi_outputs), end(vi_outputs),
+			   [this](VIOutput &output) { return output.framebuffer.addr == framebuffer.addr; }),
+		   end(vi_outputs));
 
-	VIOutput output;
-	output.framebuffer = framebuffer;
-	output.image =
-	    device.create_image_2d(VK_FORMAT_R8G8B8A8_UNORM, framebuffer.allocated_width, framebuffer.allocated_height);
+   output.framebuffer = framebuffer;
+   output.image =
+	   device.create_image_2d(VK_FORMAT_R8G8B8A8_UNORM, framebuffer.allocated_width, framebuffer.allocated_height);
 
-	auto set = device.request_blit_descriptor_set(Vulkan::Blit::DescriptorSetType::Buffers);
-	switch (framebuffer.pixel_size)
-	{
-	case 3:
-		cmd.bind_pipeline(device.get_blit_pipeline(Vulkan::Blit::PipelineType::Blit_32bit));
-		break;
+   auto set = device.request_blit_descriptor_set(Vulkan::Blit::DescriptorSetType::Buffers);
+   switch (framebuffer.pixel_size)
+   {
+      case 3:
+         cmd.bind_pipeline(device.get_blit_pipeline(Vulkan::Blit::PipelineType::Blit_32bit));
+	 break;
+      case 2:
+	 cmd.bind_pipeline(device.get_blit_pipeline(Vulkan::Blit::PipelineType::Blit_16bit));
+	 break;
+      default:
+      case 1:
+	 cmd.bind_pipeline(device.get_blit_pipeline(Vulkan::Blit::PipelineType::Blit_8bit));
+	 break;
+   }
 
-	case 2:
-		cmd.bind_pipeline(device.get_blit_pipeline(Vulkan::Blit::PipelineType::Blit_16bit));
-		break;
+   PushConstant push = { framebuffer.allocated_width, framebuffer.allocated_height };
+   cmd.push_constants(&push, sizeof(push));
 
-	default:
-	case 1:
-		cmd.bind_pipeline(device.get_blit_pipeline(Vulkan::Blit::PipelineType::Blit_8bit));
-		break;
-	}
+   set.set_storage_buffer(static_cast<unsigned>(Vulkan::Blit::BufferLayout::Color), vulkan.framebuffer);
+   set.set_storage_image(static_cast<unsigned>(Vulkan::Blit::BufferLayout::Image), *output.image);
+   cmd.bind_descriptor_set(static_cast<unsigned>(Vulkan::Blit::DescriptorSetType::Buffers), set);
 
-	struct PushConstant
-	{
-		uint32_t width, height;
-	};
-	PushConstant push = { framebuffer.allocated_width, framebuffer.allocated_height };
-	cmd.push_constants(&push, sizeof(push));
+   cmd.prepare_storage_image(*output.image);
+   cmd.dispatch((framebuffer.allocated_width + 7) / 8, (framebuffer.allocated_height + 7) / 8, 1);
+   cmd.complete_storage_image(*output.image);
 
-	set.set_storage_buffer(static_cast<unsigned>(Vulkan::Blit::BufferLayout::Color), vulkan.framebuffer);
-	set.set_storage_image(static_cast<unsigned>(Vulkan::Blit::BufferLayout::Image), *output.image);
-	cmd.bind_descriptor_set(static_cast<unsigned>(Vulkan::Blit::DescriptorSetType::Buffers), set);
-
-	cmd.prepare_storage_image(*output.image);
-	cmd.dispatch((framebuffer.allocated_width + 7) / 8, (framebuffer.allocated_height + 7) / 8, 1);
-	cmd.complete_storage_image(*output.image);
-
-	vi_outputs.push_back(move(output));
+   vi_outputs.push_back(move(output));
 }
 
 void Renderer::sync_gpu_to_dram(bool blocking)
@@ -2028,37 +2030,36 @@ void Renderer::flush_tile_lists()
 
    if (depth_is_aliased)
    {
-	   if (framebuffer.pixel_size != PIXEL_SIZE_16BPP)
-		   assert(0 && "Trying to alias depth and 16-bit color, but this does not make any sense.");
+      if (framebuffer.pixel_size != PIXEL_SIZE_16BPP)
+         assert(0 && "Trying to alias depth and 16-bit color, but this does not make any sense.");
 
-	   vulkan.cmd.bind_pipeline(device.get_rdp_pipeline(Vulkan::RDP::PipelineType::ColorDepthAlias_16bit));
+      vulkan.cmd.bind_pipeline(device.get_rdp_pipeline(Vulkan::RDP::PipelineType::ColorDepthAlias_16bit));
    }
    else
    {
-	   /* Framebuffer pipeline. */
-	   switch (framebuffer.pixel_size)
-	   {
-		   case 3:
-			   if (pass_uses_depth)
-				   vulkan.cmd.bind_pipeline(device.get_rdp_pipeline(Vulkan::RDP::PipelineType::Z_32bit));
-			   else
-				   vulkan.cmd.bind_pipeline(device.get_rdp_pipeline(Vulkan::RDP::PipelineType::NoZ_32bit));
-			   break;
+      /* Framebuffer pipeline. */
+      switch (framebuffer.pixel_size)
+      {
+         case 3:
+            if (pass_uses_depth)
+               vulkan.cmd.bind_pipeline(device.get_rdp_pipeline(Vulkan::RDP::PipelineType::Z_32bit));
+	    else
+	       vulkan.cmd.bind_pipeline(device.get_rdp_pipeline(Vulkan::RDP::PipelineType::NoZ_32bit));
+	    break;
+	 case 2:
+	    if (pass_uses_depth)
+               vulkan.cmd.bind_pipeline(device.get_rdp_pipeline(Vulkan::RDP::PipelineType::Z_16bit));
+	    else
+               vulkan.cmd.bind_pipeline(device.get_rdp_pipeline(Vulkan::RDP::PipelineType::NoZ_16bit));
+	    break;
 
-		   case 2:
-			   if (pass_uses_depth)
-				   vulkan.cmd.bind_pipeline(device.get_rdp_pipeline(Vulkan::RDP::PipelineType::Z_16bit));
-			   else
-				   vulkan.cmd.bind_pipeline(device.get_rdp_pipeline(Vulkan::RDP::PipelineType::NoZ_16bit));
-			   break;
-
-		   case 1:
-			   if (pass_uses_depth)
-				   vulkan.cmd.bind_pipeline(device.get_rdp_pipeline(Vulkan::RDP::PipelineType::Z_8bit));
-			   else
-				   vulkan.cmd.bind_pipeline(device.get_rdp_pipeline(Vulkan::RDP::PipelineType::NoZ_8bit));
-			   break;
-	   }
+	 case 1:
+	    if (pass_uses_depth)
+               vulkan.cmd.bind_pipeline(device.get_rdp_pipeline(Vulkan::RDP::PipelineType::Z_8bit));
+	    else
+               vulkan.cmd.bind_pipeline(device.get_rdp_pipeline(Vulkan::RDP::PipelineType::NoZ_8bit));
+	    break;
+      }
    }
 
    vulkan.cmd.dispatch(tiles_x, tiles_y, 1);
