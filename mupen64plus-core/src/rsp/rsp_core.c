@@ -131,8 +131,8 @@ static void update_sp_status(struct rsp_core* sp, uint32_t w)
     if (w & 0x800000) sp->regs[SP_STATUS_REG] &= ~SP_STATUS_SIG7;
     if (w & 0x1000000) sp->regs[SP_STATUS_REG] |= SP_STATUS_SIG7;
 
-    //if (get_event(SP_INT)) return;
-    if (!(w & 0x1) && !(w & 0x4))
+    if (sp->rsp_task_locked && (get_event(SP_INT))) return;
+    if (!(w & 0x1) && !(w & 0x4) && !sp->rsp_task_locked)
         return;
 
     if (!(sp->regs[SP_STATUS_REG] & (SP_STATUS_HALT | SP_STATUS_BROKE)))
@@ -155,6 +155,7 @@ void poweron_rsp(struct rsp_core* sp)
     memset(sp->regs, 0, SP_REGS_COUNT*sizeof(uint32_t));
     memset(sp->regs2, 0, SP_REGS2_COUNT*sizeof(uint32_t));
 
+    sp->rsp_task_locked     = 0;
     sp->regs[SP_STATUS_REG] = 1;
 }
 
@@ -279,13 +280,12 @@ void do_SP_Task(struct rsp_core* sp)
         sp->regs2[SP_PC_REG] |= save_pc;
         new_frame();
 
-        cp0_update_count();
-        if (sp->r4300->mi.regs[MI_INTR_REG] & MI_INTR_SP)
-            add_interrupt_event(SP_INT, 1000);
         if (sp->r4300->mi.regs[MI_INTR_REG] & MI_INTR_DP)
-            add_interrupt_event(DP_INT, 1000);
-        sp->r4300->mi.regs[MI_INTR_REG] &= ~(MI_INTR_SP | MI_INTR_DP);
-        sp->regs[SP_STATUS_REG] &= ~SP_STATUS_TASKDONE;
+	{
+	    cp0_update_count();
+            add_interrupt_event(DP_INT, 4000);
+	    sp->r4300->mi.regs[MI_INTR_REG] &= ~MI_INTR_DP;
+	}
 
         protect_framebuffers(sp->dp);
     }
@@ -297,12 +297,6 @@ void do_SP_Task(struct rsp_core* sp)
         rsp.doRspCycles(0xffffffff);
         timed_section_end(TIMED_SECTION_AUDIO);
         sp->regs2[SP_PC_REG] |= save_pc;
-
-        cp0_update_count();
-        if (sp->r4300->mi.regs[MI_INTR_REG] & MI_INTR_SP)
-            add_interrupt_event(SP_INT, 4000/*500*/);
-        sp->r4300->mi.regs[MI_INTR_REG] &= ~MI_INTR_SP;
-        sp->regs[SP_STATUS_REG] &= ~(SP_STATUS_TASKDONE | SP_STATUS_YIELDED);
     }
     else
     {
@@ -310,34 +304,20 @@ void do_SP_Task(struct rsp_core* sp)
         sp->regs2[SP_PC_REG] &= 0xfff;
         rsp.doRspCycles(0xffffffff);
         sp->regs2[SP_PC_REG] |= save_pc;
+    }
 
+    sp->rsp_task_locked = 0;
+     if ((sp->regs[SP_STATUS_REG] & (SP_STATUS_HALT | SP_STATUS_BROKE)) == 0)
+     {
         cp0_update_count();
-        if (sp->r4300->mi.regs[MI_INTR_REG] & MI_INTR_SP)
-            add_interrupt_event(SP_INT, 0/*100*/);
-        sp->r4300->mi.regs[MI_INTR_REG] &= ~MI_INTR_SP;
-        sp->regs[SP_STATUS_REG] &= ~SP_STATUS_TASKDONE;
-    }
 
-    if ((sp->regs[SP_STATUS_REG] & 0x00000001) == 0x00000000)
-    { /* needed for games like "Stunt Racer 64" with CPU-RSP timer sync fails */
-        /* printf(
-            "To do:  early RSP exit and task resume (SP_STATUS_REG = %08X)\n",
-            sp->regs[SP_STATUS_REG]
-        ); */
-        if (sp->regs[SP_STATUS_REG] & 0x00000002)
-            fputs("(...Why is SP_STATUS_BROKE set?)\n", stderr);
-
-        add_interrupt_event(SP_INT, 0x200);
+	sp->rsp_task_locked = 1;
+	add_interrupt_event(SP_INT, 1000);
     }
-    sp->regs[SP_STATUS_REG] &= ~0x00000003; /* Clear BROKE and HALT. */
 }
 
 void rsp_interrupt_event(struct rsp_core* sp)
 {
-   /* XXX: assume task has fully completed */
-   sp->regs[SP_STATUS_REG] |=
-      SP_STATUS_TASKDONE | SP_STATUS_BROKE | SP_STATUS_HALT;
-
    if ((sp->regs[SP_STATUS_REG] & SP_STATUS_INTR_BREAK) != 0)
       raise_rcp_interrupt(sp->r4300, MI_INTR_SP);
 }

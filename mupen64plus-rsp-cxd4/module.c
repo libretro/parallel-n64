@@ -22,6 +22,7 @@
 #endif
 
 #include "module.h"
+#include "main/rom.h"
 #include "su.h"
 
 RSP_INFO RSP_INFO_NAME;
@@ -54,6 +55,23 @@ NOINLINE void update_conf(const char* source)
     CFG_WAIT_FOR_CPU_HOST = ConfigGetParamBool(l_ConfigRsp, "WaitForCPUHost");
     CFG_MEND_SEMAPHORE_LOCK = ConfigGetParamBool(l_ConfigRsp, "SupportCPUSemaphoreLock");
 #endif
+#endif
+
+#if 1
+      if (strstr((char*)ROM_HEADER.Name, (const char*)"WORLD DRIVER CHAMP") != NULL)
+         CFG_HLE_GFX = 0;
+     else if (strstr((char*)ROM_HEADER.Name, (const char*)"Indiana Jones") != NULL)
+         CFG_HLE_GFX = 0;
+     else if (strstr((char*)ROM_HEADER.Name, (const char*)"Rogue Squadron") != NULL)
+         CFG_HLE_GFX = 0;
+     else if (strstr((char*)ROM_HEADER.Name, (const char*)"rogue squadron") != NULL)
+         CFG_HLE_GFX = 0;
+     else if (strstr((char*)ROM_HEADER.Name, (const char*)"Battle for Naboo") != NULL)
+         CFG_HLE_GFX = 0;
+     else if (strstr((char*)ROM_HEADER.Name, (const char*)"Stunt Racer 64") != NULL)
+         CFG_HLE_GFX = 0;
+     else if (strstr((char*)ROM_HEADER.Name, (const char*)"GAUNTLET LEGENDS") != NULL)
+         CFG_HLE_GFX = 0;
 #endif
 }
 
