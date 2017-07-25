@@ -33,8 +33,8 @@ Device::Device(const VulkanContext &context_, unsigned frames)
 
 void Device::set_num_frames(unsigned num_frames)
 {
-	deinit_per_frame();
-	init_per_frame(num_frames);
+   deinit_per_frame();
+   init_per_frame(num_frames);
 }
 
 void Device::init_per_frame(unsigned num_frames)
@@ -223,14 +223,14 @@ CommandBuffer Device::request_command_buffer(CommandPool &pool)
 
 CommandBuffer Device::request_command_buffer()
 {
-	auto &pool = per_frame[current_index].command_pool;
-	return request_command_buffer(pool);
+   auto &pool = per_frame[current_index].command_pool;
+   return request_command_buffer(pool);
 }
 
 CommandBuffer Device::request_alt_command_buffer()
 {
-	auto &pool = per_frame[current_index].alt_command_pool;
-	return request_command_buffer(pool);
+   auto &pool = per_frame[current_index].alt_command_pool;
+   return request_command_buffer(pool);
 }
 
 Semaphore Device::request_semaphore()
@@ -254,13 +254,13 @@ Semaphore Device::request_semaphore()
 
 Fence Device::submit(const CommandBuffer &cmd, const Semaphore *wait_semaphore, const Semaphore *signal_semaphore)
 {
-	return submit(context.get_queue(), cmd, wait_semaphore, signal_semaphore);
+   return submit(context.get_queue(), cmd, wait_semaphore, signal_semaphore);
 }
 
 Fence Device::submit_alt_queue(const CommandBuffer &cmd, const Semaphore *wait_semaphore,
                                const Semaphore *signal_semaphore)
 {
-	return submit(context.get_alt_queue(), cmd, wait_semaphore, signal_semaphore);
+   return submit(context.get_alt_queue(), cmd, wait_semaphore, signal_semaphore);
 }
 
 Fence Device::submit(VkQueue queue, const CommandBuffer &cmd, const Semaphore *wait_semaphore,
@@ -518,9 +518,9 @@ bool Device::find_memory_type(uint32_t *index, uint32_t device_req, uint32_t hos
 
 size_t Device::get_buffer_alignment() const
 {
-	auto &limits = context.get_gpu_props().limits;
-	return max(max<size_t>(limits.minUniformBufferOffsetAlignment, limits.minStorageBufferOffsetAlignment),
-	           max<size_t>(limits.minMemoryMapAlignment, limits.nonCoherentAtomSize));
+   auto &limits = context.get_gpu_props().limits;
+   return max(max<size_t>(limits.minUniformBufferOffsetAlignment, limits.minStorageBufferOffsetAlignment),
+	max<size_t>(limits.minMemoryMapAlignment, limits.nonCoherentAtomSize));
 }
 
 void Device::wait(const Fence &fence)
@@ -541,12 +541,12 @@ void Device::wait(const Fence &fence)
 
 ImageHandle Device::create_image_2d(VkFormat format, unsigned width, unsigned height)
 {
-	return create_image(format, width, height, 1, false, memory_allocator);
+   return create_image(format, width, height, 1, false, memory_allocator);
 }
 
 ImageHandle Device::create_image_2d_array(VkFormat format, unsigned width, unsigned height, unsigned layers)
 {
-	return create_image(format, width, height, layers, true, memory_allocator);
+   return create_image(format, width, height, layers, true, memory_allocator);
 }
 
 AllocatedMemory Device::allocate_memory(Internal::MemoryAllocator &alloc, const VkMemoryRequirements &mem_reqs)
@@ -657,15 +657,15 @@ ImageHandle Device::create_image(VkFormat format, unsigned width, unsigned heigh
 
 void Device::delete_image(Image *image)
 {
-	auto &frame = per_frame[current_index];
+   auto &frame = per_frame[current_index];
 
-	auto v = image->view;
-	auto i = image->image;
-	frame.defers.push_back([this, v, i] {
-		vkDestroyImageView(context.get_device(), v, nullptr);
-		vkDestroyImage(context.get_device(), i, nullptr);
-	});
-	delete image;
+   auto v = image->view;
+   auto i = image->image;
+   frame.defers.push_back([this, v, i] {
+		   vkDestroyImageView(context.get_device(), v, nullptr);
+		   vkDestroyImage(context.get_device(), i, nullptr);
+		   });
+   delete image;
 }
 
 void Device::init_blit_pipelines()
@@ -972,86 +972,86 @@ DescriptorSet Device::request_descriptor_set(DescriptorSetAllocator &alloc, VkDe
 
 DescriptorSet Device::request_rdp_descriptor_set(RDP::DescriptorSetType type)
 {
-	auto &frame = per_frame[current_index];
-	auto &alloc = frame.descriptor_set_rdp_allocator[static_cast<unsigned>(type)];
-	return request_descriptor_set(alloc, rdp.set_layouts[static_cast<unsigned>(type)]);
+   auto &frame = per_frame[current_index];
+   auto &alloc = frame.descriptor_set_rdp_allocator[static_cast<unsigned>(type)];
+   return request_descriptor_set(alloc, rdp.set_layouts[static_cast<unsigned>(type)]);
 }
 
 DescriptorSet Device::request_blit_descriptor_set(Blit::DescriptorSetType type)
 {
-	auto &frame = per_frame[current_index];
-	auto &alloc = frame.descriptor_set_blit_allocator[static_cast<unsigned>(type)];
-	return request_descriptor_set(alloc, blit.set_layouts[static_cast<unsigned>(type)]);
+   auto &frame = per_frame[current_index];
+   auto &alloc = frame.descriptor_set_blit_allocator[static_cast<unsigned>(type)];
+   return request_descriptor_set(alloc, blit.set_layouts[static_cast<unsigned>(type)]);
 }
 
 void DescriptorSet::set_storage_buffer(unsigned binding, Buffer &buffer, size_t offset, size_t range)
 {
-	auto &block = buffer.staging.block && buffer.staging.block->device_local ? buffer.staging : buffer.device;
-	VkDescriptorBufferInfo buf = { block.block->buffer, block.offset + offset, range };
+   auto &block = buffer.staging.block && buffer.staging.block->device_local ? buffer.staging : buffer.device;
+   VkDescriptorBufferInfo buf = { block.block->buffer, block.offset + offset, range };
 
-	VkWriteDescriptorSet write = { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET };
-	write.dstSet = set;
-	write.dstBinding = binding;
-	write.descriptorCount = 1;
-	write.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-	write.pBufferInfo = &buf;
+   VkWriteDescriptorSet write = { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET };
+   write.dstSet = set;
+   write.dstBinding = binding;
+   write.descriptorCount = 1;
+   write.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+   write.pBufferInfo = &buf;
 
-	vkUpdateDescriptorSets(device, 1, &write, 0, nullptr);
+   vkUpdateDescriptorSets(device, 1, &write, 0, nullptr);
 }
 
 void DescriptorSet::set_storage_buffer(unsigned binding, Buffer &buffer)
 {
-	auto &block = buffer.staging.block && buffer.staging.block->device_local ? buffer.staging : buffer.device;
-	set_storage_buffer(binding, buffer, 0, block.size);
+   auto &block = buffer.staging.block && buffer.staging.block->device_local ? buffer.staging : buffer.device;
+   set_storage_buffer(binding, buffer, 0, block.size);
 }
 
 void DescriptorSet::set_uniform_buffer(unsigned binding, Buffer &buffer, size_t offset, size_t range)
 {
-	auto &block = buffer.staging.block && buffer.staging.block->device_local ? buffer.staging : buffer.device;
-	VkDescriptorBufferInfo buf = { block.block->buffer, block.offset + offset, range };
+   auto &block = buffer.staging.block && buffer.staging.block->device_local ? buffer.staging : buffer.device;
+   VkDescriptorBufferInfo buf = { block.block->buffer, block.offset + offset, range };
 
-	VkWriteDescriptorSet write = { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET };
-	write.dstSet = set;
-	write.dstBinding = binding;
-	write.descriptorCount = 1;
-	write.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-	write.pBufferInfo = &buf;
+   VkWriteDescriptorSet write = { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET };
+   write.dstSet = set;
+   write.dstBinding = binding;
+   write.descriptorCount = 1;
+   write.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+   write.pBufferInfo = &buf;
 
-	vkUpdateDescriptorSets(device, 1, &write, 0, nullptr);
+   vkUpdateDescriptorSets(device, 1, &write, 0, nullptr);
 }
 
 void DescriptorSet::set_uniform_buffer(unsigned binding, Buffer &buffer)
 {
-	auto &block = buffer.staging.block && buffer.staging.block->device_local ? buffer.staging : buffer.device;
-	set_uniform_buffer(binding, buffer, 0, block.size);
+   auto &block = buffer.staging.block && buffer.staging.block->device_local ? buffer.staging : buffer.device;
+   set_uniform_buffer(binding, buffer, 0, block.size);
 }
 
 void DescriptorSet::set_image(unsigned binding, Image &image)
 {
-	VkDescriptorImageInfo img = { image.sampler, image.view, image.layout };
+   VkDescriptorImageInfo img = { image.sampler, image.view, image.layout };
 
-	VkWriteDescriptorSet write = { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET };
-	write.dstSet = set;
-	write.dstBinding = binding;
-	write.descriptorCount = 1;
-	write.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-	write.pImageInfo = &img;
+   VkWriteDescriptorSet write = { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET };
+   write.dstSet = set;
+   write.dstBinding = binding;
+   write.descriptorCount = 1;
+   write.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+   write.pImageInfo = &img;
 
-	vkUpdateDescriptorSets(device, 1, &write, 0, nullptr);
+   vkUpdateDescriptorSets(device, 1, &write, 0, nullptr);
 }
 
 void DescriptorSet::set_storage_image(unsigned binding, Image &image)
 {
-	VkDescriptorImageInfo img = { VK_NULL_HANDLE, image.view, image.layout };
+   VkDescriptorImageInfo img  = { VK_NULL_HANDLE, image.view, image.layout };
 
-	VkWriteDescriptorSet write = { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET };
-	write.dstSet = set;
-	write.dstBinding = binding;
-	write.descriptorCount = 1;
-	write.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-	write.pImageInfo = &img;
+   VkWriteDescriptorSet write = { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET };
+   write.dstSet               = set;
+   write.dstBinding           = binding;
+   write.descriptorCount      = 1;
+   write.descriptorType       = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+   write.pImageInfo           = &img;
 
-	vkUpdateDescriptorSets(device, 1, &write, 0, nullptr);
+   vkUpdateDescriptorSets(device, 1, &write, 0, nullptr);
 }
 
 void CommandBuffer::sync_buffer_to_gpu(Buffer &buffer)
@@ -1266,30 +1266,30 @@ void CommandBuffer::complete_mixed_image(Image &image)
 
 void CommandBuffer::bind_pipeline(const Pipeline &pipeline)
 {
-	vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline.pipeline);
-	layout = pipeline.layout;
+   vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline.pipeline);
+   layout = pipeline.layout;
 }
 
 void CommandBuffer::bind_descriptor_set(unsigned index, const DescriptorSet &set)
 {
-	vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, layout, index, 1, &set.set, 0, nullptr);
+   vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, layout, index, 1, &set.set, 0, nullptr);
 }
 
 void CommandBuffer::dispatch(unsigned x, unsigned y, unsigned z)
 {
-	vkCmdDispatch(cmd, x, y, z);
+   vkCmdDispatch(cmd, x, y, z);
 }
 
 void CommandBuffer::push_constants(const void *data, size_t size)
 {
-	vkCmdPushConstants(cmd, layout, VK_SHADER_STAGE_COMPUTE_BIT, 0, size, data);
+   vkCmdPushConstants(cmd, layout, VK_SHADER_STAGE_COMPUTE_BIT, 0, size, data);
 }
 
 namespace Internal
 {
 void ImageDeleter::operator()(Image *image)
 {
-	image->device.delete_image(image);
+   image->device.delete_image(image);
 }
 }
 }
