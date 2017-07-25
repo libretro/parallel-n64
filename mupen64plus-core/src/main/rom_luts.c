@@ -26,6 +26,8 @@ static const uint64_t lut_vi_clock_2200[] = {
    0x9B500E8EE90550B3ULL, /* Resident Evil 2 (E) (M2) [!] */
    0x2F493DD02E64DFD9ULL, /* Resident Evil 2 (U) [!] */
    0xAA18B1A507DB6AEBULL, /* Resident Evil 2 (U) (V1.1) [!] */
+   0xAF9DCC151A723D88ULL, /* Indiana Jones and the Infernal Machine (U) [!] */
+   0x3A6F8C6B2897BAEBULL, /* Indiana Jones and the Infernal Machine (E) */
 };
 
 static const uint64_t lut_fixedaudiopos[] = {
@@ -399,6 +401,8 @@ static const uint64_t lut_cpop[][2] = {
    { 0xB58988E9B1FC4BE8ULL, 1 }, /* Hydro Thunder (E) [!] */
    { 0x29A045CEABA9060EULL, 1 }, /* Hydro Thunder (F) [!] */
    { 0xC8DC65EB3D8C8904ULL, 1 }, /* Hydro Thunder (U) [!] */
+   { 0xAF9DCC151A723D88ULL, 1 }, /* Indiana Jones and the Infernal Machine (U) [!] */
+   { 0x3A6F8C6B2897BAEBULL, 1 }, /* Indiana Jones and the Infernal Machine (E) */
 #ifndef GLES
    { 0x979B263EF8470004ULL, 1 }, /* Killer Instinct Gold (E) [!] */
    { 0x9E8FE2BA8B270770ULL, 1 }, /* Killer Instinct Gold (U) (V1.0) [!] */

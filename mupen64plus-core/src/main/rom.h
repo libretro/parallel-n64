@@ -86,7 +86,8 @@ enum
 {
     NORMAL_ROM,
     GOLDEN_EYE,
-    RAT_ATTACK
+    RAT_ATTACK,
+    INDIANA_JONES
 };
 
 #endif /* __ROM_H__ */

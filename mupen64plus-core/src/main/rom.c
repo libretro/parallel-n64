@@ -363,6 +363,8 @@ m64p_error open_rom(const unsigned char* romimage, unsigned int size)
       ROM_PARAMS.special_rom = GOLDEN_EYE;
    else if (!strcmp(ROM_PARAMS.headername, "RAT ATTACK"))
       ROM_PARAMS.special_rom = RAT_ATTACK;
+   else if (!strcmp(ROM_PARAMS.headername, "Indiana Jones"))
+      ROM_PARAMS.special_rom = INDIANA_JONES;
    else
       ROM_PARAMS.special_rom = NORMAL_ROM;
 

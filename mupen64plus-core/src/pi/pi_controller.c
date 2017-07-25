@@ -33,6 +33,7 @@
 #include "../ri/rdram_detection_hack.h"
 #include "../ri/ri_controller.h"
 #include "../dd/dd_controller.h"
+#include "main/rom.h"
 
 #include <string.h>
 
@@ -76,7 +77,7 @@ static void dma_pi_read(struct pi_controller *pi)
       {
          pi->regs[PI_STATUS_REG] |= 1;
          cp0_update_count();
-         add_interrupt_event(PI_INT, 0x1000/* pi->regs[PI_RD_LEN_REG] */);
+	 add_interrupt_event(PI_INT, 0x1000 / pi->interrupt_mod /*pi->regs[PI_RD_LEN_REG]*/); /* XXX: 0x1000 ??? */
          return;
       }
 
@@ -113,7 +114,7 @@ static void dma_pi_read(struct pi_controller *pi)
    /* schedule end of dma interrupt event */
 
    cp0_update_count();
-   add_interrupt_event(PI_INT, /*pi->regs[PI_WR_LEN_REG]*/0x1000); /* XXX: 0x1000 ??? */
+   add_interrupt_event(PI_INT, /*pi->regs[PI_WR_LEN_REG]*/0x1000 / pi->interrupt_mod); /* XXX: 0x1000 ??? */
 }
 
 /* Copies data from the PI into RDRAM. */
@@ -169,7 +170,7 @@ static void dma_pi_write(struct pi_controller *pi)
 
             /* schedule end of dma interrupt event */
             cp0_update_count();
-            add_interrupt_event(PI_INT, length / 8);
+	    add_interrupt_event(PI_INT, 0x1000 / pi->interrupt_mod); /* XXX: 0x1000 ??? */
 
             return;
          }
@@ -199,11 +200,7 @@ static void dma_pi_write(struct pi_controller *pi)
 
       /* schedule end of dma interrupt event */
       cp0_update_count();
-#if 0
-      add_interrupt_event(PI_INT, /*pi->regs[PI_WR_LEN_REG]*/0x1000);
-#else
-      add_interrupt_event(PI_INT, ((pi->regs[PI_WR_LEN_REG] * 63) / 25));
-#endif
+      add_interrupt_event(PI_INT, /*pi->regs[PI_WR_LEN_REG]*/0x1000 / pi->interrupt_mod); /* XXX: 0x1000 ??? */
 
       return;
    }
@@ -216,7 +213,7 @@ static void dma_pi_write(struct pi_controller *pi)
 
       /* schedule end of dma interrupt event */
       cp0_update_count();
-      add_interrupt_event(PI_INT, 0x1000); /* XXX: 0x1000 ??? */
+      add_interrupt_event(PI_INT, 0x1000 / pi->interrupt_mod); /* XXX: 0x1000 ??? */
 
       return;
    }
@@ -263,7 +260,7 @@ static void dma_pi_write(struct pi_controller *pi)
 
          /* schedule end of dma interrupt event */
          cp0_update_count();
-         add_interrupt_event(PI_INT, length / 8);
+	 add_interrupt_event(PI_INT, length/8 / pi->interrupt_mod);
 
          return;
       }
@@ -293,7 +290,7 @@ static void dma_pi_write(struct pi_controller *pi)
 
    /* schedule end of dma interrupt event */
    cp0_update_count();
-   add_interrupt_event(PI_INT, length / 8);
+   add_interrupt_event(PI_INT, length/8 / pi->interrupt_mod);
 }
 
 void init_pi(struct pi_controller* pi,
@@ -313,6 +310,8 @@ void init_pi(struct pi_controller* pi,
 
    pi->r4300 = r4300;
    pi->ri    = ri;
+
+   pi->interrupt_mod = r4300->special_rom == INDIANA_JONES ? 2 : 1;
 }
 
 /* Initializes the PI. */
