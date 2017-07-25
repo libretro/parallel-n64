@@ -39,95 +39,97 @@ void Device::set_num_frames(unsigned num_frames)
 
 void Device::init_per_frame(unsigned num_frames)
 {
-	per_frame.resize(num_frames);
+   per_frame.resize(num_frames);
 
-	VkCommandPoolCreateInfo info = { VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO };
-	for (auto &frame : per_frame)
-	{
-		info.queueFamilyIndex = context.get_queue_family();
-		info.flags = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT;
-		V(vkCreateCommandPool(context.get_device(), &info, nullptr, &frame.command_pool.pool));
+   VkCommandPoolCreateInfo info = { VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO };
+   for (auto &frame : per_frame)
+   {
+      unsigned i;
 
-		info.queueFamilyIndex = context.get_alt_queue_family();
-		info.flags = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT;
-		V(vkCreateCommandPool(context.get_device(), &info, nullptr, &frame.alt_command_pool.pool));
+      info.queueFamilyIndex = context.get_queue_family();
+      info.flags = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT;
+      V(vkCreateCommandPool(context.get_device(), &info, nullptr, &frame.command_pool.pool));
 
-		for (unsigned i = 0; i < RDP::DescriptorSetCount; i++)
-			frame.descriptor_set_rdp_allocator[i].sizes = rdp.descriptor_pool_sizes[i];
-		for (unsigned i = 0; i < Blit::DescriptorSetCount; i++)
-			frame.descriptor_set_blit_allocator[i].sizes = blit.descriptor_pool_sizes[i];
-	}
+      info.queueFamilyIndex = context.get_alt_queue_family();
+      info.flags = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT;
+      V(vkCreateCommandPool(context.get_device(), &info, nullptr, &frame.alt_command_pool.pool));
+
+      for (i = 0; i < RDP::DescriptorSetCount; i++)
+         frame.descriptor_set_rdp_allocator[i].sizes = rdp.descriptor_pool_sizes[i];
+      for (i = 0; i < Blit::DescriptorSetCount; i++)
+         frame.descriptor_set_blit_allocator[i].sizes = blit.descriptor_pool_sizes[i];
+   }
 }
 
 void Device::deinit_per_frame()
 {
-	vkDeviceWaitIdle(context.get_device());
+   vkDeviceWaitIdle(context.get_device());
 
-	for (auto &frame : per_frame)
-	{
-		for (auto &defer : frame.defers)
-			defer();
+   for (auto &frame : per_frame)
+   {
+	   for (auto &defer : frame.defers)
+		   defer();
 
-		auto &fence = frame.fence_allocator;
-		for (auto f : fence.fences)
-			vkDestroyFence(context.get_device(), f, nullptr);
+	   auto &fence = frame.fence_allocator;
+	   for (auto f : fence.fences)
+		   vkDestroyFence(context.get_device(), f, nullptr);
 
-		auto &semaphore = frame.semaphore_allocator;
-		for (auto s : semaphore.semaphores)
-			vkDestroySemaphore(context.get_device(), s, nullptr);
+	   auto &semaphore = frame.semaphore_allocator;
+	   for (auto s : semaphore.semaphores)
+		   vkDestroySemaphore(context.get_device(), s, nullptr);
 
-		auto &cmd_pool = frame.command_pool;
-		if (!cmd_pool.buffers.empty())
-		{
-			vkFreeCommandBuffers(context.get_device(), cmd_pool.pool, cmd_pool.buffers.size(), cmd_pool.buffers.data());
-		}
-		vkDestroyCommandPool(context.get_device(), cmd_pool.pool, nullptr);
+	   auto &cmd_pool = frame.command_pool;
+	   if (!cmd_pool.buffers.empty())
+	   {
+		   vkFreeCommandBuffers(context.get_device(), cmd_pool.pool, cmd_pool.buffers.size(), cmd_pool.buffers.data());
+	   }
+	   vkDestroyCommandPool(context.get_device(), cmd_pool.pool, nullptr);
 
-		auto &alt_cmd_pool = frame.alt_command_pool;
-		if (!alt_cmd_pool.buffers.empty())
-		{
-			vkFreeCommandBuffers(context.get_device(), alt_cmd_pool.pool, alt_cmd_pool.buffers.size(),
-			                     alt_cmd_pool.buffers.data());
-		}
-		vkDestroyCommandPool(context.get_device(), alt_cmd_pool.pool, nullptr);
+	   auto &alt_cmd_pool = frame.alt_command_pool;
+	   if (!alt_cmd_pool.buffers.empty())
+	   {
+		   vkFreeCommandBuffers(context.get_device(), alt_cmd_pool.pool, alt_cmd_pool.buffers.size(),
+				   alt_cmd_pool.buffers.data());
+	   }
+	   vkDestroyCommandPool(context.get_device(), alt_cmd_pool.pool, nullptr);
 
-		for (auto &alloc : frame.descriptor_set_rdp_allocator)
-			for (auto &pool : alloc.pools)
-				vkDestroyDescriptorPool(context.get_device(), pool.pool, nullptr);
-		for (auto &alloc : frame.descriptor_set_blit_allocator)
-			for (auto &pool : alloc.pools)
-				vkDestroyDescriptorPool(context.get_device(), pool.pool, nullptr);
-	}
+	   for (auto &alloc : frame.descriptor_set_rdp_allocator)
+		   for (auto &pool : alloc.pools)
+			   vkDestroyDescriptorPool(context.get_device(), pool.pool, nullptr);
+	   for (auto &alloc : frame.descriptor_set_blit_allocator)
+		   for (auto &pool : alloc.pools)
+			   vkDestroyDescriptorPool(context.get_device(), pool.pool, nullptr);
+   }
 
-	per_frame.clear();
+   per_frame.clear();
 }
 
 Device::~Device()
 {
-	vkDeviceWaitIdle(context.get_device());
+   vkDeviceWaitIdle(context.get_device());
 
-	cached_allocator.current.reset();
-	cached_shared_allocator.current.reset();
-	device_allocator.current.reset();
-	shared_allocator.current.reset();
-	memory_allocator.current.reset();
+   cached_allocator.current.reset();
+   cached_shared_allocator.current.reset();
+   device_allocator.current.reset();
+   shared_allocator.current.reset();
+   memory_allocator.current.reset();
 
-	deinit_per_frame();
+   deinit_per_frame();
 
-	for (auto &pipe : rdp.pipelines)
-		vkDestroyPipeline(context.get_device(), pipe, nullptr);
-	for (auto &layout : rdp.set_layouts)
-		vkDestroyDescriptorSetLayout(context.get_device(), layout, nullptr);
-	vkDestroyPipelineLayout(context.get_device(), rdp.layout, nullptr);
+   for (auto &pipe : rdp.pipelines)
+      vkDestroyPipeline(context.get_device(), pipe, nullptr);
+   for (auto &layout : rdp.set_layouts)
+      vkDestroyDescriptorSetLayout(context.get_device(), layout, nullptr);
+   vkDestroyPipelineLayout(context.get_device(), rdp.layout, nullptr);
 
-	for (auto &pipe : blit.pipelines)
-		vkDestroyPipeline(context.get_device(), pipe, nullptr);
-	for (auto &layout : blit.set_layouts)
-		vkDestroyDescriptorSetLayout(context.get_device(), layout, nullptr);
-	vkDestroyPipelineLayout(context.get_device(), blit.layout, nullptr);
+   for (auto &pipe : blit.pipelines)
+      vkDestroyPipeline(context.get_device(), pipe, nullptr);
+   for (auto &layout : blit.set_layouts)
+      vkDestroyDescriptorSetLayout(context.get_device(), layout, nullptr);
+   vkDestroyPipelineLayout(context.get_device(), blit.layout, nullptr);
 
-	vkDestroyPipelineCache(context.get_device(), pipeline_cache, nullptr);
-	vkDestroySampler(context.get_device(), rdp.sampler, nullptr);
+   vkDestroyPipelineCache(context.get_device(), pipeline_cache, nullptr);
+   vkDestroySampler(context.get_device(), rdp.sampler, nullptr);
 }
 
 void Device::begin_index(unsigned index)
@@ -192,33 +194,31 @@ void Device::begin_index(unsigned index)
 
 CommandBuffer Device::request_command_buffer(CommandPool &pool)
 {
-	VkCommandBuffer cmd = VK_NULL_HANDLE;
-	if (pool.count < pool.buffers.size())
-	{
-		cmd = pool.buffers[pool.count++];
-	}
-	else
-	{
-		VkCommandBufferAllocateInfo info = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO };
-		info.commandPool = pool.pool;
-		info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-		info.commandBufferCount = 1;
-		V(vkAllocateCommandBuffers(context.get_device(), &info, &cmd));
+   VkCommandBuffer cmd = VK_NULL_HANDLE;
+   if (pool.count < pool.buffers.size())
+      cmd = pool.buffers[pool.count++];
+   else
+   {
+      VkCommandBufferAllocateInfo info = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO };
+      info.commandPool = pool.pool;
+      info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+      info.commandBufferCount = 1;
+      V(vkAllocateCommandBuffers(context.get_device(), &info, &cmd));
 #ifdef ENABLE_LOGS
-		fprintf(stderr, "ALLOCATING COMMAND BUFFER\n");
+      fprintf(stderr, "ALLOCATING COMMAND BUFFER\n");
 #endif
 
-		pool.buffers.push_back(cmd);
-		pool.count++;
-	}
+      pool.buffers.push_back(cmd);
+      pool.count++;
+   }
 
-	VkCommandBufferInheritanceInfo inherit = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_INFO };
-	VkCommandBufferBeginInfo info = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO };
+   VkCommandBufferInheritanceInfo inherit = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_INFO };
+   VkCommandBufferBeginInfo info = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO };
 
-	info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-	info.pInheritanceInfo = &inherit;
-	V(vkBeginCommandBuffer(cmd, &info));
-	return { cmd, VK_NULL_HANDLE };
+   info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+   info.pInheritanceInfo = &inherit;
+   V(vkBeginCommandBuffer(cmd, &info));
+   return { cmd, VK_NULL_HANDLE };
 }
 
 CommandBuffer Device::request_command_buffer()
@@ -235,21 +235,19 @@ CommandBuffer Device::request_alt_command_buffer()
 
 Semaphore Device::request_semaphore()
 {
-	auto &frame = per_frame[current_index];
-	auto &semaphores = frame.semaphore_allocator;
-	if (semaphores.count < semaphores.semaphores.size())
-	{
-		return { semaphores.semaphores[semaphores.count++] };
-	}
-	else
-	{
-		VkSemaphoreCreateInfo info = { VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO };
-		VkSemaphore sem;
-		V(vkCreateSemaphore(context.get_device(), &info, nullptr, &sem));
-		semaphores.semaphores.push_back(sem);
-		semaphores.count++;
-		return { sem };
-	}
+   auto &frame = per_frame[current_index];
+   auto &semaphores = frame.semaphore_allocator;
+   if (semaphores.count < semaphores.semaphores.size())
+      return { semaphores.semaphores[semaphores.count++] };
+   else
+   {
+      VkSemaphoreCreateInfo info = { VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO };
+      VkSemaphore sem;
+      V(vkCreateSemaphore(context.get_device(), &info, nullptr, &sem));
+      semaphores.semaphores.push_back(sem);
+      semaphores.count++;
+      return { sem };
+   }
 }
 
 Fence Device::submit(const CommandBuffer &cmd, const Semaphore *wait_semaphore, const Semaphore *signal_semaphore)
@@ -266,89 +264,85 @@ Fence Device::submit_alt_queue(const CommandBuffer &cmd, const Semaphore *wait_s
 Fence Device::submit(VkQueue queue, const CommandBuffer &cmd, const Semaphore *wait_semaphore,
                      const Semaphore *signal_semaphore)
 {
-	V(vkEndCommandBuffer(cmd.cmd));
+   V(vkEndCommandBuffer(cmd.cmd));
 
-	auto &frame = per_frame[current_index];
-	auto &fences = frame.fence_allocator;
-	VkFence fence = VK_NULL_HANDLE;
+   auto &frame = per_frame[current_index];
+   auto &fences = frame.fence_allocator;
+   VkFence fence = VK_NULL_HANDLE;
 
-	if (fences.count < fences.fences.size())
-	{
-		fence = fences.fences[fences.count++];
-	}
-	else
-	{
-		VkFenceCreateInfo info = { VK_STRUCTURE_TYPE_FENCE_CREATE_INFO };
-		V(vkCreateFence(context.get_device(), &info, nullptr, &fence));
-		fences.fences.push_back(fence);
-		fences.count++;
-	}
+   if (fences.count < fences.fences.size())
+      fence = fences.fences[fences.count++];
+   else
+   {
+      VkFenceCreateInfo info = { VK_STRUCTURE_TYPE_FENCE_CREATE_INFO };
+      V(vkCreateFence(context.get_device(), &info, nullptr, &fence));
+      fences.fences.push_back(fence);
+      fences.count++;
+   }
 
-	VkSubmitInfo info = { VK_STRUCTURE_TYPE_SUBMIT_INFO };
-	info.commandBufferCount = 1;
-	info.pCommandBuffers = &cmd.cmd;
+   VkSubmitInfo info = { VK_STRUCTURE_TYPE_SUBMIT_INFO };
+   info.commandBufferCount = 1;
+   info.pCommandBuffers = &cmd.cmd;
 
-	if (wait_semaphore)
-	{
-		static const VkPipelineStageFlags compute = VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
-		info.waitSemaphoreCount = 1;
-		info.pWaitDstStageMask = &compute;
-		info.pWaitSemaphores = &wait_semaphore->semaphore;
-	}
+   if (wait_semaphore)
+   {
+      static const VkPipelineStageFlags compute = VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
+      info.waitSemaphoreCount = 1;
+      info.pWaitDstStageMask = &compute;
+      info.pWaitSemaphores = &wait_semaphore->semaphore;
+   }
 
-	if (signal_semaphore)
-	{
-		info.signalSemaphoreCount = 1;
-		info.pSignalSemaphores = &signal_semaphore->semaphore;
-	}
+   if (signal_semaphore)
+   {
+      info.signalSemaphoreCount = 1;
+      info.pSignalSemaphores = &signal_semaphore->semaphore;
+   }
 
-	V(vkQueueSubmit(queue, 1, &info, fence));
+   V(vkQueueSubmit(queue, 1, &info, fence));
 
-	return { fence, frame.frame_count, current_index };
+   return { fence, frame.frame_count, current_index };
 }
 
 Buffer Device::request_buffer(BufferType type, size_t size)
 {
-	Buffer buffer;
-	buffer.type = type;
+   Buffer buffer;
+   buffer.type = type;
 
-	switch (type)
-	{
-	case BufferType::Staging:
-		buffer.staging = allocate_block(cached_allocator, size);
-		break;
+   switch (type)
+   {
+      case BufferType::Staging:
+         buffer.staging = allocate_block(cached_allocator, size);
+	 break;
+      case BufferType::Dynamic:
+	 buffer.staging = allocate_block(cached_allocator, size);
+	 if (!buffer.staging.block->device_local)
+            buffer.device = allocate_block(device_allocator, size);
+	 break;
+      case BufferType::DynamicShared:
+	 buffer.staging = allocate_block(cached_shared_allocator, size);
+	 if (!buffer.staging.block->device_local)
+            buffer.device = allocate_block(shared_allocator, size);
+	 break;
+      case BufferType::Device:
+	 buffer.device = allocate_block(device_allocator, size);
+	 break;
+   }
 
-	case BufferType::Dynamic:
-		buffer.staging = allocate_block(cached_allocator, size);
-		if (!buffer.staging.block->device_local)
-			buffer.device = allocate_block(device_allocator, size);
-		break;
-
-	case BufferType::DynamicShared:
-		buffer.staging = allocate_block(cached_shared_allocator, size);
-		if (!buffer.staging.block->device_local)
-			buffer.device = allocate_block(shared_allocator, size);
-		break;
-
-	case BufferType::Device:
-		buffer.device = allocate_block(device_allocator, size);
-		break;
-	}
-
-	return buffer;
+   return buffer;
 }
 
 Buffer Device::request_dynamic_buffer(CommandBuffer &cmd, DescriptorSet &set, RDP::BufferLayout binding, size_t size)
 {
-	Buffer tmp = request_buffer(BufferType::Dynamic, size);
-	cmd.sync_buffer_to_gpu(tmp);
+   Buffer tmp = request_buffer(BufferType::Dynamic, size);
+   cmd.sync_buffer_to_gpu(tmp);
 
-	if (binding == RDP::BufferLayout::Combiners)
-		set.set_uniform_buffer(static_cast<unsigned>(binding), tmp);
-	else
-		set.set_storage_buffer(static_cast<unsigned>(binding), tmp);
-	tmp.atom_alignment = context.get_gpu_props().limits.nonCoherentAtomSize;
-	return tmp;
+   if (binding == RDP::BufferLayout::Combiners)
+      set.set_uniform_buffer(static_cast<unsigned>(binding), tmp);
+   else
+      set.set_storage_buffer(static_cast<unsigned>(binding), tmp);
+
+   tmp.atom_alignment = context.get_gpu_props().limits.nonCoherentAtomSize;
+   return tmp;
 }
 
 void *Buffer::map()
@@ -367,14 +361,14 @@ void *Buffer::map()
 
 void Buffer::unmap()
 {
-	if (!staging.block->coherent)
-	{
-		VkMappedMemoryRange range = { VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE };
-		range.memory = staging.block->memory;
-		range.offset = staging.offset;
-		range.size = (staging.size + atom_alignment - 1) & ~(atom_alignment - 1);
-		V(vkFlushMappedMemoryRanges(staging.block->device, 1, &range));
-	}
+   if (!staging.block->coherent)
+   {
+      VkMappedMemoryRange range = { VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE };
+      range.memory = staging.block->memory;
+      range.offset = staging.offset;
+      range.size = (staging.size + atom_alignment - 1) & ~(atom_alignment - 1);
+      V(vkFlushMappedMemoryRanges(staging.block->device, 1, &range));
+   }
 }
 
 AllocatedBlock Device::allocate_block(BufferAllocator &alloc, size_t size)
@@ -502,18 +496,21 @@ AllocatedBlock Device::allocate_block(BufferAllocator &alloc, size_t size)
 
 bool Device::find_memory_type(uint32_t *index, uint32_t device_req, uint32_t host_req)
 {
-	for (uint32_t i = 0; i < context.get_mem_props().memoryTypeCount; i++)
-	{
-		if ((1u << i) & device_req)
-		{
-			if ((host_req & context.get_mem_props().memoryTypes[i].propertyFlags) == host_req)
-			{
-				*index = i;
-				return true;
-			}
-		}
-	}
-	return false;
+   uint32_t i;
+
+   for (i = 0; i < context.get_mem_props().memoryTypeCount; i++)
+   {
+      if ((1u << i) & device_req)
+      {
+         if ((host_req & context.get_mem_props().memoryTypes[i].propertyFlags) == host_req)
+	 {
+            *index = i;
+	    return true;
+	 }
+      }
+   }
+
+   return false;
 }
 
 size_t Device::get_buffer_alignment() const
@@ -556,11 +553,9 @@ AllocatedMemory Device::allocate_memory(Internal::MemoryAllocator &alloc, const 
 	if (current)
 	{
 		size_t aligned = (current->offset + mem_reqs.alignment - 1) & ~(mem_reqs.alignment - 1);
+		// Exhausted.
 		if (aligned + mem_reqs.size > current->size)
-		{
-			// Exhausted.
 			current.reset();
-		}
 	}
 
 	if (current)
@@ -611,48 +606,49 @@ AllocatedMemory Device::allocate_memory(Internal::MemoryAllocator &alloc, const 
 ImageHandle Device::create_image(VkFormat format, unsigned width, unsigned height, unsigned layers, bool array,
                                  Internal::MemoryAllocator &mem_allocator)
 {
-	VkImageCreateInfo info = { VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO };
-	info.imageType = VK_IMAGE_TYPE_2D;
-	info.format = format;
-	info.flags = VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT;
-	info.extent.width = width;
-	info.extent.height = height;
-	info.extent.depth = 1;
-	info.mipLevels = 1;
-	info.arrayLayers = layers;
-	info.samples = VK_SAMPLE_COUNT_1_BIT;
-	info.tiling = VK_IMAGE_TILING_OPTIMAL;
-	info.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT;
-	info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-	info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+   VkImage image;
+   VkImageView view;
+   VkMemoryRequirements mem_reqs;
+   VkImageCreateInfo info = { VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO };
 
-	VkImage image;
-	V(vkCreateImage(context.get_device(), &info, nullptr, &image));
+   info.imageType = VK_IMAGE_TYPE_2D;
+   info.format = format;
+   info.flags = VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT;
+   info.extent.width = width;
+   info.extent.height = height;
+   info.extent.depth = 1;
+   info.mipLevels = 1;
+   info.arrayLayers = layers;
+   info.samples = VK_SAMPLE_COUNT_1_BIT;
+   info.tiling = VK_IMAGE_TILING_OPTIMAL;
+   info.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT;
+   info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+   info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 
-	VkMemoryRequirements mem_reqs;
-	vkGetImageMemoryRequirements(context.get_device(), image, &mem_reqs);
+   V(vkCreateImage(context.get_device(), &info, nullptr, &image));
 
-	auto block = allocate_memory(mem_allocator, mem_reqs);
-	V(vkBindImageMemory(context.get_device(), image, block.memory->memory, block.offset));
+   vkGetImageMemoryRequirements(context.get_device(), image, &mem_reqs);
 
-	VkImageViewCreateInfo view_info = { VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO };
-	view_info.image = image;
-	view_info.viewType = array ? VK_IMAGE_VIEW_TYPE_2D_ARRAY : VK_IMAGE_VIEW_TYPE_2D;
-	view_info.format = format;
-	view_info.components.r = VK_COMPONENT_SWIZZLE_R;
-	view_info.components.g = VK_COMPONENT_SWIZZLE_G;
-	view_info.components.b = VK_COMPONENT_SWIZZLE_B;
-	view_info.components.a = VK_COMPONENT_SWIZZLE_A;
-	view_info.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-	view_info.subresourceRange.levelCount = 1;
-	view_info.subresourceRange.layerCount = layers;
+   auto block = allocate_memory(mem_allocator, mem_reqs);
+   V(vkBindImageMemory(context.get_device(), image, block.memory->memory, block.offset));
 
-	VkImageView view;
-	V(vkCreateImageView(context.get_device(), &view_info, nullptr, &view));
+   VkImageViewCreateInfo view_info = { VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO };
+   view_info.image = image;
+   view_info.viewType = array ? VK_IMAGE_VIEW_TYPE_2D_ARRAY : VK_IMAGE_VIEW_TYPE_2D;
+   view_info.format = format;
+   view_info.components.r = VK_COMPONENT_SWIZZLE_R;
+   view_info.components.g = VK_COMPONENT_SWIZZLE_G;
+   view_info.components.b = VK_COMPONENT_SWIZZLE_B;
+   view_info.components.a = VK_COMPONENT_SWIZZLE_A;
+   view_info.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+   view_info.subresourceRange.levelCount = 1;
+   view_info.subresourceRange.layerCount = layers;
 
-	auto ptr = ImageHandle(new Image(*this, image, view, move(block), layers));
-	ptr->sampler = rdp.sampler;
-	return ptr;
+   V(vkCreateImageView(context.get_device(), &view_info, nullptr, &view));
+
+   auto ptr = ImageHandle(new Image(*this, image, view, move(block), layers));
+   ptr->sampler = rdp.sampler;
+   return ptr;
 }
 
 void Device::delete_image(Image *image)
@@ -1056,212 +1052,212 @@ void DescriptorSet::set_storage_image(unsigned binding, Image &image)
 
 void CommandBuffer::sync_buffer_to_gpu(Buffer &buffer)
 {
-	if (!buffer.staging.block->device_local)
-	{
-		VkBufferCopy region = { buffer.staging.offset, buffer.device.offset, buffer.staging.size };
-		vkCmdCopyBuffer(cmd, buffer.staging.block->buffer, buffer.device.block->buffer, 1, &region);
-	}
+   if (!buffer.staging.block->device_local)
+   {
+      VkBufferCopy region = { buffer.staging.offset, buffer.device.offset, buffer.staging.size };
+      vkCmdCopyBuffer(cmd, buffer.staging.block->buffer, buffer.device.block->buffer, 1, &region);
+   }
 }
 
 void CommandBuffer::sync_buffer_to_cpu(Buffer &buffer)
 {
-	if (!buffer.staging.block->device_local)
-	{
-		VkBufferCopy region = { buffer.device.offset, buffer.staging.offset, buffer.staging.size };
-		vkCmdCopyBuffer(cmd, buffer.device.block->buffer, buffer.staging.block->buffer, 1, &region);
-	}
+   if (!buffer.staging.block->device_local)
+   {
+      VkBufferCopy region = { buffer.device.offset, buffer.staging.offset, buffer.staging.size };
+      vkCmdCopyBuffer(cmd, buffer.device.block->buffer, buffer.staging.block->buffer, 1, &region);
+   }
 }
 
 void CommandBuffer::begin_stream()
 {
-	// Invalidate transfer read cache.
-	VkMemoryBarrier barrier = { VK_STRUCTURE_TYPE_MEMORY_BARRIER };
-	barrier.srcAccessMask = 0;
-	barrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
-	vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 1, &barrier, 0,
-	                     nullptr, 0, nullptr);
+   // Invalidate transfer read cache.
+   VkMemoryBarrier barrier = { VK_STRUCTURE_TYPE_MEMORY_BARRIER };
+   barrier.srcAccessMask = 0;
+   barrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+   vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 1, &barrier, 0,
+		   nullptr, 0, nullptr);
 }
 
 void CommandBuffer::end_stream()
 {
-	// Transfers are done, sync compute shaders with this.
-	VkMemoryBarrier barrier = { VK_STRUCTURE_TYPE_MEMORY_BARRIER };
-	barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-	barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-	vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 1, &barrier, 0,
-	                     nullptr, 0, nullptr);
+   // Transfers are done, sync compute shaders with this.
+   VkMemoryBarrier barrier = { VK_STRUCTURE_TYPE_MEMORY_BARRIER };
+   barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+   barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+   vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 1, &barrier, 0,
+		   nullptr, 0, nullptr);
 }
 
 void CommandBuffer::begin_readback()
 {
-	// Compute shaders are done, begin readback.
-	VkMemoryBarrier barrier = { VK_STRUCTURE_TYPE_MEMORY_BARRIER };
-	barrier.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
-	barrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
-	vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 1, &barrier, 0,
-	                     nullptr, 0, nullptr);
+   // Compute shaders are done, begin readback.
+   VkMemoryBarrier barrier = { VK_STRUCTURE_TYPE_MEMORY_BARRIER };
+   barrier.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
+   barrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+   vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 1, &barrier, 0,
+		   nullptr, 0, nullptr);
 }
 
 void CommandBuffer::end_readback()
 {
-	// Transfers are done, synchronize memory to host.
-	VkMemoryBarrier barrier = { VK_STRUCTURE_TYPE_MEMORY_BARRIER };
-	barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-	barrier.dstAccessMask = VK_ACCESS_HOST_READ_BIT;
-	vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_HOST_BIT, 0, 1, &barrier, 0, nullptr, 0,
-	                     nullptr);
+   // Transfers are done, synchronize memory to host.
+   VkMemoryBarrier barrier = { VK_STRUCTURE_TYPE_MEMORY_BARRIER };
+   barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+   barrier.dstAccessMask = VK_ACCESS_HOST_READ_BIT;
+   vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_HOST_BIT, 0, 1, &barrier, 0, nullptr, 0,
+		   nullptr);
 }
 
 void CommandBuffer::flush_barrier()
 {
-	VkMemoryBarrier barrier = { VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER };
-	barrier.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
-	barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-	vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 0,
-	                     &barrier, 0, nullptr, 0, nullptr);
+   VkMemoryBarrier barrier = { VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER };
+   barrier.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
+   barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+   vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 0,
+		   &barrier, 0, nullptr, 0, nullptr);
 }
 
 void CommandBuffer::prepare_image(Image &image)
 {
-	VkImageMemoryBarrier barrier = { VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER };
-	barrier.srcAccessMask = 0;
-	barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-	barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-	barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-	barrier.image = image.image;
-	barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-	barrier.subresourceRange.levelCount = 1;
-	barrier.subresourceRange.layerCount = image.layers;
+   VkImageMemoryBarrier barrier = { VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER };
+   barrier.srcAccessMask = 0;
+   barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+   barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+   barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+   barrier.image = image.image;
+   barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+   barrier.subresourceRange.levelCount = 1;
+   barrier.subresourceRange.layerCount = image.layers;
 
-	image.layout = barrier.newLayout;
+   image.layout = barrier.newLayout;
 
-	vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0,
-	                     nullptr, 1, &barrier);
+   vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0,
+		   nullptr, 1, &barrier);
 }
 
 void CommandBuffer::prepare_storage_image(Image &image)
 {
-	VkImageMemoryBarrier barrier = { VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER };
-	barrier.srcAccessMask = 0;
-	barrier.dstAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
-	barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-	barrier.newLayout = VK_IMAGE_LAYOUT_GENERAL;
-	barrier.image = image.image;
-	barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-	barrier.subresourceRange.levelCount = 1;
-	barrier.subresourceRange.layerCount = image.layers;
+   VkImageMemoryBarrier barrier = { VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER };
+   barrier.srcAccessMask = 0;
+   barrier.dstAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
+   barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+   barrier.newLayout = VK_IMAGE_LAYOUT_GENERAL;
+   barrier.image = image.image;
+   barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+   barrier.subresourceRange.levelCount = 1;
+   barrier.subresourceRange.layerCount = image.layers;
 
-	image.layout = barrier.newLayout;
+   image.layout = barrier.newLayout;
 
-	vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 0, nullptr,
-	                     0, nullptr, 1, &barrier);
+   vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 0, nullptr,
+		   0, nullptr, 1, &barrier);
 }
 
 void CommandBuffer::prepare_mixed_image(Image &image)
 {
-	VkImageMemoryBarrier barrier = { VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER };
-	barrier.srcAccessMask = 0;
-	barrier.dstAccessMask = VK_ACCESS_SHADER_WRITE_BIT | VK_ACCESS_TRANSFER_WRITE_BIT;
-	barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-	barrier.newLayout = VK_IMAGE_LAYOUT_GENERAL;
-	barrier.image = image.image;
-	barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-	barrier.subresourceRange.levelCount = 1;
-	barrier.subresourceRange.layerCount = image.layers;
+   VkImageMemoryBarrier barrier = { VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER };
+   barrier.srcAccessMask = 0;
+   barrier.dstAccessMask = VK_ACCESS_SHADER_WRITE_BIT | VK_ACCESS_TRANSFER_WRITE_BIT;
+   barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+   barrier.newLayout = VK_IMAGE_LAYOUT_GENERAL;
+   barrier.image = image.image;
+   barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+   barrier.subresourceRange.levelCount = 1;
+   barrier.subresourceRange.layerCount = image.layers;
 
-	image.layout = barrier.newLayout;
+   image.layout = barrier.newLayout;
 
-	vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
-	                     VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0,
-	                     nullptr, 1, &barrier);
+   vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+		   VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0,
+		   nullptr, 1, &barrier);
 }
 
 void CommandBuffer::copy_to_image(Image &image, Buffer &buffer, size_t offset, unsigned x, unsigned y, unsigned layer,
                                   unsigned width, unsigned height, unsigned row_length)
 {
-	VkBufferImageCopy copy = {};
+   VkBufferImageCopy copy = {};
 
-	copy.bufferOffset = offset + buffer.staging.offset;
-	copy.bufferRowLength = row_length;
-	copy.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-	copy.imageSubresource.baseArrayLayer = layer;
-	copy.imageSubresource.layerCount = 1;
-	copy.imageOffset.x = x;
-	copy.imageOffset.y = y;
-	copy.imageExtent.width = width;
-	copy.imageExtent.height = height;
-	copy.imageExtent.depth = 1;
+   copy.bufferOffset = offset + buffer.staging.offset;
+   copy.bufferRowLength = row_length;
+   copy.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+   copy.imageSubresource.baseArrayLayer = layer;
+   copy.imageSubresource.layerCount = 1;
+   copy.imageOffset.x = x;
+   copy.imageOffset.y = y;
+   copy.imageExtent.width = width;
+   copy.imageExtent.height = height;
+   copy.imageExtent.depth = 1;
 
-	vkCmdCopyBufferToImage(cmd, buffer.staging.block->buffer, image.image, image.layout, 1, &copy);
+   vkCmdCopyBufferToImage(cmd, buffer.staging.block->buffer, image.image, image.layout, 1, &copy);
 }
 
 void CommandBuffer::copy_buffer(Buffer &dst, Buffer &src)
 {
-	VkBufferCopy copy = {};
+   VkBufferCopy copy = {};
 
-	auto &src_block = src.staging.block && src.staging.block->device_local ? src.staging : src.device;
-	auto &dst_block = dst.staging.block && dst.staging.block->device_local ? dst.staging : dst.device;
+   auto &src_block = src.staging.block && src.staging.block->device_local ? src.staging : src.device;
+   auto &dst_block = dst.staging.block && dst.staging.block->device_local ? dst.staging : dst.device;
 
-	copy.srcOffset = src_block.offset;
-	copy.dstOffset = dst_block.offset;
-	assert(src_block.size == dst_block.size);
-	copy.size = src_block.size;
+   copy.srcOffset = src_block.offset;
+   copy.dstOffset = dst_block.offset;
+   assert(src_block.size == dst_block.size);
+   copy.size = src_block.size;
 
-	vkCmdCopyBuffer(cmd, src_block.block->buffer, dst_block.block->buffer, 1, &copy);
+   vkCmdCopyBuffer(cmd, src_block.block->buffer, dst_block.block->buffer, 1, &copy);
 }
 
 void CommandBuffer::complete_image(Image &image)
 {
-	VkImageMemoryBarrier barrier = { VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER };
-	barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-	barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-	barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-	barrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-	barrier.image = image.image;
-	barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-	barrier.subresourceRange.levelCount = 1;
-	barrier.subresourceRange.layerCount = image.layers;
+   VkImageMemoryBarrier barrier = { VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER };
+   barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+   barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+   barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+   barrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+   barrier.image = image.image;
+   barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+   barrier.subresourceRange.levelCount = 1;
+   barrier.subresourceRange.layerCount = image.layers;
 
-	image.layout = barrier.newLayout;
+   image.layout = barrier.newLayout;
 
-	vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 0, nullptr, 0,
-	                     nullptr, 1, &barrier);
+   vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 0, nullptr, 0,
+		   nullptr, 1, &barrier);
 }
 
 void CommandBuffer::complete_storage_image(Image &image)
 {
-	VkImageMemoryBarrier barrier = { VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER };
-	barrier.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
-	barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-	barrier.oldLayout = VK_IMAGE_LAYOUT_GENERAL;
-	barrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-	barrier.image = image.image;
-	barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-	barrier.subresourceRange.levelCount = 1;
-	barrier.subresourceRange.layerCount = image.layers;
+   VkImageMemoryBarrier barrier = { VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER };
+   barrier.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
+   barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+   barrier.oldLayout = VK_IMAGE_LAYOUT_GENERAL;
+   barrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+   barrier.image = image.image;
+   barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+   barrier.subresourceRange.levelCount = 1;
+   barrier.subresourceRange.layerCount = image.layers;
 
-	image.layout = barrier.newLayout;
+   image.layout = barrier.newLayout;
 
-	vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 0,
-	                     nullptr, 0, nullptr, 1, &barrier);
+   vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 0,
+		   nullptr, 0, nullptr, 1, &barrier);
 }
 
 void CommandBuffer::complete_mixed_image(Image &image)
 {
-	VkImageMemoryBarrier barrier = { VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER };
-	barrier.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT | VK_ACCESS_TRANSFER_WRITE_BIT;
-	barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-	barrier.oldLayout = VK_IMAGE_LAYOUT_GENERAL;
-	barrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-	barrier.image = image.image;
-	barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-	barrier.subresourceRange.levelCount = 1;
-	barrier.subresourceRange.layerCount = image.layers;
+   VkImageMemoryBarrier barrier = { VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER };
+   barrier.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT | VK_ACCESS_TRANSFER_WRITE_BIT;
+   barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+   barrier.oldLayout = VK_IMAGE_LAYOUT_GENERAL;
+   barrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+   barrier.image = image.image;
+   barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+   barrier.subresourceRange.levelCount = 1;
+   barrier.subresourceRange.layerCount = image.layers;
 
-	image.layout = barrier.newLayout;
+   image.layout = barrier.newLayout;
 
-	vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_TRANSFER_BIT,
-	                     VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 0, nullptr, 0, nullptr, 1, &barrier);
+   vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_TRANSFER_BIT,
+		   VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 0, nullptr, 0, nullptr, 1, &barrier);
 }
 
 void CommandBuffer::bind_pipeline(const Pipeline &pipeline)
