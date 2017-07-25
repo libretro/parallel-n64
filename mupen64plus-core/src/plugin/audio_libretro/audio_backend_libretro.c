@@ -52,8 +52,6 @@ static unsigned CountsPerSecond;
 static unsigned BytesPerSecond;
 static unsigned CountsPerByte;
 
-bool no_audio;
-
 static const retro_resampler_t *resampler;
 static void *resampler_audio_data;
 static float *audio_in_buffer_float;
@@ -154,8 +152,6 @@ audio_batch:
    ratio             = 44100.0 / GameFreq;
    max_frames        = (GameFreq > 44100) ? MAX_AUDIO_FRAMES : (size_t)(MAX_AUDIO_FRAMES / ratio - 1);
    remain_frames     = 0;
-   if (no_audio)
-      return;
 
    if (frames > max_frames)
    {

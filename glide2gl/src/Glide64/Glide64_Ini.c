@@ -7,7 +7,6 @@
 #include "api/libretro.h"
 #include "../../libretro/libretro_private.h"
 
-extern bool no_audio;
 extern uint8_t microcode[4096];
 extern uint32_t gfx_plugin_accuracy;
 extern SETTINGS settings;
@@ -956,10 +955,6 @@ void ReadSpecialSettings (const char * name)
       //fb_info_disable = 1
       //depthmode = 0
       settings.buff_clear = 0;
-   }
-   else if (strstr(name, (const char*)"TOP GEAR RALLY"))
-   {
-      no_audio = true;
    }
    else if (strstr(name, (const char*)"½½Ò!À²¾ÝÊß½ÞÙÀÞÏ"))
    {
