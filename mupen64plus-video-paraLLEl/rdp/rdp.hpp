@@ -8,44 +8,44 @@
 #include <unordered_map>
 #include <vector>
 
-#define RDP_MAX_PRIMITIVES 1024
+#define RDP_MAX_PRIMITIVES 	1024
 #define RDP_MAX_PRIMITIVES_LOG2 12
-#define RDP_MAX_COMBINERS 64
-#define TILE_SIZE_X 8
-#define TILE_SIZE_Y 8
+#define RDP_MAX_COMBINERS 	64
+#define TILE_SIZE_X 		8
+#define TILE_SIZE_Y 		8
 
-#define RDP_FLAG_FLIP (1 << 0)
-#define RDP_FLAG_DO_OFFSET (1 << 1)
-#define RDP_FLAG_SAMPLE_TEX (1 << 2)
-#define RDP_FLAG_FORCE_BLEND (1 << 3)
-#define RDP_FLAG_AA_ENABLE (1 << 4)
-#define RDP_FLAG_SHADE (1 << 5)
-#define RDP_FLAG_INTERPOLATE_Z (1 << 6)
-#define RDP_FLAG_Z_UPDATE (1 << 7)
-#define RDP_FLAG_Z_COMPARE (1 << 8)
-#define RDP_FLAG_PERSPECTIVE (1 << 9)
-#define RDP_FLAG_BILERP0 (1 << 10)
-#define RDP_FLAG_BILERP1 (1 << 11)
-#define RDP_FLAG_ALPHATEST (1 << 12)
-#define RDP_FLAG_COLOR_ON_CVG (1 << 13)
-#define RDP_FLAG_CVG_TIMES_ALPHA (1 << 14)
-#define RDP_FLAG_ALPHA_CVG_SELECT (1 << 15)
-#define RDP_FLAG_ALPHA_NOISE (1 << 16)
+#define RDP_FLAG_FLIP		      (1 << 0)
+#define RDP_FLAG_DO_OFFSET	      (1 << 1)
+#define RDP_FLAG_SAMPLE_TEX 	      (1 << 2)
+#define RDP_FLAG_FORCE_BLEND 	      (1 << 3)
+#define RDP_FLAG_AA_ENABLE 	      (1 << 4)
+#define RDP_FLAG_SHADE 		      (1 << 5)
+#define RDP_FLAG_INTERPOLATE_Z        (1 << 6)
+#define RDP_FLAG_Z_UPDATE 	      (1 << 7)
+#define RDP_FLAG_Z_COMPARE            (1 << 8)
+#define RDP_FLAG_PERSPECTIVE          (1 << 9)
+#define RDP_FLAG_BILERP0              (1 << 10)
+#define RDP_FLAG_BILERP1              (1 << 11)
+#define RDP_FLAG_ALPHATEST            (1 << 12)
+#define RDP_FLAG_COLOR_ON_CVG         (1 << 13)
+#define RDP_FLAG_CVG_TIMES_ALPHA      (1 << 14)
+#define RDP_FLAG_ALPHA_CVG_SELECT     (1 << 15)
+#define RDP_FLAG_ALPHA_NOISE          (1 << 16)
 #define RDP_FLAG_SAMPLE_TEX_PIPELINED (1 << 17)
-#define RDP_FLAG_SAMPLE_TEX_LOD (1 << 18)
+#define RDP_FLAG_SAMPLE_TEX_LOD       (1 << 18)
 
-#define RDP_FLAG_CVG_MODE_SHIFT 20
-#define RDP_FLAG_TILE_SHIFT 22
-#define RDP_FLAG_LEVELS_SHIFT 25
-#define RDP_FLAG_CYCLE_TYPE_SHIFT 30
-#define RDP_FLAG_Z_MODE_SHIFT 28
+#define RDP_FLAG_CVG_MODE_SHIFT       20
+#define RDP_FLAG_TILE_SHIFT           22
+#define RDP_FLAG_LEVELS_SHIFT         25
+#define RDP_FLAG_CYCLE_TYPE_SHIFT     30
+#define RDP_FLAG_Z_MODE_SHIFT         28
 
-#define BLENDMODE_FLAG_DITHER_SEL 16
+#define BLENDMODE_FLAG_DITHER_SEL     16
 
-#define LOD_INFO_PRIMITIVE_DETAIL (1 << 16)
-#define LOD_INFO_PRIMITIVE_SHARPEN (1 << 17)
+#define LOD_INFO_PRIMITIVE_DETAIL        (1 << 16)
+#define LOD_INFO_PRIMITIVE_SHARPEN       (1 << 17)
 #define LOD_INFO_PRIMITIVE_MIN_LOD_SHIFT 18
-#define LOD_INFO_PRIMITIVE_MIN_LOD_MASK (31 << 18)
+#define LOD_INFO_PRIMITIVE_MIN_LOD_MASK  (31 << 18)
 
 #define SEXT(x, bits) (int32_t((x) << (32 - (bits))) >> (32 - (bits)))
 
@@ -53,23 +53,23 @@ namespace RDP
 {
 struct Primitive
 {
-	int32_t xl, xm, xh;
-	int32_t yl, ym, yh;
-	int32_t DxLDy, DxMDy, DxHDy;
-	uint32_t flags;
+   int32_t xl, xm, xh;
+   int32_t yl, ym, yh;
+   int32_t DxLDy, DxMDy, DxHDy;
+   uint32_t flags;
 };
 
 struct Attribute
 {
-	int32_t rgba[4];
-	int32_t d_rgba_dx[4];
-	int32_t d_rgba_de[4];
-	int32_t d_rgba_dy[4];
+   int32_t rgba[4];
+   int32_t d_rgba_dx[4];
+   int32_t d_rgba_de[4];
+   int32_t d_rgba_dy[4];
 
-	int32_t stwz[4];
-	int32_t d_stwz_dx[4];
-	int32_t d_stwz_de[4];
-	int32_t d_stwz_dy[4];
+   int32_t stwz[4];
+   int32_t d_stwz_dx[4];
+   int32_t d_stwz_de[4];
+   int32_t d_stwz_dy[4];
 };
 
 class Renderer

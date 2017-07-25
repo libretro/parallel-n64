@@ -14,57 +14,57 @@ namespace RDP
 
 enum Format
 {
-	FORMAT_RGBA = 0,
-	FORMAT_YUV = 1,
-	FORMAT_CI = 2,
-	FORMAT_IA = 3,
-	FORMAT_I = 4
+   FORMAT_RGBA = 0,
+   FORMAT_YUV  = 1,
+   FORMAT_CI   = 2,
+   FORMAT_IA   = 3,
+   FORMAT_I    = 4
 };
 
 enum PixelSize
 {
-	PIXEL_SIZE_4BPP = 0,
-	PIXEL_SIZE_8BPP = 1,
-	PIXEL_SIZE_16BPP = 2,
-	PIXEL_SIZE_32BPP = 3
+   PIXEL_SIZE_4BPP = 0,
+   PIXEL_SIZE_8BPP = 1,
+   PIXEL_SIZE_16BPP = 2,
+   PIXEL_SIZE_32BPP = 3
 };
 
 struct TileDescriptor
 {
-	uint32_t mask_mirror_and[4];
-	int32_t clamped[4];
+   uint32_t mask_mirror_and[4];
+   int32_t clamped[4];
 
-	float offset[2];
-	int32_t base[2];
+   float offset[2];
+   int32_t base[2];
 
-	int32_t shift[2];
-	float layer;
-	int mid_texel;
+   int32_t shift[2];
+   float layer;
+   int mid_texel;
 };
 static_assert(sizeof(TileDescriptor) == 64, "TileDescriptor is not 64 bytes.");
 
 struct Tile
 {
-	unsigned format;
-	unsigned pixel_size;
-	unsigned line;
-	unsigned tmem;
-	unsigned palette;
+   unsigned format;
+   unsigned pixel_size;
+   unsigned line;
+   unsigned tmem;
+   unsigned palette;
 
-	int32_t sl, tl, sh, th;
+   int32_t sl, tl, sh, th;
 
-	unsigned size[2];
+   unsigned size[2];
 
-	// Raw RDP values.
-	unsigned mask[2];
-	uint32_t shift[2];
-	bool mirror_en[2];
-	bool clamp_en[2];
+   // Raw RDP values.
+   unsigned mask[2];
+   uint32_t shift[2];
+   bool mirror_en[2];
+   bool clamp_en[2];
 
-	// Pre-compute values that are convenient for shader to work with.
-	int32_t clamp[4];
-	uint32_t mirror_and[2];
-	uint32_t mask_and[2];
+   // Pre-compute values that are convenient for shader to work with.
+   int32_t clamp[4];
+   uint32_t mirror_and[2];
+   uint32_t mask_and[2];
 };
 
 class TMEM
@@ -212,28 +212,28 @@ private:
 class TileAtlasAllocator
 {
 public:
-	void reset();
-	void add_size(unsigned width, unsigned height);
-	void begin_allocator();
-	void allocate(unsigned *x, unsigned *y, unsigned *layer, unsigned width, unsigned height);
-	void end_allocator();
+   void reset();
+   void add_size(unsigned width, unsigned height);
+   void begin_allocator();
+   void allocate(unsigned *x, unsigned *y, unsigned *layer, unsigned width, unsigned height);
+   void end_allocator();
 
-	void get_atlas_size(unsigned *width, unsigned *height, unsigned *layers)
-	{
-		*width = max_width;
-		*height = max_height;
-		*layers = num_layers;
-	}
+   void get_atlas_size(unsigned *width, unsigned *height, unsigned *layers)
+   {
+      *width = max_width;
+      *height = max_height;
+      *layers = num_layers;
+   }
 
 private:
-	unsigned max_width = 0;
-	unsigned max_height = 0;
+   unsigned max_width = 0;
+   unsigned max_height = 0;
 
-	unsigned current_x = 0;
-	unsigned current_y = 0;
-	unsigned max_height_in_stripe = 0;
-	unsigned current_layer = 0;
-	unsigned num_layers = 0;
+   unsigned current_x = 0;
+   unsigned current_y = 0;
+   unsigned max_height_in_stripe = 0;
+   unsigned current_layer = 0;
+   unsigned num_layers = 0;
 };
 }
 #endif
