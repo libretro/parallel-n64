@@ -359,6 +359,8 @@ static const uint64_t lut_cpop[][2] = {
    { 0xFB3C48D08D28F69FULL, 1 }, /* Charlie Blast's Territory (E) [!] */
    { 0x1E0E96E84E28826BULL, 1 }, /* Charlie Blast's Territory (U) [!] */
    { 0xF8009DB06B291823ULL, 1 }, /* City-Tour GP - Zennihon GT Senshuken (J) [!] */
+   { 0x373F58899A6CA80AULL, 3 }, /* Conker's Bad Fur Day (E) [!] */
+   { 0x30C7AC507704072DULL, 3 }, /* Conker's Bad Fur Day (U) [!] */
    { 0x630AA37D896BD7DBULL, 1 }, /* Destruction Derby 64 (E) (M3) [!] */
    { 0xDEE584A20F161187ULL, 1 }, /* Destruction Derby 64 (U) [!] */
    { 0xC16C421BA21580F7ULL, 3 }, /* Disney's Donald Duck - Goin' Quackers (U) [!] */
