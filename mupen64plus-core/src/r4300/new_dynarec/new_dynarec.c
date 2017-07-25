@@ -11280,6 +11280,8 @@ void TLBWR_new(void)
 void *TLB_refill_exception_new(u_int inst_addr,u_int mem_addr,int w)
 {
    int i;
+   if (g_dev.r4300.special_rom == RAT_ATTACK)
+     return get_addr_ht(0x80000000);
 
    if(w==1)
       g_cp0_regs[CP0_CAUSE_REG]=(inst_addr<<31)|CP0_CAUSE_EXCCODE_TLBS;
