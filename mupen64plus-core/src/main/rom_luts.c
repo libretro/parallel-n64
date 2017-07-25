@@ -15,6 +15,12 @@ static const uint64_t lut_vi_clock_1500[] = {
    0x7a4747ac44eeec23ULL  /* Pokemon Puzzle League (G) */
 };
 
+static const uint64_t lut_vi_clock_1600[] = {
+   0x519EA4E1EB7584E8ULL, /* King Hill 64 - Extreme Snowboarding (J) [!] */
+   0xE688A5B8B14B3F18ULL, /* Twisted Edge Extreme Snowboarding (E) [!] */
+   0xBBC99D32117DAA80ULL, /* Twisted Edge Extreme Snowboarding (U) [!] */
+};
+
 static const uint64_t lut_vi_clock_2200[] = {
    0x7EAE24889D40A35AULL, /* Biohazard 2 (J) [!] */
    0x9B500E8EE90550B3ULL, /* Resident Evil 2 (E) (M2) [!] */

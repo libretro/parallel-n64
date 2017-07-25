@@ -252,6 +252,19 @@ m64p_error open_rom(const unsigned char* romimage, unsigned int size)
       }
    }
 
+   for (i = 0; i < sizeof(lut_vi_clock_1600)/sizeof(lut_vi_clock_1600[0]); ++i)
+   {
+      if (lut_vi_clock_1600[i] == lut_id)
+      {
+         strcpy(ROM_SETTINGS.goodname, ROM_PARAMS.headername);
+         DebugMessage(M64MSG_INFO, "%s INI patches applied.", ROM_PARAMS.headername);
+	 g_vi_refresh_rate = 1600;
+
+         patch_applied = 1;
+         break;
+      }
+   }
+
    for (i = 0; i < sizeof(lut_vi_clock_2200)/sizeof(lut_vi_clock_2200[0]); ++i)
    {
       if (lut_vi_clock_2200[i] == lut_id)
