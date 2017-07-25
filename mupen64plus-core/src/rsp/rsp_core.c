@@ -23,6 +23,7 @@
 
 #include "main/main.h"
 #include "main/profile.h"
+#include "main/rom.h"
 #include "memory/memory.h"
 #include "plugin/plugin.h"
 #include "r4300/r4300_core.h"
@@ -270,13 +271,15 @@ void do_SP_Task(struct rsp_core* sp)
 
     if (sp->mem[0xfc0/4] == 1)
     {
-       /* Display list */
-       if (sp->dp->dpc_regs[DPC_STATUS_REG] & DPC_STATUS_FREEZE) // DP frozen (DK64, BC)
-        {
-            /* don't do the task now
-             * the task will be done when DP is unfreezed (see update_dpc_status) */
-            return;
-        }
+	if (ROM_PARAMS.special_rom != PERFECT_DARK)
+	{
+	   /* Display list */
+	   /* don't do the task now
+	    * the task will be done when 
+	    * DP is unfreezed (see update_dpc_status) */
+	   if (sp->dp->dpc_regs[DPC_STATUS_REG] & DPC_STATUS_FREEZE) /* DP frozen (DK64, BC) */
+	      return;
+	}
 
         unprotect_framebuffers(sp->dp);
 
