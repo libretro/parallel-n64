@@ -213,6 +213,19 @@ m64p_error open_rom(const unsigned char* romimage, unsigned int size)
       }
    }
 
+   for (i = 0; i < sizeof(lut_fixedaudiopos)/sizeof(lut_fixedaudiopos[0]); ++i)
+   {
+      if (lut_fixedaudiopos[i] == lut_id)
+      {
+         strcpy(ROM_SETTINGS.goodname, ROM_PARAMS.headername);
+         ROM_PARAMS.fixedaudiopos = 1;
+         DebugMessage(M64MSG_INFO, "%s INI patches applied.", ROM_PARAMS.headername);
+
+         patch_applied = 1;
+         break;
+      }
+   }
+
    for (i = 0; i < sizeof(lut_alternate_vi)/sizeof(lut_alternate_vi[0]); ++i)
    {
       if (lut_alternate_vi[i] == lut_id)
