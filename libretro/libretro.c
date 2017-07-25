@@ -117,7 +117,7 @@ bool alternate_mapping;
 
 static bool initializing            = true;
 
-extern int g_count_per_scanline;
+extern int g_vi_refresh_rate;
 
 /* after the controller's CONTROL* member has been assigned we can update
  * them straight from here... */
@@ -340,7 +340,7 @@ static void setup_variables(void)
        "(Angrylion) VI Overlay; disabled|enabled"
       },
       { "parallel-n64-virefresh",
-         "VI Refresh (Overclock); 1500|2200" },
+         "VI Refresh (Overclock); auto|1500|2200" },
       { "parallel-n64-bufferswap",
          "Buffer Swap; disabled|enabled"
       },
@@ -1168,10 +1168,11 @@ void update_variables(bool startup)
 
    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
    {
-      if (!strcmp(var.value, "1500"))
-         g_count_per_scanline = 1500;
+      if (!strcmp(var.value, "auto")) { }
+      else if (!strcmp(var.value, "1500"))
+         g_vi_refresh_rate = 1500;
       else if (!strcmp(var.value, "2200"))
-         g_count_per_scanline = 2200;
+         g_vi_refresh_rate = 2200;
    }
 
    var.key = "parallel-n64-bufferswap";
