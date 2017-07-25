@@ -108,11 +108,10 @@ static void do_dma(struct ai_controller* ai, const struct ai_dma* dma)
 
       ai->samples_format_changed = 0;
       ai->audio_pos = 0;
+      ai->last_read = 0;
    }
 
-   /* push audio samples to audio backend */
-   ai->push_audio_samples(&ai->backend,
-         &ai->ri->rdram.dram[dma->address/4], dma->length);
+   ai->last_read = dma->length;
 
    /* schedule end of dma event */
    cp0_update_count();
@@ -176,7 +175,17 @@ int read_ai_regs(void* opaque, uint32_t address, uint32_t* value)
     uint32_t reg = AI_REG(address);
 
     if (reg == AI_LEN_REG)
+    {
        *value = get_remaining_dma_length(ai);
+       if (*value < ai->last_read)
+       {
+          unsigned int diff = ai->fifo[0].length - ai->last_read;
+          unsigned char *p = (unsigned char*)&ai->ri->rdram.dram[ai->fifo[0].address/4];
+          ai->push_audio_samples(&ai->backend, p + diff,
+			  ai->last_read - *value);
+	  ai->last_read = *value;
+       }
+    }
     else
         *value = ai->regs[reg];
 
@@ -226,6 +235,14 @@ int write_ai_regs(void* opaque, uint32_t address,
 
 void ai_end_of_dma_event(struct ai_controller* ai)
 {
+   if (ai->last_read != 0)
+   {
+      unsigned int diff = ai->fifo[0].length - ai->last_read;
+      unsigned char *p = (unsigned char*)&ai->ri->rdram.dram[ai->fifo[0].address/4];
+      ai->push_audio_samples(&ai->backend,
+         p + diff, ai->last_read);
+   } 
+ 
    fifo_pop(ai);
    raise_rcp_interrupt(ai->r4300, MI_INTR_AI);
 }

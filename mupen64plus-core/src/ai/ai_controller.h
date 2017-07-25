@@ -73,6 +73,7 @@ struct ai_controller
    struct vi_controller* vi;
    uint32_t fixed_audio_pos;
    uint32_t audio_pos;
+   uint32_t last_read;
 };
 
 
