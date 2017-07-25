@@ -107,7 +107,6 @@ static void do_dma(struct ai_controller* ai, const struct ai_dma* dma)
       ai->set_audio_format(&ai->backend, frequency, bits);
 
       ai->samples_format_changed = 0;
-      ai->audio_pos = 0;
       ai->last_read = 0;
    }
 
@@ -166,6 +165,7 @@ void poweron_ai(struct ai_controller* ai)
     memset(ai->regs, 0, AI_REGS_COUNT*sizeof(uint32_t));
     memset(ai->fifo, 0, AI_DMA_FIFO_SIZE*sizeof(struct ai_dma));
     ai->samples_format_changed = 0;
+    ai->audio_pos = 0;
 }
 
 /* Reads a word from the AI MMIO register space. */
