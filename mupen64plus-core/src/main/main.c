@@ -345,6 +345,7 @@ m64p_error main_init(void)
          NULL,
          set_audio_format_via_libretro,
          push_audio_samples_via_libretro,
+	 ROM_PARAMS.fixedaudiopos,
          g_rom, g_rom_size, 
          NULL, dummy_save, saved_memory.flashram,
          NULL, dummy_save, saved_memory.sram,

@@ -38,7 +38,9 @@ void init_device(
       unsigned int emumode,
       unsigned int count_per_op,
       /* ai */
-      void * ai_user_data, void (*ai_set_audio_format)(void*,unsigned int, unsigned int), void (*ai_push_audio_samples)(void*,const void*,size_t),
+      void * ai_user_data, void (*ai_set_audio_format)(void*,unsigned int, unsigned int),
+      void (*ai_push_audio_samples)(void*,const void*,size_t),
+      unsigned int fixed_audio_pos,
       /* pi */
       uint8_t *rom,
       size_t rom_size,
@@ -64,7 +66,8 @@ void init_device(
    init_ai(&dev->ai, ai_user_data,
          ai_set_audio_format,
          ai_push_audio_samples,
-         &dev->r4300, &dev->ri, &dev->vi);
+         &dev->r4300, &dev->ri, &dev->vi,
+	 fixed_audio_pos);
    init_pi(&dev->pi,
          rom, rom_size,
          ddrom, ddrom_size,

@@ -71,6 +71,8 @@ struct ai_controller
    struct r4300_core* r4300;
    struct ri_controller* ri;
    struct vi_controller* vi;
+   uint32_t fixed_audio_pos;
+   uint32_t audio_pos;
 };
 
 
@@ -80,7 +82,9 @@ void init_ai(struct ai_controller* ai,
       void (*push_audio_samples)(void*,const void*,size_t),
       struct r4300_core* r4300,
       struct ri_controller *ri,
-      struct vi_controller* vi);
+      struct vi_controller* vi,
+      unsigned int fixed_audio_pos
+      );
 
 void poweron_ai(struct ai_controller* ai);
 

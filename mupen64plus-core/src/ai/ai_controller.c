@@ -41,7 +41,9 @@ void init_ai(struct ai_controller* ai,
       void (*push_audio_samples)(void*,const void*,size_t),
       struct r4300_core* r4300,
       struct ri_controller *ri,
-      struct vi_controller* vi)
+      struct vi_controller* vi,
+      unsigned int fixed_audio_pos
+      )
 {
    ai->user_data          = user_data;
    ai->set_audio_format   = set_audio_format;
@@ -50,11 +52,13 @@ void init_ai(struct ai_controller* ai,
    ai->r4300 = r4300;
    ai->ri    = ri;
    ai->vi    = vi;
+   ai->fixed_audio_pos = fixed_audio_pos;
 }
 
 
 static uint32_t get_remaining_dma_length(struct ai_controller* ai)
 {
+   uint64_t dma_length;
    unsigned int next_ai_event;
    unsigned int remaining_dma_duration;
    const uint32_t* cp0_regs;
@@ -74,7 +78,8 @@ static uint32_t get_remaining_dma_length(struct ai_controller* ai)
 
    remaining_dma_duration = next_ai_event - cp0_regs[CP0_COUNT_REG];
 
-   return (uint64_t)remaining_dma_duration * ai->fifo[0].length / ai->fifo[0].duration;
+   dma_length = (uint64_t)remaining_dma_duration * ai->fifo[0].length / ai->fifo[0].duration;
+   return dma_length & ~7;
 }
 
 static unsigned int get_dma_duration(struct ai_controller* ai)
@@ -102,6 +107,7 @@ static void do_dma(struct ai_controller* ai, const struct ai_dma* dma)
       ai->set_audio_format(&ai->backend, frequency, bits);
 
       ai->samples_format_changed = 0;
+      ai->audio_pos = 0;
    }
 
    /* push audio samples to audio backend */
@@ -186,6 +192,15 @@ int write_ai_regs(void* opaque, uint32_t address,
 
    switch (reg)
    {
+      case AI_DRAM_ADDR_REG:
+         ai->regs[AI_DRAM_ADDR_REG] = MASKED_WRITE(&ai->regs[AI_DRAM_ADDR_REG], value, mask);
+         if (ai->fixed_audio_pos)
+	 {
+             if (ai->audio_pos == 0)
+                 ai->audio_pos = ai->regs[AI_DRAM_ADDR_REG];
+             ai->regs[AI_DRAM_ADDR_REG] = ai->audio_pos;
+         }
+         return 0;
       case AI_LEN_REG:
          ai->regs[AI_LEN_REG] = MASKED_WRITE(&ai->regs[AI_LEN_REG], value, mask);
          fifo_push(ai);

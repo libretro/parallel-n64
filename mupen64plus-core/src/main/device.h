@@ -59,6 +59,7 @@ void init_device(
       unsigned int count_per_op,
       /* ai */
       void * ai_user_data, void (*ai_set_audio_format)(void*,unsigned int, unsigned int), void (*ai_push_audio_samples)(void*,const void*,size_t),
+      unsigned fixed_audio_pos,
       /* pi */
       uint8_t *rom,
       size_t rom_size,

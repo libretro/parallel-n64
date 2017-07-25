@@ -45,6 +45,10 @@
 
 /* Amount of cpu cycles per vi scanline - empirically determined */
 enum { DEFAULT_COUNT_PER_SCANLINE = 1500 };
+/* by default, alternate VI timing is disabled */
+enum { DEFAULT_ALTERNATE_VI_TIMING = 0 };
+/* by default, fixed audio position is disabled */
+enum { DEFAULT_FIXED_AUDIO_POS = 0 };
 
 /* Global loaded rom memory space. */
 unsigned char* g_rom = NULL;
@@ -188,6 +192,7 @@ m64p_error open_rom(const unsigned char* romimage, unsigned int size)
 
    /* add some useful properties to ROM_PARAMS */
    ROM_PARAMS.systemtype = rom_country_code_to_system_type(ROM_HEADER.destination_code);
+   ROM_PARAMS.fixedaudiopos = DEFAULT_FIXED_AUDIO_POS;
 
    memcpy(ROM_PARAMS.headername, ROM_HEADER.Name, 20);
    ROM_PARAMS.headername[20] = '\0';
