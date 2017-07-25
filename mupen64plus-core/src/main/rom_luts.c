@@ -333,6 +333,18 @@ static const uint64_t lut_delaysi[][2] = {
    { 0x9F8B96C3A01194DCULL, 0 }, /* Yakouchuu II - Satsujin Kouro (J) */
 };
 
+static const uint64_t lut_audiosignal[] = {
+   0xD614E5BFA76DBCC1ULL, /* Disney's Tarzan (E) [!] */
+   0x001A3BD0AFB3DE1AULL, /* Disney's Tarzan (F) [!] */
+   0x4C2613234F295E1AULL, /* Disney's Tarzan (G) [!] */
+   0xCBFE69C7F2C0AB2AULL, /* Disney's Tarzan (U) [!] */
+   0xB58988E9B1FC4BE8ULL, /* Hydro Thunder (E) [!] */
+   0x29A045CEABA9060EULL, /* Hydro Thunder (F) [!] */
+   0xC8DC65EB3D8C8904ULL, /* Hydro Thunder (U) [!] */
+   0x3FFE80F4A7C15F7EULL, /* NBA Showtime - NBA on NBC (U) [!] */
+   0x1FC215320B6466D4ULL, /* Rugrats in Paris - The Movie */
+};
+
 /* Cycles per emulated instruction (aka CountPerOp) */
 static const uint64_t lut_cpop[][2] = {
    { 0xB98BA4565B2B76AFULL, 1 }, /* 64 de Hakken!! Tamagotchi Minna de Tamagotchi World (J) [!] */

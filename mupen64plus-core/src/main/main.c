@@ -358,6 +358,7 @@ m64p_error main_init(void)
          ROM_SETTINGS.savetype != EEPROM_16KB ? 0x8000 : 0xc000,  /* eeprom_id   */
          NULL,                                                    /* af_rtc_userdata */
          get_time_using_C_localtime,                              /* af_rtc_get_time */
+	 ROM_PARAMS.audiosignal,
          vi_clock_from_tv_standard(ROM_PARAMS.systemtype),
          vi_expected_refresh_rate_from_tv_standard(ROM_PARAMS.systemtype),
          g_ddrom, g_ddrom_size, g_dd_disk, g_dd_disk_size);

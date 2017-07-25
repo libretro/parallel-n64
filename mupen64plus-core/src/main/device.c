@@ -52,6 +52,8 @@ void init_device(
       /* si */
       void* eeprom_user_data, void (*eeprom_save)(void*), uint8_t* eeprom_data, size_t eeprom_size, uint16_t eeprom_id,
       void* af_rtc_user_data, const struct tm* (*af_rtc_get_time)(void*),
+      /* sp */
+      unsigned int audio_signal,
       /* vi */
       unsigned int vi_clock,
       unsigned int expected_refresh_rate,
@@ -63,7 +65,7 @@ void init_device(
 {
    init_r4300(&dev->r4300, emumode, count_per_op, special_rom);
    init_rdp(&dev->dp, &dev->r4300, &dev->sp, &dev->ri);
-   init_rsp(&dev->sp, &dev->r4300, &dev->dp, &dev->ri);
+   init_rsp(&dev->sp, &dev->r4300, &dev->dp, &dev->ri, audio_signal);
    init_ai(&dev->ai, ai_user_data,
          ai_set_audio_format,
          ai_push_audio_samples,

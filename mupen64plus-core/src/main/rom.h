@@ -41,6 +41,7 @@ typedef struct _rom_params
    m64p_system_type systemtype;
    char headername[21];  /* ROM Name as in the header, removing trailing whitespace */
    int fixedaudiopos;
+   int audiosignal;
    int special_rom;
 } rom_params;
 

@@ -71,6 +71,8 @@ void init_device(
       /* si */
       void* eeprom_user_data, void (*eeprom_save)(void*), uint8_t* eeprom_data, size_t eeprom_size, uint16_t eeprom_id,
       void* af_rtc_user_data, const struct tm* (*af_rtc_get_time)(void*),
+      /* sp */
+      unsigned int audio_signal,
       /* vi */
       unsigned int vi_clock,
       unsigned int expected_refresh_rate,

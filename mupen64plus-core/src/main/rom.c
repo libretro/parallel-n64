@@ -49,6 +49,8 @@ enum { DEFAULT_COUNT_PER_SCANLINE = 1500 };
 enum { DEFAULT_ALTERNATE_VI_TIMING = 0 };
 /* by default, fixed audio position is disabled */
 enum { DEFAULT_FIXED_AUDIO_POS = 0 };
+/* by default, Audio Signal is disabled */
+enum { DEFAULT_AUDIO_SIGNAL = 0 };
 
 /* Global loaded rom memory space. */
 unsigned char* g_rom = NULL;
@@ -192,6 +194,7 @@ m64p_error open_rom(const unsigned char* romimage, unsigned int size)
    /* add some useful properties to ROM_PARAMS */
    ROM_PARAMS.systemtype = rom_country_code_to_system_type(ROM_HEADER.destination_code);
    ROM_PARAMS.fixedaudiopos = DEFAULT_FIXED_AUDIO_POS;
+   ROM_PARAMS.audiosignal = DEFAULT_AUDIO_SIGNAL;
 
    memcpy(ROM_PARAMS.headername, ROM_HEADER.Name, 20);
    ROM_PARAMS.headername[20] = '\0';
@@ -205,6 +208,19 @@ m64p_error open_rom(const unsigned char* romimage, unsigned int size)
       {
          strcpy(ROM_SETTINGS.goodname, ROM_PARAMS.headername);
          ROM_SETTINGS.savetype = EEPROM_16KB;
+         DebugMessage(M64MSG_INFO, "%s INI patches applied.", ROM_PARAMS.headername);
+
+         patch_applied = 1;
+         break;
+      }
+   }
+
+   for (i = 0; i < sizeof(lut_audiosignal)/sizeof(lut_audiosignal[0]); ++i)
+   {
+      if (lut_audiosignal[i] == lut_id)
+      {
+         strcpy(ROM_SETTINGS.goodname, ROM_PARAMS.headername);
+         ROM_PARAMS.audiosignal = 1;
          DebugMessage(M64MSG_INFO, "%s INI patches applied.", ROM_PARAMS.headername);
 
          patch_applied = 1;
