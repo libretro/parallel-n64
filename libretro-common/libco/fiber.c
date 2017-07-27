@@ -26,7 +26,7 @@ cothread_t co_active(void)
 {
    if(!co_active_)
    {
-      ConvertThreadToFiber(0);
+      ConvertThreadToFiberEx(0, FIBER_FLAG_FLOAT_SWITCH);
       co_active_ = GetCurrentFiber();
    }
    return co_active_;
@@ -36,10 +36,10 @@ cothread_t co_create(unsigned int heapsize, void (*coentry)(void))
 {
    if(!co_active_)
    {
-      ConvertThreadToFiber(0);
+      ConvertThreadToFiberEx(0, FIBER_FLAG_FLOAT_SWITCH);
       co_active_ = GetCurrentFiber();
    }
-   return (cothread_t)CreateFiber(heapsize, co_thunk, (void*)coentry);
+   return (cothread_t)CreateFiberEx(heapsize, heapsize, FIBER_FLAG_FLOAT_SWITCH, co_thunk, (void*)coentry);
 }
 
 void co_delete(cothread_t cothread)

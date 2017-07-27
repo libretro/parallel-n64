@@ -135,7 +135,7 @@ void convert_float_to_s16(int16_t *out,
 
 #endif
 
-   for (; i < samples; i++)
+   for (i = 0; i < samples; i++)
    {
       int32_t val = (int32_t)(in[i] * 0x8000);
       out[i]      = (val > 0x7FFF) ? 0x7FFF :
