@@ -62,6 +62,8 @@ void poweron_cp0(void)
    g_cp0_regs[CP0_BADVADDR_REG] = UINT32_C(0xFFFFFFFF);
    g_cp0_regs[CP0_ERROREPC_REG] = UINT32_C(0xFFFFFFFF);
 
+   init_interrupt();
+
    poweron_tlb();
 }
 

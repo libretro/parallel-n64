@@ -98,10 +98,6 @@ void r4300_execute(void)
 
     stop = 0;
 
-    last_addr = 0xa4000040;
-    next_interrupt = 624999;
-    init_interrupt();
-
     if (r4300emu == CORE_PURE_INTERPRETER)
     {
         DebugMessage(M64MSG_INFO, "Starting R4300 emulator: Pure Interpreter");

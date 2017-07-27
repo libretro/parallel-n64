@@ -43,6 +43,10 @@ void reset_hard(void)
    last_addr = UINT32_C(0xa4000040);
    next_interrupt = 624999;
    init_interrupt();
+
+   g_dev.vi.delay = g_dev.vi.next_vi = 5000;
+   add_interrupt_event_count(VI_INT, g_dev.vi.next_vi);
+
    if(r4300emu != CORE_PURE_INTERPRETER)
    {
       free_blocks();

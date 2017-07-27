@@ -106,4 +106,9 @@ void poweron_device(struct device* dev)
     poweron_vi(&dev->vi);
     poweron_dd(&dev->dd);
     poweron_memory();
+
+    /* XXX: somewhat cheating to put it here but not really other option.
+     * Proper fix would probably trigerring the first vi
+     * when VI_CONTROL_REG[1:0] is set to non zero value */
+    add_interrupt_event_count(VI_INT, dev->vi.next_vi);
 }

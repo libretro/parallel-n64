@@ -344,10 +344,8 @@ void init_interrupt(void)
 {
    SPECIAL_done = 1;
 
-   g_dev.vi.delay = g_dev.vi.next_vi = 5000;
 
    clear_queue(&q);
-   add_interrupt_event_count(VI_INT, g_dev.vi.next_vi);
    add_interrupt_event_count(SPECIAL_INT, 0);
 }
 
@@ -467,6 +465,10 @@ static void nmi_int_handler(void)
    g_cp0_regs[CP0_COUNT_REG] = 0;
    g_gs_vi_counter = 0;
    init_interrupt();
+
+   g_dev.vi.delay = g_dev.vi.next_vi = 5000;
+   add_interrupt_event_count(VI_INT, g_dev.vi.next_vi);
+
    /* clear the audio status register so that subsequent write_ai() calls will work properly */
    g_dev.ai.regs[AI_STATUS_REG] = 0;
    /* set ErrorEPC with the last instruction address */
