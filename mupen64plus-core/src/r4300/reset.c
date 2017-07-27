@@ -27,6 +27,7 @@
 #include "cached_interp.h"
 #include "interrupt.h"
 #include "main/device.h"
+#include "pifbootrom/pifbootrom.h"
 #include "main/main.h"
 #include "r4300.h"
 #include "r4300_core.h"
@@ -38,20 +39,20 @@ void reset_hard(void)
 {
    poweron_device(&g_dev);
 
-    r4300_reset_soft();
-    last_addr = UINT32_C(0xa4000040);
-    next_interrupt = 624999;
-    init_interrupt();
-    if(r4300emu != CORE_PURE_INTERPRETER)
-    {
-        free_blocks();
-        init_blocks();
-    }
-    generic_jump_to(last_addr);
+   pifbootrom_hle_execute(&g_dev);
+   last_addr = UINT32_C(0xa4000040);
+   next_interrupt = 624999;
+   init_interrupt();
+   if(r4300emu != CORE_PURE_INTERPRETER)
+   {
+      free_blocks();
+      init_blocks();
+   }
+   generic_jump_to(last_addr);
 }
 
 void reset_soft(void)
 {
-    add_interrupt_event(HW2_INT, 0);  /* Hardware 2 Interrupt immediately */
-    add_interrupt_event(NMI_INT, 50000000);  /* Non maskable Interrupt after 1/2 second */
+   add_interrupt_event(HW2_INT, 0);  	    /* Hardware 2 Interrupt immediately */
+   add_interrupt_event(NMI_INT, 50000000);  /* Non maskable Interrupt after 1/2 second */
 }

@@ -30,6 +30,7 @@
 #include "ai/ai_controller.h"
 #include "api/callbacks.h"
 #include "api/m64p_types.h"
+#include "pifbootrom/pifbootrom.h"
 #include "cached_interp.h"
 #include "cp0_private.h"
 #include "dd/dd_controller.h"
@@ -461,7 +462,7 @@ static void nmi_int_handler(void)
    g_cp0_regs[CP0_STATUS_REG] = (g_cp0_regs[CP0_STATUS_REG] & ~(CP0_STATUS_SR | CP0_STATUS_TS | UINT32_C(0x00080000))) | (CP0_STATUS_ERL | CP0_STATUS_BEV | CP0_STATUS_SR);
    g_cp0_regs[CP0_CAUSE_REG]  = 0x00000000;
    /* simulate the soft reset code which would run from the PIF ROM */
-   r4300_reset_soft();
+   pifbootrom_hle_execute(&g_dev);
    /* clear all interrupts, reset interrupt counters back to 0 */
    g_cp0_regs[CP0_COUNT_REG] = 0;
    g_gs_vi_counter = 0;

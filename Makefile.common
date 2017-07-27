@@ -105,6 +105,7 @@ SOURCES_C += \
 	$(CORE_DIR)/src/plugin/plugin.c \
 	$(CORE_DIR)/src/plugin/get_time_using_C_localtime.c \
 	$(CORE_DIR)/src/plugin/rumble_via_input_plugin.c \
+	$(CORE_DIR)/src/pifbootrom/pifbootrom.c \
 	$(CORE_DIR)/src/r4300/r4300.c \
 	$(CORE_DIR)/src/r4300/cached_interp.c \
 	$(CORE_DIR)/src/r4300/cp0.c \

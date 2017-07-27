@@ -59,6 +59,7 @@
 #include "../plugin/emulate_game_controller_via_input_plugin.h"
 #include "../plugin/get_time_using_C_localtime.h"
 #include "../plugin/rumble_via_input_plugin.h"
+#include "../pifbootrom/pifbootrom.h"
 #include "../r4300/r4300.h"
 #include "../r4300/r4300_core.h"
 #include "../r4300/reset.h"
@@ -382,7 +383,7 @@ m64p_error main_init(void)
 
    /* call r4300 CPU core and run the game */
    poweron_device(&g_dev);
-   r4300_reset_soft();
+   pifbootrom_hle_execute(&g_dev);
 
    return M64ERR_SUCCESS;
 }
