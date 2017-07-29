@@ -115,27 +115,16 @@ void set_audio_format_via_libretro(void* user_data,
    ai->regs[AI_DACRATE_REG] = saved_ai_dacrate;
 }
 
-/* Abuse core & audio plugin implementation details to obtain the desired effect. */
-void push_audio_samples_via_libretro(void* user_data, const void* buffer, size_t size)
+static void aiLenChanged(void* user_data, const void* buffer, size_t size)
 {
-   int16_t *out;
    size_t max_frames, remain_frames;
    uint32_t i;
    double ratio;
    struct resampler_data data = {0};
+   int16_t *out      = NULL;
    int16_t *raw_data = (int16_t*)buffer;
    size_t frames     = size / 4;
    uint8_t *p        = (uint8_t*)buffer;
-   struct ai_controller* ai = (struct ai_controller*)user_data;
-
-   /* save registers values */
-   uint32_t saved_ai_length = ai->regs[AI_LEN_REG];
-   uint32_t saved_ai_dram = ai->regs[AI_DRAM_ADDR_REG];
-
-   /* notify plugin of new samples to play.
-    * Exploit the fact that buffer points in ai->ri->rdram.dram to retrieve dram_addr_reg value */
-   ai->regs[AI_DRAM_ADDR_REG] = (uint8_t*)buffer - (uint8_t*)g_dev.ri.rdram.dram;
-   ai->regs[AI_LEN_REG] = size;
 
    for (i = 0; i < size; i += 4)
    {
@@ -182,6 +171,21 @@ audio_batch:
       frames   = remain_frames;
       goto audio_batch;
    }
+}
+
+/* Abuse core & audio plugin implementation details to obtain the desired effect. */
+void push_audio_samples_via_libretro(void* user_data, const void* buffer, size_t size)
+{
+   struct ai_controller* ai = (struct ai_controller*)user_data;
+   uint32_t saved_ai_length = ai->regs[AI_LEN_REG];
+   uint32_t saved_ai_dram = ai->regs[AI_DRAM_ADDR_REG];
+
+   /* notify plugin of new samples to play.
+    * Exploit the fact that buffer points in ai->ri->rdram.dram to retrieve dram_addr_reg value */
+   ai->regs[AI_DRAM_ADDR_REG] = (uint8_t*)buffer - (uint8_t*)g_dev.ri.rdram.dram;
+   ai->regs[AI_LEN_REG] = size;
+
+   aiLenChanged(user_data, buffer, size);
 
    /* restore original registers vlaues */
    ai->regs[AI_LEN_REG]       = saved_ai_length;
