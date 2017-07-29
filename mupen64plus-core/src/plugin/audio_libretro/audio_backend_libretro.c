@@ -90,6 +90,18 @@ void init_audio_libretro(unsigned max_audio_frames)
    convert_float_to_s16_init_simd();
 }
 
+static void aiDacrateChanged(void *user_data, unsigned int frequency, unsigned int bits)
+{
+   GameFreq        = frequency;
+   BytesPerSecond  = frequency * 4;
+   CountsPerSecond = VI_INTR_TIME * 60 /* TODO/FIXME - dehardcode */;
+   CountsPerByte   = CountsPerSecond / BytesPerSecond;
+
+#if 0
+   printf("CountsPerByte: %d, GameFreq: %d\n", CountsPerByte, GameFreq);
+#endif
+}
+
 /* A fully compliant implementation is not really possible with just the zilmar spec.
  * We assume bits == 16 (assumption compatible with audio-sdl plugin implementation)
  */
@@ -102,14 +114,7 @@ void set_audio_format_via_libretro(void* user_data,
    /* notify plugin of the new frequency (can't do the same for bits) */
    ai->regs[AI_DACRATE_REG] = ai->vi->clock / frequency - 1;
 
-   GameFreq        = frequency;
-   BytesPerSecond  = frequency * 4;
-   CountsPerSecond = VI_INTR_TIME * 60 /* TODO/FIXME - dehardcode */;
-   CountsPerByte   = CountsPerSecond / BytesPerSecond;
-
-#if 0
-   printf("CountsPerByte: %d, GameFreq: %d\n", CountsPerByte, GameFreq);
-#endif
+   aiDacrateChanged(user_data, frequency, bits);
 
    /* restore original registers values */
    ai->regs[AI_DACRATE_REG] = saved_ai_dacrate;
