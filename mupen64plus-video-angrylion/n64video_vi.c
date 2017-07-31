@@ -105,7 +105,6 @@ int overlay = 0;
 extern uint32_t *blitter_buf_lock;
 
 static uint32_t tvfadeoutstate[625];
-static uint32_t brightness = 0;
 static uint32_t prevwasblank = 0;
 
 STRICTINLINE static void video_filter16(
