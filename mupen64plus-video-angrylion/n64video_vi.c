@@ -121,7 +121,6 @@ STRICTINLINE static void restore_filter16(
 STRICTINLINE static void restore_filter32(
     int* r, int* g, int* b, uint32_t fboffset, uint32_t num, uint32_t hres);
 static void gamma_filters(unsigned char* argb, int gamma_and_dither);
-static void adjust_brightness(unsigned char* argb, int brightcoeff);
 STRICTINLINE static void vi_vl_lerp(CCVG* up, CCVG down, uint32_t frac);
 STRICTINLINE static void video_max_optimized(uint32_t* Pixels, uint32_t* penumin, uint32_t* penumax, int numofels);
 
@@ -407,7 +406,6 @@ static void do_frame_buffer_proper(
     int prev_x = 0, cur_x = 0, next_x = 0, far_x = 0;
     int cache_marker = 0, cache_next_marker = 0, divot_cache_marker = 0, divot_cache_next_marker = 0;
     int xfrac = 0, yfrac = 0;
-    int slowbright;
     int lerping = 0;
     int vi_width_low = vi_width & 0xFFF;
     const int x_add = *GET_GFX_INFO(VI_X_SCALE_REG) & 0x00000FFF;
@@ -441,12 +439,6 @@ static void do_frame_buffer_proper(
     cache_marker_init  = (x_start >> 10) - 2;
     cache_marker_init |= -(cache_marker_init < 0);
 
-    slowbright = 0;
-#if 0
-    if (GetAsyncKeyState(0x91))
-        brightness = ++brightness & 0xF;
-    slowbright = brightness >> 1;
-#endif
     pixels = 0;
 
     for (j = 0; j < vres; j++)
@@ -696,10 +688,6 @@ static void do_frame_buffer_proper(
                 argb[1 ^ 3] = argb[2 ^ 3] = argb[3 ^ 3] = 0xFF;
 #endif
             x_start += x_add;
-            scanline[i] = *(int32_t *)(argb);
-            if (slowbright == 0)
-                continue;
-            adjust_brightness(argb, slowbright);
             scanline[i] = *(int32_t *)(argb);
         }
         y_start += y_add;
@@ -1163,51 +1151,6 @@ static void gamma_filters(unsigned char* argb, int gamma_and_dither)
             g = gamma_dither_table[(g << 6) | dith];
             dith = ((cdith >> 9) & 0x38) | (cdith & 7);
             b = gamma_dither_table[(b << 6) | dith];
-            break;
-    }
-    argb[1 ^ BYTE_ADDR_XOR] = (unsigned char)(r);
-    argb[2 ^ BYTE_ADDR_XOR] = (unsigned char)(g);
-    argb[3 ^ BYTE_ADDR_XOR] = (unsigned char)(b);
-}
-
-static void adjust_brightness(unsigned char* argb, int brightcoeff)
-{
-    int r, g, b;
-
-    r = argb[1 ^ BYTE_ADDR_XOR];
-    g = argb[2 ^ BYTE_ADDR_XOR];
-    b = argb[3 ^ BYTE_ADDR_XOR];
-    brightcoeff &= 7;
-    switch (brightcoeff)
-    {
-        case 0:    
-            break;
-        case 1: 
-        case 2:
-        case 3:
-            r += (r >> (4 - brightcoeff));
-            g += (g >> (4 - brightcoeff));
-            b += (b >> (4 - brightcoeff));
-            if (r > 0xFF)
-                r = 0xFF;
-            if (g > 0xFF)
-                g = 0xFF;
-            if (b > 0xFF)
-                b = 0xFF;
-            break;
-        case 4:
-        case 5:
-        case 6:
-        case 7:
-            r = (r + 1) << (brightcoeff - 3);
-            g = (g + 1) << (brightcoeff - 3);
-            b = (b + 1) << (brightcoeff - 3);
-            if (r > 0xFF)
-                r = 0xFF;
-            if (g > 0xFF)
-                g = 0xFF;
-            if (b > 0xFF)
-                b = 0xFF;
             break;
     }
     argb[1 ^ BYTE_ADDR_XOR] = (unsigned char)(r);
