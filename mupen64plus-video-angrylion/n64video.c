@@ -246,18 +246,23 @@ void (*fbwrite_ptr)(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, 
    (in) &= (RDRAM_MASK >> 1);	                   \
     if ((in) <= idxlim16) {                      \
         rdram_16[(in) ^ WORD_ADDR_XOR] = (rval); \
+        hidden_bits[(in)] = (hval);              \
     }                                            \
 }
 #define PAIRWRITE32(in, rval, hval0, hval1) {    \
    (in) &= (RDRAM_MASK >> 2);                    \
     if ((in) <= idxlim32) {                      \
         rdram[(in)] = (rval);                    \
+        hidden_bits[(in) << 1] = (hval0);        \
+        hidden_bits[((in) << 1) + 1] = (hval1);  \
     }                                            \
 }
 #define PAIRWRITE8(in, rval, hval) {             \
    (in) &= RDRAM_MASK;                           \
     if ((in) <= plim) {                          \
         rdram_8[(in) ^ BYTE_ADDR_XOR] = (rval);  \
+        if ((in) & 1)                            \
+            hidden_bits[(in) >> 1] = (hval);     \
     }                                            \
 }
 
@@ -1124,6 +1129,9 @@ void rdp_init(void)
                       &blender2b_a[1], 0, 0);
     other_modes.f.stalederivs = 1;
     memset(__TMEM, 0, 0x1000);
+
+    for (i = 0; i < sizeof(hidden_bits); i++)
+        hidden_bits[i] = 0x03;
 
     memset(tile, 0, sizeof(tile));
     for (i = 0; i < 8; i++)
