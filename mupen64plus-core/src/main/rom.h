@@ -88,7 +88,6 @@ enum
     NORMAL_ROM,
     GOLDEN_EYE,
     RAT_ATTACK,
-    INDIANA_JONES,
     PERFECT_DARK
 };
 
