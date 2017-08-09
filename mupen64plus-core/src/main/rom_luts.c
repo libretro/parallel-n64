@@ -328,6 +328,9 @@ static const uint64_t lut_delaysi[][2] = {
    { 0xC2E9AA9A475D70AAULL, 0 }, /* Banjo-Tooie (U) [!] */
    { 0xC9176D39EA4779D1ULL, 0 }, /* Banjo-Tooie (E) (M4) [!] */
    { 0x155B7CDFF0DA7325ULL, 0 }, /* Banjo-Tooie (A) [!] */
+   { 0x418BDA98248A0F58ULL, 0 }, /* Mischief Makers (E) [!] */
+   { 0x0B93051B603D81F9ULL, 0 }, /* Mischief Makers (U) [!] */
+   { 0x9FE6162DE97E4037ULL, 0 }, /* Yuke Yuke!! Trouble Makers (J) [!] */
    { 0x9F8B96C3A01194DCULL, 0 }, /* Yakouchuu II - Satsujin Kouro (J) */
 };
 
