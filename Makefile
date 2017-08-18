@@ -371,6 +371,30 @@ else ifneq (,$(findstring vita,$(platform)))
    PLATFORM_EXT := unix
    STATIC_LINKING=1
 
+# Windows MSVC 2013 x86
+else ifeq ($(platform), windows_msvc2013_x86)
+	CC  = cl.exe
+	CXX = cl.exe
+
+PATH := $(shell IFS=$$'\n'; cygpath "$(VS120COMNTOOLS)../../VC/bin"):$(PATH)
+PATH := $(PATH):$(shell IFS=$$'\n'; cygpath "$(VS120COMNTOOLS)../IDE")
+LIB := $(shell IFS=$$'\n'; cygpath -w "$(VS120COMNTOOLS)../../VC/lib")
+INCLUDE := $(shell IFS=$$'\n'; cygpath "$(VS120COMNTOOLS)../../VC/include")
+
+WindowsSdkDir := $(shell reg query "HKLM\SOFTWARE\Microsoft\Microsoft SDKs\Windows\v8.1A" -v "InstallationFolder" | grep -o '[A-Z]:\\.*')lib
+
+WindowsSdkDirInc := $(shell reg query "HKLM\SOFTWARE\Microsoft\Microsoft SDKs\Windows\v8.1A" -v "InstallationFolder" | grep -o '[A-Z]:\\.*')Include
+
+INCFLAGS_PLATFORM = -I"$(WindowsSdkDirInc)"
+export INCLUDE := $(INCLUDE)
+export LIB := $(LIB);$(WindowsSdkDir)
+TARGET := $(TARGET_NAME)_libretro.dll
+PSS_STYLE :=2
+LDFLAGS += -DLL
+GL_LIB = opengl32.lib
+HAVE_PARALLEL=0
+HAVE_PARALLEL_RSP=0
+
 # Windows MSVC 2010 x64
 else ifeq ($(platform), windows_msvc2010_x64)
 	CC  = cl.exe
@@ -424,6 +448,31 @@ GL_LIB = opengl32.lib
 HAVE_PARALLEL=0
 HAVE_PARALLEL_RSP=0
 
+# Windows MSVC 2005 x86
+else ifeq ($(platform), windows_msvc2005_x86)
+	CC  = cl.exe
+	CXX = cl.exe
+	HAS_GCC := 0
+
+PATH := $(shell IFS=$$'\n'; cygpath "$(VS80COMNTOOLS)../../VC/bin"):$(PATH)
+PATH := $(PATH):$(shell IFS=$$'\n'; cygpath "$(VS80COMNTOOLS)../IDE")
+INCLUDE := $(shell IFS=$$'\n'; cygpath "$(VS80COMNTOOLS)../../VC/include")
+LIB := $(shell IFS=$$'\n'; cygpath -w "$(VS80COMNTOOLS)../../VC/lib")
+BIN := $(shell IFS=$$'\n'; cygpath "$(VS80COMNTOOLS)../../VC/bin")
+
+WindowsSdkDir := $(INETSDK)
+
+export INCLUDE := $(INCLUDE);$(INETSDK)/Include;libretro-common/include/compat/msvc
+export LIB := $(LIB);$(WindowsSdkDir);$(INETSDK)/Lib
+TARGET := $(TARGET_NAME)_libretro.dll
+PSS_STYLE :=2
+LDFLAGS += -DLL
+CFLAGS += -D_CRT_SECURE_NO_DEPRECATE
+LIBS =
+GL_LIB = opengl32.lib
+HAVE_PARALLEL=0
+HAVE_PARALLEL_RSP=0
+NOSSE=1
 
 # Windows
 else ifneq (,$(findstring win,$(platform)))

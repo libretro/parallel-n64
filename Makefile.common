@@ -169,7 +169,9 @@ ifeq ($(WITH_DYNAREC), arm)
 endif
 ifeq ($(WITH_DYNAREC), $(filter $(WITH_DYNAREC), i386 i686 x86 x86_64 x64))
 		DYNAREC_USED = 1
+ifneq ($(NOSSE), 1)
 		CPUFLAGS += -msse -msse2
+endif
 		SOURCES_C += $(CORE_DIR)/src/r4300/hacktarux_dynarec/assemble.c \
 						 $(CORE_DIR)/src/r4300/hacktarux_dynarec/regcache.c \
 						 $(CORE_DIR)/src/r4300/hacktarux_dynarec/hacktarux_dynarec.c
