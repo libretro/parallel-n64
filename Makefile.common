@@ -156,6 +156,10 @@ ifdef WITH_DYNAREC
 		DYNAFLAGS += -D_M_X64
 		CFLAGS += -DARCH_MIN_SSE2
 		CXXFLAGS += -DARCH_MIN_SSE2
+ifneq (,$(findstring msvc,$(platform)))
+		SOURCES_ASM += \
+			$(CORE_DIR)/src/r4300/hacktarux_dynarec/dyna_start.asm
+endif
 	endif
 
 ifeq ($(WITH_DYNAREC), arm)
