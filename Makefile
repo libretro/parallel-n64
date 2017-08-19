@@ -387,7 +387,7 @@ WindowsSdkDirInc := $(WindowsSdkDir)Include
 
 INCFLAGS_PLATFORM = -I"$(WindowsSdkDirInc)\um" -I"$(WindowsSdkDirInc)\shared"
 export INCLUDE := $(INCLUDE)
-export LIB := $(LIB);$(WindowsSdkDir)\Lib
+export LIB := $(LIB);$(WindowsSdkDir)\Lib;$(WindowsSdkDir)\Lib\winv6.3\um\x86
 TARGET := $(TARGET_NAME)_libretro.dll
 PSS_STYLE :=2
 LDFLAGS += -DLL
