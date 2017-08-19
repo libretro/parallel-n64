@@ -191,8 +191,6 @@ bool init()
 	frontend->set_renderer(renderer.get(), device.get());
 	renderer->set_rdram(DRAM, 8 * 1024 * 1024);
 	::VI::set_num_frames(frames);
-
-   return true;
 }
 
 void deinit()

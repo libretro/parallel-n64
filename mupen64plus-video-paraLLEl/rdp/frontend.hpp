@@ -63,7 +63,7 @@ private:
 
    Renderer *renderer = nullptr;
    Vulkan::Device *device = nullptr;
-   OtherModes other_modes;
+   OtherModes other_modes = {};
    unsigned draw_count = 0;
 
    void tri_fill_tex_coeffs(Attribute *attr, const uint32_t *args);

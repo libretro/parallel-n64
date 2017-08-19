@@ -182,7 +182,7 @@ private:
 
 	struct
 	{
-		Vulkan::CommandBuffer cmd;
+		Vulkan::CommandBuffer cmd = {};
 		Vulkan::DescriptorSet lut_set;
 		Vulkan::DescriptorSet buffer_set;
 
@@ -190,8 +190,8 @@ private:
 		Vulkan::ImageHandle centroid_lut;
 		Vulkan::Buffer z_lut;
 
-		Vulkan::Buffer framebuffer;
-		Vulkan::Buffer framebuffer_depth;
+		Vulkan::Buffer framebuffer = {};
+		Vulkan::Buffer framebuffer_depth = {};
 
 		struct
 		{
@@ -349,10 +349,10 @@ private:
 
 		uint32_t primitive_z = 0;
 
-		BufferCombiner combiners;
+		BufferCombiner combiners = {};
 		bool combiners_dirty = true;
-		bool combiner_reads_secondary_tile[2];
-		bool combiner_reads_tile[2];
+		bool combiner_reads_secondary_tile[2] = {};
+		bool combiner_reads_tile[2] = {};
 		bool combiner_reads_pipelined_tile = false;
 
 		std::unordered_map<size_t, unsigned> combiner_map;
@@ -383,7 +383,7 @@ private:
 	void sync_depth_dram_to_gpu();
 
 	TMEM tmem;
-	uint32_t tile_instances[TMEM_TILES];
+	uint32_t tile_instances[TMEM_TILES] = {};
 
 	void reset_buffers();
 
