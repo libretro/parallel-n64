@@ -164,6 +164,7 @@ EXPORT u32 CALL API_PREFIX(DoRspCycles)(u32 cycles)
 #endif
     run_task();
 
+#if 0
 /*
  * An optional EMMS when compiling with Intel SIMD or MMX support.
  *
@@ -172,6 +173,7 @@ EXPORT u32 CALL API_PREFIX(DoRspCycles)(u32 cycles)
  */
 #ifdef ARCH_MIN_SSE2
     _mm_empty();
+#endif
 #endif
 
     if (*CR[0x4] & SP_STATUS_BROKE) /* normal exit, from executing BREAK */

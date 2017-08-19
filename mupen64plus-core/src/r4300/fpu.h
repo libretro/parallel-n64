@@ -36,7 +36,7 @@
   static void fesetround(eRoundType RoundType)
   {
     static const unsigned int msRound[4] = { _RC_NEAR, _RC_CHOP, _RC_UP, _RC_DOWN };
-#if defined(__x86_64__)
+#if defined(__x86_64__) || defined(_M_X64)
     _controlfp(msRound[RoundType], _MCW_RC);
 #else
     unsigned int oldX87, oldSSE2;
