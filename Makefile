@@ -375,6 +375,7 @@ else ifneq (,$(findstring vita,$(platform)))
 else ifeq ($(platform), windows_msvc2013_x86)
 	CC  = cl.exe
 	CXX = cl.exe
+	CC_AS = ml.exe
 
 PATH := $(shell IFS=$$'\n'; cygpath "$(VS120COMNTOOLS)../../VC/bin"):$(PATH)
 PATH := $(PATH):$(shell IFS=$$'\n'; cygpath "$(VS120COMNTOOLS)../IDE")
@@ -400,6 +401,7 @@ WITH_DYNAREC=x86
 else ifeq ($(platform), windows_msvc2013_x64)
 	CC  = cl.exe
 	CXX = cl.exe
+	CC_AS = ml64.exe
 
 PATH := $(shell IFS=$$'\n'; cygpath "$(VS120COMNTOOLS)../../VC/bin/amd64"):$(PATH)
 PATH := $(PATH):$(shell IFS=$$'\n'; cygpath "$(VS120COMNTOOLS)../IDE")
@@ -424,6 +426,7 @@ HAVE_PARALLEL_RSP=0
 else ifeq ($(platform), windows_msvc2010_x64)
 	CC  = cl.exe
 	CXX = cl.exe
+	CC_AS = ml64.exe
 
 PATH := $(shell IFS=$$'\n'; cygpath "$(VS100COMNTOOLS)../../VC/bin/amd64"):$(PATH)
 PATH := $(PATH):$(shell IFS=$$'\n'; cygpath "$(VS100COMNTOOLS)../IDE")
@@ -451,6 +454,7 @@ HAVE_PARALLEL_RSP=0
 else ifeq ($(platform), windows_msvc2010_x86)
 	CC  = cl.exe
 	CXX = cl.exe
+	CC_AS = ml.exe
 
 PATH := $(shell IFS=$$'\n'; cygpath "$(VS100COMNTOOLS)../../VC/bin"):$(PATH)
 PATH := $(PATH):$(shell IFS=$$'\n'; cygpath "$(VS100COMNTOOLS)../IDE")
@@ -478,6 +482,7 @@ HAVE_PARALLEL_RSP=0
 else ifeq ($(platform), windows_msvc2005_x86)
 	CC  = cl.exe
 	CXX = cl.exe
+	CC_AS = ml.exe
 	HAS_GCC := 0
 
 PATH := $(shell IFS=$$'\n'; cygpath "$(VS80COMNTOOLS)../../VC/bin"):$(PATH)
