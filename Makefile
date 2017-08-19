@@ -394,6 +394,7 @@ LDFLAGS += -DLL
 GL_LIB = opengl32.lib
 HAVE_PARALLEL=0
 HAVE_PARALLEL_RSP=0
+WITH_DYNAREC=x86
 
 # Windows MSVC 2010 x64
 else ifeq ($(platform), windows_msvc2010_x64)
