@@ -552,10 +552,26 @@ endif
 
 COREFLAGS += -D__LIBRETRO__ -DM64P_PLUGIN_API -DM64P_CORE_PROTOTYPES -D_ENDUSER_RELEASE -DSINC_LOWER_QUALITY
 
+OBJOUT   = -o
+LINKOUT  = -o 
+
+ifneq (,$(findstring msvc,$(platform)))
+	OBJOUT = -Fo
+	LINKOUT = -out:
+	LD = link.exe
+else
+	LD = $(CXX)
+endif
 
 ifeq ($(DEBUG), 1)
-   CPUOPTS += -O0 -g
    CPUOPTS += -DOPENGL_DEBUG
+
+   ifneq (,$(findstring msvc,$(platform)))
+      CPUOPTS += -Od -MDd -Zi -FS
+      LD += -DEBUG
+   else
+      CPUOPTS += -O0 -g
+   endif
 else
    CPUOPTS += -O2 -DNDEBUG
 endif
@@ -608,17 +624,6 @@ endif
 endif
 
 LDFLAGS    += $(fpic)
-
-OBJOUT   = -o
-LINKOUT  = -o 
-
-ifneq (,$(findstring msvc,$(platform)))
-	OBJOUT = -Fo
-	LINKOUT = -out:
-	LD = link.exe
-else
-	LD = $(CXX)
-endif
 
 ifeq ($(platform), theos_ios)
 COMMON_FLAGS := -DIOS $(COMMON_DEFINES) $(INCFLAGS) $(INCFLAGS_PLATFORM) -I$(THEOS_INCLUDE_PATH) -Wno-error
