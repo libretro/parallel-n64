@@ -381,13 +381,13 @@ PATH := $(PATH):$(shell IFS=$$'\n'; cygpath "$(VS120COMNTOOLS)../IDE")
 LIB := $(shell IFS=$$'\n'; cygpath -w "$(VS120COMNTOOLS)../../VC/lib")
 INCLUDE := $(shell IFS=$$'\n'; cygpath "$(VS120COMNTOOLS)../../VC/include")
 
-WindowsSdkDir := $(shell reg query "HKLM\SOFTWARE\Microsoft\Microsoft SDKs\Windows\v8.1A" -v "InstallationFolder" | grep -o '[A-Z]:\\.*')lib
+WindowsSdkDir := $(shell reg query "HKLM\SOFTWARE\Microsoft\Windows Kits\Installed Roots" -v "KitsRoot81" | grep -o '[A-Z]:\\.*')
 
-WindowsSdkDirInc := $(shell reg query "HKLM\SOFTWARE\Microsoft\Microsoft SDKs\Windows\v8.1A" -v "InstallationFolder" | grep -o '[A-Z]:\\.*')Include
+WindowsSdkDirInc := $(WindowsSdkDir)Include
 
-INCFLAGS_PLATFORM = -I"$(WindowsSdkDirInc)"
+INCFLAGS_PLATFORM = -I"$(WindowsSdkDirInc)\um" -I"$(WindowsSdkDirInc)\shared"
 export INCLUDE := $(INCLUDE)
-export LIB := $(LIB);$(WindowsSdkDir)
+export LIB := $(LIB);$(WindowsSdkDir)\Lib
 TARGET := $(TARGET_NAME)_libretro.dll
 PSS_STYLE :=2
 LDFLAGS += -DLL
@@ -623,3 +623,6 @@ clean:
 .PHONY: clean
 -include $(OBJECTS:.o=.d)
 endif
+
+print-%:
+	@echo '$*=$($*)'
