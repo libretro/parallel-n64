@@ -36,7 +36,9 @@
   static void fesetround(eRoundType RoundType)
   {
     static const unsigned int msRound[4] = { _RC_NEAR, _RC_CHOP, _RC_UP, _RC_DOWN };
-#if defined(__x86_64__)
+#if WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_APP)
+	_controlfp(msRound[RoundType], _MCW_RC);
+#elif defined(__x86_64__)
     _controlfp(msRound[RoundType], _MCW_RC);
 #else
     unsigned int oldX87, oldSSE2;
