@@ -121,8 +121,14 @@ ifneq (,$(findstring unix,$(platform)))
    # Raspberry Pi
    ifneq (,$(findstring rpi,$(platform)))
       GLES = 1
-      GL_LIB := -L/opt/vc/lib -lGLESv2
-      INCFLAGS += -I/opt/vc/include
+      
+      ifneq (,$(findstring mesa,$(platform)))
+         GL_LIB := -lGLESv2
+      else
+         GL_LIB := -L/opt/vc/lib -lGLESv2
+         INCFLAGS += -I/opt/vc/include -I/opt/vc/include/interface/vcos -I/opt/vc/include/interface/vcos/pthreads
+      endif
+      
       WITH_DYNAREC=arm
       ifneq (,$(findstring rpi2,$(platform)))
          CPUFLAGS += -DNO_ASM -DARM -D__arm__ -DARM_ASM -D__NEON_OPT -DNOSSE
