@@ -19,6 +19,7 @@ void begin_frame();
 void set_dithering(unsigned type);
 
 void process_commands();
+void set_scissor_variables(const char *name);
 extern const struct retro_hw_render_interface_vulkan *vulkan;
 
 extern std::unique_ptr<Frontend> frontend;

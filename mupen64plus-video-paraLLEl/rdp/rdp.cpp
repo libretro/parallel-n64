@@ -1206,8 +1206,8 @@ void Renderer::set_color_image(uint32_t addr, unsigned format, unsigned pixel_si
    // We will need to estimate the real height and potentially flush out
    // everything if we guess wrong.
    // Just employ some crappy heuristic to make this sort of work.
-   if (width > 320)
-      max_height = 480;
+   if (width > width_greater_than)
+      max_height = width_greater_than_max_height;
    else if (width == 320)
       max_height = 240;
 
