@@ -178,6 +178,7 @@ public:
             !strcmp(name, "FIFA 99")               ||
             !strcmp(name, "Fox Sports Hoops 99")   ||
             !strcmp(name, "GAUNTLET LEGENDS")      ||
+            !strcmp(name, "Indiana Jones")         ||
             !strcmp(name, "Jeremy McGrath Super")  ||
             !strcmp(name, "KEN GRIFFEY SLUGFEST")  ||
             !strcmp(name, "Knockout Kings 2000")   ||
