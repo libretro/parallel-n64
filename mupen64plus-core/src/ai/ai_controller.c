@@ -104,7 +104,7 @@ static void do_dma(struct ai_controller* ai, const struct ai_dma* dma)
          ? 16 /* default bit rate */
          : 1 + ai->regs[AI_BITRATE_REG];
 
-      ai->set_audio_format(&ai->backend, frequency, bits);
+      ai->set_audio_format(ai, frequency, bits);
 
       ai->samples_format_changed = 0;
       ai->last_read = 0;

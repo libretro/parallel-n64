@@ -18,16 +18,21 @@
 using namespace std;
 using namespace Vulkan;
 
+extern "C" unsigned setting_get_dithering();
+
 namespace RDP
 {
 
 Renderer::Renderer(Vulkan::Device &device)
     : device(device)
 {
+   rdp_dithering = setting_get_dithering();
+
    reset_buffers();
    init_dither_lut();
    init_centroid_lut();
    init_z_lut();
+
 
    tmem.set_async_framebuffers(&async_transfers);
 }

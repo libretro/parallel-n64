@@ -333,7 +333,7 @@ private:
 	std::vector<VIOutput> vi_outputs;
 	void sync_framebuffer_to_cpu(AsyncFramebuffer &async);
 	unsigned current_sync_index = 0;
-	unsigned rdp_dithering = 1;
+	unsigned rdp_dithering;
    unsigned width_greater_than            = 320;
    unsigned width_greater_than_max_height = 480;
 

@@ -945,6 +945,11 @@ static void gfx_set_filtering(void)
      }
 }
 
+unsigned setting_get_dithering(void)
+{
+   return retro_dithering;
+}
+
 static void gfx_set_dithering(void)
 {
    log_cb(RETRO_LOG_DEBUG, "set dithering mode...\n");

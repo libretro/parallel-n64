@@ -199,6 +199,7 @@ bool init()
 		::RDP::renderer->set_scissor_variables(rom_name);
       pending_scissor_height = false;
    }
+
 }
 
 void deinit()
