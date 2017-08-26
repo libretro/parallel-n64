@@ -9105,8 +9105,6 @@ static void set_tile(uint32_t w1, uint32_t w2)
 
 static void fill_rect(uint32_t w1, uint32_t w2)
 {
-    int xlint, xhint;
-
     int ycur, ylfar;
     int yllimit, yhlimit;
     int invaly;
@@ -9122,16 +9120,13 @@ static void fill_rect(uint32_t w1, uint32_t w2)
     int xh = (w2 & 0x00FFF000) >> (12 -  0); /* Load XH Integer Portion */
     int yh = (w2 & 0x00000FFF) >> ( 0 -  0); /* Load YH Integer Portion */
 
+    /* Convert qpel to 16.16 fixed point format */
+    xl <<= 14;
+    xh <<= 14;
+
     yl |= (other_modes.cycle_type & 2) ? 3 : 0; /* FILL or COPY */
 
-    xlint = (unsigned)(xl) >> 2;
-    xhint = (unsigned)(xh) >> 2;
-
     max_level = 0;
-    xl = (xlint << 16) | (xl & 3)<<14;
-    xl = SIGN(xl, 30);
-    xh = (xhint << 16) | (xh & 3)<<14;
-    xh = SIGN(xh, 30);
 
     setzero_si128(spans_d_rgba);
     setzero_si128(spans_d_stwz);
