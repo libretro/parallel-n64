@@ -18,6 +18,10 @@ static int LOG_ENABLE = 1;
 static int LOG_ENABLE = 0;
 #endif
 
+#ifndef SEXT
+#define SEXT(x, bits) ((int32_t)((x) << (32 - (bits))) >> (32 - (bits)))
+#endif
+
 #define LOG(...) do { \
    if (LOG_ENABLE) fprintf(stderr, __VA_ARGS__); \
 } while(0)
@@ -7760,6 +7764,16 @@ struct stepwalker_info
    int32_t xlr[2], xlr_inc[2];
    int base;
    uint8_t xfrac;
+
+   int xl;
+   int xm;
+   int xh;
+   int yl;
+   int ym;
+   int yh;
+   int DxLDy;
+   int DxHDy;
+   int DxMDy;
 };
 
 static int cmd_cur;
@@ -8103,27 +8117,23 @@ static NOINLINE void draw_triangle(uint32_t w1, uint32_t w2,
     int tilenum = tile;
 
     /* Triangle edge Y-coordinates */
-    int yl = (w1 & 0x0000FFFF) >> (32 - 32); /* & 0x3FFF */
-    int ym = (w2 & 0xFFFF0000) >> (16 -  0); /* & 0x3FFF */
-    int yh = (w2 & 0x0000FFFF) >> ( 0 -  0); /* & 0x3FFF */
+    /* 11.2 fixed point */
+    int32_t yl = SEXT((w1 >> 0)  & 0xffff, 14);
+    int32_t ym = SEXT((w2 >> 16) & 0xffff, 14);
+    int32_t yh = SEXT((w2 >> 0)  & 0xffff, 14);
+
     /* Triangle edge X-coordinates */
-    int xl = cmd_data[stw_info->base + 1].UW32[0];
-    int xh = cmd_data[stw_info->base + 2].UW32[0];
-    int xm = cmd_data[stw_info->base + 3].UW32[0];
+    /* 14.16 fixed point */
+    int32_t xl = SEXT(cmd_data[stw_info->base + 1].UW32[0], 30) & ~1;
+    int32_t xh = SEXT(cmd_data[stw_info->base + 2].UW32[0], 30) & ~1;
+    int32_t xm = SEXT(cmd_data[stw_info->base + 3].UW32[0], 30) & ~1;
+
     /* Triangle edge inverse-slopes */
     int DxLDy = cmd_data[stw_info->base + 1].UW32[1];
     int DxHDy = cmd_data[stw_info->base + 2].UW32[1];
     int DxMDy = cmd_data[stw_info->base + 3].UW32[1];
 
     max_level   = level;
-
-    yl = SIGN(yl, 14);
-    ym = SIGN(ym, 14);
-    yh = SIGN(yh, 14);
-
-    xl = SIGN(xl, 30);
-    xh = SIGN(xh, 30);
-    xm = SIGN(xm, 30);
 
     /* Shade Coefficients */
     if (shade == 0) /* branch unlikely */
