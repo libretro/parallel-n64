@@ -8829,60 +8829,46 @@ static NOINLINE void draw_texture_rectangle(
 
 static void tex_rect(uint32_t w1, uint32_t w2)
 {
-    int16_t dsdx, dtdy;
-    int32_t s, t;
+   int32_t xl      = (cmd_data[cmd_cur + 0].UW32[0] & 0x00FFF000) >> 12;
+   int32_t yl      = (cmd_data[cmd_cur + 0].UW32[0] & 0x00000FFF) >>  0;
+   int32_t tilenum = (cmd_data[cmd_cur + 0].UW32[1] & 0x07000000) >> 24;
+   int32_t xh      = (cmd_data[cmd_cur + 0].UW32[1] & 0x00FFF000) >> 12;
+   int32_t yh      = (cmd_data[cmd_cur + 0].UW32[1] & 0x00000FFF) >>  0;
+   int32_t s    = (cmd_data[cmd_cur + 1].UW32[0] & 0xFFFF0000) >> 16;
+   int32_t t    = (cmd_data[cmd_cur + 1].UW32[0] & 0x0000FFFF) >>  0;
+   int16_t dsdx = SEXT((cmd_data[cmd_cur + 1].UW32[1] & 0xFFFF0000) >> 16, 16);
+   int16_t dtdy = SEXT((cmd_data[cmd_cur + 1].UW32[1] & 0x0000FFFF) >>  0, 16);
 
-    int32_t xl      = (cmd_data[cmd_cur + 0].UW32[0] & 0x00FFF000) >> 12;
-    int32_t yl      = (cmd_data[cmd_cur + 0].UW32[0] & 0x00000FFF) >>  0;
-    int32_t tilenum = (cmd_data[cmd_cur + 0].UW32[1] & 0x07000000) >> 24;
-    int32_t xh      = (cmd_data[cmd_cur + 0].UW32[1] & 0x00FFF000) >> 12;
-    int32_t yh      = (cmd_data[cmd_cur + 0].UW32[1] & 0x00000FFF) >>  0;
+   yl |= (other_modes.cycle_type & 2) ? 3 : 0; /* FILL OR COPY */
 
-    yl |= (other_modes.cycle_type & 2) ? 3 : 0; /* FILL OR COPY */
-
-    s    = (cmd_data[cmd_cur + 1].UW32[0] & 0xFFFF0000) >> 16;
-    t    = (cmd_data[cmd_cur + 1].UW32[0] & 0x0000FFFF) >>  0;
-    dsdx = (cmd_data[cmd_cur + 1].UW32[1] & 0xFFFF0000) >> 16;
-    dtdy = (cmd_data[cmd_cur + 1].UW32[1] & 0x0000FFFF) >>  0;
-    
-    dsdx = SIGN16(dsdx);
-    dtdy = SIGN16(dtdy);
-
-    draw_texture_rectangle(
-        TEXTURE_FLIP_NO, tilenum,
-        xl, yl, xh, yh,
-        s, t,
-        dsdx, dtdy
-    );
+   draw_texture_rectangle(
+         TEXTURE_FLIP_NO, tilenum,
+         xl, yl, xh, yh,
+         s, t,
+         dsdx, dtdy
+         );
 }
 
 static void tex_rect_flip(uint32_t w1, uint32_t w2)
 {
-    int16_t dsdx, dtdy;
-    int32_t s, t;
+   int32_t xl      = (cmd_data[cmd_cur + 0].UW32[0] & 0x00FFF000) >> 12;
+   int32_t yl      = (cmd_data[cmd_cur + 0].UW32[0] & 0x00000FFF) >>  0;
+   int32_t tilenum = (cmd_data[cmd_cur + 0].UW32[1] & 0x07000000) >> 24;
+   int32_t xh      = (cmd_data[cmd_cur + 0].UW32[1] & 0x00FFF000) >> 12;
+   int32_t yh      = (cmd_data[cmd_cur + 0].UW32[1] & 0x00000FFF) >>  0;
+   int32_t s    = (cmd_data[cmd_cur + 1].UW32[0] & 0xFFFF0000) >> 16;
+   int32_t t    = (cmd_data[cmd_cur + 1].UW32[0] & 0x0000FFFF) >>  0;
+   int16_t dsdx = SEXT((cmd_data[cmd_cur + 1].UW32[1] & 0xFFFF0000) >> 16, 16);
+   int16_t dtdy = SEXT((cmd_data[cmd_cur + 1].UW32[1] & 0x0000FFFF) >>  0, 16);
 
-    int32_t xl      = (cmd_data[cmd_cur + 0].UW32[0] & 0x00FFF000) >> 12;
-    int32_t yl      = (cmd_data[cmd_cur + 0].UW32[0] & 0x00000FFF) >>  0;
-    int32_t tilenum = (cmd_data[cmd_cur + 0].UW32[1] & 0x07000000) >> 24;
-    int32_t xh      = (cmd_data[cmd_cur + 0].UW32[1] & 0x00FFF000) >> 12;
-    int32_t yh      = (cmd_data[cmd_cur + 0].UW32[1] & 0x00000FFF) >>  0;
+   yl |= (other_modes.cycle_type & 2) ? 3 : 0; /* FILL OR COPY */
 
-    yl |= (other_modes.cycle_type & 2) ? 3 : 0; /* FILL OR COPY */
-
-    s    = (cmd_data[cmd_cur + 1].UW32[0] & 0xFFFF0000) >> 16;
-    t    = (cmd_data[cmd_cur + 1].UW32[0] & 0x0000FFFF) >>  0;
-    dsdx = (cmd_data[cmd_cur + 1].UW32[1] & 0xFFFF0000) >> 16;
-    dtdy = (cmd_data[cmd_cur + 1].UW32[1] & 0x0000FFFF) >>  0;
-    
-    dsdx = SIGN16(dsdx);
-    dtdy = SIGN16(dtdy);
-
-    draw_texture_rectangle(
-        TEXTURE_FLIP_YES, tilenum,
-        xl, yl, xh, yh,
-        s, t,
-        dsdx, dtdy
-    );
+   draw_texture_rectangle(
+         TEXTURE_FLIP_YES, tilenum,
+         xl, yl, xh, yh,
+         s, t,
+         dsdx, dtdy
+         );
 }
 
 static void sync_load(uint32_t w1, uint32_t w2)
