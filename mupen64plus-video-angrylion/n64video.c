@@ -4328,29 +4328,51 @@ static uint32_t z_compare(uint32_t zcurpixel, uint32_t sz, uint16_t dzpix, int d
 #endif
         
         *prewrap = overflow;
-        infront = sz < oz;
-        nearer  = force_coplanar || (diff <= (int32_t)oz);
-        max     = (oz == 0x3ffff);
-        diff    = (int32_t)sz - (int32_t)dznew;
 
         switch(other_modes.z_mode)
         {
-           case ZMODE_OPAQUE: 
-              return (max || (overflow ? infront : nearer));
-           case ZMODE_INTERPENETRATING: 
-              if (!infront || !farther || !overflow)
-                 return (max || (overflow ? infront : nearer)); 
-              else
-              {
-                 dzenc = dz_compress(dznotshift & 0xffff);
-                 cvgcoeff = ((oz >> dzenc) - (sz >> dzenc)) & 0xf;
-                 *curpixel_cvg = ((cvgcoeff * (*curpixel_cvg)) >> 3) & 0xf;
-              }
-              return 1;
-           case ZMODE_TRANSPARENT: 
-              return (infront || max); 
-           case ZMODE_DECAL: 
-              return (farther && nearer && !max); 
+        case ZMODE_OPAQUE: 
+            infront = sz < oz;
+            diff = (int32_t)sz - (int32_t)dznew;
+            nearer = force_coplanar || (diff <= (int32_t)oz);
+            max = (oz == 0x3ffff);
+#ifdef EXTRALOGGING
+            LOG("nearer = %d\n", nearer);
+            LOG("opaque\n");
+#endif
+            return (max || (overflow ? infront : nearer));
+            break;
+        case ZMODE_INTERPENETRATING: 
+            infront = sz < oz;
+            LOG("inter\n");
+            if (!infront || !farther || !overflow)
+            {
+                diff = (int32_t)sz - (int32_t)dznew;
+                nearer = force_coplanar || (diff <= (int32_t)oz);
+                max = (oz == 0x3ffff);
+                return (max || (overflow ? infront : nearer)); 
+            }
+            else
+            {
+                dzenc = dz_compress(dznotshift & 0xffff);
+                cvgcoeff = ((oz >> dzenc) - (sz >> dzenc)) & 0xf;
+                *curpixel_cvg = ((cvgcoeff * (*curpixel_cvg)) >> 3) & 0xf;
+                return 1;
+            }
+            break;
+        case ZMODE_TRANSPARENT: 
+            LOG("trans\n");
+            infront = sz < oz;
+            max = (oz == 0x3ffff);
+            return (infront || max); 
+            break;
+        case ZMODE_DECAL: 
+            LOG("decal\n");
+            diff = (int32_t)sz - (int32_t)dznew;
+            nearer = force_coplanar || (diff <= (int32_t)oz);
+            max = (oz == 0x3ffff);
+            return (farther && nearer && !max); 
+            break;
         }
         return 0;
     }
