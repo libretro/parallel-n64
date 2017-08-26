@@ -17,6 +17,7 @@ static int LOG_ENABLE = 1;
 #else
 static int LOG_ENABLE = 0;
 #endif
+
 #define LOG(...) do { \
    if (LOG_ENABLE) fprintf(stderr, __VA_ARGS__); \
 } while(0)
@@ -1854,14 +1855,14 @@ static void rgb_dither_complete(int* r, int* g, int* b, int dith)
 
 static void blender_equation_cycle0(int* r, int* g, int* b)
 {
-    int blend1a, blend2a;
     int blr, blg, blb, sum;
     int mulb;
+    int blend1a = *blender1b_a[0] >> 3;
+    int blend2a = *blender2b_a[0] >> 3;
 
-    blend1a = *blender1b_a[0] >> 3;
-    blend2a = *blender2b_a[0] >> 3;
-
+#ifdef EXTRALOGGING
     LOG("blend1a = %d, blend2a = %d\n", blend1a, blend2a);
+#endif
 
     if (other_modes.f.special_bsel0)
     {
@@ -1891,9 +1892,8 @@ static void blender_equation_cycle0(int* r, int* g, int* b)
 
 static STRICTINLINE void blender_equation_cycle0_2(int* r, int* g, int* b)
 {
-    int blend1a, blend2a;
-    blend1a = *blender1b_a[0] >> 3;
-    blend2a = *blender2b_a[0] >> 3;
+    int blend1a = *blender1b_a[0] >> 3;
+    int blend2a = *blender2b_a[0] >> 3;
 
     if (other_modes.f.special_bsel0)
     {
@@ -4311,17 +4311,21 @@ static uint32_t z_compare(uint32_t zcurpixel, uint32_t sz, uint16_t dzpix, int d
         dznotshift = dznew;
         dznew <<= 3;
         
+#ifdef EXTRALOGGING
         LOG("dznew = %d\n", dznew);
+#endif
 
         farther = force_coplanar || ((sz + dznew) >= oz);
         
         overflow = (curpixel_memcvg + *curpixel_cvg) & 8;
         *blend_en = other_modes.force_blend || (!overflow && other_modes.antialias_en && farther);
 
+#ifdef EXTRALOGGING
         LOG("force_blend = %d\n", other_modes.force_blend);
         LOG("oz = %d\n", oz);
         LOG("blend_en = %d\n", *blend_en);
         LOG("overflow = %d\n", overflow);
+#endif
         
         *prewrap = overflow;
 
@@ -4332,8 +4336,10 @@ static uint32_t z_compare(uint32_t zcurpixel, uint32_t sz, uint16_t dzpix, int d
             diff = (int32_t)sz - (int32_t)dznew;
             nearer = force_coplanar || (diff <= (int32_t)oz);
             max = (oz == 0x3ffff);
+#ifdef EXTRALOGGING
             LOG("nearer = %d\n", nearer);
             LOG("opaque\n");
+#endif
             return (max || (overflow ? infront : nearer));
             break;
         case ZMODE_INTERPENETRATING: 
@@ -5181,7 +5187,9 @@ static void render_spans_1cycle_complete(int start, int end, int tilenum, int fl
             texture_pipeline_cycle(&texel1_color, &texel1_color, news, newt, newtile, 0);
 
             rgbaz_correct_clip(offx, offy, sr, sg, sb, sa, &sz, curpixel_cvg);
+#ifdef EXTRALOGGING
             LOG("SZ = %d\n", sz);
+#endif
             get_dither_noise(x, i, &cdith, &adith);
             combiner_1cycle(adith, &curpixel_cvg);
             fbread1_ptr(curpixel, &curpixel_memcvg);
@@ -5357,21 +5365,29 @@ static void render_spans_1cycle_notexel1(int start, int end, int tilenum, int fl
             combiner_1cycle(adith, &curpixel_cvg);
                 
             fbread1_ptr(curpixel, &curpixel_memcvg);
+#ifdef EXTRALOGGING
             LOG("Pre CVG: %d, MEMCVG: %d\n", curpixel_cvg, curpixel_memcvg);
+#endif
             if (z_compare(zbcur, sz, dzpix, dzpixenc, &blend_en, &prewrap, &curpixel_cvg, curpixel_memcvg))
             {
+#ifdef EXTRALOGGING
                LOG("Z pass\n");
+#endif
                 if (blender_1cycle(&fir, &fig, &fib, cdith, blend_en, prewrap, curpixel_cvg, curpixel_cvbit))
                 {
+#ifdef EXTRALOGGING
                    LOG("Blend pass (CVG: %d)\n", curpixel_cvg);
+#endif
                     fbwrite_ptr(curpixel, fir, fig, fib, blend_en, curpixel_cvg, curpixel_memcvg);
                     if (other_modes.z_update_en)
                         z_store(zbcur, sz, dzpixenc);
                 }
             }
+#ifdef EXTRALOGGING
             else
                LOG("Z fail\n");
             LOG("\n");
+#endif
 
             s += dsinc;
             t += dtinc;
@@ -5503,7 +5519,9 @@ static void render_spans_1cycle_notex(int start, int end, int tilenum, int flip)
             LOG("Preclip SZ = %d\n", sz >> 3);
 #endif
             rgbaz_correct_clip(offx, offy, sr, sg, sb, sa, &sz, curpixel_cvg);
+#ifdef EXTRALOGGING
             LOG("SZ = %d\n", sz);
+#endif
             get_dither_noise(x, i, &cdith, &adith);
             combiner_1cycle(adith, &curpixel_cvg);
                 
@@ -6337,7 +6355,9 @@ static void render_spans_2cycle_notexel1(int start, int end, int tilenum, int fl
             LOG("Preclip SZ = %d\n", sz >> 3);
 #endif
             rgbaz_correct_clip(offx, offy, sr, sg, sb, sa, &sz, curpixel_cvg);
+#ifdef EXTRALOGGING
             LOG("SZ = %d\n", sz);
+#endif
                     
             get_dither_noise(x, i, &cdith, &adith);
             combiner_2cycle(adith, &curpixel_cvg, &acalpha);
