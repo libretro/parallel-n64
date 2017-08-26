@@ -514,6 +514,10 @@ private:
       uint32_t key_scale_g = 0;
       uint32_t key_scale_b = 0;
 
+      uint32_t key_center_r = 0;
+      uint32_t key_center_g = 0;
+      uint32_t key_center_b = 0;
+
 		uint32_t primitive_z = 0;
 
 		BufferCombiner combiners = {};

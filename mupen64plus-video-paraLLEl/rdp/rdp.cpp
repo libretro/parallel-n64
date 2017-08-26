@@ -336,13 +336,16 @@ void Renderer::set_scissor(int xh, int yh, int xl, int yl)
 
 void Renderer::set_key_r(uint32_t w1, uint32_t w2)
 {
-   state.key_scale_r = (w2 & 0x000000FF) >>  0;
+   state.key_scale_r  = (w2 & 0x000000FF) >>  0;
+   state.key_center_r = (w2 & 0x0000FF00) >>  8;
 }
 
 void Renderer::set_key_gb(uint32_t w1, uint32_t w2)
 {
-   state.key_scale_g = (w2 & 0x00FF0000) >> 16;
-   state.key_scale_b = (w2 & 0x000000FF) >>  0;
+   state.key_center_g = (w2 & 0xFF000000) >> 24;
+   state.key_scale_g  = (w2 & 0x00FF0000) >> 16;
+   state.key_center_b = (w2 & 0x0000FF00) >>  8;
+   state.key_scale_b  = (w2 & 0x000000FF) >>  0;
 }
 
 void Renderer::set_combine(uint32_t w1, uint32_t w2)
@@ -1045,8 +1048,10 @@ uint64_t Renderer::update_static_combiner()
 			   break;
 
 		   case 6:
-			   fprintf(stderr, "UNIMPLEMENTED SUB_B 6.\n");
 			   /* Key center */
+			   cycle.sub_b[0] = state.key_center_r;
+			   cycle.sub_b[1] = state.key_center_g;
+			   cycle.sub_b[2] = state.key_center_b;
 			   break;
 
 		   case 7:
