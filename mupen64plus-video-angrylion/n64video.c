@@ -8471,6 +8471,12 @@ no_read_zbuffer_coefficients:
                   &xlrsc[0], &allover, &allunder);
             span[j].minorx[spix] = xlrsc[0] & 0x1FFF;
 
+            /* Detect where the two lines cross.
+             * Get a boolean mask for which subscanlines have
+             * crossing scanlines.
+             * XXX: Shouldn't this be <= ?
+             * XXX: Also, why the weird bitmath here?
+             */
             curcross = ((stw_info->xlr[1 - flip]&0x0FFFC000 ^ 0x08000000)
                      <  (stw_info->xlr[0 + flip]&0x0FFFC000 ^ 0x08000000));
             invaly |= curcross;
@@ -8749,8 +8755,8 @@ static NOINLINE void draw_texture_rectangle(
     for (k = ycur; k <= ylfar; k++)
     {
         int xrsc, xlsc;
-        const int spix = k & 3;
-        const int yhclose = yhlimit & ~3;
+        const int spix = k & RDP_SUBPIXELS_MASK;
+        const int yhclose = yhlimit & RDP_SUBPIXELS_INVMASK;
 
         if (k < yhclose)
             { /* branch */ }
@@ -8774,6 +8780,12 @@ static NOINLINE void draw_texture_rectangle(
                   &xlsc, &allover, &allunder);
             span[j].minorx[spix] = xlsc & 0x1FFF;
 
+            /* Detect where the two lines cross.
+             * Get a boolean mask for which subscanlines have
+             * crossing scanlines.
+             * XXX: Shouldn't this be <= ?
+             * XXX: Also, why the weird bitmath here?
+             */
             curcross = ((xleft&0x0FFFC000 ^ 0x08000000)
                      < (xright&0x0FFFC000 ^ 0x08000000));
             invaly |= curcross;
@@ -9158,8 +9170,8 @@ static void fill_rect(uint32_t w1, uint32_t w2)
         static int maxxmx, minxhx;
         int xrsc, xlsc;
         const int32_t xleft = xl & ~0x00000001, xright = xh & ~0x00000001;
-        const int yhclose = yhlimit & ~3;
-        const int spix = k & 3;
+        const int yhclose = yhlimit & RDP_SUBPIXELS_INVMASK;
+        const int spix = k & RDP_SUBPIXELS_MASK;
 
         if (k < yhclose)
             continue;
@@ -9181,6 +9193,12 @@ static void fill_rect(uint32_t w1, uint32_t w2)
               &xlsc, &allover, &allunder);
         span[j].minorx[spix] = xlsc & 0x1FFF;
 
+        /* Detect where the two lines cross.
+         * Get a boolean mask for which subscanlines have
+         * crossing scanlines.
+         * XXX: Shouldn't this be <= ?
+         * XXX: Also, why the weird bitmath here?
+         */
         curcross = ((xleft&0x0FFFC000 ^ 0x08000000)
                  < (xright&0x0FFFC000 ^ 0x08000000));
         invaly |= curcross;
