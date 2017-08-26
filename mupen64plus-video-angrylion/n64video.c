@@ -8089,15 +8089,14 @@ static INLINE void stepwalker_info_init(struct stepwalker_info *stw_info)
    setzero_si64(stw_info->d_stwz_dy_frac);
 }
 
-static void al_clip_x(int32_t xs, int32_t clipxlshift,
+static INLINE void al_clip_x(int32_t xs, int32_t clipxlshift,
 int32_t clipxhshift, int *xsc, int *allover, int *allunder)
 {
    int curover, curunder;
    /* Quantize X bounds down to 1/8th pixel resolution.
     * Apply scissor and clipping in X.
     * Very finicky math follows, see Angrylion. */
-   int stickybit = (xs & 0x00003FFF) - 1;
-   stickybit = (uint32_t)~(stickybit) >> 31;
+   int stickybit = (uint32_t)~((xs & 0x00003FFF) - 1) >> 31;
    *xsc = (xs >> 13)&0x1FFE | stickybit;
 
    /* Clip against left side. */
