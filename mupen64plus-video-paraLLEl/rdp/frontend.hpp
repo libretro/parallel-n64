@@ -88,6 +88,8 @@ private:
    void fill_rect(const uint32_t *args);
    void set_other_modes(const uint32_t *args);
    void set_combine(const uint32_t *args);
+   void set_key_r(const uint32_t *args);
+   void set_key_gb(const uint32_t *args);
    void set_convert(const uint32_t *args);
    void set_scissor(const uint32_t *args);
    void set_prim_depth(const uint32_t *args);

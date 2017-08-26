@@ -460,6 +460,16 @@ void Frontend::tex_rect_flip(const uint32_t *args)
    tex_rect_common(args, true);
 }
 
+void Frontend::set_key_gb(const uint32_t *args)
+{
+   renderer->set_key_gb(args[0], args[1]);
+}
+
+void Frontend::set_key_r(const uint32_t *args)
+{
+   renderer->set_key_r(args[0], args[1]);
+}
+
 void Frontend::sync_load(const uint32_t *)
 {
 }
@@ -711,8 +721,8 @@ const Frontend::rdp_func_t Frontend::rdp_commands[64] = {
 	&Frontend::sync_pipe,
 	&Frontend::sync_tile,
 	&Frontend::sync_full,
-	nullptr,
-	nullptr,
+	&Frontend::set_key_gb,
+	&Frontend::set_key_r,
 	&Frontend::set_convert,
 	&Frontend::set_scissor,
 	&Frontend::set_prim_depth,

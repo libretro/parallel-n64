@@ -90,6 +90,8 @@ public:
 		state.blend_word = word | (dither_sel << BLENDMODE_FLAG_DITHER_SEL);
 	}
 
+	void set_key_r(uint32_t w1, uint32_t w2);
+	void set_key_gb(uint32_t w1, uint32_t w2);
 	void set_dithering(unsigned type);
 	void set_combine(uint32_t w1, uint32_t w2);
 	void set_prim_color(uint32_t w1, uint32_t w2);
@@ -507,6 +509,10 @@ private:
 		int32_t k3_tf = 0;
 		uint32_t k4 = 0;
 		uint32_t k5 = 0;
+
+      uint32_t key_scale_r = 0;
+      uint32_t key_scale_g = 0;
+      uint32_t key_scale_b = 0;
 
 		uint32_t primitive_z = 0;
 

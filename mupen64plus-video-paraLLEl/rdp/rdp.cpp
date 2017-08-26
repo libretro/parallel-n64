@@ -334,6 +334,17 @@ void Renderer::set_scissor(int xh, int yh, int xl, int yl)
    scissor.yl = yl;
 }
 
+void Renderer::set_key_r(uint32_t w1, uint32_t w2)
+{
+   state.key_scale_r = (w2 & 0x000000FF) >>  0;
+}
+
+void Renderer::set_key_gb(uint32_t w1, uint32_t w2)
+{
+   state.key_scale_g = (w2 & 0x00FF0000) >> 16;
+   state.key_scale_b = (w2 & 0x000000FF) >>  0;
+}
+
 void Renderer::set_combine(uint32_t w1, uint32_t w2)
 {
    state.combiners.color[0].sub_a = (w1 & 0x00f00000) >> (52 - 32);
@@ -1067,7 +1078,9 @@ uint64_t Renderer::update_static_combiner()
 
 		   case 6:
 			   /* Key scale */
-			   fprintf(stderr, "UNIMPLEMENTED MUL KEY SCALE.\n");
+			   cycle.mul[0] = uint8_t(state.key_scale_r);
+			   cycle.mul[1] = uint8_t(state.key_scale_g);
+			   cycle.mul[2] = uint8_t(state.key_scale_b);
 			   break;
 
 		   case 10:
