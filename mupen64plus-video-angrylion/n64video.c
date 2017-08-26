@@ -8089,6 +8089,33 @@ static INLINE void stepwalker_info_init(struct stepwalker_info *stw_info)
    setzero_si64(stw_info->d_stwz_dy_frac);
 }
 
+static void al_clip_x(int32_t xs, int32_t clipxlshift,
+int32_t clipxhshift, int *xsc, int *allover, int *allunder)
+{
+   int curover, curunder;
+   /* Quantize X bounds down to 1/8th pixel resolution.
+    * Apply scissor and clipping in X.
+    * Very finicky math follows, see Angrylion. */
+   int stickybit = (xs & 0x00003FFF) - 1;
+   stickybit = (uint32_t)~(stickybit) >> 31;
+   *xsc = (xs >> 13)&0x1FFE | stickybit;
+
+   /* Clip against left side. */
+   curunder = !!(xs & 0x08000000);
+   curunder = curunder | (uint32_t)(*xsc - clipxhshift)>>31;
+   *xsc = curunder ? clipxhshift : (xs >> 13) & 0x3FFE | stickybit;
+
+   /* Clip against right side. */
+   curover  = !!(*xsc & 0x00002000);
+   *xsc = *xsc & 0x1FFF;
+   curover |= (uint32_t)~(*xsc - clipxlshift) >> 31;
+   *xsc = curover ? clipxlshift : *xsc;
+
+   *allover  &= curover;
+   *allunder &= curunder;
+}
+
+
 static NOINLINE void draw_triangle(uint32_t w1, uint32_t w2,
       int shade, int texture, int zbuffer, struct stepwalker_info *stw_info)
 {
@@ -8399,7 +8426,6 @@ no_read_zbuffer_coefficients:
     for (k = ycur; k <= ylfar; k++)
     {
         static int minmax[2];
-        int stickybit;
         int xlrsc[2];
         const int spix = k & 3;
         const int yhclose = yhlimit & ~3;
@@ -8424,34 +8450,13 @@ no_read_zbuffer_coefficients:
                 allinval = 1;
             }
 
-            stickybit = (stw_info->xlr[1] & 0x00003FFF) - 1;
-            stickybit = (uint32_t)~(stickybit) >> 31; /* (stickybit >= 0) */
-            xlrsc[1] = (stw_info->xlr[1] >> 13)&0x1FFE | stickybit;
-            curunder = !!(stw_info->xlr[1] & 0x08000000);
-            curunder = curunder | (uint32_t)(xlrsc[1] - clipxhshift)>>31;
-            xlrsc[1] = curunder ? clipxhshift : (stw_info->xlr[1]>>13)&0x3FFE | stickybit;
-
-            curover  = !!(xlrsc[1] & 0x00002000);
-            xlrsc[1] = xlrsc[1] & 0x1FFF;
-            curover |= (uint32_t)~(xlrsc[1] - clipxlshift) >> 31;
-            xlrsc[1] = curover ? clipxlshift : xlrsc[1];
+            al_clip_x(stw_info->xlr[1], clipxlshift, clipxhshift,
+                  &xlrsc[1], &allover, &allunder);
             span[j].majorx[spix] = xlrsc[1] & 0x1FFF;
-            allover &= curover;
-            allunder &= curunder;
 
-            stickybit = (stw_info->xlr[0] & 0x00003FFF) - 1; /* xleft/2 & 0x1FFF */
-            stickybit = (uint32_t)~(stickybit) >> 31; /* (stickybit >= 0) */
-            xlrsc[0] = (stw_info->xlr[0] >> 13)&0x1FFE | stickybit;
-            curunder = !!(stw_info->xlr[0] & 0x08000000);
-            curunder = curunder | (uint32_t)(xlrsc[0] - clipxhshift)>>31;
-            xlrsc[0] = curunder ? clipxhshift : (stw_info->xlr[0]>>13)&0x3FFE | stickybit;
-            curover  = !!(xlrsc[0] & 0x00002000);
-            xlrsc[0] &= 0x1FFF;
-            curover |= (uint32_t)~(xlrsc[0] - clipxlshift) >> 31;
-            xlrsc[0] = curover ? clipxlshift : xlrsc[0];
+            al_clip_x(stw_info->xlr[0], clipxlshift, clipxhshift,
+                  &xlrsc[0], &allover, &allunder);
             span[j].minorx[spix] = xlrsc[0] & 0x1FFF;
-            allover &= curover;
-            allunder &= curunder;
 
             curcross = ((stw_info->xlr[1 - flip]&0x0FFFC000 ^ 0x08000000)
                      <  (stw_info->xlr[0 + flip]&0x0FFFC000 ^ 0x08000000));
@@ -8728,7 +8733,7 @@ static NOINLINE void draw_texture_rectangle(
     allinval = 1;
     for (k = ycur; k <= ylfar; k++)
     {
-        int xrsc, xlsc, stickybit;
+        int xrsc, xlsc;
         const int spix = k & 3;
         const int yhclose = yhlimit & ~3;
 
@@ -8746,33 +8751,13 @@ static NOINLINE void draw_texture_rectangle(
                 allinval = 1;
             }
 
-            stickybit = (xright & 0x00003FFF) - 1; /* xright/2 & 0x1FFF */
-            stickybit = (uint32_t)~(stickybit) >> 31; /* (stickybit >= 0) */
-            xrsc = (xright >> 13)&0x1FFE | stickybit;
-            curunder = !!(xright & 0x08000000);
-            curunder = curunder | (uint32_t)(xrsc - clipxhshift)>>31;
-            xrsc = curunder ? clipxhshift : (xright>>13)&0x3FFE | stickybit;
-            curover  = !!(xrsc & 0x00002000);
-            xrsc = xrsc & 0x1FFF;
-            curover |= (uint32_t)~(xrsc - clipxlshift) >> 31;
-            xrsc = curover ? clipxlshift : xrsc;
+            al_clip_x(xright, clipxlshift, clipxhshift,
+                  &xrsc, &allover, &allunder);
             span[j].majorx[spix] = xrsc & 0x1FFF;
-            allover &= curover;
-            allunder &= curunder;
 
-            stickybit = (xleft & 0x00003FFF) - 1; /* xleft/2 & 0x1FFF */
-            stickybit = (uint32_t)~(stickybit) >> 31; /* (stickybit >= 0) */
-            xlsc = (xleft >> 13)&0x1FFE | stickybit;
-            curunder = !!(xleft & 0x08000000);
-            curunder = curunder | (uint32_t)(xlsc - clipxhshift)>>31;
-            xlsc = curunder ? clipxhshift : (xleft>>13)&0x3FFE | stickybit;
-            curover  = !!(xlsc & 0x00002000);
-            xlsc &= 0x1FFF;
-            curover |= (uint32_t)~(xlsc - clipxlshift) >> 31;
-            xlsc = curover ? clipxlshift : xlsc;
+            al_clip_x(xleft, clipxlshift, clipxhshift,
+                  &xlsc, &allover, &allunder);
             span[j].minorx[spix] = xlsc & 0x1FFF;
-            allover &= curover;
-            allunder &= curunder;
 
             curcross = ((xleft&0x0FFFC000 ^ 0x08000000)
                      < (xright&0x0FFFC000 ^ 0x08000000));
@@ -9154,7 +9139,7 @@ static void fill_rect(uint32_t w1, uint32_t w2)
     for (k = ycur; k <= ylfar; k++)
     {
         static int maxxmx, minxhx;
-        int xrsc, xlsc, stickybit;
+        int xrsc, xlsc;
         const int32_t xleft = xl & ~0x00000001, xright = xh & ~0x00000001;
         const int yhclose = yhlimit & ~3;
         const int spix = k & 3;
@@ -9171,33 +9156,13 @@ static void fill_rect(uint32_t w1, uint32_t w2)
             allinval = 1;
         }
 
-        stickybit = (xright & 0x00003FFF) - 1; /* xright/2 & 0x1FFF */
-        stickybit = (uint32_t)~(stickybit) >> 31; /* (stickybit >= 0) */
-        xrsc = (xright >> 13)&0x1FFE | stickybit;
-        curunder = !!(xright & 0x08000000);
-        curunder = curunder | (uint32_t)(xrsc - clipxhshift)>>31;
-        xrsc = curunder ? clipxhshift : (xright>>13)&0x3FFE | stickybit;
-        curover  = !!(xrsc & 0x00002000);
-        xrsc = xrsc & 0x1FFF;
-        curover |= (uint32_t)~(xrsc - clipxlshift) >> 31;
-        xrsc = curover ? clipxlshift : xrsc;
+        al_clip_x(xright, clipxlshift, clipxhshift,
+              &xrsc, &allover, &allunder);
         span[j].majorx[spix] = xrsc & 0x1FFF;
-        allover &= curover;
-        allunder &= curunder;
 
-        stickybit = (xleft & 0x00003FFF) - 1; /* xleft/2 & 0x1FFF */
-        stickybit = (uint32_t)~(stickybit) >> 31; /* (stickybit >= 0) */
-        xlsc = (xleft >> 13)&0x1FFE | stickybit;
-        curunder = !!(xleft & 0x08000000);
-        curunder = curunder | (uint32_t)(xlsc - clipxhshift)>>31;
-        xlsc = curunder ? clipxhshift : (xleft>>13)&0x3FFE | stickybit;
-        curover  = !!(xlsc & 0x00002000);
-        xlsc &= 0x1FFF;
-        curover |= (uint32_t)~(xlsc - clipxlshift) >> 31;
-        xlsc = curover ? clipxlshift : xlsc;
+        al_clip_x(xleft, clipxlshift, clipxhshift,
+              &xlsc, &allover, &allunder);
         span[j].minorx[spix] = xlsc & 0x1FFF;
-        allover &= curover;
-        allunder &= curunder;
 
         curcross = ((xleft&0x0FFFC000 ^ 0x08000000)
                  < (xright&0x0FFFC000 ^ 0x08000000));
