@@ -8077,7 +8077,6 @@ static INLINE void stepwalker_info_init(struct stepwalker_info *stw_info)
    setzero_si64(stw_info->d_stwz_de_frac);
    setzero_si64(stw_info->d_stwz_dy_int);
    setzero_si64(stw_info->d_stwz_dy_frac);
-
 }
 
 static NOINLINE void draw_triangle(uint32_t w1, uint32_t w2,
@@ -8092,34 +8091,31 @@ static NOINLINE void draw_triangle(uint32_t w1, uint32_t w2,
     int allover, allunder, curover, curunder;
     int allinval;
     int j, k;
-    int lft, level, tile, flip, tilenum;
-    int yl, ym, yh, xl, xh, xm, DxLDy, DxHDy, DxMDy;
     const int32_t clipxlshift = __clip.xl << 1;
     const int32_t clipxhshift = __clip.xh << 1;
 
-    stepwalker_info_init(stw_info);
-
     /* Edge Coefficients */
-    lft     = (w1 & 0x00800000) >> (55 - 32);
+    int lft     = (w1 & 0x00800000) >> (55 - 32);
     /* unused  (w1 & 0x00400000) >> (54 - 32) */
-    level   = (w1 & 0x00380000) >> (51 - 32);
-     tile    = (w1 & 0x00070000) >> (48 - 32);
-    flip    = lft;
-    max_level   = level;
-    tilenum = tile;
+    int level   = (w1 & 0x00380000) >> (51 - 32);
+    int tile    = (w1 & 0x00070000) >> (48 - 32);
+    int flip    = lft;
+    int tilenum = tile;
 
     /* Triangle edge Y-coordinates */
-    yl = (w1 & 0x0000FFFF) >> (32 - 32); /* & 0x3FFF */
-    ym = (w2 & 0xFFFF0000) >> (16 -  0); /* & 0x3FFF */
-    yh = (w2 & 0x0000FFFF) >> ( 0 -  0); /* & 0x3FFF */
+    int yl = (w1 & 0x0000FFFF) >> (32 - 32); /* & 0x3FFF */
+    int ym = (w2 & 0xFFFF0000) >> (16 -  0); /* & 0x3FFF */
+    int yh = (w2 & 0x0000FFFF) >> ( 0 -  0); /* & 0x3FFF */
     /* Triangle edge X-coordinates */
-    xl = cmd_data[stw_info->base + 1].UW32[0];
-    xh = cmd_data[stw_info->base + 2].UW32[0];
-    xm = cmd_data[stw_info->base + 3].UW32[0];
+    int xl = cmd_data[stw_info->base + 1].UW32[0];
+    int xh = cmd_data[stw_info->base + 2].UW32[0];
+    int xm = cmd_data[stw_info->base + 3].UW32[0];
     /* Triangle edge inverse-slopes */
-    DxLDy = cmd_data[stw_info->base + 1].UW32[1];
-    DxHDy = cmd_data[stw_info->base + 2].UW32[1];
-    DxMDy = cmd_data[stw_info->base + 3].UW32[1];
+    int DxLDy = cmd_data[stw_info->base + 1].UW32[1];
+    int DxHDy = cmd_data[stw_info->base + 2].UW32[1];
+    int DxMDy = cmd_data[stw_info->base + 3].UW32[1];
+
+    max_level   = level;
 
     yl = SIGN(yl, 14);
     ym = SIGN(ym, 14);
@@ -8575,48 +8571,56 @@ no_read_zbuffer_coefficients:
 static void tri_noshade(uint32_t w1, uint32_t w2)
 {
    struct stepwalker_info stw_info;
+   stepwalker_info_init(&stw_info);
    draw_triangle(w1, w2, SHADE_NO, TEXTURE_NO, ZBUFFER_NO, &stw_info);
 }
 
 static void tri_noshade_z(uint32_t w1, uint32_t w2)
 {
    struct stepwalker_info stw_info;
+   stepwalker_info_init(&stw_info);
    draw_triangle(w1, w2, SHADE_NO, TEXTURE_NO, ZBUFFER_YES, &stw_info);
 }
 
 static void tri_tex(uint32_t w1, uint32_t w2)
 {
    struct stepwalker_info stw_info;
+   stepwalker_info_init(&stw_info);
    draw_triangle(w1, w2, SHADE_NO, TEXTURE_YES, ZBUFFER_NO, &stw_info);
 }
 
 static void tri_tex_z(uint32_t w1, uint32_t w2)
 {
    struct stepwalker_info stw_info;
+   stepwalker_info_init(&stw_info);
    draw_triangle(w1, w2, SHADE_NO, TEXTURE_YES, ZBUFFER_YES, &stw_info);
 }
 
 static void tri_shade(uint32_t w1, uint32_t w2)
 {
    struct stepwalker_info stw_info;
+   stepwalker_info_init(&stw_info);
    draw_triangle(w1, w2, SHADE_YES, TEXTURE_NO, ZBUFFER_NO, &stw_info);
 }
 
 static void tri_shade_z(uint32_t w1, uint32_t w2)
 {
    struct stepwalker_info stw_info;
+   stepwalker_info_init(&stw_info);
    draw_triangle(w1, w2, SHADE_YES, TEXTURE_NO, ZBUFFER_YES, &stw_info);
 }
 
 static void tri_texshade(uint32_t w1, uint32_t w2)
 {
    struct stepwalker_info stw_info;
+   stepwalker_info_init(&stw_info);
    draw_triangle(w1, w2, SHADE_YES, TEXTURE_YES, ZBUFFER_NO, &stw_info);
 }
 
 static void tri_texshade_z(uint32_t w1, uint32_t w2)
 {
    struct stepwalker_info stw_info;
+   stepwalker_info_init(&stw_info);
    draw_triangle(w1, w2, SHADE_YES, TEXTURE_YES, ZBUFFER_YES, &stw_info);
 }
 
