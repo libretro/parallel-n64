@@ -501,6 +501,10 @@ private:
 		uint32_t prim_color = 0;
 		uint32_t env_color = 0;
 		uint32_t prim_lod_frac = 0;
+		int32_t k0_tf = 0;
+		int32_t k1_tf = 0;
+		int32_t k2_tf = 0;
+		int32_t k3_tf = 0;
 		uint32_t k4 = 0;
 		uint32_t k5 = 0;
 

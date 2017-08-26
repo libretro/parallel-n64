@@ -15,6 +15,24 @@
 #include <unordered_set>
 #endif
 
+#ifndef SE
+#define SE(i, b)        ((i) | -SB((i), (b)))
+#endif
+
+#if (~0 >> 1 < 0)
+#ifndef SRA
+#define SRA(exp, sa)    ((signed)(exp) >> (sa))
+#endif
+#else
+#ifndef SRA
+#define SRA(exp, sa)    (SE((exp) >> (sa), (sa) ^ 31))
+#endif
+#endif
+
+#ifndef SIGN
+#define SIGN(i, b)      SRA((i) << (32 - (b)), (32 - (b)))
+#endif
+
 using namespace std;
 using namespace Vulkan;
 
@@ -948,9 +966,17 @@ void Renderer::set_fog_color(uint32_t w2)
    state.fog_color = w2;
 }
 
-void Renderer::set_convert(uint32_t /*w1*/, uint32_t w2)
+void Renderer::set_convert(uint32_t w1, uint32_t w2)
 {
-   // Ignore texture filter converts for now ...
+   // TODO/FIXME - Ignore texture filter converts for now ...
+   int32_t k0 = (w1 >> 13) & 0x1ff;
+   int32_t k1 = (w1 >> 4) & 0x1ff;
+   int32_t k2 = ((w1 & 0xf) << 5) | ((w2 >> 27) & 0x1f);
+   int32_t k3 = (w2 >> 18) & 0x1ff;
+   state.k0_tf = (SIGN(k0, 9) << 1) + 1;
+   state.k1_tf = (SIGN(k1, 9) << 1) + 1;
+   state.k2_tf = (SIGN(k2, 9) << 1) + 1;
+   state.k3_tf = (SIGN(k3, 9) << 1) + 1;
    state.k4 = (w2 >> 9) & 0x1ff;
    state.k5 = w2 & 0x1ff;
    state.combiners_dirty = true;
