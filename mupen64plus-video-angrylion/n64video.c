@@ -24,6 +24,18 @@ static int LOG_ENABLE = 0;
 #define SEXT(x, bits) ((int32_t)((x) << (32 - (bits))) >> (32 - (bits)))
 #endif
 
+#ifndef RDP_SUBPIXELS_LOG2
+#define RDP_SUBPIXELS_LOG2 2
+#endif
+
+#ifndef RDP_SUBPIXELS_INVMASK
+#define RDP_SUBPIXELS_INVMASK (~(RDP_SUBPIXELS_MASK))
+#endif
+
+#ifndef RDP_SUBPIXELS_MASK
+#define RDP_SUBPIXELS_MASK ((1 << RDP_SUBPIXELS_LOG2) - 1)
+#endif
+
 #define LOG(...) do { \
    if (LOG_ENABLE) fprintf(stderr, __VA_ARGS__); \
 } while(0)
@@ -8397,18 +8409,20 @@ no_read_zbuffer_coefficients:
         stw_info->d_stwz_dxh[3] = (stw_info->d_stwz_dx[3] >> 8) & ~0x00000001;
     }
 
-    ldflag = (sign_dxhdy ^ flip) ? 0 : 3;
-    invaly = 1;
-    yllimit = (yl - __clip.yl < 0) ? yl : __clip.yl; /* clip.yl always &= 0xFFF */
+    ldflag  = (sign_dxhdy ^ flip) ? 0 : 3;
+    invaly  = 1;
 
-    ycur = yh & ~3;
-    ylfar = yllimit | 3;
+    /* Scissor test and find Y bounds for where to rasterize. */
+    ycur    = yh & RDP_SUBPIXELS_INVMASK;
+    yhlimit = (yh - __clip.yh >= 0) ? yh : __clip.yh;
+    yllimit = (yl - __clip.yl < 0) ? yl : __clip.yl;
+    ylfar = yllimit | RDP_SUBPIXELS_MASK;
+
     if (yl >> 2 > ylfar >> 2)
         ylfar += 4;
     else if (yllimit >> 2 >= 0 && yllimit >> 2 < 1023)
         span[(yllimit >> 2) + 1].validline = 0;
 
-    yhlimit              = (yh - __clip.yh >= 0) ? yh : __clip.yh; /* clip.yh always &= 0xFFF */
 
     stw_info->xlr_inc[0] = (DxMDy >> 2) & ~0x00000001;
     stw_info->xlr_inc[1] = (DxHDy >> 2) & ~0x00000001;
@@ -8711,11 +8725,13 @@ static NOINLINE void draw_texture_rectangle(
     }
 
     invaly = 1;
+
+    /* Scissor test and find Y bounds for where to rasterize. */
+    ycur = yh & RDP_SUBPIXELS_INVMASK;
     yllimit = (yl <  __clip.yl) ? yl : __clip.yl;
     yhlimit = (yh >= __clip.yh) ? yh : __clip.yh;
+    ylfar = yllimit | RDP_SUBPIXELS_MASK;
 
-    ycur = yh & ~3;
-    ylfar = yllimit | 3;
     if ((yl >> 2) > (ylfar >> 2))
         ylfar += 4;
     else if ((yllimit >> 2) >= 0 && (yllimit >> 2) < 1023)
@@ -9120,15 +9136,17 @@ static void fill_rect(uint32_t w1, uint32_t w2)
     spans_dzpix = normalize_dzpix(0);
 
     invaly = 1;
-    yllimit = (yl < __clip.yl) ? yl : __clip.yl;
 
-    ycur = yh & ~3;
-    ylfar = yllimit | 3;
+    /* Scissor test and find Y bounds for where to rasterize. */
+    ycur = yh & RDP_SUBPIXELS_INVMASK;
+    yllimit = (yl < __clip.yl) ? yl : __clip.yl;
+    yhlimit = (yh >= __clip.yh) ? yh : __clip.yh;
+    ylfar = yllimit | RDP_SUBPIXELS_MASK;
+
     if (yl >> 2 > ylfar >> 2)
         ylfar += 4;
     else if (yllimit >> 2 >= 0 && yllimit>>2 < 1023)
         span[(yllimit >> 2) + 1].validline = 0;
-    yhlimit = (yh >= __clip.yh) ? yh : __clip.yh;
 
     allover = 1;
     allunder = 1;
