@@ -1,6 +1,8 @@
 #include <stdarg.h>
 #include <string.h>
 
+#include <boolean.h>
+#include <retro_miscellaneous.h>
 
 #include "z64.h"
 #include "Gfx #1.3.h"
@@ -4269,7 +4271,6 @@ static uint32_t z_compare(uint32_t zcurpixel, uint32_t sz, uint16_t dzpix, int d
     {
         uint32_t dznew;
         uint32_t dznotshift;
-        uint32_t dzmemmodifier;
         uint32_t farther;
         int overflow;
         int precision_factor;
@@ -4297,12 +4298,7 @@ static uint32_t z_compare(uint32_t zcurpixel, uint32_t sz, uint16_t dzpix, int d
         if (precision_factor < 3)
         {
             if (dzmem != 0x8000)
-            {
-                dzmemmodifier = 16 >> precision_factor;
-                dzmem <<= 1;
-                if (dzmem < dzmemmodifier)
-                    dzmem = dzmemmodifier;
-            }
+               dzmem = MAX(dzmem << 1, 16 >> precision_factor);
             else
             {
                 force_coplanar = 1;
