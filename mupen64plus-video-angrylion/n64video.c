@@ -4123,21 +4123,23 @@ static uint32_t z_compare(uint32_t zcurpixel, uint32_t sz, uint16_t dzpix, int d
     int32_t diff;
     int32_t rawdzmem;
     uint32_t oz, dzmem;
-    uint32_t nearer, max, infront;
+    uint32_t max;
     uint32_t hval      = 0;
     uint32_t zval      = 0;
     int cvgcoeff       = 0;
     uint32_t dzenc     = 0;
-    int force_coplanar = 0;
 
     sz &= 0x3ffff;
     if (other_modes.z_compare_en)
     {
-       uint32_t dznew;
+       uint32_t newdz;
        uint32_t dznotshift;
-       uint32_t farther;
        int overflow;
        int precision_factor;
+       bool infront        = false;
+       bool nearer         = false;
+       bool farther        = false;
+       bool force_coplanar = false;
 
        zcurpixel &= (RDRAM_MASK >> 1);
        if (zcurpixel <= IDXLIM16)
@@ -4171,21 +4173,21 @@ static uint32_t z_compare(uint32_t zcurpixel, uint32_t sz, uint16_t dzpix, int d
              dzmem = MAX(dzmem << 1, 16 >> precision_factor);
           else
           {
-             force_coplanar = 1;
+             force_coplanar = true;
              dzmem = 0xffff;
           }
 
        }
 
-       dznew = (uint32_t)deltaz_comparator_lut[dzpix | dzmem];
-       dznotshift = dznew;
-       dznew <<= 3;
+       newdz = (uint32_t)deltaz_comparator_lut[dzpix | dzmem];
+       dznotshift = newdz;
+       newdz <<= 3;
 
 #ifdef EXTRALOGGING
-       LOG("dznew = %d\n", dznew);
+       LOG("newdz = %d\n", newdz);
 #endif
 
-       farther = force_coplanar || ((sz + dznew) >= oz);
+       farther = force_coplanar || ((sz + newdz) >= oz);
 
        overflow = (curpixel_memcvg + *curpixel_cvg) & 8;
        *blend_en = other_modes.force_blend || (!overflow && other_modes.antialias_en && farther);
@@ -4198,36 +4200,25 @@ static uint32_t z_compare(uint32_t zcurpixel, uint32_t sz, uint16_t dzpix, int d
 #endif
 
        *prewrap = overflow;
+       infront  = sz < oz;
+       max      = (oz == 0x3ffff);
+       diff     = (int32_t)sz - (int32_t)newdz;
+       nearer   = force_coplanar || (diff <= (int32_t)oz);
 
        switch(other_modes.z_mode)
        {
           case ZMODE_OPAQUE: 
-             infront = sz < oz;
-             diff    = (int32_t)sz - (int32_t)dznew;
-             nearer  = force_coplanar || (diff <= (int32_t)oz);
-             max     = (oz == 0x3ffff);
              return (max || (overflow ? infront : nearer));
           case ZMODE_INTERPENETRATING: 
-             infront = sz < oz;
              if (!infront || !farther || !overflow)
-             {
-                diff    = (int32_t)sz - (int32_t)dznew;
-                nearer  = force_coplanar || (diff <= (int32_t)oz);
-                max     = (oz == 0x3ffff);
                 return (max || (overflow ? infront : nearer)); 
-             }
              dzenc         = dz_compress(dznotshift & 0xffff);
              cvgcoeff      = ((oz >> dzenc) - (sz >> dzenc)) & 0xf;
              *curpixel_cvg = ((cvgcoeff * (*curpixel_cvg)) >> 3) & 0xf;
              return 1;
           case ZMODE_TRANSPARENT: 
-             infront = sz < oz;
-             max     = (oz == 0x3ffff);
              return (infront || max); 
           case ZMODE_DECAL: 
-             diff   = (int32_t)sz - (int32_t)dznew;
-             nearer = force_coplanar || (diff <= (int32_t)oz);
-             max    = (oz == 0x3ffff);
              return (farther && nearer && !max); 
        }
        return 0;
