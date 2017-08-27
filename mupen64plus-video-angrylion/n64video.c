@@ -4365,23 +4365,24 @@ static STRICTINLINE void get_texel1_1cycle(int32_t* s1, int32_t* t1, int32_t s, 
     tcdiv(nexts, nextt, nextsw, s1, t1);
 }
 
-static INLINE void lodfrac_lodtile_signals(int lodclamp, int32_t lod, uint32_t* l_tile, uint32_t* magnify, uint32_t* distant)
+static INLINE void lodfrac_lodtile_signals(int lodclamp, int32_t lod, uint32_t* l_tile, bool* magnify, bool* distant)
 {
-   uint32_t ltil, dis, mag;
+   uint32_t ltil;
    int32_t lf;
+   bool dis   = false;
+   bool mag   = false;
 
    if ((lod & 0x4000) || lodclamp)
    {
-      mag = 0;
       ltil = 7;
-      dis = 1;
-      lf = 0xff;
+      dis  = true;
+      lf   = 0xff;
    }
    else if (lod < min_level)
    {
-      mag = 1;
+      mag  = true;
       ltil = 0;
-      dis = max_level ? 0 : 1;
+      dis  = max_level ? false : true;
 
       if(!other_modes.sharpen_tex_en && !other_modes.detail_tex_en)
       {
@@ -4399,9 +4400,9 @@ static INLINE void lodfrac_lodtile_signals(int lodclamp, int32_t lod, uint32_t* 
    }
    else if (lod < 32)
    {
-      mag = 1;
+      mag  = true;
       ltil = 0;
-      dis = max_level ? 0 : 1;
+      dis = max_level ? false : true;
 
       if(!other_modes.sharpen_tex_en && !other_modes.detail_tex_en)
       {
@@ -4419,13 +4420,12 @@ static INLINE void lodfrac_lodtile_signals(int lodclamp, int32_t lod, uint32_t* 
    }
    else
    {
-      mag = 0;
       ltil =  log2table[(lod >> 5) & 0xff];
 
       if (max_level)
-         dis = ((lod & 0x6000) || (ltil >= max_level)) ? 1 : 0;
+         dis = ((lod & 0x6000) || (ltil >= (int32_t)max_level));
       else
-         dis = 1;
+         dis = true;
 
 
       if(!other_modes.sharpen_tex_en && !other_modes.detail_tex_en && dis)
@@ -4510,7 +4510,9 @@ static void tclod_1cycle_current(int32_t* sss, int32_t* sst, int32_t nexts, int3
     int fars, fart, farsw;
     int lodclamp = 0;
     int32_t lod = 0;
-    uint32_t l_tile = 0, magnify = 0, distant = 0;
+    bool magnify    = false;
+    bool distant    = false;
+    uint32_t l_tile = 0;
     
     tclod_tcclamp(sss, sst);
 
@@ -4577,7 +4579,9 @@ static void tclod_1cycle_current_simple(int32_t* sss, int32_t* sst, int32_t s, i
     int fars, fart, farsw, nexts, nextt, nextsw;
     int lodclamp = 0;
     int32_t lod = 0;
-    uint32_t l_tile = 0, magnify = 0, distant = 0;
+    bool magnify    = false;
+    bool distant    = false;
+    uint32_t l_tile = 0;
     
     tclod_tcclamp(sss, sst);
 
@@ -4655,7 +4659,9 @@ static void tclod_1cycle_next(int32_t* sss, int32_t* sst, int32_t s, int32_t t, 
     int nexts, nextt, nextsw, fars, fart, farsw;
     int lodclamp = 0;
     int32_t lod = 0;
-    uint32_t l_tile = 0, magnify = 0, distant = 0;
+    bool magnify    = false;
+    bool distant    = false;
+    uint32_t l_tile = 0;
     
     tclod_tcclamp(sss, sst);
 
@@ -4763,8 +4769,11 @@ static void tclod_1cycle_next(int32_t* sss, int32_t* sst, int32_t s, int32_t t, 
         else if (lod < min_level)
             lod = min_level;
                     
-        magnify = (lod < 32) ? 1: 0;
-        l_tile =  log2table[(lod >> 5) & 0xff];
+        magnify = lod < 32;
+        /* min_lod is maximum 31 for detail/sharpen,
+         * so applying min_lod after magnify test is fine.
+         */
+        l_tile  =  log2table[(lod >> 5) & 0xffu];
         distant = ((lod & 0x6000) || (l_tile >= max_level)) ? 1 : 0;
 
         *prelodfrac = ((lod << 3) >> l_tile) & 0xff;
@@ -4783,6 +4792,7 @@ static void tclod_1cycle_next(int32_t* sss, int32_t* sst, int32_t s, int32_t t, 
 #endif
         }
 
+        /* Negative lerp factor to sharpen. */
         if(other_modes.sharpen_tex_en && magnify)
             *prelodfrac |= 0x100;
 
@@ -5395,8 +5405,8 @@ static void tclod_2cycle_current(int32_t* sss, int32_t* sst, int32_t nexts, int3
     int lodclamp = 0;
     int32_t lod = 0;
     uint32_t l_tile;
-    uint32_t magnify = 0;
-    uint32_t distant = 0;
+    bool magnify     = false;
+    bool distant     = false;
     int inits = *sss, initt = *sst;
 
     tclod_tcclamp(sss, sst);
@@ -5454,8 +5464,8 @@ static void tclod_2cycle_current_simple(int32_t* sss, int32_t* sst, int32_t s, i
     int lodclamp = 0;
     int32_t lod = 0;
     uint32_t l_tile;
-    uint32_t magnify = 0;
-    uint32_t distant = 0;
+    bool magnify     = false;
+    bool distant     = false;
     int inits = *sss, initt = *sst;
 
     tclod_tcclamp(sss, sst);
@@ -5517,8 +5527,8 @@ static void tclod_2cycle_current_notexel1(int32_t* sss, int32_t* sst, int32_t s,
     int lodclamp = 0;
     int32_t lod = 0;
     uint32_t l_tile;
-    uint32_t magnify = 0;
-    uint32_t distant = 0;
+    bool  magnify    = false;
+    bool distant     = false;
     int inits = *sss, initt = *sst;
 
     tclod_tcclamp(sss, sst);
@@ -5565,8 +5575,8 @@ static void tclod_2cycle_next(int32_t* sss, int32_t* sst, int32_t s, int32_t t, 
     int lodclamp = 0;
     int32_t lod = 0;
     uint32_t l_tile;
-    uint32_t magnify = 0;
-    uint32_t distant = 0;
+    bool magnify     = false;
+    bool distant     = false;
     int inits = *sss, initt = *sst;
 
     tclod_tcclamp(sss, sst);
@@ -5597,8 +5607,11 @@ static void tclod_2cycle_next(int32_t* sss, int32_t* sst, int32_t s, int32_t t, 
         else if (lod < min_level)
             lod = min_level;
                         
-        magnify = (lod < 32) ? 1: 0;
-        l_tile =  log2table[(lod >> 5) & 0xff];
+        magnify = lod < 32;
+        /* min_lod is maximum 31 for detail/sharpen,
+         * so applying min_lod after magnify test is fine.
+         */
+        l_tile  =  log2table[(lod >> 5) & 0xffu];
         distant = ((lod & 0x6000) || (l_tile >= max_level)) ? 1 : 0;
 
         *prelodfrac = ((lod << 3) >> l_tile) & 0xff;
@@ -5617,6 +5630,7 @@ static void tclod_2cycle_next(int32_t* sss, int32_t* sst, int32_t s, int32_t t, 
 #endif
         }
 
+        /* Negative lerp factor to sharpen. */
         if(other_modes.sharpen_tex_en && magnify)
             *prelodfrac |= 0x100;
 
@@ -6575,7 +6589,9 @@ static void tclod_copy(int32_t* sss, int32_t* sst, int32_t s, int32_t t, int32_t
     int nexts, nextt, nextsw, fars, fart, farsw;
     int lodclamp = 0;
     int32_t lod = 0;
-    uint32_t l_tile = 0, magnify = 0, distant = 0;
+    bool magnify    = false;
+    bool distant    = false;
+    uint32_t l_tile = 0;
 
     tclod_tcclamp(sss, sst);
 
@@ -6601,8 +6617,11 @@ static void tclod_copy(int32_t* sss, int32_t* sst, int32_t s, int32_t t, int32_t
         else if (lod < min_level)
             lod = min_level;
                         
-        magnify = (lod < 32) ? 1: 0;
-        l_tile =  log2table[(lod >> 5) & 0xff];
+        magnify = lod < 32;
+        /* min_lod is maximum 31 for detail/sharpen,
+         * so applying min_lod after magnify test is fine.
+         */
+        l_tile =  log2table[(lod >> 5) & 0xffu];
         distant = ((lod & 0x6000) || (l_tile >= max_level)) ? 1 : 0;
 
         if (distant)
