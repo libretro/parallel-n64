@@ -8160,7 +8160,14 @@ static NOINLINE void draw_triangle(uint32_t w1, uint32_t w2,
     int DxHDy = cmd_data[stw_info->base + 2].UW32[1];
     int DxMDy = cmd_data[stw_info->base + 3].UW32[1];
 
-    max_level   = level;
+    stw_info->xl    = xl;
+    stw_info->xh    = xh;
+    stw_info->xm    = xm;
+    stw_info->DxLDy = DxLDy;
+    stw_info->DxHDy = DxHDy;
+    stw_info->DxLDy = DxLDy;
+
+    max_level       = level;
 
     /* Shade Coefficients */
     if (shade == 0) /* branch unlikely */
@@ -8331,7 +8338,7 @@ no_read_zbuffer_coefficients:
     stw_info->d_stwz_dy_int[3] ^= (stw_info->d_stwz_dy_int[3] < 0) ? ~0 : 0;
     spans_dzpix = normalize_dz(stw_info->d_stwz_dx_int[3] + stw_info->d_stwz_dy_int[3]);
 
-    sign_dxhdy = (DxHDy < 0);
+    sign_dxhdy = (stw_info->DxHDy < 0);
     if (sign_dxhdy ^ flip) /* !do_offset */
     {
         setzero_si128(stw_info->d_rgba_diff);
@@ -8418,10 +8425,10 @@ no_read_zbuffer_coefficients:
         span[(yllimit >> 2) + 1].validline = 0;
 
 
-    stw_info->xlr_inc[0] = (DxMDy >> 2) & ~0x00000001;
-    stw_info->xlr_inc[1] = (DxHDy >> 2) & ~0x00000001;
-    stw_info->xlr[0]     = xm & ~0x00000001;
-    stw_info->xlr[1]     = xh & ~0x00000001;
+    stw_info->xlr_inc[0] = (stw_info->DxMDy >> 2) & ~0x00000001;
+    stw_info->xlr_inc[1] = (stw_info->DxHDy >> 2) & ~0x00000001;
+    stw_info->xlr[0]     = stw_info->xm & ~0x00000001;
+    stw_info->xlr[1]     = stw_info->xh & ~0x00000001;
     stw_info->xfrac      = (stw_info->xlr[1] >> 8) & 0xFF;
 
     allover = 1;
@@ -8439,8 +8446,8 @@ no_read_zbuffer_coefficients:
 
         if (k == ym)
         {
-            stw_info->xlr[0]     = xl & ~0x00000001;
-            stw_info->xlr_inc[0] = (DxLDy >> 2) & ~0x00000001;
+            stw_info->xlr[0]     = stw_info->xl & ~0x00000001;
+            stw_info->xlr_inc[0] = (stw_info->DxLDy >> 2) & ~0x00000001;
         }
 
         if (k < yhclose)
