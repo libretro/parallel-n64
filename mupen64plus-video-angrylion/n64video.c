@@ -4231,112 +4231,112 @@ static uint32_t z_compare(uint32_t zcurpixel, uint32_t sz, uint16_t dzpix, int d
     sz &= 0x3ffff;
     if (other_modes.z_compare_en)
     {
-        uint32_t dznew;
-        uint32_t dznotshift;
-        uint32_t farther;
-        int overflow;
-        int precision_factor;
+       uint32_t dznew;
+       uint32_t dznotshift;
+       uint32_t farther;
+       int overflow;
+       int precision_factor;
 
-        PAIRREAD16(zval, hval, zcurpixel);
-        oz = z_decompress(zval);
-        rawdzmem = ((zval & 3) << 2) | hval;
-        dzmem = dz_decompress(rawdzmem);
+       PAIRREAD16(zval, hval, zcurpixel);
+       oz = z_decompress(zval);
+       rawdzmem = ((zval & 3) << 2) | hval;
+       dzmem = dz_decompress(rawdzmem);
 
-        if (other_modes.f.realblendershiftersneeded)
-        {
-           blshifta = CLIP(dzpixenc - rawdzmem, 0, 4);
-           blshiftb = CLIP(rawdzmem - dzpixenc, 0, 4);
-        }
+       if (other_modes.f.realblendershiftersneeded)
+       {
+          blshifta = CLIP(dzpixenc - rawdzmem, 0, 4);
+          blshiftb = CLIP(rawdzmem - dzpixenc, 0, 4);
+       }
 
-        if (other_modes.f.interpixelblendershiftersneeded)
-        {
-           pastblshifta = CLIP(dzpixenc - pastrawdzmem, 0, 4);
-           pastblshiftb = CLIP(pastrawdzmem - dzpixenc, 0, 4);
-        }
-        pastrawdzmem = rawdzmem;
+       if (other_modes.f.interpixelblendershiftersneeded)
+       {
+          pastblshifta = CLIP(dzpixenc - pastrawdzmem, 0, 4);
+          pastblshiftb = CLIP(pastrawdzmem - dzpixenc, 0, 4);
+       }
+       pastrawdzmem = rawdzmem;
 
-        precision_factor = (zval >> 13) & 0xf;
+       precision_factor = (zval >> 13) & 0xf;
 
-        if (precision_factor < 3)
-        {
-            if (dzmem != 0x8000)
-               dzmem = MAX(dzmem << 1, 16 >> precision_factor);
-            else
-            {
-                force_coplanar = 1;
-                dzmem = 0xffff;
-            }
-            
-        }
+       if (precision_factor < 3)
+       {
+          if (dzmem != 0x8000)
+             dzmem = MAX(dzmem << 1, 16 >> precision_factor);
+          else
+          {
+             force_coplanar = 1;
+             dzmem = 0xffff;
+          }
 
-        dznew = (uint32_t)deltaz_comparator_lut[dzpix | dzmem];
-        dznotshift = dznew;
-        dznew <<= 3;
-        
-#ifdef EXTRALOGGING
-        LOG("dznew = %d\n", dznew);
-#endif
+       }
 
-        farther = force_coplanar || ((sz + dznew) >= oz);
-        
-        overflow = (curpixel_memcvg + *curpixel_cvg) & 8;
-        *blend_en = other_modes.force_blend || (!overflow && other_modes.antialias_en && farther);
+       dznew = (uint32_t)deltaz_comparator_lut[dzpix | dzmem];
+       dznotshift = dznew;
+       dznew <<= 3;
 
 #ifdef EXTRALOGGING
-        LOG("force_blend = %d\n", other_modes.force_blend);
-        LOG("oz = %d\n", oz);
-        LOG("blend_en = %d\n", *blend_en);
-        LOG("overflow = %d\n", overflow);
+       LOG("dznew = %d\n", dznew);
 #endif
-        
-        *prewrap = overflow;
 
-        switch(other_modes.z_mode)
-        {
-        case ZMODE_OPAQUE: 
-            infront = sz < oz;
-            diff = (int32_t)sz - (int32_t)dznew;
-            nearer = force_coplanar || (diff <= (int32_t)oz);
-            max = (oz == 0x3ffff);
+       farther = force_coplanar || ((sz + dznew) >= oz);
+
+       overflow = (curpixel_memcvg + *curpixel_cvg) & 8;
+       *blend_en = other_modes.force_blend || (!overflow && other_modes.antialias_en && farther);
+
 #ifdef EXTRALOGGING
-            LOG("nearer = %d\n", nearer);
-            LOG("opaque\n");
+       LOG("force_blend = %d\n", other_modes.force_blend);
+       LOG("oz = %d\n", oz);
+       LOG("blend_en = %d\n", *blend_en);
+       LOG("overflow = %d\n", overflow);
 #endif
-            return (max || (overflow ? infront : nearer));
-            break;
-        case ZMODE_INTERPENETRATING: 
-            infront = sz < oz;
-            LOG("inter\n");
-            if (!infront || !farther || !overflow)
-            {
+
+       *prewrap = overflow;
+
+       switch(other_modes.z_mode)
+       {
+          case ZMODE_OPAQUE: 
+             infront = sz < oz;
+             diff = (int32_t)sz - (int32_t)dznew;
+             nearer = force_coplanar || (diff <= (int32_t)oz);
+             max = (oz == 0x3ffff);
+#ifdef EXTRALOGGING
+             LOG("nearer = %d\n", nearer);
+             LOG("opaque\n");
+#endif
+             return (max || (overflow ? infront : nearer));
+             break;
+          case ZMODE_INTERPENETRATING: 
+             infront = sz < oz;
+             LOG("inter\n");
+             if (!infront || !farther || !overflow)
+             {
                 diff = (int32_t)sz - (int32_t)dznew;
                 nearer = force_coplanar || (diff <= (int32_t)oz);
                 max = (oz == 0x3ffff);
                 return (max || (overflow ? infront : nearer)); 
-            }
-            else
-            {
+             }
+             else
+             {
                 dzenc = dz_compress(dznotshift & 0xffff);
                 cvgcoeff = ((oz >> dzenc) - (sz >> dzenc)) & 0xf;
                 *curpixel_cvg = ((cvgcoeff * (*curpixel_cvg)) >> 3) & 0xf;
                 return 1;
-            }
-            break;
-        case ZMODE_TRANSPARENT: 
-            LOG("trans\n");
-            infront = sz < oz;
-            max = (oz == 0x3ffff);
-            return (infront || max); 
-            break;
-        case ZMODE_DECAL: 
-            LOG("decal\n");
-            diff = (int32_t)sz - (int32_t)dznew;
-            nearer = force_coplanar || (diff <= (int32_t)oz);
-            max = (oz == 0x3ffff);
-            return (farther && nearer && !max); 
-            break;
-        }
-        return 0;
+             }
+             break;
+          case ZMODE_TRANSPARENT: 
+             LOG("trans\n");
+             infront = sz < oz;
+             max = (oz == 0x3ffff);
+             return (infront || max); 
+             break;
+          case ZMODE_DECAL: 
+             LOG("decal\n");
+             diff = (int32_t)sz - (int32_t)dznew;
+             nearer = force_coplanar || (diff <= (int32_t)oz);
+             max = (oz == 0x3ffff);
+             return (farther && nearer && !max); 
+             break;
+       }
+       return 0;
     }
     else
     {
@@ -7522,28 +7522,26 @@ static void fbread2_4(uint32_t curpixel, uint32_t* curpixel_memcvg)
 
 static void fbread_8(uint32_t curpixel, uint32_t* curpixel_memcvg)
 {
-   uint8_t mem;
-   uint32_t addr = fb_address + curpixel;
-   RREADADDR8(mem, addr);
+   uint32_t addr = (fb_address + curpixel) & RDRAM_MASK;
+   uint8_t mem   = (addr <= plim) ? rdram_8[addr ^ BYTE_ADDR_XOR] : 0;
 
    COLOR_RED(memory_color)   = mem;
    COLOR_GREEN(memory_color) = mem;
    COLOR_BLUE(memory_color)  = mem;
    COLOR_ALPHA(memory_color) = 0xE0;
-   *curpixel_memcvg = 7;
+   *curpixel_memcvg          = 7;
 }
 
 static void fbread2_8(uint32_t curpixel, uint32_t* curpixel_memcvg)
 {
-   uint8_t mem;
-   uint32_t addr = fb_address + curpixel;
-   RREADADDR8(mem, addr);
+   uint32_t addr = (fb_address + curpixel) & RDRAM_MASK;
+   uint8_t mem   = (addr <= plim) ? rdram_8[addr ^ BYTE_ADDR_XOR] : 0;
 
    COLOR_RED(pre_memory_color)   = mem;
    COLOR_GREEN(pre_memory_color) = mem;
    COLOR_BLUE(pre_memory_color)  = mem;
    COLOR_ALPHA(pre_memory_color) = 0xE0;
-   *curpixel_memcvg = 7;
+   *curpixel_memcvg              = 7;
 }
 
 static INLINE void fbread_16(uint32_t curpixel, uint32_t* curpixel_memcvg)
@@ -7552,7 +7550,7 @@ static INLINE void fbread_16(uint32_t curpixel, uint32_t* curpixel_memcvg)
    uint8_t hbyte;
    uint8_t lowbits;
    uint32_t addr = (fb_address >> 1) + curpixel;
-	
+
    if (other_modes.image_read_en)
    {
       PAIRREAD16(fword, hbyte, addr);
@@ -7560,16 +7558,16 @@ static INLINE void fbread_16(uint32_t curpixel, uint32_t* curpixel_memcvg)
       if (fb_format == FORMAT_RGBA)
       {
          COLOR_RED(memory_color)   = GET_HI(fword);
-	 COLOR_GREEN(memory_color) = GET_MED(fword);
-	 COLOR_BLUE(memory_color)  = GET_LOW(fword);
-	 lowbits = ((fword & 1) << 2) | hbyte;
+         COLOR_GREEN(memory_color) = GET_MED(fword);
+         COLOR_BLUE(memory_color)  = GET_LOW(fword);
+         lowbits = ((fword & 1) << 2) | hbyte;
       }
       else
       {
          COLOR_RED(memory_color)   = fword >> 8;
-	 COLOR_GREEN(memory_color) = fword >> 8;
-	 COLOR_BLUE(memory_color)  = fword >> 8;
-	 lowbits = (fword >> 5) & 7;
+         COLOR_GREEN(memory_color) = fword >> 8;
+         COLOR_BLUE(memory_color)  = fword >> 8;
+         lowbits = (fword >> 5) & 7;
       }
 
       *curpixel_memcvg = lowbits;
@@ -7582,14 +7580,14 @@ static INLINE void fbread_16(uint32_t curpixel, uint32_t* curpixel_memcvg)
       if (fb_format == FORMAT_RGBA)
       {
          COLOR_RED(memory_color)   = GET_HI(fword);
-	 COLOR_GREEN(memory_color) = GET_MED(fword);
-	 COLOR_BLUE(memory_color)  = GET_LOW(fword);
+         COLOR_GREEN(memory_color) = GET_MED(fword);
+         COLOR_BLUE(memory_color)  = GET_LOW(fword);
       }
       else
       {
          COLOR_RED(memory_color)   = fword >> 8;
-	 COLOR_GREEN(memory_color) = fword >> 8;
-	 COLOR_BLUE(memory_color)  = fword >> 8;
+         COLOR_GREEN(memory_color) = fword >> 8;
+         COLOR_BLUE(memory_color)  = fword >> 8;
       }
 
       *curpixel_memcvg = 7;
@@ -7611,16 +7609,16 @@ static INLINE void fbread2_16(uint32_t curpixel, uint32_t* curpixel_memcvg)
       if (fb_format == FORMAT_RGBA)
       {
          COLOR_RED(pre_memory_color)    = GET_HI(fword);
-	 COLOR_GREEN(pre_memory_color)  = GET_MED(fword);
-	 COLOR_BLUE(pre_memory_color)   = GET_LOW(fword);
-	 lowbits = ((fword & 1) << 2) | hbyte;
+         COLOR_GREEN(pre_memory_color)  = GET_MED(fword);
+         COLOR_BLUE(pre_memory_color)   = GET_LOW(fword);
+         lowbits = ((fword & 1) << 2) | hbyte;
       }
       else
       {
          COLOR_RED(pre_memory_color)     = fword >> 8;
-	 COLOR_GREEN(pre_memory_color)   = fword >> 8;
-	 COLOR_BLUE(pre_memory_color)    = fword >> 8;
-	 lowbits = (fword >> 5) & 7;
+         COLOR_GREEN(pre_memory_color)   = fword >> 8;
+         COLOR_BLUE(pre_memory_color)    = fword >> 8;
+         lowbits = (fword >> 5) & 7;
       }
 
       *curpixel_memcvg              = lowbits;
@@ -7633,14 +7631,14 @@ static INLINE void fbread2_16(uint32_t curpixel, uint32_t* curpixel_memcvg)
       if (fb_format == FORMAT_RGBA)
       {
          COLOR_RED(pre_memory_color)   = GET_HI(fword);
-	 COLOR_GREEN(pre_memory_color) = GET_MED(fword);
-	 COLOR_BLUE(pre_memory_color)  = GET_LOW(fword);
+         COLOR_GREEN(pre_memory_color) = GET_MED(fword);
+         COLOR_BLUE(pre_memory_color)  = GET_LOW(fword);
       }
       else
       {
          COLOR_RED(pre_memory_color)   = fword >> 8;
-	 COLOR_GREEN(pre_memory_color) = fword >> 8;
-	 COLOR_BLUE(pre_memory_color)  = fword >> 8;
+         COLOR_GREEN(pre_memory_color) = fword >> 8;
+         COLOR_BLUE(pre_memory_color)  = fword >> 8;
       }
 
       *curpixel_memcvg              = 7;
@@ -7650,18 +7648,18 @@ static INLINE void fbread2_16(uint32_t curpixel, uint32_t* curpixel_memcvg)
 
 static void fbread_32(uint32_t curpixel, uint32_t* curpixel_memcvg)
 {
-    uint32_t mem, addr = (fb_address >> 2) + curpixel;
-    RREADIDX32(mem, addr);
+   uint32_t mem, addr = (fb_address >> 2) + curpixel;
+   RREADIDX32(mem, addr);
 
-    COLOR_RED(memory_color)    = (mem >> 24) & 0xFF;
-    COLOR_GREEN(memory_color)  = (mem >> 16) & 0xFF;
-    COLOR_BLUE(memory_color)   = (mem >>  8) & 0xFF;
+   COLOR_RED(memory_color)    = (mem >> 24) & 0xFF;
+   COLOR_GREEN(memory_color)  = (mem >> 16) & 0xFF;
+   COLOR_BLUE(memory_color)   = (mem >>  8) & 0xFF;
 
-    COLOR_ALPHA(memory_color)  = (mem >>  0) & 0xFF;
-    COLOR_ALPHA(memory_color) |= ~(-other_modes.image_read_en);
-    COLOR_ALPHA(memory_color) &= 0xE0;
+   COLOR_ALPHA(memory_color)  = (mem >>  0) & 0xFF;
+   COLOR_ALPHA(memory_color) |= ~(-other_modes.image_read_en);
+   COLOR_ALPHA(memory_color) &= 0xE0;
 
-    *curpixel_memcvg = (unsigned char)(COLOR_ALPHA(memory_color)) >> 5;
+   *curpixel_memcvg = (unsigned char)(COLOR_ALPHA(memory_color)) >> 5;
 }
 
 static void fbread2_32(uint32_t curpixel, uint32_t* curpixel_memcvg)
