@@ -3576,51 +3576,36 @@ static void read_tmem_copy(int s, int s1, int s2, int s3, int t, uint32_t tilenu
     }
 }
 
-
-
-
-
-
-
-
-static void replicate_for_copy(uint32_t* outbyte, uint32_t inshort, uint32_t nybbleoffset, uint32_t tilenum, uint32_t tformat, uint32_t tsize)
+static uint32_t replicate_for_copy(uint32_t inshort, uint32_t nybbleoffset,
+      uint32_t tilenum, uint32_t tformat, uint32_t tsize)
 {
     uint32_t lownib, hinib;
     switch(tsize)
     {
-    case PIXEL_SIZE_4BIT:
-        lownib = (nybbleoffset ^ 3) << 2;
-        lownib = hinib = (inshort >> lownib) & 0xf;
-        if (tformat == FORMAT_CI)
-        {
-            *outbyte = (tile[tilenum].palette << 4) | lownib;
-        }
-        else if (tformat == FORMAT_IA)
-        {
-            lownib = (lownib << 4) | lownib;
-            *outbyte = (lownib & 0xe0) | ((lownib & 0xe0) >> 3) | ((lownib & 0xc0) >> 6);
-        }
-        else
-            *outbyte = (lownib << 4) | lownib;
-        break;
-    case PIXEL_SIZE_8BIT:
-        hinib = ((nybbleoffset ^ 3) | 1) << 2;
-        if (tformat == FORMAT_IA)
-        {
-            lownib = (inshort >> hinib) & 0xf;
-            *outbyte = (lownib << 4) | lownib;
-        }
-        else
-        {
-            lownib = (inshort >> (hinib & ~4)) & 0xf;
-            hinib = (inshort >> hinib) & 0xf;
-            *outbyte = (hinib << 4) | lownib;
-        }
-        break;
-    default:
-        *outbyte = (inshort >> 8) & 0xff;
-        break;
+       case PIXEL_SIZE_4BIT:
+          lownib = (nybbleoffset ^ 3) << 2;
+          lownib = hinib = (inshort >> lownib) & 0xf;
+          if (tformat == FORMAT_CI)
+             return (tile[tilenum].palette << 4) | lownib;
+          else if (tformat == FORMAT_IA)
+          {
+             lownib = (lownib << 4) | lownib;
+             return (lownib & 0xe0) | ((lownib & 0xe0) >> 3) | ((lownib & 0xc0) >> 6);
+          }
+          return (lownib << 4) | lownib;
+       case PIXEL_SIZE_8BIT:
+          hinib = ((nybbleoffset ^ 3) | 1) << 2;
+          if (tformat == FORMAT_IA)
+          {
+             lownib = (inshort >> hinib) & 0xf;
+             return (lownib << 4) | lownib;
+          }
+          lownib = (inshort >> (hinib & ~4)) & 0xf;
+          hinib = (inshort >> hinib) & 0xf;
+          return (hinib << 4) | lownib;
     }
+
+    return (inshort >> 8) & 0xff;
 }
 
 static void tc_pipeline_copy(int32_t* sss0, int32_t* sss1, int32_t* sss2, int32_t* sss3, int32_t* sst, int tilenum)                                            
@@ -3703,10 +3688,10 @@ static void fetch_qword_copy(uint32_t* hidword, uint32_t* lowdword, int32_t ssss
         *hidword = (shorta << 16) | shortb;
     else
     {
-        replicate_for_copy(&shorta, shorta, lowbits[0] & 3, tilenum, tformat, tsize);
-        replicate_for_copy(&shortb, shortb, lowbits[1] & 3, tilenum, tformat, tsize);
-        replicate_for_copy(&shortc, shortc, lowbits[3] & 3, tilenum, tformat, tsize);
-        replicate_for_copy(&shortd, shortd, lowbits[4] & 3, tilenum, tformat, tsize);
+        shorta   = replicate_for_copy(shorta, lowbits[0] & 3, tilenum, tformat, tsize);
+        shortb   = replicate_for_copy(shortb, lowbits[1] & 3, tilenum, tformat, tsize);
+        shortc   = replicate_for_copy(shortc, lowbits[3] & 3, tilenum, tformat, tsize);
+        shortd   = replicate_for_copy(shortd, lowbits[4] & 3, tilenum, tformat, tsize);
         *hidword = (shorta << 24) | (shortb << 16) | (shortc << 8) | shortd;
     }
 }
