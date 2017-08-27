@@ -3337,18 +3337,17 @@ static void fetch_texel_entlut_quadro(COLOR *color0, COLOR *color1, COLOR *color
     }
 }
 
-static void sort_tmem_idx(uint32_t *idx, uint32_t idxa, uint32_t idxb, uint32_t idxc, uint32_t idxd, uint32_t bankno)
+static uint32_t sort_tmem_idx(uint32_t idxa, uint32_t idxb, uint32_t idxc, uint32_t idxd, uint32_t bankno)
 {
     if ((idxa & 3) == bankno)
-        *idx = idxa & 0x3ff;
+        return idxa & 0x3ff;
     else if ((idxb & 3) == bankno)
-        *idx = idxb & 0x3ff;
+        return idxb & 0x3ff;
     else if ((idxc & 3) == bankno)
-        *idx = idxc & 0x3ff;
+        return idxc & 0x3ff;
     else if ((idxd & 3) == bankno)
-        *idx = idxd & 0x3ff;
-    else
-        *idx = 0;
+        return idxd & 0x3ff;
+    return 0;
 }
 
 static void get_tmem_idx(int s, int t, uint32_t tilenum, uint32_t* idx0, uint32_t* idx1, uint32_t* idx2, uint32_t* idx3, uint32_t* bit3flipped, uint32_t* hibit)
@@ -3390,10 +3389,10 @@ static void get_tmem_idx(int s, int t, uint32_t tilenum, uint32_t* idx0, uint32_
     }
 
     
-    sort_tmem_idx(idx0, tidx_a, tidx_b, tidx_c, tidx_d, 0);
-    sort_tmem_idx(idx1, tidx_a, tidx_b, tidx_c, tidx_d, 1);
-    sort_tmem_idx(idx2, tidx_a, tidx_b, tidx_c, tidx_d, 2);
-    sort_tmem_idx(idx3, tidx_a, tidx_b, tidx_c, tidx_d, 3);
+    *idx0 = sort_tmem_idx(tidx_a, tidx_b, tidx_c, tidx_d, 0);
+    *idx1 = sort_tmem_idx(tidx_a, tidx_b, tidx_c, tidx_d, 1);
+    *idx2 = sort_tmem_idx(tidx_a, tidx_b, tidx_c, tidx_d, 2);
+    *idx3 = sort_tmem_idx(tidx_a, tidx_b, tidx_c, tidx_d, 3);
 }
 
 static void compute_color_index(uint32_t* cidx, uint32_t readshort, uint32_t nybbleoffset, uint32_t tilenum)
@@ -3435,20 +3434,17 @@ static void sort_tmem_shorts_lowhalf(uint32_t* bindshort, uint32_t short0, uint3
 static void read_tmem_copy(int s, int s1, int s2, int s3, int t, uint32_t tilenum, uint32_t* sortshort, int* hibits, int* lowbits)
 {
     uint32_t sortidx[8];
-    uint32_t tbase;
-    uint32_t tsize;
-    uint32_t tformat;
-    uint32_t shbytes, shbytes1, shbytes2, shbytes3;
-    int32_t delta;
     uint16_t* tmem16;
     uint32_t short0, short1, short2, short3;
     int tidx_a, tidx_blow, tidx_bhi, tidx_c, tidx_dlow, tidx_dhi;
-
-    delta = 0;
-    tbase  = (tile[tilenum].line * t) & 0x000001FF;
-    tbase += tile[tilenum].tmem;
-    tsize = tile[tilenum].size;
-    tformat = tile[tilenum].format;
+    int32_t delta     = 0;
+    uint32_t tbase    = (tile[tilenum].line * t) & 0x000001FF;
+    uint32_t tsize    = tile[tilenum].size;
+    uint32_t tformat  = tile[tilenum].format;
+    uint32_t shbytes  = s;
+    uint32_t shbytes1 = s1;
+    uint32_t shbytes2 = s2;
+    uint32_t shbytes3 = s3;
 
     if (tsize == PIXEL_SIZE_8BIT || tformat == FORMAT_YUV)
     {
@@ -3464,28 +3460,22 @@ static void read_tmem_copy(int s, int s1, int s2, int s3, int t, uint32_t tilenu
         shbytes2 = s2 << 2;
         shbytes3 = s3 << 2;
     }
-    else
-    {
-        shbytes = s;
-        shbytes1 = s1;
-        shbytes2 = s2;
-        shbytes3 = s3;
-    }
 
-    shbytes &= 0x1fff;
+    shbytes  &= 0x1fff;
     shbytes1 &= 0x1fff;
     shbytes2 &= 0x1fff;
     shbytes3 &= 0x1fff;
 
-    tbase <<= 4;
-    tidx_a = (tbase + shbytes) & 0x1fff;
+    tbase   += tile[tilenum].tmem;
+    tbase  <<= 4;
+    tidx_a   = (tbase + shbytes) & 0x1fff;
     tidx_bhi = (tbase + shbytes1) & 0x1fff;
-    tidx_c = (tbase + shbytes2) & 0x1fff;
+    tidx_c   = (tbase + shbytes2) & 0x1fff;
     tidx_dhi = (tbase + shbytes3) & 0x1fff;
 
     if (tformat == FORMAT_YUV)
     {
-        delta = shbytes1 - shbytes;
+        delta     = shbytes1 - shbytes;
         tidx_blow = (tidx_a + (delta << 1)) & 0x1fff;
         tidx_dlow = (tidx_blow + shbytes3 - shbytes) & 0x1fff;
     }
@@ -3497,20 +3487,20 @@ static void read_tmem_copy(int s, int s1, int s2, int s3, int t, uint32_t tilenu
 
     if (t & 1)
     {
-        tidx_a ^= 8;
+        tidx_a    ^= 8;
         tidx_blow ^= 8;
-        tidx_bhi ^= 8;
-        tidx_c ^= 8;
+        tidx_bhi  ^= 8;
+        tidx_c    ^= 8;
         tidx_dlow ^= 8;
-        tidx_dhi ^= 8;
+        tidx_dhi  ^= 8;
     }
 
-    hibits[0] = (tidx_a & 0x1000) ? 1 : 0;
-    hibits[1] = (tidx_blow & 0x1000) ? 1 : 0; 
-    hibits[2] =    (tidx_bhi & 0x1000) ? 1 : 0;
-    hibits[3] =    (tidx_c & 0x1000) ? 1 : 0;
-    hibits[4] =    (tidx_dlow & 0x1000) ? 1 : 0;
-    hibits[5] = (tidx_dhi & 0x1000) ? 1 : 0;
+    hibits[0]  = (tidx_a & 0x1000) ? 1 : 0;
+    hibits[1]  = (tidx_blow & 0x1000) ? 1 : 0; 
+    hibits[2]  = (tidx_bhi & 0x1000) ? 1 : 0;
+    hibits[3]  = (tidx_c & 0x1000) ? 1 : 0;
+    hibits[4]  = (tidx_dlow & 0x1000) ? 1 : 0;
+    hibits[5]  = (tidx_dhi & 0x1000) ? 1 : 0;
     lowbits[0] = tidx_a & 0xf;
     lowbits[1] = tidx_blow & 0xf;
     lowbits[2] = tidx_bhi & 0xf;
@@ -3518,20 +3508,19 @@ static void read_tmem_copy(int s, int s1, int s2, int s3, int t, uint32_t tilenu
     lowbits[4] = tidx_dlow & 0xf;
     lowbits[5] = tidx_dhi & 0xf;
 
-    tmem16 = (uint16_t *)__TMEM;
+    tmem16     = (uint16_t *)__TMEM;
 
-    tidx_a >>= 2;
+    tidx_a    >>= 2;
     tidx_blow >>= 2;
-    tidx_bhi >>= 2;
-    tidx_c >>= 2;
+    tidx_bhi  >>= 2;
+    tidx_c    >>= 2;
     tidx_dlow >>= 2;
-    tidx_dhi >>= 2;
-
+    tidx_dhi  >>= 2;
     
-    sort_tmem_idx(&sortidx[0], tidx_a, tidx_blow, tidx_c, tidx_dlow, 0);
-    sort_tmem_idx(&sortidx[1], tidx_a, tidx_blow, tidx_c, tidx_dlow, 1);
-    sort_tmem_idx(&sortidx[2], tidx_a, tidx_blow, tidx_c, tidx_dlow, 2);
-    sort_tmem_idx(&sortidx[3], tidx_a, tidx_blow, tidx_c, tidx_dlow, 3);
+    sortidx[0]  = sort_tmem_idx(tidx_a, tidx_blow, tidx_c, tidx_dlow, 0);
+    sortidx[1]  = sort_tmem_idx(tidx_a, tidx_blow, tidx_c, tidx_dlow, 1);
+    sortidx[2]  = sort_tmem_idx(tidx_a, tidx_blow, tidx_c, tidx_dlow, 2);
+    sortidx[3]  = sort_tmem_idx(tidx_a, tidx_blow, tidx_c, tidx_dlow, 3);
 
     short0 = tmem16[sortidx[0] ^ WORD_ADDR_XOR];
     short1 = tmem16[sortidx[1] ^ WORD_ADDR_XOR];
@@ -3560,10 +3549,10 @@ static void read_tmem_copy(int s, int s1, int s2, int s3, int t, uint32_t tilenu
     }
     else
     {
-        sort_tmem_idx(&sortidx[4], tidx_a, tidx_bhi, tidx_c, tidx_dhi, 0);
-        sort_tmem_idx(&sortidx[5], tidx_a, tidx_bhi, tidx_c, tidx_dhi, 1);
-        sort_tmem_idx(&sortidx[6], tidx_a, tidx_bhi, tidx_c, tidx_dhi, 2);
-        sort_tmem_idx(&sortidx[7], tidx_a, tidx_bhi, tidx_c, tidx_dhi, 3);
+        sortidx[4] = sort_tmem_idx(tidx_a, tidx_bhi, tidx_c, tidx_dhi, 0);
+        sortidx[5] = sort_tmem_idx(tidx_a, tidx_bhi, tidx_c, tidx_dhi, 1);
+        sortidx[6] = sort_tmem_idx(tidx_a, tidx_bhi, tidx_c, tidx_dhi, 2);
+        sortidx[7] = sort_tmem_idx(tidx_a, tidx_bhi, tidx_c, tidx_dhi, 3);
     }
 
     short0 = tmem16[(sortidx[4] | 0x400) ^ WORD_ADDR_XOR];
