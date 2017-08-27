@@ -8124,6 +8124,26 @@ int32_t clipxhshift, int *xsc, int *allover, int *allunder)
    *allunder &= curunder;
 }
 
+static void tri_fill_coeffs(struct stepwalker_info *stw_info)
+{
+   /* Triangle edge X-coordinates */
+   /* 14.16 fixed point */
+   int32_t xl = SEXT(cmd_data[stw_info->base + 1].UW32[0], 30) & ~1;
+   int32_t xh = SEXT(cmd_data[stw_info->base + 2].UW32[0], 30) & ~1;
+   int32_t xm = SEXT(cmd_data[stw_info->base + 3].UW32[0], 30) & ~1;
+
+   /* Triangle edge inverse-slopes */
+   int DxLDy = cmd_data[stw_info->base + 1].UW32[1];
+   int DxHDy = cmd_data[stw_info->base + 2].UW32[1];
+   int DxMDy = cmd_data[stw_info->base + 3].UW32[1];
+
+   stw_info->xl    = xl;
+   stw_info->xh    = xh;
+   stw_info->xm    = xm;
+   stw_info->DxLDy = DxLDy;
+   stw_info->DxHDy = DxHDy;
+   stw_info->DxMDy = DxMDy;
+}
 
 static NOINLINE void draw_triangle(uint32_t w1, uint32_t w2,
       int shade, int texture, int zbuffer, struct stepwalker_info *stw_info)
@@ -8153,23 +8173,6 @@ static NOINLINE void draw_triangle(uint32_t w1, uint32_t w2,
     int32_t ym = SEXT((w2 >> 16) & 0xffff, 14);
     int32_t yh = SEXT((w2 >> 0)  & 0xffff, 14);
 
-    /* Triangle edge X-coordinates */
-    /* 14.16 fixed point */
-    int32_t xl = SEXT(cmd_data[stw_info->base + 1].UW32[0], 30) & ~1;
-    int32_t xh = SEXT(cmd_data[stw_info->base + 2].UW32[0], 30) & ~1;
-    int32_t xm = SEXT(cmd_data[stw_info->base + 3].UW32[0], 30) & ~1;
-
-    /* Triangle edge inverse-slopes */
-    int DxLDy = cmd_data[stw_info->base + 1].UW32[1];
-    int DxHDy = cmd_data[stw_info->base + 2].UW32[1];
-    int DxMDy = cmd_data[stw_info->base + 3].UW32[1];
-
-    stw_info->xl    = xl;
-    stw_info->xh    = xh;
-    stw_info->xm    = xm;
-    stw_info->DxLDy = DxLDy;
-    stw_info->DxHDy = DxHDy;
-    stw_info->DxMDy = DxMDy;
 
     max_level       = level;
 
@@ -8610,6 +8613,7 @@ static void tri_noshade(uint32_t w1, uint32_t w2)
 {
    struct stepwalker_info stw_info;
    stepwalker_info_init(&stw_info);
+   tri_fill_coeffs(&stw_info);
    draw_triangle(w1, w2, SHADE_NO, TEXTURE_NO, ZBUFFER_NO, &stw_info);
 }
 
@@ -8617,6 +8621,7 @@ static void tri_noshade_z(uint32_t w1, uint32_t w2)
 {
    struct stepwalker_info stw_info;
    stepwalker_info_init(&stw_info);
+   tri_fill_coeffs(&stw_info);
    draw_triangle(w1, w2, SHADE_NO, TEXTURE_NO, ZBUFFER_YES, &stw_info);
 }
 
@@ -8624,6 +8629,7 @@ static void tri_tex(uint32_t w1, uint32_t w2)
 {
    struct stepwalker_info stw_info;
    stepwalker_info_init(&stw_info);
+   tri_fill_coeffs(&stw_info);
    draw_triangle(w1, w2, SHADE_NO, TEXTURE_YES, ZBUFFER_NO, &stw_info);
 }
 
@@ -8631,6 +8637,7 @@ static void tri_tex_z(uint32_t w1, uint32_t w2)
 {
    struct stepwalker_info stw_info;
    stepwalker_info_init(&stw_info);
+   tri_fill_coeffs(&stw_info);
    draw_triangle(w1, w2, SHADE_NO, TEXTURE_YES, ZBUFFER_YES, &stw_info);
 }
 
@@ -8638,6 +8645,7 @@ static void tri_shade(uint32_t w1, uint32_t w2)
 {
    struct stepwalker_info stw_info;
    stepwalker_info_init(&stw_info);
+   tri_fill_coeffs(&stw_info);
    draw_triangle(w1, w2, SHADE_YES, TEXTURE_NO, ZBUFFER_NO, &stw_info);
 }
 
@@ -8645,6 +8653,7 @@ static void tri_shade_z(uint32_t w1, uint32_t w2)
 {
    struct stepwalker_info stw_info;
    stepwalker_info_init(&stw_info);
+   tri_fill_coeffs(&stw_info);
    draw_triangle(w1, w2, SHADE_YES, TEXTURE_NO, ZBUFFER_YES, &stw_info);
 }
 
@@ -8652,6 +8661,7 @@ static void tri_texshade(uint32_t w1, uint32_t w2)
 {
    struct stepwalker_info stw_info;
    stepwalker_info_init(&stw_info);
+   tri_fill_coeffs(&stw_info);
    draw_triangle(w1, w2, SHADE_YES, TEXTURE_YES, ZBUFFER_NO, &stw_info);
 }
 
@@ -8659,6 +8669,7 @@ static void tri_texshade_z(uint32_t w1, uint32_t w2)
 {
    struct stepwalker_info stw_info;
    stepwalker_info_init(&stw_info);
+   tri_fill_coeffs(&stw_info);
    draw_triangle(w1, w2, SHADE_YES, TEXTURE_YES, ZBUFFER_YES, &stw_info);
 }
 
