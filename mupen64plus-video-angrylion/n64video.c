@@ -20,6 +20,10 @@ static int LOG_ENABLE = 1;
 static int LOG_ENABLE = 0;
 #endif
 
+#ifndef CLAMP_AL
+#define CLAMP_AL(x, low, high)  (((x) > (high)) ? (high) : (((x) < (low)) ? (low) : (x)))
+#endif
+
 #ifndef SEXT
 #define SEXT(x, bits) ((int32_t)((x) << (32 - (bits))) >> (32 - (bits)))
 #endif
@@ -4797,55 +4801,46 @@ static void tclod_1cycle_next(int32_t* sss, int32_t* sst, int32_t s, int32_t t, 
 static void rgbaz_correct_clip(int offx, int offy, int r, int g, int b, int a,
       int* z, uint32_t curpixel_cvg)
 {
-    int summand_r, summand_b, summand_g, summand_a;
-    int summand_z;
-    int sz = *z;
-    int zanded;
+   unsigned temp;
+   int sz = *z;
+   int zanded;
 
-    if (curpixel_cvg == 8)
-    {
-        r >>= 2;
-        g >>= 2;
-        b >>= 2;
-        a >>= 2;
-        sz = sz >> 3;
-    }
-    else
-    {
-        summand_r = offx * spans_cd_rgba[0] + offy * spans_d_rgba_dy[0];
-        summand_g = offx * spans_cd_rgba[1] + offy * spans_d_rgba_dy[1];
-        summand_b = offx * spans_cd_rgba[2] + offy * spans_d_rgba_dy[2];
-        summand_a = offx * spans_cd_rgba[3] + offy * spans_d_rgba_dy[3];
-        summand_z = offx * spans_cdz + offy * spans_d_stwz_dy[3];
+   if (curpixel_cvg != 8)
+   {
+      /* Centroid offset */
+      int summand_r = offx * spans_cd_rgba[0] + offy * spans_d_rgba_dy[0];
+      int summand_g = offx * spans_cd_rgba[1] + offy * spans_d_rgba_dy[1];
+      int summand_b = offx * spans_cd_rgba[2] + offy * spans_d_rgba_dy[2];
+      int summand_a = offx * spans_cd_rgba[3] + offy * spans_d_rgba_dy[3];
+      int summand_z = offx * spans_cdz + offy * spans_d_stwz_dy[3];
 
-        r = ((r << 2) + summand_r) >> 4;
-        g = ((g << 2) + summand_g) >> 4;
-        b = ((b << 2) + summand_b) >> 4;
-        a = ((a << 2) + summand_a) >> 4;
-        sz = ((sz << 2) + summand_z) >> 5;
-    }
+      r  = ((r << 2) + summand_r)  >> 4;
+      g  = ((g << 2) + summand_g)  >> 4;
+      b  = ((b << 2) + summand_b)  >> 4;
+      a  = ((a << 2) + summand_a)  >> 4;
+      sz = ((sz << 2) + summand_z) >> 5;
+   }
+   else
+   {
+      r  >>= 2;
+      g  >>= 2;
+      b  >>= 2;
+      a  >>= 2;
+      sz >>= 3;
+   }
 
-    
-    COLOR_RED(shade_color)   = special_9bit_clamptable[r & 0x1ff];
-    COLOR_GREEN(shade_color) = special_9bit_clamptable[g & 0x1ff];
-    COLOR_BLUE(shade_color)  = special_9bit_clamptable[b & 0x1ff];
-    COLOR_ALPHA(shade_color) = special_9bit_clamptable[a & 0x1ff];
-    
-    zanded = (sz & 0x60000) >> 17;
-    
-    switch(zanded)
-    {
-        case 0:
-        case 1:
-           *z = sz;
-           break;
-        case 2:
-        case 3:
-           *z = (0x3FFFD + zanded);
-           break;
-    }
+   COLOR_RED(shade_color)   = special_9bit_clamptable[r & 0x1ff];
+   COLOR_GREEN(shade_color) = special_9bit_clamptable[g & 0x1ff];
+   COLOR_BLUE(shade_color)  = special_9bit_clamptable[b & 0x1ff];
+   COLOR_ALPHA(shade_color) = special_9bit_clamptable[a & 0x1ff];
 
-    *z &= 0x3FFFF;
+   /* Should be a correct branchless versions of the awkward
+    * zanded in Angrylion. This pattern seems very similar to the
+    * special_9bit clamp, hrm ... */
+   temp   = ((sz + 0x20000) & 0x7ffff) - 0x20000;
+   zanded = CLAMP_AL(temp, 0, 0x3ffff);
+
+   *z  = zanded;
 }
 
 static void render_spans_1cycle_complete(int start, int end, int tilenum, int flip)
