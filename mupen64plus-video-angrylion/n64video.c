@@ -8246,378 +8246,375 @@ static void tri_fill_z_coeffs(struct stepwalker_info *stw_info)
 
 static NOINLINE void draw_triangle(uint32_t w1, uint32_t w2, struct stepwalker_info *stw_info)
 {
-    int sign_dxhdy;
-    int ycur, ylfar;
-    int yllimit, yhlimit;
-    int ldflag;
-    int invaly;
-    int j, k;
-    int allover               = 1;
-    int allunder              = 1;
-    int curover               = 0;
-    int curunder              = 0;
-    int allinval              = 1;
-    const int32_t clipxlshift = __clip.xl << 1;
-    const int32_t clipxhshift = __clip.xh << 1;
+   int ycur, ylfar;
+   int yllimit, yhlimit;
+   int ldflag;
+   int j, k;
+   int invaly                = 1;
+   int allover               = 1;
+   int allunder              = 1;
+   int curover               = 0;
+   int curunder              = 0;
+   int allinval              = 1;
+   const int32_t clipxlshift = __clip.xl << 1;
+   const int32_t clipxhshift = __clip.xh << 1;
+   int sign_dxhdy            = (stw_info->DxHDy < 0);
 
-    /* Edge Coefficients */
-    int lft     = (w1 & 0x00800000) >> (55 - 32);
-    /* unused  (w1 & 0x00400000) >> (54 - 32) */
-    int level   = (w1 & 0x00380000) >> (51 - 32);
-    int tile    = (w1 & 0x00070000) >> (48 - 32);
-    int flip    = lft;
-    int tilenum = tile;
+   /* Edge Coefficients */
+   int lft                   = (w1 & 0x00800000) >> (55 - 32);
+   /* unused  (w1 & 0x00400000) >> (54 - 32) */
+   int level                 = (w1 & 0x00380000) >> (51 - 32);
+   int tile                  = (w1 & 0x00070000) >> (48 - 32);
+   int flip                  = lft;
+   int tilenum               = tile;
 
-    /* Triangle edge Y-coordinates */
-    /* 11.2 fixed point */
-    int32_t yl = SEXT((w1 >> 0)  & 0xffff, 14);
-    int32_t ym = SEXT((w2 >> 16) & 0xffff, 14);
-    int32_t yh = SEXT((w2 >> 0)  & 0xffff, 14);
+   /* Triangle edge Y-coordinates */
+   /* 11.2 fixed point */
+   int32_t yl = SEXT((w1 >> 0)  & 0xffff, 14);
+   int32_t ym = SEXT((w2 >> 16) & 0xffff, 14);
+   int32_t yh = SEXT((w2 >> 0)  & 0xffff, 14);
 
-    max_level       = level;
+   max_level       = level;
 
-    stw_info->rgba[0]      = (stw_info->rgba_int[0] << 16) | (uint16_t)(stw_info->rgba_frac[0]);
-    stw_info->rgba[1]      = (stw_info->rgba_int[1] << 16) | (uint16_t)(stw_info->rgba_frac[1]);
-    stw_info->rgba[2]      = (stw_info->rgba_int[2] << 16) | (uint16_t)(stw_info->rgba_frac[2]);
-    stw_info->rgba[3]      = (stw_info->rgba_int[3] << 16) | (uint16_t)(stw_info->rgba_frac[3]);
-    stw_info->d_rgba_dx[0] = (stw_info->d_rgba_dx_int[0] << 16) | (uint16_t)(stw_info->d_rgba_dx_frac[0]);
-    stw_info->d_rgba_dx[1] = (stw_info->d_rgba_dx_int[1] << 16) | (uint16_t)(stw_info->d_rgba_dx_frac[1]);
-    stw_info->d_rgba_dx[2] = (stw_info->d_rgba_dx_int[2] << 16) | (uint16_t)(stw_info->d_rgba_dx_frac[2]);
-    stw_info->d_rgba_dx[3] = (stw_info->d_rgba_dx_int[3] << 16) | (uint16_t)(stw_info->d_rgba_dx_frac[3]);
-    stw_info->d_rgba_de[0] = (stw_info->d_rgba_de_int[0] << 16) | (uint16_t)(stw_info->d_rgba_de_frac[0]);
-    stw_info->d_rgba_de[1] = (stw_info->d_rgba_de_int[1] << 16) | (uint16_t)(stw_info->d_rgba_de_frac[1]);
-    stw_info->d_rgba_de[2] = (stw_info->d_rgba_de_int[2] << 16) | (uint16_t)(stw_info->d_rgba_de_frac[2]);
-    stw_info->d_rgba_de[3] = (stw_info->d_rgba_de_int[3] << 16) | (uint16_t)(stw_info->d_rgba_de_frac[3]);
-    stw_info->d_rgba_dy[0] = (stw_info->d_rgba_dy_int[0] << 16) | (uint16_t)(stw_info->d_rgba_dy_frac[0]);
-    stw_info->d_rgba_dy[1] = (stw_info->d_rgba_dy_int[1] << 16) | (uint16_t)(stw_info->d_rgba_dy_frac[1]);
-    stw_info->d_rgba_dy[2] = (stw_info->d_rgba_dy_int[2] << 16) | (uint16_t)(stw_info->d_rgba_dy_frac[2]);
-    stw_info->d_rgba_dy[3] = (stw_info->d_rgba_dy_int[3] << 16) | (uint16_t)(stw_info->d_rgba_dy_frac[3]);
+   stw_info->rgba[0]      = (stw_info->rgba_int[0] << 16) | (uint16_t)(stw_info->rgba_frac[0]);
+   stw_info->rgba[1]      = (stw_info->rgba_int[1] << 16) | (uint16_t)(stw_info->rgba_frac[1]);
+   stw_info->rgba[2]      = (stw_info->rgba_int[2] << 16) | (uint16_t)(stw_info->rgba_frac[2]);
+   stw_info->rgba[3]      = (stw_info->rgba_int[3] << 16) | (uint16_t)(stw_info->rgba_frac[3]);
+   stw_info->d_rgba_dx[0] = (stw_info->d_rgba_dx_int[0] << 16) | (uint16_t)(stw_info->d_rgba_dx_frac[0]);
+   stw_info->d_rgba_dx[1] = (stw_info->d_rgba_dx_int[1] << 16) | (uint16_t)(stw_info->d_rgba_dx_frac[1]);
+   stw_info->d_rgba_dx[2] = (stw_info->d_rgba_dx_int[2] << 16) | (uint16_t)(stw_info->d_rgba_dx_frac[2]);
+   stw_info->d_rgba_dx[3] = (stw_info->d_rgba_dx_int[3] << 16) | (uint16_t)(stw_info->d_rgba_dx_frac[3]);
+   stw_info->d_rgba_de[0] = (stw_info->d_rgba_de_int[0] << 16) | (uint16_t)(stw_info->d_rgba_de_frac[0]);
+   stw_info->d_rgba_de[1] = (stw_info->d_rgba_de_int[1] << 16) | (uint16_t)(stw_info->d_rgba_de_frac[1]);
+   stw_info->d_rgba_de[2] = (stw_info->d_rgba_de_int[2] << 16) | (uint16_t)(stw_info->d_rgba_de_frac[2]);
+   stw_info->d_rgba_de[3] = (stw_info->d_rgba_de_int[3] << 16) | (uint16_t)(stw_info->d_rgba_de_frac[3]);
+   stw_info->d_rgba_dy[0] = (stw_info->d_rgba_dy_int[0] << 16) | (uint16_t)(stw_info->d_rgba_dy_frac[0]);
+   stw_info->d_rgba_dy[1] = (stw_info->d_rgba_dy_int[1] << 16) | (uint16_t)(stw_info->d_rgba_dy_frac[1]);
+   stw_info->d_rgba_dy[2] = (stw_info->d_rgba_dy_int[2] << 16) | (uint16_t)(stw_info->d_rgba_dy_frac[2]);
+   stw_info->d_rgba_dy[3] = (stw_info->d_rgba_dy_int[3] << 16) | (uint16_t)(stw_info->d_rgba_dy_frac[3]);
 
-    stw_info->stwz[0]      = (stw_info->stwz_int[0] << 16)      | (uint16_t)(stw_info->stwz_frac[0]);
-    stw_info->stwz[1]      = (stw_info->stwz_int[1] << 16)      | (uint16_t)(stw_info->stwz_frac[1]);
-    stw_info->stwz[2]      = (stw_info->stwz_int[2] << 16)      | (uint16_t)(stw_info->stwz_frac[2]);
-    stw_info->stwz[3]      = (stw_info->stwz_int[3] << 16)      | (uint16_t)(stw_info->stwz_frac[3]);
-    stw_info->d_stwz_dx[0] = (stw_info->d_stwz_dx_int[0] << 16) | (uint16_t)(stw_info->d_stwz_dx_frac[0]);
-    stw_info->d_stwz_dx[1] = (stw_info->d_stwz_dx_int[1] << 16) | (uint16_t)(stw_info->d_stwz_dx_frac[1]);
-    stw_info->d_stwz_dx[2] = (stw_info->d_stwz_dx_int[2] << 16) | (uint16_t)(stw_info->d_stwz_dx_frac[2]);
-    stw_info->d_stwz_dx[3] = (stw_info->d_stwz_dx_int[3] << 16) | (uint16_t)(stw_info->d_stwz_dx_frac[3]);
-    stw_info->d_stwz_de[0] = (stw_info->d_stwz_de_int[0] << 16) | (uint16_t)(stw_info->d_stwz_de_frac[0]);
-    stw_info->d_stwz_de[1] = (stw_info->d_stwz_de_int[1] << 16) | (uint16_t)(stw_info->d_stwz_de_frac[1]);
-    stw_info->d_stwz_de[2] = (stw_info->d_stwz_de_int[2] << 16) | (uint16_t)(stw_info->d_stwz_de_frac[2]);
-    stw_info->d_stwz_de[3] = (stw_info->d_stwz_de_int[3] << 16) | (uint16_t)(stw_info->d_stwz_de_frac[3]);
-    stw_info->d_stwz_dy[0] = (stw_info->d_stwz_dy_int[0] << 16) | (uint16_t)(stw_info->d_stwz_dy_frac[0]);
-    stw_info->d_stwz_dy[1] = (stw_info->d_stwz_dy_int[1] << 16) | (uint16_t)(stw_info->d_stwz_dy_frac[1]);
-    stw_info->d_stwz_dy[2] = (stw_info->d_stwz_dy_int[2] << 16) | (uint16_t)(stw_info->d_stwz_dy_frac[2]);
-    stw_info->d_stwz_dy[3] = (stw_info->d_stwz_dy_int[3] << 16) | (uint16_t)(stw_info->d_stwz_dy_frac[3]);
+   stw_info->stwz[0]      = (stw_info->stwz_int[0] << 16)      | (uint16_t)(stw_info->stwz_frac[0]);
+   stw_info->stwz[1]      = (stw_info->stwz_int[1] << 16)      | (uint16_t)(stw_info->stwz_frac[1]);
+   stw_info->stwz[2]      = (stw_info->stwz_int[2] << 16)      | (uint16_t)(stw_info->stwz_frac[2]);
+   stw_info->stwz[3]      = (stw_info->stwz_int[3] << 16)      | (uint16_t)(stw_info->stwz_frac[3]);
+   stw_info->d_stwz_dx[0] = (stw_info->d_stwz_dx_int[0] << 16) | (uint16_t)(stw_info->d_stwz_dx_frac[0]);
+   stw_info->d_stwz_dx[1] = (stw_info->d_stwz_dx_int[1] << 16) | (uint16_t)(stw_info->d_stwz_dx_frac[1]);
+   stw_info->d_stwz_dx[2] = (stw_info->d_stwz_dx_int[2] << 16) | (uint16_t)(stw_info->d_stwz_dx_frac[2]);
+   stw_info->d_stwz_dx[3] = (stw_info->d_stwz_dx_int[3] << 16) | (uint16_t)(stw_info->d_stwz_dx_frac[3]);
+   stw_info->d_stwz_de[0] = (stw_info->d_stwz_de_int[0] << 16) | (uint16_t)(stw_info->d_stwz_de_frac[0]);
+   stw_info->d_stwz_de[1] = (stw_info->d_stwz_de_int[1] << 16) | (uint16_t)(stw_info->d_stwz_de_frac[1]);
+   stw_info->d_stwz_de[2] = (stw_info->d_stwz_de_int[2] << 16) | (uint16_t)(stw_info->d_stwz_de_frac[2]);
+   stw_info->d_stwz_de[3] = (stw_info->d_stwz_de_int[3] << 16) | (uint16_t)(stw_info->d_stwz_de_frac[3]);
+   stw_info->d_stwz_dy[0] = (stw_info->d_stwz_dy_int[0] << 16) | (uint16_t)(stw_info->d_stwz_dy_frac[0]);
+   stw_info->d_stwz_dy[1] = (stw_info->d_stwz_dy_int[1] << 16) | (uint16_t)(stw_info->d_stwz_dy_frac[1]);
+   stw_info->d_stwz_dy[2] = (stw_info->d_stwz_dy_int[2] << 16) | (uint16_t)(stw_info->d_stwz_dy_frac[2]);
+   stw_info->d_stwz_dy[3] = (stw_info->d_stwz_dy_int[3] << 16) | (uint16_t)(stw_info->d_stwz_dy_frac[3]);
 #ifdef USE_SSE_SUPPORT
-    stw_info->xmm_d_rgba_de = _mm_load_si128((__m128i *)stw_info->d_rgba_de);
-    stw_info->xmm_d_stwz_de = _mm_load_si128((__m128i *)stw_info->d_stwz_de);
+   stw_info->xmm_d_rgba_de = _mm_load_si128((__m128i *)stw_info->d_rgba_de);
+   stw_info->xmm_d_stwz_de = _mm_load_si128((__m128i *)stw_info->d_stwz_de);
 #endif
 
-    /* rest of edgewalker algorithm */
-    spans_d_rgba[0]    = stw_info->d_rgba_dx[0] & ~0x0000001F;
-    spans_d_rgba[1]    = stw_info->d_rgba_dx[1] & ~0x0000001F;
-    spans_d_rgba[2]    = stw_info->d_rgba_dx[2] & ~0x0000001F;
-    spans_d_rgba[3]    = stw_info->d_rgba_dx[3] & ~0x0000001F;
-    spans_d_stwz[0]    = stw_info->d_stwz_dx[0] & ~0x0000001F;
-    spans_d_stwz[1]    = stw_info->d_stwz_dx[1] & ~0x0000001F;
-    spans_d_stwz[2]    = stw_info->d_stwz_dx[2] & ~0x0000001F;
-    spans_d_stwz[3]    = stw_info->d_stwz_dx[3];
+   /* rest of edgewalker algorithm */
+   spans_d_rgba[0]    = stw_info->d_rgba_dx[0] & ~0x0000001F;
+   spans_d_rgba[1]    = stw_info->d_rgba_dx[1] & ~0x0000001F;
+   spans_d_rgba[2]    = stw_info->d_rgba_dx[2] & ~0x0000001F;
+   spans_d_rgba[3]    = stw_info->d_rgba_dx[3] & ~0x0000001F;
+   spans_d_stwz[0]    = stw_info->d_stwz_dx[0] & ~0x0000001F;
+   spans_d_stwz[1]    = stw_info->d_stwz_dx[1] & ~0x0000001F;
+   spans_d_stwz[2]    = stw_info->d_stwz_dx[2] & ~0x0000001F;
+   spans_d_stwz[3]    = stw_info->d_stwz_dx[3];
 
-    spans_d_rgba_dy[0] = stw_info->d_rgba_dy[0] >> 14;
-    spans_d_rgba_dy[1] = stw_info->d_rgba_dy[1] >> 14;
-    spans_d_rgba_dy[2] = stw_info->d_rgba_dy[2] >> 14;
-    spans_d_rgba_dy[3] = stw_info->d_rgba_dy[3] >> 14;
-    spans_d_rgba_dy[0] = SIGN(spans_d_rgba_dy[0], 13);
-    spans_d_rgba_dy[1] = SIGN(spans_d_rgba_dy[1], 13);
-    spans_d_rgba_dy[2] = SIGN(spans_d_rgba_dy[2], 13);
-    spans_d_rgba_dy[3] = SIGN(spans_d_rgba_dy[3], 13);
+   spans_d_rgba_dy[0] = stw_info->d_rgba_dy[0] >> 14;
+   spans_d_rgba_dy[1] = stw_info->d_rgba_dy[1] >> 14;
+   spans_d_rgba_dy[2] = stw_info->d_rgba_dy[2] >> 14;
+   spans_d_rgba_dy[3] = stw_info->d_rgba_dy[3] >> 14;
+   spans_d_rgba_dy[0] = SIGN(spans_d_rgba_dy[0], 13);
+   spans_d_rgba_dy[1] = SIGN(spans_d_rgba_dy[1], 13);
+   spans_d_rgba_dy[2] = SIGN(spans_d_rgba_dy[2], 13);
+   spans_d_rgba_dy[3] = SIGN(spans_d_rgba_dy[3], 13);
 
-    spans_cd_rgba[0]   = spans_d_rgba[0] >> 14;
-    spans_cd_rgba[1]   = spans_d_rgba[1] >> 14;
-    spans_cd_rgba[2]   = spans_d_rgba[2] >> 14;
-    spans_cd_rgba[3]   = spans_d_rgba[3] >> 14;
-    spans_cd_rgba[0]   = SIGN(spans_cd_rgba[0], 13);
-    spans_cd_rgba[1]   = SIGN(spans_cd_rgba[1], 13);
-    spans_cd_rgba[2]   = SIGN(spans_cd_rgba[2], 13);
-    spans_cd_rgba[3]   = SIGN(spans_cd_rgba[3], 13);
-    spans_cdz          = spans_d_stwz[3] >> 10;
-    spans_cdz          = SIGN(spans_cdz, 22);
+   spans_cd_rgba[0]   = spans_d_rgba[0] >> 14;
+   spans_cd_rgba[1]   = spans_d_rgba[1] >> 14;
+   spans_cd_rgba[2]   = spans_d_rgba[2] >> 14;
+   spans_cd_rgba[3]   = spans_d_rgba[3] >> 14;
+   spans_cd_rgba[0]   = SIGN(spans_cd_rgba[0], 13);
+   spans_cd_rgba[1]   = SIGN(spans_cd_rgba[1], 13);
+   spans_cd_rgba[2]   = SIGN(spans_cd_rgba[2], 13);
+   spans_cd_rgba[3]   = SIGN(spans_cd_rgba[3], 13);
+   spans_cdz          = spans_d_stwz[3] >> 10;
+   spans_cdz          = SIGN(spans_cdz, 22);
 
-    spans_d_stwz_dy[0] = stw_info->d_stwz_dy[0] & ~0x00007FFF;
-    spans_d_stwz_dy[1] = stw_info->d_stwz_dy[1] & ~0x00007FFF;
-    spans_d_stwz_dy[2] = stw_info->d_stwz_dy[2] & ~0x00007FFF;
-    spans_d_stwz_dy[3] = stw_info->d_stwz_dy[3] >> 10;
-    spans_d_stwz_dy[3] = SIGN(spans_d_stwz_dy[3], 22);
+   spans_d_stwz_dy[0] = stw_info->d_stwz_dy[0] & ~0x00007FFF;
+   spans_d_stwz_dy[1] = stw_info->d_stwz_dy[1] & ~0x00007FFF;
+   spans_d_stwz_dy[2] = stw_info->d_stwz_dy[2] & ~0x00007FFF;
+   spans_d_stwz_dy[3] = stw_info->d_stwz_dy[3] >> 10;
+   spans_d_stwz_dy[3] = SIGN(spans_d_stwz_dy[3], 22);
 
-    if (stw_info->flags & RDP_FLAG_INTERPOLATE_Z)
-    {
-       int32_t dzdx = stw_info->d_stwz_dx_int[3];
-       int32_t dzdy = stw_info->d_stwz_dy_int[3];
-       /* Angrylion does this, but why not just abs()?
-        * This will be off by one, but who knows, there's a reason for everything. */
-       dzdx ^= (dzdx < 0) ? ~0 : 0;
-       dzdy ^= (dzdy < 0) ? ~0 : 0;
+   if (stw_info->flags & RDP_FLAG_INTERPOLATE_Z)
+   {
+      int32_t dzdx = stw_info->d_stwz_dx_int[3];
+      int32_t dzdy = stw_info->d_stwz_dy_int[3];
+      /* Angrylion does this, but why not just abs()?
+       * This will be off by one, but who knows, there's a reason for everything. */
+      dzdx ^= (dzdx < 0) ? ~0 : 0;
+      dzdy ^= (dzdy < 0) ? ~0 : 0;
 
-       spans_dzpix = normalize_dz(dzdx + dzdy);
-    }
+      spans_dzpix = normalize_dz(dzdx + dzdy);
+   }
 
-    sign_dxhdy = (stw_info->DxHDy < 0);
-    if (sign_dxhdy ^ flip) /* !do_offset */
-    {
-        setzero_si128(stw_info->d_rgba_diff);
-        setzero_si128(stw_info->d_stwz_diff);
-    }
-    else
-    {
-       /* Apply 3/4th pixel offset. */
-       int32_t d_rgba_deh[4], d_stwz_deh[4];
-       int32_t d_rgba_dyh[4], d_stwz_dyh[4];
+   if (sign_dxhdy ^ flip) /* !do_offset */
+   {
+      setzero_si128(stw_info->d_rgba_diff);
+      setzero_si128(stw_info->d_stwz_diff);
+   }
+   else
+   {
+      /* Apply 3/4th pixel offset. */
+      int32_t d_rgba_deh[4], d_stwz_deh[4];
+      int32_t d_rgba_dyh[4], d_stwz_dyh[4];
 
-       d_rgba_deh[0]             = stw_info->d_rgba_de[0] & ~0x000001FF;
-       d_rgba_deh[1]             = stw_info->d_rgba_de[1] & ~0x000001FF;
-       d_rgba_deh[2]             = stw_info->d_rgba_de[2] & ~0x000001FF;
-       d_rgba_deh[3]             = stw_info->d_rgba_de[3] & ~0x000001FF;
-       d_stwz_deh[0]             = stw_info->d_stwz_de[0] & ~0x000001FF;
-       d_stwz_deh[1]             = stw_info->d_stwz_de[1] & ~0x000001FF;
-       d_stwz_deh[2]             = stw_info->d_stwz_de[2] & ~0x000001FF;
-       d_stwz_deh[3]             = stw_info->d_stwz_de[3] & ~0x000001FF;
+      d_rgba_deh[0]             = stw_info->d_rgba_de[0] & ~0x000001FF;
+      d_rgba_deh[1]             = stw_info->d_rgba_de[1] & ~0x000001FF;
+      d_rgba_deh[2]             = stw_info->d_rgba_de[2] & ~0x000001FF;
+      d_rgba_deh[3]             = stw_info->d_rgba_de[3] & ~0x000001FF;
+      d_stwz_deh[0]             = stw_info->d_stwz_de[0] & ~0x000001FF;
+      d_stwz_deh[1]             = stw_info->d_stwz_de[1] & ~0x000001FF;
+      d_stwz_deh[2]             = stw_info->d_stwz_de[2] & ~0x000001FF;
+      d_stwz_deh[3]             = stw_info->d_stwz_de[3] & ~0x000001FF;
 
-       d_rgba_dyh[0]             = stw_info->d_rgba_dy[0] & ~0x000001FF;
-       d_rgba_dyh[1]             = stw_info->d_rgba_dy[1] & ~0x000001FF;
-       d_rgba_dyh[2]             = stw_info->d_rgba_dy[2] & ~0x000001FF;
-       d_rgba_dyh[3]             = stw_info->d_rgba_dy[3] & ~0x000001FF;
-       d_stwz_dyh[0]             = stw_info->d_stwz_dy[0] & ~0x000001FF;
-       d_stwz_dyh[1]             = stw_info->d_stwz_dy[1] & ~0x000001FF;
-       d_stwz_dyh[2]             = stw_info->d_stwz_dy[2] & ~0x000001FF;
-       d_stwz_dyh[3]             = stw_info->d_stwz_dy[3] & ~0x000001FF;
+      d_rgba_dyh[0]             = stw_info->d_rgba_dy[0] & ~0x000001FF;
+      d_rgba_dyh[1]             = stw_info->d_rgba_dy[1] & ~0x000001FF;
+      d_rgba_dyh[2]             = stw_info->d_rgba_dy[2] & ~0x000001FF;
+      d_rgba_dyh[3]             = stw_info->d_rgba_dy[3] & ~0x000001FF;
+      d_stwz_dyh[0]             = stw_info->d_stwz_dy[0] & ~0x000001FF;
+      d_stwz_dyh[1]             = stw_info->d_stwz_dy[1] & ~0x000001FF;
+      d_stwz_dyh[2]             = stw_info->d_stwz_dy[2] & ~0x000001FF;
+      d_stwz_dyh[3]             = stw_info->d_stwz_dy[3] & ~0x000001FF;
 
-       stw_info->d_rgba_diff[0]  = d_rgba_deh[0] - (d_rgba_deh[0] >> 2) -
-          d_rgba_dyh[0] + (d_rgba_dyh[0] >> 2);
+      stw_info->d_rgba_diff[0]  = d_rgba_deh[0] - (d_rgba_deh[0] >> 2) -
+         d_rgba_dyh[0] + (d_rgba_dyh[0] >> 2);
 
-       stw_info->d_rgba_diff[1]  = d_rgba_deh[1] - (d_rgba_deh[1] >> 2) -
-          d_rgba_dyh[1] + (d_rgba_dyh[1] >> 2);
+      stw_info->d_rgba_diff[1]  = d_rgba_deh[1] - (d_rgba_deh[1] >> 2) -
+         d_rgba_dyh[1] + (d_rgba_dyh[1] >> 2);
 
-       stw_info->d_rgba_diff[2]  = d_rgba_deh[2] - (d_rgba_deh[2] >> 2) -
-          d_rgba_dyh[2] + (d_rgba_dyh[2] >> 2);
+      stw_info->d_rgba_diff[2]  = d_rgba_deh[2] - (d_rgba_deh[2] >> 2) -
+         d_rgba_dyh[2] + (d_rgba_dyh[2] >> 2);
 
-       stw_info->d_rgba_diff[3]  = d_rgba_deh[3] - (d_rgba_deh[3] >> 2) -
-          d_rgba_dyh[3] + (d_rgba_dyh[3] >> 2);
+      stw_info->d_rgba_diff[3]  = d_rgba_deh[3] - (d_rgba_deh[3] >> 2) -
+         d_rgba_dyh[3] + (d_rgba_dyh[3] >> 2);
 
-       stw_info->d_stwz_diff[0]  = d_stwz_deh[0] - (d_stwz_deh[0] >> 2) -
-          d_stwz_dyh[0] + (d_stwz_dyh[0] >> 2);
+      stw_info->d_stwz_diff[0]  = d_stwz_deh[0] - (d_stwz_deh[0] >> 2) -
+         d_stwz_dyh[0] + (d_stwz_dyh[0] >> 2);
 
-       stw_info->d_stwz_diff[1]  = d_stwz_deh[1] - (d_stwz_deh[1] >> 2) -
-          d_stwz_dyh[1] + (d_stwz_dyh[1] >> 2);
+      stw_info->d_stwz_diff[1]  = d_stwz_deh[1] - (d_stwz_deh[1] >> 2) -
+         d_stwz_dyh[1] + (d_stwz_dyh[1] >> 2);
 
-       stw_info->d_stwz_diff[2]  = d_stwz_deh[2] - (d_stwz_deh[2] >> 2) -
-          d_stwz_dyh[2] + (d_stwz_dyh[2] >> 2);
+      stw_info->d_stwz_diff[2]  = d_stwz_deh[2] - (d_stwz_deh[2] >> 2) -
+         d_stwz_dyh[2] + (d_stwz_dyh[2] >> 2);
 
-       stw_info->d_stwz_diff[3]  = d_stwz_deh[3] - (d_stwz_deh[3] >> 2) -
-          d_stwz_dyh[3] + (d_stwz_dyh[3] >> 2);
-    }
+      stw_info->d_stwz_diff[3]  = d_stwz_deh[3] - (d_stwz_deh[3] >> 2) -
+         d_stwz_dyh[3] + (d_stwz_dyh[3] >> 2);
+   }
 
-    if (other_modes.cycle_type == CYCLE_TYPE_COPY)
-    {
-        setzero_si128(stw_info->d_rgba_dxh);
-        setzero_si128(stw_info->d_stwz_dxh);
-    }
-    else
-    {
-        stw_info->d_rgba_dxh[0] = (stw_info->d_rgba_dx[0] >> 8) & ~0x00000001;
-        stw_info->d_rgba_dxh[1] = (stw_info->d_rgba_dx[1] >> 8) & ~0x00000001;
-        stw_info->d_rgba_dxh[2] = (stw_info->d_rgba_dx[2] >> 8) & ~0x00000001;
-        stw_info->d_rgba_dxh[3] = (stw_info->d_rgba_dx[3] >> 8) & ~0x00000001;
-        stw_info->d_stwz_dxh[0] = (stw_info->d_stwz_dx[0] >> 8) & ~0x00000001;
-        stw_info->d_stwz_dxh[1] = (stw_info->d_stwz_dx[1] >> 8) & ~0x00000001;
-        stw_info->d_stwz_dxh[2] = (stw_info->d_stwz_dx[2] >> 8) & ~0x00000001;
-        stw_info->d_stwz_dxh[3] = (stw_info->d_stwz_dx[3] >> 8) & ~0x00000001;
-    }
+   if (other_modes.cycle_type == CYCLE_TYPE_COPY)
+   {
+      setzero_si128(stw_info->d_rgba_dxh);
+      setzero_si128(stw_info->d_stwz_dxh);
+   }
+   else
+   {
+      stw_info->d_rgba_dxh[0] = (stw_info->d_rgba_dx[0] >> 8) & ~0x00000001;
+      stw_info->d_rgba_dxh[1] = (stw_info->d_rgba_dx[1] >> 8) & ~0x00000001;
+      stw_info->d_rgba_dxh[2] = (stw_info->d_rgba_dx[2] >> 8) & ~0x00000001;
+      stw_info->d_rgba_dxh[3] = (stw_info->d_rgba_dx[3] >> 8) & ~0x00000001;
+      stw_info->d_stwz_dxh[0] = (stw_info->d_stwz_dx[0] >> 8) & ~0x00000001;
+      stw_info->d_stwz_dxh[1] = (stw_info->d_stwz_dx[1] >> 8) & ~0x00000001;
+      stw_info->d_stwz_dxh[2] = (stw_info->d_stwz_dx[2] >> 8) & ~0x00000001;
+      stw_info->d_stwz_dxh[3] = (stw_info->d_stwz_dx[3] >> 8) & ~0x00000001;
+   }
 
-    ldflag  = (sign_dxhdy ^ flip) ? 0 : 3;
-    invaly  = 1;
+   ldflag  = (sign_dxhdy ^ flip) ? 0 : 3;
 
-    /* Scissor test and find Y bounds for where to rasterize. */
-    ycur    = yh & RDP_SUBPIXELS_INVMASK;
-    yhlimit = (yh - __clip.yh >= 0) ? yh : __clip.yh;
-    yllimit = (yl - __clip.yl < 0) ? yl : __clip.yl;
-    ylfar = yllimit | RDP_SUBPIXELS_MASK;
+   /* Scissor test and find Y bounds for where to rasterize. */
+   ycur    = yh & RDP_SUBPIXELS_INVMASK;
+   yhlimit = (yh - __clip.yh >= 0) ? yh : __clip.yh;
+   yllimit = (yl - __clip.yl < 0) ? yl : __clip.yl;
+   ylfar   = yllimit | RDP_SUBPIXELS_MASK;
 
-    if (yl >> 2 > ylfar >> 2)
-        ylfar += 4;
-    else if (yllimit >> 2 >= 0 && yllimit >> 2 < 1023)
-        span[(yllimit >> 2) + 1].validline = 0;
+   if (yl >> 2 > ylfar >> 2)
+      ylfar += 4;
+   else if (yllimit >> 2 >= 0 && yllimit >> 2 < 1023)
+      span[(yllimit >> 2) + 1].validline = 0;
 
+   stw_info->xlr_inc[0] = (stw_info->DxMDy >> 2) & ~0x00000001;
+   stw_info->xlr_inc[1] = (stw_info->DxHDy >> 2) & ~0x00000001;
+   stw_info->xlr[0]     = stw_info->xm & ~0x00000001;
+   stw_info->xlr[1]     = stw_info->xh & ~0x00000001;
+   stw_info->xfrac      = (stw_info->xlr[1] >> 8) & 0xFF;
 
-    stw_info->xlr_inc[0] = (stw_info->DxMDy >> 2) & ~0x00000001;
-    stw_info->xlr_inc[1] = (stw_info->DxHDy >> 2) & ~0x00000001;
-    stw_info->xlr[0]     = stw_info->xm & ~0x00000001;
-    stw_info->xlr[1]     = stw_info->xh & ~0x00000001;
-    stw_info->xfrac      = (stw_info->xlr[1] >> 8) & 0xFF;
+   for (k = ycur; k <= ylfar; k++)
+   {
+      static int minmax[2];
+      int xlrsc[2];
+      const int spix    = k & RDP_SUBPIXELS_MASK;
+      const int yhclose = yhlimit & ~3;
 
-    for (k = ycur; k <= ylfar; k++)
-    {
-        static int minmax[2];
-        int xlrsc[2];
-        const int spix    = k & RDP_SUBPIXELS_MASK;
-        const int yhclose = yhlimit & ~3;
+      if (k == ym)
+      {
+         stw_info->xlr[0]     = stw_info->xl & ~0x00000001;
+         stw_info->xlr_inc[0] = (stw_info->DxLDy >> 2) & ~0x00000001;
+      }
 
-        if (k == ym)
-        {
-            stw_info->xlr[0]     = stw_info->xl & ~0x00000001;
-            stw_info->xlr_inc[0] = (stw_info->DxLDy >> 2) & ~0x00000001;
-        }
+      if (k < yhclose)
+      { /* branch */ }
+      else
+      {
+         bool curcross = false;
+         invaly = (uint32_t)(k - yhlimit)>>31 | (uint32_t)~(k - yllimit)>>31;
+         j = k >> 2;
+         if (spix == 0)
+         {
+            minmax[1] = 0x000;
+            minmax[0] = 0xFFF;
+            allover = allunder = 1;
+            allinval = 1;
+         }
 
-        if (k < yhclose)
-            { /* branch */ }
-        else
-        {
-           bool curcross = false;
-            invaly = (uint32_t)(k - yhlimit)>>31 | (uint32_t)~(k - yllimit)>>31;
-            j = k >> 2;
-            if (spix == 0)
-            {
-                minmax[1] = 0x000;
-                minmax[0] = 0xFFF;
-                allover = allunder = 1;
-                allinval = 1;
-            }
+         al_clip_x(stw_info->xlr[1], clipxlshift, clipxhshift,
+               &xlrsc[1], &allover, &allunder);
+         span[j].majorx[spix] = xlrsc[1] & 0x1FFF;
 
-            al_clip_x(stw_info->xlr[1], clipxlshift, clipxhshift,
-                  &xlrsc[1], &allover, &allunder);
-            span[j].majorx[spix] = xlrsc[1] & 0x1FFF;
+         al_clip_x(stw_info->xlr[0], clipxlshift, clipxhshift,
+               &xlrsc[0], &allover, &allunder);
+         span[j].minorx[spix] = xlrsc[0] & 0x1FFF;
 
-            al_clip_x(stw_info->xlr[0], clipxlshift, clipxhshift,
-                  &xlrsc[0], &allover, &allunder);
-            span[j].minorx[spix] = xlrsc[0] & 0x1FFF;
+         /* Detect where the two lines cross.
+          * Get a boolean mask for which subscanlines have
+          * crossing scanlines.
+          * XXX: Shouldn't this be <= ?
+          * XXX: Also, why the weird bitmath here?
+          */
+         curcross = ((stw_info->xlr[1 - flip]&0x0FFFC000 ^ 0x08000000)
+               <  (stw_info->xlr[0 + flip]&0x0FFFC000 ^ 0x08000000));
+         invaly |= curcross;
+         span[j].invalyscan[spix] = invaly;
+         allinval &= invaly;
+         if (invaly != 0)
+         { /* branch */ }
+         else
+         {
+            /* Don't include invalid subsample scanlines in min/max. */
+            xlrsc[0] = (xlrsc[0] >> 3) & 0xFFF;
+            xlrsc[1] = (xlrsc[1] >> 3) & 0xFFF;
+            minmax[0]
+               = (xlrsc[flip - 0] < minmax[0]) ? xlrsc[flip - 0] : minmax[0];
+            minmax[1]
+               = (xlrsc[1 - flip] > minmax[1]) ? xlrsc[1 - flip] : minmax[1];
+         }
 
-            /* Detect where the two lines cross.
-             * Get a boolean mask for which subscanlines have
-             * crossing scanlines.
-             * XXX: Shouldn't this be <= ?
-             * XXX: Also, why the weird bitmath here?
-             */
-            curcross = ((stw_info->xlr[1 - flip]&0x0FFFC000 ^ 0x08000000)
-                     <  (stw_info->xlr[0 + flip]&0x0FFFC000 ^ 0x08000000));
-            invaly |= curcross;
-            span[j].invalyscan[spix] = invaly;
-            allinval &= invaly;
-            if (invaly != 0)
-                { /* branch */ }
-            else
-            {
-               /* Don't include invalid subsample scanlines in min/max. */
-                xlrsc[0] = (xlrsc[0] >> 3) & 0xFFF;
-                xlrsc[1] = (xlrsc[1] >> 3) & 0xFFF;
-                minmax[0]
-                  = (xlrsc[flip - 0] < minmax[0]) ? xlrsc[flip - 0] : minmax[0];
-                minmax[1]
-                  = (xlrsc[1 - flip] > minmax[1]) ? xlrsc[1 - flip] : minmax[1];
-            }
-
-            if (spix == ldflag)
-            {
+         if (spix == ldflag)
+         {
 #ifdef USE_SSE_SUPPORT
-               __m128i xmm_frac;
-               __m128i delta_x_high, delta_diff;
-               __m128i prod_hi, prod_lo;
-               __m128i result;
+            __m128i xmm_frac;
+            __m128i delta_x_high, delta_diff;
+            __m128i prod_hi, prod_lo;
+            __m128i result;
 
-               span[j].unscrx  =  (stw_info->xlr[1]) >> 16;
-               stw_info->xfrac = (stw_info->xlr[1] >> 8) & 0xFF;
-               xmm_frac        = _mm_set1_epi32(stw_info->xfrac);
+            span[j].unscrx  =  (stw_info->xlr[1]) >> 16;
+            stw_info->xfrac = (stw_info->xlr[1] >> 8) & 0xFF;
+            xmm_frac        = _mm_set1_epi32(stw_info->xfrac);
 
-               delta_x_high = _mm_load_si128((__m128i *)stw_info->d_rgba_dxh);
-               prod_lo = _mm_mul_epu32(delta_x_high, xmm_frac);
-               delta_x_high = _mm_srli_epi64(delta_x_high, 32);
-               prod_hi = _mm_mul_epu32(delta_x_high, xmm_frac);
-               prod_lo = _mm_shuffle_epi32(prod_lo, _MM_SHUFFLE(3, 1, 2, 0));
-               prod_hi = _mm_shuffle_epi32(prod_hi, _MM_SHUFFLE(3, 1, 2, 0));
-               delta_x_high = _mm_unpacklo_epi32(prod_lo, prod_hi);
+            delta_x_high = _mm_load_si128((__m128i *)stw_info->d_rgba_dxh);
+            prod_lo = _mm_mul_epu32(delta_x_high, xmm_frac);
+            delta_x_high = _mm_srli_epi64(delta_x_high, 32);
+            prod_hi = _mm_mul_epu32(delta_x_high, xmm_frac);
+            prod_lo = _mm_shuffle_epi32(prod_lo, _MM_SHUFFLE(3, 1, 2, 0));
+            prod_hi = _mm_shuffle_epi32(prod_hi, _MM_SHUFFLE(3, 1, 2, 0));
+            delta_x_high = _mm_unpacklo_epi32(prod_lo, prod_hi);
 
-               delta_diff = _mm_load_si128((__m128i *)stw_info->d_rgba_diff);
-               result = _mm_load_si128((__m128i *)stw_info->rgba);
-               result = _mm_srli_epi32(result, 9);
-               result = _mm_slli_epi32(result, 9);
-               result = _mm_add_epi32(result, delta_diff);
-               result = _mm_sub_epi32(result, delta_x_high);
-               result = _mm_srli_epi32(result, 10);
-               result = _mm_slli_epi32(result, 10);
-               _mm_store_si128((__m128i *)span[j].rgba, result);
+            delta_diff = _mm_load_si128((__m128i *)stw_info->d_rgba_diff);
+            result = _mm_load_si128((__m128i *)stw_info->rgba);
+            result = _mm_srli_epi32(result, 9);
+            result = _mm_slli_epi32(result, 9);
+            result = _mm_add_epi32(result, delta_diff);
+            result = _mm_sub_epi32(result, delta_x_high);
+            result = _mm_srli_epi32(result, 10);
+            result = _mm_slli_epi32(result, 10);
+            _mm_store_si128((__m128i *)span[j].rgba, result);
 
-               delta_x_high = _mm_load_si128((__m128i *)stw_info->d_stwz_dxh);
-               prod_lo      = _mm_mul_epu32(delta_x_high, xmm_frac);
-               delta_x_high = _mm_srli_epi64(delta_x_high, 32);
-               prod_hi      = _mm_mul_epu32(delta_x_high, xmm_frac);
-               prod_lo      = _mm_shuffle_epi32(prod_lo, _MM_SHUFFLE(3, 1, 2, 0));
-               prod_hi      = _mm_shuffle_epi32(prod_hi, _MM_SHUFFLE(3, 1, 2, 0));
-               delta_x_high = _mm_unpacklo_epi32(prod_lo, prod_hi);
+            delta_x_high = _mm_load_si128((__m128i *)stw_info->d_stwz_dxh);
+            prod_lo      = _mm_mul_epu32(delta_x_high, xmm_frac);
+            delta_x_high = _mm_srli_epi64(delta_x_high, 32);
+            prod_hi      = _mm_mul_epu32(delta_x_high, xmm_frac);
+            prod_lo      = _mm_shuffle_epi32(prod_lo, _MM_SHUFFLE(3, 1, 2, 0));
+            prod_hi      = _mm_shuffle_epi32(prod_hi, _MM_SHUFFLE(3, 1, 2, 0));
+            delta_x_high = _mm_unpacklo_epi32(prod_lo, prod_hi);
 
-               delta_diff   = _mm_load_si128((__m128i *)stw_info->d_stwz_diff);
-               result = _mm_load_si128((__m128i *)stw_info->stwz);
-               result = _mm_srli_epi32(result, 9);
-               result = _mm_slli_epi32(result, 9);
-               result = _mm_add_epi32(result, delta_diff);
-               result = _mm_sub_epi32(result, delta_x_high);
-               result = _mm_srli_epi32(result, 10);
-               result = _mm_slli_epi32(result, 10);
-               _mm_store_si128((__m128i *)span[j].stwz, result);
+            delta_diff   = _mm_load_si128((__m128i *)stw_info->d_stwz_diff);
+            result = _mm_load_si128((__m128i *)stw_info->stwz);
+            result = _mm_srli_epi32(result, 9);
+            result = _mm_slli_epi32(result, 9);
+            result = _mm_add_epi32(result, delta_diff);
+            result = _mm_sub_epi32(result, delta_x_high);
+            result = _mm_srli_epi32(result, 10);
+            result = _mm_slli_epi32(result, 10);
+            _mm_store_si128((__m128i *)span[j].stwz, result);
 #else
-               span[j].unscrx  = SIGN(stw_info->xlr[1] >> 16, 12);
-               stw_info->xfrac = (stw_info->xlr[1] >> 8) & 0xFF;
-               span[j].rgba[0]
-                  = ((stw_info->rgba[0] & ~0x1FF) + stw_info->d_rgba_diff[0] - stw_info->xfrac * stw_info->d_rgba_dxh[0])
-                  & ~0x000003FF;
-               span[j].rgba[1]
-                  = ((stw_info->rgba[1] & ~0x1FF) + stw_info->d_rgba_diff[1] - stw_info->xfrac * stw_info->d_rgba_dxh[1])
-                  & ~0x000003FF;
-               span[j].rgba[2]
-                  = ((stw_info->rgba[2] & ~0x1FF) + stw_info->d_rgba_diff[2] - stw_info->xfrac * stw_info->d_rgba_dxh[2])
-                  & ~0x000003FF;
-               span[j].rgba[3]
-                  = ((stw_info->rgba[3] & ~0x1FF) + stw_info->d_rgba_diff[3] - stw_info->xfrac * stw_info->d_rgba_dxh[3])
-                  & ~0x000003FF;
-               span[j].stwz[0]
-                  = ((stw_info->stwz[0] & ~0x1FF) + stw_info->d_stwz_diff[0] - stw_info->xfrac * stw_info->d_stwz_dxh[0])
-                  & ~0x000003FF;
-               span[j].stwz[1]
-                  = ((stw_info->stwz[1] & ~0x1FF) + stw_info->d_stwz_diff[1] - stw_info->xfrac * stw_info->d_stwz_dxh[1])
-                  & ~0x000003FF;
-               span[j].stwz[2]
-                  = ((stw_info->stwz[2] & ~0x1FF) + stw_info->d_stwz_diff[2] - stw_info->xfrac * stw_info->d_stwz_dxh[2])
-                  & ~0x000003FF;
-               span[j].stwz[3]
-                  = ((stw_info->stwz[3] & ~0x1FF) + stw_info->d_stwz_diff[3] - stw_info->xfrac * stw_info->d_stwz_dxh[3])
-                  & ~0x000003FF;
+            span[j].unscrx  = SIGN(stw_info->xlr[1] >> 16, 12);
+            stw_info->xfrac = (stw_info->xlr[1] >> 8) & 0xFF;
+            span[j].rgba[0]
+               = ((stw_info->rgba[0] & ~0x1FF) + stw_info->d_rgba_diff[0] - stw_info->xfrac * stw_info->d_rgba_dxh[0])
+               & ~0x000003FF;
+            span[j].rgba[1]
+               = ((stw_info->rgba[1] & ~0x1FF) + stw_info->d_rgba_diff[1] - stw_info->xfrac * stw_info->d_rgba_dxh[1])
+               & ~0x000003FF;
+            span[j].rgba[2]
+               = ((stw_info->rgba[2] & ~0x1FF) + stw_info->d_rgba_diff[2] - stw_info->xfrac * stw_info->d_rgba_dxh[2])
+               & ~0x000003FF;
+            span[j].rgba[3]
+               = ((stw_info->rgba[3] & ~0x1FF) + stw_info->d_rgba_diff[3] - stw_info->xfrac * stw_info->d_rgba_dxh[3])
+               & ~0x000003FF;
+            span[j].stwz[0]
+               = ((stw_info->stwz[0] & ~0x1FF) + stw_info->d_stwz_diff[0] - stw_info->xfrac * stw_info->d_stwz_dxh[0])
+               & ~0x000003FF;
+            span[j].stwz[1]
+               = ((stw_info->stwz[1] & ~0x1FF) + stw_info->d_stwz_diff[1] - stw_info->xfrac * stw_info->d_stwz_dxh[1])
+               & ~0x000003FF;
+            span[j].stwz[2]
+               = ((stw_info->stwz[2] & ~0x1FF) + stw_info->d_stwz_diff[2] - stw_info->xfrac * stw_info->d_stwz_dxh[2])
+               & ~0x000003FF;
+            span[j].stwz[3]
+               = ((stw_info->stwz[3] & ~0x1FF) + stw_info->d_stwz_diff[3] - stw_info->xfrac * stw_info->d_stwz_dxh[3])
+               & ~0x000003FF;
 #endif
-            }
+         }
 
-            if (spix == 3)
-            {
-                const int invalidline = (sckeepodd ^ j) & scfield
-                                      | (allinval | allover | allunder);
-                span[j].lx = minmax[flip - 0];
-                span[j].rx = minmax[1 - flip];
-                span[j].validline = invalidline ^ 1;
-            }
-        }
-        if (spix == 3)
-        {
-            stw_info->rgba[0] += stw_info->d_rgba_de[0];
-            stw_info->rgba[1] += stw_info->d_rgba_de[1];
-            stw_info->rgba[2] += stw_info->d_rgba_de[2];
-            stw_info->rgba[3] += stw_info->d_rgba_de[3];
-            stw_info->stwz[0] += stw_info->d_stwz_de[0];
-            stw_info->stwz[1] += stw_info->d_stwz_de[1];
-            stw_info->stwz[2] += stw_info->d_stwz_de[2];
-            stw_info->stwz[3] += stw_info->d_stwz_de[3];
-        }
+         if (spix == 3)
+         {
+            const int invalidline = (sckeepodd ^ j) & scfield
+               | (allinval | allover | allunder);
+            span[j].lx = minmax[flip - 0];
+            span[j].rx = minmax[1 - flip];
+            span[j].validline = invalidline ^ 1;
+         }
+      }
+      if (spix == 3)
+      {
+         stw_info->rgba[0] += stw_info->d_rgba_de[0];
+         stw_info->rgba[1] += stw_info->d_rgba_de[1];
+         stw_info->rgba[2] += stw_info->d_rgba_de[2];
+         stw_info->rgba[3] += stw_info->d_rgba_de[3];
+         stw_info->stwz[0] += stw_info->d_stwz_de[0];
+         stw_info->stwz[1] += stw_info->d_stwz_de[1];
+         stw_info->stwz[2] += stw_info->d_stwz_de[2];
+         stw_info->stwz[3] += stw_info->d_stwz_de[3];
+      }
 
-        stw_info->xlr[0] += stw_info->xlr_inc[0];
-        stw_info->xlr[1] += stw_info->xlr_inc[1];
-    }
+      stw_info->xlr[0] += stw_info->xlr_inc[0];
+      stw_info->xlr[1] += stw_info->xlr_inc[1];
+   }
 
-    render_spans(yhlimit >> 2, yllimit >> 2, tilenum, flip);
+   render_spans(yhlimit >> 2, yllimit >> 2, tilenum, flip);
 }
 
 static void tri_noshade(uint32_t w1, uint32_t w2)
