@@ -8303,50 +8303,51 @@ no_read_zbuffer_coefficients:
     }
     else
     {
-        int32_t d_rgba_deh[4], d_stwz_deh[4];
-        int32_t d_rgba_dyh[4], d_stwz_dyh[4];
+       /* Apply 3/4th pixel offset. */
+       int32_t d_rgba_deh[4], d_stwz_deh[4];
+       int32_t d_rgba_dyh[4], d_stwz_dyh[4];
 
-        d_rgba_deh[0]             = stw_info->d_rgba_de[0] & ~0x000001FF;
-        d_rgba_deh[1]             = stw_info->d_rgba_de[1] & ~0x000001FF;
-        d_rgba_deh[2]             = stw_info->d_rgba_de[2] & ~0x000001FF;
-        d_rgba_deh[3]             = stw_info->d_rgba_de[3] & ~0x000001FF;
-        d_stwz_deh[0]             = stw_info->d_stwz_de[0] & ~0x000001FF;
-        d_stwz_deh[1]             = stw_info->d_stwz_de[1] & ~0x000001FF;
-        d_stwz_deh[2]             = stw_info->d_stwz_de[2] & ~0x000001FF;
-        d_stwz_deh[3]             = stw_info->d_stwz_de[3] & ~0x000001FF;
+       d_rgba_deh[0]             = stw_info->d_rgba_de[0] & ~0x000001FF;
+       d_rgba_deh[1]             = stw_info->d_rgba_de[1] & ~0x000001FF;
+       d_rgba_deh[2]             = stw_info->d_rgba_de[2] & ~0x000001FF;
+       d_rgba_deh[3]             = stw_info->d_rgba_de[3] & ~0x000001FF;
+       d_stwz_deh[0]             = stw_info->d_stwz_de[0] & ~0x000001FF;
+       d_stwz_deh[1]             = stw_info->d_stwz_de[1] & ~0x000001FF;
+       d_stwz_deh[2]             = stw_info->d_stwz_de[2] & ~0x000001FF;
+       d_stwz_deh[3]             = stw_info->d_stwz_de[3] & ~0x000001FF;
 
-        d_rgba_dyh[0]             = stw_info->d_rgba_dy[0] & ~0x000001FF;
-        d_rgba_dyh[1]             = stw_info->d_rgba_dy[1] & ~0x000001FF;
-        d_rgba_dyh[2]             = stw_info->d_rgba_dy[2] & ~0x000001FF;
-        d_rgba_dyh[3]             = stw_info->d_rgba_dy[3] & ~0x000001FF;
-        d_stwz_dyh[0]             = stw_info->d_stwz_dy[0] & ~0x000001FF;
-        d_stwz_dyh[1]             = stw_info->d_stwz_dy[1] & ~0x000001FF;
-        d_stwz_dyh[2]             = stw_info->d_stwz_dy[2] & ~0x000001FF;
-        d_stwz_dyh[3]             = stw_info->d_stwz_dy[3] & ~0x000001FF;
+       d_rgba_dyh[0]             = stw_info->d_rgba_dy[0] & ~0x000001FF;
+       d_rgba_dyh[1]             = stw_info->d_rgba_dy[1] & ~0x000001FF;
+       d_rgba_dyh[2]             = stw_info->d_rgba_dy[2] & ~0x000001FF;
+       d_rgba_dyh[3]             = stw_info->d_rgba_dy[3] & ~0x000001FF;
+       d_stwz_dyh[0]             = stw_info->d_stwz_dy[0] & ~0x000001FF;
+       d_stwz_dyh[1]             = stw_info->d_stwz_dy[1] & ~0x000001FF;
+       d_stwz_dyh[2]             = stw_info->d_stwz_dy[2] & ~0x000001FF;
+       d_stwz_dyh[3]             = stw_info->d_stwz_dy[3] & ~0x000001FF;
 
-        stw_info->d_rgba_diff[0]  = d_rgba_deh[0] - (d_rgba_deh[0] >> 2) -
-           d_rgba_dyh[0] + (d_rgba_dyh[0] >> 2);
+       stw_info->d_rgba_diff[0]  = d_rgba_deh[0] - (d_rgba_deh[0] >> 2) -
+          d_rgba_dyh[0] + (d_rgba_dyh[0] >> 2);
 
-        stw_info->d_rgba_diff[1]  = d_rgba_deh[1] - (d_rgba_deh[1] >> 2) -
-           d_rgba_dyh[1] + (d_rgba_dyh[1] >> 2);
+       stw_info->d_rgba_diff[1]  = d_rgba_deh[1] - (d_rgba_deh[1] >> 2) -
+          d_rgba_dyh[1] + (d_rgba_dyh[1] >> 2);
 
-        stw_info->d_rgba_diff[2]  = d_rgba_deh[2] - (d_rgba_deh[2] >> 2) -
-           d_rgba_dyh[2] + (d_rgba_dyh[2] >> 2);
+       stw_info->d_rgba_diff[2]  = d_rgba_deh[2] - (d_rgba_deh[2] >> 2) -
+          d_rgba_dyh[2] + (d_rgba_dyh[2] >> 2);
 
-        stw_info->d_rgba_diff[3]  = d_rgba_deh[3] - (d_rgba_deh[3] >> 2) -
-           d_rgba_dyh[3] + (d_rgba_dyh[3] >> 2);
+       stw_info->d_rgba_diff[3]  = d_rgba_deh[3] - (d_rgba_deh[3] >> 2) -
+          d_rgba_dyh[3] + (d_rgba_dyh[3] >> 2);
 
-        stw_info->d_stwz_diff[0]  = d_stwz_deh[0] - (d_stwz_deh[0] >> 2) -
-           d_stwz_dyh[0] + (d_stwz_dyh[0] >> 2);
+       stw_info->d_stwz_diff[0]  = d_stwz_deh[0] - (d_stwz_deh[0] >> 2) -
+          d_stwz_dyh[0] + (d_stwz_dyh[0] >> 2);
 
-        stw_info->d_stwz_diff[1]  = d_stwz_deh[1] - (d_stwz_deh[1] >> 2) -
-           d_stwz_dyh[1] + (d_stwz_dyh[1] >> 2);
+       stw_info->d_stwz_diff[1]  = d_stwz_deh[1] - (d_stwz_deh[1] >> 2) -
+          d_stwz_dyh[1] + (d_stwz_dyh[1] >> 2);
 
-        stw_info->d_stwz_diff[2]  = d_stwz_deh[2] - (d_stwz_deh[2] >> 2) -
-           d_stwz_dyh[2] + (d_stwz_dyh[2] >> 2);
+       stw_info->d_stwz_diff[2]  = d_stwz_deh[2] - (d_stwz_deh[2] >> 2) -
+          d_stwz_dyh[2] + (d_stwz_dyh[2] >> 2);
 
-        stw_info->d_stwz_diff[3]  = d_stwz_deh[3] - (d_stwz_deh[3] >> 2) -
-           d_stwz_dyh[3] + (d_stwz_dyh[3] >> 2);
+       stw_info->d_stwz_diff[3]  = d_stwz_deh[3] - (d_stwz_deh[3] >> 2) -
+          d_stwz_dyh[3] + (d_stwz_dyh[3] >> 2);
     }
 
     if (other_modes.cycle_type == CYCLE_TYPE_COPY)
