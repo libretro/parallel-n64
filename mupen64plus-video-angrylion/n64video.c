@@ -7666,8 +7666,8 @@ static INLINE void fbread2_16(uint32_t curpixel, uint32_t* curpixel_memcvg)
 
 static void fbread_32(uint32_t curpixel, uint32_t* curpixel_memcvg)
 {
-   uint32_t mem, addr = (fb_address >> 2) + curpixel;
-   RREADIDX32(mem, addr);
+   uint32_t addr      = ((fb_address >> 2) + curpixel) & (RDRAM_MASK >> 2);
+   uint32_t mem       = (addr <= idxlim32) ? rdram[addr] : 0;
 
    COLOR_RED(memory_color)    = (mem >> 24) & 0xFF;
    COLOR_GREEN(memory_color)  = (mem >> 16) & 0xFF;
@@ -7682,8 +7682,8 @@ static void fbread_32(uint32_t curpixel, uint32_t* curpixel_memcvg)
 
 static void fbread2_32(uint32_t curpixel, uint32_t* curpixel_memcvg)
 {
-   uint32_t mem, addr = (fb_address >> 2) + curpixel; 
-   RREADIDX32(mem, addr);
+   uint32_t addr      = ((fb_address >> 2) + curpixel) & (RDRAM_MASK >> 2); 
+   uint32_t mem       = (addr <= idxlim32) ? rdram[addr] : 0;
 
    COLOR_RED(pre_memory_color)    = (mem >> 24) & 0xFF;
    COLOR_GREEN(pre_memory_color)  = (mem >> 16) & 0xFF;
