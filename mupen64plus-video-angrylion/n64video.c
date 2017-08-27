@@ -8145,8 +8145,45 @@ static void tri_fill_coeffs(struct stepwalker_info *stw_info)
    stw_info->DxMDy = DxMDy;
 }
 
+static void tri_fill_shade_coeffs(struct stepwalker_info *stw_info)
+{
+   stw_info->rgba_int[0] = (cmd_data[stw_info->base + 4].UW32[0] >> 16) & 0xFFFF;
+   stw_info->rgba_int[1] = (cmd_data[stw_info->base + 4].UW32[0] >>  0) & 0xFFFF;
+   stw_info->rgba_int[2] = (cmd_data[stw_info->base + 4].UW32[1] >> 16) & 0xFFFF;
+   stw_info->rgba_int[3] = (cmd_data[stw_info->base + 4].UW32[1] >>  0) & 0xFFFF;
+   stw_info->d_rgba_dx_int[0] = (cmd_data[stw_info->base + 5].UW32[0] >> 16) & 0xFFFF;
+   stw_info->d_rgba_dx_int[1] = (cmd_data[stw_info->base + 5].UW32[0] >>  0) & 0xFFFF;
+   stw_info->d_rgba_dx_int[2] = (cmd_data[stw_info->base + 5].UW32[1] >> 16) & 0xFFFF;
+   stw_info->d_rgba_dx_int[3] = (cmd_data[stw_info->base + 5].UW32[1] >>  0) & 0xFFFF;
+   stw_info->rgba_frac[0] = (cmd_data[stw_info->base + 6].UW32[0] >> 16) & 0xFFFF;
+   stw_info->rgba_frac[1] = (cmd_data[stw_info->base + 6].UW32[0] >>  0) & 0xFFFF;
+   stw_info->rgba_frac[2] = (cmd_data[stw_info->base + 6].UW32[1] >> 16) & 0xFFFF;
+   stw_info->rgba_frac[3] = (cmd_data[stw_info->base + 6].UW32[1] >>  0) & 0xFFFF;
+   stw_info->d_rgba_dx_frac[0] = (cmd_data[stw_info->base + 7].UW32[0] >> 16) & 0xFFFF;
+   stw_info->d_rgba_dx_frac[1] = (cmd_data[stw_info->base + 7].UW32[0] >>  0) & 0xFFFF;
+   stw_info->d_rgba_dx_frac[2] = (cmd_data[stw_info->base + 7].UW32[1] >> 16) & 0xFFFF;
+   stw_info->d_rgba_dx_frac[3] = (cmd_data[stw_info->base + 7].UW32[1] >>  0) & 0xFFFF;
+   stw_info->d_rgba_de_int[0] = (cmd_data[stw_info->base + 8].UW32[0] >> 16) & 0xFFFF;
+   stw_info->d_rgba_de_int[1] = (cmd_data[stw_info->base + 8].UW32[0] >>  0) & 0xFFFF;
+   stw_info->d_rgba_de_int[2] = (cmd_data[stw_info->base + 8].UW32[1] >> 16) & 0xFFFF;
+   stw_info->d_rgba_de_int[3] = (cmd_data[stw_info->base + 8].UW32[1] >>  0) & 0xFFFF;
+   stw_info->d_rgba_dy_int[0] = (cmd_data[stw_info->base + 9].UW32[0] >> 16) & 0xFFFF;
+   stw_info->d_rgba_dy_int[1] = (cmd_data[stw_info->base + 9].UW32[0] >>  0) & 0xFFFF;
+   stw_info->d_rgba_dy_int[2] = (cmd_data[stw_info->base + 9].UW32[1] >> 16) & 0xFFFF;
+   stw_info->d_rgba_dy_int[3] = (cmd_data[stw_info->base + 9].UW32[1] >>  0) & 0xFFFF;
+   stw_info->d_rgba_de_frac[0] = (cmd_data[stw_info->base + 10].UW32[0] >> 16) & 0xFFFF;
+   stw_info->d_rgba_de_frac[1] = (cmd_data[stw_info->base + 10].UW32[0] >>  0) & 0xFFFF;
+   stw_info->d_rgba_de_frac[2] = (cmd_data[stw_info->base + 10].UW32[1] >> 16) & 0xFFFF;
+   stw_info->d_rgba_de_frac[3] = (cmd_data[stw_info->base + 10].UW32[1] >>  0) & 0xFFFF;
+   stw_info->d_rgba_dy_frac[0] = (cmd_data[stw_info->base + 11].UW32[0] >> 16) & 0xFFFF;
+   stw_info->d_rgba_dy_frac[1] = (cmd_data[stw_info->base + 11].UW32[0] >>  0) & 0xFFFF;
+   stw_info->d_rgba_dy_frac[2] = (cmd_data[stw_info->base + 11].UW32[1] >> 16) & 0xFFFF;
+   stw_info->d_rgba_dy_frac[3] = (cmd_data[stw_info->base + 11].UW32[1] >>  0) & 0xFFFF;
+   stw_info->base += 8;
+}
+
 static NOINLINE void draw_triangle(uint32_t w1, uint32_t w2,
-      int shade, int texture, int zbuffer, struct stepwalker_info *stw_info)
+      int texture, int zbuffer, struct stepwalker_info *stw_info)
 {
     int sign_dxhdy;
     int ycur, ylfar;
@@ -8176,43 +8213,6 @@ static NOINLINE void draw_triangle(uint32_t w1, uint32_t w2,
 
     max_level       = level;
 
-    /* Shade Coefficients */
-    if (shade == 0) /* branch unlikely */
-        goto no_read_shade_coefficients;
-    stw_info->rgba_int[0] = (cmd_data[stw_info->base + 4].UW32[0] >> 16) & 0xFFFF;
-    stw_info->rgba_int[1] = (cmd_data[stw_info->base + 4].UW32[0] >>  0) & 0xFFFF;
-    stw_info->rgba_int[2] = (cmd_data[stw_info->base + 4].UW32[1] >> 16) & 0xFFFF;
-    stw_info->rgba_int[3] = (cmd_data[stw_info->base + 4].UW32[1] >>  0) & 0xFFFF;
-    stw_info->d_rgba_dx_int[0] = (cmd_data[stw_info->base + 5].UW32[0] >> 16) & 0xFFFF;
-    stw_info->d_rgba_dx_int[1] = (cmd_data[stw_info->base + 5].UW32[0] >>  0) & 0xFFFF;
-    stw_info->d_rgba_dx_int[2] = (cmd_data[stw_info->base + 5].UW32[1] >> 16) & 0xFFFF;
-    stw_info->d_rgba_dx_int[3] = (cmd_data[stw_info->base + 5].UW32[1] >>  0) & 0xFFFF;
-    stw_info->rgba_frac[0] = (cmd_data[stw_info->base + 6].UW32[0] >> 16) & 0xFFFF;
-    stw_info->rgba_frac[1] = (cmd_data[stw_info->base + 6].UW32[0] >>  0) & 0xFFFF;
-    stw_info->rgba_frac[2] = (cmd_data[stw_info->base + 6].UW32[1] >> 16) & 0xFFFF;
-    stw_info->rgba_frac[3] = (cmd_data[stw_info->base + 6].UW32[1] >>  0) & 0xFFFF;
-    stw_info->d_rgba_dx_frac[0] = (cmd_data[stw_info->base + 7].UW32[0] >> 16) & 0xFFFF;
-    stw_info->d_rgba_dx_frac[1] = (cmd_data[stw_info->base + 7].UW32[0] >>  0) & 0xFFFF;
-    stw_info->d_rgba_dx_frac[2] = (cmd_data[stw_info->base + 7].UW32[1] >> 16) & 0xFFFF;
-    stw_info->d_rgba_dx_frac[3] = (cmd_data[stw_info->base + 7].UW32[1] >>  0) & 0xFFFF;
-    stw_info->d_rgba_de_int[0] = (cmd_data[stw_info->base + 8].UW32[0] >> 16) & 0xFFFF;
-    stw_info->d_rgba_de_int[1] = (cmd_data[stw_info->base + 8].UW32[0] >>  0) & 0xFFFF;
-    stw_info->d_rgba_de_int[2] = (cmd_data[stw_info->base + 8].UW32[1] >> 16) & 0xFFFF;
-    stw_info->d_rgba_de_int[3] = (cmd_data[stw_info->base + 8].UW32[1] >>  0) & 0xFFFF;
-    stw_info->d_rgba_dy_int[0] = (cmd_data[stw_info->base + 9].UW32[0] >> 16) & 0xFFFF;
-    stw_info->d_rgba_dy_int[1] = (cmd_data[stw_info->base + 9].UW32[0] >>  0) & 0xFFFF;
-    stw_info->d_rgba_dy_int[2] = (cmd_data[stw_info->base + 9].UW32[1] >> 16) & 0xFFFF;
-    stw_info->d_rgba_dy_int[3] = (cmd_data[stw_info->base + 9].UW32[1] >>  0) & 0xFFFF;
-    stw_info->d_rgba_de_frac[0] = (cmd_data[stw_info->base + 10].UW32[0] >> 16) & 0xFFFF;
-    stw_info->d_rgba_de_frac[1] = (cmd_data[stw_info->base + 10].UW32[0] >>  0) & 0xFFFF;
-    stw_info->d_rgba_de_frac[2] = (cmd_data[stw_info->base + 10].UW32[1] >> 16) & 0xFFFF;
-    stw_info->d_rgba_de_frac[3] = (cmd_data[stw_info->base + 10].UW32[1] >>  0) & 0xFFFF;
-    stw_info->d_rgba_dy_frac[0] = (cmd_data[stw_info->base + 11].UW32[0] >> 16) & 0xFFFF;
-    stw_info->d_rgba_dy_frac[1] = (cmd_data[stw_info->base + 11].UW32[0] >>  0) & 0xFFFF;
-    stw_info->d_rgba_dy_frac[2] = (cmd_data[stw_info->base + 11].UW32[1] >> 16) & 0xFFFF;
-    stw_info->d_rgba_dy_frac[3] = (cmd_data[stw_info->base + 11].UW32[1] >>  0) & 0xFFFF;
-    stw_info->base += 8;
-no_read_shade_coefficients:
     stw_info->base -= 8;
     stw_info->rgba[0]      = (stw_info->rgba_int[0] << 16) | (uint16_t)(stw_info->rgba_frac[0]);
     stw_info->rgba[1]      = (stw_info->rgba_int[1] << 16) | (uint16_t)(stw_info->rgba_frac[1]);
@@ -8614,7 +8614,7 @@ static void tri_noshade(uint32_t w1, uint32_t w2)
    struct stepwalker_info stw_info;
    stepwalker_info_init(&stw_info);
    tri_fill_coeffs(&stw_info);
-   draw_triangle(w1, w2, SHADE_NO, TEXTURE_NO, ZBUFFER_NO, &stw_info);
+   draw_triangle(w1, w2, TEXTURE_NO, ZBUFFER_NO, &stw_info);
 }
 
 static void tri_noshade_z(uint32_t w1, uint32_t w2)
@@ -8622,7 +8622,7 @@ static void tri_noshade_z(uint32_t w1, uint32_t w2)
    struct stepwalker_info stw_info;
    stepwalker_info_init(&stw_info);
    tri_fill_coeffs(&stw_info);
-   draw_triangle(w1, w2, SHADE_NO, TEXTURE_NO, ZBUFFER_YES, &stw_info);
+   draw_triangle(w1, w2, TEXTURE_NO, ZBUFFER_YES, &stw_info);
 }
 
 static void tri_tex(uint32_t w1, uint32_t w2)
@@ -8630,7 +8630,7 @@ static void tri_tex(uint32_t w1, uint32_t w2)
    struct stepwalker_info stw_info;
    stepwalker_info_init(&stw_info);
    tri_fill_coeffs(&stw_info);
-   draw_triangle(w1, w2, SHADE_NO, TEXTURE_YES, ZBUFFER_NO, &stw_info);
+   draw_triangle(w1, w2, TEXTURE_YES, ZBUFFER_NO, &stw_info);
 }
 
 static void tri_tex_z(uint32_t w1, uint32_t w2)
@@ -8638,7 +8638,7 @@ static void tri_tex_z(uint32_t w1, uint32_t w2)
    struct stepwalker_info stw_info;
    stepwalker_info_init(&stw_info);
    tri_fill_coeffs(&stw_info);
-   draw_triangle(w1, w2, SHADE_NO, TEXTURE_YES, ZBUFFER_YES, &stw_info);
+   draw_triangle(w1, w2, TEXTURE_YES, ZBUFFER_YES, &stw_info);
 }
 
 static void tri_shade(uint32_t w1, uint32_t w2)
@@ -8646,7 +8646,8 @@ static void tri_shade(uint32_t w1, uint32_t w2)
    struct stepwalker_info stw_info;
    stepwalker_info_init(&stw_info);
    tri_fill_coeffs(&stw_info);
-   draw_triangle(w1, w2, SHADE_YES, TEXTURE_NO, ZBUFFER_NO, &stw_info);
+   tri_fill_shade_coeffs(&stw_info);
+   draw_triangle(w1, w2, TEXTURE_NO, ZBUFFER_NO, &stw_info);
 }
 
 static void tri_shade_z(uint32_t w1, uint32_t w2)
@@ -8654,7 +8655,8 @@ static void tri_shade_z(uint32_t w1, uint32_t w2)
    struct stepwalker_info stw_info;
    stepwalker_info_init(&stw_info);
    tri_fill_coeffs(&stw_info);
-   draw_triangle(w1, w2, SHADE_YES, TEXTURE_NO, ZBUFFER_YES, &stw_info);
+   tri_fill_shade_coeffs(&stw_info);
+   draw_triangle(w1, w2, TEXTURE_NO, ZBUFFER_YES, &stw_info);
 }
 
 static void tri_texshade(uint32_t w1, uint32_t w2)
@@ -8662,7 +8664,8 @@ static void tri_texshade(uint32_t w1, uint32_t w2)
    struct stepwalker_info stw_info;
    stepwalker_info_init(&stw_info);
    tri_fill_coeffs(&stw_info);
-   draw_triangle(w1, w2, SHADE_YES, TEXTURE_YES, ZBUFFER_NO, &stw_info);
+   tri_fill_shade_coeffs(&stw_info);
+   draw_triangle(w1, w2, TEXTURE_YES, ZBUFFER_NO, &stw_info);
 }
 
 static void tri_texshade_z(uint32_t w1, uint32_t w2)
@@ -8670,7 +8673,8 @@ static void tri_texshade_z(uint32_t w1, uint32_t w2)
    struct stepwalker_info stw_info;
    stepwalker_info_init(&stw_info);
    tri_fill_coeffs(&stw_info);
-   draw_triangle(w1, w2, SHADE_YES, TEXTURE_YES, ZBUFFER_YES, &stw_info);
+   tri_fill_shade_coeffs(&stw_info);
+   draw_triangle(w1, w2, TEXTURE_YES, ZBUFFER_YES, &stw_info);
 }
 
 
