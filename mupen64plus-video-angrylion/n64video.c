@@ -1858,14 +1858,12 @@ static void rgb_dither(int* r, int* g, int* b, int dith, int dither_sel)
 
 static void blender_equation_cycle0(int* r, int* g, int* b)
 {
-    int blr, blg, blb, sum;
+    int blr, blg, blb;
     int mulb;
-    int blend1a = *blender1b_a[0] >> 3;
-    int blend2a = *blender2b_a[0] >> 3;
-
-#ifdef EXTRALOGGING
-    LOG("blend1a = %d, blend2a = %d\n", blend1a, blend2a);
-#endif
+    int a0      = *blender1b_a[0];
+    int a1      = *blender2b_a[0];
+    int blend1a = a0 >> 3;
+    int blend2a = a1 >> 3;
 
     if (other_modes.f.special_bsel0)
     {
@@ -1874,48 +1872,53 @@ static void blender_equation_cycle0(int* r, int* g, int* b)
     }
     mulb = blend2a + 1;
 
+    /* Blend */
     blr = (*blender1a_r[0]) * blend1a + (*blender2a_r[0]) * mulb;
     blg = (*blender1a_g[0]) * blend1a + (*blender2a_g[0]) * mulb;
     blb = (*blender1a_b[0]) * blend1a + (*blender2a_b[0]) * mulb;
 
-    if (!other_modes.force_blend)
+    if (other_modes.force_blend)
     {
-        sum = ((blend1a & ~3) + (blend2a & ~3) + 4) << 9;
-        *r = bldiv_hwaccurate_table[sum | ((blr >> 2) & 0x7ff)];
-        *g = bldiv_hwaccurate_table[sum | ((blg >> 2) & 0x7ff)];
-        *b = bldiv_hwaccurate_table[sum | ((blb >> 2) & 0x7ff)];
+       *r = (blr >> 5) & 0xff;    
+       *g = (blg >> 5) & 0xff; 
+       *b = (blb >> 5) & 0xff;
     }
     else
     {
-        *r = (blr >> 5) & 0xff;    
-        *g = (blg >> 5) & 0xff; 
-        *b = (blb >> 5) & 0xff;
-    }    
+       /* This uses the bldiv_hwaccurate_table */
+        int sum = ((blend1a & ~3) + (blend2a & ~3) + 4) << 9;
+        *r      = bldiv_hwaccurate_table[sum | ((blr >> 2) & 0x7ff)];
+        *g      = bldiv_hwaccurate_table[sum | ((blg >> 2) & 0x7ff)];
+        *b      = bldiv_hwaccurate_table[sum | ((blb >> 2) & 0x7ff)];
+    }
 }
 
 static STRICTINLINE void blender_equation_cycle0_2(int* r, int* g, int* b)
 {
-    int blend1a = *blender1b_a[0] >> 3;
-    int blend2a = *blender2b_a[0] >> 3;
+   int a0        = *blender1b_a[0];
+   int a1        = *blender2b_a[0];
+   int blend1a   = a0 >> 3;
+   int blend2a   = a1 >> 3;
 
-    if (other_modes.f.special_bsel0)
-    {
-        blend1a = (blend1a >> pastblshifta) & 0x3C;
-        blend2a = (blend2a >> pastblshiftb) | 3;
-    }
-    blend2a += 1;
-    *r = (((*blender1a_r[0]) * blend1a + (*blender2a_r[0]) * blend2a) >> 5) & 0xff;
-    *g = (((*blender1a_g[0]) * blend1a + (*blender2a_g[0]) * blend2a) >> 5) & 0xff;
-    *b = (((*blender1a_b[0]) * blend1a + (*blender2a_b[0]) * blend2a) >> 5) & 0xff;
+   if (other_modes.f.special_bsel0)
+   {
+      blend1a = (blend1a >> pastblshifta) & 0x3C;
+      blend2a = (blend2a >> pastblshiftb) | 3;
+   }
+   blend2a += 1;
+   *r = (((*blender1a_r[0]) * blend1a + (*blender2a_r[0]) * blend2a) >> 5) & 0xff;
+   *g = (((*blender1a_g[0]) * blend1a + (*blender2a_g[0]) * blend2a) >> 5) & 0xff;
+   *b = (((*blender1a_b[0]) * blend1a + (*blender2a_b[0]) * blend2a) >> 5) & 0xff;
 }
 
 static void blender_equation_cycle1(int* r, int* g, int* b)
 {
-    int blr, blg, blb, sum;
+    int blr, blg, blb;
     int mulb;
-
-    int blend1a = *blender1b_a[1] >> 3;
-    int blend2a = *blender2b_a[1] >> 3;
+    int a0      = *blender1b_a[1];
+    int a1      = *blender2b_a[1];
+    int blend1a = a0 >> 3;
+    int blend2a = a1 >> 3;
 
     if (other_modes.f.special_bsel1)
     {
@@ -1923,22 +1926,24 @@ static void blender_equation_cycle1(int* r, int* g, int* b)
         blend2a = (blend2a >> blshiftb) | 3;
     }
     mulb = blend2a + 1;
+
+    /* Blend */
     blr = (*blender1a_r[1]) * blend1a + (*blender2a_r[1]) * mulb;
     blg = (*blender1a_g[1]) * blend1a + (*blender2a_g[1]) * mulb;
     blb = (*blender1a_b[1]) * blend1a + (*blender2a_b[1]) * mulb;
 
-    if (!other_modes.force_blend)
+    if (other_modes.force_blend)
     {
-        sum = ((blend1a & ~3) + (blend2a & ~3) + 4) << 9;
-        *r = bldiv_hwaccurate_table[sum | ((blr >> 2) & 0x7ff)];
-        *g = bldiv_hwaccurate_table[sum | ((blg >> 2) & 0x7ff)];
-        *b = bldiv_hwaccurate_table[sum | ((blb >> 2) & 0x7ff)];
+       *r = (blr >> 5) & 0xff;    
+       *g = (blg >> 5) & 0xff; 
+       *b = (blb >> 5) & 0xff;
     }
     else
     {
-        *r = (blr >> 5) & 0xff;    
-        *g = (blg >> 5) & 0xff; 
-        *b = (blb >> 5) & 0xff;
+        int sum = ((blend1a & ~3) + (blend2a & ~3) + 4) << 9;
+        *r      = bldiv_hwaccurate_table[sum | ((blr >> 2) & 0x7ff)];
+        *g      = bldiv_hwaccurate_table[sum | ((blg >> 2) & 0x7ff)];
+        *b      = bldiv_hwaccurate_table[sum | ((blb >> 2) & 0x7ff)];
     }
 }
 
