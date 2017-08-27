@@ -7372,8 +7372,7 @@ static void edgewalker_for_loads(int32_t* lewdata)
                 span[j].unscrx = xend;
                 ADJUST_ATTR_LOAD();
             }
-
-            if (spix == 3)
+            else if (spix == 3)
             {
                 span[j].lx = maxxmx;
                 span[j].rx = minxhx;
@@ -8598,6 +8597,7 @@ no_read_zbuffer_coefficients:
         stw_info->xlr[0] += stw_info->xlr_inc[0];
         stw_info->xlr[1] += stw_info->xlr_inc[1];
     }
+
     render_spans(yhlimit >> 2, yllimit >> 2, tilenum, flip);
 }
 
@@ -8810,7 +8810,7 @@ static NOINLINE void draw_texture_rectangle(
               span[j].stwz[2] = 0 & ~0x000003FF;
               span[j].stwz[3] = 0 & ~0x000003FF;
            }
-           if (spix == 3)
+           else if (spix == 3)
            {
               const int invalidline = (sckeepodd ^ j) & scfield
                  | (allinval | allover | allunder);
@@ -8819,6 +8819,7 @@ static NOINLINE void draw_texture_rectangle(
               span[j].validline = invalidline ^ 1;
            }
         }
+
         if (spix == 3)
         {
             stwz[0] = (stwz[0] + d_stwz_dy[0]) & ~0x000001FF;
@@ -9220,6 +9221,7 @@ static void fill_rect(uint32_t w1, uint32_t w2)
             span[j].validline = invalidline ^ 1;
         }
     }
+
     render_spans(yhlimit >> 2, yllimit >> 2, 0, 1);
 }
 
