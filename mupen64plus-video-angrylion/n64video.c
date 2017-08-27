@@ -7829,18 +7829,21 @@ static void set_texture_image(uint32_t w1, uint32_t w2);
 static void set_mask_image(uint32_t w1, uint32_t w2);
 static void set_color_image(uint32_t w1, uint32_t w2);
 
-static INLINE uint16_t normalize_dzpix(uint16_t sum)
+/* Angrylion does this, seems like it's
+ * rounding up to nearest POT, with some weird
+ * rules thrown in. */
+static INLINE uint16_t normalize_dz(uint16_t dz)
 {
-    int count;
+    unsigned count;
 
-    if (sum & 0xC000)
+    if (dz & 0xC000)
         return 0x8000;
-    if (sum == 0x0000)
-        return 0x0001;
-    if (sum == 0x0001)
-        return 0x0003;
+    if (dz == 0)
+        return 0;
+    if (dz == 1)
+        return 3;
     for (count = 0x2000; count > 0; count >>= 1)
-        if (sum & count)
+        if (dz & count)
             return (count << 1);
     return 0;
 }
@@ -8336,7 +8339,7 @@ no_read_zbuffer_coefficients:
 
     stw_info->d_stwz_dx_int[3] ^= (stw_info->d_stwz_dx_int[3] < 0) ? ~0 : 0;
     stw_info->d_stwz_dy_int[3] ^= (stw_info->d_stwz_dy_int[3] < 0) ? ~0 : 0;
-    spans_dzpix = normalize_dzpix(stw_info->d_stwz_dx_int[3] + stw_info->d_stwz_dy_int[3]);
+    spans_dzpix = normalize_dz(stw_info->d_stwz_dx_int[3] + stw_info->d_stwz_dy_int[3]);
 
     sign_dxhdy = (DxHDy < 0);
     if (sign_dxhdy ^ flip) /* !do_offset */
@@ -8720,7 +8723,7 @@ static NOINLINE void draw_texture_rectangle(
     setzero_si128(spans_d_stwz_dy);
     spans_d_stwz_dy[0] = d_stwz_dy[0] & ~0x00007FFF;
     spans_d_stwz_dy[1] = d_stwz_dy[1] & ~0x00007FFF;
-    spans_dzpix = normalize_dzpix(0);
+    spans_dzpix = normalize_dz(0);
 
     setzero_si128(d_stwz_dxh);
     if (other_modes.cycle_type != CYCLE_TYPE_COPY)
@@ -9143,7 +9146,7 @@ static void fill_rect(uint32_t w1, uint32_t w2)
     setzero_si128(spans_cd_rgba);
     spans_cdz = 0;
 
-    spans_dzpix = normalize_dzpix(0);
+    spans_dzpix = normalize_dz(0);
 
     /* Scissor test and find Y bounds for where to rasterize. */
     ycur        = yh & RDP_SUBPIXELS_INVMASK;
