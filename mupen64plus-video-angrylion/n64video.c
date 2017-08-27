@@ -261,30 +261,6 @@ void (*fbread1_ptr)(uint32_t, uint32_t*);
 void (*fbread2_ptr)(uint32_t, uint32_t*);
 void (*fbwrite_ptr)(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
 
-#define PAIRWRITE16(in, rval, hval) {            \
-   (in) &= (RDRAM_MASK >> 1);	                   \
-    if ((in) <= idxlim16) {                      \
-        rdram_16[(in) ^ WORD_ADDR_XOR] = (rval); \
-        hidden_bits[(in)] = (hval);              \
-    }                                            \
-}
-#define PAIRWRITE32(in, rval, hval0, hval1) {    \
-   (in) &= (RDRAM_MASK >> 2);                    \
-    if ((in) <= idxlim32) {                      \
-        rdram[(in)] = (rval);                    \
-        hidden_bits[(in) << 1] = (hval0);        \
-        hidden_bits[((in) << 1) + 1] = (hval1);  \
-    }                                            \
-}
-#define PAIRWRITE8(in, rval, hval) {             \
-   (in) &= RDRAM_MASK;                           \
-    if ((in) <= plim) {                          \
-        rdram_8[(in) ^ BYTE_ADDR_XOR] = (rval);  \
-        if ((in) & 1)                            \
-            hidden_bits[(in) >> 1] = (hval);     \
-    }                                            \
-}
-
 uint32_t internal_vi_v_current_line = 0;
 uint32_t old_vi_origin = 0;
 uint32_t oldhstart = 0;
@@ -953,7 +929,7 @@ static INLINE void z_build_com_table(void)
 
 static uint32_t vi_integer_sqrt(uint32_t a)
 {
-    unsigned long op = a, res = 0, one = 1 << 30;
+    uint32_t op = a, res = 0, one = 1 << 30;
 
     while (one > op) 
         one >>= 2;
@@ -4216,11 +4192,19 @@ static STRICTINLINE uint32_t dz_compress(uint32_t value)
     return j;
 }
 
-static STRICTINLINE void z_store(uint32_t zcurpixel, uint32_t z, int dzpixenc)
+static STRICTINLINE void z_store(uint32_t zcurpixel, uint32_t z, 
+      int dzpixenc)
 {
-    uint16_t zval = z_com_table[z & 0x3ffff]|(dzpixenc >> 2);
-    uint8_t hval = dzpixenc & 3;
-    PAIRWRITE16(zcurpixel, zval, hval);
+   uint16_t zval = z_com_table[z & 0x3ffff]|(dzpixenc >> 2);
+   uint8_t hval  = dzpixenc & 3;
+
+   zcurpixel    &= (RDRAM_MASK >> 1);
+
+   if (zcurpixel <= idxlim16)
+   {
+      rdram_16[zcurpixel ^ WORD_ADDR_XOR] = zval;
+      hidden_bits[zcurpixel] = hval;
+   }
 }
 
 static STRICTINLINE uint32_t z_decompress(uint32_t zb)
@@ -5009,7 +4993,7 @@ static void render_spans_1cycle_complete(int start, int end, int tilenum, int fl
     uint32_t blend_en;
     uint32_t prewrap;
     uint32_t curpixel_cvg, curpixel_cvbit, curpixel_memcvg;
-    unsigned long zbcur;
+    uint32_t zbcur;
 
     int prim_tile = tilenum;
     int tile1 = tilenum;
@@ -6579,9 +6563,16 @@ static void render_spans_fill_8(int start, int end, int flip)
 
       for (j = 0, fb = fb_address + curpixel; j <= length; j++, fb += xinc)
       {
-         uint32_t val = (fill_color >> (((fb & 3) ^ 3) << 3)) & 0xff;
-         uint8_t hval = ((val & 1) << 1) | (val & 1);
-         PAIRWRITE8(fb, val, hval);
+         uint32_t val  = (fill_color >> (((fb & 3) ^ 3) << 3)) & 0xff;
+         uint8_t hval  = ((val & 1) << 1) | (val & 1);
+         fb           &= RDRAM_MASK;
+
+         if (fb <= plim)
+         {
+            rdram_8[fb ^ BYTE_ADDR_XOR] = val;
+            if (fb & 1)
+               hidden_bits[fb >> 1] = hval;
+         }
       }
    }
 }
@@ -6623,8 +6614,6 @@ static void render_spans_fill_16(int start, int end, int flip)
 
    for (i = start; i <= end; i++)
    {
-      uint16_t val;
-      uint8_t hval;
       prevxstart = xstart;
       xstart     = span[i].lx;
       xendsc     = span[i].rx;
@@ -6638,10 +6627,17 @@ static void render_spans_fill_16(int start, int end, int flip)
 
       for (j = 0, fb = (fb_address >> 1) + curpixel; j <= length; j++, fb += xinc)
       {
-         val   = (fb & 1 ? fill_color : fill_color >> 16) & 0xffff;
-         hval  = (val & 1);
-         hval += hval << 1; /* hval = (val & 1) * 3; # lea(%hval, %hval, 2), %hval */
-         PAIRWRITE16(fb, val, hval);
+         uint16_t val  = (fb & 1 ? fill_color : fill_color >> 16) & 0xffff;
+         uint8_t hval  = (val & 1);
+
+         hval         += hval << 1;
+         fb           &= (RDRAM_MASK >> 1);
+
+         if (fb <= idxlim16)
+         {
+            rdram_16[fb ^ WORD_ADDR_XOR] = val;
+            hidden_bits[fb]              = hval;
+         }
       }
    }
 }
@@ -6696,7 +6692,13 @@ static void render_spans_fill_32(int start, int end, int flip)
 
       for (j = 0, fb = (fb_address >> 2) + curpixel; j <= length; j++, fb += xinc)
       {
-         PAIRWRITE32(fb, fill_color, (fill_color & 0x10000) ? 3 : 0, (fill_color & 0x1) ? 3 : 0);
+         fb &= (RDRAM_MASK >> 2);
+         if (fb <= idxlim32)
+         {
+            rdram[fb]                  = fill_color;
+            hidden_bits[fb << 1]       = (fill_color & 0x10000) ? 3 : 0;
+            hidden_bits[(fb << 1) + 1] = (fill_color & 0x1)     ? 3 : 0;
+         }
       }
    }
 }
@@ -6896,7 +6898,13 @@ static void render_spans_copy(int start, int end, int tilenum, int flip)
                 tempbyte = (uint32_t)((copyqword >> (k << 3)) & 0xff);
                 if (alphamask & (1 << k))
                 {
-                    PAIRWRITE8(tempdword, tempbyte, (tempbyte & 1) ? 3 : 0);
+                   tempdword &= RDRAM_MASK;
+                   if (tempdword <= plim)
+                   {
+                      rdram_8[tempdword ^ BYTE_ADDR_XOR] = tempbyte;
+                      if (tempdword & 1)
+                         hidden_bits[tempdword >> 1] = (tempbyte & 1) ? 3 : 0;
+                   }
                 }
                 k--;
                 tempdword += xinc;
@@ -7028,7 +7036,7 @@ static NOINLINE void loading_pipeline(
     int s, t;
     int ss, st;
     int xstart, xend, xendsc;
-    unsigned long tiptr;
+    uint32_t tiptr;
     uint32_t readidx32;
     uint64_t loadqword;
     uint16_t tempshort;
@@ -7411,71 +7419,87 @@ static void fbwrite_4(
     uint32_t curpixel, uint32_t r, uint32_t g, uint32_t b, uint32_t blend_en,
     uint32_t curpixel_cvg, uint32_t curpixel_memcvg)
 {
-    unsigned long addr  = fb_address + curpixel*1;
-    addr &= 0x00FFFFFF;
+   uint32_t max_addr  = fb_address + curpixel*1;
+   uint32_t addr      = (max_addr & 0x00FFFFFF) & RDRAM_MASK;
 
-    RWRITEADDR8(addr, 0x00);
+   if (addr <= plim)
+      rdram_8[addr & BYTE_ADDR_XOR] = 0x00;
 }
 
 static void fbwrite_8(
     uint32_t curpixel, uint32_t r, uint32_t g, uint32_t b, uint32_t blend_en,
     uint32_t curpixel_cvg, uint32_t curpixel_memcvg)
 {
-    unsigned long addr  = fb_address + 1*curpixel;
-    addr &= 0x00FFFFFF;
-    PAIRWRITE8(addr, r, (r & 1) ? 3 : 0);
+    uint32_t max_addr = fb_address + 1 * curpixel;
+    uint32_t addr     = (max_addr & 0x00FFFFFF) & RDRAM_MASK;
+
+    if (addr <= plim)
+    {
+       rdram_8[addr ^ BYTE_ADDR_XOR] = r;
+       if (addr & 1)
+          hidden_bits[addr >> 1] = (r & 1) ? 3 : 0;
+    }
 }
 
 static void fbwrite_16(
     uint32_t curpixel, uint32_t r, uint32_t g, uint32_t b, uint32_t blend_en,
     uint32_t curpixel_cvg, uint32_t curpixel_memcvg)
 {
-    uint16_t color;
-    unsigned long addr;
-    int coverage = finalize_spanalpha(blend_en, curpixel_cvg, curpixel_memcvg);
+   uint16_t color;
+   uint32_t addr;
+   int coverage = finalize_spanalpha(blend_en, curpixel_cvg, curpixel_memcvg);
 #undef CVG_DRAW
 #ifdef CVG_DRAW
-    const int covdraw = (curpixel_cvg - 1) << 5;
+   const int covdraw = (curpixel_cvg - 1) << 5;
 
-    r = covdraw;
-    g = covdraw;
-    b = covdraw;
+   r = covdraw;
+   g = covdraw;
+   b = covdraw;
 #endif
-    if (fb_format != FORMAT_RGBA)
-    {
-        color = (r << 8) | (coverage << 5);
-        coverage = 0x00;
-    }
-    else
-    {
-        r &= 0xFF & ~7;
-        g &= 0xFF & ~7;
-        b &= 0xFF & ~7;
-        color = (r << 8) | (g << 3) | (b >> 2) | (coverage >> 2);
-    }
+   if (fb_format != FORMAT_RGBA)
+   {
+      color = (r << 8) | (coverage << 5);
+      coverage = 0x00;
+   }
+   else
+   {
+      r &= 0xFF & ~7;
+      g &= 0xFF & ~7;
+      b &= 0xFF & ~7;
+      color = (r << 8) | (g << 3) | (b >> 2) | (coverage >> 2);
+   }
 
-    addr  = fb_address + 2*curpixel;
-    addr &= 0x00FFFFFF;
-    addr  = addr >> 1;
-    PAIRWRITE16(addr, color, coverage & 3);
+   addr  = ((fb_address + 2*curpixel) & 0x00FFFFFF) >> 1;
+   addr &= (RDRAM_MASK >> 1);
+
+   if (addr <= idxlim16)
+   {
+      rdram_16[addr ^ WORD_ADDR_XOR] = color;
+      hidden_bits[addr]              = coverage & 3;
+   }
 }
 
 static void fbwrite_32(
     uint32_t curpixel, uint32_t r, uint32_t g, uint32_t b, uint32_t blend_en,
     uint32_t curpixel_cvg, uint32_t curpixel_memcvg)
 {
-    uint32_t color;
-    int coverage;
-    unsigned long addr  = fb_address + 4*curpixel;
-    addr &= 0x00FFFFFF;
-    addr  = addr >> 2;
+   uint32_t max_addr   = fb_address + 4 * curpixel;
+   uint32_t addr       = (max_addr & 0x00FFFFFF) >> 2;
+   int coverage        = finalize_spanalpha(
+         blend_en, curpixel_cvg, curpixel_memcvg);
+   uint32_t color      = (r << 24) | (g << 16) | (b <<  8);
+   color |= (coverage << 5);
 
-    coverage = finalize_spanalpha(blend_en, curpixel_cvg, curpixel_memcvg);
-    color  = (r << 24) | (g << 16) | (b <<  8);
-    color |= (coverage << 5);
+   g = -(signed)(g & 1) & 3;
 
-    g = -(signed)(g & 1) & 3;
-    PAIRWRITE32(addr, color, g, 0);
+   /* pair write 32bit */
+   addr &= (RDRAM_MASK >> 2);
+   if (addr <= idxlim32)
+   {
+      rdram[addr]                  = color;
+      hidden_bits[addr << 1]       = g;
+      hidden_bits[(addr << 1) + 1] = 0;
+   }
 }
 
 static void fbread_4(uint32_t curpixel, uint32_t* curpixel_memcvg)
