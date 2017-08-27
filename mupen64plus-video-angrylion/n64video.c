@@ -8949,9 +8949,10 @@ static void set_scissor(uint32_t w1, uint32_t w2)
 
 static void set_prim_depth(uint32_t w1, uint32_t w2)
 {
-    primitive_z       = (w2 & 0xFFFF0000) >> 16;
     primitive_delta_z = (w2 & 0x0000FFFF) >>  0;
-    primitive_z = (primitive_z & 0x7FFF) << 16; /* angrylion does this why? */
+   /* Top 15 bits => Primitive Z, lower 16 are dZ.
+    * We should encode it appropriately ahead of time. */
+    primitive_z       = w2 & 0x7fffffff;
 }
 
 static void set_other_modes(uint32_t w1, uint32_t w2)
