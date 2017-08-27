@@ -8671,28 +8671,27 @@ static NOINLINE void draw_texture_rectangle(
     int32_t xleft, xright;
     uint8_t xfrac;
 
-    int maxxmx, minxhx;
-    int curcross;
-    int allover, allunder, curover, curunder;
-    int allinval;
     int ycur, ylfar;
-    int invaly;
     int j, k;
+    int invaly                = 1;
+    int maxxmx                = 0;
+    int minxhx                = 0;
     const int32_t clipxlshift = __clip.xl << 1;
     const int32_t clipxhshift = __clip.xh << 1;
+    int allover               = 1;
+    int allunder              = 1;
+    int curover               = 0;
+    int curunder              = 0;
+    int allinval              = 1;
 
     max_level = 0;
-    maxxmx = 0;
-    minxhx = 0;
 
     xl = xl << 14;
     xh = xh << 14;
     xm = xl;
     ym = yl;
 
-/*
- * texture coefficients
- */
+    /* texture coefficients */
     stwz[0] = (s << 16) | 0;
     stwz[1] = (t << 16) | 0;
 
@@ -8730,7 +8729,6 @@ static NOINLINE void draw_texture_rectangle(
         d_stwz_dxh[1] = (d_stwz_dx[1] >> 8) & ~0x00000001;
     }
 
-    invaly = 1;
 
     /* Scissor test and find Y bounds for where to rasterize. */
     ycur = yh & RDP_SUBPIXELS_INVMASK;
@@ -8743,15 +8741,10 @@ static NOINLINE void draw_texture_rectangle(
     else if ((yllimit >> 2) >= 0 && (yllimit >> 2) < 1023)
         span[(yllimit >> 2) + 1].validline = 0;
 
-    xleft = xm/* & ~0x00000001 // never needed because xm <<= 14 */;
+    xleft  = xm/* & ~0x00000001 // never needed because xm <<= 14 */;
     xright = xh/* & ~0x00000001 // never needed because xh <<= 14 */;
-    xfrac = (xright >> 8) & 0xFF;
+    xfrac  = (xright >> 8) & 0xFF;
 
-    allover = 1;
-    allunder = 1;
-    curover = 0;
-    curunder = 0;
-    allinval = 1;
     for (k = ycur; k <= ylfar; k++)
     {
         int xrsc, xlsc;
@@ -8762,63 +8755,66 @@ static NOINLINE void draw_texture_rectangle(
             { /* branch */ }
         else
         {
-            invaly = (uint32_t)(k - yhlimit)>>31 | (uint32_t)~(k - yllimit)>>31;
-            j = k >> 2;
-            if (spix == 0)
-            {
-                maxxmx = 0x000;
-                minxhx = 0xFFF;
-                allover = allunder = 1;
-                allinval = 1;
-            }
+           bool curcross = false;
+           invaly        = (uint32_t)(k - yhlimit)>>31 
+              | (uint32_t)~(k - yllimit)>>31;
 
-            al_clip_x(xright, clipxlshift, clipxhshift,
-                  &xrsc, &allover, &allunder);
-            span[j].majorx[spix] = xrsc & 0x1FFF;
+           j = k >> 2;
+           if (spix == 0)
+           {
+              maxxmx = 0x000;
+              minxhx = 0xFFF;
+              allover = allunder = 1;
+              allinval = 1;
+           }
 
-            al_clip_x(xleft, clipxlshift, clipxhshift,
-                  &xlsc, &allover, &allunder);
-            span[j].minorx[spix] = xlsc & 0x1FFF;
+           al_clip_x(xright, clipxlshift, clipxhshift,
+                 &xrsc, &allover, &allunder);
+           span[j].majorx[spix] = xrsc & 0x1FFF;
 
-            /* Detect where the two lines cross.
-             * Get a boolean mask for which subscanlines have
-             * crossing scanlines.
-             * XXX: Shouldn't this be <= ?
-             * XXX: Also, why the weird bitmath here?
-             */
-            curcross = ((xleft&0x0FFFC000 ^ 0x08000000)
-                     < (xright&0x0FFFC000 ^ 0x08000000));
-            invaly |= curcross;
-            span[j].invalyscan[spix] = invaly;
-            allinval &= invaly;
-            if (invaly != 0)
-                { /* branch */ }
-            else
-            {
-                xlsc = (xlsc >> 3) & 0xFFF;
-                xrsc = (xrsc >> 3) & 0xFFF;
-                maxxmx = (xlsc > maxxmx) ? xlsc : maxxmx;
-                minxhx = (xrsc < minxhx) ? xrsc : minxhx;
-            }
+           al_clip_x(xleft, clipxlshift, clipxhshift,
+                 &xlsc, &allover, &allunder);
+           span[j].minorx[spix] = xlsc & 0x1FFF;
 
-            if (spix == 0)
-            {
-                span[j].unscrx = xright >> 16;
-             /* xfrac = (xright >> 8) & 0xFF; // xfrac never changes. */
-                setzero_si128(span[j].rgba);
-                span[j].stwz[0] = (stwz[0] - xfrac*d_stwz_dxh[0]) & ~0x000003FF;
-                span[j].stwz[1] = (stwz[1] - xfrac*d_stwz_dxh[1]) & ~0x000003FF;
-                span[j].stwz[2] = 0 & ~0x000003FF;
-                span[j].stwz[3] = 0 & ~0x000003FF;
-            }
-            if (spix == 3)
-            {
-                const int invalidline = (sckeepodd ^ j) & scfield
-                                      | (allinval | allover | allunder);
-                span[j].lx = maxxmx;
-                span[j].rx = minxhx;
-                span[j].validline = invalidline ^ 1;
-            }
+           /* Detect where the two lines cross.
+            * Get a boolean mask for which subscanlines have
+            * crossing scanlines.
+            * XXX: Shouldn't this be <= ?
+            * XXX: Also, why the weird bitmath here?
+            */
+           curcross = ((xleft&0x0FFFC000 ^ 0x08000000)
+                 < (xright&0x0FFFC000 ^ 0x08000000));
+           invaly |= curcross;
+           span[j].invalyscan[spix] = invaly;
+           allinval &= invaly;
+           if (invaly != 0)
+           { /* branch */ }
+           else
+           {
+              xlsc = (xlsc >> 3) & 0xFFF;
+              xrsc = (xrsc >> 3) & 0xFFF;
+              maxxmx = (xlsc > maxxmx) ? xlsc : maxxmx;
+              minxhx = (xrsc < minxhx) ? xrsc : minxhx;
+           }
+
+           if (spix == 0)
+           {
+              span[j].unscrx = xright >> 16;
+              /* xfrac = (xright >> 8) & 0xFF; // xfrac never changes. */
+              setzero_si128(span[j].rgba);
+              span[j].stwz[0] = (stwz[0] - xfrac*d_stwz_dxh[0]) & ~0x000003FF;
+              span[j].stwz[1] = (stwz[1] - xfrac*d_stwz_dxh[1]) & ~0x000003FF;
+              span[j].stwz[2] = 0 & ~0x000003FF;
+              span[j].stwz[3] = 0 & ~0x000003FF;
+           }
+           if (spix == 3)
+           {
+              const int invalidline = (sckeepodd ^ j) & scfield
+                 | (allinval | allover | allunder);
+              span[j].lx = maxxmx;
+              span[j].rx = minxhx;
+              span[j].validline = invalidline ^ 1;
+           }
         }
         if (spix == 3)
         {
@@ -9115,11 +9111,13 @@ static void fill_rect(uint32_t w1, uint32_t w2)
 {
     int ycur, ylfar;
     int yllimit, yhlimit;
-    int invaly;
-    int curcross;
-    int allover, allunder, curover, curunder;
-    int allinval;
     int j, k;
+    int invaly                = 1;
+    int allover               = 1;
+    int allunder              = 1;
+    int curover               = 0;
+    int curunder              = 0;
+    int allinval              = 1;
     const int32_t clipxlshift = __clip.xl << 1;
     const int32_t clipxhshift = __clip.xh << 1;
 
@@ -9147,31 +9145,25 @@ static void fill_rect(uint32_t w1, uint32_t w2)
 
     spans_dzpix = normalize_dzpix(0);
 
-    invaly = 1;
-
     /* Scissor test and find Y bounds for where to rasterize. */
-    ycur = yh & RDP_SUBPIXELS_INVMASK;
-    yllimit = (yl < __clip.yl) ? yl : __clip.yl;
-    yhlimit = (yh >= __clip.yh) ? yh : __clip.yh;
-    ylfar = yllimit | RDP_SUBPIXELS_MASK;
+    ycur        = yh & RDP_SUBPIXELS_INVMASK;
+    yllimit     = (yl < __clip.yl) ? yl : __clip.yl;
+    yhlimit     = (yh >= __clip.yh) ? yh : __clip.yh;
+    ylfar       = yllimit | RDP_SUBPIXELS_MASK;
 
     if (yl >> 2 > ylfar >> 2)
         ylfar += 4;
     else if (yllimit >> 2 >= 0 && yllimit>>2 < 1023)
         span[(yllimit >> 2) + 1].validline = 0;
 
-    allover = 1;
-    allunder = 1;
-    curover = 0;
-    curunder = 0;
-    allinval = 1;
     for (k = ycur; k <= ylfar; k++)
     {
         static int maxxmx, minxhx;
         int xrsc, xlsc;
+        bool curcross       = false;
         const int32_t xleft = xl & ~0x00000001, xright = xh & ~0x00000001;
-        const int yhclose = yhlimit & RDP_SUBPIXELS_INVMASK;
-        const int spix = k & RDP_SUBPIXELS_MASK;
+        const int yhclose   = yhlimit & RDP_SUBPIXELS_INVMASK;
+        const int spix      = k & RDP_SUBPIXELS_MASK;
 
         if (k < yhclose)
             continue;
@@ -9333,14 +9325,14 @@ static void set_texture_image(uint32_t w1, uint32_t w2)
     ti_size    = (w1 & 0x00180000) >> (51 - 32);
     ti_width   = (w1 & 0x000003FF) >> (32 - 32);
     ti_address = (w2 & 0x03FFFFFF) >> ( 0 -  0);
- /* ti_address &= 0x00FFFFFF; // physical memory limit, enforced later */
+    /* ti_address &= 0x00FFFFFF; // physical memory limit, enforced later */
     ++ti_width;
 }
 
 static void set_mask_image(uint32_t w1, uint32_t w2)
 {
     zb_address = w2 & 0x03FFFFFF;
- /* zb_address &= 0x00FFFFFF; */
+    /* zb_address &= 0x00FFFFFF; */
 }
 
 static void set_color_image(uint32_t w1, uint32_t w2)
@@ -9350,7 +9342,7 @@ static void set_color_image(uint32_t w1, uint32_t w2)
     fb_width   = (w1 & 0x000003FF) >> (32 - 32);
     fb_address = (w2 & 0x03FFFFFF) >> ( 0 -  0);
     ++fb_width;
- /* fb_address &= 0x00FFFFFF; */
+    /* fb_address &= 0x00FFFFFF; */
 }
 
 
