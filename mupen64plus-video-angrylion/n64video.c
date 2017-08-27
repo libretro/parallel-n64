@@ -8270,14 +8270,14 @@ static NOINLINE void draw_triangle(uint32_t w1, uint32_t w2, struct stepwalker_i
 
    /* Triangle edge Y-coordinates */
    /* 11.2 fixed point */
-   int32_t yl = SEXT((w1 >> 0)  & 0xffff, 14);
-   int32_t ym = SEXT((w2 >> 16) & 0xffff, 14);
-   int32_t yh = SEXT((w2 >> 0)  & 0xffff, 14);
+   int32_t yl                = SEXT((w1 >> 0)  & 0xffff, 14);
+   int32_t ym                = SEXT((w2 >> 16) & 0xffff, 14);
+   int32_t yh                = SEXT((w2 >> 0)  & 0xffff, 14);
 
-   max_level       = level;
+   max_level                 = level;
 
-   stw_info->rgba[0]      = (stw_info->rgba_int[0] << 16) | (uint16_t)(stw_info->rgba_frac[0]);
-   stw_info->rgba[1]      = (stw_info->rgba_int[1] << 16) | (uint16_t)(stw_info->rgba_frac[1]);
+   stw_info->rgba[0]         = (stw_info->rgba_int[0] << 16) | (uint16_t)(stw_info->rgba_frac[0]);
+   stw_info->rgba[1]         = (stw_info->rgba_int[1] << 16) | (uint16_t)(stw_info->rgba_frac[1]);
    stw_info->rgba[2]      = (stw_info->rgba_int[2] << 16) | (uint16_t)(stw_info->rgba_frac[2]);
    stw_info->rgba[3]      = (stw_info->rgba_int[3] << 16) | (uint16_t)(stw_info->rgba_frac[3]);
    stw_info->d_rgba_dx[0] = (stw_info->d_rgba_dx_int[0] << 16) | (uint16_t)(stw_info->d_rgba_dx_frac[0]);
@@ -8369,51 +8369,22 @@ static NOINLINE void draw_triangle(uint32_t w1, uint32_t w2, struct stepwalker_i
    }
    else
    {
+      unsigned i;
       /* Apply 3/4th pixel offset. */
       int32_t d_rgba_deh[4], d_stwz_deh[4];
       int32_t d_rgba_dyh[4], d_stwz_dyh[4];
 
-      d_rgba_deh[0]             = stw_info->d_rgba_de[0] & ~0x000001FF;
-      d_rgba_deh[1]             = stw_info->d_rgba_de[1] & ~0x000001FF;
-      d_rgba_deh[2]             = stw_info->d_rgba_de[2] & ~0x000001FF;
-      d_rgba_deh[3]             = stw_info->d_rgba_de[3] & ~0x000001FF;
-      d_stwz_deh[0]             = stw_info->d_stwz_de[0] & ~0x000001FF;
-      d_stwz_deh[1]             = stw_info->d_stwz_de[1] & ~0x000001FF;
-      d_stwz_deh[2]             = stw_info->d_stwz_de[2] & ~0x000001FF;
-      d_stwz_deh[3]             = stw_info->d_stwz_de[3] & ~0x000001FF;
-
-      d_rgba_dyh[0]             = stw_info->d_rgba_dy[0] & ~0x000001FF;
-      d_rgba_dyh[1]             = stw_info->d_rgba_dy[1] & ~0x000001FF;
-      d_rgba_dyh[2]             = stw_info->d_rgba_dy[2] & ~0x000001FF;
-      d_rgba_dyh[3]             = stw_info->d_rgba_dy[3] & ~0x000001FF;
-      d_stwz_dyh[0]             = stw_info->d_stwz_dy[0] & ~0x000001FF;
-      d_stwz_dyh[1]             = stw_info->d_stwz_dy[1] & ~0x000001FF;
-      d_stwz_dyh[2]             = stw_info->d_stwz_dy[2] & ~0x000001FF;
-      d_stwz_dyh[3]             = stw_info->d_stwz_dy[3] & ~0x000001FF;
-
-      stw_info->d_rgba_diff[0]  = d_rgba_deh[0] - (d_rgba_deh[0] >> 2) -
-         d_rgba_dyh[0] + (d_rgba_dyh[0] >> 2);
-
-      stw_info->d_rgba_diff[1]  = d_rgba_deh[1] - (d_rgba_deh[1] >> 2) -
-         d_rgba_dyh[1] + (d_rgba_dyh[1] >> 2);
-
-      stw_info->d_rgba_diff[2]  = d_rgba_deh[2] - (d_rgba_deh[2] >> 2) -
-         d_rgba_dyh[2] + (d_rgba_dyh[2] >> 2);
-
-      stw_info->d_rgba_diff[3]  = d_rgba_deh[3] - (d_rgba_deh[3] >> 2) -
-         d_rgba_dyh[3] + (d_rgba_dyh[3] >> 2);
-
-      stw_info->d_stwz_diff[0]  = d_stwz_deh[0] - (d_stwz_deh[0] >> 2) -
-         d_stwz_dyh[0] + (d_stwz_dyh[0] >> 2);
-
-      stw_info->d_stwz_diff[1]  = d_stwz_deh[1] - (d_stwz_deh[1] >> 2) -
-         d_stwz_dyh[1] + (d_stwz_dyh[1] >> 2);
-
-      stw_info->d_stwz_diff[2]  = d_stwz_deh[2] - (d_stwz_deh[2] >> 2) -
-         d_stwz_dyh[2] + (d_stwz_dyh[2] >> 2);
-
-      stw_info->d_stwz_diff[3]  = d_stwz_deh[3] - (d_stwz_deh[3] >> 2) -
-         d_stwz_dyh[3] + (d_stwz_dyh[3] >> 2);
+      for (i = 0; i < 4; i++)
+      {
+         d_rgba_deh[i]             = stw_info->d_rgba_de[i] & ~0x000001FF;
+         d_stwz_deh[i]             = stw_info->d_stwz_de[i] & ~0x000001FF;
+         d_rgba_dyh[i]             = stw_info->d_rgba_dy[i] & ~0x000001FF;
+         d_stwz_dyh[i]             = stw_info->d_stwz_dy[i] & ~0x000001FF;
+         stw_info->d_rgba_diff[i]  = d_rgba_deh[i] - (d_rgba_deh[i] >> 2) -
+            d_rgba_dyh[i] + (d_rgba_dyh[i] >> 2);
+         stw_info->d_stwz_diff[i]  = d_stwz_deh[i] - (d_stwz_deh[i] >> 2) -
+            d_stwz_dyh[i] + (d_stwz_dyh[i] >> 2);
+      }
    }
 
    if (other_modes.cycle_type == CYCLE_TYPE_COPY)
