@@ -1829,46 +1829,31 @@ static unsigned char magic_matrix[16] = {
     07, 01, 06, 00
 };
 
-static void rgb_dither_complete(int* r, int* g, int* b, int dith)
+static void rgb_dither(int* r, int* g, int* b, int dith, int dither_sel)
 {
-   int32_t replacesign, ditherdiff;
-   int32_t newr = *r, newg = *g, newb = *b;
-	int32_t rcomp = dith, gcomp, bcomp;
+   int32_t ditherdiff[3];
+   int32_t replacesign[3];
+   int32_t newcol[3];
+   int32_t comp[3];
 
-	
-	if (newr > 247)
-		newr = 255;
-	else
-		newr = (newr & 0xf8) + 8;
-	if (newg > 247)
-		newg = 255;
-	else
-		newg = (newg & 0xf8) + 8;
-	if (newb > 247)
-		newb = 255;
-	else
-		newb = (newb & 0xf8) + 8;
+   newcol[0]      = (*r > 247) ? 255 : ((*r & 0xf8) + 8);
+   newcol[1]      = (*g > 247) ? 255 : ((*g & 0xf8) + 8);
+   newcol[2]      = (*b > 247) ? 255 : ((*b & 0xf8) + 8);
 
-	if (other_modes.rgb_dither_sel != 2)
-		gcomp = bcomp = dith;
-	else
-	{
-		gcomp = (dith + 3) & 7;
-		bcomp = (dith + 5) & 7;
-	}
+   comp[0]        = dith;
+   comp[1]        = (dither_sel != 2) ? dith : ((dith + 3) & 7);
+   comp[2]        = (dither_sel != 2) ? dith : ((dith + 5) & 7);
 
-	replacesign = (rcomp - (*r & 7)) >> 31;
-	ditherdiff = newr - *r;
+	replacesign[0] = (comp[0] - (*r & 7)) >> 31;
+	replacesign[1] = (comp[1] - (*g & 7)) >> 31;
+	replacesign[2] = (comp[2] - (*b & 7)) >> 31;
+	ditherdiff[0]  = newcol[0] - *r;
+	ditherdiff[1]  = newcol[1] - *g;
+	ditherdiff[2]  = newcol[2] - *b;
 
-	*r = *r + (ditherdiff & replacesign);
-
-	replacesign = (gcomp - (*g & 7)) >> 31;
-	ditherdiff = newg - *g;
-	*g = *g + (ditherdiff & replacesign);
-
-	replacesign = (bcomp - (*b & 7)) >> 31;
-	ditherdiff = newb - *b;
-	*b = *b + (ditherdiff & replacesign);
+	*r            += (ditherdiff[0] & replacesign[0]);
+	*g            += (ditherdiff[1] & replacesign[1]);
+	*b            += (ditherdiff[2] & replacesign[2]);
 }
 
 static void blender_equation_cycle0(int* r, int* g, int* b)
@@ -1988,7 +1973,7 @@ static int blender_1cycle(uint32_t* fr, uint32_t* fg, uint32_t* fb, int dith, ui
          }
 
          if (other_modes.rgb_dither_sel != 3)
-            rgb_dither_complete(&r, &g, &b, dith);
+            rgb_dither(&r, &g, &b, dith, other_modes.rgb_dither_sel);
 
          *fr = r;
          *fg = g;
@@ -2044,7 +2029,7 @@ int blender_2cycle(uint32_t* fr, uint32_t* fg, uint32_t* fb, int dith, uint32_t 
 
 
           if (other_modes.rgb_dither_sel != 3)
-             rgb_dither_complete(&r, &g, &b, dith);
+             rgb_dither(&r, &g, &b, dith, other_modes.rgb_dither_sel);
 
           *fr = r;
           *fg = g;
