@@ -7807,7 +7807,7 @@ static INLINE uint16_t normalize_dz(uint16_t dz)
     if (dz & 0xC000)
         return 0x8000;
     if (dz == 0)
-        return 0;
+        return 1;
     if (dz == 1)
         return 3;
     for (count = 0x2000; count > 0; count >>= 1)
