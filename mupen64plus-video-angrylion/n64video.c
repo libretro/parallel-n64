@@ -1959,125 +1959,101 @@ static void blender_equation_cycle1(int* r, int* g, int* b)
 
 static int blender_1cycle(uint32_t* fr, uint32_t* fg, uint32_t* fb, int dith, uint32_t blend_en, uint32_t prewrap, uint32_t curpixel_cvg, uint32_t curpixel_cvbit)
 {
-    int r, g, b, dontblend;
-    
-    
-    if (alpha_compare(COLOR_ALPHA(pixel_color)))
-    {
+   int r, g, b, dontblend;
 
-        
-
-        
-        
-        
-        if (other_modes.antialias_en ? (curpixel_cvg) : (curpixel_cvbit))
-        {
-
-            if (!other_modes.color_on_cvg || prewrap)
+   if (alpha_compare(COLOR_ALPHA(pixel_color)))
+   {
+      if (other_modes.antialias_en ? (curpixel_cvg) : (curpixel_cvbit))
+      {
+         if (!other_modes.color_on_cvg || prewrap)
+         {
+            dontblend = (other_modes.f.partialreject_1cycle && COLOR_ALPHA(pixel_color) >= 0xff);
+            if (!blend_en || dontblend)
             {
-                dontblend = (other_modes.f.partialreject_1cycle && COLOR_ALPHA(pixel_color) >= 0xff);
-                if (!blend_en || dontblend)
-                {
-                    r = *blender1a_r[0];
-                    g = *blender1a_g[0];
-                    b = *blender1a_b[0];
-                }
-                else
-                {
-                    COLOR_ALPHA(inv_pixel_color) =  (~(*blender1b_a[0])) & 0xff;
-                    
-                    
-                    
-                    
-
-                    blender_equation_cycle0(&r, &g, &b);
-                }
+               r = *blender1a_r[0];
+               g = *blender1a_g[0];
+               b = *blender1a_b[0];
             }
             else
             {
-                r = *blender2a_r[0];
-                g = *blender2a_g[0];
-                b = *blender2a_b[0];
+               COLOR_ALPHA(inv_pixel_color) =  (~(*blender1b_a[0])) & 0xff;
+               blender_equation_cycle0(&r, &g, &b);
             }
+         }
+         else
+         {
+            r = *blender2a_r[0];
+            g = *blender2a_g[0];
+            b = *blender2a_b[0];
+         }
 
-            if (other_modes.rgb_dither_sel != 3)
-               rgb_dither_complete(&r, &g, &b, dith);
+         if (other_modes.rgb_dither_sel != 3)
+            rgb_dither_complete(&r, &g, &b, dith);
 
-            *fr = r;
-            *fg = g;
-            *fb = b;
+         *fr = r;
+         *fg = g;
+         *fb = b;
 
-            return 1;
-        }
-        else 
-            return 0;
-        }
-    else 
-        return 0;
+         return 1;
+      }
+   }
+
+   return 0;
 }
 
 int blender_2cycle(uint32_t* fr, uint32_t* fg, uint32_t* fb, int dith, uint32_t blend_en, uint32_t prewrap, uint32_t curpixel_cvg, uint32_t curpixel_cvbit, int32_t acalpha)
 {
     int r, g, b, dontblend;
 
-    
     if (alpha_compare(acalpha))
     {
-        if (other_modes.antialias_en ? (curpixel_cvg) : (curpixel_cvbit))
-        {
-            COLOR_ALPHA(inv_pixel_color) =  (~(*blender1b_a[0])) & 0xff;
+       if (other_modes.antialias_en ? (curpixel_cvg) : (curpixel_cvbit))
+       {
+          COLOR_ALPHA(inv_pixel_color) =  (~(*blender1b_a[0])) & 0xff;
 
-            blender_equation_cycle0_2(&r, &g, &b);
-            
-            COLOR_ASSIGN(memory_color, pre_memory_color);
+          blender_equation_cycle0_2(&r, &g, &b);
 
-            COLOR_RED(blended_pixel_color)   = r;
-            COLOR_GREEN(blended_pixel_color) = g;
-            COLOR_BLUE(blended_pixel_color)  = b;
-            COLOR_ALPHA(blended_pixel_color) = COLOR_ALPHA(pixel_color);
+          COLOR_ASSIGN(memory_color, pre_memory_color);
 
-            if (!other_modes.color_on_cvg || prewrap)
-            {
-                dontblend = (other_modes.f.partialreject_2cycle && COLOR_ALPHA(pixel_color) >= 0xff);
-                if (!blend_en || dontblend)
-                {
-                    r = *blender1a_r[1];
-                    g = *blender1a_g[1];
-                    b = *blender1a_b[1];
-                }
-                else
-                {
-                    COLOR_ALPHA(inv_pixel_color) =  (~(*blender1b_a[1])) & 0xff;
-                    blender_equation_cycle1(&r, &g, &b);
-                }
-            }
-            else
-            {
-                r = *blender2a_r[1];
-                g = *blender2a_g[1];
-                b = *blender2a_b[1];
-            }
+          COLOR_RED(blended_pixel_color)   = r;
+          COLOR_GREEN(blended_pixel_color) = g;
+          COLOR_BLUE(blended_pixel_color)  = b;
+          COLOR_ALPHA(blended_pixel_color) = COLOR_ALPHA(pixel_color);
 
-            
-            if (other_modes.rgb_dither_sel != 3)
-               rgb_dither_complete(&r, &g, &b, dith);
+          if (!other_modes.color_on_cvg || prewrap)
+          {
+             dontblend = (other_modes.f.partialreject_2cycle && COLOR_ALPHA(pixel_color) >= 0xff);
+             if (!blend_en || dontblend)
+             {
+                r = *blender1a_r[1];
+                g = *blender1a_g[1];
+                b = *blender1a_b[1];
+             }
+             else
+             {
+                COLOR_ALPHA(inv_pixel_color) =  (~(*blender1b_a[1])) & 0xff;
+                blender_equation_cycle1(&r, &g, &b);
+             }
+          }
+          else
+          {
+             r = *blender2a_r[1];
+             g = *blender2a_g[1];
+             b = *blender2a_b[1];
+          }
 
-            *fr = r;
-            *fg = g;
-            *fb = b;
-            return 1;
-        }
-        else 
-        {
-           COLOR_ASSIGN(memory_color, pre_memory_color);
-           return 0;
-        }
+
+          if (other_modes.rgb_dither_sel != 3)
+             rgb_dither_complete(&r, &g, &b, dith);
+
+          *fr = r;
+          *fg = g;
+          *fb = b;
+          return 1;
+       }
     }
-    else 
-    {
-       COLOR_ASSIGN(memory_color, pre_memory_color);
-        return 0;
-    }
+    COLOR_ASSIGN(memory_color, pre_memory_color);
+    return 0;
 }
 
 static void fetch_texel(COLOR *color, int s, int t, uint32_t tilenum)
