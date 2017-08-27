@@ -4441,21 +4441,17 @@ static INLINE void lodfrac_lodtile_signals(int lodclamp, int32_t lod, uint32_t* 
    lod_frac = lf;
 }
 
-static STRICTINLINE void tclod_4x17_to_15(int32_t scurr, int32_t snext, int32_t tcurr, int32_t tnext, int32_t previous, int32_t* lod)
+/* Compute LOD - 4x17 to 15 */
+static STRICTINLINE int32_t compute_lod(int32_t scurr, int32_t snext, int32_t tcurr, int32_t tnext, int32_t previous)
 {
-    int dels = SIGN(snext, 17) - SIGN(scurr, 17);
-    int delt = SIGN(tnext, 17) - SIGN(tcurr, 17);
+   int dels        = abs(SIGN(snext, 17) - SIGN(scurr, 17));
+   int delt        = abs(SIGN(tnext, 17) - SIGN(tcurr, 17));
+   int32_t max_lod = MAX(dels, delt);
+   int32_t lod     = (MAX(previous, max_lod)) & 0x7fff;
+   if (max_lod & 0x1c000)
+      lod |= 0x4000;
 
-    if (dels & 0x20000)
-        dels = ~dels & 0x1ffff;
-    if (delt & 0x20000)
-        delt = ~delt & 0x1ffff;
-
-    dels = (dels > delt) ? dels : delt;
-    dels = (previous > dels) ? previous : dels;
-    *lod = dels & 0x7fff;
-    if (dels & 0x1c000)
-        *lod |= 0x4000;
+   return lod;
 }
 
 static STRICTINLINE void tclod_tcclamp(int32_t* sss, int32_t* sst)
@@ -4557,7 +4553,7 @@ static void tclod_1cycle_current(int32_t* sss, int32_t* sst, int32_t nexts, int3
         lodclamp = (fart & 0x60000) || (nextt & 0x60000) || (fars & 0x60000) || (nexts & 0x60000);
         
         if (!lodclamp)
-           tclod_4x17_to_15(nexts, fars, nextt, fart, 0, &lod);
+           lod = compute_lod(nexts, fars, nextt, fart, 0);
 
         lodfrac_lodtile_signals(lodclamp, lod, &l_tile, &magnify, &distant);
     
@@ -4638,7 +4634,7 @@ static void tclod_1cycle_current_simple(int32_t* sss, int32_t* sst, int32_t s, i
         lodclamp = (fart & 0x60000) || (nextt & 0x60000) || (fars & 0x60000) || (nexts & 0x60000);
 
         if (!lodclamp)
-           tclod_4x17_to_15(nexts, fars, nextt, fart, 0, &lod);
+           lod = compute_lod(nexts, fars, nextt, fart, 0);
 
         lodfrac_lodtile_signals(lodclamp, lod, &l_tile, &magnify, &distant);
     
@@ -4761,8 +4757,7 @@ static void tclod_1cycle_next(int32_t* sss, int32_t* sst, int32_t s, int32_t t, 
         lodclamp = (fart & 0x60000) || (nextt & 0x60000) || (fars & 0x60000) || (nexts & 0x60000);
         
         if (!lodclamp)
-           tclod_4x17_to_15(nexts, fars, nextt, fart, 0, &lod);
-
+           lod = compute_lod(nexts, fars, nextt, fart, 0);
         
         if ((lod & 0x4000) || lodclamp)
             lod = 0x7fff;
@@ -5423,8 +5418,8 @@ static void tclod_2cycle_current(int32_t* sss, int32_t* sst, int32_t nexts, int3
         
         if (!lodclamp)
         {
-           tclod_4x17_to_15(inits, nexts, initt, nextt, 0, &lod);
-           tclod_4x17_to_15(inits, nextys, initt, nextyt, lod, &lod);
+           lod = compute_lod(inits, nexts, initt, nextt, 0);
+           lod = compute_lod(inits, nextys, initt, nextyt, lod);
         }
 
         lodfrac_lodtile_signals(lodclamp, lod, &l_tile, &magnify, &distant);
@@ -5486,8 +5481,8 @@ static void tclod_2cycle_current_simple(int32_t* sss, int32_t* sst, int32_t s, i
 
         if (!lodclamp)
         {
-           tclod_4x17_to_15(inits, nexts, initt, nextt, 0, &lod);
-           tclod_4x17_to_15(inits, nextys, initt, nextyt, lod, &lod);
+           lod = compute_lod(inits, nexts, initt, nextt, 0);
+           lod = compute_lod(inits, nextys, initt, nextyt, lod);
         }
 
         lodfrac_lodtile_signals(lodclamp, lod, &l_tile, &magnify, &distant);
@@ -5549,8 +5544,8 @@ static void tclod_2cycle_current_notexel1(int32_t* sss, int32_t* sst, int32_t s,
 
         if (!lodclamp)
         {
-           tclod_4x17_to_15(inits, nexts, initt, nextt, 0, &lod);
-           tclod_4x17_to_15(inits, nextys, initt, nextyt, lod, &lod);
+           lod = compute_lod(inits, nexts, initt, nextt, 0);
+           lod = compute_lod(inits, nextys, initt, nextyt, lod);
         }
 
         lodfrac_lodtile_signals(lodclamp, lod, &l_tile, &magnify, &distant);
@@ -5597,8 +5592,8 @@ static void tclod_2cycle_next(int32_t* sss, int32_t* sst, int32_t s, int32_t t, 
 
         if (!lodclamp)
         {
-           tclod_4x17_to_15(inits, nexts, initt, nextt, 0, &lod);
-           tclod_4x17_to_15(inits, nextys, initt, nextyt, lod, &lod);
+           lod = compute_lod(inits, nexts, initt, nextt, 0);
+           lod = compute_lod(inits, nextys, initt, nextyt, lod);
         }
 
         
@@ -6610,7 +6605,7 @@ static void tclod_copy(int32_t* sss, int32_t* sst, int32_t s, int32_t t, int32_t
         lodclamp = (fart & 0x60000) || (nextt & 0x60000) || (fars & 0x60000) || (nexts & 0x60000);
 
         if (!lodclamp)
-           tclod_4x17_to_15(nexts, fars, nextt, fart, 0, &lod);
+           lod = compute_lod(nexts, fars, nextt, fart, 0);
 
         if ((lod & 0x4000) || lodclamp)
             lod = 0x7fff;
