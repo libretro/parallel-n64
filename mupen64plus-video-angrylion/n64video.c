@@ -8826,11 +8826,6 @@ static NOINLINE void draw_texture_rectangle(
         }
     }
 
-    if (other_modes.f.stalederivs)
-    {
-        deduce_derivatives();
-        other_modes.f.stalederivs = 0;
-    }
     render_spans(yhlimit >> 2, yllimit >> 2, tilenum, 1);
 }
 
