@@ -7284,15 +7284,6 @@ static NOINLINE void loading_pipeline(
     }
 }
 
-#define ADJUST_ATTR_LOAD() {           \
-    span[j].stwz[0] = s & ~0x000003FF; \
-    span[j].stwz[1] = t & ~0x000003FF; \
-}
-
-#define ADDVALUES_LOAD() { \
-    t += dtde; \
-}
-
 static void edgewalker_for_loads(int32_t* lewdata)
 {
     int32_t maxxmx, minxhx;
@@ -7369,8 +7360,9 @@ static void edgewalker_for_loads(int32_t* lewdata)
 
             if (spix == 0)
             {
-                span[j].unscrx = xend;
-                ADJUST_ATTR_LOAD();
+                span[j].unscrx  = xend;
+                span[j].stwz[0] = s & ~0x000003FF;
+                span[j].stwz[1] = t & ~0x000003FF;
             }
             else if (spix == 3)
             {
@@ -7380,9 +7372,7 @@ static void edgewalker_for_loads(int32_t* lewdata)
         }
 
         if (spix == 3)
-        {
-            ADDVALUES_LOAD();
-        }
+           t += dtde;
     }
 
     loading_pipeline(start, end, tilenum, coord_quad, ltlut);
@@ -8137,7 +8127,6 @@ static NOINLINE void draw_triangle(uint32_t w1, uint32_t w2,
     int yllimit, yhlimit;
     int ldflag;
     int invaly;
-    int curcross;
     int allover, allunder, curover, curunder;
     int allinval;
     int j, k;
@@ -8455,6 +8444,7 @@ no_read_zbuffer_coefficients:
             { /* branch */ }
         else
         {
+           bool curcross = false;
             invaly = (uint32_t)(k - yhlimit)>>31 | (uint32_t)~(k - yllimit)>>31;
             j = k >> 2;
             if (spix == 0)
@@ -8488,6 +8478,7 @@ no_read_zbuffer_coefficients:
                 { /* branch */ }
             else
             {
+               /* Don't include invalid subsample scanlines in min/max. */
                 xlrsc[0] = (xlrsc[0] >> 3) & 0xFFF;
                 xlrsc[1] = (xlrsc[1] >> 3) & 0xFFF;
                 minmax[0]
@@ -8794,6 +8785,7 @@ static NOINLINE void draw_texture_rectangle(
            { /* branch */ }
            else
            {
+              /* Don't include invalid subsample scanlines in min/max. */
               xlsc = (xlsc >> 3) & 0xFFF;
               xrsc = (xrsc >> 3) & 0xFFF;
               maxxmx = (xlsc > maxxmx) ? xlsc : maxxmx;
@@ -9200,6 +9192,7 @@ static void fill_rect(uint32_t w1, uint32_t w2)
             { /* branch */ }
         else
         {
+           /* Don't include invalid subsample scanlines in min/max. */
             xlsc = (xlsc >> 3) & 0xFFF;
             xrsc = (xrsc >> 3) & 0xFFF;
             maxxmx = (xlsc > maxxmx) ? xlsc : maxxmx;
