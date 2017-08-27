@@ -143,33 +143,33 @@ void Frontend::tri_fill_coeffs(Primitive *prim, const uint32_t *args, int32_t *x
 void Frontend::tri_fill_flags_common(Primitive *prim)
 {
    prim->flags |= other_modes.cycle_type << RDP_FLAG_CYCLE_TYPE_SHIFT;
-   prim->flags |= other_modes.cvg_mode << RDP_FLAG_CVG_MODE_SHIFT;
+   prim->flags |= other_modes.cvg_dest << RDP_FLAG_CVG_MODE_SHIFT;
    prim->flags |= other_modes.force_blend ? RDP_FLAG_FORCE_BLEND : 0;
-   prim->flags |= other_modes.aa_enable ? RDP_FLAG_AA_ENABLE : 0;
-   prim->flags |= other_modes.alphatest ? RDP_FLAG_ALPHATEST : 0;
-   prim->flags |= other_modes.alpha_noise ? RDP_FLAG_ALPHA_NOISE : 0;
+   prim->flags |= other_modes.antialias_en ? RDP_FLAG_AA_ENABLE : 0;
+   prim->flags |= other_modes.alpha_compare_en ? RDP_FLAG_ALPHATEST : 0;
+   prim->flags |= other_modes.dither_alpha_en ? RDP_FLAG_ALPHA_NOISE : 0;
    prim->flags |= other_modes.color_on_cvg ? RDP_FLAG_COLOR_ON_CVG : 0;
    prim->flags |= other_modes.cvg_times_alpha ? RDP_FLAG_CVG_TIMES_ALPHA : 0;
    prim->flags |= other_modes.alpha_cvg_select ? RDP_FLAG_ALPHA_CVG_SELECT : 0;
 
-   prim->flags |= other_modes.z_update ? RDP_FLAG_Z_UPDATE : 0;
-   prim->flags |= other_modes.z_compare ? RDP_FLAG_Z_COMPARE : 0;
+   prim->flags |= other_modes.z_update_en ? RDP_FLAG_Z_UPDATE : 0;
+   prim->flags |= other_modes.z_compare_en ? RDP_FLAG_Z_COMPARE : 0;
    prim->flags |= other_modes.z_mode << RDP_FLAG_Z_MODE_SHIFT;
 
    if (other_modes.sample_type)
    {
-      prim->flags |= other_modes.bilerp0 ? RDP_FLAG_BILERP0 : 0;
-      prim->flags |= other_modes.bilerp1 ? RDP_FLAG_BILERP1 : 0;
+      prim->flags |= other_modes.bi_lerp0 ? RDP_FLAG_BILERP0 : 0;
+      prim->flags |= other_modes.bi_lerp1 ? RDP_FLAG_BILERP1 : 0;
    }
 
-   if (other_modes.perspective && (other_modes.cycle_type == CYCLE_TYPE_1 || other_modes.cycle_type == CYCLE_TYPE_2))
+   if (other_modes.persp_tex_en && (other_modes.cycle_type == CYCLE_TYPE_1 || other_modes.cycle_type == CYCLE_TYPE_2))
       prim->flags |= RDP_FLAG_PERSPECTIVE;
 }
 
 void Frontend::tri_fill_tile(Primitive *prim, uint32_t *tile_mask, uint32_t mips, uint32_t tile)
 {
 	// This should depend on whether or not we'll need the second tile in the combiner.
-	if (!other_modes.lod_enable)
+	if (!other_modes.tex_lod_en)
 	{
 		if (other_modes.cycle_type == CYCLE_TYPE_2)
 		{
@@ -187,7 +187,7 @@ void Frontend::tri_fill_tile(Primitive *prim, uint32_t *tile_mask, uint32_t mips
 	{
 		prim->flags |= RDP_FLAG_SAMPLE_TEX_LOD;
 		// Detail mip-chains have an extra LOD level.
-		if (other_modes.lod_detail)
+		if (other_modes.detail_tex_en)
 			mips = min(mips + 1u, 8u);
 	}
 
@@ -525,45 +525,47 @@ void Frontend::fill_rect(const uint32_t *args)
 
 void Frontend::set_other_modes(const uint32_t *args)
 {
-   other_modes.cycle_type = (args[0] & 0x00300000) >> (52 - 32);
-   other_modes.perspective = !!(args[0] & 0x00080000);
-   other_modes.sample_type = !!(args[0] & 0x00002000);
-   other_modes.bilerp0 = !!(args[0] & 0x00000800);
-   other_modes.bilerp1 = !!(args[0] & 0x00000400);
+   other_modes.cycle_type       = (args[0] & 0x00300000) >> (52 - 32);
+   other_modes.persp_tex_en     = !!(args[0] & 0x00080000);
+   other_modes.detail_tex_en    = !!(args[0] & 0x00040000);
+   other_modes.sharpen_tex_en   = !!(args[0] & 0x00020000);
+   other_modes.tex_lod_en       = !!(args[0] & 0x00010000);
+   other_modes.en_tlut          = !!(args[0] & 0x00008000);
+   other_modes.tlut_type        = !!(args[0] & 0x00004000);
+   other_modes.sample_type      = !!(args[0] & 0x00002000);
+   other_modes.mid_texel        = !!(args[0] & 0x00001000);
+   other_modes.bi_lerp0         = !!(args[0] & 0x00000800);
+   other_modes.bi_lerp1         = !!(args[0] & 0x00000400);
+   other_modes.convert_one      = !!(args[0] & 0x00000200);
+   other_modes.key_en           = !!(args[0] & 0x00000100);
+   other_modes.rgb_dither_sel   = (args[0] & 0x000000C0) >> (36 - 32);
+   other_modes.alpha_dither_sel = (args[0] & 0x00000030) >> (36 - 32);
 
-   other_modes.z_mode = (args[1] & 0x00000c00) >> (10 - 0);
-   other_modes.cvg_mode = (args[1] & 0x00000300) >> (8 - 0);
-   other_modes.force_blend = !!(args[1] & 0x00004000);
+   other_modes.force_blend      = !!(args[1] & 0x00004000);
    other_modes.alpha_cvg_select = !!(args[1] & 0x00002000);
-   other_modes.cvg_times_alpha = !!(args[1] & 0x00001000);
-   other_modes.color_on_cvg = !!(args[1] & 0x00000080);
-   other_modes.z_update = !!(args[1] & 0x00000020);
-   other_modes.z_compare = !!(args[1] & 0x00000010);
-   other_modes.aa_enable = !!(args[1] & 0x00000008);
-   other_modes.z_source_sel = !!(args[1] & 0x00000004);
-   other_modes.alpha_noise = !!(args[1] & 0x00000002);
-   other_modes.alphatest = !!(args[1] & 0x00000001);
+   other_modes.cvg_times_alpha  = !!(args[1] & 0x00001000);
+   other_modes.z_mode           = (args[1] & 0x00000c00) >> (10 - 0);
+   other_modes.cvg_dest         = (args[1] & 0x00000300) >> (8 - 0);
+   other_modes.color_on_cvg     = !!(args[1] & 0x00000080);
+   other_modes.image_read_en    = !!(args[1] & 0x00000040);
+   other_modes.z_update_en      = !!(args[1] & 0x00000020);
+   other_modes.z_compare_en     = !!(args[1] & 0x00000010);
+   other_modes.antialias_en     = !!(args[1] & 0x00000008);
+   other_modes.z_source_sel     = !!(args[1] & 0x00000004);
+   other_modes.dither_alpha_en  = !!(args[1] & 0x00000002);
+   other_modes.alpha_compare_en = !!(args[1] & 0x00000001);
 
-   other_modes.lod_enable = !!(args[0] & 0x00010000);
-   other_modes.lod_sharpen = !!(args[0] & 0x00020000);
-   other_modes.lod_detail = !!(args[0] & 0x00040000);
-   renderer->set_lod_modes(other_modes.lod_detail, other_modes.lod_sharpen);
+   renderer->set_lod_modes(other_modes.detail_tex_en, other_modes.sharpen_tex_en);
 
-   bool convert_one = !!(args[0] & 0x00000200);
-   assert(!convert_one);
-
-   bool enable_tlut = (args[0] & 0x00008000) != 0;
-   bool set_tlut_type = (args[0] & 0x00004000) != 0;
    uint32_t blendword = (args[1] >> 16) & 0xffff;
-   uint32_t dither_sel = (args[0] & 0x000000f0) >> (36 - 32);
 
    /* memory_color in cycle 0 makes no sense. */
    if (other_modes.cycle_type == CYCLE_TYPE_2)
       assert(((blendword >> 14) & 3) != 1);
 
-   renderer->get_tmem().set_enable_tlut(enable_tlut);
-   renderer->get_tmem().set_tlut_type(set_tlut_type);
-   renderer->set_blend_word(blendword, dither_sel);
+   renderer->get_tmem().set_enable_tlut(other_modes.en_tlut);
+   renderer->get_tmem().set_tlut_type(other_modes.tlut_type);
+   renderer->set_blend_word(blendword, other_modes.alpha_dither_sel);
 }
 
 void Frontend::set_combine(const uint32_t *args)

@@ -13,24 +13,32 @@ struct OtherModes
 {
    unsigned cycle_type;
    unsigned z_mode;
-   unsigned cvg_mode;
+   unsigned cvg_dest;
+   unsigned tlut_type;
+   unsigned convert_one;
+   unsigned rgb_dither_sel;
+   unsigned alpha_dither_sel;
    bool force_blend;
-   bool aa_enable;
+   bool image_read_en;
+   bool antialias_en;
    bool z_source_sel;
-   bool z_update;
-   bool z_compare;
-   bool perspective;
-   bool bilerp0;
-   bool bilerp1;
-   bool alphatest;
-   bool alpha_noise;
+   bool z_update_en;
+   bool z_compare_en;
+   bool persp_tex_en;
+   bool bi_lerp0;
+   bool bi_lerp1;
+   bool key_en;
+   bool mid_texel;
+   bool alpha_compare_en;
+   bool dither_alpha_en;
    bool color_on_cvg;
    bool cvg_times_alpha;
    bool alpha_cvg_select;
+   bool en_tlut;
    bool sample_type;
-   bool lod_enable;
-   bool lod_sharpen;
-   bool lod_detail;
+   bool tex_lod_en;
+   bool sharpen_tex_en;
+   bool detail_tex_en;
 };
 
 class Frontend
