@@ -24,6 +24,10 @@ static int LOG_ENABLE = 0;
 #define SEXT(x, bits) ((int32_t)((x) << (32 - (bits))) >> (32 - (bits)))
 #endif
 
+#ifndef RDP_FLAG_INTERPOLATE_Z
+#define RDP_FLAG_INTERPOLATE_Z (1 << 6)
+#endif
+
 #ifndef RDP_SUBPIXELS_LOG2
 #define RDP_SUBPIXELS_LOG2 2
 #endif
@@ -7770,6 +7774,8 @@ struct stepwalker_info
    int32_t DxLDy;
    int32_t DxHDy;
    int32_t DxMDy;
+
+   uint32_t flags;
 };
 
 static int cmd_cur;
@@ -8091,12 +8097,13 @@ static INLINE void stepwalker_info_init(struct stepwalker_info *stw_info)
    setzero_si64(stw_info->d_stwz_dy_int);
    setzero_si64(stw_info->d_stwz_dy_frac);
 
-   stw_info->xl = 0;
-   stw_info->xm = 0;
-   stw_info->xh = 0;
+   stw_info->xl    = 0;
+   stw_info->xm    = 0;
+   stw_info->xh    = 0;
    stw_info->DxLDy = 0;
    stw_info->DxHDy = 0;
    stw_info->DxMDy = 0;
+   stw_info->flags = 0;
 }
 
 static INLINE void al_clip_x(int32_t xs, int32_t clipxlshift,
@@ -8122,6 +8129,12 @@ int32_t clipxhshift, int *xsc, int *allover, int *allunder)
 
    *allover  &= curover;
    *allunder &= curunder;
+}
+
+static void tri_fill_flags(struct stepwalker_info *stw_info,
+      bool zbuffer)
+{
+   stw_info->flags |= (zbuffer && !other_modes.z_source_sel) ? RDP_FLAG_INTERPOLATE_Z : 0;
 }
 
 static void tri_fill_coeffs(struct stepwalker_info *stw_info)
@@ -8339,7 +8352,9 @@ static NOINLINE void draw_triangle(uint32_t w1, uint32_t w2, struct stepwalker_i
 
     stw_info->d_stwz_dx_int[3] ^= (stw_info->d_stwz_dx_int[3] < 0) ? ~0 : 0;
     stw_info->d_stwz_dy_int[3] ^= (stw_info->d_stwz_dy_int[3] < 0) ? ~0 : 0;
-    spans_dzpix = normalize_dz(stw_info->d_stwz_dx_int[3] + stw_info->d_stwz_dy_int[3]);
+
+    if (stw_info->flags & RDP_FLAG_INTERPOLATE_Z)
+       spans_dzpix = normalize_dz(stw_info->d_stwz_dx_int[3] + stw_info->d_stwz_dy_int[3]);
 
     sign_dxhdy = (stw_info->DxHDy < 0);
     if (sign_dxhdy ^ flip) /* !do_offset */
@@ -8615,6 +8630,7 @@ static void tri_noshade_z(uint32_t w1, uint32_t w2)
    stw_info.base -= 8;
    stw_info.base -= 8;
    tri_fill_z_coeffs(&stw_info);
+   tri_fill_flags(&stw_info, true);
    draw_triangle(w1, w2, &stw_info);
 }
 
@@ -8637,6 +8653,7 @@ static void tri_tex_z(uint32_t w1, uint32_t w2)
    tri_fill_tex_coeffs(&stw_info);
    stw_info.base -= 8;
    tri_fill_z_coeffs(&stw_info);
+   tri_fill_flags(&stw_info, true);
    draw_triangle(w1, w2, &stw_info);
 }
 
@@ -8658,6 +8675,7 @@ static void tri_shade_z(uint32_t w1, uint32_t w2)
    stw_info.base -= 8;
    stw_info.base -= 8;
    tri_fill_z_coeffs(&stw_info);
+   tri_fill_flags(&stw_info, true);
    draw_triangle(w1, w2, &stw_info);
 }
 
@@ -8682,6 +8700,7 @@ static void tri_texshade_z(uint32_t w1, uint32_t w2)
    tri_fill_tex_coeffs(&stw_info);
    stw_info.base -= 8;
    tri_fill_z_coeffs(&stw_info);
+   tri_fill_flags(&stw_info, true);
    draw_triangle(w1, w2, &stw_info);
 }
 
