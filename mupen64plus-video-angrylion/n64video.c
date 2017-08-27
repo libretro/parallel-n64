@@ -1155,10 +1155,6 @@ void rdp_init(void)
  */
     plim = 0x007FFFFFul;
 
-    /* 16- and 32-bit pointer indexing limits for aliasing RDRAM reads and writes */
-	idxlim16 = 0x3fffff;
-	idxlim32 = 0x1fffff;
-
     rdram_8 = (uint8_t*)gfx_info.RDRAM;
     rdram_16 = (uint16_t*)gfx_info.RDRAM;
 }
@@ -4200,7 +4196,7 @@ static STRICTINLINE void z_store(uint32_t zcurpixel, uint32_t z,
 
    zcurpixel    &= (RDRAM_MASK >> 1);
 
-   if (zcurpixel <= idxlim16)
+   if (zcurpixel <= IDXLIM16)
    {
       rdram_16[zcurpixel ^ WORD_ADDR_XOR] = zval;
       hidden_bits[zcurpixel] = hval;
@@ -4240,7 +4236,7 @@ static uint32_t z_compare(uint32_t zcurpixel, uint32_t sz, uint16_t dzpix, int d
        int precision_factor;
 
        zcurpixel &= (RDRAM_MASK >> 1);
-       if (zcurpixel <= idxlim16)
+       if (zcurpixel <= IDXLIM16)
        {
           zval   = rdram_16[zcurpixel ^ WORD_ADDR_XOR];
           hval   = hidden_bits[zcurpixel];
@@ -6641,7 +6637,7 @@ static void render_spans_fill_16(int start, int end, int flip)
          hval         += hval << 1;
          fb           &= (RDRAM_MASK >> 1);
 
-         if (fb <= idxlim16)
+         if (fb <= IDXLIM16)
          {
             rdram_16[fb ^ WORD_ADDR_XOR] = val;
             hidden_bits[fb]              = hval;
@@ -6701,7 +6697,7 @@ static void render_spans_fill_32(int start, int end, int flip)
       for (j = 0, fb = (fb_address >> 2) + curpixel; j <= length; j++, fb += xinc)
       {
          fb &= (RDRAM_MASK >> 2);
-         if (fb <= idxlim32)
+         if (fb <= IDXLIM32)
          {
             rdram[fb]                  = fill_color;
             hidden_bits[fb << 1]       = (fill_color & 0x10000) ? 3 : 0;
@@ -7480,7 +7476,7 @@ static void fbwrite_16(
    addr  = ((fb_address + 2*curpixel) & 0x00FFFFFF) >> 1;
    addr &= (RDRAM_MASK >> 1);
 
-   if (addr <= idxlim16)
+   if (addr <= IDXLIM16)
    {
       rdram_16[addr ^ WORD_ADDR_XOR] = color;
       hidden_bits[addr]              = coverage & 3;
@@ -7502,7 +7498,7 @@ static void fbwrite_32(
 
    /* pair write 32bit */
    addr &= (RDRAM_MASK >> 2);
-   if (addr <= idxlim32)
+   if (addr <= IDXLIM32)
    {
       rdram[addr]                  = color;
       hidden_bits[addr << 1]       = g;
@@ -7562,7 +7558,7 @@ static INLINE void fbread_16(uint32_t curpixel, uint32_t* curpixel_memcvg)
    if (other_modes.image_read_en)
    {
       addr &= (RDRAM_MASK >> 1);
-      if (addr <= idxlim16)
+      if (addr <= IDXLIM16)
       {
          fword  = rdram_16[addr ^ WORD_ADDR_XOR];
          hbyte  = hidden_bits[addr];
@@ -7618,7 +7614,7 @@ static INLINE void fbread2_16(uint32_t curpixel, uint32_t* curpixel_memcvg)
    if (other_modes.image_read_en)
    {
       addr &= (RDRAM_MASK >> 1);
-      if (addr <= idxlim16)
+      if (addr <= IDXLIM16)
       {
          fword  = rdram_16[addr ^ WORD_ADDR_XOR];
          hbyte  = hidden_bits[addr];
@@ -7667,7 +7663,7 @@ static INLINE void fbread2_16(uint32_t curpixel, uint32_t* curpixel_memcvg)
 static void fbread_32(uint32_t curpixel, uint32_t* curpixel_memcvg)
 {
    uint32_t addr      = ((fb_address >> 2) + curpixel) & (RDRAM_MASK >> 2);
-   uint32_t mem       = (addr <= idxlim32) ? rdram[addr] : 0;
+   uint32_t mem       = (addr <= IDXLIM32) ? rdram[addr] : 0;
 
    COLOR_RED(memory_color)    = (mem >> 24) & 0xFF;
    COLOR_GREEN(memory_color)  = (mem >> 16) & 0xFF;
@@ -7683,7 +7679,7 @@ static void fbread_32(uint32_t curpixel, uint32_t* curpixel_memcvg)
 static void fbread2_32(uint32_t curpixel, uint32_t* curpixel_memcvg)
 {
    uint32_t addr      = ((fb_address >> 2) + curpixel) & (RDRAM_MASK >> 2); 
-   uint32_t mem       = (addr <= idxlim32) ? rdram[addr] : 0;
+   uint32_t mem       = (addr <= IDXLIM32) ? rdram[addr] : 0;
 
    COLOR_RED(pre_memory_color)    = (mem >> 24) & 0xFF;
    COLOR_GREEN(pre_memory_color)  = (mem >> 16) & 0xFF;

@@ -91,8 +91,6 @@ onetime onetimewarnings;
 uint8_t* rdram_8;
 uint16_t* rdram_16;
 uint32_t plim;
-uint32_t idxlim16;
-uint32_t idxlim32;
 uint8_t hidden_bits[0x400000];
 
 uint32_t gamma_table[0x100];
@@ -1034,7 +1032,7 @@ STRICTINLINE static void restore_filter16(
 	const int32_t* greenptr = &vi_restore_table[(gend << 2) & 0x3e0];
 	const int32_t* blueptr = &vi_restore_table[(bend << 2) & 0x3e0];
 
-    if (maxpix <= idxlim16 && leftuppix <= idxlim16)
+   if (maxpix <= IDXLIM16 && leftuppix <= IDXLIM16)
 	{
 		VI_COMPARE_OPT(leftuppix);
 		VI_COMPARE_OPT(leftuppix + 1);
@@ -1082,7 +1080,7 @@ STRICTINLINE static void restore_filter32(
     const int32_t* blueptr = &vi_restore_table[(bend << 2) & 0x3e0];
 
 
-    if (maxpix <= idxlim32 && leftuppix <= idxlim32)
+    if (maxpix <= IDXLIM32 && leftuppix <= IDXLIM32)
 	{
 		VI_COMPARE32_OPT(leftuppix);
 		VI_COMPARE32_OPT(leftuppix + 1);
