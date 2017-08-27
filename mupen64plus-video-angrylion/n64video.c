@@ -8350,11 +8350,17 @@ static NOINLINE void draw_triangle(uint32_t w1, uint32_t w2, struct stepwalker_i
     spans_d_stwz_dy[3] = stw_info->d_stwz_dy[3] >> 10;
     spans_d_stwz_dy[3] = SIGN(spans_d_stwz_dy[3], 22);
 
-    stw_info->d_stwz_dx_int[3] ^= (stw_info->d_stwz_dx_int[3] < 0) ? ~0 : 0;
-    stw_info->d_stwz_dy_int[3] ^= (stw_info->d_stwz_dy_int[3] < 0) ? ~0 : 0;
-
     if (stw_info->flags & RDP_FLAG_INTERPOLATE_Z)
-       spans_dzpix = normalize_dz(stw_info->d_stwz_dx_int[3] + stw_info->d_stwz_dy_int[3]);
+    {
+       int32_t dzdx = stw_info->d_stwz_dx_int[3];
+       int32_t dzdy = stw_info->d_stwz_dy_int[3];
+       /* Angrylion does this, but why not just abs()?
+        * This will be off by one, but who knows, there's a reason for everything. */
+       dzdx ^= (dzdx < 0) ? ~0 : 0;
+       dzdy ^= (dzdy < 0) ? ~0 : 0;
+
+       spans_dzpix = normalize_dz(dzdx + dzdy);
+    }
 
     sign_dxhdy = (stw_info->DxHDy < 0);
     if (sign_dxhdy ^ flip) /* !do_offset */
