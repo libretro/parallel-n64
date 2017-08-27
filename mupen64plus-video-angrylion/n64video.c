@@ -8238,9 +8238,12 @@ static NOINLINE void draw_triangle(uint32_t w1, uint32_t w2, struct stepwalker_i
     int yllimit, yhlimit;
     int ldflag;
     int invaly;
-    int allover, allunder, curover, curunder;
-    int allinval;
     int j, k;
+    int allover               = 1;
+    int allunder              = 1;
+    int curover               = 0;
+    int curunder              = 0;
+    int allinval              = 1;
     const int32_t clipxlshift = __clip.xl << 1;
     const int32_t clipxhshift = __clip.xh << 1;
 
@@ -8430,12 +8433,6 @@ static NOINLINE void draw_triangle(uint32_t w1, uint32_t w2, struct stepwalker_i
     stw_info->xlr[0]     = stw_info->xm & ~0x00000001;
     stw_info->xlr[1]     = stw_info->xh & ~0x00000001;
     stw_info->xfrac      = (stw_info->xlr[1] >> 8) & 0xFF;
-
-    allover = 1;
-    allunder = 1;
-    curover = 0;
-    curunder = 0;
-    allinval = 1;
 
     for (k = ycur; k <= ylfar; k++)
     {
