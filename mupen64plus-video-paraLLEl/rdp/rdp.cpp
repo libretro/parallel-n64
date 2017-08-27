@@ -754,11 +754,11 @@ void Renderer::draw_primitive(const Primitive &prim, const Attribute *attr, uint
 		   {
 			   int32_t d_rgba_deh = attr->d_rgba_de[i] & ~0x1ff;
 			   int32_t d_rgba_dyh = attr->d_rgba_dy[i] & ~0x1ff;
+			   int32_t d_stwz_deh = attr->d_stwz_de[i] & ~0x1ff;
+			   int32_t d_stwz_dyh = attr->d_stwz_dy[i] & ~0x1ff;
 			   buffer_prim.attr.d_rgba_diff[i] = d_rgba_deh - d_rgba_dyh;
 			   buffer_prim.attr.d_rgba_diff[i] -= buffer_prim.attr.d_rgba_diff[i] >> 2;
 
-			   int32_t d_stwz_deh = attr->d_stwz_de[i] & ~0x1ff;
-			   int32_t d_stwz_dyh = attr->d_stwz_dy[i] & ~0x1ff;
 			   buffer_prim.attr.d_stwz_diff[i] = d_stwz_deh - d_stwz_dyh;
 			   buffer_prim.attr.d_stwz_diff[i] -= buffer_prim.attr.d_stwz_diff[i] >> 2;
 		   }

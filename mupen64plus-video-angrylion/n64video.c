@@ -8370,20 +8370,20 @@ static NOINLINE void draw_triangle(uint32_t w1, uint32_t w2, struct stepwalker_i
    else
    {
       unsigned i;
+
       /* Apply 3/4th pixel offset. */
-      int32_t d_rgba_deh[4], d_stwz_deh[4];
-      int32_t d_rgba_dyh[4], d_stwz_dyh[4];
 
       for (i = 0; i < 4; i++)
       {
-         d_rgba_deh[i]             = stw_info->d_rgba_de[i] & ~0x000001FF;
-         d_stwz_deh[i]             = stw_info->d_stwz_de[i] & ~0x000001FF;
-         d_rgba_dyh[i]             = stw_info->d_rgba_dy[i] & ~0x000001FF;
-         d_stwz_dyh[i]             = stw_info->d_stwz_dy[i] & ~0x000001FF;
-         stw_info->d_rgba_diff[i]  = d_rgba_deh[i] - (d_rgba_deh[i] >> 2) -
-            d_rgba_dyh[i] + (d_rgba_dyh[i] >> 2);
-         stw_info->d_stwz_diff[i]  = d_stwz_deh[i] - (d_stwz_deh[i] >> 2) -
-            d_stwz_dyh[i] + (d_stwz_dyh[i] >> 2);
+         int32_t d_rgba_deh        = stw_info->d_rgba_de[i] & ~0x000001FF;
+         int32_t d_stwz_deh        = stw_info->d_stwz_de[i] & ~0x000001FF;
+         int32_t d_rgba_dyh        = stw_info->d_rgba_dy[i] & ~0x000001FF;
+         int32_t d_stwz_dyh        = stw_info->d_stwz_dy[i] & ~0x000001FF;
+         stw_info->d_rgba_diff[i]  = d_rgba_deh - d_rgba_dyh;
+         stw_info->d_rgba_diff[i] -= stw_info->d_rgba_diff[i] >> 2;
+
+         stw_info->d_stwz_diff[i]  = d_stwz_deh - d_stwz_dyh;
+         stw_info->d_stwz_diff[i] -= stw_info->d_stwz_diff[i] >> 2;
       }
    }
 
