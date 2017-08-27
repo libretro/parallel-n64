@@ -7764,15 +7764,12 @@ struct stepwalker_info
    int base;
    uint8_t xfrac;
 
-   int xl;
-   int xm;
-   int xh;
-   int yl;
-   int ym;
-   int yh;
-   int DxLDy;
-   int DxHDy;
-   int DxMDy;
+   int32_t xl;
+   int32_t xm;
+   int32_t xh;
+   int32_t DxLDy;
+   int32_t DxHDy;
+   int32_t DxMDy;
 };
 
 static int cmd_cur;
@@ -8093,6 +8090,13 @@ static INLINE void stepwalker_info_init(struct stepwalker_info *stw_info)
    setzero_si64(stw_info->d_stwz_de_frac);
    setzero_si64(stw_info->d_stwz_dy_int);
    setzero_si64(stw_info->d_stwz_dy_frac);
+
+   stw_info->xl = 0;
+   stw_info->xm = 0;
+   stw_info->xh = 0;
+   stw_info->DxLDy = 0;
+   stw_info->DxHDy = 0;
+   stw_info->DxMDy = 0;
 }
 
 static INLINE void al_clip_x(int32_t xs, int32_t clipxlshift,
@@ -8165,7 +8169,7 @@ static NOINLINE void draw_triangle(uint32_t w1, uint32_t w2,
     stw_info->xm    = xm;
     stw_info->DxLDy = DxLDy;
     stw_info->DxHDy = DxHDy;
-    stw_info->DxLDy = DxLDy;
+    stw_info->DxMDy = DxMDy;
 
     max_level       = level;
 
