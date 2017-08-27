@@ -4222,8 +4222,10 @@ static uint32_t z_compare(uint32_t zcurpixel, uint32_t sz, uint16_t dzpix, int d
 {
     int32_t diff;
     int32_t rawdzmem;
-    uint32_t oz, dzmem, zval, hval;
+    uint32_t oz, dzmem;
     uint32_t nearer, max, infront;
+    uint32_t hval      = 0;
+    uint32_t zval      = 0;
     int cvgcoeff       = 0;
     uint32_t dzenc     = 0;
     int force_coplanar = 0;
@@ -4237,10 +4239,16 @@ static uint32_t z_compare(uint32_t zcurpixel, uint32_t sz, uint16_t dzpix, int d
        int overflow;
        int precision_factor;
 
-       PAIRREAD16(zval, hval, zcurpixel);
-       oz = z_decompress(zval);
+       zcurpixel &= (RDRAM_MASK >> 1);
+       if (zcurpixel <= idxlim16)
+       {
+          zval   = rdram_16[zcurpixel ^ WORD_ADDR_XOR];
+          hval   = hidden_bits[zcurpixel];
+       }
+
+       oz       = z_decompress(zval);
        rawdzmem = ((zval & 3) << 2) | hval;
-       dzmem = dz_decompress(rawdzmem);
+       dzmem    = dz_decompress(rawdzmem);
 
        if (other_modes.f.realblendershiftersneeded)
        {
@@ -7546,14 +7554,19 @@ static void fbread2_8(uint32_t curpixel, uint32_t* curpixel_memcvg)
 
 static INLINE void fbread_16(uint32_t curpixel, uint32_t* curpixel_memcvg)
 {
-   uint16_t fword;
-   uint8_t hbyte;
    uint8_t lowbits;
-   uint32_t addr = (fb_address >> 1) + curpixel;
+   uint8_t hbyte    = 0;
+   uint16_t fword   = 0;
+   uint32_t addr    = (fb_address >> 1) + curpixel;
 
    if (other_modes.image_read_en)
    {
-      PAIRREAD16(fword, hbyte, addr);
+      addr &= (RDRAM_MASK >> 1);
+      if (addr <= idxlim16)
+      {
+         fword  = rdram_16[addr ^ WORD_ADDR_XOR];
+         hbyte  = hidden_bits[addr];
+      }
 
       if (fb_format == FORMAT_RGBA)
       {
@@ -7597,14 +7610,19 @@ static INLINE void fbread_16(uint32_t curpixel, uint32_t* curpixel_memcvg)
 
 static INLINE void fbread2_16(uint32_t curpixel, uint32_t* curpixel_memcvg)
 {
-   uint16_t fword;
-   uint8_t hbyte;
    uint8_t lowbits;
-   uint32_t addr = (fb_address >> 1) + curpixel;
+   uint8_t hbyte   = 0;
+   uint16_t fword  = 0;
+   uint32_t addr   = (fb_address >> 1) + curpixel;
 
    if (other_modes.image_read_en)
    {
-      PAIRREAD16(fword, hbyte, addr);
+      addr &= (RDRAM_MASK >> 1);
+      if (addr <= idxlim16)
+      {
+         fword  = rdram_16[addr ^ WORD_ADDR_XOR];
+         hbyte  = hidden_bits[addr];
+      }
 
       if (fb_format == FORMAT_RGBA)
       {
