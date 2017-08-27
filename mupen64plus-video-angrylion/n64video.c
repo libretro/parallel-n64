@@ -7345,7 +7345,7 @@ static void edgewalker_for_loads(int32_t* lewdata)
 
     for (k = ycur; k <= ylfar; k++)
     {
-        int spix = k & 3;
+        int spix = k & RDP_SUBPIXELS_MASK;
         if (k == ym)
             xleft = xl & ~1;
         if (!(k & ~0xfff))
@@ -8443,7 +8443,7 @@ no_read_zbuffer_coefficients:
     {
         static int minmax[2];
         int xlrsc[2];
-        const int spix = k & 3;
+        const int spix    = k & RDP_SUBPIXELS_MASK;
         const int yhclose = yhlimit & ~3;
 
         if (k == ym)
