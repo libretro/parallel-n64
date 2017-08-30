@@ -250,7 +250,7 @@ void main()
    else
       z >>= 3;
 
-   // Should be a correct brachless version of the awkward zanded in Angrylion.
+   // Should be a correct branchless version of the awkward zanded in Angrylion.
    // This pattern seems very similar to the special_9bit clamp, hrm ...
    z = clamp(((z + 0x20000) & 0x7ffff) - 0x20000, 0, 0x3ffff);
    DEPTH(tile, local) = z;

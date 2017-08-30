@@ -15,8 +15,28 @@
 #include <unordered_set>
 #endif
 
+#ifndef SE
+#define SE(i, b)        ((i) | -SB((i), (b)))
+#endif
+
+#if (~0 >> 1 < 0)
+#ifndef SRA
+#define SRA(exp, sa)    ((signed)(exp) >> (sa))
+#endif
+#else
+#ifndef SRA
+#define SRA(exp, sa)    (SE((exp) >> (sa), (sa) ^ 31))
+#endif
+#endif
+
+#ifndef SIGN
+#define SIGN(i, b)      SRA((i) << (32 - (b)), (32 - (b)))
+#endif
+
 using namespace std;
 using namespace Vulkan;
+
+extern "C" unsigned setting_get_dithering();
 
 namespace RDP
 {
@@ -24,10 +44,13 @@ namespace RDP
 Renderer::Renderer(Vulkan::Device &device)
     : device(device)
 {
+   rdp_dithering = setting_get_dithering();
+
    reset_buffers();
    init_dither_lut();
    init_centroid_lut();
    init_z_lut();
+
 
    tmem.set_async_framebuffers(&async_transfers);
 }
@@ -309,6 +332,20 @@ void Renderer::set_scissor(int xh, int yh, int xl, int yl)
    scissor.yh = yh;
    scissor.xl = xl;
    scissor.yl = yl;
+}
+
+void Renderer::set_key_r(uint32_t w1, uint32_t w2)
+{
+   state.key_scale_r  = (w2 & 0x000000FF) >>  0;
+   state.key_center_r = (w2 & 0x0000FF00) >>  8;
+}
+
+void Renderer::set_key_gb(uint32_t w1, uint32_t w2)
+{
+   state.key_center_g = (w2 & 0xFF000000) >> 24;
+   state.key_scale_g  = (w2 & 0x00FF0000) >> 16;
+   state.key_center_b = (w2 & 0x0000FF00) >>  8;
+   state.key_scale_b  = (w2 & 0x000000FF) >>  0;
 }
 
 void Renderer::set_combine(uint32_t w1, uint32_t w2)
@@ -717,11 +754,11 @@ void Renderer::draw_primitive(const Primitive &prim, const Attribute *attr, uint
 		   {
 			   int32_t d_rgba_deh = attr->d_rgba_de[i] & ~0x1ff;
 			   int32_t d_rgba_dyh = attr->d_rgba_dy[i] & ~0x1ff;
+			   int32_t d_stwz_deh = attr->d_stwz_de[i] & ~0x1ff;
+			   int32_t d_stwz_dyh = attr->d_stwz_dy[i] & ~0x1ff;
 			   buffer_prim.attr.d_rgba_diff[i] = d_rgba_deh - d_rgba_dyh;
 			   buffer_prim.attr.d_rgba_diff[i] -= buffer_prim.attr.d_rgba_diff[i] >> 2;
 
-			   int32_t d_stwz_deh = attr->d_stwz_de[i] & ~0x1ff;
-			   int32_t d_stwz_dyh = attr->d_stwz_dy[i] & ~0x1ff;
 			   buffer_prim.attr.d_stwz_diff[i] = d_stwz_deh - d_stwz_dyh;
 			   buffer_prim.attr.d_stwz_diff[i] -= buffer_prim.attr.d_stwz_diff[i] >> 2;
 		   }
@@ -943,9 +980,17 @@ void Renderer::set_fog_color(uint32_t w2)
    state.fog_color = w2;
 }
 
-void Renderer::set_convert(uint32_t /*w1*/, uint32_t w2)
+void Renderer::set_convert(uint32_t w1, uint32_t w2)
 {
-   // Ignore texture filter converts for now ...
+   // TODO/FIXME - Ignore texture filter converts for now ...
+   int32_t k0 = (w1 >> 13) & 0x1ff;
+   int32_t k1 = (w1 >> 4) & 0x1ff;
+   int32_t k2 = ((w1 & 0xf) << 5) | ((w2 >> 27) & 0x1f);
+   int32_t k3 = (w2 >> 18) & 0x1ff;
+   state.k0_tf = (SIGN(k0, 9) << 1) + 1;
+   state.k1_tf = (SIGN(k1, 9) << 1) + 1;
+   state.k2_tf = (SIGN(k2, 9) << 1) + 1;
+   state.k3_tf = (SIGN(k3, 9) << 1) + 1;
    state.k4 = (w2 >> 9) & 0x1ff;
    state.k5 = w2 & 0x1ff;
    state.combiners_dirty = true;
@@ -1003,8 +1048,10 @@ uint64_t Renderer::update_static_combiner()
 			   break;
 
 		   case 6:
-			   fprintf(stderr, "UNIMPLEMENTED SUB_B 6.\n");
 			   /* Key center */
+			   cycle.sub_b[0] = state.key_center_r;
+			   cycle.sub_b[1] = state.key_center_g;
+			   cycle.sub_b[2] = state.key_center_b;
 			   break;
 
 		   case 7:
@@ -1036,7 +1083,9 @@ uint64_t Renderer::update_static_combiner()
 
 		   case 6:
 			   /* Key scale */
-			   fprintf(stderr, "UNIMPLEMENTED MUL KEY SCALE.\n");
+			   cycle.mul[0] = uint8_t(state.key_scale_r);
+			   cycle.mul[1] = uint8_t(state.key_scale_g);
+			   cycle.mul[2] = uint8_t(state.key_scale_b);
 			   break;
 
 		   case 10:
@@ -1206,8 +1255,8 @@ void Renderer::set_color_image(uint32_t addr, unsigned format, unsigned pixel_si
    // We will need to estimate the real height and potentially flush out
    // everything if we guess wrong.
    // Just employ some crappy heuristic to make this sort of work.
-   if (width > 320)
-      max_height = 480;
+   if (width > width_greater_than)
+      max_height = width_greater_than_max_height;
    else if (width == 320)
       max_height = 240;
 

@@ -121,8 +121,14 @@ ifneq (,$(findstring unix,$(platform)))
    # Raspberry Pi
    ifneq (,$(findstring rpi,$(platform)))
       GLES = 1
-      GL_LIB := -L/opt/vc/lib -lGLESv2
-      INCFLAGS += -I/opt/vc/include
+      
+      ifneq (,$(findstring mesa,$(platform)))
+         GL_LIB := -lGLESv2
+      else
+         GL_LIB := -L/opt/vc/lib -lGLESv2
+         INCFLAGS += -I/opt/vc/include -I/opt/vc/include/interface/vcos -I/opt/vc/include/interface/vcos/pthreads
+      endif
+      
       WITH_DYNAREC=arm
       ifneq (,$(findstring rpi2,$(platform)))
          CPUFLAGS += -DNO_ASM -DARM -D__arm__ -DARM_ASM -D__NEON_OPT -DNOSSE
@@ -375,19 +381,46 @@ else ifneq (,$(findstring vita,$(platform)))
 else ifeq ($(platform), windows_msvc2013_x86)
 	CC  = cl.exe
 	CXX = cl.exe
+	CC_AS = ml.exe
 
 PATH := $(shell IFS=$$'\n'; cygpath "$(VS120COMNTOOLS)../../VC/bin"):$(PATH)
 PATH := $(PATH):$(shell IFS=$$'\n'; cygpath "$(VS120COMNTOOLS)../IDE")
 LIB := $(shell IFS=$$'\n'; cygpath -w "$(VS120COMNTOOLS)../../VC/lib")
 INCLUDE := $(shell IFS=$$'\n'; cygpath "$(VS120COMNTOOLS)../../VC/include")
 
-WindowsSdkDir := $(shell reg query "HKLM\SOFTWARE\Microsoft\Microsoft SDKs\Windows\v8.1A" -v "InstallationFolder" | grep -o '[A-Z]:\\.*')lib
+WindowsSdkDir := $(shell reg query "HKLM\SOFTWARE\Microsoft\Windows Kits\Installed Roots" -v "KitsRoot81" | grep -o '[A-Z]:\\.*')
 
-WindowsSdkDirInc := $(shell reg query "HKLM\SOFTWARE\Microsoft\Microsoft SDKs\Windows\v8.1A" -v "InstallationFolder" | grep -o '[A-Z]:\\.*')Include
+WindowsSdkDirInc := $(WindowsSdkDir)Include
 
-INCFLAGS_PLATFORM = -I"$(WindowsSdkDirInc)"
+INCFLAGS_PLATFORM = -I"$(WindowsSdkDirInc)\um" -I"$(WindowsSdkDirInc)\shared"
 export INCLUDE := $(INCLUDE)
-export LIB := $(LIB);$(WindowsSdkDir)
+export LIB := $(LIB);$(WindowsSdkDir)\Lib;$(WindowsSdkDir)\Lib\winv6.3\um\x86
+TARGET := $(TARGET_NAME)_libretro.dll
+PSS_STYLE :=2
+LDFLAGS += -DLL
+GL_LIB = opengl32.lib
+HAVE_PARALLEL=0
+HAVE_PARALLEL_RSP=0
+WITH_DYNAREC=x86
+
+# Windows MSVC 2013 x64
+else ifeq ($(platform), windows_msvc2013_x64)
+	CC  = cl.exe
+	CXX = cl.exe
+	CC_AS = ml64.exe
+
+PATH := $(shell IFS=$$'\n'; cygpath "$(VS120COMNTOOLS)../../VC/bin/amd64"):$(PATH)
+PATH := $(PATH):$(shell IFS=$$'\n'; cygpath "$(VS120COMNTOOLS)../IDE")
+LIB := $(shell IFS=$$'\n'; cygpath -w "$(VS120COMNTOOLS)../../VC/lib/amd64")
+INCLUDE := $(shell IFS=$$'\n'; cygpath "$(VS120COMNTOOLS)../../VC/include")
+
+WindowsSdkDir := $(shell reg query "HKLM\SOFTWARE\Microsoft\Windows Kits\Installed Roots" -v "KitsRoot81" | grep -o '[A-Z]:\\.*')
+
+WindowsSdkDirInc := $(WindowsSdkDir)Include
+
+INCFLAGS_PLATFORM = -I"$(WindowsSdkDirInc)\um" -I"$(WindowsSdkDirInc)\shared"
+export INCLUDE := $(INCLUDE)
+export LIB := $(LIB);$(WindowsSdkDir)\Lib;$(WindowsSdkDir)\Lib\winv6.3\um\x64
 TARGET := $(TARGET_NAME)_libretro.dll
 PSS_STYLE :=2
 LDFLAGS += -DLL
@@ -399,6 +432,7 @@ HAVE_PARALLEL_RSP=0
 else ifeq ($(platform), windows_msvc2010_x64)
 	CC  = cl.exe
 	CXX = cl.exe
+	CC_AS = ml64.exe
 
 PATH := $(shell IFS=$$'\n'; cygpath "$(VS100COMNTOOLS)../../VC/bin/amd64"):$(PATH)
 PATH := $(PATH):$(shell IFS=$$'\n'; cygpath "$(VS100COMNTOOLS)../IDE")
@@ -421,10 +455,12 @@ LDFLAGS += -DLL
 GL_LIB = opengl32.lib
 HAVE_PARALLEL=0
 HAVE_PARALLEL_RSP=0
+
 # Windows MSVC 2010 x86
 else ifeq ($(platform), windows_msvc2010_x86)
 	CC  = cl.exe
 	CXX = cl.exe
+	CC_AS = ml.exe
 
 PATH := $(shell IFS=$$'\n'; cygpath "$(VS100COMNTOOLS)../../VC/bin"):$(PATH)
 PATH := $(PATH):$(shell IFS=$$'\n'; cygpath "$(VS100COMNTOOLS)../IDE")
@@ -452,6 +488,7 @@ HAVE_PARALLEL_RSP=0
 else ifeq ($(platform), windows_msvc2005_x86)
 	CC  = cl.exe
 	CXX = cl.exe
+	CC_AS = ml.exe
 	HAS_GCC := 0
 
 PATH := $(shell IFS=$$'\n'; cygpath "$(VS80COMNTOOLS)../../VC/bin"):$(PATH)
@@ -521,10 +558,26 @@ endif
 
 COREFLAGS += -D__LIBRETRO__ -DM64P_PLUGIN_API -DM64P_CORE_PROTOTYPES -D_ENDUSER_RELEASE -DSINC_LOWER_QUALITY
 
+OBJOUT   = -o
+LINKOUT  = -o 
+
+ifneq (,$(findstring msvc,$(platform)))
+	OBJOUT = -Fo
+	LINKOUT = -out:
+	LD = link.exe
+else
+	LD = $(CXX)
+endif
 
 ifeq ($(DEBUG), 1)
-   CPUOPTS += -O0 -g
    CPUOPTS += -DOPENGL_DEBUG
+
+   ifneq (,$(findstring msvc,$(platform)))
+      CPUOPTS += -Od -MDd -Zi -FS
+      LD += -DEBUG
+   else
+      CPUOPTS += -O0 -g
+   endif
 else
    CPUOPTS += -O2 -DNDEBUG
 endif
@@ -578,17 +631,6 @@ endif
 
 LDFLAGS    += $(fpic)
 
-OBJOUT   = -o
-LINKOUT  = -o 
-
-ifneq (,$(findstring msvc,$(platform)))
-	OBJOUT = -Fo
-	LINKOUT = -out:
-	LD = link.exe
-else
-	LD = $(CXX)
-endif
-
 ifeq ($(platform), theos_ios)
 COMMON_FLAGS := -DIOS $(COMMON_DEFINES) $(INCFLAGS) $(INCFLAGS_PLATFORM) -I$(THEOS_INCLUDE_PATH) -Wno-error
 $(LIBRARY_NAME)_ASFLAGS += $(CFLAGS) $(COMMON_FLAGS)
@@ -623,3 +665,6 @@ clean:
 .PHONY: clean
 -include $(OBJECTS:.o=.d)
 endif
+
+print-%:
+	@echo '$*=$($*)'

@@ -31,7 +31,7 @@
 #include <features/features_cpu.h>
 #include <audio/conversion/float_to_s16.h>
 
-#if defined(__ARM_NEON__)
+#if defined(__ARM_NEON__) && !defined(DONT_WANT_ARM_OPTIMIZATIONS)
 static bool float_to_s16_neon_enabled = false;
 void convert_float_s16_asm(int16_t *out, const float *in, size_t samples);
 #endif
@@ -50,7 +50,7 @@ void convert_float_s16_asm(int16_t *out, const float *in, size_t samples);
 void convert_float_to_s16(int16_t *out,
       const float *in, size_t samples)
 {
-   size_t i;
+   size_t i      = 0;
 #if defined(__SSE2__)
    __m128 factor = _mm_set1_ps((float)0x8000);
 
@@ -91,7 +91,7 @@ void convert_float_to_s16(int16_t *out,
 
    samples = samples_in;
    i       = 0;
-#elif defined(__ARM_NEON__)
+#elif defined(__ARM_NEON__) && !defined(DONT_WANT_ARM_OPTIMIZATIONS)
    if (float_to_s16_neon_enabled)
    {
       size_t aligned_samples = samples & ~7;
@@ -151,7 +151,7 @@ void convert_float_to_s16(int16_t *out,
  **/
 void convert_float_to_s16_init_simd(void)
 {
-#if defined(__ARM_NEON__)
+#if defined(__ARM_NEON__) && !defined(DONT_WANT_ARM_OPTIMIZATIONS)
    unsigned cpu = cpu_features_get();
 
    if (cpu & RETRO_SIMD_NEON)

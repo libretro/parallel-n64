@@ -23,6 +23,8 @@ static const uint64_t lut_vi_clock_1600[] = {
 
 static const uint64_t lut_vi_clock_2200[] = {
    0x7EAE24889D40A35AULL, /* Biohazard 2 (J) [!] */
+   0xAF9DCC151A723D88ULL, /* Indiana Jones and the Infernal Machine (U) [!] */
+   0x3A6F8C6B2897BAEBULL, /* Indiana Jones and the Infernal Machine (E) */
    0x9B500E8EE90550B3ULL, /* Resident Evil 2 (E) (M2) [!] */
    0x2F493DD02E64DFD9ULL, /* Resident Evil 2 (U) [!] */
    0xAA18B1A507DB6AEBULL, /* Resident Evil 2 (U) (V1.1) [!] */
@@ -274,9 +276,9 @@ static const uint64_t lut_flashram[] = {
    0x0A5D8F8398C5371AULL, /* Legend of Zelda, The - Majora's Mask (E) (M4) (V1.1) */
    0x5354631C03A2DEF0ULL, /* Legend of Zelda, The - Majora's Mask (U) [!] */
    0xB443EB084DB31193ULL, /* Legend of Zelda, The - Majora's Mask (U) (GC) */
-   0x3BA7CDDC464E52A0ULL, /* Mario Story (J) [!] */
    0x0EC158F5FB3E6896ULL, /* Mega Man 64 (U) [!] */
    0x916852D873DBEAEFULL, /* NBA Courtside 2 - Featuring Kobe Bryant (U) [!] */
+   0x3BA7CDDC464E52A0ULL, /* Mario Story (J) [!] */
    0x19AB29AFC71BCD28ULL, /* Paper Mario (E) (M4) [!] */
    0x65EEE53AED7D733CULL, /* Paper Mario (U) [!] */
    0xEC0F690D32A7438CULL, /* Pocket Monsters Snap (J) [!] */
@@ -429,6 +431,8 @@ static const uint64_t lut_cpop[][2] = {
    { 0x06CB44B73163DB94ULL, 1 }, /* Killer Instinct Gold (U) (V1.2) [b1] */
    { 0xF908CA4C36464327ULL, 1 }, /* Killer Instinct Gold (U) (V1.2) [o1] */
 #endif
+   { 0xAF9DCC151A723D88ULL, 1 }, /* Indiana Jones and the Infernal Machine (U) [!] */
+   { 0x3A6F8C6B2897BAEBULL, 1 }, /* Indiana Jones and the Infernal Machine (E) */
    { 0x8C138BE095700E46ULL, 1 }, /* In-Fisherman Bass Hunter 64 (U) [!] */
    { 0xE2D37CF0F57E4EAEULL, 1 }, /* International Superstar Soccer 64 (E) [!] */
    { 0x5F2763C462412AE5ULL, 1 }, /* International Superstar Soccer 64 (U) [!] */
@@ -452,7 +456,6 @@ static const uint64_t lut_cpop[][2] = {
    { 0xC56741600F5F453CULL, 1 }, /* Mario Party 3 (E) (M4) [!] */
    { 0x0B0AB4CD7B158937ULL, 1 }, /* Mario Party 3 (J) [!] */
    { 0x7C3829D96E8247CEULL, 1 }, /* Mario Party 3 (U) [!] */
-   { 0x3BA7CDDC464E52A0ULL, 1 }, /* Mario Story (J) [!] */
    { 0x5AC383E1D712E387ULL, 1 }, /* Monopoly (U) [!] */
    { 0xD3D806FCB43AA2A8ULL, 3 }, /* Monster Truck Madness 64 (E) (M5) [!] */
    { 0xB19AD9997E585118ULL, 3 }, /* Monster Truck Madness 64 (U) [!] */
@@ -465,6 +468,7 @@ static const uint64_t lut_cpop[][2] = {
    { 0x8F50B845D729D22FULL, 1 }, /* Nuclear Strike 64 (G) [!] */
    { 0x4998DDBBF7B7AEBCULL, 1 }, /* Nuclear Strike 64 (U) [!] */
    { 0xD83BB920CC406416ULL, 1 }, /* Nushi Tsuri 64 (J) [!] */
+   { 0x3BA7CDDC464E52A0ULL, 1 }, /* Mario Story (J) [!] */
    { 0x19AB29AFC71BCD28ULL, 1 }, /* Paper Mario (E) (M4) [!] */
    { 0x65EEE53AED7D733CULL, 1 }, /* Paper Mario (U) [!] */
    { 0x1AA05AD546F52D80ULL, 3 }, /* Pilotwings 64 (E) (M3) [!] */

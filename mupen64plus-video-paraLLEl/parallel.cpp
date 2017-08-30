@@ -73,6 +73,18 @@ void parallelRomClosed(void)
 
 int parallelRomOpen(void)
 {
+   unsigned i;
+   char name[21] = "DEFAULT";
+
+   for (i = 0; i < 20; i++)
+      name[i] = gfx_info.HEADER[(32+i)^3];
+   name[20] = 0;
+
+   while (name[strlen(name)-1] == ' ')
+      name[strlen(name)-1] = 0;
+
+   RDP::set_scissor_variables(name);
+
 	return 1;
 }
 

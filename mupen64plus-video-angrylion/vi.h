@@ -38,8 +38,10 @@ extern int32_t pitchindwords;
 extern uint8_t* rdram_8;
 extern uint16_t* rdram_16;
 extern uint32_t plim;
-extern uint32_t idxlim16;
-extern uint32_t idxlim32;
+
+/* 16- and 32-bit pointer indexing limits for aliasing RDRAM reads and writes */
+#define IDXLIM16 0x3fffff
+#define IDXLIM32 0x1fffff
 extern uint8_t hidden_bits[0x400000];
 
 extern int overlay;

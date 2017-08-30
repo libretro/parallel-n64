@@ -88,7 +88,7 @@ static unsigned int get_dma_duration(struct ai_controller* ai)
    unsigned int bytes_per_sample = 4; /* XXX: assume 16bit stereo - should depends on bitrate instead */
    unsigned int cpu_counts_per_sec = ai->vi->delay * ai->vi->expected_refresh_rate; /* estimate cpu counts/sec using VI */
 
-   return ((uint64_t)ai->regs[AI_LEN_REG] * cpu_counts_per_sec) / (bytes_per_sample * samples_per_sec);
+   return ai->regs[AI_LEN_REG] * (cpu_counts_per_sec / (bytes_per_sample * samples_per_sec));
 }
 
 static void do_dma(struct ai_controller* ai, const struct ai_dma* dma)
@@ -104,7 +104,7 @@ static void do_dma(struct ai_controller* ai, const struct ai_dma* dma)
          ? 16 /* default bit rate */
          : 1 + ai->regs[AI_BITRATE_REG];
 
-      ai->set_audio_format(&ai->backend, frequency, bits);
+      ai->set_audio_format(ai, frequency, bits);
 
       ai->samples_format_changed = 0;
       ai->last_read = 0;

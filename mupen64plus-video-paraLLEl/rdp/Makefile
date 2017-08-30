@@ -4,12 +4,12 @@ SOURCES := $(wildcard *.cpp)
 OBJECTS := $(SOURCES:.cpp=.o)
 DEPS := $(OBJECTS:.o=.d)
 
-CXX := clang++
+#CXX := clang++
 
 CXXFLAGS += -std=c++11 -pthread -Wall -Wextra \
 	-Wno-shift-negative-value \
 	-Wno-missing-field-initializers -Wno-unused-function \
-	-fno-strict-overflow -g -I. \
+	-fno-strict-overflow -g -I. -I../../libretro-common/include \
 	-DPARALLEL_HAVE_DYLIB
 
 LDFLAGS += -L. -ldl -pthread
@@ -28,10 +28,12 @@ ifeq ($(SANITIZE), 1)
 	LDFLAGS += -fsanitize=address
 endif
 
-all: build
+build-glsl:
+	$(MAKE) -C glsl
+
+all: build-glsl build
 
 build:
-	$(MAKE) -C glsl
 	$(MAKE) rdp-test -C.
 
 $(TARGET): $(OBJECTS)

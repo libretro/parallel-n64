@@ -459,61 +459,82 @@ void TMEM::decode_tile(unsigned index, uint8_t *buffer, size_t stride)
 //if (tile.format != FORMAT_CI && enable_tlut)
 //	assert(0 && "Using TLUT without CI format.");
 
-#define DECODE_LOOP(op)                                                       \
-	do                                                                        \
-	{                                                                         \
-		for (unsigned y = 0; y < height; y++, buffer += stride)               \
-		{                                                                     \
-			for (unsigned x = 0; x < width; x++)                              \
-			{                                                                 \
-				op(buffer + 4 * x, tile.tmem, x, y, tile.line, tile.palette); \
-			}                                                                 \
-		}                                                                     \
-	} while (0)
-
 	if (tile.format == FORMAT_RGBA && tile.pixel_size == PIXEL_SIZE_32BPP)
 	{
-		DECODE_LOOP(read_rgba32);
+      unsigned y, x;
+      for (y = 0; y < height; y++, buffer += stride)
+         for (x = 0; x < width; x++)
+            read_rgba32(buffer + 4 * x, tile.tmem, x, y, tile.line, tile.palette);
 	}
 	else if (tile.format == FORMAT_RGBA && tile.pixel_size == PIXEL_SIZE_16BPP)
 	{
-		DECODE_LOOP(read_rgba16);
+      unsigned y, x;
+      for (y = 0; y < height; y++, buffer += stride)
+         for (x = 0; x < width; x++)
+            read_rgba16(buffer + 4 * x, tile.tmem, x, y, tile.line, tile.palette);
 	}
 	else if (tile.format == FORMAT_IA && tile.pixel_size == PIXEL_SIZE_16BPP)
 	{
-		DECODE_LOOP(read_ia16);
+      unsigned y, x;
+      for (y = 0; y < height; y++, buffer += stride)
+         for (x = 0; x < width; x++)
+            read_ia16(buffer + 4 * x, tile.tmem, x, y, tile.line, tile.palette);
 	}
 	else if (tile.format == FORMAT_IA && tile.pixel_size == PIXEL_SIZE_8BPP)
 	{
-		DECODE_LOOP(read_ia8);
+      unsigned y, x;
+      for (y = 0; y < height; y++, buffer += stride)
+         for (x = 0; x < width; x++)
+            read_ia8(buffer + 4 * x, tile.tmem, x, y, tile.line, tile.palette);
 	}
 	else if (tile.format == FORMAT_IA && tile.pixel_size == PIXEL_SIZE_4BPP)
 	{
-		DECODE_LOOP(read_ia4);
+      unsigned y, x;
+      for (y = 0; y < height; y++, buffer += stride)
+         for (x = 0; x < width; x++)
+            read_ia4(buffer + 4 * x, tile.tmem, x, y, tile.line, tile.palette);
 	}
 	else if (tile.format == FORMAT_I && (tile.pixel_size == PIXEL_SIZE_16BPP || tile.pixel_size == PIXEL_SIZE_32BPP))
 	{
-		DECODE_LOOP(read_i16);
+      unsigned y, x;
+      for (y = 0; y < height; y++, buffer += stride)
+         for (x = 0; x < width; x++)
+            read_i16(buffer + 4 * x, tile.tmem, x, y, tile.line, tile.palette);
 	}
 	else if ((tile.format == FORMAT_I || tile.format == FORMAT_RGBA) && tile.pixel_size == PIXEL_SIZE_8BPP)
 	{
-		DECODE_LOOP(read_i8);
+      unsigned y, x;
+      for (y = 0; y < height; y++, buffer += stride)
+         for (x = 0; x < width; x++)
+            read_i8(buffer + 4 * x, tile.tmem, x, y, tile.line, tile.palette);
 	}
 	else if ((tile.format == FORMAT_I || tile.format == FORMAT_RGBA) && tile.pixel_size == PIXEL_SIZE_4BPP)
 	{
-		DECODE_LOOP(read_i4);
+      unsigned y, x;
+      for (y = 0; y < height; y++, buffer += stride)
+         for (x = 0; x < width; x++)
+            read_i4(buffer + 4 * x, tile.tmem, x, y, tile.line, tile.palette);
 	}
 	else if (tile.format == FORMAT_CI && tile.pixel_size == PIXEL_SIZE_16BPP)
 	{
-		DECODE_LOOP(read_ci16);
+      unsigned y, x;
+      for (y = 0; y < height; y++, buffer += stride)
+         for (x = 0; x < width; x++)
+            read_ci16(buffer + 4 * x, tile.tmem, x, y, tile.line, tile.palette);
 	}
 	else if (tile.format == FORMAT_CI && tile.pixel_size == PIXEL_SIZE_8BPP)
 	{
-		DECODE_LOOP(read_ci8);
+      unsigned y, x;
+      for (y = 0; y < height; y++, buffer += stride)
+         for (x = 0; x < width; x++)
+            read_ci8(buffer + 4 * x, tile.tmem, x, y, tile.line, tile.palette);
 	}
 	else if (tile.format == FORMAT_CI && tile.pixel_size == PIXEL_SIZE_4BPP)
 	{
-		DECODE_LOOP(read_ci4);
+      unsigned y, x;
+      for (y = 0; y < height; y++, buffer += stride)
+         for (x = 0; x < width; x++)
+            read_ci4(buffer + 4 * x, tile.tmem, x, y, tile.line, tile.palette);
 	}
 	else
 		assert(0 && "Unsupported pixel format!");

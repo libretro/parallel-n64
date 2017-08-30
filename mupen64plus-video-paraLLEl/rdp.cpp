@@ -20,10 +20,12 @@ namespace RDP
 
 const struct retro_hw_render_interface_vulkan *vulkan;
 
+static char rom_name[21] = "DEFAULT";
 static int cmd_cur;
 static int cmd_ptr;
 static uint32_t cmd_data[0x00040000 >> 2];
 static bool rdp_sync;
+static bool pending_scissor_height;
 
 unique_ptr<Frontend> frontend;
 unique_ptr<Renderer> renderer;
@@ -191,6 +193,13 @@ bool init()
 	frontend->set_renderer(renderer.get(), device.get());
 	renderer->set_rdram(DRAM, 8 * 1024 * 1024);
 	::VI::set_num_frames(frames);
+
+   if (pending_scissor_height)
+   {
+		::RDP::renderer->set_scissor_variables(rom_name);
+      pending_scissor_height = false;
+   }
+
 }
 
 void deinit()
@@ -201,6 +210,22 @@ void deinit()
 	device.reset();
 	context.reset();
 }
+
+void set_scissor_variables(const char *name)
+{
+	if (::RDP::renderer)
+		::RDP::renderer->set_scissor_variables(name);
+   else
+   {
+      unsigned i;
+      pending_scissor_height = true;
+
+      for (i = 0; i < 20; i++)
+         rom_name[i] = name[i];
+      rom_name[20] = 0;
+   }
+}
+
 }
 
 bool parallel_create_device(struct retro_vulkan_context *frontend_context, VkInstance instance, VkPhysicalDevice gpu,

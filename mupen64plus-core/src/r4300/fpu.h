@@ -37,8 +37,8 @@
   {
     static const unsigned int msRound[4] = { _RC_NEAR, _RC_CHOP, _RC_UP, _RC_DOWN };
 #if WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_APP)
-	_controlfp(msRound[RoundType], _MCW_RC);
-#elif defined(__x86_64__)
+    _controlfp(msRound[RoundType], _MCW_RC);
+#elif defined(__x86_64__) || defined(_M_X64)
     _controlfp(msRound[RoundType], _MCW_RC);
 #else
     unsigned int oldX87, oldSSE2;
@@ -463,7 +463,7 @@ M64P_FPU_INLINE void mov_d(const double *source,double *target)
 }
 M64P_FPU_INLINE void neg_d(const double *source,double *target)
 {
-  *target=-(*source);
+  *target = -(*source);
 }
 
 #endif /* M64P_R4300_FPU_H */

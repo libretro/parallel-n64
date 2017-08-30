@@ -6,6 +6,7 @@
 #include "vulkan_util.hpp"
 #include <stdint.h>
 #include <unordered_map>
+#include <cstring>
 #include <vector>
 
 #define RDP_MAX_PRIMITIVES 	1024
@@ -89,6 +90,8 @@ public:
 		state.blend_word = word | (dither_sel << BLENDMODE_FLAG_DITHER_SEL);
 	}
 
+	void set_key_r(uint32_t w1, uint32_t w2);
+	void set_key_gb(uint32_t w1, uint32_t w2);
 	void set_dithering(unsigned type);
 	void set_combine(uint32_t w1, uint32_t w2);
 	void set_prim_color(uint32_t w1, uint32_t w2);
@@ -137,6 +140,160 @@ public:
 		tmem.set_rdram(dram, size);
 	}
 
+   void set_scissor_variables(const char *name)
+   {
+      fprintf(stderr, "ROM name: %s\n", name);
+
+      width_greater_than            = 320;
+      width_greater_than_max_height = 480;
+
+      /*
+       * We need to detect the following games by 
+       * CRC because the names are non-ASCII:
+       *
+       * Wrestlemania 2000 (Japan)
+       */
+
+      if (
+            !strcmp(name, "GOLDENEYE")             ||
+            !strcmp(name, "ALL STAR TENNIS '99")   ||
+            !strcmp(name, "All-Star Baseball 99")  ||
+            !strcmp(name, "All-Star Baseball '0")  ||
+            !strcmp(name, "All-Star Baseball 20")  ||
+            !strcmp(name, "Armorines Project S.")  ||
+            !strcmp(name, "Banjo-Kazooie")         ||
+            !strcmp(name, "BANJO KAZOOIE 2")       ||
+            !strcmp(name, "BANJO TOOIE")           ||
+            !strcmp(name, "BATTLEZONE")            ||
+            !strcmp(name, "Command&Conquer")       ||
+            !strcmp(name, "CONKER BFD")            ||
+            !strcmp(name, "CBFD ECTS")             ||
+            !strcmp(name, "CyberTiger")            ||
+            !strcmp(name, "Donald Duck Goin' Qu")  ||
+            !strcmp(name, "Donald Duck Quack At")  ||
+            !strcmp(name, "DUKE NUKEM ZERO HOUR")  ||
+            !strcmp(name, "ECW Hardcore Revolut")  ||
+            !strcmp(name, "EXCITEBIKE64")          ||
+            !strcmp(name, "F1RacingChampionship")  ||
+            !strcmp(name, "FIFA: RTWC 98")         ||
+            !strcmp(name, "RoadToWorldCup98")      ||
+            !strcmp(name, "FIFA 99")               ||
+            !strcmp(name, "Fox Sports Hoops 99")   ||
+            !strcmp(name, "GAUNTLET LEGENDS")      ||
+            !strcmp(name, "Indiana Jones")         ||
+            !strcmp(name, "Jeremy McGrath Super")  ||
+            !strcmp(name, "KEN GRIFFEY SLUGFEST")  ||
+            !strcmp(name, "Knockout Kings 2000")   ||
+            !strcmp(name, "NBA COURTSIDE")         ||
+            !strcmp(name, "LEGORacers")            ||
+            !strcmp(name, "Madden NFL 2000")       ||
+            !strcmp(name, "Madden NFL 2001")       ||
+            !strcmp(name, "Madden NFL 2002")       ||
+            !strcmp(name, "MLB FEATURING K G JR")  ||
+            !strcmp(name, "MarioTennis")           ||
+            !strcmp(name, "MarioTennis64")         ||
+            !strcmp(name, "Monaco GP Racing 2")    ||
+            !strcmp(name, "MORTAL KOMBAT 4")       ||
+            !strcmp(name, "NBA Courtside 2")       ||
+            !strcmp(name, "NBA JAM 2000")          ||
+            !strcmp(name, "NBA JAM 99")            ||
+            !strcmp(name, "NBA LIVE 2000")         ||
+            !strcmp(name, "NBA Live 99")           ||
+            !strcmp(name, "NBA SHOWTIME")          ||
+            !strcmp(name, "NEWTETRIS")             ||
+            !strcmp(name, "NFL BLITZ")             ||
+            !strcmp(name, "NFL BLITZ SPECIAL ED")  ||
+            !strcmp(name, "blitz2k")               ||
+            !strcmp(name, "NFL BLITZ 2001")        ||
+            !strcmp(name, "NFL Quarterback Club")  ||
+            !strcmp(name, "NFL QBC 2000")          ||
+            !strcmp(name, "NHL 99")                ||
+            !strcmp(name, "NHL_BREAKAWAY_98")      ||
+            !strcmp(name, "NHL Breakaway '99")     ||
+            !strcmp(name, "NIGHTMARE CREATURES")   ||
+            !strcmp(name, "NUCLEARSTRIKE64")       ||
+            !strcmp(name, "Perfect Dark")          ||
+            !strcmp(name, "Premier Manager 64")    ||
+            !strcmp(name, "Racing Simulation 2")   ||
+            !strcmp(name, "RAMPAGE")               ||
+            !strcmp(name, "RAMPAGE2")              ||
+            !strcmp(name, "RAT ATTACK")            ||
+            !strcmp(name, "Rayman 2")              ||
+            !strcmp(name, "RUGRATSTREASUREHUNT")   ||
+            !strcmp(name, "ROADSTERS TROPHY")      ||
+            !strcmp(name, "Rush 2049")             ||
+            !strcmp(name, "SCOOBY-DOO")            ||
+            !strcmp(name, "South Park")            ||
+            !strcmp(name, "Rogue Squadron")        ||
+            !strcmp(name, "rogue squadron")        ||
+            !strcmp(name, "Battle for Naboo")      ||
+            !strcmp(name, "STAR WARS EP1 RACER")   ||
+            !strcmp(name, "SUPERROBOTSPIRITS")     ||
+            !strcmp(name, "Supercross")            ||
+            !strcmp(name, "TARZAN")                ||
+            !strcmp(name, "Taz Express")           ||
+            !strcmp(name, "TG RALLY 2")            ||
+            !strcmp(name, "Tigger's Honey Hunt")   ||
+            !strcmp(name, "TRIPLE PLAY 2000")      ||
+            !strcmp(name, "Turok: Rage Wars")      ||
+            !strcmp(name, "Turok 2: Seeds of Ev")  ||
+            !strcmp(name, "Turok 3: Shadow of O")  ||
+            !strcmp(name, "VIOLENCEKILLER")        ||
+            !strcmp(name, "WCW BACKSTAGE")         ||
+            !strcmp(name, "WCW MAYHEM")            ||
+            !strcmp(name, "WCWvs.NWO:World Tour")  ||
+            !strcmp(name, "WCW / nWo  REVENGE")    ||
+            !strcmp(name, "World Cup 98")          ||
+            !strcmp(name, "WWF: Attitude")         ||
+            !strcmp(name, "WWF No Mercy")          ||
+            !strcmp(name, "WWF War Zone")          ||
+            !strcmp(name, "WRESTLEMANIA 2000")     ||
+            !strcmp(name, "PLACEHOLDER")
+            )
+      {
+         width_greater_than            = 280;
+         width_greater_than_max_height = 200;
+      }
+#if 0
+      /* We need to come up with some proper heuristics
+       * for Resident Evil 2 - see NOTE below -
+       * Without the expansion pak, the resolution ran at 320x240p, 
+       * same as the PS1. However, with the expansion, the resolution 
+       * adjusted based on CPU load and outputted a maximum 
+       * resolution of 512x384.
+       * */
+      else if
+         (
+          !strcmp(name, "BioHazard II")      ||
+          !strcmp(name, "Resident Evil II")
+         )
+         {
+            width_greater_than            = 280;
+            width_greater_than_max_height = 384;
+         }
+#endif
+#if 0
+      /* These games require separate tweaking still
+       *
+       * Bottom of the 9th (Bottom of the 9th)
+       * Resident Evil 2/Biohazard (BioHazard II) (Resident Evil II) -
+       * Army Men: Sarge's Heroes 2 (ARMYMEN SARGE 2)
+       * Brunswick Circuit Pro Bowling (BRUNSWICKBOWLING)
+       * Lode Runner 3D 
+       * Mario no Photopie
+       * NBA In The Zone 2000
+       * NFL Quarterback Club (mostly correct but not yet perfect)
+       * NFL Quarterback Club 2000 (mostly correct but not yet perfect)
+       * Perfect Dark (mostly correct but weapon selection screen can make
+       * screen shift around)
+       * Top Gear Rally (might need better heuristics )
+       * PD Ultraman Battle Collection 64 ("Ultraman Battle JAPA") (flickers)
+       * Supercross 2000 (screen can shift and pan around badly on title screen)
+       * Vigilante 8
+       */
+#endif
+   }
+
 	void set_synchronous(bool enable)
 	{
 		// Make sure we don't end up with a situation where we inadvertently write old data to RDRAM.
@@ -178,7 +335,9 @@ private:
 	std::vector<VIOutput> vi_outputs;
 	void sync_framebuffer_to_cpu(AsyncFramebuffer &async);
 	unsigned current_sync_index = 0;
-	unsigned rdp_dithering = 1;
+	unsigned rdp_dithering;
+   unsigned width_greater_than            = 320;
+   unsigned width_greater_than_max_height = 480;
 
 	struct
 	{
@@ -344,8 +503,20 @@ private:
 		uint32_t prim_color = 0;
 		uint32_t env_color = 0;
 		uint32_t prim_lod_frac = 0;
+		int32_t k0_tf = 0;
+		int32_t k1_tf = 0;
+		int32_t k2_tf = 0;
+		int32_t k3_tf = 0;
 		uint32_t k4 = 0;
 		uint32_t k5 = 0;
+
+      uint32_t key_scale_r = 0;
+      uint32_t key_scale_g = 0;
+      uint32_t key_scale_b = 0;
+
+      uint32_t key_center_r = 0;
+      uint32_t key_center_g = 0;
+      uint32_t key_center_b = 0;
 
 		uint32_t primitive_z = 0;
 
