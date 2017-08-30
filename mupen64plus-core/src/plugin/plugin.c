@@ -96,9 +96,15 @@ static m64p_error EmptyGetVersionFunc(m64p_plugin_type *PluginType, int *PluginV
     }
 
 DEFINE_GFX(angrylion);
+#ifdef HAVE_RICE
 DEFINE_GFX(rice);
+#endif
+#ifdef HAVE_GLN64
 DEFINE_GFX(gln64);
+#endif
+#ifdef HAVE_GLIDEN64
 DEFINE_GFX(glide64);
+#endif
 #ifdef HAVE_PARALLEL
 DEFINE_GFX(parallel);
 #endif
