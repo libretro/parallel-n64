@@ -102,7 +102,7 @@ DEFINE_GFX(rice);
 #ifdef HAVE_GLN64
 DEFINE_GFX(gln64);
 #endif
-#ifdef HAVE_GLIDEN64
+#ifdef HAVE_GLIDE64
 DEFINE_GFX(glide64);
 #endif
 #ifdef HAVE_PARALLEL

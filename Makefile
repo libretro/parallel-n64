@@ -593,7 +593,7 @@ ifeq ($(GLIDEN64),1)
    CXXFLAGS += -std=c++0x -MMD
 else ifeq ($(HAVE_PARALLEL), 1)
 	CFLAGS   += -MMD
-	CXXFLAGS += -std=gnu++11 -MMD
+	CXXFLAGS += -std=c++0x -MMD
 else ifneq (,$(findstring msvc,$(platform)))
 	CXXFLAGS +=
 else
