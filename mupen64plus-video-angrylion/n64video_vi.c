@@ -110,6 +110,7 @@ static uint32_t y_start;
 
 /* prescale buffer */
 static uint32_t prescale_ptr;
+static int linecount;
 
 /* parsed VI registers */
 static int dither_filter;
@@ -237,7 +238,7 @@ int vi_begin(void)
     int hres, vres;
     int x_start;
     int h_end;
-    int two_lines, line_count;
+    int two_lines;
     int hrightblank;
     int vactivelines;
     int validh;
@@ -285,7 +286,7 @@ int vi_begin(void)
     if (validinterlace)
        internal_vi_v_current_line ^= 1;
 
-    line_count   = pitchindwords << serration_pulses;
+    linecount    = pitchindwords << serration_pulses;
     lineshifter  = serration_pulses ^ 1;
 
     hres = delta_x;
@@ -388,9 +389,9 @@ int vi_begin(void)
     }
 
     prescale_ptr =
-        (v_start * line_count) + h_start + (lowerfield ? pitchindwords : 0);
+        (v_start * linecount) + h_start + (lowerfield ? pitchindwords : 0);
     do_frame_buffer[overlay](
-        prescale_ptr, hres, vres, x_start, vitype, line_count);
+        prescale_ptr, hres, vres, x_start, vitype, linecount);
 no_frame_buffer:
 
     __src.bottom = (ispal ? 576 : 480) >> lineshifter; /* visible lines */
@@ -517,10 +518,10 @@ static void do_frame_buffer_proper(
       scanline      = &blitter_buf_lock[prescale_ptr];
       prescale_ptr += linecount;
 
-      prevy = y_start >> 10;
-      yfrac = (y_start >> 5) & 0x1f;
-      pixels = vi_width_low * prevy;
-      nextpixels = pixels + vi_width_low;
+      prevy         = y_start >> 10;
+      yfrac         = (y_start >> 5) & 0x1f;
+      pixels        = vi_width_low * prevy;
+      nextpixels    = pixels + vi_width_low;
 
       for (i = 0; i < hres; i++)
       {
