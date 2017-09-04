@@ -88,6 +88,9 @@ typedef int*        v32;
 #define SIGNF(x, numb)    ((x) | -((x) & (1 << (numb - 1))))
 
 /* thread-local storage */
+#if 1
+#define TLS 
+#else
 #ifdef HAVE_PARALLEL
 #if defined(_MSC_VER)
     #define TLS __declspec(thread)
@@ -98,6 +101,7 @@ typedef int*        v32;
 #endif
 #else
 #define TLS 
+#endif
 #endif
 
 #define GET_LOW_RGBA16_TMEM(x)      replicated_rgba[((x) & 0x003F) >>  1]
