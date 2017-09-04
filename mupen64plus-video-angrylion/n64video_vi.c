@@ -183,236 +183,236 @@ static void (*vi_fetch_filter_func[2])(
 
 static STRICTINLINE uint16_t decompress_cvmask_frombyte(uint8_t x)
 {
-    uint16_t y = (x & 1) | ((x & 2) << 4) | (x & 4) | ((x & 8) << 4) |
-        ((x & 0x10) << 4) | ((x & 0x20) << 8) | ((x & 0x40) << 4) | ((x & 0x80) << 8);
-    return y;
+   uint16_t y = (x & 1) | ((x & 2) << 4) | (x & 4) | ((x & 8) << 4) |
+      ((x & 0x10) << 4) | ((x & 0x20) << 8) | ((x & 0x40) << 4) | ((x & 0x80) << 8);
+   return y;
 }
 
 void precalc_cvmask_derivatives(void)
 {
-    int i = 0, k = 0;
-    uint16_t mask = 0, maskx = 0, masky = 0;
-    uint8_t offx = 0, offy = 0;
-    static const uint8_t yarray[16] = {0, 0, 1, 0, 2, 0, 1, 0, 3, 0, 1, 0, 2, 0, 1, 0};
-    static const uint8_t xarray[16] = {0, 3, 2, 2, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0};
+   int i = 0, k = 0;
+   uint16_t mask = 0, maskx = 0, masky = 0;
+   uint8_t offx = 0, offy = 0;
+   static const uint8_t yarray[16] = {0, 0, 1, 0, 2, 0, 1, 0, 3, 0, 1, 0, 2, 0, 1, 0};
+   static const uint8_t xarray[16] = {0, 3, 2, 2, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0};
 
-    
-    for (; i < 0x100; i++)
-    {
-        mask = decompress_cvmask_frombyte(i);
-        cvarray[i].cvg = cvarray[i].cvbit = 0;
-        cvarray[i].cvbit = (i >> 7) & 1;
-        for (k = 0; k < 8; k++)
-            cvarray[i].cvg += ((i >> k) & 1);
 
-        
-        masky = maskx = offx = offy = 0;
-        for (k = 0; k < 4; k++)
-            masky |= ((mask & (0xf000 >> (k << 2))) > 0) << k;
+   for (; i < 0x100; i++)
+   {
+      mask = decompress_cvmask_frombyte(i);
+      cvarray[i].cvg = cvarray[i].cvbit = 0;
+      cvarray[i].cvbit = (i >> 7) & 1;
+      for (k = 0; k < 8; k++)
+         cvarray[i].cvg += ((i >> k) & 1);
 
-        offy = yarray[masky];
-        
-        maskx = (mask & (0xf000 >> (offy << 2))) >> ((offy ^ 3) << 2);
-        
-        
-        offx = xarray[maskx];
-        
-        cvarray[i].xoff = offx;
-        cvarray[i].yoff = offy;
-    }
+
+      masky = maskx = offx = offy = 0;
+      for (k = 0; k < 4; k++)
+         masky |= ((mask & (0xf000 >> (k << 2))) > 0) << k;
+
+      offy = yarray[masky];
+
+      maskx = (mask & (0xf000 >> (offy << 2))) >> ((offy ^ 3) << 2);
+
+
+      offx = xarray[maskx];
+
+      cvarray[i].xoff = offx;
+      cvarray[i].yoff = offy;
+   }
 }
 
 void lookup_cvmask_derivatives(uint32_t mask, uint8_t* offx, uint8_t* offy, uint32_t* curpixel_cvg, uint32_t* curpixel_cvbit)
 {
-    CVtcmaskDERIVATIVE temp = cvarray[mask];
-    *curpixel_cvg = temp.cvg;
-    *curpixel_cvbit = temp.cvbit;
-    *offx = temp.xoff;
-    *offy = temp.yoff;
+   CVtcmaskDERIVATIVE temp = cvarray[mask];
+   *curpixel_cvg = temp.cvg;
+   *curpixel_cvbit = temp.cvbit;
+   *offx = temp.xoff;
+   *offy = temp.yoff;
 }
 
 int vi_begin(void)
 {
-    uint32_t pix;
-    uint8_t cur_cvg;
-    int hres, vres;
-    int x_start;
-    int h_end;
-    int two_lines;
-    int hrightblank;
-    int vactivelines;
-    int validh;
-    int validinterlace;
-    int lowerfield;
-    int i, j;
-    const int frame_buffer = *GET_GFX_INFO(VI_ORIGIN_REG) & 0x00FFFFFF;
-    const int v_sync = *GET_GFX_INFO(VI_V_SYNC_REG) & 0x000003FF;
-    const int x1 = (*GET_GFX_INFO(VI_H_START_REG) >> 16) & 0x03FF;
-    const int y1 = (*GET_GFX_INFO(VI_V_START_REG) >> 16) & 0x03FF;
-    const int x2 = (*GET_GFX_INFO(VI_H_START_REG) >>  0) & 0x03FF;
-    const int y2 = (*GET_GFX_INFO(VI_V_START_REG) >>  0) & 0x03FF;
-    const int delta_x    = x2 - x1;
-    const int delta_y    = y2 - y1;
-    const int pixel_size = sizeof(int32_t);
-    ispal                = (v_sync > 550);
+   uint32_t pix;
+   uint8_t cur_cvg;
+   int hres, vres;
+   int x_start;
+   int h_end;
+   int two_lines;
+   int hrightblank;
+   int vactivelines;
+   int validh;
+   int validinterlace;
+   int lowerfield;
+   int i, j;
+   const int frame_buffer = *GET_GFX_INFO(VI_ORIGIN_REG) & 0x00FFFFFF;
+   const int v_sync = *GET_GFX_INFO(VI_V_SYNC_REG) & 0x000003FF;
+   const int x1 = (*GET_GFX_INFO(VI_H_START_REG) >> 16) & 0x03FF;
+   const int y1 = (*GET_GFX_INFO(VI_V_START_REG) >> 16) & 0x03FF;
+   const int x2 = (*GET_GFX_INFO(VI_H_START_REG) >>  0) & 0x03FF;
+   const int y2 = (*GET_GFX_INFO(VI_V_START_REG) >>  0) & 0x03FF;
+   const int delta_x    = x2 - x1;
+   const int delta_y    = y2 - y1;
+   const int pixel_size = sizeof(int32_t);
+   ispal                = (v_sync > 550);
 #if 0
-    struct retro_framebuffer fb = {0};
+   struct retro_framebuffer fb = {0};
 #endif
 
-    x_add                = *GET_GFX_INFO(VI_X_SCALE_REG) & 0x00000FFF;
+   x_add                = *GET_GFX_INFO(VI_X_SCALE_REG) & 0x00000FFF;
 
-    vitype               = *GET_GFX_INFO(VI_STATUS_REG) & 0x00000003;
+   vitype               = *GET_GFX_INFO(VI_STATUS_REG) & 0x00000003;
 
 #if 0
-    fb.width        = PRESCALE_WIDTH;
-    fb.height       = PRESCALE_HEIGHT;
-    fb.access_flags = RETRO_MEMORY_ACCESS_WRITE;
+   fb.width        = PRESCALE_WIDTH;
+   fb.height       = PRESCALE_HEIGHT;
+   fb.access_flags = RETRO_MEMORY_ACCESS_WRITE;
 
-    if (environ_cb(RETRO_ENVIRONMENT_GET_CURRENT_SOFTWARE_FRAMEBUFFER, &fb)
-          && fb.format == RETRO_PIXEL_FORMAT_XRGB8888)
-       blitter_buf_lock = (uint32_t*)fb.data;
+   if (environ_cb(RETRO_ENVIRONMENT_GET_CURRENT_SOFTWARE_FRAMEBUFFER, &fb)
+         && fb.format == RETRO_PIXEL_FORMAT_XRGB8888)
+      blitter_buf_lock = (uint32_t*)fb.data;
 #endif
 
-    /*
-     * initial value (angrylion)
-     */
-    serration_pulses  = !!(*GET_GFX_INFO(VI_STATUS_REG) & 0x00000040);
-    serration_pulses &= (y1 != oldvstart);
-    two_lines = serration_pulses ^ 0;
+   /*
+    * initial value (angrylion)
+    */
+   serration_pulses  = !!(*GET_GFX_INFO(VI_STATUS_REG) & 0x00000040);
+   serration_pulses &= (y1 != oldvstart);
+   two_lines = serration_pulses ^ 0;
 
-    validinterlace = (vitype & 2) && serration_pulses;
-    if (!validinterlace)
-       internal_vi_v_current_line = 0;
-    lowerfield = validinterlace && !(internal_vi_v_current_line & 1);
-    if (validinterlace)
-       internal_vi_v_current_line ^= 1;
+   validinterlace = (vitype & 2) && serration_pulses;
+   if (!validinterlace)
+      internal_vi_v_current_line = 0;
+   lowerfield = validinterlace && !(internal_vi_v_current_line & 1);
+   if (validinterlace)
+      internal_vi_v_current_line ^= 1;
 
-    linecount    = pitchindwords << serration_pulses;
-    lineshifter  = serration_pulses ^ 1;
+   linecount    = pitchindwords << serration_pulses;
+   lineshifter  = serration_pulses ^ 1;
 
-    hres = delta_x;
-    vres = delta_y;
-    h_start = x1 - (ispal ? 128 : 108);
-    v_start = y1 - (ispal ?  47 :  37);
-    x_start = (*gfx_info.VI_X_SCALE_REG >> 16) & 0x00000FFF;
+   hres = delta_x;
+   vres = delta_y;
+   h_start = x1 - (ispal ? 128 : 108);
+   v_start = y1 - (ispal ?  47 :  37);
+   x_start = (*gfx_info.VI_X_SCALE_REG >> 16) & 0x00000FFF;
 
-    if (h_start < 0)
-    {
-        x_start -= x_add * h_start;
-        h_start  = 0;
-    }
-    oldvstart = y1;
-    v_start >>= 1;
-    v_start  &= -(v_start >= 0);
-    vres >>= 1;
+   if (h_start < 0)
+   {
+      x_start -= x_add * h_start;
+      h_start  = 0;
+   }
+   oldvstart = y1;
+   v_start >>= 1;
+   v_start  &= -(v_start >= 0);
+   vres >>= 1;
 
-    if (hres > PRESCALE_WIDTH - h_start)
-        hres = PRESCALE_WIDTH - h_start;
-    if (vres > PRESCALE_HEIGHT - v_start)
-        vres = PRESCALE_HEIGHT - v_start;
-    h_end = hres + h_start;
-    hrightblank = PRESCALE_WIDTH - h_end;
+   if (hres > PRESCALE_WIDTH - h_start)
+      hres = PRESCALE_WIDTH - h_start;
+   if (vres > PRESCALE_HEIGHT - v_start)
+      vres = PRESCALE_HEIGHT - v_start;
+   h_end = hres + h_start;
+   hrightblank = PRESCALE_WIDTH - h_end;
 
-    vactivelines = v_sync - (ispal ? 47 : 37);
-    if (vactivelines > PRESCALE_HEIGHT)
-    {
-       if (log_cb)
-          log_cb(RETRO_LOG_WARN, "VI_V_SYNC_REG too big\n");
-        return 0;
-    }
-    if (vactivelines < 0)
-        return 0;
-    vactivelines >>= lineshifter;
+   vactivelines = v_sync - (ispal ? 47 : 37);
+   if (vactivelines > PRESCALE_HEIGHT)
+   {
+      if (log_cb)
+         log_cb(RETRO_LOG_WARN, "VI_V_SYNC_REG too big\n");
+      return 0;
+   }
+   if (vactivelines < 0)
+      return 0;
+   vactivelines >>= lineshifter;
 
-    validh = (hres >= 0 && h_start >= 0 && h_start < PRESCALE_WIDTH);
-    pix = 0;
-    cur_cvg = 0;
-    if (hres <= 0 || vres <= 0 || (!(vitype & 2) && prevwasblank)) /* early return. */
-        return 0;
+   validh = (hres >= 0 && h_start >= 0 && h_start < PRESCALE_WIDTH);
+   pix = 0;
+   cur_cvg = 0;
+   if (hres <= 0 || vres <= 0 || (!(vitype & 2) && prevwasblank)) /* early return. */
+      return 0;
 
-    if (vitype >> 1 == 0)
-    {
-        memset(tvfadeoutstate, 0, pixel_size*PRESCALE_HEIGHT);
-        for (i = 0; i < PRESCALE_HEIGHT; i++)
-            memset(&blitter_buf_lock[i * pitchindwords], 0, pixel_size*PRESCALE_WIDTH);
-        prevwasblank = 1;
-    }
-    else
-    {
+   if (vitype >> 1 == 0)
+   {
+      memset(tvfadeoutstate, 0, pixel_size*PRESCALE_HEIGHT);
+      for (i = 0; i < PRESCALE_HEIGHT; i++)
+         memset(&blitter_buf_lock[i * pitchindwords], 0, pixel_size*PRESCALE_WIDTH);
+      prevwasblank = 1;
+   }
+   else
+   {
 #ifdef MONITOR_Z
-       frame_buffer = zb_address;
+      frame_buffer = zb_address;
 #endif
 
-       prevwasblank = 0;
-       if (h_start > 0 && h_start < PRESCALE_WIDTH)
-          for (i = 0; i < vactivelines; i++)
-             memset(&blitter_buf_lock[i*pitchindwords], 0, pixel_size*h_start);
+      prevwasblank = 0;
+      if (h_start > 0 && h_start < PRESCALE_WIDTH)
+         for (i = 0; i < vactivelines; i++)
+            memset(&blitter_buf_lock[i*pitchindwords], 0, pixel_size*h_start);
 
-       if (h_end >= 0 && h_end < PRESCALE_WIDTH)
-          for (i = 0; i < vactivelines; i++)
-             memset(&blitter_buf_lock[i*pitchindwords + h_end], 0, pixel_size*hrightblank);
+      if (h_end >= 0 && h_end < PRESCALE_WIDTH)
+         for (i = 0; i < vactivelines; i++)
+            memset(&blitter_buf_lock[i*pitchindwords + h_end], 0, pixel_size*hrightblank);
 
-       for (i = 0; i < (v_start << two_lines) + lowerfield; i++)
-       {
-          tvfadeoutstate[i] >>= 1;
-          if (~tvfadeoutstate[i] & validh)
-             memset(&blitter_buf_lock[i*pitchindwords + h_start], 0, pixel_size*hres);
-       }
+      for (i = 0; i < (v_start << two_lines) + lowerfield; i++)
+      {
+         tvfadeoutstate[i] >>= 1;
+         if (~tvfadeoutstate[i] & validh)
+            memset(&blitter_buf_lock[i*pitchindwords + h_start], 0, pixel_size*hres);
+      }
 
-       if (serration_pulses == 0)
-          for (j = 0; j < vres; j++)
-             tvfadeoutstate[i++] = 2;
-       else
-          for (j = 0; j < vres; j++)
-          {
-             tvfadeoutstate[i] = 2;
-             ++i;
-             tvfadeoutstate[i] >>= 1;
-             if (~tvfadeoutstate[i] & validh)
-                memset(&blitter_buf_lock[i*pitchindwords + h_start], 0, pixel_size*hres);
-             ++i;
-          }
+      if (serration_pulses == 0)
+         for (j = 0; j < vres; j++)
+            tvfadeoutstate[i++] = 2;
+      else
+         for (j = 0; j < vres; j++)
+         {
+            tvfadeoutstate[i] = 2;
+            ++i;
+            tvfadeoutstate[i] >>= 1;
+            if (~tvfadeoutstate[i] & validh)
+               memset(&blitter_buf_lock[i*pitchindwords + h_start], 0, pixel_size*hres);
+            ++i;
+         }
 
-       while (i < vactivelines)
-       {
-          tvfadeoutstate[i] >>= 1;
-          if (~tvfadeoutstate[i] & validh)
-             memset(&blitter_buf_lock[i*pitchindwords + h_start], 0, pixel_size*hres);
-          ++i;
-       }
+      while (i < vactivelines)
+      {
+         tvfadeoutstate[i] >>= 1;
+         if (~tvfadeoutstate[i] & validh)
+            memset(&blitter_buf_lock[i*pitchindwords + h_start], 0, pixel_size*hres);
+         ++i;
+      }
 
-       if (frame_buffer != 0)
-       {
-          prescale_ptr =
-             (v_start * linecount) + h_start + (lowerfield ? pitchindwords : 0);
-          do_frame_buffer[overlay](
-                prescale_ptr, hres, vres, x_start, vitype, linecount);
-       }
-    }
+      if (frame_buffer != 0)
+      {
+         prescale_ptr =
+            (v_start * linecount) + h_start + (lowerfield ? pitchindwords : 0);
+         do_frame_buffer[overlay](
+               prescale_ptr, hres, vres, x_start, vitype, linecount);
+      }
+   }
 
-    __src.bottom = (ispal ? 576 : 480) >> lineshifter; /* visible lines */
+   __src.bottom = (ispal ? 576 : 480) >> lineshifter; /* visible lines */
 
-    if (lineshifter != 0) /* 240p non-interlaced VI DAC mode */
-    {
-        int32_t cur_line = 240 - 1;
+   if (lineshifter != 0) /* 240p non-interlaced VI DAC mode */
+   {
+      int32_t cur_line = 240 - 1;
 
-        while (cur_line >= 0)
-        {
-            memcpy(
-                &blitter_buf_lock[2*PRESCALE_WIDTH*cur_line + PRESCALE_WIDTH],
-                &blitter_buf_lock[1*PRESCALE_WIDTH*cur_line],
-                4 * PRESCALE_WIDTH
-            );
-            memcpy(
-                &blitter_buf_lock[2*PRESCALE_WIDTH*cur_line + 0],
-                &blitter_buf_lock[1*PRESCALE_WIDTH*cur_line],
-                4 * PRESCALE_WIDTH
-            );
-            --cur_line;
-        }
-    }
+      while (cur_line >= 0)
+      {
+         memcpy(
+               &blitter_buf_lock[2*PRESCALE_WIDTH*cur_line + PRESCALE_WIDTH],
+               &blitter_buf_lock[1*PRESCALE_WIDTH*cur_line],
+               4 * PRESCALE_WIDTH
+               );
+         memcpy(
+               &blitter_buf_lock[2*PRESCALE_WIDTH*cur_line + 0],
+               &blitter_buf_lock[1*PRESCALE_WIDTH*cur_line],
+               4 * PRESCALE_WIDTH
+               );
+         --cur_line;
+      }
+   }
 
-    return 1;
+   return 1;
 }
 
 void rdp_update(void)
@@ -728,455 +728,455 @@ static void do_frame_buffer_raw(
     uint32_t prescale_ptr, int hres, int vres, int x_start, int vitype,
     int linecount)
 {
-    uint32_t * scanline;
-    int pixels;
-    int prevy;
-    int cur_x, line_x;
-    int i;
-    const int frame_buffer = *GET_GFX_INFO(VI_ORIGIN_REG) & 0x00FFFFFF;
-    const int VI_width     = *GET_GFX_INFO(VI_WIDTH_REG) & 0x00000FFF;
-    const int x_add        = *GET_GFX_INFO(VI_X_SCALE_REG) & 0x00000FFF;
-    const int y_add        = *GET_GFX_INFO(VI_Y_SCALE_REG) & 0x00000FFF;
-    int y_start            = *GET_GFX_INFO(VI_Y_SCALE_REG)>>16 & 0x0FFF;
+   uint32_t * scanline;
+   int pixels;
+   int prevy;
+   int cur_x, line_x;
+   int i;
+   const int frame_buffer = *GET_GFX_INFO(VI_ORIGIN_REG) & 0x00FFFFFF;
+   const int VI_width     = *GET_GFX_INFO(VI_WIDTH_REG) & 0x00000FFF;
+   const int x_add        = *GET_GFX_INFO(VI_X_SCALE_REG) & 0x00000FFF;
+   const int y_add        = *GET_GFX_INFO(VI_Y_SCALE_REG) & 0x00000FFF;
+   int y_start            = *GET_GFX_INFO(VI_Y_SCALE_REG)>>16 & 0x0FFF;
 
-    if (vitype & 1) /* 32-bit RGBA (branch unlikely) */
-    {
-        while (--vres >= 0)
-        {
-            x_start       = *GET_GFX_INFO(VI_X_SCALE_REG)>>16 & 0x0FFF;
-            scanline      = &blitter_buf_lock[prescale_ptr];
-            prescale_ptr += linecount;
+   if (vitype & 1) /* 32-bit RGBA (branch unlikely) */
+   {
+      while (--vres >= 0)
+      {
+         x_start       = *GET_GFX_INFO(VI_X_SCALE_REG)>>16 & 0x0FFF;
+         scanline      = &blitter_buf_lock[prescale_ptr];
+         prescale_ptr += linecount;
 
-            prevy         = y_start >> 10;
-            pixels        = VI_width * prevy;
+         prevy         = y_start >> 10;
+         pixels        = VI_width * prevy;
 
-            for (i = 0; i < hres; i++)
-            {
-                uint32_t pix;
-                uint32_t addr;
+         for (i = 0; i < hres; i++)
+         {
+            uint32_t pix;
+            uint32_t addr;
 #ifdef MSB_FIRST
-                uint8_t argb[4];
+            uint8_t argb[4];
 #endif
-                line_x   = x_start >> 10;
-                cur_x    = pixels + line_x;
+            line_x   = x_start >> 10;
+            cur_x    = pixels + line_x;
 
-                x_start += x_add;
-                addr     = frame_buffer + 4*cur_x;
+            x_start += x_add;
+            addr     = frame_buffer + 4*cur_x;
 
-                if (plim - addr < 0)
-                    continue;
+            if (plim - addr < 0)
+               continue;
 
-                pix      = *(int32_t *)(DRAM + addr);
+            pix      = *(int32_t *)(DRAM + addr);
 #ifdef MSB_FIRST
-                argb[1 ^ BYTE_ADDR_XOR] = (uint8_t)(pix >> 24);
-                argb[2 ^ BYTE_ADDR_XOR] = (uint8_t)(pix >> 16);
-                argb[3 ^ BYTE_ADDR_XOR] = (uint8_t)(pix >>  8);
-                argb[0 ^ BYTE_ADDR_XOR] = (uint8_t)(pix >>  0);
-                scanline[i] = *(int32_t *)(argb);
+            argb[1 ^ BYTE_ADDR_XOR] = (uint8_t)(pix >> 24);
+            argb[2 ^ BYTE_ADDR_XOR] = (uint8_t)(pix >> 16);
+            argb[3 ^ BYTE_ADDR_XOR] = (uint8_t)(pix >>  8);
+            argb[0 ^ BYTE_ADDR_XOR] = (uint8_t)(pix >>  0);
+            scanline[i] = *(int32_t *)(argb);
 #else
-				scanline[i] = (pix >> 8) | (pix << 24);
+            scanline[i] = (pix >> 8) | (pix << 24);
 #endif
-            }
-            y_start += y_add;
-        }
-    }
-    else /* 16-bit RRRRR GGGGG BBBBB A */
-    {
-        while (--vres >= 0)
-        {
-            x_start       = *GET_GFX_INFO(VI_X_SCALE_REG)>>16 & 0x0FFF;
-            scanline      = &blitter_buf_lock[prescale_ptr];
-            prescale_ptr += linecount;
+         }
+         y_start += y_add;
+      }
+   }
+   else /* 16-bit RRRRR GGGGG BBBBB A */
+   {
+      while (--vres >= 0)
+      {
+         x_start       = *GET_GFX_INFO(VI_X_SCALE_REG)>>16 & 0x0FFF;
+         scanline      = &blitter_buf_lock[prescale_ptr];
+         prescale_ptr += linecount;
 
-            prevy         = y_start >> 10;
-            pixels        = VI_width * prevy;
+         prevy         = y_start >> 10;
+         pixels        = VI_width * prevy;
 
-            for (i = 0; i < hres; i++)
-            {
-                uint16_t pix;
-                uint32_t addr;
+         for (i = 0; i < hres; i++)
+         {
+            uint16_t pix;
+            uint32_t addr;
 #ifdef MSB_FIRST
-                uint8_t argb[4];
+            uint8_t argb[4];
 #else
-                uint32_t argb;
+            uint32_t argb;
 #endif
-                line_x   = x_start >> 10;
-                cur_x    = pixels + line_x;
+            line_x   = x_start >> 10;
+            cur_x    = pixels + line_x;
 
-                x_start += x_add;
-                addr     = frame_buffer + 2*cur_x;
-                if (plim - addr < 0)
-                    continue;
-                addr = addr ^ (WORD_ADDR_XOR << 1);
-                pix = *(int16_t *)(DRAM + addr);
+            x_start += x_add;
+            addr     = frame_buffer + 2*cur_x;
+            if (plim - addr < 0)
+               continue;
+            addr = addr ^ (WORD_ADDR_XOR << 1);
+            pix = *(int16_t *)(DRAM + addr);
 
 #ifdef MSB_FIRST
-                argb[1 ^ BYTE_ADDR_XOR] = (uint8_t)(pix >> 8);
-                argb[2 ^ BYTE_ADDR_XOR] = (uint8_t)(pix >> 3) & ~7;
-                argb[3 ^ BYTE_ADDR_XOR] = (uint8_t)(pix & ~1) << 2;
-                scanline[i] = *(int32_t *)(argb);
+            argb[1 ^ BYTE_ADDR_XOR] = (uint8_t)(pix >> 8);
+            argb[2 ^ BYTE_ADDR_XOR] = (uint8_t)(pix >> 3) & ~7;
+            argb[3 ^ BYTE_ADDR_XOR] = (uint8_t)(pix & ~1) << 2;
+            scanline[i] = *(int32_t *)(argb);
 #else
-                argb = (pix << 8) & 0x00F80000;
-                argb |= (pix << 5) & 0x0000F800;
-                argb |= (pix & 0x3E) << 2;
-                argb += 0xFF000000;
-                scanline[i] = argb;
+            argb = (pix << 8) & 0x00F80000;
+            argb |= (pix << 5) & 0x0000F800;
+            argb |= (pix & 0x3E) << 2;
+            argb += 0xFF000000;
+            scanline[i] = argb;
 #endif
-            }
-            y_start += y_add;
-        }
-    }
+         }
+         y_start += y_add;
+      }
+   }
 }
 
 STRICTINLINE static void vi_fetch_filter16(
     CCVG* res, uint32_t fboffset, uint32_t cur_x, uint32_t fsaa, uint32_t dither_filter)
 {
-    int r, g, b;
-    uint32_t pix, hval;
-    uint32_t cur_cvg;
-    uint32_t idx = (fboffset >> 1) + cur_x;
-    uint32_t fbw = vi_width & 0xfff;
+   int r, g, b;
+   uint32_t pix, hval;
+   uint32_t cur_cvg;
+   uint32_t idx = (fboffset >> 1) + cur_x;
+   uint32_t fbw = vi_width & 0xfff;
 
-    if (fsaa)
-    {
-       PAIRREAD16(pix, hval, idx); 
-       cur_cvg = ((pix & 1) << 2) | hval;
-    }
-    else
-    {
-       RREADIDX16(pix, idx);
-       cur_cvg = 7;
-    }
-    r = GET_HI(pix);
-    g = GET_MED(pix);
-    b = GET_LOW(pix);
+   if (fsaa)
+   {
+      PAIRREAD16(pix, hval, idx); 
+      cur_cvg = ((pix & 1) << 2) | hval;
+   }
+   else
+   {
+      RREADIDX16(pix, idx);
+      cur_cvg = 7;
+   }
+   r = GET_HI(pix);
+   g = GET_MED(pix);
+   b = GET_LOW(pix);
 
-    if (cur_cvg == 7)
-    {
-       if (dither_filter)
-          restore_filter16(&r, &g, &b, fboffset, cur_x, fbw);
-    }
-    else
-    {
-       video_filter16(&r, &g, &b, fboffset, cur_x, fbw, cur_cvg);
-    }
+   if (cur_cvg == 7)
+   {
+      if (dither_filter)
+         restore_filter16(&r, &g, &b, fboffset, cur_x, fbw);
+   }
+   else
+   {
+      video_filter16(&r, &g, &b, fboffset, cur_x, fbw, cur_cvg);
+   }
 
-    res -> r = r;
-    res -> g = g;
-    res -> b = b;
-    res -> cvg = cur_cvg;
+   res -> r = r;
+   res -> g = g;
+   res -> b = b;
+   res -> cvg = cur_cvg;
 }
 
 STRICTINLINE static void vi_fetch_filter32(
     CCVG* res, uint32_t fboffset, uint32_t cur_x, uint32_t fsaa, uint32_t dither_filter)
 {
-    int r, g, b;
-    uint32_t cur_cvg;
-    uint32_t fbw = vi_width & 0xfff;
-    uint32_t pix, addr = (fboffset >> 2) + cur_x;
-    RREADIDX32(pix, addr);
+   int r, g, b;
+   uint32_t cur_cvg;
+   uint32_t fbw = vi_width & 0xfff;
+   uint32_t pix, addr = (fboffset >> 2) + cur_x;
+   RREADIDX32(pix, addr);
 
-    if (fsaa)
-        cur_cvg = (pix >> 5) & 7;
-    else
-        cur_cvg = 7;
+   if (fsaa)
+      cur_cvg = (pix >> 5) & 7;
+   else
+      cur_cvg = 7;
 
-    r = (pix >> 24) & 0xff;
-    g = (pix >> 16) & 0xff;
-    b = (pix >> 8) & 0xff;
+   r = (pix >> 24) & 0xff;
+   g = (pix >> 16) & 0xff;
+   b = (pix >> 8) & 0xff;
 
-    if (cur_cvg == 7)
-    {
-        if (dither_filter)
-            restore_filter32(&r, &g, &b, fboffset, cur_x, fbw);
-    }
-    else
-    {
-        video_filter32(&r, &g, &b, fboffset, cur_x, fbw, cur_cvg);
-    }
+   if (cur_cvg == 7)
+   {
+      if (dither_filter)
+         restore_filter32(&r, &g, &b, fboffset, cur_x, fbw);
+   }
+   else
+   {
+      video_filter32(&r, &g, &b, fboffset, cur_x, fbw, cur_cvg);
+   }
 
-    res -> r = r;
-    res -> g = g;
-    res -> b = b;
-    res -> cvg = cur_cvg;
+   res -> r = r;
+   res -> g = g;
+   res -> b = b;
+   res -> cvg = cur_cvg;
 }
 
 STRICTINLINE static void video_filter16(
     int* endr, int* endg, int* endb, uint32_t fboffset, uint32_t num, uint32_t hres,
     uint32_t centercvg)
 {
-    uint32_t penumaxr, penumaxg, penumaxb, penuminr, penuming, penuminb;
-    uint16_t pix;
-    uint32_t numoffull = 1;
-    uint32_t hidval;
-    uint32_t backr[7], backg[7], backb[7];
-    uint32_t colr, colg, colb;
+   uint32_t penumaxr, penumaxg, penumaxb, penuminr, penuming, penuminb;
+   uint16_t pix;
+   uint32_t numoffull = 1;
+   uint32_t hidval;
+   uint32_t backr[7], backg[7], backb[7];
+   uint32_t colr, colg, colb;
 
-    uint32_t idx = (fboffset >> 1) + num;
-    uint32_t leftup = idx - hres - 1;
-    uint32_t rightup = idx - hres + 1;
-    uint32_t toleft = idx - 2;
-    uint32_t toright = idx + 2;
-    uint32_t leftdown = idx + hres - 1;
-    uint32_t rightdown = idx + hres + 1;
-    uint32_t coeff = 7 - centercvg;
+   uint32_t idx = (fboffset >> 1) + num;
+   uint32_t leftup = idx - hres - 1;
+   uint32_t rightup = idx - hres + 1;
+   uint32_t toleft = idx - 2;
+   uint32_t toright = idx + 2;
+   uint32_t leftdown = idx + hres - 1;
+   uint32_t rightdown = idx + hres + 1;
+   uint32_t coeff = 7 - centercvg;
 
-    uint32_t r = *endr;
-    uint32_t g = *endg;
-    uint32_t b = *endb;
+   uint32_t r = *endr;
+   uint32_t g = *endg;
+   uint32_t b = *endb;
 
-    backr[0] = r;
-    backg[0] = g;
-    backb[0] = b;
+   backr[0] = r;
+   backg[0] = g;
+   backb[0] = b;
 
-    VI_ANDER(leftup);
-    VI_ANDER(rightup);
-    VI_ANDER(toleft);
-    VI_ANDER(toright);
-    VI_ANDER(leftdown);
-    VI_ANDER(rightdown);
+   VI_ANDER(leftup);
+   VI_ANDER(rightup);
+   VI_ANDER(toleft);
+   VI_ANDER(toright);
+   VI_ANDER(leftdown);
+   VI_ANDER(rightdown);
 
-    video_max_optimized(backr, &penuminr, &penumaxr, numoffull);
-	video_max_optimized(backg, &penuming, &penumaxg, numoffull);
-	video_max_optimized(backb, &penuminb, &penumaxb, numoffull);
+   video_max_optimized(backr, &penuminr, &penumaxr, numoffull);
+   video_max_optimized(backg, &penuming, &penumaxg, numoffull);
+   video_max_optimized(backb, &penuminb, &penumaxb, numoffull);
 
-    colr = penuminr + penumaxr - (r << 1);
-    colg = penuming + penumaxg - (g << 1);
-    colb = penuminb + penumaxb - (b << 1);
+   colr = penuminr + penumaxr - (r << 1);
+   colg = penuming + penumaxg - (g << 1);
+   colb = penuminb + penumaxb - (b << 1);
 
-    colr = (((colr * coeff) + 4) >> 3) + r;
-    colg = (((colg * coeff) + 4) >> 3) + g;
-    colb = (((colb * coeff) + 4) >> 3) + b;
+   colr = (((colr * coeff) + 4) >> 3) + r;
+   colg = (((colg * coeff) + 4) >> 3) + g;
+   colb = (((colb * coeff) + 4) >> 3) + b;
 
-    *endr = colr & 0xFF;
-    *endg = colg & 0xFF;
-    *endb = colb & 0xFF;
+   *endr = colr & 0xFF;
+   *endg = colg & 0xFF;
+   *endb = colb & 0xFF;
 }
 
 STRICTINLINE static void video_filter32(
     int* endr, int* endg, int* endb, uint32_t fboffset, uint32_t num, uint32_t hres,
     uint32_t centercvg)
 {
-    uint32_t penumaxr, penumaxg, penumaxb, penuminr, penuming, penuminb;
-    uint32_t numoffull = 1;
-    uint32_t pix = 0, pixcvg = 0;
-    uint32_t backr[7], backg[7], backb[7];
-    uint32_t colr, colg, colb;
+   uint32_t penumaxr, penumaxg, penumaxb, penuminr, penuming, penuminb;
+   uint32_t numoffull = 1;
+   uint32_t pix = 0, pixcvg = 0;
+   uint32_t backr[7], backg[7], backb[7];
+   uint32_t colr, colg, colb;
 
-    uint32_t idx = (fboffset >> 2) + num;
-    uint32_t leftup = idx - hres - 1;
-    uint32_t rightup = idx - hres + 1;
-    uint32_t toleft = idx - 2;
-    uint32_t toright = idx + 2;
-    uint32_t leftdown = idx + hres - 1;
-    uint32_t rightdown = idx + hres + 1;
-    uint32_t coeff = 7 - centercvg;
+   uint32_t idx = (fboffset >> 2) + num;
+   uint32_t leftup = idx - hres - 1;
+   uint32_t rightup = idx - hres + 1;
+   uint32_t toleft = idx - 2;
+   uint32_t toright = idx + 2;
+   uint32_t leftdown = idx + hres - 1;
+   uint32_t rightdown = idx + hres + 1;
+   uint32_t coeff = 7 - centercvg;
 
-    uint32_t r = *endr;
-    uint32_t g = *endg;
-    uint32_t b = *endb;
+   uint32_t r = *endr;
+   uint32_t g = *endg;
+   uint32_t b = *endb;
 
-    backr[0] = r;
-    backg[0] = g;
-    backb[0] = b;
+   backr[0] = r;
+   backg[0] = g;
+   backb[0] = b;
 
-    VI_ANDER32(leftup);
-    VI_ANDER32(rightup);
-    VI_ANDER32(toleft);
-    VI_ANDER32(toright);
-    VI_ANDER32(leftdown);
-    VI_ANDER32(rightdown);
+   VI_ANDER32(leftup);
+   VI_ANDER32(rightup);
+   VI_ANDER32(toleft);
+   VI_ANDER32(toright);
+   VI_ANDER32(leftdown);
+   VI_ANDER32(rightdown);
 
-    video_max_optimized(backr, &penuminr, &penumaxr, numoffull);
-    video_max_optimized(backg, &penuming, &penumaxg, numoffull);
-    video_max_optimized(backb, &penuminb, &penumaxb, numoffull);
+   video_max_optimized(backr, &penuminr, &penumaxr, numoffull);
+   video_max_optimized(backg, &penuming, &penumaxg, numoffull);
+   video_max_optimized(backb, &penuminb, &penumaxb, numoffull);
 
-    colr = penuminr + penumaxr - (r << 1);
-    colg = penuming + penumaxg - (g << 1);
-    colb = penuminb + penumaxb - (b << 1);
+   colr = penuminr + penumaxr - (r << 1);
+   colg = penuming + penumaxg - (g << 1);
+   colb = penuminb + penumaxb - (b << 1);
 
-    colr = (((colr * coeff) + 4) >> 3) + r;
-    colg = (((colg * coeff) + 4) >> 3) + g;
-    colb = (((colb * coeff) + 4) >> 3) + b;
+   colr = (((colr * coeff) + 4) >> 3) + r;
+   colg = (((colg * coeff) + 4) >> 3) + g;
+   colb = (((colb * coeff) + 4) >> 3) + b;
 
-    *endr = colr & 0xFF;
-    *endg = colg & 0xFF;
-    *endb = colb & 0xFF;
+   *endr = colr & 0xFF;
+   *endg = colg & 0xFF;
+   *endb = colb & 0xFF;
 }
 
 STRICTINLINE static void divot_filter(
     CCVG* final, CCVG centercolor, CCVG leftcolor, CCVG rightcolor)
 {
-    uint32_t leftr, leftg, leftb;
-    uint32_t rightr, rightg, rightb;
-    uint32_t centerr, centerg, centerb;
+   uint32_t leftr, leftg, leftb;
+   uint32_t rightr, rightg, rightb;
+   uint32_t centerr, centerg, centerb;
 
-    *final = centercolor;
-    if ((centercolor.cvg & leftcolor.cvg & rightcolor.cvg) == 7)
-        return;
+   *final = centercolor;
+   if ((centercolor.cvg & leftcolor.cvg & rightcolor.cvg) == 7)
+      return;
 
-    leftr = leftcolor.r;    
-    leftg = leftcolor.g;    
-    leftb = leftcolor.b;
-    rightr = rightcolor.r;    
-    rightg = rightcolor.g;    
-    rightb = rightcolor.b;
-    centerr = centercolor.r;
-    centerg = centercolor.g;
-    centerb = centercolor.b;
+   leftr = leftcolor.r;    
+   leftg = leftcolor.g;    
+   leftb = leftcolor.b;
+   rightr = rightcolor.r;    
+   rightg = rightcolor.g;    
+   rightb = rightcolor.b;
+   centerr = centercolor.r;
+   centerg = centercolor.g;
+   centerb = centercolor.b;
 
-    if ((leftr >= centerr && rightr >= leftr) || (leftr >= rightr && centerr >= leftr))
-        final -> r = leftr;
-    else if ((rightr >= centerr && leftr >= rightr) || (rightr >= leftr && centerr >= rightr))
-        final -> r = rightr;
+   if ((leftr >= centerr && rightr >= leftr) || (leftr >= rightr && centerr >= leftr))
+      final -> r = leftr;
+   else if ((rightr >= centerr && leftr >= rightr) || (rightr >= leftr && centerr >= rightr))
+      final -> r = rightr;
 
-    if ((leftg >= centerg && rightg >= leftg) || (leftg >= rightg && centerg >= leftg))
-        final -> g = leftg;
-    else if ((rightg >= centerg && leftg >= rightg) || (rightg >= leftg && centerg >= rightg))
-        final -> g = rightg;
+   if ((leftg >= centerg && rightg >= leftg) || (leftg >= rightg && centerg >= leftg))
+      final -> g = leftg;
+   else if ((rightg >= centerg && leftg >= rightg) || (rightg >= leftg && centerg >= rightg))
+      final -> g = rightg;
 
-    if ((leftb >= centerb && rightb >= leftb) || (leftb >= rightb && centerb >= leftb))
-        final -> b = leftb;
-    else if ((rightb >= centerb && leftb >= rightb) || (rightb >= leftb && centerb >= rightb))
-        final -> b = rightb;
+   if ((leftb >= centerb && rightb >= leftb) || (leftb >= rightb && centerb >= leftb))
+      final -> b = leftb;
+   else if ((rightb >= centerb && leftb >= rightb) || (rightb >= leftb && centerb >= rightb))
+      final -> b = rightb;
 }
 
 STRICTINLINE static void restore_filter16(
     int* r, int* g, int* b, uint32_t fboffset, uint32_t num, uint32_t hres)
 {
-    uint32_t tempr, tempg, tempb;
-    uint16_t pix;
-    uint32_t addr;
+   uint32_t tempr, tempg, tempb;
+   uint16_t pix;
+   uint32_t addr;
 
-    uint32_t idx = (fboffset >> 1) + num;
-    uint32_t leftuppix = idx - hres - 1;
-    uint32_t leftdownpix = idx + hres - 1;
-    uint32_t toleftpix = idx - 1;
-    uint32_t maxpix = idx + hres + 1;
+   uint32_t idx = (fboffset >> 1) + num;
+   uint32_t leftuppix = idx - hres - 1;
+   uint32_t leftdownpix = idx + hres - 1;
+   uint32_t toleftpix = idx - 1;
+   uint32_t maxpix = idx + hres + 1;
 
-    int32_t rend = *r;
-	int32_t gend = *g;
-	int32_t bend = *b;
-	const int32_t* redptr = &vi_restore_table[(rend << 2) & 0x3e0];
-	const int32_t* greenptr = &vi_restore_table[(gend << 2) & 0x3e0];
-	const int32_t* blueptr = &vi_restore_table[(bend << 2) & 0x3e0];
+   int32_t rend = *r;
+   int32_t gend = *g;
+   int32_t bend = *b;
+   const int32_t* redptr = &vi_restore_table[(rend << 2) & 0x3e0];
+   const int32_t* greenptr = &vi_restore_table[(gend << 2) & 0x3e0];
+   const int32_t* blueptr = &vi_restore_table[(bend << 2) & 0x3e0];
 
    if (maxpix <= IDXLIM16 && leftuppix <= IDXLIM16)
-	{
-		VI_COMPARE_OPT(leftuppix);
-		VI_COMPARE_OPT(leftuppix + 1);
-		VI_COMPARE_OPT(leftuppix + 2);
-		VI_COMPARE_OPT(leftdownpix);
-		VI_COMPARE_OPT(leftdownpix + 1);
-		VI_COMPARE_OPT(maxpix);
-		VI_COMPARE_OPT(toleftpix);
-		VI_COMPARE_OPT(toleftpix + 2);
-	}
-	else
-	{
-		VI_COMPARE(leftuppix);
-		VI_COMPARE(leftuppix + 1);
-		VI_COMPARE(leftuppix + 2);
-		VI_COMPARE(leftdownpix);
-		VI_COMPARE(leftdownpix + 1);
-		VI_COMPARE(maxpix);
-		VI_COMPARE(toleftpix);
-		VI_COMPARE(toleftpix + 2);
-	}
+   {
+      VI_COMPARE_OPT(leftuppix);
+      VI_COMPARE_OPT(leftuppix + 1);
+      VI_COMPARE_OPT(leftuppix + 2);
+      VI_COMPARE_OPT(leftdownpix);
+      VI_COMPARE_OPT(leftdownpix + 1);
+      VI_COMPARE_OPT(maxpix);
+      VI_COMPARE_OPT(toleftpix);
+      VI_COMPARE_OPT(toleftpix + 2);
+   }
+   else
+   {
+      VI_COMPARE(leftuppix);
+      VI_COMPARE(leftuppix + 1);
+      VI_COMPARE(leftuppix + 2);
+      VI_COMPARE(leftdownpix);
+      VI_COMPARE(leftdownpix + 1);
+      VI_COMPARE(maxpix);
+      VI_COMPARE(toleftpix);
+      VI_COMPARE(toleftpix + 2);
+   }
 
-    *r = rend;
-    *g = gend;
-    *b = bend;
+   *r = rend;
+   *g = gend;
+   *b = bend;
 }
 
 STRICTINLINE static void restore_filter32(
     int* r, int* g, int* b, uint32_t fboffset, uint32_t num, uint32_t hres)
 {
-    uint32_t tempr, tempg, tempb;
-    uint32_t pix, addr;
+   uint32_t tempr, tempg, tempb;
+   uint32_t pix, addr;
 
-    uint32_t idx = (fboffset >> 2) + num;
-    uint32_t leftuppix = idx - hres - 1;
-    uint32_t leftdownpix = idx + hres - 1;
-    uint32_t toleftpix = idx - 1;
-    uint32_t maxpix = idx + hres + 1;
+   uint32_t idx = (fboffset >> 2) + num;
+   uint32_t leftuppix = idx - hres - 1;
+   uint32_t leftdownpix = idx + hres - 1;
+   uint32_t toleftpix = idx - 1;
+   uint32_t maxpix = idx + hres + 1;
 
-    int32_t rend = *r;
-    int32_t gend = *g;
-    int32_t bend = *b;
-    const int32_t* redptr = &vi_restore_table[(rend << 2) & 0x3e0];
-    const int32_t* greenptr = &vi_restore_table[(gend << 2) & 0x3e0];
-    const int32_t* blueptr = &vi_restore_table[(bend << 2) & 0x3e0];
-
-
-    if (maxpix <= IDXLIM32 && leftuppix <= IDXLIM32)
-	{
-		VI_COMPARE32_OPT(leftuppix);
-		VI_COMPARE32_OPT(leftuppix + 1);
-		VI_COMPARE32_OPT(leftuppix + 2);
-		VI_COMPARE32_OPT(leftdownpix);
-		VI_COMPARE32_OPT(leftdownpix + 1);
-		VI_COMPARE32_OPT(maxpix);
-		VI_COMPARE32_OPT(toleftpix);
-		VI_COMPARE32_OPT(toleftpix + 2);
-	}
-	else
-	{
-		VI_COMPARE32(leftuppix);
-		VI_COMPARE32(leftuppix + 1);
-		VI_COMPARE32(leftuppix + 2);
-		VI_COMPARE32(leftdownpix);
-		VI_COMPARE32(leftdownpix + 1);
-		VI_COMPARE32(maxpix);
-		VI_COMPARE32(toleftpix);
-		VI_COMPARE32(toleftpix + 2);
-	}
+   int32_t rend = *r;
+   int32_t gend = *g;
+   int32_t bend = *b;
+   const int32_t* redptr = &vi_restore_table[(rend << 2) & 0x3e0];
+   const int32_t* greenptr = &vi_restore_table[(gend << 2) & 0x3e0];
+   const int32_t* blueptr = &vi_restore_table[(bend << 2) & 0x3e0];
 
 
-    *r = rend;
-    *g = gend;
-    *b = bend;
+   if (maxpix <= IDXLIM32 && leftuppix <= IDXLIM32)
+   {
+      VI_COMPARE32_OPT(leftuppix);
+      VI_COMPARE32_OPT(leftuppix + 1);
+      VI_COMPARE32_OPT(leftuppix + 2);
+      VI_COMPARE32_OPT(leftdownpix);
+      VI_COMPARE32_OPT(leftdownpix + 1);
+      VI_COMPARE32_OPT(maxpix);
+      VI_COMPARE32_OPT(toleftpix);
+      VI_COMPARE32_OPT(toleftpix + 2);
+   }
+   else
+   {
+      VI_COMPARE32(leftuppix);
+      VI_COMPARE32(leftuppix + 1);
+      VI_COMPARE32(leftuppix + 2);
+      VI_COMPARE32(leftdownpix);
+      VI_COMPARE32(leftdownpix + 1);
+      VI_COMPARE32(maxpix);
+      VI_COMPARE32(toleftpix);
+      VI_COMPARE32(toleftpix + 2);
+   }
+
+
+   *r = rend;
+   *g = gend;
+   *b = bend;
 }
 
 static void gamma_filters(uint8_t* argb, int gamma_and_dither)
 {
-    int cdith, dith;
-    int r = argb[1 ^ BYTE_ADDR_XOR];
-    int g = argb[2 ^ BYTE_ADDR_XOR];
-    int b = argb[3 ^ BYTE_ADDR_XOR];
+   int cdith, dith;
+   int r = argb[1 ^ BYTE_ADDR_XOR];
+   int g = argb[2 ^ BYTE_ADDR_XOR];
+   int b = argb[3 ^ BYTE_ADDR_XOR];
 
-    switch(gamma_and_dither)
-    {
-        case 1:
-            cdith = irand();
-            dith = cdith & 1;
-            if (r < 255)
-                r += dith;
-            dith = (cdith >> 1) & 1;
-            if (g < 255)
-                g += dith;
-            dith = (cdith >> 2) & 1;
-            if (b < 255)
-                b += dith;
-            break;
-        case 2:
-            r = gamma_table[r];
-            g = gamma_table[g];
-            b = gamma_table[b];
-            break;
-        case 3:
-            cdith = irand();
-            dith = cdith & 0x3f;
-            r = gamma_dither_table[(r << 6) | dith];
-            dith = (cdith >> 6) & 0x3f;
-            g = gamma_dither_table[(g << 6) | dith];
-            dith = ((cdith >> 9) & 0x38) | (cdith & 7);
-            b = gamma_dither_table[(b << 6) | dith];
-            break;
-    }
-    argb[1 ^ BYTE_ADDR_XOR] = (uint8_t)(r);
-    argb[2 ^ BYTE_ADDR_XOR] = (uint8_t)(g);
-    argb[3 ^ BYTE_ADDR_XOR] = (uint8_t)(b);
+   switch(gamma_and_dither)
+   {
+      case 1:
+         cdith = irand();
+         dith = cdith & 1;
+         if (r < 255)
+            r += dith;
+         dith = (cdith >> 1) & 1;
+         if (g < 255)
+            g += dith;
+         dith = (cdith >> 2) & 1;
+         if (b < 255)
+            b += dith;
+         break;
+      case 2:
+         r = gamma_table[r];
+         g = gamma_table[g];
+         b = gamma_table[b];
+         break;
+      case 3:
+         cdith = irand();
+         dith = cdith & 0x3f;
+         r = gamma_dither_table[(r << 6) | dith];
+         dith = (cdith >> 6) & 0x3f;
+         g = gamma_dither_table[(g << 6) | dith];
+         dith = ((cdith >> 9) & 0x38) | (cdith & 7);
+         b = gamma_dither_table[(b << 6) | dith];
+         break;
+   }
+   argb[1 ^ BYTE_ADDR_XOR] = (uint8_t)(r);
+   argb[2 ^ BYTE_ADDR_XOR] = (uint8_t)(g);
+   argb[3 ^ BYTE_ADDR_XOR] = (uint8_t)(b);
 }
 
 STRICTINLINE static void vi_vl_lerp(CCVG* up, CCVG down, uint32_t frac)
@@ -1192,44 +1192,44 @@ STRICTINLINE static void vi_vl_lerp(CCVG* up, CCVG down, uint32_t frac)
 
 STRICTINLINE void video_max_optimized(uint32_t* pixels, uint32_t* penumin, uint32_t* penumax, int numofels)
 {
-	int i;
-	uint32_t max, min;
-	int posmax = 0, posmin = 0;
-	uint32_t curpenmax = pixels[0], curpenmin = pixels[0];
+   int i;
+   uint32_t max, min;
+   int posmax = 0, posmin = 0;
+   uint32_t curpenmax = pixels[0], curpenmin = pixels[0];
 
-	for (i = 1; i < numofels; i++)
-	{
-	    if (pixels[i] > pixels[posmax])
-		{
-			curpenmax = pixels[posmax];
-			posmax = i;			
-		}
-		else if (pixels[i] < pixels[posmin])
-		{
-			curpenmin = pixels[posmin];
-			posmin = i;
-		}
-	}
-	max = pixels[posmax];
-	min = pixels[posmin];
-	if (curpenmax != max)
-	{
-		for (i = posmax + 1; i < numofels; i++)
-		{
-			if (pixels[i] > curpenmax)
-				curpenmax = pixels[i];
-		}
-	}
-	if (curpenmin != min)
-	{
-		for (i = posmin + 1; i < numofels; i++)
-		{
-			if (pixels[i] < curpenmin)
-				curpenmin = pixels[i];
-		}
-	}
-	*penumax = curpenmax;
-	*penumin = curpenmin;
+   for (i = 1; i < numofels; i++)
+   {
+      if (pixels[i] > pixels[posmax])
+      {
+         curpenmax = pixels[posmax];
+         posmax = i;			
+      }
+      else if (pixels[i] < pixels[posmin])
+      {
+         curpenmin = pixels[posmin];
+         posmin = i;
+      }
+   }
+   max = pixels[posmax];
+   min = pixels[posmin];
+   if (curpenmax != max)
+   {
+      for (i = posmax + 1; i < numofels; i++)
+      {
+         if (pixels[i] > curpenmax)
+            curpenmax = pixels[i];
+      }
+   }
+   if (curpenmin != min)
+   {
+      for (i = posmin + 1; i < numofels; i++)
+      {
+         if (pixels[i] < curpenmin)
+            curpenmin = pixels[i];
+      }
+   }
+   *penumax = curpenmax;
+   *penumin = curpenmin;
 }
 
 NOINLINE void DisplayError(char *error)
