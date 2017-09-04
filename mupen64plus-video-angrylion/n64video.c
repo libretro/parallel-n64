@@ -7114,9 +7114,9 @@ static void edgewalker_for_loads(int32_t* lewdata)
     int k           = 0;
     int xfrac       = 0;
 
-    int commandcode = (lewdata[0] >> 24) & 0x3f;
-    int ltlut       = (commandcode == CMD_ID_LOAD_TLUT);
-    int coord_quad  = ltlut || (commandcode == CMD_ID_LOAD_BLOCK);
+    int cmd_id      = CMD_ID(lewdata);
+    int ltlut       = (cmd_id == CMD_ID_LOAD_TLUT);
+    int coord_quad  = ltlut || (cmd_id == CMD_ID_LOAD_BLOCK);
 
     int tilenum     = (lewdata[0] >> 16) & 7;
 

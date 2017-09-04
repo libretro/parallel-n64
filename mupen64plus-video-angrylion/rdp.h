@@ -132,6 +132,10 @@ typedef int*        v32;
 #define CMD_ID_SET_MASK_IMAGE                  0x3e
 #define CMD_ID_SET_COLOR_IMAGE                 0x3f
 
+#define CMD_MAX_INTS 44
+#define CMD_MAX_SIZE (CMD_MAX_INTS * sizeof(int32_t))		  #define CMD_MAX_SIZE (CMD_MAX_INTS * sizeof(int32_t))
+#define CMD_ID(cmd) ((*(cmd) >> 24) & 0x3f)
+
 typedef union {
     int64_t W;
     int64_t SW;
