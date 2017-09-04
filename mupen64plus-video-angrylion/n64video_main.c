@@ -16,7 +16,6 @@ extern uint32_t screen_pitch;
 
 int res;
 RECT __dst, __src;
-int32_t pitchindwords;
 
 int ProcessDListShown = 0;
 
@@ -114,7 +113,6 @@ int angrylionRomOpen (void)
    if (screen_height > 480)
       screen_height = 480;
 
-   pitchindwords = PRESCALE_WIDTH / 1; /* sizeof(DWORD) == sizeof(pixel) == 4 */
    screen_pitch  = PRESCALE_WIDTH << 2;
 
    rdp_init();

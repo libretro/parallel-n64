@@ -33,7 +33,6 @@ typedef struct {   // Declare an unnamed structure and give it the
 
 extern RECT __src, __dst;
 extern int res;
-extern int32_t pitchindwords;
 
 extern uint8_t* rdram_8;
 extern uint16_t* rdram_16;
@@ -50,7 +49,6 @@ extern onetime onetimewarnings;
 extern uint32_t gamma_table[0x100];
 extern uint32_t gamma_dither_table[0x4000];
 extern int32_t vi_restore_table[0x400];
-extern int32_t oldvstart;
 
 extern NOINLINE void DisplayError(char * error);
 
