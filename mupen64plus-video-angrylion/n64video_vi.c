@@ -103,6 +103,7 @@ static uint32_t prevwasblank = 0;
 
 static int pitchindwords = PRESCALE_WIDTH / 1;
 static int ispal;
+static int lineshifter;
 static uint32_t x_add;
 static uint32_t y_add;
 static uint32_t y_start;
@@ -236,7 +237,7 @@ int vi_begin(void)
     int hres, vres;
     int x_start;
     int h_end;
-    int two_lines, line_shifter, line_count;
+    int two_lines, line_count;
     int hrightblank;
     int vactivelines;
     int validh;
@@ -285,7 +286,7 @@ int vi_begin(void)
        internal_vi_v_current_line ^= 1;
 
     line_count   = pitchindwords << serration_pulses;
-    line_shifter = serration_pulses ^ 1;
+    lineshifter  = serration_pulses ^ 1;
 
     hres = delta_x;
     vres = delta_y;
@@ -319,7 +320,7 @@ int vi_begin(void)
     }
     if (vactivelines < 0)
         return 0;
-    vactivelines >>= line_shifter;
+    vactivelines >>= lineshifter;
 
     validh = (hres >= 0 && h_start >= 0 && h_start < PRESCALE_WIDTH);
     pix = 0;
@@ -392,13 +393,12 @@ int vi_begin(void)
         prescale_ptr, hres, vres, x_start, vitype, line_count);
 no_frame_buffer:
 
-    __src.bottom = (ispal ? 576 : 480) >> line_shifter; /* visible lines */
+    __src.bottom = (ispal ? 576 : 480) >> lineshifter; /* visible lines */
 
-    if (line_shifter != 0) /* 240p non-interlaced VI DAC mode */
+    if (lineshifter != 0) /* 240p non-interlaced VI DAC mode */
     {
-        signed int cur_line;
+        int32_t cur_line = 240 - 1;
 
-        cur_line = 240 - 1;
         while (cur_line >= 0)
         {
             memcpy(
