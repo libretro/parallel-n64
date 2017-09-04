@@ -155,7 +155,7 @@ STRICTINLINE static void restore_filter16(
     int* r, int* g, int* b, uint32_t fboffset, uint32_t num, uint32_t hres);
 STRICTINLINE static void restore_filter32(
     int* r, int* g, int* b, uint32_t fboffset, uint32_t num, uint32_t hres);
-static void gamma_filters(unsigned char* argb, int gamma_and_dither);
+static void gamma_filters(uint8_t* argb, int gamma_and_dither);
 STRICTINLINE static void vi_vl_lerp(CCVG* up, CCVG down, uint32_t frac);
 STRICTINLINE static void video_max_optimized(uint32_t* Pixels, uint32_t* penumin, uint32_t* penumax, int numofels);
 
@@ -518,7 +518,7 @@ static void do_frame_buffer_proper(
 
       for (i = 0; i < hres; i++)
       {
-         unsigned char argb[4];
+         uint8_t argb[4];
 
          line_x = x_start >> 10;
          prev_line_x = line_x - 1;
@@ -697,7 +697,7 @@ static void do_frame_buffer_proper(
 #endif
 #ifdef ZBUFF_AS_16B_IATEXTURE
          argb[1 ^ 3] = argb[2 ^ 3] = argb[3 ^ 3] =
-            (unsigned char)(pix >> 8)*(unsigned char)(pix >> 0) >> 8;
+            (uint8_t)(pix >> 8)*(uint8_t)(pix >> 0) >> 8;
 #endif
 #ifdef RENDER_CVG_BITS16
          argb[1 ^ 3] = argb[2 ^ 3] = argb[3 ^ 3] = cur_cvg << 5;
@@ -755,7 +755,7 @@ static void do_frame_buffer_raw(
                 uint32_t pix;
                 uint32_t addr;
 #ifdef MSB_FIRST
-                unsigned char argb[4];
+                uint8_t argb[4];
 #endif
                 line_x   = x_start >> 10;
                 cur_x    = pixels + line_x;
@@ -768,10 +768,10 @@ static void do_frame_buffer_raw(
 
                 pix      = *(int32_t *)(DRAM + addr);
 #ifdef MSB_FIRST
-                argb[1 ^ BYTE_ADDR_XOR] = (unsigned char)(pix >> 24);
-                argb[2 ^ BYTE_ADDR_XOR] = (unsigned char)(pix >> 16);
-                argb[3 ^ BYTE_ADDR_XOR] = (unsigned char)(pix >>  8);
-                argb[0 ^ BYTE_ADDR_XOR] = (unsigned char)(pix >>  0);
+                argb[1 ^ BYTE_ADDR_XOR] = (uint8_t)(pix >> 24);
+                argb[2 ^ BYTE_ADDR_XOR] = (uint8_t)(pix >> 16);
+                argb[3 ^ BYTE_ADDR_XOR] = (uint8_t)(pix >>  8);
+                argb[0 ^ BYTE_ADDR_XOR] = (uint8_t)(pix >>  0);
                 scanline[i] = *(int32_t *)(argb);
 #else
 				scanline[i] = (pix >> 8) | (pix << 24);
@@ -796,7 +796,7 @@ static void do_frame_buffer_raw(
                 uint16_t pix;
                 uint32_t addr;
 #ifdef MSB_FIRST
-                unsigned char argb[4];
+                uint8_t argb[4];
 #else
                 uint32_t argb;
 #endif
@@ -811,9 +811,9 @@ static void do_frame_buffer_raw(
                 pix = *(int16_t *)(DRAM + addr);
 
 #ifdef MSB_FIRST
-                argb[1 ^ BYTE_ADDR_XOR] = (unsigned char)(pix >> 8);
-                argb[2 ^ BYTE_ADDR_XOR] = (unsigned char)(pix >> 3) & ~7;
-                argb[3 ^ BYTE_ADDR_XOR] = (unsigned char)(pix & ~1) << 2;
+                argb[1 ^ BYTE_ADDR_XOR] = (uint8_t)(pix >> 8);
+                argb[2 ^ BYTE_ADDR_XOR] = (uint8_t)(pix >> 3) & ~7;
+                argb[3 ^ BYTE_ADDR_XOR] = (uint8_t)(pix & ~1) << 2;
                 scanline[i] = *(int32_t *)(argb);
 #else
                 argb = (pix << 8) & 0x00F80000;
@@ -909,7 +909,6 @@ STRICTINLINE static void video_filter16(
     uint16_t pix;
     uint32_t numoffull = 1;
     uint32_t hidval;
-    uint32_t r, g, b; 
     uint32_t backr[7], backg[7], backb[7];
     uint32_t colr, colg, colb;
 
@@ -922,9 +921,9 @@ STRICTINLINE static void video_filter16(
     uint32_t rightdown = idx + hres + 1;
     uint32_t coeff = 7 - centercvg;
 
-    r = *endr;
-    g = *endg;
-    b = *endb;
+    uint32_t r = *endr;
+    uint32_t g = *endg;
+    uint32_t b = *endb;
 
     backr[0] = r;
     backg[0] = g;
@@ -1139,7 +1138,7 @@ STRICTINLINE static void restore_filter32(
     *b = bend;
 }
 
-static void gamma_filters(unsigned char* argb, int gamma_and_dither)
+static void gamma_filters(uint8_t* argb, int gamma_and_dither)
 {
     int cdith, dith;
     int r = argb[1 ^ BYTE_ADDR_XOR];
@@ -1175,9 +1174,9 @@ static void gamma_filters(unsigned char* argb, int gamma_and_dither)
             b = gamma_dither_table[(b << 6) | dith];
             break;
     }
-    argb[1 ^ BYTE_ADDR_XOR] = (unsigned char)(r);
-    argb[2 ^ BYTE_ADDR_XOR] = (unsigned char)(g);
-    argb[3 ^ BYTE_ADDR_XOR] = (unsigned char)(b);
+    argb[1 ^ BYTE_ADDR_XOR] = (uint8_t)(r);
+    argb[2 ^ BYTE_ADDR_XOR] = (uint8_t)(g);
+    argb[3 ^ BYTE_ADDR_XOR] = (uint8_t)(b);
 }
 
 STRICTINLINE static void vi_vl_lerp(CCVG* up, CCVG down, uint32_t frac)
