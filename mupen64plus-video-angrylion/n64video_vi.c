@@ -245,6 +245,7 @@ int vi_begin(void)
     int validinterlace;
     int lowerfield;
     int i, j;
+    const int frame_buffer = *GET_GFX_INFO(VI_ORIGIN_REG) & 0x00FFFFFF;
     const int v_sync = *GET_GFX_INFO(VI_V_SYNC_REG) & 0x000003FF;
     const int x1 = (*GET_GFX_INFO(VI_H_START_REG) >> 16) & 0x03FF;
     const int y1 = (*GET_GFX_INFO(VI_V_START_REG) >> 16) & 0x03FF;
@@ -335,64 +336,59 @@ int vi_begin(void)
         for (i = 0; i < PRESCALE_HEIGHT; i++)
             memset(&blitter_buf_lock[i * pitchindwords], 0, pixel_size*PRESCALE_WIDTH);
         prevwasblank = 1;
-        goto no_frame_buffer;
     }
-#undef RENDER_CVG_BITS16
-#undef RENDER_CVG_BITS32
-#undef RENDER_MIN_CVG_ONLY
-#undef RENDER_MAX_CVG_ONLY
-
-#undef MONITOR_Z
-#undef BW_ZBUFFER
-#undef ZBUFF_AS_16B_IATEXTURE
-
+    else
+    {
 #ifdef MONITOR_Z
-    frame_buffer = zb_address;
+       frame_buffer = zb_address;
 #endif
 
-    prevwasblank = 0;
-    if (h_start > 0 && h_start < PRESCALE_WIDTH)
-        for (i = 0; i < vactivelines; i++)
-            memset(&blitter_buf_lock[i*pitchindwords], 0, pixel_size*h_start);
+       prevwasblank = 0;
+       if (h_start > 0 && h_start < PRESCALE_WIDTH)
+          for (i = 0; i < vactivelines; i++)
+             memset(&blitter_buf_lock[i*pitchindwords], 0, pixel_size*h_start);
 
-    if (h_end >= 0 && h_end < PRESCALE_WIDTH)
-        for (i = 0; i < vactivelines; i++)
-            memset(&blitter_buf_lock[i*pitchindwords + h_end], 0, pixel_size*hrightblank);
+       if (h_end >= 0 && h_end < PRESCALE_WIDTH)
+          for (i = 0; i < vactivelines; i++)
+             memset(&blitter_buf_lock[i*pitchindwords + h_end], 0, pixel_size*hrightblank);
 
-    for (i = 0; i < (v_start << two_lines) + lowerfield; i++)
-    {
-        tvfadeoutstate[i] >>= 1;
-        if (~tvfadeoutstate[i] & validh)
-            memset(&blitter_buf_lock[i*pitchindwords + h_start], 0, pixel_size*hres);
-    }
+       for (i = 0; i < (v_start << two_lines) + lowerfield; i++)
+       {
+          tvfadeoutstate[i] >>= 1;
+          if (~tvfadeoutstate[i] & validh)
+             memset(&blitter_buf_lock[i*pitchindwords + h_start], 0, pixel_size*hres);
+       }
 
-    if (serration_pulses == 0)
-        for (j = 0; j < vres; j++)
-            tvfadeoutstate[i++] = 2;
-    else
-        for (j = 0; j < vres; j++)
-        {
-            tvfadeoutstate[i] = 2;
-            ++i;
-            tvfadeoutstate[i] >>= 1;
-            if (~tvfadeoutstate[i] & validh)
+       if (serration_pulses == 0)
+          for (j = 0; j < vres; j++)
+             tvfadeoutstate[i++] = 2;
+       else
+          for (j = 0; j < vres; j++)
+          {
+             tvfadeoutstate[i] = 2;
+             ++i;
+             tvfadeoutstate[i] >>= 1;
+             if (~tvfadeoutstate[i] & validh)
                 memset(&blitter_buf_lock[i*pitchindwords + h_start], 0, pixel_size*hres);
-            ++i;
-        }
+             ++i;
+          }
 
-    while (i < vactivelines)
-    {
-        tvfadeoutstate[i] >>= 1;
-        if (~tvfadeoutstate[i] & validh)
-            memset(&blitter_buf_lock[i*pitchindwords + h_start], 0, pixel_size*hres);
-        ++i;
+       while (i < vactivelines)
+       {
+          tvfadeoutstate[i] >>= 1;
+          if (~tvfadeoutstate[i] & validh)
+             memset(&blitter_buf_lock[i*pitchindwords + h_start], 0, pixel_size*hres);
+          ++i;
+       }
+
+       if (frame_buffer != 0)
+       {
+          prescale_ptr =
+             (v_start * linecount) + h_start + (lowerfield ? pitchindwords : 0);
+          do_frame_buffer[overlay](
+                prescale_ptr, hres, vres, x_start, vitype, linecount);
+       }
     }
-
-    prescale_ptr =
-        (v_start * linecount) + h_start + (lowerfield ? pitchindwords : 0);
-    do_frame_buffer[overlay](
-        prescale_ptr, hres, vres, x_start, vitype, linecount);
-no_frame_buffer:
 
     __src.bottom = (ispal ? 576 : 480) >> lineshifter; /* visible lines */
 
@@ -450,9 +446,9 @@ static void do_frame_buffer_proper(
    int prev_x = 0, cur_x = 0, next_x = 0, far_x = 0;
    int cache_marker = 0, cache_next_marker = 0, divot_cache_marker = 0, divot_cache_next_marker = 0;
    int xfrac = 0, yfrac = 0;
-   int lerping = 0;
-   int vi_width_low = vi_width & 0xFFF;
-   const int x_add = *GET_GFX_INFO(VI_X_SCALE_REG) & 0x00000FFF;
+   int lerping                = 0;
+   int vi_width_low           = vi_width & 0xFFF;
+   const int x_add            = *GET_GFX_INFO(VI_X_SCALE_REG) & 0x00000FFF;
    y_start                    = (vi_y_scale >> 16) & 0x0FFF;
    y_add                      = vi_y_scale & 0xfff;
    gamma_dither               = !!(*GET_GFX_INFO(VI_STATUS_REG) & 0x00000004);
@@ -468,18 +464,15 @@ static void do_frame_buffer_proper(
 
    gamma_and_dither           = (gamma << 1) | gamma_dither;
 
-   if (frame_buffer == 0)
-      return;
+   viaa_cache                 = &viaa_array[0];
+   viaa_cache_next            = &viaa_array[1024];
+   divot_cache                = &divot_array[0];
+   divot_cache_next           = &divot_array[1024];
 
-   viaa_cache         = &viaa_array[0];
-   viaa_cache_next    = &viaa_array[1024];
-   divot_cache        = &divot_array[0];
-   divot_cache_next   = &divot_array[1024];
+   cache_marker_init          = (x_start >> 10) - 2;
+   cache_marker_init         |= -(cache_marker_init < 0);
 
-   cache_marker_init  = (x_start >> 10) - 2;
-   cache_marker_init |= -(cache_marker_init < 0);
-
-   pixels = 0;
+   pixels                     = 0;
 
    for (j = 0; j < vres; j++)
    {
@@ -737,45 +730,43 @@ static void do_frame_buffer_raw(
 {
     uint32_t * scanline;
     int pixels;
-    int prevy, y_start;
+    int prevy;
     int cur_x, line_x;
     int i;
     const int frame_buffer = *GET_GFX_INFO(VI_ORIGIN_REG) & 0x00FFFFFF;
-    const int VI_width = *GET_GFX_INFO(VI_WIDTH_REG) & 0x00000FFF;
-    const int x_add = *GET_GFX_INFO(VI_X_SCALE_REG) & 0x00000FFF;
-    const int y_add = *GET_GFX_INFO(VI_Y_SCALE_REG) & 0x00000FFF;
-
-    if (frame_buffer == 0)
-        return;
-    y_start = *GET_GFX_INFO(VI_Y_SCALE_REG)>>16 & 0x0FFF;
+    const int VI_width     = *GET_GFX_INFO(VI_WIDTH_REG) & 0x00000FFF;
+    const int x_add        = *GET_GFX_INFO(VI_X_SCALE_REG) & 0x00000FFF;
+    const int y_add        = *GET_GFX_INFO(VI_Y_SCALE_REG) & 0x00000FFF;
+    int y_start            = *GET_GFX_INFO(VI_Y_SCALE_REG)>>16 & 0x0FFF;
 
     if (vitype & 1) /* 32-bit RGBA (branch unlikely) */
     {
         while (--vres >= 0)
         {
-            x_start = *GET_GFX_INFO(VI_X_SCALE_REG)>>16 & 0x0FFF;
-            scanline = &blitter_buf_lock[prescale_ptr];
+            x_start       = *GET_GFX_INFO(VI_X_SCALE_REG)>>16 & 0x0FFF;
+            scanline      = &blitter_buf_lock[prescale_ptr];
             prescale_ptr += linecount;
 
-            prevy = y_start >> 10;
-            pixels = VI_width * prevy;
+            prevy         = y_start >> 10;
+            pixels        = VI_width * prevy;
 
             for (i = 0; i < hres; i++)
             {
-                unsigned long pix;
-                unsigned long addr;
+                uint32_t pix;
+                uint32_t addr;
 #ifdef MSB_FIRST
                 unsigned char argb[4];
 #endif
-
-                line_x = x_start >> 10;
-                cur_x = pixels + line_x;
+                line_x   = x_start >> 10;
+                cur_x    = pixels + line_x;
 
                 x_start += x_add;
-                addr = frame_buffer + 4*cur_x;
+                addr     = frame_buffer + 4*cur_x;
+
                 if (plim - addr < 0)
                     continue;
-                pix = *(int32_t *)(DRAM + addr);
+
+                pix      = *(int32_t *)(DRAM + addr);
 #ifdef MSB_FIRST
                 argb[1 ^ BYTE_ADDR_XOR] = (unsigned char)(pix >> 24);
                 argb[2 ^ BYTE_ADDR_XOR] = (unsigned char)(pix >> 16);
@@ -793,28 +784,27 @@ static void do_frame_buffer_raw(
     {
         while (--vres >= 0)
         {
-            x_start = *GET_GFX_INFO(VI_X_SCALE_REG)>>16 & 0x0FFF;
-            scanline = &blitter_buf_lock[prescale_ptr];
+            x_start       = *GET_GFX_INFO(VI_X_SCALE_REG)>>16 & 0x0FFF;
+            scanline      = &blitter_buf_lock[prescale_ptr];
             prescale_ptr += linecount;
 
-            prevy = y_start >> 10;
-            pixels = VI_width * prevy;
+            prevy         = y_start >> 10;
+            pixels        = VI_width * prevy;
 
             for (i = 0; i < hres; i++)
             {
-                unsigned short pix;
-                unsigned long addr;
+                uint16_t pix;
+                uint32_t addr;
 #ifdef MSB_FIRST
                 unsigned char argb[4];
 #else
                 uint32_t argb;
 #endif
-
-                line_x = x_start >> 10;
-                cur_x = pixels + line_x;
+                line_x   = x_start >> 10;
+                cur_x    = pixels + line_x;
 
                 x_start += x_add;
-                addr = frame_buffer + 2*cur_x;
+                addr     = frame_buffer + 2*cur_x;
                 if (plim - addr < 0)
                     continue;
                 addr = addr ^ (WORD_ADDR_XOR << 1);
@@ -863,12 +853,12 @@ STRICTINLINE static void vi_fetch_filter16(
 
     if (cur_cvg == 7)
     {
-        if (dither_filter)
-            restore_filter16(&r, &g, &b, fboffset, cur_x, fbw);
+       if (dither_filter)
+          restore_filter16(&r, &g, &b, fboffset, cur_x, fbw);
     }
     else
     {
-        video_filter16(&r, &g, &b, fboffset, cur_x, fbw, cur_cvg);
+       video_filter16(&r, &g, &b, fboffset, cur_x, fbw, cur_cvg);
     }
 
     res -> r = r;
