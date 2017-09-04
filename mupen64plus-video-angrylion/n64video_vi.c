@@ -5,6 +5,14 @@
 #include "vi.h"
 #include "api/libretro.h"
 
+enum vi_type
+{
+   VI_TYPE_BLANK = 0,
+   VI_TYPE_RESERVED,
+   VI_TYPE_RGBA5551,
+   VI_TYPE_RGBA8888
+};
+
 typedef struct
 {
    uint8_t r, g, b, cvg;
@@ -110,7 +118,7 @@ static int gamma;
 static int gamma_dither;
 static int lerp_en;
 static int extralines;
-static int vitype;
+static enum vi_type vitype;
 static int serration_pulses;
 static int gamma_and_dither;
 static int32_t v_start;
@@ -673,23 +681,20 @@ static void do_frame_buffer_proper(
                scancolor = divot_cache_next[line_x];
                scannextcolor = divot_cache_next[next_line_x];
             }
-            if (yfrac == 0)
-            {}
-            else
+            if (yfrac != 0)
             {
                vi_vl_lerp(&color, scancolor, yfrac);
                vi_vl_lerp(&nextcolor, scannextcolor, yfrac);
             }
-            if (xfrac == 0)
-            {}
-            else
+            if (xfrac != 0)
                vi_vl_lerp(&color, nextcolor, xfrac);
          }
          argb[1 ^ BYTE_ADDR_XOR] = color.r;
          argb[2 ^ BYTE_ADDR_XOR] = color.g;
          argb[3 ^ BYTE_ADDR_XOR] = color.b;
 
-         gamma_filters(argb, gamma_and_dither);
+         if (gamma_and_dither != 0)
+            gamma_filters(argb, gamma_and_dither);
 #ifdef BW_ZBUFFER
          uint32_t tempz = RREADIDX16((frame_buffer >> 1) + cur_x);
 
@@ -965,7 +970,6 @@ STRICTINLINE static void video_filter32(
     uint32_t penumaxr, penumaxg, penumaxb, penuminr, penuming, penuminb;
     uint32_t numoffull = 1;
     uint32_t pix = 0, pixcvg = 0;
-    uint32_t r, g, b; 
     uint32_t backr[7], backg[7], backb[7];
     uint32_t colr, colg, colb;
 
@@ -978,9 +982,9 @@ STRICTINLINE static void video_filter32(
     uint32_t rightdown = idx + hres + 1;
     uint32_t coeff = 7 - centercvg;
 
-    r = *endr;
-    g = *endg;
-    b = *endb;
+    uint32_t r = *endr;
+    uint32_t g = *endg;
+    uint32_t b = *endb;
 
     backr[0] = r;
     backg[0] = g;
@@ -1147,14 +1151,9 @@ STRICTINLINE static void restore_filter32(
 static void gamma_filters(unsigned char* argb, int gamma_and_dither)
 {
     int cdith, dith;
-    int r, g, b;
-
-    if (gamma_and_dither == 0)
-       return;
-
-    r = argb[1 ^ BYTE_ADDR_XOR];
-    g = argb[2 ^ BYTE_ADDR_XOR];
-    b = argb[3 ^ BYTE_ADDR_XOR];
+    int r = argb[1 ^ BYTE_ADDR_XOR];
+    int g = argb[2 ^ BYTE_ADDR_XOR];
+    int b = argb[3 ^ BYTE_ADDR_XOR];
 
     switch(gamma_and_dither)
     {
@@ -1192,18 +1191,13 @@ static void gamma_filters(unsigned char* argb, int gamma_and_dither)
 
 STRICTINLINE static void vi_vl_lerp(CCVG* up, CCVG down, uint32_t frac)
 {
-    uint32_t r0, g0, b0;
+   uint32_t r0 = up -> r;
+   uint32_t g0 = up -> g;
+   uint32_t b0 = up -> b;
 
-    if (frac == 0)
-        return;
-
-    r0 = up -> r;
-    g0 = up -> g;
-    b0 = up -> b;
-
-    up -> r = (((frac*(down.r - r0) + 16) >> 5) + r0) & 0xFF;
-    up -> g = (((frac*(down.g - g0) + 16) >> 5) + g0) & 0xFF;
-    up -> b = (((frac*(down.b - b0) + 16) >> 5) + b0) & 0xFF;
+   up -> r = (((frac*(down.r - r0) + 16) >> 5) + r0) & 0xFF;
+   up -> g = (((frac*(down.g - g0) + 16) >> 5) + g0) & 0xFF;
+   up -> b = (((frac*(down.b - b0) + 16) >> 5) + b0) & 0xFF;
 }
 
 STRICTINLINE void video_max_optimized(uint32_t* pixels, uint32_t* penumin, uint32_t* penumax, int numofels)
