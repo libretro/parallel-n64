@@ -139,6 +139,10 @@ SOURCES_C += \
 #	$(CORE_DIR)/src/api/debugger.c \
 #	$(CORE_DIR)/src/main/ini_reader.c \
 
+ifeq ($(PLATFORM_EXT), win32)
+DYNAFLAGS += -DWIN32
+endif
+
 ### DYNAREC ###
 ifdef WITH_DYNAREC
 
@@ -147,7 +151,7 @@ ifdef WITH_DYNAREC
 	endif
 
 	ifeq ($(WITH_DYNAREC), x86)
-		DYNAFLAGS += -D_M_IX86 -DWIN32
+		DYNAFLAGS += -D_M_IX86
 		CFLAGS += -DARCH_MIN_SSE2 
 		CXXFLAGS += -DARCH_MIN_SSE2
 	endif
