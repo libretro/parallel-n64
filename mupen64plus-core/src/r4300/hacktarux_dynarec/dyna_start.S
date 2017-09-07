@@ -18,20 +18,25 @@
 ;Free Software Foundation, Inc.,
 ;51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 
-global dyna_start
+option epilogue:none
+option prologue:none
 
-extern save_rsp
-extern save_rip
-extern reg
-extern return_address
+PUBLIC dyna_start
 
-section .bss
-align 4
+extern save_rsp: qword
+extern save_rip: qword
+extern reg: qword 
+extern return_address: qword 
 
-section .rodata
-section .text
+BSS SEGMENT
+ALIGN 4
+BSS ENDS
 
-dyna_start:
+RODATA SEGMENT
+RODATA ENDS
+
+CODE SEGMENT
+dyna_start PROC
     push rbx                 ;we must push an even # of registers to keep stack 16-byte aligned
     push r12
     push r13
@@ -45,8 +50,8 @@ dyna_start:
 _A1:
     pop  rax
     mov  [rel save_rip], rax
-    sub rsp, 0x20
-    and rsp, 0xFFFFFFFFFFFFFFF0          ;ensure that stack is 16-byte aligned
+    sub rsp, 0x20h
+    and rsp, 0xFFFFFFFFFFFFFFF0h          ;ensure that stack is 16-byte aligned
     mov rax, rsp
     sub rax, 8
     mov [rel return_address], rax
@@ -60,4 +65,8 @@ _A2:
     pop  r12
     pop  rbx
     ret
+dyna_start ENDP
+CODE ENDS
+
+
 
