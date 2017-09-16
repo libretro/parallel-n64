@@ -604,7 +604,7 @@ void reinit_gfx_plugin(void)
        case GFX_PARALLEL:
 #ifdef HAVE_PARALLEL
           if (!environ_cb(RETRO_ENVIRONMENT_GET_HW_RENDER_INTERFACE, &vulkan) || !vulkan)
-             log_cb(RETRO_LOG_ERROR, "Failed to obtain Vulkan interface.");
+             log_cb(RETRO_LOG_ERROR, "Failed to obtain Vulkan interface.\n");
           else
              parallel_init(vulkan);
 #endif
@@ -660,7 +660,7 @@ load_fail:
     while(1)
     {
        if (log_cb)
-          log_cb(RETRO_LOG_ERROR, "Running Dead N64 Emulator");
+          log_cb(RETRO_LOG_ERROR, "Running Dead N64 Emulator\n");
 #ifndef EMSCRIPTEN
        co_switch(main_thread);
 #endif
@@ -791,7 +791,7 @@ static bool retro_init_vulkan(void)
 
    if (!environ_cb(RETRO_ENVIRONMENT_SET_HW_RENDER, &hw_render))
    {
-      log_cb(RETRO_LOG_ERROR, "mupen64plus: libretro frontend doesn't have Vulkan support.");
+      log_cb(RETRO_LOG_ERROR, "mupen64plus: libretro frontend doesn't have Vulkan support.\n");
       return false;
    }
 
@@ -801,7 +801,7 @@ static bool retro_init_vulkan(void)
    hw_context_negotiation.create_device = parallel_create_device;
    hw_context_negotiation.destroy_device = NULL;
    if (!environ_cb(RETRO_ENVIRONMENT_SET_HW_RENDER_CONTEXT_NEGOTIATION_INTERFACE, &hw_context_negotiation))
-      log_cb(RETRO_LOG_ERROR, "mupen64plus: libretro frontend doesn't have context negotiation support.");
+      log_cb(RETRO_LOG_ERROR, "mupen64plus: libretro frontend doesn't have context negotiation support.\n");
 
    return true;
 #else
@@ -831,7 +831,7 @@ static bool retro_init_gl(void)
    if (!glsm_ctl(GLSM_CTL_STATE_CONTEXT_INIT, &params))
    {
       if (log_cb)
-         log_cb(RETRO_LOG_ERROR, "mupen64plus: libretro frontend doesn't have OpenGL support.");
+         log_cb(RETRO_LOG_ERROR, "mupen64plus: libretro frontend doesn't have OpenGL support.\n");
       return false;
    }
 
