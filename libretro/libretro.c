@@ -791,7 +791,7 @@ static bool retro_init_vulkan(void)
 
    if (!environ_cb(RETRO_ENVIRONMENT_SET_HW_RENDER, &hw_render))
    {
-      log_cb(RETRO_LOG_ERROR, "mupen64plus: libretro frontend doesn't have Vulkan support.");
+      log_cb(RETRO_LOG_ERROR, "mupen64plus: libretro frontend doesn't have Vulkan support.\n");
       return false;
    }
 
@@ -801,7 +801,7 @@ static bool retro_init_vulkan(void)
    hw_context_negotiation.create_device = parallel_create_device;
    hw_context_negotiation.destroy_device = NULL;
    if (!environ_cb(RETRO_ENVIRONMENT_SET_HW_RENDER_CONTEXT_NEGOTIATION_INTERFACE, &hw_context_negotiation))
-      log_cb(RETRO_LOG_ERROR, "mupen64plus: libretro frontend doesn't have context negotiation support.");
+      log_cb(RETRO_LOG_ERROR, "mupen64plus: libretro frontend doesn't have context negotiation support.\n");
 
    return true;
 #else
