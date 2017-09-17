@@ -397,7 +397,8 @@ static bool emu_step_load_data()
    if (game_data != NULL && *((uint32_t *)game_data) != 0x16D348E8 && *((uint32_t *)game_data) != 0x56EE6322)
    {
       /* Regular N64 ROM */
-      log_cb(RETRO_LOG_INFO, "EmuThread: M64CMD_ROM_OPEN\n");
+      if (log_cb)
+         log_cb(RETRO_LOG_INFO, "EmuThread: M64CMD_ROM_OPEN\n");
 
       if(CoreDoCommand(M64CMD_ROM_OPEN, game_size, (void*)game_data))
       {
@@ -409,7 +410,8 @@ static bool emu_step_load_data()
       free(game_data);
       game_data = NULL;
 
-      log_cb(RETRO_LOG_INFO, "EmuThread: M64CMD_ROM_GET_HEADER\n");
+      if (log_cb)
+         log_cb(RETRO_LOG_INFO, "EmuThread: M64CMD_ROM_GET_HEADER\n");
 
       if(CoreDoCommand(M64CMD_ROM_GET_HEADER, sizeof(ROM_HEADER), &ROM_HEADER))
       {
@@ -432,7 +434,8 @@ static bool emu_step_load_data()
       /* connect saved_memory.disk to disk */
       g_dd_disk = saved_memory.disk;
 
-      log_cb(RETRO_LOG_INFO, "EmuThread: M64CMD_DISK_OPEN\n");
+      if (log_cb)
+         log_cb(RETRO_LOG_INFO, "EmuThread: M64CMD_DISK_OPEN\n");
       printf("M64CMD_DISK_OPEN\n");
 
       if(CoreDoCommand(M64CMD_DISK_OPEN, game_size, (void*)game_data))
@@ -486,7 +489,8 @@ static bool emu_step_load_data()
       }
       fclose(fPtr);
 
-      log_cb(RETRO_LOG_INFO, "EmuThread: M64CMD_DDROM_OPEN\n");
+      if (log_cb)
+         log_cb(RETRO_LOG_INFO, "EmuThread: M64CMD_DDROM_OPEN\n");
       printf("M64CMD_DDROM_OPEN\n");
 
       if(CoreDoCommand(M64CMD_DDROM_OPEN, romlength, (void*)ipl_data))
@@ -498,7 +502,8 @@ static bool emu_step_load_data()
          goto load_fail;
       }
 
-      log_cb(RETRO_LOG_INFO, "EmuThread: M64CMD_ROM_GET_HEADER\n");
+      if (log_cb)
+         log_cb(RETRO_LOG_INFO, "EmuThread: M64CMD_ROM_GET_HEADER\n");
 
       if(CoreDoCommand(M64CMD_ROM_GET_HEADER, sizeof(ROM_HEADER), &ROM_HEADER))
       {
@@ -566,7 +571,8 @@ static void emu_step_initialize(void)
 
    plugin_connect_all(gfx_plugin, rsp_plugin);
 
-   log_cb(RETRO_LOG_INFO, "EmuThread: M64CMD_EXECUTE. \n");
+   if (log_cb)
+      log_cb(RETRO_LOG_INFO, "EmuThread: M64CMD_EXECUTE.\n");
 
    CoreDoCommand(M64CMD_EXECUTE, 0, NULL);
 }
@@ -604,7 +610,10 @@ void reinit_gfx_plugin(void)
        case GFX_PARALLEL:
 #ifdef HAVE_PARALLEL
           if (!environ_cb(RETRO_ENVIRONMENT_GET_HW_RENDER_INTERFACE, &vulkan) || !vulkan)
-             log_cb(RETRO_LOG_ERROR, "Failed to obtain Vulkan interface.");
+          {
+             if (log_cb)
+                log_cb(RETRO_LOG_ERROR, "Failed to obtain Vulkan interface.\n");
+          }
           else
              parallel_init(vulkan);
 #endif
@@ -649,7 +658,8 @@ static void EmuThreadFunction(void)
 
     initializing = false;
     main_run();
-    log_cb(RETRO_LOG_INFO, "EmuThread: co_switch main_thread. \n");
+    if (log_cb)
+       log_cb(RETRO_LOG_INFO, "EmuThread: co_switch main_thread.\n");
 
 #ifndef EMSCRIPTEN
     co_switch(main_thread);
@@ -660,7 +670,7 @@ load_fail:
     while(1)
     {
        if (log_cb)
-          log_cb(RETRO_LOG_ERROR, "Running Dead N64 Emulator");
+          log_cb(RETRO_LOG_ERROR, "Running Dead N64 Emulator\n");
 #ifndef EMSCRIPTEN
        co_switch(main_thread);
 #endif
@@ -791,7 +801,8 @@ static bool retro_init_vulkan(void)
 
    if (!environ_cb(RETRO_ENVIRONMENT_SET_HW_RENDER, &hw_render))
    {
-      log_cb(RETRO_LOG_ERROR, "mupen64plus: libretro frontend doesn't have Vulkan support.");
+      if (log_cb)
+         log_cb(RETRO_LOG_ERROR, "mupen64plus: libretro frontend doesn't have Vulkan support.\n");
       return false;
    }
 
@@ -801,7 +812,10 @@ static bool retro_init_vulkan(void)
    hw_context_negotiation.create_device = parallel_create_device;
    hw_context_negotiation.destroy_device = NULL;
    if (!environ_cb(RETRO_ENVIRONMENT_SET_HW_RENDER_CONTEXT_NEGOTIATION_INTERFACE, &hw_context_negotiation))
-      log_cb(RETRO_LOG_ERROR, "mupen64plus: libretro frontend doesn't have context negotiation support.");
+   {
+      if (log_cb)
+         log_cb(RETRO_LOG_ERROR, "mupen64plus: libretro frontend doesn't have context negotiation support.\n");
+   }
 
    return true;
 #else
@@ -831,7 +845,7 @@ static bool retro_init_gl(void)
    if (!glsm_ctl(GLSM_CTL_STATE_CONTEXT_INIT, &params))
    {
       if (log_cb)
-         log_cb(RETRO_LOG_ERROR, "mupen64plus: libretro frontend doesn't have OpenGL support.");
+         log_cb(RETRO_LOG_ERROR, "mupen64plus: libretro frontend doesn't have OpenGL support.\n");
       return false;
    }
 
@@ -916,7 +930,8 @@ extern void ChangeSize();
 
 static void gfx_set_filtering(void)
 {
-     log_cb(RETRO_LOG_DEBUG, "set filtering mode...\n");
+     if (log_cb)
+        log_cb(RETRO_LOG_DEBUG, "set filtering mode...\n");
      switch (gfx_plugin)
      {
         case GFX_GLIDE64:
@@ -952,7 +967,8 @@ unsigned setting_get_dithering(void)
 
 static void gfx_set_dithering(void)
 {
-   log_cb(RETRO_LOG_DEBUG, "set dithering mode...\n");
+   if (log_cb)
+      log_cb(RETRO_LOG_DEBUG, "set dithering mode...\n");
 
    switch (gfx_plugin)
    {
