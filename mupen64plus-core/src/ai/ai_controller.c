@@ -179,11 +179,21 @@ int read_ai_regs(void* opaque, uint32_t address, uint32_t* value)
        *value = get_remaining_dma_length(ai);
        if (*value < ai->last_read)
        {
+		   
           unsigned int diff = ai->fifo[0].length - ai->last_read;
-          unsigned char *p = (unsigned char*)&ai->ri->rdram.dram[ai->fifo[0].address/4];
-          ai->push_audio_samples(&ai->backend, p + diff,
-			  ai->last_read - *value);
-	  ai->last_read = *value;
+		  if (ai->last_read > ai->fifo[0].length)
+		  {
+			 //account for if buffer reset/loadstate/reset
+			 ai->push_audio_samples(&ai->backend, 0,0);
+		  }
+		  else
+		  {
+			  unsigned char *p = (unsigned char*)&ai->ri->rdram.dram[ai->fifo[0].address / 4];
+			  ai->push_audio_samples(&ai->backend, p + diff,
+				  ai->last_read - *value);
+		  }
+		  ai->last_read = *value;
+       
        }
     }
     else
