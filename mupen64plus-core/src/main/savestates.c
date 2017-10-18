@@ -189,6 +189,7 @@ int savestates_load_m64p(const unsigned char *data, size_t size)
    g_dev.ai.fifo[1].length       = GETDATA(curr, uint32_t);
    g_dev.ai.fifo[0].duration     = GETDATA(curr, unsigned int);
    g_dev.ai.fifo[0].length       = GETDATA(curr, uint32_t);
+   g_dev.ai.last_read       = GETDATA(curr, uint32_t);
 
    /* best effort initialization of fifo addresses...
     * You might get a small sound "pop" because address might be wrong.
@@ -429,6 +430,7 @@ int savestates_save_m64p(unsigned char *data, size_t size)
    PUTDATA(curr, uint32_t, g_dev.ai.fifo[1].length);
    PUTDATA(curr, unsigned int, g_dev.ai.fifo[0].duration);
    PUTDATA(curr, uint32_t, g_dev.ai.fifo[0].length);
+   PUTDATA(curr, uint32_t, g_dev.ai.last_read);
 
    PUTDATA(curr, uint32_t, g_dev.dp.dpc_regs[DPC_START_REG]);
    PUTDATA(curr, uint32_t, g_dev.dp.dpc_regs[DPC_END_REG]);
