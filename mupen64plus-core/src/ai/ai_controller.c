@@ -28,7 +28,6 @@
 #include "vi/vi_controller.h"
 
 #include <string.h>
-#include <stdbool.h>
 
 enum
 {
@@ -182,10 +181,9 @@ int read_ai_regs(void* opaque, uint32_t address, uint32_t* value)
        if (*value < ai->last_read)
        {
 		   //should never read greater than the fifo length
-		   bool read_bork = (ai->last_read > ai->fifo[0].length);
 		   unsigned int diff =ai->fifo[0].length - ai->last_read;
 		   unsigned char *p = (unsigned char*)&ai->ri->rdram.dram[ai->fifo[0].address / 4];
-		   ai->push_audio_samples(&ai->backend,read_bork?0:p + diff, read_bork ?0: ai->last_read - *value);
+		   ai->push_audio_samples(&ai->backend,p + diff,ai->last_read - *value);
 			 
 		 }
 		  ai->last_read = *value;
