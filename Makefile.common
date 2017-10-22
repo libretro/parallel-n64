@@ -6,7 +6,11 @@ LIBRETRO_DIR       = $(ROOT_DIR)/libretro
 AUDIO_LIBRETRO_DIR = $(CORE_DIR)/src/plugin/audio_libretro
 VIDEODIR_RICE      = $(ROOT_DIR)/gles2rice/src
 VIDEODIR_GLN64     = $(ROOT_DIR)/gles2n64/src
+ifeq ($(HAVE_THR_AL),1)
+VIDEODIR_ANGRYLION = $(ROOT_DIR)/mupen64plus-video-angrylion-thr
+else
 VIDEODIR_ANGRYLION = $(ROOT_DIR)/mupen64plus-video-angrylion
+endif
 VIDEODIR_PARALLEL  = $(ROOT_DIR)/mupen64plus-video-paraLLEl
 RSPDIR_PARALLEL    = $(ROOT_DIR)/mupen64plus-rsp-paraLLEl
 VIDEODIR_GLIDE     = $(ROOT_DIR)/glide2gl/src
@@ -426,9 +430,24 @@ SOURCES_C   += $(VIDEODIR_GLIDE)/Glitch64/glitch64_combiner.c \
 endif
 
 ### Angrylion's renderer ###
+ifeq ($(HAVE_THR_AL),1)
+SOURCES_C +=  $(VIDEODIR_ANGRYLION)/n64video_main.c \
+				  $(VIDEODIR_ANGRYLION)/core/file.c \
+				  $(VIDEODIR_ANGRYLION)/core/core.c \
+				  $(VIDEODIR_ANGRYLION)/core/irand.c \
+				  $(VIDEODIR_ANGRYLION)/core/rdp.c \
+				  $(VIDEODIR_ANGRYLION)/core/rdram.c \
+				  $(VIDEODIR_ANGRYLION)/core/screen.c \
+				  $(VIDEODIR_ANGRYLION)/core/trace_read.c \
+				  $(VIDEODIR_ANGRYLION)/core/trace_write.c \
+				  $(VIDEODIR_ANGRYLION)/core/vi.c 
+SOURCES_CXX +=            $(VIDEODIR_ANGRYLION)/core/parallel.cpp \
+								  $(VIDEODIR_ANGRYLION)/core/parallel_c.cpp 
+else
 SOURCES_C +=  $(VIDEODIR_ANGRYLION)/n64video_main.c \
 						  $(VIDEODIR_ANGRYLION)/n64video_vi.c \
 						  $(VIDEODIR_ANGRYLION)/n64video.c
+endif
 
 ifeq ($(HAVE_PARALLEL),1)
 CFLAGS   += -DHAVE_PARALLEL

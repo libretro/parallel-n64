@@ -5,6 +5,9 @@
 #include "m64p_types.h"
 #include "m64p_config.h"
 
+static unsigned angrylion_filtering = 0;
+static unsigned angrylion_dithering = 1;
+
 extern unsigned int screen_width, screen_height;
 extern uint32_t screen_pitch;
 
@@ -123,6 +126,16 @@ void screen_upload(int32_t* buffer, int32_t width, int32_t height, int32_t pitch
 	}
 
 
+}
+
+void angrylion_set_filtering(unsigned filter_type)
+{
+   angrylion_filtering = filter_type;
+}
+
+void angrylion_set_dithering(unsigned dither_type)
+{
+   angrylion_dithering = dither_type;
 }
 
 void screen_set_fullscreen(bool _fullscreen)

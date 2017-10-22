@@ -17,6 +17,8 @@
 #include <memory.h>
 #include <assert.h>
 
+int overlay = 0;
+
 // anamorphic NTSC resolution
 #define H_RES_NTSC 640
 #define V_RES_NTSC 480
