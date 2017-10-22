@@ -5,6 +5,10 @@ static TLS int sckeepodd;
 static TLS uint32_t primitive_z;
 static TLS uint16_t primitive_delta_z;
 
+#ifndef CLAMP_AL
+#define CLAMP_AL(x, low, high)  (((x) > (high)) ? (high) : (((x) < (low)) ? (low) : (x)))
+#endif
+
 static STRICTINLINE int32_t normalize_dzpix(int32_t sum)
 {
     if (sum & 0xc000)
@@ -128,35 +132,31 @@ static void fetch_qword_copy(uint32_t* hidword, uint32_t* lowdword, int32_t ssss
 
 static STRICTINLINE void rgbaz_correct_clip(int offx, int offy, int r, int g, int b, int a, int* z, uint32_t curpixel_cvg)
 {
-    int summand_r, summand_b, summand_g, summand_a;
-    int summand_z;
+    unsigned temp;
     int sz = *z;
     int zanded;
 
-
-
-
-    if (curpixel_cvg == 8)
+    if (curpixel_cvg != 8)
     {
-        r >>= 2;
-        g >>= 2;
-        b >>= 2;
-        a >>= 2;
-        sz = sz >> 3;
-    }
-    else
-    {
-        summand_r = offx * spans.cdr + offy * spans.drdy;
-        summand_g = offx * spans.cdg + offy * spans.dgdy;
-        summand_b = offx * spans.cdb + offy * spans.dbdy;
-        summand_a = offx * spans.cda + offy * spans.dady;
-        summand_z = offx * spans.cdz + offy * spans.dzdy;
+        int summand_r = offx * spans.cdr + offy * spans.drdy;
+        int summand_g = offx * spans.cdg + offy * spans.dgdy;
+        int summand_b = offx * spans.cdb + offy * spans.dbdy;
+        int summand_a = offx * spans.cda + offy * spans.dady;
+        int summand_z = offx * spans.cdz + offy * spans.dzdy;
 
         r = ((r << 2) + summand_r) >> 4;
         g = ((g << 2) + summand_g) >> 4;
         b = ((b << 2) + summand_b) >> 4;
         a = ((a << 2) + summand_a) >> 4;
         sz = ((sz << 2) + summand_z) >> 5;
+    }
+    else
+    {
+        r >>= 2;
+        g >>= 2;
+        b >>= 2;
+        a >>= 2;
+        sz >>= 3;
     }
 
 
@@ -165,18 +165,12 @@ static STRICTINLINE void rgbaz_correct_clip(int offx, int offy, int r, int g, in
     shade_color.b = special_9bit_clamptable[b & 0x1ff];
     shade_color.a = special_9bit_clamptable[a & 0x1ff];
 
-
-
-    zanded = (sz & 0x60000) >> 17;
-
-
-    switch(zanded)
-    {
-        case 0: *z = sz & 0x3ffff;                      break;
-        case 1: *z = sz & 0x3ffff;                      break;
-        case 2: *z = 0x3ffff;                           break;
-        case 3: *z = 0;                                 break;
-    }
+    /* Should be a correct branchless version of the awkward
+     * zanded in Angrylion. This pattern seems very similar
+     * to the special_9bit clamp, hrm... */
+    temp   = ((sz + 0x20000) & 0x7ffff) - 0x20000;
+    zanded = CLAMP_AL(temp, 0, 0x3ffff);
+     *z    = zanded;
 }
 
 static void render_spans_1cycle_complete(int start, int end, int tilenum, int flip)
