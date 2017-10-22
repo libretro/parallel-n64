@@ -14,7 +14,6 @@
 #include <string.h>
 #include <ctype.h>
 
-static uint32_t screenshot_index;
 static uint32_t trace_index;
 static uint32_t num_workers;
 static bool parallel;
@@ -94,7 +93,6 @@ void core_init(struct core_config* _config)
         parallel_alinit(num_workers);
     }
 
-    screenshot_index = 0;
     trace_index = 0;
 }
 
@@ -177,19 +175,6 @@ void core_vi_update(void)
 
 void core_screenshot(char* directory)
 {
-    // get ROM name from plugin and use placeholder if empty
-    char rom_name[32];
-    if (!get_rom_name(rom_name, sizeof(rom_name))) {
-        strcpy(rom_name, "screenshot");
-    }
-
-    // generate and find an unused file path
-    char path[FILE_MAX_PATH];
-    if (file_path_indexed(path, sizeof(path), directory, rom_name, "bmp", &screenshot_index)) {
-        vi_screenshot(path);
-    } else {
-        msg_warning("Ran out of screenshot indices!");
-    }
 }
 
 void core_close(void)
