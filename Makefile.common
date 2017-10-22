@@ -434,7 +434,6 @@ ifeq ($(HAVE_THR_AL),1)
 CFLAGS   += -DHAVE_THR_AL
 CXXFLAGS += -DHAVE_THR_AL
 SOURCES_C +=  $(VIDEODIR_ANGRYLION)/n64video_main.c \
-				  $(VIDEODIR_ANGRYLION)/core/file.c \
 				  $(VIDEODIR_ANGRYLION)/core/core.c \
 				  $(VIDEODIR_ANGRYLION)/core/irand.c \
 				  $(VIDEODIR_ANGRYLION)/core/rdp.c \

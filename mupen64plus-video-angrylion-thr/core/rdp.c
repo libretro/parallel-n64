@@ -6,7 +6,6 @@
 #include "trace_write.h"
 #include "msg.h"
 #include "irand.h"
-#include "file.h"
 #include "parallel_c.hpp"
 
 #include <memory.h>

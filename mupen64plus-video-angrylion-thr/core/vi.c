@@ -4,10 +4,8 @@
 #include "plugin.h"
 #include "screen.h"
 #include "rdram.h"
-#include "trace_write.h"
 #include "msg.h"
 #include "irand.h"
-#include "file.h"
 #include "bitmap.h"
 #include "parallel_c.hpp"
 
@@ -675,11 +673,6 @@ void vi_update(void)
     if (config->vi.mode != vi_mode) {
         memset(prescale, 0, sizeof(prescale));
         vi_mode = config->vi.mode;
-    }
-
-    // write changed VI registers to opened trace file
-    if (trace_write_is_open()) {
-        trace_write_vi(plugin_get_vi_registers());
     }
 
     // check for configuration errors
