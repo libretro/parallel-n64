@@ -2147,9 +2147,27 @@ static void rdp_tri_tex(const uint32_t* args)
 {
     int32_t ewdata[CMD_MAX_INTS];
     memcpy(&ewdata[0], args, 8 * sizeof(int32_t));
-    memset(&ewdata[8], 0, 16 * sizeof(int32_t));
+    ewdata[8]  = 0;
+    ewdata[9]  = 0;
+    ewdata[10] = 0;
+    ewdata[11] = 0;
+    ewdata[12] = 0;
+    ewdata[13] = 0;
+    ewdata[14] = 0;
+    ewdata[15] = 0;
+    ewdata[16] = 0;
+    ewdata[17] = 0;
+    ewdata[18] = 0;
+    ewdata[19] = 0;
+    ewdata[20] = 0;
+    ewdata[21] = 0;
+    ewdata[22] = 0;
+    ewdata[23] = 0;
     memcpy(&ewdata[24], args + 8, 16 * sizeof(int32_t));
-    memset(&ewdata[40], 0, 4 * sizeof(int32_t));
+    ewdata[40] = 0;
+    ewdata[41] = 0;
+    ewdata[42] = 0;
+    ewdata[43] = 0;
     edgewalker_for_prims(ewdata);
 }
 
@@ -2157,7 +2175,22 @@ static void rdp_tri_tex_z(const uint32_t* args)
 {
     int32_t ewdata[CMD_MAX_INTS];
     memcpy(&ewdata[0], args, 8 * sizeof(int32_t));
-    memset(&ewdata[8], 0, 16 * sizeof(int32_t));
+    ewdata[8]  = 0;
+    ewdata[9]  = 0;
+    ewdata[10] = 0;
+    ewdata[11] = 0;
+    ewdata[12] = 0;
+    ewdata[13] = 0;
+    ewdata[14] = 0;
+    ewdata[15] = 0;
+    ewdata[16] = 0;
+    ewdata[17] = 0;
+    ewdata[18] = 0;
+    ewdata[19] = 0;
+    ewdata[20] = 0;
+    ewdata[21] = 0;
+    ewdata[22] = 0;
+    ewdata[23] = 0;
     memcpy(&ewdata[24], args + 8, 16 * sizeof(int32_t));
     memcpy(&ewdata[40], args + 24, 4 * sizeof(int32_t));
 
@@ -2192,7 +2225,10 @@ static void rdp_tri_texshade(const uint32_t* args)
 {
     int32_t ewdata[CMD_MAX_INTS];
     memcpy(&ewdata[0], args, 40 * sizeof(int32_t));
-    memset(&ewdata[40], 0, 4 * sizeof(int32_t));
+    ewdata[40] = 0;
+    ewdata[41] = 0;
+    ewdata[42] = 0;
+    ewdata[43] = 0;
     edgewalker_for_prims(ewdata);
 }
 
@@ -2233,15 +2269,30 @@ static void rdp_tex_rect(const uint32_t* args)
     uint32_t xhint = (xh >> 2) & 0x3ff;
 
     int32_t ewdata[CMD_MAX_INTS];
-    ewdata[0] = (0x24 << 24) | ((0x80 | tilenum) << 16) | yl;
-    ewdata[1] = (yl << 16) | yh;
-    ewdata[2] = (xlint << 16) | ((xl & 3) << 14);
-    ewdata[3] = 0;
-    ewdata[4] = (xhint << 16) | ((xh & 3) << 14);
-    ewdata[5] = 0;
-    ewdata[6] = (xlint << 16) | ((xl & 3) << 14);
-    ewdata[7] = 0;
-    memset(&ewdata[8], 0, 16 * sizeof(uint32_t));
+    ewdata[0]  = (0x24 << 24) | ((0x80 | tilenum) << 16) | yl;
+    ewdata[1]  = (yl << 16) | yh;
+    ewdata[2]  = (xlint << 16) | ((xl & 3) << 14);
+    ewdata[3]  = 0;
+    ewdata[4]  = (xhint << 16) | ((xh & 3) << 14);
+    ewdata[5]  = 0;
+    ewdata[6]  = (xlint << 16) | ((xl & 3) << 14);
+    ewdata[7]  = 0;
+    ewdata[8]  = 0;
+    ewdata[9]  = 0;
+    ewdata[10] = 0;
+    ewdata[11] = 0;
+    ewdata[12] = 0;
+    ewdata[13] = 0;
+    ewdata[14] = 0;
+    ewdata[15] = 0;
+    ewdata[16] = 0;
+    ewdata[17] = 0;
+    ewdata[18] = 0;
+    ewdata[19] = 0;
+    ewdata[20] = 0;
+    ewdata[21] = 0;
+    ewdata[22] = 0;
+    ewdata[23] = 0;
     ewdata[24] = (s << 16) | t;
     ewdata[25] = 0;
     ewdata[26] = ((dsdx >> 5) << 16);
@@ -2258,7 +2309,10 @@ static void rdp_tex_rect(const uint32_t* args)
     ewdata[37] = 0;
     ewdata[38] = (dtdy & 0x1f) << 11;
     ewdata[39] = 0;
-    memset(&ewdata[40], 0, 4 * sizeof(int32_t));
+    ewdata[40] = 0;
+    ewdata[41] = 0;
+    ewdata[42] = 0;
+    ewdata[43] = 0;
 
 
 
@@ -2297,7 +2351,22 @@ static void rdp_tex_rect_flip(const uint32_t* args)
     ewdata[5] = 0;
     ewdata[6] = (xlint << 16) | ((xl & 3) << 14);
     ewdata[7] = 0;
-    memset(&ewdata[8], 0, 16 * sizeof(int32_t));
+    ewdata[8]  = 0;
+    ewdata[9]  = 0;
+    ewdata[10] = 0;
+    ewdata[11] = 0;
+    ewdata[12] = 0;
+    ewdata[13] = 0;
+    ewdata[14] = 0;
+    ewdata[15] = 0;
+    ewdata[16] = 0;
+    ewdata[17] = 0;
+    ewdata[18] = 0;
+    ewdata[19] = 0;
+    ewdata[20] = 0;
+    ewdata[21] = 0;
+    ewdata[22] = 0;
+    ewdata[23] = 0;
     ewdata[24] = (s << 16) | t;
     ewdata[25] = 0;
 
@@ -2315,7 +2384,11 @@ static void rdp_tex_rect_flip(const uint32_t* args)
     ewdata[37] = 0;
     ewdata[38] = (dsdx & 0x1f) << 27;
     ewdata[39] = 0;
-    memset(&ewdata[40], 0, 4 * sizeof(int32_t));
+    ewdata[39] = 0;
+    ewdata[40] = 0;
+    ewdata[41] = 0;
+    ewdata[42] = 0;
+    ewdata[43] = 0;
 
     edgewalker_for_prims(ewdata);
 }
