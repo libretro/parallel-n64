@@ -22,6 +22,13 @@ GLFLAGS   :=
 
 UNAME=$(shell uname -a)
 
+SPACE :=
+SPACE := $(SPACE) $(SPACE)
+BACKSLASH :=
+BACKSLASH := \$(BACKSLASH)
+filter_out1 = $(filter-out $(firstword $1),$1)
+filter_out2 = $(call filter_out1,$(call filter_out1,$1))
+
 ifeq ($(HAVE_VULKAN_DEBUG),1)
 HAVE_RSP_DUMP=1
 HAVE_RDP_DUMP=1
