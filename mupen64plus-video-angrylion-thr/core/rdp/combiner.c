@@ -48,8 +48,8 @@ static TLS struct color key_width;
 
 static TLS int32_t keyalpha;
 
-static uint32_t special_9bit_clamptable[512];
-static int32_t special_9bit_exttable[512];
+static uint8_t special_9bit_clamptable[512];
+static int16_t special_9bit_exttable[512];
 
 static INLINE void set_suba_rgb_input(int32_t **input_r, int32_t **input_g, int32_t **input_b, int code)
 {
