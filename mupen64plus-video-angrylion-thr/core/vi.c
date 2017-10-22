@@ -6,7 +6,6 @@
 #include "rdram.h"
 #include "msg.h"
 #include "irand.h"
-#include "bitmap.h"
 #include "parallel_c.hpp"
 
 #include <stdlib.h>

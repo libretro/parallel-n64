@@ -3,7 +3,6 @@
 #include "common.h"
 #include "plugin.h"
 #include "rdram.h"
-#include "trace_write.h"
 #include "msg.h"
 #include "irand.h"
 #include "parallel_c.hpp"

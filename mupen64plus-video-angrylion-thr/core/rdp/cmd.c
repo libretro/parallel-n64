@@ -274,11 +274,6 @@ void rdp_update(void)
         }
 
         rdp_cmd(rdp_cmd_data + rdp_cmd_cur, cmd_length);
-
-        if (trace_write_is_open()) {
-            trace_write_cmd(rdp_cmd_data + rdp_cmd_cur, cmd_length);
-        }
-
         rdp_cmd_cur += cmd_length;
     };
     rdp_cmd_ptr = 0;

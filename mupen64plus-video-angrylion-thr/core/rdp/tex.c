@@ -552,10 +552,6 @@ static void loading_pipeline(int start, int end, int tilenum, int coord_quad, in
 
         length = (xstart - xend + 1) & 0xfff;
 
-        if (trace_write_is_open()) {
-            trace_write_rdram((tiptr >> 2), length);
-        }
-
         for (j = 0; j < length; j+= spanadvance)
         {
             ss = s >> 16;
