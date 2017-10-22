@@ -1,3 +1,5 @@
+#include <retro_miscellaneous.h>
+
 #define ZMODE_OPAQUE            0
 #define ZMODE_INTERPENETRATING  1
 #define ZMODE_TRANSPARENT       2
@@ -261,13 +263,7 @@ static STRICTINLINE uint32_t z_compare(uint32_t zcurpixel, uint32_t sz, uint16_t
         if (precision_factor < 3)
         {
             if (dzmem != 0x8000)
-            {
-                dzmemmodifier = 16 >> precision_factor;
-                dzmem <<= 1;
-                if (dzmem < dzmemmodifier)
-                    dzmem = dzmemmodifier;
-
-            }
+               dzmem = MAX(dzmem << 1, 16 >> precision_factor);
             else
             {
                 force_coplanar = 1;
