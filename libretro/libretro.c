@@ -1088,9 +1088,13 @@ void update_variables(bool startup)
    if (var.value)
    {
       if(!strcmp(var.value, "enabled"))
+      {
          overlay = 1;
+      }
       else if(!strcmp(var.value, "disabled"))
+      {
          overlay = 0;
+      }
    }
    else
       overlay = 1;
