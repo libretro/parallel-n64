@@ -142,6 +142,13 @@ int overlay = 0;
 
 extern uint32_t *blitter_buf_lock;
 
+void angrylion_set_vi(unsigned value)
+{
+   if (value == 1)
+      overlay = 1;
+   else if (value == 0)
+      overlay = 0;
+}
 
 STRICTINLINE static void video_filter16(
     int* r, int* g, int* b, uint32_t fboffset, uint32_t num, uint32_t hres,

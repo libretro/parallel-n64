@@ -923,6 +923,7 @@ void retro_deinit(void)
 #if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
 extern void glide_set_filtering(unsigned value);
 #endif
+extern void angrylion_set_vi(unsigned value);
 extern void angrylion_set_filtering(unsigned value);
 extern void angrylion_set_dithering(unsigned value);
 extern void parallel_set_dithering(unsigned value);
@@ -1088,16 +1089,12 @@ void update_variables(bool startup)
    if (var.value)
    {
       if(!strcmp(var.value, "enabled"))
-      {
-         overlay = 1;
-      }
+         angrylion_set_vi(1);
       else if(!strcmp(var.value, "disabled"))
-      {
-         overlay = 0;
-      }
+         angrylion_set_vi(0);
    }
    else
-      overlay = 1;
+      angrylion_set_vi(1);
 
    CFG_HLE_GFX = (gfx_plugin != GFX_ANGRYLION) && (gfx_plugin != GFX_PARALLEL) ? 1 : 0;
    CFG_HLE_AUD = 0; /* There is no HLE audio code in libretro audio plugin. */

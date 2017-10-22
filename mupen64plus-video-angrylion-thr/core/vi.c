@@ -122,6 +122,17 @@ static int32_t v_start;
 static int32_t h_start;
 static int32_t v_current_line;
 
+void angrylion_set_vi(unsigned value)
+{
+   if (!config)
+      return;
+
+   if (value == 1)
+      config->vi.mode = VI_MODE_NORMAL;
+   else if (value == 0)
+      config->vi.mode = VI_MODE_COLOR;
+}
+
 static void vi_screenshot_write(char* path, int32_t* buffer, int32_t width, int32_t height, int32_t pitch, int32_t output_height)
 {
     msg_debug("screen: writing screenshot to '%s'", path);
