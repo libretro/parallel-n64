@@ -32,7 +32,8 @@
 
 #include <retro_inline.h>
 
-#ifdef __x86_64__
+
+#if defined(__x86_64__) || (_M_X64)
 extern int64_t reg[32];
 typedef uint64_t native_type;
 

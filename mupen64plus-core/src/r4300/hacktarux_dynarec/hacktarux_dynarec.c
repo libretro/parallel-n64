@@ -56,8 +56,8 @@ static struct precomp_instr fake_instr;
 int branch_taken = 0;
 
 /* that's where the dynarec will restart when going back from a C function */
-#if defined(__x86_64__)
-#ifdef _MSC_VER
+#if defined(__x86_64__) || (_M_X64)
+#if defined(_MSC_VER_)
 uint64_t *return_address;
 int64_t save_rsp = 0;
 int64_t save_rip = 0;
@@ -104,7 +104,7 @@ void dyna_jump(void)
         *return_address = (native_type)(actual->code + PC->local_addr);
 }
 
-#if defined(__x86_64__) && defined(_WIN32) && defined(_MSC_VER)
+#if defined(_M_X64) && defined(_WIN32) && defined(_MSC_VER)
 #else
 void dyna_start(void *code)
 {
@@ -253,7 +253,7 @@ void dyna_start(void *code)
 
 void dyna_stop(void)
 {
-#if defined(__x86_64__)
+#if defined(__x86_64__) || (_M_X64)
    if (save_rip != 0)
    {
       *return_address = (native_type)save_rip;
