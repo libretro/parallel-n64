@@ -26,16 +26,16 @@ static uint32_t rdram_size;
 static uint8_t* rdram_hidden_bits;
 static struct core_config config;
 
-typedef struct _RECT {
+typedef struct N64RECT {
   int32_t left;
   int32_t top;
   int32_t right;
   int32_t bottom;
-} RECT, *PRECT;
+} N64RECT;
 
 extern GFX_INFO gfx_info;
 int res;
-RECT __dst, __src;
+static N64RECT __dst, __src;
 
 int ProcessDListShown = 0;
 
