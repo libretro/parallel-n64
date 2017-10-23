@@ -658,6 +658,13 @@ CFLAGS += -DINLINE="inline"
 CXXFLAGS += -DINLINE="inline"
 endif
 
+ASFLAGS     := $(CFLAGS)
+
+ifneq (,$(findstring msvc,$(platform)))
+# mudlord can add rules here
+ASFLAGS +=
+endif
+
 ### Finalize ###
 OBJECTS     += $(SOURCES_CXX:.cpp=.o) $(SOURCES_C:.c=.o) $(SOURCES_ASM:.S=.o)
 CXXFLAGS    += $(CPUOPTS) $(COREFLAGS) $(INCFLAGS) $(INCFLAGS_PLATFORM) $(PLATCFLAGS) $(fpic) $(PLATCFLAGS) $(CPUFLAGS) $(GLFLAGS) $(DYNAFLAGS)
@@ -690,7 +697,7 @@ else
 endif
 
 %.o: %.S
-	$(CC_AS) $(CFLAGS) -c $< $(OBJOUT)$@
+	$(CC_AS) $(ASFLAGS) -c $< $(OBJOUT)$@
 
 %.o: %.c
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c $< $(OBJOUT)$@
