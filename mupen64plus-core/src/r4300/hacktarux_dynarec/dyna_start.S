@@ -21,14 +21,14 @@
 option epilogue:none
 option prologue:none
 
-PUBLIC dyna_start
-extern save_rsp: qword
-extern save_rip: qword
+
+extern save_rsp: sqword
+extern save_rip: sqword
 extern reg: qword 
 extern return_address: qword 
 
 .CODE
-start:
+PUBLIC dyna_start
 dyna_start proc
     push rbx                 ;we must push an even # of registers to keep stack 16-byte aligned
     push r12
@@ -36,18 +36,18 @@ dyna_start proc
     push r14
     push r15
     push rbp
-    mov [save_rsp], rsp
+  ;  mov [save_rsp], rsp
     lea r15, [reg]        ;store the base location of the r4300 registers in r15 for addressing
     call _A1
     jmp _A2
 _A1:
     pop  rax
-    mov  [save_rip], rax
+  ; mov  [save_rip], rax
     sub rsp, 020h
     and rsp, 0FFFFFFFFFFFFFFF0h          ;ensure that stack is 16-byte aligned
     mov rax, rsp
-    sub rax, 8
-    mov [ return_address], rax
+    sub rax, 8h
+    mov [return_address], rax
     call rcx
 _A2:
     mov  rsp, [save_rsp]
