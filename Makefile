@@ -660,10 +660,7 @@ endif
 
 ASFLAGS     := $(CFLAGS)
 
-ifneq (,$(findstring msvc,$(platform)))
-# mudlord can add rules here
-ASFLAGS +=
-endif
+
 
 ### Finalize ###
 OBJECTS     += $(SOURCES_CXX:.cpp=.o) $(SOURCES_C:.c=.o) $(SOURCES_ASM:.S=.o)
@@ -696,8 +693,14 @@ else
 	$(LD) $(LINKOUT)$@ $(OBJECTS) $(LDFLAGS) $(GL_LIB) $(LIBS)
 endif
 
+
+
+ifneq (,$(findstring msvc,$(platform)))
 %.o: %.S
+	$(CC_AS) $(ASFLAGS) -c -Fo$@ $< 
+else
 	$(CC_AS) $(ASFLAGS) -c $< $(OBJOUT)$@
+endif
 
 %.o: %.c
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c $< $(OBJOUT)$@
