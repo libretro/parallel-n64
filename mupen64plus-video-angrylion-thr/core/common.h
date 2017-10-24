@@ -1,5 +1,7 @@
 #pragma once
 
+#include <stdint.h>
+
 // inlining
 #define INLINE inline
 
@@ -21,3 +23,11 @@
 #define GET_LOW(x)  (((x) & 0x3e) << 2)
 #define GET_MED(x)  (((x) & 0x7c0) >> 3)
 #define GET_HI(x)   (((x) >> 8) & 0xf8)
+
+uint32_t** plugin_get_dp_registers(void);
+uint32_t** plugin_get_vi_registers(void);
+uint8_t* plugin_get_rdram(void);
+uint8_t* plugin_get_rdram_hidden(void);
+uint32_t plugin_get_rdram_size(void);
+uint8_t* plugin_get_dmem(void);
+uint8_t* plugin_get_rom_header(void);
