@@ -439,8 +439,8 @@ SOURCES_C +=  $(VIDEODIR_ANGRYLION)/n64video_main.c \
 				  $(VIDEODIR_ANGRYLION)/core/rdp.c \
 				  $(VIDEODIR_ANGRYLION)/core/rdram.c \
 				  $(VIDEODIR_ANGRYLION)/core/vi.c 
-SOURCES_CXX +=            $(VIDEODIR_ANGRYLION)/core/parallel.cpp \
-								  $(VIDEODIR_ANGRYLION)/core/parallel_c.cpp 
+SOURCES_CXX += \
+					$(VIDEODIR_ANGRYLION)/core/parallel_c.cpp 
 else
 SOURCES_C +=  $(VIDEODIR_ANGRYLION)/n64video_main.c \
 						  $(VIDEODIR_ANGRYLION)/n64video_vi.c \
