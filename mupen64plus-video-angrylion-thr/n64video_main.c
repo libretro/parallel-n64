@@ -260,10 +260,6 @@ void angrylionUpdateScreen(void)
 #endif
     core_vi_update();
     retro_return(true);
-#if 0
-    if (step != 0)
-        MessageBox(NULL, "Updated screen.\nPaused.", "Frame Step", MB_OK);
-#endif
     return;
 }
 
