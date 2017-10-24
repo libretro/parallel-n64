@@ -43,8 +43,6 @@ extern uint32_t plim;
 #define IDXLIM32 0x1fffff
 extern uint8_t hidden_bits[0x400000];
 
-extern int overlay;
-
 extern onetime onetimewarnings;
 extern uint32_t gamma_table[0x100];
 extern uint32_t gamma_dither_table[0x4000];

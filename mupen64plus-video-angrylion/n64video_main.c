@@ -20,6 +20,7 @@ RECT __dst, __src;
 int ProcessDListShown = 0;
 
 int retro_return(int just_flipping);
+extern void angrylion_set_vi(unsigned vi);
 
 void angrylionChangeWindow (void)
 {
