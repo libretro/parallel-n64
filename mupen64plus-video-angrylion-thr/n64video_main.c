@@ -9,9 +9,6 @@
 static unsigned angrylion_filtering = 0;
 static unsigned angrylion_dithering = 1;
 
-extern unsigned int screen_width, screen_height;
-extern uint32_t screen_pitch;
-
 #include "core/core.h"
 #include "core/rdram.h"
 #include "core/screen.h"
@@ -134,15 +131,6 @@ void angrylion_set_dithering(unsigned dither_type)
    angrylion_dithering = dither_type;
 }
 
-void screen_set_fullscreen(bool _fullscreen)
-{
-}
-
-bool screen_get_fullscreen(void)
-{
-    return false;
-}
-
 void screen_close(void)
 {
 }
@@ -242,7 +230,6 @@ void angrylionUpdateScreen(void)
 #endif
     core_vi_update();
     retro_return(true);
-    return;
 }
 
 void angrylionShowCFB (void)
