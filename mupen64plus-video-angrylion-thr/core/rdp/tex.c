@@ -683,9 +683,6 @@ static void edgewalker_for_loads(int32_t* lewdata)
    int j = 0;
    int xleft = 0, xright = 0;
    int xstart = 0, xend = 0;
-   int dsdx = 0, dtdx = 0;
-   int dsdy = 0, dtdy = 0;
-   int dsde = 0, dtde = 0;
 
    int cmd_id = CMD_ID(lewdata);
    int ltlut = (cmd_id == CMD_ID_LOAD_TLUT);
