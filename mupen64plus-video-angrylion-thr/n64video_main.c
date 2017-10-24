@@ -11,7 +11,6 @@ static unsigned angrylion_dithering = 1;
 
 #include "core/core.h"
 #include "core/rdram.h"
-#include "core/screen.h"
 
 #include <stdint.h>
 #include <stdlib.h>
@@ -31,7 +30,11 @@ int retro_return(int just_flipping);
 
 void plugin_init(void)
 {
-    
+   rdram_size = 0x800000;
+
+   // mupen64plus plugins can't access the hidden bits, so allocate it on our own
+   rdram_hidden_bits = malloc(rdram_size);
+   memset(rdram_hidden_bits, 3, rdram_size);
 }
 
 void plugin_sync_dp(void)
@@ -86,41 +89,6 @@ void plugin_close(void)
     rdram_hidden_bits = NULL;
 }
 
-void screen_init(void)
-{
-   
-}
-
-void screen_swap(void)
-{
-}
-
-void screen_upload(int32_t* buffer, int32_t width, int32_t height, int32_t pitch, int32_t output_height)
-{
-	extern uint32_t *blitter_buf_lock;
-	uint32_t * buf = (uint32_t*)buffer;
-	for (int i = 0; i <height; i++)
-		memcpy(&blitter_buf_lock[i * width], &buf[i * width], width * 4);
-
-	int cur_line = height - 1;
-	while (cur_line >= 0)
-	{
-		memcpy(
-			&blitter_buf_lock[2 * width*cur_line + width],
-			&blitter_buf_lock[1 * width*cur_line],
-			4 * width
-		);
-		memcpy(
-			&blitter_buf_lock[2 * width*cur_line + 0],
-			&blitter_buf_lock[1 * width*cur_line],
-			4 * width
-		);
-		--cur_line;
-	}
-
-
-}
-
 void angrylion_set_filtering(unsigned filter_type)
 {
    angrylion_filtering = filter_type;
@@ -130,11 +98,6 @@ void angrylion_set_dithering(unsigned dither_type)
 {
    angrylion_dithering = dither_type;
 }
-
-void screen_close(void)
-{
-}
-
 
 void angrylionChangeWindow (void)
 {
@@ -169,11 +132,7 @@ void angrylionSetRenderingCallback(void (*callback)(int))
 
 int angrylionInitiateGFX (GFX_INFO Gfx_Info)
 {
-   rdram_size = 0x800000;
-
-   // mupen64plus plugins can't access the hidden bits, so allocate it on our own
-   rdram_hidden_bits = malloc(rdram_size);
-   memset(rdram_hidden_bits, 3, rdram_size);
+   return 0;
 }
 
  

@@ -5,7 +5,6 @@
 #include "rdram.h"
 #include "msg.h"
 #include "plugin.h"
-#include "screen.h"
 #include "parallel_c.hpp"
 
 #include <stdio.h>
@@ -76,7 +75,6 @@ void core_init(struct core_config* _config)
 {
    config = *_config;
 
-   screen_init();
    plugin_init();
    rdram_init();
 
@@ -138,14 +136,9 @@ void core_vi_update(void)
     vi_update();
 }
 
-void core_screenshot(char* directory)
-{
-}
-
 void core_close(void)
 {
     parallel_close();
     vi_close();
     plugin_close();
-    screen_close();
 }

@@ -2,7 +2,6 @@
 #include "rdp.h"
 #include "common.h"
 #include "plugin.h"
-#include "screen.h"
 #include "rdram.h"
 #include "msg.h"
 #include "irand.h"
@@ -558,6 +557,34 @@ static void vi_process(void)
     }
 }
 
+static INLINE void screen_upload(int32_t* buffer,
+      int32_t width, int32_t height, int32_t pitch, int32_t output_height)
+{
+   int i, cur_line;
+	extern uint32_t *blitter_buf_lock;
+	uint32_t * buf = (uint32_t*)buffer;
+	for (i = 0; i <height; i++)
+		memcpy(&blitter_buf_lock[i * width], &buf[i * width], width * 4);
+
+	cur_line = height - 1;
+
+	while (cur_line >= 0)
+	{
+		memcpy(
+			&blitter_buf_lock[2 * width*cur_line + width],
+			&blitter_buf_lock[1 * width*cur_line],
+			4 * width
+		);
+		memcpy(
+			&blitter_buf_lock[2 * width*cur_line + 0],
+			&blitter_buf_lock[1 * width*cur_line],
+			4 * width
+		);
+		--cur_line;
+	}
+}
+
+
 static void vi_process_end(void)
 {
     int32_t width;
@@ -800,12 +827,10 @@ void vi_update(void)
     // finish and send buffer to screen
     vi_process_end_ptr();
 
-    // render frame to screen
+#if 0
+    /* render frame to screen */
     screen_swap();
-}
-
-void vi_screenshot(char* path)
-{
+#endif
 }
 
 void vi_close(void)
