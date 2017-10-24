@@ -19,13 +19,13 @@ static uint8_t* rdram_hidden;
 
 void rdram_init(void)
 {
-    idxlim8 = plugin_get_rdram_size() - 1;
-    idxlim16 = (idxlim8 >> 1) & 0xffffffu;
-    idxlim32 = (idxlim8 >> 2) & 0xffffffu;
+    idxlim8      = plugin_get_rdram_size() - 1;
+    idxlim16     = (idxlim8 >> 1) & 0xffffffu;
+    idxlim32     = (idxlim8 >> 2) & 0xffffffu;
 
-    rdram32 = (uint32_t*)plugin_get_rdram();
-    rdram16 = (uint16_t*)plugin_get_rdram();
-    rdram8 = plugin_get_rdram();
+    rdram32      = (uint32_t*)plugin_get_rdram();
+    rdram16      = (uint16_t*)plugin_get_rdram();
+    rdram8       = plugin_get_rdram();
     rdram_hidden = plugin_get_rdram_hidden();
 }
 

@@ -127,9 +127,6 @@ static STRICTINLINE void tcshift_cycle(int32_t* S, int32_t* T, int32_t* maxs, in
 
 static STRICTINLINE void tcclamp_cycle(int32_t* S, int32_t* T, int32_t* SFRAC, int32_t* TFRAC, int32_t maxs, int32_t maxt, int32_t num)
 {
-
-
-
     int32_t locs = *S, loct = *T;
     if (tile[num].f.clampens)
     {

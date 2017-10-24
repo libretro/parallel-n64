@@ -220,151 +220,139 @@ static STRICTINLINE uint32_t dz_compress(uint32_t value)
 
 static STRICTINLINE uint32_t z_compare(uint32_t zcurpixel, uint32_t sz, uint16_t dzpix, int dzpixenc, uint32_t* blend_en, uint32_t* prewrap, uint32_t* curpixel_cvg, uint32_t curpixel_memcvg)
 {
-    uint8_t hval;
-    uint16_t zval;
-    uint32_t oz, dzmem;
-    int32_t rawdzmem;
-    int force_coplanar = 0;
-    sz &= 0x3ffff;
+   uint8_t hval;
+   uint16_t zval;
+   uint32_t oz, dzmem;
+   int32_t rawdzmem;
+   int force_coplanar = 0;
+   sz &= 0x3ffff;
 
-    if (other_modes.z_compare_en)
-    {
-        PAIRREAD16(zval, hval, zcurpixel);
-        oz = z_decompress(zval);
-        rawdzmem = ((zval & 3) << 2) | hval;
-        dzmem = dz_decompress(rawdzmem);
+   if (other_modes.z_compare_en)
+   {
+      int cvgcoeff = 0;
+      uint32_t dzenc = 0;
 
+      int32_t diff;
+      uint32_t nearer, max, infront;
+      uint32_t dzmemmodifier;
 
+      PAIRREAD16(zval, hval, zcurpixel);
+      oz = z_decompress(zval);
+      rawdzmem = ((zval & 3) << 2) | hval;
+      dzmem = dz_decompress(rawdzmem);
 
-        if (other_modes.f.realblendershiftersneeded)
-        {
-            blshifta = clamp(dzpixenc - rawdzmem, 0, 4);
-            blshiftb = clamp(rawdzmem - dzpixenc, 0, 4);
+      if (other_modes.f.realblendershiftersneeded)
+      {
+         blshifta = clamp(dzpixenc - rawdzmem, 0, 4);
+         blshiftb = clamp(rawdzmem - dzpixenc, 0, 4);
 
-        }
-
-
-        if (other_modes.f.interpixelblendershiftersneeded)
-        {
-            pastblshifta = clamp(dzpixenc - pastrawdzmem, 0, 4);
-            pastblshiftb = clamp(pastrawdzmem - dzpixenc, 0, 4);
-        }
-
-        pastrawdzmem = rawdzmem;
-
-        int precision_factor = (zval >> 13) & 0xf;
+      }
 
 
+      if (other_modes.f.interpixelblendershiftersneeded)
+      {
+         pastblshifta = clamp(dzpixenc - pastrawdzmem, 0, 4);
+         pastblshiftb = clamp(pastrawdzmem - dzpixenc, 0, 4);
+      }
+
+      pastrawdzmem = rawdzmem;
+
+      int precision_factor = (zval >> 13) & 0xf;
+
+      if (precision_factor < 3)
+      {
+         if (dzmem != 0x8000)
+            dzmem = MAX(dzmem << 1, 16 >> precision_factor);
+         else
+         {
+            force_coplanar = 1;
+            dzmem = 0xffff;
+         }
+      }
+
+      uint32_t dznew = (uint32_t)deltaz_comparator_lut[dzpix | dzmem];
+
+      uint32_t dznotshift = dznew;
+      dznew <<= 3;
 
 
-        uint32_t dzmemmodifier;
-        if (precision_factor < 3)
-        {
-            if (dzmem != 0x8000)
-               dzmem = MAX(dzmem << 1, 16 >> precision_factor);
-            else
-            {
-                force_coplanar = 1;
-                dzmem = 0xffff;
-            }
-        }
+      uint32_t farther = force_coplanar || ((sz + dznew) >= oz);
 
+      int overflow = (curpixel_memcvg + *curpixel_cvg) & 8;
+      *blend_en = other_modes.force_blend || (!overflow && other_modes.antialias_en && farther);
 
+      *prewrap = overflow;
 
-
-
-
-        uint32_t dznew = (uint32_t)deltaz_comparator_lut[dzpix | dzmem];
-
-        uint32_t dznotshift = dznew;
-        dznew <<= 3;
-
-
-        uint32_t farther = force_coplanar || ((sz + dznew) >= oz);
-
-        int overflow = (curpixel_memcvg + *curpixel_cvg) & 8;
-        *blend_en = other_modes.force_blend || (!overflow && other_modes.antialias_en && farther);
-
-        *prewrap = overflow;
-
-
-
-        int cvgcoeff = 0;
-        uint32_t dzenc = 0;
-
-        int32_t diff;
-        uint32_t nearer, max, infront;
-
-        switch(other_modes.z_mode)
-        {
-        case ZMODE_OPAQUE:
+      switch(other_modes.z_mode)
+      {
+         case ZMODE_OPAQUE:
             infront = sz < oz;
             diff = (int32_t)sz - (int32_t)dznew;
             nearer = force_coplanar || (diff <= (int32_t)oz);
             max = (oz == 0x3ffff);
             return (max || (overflow ? infront : nearer));
             break;
-        case ZMODE_INTERPENETRATING:
+         case ZMODE_INTERPENETRATING:
             infront = sz < oz;
             if (!infront || !farther || !overflow)
             {
-                diff = (int32_t)sz - (int32_t)dznew;
-                nearer = force_coplanar || (diff <= (int32_t)oz);
-                max = (oz == 0x3ffff);
-                return (max || (overflow ? infront : nearer));
+               diff = (int32_t)sz - (int32_t)dznew;
+               nearer = force_coplanar || (diff <= (int32_t)oz);
+               max = (oz == 0x3ffff);
+               return (max || (overflow ? infront : nearer));
             }
             else
             {
-                dzenc = dz_compress(dznotshift & 0xffff);
-                cvgcoeff = ((oz >> dzenc) - (sz >> dzenc)) & 0xf;
-                *curpixel_cvg = ((cvgcoeff * (*curpixel_cvg)) >> 3) & 0xf;
-                return 1;
+               dzenc = dz_compress(dznotshift & 0xffff);
+               cvgcoeff = ((oz >> dzenc) - (sz >> dzenc)) & 0xf;
+               *curpixel_cvg = ((cvgcoeff * (*curpixel_cvg)) >> 3) & 0xf;
+               return 1;
             }
             break;
-        case ZMODE_TRANSPARENT:
+         case ZMODE_TRANSPARENT:
             infront = sz < oz;
             max = (oz == 0x3ffff);
             return (infront || max);
             break;
-        case ZMODE_DECAL:
+         case ZMODE_DECAL:
             diff = (int32_t)sz - (int32_t)dznew;
             nearer = force_coplanar || (diff <= (int32_t)oz);
             max = (oz == 0x3ffff);
             return (farther && nearer && !max);
             break;
-        }
-        return 0;
-    }
-    else
-    {
+      }
+      return 0;
+   }
+   else
+   {
 
 
-        if (other_modes.f.realblendershiftersneeded)
-        {
-            blshifta = 0;
-            if (dzpixenc < 0xb)
-                blshiftb = 4;
-            else
-                blshiftb = 0xf - dzpixenc;
-        }
+      if (other_modes.f.realblendershiftersneeded)
+      {
+         blshifta = 0;
+         if (dzpixenc < 0xb)
+            blshiftb = 4;
+         else
+            blshiftb = 0xf - dzpixenc;
+      }
 
-        if (other_modes.f.interpixelblendershiftersneeded)
-        {
-            pastblshifta = 0;
-            if (dzpixenc < 0xb)
-                pastblshiftb = 4;
-            else
-                pastblshiftb = 0xf - dzpixenc;
-        }
+      if (other_modes.f.interpixelblendershiftersneeded)
+      {
+         pastblshifta = 0;
+         if (dzpixenc < 0xb)
+            pastblshiftb = 4;
+         else
+            pastblshiftb = 0xf - dzpixenc;
+      }
 
-        pastrawdzmem = 0xf;
+      pastrawdzmem = 0xf;
 
-        int overflow = (curpixel_memcvg + *curpixel_cvg) & 8;
-        *blend_en = other_modes.force_blend || (!overflow && other_modes.antialias_en);
-        *prewrap = overflow;
+      int overflow = (curpixel_memcvg + *curpixel_cvg) & 8;
+      *blend_en = other_modes.force_blend || (!overflow && other_modes.antialias_en);
+      *prewrap = overflow;
 
-        return 1;
-    }
+      return 1;
+   }
 }
 
 static void rdp_set_mask_image(const uint32_t* args)

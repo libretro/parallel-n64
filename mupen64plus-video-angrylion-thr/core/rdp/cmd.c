@@ -129,15 +129,16 @@ static void rdp_cmd_run(const uint32_t* arg)
 
 static void rdp_cmd_run_buffered(void)
 {
-    for (uint32_t pos = 0; pos < rdp_cmd_buf_pos; pos++) {
-        rdp_cmd_run(rdp_cmd_buf[pos]);
-    }
+   uint32_t pos;
+   for (pos = 0; pos < rdp_cmd_buf_pos; pos++)
+      rdp_cmd_run(rdp_cmd_buf[pos]);
 }
 
 static void rdp_cmd_flush(void)
 {
     // only run if there's something buffered
-    if (rdp_cmd_buf_pos) {
+    if (rdp_cmd_buf_pos)
+    {
         // let workers run all buffered commands in parallel
         parallel_run(rdp_cmd_run_buffered);
 
@@ -152,9 +153,8 @@ static void rdp_cmd_push(const uint32_t* arg, uint32_t length)
     memcpy(rdp_cmd_buf + rdp_cmd_buf_pos, arg, length * sizeof(uint32_t));
 
     // increment buffer position and flush buffer when it is full
-    if (++rdp_cmd_buf_pos >= CMD_BUFFER_COUNT) {
+    if (++rdp_cmd_buf_pos >= CMD_BUFFER_COUNT)
         rdp_cmd_flush();
-    }
 }
 
 void rdp_cmd(const uint32_t* arg, uint32_t length)
@@ -213,10 +213,6 @@ void rdp_update(void)
         for (i = 0; i < toload; i ++)
         {
             RREADIDX32(rdp_cmd_data[rdp_cmd_ptr], dp_current_al);
-
-
-
-
 
             rdp_cmd_ptr++;
             dp_current_al++;

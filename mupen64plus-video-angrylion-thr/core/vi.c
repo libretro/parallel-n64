@@ -131,61 +131,62 @@ void angrylion_set_vi(unsigned value)
 
 void vi_init(struct core_config* _config)
 {
-    config = _config;
+    config               = _config;
 
     vi_gamma_init();
     vi_restore_init();
 
     memset(prescale, 0, sizeof(prescale));
-    vi_mode = VI_MODE_NORMAL;
+    vi_mode              = VI_MODE_NORMAL;
 
-    prevvicurrent = 0;
+    prevvicurrent        = 0;
     emucontrolsvicurrent = -1;
-    prevserrate = false;
-    oldvstart = 1337;
-    prevwasblank = false;
+    prevserrate          = false;
+    oldvstart            = 1337;
+    prevwasblank         = false;
 }
 
 static bool vi_process_start(void)
 {
     int32_t i;
-    uint32_t final = 0;
+    uint32_t final       = 0;
 
-    vi_fetch_filter_ptr = vi_fetch_filter_func[ctrl.type & 1];
+    vi_fetch_filter_ptr  = vi_fetch_filter_func[ctrl.type & 1];
 
-    ispal = v_sync > (V_SYNC_NTSC + 25);
-    h_start -= (ispal ? 128 : 108);
+    ispal                = v_sync > (V_SYNC_NTSC + 25);
+    h_start             -= (ispal ? 128 : 108);
 
     bool h_start_clamped = false;
 
-    if (h_start < 0) {
-        x_start += (x_add * (-h_start));
-        hres += h_start;
+    if (h_start < 0)
+    {
+       x_start         += (x_add * (-h_start));
+       hres            += h_start;
 
-        h_start = 0;
-        h_start_clamped = true;
+       h_start          = 0;
+       h_start_clamped  = true;
     }
 
-    bool isblank = (ctrl.type & 2) == 0;
+    bool isblank        = (ctrl.type & 2) == 0;
     bool validinterlace = !isblank && ctrl.serrate;
 
-    if (validinterlace) {
-        if (prevserrate && emucontrolsvicurrent < 0) {
-            emucontrolsvicurrent = v_current_line != prevvicurrent;
-        }
+    if (validinterlace)
+    {
+       if (prevserrate && emucontrolsvicurrent < 0)
+          emucontrolsvicurrent = v_current_line != prevvicurrent;
 
-        if (emucontrolsvicurrent == 1) {
-            lowerfield = v_current_line ^ 1;
-        } else if (!emucontrolsvicurrent) {
-            if (v_start == oldvstart) {
-                lowerfield ^= true;
-            } else {
-                lowerfield = v_start < oldvstart;
-            }
-        }
+       if (emucontrolsvicurrent == 1)
+          lowerfield = v_current_line ^ 1;
+       else if (!emucontrolsvicurrent)
+       {
+          if (v_start == oldvstart)
+             lowerfield ^= true;
+          else
+             lowerfield = v_start < oldvstart;
+       }
 
-        prevvicurrent = v_current_line;
-        oldvstart = v_start;
+       prevvicurrent = v_current_line;
+       oldvstart = v_start;
     }
 
     prevserrate = validinterlace;
@@ -195,19 +196,22 @@ static bool vi_process_start(void)
     int32_t vstartoffset = ispal ? 44 : 34;
     v_start = (v_start - vstartoffset) / 2;
 
-    if (v_start < 0) {
+    if (v_start < 0)
+    {
         y_start += (y_add * (uint32_t)(-v_start));
-        v_start = 0;
+        v_start  = 0;
     }
 
     bool hres_clamped = false;
 
-    if ((hres + h_start) > PRESCALE_WIDTH) {
+    if ((hres + h_start) > PRESCALE_WIDTH)
+    {
         hres = PRESCALE_WIDTH - h_start;
         hres_clamped = true;
     }
 
-    if ((vres + v_start) > PRESCALE_HEIGHT) {
+    if ((vres + v_start) > PRESCALE_HEIGHT)
+    {
         vres = PRESCALE_HEIGHT - v_start;
         msg_warning("vres = %d v_start = %d v_video_start = %d", vres, v_start, (*vi_reg_ptr[VI_V_START] >> 16) & 0x3ff);
     }
@@ -368,21 +372,22 @@ static void vi_process(void)
     int32_t y_end = vres;
     int32_t y_inc = 1;
 
-    if (config->parallel) {
+    if (config->parallel)
+    {
         y_begin = parallel_worker_id();
-        y_inc = parallel_worker_num();
+        y_inc   = parallel_worker_num();
     }
 
-    for (int32_t y = y_begin; y < y_end; y += y_inc) {
+    for (int32_t y = y_begin; y < y_end; y += y_inc)
+    {
         uint32_t x_offs = x_start;
         uint32_t curry = y_start + y * y_add;
         uint32_t nexty = y_start + (y + 1) * y_add;
         uint32_t prevy = curry >> 10;
 
         cache_marker = cache_next_marker = cache_marker_init;
-        if (ctrl.divot_enable) {
+        if (ctrl.divot_enable)
             divot_cache_marker = divot_cache_next_marker = cache_marker_init;
-        }
 
         int* d = prescale + prescale_ptr + linecount * y;
 
@@ -390,13 +395,13 @@ static void vi_process(void)
         pixels = vi_width_low * prevy;
         nextpixels = vi_width_low + pixels;
 
-        if (prevy == (nexty >> 10)) {
+        if (prevy == (nexty >> 10))
             fetchbugstate = 2;
-        } else {
+        else
             fetchbugstate >>= 1;
-        }
 
-        for (int32_t x = 0; x < hres; x++, x_offs += x_add) {
+        for (int32_t x = 0; x < hres; x++, x_offs += x_add)
+        {
             line_x = x_offs >> 10;
             prev_line_x = line_x - 1;
             next_line_x = line_x + 1;
@@ -449,46 +454,59 @@ static void vi_process(void)
                 cache_next_marker = next_line_x;
             }
 
-            if (ctrl.divot_enable) {
-                if (far_line_x > cache_marker) {
+            if (ctrl.divot_enable)
+            {
+                if (far_line_x > cache_marker)
+                {
                     vi_fetch_filter_ptr(&viaa_cache[far_line_x], frame_buffer, far_x, ctrl, vi_width_low, 0);
                     cache_marker = far_line_x;
                 }
 
-                if (far_line_x > cache_next_marker) {
+                if (far_line_x > cache_next_marker)
+                {
                     vi_fetch_filter_ptr(&viaa_cache_next[far_line_x], frame_buffer, far_scan_x, ctrl, vi_width_low, fetchbugstate);
                     cache_next_marker = far_line_x;
                 }
 
-                if (line_x > divot_cache_marker) {
+                if (line_x > divot_cache_marker)
+                {
                     divot_filter(&divot_cache[line_x], viaa_cache[line_x], viaa_cache[prev_line_x], viaa_cache[next_line_x]);
                     divot_filter(&divot_cache[next_line_x], viaa_cache[next_line_x], viaa_cache[line_x], viaa_cache[far_line_x]);
                     divot_cache_marker = next_line_x;
-                } else if (next_line_x > divot_cache_marker) {
+                }
+                else if (next_line_x > divot_cache_marker)
+                {
                     divot_filter(&divot_cache[next_line_x], viaa_cache[next_line_x], viaa_cache[line_x], viaa_cache[far_line_x]);
                     divot_cache_marker = next_line_x;
                 }
 
-                if (line_x > divot_cache_next_marker) {
+                if (line_x > divot_cache_next_marker)
+                {
                     divot_filter(&divot_cache_next[line_x], viaa_cache_next[line_x], viaa_cache_next[prev_line_x], viaa_cache_next[next_line_x]);
                     divot_filter(&divot_cache_next[next_line_x], viaa_cache_next[next_line_x], viaa_cache_next[line_x], viaa_cache_next[far_line_x]);
                     divot_cache_next_marker = next_line_x;
-                } else if (next_line_x > divot_cache_next_marker) {
+                }
+                else if (next_line_x > divot_cache_next_marker)
+                {
                     divot_filter(&divot_cache_next[next_line_x], viaa_cache_next[next_line_x], viaa_cache_next[line_x], viaa_cache_next[far_line_x]);
                     divot_cache_next_marker = next_line_x;
                 }
 
                 color = divot_cache[line_x];
-            } else {
-                color = viaa_cache[line_x];
             }
+            else
+                color = viaa_cache[line_x];
 
-            if (lerping) {
-                if (ctrl.divot_enable) {
+            if (lerping)
+            {
+                if (ctrl.divot_enable)
+                {
                     nextcolor = divot_cache[next_line_x];
                     scancolor = divot_cache_next[line_x];
                     scannextcolor = divot_cache_next[next_line_x];
-                } else {
+                }
+                else
+                {
                     nextcolor = viaa_cache[next_line_x];
                     scancolor = viaa_cache_next[line_x];
                     scannextcolor = viaa_cache_next[next_line_x];
@@ -505,29 +523,31 @@ static void vi_process(void)
 
             gamma_filters(&r, &g, &b, ctrl);
 
-            if (x >= minhpass && x < maxhpass) {
+            if (x >= minhpass && x < maxhpass)
                 d[x] = (r << 16) | (g << 8) | b;
-            } else {
+            else
                 d[x] = 0;
-            }
         }
 
-        if (!cache_init && y_add == 0x400) {
-            cache_marker = cache_next_marker;
-            cache_next_marker = cache_marker_init;
+        if (!cache_init && y_add == 0x400)
+        {
+           cache_marker = cache_next_marker;
+           cache_next_marker = cache_marker_init;
 
-            struct ccvg* tempccvgptr = viaa_cache;
-            viaa_cache = viaa_cache_next;
-            viaa_cache_next = tempccvgptr;
-            if (ctrl.divot_enable) {
-                divot_cache_marker = divot_cache_next_marker;
-                divot_cache_next_marker = cache_marker_init;
-                tempccvgptr = divot_cache;
-                divot_cache = divot_cache_next;
-                divot_cache_next = tempccvgptr;
-            }
+           struct ccvg* tempccvgptr = viaa_cache;
+           viaa_cache = viaa_cache_next;
+           viaa_cache_next = tempccvgptr;
 
-            cache_init = true;
+           if (ctrl.divot_enable)
+           {
+              divot_cache_marker = divot_cache_next_marker;
+              divot_cache_next_marker = cache_marker_init;
+              tempccvgptr = divot_cache;
+              divot_cache = divot_cache_next;
+              divot_cache_next = tempccvgptr;
+           }
+
+           cache_init = true;
         }
     }
 }
@@ -595,12 +615,14 @@ static void vi_process_fast(void)
    int32_t y_end = vres_raw;
    int32_t y_inc = 1;
 
-   if (config->parallel) {
+   if (config->parallel)
+   {
       y_begin = parallel_worker_id();
       y_inc = parallel_worker_num();
    }
 
-   for (int32_t y = y_begin; y < y_end; y += y_inc) {
+   for (int32_t y = y_begin; y < y_end; y += y_inc)
+   {
       int32_t line = y * vi_width_low;
       uint32_t* dst = prescale + y * hres_raw;
 
@@ -619,17 +641,16 @@ static void vi_process_fast(void)
                         r = ((pix >> 11) & 0x1f) << 3;
                         g = ((pix >>  6) & 0x1f) << 3;
                         b = ((pix >>  1) & 0x1f) << 3;
-                        break;
                      }
-
+                     break;
                   case VI_TYPE_RGBA8888:
                      {
                         uint32_t pix = rdram_read_idx32((frame_buffer >> 2) + line + x);
                         r = (pix >> 24) & 0xff;
                         g = (pix >> 16) & 0xff;
                         b = (pix >>  8) & 0xff;
-                        break;
                      }
+                     break;
 
                   default:
                      assert(false);
@@ -647,9 +668,8 @@ static void vi_process_fast(void)
                   uint16_t pix;
                   rdram_read_pair16(&pix, &hval, (frame_buffer >> 1) + line + x);
                   r = g = b = (((pix & 1) << 2) | hval) << 5;
-                  break;
                }
-
+               break;
             default:
                assert(false);
          }
@@ -676,7 +696,8 @@ void vi_update(void)
 {
     // clear buffer after switching VI modes to make sure that black borders are
     // actually black and don't contain garbage
-    if (config->vi.mode != vi_mode) {
+    if (config->vi.mode != vi_mode)
+    {
         memset(prescale, 0, sizeof(prescale));
         vi_mode = config->vi.mode;
     }
@@ -710,9 +731,8 @@ void vi_update(void)
     frame_buffer = *vi_reg_ptr[VI_ORIGIN] & 0xffffff;
 
     // cancel if the frame buffer contains no valid address
-    if (!frame_buffer) {
+    if (!frame_buffer)
         return;
-    }
 
     ctrl.raw = *vi_reg_ptr[VI_STATUS];
 
@@ -734,7 +754,8 @@ void vi_update(void)
     // configure Ultra 64 prototypes and enabling it on final hardware will
     // enable two output drivers on the same bus at the same time
     static bool vbusclock;
-    if (ctrl.vbus_clock_enable && !vbusclock) {
+    if (ctrl.vbus_clock_enable && !vbusclock)
+    {
         msg_warning("vi_update: vbus_clock_enable bit set in VI_CONTROL_REG "
                     "register. Never run this code on your N64! It's rumored "
                     "that turning this bit on will result in permanent damage "
@@ -747,11 +768,14 @@ void vi_update(void)
     void (*vi_process_ptr)(void);
     void (*vi_process_end_ptr)(void);
 
-    if (config->vi.mode == VI_MODE_NORMAL) {
+    if (config->vi.mode == VI_MODE_NORMAL)
+    {
         vi_process_start_ptr = vi_process_start;
         vi_process_ptr = vi_process;
         vi_process_end_ptr = vi_process_end;
-    } else {
+    }
+    else
+    {
         vi_process_start_ptr = vi_process_start_fast;
         vi_process_ptr = vi_process_fast;
         vi_process_end_ptr = vi_process_end_fast;

@@ -10,8 +10,6 @@ static STRICTINLINE void tcmask(int32_t* S, int32_t* T, int32_t num)
 {
     int32_t wrap;
 
-
-
     if (tile[num].mask_s)
     {
         if (tile[num].ms)
@@ -139,21 +137,12 @@ static STRICTINLINE void get_texel1_1cycle(int32_t* s1, int32_t* t1, int32_t s, 
 
     if (!sigs->endspan || !sigs->longspan || !span[scanline + 1].validline)
     {
-
-
         nextsw = (w + dwinc) >> 16;
         nexts = (s + dsinc) >> 16;
         nextt = (t + dtinc) >> 16;
     }
     else
     {
-
-
-
-
-
-
-
         int32_t nextscan = scanline + 1;
         nextt = span[nextscan].t >> 16;
         nexts = span[nextscan].s >> 16;
@@ -200,35 +189,14 @@ static STRICTINLINE void texture_pipeline_cycle(struct color* TEX, struct color*
         sfrac = sss1 & 0x1f;
         tfrac = sst1 & 0x1f;
 
-
-
-
         tcclamp_cycle(&sss1, &sst1, &sfrac, &tfrac, maxs, maxt, tilenum);
-
-
-
-
-
-
         tcmask_coupled(&sss1, &sdiff, &sst1, &tdiff, tilenum);
 
-
-
-
-
-
-
         upper = (sfrac + tfrac) & 0x20;
-
-
-
 
         if (tile[tilenum].format == FORMAT_YUV)
         {
             sfracrg = (sfrac >> 1) | ((sss1 & 1) << 4);
-
-
-
             upperrg = (sfracrg + tfrac) & 0x20;
         }
         else
@@ -237,10 +205,6 @@ static STRICTINLINE void texture_pipeline_cycle(struct color* TEX, struct color*
             sfracrg = sfrac;
         }
 
-
-
-
-
         if (!other_modes.sample_type)
             fetch_texel_entlut_quadro_nearest(&t0, &t1, &t2, &t3, sss1, sst1, tilenum, upper, upperrg);
         else if (other_modes.en_tlut)
@@ -248,28 +212,12 @@ static STRICTINLINE void texture_pipeline_cycle(struct color* TEX, struct color*
         else
             fetch_texel_quadro(&t0, &t1, &t2, &t3, sss1, sdiff, sst1, tdiff, tilenum, upper - upperrg);
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
         if (bilerp)
         {
             if (!other_modes.mid_texel)
                 center = centerrg = 0;
             else
             {
-
                 center = (sfrac == 0x10 && tfrac == 0x10);
                 centerrg = (sfracrg == 0x10 && tfrac == 0x10);
             }
@@ -280,8 +228,6 @@ static STRICTINLINE void texture_pipeline_cycle(struct color* TEX, struct color*
 
                 if (!centerrg)
                 {
-
-
                     if (upperrg)
                     {
 
@@ -430,10 +376,6 @@ static STRICTINLINE void texture_pipeline_cycle(struct color* TEX, struct color*
     }
     else
     {
-
-
-
-
         tcclamp_cycle_light(&sss1, &sst1, maxs, maxt, tilenum);
 
         tcmask(&sss1, &sst1, tilenum);
@@ -472,415 +414,389 @@ static STRICTINLINE void texture_pipeline_cycle(struct color* TEX, struct color*
 
 static void loading_pipeline(int start, int end, int tilenum, int coord_quad, int ltlut)
 {
+   int localdebugmode = 0, cnt = 0;
+   int i, j;
 
+   int dsinc, dtinc;
+   dsinc = spans.ds;
+   dtinc = spans.dt;
 
-    int localdebugmode = 0, cnt = 0;
-    int i, j;
+   int s, t;
+   int ss, st;
+   int xstart, xend, xendsc;
+   int sss = 0, sst = 0;
+   int ti_index, length;
 
-    int dsinc, dtinc;
-    dsinc = spans.ds;
-    dtinc = spans.dt;
+   uint32_t tmemidx0 = 0, tmemidx1 = 0, tmemidx2 = 0, tmemidx3 = 0;
+   int dswap = 0;
+   uint32_t readval0, readval1, readval2, readval3;
+   uint32_t readidx32;
+   uint64_t loadqword;
+   uint16_t tempshort;
+   int tmem_formatting = 0;
+   uint32_t bit3fl = 0, hibit = 0;
 
-    int s, t;
-    int ss, st;
-    int xstart, xend, xendsc;
-    int sss = 0, sst = 0;
-    int ti_index, length;
+   if (end > start && ltlut)
+   {
+      rdp_pipeline_crashed = 1;
+      return;
+   }
 
-    uint32_t tmemidx0 = 0, tmemidx1 = 0, tmemidx2 = 0, tmemidx3 = 0;
-    int dswap = 0;
-    uint32_t readval0, readval1, readval2, readval3;
-    uint32_t readidx32;
-    uint64_t loadqword;
-    uint16_t tempshort;
-    int tmem_formatting = 0;
-    uint32_t bit3fl = 0, hibit = 0;
+   if (tile[tilenum].format == FORMAT_YUV)
+      tmem_formatting = 0;
+   else if (tile[tilenum].format == FORMAT_RGBA && tile[tilenum].size == PIXEL_SIZE_32BIT)
+      tmem_formatting = 1;
+   else
+      tmem_formatting = 2;
 
-    if (end > start && ltlut)
-    {
-        rdp_pipeline_crashed = 1;
-        return;
-    }
-
-    if (tile[tilenum].format == FORMAT_YUV)
-        tmem_formatting = 0;
-    else if (tile[tilenum].format == FORMAT_RGBA && tile[tilenum].size == PIXEL_SIZE_32BIT)
-        tmem_formatting = 1;
-    else
-        tmem_formatting = 2;
-
-    int tiadvance = 0, spanadvance = 0;
-    int tiptr = 0;
-    switch (ti_size)
-    {
-    case PIXEL_SIZE_4BIT:
-        rdp_pipeline_crashed = 1;
-        return;
-        break;
-    case PIXEL_SIZE_8BIT:
-        tiadvance = 8;
-        spanadvance = 8;
-        break;
-    case PIXEL_SIZE_16BIT:
-        if (!ltlut)
-        {
+   int tiadvance = 0, spanadvance = 0;
+   int tiptr = 0;
+   switch (ti_size)
+   {
+      case PIXEL_SIZE_4BIT:
+         rdp_pipeline_crashed = 1;
+         return;
+         break;
+      case PIXEL_SIZE_8BIT:
+         tiadvance = 8;
+         spanadvance = 8;
+         break;
+      case PIXEL_SIZE_16BIT:
+         if (!ltlut)
+         {
             tiadvance = 8;
             spanadvance = 4;
-        }
-        else
-        {
+         }
+         else
+         {
             tiadvance = 2;
             spanadvance = 1;
-        }
-        break;
-    case PIXEL_SIZE_32BIT:
-        tiadvance = 8;
-        spanadvance = 2;
-        break;
-    }
+         }
+         break;
+      case PIXEL_SIZE_32BIT:
+         tiadvance = 8;
+         spanadvance = 2;
+         break;
+   }
 
-    for (i = start; i <= end; i++)
-    {
-        xstart = span[i].lx;
-        xend = span[i].unscrx;
-        xendsc = span[i].rx;
-        s = span[i].s;
-        t = span[i].t;
+   for (i = start; i <= end; i++)
+   {
+      xstart = span[i].lx;
+      xend = span[i].unscrx;
+      xendsc = span[i].rx;
+      s = span[i].s;
+      t = span[i].t;
 
-        ti_index = ti_width * i + xend;
-        tiptr = ti_address + PIXELS_TO_BYTES(ti_index, ti_size);
+      ti_index = ti_width * i + xend;
+      tiptr = ti_address + PIXELS_TO_BYTES(ti_index, ti_size);
 
-        length = (xstart - xend + 1) & 0xfff;
+      length = (xstart - xend + 1) & 0xfff;
 
-        for (j = 0; j < length; j+= spanadvance)
-        {
-            ss = s >> 16;
-            st = t >> 16;
+      for (j = 0; j < length; j+= spanadvance)
+      {
+         ss = s >> 16;
+         st = t >> 16;
 
+         sss = ss & 0xffff;
+         sst = st & 0xffff;
 
+         tc_pipeline_load(&sss, &sst, tilenum, coord_quad);
 
+         dswap = sst & 1;
 
+         get_tmem_idx(sss, sst, tilenum, &tmemidx0, &tmemidx1, &tmemidx2, &tmemidx3, &bit3fl, &hibit);
 
+         readidx32 = (tiptr >> 2) & ~1;
+         RREADIDX32(readval0, readidx32);
+         readidx32++;
+         RREADIDX32(readval1, readidx32);
+         readidx32++;
+         RREADIDX32(readval2, readidx32);
+         readidx32++;
+         RREADIDX32(readval3, readidx32);
 
-
-            sss = ss & 0xffff;
-            sst = st & 0xffff;
-
-            tc_pipeline_load(&sss, &sst, tilenum, coord_quad);
-
-            dswap = sst & 1;
-
-
-            get_tmem_idx(sss, sst, tilenum, &tmemidx0, &tmemidx1, &tmemidx2, &tmemidx3, &bit3fl, &hibit);
-
-            readidx32 = (tiptr >> 2) & ~1;
-            RREADIDX32(readval0, readidx32);
-            readidx32++;
-            RREADIDX32(readval1, readidx32);
-            readidx32++;
-            RREADIDX32(readval2, readidx32);
-            readidx32++;
-            RREADIDX32(readval3, readidx32);
-
-
-            switch(tiptr & 7)
-            {
+         switch(tiptr & 7)
+         {
             case 0:
-                if (!ltlut)
-                    loadqword = ((uint64_t)readval0 << 32) | readval1;
-                else
-                {
-                    tempshort = readval0 >> 16;
-                    loadqword = ((uint64_t)tempshort << 48) | ((uint64_t) tempshort << 32) | ((uint64_t) tempshort << 16) | tempshort;
-                }
-                break;
+               if (!ltlut)
+                  loadqword = ((uint64_t)readval0 << 32) | readval1;
+               else
+               {
+                  tempshort = readval0 >> 16;
+                  loadqword = ((uint64_t)tempshort << 48) | ((uint64_t) tempshort << 32) | ((uint64_t) tempshort << 16) | tempshort;
+               }
+               break;
             case 1:
-                loadqword = ((uint64_t)readval0 << 40) | ((uint64_t)readval1 << 8) | (readval2 >> 24);
-                break;
+               loadqword = ((uint64_t)readval0 << 40) | ((uint64_t)readval1 << 8) | (readval2 >> 24);
+               break;
             case 2:
-                if (!ltlut)
-                    loadqword = ((uint64_t)readval0 << 48) | ((uint64_t)readval1 << 16) | (readval2 >> 16);
-                else
-                {
-                    tempshort = readval0 & 0xffff;
-                    loadqword = ((uint64_t)tempshort << 48) | ((uint64_t) tempshort << 32) | ((uint64_t) tempshort << 16) | tempshort;
-                }
-                break;
+               if (!ltlut)
+                  loadqword = ((uint64_t)readval0 << 48) | ((uint64_t)readval1 << 16) | (readval2 >> 16);
+               else
+               {
+                  tempshort = readval0 & 0xffff;
+                  loadqword = ((uint64_t)tempshort << 48) | ((uint64_t) tempshort << 32) | ((uint64_t) tempshort << 16) | tempshort;
+               }
+               break;
             case 3:
-                loadqword = ((uint64_t)readval0 << 56) | ((uint64_t)readval1 << 24) | (readval2 >> 8);
-                break;
+               loadqword = ((uint64_t)readval0 << 56) | ((uint64_t)readval1 << 24) | (readval2 >> 8);
+               break;
             case 4:
-                if (!ltlut)
-                    loadqword = ((uint64_t)readval1 << 32) | readval2;
-                else
-                {
-                    tempshort = readval1 >> 16;
-                    loadqword = ((uint64_t)tempshort << 48) | ((uint64_t) tempshort << 32) | ((uint64_t) tempshort << 16) | tempshort;
-                }
-                break;
+               if (!ltlut)
+                  loadqword = ((uint64_t)readval1 << 32) | readval2;
+               else
+               {
+                  tempshort = readval1 >> 16;
+                  loadqword = ((uint64_t)tempshort << 48) | ((uint64_t) tempshort << 32) | ((uint64_t) tempshort << 16) | tempshort;
+               }
+               break;
             case 5:
-                loadqword = ((uint64_t)readval1 << 40) | ((uint64_t)readval2 << 8) | (readval3 >> 24);
-                break;
+               loadqword = ((uint64_t)readval1 << 40) | ((uint64_t)readval2 << 8) | (readval3 >> 24);
+               break;
             case 6:
-                if (!ltlut)
-                    loadqword = ((uint64_t)readval1 << 48) | ((uint64_t)readval2 << 16) | (readval3 >> 16);
-                else
-                {
-                    tempshort = readval1 & 0xffff;
-                    loadqword = ((uint64_t)tempshort << 48) | ((uint64_t) tempshort << 32) | ((uint64_t) tempshort << 16) | tempshort;
-                }
-                break;
+               if (!ltlut)
+                  loadqword = ((uint64_t)readval1 << 48) | ((uint64_t)readval2 << 16) | (readval3 >> 16);
+               else
+               {
+                  tempshort = readval1 & 0xffff;
+                  loadqword = ((uint64_t)tempshort << 48) | ((uint64_t) tempshort << 32) | ((uint64_t) tempshort << 16) | tempshort;
+               }
+               break;
             case 7:
-                loadqword = ((uint64_t)readval1 << 56) | ((uint64_t)readval2 << 24) | (readval3 >> 8);
-                break;
-            }
+               loadqword = ((uint64_t)readval1 << 56) | ((uint64_t)readval2 << 24) | (readval3 >> 8);
+               break;
+         }
 
 
-            switch(tmem_formatting)
-            {
+         switch(tmem_formatting)
+         {
             case 0:
-                readval0 = (uint32_t)((((loadqword >> 56) & 0xff) << 24) | (((loadqword >> 40) & 0xff) << 16) | (((loadqword >> 24) & 0xff) << 8) | (((loadqword >> 8) & 0xff) << 0));
-                readval1 = (uint32_t)((((loadqword >> 48) & 0xff) << 24) | (((loadqword >> 32) & 0xff) << 16) | (((loadqword >> 16) & 0xff) << 8) | (((loadqword >> 0) & 0xff) << 0));
-                if (bit3fl)
-                {
-                    tmem16[tmemidx2 ^ WORD_ADDR_XOR] = (uint16_t)(readval0 >> 16);
-                    tmem16[tmemidx3 ^ WORD_ADDR_XOR] = (uint16_t)(readval0 & 0xffff);
-                    tmem16[(tmemidx2 | 0x400) ^ WORD_ADDR_XOR] = (uint16_t)(readval1 >> 16);
-                    tmem16[(tmemidx3 | 0x400) ^ WORD_ADDR_XOR] = (uint16_t)(readval1 & 0xffff);
-                }
-                else
-                {
-                    tmem16[tmemidx0 ^ WORD_ADDR_XOR] = (uint16_t)(readval0 >> 16);
-                    tmem16[tmemidx1 ^ WORD_ADDR_XOR] = (uint16_t)(readval0 & 0xffff);
-                    tmem16[(tmemidx0 | 0x400) ^ WORD_ADDR_XOR] = (uint16_t)(readval1 >> 16);
-                    tmem16[(tmemidx1 | 0x400) ^ WORD_ADDR_XOR] = (uint16_t)(readval1 & 0xffff);
-                }
-                break;
+               readval0 = (uint32_t)((((loadqword >> 56) & 0xff) << 24) | (((loadqword >> 40) & 0xff) << 16) | (((loadqword >> 24) & 0xff) << 8) | (((loadqword >> 8) & 0xff) << 0));
+               readval1 = (uint32_t)((((loadqword >> 48) & 0xff) << 24) | (((loadqword >> 32) & 0xff) << 16) | (((loadqword >> 16) & 0xff) << 8) | (((loadqword >> 0) & 0xff) << 0));
+               if (bit3fl)
+               {
+                  tmem16[tmemidx2 ^ WORD_ADDR_XOR] = (uint16_t)(readval0 >> 16);
+                  tmem16[tmemidx3 ^ WORD_ADDR_XOR] = (uint16_t)(readval0 & 0xffff);
+                  tmem16[(tmemidx2 | 0x400) ^ WORD_ADDR_XOR] = (uint16_t)(readval1 >> 16);
+                  tmem16[(tmemidx3 | 0x400) ^ WORD_ADDR_XOR] = (uint16_t)(readval1 & 0xffff);
+               }
+               else
+               {
+                  tmem16[tmemidx0 ^ WORD_ADDR_XOR] = (uint16_t)(readval0 >> 16);
+                  tmem16[tmemidx1 ^ WORD_ADDR_XOR] = (uint16_t)(readval0 & 0xffff);
+                  tmem16[(tmemidx0 | 0x400) ^ WORD_ADDR_XOR] = (uint16_t)(readval1 >> 16);
+                  tmem16[(tmemidx1 | 0x400) ^ WORD_ADDR_XOR] = (uint16_t)(readval1 & 0xffff);
+               }
+               break;
             case 1:
-                readval0 = (uint32_t)(((loadqword >> 48) << 16) | ((loadqword >> 16) & 0xffff));
-                readval1 = (uint32_t)((((loadqword >> 32) & 0xffff) << 16) | (loadqword & 0xffff));
+               readval0 = (uint32_t)(((loadqword >> 48) << 16) | ((loadqword >> 16) & 0xffff));
+               readval1 = (uint32_t)((((loadqword >> 32) & 0xffff) << 16) | (loadqword & 0xffff));
 
-                if (bit3fl)
-                {
-                    tmem16[tmemidx2 ^ WORD_ADDR_XOR] = (uint16_t)(readval0 >> 16);
-                    tmem16[tmemidx3 ^ WORD_ADDR_XOR] = (uint16_t)(readval0 & 0xffff);
-                    tmem16[(tmemidx2 | 0x400) ^ WORD_ADDR_XOR] = (uint16_t)(readval1 >> 16);
-                    tmem16[(tmemidx3 | 0x400) ^ WORD_ADDR_XOR] = (uint16_t)(readval1 & 0xffff);
-                }
-                else
-                {
-                    tmem16[tmemidx0 ^ WORD_ADDR_XOR] = (uint16_t)(readval0 >> 16);
-                    tmem16[tmemidx1 ^ WORD_ADDR_XOR] = (uint16_t)(readval0 & 0xffff);
-                    tmem16[(tmemidx0 | 0x400) ^ WORD_ADDR_XOR] = (uint16_t)(readval1 >> 16);
-                    tmem16[(tmemidx1 | 0x400) ^ WORD_ADDR_XOR] = (uint16_t)(readval1 & 0xffff);
-                }
-                break;
+               if (bit3fl)
+               {
+                  tmem16[tmemidx2 ^ WORD_ADDR_XOR] = (uint16_t)(readval0 >> 16);
+                  tmem16[tmemidx3 ^ WORD_ADDR_XOR] = (uint16_t)(readval0 & 0xffff);
+                  tmem16[(tmemidx2 | 0x400) ^ WORD_ADDR_XOR] = (uint16_t)(readval1 >> 16);
+                  tmem16[(tmemidx3 | 0x400) ^ WORD_ADDR_XOR] = (uint16_t)(readval1 & 0xffff);
+               }
+               else
+               {
+                  tmem16[tmemidx0 ^ WORD_ADDR_XOR] = (uint16_t)(readval0 >> 16);
+                  tmem16[tmemidx1 ^ WORD_ADDR_XOR] = (uint16_t)(readval0 & 0xffff);
+                  tmem16[(tmemidx0 | 0x400) ^ WORD_ADDR_XOR] = (uint16_t)(readval1 >> 16);
+                  tmem16[(tmemidx1 | 0x400) ^ WORD_ADDR_XOR] = (uint16_t)(readval1 & 0xffff);
+               }
+               break;
             case 2:
-                if (!dswap)
-                {
-                    if (!hibit)
-                    {
-                        tmem16[tmemidx0 ^ WORD_ADDR_XOR] = (uint16_t)(loadqword >> 48);
-                        tmem16[tmemidx1 ^ WORD_ADDR_XOR] = (uint16_t)(loadqword >> 32);
-                        tmem16[tmemidx2 ^ WORD_ADDR_XOR] = (uint16_t)(loadqword >> 16);
-                        tmem16[tmemidx3 ^ WORD_ADDR_XOR] = (uint16_t)(loadqword & 0xffff);
-                    }
-                    else
-                    {
-                        tmem16[(tmemidx0 | 0x400) ^ WORD_ADDR_XOR] = (uint16_t)(loadqword >> 48);
-                        tmem16[(tmemidx1 | 0x400) ^ WORD_ADDR_XOR] = (uint16_t)(loadqword >> 32);
-                        tmem16[(tmemidx2 | 0x400) ^ WORD_ADDR_XOR] = (uint16_t)(loadqword >> 16);
-                        tmem16[(tmemidx3 | 0x400) ^ WORD_ADDR_XOR] = (uint16_t)(loadqword & 0xffff);
-                    }
-                }
-                else
-                {
-                    if (!hibit)
-                    {
-                        tmem16[tmemidx0 ^ WORD_ADDR_XOR] = (uint16_t)(loadqword >> 16);
-                        tmem16[tmemidx1 ^ WORD_ADDR_XOR] = (uint16_t)(loadqword & 0xffff);
-                        tmem16[tmemidx2 ^ WORD_ADDR_XOR] = (uint16_t)(loadqword >> 48);
-                        tmem16[tmemidx3 ^ WORD_ADDR_XOR] = (uint16_t)(loadqword >> 32);
-                    }
-                    else
-                    {
-                        tmem16[(tmemidx0 | 0x400) ^ WORD_ADDR_XOR] = (uint16_t)(loadqword >> 16);
-                        tmem16[(tmemidx1 | 0x400) ^ WORD_ADDR_XOR] = (uint16_t)(loadqword & 0xffff);
-                        tmem16[(tmemidx2 | 0x400) ^ WORD_ADDR_XOR] = (uint16_t)(loadqword >> 48);
-                        tmem16[(tmemidx3 | 0x400) ^ WORD_ADDR_XOR] = (uint16_t)(loadqword >> 32);
-                    }
-                }
-            break;
-            }
+               if (!dswap)
+               {
+                  if (!hibit)
+                  {
+                     tmem16[tmemidx0 ^ WORD_ADDR_XOR] = (uint16_t)(loadqword >> 48);
+                     tmem16[tmemidx1 ^ WORD_ADDR_XOR] = (uint16_t)(loadqword >> 32);
+                     tmem16[tmemidx2 ^ WORD_ADDR_XOR] = (uint16_t)(loadqword >> 16);
+                     tmem16[tmemidx3 ^ WORD_ADDR_XOR] = (uint16_t)(loadqword & 0xffff);
+                  }
+                  else
+                  {
+                     tmem16[(tmemidx0 | 0x400) ^ WORD_ADDR_XOR] = (uint16_t)(loadqword >> 48);
+                     tmem16[(tmemidx1 | 0x400) ^ WORD_ADDR_XOR] = (uint16_t)(loadqword >> 32);
+                     tmem16[(tmemidx2 | 0x400) ^ WORD_ADDR_XOR] = (uint16_t)(loadqword >> 16);
+                     tmem16[(tmemidx3 | 0x400) ^ WORD_ADDR_XOR] = (uint16_t)(loadqword & 0xffff);
+                  }
+               }
+               else
+               {
+                  if (!hibit)
+                  {
+                     tmem16[tmemidx0 ^ WORD_ADDR_XOR] = (uint16_t)(loadqword >> 16);
+                     tmem16[tmemidx1 ^ WORD_ADDR_XOR] = (uint16_t)(loadqword & 0xffff);
+                     tmem16[tmemidx2 ^ WORD_ADDR_XOR] = (uint16_t)(loadqword >> 48);
+                     tmem16[tmemidx3 ^ WORD_ADDR_XOR] = (uint16_t)(loadqword >> 32);
+                  }
+                  else
+                  {
+                     tmem16[(tmemidx0 | 0x400) ^ WORD_ADDR_XOR] = (uint16_t)(loadqword >> 16);
+                     tmem16[(tmemidx1 | 0x400) ^ WORD_ADDR_XOR] = (uint16_t)(loadqword & 0xffff);
+                     tmem16[(tmemidx2 | 0x400) ^ WORD_ADDR_XOR] = (uint16_t)(loadqword >> 48);
+                     tmem16[(tmemidx3 | 0x400) ^ WORD_ADDR_XOR] = (uint16_t)(loadqword >> 32);
+                  }
+               }
+               break;
+         }
 
 
-            s = (s + dsinc) & ~0x1f;
-            t = (t + dtinc) & ~0x1f;
-            tiptr += tiadvance;
-        }
-    }
+         s = (s + dsinc) & ~0x1f;
+         t = (t + dtinc) & ~0x1f;
+         tiptr += tiadvance;
+      }
+   }
+}
+
+#define ADJUST_ATTR_LOAD()                                      \
+   {                                                               \
+      span[j].s = s & ~0x3ff;                                     \
+      span[j].t = t & ~0x3ff;                                     \
+   }
+
+
+#define ADDVALUES_LOAD() {  \
+   t += dtde;      \
 }
 
 static void edgewalker_for_loads(int32_t* lewdata)
 {
-    int j = 0;
-    int xleft = 0, xright = 0;
-    int xstart = 0, xend = 0;
-    int s = 0, t = 0, w = 0;
-    int dsdx = 0, dtdx = 0;
-    int dsdy = 0, dtdy = 0;
-    int dsde = 0, dtde = 0;
-    int tilenum = 0, flip = 0;
-    int32_t yl = 0, ym = 0, yh = 0;
-    int32_t xl = 0, xm = 0, xh = 0;
-    int32_t dxldy = 0, dxhdy = 0, dxmdy = 0;
+   int k = 0;
 
-    int cmd_id = CMD_ID(lewdata);
-    int ltlut = (cmd_id == CMD_ID_LOAD_TLUT);
-    int coord_quad = ltlut || (cmd_id == CMD_ID_LOAD_BLOCK);
-    flip = 1;
-    max_level = 0;
-    tilenum = (lewdata[0] >> 16) & 7;
+   int sign_dxhdy = 0;
 
+   int do_offset = 0;
 
-    yl = SIGN(lewdata[0], 14);
-    ym = lewdata[1] >> 16;
-    ym = SIGN(ym, 14);
-    yh = SIGN(lewdata[1], 14);
+   int32_t maxxmx, minxhx;
 
-    xl = SIGN(lewdata[2], 28);
-    xh = SIGN(lewdata[3], 28);
-    xm = SIGN(lewdata[4], 28);
+   int spix = 0;
+   int valid_y = 1;
+   int length = 0;
+   int32_t xrsc = 0, xlsc = 0, stickybit = 0;
 
-    dxldy = 0;
-    dxhdy = 0;
-    dxmdy = 0;
+   int xfrac = 0;
+   int j = 0;
+   int xleft = 0, xright = 0;
+   int xstart = 0, xend = 0;
+   int dsdx = 0, dtdx = 0;
+   int dsdy = 0, dtdy = 0;
+   int dsde = 0, dtde = 0;
 
+   int cmd_id = CMD_ID(lewdata);
+   int ltlut = (cmd_id == CMD_ID_LOAD_TLUT);
+   int coord_quad = ltlut || (cmd_id == CMD_ID_LOAD_BLOCK);
+   int flip = 1;
+   int tilenum = (lewdata[0] >> 16) & 7;
 
-    s    = lewdata[5] & 0xffff0000;
-    t    = (lewdata[5] & 0xffff) << 16;
-    w    = 0;
-    dsdx = (lewdata[7] & 0xffff0000) | ((lewdata[6] >> 16) & 0xffff);
-    dtdx = ((lewdata[7] << 16) & 0xffff0000)    | (lewdata[6] & 0xffff);
-    dsde = 0;
-    dtde = (lewdata[9] & 0xffff) << 16;
-    dsdy = 0;
-    dtdy = (lewdata[8] & 0xffff) << 16;
+   int yl = SIGN(lewdata[0], 14);
+   int ym = lewdata[1] >> 16;
+   int yh = SIGN(lewdata[1], 14);
+   int xl = SIGN(lewdata[2], 28);
+   int xh = SIGN(lewdata[3], 28);
+   int xm = SIGN(lewdata[4], 28);
 
-    spans.ds = dsdx & ~0x1f;
-    spans.dt = dtdx & ~0x1f;
-    spans.dw = 0;
+   int dxldy = 0;
+   int dxhdy = 0;
+   int dxmdy = 0;
 
+   int s    = lewdata[5] & 0xffff0000;
+   int t    = (lewdata[5] & 0xffff) << 16;
+   int w    = 0;
 
+   int dsdx = (lewdata[7] & 0xffff0000) | ((lewdata[6] >> 16) & 0xffff);
+   int dtdx = ((lewdata[7] << 16) & 0xffff0000)    | (lewdata[6] & 0xffff);
+   int dsde = 0;
+   int dtde = (lewdata[9] & 0xffff) << 16;
+   int dsdy = 0;
+   int dtdy = (lewdata[8] & 0xffff) << 16;
 
+   ym        = SIGN(ym, 14);
 
+   max_level = 0;
 
+   spans.ds = dsdx & ~0x1f;
+   spans.dt = dtdx & ~0x1f;
+   spans.dw = 0;
 
-    xright = xh & ~0x1;
-    xleft = xm & ~0x1;
+   xright = xh & ~0x1;
+   xleft = xm & ~0x1;
 
-    int k = 0;
+   int ycur  =  yh & ~3;
+   int ylfar = yl | 3;
 
-    int sign_dxhdy = 0;
+   int32_t yllimit = yl;
+   int32_t yhlimit = yh;
 
-    int do_offset = 0;
+   xfrac = 0;
+   xend = xright >> 16;
 
-    int xfrac = 0;
+   for (k = ycur; k <= ylfar; k++)
+   {
+      if (k == ym)
+         xleft = xl & ~1;
 
+      spix = k & 3;
 
+      if (!(k & ~0xfff))
+      {
+         j = k >> 2;
+         valid_y = !(k < yhlimit || k >= yllimit);
 
+         if (spix == 0)
+         {
+            maxxmx = 0;
+            minxhx = 0xfff;
+         }
 
-
-
-#define ADJUST_ATTR_LOAD()                                      \
-{                                                               \
-    span[j].s = s & ~0x3ff;                                     \
-    span[j].t = t & ~0x3ff;                                     \
-}
-
-
-#define ADDVALUES_LOAD() {  \
-            t += dtde;      \
-}
-
-    int32_t maxxmx, minxhx;
-
-    int spix = 0;
-    int ycur =  yh & ~3;
-    int ylfar = yl | 3;
-
-    int valid_y = 1;
-    int length = 0;
-    int32_t xrsc = 0, xlsc = 0, stickybit = 0;
-    int32_t yllimit = yl;
-    int32_t yhlimit = yh;
-
-    xfrac = 0;
-    xend = xright >> 16;
-
-
-    for (k = ycur; k <= ylfar; k++)
-    {
-        if (k == ym)
-            xleft = xl & ~1;
-
-        spix = k & 3;
-
-        if (!(k & ~0xfff))
-        {
-            j = k >> 2;
-            valid_y = !(k < yhlimit || k >= yllimit);
-
-            if (spix == 0)
-            {
-                maxxmx = 0;
-                minxhx = 0xfff;
-            }
-
-            xrsc = (xright >> 13) & 0x7ffe;
+         xrsc = (xright >> 13) & 0x7ffe;
 
 
 
-            xlsc = (xleft >> 13) & 0x7ffe;
+         xlsc = (xleft >> 13) & 0x7ffe;
 
-            if (valid_y)
-            {
-                maxxmx = (((xlsc >> 3) & 0xfff) > maxxmx) ? (xlsc >> 3) & 0xfff : maxxmx;
-                minxhx = (((xrsc >> 3) & 0xfff) < minxhx) ? (xrsc >> 3) & 0xfff : minxhx;
-            }
+         if (valid_y)
+         {
+            maxxmx = (((xlsc >> 3) & 0xfff) > maxxmx) ? (xlsc >> 3) & 0xfff : maxxmx;
+            minxhx = (((xrsc >> 3) & 0xfff) < minxhx) ? (xrsc >> 3) & 0xfff : minxhx;
+         }
 
-            if (spix == 0)
-            {
-                span[j].unscrx = xend;
-                ADJUST_ATTR_LOAD();
-            }
+         if (spix == 0)
+         {
+            span[j].unscrx = xend;
+            ADJUST_ATTR_LOAD();
+         }
 
-            if (spix == 3)
-            {
-                span[j].lx = maxxmx;
-                span[j].rx = minxhx;
-
-
-            }
+         if (spix == 3)
+         {
+            span[j].lx = maxxmx;
+            span[j].rx = minxhx;
 
 
-        }
-
-        if (spix == 3)
-        {
-            ADDVALUES_LOAD();
-        }
+         }
 
 
+      }
 
-    }
+      if (spix == 3)
+      {
+         ADDVALUES_LOAD();
+      }
 
-    loading_pipeline(yhlimit >> 2, yllimit >> 2, tilenum, coord_quad, ltlut);
+
+
+   }
+
+   loading_pipeline(yhlimit >> 2, yllimit >> 2, tilenum, coord_quad, ltlut);
 }
 
 static void rdp_set_tile_size(const uint32_t* args)
 {
-    int tilenum = (args[1] >> 24) & 0x7;
+    int tilenum      = (args[1] >> 24) & 0x7;
     tile[tilenum].sl = (args[0] >> 12) & 0xfff;
     tile[tilenum].tl = (args[0] >>  0) & 0xfff;
     tile[tilenum].sh = (args[1] >> 12) & 0xfff;
@@ -891,64 +807,62 @@ static void rdp_set_tile_size(const uint32_t* args)
 
 static void rdp_load_block(const uint32_t* args)
 {
-    int tilenum = (args[1] >> 24) & 0x7;
-    int sl, sh, tl, dxt;
+   int32_t lewdata[10];
+   int tilenum = (args[1] >> 24) & 0x7;
+   int sl, sh, tl, dxt;
+
+   tile[tilenum].sl = sl = ((args[0] >> 12) & 0xfff);
+   tile[tilenum].tl = tl = ((args[0] >>  0) & 0xfff);
+   tile[tilenum].sh = sh = ((args[1] >> 12) & 0xfff);
+   tile[tilenum].th = dxt  = ((args[1] >>  0) & 0xfff);
+
+   calculate_clamp_diffs(tilenum);
+
+   int tlclamped = tl & 0x3ff;
 
 
-    tile[tilenum].sl = sl = ((args[0] >> 12) & 0xfff);
-    tile[tilenum].tl = tl = ((args[0] >>  0) & 0xfff);
-    tile[tilenum].sh = sh = ((args[1] >> 12) & 0xfff);
-    tile[tilenum].th = dxt  = ((args[1] >>  0) & 0xfff);
+   lewdata[0] = (args[0] & 0xff000000) | (0x10 << 19) | (tilenum << 16) | ((tlclamped << 2) | 3);
+   lewdata[1] = (((tlclamped << 2) | 3) << 16) | (tlclamped << 2);
+   lewdata[2] = sh << 16;
+   lewdata[3] = sl << 16;
+   lewdata[4] = sh << 16;
+   lewdata[5] = ((sl << 3) << 16) | (tl << 3);
+   lewdata[6] = (dxt & 0xff) << 8;
+   lewdata[7] = ((0x80 >> ti_size) << 16) | (dxt >> 8);
+   lewdata[8] = 0x20;
+   lewdata[9] = 0x20;
 
-    calculate_clamp_diffs(tilenum);
-
-    int tlclamped = tl & 0x3ff;
-
-    int32_t lewdata[10];
-
-    lewdata[0] = (args[0] & 0xff000000) | (0x10 << 19) | (tilenum << 16) | ((tlclamped << 2) | 3);
-    lewdata[1] = (((tlclamped << 2) | 3) << 16) | (tlclamped << 2);
-    lewdata[2] = sh << 16;
-    lewdata[3] = sl << 16;
-    lewdata[4] = sh << 16;
-    lewdata[5] = ((sl << 3) << 16) | (tl << 3);
-    lewdata[6] = (dxt & 0xff) << 8;
-    lewdata[7] = ((0x80 >> ti_size) << 16) | (dxt >> 8);
-    lewdata[8] = 0x20;
-    lewdata[9] = 0x20;
-
-    edgewalker_for_loads(lewdata);
+   edgewalker_for_loads(lewdata);
 
 }
 
 static void tile_tlut_common_cs_decoder(const uint32_t* args)
 {
-    int tilenum = (args[1] >> 24) & 0x7;
-    int sl, tl, sh, th;
+   int32_t lewdata[10];
+   int tilenum = (args[1] >> 24) & 0x7;
+   int sl, tl, sh, th;
+
+   tile[tilenum].sl = sl = ((args[0] >> 12) & 0xfff);
+   tile[tilenum].tl = tl = ((args[0] >>  0) & 0xfff);
+   tile[tilenum].sh = sh = ((args[1] >> 12) & 0xfff);
+   tile[tilenum].th = th = ((args[1] >>  0) & 0xfff);
+
+   calculate_clamp_diffs(tilenum);
 
 
-    tile[tilenum].sl = sl = ((args[0] >> 12) & 0xfff);
-    tile[tilenum].tl = tl = ((args[0] >>  0) & 0xfff);
-    tile[tilenum].sh = sh = ((args[1] >> 12) & 0xfff);
-    tile[tilenum].th = th = ((args[1] >>  0) & 0xfff);
 
-    calculate_clamp_diffs(tilenum);
+   lewdata[0] = (args[0] & 0xff000000) | (0x10 << 19) | (tilenum << 16) | (th | 3);
+   lewdata[1] = ((th | 3) << 16) | (tl);
+   lewdata[2] = ((sh >> 2) << 16) | ((sh & 3) << 14);
+   lewdata[3] = ((sl >> 2) << 16) | ((sl & 3) << 14);
+   lewdata[4] = ((sh >> 2) << 16) | ((sh & 3) << 14);
+   lewdata[5] = ((sl << 3) << 16) | (tl << 3);
+   lewdata[6] = 0;
+   lewdata[7] = (0x200 >> ti_size) << 16;
+   lewdata[8] = 0x20;
+   lewdata[9] = 0x20;
 
-
-    int32_t lewdata[10];
-
-    lewdata[0] = (args[0] & 0xff000000) | (0x10 << 19) | (tilenum << 16) | (th | 3);
-    lewdata[1] = ((th | 3) << 16) | (tl);
-    lewdata[2] = ((sh >> 2) << 16) | ((sh & 3) << 14);
-    lewdata[3] = ((sl >> 2) << 16) | ((sl & 3) << 14);
-    lewdata[4] = ((sh >> 2) << 16) | ((sh & 3) << 14);
-    lewdata[5] = ((sl << 3) << 16) | (tl << 3);
-    lewdata[6] = 0;
-    lewdata[7] = (0x200 >> ti_size) << 16;
-    lewdata[8] = 0x20;
-    lewdata[9] = 0x20;
-
-    edgewalker_for_loads(lewdata);
+   edgewalker_for_loads(lewdata);
 }
 
 static void rdp_load_tlut(const uint32_t* args)

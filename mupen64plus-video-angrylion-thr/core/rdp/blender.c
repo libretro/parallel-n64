@@ -86,22 +86,19 @@ static INLINE void set_blender_input(int cycle, int which, int32_t **input_r, in
 
 static STRICTINLINE int alpha_compare(int32_t comb_alpha)
 {
-    int32_t threshold;
-    if (!other_modes.alpha_compare_en)
-        return 1;
-    else
-    {
-        if (!other_modes.dither_alpha_en)
-            threshold = blend_color.a;
-        else
-            threshold = irand() & 0xff;
+   int32_t threshold;
+   if (!other_modes.alpha_compare_en)
+      return 1;
 
+   if (!other_modes.dither_alpha_en)
+      threshold = blend_color.a;
+   else
+      threshold = irand() & 0xff;
 
-        if (comb_alpha >= threshold)
-            return 1;
-        else
-            return 0;
-    }
+   if (comb_alpha >= threshold)
+      return 1;
+
+   return 0;
 }
 
 static STRICTINLINE void blender_equation_cycle0(int* r, int* g, int* b)
