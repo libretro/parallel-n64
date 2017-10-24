@@ -56,8 +56,8 @@ static struct precomp_instr fake_instr;
 int branch_taken = 0;
 
 /* that's where the dynarec will restart when going back from a C function */
-#if defined(__x86_64__) || (_M_X64)
-#if defined(_MSC_VER_)
+#if defined(__x86_64__) || defined(_M_X64)
+#if defined(_MSC_VER)
 uint64_t *return_address;
 int64_t save_rsp = 0;
 int64_t save_rip = 0;
