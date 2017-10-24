@@ -176,7 +176,7 @@ void rdp_update(void)
     int i, length;
     uint32_t cmd, cmd_length;
 
-    uint32_t** dp_reg = plugin_get_dp_registers();
+    uint32_t** dp_reg      = plugin_get_dp_registers();
     uint32_t dp_current_al = *dp_reg[DP_CURRENT] & ~7, dp_end_al = *dp_reg[DP_END] & ~7;
 
     *dp_reg[DP_STATUS] &= ~DP_STATUS_FREEZE;

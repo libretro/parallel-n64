@@ -1,7 +1,6 @@
 #include "rdp.h"
 #include "vi.h"
 #include "common.h"
-#include "plugin.h"
 #include "rdram.h"
 #include "msg.h"
 #include "irand.h"
@@ -13,14 +12,10 @@
 #define SIGN16(x)   ((int16_t)(x))
 #define SIGN8(x)    ((int8_t)(x))
 
-
 #define SIGN(x, numb)   (((x) & ((1 << numb) - 1)) | -((x) & (1 << (numb - 1))))
 #define SIGNF(x, numb)  ((x) | -((x) & (1 << (numb - 1))))
 
 #define TRELATIVE(x, y)     ((x) - ((y) << 3))
-
-
-
 
 // bit constants for DP_STATUS
 #define DP_STATUS_XBUS_DMA      0x001   // DMEM DMA mode is set
@@ -35,52 +30,48 @@
 #define DP_STATUS_END_VALID     0x200   // Unknown
 #define DP_STATUS_START_VALID   0x400   // Unknown
 
+#define PIXEL_SIZE_4BIT         0
+#define PIXEL_SIZE_8BIT         1
+#define PIXEL_SIZE_16BIT        2
+#define PIXEL_SIZE_32BIT        3
+
+#define CYCLE_TYPE_1            0
+#define CYCLE_TYPE_2            1
+#define CYCLE_TYPE_COPY         2
+#define CYCLE_TYPE_FILL         3
+
+
+#define FORMAT_RGBA             0
+#define FORMAT_YUV              1
+#define FORMAT_CI               2
+#define FORMAT_IA               3
+#define FORMAT_I                4
+
+
+#define TEXEL_RGBA4             0
+#define TEXEL_RGBA8             1
+#define TEXEL_RGBA16            2
+#define TEXEL_RGBA32            3
+#define TEXEL_YUV4              4
+#define TEXEL_YUV8              5
+#define TEXEL_YUV16             6
+#define TEXEL_YUV32             7
+#define TEXEL_CI4               8
+#define TEXEL_CI8               9
+#define TEXEL_CI16              0xa
+#define TEXEL_CI32              0xb
+#define TEXEL_IA4               0xc
+#define TEXEL_IA8               0xd
+#define TEXEL_IA16              0xe
+#define TEXEL_IA32              0xf
+#define TEXEL_I4                0x10
+#define TEXEL_I8                0x11
+#define TEXEL_I16               0x12
+#define TEXEL_I32               0x13
+
+#define PIXELS_TO_BYTES(pix, siz) (((pix) << (siz)) >> 1)
+
 static struct core_config* config;
-static struct plugin_api* plugin;
-
-static TLS int blshifta = 0, blshiftb = 0, pastblshifta = 0, pastblshiftb = 0;
-
-static TLS struct
-{
-    int lx, rx;
-    int unscrx;
-    int validline;
-    int32_t r, g, b, a, s, t, w, z;
-    int32_t majorx[4];
-    int32_t minorx[4];
-    int32_t invalyscan[4];
-} span[1024];
-
-// span states
-static TLS struct
-{
-    int ds;
-    int dt;
-    int dw;
-    int dr;
-    int dg;
-    int db;
-    int da;
-    int dz;
-    int dzpix;
-
-    int drdy;
-    int dgdy;
-    int dbdy;
-    int dady;
-    int dzdy;
-    int cdr;
-    int cdg;
-    int cdb;
-    int cda;
-    int cdz;
-
-    int dsdy;
-    int dtdy;
-    int dwdy;
-} spans;
-
-
 
 struct color
 {
@@ -158,48 +149,21 @@ struct other_modes
     } f;
 };
 
+struct spansigs
+{
+   int startspan;
+   int endspan;
+   int preendspan;
+   int nextspan;
+   int midspan;
+   int longspan;
+   int onelessthanmid;
+};
 
+static int32_t one_color = 0x100;
+static int32_t zero_color = 0x00;
 
-#define PIXEL_SIZE_4BIT         0
-#define PIXEL_SIZE_8BIT         1
-#define PIXEL_SIZE_16BIT        2
-#define PIXEL_SIZE_32BIT        3
-
-#define CYCLE_TYPE_1            0
-#define CYCLE_TYPE_2            1
-#define CYCLE_TYPE_COPY         2
-#define CYCLE_TYPE_FILL         3
-
-
-#define FORMAT_RGBA             0
-#define FORMAT_YUV              1
-#define FORMAT_CI               2
-#define FORMAT_IA               3
-#define FORMAT_I                4
-
-
-#define TEXEL_RGBA4             0
-#define TEXEL_RGBA8             1
-#define TEXEL_RGBA16            2
-#define TEXEL_RGBA32            3
-#define TEXEL_YUV4              4
-#define TEXEL_YUV8              5
-#define TEXEL_YUV16             6
-#define TEXEL_YUV32             7
-#define TEXEL_CI4               8
-#define TEXEL_CI8               9
-#define TEXEL_CI16              0xa
-#define TEXEL_CI32              0xb
-#define TEXEL_IA4               0xc
-#define TEXEL_IA8               0xd
-#define TEXEL_IA16              0xe
-#define TEXEL_IA32              0xf
-#define TEXEL_I4                0x10
-#define TEXEL_I8                0x11
-#define TEXEL_I16               0x12
-#define TEXEL_I32               0x13
-
-
+static int rdp_pipeline_crashed = 0;
 
 static TLS struct other_modes other_modes;
 
@@ -210,12 +174,62 @@ static TLS struct color nexttexel_color;
 static TLS struct color shade_color;
 static TLS int32_t noise = 0;
 static TLS int32_t primitive_lod_frac = 0;
-static int32_t one_color = 0x100;
-static int32_t zero_color = 0x00;
 
 static TLS struct color pixel_color;
 static TLS struct color memory_color;
 static TLS struct color pre_memory_color;
+
+static TLS int32_t k0_tf = 0, k1_tf = 0, k2_tf = 0, k3_tf = 0;
+static TLS int32_t k4 = 0, k5 = 0;
+static TLS int32_t lod_frac = 0;
+
+static TLS uint32_t max_level = 0;
+static TLS int32_t min_level = 0;
+
+static TLS int blshifta = 0;
+static TLS int blshiftb = 0;
+static TLS int pastblshifta = 0;
+static TLS int pastblshiftb = 0;
+
+static TLS struct
+{
+    int lx, rx;
+    int unscrx;
+    int validline;
+    int32_t r, g, b, a, s, t, w, z;
+    int32_t majorx[4];
+    int32_t minorx[4];
+    int32_t invalyscan[4];
+} span[1024];
+
+// span states
+static TLS struct
+{
+    int ds;
+    int dt;
+    int dw;
+    int dr;
+    int dg;
+    int db;
+    int da;
+    int dz;
+    int dzpix;
+
+    int drdy;
+    int dgdy;
+    int dbdy;
+    int dady;
+    int dzdy;
+    int cdr;
+    int cdg;
+    int cdb;
+    int cda;
+    int cdz;
+
+    int dsdy;
+    int dtdy;
+    int dwdy;
+} spans;
 
 static TLS struct tile
 {
@@ -238,32 +252,10 @@ static TLS struct tile
     } f;
 } tile[8];
 
-#define PIXELS_TO_BYTES(pix, siz) (((pix) << (siz)) >> 1)
-
-struct spansigs {
-    int startspan;
-    int endspan;
-    int preendspan;
-    int nextspan;
-    int midspan;
-    int longspan;
-    int onelessthanmid;
-};
-
-static void deduce_derivatives(void);
-
-static TLS int32_t k0_tf = 0, k1_tf = 0, k2_tf = 0, k3_tf = 0;
-static TLS int32_t k4 = 0, k5 = 0;
-static TLS int32_t lod_frac = 0;
-
 static struct
 {
     int copymstrangecrashes, fillmcrashes, fillmbitcrashes, syncfullcrash;
 } onetimewarnings;
-
-static TLS uint32_t max_level = 0;
-static TLS int32_t min_level = 0;
-static int rdp_pipeline_crashed = 0;
 
 static STRICTINLINE int32_t clamp(int32_t value,int32_t min,int32_t max)
 {
@@ -273,6 +265,8 @@ static STRICTINLINE int32_t clamp(int32_t value,int32_t min,int32_t max)
         return max;
     return value;
 }
+
+static void deduce_derivatives(void);
 
 #include "rdp/cmd.c"
 #include "rdp/dither.c"
@@ -398,10 +392,9 @@ static void rdp_set_other_modes(const uint32_t* args)
     other_modes.f.stalederivs = 1;
 }
 
-static void deduce_derivatives()
+static void deduce_derivatives(void)
 {
     int special_bsel0, special_bsel1;
-
 
     other_modes.f.partialreject_1cycle = (blender.i2b_a[0] == &inv_pixel_color.a && blender.i1b_a[0] == &pixel_color.a);
     other_modes.f.partialreject_2cycle = (blender.i2b_a[1] == &inv_pixel_color.a && blender.i1b_a[1] == &pixel_color.a);
