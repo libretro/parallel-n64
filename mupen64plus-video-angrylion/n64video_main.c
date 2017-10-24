@@ -116,7 +116,7 @@ int angrylionRomOpen (void)
    screen_pitch  = PRESCALE_WIDTH << 2;
 
    rdp_init();
-   overlay = ConfigGetParamBool(l_ConfigAngrylion, "VIOverlay");
+   angrylion_set_vi((int)ConfigGetParamBool(l_ConfigAngrylion, "VIOverlay"));
    return 1;
 }
 

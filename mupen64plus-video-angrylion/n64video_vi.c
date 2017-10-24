@@ -138,7 +138,7 @@ uint32_t gamma_table[0x100];
 uint32_t gamma_dither_table[0x4000];
 int32_t vi_restore_table[0x400];
 
-unsigned overlay = 0;
+static unsigned overlay = 0;
 
 extern uint32_t *blitter_buf_lock;
 
