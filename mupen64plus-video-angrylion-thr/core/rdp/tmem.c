@@ -1867,10 +1867,10 @@ static void get_tmem_idx(int s, int t, uint32_t tilenum, uint32_t* idx0, uint32_
     }
 
 
-    idx0 = sort_tmem_idx(tidx_a, tidx_b, tidx_c, tidx_d, 0);
-    idx1 = sort_tmem_idx(tidx_a, tidx_b, tidx_c, tidx_d, 1);
-    idx2 = sort_tmem_idx(tidx_a, tidx_b, tidx_c, tidx_d, 2);
-    idx3 = sort_tmem_idx(tidx_a, tidx_b, tidx_c, tidx_d, 3);
+    *idx0 = sort_tmem_idx(tidx_a, tidx_b, tidx_c, tidx_d, 0);
+    *idx1 = sort_tmem_idx(tidx_a, tidx_b, tidx_c, tidx_d, 1);
+    *idx2 = sort_tmem_idx(tidx_a, tidx_b, tidx_c, tidx_d, 2);
+    *idx3 = sort_tmem_idx(tidx_a, tidx_b, tidx_c, tidx_d, 3);
 }
 
 static void read_tmem_copy(int s, int s1, int s2, int s3, int t, uint32_t tilenum, uint32_t* sortshort, int* hibits, int* lowbits)
