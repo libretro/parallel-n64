@@ -148,6 +148,7 @@ void vi_init(struct core_config* _config)
 
 static bool vi_process_start(void)
 {
+    int32_t i;
     uint32_t final = 0;
 
     vi_fetch_filter_ptr = vi_fetch_filter_func[ctrl.type & 1];
@@ -215,12 +216,11 @@ static bool vi_process_start(void)
     int32_t hrightblank = PRESCALE_WIDTH - h_end;
 
     vactivelines = v_sync - vstartoffset;
-    if (vactivelines > PRESCALE_HEIGHT) {
+    if (vactivelines > PRESCALE_HEIGHT)
         msg_error("VI_V_SYNC_REG too big");
-    }
-    if (vactivelines < 0) {
+    if (vactivelines < 0)
         return false;
-    }
+
     vactivelines >>= lineshifter;
 
     bool validh = hres > 0 && h_start < PRESCALE_WIDTH;
@@ -233,82 +233,88 @@ static bool vi_process_start(void)
     minhpass = h_start_clamped ? 0 : 8;
     maxhpass =  hres_clamped ? hres : (hres - 7);
 
-    if (isblank && prevwasblank) {
+    if (isblank && prevwasblank)
         return false;
-    }
 
     prevwasblank = isblank;
 
     linecount = ctrl.serrate ? (PRESCALE_WIDTH << 1) : PRESCALE_WIDTH;
     prescale_ptr = v_start * linecount + h_start + (lowerfield ? PRESCALE_WIDTH : 0);
 
-    int32_t i;
-    if (isblank) {
+    if (isblank)
+    {
         // blank signal, clear entire screen buffer
         memset(tvfadeoutstate, 0, PRESCALE_HEIGHT * sizeof(uint32_t));
         memset(prescale, 0, sizeof(prescale));
-    } else {
+    }
+    else
+    {
         // clear left border
         int32_t j;
-        if (h_start > 0 && h_start < PRESCALE_WIDTH) {
-            for (i = 0; i < vactivelines; i++) {
+        if (h_start > 0 && h_start < PRESCALE_WIDTH)
+        {
+            for (i = 0; i < vactivelines; i++)
                 memset(&prescale[i * PRESCALE_WIDTH], 0, h_start * sizeof(uint32_t));
-            }
         }
 
         // clear right border
-        if (h_end >= 0 && h_end < PRESCALE_WIDTH) {
-            for (i = 0; i < vactivelines; i++) {
+        if (h_end >= 0 && h_end < PRESCALE_WIDTH)
+        {
+            for (i = 0; i < vactivelines; i++)
                 memset(&prescale[i * PRESCALE_WIDTH + h_end], 0, hrightblank * sizeof(uint32_t));
-            }
         }
 
         // clear top border
-        for (i = 0; i < ((v_start << ctrl.serrate) + lowerfield); i++) {
-            if (tvfadeoutstate[i]) {
+        for (i = 0; i < ((v_start << ctrl.serrate) + lowerfield); i++)
+        {
+            if (tvfadeoutstate[i])
+            {
                 tvfadeoutstate[i]--;
-                if (!tvfadeoutstate[i]) {
-                    if (validh) {
+                if (!tvfadeoutstate[i])
+                {
+                    if (validh)
                         memset(&prescale[i * PRESCALE_WIDTH + h_start], 0, hres * sizeof(uint32_t));
-                    } else {
+                    else
                         memset(&prescale[i * PRESCALE_WIDTH], 0, PRESCALE_WIDTH * sizeof(uint32_t));
-                    }
                 }
             }
         }
 
-        if (!ctrl.serrate) {
-            for(j = 0; j < vres; j++) {
-                if (validh) {
-                    tvfadeoutstate[i] = 2;
-                } else if (tvfadeoutstate[i]) {
-                    tvfadeoutstate[i]--;
-                    if (!tvfadeoutstate[i]) {
-                        memset(&prescale[i * PRESCALE_WIDTH], 0, PRESCALE_WIDTH * sizeof(uint32_t));
-                    }
-                }
+        if (!ctrl.serrate)
+        {
+           for(j = 0; j < vres; j++)
+           {
+              if (validh)
+                 tvfadeoutstate[i] = 2;
+              else if (tvfadeoutstate[i])
+              {
+                 tvfadeoutstate[i]--;
+                 if (!tvfadeoutstate[i])
+                    memset(&prescale[i * PRESCALE_WIDTH], 0, PRESCALE_WIDTH * sizeof(uint32_t));
+              }
 
-                i++;
-            }
+              i++;
+           }
         } else {
-            for(j = 0; j < vres; j++) {
-                if (validh) {
+            for(j = 0; j < vres; j++)
+            {
+                if (validh)
                     tvfadeoutstate[i] = 2;
-                } else if (tvfadeoutstate[i]) {
+                else if (tvfadeoutstate[i])
+                {
                     tvfadeoutstate[i]--;
-                    if (!tvfadeoutstate[i]) {
+                    if (!tvfadeoutstate[i])
                         memset(&prescale[i * PRESCALE_WIDTH], 0, PRESCALE_WIDTH * sizeof(uint32_t));
-                    }
                 }
 
-                if (tvfadeoutstate[i + 1]) {
-                    tvfadeoutstate[i + 1]--;
-                    if (!tvfadeoutstate[i + 1])
-                        if (validh) {
-                            memset(&prescale[(i + 1) * PRESCALE_WIDTH + h_start], 0, hres * sizeof(uint32_t));
-                        } else {
-                            memset(&prescale[(i + 1) * PRESCALE_WIDTH], 0, PRESCALE_WIDTH * sizeof(uint32_t));
-                        }
+                if (tvfadeoutstate[i + 1])
+                {
+                   tvfadeoutstate[i + 1]--;
+                   if (!tvfadeoutstate[i + 1])
+                      if (validh)
+                         memset(&prescale[(i + 1) * PRESCALE_WIDTH + h_start], 0, hres * sizeof(uint32_t));
+                      else
+                         memset(&prescale[(i + 1) * PRESCALE_WIDTH], 0, PRESCALE_WIDTH * sizeof(uint32_t));
                 }
 
                 i += 2;
@@ -316,16 +322,15 @@ static bool vi_process_start(void)
         }
 
         // clear bottom border
-        for (; i < vactivelines; i++) {
-            if (tvfadeoutstate[i]) {
-                tvfadeoutstate[i]--;
-            }
-            if (!tvfadeoutstate[i])
-                if (validh) {
-                    memset(&prescale[i * PRESCALE_WIDTH + h_start], 0, hres * sizeof(uint32_t));
-                } else {
-                    memset(&prescale[i * PRESCALE_WIDTH], 0, PRESCALE_WIDTH * sizeof(uint32_t));
-                }
+        for (; i < vactivelines; i++)
+        {
+           if (tvfadeoutstate[i])
+              tvfadeoutstate[i]--;
+           if (!tvfadeoutstate[i])
+              if (validh)
+                 memset(&prescale[i * PRESCALE_WIDTH + h_start], 0, hres * sizeof(uint32_t));
+              else
+                 memset(&prescale[i * PRESCALE_WIDTH], 0, PRESCALE_WIDTH * sizeof(uint32_t));
         }
     }
 
@@ -529,19 +534,21 @@ static void vi_process(void)
 
 static void vi_process_end(void)
 {
-    int32_t pitch = PRESCALE_WIDTH;
-
     int32_t width;
     int32_t height;
     int32_t output_height;
+    int32_t pitch   = PRESCALE_WIDTH;
     int32_t* buffer = prescale;
 
-    if (config->vi.overscan) {
+    if (config->vi.overscan)
+    {
         // use entire prescale buffer
         width = PRESCALE_WIDTH;
         height = (ispal ? V_RES_PAL : V_RES_NTSC) >> !ctrl.serrate;
         output_height = V_RES_NTSC;
-    } else {
+    }
+    else
+    {
         // crop away overscan area from prescale
         width = maxhpass - minhpass;
         height = vres << ctrl.serrate;
@@ -551,9 +558,8 @@ static void vi_process_end(void)
         buffer += x + y * pitch;
     }
 
-    if (config->vi.widescreen) {
+    if (config->vi.widescreen)
         output_height = output_height * 9 / 16;
-    }
 
     screen_upload(buffer, width, height, pitch, output_height);
 }
@@ -566,103 +572,104 @@ static bool vi_process_start_fast(void)
     vres_raw = y_add * vres / 1024;
 
     // skip invalid frame sizes
-    if (hres_raw <= 0 || vres_raw <= 0) {
+    if (hres_raw <= 0 || vres_raw <= 0)
         return false;
-    }
 
     // drop every other interlaced frame to avoid "wobbly" output due to the
     // vertical offset
     // TODO: completely skip rendering these frames in unfiltered to improve
     // performance?
-    if (v_current_line) {
+    if (v_current_line)
         return false;
-    }
 
     // skip blank/invalid modes
-    if (!(ctrl.type & 2)) {
+    if (!(ctrl.type & 2))
         return false;
-    }
 
     return true;
 }
 
 static void vi_process_fast(void)
 {
-    int32_t y_begin = 0;
-    int32_t y_end = vres_raw;
-    int32_t y_inc = 1;
+   int32_t y_begin = 0;
+   int32_t y_end = vres_raw;
+   int32_t y_inc = 1;
 
-    if (config->parallel) {
-        y_begin = parallel_worker_id();
-        y_inc = parallel_worker_num();
-    }
+   if (config->parallel) {
+      y_begin = parallel_worker_id();
+      y_inc = parallel_worker_num();
+   }
 
-    for (int32_t y = y_begin; y < y_end; y += y_inc) {
-        int32_t line = y * vi_width_low;
-        uint32_t* dst = prescale + y * hres_raw;
+   for (int32_t y = y_begin; y < y_end; y += y_inc) {
+      int32_t line = y * vi_width_low;
+      uint32_t* dst = prescale + y * hres_raw;
 
-        for (int32_t x = 0; x < hres_raw; x++) {
-            uint32_t r, g, b;
+      for (int32_t x = 0; x < hres_raw; x++)
+      {
+         uint32_t r, g, b;
 
-            switch (config->vi.mode) {
-                case VI_MODE_COLOR:
-                    switch (ctrl.type) {
-                        case VI_TYPE_RGBA5551: {
-                            uint16_t pix = rdram_read_idx16((frame_buffer >> 1) + line + x);
-                            r = ((pix >> 11) & 0x1f) << 3;
-                            g = ((pix >>  6) & 0x1f) << 3;
-                            b = ((pix >>  1) & 0x1f) << 3;
-                            break;
-                        }
+         switch (config->vi.mode)
+         {
+            case VI_MODE_COLOR:
+               switch (ctrl.type)
+               {
+                  case VI_TYPE_RGBA5551:
+                     {
+                        uint16_t pix = rdram_read_idx16((frame_buffer >> 1) + line + x);
+                        r = ((pix >> 11) & 0x1f) << 3;
+                        g = ((pix >>  6) & 0x1f) << 3;
+                        b = ((pix >>  1) & 0x1f) << 3;
+                        break;
+                     }
 
-                        case VI_TYPE_RGBA8888: {
-                            uint32_t pix = rdram_read_idx32((frame_buffer >> 2) + line + x);
-                            r = (pix >> 24) & 0xff;
-                            g = (pix >> 16) & 0xff;
-                            b = (pix >>  8) & 0xff;
-                            break;
-                        }
+                  case VI_TYPE_RGBA8888:
+                     {
+                        uint32_t pix = rdram_read_idx32((frame_buffer >> 2) + line + x);
+                        r = (pix >> 24) & 0xff;
+                        g = (pix >> 16) & 0xff;
+                        b = (pix >>  8) & 0xff;
+                        break;
+                     }
 
-                        default:
-                            assert(false);
-                    }
-                    break;
+                  default:
+                     assert(false);
+               }
+               break;
 
-                case VI_MODE_DEPTH: {
-                    r = g = b = rdram_read_idx16((rdp_get_zb_address() >> 1) + line + x) >> 8;
-                    break;
-                }
+            case VI_MODE_DEPTH:
+               r = g = b = rdram_read_idx16((rdp_get_zb_address() >> 1) + line + x) >> 8;
+               break;
 
-                case VI_MODE_COVERAGE: {
-                    // TODO: incorrect for RGBA8888?
-                    uint8_t hval;
-                    uint16_t pix;
-                    rdram_read_pair16(&pix, &hval, (frame_buffer >> 1) + line + x);
-                    r = g = b = (((pix & 1) << 2) | hval) << 5;
-                    break;
-                }
+            case VI_MODE_COVERAGE:
+               {
+                  // TODO: incorrect for RGBA8888?
+                  uint8_t hval;
+                  uint16_t pix;
+                  rdram_read_pair16(&pix, &hval, (frame_buffer >> 1) + line + x);
+                  r = g = b = (((pix & 1) << 2) | hval) << 5;
+                  break;
+               }
 
-                default:
-                    assert(false);
-            }
+            default:
+               assert(false);
+         }
 
-            gamma_filters(&r, &g, &b, ctrl);
+         gamma_filters(&r, &g, &b, ctrl);
 
-            dst[x] = (r << 16) | (g << 8) | b;
-        }
-    }
+         dst[x] = (r << 16) | (g << 8) | b;
+      }
+   }
 }
 
 static void vi_process_end_fast(void)
 {
-    int32_t filtered_height = (vres << 1) * V_SYNC_NTSC / v_sync;
-    int32_t output_height = hres_raw * filtered_height / hres;
+   int32_t filtered_height = (vres << 1) * V_SYNC_NTSC / v_sync;
+   int32_t output_height = hres_raw * filtered_height / hres;
 
-    if (config->vi.widescreen) {
-        output_height = output_height * 9 / 16;
-    }
+   if (config->vi.widescreen)
+      output_height = output_height * 9 / 16;
 
-    screen_upload(prescale, hres_raw, vres_raw, hres_raw, output_height);
+   screen_upload(prescale, hres_raw, vres_raw, hres_raw, output_height);
 }
 
 void vi_update(void)

@@ -80,53 +80,52 @@ uint32_t rdram_read_idx32_fast(uint32_t in)
 void rdram_write_idx8(uint32_t in, uint8_t val)
 {
     in &= RDRAM_MASK;
-    if (in <= idxlim8) {
+    if (in <= idxlim8)
         rdram8[in ^ BYTE_ADDR_XOR] = val;
-    }
 }
 
 void rdram_write_idx16(uint32_t in, uint16_t val)
 {
     in &= RDRAM_MASK >> 1;
-    if (in <= idxlim16) {
+    if (in <= idxlim16)
         rdram16[in ^ WORD_ADDR_XOR] = val;
-    }
 }
 
 void rdram_write_idx32(uint32_t in, uint32_t val)
 {
     in &= RDRAM_MASK >> 2;
-    if (rdram_valid_idx32(in)) {
+    if (rdram_valid_idx32(in))
         rdram32[in] = val;
-    }
 }
 
 void rdram_read_pair16(uint16_t* rdst, uint8_t* hdst, uint32_t in)
 {
     in &= RDRAM_MASK >> 1;
-    if (rdram_valid_idx16(in)) {
+    if (rdram_valid_idx16(in))
+    {
         *rdst = rdram16[in ^ WORD_ADDR_XOR];
         *hdst = rdram_hidden[in];
-    } else {
-        *rdst = *hdst = 0;
     }
+    else
+        *rdst = *hdst = 0;
 }
 
 void rdram_write_pair8(uint32_t in, uint8_t rval, uint8_t hval)
 {
     in &= RDRAM_MASK;
-    if (rdram_valid_idx8(in)) {
+    if (rdram_valid_idx8(in))
+    {
         rdram8[in ^ BYTE_ADDR_XOR] = rval;
-        if (in & 1) {
+        if (in & 1)
             rdram_hidden[in >> 1] = hval;
-        }
     }
 }
 
 void rdram_write_pair16(uint32_t in, uint16_t rval, uint8_t hval)
 {
     in &= RDRAM_MASK >> 1;
-    if (rdram_valid_idx16(in)) {
+    if (rdram_valid_idx16(in))
+    {
         rdram16[in ^ WORD_ADDR_XOR] = rval;
         rdram_hidden[in] = hval;
     }
@@ -135,7 +134,8 @@ void rdram_write_pair16(uint32_t in, uint16_t rval, uint8_t hval)
 void rdram_write_pair32(uint32_t in, uint32_t rval, uint8_t hval0, uint8_t hval1)
 {
     in &= RDRAM_MASK >> 2;
-    if (rdram_valid_idx32(in)) {
+    if (rdram_valid_idx32(in))
+    {
         rdram32[in] = rval;
         rdram_hidden[in << 1] = hval0;
         rdram_hidden[(in << 1) + 1] = hval1;

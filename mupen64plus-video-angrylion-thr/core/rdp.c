@@ -271,8 +271,7 @@ static STRICTINLINE int32_t clamp(int32_t value,int32_t min,int32_t max)
         return min;
     else if (value > max)
         return max;
-    else
-        return value;
+    return value;
 }
 
 #include "rdp/cmd.c"
@@ -287,39 +286,40 @@ static STRICTINLINE int32_t clamp(int32_t value,int32_t min,int32_t max)
 
 int rdp_init(struct core_config* _config)
 {
-    config = _config;
+   int i;
+   uint32_t tmp[2] = {0};
 
-    uint32_t tmp[2] = {0};
-    rdp_set_other_modes(tmp);
-    other_modes.f.stalederivs = 1;
+   config = _config;
+   rdp_set_other_modes(tmp);
+   other_modes.f.stalederivs = 1;
 
-    memset(tile, 0, sizeof(tile));
+   memset(tile, 0, sizeof(tile));
 
-    for (int i = 0; i < 8; i++)
-    {
-        calculate_tile_derivs(i);
-        calculate_clamp_diffs(i);
-    }
+   for (i = 0; i < 8; i++)
+   {
+      calculate_tile_derivs(i);
+      calculate_clamp_diffs(i);
+   }
 
-    memset(&combined_color, 0, sizeof(struct color));
-    memset(&prim_color, 0, sizeof(struct color));
-    memset(&env_color, 0, sizeof(struct color));
-    memset(&key_scale, 0, sizeof(struct color));
-    memset(&key_center, 0, sizeof(struct color));
+   memset(&combined_color, 0, sizeof(struct color));
+   memset(&prim_color, 0, sizeof(struct color));
+   memset(&env_color, 0, sizeof(struct color));
+   memset(&key_scale, 0, sizeof(struct color));
+   memset(&key_center, 0, sizeof(struct color));
 
-    rdp_pipeline_crashed = 0;
-    memset(&onetimewarnings, 0, sizeof(onetimewarnings));
+   rdp_pipeline_crashed = 0;
+   memset(&onetimewarnings, 0, sizeof(onetimewarnings));
 
-    precalc_cvmask_derivatives();
-    z_init();
-    dither_init();
-    fb_init();
-    blender_init();
-    combiner_init();
-    tex_init();
-    rasterizer_init();
+   precalc_cvmask_derivatives();
+   z_init();
+   dither_init();
+   fb_init();
+   blender_init();
+   combiner_init();
+   tex_init();
+   rasterizer_init();
 
-    return 0;
+   return 0;
 }
 
 static void rdp_invalid(const uint32_t* args)
