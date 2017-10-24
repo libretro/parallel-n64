@@ -14,8 +14,6 @@
 #include <memory.h>
 #include <assert.h>
 
-int overlay = 0;
-
 // anamorphic NTSC resolution
 #define H_RES_NTSC 640
 #define V_RES_NTSC 480
@@ -117,6 +115,14 @@ static int32_t hres_raw, vres_raw;
 static int32_t v_start;
 static int32_t h_start;
 static int32_t v_current_line;
+
+unsigned angrylion_get_vi(void)
+{
+   if (!config)
+      return 0 ;
+
+   return (unsigned)config->vi.mode;
+}
 
 void angrylion_set_vi(unsigned value)
 {

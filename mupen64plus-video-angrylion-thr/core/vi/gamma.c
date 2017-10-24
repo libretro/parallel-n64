@@ -3,59 +3,59 @@ static uint32_t gamma_dither_table[0x4000];
 
 static uint32_t vi_integer_sqrt(uint32_t a)
 {
-    unsigned long op = a, res = 0, one = 1 << 30;
+   unsigned long op = a, res = 0, one = 1 << 30;
 
-    while (one > op)
-        one >>= 2;
+   while (one > op)
+      one >>= 2;
 
-    while (one != 0)
-    {
-        if (op >= res + one)
-        {
-            op -= res + one;
-            res += one << 1;
-        }
-        res >>= 1;
-        one >>= 2;
-    }
-    return res;
+   while (one != 0)
+   {
+      if (op >= res + one)
+      {
+         op -= res + one;
+         res += one << 1;
+      }
+      res >>= 1;
+      one >>= 2;
+   }
+   return res;
 }
 
 static STRICTINLINE void gamma_filters(int* r, int* g, int* b, union vi_reg_ctrl ctrl)
 {
-    int cdith, dith;
+   int cdith, dith;
 
-    switch((ctrl.gamma_enable << 1) | ctrl.gamma_dither_enable)
-    {
-    case 0: // no gamma, no dithering
-        return;
-    case 1: // no gamma, dithering enabled
-        cdith = irand();
-        dith = cdith & 1;
-        if (*r < 255)
+   switch((ctrl.gamma_enable << 1) | ctrl.gamma_dither_enable)
+   {
+      case 0: // no gamma, no dithering
+         return;
+      case 1: // no gamma, dithering enabled
+         cdith = irand();
+         dith = cdith & 1;
+         if (*r < 255)
             *r += dith;
-        dith = (cdith >> 1) & 1;
-        if (*g < 255)
+         dith = (cdith >> 1) & 1;
+         if (*g < 255)
             *g += dith;
-        dith = (cdith >> 2) & 1;
-        if (*b < 255)
+         dith = (cdith >> 2) & 1;
+         if (*b < 255)
             *b += dith;
-        break;
-    case 2: // gamma enabled, no dithering
-        *r = gamma_table[*r];
-        *g = gamma_table[*g];
-        *b = gamma_table[*b];
-        break;
-    case 3: // gamma and dithering enabled
-        cdith = irand();
-        dith = cdith & 0x3f;
-        *r = gamma_dither_table[((*r) << 6)|dith];
-        dith = (cdith >> 6) & 0x3f;
-        *g = gamma_dither_table[((*g) << 6)|dith];
-        dith = ((cdith >> 9) & 0x38) | (cdith & 7);
-        *b = gamma_dither_table[((*b) << 6)|dith];
-        break;
-    }
+         break;
+      case 2: // gamma enabled, no dithering
+         *r = gamma_table[*r];
+         *g = gamma_table[*g];
+         *b = gamma_table[*b];
+         break;
+      case 3: // gamma and dithering enabled
+         cdith = irand();
+         dith = cdith & 0x3f;
+         *r = gamma_dither_table[((*r) << 6)|dith];
+         dith = (cdith >> 6) & 0x3f;
+         *g = gamma_dither_table[((*g) << 6)|dith];
+         dith = ((cdith >> 9) & 0x38) | (cdith & 7);
+         *b = gamma_dither_table[((*b) << 6)|dith];
+         break;
+   }
 }
 
 void vi_gamma_init(void)

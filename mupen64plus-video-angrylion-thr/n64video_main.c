@@ -195,12 +195,11 @@ void angrylionSetRenderingCallback(void (*callback)(int))
 
 int angrylionInitiateGFX (GFX_INFO Gfx_Info)
 {
-	rdram_size = 0x800000;
+   rdram_size = 0x800000;
 
-	// mupen64plus plugins can't access the hidden bits, so allocate it on our own
-	rdram_hidden_bits = malloc(rdram_size);
-	memset(rdram_hidden_bits, 3, rdram_size);
-	
+   // mupen64plus plugins can't access the hidden bits, so allocate it on our own
+   rdram_hidden_bits = malloc(rdram_size);
+   memset(rdram_hidden_bits, 3, rdram_size);
 }
 
  
@@ -211,10 +210,8 @@ void angrylionMoveScreen (int xpos, int ypos)
  
 void angrylionProcessDList(void)
 {
-    if (!ProcessDListShown)
-    {
-        ProcessDListShown = 1;
-    }
+   if (!ProcessDListShown)
+      ProcessDListShown = 1;
 }
 
 void angrylionProcessRDPList(void)
@@ -265,7 +262,6 @@ void angrylionUpdateScreen(void)
 
 void angrylionShowCFB (void)
 {
-    //MessageBox(NULL, "ShowCFB", NULL, MB_ICONWARNING);
     angrylionUpdateScreen();
 }
 

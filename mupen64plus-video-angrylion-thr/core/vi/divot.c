@@ -5,9 +5,7 @@ static STRICTINLINE void divot_filter(struct ccvg* final, struct ccvg centercolo
     *final = centercolor;
 
     if ((centercolor.cvg & leftcolor.cvg & rightcolor.cvg) == 7)
-    {
         return;
-    }
 
     leftr = leftcolor.r;
     leftg = leftcolor.g;

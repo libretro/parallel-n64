@@ -1187,10 +1187,11 @@ EXPORT float CALL ConfigGetParamFloat(m64p_handle ConfigSectionHandle, const cha
     return 0.0;
 }
 
+extern unsigned angrylion_get_vi(void);
+
 EXPORT int CALL ConfigGetParamBool(m64p_handle ConfigSectionHandle, const char *ParamName)
 {
    int i;
-   extern int overlay;
    config_section *section;
    config_var *var;
    static const struct
@@ -1237,7 +1238,7 @@ EXPORT int CALL ConfigGetParamBool(m64p_handle ConfigSectionHandle, const char *
       return false;
    }
    if (!strcmp(ParamName, "VIOverlay"))
-      return overlay;
+      return (int)angrylion_get_vi();
 
    if (!strcmp(ParamName, "Fullscreen"))
       return true;

@@ -35,10 +35,7 @@ static void vi_fetch_filter16(struct ccvg* res, uint32_t fboffset, uint32_t cur_
             restore_filter16(&r, &g, &b, fboffset, cur_x, hres, fetchstate);
     }
     else
-    {
         video_filter16(&r, &g, &b, fboffset, cur_x, hres, cur_cvg, fetchstate);
-    }
-
 
     res->r = r;
     res->g = g;
@@ -67,9 +64,7 @@ static void vi_fetch_filter32(struct ccvg* res, uint32_t fboffset, uint32_t cur_
             restore_filter32(&r, &g, &b, fboffset, cur_x, hres, fetchstate);
     }
     else
-    {
         video_filter32(&r, &g, &b, fboffset, cur_x, hres, cur_cvg, fetchstate);
-    }
 
     res->r = r;
     res->g = g;
