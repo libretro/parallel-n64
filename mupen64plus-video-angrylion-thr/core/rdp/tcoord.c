@@ -235,31 +235,25 @@ static STRICTINLINE void tcshift_copy(int32_t* S, int32_t* T, uint32_t num)
 
 static STRICTINLINE void tclod_4x17_to_15(int32_t scurr, int32_t snext, int32_t tcurr, int32_t tnext, int32_t previous, int32_t* lod)
 {
+   int delt;
+   int dels = SIGN(snext, 17) - SIGN(scurr, 17);
+   if (dels & 0x20000)
+      dels = ~dels & 0x1ffff;
+   delt = SIGN(tnext, 17) - SIGN(tcurr, 17);
+   if(delt & 0x20000)
+      delt = ~delt & 0x1ffff;
 
 
-
-    int dels = SIGN(snext, 17) - SIGN(scurr, 17);
-    if (dels & 0x20000)
-        dels = ~dels & 0x1ffff;
-    int delt = SIGN(tnext, 17) - SIGN(tcurr, 17);
-    if(delt & 0x20000)
-        delt = ~delt & 0x1ffff;
-
-
-    dels = (dels > delt) ? dels : delt;
-    dels = (previous > dels) ? previous : dels;
-    *lod = dels & 0x7fff;
-    if (dels & 0x1c000)
-        *lod |= 0x4000;
+   dels = (dels > delt) ? dels : delt;
+   dels = (previous > dels) ? previous : dels;
+   *lod = dels & 0x7fff;
+   if (dels & 0x1c000)
+      *lod |= 0x4000;
 }
 
 static STRICTINLINE void tclod_tcclamp(int32_t* sss, int32_t* sst)
 {
     int32_t tempanded, temps = *sss, tempt = *sst;
-
-
-
-
 
     if (!(temps & 0x40000))
     {

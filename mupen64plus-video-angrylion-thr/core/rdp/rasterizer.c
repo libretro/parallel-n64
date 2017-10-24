@@ -11,21 +11,22 @@ static TLS uint16_t primitive_delta_z;
 
 static STRICTINLINE int32_t normalize_dzpix(int32_t sum)
 {
-    if (sum & 0xc000)
-        return 0x8000;
-    if (!(sum & 0xffff))
-        return 1;
+   int count;
+   if (sum & 0xc000)
+      return 0x8000;
+   if (!(sum & 0xffff))
+      return 1;
 
-    if (sum == 1)
-        return 3;
+   if (sum == 1)
+      return 3;
 
-    for(int count = 0x2000; count > 0; count >>= 1)
-    {
-        if (sum & count)
-            return(count << 1);
-    }
-    msg_error("normalize_dzpix: invalid codepath taken");
-    return 0;
+   for(count = 0x2000; count > 0; count >>= 1)
+   {
+      if (sum & count)
+         return(count << 1);
+   }
+   msg_error("normalize_dzpix: invalid codepath taken");
+   return 0;
 }
 
 static void replicate_for_copy(uint32_t* outbyte, uint32_t inshort, uint32_t nybbleoffset, uint32_t tilenum, uint32_t tformat, uint32_t tsize)
@@ -76,8 +77,8 @@ static void fetch_qword_copy(uint32_t* hidword, uint32_t* lowdword, int32_t ssss
     int lowbits[6];
     int32_t sss = ssss, sst = ssst, sss1 = 0, sss2 = 0, sss3 = 0;
     int largetex = 0;
-
     uint32_t tformat, tsize;
+
     if (other_modes.en_tlut)
     {
         tsize = PIXEL_SIZE_16BIT;

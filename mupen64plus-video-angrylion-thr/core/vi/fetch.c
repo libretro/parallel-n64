@@ -49,9 +49,10 @@ static void vi_fetch_filter16(struct ccvg* res, uint32_t fboffset, uint32_t cur_
 static void vi_fetch_filter32(struct ccvg* res, uint32_t fboffset, uint32_t cur_x, union vi_reg_ctrl ctrl, uint32_t hres, uint32_t fetchstate)
 {
     int r, g, b;
-    uint32_t pix, addr = (fboffset >> 2) + cur_x;
-    RREADIDX32(pix, addr);
     uint32_t cur_cvg;
+    uint32_t pix, addr = (fboffset >> 2) + cur_x;
+
+    RREADIDX32(pix, addr);
     if (ctrl.aa_mode <= VI_AA_RESAMP_EXTRA)
         cur_cvg = (pix >> 5) & 7;
     else

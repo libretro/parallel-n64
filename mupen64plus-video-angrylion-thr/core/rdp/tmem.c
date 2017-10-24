@@ -10,18 +10,17 @@ static uint8_t replicated_rgba[32];
 #define GET_MED_RGBA16_TMEM(x)  (replicated_rgba[((x) >> 6) & 0x1f])
 #define GET_HI_RGBA16_TMEM(x)   (replicated_rgba[(x) >> 11])
 
-static void sort_tmem_idx(uint32_t *idx, uint32_t idxa, uint32_t idxb, uint32_t idxc, uint32_t idxd, uint32_t bankno)
+static uint32_t sort_tmem_idx(uint32_t idxa, uint32_t idxb, uint32_t idxc, uint32_t idxd, uint32_t bankno)
 {
     if ((idxa & 3) == bankno)
-        *idx = idxa & 0x3ff;
+        return idxa & 0x3ff;
     else if ((idxb & 3) == bankno)
-        *idx = idxb & 0x3ff;
+        return idxb & 0x3ff;
     else if ((idxc & 3) == bankno)
-        *idx = idxc & 0x3ff;
+        return idxc & 0x3ff;
     else if ((idxd & 3) == bankno)
-        *idx = idxd & 0x3ff;
-    else
-        *idx = 0;
+        return idxd & 0x3ff;
+    return 0;
 }
 
 static void sort_tmem_shorts_lowhalf(uint32_t* bindshort, uint32_t short0, uint32_t short1, uint32_t short2, uint32_t short3, uint32_t bankno)
@@ -62,32 +61,17 @@ static void compute_color_index(uint32_t* cidx, uint32_t readshort, uint32_t nyb
 
 static INLINE void fetch_texel(struct color *color, int s, int t, uint32_t tilenum)
 {
-    uint32_t tbase = tile[tilenum].line * (t & 0xff) + tile[tilenum].tmem;
-
-
-
+    uint32_t tbase  = tile[tilenum].line * (t & 0xff) + tile[tilenum].tmem;
     uint32_t tpal   = tile[tilenum].palette;
-
-
-
-
-
-
-
-
-    uint32_t taddr = 0;
-
-
-
-
+    uint32_t taddr  = 0;
 
     switch (tile[tilenum].f.notlutswitch)
     {
     case TEXEL_RGBA4:
         {
+            uint8_t byteval, c;
             taddr = ((tbase << 4) + s) >> 1;
             taddr ^= ((t & 1) ? BYTE_XOR_DWORD_SWAP : BYTE_ADDR_XOR);
-            uint8_t byteval, c;
 
             byteval = tmem[taddr & 0xfff];
             c = ((s & 1)) ? (byteval & 0xf) : (byteval >> 4);
@@ -100,12 +84,10 @@ static INLINE void fetch_texel(struct color *color, int s, int t, uint32_t tilen
         break;
     case TEXEL_RGBA8:
         {
-            taddr = (tbase << 3) + s;
-            taddr ^= ((t & 1) ? BYTE_XOR_DWORD_SWAP : BYTE_ADDR_XOR);
-
             uint8_t p;
-
-            p = tmem[taddr & 0xfff];
+            taddr    = (tbase << 3) + s;
+            taddr   ^= ((t & 1) ? BYTE_XOR_DWORD_SWAP : BYTE_ADDR_XOR);
+            p        = tmem[taddr & 0xfff];
             color->r = p;
             color->g = p;
             color->b = p;
@@ -114,13 +96,11 @@ static INLINE void fetch_texel(struct color *color, int s, int t, uint32_t tilen
         break;
     case TEXEL_RGBA16:
         {
-            taddr = (tbase << 2) + s;
-            taddr ^= ((t & 1) ? WORD_XOR_DWORD_SWAP : WORD_ADDR_XOR);
-
-
             uint16_t c;
+            taddr    = (tbase << 2) + s;
+            taddr   ^= ((t & 1) ? WORD_XOR_DWORD_SWAP : WORD_ADDR_XOR);
 
-            c = tc16[taddr & 0x7ff];
+            c        = tc16[taddr & 0x7ff];
             color->r = GET_HI_RGBA16_TMEM(c);
             color->g = GET_MED_RGBA16_TMEM(c);
             color->b = GET_LOW_RGBA16_TMEM(c);
@@ -416,24 +396,14 @@ static INLINE void fetch_texel(struct color *color, int s, int t, uint32_t tilen
 
 static INLINE void fetch_texel_quadro(struct color *color0, struct color *color1, struct color *color2, struct color *color3, int s0, int sdiff, int t0, int tdiff, uint32_t tilenum, int unequaluppers)
 {
-
-    uint32_t tbase0 = tile[tilenum].line * (t0 & 0xff) + tile[tilenum].tmem;
-
-    int t1 = (t0 & 0xff) + tdiff;
-
-
-
-    int s1 = s0 + sdiff;
-
-    uint32_t tbase2 = tile[tilenum].line * t1 + tile[tilenum].tmem;
-    uint32_t tpal = tile[tilenum].palette;
     uint32_t xort, ands;
-
-
-
-
     uint32_t taddr0, taddr1, taddr2, taddr3;
     uint32_t taddrlow0, taddrlow1, taddrlow2, taddrlow3;
+    uint32_t tbase0 = tile[tilenum].line * (t0 & 0xff) + tile[tilenum].tmem;
+    int t1 = (t0 & 0xff) + tdiff;
+    int s1 = s0 + sdiff;
+    uint32_t tbase2 = tile[tilenum].line * t1 + tile[tilenum].tmem;
+    uint32_t tpal = tile[tilenum].palette;
 
     switch (tile[tilenum].f.notlutswitch)
     {
@@ -1897,10 +1867,10 @@ static void get_tmem_idx(int s, int t, uint32_t tilenum, uint32_t* idx0, uint32_
     }
 
 
-    sort_tmem_idx(idx0, tidx_a, tidx_b, tidx_c, tidx_d, 0);
-    sort_tmem_idx(idx1, tidx_a, tidx_b, tidx_c, tidx_d, 1);
-    sort_tmem_idx(idx2, tidx_a, tidx_b, tidx_c, tidx_d, 2);
-    sort_tmem_idx(idx3, tidx_a, tidx_b, tidx_c, tidx_d, 3);
+    idx0 = sort_tmem_idx(tidx_a, tidx_b, tidx_c, tidx_d, 0);
+    idx1 = sort_tmem_idx(tidx_a, tidx_b, tidx_c, tidx_d, 1);
+    idx2 = sort_tmem_idx(tidx_a, tidx_b, tidx_c, tidx_d, 2);
+    idx3 = sort_tmem_idx(tidx_a, tidx_b, tidx_c, tidx_d, 3);
 }
 
 static void read_tmem_copy(int s, int s1, int s2, int s3, int t, uint32_t tilenum, uint32_t* sortshort, int* hibits, int* lowbits)
@@ -1995,10 +1965,10 @@ static void read_tmem_copy(int s, int s1, int s2, int s3, int t, uint32_t tilenu
     tidx_dhi >>= 2;
 
 
-    sort_tmem_idx(&sortidx[0], tidx_a, tidx_blow, tidx_c, tidx_dlow, 0);
-    sort_tmem_idx(&sortidx[1], tidx_a, tidx_blow, tidx_c, tidx_dlow, 1);
-    sort_tmem_idx(&sortidx[2], tidx_a, tidx_blow, tidx_c, tidx_dlow, 2);
-    sort_tmem_idx(&sortidx[3], tidx_a, tidx_blow, tidx_c, tidx_dlow, 3);
+    sortidx[0] = sort_tmem_idx(tidx_a, tidx_blow, tidx_c, tidx_dlow, 0);
+    sortidx[1] = sort_tmem_idx(tidx_a, tidx_blow, tidx_c, tidx_dlow, 1);
+    sortidx[2] = sort_tmem_idx(tidx_a, tidx_blow, tidx_c, tidx_dlow, 2);
+    sortidx[3] = sort_tmem_idx(tidx_a, tidx_blow, tidx_c, tidx_dlow, 3);
 
     short0 = tmem16[sortidx[0] ^ WORD_ADDR_XOR];
     short1 = tmem16[sortidx[1] ^ WORD_ADDR_XOR];
@@ -2027,10 +1997,10 @@ static void read_tmem_copy(int s, int s1, int s2, int s3, int t, uint32_t tilenu
     }
     else
     {
-        sort_tmem_idx(&sortidx[4], tidx_a, tidx_bhi, tidx_c, tidx_dhi, 0);
-        sort_tmem_idx(&sortidx[5], tidx_a, tidx_bhi, tidx_c, tidx_dhi, 1);
-        sort_tmem_idx(&sortidx[6], tidx_a, tidx_bhi, tidx_c, tidx_dhi, 2);
-        sort_tmem_idx(&sortidx[7], tidx_a, tidx_bhi, tidx_c, tidx_dhi, 3);
+        sortidx[4] = sort_tmem_idx(tidx_a, tidx_bhi, tidx_c, tidx_dhi, 0);
+        sortidx[5] = sort_tmem_idx(tidx_a, tidx_bhi, tidx_c, tidx_dhi, 1);
+        sortidx[6] = sort_tmem_idx(tidx_a, tidx_bhi, tidx_c, tidx_dhi, 2);
+        sortidx[7] = sort_tmem_idx(tidx_a, tidx_bhi, tidx_c, tidx_dhi, 3);
     }
 
     short0 = tmem16[(sortidx[4] | 0x400) ^ WORD_ADDR_XOR];
@@ -2058,8 +2028,9 @@ static void read_tmem_copy(int s, int s1, int s2, int s3, int t, uint32_t tilenu
 
 static void tmem_init(void)
 {
-    for (int i = 0; i < 32; i++)
-        replicated_rgba[i] = (i << 3) | ((i >> 2) & 7);
+   int i;
+   for (i = 0; i < 32; i++)
+      replicated_rgba[i] = (i << 3) | ((i >> 2) & 7);
 
-    memset(tmem, 0, 0x1000);
+   memset(tmem, 0, 0x1000);
 }

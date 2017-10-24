@@ -675,9 +675,8 @@ void vi_update(void)
     }
 
     // check for configuration errors
-    if (config->vi.mode >= VI_MODE_NUM) {
+    if (config->vi.mode >= VI_MODE_NUM)
         msg_error("Invalid VI mode: %d", config->vi.mode);
-    }
 
     // parse and check some common registers
     vi_reg_ptr = plugin_get_vi_registers();
@@ -711,9 +710,8 @@ void vi_update(void)
     ctrl.raw = *vi_reg_ptr[VI_STATUS];
 
     // check for unexpected VI type bits set
-    if (ctrl.type & ~3) {
+    if (ctrl.type & ~3)
         msg_error("Unknown framebuffer format %d", ctrl.type);
-    }
 
     // warn about AA glitches in certain cases
     static bool nolerp;
@@ -753,16 +751,14 @@ void vi_update(void)
     }
 
     // try to init VI frame, abort if there's nothing to display
-    if (!vi_process_start_ptr()) {
+    if (!vi_process_start_ptr())
         return;
-    }
 
     // run filter update in parallel if enabled
-    if (config->parallel) {
+    if (config->parallel)
         parallel_run(vi_process_ptr);
-    } else {
+    else
         vi_process_ptr();
-    }
 
     // finish and send buffer to screen
     vi_process_end_ptr();

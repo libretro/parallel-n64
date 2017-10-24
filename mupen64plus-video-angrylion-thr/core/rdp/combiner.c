@@ -189,24 +189,21 @@ static STRICTINLINE int32_t alpha_combiner_equation(int32_t a, int32_t b, int32_
 
 static STRICTINLINE int32_t chroma_key_min(struct color* col)
 {
-    int32_t redkey, greenkey, bluekey, keyalpha;
+    int32_t keyalpha;
+    int32_t redkey   = SIGN(col->r, 17);
+    int32_t greenkey = SIGN(col->g, 17);
+    int32_t bluekey  = SIGN(col->b, 17);
 
-
-
-
-    redkey = SIGN(col->r, 17);
     if (redkey > 0)
         redkey = ((redkey & 0xf) == 8) ? (-redkey + 0x10) : (-redkey);
 
     redkey = (key_width.r << 4) + redkey;
 
-    greenkey = SIGN(col->g, 17);
     if (greenkey > 0)
         greenkey = ((greenkey & 0xf) == 8) ? (-greenkey + 0x10) : (-greenkey);
 
     greenkey = (key_width.g << 4) + greenkey;
 
-    bluekey = SIGN(col->b, 17);
     if (bluekey > 0)
         bluekey = ((bluekey & 0xf) == 8) ? (-bluekey + 0x10) : (-bluekey);
 
@@ -231,29 +228,8 @@ static STRICTINLINE void combiner_1cycle(int adseed, uint32_t* curpixel_cvg)
         chromabypass.b = *combiner.rgbsub_a_b[1];
     }
 
-
-
-
-
-
     if (combiner.rgbmul_r[1] != &zero_color)
     {
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
         combined_color.r = color_combiner_equation(*combiner.rgbsub_a_r[1],*combiner.rgbsub_b_r[1],*combiner.rgbmul_r[1],*combiner.rgbadd_r[1]);
         combined_color.g = color_combiner_equation(*combiner.rgbsub_a_g[1],*combiner.rgbsub_b_g[1],*combiner.rgbmul_g[1],*combiner.rgbadd_g[1]);
         combined_color.b = color_combiner_equation(*combiner.rgbsub_a_b[1],*combiner.rgbsub_b_b[1],*combiner.rgbmul_b[1],*combiner.rgbadd_b[1]);

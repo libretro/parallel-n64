@@ -70,12 +70,10 @@ static STRICTINLINE void video_filter16(int* endr, int* endg, int* endb, uint32_
     uint16_t pix;
     uint32_t numoffull = 1;
     uint8_t hidval;
-    uint32_t r, g, b;
     uint32_t backr[7], backg[7], backb[7];
-
-    r = *endr;
-    g = *endg;
-    b = *endb;
+    uint32_t r = *endr;
+    uint32_t g = *endg;
+    uint32_t b = *endb;
 
     backr[0] = r;
     backg[0] = g;
@@ -134,12 +132,10 @@ static STRICTINLINE void video_filter32(int* endr, int* endg, int* endb, uint32_
     uint32_t penumaxr, penumaxg, penumaxb, penuminr, penuming, penuminb;
     uint32_t numoffull = 1;
     uint32_t pix = 0, pixcvg = 0;
-    uint32_t r, g, b;
     uint32_t backr[7], backg[7], backb[7];
-
-    r = *endr;
-    g = *endg;
-    b = *endb;
+    uint32_t r = *endr;
+    uint32_t g = *endg;
+    uint32_t b = *endb;
 
     backr[0] = r;
     backg[0] = g;

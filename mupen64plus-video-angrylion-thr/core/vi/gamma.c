@@ -60,15 +60,16 @@ static STRICTINLINE void gamma_filters(int* r, int* g, int* b, union vi_reg_ctrl
 
 void vi_gamma_init(void)
 {
-    for (int i = 0; i < 256; i++)
-    {
-        gamma_table[i] = vi_integer_sqrt(i << 6);
-        gamma_table[i] <<= 1;
-    }
+   int i;
+   for (i = 0; i < 256; i++)
+   {
+      gamma_table[i] = vi_integer_sqrt(i << 6);
+      gamma_table[i] <<= 1;
+   }
 
-    for (int i = 0; i < 0x4000; i++)
-    {
-        gamma_dither_table[i] = vi_integer_sqrt(i);
-        gamma_dither_table[i] <<= 1;
-    }
+   for (i = 0; i < 0x4000; i++)
+   {
+      gamma_dither_table[i] = vi_integer_sqrt(i);
+      gamma_dither_table[i] <<= 1;
+   }
 }

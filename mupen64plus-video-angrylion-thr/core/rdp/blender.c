@@ -106,14 +106,10 @@ static STRICTINLINE int alpha_compare(int32_t comb_alpha)
 
 static STRICTINLINE void blender_equation_cycle0(int* r, int* g, int* b)
 {
-    int blend1a, blend2a;
-    int blr, blg, blb, sum;
-    blend1a = *blender.i1b_a[0] >> 3;
-    blend2a = *blender.i2b_a[0] >> 3;
-
     int mulb;
-
-
+    int blr, blg, blb, sum;
+    int blend1a = *blender.i1b_a[0] >> 3;
+    int blend2a = *blender.i2b_a[0] >> 3;
 
     if (blender.i2b_a[0] == &memory_color.a)
     {
@@ -152,9 +148,8 @@ static STRICTINLINE void blender_equation_cycle0(int* r, int* g, int* b)
 
 static STRICTINLINE void blender_equation_cycle0_2(int* r, int* g, int* b)
 {
-    int blend1a, blend2a;
-    blend1a = *blender.i1b_a[0] >> 3;
-    blend2a = *blender.i2b_a[0] >> 3;
+    int blend1a = *blender.i1b_a[0] >> 3;
+    int blend2a = *blender.i2b_a[0] >> 3;
 
     if (blender.i2b_a[0] == &memory_color.a)
     {
@@ -170,12 +165,11 @@ static STRICTINLINE void blender_equation_cycle0_2(int* r, int* g, int* b)
 
 static STRICTINLINE void blender_equation_cycle1(int* r, int* g, int* b)
 {
-    int blend1a, blend2a;
-    int blr, blg, blb, sum;
-    blend1a = *blender.i1b_a[1] >> 3;
-    blend2a = *blender.i2b_a[1] >> 3;
-
     int mulb;
+    int blr, blg, blb, sum;
+    int blend1a = *blender.i1b_a[1] >> 3;
+    int blend2a = *blender.i2b_a[1] >> 3;
+
     if (blender.i2b_a[1] == &memory_color.a)
     {
         blend1a = (blend1a >> blshifta) & 0x3C;
@@ -206,151 +200,132 @@ static STRICTINLINE int blender_1cycle(uint32_t* fr, uint32_t* fg, uint32_t* fb,
 {
     int r, g, b, dontblend;
 
-
     if (alpha_compare(pixel_color.a))
     {
+       if (other_modes.antialias_en ? curpixel_cvg : curpixel_cvbit)
+       {
 
+          if (!other_modes.color_on_cvg || prewrap)
+          {
+             dontblend = (other_modes.f.partialreject_1cycle && pixel_color.a >= 0xff);
+             if (!blend_en || dontblend)
+             {
+                r = *blender.i1a_r[0];
+                g = *blender.i1a_g[0];
+                b = *blender.i1a_b[0];
+             }
+             else
+             {
+                inv_pixel_color.a =  (~(*blender.i1b_a[0])) & 0xff;
 
+                blender_equation_cycle0(&r, &g, &b);
+             }
+          }
+          else
+          {
+             r = *blender.i2a_r[0];
+             g = *blender.i2a_g[0];
+             b = *blender.i2a_b[0];
+          }
 
+          if (other_modes.rgb_dither_sel != 3)
+             rgb_dither(&r, &g, &b, dith);
 
-
-
-        if (other_modes.antialias_en ? curpixel_cvg : curpixel_cvbit)
-        {
-
-            if (!other_modes.color_on_cvg || prewrap)
-            {
-                dontblend = (other_modes.f.partialreject_1cycle && pixel_color.a >= 0xff);
-                if (!blend_en || dontblend)
-                {
-                    r = *blender.i1a_r[0];
-                    g = *blender.i1a_g[0];
-                    b = *blender.i1a_b[0];
-                }
-                else
-                {
-                    inv_pixel_color.a =  (~(*blender.i1b_a[0])) & 0xff;
-
-
-
-
-
-                    blender_equation_cycle0(&r, &g, &b);
-                }
-            }
-            else
-            {
-                r = *blender.i2a_r[0];
-                g = *blender.i2a_g[0];
-                b = *blender.i2a_b[0];
-            }
-
-            if (other_modes.rgb_dither_sel != 3)
-                rgb_dither(&r, &g, &b, dith);
-
-            *fr = r;
-            *fg = g;
-            *fb = b;
-            return 1;
-        }
-        else
-            return 0;
-        }
-    else
-        return 0;
+          *fr = r;
+          *fg = g;
+          *fb = b;
+          return 1;
+       }
+    }
+    return 0;
 }
 
 static STRICTINLINE int blender_2cycle(uint32_t* fr, uint32_t* fg, uint32_t* fb, int dith, uint32_t blend_en, uint32_t prewrap, uint32_t curpixel_cvg, uint32_t curpixel_cvbit, int32_t acalpha)
 {
     int r, g, b, dontblend;
 
-
     if (alpha_compare(acalpha))
     {
-        if (other_modes.antialias_en ? (curpixel_cvg) : (curpixel_cvbit))
-        {
+       if (other_modes.antialias_en ? (curpixel_cvg) : (curpixel_cvbit))
+       {
 
-            inv_pixel_color.a =  (~(*blender.i1b_a[0])) & 0xff;
-            blender_equation_cycle0_2(&r, &g, &b);
-
-
-            memory_color = pre_memory_color;
-
-            blended_pixel_color.r = r;
-            blended_pixel_color.g = g;
-            blended_pixel_color.b = b;
-            blended_pixel_color.a = pixel_color.a;
-
-            if (!other_modes.color_on_cvg || prewrap)
-            {
-                dontblend = (other_modes.f.partialreject_2cycle && pixel_color.a >= 0xff);
-                if (!blend_en || dontblend)
-                {
-                    r = *blender.i1a_r[1];
-                    g = *blender.i1a_g[1];
-                    b = *blender.i1a_b[1];
-                }
-                else
-                {
-                    inv_pixel_color.a =  (~(*blender.i1b_a[1])) & 0xff;
-                    blender_equation_cycle1(&r, &g, &b);
-                }
-            }
-            else
-            {
-                r = *blender.i2a_r[1];
-                g = *blender.i2a_g[1];
-                b = *blender.i2a_b[1];
-            }
+          inv_pixel_color.a =  (~(*blender.i1b_a[0])) & 0xff;
+          blender_equation_cycle0_2(&r, &g, &b);
 
 
-            if (other_modes.rgb_dither_sel != 3)
-                rgb_dither(&r, &g, &b, dith);
-            *fr = r;
-            *fg = g;
-            *fb = b;
-            return 1;
-        }
-        else
-        {
-            memory_color = pre_memory_color;
-            return 0;
-        }
+          memory_color = pre_memory_color;
+
+          blended_pixel_color.r = r;
+          blended_pixel_color.g = g;
+          blended_pixel_color.b = b;
+          blended_pixel_color.a = pixel_color.a;
+
+          if (!other_modes.color_on_cvg || prewrap)
+          {
+             dontblend = (other_modes.f.partialreject_2cycle && pixel_color.a >= 0xff);
+             if (!blend_en || dontblend)
+             {
+                r = *blender.i1a_r[1];
+                g = *blender.i1a_g[1];
+                b = *blender.i1a_b[1];
+             }
+             else
+             {
+                inv_pixel_color.a =  (~(*blender.i1b_a[1])) & 0xff;
+                blender_equation_cycle1(&r, &g, &b);
+             }
+          }
+          else
+          {
+             r = *blender.i2a_r[1];
+             g = *blender.i2a_g[1];
+             b = *blender.i2a_b[1];
+          }
+
+
+          if (other_modes.rgb_dither_sel != 3)
+             rgb_dither(&r, &g, &b, dith);
+          *fr = r;
+          *fg = g;
+          *fb = b;
+          return 1;
+       }
     }
-    else
-    {
-        memory_color = pre_memory_color;
-        return 0;
-    }
+
+    memory_color = pre_memory_color;
+    return 0;
 }
 
 static void blender_init(void)
 {
-    int d = 0, n = 0, temp = 0, res = 0, invd = 0, nbit = 0;
-    int ps[9];
-    for (int i = 0; i < 0x8000; i++)
-    {
-        res = 0;
-        d = (i >> 11) & 0xf;
-        n = i & 0x7ff;
-        invd = (~d) & 0xf;
+   int i;
+   int d = 0, n = 0, temp = 0, res = 0, invd = 0, nbit = 0;
+   int ps[9];
 
+   for (i = 0; i < 0x8000; i++)
+   {
+      int k;
 
-        temp = invd + (n >> 8) + 1;
-        ps[0] = temp & 7;
-        for (int k = 0; k < 8; k++)
-        {
-            nbit = (n >> (7 - k)) & 1;
-            if (res & (0x100 >> k))
-                temp = invd + (ps[k] << 1) + nbit + 1;
-            else
-                temp = d + (ps[k] << 1) + nbit;
-            ps[k + 1] = temp & 7;
-            if (temp & 0x10)
-                res |= (1 << (7 - k));
-        }
-        bldiv_hwaccurate_table[i] = res;
-    }
+      res   = 0;
+      d     = (i >> 11) & 0xf;
+      n     = i & 0x7ff;
+      invd  = (~d) & 0xf;
+      temp  = invd + (n >> 8) + 1;
+      ps[0] = temp & 7;
+
+      for (k = 0; k < 8; k++)
+      {
+         nbit = (n >> (7 - k)) & 1;
+         if (res & (0x100 >> k))
+            temp = invd + (ps[k] << 1) + nbit + 1;
+         else
+            temp = d + (ps[k] << 1) + nbit;
+         ps[k + 1] = temp & 7;
+         if (temp & 0x10)
+            res |= (1 << (7 - k));
+      }
+      bldiv_hwaccurate_table[i] = res;
+   }
 }
 
 static void rdp_set_fog_color(const uint32_t* args)

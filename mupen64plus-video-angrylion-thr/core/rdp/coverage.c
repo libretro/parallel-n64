@@ -3,11 +3,12 @@
 #define CVG_ZAP                 2
 #define CVG_SAVE                3
 
-static struct  {
-    uint8_t cvg;
-    uint8_t cvbit;
-    uint8_t xoff;
-    uint8_t yoff;
+static struct 
+{
+   uint8_t cvg;
+   uint8_t cvbit;
+   uint8_t xoff;
+   uint8_t yoff;
 } cvarray[0x100];
 
 static TLS uint8_t cvgbuf[1024];
@@ -15,7 +16,6 @@ static TLS uint8_t cvgbuf[1024];
 static STRICTINLINE uint32_t rightcvghex(uint32_t x, uint32_t fmask)
 {
     uint32_t covered = ((x & 7) + 1) >> 1;
-
     covered = 0xf0 >> covered;
     return (covered & fmask);
 }
@@ -31,31 +31,19 @@ static STRICTINLINE uint32_t leftcvghex(uint32_t x, uint32_t fmask)
 
 static STRICTINLINE void compute_cvg_flip(int32_t scanline)
 {
-    int32_t purgestart, purgeend;
-    int i, length, fmask, maskshift, fmaskshifted;
+    int i, fmask, maskshift, fmaskshifted;
     int32_t minorcur, majorcur, minorcurint, majorcurint, samecvg;
+    int32_t purgestart = span[scanline].rx;
+    int32_t purgeend = span[scanline].lx;
+    int length = purgeend - purgestart;
 
-    purgestart = span[scanline].rx;
-    purgeend = span[scanline].lx;
-    length = purgeend - purgestart;
     if (length >= 0)
     {
-
-
-
-
-
-
         memset(&cvgbuf[purgestart], 0xff, length + 1);
         for(i = 0; i < 4; i++)
         {
-
-                fmask = 0xa >> (i & 1);
-
-
-
-
-                maskshift = (i - 2) & 4;
+                fmask        = 0xa >> (i & 1);
+                maskshift    = (i - 2) & 4;
                 fmaskshifted = fmask << maskshift;
 
                 if (!span[scanline].invalyscan[i])
@@ -70,14 +58,6 @@ static STRICTINLINE void compute_cvg_flip(int32_t scanline)
                         cvgbuf[k] &= ~fmaskshifted;
                     for (int k = minorcurint; k <= purgeend; k++)
                         cvgbuf[k] &= ~fmaskshifted;
-
-
-
-
-
-
-
-
 
                     if (minorcurint > majorcurint)
                     {
@@ -98,19 +78,15 @@ static STRICTINLINE void compute_cvg_flip(int32_t scanline)
 
         }
     }
-
-
 }
 
 static STRICTINLINE void compute_cvg_noflip(int32_t scanline)
 {
-    int32_t purgestart, purgeend;
-    int i, length, fmask, maskshift, fmaskshifted;
+    int i, fmask, maskshift, fmaskshifted;
     int32_t minorcur, majorcur, minorcurint, majorcurint, samecvg;
-
-    purgestart = span[scanline].lx;
-    purgeend = span[scanline].rx;
-    length = purgeend - purgestart;
+    int32_t purgestart = span[scanline].lx;
+    int32_t purgeend = span[scanline].rx;
+    int length = purgeend - purgestart;
 
     if (length >= 0)
     {
@@ -158,23 +134,13 @@ static STRICTINLINE int finalize_spanalpha(uint32_t blend_en, uint32_t curpixel_
 {
     int finalcvg;
 
-
-
     switch(other_modes.cvg_dest)
     {
     case CVG_CLAMP:
         if (!blend_en)
-        {
             finalcvg = curpixel_cvg - 1;
-
-
-        }
         else
-        {
             finalcvg = curpixel_cvg + curpixel_memcvg;
-        }
-
-
 
         if (!(finalcvg & 8))
             finalcvg &= 7;

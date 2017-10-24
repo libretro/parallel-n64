@@ -52,9 +52,9 @@ static STRICTINLINE void restore_filter16(int* r, int* g, int* b, uint32_t fboff
 
     uint32_t toleftpix = idx - 1;
 
-    uint32_t leftuppix, leftdownpix, maxpix;
+    uint32_t leftdownpix, maxpix;
 
-    leftuppix = idx - hres - 1;
+    uint32_t leftuppix = idx - hres - 1;
 
     if (fetchbugstate != 1)
     {
@@ -113,9 +113,9 @@ static STRICTINLINE void restore_filter32(int* r, int* g, int* b, uint32_t fboff
 
     uint32_t toleftpix = idx - 1;
 
-    uint32_t leftuppix, leftdownpix, maxpix;
+    uint32_t leftdownpix, maxpix;
 
-    leftuppix = idx - hres - 1;
+    uint32_t leftuppix = idx - hres - 1;
 
     if (fetchbugstate != 1)
     {
@@ -166,15 +166,16 @@ static STRICTINLINE void restore_filter32(int* r, int* g, int* b, uint32_t fboff
     *b = bend;
 }
 
-void vi_restore_init()
+void vi_restore_init(void)
 {
-    for (int i = 0; i < 0x400; i++)
-    {
-        if (((i >> 5) & 0x1f) < (i & 0x1f))
-            vi_restore_table[i] = 1;
-        else if (((i >> 5) & 0x1f) > (i & 0x1f))
-            vi_restore_table[i] = -1;
-        else
-            vi_restore_table[i] = 0;
-    }
+   int i;
+   for (i = 0; i < 0x400; i++)
+   {
+      if (((i >> 5) & 0x1f) < (i & 0x1f))
+         vi_restore_table[i] = 1;
+      else if (((i >> 5) & 0x1f) > (i & 0x1f))
+         vi_restore_table[i] = -1;
+      else
+         vi_restore_table[i] = 0;
+   }
 }

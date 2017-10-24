@@ -161,17 +161,14 @@ void rdp_cmd(const uint32_t* arg, uint32_t length)
 {
     uint32_t cmd_id = CMD_ID(arg);
 
-    if (rdp_commands[cmd_id].sync && config->parallel) {
+    if (rdp_commands[cmd_id].sync && config->parallel)
         rdp_cmd_flush();
-    }
 
-    if (rdp_commands[cmd_id].singlethread || !config->parallel) {
+    if (rdp_commands[cmd_id].singlethread || !config->parallel)
         rdp_cmd_run(arg);
-    }
 
-    if (rdp_commands[cmd_id].multithread && config->parallel) {
+    if (rdp_commands[cmd_id].multithread && config->parallel)
         rdp_cmd_push(arg, length);
-    }
 }
 
 void rdp_update(void)
@@ -184,34 +181,12 @@ void rdp_update(void)
 
     *dp_reg[DP_STATUS] &= ~DP_STATUS_FREEZE;
 
-
-
-
-
-
-
     if (dp_end_al <= dp_current_al)
-    {
-
-
-
-
-
-
         return;
-    }
 
     length = (dp_end_al - dp_current_al) >> 2;
 
     ptr_onstart = rdp_cmd_ptr;
-
-
-
-
-
-
-
-
 
     uint32_t remaining_length = length;
 
@@ -254,8 +229,6 @@ void rdp_update(void)
     {
         cmd = CMD_ID(rdp_cmd_data + rdp_cmd_cur);
         cmd_length = rdp_commands[cmd].length >> 2;
-
-
 
         if ((rdp_cmd_ptr - rdp_cmd_cur) < cmd_length)
         {
