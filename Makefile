@@ -655,6 +655,8 @@ else
    CPUOPTS += -O2 -DNDEBUG
 endif
 
+WANT_CXX11=0
+
 ifeq ($(platform), qnx)
    CFLAGS   += -Wp,-MMD
    CXXFLAGS += -Wp,-MMD
@@ -662,11 +664,13 @@ else
 ifeq ($(GLIDEN64),1)
    CFLAGS   += -DGLIDEN64
    CXXFLAGS += -DGLIDEN64
-	CFLAGS   += -MMD
-   CXXFLAGS += -std=c++0x -MMD
+   WANT_CXX11=1
+   CFLAGS   += -MMD
+   CXXFLAGS += -MMD
 else ifeq ($(HAVE_PARALLEL), 1)
-	CFLAGS   += -MMD
-	CXXFLAGS += -std=c++0x -MMD
+   CFLAGS   += -MMD
+   WANT_CXX11=1
+   CXXFLAGS += -MMD
 else ifneq (,$(findstring msvc,$(platform)))
 	CXXFLAGS +=
 else
@@ -681,6 +685,14 @@ ifeq ($(GLIDEN64CORE),1)
    CFLAGS += -DCORE
    CXXFLAGS += -DCORE
 endif
+endif
+
+ifeq ($(HAVE_THR_AL), 1)
+WANT_CXX11=1
+endif
+
+ifeq ($(WANT_CXX11),1)
+CXXFLAGS += -std=c++0x 
 endif
 
 ifneq (,$(findstring msvc,$(platform)))
