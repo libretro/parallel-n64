@@ -46,7 +46,8 @@ static uint32_t get_rom_name(char* name, uint32_t name_size)
    for (; i < 20; i++)
       name[i] = filter_char(rom_header[(32 + i) ^ BYTE_ADDR_XOR]);
 
-   // make sure there's at least one whitespace that will terminate the string
+   // make sure there's at least one 
+   // whitespace that will terminate the string
    // below
    name[i] = ' ';
 
@@ -58,7 +59,8 @@ static uint32_t get_rom_name(char* name, uint32_t name_size)
       name[i] = 0;
    }
 
-   // game title is empty or invalid, use safe fallback using the four-character
+   // game title is empty or invalid, use safe 
+   // fallback using the four-character
    // game ID
    if (i == 0)
    {
@@ -72,46 +74,47 @@ static uint32_t get_rom_name(char* name, uint32_t name_size)
 
 void core_init(struct core_config* _config)
 {
-    config = *_config;
+   config = *_config;
 
-    screen_init();
-    plugin_init();
-    rdram_init();
+   screen_init();
+   plugin_init();
+   rdram_init();
 
-    rdp_init(&config);
-    vi_init(&config);
+   rdp_init(&config);
+   vi_init(&config);
 
-    num_workers = config.num_workers;
-    parallel = config.parallel;
+   num_workers = config.num_workers;
+   parallel    = config.parallel;
 
-    if (config.parallel)
-        parallel_alinit(num_workers);
+   if (config.parallel)
+      parallel_alinit(num_workers);
 }
 
 void core_dp_sync(void)
 {
-    // update config if set
-    if (config_new)
-    {
-        config = *config_new;
-        config_new = NULL;
+   // update config if set
+   if (config_new)
+   {
+      config = *config_new;
+      config_new = NULL;
 
-        // enable/disable multithreading or update number of workers
-        if (config.parallel != parallel || config.num_workers != num_workers) {
-            // destroy old threads
-            parallel_close();
+      // enable/disable multithreading or update number of workers
+      if (config.parallel != parallel || config.num_workers != num_workers)
+      {
+         // destroy old threads
+         parallel_close();
 
-            // create new threads if parallel option is still enabled
-            if (config.parallel)
-                parallel_alinit(num_workers);
+         // create new threads if parallel option is still enabled
+         if (config.parallel)
+            parallel_alinit(num_workers);
 
-            num_workers = config.num_workers;
-            parallel = config.parallel;
-        }
-    }
+         num_workers = config.num_workers;
+         parallel = config.parallel;
+      }
+   }
 
-    // signal plugin to handle interrupts
-    plugin_sync_dp();
+   // signal plugin to handle interrupts
+   plugin_sync_dp();
 }
 
 void core_config_update(struct core_config* _config)

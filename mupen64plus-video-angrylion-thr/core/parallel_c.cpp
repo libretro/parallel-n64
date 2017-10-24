@@ -1,9 +1,6 @@
 #include "parallel_c.hpp"
 #include "parallel.hpp"
 
-#include <atomic>
-
-
 static std::unique_ptr<Parallel> parallel;
 static thread_local uint32_t worker_id;
 static uint32_t worker_num;

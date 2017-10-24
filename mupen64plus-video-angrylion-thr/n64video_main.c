@@ -26,16 +26,7 @@ static uint32_t rdram_size;
 static uint8_t* rdram_hidden_bits;
 static struct core_config config;
 
-typedef struct N64RECT {
-  int32_t left;
-  int32_t top;
-  int32_t right;
-  int32_t bottom;
-} N64RECT;
-
 extern GFX_INFO gfx_info;
-int res;
-static N64RECT __dst, __src;
 
 int ProcessDListShown = 0;
 
@@ -93,10 +84,9 @@ uint8_t* plugin_get_rom_header(void)
 
 void plugin_close(void)
 {
-    if (rdram_hidden_bits) {
+    if (rdram_hidden_bits)
         free(rdram_hidden_bits);
-        rdram_hidden_bits = NULL;
-    }
+    rdram_hidden_bits = NULL;
 }
 
 void screen_init(void)
@@ -110,12 +100,10 @@ void screen_swap(void)
 
 void screen_upload(int32_t* buffer, int32_t width, int32_t height, int32_t pitch, int32_t output_height)
 {
-    //  memcpy(blitter_buf_lock,buffer,width*height*pitch);
 	extern uint32_t *blitter_buf_lock;
 	uint32_t * buf = (uint32_t*)buffer;
 	for (int i = 0; i <height; i++)
 		memcpy(&blitter_buf_lock[i * width], &buf[i * width], width * 4);
-
 
 	int cur_line = height - 1;
 	while (cur_line >= 0)
@@ -166,13 +154,11 @@ void angrylionChangeWindow (void)
 
 void CloseDLL (void)
 {
-    return;
 }
 
 void angrylionReadScreen2(void *dest, int *width, int *height, int front)
 {
 }
-
  
 void angrylionDrawScreen (void)
 {
@@ -216,13 +202,12 @@ void angrylionProcessDList(void)
 
 void angrylionProcessRDPList(void)
 {
-    core_dp_update();
+   core_dp_update();
 }
 
 void angrylionRomClosed (void)
 {
-  core_close();
-
+   core_close();
 }
 
 static m64p_handle l_ConfigAngrylion;
@@ -310,20 +295,12 @@ m64p_error angrylionPluginGetVersion(m64p_plugin_type *PluginType, int *PluginVe
 #define MSG_BUFFER_LEN 256
 void msg_error(const char * err, ...)
 {
-
-
-  
-   // exit(0);
 }
 
 void msg_warning(const char* err, ...)
 {
-
-
-  
 }
 
 void msg_debug(const char* err, ...)
 {
-
 }

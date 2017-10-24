@@ -2,8 +2,9 @@
 
 Parallel::Parallel(uint32_t num_workers, std::function<void(uint32_t)>&& func_worker_id)
 {
+   uint32_t worker_id;
    // create worker threads
-   for (uint32_t worker_id = 0; worker_id < num_workers; worker_id++)
+   for (worker_id = 0; worker_id < num_workers; worker_id++)
       m_workers.emplace_back(std::thread(&Parallel::do_work, this, worker_id, func_worker_id));
 }
 
