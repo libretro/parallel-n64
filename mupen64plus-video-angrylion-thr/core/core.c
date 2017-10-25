@@ -21,6 +21,9 @@
 
 #define DP_INTERRUPT    0x20
 
+extern unsigned int screen_width, screen_height;
+extern uint32_t screen_pitch;
+
 static uint32_t num_workers;
 static bool parallel;
 static bool parallel_tmp;
@@ -156,6 +159,18 @@ int angrylionRomOpen(void)
     * for better performance as well in case screen_width
     * is 320 and height is 240.
     */
+   if (screen_width < 640)
+      screen_width = 640;
+   if (screen_width > 640)
+      screen_width = 640;
+
+   if (screen_height < 480)
+      screen_height = 480;
+   if (screen_height > 480)
+      screen_height = 480;
+
+   screen_pitch  = 640 << 2;
+
 	core_config_defaults(&config);
 	config.parallel = true;
 	config.num_workers = 0;
@@ -178,6 +193,10 @@ void angrylionUpdateScreen(void)
 #endif
     core_vi_update();
     retro_return(true);
+}
+
+void screen_swap(void)
+{
 }
 
 void angrylionShowCFB (void)

@@ -1408,10 +1408,8 @@ void vi_update(void)
     // finish and send buffer to screen
     vi_process_end_ptr();
 
-#if 0
     /* render frame to screen */
     screen_swap();
-#endif
 }
 
 void vi_close(void)
