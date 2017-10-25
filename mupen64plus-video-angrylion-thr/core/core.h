@@ -47,6 +47,9 @@ enum vi_mode
 struct core_config
 {
     struct {
+        bool trace_record;
+    } dp;
+    struct {
         enum vi_mode mode;
         bool widescreen;
         bool overscan;
@@ -55,4 +58,10 @@ struct core_config
     uint32_t num_workers;
 };
 
+void core_init(struct core_config* config);
+void core_close(void);
+void core_config_update(struct core_config* config);
+void core_config_defaults(struct core_config* config);
 void core_dp_sync(void);
+void core_dp_update(void);
+void core_vi_update(void);

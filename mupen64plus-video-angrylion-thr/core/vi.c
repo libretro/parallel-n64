@@ -1,6 +1,7 @@
 #include "vi.h"
 #include "rdp.h"
 #include "common.h"
+#include "plugin.h"
 #include "rdram.h"
 #include "msg.h"
 #include "irand.h"
