@@ -53,11 +53,16 @@ std::unique_ptr<T> make_unique(Args&&... args) {
 Parallel::Parallel(uint32_t num_workers)
 {
    uint32_t worker_id;
+
+   std::unique_lock<std::mutex> ul(m_mutex);
+
    // create worker threads
    for (worker_id = 0; worker_id < num_workers; worker_id++)
    {
       m_workers.emplace_back(Worker(worker_id, this));
    }
+
+   parallel_worker = &m_workers[0];
 }
 
 Parallel::~Parallel()
