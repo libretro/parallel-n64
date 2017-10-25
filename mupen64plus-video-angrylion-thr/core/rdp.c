@@ -32,9 +32,9 @@
 
 #define PIXELS_TO_BYTES(pix, siz) (((pix) << (siz)) >> 1)
 
-#define tmem16 ((uint16_t*)tmem)
-#define tc16   ((uint16_t*)tmem)
-#define tlut   ((uint16_t*)(&tmem[0x800]))
+#define tmem16 ((uint16_t*)globals.tmem)
+#define tc16   ((uint16_t*)globals.tmem)
+#define tlut   ((uint16_t*)(&globals.tmem[0x800]))
 
 #define GET_LOW_RGBA16_TMEM(x)  (replicated_rgba[((x) >> 1) & 0x1f])
 #define GET_MED_RGBA16_TMEM(x)  (replicated_rgba[((x) >> 6) & 0x1f])
@@ -214,28 +214,12 @@ static int32_t zero_color = 0x00;
 
 static int rdp_pipeline_crashed = 0;
 
-static TLS struct color key_scale;
-static TLS struct color key_center;
-static TLS struct color key_width;
-
-static TLS int32_t keyalpha;
-
-static TLS uint8_t cvgbuf[1024];
-
-static TLS uint32_t zb_address = 0;
-static TLS int32_t pastrawdzmem = 0;
-
-static TLS int ti_format;
-static TLS int ti_size;
-static TLS int ti_width;
-static TLS uint32_t ti_address;
-
-static TLS uint8_t tmem[0x1000];
-
-static TLS struct rectangle clip;
 
 static TLS struct rdp_globals
 {
+   uint8_t cvgbuf[1024];
+   uint8_t tmem[0x1000];
+
    uint16_t primitive_delta_z;
 
    int blshifta;
@@ -244,6 +228,12 @@ static TLS struct rdp_globals
    int pastblshiftb;
    int scfield;
    int sckeepodd;
+   int ti_format;
+   int ti_size;
+   int ti_width;
+   int fb_format;
+   int fb_size;
+   int fb_width;
 
    int32_t k0_tf;
    int32_t k1_tf;
@@ -255,9 +245,14 @@ static TLS struct rdp_globals
    int32_t primitive_lod_frac;
    int32_t lod_frac;
    int32_t noise;
+   int32_t pastrawdzmem;
 
    uint32_t max_level;
    uint32_t primitive_z;
+   uint32_t zb_address;
+   uint32_t ti_address;
+   uint32_t fb_address;
+   uint32_t fill_color;
 
    struct color texel0_color;
    struct color texel1_color;
@@ -276,7 +271,17 @@ static TLS struct rdp_globals
    struct color memory_color;
    struct color pre_memory_color;
 
+   struct color key_scale;
+   struct color key_center;
+   struct color key_width;
+
+   struct rectangle clip;
    struct other_modes other_modes;
+
+   void (*fbread1_ptr)(uint32_t, uint32_t*);
+   void (*fbread2_ptr)(uint32_t, uint32_t*);
+   void (*fbwrite_ptr)(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
+   void (*tcdiv_ptr)(int32_t, int32_t, int32_t, int32_t*, int32_t*);
 } globals;
 
 static TLS struct
@@ -442,7 +447,6 @@ static struct
    uint8_t yoff;
 } cvarray[0x100];
 
-
 static uint16_t z_com_table[0x40000];
 static uint32_t z_complete_dec_table[0x4000];
 static uint16_t deltaz_comparator_lut[0x10000];
@@ -457,7 +461,6 @@ static struct {uint32_t shift; uint32_t add;} z_dec_table[8] = {
      0, 0x3f000,
      0, 0x3f800,
 };
-
 
 static uint8_t replicated_rgba[32];
 
@@ -1293,16 +1296,21 @@ static INLINE void set_subb_rgb_input(int32_t **input_r, int32_t **input_g, int3
           *input_g = &globals.env_color.g;
           *input_b = &globals.env_color.b;
           break;
-       case 6:     *input_r = &key_center.r;       *input_g = &key_center.g;       *input_b = &key_center.b;       break;
+       case 6:
+          *input_r = &globals.key_center.r;
+          *input_g = &globals.key_center.g;
+          *input_b = &globals.key_center.b;
+          break;
        case 7:
-                   *input_r = &globals.k4;
-                   *input_g = &globals.k4;
-                   *input_b = &globals.k4;
-                   break;
+          *input_r = &globals.k4;
+          *input_g = &globals.k4;
+          *input_b = &globals.k4;
+          break;
        case 8: case 9: case 10: case 11: case 12: case 13: case 14: case 15:
-                   {
-                      *input_r = &zero_color;     *input_g = &zero_color;     *input_b = &zero_color;     break;
-                   }
+          *input_r = &zero_color;
+          *input_g = &zero_color;
+          *input_b = &zero_color;
+          break;
     }
 }
 
@@ -1332,7 +1340,7 @@ static INLINE void set_mul_rgb_input(int32_t **input_r, int32_t **input_g, int32
            break;
         case 4:     *input_r = &globals.shade_color.r;      *input_g = &globals.shade_color.g;      *input_b = &globals.shade_color.b;      break;
         case 5:     *input_r = &globals.env_color.r;        *input_g = &globals.env_color.g;        *input_b = &globals.env_color.b;        break;
-        case 6:     *input_r = &key_scale.r;        *input_g = &key_scale.g;        *input_b = &key_scale.b;        break;
+        case 6:     *input_r = &globals.key_scale.r;        *input_g = &globals.key_scale.g;        *input_b = &globals.key_scale.b;        break;
         case 7: 
                     *input_r = &globals.combined_color.a;
                     *input_g = &globals.combined_color.a;
@@ -1454,17 +1462,17 @@ static STRICTINLINE int32_t chroma_key_min(struct color* col)
     if (redkey > 0)
         redkey = ((redkey & 0xf) == 8) ? (-redkey + 0x10) : (-redkey);
 
-    redkey = (key_width.r << 4) + redkey;
+    redkey = (globals.key_width.r << 4) + redkey;
 
     if (greenkey > 0)
         greenkey = ((greenkey & 0xf) == 8) ? (-greenkey + 0x10) : (-greenkey);
 
-    greenkey = (key_width.g << 4) + greenkey;
+    greenkey = (globals.key_width.g << 4) + greenkey;
 
     if (bluekey > 0)
         bluekey = ((bluekey & 0xf) == 8) ? (-bluekey + 0x10) : (-bluekey);
 
-    bluekey = (key_width.b << 4) + bluekey;
+    bluekey = (globals.key_width.b << 4) + bluekey;
 
     keyalpha = (redkey < greenkey) ? redkey : greenkey;
     keyalpha = (bluekey < keyalpha) ? bluekey : keyalpha;
@@ -1842,19 +1850,19 @@ static void rdp_set_combine(const uint32_t* args)
 
 static void rdp_set_key_gb(const uint32_t* args)
 {
-    key_width.g = (args[0] >> 12) & 0xfff;
-    key_width.b = args[0] & 0xfff;
-    key_center.g = (args[1] >> 24) & 0xff;
-    key_scale.g = (args[1] >> 16) & 0xff;
-    key_center.b = (args[1] >> 8) & 0xff;
-    key_scale.b = args[1] & 0xff;
+    globals.key_width.g   = (args[0] >> 12) & 0xfff;
+    globals.key_width.b   = args[0] & 0xfff;
+    globals.key_center.g  = (args[1] >> 24) & 0xff;
+    globals.key_scale.g   = (args[1] >> 16) & 0xff;
+    globals.key_center.b  = (args[1] >> 8) & 0xff;
+    globals.key_scale.b   = args[1] & 0xff;
 }
 
 static void rdp_set_key_r(const uint32_t* args)
 {
-    key_width.r = (args[1] >> 16) & 0xfff;
-    key_center.r = (args[1] >> 8) & 0xff;
-    key_scale.r = args[1] & 0xff;
+    globals.key_width.r  = (args[1] >> 16) & 0xfff;
+    globals.key_center.r = (args[1] >> 8) & 0xff;
+    globals.key_scale.r  = args[1] & 0xff;
 }
 
 static STRICTINLINE uint32_t rightcvghex(uint32_t x, uint32_t fmask)
@@ -1883,7 +1891,7 @@ static STRICTINLINE void compute_cvg_flip(int32_t scanline)
 
     if (length >= 0)
     {
-        memset(&cvgbuf[purgestart], 0xff, length + 1);
+        memset(&globals.cvgbuf[purgestart], 0xff, length + 1);
         for(i = 0; i < 4; i++)
         {
                 fmask        = 0xa >> (i & 1);
@@ -1899,25 +1907,26 @@ static STRICTINLINE void compute_cvg_flip(int32_t scanline)
 
 
                     for (int k = purgestart; k <= majorcurint; k++)
-                        cvgbuf[k] &= ~fmaskshifted;
+                        globals.cvgbuf[k] &= ~fmaskshifted;
                     for (int k = minorcurint; k <= purgeend; k++)
-                        cvgbuf[k] &= ~fmaskshifted;
+                        globals.cvgbuf[k] &= ~fmaskshifted;
 
                     if (minorcurint > majorcurint)
                     {
-                        cvgbuf[minorcurint] |= (rightcvghex(minorcur, fmask) << maskshift);
-                        cvgbuf[majorcurint] |= (leftcvghex(majorcur, fmask) << maskshift);
+                        globals.cvgbuf[minorcurint] |= (rightcvghex(minorcur, fmask) << maskshift);
+                        globals.cvgbuf[majorcurint] |= (leftcvghex(majorcur, fmask) << maskshift);
                     }
                     else if (minorcurint == majorcurint)
                     {
                         samecvg = rightcvghex(minorcur, fmask) & leftcvghex(majorcur, fmask);
-                        cvgbuf[majorcurint] |= (samecvg << maskshift);
+                        globals.cvgbuf[majorcurint] |= (samecvg << maskshift);
                     }
                 }
                 else
                 {
-                    for (int k = purgestart; k <= purgeend; k++)
-                        cvgbuf[k] &= ~fmaskshifted;
+                   int k;
+                   for (k = purgestart; k <= purgeend; k++)
+                      globals.cvgbuf[k] &= ~fmaskshifted;
                 }
 
         }
@@ -1934,7 +1943,7 @@ static STRICTINLINE void compute_cvg_noflip(int32_t scanline)
 
     if (length >= 0)
     {
-        memset(&cvgbuf[purgestart], 0xff, length + 1);
+        memset(&globals.cvgbuf[purgestart], 0xff, length + 1);
 
         for(i = 0; i < 4; i++)
         {
@@ -1944,31 +1953,34 @@ static STRICTINLINE void compute_cvg_noflip(int32_t scanline)
 
             if (!span[scanline].invalyscan[i])
             {
-                minorcur = span[scanline].minorx[i];
-                majorcur = span[scanline].majorx[i];
-                minorcurint = minorcur >> 3;
-                majorcurint = majorcur >> 3;
+               int k;
 
-                for (int k = purgestart; k <= minorcurint; k++)
-                    cvgbuf[k] &= ~fmaskshifted;
-                for (int k = majorcurint; k <= purgeend; k++)
-                    cvgbuf[k] &= ~fmaskshifted;
+               minorcur = span[scanline].minorx[i];
+               majorcur = span[scanline].majorx[i];
+               minorcurint = minorcur >> 3;
+               majorcurint = majorcur >> 3;
 
-                if (majorcurint > minorcurint)
-                {
-                    cvgbuf[minorcurint] |= (leftcvghex(minorcur, fmask) << maskshift);
-                    cvgbuf[majorcurint] |= (rightcvghex(majorcur, fmask) << maskshift);
-                }
-                else if (minorcurint == majorcurint)
-                {
-                    samecvg = leftcvghex(minorcur, fmask) & rightcvghex(majorcur, fmask);
-                    cvgbuf[majorcurint] |= (samecvg << maskshift);
-                }
+               for (k = purgestart; k <= minorcurint; k++)
+                  globals.cvgbuf[k] &= ~fmaskshifted;
+               for (k = majorcurint; k <= purgeend; k++)
+                  globals.cvgbuf[k] &= ~fmaskshifted;
+
+               if (majorcurint > minorcurint)
+               {
+                  globals.cvgbuf[minorcurint] |= (leftcvghex(minorcur, fmask) << maskshift);
+                  globals.cvgbuf[majorcurint] |= (rightcvghex(majorcur, fmask) << maskshift);
+               }
+               else if (minorcurint == majorcurint)
+               {
+                  samecvg = leftcvghex(minorcur, fmask) & rightcvghex(majorcur, fmask);
+                  globals.cvgbuf[majorcurint] |= (samecvg << maskshift);
+               }
             }
             else
             {
-                for (int k = purgestart; k <= purgeend; k++)
-                    cvgbuf[k] &= ~fmaskshifted;
+               int k;
+               for (k = purgestart; k <= purgeend; k++)
+                  globals.cvgbuf[k] &= ~fmaskshifted;
             }
         }
     }
@@ -2014,11 +2026,11 @@ static STRICTINLINE uint16_t decompress_cvmask_frombyte(uint8_t x)
 
 static STRICTINLINE void lookup_cvmask_derivatives(uint32_t idx, uint8_t* offx, uint8_t* offy, uint32_t* curpixel_cvg, uint32_t* curpixel_cvbit)
 {
-    uint8_t mask = cvgbuf[idx];
-    *curpixel_cvg = cvarray[mask].cvg;
+    uint8_t mask    = globals.cvgbuf[idx];
+    *curpixel_cvg   = cvarray[mask].cvg;
     *curpixel_cvbit = cvarray[mask].cvbit;
-    *offx = cvarray[mask].xoff;
-    *offy = cvarray[mask].yoff;
+    *offx           = cvarray[mask].xoff;
+    *offy           = cvarray[mask].yoff;
 }
 
 static INLINE void precalc_cvmask_derivatives(void)
@@ -2281,11 +2293,11 @@ static STRICTINLINE uint32_t z_compare(uint32_t zcurpixel, uint32_t sz, uint16_t
 
       if (globals.other_modes.f.interpixelblendershiftersneeded)
       {
-         globals.pastblshifta = clamp(dzpixenc - pastrawdzmem, 0, 4);
-         globals.pastblshiftb = clamp(pastrawdzmem - dzpixenc, 0, 4);
+         globals.pastblshifta = clamp(dzpixenc - globals.pastrawdzmem, 0, 4);
+         globals.pastblshiftb = clamp(globals.pastrawdzmem - dzpixenc, 0, 4);
       }
 
-      pastrawdzmem = rawdzmem;
+      globals.pastrawdzmem = rawdzmem;
 
       int precision_factor = (zval >> 13) & 0xf;
 
@@ -2375,7 +2387,7 @@ static STRICTINLINE uint32_t z_compare(uint32_t zcurpixel, uint32_t sz, uint16_t
             globals.pastblshiftb = 0xf - dzpixenc;
       }
 
-      pastrawdzmem = 0xf;
+      globals.pastrawdzmem = 0xf;
 
       int overflow = (curpixel_memcvg + *curpixel_cvg) & 8;
       *blend_en = globals.other_modes.force_blend || (!overflow && globals.other_modes.antialias_en);
@@ -2387,12 +2399,12 @@ static STRICTINLINE uint32_t z_compare(uint32_t zcurpixel, uint32_t sz, uint16_t
 
 static void rdp_set_mask_image(const uint32_t* args)
 {
-    zb_address  = args[1] & 0x0ffffff;
+    globals.zb_address  = args[1] & 0x0ffffff;
 }
 
 uint32_t rdp_get_zb_address(void)
 {
-    return zb_address;
+    return globals.zb_address;
 }
 
 void z_init(void)
@@ -2453,25 +2465,15 @@ static void (*fbwrite_func[4])(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t,
     fbwrite_4, fbwrite_8, fbwrite_16, fbwrite_32
 };
 
-static TLS void (*fbread1_ptr)(uint32_t, uint32_t*);
-static TLS void (*fbread2_ptr)(uint32_t, uint32_t*);
-static TLS void (*fbwrite_ptr)(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
-
-static TLS int fb_format;
-static TLS int fb_size;
-static TLS int fb_width;
-static TLS uint32_t fb_address;
-static TLS uint32_t fill_color;
-
 static void fbwrite_4(uint32_t curpixel, uint32_t r, uint32_t g, uint32_t b, uint32_t blend_en, uint32_t curpixel_cvg, uint32_t curpixel_memcvg)
 {
-    uint32_t fb = fb_address + curpixel;
+    uint32_t fb = globals.fb_address + curpixel;
     RWRITEADDR8(fb, 0);
 }
 
 static void fbwrite_8(uint32_t curpixel, uint32_t r, uint32_t g, uint32_t b, uint32_t blend_en, uint32_t curpixel_cvg, uint32_t curpixel_memcvg)
 {
-    uint32_t fb = fb_address + curpixel;
+    uint32_t fb = globals.fb_address + curpixel;
     PAIRWRITE8(fb, r & 0xff, (r & 1) ? 3 : 0);
 }
 
@@ -2486,12 +2488,12 @@ static void fbwrite_16(uint32_t curpixel, uint32_t r, uint32_t g, uint32_t b, ui
     uint32_t fb;
     uint16_t rval;
     uint8_t hval;
-    fb = (fb_address >> 1) + curpixel;
+    fb = (globals.fb_address >> 1) + curpixel;
 
     int32_t finalcvg = finalize_spanalpha(blend_en, curpixel_cvg, curpixel_memcvg);
     int16_t finalcolor;
 
-    if (fb_format == FORMAT_RGBA)
+    if (globals.fb_format == FORMAT_RGBA)
     {
         finalcolor = ((r & ~7) << 8) | ((g & ~7) << 3) | ((b & ~7) >> 2);
     }
@@ -2509,7 +2511,7 @@ static void fbwrite_16(uint32_t curpixel, uint32_t r, uint32_t g, uint32_t b, ui
 
 static void fbwrite_32(uint32_t curpixel, uint32_t r, uint32_t g, uint32_t b, uint32_t blend_en, uint32_t curpixel_cvg, uint32_t curpixel_memcvg)
 {
-    uint32_t fb = (fb_address >> 2) + curpixel;
+    uint32_t fb = (globals.fb_address >> 2) + curpixel;
 
     int32_t finalcolor;
     int32_t finalcvg = finalize_spanalpha(blend_en, curpixel_cvg, curpixel_memcvg);
@@ -2527,8 +2529,8 @@ static void fbfill_4(uint32_t curpixel)
 
 static void fbfill_8(uint32_t curpixel)
 {
-    uint32_t fb = fb_address + curpixel;
-    uint32_t val = (fill_color >> (((fb & 3) ^ 3) << 3)) & 0xff;
+    uint32_t fb = globals.fb_address + curpixel;
+    uint32_t val = (globals.fill_color >> (((fb & 3) ^ 3) << 3)) & 0xff;
     uint8_t hval = ((val & 1) << 1) | (val & 1);
     PAIRWRITE8(fb, val, hval);
 }
@@ -2537,19 +2539,19 @@ static void fbfill_16(uint32_t curpixel)
 {
     uint16_t val;
     uint8_t hval;
-    uint32_t fb = (fb_address >> 1) + curpixel;
+    uint32_t fb = (globals.fb_address >> 1) + curpixel;
     if (fb & 1)
-        val = fill_color & 0xffff;
+        val = globals.fill_color & 0xffff;
     else
-        val = (fill_color >> 16) & 0xffff;
+        val = (globals.fill_color >> 16) & 0xffff;
     hval = ((val & 1) << 1) | (val & 1);
     PAIRWRITE16(fb, val, hval);
 }
 
 static void fbfill_32(uint32_t curpixel)
 {
-    uint32_t fb = (fb_address >> 2) + curpixel;
-    PAIRWRITE32(fb, fill_color, (fill_color & 0x10000) ? 3 : 0, (fill_color & 0x1) ? 3 : 0);
+    uint32_t fb = (globals.fb_address >> 2) + curpixel;
+    PAIRWRITE32(fb, globals.fill_color, (globals.fill_color & 0x10000) ? 3 : 0, (globals.fill_color & 0x1) ? 3 : 0);
 }
 
 static void fbread_4(uint32_t curpixel, uint32_t* curpixel_memcvg)
@@ -2574,7 +2576,7 @@ static void fbread2_4(uint32_t curpixel, uint32_t* curpixel_memcvg)
 static void fbread_8(uint32_t curpixel, uint32_t* curpixel_memcvg)
 {
     uint8_t mem;
-    uint32_t addr = fb_address + curpixel;
+    uint32_t addr = globals.fb_address + curpixel;
     RREADADDR8(mem, addr);
     globals.memory_color.r = globals.memory_color.g = globals.memory_color.b = mem;
     *curpixel_memcvg = 7;
@@ -2584,7 +2586,7 @@ static void fbread_8(uint32_t curpixel, uint32_t* curpixel_memcvg)
 static void fbread2_8(uint32_t curpixel, uint32_t* curpixel_memcvg)
 {
     uint8_t mem;
-    uint32_t addr = fb_address + curpixel;
+    uint32_t addr = globals.fb_address + curpixel;
     RREADADDR8(mem, addr);
     globals.pre_memory_color.r = mem;
     globals.pre_memory_color.g = mem;
@@ -2597,7 +2599,7 @@ static void fbread_16(uint32_t curpixel, uint32_t* curpixel_memcvg)
 {
     uint16_t fword;
     uint8_t hbyte;
-    uint32_t addr = (fb_address >> 1) + curpixel;
+    uint32_t addr = (globals.fb_address >> 1) + curpixel;
 
     uint8_t lowbits;
 
@@ -2606,7 +2608,7 @@ static void fbread_16(uint32_t curpixel, uint32_t* curpixel_memcvg)
     {
         PAIRREAD16(fword, hbyte, addr);
 
-        if (fb_format == FORMAT_RGBA)
+        if (globals.fb_format == FORMAT_RGBA)
         {
             globals.memory_color.r = GET_HI(fword);
             globals.memory_color.g = GET_MED(fword);
@@ -2626,7 +2628,7 @@ static void fbread_16(uint32_t curpixel, uint32_t* curpixel_memcvg)
     {
         RREADIDX16(fword, addr);
 
-        if (fb_format == FORMAT_RGBA)
+        if (globals.fb_format == FORMAT_RGBA)
         {
             globals.memory_color.r = GET_HI(fword);
             globals.memory_color.g = GET_MED(fword);
@@ -2644,7 +2646,7 @@ static void fbread2_16(uint32_t curpixel, uint32_t* curpixel_memcvg)
 {
     uint16_t fword;
     uint8_t hbyte;
-    uint32_t addr = (fb_address >> 1) + curpixel;
+    uint32_t addr = (globals.fb_address >> 1) + curpixel;
 
     uint8_t lowbits;
 
@@ -2652,7 +2654,7 @@ static void fbread2_16(uint32_t curpixel, uint32_t* curpixel_memcvg)
     {
         PAIRREAD16(fword, hbyte, addr);
 
-        if (fb_format == FORMAT_RGBA)
+        if (globals.fb_format == FORMAT_RGBA)
         {
             globals.pre_memory_color.r = GET_HI(fword);
             globals.pre_memory_color.g = GET_MED(fword);
@@ -2672,7 +2674,7 @@ static void fbread2_16(uint32_t curpixel, uint32_t* curpixel_memcvg)
     {
         RREADIDX16(fword, addr);
 
-        if (fb_format == FORMAT_RGBA)
+        if (globals.fb_format == FORMAT_RGBA)
         {
             globals.pre_memory_color.r = GET_HI(fword);
             globals.pre_memory_color.g = GET_MED(fword);
@@ -2689,7 +2691,7 @@ static void fbread2_16(uint32_t curpixel, uint32_t* curpixel_memcvg)
 
 static void fbread_32(uint32_t curpixel, uint32_t* curpixel_memcvg)
 {
-    uint32_t mem, addr = (fb_address >> 2) + curpixel;
+    uint32_t mem, addr = (globals.fb_address >> 2) + curpixel;
     RREADIDX32(mem, addr);
     globals.memory_color.r = (mem >> 24) & 0xff;
     globals.memory_color.g = (mem >> 16) & 0xff;
@@ -2708,7 +2710,7 @@ static void fbread_32(uint32_t curpixel, uint32_t* curpixel_memcvg)
 
 static INLINE void fbread2_32(uint32_t curpixel, uint32_t* curpixel_memcvg)
 {
-    uint32_t mem, addr = (fb_address >> 2) + curpixel;
+    uint32_t mem, addr = (globals.fb_address >> 2) + curpixel;
     RREADIDX32(mem, addr);
     globals.pre_memory_color.r = (mem >> 24) & 0xff;
     globals.pre_memory_color.g = (mem >> 16) & 0xff;
@@ -2727,33 +2729,32 @@ static INLINE void fbread2_32(uint32_t curpixel, uint32_t* curpixel_memcvg)
 
 static void rdp_set_color_image(const uint32_t* args)
 {
-    fb_format   = (args[0] >> 21) & 0x7;
-    fb_size     = (args[0] >> 19) & 0x3;
-    fb_width    = (args[0] & 0x3ff) + 1;
-    fb_address  = args[1] & 0x0ffffff;
+    globals.fb_format   = (args[0] >> 21) & 0x7;
+    globals.fb_size     = (args[0] >> 19) & 0x3;
+    globals.fb_width    = (args[0] & 0x3ff) + 1;
+    globals.fb_address  = args[1] & 0x0ffffff;
 
-
-    fbread1_ptr = fbread_func[fb_size];
-    fbread2_ptr = fbread2_func[fb_size];
-    fbwrite_ptr = fbwrite_func[fb_size];
+    globals.fbread1_ptr = fbread_func[globals.fb_size];
+    globals.fbread2_ptr = fbread2_func[globals.fb_size];
+    globals.fbwrite_ptr = fbwrite_func[globals.fb_size];
 }
 
 static void rdp_set_fill_color(const uint32_t* args)
 {
-    fill_color = args[1];
+    globals.fill_color = args[1];
 }
 
 static void fb_init()
 {
-    fb_format = FORMAT_RGBA;
-    fb_size = PIXEL_SIZE_4BIT;
-    fb_width = 0;
-    fb_address = 0;
+    globals.fb_format   = FORMAT_RGBA;
+    globals.fb_size     = PIXEL_SIZE_4BIT;
+    globals.fb_width    = 0;
+    globals.fb_address  = 0;
 
 
-    fbread1_ptr = fbread_func[fb_size];
-    fbread2_ptr = fbread2_func[fb_size];
-    fbwrite_ptr = fbwrite_func[fb_size];
+    globals.fbread1_ptr = fbread_func[globals.fb_size];
+    globals.fbread2_ptr = fbread2_func[globals.fb_size];
+    globals.fbwrite_ptr = fbwrite_func[globals.fb_size];
 }
 
 static uint32_t sort_tmem_idx(uint32_t idxa, uint32_t idxb, uint32_t idxc, uint32_t idxd, uint32_t bankno)
@@ -2819,7 +2820,7 @@ static INLINE void fetch_texel(struct color *color, int s, int t, uint32_t tilen
             taddr = ((tbase << 4) + s) >> 1;
             taddr ^= ((t & 1) ? BYTE_XOR_DWORD_SWAP : BYTE_ADDR_XOR);
 
-            byteval = tmem[taddr & 0xfff];
+            byteval = globals.tmem[taddr & 0xfff];
             c = ((s & 1)) ? (byteval & 0xf) : (byteval >> 4);
             c |= (c << 4);
             color->r = c;
@@ -2833,7 +2834,7 @@ static INLINE void fetch_texel(struct color *color, int s, int t, uint32_t tilen
             uint8_t p;
             taddr    = (tbase << 3) + s;
             taddr   ^= ((t & 1) ? BYTE_XOR_DWORD_SWAP : BYTE_ADDR_XOR);
-            p        = tmem[taddr & 0xfff];
+            p        = globals.tmem[taddr & 0xfff];
             color->r = p;
             color->g = p;
             color->b = p;
@@ -2878,7 +2879,7 @@ static INLINE void fetch_texel(struct color *color, int s, int t, uint32_t tilen
 
             int32_t u, save;
 
-            save = tmem[taddr & 0x7ff];
+            save = globals.tmem[taddr & 0x7ff];
 
             save &= 0xf0;
             save |= (save >> 4);
@@ -2899,7 +2900,7 @@ static INLINE void fetch_texel(struct color *color, int s, int t, uint32_t tilen
 
             int32_t u, save;
 
-            save = u = tmem[taddr & 0x7ff];
+            save = u = globals.tmem[taddr & 0x7ff];
 
             u = u - 0x80;
 
@@ -2923,7 +2924,7 @@ static INLINE void fetch_texel(struct color *color, int s, int t, uint32_t tilen
             uint16_t c = tc16[taddrlow];
 
             int32_t y, u, v;
-            y = tmem[taddr | 0x800];
+            y = globals.tmem[taddr | 0x800];
             u = c >> 8;
             v = c & 0xff;
 
@@ -2966,7 +2967,7 @@ static INLINE void fetch_texel(struct color *color, int s, int t, uint32_t tilen
             {
                taddr ^= ((t & 1) ? BYTE_XOR_DWORD_SWAP : BYTE_ADDR_XOR);
                taddr &= 0x7ff;
-               y = tmem[taddr | 0x800];
+               y = globals.tmem[taddr | 0x800];
 
                color->b = y;
                color->a = y;
@@ -2989,7 +2990,7 @@ static INLINE void fetch_texel(struct color *color, int s, int t, uint32_t tilen
 
 
 
-            p = tmem[taddr & 0xfff];
+            p = globals.tmem[taddr & 0xfff];
             p = (s & 1) ? (p & 0xf) : (p >> 4);
             p = (tpal << 4) | p;
             color->r = color->g = color->b = color->a = p;
@@ -3003,7 +3004,7 @@ static INLINE void fetch_texel(struct color *color, int s, int t, uint32_t tilen
             uint8_t p;
 
 
-            p = tmem[taddr & 0xfff];
+            p = globals.tmem[taddr & 0xfff];
             color->r = p;
             color->g = p;
             color->b = p;
@@ -3033,7 +3034,7 @@ static INLINE void fetch_texel(struct color *color, int s, int t, uint32_t tilen
             uint8_t p, i;
 
 
-            p = tmem[taddr & 0xfff];
+            p = globals.tmem[taddr & 0xfff];
             p = (s & 1) ? (p & 0xf) : (p >> 4);
             i = p & 0xe;
             i = (i << 4) | (i << 1) | (i >> 2);
@@ -3051,7 +3052,7 @@ static INLINE void fetch_texel(struct color *color, int s, int t, uint32_t tilen
             uint8_t p, i;
 
 
-            p = tmem[taddr & 0xfff];
+            p = globals.tmem[taddr & 0xfff];
             i = p & 0xf0;
             i |= (i >> 4);
             color->r = i;
@@ -3095,7 +3096,7 @@ static INLINE void fetch_texel(struct color *color, int s, int t, uint32_t tilen
 
             uint8_t byteval, c;
 
-            byteval = tmem[taddr & 0xfff];
+            byteval = globals.tmem[taddr & 0xfff];
             c = (s & 1) ? (byteval & 0xf) : (byteval >> 4);
             c |= (c << 4);
             color->r = c;
@@ -3111,7 +3112,7 @@ static INLINE void fetch_texel(struct color *color, int s, int t, uint32_t tilen
 
             uint8_t c;
 
-            c = tmem[taddr & 0xfff];
+            c = globals.tmem[taddr & 0xfff];
             color->r = c;
             color->g = c;
             color->b = c;
@@ -3170,14 +3171,14 @@ static INLINE void fetch_texel_quadro(struct color *color0, struct color *color1
             taddr2 &= 0xfff;
             taddr3 &= 0xfff;
             ands = s0 & 1;
-            byteval = tmem[taddr0];
+            byteval = globals.tmem[taddr0];
             c = (ands) ? (byteval & 0xf) : (byteval >> 4);
             c |= (c << 4);
             color0->r = c;
             color0->g = c;
             color0->b = c;
             color0->a = c;
-            byteval = tmem[taddr2];
+            byteval = globals.tmem[taddr2];
             c = (ands) ? (byteval & 0xf) : (byteval >> 4);
             c |= (c << 4);
             color2->r = c;
@@ -3186,14 +3187,14 @@ static INLINE void fetch_texel_quadro(struct color *color0, struct color *color1
             color2->a = c;
 
             ands = s1 & 1;
-            byteval = tmem[taddr1];
+            byteval = globals.tmem[taddr1];
             c = (ands) ? (byteval & 0xf) : (byteval >> 4);
             c |= (c << 4);
             color1->r = c;
             color1->g = c;
             color1->b = c;
             color1->a = c;
-            byteval = tmem[taddr3];
+            byteval = globals.tmem[taddr3];
             c = (ands) ? (byteval & 0xf) : (byteval >> 4);
             c |= (c << 4);
             color3->r = c;
@@ -3221,22 +3222,22 @@ static INLINE void fetch_texel_quadro(struct color *color0, struct color *color1
             taddr1 &= 0xfff;
             taddr2 &= 0xfff;
             taddr3 &= 0xfff;
-            p = tmem[taddr0];
+            p = globals.tmem[taddr0];
             color0->r = p;
             color0->g = p;
             color0->b = p;
             color0->a = p;
-            p = tmem[taddr2];
+            p = globals.tmem[taddr2];
             color2->r = p;
             color2->g = p;
             color2->b = p;
             color2->a = p;
-            p = tmem[taddr1];
+            p = globals.tmem[taddr1];
             color1->r = p;
             color1->g = p;
             color1->b = p;
             color1->a = p;
-            p = tmem[taddr3];
+            p = globals.tmem[taddr3];
             color3->r = p;
             color3->g = p;
             color3->b = p;
@@ -3346,22 +3347,22 @@ static INLINE void fetch_texel_quadro(struct color *color0, struct color *color1
 
             int32_t u0, u1, u2, u3, save0, save1, save2, save3;
 
-            save0 = tmem[taddr0 & 0x7ff];
+            save0 = globals.tmem[taddr0 & 0x7ff];
             save0 &= 0xf0;
             save0 |= (save0 >> 4);
             u0 = save0 - 0x80;
 
-            save1 = tmem[taddr1 & 0x7ff];
+            save1 = globals.tmem[taddr1 & 0x7ff];
             save1 &= 0xf0;
             save1 |= (save1 >> 4);
             u1 = save1 - 0x80;
 
-            save2 = tmem[taddr2 & 0x7ff];
+            save2 = globals.tmem[taddr2 & 0x7ff];
             save2 &= 0xf0;
             save2 |= (save2 >> 4);
             u2 = save2 - 0x80;
 
-            save3 = tmem[taddr3 & 0x7ff];
+            save3 = globals.tmem[taddr3 & 0x7ff];
             save3 &= 0xf0;
             save3 |= (save3 >> 4);
             u3 = save3 - 0x80;
@@ -3407,13 +3408,13 @@ static INLINE void fetch_texel_quadro(struct color *color0, struct color *color1
 
             int32_t u0, u1, u2, u3, save0, save1, save2, save3;
 
-            save0 = u0 = tmem[taddr0 & 0x7ff];
+            save0 = u0 = globals.tmem[taddr0 & 0x7ff];
             u0 = u0 - 0x80;
-            save1 = u1 = tmem[taddr1 & 0x7ff];
+            save1 = u1 = globals.tmem[taddr1 & 0x7ff];
             u1 = u1 - 0x80;
-            save2 = u2 = tmem[taddr2 & 0x7ff];
+            save2 = u2 = globals.tmem[taddr2 & 0x7ff];
             u2 = u2 - 0x80;
-            save3 = u3 = tmem[taddr3 & 0x7ff];
+            save3 = u3 = globals.tmem[taddr3 & 0x7ff];
             u3 = u3 - 0x80;
 
             color0->r = u0;
@@ -3484,16 +3485,16 @@ static INLINE void fetch_texel_quadro(struct color *color0, struct color *color1
             c2 = tc16[taddrlow2];
             c3 = tc16[taddrlow3];
 
-            y0 = tmem[taddr0 | 0x800];
+            y0 = globals.tmem[taddr0 | 0x800];
             u0 = c0 >> 8;
             v0 = c0 & 0xff;
-            y1 = tmem[taddr1 | 0x800];
+            y1 = globals.tmem[taddr1 | 0x800];
             u1 = c1 >> 8;
             v1 = c1 & 0xff;
-            y2 = tmem[taddr2 | 0x800];
+            y2 = globals.tmem[taddr2 | 0x800];
             u2 = c2 >> 8;
             v2 = c2 & 0xff;
-            y3 = tmem[taddr3 | 0x800];
+            y3 = globals.tmem[taddr3 | 0x800];
             u3 = c3 >> 8;
             v3 = c3 & 0xff;
 
@@ -3592,8 +3593,8 @@ static INLINE void fetch_texel_quadro(struct color *color0, struct color *color1
                taddr0 &= 0x7ff;
                taddr2 &= 0x7ff;
 
-               y0 = tmem[taddr0 | 0x800];
-               y2 = tmem[taddr2 | 0x800];
+               y0 = globals.tmem[taddr0 | 0x800];
+               y2 = globals.tmem[taddr2 | 0x800];
 
                color0->b = color0->a = y0;
                color2->b = color2->a = y2;
@@ -3617,8 +3618,8 @@ static INLINE void fetch_texel_quadro(struct color *color0, struct color *color1
                taddr1 &= 0x7ff;
                taddr3 &= 0x7ff;
 
-               y1 = tmem[taddr1 | 0x800];
-               y3 = tmem[taddr3 | 0x800];
+               y1 = globals.tmem[taddr1 | 0x800];
+               y3 = globals.tmem[taddr3 | 0x800];
 
                color1->b = color1->a = y1;
                color3->b = color3->a = y3;
@@ -3661,21 +3662,21 @@ static INLINE void fetch_texel_quadro(struct color *color0, struct color *color1
             taddr2 &= 0xfff;
             taddr3 &= 0xfff;
             ands = s0 & 1;
-            p = tmem[taddr0];
+            p = globals.tmem[taddr0];
             p = (ands) ? (p & 0xf) : (p >> 4);
             p = (tpal << 4) | p;
             color0->r = color0->g = color0->b = color0->a = p;
-            p = tmem[taddr2];
+            p = globals.tmem[taddr2];
             p = (ands) ? (p & 0xf) : (p >> 4);
             p = (tpal << 4) | p;
             color2->r = color2->g = color2->b = color2->a = p;
 
             ands = s1 & 1;
-            p = tmem[taddr1];
+            p = globals.tmem[taddr1];
             p = (ands) ? (p & 0xf) : (p >> 4);
             p = (tpal << 4) | p;
             color1->r = color1->g = color1->b = color1->a = p;
-            p = tmem[taddr3];
+            p = globals.tmem[taddr3];
             p = (ands) ? (p & 0xf) : (p >> 4);
             p = (tpal << 4) | p;
             color3->r = color3->g = color3->b = color3->a = p;
@@ -3700,22 +3701,22 @@ static INLINE void fetch_texel_quadro(struct color *color0, struct color *color1
             taddr1 &= 0xfff;
             taddr2 &= 0xfff;
             taddr3 &= 0xfff;
-            p = tmem[taddr0];
+            p = globals.tmem[taddr0];
             color0->r = p;
             color0->g = p;
             color0->b = p;
             color0->a = p;
-            p = tmem[taddr2];
+            p = globals.tmem[taddr2];
             color2->r = p;
             color2->g = p;
             color2->b = p;
             color2->a = p;
-            p = tmem[taddr1];
+            p = globals.tmem[taddr1];
             color1->r = p;
             color1->g = p;
             color1->b = p;
             color1->a = p;
-            p = tmem[taddr3];
+            p = globals.tmem[taddr3];
             color3->r = p;
             color3->g = p;
             color3->b = p;
@@ -3784,7 +3785,7 @@ static INLINE void fetch_texel_quadro(struct color *color0, struct color *color1
             taddr2 &= 0xfff;
             taddr3 &= 0xfff;
             ands = s0 & 1;
-            p = tmem[taddr0];
+            p = globals.tmem[taddr0];
             p = ands ? (p & 0xf) : (p >> 4);
             i = p & 0xe;
             i = (i << 4) | (i << 1) | (i >> 2);
@@ -3792,7 +3793,7 @@ static INLINE void fetch_texel_quadro(struct color *color0, struct color *color1
             color0->g = i;
             color0->b = i;
             color0->a = (p & 0x1) ? 0xff : 0;
-            p = tmem[taddr2];
+            p = globals.tmem[taddr2];
             p = ands ? (p & 0xf) : (p >> 4);
             i = p & 0xe;
             i = (i << 4) | (i << 1) | (i >> 2);
@@ -3802,7 +3803,7 @@ static INLINE void fetch_texel_quadro(struct color *color0, struct color *color1
             color2->a = (p & 0x1) ? 0xff : 0;
 
             ands = s1 & 1;
-            p = tmem[taddr1];
+            p = globals.tmem[taddr1];
             p = ands ? (p & 0xf) : (p >> 4);
             i = p & 0xe;
             i = (i << 4) | (i << 1) | (i >> 2);
@@ -3810,7 +3811,7 @@ static INLINE void fetch_texel_quadro(struct color *color0, struct color *color1
             color1->g = i;
             color1->b = i;
             color1->a = (p & 0x1) ? 0xff : 0;
-            p = tmem[taddr3];
+            p = globals.tmem[taddr3];
             p = ands ? (p & 0xf) : (p >> 4);
             i = p & 0xe;
             i = (i << 4) | (i << 1) | (i >> 2);
@@ -3839,28 +3840,28 @@ static INLINE void fetch_texel_quadro(struct color *color0, struct color *color1
             taddr1 &= 0xfff;
             taddr2 &= 0xfff;
             taddr3 &= 0xfff;
-            p = tmem[taddr0];
+            p = globals.tmem[taddr0];
             i = p & 0xf0;
             i |= (i >> 4);
             color0->r = i;
             color0->g = i;
             color0->b = i;
             color0->a = ((p & 0xf) << 4) | (p & 0xf);
-            p = tmem[taddr1];
+            p = globals.tmem[taddr1];
             i = p & 0xf0;
             i |= (i >> 4);
             color1->r = i;
             color1->g = i;
             color1->b = i;
             color1->a = ((p & 0xf) << 4) | (p & 0xf);
-            p = tmem[taddr2];
+            p = globals.tmem[taddr2];
             i = p & 0xf0;
             i |= (i >> 4);
             color2->r = i;
             color2->g = i;
             color2->b = i;
             color2->a = ((p & 0xf) << 4) | (p & 0xf);
-            p = tmem[taddr3];
+            p = globals.tmem[taddr3];
             i = p & 0xf0;
             i |= (i >> 4);
             color3->r = i;
@@ -3965,21 +3966,21 @@ static INLINE void fetch_texel_quadro(struct color *color0, struct color *color1
             taddr2 &= 0xfff;
             taddr3 &= 0xfff;
             ands = s0 & 1;
-            p = tmem[taddr0];
+            p = globals.tmem[taddr0];
             c0 = ands ? (p & 0xf) : (p >> 4);
             c0 |= (c0 << 4);
             color0->r = color0->g = color0->b = color0->a = c0;
-            p = tmem[taddr2];
+            p = globals.tmem[taddr2];
             c2 = ands ? (p & 0xf) : (p >> 4);
             c2 |= (c2 << 4);
             color2->r = color2->g = color2->b = color2->a = c2;
 
             ands = s1 & 1;
-            p = tmem[taddr1];
+            p = globals.tmem[taddr1];
             c1 = ands ? (p & 0xf) : (p >> 4);
             c1 |= (c1 << 4);
             color1->r = color1->g = color1->b = color1->a = c1;
-            p = tmem[taddr3];
+            p = globals.tmem[taddr3];
             c3 = ands ? (p & 0xf) : (p >> 4);
             c3 |= (c3 << 4);
             color3->r = color3->g = color3->b = color3->a = c3;
@@ -4006,22 +4007,22 @@ static INLINE void fetch_texel_quadro(struct color *color0, struct color *color1
             taddr2 &= 0xfff;
             taddr3 &= 0xfff;
 
-            p = tmem[taddr0];
+            p = globals.tmem[taddr0];
             color0->r = p;
             color0->g = p;
             color0->b = p;
             color0->a = p;
-            p = tmem[taddr1];
+            p = globals.tmem[taddr1];
             color1->r = p;
             color1->g = p;
             color1->b = p;
             color1->a = p;
-            p = tmem[taddr2];
+            p = globals.tmem[taddr2];
             color2->r = p;
             color2->g = p;
             color2->b = p;
             color2->a = p;
-            p = tmem[taddr3];
+            p = globals.tmem[taddr3];
             color3->r = p;
             color3->g = p;
             color3->b = p;
@@ -4113,18 +4114,18 @@ static INLINE void fetch_texel_entlut_quadro(struct color *color0, struct color 
             taddr3 ^= xort;
 
             ands = s0 & 1;
-            c0 = tmem[taddr0 & 0x7ff];
+            c0 = globals.tmem[taddr0 & 0x7ff];
             c0 = (ands) ? (c0 & 0xf) : (c0 >> 4);
             taddr0 = (tpal | c0) << 2;
-            c2 = tmem[taddr2 & 0x7ff];
+            c2 = globals.tmem[taddr2 & 0x7ff];
             c2 = (ands) ? (c2 & 0xf) : (c2 >> 4);
             taddr2 = ((tpal | c2) << 2) + 2;
 
             ands = s1 & 1;
-            c1 = tmem[taddr1 & 0x7ff];
+            c1 = globals.tmem[taddr1 & 0x7ff];
             c1 = (ands) ? (c1 & 0xf) : (c1 >> 4);
             taddr1 = ((tpal | c1) << 2) + 1;
-            c3 = tmem[taddr3 & 0x7ff];
+            c3 = globals.tmem[taddr3 & 0x7ff];
             c3 = (ands) ? (c3 & 0xf) : (c3 >> 4);
             taddr3 = ((tpal | c3) << 2) + 3;
          }
@@ -4144,17 +4145,17 @@ static INLINE void fetch_texel_entlut_quadro(struct color *color0, struct color 
             taddr2 ^= xort;
             taddr3 ^= xort;
 
-            c0 = tmem[taddr0 & 0x7ff];
+            c0 = globals.tmem[taddr0 & 0x7ff];
             c0 >>= 4;
             taddr0 = (tpal | c0) << 2;
-            c2 = tmem[taddr2 & 0x7ff];
+            c2 = globals.tmem[taddr2 & 0x7ff];
             c2 >>= 4;
             taddr2 = ((tpal | c2) << 2) + 2;
 
-            c1 = tmem[taddr1 & 0x7ff];
+            c1 = globals.tmem[taddr1 & 0x7ff];
             c1 >>= 4;
             taddr1 = ((tpal | c1) << 2) + 1;
-            c3 = tmem[taddr3 & 0x7ff];
+            c3 = globals.tmem[taddr3 & 0x7ff];
             c3 >>= 4;
             taddr3 = ((tpal | c3) << 2) + 3;
          }
@@ -4176,13 +4177,13 @@ static INLINE void fetch_texel_entlut_quadro(struct color *color0, struct color 
             taddr2 ^= xort;
             taddr3 ^= xort;
 
-            c0 = tmem[taddr0 & 0x7ff];
+            c0 = globals.tmem[taddr0 & 0x7ff];
             taddr0 = c0 << 2;
-            c2 = tmem[taddr2 & 0x7ff];
+            c2 = globals.tmem[taddr2 & 0x7ff];
             taddr2 = (c2 << 2) + 2;
-            c1 = tmem[taddr1 & 0x7ff];
+            c1 = globals.tmem[taddr1 & 0x7ff];
             taddr1 = (c1 << 2) + 1;
-            c3 = tmem[taddr3 & 0x7ff];
+            c3 = globals.tmem[taddr3 & 0x7ff];
             taddr3 = (c3 << 2) + 3;
          }
          break;
@@ -4201,13 +4202,13 @@ static INLINE void fetch_texel_entlut_quadro(struct color *color0, struct color 
             taddr2 ^= xort;
             taddr3 ^= xort;
 
-            c0 = tmem[taddr0 & 0x7ff];
+            c0 = globals.tmem[taddr0 & 0x7ff];
             taddr0 = c0 << 2;
-            c2 = tmem[taddr2 & 0x7ff];
+            c2 = globals.tmem[taddr2 & 0x7ff];
             taddr2 = (c2 << 2) + 2;
-            c1 = tmem[taddr1 & 0x7ff];
+            c1 = globals.tmem[taddr1 & 0x7ff];
             taddr1 = (c1 << 2) + 1;
-            c3 = tmem[taddr3 & 0x7ff];
+            c3 = globals.tmem[taddr3 & 0x7ff];
             taddr3 = (c3 << 2) + 3;
          }
          break;
@@ -4252,13 +4253,13 @@ static INLINE void fetch_texel_entlut_quadro(struct color *color0, struct color 
             taddr2 ^= xort;
             taddr3 ^= xort;
 
-            c0 = tmem[taddr0 & 0x7ff];
+            c0 = globals.tmem[taddr0 & 0x7ff];
             taddr0 = c0 << 2;
-            c2 = tmem[taddr2 & 0x7ff];
+            c2 = globals.tmem[taddr2 & 0x7ff];
             taddr2 = (c2 << 2) + 2;
-            c1 = tmem[taddr1 & 0x7ff];
+            c1 = globals.tmem[taddr1 & 0x7ff];
             taddr1 = (c1 << 2) + 1;
-            c3 = tmem[taddr3 & 0x7ff];
+            c3 = globals.tmem[taddr3 & 0x7ff];
             taddr3 = (c3 << 2) + 3;
          }
          break;
@@ -4305,13 +4306,13 @@ static INLINE void fetch_texel_entlut_quadro(struct color *color0, struct color 
             taddr2 ^= xort;
             taddr3 ^= xort;
 
-            c0 = tmem[taddr0 & 0x7ff];
+            c0 = globals.tmem[taddr0 & 0x7ff];
             taddr0 = c0 << 2;
-            c2 = tmem[taddr2 & 0x7ff];
+            c2 = globals.tmem[taddr2 & 0x7ff];
             taddr2 = (c2 << 2) + 2;
-            c1 = tmem[taddr1 & 0x7ff];
+            c1 = globals.tmem[taddr1 & 0x7ff];
             taddr1 = (c1 << 2) + 1;
-            c3 = tmem[taddr3 & 0x7ff];
+            c3 = globals.tmem[taddr3 & 0x7ff];
             taddr3 = (c3 << 2) + 3;
          }
          break;
@@ -4410,7 +4411,7 @@ static INLINE void fetch_texel_entlut_quadro_nearest(struct color *color0, struc
             taddr0 ^= xort;
 
             ands = s0 & 1;
-            c0 = tmem[taddr0 & 0x7ff];
+            c0 = globals.tmem[taddr0 & 0x7ff];
             c0 = (ands) ? (c0 & 0xf) : (c0 >> 4);
 
             taddr0 = (tpal | c0) << 2;
@@ -4422,7 +4423,7 @@ static INLINE void fetch_texel_entlut_quadro_nearest(struct color *color0, struc
             xort = (t0 & 1) ? BYTE_XOR_DWORD_SWAP : BYTE_ADDR_XOR;
             taddr0 ^= xort;
 
-            c0 = tmem[taddr0 & 0x7ff];
+            c0 = globals.tmem[taddr0 & 0x7ff];
 
             c0 >>= 4;
 
@@ -4437,7 +4438,7 @@ static INLINE void fetch_texel_entlut_quadro_nearest(struct color *color0, struc
             xort = (t0 & 1) ? BYTE_XOR_DWORD_SWAP : BYTE_ADDR_XOR;
             taddr0 ^= xort;
 
-            c0 = tmem[taddr0 & 0x7ff];
+            c0 = globals.tmem[taddr0 & 0x7ff];
 
             taddr0 = c0 << 2;
          }
@@ -4448,7 +4449,7 @@ static INLINE void fetch_texel_entlut_quadro_nearest(struct color *color0, struc
             xort = (t0 & 1) ? BYTE_XOR_DWORD_SWAP : BYTE_ADDR_XOR;
             taddr0 ^= xort;
 
-            c0 = tmem[taddr0 & 0x7ff];
+            c0 = globals.tmem[taddr0 & 0x7ff];
 
             taddr0 = c0 << 2;
          }
@@ -4472,7 +4473,7 @@ static INLINE void fetch_texel_entlut_quadro_nearest(struct color *color0, struc
             xort = (t0 & 1) ? BYTE_XOR_DWORD_SWAP : BYTE_ADDR_XOR;
             taddr0 ^= xort;
 
-            c0 = tmem[taddr0 & 0x7ff];
+            c0 = globals.tmem[taddr0 & 0x7ff];
 
             taddr0 = c0 << 2;
          }
@@ -4497,7 +4498,7 @@ static INLINE void fetch_texel_entlut_quadro_nearest(struct color *color0, struc
             xort = (t0 & 1) ? BYTE_XOR_DWORD_SWAP : BYTE_ADDR_XOR;
             taddr0 ^= xort;
 
-            c0 = tmem[taddr0 & 0x7ff];
+            c0 = globals.tmem[taddr0 & 0x7ff];
 
             taddr0 = c0 << 2;
          }
@@ -4775,7 +4776,7 @@ static void tmem_init(void)
    for (i = 0; i < 32; i++)
       replicated_rgba[i] = (i << 3) | ((i >> 2) & 7);
 
-   memset(tmem, 0, 0x1000);
+   memset(globals.tmem, 0, 0x1000);
 }
 
 static void tcdiv_persp(int32_t ss, int32_t st, int32_t sw, int32_t* sss, int32_t* sst);
@@ -4785,8 +4786,6 @@ static void (*tcdiv_func[2])(int32_t, int32_t, int32_t, int32_t*, int32_t*) =
 {
     tcdiv_nopersp, tcdiv_persp
 };
-
-static TLS void (*tcdiv_ptr)(int32_t, int32_t, int32_t, int32_t*, int32_t*);
 
 static int32_t maskbits_table[16];
 static int32_t log2table[256];
@@ -5173,7 +5172,7 @@ static STRICTINLINE void tclod_2cycle_current(int32_t* sss, int32_t* sst, int32_
         nextyt = (t + spans.dtdy) >> 16;
         nextysw = (w + spans.dwdy) >> 16;
 
-        tcdiv_ptr(nextys, nextyt, nextysw, &nextys, &nextyt);
+        globals.tcdiv_ptr(nextys, nextyt, nextysw, &nextys, &nextyt);
 
         lodclamp = (initt & 0x60000) || (nextt & 0x60000) || (inits & 0x60000) || (nexts & 0x60000) || (nextys & 0x60000) || (nextyt & 0x60000);
 
@@ -5239,8 +5238,8 @@ static STRICTINLINE void tclod_2cycle_current_simple(int32_t* sss, int32_t* sst,
         nextyt = (t + spans.dtdy) >> 16;
         nextysw = (w + spans.dwdy) >> 16;
 
-        tcdiv_ptr(nexts, nextt, nextsw, &nexts, &nextt);
-        tcdiv_ptr(nextys, nextyt, nextysw, &nextys, &nextyt);
+        globals.tcdiv_ptr(nexts, nextt, nextsw, &nexts, &nextt);
+        globals.tcdiv_ptr(nextys, nextyt, nextysw, &nextys, &nextyt);
 
         lodclamp = (initt & 0x60000) || (nextt & 0x60000) || (inits & 0x60000) || (nexts & 0x60000) || (nextys & 0x60000) || (nextyt & 0x60000);
 
@@ -5302,8 +5301,8 @@ static STRICTINLINE void tclod_2cycle_current_notexel1(int32_t* sss, int32_t* ss
         nextyt = (t + spans.dtdy) >> 16;
         nextysw = (w + spans.dwdy) >> 16;
 
-        tcdiv_ptr(nexts, nextt, nextsw, &nexts, &nextt);
-        tcdiv_ptr(nextys, nextyt, nextysw, &nextys, &nextyt);
+        globals.tcdiv_ptr(nexts, nextt, nextsw, &nexts, &nextt);
+        globals.tcdiv_ptr(nextys, nextyt, nextysw, &nextys, &nextyt);
 
         lodclamp = (initt & 0x60000) || (nextt & 0x60000) || (inits & 0x60000) || (nexts & 0x60000) || (nextys & 0x60000) || (nextyt & 0x60000);
 
@@ -5349,8 +5348,8 @@ static STRICTINLINE void tclod_2cycle_next(int32_t* sss, int32_t* sst, int32_t s
         nextyt = (t + spans.dtdy) >> 16;
         nextysw = (w + spans.dwdy) >> 16;
 
-        tcdiv_ptr(nexts, nextt, nextsw, &nexts, &nextt);
-        tcdiv_ptr(nextys, nextyt, nextysw, &nextys, &nextyt);
+        globals.tcdiv_ptr(nexts, nextt, nextsw, &nexts, &nextt);
+        globals.tcdiv_ptr(nextys, nextyt, nextysw, &nextys, &nextyt);
 
         lodclamp = (initt & 0x60000) || (nextt & 0x60000) || (inits & 0x60000) || (nexts & 0x60000) || (nextys & 0x60000) || (nextyt & 0x60000);
 
@@ -5444,7 +5443,7 @@ static STRICTINLINE void tclod_1cycle_current(int32_t* sss, int32_t* sst, int32_
             fart = (t + (dtinc << 1)) >> 16;
         }
 
-        tcdiv_ptr(fars, fart, farsw, &fars, &fart);
+        globals.tcdiv_ptr(fars, fart, farsw, &fars, &fart);
 
         lodclamp = (fart & 0x60000) || (nextt & 0x60000) || (fars & 0x60000) || (nexts & 0x60000);
 
@@ -5527,8 +5526,8 @@ static STRICTINLINE void tclod_1cycle_current_simple(int32_t* sss, int32_t* sst,
             fart = (t + (dtinc << 1)) >> 16;
         }
 
-        tcdiv_ptr(nexts, nextt, nextsw, &nexts, &nextt);
-        tcdiv_ptr(fars, fart, farsw, &fars, &fart);
+        globals.tcdiv_ptr(nexts, nextt, nextsw, &nexts, &nextt);
+        globals.tcdiv_ptr(fars, fart, farsw, &fars, &fart);
 
         lodclamp = (fart & 0x60000) || (nextt & 0x60000) || (fars & 0x60000) || (nexts & 0x60000);
 
@@ -5659,8 +5658,8 @@ static STRICTINLINE void tclod_1cycle_next(int32_t* sss, int32_t* sst, int32_t s
             fart = (t + (dtinc << 1)) >> 16;
         }
 
-        tcdiv_ptr(nexts, nextt, nextsw, &nexts, &nextt);
-        tcdiv_ptr(fars, fart, farsw, &fars, &fart);
+        globals.tcdiv_ptr(nexts, nextt, nextsw, &nexts, &nextt);
+        globals.tcdiv_ptr(fars, fart, farsw, &fars, &fart);
 
         lodclamp = (fart & 0x60000) || (nextt & 0x60000) || (fars & 0x60000) || (nexts & 0x60000);
 
@@ -5708,8 +5707,8 @@ static STRICTINLINE void tclod_copy(int32_t* sss, int32_t* sst, int32_t s, int32
         fars = (s + (dsinc << 1)) >> 16;
         fart = (t + (dtinc << 1)) >> 16;
 
-        tcdiv_ptr(nexts, nextt, nextsw, &nexts, &nextt);
-        tcdiv_ptr(fars, fart, farsw, &fars, &fart);
+        globals.tcdiv_ptr(nexts, nextt, nextsw, &nexts, &nextt);
+        globals.tcdiv_ptr(fars, fart, farsw, &fars, &fart);
 
         lodclamp = (fart & 0x60000) || (nextt & 0x60000) || (fars & 0x60000) || (nexts & 0x60000);
 
@@ -5892,9 +5891,9 @@ static void tcdiv_persp(int32_t ss, int32_t st, int32_t sw, int32_t* sss, int32_
 
 static void tcoord_init(void)
 {
-    tcdiv_ptr = tcdiv_func[0];
-
     int i, k;
+
+    globals.tcdiv_ptr = tcdiv_func[0];
 
     log2table[0] = log2table[1] = 0;
     for (i = 2; i < 256; i++)
@@ -6083,7 +6082,7 @@ static STRICTINLINE void get_texel1_1cycle(int32_t* s1, int32_t* t1, int32_t s, 
         nextsw = span[nextscan].w >> 16;
     }
 
-    tcdiv_ptr(nexts, nextt, nextsw, s1, t1);
+    globals.tcdiv_ptr(nexts, nextt, nextsw, s1, t1);
 }
 
 static STRICTINLINE void get_nexttexel0_2cycle(int32_t* s1, int32_t* t1, int32_t s, int32_t t, int32_t w, int32_t dsinc, int32_t dtinc, int32_t dwinc)
@@ -6095,7 +6094,7 @@ static STRICTINLINE void get_nexttexel0_2cycle(int32_t* s1, int32_t* t1, int32_t
     nexts = (s + dsinc) >> 16;
     nextt = (t + dtinc) >> 16;
 
-    tcdiv_ptr(nexts, nextt, nextsw, s1, t1);
+    globals.tcdiv_ptr(nexts, nextt, nextsw, s1, t1);
 }
 
 static STRICTINLINE void texture_pipeline_cycle(struct color* TEX, struct color* prev, int32_t SSS, int32_t SST, uint32_t tilenum, uint32_t cycle)
@@ -6385,12 +6384,12 @@ static void loading_pipeline(int start, int end, int tilenum, int coord_quad, in
 
    int tiadvance = 0, spanadvance = 0;
    int tiptr = 0;
-   switch (ti_size)
+
+   switch (globals.ti_size)
    {
       case PIXEL_SIZE_4BIT:
          rdp_pipeline_crashed = 1;
          return;
-         break;
       case PIXEL_SIZE_8BIT:
          tiadvance = 8;
          spanadvance = 8;
@@ -6415,16 +6414,16 @@ static void loading_pipeline(int start, int end, int tilenum, int coord_quad, in
 
    for (i = start; i <= end; i++)
    {
-      xstart = span[i].lx;
-      xend = span[i].unscrx;
-      xendsc = span[i].rx;
-      s = span[i].s;
-      t = span[i].t;
+      xstart   = span[i].lx;
+      xend     = span[i].unscrx;
+      xendsc   = span[i].rx;
+      s        = span[i].s;
+      t        = span[i].t;
 
-      ti_index = ti_width * i + xend;
-      tiptr = ti_address + PIXELS_TO_BYTES(ti_index, ti_size);
+      ti_index = globals.ti_width * i + xend;
+      tiptr    = globals.ti_address + PIXELS_TO_BYTES(ti_index, globals.ti_size);
 
-      length = (xstart - xend + 1) & 0xfff;
+      length   = (xstart - xend + 1) & 0xfff;
 
       for (j = 0; j < length; j+= spanadvance)
       {
@@ -6759,7 +6758,7 @@ static void rdp_load_block(const uint32_t* args)
    lewdata[4] = sh << 16;
    lewdata[5] = ((sl << 3) << 16) | (tl << 3);
    lewdata[6] = (dxt & 0xff) << 8;
-   lewdata[7] = ((0x80 >> ti_size) << 16) | (dxt >> 8);
+   lewdata[7] = ((0x80 >> globals.ti_size) << 16) | (dxt >> 8);
    lewdata[8] = 0x20;
    lewdata[9] = 0x20;
 
@@ -6789,7 +6788,7 @@ static void tile_tlut_common_cs_decoder(const uint32_t* args)
    lewdata[4] = ((sh >> 2) << 16) | ((sh & 3) << 14);
    lewdata[5] = ((sl << 3) << 16) | (tl << 3);
    lewdata[6] = 0;
-   lewdata[7] = (0x200 >> ti_size) << 16;
+   lewdata[7] = (0x200 >> globals.ti_size) << 16;
    lewdata[8] = 0x20;
    lewdata[9] = 0x20;
 
@@ -6829,13 +6828,10 @@ static void rdp_set_tile(const uint32_t* args)
 
 static void rdp_set_texture_image(const uint32_t* args)
 {
-    ti_format   = (args[0] >> 21) & 0x7;
-    ti_size     = (args[0] >> 19) & 0x3;
-    ti_width    = (args[0] & 0x3ff) + 1;
-    ti_address  = args[1] & 0x0ffffff;
-
-
-
+    globals.ti_format   = (args[0] >> 21) & 0x7;
+    globals.ti_size     = (args[0] >> 19) & 0x3;
+    globals.ti_width    = (args[0] & 0x3ff) + 1;
+    globals.ti_address  = args[1] & 0x0ffffff;
 }
 
 static void rdp_set_convert(const uint32_t* args)
@@ -6854,10 +6850,10 @@ static void rdp_set_convert(const uint32_t* args)
 
 static void tex_init(void)
 {
-    ti_format = FORMAT_RGBA;
-    ti_size = PIXEL_SIZE_4BIT;
-    ti_width = 0;
-    ti_address = 0;
+    globals.ti_format  = FORMAT_RGBA;
+    globals.ti_size    = PIXEL_SIZE_4BIT;
+    globals.ti_width   = 0;
+    globals.ti_address = 0;
 
     tmem_init();
     tcoord_init();
@@ -7030,13 +7026,13 @@ static STRICTINLINE void rgbaz_correct_clip(int offx, int offy, int r, int g, in
 
 static void render_spans_1cycle_complete(int start, int end, int tilenum, int flip)
 {
-    int zb = zb_address >> 1;
     int zbcur;
     uint8_t offx, offy;
     struct spansigs sigs;
     uint32_t blend_en;
     uint32_t prewrap;
     uint32_t curpixel_cvg, curpixel_cvbit, curpixel_memcvg;
+    int zb = globals.zb_address >> 1;
 
     int prim_tile = tilenum;
     int tile1 = tilenum;
@@ -7111,7 +7107,7 @@ static void render_spans_1cycle_complete(int start, int end, int tilenum, int fl
         w = span[i].w;
 
         x = xendsc;
-        curpixel = fb_width * i + x;
+        curpixel = globals.fb_width * i + x;
         zbcur = zb + curpixel;
 
         if (!flip)
@@ -7181,8 +7177,7 @@ static void render_spans_1cycle_complete(int start, int end, int tilenum, int fl
             }
             else
             {
-                tcdiv_ptr(ss, st, sw, &sss, &sst);
-
+                globals.tcdiv_ptr(ss, st, sw, &sss, &sst);
 
                 tclod_1cycle_current(&sss, &sst, news, newt, s, t, w, dsinc, dtinc, dwinc, i, prim_tile, &tile1, &sigs);
 
@@ -7214,12 +7209,13 @@ static void render_spans_1cycle_complete(int start, int end, int tilenum, int fl
 
             combiner_1cycle(adith, &curpixel_cvg);
 
-            fbread1_ptr(curpixel, &curpixel_memcvg);
+            globals.fbread1_ptr(curpixel, &curpixel_memcvg);
+
             if (z_compare(zbcur, sz, dzpix, dzpixenc, &blend_en, &prewrap, &curpixel_cvg, curpixel_memcvg))
             {
                 if (blender_1cycle(&fir, &fig, &fib, cdith, blend_en, prewrap, curpixel_cvg, curpixel_cvbit))
                 {
-                    fbwrite_ptr(curpixel, fir, fig, fib, blend_en, curpixel_cvg, curpixel_memcvg);
+                    globals.fbwrite_ptr(curpixel, fir, fig, fib, blend_en, curpixel_cvg, curpixel_memcvg);
                     if (globals.other_modes.z_update_en)
                         z_store(zbcur, sz, dzpixenc);
                 }
@@ -7245,14 +7241,13 @@ static void render_spans_1cycle_complete(int start, int end, int tilenum, int fl
 
 static void render_spans_1cycle_notexel1(int start, int end, int tilenum, int flip)
 {
-    int zb = zb_address >> 1;
     int zbcur;
     uint8_t offx, offy;
     struct spansigs sigs;
     uint32_t blend_en;
     uint32_t prewrap;
     uint32_t curpixel_cvg, curpixel_cvbit, curpixel_memcvg;
-
+    int zb = globals.zb_address >> 1;
     int prim_tile = tilenum;
     int tile1 = tilenum;
 
@@ -7322,7 +7317,7 @@ static void render_spans_1cycle_notexel1(int start, int end, int tilenum, int fl
         w = span[i].w;
 
         x = xendsc;
-        curpixel = fb_width * i + x;
+        curpixel = globals.fb_width * i + x;
         zbcur = zb + curpixel;
 
         if (!flip)
@@ -7372,7 +7367,7 @@ static void render_spans_1cycle_notexel1(int start, int end, int tilenum, int fl
 
             lookup_cvmask_derivatives(x, &offx, &offy, &curpixel_cvg, &curpixel_cvbit);
 
-            tcdiv_ptr(ss, st, sw, &sss, &sst);
+            globals.tcdiv_ptr(ss, st, sw, &sss, &sst);
 
             tclod_1cycle_current_simple(&sss, &sst, s, t, w, dsinc, dtinc, dwinc, i, prim_tile, &tile1, &sigs);
 
@@ -7385,12 +7380,13 @@ static void render_spans_1cycle_notexel1(int start, int end, int tilenum, int fl
 
             combiner_1cycle(adith, &curpixel_cvg);
 
-            fbread1_ptr(curpixel, &curpixel_memcvg);
+            globals.fbread1_ptr(curpixel, &curpixel_memcvg);
+
             if (z_compare(zbcur, sz, dzpix, dzpixenc, &blend_en, &prewrap, &curpixel_cvg, curpixel_memcvg))
             {
                 if (blender_1cycle(&fir, &fig, &fib, cdith, blend_en, prewrap, curpixel_cvg, curpixel_cvbit))
                 {
-                    fbwrite_ptr(curpixel, fir, fig, fib, blend_en, curpixel_cvg, curpixel_memcvg);
+                    globals.fbwrite_ptr(curpixel, fir, fig, fib, blend_en, curpixel_cvg, curpixel_memcvg);
                     if (globals.other_modes.z_update_en)
                         z_store(zbcur, sz, dzpixenc);
                 }
@@ -7416,17 +7412,16 @@ static void render_spans_1cycle_notexel1(int start, int end, int tilenum, int fl
 
 static void render_spans_1cycle_notex(int start, int end, int tilenum, int flip)
 {
-    int zb = zb_address >> 1;
     int zbcur;
     uint8_t offx, offy;
     uint32_t blend_en;
     uint32_t prewrap;
     uint32_t curpixel_cvg, curpixel_cvbit, curpixel_memcvg;
-
     int i, j;
 
     int drinc, dginc, dbinc, dainc, dzinc;
     int xinc;
+    int zb = globals.zb_address >> 1;
 
     if (flip)
     {
@@ -7480,7 +7475,7 @@ static void render_spans_1cycle_notex(int start, int end, int tilenum, int flip)
         z = globals.other_modes.z_source_sel ? globals.primitive_z : span[i].z;
 
         x = xendsc;
-        curpixel = fb_width * i + x;
+        curpixel = globals.fb_width * i + x;
         zbcur = zb + curpixel;
 
         if (!flip)
@@ -7523,12 +7518,13 @@ static void render_spans_1cycle_notex(int start, int end, int tilenum, int flip)
 
             combiner_1cycle(adith, &curpixel_cvg);
 
-            fbread1_ptr(curpixel, &curpixel_memcvg);
+            globals.fbread1_ptr(curpixel, &curpixel_memcvg);
+
             if (z_compare(zbcur, sz, dzpix, dzpixenc, &blend_en, &prewrap, &curpixel_cvg, curpixel_memcvg))
             {
                 if (blender_1cycle(&fir, &fig, &fib, cdith, blend_en, prewrap, curpixel_cvg, curpixel_cvbit))
                 {
-                    fbwrite_ptr(curpixel, fir, fig, fib, blend_en, curpixel_cvg, curpixel_memcvg);
+                    globals.fbwrite_ptr(curpixel, fir, fig, fib, blend_en, curpixel_cvg, curpixel_memcvg);
                     if (globals.other_modes.z_update_en)
                         z_store(zbcur, sz, dzpixenc);
                 }
@@ -7549,7 +7545,6 @@ static void render_spans_1cycle_notex(int start, int end, int tilenum, int flip)
 
 static void render_spans_2cycle_complete(int start, int end, int tilenum, int flip)
 {
-    int zb = zb_address >> 1;
     int zbcur;
     uint8_t offx, offy;
     struct spansigs sigs;
@@ -7560,6 +7555,7 @@ static void render_spans_2cycle_complete(int start, int end, int tilenum, int fl
     uint32_t curpixel_cvg, curpixel_cvbit, curpixel_memcvg;
     int32_t acalpha;
 
+    int zb = globals.zb_address >> 1;
 
 
     int tile2 = (tilenum + 1) & 7;
@@ -7637,7 +7633,7 @@ static void render_spans_2cycle_complete(int start, int end, int tilenum, int fl
         w = span[i].w;
 
         x = xendsc;
-        curpixel = fb_width * i + x;
+        curpixel = globals.fb_width * i + x;
         zbcur = zb + curpixel;
 
         if (!flip)
@@ -7698,7 +7694,7 @@ static void render_spans_2cycle_complete(int start, int end, int tilenum, int fl
             }
             else
             {
-                tcdiv_ptr(ss, st, sw, &sss, &sst);
+                globals.tcdiv_ptr(ss, st, sw, &sss, &sst);
 
                 tclod_2cycle_current(&sss, &sst, news, newt, s, t, w, dsinc, dtinc, dwinc, prim_tile, &tile1, &tile2);
 
@@ -7726,13 +7722,13 @@ static void render_spans_2cycle_complete(int start, int end, int tilenum, int fl
 
             combiner_2cycle(adith, &curpixel_cvg, &acalpha);
 
-            fbread2_ptr(curpixel, &curpixel_memcvg);
+            globals.fbread2_ptr(curpixel, &curpixel_memcvg);
 
             if (z_compare(zbcur, sz, dzpix, dzpixenc, &blend_en, &prewrap, &curpixel_cvg, curpixel_memcvg))
             {
                 if (blender_2cycle(&fir, &fig, &fib, cdith, blend_en, prewrap, curpixel_cvg, curpixel_cvbit, acalpha))
                 {
-                    fbwrite_ptr(curpixel, fir, fig, fib, blend_en, curpixel_cvg, curpixel_memcvg);
+                    globals.fbwrite_ptr(curpixel, fir, fig, fib, blend_en, curpixel_cvg, curpixel_memcvg);
                     if (globals.other_modes.z_update_en)
                         z_store(zbcur, sz, dzpixenc);
                 }
@@ -7758,7 +7754,6 @@ static void render_spans_2cycle_complete(int start, int end, int tilenum, int fl
 
 static void render_spans_2cycle_notexelnext(int start, int end, int tilenum, int flip)
 {
-    int zb = zb_address >> 1;
     int zbcur;
     uint8_t offx, offy;
     uint32_t blend_en;
@@ -7774,6 +7769,7 @@ static void render_spans_2cycle_notexelnext(int start, int end, int tilenum, int
 
     int drinc, dginc, dbinc, dainc, dzinc, dsinc, dtinc, dwinc;
     int xinc;
+    int zb = globals.zb_address >> 1;
     if (flip)
     {
         drinc = spans.dr;
@@ -7837,7 +7833,7 @@ static void render_spans_2cycle_notexelnext(int start, int end, int tilenum, int
         w = span[i].w;
 
         x = xendsc;
-        curpixel = fb_width * i + x;
+        curpixel = globals.fb_width * i + x;
         zbcur = zb + curpixel;
 
         if (!flip)
@@ -7879,7 +7875,7 @@ static void render_spans_2cycle_notexelnext(int start, int end, int tilenum, int
 
             lookup_cvmask_derivatives(x, &offx, &offy, &curpixel_cvg, &curpixel_cvbit);
 
-            tcdiv_ptr(ss, st, sw, &sss, &sst);
+            globals.tcdiv_ptr(ss, st, sw, &sss, &sst);
 
             tclod_2cycle_current_simple(&sss, &sst, s, t, w, dsinc, dtinc, dwinc, prim_tile, &tile1, &tile2);
 
@@ -7893,16 +7889,13 @@ static void render_spans_2cycle_notexelnext(int start, int end, int tilenum, int
 
             combiner_2cycle(adith, &curpixel_cvg, &acalpha);
 
-            fbread2_ptr(curpixel, &curpixel_memcvg);
-
-
-
+            globals.fbread2_ptr(curpixel, &curpixel_memcvg);
 
             if (z_compare(zbcur, sz, dzpix, dzpixenc, &blend_en, &prewrap, &curpixel_cvg, curpixel_memcvg))
             {
                 if (blender_2cycle(&fir, &fig, &fib, cdith, blend_en, prewrap, curpixel_cvg, curpixel_cvbit, acalpha))
                 {
-                    fbwrite_ptr(curpixel, fir, fig, fib, blend_en, curpixel_cvg, curpixel_memcvg);
+                    globals.fbwrite_ptr(curpixel, fir, fig, fib, blend_en, curpixel_cvg, curpixel_memcvg);
                     if (globals.other_modes.z_update_en)
                         z_store(zbcur, sz, dzpixenc);
                 }
@@ -7930,7 +7923,6 @@ static void render_spans_2cycle_notexelnext(int start, int end, int tilenum, int
 
 static void render_spans_2cycle_notexel1(int start, int end, int tilenum, int flip)
 {
-    int zb = zb_address >> 1;
     int zbcur;
     uint8_t offx, offy;
     uint32_t blend_en;
@@ -7945,6 +7937,7 @@ static void render_spans_2cycle_notexel1(int start, int end, int tilenum, int fl
 
     int drinc, dginc, dbinc, dainc, dzinc, dsinc, dtinc, dwinc;
     int xinc;
+    int zb = globals.zb_address >> 1;
     if (flip)
     {
         drinc = spans.dr;
@@ -8008,7 +8001,7 @@ static void render_spans_2cycle_notexel1(int start, int end, int tilenum, int fl
         w = span[i].w;
 
         x = xendsc;
-        curpixel = fb_width * i + x;
+        curpixel = globals.fb_width * i + x;
         zbcur = zb + curpixel;
 
         if (!flip)
@@ -8050,7 +8043,7 @@ static void render_spans_2cycle_notexel1(int start, int end, int tilenum, int fl
 
             lookup_cvmask_derivatives(x, &offx, &offy, &curpixel_cvg, &curpixel_cvbit);
 
-            tcdiv_ptr(ss, st, sw, &sss, &sst);
+            globals.tcdiv_ptr(ss, st, sw, &sss, &sst);
 
             tclod_2cycle_current_notexel1(&sss, &sst, s, t, w, dsinc, dtinc, dwinc, prim_tile, &tile1);
 
@@ -8064,13 +8057,13 @@ static void render_spans_2cycle_notexel1(int start, int end, int tilenum, int fl
 
             combiner_2cycle(adith, &curpixel_cvg, &acalpha);
 
-            fbread2_ptr(curpixel, &curpixel_memcvg);
+            globals.fbread2_ptr(curpixel, &curpixel_memcvg);
 
             if (z_compare(zbcur, sz, dzpix, dzpixenc, &blend_en, &prewrap, &curpixel_cvg, curpixel_memcvg))
             {
                 if (blender_2cycle(&fir, &fig, &fib, cdith, blend_en, prewrap, curpixel_cvg, curpixel_cvbit, acalpha))
                 {
-                    fbwrite_ptr(curpixel, fir, fig, fib, blend_en, curpixel_cvg, curpixel_memcvg);
+                    globals.fbwrite_ptr(curpixel, fir, fig, fib, blend_en, curpixel_cvg, curpixel_memcvg);
                     if (globals.other_modes.z_update_en)
                         z_store(zbcur, sz, dzpixenc);
                 }
@@ -8099,7 +8092,6 @@ static void render_spans_2cycle_notexel1(int start, int end, int tilenum, int fl
 
 static void render_spans_2cycle_notex(int start, int end, int tilenum, int flip)
 {
-    int zb = zb_address >> 1;
     int zbcur;
     uint8_t offx, offy;
     int i, j;
@@ -8110,6 +8102,7 @@ static void render_spans_2cycle_notex(int start, int end, int tilenum, int flip)
 
     int drinc, dginc, dbinc, dainc, dzinc;
     int xinc;
+    int zb = globals.zb_address >> 1;
     if (flip)
     {
         drinc = spans.dr;
@@ -8163,7 +8156,7 @@ static void render_spans_2cycle_notex(int start, int end, int tilenum, int flip)
         z = globals.other_modes.z_source_sel ? globals.primitive_z : span[i].z;
 
         x = xendsc;
-        curpixel = fb_width * i + x;
+        curpixel = globals.fb_width * i + x;
         zbcur = zb + curpixel;
 
         if (!flip)
@@ -8206,13 +8199,13 @@ static void render_spans_2cycle_notex(int start, int end, int tilenum, int flip)
 
             combiner_2cycle(adith, &curpixel_cvg, &acalpha);
 
-            fbread2_ptr(curpixel, &curpixel_memcvg);
+            globals.fbread2_ptr(curpixel, &curpixel_memcvg);
 
             if (z_compare(zbcur, sz, dzpix, dzpixenc, &blend_en, &prewrap, &curpixel_cvg, curpixel_memcvg))
             {
                 if (blender_2cycle(&fir, &fig, &fib, cdith, blend_en, prewrap, curpixel_cvg, curpixel_cvbit, acalpha))
                 {
-                    fbwrite_ptr(curpixel, fir, fig, fib, blend_en, curpixel_cvg, curpixel_memcvg);
+                    globals.fbwrite_ptr(curpixel, fir, fig, fib, blend_en, curpixel_cvg, curpixel_memcvg);
                     if (globals.other_modes.z_update_en)
                         z_store(zbcur, sz, dzpixenc);
                 }
@@ -8236,7 +8229,7 @@ static void render_spans_2cycle_notex(int start, int end, int tilenum, int flip)
 
 static void render_spans_fill(int start, int end, int flip)
 {
-    if (fb_size == PIXEL_SIZE_4BIT)
+    if (globals.fb_size == PIXEL_SIZE_4BIT)
     {
         rdp_pipeline_crashed = 1;
         return;
@@ -8261,7 +8254,7 @@ static void render_spans_fill(int start, int end, int flip)
         xendsc = span[i].rx;
 
         x = xendsc;
-        curpixel = fb_width * i + x;
+        curpixel = globals.fb_width * i + x;
         length = flip ? (xstart - xendsc) : (xendsc - xstart);
 
         if (span[i].validline)
@@ -8284,26 +8277,25 @@ static void render_spans_fill(int start, int end, int flip)
 
             for (j = 0; j <= length; j++)
             {
+               switch(globals.fb_size)
+               {
+                  case 0:
+                     fbfill_4(curpixel);
+                     break;
+                  case 1:
+                     fbfill_8(curpixel);
+                     break;
+                  case 2:
+                     fbfill_16(curpixel);
+                     break;
+                  case 3:
+                  default:
+                     fbfill_32(curpixel);
+                     break;
+               }
 
-                switch(fb_size)
-                {
-                case 0:
-                    fbfill_4(curpixel);
-                    break;
-                case 1:
-                    fbfill_8(curpixel);
-                    break;
-                case 2:
-                    fbfill_16(curpixel);
-                    break;
-                case 3:
-                default:
-                    fbfill_32(curpixel);
-                    break;
-                }
-
-                x += xinc;
-                curpixel += xinc;
+               x += xinc;
+               curpixel += xinc;
             }
 
             if (slowkillbits && length >= 0)
@@ -8323,7 +8315,7 @@ static void render_spans_copy(int start, int end, int tilenum, int flip)
 {
     int i, j, k;
 
-    if (fb_size == PIXEL_SIZE_32BIT)
+    if (globals.fb_size == PIXEL_SIZE_32BIT)
     {
         rdp_pipeline_crashed = 1;
         return;
@@ -8356,13 +8348,13 @@ static void render_spans_copy(int start, int end, int tilenum, int flip)
 
     uint32_t hidword = 0, lowdword = 0;
     uint32_t hidword1 = 0, lowdword1 = 0;
-    int fbadvance = (fb_size == PIXEL_SIZE_4BIT) ? 8 : 16 >> fb_size;
+    int fbadvance = (globals.fb_size == PIXEL_SIZE_4BIT) ? 8 : 16 >> globals.fb_size;
     uint32_t fbptr = 0;
     int fbptr_advance = flip ? 8 : -8;
     uint64_t copyqword = 0;
     uint32_t tempdword = 0, tempbyte = 0;
     int copywmask = 0, alphamask = 0;
-    int bytesperpixel = (fb_size == PIXEL_SIZE_4BIT) ? 1 : (1 << (fb_size - 1));
+    int bytesperpixel = (globals.fb_size == PIXEL_SIZE_4BIT) ? 1 : (1 << (globals.fb_size - 1));
     uint32_t fbendptr = 0;
     int32_t threshold, currthreshold;
 
@@ -8380,9 +8372,9 @@ static void render_spans_copy(int start, int end, int tilenum, int flip)
         xstart = span[i].lx;
         xendsc = span[i].rx;
 
-        fb_index = fb_width * i + xendsc;
-        fbptr = fb_address + PIXELS_TO_BYTES_SPECIAL4(fb_index, fb_size);
-        fbendptr = fb_address + PIXELS_TO_BYTES_SPECIAL4((fb_width * i + xstart), fb_size);
+        fb_index = globals.fb_width * i + xendsc;
+        fbptr = globals.fb_address + PIXELS_TO_BYTES_SPECIAL4(fb_index, globals.fb_size);
+        fbendptr = globals.fb_address + PIXELS_TO_BYTES_SPECIAL4((globals.fb_width * i + xstart), globals.fb_size);
         length = flip ? (xstart - xendsc) : (xendsc - xstart);
 
 
@@ -8394,7 +8386,7 @@ static void render_spans_copy(int start, int end, int tilenum, int flip)
             st = t >> 16;
             sw = w >> 16;
 
-            tcdiv_ptr(ss, st, sw, &sss, &sst);
+            globals.tcdiv_ptr(ss, st, sw, &sss, &sst);
 
             tclod_copy(&sss, &sst, s, t, w, dsinc, dtinc, dwinc, prim_tile, &tile1);
 
@@ -8404,7 +8396,7 @@ static void render_spans_copy(int start, int end, int tilenum, int flip)
 
 
 
-            if (fb_size == PIXEL_SIZE_16BIT || fb_size == PIXEL_SIZE_8BIT)
+            if (globals.fb_size == PIXEL_SIZE_16BIT || globals.fb_size == PIXEL_SIZE_8BIT)
                 copyqword = ((uint64_t)hidword << 32) | ((uint64_t)lowdword);
             else
                 copyqword = 0;
@@ -8412,7 +8404,7 @@ static void render_spans_copy(int start, int end, int tilenum, int flip)
 
             if (!globals.other_modes.alpha_compare_en)
                 alphamask = 0xff;
-            else if (fb_size == PIXEL_SIZE_16BIT)
+            else if (globals.fb_size == PIXEL_SIZE_16BIT)
             {
                 alphamask = 0;
                 alphamask |= (((copyqword >> 48) & 1) ? 0xC0 : 0);
@@ -8420,7 +8412,7 @@ static void render_spans_copy(int start, int end, int tilenum, int flip)
                 alphamask |= (((copyqword >> 16) & 1) ? 0xC : 0);
                 alphamask |= ((copyqword & 1) ? 0x3 : 0);
             }
-            else if (fb_size == PIXEL_SIZE_8BIT)
+            else if (globals.fb_size == PIXEL_SIZE_8BIT)
             {
                 alphamask = 0;
                 threshold = (globals.other_modes.dither_alpha_en) ? (irand() & 0xff) : globals.blend_color.a;
@@ -8717,8 +8709,8 @@ static void edgewalker_for_prims(int32_t* ewdata)
     else if (yl & 0x1000)
         yllimit = 0;
     else
-        yllimit = (yl & 0xfff) < clip.yl;
-    yllimit = yllimit ? yl : clip.yl;
+        yllimit = (yl & 0xfff) < globals.clip.yl;
+    yllimit = yllimit ? yl : globals.clip.yl;
 
     int ylfar = yllimit | 3;
     if ((yl >> 2) > (ylfar >> 2))
@@ -8732,13 +8724,13 @@ static void edgewalker_for_prims(int32_t* ewdata)
     else if (yh & 0x1000)
         yhlimit = 1;
     else
-        yhlimit = (yh >= clip.yh);
-    yhlimit = yhlimit ? yh : clip.yh;
+        yhlimit = (yh >= globals.clip.yh);
+    yhlimit = yhlimit ? yh : globals.clip.yh;
 
     int yhclose = yhlimit & ~3;
 
-    int32_t clipxlshift = clip.xl << 1;
-    int32_t clipxhshift = clip.xh << 1;
+    int32_t clipxlshift = globals.clip.xl << 1;
+    int32_t clipxhshift = globals.clip.xh << 1;
     int allover = 1, allunder = 1, curover = 0, curunder = 0;
     int allinval = 1;
     int32_t curcross = 0;
@@ -8964,12 +8956,12 @@ static void edgewalker_for_prims(int32_t* ewdata)
 
 static void rasterizer_init(void)
 {
-    clip.xl           = 0;
-    clip.yl           = 0;
-    clip.xh           = 0x2000;
-    clip.yh           = 0x2000;
-    globals.scfield   = 0;
-    globals.sckeepodd = 0;
+    globals.clip.xl           = 0;
+    globals.clip.yl           = 0;
+    globals.clip.xh           = 0x2000;
+    globals.clip.yh           = 0x2000;
+    globals.scfield           = 0;
+    globals.sckeepodd         = 0;
 }
 
 static void rdp_tri_noshade(const uint32_t* args)
@@ -9274,10 +9266,10 @@ static void rdp_set_prim_depth(const uint32_t* args)
 
 static void rdp_set_scissor(const uint32_t* args)
 {
-    clip.xh = (args[0] >> 12) & 0xfff;
-    clip.yh = (args[0] >>  0) & 0xfff;
-    clip.xl = (args[1] >> 12) & 0xfff;
-    clip.yl = (args[1] >>  0) & 0xfff;
+    globals.clip.xh = (args[0] >> 12) & 0xfff;
+    globals.clip.yh = (args[0] >>  0) & 0xfff;
+    globals.clip.xl = (args[1] >> 12) & 0xfff;
+    globals.clip.yl = (args[1] >>  0) & 0xfff;
 
     globals.scfield = (args[1] >> 25) & 1;
     globals.sckeepodd = (args[1] >> 24) & 1;
@@ -9305,8 +9297,8 @@ int rdp_init(struct core_config* _config)
    memset(&globals.combined_color, 0, sizeof(struct color));
    memset(&globals.prim_color, 0, sizeof(struct color));
    memset(&globals.env_color, 0, sizeof(struct color));
-   memset(&key_scale, 0, sizeof(struct color));
-   memset(&key_center, 0, sizeof(struct color));
+   memset(&globals.key_scale, 0, sizeof(struct color));
+   memset(&globals.key_center, 0, sizeof(struct color));
 
    rdp_pipeline_crashed = 0;
    memset(&onetimewarnings, 0, sizeof(onetimewarnings));
@@ -9416,7 +9408,7 @@ static void deduce_derivatives(void)
 
     globals.other_modes.f.rgb_alpha_dither = (globals.other_modes.rgb_dither_sel << 2) | globals.other_modes.alpha_dither_sel;
 
-    tcdiv_ptr = tcdiv_func[globals.other_modes.persp_tex_en];
+    globals.tcdiv_ptr = tcdiv_func[globals.other_modes.persp_tex_en];
 
 
     int texel1_used_in_cc1 = 0, texel0_used_in_cc1 = 0, texel0_used_in_cc0 = 0, texel1_used_in_cc0 = 0;
