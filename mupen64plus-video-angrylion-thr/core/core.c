@@ -93,6 +93,11 @@ void angrylion_set_dithering(unsigned dither_type)
    angrylion_dithering = dither_type;
 }
 
+unsigned angrylion_get_dithering(void)
+{
+   return angrylion_dithering;
+}
+
 void angrylionChangeWindow (void)
 {
 }
