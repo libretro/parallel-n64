@@ -4,7 +4,6 @@
 #include "plugin.h"
 #include "rdram.h"
 #include "msg.h"
-#include "irand.h"
 #include "parallel_c.hpp"
 
 #include <stdlib.h>

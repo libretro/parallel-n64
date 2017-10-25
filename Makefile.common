@@ -435,7 +435,6 @@ CFLAGS   += -DHAVE_THR_AL
 CXXFLAGS += -DHAVE_THR_AL
 SOURCES_C +=  \
 				  $(VIDEODIR_ANGRYLION)/core/core.c \
-				  $(VIDEODIR_ANGRYLION)/core/irand.c \
 				  $(VIDEODIR_ANGRYLION)/core/rdp.c \
 				  $(VIDEODIR_ANGRYLION)/core/rdram.c \
 				  $(VIDEODIR_ANGRYLION)/core/vi.c 

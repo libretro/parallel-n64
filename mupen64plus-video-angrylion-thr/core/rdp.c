@@ -3,7 +3,6 @@
 #include "common.h"
 #include "rdram.h"
 #include "msg.h"
-#include "irand.h"
 #include "plugin.h"
 #include "parallel_c.hpp"
 
@@ -257,6 +256,15 @@ static struct
 {
     int copymstrangecrashes, fillmcrashes, fillmbitcrashes, syncfullcrash;
 } onetimewarnings;
+
+static TLS int32_t iseed = 1;
+
+int32_t irand(void)
+{
+    iseed *= 0x343fd;
+    iseed += 0x269ec3;
+    return ((iseed >> 16) & 0x7fff);
+}
 
 static STRICTINLINE int32_t clamp(int32_t value,int32_t min,int32_t max)
 {
