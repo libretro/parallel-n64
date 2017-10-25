@@ -102,10 +102,6 @@ void angrylionChangeWindow (void)
 {
 }
 
-void CloseDLL (void)
-{
-}
-
 void angrylionReadScreen2(void *dest, int *width, int *height, int front)
 {
 }
