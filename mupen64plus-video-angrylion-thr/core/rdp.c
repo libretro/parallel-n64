@@ -214,32 +214,67 @@ static int32_t zero_color = 0x00;
 
 static int rdp_pipeline_crashed = 0;
 
-static TLS struct color combined_color;
-static TLS struct color texel0_color;
-static TLS struct color texel1_color;
-static TLS struct color nexttexel_color;
-static TLS struct color shade_color;
-static TLS int32_t noise = 0;
+static TLS struct color key_scale;
+static TLS struct color key_center;
+static TLS struct color key_width;
 
-static TLS struct color pixel_color;
-static TLS struct color memory_color;
-static TLS struct color pre_memory_color;
+static TLS int32_t keyalpha;
 
-static TLS int32_t k0_tf = 0, k1_tf = 0, k2_tf = 0, k3_tf = 0;
-static TLS int32_t k4 = 0, k5 = 0;
+static TLS uint8_t cvgbuf[1024];
+
+static TLS uint32_t zb_address = 0;
+static TLS int32_t pastrawdzmem = 0;
+
+static TLS int ti_format;
+static TLS int ti_size;
+static TLS int ti_width;
+static TLS uint32_t ti_address;
+
+static TLS uint8_t tmem[0x1000];
+
+static TLS struct rectangle clip;
 
 static TLS struct rdp_globals
 {
+   uint16_t primitive_delta_z;
+
    int blshifta;
    int blshiftb;
    int pastblshifta;
    int pastblshiftb;
+   int scfield;
+   int sckeepodd;
 
+   int32_t k0_tf;
+   int32_t k1_tf;
+   int32_t k2_tf;
+   int32_t k3_tf;
+   int32_t k4;
+   int32_t k5;
    int32_t min_level;
    int32_t primitive_lod_frac;
    int32_t lod_frac;
+   int32_t noise;
 
    uint32_t max_level;
+   uint32_t primitive_z;
+
+   struct color texel0_color;
+   struct color texel1_color;
+   struct color nexttexel_color;
+   struct color shade_color;
+   struct color combined_color;
+   struct color pixel_color;
+   struct color inv_pixel_color;
+   struct color blended_pixel_color;
+
+   struct color prim_color;
+   struct color blend_color;
+   struct color env_color;
+   struct color fog_color;
+
+   struct color memory_color;
+   struct color pre_memory_color;
 
    struct other_modes other_modes;
 } globals;
@@ -349,10 +384,6 @@ static TLS struct
     int32_t *i2b_a[2];
 } blender;
 
-static TLS struct color blend_color;
-static TLS struct color fog_color;
-static TLS struct color inv_pixel_color;
-static TLS struct color blended_pixel_color;
 
 static int32_t blenderone = 0xff;
 
@@ -400,14 +431,6 @@ static TLS struct
     int32_t *alphaadd[2];
 } combiner;
 
-static TLS struct color prim_color;
-static TLS struct color env_color;
-static TLS struct color key_scale;
-static TLS struct color key_center;
-static TLS struct color key_width;
-
-static TLS int32_t keyalpha;
-
 static uint8_t special_9bit_clamptable[512];
 static int16_t special_9bit_exttable[512];
 
@@ -419,7 +442,6 @@ static struct
    uint8_t yoff;
 } cvarray[0x100];
 
-static TLS uint8_t cvgbuf[1024];
 
 static uint16_t z_com_table[0x40000];
 static uint32_t z_complete_dec_table[0x4000];
@@ -436,15 +458,6 @@ static struct {uint32_t shift; uint32_t add;} z_dec_table[8] = {
      0, 0x3f800,
 };
 
-static TLS uint32_t zb_address = 0;
-static TLS int32_t pastrawdzmem = 0;
-
-static TLS int ti_format;
-static TLS int ti_size;
-static TLS int ti_width;
-static TLS uint32_t ti_address;
-
-static TLS uint8_t tmem[0x1000];
 
 static uint8_t replicated_rgba[32];
 
@@ -469,14 +482,6 @@ static const int32_t norm_slope_table[64] = {
     0xfac, 0xfae, 0xfaf, 0xfb0, 0xfb2, 0xfb3, 0xfb5, 0xfb5,
     0xfb7, 0xfb8, 0xfb9, 0xfba, 0xfbc, 0xfbc, 0xfbe, 0xfbe
 };
-
-static TLS struct rectangle clip;
-static TLS int scfield;
-static TLS int sckeepodd;
-
-static TLS uint32_t primitive_z;
-static TLS uint16_t primitive_delta_z;
-
 
 /* END OF VARIABLES */
 
@@ -791,87 +796,87 @@ static STRICTINLINE void rgb_dither(int* r, int* g, int* b, int dith)
 
 static STRICTINLINE void get_dither_noise(int x, int y, int* cdith, int* adith)
 {
-    if (!globals.other_modes.f.getditherlevel)
-        noise = ((irand() & 7) << 6) | 0x20;
+   int dithindex;
+   if (!globals.other_modes.f.getditherlevel)
+      globals.noise = ((irand() & 7) << 6) | 0x20;
 
-    int dithindex;
-    switch(globals.other_modes.f.rgb_alpha_dither)
-    {
-    case 0:
-        dithindex = ((y & 3) << 2) | (x & 3);
-        *adith = *cdith = magic_matrix[dithindex];
-        break;
-    case 1:
-        dithindex = ((y & 3) << 2) | (x & 3);
-        *cdith = magic_matrix[dithindex];
-        *adith = (~(*cdith)) & 7;
-        break;
-    case 2:
-        dithindex = ((y & 3) << 2) | (x & 3);
-        *cdith = magic_matrix[dithindex];
-        *adith = (noise >> 6) & 7;
-        break;
-    case 3:
-        dithindex = ((y & 3) << 2) | (x & 3);
-        *cdith = magic_matrix[dithindex];
-        *adith = 0;
-        break;
-    case 4:
-        dithindex = ((y & 3) << 2) | (x & 3);
-        *adith = *cdith = bayer_matrix[dithindex];
-        break;
-    case 5:
-        dithindex = ((y & 3) << 2) | (x & 3);
-        *cdith = bayer_matrix[dithindex];
-        *adith = (~(*cdith)) & 7;
-        break;
-    case 6:
-        dithindex = ((y & 3) << 2) | (x & 3);
-        *cdith = bayer_matrix[dithindex];
-        *adith = (noise >> 6) & 7;
-        break;
-    case 7:
-        dithindex = ((y & 3) << 2) | (x & 3);
-        *cdith = bayer_matrix[dithindex];
-        *adith = 0;
-        break;
-    case 8:
-        dithindex = ((y & 3) << 2) | (x & 3);
-        *cdith = irand();
-        *adith = magic_matrix[dithindex];
-        break;
-    case 9:
-        dithindex = ((y & 3) << 2) | (x & 3);
-        *cdith = irand();
-        *adith = (~magic_matrix[dithindex]) & 7;
-        break;
-    case 10:
-        *cdith = irand();
-        *adith = (noise >> 6) & 7;
-        break;
-    case 11:
-        *cdith = irand();
-        *adith = 0;
-        break;
-    case 12:
-        dithindex = ((y & 3) << 2) | (x & 3);
-        *cdith = 7;
-        *adith = bayer_matrix[dithindex];
-        break;
-    case 13:
-        dithindex = ((y & 3) << 2) | (x & 3);
-        *cdith = 7;
-        *adith = (~bayer_matrix[dithindex]) & 7;
-        break;
-    case 14:
-        *cdith = 7;
-        *adith = (noise >> 6) & 7;
-        break;
-    case 15:
-        *cdith = 7;
-        *adith = 0;
-        break;
-    }
+   switch(globals.other_modes.f.rgb_alpha_dither)
+   {
+      case 0:
+         dithindex = ((y & 3) << 2) | (x & 3);
+         *adith = *cdith = magic_matrix[dithindex];
+         break;
+      case 1:
+         dithindex = ((y & 3) << 2) | (x & 3);
+         *cdith = magic_matrix[dithindex];
+         *adith = (~(*cdith)) & 7;
+         break;
+      case 2:
+         dithindex = ((y & 3) << 2) | (x & 3);
+         *cdith = magic_matrix[dithindex];
+         *adith = (globals.noise >> 6) & 7;
+         break;
+      case 3:
+         dithindex = ((y & 3) << 2) | (x & 3);
+         *cdith = magic_matrix[dithindex];
+         *adith = 0;
+         break;
+      case 4:
+         dithindex = ((y & 3) << 2) | (x & 3);
+         *adith = *cdith = bayer_matrix[dithindex];
+         break;
+      case 5:
+         dithindex = ((y & 3) << 2) | (x & 3);
+         *cdith = bayer_matrix[dithindex];
+         *adith = (~(*cdith)) & 7;
+         break;
+      case 6:
+         dithindex = ((y & 3) << 2) | (x & 3);
+         *cdith = bayer_matrix[dithindex];
+         *adith = (globals.noise >> 6) & 7;
+         break;
+      case 7:
+         dithindex = ((y & 3) << 2) | (x & 3);
+         *cdith = bayer_matrix[dithindex];
+         *adith = 0;
+         break;
+      case 8:
+         dithindex = ((y & 3) << 2) | (x & 3);
+         *cdith = irand();
+         *adith = magic_matrix[dithindex];
+         break;
+      case 9:
+         dithindex = ((y & 3) << 2) | (x & 3);
+         *cdith = irand();
+         *adith = (~magic_matrix[dithindex]) & 7;
+         break;
+      case 10:
+         *cdith = irand();
+         *adith = (globals.noise >> 6) & 7;
+         break;
+      case 11:
+         *cdith = irand();
+         *adith = 0;
+         break;
+      case 12:
+         dithindex = ((y & 3) << 2) | (x & 3);
+         *cdith = 7;
+         *adith = bayer_matrix[dithindex];
+         break;
+      case 13:
+         dithindex = ((y & 3) << 2) | (x & 3);
+         *cdith = 7;
+         *adith = (~bayer_matrix[dithindex]) & 7;
+         break;
+      case 14:
+         *cdith = 7;
+         *adith = (globals.noise >> 6) & 7;
+         break;
+      case 15:
+         *cdith = 7;
+         *adith = 0;
+         break;
+   }
 }
 
 static void dither_init(void)
@@ -880,67 +885,73 @@ static void dither_init(void)
 
 static INLINE void set_blender_input(int cycle, int which, int32_t **input_r, int32_t **input_g, int32_t **input_b, int32_t **input_a, int a, int b)
 {
-
-    switch (a & 0x3)
-    {
-        case 0:
-        {
+   switch (a & 0x3)
+   {
+      case 0:
+         {
             if (cycle == 0)
             {
-                *input_r = &pixel_color.r;
-                *input_g = &pixel_color.g;
-                *input_b = &pixel_color.b;
+               *input_r = &globals.pixel_color.r;
+               *input_g = &globals.pixel_color.g;
+               *input_b = &globals.pixel_color.b;
             }
             else
             {
-                *input_r = &blended_pixel_color.r;
-                *input_g = &blended_pixel_color.g;
-                *input_b = &blended_pixel_color.b;
+               *input_r = &globals.blended_pixel_color.r;
+               *input_g = &globals.blended_pixel_color.g;
+               *input_b = &globals.blended_pixel_color.b;
             }
             break;
-        }
+         }
 
-        case 1:
-        {
-            *input_r = &memory_color.r;
-            *input_g = &memory_color.g;
-            *input_b = &memory_color.b;
+      case 1:
+         *input_r = &globals.memory_color.r;
+         *input_g = &globals.memory_color.g;
+         *input_b = &globals.memory_color.b;
+         break;
+
+      case 2:
+         *input_r = &globals.blend_color.r;
+         *input_g = &globals.blend_color.g;
+         *input_b = &globals.blend_color.b;
+         break;
+      case 3:
+         *input_r = &globals.fog_color.r;
+         *input_g = &globals.fog_color.g;
+         *input_b = &globals.fog_color.b;
+         break;
+   }
+
+   if (which == 0)
+   {
+      switch (b & 0x3)
+      {
+         case 0:
+            *input_a = &globals.pixel_color.a;
             break;
-        }
-
-        case 2:
-        {
-            *input_r = &blend_color.r;      *input_g = &blend_color.g;      *input_b = &blend_color.b;
+         case 1:
+            *input_a = &globals.fog_color.a;
             break;
-        }
-
-        case 3:
-        {
-            *input_r = &fog_color.r;        *input_g = &fog_color.g;        *input_b = &fog_color.b;
+         case 2:
+            *input_a = &globals.shade_color.a;
             break;
-        }
-    }
-
-    if (which == 0)
-    {
-        switch (b & 0x3)
-        {
-            case 0:     *input_a = &pixel_color.a; break;
-            case 1:     *input_a = &fog_color.a; break;
-            case 2:     *input_a = &shade_color.a; break;
-            case 3:     *input_a = &zero_color; break;
-        }
-    }
-    else
-    {
-        switch (b & 0x3)
-        {
-            case 0:     *input_a = &inv_pixel_color.a; break;
-            case 1:     *input_a = &memory_color.a; break;
-            case 2:     *input_a = &blenderone; break;
-            case 3:     *input_a = &zero_color; break;
-        }
-    }
+         case 3:
+            *input_a = &zero_color;
+            break;
+      }
+   }
+   else
+   {
+      switch (b & 0x3)
+      {
+         case 0:
+            *input_a = &globals.inv_pixel_color.a;
+            break;
+         case 1:     *input_a = &globals.memory_color.a; break;
+         case 2:     *input_a = &blenderone; break;
+         case 3:     *input_a = &zero_color; break;
+      }
+   }
 }
 
 static STRICTINLINE int alpha_compare(int32_t comb_alpha)
@@ -950,7 +961,7 @@ static STRICTINLINE int alpha_compare(int32_t comb_alpha)
       return 1;
 
    if (!globals.other_modes.dither_alpha_en)
-      threshold = blend_color.a;
+      threshold = globals.blend_color.a;
    else
       threshold = irand() & 0xff;
 
@@ -967,7 +978,7 @@ static STRICTINLINE void blender_equation_cycle0(int* r, int* g, int* b)
     int blend1a = *blender.i1b_a[0] >> 3;
     int blend2a = *blender.i2b_a[0] >> 3;
 
-    if (blender.i2b_a[0] == &memory_color.a)
+    if (blender.i2b_a[0] == &globals.memory_color.a)
     {
         blend1a = (blend1a >> globals.blshifta) & 0x3C;
         blend2a = (blend2a >> globals.blshiftb) | 3;
@@ -1007,7 +1018,7 @@ static STRICTINLINE void blender_equation_cycle0_2(int* r, int* g, int* b)
     int blend1a = *blender.i1b_a[0] >> 3;
     int blend2a = *blender.i2b_a[0] >> 3;
 
-    if (blender.i2b_a[0] == &memory_color.a)
+    if (blender.i2b_a[0] == &globals.memory_color.a)
     {
         blend1a = (blend1a >> globals.pastblshifta) & 0x3C;
         blend2a = (blend2a >> globals.pastblshiftb) | 3;
@@ -1026,7 +1037,7 @@ static STRICTINLINE void blender_equation_cycle1(int* r, int* g, int* b)
     int blend1a = *blender.i1b_a[1] >> 3;
     int blend2a = *blender.i2b_a[1] >> 3;
 
-    if (blender.i2b_a[1] == &memory_color.a)
+    if (blender.i2b_a[1] == &globals.memory_color.a)
     {
         blend1a = (blend1a >> globals.blshifta) & 0x3C;
         blend2a = (blend2a >> globals.blshiftb) | 3;
@@ -1056,14 +1067,14 @@ static STRICTINLINE int blender_1cycle(uint32_t* fr, uint32_t* fg, uint32_t* fb,
 {
     int r, g, b, dontblend;
 
-    if (alpha_compare(pixel_color.a))
+    if (alpha_compare(globals.pixel_color.a))
     {
        if (globals.other_modes.antialias_en ? curpixel_cvg : curpixel_cvbit)
        {
 
           if (!globals.other_modes.color_on_cvg || prewrap)
           {
-             dontblend = (globals.other_modes.f.partialreject_1cycle && pixel_color.a >= 0xff);
+             dontblend = (globals.other_modes.f.partialreject_1cycle && globals.pixel_color.a >= 0xff);
              if (!blend_en || dontblend)
              {
                 r = *blender.i1a_r[0];
@@ -1072,7 +1083,7 @@ static STRICTINLINE int blender_1cycle(uint32_t* fr, uint32_t* fg, uint32_t* fb,
              }
              else
              {
-                inv_pixel_color.a =  (~(*blender.i1b_a[0])) & 0xff;
+                globals.inv_pixel_color.a =  (~(*blender.i1b_a[0])) & 0xff;
 
                 blender_equation_cycle0(&r, &g, &b);
              }
@@ -1105,20 +1116,20 @@ static STRICTINLINE int blender_2cycle(uint32_t* fr, uint32_t* fg, uint32_t* fb,
        if (globals.other_modes.antialias_en ? (curpixel_cvg) : (curpixel_cvbit))
        {
 
-          inv_pixel_color.a =  (~(*blender.i1b_a[0])) & 0xff;
+          globals.inv_pixel_color.a =  (~(*blender.i1b_a[0])) & 0xff;
           blender_equation_cycle0_2(&r, &g, &b);
 
 
-          memory_color = pre_memory_color;
+          globals.memory_color = globals.pre_memory_color;
 
-          blended_pixel_color.r = r;
-          blended_pixel_color.g = g;
-          blended_pixel_color.b = b;
-          blended_pixel_color.a = pixel_color.a;
+          globals.blended_pixel_color.r = r;
+          globals.blended_pixel_color.g = g;
+          globals.blended_pixel_color.b = b;
+          globals.blended_pixel_color.a = globals.pixel_color.a;
 
           if (!globals.other_modes.color_on_cvg || prewrap)
           {
-             dontblend = (globals.other_modes.f.partialreject_2cycle && pixel_color.a >= 0xff);
+             dontblend = (globals.other_modes.f.partialreject_2cycle && globals.pixel_color.a >= 0xff);
              if (!blend_en || dontblend)
              {
                 r = *blender.i1a_r[1];
@@ -1127,7 +1138,7 @@ static STRICTINLINE int blender_2cycle(uint32_t* fr, uint32_t* fg, uint32_t* fb,
              }
              else
              {
-                inv_pixel_color.a =  (~(*blender.i1b_a[1])) & 0xff;
+                globals.inv_pixel_color.a =  (~(*blender.i1b_a[1])) & 0xff;
                 blender_equation_cycle1(&r, &g, &b);
              }
           }
@@ -1148,7 +1159,7 @@ static STRICTINLINE int blender_2cycle(uint32_t* fr, uint32_t* fg, uint32_t* fb,
        }
     }
 
-    memory_color = pre_memory_color;
+    globals.memory_color = globals.pre_memory_color;
     return 0;
 }
 
@@ -1186,55 +1197,112 @@ static void blender_init(void)
 
 static void rdp_set_fog_color(const uint32_t* args)
 {
-    fog_color.r = (args[1] >> 24) & 0xff;
-    fog_color.g = (args[1] >> 16) & 0xff;
-    fog_color.b = (args[1] >>  8) & 0xff;
-    fog_color.a = (args[1] >>  0) & 0xff;
+    globals.fog_color.r = (args[1] >> 24) & 0xff;
+    globals.fog_color.g = (args[1] >> 16) & 0xff;
+    globals.fog_color.b = (args[1] >>  8) & 0xff;
+    globals.fog_color.a = (args[1] >>  0) & 0xff;
 }
 
 static void rdp_set_blend_color(const uint32_t* args)
 {
-    blend_color.r = (args[1] >> 24) & 0xff;
-    blend_color.g = (args[1] >> 16) & 0xff;
-    blend_color.b = (args[1] >>  8) & 0xff;
-    blend_color.a = (args[1] >>  0) & 0xff;
+    globals.blend_color.r = (args[1] >> 24) & 0xff;
+    globals.blend_color.g = (args[1] >> 16) & 0xff;
+    globals.blend_color.b = (args[1] >>  8) & 0xff;
+    globals.blend_color.a = (args[1] >>  0) & 0xff;
 }
 
 static INLINE void set_suba_rgb_input(int32_t **input_r, int32_t **input_g, int32_t **input_b, int code)
 {
-    switch (code & 0xf)
-    {
-        case 0:     *input_r = &combined_color.r;   *input_g = &combined_color.g;   *input_b = &combined_color.b;   break;
-        case 1:     *input_r = &texel0_color.r;     *input_g = &texel0_color.g;     *input_b = &texel0_color.b;     break;
-        case 2:     *input_r = &texel1_color.r;     *input_g = &texel1_color.g;     *input_b = &texel1_color.b;     break;
-        case 3:     *input_r = &prim_color.r;       *input_g = &prim_color.g;       *input_b = &prim_color.b;       break;
-        case 4:     *input_r = &shade_color.r;      *input_g = &shade_color.g;      *input_b = &shade_color.b;      break;
-        case 5:     *input_r = &env_color.r;        *input_g = &env_color.g;        *input_b = &env_color.b;        break;
-        case 6:     *input_r = &one_color;          *input_g = &one_color;          *input_b = &one_color;      break;
-        case 7:     *input_r = &noise;              *input_g = &noise;              *input_b = &noise;              break;
-        case 8: case 9: case 10: case 11: case 12: case 13: case 14: case 15:
-        {
-            *input_r = &zero_color;     *input_g = &zero_color;     *input_b = &zero_color;     break;
-        }
-    }
+   switch (code & 0xf)
+   {
+      case 0:
+         *input_r = &globals.combined_color.r;
+         *input_g = &globals.combined_color.g;
+         *input_b = &globals.combined_color.b;
+         break;
+      case 1:
+         *input_r = &globals.texel0_color.r;
+         *input_g = &globals.texel0_color.g;
+         *input_b = &globals.texel0_color.b;
+         break;
+      case 2:
+         *input_r = &globals.texel1_color.r;
+         *input_g = &globals.texel1_color.g;
+         *input_b = &globals.texel1_color.b;
+         break;
+      case 3:
+         *input_r = &globals.prim_color.r;
+         *input_g = &globals.prim_color.g; 
+         *input_b = &globals.prim_color.b;
+         break;
+      case 4:
+         *input_r = &globals.shade_color.r;
+         *input_g = &globals.shade_color.g;
+         *input_b = &globals.shade_color.b;
+         break;
+      case 5:
+         *input_r = &globals.env_color.r; 
+         *input_g = &globals.env_color.g;
+         *input_b = &globals.env_color.b;
+         break;
+      case 6:     *input_r = &one_color;          *input_g = &one_color;          *input_b = &one_color;      break;
+      case 7:
+                  *input_r = &globals.noise;
+                  *input_g = &globals.noise;
+                  *input_b = &globals.noise;
+                  break;
+      case 8: case 9: case 10: case 11: case 12: case 13: case 14: case 15:
+                  *input_r = &zero_color;
+                  *input_g = &zero_color;
+                  *input_b = &zero_color;
+                  break;
+   }
 }
 
 static INLINE void set_subb_rgb_input(int32_t **input_r, int32_t **input_g, int32_t **input_b, int code)
 {
     switch (code & 0xf)
     {
-        case 0:     *input_r = &combined_color.r;   *input_g = &combined_color.g;   *input_b = &combined_color.b;   break;
-        case 1:     *input_r = &texel0_color.r;     *input_g = &texel0_color.g;     *input_b = &texel0_color.b;     break;
-        case 2:     *input_r = &texel1_color.r;     *input_g = &texel1_color.g;     *input_b = &texel1_color.b;     break;
-        case 3:     *input_r = &prim_color.r;       *input_g = &prim_color.g;       *input_b = &prim_color.b;       break;
-        case 4:     *input_r = &shade_color.r;      *input_g = &shade_color.g;      *input_b = &shade_color.b;      break;
-        case 5:     *input_r = &env_color.r;        *input_g = &env_color.g;        *input_b = &env_color.b;        break;
-        case 6:     *input_r = &key_center.r;       *input_g = &key_center.g;       *input_b = &key_center.b;       break;
-        case 7:     *input_r = &k4;                 *input_g = &k4;                 *input_b = &k4;                 break;
-        case 8: case 9: case 10: case 11: case 12: case 13: case 14: case 15:
-        {
-            *input_r = &zero_color;     *input_g = &zero_color;     *input_b = &zero_color;     break;
-        }
+       case 0:
+          *input_r = &globals.combined_color.r;
+          *input_g = &globals.combined_color.g;
+          *input_b = &globals.combined_color.b;
+          break;
+       case 1:
+          *input_r = &globals.texel0_color.r;
+          *input_g = &globals.texel0_color.g;
+          *input_b = &globals.texel0_color.b;
+          break;
+       case 2:
+          *input_r = &globals.texel1_color.r;
+          *input_g = &globals.texel1_color.g;
+          *input_b = &globals.texel1_color.b;
+          break;
+       case 3:
+          *input_r = &globals.prim_color.r;
+          *input_g = &globals.prim_color.g;
+          *input_b = &globals.prim_color.b;
+          break;
+       case 4:
+          *input_r = &globals.shade_color.r;
+          *input_g = &globals.shade_color.g;
+          *input_b = &globals.shade_color.b;
+          break;
+       case 5:
+          *input_r = &globals.env_color.r;
+          *input_g = &globals.env_color.g;
+          *input_b = &globals.env_color.b;
+          break;
+       case 6:     *input_r = &key_center.r;       *input_g = &key_center.g;       *input_b = &key_center.b;       break;
+       case 7:
+                   *input_r = &globals.k4;
+                   *input_g = &globals.k4;
+                   *input_b = &globals.k4;
+                   break;
+       case 8: case 9: case 10: case 11: case 12: case 13: case 14: case 15:
+                   {
+                      *input_r = &zero_color;     *input_g = &zero_color;     *input_b = &zero_color;     break;
+                   }
     }
 }
 
@@ -1242,19 +1310,39 @@ static INLINE void set_mul_rgb_input(int32_t **input_r, int32_t **input_g, int32
 {
     switch (code & 0x1f)
     {
-        case 0:     *input_r = &combined_color.r;   *input_g = &combined_color.g;   *input_b = &combined_color.b;   break;
-        case 1:     *input_r = &texel0_color.r;     *input_g = &texel0_color.g;     *input_b = &texel0_color.b;     break;
-        case 2:     *input_r = &texel1_color.r;     *input_g = &texel1_color.g;     *input_b = &texel1_color.b;     break;
-        case 3:     *input_r = &prim_color.r;       *input_g = &prim_color.g;       *input_b = &prim_color.b;       break;
-        case 4:     *input_r = &shade_color.r;      *input_g = &shade_color.g;      *input_b = &shade_color.b;      break;
-        case 5:     *input_r = &env_color.r;        *input_g = &env_color.g;        *input_b = &env_color.b;        break;
+        case 0:
+           *input_r = &globals.combined_color.r;
+           *input_g = &globals.combined_color.g;
+           *input_b = &globals.combined_color.b;
+           break;
+        case 1:
+           *input_r = &globals.texel0_color.r;
+           *input_g = &globals.texel0_color.g;
+           *input_b = &globals.texel0_color.b;
+           break;
+        case 2:
+           *input_r = &globals.texel1_color.r;
+           *input_g = &globals.texel1_color.g;
+           *input_b = &globals.texel1_color.b;
+           break;
+        case 3: 
+           *input_r = &globals.prim_color.r; 
+           *input_g = &globals.prim_color.g;
+           *input_b = &globals.prim_color.b;
+           break;
+        case 4:     *input_r = &globals.shade_color.r;      *input_g = &globals.shade_color.g;      *input_b = &globals.shade_color.b;      break;
+        case 5:     *input_r = &globals.env_color.r;        *input_g = &globals.env_color.g;        *input_b = &globals.env_color.b;        break;
         case 6:     *input_r = &key_scale.r;        *input_g = &key_scale.g;        *input_b = &key_scale.b;        break;
-        case 7:     *input_r = &combined_color.a;   *input_g = &combined_color.a;   *input_b = &combined_color.a;   break;
-        case 8:     *input_r = &texel0_color.a;     *input_g = &texel0_color.a;     *input_b = &texel0_color.a;     break;
-        case 9:     *input_r = &texel1_color.a;     *input_g = &texel1_color.a;     *input_b = &texel1_color.a;     break;
-        case 10:    *input_r = &prim_color.a;       *input_g = &prim_color.a;       *input_b = &prim_color.a;       break;
-        case 11:    *input_r = &shade_color.a;      *input_g = &shade_color.a;      *input_b = &shade_color.a;      break;
-        case 12:    *input_r = &env_color.a;        *input_g = &env_color.a;        *input_b = &env_color.a;        break;
+        case 7: 
+                    *input_r = &globals.combined_color.a;
+                    *input_g = &globals.combined_color.a;
+                    *input_b = &globals.combined_color.a;
+                    break;
+        case 8:     *input_r = &globals.texel0_color.a;     *input_g = &globals.texel0_color.a;     *input_b = &globals.texel0_color.a;     break;
+        case 9:     *input_r = &globals.texel1_color.a;     *input_g = &globals.texel1_color.a;     *input_b = &globals.texel1_color.a;     break;
+        case 10:    *input_r = &globals.prim_color.a;       *input_g = &globals.prim_color.a;       *input_b = &globals.prim_color.a;       break;
+        case 11:    *input_r = &globals.shade_color.a;      *input_g = &globals.shade_color.a;      *input_b = &globals.shade_color.a;      break;
+        case 12:    *input_r = &globals.env_color.a;        *input_g = &globals.env_color.a;        *input_b = &globals.env_color.a;        break;
         case 13:
                     *input_r = &globals.lod_frac;
                     *input_g = &globals.lod_frac;
@@ -1265,7 +1353,11 @@ static INLINE void set_mul_rgb_input(int32_t **input_r, int32_t **input_g, int32
                     *input_g = &globals.primitive_lod_frac;
                     *input_b = &globals.primitive_lod_frac;
                     break;
-        case 15:    *input_r = &k5;                 *input_g = &k5;                 *input_b = &k5;                 break;
+        case 15:
+                    *input_r = &globals.k5;
+                    *input_g = &globals.k5;
+                    *input_b = &globals.k5;
+                    break;
         case 16: case 17: case 18: case 19: case 20: case 21: case 22: case 23:
         case 24: case 25: case 26: case 27: case 28: case 29: case 30: case 31:
         {
@@ -1278,12 +1370,16 @@ static INLINE void set_add_rgb_input(int32_t **input_r, int32_t **input_g, int32
 {
     switch (code & 0x7)
     {
-        case 0:     *input_r = &combined_color.r;   *input_g = &combined_color.g;   *input_b = &combined_color.b;   break;
-        case 1:     *input_r = &texel0_color.r;     *input_g = &texel0_color.g;     *input_b = &texel0_color.b;     break;
-        case 2:     *input_r = &texel1_color.r;     *input_g = &texel1_color.g;     *input_b = &texel1_color.b;     break;
-        case 3:     *input_r = &prim_color.r;       *input_g = &prim_color.g;       *input_b = &prim_color.b;       break;
-        case 4:     *input_r = &shade_color.r;      *input_g = &shade_color.g;      *input_b = &shade_color.b;      break;
-        case 5:     *input_r = &env_color.r;        *input_g = &env_color.g;        *input_b = &env_color.b;        break;
+        case 0:
+           *input_r = &globals.combined_color.r;
+           *input_g = &globals.combined_color.g;
+           *input_b = &globals.combined_color.b;
+           break;
+        case 1:     *input_r = &globals.texel0_color.r;     *input_g = &globals.texel0_color.g;     *input_b = &globals.texel0_color.b;     break;
+        case 2:     *input_r = &globals.texel1_color.r;     *input_g = &globals.texel1_color.g;     *input_b = &globals.texel1_color.b;     break;
+        case 3:     *input_r = &globals.prim_color.r;       *input_g = &globals.prim_color.g;       *input_b = &globals.prim_color.b;       break;
+        case 4:     *input_r = &globals.shade_color.r;      *input_g = &globals.shade_color.g;      *input_b = &globals.shade_color.b;      break;
+        case 5:     *input_r = &globals.env_color.r;        *input_g = &globals.env_color.g;        *input_b = &globals.env_color.b;        break;
         case 6:     *input_r = &one_color;          *input_g = &one_color;          *input_b = &one_color;          break;
         case 7:     *input_r = &zero_color;         *input_g = &zero_color;         *input_b = &zero_color;         break;
     }
@@ -1293,12 +1389,14 @@ static INLINE void set_sub_alpha_input(int32_t **input, int code)
 {
     switch (code & 0x7)
     {
-        case 0:     *input = &combined_color.a; break;
-        case 1:     *input = &texel0_color.a; break;
-        case 2:     *input = &texel1_color.a; break;
-        case 3:     *input = &prim_color.a; break;
-        case 4:     *input = &shade_color.a; break;
-        case 5:     *input = &env_color.a; break;
+        case 0: 
+           *input = &globals.combined_color.a;
+           break;
+        case 1:     *input = &globals.texel0_color.a; break;
+        case 2:     *input = &globals.texel1_color.a; break;
+        case 3:     *input = &globals.prim_color.a; break;
+        case 4:     *input = &globals.shade_color.a; break;
+        case 5:     *input = &globals.env_color.a; break;
         case 6:     *input = &one_color; break;
         case 7:     *input = &zero_color; break;
     }
@@ -1309,11 +1407,11 @@ static INLINE void set_mul_alpha_input(int32_t **input, int code)
     switch (code & 0x7)
     {
         case 0:     *input = &globals.lod_frac; break;
-        case 1:     *input = &texel0_color.a; break;
-        case 2:     *input = &texel1_color.a; break;
-        case 3:     *input = &prim_color.a; break;
-        case 4:     *input = &shade_color.a; break;
-        case 5:     *input = &env_color.a; break;
+        case 1:     *input = &globals.texel0_color.a; break;
+        case 2:     *input = &globals.texel1_color.a; break;
+        case 3:     *input = &globals.prim_color.a; break;
+        case 4:     *input = &globals.shade_color.a; break;
+        case 5:     *input = &globals.env_color.a; break;
         case 6:
                     *input = &globals.primitive_lod_frac;
                     break;
@@ -1389,56 +1487,54 @@ static STRICTINLINE void combiner_1cycle(int adseed, uint32_t* curpixel_cvg)
 
     if (combiner.rgbmul_r[1] != &zero_color)
     {
-        combined_color.r = color_combiner_equation(*combiner.rgbsub_a_r[1],*combiner.rgbsub_b_r[1],*combiner.rgbmul_r[1],*combiner.rgbadd_r[1]);
-        combined_color.g = color_combiner_equation(*combiner.rgbsub_a_g[1],*combiner.rgbsub_b_g[1],*combiner.rgbmul_g[1],*combiner.rgbadd_g[1]);
-        combined_color.b = color_combiner_equation(*combiner.rgbsub_a_b[1],*combiner.rgbsub_b_b[1],*combiner.rgbmul_b[1],*combiner.rgbadd_b[1]);
+        globals.combined_color.r = color_combiner_equation(*combiner.rgbsub_a_r[1],*combiner.rgbsub_b_r[1],*combiner.rgbmul_r[1],*combiner.rgbadd_r[1]);
+        globals.combined_color.g = color_combiner_equation(*combiner.rgbsub_a_g[1],*combiner.rgbsub_b_g[1],*combiner.rgbmul_g[1],*combiner.rgbadd_g[1]);
+        globals.combined_color.b = color_combiner_equation(*combiner.rgbsub_a_b[1],*combiner.rgbsub_b_b[1],*combiner.rgbmul_b[1],*combiner.rgbadd_b[1]);
     }
     else
     {
-        combined_color.r = ((special_9bit_exttable[*combiner.rgbadd_r[1]] << 8) + 0x80) & 0x1ffff;
-        combined_color.g = ((special_9bit_exttable[*combiner.rgbadd_g[1]] << 8) + 0x80) & 0x1ffff;
-        combined_color.b = ((special_9bit_exttable[*combiner.rgbadd_b[1]] << 8) + 0x80) & 0x1ffff;
+        globals.combined_color.r = ((special_9bit_exttable[*combiner.rgbadd_r[1]] << 8) + 0x80) & 0x1ffff;
+        globals.combined_color.g = ((special_9bit_exttable[*combiner.rgbadd_g[1]] << 8) + 0x80) & 0x1ffff;
+        globals.combined_color.b = ((special_9bit_exttable[*combiner.rgbadd_b[1]] << 8) + 0x80) & 0x1ffff;
     }
 
     if (combiner.alphamul[1] != &zero_color)
-        combined_color.a = alpha_combiner_equation(*combiner.alphasub_a[1],*combiner.alphasub_b[1],*combiner.alphamul[1],*combiner.alphaadd[1]);
+        globals.combined_color.a = alpha_combiner_equation(*combiner.alphasub_a[1],*combiner.alphasub_b[1],*combiner.alphamul[1],*combiner.alphaadd[1]);
     else
-        combined_color.a = special_9bit_exttable[*combiner.alphaadd[1]] & 0x1ff;
+        globals.combined_color.a = special_9bit_exttable[*combiner.alphaadd[1]] & 0x1ff;
 
-    pixel_color.a = special_9bit_clamptable[combined_color.a];
-    if (pixel_color.a == 0xff)
-        pixel_color.a = 0x100;
+    globals.pixel_color.a = special_9bit_clamptable[globals.combined_color.a];
+    if (globals.pixel_color.a == 0xff)
+        globals.pixel_color.a = 0x100;
 
     if (!globals.other_modes.key_en)
     {
 
-        combined_color.r >>= 8;
-        combined_color.g >>= 8;
-        combined_color.b >>= 8;
-        pixel_color.r = special_9bit_clamptable[combined_color.r];
-        pixel_color.g = special_9bit_clamptable[combined_color.g];
-        pixel_color.b = special_9bit_clamptable[combined_color.b];
+        globals.combined_color.r >>= 8;
+        globals.combined_color.g >>= 8;
+        globals.combined_color.b >>= 8;
+        globals.pixel_color.r = special_9bit_clamptable[globals.combined_color.r];
+        globals.pixel_color.g = special_9bit_clamptable[globals.combined_color.g];
+        globals.pixel_color.b = special_9bit_clamptable[globals.combined_color.b];
     }
     else
     {
-        keyalpha = chroma_key_min(&combined_color);
+        keyalpha = chroma_key_min(&globals.combined_color);
+
+        globals.pixel_color.r = special_9bit_clamptable[chromabypass.r];
+        globals.pixel_color.g = special_9bit_clamptable[chromabypass.g];
+        globals.pixel_color.b = special_9bit_clamptable[chromabypass.b];
 
 
-
-        pixel_color.r = special_9bit_clamptable[chromabypass.r];
-        pixel_color.g = special_9bit_clamptable[chromabypass.g];
-        pixel_color.b = special_9bit_clamptable[chromabypass.b];
-
-
-        combined_color.r >>= 8;
-        combined_color.g >>= 8;
-        combined_color.b >>= 8;
+        globals.combined_color.r >>= 8;
+        globals.combined_color.g >>= 8;
+        globals.combined_color.b >>= 8;
     }
 
 
     if (globals.other_modes.cvg_times_alpha)
     {
-        temp = (pixel_color.a * (*curpixel_cvg) + 4) >> 3;
+        temp = (globals.pixel_color.a * (*curpixel_cvg) + 4) >> 3;
         *curpixel_cvg = (temp >> 5) & 0xf;
     }
 
@@ -1446,26 +1542,26 @@ static STRICTINLINE void combiner_1cycle(int adseed, uint32_t* curpixel_cvg)
     {
         if (!globals.other_modes.key_en)
         {
-            pixel_color.a += adseed;
-            if (pixel_color.a & 0x100)
-                pixel_color.a = 0xff;
+            globals.pixel_color.a += adseed;
+            if (globals.pixel_color.a & 0x100)
+                globals.pixel_color.a = 0xff;
         }
         else
-            pixel_color.a = keyalpha;
+            globals.pixel_color.a = keyalpha;
     }
     else
     {
         if (globals.other_modes.cvg_times_alpha)
-            pixel_color.a = temp;
+            globals.pixel_color.a = temp;
         else
-            pixel_color.a = (*curpixel_cvg) << 5;
-        if (pixel_color.a > 0xff)
-            pixel_color.a = 0xff;
+            globals.pixel_color.a = (*curpixel_cvg) << 5;
+        if (globals.pixel_color.a > 0xff)
+            globals.pixel_color.a = 0xff;
     }
 
-    shade_color.a += adseed;
-    if (shade_color.a & 0x100)
-        shade_color.a = 0xff;
+    globals.shade_color.a += adseed;
+    if (globals.shade_color.a & 0x100)
+        globals.shade_color.a = 0xff;
 }
 
 static STRICTINLINE void combiner_2cycle(int adseed, uint32_t* curpixel_cvg, int32_t* acalpha)
@@ -1475,30 +1571,30 @@ static STRICTINLINE void combiner_2cycle(int adseed, uint32_t* curpixel_cvg, int
 
     if (combiner.rgbmul_r[0] != &zero_color)
     {
-        combined_color.r = color_combiner_equation(*combiner.rgbsub_a_r[0],*combiner.rgbsub_b_r[0],*combiner.rgbmul_r[0],*combiner.rgbadd_r[0]);
-        combined_color.g = color_combiner_equation(*combiner.rgbsub_a_g[0],*combiner.rgbsub_b_g[0],*combiner.rgbmul_g[0],*combiner.rgbadd_g[0]);
-        combined_color.b = color_combiner_equation(*combiner.rgbsub_a_b[0],*combiner.rgbsub_b_b[0],*combiner.rgbmul_b[0],*combiner.rgbadd_b[0]);
+        globals.combined_color.r = color_combiner_equation(*combiner.rgbsub_a_r[0],*combiner.rgbsub_b_r[0],*combiner.rgbmul_r[0],*combiner.rgbadd_r[0]);
+        globals.combined_color.g = color_combiner_equation(*combiner.rgbsub_a_g[0],*combiner.rgbsub_b_g[0],*combiner.rgbmul_g[0],*combiner.rgbadd_g[0]);
+        globals.combined_color.b = color_combiner_equation(*combiner.rgbsub_a_b[0],*combiner.rgbsub_b_b[0],*combiner.rgbmul_b[0],*combiner.rgbadd_b[0]);
     }
     else
     {
-        combined_color.r = ((special_9bit_exttable[*combiner.rgbadd_r[0]] << 8) + 0x80) & 0x1ffff;
-        combined_color.g = ((special_9bit_exttable[*combiner.rgbadd_g[0]] << 8) + 0x80) & 0x1ffff;
-        combined_color.b = ((special_9bit_exttable[*combiner.rgbadd_b[0]] << 8) + 0x80) & 0x1ffff;
+        globals.combined_color.r = ((special_9bit_exttable[*combiner.rgbadd_r[0]] << 8) + 0x80) & 0x1ffff;
+        globals.combined_color.g = ((special_9bit_exttable[*combiner.rgbadd_g[0]] << 8) + 0x80) & 0x1ffff;
+        globals.combined_color.b = ((special_9bit_exttable[*combiner.rgbadd_b[0]] << 8) + 0x80) & 0x1ffff;
     }
 
     if (combiner.alphamul[0] != &zero_color)
-        combined_color.a = alpha_combiner_equation(*combiner.alphasub_a[0],*combiner.alphasub_b[0],*combiner.alphamul[0],*combiner.alphaadd[0]);
+        globals.combined_color.a = alpha_combiner_equation(*combiner.alphasub_a[0],*combiner.alphasub_b[0],*combiner.alphamul[0],*combiner.alphaadd[0]);
     else
-        combined_color.a = special_9bit_exttable[*combiner.alphaadd[0]] & 0x1ff;
+        globals.combined_color.a = special_9bit_exttable[*combiner.alphaadd[0]] & 0x1ff;
 
 
 
     if (globals.other_modes.alpha_compare_en)
     {
         if (globals.other_modes.key_en)
-            keyalpha = chroma_key_min(&combined_color);
+            keyalpha = chroma_key_min(&globals.combined_color);
 
-        int32_t preacalpha = special_9bit_clamptable[combined_color.a];
+        int32_t preacalpha = special_9bit_clamptable[globals.combined_color.a];
         if (preacalpha == 0xff)
             preacalpha = 0x100;
 
@@ -1533,13 +1629,13 @@ static STRICTINLINE void combiner_2cycle(int adseed, uint32_t* curpixel_cvg, int
 
 
 
-    combined_color.r >>= 8;
-    combined_color.g >>= 8;
-    combined_color.b >>= 8;
+    globals.combined_color.r >>= 8;
+    globals.combined_color.g >>= 8;
+    globals.combined_color.b >>= 8;
 
 
-    texel0_color = texel1_color;
-    texel1_color = nexttexel_color;
+    globals.texel0_color = globals.texel1_color;
+    globals.texel1_color = globals.nexttexel_color;
 
 
 
@@ -1558,57 +1654,57 @@ static STRICTINLINE void combiner_2cycle(int adseed, uint32_t* curpixel_cvg, int
 
     if (combiner.rgbmul_r[1] != &zero_color)
     {
-        combined_color.r = color_combiner_equation(*combiner.rgbsub_a_r[1],*combiner.rgbsub_b_r[1],*combiner.rgbmul_r[1],*combiner.rgbadd_r[1]);
-        combined_color.g = color_combiner_equation(*combiner.rgbsub_a_g[1],*combiner.rgbsub_b_g[1],*combiner.rgbmul_g[1],*combiner.rgbadd_g[1]);
-        combined_color.b = color_combiner_equation(*combiner.rgbsub_a_b[1],*combiner.rgbsub_b_b[1],*combiner.rgbmul_b[1],*combiner.rgbadd_b[1]);
+        globals.combined_color.r = color_combiner_equation(*combiner.rgbsub_a_r[1],*combiner.rgbsub_b_r[1],*combiner.rgbmul_r[1],*combiner.rgbadd_r[1]);
+        globals.combined_color.g = color_combiner_equation(*combiner.rgbsub_a_g[1],*combiner.rgbsub_b_g[1],*combiner.rgbmul_g[1],*combiner.rgbadd_g[1]);
+        globals.combined_color.b = color_combiner_equation(*combiner.rgbsub_a_b[1],*combiner.rgbsub_b_b[1],*combiner.rgbmul_b[1],*combiner.rgbadd_b[1]);
     }
     else
     {
-        combined_color.r = ((special_9bit_exttable[*combiner.rgbadd_r[1]] << 8) + 0x80) & 0x1ffff;
-        combined_color.g = ((special_9bit_exttable[*combiner.rgbadd_g[1]] << 8) + 0x80) & 0x1ffff;
-        combined_color.b = ((special_9bit_exttable[*combiner.rgbadd_b[1]] << 8) + 0x80) & 0x1ffff;
+        globals.combined_color.r = ((special_9bit_exttable[*combiner.rgbadd_r[1]] << 8) + 0x80) & 0x1ffff;
+        globals.combined_color.g = ((special_9bit_exttable[*combiner.rgbadd_g[1]] << 8) + 0x80) & 0x1ffff;
+        globals.combined_color.b = ((special_9bit_exttable[*combiner.rgbadd_b[1]] << 8) + 0x80) & 0x1ffff;
     }
 
     if (combiner.alphamul[1] != &zero_color)
-        combined_color.a = alpha_combiner_equation(*combiner.alphasub_a[1],*combiner.alphasub_b[1],*combiner.alphamul[1],*combiner.alphaadd[1]);
+        globals.combined_color.a = alpha_combiner_equation(*combiner.alphasub_a[1],*combiner.alphasub_b[1],*combiner.alphamul[1],*combiner.alphaadd[1]);
     else
-        combined_color.a = special_9bit_exttable[*combiner.alphaadd[1]] & 0x1ff;
+        globals.combined_color.a = special_9bit_exttable[*combiner.alphaadd[1]] & 0x1ff;
 
     if (!globals.other_modes.key_en)
     {
 
-        combined_color.r >>= 8;
-        combined_color.g >>= 8;
-        combined_color.b >>= 8;
+        globals.combined_color.r >>= 8;
+        globals.combined_color.g >>= 8;
+        globals.combined_color.b >>= 8;
 
-        pixel_color.r = special_9bit_clamptable[combined_color.r];
-        pixel_color.g = special_9bit_clamptable[combined_color.g];
-        pixel_color.b = special_9bit_clamptable[combined_color.b];
+        globals.pixel_color.r = special_9bit_clamptable[globals.combined_color.r];
+        globals.pixel_color.g = special_9bit_clamptable[globals.combined_color.g];
+        globals.pixel_color.b = special_9bit_clamptable[globals.combined_color.b];
     }
     else
     {
-        keyalpha = chroma_key_min(&combined_color);
+        keyalpha = chroma_key_min(&globals.combined_color);
 
 
 
-        pixel_color.r = special_9bit_clamptable[chromabypass.r];
-        pixel_color.g = special_9bit_clamptable[chromabypass.g];
-        pixel_color.b = special_9bit_clamptable[chromabypass.b];
+        globals.pixel_color.r = special_9bit_clamptable[chromabypass.r];
+        globals.pixel_color.g = special_9bit_clamptable[chromabypass.g];
+        globals.pixel_color.b = special_9bit_clamptable[chromabypass.b];
 
 
-        combined_color.r >>= 8;
-        combined_color.g >>= 8;
-        combined_color.b >>= 8;
+        globals.combined_color.r >>= 8;
+        globals.combined_color.g >>= 8;
+        globals.combined_color.b >>= 8;
     }
 
-    pixel_color.a = special_9bit_clamptable[combined_color.a];
-    if (pixel_color.a == 0xff)
-        pixel_color.a = 0x100;
+    globals.pixel_color.a = special_9bit_clamptable[globals.combined_color.a];
+    if (globals.pixel_color.a == 0xff)
+        globals.pixel_color.a = 0x100;
 
 
     if (globals.other_modes.cvg_times_alpha)
     {
-        temp = (pixel_color.a * (*curpixel_cvg) + 4) >> 3;
+        temp = (globals.pixel_color.a * (*curpixel_cvg) + 4) >> 3;
 
         *curpixel_cvg = (temp >> 5) & 0xf;
 
@@ -1619,26 +1715,26 @@ static STRICTINLINE void combiner_2cycle(int adseed, uint32_t* curpixel_cvg, int
     {
         if (!globals.other_modes.key_en)
         {
-            pixel_color.a += adseed;
-            if (pixel_color.a & 0x100)
-                pixel_color.a = 0xff;
+            globals.pixel_color.a += adseed;
+            if (globals.pixel_color.a & 0x100)
+                globals.pixel_color.a = 0xff;
         }
         else
-            pixel_color.a = keyalpha;
+            globals.pixel_color.a = keyalpha;
     }
     else
     {
         if (globals.other_modes.cvg_times_alpha)
-            pixel_color.a = temp;
+            globals.pixel_color.a = temp;
         else
-            pixel_color.a = (*curpixel_cvg) << 5;
-        if (pixel_color.a > 0xff)
-            pixel_color.a = 0xff;
+            globals.pixel_color.a = (*curpixel_cvg) << 5;
+        if (globals.pixel_color.a > 0xff)
+            globals.pixel_color.a = 0xff;
     }
 
-    shade_color.a += adseed;
-    if (shade_color.a & 0x100)
-        shade_color.a = 0xff;
+    globals.shade_color.a += adseed;
+    if (globals.shade_color.a & 0x100)
+        globals.shade_color.a = 0xff;
 }
 
 static void combiner_init(void)
@@ -1688,18 +1784,18 @@ static void rdp_set_prim_color(const uint32_t* args)
 {
     globals.min_level          = (args[0] >> 8) & 0x1f;
     globals.primitive_lod_frac = args[0] & 0xff;
-    prim_color.r = (args[1] >> 24) & 0xff;
-    prim_color.g = (args[1] >> 16) & 0xff;
-    prim_color.b = (args[1] >>  8) & 0xff;
-    prim_color.a = (args[1] >>  0) & 0xff;
+    globals.prim_color.r = (args[1] >> 24) & 0xff;
+    globals.prim_color.g = (args[1] >> 16) & 0xff;
+    globals.prim_color.b = (args[1] >>  8) & 0xff;
+    globals.prim_color.a = (args[1] >>  0) & 0xff;
 }
 
 static void rdp_set_env_color(const uint32_t* args)
 {
-    env_color.r = (args[1] >> 24) & 0xff;
-    env_color.g = (args[1] >> 16) & 0xff;
-    env_color.b = (args[1] >>  8) & 0xff;
-    env_color.a = (args[1] >>  0) & 0xff;
+    globals.env_color.r = (args[1] >> 24) & 0xff;
+    globals.env_color.g = (args[1] >> 16) & 0xff;
+    globals.env_color.b = (args[1] >>  8) & 0xff;
+    globals.env_color.a = (args[1] >>  0) & 0xff;
 }
 
 static void rdp_set_combine(const uint32_t* args)
@@ -2458,16 +2554,20 @@ static void fbfill_32(uint32_t curpixel)
 
 static void fbread_4(uint32_t curpixel, uint32_t* curpixel_memcvg)
 {
-    memory_color.r = memory_color.g = memory_color.b = 0;
+   globals.memory_color.r = 0;
+   globals.memory_color.g = 0;
+   globals.memory_color.b = 0;
 
-    *curpixel_memcvg = 7;
-    memory_color.a = 0xe0;
+   *curpixel_memcvg       = 7;
+   globals.memory_color.a = 0xe0;
 }
 
 static void fbread2_4(uint32_t curpixel, uint32_t* curpixel_memcvg)
 {
-    pre_memory_color.r = pre_memory_color.g = pre_memory_color.b = 0;
-    pre_memory_color.a = 0xe0;
+    globals.pre_memory_color.r = 0;
+    globals.pre_memory_color.g = 0;
+    globals.pre_memory_color.b = 0;
+    globals.pre_memory_color.a = 0xe0;
     *curpixel_memcvg = 7;
 }
 
@@ -2476,9 +2576,9 @@ static void fbread_8(uint32_t curpixel, uint32_t* curpixel_memcvg)
     uint8_t mem;
     uint32_t addr = fb_address + curpixel;
     RREADADDR8(mem, addr);
-    memory_color.r = memory_color.g = memory_color.b = mem;
+    globals.memory_color.r = globals.memory_color.g = globals.memory_color.b = mem;
     *curpixel_memcvg = 7;
-    memory_color.a = 0xe0;
+    globals.memory_color.a = 0xe0;
 }
 
 static void fbread2_8(uint32_t curpixel, uint32_t* curpixel_memcvg)
@@ -2486,8 +2586,10 @@ static void fbread2_8(uint32_t curpixel, uint32_t* curpixel_memcvg)
     uint8_t mem;
     uint32_t addr = fb_address + curpixel;
     RREADADDR8(mem, addr);
-    pre_memory_color.r = pre_memory_color.g = pre_memory_color.b = mem;
-    pre_memory_color.a = 0xe0;
+    globals.pre_memory_color.r = mem;
+    globals.pre_memory_color.g = mem;
+    globals.pre_memory_color.b = mem;
+    globals.pre_memory_color.a = 0xe0;
     *curpixel_memcvg = 7;
 }
 
@@ -2506,19 +2608,19 @@ static void fbread_16(uint32_t curpixel, uint32_t* curpixel_memcvg)
 
         if (fb_format == FORMAT_RGBA)
         {
-            memory_color.r = GET_HI(fword);
-            memory_color.g = GET_MED(fword);
-            memory_color.b = GET_LOW(fword);
+            globals.memory_color.r = GET_HI(fword);
+            globals.memory_color.g = GET_MED(fword);
+            globals.memory_color.b = GET_LOW(fword);
             lowbits = ((fword & 1) << 2) | hbyte;
         }
         else
         {
-            memory_color.r = memory_color.g = memory_color.b = fword >> 8;
+            globals.memory_color.r = globals.memory_color.g = globals.memory_color.b = fword >> 8;
             lowbits = (fword >> 5) & 7;
         }
 
         *curpixel_memcvg = lowbits;
-        memory_color.a = lowbits << 5;
+        globals.memory_color.a = lowbits << 5;
     }
     else
     {
@@ -2526,15 +2628,15 @@ static void fbread_16(uint32_t curpixel, uint32_t* curpixel_memcvg)
 
         if (fb_format == FORMAT_RGBA)
         {
-            memory_color.r = GET_HI(fword);
-            memory_color.g = GET_MED(fword);
-            memory_color.b = GET_LOW(fword);
+            globals.memory_color.r = GET_HI(fword);
+            globals.memory_color.g = GET_MED(fword);
+            globals.memory_color.b = GET_LOW(fword);
         }
         else
-            memory_color.r = memory_color.g = memory_color.b = fword >> 8;
+            globals.memory_color.r = globals.memory_color.g = globals.memory_color.b = fword >> 8;
 
         *curpixel_memcvg = 7;
-        memory_color.a = 0xe0;
+        globals.memory_color.a = 0xe0;
     }
 }
 
@@ -2552,19 +2654,19 @@ static void fbread2_16(uint32_t curpixel, uint32_t* curpixel_memcvg)
 
         if (fb_format == FORMAT_RGBA)
         {
-            pre_memory_color.r = GET_HI(fword);
-            pre_memory_color.g = GET_MED(fword);
-            pre_memory_color.b = GET_LOW(fword);
+            globals.pre_memory_color.r = GET_HI(fword);
+            globals.pre_memory_color.g = GET_MED(fword);
+            globals.pre_memory_color.b = GET_LOW(fword);
             lowbits = ((fword & 1) << 2) | hbyte;
         }
         else
         {
-            pre_memory_color.r = pre_memory_color.g = pre_memory_color.b = fword >> 8;
+            globals.pre_memory_color.r = globals.pre_memory_color.g = globals.pre_memory_color.b = fword >> 8;
             lowbits = (fword >> 5) & 7;
         }
 
         *curpixel_memcvg = lowbits;
-        pre_memory_color.a = lowbits << 5;
+        globals.pre_memory_color.a = lowbits << 5;
     }
     else
     {
@@ -2572,15 +2674,15 @@ static void fbread2_16(uint32_t curpixel, uint32_t* curpixel_memcvg)
 
         if (fb_format == FORMAT_RGBA)
         {
-            pre_memory_color.r = GET_HI(fword);
-            pre_memory_color.g = GET_MED(fword);
-            pre_memory_color.b = GET_LOW(fword);
+            globals.pre_memory_color.r = GET_HI(fword);
+            globals.pre_memory_color.g = GET_MED(fword);
+            globals.pre_memory_color.b = GET_LOW(fword);
         }
         else
-            pre_memory_color.r = pre_memory_color.g = pre_memory_color.b = fword >> 8;
+            globals.pre_memory_color.r = globals.pre_memory_color.g = globals.pre_memory_color.b = fword >> 8;
 
         *curpixel_memcvg = 7;
-        pre_memory_color.a = 0xe0;
+        globals.pre_memory_color.a = 0xe0;
     }
 
 }
@@ -2589,18 +2691,18 @@ static void fbread_32(uint32_t curpixel, uint32_t* curpixel_memcvg)
 {
     uint32_t mem, addr = (fb_address >> 2) + curpixel;
     RREADIDX32(mem, addr);
-    memory_color.r = (mem >> 24) & 0xff;
-    memory_color.g = (mem >> 16) & 0xff;
-    memory_color.b = (mem >> 8) & 0xff;
+    globals.memory_color.r = (mem >> 24) & 0xff;
+    globals.memory_color.g = (mem >> 16) & 0xff;
+    globals.memory_color.b = (mem >> 8) & 0xff;
     if (globals.other_modes.image_read_en)
     {
         *curpixel_memcvg = (mem >> 5) & 7;
-        memory_color.a = mem & 0xe0;
+        globals.memory_color.a = mem & 0xe0;
     }
     else
     {
         *curpixel_memcvg = 7;
-        memory_color.a = 0xe0;
+        globals.memory_color.a = 0xe0;
     }
 }
 
@@ -2608,18 +2710,18 @@ static INLINE void fbread2_32(uint32_t curpixel, uint32_t* curpixel_memcvg)
 {
     uint32_t mem, addr = (fb_address >> 2) + curpixel;
     RREADIDX32(mem, addr);
-    pre_memory_color.r = (mem >> 24) & 0xff;
-    pre_memory_color.g = (mem >> 16) & 0xff;
-    pre_memory_color.b = (mem >> 8) & 0xff;
+    globals.pre_memory_color.r = (mem >> 24) & 0xff;
+    globals.pre_memory_color.g = (mem >> 16) & 0xff;
+    globals.pre_memory_color.b = (mem >> 8) & 0xff;
     if (globals.other_modes.image_read_en)
     {
         *curpixel_memcvg = (mem >> 5) & 7;
-        pre_memory_color.a = mem & 0xe0;
+        globals.pre_memory_color.a = mem & 0xe0;
     }
     else
     {
         *curpixel_memcvg = 7;
-        pre_memory_color.a = 0xe0;
+        globals.pre_memory_color.a = 0xe0;
     }
 }
 
@@ -6167,16 +6269,16 @@ static STRICTINLINE void texture_pipeline_cycle(struct color* TEX, struct color*
             {
                 if (upper)
                 {
-                    TEX->r = t3.b + ((k0_tf * t3.g + 0x80) >> 8);
-                    TEX->g = t3.b + ((k1_tf * t3.r + k2_tf * t3.g + 0x80) >> 8);
-                    TEX->b = t3.b + ((k3_tf * t3.r + 0x80) >> 8);
+                    TEX->r = t3.b + ((globals.k0_tf * t3.g + 0x80) >> 8);
+                    TEX->g = t3.b + ((globals.k1_tf * t3.r + globals.k2_tf * t3.g + 0x80) >> 8);
+                    TEX->b = t3.b + ((globals.k3_tf * t3.r + 0x80) >> 8);
                     TEX->a = t3.b;
                 }
                 else
                 {
-                    TEX->r = t0.b + ((k0_tf * t3.g + 0x80) >> 8);
-                    TEX->g = t0.b + ((k1_tf * t3.r + k2_tf * t3.g + 0x80) >> 8);
-                    TEX->b = t0.b + ((k3_tf * t3.r + 0x80) >> 8);
+                    TEX->r = t0.b + ((globals.k0_tf * t3.g + 0x80) >> 8);
+                    TEX->g = t0.b + ((globals.k1_tf * t3.r + globals.k2_tf * t3.g + 0x80) >> 8);
+                    TEX->b = t0.b + ((globals.k3_tf * t3.r + 0x80) >> 8);
                     TEX->a = t0.b;
                 }
             }
@@ -6184,16 +6286,16 @@ static STRICTINLINE void texture_pipeline_cycle(struct color* TEX, struct color*
             {
                 if (upper)
                 {
-                    TEX->r = t3.b + ((k0_tf * t0.g + 0x80) >> 8);
-                    TEX->g = t3.b + ((k1_tf * t0.r + k2_tf * t0.g + 0x80) >> 8);
-                    TEX->b = t3.b + ((k3_tf * t0.r + 0x80) >> 8);
+                    TEX->r = t3.b + ((globals.k0_tf * t0.g + 0x80) >> 8);
+                    TEX->g = t3.b + ((globals.k1_tf * t0.r + globals.k2_tf * t0.g + 0x80) >> 8);
+                    TEX->b = t3.b + ((globals.k3_tf * t0.r + 0x80) >> 8);
                     TEX->a = t3.b;
                 }
                 else
                 {
-                    TEX->r = t0.b + ((k0_tf * t0.g + 0x80) >> 8);
-                    TEX->g = t0.b + ((k1_tf * t0.r + k2_tf * t0.g + 0x80) >> 8);
-                    TEX->b = t0.b + ((k3_tf * t0.r + 0x80) >> 8);
+                    TEX->r = t0.b + ((globals.k0_tf * t0.g + 0x80) >> 8);
+                    TEX->g = t0.b + ((globals.k1_tf * t0.r + globals.k2_tf * t0.g + 0x80) >> 8);
+                    TEX->b = t0.b + ((globals.k3_tf * t0.r + 0x80) >> 8);
                     TEX->a = t0.b;
                 }
             }
@@ -6232,9 +6334,9 @@ static STRICTINLINE void texture_pipeline_cycle(struct color* TEX, struct color*
             if (convert)
                 t0 = *prev;
 
-            TEX->r = t0.b + ((k0_tf * t0.g + 0x80) >> 8);
-            TEX->g = t0.b + ((k1_tf * t0.r + k2_tf * t0.g + 0x80) >> 8);
-            TEX->b = t0.b + ((k3_tf * t0.r + 0x80) >> 8);
+            TEX->r = t0.b + ((globals.k0_tf * t0.g + 0x80) >> 8);
+            TEX->g = t0.b + ((globals.k1_tf * t0.r + globals.k2_tf * t0.g + 0x80) >> 8);
+            TEX->b = t0.b + ((globals.k3_tf * t0.r + 0x80) >> 8);
             TEX->a = t0.b;
             TEX->r &= 0x1ff;
             TEX->g &= 0x1ff;
@@ -6742,12 +6844,12 @@ static void rdp_set_convert(const uint32_t* args)
     int32_t k1 = (args[0] >> 4) & 0x1ff;
     int32_t k2 = ((args[0] & 0xf) << 5) | ((args[1] >> 27) & 0x1f);
     int32_t k3 = (args[1] >> 18) & 0x1ff;
-    k0_tf = (SIGN(k0, 9) << 1) + 1;
-    k1_tf = (SIGN(k1, 9) << 1) + 1;
-    k2_tf = (SIGN(k2, 9) << 1) + 1;
-    k3_tf = (SIGN(k3, 9) << 1) + 1;
-    k4 = (args[1] >> 9) & 0x1ff;
-    k5 = args[1] & 0x1ff;
+    globals.k0_tf = (SIGN(k0, 9) << 1) + 1;
+    globals.k1_tf = (SIGN(k1, 9) << 1) + 1;
+    globals.k2_tf = (SIGN(k2, 9) << 1) + 1;
+    globals.k3_tf = (SIGN(k3, 9) << 1) + 1;
+    globals.k4    = (args[1] >> 9) & 0x1ff;
+    globals.k5    = args[1] & 0x1ff;
 }
 
 static void tex_init(void)
@@ -6913,10 +7015,10 @@ static STRICTINLINE void rgbaz_correct_clip(int offx, int offy, int r, int g, in
     }
 
 
-    shade_color.r = special_9bit_clamptable[r & 0x1ff];
-    shade_color.g = special_9bit_clamptable[g & 0x1ff];
-    shade_color.b = special_9bit_clamptable[b & 0x1ff];
-    shade_color.a = special_9bit_clamptable[a & 0x1ff];
+    globals.shade_color.r = special_9bit_clamptable[r & 0x1ff];
+    globals.shade_color.g = special_9bit_clamptable[g & 0x1ff];
+    globals.shade_color.b = special_9bit_clamptable[b & 0x1ff];
+    globals.shade_color.a = special_9bit_clamptable[a & 0x1ff];
 
     /* Should be a correct branchless version of the awkward
      * zanded in Angrylion. This pattern seems very similar
@@ -6976,7 +7078,7 @@ static void render_spans_1cycle_complete(int start, int end, int tilenum, int fl
         dzpix = spans.dzpix;
     else
     {
-        dzpix = primitive_delta_z;
+        dzpix = globals.primitive_delta_z;
         dzinc = spans.cdz = spans.dzdy = 0;
     }
     int dzpixenc = dz_compress(dzpix);
@@ -7003,7 +7105,7 @@ static void render_spans_1cycle_complete(int start, int end, int tilenum, int fl
         g = span[i].g;
         b = span[i].b;
         a = span[i].a;
-        z = globals.other_modes.z_source_sel ? primitive_z : span[i].z;
+        z = globals.other_modes.z_source_sel ? globals.primitive_z : span[i].z;
         s = span[i].s;
         t = span[i].t;
         w = span[i].w;
@@ -7074,7 +7176,7 @@ static void render_spans_1cycle_complete(int start, int end, int tilenum, int fl
 
             if (!sigs.startspan)
             {
-                texel0_color = texel1_color;
+                globals.texel0_color = globals.texel1_color;
                 globals.lod_frac = prelodfrac;
             }
             else
@@ -7087,7 +7189,7 @@ static void render_spans_1cycle_complete(int start, int end, int tilenum, int fl
 
 
 
-                texture_pipeline_cycle(&texel0_color, &texel0_color, sss, sst, tile1, 0);
+                texture_pipeline_cycle(&globals.texel0_color, &globals.texel0_color, sss, sst, tile1, 0);
 
 
                 sigs.startspan = 0;
@@ -7103,7 +7205,7 @@ static void render_spans_1cycle_complete(int start, int end, int tilenum, int fl
 
             tclod_1cycle_next(&news, &newt, s, t, w, dsinc, dtinc, dwinc, i, prim_tile, &newtile, &sigs, &prelodfrac);
 
-            texture_pipeline_cycle(&texel1_color, &texel1_color, news, newt, newtile, 0);
+            texture_pipeline_cycle(&globals.texel1_color, &globals.texel1_color, news, newt, newtile, 0);
 
             rgbaz_correct_clip(offx, offy, sr, sg, sb, sa, &sz, curpixel_cvg);
 
@@ -7188,7 +7290,7 @@ static void render_spans_1cycle_notexel1(int start, int end, int tilenum, int fl
         dzpix = spans.dzpix;
     else
     {
-        dzpix = primitive_delta_z;
+        dzpix = globals.primitive_delta_z;
         dzinc = spans.cdz = spans.dzdy = 0;
     }
     int dzpixenc = dz_compress(dzpix);
@@ -7214,7 +7316,7 @@ static void render_spans_1cycle_notexel1(int start, int end, int tilenum, int fl
         g = span[i].g;
         b = span[i].b;
         a = span[i].a;
-        z = globals.other_modes.z_source_sel ? primitive_z : span[i].z;
+        z = globals.other_modes.z_source_sel ? globals.primitive_z : span[i].z;
         s = span[i].s;
         t = span[i].t;
         w = span[i].w;
@@ -7274,7 +7376,7 @@ static void render_spans_1cycle_notexel1(int start, int end, int tilenum, int fl
 
             tclod_1cycle_current_simple(&sss, &sst, s, t, w, dsinc, dtinc, dwinc, i, prim_tile, &tile1, &sigs);
 
-            texture_pipeline_cycle(&texel0_color, &texel0_color, sss, sst, tile1, 0);
+            texture_pipeline_cycle(&globals.texel0_color, &globals.texel0_color, sss, sst, tile1, 0);
 
             rgbaz_correct_clip(offx, offy, sr, sg, sb, sa, &sz, curpixel_cvg);
 
@@ -7350,7 +7452,7 @@ static void render_spans_1cycle_notex(int start, int end, int tilenum, int flip)
         dzpix = spans.dzpix;
     else
     {
-        dzpix = primitive_delta_z;
+        dzpix = globals.primitive_delta_z;
         dzinc = spans.cdz = spans.dzdy = 0;
     }
     int dzpixenc = dz_compress(dzpix);
@@ -7375,7 +7477,7 @@ static void render_spans_1cycle_notex(int start, int end, int tilenum, int flip)
         g = span[i].g;
         b = span[i].b;
         a = span[i].a;
-        z = globals.other_modes.z_source_sel ? primitive_z : span[i].z;
+        z = globals.other_modes.z_source_sel ? globals.primitive_z : span[i].z;
 
         x = xendsc;
         curpixel = fb_width * i + x;
@@ -7502,7 +7604,7 @@ static void render_spans_2cycle_complete(int start, int end, int tilenum, int fl
         dzpix = spans.dzpix;
     else
     {
-        dzpix = primitive_delta_z;
+        dzpix = globals.primitive_delta_z;
         dzinc = spans.cdz = spans.dzdy = 0;
     }
     int dzpixenc = dz_compress(dzpix);
@@ -7529,7 +7631,7 @@ static void render_spans_2cycle_complete(int start, int end, int tilenum, int fl
         g = span[i].g;
         b = span[i].b;
         a = span[i].a;
-        z = globals.other_modes.z_source_sel ? primitive_z : span[i].z;
+        z = globals.other_modes.z_source_sel ? globals.primitive_z : span[i].z;
         s = span[i].s;
         t = span[i].t;
         w = span[i].w;
@@ -7591,8 +7693,8 @@ static void render_spans_2cycle_complete(int start, int end, int tilenum, int fl
             if (!sigs.startspan)
             {
                 globals.lod_frac = prelodfrac;
-                texel0_color = nexttexel_color;
-                texel1_color = nexttexel1_color;
+                globals.texel0_color = globals.nexttexel_color;
+                globals.texel1_color = nexttexel1_color;
             }
             else
             {
@@ -7602,8 +7704,8 @@ static void render_spans_2cycle_complete(int start, int end, int tilenum, int fl
 
 
 
-                texture_pipeline_cycle(&texel0_color, &texel0_color, sss, sst, tile1, 0);
-                texture_pipeline_cycle(&texel1_color, &texel0_color, sss, sst, tile2, 1);
+                texture_pipeline_cycle(&globals.texel0_color, &globals.texel0_color, sss, sst, tile1, 0);
+                texture_pipeline_cycle(&globals.texel1_color, &globals.texel0_color, sss, sst, tile2, 1);
 
                 sigs.startspan = 0;
             }
@@ -7614,8 +7716,8 @@ static void render_spans_2cycle_complete(int start, int end, int tilenum, int fl
 
             tclod_2cycle_next(&news, &newt, s, t, w, dsinc, dtinc, dwinc, prim_tile, &newtile1, &newtile2, &prelodfrac);
 
-            texture_pipeline_cycle(&nexttexel_color, &nexttexel_color, news, newt, newtile1, 0);
-            texture_pipeline_cycle(&nexttexel1_color, &nexttexel_color, news, newt, newtile2, 1);
+            texture_pipeline_cycle(&globals.nexttexel_color, &globals.nexttexel_color, news, newt, newtile1, 0);
+            texture_pipeline_cycle(&nexttexel1_color, &globals.nexttexel_color, news, newt, newtile2, 1);
 
             rgbaz_correct_clip(offx, offy, sr, sg, sb, sa, &sz, curpixel_cvg);
 
@@ -7636,16 +7738,7 @@ static void render_spans_2cycle_complete(int start, int end, int tilenum, int fl
                 }
             }
             else
-                memory_color = pre_memory_color;
-
-
-
-
-
-
-
-
-
+                globals.memory_color = globals.pre_memory_color;
 
             r += drinc;
             g += dginc;
@@ -7711,7 +7804,7 @@ static void render_spans_2cycle_notexelnext(int start, int end, int tilenum, int
         dzpix = spans.dzpix;
     else
     {
-        dzpix = primitive_delta_z;
+        dzpix = globals.primitive_delta_z;
         dzinc = spans.cdz = spans.dzdy = 0;
     }
     int dzpixenc = dz_compress(dzpix);
@@ -7738,7 +7831,7 @@ static void render_spans_2cycle_notexelnext(int start, int end, int tilenum, int
         g = span[i].g;
         b = span[i].b;
         a = span[i].a;
-        z = globals.other_modes.z_source_sel ? primitive_z : span[i].z;
+        z = globals.other_modes.z_source_sel ? globals.primitive_z : span[i].z;
         s = span[i].s;
         t = span[i].t;
         w = span[i].w;
@@ -7790,8 +7883,8 @@ static void render_spans_2cycle_notexelnext(int start, int end, int tilenum, int
 
             tclod_2cycle_current_simple(&sss, &sst, s, t, w, dsinc, dtinc, dwinc, prim_tile, &tile1, &tile2);
 
-            texture_pipeline_cycle(&texel0_color, &texel0_color, sss, sst, tile1, 0);
-            texture_pipeline_cycle(&texel1_color, &texel0_color, sss, sst, tile2, 1);
+            texture_pipeline_cycle(&globals.texel0_color, &globals.texel0_color, sss, sst, tile1, 0);
+            texture_pipeline_cycle(&globals.texel1_color, &globals.texel0_color, sss, sst, tile2, 1);
 
             rgbaz_correct_clip(offx, offy, sr, sg, sb, sa, &sz, curpixel_cvg);
 
@@ -7815,7 +7908,7 @@ static void render_spans_2cycle_notexelnext(int start, int end, int tilenum, int
                 }
             }
             else
-                memory_color = pre_memory_color;
+                globals.memory_color = globals.pre_memory_color;
 
             s += dsinc;
             t += dtinc;
@@ -7882,7 +7975,7 @@ static void render_spans_2cycle_notexel1(int start, int end, int tilenum, int fl
         dzpix = spans.dzpix;
     else
     {
-        dzpix = primitive_delta_z;
+        dzpix = globals.primitive_delta_z;
         dzinc = spans.cdz = spans.dzdy = 0;
     }
     int dzpixenc = dz_compress(dzpix);
@@ -7909,7 +8002,7 @@ static void render_spans_2cycle_notexel1(int start, int end, int tilenum, int fl
         g = span[i].g;
         b = span[i].b;
         a = span[i].a;
-        z = globals.other_modes.z_source_sel ? primitive_z : span[i].z;
+        z = globals.other_modes.z_source_sel ? globals.primitive_z : span[i].z;
         s = span[i].s;
         t = span[i].t;
         w = span[i].w;
@@ -7962,7 +8055,7 @@ static void render_spans_2cycle_notexel1(int start, int end, int tilenum, int fl
             tclod_2cycle_current_notexel1(&sss, &sst, s, t, w, dsinc, dtinc, dwinc, prim_tile, &tile1);
 
 
-            texture_pipeline_cycle(&texel0_color, &texel0_color, sss, sst, tile1, 0);
+            texture_pipeline_cycle(&globals.texel0_color, &globals.texel0_color, sss, sst, tile1, 0);
 
             rgbaz_correct_clip(offx, offy, sr, sg, sb, sa, &sz, curpixel_cvg);
 
@@ -7984,7 +8077,7 @@ static void render_spans_2cycle_notexel1(int start, int end, int tilenum, int fl
 
             }
             else
-                memory_color = pre_memory_color;
+                globals.memory_color = globals.pre_memory_color;
 
             s += dsinc;
             t += dtinc;
@@ -8041,7 +8134,7 @@ static void render_spans_2cycle_notex(int start, int end, int tilenum, int flip)
         dzpix = spans.dzpix;
     else
     {
-        dzpix = primitive_delta_z;
+        dzpix = globals.primitive_delta_z;
         dzinc = spans.cdz = spans.dzdy = 0;
     }
     int dzpixenc = dz_compress(dzpix);
@@ -8067,7 +8160,7 @@ static void render_spans_2cycle_notex(int start, int end, int tilenum, int flip)
         g = span[i].g;
         b = span[i].b;
         a = span[i].a;
-        z = globals.other_modes.z_source_sel ? primitive_z : span[i].z;
+        z = globals.other_modes.z_source_sel ? globals.primitive_z : span[i].z;
 
         x = xendsc;
         curpixel = fb_width * i + x;
@@ -8125,7 +8218,7 @@ static void render_spans_2cycle_notex(int start, int end, int tilenum, int flip)
                 }
             }
             else
-                memory_color = pre_memory_color;
+                globals.memory_color = globals.pre_memory_color;
 
             r += drinc;
             g += dginc;
@@ -8330,7 +8423,7 @@ static void render_spans_copy(int start, int end, int tilenum, int flip)
             else if (fb_size == PIXEL_SIZE_8BIT)
             {
                 alphamask = 0;
-                threshold = (globals.other_modes.dither_alpha_en) ? (irand() & 0xff) : blend_color.a;
+                threshold = (globals.other_modes.dither_alpha_en) ? (irand() & 0xff) : globals.blend_color.a;
                 if (globals.other_modes.dither_alpha_en)
                 {
                     currthreshold = threshold;
@@ -8736,7 +8829,7 @@ static void edgewalker_for_prims(int32_t* ewdata)
             {
                 span[j].lx = maxxmx;
                 span[j].rx = minxhx;
-                span[j].validline  = !allinval && !allover && !allunder && (!scfield || (scfield && !(sckeepodd ^ (j & 1)))) && (!config->parallel || j % worker_num == worker_id);
+                span[j].validline  = !allinval && !allover && !allunder && (!globals.scfield || (globals.scfield && !(globals.sckeepodd ^ (j & 1)))) && (!config->parallel || j % worker_num == worker_id);
 
             }
 
@@ -8823,7 +8916,7 @@ static void edgewalker_for_prims(int32_t* ewdata)
             {
                 span[j].lx = minxmx;
                 span[j].rx = maxxhx;
-                span[j].validline  = !allinval && !allover && !allunder && (!scfield || (scfield && !(sckeepodd ^ (j & 1)))) && (!config->parallel || j % worker_num == worker_id);
+                span[j].validline  = !allinval && !allover && !allunder && (!globals.scfield || (globals.scfield && !(globals.sckeepodd ^ (j & 1)))) && (!config->parallel || j % worker_num == worker_id);
             }
 
         }
@@ -8871,12 +8964,12 @@ static void edgewalker_for_prims(int32_t* ewdata)
 
 static void rasterizer_init(void)
 {
-    clip.xl = 0;
-    clip.yl = 0;
-    clip.xh = 0x2000;
-    clip.yh = 0x2000;
-    scfield = 0;
-    sckeepodd = 0;
+    clip.xl           = 0;
+    clip.yl           = 0;
+    clip.xh           = 0x2000;
+    clip.yh           = 0x2000;
+    globals.scfield   = 0;
+    globals.sckeepodd = 0;
 }
 
 static void rdp_tri_noshade(const uint32_t* args)
@@ -9175,10 +9268,8 @@ static void rdp_fill_rect(const uint32_t* args)
 
 static void rdp_set_prim_depth(const uint32_t* args)
 {
-    primitive_z = args[1] & (0x7fff << 16);
-
-
-    primitive_delta_z = (uint16_t)(args[1]);
+    globals.primitive_z       = args[1] & (0x7fff << 16);
+    globals.primitive_delta_z = (uint16_t)(args[1]);
 }
 
 static void rdp_set_scissor(const uint32_t* args)
@@ -9188,8 +9279,8 @@ static void rdp_set_scissor(const uint32_t* args)
     clip.xl = (args[1] >> 12) & 0xfff;
     clip.yl = (args[1] >>  0) & 0xfff;
 
-    scfield = (args[1] >> 25) & 1;
-    sckeepodd = (args[1] >> 24) & 1;
+    globals.scfield = (args[1] >> 25) & 1;
+    globals.sckeepodd = (args[1] >> 24) & 1;
 }
 
 int rdp_init(struct core_config* _config)
@@ -9211,9 +9302,9 @@ int rdp_init(struct core_config* _config)
       calculate_clamp_diffs(i);
    }
 
-   memset(&combined_color, 0, sizeof(struct color));
-   memset(&prim_color, 0, sizeof(struct color));
-   memset(&env_color, 0, sizeof(struct color));
+   memset(&globals.combined_color, 0, sizeof(struct color));
+   memset(&globals.prim_color, 0, sizeof(struct color));
+   memset(&globals.env_color, 0, sizeof(struct color));
    memset(&key_scale, 0, sizeof(struct color));
    memset(&key_center, 0, sizeof(struct color));
 
@@ -9312,12 +9403,12 @@ static void deduce_derivatives(void)
 {
     int special_bsel0, special_bsel1;
 
-    globals.other_modes.f.partialreject_1cycle = (blender.i2b_a[0] == &inv_pixel_color.a && blender.i1b_a[0] == &pixel_color.a);
-    globals.other_modes.f.partialreject_2cycle = (blender.i2b_a[1] == &inv_pixel_color.a && blender.i1b_a[1] == &pixel_color.a);
+    globals.other_modes.f.partialreject_1cycle = (blender.i2b_a[0] == &globals.inv_pixel_color.a && blender.i1b_a[0] == &globals.pixel_color.a);
+    globals.other_modes.f.partialreject_2cycle = (blender.i2b_a[1] == &globals.inv_pixel_color.a && blender.i1b_a[1] == &globals.pixel_color.a);
 
 
-    special_bsel0 = (blender.i2b_a[0] == &memory_color.a);
-    special_bsel1 = (blender.i2b_a[1] == &memory_color.a);
+    special_bsel0 = (blender.i2b_a[0] == &globals.memory_color.a);
+    special_bsel1 = (blender.i2b_a[1] == &globals.memory_color.a);
 
 
     globals.other_modes.f.realblendershiftersneeded = (special_bsel0 && globals.other_modes.cycle_type == CYCLE_TYPE_1) || (special_bsel1 && globals.other_modes.cycle_type == CYCLE_TYPE_2);
@@ -9337,21 +9428,21 @@ static void deduce_derivatives(void)
     if ((combiner.rgbmul_r[0] == &globals.lod_frac) || (combiner.alphamul[0] == &globals.lod_frac))
         lod_frac_used_in_cc0 = 1;
 
-    if (combiner.rgbmul_r[1] == &texel1_color.r || combiner.rgbsub_a_r[1] == &texel1_color.r || combiner.rgbsub_b_r[1] == &texel1_color.r || combiner.rgbadd_r[1] == &texel1_color.r || \
-        combiner.alphamul[1] == &texel1_color.a || combiner.alphasub_a[1] == &texel1_color.a || combiner.alphasub_b[1] == &texel1_color.a || combiner.alphaadd[1] == &texel1_color.a || \
-        combiner.rgbmul_r[1] == &texel1_color.a)
+    if (combiner.rgbmul_r[1] == &globals.texel1_color.r || combiner.rgbsub_a_r[1] == &globals.texel1_color.r || combiner.rgbsub_b_r[1] == &globals.texel1_color.r || combiner.rgbadd_r[1] == &globals.texel1_color.r || \
+        combiner.alphamul[1] == &globals.texel1_color.a || combiner.alphasub_a[1] == &globals.texel1_color.a || combiner.alphasub_b[1] == &globals.texel1_color.a || combiner.alphaadd[1] == &globals.texel1_color.a || \
+        combiner.rgbmul_r[1] == &globals.texel1_color.a)
         texel1_used_in_cc1 = 1;
-    if (combiner.rgbmul_r[1] == &texel0_color.r || combiner.rgbsub_a_r[1] == &texel0_color.r || combiner.rgbsub_b_r[1] == &texel0_color.r || combiner.rgbadd_r[1] == &texel0_color.r || \
-        combiner.alphamul[1] == &texel0_color.a || combiner.alphasub_a[1] == &texel0_color.a || combiner.alphasub_b[1] == &texel0_color.a || combiner.alphaadd[1] == &texel0_color.a || \
-        combiner.rgbmul_r[1] == &texel0_color.a)
+    if (combiner.rgbmul_r[1] == &globals.texel0_color.r || combiner.rgbsub_a_r[1] == &globals.texel0_color.r || combiner.rgbsub_b_r[1] == &globals.texel0_color.r || combiner.rgbadd_r[1] == &globals.texel0_color.r || \
+        combiner.alphamul[1] == &globals.texel0_color.a || combiner.alphasub_a[1] == &globals.texel0_color.a || combiner.alphasub_b[1] == &globals.texel0_color.a || combiner.alphaadd[1] == &globals.texel0_color.a || \
+        combiner.rgbmul_r[1] == &globals.texel0_color.a)
         texel0_used_in_cc1 = 1;
-    if (combiner.rgbmul_r[0] == &texel1_color.r || combiner.rgbsub_a_r[0] == &texel1_color.r || combiner.rgbsub_b_r[0] == &texel1_color.r || combiner.rgbadd_r[0] == &texel1_color.r || \
-        combiner.alphamul[0] == &texel1_color.a || combiner.alphasub_a[0] == &texel1_color.a || combiner.alphasub_b[0] == &texel1_color.a || combiner.alphaadd[0] == &texel1_color.a || \
-        combiner.rgbmul_r[0] == &texel1_color.a)
+    if (combiner.rgbmul_r[0] == &globals.texel1_color.r || combiner.rgbsub_a_r[0] == &globals.texel1_color.r || combiner.rgbsub_b_r[0] == &globals.texel1_color.r || combiner.rgbadd_r[0] == &globals.texel1_color.r || \
+        combiner.alphamul[0] == &globals.texel1_color.a || combiner.alphasub_a[0] == &globals.texel1_color.a || combiner.alphasub_b[0] == &globals.texel1_color.a || combiner.alphaadd[0] == &globals.texel1_color.a || \
+        combiner.rgbmul_r[0] == &globals.texel1_color.a)
         texel1_used_in_cc0 = 1;
-    if (combiner.rgbmul_r[0] == &texel0_color.r || combiner.rgbsub_a_r[0] == &texel0_color.r || combiner.rgbsub_b_r[0] == &texel0_color.r || combiner.rgbadd_r[0] == &texel0_color.r || \
-        combiner.alphamul[0] == &texel0_color.a || combiner.alphasub_a[0] == &texel0_color.a || combiner.alphasub_b[0] == &texel0_color.a || combiner.alphaadd[0] == &texel0_color.a || \
-        combiner.rgbmul_r[0] == &texel0_color.a)
+    if (combiner.rgbmul_r[0] == &globals.texel0_color.r || combiner.rgbsub_a_r[0] == &globals.texel0_color.r || combiner.rgbsub_b_r[0] == &globals.texel0_color.r || combiner.rgbadd_r[0] == &globals.texel0_color.r || \
+        combiner.alphamul[0] == &globals.texel0_color.a || combiner.alphasub_a[0] == &globals.texel0_color.a || combiner.alphasub_b[0] == &globals.texel0_color.a || combiner.alphaadd[0] == &globals.texel0_color.a || \
+        combiner.rgbmul_r[0] == &globals.texel0_color.a)
         texel0_used_in_cc0 = 1;
     texels_in_cc0 = texel0_used_in_cc0 || texel1_used_in_cc0;
     texels_in_cc1 = texel0_used_in_cc1 || texel1_used_in_cc1;
@@ -9380,8 +9471,8 @@ static void deduce_derivatives(void)
         (globals.other_modes.cycle_type == CYCLE_TYPE_1 && lod_frac_used_in_cc1))
         lodfracused = 1;
 
-    if ((globals.other_modes.cycle_type == CYCLE_TYPE_1 && combiner.rgbsub_a_r[1] == &noise) || \
-        (globals.other_modes.cycle_type == CYCLE_TYPE_2 && (combiner.rgbsub_a_r[0] == &noise || combiner.rgbsub_a_r[1] == &noise)) || \
+    if ((globals.other_modes.cycle_type == CYCLE_TYPE_1 && combiner.rgbsub_a_r[1] == &globals.noise) || \
+        (globals.other_modes.cycle_type == CYCLE_TYPE_2 && (combiner.rgbsub_a_r[0] == &globals.noise || combiner.rgbsub_a_r[1] == &globals.noise)) || \
         globals.other_modes.alpha_dither_sel == 2)
         globals.other_modes.f.getditherlevel = 0;
     else if (globals.other_modes.f.rgb_alpha_dither != 0xf)
