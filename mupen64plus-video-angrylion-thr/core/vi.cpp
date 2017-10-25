@@ -7,10 +7,19 @@
 #include "vi.h"
 #include "rdp.h"
 #include "common.h"
-#include "plugin.h"
 #include "rdram.h"
-#include "msg.h"
 #include "parallel_c.hpp"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#include "plugin.h"
+#include "msg.h"
+
+#ifdef __cplusplus
+}
+#endif
 
 /* START OF DEFINES */
 
@@ -693,6 +702,10 @@ static int32_t v_start;
 static int32_t h_start;
 static int32_t v_current_line;
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 unsigned angrylion_get_vi(void)
 {
    if (!config)
@@ -711,6 +724,10 @@ void angrylion_set_vi(unsigned value)
    else if (value == 0)
       config->vi.mode = VI_MODE_COLOR;
 }
+
+#ifdef __cplusplus
+}
+#endif
 
 void vi_init(struct core_config* _config)
 {
@@ -957,7 +974,7 @@ static void vi_process(void)
 
     if (config->parallel)
     {
-        y_begin = parallel_worker_id();
+        y_begin = parallel_worker->m_worker_id;
         y_inc   = parallel_worker_num();
     }
 
@@ -1228,14 +1245,14 @@ static void vi_process_fast(void)
 
    if (config->parallel)
    {
-      y_begin = parallel_worker_id();
+      y_begin = parallel_worker->m_worker_id;
       y_inc = parallel_worker_num();
    }
 
    for (int32_t y = y_begin; y < y_end; y += y_inc)
    {
       int32_t line = y * vi_width_low;
-      uint32_t* dst = prescale + y * hres_raw;
+      uint32_t* dst = (uint32_t*)(prescale + y * hres_raw);
 
       for (int32_t x = 0; x < hres_raw; x++)
       {
@@ -1285,7 +1302,7 @@ static void vi_process_fast(void)
                assert(false);
          }
 
-         gamma_filters(&r, &g, &b, ctrl);
+         gamma_filters((int32_t*)&r, (int32_t*)&g, (int32_t*)&b, ctrl);
 
          dst[x] = (r << 16) | (g << 8) | b;
       }

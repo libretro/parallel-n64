@@ -7,9 +7,18 @@
 #include "vi.h"
 #include "common.h"
 #include "rdram.h"
-#include "msg.h"
-#include "plugin.h"
 #include "parallel_c.hpp"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#include "plugin.h"
+#include "msg.h"
+
+#ifdef __cplusplus
+}
+#endif
 
 /* START OF MACROS */
 
@@ -32,9 +41,9 @@
 
 #define PIXELS_TO_BYTES(pix, siz) (((pix) << (siz)) >> 1)
 
-#define tmem16 ((uint16_t*)globals.tmem)
-#define tc16   ((uint16_t*)globals.tmem)
-#define tlut   ((uint16_t*)(&globals.tmem[0x800]))
+#define tmem16 ((uint16_t*)parallel_worker->globals.tmem)
+#define tc16   ((uint16_t*)parallel_worker->globals.tmem)
+#define tlut   ((uint16_t*)(&parallel_worker->globals.tmem[0x800]))
 
 #define GET_LOW_RGBA16_TMEM(x)  (replicated_rgba[((x) >> 1) & 0x1f])
 #define GET_MED_RGBA16_TMEM(x)  (replicated_rgba[((x) >> 6) & 0x1f])
@@ -116,19 +125,9 @@
 
 /* START OF STRUCTS */
 
-struct color
-{
-    int32_t r, g, b, a;
-};
-
 struct fbcolor
 {
     uint8_t r, g, b;
-};
-
-struct rectangle
-{
-    uint16_t xl, yl, xh, yh;
 };
 
 struct tex_rectangle
@@ -138,58 +137,6 @@ struct tex_rectangle
     int16_t s, t;
     int16_t dsdx, dtdy;
     uint32_t flip;
-};
-
-struct other_modes
-{
-    int cycle_type;
-    int persp_tex_en;
-    int detail_tex_en;
-    int sharpen_tex_en;
-    int tex_lod_en;
-    int en_tlut;
-    int tlut_type;
-    int sample_type;
-    int mid_texel;
-    int bi_lerp0;
-    int bi_lerp1;
-    int convert_one;
-    int key_en;
-    int rgb_dither_sel;
-    int alpha_dither_sel;
-    int blend_m1a_0;
-    int blend_m1a_1;
-    int blend_m1b_0;
-    int blend_m1b_1;
-    int blend_m2a_0;
-    int blend_m2a_1;
-    int blend_m2b_0;
-    int blend_m2b_1;
-    int force_blend;
-    int alpha_cvg_select;
-    int cvg_times_alpha;
-    int z_mode;
-    int cvg_dest;
-    int color_on_cvg;
-    int image_read_en;
-    int z_update_en;
-    int z_compare_en;
-    int antialias_en;
-    int z_source_sel;
-    int dither_alpha_en;
-    int alpha_compare_en;
-    struct {
-        int stalederivs;
-        int dolod;
-        int partialreject_1cycle;
-        int partialreject_2cycle;
-        int rgb_alpha_dither;
-        int realblendershiftersneeded;
-        int interpixelblendershiftersneeded;
-        int getditherlevel;
-        int textureuselevel0;
-        int textureuselevel1;
-    } f;
 };
 
 struct spansigs
@@ -213,192 +160,6 @@ static int32_t one_color = 0x100;
 static int32_t zero_color = 0x00;
 
 static int rdp_pipeline_crashed = 0;
-
-static TLS struct rdp_globals
-{
-   uint8_t cvgbuf[1024];
-   uint8_t tmem[0x1000];
-
-   uint16_t primitive_delta_z;
-
-   int blshifta;
-   int blshiftb;
-   int pastblshifta;
-   int pastblshiftb;
-   int scfield;
-   int sckeepodd;
-   int ti_format;
-   int ti_size;
-   int ti_width;
-   int fb_format;
-   int fb_size;
-   int fb_width;
-
-   int32_t iseed;
-   int32_t k0_tf;
-   int32_t k1_tf;
-   int32_t k2_tf;
-   int32_t k3_tf;
-   int32_t k4;
-   int32_t k5;
-   int32_t min_level;
-   int32_t primitive_lod_frac;
-   int32_t lod_frac;
-   int32_t noise;
-   int32_t pastrawdzmem;
-
-   uint32_t max_level;
-   uint32_t primitive_z;
-   uint32_t zb_address;
-   uint32_t ti_address;
-   uint32_t fb_address;
-   uint32_t fill_color;
-
-   struct color texel0_color;
-   struct color texel1_color;
-   struct color nexttexel_color;
-   struct color shade_color;
-   struct color combined_color;
-   struct color pixel_color;
-   struct color inv_pixel_color;
-   struct color blended_pixel_color;
-
-   struct color prim_color;
-   struct color blend_color;
-   struct color env_color;
-   struct color fog_color;
-
-   struct color memory_color;
-   struct color pre_memory_color;
-
-   struct color key_scale;
-   struct color key_center;
-   struct color key_width;
-
-   struct rectangle clip;
-   struct other_modes other_modes;
-
-   void (*fbread1_ptr)(uint32_t, uint32_t*);
-   void (*fbread2_ptr)(uint32_t, uint32_t*);
-   void (*fbwrite_ptr)(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
-   void (*tcdiv_ptr)(int32_t, int32_t, int32_t, int32_t*, int32_t*);
-
-   struct
-   {
-      int lx, rx;
-      int unscrx;
-      int validline;
-      int32_t r, g, b, a, s, t, w, z;
-      int32_t majorx[4];
-      int32_t minorx[4];
-      int32_t invalyscan[4];
-   } span[1024];
-
-   /* span states */
-   struct
-   {
-      int ds;
-      int dt;
-      int dw;
-      int dr;
-      int dg;
-      int db;
-      int da;
-      int dz;
-      int dzpix;
-
-      int drdy;
-      int dgdy;
-      int dbdy;
-      int dady;
-      int dzdy;
-      int cdr;
-      int cdg;
-      int cdb;
-      int cda;
-      int cdz;
-
-      int dsdy;
-      int dtdy;
-      int dwdy;
-   } spans;
-
-   struct tile
-   {
-      int format;
-      int size;
-      int line;
-      int tmem;
-      int palette;
-      int ct, mt, cs, ms;
-      int mask_t, shift_t, mask_s, shift_s;
-
-      uint16_t sl, tl, sh, th;
-
-      struct
-      {
-         int clampdiffs, clampdifft;
-         int clampens, clampent;
-         int masksclamped, masktclamped;
-         int notlutswitch, tlutswitch;
-      } f;
-   } tile[8];
-
-   struct
-   {
-      int32_t *i1a_r[2];
-      int32_t *i1a_g[2];
-      int32_t *i1a_b[2];
-      int32_t *i1b_a[2];
-      int32_t *i2a_r[2];
-      int32_t *i2a_g[2];
-      int32_t *i2a_b[2];
-      int32_t *i2b_a[2];
-   } blender;
-
-   struct
-   {
-      int sub_a_rgb0;
-      int sub_b_rgb0;
-      int mul_rgb0;
-      int add_rgb0;
-      int sub_a_a0;
-      int sub_b_a0;
-      int mul_a0;
-      int add_a0;
-
-      int sub_a_rgb1;
-      int sub_b_rgb1;
-      int mul_rgb1;
-      int add_rgb1;
-      int sub_a_a1;
-      int sub_b_a1;
-      int mul_a1;
-      int add_a1;
-   } combine;
-
-   struct
-   {
-      int32_t *rgbsub_a_r[2];
-      int32_t *rgbsub_a_g[2];
-      int32_t *rgbsub_a_b[2];
-      int32_t *rgbsub_b_r[2];
-      int32_t *rgbsub_b_g[2];
-      int32_t *rgbsub_b_b[2];
-      int32_t *rgbmul_r[2];
-      int32_t *rgbmul_g[2];
-      int32_t *rgbmul_b[2];
-      int32_t *rgbadd_r[2];
-      int32_t *rgbadd_g[2];
-      int32_t *rgbadd_b[2];
-
-      int32_t *alphasub_a[2];
-      int32_t *alphasub_b[2];
-      int32_t *alphamul[2];
-      int32_t *alphaadd[2];
-   } combiner;
-
-} globals;
 
 static struct
 {
@@ -490,9 +251,9 @@ static const int32_t norm_slope_table[64] = {
 
 int32_t irand(void)
 {
-    globals.iseed *= 0x343fd;
-    globals.iseed += 0x269ec3;
-    return ((globals.iseed >> 16) & 0x7fff);
+    parallel_worker->globals.iseed *= 0x343fd;
+    parallel_worker->globals.iseed += 0x269ec3;
+    return ((parallel_worker->globals.iseed >> 16) & 0x7fff);
 }
 
 static STRICTINLINE int32_t clamp(int32_t value,int32_t min,int32_t max)
@@ -770,7 +531,7 @@ static STRICTINLINE void rgb_dither(int* r, int* g, int* b, int dith)
     else
         newb = (newb & 0xf8) + 8;
 
-    if (globals.other_modes.rgb_dither_sel != 2)
+    if (parallel_worker->globals.other_modes.rgb_dither_sel != 2)
         rcomp = gcomp = bcomp = dith;
     else
     {
@@ -806,10 +567,13 @@ static STRICTINLINE void get_dither_noise(int x, int y, int* cdith, int* adith)
    if (!angrylion_get_dithering())
       return;
 
-   if (!globals.other_modes.f.getditherlevel)
-      globals.noise = ((irand() & 7) << 6) | 0x20;
+   if (!parallel_worker->globals.other_modes.f.getditherlevel)
+      parallel_worker->globals.noise = ((irand() & 7) << 6) | 0x20;
 
-   switch(globals.other_modes.f.rgb_alpha_dither)
+   if (!parallel_worker->globals.other_modes.f.getditherlevel)
+      parallel_worker->globals.noise = ((irand() & 7) << 6) | 0x20;
+
+   switch(parallel_worker->globals.other_modes.f.rgb_alpha_dither)
    {
       case 0:
          dithindex = ((y & 3) << 2) | (x & 3);
@@ -823,7 +587,7 @@ static STRICTINLINE void get_dither_noise(int x, int y, int* cdith, int* adith)
       case 2:
          dithindex = ((y & 3) << 2) | (x & 3);
          *cdith = magic_matrix[dithindex];
-         *adith = (globals.noise >> 6) & 7;
+         *adith = (parallel_worker->globals.noise >> 6) & 7;
          break;
       case 3:
          dithindex = ((y & 3) << 2) | (x & 3);
@@ -842,7 +606,7 @@ static STRICTINLINE void get_dither_noise(int x, int y, int* cdith, int* adith)
       case 6:
          dithindex = ((y & 3) << 2) | (x & 3);
          *cdith = bayer_matrix[dithindex];
-         *adith = (globals.noise >> 6) & 7;
+         *adith = (parallel_worker->globals.noise >> 6) & 7;
          break;
       case 7:
          dithindex = ((y & 3) << 2) | (x & 3);
@@ -861,7 +625,7 @@ static STRICTINLINE void get_dither_noise(int x, int y, int* cdith, int* adith)
          break;
       case 10:
          *cdith = irand();
-         *adith = (globals.noise >> 6) & 7;
+         *adith = (parallel_worker->globals.noise >> 6) & 7;
          break;
       case 11:
          *cdith = irand();
@@ -879,7 +643,7 @@ static STRICTINLINE void get_dither_noise(int x, int y, int* cdith, int* adith)
          break;
       case 14:
          *cdith = 7;
-         *adith = (globals.noise >> 6) & 7;
+         *adith = (parallel_worker->globals.noise >> 6) & 7;
          break;
       case 15:
          *cdith = 7;
@@ -900,34 +664,34 @@ static INLINE void set_blender_input(int cycle, int which, int32_t **input_r, in
          {
             if (cycle == 0)
             {
-               *input_r = &globals.pixel_color.r;
-               *input_g = &globals.pixel_color.g;
-               *input_b = &globals.pixel_color.b;
+               *input_r = &parallel_worker->globals.pixel_color.r;
+               *input_g = &parallel_worker->globals.pixel_color.g;
+               *input_b = &parallel_worker->globals.pixel_color.b;
             }
             else
             {
-               *input_r = &globals.blended_pixel_color.r;
-               *input_g = &globals.blended_pixel_color.g;
-               *input_b = &globals.blended_pixel_color.b;
+               *input_r = &parallel_worker->globals.blended_pixel_color.r;
+               *input_g = &parallel_worker->globals.blended_pixel_color.g;
+               *input_b = &parallel_worker->globals.blended_pixel_color.b;
             }
             break;
          }
 
       case 1:
-         *input_r = &globals.memory_color.r;
-         *input_g = &globals.memory_color.g;
-         *input_b = &globals.memory_color.b;
+         *input_r = &parallel_worker->globals.memory_color.r;
+         *input_g = &parallel_worker->globals.memory_color.g;
+         *input_b = &parallel_worker->globals.memory_color.b;
          break;
 
       case 2:
-         *input_r = &globals.blend_color.r;
-         *input_g = &globals.blend_color.g;
-         *input_b = &globals.blend_color.b;
+         *input_r = &parallel_worker->globals.blend_color.r;
+         *input_g = &parallel_worker->globals.blend_color.g;
+         *input_b = &parallel_worker->globals.blend_color.b;
          break;
       case 3:
-         *input_r = &globals.fog_color.r;
-         *input_g = &globals.fog_color.g;
-         *input_b = &globals.fog_color.b;
+         *input_r = &parallel_worker->globals.fog_color.r;
+         *input_g = &parallel_worker->globals.fog_color.g;
+         *input_b = &parallel_worker->globals.fog_color.b;
          break;
    }
 
@@ -936,13 +700,13 @@ static INLINE void set_blender_input(int cycle, int which, int32_t **input_r, in
       switch (b & 0x3)
       {
          case 0:
-            *input_a = &globals.pixel_color.a;
+            *input_a = &parallel_worker->globals.pixel_color.a;
             break;
          case 1:
-            *input_a = &globals.fog_color.a;
+            *input_a = &parallel_worker->globals.fog_color.a;
             break;
          case 2:
-            *input_a = &globals.shade_color.a;
+            *input_a = &parallel_worker->globals.shade_color.a;
             break;
          case 3:
             *input_a = &zero_color;
@@ -954,9 +718,9 @@ static INLINE void set_blender_input(int cycle, int which, int32_t **input_r, in
       switch (b & 0x3)
       {
          case 0:
-            *input_a = &globals.inv_pixel_color.a;
+            *input_a = &parallel_worker->globals.inv_pixel_color.a;
             break;
-         case 1:     *input_a = &globals.memory_color.a; break;
+         case 1:     *input_a = &parallel_worker->globals.memory_color.a; break;
          case 2:     *input_a = &blenderone; break;
          case 3:     *input_a = &zero_color; break;
       }
@@ -966,11 +730,11 @@ static INLINE void set_blender_input(int cycle, int which, int32_t **input_r, in
 static STRICTINLINE int alpha_compare(int32_t comb_alpha)
 {
    int32_t threshold;
-   if (!globals.other_modes.alpha_compare_en)
+   if (!parallel_worker->globals.other_modes.alpha_compare_en)
       return 1;
 
-   if (!globals.other_modes.dither_alpha_en)
-      threshold = globals.blend_color.a;
+   if (!parallel_worker->globals.other_modes.dither_alpha_en)
+      threshold = parallel_worker->globals.blend_color.a;
    else
       threshold = irand() & 0xff;
 
@@ -984,25 +748,25 @@ static STRICTINLINE void blender_equation_cycle0(int* r, int* g, int* b)
 {
     int mulb;
     int blr, blg, blb, sum;
-    int blend1a = *globals.blender.i1b_a[0] >> 3;
-    int blend2a = *globals.blender.i2b_a[0] >> 3;
+    int blend1a = *parallel_worker->globals.blender.i1b_a[0] >> 3;
+    int blend2a = *parallel_worker->globals.blender.i2b_a[0] >> 3;
 
-    if (globals.blender.i2b_a[0] == &globals.memory_color.a)
+    if (parallel_worker->globals.blender.i2b_a[0] == &parallel_worker->globals.memory_color.a)
     {
-        blend1a = (blend1a >> globals.blshifta) & 0x3C;
-        blend2a = (blend2a >> globals.blshiftb) | 3;
+        blend1a = (blend1a >> parallel_worker->globals.blshifta) & 0x3C;
+        blend2a = (blend2a >> parallel_worker->globals.blshiftb) | 3;
     }
 
     mulb = blend2a + 1;
 
 
-    blr = (*globals.blender.i1a_r[0]) * blend1a + (*globals.blender.i2a_r[0]) * mulb;
-    blg = (*globals.blender.i1a_g[0]) * blend1a + (*globals.blender.i2a_g[0]) * mulb;
-    blb = (*globals.blender.i1a_b[0]) * blend1a + (*globals.blender.i2a_b[0]) * mulb;
+    blr = (*parallel_worker->globals.blender.i1a_r[0]) * blend1a + (*parallel_worker->globals.blender.i2a_r[0]) * mulb;
+    blg = (*parallel_worker->globals.blender.i1a_g[0]) * blend1a + (*parallel_worker->globals.blender.i2a_g[0]) * mulb;
+    blb = (*parallel_worker->globals.blender.i1a_b[0]) * blend1a + (*parallel_worker->globals.blender.i2a_b[0]) * mulb;
 
 
 
-    if (!globals.other_modes.force_blend)
+    if (!parallel_worker->globals.other_modes.force_blend)
     {
 
 
@@ -1024,40 +788,40 @@ static STRICTINLINE void blender_equation_cycle0(int* r, int* g, int* b)
 
 static STRICTINLINE void blender_equation_cycle0_2(int* r, int* g, int* b)
 {
-    int blend1a = *globals.blender.i1b_a[0] >> 3;
-    int blend2a = *globals.blender.i2b_a[0] >> 3;
+    int blend1a = *parallel_worker->globals.blender.i1b_a[0] >> 3;
+    int blend2a = *parallel_worker->globals.blender.i2b_a[0] >> 3;
 
-    if (globals.blender.i2b_a[0] == &globals.memory_color.a)
+    if (parallel_worker->globals.blender.i2b_a[0] == &parallel_worker->globals.memory_color.a)
     {
-        blend1a = (blend1a >> globals.pastblshifta) & 0x3C;
-        blend2a = (blend2a >> globals.pastblshiftb) | 3;
+        blend1a = (blend1a >> parallel_worker->globals.pastblshifta) & 0x3C;
+        blend2a = (blend2a >> parallel_worker->globals.pastblshiftb) | 3;
     }
 
     blend2a += 1;
-    *r = (((*globals.blender.i1a_r[0]) * blend1a + (*globals.blender.i2a_r[0]) * blend2a) >> 5) & 0xff;
-    *g = (((*globals.blender.i1a_g[0]) * blend1a + (*globals.blender.i2a_g[0]) * blend2a) >> 5) & 0xff;
-    *b = (((*globals.blender.i1a_b[0]) * blend1a + (*globals.blender.i2a_b[0]) * blend2a) >> 5) & 0xff;
+    *r = (((*parallel_worker->globals.blender.i1a_r[0]) * blend1a + (*parallel_worker->globals.blender.i2a_r[0]) * blend2a) >> 5) & 0xff;
+    *g = (((*parallel_worker->globals.blender.i1a_g[0]) * blend1a + (*parallel_worker->globals.blender.i2a_g[0]) * blend2a) >> 5) & 0xff;
+    *b = (((*parallel_worker->globals.blender.i1a_b[0]) * blend1a + (*parallel_worker->globals.blender.i2a_b[0]) * blend2a) >> 5) & 0xff;
 }
 
 static STRICTINLINE void blender_equation_cycle1(int* r, int* g, int* b)
 {
     int mulb;
     int blr, blg, blb, sum;
-    int blend1a = *globals.blender.i1b_a[1] >> 3;
-    int blend2a = *globals.blender.i2b_a[1] >> 3;
+    int blend1a = *parallel_worker->globals.blender.i1b_a[1] >> 3;
+    int blend2a = *parallel_worker->globals.blender.i2b_a[1] >> 3;
 
-    if (globals.blender.i2b_a[1] == &globals.memory_color.a)
+    if (parallel_worker->globals.blender.i2b_a[1] == &parallel_worker->globals.memory_color.a)
     {
-        blend1a = (blend1a >> globals.blshifta) & 0x3C;
-        blend2a = (blend2a >> globals.blshiftb) | 3;
+        blend1a = (blend1a >> parallel_worker->globals.blshifta) & 0x3C;
+        blend2a = (blend2a >> parallel_worker->globals.blshiftb) | 3;
     }
 
     mulb = blend2a + 1;
-    blr = (*globals.blender.i1a_r[1]) * blend1a + (*globals.blender.i2a_r[1]) * mulb;
-    blg = (*globals.blender.i1a_g[1]) * blend1a + (*globals.blender.i2a_g[1]) * mulb;
-    blb = (*globals.blender.i1a_b[1]) * blend1a + (*globals.blender.i2a_b[1]) * mulb;
+    blr = (*parallel_worker->globals.blender.i1a_r[1]) * blend1a + (*parallel_worker->globals.blender.i2a_r[1]) * mulb;
+    blg = (*parallel_worker->globals.blender.i1a_g[1]) * blend1a + (*parallel_worker->globals.blender.i2a_g[1]) * mulb;
+    blb = (*parallel_worker->globals.blender.i1a_b[1]) * blend1a + (*parallel_worker->globals.blender.i2a_b[1]) * mulb;
 
-    if (!globals.other_modes.force_blend)
+    if (!parallel_worker->globals.other_modes.force_blend)
     {
         sum = ((blend1a & ~3) + (blend2a & ~3) + 4) << 9;
         *r = bldiv_hwaccurate_table[sum | ((blr >> 2) & 0x7ff)];
@@ -1076,35 +840,35 @@ static STRICTINLINE int blender_1cycle(uint32_t* fr, uint32_t* fg, uint32_t* fb,
 {
     int r, g, b, dontblend;
 
-    if (alpha_compare(globals.pixel_color.a))
+    if (alpha_compare(parallel_worker->globals.pixel_color.a))
     {
-       if (globals.other_modes.antialias_en ? curpixel_cvg : curpixel_cvbit)
+       if (parallel_worker->globals.other_modes.antialias_en ? curpixel_cvg : curpixel_cvbit)
        {
 
-          if (!globals.other_modes.color_on_cvg || prewrap)
+          if (!parallel_worker->globals.other_modes.color_on_cvg || prewrap)
           {
-             dontblend = (globals.other_modes.f.partialreject_1cycle && globals.pixel_color.a >= 0xff);
+             dontblend = (parallel_worker->globals.other_modes.f.partialreject_1cycle && parallel_worker->globals.pixel_color.a >= 0xff);
              if (!blend_en || dontblend)
              {
-                r = *globals.blender.i1a_r[0];
-                g = *globals.blender.i1a_g[0];
-                b = *globals.blender.i1a_b[0];
+                r = *parallel_worker->globals.blender.i1a_r[0];
+                g = *parallel_worker->globals.blender.i1a_g[0];
+                b = *parallel_worker->globals.blender.i1a_b[0];
              }
              else
              {
-                globals.inv_pixel_color.a =  (~(*globals.blender.i1b_a[0])) & 0xff;
+                parallel_worker->globals.inv_pixel_color.a =  (~(*parallel_worker->globals.blender.i1b_a[0])) & 0xff;
 
                 blender_equation_cycle0(&r, &g, &b);
              }
           }
           else
           {
-             r = *globals.blender.i2a_r[0];
-             g = *globals.blender.i2a_g[0];
-             b = *globals.blender.i2a_b[0];
+             r = *parallel_worker->globals.blender.i2a_r[0];
+             g = *parallel_worker->globals.blender.i2a_g[0];
+             b = *parallel_worker->globals.blender.i2a_b[0];
           }
 
-          if (globals.other_modes.rgb_dither_sel != 3)
+          if (parallel_worker->globals.other_modes.rgb_dither_sel != 3)
              rgb_dither(&r, &g, &b, dith);
 
           *fr = r;
@@ -1122,44 +886,44 @@ static STRICTINLINE int blender_2cycle(uint32_t* fr, uint32_t* fg, uint32_t* fb,
 
     if (alpha_compare(acalpha))
     {
-       if (globals.other_modes.antialias_en ? (curpixel_cvg) : (curpixel_cvbit))
+       if (parallel_worker->globals.other_modes.antialias_en ? (curpixel_cvg) : (curpixel_cvbit))
        {
 
-          globals.inv_pixel_color.a =  (~(*globals.blender.i1b_a[0])) & 0xff;
+          parallel_worker->globals.inv_pixel_color.a =  (~(*parallel_worker->globals.blender.i1b_a[0])) & 0xff;
           blender_equation_cycle0_2(&r, &g, &b);
 
 
-          globals.memory_color = globals.pre_memory_color;
+          parallel_worker->globals.memory_color = parallel_worker->globals.pre_memory_color;
 
-          globals.blended_pixel_color.r = r;
-          globals.blended_pixel_color.g = g;
-          globals.blended_pixel_color.b = b;
-          globals.blended_pixel_color.a = globals.pixel_color.a;
+          parallel_worker->globals.blended_pixel_color.r = r;
+          parallel_worker->globals.blended_pixel_color.g = g;
+          parallel_worker->globals.blended_pixel_color.b = b;
+          parallel_worker->globals.blended_pixel_color.a = parallel_worker->globals.pixel_color.a;
 
-          if (!globals.other_modes.color_on_cvg || prewrap)
+          if (!parallel_worker->globals.other_modes.color_on_cvg || prewrap)
           {
-             dontblend = (globals.other_modes.f.partialreject_2cycle && globals.pixel_color.a >= 0xff);
+             dontblend = (parallel_worker->globals.other_modes.f.partialreject_2cycle && parallel_worker->globals.pixel_color.a >= 0xff);
              if (!blend_en || dontblend)
              {
-                r = *globals.blender.i1a_r[1];
-                g = *globals.blender.i1a_g[1];
-                b = *globals.blender.i1a_b[1];
+                r = *parallel_worker->globals.blender.i1a_r[1];
+                g = *parallel_worker->globals.blender.i1a_g[1];
+                b = *parallel_worker->globals.blender.i1a_b[1];
              }
              else
              {
-                globals.inv_pixel_color.a =  (~(*globals.blender.i1b_a[1])) & 0xff;
+                parallel_worker->globals.inv_pixel_color.a =  (~(*parallel_worker->globals.blender.i1b_a[1])) & 0xff;
                 blender_equation_cycle1(&r, &g, &b);
              }
           }
           else
           {
-             r = *globals.blender.i2a_r[1];
-             g = *globals.blender.i2a_g[1];
-             b = *globals.blender.i2a_b[1];
+             r = *parallel_worker->globals.blender.i2a_r[1];
+             g = *parallel_worker->globals.blender.i2a_g[1];
+             b = *parallel_worker->globals.blender.i2a_b[1];
           }
 
 
-          if (globals.other_modes.rgb_dither_sel != 3)
+          if (parallel_worker->globals.other_modes.rgb_dither_sel != 3)
              rgb_dither(&r, &g, &b, dith);
           *fr = r;
           *fg = g;
@@ -1168,7 +932,7 @@ static STRICTINLINE int blender_2cycle(uint32_t* fr, uint32_t* fg, uint32_t* fb,
        }
     }
 
-    globals.memory_color = globals.pre_memory_color;
+    parallel_worker->globals.memory_color = parallel_worker->globals.pre_memory_color;
     return 0;
 }
 
@@ -1206,18 +970,18 @@ static void blender_init(void)
 
 static void rdp_set_fog_color(const uint32_t* args)
 {
-    globals.fog_color.r = (args[1] >> 24) & 0xff;
-    globals.fog_color.g = (args[1] >> 16) & 0xff;
-    globals.fog_color.b = (args[1] >>  8) & 0xff;
-    globals.fog_color.a = (args[1] >>  0) & 0xff;
+    parallel_worker->globals.fog_color.r = (args[1] >> 24) & 0xff;
+    parallel_worker->globals.fog_color.g = (args[1] >> 16) & 0xff;
+    parallel_worker->globals.fog_color.b = (args[1] >>  8) & 0xff;
+    parallel_worker->globals.fog_color.a = (args[1] >>  0) & 0xff;
 }
 
 static void rdp_set_blend_color(const uint32_t* args)
 {
-    globals.blend_color.r = (args[1] >> 24) & 0xff;
-    globals.blend_color.g = (args[1] >> 16) & 0xff;
-    globals.blend_color.b = (args[1] >>  8) & 0xff;
-    globals.blend_color.a = (args[1] >>  0) & 0xff;
+    parallel_worker->globals.blend_color.r = (args[1] >> 24) & 0xff;
+    parallel_worker->globals.blend_color.g = (args[1] >> 16) & 0xff;
+    parallel_worker->globals.blend_color.b = (args[1] >>  8) & 0xff;
+    parallel_worker->globals.blend_color.a = (args[1] >>  0) & 0xff;
 }
 
 static INLINE void set_suba_rgb_input(int32_t **input_r, int32_t **input_g, int32_t **input_b, int code)
@@ -1225,40 +989,40 @@ static INLINE void set_suba_rgb_input(int32_t **input_r, int32_t **input_g, int3
    switch (code & 0xf)
    {
       case 0:
-         *input_r = &globals.combined_color.r;
-         *input_g = &globals.combined_color.g;
-         *input_b = &globals.combined_color.b;
+         *input_r = &parallel_worker->globals.combined_color.r;
+         *input_g = &parallel_worker->globals.combined_color.g;
+         *input_b = &parallel_worker->globals.combined_color.b;
          break;
       case 1:
-         *input_r = &globals.texel0_color.r;
-         *input_g = &globals.texel0_color.g;
-         *input_b = &globals.texel0_color.b;
+         *input_r = &parallel_worker->globals.texel0_color.r;
+         *input_g = &parallel_worker->globals.texel0_color.g;
+         *input_b = &parallel_worker->globals.texel0_color.b;
          break;
       case 2:
-         *input_r = &globals.texel1_color.r;
-         *input_g = &globals.texel1_color.g;
-         *input_b = &globals.texel1_color.b;
+         *input_r = &parallel_worker->globals.texel1_color.r;
+         *input_g = &parallel_worker->globals.texel1_color.g;
+         *input_b = &parallel_worker->globals.texel1_color.b;
          break;
       case 3:
-         *input_r = &globals.prim_color.r;
-         *input_g = &globals.prim_color.g; 
-         *input_b = &globals.prim_color.b;
+         *input_r = &parallel_worker->globals.prim_color.r;
+         *input_g = &parallel_worker->globals.prim_color.g; 
+         *input_b = &parallel_worker->globals.prim_color.b;
          break;
       case 4:
-         *input_r = &globals.shade_color.r;
-         *input_g = &globals.shade_color.g;
-         *input_b = &globals.shade_color.b;
+         *input_r = &parallel_worker->globals.shade_color.r;
+         *input_g = &parallel_worker->globals.shade_color.g;
+         *input_b = &parallel_worker->globals.shade_color.b;
          break;
       case 5:
-         *input_r = &globals.env_color.r; 
-         *input_g = &globals.env_color.g;
-         *input_b = &globals.env_color.b;
+         *input_r = &parallel_worker->globals.env_color.r; 
+         *input_g = &parallel_worker->globals.env_color.g;
+         *input_b = &parallel_worker->globals.env_color.b;
          break;
       case 6:     *input_r = &one_color;          *input_g = &one_color;          *input_b = &one_color;      break;
       case 7:
-                  *input_r = &globals.noise;
-                  *input_g = &globals.noise;
-                  *input_b = &globals.noise;
+                  *input_r = &parallel_worker->globals.noise;
+                  *input_g = &parallel_worker->globals.noise;
+                  *input_b = &parallel_worker->globals.noise;
                   break;
       case 8: case 9: case 10: case 11: case 12: case 13: case 14: case 15:
                   *input_r = &zero_color;
@@ -1273,44 +1037,44 @@ static INLINE void set_subb_rgb_input(int32_t **input_r, int32_t **input_g, int3
     switch (code & 0xf)
     {
        case 0:
-          *input_r = &globals.combined_color.r;
-          *input_g = &globals.combined_color.g;
-          *input_b = &globals.combined_color.b;
+          *input_r = &parallel_worker->globals.combined_color.r;
+          *input_g = &parallel_worker->globals.combined_color.g;
+          *input_b = &parallel_worker->globals.combined_color.b;
           break;
        case 1:
-          *input_r = &globals.texel0_color.r;
-          *input_g = &globals.texel0_color.g;
-          *input_b = &globals.texel0_color.b;
+          *input_r = &parallel_worker->globals.texel0_color.r;
+          *input_g = &parallel_worker->globals.texel0_color.g;
+          *input_b = &parallel_worker->globals.texel0_color.b;
           break;
        case 2:
-          *input_r = &globals.texel1_color.r;
-          *input_g = &globals.texel1_color.g;
-          *input_b = &globals.texel1_color.b;
+          *input_r = &parallel_worker->globals.texel1_color.r;
+          *input_g = &parallel_worker->globals.texel1_color.g;
+          *input_b = &parallel_worker->globals.texel1_color.b;
           break;
        case 3:
-          *input_r = &globals.prim_color.r;
-          *input_g = &globals.prim_color.g;
-          *input_b = &globals.prim_color.b;
+          *input_r = &parallel_worker->globals.prim_color.r;
+          *input_g = &parallel_worker->globals.prim_color.g;
+          *input_b = &parallel_worker->globals.prim_color.b;
           break;
        case 4:
-          *input_r = &globals.shade_color.r;
-          *input_g = &globals.shade_color.g;
-          *input_b = &globals.shade_color.b;
+          *input_r = &parallel_worker->globals.shade_color.r;
+          *input_g = &parallel_worker->globals.shade_color.g;
+          *input_b = &parallel_worker->globals.shade_color.b;
           break;
        case 5:
-          *input_r = &globals.env_color.r;
-          *input_g = &globals.env_color.g;
-          *input_b = &globals.env_color.b;
+          *input_r = &parallel_worker->globals.env_color.r;
+          *input_g = &parallel_worker->globals.env_color.g;
+          *input_b = &parallel_worker->globals.env_color.b;
           break;
        case 6:
-          *input_r = &globals.key_center.r;
-          *input_g = &globals.key_center.g;
-          *input_b = &globals.key_center.b;
+          *input_r = &parallel_worker->globals.key_center.r;
+          *input_g = &parallel_worker->globals.key_center.g;
+          *input_b = &parallel_worker->globals.key_center.b;
           break;
        case 7:
-          *input_r = &globals.k4;
-          *input_g = &globals.k4;
-          *input_b = &globals.k4;
+          *input_r = &parallel_worker->globals.k4;
+          *input_g = &parallel_worker->globals.k4;
+          *input_b = &parallel_worker->globals.k4;
           break;
        case 8: case 9: case 10: case 11: case 12: case 13: case 14: case 15:
           *input_r = &zero_color;
@@ -1325,52 +1089,52 @@ static INLINE void set_mul_rgb_input(int32_t **input_r, int32_t **input_g, int32
     switch (code & 0x1f)
     {
         case 0:
-           *input_r = &globals.combined_color.r;
-           *input_g = &globals.combined_color.g;
-           *input_b = &globals.combined_color.b;
+           *input_r = &parallel_worker->globals.combined_color.r;
+           *input_g = &parallel_worker->globals.combined_color.g;
+           *input_b = &parallel_worker->globals.combined_color.b;
            break;
         case 1:
-           *input_r = &globals.texel0_color.r;
-           *input_g = &globals.texel0_color.g;
-           *input_b = &globals.texel0_color.b;
+           *input_r = &parallel_worker->globals.texel0_color.r;
+           *input_g = &parallel_worker->globals.texel0_color.g;
+           *input_b = &parallel_worker->globals.texel0_color.b;
            break;
         case 2:
-           *input_r = &globals.texel1_color.r;
-           *input_g = &globals.texel1_color.g;
-           *input_b = &globals.texel1_color.b;
+           *input_r = &parallel_worker->globals.texel1_color.r;
+           *input_g = &parallel_worker->globals.texel1_color.g;
+           *input_b = &parallel_worker->globals.texel1_color.b;
            break;
         case 3: 
-           *input_r = &globals.prim_color.r; 
-           *input_g = &globals.prim_color.g;
-           *input_b = &globals.prim_color.b;
+           *input_r = &parallel_worker->globals.prim_color.r; 
+           *input_g = &parallel_worker->globals.prim_color.g;
+           *input_b = &parallel_worker->globals.prim_color.b;
            break;
-        case 4:     *input_r = &globals.shade_color.r;      *input_g = &globals.shade_color.g;      *input_b = &globals.shade_color.b;      break;
-        case 5:     *input_r = &globals.env_color.r;        *input_g = &globals.env_color.g;        *input_b = &globals.env_color.b;        break;
-        case 6:     *input_r = &globals.key_scale.r;        *input_g = &globals.key_scale.g;        *input_b = &globals.key_scale.b;        break;
+        case 4:     *input_r = &parallel_worker->globals.shade_color.r;      *input_g = &parallel_worker->globals.shade_color.g;      *input_b = &parallel_worker->globals.shade_color.b;      break;
+        case 5:     *input_r = &parallel_worker->globals.env_color.r;        *input_g = &parallel_worker->globals.env_color.g;        *input_b = &parallel_worker->globals.env_color.b;        break;
+        case 6:     *input_r = &parallel_worker->globals.key_scale.r;        *input_g = &parallel_worker->globals.key_scale.g;        *input_b = &parallel_worker->globals.key_scale.b;        break;
         case 7: 
-                    *input_r = &globals.combined_color.a;
-                    *input_g = &globals.combined_color.a;
-                    *input_b = &globals.combined_color.a;
+                    *input_r = &parallel_worker->globals.combined_color.a;
+                    *input_g = &parallel_worker->globals.combined_color.a;
+                    *input_b = &parallel_worker->globals.combined_color.a;
                     break;
-        case 8:     *input_r = &globals.texel0_color.a;     *input_g = &globals.texel0_color.a;     *input_b = &globals.texel0_color.a;     break;
-        case 9:     *input_r = &globals.texel1_color.a;     *input_g = &globals.texel1_color.a;     *input_b = &globals.texel1_color.a;     break;
-        case 10:    *input_r = &globals.prim_color.a;       *input_g = &globals.prim_color.a;       *input_b = &globals.prim_color.a;       break;
-        case 11:    *input_r = &globals.shade_color.a;      *input_g = &globals.shade_color.a;      *input_b = &globals.shade_color.a;      break;
-        case 12:    *input_r = &globals.env_color.a;        *input_g = &globals.env_color.a;        *input_b = &globals.env_color.a;        break;
+        case 8:     *input_r = &parallel_worker->globals.texel0_color.a;     *input_g = &parallel_worker->globals.texel0_color.a;     *input_b = &parallel_worker->globals.texel0_color.a;     break;
+        case 9:     *input_r = &parallel_worker->globals.texel1_color.a;     *input_g = &parallel_worker->globals.texel1_color.a;     *input_b = &parallel_worker->globals.texel1_color.a;     break;
+        case 10:    *input_r = &parallel_worker->globals.prim_color.a;       *input_g = &parallel_worker->globals.prim_color.a;       *input_b = &parallel_worker->globals.prim_color.a;       break;
+        case 11:    *input_r = &parallel_worker->globals.shade_color.a;      *input_g = &parallel_worker->globals.shade_color.a;      *input_b = &parallel_worker->globals.shade_color.a;      break;
+        case 12:    *input_r = &parallel_worker->globals.env_color.a;        *input_g = &parallel_worker->globals.env_color.a;        *input_b = &parallel_worker->globals.env_color.a;        break;
         case 13:
-                    *input_r = &globals.lod_frac;
-                    *input_g = &globals.lod_frac;
-                    *input_b = &globals.lod_frac;
+                    *input_r = &parallel_worker->globals.lod_frac;
+                    *input_g = &parallel_worker->globals.lod_frac;
+                    *input_b = &parallel_worker->globals.lod_frac;
                     break;
         case 14:
-                    *input_r = &globals.primitive_lod_frac;
-                    *input_g = &globals.primitive_lod_frac;
-                    *input_b = &globals.primitive_lod_frac;
+                    *input_r = &parallel_worker->globals.primitive_lod_frac;
+                    *input_g = &parallel_worker->globals.primitive_lod_frac;
+                    *input_b = &parallel_worker->globals.primitive_lod_frac;
                     break;
         case 15:
-                    *input_r = &globals.k5;
-                    *input_g = &globals.k5;
-                    *input_b = &globals.k5;
+                    *input_r = &parallel_worker->globals.k5;
+                    *input_g = &parallel_worker->globals.k5;
+                    *input_b = &parallel_worker->globals.k5;
                     break;
         case 16: case 17: case 18: case 19: case 20: case 21: case 22: case 23:
         case 24: case 25: case 26: case 27: case 28: case 29: case 30: case 31:
@@ -1385,15 +1149,15 @@ static INLINE void set_add_rgb_input(int32_t **input_r, int32_t **input_g, int32
     switch (code & 0x7)
     {
         case 0:
-           *input_r = &globals.combined_color.r;
-           *input_g = &globals.combined_color.g;
-           *input_b = &globals.combined_color.b;
+           *input_r = &parallel_worker->globals.combined_color.r;
+           *input_g = &parallel_worker->globals.combined_color.g;
+           *input_b = &parallel_worker->globals.combined_color.b;
            break;
-        case 1:     *input_r = &globals.texel0_color.r;     *input_g = &globals.texel0_color.g;     *input_b = &globals.texel0_color.b;     break;
-        case 2:     *input_r = &globals.texel1_color.r;     *input_g = &globals.texel1_color.g;     *input_b = &globals.texel1_color.b;     break;
-        case 3:     *input_r = &globals.prim_color.r;       *input_g = &globals.prim_color.g;       *input_b = &globals.prim_color.b;       break;
-        case 4:     *input_r = &globals.shade_color.r;      *input_g = &globals.shade_color.g;      *input_b = &globals.shade_color.b;      break;
-        case 5:     *input_r = &globals.env_color.r;        *input_g = &globals.env_color.g;        *input_b = &globals.env_color.b;        break;
+        case 1:     *input_r = &parallel_worker->globals.texel0_color.r;     *input_g = &parallel_worker->globals.texel0_color.g;     *input_b = &parallel_worker->globals.texel0_color.b;     break;
+        case 2:     *input_r = &parallel_worker->globals.texel1_color.r;     *input_g = &parallel_worker->globals.texel1_color.g;     *input_b = &parallel_worker->globals.texel1_color.b;     break;
+        case 3:     *input_r = &parallel_worker->globals.prim_color.r;       *input_g = &parallel_worker->globals.prim_color.g;       *input_b = &parallel_worker->globals.prim_color.b;       break;
+        case 4:     *input_r = &parallel_worker->globals.shade_color.r;      *input_g = &parallel_worker->globals.shade_color.g;      *input_b = &parallel_worker->globals.shade_color.b;      break;
+        case 5:     *input_r = &parallel_worker->globals.env_color.r;        *input_g = &parallel_worker->globals.env_color.g;        *input_b = &parallel_worker->globals.env_color.b;        break;
         case 6:     *input_r = &one_color;          *input_g = &one_color;          *input_b = &one_color;          break;
         case 7:     *input_r = &zero_color;         *input_g = &zero_color;         *input_b = &zero_color;         break;
     }
@@ -1404,13 +1168,13 @@ static INLINE void set_sub_alpha_input(int32_t **input, int code)
     switch (code & 0x7)
     {
         case 0: 
-           *input = &globals.combined_color.a;
+           *input = &parallel_worker->globals.combined_color.a;
            break;
-        case 1:     *input = &globals.texel0_color.a; break;
-        case 2:     *input = &globals.texel1_color.a; break;
-        case 3:     *input = &globals.prim_color.a; break;
-        case 4:     *input = &globals.shade_color.a; break;
-        case 5:     *input = &globals.env_color.a; break;
+        case 1:     *input = &parallel_worker->globals.texel0_color.a; break;
+        case 2:     *input = &parallel_worker->globals.texel1_color.a; break;
+        case 3:     *input = &parallel_worker->globals.prim_color.a; break;
+        case 4:     *input = &parallel_worker->globals.shade_color.a; break;
+        case 5:     *input = &parallel_worker->globals.env_color.a; break;
         case 6:     *input = &one_color; break;
         case 7:     *input = &zero_color; break;
     }
@@ -1420,14 +1184,14 @@ static INLINE void set_mul_alpha_input(int32_t **input, int code)
 {
     switch (code & 0x7)
     {
-        case 0:     *input = &globals.lod_frac; break;
-        case 1:     *input = &globals.texel0_color.a; break;
-        case 2:     *input = &globals.texel1_color.a; break;
-        case 3:     *input = &globals.prim_color.a; break;
-        case 4:     *input = &globals.shade_color.a; break;
-        case 5:     *input = &globals.env_color.a; break;
+        case 0:     *input = &parallel_worker->globals.lod_frac; break;
+        case 1:     *input = &parallel_worker->globals.texel0_color.a; break;
+        case 2:     *input = &parallel_worker->globals.texel1_color.a; break;
+        case 3:     *input = &parallel_worker->globals.prim_color.a; break;
+        case 4:     *input = &parallel_worker->globals.shade_color.a; break;
+        case 5:     *input = &parallel_worker->globals.env_color.a; break;
         case 6:
-                    *input = &globals.primitive_lod_frac;
+                    *input = &parallel_worker->globals.primitive_lod_frac;
                     break;
         case 7:     *input = &zero_color; break;
     }
@@ -1468,17 +1232,17 @@ static STRICTINLINE int32_t chroma_key_min(struct color* col)
     if (redkey > 0)
         redkey = ((redkey & 0xf) == 8) ? (-redkey + 0x10) : (-redkey);
 
-    redkey = (globals.key_width.r << 4) + redkey;
+    redkey = (parallel_worker->globals.key_width.r << 4) + redkey;
 
     if (greenkey > 0)
         greenkey = ((greenkey & 0xf) == 8) ? (-greenkey + 0x10) : (-greenkey);
 
-    greenkey = (globals.key_width.g << 4) + greenkey;
+    greenkey = (parallel_worker->globals.key_width.g << 4) + greenkey;
 
     if (bluekey > 0)
         bluekey = ((bluekey & 0xf) == 8) ? (-bluekey + 0x10) : (-bluekey);
 
-    bluekey = (globals.key_width.b << 4) + bluekey;
+    bluekey = (parallel_worker->globals.key_width.b << 4) + bluekey;
 
     keyalpha = (redkey < greenkey) ? redkey : greenkey;
     keyalpha = (bluekey < keyalpha) ? bluekey : keyalpha;
@@ -1492,90 +1256,90 @@ static STRICTINLINE void combiner_1cycle(int adseed, uint32_t* curpixel_cvg)
     int32_t keyalpha, temp;
     struct color chromabypass;
 
-    if (globals.other_modes.key_en)
+    if (parallel_worker->globals.other_modes.key_en)
     {
-        chromabypass.r = *globals.combiner.rgbsub_a_r[1];
-        chromabypass.g = *globals.combiner.rgbsub_a_g[1];
-        chromabypass.b = *globals.combiner.rgbsub_a_b[1];
+        chromabypass.r = *parallel_worker->globals.combiner.rgbsub_a_r[1];
+        chromabypass.g = *parallel_worker->globals.combiner.rgbsub_a_g[1];
+        chromabypass.b = *parallel_worker->globals.combiner.rgbsub_a_b[1];
     }
 
-    if (globals.combiner.rgbmul_r[1] != &zero_color)
+    if (parallel_worker->globals.combiner.rgbmul_r[1] != &zero_color)
     {
-        globals.combined_color.r = color_combiner_equation(*globals.combiner.rgbsub_a_r[1],*globals.combiner.rgbsub_b_r[1],*globals.combiner.rgbmul_r[1],*globals.combiner.rgbadd_r[1]);
-        globals.combined_color.g = color_combiner_equation(*globals.combiner.rgbsub_a_g[1],*globals.combiner.rgbsub_b_g[1],*globals.combiner.rgbmul_g[1],*globals.combiner.rgbadd_g[1]);
-        globals.combined_color.b = color_combiner_equation(*globals.combiner.rgbsub_a_b[1],*globals.combiner.rgbsub_b_b[1],*globals.combiner.rgbmul_b[1],*globals.combiner.rgbadd_b[1]);
-    }
-    else
-    {
-        globals.combined_color.r = ((special_9bit_exttable[*globals.combiner.rgbadd_r[1]] << 8) + 0x80) & 0x1ffff;
-        globals.combined_color.g = ((special_9bit_exttable[*globals.combiner.rgbadd_g[1]] << 8) + 0x80) & 0x1ffff;
-        globals.combined_color.b = ((special_9bit_exttable[*globals.combiner.rgbadd_b[1]] << 8) + 0x80) & 0x1ffff;
-    }
-
-    if (globals.combiner.alphamul[1] != &zero_color)
-        globals.combined_color.a = alpha_combiner_equation(*globals.combiner.alphasub_a[1],*globals.combiner.alphasub_b[1],*globals.combiner.alphamul[1],*globals.combiner.alphaadd[1]);
-    else
-        globals.combined_color.a = special_9bit_exttable[*globals.combiner.alphaadd[1]] & 0x1ff;
-
-    globals.pixel_color.a = special_9bit_clamptable[globals.combined_color.a];
-    if (globals.pixel_color.a == 0xff)
-        globals.pixel_color.a = 0x100;
-
-    if (!globals.other_modes.key_en)
-    {
-
-        globals.combined_color.r >>= 8;
-        globals.combined_color.g >>= 8;
-        globals.combined_color.b >>= 8;
-        globals.pixel_color.r = special_9bit_clamptable[globals.combined_color.r];
-        globals.pixel_color.g = special_9bit_clamptable[globals.combined_color.g];
-        globals.pixel_color.b = special_9bit_clamptable[globals.combined_color.b];
+        parallel_worker->globals.combined_color.r = color_combiner_equation(*parallel_worker->globals.combiner.rgbsub_a_r[1],*parallel_worker->globals.combiner.rgbsub_b_r[1],*parallel_worker->globals.combiner.rgbmul_r[1],*parallel_worker->globals.combiner.rgbadd_r[1]);
+        parallel_worker->globals.combined_color.g = color_combiner_equation(*parallel_worker->globals.combiner.rgbsub_a_g[1],*parallel_worker->globals.combiner.rgbsub_b_g[1],*parallel_worker->globals.combiner.rgbmul_g[1],*parallel_worker->globals.combiner.rgbadd_g[1]);
+        parallel_worker->globals.combined_color.b = color_combiner_equation(*parallel_worker->globals.combiner.rgbsub_a_b[1],*parallel_worker->globals.combiner.rgbsub_b_b[1],*parallel_worker->globals.combiner.rgbmul_b[1],*parallel_worker->globals.combiner.rgbadd_b[1]);
     }
     else
     {
-        keyalpha = chroma_key_min(&globals.combined_color);
+        parallel_worker->globals.combined_color.r = ((special_9bit_exttable[*parallel_worker->globals.combiner.rgbadd_r[1]] << 8) + 0x80) & 0x1ffff;
+        parallel_worker->globals.combined_color.g = ((special_9bit_exttable[*parallel_worker->globals.combiner.rgbadd_g[1]] << 8) + 0x80) & 0x1ffff;
+        parallel_worker->globals.combined_color.b = ((special_9bit_exttable[*parallel_worker->globals.combiner.rgbadd_b[1]] << 8) + 0x80) & 0x1ffff;
+    }
 
-        globals.pixel_color.r = special_9bit_clamptable[chromabypass.r];
-        globals.pixel_color.g = special_9bit_clamptable[chromabypass.g];
-        globals.pixel_color.b = special_9bit_clamptable[chromabypass.b];
+    if (parallel_worker->globals.combiner.alphamul[1] != &zero_color)
+        parallel_worker->globals.combined_color.a = alpha_combiner_equation(*parallel_worker->globals.combiner.alphasub_a[1],*parallel_worker->globals.combiner.alphasub_b[1],*parallel_worker->globals.combiner.alphamul[1],*parallel_worker->globals.combiner.alphaadd[1]);
+    else
+        parallel_worker->globals.combined_color.a = special_9bit_exttable[*parallel_worker->globals.combiner.alphaadd[1]] & 0x1ff;
+
+    parallel_worker->globals.pixel_color.a = special_9bit_clamptable[parallel_worker->globals.combined_color.a];
+    if (parallel_worker->globals.pixel_color.a == 0xff)
+        parallel_worker->globals.pixel_color.a = 0x100;
+
+    if (!parallel_worker->globals.other_modes.key_en)
+    {
+
+        parallel_worker->globals.combined_color.r >>= 8;
+        parallel_worker->globals.combined_color.g >>= 8;
+        parallel_worker->globals.combined_color.b >>= 8;
+        parallel_worker->globals.pixel_color.r = special_9bit_clamptable[parallel_worker->globals.combined_color.r];
+        parallel_worker->globals.pixel_color.g = special_9bit_clamptable[parallel_worker->globals.combined_color.g];
+        parallel_worker->globals.pixel_color.b = special_9bit_clamptable[parallel_worker->globals.combined_color.b];
+    }
+    else
+    {
+        keyalpha = chroma_key_min(&parallel_worker->globals.combined_color);
+
+        parallel_worker->globals.pixel_color.r = special_9bit_clamptable[chromabypass.r];
+        parallel_worker->globals.pixel_color.g = special_9bit_clamptable[chromabypass.g];
+        parallel_worker->globals.pixel_color.b = special_9bit_clamptable[chromabypass.b];
 
 
-        globals.combined_color.r >>= 8;
-        globals.combined_color.g >>= 8;
-        globals.combined_color.b >>= 8;
+        parallel_worker->globals.combined_color.r >>= 8;
+        parallel_worker->globals.combined_color.g >>= 8;
+        parallel_worker->globals.combined_color.b >>= 8;
     }
 
 
-    if (globals.other_modes.cvg_times_alpha)
+    if (parallel_worker->globals.other_modes.cvg_times_alpha)
     {
-        temp = (globals.pixel_color.a * (*curpixel_cvg) + 4) >> 3;
+        temp = (parallel_worker->globals.pixel_color.a * (*curpixel_cvg) + 4) >> 3;
         *curpixel_cvg = (temp >> 5) & 0xf;
     }
 
-    if (!globals.other_modes.alpha_cvg_select)
+    if (!parallel_worker->globals.other_modes.alpha_cvg_select)
     {
-        if (!globals.other_modes.key_en)
+        if (!parallel_worker->globals.other_modes.key_en)
         {
-            globals.pixel_color.a += adseed;
-            if (globals.pixel_color.a & 0x100)
-                globals.pixel_color.a = 0xff;
+            parallel_worker->globals.pixel_color.a += adseed;
+            if (parallel_worker->globals.pixel_color.a & 0x100)
+                parallel_worker->globals.pixel_color.a = 0xff;
         }
         else
-            globals.pixel_color.a = keyalpha;
+            parallel_worker->globals.pixel_color.a = keyalpha;
     }
     else
     {
-        if (globals.other_modes.cvg_times_alpha)
-            globals.pixel_color.a = temp;
+        if (parallel_worker->globals.other_modes.cvg_times_alpha)
+            parallel_worker->globals.pixel_color.a = temp;
         else
-            globals.pixel_color.a = (*curpixel_cvg) << 5;
-        if (globals.pixel_color.a > 0xff)
-            globals.pixel_color.a = 0xff;
+            parallel_worker->globals.pixel_color.a = (*curpixel_cvg) << 5;
+        if (parallel_worker->globals.pixel_color.a > 0xff)
+            parallel_worker->globals.pixel_color.a = 0xff;
     }
 
-    globals.shade_color.a += adseed;
-    if (globals.shade_color.a & 0x100)
-        globals.shade_color.a = 0xff;
+    parallel_worker->globals.shade_color.a += adseed;
+    if (parallel_worker->globals.shade_color.a & 0x100)
+        parallel_worker->globals.shade_color.a = 0xff;
 }
 
 static STRICTINLINE void combiner_2cycle(int adseed, uint32_t* curpixel_cvg, int32_t* acalpha)
@@ -1583,41 +1347,41 @@ static STRICTINLINE void combiner_2cycle(int adseed, uint32_t* curpixel_cvg, int
     int32_t keyalpha, temp;
     struct color chromabypass;
 
-    if (globals.combiner.rgbmul_r[0] != &zero_color)
+    if (parallel_worker->globals.combiner.rgbmul_r[0] != &zero_color)
     {
-        globals.combined_color.r = color_combiner_equation(*globals.combiner.rgbsub_a_r[0],*globals.combiner.rgbsub_b_r[0],*globals.combiner.rgbmul_r[0],*globals.combiner.rgbadd_r[0]);
-        globals.combined_color.g = color_combiner_equation(*globals.combiner.rgbsub_a_g[0],*globals.combiner.rgbsub_b_g[0],*globals.combiner.rgbmul_g[0],*globals.combiner.rgbadd_g[0]);
-        globals.combined_color.b = color_combiner_equation(*globals.combiner.rgbsub_a_b[0],*globals.combiner.rgbsub_b_b[0],*globals.combiner.rgbmul_b[0],*globals.combiner.rgbadd_b[0]);
+        parallel_worker->globals.combined_color.r = color_combiner_equation(*parallel_worker->globals.combiner.rgbsub_a_r[0],*parallel_worker->globals.combiner.rgbsub_b_r[0],*parallel_worker->globals.combiner.rgbmul_r[0],*parallel_worker->globals.combiner.rgbadd_r[0]);
+        parallel_worker->globals.combined_color.g = color_combiner_equation(*parallel_worker->globals.combiner.rgbsub_a_g[0],*parallel_worker->globals.combiner.rgbsub_b_g[0],*parallel_worker->globals.combiner.rgbmul_g[0],*parallel_worker->globals.combiner.rgbadd_g[0]);
+        parallel_worker->globals.combined_color.b = color_combiner_equation(*parallel_worker->globals.combiner.rgbsub_a_b[0],*parallel_worker->globals.combiner.rgbsub_b_b[0],*parallel_worker->globals.combiner.rgbmul_b[0],*parallel_worker->globals.combiner.rgbadd_b[0]);
     }
     else
     {
-        globals.combined_color.r = ((special_9bit_exttable[*globals.combiner.rgbadd_r[0]] << 8) + 0x80) & 0x1ffff;
-        globals.combined_color.g = ((special_9bit_exttable[*globals.combiner.rgbadd_g[0]] << 8) + 0x80) & 0x1ffff;
-        globals.combined_color.b = ((special_9bit_exttable[*globals.combiner.rgbadd_b[0]] << 8) + 0x80) & 0x1ffff;
+        parallel_worker->globals.combined_color.r = ((special_9bit_exttable[*parallel_worker->globals.combiner.rgbadd_r[0]] << 8) + 0x80) & 0x1ffff;
+        parallel_worker->globals.combined_color.g = ((special_9bit_exttable[*parallel_worker->globals.combiner.rgbadd_g[0]] << 8) + 0x80) & 0x1ffff;
+        parallel_worker->globals.combined_color.b = ((special_9bit_exttable[*parallel_worker->globals.combiner.rgbadd_b[0]] << 8) + 0x80) & 0x1ffff;
     }
 
-    if (globals.combiner.alphamul[0] != &zero_color)
-        globals.combined_color.a = alpha_combiner_equation(*globals.combiner.alphasub_a[0],*globals.combiner.alphasub_b[0],*globals.combiner.alphamul[0],*globals.combiner.alphaadd[0]);
+    if (parallel_worker->globals.combiner.alphamul[0] != &zero_color)
+        parallel_worker->globals.combined_color.a = alpha_combiner_equation(*parallel_worker->globals.combiner.alphasub_a[0],*parallel_worker->globals.combiner.alphasub_b[0],*parallel_worker->globals.combiner.alphamul[0],*parallel_worker->globals.combiner.alphaadd[0]);
     else
-        globals.combined_color.a = special_9bit_exttable[*globals.combiner.alphaadd[0]] & 0x1ff;
+        parallel_worker->globals.combined_color.a = special_9bit_exttable[*parallel_worker->globals.combiner.alphaadd[0]] & 0x1ff;
 
 
 
-    if (globals.other_modes.alpha_compare_en)
+    if (parallel_worker->globals.other_modes.alpha_compare_en)
     {
-        if (globals.other_modes.key_en)
-            keyalpha = chroma_key_min(&globals.combined_color);
+        if (parallel_worker->globals.other_modes.key_en)
+            keyalpha = chroma_key_min(&parallel_worker->globals.combined_color);
 
-        int32_t preacalpha = special_9bit_clamptable[globals.combined_color.a];
+        int32_t preacalpha = special_9bit_clamptable[parallel_worker->globals.combined_color.a];
         if (preacalpha == 0xff)
             preacalpha = 0x100;
 
-        if (globals.other_modes.cvg_times_alpha)
+        if (parallel_worker->globals.other_modes.cvg_times_alpha)
             temp = (preacalpha * (*curpixel_cvg) + 4) >> 3;
 
-        if (!globals.other_modes.alpha_cvg_select)
+        if (!parallel_worker->globals.other_modes.alpha_cvg_select)
         {
-            if (!globals.other_modes.key_en)
+            if (!parallel_worker->globals.other_modes.key_en)
             {
                 preacalpha += adseed;
                 if (preacalpha & 0x100)
@@ -1628,7 +1392,7 @@ static STRICTINLINE void combiner_2cycle(int adseed, uint32_t* curpixel_cvg, int
         }
         else
         {
-            if (globals.other_modes.cvg_times_alpha)
+            if (parallel_worker->globals.other_modes.cvg_times_alpha)
                 preacalpha = temp;
             else
                 preacalpha = (*curpixel_cvg) << 5;
@@ -1643,133 +1407,133 @@ static STRICTINLINE void combiner_2cycle(int adseed, uint32_t* curpixel_cvg, int
 
 
 
-    globals.combined_color.r >>= 8;
-    globals.combined_color.g >>= 8;
-    globals.combined_color.b >>= 8;
+    parallel_worker->globals.combined_color.r >>= 8;
+    parallel_worker->globals.combined_color.g >>= 8;
+    parallel_worker->globals.combined_color.b >>= 8;
 
 
-    globals.texel0_color = globals.texel1_color;
-    globals.texel1_color = globals.nexttexel_color;
-
-
-
+    parallel_worker->globals.texel0_color = parallel_worker->globals.texel1_color;
+    parallel_worker->globals.texel1_color = parallel_worker->globals.nexttexel_color;
 
 
 
 
 
 
-    if (globals.other_modes.key_en)
+
+
+
+    if (parallel_worker->globals.other_modes.key_en)
     {
-        chromabypass.r = *globals.combiner.rgbsub_a_r[1];
-        chromabypass.g = *globals.combiner.rgbsub_a_g[1];
-        chromabypass.b = *globals.combiner.rgbsub_a_b[1];
+        chromabypass.r = *parallel_worker->globals.combiner.rgbsub_a_r[1];
+        chromabypass.g = *parallel_worker->globals.combiner.rgbsub_a_g[1];
+        chromabypass.b = *parallel_worker->globals.combiner.rgbsub_a_b[1];
     }
 
-    if (globals.combiner.rgbmul_r[1] != &zero_color)
+    if (parallel_worker->globals.combiner.rgbmul_r[1] != &zero_color)
     {
-        globals.combined_color.r = color_combiner_equation(*globals.combiner.rgbsub_a_r[1],*globals.combiner.rgbsub_b_r[1],*globals.combiner.rgbmul_r[1],*globals.combiner.rgbadd_r[1]);
-        globals.combined_color.g = color_combiner_equation(*globals.combiner.rgbsub_a_g[1],*globals.combiner.rgbsub_b_g[1],*globals.combiner.rgbmul_g[1],*globals.combiner.rgbadd_g[1]);
-        globals.combined_color.b = color_combiner_equation(*globals.combiner.rgbsub_a_b[1],*globals.combiner.rgbsub_b_b[1],*globals.combiner.rgbmul_b[1],*globals.combiner.rgbadd_b[1]);
-    }
-    else
-    {
-        globals.combined_color.r = ((special_9bit_exttable[*globals.combiner.rgbadd_r[1]] << 8) + 0x80) & 0x1ffff;
-        globals.combined_color.g = ((special_9bit_exttable[*globals.combiner.rgbadd_g[1]] << 8) + 0x80) & 0x1ffff;
-        globals.combined_color.b = ((special_9bit_exttable[*globals.combiner.rgbadd_b[1]] << 8) + 0x80) & 0x1ffff;
-    }
-
-    if (globals.combiner.alphamul[1] != &zero_color)
-        globals.combined_color.a = alpha_combiner_equation(*globals.combiner.alphasub_a[1],*globals.combiner.alphasub_b[1],*globals.combiner.alphamul[1],*globals.combiner.alphaadd[1]);
-    else
-        globals.combined_color.a = special_9bit_exttable[*globals.combiner.alphaadd[1]] & 0x1ff;
-
-    if (!globals.other_modes.key_en)
-    {
-
-        globals.combined_color.r >>= 8;
-        globals.combined_color.g >>= 8;
-        globals.combined_color.b >>= 8;
-
-        globals.pixel_color.r = special_9bit_clamptable[globals.combined_color.r];
-        globals.pixel_color.g = special_9bit_clamptable[globals.combined_color.g];
-        globals.pixel_color.b = special_9bit_clamptable[globals.combined_color.b];
+        parallel_worker->globals.combined_color.r = color_combiner_equation(*parallel_worker->globals.combiner.rgbsub_a_r[1],*parallel_worker->globals.combiner.rgbsub_b_r[1],*parallel_worker->globals.combiner.rgbmul_r[1],*parallel_worker->globals.combiner.rgbadd_r[1]);
+        parallel_worker->globals.combined_color.g = color_combiner_equation(*parallel_worker->globals.combiner.rgbsub_a_g[1],*parallel_worker->globals.combiner.rgbsub_b_g[1],*parallel_worker->globals.combiner.rgbmul_g[1],*parallel_worker->globals.combiner.rgbadd_g[1]);
+        parallel_worker->globals.combined_color.b = color_combiner_equation(*parallel_worker->globals.combiner.rgbsub_a_b[1],*parallel_worker->globals.combiner.rgbsub_b_b[1],*parallel_worker->globals.combiner.rgbmul_b[1],*parallel_worker->globals.combiner.rgbadd_b[1]);
     }
     else
     {
-        keyalpha = chroma_key_min(&globals.combined_color);
-
-
-
-        globals.pixel_color.r = special_9bit_clamptable[chromabypass.r];
-        globals.pixel_color.g = special_9bit_clamptable[chromabypass.g];
-        globals.pixel_color.b = special_9bit_clamptable[chromabypass.b];
-
-
-        globals.combined_color.r >>= 8;
-        globals.combined_color.g >>= 8;
-        globals.combined_color.b >>= 8;
+        parallel_worker->globals.combined_color.r = ((special_9bit_exttable[*parallel_worker->globals.combiner.rgbadd_r[1]] << 8) + 0x80) & 0x1ffff;
+        parallel_worker->globals.combined_color.g = ((special_9bit_exttable[*parallel_worker->globals.combiner.rgbadd_g[1]] << 8) + 0x80) & 0x1ffff;
+        parallel_worker->globals.combined_color.b = ((special_9bit_exttable[*parallel_worker->globals.combiner.rgbadd_b[1]] << 8) + 0x80) & 0x1ffff;
     }
 
-    globals.pixel_color.a = special_9bit_clamptable[globals.combined_color.a];
-    if (globals.pixel_color.a == 0xff)
-        globals.pixel_color.a = 0x100;
+    if (parallel_worker->globals.combiner.alphamul[1] != &zero_color)
+        parallel_worker->globals.combined_color.a = alpha_combiner_equation(*parallel_worker->globals.combiner.alphasub_a[1],*parallel_worker->globals.combiner.alphasub_b[1],*parallel_worker->globals.combiner.alphamul[1],*parallel_worker->globals.combiner.alphaadd[1]);
+    else
+        parallel_worker->globals.combined_color.a = special_9bit_exttable[*parallel_worker->globals.combiner.alphaadd[1]] & 0x1ff;
 
-
-    if (globals.other_modes.cvg_times_alpha)
+    if (!parallel_worker->globals.other_modes.key_en)
     {
-        temp = (globals.pixel_color.a * (*curpixel_cvg) + 4) >> 3;
+
+        parallel_worker->globals.combined_color.r >>= 8;
+        parallel_worker->globals.combined_color.g >>= 8;
+        parallel_worker->globals.combined_color.b >>= 8;
+
+        parallel_worker->globals.pixel_color.r = special_9bit_clamptable[parallel_worker->globals.combined_color.r];
+        parallel_worker->globals.pixel_color.g = special_9bit_clamptable[parallel_worker->globals.combined_color.g];
+        parallel_worker->globals.pixel_color.b = special_9bit_clamptable[parallel_worker->globals.combined_color.b];
+    }
+    else
+    {
+        keyalpha = chroma_key_min(&parallel_worker->globals.combined_color);
+
+
+
+        parallel_worker->globals.pixel_color.r = special_9bit_clamptable[chromabypass.r];
+        parallel_worker->globals.pixel_color.g = special_9bit_clamptable[chromabypass.g];
+        parallel_worker->globals.pixel_color.b = special_9bit_clamptable[chromabypass.b];
+
+
+        parallel_worker->globals.combined_color.r >>= 8;
+        parallel_worker->globals.combined_color.g >>= 8;
+        parallel_worker->globals.combined_color.b >>= 8;
+    }
+
+    parallel_worker->globals.pixel_color.a = special_9bit_clamptable[parallel_worker->globals.combined_color.a];
+    if (parallel_worker->globals.pixel_color.a == 0xff)
+        parallel_worker->globals.pixel_color.a = 0x100;
+
+
+    if (parallel_worker->globals.other_modes.cvg_times_alpha)
+    {
+        temp = (parallel_worker->globals.pixel_color.a * (*curpixel_cvg) + 4) >> 3;
 
         *curpixel_cvg = (temp >> 5) & 0xf;
 
 
     }
 
-    if (!globals.other_modes.alpha_cvg_select)
+    if (!parallel_worker->globals.other_modes.alpha_cvg_select)
     {
-        if (!globals.other_modes.key_en)
+        if (!parallel_worker->globals.other_modes.key_en)
         {
-            globals.pixel_color.a += adseed;
-            if (globals.pixel_color.a & 0x100)
-                globals.pixel_color.a = 0xff;
+            parallel_worker->globals.pixel_color.a += adseed;
+            if (parallel_worker->globals.pixel_color.a & 0x100)
+                parallel_worker->globals.pixel_color.a = 0xff;
         }
         else
-            globals.pixel_color.a = keyalpha;
+            parallel_worker->globals.pixel_color.a = keyalpha;
     }
     else
     {
-        if (globals.other_modes.cvg_times_alpha)
-            globals.pixel_color.a = temp;
+        if (parallel_worker->globals.other_modes.cvg_times_alpha)
+            parallel_worker->globals.pixel_color.a = temp;
         else
-            globals.pixel_color.a = (*curpixel_cvg) << 5;
-        if (globals.pixel_color.a > 0xff)
-            globals.pixel_color.a = 0xff;
+            parallel_worker->globals.pixel_color.a = (*curpixel_cvg) << 5;
+        if (parallel_worker->globals.pixel_color.a > 0xff)
+            parallel_worker->globals.pixel_color.a = 0xff;
     }
 
-    globals.shade_color.a += adseed;
-    if (globals.shade_color.a & 0x100)
-        globals.shade_color.a = 0xff;
+    parallel_worker->globals.shade_color.a += adseed;
+    if (parallel_worker->globals.shade_color.a & 0x100)
+        parallel_worker->globals.shade_color.a = 0xff;
 }
 
 static void combiner_init(void)
 {
-    globals.combiner.rgbsub_a_r[0] = globals.combiner.rgbsub_a_r[1] = &one_color;
-    globals.combiner.rgbsub_a_g[0] = globals.combiner.rgbsub_a_g[1] = &one_color;
-    globals.combiner.rgbsub_a_b[0] = globals.combiner.rgbsub_a_b[1] = &one_color;
-    globals.combiner.rgbsub_b_r[0] = globals.combiner.rgbsub_b_r[1] = &one_color;
-    globals.combiner.rgbsub_b_g[0] = globals.combiner.rgbsub_b_g[1] = &one_color;
-    globals.combiner.rgbsub_b_b[0] = globals.combiner.rgbsub_b_b[1] = &one_color;
-    globals.combiner.rgbmul_r[0] = globals.combiner.rgbmul_r[1] = &one_color;
-    globals.combiner.rgbmul_g[0] = globals.combiner.rgbmul_g[1] = &one_color;
-    globals.combiner.rgbmul_b[0] = globals.combiner.rgbmul_b[1] = &one_color;
-    globals.combiner.rgbadd_r[0] = globals.combiner.rgbadd_r[1] = &one_color;
-    globals.combiner.rgbadd_g[0] = globals.combiner.rgbadd_g[1] = &one_color;
-    globals.combiner.rgbadd_b[0] = globals.combiner.rgbadd_b[1] = &one_color;
+    parallel_worker->globals.combiner.rgbsub_a_r[0] = parallel_worker->globals.combiner.rgbsub_a_r[1] = &one_color;
+    parallel_worker->globals.combiner.rgbsub_a_g[0] = parallel_worker->globals.combiner.rgbsub_a_g[1] = &one_color;
+    parallel_worker->globals.combiner.rgbsub_a_b[0] = parallel_worker->globals.combiner.rgbsub_a_b[1] = &one_color;
+    parallel_worker->globals.combiner.rgbsub_b_r[0] = parallel_worker->globals.combiner.rgbsub_b_r[1] = &one_color;
+    parallel_worker->globals.combiner.rgbsub_b_g[0] = parallel_worker->globals.combiner.rgbsub_b_g[1] = &one_color;
+    parallel_worker->globals.combiner.rgbsub_b_b[0] = parallel_worker->globals.combiner.rgbsub_b_b[1] = &one_color;
+    parallel_worker->globals.combiner.rgbmul_r[0] = parallel_worker->globals.combiner.rgbmul_r[1] = &one_color;
+    parallel_worker->globals.combiner.rgbmul_g[0] = parallel_worker->globals.combiner.rgbmul_g[1] = &one_color;
+    parallel_worker->globals.combiner.rgbmul_b[0] = parallel_worker->globals.combiner.rgbmul_b[1] = &one_color;
+    parallel_worker->globals.combiner.rgbadd_r[0] = parallel_worker->globals.combiner.rgbadd_r[1] = &one_color;
+    parallel_worker->globals.combiner.rgbadd_g[0] = parallel_worker->globals.combiner.rgbadd_g[1] = &one_color;
+    parallel_worker->globals.combiner.rgbadd_b[0] = parallel_worker->globals.combiner.rgbadd_b[1] = &one_color;
 
-    globals.combiner.alphasub_a[0] = globals.combiner.alphasub_a[1] = &one_color;
-    globals.combiner.alphasub_b[0] = globals.combiner.alphasub_b[1] = &one_color;
-    globals.combiner.alphamul[0] = globals.combiner.alphamul[1] = &one_color;
-    globals.combiner.alphaadd[0] = globals.combiner.alphaadd[1] = &one_color;
+    parallel_worker->globals.combiner.alphasub_a[0] = parallel_worker->globals.combiner.alphasub_a[1] = &one_color;
+    parallel_worker->globals.combiner.alphasub_b[0] = parallel_worker->globals.combiner.alphasub_b[1] = &one_color;
+    parallel_worker->globals.combiner.alphamul[0] = parallel_worker->globals.combiner.alphamul[1] = &one_color;
+    parallel_worker->globals.combiner.alphaadd[0] = parallel_worker->globals.combiner.alphaadd[1] = &one_color;
 
     for(int i = 0; i < 0x200; i++)
     {
@@ -1796,79 +1560,79 @@ static void combiner_init(void)
 
 static void rdp_set_prim_color(const uint32_t* args)
 {
-    globals.min_level          = (args[0] >> 8) & 0x1f;
-    globals.primitive_lod_frac = args[0] & 0xff;
-    globals.prim_color.r = (args[1] >> 24) & 0xff;
-    globals.prim_color.g = (args[1] >> 16) & 0xff;
-    globals.prim_color.b = (args[1] >>  8) & 0xff;
-    globals.prim_color.a = (args[1] >>  0) & 0xff;
+    parallel_worker->globals.min_level          = (args[0] >> 8) & 0x1f;
+    parallel_worker->globals.primitive_lod_frac = args[0] & 0xff;
+    parallel_worker->globals.prim_color.r = (args[1] >> 24) & 0xff;
+    parallel_worker->globals.prim_color.g = (args[1] >> 16) & 0xff;
+    parallel_worker->globals.prim_color.b = (args[1] >>  8) & 0xff;
+    parallel_worker->globals.prim_color.a = (args[1] >>  0) & 0xff;
 }
 
 static void rdp_set_env_color(const uint32_t* args)
 {
-    globals.env_color.r = (args[1] >> 24) & 0xff;
-    globals.env_color.g = (args[1] >> 16) & 0xff;
-    globals.env_color.b = (args[1] >>  8) & 0xff;
-    globals.env_color.a = (args[1] >>  0) & 0xff;
+    parallel_worker->globals.env_color.r = (args[1] >> 24) & 0xff;
+    parallel_worker->globals.env_color.g = (args[1] >> 16) & 0xff;
+    parallel_worker->globals.env_color.b = (args[1] >>  8) & 0xff;
+    parallel_worker->globals.env_color.a = (args[1] >>  0) & 0xff;
 }
 
 static void rdp_set_combine(const uint32_t* args)
 {
-    globals.combine.sub_a_rgb0  = (args[0] >> 20) & 0xf;
-    globals.combine.mul_rgb0    = (args[0] >> 15) & 0x1f;
-    globals.combine.sub_a_a0    = (args[0] >> 12) & 0x7;
-    globals.combine.mul_a0      = (args[0] >>  9) & 0x7;
-    globals.combine.sub_a_rgb1  = (args[0] >>  5) & 0xf;
-    globals.combine.mul_rgb1    = (args[0] >>  0) & 0x1f;
+    parallel_worker->globals.combine.sub_a_rgb0  = (args[0] >> 20) & 0xf;
+    parallel_worker->globals.combine.mul_rgb0    = (args[0] >> 15) & 0x1f;
+    parallel_worker->globals.combine.sub_a_a0    = (args[0] >> 12) & 0x7;
+    parallel_worker->globals.combine.mul_a0      = (args[0] >>  9) & 0x7;
+    parallel_worker->globals.combine.sub_a_rgb1  = (args[0] >>  5) & 0xf;
+    parallel_worker->globals.combine.mul_rgb1    = (args[0] >>  0) & 0x1f;
 
-    globals.combine.sub_b_rgb0  = (args[1] >> 28) & 0xf;
-    globals.combine.sub_b_rgb1  = (args[1] >> 24) & 0xf;
-    globals.combine.sub_a_a1    = (args[1] >> 21) & 0x7;
-    globals.combine.mul_a1      = (args[1] >> 18) & 0x7;
-    globals.combine.add_rgb0    = (args[1] >> 15) & 0x7;
-    globals.combine.sub_b_a0    = (args[1] >> 12) & 0x7;
-    globals.combine.add_a0      = (args[1] >>  9) & 0x7;
-    globals.combine.add_rgb1    = (args[1] >>  6) & 0x7;
-    globals.combine.sub_b_a1    = (args[1] >>  3) & 0x7;
-    globals.combine.add_a1      = (args[1] >>  0) & 0x7;
+    parallel_worker->globals.combine.sub_b_rgb0  = (args[1] >> 28) & 0xf;
+    parallel_worker->globals.combine.sub_b_rgb1  = (args[1] >> 24) & 0xf;
+    parallel_worker->globals.combine.sub_a_a1    = (args[1] >> 21) & 0x7;
+    parallel_worker->globals.combine.mul_a1      = (args[1] >> 18) & 0x7;
+    parallel_worker->globals.combine.add_rgb0    = (args[1] >> 15) & 0x7;
+    parallel_worker->globals.combine.sub_b_a0    = (args[1] >> 12) & 0x7;
+    parallel_worker->globals.combine.add_a0      = (args[1] >>  9) & 0x7;
+    parallel_worker->globals.combine.add_rgb1    = (args[1] >>  6) & 0x7;
+    parallel_worker->globals.combine.sub_b_a1    = (args[1] >>  3) & 0x7;
+    parallel_worker->globals.combine.add_a1      = (args[1] >>  0) & 0x7;
 
 
-    set_suba_rgb_input(&globals.combiner.rgbsub_a_r[0], &globals.combiner.rgbsub_a_g[0], &globals.combiner.rgbsub_a_b[0], globals.combine.sub_a_rgb0);
-    set_subb_rgb_input(&globals.combiner.rgbsub_b_r[0], &globals.combiner.rgbsub_b_g[0], &globals.combiner.rgbsub_b_b[0], globals.combine.sub_b_rgb0);
-    set_mul_rgb_input(&globals.combiner.rgbmul_r[0], &globals.combiner.rgbmul_g[0], &globals.combiner.rgbmul_b[0], globals.combine.mul_rgb0);
-    set_add_rgb_input(&globals.combiner.rgbadd_r[0], &globals.combiner.rgbadd_g[0], &globals.combiner.rgbadd_b[0], globals.combine.add_rgb0);
-    set_sub_alpha_input(&globals.combiner.alphasub_a[0], globals.combine.sub_a_a0);
-    set_sub_alpha_input(&globals.combiner.alphasub_b[0], globals.combine.sub_b_a0);
-    set_mul_alpha_input(&globals.combiner.alphamul[0], globals.combine.mul_a0);
-    set_sub_alpha_input(&globals.combiner.alphaadd[0], globals.combine.add_a0);
+    set_suba_rgb_input(&parallel_worker->globals.combiner.rgbsub_a_r[0], &parallel_worker->globals.combiner.rgbsub_a_g[0], &parallel_worker->globals.combiner.rgbsub_a_b[0], parallel_worker->globals.combine.sub_a_rgb0);
+    set_subb_rgb_input(&parallel_worker->globals.combiner.rgbsub_b_r[0], &parallel_worker->globals.combiner.rgbsub_b_g[0], &parallel_worker->globals.combiner.rgbsub_b_b[0], parallel_worker->globals.combine.sub_b_rgb0);
+    set_mul_rgb_input(&parallel_worker->globals.combiner.rgbmul_r[0], &parallel_worker->globals.combiner.rgbmul_g[0], &parallel_worker->globals.combiner.rgbmul_b[0], parallel_worker->globals.combine.mul_rgb0);
+    set_add_rgb_input(&parallel_worker->globals.combiner.rgbadd_r[0], &parallel_worker->globals.combiner.rgbadd_g[0], &parallel_worker->globals.combiner.rgbadd_b[0], parallel_worker->globals.combine.add_rgb0);
+    set_sub_alpha_input(&parallel_worker->globals.combiner.alphasub_a[0], parallel_worker->globals.combine.sub_a_a0);
+    set_sub_alpha_input(&parallel_worker->globals.combiner.alphasub_b[0], parallel_worker->globals.combine.sub_b_a0);
+    set_mul_alpha_input(&parallel_worker->globals.combiner.alphamul[0], parallel_worker->globals.combine.mul_a0);
+    set_sub_alpha_input(&parallel_worker->globals.combiner.alphaadd[0], parallel_worker->globals.combine.add_a0);
 
-    set_suba_rgb_input(&globals.combiner.rgbsub_a_r[1], &globals.combiner.rgbsub_a_g[1], &globals.combiner.rgbsub_a_b[1], globals.combine.sub_a_rgb1);
-    set_subb_rgb_input(&globals.combiner.rgbsub_b_r[1], &globals.combiner.rgbsub_b_g[1], &globals.combiner.rgbsub_b_b[1], globals.combine.sub_b_rgb1);
-    set_mul_rgb_input(&globals.combiner.rgbmul_r[1], &globals.combiner.rgbmul_g[1], &globals.combiner.rgbmul_b[1], globals.combine.mul_rgb1);
-    set_add_rgb_input(&globals.combiner.rgbadd_r[1], &globals.combiner.rgbadd_g[1], &globals.combiner.rgbadd_b[1], globals.combine.add_rgb1);
-    set_sub_alpha_input(&globals.combiner.alphasub_a[1], globals.combine.sub_a_a1);
-    set_sub_alpha_input(&globals.combiner.alphasub_b[1], globals.combine.sub_b_a1);
-    set_mul_alpha_input(&globals.combiner.alphamul[1], globals.combine.mul_a1);
-    set_sub_alpha_input(&globals.combiner.alphaadd[1], globals.combine.add_a1);
+    set_suba_rgb_input(&parallel_worker->globals.combiner.rgbsub_a_r[1], &parallel_worker->globals.combiner.rgbsub_a_g[1], &parallel_worker->globals.combiner.rgbsub_a_b[1], parallel_worker->globals.combine.sub_a_rgb1);
+    set_subb_rgb_input(&parallel_worker->globals.combiner.rgbsub_b_r[1], &parallel_worker->globals.combiner.rgbsub_b_g[1], &parallel_worker->globals.combiner.rgbsub_b_b[1], parallel_worker->globals.combine.sub_b_rgb1);
+    set_mul_rgb_input(&parallel_worker->globals.combiner.rgbmul_r[1], &parallel_worker->globals.combiner.rgbmul_g[1], &parallel_worker->globals.combiner.rgbmul_b[1], parallel_worker->globals.combine.mul_rgb1);
+    set_add_rgb_input(&parallel_worker->globals.combiner.rgbadd_r[1], &parallel_worker->globals.combiner.rgbadd_g[1], &parallel_worker->globals.combiner.rgbadd_b[1], parallel_worker->globals.combine.add_rgb1);
+    set_sub_alpha_input(&parallel_worker->globals.combiner.alphasub_a[1], parallel_worker->globals.combine.sub_a_a1);
+    set_sub_alpha_input(&parallel_worker->globals.combiner.alphasub_b[1], parallel_worker->globals.combine.sub_b_a1);
+    set_mul_alpha_input(&parallel_worker->globals.combiner.alphamul[1], parallel_worker->globals.combine.mul_a1);
+    set_sub_alpha_input(&parallel_worker->globals.combiner.alphaadd[1], parallel_worker->globals.combine.add_a1);
 
-    globals.other_modes.f.stalederivs = 1;
+    parallel_worker->globals.other_modes.f.stalederivs = 1;
 }
 
 static void rdp_set_key_gb(const uint32_t* args)
 {
-    globals.key_width.g   = (args[0] >> 12) & 0xfff;
-    globals.key_width.b   = args[0] & 0xfff;
-    globals.key_center.g  = (args[1] >> 24) & 0xff;
-    globals.key_scale.g   = (args[1] >> 16) & 0xff;
-    globals.key_center.b  = (args[1] >> 8) & 0xff;
-    globals.key_scale.b   = args[1] & 0xff;
+    parallel_worker->globals.key_width.g   = (args[0] >> 12) & 0xfff;
+    parallel_worker->globals.key_width.b   = args[0] & 0xfff;
+    parallel_worker->globals.key_center.g  = (args[1] >> 24) & 0xff;
+    parallel_worker->globals.key_scale.g   = (args[1] >> 16) & 0xff;
+    parallel_worker->globals.key_center.b  = (args[1] >> 8) & 0xff;
+    parallel_worker->globals.key_scale.b   = args[1] & 0xff;
 }
 
 static void rdp_set_key_r(const uint32_t* args)
 {
-    globals.key_width.r  = (args[1] >> 16) & 0xfff;
-    globals.key_center.r = (args[1] >> 8) & 0xff;
-    globals.key_scale.r  = args[1] & 0xff;
+    parallel_worker->globals.key_width.r  = (args[1] >> 16) & 0xfff;
+    parallel_worker->globals.key_center.r = (args[1] >> 8) & 0xff;
+    parallel_worker->globals.key_scale.r  = args[1] & 0xff;
 }
 
 static STRICTINLINE uint32_t rightcvghex(uint32_t x, uint32_t fmask)
@@ -1891,48 +1655,48 @@ static STRICTINLINE void compute_cvg_flip(int32_t scanline)
 {
     int i, fmask, maskshift, fmaskshifted;
     int32_t minorcur, majorcur, minorcurint, majorcurint, samecvg;
-    int32_t purgestart = globals.span[scanline].rx;
-    int32_t purgeend = globals.span[scanline].lx;
+    int32_t purgestart = parallel_worker->globals.span[scanline].rx;
+    int32_t purgeend = parallel_worker->globals.span[scanline].lx;
     int length = purgeend - purgestart;
 
     if (length >= 0)
     {
-        memset(&globals.cvgbuf[purgestart], 0xff, length + 1);
+        memset(&parallel_worker->globals.cvgbuf[purgestart], 0xff, length + 1);
         for(i = 0; i < 4; i++)
         {
                 fmask        = 0xa >> (i & 1);
                 maskshift    = (i - 2) & 4;
                 fmaskshifted = fmask << maskshift;
 
-                if (!globals.span[scanline].invalyscan[i])
+                if (!parallel_worker->globals.span[scanline].invalyscan[i])
                 {
-                    minorcur = globals.span[scanline].minorx[i];
-                    majorcur = globals.span[scanline].majorx[i];
+                    minorcur = parallel_worker->globals.span[scanline].minorx[i];
+                    majorcur = parallel_worker->globals.span[scanline].majorx[i];
                     minorcurint = minorcur >> 3;
                     majorcurint = majorcur >> 3;
 
 
                     for (int k = purgestart; k <= majorcurint; k++)
-                        globals.cvgbuf[k] &= ~fmaskshifted;
+                        parallel_worker->globals.cvgbuf[k] &= ~fmaskshifted;
                     for (int k = minorcurint; k <= purgeend; k++)
-                        globals.cvgbuf[k] &= ~fmaskshifted;
+                        parallel_worker->globals.cvgbuf[k] &= ~fmaskshifted;
 
                     if (minorcurint > majorcurint)
                     {
-                        globals.cvgbuf[minorcurint] |= (rightcvghex(minorcur, fmask) << maskshift);
-                        globals.cvgbuf[majorcurint] |= (leftcvghex(majorcur, fmask) << maskshift);
+                        parallel_worker->globals.cvgbuf[minorcurint] |= (rightcvghex(minorcur, fmask) << maskshift);
+                        parallel_worker->globals.cvgbuf[majorcurint] |= (leftcvghex(majorcur, fmask) << maskshift);
                     }
                     else if (minorcurint == majorcurint)
                     {
                         samecvg = rightcvghex(minorcur, fmask) & leftcvghex(majorcur, fmask);
-                        globals.cvgbuf[majorcurint] |= (samecvg << maskshift);
+                        parallel_worker->globals.cvgbuf[majorcurint] |= (samecvg << maskshift);
                     }
                 }
                 else
                 {
                    int k;
                    for (k = purgestart; k <= purgeend; k++)
-                      globals.cvgbuf[k] &= ~fmaskshifted;
+                      parallel_worker->globals.cvgbuf[k] &= ~fmaskshifted;
                 }
 
         }
@@ -1943,13 +1707,13 @@ static STRICTINLINE void compute_cvg_noflip(int32_t scanline)
 {
     int i, fmask, maskshift, fmaskshifted;
     int32_t minorcur, majorcur, minorcurint, majorcurint, samecvg;
-    int32_t purgestart = globals.span[scanline].lx;
-    int32_t purgeend = globals.span[scanline].rx;
+    int32_t purgestart = parallel_worker->globals.span[scanline].lx;
+    int32_t purgeend = parallel_worker->globals.span[scanline].rx;
     int length = purgeend - purgestart;
 
     if (length >= 0)
     {
-        memset(&globals.cvgbuf[purgestart], 0xff, length + 1);
+        memset(&parallel_worker->globals.cvgbuf[purgestart], 0xff, length + 1);
 
         for(i = 0; i < 4; i++)
         {
@@ -1957,36 +1721,36 @@ static STRICTINLINE void compute_cvg_noflip(int32_t scanline)
             maskshift = (i - 2) & 4;
             fmaskshifted = fmask << maskshift;
 
-            if (!globals.span[scanline].invalyscan[i])
+            if (!parallel_worker->globals.span[scanline].invalyscan[i])
             {
                int k;
 
-               minorcur = globals.span[scanline].minorx[i];
-               majorcur = globals.span[scanline].majorx[i];
+               minorcur = parallel_worker->globals.span[scanline].minorx[i];
+               majorcur = parallel_worker->globals.span[scanline].majorx[i];
                minorcurint = minorcur >> 3;
                majorcurint = majorcur >> 3;
 
                for (k = purgestart; k <= minorcurint; k++)
-                  globals.cvgbuf[k] &= ~fmaskshifted;
+                  parallel_worker->globals.cvgbuf[k] &= ~fmaskshifted;
                for (k = majorcurint; k <= purgeend; k++)
-                  globals.cvgbuf[k] &= ~fmaskshifted;
+                  parallel_worker->globals.cvgbuf[k] &= ~fmaskshifted;
 
                if (majorcurint > minorcurint)
                {
-                  globals.cvgbuf[minorcurint] |= (leftcvghex(minorcur, fmask) << maskshift);
-                  globals.cvgbuf[majorcurint] |= (rightcvghex(majorcur, fmask) << maskshift);
+                  parallel_worker->globals.cvgbuf[minorcurint] |= (leftcvghex(minorcur, fmask) << maskshift);
+                  parallel_worker->globals.cvgbuf[majorcurint] |= (rightcvghex(majorcur, fmask) << maskshift);
                }
                else if (minorcurint == majorcurint)
                {
                   samecvg = leftcvghex(minorcur, fmask) & rightcvghex(majorcur, fmask);
-                  globals.cvgbuf[majorcurint] |= (samecvg << maskshift);
+                  parallel_worker->globals.cvgbuf[majorcurint] |= (samecvg << maskshift);
                }
             }
             else
             {
                int k;
                for (k = purgestart; k <= purgeend; k++)
-                  globals.cvgbuf[k] &= ~fmaskshifted;
+                  parallel_worker->globals.cvgbuf[k] &= ~fmaskshifted;
             }
         }
     }
@@ -1996,7 +1760,7 @@ static STRICTINLINE int finalize_spanalpha(uint32_t blend_en, uint32_t curpixel_
 {
     int finalcvg;
 
-    switch(globals.other_modes.cvg_dest)
+    switch(parallel_worker->globals.other_modes.cvg_dest)
     {
     case CVG_CLAMP:
         if (!blend_en)
@@ -2032,7 +1796,7 @@ static STRICTINLINE uint16_t decompress_cvmask_frombyte(uint8_t x)
 
 static STRICTINLINE void lookup_cvmask_derivatives(uint32_t idx, uint8_t* offx, uint8_t* offy, uint32_t* curpixel_cvg, uint32_t* curpixel_cvbit)
 {
-    uint8_t mask    = globals.cvgbuf[idx];
+    uint8_t mask    = parallel_worker->globals.cvgbuf[idx];
     *curpixel_cvg   = cvarray[mask].cvg;
     *curpixel_cvbit = cvarray[mask].cvbit;
     *offx           = cvarray[mask].xoff;
@@ -2276,7 +2040,7 @@ static STRICTINLINE uint32_t z_compare(uint32_t zcurpixel, uint32_t sz, uint16_t
    int force_coplanar = 0;
    sz &= 0x3ffff;
 
-   if (globals.other_modes.z_compare_en)
+   if (parallel_worker->globals.other_modes.z_compare_en)
    {
       int cvgcoeff = 0;
       uint32_t dzenc = 0;
@@ -2290,20 +2054,20 @@ static STRICTINLINE uint32_t z_compare(uint32_t zcurpixel, uint32_t sz, uint16_t
       rawdzmem = ((zval & 3) << 2) | hval;
       dzmem = dz_decompress(rawdzmem);
 
-      if (globals.other_modes.f.realblendershiftersneeded)
+      if (parallel_worker->globals.other_modes.f.realblendershiftersneeded)
       {
-         globals.blshifta = clamp(dzpixenc - rawdzmem, 0, 4);
-         globals.blshiftb = clamp(rawdzmem - dzpixenc, 0, 4);
+         parallel_worker->globals.blshifta = clamp(dzpixenc - rawdzmem, 0, 4);
+         parallel_worker->globals.blshiftb = clamp(rawdzmem - dzpixenc, 0, 4);
       }
 
 
-      if (globals.other_modes.f.interpixelblendershiftersneeded)
+      if (parallel_worker->globals.other_modes.f.interpixelblendershiftersneeded)
       {
-         globals.pastblshifta = clamp(dzpixenc - globals.pastrawdzmem, 0, 4);
-         globals.pastblshiftb = clamp(globals.pastrawdzmem - dzpixenc, 0, 4);
+         parallel_worker->globals.pastblshifta = clamp(dzpixenc - parallel_worker->globals.pastrawdzmem, 0, 4);
+         parallel_worker->globals.pastblshiftb = clamp(parallel_worker->globals.pastrawdzmem - dzpixenc, 0, 4);
       }
 
-      globals.pastrawdzmem = rawdzmem;
+      parallel_worker->globals.pastrawdzmem = rawdzmem;
 
       int precision_factor = (zval >> 13) & 0xf;
 
@@ -2327,11 +2091,11 @@ static STRICTINLINE uint32_t z_compare(uint32_t zcurpixel, uint32_t sz, uint16_t
       uint32_t farther = force_coplanar || ((sz + dznew) >= oz);
 
       int overflow = (curpixel_memcvg + *curpixel_cvg) & 8;
-      *blend_en = globals.other_modes.force_blend || (!overflow && globals.other_modes.antialias_en && farther);
+      *blend_en = parallel_worker->globals.other_modes.force_blend || (!overflow && parallel_worker->globals.other_modes.antialias_en && farther);
 
       *prewrap = overflow;
 
-      switch(globals.other_modes.z_mode)
+      switch(parallel_worker->globals.other_modes.z_mode)
       {
          case ZMODE_OPAQUE:
             infront = sz < oz;
@@ -2375,28 +2139,28 @@ static STRICTINLINE uint32_t z_compare(uint32_t zcurpixel, uint32_t sz, uint16_t
    {
 
 
-      if (globals.other_modes.f.realblendershiftersneeded)
+      if (parallel_worker->globals.other_modes.f.realblendershiftersneeded)
       {
-         globals.blshifta = 0;
+         parallel_worker->globals.blshifta = 0;
          if (dzpixenc < 0xb)
-            globals.blshiftb = 4;
+            parallel_worker->globals.blshiftb = 4;
          else
-            globals.blshiftb = 0xf - dzpixenc;
+            parallel_worker->globals.blshiftb = 0xf - dzpixenc;
       }
 
-      if (globals.other_modes.f.interpixelblendershiftersneeded)
+      if (parallel_worker->globals.other_modes.f.interpixelblendershiftersneeded)
       {
-         globals.pastblshifta = 0;
+         parallel_worker->globals.pastblshifta = 0;
          if (dzpixenc < 0xb)
-            globals.pastblshiftb = 4;
+            parallel_worker->globals.pastblshiftb = 4;
          else
-            globals.pastblshiftb = 0xf - dzpixenc;
+            parallel_worker->globals.pastblshiftb = 0xf - dzpixenc;
       }
 
-      globals.pastrawdzmem = 0xf;
+      parallel_worker->globals.pastrawdzmem = 0xf;
 
       int overflow = (curpixel_memcvg + *curpixel_cvg) & 8;
-      *blend_en = globals.other_modes.force_blend || (!overflow && globals.other_modes.antialias_en);
+      *blend_en = parallel_worker->globals.other_modes.force_blend || (!overflow && parallel_worker->globals.other_modes.antialias_en);
       *prewrap = overflow;
 
       return 1;
@@ -2405,12 +2169,12 @@ static STRICTINLINE uint32_t z_compare(uint32_t zcurpixel, uint32_t sz, uint16_t
 
 static void rdp_set_mask_image(const uint32_t* args)
 {
-    globals.zb_address  = args[1] & 0x0ffffff;
+    parallel_worker->globals.zb_address  = args[1] & 0x0ffffff;
 }
 
 uint32_t rdp_get_zb_address(void)
 {
-    return globals.zb_address;
+    return parallel_worker->globals.zb_address;
 }
 
 void z_init(void)
@@ -2473,13 +2237,13 @@ static void (*fbwrite_func[4])(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t,
 
 static void fbwrite_4(uint32_t curpixel, uint32_t r, uint32_t g, uint32_t b, uint32_t blend_en, uint32_t curpixel_cvg, uint32_t curpixel_memcvg)
 {
-    uint32_t fb = globals.fb_address + curpixel;
+    uint32_t fb = parallel_worker->globals.fb_address + curpixel;
     RWRITEADDR8(fb, 0);
 }
 
 static void fbwrite_8(uint32_t curpixel, uint32_t r, uint32_t g, uint32_t b, uint32_t blend_en, uint32_t curpixel_cvg, uint32_t curpixel_memcvg)
 {
-    uint32_t fb = globals.fb_address + curpixel;
+    uint32_t fb = parallel_worker->globals.fb_address + curpixel;
     PAIRWRITE8(fb, r & 0xff, (r & 1) ? 3 : 0);
 }
 
@@ -2494,12 +2258,12 @@ static void fbwrite_16(uint32_t curpixel, uint32_t r, uint32_t g, uint32_t b, ui
     uint32_t fb;
     uint16_t rval;
     uint8_t hval;
-    fb = (globals.fb_address >> 1) + curpixel;
+    fb = (parallel_worker->globals.fb_address >> 1) + curpixel;
 
     int32_t finalcvg = finalize_spanalpha(blend_en, curpixel_cvg, curpixel_memcvg);
     int16_t finalcolor;
 
-    if (globals.fb_format == FORMAT_RGBA)
+    if (parallel_worker->globals.fb_format == FORMAT_RGBA)
     {
         finalcolor = ((r & ~7) << 8) | ((g & ~7) << 3) | ((b & ~7) >> 2);
     }
@@ -2517,7 +2281,7 @@ static void fbwrite_16(uint32_t curpixel, uint32_t r, uint32_t g, uint32_t b, ui
 
 static void fbwrite_32(uint32_t curpixel, uint32_t r, uint32_t g, uint32_t b, uint32_t blend_en, uint32_t curpixel_cvg, uint32_t curpixel_memcvg)
 {
-    uint32_t fb = (globals.fb_address >> 2) + curpixel;
+    uint32_t fb = (parallel_worker->globals.fb_address >> 2) + curpixel;
 
     int32_t finalcolor;
     int32_t finalcvg = finalize_spanalpha(blend_en, curpixel_cvg, curpixel_memcvg);
@@ -2535,8 +2299,8 @@ static void fbfill_4(uint32_t curpixel)
 
 static void fbfill_8(uint32_t curpixel)
 {
-    uint32_t fb = globals.fb_address + curpixel;
-    uint32_t val = (globals.fill_color >> (((fb & 3) ^ 3) << 3)) & 0xff;
+    uint32_t fb = parallel_worker->globals.fb_address + curpixel;
+    uint32_t val = (parallel_worker->globals.fill_color >> (((fb & 3) ^ 3) << 3)) & 0xff;
     uint8_t hval = ((val & 1) << 1) | (val & 1);
     PAIRWRITE8(fb, val, hval);
 }
@@ -2545,59 +2309,59 @@ static void fbfill_16(uint32_t curpixel)
 {
     uint16_t val;
     uint8_t hval;
-    uint32_t fb = (globals.fb_address >> 1) + curpixel;
+    uint32_t fb = (parallel_worker->globals.fb_address >> 1) + curpixel;
     if (fb & 1)
-        val = globals.fill_color & 0xffff;
+        val = parallel_worker->globals.fill_color & 0xffff;
     else
-        val = (globals.fill_color >> 16) & 0xffff;
+        val = (parallel_worker->globals.fill_color >> 16) & 0xffff;
     hval = ((val & 1) << 1) | (val & 1);
     PAIRWRITE16(fb, val, hval);
 }
 
 static void fbfill_32(uint32_t curpixel)
 {
-    uint32_t fb = (globals.fb_address >> 2) + curpixel;
-    PAIRWRITE32(fb, globals.fill_color, (globals.fill_color & 0x10000) ? 3 : 0, (globals.fill_color & 0x1) ? 3 : 0);
+    uint32_t fb = (parallel_worker->globals.fb_address >> 2) + curpixel;
+    PAIRWRITE32(fb, parallel_worker->globals.fill_color, (parallel_worker->globals.fill_color & 0x10000) ? 3 : 0, (parallel_worker->globals.fill_color & 0x1) ? 3 : 0);
 }
 
 static void fbread_4(uint32_t curpixel, uint32_t* curpixel_memcvg)
 {
-   globals.memory_color.r = 0;
-   globals.memory_color.g = 0;
-   globals.memory_color.b = 0;
+   parallel_worker->globals.memory_color.r = 0;
+   parallel_worker->globals.memory_color.g = 0;
+   parallel_worker->globals.memory_color.b = 0;
 
    *curpixel_memcvg       = 7;
-   globals.memory_color.a = 0xe0;
+   parallel_worker->globals.memory_color.a = 0xe0;
 }
 
 static void fbread2_4(uint32_t curpixel, uint32_t* curpixel_memcvg)
 {
-    globals.pre_memory_color.r = 0;
-    globals.pre_memory_color.g = 0;
-    globals.pre_memory_color.b = 0;
-    globals.pre_memory_color.a = 0xe0;
+    parallel_worker->globals.pre_memory_color.r = 0;
+    parallel_worker->globals.pre_memory_color.g = 0;
+    parallel_worker->globals.pre_memory_color.b = 0;
+    parallel_worker->globals.pre_memory_color.a = 0xe0;
     *curpixel_memcvg = 7;
 }
 
 static void fbread_8(uint32_t curpixel, uint32_t* curpixel_memcvg)
 {
     uint8_t mem;
-    uint32_t addr = globals.fb_address + curpixel;
+    uint32_t addr = parallel_worker->globals.fb_address + curpixel;
     RREADADDR8(mem, addr);
-    globals.memory_color.r = globals.memory_color.g = globals.memory_color.b = mem;
+    parallel_worker->globals.memory_color.r = parallel_worker->globals.memory_color.g = parallel_worker->globals.memory_color.b = mem;
     *curpixel_memcvg = 7;
-    globals.memory_color.a = 0xe0;
+    parallel_worker->globals.memory_color.a = 0xe0;
 }
 
 static void fbread2_8(uint32_t curpixel, uint32_t* curpixel_memcvg)
 {
     uint8_t mem;
-    uint32_t addr = globals.fb_address + curpixel;
+    uint32_t addr = parallel_worker->globals.fb_address + curpixel;
     RREADADDR8(mem, addr);
-    globals.pre_memory_color.r = mem;
-    globals.pre_memory_color.g = mem;
-    globals.pre_memory_color.b = mem;
-    globals.pre_memory_color.a = 0xe0;
+    parallel_worker->globals.pre_memory_color.r = mem;
+    parallel_worker->globals.pre_memory_color.g = mem;
+    parallel_worker->globals.pre_memory_color.b = mem;
+    parallel_worker->globals.pre_memory_color.a = 0xe0;
     *curpixel_memcvg = 7;
 }
 
@@ -2605,46 +2369,46 @@ static void fbread_16(uint32_t curpixel, uint32_t* curpixel_memcvg)
 {
     uint16_t fword;
     uint8_t hbyte;
-    uint32_t addr = (globals.fb_address >> 1) + curpixel;
+    uint32_t addr = (parallel_worker->globals.fb_address >> 1) + curpixel;
 
     uint8_t lowbits;
 
 
-    if (globals.other_modes.image_read_en)
+    if (parallel_worker->globals.other_modes.image_read_en)
     {
         PAIRREAD16(fword, hbyte, addr);
 
-        if (globals.fb_format == FORMAT_RGBA)
+        if (parallel_worker->globals.fb_format == FORMAT_RGBA)
         {
-            globals.memory_color.r = GET_HI(fword);
-            globals.memory_color.g = GET_MED(fword);
-            globals.memory_color.b = GET_LOW(fword);
+            parallel_worker->globals.memory_color.r = GET_HI(fword);
+            parallel_worker->globals.memory_color.g = GET_MED(fword);
+            parallel_worker->globals.memory_color.b = GET_LOW(fword);
             lowbits = ((fword & 1) << 2) | hbyte;
         }
         else
         {
-            globals.memory_color.r = globals.memory_color.g = globals.memory_color.b = fword >> 8;
+            parallel_worker->globals.memory_color.r = parallel_worker->globals.memory_color.g = parallel_worker->globals.memory_color.b = fword >> 8;
             lowbits = (fword >> 5) & 7;
         }
 
         *curpixel_memcvg = lowbits;
-        globals.memory_color.a = lowbits << 5;
+        parallel_worker->globals.memory_color.a = lowbits << 5;
     }
     else
     {
         RREADIDX16(fword, addr);
 
-        if (globals.fb_format == FORMAT_RGBA)
+        if (parallel_worker->globals.fb_format == FORMAT_RGBA)
         {
-            globals.memory_color.r = GET_HI(fword);
-            globals.memory_color.g = GET_MED(fword);
-            globals.memory_color.b = GET_LOW(fword);
+            parallel_worker->globals.memory_color.r = GET_HI(fword);
+            parallel_worker->globals.memory_color.g = GET_MED(fword);
+            parallel_worker->globals.memory_color.b = GET_LOW(fword);
         }
         else
-            globals.memory_color.r = globals.memory_color.g = globals.memory_color.b = fword >> 8;
+            parallel_worker->globals.memory_color.r = parallel_worker->globals.memory_color.g = parallel_worker->globals.memory_color.b = fword >> 8;
 
         *curpixel_memcvg = 7;
-        globals.memory_color.a = 0xe0;
+        parallel_worker->globals.memory_color.a = 0xe0;
     }
 }
 
@@ -2652,115 +2416,115 @@ static void fbread2_16(uint32_t curpixel, uint32_t* curpixel_memcvg)
 {
     uint16_t fword;
     uint8_t hbyte;
-    uint32_t addr = (globals.fb_address >> 1) + curpixel;
+    uint32_t addr = (parallel_worker->globals.fb_address >> 1) + curpixel;
 
     uint8_t lowbits;
 
-    if (globals.other_modes.image_read_en)
+    if (parallel_worker->globals.other_modes.image_read_en)
     {
         PAIRREAD16(fword, hbyte, addr);
 
-        if (globals.fb_format == FORMAT_RGBA)
+        if (parallel_worker->globals.fb_format == FORMAT_RGBA)
         {
-            globals.pre_memory_color.r = GET_HI(fword);
-            globals.pre_memory_color.g = GET_MED(fword);
-            globals.pre_memory_color.b = GET_LOW(fword);
+            parallel_worker->globals.pre_memory_color.r = GET_HI(fword);
+            parallel_worker->globals.pre_memory_color.g = GET_MED(fword);
+            parallel_worker->globals.pre_memory_color.b = GET_LOW(fword);
             lowbits = ((fword & 1) << 2) | hbyte;
         }
         else
         {
-            globals.pre_memory_color.r = globals.pre_memory_color.g = globals.pre_memory_color.b = fword >> 8;
+            parallel_worker->globals.pre_memory_color.r = parallel_worker->globals.pre_memory_color.g = parallel_worker->globals.pre_memory_color.b = fword >> 8;
             lowbits = (fword >> 5) & 7;
         }
 
         *curpixel_memcvg = lowbits;
-        globals.pre_memory_color.a = lowbits << 5;
+        parallel_worker->globals.pre_memory_color.a = lowbits << 5;
     }
     else
     {
         RREADIDX16(fword, addr);
 
-        if (globals.fb_format == FORMAT_RGBA)
+        if (parallel_worker->globals.fb_format == FORMAT_RGBA)
         {
-            globals.pre_memory_color.r = GET_HI(fword);
-            globals.pre_memory_color.g = GET_MED(fword);
-            globals.pre_memory_color.b = GET_LOW(fword);
+            parallel_worker->globals.pre_memory_color.r = GET_HI(fword);
+            parallel_worker->globals.pre_memory_color.g = GET_MED(fword);
+            parallel_worker->globals.pre_memory_color.b = GET_LOW(fword);
         }
         else
-            globals.pre_memory_color.r = globals.pre_memory_color.g = globals.pre_memory_color.b = fword >> 8;
+            parallel_worker->globals.pre_memory_color.r = parallel_worker->globals.pre_memory_color.g = parallel_worker->globals.pre_memory_color.b = fword >> 8;
 
         *curpixel_memcvg = 7;
-        globals.pre_memory_color.a = 0xe0;
+        parallel_worker->globals.pre_memory_color.a = 0xe0;
     }
 
 }
 
 static void fbread_32(uint32_t curpixel, uint32_t* curpixel_memcvg)
 {
-    uint32_t mem, addr = (globals.fb_address >> 2) + curpixel;
+    uint32_t mem, addr = (parallel_worker->globals.fb_address >> 2) + curpixel;
     RREADIDX32(mem, addr);
-    globals.memory_color.r = (mem >> 24) & 0xff;
-    globals.memory_color.g = (mem >> 16) & 0xff;
-    globals.memory_color.b = (mem >> 8) & 0xff;
-    if (globals.other_modes.image_read_en)
+    parallel_worker->globals.memory_color.r = (mem >> 24) & 0xff;
+    parallel_worker->globals.memory_color.g = (mem >> 16) & 0xff;
+    parallel_worker->globals.memory_color.b = (mem >> 8) & 0xff;
+    if (parallel_worker->globals.other_modes.image_read_en)
     {
         *curpixel_memcvg = (mem >> 5) & 7;
-        globals.memory_color.a = mem & 0xe0;
+        parallel_worker->globals.memory_color.a = mem & 0xe0;
     }
     else
     {
         *curpixel_memcvg = 7;
-        globals.memory_color.a = 0xe0;
+        parallel_worker->globals.memory_color.a = 0xe0;
     }
 }
 
 static INLINE void fbread2_32(uint32_t curpixel, uint32_t* curpixel_memcvg)
 {
-    uint32_t mem, addr = (globals.fb_address >> 2) + curpixel;
+    uint32_t mem, addr = (parallel_worker->globals.fb_address >> 2) + curpixel;
     RREADIDX32(mem, addr);
-    globals.pre_memory_color.r = (mem >> 24) & 0xff;
-    globals.pre_memory_color.g = (mem >> 16) & 0xff;
-    globals.pre_memory_color.b = (mem >> 8) & 0xff;
-    if (globals.other_modes.image_read_en)
+    parallel_worker->globals.pre_memory_color.r = (mem >> 24) & 0xff;
+    parallel_worker->globals.pre_memory_color.g = (mem >> 16) & 0xff;
+    parallel_worker->globals.pre_memory_color.b = (mem >> 8) & 0xff;
+    if (parallel_worker->globals.other_modes.image_read_en)
     {
         *curpixel_memcvg = (mem >> 5) & 7;
-        globals.pre_memory_color.a = mem & 0xe0;
+        parallel_worker->globals.pre_memory_color.a = mem & 0xe0;
     }
     else
     {
         *curpixel_memcvg = 7;
-        globals.pre_memory_color.a = 0xe0;
+        parallel_worker->globals.pre_memory_color.a = 0xe0;
     }
 }
 
 static void rdp_set_color_image(const uint32_t* args)
 {
-    globals.fb_format   = (args[0] >> 21) & 0x7;
-    globals.fb_size     = (args[0] >> 19) & 0x3;
-    globals.fb_width    = (args[0] & 0x3ff) + 1;
-    globals.fb_address  = args[1] & 0x0ffffff;
+    parallel_worker->globals.fb_format   = (args[0] >> 21) & 0x7;
+    parallel_worker->globals.fb_size     = (args[0] >> 19) & 0x3;
+    parallel_worker->globals.fb_width    = (args[0] & 0x3ff) + 1;
+    parallel_worker->globals.fb_address  = args[1] & 0x0ffffff;
 
-    globals.fbread1_ptr = fbread_func[globals.fb_size];
-    globals.fbread2_ptr = fbread2_func[globals.fb_size];
-    globals.fbwrite_ptr = fbwrite_func[globals.fb_size];
+    parallel_worker->globals.fbread1_ptr = fbread_func[parallel_worker->globals.fb_size];
+    parallel_worker->globals.fbread2_ptr = fbread2_func[parallel_worker->globals.fb_size];
+    parallel_worker->globals.fbwrite_ptr = fbwrite_func[parallel_worker->globals.fb_size];
 }
 
 static void rdp_set_fill_color(const uint32_t* args)
 {
-    globals.fill_color = args[1];
+    parallel_worker->globals.fill_color = args[1];
 }
 
 static void fb_init()
 {
-    globals.fb_format   = FORMAT_RGBA;
-    globals.fb_size     = PIXEL_SIZE_4BIT;
-    globals.fb_width    = 0;
-    globals.fb_address  = 0;
+    parallel_worker->globals.fb_format   = FORMAT_RGBA;
+    parallel_worker->globals.fb_size     = PIXEL_SIZE_4BIT;
+    parallel_worker->globals.fb_width    = 0;
+    parallel_worker->globals.fb_address  = 0;
 
 
-    globals.fbread1_ptr = fbread_func[globals.fb_size];
-    globals.fbread2_ptr = fbread2_func[globals.fb_size];
-    globals.fbwrite_ptr = fbwrite_func[globals.fb_size];
+    parallel_worker->globals.fbread1_ptr = fbread_func[parallel_worker->globals.fb_size];
+    parallel_worker->globals.fbread2_ptr = fbread2_func[parallel_worker->globals.fb_size];
+    parallel_worker->globals.fbwrite_ptr = fbwrite_func[parallel_worker->globals.fb_size];
 }
 
 static uint32_t sort_tmem_idx(uint32_t idxa, uint32_t idxb, uint32_t idxc, uint32_t idxd, uint32_t bankno)
@@ -2798,10 +2562,10 @@ static void sort_tmem_shorts_lowhalf(uint32_t* bindshort, uint32_t short0, uint3
 static void compute_color_index(uint32_t* cidx, uint32_t readshort, uint32_t nybbleoffset, uint32_t tilenum)
 {
     uint32_t lownib, hinib;
-    if (globals.tile[tilenum].size == PIXEL_SIZE_4BIT)
+    if (parallel_worker->globals.tile[tilenum].size == PIXEL_SIZE_4BIT)
     {
         lownib = (nybbleoffset ^ 3) << 2;
-        hinib = globals.tile[tilenum].palette;
+        hinib = parallel_worker->globals.tile[tilenum].palette;
     }
     else
     {
@@ -2814,11 +2578,11 @@ static void compute_color_index(uint32_t* cidx, uint32_t readshort, uint32_t nyb
 
 static INLINE void fetch_texel(struct color *color, int s, int t, uint32_t tilenum)
 {
-   uint32_t tbase  = globals.tile[tilenum].line * (t & 0xff) + globals.tile[tilenum].tmem;
-   uint32_t tpal   = globals.tile[tilenum].palette;
+   uint32_t tbase  = parallel_worker->globals.tile[tilenum].line * (t & 0xff) + parallel_worker->globals.tile[tilenum].tmem;
+   uint32_t tpal   = parallel_worker->globals.tile[tilenum].palette;
    uint32_t taddr  = 0;
 
-   switch (globals.tile[tilenum].f.notlutswitch)
+   switch (parallel_worker->globals.tile[tilenum].f.notlutswitch)
    {
       case TEXEL_RGBA4:
          {
@@ -2826,7 +2590,7 @@ static INLINE void fetch_texel(struct color *color, int s, int t, uint32_t tilen
             taddr = ((tbase << 4) + s) >> 1;
             taddr ^= ((t & 1) ? BYTE_XOR_DWORD_SWAP : BYTE_ADDR_XOR);
 
-            byteval = globals.tmem[taddr & 0xfff];
+            byteval = parallel_worker->globals.tmem[taddr & 0xfff];
             c = ((s & 1)) ? (byteval & 0xf) : (byteval >> 4);
             c |= (c << 4);
             color->r = c;
@@ -2840,7 +2604,7 @@ static INLINE void fetch_texel(struct color *color, int s, int t, uint32_t tilen
             uint8_t p;
             taddr    = (tbase << 3) + s;
             taddr   ^= ((t & 1) ? BYTE_XOR_DWORD_SWAP : BYTE_ADDR_XOR);
-            p        = globals.tmem[taddr & 0xfff];
+            p        = parallel_worker->globals.tmem[taddr & 0xfff];
             color->r = p;
             color->g = p;
             color->b = p;
@@ -2885,7 +2649,7 @@ static INLINE void fetch_texel(struct color *color, int s, int t, uint32_t tilen
 
             int32_t u, save;
 
-            save = globals.tmem[taddr & 0x7ff];
+            save = parallel_worker->globals.tmem[taddr & 0x7ff];
 
             save &= 0xf0;
             save |= (save >> 4);
@@ -2906,7 +2670,7 @@ static INLINE void fetch_texel(struct color *color, int s, int t, uint32_t tilen
 
             int32_t u, save;
 
-            save = u = globals.tmem[taddr & 0x7ff];
+            save = u = parallel_worker->globals.tmem[taddr & 0x7ff];
 
             u = u - 0x80;
 
@@ -2930,7 +2694,7 @@ static INLINE void fetch_texel(struct color *color, int s, int t, uint32_t tilen
             uint16_t c = tc16[taddrlow];
 
             int32_t y, u, v;
-            y = globals.tmem[taddr | 0x800];
+            y = parallel_worker->globals.tmem[taddr | 0x800];
             u = c >> 8;
             v = c & 0xff;
 
@@ -2973,7 +2737,7 @@ static INLINE void fetch_texel(struct color *color, int s, int t, uint32_t tilen
             {
                taddr ^= ((t & 1) ? BYTE_XOR_DWORD_SWAP : BYTE_ADDR_XOR);
                taddr &= 0x7ff;
-               y = globals.tmem[taddr | 0x800];
+               y = parallel_worker->globals.tmem[taddr | 0x800];
 
                color->b = y;
                color->a = y;
@@ -2996,7 +2760,7 @@ static INLINE void fetch_texel(struct color *color, int s, int t, uint32_t tilen
 
 
 
-            p = globals.tmem[taddr & 0xfff];
+            p = parallel_worker->globals.tmem[taddr & 0xfff];
             p = (s & 1) ? (p & 0xf) : (p >> 4);
             p = (tpal << 4) | p;
             color->r = color->g = color->b = color->a = p;
@@ -3010,7 +2774,7 @@ static INLINE void fetch_texel(struct color *color, int s, int t, uint32_t tilen
             uint8_t p;
 
 
-            p = globals.tmem[taddr & 0xfff];
+            p = parallel_worker->globals.tmem[taddr & 0xfff];
             color->r = p;
             color->g = p;
             color->b = p;
@@ -3040,7 +2804,7 @@ static INLINE void fetch_texel(struct color *color, int s, int t, uint32_t tilen
             uint8_t p, i;
 
 
-            p = globals.tmem[taddr & 0xfff];
+            p = parallel_worker->globals.tmem[taddr & 0xfff];
             p = (s & 1) ? (p & 0xf) : (p >> 4);
             i = p & 0xe;
             i = (i << 4) | (i << 1) | (i >> 2);
@@ -3058,7 +2822,7 @@ static INLINE void fetch_texel(struct color *color, int s, int t, uint32_t tilen
             uint8_t p, i;
 
 
-            p = globals.tmem[taddr & 0xfff];
+            p = parallel_worker->globals.tmem[taddr & 0xfff];
             i = p & 0xf0;
             i |= (i >> 4);
             color->r = i;
@@ -3102,7 +2866,7 @@ static INLINE void fetch_texel(struct color *color, int s, int t, uint32_t tilen
 
             uint8_t byteval, c;
 
-            byteval = globals.tmem[taddr & 0xfff];
+            byteval = parallel_worker->globals.tmem[taddr & 0xfff];
             c = (s & 1) ? (byteval & 0xf) : (byteval >> 4);
             c |= (c << 4);
             color->r = c;
@@ -3118,7 +2882,7 @@ static INLINE void fetch_texel(struct color *color, int s, int t, uint32_t tilen
 
             uint8_t c;
 
-            c = globals.tmem[taddr & 0xfff];
+            c = parallel_worker->globals.tmem[taddr & 0xfff];
             color->r = c;
             color->g = c;
             color->b = c;
@@ -3149,13 +2913,13 @@ static INLINE void fetch_texel_quadro(struct color *color0, struct color *color1
    uint32_t xort, ands;
    uint32_t taddr0, taddr1, taddr2, taddr3;
    uint32_t taddrlow0, taddrlow1, taddrlow2, taddrlow3;
-   uint32_t tbase0 = globals.tile[tilenum].line * (t0 & 0xff) + globals.tile[tilenum].tmem;
+   uint32_t tbase0 = parallel_worker->globals.tile[tilenum].line * (t0 & 0xff) + parallel_worker->globals.tile[tilenum].tmem;
    int t1 = (t0 & 0xff) + tdiff;
    int s1 = s0 + sdiff;
-   uint32_t tbase2 = globals.tile[tilenum].line * t1 + globals.tile[tilenum].tmem;
-   uint32_t tpal = globals.tile[tilenum].palette;
+   uint32_t tbase2 = parallel_worker->globals.tile[tilenum].line * t1 + parallel_worker->globals.tile[tilenum].tmem;
+   uint32_t tpal = parallel_worker->globals.tile[tilenum].palette;
 
-   switch (globals.tile[tilenum].f.notlutswitch)
+   switch (parallel_worker->globals.tile[tilenum].f.notlutswitch)
    {
       case TEXEL_RGBA4:
          {
@@ -3177,14 +2941,14 @@ static INLINE void fetch_texel_quadro(struct color *color0, struct color *color1
             taddr2 &= 0xfff;
             taddr3 &= 0xfff;
             ands = s0 & 1;
-            byteval = globals.tmem[taddr0];
+            byteval = parallel_worker->globals.tmem[taddr0];
             c = (ands) ? (byteval & 0xf) : (byteval >> 4);
             c |= (c << 4);
             color0->r = c;
             color0->g = c;
             color0->b = c;
             color0->a = c;
-            byteval = globals.tmem[taddr2];
+            byteval = parallel_worker->globals.tmem[taddr2];
             c = (ands) ? (byteval & 0xf) : (byteval >> 4);
             c |= (c << 4);
             color2->r = c;
@@ -3193,14 +2957,14 @@ static INLINE void fetch_texel_quadro(struct color *color0, struct color *color1
             color2->a = c;
 
             ands = s1 & 1;
-            byteval = globals.tmem[taddr1];
+            byteval = parallel_worker->globals.tmem[taddr1];
             c = (ands) ? (byteval & 0xf) : (byteval >> 4);
             c |= (c << 4);
             color1->r = c;
             color1->g = c;
             color1->b = c;
             color1->a = c;
-            byteval = globals.tmem[taddr3];
+            byteval = parallel_worker->globals.tmem[taddr3];
             c = (ands) ? (byteval & 0xf) : (byteval >> 4);
             c |= (c << 4);
             color3->r = c;
@@ -3228,22 +2992,22 @@ static INLINE void fetch_texel_quadro(struct color *color0, struct color *color1
             taddr1 &= 0xfff;
             taddr2 &= 0xfff;
             taddr3 &= 0xfff;
-            p = globals.tmem[taddr0];
+            p = parallel_worker->globals.tmem[taddr0];
             color0->r = p;
             color0->g = p;
             color0->b = p;
             color0->a = p;
-            p = globals.tmem[taddr2];
+            p = parallel_worker->globals.tmem[taddr2];
             color2->r = p;
             color2->g = p;
             color2->b = p;
             color2->a = p;
-            p = globals.tmem[taddr1];
+            p = parallel_worker->globals.tmem[taddr1];
             color1->r = p;
             color1->g = p;
             color1->b = p;
             color1->a = p;
-            p = globals.tmem[taddr3];
+            p = parallel_worker->globals.tmem[taddr3];
             color3->r = p;
             color3->g = p;
             color3->b = p;
@@ -3353,22 +3117,22 @@ static INLINE void fetch_texel_quadro(struct color *color0, struct color *color1
 
             int32_t u0, u1, u2, u3, save0, save1, save2, save3;
 
-            save0 = globals.tmem[taddr0 & 0x7ff];
+            save0 = parallel_worker->globals.tmem[taddr0 & 0x7ff];
             save0 &= 0xf0;
             save0 |= (save0 >> 4);
             u0 = save0 - 0x80;
 
-            save1 = globals.tmem[taddr1 & 0x7ff];
+            save1 = parallel_worker->globals.tmem[taddr1 & 0x7ff];
             save1 &= 0xf0;
             save1 |= (save1 >> 4);
             u1 = save1 - 0x80;
 
-            save2 = globals.tmem[taddr2 & 0x7ff];
+            save2 = parallel_worker->globals.tmem[taddr2 & 0x7ff];
             save2 &= 0xf0;
             save2 |= (save2 >> 4);
             u2 = save2 - 0x80;
 
-            save3 = globals.tmem[taddr3 & 0x7ff];
+            save3 = parallel_worker->globals.tmem[taddr3 & 0x7ff];
             save3 &= 0xf0;
             save3 |= (save3 >> 4);
             u3 = save3 - 0x80;
@@ -3414,13 +3178,13 @@ static INLINE void fetch_texel_quadro(struct color *color0, struct color *color1
 
             int32_t u0, u1, u2, u3, save0, save1, save2, save3;
 
-            save0 = u0 = globals.tmem[taddr0 & 0x7ff];
+            save0 = u0 = parallel_worker->globals.tmem[taddr0 & 0x7ff];
             u0 = u0 - 0x80;
-            save1 = u1 = globals.tmem[taddr1 & 0x7ff];
+            save1 = u1 = parallel_worker->globals.tmem[taddr1 & 0x7ff];
             u1 = u1 - 0x80;
-            save2 = u2 = globals.tmem[taddr2 & 0x7ff];
+            save2 = u2 = parallel_worker->globals.tmem[taddr2 & 0x7ff];
             u2 = u2 - 0x80;
-            save3 = u3 = globals.tmem[taddr3 & 0x7ff];
+            save3 = u3 = parallel_worker->globals.tmem[taddr3 & 0x7ff];
             u3 = u3 - 0x80;
 
             color0->r = u0;
@@ -3491,16 +3255,16 @@ static INLINE void fetch_texel_quadro(struct color *color0, struct color *color1
             c2 = tc16[taddrlow2];
             c3 = tc16[taddrlow3];
 
-            y0 = globals.tmem[taddr0 | 0x800];
+            y0 = parallel_worker->globals.tmem[taddr0 | 0x800];
             u0 = c0 >> 8;
             v0 = c0 & 0xff;
-            y1 = globals.tmem[taddr1 | 0x800];
+            y1 = parallel_worker->globals.tmem[taddr1 | 0x800];
             u1 = c1 >> 8;
             v1 = c1 & 0xff;
-            y2 = globals.tmem[taddr2 | 0x800];
+            y2 = parallel_worker->globals.tmem[taddr2 | 0x800];
             u2 = c2 >> 8;
             v2 = c2 & 0xff;
-            y3 = globals.tmem[taddr3 | 0x800];
+            y3 = parallel_worker->globals.tmem[taddr3 | 0x800];
             u3 = c3 >> 8;
             v3 = c3 & 0xff;
 
@@ -3599,8 +3363,8 @@ static INLINE void fetch_texel_quadro(struct color *color0, struct color *color1
                taddr0 &= 0x7ff;
                taddr2 &= 0x7ff;
 
-               y0 = globals.tmem[taddr0 | 0x800];
-               y2 = globals.tmem[taddr2 | 0x800];
+               y0 = parallel_worker->globals.tmem[taddr0 | 0x800];
+               y2 = parallel_worker->globals.tmem[taddr2 | 0x800];
 
                color0->b = color0->a = y0;
                color2->b = color2->a = y2;
@@ -3624,8 +3388,8 @@ static INLINE void fetch_texel_quadro(struct color *color0, struct color *color1
                taddr1 &= 0x7ff;
                taddr3 &= 0x7ff;
 
-               y1 = globals.tmem[taddr1 | 0x800];
-               y3 = globals.tmem[taddr3 | 0x800];
+               y1 = parallel_worker->globals.tmem[taddr1 | 0x800];
+               y3 = parallel_worker->globals.tmem[taddr3 | 0x800];
 
                color1->b = color1->a = y1;
                color3->b = color3->a = y3;
@@ -3668,21 +3432,21 @@ static INLINE void fetch_texel_quadro(struct color *color0, struct color *color1
             taddr2 &= 0xfff;
             taddr3 &= 0xfff;
             ands = s0 & 1;
-            p = globals.tmem[taddr0];
+            p = parallel_worker->globals.tmem[taddr0];
             p = (ands) ? (p & 0xf) : (p >> 4);
             p = (tpal << 4) | p;
             color0->r = color0->g = color0->b = color0->a = p;
-            p = globals.tmem[taddr2];
+            p = parallel_worker->globals.tmem[taddr2];
             p = (ands) ? (p & 0xf) : (p >> 4);
             p = (tpal << 4) | p;
             color2->r = color2->g = color2->b = color2->a = p;
 
             ands = s1 & 1;
-            p = globals.tmem[taddr1];
+            p = parallel_worker->globals.tmem[taddr1];
             p = (ands) ? (p & 0xf) : (p >> 4);
             p = (tpal << 4) | p;
             color1->r = color1->g = color1->b = color1->a = p;
-            p = globals.tmem[taddr3];
+            p = parallel_worker->globals.tmem[taddr3];
             p = (ands) ? (p & 0xf) : (p >> 4);
             p = (tpal << 4) | p;
             color3->r = color3->g = color3->b = color3->a = p;
@@ -3707,22 +3471,22 @@ static INLINE void fetch_texel_quadro(struct color *color0, struct color *color1
             taddr1 &= 0xfff;
             taddr2 &= 0xfff;
             taddr3 &= 0xfff;
-            p = globals.tmem[taddr0];
+            p = parallel_worker->globals.tmem[taddr0];
             color0->r = p;
             color0->g = p;
             color0->b = p;
             color0->a = p;
-            p = globals.tmem[taddr2];
+            p = parallel_worker->globals.tmem[taddr2];
             color2->r = p;
             color2->g = p;
             color2->b = p;
             color2->a = p;
-            p = globals.tmem[taddr1];
+            p = parallel_worker->globals.tmem[taddr1];
             color1->r = p;
             color1->g = p;
             color1->b = p;
             color1->a = p;
-            p = globals.tmem[taddr3];
+            p = parallel_worker->globals.tmem[taddr3];
             color3->r = p;
             color3->g = p;
             color3->b = p;
@@ -3791,7 +3555,7 @@ static INLINE void fetch_texel_quadro(struct color *color0, struct color *color1
             taddr2 &= 0xfff;
             taddr3 &= 0xfff;
             ands = s0 & 1;
-            p = globals.tmem[taddr0];
+            p = parallel_worker->globals.tmem[taddr0];
             p = ands ? (p & 0xf) : (p >> 4);
             i = p & 0xe;
             i = (i << 4) | (i << 1) | (i >> 2);
@@ -3799,7 +3563,7 @@ static INLINE void fetch_texel_quadro(struct color *color0, struct color *color1
             color0->g = i;
             color0->b = i;
             color0->a = (p & 0x1) ? 0xff : 0;
-            p = globals.tmem[taddr2];
+            p = parallel_worker->globals.tmem[taddr2];
             p = ands ? (p & 0xf) : (p >> 4);
             i = p & 0xe;
             i = (i << 4) | (i << 1) | (i >> 2);
@@ -3809,7 +3573,7 @@ static INLINE void fetch_texel_quadro(struct color *color0, struct color *color1
             color2->a = (p & 0x1) ? 0xff : 0;
 
             ands = s1 & 1;
-            p = globals.tmem[taddr1];
+            p = parallel_worker->globals.tmem[taddr1];
             p = ands ? (p & 0xf) : (p >> 4);
             i = p & 0xe;
             i = (i << 4) | (i << 1) | (i >> 2);
@@ -3817,7 +3581,7 @@ static INLINE void fetch_texel_quadro(struct color *color0, struct color *color1
             color1->g = i;
             color1->b = i;
             color1->a = (p & 0x1) ? 0xff : 0;
-            p = globals.tmem[taddr3];
+            p = parallel_worker->globals.tmem[taddr3];
             p = ands ? (p & 0xf) : (p >> 4);
             i = p & 0xe;
             i = (i << 4) | (i << 1) | (i >> 2);
@@ -3846,28 +3610,28 @@ static INLINE void fetch_texel_quadro(struct color *color0, struct color *color1
             taddr1 &= 0xfff;
             taddr2 &= 0xfff;
             taddr3 &= 0xfff;
-            p = globals.tmem[taddr0];
+            p = parallel_worker->globals.tmem[taddr0];
             i = p & 0xf0;
             i |= (i >> 4);
             color0->r = i;
             color0->g = i;
             color0->b = i;
             color0->a = ((p & 0xf) << 4) | (p & 0xf);
-            p = globals.tmem[taddr1];
+            p = parallel_worker->globals.tmem[taddr1];
             i = p & 0xf0;
             i |= (i >> 4);
             color1->r = i;
             color1->g = i;
             color1->b = i;
             color1->a = ((p & 0xf) << 4) | (p & 0xf);
-            p = globals.tmem[taddr2];
+            p = parallel_worker->globals.tmem[taddr2];
             i = p & 0xf0;
             i |= (i >> 4);
             color2->r = i;
             color2->g = i;
             color2->b = i;
             color2->a = ((p & 0xf) << 4) | (p & 0xf);
-            p = globals.tmem[taddr3];
+            p = parallel_worker->globals.tmem[taddr3];
             i = p & 0xf0;
             i |= (i >> 4);
             color3->r = i;
@@ -3972,21 +3736,21 @@ static INLINE void fetch_texel_quadro(struct color *color0, struct color *color1
             taddr2 &= 0xfff;
             taddr3 &= 0xfff;
             ands = s0 & 1;
-            p = globals.tmem[taddr0];
+            p = parallel_worker->globals.tmem[taddr0];
             c0 = ands ? (p & 0xf) : (p >> 4);
             c0 |= (c0 << 4);
             color0->r = color0->g = color0->b = color0->a = c0;
-            p = globals.tmem[taddr2];
+            p = parallel_worker->globals.tmem[taddr2];
             c2 = ands ? (p & 0xf) : (p >> 4);
             c2 |= (c2 << 4);
             color2->r = color2->g = color2->b = color2->a = c2;
 
             ands = s1 & 1;
-            p = globals.tmem[taddr1];
+            p = parallel_worker->globals.tmem[taddr1];
             c1 = ands ? (p & 0xf) : (p >> 4);
             c1 |= (c1 << 4);
             color1->r = color1->g = color1->b = color1->a = c1;
-            p = globals.tmem[taddr3];
+            p = parallel_worker->globals.tmem[taddr3];
             c3 = ands ? (p & 0xf) : (p >> 4);
             c3 |= (c3 << 4);
             color3->r = color3->g = color3->b = color3->a = c3;
@@ -4013,22 +3777,22 @@ static INLINE void fetch_texel_quadro(struct color *color0, struct color *color1
             taddr2 &= 0xfff;
             taddr3 &= 0xfff;
 
-            p = globals.tmem[taddr0];
+            p = parallel_worker->globals.tmem[taddr0];
             color0->r = p;
             color0->g = p;
             color0->b = p;
             color0->a = p;
-            p = globals.tmem[taddr1];
+            p = parallel_worker->globals.tmem[taddr1];
             color1->r = p;
             color1->g = p;
             color1->b = p;
             color1->a = p;
-            p = globals.tmem[taddr2];
+            p = parallel_worker->globals.tmem[taddr2];
             color2->r = p;
             color2->g = p;
             color2->b = p;
             color2->a = p;
-            p = globals.tmem[taddr3];
+            p = parallel_worker->globals.tmem[taddr3];
             color3->r = p;
             color3->g = p;
             color3->b = p;
@@ -4083,12 +3847,12 @@ static INLINE void fetch_texel_quadro(struct color *color0, struct color *color1
 
 static INLINE void fetch_texel_entlut_quadro(struct color *color0, struct color *color1, struct color *color2, struct color *color3, int s0, int sdiff, int t0, int tdiff, uint32_t tilenum, int isupper, int isupperrg)
 {
-   uint32_t tbase0 = globals.tile[tilenum].line * (t0 & 0xff) + globals.tile[tilenum].tmem;
+   uint32_t tbase0 = parallel_worker->globals.tile[tilenum].line * (t0 & 0xff) + parallel_worker->globals.tile[tilenum].tmem;
    int t1 = (t0 & 0xff) + tdiff;
    int s1;
 
-   uint32_t tbase2 = globals.tile[tilenum].line * t1 + globals.tile[tilenum].tmem;
-   uint32_t tpal = globals.tile[tilenum].palette << 4;
+   uint32_t tbase2 = parallel_worker->globals.tile[tilenum].line * t1 + parallel_worker->globals.tile[tilenum].tmem;
+   uint32_t tpal = parallel_worker->globals.tile[tilenum].palette << 4;
    uint32_t xort, ands;
 
    uint32_t taddr0, taddr1, taddr2, taddr3;
@@ -4101,7 +3865,7 @@ static INLINE void fetch_texel_entlut_quadro(struct color *color0, struct color 
 
 
 
-   switch(globals.tile[tilenum].f.tlutswitch)
+   switch(parallel_worker->globals.tile[tilenum].f.tlutswitch)
    {
       case 0:
       case 1:
@@ -4120,18 +3884,18 @@ static INLINE void fetch_texel_entlut_quadro(struct color *color0, struct color 
             taddr3 ^= xort;
 
             ands = s0 & 1;
-            c0 = globals.tmem[taddr0 & 0x7ff];
+            c0 = parallel_worker->globals.tmem[taddr0 & 0x7ff];
             c0 = (ands) ? (c0 & 0xf) : (c0 >> 4);
             taddr0 = (tpal | c0) << 2;
-            c2 = globals.tmem[taddr2 & 0x7ff];
+            c2 = parallel_worker->globals.tmem[taddr2 & 0x7ff];
             c2 = (ands) ? (c2 & 0xf) : (c2 >> 4);
             taddr2 = ((tpal | c2) << 2) + 2;
 
             ands = s1 & 1;
-            c1 = globals.tmem[taddr1 & 0x7ff];
+            c1 = parallel_worker->globals.tmem[taddr1 & 0x7ff];
             c1 = (ands) ? (c1 & 0xf) : (c1 >> 4);
             taddr1 = ((tpal | c1) << 2) + 1;
-            c3 = globals.tmem[taddr3 & 0x7ff];
+            c3 = parallel_worker->globals.tmem[taddr3 & 0x7ff];
             c3 = (ands) ? (c3 & 0xf) : (c3 >> 4);
             taddr3 = ((tpal | c3) << 2) + 3;
          }
@@ -4151,17 +3915,17 @@ static INLINE void fetch_texel_entlut_quadro(struct color *color0, struct color 
             taddr2 ^= xort;
             taddr3 ^= xort;
 
-            c0 = globals.tmem[taddr0 & 0x7ff];
+            c0 = parallel_worker->globals.tmem[taddr0 & 0x7ff];
             c0 >>= 4;
             taddr0 = (tpal | c0) << 2;
-            c2 = globals.tmem[taddr2 & 0x7ff];
+            c2 = parallel_worker->globals.tmem[taddr2 & 0x7ff];
             c2 >>= 4;
             taddr2 = ((tpal | c2) << 2) + 2;
 
-            c1 = globals.tmem[taddr1 & 0x7ff];
+            c1 = parallel_worker->globals.tmem[taddr1 & 0x7ff];
             c1 >>= 4;
             taddr1 = ((tpal | c1) << 2) + 1;
-            c3 = globals.tmem[taddr3 & 0x7ff];
+            c3 = parallel_worker->globals.tmem[taddr3 & 0x7ff];
             c3 >>= 4;
             taddr3 = ((tpal | c3) << 2) + 3;
          }
@@ -4183,13 +3947,13 @@ static INLINE void fetch_texel_entlut_quadro(struct color *color0, struct color 
             taddr2 ^= xort;
             taddr3 ^= xort;
 
-            c0 = globals.tmem[taddr0 & 0x7ff];
+            c0 = parallel_worker->globals.tmem[taddr0 & 0x7ff];
             taddr0 = c0 << 2;
-            c2 = globals.tmem[taddr2 & 0x7ff];
+            c2 = parallel_worker->globals.tmem[taddr2 & 0x7ff];
             taddr2 = (c2 << 2) + 2;
-            c1 = globals.tmem[taddr1 & 0x7ff];
+            c1 = parallel_worker->globals.tmem[taddr1 & 0x7ff];
             taddr1 = (c1 << 2) + 1;
-            c3 = globals.tmem[taddr3 & 0x7ff];
+            c3 = parallel_worker->globals.tmem[taddr3 & 0x7ff];
             taddr3 = (c3 << 2) + 3;
          }
          break;
@@ -4208,13 +3972,13 @@ static INLINE void fetch_texel_entlut_quadro(struct color *color0, struct color 
             taddr2 ^= xort;
             taddr3 ^= xort;
 
-            c0 = globals.tmem[taddr0 & 0x7ff];
+            c0 = parallel_worker->globals.tmem[taddr0 & 0x7ff];
             taddr0 = c0 << 2;
-            c2 = globals.tmem[taddr2 & 0x7ff];
+            c2 = parallel_worker->globals.tmem[taddr2 & 0x7ff];
             taddr2 = (c2 << 2) + 2;
-            c1 = globals.tmem[taddr1 & 0x7ff];
+            c1 = parallel_worker->globals.tmem[taddr1 & 0x7ff];
             taddr1 = (c1 << 2) + 1;
-            c3 = globals.tmem[taddr3 & 0x7ff];
+            c3 = parallel_worker->globals.tmem[taddr3 & 0x7ff];
             taddr3 = (c3 << 2) + 3;
          }
          break;
@@ -4259,13 +4023,13 @@ static INLINE void fetch_texel_entlut_quadro(struct color *color0, struct color 
             taddr2 ^= xort;
             taddr3 ^= xort;
 
-            c0 = globals.tmem[taddr0 & 0x7ff];
+            c0 = parallel_worker->globals.tmem[taddr0 & 0x7ff];
             taddr0 = c0 << 2;
-            c2 = globals.tmem[taddr2 & 0x7ff];
+            c2 = parallel_worker->globals.tmem[taddr2 & 0x7ff];
             taddr2 = (c2 << 2) + 2;
-            c1 = globals.tmem[taddr1 & 0x7ff];
+            c1 = parallel_worker->globals.tmem[taddr1 & 0x7ff];
             taddr1 = (c1 << 2) + 1;
-            c3 = globals.tmem[taddr3 & 0x7ff];
+            c3 = parallel_worker->globals.tmem[taddr3 & 0x7ff];
             taddr3 = (c3 << 2) + 3;
          }
          break;
@@ -4312,13 +4076,13 @@ static INLINE void fetch_texel_entlut_quadro(struct color *color0, struct color 
             taddr2 ^= xort;
             taddr3 ^= xort;
 
-            c0 = globals.tmem[taddr0 & 0x7ff];
+            c0 = parallel_worker->globals.tmem[taddr0 & 0x7ff];
             taddr0 = c0 << 2;
-            c2 = globals.tmem[taddr2 & 0x7ff];
+            c2 = parallel_worker->globals.tmem[taddr2 & 0x7ff];
             taddr2 = (c2 << 2) + 2;
-            c1 = globals.tmem[taddr1 & 0x7ff];
+            c1 = parallel_worker->globals.tmem[taddr1 & 0x7ff];
             taddr1 = (c1 << 2) + 1;
-            c3 = globals.tmem[taddr3 & 0x7ff];
+            c3 = parallel_worker->globals.tmem[taddr3 & 0x7ff];
             taddr3 = (c3 << 2) + 3;
          }
          break;
@@ -4329,7 +4093,7 @@ static INLINE void fetch_texel_entlut_quadro(struct color *color0, struct color 
    c1 = tlut[taddr1 ^ xorupperrg];
    c3 = tlut[taddr3 ^ xorupperrg];
 
-   if (!globals.other_modes.tlut_type)
+   if (!parallel_worker->globals.other_modes.tlut_type)
    {
       color0->r = GET_HI_RGBA16_TMEM(c0);
       color0->g = GET_MED_RGBA16_TMEM(c0);
@@ -4397,8 +4161,8 @@ static INLINE void fetch_texel_entlut_quadro(struct color *color0, struct color 
 
 static INLINE void fetch_texel_entlut_quadro_nearest(struct color *color0, struct color *color1, struct color *color2, struct color *color3, int s0, int t0, uint32_t tilenum, int isupper, int isupperrg)
 {
-   uint32_t tbase0 = globals.tile[tilenum].line * t0 + globals.tile[tilenum].tmem;
-   uint32_t tpal = globals.tile[tilenum].palette << 4;
+   uint32_t tbase0 = parallel_worker->globals.tile[tilenum].line * t0 + parallel_worker->globals.tile[tilenum].tmem;
+   uint32_t tpal = parallel_worker->globals.tile[tilenum].palette << 4;
    uint32_t xort, ands;
 
    uint32_t taddr0 = 0;
@@ -4406,7 +4170,7 @@ static INLINE void fetch_texel_entlut_quadro_nearest(struct color *color0, struc
 
    uint32_t xorupperrg = isupperrg ? (WORD_ADDR_XOR ^ 3) : WORD_ADDR_XOR;
 
-   switch(globals.tile[tilenum].f.tlutswitch)
+   switch(parallel_worker->globals.tile[tilenum].f.tlutswitch)
    {
       case 0:
       case 1:
@@ -4417,7 +4181,7 @@ static INLINE void fetch_texel_entlut_quadro_nearest(struct color *color0, struc
             taddr0 ^= xort;
 
             ands = s0 & 1;
-            c0 = globals.tmem[taddr0 & 0x7ff];
+            c0 = parallel_worker->globals.tmem[taddr0 & 0x7ff];
             c0 = (ands) ? (c0 & 0xf) : (c0 >> 4);
 
             taddr0 = (tpal | c0) << 2;
@@ -4429,7 +4193,7 @@ static INLINE void fetch_texel_entlut_quadro_nearest(struct color *color0, struc
             xort = (t0 & 1) ? BYTE_XOR_DWORD_SWAP : BYTE_ADDR_XOR;
             taddr0 ^= xort;
 
-            c0 = globals.tmem[taddr0 & 0x7ff];
+            c0 = parallel_worker->globals.tmem[taddr0 & 0x7ff];
 
             c0 >>= 4;
 
@@ -4444,7 +4208,7 @@ static INLINE void fetch_texel_entlut_quadro_nearest(struct color *color0, struc
             xort = (t0 & 1) ? BYTE_XOR_DWORD_SWAP : BYTE_ADDR_XOR;
             taddr0 ^= xort;
 
-            c0 = globals.tmem[taddr0 & 0x7ff];
+            c0 = parallel_worker->globals.tmem[taddr0 & 0x7ff];
 
             taddr0 = c0 << 2;
          }
@@ -4455,7 +4219,7 @@ static INLINE void fetch_texel_entlut_quadro_nearest(struct color *color0, struc
             xort = (t0 & 1) ? BYTE_XOR_DWORD_SWAP : BYTE_ADDR_XOR;
             taddr0 ^= xort;
 
-            c0 = globals.tmem[taddr0 & 0x7ff];
+            c0 = parallel_worker->globals.tmem[taddr0 & 0x7ff];
 
             taddr0 = c0 << 2;
          }
@@ -4479,7 +4243,7 @@ static INLINE void fetch_texel_entlut_quadro_nearest(struct color *color0, struc
             xort = (t0 & 1) ? BYTE_XOR_DWORD_SWAP : BYTE_ADDR_XOR;
             taddr0 ^= xort;
 
-            c0 = globals.tmem[taddr0 & 0x7ff];
+            c0 = parallel_worker->globals.tmem[taddr0 & 0x7ff];
 
             taddr0 = c0 << 2;
          }
@@ -4504,7 +4268,7 @@ static INLINE void fetch_texel_entlut_quadro_nearest(struct color *color0, struc
             xort = (t0 & 1) ? BYTE_XOR_DWORD_SWAP : BYTE_ADDR_XOR;
             taddr0 ^= xort;
 
-            c0 = globals.tmem[taddr0 & 0x7ff];
+            c0 = parallel_worker->globals.tmem[taddr0 & 0x7ff];
 
             taddr0 = c0 << 2;
          }
@@ -4516,7 +4280,7 @@ static INLINE void fetch_texel_entlut_quadro_nearest(struct color *color0, struc
    c2 = tlut[(taddr0 + 2) ^ xorupperrg];
    c3 = tlut[(taddr0 + 3) ^ xorupperrg];
 
-   if (!globals.other_modes.tlut_type)
+   if (!parallel_worker->globals.other_modes.tlut_type)
    {
       color0->r = GET_HI_RGBA16_TMEM(c0);
       color0->g = GET_MED_RGBA16_TMEM(c0);
@@ -4584,10 +4348,10 @@ static INLINE void fetch_texel_entlut_quadro_nearest(struct color *color0, struc
 
 static void get_tmem_idx(int s, int t, uint32_t tilenum, uint32_t* idx0, uint32_t* idx1, uint32_t* idx2, uint32_t* idx3, uint32_t* bit3flipped, uint32_t* hibit)
 {
-   uint32_t tbase = (globals.tile[tilenum].line * t) & 0x1ff;
-   tbase += globals.tile[tilenum].tmem;
-   uint32_t tsize = globals.tile[tilenum].size;
-   uint32_t tformat = globals.tile[tilenum].format;
+   uint32_t tbase = (parallel_worker->globals.tile[tilenum].line * t) & 0x1ff;
+   tbase += parallel_worker->globals.tile[tilenum].tmem;
+   uint32_t tsize = parallel_worker->globals.tile[tilenum].size;
+   uint32_t tformat = parallel_worker->globals.tile[tilenum].format;
    uint32_t sshorts = 0;
 
 
@@ -4625,10 +4389,10 @@ static void get_tmem_idx(int s, int t, uint32_t tilenum, uint32_t* idx0, uint32_
 
 static void read_tmem_copy(int s, int s1, int s2, int s3, int t, uint32_t tilenum, uint32_t* sortshort, int* hibits, int* lowbits)
 {
-   uint32_t tbase = (globals.tile[tilenum].line * t) & 0x1ff;
-   tbase += globals.tile[tilenum].tmem;
-   uint32_t tsize = globals.tile[tilenum].size;
-   uint32_t tformat = globals.tile[tilenum].format;
+   uint32_t tbase = (parallel_worker->globals.tile[tilenum].line * t) & 0x1ff;
+   tbase += parallel_worker->globals.tile[tilenum].tmem;
+   uint32_t tsize = parallel_worker->globals.tile[tilenum].size;
+   uint32_t tformat = parallel_worker->globals.tile[tilenum].format;
    uint32_t shbytes = 0, shbytes1 = 0, shbytes2 = 0, shbytes3 = 0;
    int32_t delta = 0;
    uint32_t sortidx[8];
@@ -4731,7 +4495,7 @@ static void read_tmem_copy(int s, int s1, int s2, int s3, int t, uint32_t tilenu
    sort_tmem_shorts_lowhalf(&sortshort[2], short0, short1, short2, short3, lowbits[3] >> 2);
    sort_tmem_shorts_lowhalf(&sortshort[3], short0, short1, short2, short3, lowbits[4] >> 2);
 
-   if (globals.other_modes.en_tlut)
+   if (parallel_worker->globals.other_modes.en_tlut)
    {
 
       compute_color_index(&short0, sortshort[0], lowbits[0] & 3, tilenum);
@@ -4760,7 +4524,7 @@ static void read_tmem_copy(int s, int s1, int s2, int s3, int t, uint32_t tilenu
 
 
 
-   if (globals.other_modes.en_tlut)
+   if (parallel_worker->globals.other_modes.en_tlut)
    {
       sort_tmem_shorts_lowhalf(&sortshort[4], short0, short1, short2, short3, 0);
       sort_tmem_shorts_lowhalf(&sortshort[5], short0, short1, short2, short3, 1);
@@ -4782,7 +4546,7 @@ static void tmem_init(void)
    for (i = 0; i < 32; i++)
       replicated_rgba[i] = (i << 3) | ((i >> 2) & 7);
 
-   memset(globals.tmem, 0, 0x1000);
+   memset(parallel_worker->globals.tmem, 0, 0x1000);
 }
 
 static void tcdiv_persp(int32_t ss, int32_t st, int32_t sw, int32_t* sss, int32_t* sst);
@@ -4803,11 +4567,11 @@ static STRICTINLINE void tcmask_copy(int32_t* S, int32_t* S1, int32_t* S2, int32
     int32_t maskbits_s;
     int32_t swrapthreshold;
 
-    if (globals.tile[num].mask_s)
+    if (parallel_worker->globals.tile[num].mask_s)
     {
-        if (globals.tile[num].ms)
+        if (parallel_worker->globals.tile[num].ms)
         {
-            swrapthreshold = globals.tile[num].f.masksclamped;
+            swrapthreshold = parallel_worker->globals.tile[num].f.masksclamped;
 
             wrap = (*S >> swrapthreshold) & 1;
             *S ^= (-wrap);
@@ -4822,23 +4586,23 @@ static STRICTINLINE void tcmask_copy(int32_t* S, int32_t* S1, int32_t* S2, int32
             *S3 ^= (-wrap);
         }
 
-        maskbits_s = maskbits_table[globals.tile[num].mask_s];
+        maskbits_s = maskbits_table[parallel_worker->globals.tile[num].mask_s];
         *S &= maskbits_s;
         *S1 &= maskbits_s;
         *S2 &= maskbits_s;
         *S3 &= maskbits_s;
     }
 
-    if (globals.tile[num].mask_t)
+    if (parallel_worker->globals.tile[num].mask_t)
     {
-        if (globals.tile[num].mt)
+        if (parallel_worker->globals.tile[num].mt)
         {
-            wrap = *T >> globals.tile[num].f.masktclamped;
+            wrap = *T >> parallel_worker->globals.tile[num].f.masktclamped;
             wrap &= 1;
             *T ^= (-wrap);
         }
 
-        *T &= maskbits_table[globals.tile[num].mask_t];
+        *T &= maskbits_table[parallel_worker->globals.tile[num].mask_t];
     }
 }
 
@@ -4849,7 +4613,7 @@ static STRICTINLINE void tcshift_cycle(int32_t* S, int32_t* T, int32_t* maxs, in
 
 
     int32_t coord = *S;
-    int32_t shifter = globals.tile[num].shift_s;
+    int32_t shifter = parallel_worker->globals.tile[num].shift_s;
 
 
     if (shifter < 11)
@@ -4867,12 +4631,12 @@ static STRICTINLINE void tcshift_cycle(int32_t* S, int32_t* T, int32_t* maxs, in
 
 
 
-    *maxs = ((coord >> 3) >= globals.tile[num].sh);
+    *maxs = ((coord >> 3) >= parallel_worker->globals.tile[num].sh);
 
 
 
     coord = *T;
-    shifter = globals.tile[num].shift_t;
+    shifter = parallel_worker->globals.tile[num].shift_t;
 
     if (shifter < 11)
     {
@@ -4885,18 +4649,18 @@ static STRICTINLINE void tcshift_cycle(int32_t* S, int32_t* T, int32_t* maxs, in
         coord = SIGN16(coord);
     }
     *T = coord;
-    *maxt = ((coord >> 3) >= globals.tile[num].th);
+    *maxt = ((coord >> 3) >= parallel_worker->globals.tile[num].th);
 }
 
 static STRICTINLINE void tcclamp_cycle(int32_t* S, int32_t* T, int32_t* SFRAC, int32_t* TFRAC, int32_t maxs, int32_t maxt, int32_t num)
 {
     int32_t locs = *S, loct = *T;
-    if (globals.tile[num].f.clampens)
+    if (parallel_worker->globals.tile[num].f.clampens)
     {
 
         if (maxs)
         {
-            *S = globals.tile[num].f.clampdiffs;
+            *S = parallel_worker->globals.tile[num].f.clampdiffs;
             *SFRAC = 0;
         }
         else if (!(locs & 0x10000))
@@ -4910,11 +4674,11 @@ static STRICTINLINE void tcclamp_cycle(int32_t* S, int32_t* T, int32_t* SFRAC, i
     else
         *S = (locs >> 5);
 
-    if (globals.tile[num].f.clampent)
+    if (parallel_worker->globals.tile[num].f.clampent)
     {
         if (maxt)
         {
-            *T = globals.tile[num].f.clampdifft;
+            *T = parallel_worker->globals.tile[num].f.clampdifft;
             *TFRAC = 0;
         }
         else if (!(loct & 0x10000))
@@ -4933,10 +4697,10 @@ static STRICTINLINE void tcclamp_cycle(int32_t* S, int32_t* T, int32_t* SFRAC, i
 static STRICTINLINE void tcclamp_cycle_light(int32_t* S, int32_t* T, int32_t maxs, int32_t maxt, int32_t num)
 {
     int32_t locs = *S, loct = *T;
-    if (globals.tile[num].f.clampens)
+    if (parallel_worker->globals.tile[num].f.clampens)
     {
         if (maxs)
-            *S = globals.tile[num].f.clampdiffs;
+            *S = parallel_worker->globals.tile[num].f.clampdiffs;
         else if (!(locs & 0x10000))
             *S = locs >> 5;
         else
@@ -4945,10 +4709,10 @@ static STRICTINLINE void tcclamp_cycle_light(int32_t* S, int32_t* T, int32_t max
     else
         *S = (locs >> 5);
 
-    if (globals.tile[num].f.clampent)
+    if (parallel_worker->globals.tile[num].f.clampent)
     {
         if (maxt)
-            *T = globals.tile[num].f.clampdifft;
+            *T = parallel_worker->globals.tile[num].f.clampdifft;
         else if (!(loct & 0x10000))
             *T = loct >> 5;
         else
@@ -4961,7 +4725,7 @@ static STRICTINLINE void tcclamp_cycle_light(int32_t* S, int32_t* T, int32_t max
 static STRICTINLINE void tcshift_copy(int32_t* S, int32_t* T, uint32_t num)
 {
     int32_t coord = *S;
-    int32_t shifter = globals.tile[num].shift_s;
+    int32_t shifter = parallel_worker->globals.tile[num].shift_s;
 
     if (shifter < 11)
     {
@@ -4976,7 +4740,7 @@ static STRICTINLINE void tcshift_copy(int32_t* S, int32_t* T, uint32_t num)
     *S = coord;
 
     coord = *T;
-    shifter = globals.tile[num].shift_t;
+    shifter = parallel_worker->globals.tile[num].shift_t;
 
     if (shifter < 11)
     {
@@ -5075,15 +4839,15 @@ static STRICTINLINE void lodfrac_lodtile_signals(int lodclamp, int32_t lod, uint
         dis = 1;
         lf = 0xff;
     }
-    else if (lod < globals.min_level)
+    else if (lod < parallel_worker->globals.min_level)
     {
 
 
         mag = 1;
         ltil = 0;
-        dis = globals.max_level == 0;
+        dis = parallel_worker->globals.max_level == 0;
 
-        if(!globals.other_modes.sharpen_tex_en && !globals.other_modes.detail_tex_en)
+        if(!parallel_worker->globals.other_modes.sharpen_tex_en && !parallel_worker->globals.other_modes.detail_tex_en)
         {
             if (dis)
                 lf = 0xff;
@@ -5092,8 +4856,8 @@ static STRICTINLINE void lodfrac_lodtile_signals(int lodclamp, int32_t lod, uint
         }
         else
         {
-            lf = globals.min_level << 3;
-            if (globals.other_modes.sharpen_tex_en)
+            lf = parallel_worker->globals.min_level << 3;
+            if (parallel_worker->globals.other_modes.sharpen_tex_en)
                 lf |= 0x100;
         }
     }
@@ -5101,9 +4865,9 @@ static STRICTINLINE void lodfrac_lodtile_signals(int lodclamp, int32_t lod, uint
     {
         mag = 1;
         ltil = 0;
-        dis = globals.max_level == 0;
+        dis = parallel_worker->globals.max_level == 0;
 
-        if(!globals.other_modes.sharpen_tex_en && !globals.other_modes.detail_tex_en)
+        if(!parallel_worker->globals.other_modes.sharpen_tex_en && !parallel_worker->globals.other_modes.detail_tex_en)
         {
             if (dis)
                 lf = 0xff;
@@ -5113,7 +4877,7 @@ static STRICTINLINE void lodfrac_lodtile_signals(int lodclamp, int32_t lod, uint
         else
         {
             lf = lod << 3;
-            if (globals.other_modes.sharpen_tex_en)
+            if (parallel_worker->globals.other_modes.sharpen_tex_en)
                 lf |= 0x100;
         }
     }
@@ -5122,13 +4886,13 @@ static STRICTINLINE void lodfrac_lodtile_signals(int lodclamp, int32_t lod, uint
         mag = 0;
         ltil =  log2table[(lod >> 5) & 0xff];
 
-        if (globals.max_level)
-            dis = ((lod & 0x6000) || (ltil >= globals.max_level)) != 0;
+        if (parallel_worker->globals.max_level)
+            dis = ((lod & 0x6000) || (ltil >= parallel_worker->globals.max_level)) != 0;
         else
             dis = 1;
 
 
-        if(!globals.other_modes.sharpen_tex_en && !globals.other_modes.detail_tex_en && dis)
+        if(!parallel_worker->globals.other_modes.sharpen_tex_en && !parallel_worker->globals.other_modes.detail_tex_en && dis)
             lf = 0xff;
         else
             lf = ((lod << 3) >> ltil) & 0xff;
@@ -5166,7 +4930,7 @@ static STRICTINLINE void tclod_2cycle_current(int32_t* sss, int32_t* sst, int32_
 
     tclod_tcclamp(sss, sst);
 
-    if (globals.other_modes.f.dolod)
+    if (parallel_worker->globals.other_modes.f.dolod)
     {
 
 
@@ -5174,11 +4938,11 @@ static STRICTINLINE void tclod_2cycle_current(int32_t* sss, int32_t* sst, int32_
 
 
 
-        nextys = (s + globals.spans.dsdy) >> 16;
-        nextyt = (t + globals.spans.dtdy) >> 16;
-        nextysw = (w + globals.spans.dwdy) >> 16;
+        nextys = (s + parallel_worker->globals.spans.dsdy) >> 16;
+        nextyt = (t + parallel_worker->globals.spans.dtdy) >> 16;
+        nextysw = (w + parallel_worker->globals.spans.dwdy) >> 16;
 
-        globals.tcdiv_ptr(nextys, nextyt, nextysw, &nextys, &nextyt);
+        parallel_worker->globals.tcdiv_ptr(nextys, nextyt, nextysw, &nextys, &nextyt);
 
         lodclamp = (initt & 0x60000) || (nextt & 0x60000) || (inits & 0x60000) || (nexts & 0x60000) || (nextys & 0x60000) || (nextyt & 0x60000);
 
@@ -5191,17 +4955,17 @@ static STRICTINLINE void tclod_2cycle_current(int32_t* sss, int32_t* sst, int32_
             tclod_4x17_to_15(inits, nextys, initt, nextyt, lod, &lod);
         }
 
-        lodfrac_lodtile_signals(lodclamp, lod, &l_tile, &magnify, &distant, &globals.lod_frac);
+        lodfrac_lodtile_signals(lodclamp, lod, &l_tile, &magnify, &distant, &parallel_worker->globals.lod_frac);
 
 
-        if (globals.other_modes.tex_lod_en)
+        if (parallel_worker->globals.other_modes.tex_lod_en)
         {
             if (distant)
-                l_tile = globals.max_level;
-            if (!globals.other_modes.detail_tex_en)
+                l_tile = parallel_worker->globals.max_level;
+            if (!parallel_worker->globals.other_modes.detail_tex_en)
             {
                 *t1 = (prim_tile + l_tile) & 7;
-                if (!(distant || (!globals.other_modes.sharpen_tex_en && magnify)))
+                if (!(distant || (!parallel_worker->globals.other_modes.sharpen_tex_en && magnify)))
                     *t2 = (*t1 + 1) & 7;
                 else
                     *t2 = *t1;
@@ -5235,17 +4999,17 @@ static STRICTINLINE void tclod_2cycle_current_simple(int32_t* sss, int32_t* sst,
 
     tclod_tcclamp(sss, sst);
 
-    if (globals.other_modes.f.dolod)
+    if (parallel_worker->globals.other_modes.f.dolod)
     {
         nextsw = (w + dwinc) >> 16;
         nexts = (s + dsinc) >> 16;
         nextt = (t + dtinc) >> 16;
-        nextys = (s + globals.spans.dsdy) >> 16;
-        nextyt = (t + globals.spans.dtdy) >> 16;
-        nextysw = (w + globals.spans.dwdy) >> 16;
+        nextys = (s + parallel_worker->globals.spans.dsdy) >> 16;
+        nextyt = (t + parallel_worker->globals.spans.dtdy) >> 16;
+        nextysw = (w + parallel_worker->globals.spans.dwdy) >> 16;
 
-        globals.tcdiv_ptr(nexts, nextt, nextsw, &nexts, &nextt);
-        globals.tcdiv_ptr(nextys, nextyt, nextysw, &nextys, &nextyt);
+        parallel_worker->globals.tcdiv_ptr(nexts, nextt, nextsw, &nexts, &nextt);
+        parallel_worker->globals.tcdiv_ptr(nextys, nextyt, nextysw, &nextys, &nextyt);
 
         lodclamp = (initt & 0x60000) || (nextt & 0x60000) || (inits & 0x60000) || (nexts & 0x60000) || (nextys & 0x60000) || (nextyt & 0x60000);
 
@@ -5255,16 +5019,16 @@ static STRICTINLINE void tclod_2cycle_current_simple(int32_t* sss, int32_t* sst,
             tclod_4x17_to_15(inits, nextys, initt, nextyt, lod, &lod);
         }
 
-        lodfrac_lodtile_signals(lodclamp, lod, &l_tile, &magnify, &distant, &globals.lod_frac);
+        lodfrac_lodtile_signals(lodclamp, lod, &l_tile, &magnify, &distant, &parallel_worker->globals.lod_frac);
 
-        if (globals.other_modes.tex_lod_en)
+        if (parallel_worker->globals.other_modes.tex_lod_en)
         {
             if (distant)
-                l_tile = globals.max_level;
-            if (!globals.other_modes.detail_tex_en)
+                l_tile = parallel_worker->globals.max_level;
+            if (!parallel_worker->globals.other_modes.detail_tex_en)
             {
                 *t1 = (prim_tile + l_tile) & 7;
-                if (!(distant || (!globals.other_modes.sharpen_tex_en && magnify)))
+                if (!(distant || (!parallel_worker->globals.other_modes.sharpen_tex_en && magnify)))
                     *t2 = (*t1 + 1) & 7;
                 else
                     *t2 = *t1;
@@ -5298,17 +5062,17 @@ static STRICTINLINE void tclod_2cycle_current_notexel1(int32_t* sss, int32_t* ss
 
     tclod_tcclamp(sss, sst);
 
-    if (globals.other_modes.f.dolod)
+    if (parallel_worker->globals.other_modes.f.dolod)
     {
         nextsw = (w + dwinc) >> 16;
         nexts = (s + dsinc) >> 16;
         nextt = (t + dtinc) >> 16;
-        nextys = (s + globals.spans.dsdy) >> 16;
-        nextyt = (t + globals.spans.dtdy) >> 16;
-        nextysw = (w + globals.spans.dwdy) >> 16;
+        nextys = (s + parallel_worker->globals.spans.dsdy) >> 16;
+        nextyt = (t + parallel_worker->globals.spans.dtdy) >> 16;
+        nextysw = (w + parallel_worker->globals.spans.dwdy) >> 16;
 
-        globals.tcdiv_ptr(nexts, nextt, nextsw, &nexts, &nextt);
-        globals.tcdiv_ptr(nextys, nextyt, nextysw, &nextys, &nextyt);
+        parallel_worker->globals.tcdiv_ptr(nexts, nextt, nextsw, &nexts, &nextt);
+        parallel_worker->globals.tcdiv_ptr(nextys, nextyt, nextysw, &nextys, &nextyt);
 
         lodclamp = (initt & 0x60000) || (nextt & 0x60000) || (inits & 0x60000) || (nexts & 0x60000) || (nextys & 0x60000) || (nextyt & 0x60000);
 
@@ -5318,13 +5082,13 @@ static STRICTINLINE void tclod_2cycle_current_notexel1(int32_t* sss, int32_t* ss
             tclod_4x17_to_15(inits, nextys, initt, nextyt, lod, &lod);
         }
 
-        lodfrac_lodtile_signals(lodclamp, lod, &l_tile, &magnify, &distant, &globals.lod_frac);
+        lodfrac_lodtile_signals(lodclamp, lod, &l_tile, &magnify, &distant, &parallel_worker->globals.lod_frac);
 
-        if (globals.other_modes.tex_lod_en)
+        if (parallel_worker->globals.other_modes.tex_lod_en)
         {
             if (distant)
-                l_tile = globals.max_level;
-            if (!globals.other_modes.detail_tex_en || magnify)
+                l_tile = parallel_worker->globals.max_level;
+            if (!parallel_worker->globals.other_modes.detail_tex_en || magnify)
                 *t1 = (prim_tile + l_tile) & 7;
             else
                 *t1 = (prim_tile + l_tile + 1) & 7;
@@ -5345,17 +5109,17 @@ static STRICTINLINE void tclod_2cycle_next(int32_t* sss, int32_t* sst, int32_t s
 
     tclod_tcclamp(sss, sst);
 
-    if (globals.other_modes.f.dolod)
+    if (parallel_worker->globals.other_modes.f.dolod)
     {
         nextsw = (w + dwinc) >> 16;
         nexts = (s + dsinc) >> 16;
         nextt = (t + dtinc) >> 16;
-        nextys = (s + globals.spans.dsdy) >> 16;
-        nextyt = (t + globals.spans.dtdy) >> 16;
-        nextysw = (w + globals.spans.dwdy) >> 16;
+        nextys = (s + parallel_worker->globals.spans.dsdy) >> 16;
+        nextyt = (t + parallel_worker->globals.spans.dtdy) >> 16;
+        nextysw = (w + parallel_worker->globals.spans.dwdy) >> 16;
 
-        globals.tcdiv_ptr(nexts, nextt, nextsw, &nexts, &nextt);
-        globals.tcdiv_ptr(nextys, nextyt, nextysw, &nextys, &nextyt);
+        parallel_worker->globals.tcdiv_ptr(nexts, nextt, nextsw, &nexts, &nextt);
+        parallel_worker->globals.tcdiv_ptr(nextys, nextyt, nextysw, &nextys, &nextyt);
 
         lodclamp = (initt & 0x60000) || (nextt & 0x60000) || (inits & 0x60000) || (nexts & 0x60000) || (nextys & 0x60000) || (nextyt & 0x60000);
 
@@ -5367,14 +5131,14 @@ static STRICTINLINE void tclod_2cycle_next(int32_t* sss, int32_t* sst, int32_t s
 
         lodfrac_lodtile_signals(lodclamp, lod, &l_tile, &magnify, &distant, prelodfrac);
 
-        if (globals.other_modes.tex_lod_en)
+        if (parallel_worker->globals.other_modes.tex_lod_en)
         {
             if (distant)
-                l_tile = globals.max_level;
-            if (!globals.other_modes.detail_tex_en)
+                l_tile = parallel_worker->globals.max_level;
+            if (!parallel_worker->globals.other_modes.detail_tex_en)
             {
                 *t1 = (prim_tile + l_tile) & 7;
-                if (!(distant || (!globals.other_modes.sharpen_tex_en && magnify)))
+                if (!(distant || (!parallel_worker->globals.other_modes.sharpen_tex_en && magnify)))
                     *t2 = (*t1 + 1) & 7;
                 else
                     *t2 = *t1;
@@ -5413,12 +5177,12 @@ static STRICTINLINE void tclod_1cycle_current(int32_t* sss, int32_t* sst, int32_
 
     tclod_tcclamp(sss, sst);
 
-    if (globals.other_modes.f.dolod)
+    if (parallel_worker->globals.other_modes.f.dolod)
     {
         int nextscan = scanline + 1;
 
 
-        if (globals.span[nextscan].validline)
+        if (parallel_worker->globals.span[nextscan].validline)
         {
             if (!sigs->endspan || !sigs->longspan)
             {
@@ -5437,9 +5201,9 @@ static STRICTINLINE void tclod_1cycle_current(int32_t* sss, int32_t* sst, int32_
             }
             else
             {
-                fart = (globals.span[nextscan].t + dtinc) >> 16;
-                fars = (globals.span[nextscan].s + dsinc) >> 16;
-                farsw = (globals.span[nextscan].w + dwinc) >> 16;
+                fart = (parallel_worker->globals.span[nextscan].t + dtinc) >> 16;
+                fars = (parallel_worker->globals.span[nextscan].s + dsinc) >> 16;
+                farsw = (parallel_worker->globals.span[nextscan].w + dwinc) >> 16;
             }
         }
         else
@@ -5449,7 +5213,7 @@ static STRICTINLINE void tclod_1cycle_current(int32_t* sss, int32_t* sst, int32_
             fart = (t + (dtinc << 1)) >> 16;
         }
 
-        globals.tcdiv_ptr(fars, fart, farsw, &fars, &fart);
+        parallel_worker->globals.tcdiv_ptr(fars, fart, farsw, &fars, &fart);
 
         lodclamp = (fart & 0x60000) || (nextt & 0x60000) || (fars & 0x60000) || (nexts & 0x60000);
 
@@ -5459,16 +5223,16 @@ static STRICTINLINE void tclod_1cycle_current(int32_t* sss, int32_t* sst, int32_
         if (!lodclamp)
             tclod_4x17_to_15(nexts, fars, nextt, fart, 0, &lod);
 
-        lodfrac_lodtile_signals(lodclamp, lod, &l_tile, &magnify, &distant, &globals.lod_frac);
+        lodfrac_lodtile_signals(lodclamp, lod, &l_tile, &magnify, &distant, &parallel_worker->globals.lod_frac);
 
-        if (globals.other_modes.tex_lod_en)
+        if (parallel_worker->globals.other_modes.tex_lod_en)
         {
             if (distant)
-                l_tile = globals.max_level;
+                l_tile = parallel_worker->globals.max_level;
 
 
 
-            if (!globals.other_modes.detail_tex_en || magnify)
+            if (!parallel_worker->globals.other_modes.detail_tex_en || magnify)
                 *t1 = (prim_tile + l_tile) & 7;
             else
                 *t1 = (prim_tile + l_tile + 1) & 7;
@@ -5487,11 +5251,11 @@ static STRICTINLINE void tclod_1cycle_current_simple(int32_t* sss, int32_t* sst,
 
     tclod_tcclamp(sss, sst);
 
-    if (globals.other_modes.f.dolod)
+    if (parallel_worker->globals.other_modes.f.dolod)
     {
 
         int nextscan = scanline + 1;
-        if (globals.span[nextscan].validline)
+        if (parallel_worker->globals.span[nextscan].validline)
         {
             if (!sigs->endspan || !sigs->longspan)
             {
@@ -5514,12 +5278,12 @@ static STRICTINLINE void tclod_1cycle_current_simple(int32_t* sss, int32_t* sst,
             }
             else
             {
-                nextt = globals.span[nextscan].t >> 16;
-                nexts = globals.span[nextscan].s >> 16;
-                nextsw = globals.span[nextscan].w >> 16;
-                fart = (globals.span[nextscan].t + dtinc) >> 16;
-                fars = (globals.span[nextscan].s + dsinc) >> 16;
-                farsw = (globals.span[nextscan].w + dwinc) >> 16;
+                nextt = parallel_worker->globals.span[nextscan].t >> 16;
+                nexts = parallel_worker->globals.span[nextscan].s >> 16;
+                nextsw = parallel_worker->globals.span[nextscan].w >> 16;
+                fart = (parallel_worker->globals.span[nextscan].t + dtinc) >> 16;
+                fars = (parallel_worker->globals.span[nextscan].s + dsinc) >> 16;
+                farsw = (parallel_worker->globals.span[nextscan].w + dwinc) >> 16;
             }
         }
         else
@@ -5532,21 +5296,21 @@ static STRICTINLINE void tclod_1cycle_current_simple(int32_t* sss, int32_t* sst,
             fart = (t + (dtinc << 1)) >> 16;
         }
 
-        globals.tcdiv_ptr(nexts, nextt, nextsw, &nexts, &nextt);
-        globals.tcdiv_ptr(fars, fart, farsw, &fars, &fart);
+        parallel_worker->globals.tcdiv_ptr(nexts, nextt, nextsw, &nexts, &nextt);
+        parallel_worker->globals.tcdiv_ptr(fars, fart, farsw, &fars, &fart);
 
         lodclamp = (fart & 0x60000) || (nextt & 0x60000) || (fars & 0x60000) || (nexts & 0x60000);
 
         if (!lodclamp)
             tclod_4x17_to_15(nexts, fars, nextt, fart, 0, &lod);
 
-        lodfrac_lodtile_signals(lodclamp, lod, &l_tile, &magnify, &distant, &globals.lod_frac);
+        lodfrac_lodtile_signals(lodclamp, lod, &l_tile, &magnify, &distant, &parallel_worker->globals.lod_frac);
 
-        if (globals.other_modes.tex_lod_en)
+        if (parallel_worker->globals.other_modes.tex_lod_en)
         {
             if (distant)
-                l_tile = globals.max_level;
-            if (!globals.other_modes.detail_tex_en || magnify)
+                l_tile = parallel_worker->globals.max_level;
+            if (!parallel_worker->globals.other_modes.detail_tex_en || magnify)
                 *t1 = (prim_tile + l_tile) & 7;
             else
                 *t1 = (prim_tile + l_tile + 1) & 7;
@@ -5563,12 +5327,12 @@ static STRICTINLINE void tclod_1cycle_next(int32_t* sss, int32_t* sst, int32_t s
 
     tclod_tcclamp(sss, sst);
 
-    if (globals.other_modes.f.dolod)
+    if (parallel_worker->globals.other_modes.f.dolod)
     {
 
         int nextscan = scanline + 1;
 
-        if (globals.span[nextscan].validline)
+        if (parallel_worker->globals.span[nextscan].validline)
         {
 
             if (!sigs->nextspan)
@@ -5594,9 +5358,9 @@ static STRICTINLINE void tclod_1cycle_next(int32_t* sss, int32_t* sst, int32_t s
                 }
                 else
                 {
-                    nextt = globals.span[nextscan].t;
-                    nexts = globals.span[nextscan].s;
-                    nextsw = globals.span[nextscan].w;
+                    nextt = parallel_worker->globals.span[nextscan].t;
+                    nexts = parallel_worker->globals.span[nextscan].s;
+                    nextsw = parallel_worker->globals.span[nextscan].w;
                     fart = (nextt + dtinc) >> 16;
                     fars = (nexts + dsinc) >> 16;
                     farsw = (nextsw + dwinc) >> 16;
@@ -5618,21 +5382,21 @@ static STRICTINLINE void tclod_1cycle_next(int32_t* sss, int32_t* sst, int32_t s
 
                 if (sigs->longspan)
                 {
-                    nextt = (globals.span[nextscan].t + dtinc) >> 16;
-                    nexts = (globals.span[nextscan].s + dsinc) >> 16;
-                    nextsw = (globals.span[nextscan].w + dwinc) >> 16;
-                    fart = (globals.span[nextscan].t + (dtinc << 1)) >> 16;
-                    fars = (globals.span[nextscan].s + (dsinc << 1)) >> 16;
-                    farsw = (globals.span[nextscan].w  + (dwinc << 1)) >> 16;
+                    nextt = (parallel_worker->globals.span[nextscan].t + dtinc) >> 16;
+                    nexts = (parallel_worker->globals.span[nextscan].s + dsinc) >> 16;
+                    nextsw = (parallel_worker->globals.span[nextscan].w + dwinc) >> 16;
+                    fart = (parallel_worker->globals.span[nextscan].t + (dtinc << 1)) >> 16;
+                    fars = (parallel_worker->globals.span[nextscan].s + (dsinc << 1)) >> 16;
+                    farsw = (parallel_worker->globals.span[nextscan].w  + (dwinc << 1)) >> 16;
                 }
                 else if (sigs->midspan)
                 {
-                    nextt = globals.span[nextscan].t >> 16;
-                    nexts = globals.span[nextscan].s >> 16;
-                    nextsw = globals.span[nextscan].w >> 16;
-                    fart = (globals.span[nextscan].t + dtinc) >> 16;
-                    fars = (globals.span[nextscan].s + dsinc) >> 16;
-                    farsw = (globals.span[nextscan].w  + dwinc) >> 16;
+                    nextt = parallel_worker->globals.span[nextscan].t >> 16;
+                    nexts = parallel_worker->globals.span[nextscan].s >> 16;
+                    nextsw = parallel_worker->globals.span[nextscan].w >> 16;
+                    fart = (parallel_worker->globals.span[nextscan].t + dtinc) >> 16;
+                    fars = (parallel_worker->globals.span[nextscan].s + dsinc) >> 16;
+                    farsw = (parallel_worker->globals.span[nextscan].w  + dwinc) >> 16;
                 }
                 else if (sigs->onelessthanmid)
                 {
@@ -5664,8 +5428,8 @@ static STRICTINLINE void tclod_1cycle_next(int32_t* sss, int32_t* sst, int32_t s
             fart = (t + (dtinc << 1)) >> 16;
         }
 
-        globals.tcdiv_ptr(nexts, nextt, nextsw, &nexts, &nextt);
-        globals.tcdiv_ptr(fars, fart, farsw, &fars, &fart);
+        parallel_worker->globals.tcdiv_ptr(nexts, nextt, nextsw, &nexts, &nextt);
+        parallel_worker->globals.tcdiv_ptr(fars, fart, farsw, &fars, &fart);
 
         lodclamp = (fart & 0x60000) || (nextt & 0x60000) || (fars & 0x60000) || (nexts & 0x60000);
 
@@ -5676,11 +5440,11 @@ static STRICTINLINE void tclod_1cycle_next(int32_t* sss, int32_t* sst, int32_t s
 
         lodfrac_lodtile_signals(lodclamp, lod, &l_tile, &magnify, &distant, prelodfrac);
 
-        if (globals.other_modes.tex_lod_en)
+        if (parallel_worker->globals.other_modes.tex_lod_en)
         {
             if (distant)
-                l_tile = globals.max_level;
-            if (!globals.other_modes.detail_tex_en || magnify)
+                l_tile = parallel_worker->globals.max_level;
+            if (!parallel_worker->globals.other_modes.detail_tex_en || magnify)
                 *t1 = (prim_tile + l_tile) & 7;
             else
                 *t1 = (prim_tile + l_tile + 1) & 7;
@@ -5701,7 +5465,7 @@ static STRICTINLINE void tclod_copy(int32_t* sss, int32_t* sst, int32_t s, int32
 
     tclod_tcclamp(sss, sst);
 
-    if (globals.other_modes.tex_lod_en)
+    if (parallel_worker->globals.other_modes.tex_lod_en)
     {
 
 
@@ -5713,8 +5477,8 @@ static STRICTINLINE void tclod_copy(int32_t* sss, int32_t* sst, int32_t s, int32
         fars = (s + (dsinc << 1)) >> 16;
         fart = (t + (dtinc << 1)) >> 16;
 
-        globals.tcdiv_ptr(nexts, nextt, nextsw, &nexts, &nextt);
-        globals.tcdiv_ptr(fars, fart, farsw, &fars, &fart);
+        parallel_worker->globals.tcdiv_ptr(nexts, nextt, nextsw, &nexts, &nextt);
+        parallel_worker->globals.tcdiv_ptr(fars, fart, farsw, &fars, &fart);
 
         lodclamp = (fart & 0x60000) || (nextt & 0x60000) || (fars & 0x60000) || (nexts & 0x60000);
 
@@ -5726,7 +5490,7 @@ static STRICTINLINE void tclod_copy(int32_t* sss, int32_t* sst, int32_t s, int32
 
 
             magnify = 0;
-            l_tile = globals.max_level;
+            l_tile = parallel_worker->globals.max_level;
         }
         else if (lod < 32)
         {
@@ -5738,16 +5502,16 @@ static STRICTINLINE void tclod_copy(int32_t* sss, int32_t* sst, int32_t s, int32
             magnify = 0;
             l_tile =  log2table[(lod >> 5) & 0xff];
 
-            if (globals.max_level)
-                distant = ((lod & 0x6000) || (l_tile >= globals.max_level)) != 0;
+            if (parallel_worker->globals.max_level)
+                distant = ((lod & 0x6000) || (l_tile >= parallel_worker->globals.max_level)) != 0;
             else
                 distant = 1;
 
             if (distant)
-                l_tile = globals.max_level;
+                l_tile = parallel_worker->globals.max_level;
         }
 
-        if (!globals.other_modes.detail_tex_en || magnify)
+        if (!parallel_worker->globals.other_modes.detail_tex_en || magnify)
             *t1 = (prim_tile + l_tile) & 7;
         else
             *t1 = (prim_tile + l_tile + 1) & 7;
@@ -5763,8 +5527,8 @@ static STRICTINLINE void tc_pipeline_copy(int32_t* sss0, int32_t* sss1, int32_t*
 
 
 
-    ss0 = TRELATIVE(ss0, globals.tile[tilenum].sl);
-    st = TRELATIVE(st, globals.tile[tilenum].tl);
+    ss0 = TRELATIVE(ss0, parallel_worker->globals.tile[tilenum].sl);
+    st = TRELATIVE(st, parallel_worker->globals.tile[tilenum].tl);
     ss0 = (ss0 >> 5);
     st = (st >> 5);
 
@@ -5788,8 +5552,8 @@ static STRICTINLINE void tc_pipeline_load(int32_t* sss, int32_t* sst, int tilenu
     sst1 = SIGN16(sst1);
 
 
-    sss1 = TRELATIVE(sss1, globals.tile[tilenum].sl);
-    sst1 = TRELATIVE(sst1, globals.tile[tilenum].tl);
+    sss1 = TRELATIVE(sss1, parallel_worker->globals.tile[tilenum].sl);
+    sst1 = TRELATIVE(sst1, parallel_worker->globals.tile[tilenum].tl);
 
 
 
@@ -5899,7 +5663,7 @@ static void tcoord_init(void)
 {
     int i, k;
 
-    globals.tcdiv_ptr = tcdiv_func[0];
+    parallel_worker->globals.tcdiv_ptr = tcdiv_func[0];
 
     log2table[0] = log2table[1] = 0;
     for (i = 2; i < 256; i++)
@@ -5949,27 +5713,27 @@ static STRICTINLINE void tcmask(int32_t* S, int32_t* T, int32_t num)
 {
     int32_t wrap;
 
-    if (globals.tile[num].mask_s)
+    if (parallel_worker->globals.tile[num].mask_s)
     {
-        if (globals.tile[num].ms)
+        if (parallel_worker->globals.tile[num].ms)
         {
-            wrap = *S >> globals.tile[num].f.masksclamped;
+            wrap = *S >> parallel_worker->globals.tile[num].f.masksclamped;
             wrap &= 1;
             *S ^= (-wrap);
         }
-        *S &= maskbits_table[globals.tile[num].mask_s];
+        *S &= maskbits_table[parallel_worker->globals.tile[num].mask_s];
     }
 
-    if (globals.tile[num].mask_t)
+    if (parallel_worker->globals.tile[num].mask_t)
     {
-        if (globals.tile[num].mt)
+        if (parallel_worker->globals.tile[num].mt)
         {
-            wrap = *T >> globals.tile[num].f.masktclamped;
+            wrap = *T >> parallel_worker->globals.tile[num].f.masktclamped;
             wrap &= 1;
             *T ^= (-wrap);
         }
 
-        *T &= maskbits_table[globals.tile[num].mask_t];
+        *T &= maskbits_table[parallel_worker->globals.tile[num].mask_t];
     }
 }
 
@@ -5981,13 +5745,13 @@ static STRICTINLINE void tcmask_coupled(int32_t* S, int32_t* sdiff, int32_t* T, 
     int32_t wrapthreshold;
 
 
-    if (globals.tile[num].mask_s)
+    if (parallel_worker->globals.tile[num].mask_s)
     {
-        maskbits = maskbits_table[globals.tile[num].mask_s];
+        maskbits = maskbits_table[parallel_worker->globals.tile[num].mask_s];
 
-        if (globals.tile[num].ms)
+        if (parallel_worker->globals.tile[num].ms)
         {
-            wrapthreshold = globals.tile[num].f.masksclamped;
+            wrapthreshold = parallel_worker->globals.tile[num].f.masksclamped;
 
             wrap = (*S >> wrapthreshold) & 1;
             *S ^= (-wrap);
@@ -6011,13 +5775,13 @@ static STRICTINLINE void tcmask_coupled(int32_t* S, int32_t* sdiff, int32_t* T, 
     else
         *sdiff = 1;
 
-    if (globals.tile[num].mask_t)
+    if (parallel_worker->globals.tile[num].mask_t)
     {
-        maskbits = maskbits_table[globals.tile[num].mask_t];
+        maskbits = maskbits_table[parallel_worker->globals.tile[num].mask_t];
 
-        if (globals.tile[num].mt)
+        if (parallel_worker->globals.tile[num].mt)
         {
-            wrapthreshold = globals.tile[num].f.masktclamped;
+            wrapthreshold = parallel_worker->globals.tile[num].f.masktclamped;
 
             wrap = (*T >> wrapthreshold) & 1;
             *T ^= (-wrap);
@@ -6044,29 +5808,29 @@ static STRICTINLINE void tcmask_coupled(int32_t* S, int32_t* sdiff, int32_t* T, 
 
 static INLINE void calculate_clamp_diffs(uint32_t i)
 {
-    globals.tile[i].f.clampdiffs = ((globals.tile[i].sh >> 2) - (globals.tile[i].sl >> 2)) & 0x3ff;
-    globals.tile[i].f.clampdifft = ((globals.tile[i].th >> 2) - (globals.tile[i].tl >> 2)) & 0x3ff;
+    parallel_worker->globals.tile[i].f.clampdiffs = ((parallel_worker->globals.tile[i].sh >> 2) - (parallel_worker->globals.tile[i].sl >> 2)) & 0x3ff;
+    parallel_worker->globals.tile[i].f.clampdifft = ((parallel_worker->globals.tile[i].th >> 2) - (parallel_worker->globals.tile[i].tl >> 2)) & 0x3ff;
 }
 
 
 static INLINE void calculate_tile_derivs(uint32_t i)
 {
-    globals.tile[i].f.clampens = globals.tile[i].cs || !globals.tile[i].mask_s;
-    globals.tile[i].f.clampent = globals.tile[i].ct || !globals.tile[i].mask_t;
-    globals.tile[i].f.masksclamped = globals.tile[i].mask_s <= 10 ? globals.tile[i].mask_s : 10;
-    globals.tile[i].f.masktclamped = globals.tile[i].mask_t <= 10 ? globals.tile[i].mask_t : 10;
-    globals.tile[i].f.notlutswitch = (globals.tile[i].format << 2) | globals.tile[i].size;
-    globals.tile[i].f.tlutswitch = (globals.tile[i].size << 2) | ((globals.tile[i].format + 2) & 3);
+    parallel_worker->globals.tile[i].f.clampens = parallel_worker->globals.tile[i].cs || !parallel_worker->globals.tile[i].mask_s;
+    parallel_worker->globals.tile[i].f.clampent = parallel_worker->globals.tile[i].ct || !parallel_worker->globals.tile[i].mask_t;
+    parallel_worker->globals.tile[i].f.masksclamped = parallel_worker->globals.tile[i].mask_s <= 10 ? parallel_worker->globals.tile[i].mask_s : 10;
+    parallel_worker->globals.tile[i].f.masktclamped = parallel_worker->globals.tile[i].mask_t <= 10 ? parallel_worker->globals.tile[i].mask_t : 10;
+    parallel_worker->globals.tile[i].f.notlutswitch = (parallel_worker->globals.tile[i].format << 2) | parallel_worker->globals.tile[i].size;
+    parallel_worker->globals.tile[i].f.tlutswitch = (parallel_worker->globals.tile[i].size << 2) | ((parallel_worker->globals.tile[i].format + 2) & 3);
 
-    if (globals.tile[i].format < 5)
+    if (parallel_worker->globals.tile[i].format < 5)
     {
-        globals.tile[i].f.notlutswitch = (globals.tile[i].format << 2) | globals.tile[i].size;
-        globals.tile[i].f.tlutswitch = (globals.tile[i].size << 2) | ((globals.tile[i].format + 2) & 3);
+        parallel_worker->globals.tile[i].f.notlutswitch = (parallel_worker->globals.tile[i].format << 2) | parallel_worker->globals.tile[i].size;
+        parallel_worker->globals.tile[i].f.tlutswitch = (parallel_worker->globals.tile[i].size << 2) | ((parallel_worker->globals.tile[i].format + 2) & 3);
     }
     else
     {
-        globals.tile[i].f.notlutswitch = 0x10 | globals.tile[i].size;
-        globals.tile[i].f.tlutswitch = (globals.tile[i].size << 2) | 2;
+        parallel_worker->globals.tile[i].f.notlutswitch = 0x10 | parallel_worker->globals.tile[i].size;
+        parallel_worker->globals.tile[i].f.tlutswitch = (parallel_worker->globals.tile[i].size << 2) | 2;
     }
 }
 
@@ -6074,7 +5838,7 @@ static STRICTINLINE void get_texel1_1cycle(int32_t* s1, int32_t* t1, int32_t s, 
 {
     int32_t nexts, nextt, nextsw;
 
-    if (!sigs->endspan || !sigs->longspan || !globals.span[scanline + 1].validline)
+    if (!sigs->endspan || !sigs->longspan || !parallel_worker->globals.span[scanline + 1].validline)
     {
         nextsw = (w + dwinc) >> 16;
         nexts = (s + dsinc) >> 16;
@@ -6083,12 +5847,12 @@ static STRICTINLINE void get_texel1_1cycle(int32_t* s1, int32_t* t1, int32_t s, 
     else
     {
         int32_t nextscan = scanline + 1;
-        nextt = globals.span[nextscan].t >> 16;
-        nexts = globals.span[nextscan].s >> 16;
-        nextsw = globals.span[nextscan].w >> 16;
+        nextt = parallel_worker->globals.span[nextscan].t >> 16;
+        nexts = parallel_worker->globals.span[nextscan].s >> 16;
+        nextsw = parallel_worker->globals.span[nextscan].w >> 16;
     }
 
-    globals.tcdiv_ptr(nexts, nextt, nextsw, s1, t1);
+    parallel_worker->globals.tcdiv_ptr(nexts, nextt, nextsw, s1, t1);
 }
 
 static STRICTINLINE void get_nexttexel0_2cycle(int32_t* s1, int32_t* t1, int32_t s, int32_t t, int32_t w, int32_t dsinc, int32_t dtinc, int32_t dwinc)
@@ -6100,7 +5864,7 @@ static STRICTINLINE void get_nexttexel0_2cycle(int32_t* s1, int32_t* t1, int32_t
     nexts = (s + dsinc) >> 16;
     nextt = (t + dtinc) >> 16;
 
-    globals.tcdiv_ptr(nexts, nextt, nextsw, s1, t1);
+    parallel_worker->globals.tcdiv_ptr(nexts, nextt, nextsw, s1, t1);
 }
 
 static STRICTINLINE void texture_pipeline_cycle(struct color* TEX, struct color* prev, int32_t SSS, int32_t SST, uint32_t tilenum, uint32_t cycle)
@@ -6110,8 +5874,8 @@ static STRICTINLINE void texture_pipeline_cycle(struct color* TEX, struct color*
     int upper, upperrg, center, centerrg;
 
 
-    int bilerp = cycle ? globals.other_modes.bi_lerp1 : globals.other_modes.bi_lerp0;
-    int convert = globals.other_modes.convert_one && cycle;
+    int bilerp = cycle ? parallel_worker->globals.other_modes.bi_lerp1 : parallel_worker->globals.other_modes.bi_lerp0;
+    int convert = parallel_worker->globals.other_modes.convert_one && cycle;
     struct color t0, t1, t2, t3;
     int sss1, sst1, sdiff, tdiff;
 
@@ -6120,10 +5884,10 @@ static STRICTINLINE void texture_pipeline_cycle(struct color* TEX, struct color*
 
     tcshift_cycle(&sss1, &sst1, &maxs, &maxt, tilenum);
 
-    sss1 = TRELATIVE(sss1, globals.tile[tilenum].sl);
-    sst1 = TRELATIVE(sst1, globals.tile[tilenum].tl);
+    sss1 = TRELATIVE(sss1, parallel_worker->globals.tile[tilenum].sl);
+    sst1 = TRELATIVE(sst1, parallel_worker->globals.tile[tilenum].tl);
 
-    if (globals.other_modes.sample_type || globals.other_modes.en_tlut)
+    if (parallel_worker->globals.other_modes.sample_type || parallel_worker->globals.other_modes.en_tlut)
     {
         sfrac = sss1 & 0x1f;
         tfrac = sst1 & 0x1f;
@@ -6133,7 +5897,7 @@ static STRICTINLINE void texture_pipeline_cycle(struct color* TEX, struct color*
 
         upper = (sfrac + tfrac) & 0x20;
 
-        if (globals.tile[tilenum].format == FORMAT_YUV)
+        if (parallel_worker->globals.tile[tilenum].format == FORMAT_YUV)
         {
             sfracrg = (sfrac >> 1) | ((sss1 & 1) << 4);
             upperrg = (sfracrg + tfrac) & 0x20;
@@ -6144,16 +5908,16 @@ static STRICTINLINE void texture_pipeline_cycle(struct color* TEX, struct color*
             sfracrg = sfrac;
         }
 
-        if (!globals.other_modes.sample_type)
+        if (!parallel_worker->globals.other_modes.sample_type)
             fetch_texel_entlut_quadro_nearest(&t0, &t1, &t2, &t3, sss1, sst1, tilenum, upper, upperrg);
-        else if (globals.other_modes.en_tlut)
+        else if (parallel_worker->globals.other_modes.en_tlut)
             fetch_texel_entlut_quadro(&t0, &t1, &t2, &t3, sss1, sdiff, sst1, tdiff, tilenum, upper, upperrg);
         else
             fetch_texel_quadro(&t0, &t1, &t2, &t3, sss1, sdiff, sst1, tdiff, tilenum, upper - upperrg);
 
         if (bilerp)
         {
-            if (!globals.other_modes.mid_texel)
+            if (!parallel_worker->globals.other_modes.mid_texel)
                 center = centerrg = 0;
             else
             {
@@ -6274,16 +6038,16 @@ static STRICTINLINE void texture_pipeline_cycle(struct color* TEX, struct color*
             {
                 if (upper)
                 {
-                    TEX->r = t3.b + ((globals.k0_tf * t3.g + 0x80) >> 8);
-                    TEX->g = t3.b + ((globals.k1_tf * t3.r + globals.k2_tf * t3.g + 0x80) >> 8);
-                    TEX->b = t3.b + ((globals.k3_tf * t3.r + 0x80) >> 8);
+                    TEX->r = t3.b + ((parallel_worker->globals.k0_tf * t3.g + 0x80) >> 8);
+                    TEX->g = t3.b + ((parallel_worker->globals.k1_tf * t3.r + parallel_worker->globals.k2_tf * t3.g + 0x80) >> 8);
+                    TEX->b = t3.b + ((parallel_worker->globals.k3_tf * t3.r + 0x80) >> 8);
                     TEX->a = t3.b;
                 }
                 else
                 {
-                    TEX->r = t0.b + ((globals.k0_tf * t3.g + 0x80) >> 8);
-                    TEX->g = t0.b + ((globals.k1_tf * t3.r + globals.k2_tf * t3.g + 0x80) >> 8);
-                    TEX->b = t0.b + ((globals.k3_tf * t3.r + 0x80) >> 8);
+                    TEX->r = t0.b + ((parallel_worker->globals.k0_tf * t3.g + 0x80) >> 8);
+                    TEX->g = t0.b + ((parallel_worker->globals.k1_tf * t3.r + parallel_worker->globals.k2_tf * t3.g + 0x80) >> 8);
+                    TEX->b = t0.b + ((parallel_worker->globals.k3_tf * t3.r + 0x80) >> 8);
                     TEX->a = t0.b;
                 }
             }
@@ -6291,16 +6055,16 @@ static STRICTINLINE void texture_pipeline_cycle(struct color* TEX, struct color*
             {
                 if (upper)
                 {
-                    TEX->r = t3.b + ((globals.k0_tf * t0.g + 0x80) >> 8);
-                    TEX->g = t3.b + ((globals.k1_tf * t0.r + globals.k2_tf * t0.g + 0x80) >> 8);
-                    TEX->b = t3.b + ((globals.k3_tf * t0.r + 0x80) >> 8);
+                    TEX->r = t3.b + ((parallel_worker->globals.k0_tf * t0.g + 0x80) >> 8);
+                    TEX->g = t3.b + ((parallel_worker->globals.k1_tf * t0.r + parallel_worker->globals.k2_tf * t0.g + 0x80) >> 8);
+                    TEX->b = t3.b + ((parallel_worker->globals.k3_tf * t0.r + 0x80) >> 8);
                     TEX->a = t3.b;
                 }
                 else
                 {
-                    TEX->r = t0.b + ((globals.k0_tf * t0.g + 0x80) >> 8);
-                    TEX->g = t0.b + ((globals.k1_tf * t0.r + globals.k2_tf * t0.g + 0x80) >> 8);
-                    TEX->b = t0.b + ((globals.k3_tf * t0.r + 0x80) >> 8);
+                    TEX->r = t0.b + ((parallel_worker->globals.k0_tf * t0.g + 0x80) >> 8);
+                    TEX->g = t0.b + ((parallel_worker->globals.k1_tf * t0.r + parallel_worker->globals.k2_tf * t0.g + 0x80) >> 8);
+                    TEX->b = t0.b + ((parallel_worker->globals.k3_tf * t0.r + 0x80) >> 8);
                     TEX->a = t0.b;
                 }
             }
@@ -6339,9 +6103,9 @@ static STRICTINLINE void texture_pipeline_cycle(struct color* TEX, struct color*
             if (convert)
                 t0 = *prev;
 
-            TEX->r = t0.b + ((globals.k0_tf * t0.g + 0x80) >> 8);
-            TEX->g = t0.b + ((globals.k1_tf * t0.r + globals.k2_tf * t0.g + 0x80) >> 8);
-            TEX->b = t0.b + ((globals.k3_tf * t0.r + 0x80) >> 8);
+            TEX->r = t0.b + ((parallel_worker->globals.k0_tf * t0.g + 0x80) >> 8);
+            TEX->g = t0.b + ((parallel_worker->globals.k1_tf * t0.r + parallel_worker->globals.k2_tf * t0.g + 0x80) >> 8);
+            TEX->b = t0.b + ((parallel_worker->globals.k3_tf * t0.r + 0x80) >> 8);
             TEX->a = t0.b;
             TEX->r &= 0x1ff;
             TEX->g &= 0x1ff;
@@ -6357,8 +6121,8 @@ static void loading_pipeline(int start, int end, int tilenum, int coord_quad, in
    int i, j;
 
    int dsinc, dtinc;
-   dsinc = globals.spans.ds;
-   dtinc = globals.spans.dt;
+   dsinc = parallel_worker->globals.spans.ds;
+   dtinc = parallel_worker->globals.spans.dt;
 
    int s, t;
    int ss, st;
@@ -6381,9 +6145,9 @@ static void loading_pipeline(int start, int end, int tilenum, int coord_quad, in
       return;
    }
 
-   if (globals.tile[tilenum].format == FORMAT_YUV)
+   if (parallel_worker->globals.tile[tilenum].format == FORMAT_YUV)
       tmem_formatting = 0;
-   else if (globals.tile[tilenum].format == FORMAT_RGBA && globals.tile[tilenum].size == PIXEL_SIZE_32BIT)
+   else if (parallel_worker->globals.tile[tilenum].format == FORMAT_RGBA && parallel_worker->globals.tile[tilenum].size == PIXEL_SIZE_32BIT)
       tmem_formatting = 1;
    else
       tmem_formatting = 2;
@@ -6391,7 +6155,7 @@ static void loading_pipeline(int start, int end, int tilenum, int coord_quad, in
    int tiadvance = 0, spanadvance = 0;
    int tiptr = 0;
 
-   switch (globals.ti_size)
+   switch (parallel_worker->globals.ti_size)
    {
       case PIXEL_SIZE_4BIT:
          rdp_pipeline_crashed = 1;
@@ -6420,14 +6184,14 @@ static void loading_pipeline(int start, int end, int tilenum, int coord_quad, in
 
    for (i = start; i <= end; i++)
    {
-      xstart   = globals.span[i].lx;
-      xend     = globals.span[i].unscrx;
-      xendsc   = globals.span[i].rx;
-      s        = globals.span[i].s;
-      t        = globals.span[i].t;
+      xstart   = parallel_worker->globals.span[i].lx;
+      xend     = parallel_worker->globals.span[i].unscrx;
+      xendsc   = parallel_worker->globals.span[i].rx;
+      s        = parallel_worker->globals.span[i].s;
+      t        = parallel_worker->globals.span[i].t;
 
-      ti_index = globals.ti_width * i + xend;
-      tiptr    = globals.ti_address + PIXELS_TO_BYTES(ti_index, globals.ti_size);
+      ti_index = parallel_worker->globals.ti_width * i + xend;
+      tiptr    = parallel_worker->globals.ti_address + PIXELS_TO_BYTES(ti_index, parallel_worker->globals.ti_size);
 
       length   = (xstart - xend + 1) & 0xfff;
 
@@ -6594,8 +6358,8 @@ static void loading_pipeline(int start, int end, int tilenum, int coord_quad, in
 
 #define ADJUST_ATTR_LOAD()                                      \
    {                                                               \
-      globals.span[j].s = s & ~0x3ff;                                     \
-      globals.span[j].t = t & ~0x3ff;                                     \
+      parallel_worker->globals.span[j].s = s & ~0x3ff;                                     \
+      parallel_worker->globals.span[j].t = t & ~0x3ff;                                     \
    }
 
 
@@ -6653,11 +6417,11 @@ static void edgewalker_for_loads(int32_t* lewdata)
 
    ym        = SIGN(ym, 14);
 
-   globals.max_level = 0;
+   parallel_worker->globals.max_level = 0;
 
-   globals.spans.ds = dsdx & ~0x1f;
-   globals.spans.dt = dtdx & ~0x1f;
-   globals.spans.dw = 0;
+   parallel_worker->globals.spans.ds = dsdx & ~0x1f;
+   parallel_worker->globals.spans.dt = dtdx & ~0x1f;
+   parallel_worker->globals.spans.dw = 0;
 
    xright = xh & ~0x1;
    xleft = xm & ~0x1;
@@ -6703,14 +6467,14 @@ static void edgewalker_for_loads(int32_t* lewdata)
 
          if (spix == 0)
          {
-            globals.span[j].unscrx = xend;
+            parallel_worker->globals.span[j].unscrx = xend;
             ADJUST_ATTR_LOAD();
          }
 
          if (spix == 3)
          {
-            globals.span[j].lx = maxxmx;
-            globals.span[j].rx = minxhx;
+            parallel_worker->globals.span[j].lx = maxxmx;
+            parallel_worker->globals.span[j].rx = minxhx;
 
 
          }
@@ -6733,10 +6497,10 @@ static void edgewalker_for_loads(int32_t* lewdata)
 static void rdp_set_tile_size(const uint32_t* args)
 {
     int tilenum      = (args[1] >> 24) & 0x7;
-    globals.tile[tilenum].sl = (args[0] >> 12) & 0xfff;
-    globals.tile[tilenum].tl = (args[0] >>  0) & 0xfff;
-    globals.tile[tilenum].sh = (args[1] >> 12) & 0xfff;
-    globals.tile[tilenum].th = (args[1] >>  0) & 0xfff;
+    parallel_worker->globals.tile[tilenum].sl = (args[0] >> 12) & 0xfff;
+    parallel_worker->globals.tile[tilenum].tl = (args[0] >>  0) & 0xfff;
+    parallel_worker->globals.tile[tilenum].sh = (args[1] >> 12) & 0xfff;
+    parallel_worker->globals.tile[tilenum].th = (args[1] >>  0) & 0xfff;
 
     calculate_clamp_diffs(tilenum);
 }
@@ -6747,10 +6511,10 @@ static void rdp_load_block(const uint32_t* args)
    int tilenum = (args[1] >> 24) & 0x7;
    int sl, sh, tl, dxt;
 
-   globals.tile[tilenum].sl = sl = ((args[0] >> 12) & 0xfff);
-   globals.tile[tilenum].tl = tl = ((args[0] >>  0) & 0xfff);
-   globals.tile[tilenum].sh = sh = ((args[1] >> 12) & 0xfff);
-   globals.tile[tilenum].th = dxt  = ((args[1] >>  0) & 0xfff);
+   parallel_worker->globals.tile[tilenum].sl = sl = ((args[0] >> 12) & 0xfff);
+   parallel_worker->globals.tile[tilenum].tl = tl = ((args[0] >>  0) & 0xfff);
+   parallel_worker->globals.tile[tilenum].sh = sh = ((args[1] >> 12) & 0xfff);
+   parallel_worker->globals.tile[tilenum].th = dxt  = ((args[1] >>  0) & 0xfff);
 
    calculate_clamp_diffs(tilenum);
 
@@ -6764,7 +6528,7 @@ static void rdp_load_block(const uint32_t* args)
    lewdata[4] = sh << 16;
    lewdata[5] = ((sl << 3) << 16) | (tl << 3);
    lewdata[6] = (dxt & 0xff) << 8;
-   lewdata[7] = ((0x80 >> globals.ti_size) << 16) | (dxt >> 8);
+   lewdata[7] = ((0x80 >> parallel_worker->globals.ti_size) << 16) | (dxt >> 8);
    lewdata[8] = 0x20;
    lewdata[9] = 0x20;
 
@@ -6778,10 +6542,10 @@ static void tile_tlut_common_cs_decoder(const uint32_t* args)
    int tilenum = (args[1] >> 24) & 0x7;
    int sl, tl, sh, th;
 
-   globals.tile[tilenum].sl = sl = ((args[0] >> 12) & 0xfff);
-   globals.tile[tilenum].tl = tl = ((args[0] >>  0) & 0xfff);
-   globals.tile[tilenum].sh = sh = ((args[1] >> 12) & 0xfff);
-   globals.tile[tilenum].th = th = ((args[1] >>  0) & 0xfff);
+   parallel_worker->globals.tile[tilenum].sl = sl = ((args[0] >> 12) & 0xfff);
+   parallel_worker->globals.tile[tilenum].tl = tl = ((args[0] >>  0) & 0xfff);
+   parallel_worker->globals.tile[tilenum].sh = sh = ((args[1] >> 12) & 0xfff);
+   parallel_worker->globals.tile[tilenum].th = th = ((args[1] >>  0) & 0xfff);
 
    calculate_clamp_diffs(tilenum);
 
@@ -6794,7 +6558,7 @@ static void tile_tlut_common_cs_decoder(const uint32_t* args)
    lewdata[4] = ((sh >> 2) << 16) | ((sh & 3) << 14);
    lewdata[5] = ((sl << 3) << 16) | (tl << 3);
    lewdata[6] = 0;
-   lewdata[7] = (0x200 >> globals.ti_size) << 16;
+   lewdata[7] = (0x200 >> parallel_worker->globals.ti_size) << 16;
    lewdata[8] = 0x20;
    lewdata[9] = 0x20;
 
@@ -6815,29 +6579,29 @@ static void rdp_set_tile(const uint32_t* args)
 {
     int tilenum = (args[1] >> 24) & 0x7;
 
-    globals.tile[tilenum].format    = (args[0] >> 21) & 0x7;
-    globals.tile[tilenum].size      = (args[0] >> 19) & 0x3;
-    globals.tile[tilenum].line      = (args[0] >>  9) & 0x1ff;
-    globals.tile[tilenum].tmem      = (args[0] >>  0) & 0x1ff;
-    globals.tile[tilenum].palette   = (args[1] >> 20) & 0xf;
-    globals.tile[tilenum].ct        = (args[1] >> 19) & 0x1;
-    globals.tile[tilenum].mt        = (args[1] >> 18) & 0x1;
-    globals.tile[tilenum].mask_t    = (args[1] >> 14) & 0xf;
-    globals.tile[tilenum].shift_t   = (args[1] >> 10) & 0xf;
-    globals.tile[tilenum].cs        = (args[1] >>  9) & 0x1;
-    globals.tile[tilenum].ms        = (args[1] >>  8) & 0x1;
-    globals.tile[tilenum].mask_s    = (args[1] >>  4) & 0xf;
-    globals.tile[tilenum].shift_s   = (args[1] >>  0) & 0xf;
+    parallel_worker->globals.tile[tilenum].format    = (args[0] >> 21) & 0x7;
+    parallel_worker->globals.tile[tilenum].size      = (args[0] >> 19) & 0x3;
+    parallel_worker->globals.tile[tilenum].line      = (args[0] >>  9) & 0x1ff;
+    parallel_worker->globals.tile[tilenum].tmem      = (args[0] >>  0) & 0x1ff;
+    parallel_worker->globals.tile[tilenum].palette   = (args[1] >> 20) & 0xf;
+    parallel_worker->globals.tile[tilenum].ct        = (args[1] >> 19) & 0x1;
+    parallel_worker->globals.tile[tilenum].mt        = (args[1] >> 18) & 0x1;
+    parallel_worker->globals.tile[tilenum].mask_t    = (args[1] >> 14) & 0xf;
+    parallel_worker->globals.tile[tilenum].shift_t   = (args[1] >> 10) & 0xf;
+    parallel_worker->globals.tile[tilenum].cs        = (args[1] >>  9) & 0x1;
+    parallel_worker->globals.tile[tilenum].ms        = (args[1] >>  8) & 0x1;
+    parallel_worker->globals.tile[tilenum].mask_s    = (args[1] >>  4) & 0xf;
+    parallel_worker->globals.tile[tilenum].shift_s   = (args[1] >>  0) & 0xf;
 
     calculate_tile_derivs(tilenum);
 }
 
 static void rdp_set_texture_image(const uint32_t* args)
 {
-    globals.ti_format   = (args[0] >> 21) & 0x7;
-    globals.ti_size     = (args[0] >> 19) & 0x3;
-    globals.ti_width    = (args[0] & 0x3ff) + 1;
-    globals.ti_address  = args[1] & 0x0ffffff;
+    parallel_worker->globals.ti_format   = (args[0] >> 21) & 0x7;
+    parallel_worker->globals.ti_size     = (args[0] >> 19) & 0x3;
+    parallel_worker->globals.ti_width    = (args[0] & 0x3ff) + 1;
+    parallel_worker->globals.ti_address  = args[1] & 0x0ffffff;
 }
 
 static void rdp_set_convert(const uint32_t* args)
@@ -6846,20 +6610,20 @@ static void rdp_set_convert(const uint32_t* args)
     int32_t k1 = (args[0] >> 4) & 0x1ff;
     int32_t k2 = ((args[0] & 0xf) << 5) | ((args[1] >> 27) & 0x1f);
     int32_t k3 = (args[1] >> 18) & 0x1ff;
-    globals.k0_tf = (SIGN(k0, 9) << 1) + 1;
-    globals.k1_tf = (SIGN(k1, 9) << 1) + 1;
-    globals.k2_tf = (SIGN(k2, 9) << 1) + 1;
-    globals.k3_tf = (SIGN(k3, 9) << 1) + 1;
-    globals.k4    = (args[1] >> 9) & 0x1ff;
-    globals.k5    = args[1] & 0x1ff;
+    parallel_worker->globals.k0_tf = (SIGN(k0, 9) << 1) + 1;
+    parallel_worker->globals.k1_tf = (SIGN(k1, 9) << 1) + 1;
+    parallel_worker->globals.k2_tf = (SIGN(k2, 9) << 1) + 1;
+    parallel_worker->globals.k3_tf = (SIGN(k3, 9) << 1) + 1;
+    parallel_worker->globals.k4    = (args[1] >> 9) & 0x1ff;
+    parallel_worker->globals.k5    = args[1] & 0x1ff;
 }
 
 static void tex_init(void)
 {
-    globals.ti_format  = FORMAT_RGBA;
-    globals.ti_size    = PIXEL_SIZE_4BIT;
-    globals.ti_width   = 0;
-    globals.ti_address = 0;
+    parallel_worker->globals.ti_format  = FORMAT_RGBA;
+    parallel_worker->globals.ti_size    = PIXEL_SIZE_4BIT;
+    parallel_worker->globals.ti_width   = 0;
+    parallel_worker->globals.ti_address = 0;
 
     tmem_init();
     tcoord_init();
@@ -6895,7 +6659,7 @@ static void replicate_for_copy(uint32_t* outbyte, uint32_t inshort, uint32_t nyb
         lownib = hinib = (inshort >> lownib) & 0xf;
         if (tformat == FORMAT_CI)
         {
-            *outbyte = (globals.tile[tilenum].palette << 4) | lownib;
+            *outbyte = (parallel_worker->globals.tile[tilenum].palette << 4) | lownib;
         }
         else if (tformat == FORMAT_IA)
         {
@@ -6935,15 +6699,15 @@ static void fetch_qword_copy(uint32_t* hidword, uint32_t* lowdword, int32_t ssss
     int largetex = 0;
     uint32_t tformat, tsize;
 
-    if (globals.other_modes.en_tlut)
+    if (parallel_worker->globals.other_modes.en_tlut)
     {
         tsize = PIXEL_SIZE_16BIT;
-        tformat = globals.other_modes.tlut_type ? FORMAT_IA : FORMAT_RGBA;
+        tformat = parallel_worker->globals.other_modes.tlut_type ? FORMAT_IA : FORMAT_RGBA;
     }
     else
     {
-        tsize = globals.tile[tilenum].size;
-        tformat = globals.tile[tilenum].format;
+        tsize = parallel_worker->globals.tile[tilenum].size;
+        tformat = parallel_worker->globals.tile[tilenum].format;
     }
 
     tc_pipeline_copy(&sss, &sss1, &sss2, &sss3, &sst, tilenum);
@@ -6951,7 +6715,7 @@ static void fetch_qword_copy(uint32_t* hidword, uint32_t* lowdword, int32_t ssss
     largetex = (tformat == FORMAT_YUV || (tformat == FORMAT_RGBA && tsize == PIXEL_SIZE_32BIT));
 
 
-    if (globals.other_modes.en_tlut)
+    if (parallel_worker->globals.other_modes.en_tlut)
     {
         shorta = sortshort[4];
         shortb = sortshort[5];
@@ -6995,11 +6759,11 @@ static STRICTINLINE void rgbaz_correct_clip(int offx, int offy, int r, int g, in
 
     if (curpixel_cvg != 8)
     {
-        int summand_r = offx * globals.spans.cdr + offy * globals.spans.drdy;
-        int summand_g = offx * globals.spans.cdg + offy * globals.spans.dgdy;
-        int summand_b = offx * globals.spans.cdb + offy * globals.spans.dbdy;
-        int summand_a = offx * globals.spans.cda + offy * globals.spans.dady;
-        int summand_z = offx * globals.spans.cdz + offy * globals.spans.dzdy;
+        int summand_r = offx * parallel_worker->globals.spans.cdr + offy * parallel_worker->globals.spans.drdy;
+        int summand_g = offx * parallel_worker->globals.spans.cdg + offy * parallel_worker->globals.spans.dgdy;
+        int summand_b = offx * parallel_worker->globals.spans.cdb + offy * parallel_worker->globals.spans.dbdy;
+        int summand_a = offx * parallel_worker->globals.spans.cda + offy * parallel_worker->globals.spans.dady;
+        int summand_z = offx * parallel_worker->globals.spans.cdz + offy * parallel_worker->globals.spans.dzdy;
 
         r = ((r << 2) + summand_r) >> 4;
         g = ((g << 2) + summand_g) >> 4;
@@ -7017,10 +6781,10 @@ static STRICTINLINE void rgbaz_correct_clip(int offx, int offy, int r, int g, in
     }
 
 
-    globals.shade_color.r = special_9bit_clamptable[r & 0x1ff];
-    globals.shade_color.g = special_9bit_clamptable[g & 0x1ff];
-    globals.shade_color.b = special_9bit_clamptable[b & 0x1ff];
-    globals.shade_color.a = special_9bit_clamptable[a & 0x1ff];
+    parallel_worker->globals.shade_color.r = special_9bit_clamptable[r & 0x1ff];
+    parallel_worker->globals.shade_color.g = special_9bit_clamptable[g & 0x1ff];
+    parallel_worker->globals.shade_color.b = special_9bit_clamptable[b & 0x1ff];
+    parallel_worker->globals.shade_color.a = special_9bit_clamptable[a & 0x1ff];
 
     /* Should be a correct branchless version of the awkward
      * zanded in Angrylion. This pattern seems very similar
@@ -7038,7 +6802,7 @@ static void render_spans_1cycle_complete(int start, int end, int tilenum, int fl
     uint32_t blend_en;
     uint32_t prewrap;
     uint32_t curpixel_cvg, curpixel_cvbit, curpixel_memcvg;
-    int zb = globals.zb_address >> 1;
+    int zb = parallel_worker->globals.zb_address >> 1;
 
     int prim_tile = tilenum;
     int tile1 = tilenum;
@@ -7052,36 +6816,36 @@ static void render_spans_1cycle_complete(int start, int end, int tilenum, int fl
 
     if (flip)
     {
-        drinc = globals.spans.dr;
-        dginc = globals.spans.dg;
-        dbinc = globals.spans.db;
-        dainc = globals.spans.da;
-        dzinc = globals.spans.dz;
-        dsinc = globals.spans.ds;
-        dtinc = globals.spans.dt;
-        dwinc = globals.spans.dw;
+        drinc = parallel_worker->globals.spans.dr;
+        dginc = parallel_worker->globals.spans.dg;
+        dbinc = parallel_worker->globals.spans.db;
+        dainc = parallel_worker->globals.spans.da;
+        dzinc = parallel_worker->globals.spans.dz;
+        dsinc = parallel_worker->globals.spans.ds;
+        dtinc = parallel_worker->globals.spans.dt;
+        dwinc = parallel_worker->globals.spans.dw;
         xinc = 1;
     }
     else
     {
-        drinc = -globals.spans.dr;
-        dginc = -globals.spans.dg;
-        dbinc = -globals.spans.db;
-        dainc = -globals.spans.da;
-        dzinc = -globals.spans.dz;
-        dsinc = -globals.spans.ds;
-        dtinc = -globals.spans.dt;
-        dwinc = -globals.spans.dw;
+        drinc = -parallel_worker->globals.spans.dr;
+        dginc = -parallel_worker->globals.spans.dg;
+        dbinc = -parallel_worker->globals.spans.db;
+        dainc = -parallel_worker->globals.spans.da;
+        dzinc = -parallel_worker->globals.spans.dz;
+        dsinc = -parallel_worker->globals.spans.ds;
+        dtinc = -parallel_worker->globals.spans.dt;
+        dwinc = -parallel_worker->globals.spans.dw;
         xinc = -1;
     }
 
     int dzpix;
-    if (!globals.other_modes.z_source_sel)
-        dzpix = globals.spans.dzpix;
+    if (!parallel_worker->globals.other_modes.z_source_sel)
+        dzpix = parallel_worker->globals.spans.dzpix;
     else
     {
-        dzpix = globals.primitive_delta_z;
-        dzinc = globals.spans.cdz = globals.spans.dzdy = 0;
+        dzpix = parallel_worker->globals.primitive_delta_z;
+        dzinc = parallel_worker->globals.spans.cdz = parallel_worker->globals.spans.dzdy = 0;
     }
     int dzpixenc = dz_compress(dzpix);
 
@@ -7097,23 +6861,23 @@ static void render_spans_1cycle_complete(int start, int end, int tilenum, int fl
 
     for (i = start; i <= end; i++)
     {
-        if (globals.span[i].validline)
+        if (parallel_worker->globals.span[i].validline)
         {
 
-        xstart = globals.span[i].lx;
-        xend = globals.span[i].unscrx;
-        xendsc = globals.span[i].rx;
-        r = globals.span[i].r;
-        g = globals.span[i].g;
-        b = globals.span[i].b;
-        a = globals.span[i].a;
-        z = globals.other_modes.z_source_sel ? globals.primitive_z : globals.span[i].z;
-        s = globals.span[i].s;
-        t = globals.span[i].t;
-        w = globals.span[i].w;
+        xstart = parallel_worker->globals.span[i].lx;
+        xend = parallel_worker->globals.span[i].unscrx;
+        xendsc = parallel_worker->globals.span[i].rx;
+        r = parallel_worker->globals.span[i].r;
+        g = parallel_worker->globals.span[i].g;
+        b = parallel_worker->globals.span[i].b;
+        a = parallel_worker->globals.span[i].a;
+        z = parallel_worker->globals.other_modes.z_source_sel ? parallel_worker->globals.primitive_z : parallel_worker->globals.span[i].z;
+        s = parallel_worker->globals.span[i].s;
+        t = parallel_worker->globals.span[i].t;
+        w = parallel_worker->globals.span[i].w;
 
         x = xendsc;
-        curpixel = globals.fb_width * i + x;
+        curpixel = parallel_worker->globals.fb_width * i + x;
         zbcur = zb + curpixel;
 
         if (!flip)
@@ -7178,19 +6942,19 @@ static void render_spans_1cycle_complete(int start, int end, int tilenum, int fl
 
             if (!sigs.startspan)
             {
-                globals.texel0_color = globals.texel1_color;
-                globals.lod_frac = prelodfrac;
+                parallel_worker->globals.texel0_color = parallel_worker->globals.texel1_color;
+                parallel_worker->globals.lod_frac = prelodfrac;
             }
             else
             {
-                globals.tcdiv_ptr(ss, st, sw, &sss, &sst);
+                parallel_worker->globals.tcdiv_ptr(ss, st, sw, &sss, &sst);
 
                 tclod_1cycle_current(&sss, &sst, news, newt, s, t, w, dsinc, dtinc, dwinc, i, prim_tile, &tile1, &sigs);
 
 
 
 
-                texture_pipeline_cycle(&globals.texel0_color, &globals.texel0_color, sss, sst, tile1, 0);
+                texture_pipeline_cycle(&parallel_worker->globals.texel0_color, &parallel_worker->globals.texel0_color, sss, sst, tile1, 0);
 
 
                 sigs.startspan = 0;
@@ -7206,23 +6970,23 @@ static void render_spans_1cycle_complete(int start, int end, int tilenum, int fl
 
             tclod_1cycle_next(&news, &newt, s, t, w, dsinc, dtinc, dwinc, i, prim_tile, &newtile, &sigs, &prelodfrac);
 
-            texture_pipeline_cycle(&globals.texel1_color, &globals.texel1_color, news, newt, newtile, 0);
+            texture_pipeline_cycle(&parallel_worker->globals.texel1_color, &parallel_worker->globals.texel1_color, news, newt, newtile, 0);
 
             rgbaz_correct_clip(offx, offy, sr, sg, sb, sa, &sz, curpixel_cvg);
 
-            if (globals.other_modes.f.getditherlevel < 2)
+            if (parallel_worker->globals.other_modes.f.getditherlevel < 2)
                 get_dither_noise(x, i, &cdith, &adith);
 
             combiner_1cycle(adith, &curpixel_cvg);
 
-            globals.fbread1_ptr(curpixel, &curpixel_memcvg);
+            parallel_worker->globals.fbread1_ptr(curpixel, &curpixel_memcvg);
 
             if (z_compare(zbcur, sz, dzpix, dzpixenc, &blend_en, &prewrap, &curpixel_cvg, curpixel_memcvg))
             {
                 if (blender_1cycle(&fir, &fig, &fib, cdith, blend_en, prewrap, curpixel_cvg, curpixel_cvbit))
                 {
-                    globals.fbwrite_ptr(curpixel, fir, fig, fib, blend_en, curpixel_cvg, curpixel_memcvg);
-                    if (globals.other_modes.z_update_en)
+                    parallel_worker->globals.fbwrite_ptr(curpixel, fir, fig, fib, blend_en, curpixel_cvg, curpixel_memcvg);
+                    if (parallel_worker->globals.other_modes.z_update_en)
                         z_store(zbcur, sz, dzpixenc);
                 }
             }
@@ -7253,7 +7017,7 @@ static void render_spans_1cycle_notexel1(int start, int end, int tilenum, int fl
     uint32_t blend_en;
     uint32_t prewrap;
     uint32_t curpixel_cvg, curpixel_cvbit, curpixel_memcvg;
-    int zb = globals.zb_address >> 1;
+    int zb = parallel_worker->globals.zb_address >> 1;
     int prim_tile = tilenum;
     int tile1 = tilenum;
 
@@ -7263,36 +7027,36 @@ static void render_spans_1cycle_notexel1(int start, int end, int tilenum, int fl
     int xinc;
     if (flip)
     {
-        drinc = globals.spans.dr;
-        dginc = globals.spans.dg;
-        dbinc = globals.spans.db;
-        dainc = globals.spans.da;
-        dzinc = globals.spans.dz;
-        dsinc = globals.spans.ds;
-        dtinc = globals.spans.dt;
-        dwinc = globals.spans.dw;
+        drinc = parallel_worker->globals.spans.dr;
+        dginc = parallel_worker->globals.spans.dg;
+        dbinc = parallel_worker->globals.spans.db;
+        dainc = parallel_worker->globals.spans.da;
+        dzinc = parallel_worker->globals.spans.dz;
+        dsinc = parallel_worker->globals.spans.ds;
+        dtinc = parallel_worker->globals.spans.dt;
+        dwinc = parallel_worker->globals.spans.dw;
         xinc = 1;
     }
     else
     {
-        drinc = -globals.spans.dr;
-        dginc = -globals.spans.dg;
-        dbinc = -globals.spans.db;
-        dainc = -globals.spans.da;
-        dzinc = -globals.spans.dz;
-        dsinc = -globals.spans.ds;
-        dtinc = -globals.spans.dt;
-        dwinc = -globals.spans.dw;
+        drinc = -parallel_worker->globals.spans.dr;
+        dginc = -parallel_worker->globals.spans.dg;
+        dbinc = -parallel_worker->globals.spans.db;
+        dainc = -parallel_worker->globals.spans.da;
+        dzinc = -parallel_worker->globals.spans.dz;
+        dsinc = -parallel_worker->globals.spans.ds;
+        dtinc = -parallel_worker->globals.spans.dt;
+        dwinc = -parallel_worker->globals.spans.dw;
         xinc = -1;
     }
 
     int dzpix;
-    if (!globals.other_modes.z_source_sel)
-        dzpix = globals.spans.dzpix;
+    if (!parallel_worker->globals.other_modes.z_source_sel)
+        dzpix = parallel_worker->globals.spans.dzpix;
     else
     {
-        dzpix = globals.primitive_delta_z;
-        dzinc = globals.spans.cdz = globals.spans.dzdy = 0;
+        dzpix = parallel_worker->globals.primitive_delta_z;
+        dzinc = parallel_worker->globals.spans.cdz = parallel_worker->globals.spans.dzdy = 0;
     }
     int dzpixenc = dz_compress(dzpix);
 
@@ -7307,23 +7071,23 @@ static void render_spans_1cycle_notexel1(int start, int end, int tilenum, int fl
 
     for (i = start; i <= end; i++)
     {
-        if (globals.span[i].validline)
+        if (parallel_worker->globals.span[i].validline)
         {
 
-        xstart = globals.span[i].lx;
-        xend = globals.span[i].unscrx;
-        xendsc = globals.span[i].rx;
-        r = globals.span[i].r;
-        g = globals.span[i].g;
-        b = globals.span[i].b;
-        a = globals.span[i].a;
-        z = globals.other_modes.z_source_sel ? globals.primitive_z : globals.span[i].z;
-        s = globals.span[i].s;
-        t = globals.span[i].t;
-        w = globals.span[i].w;
+        xstart = parallel_worker->globals.span[i].lx;
+        xend = parallel_worker->globals.span[i].unscrx;
+        xendsc = parallel_worker->globals.span[i].rx;
+        r = parallel_worker->globals.span[i].r;
+        g = parallel_worker->globals.span[i].g;
+        b = parallel_worker->globals.span[i].b;
+        a = parallel_worker->globals.span[i].a;
+        z = parallel_worker->globals.other_modes.z_source_sel ? parallel_worker->globals.primitive_z : parallel_worker->globals.span[i].z;
+        s = parallel_worker->globals.span[i].s;
+        t = parallel_worker->globals.span[i].t;
+        w = parallel_worker->globals.span[i].w;
 
         x = xendsc;
-        curpixel = globals.fb_width * i + x;
+        curpixel = parallel_worker->globals.fb_width * i + x;
         zbcur = zb + curpixel;
 
         if (!flip)
@@ -7373,27 +7137,27 @@ static void render_spans_1cycle_notexel1(int start, int end, int tilenum, int fl
 
             lookup_cvmask_derivatives(x, &offx, &offy, &curpixel_cvg, &curpixel_cvbit);
 
-            globals.tcdiv_ptr(ss, st, sw, &sss, &sst);
+            parallel_worker->globals.tcdiv_ptr(ss, st, sw, &sss, &sst);
 
             tclod_1cycle_current_simple(&sss, &sst, s, t, w, dsinc, dtinc, dwinc, i, prim_tile, &tile1, &sigs);
 
-            texture_pipeline_cycle(&globals.texel0_color, &globals.texel0_color, sss, sst, tile1, 0);
+            texture_pipeline_cycle(&parallel_worker->globals.texel0_color, &parallel_worker->globals.texel0_color, sss, sst, tile1, 0);
 
             rgbaz_correct_clip(offx, offy, sr, sg, sb, sa, &sz, curpixel_cvg);
 
-            if (globals.other_modes.f.getditherlevel < 2)
+            if (parallel_worker->globals.other_modes.f.getditherlevel < 2)
                 get_dither_noise(x, i, &cdith, &adith);
 
             combiner_1cycle(adith, &curpixel_cvg);
 
-            globals.fbread1_ptr(curpixel, &curpixel_memcvg);
+            parallel_worker->globals.fbread1_ptr(curpixel, &curpixel_memcvg);
 
             if (z_compare(zbcur, sz, dzpix, dzpixenc, &blend_en, &prewrap, &curpixel_cvg, curpixel_memcvg))
             {
                 if (blender_1cycle(&fir, &fig, &fib, cdith, blend_en, prewrap, curpixel_cvg, curpixel_cvbit))
                 {
-                    globals.fbwrite_ptr(curpixel, fir, fig, fib, blend_en, curpixel_cvg, curpixel_memcvg);
-                    if (globals.other_modes.z_update_en)
+                    parallel_worker->globals.fbwrite_ptr(curpixel, fir, fig, fib, blend_en, curpixel_cvg, curpixel_memcvg);
+                    if (parallel_worker->globals.other_modes.z_update_en)
                         z_store(zbcur, sz, dzpixenc);
                 }
             }
@@ -7427,34 +7191,34 @@ static void render_spans_1cycle_notex(int start, int end, int tilenum, int flip)
 
     int drinc, dginc, dbinc, dainc, dzinc;
     int xinc;
-    int zb = globals.zb_address >> 1;
+    int zb = parallel_worker->globals.zb_address >> 1;
 
     if (flip)
     {
-        drinc = globals.spans.dr;
-        dginc = globals.spans.dg;
-        dbinc = globals.spans.db;
-        dainc = globals.spans.da;
-        dzinc = globals.spans.dz;
+        drinc = parallel_worker->globals.spans.dr;
+        dginc = parallel_worker->globals.spans.dg;
+        dbinc = parallel_worker->globals.spans.db;
+        dainc = parallel_worker->globals.spans.da;
+        dzinc = parallel_worker->globals.spans.dz;
         xinc = 1;
     }
     else
     {
-        drinc = -globals.spans.dr;
-        dginc = -globals.spans.dg;
-        dbinc = -globals.spans.db;
-        dainc = -globals.spans.da;
-        dzinc = -globals.spans.dz;
+        drinc = -parallel_worker->globals.spans.dr;
+        dginc = -parallel_worker->globals.spans.dg;
+        dbinc = -parallel_worker->globals.spans.db;
+        dainc = -parallel_worker->globals.spans.da;
+        dzinc = -parallel_worker->globals.spans.dz;
         xinc = -1;
     }
 
     int dzpix;
-    if (!globals.other_modes.z_source_sel)
-        dzpix = globals.spans.dzpix;
+    if (!parallel_worker->globals.other_modes.z_source_sel)
+        dzpix = parallel_worker->globals.spans.dzpix;
     else
     {
-        dzpix = globals.primitive_delta_z;
-        dzinc = globals.spans.cdz = globals.spans.dzdy = 0;
+        dzpix = parallel_worker->globals.primitive_delta_z;
+        dzinc = parallel_worker->globals.spans.cdz = parallel_worker->globals.spans.dzdy = 0;
     }
     int dzpixenc = dz_compress(dzpix);
 
@@ -7468,20 +7232,20 @@ static void render_spans_1cycle_notex(int start, int end, int tilenum, int flip)
 
     for (i = start; i <= end; i++)
     {
-        if (globals.span[i].validline)
+        if (parallel_worker->globals.span[i].validline)
         {
 
-        xstart = globals.span[i].lx;
-        xend = globals.span[i].unscrx;
-        xendsc = globals.span[i].rx;
-        r = globals.span[i].r;
-        g = globals.span[i].g;
-        b = globals.span[i].b;
-        a = globals.span[i].a;
-        z = globals.other_modes.z_source_sel ? globals.primitive_z : globals.span[i].z;
+        xstart = parallel_worker->globals.span[i].lx;
+        xend = parallel_worker->globals.span[i].unscrx;
+        xendsc = parallel_worker->globals.span[i].rx;
+        r = parallel_worker->globals.span[i].r;
+        g = parallel_worker->globals.span[i].g;
+        b = parallel_worker->globals.span[i].b;
+        a = parallel_worker->globals.span[i].a;
+        z = parallel_worker->globals.other_modes.z_source_sel ? parallel_worker->globals.primitive_z : parallel_worker->globals.span[i].z;
 
         x = xendsc;
-        curpixel = globals.fb_width * i + x;
+        curpixel = parallel_worker->globals.fb_width * i + x;
         zbcur = zb + curpixel;
 
         if (!flip)
@@ -7519,19 +7283,19 @@ static void render_spans_1cycle_notex(int start, int end, int tilenum, int flip)
 
             rgbaz_correct_clip(offx, offy, sr, sg, sb, sa, &sz, curpixel_cvg);
 
-            if (globals.other_modes.f.getditherlevel < 2)
+            if (parallel_worker->globals.other_modes.f.getditherlevel < 2)
                 get_dither_noise(x, i, &cdith, &adith);
 
             combiner_1cycle(adith, &curpixel_cvg);
 
-            globals.fbread1_ptr(curpixel, &curpixel_memcvg);
+            parallel_worker->globals.fbread1_ptr(curpixel, &curpixel_memcvg);
 
             if (z_compare(zbcur, sz, dzpix, dzpixenc, &blend_en, &prewrap, &curpixel_cvg, curpixel_memcvg))
             {
                 if (blender_1cycle(&fir, &fig, &fib, cdith, blend_en, prewrap, curpixel_cvg, curpixel_cvbit))
                 {
-                    globals.fbwrite_ptr(curpixel, fir, fig, fib, blend_en, curpixel_cvg, curpixel_memcvg);
-                    if (globals.other_modes.z_update_en)
+                    parallel_worker->globals.fbwrite_ptr(curpixel, fir, fig, fib, blend_en, curpixel_cvg, curpixel_memcvg);
+                    if (parallel_worker->globals.other_modes.z_update_en)
                         z_store(zbcur, sz, dzpixenc);
                 }
             }
@@ -7561,7 +7325,7 @@ static void render_spans_2cycle_complete(int start, int end, int tilenum, int fl
     uint32_t curpixel_cvg, curpixel_cvbit, curpixel_memcvg;
     int32_t acalpha;
 
-    int zb = globals.zb_address >> 1;
+    int zb = parallel_worker->globals.zb_address >> 1;
 
 
     int tile2 = (tilenum + 1) & 7;
@@ -7578,36 +7342,36 @@ static void render_spans_2cycle_complete(int start, int end, int tilenum, int fl
     int xinc;
     if (flip)
     {
-        drinc = globals.spans.dr;
-        dginc = globals.spans.dg;
-        dbinc = globals.spans.db;
-        dainc = globals.spans.da;
-        dzinc = globals.spans.dz;
-        dsinc = globals.spans.ds;
-        dtinc = globals.spans.dt;
-        dwinc = globals.spans.dw;
+        drinc = parallel_worker->globals.spans.dr;
+        dginc = parallel_worker->globals.spans.dg;
+        dbinc = parallel_worker->globals.spans.db;
+        dainc = parallel_worker->globals.spans.da;
+        dzinc = parallel_worker->globals.spans.dz;
+        dsinc = parallel_worker->globals.spans.ds;
+        dtinc = parallel_worker->globals.spans.dt;
+        dwinc = parallel_worker->globals.spans.dw;
         xinc = 1;
     }
     else
     {
-        drinc = -globals.spans.dr;
-        dginc = -globals.spans.dg;
-        dbinc = -globals.spans.db;
-        dainc = -globals.spans.da;
-        dzinc = -globals.spans.dz;
-        dsinc = -globals.spans.ds;
-        dtinc = -globals.spans.dt;
-        dwinc = -globals.spans.dw;
+        drinc = -parallel_worker->globals.spans.dr;
+        dginc = -parallel_worker->globals.spans.dg;
+        dbinc = -parallel_worker->globals.spans.db;
+        dainc = -parallel_worker->globals.spans.da;
+        dzinc = -parallel_worker->globals.spans.dz;
+        dsinc = -parallel_worker->globals.spans.ds;
+        dtinc = -parallel_worker->globals.spans.dt;
+        dwinc = -parallel_worker->globals.spans.dw;
         xinc = -1;
     }
 
     int dzpix;
-    if (!globals.other_modes.z_source_sel)
-        dzpix = globals.spans.dzpix;
+    if (!parallel_worker->globals.other_modes.z_source_sel)
+        dzpix = parallel_worker->globals.spans.dzpix;
     else
     {
-        dzpix = globals.primitive_delta_z;
-        dzinc = globals.spans.cdz = globals.spans.dzdy = 0;
+        dzpix = parallel_worker->globals.primitive_delta_z;
+        dzinc = parallel_worker->globals.spans.cdz = parallel_worker->globals.spans.dzdy = 0;
     }
     int dzpixenc = dz_compress(dzpix);
 
@@ -7623,23 +7387,23 @@ static void render_spans_2cycle_complete(int start, int end, int tilenum, int fl
 
     for (i = start; i <= end; i++)
     {
-        if (globals.span[i].validline)
+        if (parallel_worker->globals.span[i].validline)
         {
 
-        xstart = globals.span[i].lx;
-        xend = globals.span[i].unscrx;
-        xendsc = globals.span[i].rx;
-        r = globals.span[i].r;
-        g = globals.span[i].g;
-        b = globals.span[i].b;
-        a = globals.span[i].a;
-        z = globals.other_modes.z_source_sel ? globals.primitive_z : globals.span[i].z;
-        s = globals.span[i].s;
-        t = globals.span[i].t;
-        w = globals.span[i].w;
+        xstart = parallel_worker->globals.span[i].lx;
+        xend = parallel_worker->globals.span[i].unscrx;
+        xendsc = parallel_worker->globals.span[i].rx;
+        r = parallel_worker->globals.span[i].r;
+        g = parallel_worker->globals.span[i].g;
+        b = parallel_worker->globals.span[i].b;
+        a = parallel_worker->globals.span[i].a;
+        z = parallel_worker->globals.other_modes.z_source_sel ? parallel_worker->globals.primitive_z : parallel_worker->globals.span[i].z;
+        s = parallel_worker->globals.span[i].s;
+        t = parallel_worker->globals.span[i].t;
+        w = parallel_worker->globals.span[i].w;
 
         x = xendsc;
-        curpixel = globals.fb_width * i + x;
+        curpixel = parallel_worker->globals.fb_width * i + x;
         zbcur = zb + curpixel;
 
         if (!flip)
@@ -7694,20 +7458,20 @@ static void render_spans_2cycle_complete(int start, int end, int tilenum, int fl
 
             if (!sigs.startspan)
             {
-                globals.lod_frac = prelodfrac;
-                globals.texel0_color = globals.nexttexel_color;
-                globals.texel1_color = nexttexel1_color;
+                parallel_worker->globals.lod_frac = prelodfrac;
+                parallel_worker->globals.texel0_color = parallel_worker->globals.nexttexel_color;
+                parallel_worker->globals.texel1_color = nexttexel1_color;
             }
             else
             {
-                globals.tcdiv_ptr(ss, st, sw, &sss, &sst);
+                parallel_worker->globals.tcdiv_ptr(ss, st, sw, &sss, &sst);
 
                 tclod_2cycle_current(&sss, &sst, news, newt, s, t, w, dsinc, dtinc, dwinc, prim_tile, &tile1, &tile2);
 
 
 
-                texture_pipeline_cycle(&globals.texel0_color, &globals.texel0_color, sss, sst, tile1, 0);
-                texture_pipeline_cycle(&globals.texel1_color, &globals.texel0_color, sss, sst, tile2, 1);
+                texture_pipeline_cycle(&parallel_worker->globals.texel0_color, &parallel_worker->globals.texel0_color, sss, sst, tile1, 0);
+                texture_pipeline_cycle(&parallel_worker->globals.texel1_color, &parallel_worker->globals.texel0_color, sss, sst, tile2, 1);
 
                 sigs.startspan = 0;
             }
@@ -7718,29 +7482,29 @@ static void render_spans_2cycle_complete(int start, int end, int tilenum, int fl
 
             tclod_2cycle_next(&news, &newt, s, t, w, dsinc, dtinc, dwinc, prim_tile, &newtile1, &newtile2, &prelodfrac);
 
-            texture_pipeline_cycle(&globals.nexttexel_color, &globals.nexttexel_color, news, newt, newtile1, 0);
-            texture_pipeline_cycle(&nexttexel1_color, &globals.nexttexel_color, news, newt, newtile2, 1);
+            texture_pipeline_cycle(&parallel_worker->globals.nexttexel_color, &parallel_worker->globals.nexttexel_color, news, newt, newtile1, 0);
+            texture_pipeline_cycle(&nexttexel1_color, &parallel_worker->globals.nexttexel_color, news, newt, newtile2, 1);
 
             rgbaz_correct_clip(offx, offy, sr, sg, sb, sa, &sz, curpixel_cvg);
 
-            if (globals.other_modes.f.getditherlevel < 2)
+            if (parallel_worker->globals.other_modes.f.getditherlevel < 2)
                 get_dither_noise(x, i, &cdith, &adith);
 
             combiner_2cycle(adith, &curpixel_cvg, &acalpha);
 
-            globals.fbread2_ptr(curpixel, &curpixel_memcvg);
+            parallel_worker->globals.fbread2_ptr(curpixel, &curpixel_memcvg);
 
             if (z_compare(zbcur, sz, dzpix, dzpixenc, &blend_en, &prewrap, &curpixel_cvg, curpixel_memcvg))
             {
                 if (blender_2cycle(&fir, &fig, &fib, cdith, blend_en, prewrap, curpixel_cvg, curpixel_cvbit, acalpha))
                 {
-                    globals.fbwrite_ptr(curpixel, fir, fig, fib, blend_en, curpixel_cvg, curpixel_memcvg);
-                    if (globals.other_modes.z_update_en)
+                    parallel_worker->globals.fbwrite_ptr(curpixel, fir, fig, fib, blend_en, curpixel_cvg, curpixel_memcvg);
+                    if (parallel_worker->globals.other_modes.z_update_en)
                         z_store(zbcur, sz, dzpixenc);
                 }
             }
             else
-                globals.memory_color = globals.pre_memory_color;
+                parallel_worker->globals.memory_color = parallel_worker->globals.pre_memory_color;
 
             r += drinc;
             g += dginc;
@@ -7775,39 +7539,39 @@ static void render_spans_2cycle_notexelnext(int start, int end, int tilenum, int
 
     int drinc, dginc, dbinc, dainc, dzinc, dsinc, dtinc, dwinc;
     int xinc;
-    int zb = globals.zb_address >> 1;
+    int zb = parallel_worker->globals.zb_address >> 1;
     if (flip)
     {
-        drinc = globals.spans.dr;
-        dginc = globals.spans.dg;
-        dbinc = globals.spans.db;
-        dainc = globals.spans.da;
-        dzinc = globals.spans.dz;
-        dsinc = globals.spans.ds;
-        dtinc = globals.spans.dt;
-        dwinc = globals.spans.dw;
+        drinc = parallel_worker->globals.spans.dr;
+        dginc = parallel_worker->globals.spans.dg;
+        dbinc = parallel_worker->globals.spans.db;
+        dainc = parallel_worker->globals.spans.da;
+        dzinc = parallel_worker->globals.spans.dz;
+        dsinc = parallel_worker->globals.spans.ds;
+        dtinc = parallel_worker->globals.spans.dt;
+        dwinc = parallel_worker->globals.spans.dw;
         xinc = 1;
     }
     else
     {
-        drinc = -globals.spans.dr;
-        dginc = -globals.spans.dg;
-        dbinc = -globals.spans.db;
-        dainc = -globals.spans.da;
-        dzinc = -globals.spans.dz;
-        dsinc = -globals.spans.ds;
-        dtinc = -globals.spans.dt;
-        dwinc = -globals.spans.dw;
+        drinc = -parallel_worker->globals.spans.dr;
+        dginc = -parallel_worker->globals.spans.dg;
+        dbinc = -parallel_worker->globals.spans.db;
+        dainc = -parallel_worker->globals.spans.da;
+        dzinc = -parallel_worker->globals.spans.dz;
+        dsinc = -parallel_worker->globals.spans.ds;
+        dtinc = -parallel_worker->globals.spans.dt;
+        dwinc = -parallel_worker->globals.spans.dw;
         xinc = -1;
     }
 
     int dzpix;
-    if (!globals.other_modes.z_source_sel)
-        dzpix = globals.spans.dzpix;
+    if (!parallel_worker->globals.other_modes.z_source_sel)
+        dzpix = parallel_worker->globals.spans.dzpix;
     else
     {
-        dzpix = globals.primitive_delta_z;
-        dzinc = globals.spans.cdz = globals.spans.dzdy = 0;
+        dzpix = parallel_worker->globals.primitive_delta_z;
+        dzinc = parallel_worker->globals.spans.cdz = parallel_worker->globals.spans.dzdy = 0;
     }
     int dzpixenc = dz_compress(dzpix);
 
@@ -7823,23 +7587,23 @@ static void render_spans_2cycle_notexelnext(int start, int end, int tilenum, int
 
     for (i = start; i <= end; i++)
     {
-        if (globals.span[i].validline)
+        if (parallel_worker->globals.span[i].validline)
         {
 
-        xstart = globals.span[i].lx;
-        xend = globals.span[i].unscrx;
-        xendsc = globals.span[i].rx;
-        r = globals.span[i].r;
-        g = globals.span[i].g;
-        b = globals.span[i].b;
-        a = globals.span[i].a;
-        z = globals.other_modes.z_source_sel ? globals.primitive_z : globals.span[i].z;
-        s = globals.span[i].s;
-        t = globals.span[i].t;
-        w = globals.span[i].w;
+        xstart = parallel_worker->globals.span[i].lx;
+        xend = parallel_worker->globals.span[i].unscrx;
+        xendsc = parallel_worker->globals.span[i].rx;
+        r = parallel_worker->globals.span[i].r;
+        g = parallel_worker->globals.span[i].g;
+        b = parallel_worker->globals.span[i].b;
+        a = parallel_worker->globals.span[i].a;
+        z = parallel_worker->globals.other_modes.z_source_sel ? parallel_worker->globals.primitive_z : parallel_worker->globals.span[i].z;
+        s = parallel_worker->globals.span[i].s;
+        t = parallel_worker->globals.span[i].t;
+        w = parallel_worker->globals.span[i].w;
 
         x = xendsc;
-        curpixel = globals.fb_width * i + x;
+        curpixel = parallel_worker->globals.fb_width * i + x;
         zbcur = zb + curpixel;
 
         if (!flip)
@@ -7881,33 +7645,33 @@ static void render_spans_2cycle_notexelnext(int start, int end, int tilenum, int
 
             lookup_cvmask_derivatives(x, &offx, &offy, &curpixel_cvg, &curpixel_cvbit);
 
-            globals.tcdiv_ptr(ss, st, sw, &sss, &sst);
+            parallel_worker->globals.tcdiv_ptr(ss, st, sw, &sss, &sst);
 
             tclod_2cycle_current_simple(&sss, &sst, s, t, w, dsinc, dtinc, dwinc, prim_tile, &tile1, &tile2);
 
-            texture_pipeline_cycle(&globals.texel0_color, &globals.texel0_color, sss, sst, tile1, 0);
-            texture_pipeline_cycle(&globals.texel1_color, &globals.texel0_color, sss, sst, tile2, 1);
+            texture_pipeline_cycle(&parallel_worker->globals.texel0_color, &parallel_worker->globals.texel0_color, sss, sst, tile1, 0);
+            texture_pipeline_cycle(&parallel_worker->globals.texel1_color, &parallel_worker->globals.texel0_color, sss, sst, tile2, 1);
 
             rgbaz_correct_clip(offx, offy, sr, sg, sb, sa, &sz, curpixel_cvg);
 
-            if (globals.other_modes.f.getditherlevel < 2)
+            if (parallel_worker->globals.other_modes.f.getditherlevel < 2)
                 get_dither_noise(x, i, &cdith, &adith);
 
             combiner_2cycle(adith, &curpixel_cvg, &acalpha);
 
-            globals.fbread2_ptr(curpixel, &curpixel_memcvg);
+            parallel_worker->globals.fbread2_ptr(curpixel, &curpixel_memcvg);
 
             if (z_compare(zbcur, sz, dzpix, dzpixenc, &blend_en, &prewrap, &curpixel_cvg, curpixel_memcvg))
             {
                 if (blender_2cycle(&fir, &fig, &fib, cdith, blend_en, prewrap, curpixel_cvg, curpixel_cvbit, acalpha))
                 {
-                    globals.fbwrite_ptr(curpixel, fir, fig, fib, blend_en, curpixel_cvg, curpixel_memcvg);
-                    if (globals.other_modes.z_update_en)
+                    parallel_worker->globals.fbwrite_ptr(curpixel, fir, fig, fib, blend_en, curpixel_cvg, curpixel_memcvg);
+                    if (parallel_worker->globals.other_modes.z_update_en)
                         z_store(zbcur, sz, dzpixenc);
                 }
             }
             else
-                globals.memory_color = globals.pre_memory_color;
+                parallel_worker->globals.memory_color = parallel_worker->globals.pre_memory_color;
 
             s += dsinc;
             t += dtinc;
@@ -7943,39 +7707,39 @@ static void render_spans_2cycle_notexel1(int start, int end, int tilenum, int fl
 
     int drinc, dginc, dbinc, dainc, dzinc, dsinc, dtinc, dwinc;
     int xinc;
-    int zb = globals.zb_address >> 1;
+    int zb = parallel_worker->globals.zb_address >> 1;
     if (flip)
     {
-        drinc = globals.spans.dr;
-        dginc = globals.spans.dg;
-        dbinc = globals.spans.db;
-        dainc = globals.spans.da;
-        dzinc = globals.spans.dz;
-        dsinc = globals.spans.ds;
-        dtinc = globals.spans.dt;
-        dwinc = globals.spans.dw;
+        drinc = parallel_worker->globals.spans.dr;
+        dginc = parallel_worker->globals.spans.dg;
+        dbinc = parallel_worker->globals.spans.db;
+        dainc = parallel_worker->globals.spans.da;
+        dzinc = parallel_worker->globals.spans.dz;
+        dsinc = parallel_worker->globals.spans.ds;
+        dtinc = parallel_worker->globals.spans.dt;
+        dwinc = parallel_worker->globals.spans.dw;
         xinc = 1;
     }
     else
     {
-        drinc = -globals.spans.dr;
-        dginc = -globals.spans.dg;
-        dbinc = -globals.spans.db;
-        dainc = -globals.spans.da;
-        dzinc = -globals.spans.dz;
-        dsinc = -globals.spans.ds;
-        dtinc = -globals.spans.dt;
-        dwinc = -globals.spans.dw;
+        drinc = -parallel_worker->globals.spans.dr;
+        dginc = -parallel_worker->globals.spans.dg;
+        dbinc = -parallel_worker->globals.spans.db;
+        dainc = -parallel_worker->globals.spans.da;
+        dzinc = -parallel_worker->globals.spans.dz;
+        dsinc = -parallel_worker->globals.spans.ds;
+        dtinc = -parallel_worker->globals.spans.dt;
+        dwinc = -parallel_worker->globals.spans.dw;
         xinc = -1;
     }
 
     int dzpix;
-    if (!globals.other_modes.z_source_sel)
-        dzpix = globals.spans.dzpix;
+    if (!parallel_worker->globals.other_modes.z_source_sel)
+        dzpix = parallel_worker->globals.spans.dzpix;
     else
     {
-        dzpix = globals.primitive_delta_z;
-        dzinc = globals.spans.cdz = globals.spans.dzdy = 0;
+        dzpix = parallel_worker->globals.primitive_delta_z;
+        dzinc = parallel_worker->globals.spans.cdz = parallel_worker->globals.spans.dzdy = 0;
     }
     int dzpixenc = dz_compress(dzpix);
 
@@ -7991,23 +7755,23 @@ static void render_spans_2cycle_notexel1(int start, int end, int tilenum, int fl
 
     for (i = start; i <= end; i++)
     {
-        if (globals.span[i].validline)
+        if (parallel_worker->globals.span[i].validline)
         {
 
-        xstart = globals.span[i].lx;
-        xend = globals.span[i].unscrx;
-        xendsc = globals.span[i].rx;
-        r = globals.span[i].r;
-        g = globals.span[i].g;
-        b = globals.span[i].b;
-        a = globals.span[i].a;
-        z = globals.other_modes.z_source_sel ? globals.primitive_z : globals.span[i].z;
-        s = globals.span[i].s;
-        t = globals.span[i].t;
-        w = globals.span[i].w;
+        xstart = parallel_worker->globals.span[i].lx;
+        xend = parallel_worker->globals.span[i].unscrx;
+        xendsc = parallel_worker->globals.span[i].rx;
+        r = parallel_worker->globals.span[i].r;
+        g = parallel_worker->globals.span[i].g;
+        b = parallel_worker->globals.span[i].b;
+        a = parallel_worker->globals.span[i].a;
+        z = parallel_worker->globals.other_modes.z_source_sel ? parallel_worker->globals.primitive_z : parallel_worker->globals.span[i].z;
+        s = parallel_worker->globals.span[i].s;
+        t = parallel_worker->globals.span[i].t;
+        w = parallel_worker->globals.span[i].w;
 
         x = xendsc;
-        curpixel = globals.fb_width * i + x;
+        curpixel = parallel_worker->globals.fb_width * i + x;
         zbcur = zb + curpixel;
 
         if (!flip)
@@ -8049,34 +7813,34 @@ static void render_spans_2cycle_notexel1(int start, int end, int tilenum, int fl
 
             lookup_cvmask_derivatives(x, &offx, &offy, &curpixel_cvg, &curpixel_cvbit);
 
-            globals.tcdiv_ptr(ss, st, sw, &sss, &sst);
+            parallel_worker->globals.tcdiv_ptr(ss, st, sw, &sss, &sst);
 
             tclod_2cycle_current_notexel1(&sss, &sst, s, t, w, dsinc, dtinc, dwinc, prim_tile, &tile1);
 
 
-            texture_pipeline_cycle(&globals.texel0_color, &globals.texel0_color, sss, sst, tile1, 0);
+            texture_pipeline_cycle(&parallel_worker->globals.texel0_color, &parallel_worker->globals.texel0_color, sss, sst, tile1, 0);
 
             rgbaz_correct_clip(offx, offy, sr, sg, sb, sa, &sz, curpixel_cvg);
 
-            if (globals.other_modes.f.getditherlevel < 2)
+            if (parallel_worker->globals.other_modes.f.getditherlevel < 2)
                 get_dither_noise(x, i, &cdith, &adith);
 
             combiner_2cycle(adith, &curpixel_cvg, &acalpha);
 
-            globals.fbread2_ptr(curpixel, &curpixel_memcvg);
+            parallel_worker->globals.fbread2_ptr(curpixel, &curpixel_memcvg);
 
             if (z_compare(zbcur, sz, dzpix, dzpixenc, &blend_en, &prewrap, &curpixel_cvg, curpixel_memcvg))
             {
                 if (blender_2cycle(&fir, &fig, &fib, cdith, blend_en, prewrap, curpixel_cvg, curpixel_cvbit, acalpha))
                 {
-                    globals.fbwrite_ptr(curpixel, fir, fig, fib, blend_en, curpixel_cvg, curpixel_memcvg);
-                    if (globals.other_modes.z_update_en)
+                    parallel_worker->globals.fbwrite_ptr(curpixel, fir, fig, fib, blend_en, curpixel_cvg, curpixel_memcvg);
+                    if (parallel_worker->globals.other_modes.z_update_en)
                         z_store(zbcur, sz, dzpixenc);
                 }
 
             }
             else
-                globals.memory_color = globals.pre_memory_color;
+                parallel_worker->globals.memory_color = parallel_worker->globals.pre_memory_color;
 
             s += dsinc;
             t += dtinc;
@@ -8108,33 +7872,33 @@ static void render_spans_2cycle_notex(int start, int end, int tilenum, int flip)
 
     int drinc, dginc, dbinc, dainc, dzinc;
     int xinc;
-    int zb = globals.zb_address >> 1;
+    int zb = parallel_worker->globals.zb_address >> 1;
     if (flip)
     {
-        drinc = globals.spans.dr;
-        dginc = globals.spans.dg;
-        dbinc = globals.spans.db;
-        dainc = globals.spans.da;
-        dzinc = globals.spans.dz;
+        drinc = parallel_worker->globals.spans.dr;
+        dginc = parallel_worker->globals.spans.dg;
+        dbinc = parallel_worker->globals.spans.db;
+        dainc = parallel_worker->globals.spans.da;
+        dzinc = parallel_worker->globals.spans.dz;
         xinc = 1;
     }
     else
     {
-        drinc = -globals.spans.dr;
-        dginc = -globals.spans.dg;
-        dbinc = -globals.spans.db;
-        dainc = -globals.spans.da;
-        dzinc = -globals.spans.dz;
+        drinc = -parallel_worker->globals.spans.dr;
+        dginc = -parallel_worker->globals.spans.dg;
+        dbinc = -parallel_worker->globals.spans.db;
+        dainc = -parallel_worker->globals.spans.da;
+        dzinc = -parallel_worker->globals.spans.dz;
         xinc = -1;
     }
 
     int dzpix;
-    if (!globals.other_modes.z_source_sel)
-        dzpix = globals.spans.dzpix;
+    if (!parallel_worker->globals.other_modes.z_source_sel)
+        dzpix = parallel_worker->globals.spans.dzpix;
     else
     {
-        dzpix = globals.primitive_delta_z;
-        dzinc = globals.spans.cdz = globals.spans.dzdy = 0;
+        dzpix = parallel_worker->globals.primitive_delta_z;
+        dzinc = parallel_worker->globals.spans.cdz = parallel_worker->globals.spans.dzdy = 0;
     }
     int dzpixenc = dz_compress(dzpix);
 
@@ -8149,20 +7913,20 @@ static void render_spans_2cycle_notex(int start, int end, int tilenum, int flip)
 
     for (i = start; i <= end; i++)
     {
-        if (globals.span[i].validline)
+        if (parallel_worker->globals.span[i].validline)
         {
 
-        xstart = globals.span[i].lx;
-        xend = globals.span[i].unscrx;
-        xendsc = globals.span[i].rx;
-        r = globals.span[i].r;
-        g = globals.span[i].g;
-        b = globals.span[i].b;
-        a = globals.span[i].a;
-        z = globals.other_modes.z_source_sel ? globals.primitive_z : globals.span[i].z;
+        xstart = parallel_worker->globals.span[i].lx;
+        xend = parallel_worker->globals.span[i].unscrx;
+        xendsc = parallel_worker->globals.span[i].rx;
+        r = parallel_worker->globals.span[i].r;
+        g = parallel_worker->globals.span[i].g;
+        b = parallel_worker->globals.span[i].b;
+        a = parallel_worker->globals.span[i].a;
+        z = parallel_worker->globals.other_modes.z_source_sel ? parallel_worker->globals.primitive_z : parallel_worker->globals.span[i].z;
 
         x = xendsc;
-        curpixel = globals.fb_width * i + x;
+        curpixel = parallel_worker->globals.fb_width * i + x;
         zbcur = zb + curpixel;
 
         if (!flip)
@@ -8200,24 +7964,24 @@ static void render_spans_2cycle_notex(int start, int end, int tilenum, int flip)
 
             rgbaz_correct_clip(offx, offy, sr, sg, sb, sa, &sz, curpixel_cvg);
 
-            if (globals.other_modes.f.getditherlevel < 2)
+            if (parallel_worker->globals.other_modes.f.getditherlevel < 2)
                 get_dither_noise(x, i, &cdith, &adith);
 
             combiner_2cycle(adith, &curpixel_cvg, &acalpha);
 
-            globals.fbread2_ptr(curpixel, &curpixel_memcvg);
+            parallel_worker->globals.fbread2_ptr(curpixel, &curpixel_memcvg);
 
             if (z_compare(zbcur, sz, dzpix, dzpixenc, &blend_en, &prewrap, &curpixel_cvg, curpixel_memcvg))
             {
                 if (blender_2cycle(&fir, &fig, &fib, cdith, blend_en, prewrap, curpixel_cvg, curpixel_cvbit, acalpha))
                 {
-                    globals.fbwrite_ptr(curpixel, fir, fig, fib, blend_en, curpixel_cvg, curpixel_memcvg);
-                    if (globals.other_modes.z_update_en)
+                    parallel_worker->globals.fbwrite_ptr(curpixel, fir, fig, fib, blend_en, curpixel_cvg, curpixel_memcvg);
+                    if (parallel_worker->globals.other_modes.z_update_en)
                         z_store(zbcur, sz, dzpixenc);
                 }
             }
             else
-                globals.memory_color = globals.pre_memory_color;
+                parallel_worker->globals.memory_color = parallel_worker->globals.pre_memory_color;
 
             r += drinc;
             g += dginc;
@@ -8235,7 +7999,7 @@ static void render_spans_2cycle_notex(int start, int end, int tilenum, int flip)
 
 static void render_spans_fill(int start, int end, int flip)
 {
-    if (globals.fb_size == PIXEL_SIZE_4BIT)
+    if (parallel_worker->globals.fb_size == PIXEL_SIZE_4BIT)
     {
         rdp_pipeline_crashed = 1;
         return;
@@ -8243,8 +8007,8 @@ static void render_spans_fill(int start, int end, int flip)
 
     int i, j;
 
-    int fastkillbits = globals.other_modes.image_read_en || globals.other_modes.z_compare_en;
-    int slowkillbits = globals.other_modes.z_update_en && !globals.other_modes.z_source_sel && !fastkillbits;
+    int fastkillbits = parallel_worker->globals.other_modes.image_read_en || parallel_worker->globals.other_modes.z_compare_en;
+    int slowkillbits = parallel_worker->globals.other_modes.z_update_en && !parallel_worker->globals.other_modes.z_source_sel && !fastkillbits;
 
     int xinc = flip ? 1 : -1;
 
@@ -8256,20 +8020,20 @@ static void render_spans_fill(int start, int end, int flip)
     for (i = start; i <= end; i++)
     {
         prevxstart = xstart;
-        xstart = globals.span[i].lx;
-        xendsc = globals.span[i].rx;
+        xstart = parallel_worker->globals.span[i].lx;
+        xendsc = parallel_worker->globals.span[i].rx;
 
         x = xendsc;
-        curpixel = globals.fb_width * i + x;
+        curpixel = parallel_worker->globals.fb_width * i + x;
         length = flip ? (xstart - xendsc) : (xendsc - xstart);
 
-        if (globals.span[i].validline)
+        if (parallel_worker->globals.span[i].validline)
         {
             if (fastkillbits && length >= 0)
             {
                 if (!onetimewarnings.fillmbitcrashes)
                     msg_warning("render_spans_fill: image_read_en %x z_update_en %x z_compare_en %x. RDP crashed",
-                    globals.other_modes.image_read_en, globals.other_modes.z_update_en, globals.other_modes.z_compare_en);
+                    parallel_worker->globals.other_modes.image_read_en, parallel_worker->globals.other_modes.z_update_en, parallel_worker->globals.other_modes.z_compare_en);
                 onetimewarnings.fillmbitcrashes = 1;
                 rdp_pipeline_crashed = 1;
                 return;
@@ -8283,7 +8047,7 @@ static void render_spans_fill(int start, int end, int flip)
 
             for (j = 0; j <= length; j++)
             {
-               switch(globals.fb_size)
+               switch(parallel_worker->globals.fb_size)
                {
                   case 0:
                      fbfill_4(curpixel);
@@ -8308,7 +8072,7 @@ static void render_spans_fill(int start, int end, int flip)
             {
                 if (!onetimewarnings.fillmbitcrashes)
                     msg_warning("render_spans_fill: image_read_en %x z_update_en %x z_compare_en %x z_source_sel %x. RDP crashed",
-                    globals.other_modes.image_read_en, globals.other_modes.z_update_en, globals.other_modes.z_compare_en, globals.other_modes.z_source_sel);
+                    parallel_worker->globals.other_modes.image_read_en, parallel_worker->globals.other_modes.z_update_en, parallel_worker->globals.other_modes.z_compare_en, parallel_worker->globals.other_modes.z_source_sel);
                 onetimewarnings.fillmbitcrashes = 1;
                 rdp_pipeline_crashed = 1;
                 return;
@@ -8321,7 +8085,7 @@ static void render_spans_copy(int start, int end, int tilenum, int flip)
 {
     int i, j, k;
 
-    if (globals.fb_size == PIXEL_SIZE_32BIT)
+    if (parallel_worker->globals.fb_size == PIXEL_SIZE_32BIT)
     {
         rdp_pipeline_crashed = 1;
         return;
@@ -8334,16 +8098,16 @@ static void render_spans_copy(int start, int end, int tilenum, int flip)
     int xinc;
     if (flip)
     {
-        dsinc = globals.spans.ds;
-        dtinc = globals.spans.dt;
-        dwinc = globals.spans.dw;
+        dsinc = parallel_worker->globals.spans.ds;
+        dtinc = parallel_worker->globals.spans.dt;
+        dwinc = parallel_worker->globals.spans.dw;
         xinc = 1;
     }
     else
     {
-        dsinc = -globals.spans.ds;
-        dtinc = -globals.spans.dt;
-        dwinc = -globals.spans.dw;
+        dsinc = -parallel_worker->globals.spans.ds;
+        dtinc = -parallel_worker->globals.spans.dt;
+        dwinc = -parallel_worker->globals.spans.dw;
         xinc = -1;
     }
 
@@ -8354,13 +8118,13 @@ static void render_spans_copy(int start, int end, int tilenum, int flip)
 
     uint32_t hidword = 0, lowdword = 0;
     uint32_t hidword1 = 0, lowdword1 = 0;
-    int fbadvance = (globals.fb_size == PIXEL_SIZE_4BIT) ? 8 : 16 >> globals.fb_size;
+    int fbadvance = (parallel_worker->globals.fb_size == PIXEL_SIZE_4BIT) ? 8 : 16 >> parallel_worker->globals.fb_size;
     uint32_t fbptr = 0;
     int fbptr_advance = flip ? 8 : -8;
     uint64_t copyqword = 0;
     uint32_t tempdword = 0, tempbyte = 0;
     int copywmask = 0, alphamask = 0;
-    int bytesperpixel = (globals.fb_size == PIXEL_SIZE_4BIT) ? 1 : (1 << (globals.fb_size - 1));
+    int bytesperpixel = (parallel_worker->globals.fb_size == PIXEL_SIZE_4BIT) ? 1 : (1 << (parallel_worker->globals.fb_size - 1));
     uint32_t fbendptr = 0;
     int32_t threshold, currthreshold;
 
@@ -8368,19 +8132,19 @@ static void render_spans_copy(int start, int end, int tilenum, int flip)
 
     for (i = start; i <= end; i++)
     {
-        if (globals.span[i].validline)
+        if (parallel_worker->globals.span[i].validline)
         {
 
-        s = globals.span[i].s;
-        t = globals.span[i].t;
-        w = globals.span[i].w;
+        s = parallel_worker->globals.span[i].s;
+        t = parallel_worker->globals.span[i].t;
+        w = parallel_worker->globals.span[i].w;
 
-        xstart = globals.span[i].lx;
-        xendsc = globals.span[i].rx;
+        xstart = parallel_worker->globals.span[i].lx;
+        xendsc = parallel_worker->globals.span[i].rx;
 
-        fb_index = globals.fb_width * i + xendsc;
-        fbptr = globals.fb_address + PIXELS_TO_BYTES_SPECIAL4(fb_index, globals.fb_size);
-        fbendptr = globals.fb_address + PIXELS_TO_BYTES_SPECIAL4((globals.fb_width * i + xstart), globals.fb_size);
+        fb_index = parallel_worker->globals.fb_width * i + xendsc;
+        fbptr = parallel_worker->globals.fb_address + PIXELS_TO_BYTES_SPECIAL4(fb_index, parallel_worker->globals.fb_size);
+        fbendptr = parallel_worker->globals.fb_address + PIXELS_TO_BYTES_SPECIAL4((parallel_worker->globals.fb_width * i + xstart), parallel_worker->globals.fb_size);
         length = flip ? (xstart - xendsc) : (xendsc - xstart);
 
 
@@ -8392,7 +8156,7 @@ static void render_spans_copy(int start, int end, int tilenum, int flip)
             st = t >> 16;
             sw = w >> 16;
 
-            globals.tcdiv_ptr(ss, st, sw, &sss, &sst);
+            parallel_worker->globals.tcdiv_ptr(ss, st, sw, &sss, &sst);
 
             tclod_copy(&sss, &sst, s, t, w, dsinc, dtinc, dwinc, prim_tile, &tile1);
 
@@ -8402,15 +8166,15 @@ static void render_spans_copy(int start, int end, int tilenum, int flip)
 
 
 
-            if (globals.fb_size == PIXEL_SIZE_16BIT || globals.fb_size == PIXEL_SIZE_8BIT)
+            if (parallel_worker->globals.fb_size == PIXEL_SIZE_16BIT || parallel_worker->globals.fb_size == PIXEL_SIZE_8BIT)
                 copyqword = ((uint64_t)hidword << 32) | ((uint64_t)lowdword);
             else
                 copyqword = 0;
 
 
-            if (!globals.other_modes.alpha_compare_en)
+            if (!parallel_worker->globals.other_modes.alpha_compare_en)
                 alphamask = 0xff;
-            else if (globals.fb_size == PIXEL_SIZE_16BIT)
+            else if (parallel_worker->globals.fb_size == PIXEL_SIZE_16BIT)
             {
                 alphamask = 0;
                 alphamask |= (((copyqword >> 48) & 1) ? 0xC0 : 0);
@@ -8418,11 +8182,11 @@ static void render_spans_copy(int start, int end, int tilenum, int flip)
                 alphamask |= (((copyqword >> 16) & 1) ? 0xC : 0);
                 alphamask |= ((copyqword & 1) ? 0x3 : 0);
             }
-            else if (globals.fb_size == PIXEL_SIZE_8BIT)
+            else if (parallel_worker->globals.fb_size == PIXEL_SIZE_8BIT)
             {
                 alphamask = 0;
-                threshold = (globals.other_modes.dither_alpha_en) ? (irand() & 0xff) : globals.blend_color.a;
-                if (globals.other_modes.dither_alpha_en)
+                threshold = (parallel_worker->globals.other_modes.dither_alpha_en) ? (irand() & 0xff) : parallel_worker->globals.blend_color.a;
+                if (parallel_worker->globals.other_modes.dither_alpha_en)
                 {
                     currthreshold = threshold;
                     alphamask |= (((copyqword >> 24) & 0xff) >= currthreshold ? 0xC0 : 0);
@@ -8485,15 +8249,15 @@ static void edgewalker_for_prims(int32_t* ewdata)
     int32_t xl = 0, xm = 0, xh = 0;
     int32_t dxldy = 0, dxhdy = 0, dxmdy = 0;
 
-    if (globals.other_modes.f.stalederivs)
+    if (parallel_worker->globals.other_modes.f.stalederivs)
     {
         deduce_derivatives();
-        globals.other_modes.f.stalederivs = 0;
+        parallel_worker->globals.other_modes.f.stalederivs = 0;
     }
 
 
     flip = (ewdata[0] & 0x800000) != 0;
-    globals.max_level = (ewdata[0] >> 19) & 7;
+    parallel_worker->globals.max_level = (ewdata[0] >> 19) & 7;
     tilenum = (ewdata[0] >> 16) & 7;
 
 
@@ -8557,47 +8321,47 @@ static void edgewalker_for_prims(int32_t* ewdata)
 
 
 
-    globals.spans.ds = dsdx & ~0x1f;
-    globals.spans.dt = dtdx & ~0x1f;
-    globals.spans.dw = dwdx & ~0x1f;
-    globals.spans.dr = drdx & ~0x1f;
-    globals.spans.dg = dgdx & ~0x1f;
-    globals.spans.db = dbdx & ~0x1f;
-    globals.spans.da = dadx & ~0x1f;
-    globals.spans.dz = dzdx;
+    parallel_worker->globals.spans.ds = dsdx & ~0x1f;
+    parallel_worker->globals.spans.dt = dtdx & ~0x1f;
+    parallel_worker->globals.spans.dw = dwdx & ~0x1f;
+    parallel_worker->globals.spans.dr = drdx & ~0x1f;
+    parallel_worker->globals.spans.dg = dgdx & ~0x1f;
+    parallel_worker->globals.spans.db = dbdx & ~0x1f;
+    parallel_worker->globals.spans.da = dadx & ~0x1f;
+    parallel_worker->globals.spans.dz = dzdx;
 
 
-    globals.spans.drdy = drdy >> 14;
-    globals.spans.dgdy = dgdy >> 14;
-    globals.spans.dbdy = dbdy >> 14;
-    globals.spans.dady = dady >> 14;
-    globals.spans.dzdy = dzdy >> 10;
-    globals.spans.drdy = SIGN(globals.spans.drdy, 13);
-    globals.spans.dgdy = SIGN(globals.spans.dgdy, 13);
-    globals.spans.dbdy = SIGN(globals.spans.dbdy, 13);
-    globals.spans.dady = SIGN(globals.spans.dady, 13);
-    globals.spans.dzdy = SIGN(globals.spans.dzdy, 22);
-    globals.spans.cdr = globals.spans.dr >> 14;
-    globals.spans.cdr = SIGN(globals.spans.cdr, 13);
-    globals.spans.cdg = globals.spans.dg >> 14;
-    globals.spans.cdg = SIGN(globals.spans.cdg, 13);
-    globals.spans.cdb = globals.spans.db >> 14;
-    globals.spans.cdb = SIGN(globals.spans.cdb, 13);
-    globals.spans.cda = globals.spans.da >> 14;
-    globals.spans.cda = SIGN(globals.spans.cda, 13);
-    globals.spans.cdz = globals.spans.dz >> 10;
-    globals.spans.cdz = SIGN(globals.spans.cdz, 22);
+    parallel_worker->globals.spans.drdy = drdy >> 14;
+    parallel_worker->globals.spans.dgdy = dgdy >> 14;
+    parallel_worker->globals.spans.dbdy = dbdy >> 14;
+    parallel_worker->globals.spans.dady = dady >> 14;
+    parallel_worker->globals.spans.dzdy = dzdy >> 10;
+    parallel_worker->globals.spans.drdy = SIGN(parallel_worker->globals.spans.drdy, 13);
+    parallel_worker->globals.spans.dgdy = SIGN(parallel_worker->globals.spans.dgdy, 13);
+    parallel_worker->globals.spans.dbdy = SIGN(parallel_worker->globals.spans.dbdy, 13);
+    parallel_worker->globals.spans.dady = SIGN(parallel_worker->globals.spans.dady, 13);
+    parallel_worker->globals.spans.dzdy = SIGN(parallel_worker->globals.spans.dzdy, 22);
+    parallel_worker->globals.spans.cdr = parallel_worker->globals.spans.dr >> 14;
+    parallel_worker->globals.spans.cdr = SIGN(parallel_worker->globals.spans.cdr, 13);
+    parallel_worker->globals.spans.cdg = parallel_worker->globals.spans.dg >> 14;
+    parallel_worker->globals.spans.cdg = SIGN(parallel_worker->globals.spans.cdg, 13);
+    parallel_worker->globals.spans.cdb = parallel_worker->globals.spans.db >> 14;
+    parallel_worker->globals.spans.cdb = SIGN(parallel_worker->globals.spans.cdb, 13);
+    parallel_worker->globals.spans.cda = parallel_worker->globals.spans.da >> 14;
+    parallel_worker->globals.spans.cda = SIGN(parallel_worker->globals.spans.cda, 13);
+    parallel_worker->globals.spans.cdz = parallel_worker->globals.spans.dz >> 10;
+    parallel_worker->globals.spans.cdz = SIGN(parallel_worker->globals.spans.cdz, 22);
 
-    globals.spans.dsdy = dsdy & ~0x7fff;
-    globals.spans.dtdy = dtdy & ~0x7fff;
-    globals.spans.dwdy = dwdy & ~0x7fff;
+    parallel_worker->globals.spans.dsdy = dsdy & ~0x7fff;
+    parallel_worker->globals.spans.dtdy = dtdy & ~0x7fff;
+    parallel_worker->globals.spans.dwdy = dwdy & ~0x7fff;
 
 
     int dzdy_dz = (dzdy >> 16) & 0xffff;
     int dzdx_dz = (dzdx >> 16) & 0xffff;
 
-    globals.spans.dzpix = ((dzdy_dz & 0x8000) ? ((~dzdy_dz) & 0x7fff) : dzdy_dz) + ((dzdx_dz & 0x8000) ? ((~dzdx_dz) & 0x7fff) : dzdx_dz);
-    globals.spans.dzpix = normalize_dzpix(globals.spans.dzpix & 0xffff) & 0xffff;
+    parallel_worker->globals.spans.dzpix = ((dzdy_dz & 0x8000) ? ((~dzdy_dz) & 0x7fff) : dzdy_dz) + ((dzdx_dz & 0x8000) ? ((~dzdx_dz) & 0x7fff) : dzdx_dz);
+    parallel_worker->globals.spans.dzpix = normalize_dzpix(parallel_worker->globals.spans.dzpix & 0xffff) & 0xffff;
 
 
 
@@ -8659,7 +8423,7 @@ static void edgewalker_for_prims(int32_t* ewdata)
     int xfrac = 0;
 
     int dsdxh, dtdxh, dwdxh, drdxh, dgdxh, dbdxh, dadxh, dzdxh;
-    if (globals.other_modes.cycle_type != CYCLE_TYPE_COPY)
+    if (parallel_worker->globals.other_modes.cycle_type != CYCLE_TYPE_COPY)
     {
         dsdxh = (dsdx >> 8) & ~1;
         dtdxh = (dtdx >> 8) & ~1;
@@ -8679,14 +8443,14 @@ static void edgewalker_for_prims(int32_t* ewdata)
 
 #define ADJUST_ATTR_PRIM()      \
 {                           \
-    globals.span[j].s = ((s & ~0x1ff) + dsdiff - (xfrac * dsdxh)) & ~0x3ff;             \
-    globals.span[j].t = ((t & ~0x1ff) + dtdiff - (xfrac * dtdxh)) & ~0x3ff;             \
-    globals.span[j].w = ((w & ~0x1ff) + dwdiff - (xfrac * dwdxh)) & ~0x3ff;             \
-    globals.span[j].r = ((r & ~0x1ff) + drdiff - (xfrac * drdxh)) & ~0x3ff;             \
-    globals.span[j].g = ((g & ~0x1ff) + dgdiff - (xfrac * dgdxh)) & ~0x3ff;             \
-    globals.span[j].b = ((b & ~0x1ff) + dbdiff - (xfrac * dbdxh)) & ~0x3ff;             \
-    globals.span[j].a = ((a & ~0x1ff) + dadiff - (xfrac * dadxh)) & ~0x3ff;             \
-    globals.span[j].z = ((z & ~0x1ff) + dzdiff - (xfrac * dzdxh)) & ~0x3ff;             \
+    parallel_worker->globals.span[j].s = ((s & ~0x1ff) + dsdiff - (xfrac * dsdxh)) & ~0x3ff;             \
+    parallel_worker->globals.span[j].t = ((t & ~0x1ff) + dtdiff - (xfrac * dtdxh)) & ~0x3ff;             \
+    parallel_worker->globals.span[j].w = ((w & ~0x1ff) + dwdiff - (xfrac * dwdxh)) & ~0x3ff;             \
+    parallel_worker->globals.span[j].r = ((r & ~0x1ff) + drdiff - (xfrac * drdxh)) & ~0x3ff;             \
+    parallel_worker->globals.span[j].g = ((g & ~0x1ff) + dgdiff - (xfrac * dgdxh)) & ~0x3ff;             \
+    parallel_worker->globals.span[j].b = ((b & ~0x1ff) + dbdiff - (xfrac * dbdxh)) & ~0x3ff;             \
+    parallel_worker->globals.span[j].a = ((a & ~0x1ff) + dadiff - (xfrac * dadxh)) & ~0x3ff;             \
+    parallel_worker->globals.span[j].z = ((z & ~0x1ff) + dzdiff - (xfrac * dzdxh)) & ~0x3ff;             \
 }
 
 
@@ -8715,14 +8479,14 @@ static void edgewalker_for_prims(int32_t* ewdata)
     else if (yl & 0x1000)
         yllimit = 0;
     else
-        yllimit = (yl & 0xfff) < globals.clip.yl;
-    yllimit = yllimit ? yl : globals.clip.yl;
+        yllimit = (yl & 0xfff) < parallel_worker->globals.clip.yl;
+    yllimit = yllimit ? yl : parallel_worker->globals.clip.yl;
 
     int ylfar = yllimit | 3;
     if ((yl >> 2) > (ylfar >> 2))
         ylfar += 4;
     else if ((yllimit >> 2) >= 0 && (yllimit >> 2) < 1023)
-        globals.span[(yllimit >> 2) + 1].validline = 0;
+        parallel_worker->globals.span[(yllimit >> 2) + 1].validline = 0;
 
 
     if (yh & 0x2000)
@@ -8730,13 +8494,13 @@ static void edgewalker_for_prims(int32_t* ewdata)
     else if (yh & 0x1000)
         yhlimit = 1;
     else
-        yhlimit = (yh >= globals.clip.yh);
-    yhlimit = yhlimit ? yh : globals.clip.yh;
+        yhlimit = (yh >= parallel_worker->globals.clip.yh);
+    yhlimit = yhlimit ? yh : parallel_worker->globals.clip.yh;
 
     int yhclose = yhlimit & ~3;
 
-    int32_t clipxlshift = globals.clip.xl << 1;
-    int32_t clipxhshift = globals.clip.xh << 1;
+    int32_t clipxlshift = parallel_worker->globals.clip.xl << 1;
+    int32_t clipxhshift = parallel_worker->globals.clip.xh << 1;
     int allover = 1, allunder = 1, curover = 0, curunder = 0;
     int allinval = 1;
     int32_t curcross = 0;
@@ -8744,7 +8508,7 @@ static void edgewalker_for_prims(int32_t* ewdata)
     xfrac = ((xright >> 8) & 0xff);
 
 
-    uint32_t worker_id = parallel_worker_id();
+    uint32_t worker_id = parallel_worker->m_worker_id;
     uint32_t worker_num = parallel_worker_num();
 
     if (flip)
@@ -8783,7 +8547,7 @@ static void edgewalker_for_prims(int32_t* ewdata)
             xrsc = curunder ? clipxhshift : (((xright >> 13) & 0x3ffe) | stickybit);
             curover = ((xrsc & 0x2000) || (xrsc & 0x1fff) >= clipxlshift);
             xrsc = curover ? clipxlshift : xrsc;
-            globals.span[j].majorx[spix] = xrsc & 0x1fff;
+            parallel_worker->globals.span[j].majorx[spix] = xrsc & 0x1fff;
             allover &= curover;
             allunder &= curunder;
 
@@ -8793,7 +8557,7 @@ static void edgewalker_for_prims(int32_t* ewdata)
             xlsc = curunder ? clipxhshift : (((xleft >> 13) & 0x3ffe) | stickybit);
             curover = ((xlsc & 0x2000) || (xlsc & 0x1fff) >= clipxlshift);
             xlsc = curover ? clipxlshift : xlsc;
-            globals.span[j].minorx[spix] = xlsc & 0x1fff;
+            parallel_worker->globals.span[j].minorx[spix] = xlsc & 0x1fff;
             allover &= curover;
             allunder &= curunder;
 
@@ -8803,7 +8567,7 @@ static void edgewalker_for_prims(int32_t* ewdata)
 
 
             invaly |= curcross;
-            globals.span[j].invalyscan[spix] = invaly;
+            parallel_worker->globals.span[j].invalyscan[spix] = invaly;
             allinval &= invaly;
 
             if (!invaly)
@@ -8818,16 +8582,16 @@ static void edgewalker_for_prims(int32_t* ewdata)
 
 
 
-                globals.span[j].unscrx = SIGN(xright >> 16, 12);
+                parallel_worker->globals.span[j].unscrx = SIGN(xright >> 16, 12);
                 xfrac = (xright >> 8) & 0xff;
                 ADJUST_ATTR_PRIM();
             }
 
             if (spix == 3)
             {
-                globals.span[j].lx = maxxmx;
-                globals.span[j].rx = minxhx;
-                globals.span[j].validline  = !allinval && !allover && !allunder && (!globals.scfield || (globals.scfield && !(globals.sckeepodd ^ (j & 1)))) && (!config->parallel || j % worker_num == worker_id);
+                parallel_worker->globals.span[j].lx = maxxmx;
+                parallel_worker->globals.span[j].rx = minxhx;
+                parallel_worker->globals.span[j].validline  = !allinval && !allover && !allunder && (!parallel_worker->globals.scfield || (parallel_worker->globals.scfield && !(parallel_worker->globals.sckeepodd ^ (j & 1)))) && (!config->parallel || j % worker_num == worker_id);
 
             }
 
@@ -8877,7 +8641,7 @@ static void edgewalker_for_prims(int32_t* ewdata)
             xrsc = curunder ? clipxhshift : (((xright >> 13) & 0x3ffe) | stickybit);
             curover = ((xrsc & 0x2000) || (xrsc & 0x1fff) >= clipxlshift);
             xrsc = curover ? clipxlshift : xrsc;
-            globals.span[j].majorx[spix] = xrsc & 0x1fff;
+            parallel_worker->globals.span[j].majorx[spix] = xrsc & 0x1fff;
             allover &= curover;
             allunder &= curunder;
 
@@ -8887,14 +8651,14 @@ static void edgewalker_for_prims(int32_t* ewdata)
             xlsc = curunder ? clipxhshift : (((xleft >> 13) & 0x3ffe) | stickybit);
             curover = ((xlsc & 0x2000) || (xlsc & 0x1fff) >= clipxlshift);
             xlsc = curover ? clipxlshift : xlsc;
-            globals.span[j].minorx[spix] = xlsc & 0x1fff;
+            parallel_worker->globals.span[j].minorx[spix] = xlsc & 0x1fff;
             allover &= curover;
             allunder &= curunder;
 
             curcross = ((xright ^ (1 << 27)) & (0x3fff << 14)) < ((xleft ^ (1 << 27)) & (0x3fff << 14));
 
             invaly |= curcross;
-            globals.span[j].invalyscan[spix] = invaly;
+            parallel_worker->globals.span[j].invalyscan[spix] = invaly;
             allinval &= invaly;
 
             if (!invaly)
@@ -8905,16 +8669,16 @@ static void edgewalker_for_prims(int32_t* ewdata)
 
             if (spix == ldflag)
             {
-                globals.span[j].unscrx  = SIGN(xright >> 16, 12);
+                parallel_worker->globals.span[j].unscrx  = SIGN(xright >> 16, 12);
                 xfrac = (xright >> 8) & 0xff;
                 ADJUST_ATTR_PRIM();
             }
 
             if (spix == 3)
             {
-                globals.span[j].lx = minxmx;
-                globals.span[j].rx = maxxhx;
-                globals.span[j].validline  = !allinval && !allover && !allunder && (!globals.scfield || (globals.scfield && !(globals.sckeepodd ^ (j & 1)))) && (!config->parallel || j % worker_num == worker_id);
+                parallel_worker->globals.span[j].lx = minxmx;
+                parallel_worker->globals.span[j].rx = maxxhx;
+                parallel_worker->globals.span[j].validline  = !allinval && !allover && !allunder && (!parallel_worker->globals.scfield || (parallel_worker->globals.scfield && !(parallel_worker->globals.sckeepodd ^ (j & 1)))) && (!config->parallel || j % worker_num == worker_id);
             }
 
         }
@@ -8933,10 +8697,10 @@ static void edgewalker_for_prims(int32_t* ewdata)
 
 
 
-    switch(globals.other_modes.cycle_type)
+    switch(parallel_worker->globals.other_modes.cycle_type)
     {
         case CYCLE_TYPE_1:
-            switch (globals.other_modes.f.textureuselevel0)
+            switch (parallel_worker->globals.other_modes.f.textureuselevel0)
             {
                 case 0: render_spans_1cycle_complete(yhlimit >> 2, yllimit >> 2, tilenum, flip); break;
                 case 1: render_spans_1cycle_notexel1(yhlimit >> 2, yllimit >> 2, tilenum, flip); break;
@@ -8944,7 +8708,7 @@ static void edgewalker_for_prims(int32_t* ewdata)
             }
             break;
         case CYCLE_TYPE_2:
-            switch (globals.other_modes.f.textureuselevel1)
+            switch (parallel_worker->globals.other_modes.f.textureuselevel1)
             {
                 case 0: render_spans_2cycle_complete(yhlimit >> 2, yllimit >> 2, tilenum, flip); break;
                 case 1: render_spans_2cycle_notexelnext(yhlimit >> 2, yllimit >> 2, tilenum, flip); break;
@@ -8954,7 +8718,7 @@ static void edgewalker_for_prims(int32_t* ewdata)
             break;
         case CYCLE_TYPE_COPY: render_spans_copy(yhlimit >> 2, yllimit >> 2, tilenum, flip); break;
         case CYCLE_TYPE_FILL: render_spans_fill(yhlimit >> 2, yllimit >> 2, flip); break;
-        default: msg_error("cycle_type %d", globals.other_modes.cycle_type); break;
+        default: msg_error("cycle_type %d", parallel_worker->globals.other_modes.cycle_type); break;
     }
 
 
@@ -8962,12 +8726,12 @@ static void edgewalker_for_prims(int32_t* ewdata)
 
 static void rasterizer_init(void)
 {
-    globals.clip.xl           = 0;
-    globals.clip.yl           = 0;
-    globals.clip.xh           = 0x2000;
-    globals.clip.yh           = 0x2000;
-    globals.scfield           = 0;
-    globals.sckeepodd         = 0;
+    parallel_worker->globals.clip.xl           = 0;
+    parallel_worker->globals.clip.yl           = 0;
+    parallel_worker->globals.clip.xh           = 0x2000;
+    parallel_worker->globals.clip.yh           = 0x2000;
+    parallel_worker->globals.scfield           = 0;
+    parallel_worker->globals.sckeepodd         = 0;
 }
 
 static void rdp_tri_noshade(const uint32_t* args)
@@ -9106,7 +8870,7 @@ static void rdp_tex_rect(const uint32_t* args)
     dsdx = SIGN16(dsdx);
     dtdy = SIGN16(dtdy);
 
-    if (globals.other_modes.cycle_type == CYCLE_TYPE_FILL || globals.other_modes.cycle_type == CYCLE_TYPE_COPY)
+    if (parallel_worker->globals.other_modes.cycle_type == CYCLE_TYPE_FILL || parallel_worker->globals.other_modes.cycle_type == CYCLE_TYPE_COPY)
         yl |= 3;
 
     uint32_t xlint = (xl >> 2) & 0x3ff;
@@ -9180,7 +8944,7 @@ static void rdp_tex_rect_flip(const uint32_t* args)
     dsdx = SIGN16(dsdx);
     dtdy = SIGN16(dtdy);
 
-    if (globals.other_modes.cycle_type == CYCLE_TYPE_FILL || globals.other_modes.cycle_type == CYCLE_TYPE_COPY)
+    if (parallel_worker->globals.other_modes.cycle_type == CYCLE_TYPE_FILL || parallel_worker->globals.other_modes.cycle_type == CYCLE_TYPE_COPY)
         yl |= 3;
 
     uint32_t xlint = (xl >> 2) & 0x3ff;
@@ -9244,7 +9008,7 @@ static void rdp_fill_rect(const uint32_t* args)
     uint32_t xh = (args[1] >> 12) & 0xfff;
     uint32_t yh = (args[1] >>  0) & 0xfff;
 
-    if (globals.other_modes.cycle_type == CYCLE_TYPE_FILL || globals.other_modes.cycle_type == CYCLE_TYPE_COPY)
+    if (parallel_worker->globals.other_modes.cycle_type == CYCLE_TYPE_FILL || parallel_worker->globals.other_modes.cycle_type == CYCLE_TYPE_COPY)
         yl |= 3;
 
     uint32_t xlint = (xl >> 2) & 0x3ff;
@@ -9266,19 +9030,19 @@ static void rdp_fill_rect(const uint32_t* args)
 
 static void rdp_set_prim_depth(const uint32_t* args)
 {
-    globals.primitive_z       = args[1] & (0x7fff << 16);
-    globals.primitive_delta_z = (uint16_t)(args[1]);
+    parallel_worker->globals.primitive_z       = args[1] & (0x7fff << 16);
+    parallel_worker->globals.primitive_delta_z = (uint16_t)(args[1]);
 }
 
 static void rdp_set_scissor(const uint32_t* args)
 {
-    globals.clip.xh = (args[0] >> 12) & 0xfff;
-    globals.clip.yh = (args[0] >>  0) & 0xfff;
-    globals.clip.xl = (args[1] >> 12) & 0xfff;
-    globals.clip.yl = (args[1] >>  0) & 0xfff;
+    parallel_worker->globals.clip.xh = (args[0] >> 12) & 0xfff;
+    parallel_worker->globals.clip.yh = (args[0] >>  0) & 0xfff;
+    parallel_worker->globals.clip.xl = (args[1] >> 12) & 0xfff;
+    parallel_worker->globals.clip.yl = (args[1] >>  0) & 0xfff;
 
-    globals.scfield = (args[1] >> 25) & 1;
-    globals.sckeepodd = (args[1] >> 24) & 1;
+    parallel_worker->globals.scfield = (args[1] >> 25) & 1;
+    parallel_worker->globals.sckeepodd = (args[1] >> 24) & 1;
 }
 
 int rdp_init(struct core_config* _config)
@@ -9288,11 +9052,11 @@ int rdp_init(struct core_config* _config)
 
    config = _config;
    rdp_set_other_modes(tmp);
-   globals.other_modes.f.stalederivs = 1;
+   parallel_worker->globals.other_modes.f.stalederivs = 1;
 
-   globals.iseed = 1;
-   memset(&globals, 0, sizeof(globals));
-   memset(globals.tile, 0, sizeof(globals.tile));
+   parallel_worker->globals.iseed = 1;
+   memset(&parallel_worker->globals, 0, sizeof(parallel_worker->globals));
+   memset(parallel_worker->globals.tile, 0, sizeof(parallel_worker->globals.tile));
 
    for (i = 0; i < 8; i++)
    {
@@ -9300,11 +9064,11 @@ int rdp_init(struct core_config* _config)
       calculate_clamp_diffs(i);
    }
 
-   memset(&globals.combined_color, 0, sizeof(struct color));
-   memset(&globals.prim_color, 0, sizeof(struct color));
-   memset(&globals.env_color, 0, sizeof(struct color));
-   memset(&globals.key_scale, 0, sizeof(struct color));
-   memset(&globals.key_center, 0, sizeof(struct color));
+   memset(&parallel_worker->globals.combined_color, 0, sizeof(struct color));
+   memset(&parallel_worker->globals.prim_color, 0, sizeof(struct color));
+   memset(&parallel_worker->globals.env_color, 0, sizeof(struct color));
+   memset(&parallel_worker->globals.key_scale, 0, sizeof(struct color));
+   memset(&parallel_worker->globals.key_center, 0, sizeof(struct color));
 
    rdp_pipeline_crashed = 0;
    memset(&onetimewarnings, 0, sizeof(onetimewarnings));
@@ -9348,135 +9112,135 @@ static void rdp_sync_full(const uint32_t* args)
 
 static void rdp_set_other_modes(const uint32_t* args)
 {
-    globals.other_modes.cycle_type          = (args[0] >> 20) & 3;
-    globals.other_modes.persp_tex_en        = (args[0] >> 19) & 1;
-    globals.other_modes.detail_tex_en       = (args[0] >> 18) & 1;
-    globals.other_modes.sharpen_tex_en      = (args[0] >> 17) & 1;
-    globals.other_modes.tex_lod_en          = (args[0] >> 16) & 1;
-    globals.other_modes.en_tlut             = (args[0] >> 15) & 1;
-    globals.other_modes.tlut_type           = (args[0] >> 14) & 1;
-    globals.other_modes.sample_type         = (args[0] >> 13) & 1;
-    globals.other_modes.mid_texel           = (args[0] >> 12) & 1;
-    globals.other_modes.bi_lerp0            = (args[0] >> 11) & 1;
-    globals.other_modes.bi_lerp1            = (args[0] >> 10) & 1;
-    globals.other_modes.convert_one         = (args[0] >>  9) & 1;
-    globals.other_modes.key_en              = (args[0] >>  8) & 1;
-    globals.other_modes.rgb_dither_sel      = (args[0] >>  6) & 3;
-    globals.other_modes.alpha_dither_sel    = (args[0] >>  4) & 3;
-    globals.other_modes.blend_m1a_0         = (args[1] >> 30) & 3;
-    globals.other_modes.blend_m1a_1         = (args[1] >> 28) & 3;
-    globals.other_modes.blend_m1b_0         = (args[1] >> 26) & 3;
-    globals.other_modes.blend_m1b_1         = (args[1] >> 24) & 3;
-    globals.other_modes.blend_m2a_0         = (args[1] >> 22) & 3;
-    globals.other_modes.blend_m2a_1         = (args[1] >> 20) & 3;
-    globals.other_modes.blend_m2b_0         = (args[1] >> 18) & 3;
-    globals.other_modes.blend_m2b_1         = (args[1] >> 16) & 3;
-    globals.other_modes.force_blend         = (args[1] >> 14) & 1;
-    globals.other_modes.alpha_cvg_select    = (args[1] >> 13) & 1;
-    globals.other_modes.cvg_times_alpha     = (args[1] >> 12) & 1;
-    globals.other_modes.z_mode              = (args[1] >> 10) & 3;
-    globals.other_modes.cvg_dest            = (args[1] >>  8) & 3;
-    globals.other_modes.color_on_cvg        = (args[1] >>  7) & 1;
-    globals.other_modes.image_read_en       = (args[1] >>  6) & 1;
-    globals.other_modes.z_update_en         = (args[1] >>  5) & 1;
-    globals.other_modes.z_compare_en        = (args[1] >>  4) & 1;
-    globals.other_modes.antialias_en        = (args[1] >>  3) & 1;
-    globals.other_modes.z_source_sel        = (args[1] >>  2) & 1;
-    globals.other_modes.dither_alpha_en     = (args[1] >>  1) & 1;
-    globals.other_modes.alpha_compare_en    = (args[1] >>  0) & 1;
+    parallel_worker->globals.other_modes.cycle_type          = (args[0] >> 20) & 3;
+    parallel_worker->globals.other_modes.persp_tex_en        = (args[0] >> 19) & 1;
+    parallel_worker->globals.other_modes.detail_tex_en       = (args[0] >> 18) & 1;
+    parallel_worker->globals.other_modes.sharpen_tex_en      = (args[0] >> 17) & 1;
+    parallel_worker->globals.other_modes.tex_lod_en          = (args[0] >> 16) & 1;
+    parallel_worker->globals.other_modes.en_tlut             = (args[0] >> 15) & 1;
+    parallel_worker->globals.other_modes.tlut_type           = (args[0] >> 14) & 1;
+    parallel_worker->globals.other_modes.sample_type         = (args[0] >> 13) & 1;
+    parallel_worker->globals.other_modes.mid_texel           = (args[0] >> 12) & 1;
+    parallel_worker->globals.other_modes.bi_lerp0            = (args[0] >> 11) & 1;
+    parallel_worker->globals.other_modes.bi_lerp1            = (args[0] >> 10) & 1;
+    parallel_worker->globals.other_modes.convert_one         = (args[0] >>  9) & 1;
+    parallel_worker->globals.other_modes.key_en              = (args[0] >>  8) & 1;
+    parallel_worker->globals.other_modes.rgb_dither_sel      = (args[0] >>  6) & 3;
+    parallel_worker->globals.other_modes.alpha_dither_sel    = (args[0] >>  4) & 3;
+    parallel_worker->globals.other_modes.blend_m1a_0         = (args[1] >> 30) & 3;
+    parallel_worker->globals.other_modes.blend_m1a_1         = (args[1] >> 28) & 3;
+    parallel_worker->globals.other_modes.blend_m1b_0         = (args[1] >> 26) & 3;
+    parallel_worker->globals.other_modes.blend_m1b_1         = (args[1] >> 24) & 3;
+    parallel_worker->globals.other_modes.blend_m2a_0         = (args[1] >> 22) & 3;
+    parallel_worker->globals.other_modes.blend_m2a_1         = (args[1] >> 20) & 3;
+    parallel_worker->globals.other_modes.blend_m2b_0         = (args[1] >> 18) & 3;
+    parallel_worker->globals.other_modes.blend_m2b_1         = (args[1] >> 16) & 3;
+    parallel_worker->globals.other_modes.force_blend         = (args[1] >> 14) & 1;
+    parallel_worker->globals.other_modes.alpha_cvg_select    = (args[1] >> 13) & 1;
+    parallel_worker->globals.other_modes.cvg_times_alpha     = (args[1] >> 12) & 1;
+    parallel_worker->globals.other_modes.z_mode              = (args[1] >> 10) & 3;
+    parallel_worker->globals.other_modes.cvg_dest            = (args[1] >>  8) & 3;
+    parallel_worker->globals.other_modes.color_on_cvg        = (args[1] >>  7) & 1;
+    parallel_worker->globals.other_modes.image_read_en       = (args[1] >>  6) & 1;
+    parallel_worker->globals.other_modes.z_update_en         = (args[1] >>  5) & 1;
+    parallel_worker->globals.other_modes.z_compare_en        = (args[1] >>  4) & 1;
+    parallel_worker->globals.other_modes.antialias_en        = (args[1] >>  3) & 1;
+    parallel_worker->globals.other_modes.z_source_sel        = (args[1] >>  2) & 1;
+    parallel_worker->globals.other_modes.dither_alpha_en     = (args[1] >>  1) & 1;
+    parallel_worker->globals.other_modes.alpha_compare_en    = (args[1] >>  0) & 1;
 
-    set_blender_input(0, 0, &globals.blender.i1a_r[0], &globals.blender.i1a_g[0], &globals.blender.i1a_b[0], &globals.blender.i1b_a[0],
-                      globals.other_modes.blend_m1a_0, globals.other_modes.blend_m1b_0);
-    set_blender_input(0, 1, &globals.blender.i2a_r[0], &globals.blender.i2a_g[0], &globals.blender.i2a_b[0], &globals.blender.i2b_a[0],
-                      globals.other_modes.blend_m2a_0, globals.other_modes.blend_m2b_0);
-    set_blender_input(1, 0, &globals.blender.i1a_r[1], &globals.blender.i1a_g[1], &globals.blender.i1a_b[1], &globals.blender.i1b_a[1],
-                      globals.other_modes.blend_m1a_1, globals.other_modes.blend_m1b_1);
-    set_blender_input(1, 1, &globals.blender.i2a_r[1], &globals.blender.i2a_g[1], &globals.blender.i2a_b[1], &globals.blender.i2b_a[1],
-                      globals.other_modes.blend_m2a_1, globals.other_modes.blend_m2b_1);
+    set_blender_input(0, 0, &parallel_worker->globals.blender.i1a_r[0], &parallel_worker->globals.blender.i1a_g[0], &parallel_worker->globals.blender.i1a_b[0], &parallel_worker->globals.blender.i1b_a[0],
+                      parallel_worker->globals.other_modes.blend_m1a_0, parallel_worker->globals.other_modes.blend_m1b_0);
+    set_blender_input(0, 1, &parallel_worker->globals.blender.i2a_r[0], &parallel_worker->globals.blender.i2a_g[0], &parallel_worker->globals.blender.i2a_b[0], &parallel_worker->globals.blender.i2b_a[0],
+                      parallel_worker->globals.other_modes.blend_m2a_0, parallel_worker->globals.other_modes.blend_m2b_0);
+    set_blender_input(1, 0, &parallel_worker->globals.blender.i1a_r[1], &parallel_worker->globals.blender.i1a_g[1], &parallel_worker->globals.blender.i1a_b[1], &parallel_worker->globals.blender.i1b_a[1],
+                      parallel_worker->globals.other_modes.blend_m1a_1, parallel_worker->globals.other_modes.blend_m1b_1);
+    set_blender_input(1, 1, &parallel_worker->globals.blender.i2a_r[1], &parallel_worker->globals.blender.i2a_g[1], &parallel_worker->globals.blender.i2a_b[1], &parallel_worker->globals.blender.i2b_a[1],
+                      parallel_worker->globals.other_modes.blend_m2a_1, parallel_worker->globals.other_modes.blend_m2b_1);
 
-    globals.other_modes.f.stalederivs = 1;
+    parallel_worker->globals.other_modes.f.stalederivs = 1;
 }
 
 static void deduce_derivatives(void)
 {
     int special_bsel0, special_bsel1;
 
-    globals.other_modes.f.partialreject_1cycle = (globals.blender.i2b_a[0] == &globals.inv_pixel_color.a && globals.blender.i1b_a[0] == &globals.pixel_color.a);
-    globals.other_modes.f.partialreject_2cycle = (globals.blender.i2b_a[1] == &globals.inv_pixel_color.a && globals.blender.i1b_a[1] == &globals.pixel_color.a);
+    parallel_worker->globals.other_modes.f.partialreject_1cycle = (parallel_worker->globals.blender.i2b_a[0] == &parallel_worker->globals.inv_pixel_color.a && parallel_worker->globals.blender.i1b_a[0] == &parallel_worker->globals.pixel_color.a);
+    parallel_worker->globals.other_modes.f.partialreject_2cycle = (parallel_worker->globals.blender.i2b_a[1] == &parallel_worker->globals.inv_pixel_color.a && parallel_worker->globals.blender.i1b_a[1] == &parallel_worker->globals.pixel_color.a);
 
 
-    special_bsel0 = (globals.blender.i2b_a[0] == &globals.memory_color.a);
-    special_bsel1 = (globals.blender.i2b_a[1] == &globals.memory_color.a);
+    special_bsel0 = (parallel_worker->globals.blender.i2b_a[0] == &parallel_worker->globals.memory_color.a);
+    special_bsel1 = (parallel_worker->globals.blender.i2b_a[1] == &parallel_worker->globals.memory_color.a);
 
 
-    globals.other_modes.f.realblendershiftersneeded = (special_bsel0 && globals.other_modes.cycle_type == CYCLE_TYPE_1) || (special_bsel1 && globals.other_modes.cycle_type == CYCLE_TYPE_2);
-    globals.other_modes.f.interpixelblendershiftersneeded = (special_bsel0 && globals.other_modes.cycle_type == CYCLE_TYPE_2);
+    parallel_worker->globals.other_modes.f.realblendershiftersneeded = (special_bsel0 && parallel_worker->globals.other_modes.cycle_type == CYCLE_TYPE_1) || (special_bsel1 && parallel_worker->globals.other_modes.cycle_type == CYCLE_TYPE_2);
+    parallel_worker->globals.other_modes.f.interpixelblendershiftersneeded = (special_bsel0 && parallel_worker->globals.other_modes.cycle_type == CYCLE_TYPE_2);
 
-    globals.other_modes.f.rgb_alpha_dither = (globals.other_modes.rgb_dither_sel << 2) | globals.other_modes.alpha_dither_sel;
+    parallel_worker->globals.other_modes.f.rgb_alpha_dither = (parallel_worker->globals.other_modes.rgb_dither_sel << 2) | parallel_worker->globals.other_modes.alpha_dither_sel;
 
-    globals.tcdiv_ptr = tcdiv_func[globals.other_modes.persp_tex_en];
+    parallel_worker->globals.tcdiv_ptr = tcdiv_func[parallel_worker->globals.other_modes.persp_tex_en];
 
 
     int texel1_used_in_cc1 = 0, texel0_used_in_cc1 = 0, texel0_used_in_cc0 = 0, texel1_used_in_cc0 = 0;
     int texels_in_cc0 = 0, texels_in_cc1 = 0;
     int lod_frac_used_in_cc1 = 0, lod_frac_used_in_cc0 = 0;
 
-    if ((globals.combiner.rgbmul_r[1] == &globals.lod_frac) || (globals.combiner.alphamul[1] == &globals.lod_frac))
+    if ((parallel_worker->globals.combiner.rgbmul_r[1] == &parallel_worker->globals.lod_frac) || (parallel_worker->globals.combiner.alphamul[1] == &parallel_worker->globals.lod_frac))
         lod_frac_used_in_cc1 = 1;
-    if ((globals.combiner.rgbmul_r[0] == &globals.lod_frac) || (globals.combiner.alphamul[0] == &globals.lod_frac))
+    if ((parallel_worker->globals.combiner.rgbmul_r[0] == &parallel_worker->globals.lod_frac) || (parallel_worker->globals.combiner.alphamul[0] == &parallel_worker->globals.lod_frac))
         lod_frac_used_in_cc0 = 1;
 
-    if (globals.combiner.rgbmul_r[1] == &globals.texel1_color.r || globals.combiner.rgbsub_a_r[1] == &globals.texel1_color.r || globals.combiner.rgbsub_b_r[1] == &globals.texel1_color.r || globals.combiner.rgbadd_r[1] == &globals.texel1_color.r || \
-        globals.combiner.alphamul[1] == &globals.texel1_color.a || globals.combiner.alphasub_a[1] == &globals.texel1_color.a || globals.combiner.alphasub_b[1] == &globals.texel1_color.a || globals.combiner.alphaadd[1] == &globals.texel1_color.a || \
-        globals.combiner.rgbmul_r[1] == &globals.texel1_color.a)
+    if (parallel_worker->globals.combiner.rgbmul_r[1] == &parallel_worker->globals.texel1_color.r || parallel_worker->globals.combiner.rgbsub_a_r[1] == &parallel_worker->globals.texel1_color.r || parallel_worker->globals.combiner.rgbsub_b_r[1] == &parallel_worker->globals.texel1_color.r || parallel_worker->globals.combiner.rgbadd_r[1] == &parallel_worker->globals.texel1_color.r || \
+        parallel_worker->globals.combiner.alphamul[1] == &parallel_worker->globals.texel1_color.a || parallel_worker->globals.combiner.alphasub_a[1] == &parallel_worker->globals.texel1_color.a || parallel_worker->globals.combiner.alphasub_b[1] == &parallel_worker->globals.texel1_color.a || parallel_worker->globals.combiner.alphaadd[1] == &parallel_worker->globals.texel1_color.a || \
+        parallel_worker->globals.combiner.rgbmul_r[1] == &parallel_worker->globals.texel1_color.a)
         texel1_used_in_cc1 = 1;
-    if (globals.combiner.rgbmul_r[1] == &globals.texel0_color.r || globals.combiner.rgbsub_a_r[1] == &globals.texel0_color.r || globals.combiner.rgbsub_b_r[1] == &globals.texel0_color.r || globals.combiner.rgbadd_r[1] == &globals.texel0_color.r || \
-        globals.combiner.alphamul[1] == &globals.texel0_color.a || globals.combiner.alphasub_a[1] == &globals.texel0_color.a || globals.combiner.alphasub_b[1] == &globals.texel0_color.a || globals.combiner.alphaadd[1] == &globals.texel0_color.a || \
-        globals.combiner.rgbmul_r[1] == &globals.texel0_color.a)
+    if (parallel_worker->globals.combiner.rgbmul_r[1] == &parallel_worker->globals.texel0_color.r || parallel_worker->globals.combiner.rgbsub_a_r[1] == &parallel_worker->globals.texel0_color.r || parallel_worker->globals.combiner.rgbsub_b_r[1] == &parallel_worker->globals.texel0_color.r || parallel_worker->globals.combiner.rgbadd_r[1] == &parallel_worker->globals.texel0_color.r || \
+        parallel_worker->globals.combiner.alphamul[1] == &parallel_worker->globals.texel0_color.a || parallel_worker->globals.combiner.alphasub_a[1] == &parallel_worker->globals.texel0_color.a || parallel_worker->globals.combiner.alphasub_b[1] == &parallel_worker->globals.texel0_color.a || parallel_worker->globals.combiner.alphaadd[1] == &parallel_worker->globals.texel0_color.a || \
+        parallel_worker->globals.combiner.rgbmul_r[1] == &parallel_worker->globals.texel0_color.a)
         texel0_used_in_cc1 = 1;
-    if (globals.combiner.rgbmul_r[0] == &globals.texel1_color.r || globals.combiner.rgbsub_a_r[0] == &globals.texel1_color.r || globals.combiner.rgbsub_b_r[0] == &globals.texel1_color.r || globals.combiner.rgbadd_r[0] == &globals.texel1_color.r || \
-        globals.combiner.alphamul[0] == &globals.texel1_color.a || globals.combiner.alphasub_a[0] == &globals.texel1_color.a || globals.combiner.alphasub_b[0] == &globals.texel1_color.a || globals.combiner.alphaadd[0] == &globals.texel1_color.a || \
-        globals.combiner.rgbmul_r[0] == &globals.texel1_color.a)
+    if (parallel_worker->globals.combiner.rgbmul_r[0] == &parallel_worker->globals.texel1_color.r || parallel_worker->globals.combiner.rgbsub_a_r[0] == &parallel_worker->globals.texel1_color.r || parallel_worker->globals.combiner.rgbsub_b_r[0] == &parallel_worker->globals.texel1_color.r || parallel_worker->globals.combiner.rgbadd_r[0] == &parallel_worker->globals.texel1_color.r || \
+        parallel_worker->globals.combiner.alphamul[0] == &parallel_worker->globals.texel1_color.a || parallel_worker->globals.combiner.alphasub_a[0] == &parallel_worker->globals.texel1_color.a || parallel_worker->globals.combiner.alphasub_b[0] == &parallel_worker->globals.texel1_color.a || parallel_worker->globals.combiner.alphaadd[0] == &parallel_worker->globals.texel1_color.a || \
+        parallel_worker->globals.combiner.rgbmul_r[0] == &parallel_worker->globals.texel1_color.a)
         texel1_used_in_cc0 = 1;
-    if (globals.combiner.rgbmul_r[0] == &globals.texel0_color.r || globals.combiner.rgbsub_a_r[0] == &globals.texel0_color.r || globals.combiner.rgbsub_b_r[0] == &globals.texel0_color.r || globals.combiner.rgbadd_r[0] == &globals.texel0_color.r || \
-        globals.combiner.alphamul[0] == &globals.texel0_color.a || globals.combiner.alphasub_a[0] == &globals.texel0_color.a || globals.combiner.alphasub_b[0] == &globals.texel0_color.a || globals.combiner.alphaadd[0] == &globals.texel0_color.a || \
-        globals.combiner.rgbmul_r[0] == &globals.texel0_color.a)
+    if (parallel_worker->globals.combiner.rgbmul_r[0] == &parallel_worker->globals.texel0_color.r || parallel_worker->globals.combiner.rgbsub_a_r[0] == &parallel_worker->globals.texel0_color.r || parallel_worker->globals.combiner.rgbsub_b_r[0] == &parallel_worker->globals.texel0_color.r || parallel_worker->globals.combiner.rgbadd_r[0] == &parallel_worker->globals.texel0_color.r || \
+        parallel_worker->globals.combiner.alphamul[0] == &parallel_worker->globals.texel0_color.a || parallel_worker->globals.combiner.alphasub_a[0] == &parallel_worker->globals.texel0_color.a || parallel_worker->globals.combiner.alphasub_b[0] == &parallel_worker->globals.texel0_color.a || parallel_worker->globals.combiner.alphaadd[0] == &parallel_worker->globals.texel0_color.a || \
+        parallel_worker->globals.combiner.rgbmul_r[0] == &parallel_worker->globals.texel0_color.a)
         texel0_used_in_cc0 = 1;
     texels_in_cc0 = texel0_used_in_cc0 || texel1_used_in_cc0;
     texels_in_cc1 = texel0_used_in_cc1 || texel1_used_in_cc1;
 
 
     if (texel1_used_in_cc1)
-        globals.other_modes.f.textureuselevel0 = 0;
+        parallel_worker->globals.other_modes.f.textureuselevel0 = 0;
     else if (texel0_used_in_cc1 || lod_frac_used_in_cc1)
-        globals.other_modes.f.textureuselevel0 = 1;
+        parallel_worker->globals.other_modes.f.textureuselevel0 = 1;
     else
-        globals.other_modes.f.textureuselevel0 = 2;
+        parallel_worker->globals.other_modes.f.textureuselevel0 = 2;
 
     if (texel1_used_in_cc1)
-        globals.other_modes.f.textureuselevel1 = 0;
+        parallel_worker->globals.other_modes.f.textureuselevel1 = 0;
     else if (texel1_used_in_cc0 || texel0_used_in_cc1)
-        globals.other_modes.f.textureuselevel1 = 1;
+        parallel_worker->globals.other_modes.f.textureuselevel1 = 1;
     else if (texel0_used_in_cc0 || lod_frac_used_in_cc0 || lod_frac_used_in_cc1)
-        globals.other_modes.f.textureuselevel1 = 2;
+        parallel_worker->globals.other_modes.f.textureuselevel1 = 2;
     else
-        globals.other_modes.f.textureuselevel1 = 3;
+        parallel_worker->globals.other_modes.f.textureuselevel1 = 3;
 
 
     int lodfracused = 0;
 
-    if ((globals.other_modes.cycle_type == CYCLE_TYPE_2 && (lod_frac_used_in_cc0 || lod_frac_used_in_cc1)) || \
-        (globals.other_modes.cycle_type == CYCLE_TYPE_1 && lod_frac_used_in_cc1))
+    if ((parallel_worker->globals.other_modes.cycle_type == CYCLE_TYPE_2 && (lod_frac_used_in_cc0 || lod_frac_used_in_cc1)) || \
+        (parallel_worker->globals.other_modes.cycle_type == CYCLE_TYPE_1 && lod_frac_used_in_cc1))
         lodfracused = 1;
 
-    if ((globals.other_modes.cycle_type == CYCLE_TYPE_1 && globals.combiner.rgbsub_a_r[1] == &globals.noise) || \
-        (globals.other_modes.cycle_type == CYCLE_TYPE_2 && (globals.combiner.rgbsub_a_r[0] == &globals.noise || globals.combiner.rgbsub_a_r[1] == &globals.noise)) || \
-        globals.other_modes.alpha_dither_sel == 2)
-        globals.other_modes.f.getditherlevel = 0;
-    else if (globals.other_modes.f.rgb_alpha_dither != 0xf)
-        globals.other_modes.f.getditherlevel = 1;
+    if ((parallel_worker->globals.other_modes.cycle_type == CYCLE_TYPE_1 && parallel_worker->globals.combiner.rgbsub_a_r[1] == &parallel_worker->globals.noise) || \
+        (parallel_worker->globals.other_modes.cycle_type == CYCLE_TYPE_2 && (parallel_worker->globals.combiner.rgbsub_a_r[0] == &parallel_worker->globals.noise || parallel_worker->globals.combiner.rgbsub_a_r[1] == &parallel_worker->globals.noise)) || \
+        parallel_worker->globals.other_modes.alpha_dither_sel == 2)
+        parallel_worker->globals.other_modes.f.getditherlevel = 0;
+    else if (parallel_worker->globals.other_modes.f.rgb_alpha_dither != 0xf)
+        parallel_worker->globals.other_modes.f.getditherlevel = 1;
     else
-        globals.other_modes.f.getditherlevel = 2;
+        parallel_worker->globals.other_modes.f.getditherlevel = 2;
 
-    globals.other_modes.f.dolod = globals.other_modes.tex_lod_en || lodfracused;
+    parallel_worker->globals.other_modes.f.dolod = parallel_worker->globals.other_modes.tex_lod_en || lodfracused;
 }

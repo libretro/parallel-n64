@@ -3,7 +3,16 @@
 //
 
 #include "rdram.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include "plugin.h"
+
+#ifdef __cplusplus
+}
+#endif
 
 #define RDRAM_MASK 0x00ffffff
 

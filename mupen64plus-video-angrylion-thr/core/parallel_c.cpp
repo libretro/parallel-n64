@@ -1,39 +1,48 @@
 #include "parallel_c.hpp"
+#include "common.h"
 
 #include <functional>
 #include <vector>
-#include <thread>
 #include <cstdint>
 #include <mutex>
 #include <condition_variable>
 #include <atomic>
 #include <memory>
 
+thread_local Worker* parallel_worker;
+
 class Parallel
 {
+   friend class Worker;
+
 public:
-    Parallel(uint32_t num_workers, std::function<void(uint32_t)>&& func_worker_id);
-    ~Parallel();
-    void run(std::function<void(void)>&& task);
+   Parallel(uint32_t num_workers);
+   ~Parallel();
+   void run(std::function<void(void)>&& task);
 
 private:
-    std::function<void()> m_task;
-    std::vector<std::thread> m_workers;
-    std::mutex m_mutex;
-    std::condition_variable m_signal_work;
-    std::condition_variable m_signal_done;
-    std::atomic_size_t m_workers_active;
-    std::atomic_bool m_accept_work{true};
+   std::function<void()> m_task;
+   std::vector<Worker> m_workers;
+   std::mutex m_mutex;
+   std::condition_variable m_signal_work;
+   std::condition_variable m_signal_done;
+   std::atomic_size_t m_workers_active;
+   std::atomic_bool m_accept_work{true};
 
-    void do_work(int32_t worker_id, std::function<void(uint32_t)>&& func_worker_id);
-    void wait();
+   void do_work();
+   void wait();
 
-    void operator=(const Parallel&) = delete;
-    Parallel(const Parallel&) = delete;
+   void operator=(const Parallel&) = delete;
+   Parallel(const Parallel&) = delete;
 };
 
+Worker::Worker(uint32_t id, Parallel *parallel) :
+   m_thread(&Parallel::do_work, parallel)
+   ,m_worker_id(id)
+{
+}
+
 static std::unique_ptr<Parallel> parallel;
-static thread_local uint32_t worker_id;
 static uint32_t worker_num;
 
 template<typename T, typename... Args>
@@ -41,12 +50,14 @@ std::unique_ptr<T> make_unique(Args&&... args) {
     return std::unique_ptr<T>(new T(std::forward<Args>(args)...));
 }
 
-Parallel::Parallel(uint32_t num_workers, std::function<void(uint32_t)>&& func_worker_id)
+Parallel::Parallel(uint32_t num_workers)
 {
    uint32_t worker_id;
    // create worker threads
    for (worker_id = 0; worker_id < num_workers; worker_id++)
-      m_workers.emplace_back(std::thread(&Parallel::do_work, this, worker_id, func_worker_id));
+   {
+      m_workers.emplace_back(Worker(worker_id, this));
+   }
 }
 
 Parallel::~Parallel()
@@ -64,7 +75,7 @@ Parallel::~Parallel()
 
    // join worker threads to make sure they have finished
    for (auto& thread : m_workers)
-      thread.join();
+      thread.m_thread.join();
 
    // destroy all worker threads
    m_workers.clear();
@@ -85,10 +96,13 @@ void Parallel::run(std::function<void(void)>&& task)
    wait();
 }
 
-void Parallel::do_work(int32_t worker_id, std::function<void(uint32_t)>&& func_worker_id)
+void Parallel::do_work()
 {
    std::unique_lock<std::mutex> ul(m_mutex);
-   func_worker_id(worker_id);
+
+   for (auto& thread : m_workers)
+      if (thread.m_thread.get_id() == std::this_thread::get_id())
+         parallel_worker = &thread;
 
    while (m_accept_work)
    {
@@ -110,13 +124,13 @@ void Parallel::wait()
 
 void parallel_alinit(uint32_t num)
 {
+    parallel_worker = NULL;
+
     // auto-select number of workers based on the number of cores
     if (num == 0)
         num = std::thread::hardware_concurrency();
 
-    parallel = make_unique<Parallel>(num, [](uint32_t id) {
-        worker_id = id;
-    });
+    parallel = make_unique<Parallel>(num);
 
     worker_num = num;
 }
@@ -124,11 +138,6 @@ void parallel_alinit(uint32_t num)
 void parallel_run(void task(void))
 {
     parallel->run(task);
-}
-
-uint32_t parallel_worker_id(void)
-{
-    return worker_id;
 }
 
 uint32_t parallel_worker_num(void)

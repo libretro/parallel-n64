@@ -7,18 +7,28 @@
 
 #include <boolean.h>
 
+#include "core.h"
+#include "rdp.h"
+#include "vi.h"
+#include "parallel_c.hpp"
+#include "rdram.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include "../Gfx #1.3.h"
 
 #include "m64p_types.h"
 #include "m64p_config.h"
-
-#include "core.h"
-#include "rdp.h"
-#include "vi.h"
-#include "rdram.h"
-#include "msg.h"
 #include "plugin.h"
-#include "parallel_c.hpp"
+#include "msg.h"
+
+int retro_return(int just_flipping);
+
+#ifdef __cplusplus
+}
+#endif
 
 #define DP_INTERRUPT    0x20
 
@@ -37,13 +47,14 @@ static unsigned angrylion_dithering = 1;
 
 static uint32_t rdram_size;
 static uint8_t* rdram_hidden_bits;
-static struct core_config config;
 
 int ProcessDListShown = 0;
 
 extern GFX_INFO gfx_info;
 
-int retro_return(int just_flipping);
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 uint32_t** plugin_get_dp_registers(void)
 {
@@ -176,7 +187,7 @@ int angrylionRomOpen(void)
 	core_config_defaults(&config);
 	config.parallel = true;
 	config.num_workers = 0;
-	config.vi.mode = 0;
+	config.vi.mode = (vi_mode)0;
 	config.vi.widescreen = 0;
 	config.vi.overscan = 1;
 
@@ -345,19 +356,18 @@ void core_init(struct core_config* _config)
    rdram_size = 0x800000;
 
    // mupen64plus plugins can't access the hidden bits, so allocate it on our own
-   rdram_hidden_bits = malloc(rdram_size);
+   rdram_hidden_bits = (uint8_t*)malloc(rdram_size);
    memset(rdram_hidden_bits, 3, rdram_size);
-
-   rdram_init();
-
-   rdp_init(&config);
-   vi_init(&config);
 
    num_workers = config.num_workers;
    parallel    = config.parallel;
 
    if (config.parallel)
       parallel_alinit(num_workers);
+
+   rdram_init();
+   rdp_init(&config);
+   vi_init(&config);
 }
 
 void core_dp_sync(void)
@@ -417,3 +427,7 @@ void core_close(void)
         free(rdram_hidden_bits);
     rdram_hidden_bits = NULL;
 }
+
+#ifdef __cplusplus
+}
+#endif
