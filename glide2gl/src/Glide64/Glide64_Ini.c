@@ -55,7 +55,7 @@ void ReadSpecialSettings (const char * name)
    bool updated;
    struct retro_variable var;
 
-   fprintf(stderr, "\x52\x65\x61\x64\x53\x70\x65\x63\x69\x61\x6C\x53\x65\x74\x74\x69\x6E\x67\x73\x3A\x20\x25\x73\x5C\x6E", name); // ReadSpecialSettings: %s¥n
+   fprintf(stderr, "ReadSpecialSettings: %s\n", name);
 
    /* frame buffer */
    smart_read = 0;
