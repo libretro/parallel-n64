@@ -485,6 +485,7 @@ void ReadSpecialSettings (const char * name)
    }
    else if (strstr(name, (const char *)"\xB4\xB8\xBD\xC4\xD8\xB0\xD1\x47\x32")) // ｴｸｽﾄﾘｰﾑG2
    {
+      //;Extreme-G 2
       //depthmode = 0
       smart_read = 0;
 #ifdef HAVE_HWFBE
@@ -527,7 +528,7 @@ void ReadSpecialSettings (const char * name)
    }
    else if (strstr(name, (const char *)"\xB4\xB2\xBA\xB3\xC9\xBE\xDD\xC4\xB1\xDD\xC4\xDE\xD8\xAD\xB0\xBD")) // ｴｲｺｳﾉｾﾝﾄｱﾝﾄﾞﾘｭｰｽ
    {
-      //;Eikou no Saint Andrew
+      //;Eikou no Saint Andrews
       settings.correct_viewport = 1;
    }
    else if (strstr(name, (const char *)"Eltail"))
@@ -646,7 +647,7 @@ void ReadSpecialSettings (const char * name)
    }
    else if (strstr(name, (const char*)"\x46\x33\x20\xCC\xB3\xD7\xB2\xC9\xBC\xDA\xDD\x32")) // F3 ﾌｳﾗｲﾉｼﾚﾝ2
    {
-      //;Fushigi no Dungeon - Furai no Shiren 2 (J) 
+      //;Fushigi no Dungeon - Fuurai no Shiren 2 (J)
       settings.decrease_fillrect_edge = 1;
       //depthmode = 0
    }
@@ -704,12 +705,13 @@ void ReadSpecialSettings (const char * name)
       //depthmode = 0
       settings.swapmode = 0;
    }
-   else if (strstr(name, (const char*)"GANBAKE GOEMON") 
+   else if (strstr(name, (const char*)"GANBAKE GOEMON")
          //|| strstr(name, (const char*)"\xB6\xDE\xDD\xCA\xDE\xDA\x5C\x20\xBA\xDE\xB4\xD3\xDD") */ TODO: illegal characters - find by ucode CRC */ // ｶﾞﾝﾊﾞﾚ¥ ｺﾞｴﾓﾝ
          || strstr(name, (const char*)"MYSTICAL NINJA")
          || strstr(name, (const char*)"MYSTICAL NINJA2 SG")
          )
    {
+      //;Ganbare Goemon
       optimize_texrect = 0;
       settings.alt_tex_size = 1;
       settings.filtering = 1;
@@ -755,6 +757,7 @@ void ReadSpecialSettings (const char * name)
    else if (strstr(name, (const char*)"\xCA\xD1\xBD\xC0\xB0\xD3\xC9\xB6\xDE\xC0\xD8\x36\x34") // ﾊﾑｽﾀｰﾓﾉｶﾞﾀﾘ64
          )
    {
+      //;Hamster Monogatari 64
       settings.force_microcheck = 1;
       //depthmode = 0
    }
@@ -762,6 +765,7 @@ void ReadSpecialSettings (const char * name)
          || strstr(name, (const char*)"\xCE\xDE\xB8\xBC\xDE\xAE\xB3\xD3\xC9\xB6\xDE\xC0\xD8\x32") // ﾎﾞｸｼﾞｮｳﾓﾉｶﾞﾀﾘ2
          )
    {
+      //;Bokujou Monogatari 2
       settings.zmode_compare_less = 1;
       //depthmode = 0
       settings.fog = 0;
@@ -820,7 +824,7 @@ void ReadSpecialSettings (const char * name)
    }
    else if (strstr(name, (const char*)"\xD3\xD8\xC0\xBC\xAE\xB3\xB7\xDE\x36\x34")) // ﾓﾘﾀｼｮｳｷﾞ64
    {
-      //;Morita Shogi 64
+      //;Morita Shougi 64
       settings.correct_viewport = 1;
    }
    else if (strstr(name, (const char*)"NEWTETRIS"))
@@ -922,7 +926,7 @@ void ReadSpecialSettings (const char * name)
    }
    else if (strstr(name, (const char*)"\x48\x45\x49\x57\x41\x20\xCA\xDF\xC1\xDD\xBA\x20\xDC\xB0\xD9\xC4\xDE\x36\x34")) // HEIWA ﾊﾟﾁﾝｺ ﾜｰﾙﾄﾞ64
    {
-      //; Heiwa Pachinko World
+      //;Heiwa Pachinko World 64
       //depthmode = 0
       settings.fog = 0;
       settings.swapmode = 2;
@@ -933,6 +937,7 @@ void ReadSpecialSettings (const char * name)
    }
    else if (strstr(name, (const char*)"\xB7\xD7\xAF\xC4\xB6\xB2\xB9\xC2\x20\x36\x34\xC0\xDD\xC3\xB2\xC0\xDE\xDD")) // ｷﾗｯﾄｶｲｹﾂ 64ﾀﾝﾃｲﾀﾞﾝ
    {
+      //;Kiratto Kaiketsu! 64 Tanteidan
       settings.filtering = 1;
       //depthmode = 0
       settings.buff_clear = 0;
@@ -958,6 +963,7 @@ void ReadSpecialSettings (const char * name)
    }
    else if (strstr(name, (const char*)"\xBD\xBD\xD2\x21\xC0\xB2\xBE\xDD\xCA\xDF\xBD\xDE\xD9\xC0\xDE\xCF")) // ｽｽﾒ!ﾀｲｾﾝﾊﾟｽﾞﾙﾀﾞﾏ
    {
+      //;Susume! Taisen Puzzle Dama
       settings.force_microcheck = 1;
       //depthmode = 1
       settings.fog = 0;
@@ -965,7 +971,7 @@ void ReadSpecialSettings (const char * name)
    }
    else if (strstr(name, (const char*)"\xD0\xDD\xC5\xC3\xDE\xC0\xCF\xBA\xDE\xAF\xC1\xDC\xB0\xD9\xC4\xDE")) // ﾐﾝﾅﾃﾞﾀﾏｺﾞｯﾁﾜｰﾙﾄﾞ
    {
-      //;Tamagotchi World 64 (J) 
+      //;Minna de Tamagocchi World / Tamagotchi World 64 (J)
       //depthmode = 0
       settings.fog = 0;
    }
@@ -1059,7 +1065,7 @@ void ReadSpecialSettings (const char * name)
    }
    else if (strstr(name, (const char*)"\xC7\xBC\xC2\xDE\xD8\x36\x34")) // ﾇｼﾂﾞﾘ64
    {
-      //; Nushi Zuri 64
+      //; Nushi Tsuri 64 / Nushi Zuri 64
       settings.force_microcheck = 1;
       //wrap_big_tex = 0
       //depthmode = 0
