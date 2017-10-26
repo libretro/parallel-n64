@@ -3933,33 +3933,11 @@ static INLINE void fetch_texel_entlut_quadro(struct color *color0, struct color 
       case 4:
       case 5:
       case 6:
+      case 7:
+      case 11:
+      case 15:
          {
             s1 = s0 + sdiff;
-            taddr0 = (tbase0 << 3) + s0;
-            taddr1 = (tbase0 << 3) + s1;
-            taddr2 = (tbase2 << 3) + s0;
-            taddr3 = (tbase2 << 3) + s1;
-
-            xort = (t0 & 1) ? BYTE_XOR_DWORD_SWAP : BYTE_ADDR_XOR;
-            taddr0 ^= xort;
-            taddr1 ^= xort;
-            xort = (t1 & 1) ? BYTE_XOR_DWORD_SWAP : BYTE_ADDR_XOR;
-            taddr2 ^= xort;
-            taddr3 ^= xort;
-
-            c0 = parallel_worker->globals.tmem[taddr0 & 0x7ff];
-            taddr0 = c0 << 2;
-            c2 = parallel_worker->globals.tmem[taddr2 & 0x7ff];
-            taddr2 = (c2 << 2) + 2;
-            c1 = parallel_worker->globals.tmem[taddr1 & 0x7ff];
-            taddr1 = (c1 << 2) + 1;
-            c3 = parallel_worker->globals.tmem[taddr3 & 0x7ff];
-            taddr3 = (c3 << 2) + 3;
-         }
-         break;
-      case 7:
-         {
-            s1 = s0 + (sdiff << 1);
             taddr0 = (tbase0 << 3) + s0;
             taddr1 = (tbase0 << 3) + s1;
             taddr2 = (tbase2 << 3) + s0;
@@ -4008,31 +3986,6 @@ static INLINE void fetch_texel_entlut_quadro(struct color *color0, struct color 
             taddr3 = (c3 >> 6) | 3;
          }
          break;
-      case 11:
-         {
-            s1 = s0 + (sdiff << 1);
-            taddr0 = (tbase0 << 3) + s0;
-            taddr1 = (tbase0 << 3) + s1;
-            taddr2 = (tbase2 << 3) + s0;
-            taddr3 = (tbase2 << 3) + s1;
-
-            xort = (t0 & 1) ? BYTE_XOR_DWORD_SWAP : BYTE_ADDR_XOR;
-            taddr0 ^= xort;
-            taddr1 ^= xort;
-            xort = (t1 & 1) ? BYTE_XOR_DWORD_SWAP : BYTE_ADDR_XOR;
-            taddr2 ^= xort;
-            taddr3 ^= xort;
-
-            c0 = parallel_worker->globals.tmem[taddr0 & 0x7ff];
-            taddr0 = c0 << 2;
-            c2 = parallel_worker->globals.tmem[taddr2 & 0x7ff];
-            taddr2 = (c2 << 2) + 2;
-            c1 = parallel_worker->globals.tmem[taddr1 & 0x7ff];
-            taddr1 = (c1 << 2) + 1;
-            c3 = parallel_worker->globals.tmem[taddr3 & 0x7ff];
-            taddr3 = (c3 << 2) + 3;
-         }
-         break;
       case 12:
       case 13:
       case 14:
@@ -4060,7 +4013,6 @@ static INLINE void fetch_texel_entlut_quadro(struct color *color0, struct color 
             taddr3 = (c3 >> 6) | 3;
          }
          break;
-      case 15:
       default:
          {
             s1 = s0 + (sdiff << 1);
@@ -4203,17 +4155,9 @@ static INLINE void fetch_texel_entlut_quadro_nearest(struct color *color0, struc
       case 4:
       case 5:
       case 6:
-         {
-            taddr0 = (tbase0 << 3) + s0;
-            xort = (t0 & 1) ? BYTE_XOR_DWORD_SWAP : BYTE_ADDR_XOR;
-            taddr0 ^= xort;
-
-            c0 = parallel_worker->globals.tmem[taddr0 & 0x7ff];
-
-            taddr0 = c0 << 2;
-         }
-         break;
       case 7:
+      case 11:
+      case 15:
          {
             taddr0 = (tbase0 << 3) + s0;
             xort = (t0 & 1) ? BYTE_XOR_DWORD_SWAP : BYTE_ADDR_XOR;
@@ -4227,27 +4171,6 @@ static INLINE void fetch_texel_entlut_quadro_nearest(struct color *color0, struc
       case 8:
       case 9:
       case 10:
-         {
-            taddr0 = (tbase0 << 2) + s0;
-            xort = (t0 & 1) ? WORD_XOR_DWORD_SWAP : WORD_ADDR_XOR;
-            taddr0 ^= xort;
-
-            c0 = tc16[taddr0 & 0x3ff];
-
-            taddr0 = (c0 >> 6) & ~3;
-         }
-         break;
-      case 11:
-         {
-            taddr0 = (tbase0 << 3) + s0;
-            xort = (t0 & 1) ? BYTE_XOR_DWORD_SWAP : BYTE_ADDR_XOR;
-            taddr0 ^= xort;
-
-            c0 = parallel_worker->globals.tmem[taddr0 & 0x7ff];
-
-            taddr0 = c0 << 2;
-         }
-         break;
       case 12:
       case 13:
       case 14:
@@ -4261,7 +4184,6 @@ static INLINE void fetch_texel_entlut_quadro_nearest(struct color *color0, struc
             taddr0 = (c0 >> 6) & ~3;
          }
          break;
-      case 15:
       default:
          {
             taddr0 = (tbase0 << 3) + s0;
