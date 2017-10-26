@@ -15,6 +15,7 @@
 
 #ifdef __cplusplus
 extern "C" {
+extern void DebugMessage(int level, const char *message, ...);
 #endif
 
 #include "../Gfx #1.3.h"
@@ -32,8 +33,8 @@ int retro_return(int just_flipping);
 
 #define DP_INTERRUPT    0x20
 
-extern unsigned int screen_width, screen_height;
-extern uint32_t screen_pitch;
+extern "C" unsigned int screen_width, screen_height;
+extern "C" uint32_t screen_pitch;
 
 static uint32_t num_workers;
 static bool parallel;

@@ -558,7 +558,7 @@ static STRICTINLINE void rgb_dither(int* r, int* g, int* b, int dith)
     *b = *b + (ditherdiff & replacesign);
 }
 
-extern unsigned angrylion_get_dithering(void);
+extern "C" unsigned angrylion_get_dithering(void);
 
 static STRICTINLINE void get_dither_noise(int x, int y, int* cdith, int* adith)
 {
