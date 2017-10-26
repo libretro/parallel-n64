@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <stdarg.h>
 #include <string.h>
 #include <ctype.h>
 
@@ -250,14 +251,38 @@ m64p_error angrylionPluginGetVersion(m64p_plugin_type *PluginType, int *PluginVe
 #define MSG_BUFFER_LEN 256
 void msg_error(const char * err, ...)
 {
+   va_list ap;
+   char buffer[2049];
+   va_start(ap, err);
+   vsnprintf(buffer, 2047, err, ap);
+   buffer[2048] = '\0';
+   va_end(ap);
+
+   DebugMessage(M64MSG_ERROR, "%s", buffer);
 }
 
 void msg_warning(const char* err, ...)
 {
+   va_list ap;
+   char buffer[2049];
+   va_start(ap, err);
+   vsnprintf(buffer, 2047, err, ap);
+   buffer[2048] = '\0';
+   va_end(ap);
+
+   DebugMessage(M64MSG_WARNING, "%s", buffer);
 }
 
 void msg_debug(const char* err, ...)
 {
+   va_list ap;
+   char buffer[2049];
+   va_start(ap, err);
+   vsnprintf(buffer, 2047, err, ap);
+   buffer[2048] = '\0';
+   va_end(ap);
+
+   DebugMessage(M64MSG_INFO, "%s", buffer);
 }
 
 static char filter_char(char c)
