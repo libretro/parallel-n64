@@ -47,7 +47,7 @@ static unsigned angrylion_filtering = 0;
 static unsigned angrylion_dithering = 1;
 
 static uint32_t rdram_size;
-static uint8_t* rdram_hidden_bits;
+static uint8_t rdram_hidden_bits[0x400000];
 
 int ProcessDListShown = 0;
 
@@ -352,13 +352,14 @@ static uint32_t get_rom_name(char* name, uint32_t name_size)
 
 void core_init(struct core_config* _config)
 {
+   unsigned i;
    config = *_config;
 
    rdram_size = 0x800000;
 
    // mupen64plus plugins can't access the hidden bits, so allocate it on our own
-   rdram_hidden_bits = (uint8_t*)malloc(rdram_size);
-   memset(rdram_hidden_bits, 3, rdram_size);
+   for (i = 0; i < sizeof(rdram_hidden_bits); i++)
+      rdram_hidden_bits[i] = 0x03;
 
    num_workers = config.num_workers;
    parallel    = config.parallel;
@@ -424,9 +425,6 @@ void core_close(void)
 {
     parallel_close();
     vi_close();
-    if (rdram_hidden_bits)
-        free(rdram_hidden_bits);
-    rdram_hidden_bits = NULL;
 }
 
 #ifdef __cplusplus
