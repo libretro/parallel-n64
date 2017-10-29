@@ -413,6 +413,7 @@ else ifneq (,$(findstring windows_msvc2017,$(platform)))
 	GL_LIB = opengl32.lib
 	HAVE_PARALLEL=0
 	HAVE_PARALLEL_RSP=0
+	HAVE_THR_AL=1
 
 	reg_query = $(call filter_out2,$(subst $2,,$(shell reg query "$2" -v "$1" 2>nul)))
 	fix_path = $(subst $(SPACE),\ ,$(subst \,/,$1))
