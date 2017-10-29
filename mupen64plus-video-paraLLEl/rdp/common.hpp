@@ -58,9 +58,14 @@ static inline uint32_t next_pow2(uint32_t v)
 #if defined(_MSC_VER)
 #define CLOCK_MONOTONIC 0
 
+#if _MSC_VER < 1910
+struct timespec { long tv_sec; long tv_nsec; };    //header part
+#else
+#define NOMINMAX
+#endif
+
 #include <Windows.h>
 
-struct timespec { long tv_sec; long tv_nsec; };    //header part
 int clock_gettime(int, struct timespec *spec)      //C-file part
 {  __int64 wintime; GetSystemTimeAsFileTime((FILETIME*)&wintime);
    wintime      -=116444736000000000i64;  //1jan1601 to 1jan1970
