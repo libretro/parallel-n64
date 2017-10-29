@@ -169,17 +169,17 @@ ifdef WITH_DYNAREC
 		CFLAGS += -DARCH_MIN_SSE2
 		CXXFLAGS += -DARCH_MIN_SSE2
 
-#ifneq (,$(findstring msvc,$(platform)))
-#ifeq ($(WITH_DYNAREC), $(filter $(WITH_DYNAREC), x86_64 x64))
-	#SOURCES_ASM += $(CORE_DIR)/src/r4300/hacktarux_dynarec/dyna_start_nasm_x64.S
-#else ifeq ($(WITH_DYNAREC), $(filter $(WITH_DYNAREC), i386 i686))
-	#SOURCES_ASM += $(CORE_DIR)/src/r4300/hacktarux_dynarec/dyna_start_nasm_x86.S
-#endif
-#endif
-
 ifneq (,$(findstring msvc,$(platform)))
-	SOURCES_ASM += $(CORE_DIR)/src/r4300/hacktarux_dynarec/dyna_start.S
+ifeq ($(WITH_DYNAREC), $(filter $(WITH_DYNAREC), x86_64 x64))
+	SOURCES_ASM += $(CORE_DIR)/src/r4300/hacktarux_dynarec/dyna_start_nasm_x64.S
+else ifeq ($(WITH_DYNAREC), $(filter $(WITH_DYNAREC), i386 i686))
+	SOURCES_ASM += $(CORE_DIR)/src/r4300/hacktarux_dynarec/dyna_start_nasm_x86.S
 endif
+endif
+
+#ifneq (,$(findstring msvc,$(platform)))
+#	SOURCES_ASM += $(CORE_DIR)/src/r4300/hacktarux_dynarec/dyna_start.S
+#endif
 
 endif
 
@@ -195,7 +195,9 @@ endif
 ifeq ($(WITH_DYNAREC), $(filter $(WITH_DYNAREC), i386 i686 x86 x86_64 x64))
 		DYNAREC_USED = 1
 ifneq ($(NOSSE), 1)
+ifeq (,$(findstring msvc,$(platform)))
 		CPUFLAGS += -msse -msse2
+endif
 endif
 		SOURCES_C += $(CORE_DIR)/src/r4300/hacktarux_dynarec/assemble.c \
 						 $(CORE_DIR)/src/r4300/hacktarux_dynarec/regcache.c \

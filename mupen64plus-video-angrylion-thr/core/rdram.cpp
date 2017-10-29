@@ -40,12 +40,16 @@ void rdram_init(void)
 
 bool rdram_valid_idx8(uint32_t in)
 {
-    return in <= idxlim8;
+   if (!idxlim8)
+      return false;
+   return in <= idxlim8;
 }
 
 bool rdram_valid_idx16(uint32_t in)
 {
-    return in <= idxlim16;
+   if (!idxlim16)
+      return false;
+   return in <= idxlim16;
 }
 
 bool rdram_valid_idx32(uint32_t in)

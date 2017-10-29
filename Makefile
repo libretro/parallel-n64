@@ -389,7 +389,7 @@ else ifneq (,$(findstring vita,$(platform)))
 else ifeq ($(platform), windows_msvc2013_x86)
 	CC  = cl.exe
 	CXX = cl.exe
-	CC_AS = ml.exe
+	CC_AS = nasm.exe
 
 PATH := $(shell IFS=$$'\n'; cygpath "$(VS120COMNTOOLS)../../VC/bin"):$(PATH)
 PATH := $(PATH):$(shell IFS=$$'\n'; cygpath "$(VS120COMNTOOLS)../IDE")
@@ -405,6 +405,7 @@ export INCLUDE := $(INCLUDE)
 export LIB := $(LIB);$(WindowsSdkDir)\Lib;$(WindowsSdkDir)\Lib\winv6.3\um\x86
 TARGET := $(TARGET_NAME)_libretro.dll
 PSS_STYLE :=2
+ASFLAGS += -f win32
 LDFLAGS += -DLL
 GL_LIB = opengl32.lib
 HAVE_PARALLEL=0
@@ -415,7 +416,7 @@ WITH_DYNAREC=x86
 else ifeq ($(platform), windows_msvc2013_x64)
 	CC  = cl.exe
 	CXX = cl.exe
-	CC_AS = ml64.exe
+	CC_AS = nasm.exe
 
 PATH := $(shell IFS=$$'\n'; cygpath "$(VS120COMNTOOLS)../../VC/bin/amd64"):$(PATH)
 PATH := $(PATH):$(shell IFS=$$'\n'; cygpath "$(VS120COMNTOOLS)../IDE")
@@ -431,6 +432,7 @@ export INCLUDE := $(INCLUDE)
 export LIB := $(LIB);$(WindowsSdkDir)\Lib;$(WindowsSdkDir)\Lib\winv6.3\um\x64
 TARGET := $(TARGET_NAME)_libretro.dll
 PSS_STYLE :=2
+ASFLAGS += -f win64
 LDFLAGS += -DLL
 GL_LIB = opengl32.lib
 HAVE_PARALLEL=0
@@ -440,12 +442,13 @@ HAVE_PARALLEL_RSP=0
 else ifeq ($(platform), windows_msvc2015_x64)
 	CC  = cl.exe
 	CXX = cl.exe
-	CC_AS = ml64.exe
+	CC_AS = nasm.exe
 
 PATH := $(shell IFS=$$'\n'; cygpath "$(VS140COMNTOOLS)../../VC/bin/amd64"):$(PATH)
 PATH := $(PATH):$(shell IFS=$$'\n'; cygpath "$(VS140COMNTOOLS)../IDE")
 LIB := $(shell IFS=$$'\n'; cygpath -w "$(VS140COMNTOOLS)../../VC/lib/amd64")
 INCLUDE := $(shell IFS=$$'\n'; cygpath -w "$(VS140COMNTOOLS)../../VC/include")
+ASFLAGS += -f win64
 
 reg_query = $(call filter_out2,$(subst $2,,$(shell reg query "$2" -v "$1" 2>nul)))
 fix_path = $(subst $(SPACE),\ ,$(subst \,/,$1))
@@ -473,12 +476,13 @@ HAVE_PARALLEL_RSP=0
 else ifeq ($(platform), windows_msvc2015_x86)
 	CC  = cl.exe
 	CXX = cl.exe
-	CC_AS = ml.exe
+	CC_AS = nasm.exe
 
 PATH := $(shell IFS=$$'\n'; cygpath "$(VS140COMNTOOLS)../../VC/bin"):$(PATH)
 PATH := $(PATH):$(shell IFS=$$'\n'; cygpath "$(VS140COMNTOOLS)../IDE")
 LIB := $(shell IFS=$$'\n'; cygpath -w "$(VS140COMNTOOLS)../../VC/lib")
 INCLUDE := $(shell IFS=$$'\n'; cygpath -w "$(VS140COMNTOOLS)../../VC/include")
+ASFLAGS += -f win32
 
 reg_query = $(call filter_out2,$(subst $2,,$(shell reg query "$2" -v "$1" 2>nul)))
 fix_path = $(subst $(SPACE),\ ,$(subst \,/,$1))
@@ -506,7 +510,7 @@ HAVE_PARALLEL_RSP=0
 else ifeq ($(platform), windows_msvc2010_x64)
 	CC  = cl.exe
 	CXX = cl.exe
-	CC_AS = ml64.exe
+	CC_AS = nasm.exe
 
 PATH := $(shell IFS=$$'\n'; cygpath "$(VS100COMNTOOLS)../../VC/bin/amd64"):$(PATH)
 PATH := $(PATH):$(shell IFS=$$'\n'; cygpath "$(VS100COMNTOOLS)../IDE")
@@ -525,6 +529,7 @@ export INCLUDE := $(INCLUDE)
 export LIB := $(LIB);$(WindowsSdkDir)
 TARGET := $(TARGET_NAME)_libretro.dll
 PSS_STYLE :=2
+ASFLAGS += -f win64
 LDFLAGS += -DLL
 GL_LIB = opengl32.lib
 HAVE_PARALLEL=0
@@ -534,7 +539,7 @@ HAVE_PARALLEL_RSP=0
 else ifeq ($(platform), windows_msvc2010_x86)
 	CC  = cl.exe
 	CXX = cl.exe
-	CC_AS = ml.exe
+	CC_AS = nasm.exe
 
 PATH := $(shell IFS=$$'\n'; cygpath "$(VS100COMNTOOLS)../../VC/bin"):$(PATH)
 PATH := $(PATH):$(shell IFS=$$'\n'; cygpath "$(VS100COMNTOOLS)../IDE")
@@ -553,6 +558,7 @@ export INCLUDE := $(INCLUDE)
 export LIB := $(LIB);$(WindowsSdkDir)
 TARGET := $(TARGET_NAME)_libretro.dll
 PSS_STYLE :=2
+ASFLAGS += -f win32
 LDFLAGS += -DLL
 GL_LIB = opengl32.lib
 HAVE_PARALLEL=0
@@ -562,7 +568,7 @@ HAVE_PARALLEL_RSP=0
 else ifeq ($(platform), windows_msvc2005_x86)
 	CC  = cl.exe
 	CXX = cl.exe
-	CC_AS = ml.exe
+	CC_AS = nasm.exe
 	HAS_GCC := 0
 
 PATH := $(shell IFS=$$'\n'; cygpath "$(VS80COMNTOOLS)../../VC/bin"):$(PATH)
@@ -577,6 +583,7 @@ export INCLUDE := $(INCLUDE);$(INETSDK)/Include;libretro-common/include/compat/m
 export LIB := $(LIB);$(WindowsSdkDir);$(INETSDK)/Lib
 TARGET := $(TARGET_NAME)_libretro.dll
 PSS_STYLE :=2
+ASFLAGS += -f win32
 LDFLAGS += -DLL
 CFLAGS += -D_CRT_SECURE_NO_DEPRECATE
 LIBS =
@@ -648,12 +655,18 @@ ifeq ($(DEBUG), 1)
 
    ifneq (,$(findstring msvc,$(platform)))
       CPUOPTS += -Od -MDd -Zi -FS
-      LD += -DEBUG
+      LDFLAGS += -DEBUG
    else
       CPUOPTS += -O0 -g
    endif
 else
    CPUOPTS += -O2 -DNDEBUG
+
+   ifneq (,$(findstring msvc,$(platform)))
+      CPUOPTS += -MD -Zi -FS
+      CPUOPTS += -EHsc -D_CRT_SECURE_NO_WARNINGS -D_ENDUSER_RELEASE -D__LIBRETRO_WIN64__ -D__SSE2__ -DUNICODE -D_UNICODE -D_USRDLL -DWIN32 -D_WINDLL -D_WINDOWS -WX- -Zc:forScope -Zc:wchar_t -Zi -wd4996 -W0 -fp:precise -Gd -GL -Gm- -GS- -Gy -DMSVC2010_EXPORTS -Oi -Ot
+      LDFLAGS += -LTCG -DYNAMICBASE -ERRORREPORT:QUEUE -INCREMENTAL:NO -MACHINE:X64 -MANIFEST:NO -NXCOMPAT -OPT:ICF -OPT:REF -SUBSYSTEM:WINDOWS,"5.02" -TLBID:1 advapi32.lib comdlg32.lib gdi32.lib kernel32.lib odbc32.lib odbccp32.lib ole32.lib oleaut32.lib shell32.lib user32.lib uuid.lib winspool.lib
+   endif
 endif
 
 WANT_CXX11=0
@@ -693,7 +706,9 @@ WANT_CXX11=1
 endif
 
 ifeq ($(WANT_CXX11),1)
+ifeq (,$(findstring msvc,$(platform)))
 CXXFLAGS += -std=c++0x 
+endif
 endif
 
 ifneq (,$(findstring msvc,$(platform)))
@@ -704,9 +719,7 @@ CFLAGS += -DINLINE="inline"
 CXXFLAGS += -DINLINE="inline"
 endif
 
-ASFLAGS     := $(CFLAGS)
-
-
+ASFLAGS     := $(ASFLAGS) $(CFLAGS)
 
 ### Finalize ###
 OBJECTS     += $(SOURCES_CXX:.cpp=.o) $(SOURCES_C:.c=.o) $(SOURCES_ASM:.S=.o)
@@ -743,7 +756,7 @@ endif
 
 ifneq (,$(findstring msvc,$(platform)))
 %.o: %.S
-	$(CC_AS) $(ASFLAGS) -c -Fo$@ $< 
+	$(CC_AS) $(ASFLAGS) -o$@ $< 
 else
 	$(CC_AS) $(ASFLAGS) -c $< $(OBJOUT)$@
 endif
