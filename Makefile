@@ -846,8 +846,8 @@ endif
 
 
 
-ifneq (,$(findstring msvc,$(platform)))
 %.o: %.S
+ifneq (,$(findstring msvc,$(platform)))
 	$(CC_AS) $(ASFLAGS) -o$@ $< 
 else
 	$(CC_AS) $(ASFLAGS) -c $< $(OBJOUT)$@
