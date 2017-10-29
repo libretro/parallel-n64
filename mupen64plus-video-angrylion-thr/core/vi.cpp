@@ -1153,6 +1153,9 @@ static void vi_process(void)
 }
 
 extern "C" uint32_t *blitter_buf_lock;
+extern "C" unsigned int screen_width, screen_height;
+extern "C" uint32_t screen_pitch;
+
 
 static INLINE void screen_upload(int32_t* buffer,
       int32_t width, int32_t height, int32_t pitch, int32_t output_height)
@@ -1162,22 +1165,12 @@ static INLINE void screen_upload(int32_t* buffer,
 	for (i = 0; i <height; i++)
 		memcpy(&blitter_buf_lock[i * width], &buf[i * width], width * 4);
 
-	cur_line = height - 1;
 
-	while (cur_line >= 0)
-	{
-		memcpy(
-			&blitter_buf_lock[2 * width*cur_line + width],
-			&blitter_buf_lock[1 * width*cur_line],
-			4 * width
-		);
-		memcpy(
-			&blitter_buf_lock[2 * width*cur_line + 0],
-			&blitter_buf_lock[1 * width*cur_line],
-			4 * width
-		);
-		--cur_line;
-	}
+  screen_width=width;
+  screen_height=height;
+  screen_pitch=width*4;
+
+
 }
 
 
