@@ -1561,6 +1561,7 @@ void retro_run (void)
          emu_step_initialize();
          /* Additional check for vioverlay not set at start */
          update_variables(false);
+         gfx_set_filtering();
       }
 
 #ifndef EMSCRIPTEN
