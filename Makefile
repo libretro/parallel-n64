@@ -217,8 +217,6 @@ else ifneq (,$(findstring osx,$(platform)))
    GL_LIB := -framework OpenGL
    PLATFORM_EXT := unix
 
-HAVE_THR_AL=1
-
    # Target Dynarec
    ifeq ($(ARCH), $(filter $(ARCH), ppc))
       WITH_DYNAREC =
