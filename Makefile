@@ -110,6 +110,8 @@ ifneq (,$(findstring unix,$(platform)))
 	endif
    fpic = -fPIC
 
+	HAVE_THR_AL=1
+
 #ifeq ($(WITH_DYNAREC), $(filter $(WITH_DYNAREC), x86_64 x64))
 #ifeq ($(HAVE_PARALLEL), 1)
 	#HAVE_PARALLEL_RSP=1
