@@ -1094,7 +1094,7 @@ void update_variables(bool startup)
          angrylion_set_vi(0);
    }
    else
-      angrylion_set_vi(1);
+      angrylion_set_vi(0);
 
    CFG_HLE_GFX = (gfx_plugin != GFX_ANGRYLION) && (gfx_plugin != GFX_PARALLEL) ? 1 : 0;
    CFG_HLE_AUD = 0; /* There is no HLE audio code in libretro audio plugin. */
@@ -1559,6 +1559,8 @@ void retro_run (void)
       {
          first_time = 0;
          emu_step_initialize();
+         /* Additional check for vioverlay not set at start */
+         update_variables(false);
       }
 
 #ifndef EMSCRIPTEN
