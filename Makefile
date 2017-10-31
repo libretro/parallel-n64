@@ -464,8 +464,10 @@ else ifneq (,$(findstring windows_msvc2017,$(platform)))
 	# NOTE: What about ARM?
 	ifneq (,$(findstring x64,$(TargetArchMoniker)))
 		VCCompilerToolsBinDir := $(VcCompilerToolsDir)\bin\HostX64
+		LDFLAGS += -MACHINE:X64
 	else
 		VCCompilerToolsBinDir := $(VcCompilerToolsDir)\bin\HostX86
+		LDFLAGS += -MACHINE:X86
 	endif
 
 	PATH := $(shell IFS=$$'\n'; cygpath "$(VCCompilerToolsBinDir)/$(TargetArchMoniker)"):$(PATH)
@@ -500,7 +502,7 @@ export LIB := $(LIB);$(WindowsSdkDir)\Lib;$(WindowsSdkDir)\Lib\winv6.3\um\x86
 TARGET := $(TARGET_NAME)_libretro.dll
 PSS_STYLE :=2
 ASFLAGS += -f win32
-LDFLAGS += -DLL
+LDFLAGS += -DLL -MACHINE:X86
 GL_LIB = opengl32.lib
 HAVE_PARALLEL=0
 HAVE_PARALLEL_RSP=0
@@ -527,7 +529,7 @@ export LIB := $(LIB);$(WindowsSdkDir)\Lib;$(WindowsSdkDir)\Lib\winv6.3\um\x64
 TARGET := $(TARGET_NAME)_libretro.dll
 PSS_STYLE :=2
 ASFLAGS += -f win64
-LDFLAGS += -DLL
+LDFLAGS += -DLL -MACHINE:X64
 GL_LIB = opengl32.lib
 HAVE_PARALLEL=0
 HAVE_PARALLEL_RSP=0
@@ -561,7 +563,7 @@ export LIB := $(LIB);$(VCINSTALLDIR)LIB\amd64;$(VCINSTALLDIR)ATLMFC\LIB\amd64;$(
 INCFLAGS_PLATFORM = -I"$(WindowsSDKVersion)um" -I"$(WindowsSDKVersion)shared"
 TARGET := $(TARGET_NAME)_libretro.dll
 PSS_STYLE :=2
-LDFLAGS += -DLL
+LDFLAGS += -DLL -MACHINE:X64
 GL_LIB = opengl32.lib
 HAVE_PARALLEL=0
 HAVE_PARALLEL_RSP=0
@@ -595,7 +597,7 @@ export LIB := $(LIB);$(VCINSTALLDIR)LIB;$(VCINSTALLDIR)ATLMFC\LIB;$(WindowsSdkDi
 INCFLAGS_PLATFORM = -I"$(WindowsSDKVersion)um" -I"$(WindowsSDKVersion)shared"
 TARGET := $(TARGET_NAME)_libretro.dll
 PSS_STYLE :=2
-LDFLAGS += -DLL
+LDFLAGS += -DLL -MACHINE:X86
 GL_LIB = opengl32.lib
 HAVE_PARALLEL=0
 HAVE_PARALLEL_RSP=0
@@ -624,7 +626,7 @@ export LIB := $(LIB);$(WindowsSdkDir)
 TARGET := $(TARGET_NAME)_libretro.dll
 PSS_STYLE :=2
 ASFLAGS += -f win64
-LDFLAGS += -DLL
+LDFLAGS += -DLL -MACHINE:X64
 GL_LIB = opengl32.lib
 HAVE_PARALLEL=0
 HAVE_PARALLEL_RSP=0
@@ -653,7 +655,7 @@ export LIB := $(LIB);$(WindowsSdkDir)
 TARGET := $(TARGET_NAME)_libretro.dll
 PSS_STYLE :=2
 ASFLAGS += -f win32
-LDFLAGS += -DLL
+LDFLAGS += -DLL -MACHINE:X86
 GL_LIB = opengl32.lib
 HAVE_PARALLEL=0
 HAVE_PARALLEL_RSP=0
@@ -678,7 +680,7 @@ export LIB := $(LIB);$(WindowsSdkDir);$(INETSDK)/Lib
 TARGET := $(TARGET_NAME)_libretro.dll
 PSS_STYLE :=2
 ASFLAGS += -f win32
-LDFLAGS += -DLL
+LDFLAGS += -DLL -MACHINE:X86
 CFLAGS += -D_CRT_SECURE_NO_DEPRECATE
 LIBS =
 GL_LIB = opengl32.lib
@@ -771,7 +773,7 @@ else
       endif
       CPUOPTS += -MD -Zi
       CPUOPTS += -EHsc -D_CRT_SECURE_NO_WARNINGS -D_ENDUSER_RELEASE -D__LIBRETRO_WIN64__ -D__SSE2__ -DUNICODE -D_UNICODE -D_USRDLL -DWIN32 -D_WINDLL -D_WINDOWS -WX- -Zc:forScope -Zc:wchar_t -Zi -wd4996 -W0 -fp:precise -Gd -GL -Gm- -GS- -Gy -DMSVC2010_EXPORTS -Oi -Ot
-      LDFLAGS += -LTCG -DYNAMICBASE -ERRORREPORT:QUEUE -INCREMENTAL:NO -MACHINE:X64 -MANIFEST:NO -NXCOMPAT -OPT:ICF -OPT:REF -SUBSYSTEM:WINDOWS,"5.02" -TLBID:1 advapi32.lib comdlg32.lib gdi32.lib kernel32.lib odbc32.lib odbccp32.lib ole32.lib oleaut32.lib shell32.lib user32.lib uuid.lib winspool.lib
+      LDFLAGS += -LTCG -DYNAMICBASE -ERRORREPORT:QUEUE -INCREMENTAL:NO -MANIFEST:NO -NXCOMPAT -OPT:ICF -OPT:REF -SUBSYSTEM:WINDOWS,"5.02" -TLBID:1 advapi32.lib comdlg32.lib gdi32.lib kernel32.lib odbc32.lib odbccp32.lib ole32.lib oleaut32.lib shell32.lib user32.lib uuid.lib winspool.lib
    endif
 endif
 
