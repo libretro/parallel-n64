@@ -37,11 +37,8 @@
 
 /* local variables */
 static struct hle_t g_hle;
-static void (*l_CheckInterrupts)(void) = NULL;
-static void (*l_ProcessDlistList)(void) = NULL;
-static void (*l_ProcessAlistList)(void) = NULL;
-static void (*l_ProcessRdpList)(void) = NULL;
-static void (*l_ShowCFB)(void) = NULL;
+
+static unsigned l_PluginInit = 0;
 
 /* local function */
 static void DebugMessage(int level, const char *message, va_list args)
@@ -72,12 +69,14 @@ void HleWarnMessage(void* UNUSED(user_defined), const char *message, ...)
 EXPORT m64p_error CALL hlePluginStartup(m64p_dynlib_handle UNUSED(CoreLibHandle), void *Context,
                                      void (*DebugCallback)(void *, int, const char *))
 {
-    return M64ERR_SUCCESS;
+   l_PluginInit = 1;
+   return M64ERR_SUCCESS;
 }
 
 EXPORT m64p_error CALL hlePluginShutdown(void)
 {
-    return M64ERR_SUCCESS;
+   l_PluginInit = 0;
+   return M64ERR_SUCCESS;
 }
 
 EXPORT m64p_error CALL hlePluginGetVersion(m64p_plugin_type *PluginType, int *PluginVersion, int *APIVersion, const char **PluginNamePtr, int *Capabilities)
@@ -101,44 +100,46 @@ EXPORT m64p_error CALL hlePluginGetVersion(m64p_plugin_type *PluginType, int *Pl
     return M64ERR_SUCCESS;
 }
 
-EXPORT unsigned int CALL hleDoRspCycles(unsigned int Cycles)
-{
-    hle_execute(&g_hle);
-    return Cycles;
-}
+extern RSP_INFO rsp_info;
 
 EXPORT void CALL hleInitiateRSP(RSP_INFO Rsp_Info, unsigned int* UNUSED(CycleCount))
 {
     hle_init(&g_hle,
-             Rsp_Info.RDRAM,
-             Rsp_Info.DMEM,
-             Rsp_Info.IMEM,
-             Rsp_Info.MI_INTR_REG,
-             Rsp_Info.SP_MEM_ADDR_REG,
-             Rsp_Info.SP_DRAM_ADDR_REG,
-             Rsp_Info.SP_RD_LEN_REG,
-             Rsp_Info.SP_WR_LEN_REG,
-             Rsp_Info.SP_STATUS_REG,
-             Rsp_Info.SP_DMA_FULL_REG,
-             Rsp_Info.SP_DMA_BUSY_REG,
-             Rsp_Info.SP_PC_REG,
-             Rsp_Info.SP_SEMAPHORE_REG,
-             Rsp_Info.DPC_START_REG,
-             Rsp_Info.DPC_END_REG,
-             Rsp_Info.DPC_CURRENT_REG,
-             Rsp_Info.DPC_STATUS_REG,
-             Rsp_Info.DPC_CLOCK_REG,
-             Rsp_Info.DPC_BUFBUSY_REG,
-             Rsp_Info.DPC_PIPEBUSY_REG,
-             Rsp_Info.DPC_TMEM_REG,
+             rsp_info.RDRAM,
+             rsp_info.DMEM,
+             rsp_info.IMEM,
+             rsp_info.MI_INTR_REG,
+             rsp_info.SP_MEM_ADDR_REG,
+             rsp_info.SP_DRAM_ADDR_REG,
+             rsp_info.SP_RD_LEN_REG,
+             rsp_info.SP_WR_LEN_REG,
+             rsp_info.SP_STATUS_REG,
+             rsp_info.SP_DMA_FULL_REG,
+             rsp_info.SP_DMA_BUSY_REG,
+             rsp_info.SP_PC_REG,
+             rsp_info.SP_SEMAPHORE_REG,
+             rsp_info.DPC_START_REG,
+             rsp_info.DPC_END_REG,
+             rsp_info.DPC_CURRENT_REG,
+             rsp_info.DPC_STATUS_REG,
+             rsp_info.DPC_CLOCK_REG,
+             rsp_info.DPC_BUFBUSY_REG,
+             rsp_info.DPC_PIPEBUSY_REG,
+             rsp_info.DPC_TMEM_REG,
              NULL);
 
-    l_CheckInterrupts = Rsp_Info.CheckInterrupts;
-    l_ProcessDlistList = Rsp_Info.ProcessDlistList;
-    l_ProcessAlistList = Rsp_Info.ProcessAlistList;
-    l_ProcessRdpList = Rsp_Info.ProcessRdpList;
-    l_ShowCFB = Rsp_Info.ShowCFB;
+    l_PluginInit = 1;
 }
+
+EXPORT unsigned int CALL hleDoRspCycles(unsigned int Cycles)
+{
+   if (!l_PluginInit)
+      hleInitiateRSP(rsp_info, NULL);
+
+   hle_execute(&g_hle);
+   return Cycles;
+}
+
 
 EXPORT void CALL hleRomClosed(void)
 {
