@@ -42,21 +42,13 @@ static void (*l_ProcessDlistList)(void) = NULL;
 static void (*l_ProcessAlistList)(void) = NULL;
 static void (*l_ProcessRdpList)(void) = NULL;
 static void (*l_ShowCFB)(void) = NULL;
-static void (*l_DebugCallback)(void *, int, const char *) = NULL;
-static void *l_DebugCallContext = NULL;
-static int l_PluginInit = 0;
 
 /* local function */
 static void DebugMessage(int level, const char *message, va_list args)
 {
     char msgbuf[1024];
 
-    if (l_DebugCallback == NULL)
-        return;
-
     vsprintf(msgbuf, message, args);
-
-    (*l_DebugCallback)(l_DebugCallContext, level, msgbuf);
 }
 
 /* Global functions needed by HLE core */
@@ -80,29 +72,11 @@ void HleWarnMessage(void* UNUSED(user_defined), const char *message, ...)
 EXPORT m64p_error CALL hlePluginStartup(m64p_dynlib_handle UNUSED(CoreLibHandle), void *Context,
                                      void (*DebugCallback)(void *, int, const char *))
 {
-    if (l_PluginInit)
-        return M64ERR_ALREADY_INIT;
-
-    /* first thing is to set the callback function for debug info */
-    l_DebugCallback = DebugCallback;
-    l_DebugCallContext = Context;
-
-    /* this plugin doesn't use any Core library functions (ex for Configuration), so no need to keep the CoreLibHandle */
-
-    l_PluginInit = 1;
     return M64ERR_SUCCESS;
 }
 
 EXPORT m64p_error CALL hlePluginShutdown(void)
 {
-    if (!l_PluginInit)
-        return M64ERR_NOT_INIT;
-
-    /* reset some local variable */
-    l_DebugCallback = NULL;
-    l_DebugCallContext = NULL;
-
-    l_PluginInit = 0;
     return M64ERR_SUCCESS;
 }
 
