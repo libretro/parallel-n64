@@ -66,20 +66,19 @@ void HleWarnMessage(void* UNUSED(user_defined), const char *message, ...)
 }
 
 /* DLL-exported functions */
-EXPORT m64p_error CALL hlePluginStartup(m64p_dynlib_handle UNUSED(CoreLibHandle), void *Context,
-                                     void (*DebugCallback)(void *, int, const char *))
+m64p_error hlePluginStartup(m64p_dynlib_handle UNUSED(CoreLibHandle), void *Context, void (*DebugCallback)(void *, int, const char *))
 {
    l_PluginInit = 1;
    return M64ERR_SUCCESS;
 }
 
-EXPORT m64p_error CALL hlePluginShutdown(void)
+m64p_error hlePluginShutdown(void)
 {
    l_PluginInit = 0;
    return M64ERR_SUCCESS;
 }
 
-EXPORT m64p_error CALL hlePluginGetVersion(m64p_plugin_type *PluginType, int *PluginVersion, int *APIVersion, const char **PluginNamePtr, int *Capabilities)
+m64p_error hlePluginGetVersion(m64p_plugin_type *PluginType, int *PluginVersion, int *APIVersion, const char **PluginNamePtr, int *Capabilities)
 {
     /* set version info */
     if (PluginType != NULL)
@@ -102,7 +101,7 @@ EXPORT m64p_error CALL hlePluginGetVersion(m64p_plugin_type *PluginType, int *Pl
 
 extern RSP_INFO rsp_info;
 
-EXPORT void CALL hleInitiateRSP(RSP_INFO Rsp_Info, unsigned int* UNUSED(CycleCount))
+void hleInitiateRSP(RSP_INFO Rsp_Info, unsigned int* UNUSED(CycleCount))
 {
     hle_init(&g_hle,
              rsp_info.RDRAM,
@@ -131,7 +130,7 @@ EXPORT void CALL hleInitiateRSP(RSP_INFO Rsp_Info, unsigned int* UNUSED(CycleCou
     l_PluginInit = 1;
 }
 
-EXPORT unsigned int CALL hleDoRspCycles(unsigned int Cycles)
+unsigned int hleDoRspCycles(unsigned int Cycles)
 {
    if (!l_PluginInit)
       hleInitiateRSP(rsp_info, NULL);
@@ -141,7 +140,7 @@ EXPORT unsigned int CALL hleDoRspCycles(unsigned int Cycles)
 }
 
 
-EXPORT void CALL hleRomClosed(void)
+void hleRomClosed(void)
 {
    /* do nothing */
 }
