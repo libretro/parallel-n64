@@ -14,7 +14,6 @@
 extern "C" {
 #endif
 
-#include "plugin.h"
 #include "msg.h"
 
 #ifdef __cplusplus
@@ -1342,8 +1341,8 @@ void vi_update(void)
     if (config->vi.mode >= VI_MODE_NUM)
         msg_error("Invalid VI mode: %d", config->vi.mode);
 
-    // parse and check some common registers
-    vi_reg_ptr = plugin_get_vi_registers();
+    /* parse and check some common registers */
+    vi_reg_ptr = (uint32_t**)&gfx_info.VI_STATUS_REG;
 
     v_start = (*vi_reg_ptr[VI_V_START] >> 16) & 0x3ff;
     h_start = (*vi_reg_ptr[VI_H_START] >> 16) & 0x3ff;

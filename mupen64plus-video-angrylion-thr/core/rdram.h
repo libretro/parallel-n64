@@ -7,6 +7,8 @@
 
 #include <retro_inline.h>
 
+#include "m64p_plugin.h"
+
 #define RDRAM_MASK 0x00ffffff
 
 /* endianness */
@@ -53,12 +55,6 @@ extern uint32_t idxlim32;
 extern uint32_t *rdram32;
 extern uint16_t *rdram16;
 
-void rdram_init(void);
-
-void rdram_write_idx8(uint32_t in, uint8_t val);
-void rdram_write_idx16(uint32_t in, uint16_t val);
-void rdram_write_idx32(uint32_t in, uint32_t val);
-
 static INLINE void rdram_read_pair16(uint16_t* rdst, uint8_t* hdst, uint32_t in)
 {
     in &= RDRAM_MASK >> 1;
@@ -69,6 +65,55 @@ static INLINE void rdram_read_pair16(uint16_t* rdst, uint8_t* hdst, uint32_t in)
     }
 }
 
-void rdram_write_pair8(uint32_t in, uint8_t rval, uint8_t hval);
-void rdram_write_pair16(uint32_t in, uint16_t rval, uint8_t hval);
-void rdram_write_pair32(uint32_t in, uint32_t rval, uint8_t hval0, uint8_t hval1);
+static INLINE void rdram_write_idx8(uint32_t in, uint8_t val)
+{
+    in &= RDRAM_MASK;
+    if (in <= idxlim8)
+        gfx_info.RDRAM[in ^ BYTE_ADDR_XOR] = val;
+}
+
+static INLINE void rdram_write_idx16(uint32_t in, uint16_t val)
+{
+    in &= RDRAM_MASK >> 1;
+    if (in <= idxlim16)
+        rdram16[in ^ WORD_ADDR_XOR] = val;
+}
+
+static INLINE void rdram_write_idx32(uint32_t in, uint32_t val)
+{
+    in &= RDRAM_MASK >> 2;
+    if (in <= idxlim32)
+        rdram32[in] = val;
+}
+
+static INLINE void rdram_write_pair8(uint32_t in, uint8_t rval, uint8_t hval)
+{
+    in &= RDRAM_MASK;
+    if (in <= idxlim8)
+    {
+        gfx_info.RDRAM[in ^ BYTE_ADDR_XOR] = rval;
+        if (in & 1)
+            rdram_hidden_bits[in >> 1] = hval;
+    }
+}
+
+static INLINE void rdram_write_pair16(uint32_t in, uint16_t rval, uint8_t hval)
+{
+    in &= RDRAM_MASK >> 1;
+    if (in <= idxlim16)
+    {
+        rdram16[in ^ WORD_ADDR_XOR] = rval;
+        rdram_hidden_bits[in] = hval;
+    }
+}
+
+static INLINE void rdram_write_pair32(uint32_t in, uint32_t rval, uint8_t hval0, uint8_t hval1)
+{
+    in &= RDRAM_MASK >> 2;
+    if (in <= idxlim32)
+    {
+        rdram32[in] = rval;
+        rdram_hidden_bits[in << 1] = hval0;
+        rdram_hidden_bits[(in << 1) + 1] = hval1;
+    }
+}

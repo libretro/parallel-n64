@@ -12,6 +12,7 @@
 #include "vi.h"
 #include "parallel_c.hpp"
 #include "rdram.h"
+#include "m64p_plugin.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -22,7 +23,6 @@ extern void DebugMessage(int level, const char *message, ...);
 
 #include "m64p_types.h"
 #include "m64p_config.h"
-#include "plugin.h"
 #include "msg.h"
 
 int retro_return(int just_flipping);
@@ -53,38 +53,17 @@ int ProcessDListShown = 0;
 
 extern GFX_INFO gfx_info;
 
+/* pointer indexing limits for aliasing RDRAM reads and writes */
+uint32_t idxlim8;
+uint32_t idxlim16;
+uint32_t idxlim32;
+
+uint32_t* rdram32;
+uint16_t* rdram16;
+
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-uint32_t** plugin_get_dp_registers(void)
-{
-    // HACK: this only works because the ordering of registers in GFX_INFO is
-    // the same as in dp_register
-    return (uint32_t**)&gfx_info.DPC_START_REG;
-}
-
-uint32_t** plugin_get_vi_registers(void)
-{
-    // HACK: this only works because the ordering of registers in GFX_INFO is
-    // the same as in vi_register
-    return (uint32_t**)&gfx_info.VI_STATUS_REG;
-}
-
-uint32_t plugin_get_rdram_size(void)
-{
-    return rdram_size;
-}
-
-uint8_t* plugin_get_dmem(void)
-{
-    return gfx_info.DMEM;
-}
-
-uint8_t* plugin_get_rom_header(void)
-{
-    return gfx_info.HEADER;
-}
 
 void angrylion_set_filtering(unsigned filter_type)
 {
@@ -303,7 +282,7 @@ static uint32_t get_rom_name(char* name, uint32_t name_size)
    if (name_size < 21)
       return 0;
 
-   rom_header = plugin_get_rom_header();
+   rom_header = gfx_info.HEADER;
 
    // not available
    if (!rom_header)
@@ -338,6 +317,16 @@ static uint32_t get_rom_name(char* name, uint32_t name_size)
    }
 
    return i;
+}
+
+static void rdram_init(void)
+{
+    idxlim8      = rdram_size - 1;
+    idxlim16     = (idxlim8 >> 1) & 0xffffffu;
+    idxlim32     = (idxlim8 >> 2) & 0xffffffu;
+
+    rdram32      = (uint32_t*)gfx_info.RDRAM;
+    rdram16      = (uint16_t*)gfx_info.RDRAM;
 }
 
 void core_init(struct core_config* _config)

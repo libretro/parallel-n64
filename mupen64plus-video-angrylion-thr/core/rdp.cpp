@@ -14,7 +14,6 @@ extern "C" {
 #endif
 
 #include "m64p_plugin.h"
-#include "plugin.h"
 #include "msg.h"
 
 #ifdef __cplusplus
@@ -435,8 +434,7 @@ void rdp_update(void)
 {
     int i, length;
     uint32_t cmd, cmd_length;
-
-    uint32_t** dp_reg      = plugin_get_dp_registers();
+    uint32_t** dp_reg      = (uint32_t**)&gfx_info.DPC_START_REG;
     uint32_t dp_current_al = *dp_reg[DP_CURRENT] & ~7, dp_end_al = *dp_reg[DP_END] & ~7;
 
     *dp_reg[DP_STATUS] &= ~DP_STATUS_FREEZE;
@@ -460,7 +458,7 @@ void rdp_update(void)
 
     if (*dp_reg[DP_STATUS] & DP_STATUS_XBUS_DMA)
     {
-        uint32_t* dmem = (uint32_t*)plugin_get_dmem();
+        uint32_t* dmem = (uint32_t*)(uint8_t*)gfx_info.DMEM;
         for (i = 0; i < toload; i ++)
         {
             rdp_cmd_data[rdp_cmd_ptr] = dmem[dp_current_al & 0x3ff];
@@ -2050,7 +2048,7 @@ static STRICTINLINE uint32_t z_compare(uint32_t zcurpixel, uint32_t sz, uint16_t
       uint32_t nearer, max, infront;
       uint32_t dzmemmodifier;
 
-      PAIRREAD16(zval, hval, zcurpixel);
+      PAIRREAD16(&zval, &hval, zcurpixel);
       oz = z_decompress(zval);
       rawdzmem = ((zval & 3) << 2) | hval;
       dzmem = dz_decompress(rawdzmem);
@@ -2375,7 +2373,7 @@ static void fbread_16(uint32_t curpixel, uint32_t* curpixel_memcvg)
 
     if (parallel_worker->globals.other_modes.image_read_en)
     {
-        PAIRREAD16(fword, hbyte, addr);
+        PAIRREAD16(&fword, &hbyte, addr);
 
         if (parallel_worker->globals.fb_format == FORMAT_RGBA)
         {
@@ -2421,7 +2419,7 @@ static void fbread2_16(uint32_t curpixel, uint32_t* curpixel_memcvg)
 
     if (parallel_worker->globals.other_modes.image_read_en)
     {
-        PAIRREAD16(fword, hbyte, addr);
+        PAIRREAD16(&fword, &hbyte, addr);
 
         if (parallel_worker->globals.fb_format == FORMAT_RGBA)
         {
