@@ -66,3 +66,5 @@ void rdram_read_pair16(uint16_t* rdst, uint8_t* hdst, uint32_t in);
 void rdram_write_pair8(uint32_t in, uint8_t rval, uint8_t hval);
 void rdram_write_pair16(uint32_t in, uint16_t rval, uint8_t hval);
 void rdram_write_pair32(uint32_t in, uint32_t rval, uint8_t hval0, uint8_t hval1);
+
+extern uint8_t rdram_hidden_bits[0x400000];

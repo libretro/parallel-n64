@@ -5,6 +5,8 @@
 #include <stdio.h>
 #include <string.h>
 
+#include <retro_miscellaneous.h>
+
 using namespace std;
 
 namespace RDP
