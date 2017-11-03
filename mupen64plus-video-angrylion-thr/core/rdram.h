@@ -29,8 +29,8 @@
 // macros used to interface with AL's code
 #define RREADADDR8(rdst, in) {(rdst) = ((((in) & RDRAM_MASK) <= idxlim8) ? gfx_info.RDRAM[((in) & RDRAM_MASK) ^ BYTE_ADDR_XOR] : 0);}
 #define RREADIDX16(rdst, in) {(rdst) = ((((in) & (RDRAM_MASK >> 1)) <= idxlim16) ? rdram16[((in) & (RDRAM_MASK >> 1)) ^ WORD_ADDR_XOR] : 0);}
+#define RREADIDX32(rdst, in) {(rdst) = ((((in) & (RDRAM_MASK >> 2)) <= idxlim32) ? rdram32[((in) & (RDRAM_MASK >> 2))] : 0);}
 #define RREADIDX16FAST(rdst, in) {(rdst) = rdram16[(in) ^WORD_ADDR_XOR];}
-#define RREADIDX32(rdst, in) {(rdst) = rdram_read_idx32((in));}
 
 #define RWRITEADDR8(in, val) rdram_write_idx8((in), (val))
 #define RWRITEIDX16(in, val) rdram_write_idx16((in), (val))
@@ -52,9 +52,6 @@ extern uint32_t *rdram32;
 extern uint16_t *rdram16;
 
 void rdram_init(void);
-
-uint32_t rdram_read_idx32(uint32_t in);
-uint32_t rdram_read_idx32_fast(uint32_t in);
 
 void rdram_write_idx8(uint32_t in, uint8_t val);
 void rdram_write_idx16(uint32_t in, uint16_t val);

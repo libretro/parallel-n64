@@ -80,7 +80,7 @@ extern "C" {
 
 #define VI_COMPARE32_OPT(x)                                             \
 {                                                                       \
-    pix = rdram_read_idx32_fast((x));                                   \
+    pix   = rdram32[(x)];                                               \
     tempr = (pix >> 27) & 0x1f;                                         \
     tempg = (pix >> 19) & 0x1f;                                         \
     tempb = (pix >> 11) & 0x1f;                                         \
@@ -1273,7 +1273,9 @@ static void vi_process_fast(void)
                      break;
                   case VI_TYPE_RGBA8888:
                      {
-                        uint32_t pix = rdram_read_idx32((frame_buffer >> 2) + line + x);
+                        uint32_t pix;
+                        uint32_t in  = (frame_buffer >> 2) + line + x;
+                        RREADIDX32(pix, in);
                         r = (pix >> 24) & 0xff;
                         g = (pix >> 16) & 0xff;
                         b = (pix >>  8) & 0xff;
