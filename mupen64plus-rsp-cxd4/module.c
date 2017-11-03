@@ -269,53 +269,9 @@ EXPORT void CALL API_PREFIX(InitiateRSP)(RSP_INFO Rsp_Info, pu32 CycleCount)
 
 EXPORT void CALL API_PREFIX(RomClosed)(void)
 {
-    FILE* stream;
-
     GET_RCP_REG(SP_PC_REG) = 0x04001000;
-
-/*
- * Sometimes the end user won't correctly install to the right directory. :(
- * If the config file wasn't installed correctly, politely shut errors up.
- */
-#if !defined(M64P_PLUGIN_API)
-    stream = my_fopen(CFG_FILE, "wb");
-    my_fwrite(conf, 8, 32 / 8, stream);
-    my_fclose(stream);
-#endif
-    return;
 }
 
-#if !defined(M64P_PLUGIN_API)
-
-NOINLINE void message(const char* body)
-{
-#ifdef WIN32
-    char* argv;
-    int i, j;
-
-    argv = my_calloc(my_strlen(body) + 64, 1);
-    my_strcpy(argv, "CMD /Q /D /C \"TITLE RSP Message&&ECHO ");
-    i = 0;
-    j = my_strlen(argv);
-    while (body[i] != '\0') {
-        if (body[i] == '\n') {
-            my_strcat(argv, "&&ECHO ");
-            ++i;
-            j += 7;
-            continue;
-        }
-        argv[j++] = body[i++];
-    }
-    my_strcat(argv, "&&PAUSE&&EXIT\"");
-    my_system(argv);
-    my_free(argv);
-#else
-    fputs(body, stdout);
-    putchar('\n');
-#endif
-    return;
-}
-#else
 NOINLINE void message(const char* body)
 {
 #if defined(M64P_PLUGIN_API)
@@ -325,31 +281,6 @@ NOINLINE void message(const char* body)
 #endif
 
 }
-#endif
-
-#if !defined(M64P_PLUGIN_API)
-NOINLINE void update_conf(const char* source)
-{
-    FILE* stream;
-    register int i;
-
-/*
- * hazard adjustment
- * If file not found, wipe the registry to 0's (all default settings).
- */
-    for (i = 0; i < 32; i++)
-        conf[i] = 0x00;
-
-    stream = my_fopen(source, "rb");
-    if (stream == NULL) {
-        message("Failed to read config.");
-        return;
-    }
-    my_fread(conf, 8, 32 / 8, stream);
-    my_fclose(stream);
-    return;
-}
-#endif
 
 #ifdef SP_EXECUTE_LOG
 void step_SP_commands(uint32_t inst)
@@ -413,7 +344,6 @@ void export_SP_memory(void)
 {
     export_data_cache();
     export_instruction_cache();
-    return;
 }
 
 /*
@@ -541,10 +471,6 @@ NOINLINE int my_system(char* command)
 NOINLINE FILE* my_fopen(const char * filename, const char* mode)
 {
 #ifdef WIN32
-#if 0
-    if (mode[1] != 'b')
-        return NULL; /* non-binary yet to be supported? */
-#endif
     return (FILE *)(HANDLE)CreateFileA(
         filename,
         (mode[0] == 'r') ? GENERIC_READ : GENERIC_WRITE,
