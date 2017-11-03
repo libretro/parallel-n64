@@ -109,6 +109,7 @@ uint32_t screen_width               = 640;
 uint32_t screen_height              = 480;
 uint32_t screen_pitch               = 0;
 uint32_t screen_aspectmodehint;
+uint32_t send_allist_to_hle_rsp     = 0;
 
 unsigned int BUFFERSWAP             = 0;
 unsigned int FAKE_SDL_TICKS         = 0;
@@ -310,6 +311,8 @@ static void setup_variables(void)
       { "parallel-n64-parallel-rdp-synchronous",
          "ParaLLEl Synchronous RDP; enabled|disabled" },
 #endif
+      { "parallel-n64-send_allist_to_hle_rsp",
+         "Send audio lists to HLE RSP; disabled|enabled" },
       { "parallel-n64-gfxplugin",
          "GFX Plugin; auto|glide64|gln64|rice|angrylion"
 #if defined(HAVE_PARALLEL)
@@ -1020,7 +1023,20 @@ void update_variables(bool startup)
    parallel_set_synchronous_rdp(rdp_sync);
 #endif
 
-   var.key = "parallel-n64-screensize";
+   var.key   = "parallel-n64-send_allist_to_hle_rsp";
+   var.value = NULL;
+
+   if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+   {
+      if(!strcmp(var.value, "enabled"))
+         send_allist_to_hle_rsp = true;
+      else
+         send_allist_to_hle_rsp = false;
+   }
+   else
+      send_allist_to_hle_rsp = false;
+
+   var.key   = "parallel-n64-screensize";
    var.value = NULL;
 
    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)

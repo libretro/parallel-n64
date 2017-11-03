@@ -265,6 +265,10 @@ int write_rsp_regs2(void* opaque, uint32_t address, uint32_t value, uint32_t mas
     return 0;
 }
 
+/* forward declaration */
+void hleDoRspCycles(unsigned int value);
+extern uint32_t send_allist_to_hle_rsp;
+
 void do_SP_Task(struct rsp_core* sp)
 {
     uint32_t save_pc = sp->regs2[SP_PC_REG] & ~0xfff;
@@ -304,7 +308,10 @@ void do_SP_Task(struct rsp_core* sp)
        /* Audio List */
         sp->regs2[SP_PC_REG] &= 0xfff;
         timed_section_start(TIMED_SECTION_AUDIO);
-        rsp.doRspCycles(0xffffffff);
+        if (send_allist_to_hle_rsp == 0)
+           rsp.doRspCycles(0xffffffff);
+        else
+           hleDoRspCycles(0xffffffff);
         timed_section_end(TIMED_SECTION_AUDIO);
         sp->regs2[SP_PC_REG] |= save_pc;
     }
