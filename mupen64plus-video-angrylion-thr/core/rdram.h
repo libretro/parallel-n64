@@ -5,6 +5,8 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+#include <retro_inline.h>
+
 #define RDRAM_MASK 0x00ffffff
 
 /* endianness */
@@ -36,7 +38,7 @@
 #define RWRITEIDX16(in, val) rdram_write_idx16((in), (val))
 #define RWRITEIDX32(in, val) rdram_write_idx32((in), (val))
 
-#define PAIRREAD16(rdst, hdst, in) rdram_read_pair16(&rdst, &hdst, (in))
+#define PAIRREAD16(rdst, hdst, in) rdram_read_pair16(rdst, hdst, (in))
 
 #define PAIRWRITE16(in, rval, hval) rdram_write_pair16((in), (rval), (hval))
 
@@ -57,7 +59,15 @@ void rdram_write_idx8(uint32_t in, uint8_t val);
 void rdram_write_idx16(uint32_t in, uint16_t val);
 void rdram_write_idx32(uint32_t in, uint32_t val);
 
-void rdram_read_pair16(uint16_t* rdst, uint8_t* hdst, uint32_t in);
+static INLINE void rdram_read_pair16(uint16_t* rdst, uint8_t* hdst, uint32_t in)
+{
+    in &= RDRAM_MASK >> 1;
+    if (in <= idxlim16)
+    {
+        *rdst = rdram16[in ^ WORD_ADDR_XOR];
+        *hdst = rdram_hidden_bits[in];
+    }
+}
 
 void rdram_write_pair8(uint32_t in, uint8_t rval, uint8_t hval);
 void rdram_write_pair16(uint32_t in, uint16_t rval, uint8_t hval);

@@ -55,18 +55,6 @@ void rdram_write_idx32(uint32_t in, uint32_t val)
         rdram32[in] = val;
 }
 
-void rdram_read_pair16(uint16_t* rdst, uint8_t* hdst, uint32_t in)
-{
-    in &= RDRAM_MASK >> 1;
-    if (in <= idxlim16)
-    {
-        *rdst = rdram16[in ^ WORD_ADDR_XOR];
-        *hdst = rdram_hidden_bits[in];
-    }
-    else
-        *rdst = *hdst = 0;
-}
-
 void rdram_write_pair8(uint32_t in, uint8_t rval, uint8_t hval)
 {
     in &= RDRAM_MASK;

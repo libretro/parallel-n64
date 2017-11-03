@@ -2034,10 +2034,10 @@ static STRICTINLINE uint32_t dz_compress(uint32_t value)
 
 static STRICTINLINE uint32_t z_compare(uint32_t zcurpixel, uint32_t sz, uint16_t dzpix, int dzpixenc, uint32_t* blend_en, uint32_t* prewrap, uint32_t* curpixel_cvg, uint32_t curpixel_memcvg)
 {
-   uint8_t hval;
-   uint16_t zval;
    uint32_t oz, dzmem;
    int32_t rawdzmem;
+   uint8_t hval       = 0;
+   uint16_t zval      = 0;
    int force_coplanar = 0;
    sz &= 0x3ffff;
 
@@ -2368,12 +2368,10 @@ static void fbread2_8(uint32_t curpixel, uint32_t* curpixel_memcvg)
 
 static void fbread_16(uint32_t curpixel, uint32_t* curpixel_memcvg)
 {
-    uint16_t fword;
-    uint8_t hbyte;
-    uint32_t addr = (parallel_worker->globals.fb_address >> 1) + curpixel;
-
     uint8_t lowbits;
-
+    uint16_t fword = 0;
+    uint8_t hbyte  = 0;
+    uint32_t addr  = (parallel_worker->globals.fb_address >> 1) + curpixel;
 
     if (parallel_worker->globals.other_modes.image_read_en)
     {
@@ -2415,11 +2413,11 @@ static void fbread_16(uint32_t curpixel, uint32_t* curpixel_memcvg)
 
 static void fbread2_16(uint32_t curpixel, uint32_t* curpixel_memcvg)
 {
-    uint16_t fword;
-    uint8_t hbyte;
-    uint32_t addr = (parallel_worker->globals.fb_address >> 1) + curpixel;
-
     uint8_t lowbits;
+    uint16_t fword = 0;
+    uint8_t hbyte  = 0;
+    uint32_t addr  = (parallel_worker->globals.fb_address >> 1) + curpixel;
+
 
     if (parallel_worker->globals.other_modes.image_read_en)
     {

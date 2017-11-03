@@ -90,7 +90,7 @@ extern "C" {
 }
 
 #define VI_ANDER(x) {                                                   \
-            PAIRREAD16(pix, hidval, (x));                                   \
+            PAIRREAD16(&pix, &hidval, (x));                                   \
             if (hidval == 3 && (pix & 1))                               \
             {                                                           \
                 backr[numoffull] = GET_HI(pix);                         \
@@ -606,13 +606,13 @@ void (*vi_fetch_filter_ptr)(struct ccvg*, uint32_t, uint32_t, union vi_reg_ctrl,
 static void vi_fetch_filter16(struct ccvg* res, uint32_t fboffset, uint32_t cur_x, union vi_reg_ctrl ctrl, uint32_t hres, uint32_t fetchstate)
 {
     int r, g, b;
-    uint32_t idx = (fboffset >> 1) + cur_x;
-    uint8_t hval;
-    uint16_t pix;
-    uint32_t cur_cvg;
+    uint32_t idx     = (fboffset >> 1) + cur_x;
+    uint8_t hval     = 0;
+    uint16_t pix     = 0;
+    uint32_t cur_cvg = 0;
     if (ctrl.aa_mode <= VI_AA_RESAMP_EXTRA)
     {
-        PAIRREAD16(pix, hval, idx);
+        PAIRREAD16(&pix, &hval, idx);
         cur_cvg = ((pix & 1) << 2) | hval;
     }
     else
@@ -1299,9 +1299,10 @@ static void vi_process_fast(void)
             case VI_MODE_COVERAGE:
                {
                   // TODO: incorrect for RGBA8888?
-                  uint8_t hval;
-                  uint16_t pix;
-                  rdram_read_pair16(&pix, &hval, (frame_buffer >> 1) + line + x);
+                  uint8_t hval = 0;
+                  uint16_t pix = 0;
+                  uint32_t in  = (frame_buffer >> 1) + line + x;
+                  PAIRREAD16(&pix, &hval, in);
                   r = g = b = (((pix & 1) << 2) | hval) << 5;
                }
                break;
