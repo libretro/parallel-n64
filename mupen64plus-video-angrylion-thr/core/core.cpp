@@ -71,11 +71,6 @@ uint32_t** plugin_get_vi_registers(void)
     return (uint32_t**)&gfx_info.VI_STATUS_REG;
 }
 
-uint8_t* plugin_get_rdram(void)
-{
-    return gfx_info.RDRAM;
-}
-
 uint8_t* plugin_get_rdram_hidden(void)
 {
     return rdram_hidden_bits;
