@@ -36,17 +36,68 @@
 #define RREADIDX32(rdst, in) {(rdst) = ((((in) & (RDRAM_MASK >> 2)) <= idxlim32) ? rdram32[((in) & (RDRAM_MASK >> 2))] : 0);}
 #define RREADIDX16FAST(rdst, in) {(rdst) = rdram16[(in) ^WORD_ADDR_XOR];}
 
-#define RWRITEADDR8(in, val) rdram_write_idx8((in), (val))
-#define RWRITEIDX16(in, val) rdram_write_idx16((in), (val))
-#define RWRITEIDX32(in, val) rdram_write_idx32((in), (val))
+#define PAIRREAD16(rdst, hdst, in) \
+{ \
+    (in) &= RDRAM_MASK >> 1; \
+    if ((in) <= idxlim16) \
+    { \
+        *(rdst) = rdram16[(in) ^ WORD_ADDR_XOR]; \
+        *(hdst) = rdram_hidden_bits[(in)]; \
+    } \
+}
+   
+#define PAIRWRITE16(in, rval, hval) \
+{ \
+    (in) &= RDRAM_MASK >> 1; \
+    if ((in) <= idxlim16) \
+    { \
+        rdram16[(in) ^ WORD_ADDR_XOR] = (rval); \
+        rdram_hidden_bits[(in)]       = (hval); \
+    } \
+}
 
-#define PAIRREAD16(rdst, hdst, in) rdram_read_pair16(rdst, hdst, (in))
+#define PAIRWRITE32(in, rval, hval0, hval1) \
+{ \
+    (in) &= RDRAM_MASK >> 2; \
+    if ((in) <= idxlim32) \
+    { \
+        rdram32[(in)]                      = (rval); \
+        rdram_hidden_bits[(in) << 1]       = (hval0); \
+        rdram_hidden_bits[((in) << 1) + 1] = (hval1); \
+    } \
+}
 
-#define PAIRWRITE16(in, rval, hval) rdram_write_pair16((in), (rval), (hval))
+#define PAIRWRITE8(in, rval, hval) \
+{ \
+    (in) &= RDRAM_MASK; \
+    if ((in) <= idxlim8) \
+    { \
+        gfx_info.RDRAM[(in) ^ BYTE_ADDR_XOR] = rval; \
+        if ((in) & 1) \
+            rdram_hidden_bits[(in) >> 1] = hval; \
+    } \
+}
 
-#define PAIRWRITE32(in, rval, hval0, hval1) rdram_write_pair32((in), (rval), (hval0), (hval1))
+#define RWRITEADDR8(in, val) \
+{ \
+    (in) &= RDRAM_MASK; \
+    if ((in) <= idxlim8) \
+        gfx_info.RDRAM[(in) ^ BYTE_ADDR_XOR] = (val); \
+}
 
-#define PAIRWRITE8(in, rval, hval) rdram_write_pair8((in), (rval), (hval))
+#define RWRITEIDX16(in, val) \
+{ \
+    (in) &= RDRAM_MASK >> 1; \
+    if ((in) <= idxlim16) \
+        rdram16[(in) ^ WORD_ADDR_XOR] = (val); \
+}
+
+#define RWRITEIDX32(in, val) \
+{ \
+    (in) &= RDRAM_MASK >> 2; \
+    if ((in) <= idxlim32) \
+        rdram32[(in)] = (val); \
+}
 
 extern uint32_t idxlim8;
 extern uint32_t idxlim16;
@@ -54,66 +105,3 @@ extern uint32_t idxlim32;
 
 extern uint32_t *rdram32;
 extern uint16_t *rdram16;
-
-static INLINE void rdram_read_pair16(uint16_t* rdst, uint8_t* hdst, uint32_t in)
-{
-    in &= RDRAM_MASK >> 1;
-    if (in <= idxlim16)
-    {
-        *rdst = rdram16[in ^ WORD_ADDR_XOR];
-        *hdst = rdram_hidden_bits[in];
-    }
-}
-
-static INLINE void rdram_write_idx8(uint32_t in, uint8_t val)
-{
-    in &= RDRAM_MASK;
-    if (in <= idxlim8)
-        gfx_info.RDRAM[in ^ BYTE_ADDR_XOR] = val;
-}
-
-static INLINE void rdram_write_idx16(uint32_t in, uint16_t val)
-{
-    in &= RDRAM_MASK >> 1;
-    if (in <= idxlim16)
-        rdram16[in ^ WORD_ADDR_XOR] = val;
-}
-
-static INLINE void rdram_write_idx32(uint32_t in, uint32_t val)
-{
-    in &= RDRAM_MASK >> 2;
-    if (in <= idxlim32)
-        rdram32[in] = val;
-}
-
-static INLINE void rdram_write_pair8(uint32_t in, uint8_t rval, uint8_t hval)
-{
-    in &= RDRAM_MASK;
-    if (in <= idxlim8)
-    {
-        gfx_info.RDRAM[in ^ BYTE_ADDR_XOR] = rval;
-        if (in & 1)
-            rdram_hidden_bits[in >> 1] = hval;
-    }
-}
-
-static INLINE void rdram_write_pair16(uint32_t in, uint16_t rval, uint8_t hval)
-{
-    in &= RDRAM_MASK >> 1;
-    if (in <= idxlim16)
-    {
-        rdram16[in ^ WORD_ADDR_XOR] = rval;
-        rdram_hidden_bits[in] = hval;
-    }
-}
-
-static INLINE void rdram_write_pair32(uint32_t in, uint32_t rval, uint8_t hval0, uint8_t hval1)
-{
-    in &= RDRAM_MASK >> 2;
-    if (in <= idxlim32)
-    {
-        rdram32[in] = rval;
-        rdram_hidden_bits[in << 1] = hval0;
-        rdram_hidden_bits[(in << 1) + 1] = hval1;
-    }
-}
