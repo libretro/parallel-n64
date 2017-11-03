@@ -47,7 +47,7 @@ static unsigned angrylion_filtering = 0;
 static unsigned angrylion_dithering = 1;
 
 static uint32_t rdram_size;
-uint8_t rdram_hidden_bits[0x400000];
+static uint8_t rdram_hidden_bits[0x400000];
 
 int ProcessDListShown = 0;
 
@@ -74,6 +74,11 @@ uint32_t** plugin_get_vi_registers(void)
 uint8_t* plugin_get_rdram(void)
 {
     return gfx_info.RDRAM;
+}
+
+uint8_t* plugin_get_rdram_hidden(void)
+{
+    return rdram_hidden_bits;
 }
 
 uint32_t plugin_get_rdram_size(void)

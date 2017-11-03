@@ -44,6 +44,17 @@ static inline uint64_t hash64(const void *data_, size_t size)
    return h;
 }
 
+static inline uint32_t next_pow2(uint32_t v)
+{
+   v--;
+   v |= v >> 16;
+   v |= v >> 8;
+   v |= v >> 4;
+   v |= v >> 2;
+   v |= v >> 1;
+   return v + 1;
+}
+
 #if defined(_MSC_VER)
 #define CLOCK_MONOTONIC 0
 

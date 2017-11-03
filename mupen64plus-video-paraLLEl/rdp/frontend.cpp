@@ -2,28 +2,26 @@
 #include <assert.h>
 #include <string.h>
 
-#include <retro_miscellaneous.h>
-
 using namespace std;
 
 namespace RDP
 {
 static int32_t minimum(int32_t x0, int32_t x1, int32_t x2, int32_t x3, int32_t x4, int32_t x5)
 {
-   x0 = MIN(x0, x1);
-   x2 = MIN(x2, x3);
-   x4 = MIN(x4, x5);
-   x0 = MIN(x0, x2);
-   return MIN(x0, x4);
+   x0 = min(x0, x1);
+   x2 = min(x2, x3);
+   x4 = min(x4, x5);
+   x0 = min(x0, x2);
+   return min(x0, x4);
 }
 
 static int32_t maximum(int32_t x0, int32_t x1, int32_t x2, int32_t x3, int32_t x4, int32_t x5)
 {
-   x0 = MAX(x0, x1);
-   x2 = MAX(x2, x3);
-   x4 = MAX(x4, x5);
-   x0 = MAX(x0, x2);
-   return MAX(x0, x4);
+   x0 = max(x0, x1);
+   x2 = max(x2, x3);
+   x4 = max(x4, x5);
+   x0 = max(x0, x2);
+   return max(x0, x4);
 }
 
 void Frontend::invalid(const uint32_t *)
@@ -190,7 +188,7 @@ void Frontend::tri_fill_tile(Primitive *prim, uint32_t *tile_mask, uint32_t mips
 		prim->flags |= RDP_FLAG_SAMPLE_TEX_LOD;
 		// Detail mip-chains have an extra LOD level.
 		if (other_modes.detail_tex_en)
-			mips = MIN(mips + 1u, 8u);
+			mips = min(mips + 1u, 8u);
 	}
 
 	if (other_modes.cycle_type == CYCLE_TYPE_2)

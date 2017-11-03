@@ -413,7 +413,7 @@ else ifneq (,$(findstring windows_msvc2017,$(platform)))
 	CC_AS = nasm.exe
         ASFLAGS += -f win64
 	GL_LIB = opengl32.lib
-	HAVE_PARALLEL=0
+	HAVE_PARALLEL=1
 	HAVE_PARALLEL_RSP=0
 	HAVE_THR_AL=1
 
