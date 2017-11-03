@@ -15,7 +15,6 @@ extern "C" {
 }
 #endif
 
-#define RDRAM_MASK 0x00ffffff
 
 // pointer indexing limits for aliasing RDRAM reads and writes
 uint32_t idxlim8;
@@ -35,17 +34,6 @@ void rdram_init(void)
     rdram32      = (uint32_t*)gfx_info.RDRAM;
     rdram16      = (uint16_t*)gfx_info.RDRAM;
     rdram_hidden = plugin_get_rdram_hidden();
-}
-
-uint8_t rdram_read_idx8(uint32_t in)
-{
-    in &= RDRAM_MASK;
-    return (in <= idxlim8) ? gfx_info.RDRAM[in ^ BYTE_ADDR_XOR] : 0;
-}
-
-uint8_t rdram_read_idx8_fast(uint32_t in)
-{
-    return gfx_info.RDRAM[in ^ BYTE_ADDR_XOR];
 }
 
 uint16_t rdram_read_idx16(uint32_t in)

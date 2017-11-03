@@ -13,6 +13,7 @@
 extern "C" {
 #endif
 
+#include "m64p_plugin.h"
 #include "plugin.h"
 #include "msg.h"
 

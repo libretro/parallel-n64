@@ -5,30 +5,29 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-// endianness
-#define LSB_FIRST 1 
-#ifdef LSB_FIRST
-    #define BYTE_ADDR_XOR       3
-    #define WORD_ADDR_XOR       1
-    #define BYTE4_XOR_BE(a)     ((a) ^ BYTE_ADDR_XOR)
-#else
-    #define BYTE_ADDR_XOR       0
-    #define WORD_ADDR_XOR       0
-    #define BYTE4_XOR_BE(a)     (a)
-#endif
+#define RDRAM_MASK 0x00ffffff
 
-#ifdef LSB_FIRST
-    #define BYTE_XOR_DWORD_SWAP 7
-    #define WORD_XOR_DWORD_SWAP 3
+/* endianness */
+#ifdef MSB_FIRST
+#define BYTE_ADDR_XOR       0
+#define WORD_ADDR_XOR       0
+#define BYTE4_XOR_BE(a)     (a)
+
+#define BYTE_XOR_DWORD_SWAP 4
+#define WORD_XOR_DWORD_SWAP 2
 #else
-    #define BYTE_XOR_DWORD_SWAP 4
-    #define WORD_XOR_DWORD_SWAP 2
+#define BYTE_ADDR_XOR       3
+#define WORD_ADDR_XOR       1
+#define BYTE4_XOR_BE(a)     ((a) ^ BYTE_ADDR_XOR)
+
+#define BYTE_XOR_DWORD_SWAP 7
+#define WORD_XOR_DWORD_SWAP 3
 #endif
 
 #define DWORD_XOR_DWORD_SWAP 1
 
 // macros used to interface with AL's code
-#define RREADADDR8(rdst, in) {(rdst) = rdram_read_idx8((in));}
+#define RREADADDR8(rdst, in) {(rdst) = ((((in) & RDRAM_MASK) <= idxlim8) ? gfx_info.RDRAM[((in) & RDRAM_MASK) ^ BYTE_ADDR_XOR] : 0);}
 #define RREADIDX16(rdst, in) {(rdst) = rdram_read_idx16((in));}
 #define RREADIDX32(rdst, in) {(rdst) = rdram_read_idx32((in));}
 
@@ -50,8 +49,6 @@ extern uint32_t idxlim32;
 
 void rdram_init(void);
 
-uint8_t rdram_read_idx8(uint32_t in);
-uint8_t rdram_read_idx8_fast(uint32_t in);
 uint16_t rdram_read_idx16(uint32_t in);
 uint16_t rdram_read_idx16_fast(uint32_t in);
 uint32_t rdram_read_idx32(uint32_t in);
