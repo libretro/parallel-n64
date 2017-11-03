@@ -313,8 +313,6 @@ void core_close(void);
 void core_config_update(struct core_config* config);
 void core_config_defaults(struct core_config* config);
 void core_dp_sync(void);
-void core_dp_update(void);
-void core_vi_update(void);
 void screen_swap(void);
 
 #ifdef __cplusplus

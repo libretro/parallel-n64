@@ -126,7 +126,7 @@ void angrylionProcessDList(void)
 
 void angrylionProcessRDPList(void)
 {
-   core_dp_update();
+   rdp_update();
 }
 
 void angrylionRomClosed (void)
@@ -167,14 +167,13 @@ int angrylionRomOpen(void)
 
 void angrylionUpdateScreen(void)
 {
-    static int counter;
-
 #ifdef HAVE_FRAMESKIP
+    static int counter;
     if (counter++ < skip)
         return;
     counter = 0;
 #endif
-    core_vi_update();
+    vi_update();
     retro_return(true);
 }
 
@@ -388,16 +387,6 @@ void core_config_defaults(struct core_config* config)
 {
     memset(config, 0, sizeof(*config));
     config->parallel = true;
-}
-
-void core_dp_update(void)
-{
-    rdp_update();
-}
-
-void core_vi_update(void)
-{
-    vi_update();
 }
 
 void core_close(void)
