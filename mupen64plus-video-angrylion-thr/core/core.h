@@ -47,9 +47,6 @@ enum vi_mode
 struct core_config
 {
     struct {
-        bool trace_record;
-    } dp;
-    struct {
         enum vi_mode mode;
         bool widescreen;
         bool overscan;

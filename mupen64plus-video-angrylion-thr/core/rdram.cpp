@@ -24,7 +24,6 @@ static uint32_t idxlim32;
 
 static uint32_t* rdram32;
 static uint16_t* rdram16;
-static uint8_t* rdram8;
 static uint8_t* rdram_hidden;
 
 void rdram_init(void)
@@ -33,9 +32,8 @@ void rdram_init(void)
     idxlim16     = (idxlim8 >> 1) & 0xffffffu;
     idxlim32     = (idxlim8 >> 2) & 0xffffffu;
 
-    rdram32      = (uint32_t*)plugin_get_rdram();
-    rdram16      = (uint16_t*)plugin_get_rdram();
-    rdram8       = plugin_get_rdram();
+    rdram32      = (uint32_t*)gfx_info.RDRAM;
+    rdram16      = (uint16_t*)gfx_info.RDRAM;
     rdram_hidden = plugin_get_rdram_hidden();
 }
 
@@ -61,12 +59,12 @@ bool rdram_valid_idx32(uint32_t in)
 uint8_t rdram_read_idx8(uint32_t in)
 {
     in &= RDRAM_MASK;
-    return rdram_valid_idx8(in) ? rdram8[in ^ BYTE_ADDR_XOR] : 0;
+    return rdram_valid_idx8(in) ? gfx_info.RDRAM[in ^ BYTE_ADDR_XOR] : 0;
 }
 
 uint8_t rdram_read_idx8_fast(uint32_t in)
 {
-    return rdram8[in ^ BYTE_ADDR_XOR];
+    return gfx_info.RDRAM[in ^ BYTE_ADDR_XOR];
 }
 
 uint16_t rdram_read_idx16(uint32_t in)
@@ -95,7 +93,7 @@ void rdram_write_idx8(uint32_t in, uint8_t val)
 {
     in &= RDRAM_MASK;
     if (in <= idxlim8)
-        rdram8[in ^ BYTE_ADDR_XOR] = val;
+        gfx_info.RDRAM[in ^ BYTE_ADDR_XOR] = val;
 }
 
 void rdram_write_idx16(uint32_t in, uint16_t val)
@@ -129,7 +127,7 @@ void rdram_write_pair8(uint32_t in, uint8_t rval, uint8_t hval)
     in &= RDRAM_MASK;
     if (rdram_valid_idx8(in))
     {
-        rdram8[in ^ BYTE_ADDR_XOR] = rval;
+        gfx_info.RDRAM[in ^ BYTE_ADDR_XOR] = rval;
         if (in & 1)
             rdram_hidden[in >> 1] = hval;
     }
