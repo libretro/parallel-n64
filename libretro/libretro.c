@@ -272,6 +272,9 @@ static void core_settings_autoselect_rsp_plugin(void)
       rsp_plugin = RSP_CXD4;
 #endif
    }
+
+   if (gfx_plugin == GFX_ANGRYLION)
+      rsp_plugin = RSP_CXD4;
 }
 
 static void setup_variables(void)
