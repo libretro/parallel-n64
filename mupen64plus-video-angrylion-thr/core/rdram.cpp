@@ -34,17 +34,6 @@ void rdram_init(void)
     rdram16      = (uint16_t*)gfx_info.RDRAM;
 }
 
-uint16_t rdram_read_idx16(uint32_t in)
-{
-    in &= RDRAM_MASK >> 1;
-    return (in <= idxlim16) ? rdram16[in ^ WORD_ADDR_XOR] : 0;
-}
-
-uint16_t rdram_read_idx16_fast(uint32_t in)
-{
-    return rdram16[in ^ WORD_ADDR_XOR];
-}
-
 uint32_t rdram_read_idx32(uint32_t in)
 {
     in &= RDRAM_MASK >> 2;

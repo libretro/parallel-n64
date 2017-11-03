@@ -57,7 +57,7 @@ extern "C" {
 
 #define VI_COMPARE_OPT(x)                                           \
 {                                                                   \
-    pix = rdram_read_idx16_fast((x));                               \
+   RREADIDX16FAST(pix, (x));                                        \
     tempr = (pix >> 11) & 0x1f;                                     \
     tempg = (pix >> 6) & 0x1f;                                      \
     tempb = (pix >> 1) & 0x1f;                                      \
@@ -1263,7 +1263,9 @@ static void vi_process_fast(void)
                {
                   case VI_TYPE_RGBA5551:
                      {
-                        uint16_t pix = rdram_read_idx16((frame_buffer >> 1) + line + x);
+                        uint16_t pix;
+                        uint32_t in = (frame_buffer >> 1) + line + x;
+                        RREADIDX16(pix, in);
                         r = ((pix >> 11) & 0x1f) << 3;
                         g = ((pix >>  6) & 0x1f) << 3;
                         b = ((pix >>  1) & 0x1f) << 3;
@@ -1284,7 +1286,12 @@ static void vi_process_fast(void)
                break;
 
             case VI_MODE_DEPTH:
-               r = g = b = rdram_read_idx16((rdp_get_zb_address() >> 1) + line + x) >> 8;
+               {
+                  uint16_t pix;
+                  uint32_t in = ((rdp_get_zb_address() >> 1) + line + x) >> 8;
+                  RREADIDX16(pix,in);
+                  r = g = b = pix;
+               }
                break;
 
             case VI_MODE_COVERAGE:
