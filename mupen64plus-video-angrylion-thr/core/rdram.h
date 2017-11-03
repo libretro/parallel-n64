@@ -47,6 +47,9 @@ extern uint32_t idxlim8;
 extern uint32_t idxlim16;
 extern uint32_t idxlim32;
 
+extern uint32_t *rdram32;
+extern uint16_t *rdram16;
+
 void rdram_init(void);
 
 uint16_t rdram_read_idx16(uint32_t in);

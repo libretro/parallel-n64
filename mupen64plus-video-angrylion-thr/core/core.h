@@ -55,6 +55,8 @@ struct core_config
     uint32_t num_workers;
 };
 
+extern uint8_t rdram_hidden_bits[0x400000];
+
 #ifdef __cplusplus
 extern "C" {
 #endif

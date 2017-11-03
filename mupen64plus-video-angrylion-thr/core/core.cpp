@@ -47,7 +47,7 @@ static unsigned angrylion_filtering = 0;
 static unsigned angrylion_dithering = 1;
 
 static uint32_t rdram_size;
-static uint8_t rdram_hidden_bits[0x400000];
+uint8_t rdram_hidden_bits[0x400000];
 
 int ProcessDListShown = 0;
 
@@ -69,11 +69,6 @@ uint32_t** plugin_get_vi_registers(void)
     // HACK: this only works because the ordering of registers in GFX_INFO is
     // the same as in vi_register
     return (uint32_t**)&gfx_info.VI_STATUS_REG;
-}
-
-uint8_t* plugin_get_rdram_hidden(void)
-{
-    return rdram_hidden_bits;
 }
 
 uint32_t plugin_get_rdram_size(void)
