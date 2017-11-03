@@ -487,7 +487,8 @@ static STRICTINLINE void restore_filter16(int* r, int* g, int* b, uint32_t fboff
    uint16_t pix;
    uint32_t addr;
 
-   if (rdram_valid_idx16(maxpix) && rdram_valid_idx16(leftuppix))
+   if (  (maxpix    <= idxlim16) &&
+         (leftuppix <= idxlim16))
    {
       VI_COMPARE_OPT(leftuppix);
       VI_COMPARE_OPT(leftuppix + 1);
@@ -547,7 +548,10 @@ static STRICTINLINE void restore_filter32(int* r, int* g, int* b, uint32_t fboff
    uint32_t tempr, tempg, tempb;
    uint32_t pix, addr;
 
-   if (rdram_valid_idx32(maxpix) && rdram_valid_idx32(leftuppix))
+   if (
+         (maxpix <= idxlim32)    &&
+         (leftuppix <= idxlim32)
+      )
    {
       VI_COMPARE32_OPT(leftuppix);
       VI_COMPARE32_OPT(leftuppix + 1);

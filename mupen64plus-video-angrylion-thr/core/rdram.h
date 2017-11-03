@@ -44,11 +44,11 @@
 
 #define PAIRWRITE8(in, rval, hval) rdram_write_pair8((in), (rval), (hval))
 
-void rdram_init(void);
+extern uint32_t idxlim8;
+extern uint32_t idxlim16;
+extern uint32_t idxlim32;
 
-bool rdram_valid_idx8(uint32_t in);
-bool rdram_valid_idx16(uint32_t in);
-bool rdram_valid_idx32(uint32_t in);
+void rdram_init(void);
 
 uint8_t rdram_read_idx8(uint32_t in);
 uint8_t rdram_read_idx8_fast(uint32_t in);
