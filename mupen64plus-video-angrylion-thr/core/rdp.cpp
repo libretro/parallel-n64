@@ -110,6 +110,7 @@ extern "C" {
 #define TEXEL_I32               0x13
 
 #define CMD_BUFFER_COUNT        1024
+#define CMD_MAX_BUFFER_LENGTH   0x10000
 
 #define CVG_CLAMP               0
 #define CVG_WRAP                1
@@ -419,12 +420,15 @@ void rdp_cmd(const uint32_t* arg, uint32_t length)
 {
     uint32_t cmd_id = CMD_ID(arg);
 
+    /* flush pending commands if the next command requires it */
     if (rdp_commands[cmd_id].sync && config->parallel)
         rdp_cmd_flush();
 
+    /* run command in main thread */
     if (rdp_commands[cmd_id].singlethread || !config->parallel)
         rdp_cmd_run(arg);
 
+    /* run command in worker threads */
     if (rdp_commands[cmd_id].multithread && config->parallel)
         rdp_cmd_push(arg, length);
 }
@@ -432,7 +436,6 @@ void rdp_cmd(const uint32_t* arg, uint32_t length)
 void rdp_update(void)
 {
     int i, length;
-    uint32_t remaining_length;
     uint32_t cmd, cmd_length;
     uint32_t** dp_reg      = (uint32_t**)&gfx_info.DPC_START_REG;
     uint32_t dp_current_al = *dp_reg[DP_CURRENT] & ~7, dp_end_al = *dp_reg[DP_END] & ~7;
@@ -443,13 +446,12 @@ void rdp_update(void)
         return;
 
     length             = (dp_end_al - dp_current_al) >> 2;
-    remaining_length   = length;
 
     dp_current_al    >>= 2;
 
-    while (remaining_length)
+    while (length)
     {
-       int toload = remaining_length > 0x10000 ? 0x10000 : remaining_length;
+       int toload = length > CMD_MAX_BUFFER_LENGTH ? CMD_MAX_BUFFER_LENGTH : length;
 
        if (*dp_reg[DP_STATUS] & DP_STATUS_XBUS_DMA)
        {
@@ -472,7 +474,7 @@ void rdp_update(void)
           }
        }
 
-       remaining_length -= toload;
+       length -= toload;
 
        while (rdp_cmd_cur < rdp_cmd_ptr && !rdp_pipeline_crashed)
        {
@@ -481,11 +483,11 @@ void rdp_update(void)
 
           if ((rdp_cmd_ptr - rdp_cmd_cur) < cmd_length)
           {
-             if (!remaining_length)
+             if (!length)
                 goto end;
 
              dp_current_al    -= (rdp_cmd_ptr - rdp_cmd_cur);
-             remaining_length += (rdp_cmd_ptr - rdp_cmd_cur);
+             length           += (rdp_cmd_ptr - rdp_cmd_cur);
              break;
           }
 
