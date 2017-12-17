@@ -792,8 +792,8 @@ ifeq ($(GLIDEN64),1)
 else ifeq ($(HAVE_PARALLEL), 1)
    WANT_CXX11=1
    ifeq (,$(findstring msvc,$(platform)))
-     CFLAGS   += -MMD
-     CXXFLAGS += -MMD
+     CFLAGS   += -MMD -MT
+     CXXFLAGS += -MMD -MT
    endif
 else ifeq (,$(findstring msvc,$(platform)))
     CFLAGS   += -MMD
