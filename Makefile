@@ -166,7 +166,14 @@ ifneq (,$(findstring unix,$(platform)))
          # ODROID-C1
          CPUFLAGS += -mcpu=cortex-a5 -mfpu=neon
       else ifneq (,$(findstring ODROID-XU3,$(BOARD)))
-         # ODROID-XU4, XU3 & XU3 Lite
+         # ODROID-XU4 (on older kernel), XU3 & XU3 Lite
+         ifeq "$(shell expr `gcc -dumpversion` \>= 4.9)" "1"
+            CPUFLAGS += -march=armv7ve -mcpu=cortex-a15.cortex-a7 -mfpu=neon-vfpv4
+         else
+            CPUFLAGS += -mcpu=cortex-a9 -mfpu=neon
+         endif
+      else ifneq (,$(findstring ODROID-XU4,$(BOARD)))
+         # ODROID-XU4 on newer kernels now identify as ODROID-XU4
          ifeq "$(shell expr `gcc -dumpversion` \>= 4.9)" "1"
             CPUFLAGS += -march=armv7ve -mcpu=cortex-a15.cortex-a7 -mfpu=neon-vfpv4
          else
