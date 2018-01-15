@@ -131,14 +131,14 @@ ifneq (,$(findstring unix,$(platform)))
    # Raspberry Pi
    ifneq (,$(findstring rpi,$(platform)))
       GLES = 1
-      
+
       ifneq (,$(findstring mesa,$(platform)))
          GL_LIB := -lGLESv2
       else
          GL_LIB := -L/opt/vc/lib -lGLESv2
          INCFLAGS += -I/opt/vc/include -I/opt/vc/include/interface/vcos -I/opt/vc/include/interface/vcos/pthreads
       endif
-      
+
       WITH_DYNAREC=arm
       ifneq (,$(findstring rpi2,$(platform)))
          CPUFLAGS += -DNO_ASM -DARM -D__arm__ -DARM_ASM -D__NEON_OPT -DNOSSE
@@ -333,40 +333,17 @@ else ifeq ($(platform), emscripten)
    GLES := 1
    WITH_DYNAREC :=
 
-   HAVE_PARALLEL=0
+   HAVE_PARALLEL = 0
    CPUFLAGS += -DNOSSE
    CPUFLAGS += -DEMSCRIPTEN -DNO_ASM -s USE_ZLIB=1
-   PLATCFLAGS += \
-      -Dsinc_resampler=mupen_sinc_resampler \
-      -DCC_resampler=mupen_CC_resampler \
-      -Drglgen_symbol_map=mupen_rglgen_symbol_map \
-      -Drglgen_resolve_symbols_custom=mupen_rglgen_resolve_symbols_custom \
-      -Drglgen_resolve_symbols=mupen_rglgen_resolve_symbols \
-      -Dmemalign_alloc=mupen_memalign_alloc \
-      -Dmemalign_free=mupen_memalign_free \
-      -Dmemalign_alloc_aligned=mupen_memalign_alloc_aligned \
-      -Daudio_resampler_driver_find_handle=mupen_audio_resampler_driver_find_handle \
-      -Daudio_resampler_driver_find_ident=mupen_audio_resampler_driver_find_ident \
-      -Drarch_resampler_realloc=mupen_rarch_resampler_realloc \
-      -Dconvert_float_to_s16_C=mupen_convert_float_to_s16_C \
-      -Dconvert_float_to_s16_init_simd=mupen_convert_float_to_s16_init_simd \
-      -Dconvert_s16_to_float_C=mupen_convert_s16_to_float_C \
-      -Dconvert_s16_to_float_init_simd=mupen_convert_s16_to_float_init_simd \
-      -Dcpu_features_get_perf_counter=mupen_cpu_features_get_perf_counter \
-      -Dcpu_features_get_time_usec=mupen_cpu_features_get_time_usec \
-      -Dcpu_features_get_core_amount=mupen_cpu_features_get_core_amount \
-      -Dcpu_features_get=mupen_cpu_features_get \
-      -Dffs=mupen_ffs \
-      -Dstrlcpy_retro__=mupen_strlcpy_retro__ \
-      -Dstrlcat_retro__=mupen_strlcat_retro__
-
 
    WITH_DYNAREC =
-	CC = emcc
+   CC = emcc
    CXX = em++
    HAVE_NEON = 0
    PLATFORM_EXT := unix
-	STATIC_LINKING=1
+   STATIC_LINKING = 1
+   SOURCES_C += $(CORE_DIR)/src/r4300/empty_dynarec.c
    #HAVE_SHARED_CONTEXT := 1
 
 # PlayStation Vita
@@ -388,7 +365,7 @@ else ifneq (,$(findstring vita,$(platform)))
    CPUCFLAGS += -DNO_ASM
    CFLAGS += -DVITA -lm
    VITA = 1
-	HAVE_PARALLEL=0
+   HAVE_PARALLEL=0
    SOURCES_C += $(CORE_DIR)/src/r4300/empty_dynarec.c
 
    PLATFORM_EXT := unix
@@ -742,8 +719,8 @@ endif
 
 COREFLAGS += -D__LIBRETRO__ -DM64P_PLUGIN_API -DM64P_CORE_PROTOTYPES -D_ENDUSER_RELEASE -DSINC_LOWER_QUALITY
 
-OBJOUT   = -o
-LINKOUT  = -o 
+OBJOUT   = -o $(shell)
+LINKOUT  = -o $(shell)
 
 ifneq (,$(findstring msvc,$(platform)))
 	OBJOUT = -Fo
@@ -803,7 +780,7 @@ else ifeq ($(HAVE_PARALLEL), 1)
      CXXFLAGS += -MMD
    else
      CFLAGS   += -MT
-     CXXFLAGS += -MT     
+     CXXFLAGS += -MT
    endif
 else ifeq (,$(findstring msvc,$(platform)))
     CFLAGS   += -MMD
@@ -825,7 +802,7 @@ endif
 
 ifeq ($(WANT_CXX11),1)
 ifeq (,$(findstring msvc,$(platform)))
-CXXFLAGS += -std=c++0x 
+CXXFLAGS += -std=c++0x
 endif
 endif
 
@@ -874,7 +851,7 @@ endif
 
 %.o: %.S
 ifneq (,$(findstring msvc,$(platform)))
-	$(CC_AS) $(ASFLAGS) -o$@ $< 
+	$(CC_AS) $(ASFLAGS) -o$@ $<
 else
 	$(CC_AS) $(ASFLAGS) -c $< $(OBJOUT)$@
 endif

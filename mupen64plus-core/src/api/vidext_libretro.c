@@ -8,7 +8,7 @@
  *   the Free Software Foundation; either version 2 of the License, or     *
  *   (at your option) any later version.                                   *
  *                                                                         *
- *   This program is distributed in the hope that it will be useful,       * 
+ *   This program is distributed in the hope that it will be useful,       *
  *   but WITHOUT ANY WARRANTY; without even the implied warranty of        *
  *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the         *
  *   GNU General Public License for more details.                          *
@@ -18,7 +18,7 @@
  *   Free Software Foundation, Inc.,                                       *
  *   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.          *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
-                       
+
 /* This file contains the Core video extension functions which will be exported
  * outside of the core library.
  */
@@ -28,7 +28,7 @@
 
 #include <boolean.h>
 
-void retro_return(bool a);
+int retro_return(int a);
 
 #define M64P_CORE_PROTOTYPES 1
 #include "m64p_types.h"
@@ -121,7 +121,7 @@ EXPORT m64p_error CALL VidExt_Quit(void)
 EXPORT m64p_error CALL VidExt_SetVideoMode(int Width, int Height, int BitsPerPixel,
       m64p_video_mode ScreenMode, m64p_video_flags Flags)
 {
-   /* TODO/FIXME - implement. */ 
+   /* TODO/FIXME - implement. */
    return M64ERR_SUCCESS;
 }
 
