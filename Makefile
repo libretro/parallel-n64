@@ -719,8 +719,8 @@ endif
 
 COREFLAGS += -D__LIBRETRO__ -DM64P_PLUGIN_API -DM64P_CORE_PROTOTYPES -D_ENDUSER_RELEASE -DSINC_LOWER_QUALITY
 
-OBJOUT   = -o
-LINKOUT  = -o
+OBJOUT   = -o $(shell)
+LINKOUT  = -o $(shell)
 
 ifneq (,$(findstring msvc,$(platform)))
 	OBJOUT = -Fo
