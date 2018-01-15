@@ -151,7 +151,7 @@ static void _updateViewport(void)
    float Xf = gSP.viewport.vscale[0] < 0 ? (gSP.viewport.x + gSP.viewport.vscale[0] * 2.0f) : gSP.viewport.x;
    const GLint X = (GLint)(Xf * scaleX);
    const GLint Y = gSP.viewport.vscale[1] < 0 ? (GLint)((gSP.viewport.y + gSP.viewport.vscale[1] * 2.0f) * scaleY) : (GLint)((VI_height - (gSP.viewport.y + gSP.viewport.height)) * scaleY);
-   
+
    glViewport(X,
          Y + OGL_GetHeightOffset(),
          MAX((GLint)(gSP.viewport.width * scaleX), 0),
@@ -180,7 +180,7 @@ static void _updateScissor(struct FrameBuffer *_pBuffer)
       scaleX       = OGL_GetScaleX();
       scaleY       = OGL_GetScaleY();
       heightOffset = OGL_GetHeightOffset();
-      screenHeight = VI.height; 
+      screenHeight = VI.height;
    }
    else
    {
@@ -782,8 +782,8 @@ bool texturedRectDepthBufferCopy(const struct TexturedRectParams *_params)
 	// Works only with depth buffer emulation enabled.
 	// Load of arbitrary data to that area causes weird camera rotation in CBFD.
 	const struct gDPTile *pTile = (const struct gDPTile*)gSP.textureTile[0];
-	if (pTile->loadType == LOADTYPE_BLOCK && gDP.textureImage.size == 2 
-         && gDP.textureImage.address >= gDP.depthImageAddress 
+	if (pTile->loadType == LOADTYPE_BLOCK && gDP.textureImage.size == 2
+         && gDP.textureImage.address >= gDP.depthImageAddress
          &&  gDP.textureImage.address < (gDP.depthImageAddress + gDP.colorImage.width*gDP.colorImage.width * 6 / 4))
    {
       uint32_t x;
@@ -1084,7 +1084,7 @@ void OGL_ClearDepthBuffer(bool _fullsize)
 #endif
 
    glDisable( GL_SCISSOR_TEST );
-   glDepthMask( GL_TRUE ); 
+   glDepthMask( GL_TRUE );
    glClear( GL_DEPTH_BUFFER_BIT );
 
    _updateDepthUpdate();
@@ -1123,7 +1123,7 @@ int OGL_CheckError(void)
 
 void OGL_SwapBuffers(void)
 {
-   void retro_return(bool a);
+   int retro_return(int a);
    // if emulator defined a render callback function, call it before
    // buffer swap
    if (renderCallback)

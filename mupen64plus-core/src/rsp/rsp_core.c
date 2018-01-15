@@ -266,7 +266,7 @@ int write_rsp_regs2(void* opaque, uint32_t address, uint32_t value, uint32_t mas
 }
 
 /* forward declaration */
-void hleDoRspCycles(unsigned int value);
+unsigned int hleDoRspCycles(unsigned int value);
 extern uint32_t send_allist_to_hle_rsp;
 
 void do_SP_Task(struct rsp_core* sp)
@@ -279,7 +279,7 @@ void do_SP_Task(struct rsp_core* sp)
 	{
 	   /* Display list */
 	   /* don't do the task now
-	    * the task will be done when 
+	    * the task will be done when
 	    * DP is unfreezed (see update_dpc_status) */
 	   if (sp->dp->dpc_regs[DPC_STATUS_REG] & DPC_STATUS_FREEZE) /* DP frozen (DK64, BC) */
 	      return;

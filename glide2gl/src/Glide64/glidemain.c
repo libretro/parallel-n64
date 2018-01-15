@@ -86,7 +86,7 @@ VOODOO voodoo = {0, 0};
 
 uint32_t   offset_textures = 0;
 
-// SOME FUNCTION DEFINITIONS 
+// SOME FUNCTION DEFINITIONS
 
 void glide_set_filtering(unsigned value);
 
@@ -622,7 +622,7 @@ output:   none
 *******************************************************************/
 uint32_t update_screen_count = 0;
 
-void retro_return(bool a);
+int retro_return(int a);
 
 void glide64UpdateScreen (void)
 {
