@@ -207,7 +207,7 @@ m64p_error main_core_state_set(m64p_core_param param, int val)
          if (!g_EmulatorRunning)
             return M64ERR_INVALID_STATE;
          if (val == M64EMU_STOPPED)
-         {        
+         {
             /* this stop function is asynchronous.  The emulator may not terminate until later */
              mupen_main_stop();
             return M64ERR_SUCCESS;
@@ -350,7 +350,7 @@ m64p_error main_init(void)
          set_audio_format_via_libretro,
          push_audio_samples_via_libretro,
 	 ROM_PARAMS.fixedaudiopos,
-         g_rom, g_rom_size, 
+         g_rom, g_rom_size,
          NULL, dummy_save, saved_memory.flashram,
          NULL, dummy_save, saved_memory.sram,
          g_rdram, (disable_extra_mem == 0) ? 0x800000 : 0x400000,
@@ -388,6 +388,13 @@ m64p_error main_init(void)
    return M64ERR_SUCCESS;
 }
 
+m64p_error main_pre_run(void)
+{
+   r4300_init();
+
+   return M64ERR_SUCCESS;
+}
+
 m64p_error main_run(void)
 {
    r4300_execute();
@@ -407,7 +414,7 @@ void mupen_main_stop(void)
 #ifdef DBG
    if(g_DebuggerActive)
       debugger_step();
-#endif        
+#endif
 }
 
 void main_check_inputs(void)

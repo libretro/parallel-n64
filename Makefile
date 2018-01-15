@@ -335,7 +335,7 @@ else ifeq ($(platform), emscripten)
 
    HAVE_PARALLEL = 0
    CPUFLAGS += -DNOSSE
-   CPUFLAGS += -DEMSCRIPTEN -DNO_ASM -s USE_ZLIB=1
+   CPUFLAGS += -DEMSCRIPTEN -DNO_ASM -s USE_ZLIB=1 -DNO_LIBCO
 
    WITH_DYNAREC =
    CC = emcc
@@ -719,8 +719,8 @@ endif
 
 COREFLAGS += -D__LIBRETRO__ -DM64P_PLUGIN_API -DM64P_CORE_PROTOTYPES -D_ENDUSER_RELEASE -DSINC_LOWER_QUALITY
 
-OBJOUT   = -o $(shell)
-LINKOUT  = -o $(shell)
+OBJOUT   = -o 
+LINKOUT  = -o 
 
 ifneq (,$(findstring msvc,$(platform)))
 	OBJOUT = -Fo

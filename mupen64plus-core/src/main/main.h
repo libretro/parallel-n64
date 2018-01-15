@@ -53,6 +53,7 @@ int  main_set_core_defaults(void);
 void main_message(m64p_msg_level level, unsigned int osd_corner, const char *format, ...);
 
 m64p_error main_init(void);
+m64p_error main_pre_run(void);
 m64p_error main_run(void);
 void mupen_main_exit(void);
 void mupen_main_stop(void);
@@ -70,4 +71,3 @@ m64p_error main_read_screen(void *pixels, int bFront);
 m64p_error main_reset(int do_hard_reset);
 
 #endif /* __MAIN_H__ */
-

@@ -92,7 +92,7 @@ static void dynarec_setup_code(void)
 }
 #endif
 
-void r4300_execute(void)
+void r4300_init(void)
 {
     current_instruction_table = cached_interpreter_table;
 
@@ -102,7 +102,7 @@ void r4300_execute(void)
     {
         DebugMessage(M64MSG_INFO, "Starting R4300 emulator: Pure Interpreter");
         r4300emu = CORE_PURE_INTERPRETER;
-        pure_interpreter();
+        pure_interpreter_init();
     }
 #if defined(DYNAREC)
     else if (r4300emu >= 2)
@@ -113,13 +113,9 @@ void r4300_execute(void)
 
 #ifdef NEW_DYNAREC
         new_dynarec_init();
-        new_dyna_start();
-        new_dynarec_cleanup();
 #else
         dyna_start(dynarec_setup_code);
-        PC++;
 #endif
-        free_blocks();
     }
 #endif
     else /* if (r4300emu == CORE_INTERPRETER) */
@@ -134,17 +130,49 @@ void r4300_execute(void)
             return;
 
         last_addr = PC->addr;
+    }
+}
 
+void r4300_execute(void)
+{
+    if (r4300emu == CORE_PURE_INTERPRETER)
+    {
+        pure_interpreter();
+    }
+#if defined(DYNAREC)
+    else if (r4300emu >= 2)
+    {
+#ifdef NEW_DYNAREC
+        new_dyna_start();
+        if (stop)
+            new_dynarec_cleanup();
+#else
+        dyna_start(dynarec_setup_code);
+        if (stop)
+            PC++;
+#endif
+        if (stop)
+            free_blocks();
+    }
+#endif
+    else /* if (r4300emu == CORE_INTERPRETER) */
+    {
         r4300_step();
 
-        free_blocks();
+        if (stop)
+            free_blocks();
     }
 
-    DebugMessage(M64MSG_INFO, "R4300 emulator finished.");
+    if (stop)
+        DebugMessage(M64MSG_INFO, "R4300 emulator finished.");
 }
+
+int retro_stop_stepping(void);
 
 void r4300_step(void)
 {
-   while (!stop)
+   while (!stop && !retro_stop_stepping())
+   {
       PC->ops();
+   }
 }
