@@ -334,8 +334,7 @@ else ifeq ($(platform), emscripten)
    WITH_DYNAREC :=
 
    HAVE_PARALLEL = 0
-   CPUFLAGS += -DNOSSE
-   CPUFLAGS += -DEMSCRIPTEN -DNO_ASM -s USE_ZLIB=1 -DNO_LIBCO
+   CPUFLAGS += -DNOSSE -DEMSCRIPTEN -DNO_ASM -DNO_LIBCO -s USE_ZLIB=1 -s PRECISE_F32=1
 
    WITH_DYNAREC =
    CC = emcc
@@ -344,7 +343,6 @@ else ifeq ($(platform), emscripten)
    PLATFORM_EXT := unix
    STATIC_LINKING = 1
    SOURCES_C += $(CORE_DIR)/src/r4300/empty_dynarec.c
-   #HAVE_SHARED_CONTEXT := 1
 
 # PlayStation Vita
 else ifneq (,$(findstring vita,$(platform)))

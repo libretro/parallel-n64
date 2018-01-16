@@ -27,7 +27,6 @@
 
 /* TODO: get rid of glitch_vbo */
 /* TODO: try glDrawElements */
-/* TODO: #ifdefs for EMSCRIPTEN (ToadKing?) */
 /* TODO: investigate triangle degeneration to allow caching GL_TRIANGLE_STRIP */
 
 /* This structure is a truncated version of VERTEX, we use it to lower memory
@@ -59,18 +58,9 @@ static bool       vbuf_drawing   = false;
 
 extern retro_environment_t environ_cb;
 
-#ifdef EMSCRIPTEN
-static struct draw_buffer *gli_vbo;
-static unsigned gli_vbo_size;
-#endif
-
 void vbo_init(void)
 {
-#ifdef EMSCRIPTEN
-   struct retro_variable var = { "mupen64-vcache-vbo", "enabled" };
-#else
    struct retro_variable var = { "mupen64-vcache-vbo", 0 };
-#endif
    vbuf_use_vbo = false;
    vbuf_length = 0;
 

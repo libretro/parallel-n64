@@ -1812,11 +1812,21 @@ int retro_return(int just_flipping)
    vbo_disable();
 #endif
 
-   flip_only = just_flipping;
-
 #ifdef NO_LIBCO
+   if (just_flipping)
+   {
+      /* HACK: in case the VI comes before the render? is that possible?
+       * remove this when we totally remove libco */
+      flip_only = 1;
+      emu_step_render();
+      flip_only = 0;
+   }
+   else
+      flip_only = just_flipping;
+
    stop_stepping = true;
 #else
+   flip_only = just_flipping;
    co_switch(main_thread);
 #endif
 
