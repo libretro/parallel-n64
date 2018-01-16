@@ -44,10 +44,6 @@ int glsl_support = 1;
 extern uint16_t *frameBuffer;
 static uint8_t  *buf;
 
-#ifdef EMSCRIPTEN
-GLuint glitch_vbo;
-#endif
-
 static int isExtensionSupported(const char *extension)
 {
    const char *str = (const char*)glGetString(GL_EXTENSIONS);
@@ -86,15 +82,12 @@ uint32_t grSstWinOpen(void)
    glGenTextures(1, &default_texture);
    frameBuffer = (uint16_t*)malloc(width * height * sizeof(uint16_t));
    buf = (uint8_t*)malloc(width * height * 4 * sizeof(uint8_t));
-#ifdef EMSCRIPTEN
-   glGenBuffers(1, &glitch_vbo);
-#endif
    glViewport(0, 0, width, height);
 
    packed_pixels_support = 0;
    npot_support          = 0;
    bgra8888_support      = 0;
-   
+
    // we can assume that non-GLES has GL_EXT_packed_pixels
    // support -it's included since OpenGL 1.2
    if (isExtensionSupported("GL_EXT_packed_pixels") != 0)
@@ -128,9 +121,6 @@ int32_t grSstWinClose(uint32_t context)
       free(buf);
 
    glDeleteTextures(1, &default_texture);
-#ifdef EMSCRIPTEN
-   glDeleteBuffers(1, &glitch_vbo);
-#endif
 
    frameBuffer = NULL;
    buf         = NULL;
@@ -196,7 +186,7 @@ int32_t grLfbReadRegion( int32_t src_buffer,
    return FXTRUE;
 }
 
-int32_t 
+int32_t
 grLfbWriteRegion( int32_t dst_buffer,
       uint32_t dst_x, uint32_t dst_y,
       uint32_t src_format,
@@ -271,22 +261,12 @@ grLfbWriteRegion( int32_t dst_buffer,
       data[14] = 0.0f;
       data[15] = 0.0f;
 
-#ifdef EMSCRIPTEN
-      glBindBuffer(GL_ARRAY_BUFFER, glitch_vbo);
-      glBufferData(GL_ARRAY_BUFFER, sizeof(data), data, GL_DYNAMIC_DRAW);
-#endif
-
       glDisableVertexAttribArray(COLOUR_ATTR);
       glDisableVertexAttribArray(TEXCOORD_1_ATTR);
       glDisableVertexAttribArray(FOG_ATTR);
 
-#ifdef EMSCRIPTEN
-      glVertexAttribPointer(POSITION_ATTR,2,GL_FLOAT,false,4 * sizeof(float), 0); //Position
-      glVertexAttribPointer(TEXCOORD_0_ATTR,2,GL_FLOAT,false,4 * sizeof(float), 2); //Tex
-#else
       glVertexAttribPointer(POSITION_ATTR,2,GL_FLOAT,false,4 * sizeof(float), &data[0]); //Position
       glVertexAttribPointer(TEXCOORD_0_ATTR,2,GL_FLOAT,false,4 * sizeof(float), &data[2]); //Tex
-#endif
 
       glEnableVertexAttribArray(COLOUR_ATTR);
       glEnableVertexAttribArray(TEXCOORD_1_ATTR);
@@ -296,9 +276,6 @@ grLfbWriteRegion( int32_t dst_buffer,
       glUniform4f(textureSizes_location,1,1,1,1);
 
       glDrawArrays(GL_TRIANGLE_STRIP,0,4);
-#ifdef EMSCRIPTEN
-      glBindBuffer(GL_ARRAY_BUFFER, 0);
-#endif
 
       compile_shader();
 

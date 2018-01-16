@@ -727,13 +727,18 @@ void InterpretOpcode(void)
 	} /* switch ((op >> 26) & 0x3F) */
 }
 
-void pure_interpreter(void)
+int retro_stop_stepping(void);
+
+void pure_interpreter_init(void)
 {
    stop = 0;
    PC = &interp_PC;
    PC->addr = last_addr = 0xa4000040;
+}
 
-   while (!stop)
+void pure_interpreter(void)
+{
+   while (!stop && !retro_stop_stepping())
    {
 #ifdef DBG
      if (g_DebuggerActive) update_debugger(PC->addr);

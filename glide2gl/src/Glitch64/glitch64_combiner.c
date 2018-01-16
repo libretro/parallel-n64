@@ -132,9 +132,6 @@ SHADER_HEADER
 #else
 "#define highp                  \n"
 #endif
-#ifdef EMSCRIPTEN
-"#extension GL_EXT_frag_depth : enable\n"
-#endif
 "uniform sampler2D texture0;    \n"
 "uniform sampler2D texture1;    \n"
 "uniform vec4 exactSizes;     \n"  //textureSizes doesn't contain the correct sizes, use this one instead for offset calculations

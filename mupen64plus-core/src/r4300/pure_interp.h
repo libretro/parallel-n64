@@ -22,6 +22,7 @@
 #ifndef M64P_R4300_PURE_INTERP_H
 #define M64P_R4300_PURE_INTERP_H
 
+void pure_interpreter_init(void);
 void pure_interpreter(void);
 
 #endif /* M64P_R4300_PURE_INTERP_H */

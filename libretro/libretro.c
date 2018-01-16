@@ -3,7 +3,7 @@
 #include <string.h>
 
 #include "api/libretro.h"
-#ifndef EMSCRIPTEN
+#ifndef NO_LIBCO
 #include <libco.h>
 #endif
 
@@ -38,6 +38,10 @@
 #define PRESCALE_HEIGHT 625
 #endif
 
+#if defined(NO_LIBCO) && defined(DYNAREC)
+#error cannot currently use dynarecs without libco
+#endif
+
 /* forward declarations */
 int InitGfx(void);
 #if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
@@ -69,7 +73,9 @@ struct retro_rumble_interface rumble;
 
 save_memory_data saved_memory;
 
-#ifndef EMSCRIPTEN
+#ifdef NO_LIBCO
+static bool stop_stepping;
+#else
 cothread_t main_thread;
 static cothread_t game_thread;
 #endif
@@ -588,7 +594,7 @@ void reinit_gfx_plugin(void)
     if(first_context_reset)
     {
         first_context_reset = false;
-#ifndef EMSCRIPTEN
+#ifndef NO_LIBCO
         co_switch(game_thread);
 #endif
     }
@@ -641,6 +647,22 @@ void deinit_gfx_plugin(void)
     }
 }
 
+#ifdef NO_LIBCO
+static void EmuThreadInit(void)
+{
+    emu_step_initialize();
+
+    initializing = false;
+
+    main_pre_run();
+}
+
+static void EmuThreadStep(void)
+{
+    stop_stepping = false;
+    main_run();
+}
+#else
 static void EmuThreadFunction(void)
 {
     if (!emu_step_load_data())
@@ -649,27 +671,22 @@ static void EmuThreadFunction(void)
     /* ROM is loaded, switch back to main thread
      * so retro_load_game can return (returning failure if needed).
      * We'll continue here once the context is reset. */
-#ifndef EMSCRIPTEN
     co_switch(main_thread);
-#endif
 
     emu_step_initialize();
 
     /*Context is reset too, everything is safe to use.
      * Now back to main thread so we don't start pushing
      * frames outside retro_run. */
-#ifndef EMSCRIPTEN
     co_switch(main_thread);
-#endif
 
     initializing = false;
+    main_pre_run();
     main_run();
     if (log_cb)
        log_cb(RETRO_LOG_INFO, "EmuThread: co_switch main_thread.\n");
 
-#ifndef EMSCRIPTEN
     co_switch(main_thread);
-#endif
 
 load_fail:
     /*NEVER RETURN! That's how libco rolls */
@@ -677,11 +694,10 @@ load_fail:
     {
        if (log_cb)
           log_cb(RETRO_LOG_ERROR, "Running Dead N64 Emulator\n");
-#ifndef EMSCRIPTEN
        co_switch(main_thread);
-#endif
     }
 }
+#endif
 
 const char* retro_get_system_directory(void)
 {
@@ -894,7 +910,7 @@ void retro_init(void)
    polygonOffsetUnits = -3.0f;
    polygonOffsetFactor =  -3.0f;
 
-#ifndef EMSCRIPTEN
+#ifndef NO_LIBCO
    main_thread = co_active();
    game_thread = co_create(65536 * sizeof(void*) * 16, EmuThreadFunction);
 #endif
@@ -911,7 +927,7 @@ void retro_deinit(void)
    blitter_buf      = NULL;
    blitter_buf_lock = NULL;
 
-#ifndef EMSCRIPTEN
+#ifndef NO_LIBCO
    co_delete(game_thread);
 #endif
 
@@ -1138,7 +1154,7 @@ void update_variables(bool startup)
          retro_filtering = 3;
 
       if (retro_filtering != old_filtering)
-	gfx_set_filtering(); 
+	gfx_set_filtering();
 
       old_filtering      = retro_filtering;
    }
@@ -1408,9 +1424,12 @@ bool retro_load_game(const struct retro_game_info *game)
    stop      = false;
    /* Finish ROM load before doing anything funny,
     * so we can return failure if needed. */
-#ifndef EMSCRIPTEN
+#ifdef NO_LIBCO
+    emu_step_load_data();
+#else
    co_switch(game_thread);
 #endif
+
    if (stop)
       return false;
 
@@ -1424,7 +1443,9 @@ void retro_unload_game(void)
     stop = 1;
     first_time = 1;
 
-#ifndef EMSCRIPTEN
+#ifdef NO_LIBCO
+    EmuThreadStep();
+#else
     co_switch(game_thread);
 #endif
 
@@ -1581,9 +1602,14 @@ void retro_run (void)
          /* Additional check for vioverlay not set at start */
          update_variables(false);
          gfx_set_filtering();
+#ifdef NO_LIBCO
+         EmuThreadInit();
+#endif
       }
 
-#ifndef EMSCRIPTEN
+#ifdef NO_LIBCO
+      EmuThreadStep();
+#else
       co_switch(game_thread);
 #endif
 
@@ -1768,6 +1794,15 @@ void retro_cheat_set(unsigned index, bool enabled, const char* codeLine)
 
 void vbo_disable(void);
 
+int retro_stop_stepping(void)
+{
+#ifdef NO_LIBCO
+    return stop_stepping;
+#else
+    return false;
+#endif
+}
+
 int retro_return(int just_flipping)
 {
    if (stop)
@@ -1777,9 +1812,21 @@ int retro_return(int just_flipping)
    vbo_disable();
 #endif
 
-   flip_only = just_flipping;
+#ifdef NO_LIBCO
+   if (just_flipping)
+   {
+      /* HACK: in case the VI comes before the render? is that possible?
+       * remove this when we totally remove libco */
+      flip_only = 1;
+      emu_step_render();
+      flip_only = 0;
+   }
+   else
+      flip_only = just_flipping;
 
-#ifndef EMSCRIPTEN
+   stop_stepping = true;
+#else
+   flip_only = just_flipping;
    co_switch(main_thread);
 #endif
 

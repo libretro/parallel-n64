@@ -57,10 +57,10 @@
 int GetTexAddrUMA(int tmu, int texsize);
 static void LoadTex (int id, int tmu);
 
-uint8_t tex1[2048*2048*4];		// temporary texture
-uint8_t tex2[2048*2048*4];
+uint32_t tex1[2048*2048];		// temporary texture
+uint32_t tex2[2048*2048];
 uint8_t *texture;
-uint8_t *texture_buffer = tex1;
+uint8_t *texture_buffer = (uint8_t *)tex1;
 
 typedef struct TEXINFO_t
 {
@@ -181,7 +181,7 @@ static void GetTexInfo (int id, int tile)
       width = MIN(mask_width, tile_width);	// changed from mask_width only
       gDP.tiles[tile].width = width;
 
-      // Get the width/height to load 
+      // Get the width/height to load
       if ((g_gdp.tile[tile].cs && tile_width <= 256) || (mask_width > 256))   // actual width
          gDP.tiles[tile].width = tile_width;
 
@@ -1095,7 +1095,7 @@ static void LoadTex(int id, int tmu)
                while(--size)
                {
                   *col = (*col & 1) ? col16 : *col;
-                  *col++;
+                  col++;
                };
             }
             break;
@@ -1121,7 +1121,7 @@ static void LoadTex(int id, int tmu)
 
    result = 0;	// keep =0 so it doesn't mess up on the first split
 
-   texture = tex1;
+   texture = (uint8_t *)tex1;
 
    {
       uint32_t size;
@@ -1250,7 +1250,7 @@ static void LoadTex(int id, int tmu)
    {
 	   int size        = real_x * real_y;
       uint32_t *src   = (uint32_t*)texture;
-      uint32_t *dst   = (uint32_t*)tex2;
+      uint32_t *dst   = tex2;
       unsigned texfmt = LOWORD(result);
 
       /* Convert the texture to ARGB 4444 */
@@ -1269,7 +1269,7 @@ static void LoadTex(int id, int tmu)
                *dst++ = ((col & 0x1E001E) >> 1) | ((col & 0x3C003C0) >> 2) | ((col & 0x78007800) >> 3) | ((col & 0x80008000) >> 3) | ((col & 0x80008000) >> 2) | ((col & 0x80008000) >> 1) | (col & 0x80008000);
             }
 
-            texture = tex2;
+            texture = (uint8_t *)tex2;
             break;
          case GR_TEXFMT_ALPHA_INTENSITY_88:
             /* 2 pixels are converted in one loop
@@ -1281,7 +1281,7 @@ static void LoadTex(int id, int tmu)
                uint32_t col = *src++;
                *dst++ = (16 * (col & 0xF000F0) >> 8) | (col & 0xF000F0) | (16 * (col & 0xF000F0)) | (col & 0xF000F000);
             }
-            texture = tex2;
+            texture = (uint8_t *)tex2;
             break;
          case GR_TEXFMT_ALPHA_INTENSITY_44:
             /* 4 pixels are converted in one loop
@@ -1296,7 +1296,7 @@ static void LoadTex(int id, int tmu)
                *dst++ = (((col >> 8) & 0xF00) >> 8) | (((col >> 8) & 0xF00) >> 4) | ((col >> 8) & 0xFF00) | ((col & 0xF000000) >> 8) | ((col & 0xF000000) >> 4) | (col & 0xFF000000);
             }
 
-            texture = tex2;
+            texture = (uint8_t *)tex2;
             break;
          case GR_TEXFMT_ALPHA_8:
             /* 4 pixels are converted in one loop
@@ -1311,7 +1311,7 @@ static void LoadTex(int id, int tmu)
                *dst++ = ((col & 0xF00000) >> 20) | ((col & 0xF00000) >> 16) | ((col & 0xF00000) >> 12) | ((col & 0xF00000) >> 8) | ((col & 0xF0000000) >> 12) | ((col & 0xF0000000) >> 8) | ((col & 0xF0000000) >> 4) | (col & 0xF0000000);
             }
 
-            texture = tex2;
+            texture = (uint8_t *)tex2;
             break;
       }
 
@@ -1703,7 +1703,7 @@ static void LoadTex(int id, int tmu)
          LoadTex (id, tmu);
          /* Don't continue (already done) */
          return;
-         
+
       }
 
       tex_addr = GetTexAddrUMA(tmu, texture_size);
