@@ -477,7 +477,11 @@ ifeq ($(HAVE_RDP_DUMP), 1)
 	CXXFLAGS += -DHAVE_RDP_DUMP
 endif
 
+ifneq ($(findstring Haiku,$(shell uname -s)),)
+	LDFLAGS += -lroot
+else
 	LDFLAGS += -pthread
+endif
 endif
 
 ifeq ($(HAVE_PARALLEL_RSP), 1)

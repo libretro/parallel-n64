@@ -6,13 +6,19 @@ DEPS := $(OBJECTS:.o=.d)
 
 #CXX := clang++
 
-CXXFLAGS += -std=c++11 -pthread -Wall -Wextra \
+ifneq ($(findstring Haiku,$(shell uname -s)),)
+CXXFLAGS += -std=c++11 -lroot
+LDFLAGS += -L. -ldl -lroot
+else
+CXXFLAGS += -std=c++11 -pthread
+LDFLAGS += -L. -ldl -pthread
+endif
+
+CXXFLAGS += -Wall -Wextra \
 	-Wno-shift-negative-value \
 	-Wno-missing-field-initializers -Wno-unused-function \
 	-fno-strict-overflow -g -I. -I../../libretro-common/include \
 	-DPARALLEL_HAVE_DYLIB
-
-LDFLAGS += -L. -ldl -pthread
 
 DEBUG = 0
 
