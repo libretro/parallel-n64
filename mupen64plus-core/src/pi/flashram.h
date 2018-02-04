@@ -51,9 +51,12 @@ struct flashram
    unsigned int write_pointer;
 };
 
+void init_flashram(struct flashram* flashram,
+      void* user_data,
+      void (*save)(void*),
+      uint8_t* data);
 
-void init_flashram(struct flashram *flashram);
-void init_flashram(struct flashram* flashram);
+void poweron_flashram(struct flashram* flashram);
 
 void flashram_save(struct flashram* flashram);
 

@@ -18,38 +18,45 @@
  *   Free Software Foundation, Inc.,                                       *
  *   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.          *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
 #include <stdint.h>
+#include <stdlib.h>
+
 #define __STDC_FORMAT_MACROS
+#ifdef _MSC_VER
+#define PRIx32 "x"
+#define PRIX32 "X"
+#else
+#include <inttypes.h>
+#endif
 #include <string.h>
 
-#include "cached_interp.h"
-
-#include "api/m64p_types.h"
 #include "api/callbacks.h"
 #include "api/debugger.h"
-#include "main/main.h"
-#include "memory/memory.h"
-
-#include "r4300.h"
+#include "api/m64p_types.h"
+#include "cached_interp.h"
 #include "cp0_private.h"
 #include "cp1_private.h"
-#include "ops.h"
 #include "exception.h"
-#include "interupt.h"
+#include "interrupt.h"
 #include "macros.h"
+#include "main/main.h"
+#include "memory/memory.h"
+#include "ops.h"
+#include "r4300.h"
 #include "recomp.h"
+#include "tlb.h"
 
 #ifdef DBG
+#include "debugger/dbg_debugger.h"
 #include "debugger/dbg_types.h"
-#include "debugger/debugger.h"
 #endif
 
 /* global variables */
 char invalid_code[0x100000];
-precomp_block *blocks[0x100000];
-precomp_block *actual;
-unsigned int jump_to_address;
-uint32_t adler32(uint32_t adler, void *buf, int len);
+struct precomp_block *blocks[0x100000];
+struct precomp_block *actual           = NULL;
+uint32_t jump_to_address;
 
 // -----------------------------------------------------------
 // Cached interpreter functions (and fallback for dynarec).
@@ -69,7 +76,7 @@ uint32_t adler32(uint32_t adler, void *buf, int len);
    { \
       const int take_jump = (condition); \
       const uint32_t jump_target = (destination); \
-      long long int *link_register = (link); \
+      int64_t *link_register = (link); \
       if (cop1 && check_cop1_unusable()) return; \
       if (link_register != &reg[0]) \
       { \
@@ -78,11 +85,11 @@ uint32_t adler32(uint32_t adler, void *buf, int len);
       if (!likely || take_jump) \
       { \
          PC++; \
-         delay_slot=1; \
+         g_dev.r4300.delay_slot=1; \
          UPDATE_DEBUGGER(); \
          PC->ops(); \
-         update_count(); \
-         delay_slot=0; \
+         cp0_update_count(); \
+         g_dev.r4300.delay_slot=0; \
          if (take_jump && !skip_jump) \
          { \
             PC=actual->block+((jump_target-actual->start)>>2); \
@@ -91,16 +98,16 @@ uint32_t adler32(uint32_t adler, void *buf, int len);
       else \
       { \
          PC += 2; \
-         update_count(); \
+         cp0_update_count(); \
       } \
       last_addr = PC->addr; \
-      if (next_interupt <= g_cp0_regs[CP0_COUNT_REG]) gen_interupt(); \
+      if (next_interrupt <= g_cp0_regs[CP0_COUNT_REG]) gen_interrupt(); \
    } \
    static void name##_OUT(void) \
    { \
       const int take_jump = (condition); \
       const uint32_t jump_target = (destination); \
-      long long int *link_register = (link); \
+      int64_t *link_register = (link); \
       if (cop1 && check_cop1_unusable()) return; \
       if (link_register != &reg[0]) \
       { \
@@ -109,11 +116,11 @@ uint32_t adler32(uint32_t adler, void *buf, int len);
       if (!likely || take_jump) \
       { \
          PC++; \
-         delay_slot=1; \
+         g_dev.r4300.delay_slot=1; \
          UPDATE_DEBUGGER(); \
          PC->ops(); \
-         update_count(); \
-         delay_slot=0; \
+         cp0_update_count(); \
+         g_dev.r4300.delay_slot=0; \
          if (take_jump && !skip_jump) \
          { \
             jump_to(jump_target); \
@@ -122,10 +129,10 @@ uint32_t adler32(uint32_t adler, void *buf, int len);
       else \
       { \
          PC += 2; \
-         update_count(); \
+         cp0_update_count(); \
       } \
       last_addr = PC->addr; \
-      if (next_interupt <= g_cp0_regs[CP0_COUNT_REG]) gen_interupt(); \
+      if (next_interrupt <= g_cp0_regs[CP0_COUNT_REG]) gen_interrupt(); \
    } \
    static void name##_IDLE(void) \
    { \
@@ -134,8 +141,8 @@ uint32_t adler32(uint32_t adler, void *buf, int len);
       if (cop1 && check_cop1_unusable()) return; \
       if (take_jump) \
       { \
-         update_count(); \
-         skip = next_interupt - g_cp0_regs[CP0_COUNT_REG]; \
+         cp0_update_count(); \
+         skip = next_interrupt - g_cp0_regs[CP0_COUNT_REG]; \
          if (skip > 3) g_cp0_regs[CP0_COUNT_REG] += (skip & UINT32_C(0xFFFFFFFC)); \
          else name(); \
       } \
@@ -155,36 +162,36 @@ uint32_t adler32(uint32_t adler, void *buf, int len);
   static void JALR_IDLE(void) __attribute__((used));
 #endif
 
-#include "interpreter.def"
+#include "mips_instructions.def"
 
 // -----------------------------------------------------------
 // Flow control 'fake' instructions
 // -----------------------------------------------------------
 static void FIN_BLOCK(void)
 {
-   if (!delay_slot)
+   if (!g_dev.r4300.delay_slot)
    {
       jump_to((PC-1)->addr+4);
 #if 0
 #ifdef DBG
       if (g_DebuggerActive) update_debugger(PC->addr);
 #endif
-      // Used by dynarec only, check should be unnecessary
+      /* Used by dynarec only, check should be unnecessary */
 #endif
       PC->ops();
       if (r4300emu == CORE_DYNAREC) dyna_jump();
    }
    else
    {
-      precomp_block *blk = actual;
-      precomp_instr *inst = PC;
+      struct precomp_block *blk = actual;
+      struct precomp_instr *inst = PC;
       jump_to((PC-1)->addr+4);
 
 #if 0
 #ifdef DBG
       if (g_DebuggerActive) update_debugger(PC->addr);
 #endif
-      // Used by dynarec only, check should be unnecessary
+      /* Used by dynarec only, check should be unnecessary */
 #endif
       if (!skip_jump)
       {
@@ -215,8 +222,8 @@ static void NOTCOMPILED(void)
 #ifdef DBG
    if (g_DebuggerActive) update_debugger(PC->addr);
 #endif
-   // The preceeding update_debugger SHOULD be unnecessary since it should have been
-   // called before NOTCOMPILED would have been executed
+   /* The preceeding update_debugger SHOULD be unnecessary since it should have been
+      called before NOTCOMPILED would have been executed */
 #endif
    PC->ops();
    if (r4300emu == CORE_DYNAREC)
@@ -451,7 +458,7 @@ const cpu_instruction_table cached_interpreter_table = {
 
    DIV_S,
    DIV_D,
-   
+
    ABS_S,
    ABS_D,
 
@@ -520,7 +527,7 @@ static unsigned int update_invalid_addr(unsigned int addr)
    }
    else
    {
-      unsigned int paddr = virtual_to_physical_address(addr, 2);
+      unsigned int paddr = virtual_to_physical_address(&g_dev.r4300, addr, 2);
       if (paddr)
       {
          unsigned int beg_paddr = paddr - (addr - (addr&~0xFFF));
@@ -546,7 +553,7 @@ void jump_to_func(void)
    {
       if (!blocks[addr>>12])
       {
-         blocks[addr>>12] = (precomp_block *) malloc(sizeof(precomp_block));
+         blocks[addr>>12] = (struct precomp_block *) malloc(sizeof(struct precomp_block));
          actual = blocks[addr>>12];
          blocks[addr>>12]->code = NULL;
          blocks[addr>>12]->block = NULL;
@@ -627,3 +634,4 @@ void invalidate_cached_code_hacktarux(uint32_t address, size_t size)
       }
    }
 }
+

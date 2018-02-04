@@ -26,6 +26,21 @@
 
 #include <string.h>
 
+void init_eeprom(struct eeprom *eeprom,
+      void *user_data,
+      void (*save)(void*),
+      uint8_t *data,
+      size_t size,
+      uint16_t id)
+{
+   /* connect saved_memory.eeprom to eeprom */
+   eeprom->user_data = user_data;
+   eeprom->save      = save;
+   eeprom->data      = data;
+   eeprom->size      = size;
+   eeprom->id        = id;
+}
+
 void eeprom_save(struct eeprom* eeprom)
 {
    eeprom->save(eeprom->user_data);

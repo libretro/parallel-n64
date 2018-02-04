@@ -35,6 +35,12 @@ struct eeprom
     uint16_t id;
 };
 
+void init_eeprom(struct eeprom *eeprom,
+      void *user_data,
+      void (*save)(void*),
+      uint8_t *data,
+      size_t size,
+      uint16_t id);
 
 void eeprom_save(struct eeprom* eeprom);
 

@@ -10,11 +10,11 @@ In the engineering make-up of the Nintendo 64 (original codename:  Project Reali
 
 Here, the entire MIPS R4000 instruction set was modified for very fast, exception-free processing flow, and operation definitions for each instruction do not fall within the scope of this section.  Presented instead are layouts of the new instructions added to the scalar unit (those under `LWC2` and `SWC2`, even though they do interface with the vector unit) and the vector unit (essentially, any instruction under `COP2` whose mnemonic starts with a 'V').  Information of how pre-existing MIPS R4000 instructions were modified or which ones were removed is the adventure of the MIPS programmer to research.
 
-V*&#8;_vd_, _vs_, _vt_[_element_] `/* exceptions:  scalar divide reads */`
-<table border="1">
-<tr align="center"><td>COP2</td><td>element</td><td>vs1</td><td>vs2</td><td>vt</td><td>func</td></tr>
-<tr align="right"><td>010010</td><td>1----</td><td>-----</td><td>-----</td><td>-----</td><td>??????</td></tr>
-</table>
+`C2` _vd_, _vs_, _vt_[_element_] `/* exceptions:  scalar divide reads */`
+
+|  COP2  | element |  vs1  |  vs2  |  vt   |  func  |
+| ------ |:-------:| ----- | ----- | ----- | ------ |
+|`010010`| `1eeee` |`ttttt`|`sssss`|`ddddd`|`??????`|
 
 The major types of VU computational instructions are _multiply,_ _add,_ _select,_ _logical,_ and _divide._
 
@@ -25,14 +25,13 @@ Multiply instructions are the most frequent and classifiable as follows:
 * If `(format & 0b100) == 0`, then the operation is single-precision (`VMUL*` and `VMAC*`).
 * If `(format & 0b100) != 0`, then the operation is double-precision (`VMUD*` and `VMAD*`).
 
-<table border="1">
-<tr align="center"><td><i>op-code</i></td><td>Type</td></tr>
-<tr><td>0 0 a x x x</td><td>multiply</td></tr>
-<tr><td>0 1 x x x x</td><td>add</td></tr>
-<tr><td>1 0 0 x x x</td><td>select</td></tr>
-<tr><td>1 0 1 x x x</td><td>logical</td></tr>
-<tr><td>1 1 0 x x x</td><td>divide</td></tr>
-</table>
+|_op-code_|   Type   |
+| -------:| -------- |
+| `00axxx`| multiply |
+| `01xxxx`| add      |
+| `100xxx`| select   |
+| `101xxx`| logical  |
+| `110xxx`| divide   |
 
 * `00 (VMULF)` Vector Multiply Signed Fractions
 * `01 (VMULU)` Vector Multiply Unsigned Fractions
@@ -101,25 +100,24 @@ Multiply instructions are the most frequent and classifiable as follows:
 
 ### RSP Vector Load Transfers
 
-The VR-DMEM transaction instruction cycles are still processed by the scalar unit, not the vector unit. In the modern implementations accepted by most vector unit communications systems today, the transfer instructions are classifiable under five groups:
-<ol>
-<li>BV, SV, LV, DV</li>
-<li>PV, UV, XV, ZV</li>
-<li>HV, FV, AV</li>
-<li>QV, RV</li>
-<li>TV, WV</li>
-</ol>
+The VR-DMEM transaction instruction cycles are still processed by the scalar unit, not the vector unit.  In the modern implementations accepted by most vector unit communications systems today, the transfer instructions are classifiable under five groups:
 
-Not all of those instructions were implemented as of the time of the Nintendo 64's RCP, however. Additionally, their ordering in the opcode matrix was a little skewed to what is seen below. At this time, it is better to use only three categories of instructions:
+1.  BV, SV, LV, DV
+2.  PV, UV, XV, ZV
+3.  HV, FV, AV
+4.  QV, RV
+5.  TV, WV
+
+Not all of those instructions were implemented as of the time of the Nintendo 64's RCP, however.  Additionally, their ordering in the opcode matrix was a little skewed to what is seen below.  At this time, it is better to use only three categories of instructions:
 * _normal_:  Anything under Group I or Group IV is normal type.  Only the element must be aligned; `addr & 1` may resolve true.
 * _packed_:  Anything under Group II or Group III.  Useful for working with specially mapped data, such as pixels.
 * _transposed_:  `LTV`, *LTWV,* `STV`, and `SWV` can be found in heaps of 16 instructions, all dedicated to matrix transposition through eight diagonals of halfword elements.
 
-LWC2&#8;_vt_[_element_], _offset_(_base_)
-<table border="1">
-<tr align="center"><td>LWC2</td><td>base</td><td>vt</td><td>rd</td><td>element</td><td>offset</td></tr>
-<tr align="right"><td>110010</td><td>-----</td><td>-----</td><td>?????</td><td>----</td><td>-------</td></tr>
-</table>
+`LWC2` _vt_[_element_], _offset_(_base_)
+
+|  LWC2  | base  |  vt   |  rd   | element |  offset  |
+| ------ | ----- | ----- | ----- |:-------:| -------- |
+|`110010`|`sssss`|`ttttt`|`?????`| `eeee`  | `Xxxxxxx`|
 
 * `00 (LBV)` Load Byte to Vector Unit
 * `01 (LSV)` Load Shortword to Vector Unit
@@ -138,10 +136,11 @@ LWC2&#8;_vt_[_element_], _offset_(_base_)
 * `16 reserved`
 * `17 reserved`
 
-<table border="1">
-<tr align="center"><td>SWC2</td><td>base</td><td>vt</td><td>rd</td><td>element</td><td>offset</td></tr>
-<tr align="right"><td>111010</td><td>-----</td><td>-----</td><td>?????</td><td>----</td><td>-------</td></tr>
-</table>
+`SWC2` _vt_[_element_], _offset_(_base_)
+
+|  SWC2  | base  |  vt   |  rd   | element |  offset  |
+| ------ | ----- | ----- | ----- |:-------:| -------- |
+|`111010`|`sssss`|`ttttt`|`?????`| `eeee`  | `Xxxxxxx`|
 
 * `00 (SBV)` Store Byte from Vector Unit
 * `01 (SSV)` Store Shortword from Vector Unit

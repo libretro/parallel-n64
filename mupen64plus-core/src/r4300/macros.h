@@ -22,7 +22,7 @@
 #ifndef M64P_R4300_MACROS_H
 #define M64P_R4300_MACROS_H
 
-#define SE8(a)  ((int64_t) ((int8_t)  (a)))
+#define SE8(a) ((int64_t) ((int8_t) (a)))
 #define SE16(a) ((int64_t) ((int16_t) (a)))
 #define SE32(a) ((int64_t) ((int32_t) (a)))
 
@@ -44,19 +44,20 @@
 #define cffs PC->f.cf.fs
 #define cffd PC->f.cf.fd
 
-// 32 bits macros
+/* 32 bits macros */
 #ifdef MSB_FIRST
-#define rrt32 *((int32_t*)PC->f.r.rt+1)
-#define rrd32 *((int32_t*)PC->f.r.rd+1)
-#define rrs32 *((int32_t*)PC->f.r.rs+1)
-#define irs32 *((int32_t*)PC->f.i.rs+1)
-#define irt32 *((int32_t*)PC->f.i.rt+1)
+#define rrt32 *((int32_t*) PC->f.r.rt + 1)
+#define rrd32 *((int32_t*) PC->f.r.rd + 1)
+#define rrs32 *((int32_t*) PC->f.r.rs + 1)
+#define irs32 *((int32_t*) PC->f.i.rs + 1)
+#define irt32 *((int32_t*) PC->f.i.rt + 1)
 #else
-#define rrt32 *((int32_t*)PC->f.r.rt)
-#define rrd32 *((int32_t*)PC->f.r.rd)
-#define rrs32 *((int32_t*)PC->f.r.rs)
-#define irs32 *((int32_t*)PC->f.i.rs)
-#define irt32 *((int32_t*)PC->f.i.rt)
+#define rrt32 *((int32_t*) PC->f.r.rt)
+#define rrd32 *((int32_t*) PC->f.r.rd)
+#define rrs32 *((int32_t*) PC->f.r.rs)
+#define irs32 *((int32_t*) PC->f.i.rs)
+#define irt32 *((int32_t*) PC->f.i.rt)
 #endif
 
 #endif /* M64P_R4300_MACROS_H */
+

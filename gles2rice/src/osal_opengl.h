@@ -22,17 +22,15 @@
 #if !defined(OSAL_OPENGL_H)
 #define OSAL_OPENGL_H
 
-#include <SDL_config.h>
-
 #if defined(_MSC_VER) && !defined(_XBOX)
 #include <windows.h>
 #elif defined(_XBOX)
 #include <xtl.h>
 #endif
 
-#include <SDL_opengles2.h>
+#include <glsm/glsmsym.h>
 
-#if !defined(__LIBRETRO__) || defined(HAVE_OPENGLES2) // Desktop GL fix
+#if defined(HAVE_OPENGLES2) // Desktop GL fix
 #define GLSL_VERSION "100"
 #else
 #define GLSL_VERSION "120"
@@ -60,14 +58,7 @@
 #define GL_PREVIOUS                         0x8578
 #endif
 
-// Function substitutions
-#define pglActiveTexture                    glActiveTexture
-
 // No-op substitutions (unavailable in GLES2)
-#define glLoadIdentity()
-#define glMatrixMode(x)
-#define glOrtho(a,b,c,d,e,f)
-#define glReadBuffer(x)
 #define glTexEnvi(x,y,z)
 #define glTexEnvfv(x,y,z)
 

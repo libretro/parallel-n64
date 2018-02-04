@@ -37,43 +37,98 @@
 //
 //****************************************************************
 
-#ifndef Util_H
-#define Util_H
+#ifndef _GLIDE64_UTIL_H
+#define _GLIDE64_UTIL_H
+
+#include "../Glitch64/glide.h"
+#include "rdp.h"
+#include "../../../mupen64plus-core/src/main/util.h"
+
+#include "../../Graphics/RDP/gDP_state.h"
+#include "../../Graphics/RDP/RDP_state.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #define NOT_TMU0	0x00
 #define NOT_TMU1	0x01
 #define NOT_TMU2	0x02
 
+#define clip_tri_uv(first, second, index, percent) \
+   rdp.vtxbuf[index].u[0] = first->u[0] + (second->u[0] - first->u[0]) * percent; \
+   rdp.vtxbuf[index].v[0] = first->v[0] + (second->v[0] - first->v[0]) * percent; \
+   rdp.vtxbuf[index].u[1] = first->u[1] + (second->u[1] - first->u[1]) * percent; \
+   rdp.vtxbuf[index].v[1] = first->v[1] + (second->v[1] - first->v[1]) * percent
+
+#define clip_tri_interp_colors(first, second, index, percent, val, interpolate_colors) \
+   if (interpolate_colors) \
+      glide64_interpolate_colors(first, second, &rdp.vtxbuf[index++], percent, 1.0f, 1.0f, 1.0f); \
+   else \
+      rdp.vtxbuf[index++].number = first->number | second->number | val
+
 void do_triangle_stuff(uint16_t linew, int old_interpolate);
 void do_triangle_stuff_2(uint16_t linew, uint8_t no_clip, int old_interpolate);
-void apply_shade_mods(VERTEX *v);
+void apply_shade_modulation(VERTEX *v);
 
 void update(void);
 void update_scissor(bool set_scissor);
 
 float ScaleZ(float z);
 
-#if defined(_MSC_VER) && (defined(_M_IX86) || defined(_M_X64))
-#include <stdlib.h>
-#define bswap32(x) _byteswap_ulong(x)
-#else
-static inline uint32_t bswap32(uint32_t val)
-{
-   return (((val & 0xff000000) >> 24) |
-         ((val & 0x00ff0000) >>  8) |
-         ((val & 0x0000ff00) <<  8) |
-         ((val & 0x000000ff) << 24));
-
-}
-#endif
-
-#define ALOWORD(x)   (*((uint16_t*)&x))   // low word
-
-#define __ROR32(value, count, nbits) ((value >> (count % (nbits))) | (value << ((nbits) - (count % (nbits)))))
-
-#define __ROR16(value, count, nbits) (((value >> (count % nbits)) | (value << (nbits - (count % nbits)))))
-
 // rotate left
 #define __ROL__(value, count, nbits) ((value << (count % (nbits))) | (value >> ((nbits) - (count % (nbits)))))
+
+static INLINE void draw_tri_uv_calculation_update_shift(unsigned cur_tile, unsigned index, VERTEX *v)
+{
+   if (g_gdp.tile[cur_tile].shift_s)
+   {
+      if (g_gdp.tile[cur_tile].shift_s > 10)
+         v->u[index] *= (float)(1 << (16 - g_gdp.tile[cur_tile].shift_s));
+      else
+         v->u[index] /= (float)(1 << g_gdp.tile[cur_tile].shift_s);
+   }
+
+   if (g_gdp.tile[cur_tile].shift_t)
+   {
+      if (g_gdp.tile[cur_tile].shift_t > 10)
+         v->v[index] *= (float)(1 << (16 - g_gdp.tile[cur_tile].shift_t));
+      else
+         v->v[index] /= (float)(1 << g_gdp.tile[cur_tile].shift_t);
+   }
+
+   v->u[index]   -= gDP.tiles[cur_tile].fuls;
+   v->v[index]   -= gDP.tiles[cur_tile].fult;
+   v->u[index]    = rdp.cur_cache[index]->c_off + rdp.cur_cache[index]->c_scl_x * v->u[index];
+   v->v[index]    = rdp.cur_cache[index]->c_off + rdp.cur_cache[index]->c_scl_y * v->v[index];
+   v->u_w[index]  = v->u[index] / v->w;
+   v->v_w[index]  = v->v[index] / v->w;
+}
+
+static INLINE uint32_t rol32(uint32_t value, uint32_t amount)
+{
+    return (value << amount) | (value >> (-(int32_t)amount & 31));
+}
+
+static INLINE uint32_t ror32(uint32_t value, uint32_t amount)
+{
+    return (value << (-(int32_t)amount & 31)) | (value >> amount);
+}
+
+static INLINE uint16_t rol16(uint16_t value, uint16_t amount)
+{
+    return (value << amount) | (value >> (-(int16_t)amount & 15));
+}
+
+static INLINE uint16_t ror16(uint16_t value, uint16_t amount)
+{
+    return (value << (-(int16_t)amount & 15)) | (value >> amount);
+}
+
+void apply_shading(void *data);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif  // ifndef Util_H

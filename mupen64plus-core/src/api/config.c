@@ -27,6 +27,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <retro_miscellaneous.h>
+
 #define M64P_CORE_PROTOTYPES 1
 #include "m64p_types.h"
 #include "m64p_config.h"
@@ -35,9 +37,6 @@
 
 #include "main/util.h"
 
-#include "osal/preproc.h"
-
-#ifdef __LIBRETRO__
 /* Cxd4 RSP */
 #include "../../../mupen64plus-rsp-cxd4/config.h"
 
@@ -47,7 +46,7 @@
 #define GFX_RICE        1 
 #define GFX_GLN64       2
 #define GFX_ANGRYLION   3
-#endif
+#define GFX_PARALLEL    4
 
 /* local types */
 #define MUPEN64PLUS_CFG_NAME "mupen64plus.cfg"
@@ -111,7 +110,7 @@ static config_section **find_section_link(config_list *list, const char *ParamNa
     config_section **curr_sec_link;
     for (curr_sec_link = list; *curr_sec_link != NULL; curr_sec_link = &(*curr_sec_link)->next)
     {
-        if (osal_insensitive_strcmp(ParamName, (*curr_sec_link)->name) == 0)
+        if (strcasecmp(ParamName, (*curr_sec_link)->name) == 0)
             break;
     }
 
@@ -129,7 +128,7 @@ static config_section **find_alpha_section_link(config_list *list, const char *P
     config_section **curr_sec_link;
     for (curr_sec_link = list; *curr_sec_link != NULL; curr_sec_link = &(*curr_sec_link)->next)
     {
-        if (osal_insensitive_strcmp((*curr_sec_link)->name, ParamName) >= 0)
+        if (strcasecmp((*curr_sec_link)->name, ParamName) >= 0)
             break;
     }
 
@@ -183,7 +182,7 @@ static config_var *find_section_var(config_section *section, const char *ParamNa
     config_var *curr_var;
     for (curr_var = section->first_var; curr_var != NULL; curr_var = curr_var->next)
     {
-        if (osal_insensitive_strcmp(ParamName, curr_var->name) == 0)
+        if (strcasecmp(ParamName, curr_var->name) == 0)
             return curr_var;
     }
 
@@ -366,216 +365,21 @@ static void copy_configlist_active_to_saved(void)
     }
 }
 
-static m64p_error write_configlist_file(void)
-{
-    config_section *curr_section;
-    const char *configpath;
-    char *filepath;
-    FILE *fPtr;
-
-    /* get the full pathname to the config file and try to open it */
-    configpath = ConfigGetUserConfigPath();
-    if (configpath == NULL)
-        return M64ERR_FILES;
-
-    filepath = combinepath(configpath, MUPEN64PLUS_CFG_NAME);
-    if (filepath == NULL)
-        return M64ERR_NO_MEMORY;
-
-    fPtr = fopen(filepath, "wb"); 
-    if (fPtr == NULL)
-    {
-        DebugMessage(M64MSG_ERROR, "Couldn't open configuration file '%s' for writing.", filepath);
-        free(filepath);
-        return M64ERR_FILES;
-    }
-    free(filepath);
-
-    /* write out header */
-    fprintf(fPtr, "# Mupen64Plus Configuration File\n");
-    fprintf(fPtr, "# This file is automatically read and written by the Mupen64Plus Core library\n");
-
-    /* write out all of the config parameters from the Saved list */
-    curr_section = l_ConfigListSaved;
-    while (curr_section != NULL)
-    {
-        config_var *curr_var = curr_section->first_var;
-        fprintf(fPtr, "\n[%s]\n\n", curr_section->name);
-        while (curr_var != NULL)
-        {
-            if (curr_var->comment != NULL && strlen(curr_var->comment) > 0)
-                fprintf(fPtr, "# %s\n", curr_var->comment);
-            if (curr_var->type == M64TYPE_INT)
-                fprintf(fPtr, "%s = %i\n", curr_var->name, curr_var->val.integer);
-            else if (curr_var->type == M64TYPE_FLOAT)
-                fprintf(fPtr, "%s = %f\n", curr_var->name, curr_var->val.number);
-            else if (curr_var->type == M64TYPE_BOOL && curr_var->val.integer)
-                fprintf(fPtr, "%s = True\n", curr_var->name);
-            else if (curr_var->type == M64TYPE_BOOL && !curr_var->val.integer)
-                fprintf(fPtr, "%s = False\n", curr_var->name);
-            else if (curr_var->type == M64TYPE_STRING && curr_var->val.string != NULL)
-                fprintf(fPtr, "%s = \"%s\"\n", curr_var->name, curr_var->val.string);
-            curr_var = curr_var->next;
-        }
-        fprintf(fPtr, "\n");
-        curr_section = curr_section->next;
-    }
-
-    fclose(fPtr);
-    return M64ERR_SUCCESS;
-}
-
 /* ----------------------------------------------------------- */
 /* these functions are only to be used within the Core library */
 /* ----------------------------------------------------------- */
 
 m64p_error ConfigInit(const char *ConfigDirOverride, const char *DataDirOverride)
 {
-    m64p_error rval;
-    const char *configpath = NULL;
-    char *filepath;
-    long filelen;
-    FILE *fPtr;
-    char *configtext;
-
-    config_section *current_section = NULL;
-    char *line, *end, *lastcomment;
-
     if (l_ConfigInit)
         return M64ERR_ALREADY_INIT;
     l_ConfigInit = 1;
-
-    /* if a data directory was specified, make a copy of it */
-    if (DataDirOverride != NULL)
-    {
-        l_DataDirOverride = strdup(DataDirOverride);
-        if (l_DataDirOverride == NULL)
-            return M64ERR_NO_MEMORY;
-    }
-
-    /* if a config directory was specified, make a copy of it */
-    if (ConfigDirOverride != NULL)
-    {
-        l_ConfigDirOverride = strdup(ConfigDirOverride);
-        if (l_ConfigDirOverride == NULL)
-            return M64ERR_NO_MEMORY;
-    }
-
-    /* get the full pathname to the config file and try to open it */
-    configpath = ConfigGetUserConfigPath();
-    if (configpath == NULL)
-        return M64ERR_FILES;
-
-    filepath = combinepath(configpath, MUPEN64PLUS_CFG_NAME);
-    if (filepath == NULL)
-        return M64ERR_NO_MEMORY;
-
-    fPtr = fopen(filepath, "rb");
-    if (fPtr == NULL)
-    {
-        DebugMessage(M64MSG_INFO, "Couldn't open configuration file '%s'.  Using defaults.", filepath);
-        free(filepath);
-        l_SaveConfigOnExit = 1; /* auto-save the config file so that the defaults will be saved to disk */
-        return M64ERR_SUCCESS;
-    }
-    free(filepath);
-
-    /* read the entire config file */
-    fseek(fPtr, 0L, SEEK_END);
-    filelen = ftell(fPtr);
-    fseek(fPtr, 0L, SEEK_SET);
-
-    configtext = (char *) malloc(filelen + 1);
-    if (configtext == NULL)
-    {
-        fclose(fPtr);
-        return M64ERR_NO_MEMORY;
-    }
-    if (fread(configtext, 1, filelen, fPtr) != filelen)
-    {
-        free(configtext);
-        fclose(fPtr);
-        return M64ERR_FILES;
-    }
-    fclose(fPtr);
-
-    /* parse the file data */
-    current_section = NULL;
-    line = configtext;
-    end = configtext + filelen;
-    lastcomment = NULL;
-    *end = 0;
-    while (line < end)
-    {
-        ini_line l = ini_parse_line(&line);
-        switch (l.type)
-        {
-            case INI_COMMENT:
-                lastcomment = l.value;
-                break;
-
-            case INI_SECTION:
-                rval = ConfigOpenSection(l.name, (m64p_handle *) &current_section);
-                if (rval != M64ERR_SUCCESS)
-                {
-                    free(configtext);
-                    return rval;
-                }
-                lastcomment = NULL;
-                break;
-
-            case INI_PROPERTY:
-                if (l.value[0] == '"' && l.value[strlen(l.value)-1] == '"')
-                {
-                    l.value++;
-                    l.value[strlen(l.value)-1] = 0;
-                    ConfigSetDefaultString((m64p_handle) current_section, l.name, l.value, lastcomment);
-                }
-                else if (osal_insensitive_strcmp(l.value, "false") == 0)
-                {
-                    ConfigSetDefaultBool((m64p_handle) current_section, l.name, 0, lastcomment);
-                }
-                else if (osal_insensitive_strcmp(l.value, "true") == 0)
-                {
-                    ConfigSetDefaultBool((m64p_handle) current_section, l.name, 1, lastcomment);
-                }
-                else if (is_numeric(l.value))
-                {
-                    int val_int = (int) strtol(l.value, NULL, 10);
-                    float val_float = (float) strtod(l.value, NULL);
-                    if ((val_float - val_int) != 0.0)
-                        ConfigSetDefaultFloat((m64p_handle) current_section, l.name, val_float, lastcomment);
-                    else
-                        ConfigSetDefaultInt((m64p_handle) current_section, l.name, val_int, lastcomment);
-                }
-                else
-                {
-                    /* assume that it's a string */
-                    ConfigSetDefaultString((m64p_handle) current_section, l.name, l.value, lastcomment);
-                }
-                lastcomment = NULL;
-                break;
-
-            default:
-                break;
-        }
-    }
-
-    /* release memory used for config file text */
-    free(configtext);
-
-    /* duplicate the entire config data list, to store a copy of the list which represents the state of the file on disk */
-    copy_configlist_active_to_saved();
 
     return M64ERR_SUCCESS;
 }
 
 m64p_error ConfigShutdown(void)
 {
-    /* first, save the file if necessary */
-    if (l_SaveConfigOnExit)
-        ConfigSaveFile();
-
     /* reset the initialized flag */
     if (!l_ConfigInit)
         return M64ERR_NOT_INIT;
@@ -636,7 +440,7 @@ EXPORT m64p_error CALL ConfigOpenSection(const char *SectionName, m64p_handle *C
 
     /* walk through the section list, looking for a case-insensitive name match */
     curr_section = find_alpha_section_link(&l_ConfigListActive, SectionName);
-    if (*curr_section != NULL && osal_insensitive_strcmp(SectionName, (*curr_section)->name) == 0)
+    if (*curr_section != NULL && strcasecmp(SectionName, (*curr_section)->name) == 0)
     {
         *ConfigSectionHandle = *curr_section;
         return M64ERR_SUCCESS;
@@ -827,48 +631,12 @@ EXPORT m64p_error CALL ConfigSaveFile(void)
     /* copy the active config list to the saved config list */
     copy_configlist_active_to_saved();
 
-    /* write the saved config list out to a file */
-    return (write_configlist_file());
+    return M64ERR_SUCCESS;
 }
 
 EXPORT m64p_error CALL ConfigSaveSection(const char *SectionName)
 {
-    config_section *curr_section, *new_section;
-    config_section **insertion_point;
-
-    if (!l_ConfigInit)
-        return M64ERR_NOT_INIT;
-    if (SectionName == NULL || strlen(SectionName) < 1)
-        return M64ERR_INPUT_ASSERT;
-
-    /* walk through the Active section list, looking for a case-insensitive name match */
-    curr_section = find_section(l_ConfigListActive, SectionName);
-    if (curr_section == NULL)
-        return M64ERR_INPUT_NOT_FOUND;
-
-    /* duplicate this section */
-    new_section = section_deepcopy(curr_section);
-    if (new_section == NULL)
-        return M64ERR_NO_MEMORY;
-
-    /* update config section that's in the Saved list with the new one */
-    insertion_point = find_alpha_section_link(&l_ConfigListSaved, SectionName);
-    if (*insertion_point != NULL && osal_insensitive_strcmp((*insertion_point)->name, SectionName) == 0)
-    {
-        /* the section exists in the saved list and will be replaced */
-        new_section->next = (*insertion_point)->next;
-        delete_section(*insertion_point);
-        *insertion_point = new_section;
-    }
-    else
-    {
-        /* the section didn't exist in the saved list and has to be inserted */
-        new_section->next = *insertion_point;
-        *insertion_point = new_section;
-    }
-
-    /* write the saved config list out to a file */
-    return (write_configlist_file());
+    return M64ERR_SUCCESS;
 }
 
 EXPORT m64p_error CALL ConfigRevertChanges(const char *SectionName)
@@ -1211,7 +979,6 @@ EXPORT m64p_error CALL ConfigSetDefaultString(m64p_handle ConfigSectionHandle, c
     return M64ERR_SUCCESS;
 }
 
-#ifdef __LIBRETRO__  // Conifg overrides
 #include "libretro.h"
 extern retro_environment_t environ_cb;
 
@@ -1234,141 +1001,144 @@ static int choose_value(const char* value_name, const value_pair* values)
 
    return -1;
 }
-#endif
 
 EXPORT int CALL ConfigGetParamInt(m64p_handle ConfigSectionHandle, const char *ParamName)
 {
    int i;
-    config_section *section;
-    config_var *var;
-    static const struct
-    {
-        const char* ParamName;
-        const char* RetroName;
-        const value_pair Values[32];
-    }   libretro_translate[] =
-    {
-        { "R4300Emulator", "mupen64-cpucore", { { 0, "pure_interpreter" }, { 1, "cached_interpreter" }, { 2, "dynamic_recompiler" }, { 3, "neb_dynamic_recompiler" }, { 0, 0 } } },
-        { "ScreenWidth", "mupen64-screensize", { 
-                                                  { 320, "320x200" },
-                                                  { 320, "320x240" },
-                                                  { 400, "400x256" },
-                                                  { 512, "512x384" },
-                                                  { 640, "640x200" },
-                                                  { 640, "640x350" },
-                                                  { 640, "640x400" },
-                                                  { 640, "640x480" },
-                                                  { 800, "800x600" },
-                                                  { 960, "960x720" },
-                                                  { 856,  "856x480" },
-                                                  { 512,  "512x256" },
-                                                  { 1024, "1024x768" },
-                                                  { 1280, "1280x1024" },
-                                                  { 1600, "1600x1200" },
-                                                  { 400, "400x300" },
-                                                  { 1152, "1152x864" },
-                                                  { 1280, "1280x960" },
-                                                  { 1600, "1600x1024" },
-                                                  { 1920, "1920x1440" },
-                                                  { 2048, "2048x1536" },
-                                                  { 2048, "2048x2048" },
-                                                  { 0, 0 } 
-                                               }
-        },
-        { "ScreenHeight", "mupen64-screensize", { 
-                                                   { 200, "320x200" },
-                                                   { 240, "320x240" },
-                                                   { 256, "400x256" },
-                                                   { 384, "512x384" },
-                                                   { 200, "640x200" },
-                                                   { 350, "640x350" },
-                                                   { 400, "640x400" },
-                                                   { 480, "640x480" },
-                                                   { 600, "800x600" },
-                                                   { 720, "960x720" },
-                                                   { 480, "856x480" },
-                                                   { 256, "512x256" },
-                                                   { 768, "1024x768" },
-                                                   { 1024, "1280x1024" },
-                                                   { 1200, "1600x1200" },
-                                                   { 300, "400x300" },
-                                                   { 854, "1152x864" },
-                                                   { 960, "1280x960" },
-                                                   { 1024, "1600x1024" },
-                                                   { 1440, "1920x1440" },
-                                                   { 1536, "2048x1536" },
-                                                   { 2048, "2048x2048" },
-                                                   { 0, 0 } 
-                                                } 
-        },
-        { "DisableExtraMem", "mupen64-disable_expmem", {
-                                                          { 0, "enabled" },
-                                                          { 1, "disabled" },
-                                                       }
-        },
-        { 0, 0, { {0, 0} } }
-    };
+   config_section *section;
+   config_var *var;
+   static const struct
+   {
+      const char* ParamName;
+      const char* RetroName;
+      const value_pair Values[32];
+   }   libretro_translate[] =
+   {
+      { "R4300Emulator", "parallel-n64-cpucore", { { 0, "pure_interpreter" }, { 1, "cached_interpreter" }, { 2, "dynamic_recompiler" }, { 3, "neb_dynamic_recompiler" }, { 0, 0 } } },
+      { "ScreenWidth", "parallel-n64-screensize", { 
+                                                { 320, "320x200" },
+                                                { 320, "320x240" },
+                                                { 400, "400x256" },
+                                                { 512, "512x384" },
+                                                { 640, "640x200" },
+                                                { 640, "640x350" },
+                                                { 640, "640x400" },
+                                                { 640, "640x480" },
+                                                { 800, "800x600" },
+                                                { 960, "960x720" },
+                                                { 856,  "856x480" },
+                                                { 512,  "512x256" },
+                                                { 1024, "1024x768" },
+                                                { 1280, "1280x1024" },
+                                                { 1600, "1600x1200" },
+                                                { 400, "400x300" },
+                                                { 1152, "1152x864" },
+                                                { 1280, "1280x960" },
+                                                { 1600, "1600x1024" },
+                                                { 1920, "1920x1440" },
+                                                { 2048, "2048x1536" },
+                                                { 2048, "2048x2048" },
+                                                { 0, 0 } 
+                                             }
+      },
+      { "ScreenHeight", "parallel-n64-screensize", { 
+                                                 { 200, "320x200" },
+                                                 { 240, "320x240" },
+                                                 { 256, "400x256" },
+                                                 { 384, "512x384" },
+                                                 { 200, "640x200" },
+                                                 { 350, "640x350" },
+                                                 { 400, "640x400" },
+                                                 { 480, "640x480" },
+                                                 { 600, "800x600" },
+                                                 { 720, "960x720" },
+                                                 { 480, "856x480" },
+                                                 { 256, "512x256" },
+                                                 { 768, "1024x768" },
+                                                 { 1024, "1280x1024" },
+                                                 { 1200, "1600x1200" },
+                                                 { 300, "400x300" },
+                                                 { 854, "1152x864" },
+                                                 { 960, "1280x960" },
+                                                 { 1024, "1600x1024" },
+                                                 { 1440, "1920x1440" },
+                                                 { 1536, "2048x1536" },
+                                                 { 2048, "2048x2048" },
+                                                 { 0, 0 } 
+                                              } 
+      },
+      { "DisableExtraMem", "parallel-n64-disable_expmem", {
+                                                        { 0, "enabled" },
+                                                        { 1, "disabled" },
+                                                     }
+      },
+      {
+         "BootDevice", "parallel-n64-boot-device",
+         {
+            { 0, "Default" },
+            { 1, "64DD IPL" },
+         }
+      }, 
+      { 0, 0, { {0, 0} } }
+   };
 
-#ifdef __LIBRETRO__
-    if (!strcmp(ParamName, "AnisoFilter"))
-#ifdef GLES
-       return 0;
+   if (!strcmp(ParamName, "AnisoFilter"))
+#ifdef HAVE_OPENGLES
+      return 0;
 #else
-       return 1;
+   return 1;
 #endif
 
-    for (i = 0; libretro_translate[i].ParamName; i ++)
-    {
-        if (strcmp(ParamName, libretro_translate[i].ParamName) == 0)
-        {
-            int result = choose_value(libretro_translate[i].RetroName, libretro_translate[i].Values);
-            if (result >= 0)
-                return result;
-            break;
-       }
-    }
+   for (i = 0; libretro_translate[i].ParamName; i ++)
+   {
+      if (strcmp(ParamName, libretro_translate[i].ParamName) == 0)
+      {
+         int result = choose_value(libretro_translate[i].RetroName, libretro_translate[i].Values);
+         if (result >= 0)
+            return result;
+         break;
+      }
+   }
 
-#endif
+   /* check input conditions */
+   if (!l_ConfigInit || ConfigSectionHandle == NULL || ParamName == NULL)
+   {
+      DebugMessage(M64MSG_ERROR, "ConfigGetParamInt(): Input assertion!");
+      return 0;
+   }
 
-    /* check input conditions */
-    if (!l_ConfigInit || ConfigSectionHandle == NULL || ParamName == NULL)
-    {
-        DebugMessage(M64MSG_ERROR, "ConfigGetParamInt(): Input assertion!");
-        return 0;
-    }
+   section = (config_section *) ConfigSectionHandle;
+   if (section->magic != SECTION_MAGIC)
+   {
+      DebugMessage(M64MSG_ERROR, "ConfigGetParamInt(): ConfigSectionHandle invalid!");
+      return 0;
+   }
 
-    section = (config_section *) ConfigSectionHandle;
-    if (section->magic != SECTION_MAGIC)
-    {
-        DebugMessage(M64MSG_ERROR, "ConfigGetParamInt(): ConfigSectionHandle invalid!");
-        return 0;
-    }
+   /* if this parameter doesn't already exist, return an error */
+   var = find_section_var(section, ParamName);
+   if (var == NULL)
+   {
+      DebugMessage(M64MSG_ERROR, "ConfigGetParamInt(): Parameter '%s' not found!", ParamName);
+      return 0;
+   }
 
-    /* if this parameter doesn't already exist, return an error */
-    var = find_section_var(section, ParamName);
-    if (var == NULL)
-    {
-        DebugMessage(M64MSG_ERROR, "ConfigGetParamInt(): Parameter '%s' not found!", ParamName);
-        return 0;
-    }
+   /* translate the actual variable type to an int */
+   switch(var->type)
+   {
+      case M64TYPE_INT:
+         return var->val.integer;
+      case M64TYPE_FLOAT:
+         return (int) var->val.number;
+      case M64TYPE_BOOL:
+         return (var->val.integer != 0);
+      case M64TYPE_STRING:
+         return atoi(var->val.string);
+      default:
+         DebugMessage(M64MSG_ERROR, "ConfigGetParamInt(): invalid internal parameter type for '%s'", ParamName);
+         return 0;
+   }
 
-    /* translate the actual variable type to an int */
-    switch(var->type)
-    {
-        case M64TYPE_INT:
-            return var->val.integer;
-        case M64TYPE_FLOAT:
-            return (int) var->val.number;
-        case M64TYPE_BOOL:
-            return (var->val.integer != 0);
-        case M64TYPE_STRING:
-            return atoi(var->val.string);
-        default:
-            DebugMessage(M64MSG_ERROR, "ConfigGetParamInt(): invalid internal parameter type for '%s'", ParamName);
-            return 0;
-    }
-
-    return 0;
+   return 0;
 }
 
 EXPORT float CALL ConfigGetParamFloat(m64p_handle ConfigSectionHandle, const char *ParamName)
@@ -1417,86 +1187,111 @@ EXPORT float CALL ConfigGetParamFloat(m64p_handle ConfigSectionHandle, const cha
     return 0.0;
 }
 
+extern unsigned angrylion_get_vi(void);
+
 EXPORT int CALL ConfigGetParamBool(m64p_handle ConfigSectionHandle, const char *ParamName)
 {
-    config_section *section;
-    config_var *var;
+   int i;
+   config_section *section;
+   config_var *var;
+   static const struct
+   {
+      const char* ParamName;
+      const char* RetroName;
+      const value_pair Values[32];
+   }   libretro_translate[] =
+   {
+      { "64DD", "parallel-n64-64dd-hardware",
+         {
+            { 0, "disabled" }, { 1, "enabled" }
+         }
+      },
+      { 0, 0, { {0, 0} } }
+   };
 
-#ifdef __LIBRETRO__
-    extern int overlay;
+   for (i = 0; libretro_translate[i].ParamName; i ++)
+   {
+      if (strcmp(ParamName, libretro_translate[i].ParamName) == 0)
+      {
+         int result = choose_value(libretro_translate[i].RetroName, libretro_translate[i].Values);
+         if (result >= 0)
+            return result;
+         break;
+      }
+   }
 
-    if (!strcmp(ParamName, "DisplayListToGraphicsPlugin"))
-    {
-       return CFG_HLE_GFX;
-    }
-    if (!strcmp(ParamName, "AudioListToAudioPlugin"))
-    {
-       return CFG_HLE_AUD;
-    }
-    if (!strcmp(ParamName, "WaitForCPUHost"))
-    {
-       return false;
-    }
-    if (!strcmp(ParamName, "SupportCPUSemaphoreLock"))
-    {
-       return false;
-    }
-    if (!strcmp(ParamName, "VIOverlay"))
-       return overlay;
 
-    if (!strcmp(ParamName, "Fullscreen"))
-       return true;
-    if (!strcmp(ParamName, "VerticalSync"))
-       return false;
-    if (!strcmp(ParamName, "FBO"))
-       return true;
-    if (!strcmp(ParamName, "AnisotropicFiltering"))
-#ifdef GLES
-       return false;
+   if (!strcmp(ParamName, "DisplayListToGraphicsPlugin"))
+   {
+      return CFG_HLE_GFX;
+   }
+   if (!strcmp(ParamName, "AudioListToAudioPlugin"))
+   {
+      return CFG_HLE_AUD;
+   }
+   if (!strcmp(ParamName, "WaitForCPUHost"))
+   {
+      return false;
+   }
+   if (!strcmp(ParamName, "SupportCPUSemaphoreLock"))
+   {
+      return false;
+   }
+   if (!strcmp(ParamName, "VIOverlay"))
+      return (int)angrylion_get_vi();
+
+   if (!strcmp(ParamName, "Fullscreen"))
+      return true;
+   if (!strcmp(ParamName, "VerticalSync"))
+      return false;
+   if (!strcmp(ParamName, "FBO"))
+      return true;
+   if (!strcmp(ParamName, "AnisotropicFiltering"))
+#ifdef HAVE_OPENGLES
+      return false;
 #else
-       return true;
+   return true;
 #endif
-#endif
 
-    /* check input conditions */
-    if (!l_ConfigInit || ConfigSectionHandle == NULL || ParamName == NULL)
-    {
-        DebugMessage(M64MSG_ERROR, "ConfigGetParamBool(): Input assertion!");
-        return 0;
-    }
+   /* check input conditions */
+   if (!l_ConfigInit || ConfigSectionHandle == NULL || ParamName == NULL)
+   {
+      DebugMessage(M64MSG_ERROR, "ConfigGetParamBool(): Input assertion!");
+      return 0;
+   }
 
-    section = (config_section *) ConfigSectionHandle;
-    if (section->magic != SECTION_MAGIC)
-    {
-        DebugMessage(M64MSG_ERROR, "ConfigGetParamBool(): ConfigSectionHandle invalid!");
-        return 0;
-    }
+   section = (config_section *) ConfigSectionHandle;
+   if (section->magic != SECTION_MAGIC)
+   {
+      DebugMessage(M64MSG_ERROR, "ConfigGetParamBool(): ConfigSectionHandle invalid!");
+      return 0;
+   }
 
-    /* if this parameter doesn't already exist, return an error */
-    var = find_section_var(section, ParamName);
-    if (var == NULL)
-    {
-        DebugMessage(M64MSG_ERROR, "ConfigGetParamBool(): Parameter '%s' not found!", ParamName);
-        return 0;
-    }
+   /* if this parameter doesn't already exist, return an error */
+   var = find_section_var(section, ParamName);
+   if (var == NULL)
+   {
+      DebugMessage(M64MSG_ERROR, "ConfigGetParamBool(): Parameter '%s' not found!", ParamName);
+      return 0;
+   }
 
-    /* translate the actual variable type to an int */
-    switch(var->type)
-    {
-        case M64TYPE_INT:
-            return (var->val.integer != 0);
-        case M64TYPE_FLOAT:
-            return (var->val.number != 0.0);
-        case M64TYPE_BOOL:
-            return var->val.integer;
-        case M64TYPE_STRING:
-            return (osal_insensitive_strcmp(var->val.string, "true") == 0);
-        default:
-            DebugMessage(M64MSG_ERROR, "ConfigGetParamBool(): invalid internal parameter type for '%s'", ParamName);
-            return 0;
-    }
+   /* translate the actual variable type to an int */
+   switch(var->type)
+   {
+      case M64TYPE_INT:
+         return (var->val.integer != 0);
+      case M64TYPE_FLOAT:
+         return (var->val.number != 0.0);
+      case M64TYPE_BOOL:
+         return var->val.integer;
+      case M64TYPE_STRING:
+         return (strcasecmp(var->val.string, "true") == 0);
+      default:
+         DebugMessage(M64MSG_ERROR, "ConfigGetParamBool(): invalid internal parameter type for '%s'", ParamName);
+         return 0;
+   }
 
-    return 0;
+   return 0;
 }
 
 EXPORT const char * CALL ConfigGetParamString(m64p_handle ConfigSectionHandle, const char *ParamName)
@@ -1557,10 +1352,10 @@ extern const char* retro_get_system_directory();
 
 EXPORT const char * CALL ConfigGetSharedDataFilepath(const char *filename)
 {
-  static char configpath[PATH_MAX];
+  static char configpath[PATH_MAX_LENGTH];
   if (filename == NULL) return NULL;
 
-  snprintf(configpath, PATH_MAX, "%s/%s", retro_get_system_directory(), filename);
+  snprintf(configpath, PATH_MAX_LENGTH, "%s/%s", retro_get_system_directory(), filename);
 
   /* TODO: Return NULL if file does not exist */
 

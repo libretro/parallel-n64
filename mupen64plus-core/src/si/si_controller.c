@@ -30,6 +30,15 @@
 
 #include <string.h>
 
+enum
+{
+   SI_STATUS_DMA_BUSY  = 0x0001,
+   SI_STATUS_RD_BUSY   = 0x0002,
+   SI_STATUS_DMA_ERROR = 0x0008,
+   SI_STATUS_INTERRUPT = 0x1000,
+
+};
+
 static void dma_si_write(struct si_controller* si)
 {
    int i;
@@ -44,13 +53,16 @@ static void dma_si_write(struct si_controller* si)
       *((uint32_t*)(&si->pif.ram[i])) = sl(si->ri->rdram.dram[(si->regs[SI_DRAM_ADDR_REG]+i)/4]);
 
    update_pif_write(si);
-   update_count();
+   cp0_update_count();
 
    if (g_delay_si)
-      add_interupt_event(SI_INT, /*0x100*/0x900);
+   {
+      si->regs[SI_STATUS_REG] |= SI_STATUS_DMA_BUSY;
+      add_interrupt_event(SI_INT, /*0x100*/0x900);
+   }
    else
    {
-      si->regs[SI_STATUS_REG] |= 0x1000; // INTERRUPT
+      si->regs[SI_STATUS_REG] |= SI_STATUS_INTERRUPT;
       signal_rcp_interrupt(si->r4300, MI_INTR_SI);
    }
 }
@@ -69,37 +81,53 @@ static void dma_si_read(struct si_controller* si)
 
    for (i = 0; i < PIF_RAM_SIZE; i += 4)
       si->ri->rdram.dram[(si->regs[SI_DRAM_ADDR_REG]+i)/4] = sl(*(uint32_t*)(&si->pif.ram[i]));
-   update_count();
+   cp0_update_count();
 
    if (g_delay_si)
-      add_interupt_event(SI_INT, /*0x100*/0x900);
+   {
+      si->regs[SI_STATUS_REG] |= SI_STATUS_DMA_BUSY;
+      add_interrupt_event(SI_INT, /*0x100*/0x900);
+   }
    else
    {
-      si->regs[SI_STATUS_REG] |= 0x1000; // INTERRUPT
+      si->regs[SI_STATUS_REG] |= SI_STATUS_INTERRUPT;
       signal_rcp_interrupt(si->r4300, MI_INTR_SI);
    }
 }
 
-void connect_si(struct si_controller* si,
-                struct r4300_core* r4300,
-                struct ri_controller *ri)
+void init_si(struct si_controller* si,
+      void* eeprom_user_data,
+      void (*eeprom_save)(void*),
+      uint8_t* eeprom_data,
+      size_t eeprom_size,
+      uint16_t eeprom_id,
+      void* af_rtc_user_data,
+      const struct tm* (*af_rtc_get_time)(void*),
+      const uint8_t* ipl3,
+      struct r4300_core* r4300,
+      struct ri_controller *ri)
 {
-    si->r4300 = r4300;
-    si->ri    = ri;
+   si->r4300 = r4300;
+   si->ri    = ri;
+
+   init_pif(&si->pif,
+         eeprom_user_data, eeprom_save, eeprom_data, eeprom_size, eeprom_id,
+         af_rtc_user_data, af_rtc_get_time, ipl3 
+         );
 }
 
-void init_si(struct si_controller* si)
+void poweron_si(struct si_controller* si)
 {
     memset(si->regs, 0, SI_REGS_COUNT*sizeof(uint32_t));
 
-    init_pif(&si->pif);
+    poweron_pif(&si->pif);
 }
 
 
 int read_si_regs(void* opaque, uint32_t address, uint32_t* value)
 {
     struct si_controller* si = (struct si_controller*)opaque;
-    uint32_t reg             = si_reg(address);
+    uint32_t reg             = SI_REG(address);
 
     *value                   = si->regs[reg];
 
@@ -109,26 +137,26 @@ int read_si_regs(void* opaque, uint32_t address, uint32_t* value)
 int write_si_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mask)
 {
     struct si_controller* si = (struct si_controller*)opaque;
-    uint32_t reg             = si_reg(address);
+    uint32_t reg             = SI_REG(address);
 
     switch (reg)
     {
        case SI_DRAM_ADDR_REG:
-          masked_write(&si->regs[SI_DRAM_ADDR_REG], value, mask);
+          si->regs[SI_DRAM_ADDR_REG] = MASKED_WRITE(&si->regs[SI_DRAM_ADDR_REG], value, mask);
           break;
 
        case SI_PIF_ADDR_RD64B_REG:
-          masked_write(&si->regs[SI_PIF_ADDR_RD64B_REG], value, mask);
+          si->regs[SI_PIF_ADDR_RD64B_REG] = MASKED_WRITE(&si->regs[SI_PIF_ADDR_RD64B_REG], value, mask);
           dma_si_read(si);
           break;
 
        case SI_PIF_ADDR_WR64B_REG:
-          masked_write(&si->regs[SI_PIF_ADDR_WR64B_REG], value, mask);
+          si->regs[SI_PIF_ADDR_WR64B_REG] = MASKED_WRITE(&si->regs[SI_PIF_ADDR_WR64B_REG], value, mask);
           dma_si_write(si);
           break;
 
        case SI_STATUS_REG:
-          si->regs[SI_STATUS_REG] &= ~0x1000;
+          si->regs[SI_STATUS_REG] &= ~SI_STATUS_INTERRUPT;
           clear_rcp_interrupt(si->r4300, MI_INTR_SI);
           break;
     }
@@ -143,6 +171,7 @@ void si_end_of_dma_event(struct si_controller* si)
    si->pif.ram[0x3f] = 0x0;
 
    /* trigger SI interrupt */
-   si->regs[SI_STATUS_REG] |= 0x1000;
+   si->regs[SI_STATUS_REG] &= ~SI_STATUS_DMA_BUSY;
+   si->regs[SI_STATUS_REG] |= SI_STATUS_INTERRUPT;
    raise_rcp_interrupt(si->r4300, MI_INTR_SI);
 }

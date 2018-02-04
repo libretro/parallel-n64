@@ -42,12 +42,15 @@
 #include "main/rom.h"
 #include "main/version.h"
 #include "main/util.h"
+#include "dd/dd_rom.h"
+#include "dd/dd_disk.h"
 #include "plugin/plugin.h"
-#include "plugin/audio_backend_compat.h"
 
 /* some local state variables */
-static int l_CoreInit = 0;
-static int l_ROMOpen = 0;
+static int l_CoreInit   = 0;
+static int l_ROMOpen    = 0;
+static int l_DDROMOpen  = 0;
+static int l_DDDiskOpen = 0;
 
 /* functions exported outside of libmupen64plus to front-end application */
 EXPORT m64p_error CALL CoreStartup(int APIVersion, const char *ConfigPath, const char *DataPath, void *Context,
@@ -56,9 +59,6 @@ EXPORT m64p_error CALL CoreStartup(int APIVersion, const char *ConfigPath, const
 {
     if (l_CoreInit)
         return M64ERR_ALREADY_INIT;
-
-    /* set default AI backend */
-    SetAudioInterfaceBackend(&AUDIO_BACKEND_COMPAT);
 
     /* very first thing is to set the callback functions for debug info and state changing*/
     SetDebugCallback(DebugCallback, Context);
@@ -83,9 +83,6 @@ EXPORT m64p_error CALL CoreStartup(int APIVersion, const char *ConfigPath, const
     if (!main_set_core_defaults())
         return M64ERR_INTERNAL;
 
-    /* The ROM database contains MD5 hashes, goodnames, and some game-specific parameters */
-    romdatabase_open();
-
     l_CoreInit = 1;
     return M64ERR_SUCCESS;
 }
@@ -95,8 +92,6 @@ EXPORT m64p_error CALL CoreShutdown(void)
     if (!l_CoreInit)
         return M64ERR_NOT_INIT;
 
-    /* close down some core sub-systems */
-    romdatabase_close();
     ConfigShutdown();
 
     l_CoreInit = 0;
@@ -126,15 +121,18 @@ EXPORT m64p_error CALL CoreDoCommand(m64p_command Command, int ParamInt, void *P
             if (rval == M64ERR_SUCCESS)
             {
                 l_ROMOpen = 1;
+                cheat_init();
             }
             return rval;
         case M64CMD_ROM_CLOSE:
             if (g_EmulatorRunning || !l_ROMOpen)
                 return M64ERR_INVALID_STATE;
             l_ROMOpen = 0;
+            cheat_delete_all();
+            cheat_uninit();
             return close_rom();
         case M64CMD_ROM_GET_HEADER:
-            if (!l_ROMOpen)
+            if (!l_ROMOpen && !l_DDROMOpen)
                 return M64ERR_INVALID_STATE;
             if (ParamPtr == NULL)
                 return M64ERR_INPUT_ASSERT;
@@ -159,7 +157,7 @@ EXPORT m64p_error CALL CoreDoCommand(m64p_command Command, int ParamInt, void *P
             memcpy(ParamPtr, &ROM_SETTINGS, ParamInt);
             return M64ERR_SUCCESS;
         case M64CMD_EXECUTE:
-            if (g_EmulatorRunning || !l_ROMOpen)
+            if (g_EmulatorRunning || !l_ROMOpen && !l_DDROMOpen)
                 return M64ERR_INVALID_STATE;
             /* the main_run() function will not return until the player has quit the game */
             return main_init();
@@ -201,6 +199,29 @@ EXPORT m64p_error CALL CoreDoCommand(m64p_command Command, int ParamInt, void *P
             if (ParamInt < 0 || ParamInt > 1)
                 return M64ERR_INPUT_INVALID;
             return main_reset(ParamInt);
+        case M64CMD_DDROM_OPEN:
+            if (g_EmulatorRunning || l_DDROMOpen)
+               return M64ERR_INVALID_STATE;
+            if (ParamPtr == NULL || ParamInt < 4096)
+               return M64ERR_INPUT_ASSERT;
+            rval = open_ddrom((const unsigned char *)ParamPtr, ParamInt);
+            if (rval == M64ERR_SUCCESS)
+               l_DDROMOpen = 1;
+            return rval;
+        case M64CMD_DISK_OPEN:
+            if (g_EmulatorRunning || l_DDDiskOpen)
+               return M64ERR_INVALID_STATE;
+            if (ParamPtr == NULL || ParamInt < 4096)
+               return M64ERR_INPUT_ASSERT;
+            rval = open_dd_disk((const unsigned char *)ParamPtr, ParamInt);
+            if (rval == M64ERR_SUCCESS)
+               l_DDDiskOpen = 1;
+            return rval;
+        case M64CMD_DISK_CLOSE:
+            if (g_EmulatorRunning || !l_DDDiskOpen)
+               return M64ERR_INVALID_STATE;
+            l_DDDiskOpen = 0;
+            return close_dd_disk();
         default:
             return M64ERR_INPUT_INVALID;
     }
@@ -210,10 +231,7 @@ EXPORT m64p_error CALL CoreDoCommand(m64p_command Command, int ParamInt, void *P
 
 EXPORT m64p_error CALL CoreSetAudioInterfaceBackend(const struct m64p_audio_backend* backend)
 {
-   if (!l_CoreInit)
-      return M64ERR_NOT_INIT;
-
-   return SetAudioInterfaceBackend(backend);
+   return M64ERR_SUCCESS;
 }
 
 EXPORT m64p_error CALL CoreAddCheat(const char *CheatName, m64p_cheat_code *CodeList, int NumCodes)
@@ -255,31 +273,6 @@ EXPORT m64p_error CALL CoreCheatClearAll(void)
 
 EXPORT m64p_error CALL CoreGetRomSettings(m64p_rom_settings *RomSettings, int RomSettingsLength, int Crc1, int Crc2)
 {
-    romdatabase_entry* entry;
-    int i;
-
-    if (!l_CoreInit)
-        return M64ERR_NOT_INIT;
-    if (RomSettings == NULL)
-        return M64ERR_INPUT_ASSERT;
-    if (RomSettingsLength < sizeof(m64p_rom_settings))
-        return M64ERR_INPUT_INVALID;
-
-    /* Look up this ROM in the .ini file and fill in goodname, etc */
-    entry = ini_search_by_crc(Crc1, Crc2);
-    if (entry == NULL)
-        return M64ERR_INPUT_NOT_FOUND;
-
-    strncpy(RomSettings->goodname, entry->goodname, 255);
-    RomSettings->goodname[255] = '\0';
-    for (i = 0; i < 16; i++)
-        sprintf(RomSettings->MD5 + i*2, "%02X", entry->md5[i]);
-    RomSettings->MD5[32] = '\0';
-    RomSettings->savetype = entry->savetype;
-    RomSettings->status = entry->status;
-    RomSettings->players = entry->players;
-    RomSettings->rumble = entry->rumble;
-
     return M64ERR_SUCCESS;
 }
 

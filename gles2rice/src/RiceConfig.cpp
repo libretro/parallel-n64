@@ -21,7 +21,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include <fstream>
 
 #include <stdlib.h>
-#include "../../libretro/SDL.h"
+#include "../../libretro/libretro_private.h"
 
 #define M64P_PLUGIN_PROTOTYPES 1
 #include "osal_preproc.h"
@@ -316,12 +316,12 @@ bool InitConfiguration(void)
     if (ConfigOpenSection("Video-General", &l_ConfigVideoGeneral) != M64ERR_SUCCESS)
     {
         DebugMessage(M64MSG_ERROR, "Unable to open Video-General configuration section");
-        return FALSE;
+        return false;
     }
     if (ConfigOpenSection("Video-Rice", &l_ConfigVideoRice) != M64ERR_SUCCESS)
     {
         DebugMessage(M64MSG_ERROR, "Unable to open Video-Rice configuration section");
-        return FALSE;
+        return false;
     }
 
     ConfigSetDefaultBool(l_ConfigVideoGeneral, "Fullscreen", 0, "Use fullscreen mode if True, or windowed mode if False ");
@@ -337,25 +337,25 @@ bool InitConfiguration(void)
 #else
     ConfigSetDefaultInt(l_ConfigVideoRice, "ScreenUpdateSetting", SCREEN_UPDATE_AT_VI_UPDATE, "Control when the screen will be updated (0=ROM default, 1=VI origin update, 2=VI origin change, 3=CI change, 4=first CI change, 5=first primitive draw, 6=before screen clear, 7=after screen drawn)");  // SCREEN_UPDATE_AT_VI_UPDATE_AND_DRAWN
 #endif
-    ConfigSetDefaultBool(l_ConfigVideoRice, "NormalAlphaBlender", FALSE, "Force to use normal alpha blender");
-    ConfigSetDefaultBool(l_ConfigVideoRice, "FastTextureLoading", FALSE, "Use a faster algorithm to speed up texture loading and CRC computation");
-    ConfigSetDefaultBool(l_ConfigVideoRice, "AccurateTextureMapping", TRUE, "Use different texture coordinate clamping code");
-    ConfigSetDefaultBool(l_ConfigVideoRice, "InN64Resolution", FALSE, "Force emulated frame buffers to be in N64 native resolution");
-    ConfigSetDefaultBool(l_ConfigVideoRice, "SaveVRAM", FALSE, "Try to reduce Video RAM usage (should never be used)");
-    ConfigSetDefaultBool(l_ConfigVideoRice, "DoubleSizeForSmallTxtrBuf", FALSE, "Enable this option to have better render-to-texture quality");
-    ConfigSetDefaultBool(l_ConfigVideoRice, "DefaultCombinerDisable", FALSE, "Force to use normal color combiner");
+    ConfigSetDefaultBool(l_ConfigVideoRice, "NormalAlphaBlender", false, "Force to use normal alpha blender");
+    ConfigSetDefaultBool(l_ConfigVideoRice, "FastTextureLoading", false, "Use a faster algorithm to speed up texture loading and CRC computation");
+    ConfigSetDefaultBool(l_ConfigVideoRice, "AccurateTextureMapping", true, "Use different texture coordinate clamping code");
+    ConfigSetDefaultBool(l_ConfigVideoRice, "InN64Resolution", false, "Force emulated frame buffers to be in N64 native resolution");
+    ConfigSetDefaultBool(l_ConfigVideoRice, "SaveVRAM", false, "Try to reduce Video RAM usage (should never be used)");
+    ConfigSetDefaultBool(l_ConfigVideoRice, "DoubleSizeForSmallTxtrBuf", false, "Enable this option to have better render-to-texture quality");
+    ConfigSetDefaultBool(l_ConfigVideoRice, "DefaultCombinerDisable", false, "Force to use normal color combiner");
 
-    ConfigSetDefaultBool(l_ConfigVideoRice, "EnableHacks", TRUE, "Enable game-specific settings from INI file");
-    ConfigSetDefaultBool(l_ConfigVideoRice, "WinFrameMode", FALSE, "If enabled, graphics will be drawn in WinFrame mode instead of solid and texture mode");
-    ConfigSetDefaultBool(l_ConfigVideoRice, "FullTMEMEmulation", FALSE, "N64 Texture Memory Full Emulation (may fix some games, may break others)");
-    ConfigSetDefaultBool(l_ConfigVideoRice, "OpenGLVertexClipper", FALSE, "Enable vertex clipper for fog operations");
-    ConfigSetDefaultBool(l_ConfigVideoRice, "SkipFrame", FALSE, "If this option is enabled, the plugin will skip every other frame");
-    ConfigSetDefaultBool(l_ConfigVideoRice, "TexRectOnly", FALSE, "If enabled, texture enhancement will be done only for TxtRect ucode");
-    ConfigSetDefaultBool(l_ConfigVideoRice, "SmallTextureOnly", FALSE, "If enabled, texture enhancement will be done only for textures width+height<=128");
-    ConfigSetDefaultBool(l_ConfigVideoRice, "LoadHiResCRCOnly", TRUE, "Select hi-resolution textures based only on the CRC and ignore format+size information (Glide64 compatibility)");
-    ConfigSetDefaultBool(l_ConfigVideoRice, "LoadHiResTextures", FALSE, "Enable hi-resolution texture file loading");
-    ConfigSetDefaultBool(l_ConfigVideoRice, "DumpTexturesToFiles", FALSE, "Enable texture dumping");
-    ConfigSetDefaultBool(l_ConfigVideoRice, "ShowFPS", FALSE, "Display On-screen FPS");
+    ConfigSetDefaultBool(l_ConfigVideoRice, "EnableHacks", true, "Enable game-specific settings from INI file");
+    ConfigSetDefaultBool(l_ConfigVideoRice, "WinFrameMode", false, "If enabled, graphics will be drawn in WinFrame mode instead of solid and texture mode");
+    ConfigSetDefaultBool(l_ConfigVideoRice, "FullTMEMEmulation", false, "N64 Texture Memory Full Emulation (may fix some games, may break others)");
+    ConfigSetDefaultBool(l_ConfigVideoRice, "OpenGLVertexClipper", false, "Enable vertex clipper for fog operations");
+    ConfigSetDefaultBool(l_ConfigVideoRice, "SkipFrame", false, "If this option is enabled, the plugin will skip every other frame");
+    ConfigSetDefaultBool(l_ConfigVideoRice, "TexRectOnly", false, "If enabled, texture enhancement will be done only for TxtRect ucode");
+    ConfigSetDefaultBool(l_ConfigVideoRice, "SmallTextureOnly", false, "If enabled, texture enhancement will be done only for textures width+height<=128");
+    ConfigSetDefaultBool(l_ConfigVideoRice, "LoadHiResCRCOnly", true, "Select hi-resolution textures based only on the CRC and ignore format+size information (Glide64 compatibility)");
+    ConfigSetDefaultBool(l_ConfigVideoRice, "LoadHiResTextures", false, "Enable hi-resolution texture file loading");
+    ConfigSetDefaultBool(l_ConfigVideoRice, "DumpTexturesToFiles", false, "Enable texture dumping");
+    ConfigSetDefaultBool(l_ConfigVideoRice, "ShowFPS", false, "Display On-screen FPS");
 
     ConfigSetDefaultInt(l_ConfigVideoRice, "Mipmapping", 2, "Use Mipmapping? 0=no, 1=nearest, 2=bilinear, 3=trilinear");
     ConfigSetDefaultInt(l_ConfigVideoRice, "FogMethod", 0, "Enable, Disable or Force fog generation (0=Disable, 1=Enable n64 choose, 2=Force Fog)");
@@ -367,7 +367,7 @@ bool InitConfiguration(void)
     ConfigSetDefaultInt(l_ConfigVideoRice, "MultiSampling", 0, "Enable/Disable MultiSampling (0=off, 2,4,8,16=quality)");
     ConfigSetDefaultInt(l_ConfigVideoRice, "ColorQuality", TEXTURE_FMT_A8R8G8B8, "Color bit depth for rendering window (0=32 bits, 1=16 bits)");
     ConfigSetDefaultInt(l_ConfigVideoRice, "OpenGLRenderSetting", OGL_DEVICE, "OpenGL level to support (0=auto, 1=OGL_1.1, 2=OGL_1.2, 3=OGL_1.3, 4=OGL_1.4, 5=OGL_1.4_V2, 6=OGL_TNT2, 7=NVIDIA_OGL, 8=OGL_FRAGMENT_PROGRAM)");
-    return TRUE;
+    return true;
 }
 
 bool isMMXSupported() 
@@ -385,7 +385,7 @@ bool isMMXSupported()
 
 static void ReadConfiguration(void)
 {
-   struct retro_variable var = { "mupen64-screensize", 0 };
+   struct retro_variable var = { "parallel-n64-screensize", 0 };
    bool ret = environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var);
 
    if (ret && var.value)
@@ -458,20 +458,20 @@ bool LoadConfiguration(void)
     if (!ReadIniFile())
     {
         DebugMessage(M64MSG_ERROR, "Unable to read ini file from disk");
-        return FALSE;
+        return false;
     }
 #endif
 
     if (l_ConfigVideoGeneral == NULL || l_ConfigVideoRice == NULL)
     {
         DebugMessage(M64MSG_ERROR, "Rice Video configuration sections are not open!");
-        return FALSE;
+        return false;
     }
     
     // Read config parameters from core config API and set up internal variables
     ReadConfiguration();
 
-    return TRUE;
+    return true;
 }
 
 void GenerateCurrentRomOptions()
@@ -910,7 +910,7 @@ bool ReadIniFile()
 
     if (inifile.fail())
     {
-        return FALSE;
+        return false;
     }
 
     while (getline(inifile,readinfo)/*&&sectionno<999*/)
@@ -929,27 +929,27 @@ bool ReadIniFile()
                 readinfo[strlen(readinfo)-1]='\0';
                 strcpy(newsection.crccheck, readinfo+1);
 
-                newsection.bDisableTextureCRC = FALSE;
-                newsection.bDisableCulling = FALSE;
-                newsection.bIncTexRectEdge = FALSE;
-                newsection.bZHack = FALSE;
-                newsection.bTextureScaleHack = FALSE;
-                newsection.bFastLoadTile = FALSE;
-                newsection.bUseSmallerTexture = FALSE;
-                newsection.bPrimaryDepthHack = FALSE;
-                newsection.bTexture1Hack = FALSE;
-                newsection.bDisableObjBG = FALSE;
+                newsection.bDisableTextureCRC = false;
+                newsection.bDisableCulling = false;
+                newsection.bIncTexRectEdge = false;
+                newsection.bZHack = false;
+                newsection.bTextureScaleHack = false;
+                newsection.bFastLoadTile = false;
+                newsection.bUseSmallerTexture = false;
+                newsection.bPrimaryDepthHack = false;
+                newsection.bTexture1Hack = false;
+                newsection.bDisableObjBG = false;
                 newsection.VIWidth = -1;
                 newsection.VIHeight = -1;
                 newsection.UseCIWidthAndRatio = NOT_USE_CI_WIDTH_AND_RATIO;
                 newsection.dwFullTMEM = 0;
-                newsection.bTxtSizeMethod2 = FALSE;
-                newsection.bEnableTxtLOD = FALSE;
+                newsection.bTxtSizeMethod2 = false;
+                newsection.bEnableTxtLOD = false;
 
-                newsection.bEmulateClear = FALSE;
-                newsection.bForceScreenClear = FALSE;
-                newsection.bDisableBlender = FALSE;
-                newsection.bForceDepthBuffer = FALSE;
+                newsection.bEmulateClear = false;
+                newsection.bForceScreenClear = false;
+                newsection.bDisableBlender = false;
+                newsection.bForceDepthBuffer = false;
                 newsection.dwFastTextureCRC = 0;
                 newsection.dwAccurateTextureMapping = 0;
                 newsection.dwNormalBlender = 0;
@@ -1057,7 +1057,7 @@ bool ReadIniFile()
     }
     //inifile.close();
 
-    return TRUE;
+    return true;
 }
 
 //read a line from the ini file
@@ -1234,10 +1234,10 @@ void OutputSectionDetails(uint32_t i, FILE * fh)
     if (IniSections[i].dwFullTMEM > 0)
         fprintf(fh, "FullTMEM=%d\n", IniSections[i].dwFullTMEM);
 
-    if (IniSections[i].bTxtSizeMethod2 != FALSE )
+    if (IniSections[i].bTxtSizeMethod2 != false )
         fprintf(fh, "AlternativeTxtSizeMethod=%d\n", IniSections[i].bTxtSizeMethod2);
 
-    if (IniSections[i].bEnableTxtLOD != FALSE )
+    if (IniSections[i].bEnableTxtLOD != false )
         fprintf(fh, "EnableTxtLOD=%d\n", IniSections[i].bEnableTxtLOD);
 
     if (IniSections[i].bDisableObjBG != 0 )
@@ -1299,27 +1299,27 @@ static int FindIniEntry(uint32_t dwCRC1, uint32_t dwCRC2, uint8_t nCountryID, ch
     strcpy(newsection.crccheck, (char*)szCRC);
 
     strncpy(newsection.name, szName, 50);
-    newsection.bDisableTextureCRC = FALSE;
-    newsection.bDisableCulling = FALSE;
-    newsection.bIncTexRectEdge = FALSE;
-    newsection.bZHack = FALSE;
-    newsection.bTextureScaleHack = FALSE;
-    newsection.bFastLoadTile = FALSE;
-    newsection.bUseSmallerTexture = FALSE;
-    newsection.bPrimaryDepthHack = FALSE;
-    newsection.bTexture1Hack = FALSE;
-    newsection.bDisableObjBG = FALSE;
+    newsection.bDisableTextureCRC = false;
+    newsection.bDisableCulling = false;
+    newsection.bIncTexRectEdge = false;
+    newsection.bZHack = false;
+    newsection.bTextureScaleHack = false;
+    newsection.bFastLoadTile = false;
+    newsection.bUseSmallerTexture = false;
+    newsection.bPrimaryDepthHack = false;
+    newsection.bTexture1Hack = false;
+    newsection.bDisableObjBG = false;
     newsection.VIWidth = -1;
     newsection.VIHeight = -1;
     newsection.UseCIWidthAndRatio = NOT_USE_CI_WIDTH_AND_RATIO;
     newsection.dwFullTMEM = 0;
-    newsection.bTxtSizeMethod2 = FALSE;
-    newsection.bEnableTxtLOD = FALSE;
+    newsection.bTxtSizeMethod2 = false;
+    newsection.bEnableTxtLOD = false;
 
-    newsection.bEmulateClear = FALSE;
-    newsection.bForceScreenClear = FALSE;
-    newsection.bDisableBlender = FALSE;
-    newsection.bForceDepthBuffer = FALSE;
+    newsection.bEmulateClear = false;
+    newsection.bForceScreenClear = false;
+    newsection.bDisableBlender = false;
+    newsection.bForceDepthBuffer = false;
     newsection.dwFastTextureCRC = 0;
     newsection.dwAccurateTextureMapping = 0;
     newsection.dwNormalBlender = 0;

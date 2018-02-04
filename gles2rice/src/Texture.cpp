@@ -41,7 +41,7 @@ CTexture::CTexture(uint32_t dwWidth, uint32_t dwHeight, TextureUsage usage) :
         m_pTexture(NULL),
         m_dwTextureFmt(TEXTURE_FMT_A8R8G8B8)
 {
-    // fix me, do something here
+   // fix me, do something here
 }
 
 
@@ -51,18 +51,16 @@ CTexture::~CTexture(void)
 
 TextureFmt CTexture::GetSurfaceFormat(void)
 {
-    if (m_pTexture == NULL)
-        return TEXTURE_FMT_UNKNOWN;
-    else
-        return m_dwTextureFmt;
+   if (m_pTexture == NULL)
+      return TEXTURE_FMT_UNKNOWN;
+   return m_dwTextureFmt;
 }
 
 uint32_t CTexture::GetPixelSize()
 {
-    if( m_dwTextureFmt == TEXTURE_FMT_A8R8G8B8 )
-        return 4;
-    else
-        return 2;
+   if( m_dwTextureFmt == TEXTURE_FMT_A8R8G8B8 )
+      return 4;
+   return 2;
 }
 
 
@@ -76,199 +74,186 @@ uint32_t CTexture::GetPixelSize()
 // limition
 void CTexture::ScaleImageToSurface(bool scaleS, bool scaleT)
 {
-    uint8_t g_ucTempBuffer[1024*1024*4];
+   uint8_t g_ucTempBuffer[1024*1024*4];
 
-    if( scaleS==false && scaleT==false) return;
+   if( scaleS==false && scaleT==false)
+      return;
 
-    // If the image is not scaled, call this function to scale the real image to
-    // the D3D given dimension
+   // If the image is not scaled, call this function to scale the real image to
+   // the D3D given dimension
 
-    uint32_t width = scaleS ? m_dwWidth : m_dwCreatedTextureWidth;
-    uint32_t height = scaleT ? m_dwHeight : m_dwCreatedTextureHeight;
+   uint32_t width = scaleS ? m_dwWidth : m_dwCreatedTextureWidth;
+   uint32_t height = scaleT ? m_dwHeight : m_dwCreatedTextureHeight;
 
-    uint32_t xDst, yDst;
-    uint32_t xSrc, ySrc;
+   uint32_t xDst, yDst;
+   uint32_t xSrc, ySrc;
 
-    DrawInfo di;
+   DrawInfo di;
 
-    if (!StartUpdate(&di))
-    {
-        return;
-    }
+   if (!StartUpdate(&di))
+      return;
 
-    int pixSize = GetPixelSize();
+   int pixSize = GetPixelSize();
 
-    // Copy across from the temp buffer to the surface
-    switch (pixSize)
-    {
-    case 4:
-        {
+   // Copy across from the temp buffer to the surface
+   switch (pixSize)
+   {
+      case 4:
+         {
             memcpy((uint8_t*)g_ucTempBuffer, (uint8_t*)(di.lpSurface), m_dwHeight*m_dwCreatedTextureWidth*4);
 
             uint32_t * pDst;
             uint32_t * pSrc;
-            
+
             for (yDst = 0; yDst < m_dwCreatedTextureHeight; yDst++)
             {
-                // ySrc ranges from 0..m_dwHeight
-                // I'd rather do this but sometimes very narrow (i.e. 1 pixel)
-                // surfaces are created which results in  /0...
-                //ySrc = (yDst * (m_dwHeight-1)) / (d3dTextureHeight-1);
-                ySrc = (uint32_t)((yDst * height) / m_dwCreatedTextureHeight+0.49f);
-                
-                pSrc = (uint32_t*)((uint8_t*)g_ucTempBuffer + (ySrc * m_dwCreatedTextureWidth * 4));
-                pDst = (uint32_t*)((uint8_t*)di.lpSurface + (yDst * di.lPitch));
-                
-                for (xDst = 0; xDst < m_dwCreatedTextureWidth; xDst++)
-                {
-                    xSrc = (uint32_t)((xDst * width) / m_dwCreatedTextureWidth+0.49f);
-                    pDst[xDst] = pSrc[xSrc];
-                }
+               // ySrc ranges from 0..m_dwHeight
+               // I'd rather do this but sometimes very narrow (i.e. 1 pixel)
+               // surfaces are created which results in  /0...
+               //ySrc = (yDst * (m_dwHeight-1)) / (d3dTextureHeight-1);
+               ySrc = (uint32_t)((yDst * height) / m_dwCreatedTextureHeight+0.49f);
+
+               pSrc = (uint32_t*)((uint8_t*)g_ucTempBuffer + (ySrc * m_dwCreatedTextureWidth * 4));
+               pDst = (uint32_t*)((uint8_t*)di.lpSurface + (yDst * di.lPitch));
+
+               for (xDst = 0; xDst < m_dwCreatedTextureWidth; xDst++)
+               {
+                  xSrc = (uint32_t)((xDst * width) / m_dwCreatedTextureWidth+0.49f);
+                  pDst[xDst] = pSrc[xSrc];
+               }
             }
-        }
-        
-        break;
-    case 2:
-        {
+         }
+
+         break;
+      case 2:
+         {
             memcpy((uint8_t*)g_ucTempBuffer, (uint8_t*)(di.lpSurface), m_dwHeight*m_dwCreatedTextureWidth*2);
 
             uint16_t * pDst;
             uint16_t * pSrc;
-            
+
             for (yDst = 0; yDst < m_dwCreatedTextureHeight; yDst++)
             {
-                // ySrc ranges from 0..m_dwHeight
-                ySrc = (yDst * height) / m_dwCreatedTextureHeight;
-                
-                pSrc = (uint16_t*)((uint8_t*)g_ucTempBuffer + (ySrc * m_dwCreatedTextureWidth * 2));
-                pDst = (uint16_t*)((uint8_t*)di.lpSurface + (yDst * di.lPitch));
-                
-                for (xDst = 0; xDst < m_dwCreatedTextureWidth; xDst++)
-                {
-                    xSrc = (xDst * width) / m_dwCreatedTextureWidth;
-                    pDst[xDst] = pSrc[xSrc];
-                }
-            }
-        }
-        break;
-    }
- 
-    EndUpdate(&di);
+               // ySrc ranges from 0..m_dwHeight
+               ySrc = (yDst * height) / m_dwCreatedTextureHeight;
 
-    if( scaleS ) m_bScaledS = true;
-    if( scaleT ) m_bScaledT = true;
+               pSrc = (uint16_t*)((uint8_t*)g_ucTempBuffer + (ySrc * m_dwCreatedTextureWidth * 2));
+               pDst = (uint16_t*)((uint8_t*)di.lpSurface + (yDst * di.lPitch));
+
+               for (xDst = 0; xDst < m_dwCreatedTextureWidth; xDst++)
+               {
+                  xSrc = (xDst * width) / m_dwCreatedTextureWidth;
+                  pDst[xDst] = pSrc[xSrc];
+               }
+            }
+         }
+         break;
+   }
+
+   EndUpdate(&di);
+
+   if( scaleS ) m_bScaledS = true;
+   if( scaleT ) m_bScaledT = true;
 }
 
 void CTexture::ClampImageToSurfaceS()
 {
-    if( !m_bClampedS && m_dwWidth < m_dwCreatedTextureWidth )
-    {       
-        DrawInfo di;
-        if( StartUpdate(&di) )
-        {
-            if(  m_dwTextureFmt == TEXTURE_FMT_A8R8G8B8 )
+   if( !m_bClampedS && m_dwWidth < m_dwCreatedTextureWidth )
+   {       
+      DrawInfo di;
+      if( StartUpdate(&di) )
+      {
+         if(  m_dwTextureFmt == TEXTURE_FMT_A8R8G8B8 )
+         {
+            for( uint32_t y = 0; y<m_dwHeight; y++ )
             {
-                for( uint32_t y = 0; y<m_dwHeight; y++ )
-                {
-                    uint32_t* line = (uint32_t*)((uint8_t*)di.lpSurface+di.lPitch*y);
-                    uint32_t val = line[m_dwWidth-1];
-                    for( uint32_t x=m_dwWidth; x<m_dwCreatedTextureWidth; x++ )
-                    {
-                        line[x] = val;
-                    }
-                }
+               uint32_t* line = (uint32_t*)((uint8_t*)di.lpSurface+di.lPitch*y);
+               uint32_t val = line[m_dwWidth-1];
+               for( uint32_t x=m_dwWidth; x<m_dwCreatedTextureWidth; x++ )
+                  line[x] = val;
             }
-            else
+         }
+         else
+         {
+            for( uint32_t y = 0; y<m_dwHeight; y++ )
             {
-                for( uint32_t y = 0; y<m_dwHeight; y++ )
-                {
-                    uint16_t* line = (uint16_t*)((uint8_t*)di.lpSurface+di.lPitch*y);
-                    uint16_t val = line[m_dwWidth-1];
-                    for( uint32_t x=m_dwWidth; x<m_dwCreatedTextureWidth; x++ )
-                    {
-                        line[x] = val;
-                    }
-                }
+               uint16_t* line = (uint16_t*)((uint8_t*)di.lpSurface+di.lPitch*y);
+               uint16_t val = line[m_dwWidth-1];
+               for( uint32_t x=m_dwWidth; x<m_dwCreatedTextureWidth; x++ )
+                  line[x] = val;
             }
-            EndUpdate(&di);
-        }
-    }
-    m_bClampedS = true;
+         }
+         EndUpdate(&di);
+      }
+   }
+   m_bClampedS = true;
 }
 
 void CTexture::ClampImageToSurfaceT()
 {
-    if( !m_bClampedT && m_dwHeight < m_dwCreatedTextureHeight )
-    {
-        DrawInfo di;
-        if( StartUpdate(&di) )
-        {
-            if(  m_dwTextureFmt == TEXTURE_FMT_A8R8G8B8 )
+   if( !m_bClampedT && m_dwHeight < m_dwCreatedTextureHeight )
+   {
+      DrawInfo di;
+      if( StartUpdate(&di) )
+      {
+         if(  m_dwTextureFmt == TEXTURE_FMT_A8R8G8B8 )
+         {
+            uint32_t* linesrc = (uint32_t*)((uint8_t*)di.lpSurface+di.lPitch*(m_dwHeight-1));
+            for( uint32_t y = m_dwHeight; y<m_dwCreatedTextureHeight; y++ )
             {
-                uint32_t* linesrc = (uint32_t*)((uint8_t*)di.lpSurface+di.lPitch*(m_dwHeight-1));
-                for( uint32_t y = m_dwHeight; y<m_dwCreatedTextureHeight; y++ )
-                {
-                    uint32_t* linedst = (uint32_t*)((uint8_t*)di.lpSurface+di.lPitch*y);
-                    for( uint32_t x=0; x<m_dwCreatedTextureWidth; x++ )
-                    {
-                        linedst[x] = linesrc[x];
-                    }
-                }
+               uint32_t* linedst = (uint32_t*)((uint8_t*)di.lpSurface+di.lPitch*y);
+               for( uint32_t x=0; x<m_dwCreatedTextureWidth; x++ )
+                  linedst[x] = linesrc[x];
             }
-            else
+         }
+         else
+         {
+            uint16_t* linesrc = (uint16_t*)((uint8_t*)di.lpSurface+di.lPitch*(m_dwHeight-1));
+            for( uint32_t y = m_dwHeight; y<m_dwCreatedTextureHeight; y++ )
             {
-                uint16_t* linesrc = (uint16_t*)((uint8_t*)di.lpSurface+di.lPitch*(m_dwHeight-1));
-                for( uint32_t y = m_dwHeight; y<m_dwCreatedTextureHeight; y++ )
-                {
-                    uint16_t* linedst = (uint16_t*)((uint8_t*)di.lpSurface+di.lPitch*y);
-                    for( uint32_t x=0; x<m_dwCreatedTextureWidth; x++ )
-                    {
-                        linedst[x] = linesrc[x];
-                    }
-                }
+               uint16_t* linedst = (uint16_t*)((uint8_t*)di.lpSurface+di.lPitch*y);
+               for( uint32_t x=0; x<m_dwCreatedTextureWidth; x++ )
+                  linedst[x] = linesrc[x];
             }
-            EndUpdate(&di);
-        }
-    }
-    m_bClampedT = true;
+         }
+         EndUpdate(&di);
+      }
+   }
+   m_bClampedT = true;
 }
 
 void CTexture::RestoreAlphaChannel(void)
 {
-    DrawInfo di;
+   DrawInfo di;
 
-    if ( StartUpdate(&di) )
-    {
-        uint32_t *pSrc = (uint32_t *)di.lpSurface;
-        int lPitch = di.lPitch;
+   if ( StartUpdate(&di) )
+   {
+      uint32_t *pSrc = (uint32_t *)di.lpSurface;
+      int lPitch = di.lPitch;
 
-        for (uint32_t y = 0; y < m_dwHeight; y++)
-        {
-            uint32_t * dwSrc = (uint32_t *)((uint8_t *)pSrc + y*lPitch);
-            for (uint32_t x = 0; x < m_dwWidth; x++)
-            {
-                uint32_t dw = dwSrc[x];
-                uint32_t dwRed   = (uint8_t)((dw & 0x00FF0000)>>16);
-                uint32_t dwGreen = (uint8_t)((dw & 0x0000FF00)>>8 );
-                uint32_t dwBlue  = (uint8_t)((dw & 0x000000FF)    );
-                uint32_t dwAlpha = (dwRed+dwGreen+dwBlue)/3;
-                dw &= 0x00FFFFFF;
-                dw |= (dwAlpha<<24);
+      for (uint32_t y = 0; y < m_dwHeight; y++)
+      {
+         uint32_t * dwSrc = (uint32_t *)((uint8_t *)pSrc + y*lPitch);
+         for (uint32_t x = 0; x < m_dwWidth; x++)
+         {
+            uint32_t dw = dwSrc[x];
+            uint32_t dwRed   = (uint8_t)((dw & 0x00FF0000)>>16);
+            uint32_t dwGreen = (uint8_t)((dw & 0x0000FF00)>>8 );
+            uint32_t dwBlue  = (uint8_t)((dw & 0x000000FF)    );
+            uint32_t dwAlpha = (dwRed+dwGreen+dwBlue)/3;
+            dw &= 0x00FFFFFF;
+            dw |= (dwAlpha<<24);
 
-                /*
-                uint32_t dw = dwSrc[x];
-                if( (dw&0x00FFFFFF) > 0 )
-                    dw |= 0xFF000000;
-                else
-                    dw &= 0x00FFFFFF;
-                    */
-            }
-        }
-        EndUpdate(&di);
-    }
-    else
-    {
-        //TRACE0("Cannot lock texture");
-    }
+            /*
+               uint32_t dw = dwSrc[x];
+               if( (dw&0x00FFFFFF) > 0 )
+               dw |= 0xFF000000;
+               else
+               dw &= 0x00FFFFFF;
+               */
+         }
+      }
+      EndUpdate(&di);
+   }
 }
 

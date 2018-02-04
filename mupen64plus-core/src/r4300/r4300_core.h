@@ -22,19 +22,48 @@
 #ifndef M64P_R4300_R4300_CORE_H
 #define M64P_R4300_R4300_CORE_H
 
+#include <stdio.h>
+#include <stddef.h>
+#include <stdint.h>
+
 #include "cp0.h"
-#include "interupt.h"
+#include "cp1.h"
+#include "interrupt.h"
 #include "mi_controller.h"
 #include "tlb.h"
 
-#include <stddef.h>
-
 struct r4300_core
 {
-    struct mi_controller mi;
+   unsigned int delay_slot;
+
+   /* from recomp.c.
+    * XXX: more work is needed to correctly encapsulate these */
+   struct
+   {
+      int init_length;
+      struct precomp_instr* dst;          /* destination structure for the recompiled instruction */
+      int code_length;                    /* current real recompiled code length */
+      int max_code_length;                /* current recompiled code's buffer length */
+      unsigned char **inst_pointer;       /* output buffer for recompiled code */
+      struct precomp_block *dst_block;    /* the current block that we are recompiling */
+      uint32_t src;                       /* the current recompiled instruction */
+      int fast_memory;
+      int no_compiled_jump;               /* use cached interpreter instead of recompiler for jumps */
+      void (*recomp_func)(void);          /* pointer to the dynarec's generator
+                                             function for the latest decoded opcode */
+      const uint32_t *SRC;                /* currently recompiled instruction in the input stream */
+      int check_nop;                      /* next instruction is nop ? */
+      int delay_slot_compiled;
+   } recomp;
+
+   struct mi_controller mi;
+
+   uint32_t special_rom;
 };
 
-void init_r4300(struct r4300_core* r4300);
+void init_r4300(struct r4300_core* r4300, unsigned int emumode, unsigned int count_per_op, int special_rom);
+
+void poweron_r4300(struct r4300_core* r4300);
 
 int64_t* r4300_regs(void);
 int64_t* r4300_mult_hi(void);
@@ -55,9 +84,10 @@ unsigned int get_r4300_emumode(void);
  */
 void invalidate_r4300_cached_code(uint32_t address, size_t size);
 
+
 /* Jump to the given address. This works for all r4300 emulator, but is slower.
  * Use this for common code which can be executed from any r4300 emulator. */
-void generic_jump_to(unsigned int address);
+void generic_jump_to(uint32_t address);
 
 void savestates_load_set_pc(uint32_t pc);
 

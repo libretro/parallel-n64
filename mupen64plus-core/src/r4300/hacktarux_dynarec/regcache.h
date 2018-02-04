@@ -26,40 +26,40 @@
 #include "r4300/recomp.h"
 
 void free_register(int reg);
+void init_cache(struct precomp_instr* start);
 #if defined(__x86_64__)
-void init_cache(precomp_instr* start);
 void free_registers_move_start(void);
-int allocate_register_32(unsigned int *addr);
-int allocate_register_64(unsigned long long *addr);
-int allocate_register_32_w(unsigned int *addr);
-int allocate_register_64_w(unsigned long long *addr);
-void allocate_register_32_manually(int reg, unsigned int *addr);
-void allocate_register_32_manually_w(int reg, unsigned int *addr);
+int allocate_register_32(uint32_t *addr);
+int allocate_register_64(uint64_t *addr);
+int allocate_register_32_w(uint32_t *addr);
+int allocate_register_64_w(uint64_t *addr);
+void allocate_register_32_manually(int reg, uint32_t *addr);
+void allocate_register_32_manually_w(int reg, uint32_t *addr);
 
-int lru_register_exc1(int exc1);
 #else
-int allocate_register(unsigned int *addr);
-int allocate_64_register1(unsigned int *addr);
-int allocate_64_register2(unsigned int *addr);
-int allocate_register_w(unsigned int *addr);
-int allocate_64_register1_w(unsigned int *addr);
-int allocate_64_register2_w(unsigned int *addr);
-void allocate_register_manually(int reg, unsigned int *addr);
-void allocate_register_manually_w(int reg, unsigned int *addr, int load);
+int lru_register_exc1(int exc1);
+int allocate_register(uint32_t *addr);
+int allocate_64_register1(uint32_t *addr);
+int allocate_64_register2(uint32_t *addr);
+int allocate_register_w(uint32_t *addr);
+int allocate_64_register1_w(uint32_t *addr);
+int allocate_64_register2_w(uint32_t *addr);
+void allocate_register_manually(int reg, uint32_t *addr);
+void allocate_register_manually_w(int reg, uint32_t *addr, int load);
 
-void set_64_register_state(int reg1, int reg2, unsigned int *addr, int dirty);
+void set_64_register_state(int reg1, int reg2, uint32_t *addr, int dirty);
 void force_32(int reg);
 #endif
 
 void simplify_access(void);
 void free_all_registers(void);
-int is64(unsigned int *addr);
+int is64(uint32_t *addr);
 int lru_register(void);
 int lru_base_register(void);
-void set_register_state(int reg, unsigned int *addr, int dirty, int is64bits);
+void set_register_state(int reg, uint32_t *addr, int dirty, int is64bits);
 int lock_register(int reg);
 void unlock_register(int reg);
-void build_wrappers(precomp_instr*, int, int, precomp_block*);
+void build_wrappers(struct precomp_instr*, int, int, struct precomp_block*);
 
 #endif /* __REGCACHE_H__ */
 

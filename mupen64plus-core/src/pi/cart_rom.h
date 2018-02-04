@@ -25,23 +25,23 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#ifndef ROM_ADDR
+#define ROM_ADDR(a)  ((a & 0x03fffffc))
+#endif
+
 struct cart_rom
 {
-    uint8_t* rom;
-    size_t rom_size;
+   uint8_t* rom;
+   size_t rom_size;
 
-    uint32_t last_write;
+   uint32_t last_write;
+   uint32_t rom_written;
 };
 
-static INLINE uint32_t rom_address(uint32_t address)
-{
-    return (address & 0x03fffffc);
-}
-
-void connect_cart_rom(struct cart_rom* cart_rom,
+void init_cart_rom(struct cart_rom* cart_rom,
                       uint8_t* rom, size_t rom_size);
 
-void init_cart_rom(struct cart_rom* cart_rom);
+void poweron_cart_rom(struct cart_rom* cart_rom);
 
 int read_cart_rom(void* opaque, uint32_t address, uint32_t* value);
 int write_cart_rom(void* opaque, uint32_t address, uint32_t value, uint32_t mask);

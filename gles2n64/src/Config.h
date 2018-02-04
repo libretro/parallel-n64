@@ -16,11 +16,9 @@ enum Aspect
 extern "C" {
 #endif
 
-#ifdef __LIBRETRO__ // Prefix symbol
 #define config gln64config
-#endif
 
-#include <stdbool.h>
+#include <boolean.h>
 
 #define BILINEAR_3POINT   0
 #define BILINEAR_STANDARD 1
@@ -51,7 +49,6 @@ typedef struct
     } texture;
 
 	struct {
-		uint32_t enableFog;
 		uint32_t enableNoise;
 		uint32_t enableLOD;
 		uint32_t enableHWLighting;
@@ -80,7 +77,7 @@ typedef struct
     bool    stretchVideo;
     bool    romPAL;    //is the rom PAL
     char    romName[21];
-} Config;
+} gln64Config;
 
 #define hack_Ogre64					(1<<0)  //Ogre Battle 64 background copy
 #define hack_noDepthFrameBuffers	(1<<1)  //Do not use depth buffers as texture
@@ -91,7 +88,7 @@ typedef struct
 #define hack_legoRacers				(1<<6)  //LEGO racers course map
 #define hack_blastCorps				(1<<7)  //Blast Corps black polygons
 
-extern Config config;
+extern gln64Config config;
 
 void Config_gln64_LoadConfig(void);
 void Config_gln64_LoadRomConfig(unsigned char* header);

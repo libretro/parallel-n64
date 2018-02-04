@@ -3,6 +3,8 @@
 
 #include <stdlib.h>
 
+#include <retro_miscellaneous.h>
+
 #define LOG_NONE	0
 #define LOG_ERROR   1
 #define LOG_MINIMAL	2
@@ -17,14 +19,6 @@
 #define LOG(A, ...) fprintf(stdout, __VA_ARGS__)
 #else
 #define LOG(A, ...)
-#endif
-
-#ifndef max
-#define max(a, b) ((a) > (b) ? (a) : (b))
-#endif
-
-#ifndef min
-#define min(a, b) ((a) < (b) ? (a) : (b))
 #endif
 
 #endif

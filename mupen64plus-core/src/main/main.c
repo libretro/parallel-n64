@@ -45,6 +45,7 @@
 
 #include "main.h"
 #include "cheat.h"
+#include "device.h"
 #include "eventloop.h"
 #include "rom.h"
 #include "savestates.h"
@@ -58,6 +59,7 @@
 #include "../plugin/emulate_game_controller_via_input_plugin.h"
 #include "../plugin/get_time_using_C_localtime.h"
 #include "../plugin/rumble_via_input_plugin.h"
+#include "../pifbootrom/pifbootrom.h"
 #include "../r4300/r4300.h"
 #include "../r4300/r4300_core.h"
 #include "../r4300/reset.h"
@@ -66,16 +68,23 @@
 #include "../ri/ri_controller.h"
 #include "../si/si_controller.h"
 #include "../vi/vi_controller.h"
+#include "../dd/dd_controller.h"
+#include "../dd/dd_rom.h"
+#include "../dd/dd_disk.h"
 
 #ifdef DBG
 #include "../debugger/dbg_types.h"
 #include "../debugger/debugger.h"
 #endif
 
-#ifdef __LIBRETRO__
 #include "api/libretro.h"
+
+void set_audio_format_via_libretro(void* user_data,
+      unsigned int frequency, unsigned int bits);
+
+void push_audio_samples_via_libretro(void* user_data, const void* buffer, size_t size);
+
 extern retro_input_poll_t poll_cb;
-#endif
 
 /* version number for Core config section */
 #define CONFIG_PARAM_VERSION 1.01
@@ -85,18 +94,14 @@ m64p_handle g_CoreConfig = NULL;
 
 m64p_frame_callback g_FrameCallback = NULL;
 
-int         g_MemHasBeenBSwapped = 0;   // store byte-swapped flag so we don't swap twice when re-playing game
-int         g_EmulatorRunning = 0;      // need separate boolean to tell if emulator is running, since --nogui doesn't use a thread
+int         g_MemHasBeenBSwapped = 0;   /* store byte-swapped flag so we don't swap twice when re-playing game */
+int        g_DDMemHasBeenBSwapped = 0; /* store byte-swapped flag so we don't swap twice when re-playing game */
+int         g_EmulatorRunning = 0;      /* need separate boolean to tell if emulator is running, since --nogui doesn't use a thread */
 
+/* XXX: only global because of new dynarec linkage_x86.asm and plugin.c */
 ALIGN(16, uint32_t g_rdram[RDRAM_MAX_SIZE/4]);
-struct ai_controller g_ai;
-struct pi_controller g_pi;
-struct ri_controller g_ri;
-struct si_controller g_si;
-struct vi_controller g_vi;
+struct device g_dev;
 struct r4300_core g_r4300;
-struct rdp_core g_dp;
-struct rsp_core g_sp;
 
 int g_delay_si = 0;
 
@@ -202,9 +207,9 @@ m64p_error main_core_state_set(m64p_core_param param, int val)
          if (!g_EmulatorRunning)
             return M64ERR_INVALID_STATE;
          if (val == M64EMU_STOPPED)
-         {        
+         {
             /* this stop function is asynchronous.  The emulator may not terminate until later */
-            main_stop();
+             mupen_main_stop();
             return M64ERR_SUCCESS;
          }
          else if (val == M64EMU_RUNNING)
@@ -216,8 +221,10 @@ m64p_error main_core_state_set(m64p_core_param param, int val)
          event_set_gameshark(val);
          return M64ERR_SUCCESS;
       default:
-         return M64ERR_INPUT_INVALID;
+         break;
    }
+
+   return M64ERR_INPUT_INVALID;
 }
 
 m64p_error main_read_screen(void *pixels, int bFront)
@@ -246,7 +253,7 @@ void new_frame(void)
       (*g_FrameCallback)(l_CurrentFrame++);
 }
 
-void main_exit(void)
+void mupen_main_exit(void)
 {
    /* now begin to shut down */
 #ifdef DBG
@@ -254,9 +261,9 @@ void main_exit(void)
       destroy_debugger();
 #endif
 
-   rsp.romClosed();
-   input.romClosed();
-   gfx.romClosed();
+   if (rsp.romClosed) rsp.romClosed();
+   if (input.romClosed) input.romClosed();
+   if (gfx.romClosed) gfx.romClosed();
 
    // clean up
    g_EmulatorRunning = 0;
@@ -295,29 +302,6 @@ void new_vi(void)
 #endif
 }
 
-static void connect_all(
-      struct r4300_core *r4300,
-      struct rdp_core* dp,
-      struct rsp_core* sp,
-      struct ai_controller* ai,
-      struct pi_controller* pi,
-      struct ri_controller* ri,
-      struct si_controller* si,
-      struct vi_controller* vi,
-      uint32_t* dram,
-      size_t dram_size,
-      uint8_t *rom,
-      size_t rom_size)
-{
-   connect_rdp(dp, r4300, sp, ri);
-   connect_rsp(sp, r4300, dp, ri);
-   connect_ai(ai, r4300, ri, vi);
-   connect_pi(pi, r4300, ri, rom, rom_size);
-   connect_ri(ri, dram, dram_size);
-   connect_si(si, r4300, ri);
-   connect_vi(vi, r4300);
-}
-
 static void dummy_save(void *user_data)
 {
 }
@@ -329,9 +313,8 @@ m64p_error main_init(void)
 {
    size_t i;
    unsigned int disable_extra_mem;
-   static int channels[] = { 0, 1, 2, 3 };
    /* take the r4300 emulator mode from the config file at this point and cache it in a global variable */
-   r4300emu = ConfigGetParamInt(g_CoreConfig, "R4300Emulator");
+   unsigned int emumode = ConfigGetParamInt(g_CoreConfig, "R4300Emulator");
 
    /* set some other core parameters based on the config file values */
    no_compiled_jump = ConfigGetParamBool(g_CoreConfig, "NoCompiledJump");
@@ -342,20 +325,45 @@ m64p_error main_init(void)
 
    if (count_per_op <= 0)
       count_per_op = 2;
+   if (g_vi_refresh_rate == 0)
+      g_vi_refresh_rate = 1500;
 
    /* do byte-swapping if it's not been done yet */
    if (g_MemHasBeenBSwapped == 0)
    {
-      swap_buffer(g_rom, 4, g_rom_size/4);
+      swap_buffer(g_rom, 4, g_rom_size / 4);
       g_MemHasBeenBSwapped = 1;
    }
 
-   connect_all(&g_r4300, &g_dp, &g_sp,
-         &g_ai, &g_pi, &g_ri, &g_si, &g_vi,
-         g_rdram, (disable_extra_mem == 0) ? 0x800000 : 0x400000,
-         g_rom, g_rom_size);
+   if (g_DDMemHasBeenBSwapped == 0)
+   {
+      swap_buffer(g_ddrom, 4, g_ddrom_size / 4);
+      g_DDMemHasBeenBSwapped = 1;
+   }
 
-   init_memory();
+   init_device(
+         &g_dev,
+         emumode,
+         count_per_op,
+	 ROM_PARAMS.special_rom,
+         NULL,
+         set_audio_format_via_libretro,
+         push_audio_samples_via_libretro,
+	 ROM_PARAMS.fixedaudiopos,
+         g_rom, g_rom_size,
+         NULL, dummy_save, saved_memory.flashram,
+         NULL, dummy_save, saved_memory.sram,
+         g_rdram, (disable_extra_mem == 0) ? 0x800000 : 0x400000,
+         NULL,dummy_save,saved_memory.eeprom,
+         ROM_SETTINGS.savetype != EEPROM_16KB ? 0x200  : 0x800,   /* eeprom_size */
+         ROM_SETTINGS.savetype != EEPROM_16KB ? 0x8000 : 0xc000,  /* eeprom_id   */
+         NULL,                                                    /* af_rtc_userdata */
+         get_time_using_C_localtime,                              /* af_rtc_get_time */
+	 ROM_PARAMS.audiosignal,
+         vi_clock_from_tv_standard(ROM_PARAMS.systemtype),
+         vi_expected_refresh_rate_from_tv_standard(ROM_PARAMS.systemtype),
+         g_ddrom, g_ddrom_size, g_dd_disk, g_dd_disk_size);
+
 
    // Attach rom to plugins
    printf("Gfx RomOpen.\n");
@@ -364,67 +372,6 @@ m64p_error main_init(void)
       printf("Gfx RomOpen failed.\n");
       return M64ERR_PLUGIN_FAIL;
    }
-   printf("Input RomOpen.\n");
-   if (!input.romOpen())
-   {
-      printf("Input RomOpen failed.\n");
-      gfx.romClosed();
-      return M64ERR_PLUGIN_FAIL;
-   }
-
-   /* connect external time source to AF_RTC component */
-   g_si.pif.af_rtc.user_data = NULL;
-   g_si.pif.af_rtc.get_time = get_time_using_C_localtime;
-
-   /* connect external game controllers */
-   for(i = 0; i < GAME_CONTROLLERS_COUNT; ++i)
-   {
-      g_si.pif.controllers[i].user_data = &channels[i];
-      g_si.pif.controllers[i].is_connected = egcvip_is_connected;
-      g_si.pif.controllers[i].get_input = egcvip_get_input;
-   }
-
-   /* connect external rumblepaks */
-   for(i = 0; i < GAME_CONTROLLERS_COUNT; ++i)
-   {
-      g_si.pif.controllers[i].rumblepak.user_data = &channels[i];
-      g_si.pif.controllers[i].rumblepak.rumble = rvip_rumble;
-   }
-
-   /* connect saved_memory.mempacks to mempaks */
-   for(i = 0; i < GAME_CONTROLLERS_COUNT; ++i)
-   {
-      g_si.pif.controllers[i].mempak.user_data = NULL;
-      g_si.pif.controllers[i].mempak.save = dummy_save;
-      g_si.pif.controllers[i].mempak.data = &saved_memory.mempack[i][0];
-   }
-
-   /* connect saved_memory.eeprom to eeprom */
-   g_si.pif.eeprom.user_data = NULL;
-   g_si.pif.eeprom.save = dummy_save;
-   g_si.pif.eeprom.data = saved_memory.eeprom;
-   if (ROM_SETTINGS.savetype != EEPROM_16KB)
-   {
-      /* 4kbits EEPROM */
-      g_si.pif.eeprom.size = 0x200;
-      g_si.pif.eeprom.id = 0x8000;
-   }
-   else
-   {
-      /* 16kbits EEPROM */
-      g_si.pif.eeprom.size = 0x800;
-      g_si.pif.eeprom.id = 0xc000;
-   }
-
-   /* connect saved_memory.flashram to flashram */
-   g_pi.flashram.user_data = NULL;
-   g_pi.flashram.save = dummy_save;
-   g_pi.flashram.data = saved_memory.flashram;
-
-   /* connect saved_memory.sram to SRAM */
-   g_pi.sram.user_data = NULL;
-   g_pi.sram.save = dummy_save;
-   g_pi.sram.data = saved_memory.sram;
 
 #ifdef DBG
    if (ConfigGetParamBool(g_CoreConfig, "EnableDebugger"))
@@ -435,10 +382,15 @@ m64p_error main_init(void)
    StateChanged(M64CORE_EMU_STATE, M64EMU_RUNNING);
 
    /* call r4300 CPU core and run the game */
-   r4300_reset_hard();
-   r4300_reset_soft();
-   r4300_init();
+   poweron_device(&g_dev);
+   pifbootrom_hle_execute(&g_dev);
 
+   return M64ERR_SUCCESS;
+}
+
+m64p_error main_pre_run(void)
+{
+   r4300_init();
 
    return M64ERR_SUCCESS;
 }
@@ -450,7 +402,7 @@ m64p_error main_run(void)
    return M64ERR_SUCCESS;
 }
 
-void main_stop(void)
+void mupen_main_stop(void)
 {
    /* note: this operation is asynchronous.  It may be called from a thread other than the
       main emulator thread, and may return before the emulator is completely stopped */
@@ -462,14 +414,10 @@ void main_stop(void)
 #ifdef DBG
    if(g_DebuggerActive)
       debugger_step();
-#endif        
-
-   r4300_deinit();
+#endif
 }
 
 void main_check_inputs(void)
 {
-#ifdef __LIBRETRO__
    poll_cb();
-#endif
 }

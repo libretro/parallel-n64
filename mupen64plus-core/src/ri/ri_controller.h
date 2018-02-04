@@ -26,6 +26,10 @@
 
 #include "rdram.h"
 
+#ifndef RI_REG
+#define RI_REG(a) ((a & 0xffff) >> 2)
+#endif
+
 enum ri_registers
 {
     RI_MODE_REG,
@@ -46,16 +50,11 @@ struct ri_controller
     struct rdram rdram;
 };
 
-static INLINE uint32_t ri_reg(uint32_t address)
-{
-    return (address & 0xffff) >> 2;
-}
-
-void connect_ri(struct ri_controller* ri,
+void init_ri(struct ri_controller* ri,
       uint32_t* dram,
       size_t dram_size);
 
-void init_ri(struct ri_controller* ri);
+void poweron_ri(struct ri_controller* ri);
 
 int read_ri_regs(void* opaque, uint32_t address, uint32_t* value);
 int write_ri_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mask);

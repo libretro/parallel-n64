@@ -26,6 +26,10 @@
 
 #include "pif.h"
 
+#ifndef SI_REG
+#define SI_REG(a) ((a & 0xffff) >> 2)
+#endif
+
 struct r4300_core;
 struct ri_controller;
 
@@ -51,17 +55,21 @@ struct si_controller
     struct ri_controller *ri;
 };
 
-static INLINE uint32_t si_reg(uint32_t address)
-{
-    return (address & 0xffff) >> 2;
-}
 
 
-void connect_si(struct si_controller* si,
-                struct r4300_core* r4300,
-                struct ri_controller *ri);
+void init_si(struct si_controller* si,
+      void* eeprom_user_data,
+      void (*eeprom_save)(void*),
+      uint8_t* eeprom_data,
+      size_t eeprom_size,
+      uint16_t eeeprom_id,
+      void* af_rtc_user_data,
+      const struct tm* (*af_rtc_get_time)(void*),
+      const uint8_t* ipl3,
+      struct r4300_core* r4300,
+      struct ri_controller *ri);
 
-void init_si(struct si_controller* si);
+void poweron_si(struct si_controller* si);
 
 int read_si_regs(void* opaque, uint32_t address, uint32_t* value);
 int write_si_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mask);

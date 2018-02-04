@@ -37,85 +37,15 @@
 //
 //****************************************************************
 
-static void calc_point_light (VERTEX *v, float * vpos)
-{
-   uint32_t l;
-   float color[3];
-   float light_intensity = 0.0f;
-
-   color[0] = rdp.light[rdp.num_lights].col[0];
-   color[1] = rdp.light[rdp.num_lights].col[1];
-   color[2] = rdp.light[rdp.num_lights].col[2];
-
-   for (l = 0; l < rdp.num_lights; l++)
-   {
-      light_intensity = 0.0f;
-
-      if (rdp.light[l].nonblack)
-      {
-         float lvec[3], light_len2, light_len, at;
-         lvec[0] = rdp.light[l].x - vpos[0];
-         lvec[1] = rdp.light[l].y - vpos[1];
-         lvec[2] = rdp.light[l].z - vpos[2];
-
-         light_len2 = lvec[0] * lvec[0] + lvec[1] * lvec[1] + lvec[2] * lvec[2];
-         light_len = sqrtf(light_len2);
-         //FRDP ("calc_point_light: len: %f, len2: %f\n", light_len, light_len2);
-         at = rdp.light[l].ca + light_len/65535.0f*rdp.light[l].la + light_len2/65535.0f*rdp.light[l].qa;
-
-         if (at > 0.0f)
-            light_intensity = 1/at;//DotProduct (lvec, nvec) / (light_len * normal_len * at);
-      }
-
-      if (light_intensity > 0.0f)
-      {
-         color[0] += rdp.light[l].col[0] * light_intensity;
-         color[1] += rdp.light[l].col[1] * light_intensity;
-         color[2] += rdp.light[l].col[2] * light_intensity;
-      }
-   }
-
-   if (color[0] > 1.0f)
-      color[0] = 1.0f;
-   if (color[1] > 1.0f)
-      color[1] = 1.0f;
-   if (color[2] > 1.0f)
-      color[2] = 1.0f;
-
-   v->r = (uint8_t)(color[0]*255.0f);
-   v->g = (uint8_t)(color[1]*255.0f);
-   v->b = (uint8_t)(color[2]*255.0f);
-}
-
 static void uc2_vertex(uint32_t w0, uint32_t w1)
 {
-   uint32_t i, l, addr, geom_mode;
+   uint32_t addr, geom_mode;
    int v0, n;
-   float x, y, z;
    
    if (!(w0 & 0x00FFFFFF))
    {
       uc6_obj_rectangle(w0, w1);
       return;
-   }
-
-   // This is special, not handled in update(), but here
-   // * Matrix Pre-multiplication idea by Gonetz (Gonetz@ngs.ru)
-   if (g_gdp.flags & UPDATE_MULT_MAT)
-   {
-      g_gdp.flags ^= UPDATE_MULT_MAT;
-      MulMatrices(rdp.model, rdp.proj, rdp.combined);
-   }
-   if (g_gdp.flags & UPDATE_LIGHTS)
-   {
-      g_gdp.flags ^= UPDATE_LIGHTS;
-
-      // Calculate light vectors
-      for (l = 0; l < rdp.num_lights; l++)
-      {
-         InverseTransformVector(&rdp.light[l].dir[0], rdp.light_vector[l], rdp.model);
-         NormalizeVector (rdp.light_vector[l]);
-      }
    }
 
    addr = RSP_SegmentToPhysical(w1);
@@ -125,50 +55,45 @@ static void uc2_vertex(uint32_t w0, uint32_t w1)
    if (v0 < 0)
       return;
 
-   geom_mode = rdp.geom_mode;
-   if ((settings.hacks&hack_Fzero) && (rdp.geom_mode & G_TEXTURE_GEN))
+   geom_mode = gSP.geometryMode;
+   if ((settings.hacks&hack_Fzero) && (gSP.geometryMode & G_TEXTURE_GEN))
    {
       if (((int16_t*)gfx_info.RDRAM)[(((addr) >> 1) + 4)^1] || ((int16_t*)gfx_info.RDRAM)[(((addr) >> 1) + 5)^1])
-         rdp.geom_mode ^= G_TEXTURE_GEN;
+         gSP.geometryMode ^= G_TEXTURE_GEN;
    }
 
-   gSPVertex_G64(addr, n, v0);
+   glide64gSPVertex(addr, n, v0);
 
-   rdp.geom_mode = geom_mode;
+   gSP.geometryMode = geom_mode;
 }
 
 static void uc2_modifyvtx(uint32_t w0, uint32_t w1)
 {
-   gSPModifyVertex_G64( _SHIFTR( w0, 1, 15 ), _SHIFTR( w0, 16, 8 ), w1 );
+   glide64gSPModifyVertex( _SHIFTR( w0, 1, 15 ), _SHIFTR( w0, 16, 8 ), w1 );
 }
 
 static void uc2_culldl(uint32_t w0, uint32_t w1)
 {
-	gSPCullDisplayList_G64( _SHIFTR( w0, 1, 15 ), _SHIFTR( w1, 1, 15 ) );
+	glide64gSPCullDisplayList( _SHIFTR( w0, 1, 15 ), _SHIFTR( w1, 1, 15 ) );
 }
 
 static void uc2_tri1(uint32_t w0, uint32_t w1)
 {
-   VERTEX *v[3];
    if ((w0 & 0x00FFFFFF) == 0x17)
    {
       uc6_obj_loadtxtr(w0, w1);
       return;
    }
 
-   if (rdp.skip_drawing)
-      return;
-
-   v[0] = &rdp.vtx[_SHIFTR(w0,  17, 7)];
-   v[1] = &rdp.vtx[_SHIFTR(w0,   9, 7)];
-   v[2] = &rdp.vtx[_SHIFTR(w0,   1, 7)];
-
-   cull_trianglefaces(v, 1, true, true, 0);
+	glide64gSP1Triangle( _SHIFTR( w0, 17, 7 ),
+				  _SHIFTR( w0, 9, 7 ),
+				  _SHIFTR( w0, 1, 7 ), 0);
 }
+
+/* F3DEX2_Quad */
 
 static void uc2_quad(uint32_t w0, uint32_t w1)
 {
-   VERTEX *v[6];
    if ((w0 & 0x00FFFFFF) == 0x2F)
    {
       uint32_t command = w0 >> 24;
@@ -184,17 +109,14 @@ static void uc2_quad(uint32_t w0, uint32_t w1)
       }
    }
 
-   if (rdp.skip_drawing)
-      return;
-
-   v[0] = &rdp.vtx[_SHIFTR(w0, 17, 7)];
-   v[1] = &rdp.vtx[_SHIFTR(w0,  9, 7)];
-   v[2] = &rdp.vtx[_SHIFTR(w0,  1, 7)];
-   v[3] = &rdp.vtx[_SHIFTR(w1, 17, 7)];
-   v[4] = &rdp.vtx[_SHIFTR(w1,  9, 7)];
-   v[5] = &rdp.vtx[_SHIFTR(w1,  1, 7)];
-
-   cull_trianglefaces(v, 2, true, true, 0);
+   glide64gSP2Triangles( _SHIFTR( w0, 17, 7 ),
+         _SHIFTR( w0, 9, 7 ),
+         _SHIFTR( w0, 1, 7 ),
+         0,
+         _SHIFTR( w1, 17, 7 ),
+         _SHIFTR( w1, 9, 7 ),
+         _SHIFTR( w1, 1, 7 ),
+         0 );
 }
 
 static void uc2_line3d(uint32_t w0, uint32_t w1)
@@ -203,20 +125,19 @@ static void uc2_line3d(uint32_t w0, uint32_t w1)
       uc6_ldtx_rect_r(w0, w1);
    else
    {
-      VERTEX *v[3];
-      uint32_t cull_mode;
-      uint16_t width;
+      uint32_t mode  = (rdp.flags & G_CULL_BOTH) >> CULLSHIFT;
+      rdp.flags     |= G_CULL_BOTH;
+      g_gdp.flags   |= UPDATE_CULL_MODE;
 
-      v[0] = &rdp.vtx[(w0 >> 17) & 0x7F];
-      v[1] = &rdp.vtx[(w0 >> 9) & 0x7F];
-      v[2] = &rdp.vtx[(w0 >> 9) & 0x7F];
-      width = (uint16_t)(w0 + 3)&0xFF;
-      cull_mode = (rdp.flags & CULLMASK) >> CULLSHIFT;
-      rdp.flags |= CULLMASK;
-      g_gdp.flags |= UPDATE_CULL_MODE;
-      cull_trianglefaces(v, 1, true, true, width);
-      rdp.flags ^= CULLMASK;
-      rdp.flags |= cull_mode << CULLSHIFT;
+      glide64gSP1Triangle(
+            _SHIFTR( w0, 17, 7 ),
+            _SHIFTR( w0, 9, 7 ),
+            _SHIFTR( w0, 9, 7 ),
+            (uint16_t)(w0 + 3)&0xFF
+            );
+
+      rdp.flags   ^= G_CULL_BOTH;
+      rdp.flags   |= mode << CULLSHIFT;
       g_gdp.flags |= UPDATE_CULL_MODE;
    }
 }
@@ -235,12 +156,12 @@ static void uc2_dma_io(uint32_t w0, uint32_t w1)
 
 static void uc2_pop_matrix(uint32_t w0, uint32_t w1)
 {
-   gSPPopMatrixN_G64( 0, w1 >> 6 );
+   glide64gSPPopMatrixN( 0, w1 >> 6 );
 }
 
 static void uc2_geom_mode(uint32_t w0, uint32_t w1)
 {
-   // Switch around some things
+   /* Switch around some things */
    uint32_t clr_mode = (w0 & 0x00DFC9FF) |
       ((w0 & 0x00000600) << 3) |
       ((w0 & 0x00200000) >> 12) | 0xFF000000;
@@ -248,10 +169,10 @@ static void uc2_geom_mode(uint32_t w0, uint32_t w1)
       ((w1 & 0x00000600) << 3) |
       ((w1 & 0x00200000) >> 12);
 
-   rdp.geom_mode &= clr_mode;
-   rdp.geom_mode |= set_mode;
+   gSP.geometryMode &= clr_mode;
+   glide64gSPSetGeometryMode(set_mode);
 
-   if (rdp.geom_mode & G_ZBUFFER)
+   if (gSP.geometryMode & G_ZBUFFER)
    {
       if (!(rdp.flags & ZBUF_ENABLED))
       {
@@ -269,7 +190,7 @@ static void uc2_geom_mode(uint32_t w0, uint32_t w1)
       }
    }
 
-   if (rdp.geom_mode & CULL_FRONT)
+   if (gSP.geometryMode & CULL_FRONT)
    {
       if (!(rdp.flags & CULL_FRONT))
       {
@@ -285,7 +206,7 @@ static void uc2_geom_mode(uint32_t w0, uint32_t w1)
          g_gdp.flags |= UPDATE_CULL_MODE;
       }
    }
-   if (rdp.geom_mode & CULL_BACK)
+   if (gSP.geometryMode & CULL_BACK)
    {
       if (!(rdp.flags & CULL_BACK))
       {
@@ -302,7 +223,7 @@ static void uc2_geom_mode(uint32_t w0, uint32_t w1)
       }
    }
 
-   if (rdp.geom_mode & G_FOG)
+   if (gSP.geometryMode & G_FOG)
    {
       if (!(rdp.flags & FOG_ENABLED))
       {
@@ -412,31 +333,28 @@ static void uc2_moveword(uint32_t w0, uint32_t w1)
          break;
 
       case G_MW_NUMLIGHT:
-         gSPNumLights_G64( w1 / 24);
+         glide64gSPNumLights( w1 / 24);
          break;
       case G_MW_CLIP:
          if (offset == 0x04)
-         {
-            rdp.clip_ratio = (float)vi_integer_sqrt(w1);
-            g_gdp.flags |= UPDATE_VIEWPORT;
-         }
+            glide64gSPClipRatio(w1);
          break;
       case G_MW_SEGMENT:
          if ((w1 & BMASK) < BMASK)
-            rdp.segment[(offset >> 2) & 0xF] = w1;
+            glide64gSPSegment((offset >> 2) & 0xF, w1);
          break;
       case G_MW_FOG:
-         gSPFogFactor_G64((int16_t)_SHIFTR(w1, 16, 16), (int16_t)_SHIFTR(w1, 0, 16));
+         glide64gSPFogFactor((int16_t)_SHIFTR(w1, 16, 16), (int16_t)_SHIFTR(w1, 0, 16));
 
-         /*offset must be 0 for move_fog, but it can be non zero in Nushi Zuri 64 - Shiokaze ni Notte
-          * low-level display list has setothermode commands in this place, so this is obviously not move_fog.
-          */
-         if (offset == 0x04)
+         /*offset must be 0 for move_fog, but it can be non zero in Nushi Zuri 64 - Shiokaze ni Notte		
+          * low-level display list has setothermode commands in this place, so this is obviously not move_fog.		
+          */		
+         if (offset == 0x04)		
             rdp.tlut_mode = (w1 == 0xffffffff) ? 0 : 2;
          break;
 
       case G_MW_LIGHTCOL:
-         gSPLightColor_G64((_SHIFTR( w0, 0, 16 ) / 24) + 1, w1 );
+         gSPLightColor((_SHIFTR( w0, 0, 16 ) / 24) + 1, w1 );
          break;
 
       case G_MW_FORCEMTX:
@@ -450,8 +368,6 @@ static void uc2_moveword(uint32_t w0, uint32_t w1)
 
 static void uc2_movemem(uint32_t w0, uint32_t w1)
 {
-   int16_t *rdram     = (int16_t*)(gfx_info.RDRAM  + RSP_SegmentToPhysical(w1));
-
    switch (_SHIFTR(w0, 0, 8))
    {
       case 0:
@@ -459,13 +375,13 @@ static void uc2_movemem(uint32_t w0, uint32_t w1)
          uc6_obj_movemem(w0, w1);
          break;
       case F3DEX2_MV_VIEWPORT:
-         gSPViewport_G64( w1 );
+         gSPViewport( w1 );
          break;
       case G_MV_MATRIX:
-         gSPForceMatrix_G64(w1);
+         glide64gSPForceMatrix(w1);
 
          /* force matrix takes two commands */
-         rdp.pc[rdp.pc_i] += 8; 
+         __RSP.PC[__RSP.PCi] += 8; 
          break;
 
       case G_MV_LIGHT:
@@ -474,9 +390,9 @@ static void uc2_movemem(uint32_t w0, uint32_t w1)
             uint32_t n = offset / 24;
 
             if (n < 2)
-               gSPLookAt_G64(w1, n);
+               gSPLookAt(w1, n);
             else
-               gSPLight_G64(w1, n - 1);
+               gSPLight(w1, n - 1);
          }
          break;
 
@@ -493,5 +409,5 @@ static void uc2_rdphalf_2(uint32_t w0, uint32_t w1)
 
 static void uc2_dlist_cnt(uint32_t w0, uint32_t w1)
 {
-	gSPDlistCount_G64(_SHIFTR( w0, 0, 8 ), w1);
+	glide64gSPDlistCount(_SHIFTR( w0, 0, 8 ), w1);
 }

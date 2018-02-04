@@ -27,6 +27,10 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#ifndef AI_REG
+#define AI_REG(a) ((a & 0xFFFF) >> 2)
+#endif
+
 struct r4300_core;
 struct ri_controller;
 struct vi_controller;
@@ -49,30 +53,41 @@ struct ai_dma
    unsigned int duration;
 };
 
+enum { AI_DMA_FIFO_SIZE = 2 };
+
 struct ai_controller
 {
    uint32_t regs[AI_REGS_COUNT];
-   struct ai_dma fifo[2];
+   struct ai_dma fifo[AI_DMA_FIFO_SIZE];
    unsigned int samples_format_changed;
 
    struct m64p_audio_backend backend;
 
+   /* external speaker output */
+   void* user_data;
+   void (*set_audio_format)(void*,unsigned int, unsigned int);
+   void (*push_audio_samples)(void*,const void*,size_t);
+
    struct r4300_core* r4300;
    struct ri_controller* ri;
    struct vi_controller* vi;
+   uint32_t fixed_audio_pos;
+   uint32_t audio_pos;
+   uint32_t last_read;
 };
 
-static INLINE uint32_t ai_reg(uint32_t address)
-{
-    return (address & 0xffff) >> 2;
-}
 
-void connect_ai(struct ai_controller* ai,
-                struct r4300_core* r4300,
-                struct ri_controller* ri,
-                struct vi_controller* vi);
+void init_ai(struct ai_controller* ai,
+      void * user_data,
+      void (*set_audio_format)(void*,unsigned int, unsigned int),
+      void (*push_audio_samples)(void*,const void*,size_t),
+      struct r4300_core* r4300,
+      struct ri_controller *ri,
+      struct vi_controller* vi,
+      unsigned int fixed_audio_pos
+      );
 
-void init_ai(struct ai_controller* ai);
+void poweron_ai(struct ai_controller* ai);
 
 int read_ai_regs(void* opaque, uint32_t address, uint32_t* value);
 int write_ai_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mask);

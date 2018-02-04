@@ -61,38 +61,10 @@ typedef struct
 
 typedef struct 
 {
-    // Set by RDP_SetTile
-    unsigned int dwFormat   :3;     // e.g. RGBA, YUV etc
-    unsigned int dwSize     :2;     // e.g 4/8/16/32bpp
-    unsigned int dwLine     :9;     // Ummm...
-    unsigned int dwPalette  :4;     // 0..15 - a palette index?
-    uint32_t dwTMem;                  // Texture memory location
-
-    unsigned int bClampS    :1;
-    unsigned int bClampT    :1;
-    unsigned int bMirrorS   :1;
-    unsigned int bMirrorT   :1;
-
-    unsigned int dwMaskS    :4;
-    unsigned int dwMaskT    :4;
-    unsigned int dwShiftS   :4;
-    unsigned int dwShiftT   :4;
-
-    // Set by RDP_SetTileSize
-    int sl;     // Upper left S     - 8:3
-    int tl;     // Upper Left T     - 8:3
-    int sh;     // Lower Right S
-    int th;     // Lower Right T
-
     int   hilite_sl;
     int   hilite_tl;
     int   hilite_sh;
     int   hilite_th;
-
-    float fsl;      // Upper left S     - 8:3
-    float ftl;      // Upper Left T     - 8:3
-    float fsh;      // Lower Right S
-    float fth;      // Lower Right T
 
     float   fhilite_sl;
     float   fhilite_tl;
@@ -102,9 +74,6 @@ typedef struct
     uint32_t dwDXT;
 
     uint32_t dwPitch;
-
-    uint32_t dwWidth;
-    uint32_t dwHeight;
 
     float fShiftScaleS;
     float fShiftScaleT;
@@ -117,7 +86,7 @@ typedef struct
     bool bForceClampS;
     bool bForceClampT;
 
-} Tile;
+} TileAdditionalInfo;
 
 
 typedef struct
@@ -427,7 +396,7 @@ typedef union {
 typedef struct {
     uint32_t dwFormat;
     uint32_t dwSize;
-    bool  bSetBy;
+    uint32_t  bSetBy;
 
     uint32_t dwLoadAddress;
     uint32_t dwTotalWords;

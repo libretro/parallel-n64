@@ -25,26 +25,24 @@
 #include <stdio.h>
 #include <math.h>
 #include "glide.h"
-#include "g3ext.h"
 #include "glitchmain.h"
-#include "../../libretro/SDL.h"
+#include "../Glide64/rdp.h"
+#include "../../libretro/libretro_private.h"
+
+#include <gfx/gl_capabilities.h>
 
 extern retro_environment_t environ_cb;
 
 int width, height;
 int bgra8888_support;
-int npot_support;
+static int npot_support;
 // ZIGGY
 static GLuint default_texture;
 int glsl_support = 1;
 //Gonetz
 
-uint16_t *frameBuffer;
-uint8_t  *buf;
-
-#ifdef EMSCRIPTEN
-GLuint glitch_vbo;
-#endif
+extern uint16_t *frameBuffer;
+static uint8_t  *buf;
 
 static int isExtensionSupported(const char *extension)
 {
@@ -54,12 +52,13 @@ static int isExtensionSupported(const char *extension)
    return 0;
 }
 
-void FindBestDepthBias();
-
 uint32_t grSstWinOpen(void)
 {
    bool ret;
-   struct retro_variable var = { "mupen64-screensize", 0 };
+   struct retro_variable var = { "parallel-n64-screensize", 0 };
+
+   if (frameBuffer)
+      grSstWinClose(0);
 
    ret = environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var);
 
@@ -83,77 +82,50 @@ uint32_t grSstWinOpen(void)
    glGenTextures(1, &default_texture);
    frameBuffer = (uint16_t*)malloc(width * height * sizeof(uint16_t));
    buf = (uint8_t*)malloc(width * height * 4 * sizeof(uint8_t));
-#ifdef EMSCRIPTEN
-   glGenBuffers(1, &glitch_vbo);
-#endif
    glViewport(0, 0, width, height);
 
-#if 0
-   if (isExtensionSupported("GL_ARB_texture_env_combine") == 0 &&
-         isExtensionSupported("GL_EXT_texture_env_combine") == 0)
-      DISPLAY_WARNING("Your video card doesn't support GL_ARB_texture_env_combine extension");
-   if (isExtensionSupported("GL_ARB_multitexture") == 0)
-      DISPLAY_WARNING("Your video card doesn't support GL_ARB_multitexture extension");
-   if (isExtensionSupported("GL_ARB_texture_mirrored_repeat") == 0)
-      DISPLAY_WARNING("Your video card doesn't support GL_ARB_texture_mirrored_repeat extension");
-#endif
-
    packed_pixels_support = 0;
-   
+   npot_support          = 0;
+   bgra8888_support      = 0;
+
    // we can assume that non-GLES has GL_EXT_packed_pixels
    // support -it's included since OpenGL 1.2
    if (isExtensionSupported("GL_EXT_packed_pixels") != 0)
       packed_pixels_support = 1;
 
-   if (isExtensionSupported("GL_ARB_texture_non_power_of_two") == 0)
-   {
-      //DISPLAY_WARNING("GL_ARB_texture_non_power_of_two supported.\n");
-      npot_support = 0;
-   }
-   else
+   if (gl_check_capability(GL_CAPS_FULL_NPOT_SUPPORT))
    {
       printf("GL_ARB_texture_non_power_of_two supported.\n");
       npot_support = 1;
    }
 
-   if (isExtensionSupported("GL_ARB_shading_language_100") &&
-         isExtensionSupported("GL_ARB_shader_objects") &&
-         isExtensionSupported("GL_ARB_fragment_shader") &&
-         isExtensionSupported("GL_ARB_vertex_shader"))
-   {}
-
-   if (isExtensionSupported("GL_EXT_texture_format_BGRA8888"))
+   if (gl_check_capability(GL_CAPS_BGRA8888))
    {
       printf("GL_EXT_texture_format_BGRA8888 supported.\n");
       bgra8888_support = 1;
    }
-   else
-   {
-      //DISPLAY_WARNING("GL_EXT_texture_format_BGRA8888 not supported.\n");
-      bgra8888_support = 0;
-   }
 
-   FindBestDepthBias();
-
-   init_textures();
+   init_geometry();
    init_combiner();
+   init_textures();
 
    return 1;
 }
 
-int32_t grSstWinClose( uint32_t context )
+int32_t grSstWinClose(uint32_t context)
 {
    if (frameBuffer)
       free(frameBuffer);
+
    if (buf)
       free(buf);
-   glDeleteTextures(1, &default_texture);
-#ifdef EMSCRIPTEN
-   glDeleteBuffers(1, &glitch_vbo);
-#endif
-   frameBuffer = NULL;
-   buf = NULL;
 
+   glDeleteTextures(1, &default_texture);
+
+   frameBuffer = NULL;
+   buf         = NULL;
+
+   free_geometry();
    free_combiners();
    free_textures();
 
@@ -166,12 +138,10 @@ int32_t grLfbLock( int32_t type, int32_t buffer, int32_t writeMode,
           int32_t origin, int32_t pixelPipeline,
           GrLfbInfo_t *info )
 {
-   LOG("grLfbLock(%d,%d,%d,%d,%d)\r\n", type, buffer, writeMode, origin, pixelPipeline);
-
-   info->origin = origin;
+   info->origin        = origin;
    info->strideInBytes = width * ((writeMode == GR_LFBWRITEMODE_888) ? 4 : 2);
-   info->lfbPtr = frameBuffer;
-   info->writeMode = writeMode;
+   info->lfbPtr        = frameBuffer;
+   info->writeMode     = writeMode;
 
    if (writeMode == GR_LFBWRITEMODE_565)
    {
@@ -199,7 +169,6 @@ int32_t grLfbReadRegion( int32_t src_buffer,
       uint32_t dst_stride, void *dst_data )
 {
    unsigned int i,j;
-   LOG("grLfbReadRegion(%d,%d,%d,%d,%d,%d)\r\n", src_buffer, src_x, src_y, src_width, src_height, dst_stride);
 
    glReadPixels(src_x, height-src_y-src_height, src_width, src_height, GL_RGBA, GL_UNSIGNED_BYTE, buf);
 
@@ -217,7 +186,7 @@ int32_t grLfbReadRegion( int32_t src_buffer,
    return FXTRUE;
 }
 
-int32_t 
+int32_t
 grLfbWriteRegion( int32_t dst_buffer,
       uint32_t dst_x, uint32_t dst_y,
       uint32_t src_format,
@@ -227,7 +196,6 @@ grLfbWriteRegion( int32_t dst_buffer,
 {
    unsigned int i,j;
    uint16_t *frameBuffer = (uint16_t*)src_data;
-   LOG("grLfbWriteRegion(%d,%d,%d,%d,%d,%d,%d,%d)\r\n",dst_buffer, dst_x, dst_y, src_format, src_width, src_height, pixelPipeline, src_stride);
 
    if(dst_buffer == GR_BUFFER_AUXBUFFER)
    {
@@ -247,10 +215,11 @@ grLfbWriteRegion( int32_t dst_buffer,
    }
    else
    {
-      int tex_width, tex_height, invert;
-      int vertexOffset_location, textureSizes_location;
+      int invert;
+      int textureSizes_location;
       static float data[16];
       const unsigned int half_stride = src_stride / 2;
+
       glActiveTexture(GL_TEXTURE0);
 
       /* src_format is GR_LFBWRITEMODE_555 */
@@ -273,8 +242,6 @@ grLfbWriteRegion( int32_t dst_buffer,
 
       glDisable(GL_DEPTH_TEST);
       glDisable(GL_BLEND);
-      tex_width  = src_width;
-      tex_height = src_height;
       invert = 1;
 
       data[ 0] = (float)((int)dst_x);                             /* X 0 */
@@ -294,24 +261,12 @@ grLfbWriteRegion( int32_t dst_buffer,
       data[14] = 0.0f;
       data[15] = 0.0f;
 
-#ifdef EMSCRIPTEN
-      glBindBuffer(GL_ARRAY_BUFFER, glitch_vbo);
-      glBufferData(GL_ARRAY_BUFFER, sizeof(data), data, GL_DYNAMIC_DRAW);
-#else
-      glBindBuffer(GL_ARRAY_BUFFER, 0);
-#endif
-
       glDisableVertexAttribArray(COLOUR_ATTR);
       glDisableVertexAttribArray(TEXCOORD_1_ATTR);
       glDisableVertexAttribArray(FOG_ATTR);
 
-#ifdef EMSCRIPTEN
-      glVertexAttribPointer(POSITION_ATTR,2,GL_FLOAT,false,4 * sizeof(float), 0); //Position
-      glVertexAttribPointer(TEXCOORD_0_ATTR,2,GL_FLOAT,false,4 * sizeof(float), 2); //Tex
-#else
       glVertexAttribPointer(POSITION_ATTR,2,GL_FLOAT,false,4 * sizeof(float), &data[0]); //Position
       glVertexAttribPointer(TEXCOORD_0_ATTR,2,GL_FLOAT,false,4 * sizeof(float), &data[2]); //Tex
-#endif
 
       glEnableVertexAttribArray(COLOUR_ATTR);
       glEnableVertexAttribArray(TEXCOORD_1_ATTR);
@@ -321,12 +276,40 @@ grLfbWriteRegion( int32_t dst_buffer,
       glUniform4f(textureSizes_location,1,1,1,1);
 
       glDrawArrays(GL_TRIANGLE_STRIP,0,4);
-      glBindBuffer(GL_ARRAY_BUFFER, 0);
 
       compile_shader();
 
       glEnable(GL_DEPTH_TEST);
       glEnable(GL_BLEND);
    }
+
    return FXTRUE;
+}
+
+void grBufferSwap(uint32_t swap_interval)
+{
+   bool swapmode = settings.swapmode_retro && BUFFERSWAP;
+   if (!swapmode)
+      retro_return(true);
+}
+
+void grClipWindow(uint32_t minx, uint32_t miny, uint32_t maxx, uint32_t maxy)
+{
+   glScissor(minx, height - maxy, maxx - minx, maxy - miny);
+   glEnable(GL_SCISSOR_TEST);
+}
+
+void grBufferClear(uint32_t color, uint32_t alpha, uint32_t depth)
+{
+   glClearColor(((color >> 24) & 0xFF) / 255.0f,
+         ((color >> 16) & 0xFF) / 255.0f,
+         (color         & 0xFF) / 255.0f,
+         alpha / 255.0f);
+   glClearDepth(depth / 65535.0f);
+   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+}
+
+void grColorMask(bool rgb, bool a)
+{
+   glColorMask(rgb, rgb, rgb, a);
 }

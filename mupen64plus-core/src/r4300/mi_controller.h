@@ -35,14 +35,15 @@ enum mi_registers
     MI_REGS_COUNT
 };
 
+
 enum mi_intr
 {
-   MI_INTR_SP = 0x01,
-   MI_INTR_SI = 0x02,
-   MI_INTR_AI = 0x04,
-   MI_INTR_VI = 0x08,
-   MI_INTR_PI = 0x10,
-   MI_INTR_DP = 0x20
+    MI_INTR_SP = 0x01,
+    MI_INTR_SI = 0x02,
+    MI_INTR_AI = 0x04,
+    MI_INTR_VI = 0x08,
+    MI_INTR_PI = 0x10,
+    MI_INTR_DP = 0x20
 };
 
 struct mi_controller
@@ -50,18 +51,18 @@ struct mi_controller
     uint32_t regs[MI_REGS_COUNT];
 };
 
-static INLINE uint32_t mi_reg(uint32_t address)
+static uint32_t mi_reg(uint32_t address)
 {
     return (address & 0xffff) >> 2;
 }
 
-void init_mi(struct mi_controller* mi);
+void poweron_mi(struct mi_controller* mi);
 
 int read_mi_regs(void* opaque, uint32_t address, uint32_t* value);
 int write_mi_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mask);
 
-void raise_rcp_interrupt (struct r4300_core* r4300, uint32_t mi_intr);
+void raise_rcp_interrupt(struct r4300_core* r4300, uint32_t mi_intr);
 void signal_rcp_interrupt(struct r4300_core* r4300, uint32_t mi_intr);
-void clear_rcp_interrupt (struct r4300_core* r4300, uint32_t mi_intr);
+void clear_rcp_interrupt(struct r4300_core* r4300, uint32_t mi_intr);
 
 #endif

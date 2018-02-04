@@ -37,7 +37,6 @@ public:
     void UpdateFrame(bool swapOnly);
 
     bool IsExtensionSupported(const char* pExtName);
-    bool IsWglExtensionSupported(const char* pExtName);
     static void InitDeviceParameters();
 
 protected:

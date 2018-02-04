@@ -214,17 +214,17 @@ EXPORT void * CALL DebugMemGetPointer(m64p_dbg_memptr_type mem_ptr_type)
     switch (mem_ptr_type)
     {
         case M64P_DBG_PTR_RDRAM:
-            return g_rdram;
+            return g_dev.ri.rdram.dram;
         case M64P_DBG_PTR_PI_REG:
-            return g_pi.regs;
+            return g_dev.pi.regs;
         case M64P_DBG_PTR_SI_REG:
-            return g_si.regs;
+            return g_dev.pi.regs;
         case M64P_DBG_PTR_VI_REG:
-            return g_vi.regs;
+            return g_dev.vi.regs;
         case M64P_DBG_PTR_RI_REG:
-            return g_ri.regs;
+            return g_dev.ri.regs;
         case M64P_DBG_PTR_AI_REG:
-            return g_ai.regs;
+            return g_dev.ai.regs;
         default:
             DebugMessage(M64MSG_ERROR, "Bug: DebugMemGetPointer() called with invalid m64p_dbg_memptr_type");
             return NULL;

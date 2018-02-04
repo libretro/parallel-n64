@@ -19,37 +19,40 @@
  *   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.          *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include "../audio_backend_compat.h"
-
 #include "api/m64p_types.h"
 #include "api/libretro.h"
 #include "ai/ai_controller.h"
 #include "main/main.h"
+#include "main/device.h"
 #include "main/rom.h"
 #include "plugin/plugin.h"
 #include "ri/ri_controller.h"
+#include "vi/vi_controller.h"
 
+#include <stdio.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdarg.h>
 
+#include <audio/conversion/float_to_s16.h>
+#include <audio/conversion/s16_to_float.h>
+#include <audio/audio_resampler.h>
+
 extern retro_audio_sample_batch_t audio_batch_cb;
 
-#include "audio_resampler_driver.h"
-#include "audio_utils.h"
+static unsigned MAX_AUDIO_FRAMES = 2048;
 
-#ifndef MAX_AUDIO_FRAMES
-#define MAX_AUDIO_FRAMES 2048
-#endif
+#define VI_INTR_TIME 500000
 
 /* Read header for type definition */
 static int GameFreq = 33600;
+static unsigned CountsPerSecond;
+static unsigned BytesPerSecond;
+static unsigned CountsPerByte;
 
-bool no_audio;
-
-static const rarch_resampler_t *resampler;
+static const retro_resampler_t *resampler;
 static void *resampler_audio_data;
 static float *audio_in_buffer_float;
 static float *audio_out_buffer_float;
@@ -73,57 +76,62 @@ void deinit_audio_libretro(void)
    }
 }
 
-void init_audio_libretro(void)
+void init_audio_libretro(unsigned max_audio_frames)
 {
-   rarch_resampler_realloc(&resampler_audio_data, &resampler, "CC", 1.0);
+   retro_resampler_realloc(&resampler_audio_data, &resampler, "sinc", RESAMPLER_QUALITY_DONTCARE, 1.0);
 
-   audio_in_buffer_float = malloc(2 * MAX_AUDIO_FRAMES * sizeof(float));
+   MAX_AUDIO_FRAMES = max_audio_frames;
+
+   audio_in_buffer_float  = malloc(2 * MAX_AUDIO_FRAMES * sizeof(float));
    audio_out_buffer_float = malloc(2 * MAX_AUDIO_FRAMES * sizeof(float));
-   audio_out_buffer_s16 = malloc(2 * MAX_AUDIO_FRAMES * sizeof(int16_t));
+   audio_out_buffer_s16   = malloc(2 * MAX_AUDIO_FRAMES * sizeof(int16_t));
 
-   audio_convert_init_simd();
+   convert_s16_to_float_init_simd();
+   convert_float_to_s16_init_simd();
+}
+
+static void aiDacrateChanged(void *user_data, unsigned int frequency, unsigned int bits)
+{
+   GameFreq        = frequency;
+   BytesPerSecond  = frequency * 4;
+   CountsPerSecond = VI_INTR_TIME * 60 /* TODO/FIXME - dehardcode */;
+   CountsPerByte   = CountsPerSecond / BytesPerSecond;
+
+#if 0
+   printf("CountsPerByte: %d, GameFreq: %d\n", CountsPerByte, GameFreq);
+#endif
 }
 
 /* A fully compliant implementation is not really possible with just the zilmar spec.
  * We assume bits == 16 (assumption compatible with audio-sdl plugin implementation)
  */
-static void set_audio_format_via_libretro(void* user_data,
+void set_audio_format_via_libretro(void* user_data,
       unsigned int frequency, unsigned int bits)
 {
-   uint32_t saved_ai_dacrate = g_ai.regs[AI_DACRATE_REG];
+   struct ai_controller* ai = (struct ai_controller*)user_data;
+   uint32_t saved_ai_dacrate = ai->regs[AI_DACRATE_REG];
 
    /* notify plugin of the new frequency (can't do the same for bits) */
-   g_ai.regs[AI_DACRATE_REG] = (ROM_PARAMS.aidacrate / frequency) - 1;
+   ai->regs[AI_DACRATE_REG] = ai->vi->clock / frequency - 1;
 
-   GameFreq = frequency;
+   aiDacrateChanged(user_data, frequency, bits);
 
    /* restore original registers values */
-   g_ai.regs[AI_DACRATE_REG] = saved_ai_dacrate;
+   ai->regs[AI_DACRATE_REG] = saved_ai_dacrate;
 }
 
-/* Abuse core & audio plugin implementation details to obtain the desired effect. */
-static void push_audio_samples_via_libretro(void* user_data, const void* buffer, size_t size)
+static void aiLenChanged(void* user_data, const void* buffer, size_t size)
 {
-   int16_t *out;
    size_t max_frames, remain_frames;
    uint32_t i;
    double ratio;
    struct resampler_data data = {0};
-   uint32_t len      = size;
+   int16_t *out      = NULL;
    int16_t *raw_data = (int16_t*)buffer;
-   size_t frames     = len / 4;
+   size_t frames     = size / 4;
    uint8_t *p        = (uint8_t*)buffer;
 
-   /* save registers values */
-   uint32_t saved_ai_length = g_ai.regs[AI_LEN_REG];
-   uint32_t saved_ai_dram = g_ai.regs[AI_DRAM_ADDR_REG];
-
-   /* notify plugin of new samples to play.
-    * Exploit the fact that buffer points in g_rdram to retreive dram_addr_reg value */
-   g_ai.regs[AI_DRAM_ADDR_REG] = (uint8_t*)buffer - (uint8_t*)g_rdram;
-   g_ai.regs[AI_LEN_REG] = size;
-
-   for (i = 0; i < len; i += 4)
+   for (i = 0; i < size; i += 4)
    {
       p[i ] ^= p[i + 2];
       p[i + 2] ^= p[i ];
@@ -138,8 +146,6 @@ audio_batch:
    ratio             = 44100.0 / GameFreq;
    max_frames        = (GameFreq > 44100) ? MAX_AUDIO_FRAMES : (size_t)(MAX_AUDIO_FRAMES / ratio - 1);
    remain_frames     = 0;
-   if (no_audio)
-      return;
 
    if (frames > max_frames)
    {
@@ -152,9 +158,9 @@ audio_batch:
    data.input_frames = frames;
    data.ratio        = ratio;
 
-   audio_convert_s16_to_float(audio_in_buffer_float, raw_data, frames * 2, 1.0f);
+   convert_s16_to_float(audio_in_buffer_float, raw_data, frames * 2, 1.0f);
    resampler->process(resampler_audio_data, &data);
-   audio_convert_float_to_s16(audio_out_buffer_s16, audio_out_buffer_float, data.output_frames * 2);
+   convert_float_to_s16(audio_out_buffer_s16, audio_out_buffer_float, data.output_frames * 2);
 
    out                    = audio_out_buffer_s16;
 
@@ -170,15 +176,23 @@ audio_batch:
       frames   = remain_frames;
       goto audio_batch;
    }
-
-   /* restore original registers vlaues */
-   g_ai.regs[AI_LEN_REG] = saved_ai_length;
-   g_ai.regs[AI_DRAM_ADDR_REG] = saved_ai_dram;
 }
 
-const struct m64p_audio_backend AUDIO_BACKEND_COMPAT =
+/* Abuse core & audio plugin implementation details to obtain the desired effect. */
+void push_audio_samples_via_libretro(void* user_data, const void* buffer, size_t size)
 {
-   NULL,
-   set_audio_format_via_libretro,
-   push_audio_samples_via_libretro
-};
+   struct ai_controller* ai = (struct ai_controller*)user_data;
+   uint32_t saved_ai_length = ai->regs[AI_LEN_REG];
+   uint32_t saved_ai_dram = ai->regs[AI_DRAM_ADDR_REG];
+
+   /* notify plugin of new samples to play.
+    * Exploit the fact that buffer points in ai->ri->rdram.dram to retrieve dram_addr_reg value */
+   ai->regs[AI_DRAM_ADDR_REG] = (uint8_t*)buffer - (uint8_t*)g_dev.ri.rdram.dram;
+   ai->regs[AI_LEN_REG] = size;
+
+   aiLenChanged(user_data, buffer, size);
+
+   /* restore original registers vlaues */
+   ai->regs[AI_LEN_REG]       = saved_ai_length;
+   ai->regs[AI_DRAM_ADDR_REG] = saved_ai_dram;
+}

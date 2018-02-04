@@ -216,10 +216,10 @@ char *trim(char *str)
 {
    char *start = str, *end = str + strlen(str);
 
-   while (start < end && isspace(*start))
+   while (start < end && isspace((unsigned char)(*start)))
       start++;
 
-   while (end > start && isspace(*(end-1)))
+   while (end > start && isspace((unsigned char)(*(end-1))))
       end--;
 
    memmove(str, start, end - start);
@@ -232,7 +232,7 @@ int string_to_int(const char *str, int *result)
 {
    char *endptr;
    long int n;
-   if (*str == '\0' || isspace(*str))
+   if (*str == '\0' || isspace((unsigned char)(*str)))
       return 0;
    errno = 0;
    n = strtol(str, &endptr, 10);
@@ -276,9 +276,9 @@ int parse_hex(const char *str, unsigned char *output, size_t output_size)
 
 char *formatstr(const char *fmt, ...)
 {
-   int size = 128, ret;
-   char *str = (char *)malloc(size), *newstr;
    va_list args;
+   int  size = 128;
+   char *str = (char *)malloc(size), *newstr;
 
    /* There are two implementations of vsnprintf we have to deal with:
     * C99 version: Returns the number of characters which would have been written
@@ -289,6 +289,8 @@ char *formatstr(const char *fmt, ...)
     */
    while (str != NULL)
    {
+      int ret;
+
       va_start(args, fmt);
       ret = vsnprintf(str, size, fmt, args);
       va_end(args);

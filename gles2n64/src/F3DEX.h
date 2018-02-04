@@ -46,13 +46,13 @@ extern "C" {
 #define F3DEX_BRANCH_Z              0xB0
 #define F3DEX_LOAD_UCODE            0xAF // 0xCF
 
-void F3DEX_Vtx( u32 w0, u32 w1 );
-void F3DEX_Tri1( u32 w0, u32 w1 );
-void F3DEX_CullDL( u32 w0, u32 w1 );
-void F3DEX_ModifyVtx( u32 w0, u32 w1 );
-void F3DEX_Tri2( u32 w0, u32 w1 );
-void F3DEX_Branch_Z( u32 w0, u32 w1 );
-void F3DEX_Load_uCode( u32 w0, u32 w1 );
+void F3DEX_Vtx( uint32_t w0, uint32_t w1 );
+void F3DEX_Tri1( uint32_t w0, uint32_t w1 );
+void F3DEX_CullDL( uint32_t w0, uint32_t w1 );
+void F3DEX_ModifyVtx( uint32_t w0, uint32_t w1 );
+void F3DEX_Tri2( uint32_t w0, uint32_t w1 );
+void F3DEX_Branch_Z( uint32_t w0, uint32_t w1 );
+void F3DEX_Load_uCode( uint32_t w0, uint32_t w1 );
 void F3DEX_Init();
 
 #ifdef __cplusplus

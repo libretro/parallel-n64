@@ -1,4 +1,4 @@
-
+#include <stdint.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <math.h>
@@ -11,11 +11,11 @@
 #endif
 
 #include <boolean.h>
+#include <retro_miscellaneous.h>
 
 #include "Common.h"
 #include "gles2N64.h"
 #include "OpenGL.h"
-#include "Types.h"
 #include "N64.h"
 #include "gSP.h"
 #include "gDP.h"
@@ -25,6 +25,9 @@
 #include "VI.h"
 #include "RSP.h"
 #include "Config.h"
+
+#include "../../Graphics/RDP/gDP_state.h"
+#include "../../Graphics/RSP/gSP_state.h"
 
 GLInfo OGL;
 
@@ -142,17 +145,17 @@ static void _updateCullFace(void)
 /* TODO/FIXME - not complete yet */
 static void _updateViewport(void)
 {
-   const u32 VI_height = VI.height;
-   const f32 scaleX = OGL_GetScaleX();
-   const f32 scaleY = OGL_GetScaleY();
+   const uint32_t VI_height = VI.height;
+   const float scaleX = OGL_GetScaleX();
+   const float scaleY = OGL_GetScaleY();
    float Xf = gSP.viewport.vscale[0] < 0 ? (gSP.viewport.x + gSP.viewport.vscale[0] * 2.0f) : gSP.viewport.x;
    const GLint X = (GLint)(Xf * scaleX);
    const GLint Y = gSP.viewport.vscale[1] < 0 ? (GLint)((gSP.viewport.y + gSP.viewport.vscale[1] * 2.0f) * scaleY) : (GLint)((VI_height - (gSP.viewport.y + gSP.viewport.height)) * scaleY);
-   
+
    glViewport(X,
          Y + OGL_GetHeightOffset(),
-         max((GLint)(gSP.viewport.width * scaleX), 0),
-         max((GLint)(gSP.viewport.height * scaleY), 0));
+         MAX((GLint)(gSP.viewport.width * scaleX), 0),
+         MAX((GLint)(gSP.viewport.height * scaleY), 0));
 
 	gSP.changed &= ~CHANGED_VIEWPORT;
 }
@@ -167,8 +170,8 @@ static void _updateDepthUpdate(void)
 
 static void _updateScissor(struct FrameBuffer *_pBuffer)
 {
-   u32 heightOffset, screenHeight;
-   f32 scaleX, scaleY;
+   uint32_t heightOffset, screenHeight;
+   float scaleX, scaleY;
    float SX0 = gDP.scissor.ulx;
    float SX1 = gDP.scissor.lrx;
 
@@ -177,14 +180,14 @@ static void _updateScissor(struct FrameBuffer *_pBuffer)
       scaleX       = OGL_GetScaleX();
       scaleY       = OGL_GetScaleY();
       heightOffset = OGL_GetHeightOffset();
-      screenHeight = VI.height; 
+      screenHeight = VI.height;
    }
    else
    {
-      scaleX       = _pBuffer->scaleX;
-      scaleY       = _pBuffer->scaleY;
+      scaleX       = _pBuffer->m_scaleX;
+      scaleY       = _pBuffer->m_scaleY;
       heightOffset = 0;
-      screenHeight = (_pBuffer->height == 0) ? VI.height : _pBuffer->height;
+      screenHeight = (_pBuffer->m_height == 0) ? VI.height : _pBuffer->m_height;
    }
 
 #if 0
@@ -195,15 +198,15 @@ static void _updateScissor(struct FrameBuffer *_pBuffer)
    glScissor(
          (GLint)(SX0 * scaleX),
          (GLint)((screenHeight - gDP.scissor.lry) * scaleY + heightOffset),
-         max((GLint)((SX1 - gDP.scissor.ulx) * scaleX), 0),
-         max((GLint)((gDP.scissor.lry - gDP.scissor.uly) * scaleY), 0)
+         MAX((GLint)((SX1 - gDP.scissor.ulx) * scaleX), 0),
+         MAX((GLint)((gDP.scissor.lry - gDP.scissor.uly) * scaleY), 0)
          );
 	gDP.changed &= ~CHANGED_SCISSOR;
 }
 
 static void _setBlendMode(void)
 {
-	const u32 blendmode = gDP.otherMode.l >> 16;
+	const uint32_t blendmode = gDP.otherMode.l >> 16;
 	// 0x7000 = CVG_X_ALPHA|ALPHA_CVG_SEL|FORCE_BL
 	if (gDP.otherMode.alphaCvgSel != 0 && (gDP.otherMode.l & 0x7000) != 0x7000) {
 		switch (blendmode) {
@@ -300,6 +303,9 @@ static void _setBlendMode(void)
 				glBlendFunc( GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA );
 				break;
 
+         case 0x5000: // V8 explosions
+            glBlendFunc(GL_ONE_MINUS_SRC_ALPHA, GL_SRC_ALPHA);
+            break;
 
 			default:
 				LOG(LOG_VERBOSE, "Unhandled blend mode=%x", gDP.otherMode.l >> 16);
@@ -452,13 +458,13 @@ static void _updateStates(void)
    gSP.changed &= CHANGED_TEXTURE | CHANGED_MATRIX;
 }
 
-void OGL_DrawTriangle(SPVertex *vertices, int v0, int v1, int v2)
+void OGL_DrawTriangle(struct SPVertex *vertices, int v0, int v1, int v2)
 {
 }
 
 static void OGL_SetColorArray(void)
 {
-   if (scProgramCurrent->usesCol)
+   if (scProgramCurrent->usesCol || gDP.otherMode.c1_m1b == 2)
       glEnableVertexAttribArray(SC_COLOR);
    else
       glDisableVertexAttribArray(SC_COLOR);
@@ -511,29 +517,29 @@ static void OGL_prepareDrawTriangle(bool _dma)
 
    if (updateArrays)
    {
-      SPVertex *pVtx = (SPVertex*)&OGL.triangles.vertices[0];
-      glVertexAttribPointer(SC_POSITION, 4, GL_FLOAT, GL_FALSE, sizeof(SPVertex), &pVtx->x);
+      struct SPVertex *pVtx = (struct SPVertex*)&OGL.triangles.vertices[0];
+      glVertexAttribPointer(SC_POSITION, 4, GL_FLOAT, GL_FALSE, sizeof(struct SPVertex), &pVtx->x);
       if (m_bFlatColors)
-         glVertexAttribPointer(SC_COLOR, 4, GL_FLOAT, GL_FALSE, sizeof(SPVertex), &pVtx->flat_r);
+         glVertexAttribPointer(SC_COLOR, 4, GL_FLOAT, GL_FALSE, sizeof(struct SPVertex), &pVtx->flat_r);
       else
-         glVertexAttribPointer(SC_COLOR, 4, GL_FLOAT, GL_FALSE, sizeof(SPVertex), &pVtx->r);
-      glVertexAttribPointer(SC_TEXCOORD0, 2, GL_FLOAT, GL_FALSE, sizeof(SPVertex), &pVtx->s);
+         glVertexAttribPointer(SC_COLOR, 4, GL_FLOAT, GL_FALSE, sizeof(struct SPVertex), &pVtx->r);
+      glVertexAttribPointer(SC_TEXCOORD0, 2, GL_FLOAT, GL_FALSE, sizeof(struct SPVertex), &pVtx->s);
    }
    else if (updateColorArrays)
    {
-      SPVertex *pVtx = (SPVertex*)&OGL.triangles.vertices[0];
+      struct SPVertex *pVtx = (struct SPVertex*)&OGL.triangles.vertices[0];
       if (m_bFlatColors)
-         glVertexAttribPointer(SC_COLOR, 4, GL_FLOAT, GL_FALSE, sizeof(SPVertex), &pVtx->flat_r);
+         glVertexAttribPointer(SC_COLOR, 4, GL_FLOAT, GL_FALSE, sizeof(struct SPVertex), &pVtx->flat_r);
       else
-         glVertexAttribPointer(SC_COLOR, 4, GL_FLOAT, GL_FALSE, sizeof(SPVertex), &pVtx->r);
+         glVertexAttribPointer(SC_COLOR, 4, GL_FLOAT, GL_FALSE, sizeof(struct SPVertex), &pVtx->r);
    }
 }
 
-void OGL_DrawLLETriangle(u32 _numVtx)
+void OGL_DrawLLETriangle(uint32_t _numVtx)
 {
    struct FrameBuffer * pCurrentBuffer;
    float scaleX, scaleY;
-   u32 i;
+   uint32_t i;
 	if (_numVtx == 0)
 		return;
 
@@ -548,14 +554,14 @@ void OGL_DrawLLETriangle(u32 _numVtx)
       glViewport( 0, OGL_GetHeightOffset(), OGL_GetScreenWidth(), OGL_GetScreenHeight());
    }
 	else
-		glViewport(0, 0, pCurrentBuffer->width * pCurrentBuffer->scaleX, pCurrentBuffer->height * pCurrentBuffer->scaleY);
+		glViewport(0, 0, pCurrentBuffer->m_width * pCurrentBuffer->m_scaleX, pCurrentBuffer->m_height * pCurrentBuffer->m_scaleY);
 
-	scaleX = pCurrentBuffer != NULL ? 1.0f / pCurrentBuffer->width : VI.rwidth;
-	scaleY = pCurrentBuffer != NULL ? 1.0f / pCurrentBuffer->height : VI.rheight;
+	scaleX = pCurrentBuffer != NULL ? 1.0f / pCurrentBuffer->m_width : VI.rwidth;
+	scaleY = pCurrentBuffer != NULL ? 1.0f / pCurrentBuffer->m_height : VI.rheight;
 
 	for (i = 0; i < _numVtx; ++i)
    {
-      SPVertex *vtx = (SPVertex*)&OGL.triangles.vertices[i];
+      struct SPVertex *vtx = (struct SPVertex*)&OGL.triangles.vertices[i];
 
       vtx->HWLight = 0;
       vtx->x  = vtx->x * (2.0f * scaleX) - 1.0f;
@@ -582,8 +588,8 @@ void OGL_DrawLLETriangle(u32 _numVtx)
 
 void OGL_AddTriangle(int v0, int v1, int v2)
 {
-   u32 i;
-   SPVertex *vtx = NULL;
+   uint32_t i;
+   struct SPVertex *vtx = NULL;
 
    OGL.triangles.elements[OGL.triangles.num++] = v0;
    OGL.triangles.elements[OGL.triangles.num++] = v1;
@@ -594,7 +600,7 @@ void OGL_AddTriangle(int v0, int v1, int v2)
       /* Prim shading */
       for (i = OGL.triangles.num - 3; i < OGL.triangles.num; ++i)
       {
-         vtx = (SPVertex*)&OGL.triangles.vertices[OGL.triangles.elements[i]];
+         vtx = (struct SPVertex*)&OGL.triangles.vertices[OGL.triangles.elements[i]];
          vtx->flat_r = gDP.primColor.r;
          vtx->flat_g = gDP.primColor.g;
          vtx->flat_b = gDP.primColor.b;
@@ -604,11 +610,11 @@ void OGL_AddTriangle(int v0, int v1, int v2)
    else if ((gSP.geometryMode & G_SHADING_SMOOTH) == 0)
    {
       /* Flat shading */
-      SPVertex *vtx0 = (SPVertex*)&OGL.triangles.vertices[v0];
+      struct SPVertex *vtx0 = (struct SPVertex*)&OGL.triangles.vertices[v0];
 
       for (i = OGL.triangles.num - 3; i < OGL.triangles.num; ++i)
       {
-         vtx = (SPVertex*)&OGL.triangles.vertices[OGL.triangles.elements[i]];
+         vtx = (struct SPVertex*)&OGL.triangles.vertices[OGL.triangles.elements[i]];
          vtx->flat_r = vtx0->r;
          vtx->flat_g = vtx0->g;
          vtx->flat_b = vtx0->b;
@@ -620,13 +626,13 @@ void OGL_AddTriangle(int v0, int v1, int v2)
    {
 		for (i = OGL.triangles.num - 3; i < OGL.triangles.num; ++i)
       {
-			vtx = (SPVertex*)&OGL.triangles.vertices[OGL.triangles.elements[i]];
+			vtx = (struct SPVertex*)&OGL.triangles.vertices[OGL.triangles.elements[i]];
 			vtx->z = gDP.primDepth.z * vtx->w;
 		}
 	}
 }
 
-void OGL_DrawDMATriangles(u32 _numVtx)
+void OGL_DrawDMATriangles(uint32_t _numVtx)
 {
    if (_numVtx == 0)
       return;
@@ -658,8 +664,8 @@ void OGL_DrawLine(int v0, int v1, float width )
       OGL_SetColorArray();
       glDisableVertexAttribArray(SC_TEXCOORD0);
       glDisableVertexAttribArray(SC_TEXCOORD1);
-      glVertexAttribPointer(SC_POSITION, 4, GL_FLOAT, GL_FALSE, sizeof(SPVertex), &OGL.triangles.vertices[0].x);
-      glVertexAttribPointer(SC_COLOR, 4, GL_FLOAT, GL_FALSE, sizeof(SPVertex), &OGL.triangles.vertices[0].r);
+      glVertexAttribPointer(SC_POSITION, 4, GL_FLOAT, GL_FALSE, sizeof(struct SPVertex), &OGL.triangles.vertices[0].x);
+      glVertexAttribPointer(SC_COLOR, 4, GL_FLOAT, GL_FALSE, sizeof(struct SPVertex), &OGL.triangles.vertices[0].r);
 
       SC_ForceUniform1f(uRenderState, RS_LINE);
       _updateCullFace();
@@ -704,12 +710,12 @@ void OGL_DrawRect( int ulx, int uly, int lrx, int lry, float *color)
    if (pCurrentBuffer == NULL)
       glViewport(0, OGL_GetHeightOffset(), OGL_GetScreenWidth(), OGL_GetScreenHeight());
    else
-      glViewport(0, 0, pCurrentBuffer->width * pCurrentBuffer->scaleX, pCurrentBuffer->height * pCurrentBuffer->scaleY);
+      glViewport(0, 0, pCurrentBuffer->m_width * pCurrentBuffer->m_scaleX, pCurrentBuffer->m_height * pCurrentBuffer->m_scaleY);
 
    glDisable(GL_CULL_FACE);
 
-   scaleX = pCurrentBuffer != NULL ? 1.0f / pCurrentBuffer->width  : VI.rwidth;
-   scaleY = pCurrentBuffer != NULL ? 1.0f / pCurrentBuffer->height : VI.rheight;
+   scaleX = pCurrentBuffer != NULL ? 1.0f / pCurrentBuffer->m_width  : VI.rwidth;
+   scaleY = pCurrentBuffer != NULL ? 1.0f / pCurrentBuffer->m_height : VI.rheight;
 	Z      = (gDP.otherMode.depthSource == G_ZS_PRIM) ? gDP.primDepth.z : gSP.viewport.nearz;
 	W      = 1.0f;
 
@@ -736,7 +742,7 @@ void OGL_DrawRect( int ulx, int uly, int lrx, int lry, float *color)
 #if 0
 	if (ogl.isAdjustScreen() && (gDP.colorImage.width > VI.width * 98 / 100) && (_lrx - _ulx < VI.width * 9 / 10)) {
 		const float scale = ogl.getAdjustScale();
-		for (u32 i = 0; i < 4; ++i)
+		for (uint32_t i = 0; i < 4; ++i)
 			m_rect[i].x *= scale;
 	}
 #endif
@@ -775,12 +781,14 @@ bool texturedRectDepthBufferCopy(const struct TexturedRectParams *_params)
 	// Data from depth buffer loaded into TMEM and then rendered to RDRAM by texrect.
 	// Works only with depth buffer emulation enabled.
 	// Load of arbitrary data to that area causes weird camera rotation in CBFD.
-	const gDPTile *pTile = (const gDPTile*)gSP.textureTile[0];
-	if (pTile->loadType == LOADTYPE_BLOCK && gDP.textureImage.size == 2 
-         && gDP.textureImage.address >= gDP.depthImageAddress 
+	const struct gDPTile *pTile = (const struct gDPTile*)gSP.textureTile[0];
+	if (pTile->loadType == LOADTYPE_BLOCK && gDP.textureImage.size == 2
+         && gDP.textureImage.address >= gDP.depthImageAddress
          &&  gDP.textureImage.address < (gDP.depthImageAddress + gDP.colorImage.width*gDP.colorImage.width * 6 / 4))
    {
-      u32 x;
+      uint32_t x;
+	  uint32_t width, ulx;
+	  uint16_t *pSrc, *pDst;
       struct FrameBuffer *pBuffer = FrameBuffer_GetCurrent();
       if (config.frameBufferEmulation.enable == 0 || !pBuffer)
          return true;
@@ -795,10 +803,11 @@ bool texturedRectDepthBufferCopy(const struct TexturedRectParams *_params)
          RDP_RepeatLastLoadBlock();
 #endif
 
-      const u32 width = (u32)(_params->lrx - _params->ulx);
-      const u32 ulx = (u32)_params->ulx;
-      u16 * pSrc = ((u16*)TMEM) + (u32)floorf(_params->uls + 0.5f);
-      u16 *pDst = (u16*)(gfx_info.RDRAM + gDP.colorImage.address);
+
+      width = (uint32_t)(_params->lrx - _params->ulx);
+      ulx = (uint32_t)_params->ulx;
+      pSrc = ((uint16_t*)TMEM) + (uint32_t)floorf(_params->uls + 0.5f);
+      pDst = (uint16_t*)(gfx_info.RDRAM + gDP.colorImage.address);
       for (x = 0; x < width; ++x)
          pDst[(ulx + x) ^ 1] = swapword(pSrc[x]);
 
@@ -818,8 +827,8 @@ bool texturedRectCopyToItself(const struct TexturedRectParams * _params)
 
 static bool texturedRectBGCopy(const struct TexturedRectParams *_params)
 {
-   u8 *texaddr, *fbaddr;
-   u32 y, width, tex_width, uly, lry;
+   uint8_t *texaddr, *fbaddr;
+   uint32_t y, width, tex_width, uly, lry;
    float flry;
 	if (GBI_GetCurrentMicrocodeType() != S2DEX)
 		return false;
@@ -828,18 +837,18 @@ static bool texturedRectBGCopy(const struct TexturedRectParams *_params)
 	if (flry > gDP.scissor.lry)
 		flry = gDP.scissor.lry;
 
-	width = (u32)(_params->lrx - _params->ulx);
+	width = (uint32_t)(_params->lrx - _params->ulx);
 	tex_width = gSP.textureTile[0]->line << 3;
-	uly = (u32)_params->uly;
+	uly = (uint32_t)_params->uly;
 	lry = flry;
 
-	texaddr = gfx_info.RDRAM + gDP.loadInfo[gSP.textureTile[0]->tmem].texAddress + tex_width*(u32)_params->ult + (u32)_params->uls;
-	fbaddr = gfx_info.RDRAM + gDP.colorImage.address + (u32)_params->ulx;
+	texaddr = gfx_info.RDRAM + gDP.loadInfo[gSP.textureTile[0]->tmem].texAddress + tex_width*(uint32_t)_params->ult + (uint32_t)_params->uls;
+	fbaddr = gfx_info.RDRAM + gDP.colorImage.address + (uint32_t)_params->ulx;
 
 	for (y = uly; y < lry; ++y)
    {
-		u8 *src = texaddr + (y - uly) * tex_width;
-		u8 *dst = fbaddr + y * gDP.colorImage.width;
+		uint8_t *src = texaddr + (y - uly) * tex_width;
+		uint8_t *dst = fbaddr + y * gDP.colorImage.width;
 		memcpy(dst, src, width);
 	}
 	FrameBuffer_RemoveBuffer(gDP.colorImage.address);
@@ -848,19 +857,21 @@ static bool texturedRectBGCopy(const struct TexturedRectParams *_params)
 
 static bool texturedRectPaletteMod(const struct TexturedRectParams *_params)
 {
-   u32 i;
+   uint32_t i;
+   uint16_t env16, prim16, *src, *dst;
+   uint8_t envr, envg, envb, prmr, prmg, prmb;
 	if (gDP.scissor.lrx != 16 || gDP.scissor.lry != 1 || _params->lrx != 16 || _params->lry != 1)
 		return false;
-	u8 envr = (u8)(gDP.envColor.r * 31.0f);
-	u8 envg = (u8)(gDP.envColor.g * 31.0f);
-	u8 envb = (u8)(gDP.envColor.b * 31.0f);
-	u16 env16 = (u16)((envr << 11) | (envg << 6) | (envb << 1) | 1);
-	u8 prmr = (u8)(gDP.primColor.r * 31.0f);
-	u8 prmg = (u8)(gDP.primColor.g * 31.0f);
-	u8 prmb = (u8)(gDP.primColor.b * 31.0f);
-	u16 prim16 = (u16)((prmr << 11) | (prmg << 6) | (prmb << 1) | 1);
-	u16 * src = (u16*)&TMEM[256];
-	u16 * dst = (u16*)(gfx_info.RDRAM + gDP.colorImage.address);
+	envr = (uint8_t)(gDP.envColor.r * 31.0f);
+	envg = (uint8_t)(gDP.envColor.g * 31.0f);
+	envb = (uint8_t)(gDP.envColor.b * 31.0f);
+	env16 = (uint16_t)((envr << 11) | (envg << 6) | (envb << 1) | 1);
+	prmr = (uint8_t)(gDP.primColor.r * 31.0f);
+	prmg = (uint8_t)(gDP.primColor.g * 31.0f);
+	prmb = (uint8_t)(gDP.primColor.b * 31.0f);
+	prim16 = (uint16_t)((prmr << 11) | (prmg << 6) | (prmb << 1) | 1);
+	src = (uint16_t*)&TMEM[256];
+	dst = (uint16_t*)(gfx_info.RDRAM + gDP.colorImage.address);
 	for (i = 0; i < 16; ++i)
 		dst[i ^ 1] = (src[i<<2] & 0x100) ? prim16 : env16;
 	return true;
@@ -924,12 +935,12 @@ void OGL_DrawTexturedRect(const struct TexturedRectParams *_params)
    if (pCurrentBuffer == NULL)
       glViewport(0, OGL_GetHeightOffset(), OGL_GetScreenWidth(), OGL_GetScreenHeight());
    else
-      glViewport(0, 0, pCurrentBuffer->width * pCurrentBuffer->scaleX, pCurrentBuffer->height * pCurrentBuffer->scaleY);
+      glViewport(0, 0, pCurrentBuffer->m_width * pCurrentBuffer->m_scaleX, pCurrentBuffer->m_height * pCurrentBuffer->m_scaleY);
 
    glDisable(GL_CULL_FACE);
 
-   scaleX = pCurrentBuffer != NULL ? 1.0f / pCurrentBuffer->width  : VI.rwidth;
-   scaleY = pCurrentBuffer != NULL ? 1.0f / pCurrentBuffer->height : VI.rheight;
+   scaleX = pCurrentBuffer != NULL ? 1.0f / pCurrentBuffer->m_width  : VI.rwidth;
+   scaleY = pCurrentBuffer != NULL ? 1.0f / pCurrentBuffer->m_height : VI.rheight;
 	Z = (gDP.otherMode.depthSource == G_ZS_PRIM) ? gDP.primDepth.z : gSP.viewport.nearz;
 	W = 1.0f;
 
@@ -1054,7 +1065,7 @@ void OGL_DrawTexturedRect(const struct TexturedRectParams *_params)
 	if (ogl.isAdjustScreen() && (gDP.colorImage.width > VI.width * 98 / 100) && (_params.lrx - _params.ulx < VI.width * 9 / 10))
    {
 		const float scale = ogl.getAdjustScale();
-		for (u32 i = 0; i < 4; ++i)
+		for (uint32_t i = 0; i < 4; ++i)
 			m_rect[i].x *= scale;
 	}
 #endif
@@ -1073,7 +1084,7 @@ void OGL_ClearDepthBuffer(bool _fullsize)
 #endif
 
    glDisable( GL_SCISSOR_TEST );
-   glDepthMask( GL_TRUE ); 
+   glDepthMask( GL_TRUE );
    glClear( GL_DEPTH_BUFFER_BIT );
 
    _updateDepthUpdate();
@@ -1112,14 +1123,16 @@ int OGL_CheckError(void)
 
 void OGL_SwapBuffers(void)
 {
+   int retro_return(int a);
    // if emulator defined a render callback function, call it before
    // buffer swap
-   if (renderCallback) (*renderCallback)();
+   if (renderCallback)
+      (*renderCallback)();
    retro_return(true);
 
    scProgramChanged = 0;
 	gDP.otherMode.l = 0;
-	gDPSetTextureLUT(G_TT_NONE);
+	gln64gDPSetTextureLUT(G_TT_NONE);
 	++__RSP.DList;
 }
 
@@ -1191,10 +1204,10 @@ bool OGL_Start(void)
    OGL.renderState = RS_NONE;
    gSP.changed = gDP.changed = 0xFFFFFFFF;
 
-   memset(OGL.triangles.vertices, 0, VERTBUFF_SIZE * sizeof(SPVertex));
+   memset(OGL.triangles.vertices, 0, VERTBUFF_SIZE * sizeof(struct SPVertex));
    memset(OGL.triangles.elements, 0, ELEMBUFF_SIZE * sizeof(GLubyte));
 
    OGL.triangles.num = 0;
 
-   return TRUE;
+   return true;
 }

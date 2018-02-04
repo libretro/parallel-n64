@@ -12,255 +12,184 @@
 
 #include "Config.h"
 
-void F3D_SPNoOp( u32 w0, u32 w1 )
+#include "../../Graphics/RDP/gDP_state.h"
+#include "../../Graphics/RSP/gSP_funcs_C.h"
+
+void F3D_SPNoOp( uint32_t w0, uint32_t w1 )
 {
-   gSPNoOp();
+   gln64gSPNoOp();
 }
 
-void F3D_Mtx( u32 w0, u32 w1 )
+void F3D_Mtx( uint32_t w0, uint32_t w1 )
 {
    if (_SHIFTR( w0, 0, 16 ) != 64)
-   {
-#ifdef DEBUG
-      DebugMsg( DEBUG_MEDIUM | DEBUG_HIGH | DEBUG_ERROR, "G_MTX: address = 0x%08X    length = %i    params = 0x%02X\n", w1, _SHIFTR( w0, 0, 16 ), _SHIFTR( w0, 16, 8 ) );
-#endif
       return;
-   }
 
-   gSPMatrix( w1, _SHIFTR( w0, 16, 8 ) );
+   gln64gSPMatrix( w1, _SHIFTR( w0, 16, 8 ) );
 }
 
-void F3D_Reserved0( u32 w0, u32 w1 )
+void F3D_Vtx( uint32_t w0, uint32_t w1 )
 {
-#ifdef DEBUG
-   DebugMsg( DEBUG_MEDIUM | DEBUG_IGNORED | DEBUG_UNKNOWN, "G_RESERVED0: w0=0x%08lX w1=0x%08lX\n", w0, w1 );
-#endif
+   gln64gSPVertex( w1, _SHIFTR( w0, 20, 4 ) + 1, _SHIFTR( w0, 16, 4 ) );
 }
 
-void F3D_MoveMem( u32 w0, u32 w1 )
-{
-   switch (_SHIFTR( w0, 16, 8 ))
-   {
-      case F3D_MV_VIEWPORT://G_MV_VIEWPORT:
-         gSPViewport( w1 );
-         break;
-      case G_MV_MATRIX_1:
-         gSPForceMatrix( w1 );
-         // force matrix takes four commands
-         __RSP.PC[__RSP.PCi] += 24;
-         break;
-      case G_MV_L0:
-         gSPLight( w1, LIGHT_1 );
-         break;
-      case G_MV_L1:
-         gSPLight( w1, LIGHT_2 );
-         break;
-      case G_MV_L2:
-         gSPLight( w1, LIGHT_3 );
-         break;
-      case G_MV_L3:
-         gSPLight( w1, LIGHT_4 );
-         break;
-      case G_MV_L4:
-         gSPLight( w1, LIGHT_5 );
-         break;
-      case G_MV_L5:
-         gSPLight( w1, LIGHT_6 );
-         break;
-      case G_MV_L6:
-         gSPLight( w1, LIGHT_7 );
-         break;
-      case G_MV_L7:
-         gSPLight( w1, LIGHT_8 );
-         break;
-      case G_MV_LOOKATX:
-			gSPLookAt(w1, 0);
-         break;
-      case G_MV_LOOKATY:
-			gSPLookAt(w1, 1);
-         break;
-   }
-}
-
-void F3D_Vtx( u32 w0, u32 w1 )
-{
-   gSPVertex( w1, _SHIFTR( w0, 20, 4 ) + 1, _SHIFTR( w0, 16, 4 ) );
-}
-
-void F3D_Reserved1( u32 w0, u32 w1 )
-{
-}
-
-void F3D_DList( u32 w0, u32 w1 )
+void F3D_DList( uint32_t w0, uint32_t w1 )
 {
    switch (_SHIFTR( w0, 16, 8 ))
    {
       case G_DL_PUSH:
-         gSPDisplayList( w1 );
+         gln64gSPDisplayList( w1 );
          break;
       case G_DL_NOPUSH:
-         gSPBranchList( w1 );
+         gln64gSPBranchList( w1 );
          break;
    }
 }
 
-void F3D_Reserved2( u32 w0, u32 w1 )
+void F3D_Sprite2D_Base( uint32_t w0, uint32_t w1 )
 {
-}
-
-void F3D_Reserved3( u32 w0, u32 w1 )
-{
-}
-
-void F3D_Sprite2D_Base( u32 w0, u32 w1 )
-{
-	gSPSprite2DBase( w1 );
+	gln64gSPSprite2DBase( w1 );
 }
 
 
-void F3D_Tri1( u32 w0, u32 w1 )
+void F3D_Tri1( uint32_t w0, uint32_t w1 )
 {
-   gSP1Triangle( _SHIFTR( w1, 16, 8 ) / 10,
+   gln64gSP1Triangle( _SHIFTR( w1, 16, 8 ) / 10,
          _SHIFTR( w1, 8, 8 ) / 10,
-         _SHIFTR( w1, 0, 8 ) / 10);
+         _SHIFTR( w1, 0, 8 ) / 10, 0);
 }
 
-void F3D_CullDL( u32 w0, u32 w1 )
+void F3D_CullDL( uint32_t w0, uint32_t w1 )
 {
-   gSPCullDisplayList( _SHIFTR( w0, 0, 24 ) / 40, (w1 / 40) - 1 );
+   gln64gSPCullDisplayList( _SHIFTR( w0, 0, 24 ) / 40, (w1 / 40) - 1 );
 }
 
-void F3D_PopMtx( u32 w0, u32 w1 )
+void F3D_PopMtx( uint32_t w0, uint32_t w1 )
 {
-   gSPPopMatrix( w1 );
+   gln64gSPPopMatrix( w1 );
 }
 
-void F3D_MoveWord( u32 w0, u32 w1 )
+void F3D_MoveWord( uint32_t w0, uint32_t w1 )
 {
    switch (_SHIFTR( w0, 0, 8 ))
    {
       case G_MW_MATRIX:
-         gSPInsertMatrix( _SHIFTR( w0, 8, 16 ), w1 );
+         gln64gSPInsertMatrix( _SHIFTR( w0, 8, 16 ), w1 );
          break;
 
       case G_MW_NUMLIGHT:
-         gSPNumLights( ((w1 - 0x80000000) >> 5) - 1 );
+         gln64gSPNumLights( ((w1 - 0x80000000) >> 5) - 1 );
          break;
 
       case G_MW_CLIP:
-         gSPClipRatio( w1 );
+         gln64gSPClipRatio( w1 );
          break;
 
       case G_MW_SEGMENT:
-			gSPSegment( _SHIFTR( w0, 10, 4 ), w1 & 0x00FFFFFF );
+			gln64gSPSegment( _SHIFTR( w0, 10, 4 ), w1 & 0x00FFFFFF );
          break;
 
       case G_MW_FOG:
-			gSPFogFactor( (s16)_SHIFTR( w1, 16, 16 ), (s16)_SHIFTR( w1, 0, 16 ) );
+			gln64gSPFogFactor( (int16_t)_SHIFTR( w1, 16, 16 ), (int16_t)_SHIFTR( w1, 0, 16 ) );
          break;
 
       case G_MW_LIGHTCOL:
          switch (_SHIFTR( w0, 8, 16 ))
          {
             case F3D_MWO_aLIGHT_1:
-               gSPLightColor( LIGHT_1, w1 );
+               gln64gSPLightColor( LIGHT_1, w1 );
                break;
             case F3D_MWO_aLIGHT_2:
-               gSPLightColor( LIGHT_2, w1 );
+               gln64gSPLightColor( LIGHT_2, w1 );
                break;
             case F3D_MWO_aLIGHT_3:
-               gSPLightColor( LIGHT_3, w1 );
+               gln64gSPLightColor( LIGHT_3, w1 );
                break;
             case F3D_MWO_aLIGHT_4:
-               gSPLightColor( LIGHT_4, w1 );
+               gln64gSPLightColor( LIGHT_4, w1 );
                break;
             case F3D_MWO_aLIGHT_5:
-               gSPLightColor( LIGHT_5, w1 );
+               gln64gSPLightColor( LIGHT_5, w1 );
                break;
             case F3D_MWO_aLIGHT_6:
-               gSPLightColor( LIGHT_6, w1 );
+               gln64gSPLightColor( LIGHT_6, w1 );
                break;
             case F3D_MWO_aLIGHT_7:
-               gSPLightColor( LIGHT_7, w1 );
+               gln64gSPLightColor( LIGHT_7, w1 );
                break;
             case F3D_MWO_aLIGHT_8:
-               gSPLightColor( LIGHT_8, w1 );
+               gln64gSPLightColor( LIGHT_8, w1 );
                break;
          }
          break;
       case G_MW_POINTS:
          {
-            const u32 val = _SHIFTR(w0, 8, 16);
-            gSPModifyVertex(val / 40, val % 40, w1);
+            const uint32_t val = _SHIFTR(w0, 8, 16);
+            gln64gSPModifyVertex(val / 40, val % 40, w1);
          }
          break;
       case G_MW_PERSPNORM:
-         gSPPerspNormalize( w1 );
+         gln64gSPPerspNormalize( w1 );
          break;
    }
 }
 
-void F3D_Texture( u32 w0, u32 w1 )
+void F3D_Texture( uint32_t w0, uint32_t w1 )
 {
-   gSPTexture( _FIXED2FLOAT( _SHIFTR( w1, 16, 16 ), 16 ),
+   gln64gSPTexture( _FIXED2FLOAT( _SHIFTR( w1, 16, 16 ), 16 ),
          _FIXED2FLOAT( _SHIFTR( w1, 0, 16 ), 16 ),
          _SHIFTR( w0, 11, 3 ),
          _SHIFTR( w0, 8, 3 ),
          _SHIFTR( w0, 0, 8 ) );
 }
 
-void F3D_SetOtherMode_H( u32 w0, u32 w1 )
+void F3D_SetOtherMode_H( uint32_t w0, uint32_t w1 )
 {
-	const u32 length = _SHIFTR(w0, 0, 8);
-	const u32 shift = _SHIFTR(w0, 8, 8);
-	gSPSetOtherMode_H(length, shift, w1);
+	const uint32_t length = _SHIFTR(w0, 0, 8);
+	const uint32_t shift  = _SHIFTR(w0, 8, 8);
+	gln64gSPSetOtherMode_H(length, shift, w1);
 }
 
-void F3D_SetOtherMode_L( u32 w0, u32 w1 )
+void F3D_SetOtherMode_L( uint32_t w0, uint32_t w1 )
 {
-	const u32 length = _SHIFTR(w0, 0, 8);
-	const u32 shift = _SHIFTR(w0, 8, 8);
-	gSPSetOtherMode_L(length, shift, w1);
+	const uint32_t length = _SHIFTR(w0, 0, 8);
+	const uint32_t shift = _SHIFTR(w0, 8, 8);
+	gln64gSPSetOtherMode_L(length, shift, w1);
 }
 
-void F3D_EndDL( u32 w0, u32 w1 )
+void F3D_SetGeometryMode( uint32_t w0, uint32_t w1 )
 {
-   gSPEndDisplayList();
+   gln64gSPSetGeometryMode( w1 );
 }
 
-void F3D_SetGeometryMode( u32 w0, u32 w1 )
+void F3D_ClearGeometryMode( uint32_t w0, uint32_t w1 )
 {
-   gSPSetGeometryMode( w1 );
+   gln64gSPClearGeometryMode( w1 );
 }
 
-void F3D_ClearGeometryMode( u32 w0, u32 w1 )
+void F3D_Quad( uint32_t w0, uint32_t w1 )
 {
-   gSPClearGeometryMode( w1 );
+	gln64gSP1Quadrangle( _SHIFTR( w1, 24, 8 ) / 10, _SHIFTR( w1, 16, 8 ) / 10, _SHIFTR( w1, 8, 8 ) / 10, _SHIFTR( w1, 0, 8 ) / 10 );
 }
 
-void F3D_Quad( u32 w0, u32 w1 )
-{
-	gSP1Quadrangle( _SHIFTR( w1, 24, 8 ) / 10, _SHIFTR( w1, 16, 8 ) / 10, _SHIFTR( w1, 8, 8 ) / 10, _SHIFTR( w1, 0, 8 ) / 10 );
-}
-
-void F3D_RDPHalf_1( u32 w0, u32 w1 )
+void F3D_RDPHalf_1( uint32_t w0, uint32_t w1 )
 {
    gDP.half_1 = w1;
 	RDP_Half_1(w1);
 }
 
-void F3D_RDPHalf_2( u32 w0, u32 w1 )
+void F3D_RDPHalf_2( uint32_t w0, uint32_t w1 )
 {
    gDP.half_2 = w1;
 }
 
-void F3D_RDPHalf_Cont( u32 w0, u32 w1 )
+void F3D_RDPHalf_Cont( uint32_t w0, uint32_t w1 )
 {
 }
 
-void F3D_Tri4( u32 w0, u32 w1 )
+void F3D_Tri4( uint32_t w0, uint32_t w1 )
 {
-	gSP4Triangles( _SHIFTR( w1, 28, 4 ), _SHIFTR( w0, 12, 4 ), _SHIFTR( w1, 24, 4 ),
+	gln64gSP4Triangles( _SHIFTR( w1, 28, 4 ), _SHIFTR( w0, 12, 4 ), _SHIFTR( w1, 24, 4 ),
 				   _SHIFTR( w1, 20, 4 ), _SHIFTR( w0,  8, 4 ), _SHIFTR( w1, 16, 4 ),
 				   _SHIFTR( w1, 12, 4 ), _SHIFTR( w0,  4, 4 ), _SHIFTR( w1,  8, 4 ),
 				   _SHIFTR( w1,  4, 4 ), _SHIFTR( w0,  0, 4 ), _SHIFTR( w1,  0, 4 ) );

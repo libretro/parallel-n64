@@ -23,6 +23,7 @@
 #define M64P_SI_MEMPAK_H
 
 #include <stdint.h>
+#include <stddef.h>
 
 struct mempak
 {
@@ -34,11 +35,13 @@ struct mempak
 
 enum { MEMPAK_SIZE = 0x8000 };
 
+void init_mempak(struct mempak* mpk, void* user_data, void (*save)(void*), uint8_t* data);
+
 void mempak_save(struct mempak* mpk);
 
 void format_mempak(uint8_t* mempak);
 
-void mempak_read_command(struct mempak* mpk, uint8_t* cmd);
-void mempak_write_command(struct mempak* mpk, uint8_t* cmd);
+void mempak_read_command(struct mempak* mpk, uint16_t address, uint8_t* data, size_t size);
+void mempak_write_command(struct mempak* mpk, uint16_t address, const uint8_t* data, size_t size);
 
 #endif

@@ -20,14 +20,23 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "tlb.h"
-#include "exception.h"
 
+#include "api/m64p_types.h"
+#include "exception.h"
 #include "main/rom.h"
 
 tlb tlb_e[32];
 
 uint32_t tlb_LUT_r[0x100000];
 uint32_t tlb_LUT_w[0x100000];
+
+void poweron_tlb(void)
+{
+   /* clear TLB entries */		
+   memset(tlb_e, 0, 32 * sizeof(tlb_e[0]));		
+   memset(tlb_LUT_r, 0, 0x100000 * sizeof(tlb_LUT_r[0]));		
+   memset(tlb_LUT_w, 0, 0x100000 * sizeof(tlb_LUT_w[0]));
+}
 
 void tlb_unmap(tlb *entry)
 {
@@ -85,44 +94,47 @@ void tlb_map(tlb *entry)
     }
 }
 
-uint32_t virtual_to_physical_address(uint32_t addresse, int w)
+uint32_t virtual_to_physical_address(struct r4300_core *r4300, uint32_t addresse, int w)
 {
-    if (addresse >= UINT32_C(0x7f000000) && addresse < UINT32_C(0x80000000) && isGoldeneyeRom)
+    if (addresse >= UINT32_C(0x7f000000) && addresse < UINT32_C(0x80000000) && r4300->special_rom == GOLDEN_EYE)
     {
         /**************************************************
          GoldenEye 007 hack allows for use of TLB.
          Recoded by okaygo to support all US, J, and E ROMS.
         **************************************************/
-        switch (ROM_HEADER.destination_code)
+        switch (ROM_HEADER.destination_code & UINT16_C(0xFF))
         {
-        case 'E': /* North American */
-            return UINT32_C(0xb0034b30) + (addresse & UINT32_C(0xFFFFFF));
-            break;
-        case 'J': /* Japanese */
-            return UINT32_C(0xb0034b70) + (addresse & UINT32_C(0xFFFFFF));
-            break;
-        case 'P': /* European (PAL spec.) */
-            return UINT32_C(0xb00329f0) + (addresse & UINT32_C(0xFFFFFF));
-            break;
-        default:
-            // UNKNOWN COUNTRY CODE FOR GOLDENEYE USING AMERICAN VERSION HACK
-            return UINT32_C(0xb0034b30) + (addresse & UINT32_C(0xFFFFFF));
-            break;
+           case 0x45:
+              /* U */
+              return UINT32_C(0xb0034b30) + (addresse & UINT32_C(0xFFFFFF));
+           case 0x4A:
+              /* J */
+              return UINT32_C(0xb0034b70) + (addresse & UINT32_C(0xFFFFFF));
+           case 0x50:
+              /* E */
+              return UINT32_C(0xb00329f0) + (addresse & UINT32_C(0xFFFFFF));
+           default:
+              /* UNKNOWN COUNTRY CODE FOR GOLDENEYE USING AMERICAN VERSION HACK */
+              break;
         }
+        return UINT32_C(0xb0034b30) + (addresse & UINT32_C(0xFFFFFF));
     }
+
     if (w == 1)
     {
         if (tlb_LUT_w[addresse>>12])
-            return (tlb_LUT_w[addresse>>12] & UINT32_C(0xFFFFF000))|(addresse & UINT32_C(0xFFF));
+            return (tlb_LUT_w[addresse>>12] & UINT32_C(0xFFFFF000)) | (addresse & UINT32_C(0xFFF));
     }
     else
     {
         if (tlb_LUT_r[addresse>>12])
-            return (tlb_LUT_r[addresse>>12] & UINT32_C(0xFFFFF000))|(addresse & UINT32_C(0xFFF));
+            return (tlb_LUT_r[addresse>>12] & UINT32_C(0xFFFFF000)) | (addresse & UINT32_C(0xFFF));
     }
+
     //printf("tlb exception !!! @ %x, %x, add:%x\n", addresse, w, PC->addr);
     //getchar();
-    TLB_refill_exception(addresse,w);
+    if (r4300->special_rom != RAT_ATTACK)
+       TLB_refill_exception(addresse,w);
     //return 0x80000000;
     return 0x00000000;
 }

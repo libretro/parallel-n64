@@ -37,7 +37,9 @@
 #include "api/m64p_types.h"
 
 #include "main/main.h"
+#include "main/device.h"
 #include "main/rom.h"
+#include "dd/dd_rom.h"
 #include "main/version.h"
 #include "memory/memory.h"
 
@@ -94,9 +96,18 @@ static m64p_error EmptyGetVersionFunc(m64p_plugin_type *PluginType, int *PluginV
     }
 
 DEFINE_GFX(angrylion);
+#ifdef HAVE_RICE
 DEFINE_GFX(rice);
+#endif
+#ifdef HAVE_GLN64
 DEFINE_GFX(gln64);
+#endif
+#ifdef HAVE_GLIDE64
 DEFINE_GFX(glide64);
+#endif
+#ifdef HAVE_PARALLEL
+DEFINE_GFX(parallel);
+#endif
 
 gfx_plugin_functions gfx;
 GFX_INFO gfx_info;
@@ -104,33 +115,42 @@ GFX_INFO gfx_info;
 static m64p_error plugin_start_gfx(void)
 {
    /* fill in the GFX_INFO data structure */
-   gfx_info.HEADER = (unsigned char *) g_rom;
+   if ((g_ddrom != NULL) && (g_ddrom_size != 0) && (g_rom == NULL) && (g_rom_size == 0))
+   {
+      //fill in 64DD IPL header
+      gfx_info.HEADER = (unsigned char *) g_ddrom;
+   }
+   else
+   {
+      //fill in regular N64 ROM header
+      gfx_info.HEADER = (unsigned char *) g_rom;
+   }
    gfx_info.RDRAM = (unsigned char *) g_rdram;
-   gfx_info.DMEM = (unsigned char *) g_sp.mem;
-   gfx_info.IMEM = (unsigned char *) g_sp.mem + 0x1000;
-   gfx_info.MI_INTR_REG = &(g_r4300.mi.regs[MI_INTR_REG]);
-   gfx_info.DPC_START_REG = &(g_dp.dpc_regs[DPC_START_REG]);
-   gfx_info.DPC_END_REG = &(g_dp.dpc_regs[DPC_END_REG]);
-   gfx_info.DPC_CURRENT_REG = &(g_dp.dpc_regs[DPC_CURRENT_REG]);
-   gfx_info.DPC_STATUS_REG = &(g_dp.dpc_regs[DPC_STATUS_REG]);
-   gfx_info.DPC_CLOCK_REG = &(g_dp.dpc_regs[DPC_CLOCK_REG]);
-   gfx_info.DPC_BUFBUSY_REG = &(g_dp.dpc_regs[DPC_BUFBUSY_REG]);
-   gfx_info.DPC_PIPEBUSY_REG = &(g_dp.dpc_regs[DPC_PIPEBUSY_REG]);
-   gfx_info.DPC_TMEM_REG = &(g_dp.dpc_regs[DPC_TMEM_REG]);
-   gfx_info.VI_STATUS_REG = &(g_vi.regs[VI_STATUS_REG]);
-   gfx_info.VI_ORIGIN_REG = &(g_vi.regs[VI_ORIGIN_REG]);
-   gfx_info.VI_WIDTH_REG = &(g_vi.regs[VI_WIDTH_REG]);
-   gfx_info.VI_INTR_REG = &(g_vi.regs[VI_V_INTR_REG]);
-   gfx_info.VI_V_CURRENT_LINE_REG = &(g_vi.regs[VI_CURRENT_REG]);
-   gfx_info.VI_TIMING_REG = &(g_vi.regs[VI_BURST_REG]);
-   gfx_info.VI_V_SYNC_REG = &(g_vi.regs[VI_V_SYNC_REG]);
-   gfx_info.VI_H_SYNC_REG = &(g_vi.regs[VI_H_SYNC_REG]);
-   gfx_info.VI_LEAP_REG = &(g_vi.regs[VI_LEAP_REG]);
-   gfx_info.VI_H_START_REG = &(g_vi.regs[VI_H_START_REG]);
-   gfx_info.VI_V_START_REG = &(g_vi.regs[VI_V_START_REG]);
-   gfx_info.VI_V_BURST_REG = &(g_vi.regs[VI_V_BURST_REG]);
-   gfx_info.VI_X_SCALE_REG = &(g_vi.regs[VI_X_SCALE_REG]);
-   gfx_info.VI_Y_SCALE_REG = &(g_vi.regs[VI_Y_SCALE_REG]);
+   gfx_info.DMEM = (unsigned char *) g_dev.sp.mem;
+   gfx_info.IMEM = (unsigned char *) g_dev.sp.mem + 0x1000;
+   gfx_info.MI_INTR_REG = &(g_dev.r4300.mi.regs[MI_INTR_REG]);
+   gfx_info.DPC_START_REG = &(g_dev.dp.dpc_regs[DPC_START_REG]);
+   gfx_info.DPC_END_REG = &(g_dev.dp.dpc_regs[DPC_END_REG]);
+   gfx_info.DPC_CURRENT_REG = &(g_dev.dp.dpc_regs[DPC_CURRENT_REG]);
+   gfx_info.DPC_STATUS_REG = &(g_dev.dp.dpc_regs[DPC_STATUS_REG]);
+   gfx_info.DPC_CLOCK_REG = &(g_dev.dp.dpc_regs[DPC_CLOCK_REG]);
+   gfx_info.DPC_BUFBUSY_REG = &(g_dev.dp.dpc_regs[DPC_BUFBUSY_REG]);
+   gfx_info.DPC_PIPEBUSY_REG = &(g_dev.dp.dpc_regs[DPC_PIPEBUSY_REG]);
+   gfx_info.DPC_TMEM_REG = &(g_dev.dp.dpc_regs[DPC_TMEM_REG]);
+   gfx_info.VI_STATUS_REG = &(g_dev.vi.regs[VI_STATUS_REG]);
+   gfx_info.VI_ORIGIN_REG = &(g_dev.vi.regs[VI_ORIGIN_REG]);
+   gfx_info.VI_WIDTH_REG = &(g_dev.vi.regs[VI_WIDTH_REG]);
+   gfx_info.VI_INTR_REG = &(g_dev.vi.regs[VI_V_INTR_REG]);
+   gfx_info.VI_V_CURRENT_LINE_REG = &(g_dev.vi.regs[VI_CURRENT_REG]);
+   gfx_info.VI_TIMING_REG = &(g_dev.vi.regs[VI_BURST_REG]);
+   gfx_info.VI_V_SYNC_REG = &(g_dev.vi.regs[VI_V_SYNC_REG]);
+   gfx_info.VI_H_SYNC_REG = &(g_dev.vi.regs[VI_H_SYNC_REG]);
+   gfx_info.VI_LEAP_REG = &(g_dev.vi.regs[VI_LEAP_REG]);
+   gfx_info.VI_H_START_REG = &(g_dev.vi.regs[VI_H_START_REG]);
+   gfx_info.VI_V_START_REG = &(g_dev.vi.regs[VI_V_START_REG]);
+   gfx_info.VI_V_BURST_REG = &(g_dev.vi.regs[VI_V_BURST_REG]);
+   gfx_info.VI_X_SCALE_REG = &(g_dev.vi.regs[VI_X_SCALE_REG]);
+   gfx_info.VI_Y_SCALE_REG = &(g_dev.vi.regs[VI_Y_SCALE_REG]);
    gfx_info.CheckInterrupts = EmptyFunc;
 
    /* call the audio plugin */
@@ -203,6 +223,9 @@ static m64p_error plugin_start_input(void)
 
 DEFINE_RSP(hle);
 DEFINE_RSP(cxd4);
+#ifdef HAVE_PARALLEL_RSP
+DEFINE_RSP(parallelRSP);
+#endif
 
 rsp_plugin_functions rsp;
 RSP_INFO rsp_info;
@@ -211,26 +234,26 @@ static m64p_error plugin_start_rsp(void)
 {
    /* fill in the RSP_INFO data structure */
    rsp_info.RDRAM = (unsigned char *) g_rdram;
-   rsp_info.DMEM = (unsigned char *) g_sp.mem;
-   rsp_info.IMEM = (unsigned char *) g_sp.mem + 0x1000;
-   rsp_info.MI_INTR_REG = &g_r4300.mi.regs[MI_INTR_REG];
-   rsp_info.SP_MEM_ADDR_REG = &g_sp.regs[SP_MEM_ADDR_REG];
-   rsp_info.SP_DRAM_ADDR_REG = &g_sp.regs[SP_DRAM_ADDR_REG];
-   rsp_info.SP_RD_LEN_REG = &g_sp.regs[SP_RD_LEN_REG];
-   rsp_info.SP_WR_LEN_REG = &g_sp.regs[SP_WR_LEN_REG];
-   rsp_info.SP_STATUS_REG = &g_sp.regs[SP_STATUS_REG];
-   rsp_info.SP_DMA_FULL_REG = &g_sp.regs[SP_DMA_FULL_REG];
-   rsp_info.SP_DMA_BUSY_REG = &g_sp.regs[SP_DMA_BUSY_REG];
-   rsp_info.SP_PC_REG = &g_sp.regs2[SP_PC_REG];
-   rsp_info.SP_SEMAPHORE_REG = &g_sp.regs[SP_SEMAPHORE_REG];
-   rsp_info.DPC_START_REG = &g_dp.dpc_regs[DPC_START_REG];
-   rsp_info.DPC_END_REG = &g_dp.dpc_regs[DPC_END_REG];
-   rsp_info.DPC_CURRENT_REG = &g_dp.dpc_regs[DPC_CURRENT_REG];
-   rsp_info.DPC_STATUS_REG = &g_dp.dpc_regs[DPC_STATUS_REG];
-   rsp_info.DPC_CLOCK_REG = &g_dp.dpc_regs[DPC_CLOCK_REG];
-   rsp_info.DPC_BUFBUSY_REG = &g_dp.dpc_regs[DPC_BUFBUSY_REG];
-   rsp_info.DPC_PIPEBUSY_REG = &g_dp.dpc_regs[DPC_PIPEBUSY_REG];
-   rsp_info.DPC_TMEM_REG = &g_dp.dpc_regs[DPC_TMEM_REG];
+   rsp_info.DMEM = (unsigned char *) g_dev.sp.mem;
+   rsp_info.IMEM = (unsigned char *) g_dev.sp.mem + 0x1000;
+   rsp_info.MI_INTR_REG = &g_dev.r4300.mi.regs[MI_INTR_REG];
+   rsp_info.SP_MEM_ADDR_REG = &g_dev.sp.regs[SP_MEM_ADDR_REG];
+   rsp_info.SP_DRAM_ADDR_REG = &g_dev.sp.regs[SP_DRAM_ADDR_REG];
+   rsp_info.SP_RD_LEN_REG = &g_dev.sp.regs[SP_RD_LEN_REG];
+   rsp_info.SP_WR_LEN_REG = &g_dev.sp.regs[SP_WR_LEN_REG];
+   rsp_info.SP_STATUS_REG = &g_dev.sp.regs[SP_STATUS_REG];
+   rsp_info.SP_DMA_FULL_REG = &g_dev.sp.regs[SP_DMA_FULL_REG];
+   rsp_info.SP_DMA_BUSY_REG = &g_dev.sp.regs[SP_DMA_BUSY_REG];
+   rsp_info.SP_PC_REG = &g_dev.sp.regs2[SP_PC_REG];
+   rsp_info.SP_SEMAPHORE_REG = &g_dev.sp.regs[SP_SEMAPHORE_REG];
+   rsp_info.DPC_START_REG = &g_dev.dp.dpc_regs[DPC_START_REG];
+   rsp_info.DPC_END_REG = &g_dev.dp.dpc_regs[DPC_END_REG];
+   rsp_info.DPC_CURRENT_REG = &g_dev.dp.dpc_regs[DPC_CURRENT_REG];
+   rsp_info.DPC_STATUS_REG = &g_dev.dp.dpc_regs[DPC_STATUS_REG];
+   rsp_info.DPC_CLOCK_REG = &g_dev.dp.dpc_regs[DPC_CLOCK_REG];
+   rsp_info.DPC_BUFBUSY_REG = &g_dev.dp.dpc_regs[DPC_BUFBUSY_REG];
+   rsp_info.DPC_PIPEBUSY_REG = &g_dev.dp.dpc_regs[DPC_PIPEBUSY_REG];
+   rsp_info.DPC_TMEM_REG = &g_dev.dp.dpc_regs[DPC_TMEM_REG];
    rsp_info.CheckInterrupts = EmptyFunc;
    rsp_info.ProcessDlistList = gfx.processDList;
    rsp_info.ProcessAlistList = NULL;
@@ -248,16 +271,46 @@ void plugin_connect_all(enum gfx_plugin_type gfx_plugin, enum rsp_plugin_type rs
 {
    switch (gfx_plugin)
    {
-      case GFX_ANGRYLION:  gfx = gfx_angrylion; break;
-      case GFX_RICE:  gfx = gfx_rice; break;
-      case GFX_GLN64: gfx = gfx_gln64; break;
-      default:        gfx = gfx_glide64; break;
+      case GFX_ANGRYLION:
+         gfx = gfx_angrylion;
+         break;
+      case GFX_PARALLEL:
+#ifdef HAVE_PARALLEL
+         gfx = gfx_parallel;
+#endif
+         break;
+      case GFX_RICE:
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
+         gfx = gfx_rice;
+         break;
+#endif
+      case GFX_GLN64:
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
+         gfx = gfx_gln64;
+         break;
+#endif
+      default:
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
+         gfx = gfx_glide64;
+#else
+         gfx = gfx_angrylion;
+#endif
+         break;
    }
 
    switch (rsp_plugin)
    {
-      case RSP_CXD4: rsp = rsp_cxd4; break;
-      default:       rsp = rsp_hle; break;
+      case RSP_CXD4:
+         rsp = rsp_cxd4;
+         break;
+#ifdef HAVE_PARALLEL_RSP
+      case RSP_PARALLEL:
+         rsp = rsp_parallelRSP;
+         break;
+#endif
+      default:
+         rsp = rsp_hle;
+         break;
    }
 
    plugin_start_gfx();

@@ -21,6 +21,7 @@
 
 #include "pif.h"
 #include "n64_cic_nus_6105.h"
+#include "game_controller.h"
 #include "si_controller.h"
 
 #include "../api/m64p_types.h"
@@ -28,6 +29,9 @@
 #include "../memory/memory.h"
 #include "../plugin/plugin.h"
 #include "r4300/r4300_core.h"
+
+#include "../plugin/emulate_game_controller_via_input_plugin.h"
+#include "../plugin/rumble_via_input_plugin.h"
 
 #include <string.h>
 
@@ -58,7 +62,46 @@ static void process_cart_command(struct pif* pif, uint8_t* cmd)
    }
 }
 
-void init_pif(struct pif* pif)
+static void game_controller_dummy_save(void *user_data)
+{
+}
+
+void init_pif(struct pif *pif,
+      void *eeprom_user_data,
+      void (*eeprom_save)(void*),
+      uint8_t *eeprom_data,
+      size_t eeprom_size,
+      uint16_t eeprom_id,
+      void* af_rtc_user_data,
+      const struct tm* (*af_rtc_get_time)(void*),
+      const uint8_t *ipl3
+      )
+{
+   size_t i;
+
+   for (i = 0; i < GAME_CONTROLLERS_COUNT; ++i)
+   {
+      static  channels[] = { 0, 1, 2, 3 };
+      init_game_controller(
+            &pif->controllers[i], 
+            (void*)&channels[i],
+            egcvip_is_connected,
+            egcvip_get_input,
+            NULL,
+            &game_controller_dummy_save,
+            &saved_memory.mempack[i][0],
+            &channels[i],
+            rvip_rumble
+            );
+   }
+
+   init_eeprom(&pif->eeprom,
+         eeprom_user_data, eeprom_save, eeprom_data, eeprom_size, eeprom_id);
+   init_af_rtc(&pif->af_rtc, af_rtc_user_data, af_rtc_get_time);
+   init_cic_using_ipl3(&pif->cic, ipl3);
+}
+
+void poweron_pif(struct pif* pif)
 {
    memset(pif->ram, 0, PIF_RAM_SIZE);
 }
@@ -66,7 +109,7 @@ void init_pif(struct pif* pif)
 int read_pif_ram(void* opaque, uint32_t address, uint32_t* value)
 {
    struct si_controller* si = (struct si_controller*)opaque;
-   uint32_t addr            = pif_ram_address(address);
+   uint32_t addr            = PIF_RAM_ADDR(address);
 
    if (addr >= PIF_RAM_SIZE)
    {
@@ -83,7 +126,7 @@ int read_pif_ram(void* opaque, uint32_t address, uint32_t* value)
 int write_pif_ram(void* opaque, uint32_t address, uint32_t value, uint32_t mask)
 {
    struct si_controller* si = (struct si_controller*)opaque;
-   uint32_t addr            = pif_ram_address(address);
+   uint32_t addr            = PIF_RAM_ADDR(address);
 
    if (addr >= PIF_RAM_SIZE)
    {
@@ -91,15 +134,15 @@ int write_pif_ram(void* opaque, uint32_t address, uint32_t value, uint32_t mask)
       return -1;
    }
 
-   masked_write((uint32_t*)(&si->pif.ram[addr]), sl(value), sl(mask));
+   si->pif.ram[addr] = MASKED_WRITE((uint32_t*)(&si->pif.ram[addr]), sl(value), sl(mask));
 
    if ((addr == 0x3c) && (mask & 0xff))
    {
       if (si->pif.ram[0x3f] == 0x08)
       {
          si->pif.ram[0x3f] = 0;
-         update_count();
-         add_interupt_event(SI_INT, /*0x100*/0x900);
+         cp0_update_count();
+         add_interrupt_event(SI_INT, /*0x100*/0x900);
       }
       else
       {
@@ -111,13 +154,15 @@ int write_pif_ram(void* opaque, uint32_t address, uint32_t value, uint32_t mask)
 
 void update_pif_write(struct si_controller *si)
 {
-   int8_t challenge[30], response[30];
    int i=0, channel=0;
-
    struct pif* pif = &si->pif;
+
+   pif->cic_challenge = 0;
 
    if (pif->ram[0x3F] > 1)
    {
+      int8_t challenge[30], response[30];
+
       switch (pif->ram[0x3F])
       {
          case 0x02:
@@ -139,6 +184,7 @@ void update_pif_write(struct si_controller *si)
                pif->ram[48+i] = (response[i*2] << 4) + response[i*2+1];
             // the last byte (2 nibbles) is always 0
             pif->ram[63] = 0;
+            pif->cic_challenge = 1;
             break;
          case 0x08:
 #ifdef DEBUG_PIF
@@ -195,6 +241,11 @@ void update_pif_read(struct si_controller *si)
    struct pif* pif = &si->pif;
 
    int i=0, channel=0;
+
+   /* When PIF ram contains a CIC challenge result, do not
+    * process the memory as if it were normal commands. */
+   if (pif->cic_challenge)
+      return;
 
    while (i<0x40)
    {

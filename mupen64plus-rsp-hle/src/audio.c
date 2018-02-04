@@ -94,31 +94,29 @@ const int16_t RESAMPLE_LUT[64 * 4] = {
 
 int32_t rdot(size_t n, const int16_t *x, const int16_t *y)
 {
-    int32_t accu = 0;
+   int32_t accu = 0;
 
-    while (n-- != 0)
-       accu += *(x++) * *(--y);
+   while (n-- != 0)
+      accu += *(x++) * *(--y);
 
-    return accu;
+   return accu;
 }
 
 void adpcm_compute_residuals(int16_t* dst, const int16_t* src,
         const int16_t* cb_entry, const int16_t* last_samples, size_t count)
 {
-    const int16_t* const book1 = cb_entry;
-    const int16_t* const book2 = cb_entry + 8;
+   size_t i;
+   const int16_t* const book1 = cb_entry;
+   const int16_t* const book2 = cb_entry + 8;
 
-    const int16_t l1 = last_samples[0];
-    const int16_t l2 = last_samples[1];
+   const int16_t l1           = last_samples[0];
+   const int16_t l2           = last_samples[1];
 
-    size_t i;
-
-    assert(count <= 8);
-
-    for(i = 0; i < count; ++i) {
-        int32_t accu = (int32_t)src[i] << 11;
-        accu += book1[i]*l1 + book2[i]*l2 + rdot(i, book2, src + i);
-        dst[i] = clamp_s16(accu >> 11);
+   for(i = 0; i < count; ++i)
+   {
+      int32_t accu  = (int32_t)src[i] << 11;
+      accu         += book1[i]*l1 + book2[i]*l2 + rdot(i, book2, src + i);
+      dst[i]        = clamp_s16(accu >> 11);
    }
 }
 

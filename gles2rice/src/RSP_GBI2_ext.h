@@ -26,9 +26,9 @@ void RSP_GBI2_DL_Count(Gfx *gfx)
     // This cmd is likely to execute number of ucode at the given address
     uint32_t dwAddr = RSPSegmentAddr((gfx->words.w1));
     {
-        gDlistStackPointer++;
-        gDlistStack[gDlistStackPointer].pc = dwAddr;
-        gDlistStack[gDlistStackPointer].countdown = ((gfx->words.w0)&0xFFFF);
+        __RSP.PCi++;
+        __RSP.PC[__RSP.PCi]        = dwAddr;
+        __RSP.countdown[__RSP.PCi] = ((gfx->words.w0)&0xFFFF);
     }
 }
 

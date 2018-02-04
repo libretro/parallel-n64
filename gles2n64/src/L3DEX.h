@@ -5,9 +5,9 @@
 extern "C" {
 #endif
 
-#include "Types.h"
+#include <stdint.h>
 
-void L3DEX_Line3D( u32 w0, u32 w1 );
+void L3DEX_Line3D( uint32_t w0, uint32_t w1 );
 void L3DEX_Init(void);
 
 #ifdef __cplusplus

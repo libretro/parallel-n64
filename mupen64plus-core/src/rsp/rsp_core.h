@@ -24,11 +24,46 @@
 
 #include <stdint.h>
 
+#ifndef RSP_MEM_ADDR
+#define RSP_MEM_ADDR(a) ((a & 0x1fff) >> 2)
+#endif
+
+#ifndef RSP_REG
+#define RSP_REG(a)      ((a & 0xffff) >> 2)
+#endif
+
+#ifndef RSP_REG2
+#define RSP_REG2(a)     ((a & 0xffff) >> 2)
+#endif
+
 struct r4300_core;
 struct rdp_core;
 struct ri_controller;
 
 enum { SP_MEM_SIZE = 0x2000 };
+
+enum
+{
+   /* SP_STATUS - read */
+   SP_STATUS_HALT       = 0x0001,
+   SP_STATUS_BROKE      = 0x0002,
+   SP_STATUS_DMA_BUSY   = 0x0004,
+   SP_STATUS_DMA_FULL   = 0x0008,
+   SP_STATUS_IO_FULL    = 0x0010,
+   SP_STATUS_SSTEP      = 0x0020,
+   SP_STATUS_INTR_BREAK = 0x0040,
+   SP_STATUS_SIG0       = 0x0080,
+   SP_STATUS_YIELD      = 0x0080,
+   SP_STATUS_SIG1       = 0x0100,
+   SP_STATUS_YIELDED    = 0x0100,
+   SP_STATUS_SIG2       = 0x0200,
+   SP_STATUS_TASKDONE   = 0x0200,
+   SP_STATUS_SIG3       = 0x0400,
+   SP_STATUS_SIG4       = 0x0800,
+   SP_STATUS_SIG5       = 0x1000,
+   SP_STATUS_SIG6       = 0x2000,
+   SP_STATUS_SIG7       = 0x4000,
+};
 
 enum sp_registers
 {
@@ -50,39 +85,26 @@ enum sp_registers2
     SP_REGS2_COUNT
 };
 
-
 struct rsp_core
 {
     uint32_t mem[SP_MEM_SIZE/4];
     uint32_t regs[SP_REGS_COUNT];
     uint32_t regs2[SP_REGS2_COUNT];
+    uint32_t rsp_task_locked;
+    uint32_t audio_signal;
 
     struct r4300_core* r4300;
     struct rdp_core* dp;
     struct ri_controller* ri;
 };
 
-static INLINE uint32_t rsp_mem_address(uint32_t address)
-{
-    return (address & 0x1fff) >> 2;
-}
-
-static INLINE uint32_t rsp_reg(uint32_t address)
-{
-    return (address & 0xffff) >> 2;
-}
-
-static INLINE uint32_t rsp_reg2(uint32_t address)
-{
-    return (address & 0xffff) >> 2;
-}
-
-void connect_rsp(struct rsp_core* sp,
+void init_rsp(struct rsp_core* sp,
                  struct r4300_core* r4300,
                  struct rdp_core* dp,
-                 struct ri_controller* ri);
+                 struct ri_controller* ri,
+		 uint32_t audio_signal);
 
-void init_rsp(struct rsp_core* sp);
+void poweron_rsp(struct rsp_core* sp);
 
 int read_rsp_mem(void* opaque, uint32_t address, uint32_t* value);
 int write_rsp_mem(void* opaque, uint32_t address, uint32_t value, uint32_t mask);

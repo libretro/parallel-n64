@@ -26,7 +26,7 @@
 
 #include <string.h>
 
-void connect_rdram(struct rdram* rdram,
+void init_rdram(struct rdram* rdram,
                    uint32_t* dram,
                    size_t dram_size)
 {
@@ -34,7 +34,7 @@ void connect_rdram(struct rdram* rdram,
     rdram->dram_size = dram_size;
 }
 
-void init_rdram(struct rdram* rdram)
+void poweron_rdram(struct rdram* rdram)
 {
     memset(rdram->regs, 0, RDRAM_REGS_COUNT*sizeof(uint32_t));
     memset(rdram->dram, 0, rdram->dram_size);
@@ -44,7 +44,7 @@ void init_rdram(struct rdram* rdram)
 int read_rdram_regs(void* opaque, uint32_t address, uint32_t* value)
 {
     struct ri_controller* ri = (struct ri_controller*)opaque;
-    uint32_t reg             = rdram_reg(address);
+    uint32_t reg             = RDRAM_REG(address);
 
     *value                   = ri->rdram.regs[reg];
 
@@ -54,9 +54,9 @@ int read_rdram_regs(void* opaque, uint32_t address, uint32_t* value)
 int write_rdram_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mask)
 {
     struct ri_controller* ri = (struct ri_controller*)opaque;
-    uint32_t reg             = rdram_reg(address);
+    uint32_t reg             = RDRAM_REG(address);
 
-    masked_write(&ri->rdram.regs[reg], value, mask);
+    ri->rdram.regs[reg] = MASKED_WRITE(&ri->rdram.regs[reg], value, mask);
 
     return 0;
 }
@@ -65,7 +65,7 @@ int write_rdram_regs(void* opaque, uint32_t address, uint32_t value, uint32_t ma
 int read_rdram_dram(void* opaque, uint32_t address, uint32_t* value)
 {
     struct ri_controller* ri = (struct ri_controller*)opaque;
-    uint32_t addr            = rdram_dram_address(address);
+    uint32_t addr            = RDRAM_DRAM_ADDR(address);
 
     *value = ri->rdram.dram[addr];
 
@@ -75,9 +75,9 @@ int read_rdram_dram(void* opaque, uint32_t address, uint32_t* value)
 int write_rdram_dram(void* opaque, uint32_t address, uint32_t value, uint32_t mask)
 {
     struct ri_controller* ri = (struct ri_controller*)opaque;
-    uint32_t addr            = rdram_dram_address(address);
+    uint32_t addr            = RDRAM_DRAM_ADDR(address);
 
-    masked_write(&ri->rdram.dram[addr], value, mask);
+    ri->rdram.dram[addr] = MASKED_WRITE(&ri->rdram.dram[addr], value, mask);
 
     return 0;
 }

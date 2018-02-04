@@ -24,32 +24,39 @@
 
 #include <stdint.h>
 
-#include "r4300/reset.h"
-#include "r4300/r4300.h"
-#include "r4300/interupt.h"
-#include "memory/memory.h"
-#include "r4300/cached_interp.h"
+#include "cached_interp.h"
+#include "interrupt.h"
+#include "main/device.h"
+#include "pifbootrom/pifbootrom.h"
+#include "main/main.h"
+#include "r4300.h"
+#include "r4300_core.h"
+#include "reset.h"
 
 int reset_hard_job = 0;
 
 void reset_hard(void)
 {
-    init_memory();
-    r4300_reset_hard();
-    r4300_reset_soft();
-    last_addr = UINT32_C(0xa4000040);
-    next_interupt = 624999;
-    init_interupt();
-    if(r4300emu != CORE_PURE_INTERPRETER)
-    {
-        free_blocks();
-        init_blocks();
-    }
-    generic_jump_to(last_addr);
+   poweron_device(&g_dev);
+
+   pifbootrom_hle_execute(&g_dev);
+   last_addr = UINT32_C(0xa4000040);
+   next_interrupt = 624999;
+   init_interrupt();
+
+   g_dev.vi.delay = g_dev.vi.next_vi = 5000;
+   add_interrupt_event_count(VI_INT, g_dev.vi.next_vi);
+
+   if(r4300emu != CORE_PURE_INTERPRETER)
+   {
+      free_blocks();
+      init_blocks();
+   }
+   generic_jump_to(last_addr);
 }
 
 void reset_soft(void)
 {
-    add_interupt_event(HW2_INT, 0);  /* Hardware 2 Interrupt immediately */
-    add_interupt_event(NMI_INT, 50000000);  /* Non maskable Interrupt after 1/2 second */
+   add_interrupt_event(HW2_INT, 0);  	    /* Hardware 2 Interrupt immediately */
+   add_interrupt_event(NMI_INT, 50000000);  /* Non maskable Interrupt after 1/2 second */
 }

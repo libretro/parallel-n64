@@ -1,11 +1,9 @@
 #ifndef TEXTURES_H
 #define TEXTURES_H
 
-#ifdef __LIBRETRO__ // Use SDL_opengles2.h instead of GLES2/gl2.h
-#include <SDL_opengles2.h>
-#else
-#include <GLES2/gl2.h>
-#endif
+#include <retro_inline.h>
+
+#include <glsm/glsmsym.h>
 
 #include "convert.h"
 
@@ -13,31 +11,35 @@
 extern "C" {
 #endif
 
+struct gDPTile;
+
+typedef uint32_t (*GetTexelFunc)( uint64_t *src, uint16_t x, uint16_t i, uint8_t palette );
+
 typedef struct CachedTexture
 {
    GLuint  glName;
-   u32     address;
-   u32     crc;
+   uint32_t     address;
+   uint32_t     crc;
    float   offsetS, offsetT;
-   u32     maskS, maskT;
-   u32     clampS, clampT;
-   u32     mirrorS, mirrorT;
-   u32     line;
-   u32     size;
-   u32     format;
-   u32     tMem;
-   u32     palette;
-   u32     width, height;            // N64 width and height
-   u32     clampWidth, clampHeight;  // Size to clamp to
-   u32     realWidth, realHeight;    // Actual texture size
-   f32     scaleS, scaleT;           // Scale to map to 0.0-1.0
-   f32     shiftScaleS, shiftScaleT; // Scale to shift
-   u32     textureBytes;
+   uint32_t     maskS, maskT;
+   uint32_t     clampS, clampT;
+   uint32_t     mirrorS, mirrorT;
+   uint32_t     line;
+   uint32_t     size;
+   uint32_t     format;
+   uint32_t     tMem;
+   uint32_t     palette;
+   uint32_t     width, height;            // N64 width and height
+   uint32_t     clampWidth, clampHeight;  // Size to clamp to
+   uint32_t     realWidth, realHeight;    // Actual texture size
+   float     scaleS, scaleT;           // Scale to map to 0.0-1.0
+   float     shiftScaleS, shiftScaleT; // Scale to shift
+   uint32_t     textureBytes;
 
    struct CachedTexture   *lower, *higher;
-   u32     lastDList;
-   u8      max_level;
-   u8		frameBufferTexture;
+   uint32_t     lastDList;
+   uint8_t      max_level;
+   uint8_t		frameBufferTexture;
 } CachedTexture;
 
 #define TEXTURECACHE_MAX (8 * 1024 * 1024)
@@ -49,26 +51,43 @@ typedef struct TextureCache
     CachedTexture   *bottom, *top;
     CachedTexture   *dummy;
 
-    u32             cachedBytes;
-    u32             numCached;
-    u32             hits, misses;
+    uint32_t             cachedBytes;
+    uint32_t             numCached;
+    uint32_t             hits, misses;
     GLuint          glNoiseNames[32];
 } TextureCache;
 
 extern TextureCache cache;
 
-static INLINE u32 pow2( u32 dim )
+static INLINE uint8_t TextureCache_SizeToBPP(uint8_t size)
 {
-    u32 i = 1;
+   switch (size)
+   {
+      case 0:
+         return 4;
+      case 1:
+         return 8;
+      case 2:
+         return 16;
+      default:
+         break;
+   }
+
+   return 32;
+}
+
+static INLINE uint32_t pow2( uint32_t dim )
+{
+    uint32_t i = 1;
 
     while (i < dim) i <<= 1;
 
     return i;
 }
 
-static INLINE u32 powof( u32 dim )
+static INLINE uint32_t powof( uint32_t dim )
 {
-    u32 num, i;
+    uint32_t num, i;
     num = 1;
     i = 0;
 
@@ -87,10 +106,10 @@ void TextureCache_Remove( CachedTexture *texture );
 void TextureCache_RemoveBottom();
 void TextureCache_Init();
 void TextureCache_Destroy();
-void TextureCache_Update( u32 t );
-void TextureCache_ActivateTexture( u32 t, CachedTexture *texture );
-void TextureCache_ActivateNoise( u32 t );
-void TextureCache_ActivateDummy( u32 t );
+void TextureCache_Update( uint32_t t );
+void TextureCache_ActivateTexture( uint32_t t, CachedTexture *texture );
+void TextureCache_ActivateNoise( uint32_t t );
+void TextureCache_ActivateDummy( uint32_t t );
 bool TextureCache_Verify();
 
 #ifdef __cplusplus
