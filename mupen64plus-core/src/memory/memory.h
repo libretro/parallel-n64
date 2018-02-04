@@ -24,14 +24,14 @@
 
 #include <stdint.h>
 
-#ifdef __LIBRETRO__
-#include "../../libretro/libretro_memory.h"
+#ifndef MASKED_WRITE
+#define MASKED_WRITE(dst, value, mask) ((*(dst) & ~(mask)) | ((value) & (mask)))
 #endif
+
+#include "libretro_memory.h"
 
 #define AI_STATUS_FIFO_FULL	0x80000000		/* Bit 31: full */
 #define AI_STATUS_DMA_BUSY	   0x40000000		/* Bit 30: busy */
-
-extern uint32_t VI_REFRESH;
 
 #define read_word_in_memory() readmem[address>>16]()
 #define read_byte_in_memory() readmemb[address>>16]()
@@ -42,10 +42,10 @@ extern uint32_t VI_REFRESH;
 #define write_hword_in_memory() writememh[address >>16]()
 #define write_dword_in_memory() writememd[address >>16]()
 
-extern uint32_t address, word;
+extern uint32_t address, cpu_word;
 extern uint8_t cpu_byte;
-extern uint16_t hword;
-extern uint64_t dword, *rdword;
+extern uint16_t cpu_hword;
+extern uint64_t cpu_dword, *rdword;
 
 extern void (*readmem[0x10000])(void);
 extern void (*readmemb[0x10000])(void);
@@ -75,12 +75,7 @@ extern void (*writememd[0x10000])(void);
 #define Sh16 1
 #endif
 
-static INLINE void masked_write(uint32_t* dst, uint32_t value, uint32_t mask)
-{
- *dst = (*dst & ~mask) | (value & mask);
-}
-
-int init_memory(void);
+void poweron_memory(void);
 
 void map_region(uint16_t region,
       int type,

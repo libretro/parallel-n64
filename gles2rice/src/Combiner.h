@@ -77,23 +77,18 @@ uint32_t GetTexelNumber(N64CombinerType &m);
 int CountTexel1Cycle(N64CombinerType &m);
 bool IsTextureUsed(N64CombinerType &m);
 
-void swap(uint8_t &a, uint8_t &b);
-
-
 inline bool isEqual(uint8_t val1, uint8_t val2)
 {
-    if( (val1&MUX_MASK) == (val2&MUX_MASK) )
-        return true;
-    else
-        return false;
+   if( (val1&MUX_MASK) == (val2&MUX_MASK) )
+      return true;
+   return false;
 }
 
 inline bool isTexel(uint8_t val)
 {
-    if( (val&MUX_MASK) == MUX_TEXEL0 || (val&MUX_MASK) == MUX_TEXEL1 )
-        return true;
-    else
-        return false;
+   if( (val&MUX_MASK) == MUX_TEXEL0 || (val&MUX_MASK) == MUX_TEXEL1 )
+      return true;
+   return false;
 }
 
 COLOR CalculateConstFactor(uint32_t colorOp, uint32_t alphaOp, uint32_t curCol);

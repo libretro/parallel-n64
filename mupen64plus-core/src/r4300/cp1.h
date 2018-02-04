@@ -24,6 +24,8 @@
 
 #include <stdint.h>
 
+void poweron_cp1(void);
+
 int64_t* r4300_cp1_regs(void);
 float** r4300_cp1_regs_simple(void);
 double** r4300_cp1_regs_double(void);
@@ -37,3 +39,4 @@ void set_fpr_pointers(uint32_t newStatus);
 void update_x86_rounding_mode(uint32_t FCR31);
 
 #endif /* M64P_R4300_CP1_H */
+

@@ -106,6 +106,8 @@ typedef struct {
     void (*CheckInterrupts)(void);
 } GFX_INFO;
 
+extern GFX_INFO gfx_info;
+
 typedef struct {
     uint8_t * RDRAM;
     uint8_t * DMEM;

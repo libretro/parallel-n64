@@ -32,7 +32,7 @@ void free_assembler(void **block_jumps_table, int *block_jumps_number, void **bl
 {
 }
 
-void passe2(precomp_instr *dest, int start, int end, precomp_block *block)
+void passe2(struct precomp_instr *dest, int start, int end, struct precomp_block *block)
 {
 }
 
@@ -435,12 +435,6 @@ void gennotcompiled()
 void genlink_subblock()
 {
 }
-
-#ifdef COMPARE_CORE
-void gendebug()
-{
-}
-#endif
 
 void genni()
 {
@@ -1030,7 +1024,7 @@ void gentlbwr()
 
 /* From regcache.c */
 
-void init_cache(precomp_instr* start)
+void init_cache(struct precomp_instr* start)
 {
 }
 

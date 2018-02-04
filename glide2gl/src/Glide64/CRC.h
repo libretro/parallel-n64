@@ -46,7 +46,15 @@
 #ifndef GLIDE64_CRC32_H
 #define GLIDE64_CRC32_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 void CRC_Glide64_BuildTable(void);
-extern unsigned int CRC32(unsigned int crc, void *buffer, unsigned int count);
+unsigned int CRC32(unsigned int crc, void *buffer, unsigned int count);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

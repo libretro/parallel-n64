@@ -40,11 +40,23 @@
 #ifndef RDP_H
 #define RDP_H
 
-#include "rdp_common/gdp.h"
+#include <retro_inline.h>
+#include <clamping.h>
+
+#include "../../Graphics/RDP/RDP_state.h"
+#include "../../Graphics/RSP/gSP_state.h"
 #include "Gfx_1.3.h"
+#include "../Glitch64/glide.h"
+
+void (*_gSPVertex)(uint32_t addr, uint32_t n, uint32_t v0);
 
 extern uint32_t frame_count; // frame counter
 extern uint32_t gfx_plugin_accuracy;
+
+/* The highest 8 bits are the segment # (1-16), 
+ * and the lower 24 bits are the offset to
+ * add to it. */
+#define RSP_SegmentToPhysical(so) (((gSP.segment[((so) >> 24) & 0x0f] + ((so) & BMASK)) & BMASK) & 0x00ffffff)
 
 #define MAX_CACHE   1024*4
 #define MAX_TRI_CACHE 768 // this is actually # of vertices, not triangles
@@ -52,15 +64,13 @@ extern uint32_t gfx_plugin_accuracy;
 
 #define MAX_TMU     2
 
+#define MAXCMD 0x100000
+#define MAXCMD_MASK (MAXCMD - 1)
+
 // Supported flags
 #define SUP_TEXMIRROR 0x00000001
 
 // Clipping flags
-#define CLIP_XMAX 0x00000001
-#define CLIP_XMIN 0x00000002
-#define CLIP_YMAX 0x00000004
-#define CLIP_YMIN 0x00000008
-#define CLIP_WMIN 0x00000010
 #define CLIP_ZMAX 0x00000020
 #define CLIP_ZMIN 0x00000040
 
@@ -71,7 +81,6 @@ extern uint32_t gfx_plugin_accuracy;
 #define RDP_CYCLE_TYPE        0x00300000
 #define RDP_TEX_LOD_ENABLE    0x00010000
 #define RDP_PERSP_TEX_ENABLE  0x00080000
-#define RDP_FORCE_BLEND       0x00004000
 #define RDP_COLOR_ON_CVG      0x00000080
 #define RDP_ALPHA_CVG_SELECT  0x00002000
 #define ZBUF_ENABLED  0x00000001
@@ -83,7 +92,6 @@ extern uint32_t gfx_plugin_accuracy;
 #define CULL_BACK     0x00002000  // * must be here
 #define FOG_ENABLED   0x00010000
 
-#define CULLMASK    0x00003000
 #define CULLSHIFT   12
 
 #define CMB_MULT    0x00000001
@@ -98,6 +106,8 @@ extern uint32_t gfx_plugin_accuracy;
 #define CMB_INTER   0x00000200
 #define CMB_MULT_OWN_ALPHA  0x00000400
 #define CMB_COL_SUB_OWN  0x00000800
+
+#define G_ACCLAIM_LIGHTING		0x00000080
 
 #if defined _MSC_VER
 #define DECLAREALIGN16VAR(var) __declspec(align(16)) float (var)
@@ -156,6 +166,8 @@ extern uint32_t gfx_plugin_accuracy;
 #define  hack_Yoshi       (1<<27)  //Yoshi Story
 #define  hack_Zelda       (1<<28)  //zeldas hacks
 #define  hack_Blastcorps  (1<<29)  /* Blast Corps */
+#define  hack_OOT         (1<<30)  /* Zelda OOT hacks */
+#define  hack_Winback     (1<<31)  //WinBack - Covert Operations
 
 #define FBCRCMODE_NONE  0
 #define FBCRCMODE_FAST  1
@@ -183,6 +195,7 @@ typedef struct
    int fog;
    int buff_clear;
    int swapmode;
+   bool swapmode_retro;
    int lodmode;
    int aspectmode;
 
@@ -235,57 +248,8 @@ typedef struct
 // This structure is what is passed in by rdp:settextureimage
 typedef struct
 {
-   uint8_t format;      // format: ARGB, IA, ...
-   uint8_t size;        // size: 4,8,16, or 32 bit
-   uint16_t width;      // used in settextureimage
-   uint32_t addr;       // address in RDRAM to load the texture from
    int set_by;          // 0-loadblock 1-loadtile
 } TEXTURE_IMAGE;
-
-// This structure is a tile descriptor (as used by rdp:settile and rdp:settilesize)
-typedef struct
-{
-   // rdp:settile
-   uint8_t format;      // format: ARGB, IA, ...
-   uint8_t size;        // size: 4,8,16, or 32 bit
-   uint16_t line;       // size of one row (x axis) in 64 bit words
-   uint16_t t_mem;      // location in texture memory (in 64 bit words, max 512 (4MB))
-   uint8_t palette;     // palette # to use
-   uint8_t clamp_t;     // clamp or wrap (y axis)?
-   uint8_t mirror_t;    // mirroring on (y axis)?
-   uint8_t mask_t;      // mask to wrap around (ex: 5 would wrap around 32) (y axis)
-   uint8_t shift_t;     // ??? (scaling)
-   uint8_t clamp_s;     // clamp or wrap (x axis)?
-   uint8_t mirror_s;    // mirroring on (x axis)?
-   uint8_t mask_s;      // mask to wrap around (x axis)
-   uint8_t shift_s;     // ??? (scaling)
-
-   // rdp:settilesize
-   uint16_t ul_s;       // upper left s coordinate
-   uint16_t ul_t;       // upper left t coordinate
-   uint16_t lr_s;       // lower right s coordinate
-   uint16_t lr_t;       // lower right t coordinate
-
-   float f_ul_s;
-   float f_ul_t;
-
-   // these are set by loadtile
-   uint16_t t_ul_s;     // upper left s coordinate
-   uint16_t t_ul_t;     // upper left t coordinate
-   uint16_t t_lr_s;     // lower right s coordinate
-   uint16_t t_lr_t;     // lower right t coordinate
-
-   uint32_t width;
-   uint32_t height;
-
-   // uc0:texture
-   uint8_t on;
-   float s_scale;
-   float t_scale;
-
-   uint16_t org_s_scale;
-   uint16_t org_t_scale;
-} TILE;
 
 // This structure forms the lookup table for cached textures
 typedef struct {
@@ -338,13 +302,6 @@ typedef struct
    uint32_t nonzero;
 } LIGHT;
 
-typedef struct {
-    int clampdiffs, clampdifft;
-    int clampens, clampent;
-    int masksclamped, masktclamped;
-    int notlutswitch, tlutswitch;
-} FAKETILE;
-
 typedef enum
 {
    CI_MAIN,      //0, main color image
@@ -371,47 +328,6 @@ typedef struct
    int   changed;
 } COLOR_IMAGE;
 
-typedef struct
-{
-   int32_t tmu;
-   uint32_t addr;          //address of color image
-   uint32_t end_addr;
-   uint32_t tex_addr;      //address in video memory
-   uint32_t width;         //width of color image
-   uint32_t height;        //height of color image
-   uint8_t  format;        //format of color image
-   uint8_t  size;          //format of color image
-   uint8_t  clear;         //flag. texture buffer must be cleared
-   uint8_t  drawn;         //flag. if equal to 1, this image was already drawn in current frame
-   uint32_t crc;           //checksum of the color image
-   float scr_width;        //width of rendered image
-   float scr_height;       //height of rendered image
-   uint32_t tex_width;     //width of texture buffer
-   uint32_t tex_height;    //height of texture buffer
-   int   tile;     
-   uint16_t  tile_uls;     //shift from left bound of the texture
-   uint16_t  tile_ult;     //shift from top of the texture
-   uint32_t v_shift;       //shift from top of the texture
-   uint32_t u_shift;       //shift from left of the texture
-   float lr_u;
-   float lr_v;
-   float u_scale;          //used to map vertex u,v coordinates into hires texture
-   float v_scale;          //used to map vertex u,v coordinates into hires texture
-   CACHE_LUT * cache;      //pointer to texture cache item
-   GrTexInfo info;
-   uint16_t t_mem;
-} TBUFF_COLOR_IMAGE;
-
-typedef struct
-{
-   int32_t tmu;
-   uint32_t begin;         //start of the block in video memory
-   uint32_t end;           //end of the block in video memory
-   uint8_t count;          //number of allocated texture buffers
-   int clear_allowed;      //stack of buffers can be cleared
-   TBUFF_COLOR_IMAGE images[256];
-} TEXTURE_BUFFER;
-
 #define NUMTEXBUF 92
 
 #define FOG_MODE_DISABLED       0
@@ -431,41 +347,19 @@ struct RDP
 
    float offset_x, offset_y, offset_x_bak, offset_y_bak;
 
-   float scale_x, scale_1024, scale_x_bak;
-   float scale_y, scale_768, scale_y_bak;
+   float scale_x, scale_x_bak;
+   float scale_y, scale_y_bak;
 
-   float view_scale[3];
-   float view_trans[3];
    float clip_min_x, clip_max_x, clip_min_y, clip_max_y;
    float clip_ratio;
 
    int updatescreen;
 
-   // Program counter
-   uint32_t pc[10]; // Display List PC stack
-   uint32_t pc_i;   // current PC index in the stack
-   int dl_count; // number of instructions before returning
-   int LLE;
-
-   // Segments
-   uint32_t segment[16];  // Segment pointer
-
-   // Marks the end of DList execution (done in uc?:enddl)
-   int halt;
-
-   // Next command
-   uint32_t cmd0;
-   uint32_t cmd1;
-   uint32_t cmd2;
-   uint32_t cmd3;
-
    // Clipping
-   SCISSOR scissor_o;
    SCISSOR scissor;
    int scissor_set;
 
    // Colors
-   uint32_t prim_lodmin;
    unsigned noise;
 
    float col[4];   // color multiplier
@@ -482,45 +376,30 @@ struct RDP
    DECLAREALIGN16VAR(combined[4][4]);
    DECLAREALIGN16VAR(dkrproj[3][4][4]);
 
-   DECLAREALIGN16VAR(model_stack[32][4][4]);  // 32 deep, will warn if overflow
-   int model_i;          // index in the model matrix stack
-   int model_stack_size;
-
    // Textures
    TEXTURE_IMAGE timg;       // 1 for each tmem address
-   TILE tiles[8];          // 8 tile descriptors
    uint32_t addr[512];        // 512 addresses (used to determine address loaded from)
 
    int     cur_tile;   // current tile
-   int     mipmap_level;
    int     last_tile;   // last tile set
    int     last_tile_size;   // last tile size set
 
    int     t0, t1;
    int     tex;
-   int     filter_mode;
 
    // Texture palette
    uint16_t pal_8[256];
    uint32_t pal_8_crc[16];
-   uint32_t pal_256_crc;
    uint8_t tlut_mode;
    int force_wrap;
 
    // Lighting
-   uint32_t num_lights;
    LIGHT light[12];
    float light_vector[12][3];
    float lookat[2][3];
-   int  use_lookat;
 
    // Combine modes
    uint32_t cycle1, cycle2;
-
-   uint8_t fbl_a0, fbl_b0, fbl_c0, fbl_d0;
-   uint8_t fbl_a1, fbl_b1, fbl_c1, fbl_d1;
-
-   //  float YUV_C0, YUV_C1, YUV_C2, YUV_C3, YUV_C4; //YUV textures conversion coefficients
 
    // What needs updating
    uint32_t flags;
@@ -535,20 +414,16 @@ struct RDP
    // Debug stuff
    uint32_t rm; // use othermode_l instead, this just as a check for changes
    uint32_t render_mode_changed;
-   uint32_t geom_mode;
-
-   uint32_t othermode_h;
-   uint32_t othermode_l;
 
    // used to check if in texrect while loading texture
    uint8_t texrecting;
 
    //frame buffer related slots. Added by Gonetz
-   uint32_t cimg, ocimg, zimg, tmpzimg, vi_org_reg;
+   uint32_t ocimg, tmpzimg, vi_org_reg;
    COLOR_IMAGE maincimg[2];
    uint32_t last_drawn_ci_addr;
    uint32_t main_ci, main_ci_end, main_ci_bg, main_ci_last_tex_addr, zimg_end, last_bg;
-   uint32_t ci_width, ci_height, ci_size, ci_end;
+   uint32_t ci_end;
    uint32_t zi_width;
    int zi_lrx, zi_lry;
    uint8_t  ci_count, num_of_ci, main_ci_index, copy_ci_index, copy_zi_index;
@@ -559,7 +434,6 @@ struct RDP
    int skip_drawing; //rendering is not required. used for frame buffer emulation
 
    //fog related slots. Added by Gonetz
-   float fog_multiplier, fog_offset;
    unsigned fog_mode;
    // Clipping
    int clip;     // clipping flags
@@ -582,21 +456,15 @@ struct RDP
    char RomName[21];
 };
 
-void ChangeSize(void);
 
 extern struct RDP rdp;
 extern SETTINGS settings;
 extern VOODOO voodoo;
 
 extern uint32_t   offset_textures;
-extern uint32_t   offset_texbuf1;
 
 extern int	ucode_error_report;
 
-// RDP functions
-void rdp_free(void);
-void rdp_new(void);
-void rdp_reset(void);
 
 extern const char *ACmp[];
 extern const char *Mode0[];
@@ -642,10 +510,10 @@ static INLINE void ConvertCoordsKeep (VERTEX *v, int n)
    int i;
    for (i = 0; i < n; i++)
    {
-      v[i].coord[0] = v[i].u0;
-      v[i].coord[1] = v[i].v0;
-      v[i].coord[2] = v[i].u1;
-      v[i].coord[3] = v[i].v1;
+      v[i].coord[0] = v[i].u[0];
+      v[i].coord[1] = v[i].v[0];
+      v[i].coord[2] = v[i].u[1];
+      v[i].coord[3] = v[i].v[1];
    }
 }
 
@@ -655,42 +523,11 @@ static INLINE void ConvertCoordsConvert (VERTEX *v, int n)
    int i;
    for (i = 0; i < n; i++)
    {
-      v[i].coord[(rdp.t0 << 1)  ] = v[i].u0;
-      v[i].coord[(rdp.t0 << 1)+1] = v[i].v0;
-      v[i].coord[(rdp.t1 << 1)  ] = v[i].u1;
-      v[i].coord[(rdp.t1 << 1)+1] = v[i].v1;
+      v[i].coord[(rdp.t0 << 1)  ] = v[i].u[0];
+      v[i].coord[(rdp.t0 << 1)+1] = v[i].v[0];
+      v[i].coord[(rdp.t1 << 1)  ] = v[i].u[1];
+      v[i].coord[(rdp.t1 << 1)+1] = v[i].v[1];
    }
-}
-
-static INLINE void CalculateFog (VERTEX *v)
-{
-   if (rdp.flags & FOG_ENABLED)
-   {
-      if (v->w < 0.0f)
-         v->f = 0.0f;
-      else
-         v->f = min(255.0f, max(0.0f, v->z_w * rdp.fog_multiplier + rdp.fog_offset));
-      v->a = (uint8_t)v->f;
-   }
-   else
-      v->f = 1.0f;
-}
-
-static INLINE void glideSetVertexFlatShading(VERTEX *v, VERTEX **vtx, uint32_t w1)
-{
-   int flag = min(2, (w1 >> 24) & 3);
-   v->a = vtx[flag]->a;
-   v->b = vtx[flag]->b;
-   v->g = vtx[flag]->g;
-   v->r = vtx[flag]->r;
-}
-
-static INLINE void glideSetVertexPrimShading(VERTEX *v, uint32_t prim_color)
-{
-   v->r = (uint8_t)g_gdp.prim_color.r;
-   v->g = (uint8_t)g_gdp.prim_color.g;
-   v->b = (uint8_t)g_gdp.prim_color.b;
-   v->a = (uint8_t)g_gdp.prim_color.a;
 }
 
 static INLINE uint32_t vi_integer_sqrt(uint32_t a)
@@ -713,20 +550,17 @@ static INLINE uint32_t vi_integer_sqrt(uint32_t a)
    return res;
 }
 
-static INLINE float get_float_color_clamped(float col)
-{
-   if (col > 1.0f)
-      col = 1.0f;
-   if (col < 0.0f)
-      col = 0.0f;
-   return col;
-}
-
-void newSwapBuffers(void);
-extern void rdp_setfuncs(void);
 extern int SwapOK;
 
 // ** utility functions
 void load_palette (uint32_t addr, uint16_t start, uint16_t count);
+
+void newSwapBuffers(void);
+extern void rdp_setfuncs(void);
+
+void ChangeSize(void);
+void rdp_free(void);
+void rdp_new(void);
+void rdp_reset(void);
 
 #endif  // ifndef RDP_H

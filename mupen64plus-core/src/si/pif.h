@@ -29,30 +29,40 @@
 #include "eeprom.h"
 #include "game_controller.h"
 
-enum { GAME_CONTROLLERS_COUNT = 4 };
+#ifndef PIF_RAM_ADDR
+#define PIF_RAM_ADDR(a)    (((a) & 0xfffc) - 0x7c0)
+#endif
 
-struct si_controller;
+enum
+{
+   GAME_CONTROLLERS_COUNT = 4
+};
 
-enum { PIF_RAM_SIZE = 0x40 };
-
+enum
+{
+   PIF_RAM_SIZE = 0x40
+};
 
 enum pif_commands
 {
-   PIF_CMD_STATUS = 0x00,
+   PIF_CMD_STATUS          = 0x00,
    PIF_CMD_CONTROLLER_READ = 0x01,
-   PIF_CMD_PAK_READ = 0x02,
-   PIF_CMD_PAK_WRITE = 0x03,
-   PIF_CMD_EEPROM_READ = 0x04,
-   PIF_CMD_EEPROM_WRITE = 0x05,
-   PIF_CMD_AF_RTC_STATUS = 0x06,
-   PIF_CMD_AF_RTC_READ = 0x07,
-   PIF_CMD_AF_RTC_WRITE = 0x08,
-   PIF_CMD_RESET = 0xff,
+   PIF_CMD_PAK_READ        = 0x02,
+   PIF_CMD_PAK_WRITE       = 0x03,
+   PIF_CMD_EEPROM_READ     = 0x04,
+   PIF_CMD_EEPROM_WRITE    = 0x05,
+   PIF_CMD_AF_RTC_STATUS   = 0x06,
+   PIF_CMD_AF_RTC_READ     = 0x07,
+   PIF_CMD_AF_RTC_WRITE    = 0x08,
+   PIF_CMD_RESET           = 0xff
 };
+
+struct si_controller;
 
 struct pif
 {
    uint8_t ram[PIF_RAM_SIZE];
+   uint8_t cic_challenge;
 
    struct game_controller controllers[GAME_CONTROLLERS_COUNT];
    struct eeprom eeprom;
@@ -61,13 +71,18 @@ struct pif
    struct cic cic;
 };
 
-static INLINE uint32_t pif_ram_address(uint32_t address)
-{
-   return ((address & 0xfffc) - 0x7c0);
-}
+void init_pif(struct pif *pif,
+      void *eeprom_user_data,
+      void (*eeprom_save)(void*),
+      uint8_t *eeprom_data,
+      size_t eeprom_size,
+      uint16_t eeprom_id,
+      void* af_rtc_user_data,
+      const struct tm* (*af_rtc_get_time)(void*),
+      const uint8_t *ipl3
+      );
 
-
-void init_pif(struct pif* pif);
+void poweron_pif(struct pif* pif);
 
 int read_pif_ram(void* opaque, uint32_t address, uint32_t* value);
 int write_pif_ram(void* opaque, uint32_t address, uint32_t value, uint32_t mask);

@@ -39,25 +39,28 @@
 
 #include "Gfx_1.3.h"
 #include "TexCache.h"
+#include "TexLoad.h"
 #include "Combine.h"
 #include "Util.h"
-#include "GBI.h"
 #include "libretro.h"
+#include "GlideExtensions.h"
+#include "MiClWr.h"
+#include "CRC.h"
 
-extern retro_log_printf_t log_cb;
+#include <clamping.h>
+#include <encodings/crc32.h>
 
+#include "../../../Graphics/GBI.h"
+#include "../../../Graphics/RDP/gDP_state.h"
+#include "../../../Graphics/image_convert.h"
+
+int GetTexAddrUMA(int tmu, int texsize);
 static void LoadTex (int id, int tmu);
 
-uint8_t tex1[2048*2048*4];		// temporary texture
-uint8_t tex2[2048*2048*4];
+uint32_t tex1[2048*2048];		// temporary texture
+uint32_t tex2[2048*2048];
 uint8_t *texture;
-uint8_t *texture_buffer = tex1;
-
-#include "TexLoad.h"	// texture loading functions, ONLY INCLUDE IN THIS FILE!!!
-#include "MiClWr32b.h"
-#include "MiClWr16b.h"	// Mirror/Clamp/Wrap functions, ONLY INCLUDE IN THIS FILE!!!
-#include "MiClWr8b.h"	// Mirror/Clamp/Wrap functions, ONLY INCLUDE IN THIS FILE!!!
-#include "CRC.h"
+uint8_t *texture_buffer = (uint8_t *)tex1;
 
 typedef struct TEXINFO_t
 {
@@ -132,41 +135,28 @@ void ClearCache(void)
       DeleteList(&cachelut[i]);
 }
 
-//****************************************************************
-static uint32_t textureCRC(uint8_t *addr, int width, int height, int line)
+static uint32_t textureCRC(uint32_t crc, uint8_t *addr, int width, int height, int line)
 {
-   uint32_t crc = 0;
-   uint32_t *pixelpos;
-   unsigned int i;
-   uint64_t twopixel_crc;
+   const size_t len = sizeof(uint32_t) * 2 * width;
 
-   pixelpos = (uint32_t*)addr;
-   for (; height; height--)
+   while (height--)
    {
-      for (i = width; i; --i)
-      {
-         twopixel_crc = i * (uint64_t)(pixelpos[1] + pixelpos[0] + crc);
-         crc = (uint32_t)(twopixel_crc >> 32) + (uint32_t)twopixel_crc;
-         pixelpos += 2;
-      }
-      crc = ((unsigned int)height * (uint64_t)crc >> 32) + height * crc;
-      pixelpos = (uint32_t *)((char *)pixelpos + line);
+      crc = encoding_crc32(crc, addr, len);
+      addr += len + line;
    }
 
    return crc;
 }
 
-// Gets information for either t0 or t1, checks if in cache & fills tex_found
+/* Gets information for either t0 or t1, checks if in cache & fills tex_found */
 static void GetTexInfo (int id, int tile)
 {
-   int t, tile_width, tile_height, mask_width, mask_height, width, height, wid_64, line, bpl;
+   int t, tile_width, tile_height, mask_width, mask_height, width, height, wid_64, line;
    int real_image_width, real_image_height, crc_height;
    uint32_t crc, flags, mod, modcolor, modcolor1, modcolor2, modfactor, mod_mask;
    NODE *node;
    CACHE_LUT *cache;
    TEXINFO *info;
-
-   FRDP (" | |-+ GetTexInfo (id: %d, tile: %d)\n", id, tile);
 
    // this is the NEW cache searching, searches only textures with similar crc's
    for (t = 0; t < MAX_TMU; t++)
@@ -175,11 +165,11 @@ static void GetTexInfo (int id, int tile)
    info = (TEXINFO*)&texinfo[id];
 
    // Get width and height
-   tile_width = rdp.tiles[tile].lr_s - rdp.tiles[tile].ul_s + 1;
-   tile_height = rdp.tiles[tile].lr_t - rdp.tiles[tile].ul_t + 1;
+   tile_width  = g_gdp.tile[tile].sl - g_gdp.tile[tile].sh + 1;
+   tile_height = g_gdp.tile[tile].tl - g_gdp.tile[tile].th + 1;
 
-   mask_width = (rdp.tiles[tile].mask_s==0)?(tile_width):(1 << rdp.tiles[tile].mask_s);
-   mask_height = (rdp.tiles[tile].mask_t==0)?(tile_height):(1 << rdp.tiles[tile].mask_t);
+   mask_width = (g_gdp.tile[tile].mask_s==0)?(tile_width):(1 << g_gdp.tile[tile].mask_s);
+   mask_height = (g_gdp.tile[tile].mask_t==0)?(tile_height):(1 << g_gdp.tile[tile].mask_t);
 
    if (settings.alt_tex_size)
    {
@@ -188,24 +178,19 @@ static void GetTexInfo (int id, int tile)
       //  textures.
 
       // wrap all the way
-      width = min(mask_width, tile_width);	// changed from mask_width only
-      rdp.tiles[tile].width = width;
+      width = MIN(mask_width, tile_width);	// changed from mask_width only
+      gDP.tiles[tile].width = width;
 
       // Get the width/height to load
-      if ((rdp.tiles[tile].clamp_s && tile_width <= 256) || (mask_width > 256))
-      {
-         // actual width
-         rdp.tiles[tile].width = tile_width;
-      }
+      if ((g_gdp.tile[tile].cs && tile_width <= 256) || (mask_width > 256))   // actual width
+         gDP.tiles[tile].width = tile_width;
 
-      height = min(mask_height, tile_height);
-      rdp.tiles[tile].height = height;
+      height = MIN(mask_height, tile_height);
+      gDP.tiles[tile].height = height;
 
-      if ((rdp.tiles[tile].clamp_t && tile_height <= 256) || (mask_height > 256))
-      {
-         // actual height
-         rdp.tiles[tile].height = tile_height;
-      }
+      // actual height
+      if ((g_gdp.tile[tile].ct && tile_height <= 256) || (mask_height > 256))
+         gDP.tiles[tile].height = tile_height;
    }
    else
    {
@@ -220,53 +205,51 @@ static void GetTexInfo (int id, int tile)
       }
 
       width = mask_width;
-      rdp.tiles[tile].width = mask_width;
+      gDP.tiles[tile].width = mask_width;
       // Get the width/height to load
-      if ((rdp.tiles[tile].clamp_s && tile_width <= 256) )//|| (mask_width > 256))
+      if ((g_gdp.tile[tile].cs && tile_width <= 256) )//|| (mask_width > 256))
       {
          // loading width
-         width = min(mask_width, tile_width);
+         width = MIN(mask_width, tile_width);
          // actual width
-         rdp.tiles[tile].width = tile_width;
+         gDP.tiles[tile].width = tile_width;
       }
 
       height = mask_height;
-      rdp.tiles[tile].height = mask_height;
+      gDP.tiles[tile].height = mask_height;
 
-      if ((rdp.tiles[tile].clamp_t && tile_height <= 256) || (mask_height > 256))
+      if ((g_gdp.tile[tile].ct && tile_height <= 256) || (mask_height > 256))
       {
          // loading height
-         height = min(mask_height, tile_height);
+         height = MIN(mask_height, tile_height);
          // actual height
-         rdp.tiles[tile].height = tile_height;
+         gDP.tiles[tile].height = tile_height;
       }
    }
 
    // without any large texture fixing-up; for alignment
-   real_image_width = rdp.tiles[tile].width;
-   real_image_height = rdp.tiles[tile].height;
+   real_image_width  = gDP.tiles[tile].width;
+   real_image_height = gDP.tiles[tile].height;
    crc_height = height;
    if (rdp.timg.set_by == 1)
       crc_height = tile_height;
 
-   bpl = width << rdp.tiles[tile].size >> 1;
-
 #ifndef NDEBUG
    LRDP(" | | |-+ Texture approved:\n");
-   FRDP (" | | | |- tmem: %08lx\n", rdp.tiles[tile].t_mem);
+   FRDP (" | | | |- tmem: %08lx\n", g_gdp.tile[tile].tmem);
    FRDP (" | | | |- load width: %d\n", width);
    FRDP (" | | | |- load height: %d\n", height);
-   FRDP (" | | | |- actual width: %d\n", rdp.tiles[tile].width);
-   FRDP (" | | | |- actual height: %d\n", rdp.tiles[tile].height);
-   FRDP (" | | | |- size: %d\n", rdp.tiles[tile].size);
-   FRDP (" | | | +- format: %d\n", rdp.tiles[tile].format);
+   FRDP (" | | | |- actual width: %d\n", gDP.tiles[tile].width);
+   FRDP (" | | | |- actual height: %d\n", gDP.tiles[tile].height);
+   FRDP (" | | | |- size: %d\n", g_gdp.tile[tile].size);
+   FRDP (" | | | +- format: %d\n", g_gdp.tile[tile].format);
    LRDP(" | | |- Calculating CRC... ");
 #endif
 
    // ** CRC CHECK
 
-   wid_64 = width << (rdp.tiles[tile].size) >> 1;
-   if (rdp.tiles[tile].size == G_IM_SIZ_32b)
+   wid_64 = width << (g_gdp.tile[tile].size) >> 1;
+   if (g_gdp.tile[tile].size == G_IM_SIZ_32b)
    {
       if (wid_64 & 15) wid_64 += 16;
       wid_64 &= 0xFFFFFFF0;
@@ -278,20 +261,20 @@ static void GetTexInfo (int id, int tile)
    wid_64 = wid_64>>3;
 
    // Texture too big for tmem & needs to wrap? (trees in mm)
-   if (rdp.tiles[tile].t_mem + min(height, tile_height) * (rdp.tiles[tile].line<<3) > 4096)
+   if (g_gdp.tile[tile].tmem + MIN(height, tile_height) * (g_gdp.tile[tile].line << 3) > 4096)
    {
       int y, shift;
       LRDP("TEXTURE WRAPS TMEM!!! ");
 
       // calculate the y value that intersects at 4096 bytes
-      y = (4096 - rdp.tiles[tile].t_mem) / (rdp.tiles[tile].line<<3);
+      y = (4096 - g_gdp.tile[tile].tmem) / (g_gdp.tile[tile].line<<3);
 
-      rdp.tiles[tile].clamp_t = 0;
-      rdp.tiles[tile].lr_t = rdp.tiles[tile].ul_t + y - 1;
+      g_gdp.tile[tile].ct = 0;
+      g_gdp.tile[tile].tl = g_gdp.tile[tile].th + y - 1;
 
       // calc mask
       for (shift=0; (1<<shift)<y; shift++);
-      rdp.tiles[tile].mask_t = shift;
+      g_gdp.tile[tile].mask_t = shift;
 
       // restart the function
       LRDP("restarting...\n");
@@ -299,43 +282,47 @@ static void GetTexInfo (int id, int tile)
       return;
    }
 
-   line = rdp.tiles[tile].line;
-   if (rdp.tiles[tile].size == G_IM_SIZ_32b)
+   line = g_gdp.tile[tile].line;
+   if (g_gdp.tile[tile].size == G_IM_SIZ_32b)
       line <<= 1;
+
    crc = 0;
+
+   if ((g_gdp.tile[tile].size < 2) && (rdp.tlut_mode || g_gdp.tile[tile].format == G_IM_FMT_CI))
+   {
+      if (g_gdp.tile[tile].size == G_IM_SIZ_4b)
+         crc = rdp.pal_8_crc[g_gdp.tile[tile].palette];
+      else
+         crc = gDP.paletteCRC256;
+   }
+
    {
       uint8_t *addr;
       line = (line - wid_64) << 3;
       if (wid_64 < 1)
          wid_64 = 1;
-      addr = (uint8_t*)((((uint8_t*)g_gdp.tmem) + (rdp.tiles[tile].t_mem<<3)));
+      addr = (uint8_t*)((((uint8_t*)g_gdp.tmem) + (g_gdp.tile[tile].tmem << 3)));
       if (crc_height > 0) // Check the CRC
       {
-         if (rdp.tiles[tile].size < 3)
-            crc = textureCRC(addr, wid_64, crc_height, line);
+         if (g_gdp.tile[tile].size < 3)
+            crc = textureCRC(crc, addr, wid_64, crc_height, line);
          else //32b texture
          {
             int line_2, wid_64_2;
             line_2 = line >> 1;
-            wid_64_2 = max(1, wid_64 >> 1);
-            crc = textureCRC(addr, wid_64_2, crc_height, line_2);
-            crc += textureCRC(addr+0x800, wid_64_2, crc_height, line_2);
+            wid_64_2 = MAX(1, wid_64 >> 1);
+            crc = textureCRC(crc, addr, wid_64_2, crc_height, line_2);
+            crc = textureCRC(crc, addr+0x800, wid_64_2, crc_height, line_2);
          }
       }
    }
-   if ((rdp.tiles[tile].size < 2) && (rdp.tlut_mode || rdp.tiles[tile].format == G_IM_FMT_CI))
-   {
-      if (rdp.tiles[tile].size == G_IM_SIZ_4b)
-         crc += rdp.pal_8_crc[rdp.tiles[tile].palette];
-      else
-         crc += rdp.pal_256_crc;
-   }
+
 
    FRDP ("Done.  CRC is: %08lx.\n", crc);
 
-   flags = (rdp.tiles[tile].clamp_s << 23) | (rdp.tiles[tile].mirror_s << 22) |
-      (rdp.tiles[tile].mask_s << 18) | (rdp.tiles[tile].clamp_t << 17) |
-      (rdp.tiles[tile].mirror_t << 16) | (rdp.tiles[tile].mask_t << 12);
+   flags = (g_gdp.tile[tile].cs << 23) | (g_gdp.tile[tile].ms << 22) |
+      (g_gdp.tile[tile].mask_s << 18) | (g_gdp.tile[tile].ct << 17) |
+      (g_gdp.tile[tile].mt << 16) | (g_gdp.tile[tile].mask_t << 12);
 
    info->real_image_width = real_image_width;
    info->real_image_height = real_image_height;
@@ -374,18 +361,18 @@ static void GetTexInfo (int id, int tile)
    }
 
    node = (NODE*)cachelut[crc>>16];
-   mod_mask = (rdp.tiles[tile].format == G_IM_FMT_CI) ? 0xFFFFFFFF : 0xF0F0F0F0;
+   mod_mask = (g_gdp.tile[tile].format == G_IM_FMT_CI) ? 0xFFFFFFFF : 0xF0F0F0F0;
    while (node)
    {
       if (node->crc == crc)
       {
          cache = (CACHE_LUT*)node->data;
          if (/*tex_found[id][node->tmu] == -1 &&
-               rdp.tiles[tile].palette == cache->palette &&
-               rdp.tiles[tile].format == cache->format &&
-               rdp.tiles[tile].size == cache->size &&*/
-               rdp.tiles[tile].width == cache->width &&
-               rdp.tiles[tile].height == cache->height &&
+               g_gdp.tile[tile].palette == cache->palette &&
+               g_gdp.tile[tile].format == cache->format &&
+               g_gdp.tile[tile].size == cache->size &&*/
+               gDP.tiles[tile].width == cache->width &&
+               gDP.tiles[tile].height == cache->height &&
                flags == cache->flags)
          {
             if (!(mod+cache->mod) || (cache->mod == mod &&
@@ -403,8 +390,6 @@ static void GetTexInfo (int id, int tile)
       }
       node = node->pNext;
    }
-
-   LRDP(" | | | +- Done.\n | | +- GetTexInfo end\n");
 }
 
 #define TMUMODE_NORMAL		0
@@ -417,7 +402,6 @@ int SwapTextureBuffer(void); //forward decl
 void TexCache(void)
 {
    int i, tmu_0_mode, tmu_1_mode, tmu_0, tmu_1;
-   LRDP(" |-+ TexCache called\n");
 
    if (rdp.tex & 1)
       GetTexInfo (0, rdp.cur_tile);
@@ -650,7 +634,7 @@ void TexCache(void)
 
    if ((rdp.tex & 1) && tmu_0 < NUM_TMU)
    {
-         if (tex_found[0][tmu_0] != -1)
+      if (tex_found[0][tmu_0] != -1)
       {
          CACHE_LUT *cache;
          LRDP(" | |- T0 found in cache.\n");
@@ -669,7 +653,7 @@ void TexCache(void)
    }
    if ((rdp.tex & 2) && tmu_1 < NUM_TMU)
    {
-         if (tex_found[1][tmu_1] != -1)
+      if (tex_found[1][tmu_1] != -1)
       {
          CACHE_LUT *cache;
          LRDP(" | |- T1 found in cache.\n");
@@ -694,7 +678,7 @@ void TexCache(void)
       tmu_v[1] = tmu_1;
       for (i = 0; i < NUM_TMU; i++)
       {
-         int tile, filter;
+         int tile;
          const int tmu = tmu_v[i];
 
          if (tmu >= NUM_TMU)
@@ -706,55 +690,51 @@ void TexCache(void)
          if (rdp.cur_cache[i])
          {
             uint32_t mode_s, mode_t;
-            int clamp_s, clamp_t;
+            int cs, ct, filter;
             if (rdp.force_wrap && !rdp.texrecting)
             {
-               clamp_s = rdp.tiles[tile].clamp_s && rdp.tiles[tile].lr_s-rdp.tiles[tile].ul_s < 256;
-               clamp_t = rdp.tiles[tile].clamp_t && rdp.tiles[tile].lr_t-rdp.tiles[tile].ul_t < 256;
+               cs = g_gdp.tile[tile].cs && g_gdp.tile[tile].sl - g_gdp.tile[tile].sh < 256;
+               ct = g_gdp.tile[tile].ct && g_gdp.tile[tile].tl - g_gdp.tile[tile].th < 256;
             }
             else
             {
-               clamp_s = (rdp.tiles[tile].clamp_s || rdp.tiles[tile].mask_s == 0) &&
-                  rdp.tiles[tile].lr_s-rdp.tiles[tile].ul_s < 256;
-               clamp_t = (rdp.tiles[tile].clamp_t || rdp.tiles[tile].mask_t == 0) &&
-                  rdp.tiles[tile].lr_t-rdp.tiles[tile].ul_t < 256;
+               cs = (g_gdp.tile[tile].cs || g_gdp.tile[tile].mask_s == 0) &&
+                  g_gdp.tile[tile].sl - g_gdp.tile[tile].sh < 256;
+               ct = (g_gdp.tile[tile].ct || g_gdp.tile[tile].mask_t == 0) &&
+                  g_gdp.tile[tile].tl - g_gdp.tile[tile].th < 256;
             }
 
             mode_s = GR_TEXTURECLAMP_WRAP;
             mode_t = GR_TEXTURECLAMP_WRAP;
 
-            if (clamp_s)
+            if (cs)
                mode_s = GR_TEXTURECLAMP_CLAMP;
-            else if (rdp.tiles[tile].mirror_s)
+            else if (g_gdp.tile[tile].ms)
                mode_s = GR_TEXTURECLAMP_MIRROR_EXT;
 
-            if (clamp_t)
+            if (ct)
                mode_t = GR_TEXTURECLAMP_CLAMP;
-            else if (rdp.tiles[tile].mirror_t)
+            else if (g_gdp.tile[tile].mt)
                mode_t = GR_TEXTURECLAMP_MIRROR_EXT;
 
             if (settings.filtering == 0)
-               filter = (rdp.filter_mode!=2)?GR_TEXTUREFILTER_POINT_SAMPLED:GR_TEXTUREFILTER_3POINT_LINEAR;
+               filter = (gDP.otherMode.textureFilter == 2)? GR_TEXTUREFILTER_3POINT_LINEAR : GR_TEXTUREFILTER_POINT_SAMPLED;
             else
                filter = (settings.filtering==1)? GR_TEXTUREFILTER_3POINT_LINEAR : (settings.filtering==2)?GR_TEXTUREFILTER_POINT_SAMPLED:GR_TEXTUREFILTER_BILINEAR;
             grTexFilterClampMode (tmu, mode_s, mode_t, filter, filter);
          }
       }
    }
-
-   LRDP(" | +- TexCache End\n");
 }
 
 // Does the actual texture loading after everything is prepared
 static void LoadTex(int id, int tmu)
 {
-   int td, lod, aspect, shift, size_max, wid, hei, modifyPalette;
+   int lod, aspect, shift, size_max, wid, hei, modifyPalette;
    uint32_t size_x, size_y, real_x, real_y, result;
    uint32_t mod, modcolor, modcolor1, modcolor2, modfactor;
    CACHE_LUT *cache;
-   FRDP (" | |-+ LoadTex (id: %d, tmu: %d)\n", id, tmu);
-
-   td = rdp.cur_tile + id;
+   int td = rdp.cur_tile + id;
 
    if (texinfo[id].width < 0 || texinfo[id].height < 0)
       return;
@@ -774,25 +754,25 @@ static void LoadTex(int id, int tmu)
 
    //!Hackalert
    //GoldenEye water texture. It has CI format in fact, but the game set it to RGBA
-   if ((settings.hacks&hack_GoldenEye) && rdp.tiles[td].format == G_IM_FMT_RGBA && rdp.tlut_mode == 2 && rdp.tiles[td].size == G_IM_SIZ_16b)
+   if ((settings.hacks&hack_GoldenEye) && g_gdp.tile[td].format == G_IM_FMT_RGBA && rdp.tlut_mode == 2 && g_gdp.tile[td].size == G_IM_SIZ_16b)
    {
-      rdp.tiles[td].format = G_IM_FMT_CI;
-      rdp.tiles[td].size = G_IM_SIZ_8b;
+      g_gdp.tile[td].format = G_IM_FMT_CI;
+      g_gdp.tile[td].size = G_IM_SIZ_8b;
    }
 
    // Set the data
-   cache->line = rdp.tiles[td].line;
-   cache->addr = rdp.addr[rdp.tiles[td].t_mem];
-   cache->crc = texinfo[id].crc;
-   cache->palette = rdp.tiles[td].palette;
-   cache->width = rdp.tiles[td].width;
-   cache->height = rdp.tiles[td].height;
-   cache->format = rdp.tiles[td].format;
-   cache->size = rdp.tiles[td].size;
-   cache->tmem_addr = voodoo.tmem_ptr[tmu];
-   cache->set_by = rdp.timg.set_by;
+   cache->line       = g_gdp.tile[td].line;
+   cache->addr       = rdp.addr[g_gdp.tile[td].tmem];
+   cache->crc        = texinfo[id].crc;
+   cache->palette    = g_gdp.tile[td].palette;
+   cache->width      = gDP.tiles[td].width;
+   cache->height     = gDP.tiles[td].height;
+   cache->format     = g_gdp.tile[td].format;
+   cache->size       = g_gdp.tile[td].size;
+   cache->tmem_addr  = voodoo.tmem_ptr[tmu];
+   cache->set_by     = rdp.timg.set_by;
    cache->texrecting = rdp.texrecting;
-   cache->last_used = frame_count;
+   cache->last_used  = frame_count;
    cache->uses = 0;
    cache->flags = texinfo[id].flags;
 
@@ -803,8 +783,8 @@ static void LoadTex(int id, int tmu)
    cache->t_info.format = GR_TEXFMT_ARGB_1555;
 
    // Calculate lod and aspect
-   size_x = rdp.tiles[td].width;
-   size_y = rdp.tiles[td].height;
+   size_x = gDP.tiles[td].width;
+   size_y = gDP.tiles[td].height;
 
    for (shift=0; (1<<shift) < (int)size_x; shift++);
    size_x = 1 << shift;
@@ -812,7 +792,7 @@ static void LoadTex(int id, int tmu)
    size_y = 1 << shift;
 
    // Calculate the maximum size
-   size_max = max (size_x, size_y);
+   size_max = MAX(size_x, size_y);
    real_x = size_max;
    real_y = size_max;
    switch (size_max)
@@ -939,7 +919,6 @@ static void LoadTex(int id, int tmu)
    else cache->c_scl_x = 0.0f;
    if (hei != 1) cache->c_scl_y = cache->scale;
    else cache->c_scl_y = 0.0f;
-   // **
 
    if (id == 0)
    {
@@ -984,7 +963,7 @@ static void LoadTex(int id, int tmu)
          case TMOD_TEX_INTER_COLOR_USING_FACTOR:
             percent_r = percent_g = percent_b = modfactor / 255.0f;
          case TMOD_TEX_INTER_COL_USING_COL1:
-            do
+            while(--size)
             {
                uint8_t a = (*col & 0x0001);
                uint8_t r = (uint8_t)
@@ -994,40 +973,31 @@ static void LoadTex(int id, int tmu)
                uint8_t b = (uint8_t)
                   ((1-percent_b) * (((*col & 0x003E) >>  1)) + percent_b * cb0);
 
-               *col++ = (uint16_t)(((uint16_t)(r >> 3) << 11) |
-                     ((uint16_t)(g >> 3) << 6) |
-                     ((uint16_t)(b >> 3) << 1) |
-                     ((uint16_t)(a ) << 0));
-            }while(--size);
+               *col++    = PAL8toRGBA16(r, g, b, a);
+            };
             break;
          case TMOD_FULL_COLOR_SUB_TEX:
-            do
+            while(--size)
             {
                uint8_t a = ca0 - (*col & 0x0001);
                uint8_t r = cr0 - (((*col & 0xF800) >> 11));
                uint8_t g = cg0 - (((*col & 0x07C0) >> 6));
                uint8_t b = cb0 - (((*col & 0x003E) >> 1));
-               *col++ = (uint16_t)(((uint16_t)(r >> 3) << 11) |
-                     ((uint16_t)(g >> 3) << 6) |
-                     ((uint16_t)(b >> 3) << 1) |
-                     ((uint16_t)(a ) << 0));
-            }while(--size);
+               *col++    = PAL8toRGBA16(r, g, b, a);
+            };
             break;
          case TMOD_TEX_SUB_COL:
-            do
+            while(--size)
             {
                uint8_t a = (*col & 0x0001);
                uint8_t r = (((*col & 0xF800) >> 11)) - cr0;
                uint8_t g = (((*col & 0x07C0) >> 6)) - cg0;
                uint8_t b = (((*col & 0x003E) >> 1)) - cb0;
-               *col++ = (uint16_t)(((uint16_t)(r >> 3) << 11) |
-                     ((uint16_t)(g >> 3) << 6) |
-                     ((uint16_t)(b >> 3) << 1) |
-                     ((uint16_t)(a ) << 0));
-            }while(--size);
+               *col++    = PAL8toRGBA16(r, g, b, a);
+            };
             break;
          case TMOD_COL_INTER_COL1_USING_TEX:
-            do
+            while(--size)
             {
                float percent_r = ((*col & 0xF800) >> 11) / 31.0f;
                float percent_g = ((*col & 0x07C0) >> 6) / 31.0f;
@@ -1036,106 +1006,73 @@ static void LoadTex(int id, int tmu)
                uint8_t r = (uint8_t)((1.0f-percent_r) * cr0 + percent_r * cr1);
                uint8_t g = (uint8_t)((1.0f-percent_g) * cg0 + percent_g * cg1);
                uint8_t b = (uint8_t)((1.0f-percent_b) * cb0 + percent_b * cb1);
-               *col++ = (uint16_t)(((uint16_t)(r >> 3) << 11) |
-                     ((uint16_t)(g >> 3) << 6) |
-                     ((uint16_t)(b >> 3) << 1) |
-                     ((uint16_t)(a ) << 0));
-            }while(--size);
+               *col++    = PAL8toRGBA16(r, g, b, a);
+            };
             break;
          case TMOD_TEX_SUB_COL_MUL_FAC_ADD_TEX:
             {
                float percent = modfactor / 255.0f;
 
-               do
+               while(--size)
                {
                   uint8_t a = (*col & 0x0001);
                   float r = (uint8_t)((float)((*col & 0xF800) >> 11));
                   float g = (uint8_t)((float)((*col & 0x07C0) >> 6));
                   float b = (uint8_t)((float)((*col & 0x003E) >> 1));
                   r = (r - cr0) * percent + r;
-                  if (r > 255.0f)
-                     r = 255.0f;
-                  if (r < 0.0f)
-                     r = 0.0f;
                   g = (g - cg0) * percent + g;
-                  if (g > 255.0f)
-                     g = 255.0f;
-                  if (g < 0.0f)
-                     g = 0.0f;
                   b = (b - cb0) * percent + b;
-                  if (b > 255.0f)
-                     g = 255.0f;
-                  if (b < 0.0f)
-                     b = 0.0f;
-                  *col++ = (uint16_t)(((uint16_t)((uint8_t)(r) >> 3) << 11) |
-                        ((uint16_t)((uint8_t)(g) >> 3) << 6) |
-                        ((uint16_t)((uint8_t)(b) >> 3) << 1) |
-                        (uint16_t)(a) );
-               }while(--size);
+
+                  /* clipping the result */
+                  r = clamp_float(r, 0.0f, 255.0f);
+                  g = clamp_float(g, 0.0f, 255.0f);
+                  b = clamp_float(b, 0.0f, 255.0f);
+                  *col++    = PAL8toRGBA16(r, g, b, a);
+               };
             }
             break;
          case TMOD_TEX_SUB_COL_MUL_FAC:
             {
                float percent = modfactor / 255.0f;
 
-               do
+               while(--size)
                {
                   uint8_t a = (*col & 0x0001);
-                  float r = (((float)((*col & 0xF800) >> 11)) - cr0) * percent;
-                  float g = (((float)((*col & 0x07C0) >> 6)) - cg0) * percent;
-                  float b = ((float)((*col & 0x003E) >> 1) - cb0) * percent;
-                  if (r > 255.0f)
-                     r = 255.0f;
-                  if (r < 0.0f)
-                     r = 0.0f;
-                  if (g > 255.0f)
-                     g = 255.0f;
-                  if (g < 0.0f)
-                     g = 0.0f;
-                  if (b > 255.0f)
-                     g = 255.0f;
-                  if (b < 0.0f)
-                     b = 0.0f;
-
-                  *col++ = (uint16_t)(((uint16_t)((uint8_t)(r) >> 3) << 11) |
-                        ((uint16_t)((uint8_t)(g) >> 3) << 6) |
-                        ((uint16_t)((uint8_t)(b) >> 3) << 1) |
-                        (uint16_t)(a) );
-               }while(--size);
+                  float r   = (((float)((*col & 0xF800) >> 11)) - cr0) * percent;
+                  float g   = (((float)((*col & 0x07C0) >> 6)) - cg0) * percent;
+                  float b   = ((float)((*col & 0x003E) >> 1) - cb0) * percent;
+                  r         = clamp_float(r, 0.0f, 255.0f);
+                  g         = clamp_float(g, 0.0f, 255.0f);
+                  b         = clamp_float(b, 0.0f, 255.0f);
+                  *col++    = PAL8toRGBA16(r, g, b, a);
+               };
             }
          case TMOD_TEX_SCALE_COL_ADD_COL:
             percent_r = ((modcolor1 >> 24) & 0xFF) / 255.0f;
             percent_g = ((modcolor1 >> 16) & 0xFF) / 255.0f;
             percent_b = ((modcolor1 >> 8)  & 0xFF) / 255.0f;
 
-            do
+            while(--size)
             {
                uint8_t a = (*col & 0x0001);
                uint8_t r = (uint8_t)(percent_r * ((*col & 0xF800) >> 11)) + cr0;
                uint8_t g = (uint8_t)(percent_g * ((*col & 0x07C0) >> 6)) + cg0;
                uint8_t b = (uint8_t)(percent_b * ((*col & 0x003E) >> 1)) + cb0;
-               *col++ = (uint16_t)(((uint16_t)(r >> 3) << 11) |
-                     ((uint16_t)(g >> 3) << 6) |
-                     ((uint16_t)(b >> 3) << 1) |
-                     ((uint16_t)(a ) << 0));
-            }while(--size);
+               *col++    = PAL8toRGBA16(r, g, b, a);
+            };
             break;
          case TMOD_TEX_ADD_COL:
-            do
+            while(--size)
             {
                uint8_t a = (*col & 0x0001);
                uint8_t r = cr0 + (((*col & 0xF800) >> 11));
                uint8_t g = cg0 + (((*col & 0x07C0) >> 6));
                uint8_t b = cb0 + (((*col & 0x003E) >> 1));
-               *col++ = (uint16_t)(((uint16_t)(r >> 3) << 11) |
-                     ((uint16_t)(g >> 3) << 6) |
-                     ((uint16_t)(b >> 3) << 1) |
-                     ((uint16_t)(a ) << 0));
-            }while(--size);
-            break;
+               *col++    = PAL8toRGBA16(r, g, b, a);
+            };
             break;
          case TMOD_COL_INTER_TEX_USING_COL1:
-            do
+            while(--size)
             {
                uint8_t a = (*col & 0x0001);
                uint8_t r = (uint8_t)
@@ -1144,11 +1081,8 @@ static void LoadTex(int id, int tmu)
                   (uint8_t)(percent_g * ((*col & 0x07C0) >>  6) + (1-percent_g) * cg0);
                uint8_t b =
                   (uint8_t)(percent_b * ((*col & 0x003E) >>  1) + (1-percent_b) * cb0);
-               *col++ = (uint16_t)(((uint16_t)(r >> 3) << 11) |
-                     ((uint16_t)(g >> 3) << 6) |
-                     ((uint16_t)(b >> 3) << 1) |
-                     ((uint16_t)(a ) << 0));
-            }while(--size);
+               *col++    = PAL8toRGBA16(r, g, b, a);
+            };
             break;
          case TMOD_TEX_INTER_COL_USING_TEXA:
             {
@@ -1158,86 +1092,69 @@ static void LoadTex(int id, int tmu)
                uint8_t a = (modcolor & 0xFF) ? 1 : 0;
                uint16_t col16 = ((r << 11)|(g << 6)|(b << 1) | a);
 
-               do
+               while(--size)
                {
                   *col = (*col & 1) ? col16 : *col;
-                  *col++;
-               }while(--size);
+                  col++;
+               };
             }
             break;
          case TMOD_TEX_MUL_COL:
-            do
+            while(--size)
             {
                uint8_t a = (*col & 0x0001);
                uint8_t r = (((*col & 0xF800) >> 11) * cr0);
                uint8_t g = (((*col & 0x07C0) >> 6) * cg0);
                uint8_t b = (((*col & 0x003E) >> 1) * cb0);
-               *col++ = (uint16_t)(((uint16_t)(r >> 3) << 11) |
-                     ((uint16_t)(g >> 3) << 6) |
-                     ((uint16_t)(b >> 3) << 1) |
-                     ((uint16_t)(a ) << 0));
-            }while(--size);
+               *col++    = PAL8toRGBA16(r, g, b, a);
+            };
             break;
       }
 
       memcpy(rdp.pal_8, tmp_pal, 512);
    }
 
-   cache->mod = mod;
-   cache->mod_color = modcolor;
+   cache->mod        = mod;
+   cache->mod_color  = modcolor;
    cache->mod_color1 = modcolor1;
    cache->mod_factor = modfactor;
 
    result = 0;	// keep =0 so it doesn't mess up on the first split
 
-   texture = tex1;
+   texture = (uint8_t *)tex1;
 
    {
       uint32_t size;
-	  int min_x, min_y;
+      int min_x, min_y;
 
-      result = load_table[rdp.tiles[td].size][rdp.tiles[td].format]
-         ((uintptr_t)(texture), (uintptr_t)(g_gdp.tmem)+(rdp.tiles[td].t_mem<<3),
+      result = load_table[g_gdp.tile[td].size][g_gdp.tile[td].format]
+         ((uintptr_t)(texture), (uintptr_t)(g_gdp.tmem)+(g_gdp.tile[td].tmem<<3),
           texinfo[id].wid_64, texinfo[id].height, texinfo[id].line, real_x, td);
 
       size = HIWORD(result);
 
-      if (rdp.tiles[td].mask_s != 0)
-         min_x = min((int)real_x, 1<<rdp.tiles[td].mask_s);
+      if (g_gdp.tile[td].mask_s != 0)
+         min_x = MIN((int)real_x, 1 << g_gdp.tile[td].mask_s);
       else
          min_x = real_x;
-      if (rdp.tiles[td].mask_t != 0)
-         min_y  = min((int)real_y, 1<<rdp.tiles[td].mask_t);
+      if (g_gdp.tile[td].mask_t != 0)
+         min_y  = MIN((int)real_y, 1 << g_gdp.tile[td].mask_t);
       else
          min_y = real_y;
 
       // Load using mirroring/clamping
       if (min_x > texinfo[id].width && (signed)real_x > texinfo[id].width) /* real_x unsigned just for right shift */
-      {
-         if (size == 1)
-            Clamp16bS ((texture), texinfo[id].width, min_x, real_x, texinfo[id].height);
-         else if (size == 2)
-            Clamp32bS ((texture), texinfo[id].width, min_x, real_x, texinfo[id].height);
-         else
-            Clamp8bS ((texture), texinfo[id].width, min_x, real_x, texinfo[id].height);
-      }
+         ClampTex(texture, texinfo[id].width, min_x, real_x, texinfo[id].height, size);
 
       if (texinfo[id].width < (int)real_x)
       {
-         bool cond_true = rdp.tiles[td].mask_s != 0
-               && (real_x > (1U << rdp.tiles[td].mask_s));
+         bool cond_true = g_gdp.tile[td].mask_s != 0
+            && (real_x > (1U << g_gdp.tile[td].mask_s));
 
-         if (rdp.tiles[td].mirror_s && cond_true)
+         if (g_gdp.tile[td].ms && cond_true)
          {
-            if (size == 1)
-               Mirror16bS ((texture), rdp.tiles[td].mask_s,
-                     real_x, real_x, texinfo[id].height);
-            else if (size == 2)
-               Mirror32bS ((texture), rdp.tiles[td].mask_s,
-                     real_x, real_x, texinfo[id].height);
-            else
-               Mirror8bS ((texture), rdp.tiles[td].mask_s,
-                     real_x, real_x, texinfo[id].height);
+            MirrorTex((texture), g_gdp.tile[td].mask_s,
+                  real_x, real_x, texinfo[id].height, size);
          }
          else if (cond_true)
          {
@@ -1245,7 +1162,7 @@ static void LoadTex(int id, int tmu)
             uint8_t *tex        = (uint8_t*)texture;
             uint32_t max_height = texinfo[id].height;
             uint8_t shift_a     = (size == 0) ? 2 : (size == 1) ? 1 : 0;
-            uint32_t mask_width = (1 << rdp.tiles[td].mask_s);
+            uint32_t mask_width = (1 << g_gdp.tile[td].mask_s);
             uint32_t mask_mask  = (mask_width-1) >> shift_a;
             int32_t count       = (real_x - mask_width) >> shift_a;
             int32_t line_full   = real_x << size;
@@ -1283,12 +1200,12 @@ static void LoadTex(int id, int tmu)
 
       if (texinfo[id].height < (int)real_y)
       {
-         if (rdp.tiles[td].mirror_t)
+         if (g_gdp.tile[td].mt)
          {
             // Vertical Mirror
-            if (rdp.tiles[td].mask_t != 0 && (real_y > (1U << rdp.tiles[td].mask_t)))
+            if (g_gdp.tile[td].mask_t != 0 && (real_y > (1U << g_gdp.tile[td].mask_t)))
             {
-               uint32_t mask_height = (1 << rdp.tiles[td].mask_t);
+               uint32_t mask_height = (1 << g_gdp.tile[td].mask_t);
                uint32_t mask_mask   = mask_height-1;
                int32_t line_full    = real_x << size;
                uint8_t *dst         = (uint8_t*)(texture + mask_height * line_full);
@@ -1305,11 +1222,11 @@ static void LoadTex(int id, int tmu)
                }
             }
          }
-         else if (rdp.tiles[td].mask_t != 0 && real_y > (1U << rdp.tiles[td].mask_t))
+         else if (g_gdp.tile[td].mask_t != 0 && real_y > (1U << g_gdp.tile[td].mask_t))
          {
             // Vertical Wrap
             uint32_t wrap_size   = size;
-            uint32_t mask_height = (1 << rdp.tiles[td].mask_t);
+            uint32_t mask_height = (1 << g_gdp.tile[td].mask_t);
             uint32_t y           = mask_height;
             uint32_t mask_mask   = mask_height-1;
             int32_t line_full    = real_x << wrap_size;
@@ -1331,71 +1248,71 @@ static void LoadTex(int id, int tmu)
 
    if (mod && !modifyPalette)
    {
-	   int size      = real_x * real_y;
-      uint32_t *src = (uint32_t*)texture;
-      uint32_t *dst = (uint32_t*)tex2;
+	   int size        = real_x * real_y;
+      uint32_t *src   = (uint32_t*)texture;
+      uint32_t *dst   = tex2;
+      unsigned texfmt = LOWORD(result);
 
-      // Convert the texture to ARGB 4444
-      if (LOWORD(result) == GR_TEXFMT_ARGB_1555)
+      /* Convert the texture to ARGB 4444 */
+
+      switch (texfmt)
       {
-         // 2 pixels are converted in one loop
-         // NOTE: width * height must be a multiple of 2
-         
-         size >>= 1;
+         case GR_TEXFMT_ARGB_1555:
+            /* 2 pixels are converted in one loop
+             * NOTE: width * height must be a multiple of 2 */
 
-         do
-         {
-            uint32_t col = *src++;
-            *dst++ = ((col & 0x1E001E) >> 1) | ((col & 0x3C003C0) >> 2) | ((col & 0x78007800) >> 3) | ((col & 0x80008000) >> 3) | ((col & 0x80008000) >> 2) | ((col & 0x80008000) >> 1) | (col & 0x80008000);
-         }while(--size);
+            size >>= 1;
 
-         texture = tex2;
-      }
-      else if (LOWORD(result) == GR_TEXFMT_ALPHA_INTENSITY_88)
-      {
-         // 2 pixels are converted in one loop
-         // NOTE: width * height must be a multiple of 2
-         
-         size >>= 1;
-        
-         do
-         {
-            uint32_t col = *src++;
-            *dst++ = (16 * (col & 0xF000F0) >> 8) | (col & 0xF000F0) | (16 * (col & 0xF000F0)) | (col & 0xF000F000);
-         }while (--size);
-         texture = tex2;
-      }
-      else if (LOWORD(result) == GR_TEXFMT_ALPHA_INTENSITY_44)
-      {
-         // 4 pixels are converted in one loop
-         // NOTE: width * height must be a multiple of 4
-         
-         size >>= 2;
+            while (size--)
+            {
+               uint32_t col = *src++;
+               *dst++ = ((col & 0x1E001E) >> 1) | ((col & 0x3C003C0) >> 2) | ((col & 0x78007800) >> 3) | ((col & 0x80008000) >> 3) | ((col & 0x80008000) >> 2) | ((col & 0x80008000) >> 1) | (col & 0x80008000);
+            }
 
-         do
-         {
-            uint32_t col = *src++;
-            *dst++ = ((((uint16_t)col << 8) & 0xFF00 & 0xF00u) >> 8) | ((((uint16_t)col << 8) & 0xFF00 & 0xF00u) >> 4) | (uint16_t)(((uint16_t)col << 8) & 0xFF00) | (((col << 16) & 0xF000000) >> 8) | (((col << 16) & 0xF000000) >> 4) | ((col << 16) & 0xFF000000);
-            *dst++ = (((col >> 8) & 0xF00) >> 8) | (((col >> 8) & 0xF00) >> 4) | ((col >> 8) & 0xFF00) | ((col & 0xF000000) >> 8) | ((col & 0xF000000) >> 4) | (col & 0xFF000000);
-         }while (--size);
+            texture = (uint8_t *)tex2;
+            break;
+         case GR_TEXFMT_ALPHA_INTENSITY_88:
+            /* 2 pixels are converted in one loop
+             * NOTE: width * height must be a multiple of 2 */
+            size >>= 1;
 
-         texture = tex2;
-      }
-      else if (LOWORD(result) == GR_TEXFMT_ALPHA_8)
-      {
-         // 4 pixels are converted in one loop
-         // NOTE: width * height must be a multiple of 4
-         
-         size >>= 2;
+            while (size--)
+            {
+               uint32_t col = *src++;
+               *dst++ = (16 * (col & 0xF000F0) >> 8) | (col & 0xF000F0) | (16 * (col & 0xF000F0)) | (col & 0xF000F000);
+            }
+            texture = (uint8_t *)tex2;
+            break;
+         case GR_TEXFMT_ALPHA_INTENSITY_44:
+            /* 4 pixels are converted in one loop
+             * NOTE: width * height must be a multiple of 4 */
 
-         do
-         {
-            uint32_t col = *src++;
-            *dst++ = ((col & 0xF0) << 8 >> 12) | (uint8_t)(col & 0xF0) | (16 * (uint8_t)(col & 0xF0) & 0xFFFFFFF) | ((uint8_t)(col & 0xF0) << 8) | (16 * (uint16_t)(col & 0xF000) & 0xFFFFF) | (((uint16_t)(col & 0xF000) << 8) & 0xFFFFFF) | (((uint16_t)(col & 0xF000) << 12) & 0xFFFFFFF) | ((uint16_t)(col & 0xF000) << 16);
-            *dst++ = ((col & 0xF00000) >> 20) | ((col & 0xF00000) >> 16) | ((col & 0xF00000) >> 12) | ((col & 0xF00000) >> 8) | ((col & 0xF0000000) >> 12) | ((col & 0xF0000000) >> 8) | ((col & 0xF0000000) >> 4) | (col & 0xF0000000);
-         }while (--size);
+            size >>= 2;
 
-         texture = tex2;
+            while (size--)
+            {
+               uint32_t col = *src++;
+               *dst++ = ((((uint16_t)col << 8) & 0xFF00 & 0xF00u) >> 8) | ((((uint16_t)col << 8) & 0xFF00 & 0xF00u) >> 4) | (uint16_t)(((uint16_t)col << 8) & 0xFF00) | (((col << 16) & 0xF000000) >> 8) | (((col << 16) & 0xF000000) >> 4) | ((col << 16) & 0xFF000000);
+               *dst++ = (((col >> 8) & 0xF00) >> 8) | (((col >> 8) & 0xF00) >> 4) | ((col >> 8) & 0xFF00) | ((col & 0xF000000) >> 8) | ((col & 0xF000000) >> 4) | (col & 0xFF000000);
+            }
+
+            texture = (uint8_t *)tex2;
+            break;
+         case GR_TEXFMT_ALPHA_8:
+            /* 4 pixels are converted in one loop
+             * NOTE: width * height must be a multiple of 4 */
+
+            size >>= 2;
+
+            while (size--)
+            {
+               uint32_t col = *src++;
+               *dst++ = ((col & 0xF0) << 8 >> 12) | (uint8_t)(col & 0xF0) | (16 * (uint8_t)(col & 0xF0) & 0xFFFFFFF) | ((uint8_t)(col & 0xF0) << 8) | (16 * (uint16_t)(col & 0xF000) & 0xFFFFF) | (((uint16_t)(col & 0xF000) << 8) & 0xFFFFFF) | (((uint16_t)(col & 0xF000) << 12) & 0xFFFFFFF) | ((uint16_t)(col & 0xF000) << 16);
+               *dst++ = ((col & 0xF00000) >> 20) | ((col & 0xF00000) >> 16) | ((col & 0xF00000) >> 12) | ((col & 0xF00000) >> 8) | ((col & 0xF0000000) >> 12) | ((col & 0xF0000000) >> 8) | ((col & 0xF0000000) >> 4) | (col & 0xF0000000);
+            }
+
+            texture = (uint8_t *)tex2;
+            break;
       }
 
       result = (1 << 16) | GR_TEXFMT_ARGB_4444;
@@ -1409,17 +1326,19 @@ static void LoadTex(int id, int tmu)
          ((modcolor2 & 0x0000F000) >> 8) | ((modcolor2 & 0x000000F0) >> 4);
 
       {
+		  uint16_t *dst;
+		  uint32_t cr0, cg0, cb0, cr1, cg1, cb1, cr2, cg2, cb2;
          size = (real_x * real_y) << 1;
-         uint16_t *dst = (uint16_t*)texture;
-         uint32_t cr0 = (modcolor >> 12) & 0xF;
-         uint32_t cg0 = (modcolor >> 8) & 0xF;
-         uint32_t cb0 = (modcolor >> 4) & 0xF;
-         uint32_t cr1 = (modcolor1 >> 12) & 0xF;
-         uint32_t cg1 = (modcolor1 >> 8) & 0xF;
-         uint32_t cb1 = (modcolor1 >> 4) & 0xF;
-         uint32_t cr2 = (modcolor2 >> 12) & 0xF;
-         uint32_t cg2 = (modcolor2 >> 8) & 0xF;
-         uint32_t cb2 = (modcolor2 >> 4) & 0xF;
+         dst = (uint16_t*)texture;
+         cr0 = (modcolor >> 12) & 0xF;
+         cg0 = (modcolor >> 8) & 0xF;
+         cb0 = (modcolor >> 4) & 0xF;
+         cr1 = (modcolor1 >> 12) & 0xF;
+         cg1 = (modcolor1 >> 8) & 0xF;
+         cb1 = (modcolor1 >> 4) & 0xF;
+         cr2 = (modcolor2 >> 12) & 0xF;
+         cg2 = (modcolor2 >> 8) & 0xF;
+         cb2 = (modcolor2 >> 4) & 0xF;
 
          switch (mod)
          {
@@ -1427,7 +1346,7 @@ static void LoadTex(int id, int tmu)
                {
                   float percent = modfactor / 255.0f;
 
-                  do
+                  while (size--)
                   {
                      uint8_t r = (uint8_t)
                         ((1 - percent) * (((*dst) >> 8) & 0xF) + percent * cr0);
@@ -1435,8 +1354,9 @@ static void LoadTex(int id, int tmu)
                         ((1 - percent) * (((*dst) >> 4) & 0xF) + percent * cg0);
                      uint8_t b = (uint8_t)
                         ((1 - percent) * ((*dst) & 0xF) + percent * cb0);
-                     *(dst++) = (*dst & 0xF000) | (r << 8) | (g << 4) | b;
-                  }while(--size);
+                     *dst = (*dst & 0xF000) | (r << 8) | (g << 4) | b;
+                     dst++;
+                  }
                }
                break;
             case TMOD_TEX_INTER_COL_USING_COL1:
@@ -1445,7 +1365,7 @@ static void LoadTex(int id, int tmu)
                   float percent_g = cg1 / 15.0f;
                   float percent_b = cb1 / 15.0f;
 
-                  do
+                  while (size--)
                   {
                      uint8_t r = (uint8_t)
                         ((1 - percent_r) * (((*dst) >> 8) & 0xF) + percent_r * cr0);
@@ -1453,24 +1373,26 @@ static void LoadTex(int id, int tmu)
                         ((1 - percent_g) * (((*dst) >> 4) & 0xF) + percent_g * cg0);
                      uint8_t b = (uint8_t)
                         ((1 - percent_b) * ((*dst) & 0xF) + percent_b * cb0);
-                     *(dst++) = (*dst & 0xF000) | (r << 8) | (g << 4) | b;
-                  }while(--size);
+                     *dst = (*dst & 0xF000) | (r << 8) | (g << 4) | b;
+                     dst++;
+                  }
                }
                break;
             case TMOD_FULL_COLOR_SUB_TEX:
                {
-                  do
+                  while (size--)
                   {
                      uint8_t a = ((modcolor & 0xF) - (((*dst) >> 12) & 0xF));
                      uint8_t r = (cr0 - (((*dst) >> 8) & 0xF));
                      uint8_t g = (cg0 - (((*dst) >> 4) & 0xF));
                      uint8_t b = (cb0 - (*dst & 0xF));
-                     *(dst++) = (a << 12) | (r << 8) | (g << 4) | b;
-                  }while(--size);
+                     *dst = (a << 12) | (r << 8) | (g << 4) | b;
+                     dst++;
+                  }
                }
                break;
             case TMOD_COL_INTER_COL1_USING_TEX:
-               do
+               while (size--)
                {
                   float percent_r = (((*dst) >> 8) & 0xF) / 15.0f;
                   float percent_g = (((*dst) >> 4) & 0xF) / 15.0f;
@@ -1478,8 +1400,9 @@ static void LoadTex(int id, int tmu)
                   uint8_t r = (uint8_t)((1.0f-percent_r) * cr0 + percent_r * cr1 + 0.0001f);
                   uint8_t g = (uint8_t)((1.0f-percent_g) * cg0 + percent_g * cg1 + 0.0001f);
                   uint8_t b = (uint8_t)((1.0f-percent_b) * cb0 + percent_b * cb1 + 0.0001f);
-                  *(dst++) = (*dst & 0xF000) | (r << 8) | (g << 4) | b;
-               }while(--size);
+                  *dst = (*dst & 0xF000) | (r << 8) | (g << 4) | b;
+                  dst++;
+               }
                break;
             case TMOD_COL_INTER_COL1_USING_TEXA:
             case TMOD_COL_INTER_COL1_USING_TEXA__MUL_TEX:
@@ -1487,7 +1410,7 @@ static void LoadTex(int id, int tmu)
 
                   if (mod == TMOD_COL_INTER_COL1_USING_TEXA__MUL_TEX)
                   {
-                     do
+                     while (size--)
                      {
                         float percent = ((*dst & 0xF000) >> 12) / 15.0f;
                         uint8_t r = (uint8_t)
@@ -1496,19 +1419,21 @@ static void LoadTex(int id, int tmu)
                            ((((1 - percent) * cg0 + percent * cg1) / 15.0f) * ((((*dst) & 0x00F0) >> 4) / 15.0f) * 15.0f);
                         uint8_t b = (uint8_t)
                            ((((1 - percent) * cb0 + percent * cb1) / 15.0f) * (((*dst) & 0x000F) / 15.0f) * 15.0f);
-                        *(dst++) = (*dst & 0xF000) | (r << 8) | (g << 4) | b;
-                     }while(--size);
+                        *dst = (*dst & 0xF000) | (r << 8) | (g << 4) | b;
+                        dst++;
+                     }
                   }
                   else
                   {
-                     do
+                     while (size--)
                      {
                         float percent = ((*dst & 0xF000) >> 12) / 15.0f;
                         uint8_t r = (uint8_t)((1 - percent)*cr0 + percent*cr1);
                         uint8_t g = (uint8_t)((1 - percent)*cg0 + percent*cg1);
                         uint8_t b = (uint8_t)((1 - percent)*cb0 + percent*cb1);
-                        *(dst++) = (*dst & 0xF000) | (r << 8) | (g << 4) | b;
-                     }while(--size);
+                        *dst = (*dst & 0xF000) | (r << 8) | (g << 4) | b;
+                        dst++;
+                     }
                   }
                }
                break;
@@ -1517,7 +1442,7 @@ static void LoadTex(int id, int tmu)
                {
                   if (mod == TMOD_COL_INTER_TEX_USING_TEX)
                   {
-                     do
+                     while (size--)
                      {
                         float percent_r = (((*dst) >> 8) & 0xF) / 15.0f;
                         float percent_g = (((*dst) >> 4) & 0xF) / 15.0f;
@@ -1528,12 +1453,13 @@ static void LoadTex(int id, int tmu)
                            ((1.0f-percent_g) * cg0 + percent_g * (((*dst) & 0x00F0) >> 4));
                         uint8_t b = (uint8_t)
                            ((1.0f-percent_b) * cb0 + percent_b * ((*dst) & 0x000F));
-                        *(dst++) = (*dst & 0xF000) | (r << 8) | (g << 4) | b;
-                     }while(--size);
+                        *dst = (*dst & 0xF000) | (r << 8) | (g << 4) | b;
+                        dst++;
+                     }
                   }
                   else
                   {
-                     do
+                     while (size--)
                      {
                         float percent = ((*dst & 0xF000) >> 12) / 15.0f;
                         uint8_t r = (uint8_t)
@@ -1542,14 +1468,15 @@ static void LoadTex(int id, int tmu)
                            ((1 - percent)*cg0 + percent*((*dst & 0x00F0) >> 4));
                         uint8_t b = (uint8_t)
                            ((1 - percent)*cb0 + percent*(*dst & 0x000F));
-                        *(dst++) = (*dst & 0xF000) | (r << 8) | (g << 4) | b;
-                     }while(--size);
+                        *dst = (*dst & 0xF000) | (r << 8) | (g << 4) | b;
+                        dst++;
+                     }
                   }
                }
                break;
             case TMOD_COL2_INTER__COL_INTER_COL1_USING_TEX__USING_TEXA:
                {
-                  do
+                  while (size--)
                   {
                      float percent_a = ((*dst & 0xF000) >> 12) / 15.0f;
                      float percent_r = (((*dst) >> 8) & 0xF) / 15.0f;
@@ -1561,45 +1488,45 @@ static void LoadTex(int id, int tmu)
                         (((1.0f-percent_g)*cg0 + percent_g*cg1)*percent_a + cg2*(1.0f-percent_a));
                      uint8_t b = (uint8_t)
                         (((1.0f-percent_b)*cb0 + percent_b*cb1)*percent_a + cb2*(1.0f-percent_a));
-                     *(dst++) = (*dst & 0xF000) | (r << 8) | (g << 4) | b;
-                  }while(--size);
+                     *dst = (*dst & 0xF000) | (r << 8) | (g << 4) | b;
+                     dst++;
+                  }
                }
                break;
             case TMOD_TEX_SCALE_FAC_ADD_FAC:
                {
                   float base_a_plus_percent = ((1.0f - (modfactor / 255.0f)) * 15.0f) + (modfactor / 255.0f);
 
+                  while (size--)
                   {
-                     *(dst++) = ((uint16_t)(base_a_plus_percent * ((*dst) >> 12)) << 12) | ((*dst) & 0x0FFF);
-                  }while(--size);
+                     *dst = ((uint16_t)(base_a_plus_percent * ((*dst) >> 12)) << 12) | ((*dst) & 0x0FFF);
+                      dst++;
+                  }
                }
                break;
             case TMOD_TEX_SUB_COL_MUL_FAC_ADD_TEX:
                {
                   float percent = modfactor / 255.0f;
 
-                  do
+                  while (size--)
                   {
-                     float r, g, b;
-                     r = (float)(((*dst) >> 8) & 0xF);
-                     r = (r - cr0) * percent + r;
-                     if (r > 15.0f) r = 15.0f;
-                     if (r < 0.0f) r = 0.0f;
-                     g = (float)(((*dst) >> 4) & 0xF);
-                     g = (g - cg0) * percent + g;
-                     if (g > 15.0f) g = 15.0f;
-                     if (g < 0.0f) g = 0.0f;
-                     b = (float)(*dst & 0xF);
-                     b = (b - cb0) * percent + b;
-                     if (b > 15.0f) b = 15.0f;
-                     if (b < 0.0f) b = 0.0f;
+                     float r = (float)(((*dst) >> 8) & 0xF);
+                     float g = (float)(((*dst) >> 4) & 0xF);
+                     float b = (float)(*dst & 0xF);
+                     r       = (r - cr0) * percent + r;
+                     r       = clamp_float(r, 0.0f, 15.0f);
+                     g       = (g - cg0) * percent + g;
+                     g       = clamp_float(g, 0.0f, 15.0f);
+                     b       = (b - cb0) * percent + b;
+                     b       = clamp_float(b, 0.0f, 15.0f);
 
-                     *(dst++) = (*dst & 0xF000) | ((uint16_t)r << 8) | ((uint16_t)g << 4) | (uint16_t)b;
-                  }while(--size);
+                     *dst    = (*dst & 0xF000) | ((uint16_t)r << 8) | ((uint16_t)g << 4) | (uint16_t)b;
+                     dst++;
+                  }
                }
                break;
             case TMOD_TEX_SCALE_COL_ADD_COL:
-               do
+               while (size--)
                {
                   float percent_r = (((*dst) >> 8) & 0xF) / 15.0f;
                   float percent_g = (((*dst) >> 4) & 0xF) / 15.0f;
@@ -1607,53 +1534,49 @@ static void LoadTex(int id, int tmu)
                   uint8_t r = (uint8_t)(percent_r * cr0 + cr1 + 0.0001f);
                   uint8_t g = (uint8_t)(percent_g * cg0 + cg1 + 0.0001f);
                   uint8_t b = (uint8_t)(percent_b * cb0 + cb1 + 0.0001f);
-                  *(dst++) = (*dst & 0xF000) | (r << 8) | (g << 4) | b;
-               }while(--size);
+                  *dst = (*dst & 0xF000) | (r << 8) | (g << 4) | b;
+                  dst++;
+               }
                break;
             case TMOD_TEX_ADD_COL:
-               do
+               while (size--)
                {
                   uint8_t r = (uint8_t)(cr0 + (((*dst) >> 8) & 0xF))&0xF;
                   uint8_t g = (uint8_t)(cg0 + (((*dst) >> 4) & 0xF))&0xF;
                   uint8_t b = (uint8_t)(cb0 + ((*dst) & 0xF))&0xF;
-                  *(dst++) = ((((*dst) >> 12) & 0xF) << 12) | (r << 8) | (g << 4) | b;
-               }while(--size);
+                  *dst = ((((*dst) >> 12) & 0xF) << 12) | (r << 8) | (g << 4) | b;
+                  dst++;
+               }
                break;
             case TMOD_TEX_SUB_COL:
                {
-                  do
+                  while (size--)
                   {
                      uint8_t r = (((*dst) >> 8) & 0xF) - cr0;
                      uint8_t g = (((*dst) >> 4) & 0xF) - cg0;
                      uint8_t b = (((*dst) & 0xF) - cb0) - cb0;
-                     *(dst++) = (((*dst) & 0xF000) << 12) | (r << 8) | (g << 4) | b;
-                  }while(--size);
+                     *dst = (((*dst) & 0xF000) << 12) | (r << 8) | (g << 4) | b;
+                     dst++;
+                  }
                }
                break;
             case TMOD_TEX_SUB_COL_MUL_FAC:
                {
                   float percent = modfactor / 255.0f;
 
-                  do
+                  while (size--)
                   {
                      float r = ((float)(((*dst) >> 8) & 0xF) - cr0) * percent;
                      float g = ((float)(((*dst) >> 4) & 0xF) - cg0) * percent;
                      float b = ((float)(*dst & 0xF) - cb0) * percent;
-                     if (r > 15.0f)
-                        r = 15.0f;
-                     if (r < 0.0f)
-                        r = 0.0f;
-                     if (g > 15.0f)
-                        g = 15.0f;
-                     if (g < 0.0f)
-                        g = 0.0f;
-                     if (b > 15.0f)
-                        b = 15.0f;
-                     if (b < 0.0f)
-                        b = 0.0f;
 
-                     *(dst++) = ((((*dst) >> 12) & 0xF) << 12) | ((uint16_t)r << 8) | ((uint16_t)g << 4) | (uint16_t)b;
-                  }while(--size);
+                     r       = clamp_float(r, 0.0f, 15.0f);
+                     g       = clamp_float(g, 0.0f, 15.0f);
+                     b       = clamp_float(b, 0.0f, 15.0f);
+
+                     *dst = ((((*dst) >> 12) & 0xF) << 12) | ((uint16_t)r << 8) | ((uint16_t)g << 4) | (uint16_t)b;
+                     dst++;
+                  }
                }
                break;
             case TMOD_COL_INTER_TEX_USING_COL1:
@@ -1662,7 +1585,7 @@ static void LoadTex(int id, int tmu)
                   float percent_g = cg1 / 15.0f;
                   float percent_b = cb1 / 15.0f;
 
-                  do
+                  while (size--)
                   {
                      uint8_t r = (uint8_t)
                         (percent_r * (((*dst) >> 8) & 0xF) + (1 - percent_r) * cr0);
@@ -1670,19 +1593,21 @@ static void LoadTex(int id, int tmu)
                         (percent_g * (((*dst) >> 4) & 0xF) + (1 - percent_g) * cg0);
                      uint8_t b = (uint8_t)
                         (percent_b * ((*dst) & 0xF) + (1 - percent_b) * cb0);
-                     *(dst++) = ((((*dst) >> 12) & 0xF) << 12) | (r << 8) | (g << 4) | b;
-                  }while(--size);
+                     *dst = ((((*dst) >> 12) & 0xF) << 12) | (r << 8) | (g << 4) | b;
+                     dst++;
+                  }
                }
                break;
             case TMOD_COL_MUL_TEXA_ADD_TEX:
-               do
+               while (size--)
                {
                   float factor = ((*dst & 0xF000) >> 12) / 15.0f;
                   uint8_t r = (uint8_t)(cr0 * factor + (((*dst) >> 8) & 0xF))&0xF;
                   uint8_t g = (uint8_t)(cg0 * factor + (((*dst) >> 4) & 0xF))&0xF;
                   uint8_t b = (uint8_t)(cb0 * factor + ((*dst) & 0xF))&0xF;
-                  *(dst++) = (*dst & 0xF000) | (r << 8) | (g << 4) | b;
-               }while(--size);
+                  *dst = (*dst & 0xF000) | (r << 8) | (g << 4) | b;
+                  dst++;
+               }
                break;
             case TMOD_TEX_INTER_NOISE_USING_COL:
                {
@@ -1690,7 +1615,7 @@ static void LoadTex(int id, int tmu)
                   float percent_g = cg0 / 15.0f;
                   float percent_b = cb0 / 15.0f;
 
-                  do
+                  while (size--)
                   {
                      uint8_t noise = rand()%16;
                      uint8_t r = (uint8_t)
@@ -1699,12 +1624,13 @@ static void LoadTex(int id, int tmu)
                         ((1 - percent_g)*(((*dst) >> 4) & 0xF) + percent_g*noise);
                      uint8_t b = (uint8_t)
                         ((1 - percent_b)*(*dst & 0xF) + percent_b*noise);
-                     *(dst++) = (*dst & 0xF000) | (r << 8) | (g << 4) | b;
-                  }while(--size);
+                     *dst      = (*dst & 0xF000) | (r << 8) | (g << 4) | b;
+                     dst++;
+                  }
                }
                break;
             case TMOD_TEX_INTER_COL_USING_TEXA:
-               do
+               while (size--)
                {
                   float percent = ((*dst & 0xF000) >> 12) / 15.0f;
                   uint8_t r = (uint8_t)
@@ -1713,29 +1639,32 @@ static void LoadTex(int id, int tmu)
                      (percent*cg0 + (1 - percent)*((*dst & 0x00F0) >> 4));
                   uint8_t b = (uint8_t)
                      (percent*cb0 + (1 - percent)*(*dst & 0x000F));
-                  *(dst++) = (*dst & 0xF000) | (r << 8) | (g << 4) | b;
-               }while(--size);
+                  *dst      = (*dst & 0xF000) | (r << 8) | (g << 4) | b;
+                  dst++;
+               }
                break;
             case TMOD_TEX_MUL_COL:
-               do
+               while (size--)
                {
                   uint8_t r = (cr0 * ((*dst & 0x0F00) >> 8));
                   uint8_t g = (cg0 * ((*dst & 0x00F0) >> 4));
                   uint8_t b = (cb0 * (*dst & 0x000F));
-                  *(dst++) = (*dst & 0xF000) | (r << 8) | (g << 4) | b;
-               }while(--size);
+                  *dst      = (*dst & 0xF000) | (r << 8) | (g << 4) | b;
+                  dst++;
+               }
                break;
             case TMOD_TEX_SCALE_FAC_ADD_COL:
                {
                   float percent = modfactor / 255.0f;
 
-                  do
+                  while (size--)
                   {
                      uint8_t r = (uint8_t)(cr0 + percent*(((*dst) >> 8) & 0xF));
                      uint8_t g = (uint8_t)(cg0 + percent*(((*dst) >> 4) & 0xF));
                      uint8_t b = (uint8_t)(cb0 + percent*(((*dst) >> 0) & 0xF));
-                     *(dst++) = (*dst & 0xF000) | (r << 8) | (g << 4) | b;
-                  }while(--size);
+                     *dst      = (*dst & 0xF000) | (r << 8) | (g << 4) | b;
+                     dst++;
+                  }
                }
                break;
          }
@@ -1744,25 +1673,25 @@ static void LoadTex(int id, int tmu)
 
 
    cache->t_info.format = LOWORD(result);
-
-   cache->realwidth = real_x;
-   cache->realheight = real_y;
-   cache->lod = lod;
-   cache->aspect = aspect;
+   cache->realwidth     = real_x;
+   cache->realheight    = real_y;
+   cache->lod           = lod;
+   cache->aspect        = aspect;
 
    {
 	   uint32_t texture_size, tex_addr;
 	   GrTexInfo *t_info;
-      // Load the texture into texture memory
-      t_info = (GrTexInfo*)&cache->t_info;
-      t_info->data = texture;
-      t_info->smallLodLog2 = lod;
-      t_info->largeLodLog2 = lod;
+
+      /* Load the texture into texture memory */
+      t_info                  = (GrTexInfo*)&cache->t_info;
+      t_info->data            = texture;
+      t_info->smallLodLog2    = lod;
+      t_info->largeLodLog2    = lod;
       t_info->aspectRatioLog2 = aspect;
 
-      texture_size = grTexCalcMemRequired (t_info->largeLodLog2, t_info->aspectRatioLog2, t_info->format);
+      texture_size            = grTexCalcMemRequired (t_info->largeLodLog2, t_info->aspectRatioLog2, t_info->format);
 
-      // Check for end of memory (too many textures to fit, clear cache)
+      /* Check for end of memory (too many textures to fit, clear cache) */
       if (voodoo.tmem_ptr[tmu]+texture_size >= voodoo.tex_max_addr)
       {
          LRDP("Cache size reached, clearing...\n");
@@ -1772,8 +1701,9 @@ static void LoadTex(int id, int tmu)
             LoadTex (0, rdp.t0);
 
          LoadTex (id, tmu);
+         /* Don't continue (already done) */
          return;
-         // DON'T CONTINUE (already done)
+
       }
 
       tex_addr = GetTexAddrUMA(tmu, texture_size);
@@ -1783,6 +1713,4 @@ static void LoadTex(int id, int tmu)
             t_info,
             true);
    }
-
-   LRDP(" | | +- LoadTex end\n");
 }

@@ -1,5 +1,5 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
- *   Mupen64plus - fpu.c                                                   *
+ *   Mupen64plus - fpu.h                                                   *
  *   Mupen64Plus homepage: http://code.google.com/p/mupen64plus/           *
  *   Copyright (C) 2010 Ari64                                              *
  *                                                                         *
@@ -22,562 +22,448 @@
 #ifndef M64P_R4300_FPU_H
 #define M64P_R4300_FPU_H
 
-#include <stdint.h>
 #include <math.h>
+#include <stdint.h>
 
-#include "r4300.h"
 #include "cp1_private.h"
+#include "r4300.h"
 
-#if defined(EMSCRIPTEN)
-#define CUSTOM_FESETROUND
-#endif
+#ifdef _MSC_VER
+  #define M64P_FPU_INLINE static __inline
+  #include <float.h>
 
-#if defined(_MSC_VER)
-#define CUSTOM_FESETROUND
-#define M64P_FPU_INLINE static __inline
-#include <float.h>
-typedef enum { FE_TONEAREST = 0, FE_TOWARDZERO, FE_UPWARD, FE_DOWNWARD } eRoundType;
-
-static __inline double round(double x) { return floor(x + 0.5); }
-static __inline float roundf(float x) { return (float) floor(x + 0.5); }
-static __inline double trunc(double x) { return (double) (int32_t) x; }
-static __inline float truncf(float x) { return (float) (int32_t) x; }
-#define isnan _isnan
+  typedef enum { FE_TONEAREST = 0, FE_TOWARDZERO, FE_UPWARD, FE_DOWNWARD } eRoundType;
+  static void fesetround(eRoundType RoundType)
+  {
+    static const unsigned int msRound[4] = { _RC_NEAR, _RC_CHOP, _RC_UP, _RC_DOWN };
+#if WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_APP)
+    _controlfp(msRound[RoundType], _MCW_RC);
+#elif defined(__x86_64__) || defined(_M_X64)
+    _controlfp(msRound[RoundType], _MCW_RC);
 #else
-#define M64P_FPU_INLINE static inline
-#include <fenv.h>
+    unsigned int oldX87, oldSSE2;
+    __control87_2(msRound[RoundType], _MCW_RC, &oldX87, &oldSSE2);
 #endif
-
-#ifndef FE_TONEAREST
-#define FE_TONEAREST 0x0
-#endif
-
-#ifndef FE_TOWARDZERO
-#define FE_TOWARDZERO 0x1
-#endif
-
-#ifndef FE_UPWARD
-#define FE_UPWARD 0x2
-#endif
-
-#ifndef FE_DOWNWARD
-#define FE_DOWNWARD 0x3
-#endif
-
-#ifndef _FPSCR_RMODE_SHIFT
-#define _FPSCR_RMODE_SHIFT 22
-#endif
-
-#ifdef ANDROID_OLD_GCC
-typedef __uint32_t fenv_t;
-typedef __uint32_t fexcept_t;
-#define CUSTOM_FEGETENV
-#define CUSTOM_FESETENV
-#define CUSTOM_FESETROUND
-#endif
-
-#ifdef CUSTOM_FEGETENV
-
-#ifdef ANDROID
-static INLINE int32_t m64p_fegetenv(fenv_t* __envp)
-{
-   fenv_t _fpscr;
-#if !defined(__SOFTFP__)
-#if !defined(__thumb__) || defined(__thumb2__)
-   __asm__ __volatile__("vmrs %0,fpscr" : "=r" (_fpscr));
+  }
+  static __inline double round(double x) { return floor(x + 0.5); }
+  static __inline float roundf(float x) { return (float) floor(x + 0.5); }
+  static __inline double trunc(double x) { return (double) (int) x; }
+  static __inline float truncf(float x) { return (float) (int) x; }
+  #define isnan _isnan
 #else
-   /* Switching from thumb1 to arm, do vmrs, then switch back */
-   __asm__ __volatile__(
-         ".balign 4 \n\t"
-         "mov ip, pc \n\t"
-         "bx ip \n\t"
-         ".arm \n\t"
-         "vmrs %0, fpscr \n\t"
-         "add ip, pc, #1 \n\t"
-         "bx ip \n\t"
-         ".thumb \n\t"
-         : "=r" (_fpscr) : : "ip");
+  #define M64P_FPU_INLINE static inline
+#ifndef VITA
+  #include <fenv.h>
 #endif
-#else
-   _fpscr = 0;
-#endif
-   *__envp = _fpscr;
-   return 0;
-}
-
-#endif
-#else
-#define m64p_fegetenv fegetenv
-#endif
-
-#ifdef CUSTOM_FESETENV
-
-#ifdef ANDROID
-static INLINE int32_t m64p_fesetenv(const fenv_t* __envp)
-{
-   fenv_t _fpscr = *__envp;
-#if !defined(__SOFTFP__)
-#if !defined(__thumb__) || defined(__thumb2__)
-   __asm__ __volatile__("vmsr fpscr,%0" : :"ri" (_fpscr));
-#else
-   /* Switching from thumb1 to arm, do vmsr, then switch back */
-   __asm__ __volatile__(
-         ".balign 4 \n\t"
-         "mov ip, pc \n\t"
-         "bx ip \n\t"
-         ".arm \n\t"
-         "vmsr fpscr, %0 \n\t"
-         "add ip, pc, #1 \n\t"
-         "bx ip \n\t"
-         ".thumb \n\t"
-         : : "ri" (_fpscr) : "ip");
-#endif
-#else
-   _fpscr = _fpscr;
-#endif
-   return 0;
-}
-#endif
-
-#else
-#define m64p_fesetenv fesetenv
-#endif
-
-#ifdef CUSTOM_FESETROUND
-
-#if defined(ANDROID)
-static INLINE int32_t m64p_fesetround(int32_t __round)
-{
-   uint32_t _fpscr;
-   m64p_fegetenv(&_fpscr);
-   _fpscr &= ~(0x3 << _FPSCR_RMODE_SHIFT);
-   _fpscr |= (__round << _FPSCR_RMODE_SHIFT);
-   m64p_fesetenv(&_fpscr);
-   return 0;
-}
-#elif defined(_MSC_VER) && defined(_M_IX86)
-static INLINE void m64p_fesetround(eRoundType RoundType)
-{
-   static const uint32_t msRound[4] = { _RC_NEAR, _RC_CHOP, _RC_UP, _RC_DOWN };
-   uint32_t oldX87, oldSSE2;
-
-   __control87_2(msRound[RoundType], _MCW_RC, &oldX87, &oldSSE2);
-}
-#elif defined(EMSCRIPTEN) || defined(_WIN64)
-static INLINE int32_t m64p_fesetround(int32_t __round)
-{
-   (void)__round;
-   return 0;
-}
-#endif
-#else
-#define m64p_fesetround fesetround
-
 #endif
 
 #define FCR31_CMP_BIT UINT32_C(0x800000)
 
+
 M64P_FPU_INLINE void set_rounding(void)
 {
+   /* TODO skogaby: fix this for real */
+#ifndef VITA
    switch(FCR31 & 3)
    {
       case 0: /* Round to nearest, or to even if equidistant */
-         m64p_fesetround(FE_TONEAREST);
+         fesetround(FE_TONEAREST);
          break;
       case 1: /* Truncate (toward 0) */
-         m64p_fesetround(FE_TOWARDZERO);
+         fesetround(FE_TOWARDZERO);
          break;
       case 2: /* Round up (toward +Inf) */
-         m64p_fesetround(FE_UPWARD);
+         fesetround(FE_UPWARD);
          break;
       case 3: /* Round down (toward -Inf) */
-         m64p_fesetround(FE_DOWNWARD);
+         fesetround(FE_DOWNWARD);
          break;
    }
+#endif
 }
 
-M64P_FPU_INLINE void cvt_s_w(int32_t *source,float *dest)
+M64P_FPU_INLINE void cvt_s_w(const int32_t *source,float *dest)
 {
-   set_rounding();
-   *dest = (float) *source;
+  set_rounding();
+  *dest = (float) *source;
 }
-M64P_FPU_INLINE void cvt_d_w(int32_t *source,double *dest)
+M64P_FPU_INLINE void cvt_d_w(const int32_t *source,double *dest)
 {
-   *dest = (double) *source;
+  *dest = (double) *source;
 }
-M64P_FPU_INLINE void cvt_s_l(int64_t *source,float *dest)
+M64P_FPU_INLINE void cvt_s_l(const int64_t *source,float *dest)
 {
-   set_rounding();
-   *dest = (float) *source;
+  set_rounding();
+  *dest = (float) *source;
 }
-M64P_FPU_INLINE void cvt_d_l(int64_t *source,double *dest)
+M64P_FPU_INLINE void cvt_d_l(const int64_t *source,double *dest)
 {
-   set_rounding();
-   *dest = (double) *source;
+  set_rounding();
+  *dest = (double) *source;
 }
 M64P_FPU_INLINE void cvt_d_s(const float *source,double *dest)
 {
-   *dest = (double) *source;
+  *dest = (double) *source;
 }
-M64P_FPU_INLINE void cvt_s_d(double *source,float *dest)
+M64P_FPU_INLINE void cvt_s_d(const double *source,float *dest)
 {
-   set_rounding();
-   *dest = (float) *source;
+  set_rounding();
+  *dest = (float) *source;
 }
 
 M64P_FPU_INLINE void round_l_s(const float *source,int64_t *dest)
 {
-   *dest = (int64_t) roundf(*source);
+  *dest = (int64_t) roundf(*source);
 }
-M64P_FPU_INLINE void round_w_s(const float *source, int32_t *dest)
+M64P_FPU_INLINE void round_w_s(const float *source,int32_t *dest)
 {
-   *dest = (int32_t) roundf(*source);
+  *dest = (int32_t) roundf(*source);
 }
 M64P_FPU_INLINE void trunc_l_s(const float *source,int64_t *dest)
 {
-   *dest = (int64_t) truncf(*source);
+  *dest = (int64_t) truncf(*source);
 }
 M64P_FPU_INLINE void trunc_w_s(const float *source,int32_t *dest)
 {
-   *dest = (int32_t) truncf(*source);
+  *dest = (int32_t) truncf(*source);
 }
 M64P_FPU_INLINE void ceil_l_s(const float *source,int64_t *dest)
 {
-   *dest = (int64_t) ceilf(*source);
+  *dest = (int64_t) ceilf(*source);
 }
 M64P_FPU_INLINE void ceil_w_s(const float *source,int32_t *dest)
 {
-   *dest = (int32_t) ceilf(*source);
+  *dest = (int32_t) ceilf(*source);
 }
 M64P_FPU_INLINE void floor_l_s(const float *source,int64_t *dest)
 {
-   *dest = (int64_t) floorf(*source);
+  *dest = (int64_t) floorf(*source);
 }
 M64P_FPU_INLINE void floor_w_s(const float *source,int32_t *dest)
 {
-   *dest = (int32_t) floorf(*source);
+  *dest = (int32_t) floorf(*source);
 }
 
-M64P_FPU_INLINE void round_l_d(double *source,int64_t *dest)
+M64P_FPU_INLINE void round_l_d(const double *source,int64_t *dest)
 {
-   *dest = (int64_t) round(*source);
+  *dest = (int64_t) round(*source);
 }
-M64P_FPU_INLINE void round_w_d(double *source, int32_t *dest)
+M64P_FPU_INLINE void round_w_d(const double *source,int32_t *dest)
 {
-   *dest = (int32_t) round(*source);
+  *dest = (int32_t) round(*source);
 }
-M64P_FPU_INLINE void trunc_l_d(double *source,int64_t *dest)
+M64P_FPU_INLINE void trunc_l_d(const double *source,int64_t *dest)
 {
-   *dest = (int64_t) trunc(*source);
+  *dest = (int64_t) trunc(*source);
 }
-M64P_FPU_INLINE void trunc_w_d(double *source, int32_t *dest)
+M64P_FPU_INLINE void trunc_w_d(const double *source,int32_t *dest)
 {
-   *dest = (int32_t) trunc(*source);
+  *dest = (int32_t) trunc(*source);
 }
-M64P_FPU_INLINE void ceil_l_d(double *source,int64_t *dest)
+M64P_FPU_INLINE void ceil_l_d(const double *source,int64_t *dest)
 {
-   *dest = (int64_t) ceil(*source);
+  *dest = (int64_t) ceil(*source);
 }
-M64P_FPU_INLINE void ceil_w_d(double *source,int32_t *dest)
+M64P_FPU_INLINE void ceil_w_d(const double *source,int32_t *dest)
 {
-   *dest = (int32_t) ceil(*source);
+  *dest = (int32_t) ceil(*source);
 }
-M64P_FPU_INLINE void floor_l_d(double *source,int64_t *dest)
+M64P_FPU_INLINE void floor_l_d(const double *source,int64_t *dest)
 {
-   *dest = (int64_t) floor(*source);
+  *dest = (int64_t) floor(*source);
 }
-M64P_FPU_INLINE void floor_w_d(double *source,int32_t *dest)
+M64P_FPU_INLINE void floor_w_d(const double *source,int32_t *dest)
 {
-   *dest = (int32_t) floor(*source);
+  *dest = (int32_t) floor(*source);
 }
 
 M64P_FPU_INLINE void cvt_w_s(const float *source,int32_t *dest)
 {
-   switch(FCR31&3)
-   {
-      case 0: round_w_s(source,dest);return;
-      case 1: trunc_w_s(source,dest);return;
-      case 2: ceil_w_s(source,dest);return;
-      case 3: floor_w_s(source,dest);return;
-   }
+  switch(FCR31&3)
+  {
+    case 0: round_w_s(source,dest);return;
+    case 1: trunc_w_s(source,dest);return;
+    case 2: ceil_w_s(source,dest);return;
+    case 3: floor_w_s(source,dest);return;
+  }
 }
-M64P_FPU_INLINE void cvt_w_d(double *source,int32_t *dest)
+M64P_FPU_INLINE void cvt_w_d(const double *source,int32_t *dest)
 {
-   switch(FCR31&3)
-   {
-      case 0: round_w_d(source,dest);return;
-      case 1: trunc_w_d(source,dest);return;
-      case 2: ceil_w_d(source,dest);return;
-      case 3: floor_w_d(source,dest);return;
-   }
+  switch(FCR31&3)
+  {
+    case 0: round_w_d(source,dest);return;
+    case 1: trunc_w_d(source,dest);return;
+    case 2: ceil_w_d(source,dest);return;
+    case 3: floor_w_d(source,dest);return;
+  }
 }
 M64P_FPU_INLINE void cvt_l_s(const float *source,int64_t *dest)
 {
-   switch(FCR31&3)
-   {
-      case 0: round_l_s(source,dest);return;
-      case 1: trunc_l_s(source,dest);return;
-      case 2: ceil_l_s(source,dest);return;
-      case 3: floor_l_s(source,dest);return;
-   }
+  switch(FCR31&3)
+  {
+    case 0: round_l_s(source,dest);return;
+    case 1: trunc_l_s(source,dest);return;
+    case 2: ceil_l_s(source,dest);return;
+    case 3: floor_l_s(source,dest);return;
+  }
 }
-M64P_FPU_INLINE void cvt_l_d(double *source,int64_t *dest)
+M64P_FPU_INLINE void cvt_l_d(const double *source,int64_t *dest)
 {
-   switch(FCR31&3)
-   {
-      case 0: round_l_d(source,dest);return;
-      case 1: trunc_l_d(source,dest);return;
-      case 2: ceil_l_d(source,dest);return;
-      case 3: floor_l_d(source,dest);return;
-   }
+  switch(FCR31&3)
+  {
+    case 0: round_l_d(source,dest);return;
+    case 1: trunc_l_d(source,dest);return;
+    case 2: ceil_l_d(source,dest);return;
+    case 3: floor_l_d(source,dest);return;
+  }
 }
 
-M64P_FPU_INLINE void c_f_s(void)
+M64P_FPU_INLINE void c_f_s()
 {
-   FCR31 &= ~FCR31_CMP_BIT;
+  FCR31 &= ~FCR31_CMP_BIT;
 }
 M64P_FPU_INLINE void c_un_s(const float *source,const float *target)
 {
-   FCR31=(isnan(*source) || isnan(*target)) ? FCR31|FCR31_CMP_BIT : FCR31&~FCR31_CMP_BIT;
+  FCR31=(isnan(*source) || isnan(*target)) ? FCR31|FCR31_CMP_BIT : FCR31&~FCR31_CMP_BIT;
 }
-
+                          
 M64P_FPU_INLINE void c_eq_s(const float *source,const float *target)
 {
-   if (isnan(*source) || isnan(*target)) {FCR31&=~FCR31_CMP_BIT;return;}
-   FCR31 = *source==*target ? FCR31|FCR31_CMP_BIT : FCR31&~FCR31_CMP_BIT;
+  if (isnan(*source) || isnan(*target)) {FCR31&=~FCR31_CMP_BIT;return;}
+  FCR31 = *source==*target ? FCR31|FCR31_CMP_BIT : FCR31&~FCR31_CMP_BIT;
 }
 M64P_FPU_INLINE void c_ueq_s(const float *source,const float *target)
 {
-   if (isnan(*source) || isnan(*target)) {FCR31|=FCR31_CMP_BIT;return;}
-   FCR31 = *source==*target ? FCR31|FCR31_CMP_BIT : FCR31&~FCR31_CMP_BIT;
+  if (isnan(*source) || isnan(*target)) {FCR31|=FCR31_CMP_BIT;return;}
+  FCR31 = *source==*target ? FCR31|FCR31_CMP_BIT : FCR31&~FCR31_CMP_BIT;
 }
 
 M64P_FPU_INLINE void c_olt_s(const float *source,const float *target)
 {
-   if (isnan(*source) || isnan(*target)) {FCR31&=~FCR31_CMP_BIT;return;}
-   FCR31 = *source<*target ? FCR31|FCR31_CMP_BIT : FCR31&~FCR31_CMP_BIT;
+  if (isnan(*source) || isnan(*target)) {FCR31&=~FCR31_CMP_BIT;return;}
+  FCR31 = *source<*target ? FCR31|FCR31_CMP_BIT : FCR31&~FCR31_CMP_BIT;
 }
 M64P_FPU_INLINE void c_ult_s(const float *source,const float *target)
 {
-   if (isnan(*source) || isnan(*target)) {FCR31|=FCR31_CMP_BIT;return;}
-   FCR31 = *source<*target ? FCR31|FCR31_CMP_BIT : FCR31&~FCR31_CMP_BIT;
+  if (isnan(*source) || isnan(*target)) {FCR31|=FCR31_CMP_BIT;return;}
+  FCR31 = *source<*target ? FCR31|FCR31_CMP_BIT : FCR31&~FCR31_CMP_BIT;
 }
 
 M64P_FPU_INLINE void c_ole_s(const float *source,const float *target)
 {
-   if (isnan(*source) || isnan(*target)) {FCR31&=~FCR31_CMP_BIT;return;}
-   FCR31 = *source<=*target ? FCR31|FCR31_CMP_BIT : FCR31&~FCR31_CMP_BIT;
+  if (isnan(*source) || isnan(*target)) {FCR31&=~FCR31_CMP_BIT;return;}
+  FCR31 = *source<=*target ? FCR31|FCR31_CMP_BIT : FCR31&~FCR31_CMP_BIT;
 }
 M64P_FPU_INLINE void c_ule_s(const float *source,const float *target)
 {
-   if (isnan(*source) || isnan(*target)) {FCR31|=FCR31_CMP_BIT;return;}
-   FCR31 = *source<=*target ? FCR31|FCR31_CMP_BIT : FCR31&~FCR31_CMP_BIT;
+  if (isnan(*source) || isnan(*target)) {FCR31|=FCR31_CMP_BIT;return;}
+  FCR31 = *source<=*target ? FCR31|FCR31_CMP_BIT : FCR31&~FCR31_CMP_BIT;
 }
 
 M64P_FPU_INLINE void c_sf_s(const float *source,const float *target)
 {
-   //if (isnan(*source) || isnan(*target)) // FIXME - exception
-   FCR31&=~FCR31_CMP_BIT;
+  //if (isnan(*source) || isnan(*target)) // FIXME - exception
+  FCR31&=~FCR31_CMP_BIT;
 }
 M64P_FPU_INLINE void c_ngle_s(const float *source,const float *target)
 {
-   //if (isnan(*source) || isnan(*target)) // FIXME - exception
-   FCR31&=~FCR31_CMP_BIT;
+  //if (isnan(*source) || isnan(*target)) // FIXME - exception
+  FCR31&=~FCR31_CMP_BIT;
 }
 
 M64P_FPU_INLINE void c_seq_s(const float *source,const float *target)
 {
-   //if (isnan(*source) || isnan(*target)) // FIXME - exception
-   FCR31 = *source==*target ? FCR31|FCR31_CMP_BIT : FCR31&~FCR31_CMP_BIT;
+  //if (isnan(*source) || isnan(*target)) // FIXME - exception
+  FCR31 = *source==*target ? FCR31|FCR31_CMP_BIT : FCR31&~FCR31_CMP_BIT;
 }
 M64P_FPU_INLINE void c_ngl_s(const float *source,const float *target)
 {
-   //if (isnan(*source) || isnan(*target)) // FIXME - exception
-   FCR31 = *source==*target ? FCR31|FCR31_CMP_BIT : FCR31&~FCR31_CMP_BIT;
+  //if (isnan(*source) || isnan(*target)) // FIXME - exception
+  FCR31 = *source==*target ? FCR31|FCR31_CMP_BIT : FCR31&~FCR31_CMP_BIT;
 }
 
 M64P_FPU_INLINE void c_lt_s(const float *source,const float *target)
 {
-   //if (isnan(*source) || isnan(*target)) // FIXME - exception
-   FCR31 = *source<*target ? FCR31|FCR31_CMP_BIT : FCR31&~FCR31_CMP_BIT;
+  //if (isnan(*source) || isnan(*target)) // FIXME - exception
+  FCR31 = *source<*target ? FCR31|FCR31_CMP_BIT : FCR31&~FCR31_CMP_BIT;
 }
 M64P_FPU_INLINE void c_nge_s(const float *source,const float *target)
 {
-   //if (isnan(*source) || isnan(*target)) // FIXME - exception
-   FCR31 = *source<*target ? FCR31|FCR31_CMP_BIT : FCR31&~FCR31_CMP_BIT;
+  //if (isnan(*source) || isnan(*target)) // FIXME - exception
+  FCR31 = *source<*target ? FCR31|FCR31_CMP_BIT : FCR31&~FCR31_CMP_BIT;
 }
 
 M64P_FPU_INLINE void c_le_s(const float *source,const float *target)
 {
-   //if (isnan(*source) || isnan(*target)) // FIXME - exception
-   FCR31 = *source<=*target ? FCR31|FCR31_CMP_BIT : FCR31&~FCR31_CMP_BIT;
+  //if (isnan(*source) || isnan(*target)) // FIXME - exception
+  FCR31 = *source<=*target ? FCR31|FCR31_CMP_BIT : FCR31&~FCR31_CMP_BIT;
 }
 M64P_FPU_INLINE void c_ngt_s(const float *source,const float *target)
 {
-   //if (isnan(*source) || isnan(*target)) // FIXME - exception
-   FCR31 = *source<=*target ? FCR31|FCR31_CMP_BIT : FCR31&~FCR31_CMP_BIT;
+  //if (isnan(*source) || isnan(*target)) // FIXME - exception
+  FCR31 = *source<=*target ? FCR31|FCR31_CMP_BIT : FCR31&~FCR31_CMP_BIT;
 }
 
-M64P_FPU_INLINE void c_f_d(void)
+M64P_FPU_INLINE void c_f_d()
 {
-   FCR31 &= ~FCR31_CMP_BIT;
+  FCR31 &= ~FCR31_CMP_BIT;
 }
-M64P_FPU_INLINE void c_un_d(double *source,double *target)
+M64P_FPU_INLINE void c_un_d(const double *source,const double *target)
 {
-   FCR31=(isnan(*source) || isnan(*target)) ? FCR31|FCR31_CMP_BIT : FCR31&~FCR31_CMP_BIT;
+  FCR31=(isnan(*source) || isnan(*target)) ? FCR31|FCR31_CMP_BIT : FCR31&~FCR31_CMP_BIT;
 }
-
-M64P_FPU_INLINE void c_eq_d(double *source,double *target)
+                          
+M64P_FPU_INLINE void c_eq_d(const double *source,const double *target)
 {
-   if (isnan(*source) || isnan(*target)) {FCR31&=~FCR31_CMP_BIT;return;}
-   FCR31 = *source==*target ? FCR31|FCR31_CMP_BIT : FCR31&~FCR31_CMP_BIT;
+  if (isnan(*source) || isnan(*target)) {FCR31&=~FCR31_CMP_BIT;return;}
+  FCR31 = *source==*target ? FCR31|FCR31_CMP_BIT : FCR31&~FCR31_CMP_BIT;
 }
-M64P_FPU_INLINE void c_ueq_d(double *source,double *target)
+M64P_FPU_INLINE void c_ueq_d(const double *source,const double *target)
 {
-   if (isnan(*source) || isnan(*target)) {FCR31|=FCR31_CMP_BIT;return;}
-   FCR31 = *source==*target ? FCR31|FCR31_CMP_BIT : FCR31&~FCR31_CMP_BIT;
-}
-
-M64P_FPU_INLINE void c_olt_d(double *source,double *target)
-{
-   if (isnan(*source) || isnan(*target)) {FCR31&=~FCR31_CMP_BIT;return;}
-   FCR31 = *source<*target ? FCR31|FCR31_CMP_BIT : FCR31&~FCR31_CMP_BIT;
-}
-M64P_FPU_INLINE void c_ult_d(double *source,double *target)
-{
-   if (isnan(*source) || isnan(*target)) {FCR31|=FCR31_CMP_BIT;return;}
-   FCR31 = *source<*target ? FCR31|FCR31_CMP_BIT : FCR31&~FCR31_CMP_BIT;
+  if (isnan(*source) || isnan(*target)) {FCR31|=FCR31_CMP_BIT;return;}
+  FCR31 = *source==*target ? FCR31|FCR31_CMP_BIT : FCR31&~FCR31_CMP_BIT;
 }
 
-M64P_FPU_INLINE void c_ole_d(double *source,double *target)
+M64P_FPU_INLINE void c_olt_d(const double *source,const double *target)
 {
-   if (isnan(*source) || isnan(*target)) {FCR31&=~FCR31_CMP_BIT;return;}
-   FCR31 = *source<=*target ? FCR31|FCR31_CMP_BIT : FCR31&~FCR31_CMP_BIT;
+  if (isnan(*source) || isnan(*target)) {FCR31&=~FCR31_CMP_BIT;return;}
+  FCR31 = *source<*target ? FCR31|FCR31_CMP_BIT : FCR31&~FCR31_CMP_BIT;
 }
-M64P_FPU_INLINE void c_ule_d(double *source,double *target)
+M64P_FPU_INLINE void c_ult_d(const double *source,const double *target)
 {
-   if (isnan(*source) || isnan(*target)) {FCR31|=FCR31_CMP_BIT;return;}
-   FCR31 = *source<=*target ? FCR31|FCR31_CMP_BIT : FCR31&~FCR31_CMP_BIT;
-}
-
-M64P_FPU_INLINE void c_sf_d(double *source,double *target)
-{
-   //if (isnan(*source) || isnan(*target)) // FIXME - exception
-   FCR31&=~FCR31_CMP_BIT;
-}
-M64P_FPU_INLINE void c_ngle_d(double *source,double *target)
-{
-   //if (isnan(*source) || isnan(*target)) // FIXME - exception
-   FCR31&=~FCR31_CMP_BIT;
+  if (isnan(*source) || isnan(*target)) {FCR31|=FCR31_CMP_BIT;return;}
+  FCR31 = *source<*target ? FCR31|FCR31_CMP_BIT : FCR31&~FCR31_CMP_BIT;
 }
 
-M64P_FPU_INLINE void c_seq_d(double *source,double *target)
+M64P_FPU_INLINE void c_ole_d(const double *source,const double *target)
 {
-   //if (isnan(*source) || isnan(*target)) // FIXME - exception
-   FCR31 = *source==*target ? FCR31|FCR31_CMP_BIT : FCR31&~FCR31_CMP_BIT;
+  if (isnan(*source) || isnan(*target)) {FCR31&=~FCR31_CMP_BIT;return;}
+  FCR31 = *source<=*target ? FCR31|FCR31_CMP_BIT : FCR31&~FCR31_CMP_BIT;
 }
-M64P_FPU_INLINE void c_ngl_d(double *source,double *target)
+M64P_FPU_INLINE void c_ule_d(const double *source,const double *target)
 {
-   //if (isnan(*source) || isnan(*target)) // FIXME - exception
-   FCR31 = *source==*target ? FCR31|FCR31_CMP_BIT : FCR31&~FCR31_CMP_BIT;
-}
-
-M64P_FPU_INLINE void c_lt_d(double *source,double *target)
-{
-   //if (isnan(*source) || isnan(*target)) // FIXME - exception
-   FCR31 = *source<*target ? FCR31|FCR31_CMP_BIT : FCR31&~FCR31_CMP_BIT;
-}
-M64P_FPU_INLINE void c_nge_d(double *source,double *target)
-{
-   //if (isnan(*source) || isnan(*target)) // FIXME - exception
-   FCR31 = *source<*target ? FCR31|FCR31_CMP_BIT : FCR31&~FCR31_CMP_BIT;
+  if (isnan(*source) || isnan(*target)) {FCR31|=FCR31_CMP_BIT;return;}
+  FCR31 = *source<=*target ? FCR31|FCR31_CMP_BIT : FCR31&~FCR31_CMP_BIT;
 }
 
-M64P_FPU_INLINE void c_le_d(double *source,double *target)
+M64P_FPU_INLINE void c_sf_d(const double *source,const double *target)
 {
-   //if (isnan(*source) || isnan(*target)) // FIXME - exception
-   FCR31 = *source<=*target ? FCR31|FCR31_CMP_BIT : FCR31&~FCR31_CMP_BIT;
+  //if (isnan(*source) || isnan(*target)) // FIXME - exception
+  FCR31&=~FCR31_CMP_BIT;
 }
-M64P_FPU_INLINE void c_ngt_d(double *source,double *target)
+M64P_FPU_INLINE void c_ngle_d(const double *source,const double *target)
 {
-   //if (isnan(*source) || isnan(*target)) // FIXME - exception
-   FCR31 = *source<=*target ? FCR31|FCR31_CMP_BIT : FCR31&~FCR31_CMP_BIT;
+  //if (isnan(*source) || isnan(*target)) // FIXME - exception
+  FCR31&=~FCR31_CMP_BIT;
+}
+
+M64P_FPU_INLINE void c_seq_d(const double *source,const double *target)
+{
+  //if (isnan(*source) || isnan(*target)) // FIXME - exception
+  FCR31 = *source==*target ? FCR31|FCR31_CMP_BIT : FCR31&~FCR31_CMP_BIT;
+}
+M64P_FPU_INLINE void c_ngl_d(const double *source,const double *target)
+{
+  //if (isnan(*source) || isnan(*target)) // FIXME - exception
+  FCR31 = *source==*target ? FCR31|FCR31_CMP_BIT : FCR31&~FCR31_CMP_BIT;
+}
+
+M64P_FPU_INLINE void c_lt_d(const double *source,const double *target)
+{
+  //if (isnan(*source) || isnan(*target)) // FIXME - exception
+  FCR31 = *source<*target ? FCR31|FCR31_CMP_BIT : FCR31&~FCR31_CMP_BIT;
+}
+M64P_FPU_INLINE void c_nge_d(const double *source,const double *target)
+{
+  //if (isnan(*source) || isnan(*target)) // FIXME - exception
+  FCR31 = *source<*target ? FCR31|FCR31_CMP_BIT : FCR31&~FCR31_CMP_BIT;
+}
+
+M64P_FPU_INLINE void c_le_d(const double *source,const double *target)
+{
+  //if (isnan(*source) || isnan(*target)) // FIXME - exception
+  FCR31 = *source<=*target ? FCR31|FCR31_CMP_BIT : FCR31&~FCR31_CMP_BIT;
+}
+M64P_FPU_INLINE void c_ngt_d(const double *source,const double *target)
+{
+  //if (isnan(*source) || isnan(*target)) // FIXME - exception
+  FCR31 = *source<=*target ? FCR31|FCR31_CMP_BIT : FCR31&~FCR31_CMP_BIT;
 }
 
 
-M64P_FPU_INLINE void add_s(const float *source1,const float *source2, float *target)
+M64P_FPU_INLINE void add_s(const float *source1,const float *source2,float *target)
 {
-   set_rounding();
-   *target=(*source1)+(*source2);
+  set_rounding();
+  *target=(*source1)+(*source2);
 }
-M64P_FPU_INLINE void sub_s(const float *source1,const float *source2, float *target)
+M64P_FPU_INLINE void sub_s(const float *source1,const float *source2,float *target)
 {
-   set_rounding();
-   *target=(*source1)-(*source2);
+  set_rounding();
+  *target=(*source1)-(*source2);
 }
-M64P_FPU_INLINE void mul_s(const float *source1,const float *source2, float *target)
+M64P_FPU_INLINE void mul_s(const float *source1,const float *source2,float *target)
 {
-   set_rounding();
-   *target=(*source1)*(*source2);
+  set_rounding();
+  *target=(*source1)*(*source2);
 }
-M64P_FPU_INLINE void div_s(const float *source1,const float *source2, float *target)
+M64P_FPU_INLINE void div_s(const float *source1,const float *source2,float *target)
 {
-   set_rounding();
-   *target=(*source1)/(*source2);
+  set_rounding();
+  *target=(*source1)/(*source2);
 }
-M64P_FPU_INLINE void sqrt_s(const float *source, float *target)
+M64P_FPU_INLINE void sqrt_s(const float *source,float *target)
 {
-   set_rounding();
-   *target=sqrtf(*source);
+  set_rounding();
+  *target=sqrtf(*source);
 }
-M64P_FPU_INLINE void abs_s(const float *source, float *target)
+M64P_FPU_INLINE void abs_s(const float *source,float *target)
 {
-   *target=fabsf(*source);
+  *target=fabsf(*source);
 }
-M64P_FPU_INLINE void mov_s(const float *source, float *target)
+M64P_FPU_INLINE void mov_s(const float *source,float *target)
 {
-   *target=*source;
+  *target=*source;
 }
-M64P_FPU_INLINE void neg_s(const float *source, float *target)
+M64P_FPU_INLINE void neg_s(const float *source,float *target)
 {
-   *target=-(*source);
+  *target=-(*source);
 }
-M64P_FPU_INLINE void add_d(double *source1,double *source2,double *target)
+M64P_FPU_INLINE void add_d(const double *source1,const double *source2,double *target)
 {
-   set_rounding();
-   *target=(*source1)+(*source2);
+  set_rounding();
+  *target=(*source1)+(*source2);
 }
-M64P_FPU_INLINE void sub_d(double *source1,double *source2,double *target)
+M64P_FPU_INLINE void sub_d(const double *source1,const double *source2,double *target)
 {
-   set_rounding();
-   *target=(*source1)-(*source2);
+  set_rounding();
+  *target=(*source1)-(*source2);
 }
-M64P_FPU_INLINE void mul_d(double *source1,double *source2,double *target)
+M64P_FPU_INLINE void mul_d(const double *source1,const double *source2,double *target)
 {
-   set_rounding();
-   *target=(*source1)*(*source2);
+  set_rounding();
+  *target=(*source1)*(*source2);
 }
-M64P_FPU_INLINE void div_d(double *source1,double *source2,double *target)
+M64P_FPU_INLINE void div_d(const double *source1,const double *source2,double *target)
 {
-   set_rounding();
-   *target=(*source1)/(*source2);
+  set_rounding();
+  *target=(*source1)/(*source2);
 }
-M64P_FPU_INLINE void sqrt_d(double *source,double *target)
+M64P_FPU_INLINE void sqrt_d(const double *source,double *target)
 {
-   set_rounding();
-   *target=sqrt(*source);
+  set_rounding();
+  *target=sqrt(*source);
 }
-M64P_FPU_INLINE void abs_d(double *source,double *target)
+M64P_FPU_INLINE void abs_d(const double *source,double *target)
 {
-   *target=fabs(*source);
+  *target=fabs(*source);
 }
-M64P_FPU_INLINE void mov_d(double *source,double *target)
+M64P_FPU_INLINE void mov_d(const double *source,double *target)
 {
-   *target=*source;
+  *target=*source;
 }
-M64P_FPU_INLINE void neg_d(double *source,double *target)
+M64P_FPU_INLINE void neg_d(const double *source,double *target)
 {
-   *target=-(*source);
+  *target = -(*source);
 }
 
 #endif /* M64P_R4300_FPU_H */

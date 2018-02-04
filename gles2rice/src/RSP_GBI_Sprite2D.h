@@ -27,14 +27,12 @@ uint32_t g_SavedUcode=1;
 void RSP_GBI_Sprite2DBase(Gfx *gfx)
 {
    int8_t *rdram_s8 = (int8_t*)gfx_info.RDRAM;
-    uint32_t dwAddr = RSPSegmentAddr((gfx->words.w1));
-    dwAddr &= (g_dwRamSize-1);
+   uint32_t dwAddr = RSPSegmentAddr((gfx->words.w1));
+   dwAddr &= (g_dwRamSize-1);
 
-    //RSP_RDP_NOIMPL("RDP: Sprite2D (0x%08x 0x%08x)", (gfx->words.w0), (gfx->words.w1));
+   //RSP_RDP_NOIMPL("RDP: Sprite2D (0x%08x 0x%08x)", (gfx->words.w0), (gfx->words.w1));
 
-    g_Sprite2DInfo.spritePtr = (SpriteStruct *)(rdram_s8 + dwAddr);
-
-    DEBUGGER_PAUSE_AND_DUMP_COUNT_N(NEXT_SPRITE_2D, {DebuggerAppendMsg("Pause after Sprite2DBase: Addr=%08X\n", dwAddr);});
+   g_Sprite2DInfo.spritePtr = (SpriteStruct *)(rdram_s8 + dwAddr);
 }
 
 typedef struct{
@@ -90,7 +88,6 @@ void RSP_GBI_Sprite2D_PuzzleMaster64(Gfx *gfx)
     g_Sprite2DInfo.spritePtr = &tempInfo;
 
     CRender::g_pRender->DrawSprite2D(g_Sprite2DInfo, 1);
-    DEBUGGER_PAUSE_AND_DUMP_COUNT_N(NEXT_SPRITE_2D, {DebuggerAppendMsg("Pause after Sprite2DBase: Addr=%08X\n", dwAddr);});
 }
 
 
@@ -102,8 +99,6 @@ void RSP_GBI1_Sprite2DDraw(Gfx *gfx)
 
     //RSP_RDP_NOIMPL("gSPSprite2DDraw is not implemented", (gfx->words.w0), (gfx->words.w1));
     CRender::g_pRender->DrawSprite2D(g_Sprite2DInfo, 1);
-    DEBUGGER_PAUSE_AND_DUMP_COUNT_N(NEXT_SPRITE_2D, 
-        {DebuggerAppendMsg("Pause after Sprite2DDraw at (%d, %d)\n", g_Sprite2DInfo.px, g_Sprite2DInfo.py);});
 
     LoadedUcodeMap[RSP_SPRITE2D_SCALEFLIP] = &RSP_GBI1_CullDL;
     LoadedUcodeMap[RSP_SPRITE2D_DRAW] = &RSP_GBI1_PopMtx;
@@ -119,7 +114,6 @@ void RSP_GBI0_Sprite2DDraw(Gfx *gfx)
 
     //RSP_RDP_NOIMPL("gSPSprite2DDraw is not implemented", (gfx->words.w0), (gfx->words.w1));
     CRender::g_pRender->DrawSprite2D(g_Sprite2DInfo, 0);
-    DEBUGGER_PAUSE_AND_DUMP_COUNT_N(NEXT_SPRITE_2D, {TRACE0("Pause after Sprite2DDraw\n");});
 }
 
 
@@ -136,9 +130,6 @@ void RSP_GBI1_Sprite2DScaleFlip(Gfx *gfx)
     g_Sprite2DInfo.flipX = (uint8_t)(((gfx->words.w0)>>8)&0xFF);
     g_Sprite2DInfo.flipY = (uint8_t)((gfx->words.w0)&0xFF);
     //RSP_RDP_NOIMPL("RSP_SPRITE2D_SCALEFLIP is not implemented", (gfx->words.w0), (gfx->words.w1));
-    DEBUGGER_PAUSE_AND_DUMP_COUNT_N(NEXT_SPRITE_2D, 
-        {DebuggerAppendMsg("Pause after Sprite2DScaleFlip, Flip (%d,%d), Scale (%f, %f)\n", g_Sprite2DInfo.flipX, g_Sprite2DInfo.flipY,
-            g_Sprite2DInfo.scaleX, g_Sprite2DInfo.scaleY);});
 }
 
 

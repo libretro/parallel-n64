@@ -16,11 +16,9 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
 
-#include "OGLDecodedMux.h"
+#include <retro_miscellaneous.h>
 
-#ifndef max
-#define max(a,b) ((a) > (b) ? (a) : (b))
-#endif
+#include "OGLDecodedMux.h"
 
 //========================================================================
 void COGLDecodedMux::Simplify(void)
@@ -31,9 +29,9 @@ void COGLDecodedMux::Simplify(void)
 void COGLDecodedMux::Reformat(void)
 {
     DecodedMux::Reformat(true);
-    signed cond3 = max(splitType[0], splitType[1]);
-    signed cond2 = max(cond3, splitType[2]);
-    mType = (CombinerFormatType)max(cond2, splitType[3]);
+    signed cond3 = MAX(splitType[0], splitType[1]);
+    signed cond2 = MAX(cond3, splitType[2]);
+    mType = (CombinerFormatType)MAX(cond2, splitType[3]);
 }
 
 void COGLExtDecodedMux::Simplify(void)

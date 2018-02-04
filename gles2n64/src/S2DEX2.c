@@ -8,7 +8,6 @@
 #include "gSP.h" 
 #include "gDP.h"
 #include "RSP.h"
-#include "Types.h"
 
 void S2DEX2_Init(void)
 {

@@ -148,7 +148,10 @@ typedef enum {
    M64CMD_CORE_STATE_SET,
    M64CMD_READ_SCREEN,
    M64CMD_RESET,
-   M64CMD_ADVANCE_FRAME
+   M64CMD_ADVANCE_FRAME,
+   M64CMD_DDROM_OPEN,
+   M64CMD_DISK_OPEN,
+   M64CMD_DISK_CLOSE
 } m64p_command;
 
 typedef struct
@@ -248,7 +251,8 @@ typedef enum {
    M64P_MEM_ROM,
    M64P_MEM_PIF,
    M64P_MEM_MI,
-   M64P_MEM_BREAKPOINT
+   M64P_MEM_BREAKPOINT,
+   M64P_MEM_DD
 } m64p_dbg_mem_type;
 
 typedef enum

@@ -17,13 +17,12 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 */
 
-#include <stdlib.h> // < __LIBRETRO__: Needed for exit()
+#include <stdlib.h>
 #include "osal_opengl.h"
 
 #include "DeviceBuilder.h"
 #include "FrameBuffer.h"
 #include "OGLCombiner.h"
-#include "OGLDebug.h"
 #include "OGLExtRender.h"
 #include "OGLGraphicsContext.h"
 #include "OGLTexture.h"
@@ -45,26 +44,10 @@ CDeviceBuilder* CDeviceBuilder::GetBuilder(void)
 void CDeviceBuilder::SelectDeviceType(SupportedDeviceType type)
 {
     if( type != m_deviceType && m_pInstance != NULL )
-    {
         DeleteBuilder();
-    }
 
-    CDeviceBuilder::m_deviceType = type;
-    switch(type)
-    {
-    case OGL_DEVICE:
-    case OGL_1_1_DEVICE:
-    case OGL_1_2_DEVICE:
-    case OGL_1_3_DEVICE:
-    case OGL_1_4_DEVICE:
-    case OGL_TNT2_DEVICE:
-    case NVIDIA_OGL_DEVICE:
-    case OGL_FRAGMENT_PROGRAM:
-        CDeviceBuilder::m_deviceGeneralType = OGL_DEVICE;
-        break;
-     default:
-       break;
-    }
+    CDeviceBuilder::m_deviceType        = type;
+    CDeviceBuilder::m_deviceGeneralType = OGL_DEVICE;
 }
 
 SupportedDeviceType CDeviceBuilder::GetDeviceType(void)
@@ -80,24 +63,7 @@ SupportedDeviceType CDeviceBuilder::GetGeneralDeviceType(void)
 CDeviceBuilder* CDeviceBuilder::CreateBuilder(SupportedDeviceType type)
 {
     if( m_pInstance == NULL )
-    {
-        switch( type )
-        {
-        case    OGL_DEVICE:
-        case    OGL_1_1_DEVICE:
-        case    OGL_1_2_DEVICE:
-        case    OGL_1_3_DEVICE:
-        case    OGL_1_4_DEVICE:
-        case    OGL_TNT2_DEVICE:
-        case    NVIDIA_OGL_DEVICE:
-        case OGL_FRAGMENT_PROGRAM:
-            m_pInstance = new OGLDeviceBuilder();
-            break;
-        default:
-            DebugMessage(M64MSG_ERROR, "CreateBuilder: unknown OGL device type");
-            exit(1);
-        }
-    }
+       m_pInstance = new OGLDeviceBuilder();
 
     return m_pInstance;
 }
@@ -132,7 +98,9 @@ void CDeviceBuilder::DeleteGraphicsContext(void)
         CGraphicsContext::g_pGraphicsContext = m_pGraphicsContext = NULL;
     }
 
-    SAFE_DELETE(g_pFrameBufferManager);
+    if (g_pFrameBufferManager)
+       free(g_pFrameBufferManager);
+    g_pFrameBufferManager = NULL;
 }
 
 void CDeviceBuilder::DeleteRender(void)
@@ -200,8 +168,8 @@ CTexture * OGLDeviceBuilder::CreateTexture(uint32_t dwWidth, uint32_t dwHeight, 
         TRACE0("Cannot create new texture, out of video memory");
         return NULL;
     }
-    else
-        return txtr;
+
+    return txtr;
 }
 
 CColorCombiner * OGLDeviceBuilder::CreateColorCombiner(CRender *pRender)
@@ -220,9 +188,7 @@ CColorCombiner * OGLDeviceBuilder::CreateColorCombiner(CRender *pRender)
 CBlender * OGLDeviceBuilder::CreateAlphaBlender(CRender *pRender)
 {
     if( m_pAlphaBlender == NULL )
-    {
         m_pAlphaBlender = new COGLBlender(pRender);
-    }
 
     return m_pAlphaBlender;
 }

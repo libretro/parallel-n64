@@ -33,13 +33,13 @@
 #include "RSP.h"
 #include "Textures.h"
 #include "OpenGL.h"
-#include "../../libretro/SDL.h"
+#include "../../libretro/libretro_private.h"
 
 #include "Config.h"
 #include "Common.h"
 
 
-Config config;
+gln64Config config;
 
 typedef struct
 {
@@ -99,7 +99,7 @@ static void Config_WriteConfig(const char *filename)
    for(i = 0; i < configOptionsSize; i++)
    {
       Option *o = &configOptions[i];
-      fprintf(f, "%s", o->name); // __LIBRETRO__: Fix warning
+      fprintf(f, "%s", o->name);
       if (o->data) fprintf(f,"=%i", *(o->data));
       fprintf(f, "\n");
    }
@@ -196,7 +196,8 @@ void Config_gln64_LoadRomConfig(unsigned char* header)
          log_cb(RETRO_LOG_INFO, "[gles2N64]: Searching Database for \"%s\" ROM\n", config.romName);
       while (!feof(f))
       {
-         fgets(line, 4096, f);
+         if (fgets(line, sizeof(line), f) == NULL)
+            fputs("glN64 ROM config stream read error.\n", stderr);
          if (line[0] == '\n') continue;
 
          if (strncmp(line,"rom name=", 9) == 0)
@@ -238,10 +239,8 @@ void Config_gln64_LoadConfig(void)
    // default configuration
    Config_SetDefault();
 
-   // __LIBRETRO__: Get screen size
    config.screen.width = screen_width;
    config.screen.height = screen_height;
-
 
    // read configuration
    f = (FILE*)fopen(filename, "r");
@@ -262,7 +261,9 @@ void Config_gln64_LoadConfig(void)
       while (!feof( f ))
       {
          char *val;
-         fgets( line, 4096, f );
+
+         if (fgets(line, sizeof(line), f) == NULL)
+            fputs("glN64 config stream read error.\n", stderr);
 
          if (line[0] == '#' || line[0] == '\n')
             continue;

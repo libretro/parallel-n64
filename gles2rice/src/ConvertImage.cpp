@@ -138,19 +138,19 @@ void ConvertRGBA32(CTexture *pTexture, const TxtrInfo &tinfo)
 
     if( options.bUseFullTMEM )
     {
-        Tile &tile = gRDP.tiles[tinfo.tileNo];
+        gDPTile *tile = &gDP.tiles[tinfo.tileNo];
 
         uint32_t *pWordSrc;
         if( tinfo.tileNo >= 0 )
         {
-            pWordSrc = (uint32_t*)&g_Tmem.g_Tmem64bit[tile.dwTMem];
+            pWordSrc = (uint32_t*)&g_Tmem.g_Tmem64bit[tile->tmem];
 
             for (uint32_t y = 0; y < tinfo.HeightToLoad; y++)
             {
                 uint32_t * dwDst = (uint32_t *)((uint8_t *)dInfo.lpSurface + y*dInfo.lPitch);
 
                 uint32_t nFiddle = ( y&1 )? 0x2 : 0;
-                int idx = tile.dwLine*4*y;
+                int idx = tile->line * 4 * y;
 
                 for (uint32_t x = 0; x < tinfo.WidthToLoad; x++, idx++)
                 {
@@ -379,7 +379,7 @@ void ConvertIA8(CTexture *pTexture, const TxtrInfo &tinfo)
     }
     else
     {
-        register const uint8_t* FourToEightArray = &FourToEight[0];
+        const uint8_t* FourToEightArray = &FourToEight[0];
         for (uint32_t y = 0; y < tinfo.HeightToLoad; y++)
         {
             uint8_t *pDst = (uint8_t *)dInfo.lpSurface + y * dInfo.lPitch;
@@ -389,7 +389,7 @@ void ConvertIA8(CTexture *pTexture, const TxtrInfo &tinfo)
 
             for (uint32_t x = 0; x < tinfo.WidthToLoad; x++)
             {
-                register uint8_t b = pSrc[(dwByteOffset++) ^ 0x3];
+                uint8_t b = pSrc[(dwByteOffset++) ^ 0x3];
                 uint8_t I = *(FourToEightArray+(b>>4));
 
                 *pDst++ = I;
@@ -1053,11 +1053,11 @@ void ConvertYUV(CTexture *pTexture, const TxtrInfo &tinfo)
 
     if( options.bUseFullTMEM )
     {
-        Tile &tile = gRDP.tiles[tinfo.tileNo];
+        gDPTile *tile = &gDP.tiles[tinfo.tileNo];
 
         uint16_t * pSrc;
         if( tinfo.tileNo >= 0 )
-            pSrc = (uint16_t*)&g_Tmem.g_Tmem64bit[tile.dwTMem];
+            pSrc = (uint16_t*)&g_Tmem.g_Tmem64bit[tile->tmem];
         else
             pSrc = (uint16_t*)(tinfo.pPhysicalAddress);
 
@@ -1065,7 +1065,7 @@ void ConvertYUV(CTexture *pTexture, const TxtrInfo &tinfo)
         for (y = 0; y < tinfo.HeightToLoad; y++)
         {
             nFiddle = ( y&1 )? 0x4 : 0;
-            int dwWordOffset = tinfo.tileNo>=0? tile.dwLine*8*y : ((y+tinfo.TopToLoad) * tinfo.Pitch) + (tinfo.LeftToLoad * 2);
+            int dwWordOffset = tinfo.tileNo>=0? tile->line * 8 * y : ((y+tinfo.TopToLoad) * tinfo.Pitch) + (tinfo.LeftToLoad * 2);
             uint32_t * dwDst = (uint32_t *)((uint8_t *)dInfo.lpSurface + y*dInfo.lPitch);
 
             for (x = 0; x < tinfo.WidthToLoad/2; x++)
@@ -1177,11 +1177,11 @@ void Convert4b(CTexture *pTexture, const TxtrInfo &tinfo)
 
     uint16_t * pPal = (uint16_t *)tinfo.PalAddress;
     bool bIgnoreAlpha = (tinfo.TLutFmt==TLUT_FMT_UNKNOWN);
-    if( tinfo.Format <= TXT_FMT_CI ) bIgnoreAlpha = (tinfo.TLutFmt==TLUT_FMT_NONE);
+    if( tinfo.Format <= G_IM_FMT_CI ) bIgnoreAlpha = (tinfo.TLutFmt==TLUT_FMT_NONE);
 
-    Tile &tile = gRDP.tiles[tinfo.tileNo];
+    gDPTile *tile = &gDP.tiles[tinfo.tileNo];
 
-    uint8_t *pByteSrc = tinfo.tileNo >= 0 ? (uint8_t*)&g_Tmem.g_Tmem64bit[tile.dwTMem] : (uint8_t*)(tinfo.pPhysicalAddress);
+    uint8_t *pByteSrc = tinfo.tileNo >= 0 ? (uint8_t*)&g_Tmem.g_Tmem64bit[tile->tmem] : (uint8_t*)(tinfo.pPhysicalAddress);
 
     for (uint32_t y = 0; y < tinfo.HeightToLoad; y++)
     {
@@ -1196,24 +1196,20 @@ void Convert4b(CTexture *pTexture, const TxtrInfo &tinfo)
                     nFiddle = 0x7;
             }
             else
-            {
                 nFiddle = 3;
-            }
         }
         else
-        {
             nFiddle = ( y&1 )? 0x4 : 0;
-        }
 
         uint32_t * pDst = (uint32_t *)((uint8_t *)dInfo.lpSurface + y * dInfo.lPitch);
-        int idx = tinfo.tileNo>=0 ? tile.dwLine*8*y : ((y+tinfo.TopToLoad) * tinfo.Pitch) + (tinfo.LeftToLoad / 2);
+        int idx = tinfo.tileNo>=0 ? tile->line * 8 * y : ((y+tinfo.TopToLoad) * tinfo.Pitch) + (tinfo.LeftToLoad / 2);
 
         if (tinfo.WidthToLoad == 1)
         {
             // corner case
             uint8_t b = pByteSrc[idx^nFiddle];
             uint8_t bhi = (b&0xf0)>>4;
-            if( gRDP.otherMode.text_tlut>=2 || ( tinfo.Format != TXT_FMT_IA && tinfo.Format != TXT_FMT_I) )
+            if( gRDP.otherMode.text_tlut>=2 || ( tinfo.Format != G_IM_FMT_IA && tinfo.Format != G_IM_FMT_I) )
             {
                 if( tinfo.TLutFmt == TLUT_FMT_IA16 )
                 {
@@ -1230,9 +1226,9 @@ void Convert4b(CTexture *pTexture, const TxtrInfo &tinfo)
                         *pDst = Convert555ToRGBA(pPal[bhi^1]);
                 }
             }
-            else if( tinfo.Format == TXT_FMT_IA )
+            else if( tinfo.Format == G_IM_FMT_IA )
                 *pDst = ConvertIA4ToRGBA(b>>4);
-            else    // if( tinfo.Format == TXT_FMT_I )
+            else    // if( tinfo.Format == G_IM_FMT_I )
                 *pDst = ConvertI4ToRGBA(b>>4);
             if( bIgnoreAlpha )
                 *pDst |= 0xFF000000;
@@ -1244,7 +1240,7 @@ void Convert4b(CTexture *pTexture, const TxtrInfo &tinfo)
             uint8_t bhi = (b&0xf0)>>4;
             uint8_t blo = (b&0x0f);
 
-            if( gRDP.otherMode.text_tlut>=2 || ( tinfo.Format != TXT_FMT_IA && tinfo.Format != TXT_FMT_I) )
+            if( gRDP.otherMode.text_tlut>=2 || ( tinfo.Format != G_IM_FMT_IA && tinfo.Format != G_IM_FMT_I) )
             {
                 if( tinfo.TLutFmt == TLUT_FMT_IA16 )
                 {
@@ -1273,12 +1269,12 @@ void Convert4b(CTexture *pTexture, const TxtrInfo &tinfo)
                     }
                 }
             }
-            else if( tinfo.Format == TXT_FMT_IA )
+            else if( tinfo.Format == G_IM_FMT_IA )
             {
                 pDst[0] = ConvertIA4ToRGBA(b>>4);
                 pDst[1] = ConvertIA4ToRGBA(b&0xF);
             }
-            else    // if( tinfo.Format == TXT_FMT_I )
+            else    // if( tinfo.Format == G_IM_FMT_I )
             {
                 pDst[0] = ConvertI4ToRGBA(b>>4);
                 pDst[1] = ConvertI4ToRGBA(b&0xF);
@@ -1305,14 +1301,14 @@ void Convert8b(CTexture *pTexture, const TxtrInfo &tinfo)
 
     uint16_t * pPal = (uint16_t *)tinfo.PalAddress;
     bool bIgnoreAlpha = (tinfo.TLutFmt==TLUT_FMT_UNKNOWN);
-    if( tinfo.Format <= TXT_FMT_CI ) bIgnoreAlpha = (tinfo.TLutFmt==TLUT_FMT_NONE);
+    if( tinfo.Format <= G_IM_FMT_CI ) bIgnoreAlpha = (tinfo.TLutFmt==TLUT_FMT_NONE);
 
-    Tile &tile = gRDP.tiles[tinfo.tileNo];
+    gDPTile *tile = &gDP.tiles[tinfo.tileNo];
 
     uint8_t *pByteSrc;
     if( tinfo.tileNo >= 0 )
     {
-        pByteSrc = (uint8_t*)&g_Tmem.g_Tmem64bit[tile.dwTMem];
+        pByteSrc = (uint8_t*)&g_Tmem.g_Tmem64bit[tile->tmem];
     }
     else
     {
@@ -1335,23 +1331,19 @@ void Convert8b(CTexture *pTexture, const TxtrInfo &tinfo)
                     nFiddle = 0x7;
             }
             else
-            {
                 nFiddle = 3;
-            }
         }
         else
-        {
             nFiddle = ( y&1 )? 0x4 : 0;
-        }
 
 
-        int idx = tinfo.tileNo>=0? tile.dwLine*8*y : ((y+tinfo.TopToLoad) * tinfo.Pitch) + tinfo.LeftToLoad;
+        int idx = tinfo.tileNo>=0? tile->line * 8 * y : ((y+tinfo.TopToLoad) * tinfo.Pitch) + tinfo.LeftToLoad;
 
         for (uint32_t x = 0; x < tinfo.WidthToLoad; x++, idx++)
         {
             uint8_t b = pByteSrc[idx^nFiddle];
 
-            if( gRDP.otherMode.text_tlut>=2 || ( tinfo.Format != TXT_FMT_IA && tinfo.Format != TXT_FMT_I) )
+            if( gRDP.otherMode.text_tlut>=2 || ( tinfo.Format != G_IM_FMT_IA && tinfo.Format != G_IM_FMT_I) )
             {
                 if( tinfo.TLutFmt == TLUT_FMT_IA16 )
                 {
@@ -1368,7 +1360,7 @@ void Convert8b(CTexture *pTexture, const TxtrInfo &tinfo)
                         *pDst = Convert555ToRGBA(pPal[b^1]);
                 }
             }
-            else if( tinfo.Format == TXT_FMT_IA )
+            else if( tinfo.Format == G_IM_FMT_IA )
             {
                 uint8_t I = FourToEight[(b & 0xf0)>>4];
                 uint8_t * pByteDst = (uint8_t*)pDst;
@@ -1377,7 +1369,7 @@ void Convert8b(CTexture *pTexture, const TxtrInfo &tinfo)
                 pByteDst[2] = I;
                 pByteDst[3] = FourToEight[(b & 0x0f)   ];
             }
-            else    // if( tinfo.Format == TXT_FMT_I )
+            else    // if( tinfo.Format == G_IM_FMT_I )
             {
                 uint8_t * pByteDst = (uint8_t*)pDst;
                 pByteDst[0] = b;
@@ -1405,11 +1397,11 @@ void Convert16b(CTexture *pTexture, const TxtrInfo &tinfo)
     if (!pTexture->StartUpdate(&dInfo)) 
         return;
 
-    Tile &tile = gRDP.tiles[tinfo.tileNo];
+    gDPTile *tile = &gDP.tiles[tinfo.tileNo];
 
     uint16_t *pWordSrc;
     if( tinfo.tileNo >= 0 )
-        pWordSrc = (uint16_t*)&g_Tmem.g_Tmem64bit[tile.dwTMem];
+        pWordSrc = (uint16_t*)&g_Tmem.g_Tmem64bit[tile->tmem];
     else
         pWordSrc = (uint16_t*)(tinfo.pPhysicalAddress);
 
@@ -1429,31 +1421,27 @@ void Convert16b(CTexture *pTexture, const TxtrInfo &tinfo)
                     nFiddle = 0x3;
             }
             else
-            {
                 nFiddle = 0x1;
-            }
         }
         else
-        {
             nFiddle = ( y&1 )? 0x2 : 0;
-        }
 
 
-        int idx = tinfo.tileNo>=0? tile.dwLine*4*y : (((y+tinfo.TopToLoad) * tinfo.Pitch)>>1) + tinfo.LeftToLoad;
+        int idx = tinfo.tileNo>=0? tile->line * 4 * y : (((y+tinfo.TopToLoad) * tinfo.Pitch)>>1) + tinfo.LeftToLoad;
 
         for (uint32_t x = 0; x < tinfo.WidthToLoad; x++, idx++)
         {
             uint16_t w = pWordSrc[idx^nFiddle];
             uint16_t w2 = tinfo.tileNo>=0? ((w>>8)|(w<<8)) : w;
 
-            if( tinfo.Format == TXT_FMT_RGBA )
+            if( tinfo.Format == G_IM_FMT_RGBA )
             {
                 dwDst[x] = Convert555ToRGBA(w2);
             }
-            else if( tinfo.Format == TXT_FMT_YUV )
+            else if( tinfo.Format == G_IM_FMT_YUV )
             {
             }
-            else if( tinfo.Format >= TXT_FMT_IA )
+            else if( tinfo.Format >= G_IM_FMT_IA )
             {
                 uint8_t * pByteDst = (uint8_t*)&dwDst[x];
                 *pByteDst++ = (uint8_t)(w2 >> 8);

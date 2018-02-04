@@ -22,65 +22,114 @@
 #include "vi_controller.h"
 
 #include "main/main.h"
+#include "main/rom.h"
 #include "memory/memory.h"
 #include "plugin/plugin.h"
 #include "r4300/r4300_core.h"
-#include "r4300/interupt.h"
+#include "r4300/interrupt.h"
 
 #include <string.h>
 
-void connect_vi(struct vi_controller* vi,
-                struct r4300_core* r4300)
+/* XXX: timing hacks */
+enum { DEFAULT_CPU_COUNT_PER_SCANLINE = 1500 };
+enum { NTSC_VERTICAL_RESOLUTION = 525 };
+
+extern unsigned alternate_vi_timing;
+
+void init_vi(struct vi_controller* vi,
+      unsigned int clock, unsigned int expected_refresh_rate,
+      /* unsigned int count_per_scanline, unsigned int alternate_timing, */
+      struct r4300_core* r4300)
 {
-    vi->r4300 = r4300;
+   vi->clock = clock;
+   vi->expected_refresh_rate = expected_refresh_rate;
+#if 0
+   vi->count_per_scanline    = count_per_scanline;
+   vi->alternate_timing      = alternate_timing;
+#endif
+   vi->r4300 = r4300;
 }
 
-void init_vi(struct vi_controller* vi)
+unsigned int vi_clock_from_tv_standard(m64p_system_type tv_standard)
 {
-    memset(vi->regs, 0, VI_REGS_COUNT*sizeof(uint32_t));
-
-    vi->field = 0;
-    vi->delay = vi->next_vi = 5000;
+   switch(tv_standard)
+   {
+      case SYSTEM_PAL:
+         return 49656530;
+      case SYSTEM_MPAL:
+         return 48628316;
+      case SYSTEM_NTSC:
+      default:
+         return 48681812;
+   }
 }
 
+unsigned int vi_expected_refresh_rate_from_tv_standard(m64p_system_type tv_standard)
+{
+   switch (tv_standard)
+   {
+      case SYSTEM_PAL:
+      case SYSTEM_MPAL:
+         return 50;
 
-int read_vi_regs(void* opaque, uint32_t address, uint32_t* value)
+      case SYSTEM_NTSC:
+      default:
+         return 60;
+   }
+}
+
+/* Initializes the VI. */
+void poweron_vi(struct vi_controller* vi)
+{
+   memset(vi->regs, 0, VI_REGS_COUNT*sizeof(uint32_t));
+
+   vi->field = 0;
+   vi->delay = vi->next_vi = 5000;
+}
+
+/* Reads a word from the VI MMIO register space. */
+int read_vi_regs(void* opaque, uint32_t address, uint32_t *word)
 {
     struct vi_controller* vi = (struct vi_controller*)opaque;
-    uint32_t reg = vi_reg(address);
+    uint32_t             reg = VI_REG(address);
     const uint32_t* cp0_regs = r4300_cp0_regs();
 
     if (reg == VI_CURRENT_REG)
     {
-        update_count();
-        vi->regs[VI_CURRENT_REG] = (vi->delay - (vi->next_vi - cp0_regs[CP0_COUNT_REG]))/1500;
+        cp0_update_count();
+        if (alternate_vi_timing)
+           vi->regs[VI_CURRENT_REG] = (vi->delay - (vi->next_vi - cp0_regs[CP0_COUNT_REG])) % (NTSC_VERTICAL_RESOLUTION + 1);
+        else
+           vi->regs[VI_CURRENT_REG] = (vi->delay - (vi->next_vi - cp0_regs[CP0_COUNT_REG])) / g_vi_refresh_rate;
         vi->regs[VI_CURRENT_REG] = (vi->regs[VI_CURRENT_REG] & (~1)) | vi->field;
     }
 
-    *value = vi->regs[reg];
+    *word = vi->regs[reg];
 
     return 0;
 }
 
-int write_vi_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mask)
+/* Writes a word to the VI MMIO register space. */
+int write_vi_regs(void* opaque, uint32_t address,
+      uint32_t word, uint32_t mask)
 {
     struct vi_controller* vi = (struct vi_controller*)opaque;
-    uint32_t reg             = vi_reg(address);
+    uint32_t reg             = VI_REG(address);
 
-    switch(reg)
+    switch (reg)
     {
        case VI_STATUS_REG:
-          if ((vi->regs[VI_STATUS_REG] & mask) != (value & mask))
+          if ((vi->regs[VI_STATUS_REG] & mask) != (word & mask))
           {
-             masked_write(&vi->regs[VI_STATUS_REG], value, mask);
+             vi->regs[VI_STATUS_REG] = MASKED_WRITE(&vi->regs[VI_STATUS_REG], word, mask);
              gfx.viStatusChanged();
           }
           return 0;
 
        case VI_WIDTH_REG:
-          if ((vi->regs[VI_WIDTH_REG] & mask) != (value & mask))
+          if ((vi->regs[VI_WIDTH_REG] & mask) != (word & mask))
           {
-             masked_write(&vi->regs[VI_WIDTH_REG], value, mask);
+             vi->regs[VI_WIDTH_REG] = MASKED_WRITE(&vi->regs[VI_WIDTH_REG], word, mask);
              gfx.viWidthChanged();
           }
           return 0;
@@ -90,7 +139,7 @@ int write_vi_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mask)
           return 0;
     }
 
-    masked_write(&vi->regs[reg], value, mask);
+    vi->regs[reg] = MASKED_WRITE(&vi->regs[reg], word, mask);
 
     return 0;
 }
@@ -106,13 +155,14 @@ void vi_vertical_interrupt_event(struct vi_controller* vi)
    vi->field ^= (vi->regs[VI_STATUS_REG] >> 6) & 0x1;
 
    /* schedule next vertical interrupt */
-   vi->delay = (vi->regs[VI_V_SYNC_REG] == 0)
-      ? 500000
-      : (vi->regs[VI_V_SYNC_REG] + 1) * VI_REFRESH;
+   if (vi->regs[VI_V_SYNC_REG] == 0)
+      vi->delay = 500000;
+   else
+      vi->delay = (vi->regs[VI_V_SYNC_REG] + 1) * g_vi_refresh_rate;
 
    vi->next_vi += vi->delay;
 
-   add_interupt_event_count(VI_INT, vi->next_vi);
+   add_interrupt_event_count(VI_INT, vi->next_vi);
 
    /* trigger interrupt */
    raise_rcp_interrupt(vi->r4300, MI_INTR_VI);

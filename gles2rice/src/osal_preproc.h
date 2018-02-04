@@ -25,6 +25,8 @@
 #ifndef OSAL_PREPROC_H
 #define OSAL_PREPROC_H
 
+#include <boolean.h>
+
 #ifdef _MSC_VER
 #define ALIGN(BYTES,DATA) __declspec(align(BYTES)) DATA
 #else
@@ -38,13 +40,5 @@ typedef struct
    int right;
    int left;
 } M64P_RECT;
-
-#ifndef FALSE
-#define FALSE 0
-#endif
-
-#ifndef TRUE
-#define TRUE 1
-#endif
 
 #endif // OSAL_PREPROC_H

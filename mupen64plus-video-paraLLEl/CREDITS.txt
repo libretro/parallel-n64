@@ -1,0 +1,4 @@
+Written by Tiny Tiger.
+
+Code is heavily inspired by the Angrylion LLE plugin.
+This plugin aims to be very similar to Angrylion LLE, but it is completely rewritten to run in parallel on GPUs.

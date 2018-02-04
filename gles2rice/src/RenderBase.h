@@ -25,6 +25,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "RSP_Parser.h"
 #include "Video.h"
 
+#include "../../Graphics/RSP/gSP_state.h"
+
 /*
  *  Global variables defined in this file were moved out of Render class
  *  to make them be accessed faster
@@ -81,7 +83,6 @@ extern EXTERNAL_VERTEX  g_vtxForExternal[MAX_VERTS];
 /*      Don't move                                                      */
 /************************************************************************/
 
-extern uint32_t             gRSPnumLights;
 extern Light              gRSPlights[16];
 extern ALIGN(16, Matrix   gRSPworldProjectTransported);
 extern ALIGN(16, Matrix   gRSPworldProject);
@@ -148,8 +149,6 @@ typedef struct
     bool    bCombinedMatrixIsUpdated;
     bool    bLightIsUpdated;
 
-    uint32_t  segments[16];
-
     int     DKRCMatrixIndex;
     int     DKRVtxCount;
     bool    DKRBillBoard;
@@ -187,7 +186,8 @@ typedef struct
 
 extern ALIGN(16, RSP_Options gRSP);
 
-typedef struct {
+typedef struct
+{
     uint32_t  keyR;
     uint32_t  keyG;
     uint32_t  keyB;
@@ -214,12 +214,9 @@ typedef struct {
     uint32_t  fillColor;
     uint32_t  originalFillColor;
 
-    uint32_t  geometryMode;
-    uint32_t  otherModeL;
-    uint32_t  otherModeH;
     RDP_OtherMode otherMode;
 
-    Tile    tiles[8];
+    TileAdditionalInfo    tilesinfo[8];
     ScissorType scissor;
 
     bool    textureIsChanged;
@@ -245,9 +242,9 @@ void ProcessVertexDataExternal(uint32_t dwAddr, uint32_t dwV0, uint32_t dwNum);
 void SetPrimitiveColor(uint32_t dwCol, uint32_t LODMin, uint32_t LODFrac);
 void SetPrimitiveDepth(uint32_t z, uint32_t dwDZ);
 void SetVertexXYZ(uint32_t vertex, float x, float y, float z);
-void ModifyVertexInfo(uint32_t where, uint32_t vertex, uint32_t val);
+void ricegSPModifyVertex(uint32_t vtx, uint32_t where,  uint32_t val);
 void ProcessVertexDataDKR(uint32_t dwAddr, uint32_t dwV0, uint32_t dwNum);
-void SetLightCol(uint32_t dwLight, uint32_t dwCol);
+void ricegSPLightColor(uint32_t dwLight, uint32_t dwCol);
 void SetLightDirection(uint32_t dwLight, float x, float y, float z, float range);
 void ForceMainTextureIndex(int dwTile); 
 void UpdateCombinedMatrix();
@@ -271,15 +268,6 @@ inline float GetPrimitiveDepth() { return gRDP.fPrimitiveDepth; }
 inline uint32_t GetPrimitiveColor() { return gRDP.primitiveColor; }
 inline float* GetPrimitiveColorfv() { return gRDP.fvPrimitiveColor; }
 inline uint32_t GetLODFrac() { return gRDP.LODFrac; }
-inline void SetEnvColor(uint32_t dwCol) 
-{ 
-    gRDP.colorsAreReloaded = true;
-    gRDP.envColor = dwCol; 
-    gRDP.fvEnvColor[0] = ((dwCol>>16)&0xFF)/255.0f;     // R 
-    gRDP.fvEnvColor[1] = ((dwCol>>8)&0xFF)/255.0f;      // G
-    gRDP.fvEnvColor[2] = ((dwCol)&0xFF)/255.0f;         // B
-    gRDP.fvEnvColor[3] = ((dwCol>>24)&0xFF)/255.0f;     // A
-}
 inline uint32_t GetEnvColor() { return gRDP.envColor; }
 inline float* GetEnvColorfv() { return gRDP.fvEnvColor; }
 
@@ -296,15 +284,11 @@ inline void SetLighting(bool bLighting) { gRSP.bLightingEnable = bLighting; }
 
 // Generate texture coords?
 inline void SetTextureGen(bool bTextureGen) { gRSP.bTextureGen = bTextureGen; }
-inline void SetNumLights(uint32_t dwNumLights) 
-{ 
-    gRSPnumLights = dwNumLights; 
-    DEBUGGER_PAUSE_AND_DUMP(NEXT_SET_LIGHT,TRACE1("Set Number Of Lights: %d", dwNumLights));
-}
-inline uint32_t GetNumLights() { return gRSPnumLights; }
 inline COLOR GetVertexDiffuseColor(uint32_t ver) { return g_dwVtxDifColor[ver]; }
 inline void SetScreenMult(float fMultX, float fMultY) { windowSetting.fMultX = fMultX; windowSetting.fMultY = fMultY; }
 inline COLOR GetLightCol(uint32_t dwLight) { return gRSPlights[dwLight].col; }
+
+void ricegSPNumLights(int32_t n);
 
 #endif
 

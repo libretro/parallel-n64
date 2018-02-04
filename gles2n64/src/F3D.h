@@ -1,6 +1,7 @@
 #ifndef F3D_H
 #define F3D_H
-#include "Types.h"
+
+#include <stdint.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -72,32 +73,32 @@ extern "C" {
 
 #define F3D_TRI_UNKNOWN         0xC0
 
-void F3D_SPNoOp( u32 w0, u32 w1 );
-void F3D_Mtx( u32 w0, u32 w1 );
-void F3D_Reserved0( u32 w0, u32 w1 );
-void F3D_MoveMem( u32 w0, u32 w1 );
-void F3D_Vtx( u32 w0, u32 w1 );
-void F3D_Reserved1( u32 w0, u32 w1 );
-void F3D_DList( u32 w0, u32 w1 );
-void F3D_Reserved2( u32 w0, u32 w1 );
-void F3D_Reserved3( u32 w0, u32 w1 );
-void F3D_Sprite2D_Base( u32 w0, u32 w1 );
-void F3D_Tri1( u32 w0, u32 w1 );
-void F3D_CullDL( u32 w0, u32 w1 );
-void F3D_PopMtx( u32 w0, u32 w1 );
-void F3D_MoveWord( u32 w0, u32 w1 );
-void F3D_Texture( u32 w0, u32 w1 );
-void F3D_SetOtherMode_H( u32 w0, u32 w1 );
-void F3D_SetOtherMode_L( u32 w0, u32 w1 );
-void F3D_EndDL( u32 w0, u32 w1 );
-void F3D_SetGeometryMode( u32 w0, u32 w1 );
-void F3D_ClearGeometryMode( u32 w0, u32 w1 );
-//void F3D_Line3D( u32 w0, u32 w1 );
-void F3D_Quad( u32 w0, u32 w1 );
-void F3D_RDPHalf_1( u32 w0, u32 w1 );
-void F3D_RDPHalf_2( u32 w0, u32 w1 );
-void F3D_RDPHalf_Cont( u32 w0, u32 w1 );
-void F3D_Tri4( u32 w0, u32 w1 );
+void F3D_SPNoOp( uint32_t w0, uint32_t w1 );
+void F3D_Mtx( uint32_t w0, uint32_t w1 );
+void F3D_Reserved0( uint32_t w0, uint32_t w1 );
+void F3D_MoveMem( uint32_t w0, uint32_t w1 );
+void F3D_Vtx( uint32_t w0, uint32_t w1 );
+void F3D_Reserved1( uint32_t w0, uint32_t w1 );
+void F3D_DList( uint32_t w0, uint32_t w1 );
+void F3D_Reserved2( uint32_t w0, uint32_t w1 );
+void F3D_Reserved3( uint32_t w0, uint32_t w1 );
+void F3D_Sprite2D_Base( uint32_t w0, uint32_t w1 );
+void F3D_Tri1( uint32_t w0, uint32_t w1 );
+void F3D_CullDL( uint32_t w0, uint32_t w1 );
+void F3D_PopMtx( uint32_t w0, uint32_t w1 );
+void F3D_MoveWord( uint32_t w0, uint32_t w1 );
+void F3D_Texture( uint32_t w0, uint32_t w1 );
+void F3D_SetOtherMode_H( uint32_t w0, uint32_t w1 );
+void F3D_SetOtherMode_L( uint32_t w0, uint32_t w1 );
+void F3D_EndDL( uint32_t w0, uint32_t w1 );
+void F3D_SetGeometryMode( uint32_t w0, uint32_t w1 );
+void F3D_ClearGeometryMode( uint32_t w0, uint32_t w1 );
+//void F3D_Line3D( uint32_t w0, uint32_t w1 );
+void F3D_Quad( uint32_t w0, uint32_t w1 );
+void F3D_RDPHalf_1( uint32_t w0, uint32_t w1 );
+void F3D_RDPHalf_2( uint32_t w0, uint32_t w1 );
+void F3D_RDPHalf_Cont( uint32_t w0, uint32_t w1 );
+void F3D_Tri4( uint32_t w0, uint32_t w1 );
 void F3D_Init();
 
 #ifdef __cplusplus

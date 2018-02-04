@@ -4,6 +4,8 @@
 #include <stdio.h>
 #include <stdint.h>
 
+#include <retro_inline.h>
+
 #define SP_INTERRUPT    0x1
 #define SI_INTERRUPT    0x2
 #define AI_INTERRUPT    0x4
@@ -42,13 +44,13 @@
 #define R4300i_SP_Intr 1
 
 #ifdef MSB_FIRST
-    #define BYTE_ADDR_XOR        0
-    #define WORD_ADDR_XOR        0
-    #define BYTE4_XOR_BE(a)     (a)
+#define BYTE_ADDR_XOR        0
+#define WORD_ADDR_XOR        0
+#define BYTE4_XOR_BE(a)     (a)
 #else
-    #define BYTE_ADDR_XOR        3
-    #define WORD_ADDR_XOR        1
-    #define BYTE4_XOR_BE(a)     ((a) ^ 3)                
+#define BYTE_ADDR_XOR        3
+#define WORD_ADDR_XOR        1
+#define BYTE4_XOR_BE(a)     ((a) ^ 3)                
 #endif
 
 #ifdef MSB_FIRST
@@ -70,8 +72,15 @@
 #define ALIGNED         __attribute__((aligned(16)))
 #endif
 
-#define PRESCALE_WIDTH 640
+#ifndef PRESCALE_WIDTH
+#define PRESCALE_WIDTH  640
+#endif
+
+#ifndef PRESCALE_HEIGHT
 #define PRESCALE_HEIGHT 625
+#endif
+
+#define RDRAM_MASK 0x00ffffff
 
 #define GET_GFX_INFO(member)    (gfx_info.member)
 
@@ -90,7 +99,7 @@
 #define rsp_imem ((uint32_t*)gfx_info.IMEM)
 #define rsp_dmem ((uint32_t*)gfx_info.DMEM)
 
-#define rdram16 ((UINT16*)DRAM)
+#define rdram16 ((uint16_t*)DRAM)
 #define rdram8 (DRAM)
 
 #define vi_origin (*(uint32_t*)gfx_info.VI_ORIGIN_REG)
@@ -115,46 +124,19 @@
 #define GET_MED(x)      (((x) & 0x07C0) >> 3)
 #define GET_HI(x)       (((x) >> 8) & 0x00F8)
 
-#define RREADADDR8(in) \
-    (((in) <= plim) ? (rdram8[(in) ^ BYTE_ADDR_XOR]) : 0)
-#define RREADIDX16(in) \
-    (((in) <= idxlim16) ? (rdram_16[(in) ^ WORD_ADDR_XOR]) : 0)
-#define RREADIDX32(in) \
-    (((in) <= idxlim32) ? (rdram[(in)]) : 0)
+#define RREADIDX16(rdst, in) {(in) &= (RDRAM_MASK >> 1); (rdst) = ((in) <= IDXLIM16) ? (rdram_16[(in) ^ WORD_ADDR_XOR]) : 0;}
+#define RREADIDX32(rdst, in) {(in) &= (RDRAM_MASK >> 2); (rdst) = ((in) <= IDXLIM32) ? (rdram[(in)]) : 0;}
 
-#define RWRITEADDR8(in, val) { \
-    if ((in) <= plim) rdram8[(in) ^ BYTE_ADDR_XOR] = (val);}
-#define RWRITEIDX16(in, val) { \
-    if ((in) <= idxlim16) rdram_16[(in) ^ WORD_ADDR_XOR] = (val);}
-#define RWRITEIDX32(in, val) { \
-    if ((in) <= idxlim32) rdram[(in)] = (val);}
+#define RWRITEIDX16(in, val)	{(in) &= (RDRAM_MASK >> 1); if ((in) <= IDXLIM16) rdram_16[(in) ^ WORD_ADDR_XOR] = (val);}
+#define RWRITEIDX32(in, val)	{(in) &= (RDRAM_MASK >> 2); if ((in) <= IDXLIM32) rdram[(in)] = (val);}
 
 #define PAIRREAD16(rdst, hdst, in) {             \
-    if ((in) <= idxlim16) {                      \
+   (in) &= (RDRAM_MASK >> 1);			             \
+    if ((in) <= IDXLIM16) {                      \
         (rdst) = rdram_16[(in) ^ WORD_ADDR_XOR]; \
         (hdst) = hidden_bits[(in)];              \
     } else                                       \
         (rdst) = (hdst) = 0;                     \
-}
-#define PAIRWRITE16(in, rval, hval) {            \
-    if ((in) <= idxlim16) {                      \
-        rdram_16[(in) ^ WORD_ADDR_XOR] = (rval); \
-        hidden_bits[(in)] = (hval);              \
-    }                                            \
-}
-#define PAIRWRITE32(in, rval, hval0, hval1) {    \
-    if ((in) <= idxlim32) {                      \
-        rdram[(in)] = (rval);                    \
-        hidden_bits[(in) << 1] = (hval0);        \
-        hidden_bits[((in) << 1) + 1] = (hval1);  \
-    }                                            \
-}
-#define PAIRWRITE8(in, rval, hval) {             \
-    if ((in) <= plim) {                          \
-        rdram8[(in) ^ BYTE_ADDR_XOR] = (rval);  \
-        if ((in) & 1)                            \
-            hidden_bits[(in) >> 1] = (hval);     \
-    }                                            \
 }
 
 #endif

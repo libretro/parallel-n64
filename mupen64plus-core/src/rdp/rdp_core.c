@@ -34,34 +34,29 @@ static int update_dpc_status(struct rdp_core* dp, uint32_t w)
    int do_sp_task_on_unfreeze = 0;
 
    /* clear / set xbus_dmem_dma */
-   if (w & 0x1)
-      dp->dpc_regs[DPC_STATUS_REG] &= ~0x1;
-   if (w & 0x2)
-      dp->dpc_regs[DPC_STATUS_REG] |= 0x1;
+   if (w & DPC_STATUS_CLR_XBUS_DMEM_DMA) dp->dpc_regs[DPC_STATUS_REG] &= ~DPC_STATUS_XBUS_DMEM_DMA;
+   if (w & DPC_STATUS_SET_XBUS_DMEM_DMA) dp->dpc_regs[DPC_STATUS_REG] |= DPC_STATUS_XBUS_DMEM_DMA;
 
    /* clear / set freeze */
-   if (w & 0x4)
+   if (w & DPC_STATUS_CLR_FREEZE)
    {
-      dp->dpc_regs[DPC_STATUS_REG] &= ~0x2;
+      dp->dpc_regs[DPC_STATUS_REG] &= ~DPC_STATUS_FREEZE;
 
-      if (!(dp->sp->regs[SP_STATUS_REG] & 0x3)) // !halt && !broke
+      if (!(dp->sp->regs[SP_STATUS_REG] & (SP_STATUS_HALT | SP_STATUS_BROKE)))
          do_sp_task_on_unfreeze = 1;
    }
 
-   if (w & 0x8)
-      dp->dpc_regs[DPC_STATUS_REG] |= 0x2;
+   if (w & DPC_STATUS_SET_FREEZE) dp->dpc_regs[DPC_STATUS_REG] |= DPC_STATUS_FREEZE;
 
    /* clear / set flush */
-   if (w & 0x10)
-      dp->dpc_regs[DPC_STATUS_REG] &= ~0x4;
-   if (w & 0x20)
-      dp->dpc_regs[DPC_STATUS_REG] |= 0x4;
+   if (w & DPC_STATUS_CLR_FLUSH) dp->dpc_regs[DPC_STATUS_REG] &= ~DPC_STATUS_FLUSH;
+   if (w & DPC_STATUS_SET_FLUSH) dp->dpc_regs[DPC_STATUS_REG] |= DPC_STATUS_FLUSH;
 
    return do_sp_task_on_unfreeze;
 }
 
 
-void connect_rdp(struct rdp_core* dp,
+void init_rdp(struct rdp_core* dp,
                  struct r4300_core* r4300,
                  struct rsp_core* sp,
                  struct ri_controller *ri)
@@ -71,19 +66,19 @@ void connect_rdp(struct rdp_core* dp,
     dp->ri    = ri;
 }
 
-void init_rdp(struct rdp_core* dp)
+void poweron_rdp(struct rdp_core* dp)
 {
     memset(dp->dpc_regs, 0, DPC_REGS_COUNT*sizeof(uint32_t));
     memset(dp->dps_regs, 0, DPS_REGS_COUNT*sizeof(uint32_t));
 
-    init_fb(&dp->fb);
+    poweron_fb(&dp->fb);
 }
 
 
 int read_dpc_regs(void* opaque, uint32_t address, uint32_t* value)
 {
     struct rdp_core* dp = (struct rdp_core*)opaque;
-    uint32_t reg        = dpc_reg(address);
+    uint32_t reg        = DPC_REG(address);
 
     *value              = dp->dpc_regs[reg];
 
@@ -93,7 +88,7 @@ int read_dpc_regs(void* opaque, uint32_t address, uint32_t* value)
 int write_dpc_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mask)
 {
    struct rdp_core* dp = (struct rdp_core*)opaque;
-   uint32_t reg        = dpc_reg(address);
+   uint32_t reg        = DPC_REG(address);
 
    switch(reg)
    {
@@ -108,7 +103,7 @@ int write_dpc_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mask
          return 0;
    }
 
-   masked_write(&dp->dpc_regs[reg], value, mask);
+   dp->dpc_regs[reg] = MASKED_WRITE(&dp->dpc_regs[reg], value, mask);
 
    switch(reg)
    {
@@ -128,7 +123,7 @@ int write_dpc_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mask
 int read_dps_regs(void* opaque, uint32_t address, uint32_t* value)
 {
     struct rdp_core* dp = (struct rdp_core*)opaque;
-    uint32_t reg        = dps_reg(address);
+    uint32_t reg        = DPS_REG(address);
 
     *value = dp->dps_regs[reg];
 
@@ -138,17 +133,14 @@ int read_dps_regs(void* opaque, uint32_t address, uint32_t* value)
 int write_dps_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mask)
 {
     struct rdp_core* dp = (struct rdp_core*)opaque;
-    uint32_t reg        = dps_reg(address);
+    uint32_t reg        = DPS_REG(address);
 
-    masked_write(&dp->dps_regs[reg], value, mask);
+    dp->dps_regs[reg] = MASKED_WRITE(&dp->dps_regs[reg], value, mask);
 
     return 0;
 }
 
 void rdp_interrupt_event(struct rdp_core* dp)
 {
-   dp->dpc_regs[DPC_STATUS_REG] &= ~2;
-   dp->dpc_regs[DPC_STATUS_REG] |= 0x81;
-
    raise_rcp_interrupt(dp->r4300, MI_INTR_DP);
 }

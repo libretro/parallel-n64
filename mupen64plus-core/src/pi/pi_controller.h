@@ -28,6 +28,11 @@
 #include "cart_rom.h"
 #include "flashram.h"
 #include "sram.h"
+#include "../dd/dd_rom.h"
+
+#ifndef PI_REG
+#define PI_REG(a) ((a & 0xffff) >> 2)
+#endif
 
 struct r4300_core;
 struct ri_controller;
@@ -57,6 +62,7 @@ struct pi_controller
     struct cart_rom cart_rom;
     struct flashram flashram;
     struct sram sram;
+    struct dd_rom dd_rom;
 
     int use_flashram;
 
@@ -64,18 +70,15 @@ struct pi_controller
     struct ri_controller *ri;
 };
 
-static INLINE uint32_t pi_reg(uint32_t address)
-{
-    return (address & 0xffff) >> 2;
-}
-
-
-void connect_pi(struct pi_controller* pi,
+void init_pi(struct pi_controller* pi,
+                uint8_t* rom, size_t rom_size,
+                uint8_t* ddrom, size_t ddrom_size,
+                void* flashram_user_data, void (*flashram_save)(void*), uint8_t* flashram_data,
+                void* sram_user_data, void (*sram_save)(void*), uint8_t* sram_data,
                 struct r4300_core* r4300,
-                struct ri_controller *ri,
-                uint8_t *rom, size_t rom_size);
+                struct ri_controller *ri);
 
-void init_pi(struct pi_controller* pi);
+void poweron_pi(struct pi_controller* pi);
 
 int read_pi_regs(void* opaque, uint32_t address, uint32_t* value);
 int write_pi_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mask);

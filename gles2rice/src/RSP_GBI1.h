@@ -29,17 +29,10 @@ void RSP_GBI1_Vtx(Gfx *gfx)
     LOG_UCODE("    Address 0x%08x, v0: %d, Num: %d, Length: 0x%04x", addr, v0, n, gfx->gbi1vtx.len);
 
     if (addr > g_dwRamSize)
-    {
-        TRACE0("     Address out of range - ignoring load");
         return;
-    }
 
     if ((v0 + n) > 80)
-    {
-        TRACE5("Warning, invalid vertex positions, N=%d, v0=%d, Addr=0x%08X, Cmd=%08X-%08X",
-            n, v0, addr, gfx->words.w0, gfx->words.w1);
         return;
-    }
 
     ProcessVertexData(addr, v0, n);
     status.dwNumVertices += n;
@@ -56,29 +49,26 @@ void RSP_GBI1_ModifyVtx(Gfx *gfx)
     }
     else
     {
-        uint32_t dwWhere = ((gfx->words.w0) >> 16) & 0xFF;
-        uint32_t dwVert   = (((gfx->words.w0)      ) & 0xFFFF) / 2;
-        uint32_t dwValue  = (gfx->words.w1);
+       uint32_t where    = ((gfx->words.w0) >> 16) & 0xFF;
+       uint32_t vtx      = (((gfx->words.w0)      ) & 0xFFFF) / 2;
+       uint32_t val      = (gfx->words.w1);
 
-        if( dwVert > 80 )
-        {
-            RSP_RDP_NOIMPL("RSP_GBI1_ModifyVtx: Invalid vertex number: %d", dwVert, 0);
-            return;
-        }
+       if( vtx > 80 )
+          return;
 
-        // Data for other commands?
-        switch (dwWhere)
-        {
-        case RSP_MV_WORD_OFFSET_POINT_RGBA:         // Modify RGBA
-        case RSP_MV_WORD_OFFSET_POINT_XYSCREEN:     // Modify X,Y
-        case RSP_MV_WORD_OFFSET_POINT_ZSCREEN:      // Modify C
-        case RSP_MV_WORD_OFFSET_POINT_ST:           // Texture
-            ModifyVertexInfo(dwWhere, dwVert, dwValue);
-            break;
-        default:
-            RSP_RDP_NOIMPL("RSP_GBI1_ModifyVtx: Setting unk value: 0x%02x, 0x%08x", dwWhere, dwValue);
-            break;
-        }
+       // Data for other commands?
+       switch (where)
+       {
+          case G_MWO_POINT_RGBA:
+          case G_MWO_POINT_XYSCREEN:
+          case G_MWO_POINT_ZSCREEN:
+          case G_MWO_POINT_ST:
+             ricegSPModifyVertex(vtx, where, val);
+             break;
+          default:
+             RSP_RDP_NOIMPL("RSP_GBI1_ModifyVtx: Setting unk value: 0x%02x, 0x%08x", where, val);
+             break;
+       }
     }
 }
 
@@ -89,7 +79,7 @@ void RSP_GBI1_Tri2(Gfx *gfx)
     bool bTexturesAreEnabled = CRender::g_pRender->IsTextureEnabled();
 
     // While the next command pair is Tri2, add vertices
-    uint32_t dwPC = gDlistStack[gDlistStackPointer].pc;
+    uint32_t dwPC = __RSP.PC[__RSP.PCi];
 
     do {
         // Vertex indices are multiplied by 10 for Mario64, by 2 for MarioKart
@@ -139,22 +129,14 @@ void RSP_GBI1_Tri2(Gfx *gfx)
         
         gfx++;
         dwPC += 8;
-#ifdef DEBUGGER
-    } while (!(pauseAtNext && eventToPause==NEXT_TRIANGLE) && gfx->words.cmd == (uint8_t)RSP_TRI2);
-#else
     } while( gfx->words.cmd == (uint8_t)RSP_TRI2);
-#endif
 
 
-    gDlistStack[gDlistStackPointer].pc = dwPC-8;
+    __RSP.PC[__RSP.PCi] = dwPC-8;
 
 
     if (bTrisAdded) 
-    {
         CRender::g_pRender->DrawTriangles();
-    }
-
-    DEBUG_TRIANGLE(TRACE0("Pause at GBI1 TRI1"));
 }
 
 extern XVECTOR4 g_vtxNonTransformed[MAX_VERTS];
@@ -167,33 +149,17 @@ void RSP_GBI1_BranchZ(Gfx *gfx)
     uint32_t vtx = ((gfx->words.w0)&0xFFF)>>1;
     float vtxdepth = g_vecProjected[vtx].z/g_vecProjected[vtx].w;
 
-#ifdef DEBUGGER
-    if( debuggerEnableZBuffer==FALSE || vtxdepth <= (int32_t)gfx->words.w1 || g_curRomInfo.bForceDepthBuffer )
-#else
     if( vtxdepth <= (int32_t)(gfx->words.w1) || g_curRomInfo.bForceDepthBuffer )
-#endif
     {
-        uint32_t dwPC = gDlistStack[gDlistStackPointer].pc;       // This points to the next instruction
+        uint32_t dwPC = __RSP.PC[__RSP.PCi];       // This points to the next instruction
         uint32_t dwDL = *(uint32_t *)(rdram_u8 + dwPC-12);
         uint32_t dwAddr = RSPSegmentAddr(dwDL);
 
         LOG_UCODE("BranchZ to DisplayList 0x%08x", dwAddr);
-        gDlistStack[gDlistStackPointer].pc = dwAddr;
-        gDlistStack[gDlistStackPointer].countdown = MAX_DL_COUNT;
+        __RSP.PC[__RSP.PCi]        = dwAddr;
+        __RSP.countdown[__RSP.PCi] = MAX_DL_COUNT;
     }
 }
-
-#ifdef DEBUGGER
-void DumpUcodeInfo(UcodeInfo &info)
-{
-    DebuggerAppendMsg("Loading Unknown Ucode:\n%08X-%08X-%08X-%08X, Size=0x%X, CRC=0x%08X\nCode:\n",
-        info.ucDWORD1, info.ucDWORD2, info.ucDWORD3, info.ucDWORD4, 
-        info.ucSize, info.ucCRC);
-    DumpHex(info.ucStart,20);
-    TRACE0("Data:\n");
-    DumpHex(info.ucDStart,20);
-}
-#endif
 
 void RSP_GBI1_LoadUCode(Gfx *gfx)
 {
@@ -201,15 +167,13 @@ void RSP_GBI1_LoadUCode(Gfx *gfx)
     SP_Timing(RSP_GBI1_LoadUCode);
 
     //TRACE0("Load ucode");
-    uint32_t dwPC = gDlistStack[gDlistStackPointer].pc;
-    uint32_t dwUcStart = RSPSegmentAddr((gfx->words.w1));
-    uint32_t dwSize = ((gfx->words.w0)&0xFFFF)+1;
+    uint32_t dwPC       = __RSP.PC[__RSP.PCi];
+    uint32_t dwUcStart  = RSPSegmentAddr((gfx->words.w1));
+    uint32_t dwSize     = ((gfx->words.w0)&0xFFFF)+1;
     uint32_t dwUcDStart = RSPSegmentAddr(*(uint32_t *)(rdram_u8 + dwPC-12));
 
     uint32_t ucode = DLParser_CheckUcode(dwUcStart, dwUcDStart, dwSize, 8);
     RSP_SetUcode(ucode, dwUcStart, dwUcDStart, dwSize);
-
-    DEBUGGER_PAUSE_AND_DUMP(NEXT_SWITCH_UCODE,{DebuggerAppendMsg("Pause at loading ucode");});
 }
 
 void RSP_GFX_Force_Matrix(uint32_t dwAddr)
@@ -224,163 +188,12 @@ void RSP_GFX_Force_Matrix(uint32_t dwAddr)
     LoadMatrix(dwAddr);
 
     CRender::g_pRender->SetWorldProjectMatrix(matToLoad);
-
-    DEBUGGER_PAUSE_AND_DUMP(NEXT_MATRIX_CMD,{TRACE0("Paused at ModMatrix Cmd");});
 }
 
 
 void DisplayVertexInfo(uint32_t dwAddr, uint32_t dwV0, uint32_t dwN)
 {
-#ifdef DEBUGGER
-   uint8_t *rdram_u8 = (uint8_t*)gfx_info.RDRAM;
-        int8_t *pcSrc = (int8_t *)(rdram_u8 + dwAddr);
-        short *psSrc = (short *)(rdram_u8 + dwAddr);
-
-        for (uint32_t dwV = dwV0; dwV < dwV0 + dwN; dwV++)
-        {
-            float x = (float)psSrc[0^0x1];
-            float y = (float)psSrc[1^0x1];
-            float z = (float)psSrc[2^0x1];
-
-            //uint32_t wFlags = g_dwVtxFlags[dwV]; //(uint16_t)psSrc[3^0x1];
-            uint32_t wFlags = 0;
-
-            uint8_t a = pcSrc[12^0x3];
-            uint8_t b = pcSrc[13^0x3];
-            uint8_t c = pcSrc[14^0x3];
-            uint8_t d = pcSrc[15^0x3];
-            
-            //int nTU = (int)(short)(psSrc[4^0x1]<<4);
-            //int nTV = (int)(short)(psSrc[5^0x1]<<4);
-
-            //float tu = (float)(nTU>>4);
-            //float tv = (float)(nTV>>4);
-            float tu = (float)(short)(psSrc[4^0x1]);
-            float tv = (float)(short)(psSrc[5^0x1]);
-
-            XVECTOR4 & t = g_vecProjected[dwV];
-
-            psSrc += 8;         // Increase by 16 bytes
-            pcSrc += 16;
-
-            LOG_UCODE(" #%02d Flags: 0x%04x Pos: {% 6f,% 6f,% 6f} Tex: {%+7.2f,%+7.2f}, Extra: %02x %02x %02x %02x (transf: {% 6f,% 6f,% 6f})",
-                dwV, wFlags, x, y, z, tu, tv, a, b, c, d, t.x, t.y, t.z );
-        }
-#endif
 }
-
-void RSP_MoveMemLight(uint32_t dwLight, uint32_t dwAddr)
-{
-    if( dwLight >= 16 )
-    {
-        DebuggerAppendMsg("Warning: invalid light # = %d", dwLight);
-        return;
-    }
-
-    int8_t *rdram_s8 = (int8_t*)gfx_info.RDRAM;
-    int8_t * pcBase = rdram_s8 + dwAddr;
-    uint32_t * pdwBase = (uint32_t *)pcBase;
-
-
-    float range = 0, x, y, z;
-    if( options.enableHackForGames == HACK_FOR_ZELDA_MM && (pdwBase[0]&0xFF) == 0x08 && (pdwBase[1]&0xFF) == 0xFF )
-    {
-        gRSPn64lights[dwLight].dwRGBA       = pdwBase[0];
-        gRSPn64lights[dwLight].dwRGBACopy   = pdwBase[1];
-        short* pdwBase16 = (short*)pcBase;
-        x       = pdwBase16[5];
-        y       = pdwBase16[4];
-        z       = pdwBase16[7];
-        range   = pdwBase16[6];
-    }
-    else
-    {
-        gRSPn64lights[dwLight].dwRGBA       = pdwBase[0];
-        gRSPn64lights[dwLight].dwRGBACopy   = pdwBase[1];
-        x       = pcBase[8 ^ 0x3];
-        y       = pcBase[9 ^ 0x3];
-        z       = pcBase[10 ^ 0x3];
-    }
-
-                    
-    LOG_UCODE("       RGBA: 0x%08x, RGBACopy: 0x%08x, x: %d, y: %d, z: %d", 
-        gRSPn64lights[dwLight].dwRGBA,
-        gRSPn64lights[dwLight].dwRGBACopy,
-        x, y, z);
-
-    LIGHT_DUMP(TRACE3("Move Light: %08X, %08X, %08X", pdwBase[0], pdwBase[1], pdwBase[2]));
-
-
-    if (dwLight == gRSP.ambientLightIndex)
-    {
-        LOG_UCODE("      (Ambient Light)");
-
-        uint32_t dwCol = COLOR_RGBA( (gRSPn64lights[dwLight].dwRGBA >> 24)&0xFF,
-                      (gRSPn64lights[dwLight].dwRGBA >> 16)&0xFF,
-                      (gRSPn64lights[dwLight].dwRGBA >>  8)&0xFF, 0xff);
-
-        SetAmbientLight( dwCol );
-    }
-    else
-    {
-        LOG_UCODE("      (Normal Light)");
-
-        SetLightCol(dwLight, gRSPn64lights[dwLight].dwRGBA);
-        if (pdwBase[2] == 0)    // Direction is 0!
-        {
-            LOG_UCODE("      Light is invalid");
-        }
-        SetLightDirection(dwLight, x, y, z, range);
-    }
-}
-
-void RSP_MoveMemViewport(uint32_t dwAddr)
-{
-   uint8_t *rdram_u8 = (uint8_t*)gfx_info.RDRAM;
-    if( dwAddr+16 >= g_dwRamSize )
-    {
-        TRACE0("MoveMem Viewport, invalid memory");
-        return;
-    }
-
-    short scale[4];
-    short trans[4];
-
-    // dwAddr is offset into RD_RAM of 8 x 16bits of data...
-    scale[0] = *(short *)(rdram_u8 + ((dwAddr+(0*2))^0x2));
-    scale[1] = *(short *)(rdram_u8 + ((dwAddr+(1*2))^0x2));
-    scale[2] = *(short *)(rdram_u8 + ((dwAddr+(2*2))^0x2));
-    scale[3] = *(short *)(rdram_u8 + ((dwAddr+(3*2))^0x2));
-
-    trans[0] = *(short *)(rdram_u8 + ((dwAddr+(4*2))^0x2));
-    trans[1] = *(short *)(rdram_u8 + ((dwAddr+(5*2))^0x2));
-    trans[2] = *(short *)(rdram_u8 + ((dwAddr+(6*2))^0x2));
-    trans[3] = *(short *)(rdram_u8 + ((dwAddr+(7*2))^0x2));
-
-
-    int nCenterX = trans[0]/4;
-    int nCenterY = trans[1]/4;
-    int nWidth   = scale[0]/4;
-    int nHeight  = scale[1]/4;
-
-    // Check for some strange games
-    if( nWidth < 0 )    nWidth = -nWidth;
-    if( nHeight < 0 )   nHeight = -nHeight;
-
-    int nLeft = nCenterX - nWidth;
-    int nTop  = nCenterY - nHeight;
-    int nRight= nCenterX + nWidth;
-    int nBottom= nCenterY + nHeight;
-
-    //int maxZ = scale[2];
-    int maxZ = 0x3FF;
-
-    CRender::g_pRender->SetViewport(nLeft, nTop, nRight, nBottom, maxZ);
-
-    LOG_UCODE("        Scale: %d %d %d %d = %d,%d", scale[0], scale[1], scale[2], scale[3], nWidth, nHeight);
-    LOG_UCODE("        Trans: %d %d %d %d = %d,%d", trans[0], trans[1], trans[2], trans[3], nCenterX, nCenterY);
-}
-
 
 // S2DEX uses this - 0xc1
 void RSP_S2DEX_SPObjLoadTxtr_Ucode1(Gfx *gfx)
@@ -392,10 +205,10 @@ void RSP_S2DEX_SPObjLoadTxtr_Ucode1(Gfx *gfx)
     RSP_SetUcode(1, 0, 0, 0);
     memcpy( &LoadedUcodeMap, &ucodeMap1, sizeof(UcodeMap));
     
-    LoadedUcodeMap[S2DEX_OBJ_MOVEMEM] = &RSP_S2DEX_OBJ_MOVEMEM;
-    LoadedUcodeMap[S2DEX_OBJ_LOADTXTR] = &RSP_S2DEX_SPObjLoadTxtr;
+    LoadedUcodeMap[S2DEX_OBJ_MOVEMEM]     = &RSP_S2DEX_OBJ_MOVEMEM;
+    LoadedUcodeMap[S2DEX_OBJ_LOADTXTR]    = &RSP_S2DEX_SPObjLoadTxtr;
     LoadedUcodeMap[S2DEX_OBJ_LDTX_SPRITE] = &RSP_S2DEX_SPObjLoadTxSprite;
-    LoadedUcodeMap[S2DEX_OBJ_LDTX_RECT] = &RSP_S2DEX_SPObjLoadTxRect;
+    LoadedUcodeMap[S2DEX_OBJ_LDTX_RECT]   = &RSP_S2DEX_SPObjLoadTxRect;
     LoadedUcodeMap[S2DEX_OBJ_LDTX_RECT_R] = &RSP_S2DEX_SPObjLoadTxRectR;
 
     RSP_S2DEX_SPObjLoadTxtr(gfx);

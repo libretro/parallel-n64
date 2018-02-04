@@ -1,104 +1,102 @@
 #include <string.h>
 #include <stdlib.h>
-#include <stdbool.h>
+#include <boolean.h>
 #include "z64.h"
 #include "Gfx #1.3.h"
 #include "vi.h"
 #include "rdp.h"
 #include "m64p_types.h"
 #include "m64p_config.h"
+#ifdef HAVE_RDP_DUMP
+#include "../mupen64plus-video-paraLLEl/rdp_dump.h"
+#endif
 
 extern unsigned int screen_width, screen_height;
 extern uint32_t screen_pitch;
 
-uint32_t *blitter_buf;
 int res;
 RECT __dst, __src;
-int32_t pitchindwords;
 
 int ProcessDListShown = 0;
-extern int SaveLoaded;
-extern uint32_t command_counter;
 
-int retro_return(bool just_flipping);
+int retro_return(int just_flipping);
+extern void angrylion_set_vi(unsigned vi);
 
-EXPORT void CALL CaptureScreen ( char * Directory )
-{
-   return;
-}
-
-EXPORT void CALL angrylionChangeWindow (void)
+void angrylionChangeWindow (void)
 {
 }
 
-EXPORT void CALL CloseDLL (void)
+void CloseDLL (void)
 {
-   return;
+    return;
 }
 
-EXPORT void CALL angrylionReadScreen2(void *dest, int *width, int *height, int front)
-{
-}
-
-
-EXPORT void CALL angrylionDrawScreen (void)
+void angrylionReadScreen2(void *dest, int *width, int *height, int front)
 {
 }
 
-EXPORT void CALL angrylionGetDllInfo(PLUGIN_INFO* PluginInfo)
-{
-   PluginInfo -> Version = 0x0103;
-   PluginInfo -> Type  = 2;
-   strcpy(
-         PluginInfo -> Name, "angrylion's RDP"
-         );
-   PluginInfo -> NormalMemory = true;
-   PluginInfo -> MemoryBswaped = true;
-}
-
-EXPORT void CALL angrylionSetRenderingCallback(void (*callback)(int))
+ 
+void angrylionDrawScreen (void)
 {
 }
 
-EXPORT int CALL angrylionInitiateGFX (GFX_INFO Gfx_Info)
+void angrylionGetDllInfo(PLUGIN_INFO* PluginInfo)
 {
+    PluginInfo -> Version = 0x0103;
+    PluginInfo -> Type  = 2;
+    strcpy(
+    PluginInfo -> Name, "angrylion's RDP"
+    );
+    PluginInfo -> NormalMemory = true;
+    PluginInfo -> MemoryBswaped = true;
+}
+
+void angrylionSetRenderingCallback(void (*callback)(int))
+{
+}
+
+int angrylionInitiateGFX (GFX_INFO Gfx_Info)
+{
+#ifdef HAVE_RDP_DUMP
+   const char *env = getenv("RDP_DUMP");
+   if (env)
+      rdp_dump_init(env, 8 * 1024 * 1024);
+#endif
    return true;
 }
 
-
-EXPORT void CALL angrylionMoveScreen (int xpos, int ypos)
+ 
+void angrylionMoveScreen (int xpos, int ypos)
 {
 }
 
-
-EXPORT void CALL angrylionProcessDList(void)
+ 
+void angrylionProcessDList(void)
 {
-   if (!ProcessDListShown)
-   {
-      DisplayError("ProcessDList");
-      ProcessDListShown = 1;
-   }
+    if (!ProcessDListShown)
+    {
+        DisplayError("ProcessDList");
+        ProcessDListShown = 1;
+    }
 }
 
-EXPORT void CALL angrylionProcessRDPList(void)
+void angrylionProcessRDPList(void)
 {
-   process_RDP_list();
-   return;
+    process_RDP_list();
+    return;
 }
 
-EXPORT void CALL angrylionRomClosed (void)
+void angrylionRomClosed (void)
 {
-   rdp_close();
-   if (blitter_buf)
-      free(blitter_buf);
-
-   SaveLoaded = 1;
-   command_counter = 0;
+    rdp_close();
+#ifdef HAVE_RDP_DUMP
+    rdp_dump_end();
+#endif
 }
 
 static m64p_handle l_ConfigAngrylion;
-
-EXPORT int CALL angrylionRomOpen (void)
+ 
+int angrylionRomOpen (void)
 {
    /* TODO/FIXME: For now just force it to 640x480.
     *
@@ -116,64 +114,60 @@ EXPORT int CALL angrylionRomOpen (void)
    if (screen_height > 480)
       screen_height = 480;
 
-   blitter_buf = (uint32_t*)calloc(
-         PRESCALE_WIDTH * PRESCALE_HEIGHT, sizeof(uint32_t)
-         );
-   pitchindwords = PRESCALE_WIDTH / 1; /* sizeof(DWORD) == sizeof(pixel) == 4 */
-   screen_pitch = PRESCALE_WIDTH << 2;
+   screen_pitch  = PRESCALE_WIDTH << 2;
 
    rdp_init();
-   overlay = ConfigGetParamBool(l_ConfigAngrylion, "VIOverlay");
+   angrylion_set_vi((int)ConfigGetParamBool(l_ConfigAngrylion, "VIOverlay"));
    return 1;
 }
 
-EXPORT void CALL angrylionUpdateScreen(void)
+void angrylionUpdateScreen(void)
 {
-   static int counter;
+    static int counter;
 
 #ifdef HAVE_FRAMESKIP
-   if (counter++ < skip)
-      return;
-   counter = 0;
+    if (counter++ < skip)
+        return;
+    counter = 0;
 #endif
-   rdp_update();
-   retro_return(true);
+    rdp_update();
+    retro_return(true);
 #if 0
-   if (step != 0)
-      MessageBox(NULL, "Updated screen.\nPaused.", "Frame Step", MB_OK);
+    if (step != 0)
+        MessageBox(NULL, "Updated screen.\nPaused.", "Frame Step", MB_OK);
 #endif
-   return;
+    return;
 }
 
-EXPORT void CALL angrylionShowCFB (void)
+void angrylionShowCFB (void)
 {
-   //MessageBox(NULL, "ShowCFB", NULL, MB_ICONWARNING);
-   angrylionUpdateScreen();
-   return;
+    //MessageBox(NULL, "ShowCFB", NULL, MB_ICONWARNING);
+    angrylionUpdateScreen();
+    return;
 }
 
 
-EXPORT void CALL angrylionViStatusChanged (void)
-{
-}
-
-EXPORT void CALL angrylionViWidthChanged (void)
+void angrylionViStatusChanged (void)
 {
 }
 
-EXPORT void CALL angrylionFBWrite(unsigned int addr, unsigned int size)
+void angrylionViWidthChanged (void)
 {
 }
 
-EXPORT void CALL angrylionFBRead(unsigned int addr)
+void angrylionFBWrite(unsigned int addr, unsigned int size)
 {
 }
 
-EXPORT void CALL angrylionFBGetFrameBufferInfo(void *pinfo)
+void angrylionFBRead(unsigned int addr)
 {
 }
 
-EXPORT m64p_error CALL angrylionPluginGetVersion(m64p_plugin_type *PluginType, int *PluginVersion, int *APIVersion, const char **PluginNamePtr, int *Capabilities)
+void angrylionFBGetFrameBufferInfo(void *pinfo)
+{
+}
+
+m64p_error angrylionPluginGetVersion(m64p_plugin_type *PluginType, int *PluginVersion, int *APIVersion, const char **PluginNamePtr, int *Capabilities)
 {
    /* set version info */
    if (PluginType != NULL)

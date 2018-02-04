@@ -80,9 +80,9 @@ typedef unsigned char uint8_t;
 
 #define HASH_FIND(hh,head,keyptr,keylen,out)                                     \
 do {                                                                             \
-  unsigned _hf_bkt,_hf_hashv;                                                    \
   out=NULL;                                                                      \
   if (head) {                                                                    \
+     unsigned _hf_bkt, _hf_hashv;                                                \
      HASH_FCN(keyptr,keylen, (head)->hh.tbl->num_buckets, _hf_hashv, _hf_bkt);   \
      HASH_FIND_IN_BKT((head)->hh.tbl, hh, (head)->hh.tbl->buckets[ _hf_bkt ],  \
            keyptr,keylen,out);                                      \
@@ -91,19 +91,21 @@ do {                                                                            
 
 #define HASH_MAKE_TABLE(hh,head)                                                 \
 do {                                                                             \
-  (head)->hh.tbl = (UT_hash_table*)malloc(                                \
+  (head)->hh.tbl = (UT_hash_table*)malloc(                                       \
                   sizeof(UT_hash_table));                                        \
   if (!((head)->hh.tbl))  { uthash_fatal( "out of memory"); }                    \
-  memset((head)->hh.tbl, 0, sizeof(UT_hash_table));                              \
-  (head)->hh.tbl->tail = &((head)->hh);                                          \
   (head)->hh.tbl->num_buckets = HASH_INITIAL_NUM_BUCKETS;                        \
   (head)->hh.tbl->log2_num_buckets = HASH_INITIAL_NUM_BUCKETS_LOG2;              \
+  (head)->hh.tbl->num_items = 0;                                                 \
+  (head)->hh.tbl->tail = &((head)->hh);                                          \
   (head)->hh.tbl->hho = (char*)(&(head)->hh) - (char*)(head);                    \
-  (head)->hh.tbl->buckets = (UT_hash_bucket*)malloc(                      \
-          HASH_INITIAL_NUM_BUCKETS*sizeof(struct UT_hash_bucket));               \
+  (head)->hh.tbl->ideal_chain_maxlen = 0;                                        \
+  (head)->hh.tbl->nonideal_items = 0;                                            \
+  (head)->hh.tbl->ineff_expands = 0;                                             \
+  (head)->hh.tbl->noexpand = 0;                                                  \
+  (head)->hh.tbl->buckets = (UT_hash_bucket*)calloc(                             \
+          HASH_INITIAL_NUM_BUCKETS, sizeof(struct UT_hash_bucket));              \
   if (! (head)->hh.tbl->buckets) { uthash_fatal( "out of memory"); }             \
-  memset((head)->hh.tbl->buckets, 0,                                             \
-          HASH_INITIAL_NUM_BUCKETS*sizeof(struct UT_hash_bucket));               \
 } while(0)
 
 #define HASH_ADD(hh,head,fieldname,keylen_in,add)                                \
@@ -160,13 +162,13 @@ do {                                                                            
  */
 #define HASH_DELETE(hh,head,delptr)                                              \
 do {                                                                             \
-    unsigned _hd_bkt;                                                            \
     struct UT_hash_handle *_hd_hh_del;                                           \
     if ( ((delptr)->hh.prev == NULL) && ((delptr)->hh.next == NULL) )  {         \
         free((head)->hh.tbl->buckets); \
         free((head)->hh.tbl);                      \
         head = NULL;                                                             \
     } else {                                                                     \
+        unsigned _hd_bkt;                                                        \
         _hd_hh_del = &((delptr)->hh);                                            \
         if ((delptr) == ELMT_FROM_HH((head)->hh.tbl,(head)->hh.tbl->tail)) {     \
             (head)->hh.tbl->tail =                                               \
@@ -338,7 +340,7 @@ do {                                                                            
 #define MUR_PLUS2_ALIGNED(p) (((unsigned long)p & 0x3) == 2)
 #define MUR_PLUS3_ALIGNED(p) (((unsigned long)p & 0x3) == 3)
 #define WP(p) ((uint32_t*)((unsigned long)(p) & ~3UL))
-#if (defined(__BIG_ENDIAN__) || defined(SPARC) || defined(__ppc__) || defined(__ppc64__))
+#if (defined(MSB_FIRST) || defined(SPARC) || defined(__ppc__) || defined(__ppc64__))
 #define MUR_THREE_ONE(p) ((((*WP(p))&0x00ffffff) << 8) | (((*(WP(p)+1))&0xff000000) >> 24))
 #define MUR_TWO_TWO(p)   ((((*WP(p))&0x0000ffff) <<16) | (((*(WP(p)+1))&0xffff0000) >> 16))
 #define MUR_ONE_THREE(p) ((((*WP(p))&0x000000ff) <<24) | (((*(WP(p)+1))&0xffffff00) >>  8))
@@ -479,12 +481,10 @@ do {                                                                            
     unsigned _he_bkt;                                                            \
     unsigned _he_bkt_i;                                                          \
     struct UT_hash_handle *_he_thh, *_he_hh_nxt;                                 \
-    UT_hash_bucket *_he_new_buckets, *_he_newbkt;                                \
-    _he_new_buckets = (UT_hash_bucket*)malloc(                            \
-             2 * tbl->num_buckets * sizeof(struct UT_hash_bucket));              \
+    UT_hash_bucket *_he_newbkt      = NULL;                                      \
+    UT_hash_bucket *_he_new_buckets = (UT_hash_bucket*)calloc(                   \
+          2 * tbl->num_buckets, sizeof(UT_hash_bucket));                         \
     if (!_he_new_buckets) { uthash_fatal( "out of memory"); }                    \
-    memset(_he_new_buckets, 0,                                                   \
-            2 * tbl->num_buckets * sizeof(struct UT_hash_bucket));               \
     tbl->ideal_chain_maxlen =                                                    \
        (tbl->num_items >> (tbl->log2_num_buckets+1)) +                           \
        ((tbl->num_items & ((tbl->num_buckets*2)-1)) ? 1 : 0);                    \

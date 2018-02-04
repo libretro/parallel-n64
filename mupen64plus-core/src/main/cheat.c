@@ -29,6 +29,7 @@
 #include "memory/memory.h"
 #include "cheat.h"
 #include "main.h"
+#include "device.h"
 #include "rom.h"
 #include "list.h"
 #include "eventloop.h"
@@ -65,35 +66,35 @@ extern unsigned int frame_dupe;
 /* Private functions */
 static uint16_t read_address_16bit(unsigned int address)
 {
-    return *(uint16_t*)(((uint8_t*)g_rdram + ((address & 0xFFFFFF)^S16)));
+    return *(uint16_t*)(((uint8_t*)g_dev.ri.rdram.dram + ((address & 0xFFFFFF)^S16)));
 }
 
 static uint8_t read_address_8bit(unsigned int address)
 {
-    return *(unsigned char *)(((unsigned char*)g_rdram + ((address & 0xFFFFFF)^S8)));
+    return *(unsigned char *)(((unsigned char*)g_dev.ri.rdram.dram + ((address & 0xFFFFFF)^S8)));
 }
 
 static void update_address_16bit(unsigned int address, unsigned short new_value)
 {
-    *(uint16_t *)(((uint8_t*)g_rdram + ((address & 0xFFFFFF)^S16))) = new_value;
+    *(uint16_t *)(((uint8_t*)g_dev.ri.rdram.dram + ((address & 0xFFFFFF)^S16))) = new_value;
 }
 
 static void update_address_8bit(unsigned int address, unsigned char new_value)
 {
-     *(uint8_t *)(((uint8_t*)g_rdram + ((address & 0xFFFFFF)^S8))) = new_value;
+     *(uint8_t *)(((uint8_t*)g_dev.ri.rdram.dram + ((address & 0xFFFFFF)^S8))) = new_value;
 }
 
 static int address_equal_to_8bit(unsigned int address, unsigned char value)
 {
     unsigned char value_read;
-    value_read = *(unsigned char *)(((unsigned char*)g_rdram + ((address & 0xFFFFFF)^S8)));
+    value_read = *(unsigned char *)(((unsigned char*)g_dev.ri.rdram.dram + ((address & 0xFFFFFF)^S8)));
     return value_read == value;
 }
 
 static int address_equal_to_16bit(unsigned int address, unsigned short value)
 {
     unsigned short value_read;
-    value_read = *(unsigned short *)(((unsigned char*)g_rdram + ((address & 0xFFFFFF)^S16)));
+    value_read = *(unsigned short *)(((unsigned char*)g_dev.ri.rdram.dram + ((address & 0xFFFFFF)^S16)));
     return value_read == value;
 }
 
@@ -215,40 +216,9 @@ void cheat_apply_cheats(int entry)
    }
 #endif
 
-   if (!frame_dupe)
-   {
-      // If game is Zelda OOT, apply subscreen delay fix
-      if (strncmp((char *)ROM_HEADER.Name, "THE LEGEND OF ZELDA", 19) == 0 && entry == ENTRY_VI) {
-         if (sl(ROM_HEADER.CRC1) == 0xEC7011B7 && sl(ROM_HEADER.CRC2) == 0x7616D72B) {
-            // Legend of Zelda, The - Ocarina of Time (U) + (J) (V1.0)
-            execute_cheat(0x801DA5CB, 0x0002, NULL);
-         } else if (sl(ROM_HEADER.CRC1) == 0xD43DA81F && sl(ROM_HEADER.CRC2) == 0x021E1E19) {
-            // Legend of Zelda, The - Ocarina of Time (U) + (J) (V1.1)
-            execute_cheat(0x801DA78B, 0x0002, NULL);
-         } else if (sl(ROM_HEADER.CRC1) == 0x693BA2AE && sl(ROM_HEADER.CRC2) == 0xB7F14E9F) {
-            // Legend of Zelda, The - Ocarina of Time (U) + (J) (V1.2)
-            execute_cheat(0x801DAE8B, 0x0002, NULL);
-         } else if (sl(ROM_HEADER.CRC1) == 0xB044B569 && sl(ROM_HEADER.CRC2) == 0x373C1985) {
-            // Legend of Zelda, The - Ocarina of Time (E) (V1.0)
-            execute_cheat(0x801D860B, 0x0002, NULL);
-         } else if (sl(ROM_HEADER.CRC1) == 0xB2055FBD && sl(ROM_HEADER.CRC2) == 0x0BAB4E0C) {
-            // Legend of Zelda, The - Ocarina of Time (E) (V1.1)
-            execute_cheat(0x801D864B, 0x0002, NULL);
-         } else if (sl(ROM_HEADER.CRC1) == 0xF034001A && sl(ROM_HEADER.CRC2) == 0xAE47ED06) {
-            // Legend of Zelda, The - Ocarina of Time - Master Quest (U) (GC)
-            execute_cheat(0x801DB74B, 0x0002, NULL);
-         } else if (sl(ROM_HEADER.CRC1) == 0x1D4136F3 && sl(ROM_HEADER.CRC2) == 0xAF63EEA9) {
-            // Legend of Zelda, The - Ocarina of Time - Master Quest (E) (GC)
-            execute_cheat(0x801D8F4B, 0x0002, NULL);
-         } else if (sl(ROM_HEADER.CRC1) == 0x917D18F6 && sl(ROM_HEADER.CRC2) == 0x69BC5453) {
-            // Legend of Zelda, The - Ocarina of Time - Master Quest (U) (Debug Version)
-            execute_cheat(0x8022414B, 0x0002, NULL);
-         }
-      }
-   }
-
     // If game is Pokemon Snap, apply controller fix
-    if (strncmp((char *)ROM_HEADER.Name, "POKEMON SNAP", 12) == 0 && entry == ENTRY_VI) {
+    if (strncmp((char *)ROM_HEADER.Name, "POKEMON SNAP", 12) == 0 && entry == ENTRY_VI)
+    {
        if (sl(ROM_HEADER.CRC1) == 0xCA12B547 && sl(ROM_HEADER.CRC2) == 0x71FA4EE4) {
           // Pokemon Snap (U)
           execute_cheat(0xD1382D1C, 0x0002, NULL);
@@ -283,6 +253,34 @@ void cheat_apply_cheats(int entry)
           // Pokemon Snap (E) + (F) + (I) + (S)
           execute_cheat(0xD1381BFC, 0x802C, NULL);
           execute_cheat(0x80381BEF, 0x0000, NULL);
+       }
+    }
+    else if (!strcmp((char *)ROM_HEADER.Name, "DONKEY KONG 64"))
+    {
+       switch (ROM_HEADER.destination_code)
+       {
+          case 'J': /* Japan */
+             execute_cheat(0x806170A2, 0x0000, NULL);
+             break;
+          case 'A': /* Japan / USA */
+          case 'E': /* USA */
+             execute_cheat(0x80619632, 0x0000, NULL);
+             break;
+          case 'D': /* Germany */
+          case 'F': /* France */
+          case 'I': /* Italy */
+          case 'S': /* Spain */
+          case 0x50:
+          case 0x58:
+          case 0x20:
+          case 0x21:
+          case 0x38:
+          case 0x70:
+             execute_cheat(0x806128E2, 0x0000, NULL);
+             break;
+          default:
+             break;
+
        }
     }
     

@@ -21,9 +21,20 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #define _RICE_CONFIG_H_
 
 #include <stdio.h>
-#include "../../libretro/boolean.h"
+
+#include <boolean.h>
 
 #include "typedefs.h"
+
+#ifdef MSB_FIRST
+    #define BYTE_ADDR_XOR        0
+    #define WORD_ADDR_XOR        0
+    #define BYTE4_XOR_BE(a)     (a)
+#else
+    #define BYTE_ADDR_XOR        3
+    #define WORD_ADDR_XOR        1
+    #define BYTE4_XOR_BE(a)     ((a) ^ 3)                
+#endif
 
 typedef enum
 {
@@ -37,7 +48,7 @@ typedef enum
     NVIDIA_OGL_DEVICE,
     OGL_FRAGMENT_PROGRAM,
 
-    DIRECTX_DEVICE,
+    DIRECTX_DEVICE
 } SupportedDeviceType;
 
 enum DirectXCombinerType
@@ -51,7 +62,7 @@ enum DirectXCombinerType
     DX_3_STAGES,
     DX_4_STAGES,
     DX_PIXEL_SHADER,
-    DX_SEMI_PIXEL_SHADER,
+    DX_SEMI_PIXEL_SHADER
 };
 
 
@@ -71,7 +82,7 @@ enum {
     FRM_BUF_WITH_EMULATOR,
     FRM_BUF_BASIC_AND_WITH_EMULATOR,
     FRM_BUF_WITH_EMULATOR_READ_ONLY,
-    FRM_BUF_WITH_EMULATOR_WRITE_ONLY,
+    FRM_BUF_WITH_EMULATOR_WRITE_ONLY
 };
 
 enum {
@@ -82,7 +93,7 @@ enum {
     FRM_BUF_WRITEBACK_1_5,
     FRM_BUF_WRITEBACK_1_6,
     FRM_BUF_WRITEBACK_1_7,
-    FRM_BUF_WRITEBACK_1_8,
+    FRM_BUF_WRITEBACK_1_8
 };
 
 enum {
@@ -90,26 +101,26 @@ enum {
     TXT_BUF_IGNORE,
     TXT_BUF_NORMAL,
     TXT_BUF_WRITE_BACK,
-    TXT_BUF_WRITE_BACK_AND_RELOAD,
+    TXT_BUF_WRITE_BACK_AND_RELOAD
 };
 
 enum {
     TXT_QUALITY_DEFAULT,
     TXT_QUALITY_32BIT,
-    TXT_QUALITY_16BIT,
+    TXT_QUALITY_16BIT
 };
 
 enum {
     FORCE_DEFAULT_FILTER,
     FORCE_POINT_FILTER,
-    FORCE_LINEAR_FILTER,
+    FORCE_LINEAR_FILTER
 };
 
 enum {
     TEXTURE_NO_MIPMAP = 0,
     TEXTURE_NO_FILTER,
     TEXTURE_BILINEAR_FILTER,
-    TEXTURE_TRILINEAR_FILTER,
+    TEXTURE_TRILINEAR_FILTER
 };
 
 enum {
@@ -122,7 +133,7 @@ enum {
     TEXTURE_SHARPEN_ENHANCEMENT,
     TEXTURE_SHARPEN_MORE_ENHANCEMENT,
     TEXTURE_EXTERNAL,
-    TEXTURE_MIRRORED,
+    TEXTURE_MIRRORED
 };
 
 enum {
@@ -130,7 +141,7 @@ enum {
     TEXTURE_ENHANCEMENT_WITH_SMOOTH_FILTER_1,
     TEXTURE_ENHANCEMENT_WITH_SMOOTH_FILTER_2,
     TEXTURE_ENHANCEMENT_WITH_SMOOTH_FILTER_3,
-    TEXTURE_ENHANCEMENT_WITH_SMOOTH_FILTER_4,
+    TEXTURE_ENHANCEMENT_WITH_SMOOTH_FILTER_4
 };
 
 enum {
@@ -141,7 +152,7 @@ enum {
     SCREEN_UPDATE_AT_1ST_CI_CHANGE = 4,
     SCREEN_UPDATE_AT_1ST_PRIMITIVE = 5,
     SCREEN_UPDATE_BEFORE_SCREEN_CLEAR = 6,
-    SCREEN_UPDATE_AT_VI_UPDATE_AND_DRAWN = 7,   // Update screen at VI origin is updated and the screen has been drawn
+    SCREEN_UPDATE_AT_VI_UPDATE_AND_DRAWN = 7   // Update screen at VI origin is updated and the screen has been drawn
 };
 
 enum {
@@ -152,7 +163,7 @@ enum {
     ONSCREEN_DISPLAY_TEXT_FROM_CORE_ONLY,
     ONSCREEN_DISPLAY_DLIST_PER_SECOND_WITH_CORE_MSG,
     ONSCREEN_DISPLAY_FRAME_PER_SECOND_WITH_CORE_MSG,
-    ONSCREEN_DISPLAY_DEBUG_INFORMATION_WITH_CORE_MSG,
+    ONSCREEN_DISPLAY_DEBUG_INFORMATION_WITH_CORE_MSG
 };
 
 enum HACK_FOR_GAMES
@@ -192,13 +203,13 @@ enum HACK_FOR_GAMES
     HACK_FOR_TOPGEARRALLY,
     HACK_FOR_DUKE_NUKEM,
     HACK_FOR_ZELDA_MM,
-    HACK_FOR_MARIO_KART,
+    HACK_FOR_MARIO_KART
 };
 
 enum {
     NOT_USE_CI_WIDTH_AND_RATIO,
     USE_CI_WIDTH_AND_RATIO_FOR_NTSC,
-    USE_CI_WIDTH_AND_RATIO_FOR_PAL,
+    USE_CI_WIDTH_AND_RATIO_FOR_PAL
 };
 
 typedef struct {

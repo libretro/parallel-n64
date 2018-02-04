@@ -22,7 +22,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include <stdarg.h>
 #include <stdlib.h>
-#include <SDL.h>
 
 #include "osal_opengl.h"
 
@@ -64,182 +63,9 @@ std::vector<uint32_t> frameWriteRecord;
 
 void (*renderCallback)(int) = NULL;
 
-#ifdef __LIBRETRO__ // Prefix API
-#define VIDEO_TAG(X) rice##X
-
-#define ReadScreen2 VIDEO_TAG(ReadScreen2)
-#define PluginStartup VIDEO_TAG(PluginStartup)
-#define PluginShutdown VIDEO_TAG(PluginShutdown)
-#define PluginGetVersion VIDEO_TAG(PluginGetVersion)
-#define CaptureScreen VIDEO_TAG(CaptureScreen)
-#define ChangeWindow VIDEO_TAG(ChangeWindow)
-#define CloseDLL VIDEO_TAG(CloseDLL)
-#define DllTest VIDEO_TAG(DllTest)
-#define DrawScreen VIDEO_TAG(DrawScreen)
-#define GetDllInfo VIDEO_TAG(GetDllInfo)
-#define InitiateGFX VIDEO_TAG(InitiateGFX)
-#define MoveScreen VIDEO_TAG(MoveScreen)
-#define RomClosed VIDEO_TAG(RomClosed)
-#define RomOpen VIDEO_TAG(RomOpen)
-#define ShowCFB VIDEO_TAG(ShowCFB)
-#define SetRenderingCallback VIDEO_TAG(SetRenderingCallback)
-#define UpdateScreen VIDEO_TAG(UpdateScreen)
-#define ViStatusChanged VIDEO_TAG(ViStatusChanged)
-#define ViWidthChanged VIDEO_TAG(ViWidthChanged)
-#define ReadScreen VIDEO_TAG(ReadScreen)
-#define FBGetFrameBufferInfo VIDEO_TAG(FBGetFrameBufferInfo)
-#define FBRead VIDEO_TAG(FBRead)
-#define FBWrite VIDEO_TAG(FBWrite)
-#define ProcessDList VIDEO_TAG(ProcessDList)
-#define ProcessRDPList VIDEO_TAG(ProcessRDPList)
-#define ResizeVideoOutput VIDEO_TAG(ResizeVideoOutput)
-#endif
-
-//---------------------------------------------------------------------------------------
 // Forward function declarations
 
-extern "C" EXPORT void CALL RomClosed(void);
-
-//---------------------------------------------------------------------------------------
-
-static void ResizeStep2(void)
-{
-    // Delete all OpenGL textures
-    gTextureManager.CleanUp();
-    RDP_Cleanup();
-    // delete our opengl renderer
-    CDeviceBuilder::GetBuilder()->DeleteRender();
-
-    // call video extension function with updated width, height (this creates a new OpenGL context)
-    windowSetting.uDisplayWidth = status.gNewResizeWidth;
-    windowSetting.uDisplayHeight = status.gNewResizeHeight;
-    //CoreVideo_ResizeWindow(windowSetting.uDisplayWidth, windowSetting.uDisplayHeight);
-
-    // re-initialize our OpenGL graphics context state
-    bool res = CGraphicsContext::Get()->ResizeInitialize(windowSetting.uDisplayWidth, windowSetting.uDisplayHeight);
-    if (res)
-    {
-        // re-create the OpenGL renderer
-        CDeviceBuilder::GetBuilder()->CreateRender();
-        CRender::GetRender()->Initialize();
-        DLParser_Init();
-    }
-
-    status.ToResize = false;
-}
-
-static void UpdateScreenStep2 (void)
-{
-    status.bVIOriginIsUpdated = false;
-
-    if (status.ToResize && status.gDlistCount > 0)
-    {
-        ResizeStep2();
-        return;
-    }
-
-    if( status.bHandleN64RenderTexture )
-        g_pFrameBufferManager->CloseRenderTexture(true);
-    
-    g_pFrameBufferManager->SetAddrBeDisplayed(*gfx_info.VI_ORIGIN_REG);
-
-    if( status.gDlistCount == 0 )
-    {
-        // CPU frame buffer update
-        uint32_t width = *gfx_info.VI_WIDTH_REG;
-        if( (*gfx_info.VI_ORIGIN_REG & (g_dwRamSize-1) ) > width*2 && *gfx_info.VI_H_START_REG != 0 && width != 0 )
-        {
-            SetVIScales();
-            CRender::GetRender()->DrawFrameBuffer(true, 0, 0, 0, 0);
-            CGraphicsContext::Get()->UpdateFrame(false);
-        }
-        return;
-    }
-
-    TXTRBUF_DETAIL_DUMP(TRACE1("VI ORIG is updated to %08X", *gfx_info.VI_ORIGIN_REG));
-
-    if( currentRomOptions.screenUpdateSetting == SCREEN_UPDATE_AT_VI_UPDATE )
-    {
-        CGraphicsContext::Get()->UpdateFrame(false);
-
-        DEBUGGER_IF_DUMP( pauseAtNext, TRACE1("Update Screen: VIORIG=%08X", *gfx_info.VI_ORIGIN_REG));
-        DEBUGGER_PAUSE_COUNT_N_WITHOUT_UPDATE(NEXT_FRAME);
-        DEBUGGER_PAUSE_COUNT_N_WITHOUT_UPDATE(NEXT_SET_CIMG);
-        return;
-    }
-
-    TXTRBUF_DETAIL_DUMP(TRACE1("VI ORIG is updated to %08X", *gfx_info.VI_ORIGIN_REG));
-
-    if( currentRomOptions.screenUpdateSetting == SCREEN_UPDATE_AT_VI_UPDATE_AND_DRAWN )
-    {
-        if( status.bScreenIsDrawn )
-        {
-            CGraphicsContext::Get()->UpdateFrame(false);
-            DEBUGGER_IF_DUMP( pauseAtNext, TRACE1("Update Screen: VIORIG=%08X", *gfx_info.VI_ORIGIN_REG));
-        }
-        else
-        {
-            DEBUGGER_IF_DUMP( pauseAtNext, TRACE1("Skip Screen Update: VIORIG=%08X", *gfx_info.VI_ORIGIN_REG));
-        }
-
-        DEBUGGER_PAUSE_COUNT_N_WITHOUT_UPDATE(NEXT_FRAME);
-        DEBUGGER_PAUSE_COUNT_N_WITHOUT_UPDATE(NEXT_SET_CIMG);
-        return;
-    }
-
-    if( currentRomOptions.screenUpdateSetting==SCREEN_UPDATE_AT_VI_CHANGE )
-    {
-
-        if( *gfx_info.VI_ORIGIN_REG != status.curVIOriginReg )
-        {
-            if( *gfx_info.VI_ORIGIN_REG < status.curDisplayBuffer || *gfx_info.VI_ORIGIN_REG > status.curDisplayBuffer+0x2000  )
-            {
-                status.curDisplayBuffer = *gfx_info.VI_ORIGIN_REG;
-                status.curVIOriginReg = status.curDisplayBuffer;
-                //status.curRenderBuffer = NULL;
-
-                CGraphicsContext::Get()->UpdateFrame(false);
-                DEBUGGER_IF_DUMP( pauseAtNext, TRACE1("Update Screen: VIORIG=%08X", *gfx_info.VI_ORIGIN_REG));
-                DEBUGGER_PAUSE_COUNT_N_WITHOUT_UPDATE(NEXT_FRAME);
-                DEBUGGER_PAUSE_COUNT_N_WITHOUT_UPDATE(NEXT_SET_CIMG);
-            }
-            else
-            {
-                status.curDisplayBuffer = *gfx_info.VI_ORIGIN_REG;
-                status.curVIOriginReg = status.curDisplayBuffer;
-                DEBUGGER_PAUSE_AND_DUMP_NO_UPDATE(NEXT_FRAME, {DebuggerAppendMsg("Skip Screen Update, closed to the display buffer, VIORIG=%08X", *gfx_info.VI_ORIGIN_REG);});
-            }
-        }
-        else
-        {
-            DEBUGGER_PAUSE_AND_DUMP_NO_UPDATE(NEXT_FRAME, {DebuggerAppendMsg("Skip Screen Update, the same VIORIG=%08X", *gfx_info.VI_ORIGIN_REG);});
-        }
-
-        return;
-    }
-
-    if( currentRomOptions.screenUpdateSetting >= SCREEN_UPDATE_AT_1ST_CI_CHANGE )
-    {
-        status.bVIOriginIsUpdated=true;
-        DEBUGGER_PAUSE_AND_DUMP_NO_UPDATE(NEXT_FRAME, {DebuggerAppendMsg("VI ORIG is updated to %08X", *gfx_info.VI_ORIGIN_REG);});
-        return;
-    }
-
-    DEBUGGER_IF_DUMP( pauseAtNext, TRACE1("VI is updated, No screen update: VIORIG=%08X", *gfx_info.VI_ORIGIN_REG));
-    DEBUGGER_PAUSE_COUNT_N_WITHOUT_UPDATE(NEXT_FRAME);
-    DEBUGGER_PAUSE_COUNT_N_WITHOUT_UPDATE(NEXT_SET_CIMG);
-}
-
-static void ProcessDListStep2(void)
-{
-    if( status.toShowCFB )
-    {
-        CRender::GetRender()->DrawFrameBuffer(true, 0, 0, 0, 0);
-        status.toShowCFB = false;
-    }
-
-    DLParser_Process((OSTask *)(gfx_info.DMEM + 0x0FC0));
-}   
+extern "C" void riceRomClosed(void);
 
 static bool StartVideo(void)
 {
@@ -291,25 +117,6 @@ static bool StartVideo(void)
     status.bGameIsRunning = true;
    
     return true;
-}
-
-static void StopVideo()
-{
-    status.bGameIsRunning = false;
-
-    // Kill all textures?
-    gTextureManager.RecycleAllTextures();
-    gTextureManager.CleanUp();
-    RDP_Cleanup();
-
-    CDeviceBuilder::GetBuilder()->DeleteRender();
-    CGraphicsContext::Get()->CleanUp();
-    CDeviceBuilder::GetBuilder()->DeleteGraphicsContext();
-
-    windowSetting.dps = windowSetting.fps = -1;
-    windowSetting.lastSecDlistCount = windowSetting.lastSecFrameCount = 0xFFFFFFFF;
-    status.gDlistCount = status.gFrameCount = 0;
-
 }
 
 //---------------------------------------------------------------------------------------
@@ -490,7 +297,7 @@ extern "C" {
 #endif
 
 /* Mupen64Plus plugin functions */
-EXPORT m64p_error CALL PluginStartup(m64p_dynlib_handle CoreLibHandle, void *Context,
+m64p_error ricePluginStartup(m64p_dynlib_handle CoreLibHandle, void *Context,
                                    void (*DebugCallback)(void *, int, const char *))
 {
     if (l_PluginInit)
@@ -508,14 +315,14 @@ EXPORT m64p_error CALL PluginStartup(m64p_dynlib_handle CoreLibHandle, void *Con
     return M64ERR_SUCCESS;
 }
 
-EXPORT m64p_error CALL PluginShutdown(void)
+m64p_error ricePluginShutdown(void)
 {
     if (!l_PluginInit)
         return M64ERR_NOT_INIT;
 
     if( status.bGameIsRunning )
     {
-        RomClosed();
+        riceRomClosed();
     }
 #if 0
     if (bIniIsChanged)
@@ -533,7 +340,7 @@ EXPORT m64p_error CALL PluginShutdown(void)
     return M64ERR_SUCCESS;
 }
 
-EXPORT m64p_error CALL PluginGetVersion(m64p_plugin_type *PluginType, int *PluginVersion, int *APIVersion, const char **PluginNamePtr, int *Capabilities)
+m64p_error ricePluginGetVersion(m64p_plugin_type *PluginType, int *PluginVersion, int *APIVersion, const char **PluginNamePtr, int *Capabilities)
 {
     /* set version info */
     if (PluginType != NULL)
@@ -556,29 +363,38 @@ EXPORT m64p_error CALL PluginGetVersion(m64p_plugin_type *PluginType, int *Plugi
     return M64ERR_SUCCESS;
 }
 
-//-------------------------------------------------------------------------------------
-
-
-EXPORT void CALL ChangeWindow (void)
+void riceChangeWindow (void)
 {
 }
 
-//---------------------------------------------------------------------------------------
-
-EXPORT void CALL MoveScreen (int xpos, int ypos)
+void riceMoveScreen (int xpos, int ypos)
 { 
 }
 
-//---------------------------------------------------------------------------------------
-EXPORT void CALL RomClosed(void)
+void riceRomClosed(void)
 {
     TRACE0("To stop video");
     Ini_StoreRomOptions(&g_curRomInfo);
-    StopVideo();
+
+    status.bGameIsRunning = false;
+
+    // Kill all textures?
+    gTextureManager.RecycleAllTextures();
+    gTextureManager.CleanUp();
+    RDP_Cleanup();
+
+    CDeviceBuilder::GetBuilder()->DeleteRender();
+    CGraphicsContext::Get()->CleanUp();
+    CDeviceBuilder::GetBuilder()->DeleteGraphicsContext();
+
+    windowSetting.dps = windowSetting.fps = -1;
+    windowSetting.lastSecDlistCount = windowSetting.lastSecFrameCount = 0xFFFFFFFF;
+    status.gDlistCount = status.gFrameCount = 0;
+
     TRACE0("Video is stopped");
 }
 
-EXPORT int CALL RomOpen(void)
+int riceRomOpen(void)
 {
     /* Read RiceVideoLinux.ini file, set up internal variables by reading values from core configuration API */
     LoadConfiguration();
@@ -590,7 +406,7 @@ EXPORT int CALL RomOpen(void)
 #ifdef DEBUGGER
     if( debuggerPause )
     {
-        debuggerPause = FALSE;
+        debuggerPause = false;
         usleep(100 * 1000);
     }
 #endif
@@ -601,29 +417,116 @@ EXPORT int CALL RomOpen(void)
     return 1;
 }
 
-
-//---------------------------------------------------------------------------------------
-EXPORT void CALL UpdateScreen(void)
+void riceUpdateScreen(void)
 {
-    UpdateScreenStep2();
+    status.bVIOriginIsUpdated = false;
+
+    if (status.ToResize && status.gDlistCount > 0)
+    {
+       // Delete all OpenGL textures
+       gTextureManager.CleanUp();
+       RDP_Cleanup();
+       // delete our opengl renderer
+       CDeviceBuilder::GetBuilder()->DeleteRender();
+
+       // call video extension function with updated width, height (this creates a new OpenGL context)
+       windowSetting.uDisplayWidth = status.gNewResizeWidth;
+       windowSetting.uDisplayHeight = status.gNewResizeHeight;
+       //CoreVideo_ResizeWindow(windowSetting.uDisplayWidth, windowSetting.uDisplayHeight);
+
+       // re-initialize our OpenGL graphics context state
+       bool res = CGraphicsContext::Get()->ResizeInitialize(windowSetting.uDisplayWidth, windowSetting.uDisplayHeight);
+       if (res)
+       {
+          // re-create the OpenGL renderer
+          CDeviceBuilder::GetBuilder()->CreateRender();
+          CRender::GetRender()->Initialize();
+          DLParser_Init();
+       }
+
+       status.ToResize = false;
+       return;
+    }
+
+    if( status.bHandleN64RenderTexture )
+        g_pFrameBufferManager->CloseRenderTexture(true);
+    
+    g_pFrameBufferManager->SetAddrBeDisplayed(*gfx_info.VI_ORIGIN_REG);
+
+    if( status.gDlistCount == 0 )
+    {
+        // CPU frame buffer update
+        uint32_t width = *gfx_info.VI_WIDTH_REG;
+        if( (*gfx_info.VI_ORIGIN_REG & (g_dwRamSize-1) ) > width*2 && *gfx_info.VI_H_START_REG != 0 && width != 0 )
+        {
+            SetVIScales();
+            CRender::GetRender()->DrawFrameBuffer(true, 0, 0, 0, 0);
+            CGraphicsContext::Get()->UpdateFrame(false);
+        }
+        return;
+    }
+
+    TXTRBUF_DETAIL_DUMP(TRACE1("VI ORIG is updated to %08X", *gfx_info.VI_ORIGIN_REG));
+
+    if( currentRomOptions.screenUpdateSetting == SCREEN_UPDATE_AT_VI_UPDATE )
+    {
+        CGraphicsContext::Get()->UpdateFrame(false);
+        return;
+    }
+
+    TXTRBUF_DETAIL_DUMP(TRACE1("VI ORIG is updated to %08X", *gfx_info.VI_ORIGIN_REG));
+
+    if( currentRomOptions.screenUpdateSetting == SCREEN_UPDATE_AT_VI_UPDATE_AND_DRAWN )
+    {
+        if( status.bScreenIsDrawn )
+            CGraphicsContext::Get()->UpdateFrame(false);
+
+        return;
+    }
+
+    if( currentRomOptions.screenUpdateSetting==SCREEN_UPDATE_AT_VI_CHANGE )
+    {
+
+        if( *gfx_info.VI_ORIGIN_REG != status.curVIOriginReg )
+        {
+            if( *gfx_info.VI_ORIGIN_REG < status.curDisplayBuffer || *gfx_info.VI_ORIGIN_REG > status.curDisplayBuffer+0x2000  )
+            {
+                status.curDisplayBuffer = *gfx_info.VI_ORIGIN_REG;
+                status.curVIOriginReg = status.curDisplayBuffer;
+                //status.curRenderBuffer = NULL;
+
+                CGraphicsContext::Get()->UpdateFrame(false);
+            }
+            else
+            {
+                status.curDisplayBuffer = *gfx_info.VI_ORIGIN_REG;
+                status.curVIOriginReg = status.curDisplayBuffer;
+            }
+        }
+
+        return;
+    }
+
+    if( currentRomOptions.screenUpdateSetting >= SCREEN_UPDATE_AT_1ST_CI_CHANGE )
+    {
+        status.bVIOriginIsUpdated=true;
+        return;
+    }
 }
 
-//---------------------------------------------------------------------------------------
-
-EXPORT void CALL ViStatusChanged(void)
+void riceViStatusChanged(void)
 {
     SetVIScales();
     CRender::g_pRender->UpdateClipRectangle();
 }
 
-//---------------------------------------------------------------------------------------
-EXPORT void CALL ViWidthChanged(void)
+void riceViWidthChanged(void)
 {
     SetVIScales();
     CRender::g_pRender->UpdateClipRectangle();
 }
 
-EXPORT int CALL InitiateGFX(GFX_INFO Gfx_Info)
+int riceInitiateGFX(GFX_INFO Gfx_Info)
 {
     memset(&status, 0, sizeof(status));
 
@@ -635,16 +538,16 @@ EXPORT int CALL InitiateGFX(GFX_INFO Gfx_Info)
     if (!InitConfiguration())
     {
         DebugMessage(M64MSG_ERROR, "Failed to read configuration data");
-        return FALSE;
+        return false;
     }
 
     CGraphicsContext::InitWindowInfo();
     CGraphicsContext::InitDeviceParameters();
 
-    return(TRUE);
+    return true;
 }
 
-EXPORT void CALL ResizeVideoOutput(int width, int height)
+void riceResizeVideoOutput(int width, int height)
 {
     // save the new window resolution.  actual resizing operation is asynchronous (it happens later)
     status.gNewResizeWidth = width;
@@ -652,16 +555,20 @@ EXPORT void CALL ResizeVideoOutput(int width, int height)
     status.ToResize = true;
 }
 
-//---------------------------------------------------------------------------------------
-
-EXPORT void CALL ProcessRDPList(void)
+void riceProcessRDPList(void)
 {
    RDP_DLParser_Process();
 }   
 
-EXPORT void CALL ProcessDList(void)
+void riceProcessDList(void)
 {
-    ProcessDListStep2();
+    if( status.toShowCFB )
+    {
+        CRender::GetRender()->DrawFrameBuffer(true, 0, 0, 0, 0);
+        status.toShowCFB = false;
+    }
+
+    DLParser_Process((OSTask *)(gfx_info.DMEM + 0x0FC0));
 }   
 
 //---------------------------------------------------------------------------------------
@@ -685,7 +592,7 @@ EXPORT void CALL ProcessDList(void)
   output:   none
 *******************************************************************/ 
 
-EXPORT void CALL FBRead(uint32_t addr)
+void riceFBRead(uint32_t addr)
 {
     g_pFrameBufferManager->FrameBufferReadByCPU(addr);
 }
@@ -705,7 +612,7 @@ EXPORT void CALL FBRead(uint32_t addr)
   output:   none
 *******************************************************************/ 
 
-EXPORT void CALL FBWrite(uint32_t addr, uint32_t size)
+void riceFBWrite(uint32_t addr, uint32_t size)
 {
     g_pFrameBufferManager->FrameBufferWriteByCPU(addr, size);
 }
@@ -732,7 +639,7 @@ output:   Values are return in the FrameBufferInfo structure
           Plugin can return up to 6 frame buffer info
  ************************************************************************/
 
-EXPORT void CALL FBGetFrameBufferInfo(void *p)
+void riceFBGetFrameBufferInfo(void *p)
 {
     FrameBufferInfo * pinfo = (FrameBufferInfo *)p;
     memset(pinfo,0,sizeof(FrameBufferInfo)*6);
@@ -769,13 +676,12 @@ EXPORT void CALL FBGetFrameBufferInfo(void *p)
 }
 
 // Plugin spec 1.3 functions
-EXPORT void CALL ShowCFB(void)
+void riceShowCFB(void)
 {
     status.toShowCFB = true;
 }
 
-//void ReadScreen2( void *dest, int *width, int *height, int bFront )
-EXPORT void CALL ReadScreen2(void *dest, int *width, int *height, int bFront)
+void riceReadScreen2(void *dest, int *width, int *height, int bFront)
 {
     if (width == NULL || height == NULL)
         return;
@@ -788,7 +694,7 @@ EXPORT void CALL ReadScreen2(void *dest, int *width, int *height, int bFront)
 }
     
 
-EXPORT void CALL SetRenderingCallback(void (*callback)(int))
+void riceSetRenderingCallback(void (*callback)(int))
 {
     renderCallback = callback;
 }

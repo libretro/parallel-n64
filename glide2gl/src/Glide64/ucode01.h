@@ -37,93 +37,74 @@
 //
 //****************************************************************
 
-//
-// vertex - loads vertices
-//
+/* Fast3DEX */
+
+/* vertex - loads vertices */
 
 static void uc1_vertex(uint32_t w0, uint32_t w1)
 {
-   int32_t v0 = (w0 >> 17) & 0x7F; // Current vertex
-   int32_t n = (w0 >> 10) & 0x3F; // Number to copy
-   rsp_vertex(v0, n);
+   glide64gSPVertex(
+         RSP_SegmentToPhysical(__RSP.w1),       /* Address */
+         (w0 >> 10) & 0x3F,                     /* Number of vertices to copy */
+         (w0 >> 17) & 0x7F                      /* Current vertex */
+         );
 }
 
 static void uc1_tri1(uint32_t w0, uint32_t w1)
 {
-   VERTEX *v[3];
-   if (rdp.skip_drawing)
-      return;
-
-   v[0] = &rdp.vtx[(w1 >> 17) & 0x7F];
-   v[1] = &rdp.vtx[(w1 >> 9) & 0x7F];
-   v[2] = &rdp.vtx[(w1 >> 1) & 0x7F];
-
-   cull_trianglefaces(v, 1, true, true, 0);
+   glide64gSP1Triangle( _SHIFTR( w1, 17, 7 ), _SHIFTR( w1, 9, 7 ), _SHIFTR( w1, 1, 7 ), 0 );
 }
 
 static void uc1_tri2(uint32_t w0, uint32_t w1)
 {
-   VERTEX *v[6];
-   if (rdp.skip_drawing)
-      return;
-
-   v[0] = &rdp.vtx[(w0 >> 17) & 0x7F];
-   v[1] = &rdp.vtx[(w0 >> 9) & 0x7F];
-   v[2] = &rdp.vtx[(w0 >> 1) & 0x7F];
-   v[3] = &rdp.vtx[(w1 >> 17) & 0x7F];
-   v[4] = &rdp.vtx[(w1 >> 9) & 0x7F];
-   v[5] = &rdp.vtx[(w1 >> 1) & 0x7F];
-
-   cull_trianglefaces(v, 2, true, true, 0);
+   glide64gSP2Triangles( _SHIFTR( w0, 17, 7 ), _SHIFTR( w0, 9, 7 ), _SHIFTR( w0, 1, 7 ), 0,
+         _SHIFTR( w1, 17, 7 ), _SHIFTR( w1, 9, 7 ), _SHIFTR( w1, 1, 7 ), 0);
 }
 
 static void uc1_line3d(uint32_t w0, uint32_t w1)
 {
    if (!settings.force_quad3d && ((w1 & 0xFF000000) == 0) && ((w0 & 0x00FFFFFF) == 0))
    {
-      uint32_t cull_mode;
-      VERTEX *v[3];
-      uint16_t width = (uint16_t)(w1 & 0xFF) + 3;
+      uint32_t mode = (rdp.flags & G_CULL_BOTH) >> CULLSHIFT;
+      rdp.flags    |= G_CULL_BOTH;
+      g_gdp.flags  |= UPDATE_CULL_MODE;
 
-      v[0] = &rdp.vtx[(w1 >> 17) & 0x7F];
-      v[1] = &rdp.vtx[(w1 >> 9) & 0x7F];
-      v[2] = &rdp.vtx[(w1 >> 9) & 0x7F];
-      cull_mode = (rdp.flags & CULLMASK) >> CULLSHIFT;
-      rdp.flags |= CULLMASK;
-      g_gdp.flags |= UPDATE_CULL_MODE;
-      cull_trianglefaces(v, 1, true, true, width);
-      rdp.flags ^= CULLMASK;
-      rdp.flags |= cull_mode << CULLSHIFT;
-      g_gdp.flags |= UPDATE_CULL_MODE;
+      glide64gSP1Triangle(
+            (w1 >> 17) & 0x7F,
+            (w1 >> 9) & 0x7F,
+            (w1 >> 9) & 0x7F,
+            (uint16_t)(w1 & 0xFF) + 3);
+
+      rdp.flags    ^= G_CULL_BOTH;
+      rdp.flags    |= mode << CULLSHIFT;
+      g_gdp.flags  |= UPDATE_CULL_MODE;
+
+      return;
    }
-   else
-   {
-      VERTEX *v[6];
 
-      v[0] = &rdp.vtx[(w1 >> 25) & 0x7F];
-      v[1] = &rdp.vtx[(w1 >> 17) & 0x7F];
-      v[2] = &rdp.vtx[(w1 >> 9) & 0x7F];
-      v[3] = &rdp.vtx[(w1 >> 1) & 0x7F];
-      v[4] = &rdp.vtx[(w1 >> 25) & 0x7F];
-      v[5] = &rdp.vtx[(w1 >> 9) & 0x7F];
-
-      cull_trianglefaces(v, 2, true, true, 0);
-   }
+   glide64gSP2Triangles(
+         (w1 >> 25) & 0x7F,
+         (w1 >> 17) & 0x7F,
+         (w1 >> 9) & 0x7F,
+         0,
+         (w1 >> 1) & 0x7F,
+         (w1 >> 25) & 0x7F,
+         (w1 >> 9) & 0x7F,
+         0);
 }
-
-uint32_t branch_dl = 0;
 
 static void uc1_rdphalf_1(uint32_t w0, uint32_t w1)
 {
-   branch_dl = w1;
+   gDP.half_1 = w1;
    rdphalf_1(w0, w1);
 }
 
 static void uc1_branch_z(uint32_t w0, uint32_t w1)
 {
-   uint32_t addr = RSP_SegmentToPhysical(branch_dl);
-   uint32_t vtx  = (w0 & 0xFFF) >> 1;
-
-   if( fabs(rdp.vtx[vtx].z) <= (w1/*&0xFFFF*/) )
-      rdp.pc[rdp.pc_i] = addr;
+   uint32_t branchdl    = gDP.half_1;
+   uint32_t address     = RSP_SegmentToPhysical(branchdl);
+   uint32_t vtx         = (w0 >> 1) & 0x7FF;
+   const uint32_t zTest = (uint32_t)((rdp.vtx[vtx].z / rdp.vtx[vtx].w) * 1023.0f);
+   if (zTest > 0x03FF || zTest <= w1)
+      __RSP.PC[__RSP.PCi] = address;
 }

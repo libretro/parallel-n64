@@ -1,7 +1,8 @@
 #ifndef FRAMEBUFFER_H
 #define FRAMEBUFFER_H
 
-#include "Types.h"
+#include <stdint.h>
+
 #include "DepthBuffer.h"
 #include "Textures.h"
 
@@ -11,10 +12,9 @@ struct FrameBuffer
 
 	CachedTexture *texture;
 
-	u32 startAddress, endAddress;
-	u32 size, width, height, fillcolor, validityChecked;
-   bool changed;
-	float scaleX, scaleY;
+	uint32_t m_startAddress, m_endAddress;
+	uint32_t m_size, m_width, m_height, m_fillcolor, m_validityChecked;
+	float m_scaleX, m_scaleY;
 
 	bool m_copiedToRdram;
 	bool m_cleared;
@@ -26,14 +26,14 @@ struct FrameBuffer
 	bool m_needHeightCorrection;
 	bool m_postProcessed;
 
-	GLuint FBO;
-	struct gDPTile *pLoadTile;
-	CachedTexture *pTexture;
-	struct DepthBuffer *pDepthBuffer;
+	GLuint m_FBO;
+	struct gDPTile *m_pLoadTile;
+	CachedTexture *m_pTexture;
+	struct DepthBuffer *m_pDepthBuffer;
 	// multisampling
-	CachedTexture *pResolveTexture;
-	GLuint resolveFBO;
-	bool resolved;
+	CachedTexture *m_pResolveTexture;
+	GLuint m_resolveFBO;
+	bool m_resolved;
 };
 
 struct FrameBufferInfo
@@ -46,16 +46,17 @@ extern struct FrameBufferInfo frameBuffer;
 
 void FrameBuffer_Init(void);
 void FrameBuffer_Destroy(void);
-void FrameBuffer_SaveBuffer( u32 address, u16 format, u16 size, u16 width, u16 height, bool unknown );
-void FrameBuffer_RenderBuffer( u32 address );
-void FrameBuffer_RestoreBuffer( u32 address, u16 size, u16 width );
-void FrameBuffer_RemoveBuffer( u32 address );
-struct FrameBuffer *FrameBuffer_FindBuffer( u32 address );
+void FrameBuffer_CopyToRDRAM( uint32_t _address );
+void FrameBuffer_CopyFromRDRAM( uint32_t _address, bool _bUseAlpha );
+void FrameBuffer_CopyDepthBuffer( uint32_t _address );
+void FrameBuffer_ActivateBufferTexture( int16_t t, struct FrameBuffer *buffer);
+void FrameBuffer_ActivateBufferTextureBG(int16_t t, struct FrameBuffer *buffer);
+
+void FrameBuffer_SaveBuffer( uint32_t address, uint16_t format, uint16_t size, uint16_t width, uint16_t height, bool unknown );
+void FrameBuffer_RenderBuffer( uint32_t address );
+void FrameBuffer_RestoreBuffer( uint32_t address, uint16_t size, uint16_t width );
+void FrameBuffer_RemoveBuffer( uint32_t address );
+struct FrameBuffer *FrameBuffer_FindBuffer( uint32_t address );
 struct FrameBuffer *FrameBuffer_GetCurrent(void);
-void FrameBuffer_ActivateBufferTexture( s16 t, struct FrameBuffer *buffer);
-void FrameBuffer_ActivateBufferTextureBG(s16 t, struct FrameBuffer *buffer);
-void FrameBuffer_CopyFromRDRAM( u32 _address, bool _bUseAlpha );
-void FrameBuffer_CopyToRDRAM( u32 _address );
-void FrameBuffer_CopyDepthBuffer( u32 _address );
 
 #endif

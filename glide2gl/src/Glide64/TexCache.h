@@ -37,13 +37,23 @@
 //
 //****************************************************************
 
-#ifndef TEXCACHE_H
-#define TEXCACHE_H
+#ifndef _GLIDE64_TEXCACHE_H
+#define _GLIDE64_TEXCACHE_H
+
+#include <stdint.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 void TexCacheInit(void);
 void TexCache(void);
 void ClearCache(void);
 
 extern uint8_t * texture_buffer;
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif //TEXCACHE_H

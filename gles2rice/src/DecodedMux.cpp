@@ -18,17 +18,13 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include <stdint.h>
 #include <algorithm>
 
+#include <retro_miscellaneous.h>
+
 #include "Combiner.h"
 #include "Config.h"
 #include "RenderBase.h"
 
-#ifndef min
-#define min(a,b) ((a) < (b) ? (a) : (b))
-#endif
-
-#ifndef max
-#define max(a,b) ((a) > (b) ? (a) : (b))
-#endif
+#include "../../Graphics/image_convert.h"
 
 #define ALLOW_USE_TEXTURE_FOR_CONSTANTS
 
@@ -552,8 +548,8 @@ void DecodedMux::Reformat(bool do_complement)
         splitType[i] = CM_FMT_TYPE_A_ADD_D;         //All Type 2 will be changed to = A+D
         if( m.b == MUX_0 && m.c == MUX_1 )
         {
-            if( m.d == MUX_TEXEL0 || m.d == MUX_TEXEL1 )    swap(m.a, m.d);
-            if( m.a == MUX_COMBINED ) swap(m.a, m.d);
+            if( m.d == MUX_TEXEL0 || m.d == MUX_TEXEL1 )    swapbyte(&m.a, &m.d);
+            if( m.a == MUX_COMBINED ) swapbyte(&m.a, &m.d);
             continue;
         }
 
@@ -561,7 +557,7 @@ void DecodedMux::Reformat(bool do_complement)
         {
             m.a = m.c;          //Change format A+D
             m.c = MUX_1;
-            if( m.d == MUX_TEXEL0 || m.d == MUX_TEXEL1 )    swap(m.a, m.d);
+            if( m.d == MUX_TEXEL0 || m.d == MUX_TEXEL1 )    swapbyte(&m.a, &m.d);
             continue;
         }
 
@@ -572,8 +568,8 @@ void DecodedMux::Reformat(bool do_complement)
         splitType[i] = CM_FMT_TYPE_A_MOD_C;         //A*C
         if( m.b == MUX_0 && m.d == MUX_0 )
         {
-            if( m.c == MUX_TEXEL0 || m.c == MUX_TEXEL1 )    swap(m.a, m.c);
-            if( m.a == MUX_COMBINED ) swap(m.a, m.c);
+            if( m.c == MUX_TEXEL0 || m.c == MUX_TEXEL1 )    swapbyte(&m.a, &m.c);
+            if( m.a == MUX_COMBINED ) swapbyte(&m.a, &m.c);
             continue;
         }
 
@@ -581,8 +577,8 @@ void DecodedMux::Reformat(bool do_complement)
         {
             m.a = m.b^MUX_COMPLEMENT;
             m.b = MUX_0;
-            if( m.c == MUX_TEXEL0 || m.c == MUX_TEXEL1 )    swap(m.a, m.c);
-            if( m.a == MUX_COMBINED ) swap(m.a, m.c);
+            if( m.c == MUX_TEXEL0 || m.c == MUX_TEXEL1 )    swapbyte(&m.a, &m.c);
+            if( m.a == MUX_COMBINED ) swapbyte(&m.a, &m.c);
             continue;
         }
 
@@ -600,8 +596,8 @@ void DecodedMux::Reformat(bool do_complement)
         splitType[i] = CM_FMT_TYPE_A_MOD_C_ADD_D;
         if( m.b == MUX_0 )
         {
-            if( m.c == MUX_TEXEL0 || m.c == MUX_TEXEL1 )    swap(m.a, m.c);
-            if( m.a == MUX_COMBINED ) swap(m.a, m.c); 
+            if( m.c == MUX_TEXEL0 || m.c == MUX_TEXEL1 )    swapbyte(&m.a, &m.c);
+            if( m.a == MUX_COMBINED ) swapbyte(&m.a, &m.c); 
             continue;
         }
 
@@ -609,8 +605,8 @@ void DecodedMux::Reformat(bool do_complement)
         {
             m.a = m.b^MUX_COMPLEMENT;
             m.b = MUX_0;
-            if( m.c == MUX_TEXEL0 || m.c == MUX_TEXEL1 )    swap(m.a, m.c);
-            if( m.a == MUX_COMBINED ) swap(m.a, m.c); 
+            if( m.c == MUX_TEXEL0 || m.c == MUX_TEXEL1 )    swapbyte(&m.a, &m.c);
+            if( m.a == MUX_COMBINED ) swapbyte(&m.a, &m.c); 
             continue;
         }
 
@@ -628,7 +624,7 @@ void DecodedMux::Reformat(bool do_complement)
         splitType[i] = CM_FMT_TYPE_A_SUB_B_ADD_D;
         if( m.c == MUX_1 )
         {
-            if( m.c == MUX_TEXEL0 || m.c == MUX_TEXEL1 )    swap(m.a, m.c);
+            if( m.c == MUX_TEXEL0 || m.c == MUX_TEXEL1 )    swapbyte(&m.a, &m.c);
             continue;
         }
 
@@ -708,9 +704,9 @@ void DecodedMux::Reformat(bool do_complement)
         m_n64Combiners[3].d = MUX_COMBINED;
     }
     
-    signed cond3 = max(splitType[0], splitType[1]);
-    signed cond2 = max(cond3, splitType[2]);
-    mType = (CombinerFormatType)max(cond2,splitType[3]);
+    signed cond3 = MAX(splitType[0], splitType[1]);
+    signed cond2 = MAX(cond3, splitType[2]);
+    mType = (CombinerFormatType)MAX(cond2,splitType[3]);
 }
 
 const char* MuxGroupStr[4] =
@@ -818,7 +814,7 @@ int DecodedMux::CountTexels(void)
     for (int i=0; i<4; i++)
     {
         N64CombinerType &m = m_n64Combiners[i];
-        count = max(count, ::CountTexel1Cycle(m));
+        count = MAX(count, ::CountTexel1Cycle(m));
         if (count == 2) 
             break;
     }
@@ -1020,7 +1016,7 @@ void DecodedMux::UseShadeForConstant(void)
 
     bool forceToUsed = constants>m_maxConstants;
 
-    if (!IsUsedInColorChannel(MUX_SHADE, MUX_MASK) && (forceToUsed || max(splitType[0], splitType[2]) >= CM_FMT_TYPE_A_MOD_C_ADD_D))
+    if (!IsUsedInColorChannel(MUX_SHADE, MUX_MASK) && (forceToUsed || MAX(splitType[0], splitType[2]) >= CM_FMT_TYPE_A_MOD_C_ADD_D))
     {
         int countEnv = Count(MUX_ENV, N64Cycle0RGB, mask) + Count(MUX_ENV, N64Cycle1RGB, mask);
         int countPrim = Count(MUX_PRIM, N64Cycle0RGB, mask) + Count(MUX_PRIM, N64Cycle1RGB, mask);
@@ -1056,8 +1052,8 @@ void DecodedMux::UseShadeForConstant(void)
         int countEnv = Count(MUX_ENV|MUX_ALPHAREPLICATE, N64Cycle0RGB, mask) + Count(MUX_ENV|MUX_ALPHAREPLICATE, N64Cycle1RGB, mask);
         int countPrim = Count(MUX_PRIM|MUX_ALPHAREPLICATE, N64Cycle0RGB, mask) + Count(MUX_PRIM|MUX_ALPHAREPLICATE, N64Cycle1RGB, mask);
 
-        if (forceToUsed || max(splitType[1], splitType[3]) >= CM_FMT_TYPE_A_MOD_C_ADD_D ||
-            (max(splitType[0], splitType[2]) >= CM_FMT_TYPE_A_MOD_C_ADD_D && countEnv+countPrim > 0 ))
+        if (forceToUsed || MAX(splitType[1], splitType[3]) >= CM_FMT_TYPE_A_MOD_C_ADD_D ||
+            (MAX(splitType[0], splitType[2]) >= CM_FMT_TYPE_A_MOD_C_ADD_D && countEnv+countPrim > 0 ))
         {
             countEnv = Count(MUX_ENV, N64Cycle0Alpha, MUX_MASK) +
                        Count(MUX_ENV, N64Cycle1Alpha, MUX_MASK) +
@@ -1370,7 +1366,7 @@ void DecodedMux::To_AB_Add_CD_Format(void)  // Use by TNT,Geforce
             }
             else if( splitType[i+2] == CM_FMT_TYPE_A_MOD_C )
             {
-                if( (m1.c&MUX_MASK) == MUX_COMBINED )   swap(m1.a, m1.c);
+                if( (m1.c&MUX_MASK) == MUX_COMBINED )   swapbyte(&m1.a, &m1.c);
                 m1.b = m1.d = m1.c;
                 m1.c = (m0.d | (m1.a & (~MUX_MASK)));
                 splitType[i+2] = CM_FMT_TYPE_AB_ADD_CD;
@@ -1403,7 +1399,7 @@ void DecodedMux::To_AB_Add_CD_Format(void)  // Use by TNT,Geforce
             }
             else if( splitType[i+2] == CM_FMT_TYPE_A_MOD_C )
             {
-                if( (m1.c&MUX_MASK) == MUX_COMBINED )   swap(m1.a, m1.c);
+                if( (m1.c&MUX_MASK) == MUX_COMBINED )   swapbyte(&m1.a, &m1.c);
                 m1.b = m1.d = m1.c;
                 m1.c = (m0.d | (m1.a & (~MUX_MASK)));
                 splitType[i+2] = CM_FMT_TYPE_AB_ADD_CD;
@@ -1429,31 +1425,21 @@ void DecodedMux::To_AB_Add_C_Format(void)   // Use by ATI Radeon
 void DecodedMux::CheckCombineInCycle1(void)
 {
     if (IsUsedInCycle(MUX_COMBINED, 0, COLOR_CHANNEL, MUX_MASK))
-    {
         ReplaceVal(MUX_COMBINED, MUX_SHADE, 0, MUX_MASK);
-    }
 
     if (IsUsedInCycle(MUX_COMBALPHA, 0, COLOR_CHANNEL, MUX_MASK))
-    {
         ReplaceVal(MUX_COMBALPHA, MUX_SHADE|MUX_ALPHAREPLICATE, 0, MUX_MASK);
-    }
 
     if (IsUsedInCycle(MUX_COMBINED, 0, ALPHA_CHANNEL, MUX_MASK))
     {
         if (cA0 == MUX_COMBINED && cRGB0 == MUX_LODFRAC && bRGB0 == dRGB0 && bA0 == dA0)
-        {
             cA0 = MUX_LODFRAC;
-        }
         else
-        {
             ReplaceVal(MUX_COMBINED, MUX_SHADE, 1, MUX_MASK);
-        }
     }
 
     if (IsUsedInCycle(MUX_COMBALPHA, 0, ALPHA_CHANNEL, MUX_MASK))
-    {
         ReplaceVal(MUX_COMBALPHA, MUX_SHADE, 1, MUX_MASK);
-    }
 }
 
 void DecodedMux::SplitComplexStages()
@@ -1543,16 +1529,12 @@ void DecodedMux::Hack(void)
     if( options.enableHackForGames == HACK_FOR_TONYHAWK )
     {
         if( gRSP.curTile == 1 )
-        {
             ReplaceVal(MUX_TEXEL1, MUX_TEXEL0, -1, MUX_MASK);
-        }
     }
     else if( options.enableHackForGames == HACK_FOR_ZELDA || options.enableHackForGames == HACK_FOR_ZELDA_MM)
     {
         if( m_dwMux1 == 0xfffd9238 && m_dwMux0 == 0x00ffadff )
-        {
             ReplaceVal(MUX_TEXEL1, MUX_TEXEL0, -1, MUX_MASK);
-        }
         else if( m_dwMux1 == 0xff5bfff8 && m_dwMux0 == 0x00121603 )
         {
             // The Zelda road trace

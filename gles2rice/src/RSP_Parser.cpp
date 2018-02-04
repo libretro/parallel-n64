@@ -19,7 +19,12 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include <algorithm>
 #include <math.h>
-#include <SDL.h>
+#include <time.h>
+
+#include "../../libretro/libretro_private.h"
+#include "../../Graphics/RDP/gDP_funcs_prot.h"
+#include "../../Graphics/RDP/gDP_state.h"
+#include "../../Graphics/RSP/RSP_state.h"
 
 #include "ConvertImage.h"
 #include "GraphicsContext.h"
@@ -27,7 +32,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "RenderTexture.h"
 #include "Video.h"
 #include "ucode.h"
-#include <time.h>
+
 
 #ifdef _MSC_VER
 #define strncasecmp _strnicmp
@@ -246,13 +251,10 @@ static UcodeData g_UcodeData[] =
 
 FiddledVtx * g_pVtxBase=NULL;
 
-SetImgInfo g_TI = { TXT_FMT_RGBA, TXT_SIZE_16b, 1, 0 };
-SetImgInfo g_CI = { TXT_FMT_RGBA, TXT_SIZE_16b, 1, 0 };
-SetImgInfo g_ZI = { TXT_FMT_RGBA, TXT_SIZE_16b, 1, 0 };
+SetImgInfo g_TI = { G_IM_FMT_RGBA, G_IM_SIZ_16b, 1, 0 };
+SetImgInfo g_CI = { G_IM_FMT_RGBA, G_IM_SIZ_16b, 1, 0 };
+SetImgInfo g_ZI = { G_IM_FMT_RGBA, G_IM_SIZ_16b, 1, 0 };
 RenderTextureInfo g_ZI_saves[2];
-
-DListStack  gDlistStack[MAX_DL_STACK_SIZE];
-int     gDlistStackPointer= -1;
 
 TMEMLoadMapInfo g_tmemLoadAddrMap[0x200];   // Totally 4KB TMEM
 TMEMLoadMapInfo g_tmemInfo0;                // Info for Tmem=0
@@ -283,15 +285,15 @@ void DLParser_Init()
     status.gRDPTime = 0;
     status.gDlistCount = 0;
     status.gUcodeCount = 0;
-    status.frameReadByCPU = FALSE;
-    status.frameWriteByCPU = FALSE;
+    status.frameReadByCPU = false;
+    status.frameWriteByCPU = false;
     status.SPCycleCount = 0;
     status.DPCycleCount = 0;
     status.bN64IsDrawingTextureBuffer = false;
     status.bDirectWriteIntoRDRAM = false;
     status.bHandleN64RenderTexture = false;
 
-    status.bUcodeIsKnown = FALSE;
+    status.bUcodeIsKnown = false;
     status.lastPurgeTimeTime = status.gRDPTime;
 
     status.curRenderBuffer = 0;
@@ -308,7 +310,8 @@ void DLParser_Init()
 
     for( int i=0; i<8; i++ )
     {
-        memset(&gRDP.tiles[i], 0, sizeof(Tile));
+        memset(&gRDP.tilesinfo[i], 0, sizeof(TileAdditionalInfo));
+        memset(&gDP.tiles[i], 0, sizeof(struct gDPTile));
     }
     memset(g_tmemLoadAddrMap, 0, sizeof(g_tmemLoadAddrMap));
 
@@ -341,8 +344,8 @@ void DLParser_Init()
 
 void RDP_GFX_Reset()
 {
-    gDlistStackPointer=-1;
-    status.bUcodeIsKnown = FALSE;
+    __RSP.PCi =-1;
+    status.bUcodeIsKnown = false;
     gTextureManager.RecycleAllTextures();
 }
 
@@ -350,181 +353,175 @@ void RDP_GFX_Reset()
 void RDP_Cleanup()
 {
     if( status.bHandleN64RenderTexture )
-    {
         g_pFrameBufferManager->CloseRenderTexture(false);
-    }
 }
 
 void RDP_SetUcodeMap(int ucode)
 {
-    status.bUseModifiedUcodeMap = false;
-    switch( ucode )
-    {
-    case 0: // Mario and demos
-        break;
-    case 1: // F3DEX GBI1
-    case 20:
-        break;
-    case 2: // Golden Eye
-        memcpy( &LoadedUcodeMap, &ucodeMap0, sizeof(UcodeMap));
-        //LoadedUcodeMap[9]=RSP_GBI1_Sprite2DBase;
-        //LoadedUcodeMap[0xaf]=RSP_GBI1_LoadUCode;
-        //LoadedUcodeMap[0xb0]=RSP_GBI1_BranchZ;
-        LoadedUcodeMap[0xb4]=DLParser_RDPHalf_1_0xb4_GoldenEye;
-        status.bUseModifiedUcodeMap = true;
-        break;
-    case 3: // S2DEX GBI2
-        break;
-    case 4:
-        memcpy( &LoadedUcodeMap, &ucodeMap0, sizeof(UcodeMap));
-        LoadedUcodeMap[4]=RSP_Vtx_WRUS;
-        LoadedUcodeMap[0xb1]=RSP_GBI1_Tri2;
-        //LoadedUcodeMap[9]=RSP_GBI1_Sprite2DBase;
-        //LoadedUcodeMap[0xaf]=RSP_GBI1_LoadUCode;
-        //LoadedUcodeMap[0xb0]=RSP_GBI1_BranchZ;
-        //LoadedUcodeMap[0xb2]=RSP_GBI1_ModifyVtx;
-        status.bUseModifiedUcodeMap = true;
-        break;
-    case 5: // F3DEX GBI2
-        break;
-    case 6: // DKR, Jet Force Gemini, Mickey
-    case 11: // DKR, Jet Force Gemini, Mickey
-        memcpy( &LoadedUcodeMap, &ucodeMap0, sizeof(UcodeMap));
-        LoadedUcodeMap[1]=RSP_Mtx_DKR;
-        LoadedUcodeMap[4]=RSP_Vtx_DKR;
-        if( ucode == 11 )   LoadedUcodeMap[4]=RSP_Vtx_Gemini;
-        LoadedUcodeMap[5]=RSP_DMA_Tri_DKR;
-        LoadedUcodeMap[7]=RSP_DL_In_MEM_DKR;
-        LoadedUcodeMap[0xbc]=RSP_MoveWord_DKR;
-        LoadedUcodeMap[0xbf]=DLParser_Set_Addr_Ucode6;
-        //LoadedUcodeMap[9]=RSP_GBI1_Sprite2DBase;
-        //LoadedUcodeMap[0xb0]=RSP_GBI1_BranchZ;
-        //LoadedUcodeMap[0xb2]=RSP_GBI1_ModifyVtx;
-        status.bUseModifiedUcodeMap = true;
-        break;
-    case 7: // S2DEX GBI1
-        break;
-    case 8: // Ucode 0 with Sprite2D, Puzzle Master 64
-        memcpy( &LoadedUcodeMap, &ucodeMap0, sizeof(UcodeMap));
-        LoadedUcodeMap[RSP_SPRITE2D_BASE] = RSP_GBI_Sprite2D_PuzzleMaster64;
-        LoadedUcodeMap[RSP_SPRITE2D_SCALEFLIP] = RSP_GBI1_Sprite2DScaleFlip;
-        LoadedUcodeMap[RSP_SPRITE2D_DRAW] = RSP_GBI0_Sprite2DDraw;
-        status.bUseModifiedUcodeMap = true;
-        break;
-    case 9: // Perfect Dark
-        memcpy( &LoadedUcodeMap, &ucodeMap0, sizeof(UcodeMap));
-        LoadedUcodeMap[4]=RSP_Vtx_PD;
-        LoadedUcodeMap[7]=RSP_Set_Vtx_CI_PD;
-        LoadedUcodeMap[0xb1]=RSP_Tri4_PD;
-        LoadedUcodeMap[0xb4]=DLParser_RDPHalf_1_0xb4_GoldenEye;
-        status.bUseModifiedUcodeMap = true;
-        break;
-    case 10: // Conker BFD
-        memcpy( &LoadedUcodeMap, &ucodeMap5, sizeof(UcodeMap));
-        LoadedUcodeMap[1]=RSP_Vtx_Conker;
-        LoadedUcodeMap[0x10]=DLParser_Tri4_Conker;
-        LoadedUcodeMap[0x11]=DLParser_Tri4_Conker;
-        LoadedUcodeMap[0x12]=DLParser_Tri4_Conker;
-        LoadedUcodeMap[0x13]=DLParser_Tri4_Conker;
-        LoadedUcodeMap[0x14]=DLParser_Tri4_Conker;
-        LoadedUcodeMap[0x15]=DLParser_Tri4_Conker;
-        LoadedUcodeMap[0x16]=DLParser_Tri4_Conker;
-        LoadedUcodeMap[0x17]=DLParser_Tri4_Conker;
-        LoadedUcodeMap[0x18]=DLParser_Tri4_Conker;
-        LoadedUcodeMap[0x19]=DLParser_Tri4_Conker;
-        LoadedUcodeMap[0x1a]=DLParser_Tri4_Conker;
-        LoadedUcodeMap[0x1b]=DLParser_Tri4_Conker;
-        LoadedUcodeMap[0x1c]=DLParser_Tri4_Conker;
-        LoadedUcodeMap[0x1d]=DLParser_Tri4_Conker;
-        LoadedUcodeMap[0x1e]=DLParser_Tri4_Conker;
-        LoadedUcodeMap[0x1f]=DLParser_Tri4_Conker;
-        LoadedUcodeMap[0xdb]=DLParser_MoveWord_Conker;
-        LoadedUcodeMap[0xdc]=DLParser_MoveMem_Conker;
-        status.bUseModifiedUcodeMap = true;
-        break;
-    case 12: // Silicon Velley, Space Station
-        memcpy( &LoadedUcodeMap, &ucodeMap1, sizeof(UcodeMap));
-        LoadedUcodeMap[0x01]=RSP_GBI0_Mtx;
-        status.bUseModifiedUcodeMap = true;
-        break;
-    case 13: // modified S2DEX
-        memcpy( &LoadedUcodeMap, &ucodeMap7, sizeof(UcodeMap));
-        //LoadedUcodeMap[S2DEX_BG_1CYC] = ucodeMap1[S2DEX_BG_1CYC];
-        LoadedUcodeMap[S2DEX_OBJ_RECTANGLE] = ucodeMap1[S2DEX_OBJ_RECTANGLE];
-        LoadedUcodeMap[S2DEX_OBJ_SPRITE] = ucodeMap1[S2DEX_OBJ_SPRITE];
-        //LoadedUcodeMap[S2DEX_OBJ_RENDERMODE] = ucodeMap1[S2DEX_OBJ_RENDERMODE];
-        //LoadedUcodeMap[S2DEX_OBJ_RECTANGLE_R] = ucodeMap1[S2DEX_OBJ_RECTANGLE_R];
-        LoadedUcodeMap[S2DEX_RDPHALF_0] = ucodeMap1[S2DEX_RDPHALF_0];
-        status.bUseModifiedUcodeMap = true;
-        break;
-    case 14: // OgreBattle Background
-        memcpy( &LoadedUcodeMap, &ucodeMap5, sizeof(UcodeMap));
-        LoadedUcodeMap[0xda] = DLParser_OgreBatter64BG;
-        LoadedUcodeMap[0xdc] = RSP_S2DEX_OBJ_MOVEMEM;
-        status.bUseModifiedUcodeMap = true;
-        break;
-    case 15: // Ucode 0 with Sprite2D
-        memcpy( &LoadedUcodeMap, &ucodeMap0, sizeof(UcodeMap));
-        LoadedUcodeMap[RSP_SPRITE2D_BASE] = RSP_GBI_Sprite2DBase;
-        LoadedUcodeMap[RSP_SPRITE2D_SCALEFLIP] = RSP_GBI1_Sprite2DScaleFlip;
-        LoadedUcodeMap[RSP_SPRITE2D_DRAW] = RSP_GBI0_Sprite2DDraw;
-        status.bUseModifiedUcodeMap = true;
-        break;
-    case 16: // Star War, Shadow Of Empire
-        memcpy( &LoadedUcodeMap, &ucodeMap0, sizeof(UcodeMap));
-        LoadedUcodeMap[4]=RSP_Vtx_ShadowOfEmpire;
-        status.bUseModifiedUcodeMap = true;
-        break;
-    case 17:    //Indiana Jones, does not work anyway
-        memcpy( &LoadedUcodeMap, &ucodeMap1, sizeof(UcodeMap));
-        LoadedUcodeMap[0]=DLParser_Ucode8_0x0;
-        //LoadedUcodeMap[1]=RSP_RDP_Nothing;
-        LoadedUcodeMap[2]=DLParser_RS_Color_Buffer;
-        LoadedUcodeMap[3]=DLParser_RS_MoveMem;
-        LoadedUcodeMap[4]=DLParser_RS_Vtx_Buffer;
-        LoadedUcodeMap[5]=DLParser_Ucode8_0x05;
-        LoadedUcodeMap[6]=DLParser_Ucode8_DL;
-        LoadedUcodeMap[7]=DLParser_Ucode8_JUMP;
-        LoadedUcodeMap[8]=RSP_RDP_Nothing;
-        LoadedUcodeMap[9]=RSP_RDP_Nothing;
-        LoadedUcodeMap[10]=RSP_RDP_Nothing;
-        LoadedUcodeMap[11]=RSP_RDP_Nothing;
-        LoadedUcodeMap[0x80]=DLParser_RS_Block;
-        LoadedUcodeMap[0xb4]=DLParser_Ucode8_0xb4;
-        LoadedUcodeMap[0xb5]=DLParser_Ucode8_0xb5;
-        LoadedUcodeMap[0xb8]=DLParser_Ucode8_EndDL;
-        LoadedUcodeMap[0xbc]=DLParser_Ucode8_0xbc;
-        LoadedUcodeMap[0xbd]=DLParser_Ucode8_0xbd;
-        LoadedUcodeMap[0xbe]=DLParser_RS_0xbe;
-        LoadedUcodeMap[0xbF]=DLParser_Ucode8_0xbf;
-        LoadedUcodeMap[0xe4]=DLParser_TexRect_Last_Legion;
-        status.bUseModifiedUcodeMap = true;
-        break;
-    case 18: // World Driver Championship
-        memcpy( &LoadedUcodeMap, &ucodeMap1, sizeof(UcodeMap));
-        LoadedUcodeMap[0xe]=DLParser_RSP_DL_WorldDriver;
-        LoadedUcodeMap[0x2]=DLParser_RSP_Pop_DL_WorldDriver;
-        LoadedUcodeMap[0xdf]=DLParser_RSP_Pop_DL_WorldDriver;
-        LoadedUcodeMap[0x6]=RSP_RDP_Nothing;
-        status.bUseModifiedUcodeMap = true;
-        break;
-    case 19: // Last Legion UX
-        memcpy( &LoadedUcodeMap, &ucodeMap1, sizeof(UcodeMap));
-        LoadedUcodeMap[0x80]=DLParser_RSP_Last_Legion_0x80;
-        LoadedUcodeMap[0x00]=DLParser_RSP_Last_Legion_0x00;
-        LoadedUcodeMap[0xe4]=DLParser_TexRect_Last_Legion;
-        status.bUseModifiedUcodeMap = true;
-        break;
-    default:
-        memcpy( &LoadedUcodeMap, &ucodeMap5, sizeof(UcodeMap));
-        status.bUseModifiedUcodeMap = true;
-        break;
-    }
+   status.bUseModifiedUcodeMap = false;
+   switch( ucode )
+   {
+      case 0: // Mario and demos
+         break;
+      case 1: // F3DEX GBI1
+      case 20:
+         break;
+      case 2: // Golden Eye
+         memcpy( &LoadedUcodeMap, &ucodeMap0, sizeof(UcodeMap));
+         //LoadedUcodeMap[9]=RSP_GBI1_Sprite2DBase;
+         //LoadedUcodeMap[0xaf]=RSP_GBI1_LoadUCode;
+         //LoadedUcodeMap[0xb0]=RSP_GBI1_BranchZ;
+         LoadedUcodeMap[0xb4]=DLParser_RDPHalf_1_0xb4_GoldenEye;
+         status.bUseModifiedUcodeMap = true;
+         break;
+      case 3: // S2DEX GBI2
+         break;
+      case 4:
+         memcpy( &LoadedUcodeMap, &ucodeMap0, sizeof(UcodeMap));
+         LoadedUcodeMap[4]=RSP_Vtx_WRUS;
+         LoadedUcodeMap[0xb1]=RSP_GBI1_Tri2;
+         //LoadedUcodeMap[9]=RSP_GBI1_Sprite2DBase;
+         //LoadedUcodeMap[0xaf]=RSP_GBI1_LoadUCode;
+         //LoadedUcodeMap[0xb0]=RSP_GBI1_BranchZ;
+         //LoadedUcodeMap[0xb2]=RSP_GBI1_ModifyVtx;
+         status.bUseModifiedUcodeMap = true;
+         break;
+      case 5: // F3DEX GBI2
+         break;
+      case 6: // DKR, Jet Force Gemini, Mickey
+      case 11: // DKR, Jet Force Gemini, Mickey
+         memcpy( &LoadedUcodeMap, &ucodeMap0, sizeof(UcodeMap));
+         LoadedUcodeMap[1]=RSP_Mtx_DKR;
+         LoadedUcodeMap[4]=RSP_Vtx_DKR;
+         if( ucode == 11 )   LoadedUcodeMap[4]=RSP_Vtx_Gemini;
+         LoadedUcodeMap[5]=RSP_DMA_Tri_DKR;
+         LoadedUcodeMap[7]=RSP_DL_In_MEM_DKR;
+         LoadedUcodeMap[0xbc]=RSP_MoveWord_DKR;
+         LoadedUcodeMap[0xbf]=DLParser_Set_Addr_Ucode6;
+         //LoadedUcodeMap[9]=RSP_GBI1_Sprite2DBase;
+         //LoadedUcodeMap[0xb0]=RSP_GBI1_BranchZ;
+         //LoadedUcodeMap[0xb2]=RSP_GBI1_ModifyVtx;
+         status.bUseModifiedUcodeMap = true;
+         break;
+      case 7: // S2DEX GBI1
+         break;
+      case 8: // Ucode 0 with Sprite2D, Puzzle Master 64
+         memcpy( &LoadedUcodeMap, &ucodeMap0, sizeof(UcodeMap));
+         LoadedUcodeMap[RSP_SPRITE2D_BASE] = RSP_GBI_Sprite2D_PuzzleMaster64;
+         LoadedUcodeMap[RSP_SPRITE2D_SCALEFLIP] = RSP_GBI1_Sprite2DScaleFlip;
+         LoadedUcodeMap[RSP_SPRITE2D_DRAW] = RSP_GBI0_Sprite2DDraw;
+         status.bUseModifiedUcodeMap = true;
+         break;
+      case 9: // Perfect Dark
+         memcpy( &LoadedUcodeMap, &ucodeMap0, sizeof(UcodeMap));
+         LoadedUcodeMap[4]=RSP_Vtx_PD;
+         LoadedUcodeMap[7]=RSP_Set_Vtx_CI_PD;
+         LoadedUcodeMap[0xb1]=RSP_Tri4_PD;
+         LoadedUcodeMap[0xb4]=DLParser_RDPHalf_1_0xb4_GoldenEye;
+         status.bUseModifiedUcodeMap = true;
+         break;
+      case 10: // Conker BFD
+         memcpy( &LoadedUcodeMap, &ucodeMap5, sizeof(UcodeMap));
+         LoadedUcodeMap[1]=RSP_Vtx_Conker;
+         LoadedUcodeMap[0x10]=DLParser_Tri4_Conker;
+         LoadedUcodeMap[0x11]=DLParser_Tri4_Conker;
+         LoadedUcodeMap[0x12]=DLParser_Tri4_Conker;
+         LoadedUcodeMap[0x13]=DLParser_Tri4_Conker;
+         LoadedUcodeMap[0x14]=DLParser_Tri4_Conker;
+         LoadedUcodeMap[0x15]=DLParser_Tri4_Conker;
+         LoadedUcodeMap[0x16]=DLParser_Tri4_Conker;
+         LoadedUcodeMap[0x17]=DLParser_Tri4_Conker;
+         LoadedUcodeMap[0x18]=DLParser_Tri4_Conker;
+         LoadedUcodeMap[0x19]=DLParser_Tri4_Conker;
+         LoadedUcodeMap[0x1a]=DLParser_Tri4_Conker;
+         LoadedUcodeMap[0x1b]=DLParser_Tri4_Conker;
+         LoadedUcodeMap[0x1c]=DLParser_Tri4_Conker;
+         LoadedUcodeMap[0x1d]=DLParser_Tri4_Conker;
+         LoadedUcodeMap[0x1e]=DLParser_Tri4_Conker;
+         LoadedUcodeMap[0x1f]=DLParser_Tri4_Conker;
+         LoadedUcodeMap[0xdb]=DLParser_MoveWord_Conker;
+         LoadedUcodeMap[0xdc]=DLParser_MoveMem_Conker;
+         status.bUseModifiedUcodeMap = true;
+         break;
+      case 12: // Silicon Velley, Space Station
+         memcpy( &LoadedUcodeMap, &ucodeMap1, sizeof(UcodeMap));
+         LoadedUcodeMap[0x01]=RSP_GBI0_Mtx;
+         status.bUseModifiedUcodeMap = true;
+         break;
+      case 13: // modified S2DEX
+         memcpy( &LoadedUcodeMap, &ucodeMap7, sizeof(UcodeMap));
+         //LoadedUcodeMap[S2DEX_BG_1CYC] = ucodeMap1[S2DEX_BG_1CYC];
+         LoadedUcodeMap[S2DEX_OBJ_RECTANGLE] = ucodeMap1[S2DEX_OBJ_RECTANGLE];
+         LoadedUcodeMap[S2DEX_OBJ_SPRITE] = ucodeMap1[S2DEX_OBJ_SPRITE];
+         //LoadedUcodeMap[S2DEX_OBJ_RENDERMODE] = ucodeMap1[S2DEX_OBJ_RENDERMODE];
+         //LoadedUcodeMap[S2DEX_OBJ_RECTANGLE_R] = ucodeMap1[S2DEX_OBJ_RECTANGLE_R];
+         LoadedUcodeMap[S2DEX_RDPHALF_0] = ucodeMap1[S2DEX_RDPHALF_0];
+         status.bUseModifiedUcodeMap = true;
+         break;
+      case 14: // OgreBattle Background
+         memcpy( &LoadedUcodeMap, &ucodeMap5, sizeof(UcodeMap));
+         LoadedUcodeMap[0xda] = DLParser_OgreBatter64BG;
+         LoadedUcodeMap[0xdc] = RSP_S2DEX_OBJ_MOVEMEM;
+         status.bUseModifiedUcodeMap = true;
+         break;
+      case 15: // Ucode 0 with Sprite2D
+         memcpy( &LoadedUcodeMap, &ucodeMap0, sizeof(UcodeMap));
+         LoadedUcodeMap[RSP_SPRITE2D_BASE] = RSP_GBI_Sprite2DBase;
+         LoadedUcodeMap[RSP_SPRITE2D_SCALEFLIP] = RSP_GBI1_Sprite2DScaleFlip;
+         LoadedUcodeMap[RSP_SPRITE2D_DRAW] = RSP_GBI0_Sprite2DDraw;
+         status.bUseModifiedUcodeMap = true;
+         break;
+      case 16: // Star Wars Shadow Of The Empire
+         memcpy( &LoadedUcodeMap, &ucodeMap0, sizeof(UcodeMap));
+         LoadedUcodeMap[4]=RSP_Vtx_ShadowOfEmpire;
+         status.bUseModifiedUcodeMap = true;
+         break;
+      case 17:    //Indiana Jones, does not work anyway
+         memcpy( &LoadedUcodeMap, &ucodeMap1, sizeof(UcodeMap));
+         LoadedUcodeMap[0]=DLParser_Ucode8_0x0;
+         //LoadedUcodeMap[1]=RSP_RDP_Nothing;
+         LoadedUcodeMap[2]=DLParser_RS_Color_Buffer;
+         LoadedUcodeMap[3]=DLParser_RS_MoveMem;
+         LoadedUcodeMap[4]=DLParser_RS_Vtx_Buffer;
+         LoadedUcodeMap[5]=DLParser_Ucode8_0x05;
+         LoadedUcodeMap[6]=DLParser_Ucode8_DL;
+         LoadedUcodeMap[7]=DLParser_Ucode8_JUMP;
+         LoadedUcodeMap[8]=RSP_RDP_Nothing;
+         LoadedUcodeMap[9]=RSP_RDP_Nothing;
+         LoadedUcodeMap[10]=RSP_RDP_Nothing;
+         LoadedUcodeMap[11]=RSP_RDP_Nothing;
+         LoadedUcodeMap[0x80]=DLParser_RS_Block;
+         LoadedUcodeMap[0xb4]=DLParser_Ucode8_0xb4;
+         LoadedUcodeMap[0xb5]=DLParser_Ucode8_0xb5;
+         LoadedUcodeMap[0xb8]=DLParser_Ucode8_EndDL;
+         LoadedUcodeMap[0xbc]=DLParser_Ucode8_0xbc;
+         LoadedUcodeMap[0xbd]=DLParser_Ucode8_0xbd;
+         LoadedUcodeMap[0xbe]=DLParser_RS_0xbe;
+         LoadedUcodeMap[0xbF]=DLParser_Ucode8_0xbf;
+         LoadedUcodeMap[0xe4]=DLParser_TexRect_Last_Legion;
+         status.bUseModifiedUcodeMap = true;
+         break;
+      case 18: // World Driver Championship
+         memcpy( &LoadedUcodeMap, &ucodeMap1, sizeof(UcodeMap));
+         LoadedUcodeMap[0xe]=DLParser_RSP_DL_WorldDriver;
+         LoadedUcodeMap[0x2]=DLParser_RSP_Pop_DL_WorldDriver;
+         LoadedUcodeMap[0xdf]=DLParser_RSP_Pop_DL_WorldDriver;
+         LoadedUcodeMap[0x6]=RSP_RDP_Nothing;
+         status.bUseModifiedUcodeMap = true;
+         break;
+      case 19: // Last Legion UX
+         memcpy( &LoadedUcodeMap, &ucodeMap1, sizeof(UcodeMap));
+         LoadedUcodeMap[0x80]=DLParser_RSP_Last_Legion_0x80;
+         LoadedUcodeMap[0x00]=DLParser_RSP_Last_Legion_0x00;
+         LoadedUcodeMap[0xe4]=DLParser_TexRect_Last_Legion;
+         status.bUseModifiedUcodeMap = true;
+         break;
+      default:
+         memcpy( &LoadedUcodeMap, &ucodeMap5, sizeof(UcodeMap));
+         status.bUseModifiedUcodeMap = true;
+         break;
+   }
 
-#ifdef DEBUGGER
-    if( logMicrocode )
-        TRACE1("Using ucode %d", ucode);
-#endif
 }
 
 void RSP_SetUcode(int ucode, uint32_t ucStart, uint32_t ucDStart, uint32_t ucSize)
@@ -539,17 +536,12 @@ void RSP_SetUcode(int ucode, uint32_t ucStart, uint32_t ucDStart, uint32_t ucSiz
 
     RDP_SetUcodeMap(ucode);
     if( status.bUseModifiedUcodeMap )
-    {
         currentUcodeMap = &LoadedUcodeMap[0];
-    }
     else
-    {
         currentUcodeMap = *ucodeMaps[ucode];
-    }
 
     gRSP.vertexMult = vertexMultVals[ucode];
 
-    //if( gRSP.ucode != ucode ) DebuggerAppendMsg("Set to ucode: %d", ucode);
     gRSP.ucode = ucode;
 
     lastUcodeInfo.used = true;
@@ -572,37 +564,29 @@ void RSP_SetUcode(int ucode, uint32_t ucStart, uint32_t ucDStart, uint32_t ucSiz
 //*****************************************************************************
 static uint32_t DLParser_IdentifyUcodeFromString( const unsigned char * str_ucode )
 {
-    const unsigned char str_ucode0[] = "RSP SW Version: 2.0";
-    const unsigned char str_ucode1[] = "RSP Gfx ucode ";
+   const unsigned char str_ucode0[] = "RSP SW Version: 2.0";
+   const unsigned char str_ucode1[] = "RSP Gfx ucode ";
 
-    if ( strncasecmp( (char*)str_ucode, (char*)str_ucode0, strlen((char*)str_ucode0) ) == 0 )
-    {
-        return 0;
-    }
+   if ( strncasecmp( (char*)str_ucode, (char*)str_ucode0, strlen((char*)str_ucode0) ) == 0 )
+      return 0;
 
-    if ( strncasecmp( (char*)str_ucode, (char*)str_ucode1, strlen((char*)str_ucode1) ) == 0 )
-    {
-        if( strstr((char*)str_ucode,"1.") != 0 )
-        {
-            if( strstr((char*)str_ucode,"S2DEX") != 0 )
-            {
-                return 7;
-            }
-            else
-                return 1;
-        }
-        else if( strstr((char*)str_ucode,"2.") != 0 )
-        {
-            if( strstr((char*)str_ucode,"S2DEX") != 0 )
-            {
-                return 3;
-            }
-            else
-                return 5;
-        }
-    }
+   if ( strncasecmp( (char*)str_ucode, (char*)str_ucode1, strlen((char*)str_ucode1) ) == 0 )
+   {
+      if( strstr((char*)str_ucode,"1.") != 0 )
+      {
+         if( strstr((char*)str_ucode,"S2DEX") != 0 )
+            return 7;
+         return 1;
+      }
+      else if( strstr((char*)str_ucode,"2.") != 0 )
+      {
+         if( strstr((char*)str_ucode,"S2DEX") != 0 )
+            return 3;
+         return 5;
+      }
+   }
 
-    return 5;
+   return 5;
 }
 
 //*****************************************************************************
@@ -612,76 +596,36 @@ static uint32_t DLParser_IdentifyUcode( uint32_t crc_size, uint32_t crc_800, cha
 {
     for ( uint32_t i = 0; i < sizeof(g_UcodeData)/sizeof(UcodeData); i++ )
     {
-#ifdef DEBUGGER
         if ( crc_800 == g_UcodeData[i].crc_800 )
         {
-            if( strlen(str)==0 || strcmp((const char *) g_UcodeData[i].ucode_name, str) == 0 ) 
-            {
-                TRACE0((const char *) g_UcodeData[i].ucode_name);
-            }
-            else
-            {
-                DebuggerAppendMsg("Incorrect description for this ucode:\n%x, %x, %s",crc_800, crc_size, str);
-            }
-            status.bUcodeIsKnown = TRUE;
-            gRSP.bNearClip = !g_UcodeData[i].non_nearclip;
-            gRSP.bRejectVtx = g_UcodeData[i].reject;
-            DebuggerAppendMsg("Identify ucode = %d, crc = %08X, %s", g_UcodeData[i].ucode, crc_800, str);
-            return g_UcodeData[i].ucode;
-        }
-#else
-        if ( crc_800 == g_UcodeData[i].crc_800 )
-        {
-            status.bUcodeIsKnown = TRUE;
+            status.bUcodeIsKnown = true;
             gRSP.bNearClip = !g_UcodeData[i].non_nearclip;
             gRSP.bRejectVtx = g_UcodeData[i].reject;
             return g_UcodeData[i].ucode;
         }
-#endif
     }
 
-#ifdef DEBUGGER
-    {
-        static bool warned = false;
-        if( warned == false )
-        {
-            warned = true;
-            TRACE0("Can not identify ucode for this game");
-        }
-    }
-#endif
-    gRSP.bNearClip = false;
-    gRSP.bRejectVtx = false;
-    status.bUcodeIsKnown = FALSE;
+    gRSP.bNearClip       = false;
+    gRSP.bRejectVtx      = false;
+    status.bUcodeIsKnown = false;
     return ~0;
 }
 
 uint32_t DLParser_CheckUcode(uint32_t ucStart, uint32_t ucDStart, uint32_t ucSize, uint32_t ucDSize)
 {
     if( options.enableHackForGames == HACK_FOR_ROGUE_SQUADRON )
-    {
         return 17;
-    }
 
     // Check the used ucode table first
     int usedUcodeIndex = 0;
     for( usedUcodeIndex=0; (unsigned int)usedUcodeIndex<maxUsedUcodes; usedUcodeIndex++ )
     {
-        if( UsedUcodes[usedUcodeIndex].used == false )
-        {
+        if(!UsedUcodes[usedUcodeIndex].used)
             break;
-        }
 
         if( UsedUcodes[usedUcodeIndex].ucStart == ucStart && UsedUcodes[usedUcodeIndex].ucSize == ucSize &&
             UsedUcodes[usedUcodeIndex].ucDStart == ucDStart /*&& UsedUcodes[usedUcodeIndex].ucDSize == ucDSize*/ )
         {
-#ifdef DEBUGGER
-            if(gRSP.ucode != (int)UsedUcodes[usedUcodeIndex].ucode && logMicrocode)
-            {
-                DebuggerAppendMsg("Check, ucode = %d, crc = %08X, %s", UsedUcodes[usedUcodeIndex].ucode, 
-                    UsedUcodes[usedUcodeIndex].crc_800 , UsedUcodes[usedUcodeIndex].rspstr);
-            }
-#endif
             lastUcodeInfo.ucStart = ucStart;
             lastUcodeInfo.used = true;
             lastUcodeInfo.ucDStart = ucDStart;
@@ -697,14 +641,14 @@ uint32_t DLParser_CheckUcode(uint32_t ucStart, uint32_t ucDStart, uint32_t ucSiz
        int8_t *rdram_s8 = (int8_t*)gfx_info.RDRAM;
         for ( uint32_t i = 0; i < 0x1000; i++ )
         {
-            if ( rdram_s8[ base + ((i+0) ^ 3) ] == 'R' &&
-                 rdram_s8[ base + ((i+1) ^ 3) ] == 'S' &&
-                 rdram_s8[ base + ((i+2) ^ 3) ] == 'P' )
+            if ( rdram_s8[ base + BYTE4_XOR_BE(i+0) ] == 'R' &&
+                 rdram_s8[ base + BYTE4_XOR_BE(i+1) ] == 'S' &&
+                 rdram_s8[ base + BYTE4_XOR_BE(i+2) ] == 'P' )
             {
                 unsigned char * p = str;
-                while ( rdram_s8[ base + (i ^ 3) ] >= ' ')
+                while ( rdram_s8[ base + BYTE4_XOR_BE(i) ] >= ' ')
                 {
-                    *p++ = rdram_s8[ base + (i ^ 3) ];
+                    *p++ = rdram_s8[ base + BYTE4_XOR_BE(i) ];
                     i++;
                 }
                 *p++ = 0;
@@ -716,70 +660,38 @@ uint32_t DLParser_CheckUcode(uint32_t ucStart, uint32_t ucDStart, uint32_t ucSiz
     //if ( strcmp( str, gLastMicrocodeString ) != 0 )
     {
        uint8_t *rdram_u8 = (uint8_t*)gfx_info.RDRAM;
-        //uint32_t size = ucDSize;
-        base = ucStart & 0x1fffffff;
+       //uint32_t size = ucDSize;
+       base = ucStart & 0x1fffffff;
+       uint32_t crc_size = ComputeCRC32( 0, &rdram_u8[ base ], 8);//size );
+       uint32_t crc_800  = ComputeCRC32( 0, &rdram_u8[ base ], 0x800 );
+       uint32_t ucode    = DLParser_IdentifyUcode( crc_size, crc_800, (char*)str );
+       if ( (int)ucode == ~0 )
+       {
+          ucode = DLParser_IdentifyUcodeFromString(str);
+          if ( (int)ucode == ~0 )
+             ucode=5;
+       }
 
-        uint32_t crc_size = ComputeCRC32( 0, &rdram_u8[ base ], 8);//size );
-        uint32_t crc_800 = ComputeCRC32( 0, &rdram_u8[ base ], 0x800 );
-        uint32_t ucode;
-        ucode = DLParser_IdentifyUcode( crc_size, crc_800, (char*)str );
-        if ( (int)ucode == ~0 )
-        {
-#ifdef DEBUGGER
-            static bool warned=false;
-            //if( warned == false )
-            {
-                char message[300];
+       //DLParser_SetuCode( ucode );
 
-                sprintf(message, "Unable to find ucode to use for '%s' CRCSize: 0x%08x CRC800: 0x%08x",
-                        str, crc_size, crc_800);
-                TRACE0(message);
-                DebugMessage(M64MSG_ERROR, message);
-                warned = true;
-            }
-#endif
-            ucode = DLParser_IdentifyUcodeFromString(str);
-            if ( (int)ucode == ~0 )
-            {
-                ucode=5;
-            }
-        }
+       strcpy( (char*)gLastMicrocodeString, (char*)str );
 
-        //DLParser_SetuCode( ucode );
-        
-#ifdef DEBUGGER
-        {
-            static bool warned=false;
-            if( warned == false )
-            {
-                warned = true;
-                if( strlen((char *) str) == 0 )
-                    DebuggerAppendMsg("Can not find RSP string in the DLIST, CRC800: 0x%08x, CRCSize: 0x%08x", crc_800, crc_size);
-                else
-                    TRACE0((char *) str);
-            }
-        }
-#endif
-        strcpy( (char*)gLastMicrocodeString, (char*)str );
+       if( usedUcodeIndex >= MAX_UCODE_INFO )
+          usedUcodeIndex = rand()%MAX_UCODE_INFO;
 
-        if( usedUcodeIndex >= MAX_UCODE_INFO )
-        {
-            usedUcodeIndex = rand()%MAX_UCODE_INFO;
-        }
+       UsedUcodes[usedUcodeIndex].ucStart = ucStart;
+       UsedUcodes[usedUcodeIndex].ucSize = ucSize;
+       UsedUcodes[usedUcodeIndex].ucDStart = ucDStart;
+       UsedUcodes[usedUcodeIndex].ucDSize = ucDSize;
+       UsedUcodes[usedUcodeIndex].ucode = ucode;
+       UsedUcodes[usedUcodeIndex].crc_800 = crc_800;
+       UsedUcodes[usedUcodeIndex].crc_size = crc_size;
+       UsedUcodes[usedUcodeIndex].used = true;
+       strcpy( UsedUcodes[usedUcodeIndex].rspstr, (char*)str );
 
-        UsedUcodes[usedUcodeIndex].ucStart = ucStart;
-        UsedUcodes[usedUcodeIndex].ucSize = ucSize;
-        UsedUcodes[usedUcodeIndex].ucDStart = ucDStart;
-        UsedUcodes[usedUcodeIndex].ucDSize = ucDSize;
-        UsedUcodes[usedUcodeIndex].ucode = ucode;
-        UsedUcodes[usedUcodeIndex].crc_800 = crc_800;
-        UsedUcodes[usedUcodeIndex].crc_size = crc_size;
-        UsedUcodes[usedUcodeIndex].used = true;
-        strcpy( UsedUcodes[usedUcodeIndex].rspstr, (char*)str );
+       TRACE2("New ucode has been detected:\n%s, ucode=%d", str, ucode);
 
-        TRACE2("New ucode has been detected:\n%s, ucode=%d", str, ucode);
-    
-        return ucode;
+       return ucode;
     }
 }
 
@@ -803,9 +715,7 @@ void DLParser_Process(OSTask * pTask)
     status.bScreenIsDrawn = true;
 
     if( currentRomOptions.N64RenderToTextureEmuType != TXT_BUF_NONE && defaultRomOptions.bSaveVRAM )
-    {
         g_pFrameBufferManager->CheckRenderTextureCRCInRDRAM();
-    }
 
     g_pOSTask = pTask;
     
@@ -818,17 +728,13 @@ void DLParser_Process(OSTask * pTask)
     {
         uint32_t ucode = DLParser_CheckUcode(pTask->t.ucode, pTask->t.ucode_data, pTask->t.ucode_size, pTask->t.ucode_data_size);
         RSP_SetUcode(ucode, pTask->t.ucode, pTask->t.ucode_data, pTask->t.ucode_size);
-        DEBUGGER_PAUSE_AND_DUMP(NEXT_SWITCH_UCODE,{DebuggerAppendMsg("Pause at switching ucode");});
     }
 
     // Initialize stack
     status.bN64FrameBufferIsUsed = false;
-    gDlistStackPointer=0;
-    gDlistStack[gDlistStackPointer].pc = (uint32_t)pTask->t.data_ptr;
-    gDlistStack[gDlistStackPointer].countdown = MAX_DL_COUNT;
-    DEBUGGER_PAUSE_AT_COND_AND_DUMP_COUNT_N((gDlistStack[gDlistStackPointer].pc == 0 && pauseAtNext && eventToPause==NEXT_UNKNOWN_OP),
-            {DebuggerAppendMsg("Start Task without DLIST: ucode=%08X, data=%08X", (uint32_t)pTask->t.ucode, (uint32_t)pTask->t.ucode_data);});
-
+    __RSP.PCi =0;
+    __RSP.PC[__RSP.PCi]        = (uint32_t)pTask->t.data_ptr;
+    __RSP.countdown[__RSP.PCi] = MAX_DL_COUNT;
 
     // Check if we need to purge (every 5 milliseconds)
     if (status.gRDPTime - status.lastPurgeTimeTime > 5)
@@ -857,38 +763,16 @@ void DLParser_Process(OSTask * pTask)
 
     {
         // The main loop
-        while( gDlistStackPointer >= 0 )
+        while( __RSP.PCi >= 0 )
         {
-#ifdef DEBUGGER
-            DEBUGGER_PAUSE_COUNT_N(NEXT_UCODE);
-            if( debuggerPause )
-            {
-                DebuggerPause();
-                CRender::g_pRender->SetFillMode(options.bWinFrameMode? RICE_FILLMODE_WINFRAME : RICE_FILLMODE_SOLID);
-            }
-
-            if (gDlistStack[gDlistStackPointer].pc > g_dwRamSize)
-            {
-                DebuggerAppendMsg("Error: dwPC is %08X", gDlistStack[gDlistStackPointer].pc );
-                break;
-            }
-#endif
-
             status.gUcodeCount++;
 
-            Gfx *pgfx = (Gfx*)&rdram_u32[(gDlistStack[gDlistStackPointer].pc>>2)];
-#ifdef DEBUGGER
-            LOG_UCODE("0x%08x: %08x %08x %-10s", 
-                gDlistStack[gDlistStackPointer].pc, pgfx->words.w0, pgfx->words.w1, (gRSP.ucode!=5&&gRSP.ucode!=10)?ucodeNames_GBI1[(pgfx->words.w0>>24)]:ucodeNames_GBI2[(pgfx->words.w0>>24)]);
-#endif
-            gDlistStack[gDlistStackPointer].pc += 8;
+            Gfx *pgfx = (Gfx*)&rdram_u32[(__RSP.PC[__RSP.PCi]>>2)];
+            __RSP.PC[__RSP.PCi] += 8;
             currentUcodeMap[pgfx->words.w0 >>24](pgfx);
 
-            if ( gDlistStackPointer >= 0 && --gDlistStack[gDlistStackPointer].countdown < 0 )
-            {
-                LOG_UCODE("**EndDLInMem");
-                gDlistStackPointer--;
-            }
+            if ( __RSP.PCi >= 0 && --__RSP.countdown[__RSP.PCi] < 0 )
+                __RSP.PCi--;
         }
 
     }
@@ -908,30 +792,10 @@ void DLParser_Process(OSTask * pTask)
 
 void RDP_NOIMPL_Real(const char* op, uint32_t word0, uint32_t word1) 
 {
-#ifdef DEBUGGER
-    if( logWarning )
-    {
-        TRACE0("Stack Trace");
-        for( int i=0; i<gDlistStackPointer; i++ )
-        {
-            DebuggerAppendMsg("  %08X", gDlistStack[i].pc);
-        }
-        uint32_t dwPC = gDlistStack[gDlistStackPointer].pc-8;
-        DebuggerAppendMsg("PC=%08X",dwPC);
-        DebuggerAppendMsg(op, word0, word1);
-    }
-    DEBUGGER_PAUSE_AND_DUMP_COUNT_N(NEXT_UNKNOWN_OP, {TRACE0("Paused at unimplemented ucode\n");})
-#endif
 }
 
 void RDP_NOIMPL_WARN(const char* op)
 {
-#ifdef DEBUGGER
-    if(logWarning)
-    {
-        TRACE0(op);
-    }
-#endif
 }
 
 
@@ -943,44 +807,37 @@ void RSP_GBI1_Noop(Gfx *gfx)
 
 void RDP_GFX_PopDL()
 {
-    LOG_UCODE("Returning from DisplayList: level=%d", gDlistStackPointer+1);
-    LOG_UCODE("############################################");
-    LOG_UCODE("/\\ /\\ /\\ /\\ /\\ /\\ /\\ /\\ /\\ /\\ /\\ /\\ /\\ /\\ /\\");
-    LOG_UCODE("");
-
-    gDlistStackPointer--;
+    __RSP.PCi--;
 }
 
 uint32_t CalcalateCRC(uint32_t* srcPtr, uint32_t srcSize)
 {
     uint32_t crc=0;
     for( uint32_t i=0; i<srcSize; i++ )
-    {
         crc += srcPtr[i];
-    }
     return crc;
 }
 
 
 void RSP_GFX_InitGeometryMode()
 {
-    bool bCullFront     = (gRDP.geometryMode & G_CULL_FRONT) ? true : false;
-    bool bCullBack      = (gRDP.geometryMode & G_CULL_BACK) ? true : false;
+    bool bCullFront     = (gSP.geometryMode & G_CULL_FRONT) ? true : false;
+    bool bCullBack      = (gSP.geometryMode & G_CULL_BACK) ? true : false;
+
     if( bCullFront && bCullBack ) // should never cull front
-    {
         bCullFront = false;
-    }
+
     CRender::g_pRender->SetCullMode(bCullFront, bCullBack);
     
-    bool bShade         = (gRDP.geometryMode & G_SHADE) ? true : false;
-    bool bShadeSmooth   = (gRDP.geometryMode & G_SHADING_SMOOTH) ? true : false;
+    bool bShade         = (gSP.geometryMode & G_SHADE) ? true : false;
+    bool bShadeSmooth   = (gSP.geometryMode & G_SHADING_SMOOTH) ? true : false;
     if (bShade && bShadeSmooth)     CRender::g_pRender->SetShadeMode( SHADE_SMOOTH );
     else                            CRender::g_pRender->SetShadeMode( SHADE_FLAT );
     
-    CRender::g_pRender->SetFogEnable( gRDP.geometryMode & G_FOG ? true : false );
-    SetTextureGen((gRDP.geometryMode & G_TEXTURE_GEN) ? true : false );
-    SetLighting( (gRDP.geometryMode & G_LIGHTING ) ? true : false );
-    CRender::g_pRender->ZBufferEnable( gRDP.geometryMode & G_ZBUFFER );
+    CRender::g_pRender->SetFogEnable( gSP.geometryMode & G_FOG ? true : false );
+    SetTextureGen((gSP.geometryMode & G_TEXTURE_GEN) ? true : false );
+    SetLighting( (gSP.geometryMode & G_LIGHTING ) ? true : false );
+    CRender::g_pRender->ZBufferEnable( gSP.geometryMode & G_ZBUFFER );
 }
 
 //////////////////////////////////////////////////////////
@@ -1046,11 +903,7 @@ void DLParser_SetPrimDepth(Gfx *gfx)
     uint32_t dwZ  = ((gfx->words.w1) >> 16) & 0xFFFF;
     uint32_t dwDZ = ((gfx->words.w1)      ) & 0xFFFF;
 
-    LOG_UCODE("SetPrimDepth: 0x%08x 0x%08x - z: 0x%04x dz: 0x%04x",
-        gfx->words.w0, gfx->words.w1, dwZ, dwDZ);
-    
     SetPrimitiveDepth(dwZ, dwDZ);
-    DEBUGGER_PAUSE(NEXT_SET_PRIM_COLOR);
 }
 
 void DLParser_RDPSetOtherMode(Gfx *gfx)
@@ -1059,50 +912,46 @@ void DLParser_RDPSetOtherMode(Gfx *gfx)
     gRDP.otherMode._u32[1] = (gfx->words.w0);   // High
     gRDP.otherMode._u32[0] = (gfx->words.w1);   // Low
 
-    if( gRDP.otherModeH != ((gfx->words.w0) & 0x0FFFFFFF) )
+    if( gDP.otherMode.h != ((gfx->words.w0) & 0x0FFFFFFF) )
     {
-        gRDP.otherModeH = ((gfx->words.w0) & 0x0FFFFFFF);
+        gDP.otherMode.h = ((gfx->words.w0) & 0x0FFFFFFF);
 
-        uint32_t dwTextFilt  = (gRDP.otherModeH>>RSP_SETOTHERMODE_SHIFT_TEXTFILT)&0x3;
-        CRender::g_pRender->SetTextureFilter(dwTextFilt<<RSP_SETOTHERMODE_SHIFT_TEXTFILT);
+        uint32_t dwTextFilt  = (gDP.otherMode.h >> G_MDSFT_TEXTFILT)&0x3;
+        CRender::g_pRender->SetTextureFilter(dwTextFilt << G_MDSFT_TEXTFILT);
     }
 
-    if( gRDP.otherModeL != (gfx->words.w1) )
+    if( gDP.otherMode.l != (gfx->words.w1) )
     {
-        if( (gRDP.otherModeL&ZMODE_DEC) != ((gfx->words.w1)&ZMODE_DEC) )
+        if( (gDP.otherMode.l & ZMODE_DECAL) != ((gfx->words.w1) & ZMODE_DECAL) )
         {
-            if( ((gfx->words.w1)&ZMODE_DEC) == ZMODE_DEC )
+            if( ((gfx->words.w1) & ZMODE_DECAL) == ZMODE_DECAL )
                 CRender::g_pRender->SetZBias( 2 );
             else
                 CRender::g_pRender->SetZBias( 0 );
         }
 
-        gRDP.otherModeL = (gfx->words.w1);
+        gDP.otherMode.l = (gfx->words.w1);
 
-        bool bZCompare      = (gRDP.otherModeL & Z_COMPARE) ? TRUE : FALSE;
-        bool bZUpdate       = (gRDP.otherModeL & Z_UPDATE)  ? TRUE : FALSE;
+        bool bZCompare      = (gDP.otherMode.l & Z_COMPARE) ? true : false;
+        bool bZUpdate       = (gDP.otherMode.l & Z_UPDATE)  ? true : false;
 
         CRender::g_pRender->SetZCompare( bZCompare );
         CRender::g_pRender->SetZUpdate( bZUpdate );
 
-        uint32_t dwAlphaTestMode = (gRDP.otherModeL >> RSP_SETOTHERMODE_SHIFT_ALPHACOMPARE) & 0x3;
+        uint32_t dwAlphaTestMode = (gDP.otherMode.l >> G_MDSFT_ALPHACOMPARE) & 0x3;
 
         if ((dwAlphaTestMode) != 0)
-            CRender::g_pRender->SetAlphaTestEnable( TRUE );
+            CRender::g_pRender->SetAlphaTestEnable( true );
         else
-            CRender::g_pRender->SetAlphaTestEnable( FALSE );
+            CRender::g_pRender->SetAlphaTestEnable( false );
     }
 
     uint16_t blender = gRDP.otherMode.blender;
     RDP_BlenderSetting &bl = *(RDP_BlenderSetting*)(&(blender));
     if( bl.c1_m1a==3 || bl.c1_m2a == 3 || bl.c2_m1a == 3 || bl.c2_m2a == 3 )
-    {
         gRDP.bFogEnableInBlender = true;
-    }
     else
-    {
         gRDP.bFogEnableInBlender = false;
-    }
 }
 
 
@@ -1110,18 +959,15 @@ void DLParser_RDPSetOtherMode(Gfx *gfx)
 void DLParser_RDPLoadSync(Gfx *gfx) 
 { 
     DP_Timing(DLParser_RDPLoadSync);
-    LOG_UCODE("LoadSync: (Ignored)"); 
 }
 
 void DLParser_RDPPipeSync(Gfx *gfx) 
 { 
     DP_Timing(DLParser_RDPPipeSync);
-    LOG_UCODE("PipeSync: (Ignored)"); 
 }
 void DLParser_RDPTileSync(Gfx *gfx) 
 { 
     DP_Timing(DLParser_RDPTileSync);
-    LOG_UCODE("TileSync: (Ignored)"); 
 }
 
 void DLParser_RDPFullSync(Gfx *gfx)
@@ -1130,298 +976,105 @@ void DLParser_RDPFullSync(Gfx *gfx)
     TriggerDPInterrupt();
 }
 
+
 void DLParser_SetScissor(Gfx *gfx)
 {
-    DP_Timing(DLParser_SetScissor);
+   ScissorType tempScissor;
+   uint32_t w0 = gfx->words.w0;
+   uint32_t w1 = gfx->words.w1;
+   DP_Timing(DLParser_SetScissor);
 
-    ScissorType tempScissor;
-    // The coords are all in 8:2 fixed point
-    tempScissor.x0   = ((gfx->words.w0)>>12)&0xFFF;
-    tempScissor.y0   = ((gfx->words.w0)>>0 )&0xFFF;
-    tempScissor.mode = ((gfx->words.w1)>>24)&0x03;
-    tempScissor.x1   = ((gfx->words.w1)>>12)&0xFFF;
-    tempScissor.y1   = ((gfx->words.w1)>>0 )&0xFFF;
+   /* The coords are all in 8:2 fixed point */
+   ricegDPSetScissor(
+         &tempScissor,           /* tempScissor */
+         (w1 >> 24) & 0x03,      /* mode */
+         (w0 >> 12) & 0xFFF,     /* ulx */
+         (w0 >>  0) & 0xFFF,     /* uly */
+         (w1 >> 12) & 0xFFF,     /* lrx */
+         (w1 >>  0) & 0xFFF      /* lry */
+         );
 
-    tempScissor.left    = tempScissor.x0/4;
-    tempScissor.top     = tempScissor.y0/4;
-    tempScissor.right   = tempScissor.x1/4;
-    tempScissor.bottom  = tempScissor.y1/4;
+   tempScissor.left    = tempScissor.x0/4;
+   tempScissor.top     = tempScissor.y0/4;
+   tempScissor.right   = tempScissor.x1/4;
+   tempScissor.bottom  = tempScissor.y1/4;
 
-    if( options.bEnableHacks )
-    {
-        if( g_CI.dwWidth == 0x200 && tempScissor.right == 0x200 )
-        {
-            uint32_t width = *gfx_info.VI_WIDTH_REG & 0xFFF;
+   if( options.bEnableHacks )
+   {
+      if( g_CI.dwWidth == 0x200 && tempScissor.right == 0x200 )
+      {
+         uint32_t width = *gfx_info.VI_WIDTH_REG & 0xFFF;
 
-            if( width != 0x200 )
-            {
-                // Hack for RE2
-                tempScissor.bottom = tempScissor.right*tempScissor.bottom/width;
-                tempScissor.right = width;
-            }
+         if( width != 0x200 )
+         {
+            // Hack for RE2
+            tempScissor.bottom = tempScissor.right*tempScissor.bottom/width;
+            tempScissor.right = width;
+         }
 
-        }
-    }
+      }
+   }
 
-    if( gRDP.scissor.left != tempScissor.left || gRDP.scissor.top != tempScissor.top ||
-        gRDP.scissor.right != tempScissor.right || gRDP.scissor.bottom != tempScissor.bottom ||
-        gRSP.real_clip_scissor_left != tempScissor.left || gRSP.real_clip_scissor_top != tempScissor.top ||
-        gRSP.real_clip_scissor_right != tempScissor.right || gRSP.real_clip_scissor_bottom != tempScissor.bottom)
-    {
-        memcpy(&(gRDP.scissor), &tempScissor, sizeof(ScissorType) );
-        if( !status.bHandleN64RenderTexture )
-            SetVIScales();
+   if( gRDP.scissor.left != tempScissor.left || gRDP.scissor.top != tempScissor.top ||
+         gRDP.scissor.right != tempScissor.right || gRDP.scissor.bottom != tempScissor.bottom ||
+         gRSP.real_clip_scissor_left != tempScissor.left || gRSP.real_clip_scissor_top != tempScissor.top ||
+         gRSP.real_clip_scissor_right != tempScissor.right || gRSP.real_clip_scissor_bottom != tempScissor.bottom)
+   {
+      memcpy(&(gRDP.scissor), &tempScissor, sizeof(ScissorType) );
+      if( !status.bHandleN64RenderTexture )
+         SetVIScales();
 
-        if(  options.enableHackForGames == HACK_FOR_SUPER_BOWLING && g_CI.dwAddr%0x100 != 0 )
-        {
-            // right half screen
-            gRDP.scissor.left += 160;
-            gRDP.scissor.right += 160;
-            CRender::g_pRender->SetViewport(160, 0, 320, 240, 0xFFFF);
-        }
+      if(  options.enableHackForGames == HACK_FOR_SUPER_BOWLING && g_CI.dwAddr%0x100 != 0 )
+      {
+         // right half screen
+         gRDP.scissor.left += 160;
+         gRDP.scissor.right += 160;
+         CRender::g_pRender->SetViewport(160, 0, 320, 240, 0xFFFF);
+      }
 
-        CRender::g_pRender->UpdateClipRectangle();
-        CRender::g_pRender->UpdateScissor();
-        CRender::g_pRender->SetViewportRender();
-    }
+      CRender::g_pRender->UpdateClipRectangle();
+      CRender::g_pRender->UpdateScissor();
+      CRender::g_pRender->SetViewportRender();
+   }
 
-    LOG_UCODE("SetScissor: x0=%d y0=%d x1=%d y1=%d mode=%d",
-        gRDP.scissor.left, gRDP.scissor.top,
-        gRDP.scissor.right, gRDP.scissor.bottom,
-        gRDP.scissor.mode);
-
-    ///TXTRBUF_DETAIL_DUMP(DebuggerAppendMsg("SetScissor: x0=%d y0=%d x1=%d y1=%d mode=%d", gRDP.scissor.left, gRDP.scissor.top,
-    //gRDP.scissor.right, gRDP.scissor.bottom, gRDP.scissor.mode););
+   ///TXTRBUF_DETAIL_DUMP(DebuggerAppendMsg("SetScissor: x0=%d y0=%d x1=%d y1=%d mode=%d", gRDP.scissor.left, gRDP.scissor.top,
+   //gRDP.scissor.right, gRDP.scissor.bottom, gRDP.scissor.mode););
 }
-
 
 void DLParser_FillRect(Gfx *gfx)
 { 
    uint8_t *rdram_u8 = (uint8_t*)gfx_info.RDRAM;
-    DP_Timing(DLParser_FillRect);   // fix me
-    status.primitiveType = PRIM_FILLRECT;
+   DP_Timing(DLParser_FillRect);   // fix me
+   status.primitiveType = PRIM_FILLRECT;
 
-    if( status.bN64IsDrawingTextureBuffer && frameBufferOptions.bIgnore )
-    {
-        return;
-    }
+   if( status.bN64IsDrawingTextureBuffer && frameBufferOptions.bIgnore )
+      return;
 
-    if( options.enableHackForGames == HACK_FOR_MARIO_TENNIS )
-    {
-        uint32_t dwPC = gDlistStack[gDlistStackPointer].pc;       // This points to the next instruction
-        uint32_t w2 = *(uint32_t *)(rdram_u8 + dwPC);
-        if( (w2>>24) == RDP_FILLRECT )
-        {
-            // Mario Tennis, a lot of FillRect ucodes, skip all of them
-            while( (w2>>24) == RDP_FILLRECT )
-            {
-                dwPC += 8;
-                w2 = *(uint32_t *)(rdram_u8 + dwPC);
-            }
+   if( options.enableHackForGames == HACK_FOR_MARIO_TENNIS )
+   {
+      uint32_t dwPC = __RSP.PC[__RSP.PCi];       // This points to the next instruction
+      uint32_t w2   = *(uint32_t *)(rdram_u8 + dwPC);
 
-            gDlistStack[gDlistStackPointer].pc = dwPC;
-            return;
-        }
-    }
+      if( (w2>>24) == G_FILLRECT )
+      {
+         // Mario Tennis, a lot of FillRect ucodes, skip all of them
+         while( (w2>>24) == G_FILLRECT )
+         {
+            dwPC += 8;
+            w2 = *(uint32_t *)(rdram_u8 + dwPC);
+         }
 
-    uint32_t x0   = (((gfx->words.w1)>>12)&0xFFF)/4;
-    uint32_t y0   = (((gfx->words.w1)>>0 )&0xFFF)/4;
-    uint32_t x1   = (((gfx->words.w0)>>12)&0xFFF)/4;
-    uint32_t y1   = (((gfx->words.w0)>>0 )&0xFFF)/4;
+         __RSP.PC[__RSP.PCi] = dwPC;
+         return;
+      }
+   }
 
-    // Note, in some modes, the right/bottom lines aren't drawn
-
-    LOG_UCODE("    (%d,%d) (%d,%d)", x0, y0, x1, y1);
-
-    if( gRDP.otherMode.cycle_type >= CYCLE_TYPE_COPY )
-    {
-        x1++;
-        y1++;
-    }
-
-    //TXTRBUF_DETAIL_DUMP(DebuggerAppendMsg("FillRect: X0=%d, Y0=%d, X1=%d, Y1=%d, Color=0x%08X", x0, y0, x1, y1, gRDP.originalFillColor););
-
-    if( status.bHandleN64RenderTexture && options.enableHackForGames == HACK_FOR_BANJO_TOOIE )
-    {
-        // Skip this
-        return;
-    }
-
-    if (IsUsedAsDI(g_CI.dwAddr))
-    {
-        // Clear the Z Buffer
-        if( x0!=0 || y0!=0 || windowSetting.uViWidth-x1>1 || windowSetting.uViHeight-y1>1)
-        {
-            if( options.enableHackForGames == HACK_FOR_GOLDEN_EYE )
-            {
-                // GoldenEye is using double zbuffer
-                if( g_CI.dwAddr == g_ZI.dwAddr )
-                {
-                    // The zbuffer is the upper screen
-                    COORDRECT rect={int(x0*windowSetting.fMultX),int(y0*windowSetting.fMultY),int(x1*windowSetting.fMultX),int(y1*windowSetting.fMultY)};
-                    CRender::g_pRender->ClearBuffer(false,true,rect);   //Check me
-                    LOG_UCODE("    Clearing ZBuffer");
-                }
-                else
-                {
-                    // The zbuffer is the lower screen
-                    int h = (g_CI.dwAddr-g_ZI.dwAddr)/g_CI.dwWidth/2;
-                    COORDRECT rect={int(x0*windowSetting.fMultX),int((y0+h)*windowSetting.fMultY),int(x1*windowSetting.fMultX),int((y1+h)*windowSetting.fMultY)};
-                    CRender::g_pRender->ClearBuffer(false,true,rect);   //Check me
-                    LOG_UCODE("    Clearing ZBuffer");
-                }
-            }
-            else
-            {
-                COORDRECT rect={int(x0*windowSetting.fMultX),int(y0*windowSetting.fMultY),int(x1*windowSetting.fMultX),int(y1*windowSetting.fMultY)};
-                CRender::g_pRender->ClearBuffer(false,true,rect);   //Check me
-                LOG_UCODE("    Clearing ZBuffer");
-            }
-        }
-        else
-        {
-            CRender::g_pRender->ClearBuffer(false,true);    //Check me
-            LOG_UCODE("    Clearing ZBuffer");
-        }
-
-        DEBUGGER_PAUSE_AND_DUMP_COUNT_N( NEXT_FLUSH_TRI,{TRACE0("Pause after FillRect: ClearZbuffer\n");});
-        DEBUGGER_PAUSE_AND_DUMP_COUNT_N( NEXT_FILLRECT, {DebuggerAppendMsg("ClearZbuffer: X0=%d, Y0=%d, X1=%d, Y1=%d, Color=0x%08X", x0, y0, x1, y1, gRDP.originalFillColor);
-        DebuggerAppendMsg("Pause after ClearZbuffer: Color=%08X\n", gRDP.originalFillColor);});
-
-        if( g_curRomInfo.bEmulateClear )
-        {
-            // Emulating Clear, by write the memory in RDRAM
-            uint16_t color = (uint16_t)gRDP.originalFillColor;
-            uint32_t pitch = g_CI.dwWidth<<1;
-            long long base = (long long) (rdram_u8 + g_CI.dwAddr);
-            for( uint32_t i =y0; i<y1; i++ )
-            {
-                for( uint32_t j=x0; j<x1; j++ )
-                {
-                    *(uint16_t*)((base+pitch*i+j)^2) = color;
-                }
-            }
-        }
-    }
-    else if( status.bHandleN64RenderTexture )
-    {
-        if( !status.bCIBufferIsRendered )
-            g_pFrameBufferManager->ActiveTextureBuffer();
-
-        int cond1 =  (((int)x0 < status.leftRendered) ? ((int)x0) : (status.leftRendered));
-        int cond2 =  (((int)y0 < status.topRendered) ? ((int)y0) : (status.topRendered));
-        int cond3 =  ((status.rightRendered > ((int)x1)) ? ((int)x1) : (status.rightRendered));
-        int cond4 =  ((status.bottomRendered > ((int)y1)) ? ((int)y1) : (status.bottomRendered));
-        int cond5 =  ((g_pRenderTextureInfo->maxUsedHeight > ((int)y1)) ? ((int)y1) : (g_pRenderTextureInfo->maxUsedHeight));
-
-        status.leftRendered = status.leftRendered < 0 ? x0 : cond1;
-        status.topRendered = status.topRendered<0 ? y0 : cond2;
-        status.rightRendered = status.rightRendered<0 ? x1 : cond3;
-        status.bottomRendered = status.bottomRendered<0 ? y1 : cond4;
-
-        g_pRenderTextureInfo->maxUsedHeight = cond5;
-
-        if( status.bDirectWriteIntoRDRAM || ( x0==0 && y0==0 && (x1 == g_pRenderTextureInfo->N64Width || x1 == g_pRenderTextureInfo->N64Width-1 ) ) )
-        {
-            if( g_pRenderTextureInfo->CI_Info.dwSize == TXT_SIZE_16b )
-            {
-                uint16_t color = (uint16_t)gRDP.originalFillColor;
-                uint32_t pitch = g_pRenderTextureInfo->N64Width<<1;
-                long long base = (long long) (rdram_u8 + g_pRenderTextureInfo->CI_Info.dwAddr);
-                for( uint32_t i =y0; i<y1; i++ )
-                {
-                    for( uint32_t j=x0; j<x1; j++ )
-                    {
-                        *(uint16_t*)((base+pitch*i+j)^2) = color;
-                    }
-                }
-            }
-            else
-            {
-                uint8_t color = (uint8_t)gRDP.originalFillColor;
-                uint32_t pitch = g_pRenderTextureInfo->N64Width;
-                long long base = (long long) (rdram_u8 + g_pRenderTextureInfo->CI_Info.dwAddr);
-                for( uint32_t i=y0; i<y1; i++ )
-                {
-                    for( uint32_t j=x0; j<x1; j++ )
-                    {
-                        *(uint8_t*)((base+pitch*i+j)^3) = color;
-                    }
-                }
-            }
-
-            status.bFrameBufferDrawnByTriangles = false;
-        }
-        else
-        {
-            status.bFrameBufferDrawnByTriangles = true;
-        }
-        status.bFrameBufferDrawnByTriangles = true;
-
-        if( !status.bDirectWriteIntoRDRAM )
-        {
-            status.bFrameBufferIsDrawn = true;
-
-            //if( x0==0 && y0==0 && (x1 == g_pRenderTextureInfo->N64Width || x1 == g_pRenderTextureInfo->N64Width-1 ) && gRDP.fillColor == 0)
-            //{
-            //  CRender::g_pRender->ClearBuffer(true,false);
-            //}
-            //else
-            {
-                if( gRDP.otherMode.cycle_type == CYCLE_TYPE_FILL )
-                {
-                    CRender::g_pRender->FillRect(x0, y0, x1, y1, gRDP.fillColor);
-                }
-                else
-                {
-                    COLOR primColor = GetPrimitiveColor();
-                    CRender::g_pRender->FillRect(x0, y0, x1, y1, primColor);
-                }
-            }
-        }
-
-        DEBUGGER_PAUSE_AND_DUMP_COUNT_N( NEXT_FLUSH_TRI,{TRACE0("Pause after FillRect\n");});
-        DEBUGGER_PAUSE_AND_DUMP_COUNT_N( NEXT_FILLRECT, {DebuggerAppendMsg("FillRect: X0=%d, Y0=%d, X1=%d, Y1=%d, Color=0x%08X", x0, y0, x1, y1, gRDP.originalFillColor);
-        DebuggerAppendMsg("Pause after FillRect: Color=%08X\n", gRDP.originalFillColor);});
-    }
-    else
-    {
-        LOG_UCODE("    Filling Rectangle");
-        if( frameBufferOptions.bSupportRenderTextures || frameBufferOptions.bCheckBackBufs )
-        {
-           int cond1 =  (((int)x0 < status.leftRendered) ? ((int)x0) : (status.leftRendered));
-           int cond2 =  (((int)y0 < status.topRendered) ? ((int)y0) : (status.topRendered));
-           int cond3 =  ((status.rightRendered > ((int)x1)) ? ((int)x1) : (status.rightRendered));
-           int cond4 =  ((status.bottomRendered > ((int)y1)) ? ((int)y1) : (status.bottomRendered));
-           int cond5 =  ((g_pRenderTextureInfo->maxUsedHeight > ((int)y1)) ? ((int)y1) : (g_pRenderTextureInfo->maxUsedHeight));
-
-            if( !status.bCIBufferIsRendered ) g_pFrameBufferManager->ActiveTextureBuffer();
-
-            status.leftRendered = status.leftRendered<0 ? x0 : cond1;
-            status.topRendered = status.topRendered<0 ? y0 : cond2;
-            status.rightRendered = status.rightRendered<0 ? x1 : cond3;
-            status.bottomRendered = status.bottomRendered<0 ? y1 : cond4;
-        }
-
-        if( gRDP.otherMode.cycle_type == CYCLE_TYPE_FILL )
-        {
-            if( !status.bHandleN64RenderTexture || g_pRenderTextureInfo->CI_Info.dwSize == TXT_SIZE_16b )
-            {
-                CRender::g_pRender->FillRect(x0, y0, x1, y1, gRDP.fillColor);
-            }
-        }
-        else
-        {
-            COLOR primColor = GetPrimitiveColor();
-            //if( RGBA_GETALPHA(primColor) != 0 )
-            {
-                CRender::g_pRender->FillRect(x0, y0, x1, y1, primColor);
-            }
-        }
-        DEBUGGER_PAUSE_AND_DUMP_COUNT_N( NEXT_FLUSH_TRI,{TRACE0("Pause after FillRect\n");});
-        DEBUGGER_PAUSE_AND_DUMP_COUNT_N( NEXT_FILLRECT, {DebuggerAppendMsg("FillRect: X0=%d, Y0=%d, X1=%d, Y1=%d, Color=0x%08X", x0, y0, x1, y1, gRDP.originalFillColor);
-        DebuggerAppendMsg("Pause after FillRect: Color=%08X\n", gRDP.originalFillColor);});
-    }
+   ricegDPFillRect(
+         (((gfx->words.w1)>>12)&0xFFF)/4,    /* ulx */
+         (((gfx->words.w1)>>0 )&0xFFF)/4,    /* uly */
+         (((gfx->words.w0)>>12)&0xFFF)/4,    /* lrx */
+         (((gfx->words.w0)>>0 )&0xFFF)/4     /* lry */
+         );
 }
 
 
@@ -1437,15 +1090,11 @@ void DLParser_SetCImg(Gfx *gfx)
 
     TXTRBUF_DETAIL_DUMP(DebuggerAppendMsg("SetCImg: Addr=0x%08X, Fmt:%s-%sb, Width=%d\n", dwNewAddr, pszImgFormat[dwFmt], pszImgSize[dwSiz], dwWidth););
 
-    if( dwFmt == TXT_FMT_YUV || dwFmt == TXT_FMT_IA )
+    if( dwFmt == G_IM_FMT_YUV || dwFmt == G_IM_FMT_IA )
     {
         WARNING(TRACE4("Check me:  SetCImg Addr=0x%08X, Fmt:%s-%sb, Width=%d\n", 
             g_CI.dwAddr, pszImgFormat[dwFmt], pszImgSize[dwSiz], dwWidth));
     }
-
-    LOG_UCODE("    Image: 0x%08x", RSPSegmentAddr(gfx->words.w1));
-    LOG_UCODE("    Fmt: %s Size: %s Width: %d",
-        pszImgFormat[dwFmt], pszImgSize[dwSiz], dwWidth);
 
     if( g_CI.dwAddr == dwNewAddr && g_CI.dwFormat == dwFmt && g_CI.dwSize == dwSiz && g_CI.dwWidth == dwWidth )
     {
@@ -1508,22 +1157,15 @@ void DLParser_SetCImg(Gfx *gfx)
 
         TXTRBUF_DUMP(TRACE4("SetCImg : Addr=0x%08X, Fmt:%s-%sb, Width=%d\n", 
             g_CI.dwAddr, pszImgFormat[dwFmt], pszImgSize[dwSiz], dwWidth));
-
-        DEBUGGER_PAUSE_AND_DUMP_NO_UPDATE(NEXT_SET_CIMG, 
-        {
-            DebuggerAppendMsg("Pause after SetCImg: Addr=0x%08X, Fmt:%s-%sb, Width=%d\n", 
-                dwNewAddr, pszImgFormat[dwFmt], pszImgSize[dwSiz], dwWidth);
-        }
-        );
         return;
     }
 
     SetImgInfo newCI;
-    newCI.bpl = dwBpl;
-    newCI.dwAddr = dwNewAddr;
+    newCI.bpl      = dwBpl;
+    newCI.dwAddr   = dwNewAddr;
     newCI.dwFormat = dwFmt;
-    newCI.dwSize = dwSiz;
-    newCI.dwWidth = dwWidth;
+    newCI.dwSize   = dwSiz;
+    newCI.dwWidth  = dwWidth;
 
     g_pFrameBufferManager->Set_CI_addr(newCI);
 }
@@ -1531,12 +1173,11 @@ void DLParser_SetCImg(Gfx *gfx)
 void DLParser_SetZImg(Gfx *gfx)
 {
     DP_Timing(DLParser_SetZImg);
-    LOG_UCODE("    Image: 0x%08x", RSPSegmentAddr(gfx->words.w1));
 
     uint32_t dwFmt   = gfx->setimg.fmt;
     uint32_t dwSiz   = gfx->setimg.siz;
     uint32_t dwWidth = gfx->setimg.width + 1;
-    uint32_t dwAddr = RSPSegmentAddr((gfx->setimg.addr));
+    uint32_t dwAddr  = RSPSegmentAddr((gfx->setimg.addr));
 
     if( dwAddr != g_ZI_saves[0].CI_Info.dwAddr )
     {
@@ -1544,7 +1185,7 @@ void DLParser_SetZImg(Gfx *gfx)
         g_ZI_saves[1].CI_Info.dwFormat  = g_ZI.dwFormat;
         g_ZI_saves[1].CI_Info.dwSize    = g_ZI.dwSize;
         g_ZI_saves[1].CI_Info.dwWidth   = g_ZI.dwWidth;
-        g_ZI_saves[1].updateAtFrame = g_ZI_saves[0].updateAtFrame;
+        g_ZI_saves[1].updateAtFrame     = g_ZI_saves[0].updateAtFrame;
 
         g_ZI_saves[0].CI_Info.dwAddr    = g_ZI.dwAddr   = dwAddr;
         g_ZI_saves[0].CI_Info.dwFormat  = g_ZI.dwFormat = dwFmt;
@@ -1554,34 +1195,21 @@ void DLParser_SetZImg(Gfx *gfx)
     }
     else
     {
-        g_ZI.dwAddr = dwAddr;
-        g_ZI.dwFormat = dwFmt;
-        g_ZI.dwSize = dwSiz;
+        g_ZI.dwAddr     = dwAddr;
+        g_ZI.dwFormat   = dwFmt;
+        g_ZI.dwSize     = dwSiz;
         g_ZI.dwWidth    = dwWidth;
     }
-
-    DEBUGGER_IF_DUMP((pauseAtNext) ,
-    {DebuggerAppendMsg("SetZImg: Addr=0x%08X, Fmt:%s-%sb, Width=%d\n", 
-    g_ZI.dwAddr, pszImgFormat[dwFmt], pszImgSize[dwSiz], dwWidth);}
-    );
-
-    DEBUGGER_PAUSE_AND_DUMP_NO_UPDATE(NEXT_SET_CIMG, 
-        {
-            DebuggerAppendMsg("Pause after SetZImg: Addr=0x%08X, Fmt:%s-%sb, Width=%d\n", 
-                g_ZI.dwAddr, pszImgFormat[dwFmt], pszImgSize[dwSiz], dwWidth);
-        }
-    );
 }
 
 bool IsUsedAsDI(uint32_t addr)
 {
     if( addr == g_ZI_saves[0].CI_Info.dwAddr )
         return true;
-    else if( addr == g_ZI_saves[1].CI_Info.dwAddr && status.gDlistCount - g_ZI_saves[1].updateAtFrame < 10 
-        && g_ZI_saves[1].CI_Info.dwAddr != 0 )
-        return true;
-    else
-        return false;
+    if( addr == g_ZI_saves[1].CI_Info.dwAddr && status.gDlistCount - g_ZI_saves[1].updateAtFrame < 10 
+          && g_ZI_saves[1].CI_Info.dwAddr != 0 )
+       return true;
+    return false;
 }
 
 void DLParser_SetCombine(Gfx *gfx)
@@ -1592,21 +1220,20 @@ void DLParser_SetCombine(Gfx *gfx)
     CRender::g_pRender->SetMux(dwMux0, dwMux1);
 }
 
+
 void DLParser_SetFillColor(Gfx *gfx)
 {
-    DP_Timing(DLParser_SetFillColor);
-    gRDP.fillColor = Convert555ToRGBA(gfx->setcolor.fillcolor);
-    gRDP.originalFillColor = (gfx->setcolor.color);
+   ricegDPSetFillColor(gfx->setcolor.fillcolor);
 
-    LOG_UCODE("    Color5551=0x%04x = 0x%08x", (uint16_t)gfx->words.w1, gRDP.fillColor);
-
+   gRDP.originalFillColor = (gfx->setcolor.color);
 }
+
 
 void DLParser_SetFogColor(Gfx *gfx)
 {
-    DP_Timing(DLParser_SetFogColor);
-    CRender::g_pRender->SetFogColor( gfx->setcolor.r, gfx->setcolor.g, gfx->setcolor.b, gfx->setcolor.a );
-    FOG_DUMP(TRACE1("Set Fog color: %08X", gfx->setcolor.color));
+   ricegDPSetFogColor(gfx->setcolor.r, gfx->setcolor.g, gfx->setcolor.b,
+         gfx->setcolor.a);
+   FOG_DUMP(TRACE1("Set Fog color: %08X", gfx->setcolor.color));
 }
 
 void DLParser_SetBlendColor(Gfx *gfx)
@@ -1626,7 +1253,8 @@ void DLParser_SetPrimColor(Gfx *gfx)
 void DLParser_SetEnvColor(Gfx *gfx)
 {
     DP_Timing(DLParser_SetEnvColor);
-    SetEnvColor( COLOR_RGBA(gfx->setcolor.r, gfx->setcolor.g, gfx->setcolor.b, gfx->setcolor.a) );
+
+    ricegDPSetEnvColor(gfx->setcolor.r, gfx->setcolor.g, gfx->setcolor.b, gfx->setcolor.a);
 }
 
 
@@ -1636,13 +1264,13 @@ void RDP_DLParser_Process(void)
 
     status.gDlistCount++;
 
-    uint32_t start = *(gfx_info.DPC_START_REG);
-    uint32_t end = *(gfx_info.DPC_END_REG);
+    uint32_t start      = *(gfx_info.DPC_START_REG);
+    uint32_t end        = *(gfx_info.DPC_END_REG);
     uint32_t *rdram_u32 = (uint32_t*)gfx_info.RDRAM;
 
-    gDlistStackPointer=0;
-    gDlistStack[gDlistStackPointer].pc = start;
-    gDlistStack[gDlistStackPointer].countdown = MAX_DL_COUNT;
+    __RSP.PCi                  = 0;
+    __RSP.PC[__RSP.PCi]        = start;
+    __RSP.countdown[__RSP.PCi] = MAX_DL_COUNT;
 
     // Check if we need to purge (every 5 milliseconds)
     if (status.gRDPTime - status.lastPurgeTimeTime > 5)
@@ -1660,10 +1288,10 @@ void RDP_DLParser_Process(void)
     CRender::g_pRender->BeginRendering();
     CRender::g_pRender->SetViewport(0, 0, windowSetting.uViWidth, windowSetting.uViHeight, 0x3FF);
 
-    while( gDlistStack[gDlistStackPointer].pc < end )
+    while( __RSP.PC[__RSP.PCi] < end )
     {
-        Gfx *pgfx = (Gfx*)&rdram_u32[(gDlistStack[gDlistStackPointer].pc>>2)];
-        gDlistStack[gDlistStackPointer].pc += 8;
+        Gfx *pgfx = (Gfx*)&rdram_u32[(__RSP.PC[__RSP.PCi] >> 2)];
+        __RSP.PC[__RSP.PCi] += 8;
         currentUcodeMap[pgfx->words.w0 >>24](pgfx);
     }
 
@@ -1704,29 +1332,30 @@ void RDP_TriShadeTxtrZ(Gfx *gfx)
 
 static int crc_table_empty = 1;
 static unsigned int crc_table[256];
-static void make_crc_table(void);
 
-static void make_crc_table()
+static void make_crc_table(void)
 {
-    /* terms of polynomial defining this crc (except x^32): */
-    static const uint8_t p[] = {0,1,2,4,5,7,8,10,11,12,16,22,23,26};
+   unsigned n;
+   /* terms of polynomial defining this crc (except x^32): */
+   static const uint8_t p[] = {0,1,2,4,5,7,8,10,11,12,16,22,23,26};
+   /* make exclusive-or pattern from polynomial (0xedb88320L) */
+   unsigned int poly   = 0L;
 
-    /* make exclusive-or pattern from polynomial (0xedb88320L) */
-    unsigned int poly = 0L;
-    for (unsigned int n = 0; n < sizeof(p)/sizeof(uint8_t); n++)
-        poly |= 1L << (31 - p[n]);
+   for (n = 0; n < sizeof(p)/sizeof(uint8_t); n++)
+      poly |= 1L << (31 - p[n]);
 
-    for (unsigned int n = 0; n < 256; n++)
-    {
-        unsigned int c = n;
-        for (int k = 0; k < 8; k++)
-        {
-            c = (c & 1) ? (poly ^ (c >> 1)) : c >> 1;
-        }
+   for (unsigned int n = 0; n < 256; n++)
+   {
+      unsigned k;
+      unsigned int c = n;
+      for (k = 0; k < 8; k++)
+      {
+         c = (c & 1) ? (poly ^ (c >> 1)) : c >> 1;
+      }
 
-        crc_table[n] = c;
-    }
-    crc_table_empty = 0;
+      crc_table[n] = c;
+   }
+   crc_table_empty = 0;
 }
 
 /* ========================================================================= */
@@ -1765,35 +1394,24 @@ unsigned int ComputeCRC32(unsigned int crc, const uint8_t *buf, unsigned int len
 Matrix matToLoad;
 void LoadMatrix(uint32_t addr)
 {
-   uint8_t *rdram_u8 = (uint8_t*)gfx_info.RDRAM;
-    const float fRecip = 1.0f / 65536.0f;
-    if (addr + 64 > g_dwRamSize)
-    {
-        TRACE1("Mtx: Address invalid (0x%08x)", addr);
-        return;
-    }
+   unsigned i, j;
+   uint8_t   *rdram_u8 = (uint8_t*)gfx_info.RDRAM;
+   const float fRecip = 1.0f / 65536.0f;
 
-    for (int i = 0; i < 4; i++)
-    {
-        for (int j = 0; j < 4; j++) 
-        {
-            int hi = *(short *)(rdram_u8 + ((addr+(i<<3)+(j<<1)     )^0x2));
-            int lo = *(unsigned short *)(rdram_u8 + ((addr+(i<<3)+(j<<1) + 32)^0x2));
-            matToLoad.m[i][j] = (float)((hi<<16) | lo) * fRecip;
-        }
-    }
+   if (addr + 64 > g_dwRamSize)
+   {
+      TRACE1("Mtx: Address invalid (0x%08x)", addr);
+      return;
+   }
 
-
-#ifdef DEBUGGER
-    LOG_UCODE(
-        " %#+12.5f %#+12.5f %#+12.5f %#+12.5f\r\n"
-        " %#+12.5f %#+12.5f %#+12.5f %#+12.5f\r\n"
-        " %#+12.5f %#+12.5f %#+12.5f %#+12.5f\r\n"
-        " %#+12.5f %#+12.5f %#+12.5f %#+12.5f\r\n",
-        matToLoad.m[0][0], matToLoad.m[0][1], matToLoad.m[0][2], matToLoad.m[0][3],
-        matToLoad.m[1][0], matToLoad.m[1][1], matToLoad.m[1][2], matToLoad.m[1][3],
-        matToLoad.m[2][0], matToLoad.m[2][1], matToLoad.m[2][2], matToLoad.m[2][3],
-        matToLoad.m[3][0], matToLoad.m[3][1], matToLoad.m[3][2], matToLoad.m[3][3]);
-#endif // DEBUGGER
+   for (i = 0; i < 4; i++)
+   {
+      for (j = 0; j < 4; j++) 
+      {
+         int hi = *(short *)(rdram_u8 + ((addr+(i<<3)+(j<<1)     )^0x2));
+         int lo = *(unsigned short *)(rdram_u8 + ((addr+(i<<3)+(j<<1) + 32)^0x2));
+         matToLoad.m[i][j] = (float)((hi<<16) | lo) * fRecip;
+      }
+   }
 }
 

@@ -21,25 +21,16 @@
                        
 /* this header file is for system-dependent #defines, #includes, and typedefs */
 
-#if !defined (OSAL_PREPROC_H)
+#ifndef OSAL_PREPROC_H
 #define OSAL_PREPROC_H
 
-#if defined(WIN32) && !defined(__MINGW32__)
+#if defined(_WIN32) && !defined(__MINGW32__)
 
   /* macros */
-#ifdef _WIN64
- /* Have not implemented interrupt in x64 on MSVC. */
-  #define OSAL_BREAKPOINT_INTERRUPT
-#else
-  #define OSAL_BREAKPOINT_INTERRUPT __asm int 3
-#endif
-
   #define ALIGN(BYTES,DATA) __declspec(align(BYTES)) DATA
-  #define osal_inline __inline
 
   /* string functions */
   #define osal_insensitive_strcmp(x, y) _stricmp(x, y)
-  #define snprintf _snprintf
   #define strdup _strdup
 
   /* for isnan() */
@@ -49,12 +40,10 @@
   #define OSAL_DIR_SEPARATORS           "\\/"
   #define PATH_MAX _MAX_PATH
 
-#else  /* Not WIN32 */
+#else  /* Not _WIN32 */
 
   // macros
-  #define OSAL_BREAKPOINT_INTERRUPT __asm__(" int $3; ");
   #define ALIGN(BYTES,DATA) DATA __attribute__((aligned(BYTES)))
-  #define osal_inline inline
 
   // string functions
   #define osal_insensitive_strcmp(x, y) strcasecmp(x, y)

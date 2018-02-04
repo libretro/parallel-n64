@@ -20,19 +20,13 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #ifndef __TEXTUREHANDLER_H__
 #define __TEXTUREHANDLER_H__
 
-#ifndef SAFE_DELETE
-#define SAFE_DELETE(p)  { if(p) { delete (p);     (p)=NULL; } }
-#endif
-
-#ifndef SAFE_CHECK
-# define SAFE_CHECK(a)  if( (a) == NULL ) {DebugMessage(M64MSG_ERROR, "Creater out of memory"); throw new std::exception();}
-#endif
-
+#include <stdlib.h>
 #include <string.h>
 #ifndef _MSC_VER
 #include <strings.h>
 #endif
 
+#include "../../Graphics/RDP/gDP_state.h"
 #include "typedefs.h"
 #include "Texture.h"
 #define absi(x)     ((x)>=0?(x):(-x))
@@ -79,18 +73,18 @@ public:
         return *this;
     }
 
-    inline TxtrInfo& operator = (const Tile& tile)
+    inline TxtrInfo& operator = (const gDPTile& tile)
     {
-        Format = tile.dwFormat;
-        Size = tile.dwSize;
-        Palette = tile.dwPalette;
+        Format  = tile.format;
+        Size    = tile.size;
+        Palette = tile.palette;
         
-        maskS = tile.dwMaskS;
-        maskT = tile.dwMaskT;
-        mirrorS = tile.bMirrorS;
-        mirrorT = tile.bMirrorT;
-        clampS = tile.bClampS;
-        clampT = tile.bClampT;
+        maskS   = tile.masks;
+        maskT   = tile.maskt;
+        mirrorS = tile.mirrors;
+        mirrorT = tile.mirrort;
+        clampS  = tile.clamps;
+        clampT  = tile.clampt;
 
         return *this;
     }
@@ -137,8 +131,13 @@ typedef struct TxtrCacheEntry
 
     ~TxtrCacheEntry()
     {
-        SAFE_DELETE(pTexture);
-        SAFE_DELETE(pEnhancedTexture);
+       if (pTexture)
+          free(pTexture);
+       if (pEnhancedTexture)
+          free(pEnhancedTexture);
+
+       pTexture         = NULL;
+       pEnhancedTexture = NULL;
     }
     
     struct TxtrCacheEntry *pNext;       // Must be first element!

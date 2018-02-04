@@ -178,7 +178,6 @@ void microcheck(void)
          || uc_crc == UCODE_RIDGE_RACER_64
          || uc_crc == UCODE_40WINKS
          || uc_crc == 0xcb8c9b6c
-         || uc_crc == UCODE_ARMORINES_PROJECT
          )
          {
             settings.ucode = 2;
@@ -273,6 +272,33 @@ void microcheck(void)
       if (log_cb)
          log_cb(RETRO_LOG_INFO, "Microcode -1 - Unknown Microcode.\n");
    }
+   else if (
+         uc_crc == 0xef54ee35
+         )
+   {
+      settings.ucode = 10;
+      if (log_cb)
+         log_cb(RETRO_LOG_INFO, "Microcode 10 - F3DTEXA (64 de Hakken).\n");
+   }
+#if 0
+   else if (
+         uc_crc == UCODE_ARMORINES_PROJECT
+         )
+   {
+      settings.ucode = 11;
+      if (log_cb)
+         log_cb(RETRO_LOG_INFO, "Microcode 10 - F3DEX2Acclaim (Turok 2/3/South Park).\n");
+   }
+#else
+   else if (
+         uc_crc == UCODE_ARMORINES_PROJECT
+         )
+   {
+      settings.ucode = 2;
+      if (log_cb)
+         log_cb(RETRO_LOG_INFO, "Microcode 2 - F3DEX 2.XX (The Legend of Zelda: Ocarina of Time)\n");
+   }
+#endif
 
    if (log_cb)
       log_cb(RETRO_LOG_INFO, "microcheck: old ucode: %d,  new ucode: %d\n", old_ucode, settings.ucode);

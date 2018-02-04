@@ -2,7 +2,6 @@
 
 #include "Common.h"
 #include "gles2N64.h"
-#include "Types.h"
 #include "VI.h"
 #include "OpenGL.h"
 #include "N64.h"
@@ -13,21 +12,23 @@
 #include "Config.h"
 #include "FrameBuffer.h"
 
+#include "../../Graphics/RDP/gDP_state.h"
+
 VIInfo VI;
 
 void VI_UpdateSize(void)
 {
    struct FrameBuffer *pBuffer, *pDepthBuffer;
 	const bool interlacedPrev = VI.interlaced;
-   f32 xScale  = _FIXED2FLOAT( _SHIFTR( *gfx_info.VI_X_SCALE_REG, 0, 12 ), 10 );
-	u32 vScale  = _SHIFTR(*gfx_info.VI_Y_SCALE_REG, 0, 12);
+   float xScale  = _FIXED2FLOAT( _SHIFTR( *gfx_info.VI_X_SCALE_REG, 0, 12 ), 10 );
+	uint32_t vScale  = _SHIFTR(*gfx_info.VI_Y_SCALE_REG, 0, 12);
 
-   u32 hEnd = _SHIFTR( *gfx_info.VI_H_START_REG, 0, 10 );
-   u32 hStart = _SHIFTR( *gfx_info.VI_H_START_REG, 16, 10 );
+   uint32_t hEnd = _SHIFTR( *gfx_info.VI_H_START_REG, 0, 10 );
+   uint32_t hStart = _SHIFTR( *gfx_info.VI_H_START_REG, 16, 10 );
 
    // These are in half-lines, so shift an extra bit
-   u32 vEnd = _SHIFTR( *gfx_info.VI_V_START_REG, 0, 10 );
-   u32 vStart = _SHIFTR( *gfx_info.VI_V_START_REG, 16, 10 );
+   uint32_t vEnd = _SHIFTR( *gfx_info.VI_V_START_REG, 0, 10 );
+   uint32_t vStart = _SHIFTR( *gfx_info.VI_V_START_REG, 16, 10 );
 	if (VI.width > 0)
 		VI.widthPrev = VI.width;
 
@@ -36,28 +37,27 @@ void VI_UpdateSize(void)
 	VI.interlaced = (*gfx_info.VI_STATUS_REG & 0x40) != 0;
 	if (VI.interlaced)
    {
-		f32 fullWidth = 640.0f * xScale;
+		float fullWidth = 640.0f * xScale;
 		if (*gfx_info.VI_WIDTH_REG > fullWidth)
       {
-			const u32 scale = (u32)floorf(*gfx_info.VI_WIDTH_REG / fullWidth + 0.5f);
+			const uint32_t scale = (uint32_t)floorf(*gfx_info.VI_WIDTH_REG / fullWidth + 0.5f);
 			VI.width /= scale;
 			VI.real_height *= scale;
 		}
 		if (VI.real_height % 2 == 1)
 			--VI.real_height;
-	} else if (hEnd != 0 && *gfx_info.VI_WIDTH_REG != 0)
-		VI.width = min((u32)floorf((hEnd - hStart)*xScale + 0.5f), *gfx_info.VI_WIDTH_REG);
+	}
 
 	VI.PAL = (*gfx_info.VI_V_SYNC_REG & 0x3ff) > 550;
 	if (VI.PAL && (vEnd - vStart) > 478)
    {
-		VI.height = (u32)(VI.real_height*1.0041841f);
+		VI.height = (uint32_t)(VI.real_height*1.0041841f);
 		if (VI.height > 576)
 			VI.height = VI.real_height = 576;
 	}
 	else
    {
-		VI.height = (u32)(VI.real_height*1.0126582f);
+		VI.height = (uint32_t)(VI.real_height*1.0126582f);
 		if (VI.height > 480)
 			VI.height = VI.real_height = 480;
 	}
@@ -70,8 +70,8 @@ void VI_UpdateSize(void)
 	if (config.frameBufferEmulation.enable &&
 		((interlacedPrev != VI.interlaced) ||
 		(VI.width > 0 && VI.width != VI.widthPrev) ||
-		(!VI.interlaced && pDepthBuffer != NULL && pDepthBuffer->width != VI.width) ||
-		(pBuffer != NULL && pBuffer->height != VI.height))
+		(!VI.interlaced && pDepthBuffer != NULL && pDepthBuffer->m_width != VI.width) ||
+		(pBuffer != NULL && pBuffer->m_height != VI.height))
 	)
    {
       FrameBuffer_RemoveBuffer(VI.widthPrev);
@@ -88,7 +88,7 @@ void VI_UpdateSize(void)
 
 void VI_UpdateScreen(void)
 {
-	static u32 uNumCurFrameIsShown = 0;
+	static uint32_t uNumCurFrameIsShown = 0;
    bool bVIUpdated = false;
 
    if (*gfx_info.VI_ORIGIN_REG != VI.lastOrigin)
@@ -108,9 +108,9 @@ void VI_UpdateScreen(void)
 			if ((gSP.changed&CHANGED_CPU_FB_WRITE) == CHANGED_CPU_FB_WRITE)
          {
 				struct FrameBuffer * pBuffer = FrameBuffer_FindBuffer(*gfx_info.VI_ORIGIN_REG);
-				if (pBuffer == NULL || pBuffer->width != VI.width)
+				if (pBuffer == NULL || pBuffer->m_width != VI.width)
             {
-               u32 size;
+               uint32_t size;
 
 					if (!bVIUpdated)
                {
@@ -151,7 +151,7 @@ void VI_UpdateScreen(void)
 			VI.lastOrigin = *gfx_info.VI_ORIGIN_REG;
 #ifdef DEBUG
 			while (Debug.paused && !Debug.step);
-			Debug.step = FALSE;
+			Debug.step = false;
 #endif
 		} else {
 			uNumCurFrameIsShown++;

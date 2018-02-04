@@ -1,6 +1,7 @@
+#include <stdint.h>
 #include <stdlib.h>
+#include <boolean.h>
 #include "DepthBuffer.h"
-#include "Types.h"
 
 DepthBufferInfo depthBuffer;
 
@@ -61,7 +62,7 @@ void DepthBuffer_Remove( DepthBuffer *buffer )
    depthBuffer.numBuffers--;
 }
 
-void DepthBuffer_RemoveBuffer( u32 address )
+void DepthBuffer_RemoveBuffer( uint32_t address )
 {
     DepthBuffer *current = depthBuffer.bottom;
     while (current != NULL)
@@ -125,7 +126,7 @@ void DepthBuffer_Destroy(void)
    depthBuffer.top = NULL;
 }
 
-void DepthBuffer_SetBuffer( u32 address )
+void DepthBuffer_SetBuffer( uint32_t address )
 {
    DepthBuffer *current = depthBuffer.top;
 
@@ -143,13 +144,12 @@ void DepthBuffer_SetBuffer( u32 address )
 
    current = DepthBuffer_AddTop();
 
-   current->address = address;
-   current->cleared = TRUE;
-
+   current->address    = address;
+   current->cleared    = true;
    depthBuffer.current = current;
 }
 
-DepthBuffer *DepthBuffer_FindBuffer( u32 address )
+DepthBuffer *DepthBuffer_FindBuffer( uint32_t address )
 {
    DepthBuffer *current = depthBuffer.top;
 

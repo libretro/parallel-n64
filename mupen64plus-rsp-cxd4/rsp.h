@@ -1,261 +1,276 @@
-/******************************************************************************\
-* Authors:  Iconoclast                                                         *
-* Release:  2013.12.12                                                         *
-* License:  CC0 Public Domain Dedication                                       *
+/*******************************************************************************
+* Common RSP plugin specifications:  version #1.2 created by zilmar            *
+* Revised 2014 by Iconoclast for more compliance, portability and readability. *
 *                                                                              *
-* To the extent possible under law, the author(s) have dedicated all copyright *
-* and related and neighboring rights to this software to the public domain     *
-* worldwide. This software is distributed without any warranty.                *
-*                                                                              *
-* You should have received a copy of the CC0 Public Domain Dedication along    *
-* with this software.                                                          *
-* If not, see <http://creativecommons.org/publicdomain/zero/1.0/>.             *
-\******************************************************************************/
-#ifndef _RSP_H_
-#define _RSP_H_
+* All questions or suggestions should go through the EmuTalk plugin forum.     *
+* http://www.emutalk.net/forums/showforum.php?f=31                             *
+*******************************************************************************/
 
-#include "Rsp_#1.1.h"
-RSP_INFO RSP;
+#ifndef _RSP_H_INCLUDED__
+#define _RSP_H_INCLUDED__
 
-#ifdef _MSC_VER
-#define NOINLINE    __declspec(noinline)
-#define ALIGNED     _declspec(align(16))
-#else
-#define NOINLINE    __attribute__((noinline))
-#define ALIGNED     __attribute__((aligned(16)))
+#include "my_types.h"
+
+#if defined(__cplusplus)
+extern "C" {
 #endif
+
+#define PLUGIN_TYPE_RSP             1
+#define PLUGIN_TYPE_GFX             2
+#define PLUGIN_TYPE_AUDIO           3
+#define PLUGIN_TYPE_CONTROLLER      4
+
+#ifndef PLUGIN_API_VERSION
+#define PLUGIN_API_VERSION      0x0102
+#endif
+
+/* old names from the original specification file */
+#define hInst               hinst
+#define MemorySwapped       MemoryBswaped
 
 /*
- * Streaming SIMD Extensions version import management
+ * Declare RSP_INFO structure instance as:  `RSP_INFO RSP_INFO_NAME;'
+ * ... for the ability to use the below convenience macros.
+ *
+ * Doing the traditional `RSP_INFO rsp_info' declaration has also worked but
+ * requires accessing the RCP registers in a less portable way, for example:
+ * `*(rsp_info).MI_INTR_REG |= MI_INTR_MASK_SP;'
+ * versus
+ * `GET_RCP_REG(MI_INTR_REG) |= MI_INTR_MASK_SP;'.
  */
-#ifdef ARCH_MIN_SSSE3
-#define ARCH_MIN_SSE2
-#include <tmmintrin.h>
-#endif
-#ifdef ARCH_MIN_SSE2
-#include <emmintrin.h>
-#endif
-
-typedef unsigned char byte;
-
-NOINLINE void message(const char* body, int priority)
-{
-    priority &= 03;
-    if (priority < MINIMUM_MESSAGE_PRIORITY)
-        return;
-    printf("%s\n", body);
-}
-
-#ifndef EMULATE_STATIC_PC
-static int stage;
-#endif
-static int temp_PC;
-#ifdef WAIT_FOR_CPU_HOST
-static short MFC0_count[32];
-/* Keep one C0 MF status read count for each scalar register. */
-#endif
-
-#ifdef SP_EXECUTE_LOG
-static FILE *output_log;
-extern void step_SP_commands(uint32_t inst);
-#endif
-extern void export_SP_memory(void);
-NOINLINE void trace_RSP_registers(void);
-
-#include "su.h"
-#include "vu/vu.h"
-
-/* Allocate the RSP CPU loop to its own functional space. */
-NOINLINE extern void run_task(void);
-#include "execute.h"
-
-#ifdef SP_EXECUTE_LOG
-void step_SP_commands(uint32_t inst)
-{
-    if (output_log)
-    {
-        const char digits[16] = {
-            '0','1','2','3','4','5','6','7','8','9','A','B','C','D','E','F'
-        };
-        char text[256];
-        char offset[4] = "";
-        char code[9] = "";
-        unsigned char endian_swap[4];
-
-        endian_swap[00] = (unsigned char)(inst >> 24);
-        endian_swap[01] = (unsigned char)(inst >> 16);
-        endian_swap[02] = (unsigned char)(inst >>  8);
-        endian_swap[03] = (unsigned char)inst;
-        offset[00] = digits[(*RSP.SP_PC_REG & 0xF00) >> 8];
-        offset[01] = digits[(*RSP.SP_PC_REG & 0x0F0) >> 4];
-        offset[02] = digits[(*RSP.SP_PC_REG & 0x00F) >> 0];
-        code[00] = digits[(inst & 0xF0000000) >> 28];
-        code[01] = digits[(inst & 0x0F000000) >> 24];
-        code[02] = digits[(inst & 0x00F00000) >> 20];
-        code[03] = digits[(inst & 0x000F0000) >> 16];
-        code[04] = digits[(inst & 0x0000F000) >> 12];
-        code[05] = digits[(inst & 0x00000F00) >>  8];
-        code[06] = digits[(inst & 0x000000F0) >>  4];
-        code[07] = digits[(inst & 0x0000000F) >>  0];
-        strcpy(text, offset);
-        strcat(text, "\n");
-        strcat(text, code);
-        message(text, 0); /* PC offset, MIPS hex. */
-        if (output_log == NULL) {} else /* Global pointer not updated?? */
-            fwrite(endian_swap, 4, 1, output_log);
-    }
-}
-#endif
-
-NOINLINE void export_data_cache(void)
-{
-    FILE* out;
-    register uint32_t addr;
-
-    out = fopen("rcpcache.dhex", "wb");
-#if (0)
-    for (addr = 0x00000000; addr < 0x00001000; addr += 0x00000001)
-        fputc(RSP.DMEM[BES(addr & 0x00000FFF)], out);
+#ifndef RSP_INFO_NAME
+#ifdef M64P_PLUGIN_API
+#define RSP_INFO_NAME           RSP_info
 #else
-    for (addr = 0x00000000; addr < 0x00001000; addr += 0x00000004)
-    {
-        fputc(RSP.DMEM[addr + 0x000 + BES(0x000)], out);
-        fputc(RSP.DMEM[addr + 0x001 + MES(0x000)], out);
-        fputc(RSP.DMEM[addr + 0x002 - MES(0x000)], out);
-        fputc(RSP.DMEM[addr + 0x003 - BES(0x000)], out);
-    }
+#define RSP_INFO_NAME           RCP_info_SP
 #endif
-    fclose(out);
-    return;
-}
-NOINLINE void export_instruction_cache(void)
-{
-    FILE* out;
-    register uint32_t addr;
-
-    out = fopen("rcpcache.ihex", "wb");
-#if (0)
-    for (addr = 0x00000000; addr < 0x00001000; addr += 0x00000001)
-        fputc(RSP.IMEM[BES(addr & 0x00000FFF)], out);
-#else
-    for (addr = 0x00000000; addr < 0x00001000; addr += 0x00000004)
-    {
-        fputc(RSP.IMEM[addr + 0x000 + BES(0x000)], out);
-        fputc(RSP.IMEM[addr + 0x001 + MES(0x000)], out);
-        fputc(RSP.IMEM[addr + 0x002 - MES(0x000)], out);
-        fputc(RSP.IMEM[addr + 0x003 - BES(0x000)], out);
-    }
+#define GET_RSP_INFO(member)    ((RSP_INFO_NAME).member)
+#define GET_RCP_REG(member)     (*(RSP_INFO_NAME).member)
 #endif
-    fclose(out);
-    return;
-}
-void export_SP_memory(void)
-{
-    export_data_cache();
-    export_instruction_cache();
-    return;
-}
 
-const char CR_names[16][14] = {
-    "SP_MEM_ADDR  ","SP_DRAM_ADDR ","SP_DMA_RD_LEN","SP_DMA_WR_LEN",
-    "SP_STATUS    ","SP_DMA_FULL  ","SP_DMA_BUSY  ","SP_SEMAPHORE ",
-    "CMD_START    ","CMD_END      ","CMD_CURRENT  ","CMD_STATUS   ",
-    "CMD_CLOCK    ","CMD_BUSY     ","CMD_PIPE_BUSY","CMD_TMEM_BUSY",
-};
-const char SR_names[32][5] = {
-    "zero","$at:"," v0:"," v1:"," a0:"," a1:"," a2:"," a3:",
-    " t0:"," t1:"," t2:"," t3:"," t4:"," t5:"," t6:"," t7:",
-    " s0:"," s1:"," s2:"," s3:"," s4:"," s5:"," s6:"," s7:",
-    " t8:"," t9:"," k0:"," k1:"," gp:","$sp:","$s8:","$ra:",
-};
-const char* Boolean_names[2] = {
-    "false",
-    "true"
-};
+typedef struct {
+    i32 left;
+    i32 top;
+    i32 right;
+    i32 bottom;
+} winapi_rect;
 
-NOINLINE void trace_RSP_registers(void)
-{
-    register int i;
-    FILE* out;
+typedef struct {
+    p_void hdc;
+    int fErase;
+    winapi_rect rcPaint;
+    int fRestore;
+    int fIncUpdate;
+    u8 rgbReserved[32];
+} winapi_paintstruct;
 
-    out = fopen("SP_STATE.TXT", "w");
-    fprintf(out, "RCP Communications Register Display\n\n");
+typedef struct {
+    u16 Version;        /* Set to PLUGIN_API_VERSION. */
+    u16 Type;           /* Set to PLUGIN_TYPE_RSP. */
+    char Name[100];     /* plugin title, to help the user select plugins */
 
-/*
- * The precise names for RSP CP0 registers are somewhat difficult to define.
- * Generally, I have tried to adhere to the names shared from bpoint/zilmar,
- * while also merging the concrete purpose and correct assembler references.
- * Whether or not you find these names agreeable is mostly a matter of seeing
- * them from the RCP's point of view or the CPU host's mapped point of view.
- */
+    /* If the plugin supports these memory options, then set them to true. */
+    int NormalMemory;   /* a normal byte array */
+    int MemorySwapped;  /* a normal byte array choosing the client-side,
+                           native hardware's endian over the MIPS target's */
+} PLUGIN_INFO;
+
+#if !defined(M64P_PLUGIN_API)
+typedef struct {
+    p_void hInst;
+    int MemorySwapped;
+
+    pu8 RDRAM; /* CPU-RCP dynamic RAM (sensitive to MemorySwapped flag) */
+    pu8 DMEM; /* high 4K of SP cache memory (sensitive to MemorySwapped flag) */
+    pu8 IMEM; /* low 4K of SP cache memory (sensitive to MemorySwapped flag) */
+
+    pu32 MI_INTR_REG;
+
+    pu32 SP_MEM_ADDR_REG;
+    pu32 SP_DRAM_ADDR_REG;
+    pu32 SP_RD_LEN_REG;
+    pu32 SP_WR_LEN_REG;
+    pu32 SP_STATUS_REG;
+    pu32 SP_DMA_FULL_REG;
+    pu32 SP_DMA_BUSY_REG;
+    pu32 SP_PC_REG; /* This was supposed to be defined AFTER semaphore. */
+    pu32 SP_SEMAPHORE_REG;
 #if 0
-    for (i = 0; i < 8; i++)
-        fprintf(out, "%s:  %08"PRIX32"    %s:  %08"PRIX32"\n",
-            CR_names[i+0], *(CR[i+0]), CR_names[i+8], *(CR[i+8]));
-    fprintf(out, "\n");
+    pu32 SP_PC_REG; /* CPU-mapped between SP and DP command buffer regs */
 #endif
+    pu32 DPC_START_REG;
+    pu32 DPC_END_REG;
+    pu32 DPC_CURRENT_REG;
+    pu32 DPC_STATUS_REG;
+    pu32 DPC_CLOCK_REG;
+    pu32 DPC_BUFBUSY_REG;
+    pu32 DPC_PIPEBUSY_REG;
+    pu32 DPC_TMEM_REG;
+
+    p_func CheckInterrupts;
+    p_func ProcessDList;
+    p_func ProcessAList;
+    p_func ProcessRdpList;
+    p_func ShowCFB;
+} RSP_INFO;
+#endif
+
+typedef struct {
+    /* menu */
+    /* Items should have an ID between 5001 and 5100. */
+    p_void hRSPMenu;
+    void (*ProcessMenuItem)(int ID);
+
+    /* break points */
+    int UseBPoints;
+    char BPPanelName[20];
+    p_func Add_BPoint;
+    void (*CreateBPPanel)(p_void hDlg, winapi_rect rcBox);
+    p_func HideBPPanel;
+    void (*PaintBPPanel)(winapi_paintstruct ps);
+    p_void ShowBPPanel;
+    void (*RefreshBpoints)(p_void hList);
+    void (*RemoveBpoint)(p_void hList, int index);
+    p_void RemoveAllBpoint;
+
+    /* RSP command window */
+    p_func Enter_RSP_Commands_Window;
+} RSPDEBUG_INFO;
+
+typedef struct {
+    p_func UpdateBreakPoints;
+    p_func UpdateMemory;
+    p_func UpdateR4300iRegisters;
+    p_func Enter_BPoint_Window;
+    p_func Enter_R4300i_Commands_Window;
+    p_func Enter_R4300i_Register_Window;
+    p_func Enter_RSP_Commands_Window;
+    p_func Enter_Memory_Window;
+} DEBUG_INFO;
+
+/******************************************************************************
+* name     :  CloseDLL
+* optional :  no
+* call time:  when the emulator is shutting down or chooses to free memory
+* input    :  none
+* output   :  none
+*******************************************************************************/
+EXPORT void CALL CloseDLL(void);
+
+/******************************************************************************
+* name     :  DllAbout
+* optional :  yes
+* call time:  upon a request to see information about the plugin (e.g., authors)
+* input    :  a pointer to the window that called this function
+* output   :  none
+*******************************************************************************/
+EXPORT void CALL DllAbout(p_void hParent);
+
+/******************************************************************************
+* name     :  DllConfig
+* optional :  yes
+* call time:  upon a request to configure the plugin (e.g., change settings)
+* input    :  a pointer to the window that called this function
+* output   :  none
+*******************************************************************************/
+EXPORT void CALL DllConfig(p_void hParent);
+
+/******************************************************************************
+* name     :  DllTest
+* optional :  yes
+* call time:  upon a request to test the plugin (e.g., system capabilities)
+* input    :  a pointer to the window that called this function
+* output   :  none
+*******************************************************************************/
+EXPORT void CALL DllTest(p_void hParent);
+
+/******************************************************************************
+* name     :  DoRspCycles
+* optional :  no
+* call time:  when the R4300 CPU alternates control to execute on the RSP
+* input    :  number of cycles meant to be executed (for segmented execution)
+* output   :  The number of cycles executed also was intended for cycle-timing
+*             attempts, much like Project64 itself originally was, and requires
+*             individual experiment.  This value is ignored if the RSP CPU flow
+*             was halted when the function completed.  In-depth debate:
+*             http://www.emutalk.net/showthread.php?t=43088
+*******************************************************************************/
+EXPORT u32 CALL DoRspCycles(u32 Cycles);
+
+/******************************************************************************
+* name     :  GetDllInfo
+* optional :  no
+* call time:  during the enumeration of valid plugins the emulator can load
+* input    :  a pointer to a PLUGIN_INFO stucture used to determine support
+* output   :  none
+*******************************************************************************/
+EXPORT void CALL GetDllInfo(PLUGIN_INFO * PluginInfo);
+
+/******************************************************************************
+* name     :  GetRspDebugInfo
+* optional :  yes
+* call time:  when the emulator requests information about what the RSP plugin
+*             is and is not programmed to debug
+* input    :  a pointer to a RSPDEBUG_INFO stucture to determine capabilities
+* output   :  none
+*******************************************************************************/
+EXPORT void CALL GetRspDebugInfo(RSPDEBUG_INFO * RSPDebugInfo);
+
+/******************************************************************************
+* name     :  InitiateRSP
+* optional :  no
+* call time:  after the emulator has successfully loaded the plugin but needs
+*             more information about it before proceeding to start emulation
+* input    :  a RSP_INFO structure mostly for setting up the RCP memory map
+* output   :  none
+*******************************************************************************/
+EXPORT void CALL InitiateRSP(RSP_INFO Rsp_Info, pu32 CycleCount);
+
+/******************************************************************************
+* name     :  InitiateRSPDebugger
+* optional :  yes
+* call time:  after plugin load, when the emulator is ready to supply an
+*             informational structure useful to the RSP plugin for integrating
+*             its debugger, if any, with the rest of the emulator
+* input    :  a DEBUG_INFO structure offering debugger integration information
+* output   :  none
+*******************************************************************************/
+EXPORT void CALL InitiateRSPDebugger(DEBUG_INFO DebugInfo);
+
+/******************************************************************************
+* name     :  RomClosed
+* optional :  no
+* call time:  when unloading the ROM (sometimes when emulation ends)
+* input    :  none
+* output   :  none
+*******************************************************************************/
+EXPORT void CALL RomClosed(void);
+
 /*
- * There is no memory map for remaining registers not shared by the CPU.
- * The scalar register (SR) file is straightforward and based on the
- * GPR file in the MIPS ISA.  However, the RSP assembly language is still
- * different enough from the MIPS assembly language, in that tokens such as
- * "$zero" and "$s0" are no longer valid.  "$k0", for example, is not a valid
- * RSP register name because on MIPS it was kernel-use, but on the RSP, free.
- * To be colorful/readable, however, I have set the modern MIPS names anyway.
+ * required?? in version #1.2 of the RSP plugin spec
+ * Have not tested a #1.2 implementation yet so shouldn't document them yet.
+ *
+ * Most of these functions were made to inhibit private plugin distribution
+ * from Project64 in its commercial state, and there is no documentation of
+ * these in the source to Project64 2.x as of yet.
  */
-    for (i = 0; i < 16; i++)
-        fprintf(out, "%s  %08X,  %s  %08X,\n",
-            SR_names[i+0], SR[i+0], SR_names[i+16], SR[i+16]);
-    fprintf(out, "\n");
+#if (PLUGIN_API_VERSION >= 0x0102) && !defined(M64P_PLUGIN_API)
+EXPORT void CALL RomOpen(void);
+EXPORT void CALL EnableDebugging(int Enabled);
+EXPORT void CALL PluginLoaded(void);
+#endif
 
-    for (i = 0; i < 32; i++)
-    {
-        register int j;
+/************ profiling **************/
+#define Default_ProfilingOn         0
+#define Default_IndvidualBlock      0
+#define Default_ShowErrors          0
+#define Default_AudioHle            0
 
-        if (i < 10)
-            fprintf(out, "$v%i :  ", i);
-        else
-            fprintf(out, "$v%i:  ", i);
-        for (j = 0; j < N; j++)
-            fprintf(out, "[%04hX]", VR[i][j]);
-        fprintf(out, "\n");
-    }
-    fprintf(out, "\n");
+#define InterpreterCPU      0
+#define RecompilerCPU       1
 
-/*
- * The SU has its fair share of registers, but the VU has its counterparts.
- * Just like we have the scalar 16 system control registers for the RSP CP0,
- * we have also a tiny group of special-purpose, vector control registers.
- */
-    fprintf(out, "$%s:  0x%04X\n", tokens_CR_V[0], get_VCO());
-    fprintf(out, "$%s:  0x%04X\n", tokens_CR_V[1], get_VCC());
-    fprintf(out, "$%s:  0x%02X\n", tokens_CR_V[2], get_VCE());
-    fprintf(out, "\n");
-
-/*
- * 48-bit RSP accumulators
- * Most vector unit patents traditionally call this register file "VACC".
- * However, typically in discussion about SGI's implementation, we say "ACC".
- */
-    for (i = 0; i < 8; i++)
-    {
-        register int j;
-
-        fprintf(out, "ACC[%o]:  ", i);
-        for (j = 0; j < 3; j++)
-            fprintf(out, "[%04hX]", VACC[j][i]);
-        fprintf(out, "\n");
-    }
-    fprintf(out, "\n");
-
-/*
- * special-purpose vector unit registers for vector divide operations only
- */
-    fprintf(out, "%s:  %i\n", "DivIn", DivIn);
-    fprintf(out, "%s:  %i\n", "DivOut", DivOut);
-    /* MovIn:  This reg. might exist for VMOV, but it is obsolete to emulate. */
-    fprintf(out, "DPH:  %s\n", Boolean_names[DPH]);
-    fclose(out);
-    return;
+#if defined(__cplusplus)
 }
+#endif
+
 #endif
