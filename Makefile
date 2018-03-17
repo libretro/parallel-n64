@@ -135,7 +135,7 @@ ifneq (,$(findstring unix,$(platform)))
       ifneq (,$(findstring mesa,$(platform)))
          GL_LIB := -lGLESv2
       else
-         GL_LIB := -L/opt/vc/lib -lGLESv2
+         GL_LIB := -L/opt/vc/lib -lbrcmGLESv2
          INCFLAGS += -I/opt/vc/include -I/opt/vc/include/interface/vcos -I/opt/vc/include/interface/vcos/pthreads
       endif
 
