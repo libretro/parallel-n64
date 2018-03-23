@@ -87,6 +87,7 @@ static bool vulkan_inited           = false;
 static bool gl_inited               = false;
 
 int astick_deadzone                 = 0;
+int astick_sensitivity              = 100;
 int first_time                      = 1;
 bool flip_only                      = false;
 
@@ -300,6 +301,8 @@ static void setup_variables(void)
          "Audio Buffer Size (restart); 2048|1024"},
       {"parallel-n64-astick-deadzone",
         "Analog Deadzone (percent); 15|20|25|30|0|5|10"},
+      {"parallel-n64-astick-sensitivity",
+        "Analog Sensitivity (percent); 100|105|110|115|120|125|130|135|140|145|150|50|55|60|65|70|75|80|85|90|95"},
       {"parallel-n64-pak1",
         "Player 1 Pak; none|memory|rumble"},
       {"parallel-n64-pak2",
@@ -1204,6 +1207,12 @@ void update_variables(bool startup)
 
    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
       astick_deadzone = (int)(atoi(var.value) * 0.01f * 0x8000);
+
+   var.key = "parallel-n64-astick-sensitivity";
+   var.value = NULL;
+
+   if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+      astick_sensitivity = atoi(var.value);
 
    var.key = "parallel-n64-gfxplugin-accuracy";
    var.value = NULL;
