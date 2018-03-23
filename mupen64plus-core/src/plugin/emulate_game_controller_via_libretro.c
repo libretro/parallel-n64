@@ -41,6 +41,7 @@ extern struct retro_rumble_interface rumble;
 extern int pad_pak_types[4];
 extern int pad_present[4];
 extern int astick_deadzone;
+extern int astick_sensitivity;
 
 extern m64p_rom_header ROM_HEADER;
 
@@ -320,7 +321,7 @@ static void inputGetKeys_reuse(int16_t analogX, int16_t analogY, int Control, BU
       // Re-scale analog stick range to negate deadzone (makes slow movements possible)
       radius = (radius - astick_deadzone)*((float)ASTICK_MAX/(ASTICK_MAX - astick_deadzone));
       // N64 Analog stick range is from -80 to 80
-      radius *= 80.0 / ASTICK_MAX;
+      radius *= 80.0 / ASTICK_MAX * (astick_sensitivity / 100.0);
       // Convert back to cartesian coordinates
       Keys->X_AXIS = +(int32_t)ROUND(radius * cos(angle));
       Keys->Y_AXIS = -(int32_t)ROUND(radius * sin(angle));
