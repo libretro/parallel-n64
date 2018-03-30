@@ -24,6 +24,8 @@
     #include "ppc.c"
   #elif defined VITA
     #include "scefiber.c"
+  #elif defined __aarch64__
+    #include "aarch64.c"
   #elif defined(__ARM_EABI__) || defined(__arm__)
     #include "armeabi.c"
   #else
