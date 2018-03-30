@@ -20,6 +20,11 @@ LOCAL_MODULE := retro
 ROOT_DIR := ..
 LIBRETRO_DIR = ../libretro
 
+ifeq ($(TARGET_ARCH),arm64)
+WITH_DYNAREC := arm64
+HAVE_PARALLEL :=1
+endif
+
 ifeq ($(TARGET_ARCH),arm)
 LOCAL_ARM_MODE := arm
 LOCAL_CFLAGS := -marm
