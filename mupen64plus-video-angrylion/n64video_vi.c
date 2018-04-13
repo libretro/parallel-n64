@@ -1,9 +1,10 @@
 #include <string.h>
 
+#include <libretro.h>
+
 #include "z64.h"
 #include "rdp.h"
 #include "vi.h"
-#include "api/libretro.h"
 
 enum vi_type
 {

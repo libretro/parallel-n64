@@ -2,8 +2,8 @@
 #define PARALLEL_H__
 
 #include <vulkan/vulkan.h>
-#include "api/libretro.h"
-#include "api/libretro_vulkan.h"
+#include <libretro.h>
+#include <libretro_vulkan.h>
 
 #ifdef __cplusplus
 extern "C" {

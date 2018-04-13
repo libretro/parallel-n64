@@ -4,7 +4,7 @@
 #include "rdp.h"
 #include "Framebuffer_glide64.h"
 
-#include "api/libretro.h"
+#include <libretro.h>
 #include "../../libretro/libretro_private.h"
 
 extern uint8_t microcode[4096];

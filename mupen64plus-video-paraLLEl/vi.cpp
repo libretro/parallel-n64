@@ -1,8 +1,8 @@
 #include <string.h>
 
 #include "Gfx #1.3.h"
-#include "api/libretro.h"
-#include "api/libretro_vulkan.h"
+#include <libretro.h>
+#include <libretro_vulkan.h>
 #include "rdp.hpp"
 #include "z64.h"
 #include <utility>

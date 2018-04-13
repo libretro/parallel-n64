@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "api/libretro.h"
+#include <libretro.h>
 #ifndef NO_LIBCO
 #include <libco.h>
 #endif

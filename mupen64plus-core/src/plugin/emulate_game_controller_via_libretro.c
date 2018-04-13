@@ -23,7 +23,7 @@
 #include "plugin.h"
 
 #include "api/m64p_plugin.h"
-#include "api/libretro.h"
+#include <libretro.h>
 #include "si/game_controller.h"
 #include <stdio.h>
 #include <stdlib.h>

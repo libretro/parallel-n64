@@ -77,7 +77,7 @@
 #include "../debugger/debugger.h"
 #endif
 
-#include "api/libretro.h"
+#include <libretro.h>
 
 void set_audio_format_via_libretro(void* user_data,
       unsigned int frequency, unsigned int bits);

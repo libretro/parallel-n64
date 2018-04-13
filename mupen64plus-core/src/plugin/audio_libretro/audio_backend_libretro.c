@@ -20,7 +20,7 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "api/m64p_types.h"
-#include "api/libretro.h"
+#include <libretro.h>
 #include "ai/ai_controller.h"
 #include "main/main.h"
 #include "main/device.h"

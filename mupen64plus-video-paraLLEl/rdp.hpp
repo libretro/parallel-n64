@@ -1,8 +1,8 @@
 #ifndef PARALLEL_RDP_HPP
 #define PARALLEL_RDP_HPP
 
-#include "api/libretro.h"
-#include "api/libretro_vulkan.h"
+#include <libretro.h>
+#include <libretro_vulkan.h>
 #include <memory>
 #include <vector>
 

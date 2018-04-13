@@ -46,7 +46,7 @@
 #include "Framebuffer_glide64.h"
 #include "Glide64_Ini.h"
 #include "GlideExtensions.h"
-#include "api/libretro.h"
+#include <libretro.h>
 
 #include "../../../Graphics/RDP/gDP_funcs_C.h"
 
