@@ -1,4 +1,4 @@
-/* Copyright  (C) 2010-2016 The RetroArch team
+/* Copyright  (C) 2010-2017 The RetroArch team
  *
  * ---------------------------------------------------------------------------------------
  * The following license statement only applies to this file (crc32.h).
@@ -26,6 +26,12 @@
 #include <stdint.h>
 #include <stddef.h>
 
+#include <retro_common_api.h>
+
+RETRO_BEGIN_DECLS
+
 uint32_t encoding_crc32(uint32_t crc, const uint8_t *buf, size_t len);
+
+RETRO_END_DECLS
 
 #endif

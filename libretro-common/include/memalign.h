@@ -1,4 +1,4 @@
-/* Copyright  (C) 2010-2016 The RetroArch team
+/* Copyright  (C) 2010-2017 The RetroArch team
  *
  * ---------------------------------------------------------------------------------------
  * The following license statement only applies to this file (memalign.h).
@@ -30,6 +30,8 @@
 RETRO_BEGIN_DECLS
 
 void *memalign_alloc(size_t boundary, size_t size);
+
+void *memalign_alloc_aligned(size_t size);
 
 void memalign_free(void *ptr);
 

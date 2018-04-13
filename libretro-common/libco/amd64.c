@@ -24,7 +24,7 @@ static void (*co_swap)(cothread_t, cothread_t) = 0;
 #endif
 
 #ifdef _WIN32
-//ABI: Win64
+/* ABI: Win64 */
 static unsigned char co_swap_function[] = {
   0x48, 0x89, 0x22,                                 /* mov    [rdx],rsp        */
   0x48, 0x8b, 0x21,                                 /* mov    rsp,[rcx]        */
@@ -74,7 +74,7 @@ static unsigned char co_swap_function[] = {
 
 #include <windows.h>
 
-void co_init(void)
+static void co_init(void)
 {
    DWORD old_privileges;
    VirtualProtect(co_swap_function,
@@ -105,7 +105,7 @@ static unsigned char co_swap_function[] = {
 #include <unistd.h>
 #include <sys/mman.h>
 
-void co_init(void)
+static void co_init(void)
 {
    unsigned long long addr = (unsigned long long)co_swap_function;
    unsigned long long base = addr - (addr % sysconf(_SC_PAGESIZE));
@@ -113,7 +113,7 @@ void co_init(void)
    mprotect((void*)base, size, PROT_READ | PROT_WRITE | PROT_EXEC);
 }
 #else
-void co_init(void) {}
+static void co_init(void) {}
 #endif
 #endif
 

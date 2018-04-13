@@ -1,4 +1,4 @@
-/* Copyright  (C) 2010-2016 The RetroArch team
+/* Copyright  (C) 2010-2017 The RetroArch team
  *
  * ---------------------------------------------------------------------------------------
  * The following license statement only applies to this file (gl_capabilities.h).
@@ -26,6 +26,8 @@
 #include <boolean.h>
 #include <retro_common_api.h>
 
+RETRO_BEGIN_DECLS
+
 enum gl_capability_enum
 {
    GL_CAPS_NONE = 0,
@@ -44,10 +46,10 @@ enum gl_capability_enum
    GL_CAPS_SRGB_FBO_ES3,
    GL_CAPS_FP_FBO,
    GL_CAPS_BGRA8888,
-   GL_CAPS_GLES3_SUPPORTED
+   GL_CAPS_GLES3_SUPPORTED,
+   GL_CAPS_TEX_STORAGE,
+   GL_CAPS_TEX_STORAGE_EXT
 };
-
-RETRO_BEGIN_DECLS
 
 bool gl_check_error(char **error_string);
 
@@ -58,6 +60,8 @@ void gl_query_core_context_set(bool set);
 void gl_query_core_context_unset(void);
 
 bool gl_check_capability(enum gl_capability_enum enum_idx);
+
+bool gl_query_extension(const char *ext);
 
 RETRO_END_DECLS
 

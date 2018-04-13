@@ -1,4 +1,4 @@
-/* Copyright  (C) 2010-2016 The RetroArch team
+/* Copyright  (C) 2010-2017 The RetroArch team
  *
  * ---------------------------------------------------------------------------------------
  * The following license statement only applies to this file (encoding_crc32.c).
@@ -22,6 +22,7 @@
 
 #include <stdint.h>
 #include <stddef.h>
+#include <encodings/crc32.h>
 
 static const uint32_t crc32_table[256] = {
   0x00000000L, 0x77073096L, 0xee0e612cL, 0x990951baL, 0x076dc419L,

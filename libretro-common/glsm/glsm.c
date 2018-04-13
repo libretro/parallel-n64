@@ -505,15 +505,15 @@ void rglBlendFunc(GLenum sfactor, GLenum dfactor)
  * Core in:
  * OpenGL    : 1.4
  */
-void rglBlendFuncSeparate(GLenum sfactorRGB, GLenum dfactorRGB, GLenum sfactorAlpha, GLenum dfactorAlpha)
+void rglBlendFuncSeparate(GLenum sfactor, GLenum dfactor)
 {
    glsm_ctl(GLSM_CTL_IMM_VBO_DRAW, NULL);
    gl_state.blendfunc_separate.used     = true;
-   gl_state.blendfunc_separate.srcRGB   = sfactorRGB;
-   gl_state.blendfunc_separate.dstRGB   = dfactorRGB;
-   gl_state.blendfunc_separate.srcAlpha = sfactorAlpha;
-   gl_state.blendfunc_separate.dstAlpha = dfactorAlpha;
-   glBlendFuncSeparate(sfactorRGB, dfactorRGB, sfactorAlpha, dfactorAlpha);
+   gl_state.blendfunc_separate.srcRGB   = sfactor;
+   gl_state.blendfunc_separate.dstRGB   = dfactor;
+   gl_state.blendfunc_separate.srcAlpha = sfactor;
+   gl_state.blendfunc_separate.dstAlpha = dfactor;
+   glBlendFunc(sfactor, dfactor);
 }
 
 /*
@@ -2207,7 +2207,7 @@ static bool glsm_state_ctx_init(void *data)
 #ifdef CORE
    hw_render.context_type       = RETRO_HW_CONTEXT_OPENGL_CORE;
    hw_render.version_major      = 3;
-   hw_render.version_minor      = 1;
+   hw_render.version_minor      = 3;
 #else
    hw_render.context_type       = RETRO_HW_CONTEXT_OPENGL;
 #endif
@@ -2217,7 +2217,7 @@ static bool glsm_state_ctx_init(void *data)
    hw_render.stencil            = params->stencil;
    hw_render.depth              = true;
    hw_render.bottom_left_origin = true;
-   hw_render.cache_context      = true;
+   hw_render.cache_context      = false;
 
    if (!params->environ_cb(RETRO_ENVIRONMENT_SET_HW_RENDER, &hw_render))
       return false;

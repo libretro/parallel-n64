@@ -25,8 +25,26 @@
 
 #include <retro_common.h>
 
-#include <stdio.h>
+#include <stdio.h> /* added for _vsnprintf_s and _vscprintf on VS2015 and VS2017 */
 #include <stdarg.h>
+
+#if _MSC_VER < 1800
+#define va_copy(dst, src) ((dst) = (src))
+#endif
+
+#if _MSC_VER < 1300
+#define _vscprintf c89_vscprintf_retro__
+
+static int c89_vscprintf_retro__(const char *format, va_list pargs)
+{
+   int retval;
+   va_list argcopy;
+   va_copy(argcopy, pargs);
+   retval = vsnprintf(NULL, 0, format, argcopy);
+   va_end(argcopy);
+   return retval;
+}
+#endif
 
 /* http://stackoverflow.com/questions/2915672/snprintf-and-visual-studio-2010 */
 

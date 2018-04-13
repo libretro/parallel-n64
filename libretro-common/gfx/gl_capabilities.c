@@ -1,4 +1,4 @@
-/* Copyright  (C) 2010-2016 The RetroArch team
+/* Copyright  (C) 2010-2017 The RetroArch team
  *
  * ---------------------------------------------------------------------------------------
  * The following license statement only applies to this file (gl_capabilities.c).
@@ -48,7 +48,7 @@ void gl_query_core_context_unset(void)
    gl_core_context = false;
 }
 
-static bool gl_query_extension(const char *ext)
+bool gl_query_extension(const char *ext)
 {
    bool ret = false;
 
@@ -120,6 +120,7 @@ bool gl_check_capability(enum gl_capability_enum enum_idx)
       major = minor = 0;
 
    (void)vendor;
+   (void)renderer;
 
    switch (enum_idx)
    {
@@ -172,30 +173,27 @@ bool gl_check_capability(enum gl_capability_enum enum_idx)
       case GL_CAPS_FBO:
 #if defined(HAVE_PSGL) || defined(HAVE_OPENGLES2) || defined(HAVE_OPENGLES3) || defined(HAVE_OPENGLES_3_1) || defined(HAVE_OPENGLES_3_2)
          return true;
-#elif defined(HAVE_FBO)
-         if (!gl_query_core_context_in_use() && !gl_query_extension("ARB_framebuffer_object")
+#else
+         if (     !gl_query_core_context_in_use()
+               && !gl_query_extension("ARB_framebuffer_object")
                && !gl_query_extension("EXT_framebuffer_object"))
             return false;
 
-         if (glGenFramebuffers
-               && glBindFramebuffer
-               && glFramebufferTexture2D
-               && glCheckFramebufferStatus
-               && glDeleteFramebuffers
-               && glGenRenderbuffers
-               && glBindRenderbuffer
-               && glFramebufferRenderbuffer
-               && glRenderbufferStorage
-               && glDeleteRenderbuffers)
+         if (gl_query_extension("ARB_framebuffer_object"))
             return true;
-         break;
-#else
+
+         if (gl_query_extension("EXT_framebuffer_object"))
+            return true;
+
+         if (major >= 3)
+            return true;
          break;
 #endif
       case GL_CAPS_ARGB8:
 #ifdef HAVE_OPENGLES
          if (gl_query_extension("OES_rgb8_rgba8")
-               || gl_query_extension("ARM_argb8"))
+               || gl_query_extension("ARM_rgba8")
+                  || major >= 3)
             return true;
 #else
          /* TODO/FIXME - implement this for non-GLES? */
@@ -278,32 +276,54 @@ bool gl_check_capability(enum gl_capability_enum enum_idx)
 #if defined(HAVE_OPENGLES)
          if (major >= 3 || gl_query_extension("EXT_sRGB"))
             return true;
-#elif defined(HAVE_FBO)
-         if (gl_query_core_context_in_use() ||
-               (gl_query_extension("EXT_texture_sRGB")
-                && gl_query_extension("ARB_framebuffer_sRGB")))
-            return true;
 #endif
+         if (gl_check_capability(GL_CAPS_FBO))
+         {
+            if (   gl_query_core_context_in_use() ||
+                  (gl_query_extension("EXT_texture_sRGB")
+                   && gl_query_extension("ARB_framebuffer_sRGB"))
+               )
+               return true;
+         }
          break;
       case GL_CAPS_FP_FBO:
          /* GLES - No extensions for float FBO currently. */
 #ifndef HAVE_OPENGLES
-#ifdef HAVE_FBO
-         /* Float FBO is core in 3.2. */
-         if (gl_query_core_context_in_use() || gl_query_extension("ARB_texture_float"))
-            return true;
-#endif
+         if (gl_check_capability(GL_CAPS_FBO))
+         {
+            /* Float FBO is core in 3.2. */
+            if (gl_query_core_context_in_use() || gl_query_extension("ARB_texture_float"))
+               return true;
+         }
 #endif
          break;
       case GL_CAPS_BGRA8888:
 #ifdef HAVE_OPENGLES
          /* There are both APPLE and EXT variants. */
-         /* Videocore hardware supports BGRA8888 extension, but
-          * should be purposefully avoided. */
          if (gl_query_extension("BGRA8888") && !strstr(renderer, "VideoCore"))
             return true;
 #else
-         /* TODO/FIXME - implement this for non-GLES? */
+         return true;
+#endif
+         break;
+      case GL_CAPS_TEX_STORAGE:
+#ifdef HAVE_OPENGLES
+         if (major >= 3)
+            return true;
+#else
+         if (strstr(vendor, "ATI Technologies"))
+            return false;
+         if (gl_query_extension("ARB_texture_storage"))
+            return true;
+#endif
+         break;
+      case GL_CAPS_TEX_STORAGE_EXT:
+#ifdef TARGET_OS_IPHONE
+           /* Not working on iOS */
+           return false;
+#else
+         if (gl_query_extension("EXT_texture_storage"))
+            return true;
 #endif
          break;
       case GL_CAPS_NONE:

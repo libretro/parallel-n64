@@ -1,4 +1,4 @@
-/* Copyright  (C) 2010-2016 The RetroArch team
+/* Copyright  (C) 2010-2017 The RetroArch team
  *
  * ---------------------------------------------------------------------------------------
  * The following license statement only applies to this file (intrinsics.h).
@@ -30,8 +30,10 @@
 #include <retro_common_api.h>
 #include <retro_inline.h>
 
-#ifdef _MSC_VER
+#if defined(_MSC_VER) && !defined(_XBOX)
+#if (_MSC_VER > 1310)
 #include <intrin.h>
+#endif
 #endif
 
 RETRO_BEGIN_DECLS
@@ -55,23 +57,17 @@ static INLINE unsigned compat_clz_u16(uint16_t val)
 }
 
 /* Count Trailing Zero */
+static INLINE int compat_ctz(unsigned x)
+{
 #if defined(__GNUC__) && !defined(RARCH_CONSOLE)
-static INLINE int compat_ctz(unsigned x)
-{
    return __builtin_ctz(x);
-}
-#elif _MSC_VER >= 1400
-static INLINE int compat_ctz(unsigned x)
-{
+#elif _MSC_VER >= 1400 && !defined(_XBOX)
    unsigned long r = 0;
    _BitScanReverse((unsigned long*)&r, x);
    return (int)r;
-}
 #else
-/* Only checks at nibble granularity, 
+/* Only checks at nibble granularity,
  * because that's what we need. */
-static INLINE int compat_ctz(unsigned x)
-{
    if (x & 0x000f)
       return 0;
    if (x & 0x00f0)
@@ -81,8 +77,8 @@ static INLINE int compat_ctz(unsigned x)
    if (x & 0xf000)
       return 12;
    return 16;
-}
 #endif
+}
 
 RETRO_END_DECLS
 

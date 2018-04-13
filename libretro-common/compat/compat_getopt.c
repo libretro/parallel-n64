@@ -1,4 +1,4 @@
-/* Copyright  (C) 2010-2015 The RetroArch team
+/* Copyright  (C) 2010-2017 The RetroArch team
  *
  * ---------------------------------------------------------------------------------------
  * The following license statement only applies to this file (compat_getopt.c).
@@ -112,8 +112,8 @@ static int parse_short(const char *optstring, char * const *argv)
 
    if (embedded_arg)
    {
-      /* If we see additional characters, 
-       * and they don't take arguments, this 
+      /* If we see additional characters,
+       * and they don't take arguments, this
        * means we have multiple flags in one. */
       memmove(&argv[0][1], &argv[0][2], strlen(&argv[0][2]) + 1);
       return opt[0];
@@ -138,7 +138,7 @@ static int parse_long(const struct option *longopts, char * const *argv)
 
    if (!opt)
       return '?';
-   
+
    /* getopt_long has an "optional" arg, but we don't bother with that. */
    if (opt->has_arg && !argv[1])
       return '?';
@@ -167,11 +167,11 @@ static void shuffle_block(char **begin, char **last, char **end)
 
    retro_assert(tmp);
 
-   memcpy(tmp, begin, len * sizeof(const char*));
+   memcpy((void*)tmp, begin, len * sizeof(const char*));
    memmove(begin, last, (end - last) * sizeof(const char*));
    memcpy(end - len, tmp, len * sizeof(const char*));
 
-   free(tmp);
+   free((void*)tmp);
 }
 
 int getopt_long(int argc, char *argv[],
@@ -184,7 +184,7 @@ int getopt_long(int argc, char *argv[],
    if (optind == 0)
       optind = 1;
 
-   if (argc == 1)
+   if (argc < 2)
       return -1;
 
    short_index = find_short_index(&argv[optind]);

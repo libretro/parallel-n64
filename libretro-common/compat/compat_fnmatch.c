@@ -1,4 +1,4 @@
-/* Copyright  (C) 2010-2015 The RetroArch team
+/* Copyright  (C) 2010-2017 The RetroArch team
  *
  * ---------------------------------------------------------------------------------------
  * The following license statement only applies to this file (compat_fnmatch.c).
@@ -23,20 +23,22 @@
 #if __TEST_FNMATCH__
 #include <assert.h>
 #endif
+#include <stddef.h>
 
 #include <compat/fnmatch.h>
 
-/* Implemnentation of fnmatch(3) so it can be 
+/* Implemnentation of fnmatch(3) so it can be
  * distributed to non *nix platforms.
  *
- * No flags are implemented ATM. 
+ * No flags are implemented ATM.
  * We don't use them. Add flags as needed. */
 
 int rl_fnmatch(const char *pattern, const char *string, int flags)
 {
-   const char *c;
-   int charmatch = 0;
    int rv;
+   const char *c = NULL;
+   int charmatch = 0;
+
    for (c = pattern; *c != '\0'; c++)
    {
       /* String ended before pattern */
@@ -47,7 +49,7 @@ int rl_fnmatch(const char *pattern, const char *string, int flags)
       {
          /* Match any number of unknown chars */
          case '*':
-            /* Find next node in the pattern 
+            /* Find next node in the pattern
              * ignoring multiple asterixes
              */
             do {
@@ -56,7 +58,7 @@ int rl_fnmatch(const char *pattern, const char *string, int flags)
                   return 0;
             } while (*c == '*');
 
-            /* Match the remaining pattern 
+            /* Match the remaining pattern
              * ignoring more and more characters. */
             do {
                /* We reached the end of the string without a
@@ -105,9 +107,9 @@ int rl_fnmatch(const char *pattern, const char *string, int flags)
             c++;
             /* Dangling escape at end of pattern.
              * FIXME: Was c == '\0' (makes no sense).
-             * Not sure if c == NULL or *c == '\0' 
+             * Not sure if c == NULL or *c == '\0'
              * is intended. Assuming *c due to c++ right before. */
-            if (*c == '\0') 
+            if (*c == '\0')
                return FNM_NOMATCH;
          default:
             if (*c != *string)
