@@ -49,4 +49,5 @@ LOCAL_LDFLAGS      := -Wl,-version-script=$(LIBRETRO_DIR)/link.T
 LOCAL_LDLIBS       := -lGLESv2
 LOCAL_CPP_FEATURES := exceptions
 LOCAL_ARM_NEON     := true
+LOCAL_ARM_MODE     := arm
 include $(BUILD_SHARED_LIBRARY)
