@@ -448,10 +448,10 @@ ifeq ($(HAVE_THR_AL),1)
 CFLAGS   += -DHAVE_THR_AL
 CXXFLAGS += -DHAVE_THR_AL
 SOURCES_CXX += \
-				  $(VIDEODIR_ANGRYLION)/core/core.cpp \
-				  $(VIDEODIR_ANGRYLION)/core/rdp.cpp \
-				  $(VIDEODIR_ANGRYLION)/core/vi.cpp \
-				  $(VIDEODIR_ANGRYLION)/core/parallel_c.cpp
+				  $(VIDEODIR_ANGRYLION)/interface.cpp \
+				  $(VIDEODIR_ANGRYLION)/parallel_al.cpp
+SOURCES_C +=  $(VIDEODIR_ANGRYLION)/rdp.c \
+				  $(VIDEODIR_ANGRYLION)/screen.c 
 else
 SOURCES_C +=  $(VIDEODIR_ANGRYLION)/n64video_main.c \
 						  $(VIDEODIR_ANGRYLION)/n64video_vi.c \
