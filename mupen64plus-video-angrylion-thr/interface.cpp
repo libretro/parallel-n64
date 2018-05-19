@@ -43,6 +43,8 @@ extern uint32_t *blitter_buf_lock;
 extern unsigned int screen_width, screen_height;
 extern uint32_t screen_pitch;
 
+static struct rdp_config config;
+
 #include <ctype.h>
 
 
@@ -185,12 +187,17 @@ void screen_write(struct rdp_frame_buffer* buffer, int32_t output_height)
 
 unsigned angrylion_get_vi(void)
 {
-      return 0 ;
-
+   return (unsigned)config.vi.mode;
 }
 
 void angrylion_set_vi(unsigned value)
 {
+
+   if (value == 1)
+     config.vi.mode = VI_MODE_NORMAL;
+  else if (value == 0)
+      config.vi.mode = VI_MODE_COLOR;
+  rdp_update_config(&config);
 
 }
 
@@ -282,7 +289,7 @@ int angrylionRomOpen(void)
       screen_height = 480;
 
    screen_pitch  = 640 << 2;
-   rdp_config config;
+  
 	rdp_config_defaults(&config);
 	config.parallel = true;
 	config.num_workers = 0;
