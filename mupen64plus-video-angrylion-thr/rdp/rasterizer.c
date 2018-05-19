@@ -1,3 +1,8 @@
+#ifndef CLAMP_AL
+#define CLAMP_AL(x, low, high)  (((x) > (high)) ? (high) : (((x) < (low)) ? (low) : (x)))
+#endif
+
+
 static STRICTINLINE int32_t normalize_dzpix(int32_t sum)
 {
     if (sum & 0xc000)
@@ -125,6 +130,7 @@ static STRICTINLINE void rgbaz_correct_clip(struct rdp_state* rdp, int offx, int
     int summand_z;
     int sz = *z;
     int zanded;
+    unsigned temp;
 
 
 
@@ -160,16 +166,9 @@ static STRICTINLINE void rgbaz_correct_clip(struct rdp_state* rdp, int offx, int
 
 
 
-    zanded = (sz & 0x60000) >> 17;
-
-
-    switch(zanded)
-    {
-        case 0: *z = sz & 0x3ffff;                      break;
-        case 1: *z = sz & 0x3ffff;                      break;
-        case 2: *z = 0x3ffff;                           break;
-        case 3: *z = 0;                                 break;
-    }
+   temp   = ((sz + 0x20000) & 0x7ffff) - 0x20000;
+   zanded = CLAMP_AL(temp, 0, 0x3ffff);
+   *z = zanded;
 }
 
 static void render_spans_1cycle_complete(struct rdp_state* rdp, int start, int end, int tilenum, int flip)
