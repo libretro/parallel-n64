@@ -4,14 +4,10 @@
 #include <stdarg.h>
 #include <string.h>
 #include <ctype.h>
-
 #include <boolean.h>
-
-#include "core.h"
+#include "common.h"
+#include "screen.h"
 #include "rdp.h"
-#include "vi.h"
-#include "parallel_c.hpp"
-#include "rdram.h"
 #include "m64p_plugin.h"
 
 #ifdef __cplusplus
@@ -19,11 +15,10 @@ extern "C" {
 extern void DebugMessage(int level, const char *message, ...);
 #endif
 
-#include "../Gfx #1.3.h"
+#include "Gfx #1.3.h"
 
 #include "m64p_types.h"
 #include "m64p_config.h"
-#include "msg.h"
 
 int retro_return(int just_flipping);
 
@@ -33,37 +28,178 @@ int retro_return(int just_flipping);
 
 #define DP_INTERRUPT    0x20
 
-extern "C" unsigned int screen_width, screen_height;
-extern "C" uint32_t screen_pitch;
-
-static uint32_t num_workers;
-static bool parallel;
-static bool parallel_tmp;
-
-static struct core_config* config_new;
-static struct core_config config;
-
 static unsigned angrylion_filtering = 0;
 static unsigned angrylion_dithering = 1;
-
-static uint32_t rdram_size;
-uint8_t rdram_hidden_bits[0x400000];
 
 int ProcessDListShown = 0;
 
 extern GFX_INFO gfx_info;
 
-/* pointer indexing limits for aliasing RDRAM reads and writes */
-uint32_t idxlim8;
-uint32_t idxlim16;
-uint32_t idxlim32;
-
-uint32_t* rdram32;
-uint16_t* rdram16;
-
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+extern uint32_t *blitter_buf_lock;
+extern unsigned int screen_width, screen_height;
+extern uint32_t screen_pitch;
+
+static struct rdp_config config;
+
+#include <ctype.h>
+
+
+
+void plugin_init(void)
+{
+}
+
+void plugin_sync_dp(void)
+{
+    *gfx_info.MI_INTR_REG |= DP_INTERRUPT;
+    gfx_info.CheckInterrupts();
+}
+
+uint32_t** plugin_get_dp_registers(void)
+{
+    // HACK: this only works because the ordering of registers in GFX_INFO is
+    // the same as in dp_register
+    return (uint32_t**)&gfx_info.DPC_START_REG;
+}
+
+uint32_t** plugin_get_vi_registers(void)
+{
+    // HACK: this only works because the ordering of registers in GFX_INFO is
+    // the same as in vi_register
+    return (uint32_t**)&gfx_info.VI_STATUS_REG;
+}
+
+uint8_t* plugin_get_rdram(void)
+{
+    return gfx_info.RDRAM;
+}
+
+uint32_t plugin_get_rdram_size(void)
+{
+    return 0x800000;
+}
+
+uint8_t* plugin_get_dmem(void)
+{
+    return gfx_info.DMEM;
+}
+
+uint8_t* plugin_get_rom_header(void)
+{
+    return gfx_info.HEADER;
+}
+
+void plugin_close(void)
+{
+}
+
+static char filter_char(char c)
+{
+    if (isalnum(c) || c == '_' || c == '-' || c == '.') {
+        return c;
+    } else {
+        return ' ';
+    }
+}
+
+uint32_t plugin_get_rom_name(char* name, uint32_t name_size)
+{
+    if (name_size < 21) {
+        // buffer too small
+        return 0;
+    }
+
+    uint8_t* rom_header = plugin_get_rom_header();
+    if (!rom_header) {
+        // not available
+        return 0;
+    }
+
+    // copy game name from ROM header, which is encoded in Shift_JIS.
+    // most games just use the ASCII subset, so filter out the rest.
+    int i = 0;
+    for (; i < 20; i++) {
+        name[i] = filter_char(rom_header[(32 + i) ^ BYTE_ADDR_XOR]);
+    }
+
+    // make sure there's at least one whitespace that will terminate the string
+    // below
+    name[i] = ' ';
+
+    // trim trailing whitespaces
+    for (; i > 0; i--) {
+        if (name[i] != ' ') {
+            break;
+        }
+        name[i] = 0;
+    }
+
+    // game title is empty or invalid, use safe fallback using the four-character
+    // game ID
+    if (i == 0) {
+        for (; i < 4; i++) {
+            name[i] = filter_char(rom_header[(59 + i) ^ BYTE_ADDR_XOR]);
+        }
+        name[i] = 0;
+    }
+
+    return i;
+}
+
+void screen_swap(bool blank)
+{
+}
+
+void screen_init(struct rdp_config* config)
+{
+}
+
+void screen_read(struct rdp_frame_buffer* buffer, bool rgb)
+{}
+
+void screen_set_fullscreen(bool _fullscreen)
+{}
+
+bool screen_get_fullscreen(void)
+{}
+
+void screen_close(void)
+{}
+
+void screen_write(struct rdp_frame_buffer* buffer, int32_t output_height)
+{
+   int i, cur_line;
+	uint32_t * buf = (uint32_t*)buffer->pixels;
+	for (i = 0; i <buffer->height; i++)
+		memcpy(&blitter_buf_lock[i * buffer->width], 
+        &buf[i * buffer->width], buffer->width * 4);
+
+
+  screen_width=buffer->width;
+  screen_height=buffer->height;
+  screen_pitch=buffer->width*4;
+}
+
+
+unsigned angrylion_get_vi(void)
+{
+   return (unsigned)config.vi.mode;
+}
+
+void angrylion_set_vi(unsigned value)
+{
+
+   if (value == 1)
+     config.vi.mode = VI_MODE_NORMAL;
+  else if (value == 0)
+      config.vi.mode = VI_MODE_COLOR;
+  rdp_update_config(&config);
+
+}
 
 void angrylion_set_filtering(unsigned filter_type)
 {
@@ -131,7 +267,7 @@ void angrylionProcessRDPList(void)
 
 void angrylionRomClosed (void)
 {
-   core_close();
+   rdp_close();
 }
 
 int angrylionRomOpen(void)
@@ -153,15 +289,14 @@ int angrylionRomOpen(void)
       screen_height = 480;
 
    screen_pitch  = 640 << 2;
-
-	core_config_defaults(&config);
+  
+	rdp_config_defaults(&config);
 	config.parallel = true;
 	config.num_workers = 0;
 	config.vi.mode = (vi_mode)0;
 	config.vi.widescreen = 0;
-	config.vi.overscan = 1;
-
-	core_init(&config);
+	config.vi.hide_overscan = 0;
+    rdp_init(&config);
    return 1;
 }
 
@@ -173,12 +308,8 @@ void angrylionUpdateScreen(void)
         return;
     counter = 0;
 #endif
-    vi_update();
+    rdp_update_vi();
     retro_return(true);
-}
-
-void screen_swap(void)
-{
 }
 
 void angrylionShowCFB (void)
@@ -263,136 +394,6 @@ void msg_debug(const char* err, ...)
    va_end(ap);
 
    DebugMessage(M64MSG_INFO, "%s", buffer);
-}
-
-static char filter_char(char c)
-{
-    if (isalnum(c) || c == '_' || c == '-' || c == '.')
-        return c;
-    return ' ';
-}
-
-static uint32_t get_rom_name(char* name, uint32_t name_size)
-{
-   int i = 0;
-   uint8_t *rom_header = NULL;
-
-   // buffer too small
-   if (name_size < 21)
-      return 0;
-
-   rom_header = gfx_info.HEADER;
-
-   // not available
-   if (!rom_header)
-      return 0;
-
-   // copy game name from ROM header, which is encoded in Shift_JIS.
-   // most games just use the ASCII subset, so filter out the rest.
-   for (; i < 20; i++)
-      name[i] = filter_char(rom_header[(32 + i) ^ BYTE_ADDR_XOR]);
-
-   // make sure there's at least one 
-   // whitespace that will terminate the string
-   // below
-   name[i] = ' ';
-
-   // trim trailing whitespaces
-   for (; i > 0; i--)
-   {
-      if (name[i] != ' ')
-         break;
-      name[i] = 0;
-   }
-
-   // game title is empty or invalid, use safe 
-   // fallback using the four-character
-   // game ID
-   if (i == 0)
-   {
-      for (; i < 4; i++)
-         name[i] = filter_char(rom_header[(59 + i) ^ BYTE_ADDR_XOR]);
-      name[i] = 0;
-   }
-
-   return i;
-}
-
-static void rdram_init(void)
-{
-    idxlim8      = rdram_size - 1;
-    idxlim16     = (idxlim8 >> 1) & 0xffffffu;
-    idxlim32     = (idxlim8 >> 2) & 0xffffffu;
-
-    rdram32      = (uint32_t*)gfx_info.RDRAM;
-    rdram16      = (uint16_t*)gfx_info.RDRAM;
-}
-
-void core_init(struct core_config* _config)
-{
-   unsigned i;
-   config = *_config;
-
-   rdram_size = 0x800000;
-
-   // mupen64plus plugins can't access the hidden bits, so allocate it on our own
-   for (i = 0; i < sizeof(rdram_hidden_bits); i++)
-      rdram_hidden_bits[i] = 0x03;
-
-   num_workers = config.num_workers;
-   parallel    = config.parallel;
-
-   if (config.parallel)
-      parallel_alinit(num_workers);
-
-   rdram_init();
-   rdp_init(&config);
-   vi_init(&config);
-}
-
-void core_dp_sync(void)
-{
-   // update config if set
-   if (config_new)
-   {
-      config = *config_new;
-      config_new = NULL;
-
-      // enable/disable multithreading or update number of workers
-      if (config.parallel != parallel || config.num_workers != num_workers)
-      {
-         // destroy old threads
-         parallel_close();
-
-         // create new threads if parallel option is still enabled
-         if (config.parallel)
-            parallel_alinit(num_workers);
-
-         num_workers = config.num_workers;
-         parallel = config.parallel;
-      }
-   }
-
-   // signal plugin to handle interrupts
-   *gfx_info.MI_INTR_REG |= DP_INTERRUPT;
-   gfx_info.CheckInterrupts();
-}
-
-void core_config_update(struct core_config* _config)
-{
-    config_new = _config;
-}
-
-void core_config_defaults(struct core_config* config)
-{
-    memset(config, 0, sizeof(*config));
-    config->parallel = true;
-}
-
-void core_close(void)
-{
-    parallel_close();
-    vi_close();
 }
 
 #ifdef __cplusplus
