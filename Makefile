@@ -744,7 +744,13 @@ ifeq ($(DEBUG), 1)
       CPUOPTS += -O0 -g
    endif
 else
-   CPUOPTS += -O3 -DNDEBUG -fipa-pta
+   CPUOPTS += -O3 -DNDEBUG
+ifneq ($(findstring Darwin,$(UNAME)),)
+   CPUOPTS += -flto
+else
+   CPUOPTS += -fipa-pta
+endif
+
 
    ifneq (,$(findstring msvc,$(platform)))
       ifeq (,$(findstring msvc2005,$(platform)))
