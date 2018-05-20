@@ -219,6 +219,7 @@ else ifneq (,$(findstring osx,$(platform)))
    LDFLAGS += -stdlib=libc++
    fpic = -fPIC
 
+HAVE_THR_AL=1
    HAVE_PARALLEL=0
    PLATCFLAGS += -D__MACOSX__ -DOSX
    GL_LIB := -framework OpenGL
