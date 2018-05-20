@@ -58,15 +58,16 @@ static STRICTINLINE void compute_cvg_flip(struct rdp_state* rdp, int32_t scanlin
 
                 if (!rdp->span[scanline].invalyscan[i])
                 {
+                   int k;
                     minorcur = rdp->span[scanline].minorx[i];
                     majorcur = rdp->span[scanline].majorx[i];
                     minorcurint = minorcur >> 3;
                     majorcurint = majorcur >> 3;
 
 
-                    for (int k = purgestart; k <= majorcurint; k++)
+                    for (k = purgestart; k <= majorcurint; k++)
                         rdp->cvgbuf[k] &= ~fmaskshifted;
-                    for (int k = minorcurint; k <= purgeend; k++)
+                    for (k = minorcurint; k <= purgeend; k++)
                         rdp->cvgbuf[k] &= ~fmaskshifted;
 
 
@@ -90,7 +91,8 @@ static STRICTINLINE void compute_cvg_flip(struct rdp_state* rdp, int32_t scanlin
                 }
                 else
                 {
-                    for (int k = purgestart; k <= purgeend; k++)
+                   int k;
+                    for (k = purgestart; k <= purgeend; k++)
                         rdp->cvgbuf[k] &= ~fmaskshifted;
                 }
 
@@ -122,14 +124,15 @@ static STRICTINLINE void compute_cvg_noflip(struct rdp_state* rdp, int32_t scanl
 
             if (!rdp->span[scanline].invalyscan[i])
             {
+               int k;
                 minorcur = rdp->span[scanline].minorx[i];
                 majorcur = rdp->span[scanline].majorx[i];
                 minorcurint = minorcur >> 3;
                 majorcurint = majorcur >> 3;
 
-                for (int k = purgestart; k <= minorcurint; k++)
+                for (k = purgestart; k <= minorcurint; k++)
                     rdp->cvgbuf[k] &= ~fmaskshifted;
-                for (int k = majorcurint; k <= purgeend; k++)
+                for (k = majorcurint; k <= purgeend; k++)
                     rdp->cvgbuf[k] &= ~fmaskshifted;
 
                 if (majorcurint > minorcurint)
@@ -145,7 +148,8 @@ static STRICTINLINE void compute_cvg_noflip(struct rdp_state* rdp, int32_t scanl
             }
             else
             {
-                for (int k = purgestart; k <= purgeend; k++)
+               int k;
+                for (k = purgestart; k <= purgeend; k++)
                     rdp->cvgbuf[k] &= ~fmaskshifted;
             }
         }

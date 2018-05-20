@@ -309,9 +309,10 @@ static STRICTINLINE int blender_2cycle(struct rdp_state* rdp, uint32_t* fr, uint
 
 static void blender_init_lut(void)
 {
+    int i, k;
     int d = 0, n = 0, temp = 0, res = 0, invd = 0, nbit = 0;
     int ps[9];
-    for (int i = 0; i < 0x8000; i++)
+    for (i = 0; i < 0x8000; i++)
     {
         res = 0;
         d = (i >> 11) & 0xf;
@@ -321,7 +322,7 @@ static void blender_init_lut(void)
 
         temp = invd + (n >> 8) + 1;
         ps[0] = temp & 7;
-        for (int k = 0; k < 8; k++)
+        for (k = 0; k < 8; k++)
         {
             nbit = (n >> (7 - k)) & 1;
             if (res & (0x100 >> k))

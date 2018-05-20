@@ -325,6 +325,7 @@ static bool vi_process_start(void)
 
 static void vi_process(uint32_t worker_id)
 {
+   int32_t y;
     struct ccvg viaa_array[0xa10 << 1];
     struct ccvg divot_array[0xa10 << 1];
 
@@ -361,7 +362,8 @@ static void vi_process(uint32_t worker_id)
         y_inc = parallel_num_workers();
     }
 
-    for (int32_t y = y_begin; y < y_end; y += y_inc) {
+    for (y = y_begin; y < y_end; y += y_inc) {
+       int32_t x;
         uint32_t x_offs = x_start;
         uint32_t curry = y_start + y * y_add;
         uint32_t nexty = y_start + (y + 1) * y_add;
@@ -384,7 +386,7 @@ static void vi_process(uint32_t worker_id)
             fetchbugstate >>= 1;
         }
 
-        for (int32_t x = 0; x < hres; x++, x_offs += x_add) {
+        for (x = 0; x < hres; x++, x_offs += x_add) {
             line_x = x_offs >> 10;
             prev_line_x = line_x - 1;
             next_line_x = line_x + 1;
@@ -572,6 +574,7 @@ static bool vi_process_start_fast(void)
 
 static void vi_process_fast(uint32_t worker_id)
 {
+   int32_t y;
     int32_t y_begin = 0;
     int32_t y_end = vres_raw;
     int32_t y_inc = 1;
@@ -589,11 +592,12 @@ static void vi_process_fast(uint32_t worker_id)
         y_inc = parallel_num_workers();
     }
 
-    for (int32_t y = y_begin; y < y_end; y += y_inc) {
+    for (y = y_begin; y < y_end; y += y_inc) {
+        int32_t x;
         int32_t line = y * vi_width_low;
         uint32_t* dst = prescale + y * hres_raw;
 
-        for (int32_t x = 0; x < hres_raw; x++) {
+        for (x = 0; x < hres_raw; x++) {
             uint32_t r, g, b;
 
             switch (config.vi.mode) {

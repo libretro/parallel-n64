@@ -5,6 +5,7 @@
 
 static STRICTINLINE int32_t normalize_dzpix(int32_t sum)
 {
+   int count;
     if (sum & 0xc000)
         return 0x8000;
     if (!(sum & 0xffff))
@@ -13,7 +14,7 @@ static STRICTINLINE int32_t normalize_dzpix(int32_t sum)
     if (sum == 1)
         return 3;
 
-    for(int count = 0x2000; count > 0; count >>= 1)
+    for(count = 0x2000; count > 0; count >>= 1)
     {
         if (sum & count)
             return(count << 1);

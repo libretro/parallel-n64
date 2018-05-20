@@ -458,7 +458,8 @@ static STRICTINLINE void combiner_2cycle(struct rdp_state* rdp, int adseed, uint
 
 static void combiner_init_lut(void)
 {
-    for(int i = 0; i < 0x200; i++)
+   int i;
+    for(i = 0; i < 0x200; i++)
     {
         switch((i >> 7) & 3)
         {
@@ -475,7 +476,7 @@ static void combiner_init_lut(void)
         }
     }
 
-    for (int i = 0; i < 0x200; i++)
+    for (i = 0; i < 0x200; i++)
     {
         special_9bit_exttable[i] = ((i & 0x180) == 0x180) ? (i | ~0x1ff) : (i & 0x1ff);
     }

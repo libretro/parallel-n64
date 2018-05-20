@@ -26,8 +26,9 @@ static STRICTINLINE uint32_t z_decompress(uint32_t zb)
 static INLINE void z_build_com_table(void)
 {
 
+   int z;
     uint16_t altmem = 0;
-    for(int z = 0; z < 0x40000; z++)
+    for(z = 0; z < 0x40000; z++)
     {
     switch((z >> 11) & 0x7f)
     {
@@ -377,11 +378,12 @@ static void rdp_set_mask_image(struct rdp_state* rdp, const uint32_t* args)
 
 void z_init_lut(void)
 {
+   int i;
     z_build_com_table();
 
     uint32_t exponent;
     uint32_t mantissa;
-    for (int i = 0; i < 0x4000; i++)
+    for (i = 0; i < 0x4000; i++)
     {
         exponent = (i >> 11) & 7;
         mantissa = i & 0x7ff;
@@ -389,9 +391,10 @@ void z_init_lut(void)
     }
 
     deltaz_comparator_lut[0] = 0;
-    for (int i = 1; i < 0x10000; i++)
+    for (i = 1; i < 0x10000; i++)
     {
-        for (int k = 15; k >= 0; k--)
+       int k;
+        for (k = 15; k >= 0; k--)
         {
             if (i & (1 << k))
             {

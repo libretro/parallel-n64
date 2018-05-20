@@ -174,7 +174,8 @@ static void cmd_run(struct rdp_state* rdp, const uint32_t* arg)
 
 static void cmd_run_buffered(uint32_t worker_id)
 {
-    for (uint32_t pos = 0; pos < rdp_cmd_buf_pos; pos++) {
+   uint32_t pos;
+    for (pos = 0; pos < rdp_cmd_buf_pos; pos++) {
         cmd_run(&rdp_states[worker_id], rdp_cmd_buf[pos]);
     }
 }
@@ -210,6 +211,7 @@ void rdp_update(void)
 
     // while there's data in the command buffer...
     while (dp_end_al - dp_current_al > 0) {
+        uint32_t i, toload;
         bool xbus_dma = (*dp_reg[DP_STATUS] & DP_STATUS_XBUS_DMA) != 0;
         uint32_t* dmem = (uint32_t*)plugin_get_dmem();
         uint32_t* cmd_buf = rdp_cmd_buf[rdp_cmd_buf_pos];
@@ -227,14 +229,14 @@ void rdp_update(void)
         }
 
         // copy more data from the N64 to the local command buffer
-        uint32_t toload = MIN(dp_end_al - dp_current_al, rdp_cmd_len - 1);
+        toload = MIN(dp_end_al - dp_current_al, rdp_cmd_len - 1);
 
         if (xbus_dma) {
-            for (uint32_t i = 0; i < toload; i++) {
+            for (i = 0; i < toload; i++) {
                 cmd_buf[rdp_cmd_pos++] = dmem[dp_current_al++ & 0x3ff];
             }
         } else {
-            for (uint32_t i = 0; i < toload; i++) {
+            for (i = 0; i < toload; i++) {
                 cmd_buf[rdp_cmd_pos++] = rdram_read_idx32(dp_current_al++);
             }
         }

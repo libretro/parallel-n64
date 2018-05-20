@@ -43,6 +43,7 @@ static STRICTINLINE void video_max_optimized(uint32_t* pixels, uint32_t* penumin
 
 static STRICTINLINE void video_filter16(int* endr, int* endg, int* endb, uint32_t fboffset, uint32_t num, uint32_t hres, uint32_t centercvg, uint32_t fetchbugstate)
 {
+   int i;
     uint32_t penumaxr, penumaxg, penumaxb, penuminr, penuming, penuminb;
     uint16_t pix;
     uint32_t numoffull = 1;
@@ -81,7 +82,7 @@ static STRICTINLINE void video_filter16(int* endr, int* endg, int* endb, uint32_
 
     const uint32_t dirs[] = {leftup, rightup, toleft, toright, leftdown, rightdown};
 
-    for (int i = 0; i < 6; i++)
+    for (i = 0; i < 6; i++)
     {
         rdram_read_pair16(&pix, &hidval, dirs[i]);
         if (hidval == 3 && (pix & 1))
@@ -115,6 +116,7 @@ static STRICTINLINE void video_filter16(int* endr, int* endg, int* endb, uint32_
 
 static STRICTINLINE void video_filter32(int* endr, int* endg, int* endb, uint32_t fboffset, uint32_t num, uint32_t hres, uint32_t centercvg, uint32_t fetchbugstate)
 {
+   int i;
     uint32_t penumaxr, penumaxg, penumaxb, penuminr, penuming, penuminb;
     uint32_t numoffull = 1;
     uint32_t pix = 0, pixcvg = 0;
@@ -152,7 +154,7 @@ static STRICTINLINE void video_filter32(int* endr, int* endg, int* endb, uint32_
 
     const uint32_t dirs[] = {leftup, rightup, toleft, toright, leftdown, rightdown};
 
-    for (int i = 0; i < 6; i++)
+    for (i = 0; i < 6; i++)
     {
         pix = rdram_read_idx32(dirs[i]);
         pixcvg = (pix >> 5) & 7;

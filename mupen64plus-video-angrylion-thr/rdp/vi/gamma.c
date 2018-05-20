@@ -60,13 +60,14 @@ static STRICTINLINE void gamma_filters(uint32_t* r, uint32_t* g, uint32_t* b, un
 
 void vi_gamma_init(void)
 {
-    for (int i = 0; i < 256; i++)
+   int i;
+    for (i = 0; i < 256; i++)
     {
         gamma_table[i] = vi_integer_sqrt(i << 6);
         gamma_table[i] <<= 1;
     }
 
-    for (int i = 0; i < 0x4000; i++)
+    for (i = 0; i < 0x4000; i++)
     {
         gamma_dither_table[i] = vi_integer_sqrt(i);
         gamma_dither_table[i] <<= 1;

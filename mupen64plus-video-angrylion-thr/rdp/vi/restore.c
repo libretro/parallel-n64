@@ -2,6 +2,7 @@ static int vi_restore_table[0x400];
 
 static STRICTINLINE void restore_filter16(int* r, int* g, int* b, uint32_t fboffset, uint32_t num, uint32_t hres, uint32_t fetchbugstate)
 {
+   int i;
     uint32_t idx = (fboffset >> 1) + num;
 
     uint32_t toleftpix = idx - 1;
@@ -39,7 +40,7 @@ static STRICTINLINE void restore_filter16(int* r, int* g, int* b, uint32_t fboff
 
     if (rdram_valid_idx16(maxpix) && rdram_valid_idx16(leftuppix))
     {
-        for (int i = 0; i < 8; i++)
+        for (i = 0; i < 8; i++)
         {
             pix = rdram_read_idx16_fast(dirs[i]);
             tempr = (pix >> 11) & 0x1f;
@@ -52,7 +53,7 @@ static STRICTINLINE void restore_filter16(int* r, int* g, int* b, uint32_t fboff
     }
     else
     {
-        for (int i = 0; i < 8; i++)
+        for (i = 0; i < 8; i++)
         {
             pix = rdram_read_idx16(dirs[i]);
             tempr = (pix >> 11) & 0x1f;
@@ -72,6 +73,7 @@ static STRICTINLINE void restore_filter16(int* r, int* g, int* b, uint32_t fboff
 
 static STRICTINLINE void restore_filter32(int* r, int* g, int* b, uint32_t fboffset, uint32_t num, uint32_t hres, uint32_t fetchbugstate)
 {
+   int i;
     uint32_t idx = (fboffset >> 2) + num;
 
     uint32_t toleftpix = idx - 1;
@@ -109,7 +111,7 @@ static STRICTINLINE void restore_filter32(int* r, int* g, int* b, uint32_t fboff
 
     if (rdram_valid_idx32(maxpix) && rdram_valid_idx32(leftuppix))
     {
-        for (int i = 0; i < 8; i++)
+        for (i = 0; i < 8; i++)
         {
             pix = rdram_read_idx32_fast(dirs[i]);
             tempr = (pix >> 27) & 0x1f;
@@ -122,7 +124,7 @@ static STRICTINLINE void restore_filter32(int* r, int* g, int* b, uint32_t fboff
     }
     else
     {
-        for (int i = 0; i < 8; i++)
+        for (i = 0; i < 8; i++)
         {
             pix = rdram_read_idx32(dirs[i]);
             tempr = (pix >> 27) & 0x1f;
@@ -141,7 +143,8 @@ static STRICTINLINE void restore_filter32(int* r, int* g, int* b, uint32_t fboff
 
 void vi_restore_init()
 {
-    for (int i = 0; i < 0x400; i++)
+   int i;
+    for (i = 0; i < 0x400; i++)
     {
         if (((i >> 5) & 0x1f) < (i & 0x1f))
             vi_restore_table[i] = 1;
