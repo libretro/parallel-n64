@@ -64,10 +64,12 @@ static STRICTINLINE void rgb_dither(int rgb_dither_sel, int* r, int* g, int* b, 
 
 static STRICTINLINE void get_dither_noise(struct rdp_state* rdp, int x, int y, int* cdith, int* adith)
 {
+    int dithindex;
     if (!rdp->other_modes.f.getditherlevel)
         rdp->noise = ((irand(&rdp->seed_dp) & 7) << 6) | 0x20;
 
-    int dithindex;
+    y >>= rdp->scfield;
+
     switch(rdp->other_modes.f.rgb_alpha_dither)
     {
     case 0:

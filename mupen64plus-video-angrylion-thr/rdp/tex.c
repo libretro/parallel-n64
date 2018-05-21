@@ -236,12 +236,6 @@ static STRICTINLINE void texture_pipeline_cycle(struct rdp_state* rdp, struct co
 
 
 
-        if (!rdp->other_modes.sample_type)
-            fetch_texel_entlut_quadro_nearest(rdp, &t0, &t1, &t2, &t3, sss1, sst1, tilenum, upper, upperrg);
-        else if (rdp->other_modes.en_tlut)
-            fetch_texel_entlut_quadro(rdp, &t0, &t1, &t2, &t3, sss1, sdiff, sst1, tdiff, tilenum, upper, upperrg);
-        else
-            fetch_texel_quadro(rdp, &t0, &t1, &t2, &t3, sss1, sdiff, sst1, tdiff, tilenum, upper - upperrg);
 
 
 
@@ -260,6 +254,13 @@ static STRICTINLINE void texture_pipeline_cycle(struct rdp_state* rdp, struct co
 
         if (bilerp)
         {
+            if (!rdp->other_modes.sample_type)
+               fetch_texel_entlut_quadro_nearest(rdp, &t0, &t1, &t2, &t3, sss1, sst1, tilenum, upper, upperrg);
+            else if (rdp->other_modes.en_tlut)
+               fetch_texel_entlut_quadro(rdp, &t0, &t1, &t2, &t3, sss1, sdiff, sst1, tdiff, tilenum, upper, upperrg);
+            else
+               fetch_texel_quadro(rdp, &t0, &t1, &t2, &t3, sss1, sdiff, sst1, tdiff, tilenum, upper - upperrg);
+
             if (!rdp->other_modes.mid_texel)
                 center = centerrg = 0;
             else
@@ -378,6 +379,15 @@ static STRICTINLINE void texture_pipeline_cycle(struct rdp_state* rdp, struct co
 
             if (convert)
                 t0 = t3 = *prev;
+            else
+            {
+               if (!rdp->other_modes.sample_type)
+                  fetch_texel_entlut_quadro_nearest(rdp, &t0, &t1, &t2, &t3, sss1, sst1, tilenum, upper, upperrg);
+               else if (rdp->other_modes.en_tlut)
+                  fetch_texel_entlut_quadro(rdp, &t0, &t1, &t2, &t3, sss1, sdiff, sst1, tdiff, tilenum, upper, upperrg);
+               else
+                  fetch_texel_quadro(rdp, &t0, &t1, &t2, &t3, sss1, sdiff, sst1, tdiff, tilenum, upper - upperrg);
+            }
 
 
             if (upperrg)
@@ -434,12 +444,13 @@ static STRICTINLINE void texture_pipeline_cycle(struct rdp_state* rdp, struct co
         tcmask(rdp, &sss1, &sst1, tilenum);
 
 
-        fetch_texel(rdp, &t0, sss1, sst1, tilenum);
 
         if (bilerp)
         {
             if (!convert)
             {
+                fetch_texel(rdp, &t0, sss1, sst1, tilenum);
+
                 TEX->r = t0.r & 0x1ff;
                 TEX->g = t0.g & 0x1ff;
                 TEX->b = t0.b;
@@ -452,6 +463,8 @@ static STRICTINLINE void texture_pipeline_cycle(struct rdp_state* rdp, struct co
         {
             if (convert)
                 t0 = *prev;
+            else
+                fetch_texel(rdp, &t0, sss1, sst1, tilenum);
 
             TEX->r = t0.b + ((rdp->k0_tf * t0.g + 0x80) >> 8);
             TEX->g = t0.b + ((rdp->k1_tf * t0.r + rdp->k2_tf * t0.g + 0x80) >> 8);
