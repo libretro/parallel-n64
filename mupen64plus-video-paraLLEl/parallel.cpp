@@ -13,7 +13,7 @@ extern "C" {
 #include "rdp_dump.h"
 #endif
 
-extern int retro_return(int just_flipping);
+extern int retro_return(bool just_flipping);
 
 void parallelChangeWindow(void)
 {
@@ -141,7 +141,7 @@ m64p_error parallelPluginGetVersion(m64p_plugin_type *PluginType, int *PluginVer
 	return M64ERR_SUCCESS;
 }
 
-int parallel_init(const struct retro_hw_render_interface_vulkan *vulkan)
+bool parallel_init(const struct retro_hw_render_interface_vulkan *vulkan)
 {
    RDP::vulkan = vulkan;
    return RDP::init();

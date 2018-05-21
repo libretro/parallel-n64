@@ -25,6 +25,8 @@
 #include <string.h>
 #include <ctype.h>
 
+#include <boolean.h>
+
 #define M64P_CORE_PROTOTYPES 1
 #include "api/m64p_types.h"
 #include "api/callbacks.h"
@@ -59,7 +61,7 @@ int g_rom_size = 0;
 unsigned alternate_vi_timing = 0;
 int           g_vi_refresh_rate = DEFAULT_COUNT_PER_SCANLINE;
 
-extern unsigned int frame_dupe;
+extern bool frame_dupe;
 
 m64p_rom_header   ROM_HEADER;
 rom_params        ROM_PARAMS;

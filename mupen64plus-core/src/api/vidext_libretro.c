@@ -28,7 +28,7 @@
 
 #include <boolean.h>
 
-int retro_return(int a);
+int retro_return(bool a);
 
 #define M64P_CORE_PROTOTYPES 1
 #include "m64p_types.h"

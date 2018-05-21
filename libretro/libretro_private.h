@@ -3,7 +3,8 @@
 
 #include <stdio.h>
 #include <string.h>
-#include "libretro.h"
+#include <boolean.h>
+#include <libretro.h>
 #include "libretro_perf.h"
 
 #ifdef __cplusplus
@@ -16,7 +17,7 @@ extern retro_get_cpu_features_t perf_get_cpu_features_cb;
 extern retro_perf_get_counter_t perf_get_counter_cb;
 extern retro_log_printf_t log_cb;
 extern retro_perf_register_t perf_register_cb;
-int retro_return(int just_flipping);
+int retro_return(bool just_flipping);
 
 #define SDL_GetTicks() FAKE_SDL_TICKS
 

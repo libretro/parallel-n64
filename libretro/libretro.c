@@ -104,7 +104,7 @@ static bool     reinit_screen       = false;
 static bool     first_context_reset = false;
 static bool     pushed_frame        = false;
 
-unsigned frame_dupe                 = false;
+bool frame_dupe                     = false;
 
 uint32_t *blitter_buf               = NULL;
 uint32_t *blitter_buf_lock          = NULL;
@@ -1812,7 +1812,7 @@ int retro_stop_stepping(void)
 #endif
 }
 
-int retro_return(int just_flipping)
+int retro_return(bool just_flipping)
 {
    if (stop)
       return 0;

@@ -1123,7 +1123,7 @@ int OGL_CheckError(void)
 
 void OGL_SwapBuffers(void)
 {
-   int retro_return(int a);
+   int retro_return(bool a);
    // if emulator defined a render callback function, call it before
    // buffer swap
    if (renderCallback)

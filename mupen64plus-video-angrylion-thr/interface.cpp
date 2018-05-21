@@ -20,7 +20,7 @@ extern void DebugMessage(int level, const char *message, ...);
 #include "m64p_types.h"
 #include "m64p_config.h"
 
-int retro_return(int just_flipping);
+int retro_return(bool just_flipping);
 
 #ifdef __cplusplus
 }

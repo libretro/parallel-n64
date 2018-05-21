@@ -622,7 +622,7 @@ output:   none
 *******************************************************************/
 uint32_t update_screen_count = 0;
 
-int retro_return(int a);
+int retro_return(bool a);
 
 void glide64UpdateScreen (void)
 {
