@@ -679,6 +679,7 @@ else ifneq (,$(findstring win,$(platform)))
    PLATFORM_EXT := win32
    CC = gcc
    CXX = g++
+   HAVE_THR_AL=1
 
 #ifeq ($(WITH_DYNAREC), $(filter $(WITH_DYNAREC), x86_64 x64))
 #ifeq ($(HAVE_PARALLEL), 1)
