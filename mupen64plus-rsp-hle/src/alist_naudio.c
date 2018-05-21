@@ -72,6 +72,8 @@ static void NAUDIO_0000(struct hle_t* hle,
 
 static void NAUDIO_02B0(struct hle_t* hle, uint32_t UNUSED(w1), uint32_t w2)
 {
+   if (!hle)
+      return;
     /* emulate code at 0x12b0 (inside SETVOL), because PC always execute in IMEM */
     hle->alist_naudio.rate[1] &= ~0xffff;
     hle->alist_naudio.rate[1] |= (w2 & 0xffff);
@@ -192,10 +194,13 @@ static void SAVEBUFF(struct hle_t* hle, uint32_t w1, uint32_t w2)
    alist_save(hle, dmem, address, count);
 }
 
-static void LOADADPCM(struct hle_t* hle, uint32_t w1, uint32_t w2)
+static void NAUDIO_LOADADPCM(struct hle_t* hle, uint32_t w1, uint32_t w2)
 {
    uint16_t count   = w1;
    uint32_t address = (w2 & 0xffffff);
+
+   if (!hle)
+      return;
 
    dram_load_u16(hle, (uint16_t*)hle->alist_naudio.table, address, count >> 1);
 }
@@ -277,7 +282,7 @@ void alist_process_naudio(struct hle_t* hle)
     static const acmd_callback_t ABI[0x10] = {
         SPNOOP,         ADPCM,          CLEARBUFF,      ENVMIXER,
         LOADBUFF,       RESAMPLE,       SAVEBUFF,       NAUDIO_0000,
-        NAUDIO_0000,    SETVOL,         DMEMMOVE,       LOADADPCM,
+        NAUDIO_0000,    SETVOL,         DMEMMOVE,       NAUDIO_LOADADPCM,
         MIXER,          INTERLEAVE,     NAUDIO_02B0,    SETLOOP
     };
 
@@ -290,7 +295,7 @@ void alist_process_naudio_bk(struct hle_t* hle)
     static const acmd_callback_t ABI[0x10] = {
         SPNOOP,         ADPCM,          CLEARBUFF,      ENVMIXER,
         LOADBUFF,       RESAMPLE,       SAVEBUFF,       NAUDIO_0000,
-        NAUDIO_0000,    SETVOL,         DMEMMOVE,       LOADADPCM,
+        NAUDIO_0000,    SETVOL,         DMEMMOVE,       NAUDIO_LOADADPCM,
         MIXER,          INTERLEAVE,     NAUDIO_02B0,    SETLOOP
     };
 
@@ -303,7 +308,7 @@ void alist_process_naudio_dk(struct hle_t* hle)
     static const acmd_callback_t ABI[0x10] = {
         SPNOOP,         ADPCM,          CLEARBUFF,      ENVMIXER,
         LOADBUFF,       RESAMPLE,       SAVEBUFF,       MIXER,
-        MIXER,          SETVOL,         DMEMMOVE,       LOADADPCM,
+        MIXER,          SETVOL,         DMEMMOVE,       NAUDIO_LOADADPCM,
         MIXER,          INTERLEAVE,     NAUDIO_02B0,    SETLOOP
     };
 
@@ -315,7 +320,7 @@ void alist_process_naudio_mp3(struct hle_t* hle)
     static const acmd_callback_t ABI[0x10] = {
         UNKNOWN,        ADPCM,          CLEARBUFF,      ENVMIXER,
         LOADBUFF,       RESAMPLE,       SAVEBUFF,       MP3,
-        MP3ADDY,        SETVOL,         DMEMMOVE,       LOADADPCM,
+        MP3ADDY,        SETVOL,         DMEMMOVE,       NAUDIO_LOADADPCM,
         MIXER,          INTERLEAVE,     NAUDIO_14,      SETLOOP
     };
 
@@ -328,7 +333,7 @@ void alist_process_naudio_cbfd(struct hle_t* hle)
     static const acmd_callback_t ABI[0x10] = {
         UNKNOWN,        ADPCM,          CLEARBUFF,      ENVMIXER,
         LOADBUFF,       RESAMPLE,       SAVEBUFF,       MP3,
-        MP3ADDY,        SETVOL,         DMEMMOVE,       LOADADPCM,
+        MP3ADDY,        SETVOL,         DMEMMOVE,       NAUDIO_LOADADPCM,
         MIXER,          INTERLEAVE,     NAUDIO_14,      SETLOOP
     };
 

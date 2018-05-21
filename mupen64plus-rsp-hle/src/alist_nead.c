@@ -51,10 +51,13 @@ static void SPNOOP(struct hle_t* UNUSED(hle), uint32_t UNUSED(w1), uint32_t UNUS
 {
 }
 
-static void LOADADPCM(struct hle_t* hle, uint32_t w1, uint32_t w2)
+static void NEAD_LOADADPCM(struct hle_t* hle, uint32_t w1, uint32_t w2)
 {
    uint16_t count   = w1;
    uint32_t address = (w2 & 0xffffff);
+
+   if (!hle)
+      return;
 
    dram_load_u16(hle, (uint16_t*)hle->alist_nead.table, address, count >> 1);
 }
@@ -356,7 +359,7 @@ void alist_process_nead_mk(struct hle_t* hle)
    static const acmd_callback_t ABI[0x20] = {
       SPNOOP,         ADPCM,          CLEARBUFF,      SPNOOP,
       SPNOOP,         RESAMPLE,       SPNOOP,         SEGMENT,
-      SETBUFF,        SPNOOP,         DMEMMOVE,       LOADADPCM,
+      SETBUFF,        SPNOOP,         DMEMMOVE,       NEAD_LOADADPCM,
       MIXER,          INTERLEAVE_MK,  POLEF,          SETLOOP,
       NEAD_16,        INTERL,         ENVSETUP1_MK,   ENVMIXER_MK,
       LOADBUFF,       SAVEBUFF,       ENVSETUP2,      SPNOOP,
@@ -372,7 +375,7 @@ void alist_process_nead_sf(struct hle_t* hle)
    static const acmd_callback_t ABI[0x20] = {
       SPNOOP,         ADPCM,          CLEARBUFF,      SPNOOP,
       ADDMIXER,       RESAMPLE,       RESAMPLE_ZOH,   SPNOOP,
-      SETBUFF,        SPNOOP,         DMEMMOVE,       LOADADPCM,
+      SETBUFF,        SPNOOP,         DMEMMOVE,       NEAD_LOADADPCM,
       MIXER,          INTERLEAVE_MK,  POLEF,          SETLOOP,
       NEAD_16,        INTERL,         ENVSETUP1,      ENVMIXER,
       LOADBUFF,       SAVEBUFF,       ENVSETUP2,      SPNOOP,
@@ -388,7 +391,7 @@ void alist_process_nead_sfj(struct hle_t* hle)
    static const acmd_callback_t ABI[0x20] = {
       SPNOOP,         ADPCM,          CLEARBUFF,      SPNOOP,
       ADDMIXER,       RESAMPLE,       RESAMPLE_ZOH,   SPNOOP,
-      SETBUFF,        SPNOOP,         DMEMMOVE,       LOADADPCM,
+      SETBUFF,        SPNOOP,         DMEMMOVE,       NEAD_LOADADPCM,
       MIXER,          INTERLEAVE_MK,  POLEF,          SETLOOP,
       NEAD_16,        INTERL,         ENVSETUP1,      ENVMIXER,
       LOADBUFF,       SAVEBUFF,       ENVSETUP2,      UNKNOWN,
@@ -404,7 +407,7 @@ void alist_process_nead_fz(struct hle_t* hle)
    static const acmd_callback_t ABI[0x20] = {
       UNKNOWN,        ADPCM,          CLEARBUFF,      SPNOOP,
       ADDMIXER,       RESAMPLE,       SPNOOP,         SPNOOP,
-      SETBUFF,        SPNOOP,         DMEMMOVE,       LOADADPCM,
+      SETBUFF,        SPNOOP,         DMEMMOVE,       NEAD_LOADADPCM,
       MIXER,          INTERLEAVE,     SPNOOP,         SETLOOP,
       NEAD_16,        INTERL,         ENVSETUP1,      ENVMIXER,
       LOADBUFF,       SAVEBUFF,       ENVSETUP2,      UNKNOWN,
@@ -420,7 +423,7 @@ void alist_process_nead_wrjb(struct hle_t* hle)
    static const acmd_callback_t ABI[0x20] = {
       SPNOOP,         ADPCM,          CLEARBUFF,      UNKNOWN,
       ADDMIXER,       RESAMPLE,       RESAMPLE_ZOH,   SPNOOP,
-      SETBUFF,        SPNOOP,         DMEMMOVE,       LOADADPCM,
+      SETBUFF,        SPNOOP,         DMEMMOVE,       NEAD_LOADADPCM,
       MIXER,          INTERLEAVE,     SPNOOP,         SETLOOP,
       NEAD_16,        INTERL,         ENVSETUP1,      ENVMIXER,
       LOADBUFF,       SAVEBUFF,       ENVSETUP2,      UNKNOWN,
@@ -436,7 +439,7 @@ void alist_process_nead_ys(struct hle_t* hle)
    static const acmd_callback_t ABI[0x18] = {
       UNKNOWN,        ADPCM,          CLEARBUFF,      UNKNOWN,
       ADDMIXER,       RESAMPLE,       RESAMPLE_ZOH,   FILTER,
-      SETBUFF,        DUPLICATE,      DMEMMOVE,       LOADADPCM,
+      SETBUFF,        DUPLICATE,      DMEMMOVE,       NEAD_LOADADPCM,
       MIXER,          INTERLEAVE,     HILOGAIN,       SETLOOP,
       NEAD_16,        INTERL,         ENVSETUP1,      ENVMIXER,
       LOADBUFF,       SAVEBUFF,       ENVSETUP2,      UNKNOWN
@@ -450,7 +453,7 @@ void alist_process_nead_1080(struct hle_t* hle)
    static const acmd_callback_t ABI[0x18] = {
       UNKNOWN,        ADPCM,          CLEARBUFF,      UNKNOWN,
       ADDMIXER,       RESAMPLE,       RESAMPLE_ZOH,   FILTER,
-      SETBUFF,        DUPLICATE,      DMEMMOVE,       LOADADPCM,
+      SETBUFF,        DUPLICATE,      DMEMMOVE,       NEAD_LOADADPCM,
       MIXER,          INTERLEAVE,     HILOGAIN,       SETLOOP,
       NEAD_16,        INTERL,         ENVSETUP1,      ENVMIXER,
       LOADBUFF,       SAVEBUFF,       ENVSETUP2,      UNKNOWN
@@ -464,7 +467,7 @@ void alist_process_nead_oot(struct hle_t* hle)
    static const acmd_callback_t ABI[0x18] = {
       UNKNOWN,        ADPCM,          CLEARBUFF,      UNKNOWN,
       ADDMIXER,       RESAMPLE,       RESAMPLE_ZOH,   FILTER,
-      SETBUFF,        DUPLICATE,      DMEMMOVE,       LOADADPCM,
+      SETBUFF,        DUPLICATE,      DMEMMOVE,       NEAD_LOADADPCM,
       MIXER,          INTERLEAVE,     HILOGAIN,       SETLOOP,
       NEAD_16,        INTERL,         ENVSETUP1,      ENVMIXER,
       LOADBUFF,       SAVEBUFF,       ENVSETUP2,      UNKNOWN
@@ -478,7 +481,7 @@ void alist_process_nead_mm(struct hle_t* hle)
    static const acmd_callback_t ABI[0x18] = {
       UNKNOWN,        ADPCM,          CLEARBUFF,      SPNOOP,
       ADDMIXER,       RESAMPLE,       RESAMPLE_ZOH,   FILTER,
-      SETBUFF,        DUPLICATE,      DMEMMOVE,       LOADADPCM,
+      SETBUFF,        DUPLICATE,      DMEMMOVE,       NEAD_LOADADPCM,
       MIXER,          INTERLEAVE,     HILOGAIN,       SETLOOP,
       NEAD_16,        INTERL,         ENVSETUP1,      ENVMIXER,
       LOADBUFF,       SAVEBUFF,       ENVSETUP2,      UNKNOWN
@@ -492,7 +495,7 @@ void alist_process_nead_mmb(struct hle_t* hle)
    static const acmd_callback_t ABI[0x18] = {
       SPNOOP,         ADPCM,          CLEARBUFF,      SPNOOP,
       ADDMIXER,       RESAMPLE,       RESAMPLE_ZOH,   FILTER,
-      SETBUFF,        DUPLICATE,      DMEMMOVE,       LOADADPCM,
+      SETBUFF,        DUPLICATE,      DMEMMOVE,       NEAD_LOADADPCM,
       MIXER,          INTERLEAVE,     HILOGAIN,       SETLOOP,
       NEAD_16,        INTERL,         ENVSETUP1,      ENVMIXER,
       LOADBUFF,       SAVEBUFF,       ENVSETUP2,      UNKNOWN
@@ -506,7 +509,7 @@ void alist_process_nead_ac(struct hle_t* hle)
    static const acmd_callback_t ABI[0x18] = {
       UNKNOWN,        ADPCM,          CLEARBUFF,      SPNOOP,
       ADDMIXER,       RESAMPLE,       RESAMPLE_ZOH,   FILTER,
-      SETBUFF,        DUPLICATE,      DMEMMOVE,       LOADADPCM,
+      SETBUFF,        DUPLICATE,      DMEMMOVE,       NEAD_LOADADPCM,
       MIXER,          INTERLEAVE,     HILOGAIN,       SETLOOP,
       NEAD_16,        INTERL,         ENVSETUP1,      ENVMIXER,
       LOADBUFF,       SAVEBUFF,       ENVSETUP2,      UNKNOWN

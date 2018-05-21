@@ -64,7 +64,7 @@
 #define IMUL14(x, y) ((((int64_t)x) * ((int64_t)y)) >> 14)
 
 static uint16_t *zLUT;
-uint16_t *frameBuffer;
+uint16_t *glide64_frameBuffer;
 
 extern int dzdx;
 
@@ -994,7 +994,7 @@ void CopyFrameBuffer(int32_t buffer)
 
    if (rdp.scale_x < 1.1f)
    {
-      uint16_t * ptr_src = (uint16_t*)frameBuffer;
+      uint16_t * ptr_src = (uint16_t*)glide64_frameBuffer;
       if (grLfbReadRegion(buffer,
                (uint32_t)rdp.offset_x,
                (uint32_t)rdp.offset_y,//rdp.ci_upper_bound,

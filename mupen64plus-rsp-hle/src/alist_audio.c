@@ -131,6 +131,9 @@ static void SETVOL(struct hle_t* hle, uint32_t w1, uint32_t w2)
    unsigned lr;
    uint8_t flags = (w1 >> 16);
 
+   if (!hle)
+      return;
+
    if (flags & A_AUX)
    {
       hle->alist_audio.dry = w1;
@@ -151,6 +154,9 @@ static void SETVOL(struct hle_t* hle, uint32_t w1, uint32_t w2)
 
 static void SETLOOP(struct hle_t* hle, uint32_t UNUSED(w1), uint32_t w2)
 {
+   if (!hle)
+      return;
+
    hle->alist_audio.loop = get_address(hle, w2);
 }
 
@@ -158,6 +164,9 @@ static void ADPCM(struct hle_t* hle, uint32_t w1, uint32_t w2)
 {
    uint8_t  flags   = (w1 >> 16);
    uint32_t address = get_address(hle, w2);
+
+   if (!hle)
+      return;
 
    alist_adpcm(
          hle,
@@ -219,6 +228,9 @@ static void LOADADPCM(struct hle_t* hle, uint32_t w1, uint32_t w2)
 {
    uint16_t count   = w1;
    uint32_t address = get_address(hle, w2);
+
+   if (!hle)
+      return;
 
    dram_load_u16(hle, (uint16_t*)hle->alist_audio.table, address, align(count, 8) >> 1);
 }

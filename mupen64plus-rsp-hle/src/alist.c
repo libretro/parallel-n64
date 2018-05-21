@@ -749,6 +749,9 @@ void alist_adpcm(
    int16_t last_frame[16];
    size_t i;
 
+   if (!hle || !codebook)
+      return;
+
    adpcm_predict_frame_t predict_frame = (two_bit_per_sample)
       ? adpcm_predict_frame_2bits
       : adpcm_predict_frame_4bits;
