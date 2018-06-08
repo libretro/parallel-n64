@@ -435,6 +435,9 @@ NOINLINE int my_system(char* command)
 {
     int ret_slot;
 #ifdef WIN32
+#if _MSC_VER >= 1400 && WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_APP)
+    return (ret_slot);
+#else
     static STARTUPINFOA info;
     static PROCESS_INFORMATION info_process;
 
@@ -462,6 +465,7 @@ NOINLINE int my_system(char* command)
     WaitForSingleObject(info_process.hProcess, INFINITE);
     CloseHandle(info_process.hProcess);
     CloseHandle(info_process.hThread);
+#endif
 #else
     ret_slot = system(command);
 #endif
