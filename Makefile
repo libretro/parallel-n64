@@ -381,9 +381,11 @@ else ifneq (,$(findstring windows_msvc2017,$(platform)))
 		LIBS += kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib
 	else ifneq (,$(findstring uwp,$(PlatformSuffix)))
 		WinPartition = uwp
-		MSVC2017CompileFlags = -DWINAPI_FAMILY=WINAPI_FAMILY_APP -D_WINDLL -D_UNICODE -DUNICODE __WRL_NO_DEFAULT_LIB__ -EHsc
+		MSVC2017CompileFlags = -DWINAPI_FAMILY=WINAPI_FAMILY_APP -D_WINDLL -D_UNICODE -DUNICODE -D__WRL_NO_DEFAULT_LIB__ -EHsc
 		LDFLAGS += -APPCONTAINER -NXCOMPAT -DYNAMICBASE -MANIFEST:NO -LTCG -OPT:REF -SUBSYSTEM:CONSOLE -MANIFESTUAC:NO -OPT:ICF -ERRORREPORT:PROMPT -NOLOGO -TLBID:1 -DEBUG:FULL -WINMD:NO
 		LIBS += WindowsApp.lib
+
+        HAVE_OPENGL = 0
 	endif
 
 	CFLAGS += $(MSVC2017CompileFlags)
