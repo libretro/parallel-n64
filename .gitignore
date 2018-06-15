@@ -4,6 +4,7 @@
 *.lib
 *.pdb
 *.exp
+*.manifest
 *.dylib
 *.so
 *.d
