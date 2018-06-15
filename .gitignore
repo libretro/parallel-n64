@@ -1,6 +1,9 @@
 *.a
 *.o
 *.dll
+*.lib
+*.pdb
+*.exp
 *.dylib
 *.so
 *.d
