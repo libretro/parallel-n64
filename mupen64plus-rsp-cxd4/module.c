@@ -435,6 +435,9 @@ NOINLINE int my_system(char* command)
 {
     int ret_slot;
 #ifdef WIN32
+#if _MSC_VER >= 1400 && WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_APP)
+    return (ret_slot);
+#else
     static STARTUPINFOA info;
     static PROCESS_INFORMATION info_process;
 
@@ -462,6 +465,7 @@ NOINLINE int my_system(char* command)
     WaitForSingleObject(info_process.hProcess, INFINITE);
     CloseHandle(info_process.hProcess);
     CloseHandle(info_process.hThread);
+#endif
 #else
     ret_slot = system(command);
 #endif
@@ -471,6 +475,9 @@ NOINLINE int my_system(char* command)
 NOINLINE FILE* my_fopen(const char * filename, const char* mode)
 {
 #ifdef WIN32
+#if _MSC_VER >= 1400 && WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_APP)
+    return NULL;
+#else
     return (FILE *)(HANDLE)CreateFileA(
         filename,
         (mode[0] == 'r') ? GENERIC_READ : GENERIC_WRITE,
@@ -484,6 +491,7 @@ NOINLINE FILE* my_fopen(const char * filename, const char* mode)
 #endif
         NULL
     );
+#endif
 #else
     return fopen(filename, mode);
 #endif

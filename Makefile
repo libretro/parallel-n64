@@ -381,10 +381,15 @@ else ifneq (,$(findstring windows_msvc2017,$(platform)))
 		LIBS += kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib
 	else ifneq (,$(findstring uwp,$(PlatformSuffix)))
 		WinPartition = uwp
-		MSVC2017CompileFlags = -DWINAPI_FAMILY=WINAPI_FAMILY_APP -DWINDLL -D_UNICODE -DUNICODE -DWRL_NO_DEFAULT_LIB
+		MSVC2017CompileFlags = -DWINAPI_FAMILY=WINAPI_FAMILY_APP -D_WINDLL -D_UNICODE -DUNICODE -D__WRL_NO_DEFAULT_LIB__ -EHsc
 		LDFLAGS += -APPCONTAINER -NXCOMPAT -DYNAMICBASE -MANIFEST:NO -LTCG -OPT:REF -SUBSYSTEM:CONSOLE -MANIFESTUAC:NO -OPT:ICF -ERRORREPORT:PROMPT -NOLOGO -TLBID:1 -DEBUG:FULL -WINMD:NO
 		LIBS += WindowsApp.lib
+
+        HAVE_OPENGL = 0
 	endif
+
+    WITH_DYNAREC :=
+    SOURCES_C += $(CORE_DIR)/src/r4300/empty_dynarec.c
 
 	CFLAGS += $(MSVC2017CompileFlags)
 	CXXFLAGS += $(MSVC2017CompileFlags)
@@ -457,7 +462,10 @@ else ifneq (,$(findstring windows_msvc2017,$(platform)))
 	PATH := $(PATH):$(shell IFS=$$'\n'; cygpath "$(VsInstallRoot)/Common7/IDE")
 	INCLUDE := $(shell IFS=$$'\n'; cygpath -w "$(VcCompilerToolsDir)/include")
 	LIB := $(shell IFS=$$'\n'; cygpath -w "$(VcCompilerToolsDir)/lib/$(TargetArchMoniker)")
-
+	ifneq (,$(findstring uwp,$(PlatformSuffix)))
+		LIB := $(shell IFS=$$'\n'; cygpath -w "$(LIB)/store")
+	endif
+    
 	export INCLUDE := $(INCLUDE);$(WindowsSDKSharedIncludeDir);$(WindowsSDKUCRTIncludeDir);$(WindowsSDKUMIncludeDir)
 	export LIB := $(LIB);$(WindowsSDKUCRTLibDir);$(WindowsSDKUMLibDir)
 	TARGET := $(TARGET_NAME)_libretro.dll
@@ -740,7 +748,13 @@ ifeq ($(DEBUG), 1)
          CPUOPTS += -FS
       endif
       endif
+
+      ifeq ($(STATIC_LINKING),1)
+      CPUOPTS += -Od -MTd -Zi
+      else
       CPUOPTS += -Od -MDd -Zi
+      endif
+
       LDFLAGS += -DEBUG
    else
       CPUOPTS += -O0 -g
@@ -754,7 +768,7 @@ endif
    CPUOPTS += -DNDEBUG
 ifneq ($(findstring Darwin,$(UNAME)),)
    CPUOPTS += -flto
-else
+else ifeq ($(findstring msvc,$(platform)),)
    CPUOPTS += -fipa-pta
 endif
 
@@ -766,9 +780,20 @@ endif
          CPUOPTS += -FS
       endif
       endif
+
+      ifeq ($(STATIC_LINKING),1)
       CPUOPTS += -MT -Zi
+      else
+      CPUOPTS += -MD -Zi
+      endif
+
+      ifeq (,$(findstring msvc2017,$(platform)))
       CPUOPTS += -EHsc -D_CRT_SECURE_NO_WARNINGS -D_ENDUSER_RELEASE -D__LIBRETRO_WIN64__ -D__SSE2__ -DUNICODE -D_UNICODE -D_USRDLL -DWIN32 -D_WINDLL -D_WINDOWS -WX- -Zc:forScope -Zc:wchar_t -Zi -wd4996 -W0 -fp:precise -Gd -GL -Gm- -GS- -Gy -DMSVC2010_EXPORTS -Oi -Ot
       LDFLAGS += -LTCG -DYNAMICBASE -ERRORREPORT:QUEUE -INCREMENTAL:NO -MANIFEST:NO -NXCOMPAT -OPT:ICF -OPT:REF -SUBSYSTEM:WINDOWS,"5.02" -TLBID:1 advapi32.lib comdlg32.lib gdi32.lib kernel32.lib odbc32.lib odbccp32.lib ole32.lib oleaut32.lib shell32.lib user32.lib uuid.lib winspool.lib
+      else
+      CPUOPTS += -EHsc -D_CRT_SECURE_NO_WARNINGS -D_ENDUSER_RELEASE -D__LIBRETRO_WIN64__ -D__SSE2__ -DUNICODE -D_UNICODE -D_USRDLL -DWIN32 -D_WINDLL -D_WINDOWS -WX- -Zc:forScope -Zc:wchar_t -Zi -wd4996 -W0 -fp:precise -Gd -GL -Gm- -GS- -Gy -DMSVC2010_EXPORTS -Oi -Ot
+      LDFLAGS += -LTCG -DYNAMICBASE -ERRORREPORT:QUEUE -INCREMENTAL:NO -NXCOMPAT -OPT:ICF -OPT:REF
+      endif
    endif
 endif
 
