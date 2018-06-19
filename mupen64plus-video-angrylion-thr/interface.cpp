@@ -165,7 +165,9 @@ void screen_set_fullscreen(bool _fullscreen)
 {}
 
 bool screen_get_fullscreen(void)
-{}
+{
+   return false;
+}
 
 void screen_close(void)
 {}
