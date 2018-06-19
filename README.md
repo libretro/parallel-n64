@@ -1,5 +1,7 @@
-mupen64plus-libretro
-====================
+[![Build Status](https://travis-ci.org/libretro/parallel-n64.svg?branch=master)](https://travis-ci.org/libretro/parallel-n64)
+[![Build status](https://ci.appveyor.com/api/projects/status/iqe836smfugoy8ey/branch/master?svg=true)](https://ci.appveyor.com/project/bparker06/parallel-n64/branch/master)
+
+# mupen64plus-libretro
 
 To enable a dynarec CPU core you must pass the WITH_DYNAREC value to make:
 * make WITH_DYNAREC=x86
