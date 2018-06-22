@@ -769,7 +769,9 @@ endif
 ifneq ($(findstring Darwin,$(UNAME)),)
    CPUOPTS += -flto
 else ifeq ($(findstring msvc,$(platform)),)
+ifneq ($(platform), emscripten)
    CPUOPTS += -fipa-pta
+endif
 endif
 
 
