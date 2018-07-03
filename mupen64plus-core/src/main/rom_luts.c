@@ -237,6 +237,7 @@ static const uint64_t lut_ee4k[] = {
    0xA03CF036BCC1C5D2ULL, /* Super Mario 64 (E) (M3) [!] */
    0x4EAA3D0E74757C24ULL, /* Super Mario 64 (J) [!] */
    0x635A2BFF8B022326ULL, /* Super Mario 64 (U) [!] */
+   0x85a772f1d5e7cdcaULL, /* Super Mario 64 60fps */
    0xD6FBA4A86326AA2CULL, /* Super Mario 64 - Shindou Edition (J) [!] */
    0x0FE684A98BB77AC4ULL, /* Tetrisphere (E) [!] */
    0x3C1FDABE02A4E0BAULL, /* Tetrisphere (U) [!] */
