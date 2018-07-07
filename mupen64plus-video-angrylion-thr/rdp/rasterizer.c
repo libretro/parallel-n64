@@ -131,7 +131,7 @@ static STRICTINLINE void rgbaz_correct_clip(struct rdp_state* rdp, int offx, int
     int summand_z;
     int sz = *z;
     int zanded;
-    unsigned temp;
+    int32_t temp = 0;
 
 
 
