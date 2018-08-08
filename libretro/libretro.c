@@ -302,7 +302,7 @@ static void setup_variables(void)
       {"parallel-n64-astick-deadzone",
         "Analog Deadzone (percent); 15|20|25|30|0|5|10"},
       {"parallel-n64-astick-sensitivity",
-        "Analog Sensitivity (percent); 100|105|110|115|120|125|130|135|140|145|150|50|55|60|65|70|75|80|85|90|95"},
+        "Analog Sensitivity (percent); 100|105|110|115|120|125|130|135|140|145|150|200|50|55|60|65|70|75|80|85|90|95"},
       {"parallel-n64-pak1",
         "Player 1 Pak; none|memory|rumble"},
       {"parallel-n64-pak2",
