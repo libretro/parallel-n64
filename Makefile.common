@@ -185,9 +185,9 @@ endif
 
 ifeq ($(WITH_DYNAREC), arm)
 		DYNAREC_USED = 1
+		DYNAREC_EMPTY = 1
 		SOURCES_C += $(CORE_DIR)/src/r4300/new_dynarec/new_dynarec.c \
-						 $(CORE_DIR)/src/r4300/new_dynarec/arm/arm_cpu_features.c \
-						 $(CORE_DIR)/src/r4300/empty_dynarec.c
+						 $(CORE_DIR)/src/r4300/new_dynarec/arm/arm_cpu_features.c
 
 		SOURCES_ASM += \
 			$(CORE_DIR)/src/r4300/new_dynarec/arm/linkage_$(WITH_DYNAREC).S
@@ -204,10 +204,14 @@ endif
 						 $(CORE_DIR)/src/r4300/hacktarux_dynarec/hacktarux_dynarec.c
 endif
 ifeq ($(DYNAREC_USED),0)
-	SOURCES_C += $(CORE_DIR)/src/r4300/empty_dynarec.c
+	DYNAREC_EMPTY = 1
 else
 	DYNAFLAGS += -DDYNAREC
 endif
+endif
+
+ifeq ($(DYNAREC_EMPTY), 1)
+SOURCES_C += $(CORE_DIR)/src/r4300/empty_dynarec.c
 endif
 
 ifeq ($(NATIVE_MARCH), 1)
