@@ -300,7 +300,7 @@ else ifneq (,$(findstring android,$(platform)))
    WITH_DYNAREC=arm
    GLES = 1
    PLATCFLAGS += -DANDROID
-   CPUCFLAGS  += -DNO_ASM
+   CPUCFLAGS  += -DNO_ASM -DNO_LIBCO
    HAVE_NEON = 1
    CPUFLAGS += -marm -mcpu=cortex-a8 -mfpu=neon -mfloat-abi=softfp -D__arm__ -DARM_ASM -D__NEON_OPT
    CFLAGS += -DANDROID
