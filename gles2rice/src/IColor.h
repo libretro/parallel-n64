@@ -44,13 +44,13 @@ public:
         *((COLOR*)this) = (unsigned int) rgba;
     }
 
-    inline IColor operator = (const IColor &sec) const
+    inline IColor &operator = (const IColor &sec) const
     {
         *((COLOR*)this) = *((COLOR*)&sec);
         return *this;
     }
 
-    inline IColor operator = (COLOR col) const
+    inline IColor &operator = (COLOR col) const
     {
         *((COLOR*)this) = col;
         return *this;
