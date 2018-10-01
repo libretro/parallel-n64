@@ -16,8 +16,6 @@ RSPDIR_PARALLEL    = $(ROOT_DIR)/mupen64plus-rsp-paraLLEl
 VIDEODIR_GLIDE     = $(ROOT_DIR)/glide2gl/src
 VIDEODIR_GLIDEN64  = $(ROOT_DIR)/mupen64plus-video-gliden64
 
-DYNAREC_USED := 0
-
 ifeq ($(HAVE_OPENGL),0)
 	HAVE_GLN64    =0
 	HAVE_GLIDE64  =0
@@ -186,16 +184,16 @@ endif
 endif
 
 ifeq ($(WITH_DYNAREC), arm)
-		DYNAREC_USED = 1
-		DYNAREC_EMPTY = 1
+		DYNAFLAGS += -DDYNAREC
 		SOURCES_C += $(CORE_DIR)/src/r4300/new_dynarec/new_dynarec.c \
 						 $(CORE_DIR)/src/r4300/new_dynarec/arm/arm_cpu_features.c
 
 		SOURCES_ASM += \
 			$(CORE_DIR)/src/r4300/new_dynarec/arm/linkage_$(WITH_DYNAREC).S
 endif
+
 ifeq ($(WITH_DYNAREC), $(filter $(WITH_DYNAREC), i386 i686 x86 x86_64 x64))
-		DYNAREC_USED = 1
+		DYNAFLAGS += -DDYNAREC
 ifneq ($(NOSSE), 1)
 ifeq (,$(findstring msvc,$(platform)))
 		CPUFLAGS += -msse -msse2
@@ -204,11 +202,6 @@ endif
 		SOURCES_C += $(CORE_DIR)/src/r4300/hacktarux_dynarec/assemble.c \
 						 $(CORE_DIR)/src/r4300/hacktarux_dynarec/regcache.c \
 						 $(CORE_DIR)/src/r4300/hacktarux_dynarec/hacktarux_dynarec.c
-endif
-ifeq ($(DYNAREC_USED),0)
-	DYNAREC_EMPTY = 1
-else
-	DYNAFLAGS += -DDYNAREC
 endif
 endif
 
