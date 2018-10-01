@@ -169,10 +169,8 @@ ifdef WITH_DYNAREC
 
 ifneq (,$(findstring msvc,$(platform)))
 ifeq ($(WITH_DYNAREC), $(filter $(WITH_DYNAREC), x86_64 x64))
-	DYNAFLAGS += -DHAVE_DYNAREC_HACKTARUX
 	SOURCES_ASM += $(CORE_DIR)/src/r4300/hacktarux_dynarec/dyna_start_nasm_x64.S
 else ifeq ($(WITH_DYNAREC), $(filter $(WITH_DYNAREC), i386 i686))
-	DYNAFLAGS += -DHAVE_DYNAREC_HACKTARUX
 	SOURCES_ASM += $(CORE_DIR)/src/r4300/hacktarux_dynarec/dyna_start_nasm_x86.S
 endif
 endif
@@ -193,6 +191,7 @@ ifeq ($(WITH_DYNAREC), arm)
 endif
 
 ifeq ($(WITH_DYNAREC), $(filter $(WITH_DYNAREC), i386 i686 x86 x86_64 x64))
+		DYNAFLAGS += -DHAVE_DYNAREC_HACKTARUX
 		DYNAFLAGS += -DDYNAREC
 ifneq ($(NOSSE), 1)
 ifeq (,$(findstring msvc,$(platform)))
