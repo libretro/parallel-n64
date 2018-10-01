@@ -2177,14 +2177,19 @@ void init_block(struct precomp_block *block)
    if (!block->block)
    {
       size_t memsize = get_block_memsize(block);
-      if (r4300emu == CORE_DYNAREC) {
+#ifdef DYNAREC
+      if (r4300emu == CORE_DYNAREC)
+      {
          block->block = (struct precomp_instr *) malloc_exec(memsize);
-         if (!block->block) {
+         if (!block->block)
+         {
             DebugMessage(M64MSG_ERROR, "Memory error: couldn't allocate executable memory for dynamic recompiler. Try to use an interpreter mode.");
             return;
          }
       }
-      else {
+      else
+#endif
+      {
          block->block = (struct precomp_instr *) malloc(memsize);
          if (!block->block) {
             DebugMessage(M64MSG_ERROR, "Memory error: couldn't allocate memory for cached interpreter.");
@@ -2196,6 +2201,7 @@ void init_block(struct precomp_block *block)
       already_exist = 0;
    }
 
+#ifdef DYNAREC
    if (r4300emu == CORE_DYNAREC)
    {
       if (!block->code)
@@ -2223,6 +2229,7 @@ void init_block(struct precomp_block *block)
       init_assembler(NULL, 0, NULL, 0);
       init_cache(block->block);
    }
+#endif
 
    if (!already_exist)
    {
@@ -2234,7 +2241,10 @@ void init_block(struct precomp_block *block)
          dst->reg_cache_infos.need_map = 0;
          dst->local_addr = code_length;
          RNOTCOMPILED();
-         if (r4300emu == CORE_DYNAREC) recomp_func();
+#ifdef DYNAREC
+         if (r4300emu == CORE_DYNAREC)
+            recomp_func();
+#endif
       }
       init_length = code_length;
    }
@@ -2250,6 +2260,7 @@ void init_block(struct precomp_block *block)
       }
    }
 
+#ifdef DYNAREC
    if (r4300emu == CORE_DYNAREC)
    {
       free_all_registers();
@@ -2259,6 +2270,7 @@ void init_block(struct precomp_block *block)
       block->max_code_length = max_code_length;
       free_assembler(&block->jumps_table, &block->jumps_number, &block->riprel_table, &block->riprel_number);
    }
+#endif
 
    /* here we're marking the block as a valid code even if it's not compiled
     * yet as the game should have already set up the code correctly.
@@ -2320,10 +2332,13 @@ void free_block(struct precomp_block *block)
 {
    size_t memsize = get_block_memsize(block);
 
-   if (block->block) {
+   if (block->block)
+   {
+#ifdef DYNAREC
       if (r4300emu == CORE_DYNAREC)
          free_exec(block->block, memsize);
       else
+#endif
          free(block->block);
       block->block = NULL;
    }
@@ -2346,6 +2361,7 @@ void recompile_block(const uint32_t *source, struct precomp_block *block, uint32
    //for (i=0; i<16; i++) block->md5[i] = 0;
    block->adler32 = 0;
 
+#ifdef DYNAREC
    if (r4300emu == CORE_DYNAREC)
    {
       code_length = block->code_length;
@@ -2354,6 +2370,7 @@ void recompile_block(const uint32_t *source, struct precomp_block *block, uint32
       init_assembler(block->jumps_table, block->jumps_number, block->riprel_table, block->riprel_number);
       init_cache(block->block + (func & 0xFFF) / 4);
    }
+#endif
 
    for (i = (func & 0xFFF) / 4; finished != 2; i++)
    {
@@ -2374,7 +2391,10 @@ void recompile_block(const uint32_t *source, struct precomp_block *block, uint32
       dst->local_addr = code_length;
       recomp_func = NULL;
       recomp_ops[((src >> 26) & 0x3F)]();
-      if (r4300emu == CORE_DYNAREC) recomp_func();
+#ifdef DYNAREC
+      if (r4300emu == CORE_DYNAREC)
+         recomp_func();
+#endif
       dst = block->block + i;
 
       /*if ((dst+1)->ops != NOTCOMPILED && !delay_slot_compiled &&
@@ -2410,7 +2430,10 @@ void recompile_block(const uint32_t *source, struct precomp_block *block, uint32
       dst->reg_cache_infos.need_map = 0;
       dst->local_addr = code_length;
       RFIN_BLOCK();
-      if (r4300emu == CORE_DYNAREC) recomp_func();
+#ifdef DYNAREC
+      if (r4300emu == CORE_DYNAREC)
+         recomp_func();
+#endif
       i++;
       if (i < length-1+(length>>2)) // useful when last opcode is a jump
       {
@@ -2419,11 +2442,16 @@ void recompile_block(const uint32_t *source, struct precomp_block *block, uint32
          dst->reg_cache_infos.need_map = 0;
          dst->local_addr = code_length;
          RFIN_BLOCK();
-         if (r4300emu == CORE_DYNAREC) recomp_func();
+#ifdef DYNAREC
+         if (r4300emu == CORE_DYNAREC)
+            recomp_func();
+#endif
          i++;
       }
    }
-   else if (r4300emu == CORE_DYNAREC) genlink_subblock();
+#ifdef DYNAREC
+   else if (r4300emu == CORE_DYNAREC)
+      genlink_subblock();
 
    if (r4300emu == CORE_DYNAREC)
    {
@@ -2433,6 +2461,8 @@ void recompile_block(const uint32_t *source, struct precomp_block *block, uint32
       block->max_code_length = max_code_length;
       free_assembler(&block->jumps_table, &block->jumps_number, &block->riprel_table, &block->riprel_number);
    }
+#endif
+
 #ifdef CORE_DBG
    DebugMessage(M64MSG_INFO, "block recompiled (%" PRIX32 "-%" PRIX32 ")", func, block->start+i*4);
 #endif
@@ -2527,12 +2557,18 @@ void recompile_opcode(void)
    {
       recomp_func = NULL;
       recomp_ops[((src >> 26) & 0x3F)]();
-      if (r4300emu == CORE_DYNAREC) recomp_func();
+#ifdef DYNAREC
+      if (r4300emu == CORE_DYNAREC)
+         recomp_func();
+#endif
    }
    else
    {
       RNOP();
-      if (r4300emu == CORE_DYNAREC) recomp_func();
+#ifdef DYNAREC
+      if (r4300emu == CORE_DYNAREC)
+         recomp_func();
+#endif
    }
    delay_slot_compiled = 2;
 }

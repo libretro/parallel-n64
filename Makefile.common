@@ -151,7 +151,7 @@ endif
 
 ### DYNAREC ###
 ifdef WITH_DYNAREC
-
+	DYNAFLAGS += -DDYNAREC
 	ifeq ($(WITH_DYNAREC), arm)
 		DYNAFLAGS += -DNEW_DYNAREC=3
 	endif
@@ -182,7 +182,6 @@ endif
 endif
 
 ifeq ($(WITH_DYNAREC), arm)
-		DYNAFLAGS += -DDYNAREC
 		SOURCES_C += $(CORE_DIR)/src/r4300/new_dynarec/new_dynarec.c \
 						 $(CORE_DIR)/src/r4300/new_dynarec/arm/arm_cpu_features.c
 
@@ -192,7 +191,6 @@ endif
 
 ifeq ($(WITH_DYNAREC), $(filter $(WITH_DYNAREC), i386 i686 x86 x86_64 x64))
 		DYNAFLAGS += -DHAVE_DYNAREC_HACKTARUX
-		DYNAFLAGS += -DDYNAREC
 ifneq ($(NOSSE), 1)
 ifeq (,$(findstring msvc,$(platform)))
 		CPUFLAGS += -msse -msse2
