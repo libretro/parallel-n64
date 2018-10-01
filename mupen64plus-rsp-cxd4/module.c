@@ -431,47 +431,6 @@ NOINLINE char* my_strcat(char* destination, const char* source)
     return (destination);
 }
 
-NOINLINE int my_system(char* command)
-{
-    int ret_slot;
-#ifdef WIN32
-#if _MSC_VER >= 1400 && WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_APP)
-    return (ret_slot);
-#else
-    static STARTUPINFOA info;
-    static PROCESS_INFORMATION info_process;
-
-    info.cb = sizeof(info);
-    info.dwFillAttribute =
-        FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_INTENSITY;
-    info.dwFlags = STARTF_USEFILLATTRIBUTE | STARTF_USECOUNTCHARS;
-
-    info.dwXCountChars = 80;
-    info.dwYCountChars = 20;
-
-    ret_slot = CreateProcessA(
-        NULL,
-        command,
-        NULL,
-        NULL,
-        FALSE,
-        0x00000000,
-        NULL,
-        NULL,
-        &info,
-        &info_process
-    );
-
-    WaitForSingleObject(info_process.hProcess, INFINITE);
-    CloseHandle(info_process.hProcess);
-    CloseHandle(info_process.hThread);
-#endif
-#else
-    ret_slot = system(command);
-#endif
-    return (ret_slot);
-}
-
 NOINLINE FILE* my_fopen(const char * filename, const char* mode)
 {
 #ifdef WIN32

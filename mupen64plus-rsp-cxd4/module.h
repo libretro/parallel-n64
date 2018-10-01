@@ -90,7 +90,6 @@ NOINLINE extern void my_free(p_void ptr);
 NOINLINE extern size_t my_strlen(const char* str);
 NOINLINE extern char* my_strcpy(char* destination, const char* source);
 NOINLINE extern char* my_strcat(char* destination, const char* source);
-NOINLINE extern int my_system(char* command);
 NOINLINE extern FILE* my_fopen(const char * filename, const char* mode);
 NOINLINE extern int my_fclose(FILE* stream);
 NOINLINE extern size_t my_fread(
