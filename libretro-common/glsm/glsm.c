@@ -65,12 +65,6 @@ struct gl_cached_state
 
    struct
    {
-      GLenum pname;
-      GLint param;
-   } pixelstore_i;
-
-   struct
-   {
       GLuint r;
       GLuint g;
       GLuint b;
@@ -433,8 +427,6 @@ void rglPixelStorei(GLenum pname, GLint param)
    log_cb(RETRO_LOG_INFO, "glPixelStorei.\n");
 #endif
    glPixelStorei(pname, param);
-   gl_state.pixelstore_i.pname = pname;
-   gl_state.pixelstore_i.param = param;
 }
 
 /*
