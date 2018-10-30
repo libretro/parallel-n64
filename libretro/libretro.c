@@ -338,7 +338,7 @@ static void setup_variables(void)
 #endif
          },
       { "parallel-n64-screensize",
-         "Resolution (restart); 640x480|960x720|1280x960|1600x1200|1920x1440|2240x1680|320x240" },
+         "Resolution (restart); 640x480|960x720|1280x960|1440x1080|1600x1200|1920x1440|2240x1680|320x240" },
       { "parallel-n64-aspectratiohint",
          "Aspect ratio hint (reinit); normal|widescreen" },
       { "parallel-n64-filtering",
