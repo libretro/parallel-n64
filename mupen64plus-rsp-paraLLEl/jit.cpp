@@ -10,6 +10,7 @@
 #include <llvm/ADT/SmallString.h>
 #include <llvm/ExecutionEngine/ExecutionEngine.h>
 #include <llvm/ExecutionEngine/MCJIT.h>
+#include <llvm/ExecutionEngine/JITSymbol.h>
 #include <llvm/ExecutionEngine/ObjectCache.h>
 #include <llvm/ExecutionEngine/SectionMemoryManager.h>
 #include <llvm/ExecutionEngine/RuntimeDyld.h>
@@ -26,8 +27,6 @@
 #include <llvm/Support/raw_ostream.h>
 
 #include <stdio.h>
-
-#include <sys/mman.h>
 
 using namespace clang;
 using namespace std;
@@ -57,24 +56,25 @@ Block::~Block()
 {
 }
 
-struct ShaderJITResolver : public llvm::RuntimeDyld::SymbolResolver
+struct RSPResolver : public llvm::JITSymbolResolver
 {
-   ShaderJITResolver(const unordered_map<string, uint64_t> &symbol_table)
+public:
+   RSPResolver(const unordered_map<string, uint64_t> &symbol_table)
       : symbol_table(symbol_table)
    {}
 
-   llvm::RuntimeDyld::SymbolInfo findSymbol(const std::string &name) override
+   llvm::JITSymbol findSymbol(const std::string &name) override
    {
       auto itr = symbol_table.find(name);
       if (itr != end(symbol_table))
-         return llvm::RuntimeDyld::SymbolInfo(itr->second, llvm::JITSymbolFlags::None);
+         return llvm::JITSymbol(itr->second, llvm::JITSymbolFlags::None);
       else
-         return llvm::RuntimeDyld::SymbolInfo(nullptr);
+         return llvm::JITSymbol(nullptr);
    }
 
-   llvm::RuntimeDyld::SymbolInfo findSymbolInLogicalDylib(const std::string &name) override
+   llvm::JITSymbol findSymbolInLogicalDylib(const std::string &name) override
    {
-      return llvm::RuntimeDyld::SymbolInfo(nullptr);
+      return llvm::JITSymbol(nullptr);
    }
 
    const unordered_map<string, uint64_t> &symbol_table;
@@ -117,11 +117,16 @@ struct LLVMEngine
       invocation = CI.get();
 
       clang = llvm::make_unique<CompilerInstance>();
-      clang->setInvocation(CI.release());
+      clang->setInvocation(std::move(CI));
       clang->createDiagnostics();
 
       act = llvm::make_unique<EmitLLVMOnlyAction>();
    }
+
+template<typename T, typename... Args>
+std::unique_ptr<T> make_unique(Args&&... args) {
+    return std::unique_ptr<T>(new T(std::forward<Args>(args)...));
+}
 
    Func compile(const std::unordered_map<std::string, uint64_t> &symbol_table)
    {
@@ -136,12 +141,14 @@ struct LLVMEngine
 
       if (!EE)
       {
-         auto resolver = llvm::make_unique<ShaderJITResolver>(symbol_table);
+         auto resolver = make_unique<RSPResolver>(symbol_table);
          auto memory_manager = llvm::make_unique<llvm::SectionMemoryManager>();
-         EE = std::unique_ptr<llvm::ExecutionEngine>(llvm::EngineBuilder(std::move(module))
-               .setMCJITMemoryManager(move(memory_manager))
-               .setSymbolResolver(move(resolver))
-               .create());
+
+         llvm::EngineBuilder EB(std::move(module));
+         EB.setMCJITMemoryManager(std::move(memory_manager));
+         EB.setSymbolResolver(std::move(resolver));
+         EE = std::unique_ptr<llvm::ExecutionEngine>(EB.create());
+                
          EE->DisableLazyCompilation(true);
       }
       else
@@ -189,9 +196,10 @@ bool Block::Impl::compile(const std::string &source)
    static LLVMEngine llvm;
 
    StringRef code_data(source);
+   auto  &pp = llvm.invocation->getPreprocessorOpts();
    auto buffer = llvm::MemoryBuffer::getMemBufferCopy(code_data);
-   llvm.invocation->getPreprocessorOpts().clearRemappedFiles();
-   llvm.invocation->getPreprocessorOpts().addRemappedFile("__block.c", buffer.release());
+    pp.clearRemappedFiles();
+    pp.addRemappedFile("__block.c", buffer.release());
 
    block = llvm.compile(symbol_table);
    return block != nullptr;
