@@ -123,13 +123,8 @@ struct LLVMEngine
       clang->setInvocation(std::move(CI));
       clang->createDiagnostics();
  
-      act = make_unique<EmitLLVMOnlyAction>();
+      act = llvm::make_unique<EmitLLVMOnlyAction>();
    }
-
-template<typename T, typename... Args>
-std::unique_ptr<T> make_unique(Args&&... args) {
-    return std::unique_ptr<T>(new T(std::forward<Args>(args)...));
-}
 
    Func compile(const std::unordered_map<std::string, uint64_t> &symbol_table)
    {
@@ -144,7 +139,7 @@ std::unique_ptr<T> make_unique(Args&&... args) {
 
       if (!EE)
       {
-         auto resolver = make_unique<RSPResolver>(symbol_table);
+         auto resolver = llvm::make_unique<RSPResolver>(symbol_table);
          auto memory_manager = llvm::make_unique<llvm::SectionMemoryManager>();
 
          llvm::EngineBuilder EB(std::move(module));
