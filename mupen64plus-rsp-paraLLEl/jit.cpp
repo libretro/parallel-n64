@@ -1,5 +1,7 @@
 #include "jit.hpp"
 
+
+
 #include <clang/CodeGen/CodeGenAction.h>
 #include <clang/Driver/Compilation.h>
 #include <clang/Driver/Driver.h>
@@ -7,6 +9,7 @@
 #include <clang/Frontend/CompilerInstance.h>
 #include <clang/Frontend/CompilerInvocation.h>
 #include <clang/Frontend/TextDiagnosticPrinter.h>
+#include <clang/Lex/PreprocessorOptions.h>
 #include <llvm/ADT/SmallString.h>
 #include <llvm/ExecutionEngine/ExecutionEngine.h>
 #include <llvm/ExecutionEngine/MCJIT.h>
@@ -27,9 +30,9 @@
 #include <llvm/Support/raw_ostream.h>
 
 #include <stdio.h>
-
 using namespace clang;
 using namespace std;
+
 
 namespace JIT
 {
@@ -119,8 +122,8 @@ struct LLVMEngine
       clang = llvm::make_unique<CompilerInstance>();
       clang->setInvocation(std::move(CI));
       clang->createDiagnostics();
-
-      act = llvm::make_unique<EmitLLVMOnlyAction>();
+ 
+      act = make_unique<EmitLLVMOnlyAction>();
    }
 
 template<typename T, typename... Args>
@@ -174,7 +177,7 @@ std::unique_ptr<T> make_unique(Args&&... args) {
 
    std::unique_ptr<CompilerInvocation> CI;
    std::unique_ptr<CompilerInstance> clang;
-   std::unique_ptr<EmitLLVMOnlyAction> act;
+   std::unique_ptr<CodeGenAction> act;
    std::unique_ptr<llvm::ExecutionEngine> EE;
    CompilerInvocation *invocation = nullptr;
 };
@@ -196,10 +199,9 @@ bool Block::Impl::compile(const std::string &source)
    static LLVMEngine llvm;
 
    StringRef code_data(source);
-   auto  &pp = llvm.invocation->getPreprocessorOpts();
    auto buffer = llvm::MemoryBuffer::getMemBufferCopy(code_data);
-    pp.clearRemappedFiles();
-    pp.addRemappedFile("__block.c", buffer.release());
+    llvm.invocation->getPreprocessorOpts().clearRemappedFiles();
+    llvm.invocation->getPreprocessorOpts().addRemappedFile("__block.c", buffer.release());
 
    block = llvm.compile(symbol_table);
    return block != nullptr;
