@@ -142,10 +142,10 @@ struct LLVMEngine
          auto resolver = llvm::make_unique<RSPResolver>(symbol_table);
          auto memory_manager = llvm::make_unique<llvm::SectionMemoryManager>();
 
-         llvm::EngineBuilder EB(std::move(module));
-         EB.setMCJITMemoryManager(std::move(memory_manager));
-         EB.setSymbolResolver(std::move(resolver));
-         EE = std::unique_ptr<llvm::ExecutionEngine>(EB.create());
+        EE = std::unique_ptr<llvm::ExecutionEngine>(llvm::EngineBuilder(std::move(module))
+         .setMCJITMemoryManager(std::move(memory_manager))
+         .setSymbolResolver(std::move(resolver))
+         .create());
                 
          EE->DisableLazyCompilation(true);
       }
