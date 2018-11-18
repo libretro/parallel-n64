@@ -1,5 +1,5 @@
-#ifndef JIT_HPP__
-#define JIT_HPP__
+#ifndef JIT_HPP
+#define JIT_HPP
 
 #include <memory>
 #include <unordered_map>
