@@ -53,7 +53,7 @@ enum vi_interp
     VI_INTERP_NUM
 };
 
-struct rdp_config
+struct n64video_config
 {
     struct {
         enum vi_mode mode;
@@ -65,26 +65,8 @@ struct rdp_config
     uint32_t num_workers;
 };
 
-struct rdp_frame_buffer
-{
-    uint32_t* pixels;
-    uint32_t width;
-    uint32_t height;
-    uint32_t pitch;
-};
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-void rdp_config_defaults(struct rdp_config* config);
-
-void rdp_init(struct rdp_config* config);
-void rdp_update_config(struct rdp_config* config);
-void rdp_update_vi(void);
-void rdp_update(void);
-void rdp_close(void);
-
-#ifdef __cplusplus
-}
-#endif
+void n64video_config_defaults(struct n64video_config* config);
+void n64video_init(struct n64video_config* config);
+void n64video_update_screen(void);
+void n64video_process_list(void);
+void n64video_close(void);

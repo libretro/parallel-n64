@@ -282,7 +282,7 @@ static INLINE void fbread2_32(struct rdp_state* rdp, uint32_t curpixel, uint32_t
     }
 }
 
-static void rdp_set_color_image(struct rdp_state* rdp, const uint32_t* args)
+void rdp_set_color_image(struct rdp_state* rdp, const uint32_t* args)
 {
     rdp->fb_format   = (args[0] >> 21) & 0x7;
     rdp->fb_size     = (args[0] >> 19) & 0x3;
@@ -295,7 +295,7 @@ static void rdp_set_color_image(struct rdp_state* rdp, const uint32_t* args)
     rdp->fbwrite_ptr = fbwrite_func[rdp->fb_size];
 }
 
-static void rdp_set_fill_color(struct rdp_state* rdp, const uint32_t* args)
+void rdp_set_fill_color(struct rdp_state* rdp, const uint32_t* args)
 {
     rdp->fill_color = args[1];
 }

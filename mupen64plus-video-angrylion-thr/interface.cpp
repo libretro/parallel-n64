@@ -7,7 +7,7 @@
 #include <boolean.h>
 #include "common.h"
 #include "screen.h"
-#include "rdp.h"
+#include "n64video.h"
 #include "m64p_plugin.h"
 
 #ifdef __cplusplus
@@ -43,7 +43,7 @@ extern uint32_t *blitter_buf_lock;
 extern unsigned int screen_width, screen_height;
 extern uint32_t screen_pitch;
 
-static struct rdp_config config;
+static struct n64video_config config;
 
 #include <ctype.h>
 
@@ -264,12 +264,12 @@ void angrylionProcessDList(void)
 
 void angrylionProcessRDPList(void)
 {
-   rdp_update();
+  n64video_process_list();
 }
 
 void angrylionRomClosed (void)
 {
-   rdp_close();
+  n64video_close();
 }
 
 int angrylionRomOpen(void)
@@ -292,13 +292,13 @@ int angrylionRomOpen(void)
 
    screen_pitch  = 640 << 2;
   
-	rdp_config_defaults(&config);
+	n64video_config_defaults(&config);
 	config.parallel = true;
 	config.num_workers = 0;
 	config.vi.mode = (vi_mode)0;
 	config.vi.widescreen = 0;
 	config.vi.hide_overscan = 0;
-    rdp_init(&config);
+   n64video_init(&config);
    return 1;
 }
 
@@ -310,7 +310,7 @@ void angrylionUpdateScreen(void)
         return;
     counter = 0;
 #endif
-    rdp_update_vi();
+    n64video_update_screen();
     retro_return(true);
 }
 

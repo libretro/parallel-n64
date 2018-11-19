@@ -2,7 +2,7 @@ static int vi_restore_table[0x400];
 
 static STRICTINLINE void restore_filter16(int* r, int* g, int* b, uint32_t fboffset, uint32_t num, uint32_t hres, uint32_t fetchbugstate)
 {
-   int i;
+    int i;
     uint32_t idx = (fboffset >> 1) + num;
 
     uint32_t toleftpix = idx - 1;
@@ -73,7 +73,7 @@ static STRICTINLINE void restore_filter16(int* r, int* g, int* b, uint32_t fboff
 
 static STRICTINLINE void restore_filter32(int* r, int* g, int* b, uint32_t fboffset, uint32_t num, uint32_t hres, uint32_t fetchbugstate)
 {
-   int i;
+    int i;
     uint32_t idx = (fboffset >> 2) + num;
 
     uint32_t toleftpix = idx - 1;
@@ -143,7 +143,7 @@ static STRICTINLINE void restore_filter32(int* r, int* g, int* b, uint32_t fboff
 
 void vi_restore_init()
 {
-   int i;
+    int i;
     for (i = 0; i < 0x400; i++)
     {
         if (((i >> 5) & 0x1f) < (i & 0x1f))

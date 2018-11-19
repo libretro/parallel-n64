@@ -1,11 +1,6 @@
-#ifndef CLAMP_AL
-#define CLAMP_AL(x, low, high)  (((x) > (high)) ? (high) : (((x) < (low)) ? (low) : (x)))
-#endif
-
-
 static STRICTINLINE int32_t normalize_dzpix(int32_t sum)
 {
-   int count;
+    int count;
     if (sum & 0xc000)
         return 0x8000;
     if (!(sum & 0xffff))
@@ -17,7 +12,7 @@ static STRICTINLINE int32_t normalize_dzpix(int32_t sum)
     for(count = 0x2000; count > 0; count >>= 1)
     {
         if (sum & count)
-            return(count << 1);
+            return (count << 1);
     }
     msg_error("normalize_dzpix: invalid codepath taken");
     return 0;
@@ -125,24 +120,18 @@ static void fetch_qword_copy(struct rdp_state* rdp, uint32_t* hidword, uint32_t*
     }
 }
 
-static STRICTINLINE void rgbaz_correct_clip(struct rdp_state* rdp, int offx, int offy, int r, int g, int b, int a, int* z, uint32_t curpixel_cvg)
+static STRICTINLINE void rgba_correct(struct rdp_state* rdp, int offx, int offy, int r, int g, int b, int a, uint32_t cvg)
 {
     int summand_r, summand_b, summand_g, summand_a;
-    int summand_z;
-    int sz = *z;
-    int zanded;
-    int32_t temp = 0;
 
 
 
-
-    if (curpixel_cvg == 8)
+    if (cvg == 8)
     {
         r >>= 2;
         g >>= 2;
         b >>= 2;
         a >>= 2;
-        sz = sz >> 3;
     }
     else
     {
@@ -150,13 +139,11 @@ static STRICTINLINE void rgbaz_correct_clip(struct rdp_state* rdp, int offx, int
         summand_g = offx * rdp->spans_cdg + offy * rdp->spans_dgdy;
         summand_b = offx * rdp->spans_cdb + offy * rdp->spans_dbdy;
         summand_a = offx * rdp->spans_cda + offy * rdp->spans_dady;
-        summand_z = offx * rdp->spans_cdz + offy * rdp->spans_dzdy;
 
         r = ((r << 2) + summand_r) >> 4;
         g = ((g << 2) + summand_g) >> 4;
         b = ((b << 2) + summand_b) >> 4;
         a = ((a << 2) + summand_a) >> 4;
-        sz = ((sz << 2) + summand_z) >> 5;
     }
 
 
@@ -164,12 +151,37 @@ static STRICTINLINE void rgbaz_correct_clip(struct rdp_state* rdp, int offx, int
     rdp->shade_color.g = special_9bit_clamptable[g & 0x1ff];
     rdp->shade_color.b = special_9bit_clamptable[b & 0x1ff];
     rdp->shade_color.a = special_9bit_clamptable[a & 0x1ff];
+}
+
+static STRICTINLINE void z_correct(struct rdp_state* rdp, int offx, int offy, int* z, uint32_t cvg)
+{
+    int summand_z;
+    int sz = *z;
+    int zanded;
 
 
 
-   temp   = ((sz + 0x20000) & 0x7ffff) - 0x20000;
-   zanded = CLAMP_AL(temp, 0, 0x3ffff);
-   *z = zanded;
+    if (cvg == 8)
+        sz = sz >> 3;
+    else
+    {
+        summand_z = offx * rdp->spans_cdz + offy * rdp->spans_dzdy;
+
+        sz = ((sz << 2) + summand_z) >> 5;
+    }
+
+
+
+    zanded = (sz & 0x60000) >> 17;
+
+
+    switch (zanded)
+    {
+        case 0: *z = sz & 0x3ffff;                      break;
+        case 1: *z = sz & 0x3ffff;                      break;
+        case 2: *z = 0x3ffff;                           break;
+        case 3: *z = 0;                                 break;
+    }
 }
 
 static void render_spans_1cycle_complete(struct rdp_state* rdp, int start, int end, int tilenum, int flip)
@@ -294,8 +306,6 @@ static void render_spans_1cycle_complete(struct rdp_state* rdp, int start, int e
         sigs.midspan = (lodlength == 7);
         sigs.onelessthanmid = (lodlength == 6);
 
-        sigs.startspan = 1;
-
         for (j = 0; j <= length; j++)
         {
             sr = r >> 14;
@@ -318,7 +328,7 @@ static void render_spans_1cycle_complete(struct rdp_state* rdp, int start, int e
 
 
 
-            if (!sigs.startspan)
+            if (j)
             {
                 rdp->texel0_color = rdp->texel1_color;
                 rdp->lod_frac = prelodfrac;
@@ -334,9 +344,6 @@ static void render_spans_1cycle_complete(struct rdp_state* rdp, int start, int e
 
 
                 texture_pipeline_cycle(rdp, &rdp->texel0_color, &rdp->texel0_color, sss, sst, tile1, 0);
-
-
-                sigs.startspan = 0;
             }
 
             sigs.nextspan = sigs.endspan;
@@ -351,7 +358,8 @@ static void render_spans_1cycle_complete(struct rdp_state* rdp, int start, int e
 
             texture_pipeline_cycle(rdp, &rdp->texel1_color, &rdp->texel1_color, news, newt, newtile, 0);
 
-            rgbaz_correct_clip(rdp, offx, offy, sr, sg, sb, sa, &sz, curpixel_cvg);
+            rgba_correct(rdp, offx, offy, sr, sg, sb, sa, curpixel_cvg);
+            z_correct(rdp, offx, offy, &sz, curpixel_cvg);
 
             if (rdp->other_modes.f.getditherlevel < 2)
                 get_dither_noise(rdp, x, i, &cdith, &adith);
@@ -511,6 +519,8 @@ static void render_spans_1cycle_notexel1(struct rdp_state* rdp, int start, int e
             sw = w >> 16;
             sz = (z >> 10) & 0x3fffff;
 
+
+
             sigs.endspan = (j == length);
             sigs.preendspan = (j == (length - 1));
 
@@ -522,7 +532,8 @@ static void render_spans_1cycle_notexel1(struct rdp_state* rdp, int start, int e
 
             texture_pipeline_cycle(rdp, &rdp->texel0_color, &rdp->texel0_color, sss, sst, tile1, 0);
 
-            rgbaz_correct_clip(rdp, offx, offy, sr, sg, sb, sa, &sz, curpixel_cvg);
+            rgba_correct(rdp, offx, offy, sr, sg, sb, sa, curpixel_cvg);
+            z_correct(rdp, offx, offy, &sz, curpixel_cvg);
 
             if (rdp->other_modes.f.getditherlevel < 2)
                 get_dither_noise(rdp, x, i, &cdith, &adith);
@@ -660,7 +671,8 @@ static void render_spans_1cycle_notex(struct rdp_state* rdp, int start, int end,
 
             lookup_cvmask_derivatives(rdp->cvgbuf[x], &offx, &offy, &curpixel_cvg, &curpixel_cvbit);
 
-            rgbaz_correct_clip(rdp, offx, offy, sr, sg, sb, sa, &sz, curpixel_cvg);
+            rgba_correct(rdp, offx, offy, sr, sg, sb, sa, curpixel_cvg);
+            z_correct(rdp, offx, offy, &sz, curpixel_cvg);
 
             if (rdp->other_modes.f.getditherlevel < 2)
                 get_dither_noise(rdp, x, i, &cdith, &adith);
@@ -696,12 +708,12 @@ static void render_spans_2cycle_complete(struct rdp_state* rdp, int start, int e
     int zb = rdp->zb_address >> 1;
     int zbcur;
     uint8_t offx, offy;
-    struct spansigs sigs;
     int32_t prelodfrac;
     struct color nexttexel1_color;
     uint32_t blend_en;
     uint32_t prewrap;
     uint32_t curpixel_cvg, curpixel_cvbit, curpixel_memcvg;
+    uint32_t nextpixel_cvg;
     int32_t acalpha;
 
 
@@ -709,10 +721,7 @@ static void render_spans_2cycle_complete(struct rdp_state* rdp, int start, int e
     int tile2 = (tilenum + 1) & 7;
     int tile1 = tilenum;
     int prim_tile = tilenum;
-
-    int newtile1 = tile1;
-    int newtile2 = tile2;
-    int news, newt;
+    int tile3 = tilenum;
 
     int i, j;
 
@@ -754,13 +763,15 @@ static void render_spans_2cycle_complete(struct rdp_state* rdp, int start, int e
     int dzpixenc = dz_compress(dzpix);
 
     int cdith = 7, adith = 0;
+
     int r, g, b, a, z, s, t, w;
     int sr, sg, sb, sa, sz, ss, st, sw;
     int xstart, xend, xendsc;
     int sss = 0, sst = 0;
     int curpixel = 0;
+    int wen;
 
-    int x, length, scdiff;
+    int x, length, scdiff, lodlength;
     uint32_t fir, fig, fib;
 
     for (i = start; i <= end; i++)
@@ -816,71 +827,85 @@ static void render_spans_2cycle_complete(struct rdp_state* rdp, int start, int e
             t += (dtinc * scdiff);
             w += (dwinc * scdiff);
         }
-        sigs.startspan = 1;
+
+        lodlength = length + scdiff;
 
         for (j = 0; j <= length; j++)
         {
-            sr = r >> 14;
-            sg = g >> 14;
-            sb = b >> 14;
-            sa = a >> 14;
-            ss = s >> 16;
-            st = t >> 16;
-            sw = w >> 16;
             sz = (z >> 10) & 0x3fffff;
 
-
-            lookup_cvmask_derivatives(rdp->cvgbuf[x], &offx, &offy, &curpixel_cvg, &curpixel_cvbit);
-
-            get_nexttexel0_2cycle(rdp, &news, &newt, s, t, w, dsinc, dtinc, dwinc);
-
-            if (!sigs.startspan)
+            if (!j)
             {
-                rdp->lod_frac = prelodfrac;
-                rdp->texel0_color = rdp->nexttexel_color;
-                rdp->texel1_color = nexttexel1_color;
-            }
-            else
-            {
+                sr = r >> 14;
+                sg = g >> 14;
+                sb = b >> 14;
+                sa = a >> 14;
+                ss = s >> 16;
+                st = t >> 16;
+                sw = w >> 16;
+
                 rdp->tcdiv_ptr(ss, st, sw, &sss, &sst);
 
-                tclod_2cycle_current(rdp, &sss, &sst, news, newt, s, t, w, dsinc, dtinc, dwinc, prim_tile, &tile1, &tile2);
-
-
+                tclod_2cycle(rdp, &sss, &sst, s, t, w, dsinc, dtinc, dwinc, prim_tile, &tile1, &tile2, &rdp->lod_frac);
 
                 texture_pipeline_cycle(rdp, &rdp->texel0_color, &rdp->texel0_color, sss, sst, tile1, 0);
                 texture_pipeline_cycle(rdp, &rdp->texel1_color, &rdp->texel0_color, sss, sst, tile2, 1);
 
-                sigs.startspan = 0;
+                lookup_cvmask_derivatives(rdp->cvgbuf[x], &offx, &offy, &curpixel_cvg, &curpixel_cvbit);
+
+                rgba_correct(rdp, offx, offy, sr, sg, sb, sa, curpixel_cvg);
+
+                if (rdp->other_modes.f.getditherlevel < 2)
+                    get_dither_noise(rdp, x, i, &cdith, &adith);
+
+                combiner_2cycle_cycle0(rdp, adith, curpixel_cvg, &acalpha);
             }
+
+
 
             s += dsinc;
             t += dtinc;
             w += dwinc;
 
-            tclod_2cycle_next(rdp, &news, &newt, s, t, w, dsinc, dtinc, dwinc, prim_tile, &newtile1, &newtile2, &prelodfrac);
+            ss = s >> 16;
+            st = t >> 16;
+            sw = w >> 16;
 
-            texture_pipeline_cycle(rdp, &rdp->nexttexel_color, &rdp->nexttexel_color, news, newt, newtile1, 0);
-            texture_pipeline_cycle(rdp, &nexttexel1_color, &rdp->nexttexel_color, news, newt, newtile2, 1);
+            rdp->tcdiv_ptr(ss, st, sw, &sss, &sst);
 
-            rgbaz_correct_clip(rdp, offx, offy, sr, sg, sb, sa, &sz, curpixel_cvg);
+            if (j < length || !rdp->span[i + 1].validline || lodlength < 3)
+            {
+                tclod_2cycle(rdp, &sss, &sst, s, t, w, dsinc, dtinc, dwinc, prim_tile, &tile1, &tile2, &prelodfrac);
 
-            if (rdp->other_modes.f.getditherlevel < 2)
-                get_dither_noise(rdp, x, i, &cdith, &adith);
+                texture_pipeline_cycle(rdp, &rdp->nexttexel_color, &rdp->nexttexel_color, sss, sst, tile1, 0);
+                texture_pipeline_cycle(rdp, &nexttexel1_color, &rdp->nexttexel_color, sss, sst, tile2, 1);
+            }
+            else
+            {
+                int sss2, sst2;
 
-            combiner_2cycle(rdp, adith, &curpixel_cvg, &acalpha);
+                ss = rdp->span[i + 1].s >> 16;
+                st = rdp->span[i + 1].t >> 16;
+                sw = rdp->span[i + 1].w >> 16;
+                rdp->tcdiv_ptr(ss, st, sw, &sss2, &sst2);
+
+                tclod_2cycle_next(rdp, &sss, &sst, &sss2, &sst2, s, t, w, dsinc, dtinc, dwinc, prim_tile, &tile1, &tile3, &prelodfrac, i);
+
+                texture_pipeline_cycle(rdp, &rdp->nexttexel_color, &rdp->nexttexel_color, sss, sst, tile1, 0);
+                texture_pipeline_cycle(rdp, &nexttexel1_color, &rdp->nexttexel_color, sss2, sst2, tile3, 0);
+            }
+
+            z_correct(rdp, offx, offy, &sz, curpixel_cvg);
+
+            combiner_2cycle_cycle1(rdp, adith, &curpixel_cvg);
 
             rdp->fbread2_ptr(rdp, curpixel, &curpixel_memcvg);
 
-            if (z_compare(rdp, zbcur, sz, dzpix, dzpixenc, &blend_en, &prewrap, &curpixel_cvg, curpixel_memcvg))
-            {
-                if (blender_2cycle(rdp, &fir, &fig, &fib, cdith, blend_en, prewrap, curpixel_cvg, curpixel_cvbit, acalpha))
-                {
-                    rdp->fbwrite_ptr(rdp, curpixel, fir, fig, fib, blend_en, curpixel_cvg, curpixel_memcvg);
-                    if (rdp->other_modes.z_update_en)
-                        z_store(zbcur, sz, dzpixenc);
-                }
-            }
+
+            wen = z_compare(rdp, zbcur, sz, dzpix, dzpixenc, &blend_en, &prewrap, &curpixel_cvg, curpixel_memcvg);
+
+            if (wen)
+                wen &= blender_2cycle_cycle0(rdp, curpixel_cvg, curpixel_cvbit);
             else
                 rdp->memory_color = rdp->pre_memory_color;
 
@@ -889,17 +914,60 @@ static void render_spans_2cycle_complete(struct rdp_state* rdp, int start, int e
 
 
 
-
-
-
+            x += xinc;
 
             r += drinc;
             g += dginc;
             b += dbinc;
             a += dainc;
+
+            sr = r >> 14;
+            sg = g >> 14;
+            sb = b >> 14;
+            sa = a >> 14;
+
+
+
+
+            lookup_cvmask_derivatives(j < length ? rdp->cvgbuf[x] : 0, &offx, &offy, &nextpixel_cvg, &curpixel_cvbit);
+
+            rgba_correct(rdp, offx, offy, sr, sg, sb, sa, nextpixel_cvg);
+
+            rdp->lod_frac = prelodfrac;
+            rdp->texel0_color = rdp->nexttexel_color;
+            rdp->texel1_color = nexttexel1_color;
+
+
+            combiner_2cycle_cycle0(rdp, adith, nextpixel_cvg, &acalpha);
+
+            if (wen)
+            {
+                wen &= alpha_compare(rdp, acalpha);
+
+
+
+
+                if (wen)
+                {
+                    blender_2cycle_cycle1(rdp, &fir, &fig, &fib, cdith, blend_en, prewrap);
+                    rdp->fbwrite_ptr(rdp, curpixel, fir, fig, fib, blend_en, curpixel_cvg, curpixel_memcvg);
+                    if (rdp->other_modes.z_update_en)
+                        z_store(zbcur, sz, dzpixenc);
+                }
+            }
+
+            if (rdp->other_modes.f.getditherlevel < 2)
+                get_dither_noise(rdp, x, i, &cdith, &adith);
+
+            curpixel_cvg = nextpixel_cvg;
+
+
+
+
+
+
             z += dzinc;
 
-            x += xinc;
             curpixel += xinc;
             zbcur += xinc;
         }
@@ -917,6 +985,7 @@ static void render_spans_2cycle_notexelnext(struct rdp_state* rdp, int start, in
     uint32_t blend_en;
     uint32_t prewrap;
     uint32_t curpixel_cvg, curpixel_cvbit, curpixel_memcvg;
+    uint32_t nextpixel_cvg;
     int32_t acalpha;
 
     int tile2 = (tilenum + 1) & 7;
@@ -963,11 +1032,13 @@ static void render_spans_2cycle_notexelnext(struct rdp_state* rdp, int start, in
     int dzpixenc = dz_compress(dzpix);
 
     int cdith = 7, adith = 0;
+
     int r, g, b, a, z, s, t, w;
     int sr, sg, sb, sa, sz, ss, st, sw;
     int xstart, xend, xendsc;
     int sss = 0, sst = 0;
     int curpixel = 0;
+    int wen;
 
     int x, length, scdiff;
     uint32_t fir, fig, fib;
@@ -1021,6 +1092,58 @@ static void render_spans_2cycle_notexelnext(struct rdp_state* rdp, int start, in
 
         for (j = 0; j <= length; j++)
         {
+            sz = (z >> 10) & 0x3fffff;
+
+            if (!j)
+            {
+                sr = r >> 14;
+                sg = g >> 14;
+                sb = b >> 14;
+                sa = a >> 14;
+                ss = s >> 16;
+                st = t >> 16;
+                sw = w >> 16;
+
+                rdp->tcdiv_ptr(ss, st, sw, &sss, &sst);
+
+                tclod_2cycle(rdp, &sss, &sst, s, t, w, dsinc, dtinc, dwinc, prim_tile, &tile1, &tile2, &rdp->lod_frac);
+
+                texture_pipeline_cycle(rdp, &rdp->texel0_color, &rdp->texel0_color, sss, sst, tile1, 0);
+                texture_pipeline_cycle(rdp, &rdp->texel1_color, &rdp->texel0_color, sss, sst, tile2, 1);
+
+                lookup_cvmask_derivatives(rdp->cvgbuf[x], &offx, &offy, &curpixel_cvg, &curpixel_cvbit);
+
+                rgba_correct(rdp, offx, offy, sr, sg, sb, sa, curpixel_cvg);
+
+                if (rdp->other_modes.f.getditherlevel < 2)
+                    get_dither_noise(rdp, x, i, &cdith, &adith);
+
+                combiner_2cycle_cycle0(rdp, adith, curpixel_cvg, &acalpha);
+            }
+
+            z_correct(rdp, offx, offy, &sz, curpixel_cvg);
+
+            combiner_2cycle_cycle1(rdp, adith, &curpixel_cvg);
+
+            rdp->fbread2_ptr(rdp, curpixel, &curpixel_memcvg);
+
+            wen = z_compare(rdp, zbcur, sz, dzpix, dzpixenc, &blend_en, &prewrap, &curpixel_cvg, curpixel_memcvg);
+
+            if (wen)
+                wen &= blender_2cycle_cycle0(rdp, curpixel_cvg, curpixel_cvbit);
+            else
+                rdp->memory_color = rdp->pre_memory_color;
+
+            x += xinc;
+
+            r += drinc;
+            g += dginc;
+            b += dbinc;
+            a += dainc;
+            s += dsinc;
+            t += dtinc;
+            w += dwinc;
+
             sr = r >> 14;
             sg = g >> 14;
             sb = b >> 14;
@@ -1028,51 +1151,40 @@ static void render_spans_2cycle_notexelnext(struct rdp_state* rdp, int start, in
             ss = s >> 16;
             st = t >> 16;
             sw = w >> 16;
-            sz = (z >> 10) & 0x3fffff;
 
-            lookup_cvmask_derivatives(rdp->cvgbuf[x], &offx, &offy, &curpixel_cvg, &curpixel_cvbit);
+            lookup_cvmask_derivatives(j < length ? rdp->cvgbuf[x] : 0, &offx, &offy, &nextpixel_cvg, &curpixel_cvbit);
+
+            rgba_correct(rdp, offx, offy, sr, sg, sb, sa, nextpixel_cvg);
 
             rdp->tcdiv_ptr(ss, st, sw, &sss, &sst);
 
-            tclod_2cycle_current_simple(rdp, &sss, &sst, s, t, w, dsinc, dtinc, dwinc, prim_tile, &tile1, &tile2);
+            tclod_2cycle(rdp, &sss, &sst, s, t, w, dsinc, dtinc, dwinc, prim_tile, &tile1, &tile2, &rdp->lod_frac);
 
             texture_pipeline_cycle(rdp, &rdp->texel0_color, &rdp->texel0_color, sss, sst, tile1, 0);
             texture_pipeline_cycle(rdp, &rdp->texel1_color, &rdp->texel0_color, sss, sst, tile2, 1);
 
-            rgbaz_correct_clip(rdp, offx, offy, sr, sg, sb, sa, &sz, curpixel_cvg);
+            combiner_2cycle_cycle0(rdp, adith, nextpixel_cvg, &acalpha);
 
-            if (rdp->other_modes.f.getditherlevel < 2)
-                get_dither_noise(rdp, x, i, &cdith, &adith);
-
-            combiner_2cycle(rdp, adith, &curpixel_cvg, &acalpha);
-
-            rdp->fbread2_ptr(rdp, curpixel, &curpixel_memcvg);
-
-
-
-
-            if (z_compare(rdp, zbcur, sz, dzpix, dzpixenc, &blend_en, &prewrap, &curpixel_cvg, curpixel_memcvg))
+            if (wen)
             {
-                if (blender_2cycle(rdp, &fir, &fig, &fib, cdith, blend_en, prewrap, curpixel_cvg, curpixel_cvbit, acalpha))
+                wen &= alpha_compare(rdp, acalpha);
+
+                if (wen)
                 {
+                    blender_2cycle_cycle1(rdp, &fir, &fig, &fib, cdith, blend_en, prewrap);
                     rdp->fbwrite_ptr(rdp, curpixel, fir, fig, fib, blend_en, curpixel_cvg, curpixel_memcvg);
                     if (rdp->other_modes.z_update_en)
                         z_store(zbcur, sz, dzpixenc);
                 }
             }
-            else
-                rdp->memory_color = rdp->pre_memory_color;
 
-            s += dsinc;
-            t += dtinc;
-            w += dwinc;
-            r += drinc;
-            g += dginc;
-            b += dbinc;
-            a += dainc;
+            if (rdp->other_modes.f.getditherlevel < 2)
+                get_dither_noise(rdp, x, i, &cdith, &adith);
+
+            curpixel_cvg = nextpixel_cvg;
+
             z += dzinc;
 
-            x += xinc;
             curpixel += xinc;
             zbcur += xinc;
         }
@@ -1089,6 +1201,7 @@ static void render_spans_2cycle_notexel1(struct rdp_state* rdp, int start, int e
     uint32_t blend_en;
     uint32_t prewrap;
     uint32_t curpixel_cvg, curpixel_cvbit, curpixel_memcvg;
+    uint32_t nextpixel_cvg;
     int32_t acalpha;
 
     int tile1 = tilenum;
@@ -1134,11 +1247,13 @@ static void render_spans_2cycle_notexel1(struct rdp_state* rdp, int start, int e
     int dzpixenc = dz_compress(dzpix);
 
     int cdith = 7, adith = 0;
+
     int r, g, b, a, z, s, t, w;
     int sr, sg, sb, sa, sz, ss, st, sw;
     int xstart, xend, xendsc;
     int sss = 0, sst = 0;
     int curpixel = 0;
+    int wen;
 
     int x, length, scdiff;
     uint32_t fir, fig, fib;
@@ -1192,6 +1307,57 @@ static void render_spans_2cycle_notexel1(struct rdp_state* rdp, int start, int e
 
         for (j = 0; j <= length; j++)
         {
+            sz = (z >> 10) & 0x3fffff;
+
+            if (!j)
+            {
+                sr = r >> 14;
+                sg = g >> 14;
+                sb = b >> 14;
+                sa = a >> 14;
+                ss = s >> 16;
+                st = t >> 16;
+                sw = w >> 16;
+
+                rdp->tcdiv_ptr(ss, st, sw, &sss, &sst);
+
+                tclod_2cycle_notexel1(rdp, &sss, &sst, s, t, w, dsinc, dtinc, dwinc, prim_tile, &tile1);
+
+                texture_pipeline_cycle(rdp, &rdp->texel0_color, &rdp->texel0_color, sss, sst, tile1, 0);
+
+                lookup_cvmask_derivatives(rdp->cvgbuf[x], &offx, &offy, &curpixel_cvg, &curpixel_cvbit);
+
+                rgba_correct(rdp, offx, offy, sr, sg, sb, sa, curpixel_cvg);
+
+                if (rdp->other_modes.f.getditherlevel < 2)
+                    get_dither_noise(rdp, x, i, &cdith, &adith);
+
+                combiner_2cycle_cycle0(rdp, adith, curpixel_cvg, &acalpha);
+            }
+
+            z_correct(rdp, offx, offy, &sz, curpixel_cvg);
+
+            combiner_2cycle_cycle1(rdp, adith, &curpixel_cvg);
+
+            rdp->fbread2_ptr(rdp, curpixel, &curpixel_memcvg);
+
+            wen = z_compare(rdp, zbcur, sz, dzpix, dzpixenc, &blend_en, &prewrap, &curpixel_cvg, curpixel_memcvg);
+
+            if (wen)
+                wen &= blender_2cycle_cycle0(rdp, curpixel_cvg, curpixel_cvbit);
+            else
+                rdp->memory_color = rdp->pre_memory_color;
+
+            x += xinc;
+
+            r += drinc;
+            g += dginc;
+            b += dbinc;
+            a += dainc;
+            s += dsinc;
+            t += dtinc;
+            w += dwinc;
+
             sr = r >> 14;
             sg = g >> 14;
             sb = b >> 14;
@@ -1199,49 +1365,39 @@ static void render_spans_2cycle_notexel1(struct rdp_state* rdp, int start, int e
             ss = s >> 16;
             st = t >> 16;
             sw = w >> 16;
-            sz = (z >> 10) & 0x3fffff;
 
-            lookup_cvmask_derivatives(rdp->cvgbuf[x], &offx, &offy, &curpixel_cvg, &curpixel_cvbit);
+            lookup_cvmask_derivatives(j < length ? rdp->cvgbuf[x] : 0, &offx, &offy, &nextpixel_cvg, &curpixel_cvbit);
+
+            rgba_correct(rdp, offx, offy, sr, sg, sb, sa, nextpixel_cvg);
 
             rdp->tcdiv_ptr(ss, st, sw, &sss, &sst);
 
-            tclod_2cycle_current_notexel1(rdp, &sss, &sst, s, t, w, dsinc, dtinc, dwinc, prim_tile, &tile1);
-
+            tclod_2cycle_notexel1(rdp, &sss, &sst, s, t, w, dsinc, dtinc, dwinc, prim_tile, &tile1);
 
             texture_pipeline_cycle(rdp, &rdp->texel0_color, &rdp->texel0_color, sss, sst, tile1, 0);
 
-            rgbaz_correct_clip(rdp, offx, offy, sr, sg, sb, sa, &sz, curpixel_cvg);
+            combiner_2cycle_cycle0(rdp, adith, nextpixel_cvg, &acalpha);
 
-            if (rdp->other_modes.f.getditherlevel < 2)
-                get_dither_noise(rdp, x, i, &cdith, &adith);
-
-            combiner_2cycle(rdp, adith, &curpixel_cvg, &acalpha);
-
-            rdp->fbread2_ptr(rdp, curpixel, &curpixel_memcvg);
-
-            if (z_compare(rdp, zbcur, sz, dzpix, dzpixenc, &blend_en, &prewrap, &curpixel_cvg, curpixel_memcvg))
+            if (wen)
             {
-                if (blender_2cycle(rdp, &fir, &fig, &fib, cdith, blend_en, prewrap, curpixel_cvg, curpixel_cvbit, acalpha))
+                wen &= alpha_compare(rdp, acalpha);
+
+                if (wen)
                 {
+                    blender_2cycle_cycle1(rdp, &fir, &fig, &fib, cdith, blend_en, prewrap);
                     rdp->fbwrite_ptr(rdp, curpixel, fir, fig, fib, blend_en, curpixel_cvg, curpixel_memcvg);
                     if (rdp->other_modes.z_update_en)
                         z_store(zbcur, sz, dzpixenc);
                 }
-
             }
-            else
-                rdp->memory_color = rdp->pre_memory_color;
 
-            s += dsinc;
-            t += dtinc;
-            w += dwinc;
-            r += drinc;
-            g += dginc;
-            b += dbinc;
-            a += dainc;
+            if (rdp->other_modes.f.getditherlevel < 2)
+                get_dither_noise(rdp, x, i, &cdith, &adith);
+
+            curpixel_cvg = nextpixel_cvg;
+
             z += dzinc;
 
-            x += xinc;
             curpixel += xinc;
             zbcur += xinc;
         }
@@ -1255,11 +1411,13 @@ static void render_spans_2cycle_notex(struct rdp_state* rdp, int start, int end,
     int zb = rdp->zb_address >> 1;
     int zbcur;
     uint8_t offx, offy;
-    int i, j;
     uint32_t blend_en;
     uint32_t prewrap;
     uint32_t curpixel_cvg, curpixel_cvbit, curpixel_memcvg;
+    uint32_t nextpixel_cvg;
     int32_t acalpha;
+
+    int i, j;
 
     int drinc, dginc, dbinc, dainc, dzinc;
     int xinc;
@@ -1293,10 +1451,12 @@ static void render_spans_2cycle_notex(struct rdp_state* rdp, int start, int end,
     int dzpixenc = dz_compress(dzpix);
 
     int cdith = 7, adith = 0;
+
     int r, g, b, a, z;
     int sr, sg, sb, sa, sz;
     int xstart, xend, xendsc;
     int curpixel = 0;
+    int wen;
 
     int x, length, scdiff;
     uint32_t fir, fig, fib;
@@ -1344,48 +1504,83 @@ static void render_spans_2cycle_notex(struct rdp_state* rdp, int start, int end,
 
         for (j = 0; j <= length; j++)
         {
-            sr = r >> 14;
-            sg = g >> 14;
-            sb = b >> 14;
-            sa = a >> 14;
             sz = (z >> 10) & 0x3fffff;
 
-            lookup_cvmask_derivatives(rdp->cvgbuf[x], &offx, &offy, &curpixel_cvg, &curpixel_cvbit);
+            if (!j)
+            {
+                sr = r >> 14;
+                sg = g >> 14;
+                sb = b >> 14;
+                sa = a >> 14;
 
-            rgbaz_correct_clip(rdp, offx, offy, sr, sg, sb, sa, &sz, curpixel_cvg);
+                lookup_cvmask_derivatives(rdp->cvgbuf[x], &offx, &offy, &curpixel_cvg, &curpixel_cvbit);
 
-            if (rdp->other_modes.f.getditherlevel < 2)
-                get_dither_noise(rdp, x, i, &cdith, &adith);
+                rgba_correct(rdp, offx, offy, sr, sg, sb, sa, curpixel_cvg);
 
-            combiner_2cycle(rdp, adith, &curpixel_cvg, &acalpha);
+                if (rdp->other_modes.f.getditherlevel < 2)
+                    get_dither_noise(rdp, x, i, &cdith, &adith);
+
+                combiner_2cycle_cycle0(rdp, adith, curpixel_cvg, &acalpha);
+            }
+
+            z_correct(rdp, offx, offy, &sz, curpixel_cvg);
+
+            combiner_2cycle_cycle1(rdp, adith, &curpixel_cvg);
 
             rdp->fbread2_ptr(rdp, curpixel, &curpixel_memcvg);
 
-            if (z_compare(rdp, zbcur, sz, dzpix, dzpixenc, &blend_en, &prewrap, &curpixel_cvg, curpixel_memcvg))
-            {
-                if (blender_2cycle(rdp, &fir, &fig, &fib, cdith, blend_en, prewrap, curpixel_cvg, curpixel_cvbit, acalpha))
-                {
-                    rdp->fbwrite_ptr(rdp, curpixel, fir, fig, fib, blend_en, curpixel_cvg, curpixel_memcvg);
-                    if (rdp->other_modes.z_update_en)
-                        z_store(zbcur, sz, dzpixenc);
-                }
-            }
+            wen = z_compare(rdp, zbcur, sz, dzpix, dzpixenc, &blend_en, &prewrap, &curpixel_cvg, curpixel_memcvg);
+
+            if (wen)
+                wen &= blender_2cycle_cycle0(rdp, curpixel_cvg, curpixel_cvbit);
             else
                 rdp->memory_color = rdp->pre_memory_color;
+
+            x += xinc;
 
             r += drinc;
             g += dginc;
             b += dbinc;
             a += dainc;
+
+            sr = r >> 14;
+            sg = g >> 14;
+            sb = b >> 14;
+            sa = a >> 14;
+
+            lookup_cvmask_derivatives(j < length ? rdp->cvgbuf[x] : 0, &offx, &offy, &nextpixel_cvg, &curpixel_cvbit);
+
+            rgba_correct(rdp, offx, offy, sr, sg, sb, sa, nextpixel_cvg);
+
+            combiner_2cycle_cycle0(rdp, adith, nextpixel_cvg, &acalpha);
+
+            if (wen)
+            {
+                wen &= alpha_compare(rdp, acalpha);
+
+                if (wen)
+                {
+                    blender_2cycle_cycle1(rdp, &fir, &fig, &fib, cdith, blend_en, prewrap);
+                    rdp->fbwrite_ptr(rdp, curpixel, fir, fig, fib, blend_en, curpixel_cvg, curpixel_memcvg);
+                    if (rdp->other_modes.z_update_en)
+                        z_store(zbcur, sz, dzpixenc);
+                }
+            }
+
+            if (rdp->other_modes.f.getditherlevel < 2)
+                get_dither_noise(rdp, x, i, &cdith, &adith);
+
+            curpixel_cvg = nextpixel_cvg;
+
             z += dzinc;
 
-            x += xinc;
             curpixel += xinc;
             zbcur += xinc;
         }
         }
     }
 }
+
 
 static void render_spans_fill(struct rdp_state* rdp, int start, int end, int flip)
 {
@@ -1424,7 +1619,7 @@ static void render_spans_fill(struct rdp_state* rdp, int start, int end, int fli
                 if (!onetimewarnings.fillmbitcrashes)
                     msg_warning("render_spans_fill: image_read_en %x z_update_en %x z_compare_en %x. RDP crashed",
                     rdp->other_modes.image_read_en, rdp->other_modes.z_update_en, rdp->other_modes.z_compare_en);
-                onetimewarnings.fillmbitcrashes = 1;
+                onetimewarnings.fillmbitcrashes = true;
                 rdp_pipeline_crashed = 1;
                 return;
             }
@@ -1576,7 +1771,7 @@ static void render_spans_copy(struct rdp_state* rdp, int start, int end, int til
             else if (rdp->fb_size == PIXEL_SIZE_8BIT)
             {
                 alphamask = 0;
-                threshold = (rdp->other_modes.dither_alpha_en) ? (irand(&rdp->seed_dp) & 0xff) : rdp->blend_color.a;
+                threshold = (rdp->other_modes.dither_alpha_en) ? (irand(&rdp->rand_dp) & 0xff) : rdp->blend_color.a;
                 if (rdp->other_modes.dither_alpha_en)
                 {
                     currthreshold = threshold;
@@ -1899,9 +2094,6 @@ static void edgewalker_for_prims(struct rdp_state* rdp, int32_t* ewdata)
     xfrac = ((xright >> 8) & 0xff);
 
 
-    uint32_t worker_id = rdp->worker_id;
-    uint32_t num_workers = config.parallel ? parallel_num_workers() : 1;
-
     if (flip)
     {
     for (k = ycur; k <= ylfar; k++)
@@ -1982,7 +2174,7 @@ static void edgewalker_for_prims(struct rdp_state* rdp, int32_t* ewdata)
             {
                 rdp->span[j].lx = maxxmx;
                 rdp->span[j].rx = minxhx;
-                rdp->span[j].validline  = !allinval && !allover && !allunder && (!rdp->scfield || (rdp->scfield && !(rdp->sckeepodd ^ (j & 1)))) && (!config.parallel || j % num_workers == worker_id);
+                rdp->span[j].validline  = !allinval && !allover && !allunder && (!rdp->scfield || (rdp->scfield && !(rdp->sckeepodd ^ (j & 1)))) && (!rdp->stride || j % rdp->stride == rdp->offset);
 
             }
 
@@ -2069,7 +2261,7 @@ static void edgewalker_for_prims(struct rdp_state* rdp, int32_t* ewdata)
             {
                 rdp->span[j].lx = minxmx;
                 rdp->span[j].rx = maxxhx;
-                rdp->span[j].validline  = !allinval && !allover && !allunder && (!rdp->scfield || (rdp->scfield && !(rdp->sckeepodd ^ (j & 1)))) && (!config.parallel || j % num_workers == worker_id);
+                rdp->span[j].validline  = !allinval && !allover && !allunder && (!rdp->scfield || (rdp->scfield && !(rdp->sckeepodd ^ (j & 1)))) && (!rdp->stride || j % rdp->stride == rdp->offset);
             }
 
         }
@@ -2121,7 +2313,7 @@ static void rasterizer_init(struct rdp_state* rdp)
     rdp->clip.yh = 0x2000;
 }
 
-static void rdp_tri_noshade(struct rdp_state* rdp, const uint32_t* args)
+void rdp_tri_noshade(struct rdp_state* rdp, const uint32_t* args)
 {
     int32_t ewdata[CMD_MAX_INTS];
     memcpy(&ewdata[0], args, 8 * sizeof(int32_t));
@@ -2129,7 +2321,7 @@ static void rdp_tri_noshade(struct rdp_state* rdp, const uint32_t* args)
     edgewalker_for_prims(rdp, ewdata);
 }
 
-static void rdp_tri_noshade_z(struct rdp_state* rdp, const uint32_t* args)
+void rdp_tri_noshade_z(struct rdp_state* rdp, const uint32_t* args)
 {
     int32_t ewdata[CMD_MAX_INTS];
     memcpy(&ewdata[0], args, 8 * sizeof(int32_t));
@@ -2138,7 +2330,7 @@ static void rdp_tri_noshade_z(struct rdp_state* rdp, const uint32_t* args)
     edgewalker_for_prims(rdp, ewdata);
 }
 
-static void rdp_tri_tex(struct rdp_state* rdp, const uint32_t* args)
+void rdp_tri_tex(struct rdp_state* rdp, const uint32_t* args)
 {
     int32_t ewdata[CMD_MAX_INTS];
     memcpy(&ewdata[0], args, 8 * sizeof(int32_t));
@@ -2148,7 +2340,7 @@ static void rdp_tri_tex(struct rdp_state* rdp, const uint32_t* args)
     edgewalker_for_prims(rdp, ewdata);
 }
 
-static void rdp_tri_tex_z(struct rdp_state* rdp, const uint32_t* args)
+void rdp_tri_tex_z(struct rdp_state* rdp, const uint32_t* args)
 {
     int32_t ewdata[CMD_MAX_INTS];
     memcpy(&ewdata[0], args, 8 * sizeof(int32_t));
@@ -2166,7 +2358,7 @@ static void rdp_tri_tex_z(struct rdp_state* rdp, const uint32_t* args)
 
 }
 
-static void rdp_tri_shade(struct rdp_state* rdp, const uint32_t* args)
+void rdp_tri_shade(struct rdp_state* rdp, const uint32_t* args)
 {
     int32_t ewdata[CMD_MAX_INTS];
     memcpy(&ewdata[0], args, 24 * sizeof(int32_t));
@@ -2174,7 +2366,7 @@ static void rdp_tri_shade(struct rdp_state* rdp, const uint32_t* args)
     edgewalker_for_prims(rdp, ewdata);
 }
 
-static void rdp_tri_shade_z(struct rdp_state* rdp, const uint32_t* args)
+void rdp_tri_shade_z(struct rdp_state* rdp, const uint32_t* args)
 {
     int32_t ewdata[CMD_MAX_INTS];
     memcpy(&ewdata[0], args, 24 * sizeof(int32_t));
@@ -2183,7 +2375,7 @@ static void rdp_tri_shade_z(struct rdp_state* rdp, const uint32_t* args)
     edgewalker_for_prims(rdp, ewdata);
 }
 
-static void rdp_tri_texshade(struct rdp_state* rdp, const uint32_t* args)
+void rdp_tri_texshade(struct rdp_state* rdp, const uint32_t* args)
 {
     int32_t ewdata[CMD_MAX_INTS];
     memcpy(&ewdata[0], args, 40 * sizeof(int32_t));
@@ -2191,7 +2383,7 @@ static void rdp_tri_texshade(struct rdp_state* rdp, const uint32_t* args)
     edgewalker_for_prims(rdp, ewdata);
 }
 
-static void rdp_tri_texshade_z(struct rdp_state* rdp, const uint32_t* args)
+void rdp_tri_texshade_z(struct rdp_state* rdp, const uint32_t* args)
 {
     int32_t ewdata[CMD_MAX_INTS];
     memcpy(&ewdata[0], args, CMD_MAX_SIZE);
@@ -2205,7 +2397,7 @@ static void rdp_tri_texshade_z(struct rdp_state* rdp, const uint32_t* args)
 
 }
 
-static void rdp_tex_rect(struct rdp_state* rdp, const uint32_t* args)
+void rdp_tex_rect(struct rdp_state* rdp, const uint32_t* args)
 {
     uint32_t tilenum    = (args[1] >> 24) & 0x7;
     uint32_t xl = (args[0] >> 12) & 0xfff;
@@ -2261,7 +2453,7 @@ static void rdp_tex_rect(struct rdp_state* rdp, const uint32_t* args)
 
 }
 
-static void rdp_tex_rect_flip(struct rdp_state* rdp, const uint32_t* args)
+void rdp_tex_rect_flip(struct rdp_state* rdp, const uint32_t* args)
 {
     uint32_t tilenum    = (args[1] >> 24) & 0x7;
     uint32_t xl = (args[0] >> 12) & 0xfff;
@@ -2315,7 +2507,7 @@ static void rdp_tex_rect_flip(struct rdp_state* rdp, const uint32_t* args)
     edgewalker_for_prims(rdp, ewdata);
 }
 
-static void rdp_fill_rect(struct rdp_state* rdp, const uint32_t* args)
+void rdp_fill_rect(struct rdp_state* rdp, const uint32_t* args)
 {
     uint32_t xl = (args[0] >> 12) & 0xfff;
     uint32_t yl = (args[0] >>  0) & 0xfff;
@@ -2342,7 +2534,7 @@ static void rdp_fill_rect(struct rdp_state* rdp, const uint32_t* args)
     edgewalker_for_prims(rdp, ewdata);
 }
 
-static void rdp_set_prim_depth(struct rdp_state* rdp, const uint32_t* args)
+void rdp_set_prim_depth(struct rdp_state* rdp, const uint32_t* args)
 {
     rdp->primitive_z = args[1] & (0x7fff << 16);
 
@@ -2350,7 +2542,7 @@ static void rdp_set_prim_depth(struct rdp_state* rdp, const uint32_t* args)
     rdp->primitive_delta_z = (uint16_t)(args[1]);
 }
 
-static void rdp_set_scissor(struct rdp_state* rdp, const uint32_t* args)
+void rdp_set_scissor(struct rdp_state* rdp, const uint32_t* args)
 {
     rdp->clip.xh = (args[0] >> 12) & 0xfff;
     rdp->clip.yh = (args[0] >>  0) & 0xfff;
