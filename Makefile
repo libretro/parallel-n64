@@ -133,6 +133,8 @@ ifneq (,$(findstring unix,$(platform)))
    # Raspberry Pi
    ifneq (,$(findstring rpi,$(platform)))
       GLES = 1
+      #Fix for undefined references within the DynaRec.
+      CPUFLAGS += -DARM_FIX
 
       ifneq (,$(findstring mesa,$(platform)))
          GL_LIB := -lGLESv2
@@ -355,7 +357,9 @@ else ifeq ($(platform), classic_armv7_a7)
 	HAVE_THR_AL=1
 	GLES = 1
 	GL_LIB := -lGLESv2
-    CPUFLAGS += -DNO_ASM -DARM -D__arm__ -DARM_ASM -D__NEON_OPT -DNOSSE
+	#Fix for undefined references within the DynaRec.
+	CPUFLAGS += -DARM_FIX
+	CPUFLAGS += -DNO_ASM -DARM -D__arm__ -DARM_ASM -D__NEON_OPT -DNOSSE
 	ifeq ($(shell echo `$(CC) -dumpversion` "< 4.9" | bc -l), 1)
 	  CFLAGS += -march=armv7-a
 	else
