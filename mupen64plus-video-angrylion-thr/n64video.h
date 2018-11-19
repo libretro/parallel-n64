@@ -5,6 +5,10 @@
 
 #define RDRAM_MAX_SIZE 0x800000
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 enum dp_register
 {
     DP_START,
@@ -70,3 +74,7 @@ void n64video_init(struct n64video_config* config);
 void n64video_update_screen(void);
 void n64video_process_list(void);
 void n64video_close(void);
+
+#ifdef __cplusplus
+}
+#endif
