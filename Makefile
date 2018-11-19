@@ -51,9 +51,7 @@ ifeq ($(platform),)
       platform = win
    endif
 else ifneq (,$(findstring armv,$(platform)))
-   ifeq (,$(findstring classic_,$(platform)))
-      override platform += unix
-   endif
+   override platform += unix
 else ifneq (,$(findstring rpi,$(platform)))
    override platform += unix
 else ifneq (,$(findstring odroid,$(platform)))
@@ -188,9 +186,42 @@ ifneq (,$(findstring unix,$(platform)))
          CPUFLAGS += -mcpu=cortex-a9 -mfpu=neon
       endif
    endif
+   
+   # Classic Platforms ####################
+   # Platform affix = classic_<ISA>_<µARCH>
+   # Help at https://modmyclassic.com/comp
 
+   # (armv7 a7, hard point, neon based) ### 
+   # NESC, SNESC, C64 mini 
+   ifneq (,$(findstring classic_armv7_a7, $(platform)))
+      GLES = 1
+      GL_LIB := -lGLESv2
+      HAVE_NEON = 1
+      WITH_DYNAREC=arm
+      ASFLAGS += -D__ARM_NEON__ -marm -mtune=cortex-a7 -mfpu=neon-vfpv4 -mfloat-abi=hard
+      CPUFLAGS += -DNO_ASM -DARM -D__arm__ -DARM_ASM -D__NEON_OPT -DNOSSE -DARM_FIX
+      CPUFLAGS += -Ofast \
+      -flto=4 -fwhole-program -fuse-linker-plugin \
+      -fdata-sections -ffunction-sections -Wl,--gc-sections \
+      -fno-stack-protector -fno-ident -fomit-frame-pointer \
+      -falign-functions=1 -falign-jumps=1 -falign-loops=1 \
+      -fno-unwind-tables -fno-asynchronous-unwind-tables -fno-unroll-loops \
+      -fmerge-all-constants -fno-math-errno \
+      -marm -mtune=cortex-a7 -mfpu=neon-vfpv4 -mfloat-abi=hard
+      LDFLAGS += -marm -mtune=cortex-a7 -mfpu=neon-vfpv4 -mfloat-abi=hard
+      ifeq ($(shell echo `$(CC) -dumpversion` "< 4.9" | bc -l), 1)
+        CPUFLAGS += -march=armv7-a
+      else
+        CPUFLAGS += -march=armv7ve
+        # If gcc is 5.0 or later
+        ifeq ($(shell echo `$(CC) -dumpversion` ">= 5" | bc -l), 1)
+          LDFLAGS += -static-libgcc -static-libstdc++
+        endif
+      endif
+   #######################################
+   
    # Generic ARM
-   ifneq (,$(findstring armv,$(platform)))
+   else ifneq (,$(findstring armv,$(platform)))
       CPUFLAGS += -DNO_ASM -DARM -D__arm__ -DARM_ASM -DNOSSE
       WITH_DYNAREC=arm
       ifneq (,$(findstring neon,$(platform)))
@@ -331,45 +362,6 @@ else ifeq ($(platform), qnx)
    CFLAGS += -D__QNX__
 
    PLATFORM_EXT := unix
-
-# Classic Platforms ####################
-# Platform affix = classic_<ISA>_<µARCH>
-# Help at https://modmyclassic.com/comp
-
-# (armv7 a7, hard point, neon based) ### 
-# NESC, SNESC, C64 mini 
-else ifeq ($(platform), classic_armv7_a7)
-	TARGET := $(TARGET_NAME)_libretro.so
-	fpic := -fPIC
-	LDFLAGS += -shared -Wl,--no-undefined
-	CFLAGS += -Ofast \
-	-flto=4 -fwhole-program -fuse-linker-plugin \
-	-fdata-sections -ffunction-sections -Wl,--gc-sections \
-	-fno-stack-protector -fno-ident -fomit-frame-pointer \
-	-falign-functions=1 -falign-jumps=1 -falign-loops=1 \
-	-fno-unwind-tables -fno-asynchronous-unwind-tables -fno-unroll-loops \
-	-fmerge-all-constants -fno-math-errno \
-	-marm -mtune=cortex-a7 -mfpu=neon-vfpv4 -mfloat-abi=hard
-	CXXFLAGS += $(CFLAGS)
-	HAVE_NEON = 1
-	ARCH = arm
-	WITH_DYNAREC = arm
-	HAVE_THR_AL=1
-	GLES = 1
-	GL_LIB := -lGLESv2
-	#Fix for undefined references within the DynaRec.
-	CPUFLAGS += -DARM_FIX
-	CPUFLAGS += -DNO_ASM -DARM -D__arm__ -DARM_ASM -D__NEON_OPT -DNOSSE
-	ifeq ($(shell echo `$(CC) -dumpversion` "< 4.9" | bc -l), 1)
-	  CFLAGS += -march=armv7-a
-	else
-	  CFLAGS += -march=armv7ve
-	  # If gcc is 5.0 or later
-	  ifeq ($(shell echo `$(CC) -dumpversion` ">= 5" | bc -l), 1)
-	    LDFLAGS += -static-libgcc -static-libstdc++
-	  endif
-	endif
-#######################################
 
 # emscripten
 else ifeq ($(platform), emscripten)
