@@ -197,7 +197,7 @@ ifneq (,$(findstring unix,$(platform)))
       HAVE_NEON = 1
       WITH_DYNAREC=arm
       ASFLAGS += -D__ARM_NEON__ -marm -mtune=cortex-a7 -mfpu=neon-vfpv4 -mfloat-abi=hard
-      CPUFLAGS += -DNO_ASM -DARM -D__arm__ -DARM_ASM -D__NEON_OPT -DNOSSE -DARM_FIX
+      CPUFLAGS += -DNO_ASM -DARM -D__arm__ -DARM_ASM -D__NEON_OPT -DNOSSE -DARM_FIX -DCLASSIC
       CPUFLAGS += -Ofast \
       -flto=4 -fwhole-program -fuse-linker-plugin \
       -fdata-sections -ffunction-sections -Wl,--gc-sections \
