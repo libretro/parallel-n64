@@ -305,9 +305,9 @@ static void setup_variables(void)
         "Analog Sensitivity (percent); 100|105|110|115|120|125|130|135|140|145|150|200|50|55|60|65|70|75|80|85|90|95"},
       {"parallel-n64-pak1",
 #ifdef CLASSIC
-        "Player 1 Pak; none|memory|rumble"},
+        "Player 1 Pak; memory|rumble|none"},
 #else
-        "Player 1 Pak; memory|rumble|none"},	
+        "Player 1 Pak; none|memory|rumble"},	
 #endif
       {"parallel-n64-pak2",
         "Player 2 Pak; none|memory|rumble"},
@@ -343,9 +343,9 @@ static void setup_variables(void)
          },
       { "parallel-n64-screensize",
 #ifdef CLASSIC
-         "Resolution (restart); 640x480|960x720|1280x960|1440x1080|1600x1200|1920x1440|2240x1680|2880x2160|5760x4320|320x240" },
+         "Resolution (restart); 320x240|640x480|960x720|1280x960|1440x1080|1600x1200|1920x1440|2240x1680|2880x2160|5760x4320" },
 #else
-         "Resolution (restart); 320x240|640x480|960x720|1280x960|1440x1080|1600x1200|1920x1440|2240x1680|2880x2160|5760x4320" },	
+         "Resolution (restart); 640x480|960x720|1280x960|1440x1080|1600x1200|1920x1440|2240x1680|2880x2160|5760x4320|320x240" },	
 #endif
       { "parallel-n64-aspectratiohint",
          "Aspect ratio hint (reinit); normal|widescreen" },
