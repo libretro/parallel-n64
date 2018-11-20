@@ -131,8 +131,6 @@ ifneq (,$(findstring unix,$(platform)))
    # Raspberry Pi
    ifneq (,$(findstring rpi,$(platform)))
       GLES = 1
-      #Fix for undefined references within the DynaRec.
-      CPUFLAGS += -DARM_FIX
 
       ifneq (,$(findstring mesa,$(platform)))
          GL_LIB := -lGLESv2
