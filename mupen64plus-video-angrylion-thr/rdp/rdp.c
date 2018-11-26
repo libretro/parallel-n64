@@ -1,51 +1,3 @@
-#include "rdp.h"
-#include "common.h"
-#include "plugin.h"
-#include "msg.h"
-#include "screen.h"
-#include "parallel_al.h"
-
-#include <memory.h>
-#include <string.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include <assert.h>
-
-#define MIN(a, b) (((a) < (b)) ? (a) : (b))
-#define MAX(a, b) (((a) > (b)) ? (a) : (b))
-
-#define SIGN16(x)   ((int16_t)(x))
-#define SIGN8(x)    ((int8_t)(x))
-
-#define SIGN(x, numb)   (((x) & ((1 << numb) - 1)) | -((x) & (1 << (numb - 1))))
-#define SIGNF(x, numb)  ((x) | -((x) & (1 << (numb - 1))))
-
-#define TRELATIVE(x, y)     ((x) - ((y) << 3))
-
-#define PIXELS_TO_BYTES(pix, siz) (((pix) << (siz)) >> 1)
-
-// RGBA5551 to RGBA8888 helper
-#define RGBA16_R(x) (((x) >> 8) & 0xf8)
-#define RGBA16_G(x) (((x) & 0x7c0) >> 3)
-#define RGBA16_B(x) (((x) & 0x3e) << 2)
-
-// RGBA8888 helper
-#define RGBA32_R(x) (((x) >> 24) & 0xff)
-#define RGBA32_G(x) (((x) >> 16) & 0xff)
-#define RGBA32_B(x) (((x) >> 8) & 0xff)
-#define RGBA32_A(x) ((x) & 0xff)
-
-// inlining
-#define INLINE inline
-
-#ifdef _MSC_VER
-#define STRICTINLINE __forceinline
-#elif defined(__GNUC__)
-#define STRICTINLINE __attribute__((always_inline))
-#else
-#define STRICTINLINE inline
-#endif
-
 // bit constants for DP_STATUS
 #define DP_STATUS_XBUS_DMA      0x001   // DMEM DMA mode is set
 #define DP_STATUS_FREEZE        0x002   // Freeze has been set
@@ -103,23 +55,9 @@ struct color
     int32_t r, g, b, a;
 };
 
-struct fbcolor
-{
-    uint8_t r, g, b;
-};
-
 struct rectangle
 {
     uint16_t xl, yl, xh, yh;
-};
-
-struct tex_rectangle
-{
-    int tilenum;
-    uint16_t xl, yl, xh, yh;
-    int16_t s, t;
-    int16_t dsdx, dtdy;
-    uint32_t flip;
 };
 
 struct other_modes
@@ -178,7 +116,6 @@ struct other_modes
 
 struct spansigs
 {
-    int startspan;
     int endspan;
     int preendspan;
     int nextspan;
@@ -242,7 +179,8 @@ struct combiner_inputs
 
 struct rdp_state
 {
-    uint32_t worker_id;
+    uint32_t stride;
+    uint32_t offset;
 
     int blshifta;
     int blshiftb;
@@ -305,8 +243,8 @@ struct rdp_state
     int32_t min_level;
 
     // irand
-    int32_t seed_dp;
-    int32_t seed_vi;
+    uint32_t rand_dp;
+    uint32_t rand_vi;
 
     // blender
     int32_t *blender1a_r[2];
@@ -317,6 +255,8 @@ struct rdp_state
     int32_t *blender2a_g[2];
     int32_t *blender2a_b[2];
     int32_t *blender2b_a[2];
+
+    int32_t blender_shade_alpha;
 
     struct color blend_color;
     struct color fog_color;
@@ -391,172 +331,238 @@ struct rdp_state
     int32_t pastrawdzmem;
 };
 
-
-static struct rdp_state* rdp_states;
-static struct rdp_config config;
-static struct rdp_config config_new;
-static struct plugin_api* plugin;
-
 static int32_t one_color = 0x100;
 static int32_t zero_color = 0x00;
 
-static bool init_lut;
-static bool config_update;
-
-static struct
+static const struct
 {
-    int copymstrangecrashes, fillmcrashes, fillmbitcrashes, syncfullcrash;
-} onetimewarnings;
-
-static int rdp_pipeline_crashed = 0;
-
-static STRICTINLINE int32_t clamp(int32_t value, int32_t min, int32_t max)
-{
-    if (value < min)
-        return min;
-    else if (value > max)
-        return max;
-    else
-        return value;
-}
-
-static STRICTINLINE int32_t irand(int32_t* seed)
-{
-    *seed *= 0x343fd;
-    *seed += 0x269ec3;
-    return ((*seed >> 16) & 0x7fff);
-}
+    // command handler function pointer
+    void (*handler)(struct rdp_state* rdp, const uint32_t*);
+    // command data length in bytes
+    uint32_t length;
+} rdp_commands[] = {
+    {rdp_noop,                8},
+    {rdp_invalid,             8},
+    {rdp_invalid,             8},
+    {rdp_invalid,             8},
+    {rdp_invalid,             8},
+    {rdp_invalid,             8},
+    {rdp_invalid,             8},
+    {rdp_invalid,             8},
+    {rdp_tri_noshade,        32},
+    {rdp_tri_noshade_z,      48},
+    {rdp_tri_tex,            96},
+    {rdp_tri_tex_z,         112},
+    {rdp_tri_shade,          96},
+    {rdp_tri_shade_z,       112},
+    {rdp_tri_texshade,      160},
+    {rdp_tri_texshade_z,    176},
+    {rdp_invalid,             8},
+    {rdp_invalid,             8},
+    {rdp_invalid,             8},
+    {rdp_invalid,             8},
+    {rdp_invalid,             8},
+    {rdp_invalid,             8},
+    {rdp_invalid,             8},
+    {rdp_invalid,             8},
+    {rdp_invalid,             8},
+    {rdp_invalid,             8},
+    {rdp_invalid,             8},
+    {rdp_invalid,             8},
+    {rdp_invalid,             8},
+    {rdp_invalid,             8},
+    {rdp_invalid,             8},
+    {rdp_invalid,             8},
+    {rdp_invalid,             8},
+    {rdp_invalid,             8},
+    {rdp_invalid,             8},
+    {rdp_invalid,             8},
+    {rdp_tex_rect,           16},
+    {rdp_tex_rect_flip,      16},
+    {rdp_sync_load,           8},
+    {rdp_sync_pipe,           8},
+    {rdp_sync_tile,           8},
+    {rdp_sync_full,           8},
+    {rdp_set_key_gb,          8},
+    {rdp_set_key_r,           8},
+    {rdp_set_convert,         8},
+    {rdp_set_scissor,         8},
+    {rdp_set_prim_depth,      8},
+    {rdp_set_other_modes,     8},
+    {rdp_load_tlut,           8},
+    {rdp_invalid,             8},
+    {rdp_set_tile_size,       8},
+    {rdp_load_block,          8},
+    {rdp_load_tile,           8},
+    {rdp_set_tile,            8},
+    {rdp_fill_rect,           8},
+    {rdp_set_fill_color,      8},
+    {rdp_set_fog_color,       8},
+    {rdp_set_blend_color,     8},
+    {rdp_set_prim_color,      8},
+    {rdp_set_env_color,       8},
+    {rdp_set_combine,         8},
+    {rdp_set_texture_image,   8},
+    {rdp_set_mask_image,      8},
+    {rdp_set_color_image,     8}
+};
 
 static void deduce_derivatives(struct rdp_state* rdp);
 
-#include "rdp/rdram.c"
-#include "rdp/cmd.c"
-#include "rdp/dither.c"
-#include "rdp/blender.c"
-#include "rdp/combiner.c"
-#include "rdp/coverage.c"
-#include "rdp/zbuffer.c"
-#include "rdp/fbuffer.c"
-#include "rdp/tex.c"
-#include "rdp/rasterizer.c"
-#include "rdp/vi.c"
+#include "rdram.c"
+#include "dither.c"
+#include "blender.c"
+#include "combiner.c"
+#include "coverage.c"
+#include "zbuffer.c"
+#include "fbuffer.c"
+#include "tmem.c"
+#include "tcoord.c"
+#include "tex.c"
+#include "rasterizer.c"
 
-void rdp_config_defaults(struct rdp_config* config)
+static void deduce_derivatives(struct rdp_state* rdp)
 {
-    config->parallel = true;
-    config->num_workers = 0;
-    config->vi.interp = VI_INTERP_NEAREST;
-    config->vi.mode = VI_MODE_NORMAL;
-    config->vi.widescreen = false;
-    config->vi.hide_overscan = false;
+    int special_bsel0, special_bsel1;
+
+
+    rdp->other_modes.f.partialreject_1cycle = (rdp->blender2b_a[0] == &rdp->inv_pixel_color.a && rdp->blender1b_a[0] == &rdp->pixel_color.a);
+    rdp->other_modes.f.partialreject_2cycle = (rdp->blender2b_a[1] == &rdp->inv_pixel_color.a && rdp->blender1b_a[1] == &rdp->pixel_color.a);
+
+
+    special_bsel0 = (rdp->blender2b_a[0] == &rdp->memory_color.a);
+    special_bsel1 = (rdp->blender2b_a[1] == &rdp->memory_color.a);
+
+
+    rdp->other_modes.f.realblendershiftersneeded = (special_bsel0 && rdp->other_modes.cycle_type == CYCLE_TYPE_1) || (special_bsel1 && rdp->other_modes.cycle_type == CYCLE_TYPE_2);
+    rdp->other_modes.f.interpixelblendershiftersneeded = (special_bsel0 && rdp->other_modes.cycle_type == CYCLE_TYPE_2);
+
+    rdp->other_modes.f.rgb_alpha_dither = (rdp->other_modes.rgb_dither_sel << 2) | rdp->other_modes.alpha_dither_sel;
+
+    rdp->tcdiv_ptr = tcdiv_func[rdp->other_modes.persp_tex_en];
+
+
+    int texel1_used_in_cc1 = 0, texel0_used_in_cc1 = 0, texel0_used_in_cc0 = 0, texel1_used_in_cc0 = 0;
+    int texels_in_cc0 = 0, texels_in_cc1 = 0;
+    int lod_frac_used_in_cc1 = 0, lod_frac_used_in_cc0 = 0;
+    int texels_or_lf_used_in_ac0 = 0, texel0_used_in_ac0 = 0, texel1_used_in_ac0 = 0;
+
+    if ((rdp->combiner_rgbmul_r[1] == &rdp->lod_frac) || (rdp->combiner_alphamul[1] == &rdp->lod_frac))
+        lod_frac_used_in_cc1 = 1;
+    if ((rdp->combiner_rgbmul_r[0] == &rdp->lod_frac) || (rdp->combiner_alphamul[0] == &rdp->lod_frac))
+        lod_frac_used_in_cc0 = 1;
+
+    if (rdp->combiner_rgbmul_r[1] == &rdp->texel1_color.r || rdp->combiner_rgbsub_a_r[1] == &rdp->texel1_color.r || rdp->combiner_rgbsub_b_r[1] == &rdp->texel1_color.r || rdp->combiner_rgbadd_r[1] == &rdp->texel1_color.r || \
+        rdp->combiner_alphamul[1] == &rdp->texel1_color.a || rdp->combiner_alphasub_a[1] == &rdp->texel1_color.a || rdp->combiner_alphasub_b[1] == &rdp->texel1_color.a || rdp->combiner_alphaadd[1] == &rdp->texel1_color.a || \
+        rdp->combiner_rgbmul_r[1] == &rdp->texel1_color.a)
+        texel1_used_in_cc1 = 1;
+    if (rdp->combiner_rgbmul_r[1] == &rdp->texel0_color.r || rdp->combiner_rgbsub_a_r[1] == &rdp->texel0_color.r || rdp->combiner_rgbsub_b_r[1] == &rdp->texel0_color.r || rdp->combiner_rgbadd_r[1] == &rdp->texel0_color.r || \
+        rdp->combiner_alphamul[1] == &rdp->texel0_color.a || rdp->combiner_alphasub_a[1] == &rdp->texel0_color.a || rdp->combiner_alphasub_b[1] == &rdp->texel0_color.a || rdp->combiner_alphaadd[1] == &rdp->texel0_color.a || \
+        rdp->combiner_rgbmul_r[1] == &rdp->texel0_color.a)
+        texel0_used_in_cc1 = 1;
+    if (rdp->combiner_alphamul[0] == &rdp->texel1_color.a || rdp->combiner_alphasub_a[0] == &rdp->texel1_color.a || rdp->combiner_alphasub_b[0] == &rdp->texel1_color.a || rdp->combiner_alphaadd[0] == &rdp->texel1_color.a)
+        texel1_used_in_ac0 = 1;
+    if (rdp->combiner_alphamul[0] == &rdp->texel0_color.a || rdp->combiner_alphasub_a[0] == &rdp->texel0_color.a || rdp->combiner_alphasub_b[0] == &rdp->texel0_color.a || rdp->combiner_alphaadd[0] == &rdp->texel0_color.a)
+        texel0_used_in_ac0 = 1;
+    if (rdp->combiner_rgbmul_r[0] == &rdp->texel1_color.r || rdp->combiner_rgbsub_a_r[0] == &rdp->texel1_color.r || rdp->combiner_rgbsub_b_r[0] == &rdp->texel1_color.r || rdp->combiner_rgbadd_r[0] == &rdp->texel1_color.r || \
+        texel1_used_in_ac0 || rdp->combiner_rgbmul_r[0] == &rdp->texel1_color.a)
+        texel1_used_in_cc0 = 1;
+    if (rdp->combiner_rgbmul_r[0] == &rdp->texel0_color.r || rdp->combiner_rgbsub_a_r[0] == &rdp->texel0_color.r || rdp->combiner_rgbsub_b_r[0] == &rdp->texel0_color.r || rdp->combiner_rgbadd_r[0] == &rdp->texel0_color.r || \
+        texel0_used_in_ac0 || rdp->combiner_rgbmul_r[0] == &rdp->texel0_color.a)
+        texel0_used_in_cc0 = 1;
+    texels_or_lf_used_in_ac0 = texel0_used_in_ac0 || texel1_used_in_ac0 || (rdp->combiner_alphamul[0] == &rdp->lod_frac);
+    texels_in_cc0 = texel0_used_in_cc0 || texel1_used_in_cc0;
+    texels_in_cc1 = texel0_used_in_cc1 || texel1_used_in_cc1;
+
+
+    if (texel1_used_in_cc1)
+        rdp->other_modes.f.textureuselevel0 = 0;
+    else if (texel0_used_in_cc1 || lod_frac_used_in_cc1)
+        rdp->other_modes.f.textureuselevel0 = 1;
+    else
+        rdp->other_modes.f.textureuselevel0 = 2;
+
+    if (texel1_used_in_cc1 || (rdp->other_modes.alpha_compare_en && texels_or_lf_used_in_ac0))
+        rdp->other_modes.f.textureuselevel1 = 0;
+    else if (texel1_used_in_cc0 || texel0_used_in_cc1)
+        rdp->other_modes.f.textureuselevel1 = 1;
+    else if (texel0_used_in_cc0 || lod_frac_used_in_cc0 || lod_frac_used_in_cc1)
+        rdp->other_modes.f.textureuselevel1 = 2;
+    else
+        rdp->other_modes.f.textureuselevel1 = 3;
+
+
+    int lodfracused = 0;
+
+    if ((rdp->other_modes.cycle_type == CYCLE_TYPE_2 && (lod_frac_used_in_cc0 || lod_frac_used_in_cc1)) || \
+        (rdp->other_modes.cycle_type == CYCLE_TYPE_1 && lod_frac_used_in_cc1))
+        lodfracused = 1;
+
+    if ((rdp->other_modes.cycle_type == CYCLE_TYPE_1 && rdp->combiner_rgbsub_a_r[1] == &rdp->noise) || \
+        (rdp->other_modes.cycle_type == CYCLE_TYPE_2 && (rdp->combiner_rgbsub_a_r[0] == &rdp->noise || rdp->combiner_rgbsub_a_r[1] == &rdp->noise)) || \
+        rdp->other_modes.alpha_dither_sel == 2)
+        rdp->other_modes.f.getditherlevel = 0;
+    else if (rdp->other_modes.f.rgb_alpha_dither != 0xf)
+        rdp->other_modes.f.getditherlevel = 1;
+    else
+        rdp->other_modes.f.getditherlevel = 2;
+
+    rdp->other_modes.f.dolod = rdp->other_modes.tex_lod_en || lodfracused;
 }
 
-void rdp_init_worker(uint32_t worker_id)
+void rdp_create(struct rdp_state** rdp, uint32_t stride, uint32_t offset)
 {
-   int i;
-    struct rdp_state* rdp = &rdp_states[worker_id];
-    memset(rdp, 0, sizeof(*rdp));
+    struct rdp_state* state = calloc(1, sizeof(struct rdp_state));
 
-    rdp->worker_id = worker_id;
-    rdp->seed_dp = rdp->seed_vi = 3;
+    state->stride = stride;
+    state->offset = offset;
+    state->rand_dp = state->rand_vi = 3 + offset * 13;
 
-    uint32_t tmp[2] = {0};
-    rdp_set_other_modes(rdp, tmp);
+    uint32_t tmp[2] = { 0 };
+    rdp_set_other_modes(state, tmp);
 
-    for (i = 0; i < 8; i++)
-    {
-        calculate_tile_derivs(&rdp->tile[i]);
-        calculate_clamp_diffs(&rdp->tile[i]);
+    fb_init(state);
+    combiner_init(state);
+    tex_init(state);
+    rasterizer_init(state);
+
+    *rdp = state;
+}
+
+void rdp_destroy(struct rdp_state* rdp)
+{
+    if (rdp) {
+        free(rdp);
     }
-
-    fb_init(rdp);
-    combiner_init(rdp);
-    tex_init(rdp);
-    rasterizer_init(rdp);
 }
 
-void rdp_init(struct rdp_config* _config)
-{
-    if (_config) {
-        config = *_config;
-    }
-
-    // initialize static lookup tables, once is enough
-    if (!init_lut) {
-        blender_init_lut();
-        coverage_init_lut();
-        combiner_init_lut();
-        tex_init_lut();
-        z_init_lut();
-
-        init_lut = true;
-    }
-
-    // init externals
-    screen_init(_config);
-    plugin_init();
-
-    // init internals
-    rdram_init();
-    vi_init();
-    cmd_init();
-
-    rdp_pipeline_crashed = 0;
-    memset(&onetimewarnings, 0, sizeof(onetimewarnings));
-
-    if (config.parallel) {
-        parallel_alinit(config.num_workers);
-        rdp_states = malloc(parallel_num_workers() * sizeof(struct rdp_state));
-        parallel_run(rdp_init_worker);
-    } else {
-        rdp_states = malloc(sizeof(struct rdp_state));
-        rdp_init_worker(0);
-    }
-}
-
-void rdp_update_config(struct rdp_config* config)
-{
-    // updating the config directly would be dangerous and can cause crashes,
-    // so wait for the next sync_full before applying it
-    config_new = *config;
-    config_update = true;
-}
-
-static void rdp_invalid(struct rdp_state* rdp, const uint32_t* args)
+void rdp_invalid(struct rdp_state* rdp, const uint32_t* args)
 {
 }
 
-static void rdp_noop(struct rdp_state* rdp, const uint32_t* args)
+void rdp_noop(struct rdp_state* rdp, const uint32_t* args)
 {
 }
 
-static void rdp_sync_load(struct rdp_state* rdp, const uint32_t* args)
+void rdp_sync_load(struct rdp_state* rdp, const uint32_t* args)
 {
 }
 
-static void rdp_sync_pipe(struct rdp_state* rdp, const uint32_t* args)
+void rdp_sync_pipe(struct rdp_state* rdp, const uint32_t* args)
 {
 }
 
-static void rdp_sync_tile(struct rdp_state* rdp, const uint32_t* args)
+void rdp_sync_tile(struct rdp_state* rdp, const uint32_t* args)
 {
 }
 
-static void rdp_sync_full(struct rdp_state* rdp, const uint32_t* args)
+void rdp_sync_full(struct rdp_state* rdp, const uint32_t* args)
 {
-    // update config if set
-    if (config_update) {
-        rdp_close();
-        rdp_init(&config_new);
-
-        config_update = false;
-    }
-
     // signal plugin to handle interrupts
     plugin_sync_dp();
 }
 
-static void rdp_set_other_modes(struct rdp_state* rdp, const uint32_t* args)
+void rdp_set_other_modes(struct rdp_state* rdp, const uint32_t* args)
 {
     rdp->other_modes.cycle_type          = (args[0] >> 20) & 3;
     rdp->other_modes.persp_tex_en        = (args[0] >> 19) & 1;
@@ -607,100 +613,8 @@ static void rdp_set_other_modes(struct rdp_state* rdp, const uint32_t* args)
     rdp->other_modes.f.stalederivs = 1;
 }
 
-static void deduce_derivatives(struct rdp_state* rdp)
+void rdp_cmd(struct rdp_state* rdp, const uint32_t* args)
 {
-    int special_bsel0, special_bsel1;
-
-
-    rdp->other_modes.f.partialreject_1cycle = (rdp->blender2b_a[0] == &rdp->inv_pixel_color.a && rdp->blender1b_a[0] == &rdp->pixel_color.a);
-    rdp->other_modes.f.partialreject_2cycle = (rdp->blender2b_a[1] == &rdp->inv_pixel_color.a && rdp->blender1b_a[1] == &rdp->pixel_color.a);
-
-
-    special_bsel0 = (rdp->blender2b_a[0] == &rdp->memory_color.a);
-    special_bsel1 = (rdp->blender2b_a[1] == &rdp->memory_color.a);
-
-
-    rdp->other_modes.f.realblendershiftersneeded = (special_bsel0 && rdp->other_modes.cycle_type == CYCLE_TYPE_1) || (special_bsel1 && rdp->other_modes.cycle_type == CYCLE_TYPE_2);
-    rdp->other_modes.f.interpixelblendershiftersneeded = (special_bsel0 && rdp->other_modes.cycle_type == CYCLE_TYPE_2);
-
-    rdp->other_modes.f.rgb_alpha_dither = (rdp->other_modes.rgb_dither_sel << 2) | rdp->other_modes.alpha_dither_sel;
-
-    rdp->tcdiv_ptr = tcdiv_func[rdp->other_modes.persp_tex_en];
-
-
-    int texel1_used_in_cc1 = 0, texel0_used_in_cc1 = 0, texel0_used_in_cc0 = 0, texel1_used_in_cc0 = 0;
-    int texels_in_cc0 = 0, texels_in_cc1 = 0;
-    int lod_frac_used_in_cc1 = 0, lod_frac_used_in_cc0 = 0;
-
-    if ((rdp->combiner_rgbmul_r[1] == &rdp->lod_frac) || (rdp->combiner_alphamul[1] == &rdp->lod_frac))
-        lod_frac_used_in_cc1 = 1;
-    if ((rdp->combiner_rgbmul_r[0] == &rdp->lod_frac) || (rdp->combiner_alphamul[0] == &rdp->lod_frac))
-        lod_frac_used_in_cc0 = 1;
-
-    if (rdp->combiner_rgbmul_r[1] == &rdp->texel1_color.r || rdp->combiner_rgbsub_a_r[1] == &rdp->texel1_color.r || rdp->combiner_rgbsub_b_r[1] == &rdp->texel1_color.r || rdp->combiner_rgbadd_r[1] == &rdp->texel1_color.r || \
-        rdp->combiner_alphamul[1] == &rdp->texel1_color.a || rdp->combiner_alphasub_a[1] == &rdp->texel1_color.a || rdp->combiner_alphasub_b[1] == &rdp->texel1_color.a || rdp->combiner_alphaadd[1] == &rdp->texel1_color.a || \
-        rdp->combiner_rgbmul_r[1] == &rdp->texel1_color.a)
-        texel1_used_in_cc1 = 1;
-    if (rdp->combiner_rgbmul_r[1] == &rdp->texel0_color.r || rdp->combiner_rgbsub_a_r[1] == &rdp->texel0_color.r || rdp->combiner_rgbsub_b_r[1] == &rdp->texel0_color.r || rdp->combiner_rgbadd_r[1] == &rdp->texel0_color.r || \
-        rdp->combiner_alphamul[1] == &rdp->texel0_color.a || rdp->combiner_alphasub_a[1] == &rdp->texel0_color.a || rdp->combiner_alphasub_b[1] == &rdp->texel0_color.a || rdp->combiner_alphaadd[1] == &rdp->texel0_color.a || \
-        rdp->combiner_rgbmul_r[1] == &rdp->texel0_color.a)
-        texel0_used_in_cc1 = 1;
-    if (rdp->combiner_rgbmul_r[0] == &rdp->texel1_color.r || rdp->combiner_rgbsub_a_r[0] == &rdp->texel1_color.r || rdp->combiner_rgbsub_b_r[0] == &rdp->texel1_color.r || rdp->combiner_rgbadd_r[0] == &rdp->texel1_color.r || \
-        rdp->combiner_alphamul[0] == &rdp->texel1_color.a || rdp->combiner_alphasub_a[0] == &rdp->texel1_color.a || rdp->combiner_alphasub_b[0] == &rdp->texel1_color.a || rdp->combiner_alphaadd[0] == &rdp->texel1_color.a || \
-        rdp->combiner_rgbmul_r[0] == &rdp->texel1_color.a)
-        texel1_used_in_cc0 = 1;
-    if (rdp->combiner_rgbmul_r[0] == &rdp->texel0_color.r || rdp->combiner_rgbsub_a_r[0] == &rdp->texel0_color.r || rdp->combiner_rgbsub_b_r[0] == &rdp->texel0_color.r || rdp->combiner_rgbadd_r[0] == &rdp->texel0_color.r || \
-        rdp->combiner_alphamul[0] == &rdp->texel0_color.a || rdp->combiner_alphasub_a[0] == &rdp->texel0_color.a || rdp->combiner_alphasub_b[0] == &rdp->texel0_color.a || rdp->combiner_alphaadd[0] == &rdp->texel0_color.a || \
-        rdp->combiner_rgbmul_r[0] == &rdp->texel0_color.a)
-        texel0_used_in_cc0 = 1;
-    texels_in_cc0 = texel0_used_in_cc0 || texel1_used_in_cc0;
-    texels_in_cc1 = texel0_used_in_cc1 || texel1_used_in_cc1;
-
-
-    if (texel1_used_in_cc1)
-        rdp->other_modes.f.textureuselevel0 = 0;
-    else if (texel0_used_in_cc1 || lod_frac_used_in_cc1)
-        rdp->other_modes.f.textureuselevel0 = 1;
-    else
-        rdp->other_modes.f.textureuselevel0 = 2;
-
-    if (texel1_used_in_cc1)
-        rdp->other_modes.f.textureuselevel1 = 0;
-    else if (texel1_used_in_cc0 || texel0_used_in_cc1)
-        rdp->other_modes.f.textureuselevel1 = 1;
-    else if (texel0_used_in_cc0 || lod_frac_used_in_cc0 || lod_frac_used_in_cc1)
-        rdp->other_modes.f.textureuselevel1 = 2;
-    else
-        rdp->other_modes.f.textureuselevel1 = 3;
-
-
-    int lodfracused = 0;
-
-    if ((rdp->other_modes.cycle_type == CYCLE_TYPE_2 && (lod_frac_used_in_cc0 || lod_frac_used_in_cc1)) || \
-        (rdp->other_modes.cycle_type == CYCLE_TYPE_1 && lod_frac_used_in_cc1))
-        lodfracused = 1;
-
-    if ((rdp->other_modes.cycle_type == CYCLE_TYPE_1 && rdp->combiner_rgbsub_a_r[1] == &rdp->noise) || \
-        (rdp->other_modes.cycle_type == CYCLE_TYPE_2 && (rdp->combiner_rgbsub_a_r[0] == &rdp->noise || rdp->combiner_rgbsub_a_r[1] == &rdp->noise)) || \
-        rdp->other_modes.alpha_dither_sel == 2)
-        rdp->other_modes.f.getditherlevel = 0;
-    else if (rdp->other_modes.f.rgb_alpha_dither != 0xf)
-        rdp->other_modes.f.getditherlevel = 1;
-    else
-        rdp->other_modes.f.getditherlevel = 2;
-
-    rdp->other_modes.f.dolod = rdp->other_modes.tex_lod_en || lodfracused;
-}
-
-void rdp_close(void)
-{
-    vi_close();
-    parallel_close();
-    plugin_close();
-    screen_close();
-
-    if (rdp_states) {
-        free(rdp_states);
-        rdp_states = NULL;
-    }
+    uint32_t cmd_id = CMD_ID(args);
+    rdp_commands[cmd_id].handler(rdp, args);
 }

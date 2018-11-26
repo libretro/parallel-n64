@@ -444,7 +444,7 @@ CXXFLAGS += -DHAVE_THR_AL
 SOURCES_CXX += \
 				  $(VIDEODIR_ANGRYLION)/interface.cpp \
 				  $(VIDEODIR_ANGRYLION)/parallel_al.cpp
-SOURCES_C +=  $(VIDEODIR_ANGRYLION)/rdp.c \
+SOURCES_C +=  $(VIDEODIR_ANGRYLION)/n64video.c \
 				  $(VIDEODIR_ANGRYLION)/screen.c 
 else
 SOURCES_C +=  $(VIDEODIR_ANGRYLION)/n64video_main.c \

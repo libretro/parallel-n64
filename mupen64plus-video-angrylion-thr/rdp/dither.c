@@ -64,12 +64,12 @@ static STRICTINLINE void rgb_dither(int rgb_dither_sel, int* r, int* g, int* b, 
 
 static STRICTINLINE void get_dither_noise(struct rdp_state* rdp, int x, int y, int* cdith, int* adith)
 {
-    int dithindex;
     if (!rdp->other_modes.f.getditherlevel)
-        rdp->noise = ((irand(&rdp->seed_dp) & 7) << 6) | 0x20;
+        rdp->noise = ((irand(&rdp->rand_dp) & 7) << 6) | 0x20;
 
     y >>= rdp->scfield;
 
+    int dithindex;
     switch(rdp->other_modes.f.rgb_alpha_dither)
     {
     case 0:
@@ -112,20 +112,20 @@ static STRICTINLINE void get_dither_noise(struct rdp_state* rdp, int x, int y, i
         break;
     case 8:
         dithindex = ((y & 3) << 2) | (x & 3);
-        *cdith = irand(&rdp->seed_dp);
+        *cdith = irand(&rdp->rand_dp);
         *adith = magic_matrix[dithindex];
         break;
     case 9:
         dithindex = ((y & 3) << 2) | (x & 3);
-        *cdith = irand(&rdp->seed_dp);
+        *cdith = irand(&rdp->rand_dp);
         *adith = (~magic_matrix[dithindex]) & 7;
         break;
     case 10:
-        *cdith = irand(&rdp->seed_dp);
+        *cdith = irand(&rdp->rand_dp);
         *adith = (rdp->noise >> 6) & 7;
         break;
     case 11:
-        *cdith = irand(&rdp->seed_dp);
+        *cdith = irand(&rdp->rand_dp);
         *adith = 0;
         break;
     case 12:

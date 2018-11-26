@@ -51,7 +51,7 @@ static INLINE void set_blender_input(struct rdp_state* rdp, int cycle, int which
         {
             case 0:     *input_a = &rdp->pixel_color.a; break;
             case 1:     *input_a = &rdp->fog_color.a; break;
-            case 2:     *input_a = &rdp->shade_color.a; break;
+            case 2:     *input_a = &rdp->blender_shade_alpha; break;
             case 3:     *input_a = &zero_color; break;
         }
     }
@@ -77,7 +77,7 @@ static STRICTINLINE int alpha_compare(struct rdp_state* rdp, int32_t comb_alpha)
         if (!rdp->other_modes.dither_alpha_en)
             threshold = rdp->blend_color.a;
         else
-            threshold = irand(&rdp->seed_dp) & 0xff;
+            threshold = irand(&rdp->rand_dp) & 0xff;
 
 
         if (comb_alpha >= threshold)
@@ -243,68 +243,60 @@ static STRICTINLINE int blender_1cycle(struct rdp_state* rdp, uint32_t* fr, uint
         return 0;
 }
 
-static STRICTINLINE int blender_2cycle(struct rdp_state* rdp, uint32_t* fr, uint32_t* fg, uint32_t* fb, int dith, uint32_t blend_en, uint32_t prewrap, uint32_t curpixel_cvg, uint32_t curpixel_cvbit, int32_t acalpha)
+static STRICTINLINE int blender_2cycle_cycle0(struct rdp_state* rdp, uint32_t curpixel_cvg, uint32_t curpixel_cvbit)
+{
+    int r, g, b;
+    int wen = (rdp->other_modes.antialias_en ? curpixel_cvg : curpixel_cvbit) > 0 ? 1 : 0;
+
+    if (wen)
+    {
+        rdp->inv_pixel_color.a =  (~(*rdp->blender1b_a[0])) & 0xff;
+
+        blender_equation_cycle0_2(rdp, &r, &g, &b);
+
+        rdp->blended_pixel_color.r = r;
+        rdp->blended_pixel_color.g = g;
+        rdp->blended_pixel_color.b = b;
+    }
+
+    rdp->memory_color = rdp->pre_memory_color;
+
+    return wen;
+}
+
+
+static STRICTINLINE void blender_2cycle_cycle1(struct rdp_state* rdp, uint32_t* fr, uint32_t* fg, uint32_t* fb, int dith, uint32_t blend_en, uint32_t prewrap)
 {
     int r, g, b, dontblend;
 
-
-    if (alpha_compare(rdp, acalpha))
+    if (!rdp->other_modes.color_on_cvg || prewrap)
     {
-        if (rdp->other_modes.antialias_en ? (curpixel_cvg) : (curpixel_cvbit))
+        dontblend = (rdp->other_modes.f.partialreject_2cycle && rdp->pixel_color.a >= 0xff);
+        if (!blend_en || dontblend)
         {
-
-            rdp->inv_pixel_color.a =  (~(*rdp->blender1b_a[0])) & 0xff;
-            blender_equation_cycle0_2(rdp, &r, &g, &b);
-
-
-            rdp->memory_color = rdp->pre_memory_color;
-
-            rdp->blended_pixel_color.r = r;
-            rdp->blended_pixel_color.g = g;
-            rdp->blended_pixel_color.b = b;
-            rdp->blended_pixel_color.a = rdp->pixel_color.a;
-
-            if (!rdp->other_modes.color_on_cvg || prewrap)
-            {
-                dontblend = (rdp->other_modes.f.partialreject_2cycle && rdp->pixel_color.a >= 0xff);
-                if (!blend_en || dontblend)
-                {
-                    r = *rdp->blender1a_r[1];
-                    g = *rdp->blender1a_g[1];
-                    b = *rdp->blender1a_b[1];
-                }
-                else
-                {
-                    rdp->inv_pixel_color.a =  (~(*rdp->blender1b_a[1])) & 0xff;
-                    blender_equation_cycle1(rdp, &r, &g, &b);
-                }
-            }
-            else
-            {
-                r = *rdp->blender2a_r[1];
-                g = *rdp->blender2a_g[1];
-                b = *rdp->blender2a_b[1];
-            }
-
-
-            if (rdp->other_modes.rgb_dither_sel != 3)
-                rgb_dither(rdp->other_modes.rgb_dither_sel, &r, &g, &b, dith);
-            *fr = r;
-            *fg = g;
-            *fb = b;
-            return 1;
+            r = *rdp->blender1a_r[1];
+            g = *rdp->blender1a_g[1];
+            b = *rdp->blender1a_b[1];
         }
         else
         {
-            rdp->memory_color = rdp->pre_memory_color;
-            return 0;
+            rdp->inv_pixel_color.a =  (~(*rdp->blender1b_a[1])) & 0xff;
+            blender_equation_cycle1(rdp, &r, &g, &b);
         }
     }
     else
     {
-        rdp->memory_color = rdp->pre_memory_color;
-        return 0;
+        r = *rdp->blender2a_r[1];
+        g = *rdp->blender2a_g[1];
+        b = *rdp->blender2a_b[1];
     }
+
+    if (rdp->other_modes.rgb_dither_sel != 3)
+        rgb_dither(rdp->other_modes.rgb_dither_sel, &r, &g, &b, dith);
+
+    *fr = r;
+    *fg = g;
+    *fb = b;
 }
 
 static void blender_init_lut(void)
@@ -337,7 +329,7 @@ static void blender_init_lut(void)
     }
 }
 
-static void rdp_set_fog_color(struct rdp_state* rdp, const uint32_t* args)
+void rdp_set_fog_color(struct rdp_state* rdp, const uint32_t* args)
 {
     rdp->fog_color.r = RGBA32_R(args[1]);
     rdp->fog_color.g = RGBA32_G(args[1]);
@@ -345,7 +337,7 @@ static void rdp_set_fog_color(struct rdp_state* rdp, const uint32_t* args)
     rdp->fog_color.a = RGBA32_A(args[1]);
 }
 
-static void rdp_set_blend_color(struct rdp_state* rdp, const uint32_t* args)
+void rdp_set_blend_color(struct rdp_state* rdp, const uint32_t* args)
 {
     rdp->blend_color.r = RGBA32_R(args[1]);
     rdp->blend_color.g = RGBA32_G(args[1]);

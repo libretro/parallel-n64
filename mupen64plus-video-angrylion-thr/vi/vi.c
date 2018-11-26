@@ -30,23 +30,20 @@ enum vi_aa
     VI_AA_REPLICATE             // replicate pixels, no interpolation
 };
 
-union vi_reg_ctrl
+struct vi_reg_ctrl
 {
-    struct {
-        uint32_t type : 2;
-        uint32_t gamma_dither_enable : 1;
-        uint32_t gamma_enable : 1;
-        uint32_t divot_enable : 1;
-        uint32_t vbus_clock_enable : 1;
-        uint32_t serrate : 1;
-        uint32_t test_mode : 1;
-        uint32_t aa_mode : 2;
-        uint32_t reserved : 1;
-        uint32_t kill_we : 1;
-        uint32_t pixel_advance : 4;
-        uint32_t dither_filter_enable : 1;
-    };
-    uint32_t raw;
+    uint8_t type;
+    bool gamma_dither_enable;
+    bool gamma_enable;
+    bool divot_enable;
+    bool vbus_clock_enable;
+    bool serrate;
+    uint8_t test_mode;
+    uint8_t aa_mode;
+    bool reserved;
+    bool kill_we;
+    uint8_t pixel_advance;
+    bool dither_filter_enable;
 };
 
 struct ccvg
@@ -54,15 +51,15 @@ struct ccvg
     uint8_t r, g, b, cvg;
 };
 
-#include "vi/gamma.c"
-#include "vi/lerp.c"
-#include "vi/divot.c"
-#include "vi/video.c"
-#include "vi/restore.c"
-#include "vi/fetch.c"
+#include "gamma.c"
+#include "lerp.c"
+#include "divot.c"
+#include "video.c"
+#include "restore.c"
+#include "fetch.c"
 
 // states
-static void(*vi_fetch_filter_ptr)(struct ccvg*, uint32_t, uint32_t, union vi_reg_ctrl, uint32_t, uint32_t);
+static void(*vi_fetch_filter_ptr)(struct ccvg*, uint32_t, uint32_t, struct vi_reg_ctrl, uint32_t, uint32_t);
 static uint32_t prevvicurrent;
 static int32_t emucontrolsvicurrent;
 static bool prevserrate;
@@ -89,25 +86,12 @@ static int32_t linecount;
 
 // parsed VI registers
 static uint32_t** vi_reg_ptr;
-static union vi_reg_ctrl ctrl;
+static struct vi_reg_ctrl ctrl;
 static int32_t hres, vres;
 static int32_t hres_raw, vres_raw;
 static int32_t v_start;
 static int32_t h_start;
 static int32_t v_current_line;
-
-// VI mode function pointers and prototypes
-static bool(*vi_process_start_ptr)(void);
-static void(*vi_process_ptr)(uint32_t);
-static void(*vi_process_end_ptr)(void);
-
-static bool vi_process_start(void);
-static void vi_process(uint32_t worker_id);
-static void vi_process_end(void);
-
-static bool vi_process_start_fast(void);
-static void vi_process_fast(uint32_t worker_id);
-static void vi_process_end_fast(void);
 
 static void vi_init(void)
 {
@@ -121,211 +105,11 @@ static void vi_init(void)
     prevserrate = false;
     oldvstart = 1337;
     prevwasblank = false;
-
-    // select filter functions based on config
-    if (config.vi.mode == VI_MODE_NORMAL) {
-        vi_process_start_ptr = vi_process_start;
-        vi_process_ptr = vi_process;
-        vi_process_end_ptr = vi_process_end;
-    }
-    else {
-        vi_process_start_ptr = vi_process_start_fast;
-        vi_process_ptr = vi_process_fast;
-        vi_process_end_ptr = vi_process_end_fast;
-    }
 }
 
-static bool vi_process_start(void)
+static void vi_process_full_parallel(uint32_t worker_id)
 {
-    uint32_t final = 0;
-
-    vi_fetch_filter_ptr = ctrl.type & 1 ? vi_fetch_filter32 : vi_fetch_filter16;
-
-    ispal = v_sync > (V_SYNC_NTSC + 25);
-    h_start -= (ispal ? 128 : 108);
-
-    bool h_start_clamped = false;
-
-    if (h_start < 0) {
-        x_start += (x_add * (-h_start));
-        hres += h_start;
-
-        h_start = 0;
-        h_start_clamped = true;
-    }
-
-    bool isblank = (ctrl.type & 2) == 0;
-    bool validinterlace = !isblank && ctrl.serrate;
-
-    if (validinterlace) {
-        if (prevserrate && emucontrolsvicurrent < 0) {
-            emucontrolsvicurrent = v_current_line != prevvicurrent;
-        }
-
-        if (emucontrolsvicurrent == 1) {
-            lowerfield = v_current_line ^ 1;
-        } else if (!emucontrolsvicurrent) {
-            if (v_start == oldvstart) {
-                lowerfield ^= true;
-            } else {
-                lowerfield = v_start < oldvstart;
-            }
-        }
-
-        prevvicurrent = v_current_line;
-        oldvstart = v_start;
-    }
-
-    prevserrate = validinterlace;
-
-    uint32_t lineshifter = !ctrl.serrate;
-
-    int32_t vstartoffset = ispal ? 44 : 34;
-    v_start = (v_start - vstartoffset) / 2;
-
-    if (v_start < 0) {
-        y_start += (y_add * (uint32_t)(-v_start));
-        v_start = 0;
-    }
-
-    bool hres_clamped = false;
-
-    if ((hres + h_start) > PRESCALE_WIDTH) {
-        hres = PRESCALE_WIDTH - h_start;
-        hres_clamped = true;
-    }
-
-    if ((vres + v_start) > PRESCALE_HEIGHT) {
-        vres = PRESCALE_HEIGHT - v_start;
-        msg_warning("vres = %d v_start = %d v_video_start = %d", vres, v_start, (*vi_reg_ptr[VI_V_START] >> 16) & 0x3ff);
-    }
-
-    int32_t h_end = hres + h_start; // note: the result appears to be different to VI_H_END
-    int32_t hrightblank = PRESCALE_WIDTH - h_end;
-
-    vactivelines = v_sync - vstartoffset;
-    if (vactivelines > PRESCALE_HEIGHT) {
-        msg_error("VI_V_SYNC_REG too big");
-    }
-    if (vactivelines < 0) {
-        return false;
-    }
-    vactivelines >>= lineshifter;
-
-    bool validh = hres > 0 && h_start < PRESCALE_WIDTH;
-
-    uint32_t pix = 0;
-    uint8_t cur_cvg = 0;
-
-    int32_t *d = 0;
-
-    minhpass = h_start_clamped ? 0 : 8;
-    maxhpass =  hres_clamped ? hres : (hres - 7);
-
-    if (isblank && prevwasblank) {
-        return false;
-    }
-
-    prevwasblank = isblank;
-
-    linecount = ctrl.serrate ? (PRESCALE_WIDTH << 1) : PRESCALE_WIDTH;
-    prescale_ptr = v_start * linecount + h_start + (lowerfield ? PRESCALE_WIDTH : 0);
-
-    int32_t i;
-    if (isblank) {
-        // blank signal, clear entire screen buffer
-        memset(tvfadeoutstate, 0, PRESCALE_HEIGHT * sizeof(uint32_t));
-        memset(prescale, 0, sizeof(prescale));
-    } else {
-        // clear left border
-        int32_t j;
-        if (h_start > 0 && h_start < PRESCALE_WIDTH) {
-            for (i = 0; i < vactivelines; i++) {
-                memset(&prescale[i * PRESCALE_WIDTH], 0, h_start * sizeof(uint32_t));
-            }
-        }
-
-        // clear right border
-        if (h_end >= 0 && h_end < PRESCALE_WIDTH) {
-            for (i = 0; i < vactivelines; i++) {
-                memset(&prescale[i * PRESCALE_WIDTH + h_end], 0, hrightblank * sizeof(uint32_t));
-            }
-        }
-
-        // clear top border
-        for (i = 0; i < ((v_start << ctrl.serrate) + lowerfield); i++) {
-            if (tvfadeoutstate[i]) {
-                tvfadeoutstate[i]--;
-                if (!tvfadeoutstate[i]) {
-                    if (validh) {
-                        memset(&prescale[i * PRESCALE_WIDTH + h_start], 0, hres * sizeof(uint32_t));
-                    } else {
-                        memset(&prescale[i * PRESCALE_WIDTH], 0, PRESCALE_WIDTH * sizeof(uint32_t));
-                    }
-                }
-            }
-        }
-
-        if (!ctrl.serrate) {
-            for(j = 0; j < vres; j++) {
-                if (validh) {
-                    tvfadeoutstate[i] = 2;
-                } else if (tvfadeoutstate[i]) {
-                    tvfadeoutstate[i]--;
-                    if (!tvfadeoutstate[i]) {
-                        memset(&prescale[i * PRESCALE_WIDTH], 0, PRESCALE_WIDTH * sizeof(uint32_t));
-                    }
-                }
-
-                i++;
-            }
-        } else {
-            for(j = 0; j < vres; j++) {
-                if (validh) {
-                    tvfadeoutstate[i] = 2;
-                } else if (tvfadeoutstate[i]) {
-                    tvfadeoutstate[i]--;
-                    if (!tvfadeoutstate[i]) {
-                        memset(&prescale[i * PRESCALE_WIDTH], 0, PRESCALE_WIDTH * sizeof(uint32_t));
-                    }
-                }
-
-                if (tvfadeoutstate[i + 1]) {
-                    tvfadeoutstate[i + 1]--;
-                    if (!tvfadeoutstate[i + 1]) {
-                        if (validh) {
-                            memset(&prescale[(i + 1) * PRESCALE_WIDTH + h_start], 0, hres * sizeof(uint32_t));
-                        } else {
-                            memset(&prescale[(i + 1) * PRESCALE_WIDTH], 0, PRESCALE_WIDTH * sizeof(uint32_t));
-                        }
-                    }
-                }
-
-                i += 2;
-            }
-        }
-
-        // clear bottom border
-        for (; i < vactivelines; i++) {
-            if (tvfadeoutstate[i]) {
-                tvfadeoutstate[i]--;
-            }
-            if (!tvfadeoutstate[i]) {
-                if (validh) {
-                    memset(&prescale[i * PRESCALE_WIDTH + h_start], 0, hres * sizeof(uint32_t));
-                } else {
-                    memset(&prescale[i * PRESCALE_WIDTH], 0, PRESCALE_WIDTH * sizeof(uint32_t));
-                }
-            }
-        }
-    }
-
-    return validh;
-}
-
-static void vi_process(uint32_t worker_id)
-{
-   int32_t y;
+    int32_t y;
     struct ccvg viaa_array[0xa10 << 1];
     struct ccvg divot_array[0xa10 << 1];
 
@@ -351,7 +135,7 @@ static void vi_process(uint32_t worker_id)
 
     pixels = 0;
 
-    int32_t* seed = &rdp_states[worker_id].seed_vi;
+    int32_t* rstate = &rdp_states[worker_id]->rand_vi;
 
     int32_t y_begin = 0;
     int32_t y_end = vres;
@@ -363,7 +147,7 @@ static void vi_process(uint32_t worker_id)
     }
 
     for (y = y_begin; y < y_end; y += y_inc) {
-       int32_t x;
+        int32_t x;
         uint32_t x_offs = x_start;
         uint32_t curry = y_start + y * y_add;
         uint32_t nexty = y_start + (y + 1) * y_add;
@@ -493,10 +277,10 @@ static void vi_process(uint32_t worker_id)
             g = color.g;
             b = color.b;
 
-            gamma_filters(&r, &g, &b, ctrl, seed);
+            gamma_filters(&r, &g, &b, ctrl, rstate);
 
             if (x >= minhpass && x < maxhpass) {
-                d[x] = (r << 16) | (g << 8) | b;
+                d[x] = (b << 16) | (g << 8) | r;
             } else {
                 d[x] = 0;
             }
@@ -522,9 +306,149 @@ static void vi_process(uint32_t worker_id)
     }
 }
 
-static void vi_process_end(void)
+static bool vi_process_full(void)
 {
-    struct rdp_frame_buffer fb;
+    vi_fetch_filter_ptr = ctrl.type & 1 ? vi_fetch_filter32 : vi_fetch_filter16;
+
+    bool isblank = (ctrl.type & 2) == 0;
+    bool validinterlace = !isblank && ctrl.serrate;
+
+    if (validinterlace) {
+        if (prevserrate && emucontrolsvicurrent < 0) {
+            emucontrolsvicurrent = v_current_line != prevvicurrent;
+        }
+
+        if (emucontrolsvicurrent == 1) {
+            lowerfield = v_current_line ^ 1;
+        } else if (!emucontrolsvicurrent) {
+            if (v_start == oldvstart) {
+                lowerfield ^= true;
+            } else {
+                lowerfield = v_start < oldvstart;
+            }
+        }
+
+        prevvicurrent = v_current_line;
+        oldvstart = v_start;
+    }
+
+    prevserrate = validinterlace;
+
+    bool validh = hres > 0 && h_start < PRESCALE_WIDTH;
+    int32_t h_end = hres + h_start; // note: the result appears to be different to VI_H_END
+    int32_t hrightblank = PRESCALE_WIDTH - h_end;
+
+    if (isblank && prevwasblank) {
+        return false;
+    }
+
+    prevwasblank = isblank;
+
+    linecount = PRESCALE_WIDTH << ctrl.serrate;
+    prescale_ptr = v_start * linecount + h_start + (lowerfield ? PRESCALE_WIDTH : 0);
+
+    int32_t i;
+    if (isblank) {
+        // blank signal, clear entire screen buffer
+        memset(tvfadeoutstate, 0, PRESCALE_HEIGHT * sizeof(uint32_t));
+        memset(prescale, 0, sizeof(prescale));
+    } else {
+        // clear left border
+        int32_t j;
+        if (h_start > 0 && h_start < PRESCALE_WIDTH) {
+            for (i = 0; i < vactivelines; i++) {
+                memset(&prescale[i * PRESCALE_WIDTH], 0, h_start * sizeof(uint32_t));
+            }
+        }
+
+        // clear right border
+        if (h_end >= 0 && h_end < PRESCALE_WIDTH) {
+            for (i = 0; i < vactivelines; i++) {
+                memset(&prescale[i * PRESCALE_WIDTH + h_end], 0, hrightblank * sizeof(uint32_t));
+            }
+        }
+
+        // clear top border
+        for (i = 0; i < ((v_start << ctrl.serrate) + lowerfield); i++) {
+            if (tvfadeoutstate[i]) {
+                tvfadeoutstate[i]--;
+                if (!tvfadeoutstate[i]) {
+                    if (validh) {
+                        memset(&prescale[i * PRESCALE_WIDTH + h_start], 0, hres * sizeof(uint32_t));
+                    } else {
+                        memset(&prescale[i * PRESCALE_WIDTH], 0, PRESCALE_WIDTH * sizeof(uint32_t));
+                    }
+                }
+            }
+        }
+
+        if (!ctrl.serrate) {
+            for(j = 0; j < vres; j++) {
+                if (validh) {
+                    tvfadeoutstate[i] = 2;
+                } else if (tvfadeoutstate[i]) {
+                    tvfadeoutstate[i]--;
+                    if (!tvfadeoutstate[i]) {
+                        memset(&prescale[i * PRESCALE_WIDTH], 0, PRESCALE_WIDTH * sizeof(uint32_t));
+                    }
+                }
+
+                i++;
+            }
+        } else {
+            for(j = 0; j < vres; j++) {
+                if (validh) {
+                    tvfadeoutstate[i] = 2;
+                } else if (tvfadeoutstate[i]) {
+                    tvfadeoutstate[i]--;
+                    if (!tvfadeoutstate[i]) {
+                        memset(&prescale[i * PRESCALE_WIDTH], 0, PRESCALE_WIDTH * sizeof(uint32_t));
+                    }
+                }
+
+                if (tvfadeoutstate[i + 1]) {
+                    tvfadeoutstate[i + 1]--;
+                    if (!tvfadeoutstate[i + 1]) {
+                        if (validh) {
+                            memset(&prescale[(i + 1) * PRESCALE_WIDTH + h_start], 0, hres * sizeof(uint32_t));
+                        } else {
+                            memset(&prescale[(i + 1) * PRESCALE_WIDTH], 0, PRESCALE_WIDTH * sizeof(uint32_t));
+                        }
+                    }
+                }
+
+                i += 2;
+            }
+        }
+
+        // clear bottom border
+        for (; i < vactivelines; i++) {
+            if (tvfadeoutstate[i]) {
+                tvfadeoutstate[i]--;
+            }
+            if (!tvfadeoutstate[i]) {
+                if (validh) {
+                    memset(&prescale[i * PRESCALE_WIDTH + h_start], 0, hres * sizeof(uint32_t));
+                } else {
+                    memset(&prescale[i * PRESCALE_WIDTH], 0, PRESCALE_WIDTH * sizeof(uint32_t));
+                }
+            }
+        }
+    }
+
+    if (!validh) {
+        return false;
+    }
+
+    // run filter update in parallel if enabled
+    if (config.parallel) {
+        parallel_run(vi_process_full_parallel);
+    } else {
+        vi_process_full_parallel(0);
+    }
+
+    // finish and send buffer to screen
+    struct frame_buffer fb;
     fb.pixels = prescale;
     fb.pitch = PRESCALE_WIDTH;
 
@@ -545,36 +469,18 @@ static void vi_process_end(void)
         output_height = V_RES_NTSC;
     }
 
+    // convert to 16:9 if enabled
     if (config.vi.widescreen) {
         output_height = output_height * 3 / 4;
     }
 
     screen_write(&fb, output_height);
-}
-
-static bool vi_process_start_fast(void)
-{
-    // note: this is probably a very, very crude method to get the frame size,
-    // but should hopefully work most of the time
-    hres_raw = (int32_t)x_add * hres / 1024;
-    vres_raw = (int32_t)y_add * vres / 1024;
-
-    // skip invalid frame sizes
-    if (hres_raw <= 0 || vres_raw <= 0) {
-        return false;
-    }
-
-    // skip blank/invalid modes
-    if (!(ctrl.type & 2)) {
-        return false;
-    }
-
     return true;
 }
 
-static void vi_process_fast(uint32_t worker_id)
+static void vi_process_fast_parallel(uint32_t worker_id)
 {
-   int32_t y;
+    int32_t y;
     int32_t y_begin = 0;
     int32_t y_end = vres_raw;
     int32_t y_inc = 1;
@@ -620,12 +526,14 @@ static void vi_process_fast(uint32_t worker_id)
                         }
 
                         default:
-                            assert(false);
+                            return;
                     }
+
+                    gamma_filters(&r, &g, &b, ctrl, &rdp_states[worker_id]->rand_vi);
                     break;
 
                 case VI_MODE_DEPTH: {
-                    r = g = b = rdram_read_idx16((rdp_states[0].zb_address >> 1) + line + x) >> 8;
+                    r = g = b = rdram_read_idx16((rdp_states[0]->zb_address >> 1) + line + x) >> 8;
                     break;
                 }
 
@@ -639,35 +547,67 @@ static void vi_process_fast(uint32_t worker_id)
                 }
 
                 default:
-                    assert(false);
+                    return;
             }
 
-            gamma_filters(&r, &g, &b, ctrl, &rdp_states[worker_id].seed_vi);
-
-            dst[x] = (r << 16) | (g << 8) | b;
+            dst[x] = (b << 16) | (g << 8) | r;
         }
     }
 }
 
-static void vi_process_end_fast(void)
+static bool vi_process_fast(void)
 {
-    struct rdp_frame_buffer fb;
+    // note: this is probably a very, very crude method to get the frame size,
+    // but should hopefully work most of the time
+    hres_raw = (int32_t)x_add * hres / 1024;
+    vres_raw = (int32_t)y_add * vres / 1024;
+
+    // skip invalid frame sizes
+    if (hres_raw <= 0 || vres_raw <= 0) {
+        return false;
+    }
+
+    // skip blank/invalid modes
+    if (!(ctrl.type & 2)) {
+        return false;
+    }
+
+    // run filter update in parallel if enabled
+    if (config.parallel) {
+        parallel_run(vi_process_fast_parallel);
+    } else {
+        vi_process_fast_parallel(0);
+    }
+
+    // finish and send buffer to screen
+    struct frame_buffer fb;
     fb.pixels = prescale;
     fb.width = hres_raw;
     fb.height = vres_raw;
     fb.pitch = hres_raw;
 
+    // get display size of filtered mode
+    int32_t filtered_width = maxhpass - minhpass;
     int32_t filtered_height = (vres << 1) * V_SYNC_NTSC / v_sync;
-    int32_t output_height = hres_raw * filtered_height / hres;
 
+    // re-calculate cropped 8 pixel area on the left and right from filtered mode
+    int32_t border_width = (hres - filtered_width) * hres_raw / hres;
+    fb.pixels += (border_width / 2) + 1;
+    fb.width -= border_width;
+
+    // force aspect ratio of filtered mode
+    int32_t output_height = fb.width * filtered_height / filtered_width;
+
+    // convert to 16:9 if enabled
     if (config.vi.widescreen) {
         output_height = output_height * 3 / 4;
     }
 
     screen_write(&fb, output_height);
+    return true;
 }
 
-void rdp_update_vi(void)
+void n64video_update_screen(void)
 {
     // check for configuration errors
     if (config.vi.mode >= VI_MODE_NUM) {
@@ -704,7 +644,20 @@ void rdp_update_vi(void)
         return;
     }
 
-    ctrl.raw = *vi_reg_ptr[VI_STATUS];
+    // split up VI_CONTROL bits
+    uint32_t vi_control = *vi_reg_ptr[VI_STATUS];
+    ctrl.type = vi_control & 3;
+    ctrl.gamma_dither_enable = (vi_control >> 2) & 1;
+    ctrl.gamma_enable = (vi_control >> 3) & 1;
+    ctrl.divot_enable = (vi_control >> 4) & 1;
+    ctrl.vbus_clock_enable = (vi_control >> 5) & 1;
+    ctrl.serrate = (vi_control >> 6) & 1;
+    ctrl.test_mode = (vi_control >> 7) & 1;
+    ctrl.aa_mode = (vi_control >> 8) & 3;
+    ctrl.reserved = (vi_control >> 9) & 1;
+    ctrl.kill_we = (vi_control >> 10) & 1;
+    ctrl.pixel_advance = (vi_control >> 12) & 0xf;
+    ctrl.dither_filter_enable = (vi_control >> 16) & 1;
 
     // check for unexpected VI type bits set
     if (ctrl.type & ~3) {
@@ -712,45 +665,84 @@ void rdp_update_vi(void)
     }
 
     // warn about AA glitches in certain cases
-    static bool nolerp;
     if (ctrl.aa_mode == VI_AA_REPLICATE && ctrl.type == VI_TYPE_RGBA5551 &&
-        h_start < 0x80 && x_add <= 0x200 && !nolerp) {
+        h_start < 0x80 && x_add <= 0x200 && !onetimewarnings.nolerp) {
         msg_warning("vi_update: Disabling VI interpolation in 16-bit color "
                     "modes causes glitches on hardware if h_start is less than "
                     "128 pixels and x_scale is less or equal to 0x200.");
-        nolerp = true;
+        onetimewarnings.nolerp = true;
     }
 
     // check for the dangerous vbus_clock_enable flag. it was introduced to
     // configure Ultra 64 prototypes and enabling it on final hardware will
     // enable two output drivers on the same bus at the same time
-    static bool vbusclock;
-    if (ctrl.vbus_clock_enable && !vbusclock) {
+    if (ctrl.vbus_clock_enable && !onetimewarnings.vbusclock) {
         msg_warning("vi_update: vbus_clock_enable bit set in VI_CONTROL_REG "
                     "register. Never run this code on your N64! It's rumored "
                     "that turning this bit on will result in permanent damage "
                     "to the hardware! Emulation will now continue.");
-        vbusclock = true;
+        onetimewarnings.vbusclock = true;
     }
 
-    // try to init VI frame, abort if there's nothing to display
-    if (!vi_process_start_ptr()) {
-        screen_swap(true);
-        return;
+    // adjust sizes and offsets
+    ispal = v_sync > (V_SYNC_NTSC + 25);
+    h_start -= (ispal ? 128 : 108);
+
+    bool h_start_clamped = false;
+
+    if (h_start < 0) {
+        x_start += (x_add * (-h_start));
+        hres += h_start;
+
+        h_start = 0;
+        h_start_clamped = true;
     }
 
-    // run filter update in parallel if enabled
-    if (config.parallel) {
-        parallel_run(vi_process_ptr);
-    } else {
-        vi_process_ptr(0);
+    int32_t vstartoffset = ispal ? 44 : 34;
+    v_start = (v_start - vstartoffset) / 2;
+
+    if (v_start < 0) {
+        y_start += (y_add * (uint32_t)(-v_start));
+        v_start = 0;
     }
 
-    // finish and send buffer to screen
-    vi_process_end_ptr();
+    bool hres_clamped = false;
 
-    // render frame to screen
-    screen_swap(false);
+    if ((hres + h_start) > PRESCALE_WIDTH) {
+        hres = PRESCALE_WIDTH - h_start;
+        hres_clamped = true;
+    }
+
+    if ((vres + v_start) > PRESCALE_HEIGHT) {
+        vres = PRESCALE_HEIGHT - v_start;
+        msg_warning("vres = %d v_start = %d v_video_start = %d", vres, v_start, (*vi_reg_ptr[VI_V_START] >> 16) & 0x3ff);
+    }
+
+    vactivelines = v_sync - vstartoffset;
+
+    if (vactivelines > PRESCALE_HEIGHT) {
+        msg_error("VI_V_SYNC_REG too big");
+    }
+
+    bool blank = true;
+
+    if (vactivelines >= 0) {
+        uint32_t lineshifter = !ctrl.serrate;
+        vactivelines >>= lineshifter;
+
+        minhpass = h_start_clamped ? 0 : 8;
+        maxhpass = hres_clamped ? hres : (hres - 7);
+
+        // run filter update in parallel if enabled
+        if (config.vi.mode == VI_MODE_NORMAL) {
+            blank = !vi_process_full();
+        } else {
+            blank = !vi_process_fast();
+        }
+    }
+
+    // render frame to screen or blank screen if the frame is invalid
+    screen_swap(blank);
 }
 
 static void vi_close(void)

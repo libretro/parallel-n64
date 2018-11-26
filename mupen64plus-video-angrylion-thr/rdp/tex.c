@@ -1,6 +1,3 @@
-#include "tex/tmem.c"
-#include "tex/tcoord.c"
-
 static STRICTINLINE void tcmask(struct rdp_state* rdp, int32_t* S, int32_t* T, int32_t num)
 {
     int32_t wrap;
@@ -158,18 +155,6 @@ static STRICTINLINE void get_texel1_1cycle(struct rdp_state* rdp, int32_t* s1, i
     rdp->tcdiv_ptr(nexts, nextt, nextsw, s1, t1);
 }
 
-static STRICTINLINE void get_nexttexel0_2cycle(struct rdp_state* rdp, int32_t* s1, int32_t* t1, int32_t s, int32_t t, int32_t w, int32_t dsinc, int32_t dtinc, int32_t dwinc)
-{
-
-
-    int32_t nexts, nextt, nextsw;
-    nextsw = (w + dwinc) >> 16;
-    nexts = (s + dsinc) >> 16;
-    nextt = (t + dtinc) >> 16;
-
-    rdp->tcdiv_ptr(nexts, nextt, nextsw, s1, t1);
-}
-
 static STRICTINLINE void texture_pipeline_cycle(struct rdp_state* rdp, struct color* TEX, struct color* prev, int32_t SSS, int32_t SST, uint32_t tilenum, uint32_t cycle)
 {
     int32_t maxs, maxt, invt3r, invt3g, invt3b, invt3a;
@@ -248,18 +233,15 @@ static STRICTINLINE void texture_pipeline_cycle(struct rdp_state* rdp, struct co
 
 
 
-
-
-
-
         if (bilerp)
         {
+
             if (!rdp->other_modes.sample_type)
-               fetch_texel_entlut_quadro_nearest(rdp, &t0, &t1, &t2, &t3, sss1, sst1, tilenum, upper, upperrg);
+                fetch_texel_entlut_quadro_nearest(rdp, &t0, &t1, &t2, &t3, sss1, sst1, tilenum, upper, upperrg);
             else if (rdp->other_modes.en_tlut)
-               fetch_texel_entlut_quadro(rdp, &t0, &t1, &t2, &t3, sss1, sdiff, sst1, tdiff, tilenum, upper, upperrg);
+                fetch_texel_entlut_quadro(rdp, &t0, &t1, &t2, &t3, sss1, sdiff, sst1, tdiff, tilenum, upper, upperrg);
             else
-               fetch_texel_quadro(rdp, &t0, &t1, &t2, &t3, sss1, sdiff, sst1, tdiff, tilenum, upper - upperrg);
+                fetch_texel_quadro(rdp, &t0, &t1, &t2, &t3, sss1, sdiff, sst1, tdiff, tilenum, upper - upperrg);
 
             if (!rdp->other_modes.mid_texel)
                 center = centerrg = 0;
@@ -295,7 +277,7 @@ static STRICTINLINE void texture_pipeline_cycle(struct rdp_state* rdp, struct co
                 else
                 {
 
-                    invt3r  = ~t3.r;
+                    invt3r = ~t3.r;
                     invt3g = ~t3.g;
 
 
@@ -329,17 +311,22 @@ static STRICTINLINE void texture_pipeline_cycle(struct rdp_state* rdp, struct co
             }
             else
             {
+                int32_t prevr, prevg, prevb;
+                prevr = SIGN(prev->r, 9);
+                prevg = SIGN(prev->g, 9);
+                prevb = SIGN(prev->b, 9);
+
                 if (!centerrg)
                 {
                     if (upperrg)
                     {
-                        TEX->r = prev->b + ((prev->r * (t2.r - t3.r) + prev->g * (t1.r - t3.r) + 0x80) >> 8);
-                        TEX->g = prev->b + ((prev->r * (t2.g - t3.g) + prev->g * (t1.g - t3.g) + 0x80) >> 8);
+                        TEX->r = prevb + ((prevr * (t2.r - t3.r) + prevg * (t1.r - t3.r) + 0x80) >> 8);
+                        TEX->g = prevb + ((prevr * (t2.g - t3.g) + prevg * (t1.g - t3.g) + 0x80) >> 8);
                     }
                     else
                     {
-                        TEX->r = prev->b + ((prev->r * (t1.r - t0.r) + prev->g * (t2.r - t0.r) + 0x80) >> 8);
-                        TEX->g = prev->b + ((prev->r * (t1.g - t0.g) + prev->g * (t2.g - t0.g) + 0x80) >> 8);
+                        TEX->r = prevb + ((prevr * (t1.r - t0.r) + prevg * (t2.r - t0.r) + 0x80) >> 8);
+                        TEX->g = prevb + ((prevr * (t1.g - t0.g) + prevg * (t2.g - t0.g) + 0x80) >> 8);
                     }
                 }
                 else
@@ -347,21 +334,21 @@ static STRICTINLINE void texture_pipeline_cycle(struct rdp_state* rdp, struct co
                     invt3r = ~t3.r;
                     invt3g = ~t3.g;
 
-                    TEX->r = prev->b + ((prev->r * (t2.r - t3.r) + prev->g * (t1.r - t3.r) + ((invt3r + t0.r) << 6) + 0xc0) >> 8);
-                    TEX->g = prev->b + ((prev->r * (t2.g - t3.g) + prev->g * (t1.g - t3.g) + ((invt3g + t0.g) << 6) + 0xc0) >> 8);
+                    TEX->r = prevb + ((prevr * (t2.r - t3.r) + prevg * (t1.r - t3.r) + ((invt3r + t0.r) << 6) + 0xc0) >> 8);
+                    TEX->g = prevb + ((prevr * (t2.g - t3.g) + prevg * (t1.g - t3.g) + ((invt3g + t0.g) << 6) + 0xc0) >> 8);
                 }
 
                 if (!center)
                 {
                     if (upper)
                     {
-                        TEX->b = prev->b + ((prev->r * (t2.b - t3.b) + prev->g * (t1.b - t3.b) + 0x80) >> 8);
-                        TEX->a = prev->b + ((prev->r * (t2.a - t3.a) + prev->g * (t1.a - t3.a) + 0x80) >> 8);
+                        TEX->b = prevb + ((prevr * (t2.b - t3.b) + prevg * (t1.b - t3.b) + 0x80) >> 8);
+                        TEX->a = prevb + ((prevr * (t2.a - t3.a) + prevg * (t1.a - t3.a) + 0x80) >> 8);
                     }
                     else
                     {
-                        TEX->b = prev->b + ((prev->r * (t1.b - t0.b) + prev->g * (t2.b - t0.b) + 0x80) >> 8);
-                        TEX->a = prev->b + ((prev->r * (t1.a - t0.a) + prev->g * (t2.a - t0.a) + 0x80) >> 8);
+                        TEX->b = prevb + ((prevr * (t1.b - t0.b) + prevg * (t2.b - t0.b) + 0x80) >> 8);
+                        TEX->a = prevb + ((prevr * (t1.a - t0.a) + prevg * (t2.a - t0.a) + 0x80) >> 8);
                     }
                 }
                 else
@@ -369,24 +356,34 @@ static STRICTINLINE void texture_pipeline_cycle(struct rdp_state* rdp, struct co
                     invt3b = ~t3.b;
                     invt3a = ~t3.a;
 
-                    TEX->b = prev->b + ((prev->r * (t2.b - t3.b) + prev->g * (t1.b - t3.b) + ((invt3b + t0.b) << 6) + 0xc0) >> 8);
-                    TEX->a = prev->b + ((prev->r * (t2.a - t3.a) + prev->g * (t1.a - t3.a) + ((invt3a + t0.a) << 6) + 0xc0) >> 8);
+                    TEX->b = prevb + ((prevr * (t2.b - t3.b) + prevg * (t1.b - t3.b) + ((invt3b + t0.b) << 6) + 0xc0) >> 8);
+                    TEX->a = prevb + ((prevr * (t2.a - t3.a) + prevg * (t1.a - t3.a) + ((invt3a + t0.a) << 6) + 0xc0) >> 8);
                 }
             }
         }
         else
         {
 
+
+
             if (convert)
+            {
                 t0 = t3 = *prev;
+                t0.r = SIGN(t0.r, 9);
+                t0.g = SIGN(t0.g, 9);
+                t0.b = SIGN(t0.b, 9);
+                t3.r = SIGN(t3.r, 9);
+                t3.g = SIGN(t3.g, 9);
+                t3.b = SIGN(t3.b, 9);
+            }
             else
             {
-               if (!rdp->other_modes.sample_type)
-                  fetch_texel_entlut_quadro_nearest(rdp, &t0, &t1, &t2, &t3, sss1, sst1, tilenum, upper, upperrg);
-               else if (rdp->other_modes.en_tlut)
-                  fetch_texel_entlut_quadro(rdp, &t0, &t1, &t2, &t3, sss1, sdiff, sst1, tdiff, tilenum, upper, upperrg);
-               else
-                  fetch_texel_quadro(rdp, &t0, &t1, &t2, &t3, sss1, sdiff, sst1, tdiff, tilenum, upper - upperrg);
+                if (!rdp->other_modes.sample_type)
+                    fetch_texel_entlut_quadro_nearest(rdp, &t0, &t1, &t2, &t3, sss1, sst1, tilenum, upper, upperrg);
+                else if (rdp->other_modes.en_tlut)
+                    fetch_texel_entlut_quadro(rdp, &t0, &t1, &t2, &t3, sss1, sdiff, sst1, tdiff, tilenum, upper, upperrg);
+                else
+                    fetch_texel_quadro(rdp, &t0, &t1, &t2, &t3, sss1, sdiff, sst1, tdiff, tilenum, upper - upperrg);
             }
 
 
@@ -445,10 +442,12 @@ static STRICTINLINE void texture_pipeline_cycle(struct rdp_state* rdp, struct co
 
 
 
+
         if (bilerp)
         {
             if (!convert)
             {
+
                 fetch_texel(rdp, &t0, sss1, sst1, tilenum);
 
                 TEX->r = t0.r & 0x1ff;
@@ -462,14 +461,19 @@ static STRICTINLINE void texture_pipeline_cycle(struct rdp_state* rdp, struct co
         else
         {
             if (convert)
+            {
                 t0 = *prev;
+                t0.r = SIGN(t0.r, 9);
+                t0.g = SIGN(t0.g, 9);
+                t0.b = SIGN(t0.b, 9);
+            }
             else
                 fetch_texel(rdp, &t0, sss1, sst1, tilenum);
 
             TEX->r = t0.b + ((rdp->k0_tf * t0.g + 0x80) >> 8);
             TEX->g = t0.b + ((rdp->k1_tf * t0.r + rdp->k2_tf * t0.g + 0x80) >> 8);
             TEX->b = t0.b + ((rdp->k3_tf * t0.r + 0x80) >> 8);
-            TEX->a = t0.b;
+            TEX->a = t0.b & 0x1ff;
             TEX->r &= 0x1ff;
             TEX->g &= 0x1ff;
             TEX->b &= 0x1ff;
@@ -886,7 +890,7 @@ static void edgewalker_for_loads(struct rdp_state* rdp, int32_t* lewdata)
     loading_pipeline(rdp, yhlimit >> 2, yllimit >> 2, tilenum, coord_quad, ltlut);
 }
 
-static void rdp_set_tile_size(struct rdp_state* rdp, const uint32_t* args)
+void rdp_set_tile_size(struct rdp_state* rdp, const uint32_t* args)
 {
     int tilenum = (args[1] >> 24) & 0x7;
     rdp->tile[tilenum].sl = (args[0] >> 12) & 0xfff;
@@ -897,7 +901,7 @@ static void rdp_set_tile_size(struct rdp_state* rdp, const uint32_t* args)
     calculate_clamp_diffs(&rdp->tile[tilenum]);
 }
 
-static void rdp_load_block(struct rdp_state* rdp, const uint32_t* args)
+void rdp_load_block(struct rdp_state* rdp, const uint32_t* args)
 {
     int tilenum = (args[1] >> 24) & 0x7;
     int sl, sh, tl, dxt;
@@ -959,17 +963,17 @@ static void tile_tlut_common_cs_decoder(struct rdp_state* rdp, const uint32_t* a
     edgewalker_for_loads(rdp, lewdata);
 }
 
-static void rdp_load_tlut(struct rdp_state* rdp, const uint32_t* args)
+void rdp_load_tlut(struct rdp_state* rdp, const uint32_t* args)
 {
     tile_tlut_common_cs_decoder(rdp, args);
 }
 
-static void rdp_load_tile(struct rdp_state* rdp, const uint32_t* args)
+void rdp_load_tile(struct rdp_state* rdp, const uint32_t* args)
 {
     tile_tlut_common_cs_decoder(rdp, args);
 }
 
-static void rdp_set_tile(struct rdp_state* rdp, const uint32_t* args)
+void rdp_set_tile(struct rdp_state* rdp, const uint32_t* args)
 {
     int tilenum = (args[1] >> 24) & 0x7;
 
@@ -990,7 +994,7 @@ static void rdp_set_tile(struct rdp_state* rdp, const uint32_t* args)
     calculate_tile_derivs(&rdp->tile[tilenum]);
 }
 
-static void rdp_set_texture_image(struct rdp_state* rdp, const uint32_t* args)
+void rdp_set_texture_image(struct rdp_state* rdp, const uint32_t* args)
 {
     rdp->ti_format   = (args[0] >> 21) & 0x7;
     rdp->ti_size     = (args[0] >> 19) & 0x3;
@@ -1001,7 +1005,7 @@ static void rdp_set_texture_image(struct rdp_state* rdp, const uint32_t* args)
 
 }
 
-static void rdp_set_convert(struct rdp_state* rdp, const uint32_t* args)
+void rdp_set_convert(struct rdp_state* rdp, const uint32_t* args)
 {
     int32_t k0 = (args[0] >> 13) & 0x1ff;
     int32_t k1 = (args[0] >> 4) & 0x1ff;
@@ -1023,5 +1027,12 @@ static void tex_init_lut(void)
 
 static void tex_init(struct rdp_state* rdp)
 {
+    int i;
     tcoord_init(rdp);
+
+    for (i = 0; i < 8; i++)
+    {
+        calculate_tile_derivs(&rdp->tile[i]);
+        calculate_clamp_diffs(&rdp->tile[i]);
+    }
 }

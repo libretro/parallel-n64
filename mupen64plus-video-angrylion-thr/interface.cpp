@@ -7,7 +7,7 @@
 #include <boolean.h>
 #include "common.h"
 #include "screen.h"
-#include "rdp.h"
+#include "n64video.h"
 #include "m64p_plugin.h"
 
 #ifdef __cplusplus
@@ -43,7 +43,7 @@ extern uint32_t *blitter_buf_lock;
 extern unsigned int screen_width, screen_height;
 extern uint32_t screen_pitch;
 
-static struct rdp_config config;
+static struct n64video_config config;
 
 #include <ctype.h>
 
@@ -150,15 +150,15 @@ uint32_t plugin_get_rom_name(char* name, uint32_t name_size)
     return i;
 }
 
-void screen_swap(bool blank)
+void screen_swap(bool)
 {
 }
 
-void screen_init(struct rdp_config* config)
+void screen_init(struct n64video_config* config)
 {
 }
 
-void screen_read(struct rdp_frame_buffer* buffer, bool rgb)
+void screen_read(struct frame_buffer* buffer, bool alpha)
 {}
 
 void screen_set_fullscreen(bool _fullscreen)
@@ -172,18 +172,33 @@ bool screen_get_fullscreen(void)
 void screen_close(void)
 {}
 
-void screen_write(struct rdp_frame_buffer* buffer, int32_t output_height)
+
+inline void swapcols(frame_buffer* fb ) {
+    uint8_t* pixels = (uint8_t*)blitter_buf_lock;
+    for (int i = 0; i < fb->width; i++) {
+        for (int j = 0; j < fb->height; j++) {
+            int index = (i * fb->height + j) * 4;
+            int temp = pixels[index + 0];
+            pixels[index + 0] = pixels[index + 2];
+            pixels[index + 2] = temp;
+        }
+    }
+}
+
+
+void screen_write(struct frame_buffer* buffer, int32_t output_height)
 {
    int i, cur_line;
 	uint32_t * buf = (uint32_t*)buffer->pixels;
-	for (i = 0; i <buffer->height; i++)
-		memcpy(&blitter_buf_lock[i * buffer->width], 
-        &buf[i * buffer->width], buffer->width * 4);
+    
+    for (i = 0; i < buffer->height; i++)
+          memcpy(&blitter_buf_lock[i * buffer->width],&buf[i * buffer->width], buffer->pitch * 4);
+    swapcols(buffer);
 
 
   screen_width=buffer->width;
   screen_height=buffer->height;
-  screen_pitch=buffer->width*4;
+  screen_pitch= buffer->pitch*4;
 }
 
 
@@ -199,7 +214,8 @@ void angrylion_set_vi(unsigned value)
      config.vi.mode = VI_MODE_NORMAL;
   else if (value == 0)
       config.vi.mode = VI_MODE_COLOR;
-  rdp_update_config(&config);
+  n64video_close();
+  n64video_init(&config);
 
 }
 
@@ -264,12 +280,12 @@ void angrylionProcessDList(void)
 
 void angrylionProcessRDPList(void)
 {
-   rdp_update();
+  n64video_process_list();
 }
 
 void angrylionRomClosed (void)
 {
-   rdp_close();
+  n64video_close();
 }
 
 int angrylionRomOpen(void)
@@ -292,13 +308,13 @@ int angrylionRomOpen(void)
 
    screen_pitch  = 640 << 2;
   
-	rdp_config_defaults(&config);
+	n64video_config_defaults(&config);
 	config.parallel = true;
 	config.num_workers = 0;
 	config.vi.mode = (vi_mode)0;
 	config.vi.widescreen = 0;
 	config.vi.hide_overscan = 0;
-    rdp_init(&config);
+   n64video_init(&config);
    return 1;
 }
 
@@ -310,7 +326,7 @@ void angrylionUpdateScreen(void)
         return;
     counter = 0;
 #endif
-    rdp_update_vi();
+    n64video_update_screen();
     retro_return(true);
 }
 
