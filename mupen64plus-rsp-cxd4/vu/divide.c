@@ -1,7 +1,7 @@
 /******************************************************************************\
 * Project:  MSP Simulation Layer for Vector Unit Computational Divides         *
 * Authors:  Iconoclast                                                         *
-* Release:  2018.11.25                                                         *
+* Release:  2018.11.27                                                         *
 * License:  CC0 Public Domain Dedication                                       *
 *                                                                              *
 * To the extent possible under law, the author(s) have dedicated all copyright *
@@ -1080,14 +1080,14 @@ NOINLINE static void do_div(i32 data, int sqrt, int precision)
     int fetch;
     int shift;
 
-#if (~0 >> 1 == -1)
-    data ^= (s32)(data + 32768) >> 31; /* DP only:  (data < -32768) */
-    fetch = (s32)(data +     0) >> 31;
+#if ((~0 >> 1 == -1) && (0))
+    data ^= (s32)(((s64)data + 32768) >> 63); /* DP only:  (data < -32768) */
+    fetch = (s32)(((s32)data +     0) >> 31);
     data ^= fetch;
     data -= fetch; /* two's complement:  -x == ~x - (~0) on wrap-around */
 #else
     if (precision == SP_DIV_PRECISION_SINGLE)
-        data = (data < 0) ? -data : +data;
+        data = (data <       0) ? -data : +data;
     if (precision == SP_DIV_PRECISION_DOUBLE && data < 0)
         data = (data >= -32768) ? -data : ~data;
 #endif
