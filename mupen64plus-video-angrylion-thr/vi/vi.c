@@ -280,7 +280,7 @@ static void vi_process_full_parallel(uint32_t worker_id)
             gamma_filters(&r, &g, &b, ctrl, rstate);
 
             if (x >= minhpass && x < maxhpass) {
-                d[x] = (b << 16) | (g << 8) | r;
+                d[x] = (r << 16) | (g << 8) | b;
             } else {
                 d[x] = 0;
             }
@@ -550,7 +550,7 @@ static void vi_process_fast_parallel(uint32_t worker_id)
                     return;
             }
 
-            dst[x] = (b << 16) | (g << 8) | r;
+            dst[x] = (r << 16) | (g << 8) | b;
         }
     }
 }

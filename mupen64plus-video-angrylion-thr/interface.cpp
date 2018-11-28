@@ -173,19 +173,6 @@ void screen_close(void)
 {}
 
 
-inline void swapcols(frame_buffer* fb ) {
-    uint8_t* pixels = (uint8_t*)blitter_buf_lock;
-    for (int i = 0; i < fb->width; i++) {
-        for (int j = 0; j < fb->height; j++) {
-            int index = (i * fb->height + j) * 4;
-            int temp = pixels[index + 0];
-            pixels[index + 0] = pixels[index + 2];
-            pixels[index + 2] = temp;
-        }
-    }
-}
-
-
 void screen_write(struct frame_buffer* buffer, int32_t output_height)
 {
    int i, cur_line;
@@ -193,7 +180,6 @@ void screen_write(struct frame_buffer* buffer, int32_t output_height)
     
     for (i = 0; i < buffer->height; i++)
           memcpy(&blitter_buf_lock[i * buffer->width],&buf[i * buffer->width], buffer->pitch * 4);
-    swapcols(buffer);
 
 
   screen_width=buffer->width;
