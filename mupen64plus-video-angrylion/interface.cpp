@@ -30,6 +30,8 @@ int retro_return(bool just_flipping);
 
 static unsigned angrylion_filtering = 0;
 static unsigned angrylion_dithering = 1;
+static unsigned angrylion_vi = 0;
+static unsigned angrylion_threads = 0;
 
 int ProcessDListShown = 0;
 
@@ -190,24 +192,34 @@ void screen_write(struct frame_buffer* buffer, int32_t output_height)
 
 unsigned angrylion_get_vi(void)
 {
-   return (unsigned)config.vi.mode;
+   return angrylion_vi;
 }
 
 void angrylion_set_vi(unsigned value)
 {
 
-   if (value == 1)
-     config.vi.mode = VI_MODE_NORMAL;
-  else if (value == 0)
-      config.vi.mode = VI_MODE_COLOR;
-  n64video_close();
-  n64video_init(&config);
+   angrylion_vi = value;
 
+}
+
+void angrylion_set_threads(unsigned value)
+{
+    angrylion_threads = value;
+}
+
+unsigned angrylion_get_threads()
+{
+    return angrylion_threads;
 }
 
 void angrylion_set_filtering(unsigned filter_type)
 {
    angrylion_filtering = filter_type;
+}
+
+unsigned angrylion_get_filtering()
+{
+    return angrylion_filtering;
 }
 
 void angrylion_set_dithering(unsigned dither_type)
@@ -296,8 +308,9 @@ int angrylionRomOpen(void)
   
 	n64video_config_defaults(&config);
 	config.parallel = true;
-	config.num_workers = 0;
-	config.vi.mode = (vi_mode)0;
+	config.num_workers = angrylion_get_threads();
+	config.vi.mode = (vi_mode)angrylion_get_vi();
+    config.vi.interp = (vi_interp)angrylion_get_filtering();
 	config.vi.widescreen = 0;
 	config.vi.hide_overscan = 0;
    n64video_init(&config);

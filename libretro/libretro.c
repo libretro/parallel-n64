@@ -354,6 +354,8 @@ static void setup_variables(void)
       { "parallel-n64-angrylion-vioverlay",
        "(Angrylion) VI Overlay; disabled|enabled"
       },
+       { "parallel-n64-angrylion-multithread",
+         "(Angrylion) Multi-threading; enabled|disabled " },
       { "parallel-n64-virefresh",
          "VI Refresh (Overclock); auto|1500|2200" },
       { "parallel-n64-bufferswap",
@@ -943,7 +945,6 @@ void retro_deinit(void)
    gl_inited         = false;
 }
 
-#include "../mupen64plus-video-angrylion/vi.h"
 
 #if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
 extern void glide_set_filtering(unsigned value);
@@ -951,7 +952,9 @@ extern void glide_set_filtering(unsigned value);
 extern void angrylion_set_vi(unsigned value);
 extern void angrylion_set_filtering(unsigned value);
 extern void angrylion_set_dithering(unsigned value);
+extern void  angrylion_set_threads(unsigned value);
 extern void parallel_set_dithering(unsigned value);
+extern void  angrylion_set_threads(unsigned value);
 extern void ChangeSize();
 
 static void gfx_set_filtering(void)
@@ -1119,6 +1122,8 @@ void update_variables(bool startup)
       }
    }
 
+   
+
    var.key = "parallel-n64-angrylion-vioverlay";
    var.value = NULL;
 
@@ -1133,6 +1138,21 @@ void update_variables(bool startup)
    }
    else
       angrylion_set_vi(0);
+
+   var.key = "parallel-n64-angrylion-multithread";
+   var.value = NULL;
+
+   environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var);
+
+   if (var.value)
+   {
+      if(!strcmp(var.value, "enabled"))
+         angrylion_set_threads(0);
+      else if(!strcmp(var.value, "disabled"))
+         angrylion_set_threads(1);
+   }
+   else
+      angrylion_set_threads(1);
 
    CFG_HLE_GFX = (gfx_plugin != GFX_ANGRYLION) && (gfx_plugin != GFX_PARALLEL) ? 1 : 0;
    CFG_HLE_AUD = 0; /* There is no HLE audio code in libretro audio plugin. */
