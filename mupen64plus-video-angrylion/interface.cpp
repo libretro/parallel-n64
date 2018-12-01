@@ -45,7 +45,7 @@ extern uint32_t *blitter_buf_lock;
 extern unsigned int screen_width, screen_height;
 extern uint32_t screen_pitch;
 
-static struct n64video_config config;
+static struct n64video_config config={{VI_MODE_NORMAL,VI_INTERP_NEAREST,false,false},true,0};
 
 #include <ctype.h>
 
@@ -192,34 +192,51 @@ void screen_write(struct frame_buffer* buffer, int32_t output_height)
 
 unsigned angrylion_get_vi(void)
 {
-   return angrylion_vi;
+   return config.vi.mode;
 }
 
 void angrylion_set_vi(unsigned value)
 {
-
-   angrylion_vi = value;
-
+ 
+   if(config.vi.mode != (vi_mode)value)
+   {
+      config.vi.mode = (vi_mode)value;
+      n64video_close();
+      n64video_init(&config);
+   }
 }
 
 void angrylion_set_threads(unsigned value)
 {
-    angrylion_threads = value;
+  
+    if(config.num_workers != value)
+    {
+     config.num_workers = value;
+    n64video_close();
+    n64video_init(&config);
+    }
+    
 }
 
 unsigned angrylion_get_threads()
 {
-    return angrylion_threads;
+    return  config.num_workers;
 }
 
 void angrylion_set_filtering(unsigned filter_type)
 {
-   angrylion_filtering = filter_type;
+   
+    if(config.vi.interp != (vi_interp)filter_type)
+    {
+    config.vi.interp = (vi_interp)filter_type;
+    n64video_close();
+    n64video_init(&config);
+    }
 }
 
 unsigned angrylion_get_filtering()
 {
-    return angrylion_filtering;
+    return  (unsigned)config.vi.interp;
 }
 
 void angrylion_set_dithering(unsigned dither_type)
@@ -305,14 +322,6 @@ int angrylionRomOpen(void)
       screen_height = 480;
 
    screen_pitch  = 640 << 2;
-  
-	n64video_config_defaults(&config);
-	config.parallel = true;
-	config.num_workers = angrylion_get_threads();
-	config.vi.mode = (vi_mode)angrylion_get_vi();
-    config.vi.interp = (vi_interp)angrylion_get_filtering();
-	config.vi.widescreen = 0;
-	config.vi.hide_overscan = 0;
    n64video_init(&config);
    return 1;
 }
