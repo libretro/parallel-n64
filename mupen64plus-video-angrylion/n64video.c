@@ -216,7 +216,7 @@ void n64video_init(struct n64video_config* _config)
     memset(&onetimewarnings, 0, sizeof(onetimewarnings));
 
     if (config.parallel) {
-        parallel_alinit(config.num_workers);
+        parallel_init(config.num_workers);
         rdp_states = calloc(parallel_num_workers(), sizeof(struct rdp_state*));
         parallel_run(rdp_init_worker);
     } else {
@@ -293,6 +293,11 @@ void n64video_process_list(void)
                 rdp_cmd(rdp_states[0], cmd_buf);
             }
 
+            // send Z-buffer address to VI for "depth" output mode
+            if (rdp_cmd_id == CMD_ID_SET_MASK_IMAGE) {
+                vi_set_zbuffer_address(cmd_buf[1] & 0x0ffffff);
+            }
+
             // reset current command buffer to prepare for the next one
             cmd_init();
         }
@@ -310,8 +315,7 @@ void n64video_close(void)
     screen_close();
 
     if (rdp_states) {
-	uint32_t i;
-        for (i = 0; i < config.num_workers; i++) {
+        for (uint32_t i = 0; i < config.num_workers; i++) {
             rdp_destroy(rdp_states[i]);
         }
 

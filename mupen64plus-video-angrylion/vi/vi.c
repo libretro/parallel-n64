@@ -38,7 +38,7 @@ struct vi_reg_ctrl
     bool divot_enable;
     bool vbus_clock_enable;
     bool serrate;
-    uint8_t test_mode;
+    bool test_mode;
     uint8_t aa_mode;
     bool reserved;
     bool kill_we;
@@ -78,6 +78,8 @@ static int32_t v_sync;
 static int32_t vi_width_low;
 static uint32_t frame_buffer;
 static uint32_t tvfadeoutstate[PRESCALE_HEIGHT];
+static uint32_t rseed;
+static uint32_t zb_address;
 
 // prescale buffer
 static uint32_t prescale[PRESCALE_WIDTH * PRESCALE_HEIGHT];
@@ -105,6 +107,8 @@ static void vi_init(void)
     prevserrate = false;
     oldvstart = 1337;
     prevwasblank = false;
+    rseed = 3;
+    zb_address = 0;
 }
 
 static void vi_process_full_parallel(uint32_t worker_id)
@@ -134,8 +138,6 @@ static void vi_process_full_parallel(uint32_t worker_id)
     bool cache_init = false;
 
     pixels = 0;
-
-    int32_t* rstate = &rdp_states[worker_id]->rand_vi;
 
     int32_t y_begin = 0;
     int32_t y_end = vres;
@@ -277,7 +279,7 @@ static void vi_process_full_parallel(uint32_t worker_id)
             g = color.g;
             b = color.b;
 
-            gamma_filters(&r, &g, &b, ctrl, rstate);
+            gamma_filters(&r, &g, &b, ctrl, &rseed);
 
             if (x >= minhpass && x < maxhpass) {
                 d[x] = (r << 16) | (g << 8) | b;
@@ -529,11 +531,13 @@ static void vi_process_fast_parallel(uint32_t worker_id)
                             return;
                     }
 
-                    gamma_filters(&r, &g, &b, ctrl, &rdp_states[worker_id]->rand_vi);
+                    gamma_filters(&r, &g, &b, ctrl, &rseed);
                     break;
 
                 case VI_MODE_DEPTH: {
-                    r = g = b = rdram_read_idx16((rdp_states[0]->zb_address >> 1) + line + x) >> 8;
+                    if (zb_address) {
+                        r = g = b = rdram_read_idx16((zb_address >> 1) + line + x) >> 8;
+                    }
                     break;
                 }
 
@@ -605,6 +609,11 @@ static bool vi_process_fast(void)
 
     screen_write(&fb, output_height);
     return true;
+}
+
+void vi_set_zbuffer_address(uint32_t address)
+{
+    zb_address = address;
 }
 
 void n64video_update_screen(void)
