@@ -225,7 +225,9 @@ unsigned angrylion_get_threads()
 
 void angrylion_set_filtering(unsigned filter_type)
 {
-   
+    if(filter_type!=2)filter_type=1;
+    else
+    filter_type=0;
     if(config.vi.interp != (vi_interp)filter_type)
     {
     config.vi.interp = (vi_interp)filter_type;

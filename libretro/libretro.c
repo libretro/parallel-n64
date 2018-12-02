@@ -310,11 +310,6 @@ static void setup_variables(void)
         "Player 1 Pak; none|memory|rumble"},	
 #endif
       {"parallel-n64-pak2",
-
-
-
-
-
         "Player 2 Pak; none|memory|rumble"},
       {"parallel-n64-pak3",
         "Player 3 Pak; none|memory|rumble"},
@@ -365,7 +360,7 @@ static void setup_variables(void)
        "(Glide64) Polygon Offset Units; -3.0|-2.5|-2.0|-1.5|-1.0|-0.5|0.0|0.5|1.0|1.5|2.0|2.5|3.0|3.5|4.0|4.5|5.0|-3.5|-4.0|-4.5|-5.0"
       },
       { "parallel-n64-angrylion-vioverlay",
-       "(Angrylion) VI Overlay; disabled|enabled"
+       "(Angrylion) VI Overlay; Filtered|Unfiltered|Depth|Coverage"
       },
        { "parallel-n64-angrylion-multithread",
          "(Angrylion) Multi-threading; enabled|disabled " },
@@ -1144,10 +1139,14 @@ void update_variables(bool startup)
 
    if (var.value)
    {
-      if(!strcmp(var.value, "enabled"))
-         angrylion_set_vi(1);
-      else if(!strcmp(var.value, "disabled"))
+      if(!strcmp(var.value, "Filtered"))
          angrylion_set_vi(0);
+      else if(!strcmp(var.value, "Unfiltered"))
+         angrylion_set_vi(1);
+      else if(!strcmp(var.value, "Depth"))
+         angrylion_set_vi(2);
+      else if(!strcmp(var.value, "Coverage"))
+         angrylion_set_vi(3);
    }
    else
       angrylion_set_vi(0);
