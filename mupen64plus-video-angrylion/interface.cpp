@@ -32,6 +32,7 @@ static unsigned angrylion_filtering = 0;
 static unsigned angrylion_dithering = 1;
 static unsigned angrylion_vi = 0;
 static unsigned angrylion_threads = 0;
+static unsigned angrylion_overscan = 1;
 
 int ProcessDListShown = 0;
 
@@ -212,6 +213,18 @@ void angrylion_set_threads(unsigned value)
     if(config.num_workers != value)
     {
      config.num_workers = value;
+    n64video_close();
+    n64video_init(&config);
+    }
+    
+}
+
+void angrylion_set_overscan(unsigned value)
+{
+  
+    if(config.vi.hide_overscan != value)
+    {
+    config.vi.hide_overscan = value;
     n64video_close();
     n64video_init(&config);
     }
