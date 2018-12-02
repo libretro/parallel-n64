@@ -216,7 +216,7 @@ void n64video_init(struct n64video_config* _config)
     memset(&onetimewarnings, 0, sizeof(onetimewarnings));
 
     if (config.parallel) {
-        parallel_init(config.num_workers);
+        parallel_alinit(config.num_workers);
         rdp_states = calloc(parallel_num_workers(), sizeof(struct rdp_state*));
         parallel_run(rdp_init_worker);
     } else {

@@ -46,7 +46,7 @@ extern uint32_t *blitter_buf_lock;
 extern unsigned int screen_width, screen_height;
 extern uint32_t screen_pitch;
 
-static struct n64video_config config={{VI_MODE_NORMAL,VI_INTERP_NEAREST,false,false},true,0};
+static struct n64video_config config={{VI_MODE_NORMAL,VI_INTERP_LINEAR,false,true},true,0};
 
 #include <ctype.h>
 
