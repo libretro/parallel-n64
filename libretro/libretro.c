@@ -363,9 +363,9 @@ static void setup_variables(void)
        "(Angrylion) VI Overlay; Filtered|Unfiltered|Depth|Coverage"
       },
        { "parallel-n64-angrylion-multithread",
-         "(Angrylion) Multi-threading; enabled|disabled " },
+         "(Angrylion) Multi-threading; enabled|disabled" },
        { "parallel-n64-angrylion-overscan",
-         "(Angrylion) Hide overscan; enabled|disabled " },
+         "(Angrylion) Hide overscan; enabled|disabled" },
       { "parallel-n64-virefresh",
          "VI Refresh (Overclock); auto|1500|2200" },
       { "parallel-n64-bufferswap",
@@ -1167,7 +1167,7 @@ void update_variables(bool startup)
          angrylion_set_threads(1);
    }
    else
-      angrylion_set_threads(1);
+      angrylion_set_threads(0);
 
    var.key = "parallel-n64-angrylion-overscan";
    var.value = NULL;
@@ -1182,7 +1182,7 @@ void update_variables(bool startup)
          angrylion_set_overscan(0);
    }
    else
-      angrylion_set_overscan(0);
+      angrylion_set_overscan(1);
 
 
 
