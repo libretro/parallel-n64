@@ -22,6 +22,24 @@
 
 #include "recomp.h"
 
+/* This fixes compilation for classic and rpi platforms by adding some stubs */
+
+#ifdef ARM_FIX
+
+void init_assembler(void *block_jumps_table, int block_jumps_number, void *block_riprel_table, int block_riprel_number)
+{
+}
+
+void free_assembler(void **block_jumps_table, int *block_jumps_number, void **block_riprel_table, int *block_riprel_number)
+{
+}
+
+void passe2(struct precomp_instr *dest, int start, int end, struct precomp_block *block)
+{
+}
+
+#endif
+
 /* From gbc.c */
 
 #ifndef HAVE_DYNAREC_HACKTARUX
