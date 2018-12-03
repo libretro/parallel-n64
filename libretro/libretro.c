@@ -365,7 +365,7 @@ static void setup_variables(void)
        { "parallel-n64-angrylion-multithread",
          "(Angrylion) Multi-threading; enabled|disabled" },
        { "parallel-n64-angrylion-overscan",
-         "(Angrylion) Hide overscan; enabled|disabled" },
+         "(Angrylion) Hide overscan; disabled|enabled" },
       { "parallel-n64-virefresh",
          "VI Refresh (Overclock); auto|1500|2200" },
       { "parallel-n64-bufferswap",
@@ -1551,6 +1551,7 @@ void retro_run (void)
    static bool updated = false;
 
    blitter_buf_lock = blitter_buf;
+   memset(blitter_buf_lock,0,PRESCALE_WIDTH * PRESCALE_HEIGHT*sizeof(uint32_t));
 
    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE_UPDATE, &updated) && updated)
    {

@@ -183,7 +183,7 @@ void screen_write(struct frame_buffer* buffer, int32_t output_height)
 	uint32_t * buf = (uint32_t*)buffer->pixels;
     
     for (i = 0; i < buffer->height; i++)
-          memcpy(&blitter_buf_lock[i * buffer->width],&buf[i * buffer->width], buffer->pitch * 4);
+          memcpy(&blitter_buf_lock[i * buffer->width],&buf[i * buffer->width], buffer->width * 4);
 
 
   screen_width=buffer->width;
@@ -229,9 +229,10 @@ void angrylion_set_threads(unsigned value)
 void angrylion_set_overscan(unsigned value)
 {
   
-    if(config.vi.hide_overscan != value)
+    if(config.vi.hide_overscan != (bool)value)
+    
     {
-    config.vi.hide_overscan = value;
+    config.vi.hide_overscan = (bool)value;
     if (angrylion_init)
     {
         n64video_close();
