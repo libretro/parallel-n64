@@ -154,8 +154,16 @@ uint32_t plugin_get_rom_name(char* name, uint32_t name_size)
     return i;
 }
 
-void screen_swap(bool)
+uint32_t * buf;
+void screen_swap(bool blank)
 {
+    memset(blitter_buf_lock, 0, 640 * 625 * sizeof(uint32_t));
+    if (!blank)
+    {
+        int i;
+        for (i = 0; i < screen_height; i++)
+            memcpy(&blitter_buf_lock[i * screen_width], &buf[i * screen_width], screen_width * 4);
+    }
 }
 
 void screen_init(struct n64video_config* config)
@@ -180,15 +188,10 @@ void screen_close(void)
 void screen_write(struct frame_buffer* buffer, int32_t output_height)
 {
    int i, cur_line;
-	uint32_t * buf = (uint32_t*)buffer->pixels;
-    
-    for (i = 0; i < buffer->height; i++)
-          memcpy(&blitter_buf_lock[i * buffer->width],&buf[i * buffer->width], buffer->width * 4);
-
-
-  screen_width=buffer->width;
-  screen_height=buffer->height;
-  screen_pitch= buffer->pitch*4;
+	buf = (uint32_t*)buffer->pixels;
+    screen_width = buffer->width;
+    screen_height = buffer->height;
+    screen_pitch = buffer->pitch * 4;
 }
 
 
