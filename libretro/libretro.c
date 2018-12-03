@@ -1551,7 +1551,6 @@ void retro_run (void)
    static bool updated = false;
 
    blitter_buf_lock = blitter_buf;
-   memset(blitter_buf_lock,0,PRESCALE_WIDTH * PRESCALE_HEIGHT*sizeof(uint32_t));
 
    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE_UPDATE, &updated) && updated)
    {
