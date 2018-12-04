@@ -1182,7 +1182,7 @@ void update_variables(bool startup)
          angrylion_set_overscan(0);
    }
    else
-      angrylion_set_overscan(1);
+      angrylion_set_overscan(0);
 
 
 

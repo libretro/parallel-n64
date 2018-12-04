@@ -47,7 +47,7 @@ extern uint32_t *blitter_buf_lock;
 extern unsigned int screen_width, screen_height;
 extern uint32_t screen_pitch;
 
-static struct n64video_config config={{VI_MODE_NORMAL,VI_INTERP_LINEAR,false,true},true,0};
+static struct n64video_config config={{VI_MODE_NORMAL,VI_INTERP_LINEAR,false,false},true,0};
 
 #include <ctype.h>
 
@@ -154,16 +154,11 @@ uint32_t plugin_get_rom_name(char* name, uint32_t name_size)
     return i;
 }
 
-uint32_t * buf;
+
 void screen_swap(bool blank)
 {
-    memset(blitter_buf_lock, 0, 640 * 625 * sizeof(uint32_t));
-    if (!blank)
-    {
-        int i;
-        for (i = 0; i < screen_height; i++)
-            memcpy(&blitter_buf_lock[i * screen_width], &buf[i * screen_width], screen_width * 4);
-    }
+   if(blank)
+   memset(blitter_buf_lock,0,625*640*sizeof(uint32_t));
 }
 
 void screen_init(struct n64video_config* config)
@@ -188,7 +183,8 @@ void screen_close(void)
 void screen_write(struct frame_buffer* buffer, int32_t output_height)
 {
    int i, cur_line;
-	buf = (uint32_t*)buffer->pixels;
+	uint32_t * buf = (uint32_t*)buffer->pixels;
+    memcpy(blitter_buf_lock, buf, screen_width*screen_height * sizeof(uint32_t));
     screen_width = buffer->width;
     screen_height = buffer->height;
     screen_pitch = buffer->pitch * 4;
