@@ -182,9 +182,7 @@ void screen_close(void)
 
 void screen_write(struct frame_buffer* buffer, int32_t output_height)
 {
-   int i, cur_line;
-	uint32_t * buf = (uint32_t*)buffer->pixels;
-    memcpy(blitter_buf_lock, buf, screen_width*screen_height * sizeof(uint32_t));
+    memcpy(blitter_buf_lock, buffer->pixels, screen_width*screen_height * sizeof(uint32_t));
     screen_width = buffer->width;
     screen_height = buffer->height;
     screen_pitch = buffer->pitch * 4;
