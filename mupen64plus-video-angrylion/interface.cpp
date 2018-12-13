@@ -30,6 +30,10 @@ int retro_return(bool just_flipping);
 
 static unsigned angrylion_filtering = 0;
 static unsigned angrylion_dithering = 1;
+static unsigned angrylion_vi = 0;
+static unsigned angrylion_threads = 0;
+static unsigned angrylion_overscan = 1;
+static bool angrylion_init = false;
 
 int ProcessDListShown = 0;
 
@@ -43,7 +47,7 @@ extern uint32_t *blitter_buf_lock;
 extern unsigned int screen_width, screen_height;
 extern uint32_t screen_pitch;
 
-static struct n64video_config config;
+static struct n64video_config config={{VI_MODE_NORMAL,VI_INTERP_LINEAR,false,false},true,0};
 
 #include <ctype.h>
 
@@ -150,8 +154,11 @@ uint32_t plugin_get_rom_name(char* name, uint32_t name_size)
     return i;
 }
 
-void screen_swap(bool)
+
+void screen_swap(bool blank)
 {
+   if(blank)
+   memset(blitter_buf_lock,0,625*640*sizeof(uint32_t));
 }
 
 void screen_init(struct n64video_config* config)
@@ -175,39 +182,87 @@ void screen_close(void)
 
 void screen_write(struct frame_buffer* buffer, int32_t output_height)
 {
-   int i, cur_line;
-	uint32_t * buf = (uint32_t*)buffer->pixels;
-    
-    for (i = 0; i < buffer->height; i++)
-          memcpy(&blitter_buf_lock[i * buffer->width],&buf[i * buffer->width], buffer->pitch * 4);
-
-
-  screen_width=buffer->width;
-  screen_height=buffer->height;
-  screen_pitch= buffer->pitch*4;
+    memcpy(blitter_buf_lock, buffer->pixels, screen_width*screen_height * sizeof(uint32_t));
+    screen_width = buffer->width;
+    screen_height = buffer->height;
+    screen_pitch = buffer->pitch * 4;
 }
 
 
 unsigned angrylion_get_vi(void)
 {
-   return (unsigned)config.vi.mode;
+   return config.vi.mode;
 }
 
 void angrylion_set_vi(unsigned value)
 {
+ 
+   if(config.vi.mode != (vi_mode)value)
+   {
+      config.vi.mode = (vi_mode)value;
+      if (angrylion_init)
+      {
+          n64video_close();
+          n64video_init(&config);
+      }
+   }
+}
 
-   if (value == 1)
-     config.vi.mode = VI_MODE_NORMAL;
-  else if (value == 0)
-      config.vi.mode = VI_MODE_COLOR;
-  n64video_close();
-  n64video_init(&config);
+void angrylion_set_threads(unsigned value)
+{
+  
+    if(config.num_workers != value)
+    {
+     config.num_workers = value;
+     if (angrylion_init)
+     {
+         n64video_close();
+         n64video_init(&config);
+     }
+    }
+    
+}
 
+void angrylion_set_overscan(unsigned value)
+{
+  
+    if(config.vi.hide_overscan != (bool)value)
+    
+    {
+    config.vi.hide_overscan = (bool)value;
+    if (angrylion_init)
+    {
+        n64video_close();
+        n64video_init(&config);
+    }
+    }
+    
+}
+
+unsigned angrylion_get_threads()
+{
+    return  config.num_workers;
 }
 
 void angrylion_set_filtering(unsigned filter_type)
 {
-   angrylion_filtering = filter_type;
+    if(filter_type!=2)filter_type=1;
+    else
+    filter_type=0;
+    if(config.vi.interp != (vi_interp)filter_type)
+    {
+    config.vi.interp = (vi_interp)filter_type;
+    if (angrylion_init)
+    {
+        n64video_close();
+        n64video_init(&config);
+    }
+    }
+}
+
+unsigned angrylion_get_filtering()
+{
+    return  (unsigned)config.vi.interp;
 }
 
 void angrylion_set_dithering(unsigned dither_type)
@@ -293,14 +348,8 @@ int angrylionRomOpen(void)
       screen_height = 480;
 
    screen_pitch  = 640 << 2;
-  
-	n64video_config_defaults(&config);
-	config.parallel = true;
-	config.num_workers = 0;
-	config.vi.mode = (vi_mode)0;
-	config.vi.widescreen = 0;
-	config.vi.hide_overscan = 0;
    n64video_init(&config);
+   angrylion_init = true;
    return 1;
 }
 
