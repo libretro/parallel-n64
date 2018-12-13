@@ -315,7 +315,8 @@ void n64video_close(void)
     screen_close();
 
     if (rdp_states) {
-        for (uint32_t i = 0; i < config.num_workers; i++) {
+       uint32_t i;
+        for (i = 0; i < config.num_workers; i++) {
             rdp_destroy(rdp_states[i]);
         }
 
