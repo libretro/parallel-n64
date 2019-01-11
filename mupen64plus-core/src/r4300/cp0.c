@@ -34,7 +34,7 @@
 #endif
 
 /* global variable */
-#if NEW_DYNAREC != NEW_DYNAREC_ARM
+#if NEW_DYNAREC < NEW_DYNAREC_ARM
 /* ARM backend requires a different memory layout
  * and therefore manually allocate that variable */
 uint32_t g_cp0_regs[CP0_REGS_COUNT];

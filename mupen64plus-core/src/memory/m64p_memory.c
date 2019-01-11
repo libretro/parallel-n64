@@ -51,13 +51,13 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#if NEW_DYNAREC != NEW_DYNAREC_ARM
+#if NEW_DYNAREC < NEW_DYNAREC_ARM
 // address : address of the read/write operation being done
 uint32_t address = 0;
 #endif
 
 // values that are being written are stored in these variables
-#if NEW_DYNAREC != NEW_DYNAREC_ARM
+#if NEW_DYNAREC < NEW_DYNAREC_ARM
 uint32_t cpu_word;
 uint8_t cpu_byte;
 uint16_t cpu_hword;
