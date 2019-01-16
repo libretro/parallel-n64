@@ -15,7 +15,7 @@
 //
 // This table is used to "shuffle" the RSP vector after loading it.
 //
-const uint16_t shuffle_keys[16][8] alignas(64)  = {
+alignas(64) const uint16_t shuffle_keys[16][8]  = {
   /* -- */ {0x0100, 0x0302, 0x0504, 0x0706, 0x0908, 0x0B0A, 0x0D0C, 0x0F0E},
   /* -- */ {0x0100, 0x0302, 0x0504, 0x0706, 0x0908, 0x0B0A, 0x0D0C, 0x0F0E},
 
@@ -46,7 +46,7 @@ const uint16_t shuffle_keys[16][8] alignas(64)  = {
 //
 
 // Shift left LUT; shifts in zeros from the right, one byte at a time.
-static const uint16_t sll_b2l_keys[16][8] alignas(64) = {
+alignas(64) static const uint16_t sll_b2l_keys[16][8] = {
   {0x0001, 0x0203, 0x0405, 0x0607, 0x0809, 0x0A0B, 0x0C0D, 0x0E0F},
   {0x8000, 0x0102, 0x0304, 0x0506, 0x0708, 0x090A, 0x0B0C, 0x0D0E},
   {0x8080, 0x0001, 0x0203, 0x0405, 0x0607, 0x0809, 0x0A0B, 0x0C0D},
@@ -69,7 +69,7 @@ static const uint16_t sll_b2l_keys[16][8] alignas(64) = {
 };
 
 // Shift left LUT; shirts low order to high order, inserting 0x00s.
-static const uint16_t sll_l2b_keys[16][8] alignas(64) = {
+alignas(64) static const uint16_t sll_l2b_keys[16][8] = {
   {0x0001, 0x0203, 0x0405, 0x0607, 0x0809, 0x0A0B, 0x0C0D, 0x0E0F},
   {0x0180, 0x0300, 0x0502, 0x0704, 0x0906, 0x0B08, 0x0D0A, 0x0E0C},
   {0x8080, 0x0001, 0x0203, 0x0405, 0x0607, 0x0809, 0x0A0B, 0x0C0D},
@@ -92,7 +92,7 @@ static const uint16_t sll_l2b_keys[16][8] alignas(64) = {
 };
 
 // Shift right LUT; shifts in zeros from the left, one byte at a time.
-static const uint16_t srl_b2l_keys[16][8] alignas(64) = {
+alignas(64) static const uint16_t srl_b2l_keys[16][8] = {
   {0x0001, 0x0203, 0x0405, 0x0607, 0x0809, 0x0A0B, 0x0C0D, 0x0E0F},
   {0x0102, 0x0304, 0x0506, 0x0708, 0x090A, 0x0B0C, 0x0D0E, 0x0F80},
   {0x0203, 0x0405, 0x0607, 0x0809, 0x0A0B, 0x0C0D, 0x0E0F, 0x8080},
@@ -114,7 +114,7 @@ static const uint16_t srl_b2l_keys[16][8] alignas(64) = {
   {0x0F80, 0x8080, 0x8080, 0x8080, 0x8080, 0x8080, 0x8080, 0x8080},
 };
 
-static const uint16_t ror_b2l_keys[16][8] alignas(64) = {
+alignas(64) static const uint16_t ror_b2l_keys[16][8] = {
   {0x0001, 0x0203, 0x0405, 0x0607, 0x0809, 0x0A0B, 0x0C0D, 0x0E0F},
   {0x0102, 0x0304, 0x0506, 0x0708, 0x090A, 0x0B0C, 0x0D0E, 0x0F00},
   {0x0203, 0x0405, 0x0607, 0x0809, 0x0A0B, 0x0C0D, 0x0E0F, 0x0001},
@@ -137,7 +137,7 @@ static const uint16_t ror_b2l_keys[16][8] alignas(64) = {
 };
 
 // Rotate left LUT; rotates high order bytes back to low order.
-static const uint16_t rol_l2b_keys[16][8] alignas(64) = {
+alignas(64) static const uint16_t rol_l2b_keys[16][8] = {
   {0x0001, 0x0203, 0x0405, 0x0607, 0x0809, 0x0A0B, 0x0C0D, 0x0E0F},
   {0x010E, 0x0300, 0x0502, 0x0704, 0x0906, 0x0B08, 0x0D0A, 0x0F0C},
   {0x0E0F, 0x0001, 0x0203, 0x0405, 0x0607, 0x0809, 0x0A0B, 0x0C0D},
@@ -160,7 +160,7 @@ static const uint16_t rol_l2b_keys[16][8] alignas(64) = {
 };
 
 // Rotate right LUT; rotates high order bytes back to low order.
-static const uint16_t ror_l2b_keys[16][8] alignas(64) = {
+alignas(64) static const uint16_t ror_l2b_keys[16][8] = {
   {0x0001, 0x0203, 0x0405, 0x0607, 0x0809, 0x0A0B, 0x0C0D, 0x0E0F},
   {0x0300, 0x0502, 0x0704, 0x0906, 0x0B08, 0x0D0A, 0x0F0C, 0x010E},
   {0x0203, 0x0405, 0x0607, 0x0809, 0x0A0B, 0x0C0D, 0x0E0F, 0x0001},
@@ -184,7 +184,7 @@ static const uint16_t ror_l2b_keys[16][8] alignas(64) = {
 
 #ifndef __SSSE3__
 static inline __m128i sse2_pshufb_loop8(__m128i v, const uint8_t *keys) {
-  uint8_t temp[(0x80 |128) + 1] alignas(16);
+  alignas(16) uint8_t temp[(0x80 |128) + 1] ;
   unsigned j;
 
   _mm_store_si128((__m128i *) temp, v);
