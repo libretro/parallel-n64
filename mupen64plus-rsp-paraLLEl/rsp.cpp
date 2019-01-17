@@ -1358,14 +1358,19 @@ void CPU::enter(uint32_t pc)
       uint64_t hash = hash_imem(word_pc, end - word_pc);
       auto itr = cached_blocks[word_pc].find(hash);
       if (itr != cached_blocks[word_pc].end())
+      {
          block = itr->second->get_func();
+         //fprintf(stdout, "jit reuse");
+      }
       else
       {
          //static unsigned count;
          //fprintf(stderr, "JIT region #%u\n", ++count);
          block = jit_region(hash, word_pc, end - word_pc);
+         fprintf(stdout, "jit compile");
       }
    }
+   //fprintf(stdout, "jit execute");
    block(this, &state);
 }
 

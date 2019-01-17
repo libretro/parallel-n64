@@ -87,7 +87,7 @@ namespace RSP
          void init_symbol_table();
          void print_registers();
 
-         uint32_t cached_imem[IMEM_WORDS] alignas(64) = {};
+         alignas(64) uint32_t cached_imem[IMEM_WORDS]  = {};
 
          // Platform specific.
 #ifdef _WIN32

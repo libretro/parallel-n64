@@ -3,7 +3,7 @@ PERF_TEST=0
 HAVE_SHARED_CONTEXT=0
 WITH_CRC=brumme
 FORCE_GLES=0
-HAVE_OPENGL=1
+HAVE_OPENGL=0
 HAVE_VULKAN_DEBUG=0
 GLIDEN64=0
 GLIDEN64CORE=0
@@ -86,6 +86,8 @@ ifeq ($(ARCH), $(filter $(ARCH), i386 i686))
    WITH_DYNAREC = x86
 else ifeq ($(ARCH), $(filter $(ARCH), arm))
    WITH_DYNAREC = arm
+else ifeq ($(ARCH), $(filter $(ARCH), aarch64))
+   WITH_DYNAREC = aarch64
 endif
 
 ifeq ($(HAVE_VULKAN_DEBUG),1)
@@ -124,7 +126,7 @@ ifneq (,$(findstring unix,$(platform)))
    else ifneq (,$(findstring gles,$(platform)))
       GLES = 1
       GL_LIB := -lGLESv2
-   else
+   else ifeq ($(HAVE_OPENGL),1)
       GL_LIB := -lGL
    endif
 
@@ -216,7 +218,22 @@ ifneq (,$(findstring unix,$(platform)))
           LDFLAGS += -static-libgcc -static-libstdc++
         endif
       endif
-   #######################################
+
+ #######################################
+   # Generic ARMV8 - cross - No GL 
+   else ifneq (,$(findstring armv8,$(platform)))
+      CC = aarch64-linux-gnu-gcc
+      CXX = aarch64-linux-gnu-g++
+      CPUFLAGS += -DNO_ASM -DARM -DARM_ASM -DDONT_WANT_ARM_OPTIMIZATIONS -DARM_FIX -DCLASSIC -DARM64
+      LDFLAGS += -static-libgcc -static-libstdc++
+      GLES = 0
+      HAVE_NEON = 0
+      WITH_DYNAREC=aarch64
+      ifneq (,$(findstring neon,$(platform)))
+         CPUFLAGS += -D__NEON_OPT -mfpu=neon
+         HAVE_NEON = 1
+      endif
+ #######################################
    
    # Generic ARM
    else ifneq (,$(findstring armv,$(platform)))
