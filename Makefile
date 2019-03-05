@@ -271,7 +271,6 @@ ifneq (,$(findstring unix,$(platform)))
          CPUFLAGS += -D__NEON_OPT -mfpu=neon
          HAVE_NEON = 1
       endif
-   endif
 
    PLATFORM_EXT := unix
 
