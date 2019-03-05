@@ -218,7 +218,7 @@ ifneq (,$(findstring unix,$(platform)))
           LDFLAGS += -static-libgcc -static-libstdc++
         endif
       endif
-	  
+	endif  
 	# (armv8 a35, hard point, neon based) ###
 	# PlayStation Classic
 	ifneq (,$(findstring classic_armv8_a35, $(platform)))
@@ -246,7 +246,7 @@ ifneq (,$(findstring unix,$(platform)))
           LDFLAGS += -static-libgcc -static-libstdc++
         endif
       endif
-
+	endif
  #######################################
    # Generic ARMV8 - cross - No GL 
    else ifneq (,$(findstring armv8,$(platform)))
