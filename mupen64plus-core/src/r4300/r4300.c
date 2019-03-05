@@ -50,7 +50,7 @@
 unsigned int r4300emu = 0;
 unsigned int count_per_op = COUNT_PER_OP_DEFAULT;
 unsigned int llbit;
-#if NEW_DYNAREC != NEW_DYNAREC_ARM
+#if NEW_DYNAREC < NEW_DYNAREC_ARM
 int stop;
 int64_t reg[32], hi, lo;
 uint32_t next_interrupt;

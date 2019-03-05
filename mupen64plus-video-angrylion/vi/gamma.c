@@ -21,7 +21,7 @@ static uint32_t vi_integer_sqrt(uint32_t a)
     return res;
 }
 
-static STRICTINLINE void gamma_filters(uint32_t* r, uint32_t* g, uint32_t* b, union vi_reg_ctrl ctrl, int32_t* seed)
+static STRICTINLINE void gamma_filters(uint32_t* r, uint32_t* g, uint32_t* b, struct vi_reg_ctrl ctrl, int32_t* rstate)
 {
     int cdith, dith;
 
@@ -30,7 +30,7 @@ static STRICTINLINE void gamma_filters(uint32_t* r, uint32_t* g, uint32_t* b, un
     case 0: // no gamma, no dithering
         return;
     case 1: // no gamma, dithering enabled
-        cdith = irand(seed);
+        cdith = irand(rstate);
         dith = cdith & 1;
         if (*r < 255)
             *r += dith;
@@ -47,7 +47,7 @@ static STRICTINLINE void gamma_filters(uint32_t* r, uint32_t* g, uint32_t* b, un
         *b = gamma_table[*b];
         break;
     case 3: // gamma and dithering enabled
-        cdith = irand(seed);
+        cdith = irand(rstate);
         dith = cdith & 0x3f;
         *r = gamma_dither_table[((*r) << 6)|dith];
         dith = (cdith >> 6) & 0x3f;
@@ -60,7 +60,7 @@ static STRICTINLINE void gamma_filters(uint32_t* r, uint32_t* g, uint32_t* b, un
 
 void vi_gamma_init(void)
 {
-   int i;
+    int i;
     for (i = 0; i < 256; i++)
     {
         gamma_table[i] = vi_integer_sqrt(i << 6);

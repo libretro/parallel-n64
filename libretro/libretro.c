@@ -360,8 +360,12 @@ static void setup_variables(void)
        "(Glide64) Polygon Offset Units; -3.0|-2.5|-2.0|-1.5|-1.0|-0.5|0.0|0.5|1.0|1.5|2.0|2.5|3.0|3.5|4.0|4.5|5.0|-3.5|-4.0|-4.5|-5.0"
       },
       { "parallel-n64-angrylion-vioverlay",
-       "(Angrylion) VI Overlay; disabled|enabled"
+       "(Angrylion) VI Overlay; Filtered|Unfiltered|Depth|Coverage"
       },
+       { "parallel-n64-angrylion-multithread",
+         "(Angrylion) Multi-threading; enabled|disabled" },
+       { "parallel-n64-angrylion-overscan",
+         "(Angrylion) Hide overscan; disabled|enabled" },
       { "parallel-n64-virefresh",
          "VI Refresh (Overclock); auto|1500|2200" },
       { "parallel-n64-bufferswap",
@@ -951,7 +955,6 @@ void retro_deinit(void)
    gl_inited         = false;
 }
 
-#include "../mupen64plus-video-angrylion/vi.h"
 
 #if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
 extern void glide_set_filtering(unsigned value);
@@ -959,7 +962,10 @@ extern void glide_set_filtering(unsigned value);
 extern void angrylion_set_vi(unsigned value);
 extern void angrylion_set_filtering(unsigned value);
 extern void angrylion_set_dithering(unsigned value);
+extern void  angrylion_set_threads(unsigned value);
 extern void parallel_set_dithering(unsigned value);
+extern void  angrylion_set_threads(unsigned value);
+extern void  angrylion_set_overscan(unsigned value);
 extern void ChangeSize();
 
 static void gfx_set_filtering(void)
@@ -1127,6 +1133,8 @@ void update_variables(bool startup)
       }
    }
 
+   
+
    var.key = "parallel-n64-angrylion-vioverlay";
    var.value = NULL;
 
@@ -1134,13 +1142,49 @@ void update_variables(bool startup)
 
    if (var.value)
    {
-      if(!strcmp(var.value, "enabled"))
-         angrylion_set_vi(1);
-      else if(!strcmp(var.value, "disabled"))
+      if(!strcmp(var.value, "Filtered"))
          angrylion_set_vi(0);
+      else if(!strcmp(var.value, "Unfiltered"))
+         angrylion_set_vi(1);
+      else if(!strcmp(var.value, "Depth"))
+         angrylion_set_vi(2);
+      else if(!strcmp(var.value, "Coverage"))
+         angrylion_set_vi(3);
    }
    else
       angrylion_set_vi(0);
+
+   var.key = "parallel-n64-angrylion-multithread";
+   var.value = NULL;
+
+   environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var);
+
+   if (var.value)
+   {
+      if(!strcmp(var.value, "enabled"))
+         angrylion_set_threads(0);
+      else if(!strcmp(var.value, "disabled"))
+         angrylion_set_threads(1);
+   }
+   else
+      angrylion_set_threads(0);
+
+   var.key = "parallel-n64-angrylion-overscan";
+   var.value = NULL;
+
+   environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var);
+
+   if (var.value)
+   {
+      if(!strcmp(var.value, "enabled"))
+         angrylion_set_overscan(1);
+      else if(!strcmp(var.value, "disabled"))
+         angrylion_set_overscan(0);
+   }
+   else
+      angrylion_set_overscan(0);
+
+
 
    CFG_HLE_GFX = (gfx_plugin != GFX_ANGRYLION) && (gfx_plugin != GFX_PARALLEL) ? 1 : 0;
    CFG_HLE_AUD = 0; /* There is no HLE audio code in libretro audio plugin. */

@@ -2056,7 +2056,7 @@ static void read_tmem_copy(struct rdp_state* rdp, int s, int s1, int s2, int s3,
 
 static void tmem_init_lut(void)
 {
-   int i;
+    int i;
     for (i = 0; i < 32; i++)
         replicated_rgba[i] = (i << 3) | ((i >> 2) & 7);
 }

@@ -91,7 +91,7 @@ static STRICTINLINE void compute_cvg_flip(struct rdp_state* rdp, int32_t scanlin
                 }
                 else
                 {
-                   int k;
+                    int k;
                     for (k = purgestart; k <= purgeend; k++)
                         rdp->cvgbuf[k] &= ~fmaskshifted;
                 }
@@ -148,7 +148,7 @@ static STRICTINLINE void compute_cvg_noflip(struct rdp_state* rdp, int32_t scanl
             }
             else
             {
-               int k;
+                int k;
                 for (k = purgestart; k <= purgeend; k++)
                     rdp->cvgbuf[k] &= ~fmaskshifted;
             }
