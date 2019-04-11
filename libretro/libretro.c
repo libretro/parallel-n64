@@ -71,6 +71,19 @@ retro_environment_t environ_cb                    = NULL;
 
 struct retro_rumble_interface rumble;
 
+#define SUBSYSTEM_CART_DISK 0x0101
+
+static const struct retro_subsystem_rom_info n64_cart_disk[] = {
+   { "Cartridge", "n64|z64|v64|bin", false, false, false, NULL, 0 },
+   { "Disk",      "ndd|bin",         false, false, false, NULL, 0 },
+   { NULL }
+};
+
+static const struct retro_subsystem_info subsystems[] = {
+   { "Cartridge and Disk", "n64_cart_disk", n64_cart_disk, 2, SUBSYSTEM_CART_DISK},
+   { NULL }
+};
+
 save_memory_data saved_memory;
 
 #ifdef NO_LIBCO
@@ -91,8 +104,10 @@ int astick_sensitivity              = 100;
 int first_time                      = 1;
 bool flip_only                      = false;
 
-static uint8_t* game_data           = NULL;
-static uint32_t game_size           = 0;
+static uint8_t* cart_data           = NULL;
+static uint32_t cart_size           = 0;
+static uint8_t* disk_data           = NULL;
+static uint32_t disk_size           = 0;
 
 static bool     emu_initialized     = false;
 static unsigned initial_boot        = true;
@@ -404,12 +419,18 @@ static void setup_variables(void)
 
    environ_cb(RETRO_ENVIRONMENT_SET_VARIABLES, variables);
    environ_cb(RETRO_ENVIRONMENT_SET_CONTROLLER_INFO, (void*)ports);
+   environ_cb(RETRO_ENVIRONMENT_SET_SUBSYSTEM_INFO, (void*)subsystems);
 }
 
+bool is_cartridge_rom(const uint8_t* data)
+{
+   return (data != NULL && *((uint32_t *)data) != 0x16D348E8 && *((uint32_t *)data) != 0x56EE6322);
+}
 
 static bool emu_step_load_data()
 {
    const char *dir;
+   bool loaded = false;
    char slash;
 
    #if defined(_WIN32)
@@ -421,21 +442,23 @@ static bool emu_step_load_data()
    if(CoreStartup(FRONTEND_API_VERSION, ".", ".", "Core", n64DebugCallback, 0, 0) && log_cb)
        log_cb(RETRO_LOG_ERROR, "mupen64plus: Failed to initialize core\n");
 
-   if (game_data != NULL && *((uint32_t *)game_data) != 0x16D348E8 && *((uint32_t *)game_data) != 0x56EE6322)
+   if (cart_data != NULL && cart_size != 0)
    {
-      /* Regular N64 ROM */
+      /* N64 Cartridge loading */
+      loaded = true;
+
       if (log_cb)
          log_cb(RETRO_LOG_INFO, "EmuThread: M64CMD_ROM_OPEN\n");
 
-      if(CoreDoCommand(M64CMD_ROM_OPEN, game_size, (void*)game_data))
+      if(CoreDoCommand(M64CMD_ROM_OPEN, cart_size, (void*)cart_data))
       {
          if (log_cb)
             log_cb(RETRO_LOG_ERROR, "mupen64plus: Failed to load ROM\n");
          goto load_fail;
       }
 
-      free(game_data);
-      game_data = NULL;
+      free(cart_data);
+      cart_data = NULL;
 
       if (log_cb)
          log_cb(RETRO_LOG_INFO, "EmuThread: M64CMD_ROM_GET_HEADER\n");
@@ -447,14 +470,15 @@ static bool emu_step_load_data()
          goto load_fail;
       }
    }
-   else
+   if (disk_data != NULL && disk_size != 0)
    {
+      /* 64DD Disk loading */
       char disk_ipl_path[256];
       FILE *fPtr;
       long romlength = 0;
       uint8_t* ipl_data = NULL;
 
-      /* 64DD Disk loading */
+      loaded = true;
       if (!environ_cb(RETRO_ENVIRONMENT_GET_SYSTEM_DIRECTORY, &dir) || !dir)
          goto load_fail;
 
@@ -465,16 +489,15 @@ static bool emu_step_load_data()
          log_cb(RETRO_LOG_INFO, "EmuThread: M64CMD_DISK_OPEN\n");
       printf("M64CMD_DISK_OPEN\n");
 
-      if(CoreDoCommand(M64CMD_DISK_OPEN, game_size, (void*)game_data))
+      if(CoreDoCommand(M64CMD_DISK_OPEN, disk_size, (void*)disk_data))
       {
          if (log_cb)
             log_cb(RETRO_LOG_ERROR, "mupen64plus: Failed to load DISK\n");
          goto load_fail;
       }
 
-      free(game_data);
-      game_data = NULL;
-
+      free(disk_data);
+      disk_data = NULL;
 
       /* 64DD IPL LOAD - assumes "64DD_IPL.bin" is in system folder */
       sprintf(disk_ipl_path, "%s%c64DD_IPL.bin", dir, slash);
@@ -539,11 +562,13 @@ static bool emu_step_load_data()
          goto load_fail;
       }
    }
-   return true;
+   return loaded;
 
 load_fail:
-   free(game_data);
-   game_data = NULL;
+   free(cart_data);
+   cart_data = NULL;
+   free(disk_data);
+   disk_data = NULL;
    stop = 1;
 
    return false;
@@ -1478,9 +1503,18 @@ bool retro_load_game(const struct retro_game_info *game)
       }
    }
 
-   game_data = malloc(game->size);
-   game_size = game->size;
-   memcpy(game_data, game->data, game->size);
+   if (is_cartridge_rom(game->data))
+   {
+      cart_data = malloc(game->size);
+      cart_size = game->size;
+      memcpy(cart_data, game->data, game->size);
+   }
+   else
+   {
+      disk_data = malloc(game->size);
+      disk_size = game->size;
+      memcpy(disk_data, game->data, game->size);
+   }
 
    stop      = false;
    /* Finish ROM load before doing anything funny,
@@ -1497,6 +1531,23 @@ bool retro_load_game(const struct retro_game_info *game)
    first_context_reset = true;
 
    return true;
+}
+
+bool retro_load_game_special(unsigned game_type, const struct retro_game_info *info, size_t num_info)
+{
+   if (game_type == SUBSYSTEM_CART_DISK)
+   {
+      if (!info[1].data || info[1].size == 0)
+         return false;
+      
+      disk_size = info[1].size;
+      disk_data = malloc(disk_size);
+      memcpy(disk_data, info[1].data, disk_size);
+
+      return retro_load_game(&info[0]);
+   }
+ 
+   return false;
 }
 
 void retro_unload_game(void)
@@ -1798,8 +1849,6 @@ void retro_set_controller_port_device(unsigned in_port, unsigned device)
 
 /* Stubs */
 unsigned retro_api_version(void) { return RETRO_API_VERSION; }
-
-bool retro_load_game_special(unsigned game_type, const struct retro_game_info *info, size_t num_info) { return false; }
 
 void retro_cheat_reset(void)
 {
