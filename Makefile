@@ -820,7 +820,9 @@ ifneq ($(findstring Darwin,$(UNAME)),)
    CPUOPTS += -flto
 else ifeq ($(findstring msvc,$(platform)),)
 ifneq ($(platform), emscripten)
+ifneq ($(shell $(CC) -v 2>&1 | grep -c "clang"),1)
    CPUOPTS += -fipa-pta
+endif
 endif
 endif
 
