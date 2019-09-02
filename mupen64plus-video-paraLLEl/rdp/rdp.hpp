@@ -7,6 +7,7 @@
 #include <stdint.h>
 #include <unordered_map>
 #include <cstring>
+#include <cstdio>
 #include <vector>
 
 #define RDP_MAX_PRIMITIVES 	1024
