@@ -221,7 +221,7 @@ ifneq (,$(findstring unix,$(platform)))
 	endif  
 # (armv8 a35, hard point, neon based) ###
 # PlayStation Classic
-	ifneq (,$(findstring classic_armv8_a35, $(platform)))
+ifneq (,$(findstring classic_armv8_a35, $(platform)))
 	GLES = 1
 	GL_LIB := -lGLESv2
 	HAVE_NEON = 1
@@ -239,6 +239,7 @@ ifneq (,$(findstring unix,$(platform)))
 	LDFLAGS += -marm -mtune=cortex-a35 -mfpu=neon-fp-armv8 -mfloat-abi=hard
         CPUFLAGS += -march=armv8-a
         LDFLAGS += -static-libgcc -static-libstdc++
+	endif
  #######################################
    # Generic ARMV8 - cross - No GL 
    else ifneq (,$(findstring armv8,$(platform)))
