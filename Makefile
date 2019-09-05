@@ -847,7 +847,9 @@ ifneq ($(findstring Darwin,$(UNAME)),)
    CPUOPTS += -flto
 else ifeq ($(findstring msvc,$(platform)),)
 ifneq ($(platform), emscripten)
+ifneq ($(shell $(CC) -v 2>&1 | grep -c "clang"),1)
    CPUOPTS += -fipa-pta
+endif
 endif
 endif
 
@@ -956,13 +958,11 @@ include $(THEOS_MAKE_PATH)/library.mk
 else
 all: $(TARGET)
 $(TARGET): $(OBJECTS)
-	@echo "** BUILDING $(TARGET) FOR PLATFORM $(platform) **"
 ifeq ($(STATIC_LINKING), 1)
 	$(AR) rcs $@ $(OBJECTS)
 else
 	$(LD) $(LINKOUT)$@ $(OBJECTS) $(LDFLAGS) $(GL_LIB) $(LIBS)
 endif
-	@echo "** BUILD SUCCESSFUL! GG NO RE **"
 
 
 %.o: %.S
