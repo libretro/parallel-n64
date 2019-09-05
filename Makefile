@@ -219,34 +219,26 @@ ifneq (,$(findstring unix,$(platform)))
         endif
       endif
 	endif  
-	# (armv8 a35, hard point, neon based) ###
-	# PlayStation Classic
+# (armv8 a35, hard point, neon based) ###
+# PlayStation Classic
 	ifneq (,$(findstring classic_armv8_a35, $(platform)))
-      GLES = 1
-      GL_LIB := -lGLESv2
-      HAVE_NEON = 1
-      WITH_DYNAREC=arm
-      ASFLAGS += -D__ARM_NEON__ -marm -mtune=cortex-a35 -mfpu=neon-fp-armv8 -mfloat-abi=hard
-      CPUFLAGS += -DNO_ASM -DARM -D__arm__ -DARM_ASM -D__NEON_OPT -DNOSSE -DARM_FIX -DCLASSIC
-      CPUFLAGS += -Ofast \
-      -flto=4 -fwhole-program -fuse-linker-plugin \
-      -fdata-sections -ffunction-sections -Wl,--gc-sections \
-      -fno-stack-protector -fno-ident -fomit-frame-pointer \
-      -falign-functions=1 -falign-jumps=1 -falign-loops=1 \
-      -fno-unwind-tables -fno-asynchronous-unwind-tables -fno-unroll-loops \
-      -fmerge-all-constants -fno-math-errno \
-      -marm -mtune=cortex-a35 -mfpu=neon-fp-armv8 -mfloat-abi=hard
-      LDFLAGS += -marm -mtune=cortex-a35 -mfpu=neon-fp-armv8 -mfloat-abi=hard
-      ifeq ($(shell echo `$(CC) -dumpversion` "< 4.9" | bc -l), 1)
+	GLES = 1
+	GL_LIB := -lGLESv2
+	HAVE_NEON = 1
+	WITH_DYNAREC=arm
+	ASFLAGS += -D__ARM_NEON__ -marm -mtune=cortex-a35 -mfpu=neon-fp-armv8 -mfloat-abi=hard
+	CPUFLAGS += -DNO_ASM -DARM -D__arm__ -DARM_ASM -D__NEON_OPT -DNOSSE -DARM_FIX -DCLASSIC
+	CPUFLAGS += -Ofast \
+	-flto -fwhole-program -fuse-linker-plugin \
+	-fdata-sections -ffunction-sections -Wl,--gc-sections \
+	-fno-stack-protector -fno-ident -fomit-frame-pointer \
+	-falign-functions=1 -falign-jumps=1 -falign-loops=1 \
+	-fno-unwind-tables -fno-asynchronous-unwind-tables -fno-unroll-loops \
+	-fmerge-all-constants -fno-math-errno \
+	-marm -mtune=cortex-a35 -mfpu=neon-fp-armv8 -mfloat-abi=hard
+	LDFLAGS += -marm -mtune=cortex-a35 -mfpu=neon-fp-armv8 -mfloat-abi=hard
         CPUFLAGS += -march=armv8-a
-      else
-        CPUFLAGS += -march=armv8-a
-        # If gcc is 5.0 or later
-        ifeq ($(shell echo `$(CC) -dumpversion` ">= 5" | bc -l), 1)
-          LDFLAGS += -static-libgcc -static-libstdc++
-        endif
-      endif
-	endif
+        LDFLAGS += -static-libgcc -static-libstdc++
  #######################################
    # Generic ARMV8 - cross - No GL 
    else ifneq (,$(findstring armv8,$(platform)))
