@@ -316,16 +316,25 @@ else ifneq (,$(findstring ios,$(platform)))
    PLATCFLAGS += -DHAVE_POSIX_MEMALIGN -DNO_ASM
    PLATCFLAGS += -DIOS -marm
    CPUFLAGS += -DNO_ASM  -DARM -D__arm__ -DARM_ASM -D__NEON_OPT
-   CPUFLAGS += -marm -mcpu=cortex-a8 -mfpu=neon -mfloat-abi=softfp
    LDFLAGS += -dynamiclib
-   HAVE_NEON=1
 
    fpic = -fPIC
    GL_LIB := -framework OpenGLES
-
-   CC = clang -arch armv7 -isysroot $(IOSSDK)
+   ifeq ($(platform),ios-arm64)
+      CC = clang -arch arm64 -isysroot $(IOSSDK)
+      CXX = clang++ -arch arm64 -isysroot $(IOSSDK)
+      CFLAGS += -DDONT_WANT_ARM_OPTIMIZATIONS
+      FORCE_GLES=1
+      CXXFLAGS += -Wc++11-extensions -std=c++11 -stdlib=libc++ -Wc++11-long-long
+      CPUFLAGS += -marm -mfpu=neon -mfloat-abi=softfp
+      HAVE_NEON=0
+   else
+      CPUFLAGS += -marm -mcpu=cortex-a8 -mfpu=neon -mfloat-abi=softfp
+      CC = clang -arch armv7 -isysroot $(IOSSDK)
+      CXX = clang++ -arch armv7 -isysroot $(IOSSDK)
+      HAVE_NEON=1
+   endif
    CC_AS = perl ./tools/gas-preprocessor.pl $(CC)
-   CXX = clang++ -arch armv7 -isysroot $(IOSSDK)
    ifeq ($(platform),ios9)
       CC         += -miphoneos-version-min=8.0
       CC_AS      += -miphoneos-version-min=8.0
@@ -894,7 +903,9 @@ else ifeq ($(HAVE_PARALLEL), 1)
    endif
 else ifeq (,$(findstring msvc,$(platform)))
     CFLAGS   += -MMD
-    CXXFLAGS += -std=c++98 -MMD
+    ifneq ($(platform),ios-arm64)
+        CXXFLAGS += -std=c++98 -MMD
+    endif
 endif
 ifeq ($(GLIDEN64ES),1)
    CFLAGS   += -DGLIDEN64ES
