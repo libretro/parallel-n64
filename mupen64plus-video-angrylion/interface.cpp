@@ -6,9 +6,9 @@
 #include <ctype.h>
 #include <boolean.h>
 #include "common.h"
-#include "screen.h"
 #include "n64video.h"
 #include "m64p_plugin.h"
+#include "vdac.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -47,7 +47,7 @@ extern uint32_t *blitter_buf_lock;
 extern unsigned int screen_width, screen_height;
 extern uint32_t screen_pitch;
 
-static struct n64video_config config={{VI_MODE_NORMAL,VI_INTERP_LINEAR,false,false},true,0};
+struct n64video_config config;
 
 #include <ctype.h>
 
@@ -154,13 +154,6 @@ uint32_t plugin_get_rom_name(char* name, uint32_t name_size)
     return i;
 }
 
-
-void screen_swap(bool blank)
-{
-   if(blank)
-   memset(blitter_buf_lock,0,625*640*sizeof(uint32_t));
-}
-
 void screen_init(struct n64video_config* config)
 {
 }
@@ -180,12 +173,26 @@ void screen_close(void)
 {}
 
 
-void screen_write(struct frame_buffer* buffer, int32_t output_height)
+void vdac_init(struct n64video_config* config)
 {
-    memcpy(blitter_buf_lock, buffer->pixels, screen_width*screen_height * sizeof(uint32_t));
-    screen_width = buffer->width;
-    screen_height = buffer->height;
-    screen_pitch = buffer->pitch * 4;
+}
+
+void vdac_close(void)
+{
+    
+}
+void vdac_sync(bool invalid)
+{
+   if(invalid)
+   memset(blitter_buf_lock,0,625*640*sizeof(uint32_t));
+}
+
+void vdac_write(struct frame_buffer* fb)
+{
+  memcpy(blitter_buf_lock, fb->pixels, screen_width*screen_height * sizeof(uint32_t));
+    screen_width = fb->width;
+    screen_height = fb->height;
+    screen_pitch = fb->pitch * 4;
 }
 
 
@@ -304,6 +311,7 @@ void angrylionSetRenderingCallback(void (*callback)(int))
 
 int angrylionInitiateGFX (GFX_INFO Gfx_Info)
 {
+   n64video_config_init(&config);
    return 0;
 }
 
@@ -331,6 +339,7 @@ void angrylionRomClosed (void)
 
 int angrylionRomOpen(void)
 {
+    
    /* TODO/FIXME: For now just force it to 640x480.
     *
     * Later on we might want a low-res mode (320x240)

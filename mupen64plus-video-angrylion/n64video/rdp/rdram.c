@@ -1,3 +1,5 @@
+#ifdef N64VIDEO_C
+
 //
 // rdram.c: RDRAM memory interface
 //
@@ -33,13 +35,13 @@ static uint8_t rdram_hidden[RDRAM_MAX_SIZE / 2];
 
 static void rdram_init(void)
 {
-    idxlim8 = plugin_get_rdram_size() - 1;
+    idxlim8 = config.gfx.rdram_size - 1;
     idxlim16 = (idxlim8 >> 1) & 0xffffffu;
     idxlim32 = (idxlim8 >> 2) & 0xffffffu;
 
-    rdram32 = (uint32_t*)plugin_get_rdram();
-    rdram16 = (uint16_t*)plugin_get_rdram();
-    rdram8 = plugin_get_rdram();
+    rdram32 = (uint32_t*)config.gfx.rdram;
+    rdram16 = (uint16_t*)config.gfx.rdram;
+    rdram8 = config.gfx.rdram;
 
     memset(rdram_hidden, 3, sizeof(rdram_hidden));
 }
@@ -95,7 +97,7 @@ static STRICTINLINE uint32_t rdram_read_idx32_fast(uint32_t in)
 static STRICTINLINE void rdram_write_idx8(uint32_t in, uint8_t val)
 {
     in &= RDRAM_MASK;
-    if (in <= idxlim8) {
+    if (rdram_valid_idx8(in)) {
         rdram8[in ^ BYTE_ADDR_XOR] = val;
     }
 }
@@ -103,7 +105,7 @@ static STRICTINLINE void rdram_write_idx8(uint32_t in, uint8_t val)
 static STRICTINLINE void rdram_write_idx16(uint32_t in, uint16_t val)
 {
     in &= RDRAM_MASK >> 1;
-    if (in <= idxlim16) {
+    if (rdram_valid_idx16(in)) {
         rdram16[in ^ WORD_ADDR_XOR] = val;
     }
 }
@@ -156,3 +158,5 @@ static STRICTINLINE void rdram_write_pair32(uint32_t in, uint32_t rval, uint8_t 
         rdram_hidden[(in << 1) + 1] = hval1;
     }
 }
+
+#endif // N64VIDEO_C

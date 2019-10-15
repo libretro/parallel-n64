@@ -1,3 +1,5 @@
+#ifdef N64VIDEO_C
+
 static int vi_restore_table[0x400];
 
 static STRICTINLINE void restore_filter16(int* r, int* g, int* b, uint32_t fboffset, uint32_t num, uint32_t hres, uint32_t fetchbugstate)
@@ -154,3 +156,5 @@ void vi_restore_init()
             vi_restore_table[i] = 0;
     }
 }
+
+#endif // N64VIDEO_C

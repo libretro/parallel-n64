@@ -1,3 +1,5 @@
+#ifdef N64VIDEO_C
+
 static STRICTINLINE void video_max_optimized(uint32_t* pixels, uint32_t* penumin, uint32_t* penumax, int numofels)
 {
     int i;
@@ -186,3 +188,5 @@ static STRICTINLINE void video_filter32(int* endr, int* endg, int* endb, uint32_
     *endg = colg & 0xff;
     *endb = colb & 0xff;
 }
+
+#endif // N64VIDEO_C

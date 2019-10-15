@@ -1,3 +1,5 @@
+#ifdef N64VIDEO_C
+
 // anamorphic NTSC resolution
 #define H_RES_NTSC 640
 #define V_RES_NTSC 480
@@ -46,20 +48,16 @@ struct vi_reg_ctrl
     bool dither_filter_enable;
 };
 
-struct ccvg
-{
-    uint8_t r, g, b, cvg;
-};
+typedef void(*vi_fetch_filter_func)(struct rgba*, uint32_t, uint32_t, struct vi_reg_ctrl, uint32_t, uint32_t);
 
-#include "gamma.c"
-#include "lerp.c"
-#include "divot.c"
-#include "video.c"
-#include "restore.c"
-#include "fetch.c"
+#include "vi/gamma.c"
+#include "vi/lerp.c"
+#include "vi/divot.c"
+#include "vi/video.c"
+#include "vi/restore.c"
+#include "vi/fetch.c"
 
 // states
-static void(*vi_fetch_filter_ptr)(struct ccvg*, uint32_t, uint32_t, struct vi_reg_ctrl, uint32_t, uint32_t);
 static uint32_t prevvicurrent;
 static int32_t emucontrolsvicurrent;
 static bool prevserrate;
@@ -78,11 +76,11 @@ static int32_t v_sync;
 static int32_t vi_width_low;
 static uint32_t frame_buffer;
 static uint32_t tvfadeoutstate[PRESCALE_HEIGHT];
-static uint32_t rseed;
+static uint32_t rseed[PARALLEL_MAX_WORKERS];
 static uint32_t zb_address;
 
 // prescale buffer
-static uint32_t prescale[PRESCALE_WIDTH * PRESCALE_HEIGHT];
+static struct rgba prescale[PRESCALE_WIDTH * PRESCALE_HEIGHT];
 static uint32_t prescale_ptr;
 static int32_t linecount;
 
@@ -97,6 +95,8 @@ static int32_t v_current_line;
 
 static void vi_init(void)
 {
+    vdac_init(&config);
+
     vi_gamma_init();
     vi_restore_init();
 
@@ -107,29 +107,31 @@ static void vi_init(void)
     prevserrate = false;
     oldvstart = 1337;
     prevwasblank = false;
-    rseed = 3;
     zb_address = 0;
+
+    memset(rseed, 3, sizeof(rseed));
 }
 
 static void vi_process_full_parallel(uint32_t worker_id)
 {
     int32_t y;
-    struct ccvg viaa_array[0xa10 << 1];
-    struct ccvg divot_array[0xa10 << 1];
+    struct rgba viaa_array[0xa10 << 1];
+    struct rgba divot_array[0xa10 << 1];
 
     int32_t cache_marker = 0, cache_next_marker = 0, divot_cache_marker = 0, divot_cache_next_marker = 0;
     int32_t cache_marker_init = (x_start >> 10) - 1;
 
-    struct ccvg *viaa_cache = &viaa_array[0];
-    struct ccvg *viaa_cache_next = &viaa_array[0xa10];
-    struct ccvg *divot_cache = &divot_array[0];
-    struct ccvg *divot_cache_next = &divot_array[0xa10];
+    struct rgba *viaa_cache = &viaa_array[0];
+    struct rgba *viaa_cache_next = &viaa_array[0xa10];
+    struct rgba *divot_cache = &divot_array[0];
+    struct rgba *divot_cache_next = &divot_array[0xa10];
 
-    struct ccvg color, nextcolor, scancolor, scannextcolor;
+    struct rgba color, nextcolor, scancolor, scannextcolor;
+
+    vi_fetch_filter_func vi_fetch_filter_ptr = ctrl.type & 1 ? vi_fetch_filter32 : vi_fetch_filter16;
 
     uint32_t pixels = 0, nextpixels = 0, fetchbugstate = 0;
 
-    int32_t r = 0, g = 0, b = 0;
     int32_t xfrac = 0, yfrac = 0;
     int32_t line_x = 0, next_line_x = 0, prev_line_x = 0, far_line_x = 0;
     int32_t prev_scan_x = 0, scan_x = 0, next_scan_x = 0, far_scan_x = 0;
@@ -160,7 +162,7 @@ static void vi_process_full_parallel(uint32_t worker_id)
             divot_cache_marker = divot_cache_next_marker = cache_marker_init;
         }
 
-        int* d = prescale + prescale_ptr + linecount * y;
+        struct rgba* pixel_row = &prescale[prescale_ptr + linecount * y];
 
         yfrac = (curry >> 5) & 0x1f;
         pixels = vi_width_low * prevy;
@@ -275,16 +277,13 @@ static void vi_process_full_parallel(uint32_t worker_id)
                 vi_vl_lerp(&color, nextcolor, xfrac);
             }
 
-            r = color.r;
-            g = color.g;
-            b = color.b;
-
-            gamma_filters(&r, &g, &b, ctrl, &rseed);
+            struct rgba* pixel = &pixel_row[x];
 
             if (x >= minhpass && x < maxhpass) {
-                d[x] = (r << 16) | (g << 8) | b;
+                *pixel = color;
+                gamma_filters(pixel, ctrl.gamma_enable, ctrl.gamma_dither_enable, &rseed[worker_id]);
             } else {
-                d[x] = 0;
+                pixel->r = pixel->g = pixel->b = 0;
             }
         }
 
@@ -292,7 +291,7 @@ static void vi_process_full_parallel(uint32_t worker_id)
             cache_marker = cache_next_marker;
             cache_next_marker = cache_marker_init;
 
-            struct ccvg* tempccvgptr = viaa_cache;
+            struct rgba* tempccvgptr = viaa_cache;
             viaa_cache = viaa_cache_next;
             viaa_cache_next = tempccvgptr;
             if (ctrl.divot_enable) {
@@ -310,8 +309,6 @@ static void vi_process_full_parallel(uint32_t worker_id)
 
 static bool vi_process_full(void)
 {
-    vi_fetch_filter_ptr = ctrl.type & 1 ? vi_fetch_filter32 : vi_fetch_filter16;
-
     bool isblank = (ctrl.type & 2) == 0;
     bool validinterlace = !isblank && ctrl.serrate;
 
@@ -454,13 +451,11 @@ static bool vi_process_full(void)
     fb.pixels = prescale;
     fb.pitch = PRESCALE_WIDTH;
 
-    int32_t output_height;
-
     if (config.vi.hide_overscan) {
         // crop away overscan area from prescale
         fb.width = maxhpass - minhpass;
         fb.height = vres << ctrl.serrate;
-        output_height = (vres << 1) * V_SYNC_NTSC / v_sync;
+        fb.height_out = (vres << 1) * V_SYNC_NTSC / v_sync;
         int32_t x = h_start + minhpass;
         int32_t y = (v_start + (emucontrolsvicurrent ? lowerfield : 0)) << ctrl.serrate;
         fb.pixels += x + y * fb.pitch;
@@ -468,16 +463,17 @@ static bool vi_process_full(void)
         // use entire prescale buffer
         fb.width = PRESCALE_WIDTH;
         fb.height = (ispal ? V_RES_PAL : V_RES_NTSC) >> !ctrl.serrate;
-        output_height = V_RES_NTSC;
+        fb.height_out = V_RES_NTSC;
     }
 
     // convert to 16:9 if enabled
     if (config.vi.widescreen) {
-        output_height = output_height * 3 / 4;
+        fb.height_out = fb.height_out * 3 / 4;
     }
 
-    screen_write(&fb, output_height);
-    return true;
+    vdac_write(&fb);
+
+    return fb.width > 0 && fb.height > 0;
 }
 
 static void vi_process_fast_parallel(uint32_t worker_id)
@@ -503,27 +499,28 @@ static void vi_process_fast_parallel(uint32_t worker_id)
     for (y = y_begin; y < y_end; y += y_inc) {
         int32_t x;
         int32_t line = y * vi_width_low;
-        uint32_t* dst = prescale + y * hres_raw;
+
+        struct rgba* pixel_row = &prescale[y * hres_raw];
 
         for (x = 0; x < hres_raw; x++) {
-            uint32_t r, g, b;
+            struct rgba* pixel = &pixel_row[x];
 
             switch (config.vi.mode) {
                 case VI_MODE_COLOR:
                     switch (ctrl.type) {
                         case VI_TYPE_RGBA5551: {
                             uint16_t pix = rdram_read_idx16((frame_buffer >> 1) + line + x);
-                            r = RGBA16_R(pix);
-                            g = RGBA16_G(pix);
-                            b = RGBA16_B(pix);
+                            pixel->r = RGBA16_R(pix);
+                            pixel->g = RGBA16_G(pix);
+                            pixel->b = RGBA16_B(pix);
                             break;
                         }
 
                         case VI_TYPE_RGBA8888: {
                             uint32_t pix = rdram_read_idx32((frame_buffer >> 2) + line + x);
-                            r = RGBA32_R(pix);
-                            g = RGBA32_G(pix);
-                            b = RGBA32_B(pix);
+                            pixel->r = RGBA32_R(pix);
+                            pixel->g = RGBA32_G(pix);
+                            pixel->b = RGBA32_B(pix);
                             break;
                         }
 
@@ -531,12 +528,12 @@ static void vi_process_fast_parallel(uint32_t worker_id)
                             return;
                     }
 
-                    gamma_filters(&r, &g, &b, ctrl, &rseed);
+                    gamma_filters(pixel, ctrl.gamma_enable, false, &rseed[worker_id]);
                     break;
 
                 case VI_MODE_DEPTH: {
                     if (zb_address) {
-                        r = g = b = rdram_read_idx16((zb_address >> 1) + line + x) >> 8;
+                        pixel->r = pixel->g = pixel->b = rdram_read_idx16((zb_address >> 1) + line + x) >> 8;
                     }
                     break;
                 }
@@ -546,15 +543,13 @@ static void vi_process_fast_parallel(uint32_t worker_id)
                     uint8_t hval;
                     uint16_t pix;
                     rdram_read_pair16(&pix, &hval, (frame_buffer >> 1) + line + x);
-                    r = g = b = (((pix & 1) << 2) | hval) << 5;
+                    pixel->r = pixel->g = pixel->b = (((pix & 1) << 2) | hval) << 5;
                     break;
                 }
 
                 default:
                     return;
             }
-
-            dst[x] = (r << 16) | (g << 8) | b;
         }
     }
 }
@@ -600,15 +595,16 @@ static bool vi_process_fast(void)
     fb.width -= border_width;
 
     // force aspect ratio of filtered mode
-    int32_t output_height = fb.width * filtered_height / filtered_width;
+    fb.height_out = fb.width * filtered_height / filtered_width;
 
     // convert to 16:9 if enabled
     if (config.vi.widescreen) {
-        output_height = output_height * 3 / 4;
+        fb.height_out = fb.height_out * 3 / 4;
     }
 
-    screen_write(&fb, output_height);
-    return true;
+    vdac_write(&fb);
+
+    return fb.width > 0 && fb.height > 0;
 }
 
 void vi_set_zbuffer_address(uint32_t address)
@@ -624,7 +620,7 @@ void n64video_update_screen(void)
     }
 
     // parse and check some common registers
-    vi_reg_ptr = plugin_get_vi_registers();
+    vi_reg_ptr = config.gfx.vi_reg;
 
     v_start = (*vi_reg_ptr[VI_V_START] >> 16) & 0x3ff;
     h_start = (*vi_reg_ptr[VI_H_START] >> 16) & 0x3ff;
@@ -649,7 +645,7 @@ void n64video_update_screen(void)
 
     // cancel if the frame buffer contains no valid address
     if (!frame_buffer) {
-        screen_swap(true);
+        vdac_sync(true);
         return;
     }
 
@@ -733,7 +729,7 @@ void n64video_update_screen(void)
         msg_error("VI_V_SYNC_REG too big");
     }
 
-    bool blank = true;
+    bool valid = true;
 
     if (vactivelines >= 0) {
         uint32_t lineshifter = !ctrl.serrate;
@@ -744,16 +740,19 @@ void n64video_update_screen(void)
 
         // run filter update in parallel if enabled
         if (config.vi.mode == VI_MODE_NORMAL) {
-            blank = !vi_process_full();
+            valid = vi_process_full();
         } else {
-            blank = !vi_process_fast();
+            valid = vi_process_fast();
         }
     }
 
     // render frame to screen or blank screen if the frame is invalid
-    screen_swap(blank);
+    vdac_sync(!valid);
 }
 
 static void vi_close(void)
 {
+    vdac_close();
 }
+
+#endif // N64VIDEO_C
