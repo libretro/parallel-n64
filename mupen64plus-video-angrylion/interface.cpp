@@ -330,6 +330,15 @@ void angrylionSetRenderingCallback(void (*callback)(int))
 int angrylionInitiateGFX (GFX_INFO Gfx_Info)
 {
    n64video_config_init(&config);
+    config.gfx.rdram =Gfx_Info.RDRAM;
+    config.gfx.rdram_size = 0x800000;
+    config.gfx.dmem = Gfx_Info.DMEM;
+    config.gfx.mi_intr_reg = (uint32_t*)Gfx_Info.MI_INTR_REG;
+    config.gfx.mi_intr_cb = Gfx_Info.CheckInterrupts;
+
+    config.gfx.vi_reg = (uint32_t**)&Gfx_Info.VI_STATUS_REG;
+    config.gfx.dp_reg = (uint32_t**)&Gfx_Info.DPC_START_REG;
+
    return true;
 }
 
