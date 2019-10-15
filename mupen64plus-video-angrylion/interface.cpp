@@ -326,18 +326,13 @@ void angrylionGetDllInfo(PLUGIN_INFO* PluginInfo)
 void angrylionSetRenderingCallback(void (*callback)(int))
 {
 }
+GFX_INFO grafx_Info;
 
 int angrylionInitiateGFX (GFX_INFO Gfx_Info)
 {
    n64video_config_init(&config);
-    config.gfx.rdram =Gfx_Info.RDRAM;
-    config.gfx.rdram_size = 0x800000;
-    config.gfx.dmem = Gfx_Info.DMEM;
-    config.gfx.mi_intr_reg = (uint32_t*)Gfx_Info.MI_INTR_REG;
-    config.gfx.mi_intr_cb = Gfx_Info.CheckInterrupts;
-
-    config.gfx.vi_reg = (uint32_t**)&Gfx_Info.VI_STATUS_REG;
-    config.gfx.dp_reg = (uint32_t**)&Gfx_Info.DPC_START_REG;
+   grafx_Info = Gfx_Info;
+   
 
    return true;
 }
@@ -384,6 +379,14 @@ int angrylionRomOpen(void)
       screen_height = 480;
 
    screen_pitch  = 640 << 2;
+    config.gfx.rdram =grafx_Info.RDRAM;
+    config.gfx.rdram_size = 0x800000;
+    config.gfx.dmem = grafx_Info.DMEM;
+    config.gfx.mi_intr_reg = (uint32_t*)grafx_Info.MI_INTR_REG;
+    config.gfx.mi_intr_cb = grafx_Info.CheckInterrupts;
+
+    config.gfx.vi_reg = (uint32_t**)&grafx_Info.VI_STATUS_REG;
+    config.gfx.dp_reg = (uint32_t**)&grafx_Info.DPC_START_REG;
    n64video_init(&config);
    angrylion_init = true;
    return 1;
