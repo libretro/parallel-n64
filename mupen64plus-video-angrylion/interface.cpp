@@ -179,7 +179,7 @@ void vdac_init(struct n64video_config* config)
 
 void vdac_close(void)
 {
-    
+
 }
 void vdac_sync(bool invalid)
 {
@@ -244,6 +244,24 @@ void angrylion_set_overscan(unsigned value)
     }
     }
     
+}
+
+void angrylion_set_synclevel(unsigned value)
+{
+if(config.dp.compat != (dp_compat_profile)value)
+{
+    config.dp.compat= (dp_compat_profile)value;
+    if (angrylion_init)
+    {
+        n64video_close();
+        n64video_init(&config);
+    }
+}
+}
+
+unsigned angrylion_get_synclevel()
+{
+    return config.dp.compat;
 }
 
 unsigned angrylion_get_threads()

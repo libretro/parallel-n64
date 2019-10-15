@@ -377,6 +377,9 @@ static void setup_variables(void)
       { "parallel-n64-angrylion-vioverlay",
        "(Angrylion) VI Overlay; Filtered|Unfiltered|Depth|Coverage"
       },
+      { "parallel-n64-angrylion-sync",
+       "(Angrylion) Thread sync level; High|Medium|Low"
+      },
        { "parallel-n64-angrylion-multithread",
          "(Angrylion) Multi-threading; enabled|disabled" },
        { "parallel-n64-angrylion-overscan",
@@ -991,6 +994,8 @@ extern void  angrylion_set_threads(unsigned value);
 extern void parallel_set_dithering(unsigned value);
 extern void  angrylion_set_threads(unsigned value);
 extern void  angrylion_set_overscan(unsigned value);
+
+extern void angrylion_set_synclevel(unsigned value);
 extern void ChangeSize();
 
 static void gfx_set_filtering(void)
@@ -1178,6 +1183,23 @@ void update_variables(bool startup)
    }
    else
       angrylion_set_vi(0);
+
+   var.key = "parallel-n64-angrylion-sync";
+   var.value = NULL;
+
+   environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var);
+
+   if (var.value)
+   {
+      if(!strcmp(var.value, "High"))
+         angrylion_set_synclevel(2);
+      else if(!strcmp(var.value, "Medium"))
+         angrylion_set_synclevel(1);
+      else if(!strcmp(var.value, "Low"))
+         angrylion_set_synclevel(0);
+   }
+   else
+      angrylion_set_synclevel(2);
 
    var.key = "parallel-n64-angrylion-multithread";
    var.value = NULL;
