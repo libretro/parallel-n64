@@ -213,7 +213,7 @@ void n64video_init(struct n64video_config* _config)
 
     if (config.parallel) {
         // init worker system
-        parallel_init(config.num_workers);
+        parallel_alinit(config.num_workers);
 
         // sync states from main worker
         for (uint32_t i = 1; i < parallel_num_workers(); i++) {

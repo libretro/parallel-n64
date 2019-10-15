@@ -330,7 +330,7 @@ void angrylionSetRenderingCallback(void (*callback)(int))
 int angrylionInitiateGFX (GFX_INFO Gfx_Info)
 {
    n64video_config_init(&config);
-   return 0;
+   return true;
 }
 
  
