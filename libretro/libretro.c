@@ -1451,7 +1451,9 @@ bool retro_load_game(const struct retro_game_info *game)
 
    if (gfx_plugin != GFX_ANGRYLION)
    {
-      if (retro_init_vulkan())
+      unsigned preferred;
+      environ_cb(RETRO_ENVIRONMENT_GET_PREFERRED_HW_RENDER, &preferred);
+      if (preferred != RETRO_HW_CONTEXT_OPENGL && preferred != RETRO_HW_CONTEXT_OPENGL_CORE && retro_init_vulkan())
          vulkan_inited = true;
       else if (retro_init_gl())
          gl_inited = true;
