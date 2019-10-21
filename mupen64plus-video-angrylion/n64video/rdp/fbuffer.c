@@ -1,5 +1,3 @@
-#ifdef N64VIDEO_C
-
 static void fbwrite_4(uint32_t wid, uint32_t curpixel, uint32_t r, uint32_t g, uint32_t b, uint32_t blend_en, uint32_t curpixel_cvg, uint32_t curpixel_memcvg);
 static void fbwrite_8(uint32_t wid, uint32_t curpixel, uint32_t r, uint32_t g, uint32_t b, uint32_t blend_en, uint32_t curpixel_cvg, uint32_t curpixel_memcvg);
 static void fbwrite_16(uint32_t wid, uint32_t curpixel, uint32_t r, uint32_t g, uint32_t b, uint32_t blend_en, uint32_t curpixel_cvg, uint32_t curpixel_memcvg);
@@ -314,5 +312,3 @@ static void fb_init(uint32_t wid)
     state[wid].fbread2_ptr = fbread2_func[state[wid].fb_size];
     state[wid].fbwrite_ptr = fbwrite_func[state[wid].fb_size];
 }
-
-#endif // N64VIDEO_C

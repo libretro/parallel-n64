@@ -1,5 +1,3 @@
-#ifdef N64VIDEO_C
-
 #define tmem16 ((uint16_t*)state[wid].tmem)
 #define tc16   ((uint16_t*)state[wid].tmem)
 #define tlut   ((uint16_t*)(&state[wid].tmem[0x800]))
@@ -2062,5 +2060,3 @@ static void tmem_init_lut(void)
     for (i = 0; i < 32; i++)
         replicated_rgba[i] = (i << 3) | ((i >> 2) & 7);
 }
-
-#endif // N64VIDEO_C

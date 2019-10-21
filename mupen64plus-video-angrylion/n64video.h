@@ -89,16 +89,8 @@ struct n64video_config
     uint32_t num_workers;           // number of rendering workers
 };
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 void n64video_config_init(struct n64video_config* config);
 void n64video_init(struct n64video_config* config);
 void n64video_update_screen(void);
 void n64video_process_list(void);
 void n64video_close(void);
-
-#ifdef __cplusplus
-}
-#endif

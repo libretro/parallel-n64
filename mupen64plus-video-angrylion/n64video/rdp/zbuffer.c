@@ -1,5 +1,3 @@
-#ifdef N64VIDEO_C
-
 #define ZMODE_OPAQUE            0
 #define ZMODE_INTERPENETRATING  1
 #define ZMODE_TRANSPARENT       2
@@ -406,5 +404,3 @@ void z_init_lut(void)
         }
     }
 }
-
-#endif // N64VIDEO_C

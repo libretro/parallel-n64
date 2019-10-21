@@ -1,5 +1,3 @@
-#ifdef N64VIDEO_C
-
 static uint32_t special_9bit_clamptable[512];
 static int32_t special_9bit_exttable[512];
 
@@ -577,5 +575,3 @@ void rdp_set_key_r(uint32_t wid, const uint32_t* args)
     state[wid].key_center.r = (args[1] >> 8) & 0xff;
     state[wid].key_scale.r = args[1] & 0xff;
 }
-
-#endif // N64VIDEO_C

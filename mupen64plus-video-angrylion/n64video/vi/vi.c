@@ -48,12 +48,12 @@ struct vi_reg_ctrl
 
 typedef void(*vi_fetch_filter_func)(struct rgba*, uint32_t, uint32_t, struct vi_reg_ctrl, uint32_t, uint32_t);
 
-#include "vi/gamma.c"
-#include "vi/lerp.c"
-#include "vi/divot.c"
-#include "vi/video.c"
-#include "vi/restore.c"
-#include "vi/fetch.c"
+#include "gamma.c"
+#include "lerp.c"
+#include "divot.c"
+#include "video.c"
+#include "restore.c"
+#include "fetch.c"
 
 // states
 static uint32_t prevvicurrent;
@@ -74,7 +74,7 @@ static int32_t v_sync;
 static int32_t vi_width_low;
 static uint32_t frame_buffer;
 static uint32_t tvfadeoutstate[PRESCALE_HEIGHT];
-static uint32_t rseed[PARALLEL_MAX_WORKERS];
+static uint32_t rseed;
 static uint32_t zb_address;
 
 // prescale buffer
@@ -93,8 +93,6 @@ static int32_t v_current_line;
 
 static void vi_init(void)
 {
-    vdac_init(&config);
-
     vi_gamma_init();
     vi_restore_init();
 
@@ -105,9 +103,8 @@ static void vi_init(void)
     prevserrate = false;
     oldvstart = 1337;
     prevwasblank = false;
+    rseed = 3;
     zb_address = 0;
-
-    memset(rseed, 3, sizeof(rseed));
 }
 
 static void vi_process_full_parallel(uint32_t worker_id)
@@ -279,7 +276,7 @@ static void vi_process_full_parallel(uint32_t worker_id)
 
             if (x >= minhpass && x < maxhpass) {
                 *pixel = color;
-                gamma_filters(pixel, ctrl.gamma_enable, ctrl.gamma_dither_enable, &rseed[worker_id]);
+                gamma_filters(pixel, ctrl, &rseed);
             } else {
                 pixel->r = pixel->g = pixel->b = 0;
             }
@@ -449,11 +446,13 @@ static bool vi_process_full(void)
     fb.pixels = prescale;
     fb.pitch = PRESCALE_WIDTH;
 
+    int32_t output_height;
+
     if (config.vi.hide_overscan) {
         // crop away overscan area from prescale
         fb.width = maxhpass - minhpass;
         fb.height = vres << ctrl.serrate;
-        fb.height_out = (vres << 1) * V_SYNC_NTSC / v_sync;
+        output_height = (vres << 1) * V_SYNC_NTSC / v_sync;
         int32_t x = h_start + minhpass;
         int32_t y = (v_start + (emucontrolsvicurrent ? lowerfield : 0)) << ctrl.serrate;
         fb.pixels += x + y * fb.pitch;
@@ -461,16 +460,15 @@ static bool vi_process_full(void)
         // use entire prescale buffer
         fb.width = PRESCALE_WIDTH;
         fb.height = (ispal ? V_RES_PAL : V_RES_NTSC) >> !ctrl.serrate;
-        fb.height_out = V_RES_NTSC;
+        output_height = V_RES_NTSC;
     }
 
     // convert to 16:9 if enabled
     if (config.vi.widescreen) {
-        fb.height_out = fb.height_out * 3 / 4;
+        output_height = output_height * 3 / 4;
     }
 
-    vdac_write(&fb);
-
+    screen_write(&fb, output_height);
     return fb.width > 0 && fb.height > 0;
 }
 
@@ -526,7 +524,7 @@ static void vi_process_fast_parallel(uint32_t worker_id)
                             return;
                     }
 
-                    gamma_filters(pixel, ctrl.gamma_enable, false, &rseed[worker_id]);
+                    gamma_filters(pixel, ctrl, &rseed);
                     break;
 
                 case VI_MODE_DEPTH: {
@@ -593,15 +591,14 @@ static bool vi_process_fast(void)
     fb.width -= border_width;
 
     // force aspect ratio of filtered mode
-    fb.height_out = fb.width * filtered_height / filtered_width;
+    int32_t output_height = fb.width * filtered_height / filtered_width;
 
     // convert to 16:9 if enabled
     if (config.vi.widescreen) {
-        fb.height_out = fb.height_out * 3 / 4;
+        output_height = output_height * 3 / 4;
     }
 
-    vdac_write(&fb);
-
+    screen_write(&fb, output_height);
     return fb.width > 0 && fb.height > 0;
 }
 
@@ -618,7 +615,7 @@ void n64video_update_screen(void)
     }
 
     // parse and check some common registers
-    vi_reg_ptr = config.gfx.vi_reg;
+    vi_reg_ptr = plugin_get_vi_registers();
 
     v_start = (*vi_reg_ptr[VI_V_START] >> 16) & 0x3ff;
     h_start = (*vi_reg_ptr[VI_H_START] >> 16) & 0x3ff;
@@ -643,7 +640,7 @@ void n64video_update_screen(void)
 
     // cancel if the frame buffer contains no valid address
     if (!frame_buffer) {
-        vdac_sync(true);
+        screen_swap(true);
         return;
     }
 
@@ -727,7 +724,7 @@ void n64video_update_screen(void)
         msg_error("VI_V_SYNC_REG too big");
     }
 
-    bool valid = true;
+    bool blank = true;
 
     if (vactivelines >= 0) {
         uint32_t lineshifter = !ctrl.serrate;
@@ -738,17 +735,16 @@ void n64video_update_screen(void)
 
         // run filter update in parallel if enabled
         if (config.vi.mode == VI_MODE_NORMAL) {
-            valid = vi_process_full();
+            blank = !vi_process_full();
         } else {
-            valid = vi_process_fast();
+            blank = !vi_process_fast();
         }
     }
 
     // render frame to screen or blank screen if the frame is invalid
-    vdac_sync(!valid);
+    screen_swap(blank);
 }
 
 static void vi_close(void)
 {
-    vdac_close();
 }

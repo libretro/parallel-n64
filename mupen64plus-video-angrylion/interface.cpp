@@ -5,10 +5,8 @@
 #include <string.h>
 #include <ctype.h>
 #include <boolean.h>
-#include "common.h"
-#include "n64video.h"
+
 #include "m64p_plugin.h"
-#include "vdac.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -16,9 +14,12 @@ extern void DebugMessage(int level, const char *message, ...);
 #endif
 
 #include "Gfx #1.3.h"
-
+#include "common.h"
+#include "screen.h"
+#include "n64video.h"
 #include "m64p_types.h"
 #include "m64p_config.h"
+#include "vdac.h"
 
 int retro_return(bool just_flipping);
 
@@ -47,7 +48,7 @@ extern uint32_t *blitter_buf_lock;
 extern unsigned int screen_width, screen_height;
 extern uint32_t screen_pitch;
 
-struct n64video_config config;
+static struct n64video_config config;
 
 #include <ctype.h>
 
@@ -156,10 +157,33 @@ uint32_t plugin_get_rom_name(char* name, uint32_t name_size)
 
 void screen_init(struct n64video_config* config)
 {
+
 }
 
-void screen_read(struct frame_buffer* buffer, bool alpha)
-{}
+void vdac_init(struct n64video_config* config)
+{
+
+}
+void vdac_read(struct frame_buffer* fb, bool alpha)
+{
+
+}
+void vdac_write(struct frame_buffer* fb)
+{
+ memcpy(blitter_buf_lock, fb->pixels, screen_width*screen_height * sizeof(uint32_t));
+    screen_width = fb->width;
+    screen_height = fb->height;
+    screen_pitch = fb->pitch * 4;
+}
+void vdac_sync(bool invalid)
+{
+     if(invalid)
+  memset(blitter_buf_lock,0,625*640*sizeof(uint32_t));
+}
+void vdac_close(void)
+{
+
+}
 
 void screen_set_fullscreen(bool _fullscreen)
 {}
@@ -172,34 +196,6 @@ bool screen_get_fullscreen(void)
 void screen_close(void)
 {}
 
-
-void vdac_init(struct n64video_config* config)
-{
-}
-
-void vdac_close(void)
-{
-
-}
-void vdac_sync(bool invalid)
-{
-   if(invalid)
-   memset(blitter_buf_lock,0,625*640*sizeof(uint32_t));
-}
-
-void vdac_write(struct frame_buffer* fb)
-{
-  memcpy(blitter_buf_lock, fb->pixels, screen_width*screen_height * sizeof(uint32_t));
-    screen_width = fb->width;
-    screen_height = fb->height;
-    screen_pitch = fb->pitch * 4;
-}
-
-
-unsigned angrylion_get_vi(void)
-{
-   return config.vi.mode;
-}
 
 void angrylion_set_vi(unsigned value)
 {
@@ -269,6 +265,13 @@ unsigned angrylion_get_threads()
     return  config.num_workers;
 }
 
+
+unsigned angrylion_get_vi()
+{
+    return config.vi.mode;
+}
+
+
 void angrylion_set_filtering(unsigned filter_type)
 {
     if(filter_type!=2)filter_type=1;
@@ -326,15 +329,10 @@ void angrylionGetDllInfo(PLUGIN_INFO* PluginInfo)
 void angrylionSetRenderingCallback(void (*callback)(int))
 {
 }
-GFX_INFO grafx_Info;
 
 int angrylionInitiateGFX (GFX_INFO Gfx_Info)
 {
-   n64video_config_init(&config);
-   grafx_Info = Gfx_Info;
-   
-
-   return true;
+   return 0;
 }
 
  
@@ -361,7 +359,6 @@ void angrylionRomClosed (void)
 
 int angrylionRomOpen(void)
 {
-    
    /* TODO/FIXME: For now just force it to 640x480.
     *
     * Later on we might want a low-res mode (320x240)
@@ -379,14 +376,19 @@ int angrylionRomOpen(void)
       screen_height = 480;
 
    screen_pitch  = 640 << 2;
-    config.gfx.rdram =grafx_Info.RDRAM;
-    config.gfx.rdram_size = 0x800000;
-    config.gfx.dmem = grafx_Info.DMEM;
-    config.gfx.mi_intr_reg = (uint32_t*)grafx_Info.MI_INTR_REG;
-    config.gfx.mi_intr_cb = grafx_Info.CheckInterrupts;
 
-    config.gfx.vi_reg = (uint32_t**)&grafx_Info.VI_STATUS_REG;
-    config.gfx.dp_reg = (uint32_t**)&grafx_Info.DPC_START_REG;
+  config.gfx.rdram = plugin_get_rdram();
+    config.gfx.rdram_size = plugin_get_rdram_size();
+
+    config.gfx.dmem = plugin_get_dmem();
+    config.gfx.mi_intr_reg = (uint32_t*)gfx_info.MI_INTR_REG;
+    config.gfx.mi_intr_cb = gfx_info.CheckInterrupts;
+
+    config.gfx.vi_reg = plugin_get_vi_registers();
+    config.gfx.dp_reg = plugin_get_dp_registers();
+
+
+
    n64video_init(&config);
    angrylion_init = true;
    return 1;

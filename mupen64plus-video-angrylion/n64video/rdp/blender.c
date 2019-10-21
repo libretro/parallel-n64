@@ -1,5 +1,3 @@
-#ifdef N64VIDEO_C
-
 static int32_t blenderone = 0xff;
 
 static uint8_t bldiv_hwaccurate_table[0x8000];
@@ -346,5 +344,3 @@ void rdp_set_blend_color(uint32_t wid, const uint32_t* args)
     state[wid].blend_color.b = RGBA32_B(args[1]);
     state[wid].blend_color.a = RGBA32_A(args[1]);
 }
-
-#endif // N64VIDEO_C

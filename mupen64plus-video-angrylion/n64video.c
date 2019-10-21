@@ -109,10 +109,6 @@ static STRICTINLINE uint32_t irand(uint32_t* state)
     return ((*state >> 16) & 0x7fff);
 }
 
-// include guard to prevent compilation of code modules
-// as translation units
-#define N64VIDEO_C
-
 #include "n64video/rdp.c"
 #include "n64video/vi.c"
 

@@ -1,5 +1,3 @@
-#ifdef N64VIDEO_C
-
 static void vi_fetch_filter16(struct rgba* res, uint32_t fboffset, uint32_t cur_x, struct vi_reg_ctrl ctrl, uint32_t hres, uint32_t fetchstate)
 {
     int r, g, b;
@@ -67,6 +65,3 @@ static void vi_fetch_filter32(struct rgba* res, uint32_t fboffset, uint32_t cur_
     res->b = b;
     res->a = cur_cvg;
 }
-
-#endif // N64VIDEO_C
-

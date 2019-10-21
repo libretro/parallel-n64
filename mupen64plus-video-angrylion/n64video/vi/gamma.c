@@ -1,5 +1,3 @@
-#ifdef N64VIDEO_C
-
 static uint8_t gamma_table[0x100];
 static uint8_t gamma_dither_table[0x4000];
 
@@ -75,5 +73,3 @@ void vi_gamma_init(void)
         gamma_dither_table[i] <<= 1;
     }
 }
-
-#endif // N64VIDEO_C

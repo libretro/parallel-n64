@@ -1,5 +1,3 @@
-#ifdef N64VIDEO_C
-
 static STRICTINLINE void tcmask(uint32_t wid, int32_t* S, int32_t* T, int32_t num)
 {
     int32_t wrap;
@@ -1038,5 +1036,3 @@ static void tex_init(uint32_t wid)
         calculate_clamp_diffs(&state[wid].tile[i]);
     }
 }
-
-#endif // N64VIDEO_C

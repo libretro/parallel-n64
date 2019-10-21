@@ -1,5 +1,3 @@
-#ifdef N64VIDEO_C
-
 // bit constants for DP_STATUS
 #define DP_STATUS_XBUS_DMA      0x001   // DMEM DMA mode is set
 #define DP_STATUS_FREEZE        0x002   // Freeze has been set
@@ -654,5 +652,3 @@ void rdp_cmd(uint32_t wid, const uint32_t* args)
     uint32_t cmd_id = CMD_ID(args);
     rdp_commands[cmd_id].handler(wid, args);
 }
-
-#endif // N64VIDEO_C

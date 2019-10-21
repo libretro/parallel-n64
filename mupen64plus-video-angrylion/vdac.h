@@ -22,16 +22,8 @@ struct frame_buffer
     uint32_t pitch;
 };
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 void vdac_init(struct n64video_config* config);
 void vdac_read(struct frame_buffer* fb, bool alpha);
 void vdac_write(struct frame_buffer* fb);
 void vdac_sync(bool invaid);
 void vdac_close(void);
-
-#ifdef __cplusplus
-}
-#endif

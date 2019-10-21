@@ -1,5 +1,3 @@
-#ifdef N64VIDEO_C
-
 static const int32_t norm_point_table[64] = {
     0x4000, 0x3f04, 0x3e10, 0x3d22, 0x3c3c, 0x3b5d, 0x3a83, 0x39b1,
     0x38e4, 0x381c, 0x375a, 0x369d, 0x35e5, 0x3532, 0x3483, 0x33d9,
@@ -1150,5 +1148,3 @@ static void tcoord_init(uint32_t wid)
 {
     state[wid].tcdiv_ptr = tcdiv_func[0];
 }
-
-#endif // N64VIDEO_C
