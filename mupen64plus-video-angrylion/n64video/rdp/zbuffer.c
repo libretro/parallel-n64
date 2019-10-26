@@ -213,7 +213,7 @@ static STRICTINLINE uint32_t dz_compress(uint32_t value)
     return j;
 }
 
-static STRICTINLINE uint32_t z_compare(struct rdp_state* rdp, uint32_t zcurpixel, uint32_t sz, uint16_t dzpix, int dzpixenc, uint32_t* blend_en, uint32_t* prewrap, uint32_t* curpixel_cvg, uint32_t curpixel_memcvg)
+static STRICTINLINE uint32_t z_compare(uint32_t wid, uint32_t zcurpixel, uint32_t sz, uint16_t dzpix, int dzpixenc, uint32_t* blend_en, uint32_t* prewrap, uint32_t* curpixel_cvg, uint32_t curpixel_memcvg)
 {
 
 
@@ -225,7 +225,7 @@ static STRICTINLINE uint32_t z_compare(struct rdp_state* rdp, uint32_t zcurpixel
     uint32_t oz, dzmem;
     int32_t rawdzmem;
 
-    if (rdp->other_modes.z_compare_en)
+    if (state[wid].other_modes.z_compare_en)
     {
         PAIRREAD16(zval, hval, zcurpixel);
         oz = z_decompress(zval);
@@ -234,21 +234,21 @@ static STRICTINLINE uint32_t z_compare(struct rdp_state* rdp, uint32_t zcurpixel
 
 
 
-        if (rdp->other_modes.f.realblendershiftersneeded)
+        if (state[wid].other_modes.f.realblendershiftersneeded)
         {
-            rdp->blshifta = clamp(dzpixenc - rawdzmem, 0, 4);
-            rdp->blshiftb = clamp(rawdzmem - dzpixenc, 0, 4);
+            state[wid].blshifta = clamp(dzpixenc - rawdzmem, 0, 4);
+            state[wid].blshiftb = clamp(rawdzmem - dzpixenc, 0, 4);
 
         }
 
 
-        if (rdp->other_modes.f.interpixelblendershiftersneeded)
+        if (state[wid].other_modes.f.interpixelblendershiftersneeded)
         {
-            rdp->pastblshifta = clamp(dzpixenc - rdp->pastrawdzmem, 0, 4);
-            rdp->pastblshiftb = clamp(rdp->pastrawdzmem - dzpixenc, 0, 4);
+            state[wid].pastblshifta = clamp(dzpixenc - state[wid].pastrawdzmem, 0, 4);
+            state[wid].pastblshiftb = clamp(state[wid].pastrawdzmem - dzpixenc, 0, 4);
         }
 
-        rdp->pastrawdzmem = rawdzmem;
+        state[wid].pastrawdzmem = rawdzmem;
 
         int precision_factor = (zval >> 13) & 0xf;
 
@@ -287,7 +287,7 @@ static STRICTINLINE uint32_t z_compare(struct rdp_state* rdp, uint32_t zcurpixel
         uint32_t farther = force_coplanar || ((sz + dznew) >= oz);
 
         int overflow = (curpixel_memcvg + *curpixel_cvg) & 8;
-        *blend_en = rdp->other_modes.force_blend || (!overflow && rdp->other_modes.antialias_en && farther);
+        *blend_en = state[wid].other_modes.force_blend || (!overflow && state[wid].other_modes.antialias_en && farther);
 
         *prewrap = overflow;
 
@@ -299,7 +299,7 @@ static STRICTINLINE uint32_t z_compare(struct rdp_state* rdp, uint32_t zcurpixel
         int32_t diff;
         uint32_t nearer, max, infront;
 
-        switch(rdp->other_modes.z_mode)
+        switch(state[wid].other_modes.z_mode)
         {
         case ZMODE_OPAQUE:
             infront = sz < oz;
@@ -343,37 +343,37 @@ static STRICTINLINE uint32_t z_compare(struct rdp_state* rdp, uint32_t zcurpixel
     {
 
 
-        if (rdp->other_modes.f.realblendershiftersneeded)
+        if (state[wid].other_modes.f.realblendershiftersneeded)
         {
-            rdp->blshifta = 0;
+            state[wid].blshifta = 0;
             if (dzpixenc < 0xb)
-                rdp->blshiftb = 4;
+                state[wid].blshiftb = 4;
             else
-                rdp->blshiftb = 0xf - dzpixenc;
+                state[wid].blshiftb = 0xf - dzpixenc;
         }
 
-        if (rdp->other_modes.f.interpixelblendershiftersneeded)
+        if (state[wid].other_modes.f.interpixelblendershiftersneeded)
         {
-            rdp->pastblshifta = 0;
+            state[wid].pastblshifta = 0;
             if (dzpixenc < 0xb)
-                rdp->pastblshiftb = 4;
+                state[wid].pastblshiftb = 4;
             else
-                rdp->pastblshiftb = 0xf - dzpixenc;
+                state[wid].pastblshiftb = 0xf - dzpixenc;
         }
 
-        rdp->pastrawdzmem = 0xf;
+        state[wid].pastrawdzmem = 0xf;
 
         int overflow = (curpixel_memcvg + *curpixel_cvg) & 8;
-        *blend_en = rdp->other_modes.force_blend || (!overflow && rdp->other_modes.antialias_en);
+        *blend_en = state[wid].other_modes.force_blend || (!overflow && state[wid].other_modes.antialias_en);
         *prewrap = overflow;
 
         return 1;
     }
 }
 
-void rdp_set_mask_image(struct rdp_state* rdp, const uint32_t* args)
+void rdp_set_mask_image(uint32_t wid, const uint32_t* args)
 {
-    rdp->zb_address  = args[1] & 0x0ffffff;
+    state[wid].zb_address  = args[1] & 0x0ffffff;
 }
 
 void z_init_lut(void)

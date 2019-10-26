@@ -5,9 +5,7 @@
 #include <string.h>
 #include <ctype.h>
 #include <boolean.h>
-#include "common.h"
-#include "screen.h"
-#include "n64video.h"
+
 #include "m64p_plugin.h"
 
 #ifdef __cplusplus
@@ -16,9 +14,12 @@ extern void DebugMessage(int level, const char *message, ...);
 #endif
 
 #include "Gfx #1.3.h"
-
+#include "common.h"
+#include "screen.h"
+#include "n64video.h"
 #include "m64p_types.h"
 #include "m64p_config.h"
+#include "vdac.h"
 
 int retro_return(bool just_flipping);
 
@@ -47,7 +48,7 @@ extern uint32_t *blitter_buf_lock;
 extern unsigned int screen_width, screen_height;
 extern uint32_t screen_pitch;
 
-static struct n64video_config config={{VI_MODE_NORMAL,VI_INTERP_LINEAR,false,false},true,0};
+static struct n64video_config config;
 
 #include <ctype.h>
 
@@ -154,19 +155,35 @@ uint32_t plugin_get_rom_name(char* name, uint32_t name_size)
     return i;
 }
 
-
-void screen_swap(bool blank)
-{
-   if(blank)
-   memset(blitter_buf_lock,0,625*640*sizeof(uint32_t));
-}
-
 void screen_init(struct n64video_config* config)
 {
+
 }
 
-void screen_read(struct frame_buffer* buffer, bool alpha)
-{}
+void vdac_init(struct n64video_config* config)
+{
+
+}
+void vdac_read(struct frame_buffer* fb, bool alpha)
+{
+
+}
+void vdac_write(struct frame_buffer* fb)
+{
+ memcpy(blitter_buf_lock, fb->pixels, screen_width*screen_height * sizeof(uint32_t));
+    screen_width = fb->width;
+    screen_height = fb->height;
+    screen_pitch = fb->pitch * 4;
+}
+void vdac_sync(bool invalid)
+{
+     if(invalid)
+  memset(blitter_buf_lock,0,625*640*sizeof(uint32_t));
+}
+void vdac_close(void)
+{
+
+}
 
 void screen_set_fullscreen(bool _fullscreen)
 {}
@@ -179,20 +196,6 @@ bool screen_get_fullscreen(void)
 void screen_close(void)
 {}
 
-
-void screen_write(struct frame_buffer* buffer, int32_t output_height)
-{
-    memcpy(blitter_buf_lock, buffer->pixels, screen_width*screen_height * sizeof(uint32_t));
-    screen_width = buffer->width;
-    screen_height = buffer->height;
-    screen_pitch = buffer->pitch * 4;
-}
-
-
-unsigned angrylion_get_vi(void)
-{
-   return config.vi.mode;
-}
 
 void angrylion_set_vi(unsigned value)
 {
@@ -239,10 +242,35 @@ void angrylion_set_overscan(unsigned value)
     
 }
 
+void angrylion_set_synclevel(unsigned value)
+{
+if(config.dp.compat != (dp_compat_profile)value)
+{
+    config.dp.compat= (dp_compat_profile)value;
+    if (angrylion_init)
+    {
+        n64video_close();
+        n64video_init(&config);
+    }
+}
+}
+
+unsigned angrylion_get_synclevel()
+{
+    return config.dp.compat;
+}
+
 unsigned angrylion_get_threads()
 {
     return  config.num_workers;
 }
+
+
+unsigned angrylion_get_vi()
+{
+    return config.vi.mode;
+}
+
 
 void angrylion_set_filtering(unsigned filter_type)
 {
@@ -348,6 +376,19 @@ int angrylionRomOpen(void)
       screen_height = 480;
 
    screen_pitch  = 640 << 2;
+
+  config.gfx.rdram = plugin_get_rdram();
+    config.gfx.rdram_size = plugin_get_rdram_size();
+
+    config.gfx.dmem = plugin_get_dmem();
+    config.gfx.mi_intr_reg = (uint32_t*)gfx_info.MI_INTR_REG;
+    config.gfx.mi_intr_cb = gfx_info.CheckInterrupts;
+
+    config.gfx.vi_reg = plugin_get_vi_registers();
+    config.gfx.dp_reg = plugin_get_dp_registers();
+
+
+
    n64video_init(&config);
    angrylion_init = true;
    return 1;

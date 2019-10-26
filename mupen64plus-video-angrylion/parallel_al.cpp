@@ -13,7 +13,7 @@ class Parallel
 {
 public:
     Parallel(std::uint32_t num_workers) :
-        m_num_workers(std::min(num_workers, 64U))
+        m_num_workers(std::min(num_workers, PARALLEL_MAX_WORKERS))
     {
         // mask for m_tasks_done when all workers have finished their task
         // except for worker 0, which runs in the main thread

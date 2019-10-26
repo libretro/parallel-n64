@@ -18,7 +18,7 @@ static STRICTINLINE int32_t normalize_dzpix(int32_t sum)
     return 0;
 }
 
-static void replicate_for_copy(struct rdp_state* rdp, uint32_t* outbyte, uint32_t inshort, uint32_t nybbleoffset, uint32_t tilenum, uint32_t tformat, uint32_t tsize)
+static void replicate_for_copy(uint32_t wid, uint32_t* outbyte, uint32_t inshort, uint32_t nybbleoffset, uint32_t tilenum, uint32_t tformat, uint32_t tsize)
 {
     uint32_t lownib, hinib;
     switch(tsize)
@@ -28,7 +28,7 @@ static void replicate_for_copy(struct rdp_state* rdp, uint32_t* outbyte, uint32_
         lownib = hinib = (inshort >> lownib) & 0xf;
         if (tformat == FORMAT_CI)
         {
-            *outbyte = (rdp->tile[tilenum].palette << 4) | lownib;
+            *outbyte = (state[wid].tile[tilenum].palette << 4) | lownib;
         }
         else if (tformat == FORMAT_IA)
         {
@@ -58,7 +58,7 @@ static void replicate_for_copy(struct rdp_state* rdp, uint32_t* outbyte, uint32_
     }
 }
 
-static void fetch_qword_copy(struct rdp_state* rdp, uint32_t* hidword, uint32_t* lowdword, int32_t ssss, int32_t ssst, uint32_t tilenum)
+static void fetch_qword_copy(uint32_t wid, uint32_t* hidword, uint32_t* lowdword, int32_t ssss, int32_t ssst, uint32_t tilenum)
 {
     uint32_t shorta, shortb, shortc, shortd;
     uint32_t sortshort[8];
@@ -68,23 +68,23 @@ static void fetch_qword_copy(struct rdp_state* rdp, uint32_t* hidword, uint32_t*
     int largetex = 0;
 
     uint32_t tformat, tsize;
-    if (rdp->other_modes.en_tlut)
+    if (state[wid].other_modes.en_tlut)
     {
         tsize = PIXEL_SIZE_16BIT;
-        tformat = rdp->other_modes.tlut_type ? FORMAT_IA : FORMAT_RGBA;
+        tformat = state[wid].other_modes.tlut_type ? FORMAT_IA : FORMAT_RGBA;
     }
     else
     {
-        tsize = rdp->tile[tilenum].size;
-        tformat = rdp->tile[tilenum].format;
+        tsize = state[wid].tile[tilenum].size;
+        tformat = state[wid].tile[tilenum].format;
     }
 
-    tc_pipeline_copy(rdp, &sss, &sss1, &sss2, &sss3, &sst, tilenum);
-    read_tmem_copy(rdp, sss, sss1, sss2, sss3, sst, tilenum, sortshort, hibits, lowbits);
+    tc_pipeline_copy(wid, &sss, &sss1, &sss2, &sss3, &sst, tilenum);
+    read_tmem_copy(wid, sss, sss1, sss2, sss3, sst, tilenum, sortshort, hibits, lowbits);
     largetex = (tformat == FORMAT_YUV || (tformat == FORMAT_RGBA && tsize == PIXEL_SIZE_32BIT));
 
 
-    if (rdp->other_modes.en_tlut)
+    if (state[wid].other_modes.en_tlut)
     {
         shorta = sortshort[4];
         shortb = sortshort[5];
@@ -112,15 +112,15 @@ static void fetch_qword_copy(struct rdp_state* rdp, uint32_t* hidword, uint32_t*
         *hidword = (shorta << 16) | shortb;
     else
     {
-        replicate_for_copy(rdp, &shorta, shorta, lowbits[0] & 3, tilenum, tformat, tsize);
-        replicate_for_copy(rdp, &shortb, shortb, lowbits[1] & 3, tilenum, tformat, tsize);
-        replicate_for_copy(rdp, &shortc, shortc, lowbits[3] & 3, tilenum, tformat, tsize);
-        replicate_for_copy(rdp, &shortd, shortd, lowbits[4] & 3, tilenum, tformat, tsize);
+        replicate_for_copy(wid, &shorta, shorta, lowbits[0] & 3, tilenum, tformat, tsize);
+        replicate_for_copy(wid, &shortb, shortb, lowbits[1] & 3, tilenum, tformat, tsize);
+        replicate_for_copy(wid, &shortc, shortc, lowbits[3] & 3, tilenum, tformat, tsize);
+        replicate_for_copy(wid, &shortd, shortd, lowbits[4] & 3, tilenum, tformat, tsize);
         *hidword = (shorta << 24) | (shortb << 16) | (shortc << 8) | shortd;
     }
 }
 
-static STRICTINLINE void rgba_correct(struct rdp_state* rdp, int offx, int offy, int r, int g, int b, int a, uint32_t cvg)
+static STRICTINLINE void rgba_correct(uint32_t wid, int offx, int offy, int r, int g, int b, int a, uint32_t cvg)
 {
     int summand_r, summand_b, summand_g, summand_a;
 
@@ -135,10 +135,10 @@ static STRICTINLINE void rgba_correct(struct rdp_state* rdp, int offx, int offy,
     }
     else
     {
-        summand_r = offx * rdp->spans_cdr + offy * rdp->spans_drdy;
-        summand_g = offx * rdp->spans_cdg + offy * rdp->spans_dgdy;
-        summand_b = offx * rdp->spans_cdb + offy * rdp->spans_dbdy;
-        summand_a = offx * rdp->spans_cda + offy * rdp->spans_dady;
+        summand_r = offx * state[wid].spans_cdr + offy * state[wid].spans_drdy;
+        summand_g = offx * state[wid].spans_cdg + offy * state[wid].spans_dgdy;
+        summand_b = offx * state[wid].spans_cdb + offy * state[wid].spans_dbdy;
+        summand_a = offx * state[wid].spans_cda + offy * state[wid].spans_dady;
 
         r = ((r << 2) + summand_r) >> 4;
         g = ((g << 2) + summand_g) >> 4;
@@ -147,13 +147,13 @@ static STRICTINLINE void rgba_correct(struct rdp_state* rdp, int offx, int offy,
     }
 
 
-    rdp->shade_color.r = special_9bit_clamptable[r & 0x1ff];
-    rdp->shade_color.g = special_9bit_clamptable[g & 0x1ff];
-    rdp->shade_color.b = special_9bit_clamptable[b & 0x1ff];
-    rdp->shade_color.a = special_9bit_clamptable[a & 0x1ff];
+    state[wid].shade_color.r = special_9bit_clamptable[r & 0x1ff];
+    state[wid].shade_color.g = special_9bit_clamptable[g & 0x1ff];
+    state[wid].shade_color.b = special_9bit_clamptable[b & 0x1ff];
+    state[wid].shade_color.a = special_9bit_clamptable[a & 0x1ff];
 }
 
-static STRICTINLINE void z_correct(struct rdp_state* rdp, int offx, int offy, int* z, uint32_t cvg)
+static STRICTINLINE void z_correct(uint32_t wid, int offx, int offy, int* z, uint32_t cvg)
 {
     int summand_z;
     int sz = *z;
@@ -165,7 +165,7 @@ static STRICTINLINE void z_correct(struct rdp_state* rdp, int offx, int offy, in
         sz = sz >> 3;
     else
     {
-        summand_z = offx * rdp->spans_cdz + offy * rdp->spans_dzdy;
+        summand_z = offx * state[wid].spans_cdz + offy * state[wid].spans_dzdy;
 
         sz = ((sz << 2) + summand_z) >> 5;
     }
@@ -184,9 +184,9 @@ static STRICTINLINE void z_correct(struct rdp_state* rdp, int offx, int offy, in
     }
 }
 
-static void render_spans_1cycle_complete(struct rdp_state* rdp, int start, int end, int tilenum, int flip)
+static void render_spans_1cycle_complete(uint32_t wid, int start, int end, int tilenum, int flip)
 {
-    int zb = rdp->zb_address >> 1;
+    int zb = state[wid].zb_address >> 1;
     int zbcur;
     uint8_t offx, offy;
     struct spansigs sigs;
@@ -206,36 +206,36 @@ static void render_spans_1cycle_complete(struct rdp_state* rdp, int start, int e
 
     if (flip)
     {
-        drinc = rdp->spans_dr;
-        dginc = rdp->spans_dg;
-        dbinc = rdp->spans_db;
-        dainc = rdp->spans_da;
-        dzinc = rdp->spans_dz;
-        dsinc = rdp->spans_ds;
-        dtinc = rdp->spans_dt;
-        dwinc = rdp->spans_dw;
+        drinc = state[wid].spans_dr;
+        dginc = state[wid].spans_dg;
+        dbinc = state[wid].spans_db;
+        dainc = state[wid].spans_da;
+        dzinc = state[wid].spans_dz;
+        dsinc = state[wid].spans_ds;
+        dtinc = state[wid].spans_dt;
+        dwinc = state[wid].spans_dw;
         xinc = 1;
     }
     else
     {
-        drinc = -rdp->spans_dr;
-        dginc = -rdp->spans_dg;
-        dbinc = -rdp->spans_db;
-        dainc = -rdp->spans_da;
-        dzinc = -rdp->spans_dz;
-        dsinc = -rdp->spans_ds;
-        dtinc = -rdp->spans_dt;
-        dwinc = -rdp->spans_dw;
+        drinc = -state[wid].spans_dr;
+        dginc = -state[wid].spans_dg;
+        dbinc = -state[wid].spans_db;
+        dainc = -state[wid].spans_da;
+        dzinc = -state[wid].spans_dz;
+        dsinc = -state[wid].spans_ds;
+        dtinc = -state[wid].spans_dt;
+        dwinc = -state[wid].spans_dw;
         xinc = -1;
     }
 
     int dzpix;
-    if (!rdp->other_modes.z_source_sel)
-        dzpix = rdp->spans_dzpix;
+    if (!state[wid].other_modes.z_source_sel)
+        dzpix = state[wid].spans_dzpix;
     else
     {
-        dzpix = rdp->primitive_delta_z;
-        dzinc = rdp->spans_cdz = rdp->spans_dzdy = 0;
+        dzpix = state[wid].primitive_delta_z;
+        dzinc = state[wid].spans_cdz = state[wid].spans_dzdy = 0;
     }
     int dzpixenc = dz_compress(dzpix);
 
@@ -251,36 +251,36 @@ static void render_spans_1cycle_complete(struct rdp_state* rdp, int start, int e
 
     for (i = start; i <= end; i++)
     {
-        if (rdp->span[i].validline)
+        if (state[wid].span[i].validline)
         {
 
-        xstart = rdp->span[i].lx;
-        xend = rdp->span[i].unscrx;
-        xendsc = rdp->span[i].rx;
-        r = rdp->span[i].r;
-        g = rdp->span[i].g;
-        b = rdp->span[i].b;
-        a = rdp->span[i].a;
-        z = rdp->other_modes.z_source_sel ? rdp->primitive_z : rdp->span[i].z;
-        s = rdp->span[i].s;
-        t = rdp->span[i].t;
-        w = rdp->span[i].w;
+        xstart = state[wid].span[i].lx;
+        xend = state[wid].span[i].unscrx;
+        xendsc = state[wid].span[i].rx;
+        r = state[wid].span[i].r;
+        g = state[wid].span[i].g;
+        b = state[wid].span[i].b;
+        a = state[wid].span[i].a;
+        z = state[wid].other_modes.z_source_sel ? state[wid].primitive_z : state[wid].span[i].z;
+        s = state[wid].span[i].s;
+        t = state[wid].span[i].t;
+        w = state[wid].span[i].w;
 
         x = xendsc;
-        curpixel = rdp->fb_width * i + x;
+        curpixel = state[wid].fb_width * i + x;
         zbcur = zb + curpixel;
 
         if (!flip)
         {
             length = xendsc - xstart;
             scdiff = xend - xendsc;
-            compute_cvg_noflip(rdp, i);
+            compute_cvg_noflip(wid, i);
         }
         else
         {
             length = xstart - xendsc;
             scdiff = xendsc - xend;
-            compute_cvg_flip(rdp, i);
+            compute_cvg_flip(wid, i);
         }
 
 
@@ -321,29 +321,29 @@ static void render_spans_1cycle_complete(struct rdp_state* rdp, int start, int e
             sigs.endspan = (j == length);
             sigs.preendspan = (j == (length - 1));
 
-            lookup_cvmask_derivatives(rdp->cvgbuf[x], &offx, &offy, &curpixel_cvg, &curpixel_cvbit);
+            lookup_cvmask_derivatives(state[wid].cvgbuf[x], &offx, &offy, &curpixel_cvg, &curpixel_cvbit);
 
 
-            get_texel1_1cycle(rdp, &news, &newt, s, t, w, dsinc, dtinc, dwinc, i, &sigs);
+            get_texel1_1cycle(wid, &news, &newt, s, t, w, dsinc, dtinc, dwinc, i, &sigs);
 
 
 
             if (j)
             {
-                rdp->texel0_color = rdp->texel1_color;
-                rdp->lod_frac = prelodfrac;
+                state[wid].texel0_color = state[wid].texel1_color;
+                state[wid].lod_frac = prelodfrac;
             }
             else
             {
-                rdp->tcdiv_ptr(ss, st, sw, &sss, &sst);
+                state[wid].tcdiv_ptr(ss, st, sw, &sss, &sst);
 
 
-                tclod_1cycle_current(rdp, &sss, &sst, news, newt, s, t, w, dsinc, dtinc, dwinc, i, prim_tile, &tile1, &sigs);
+                tclod_1cycle_current(wid, &sss, &sst, news, newt, s, t, w, dsinc, dtinc, dwinc, i, prim_tile, &tile1, &sigs);
 
 
 
 
-                texture_pipeline_cycle(rdp, &rdp->texel0_color, &rdp->texel0_color, sss, sst, tile1, 0);
+                texture_pipeline_cycle(wid, &state[wid].texel0_color, &state[wid].texel0_color, sss, sst, tile1, 0);
             }
 
             sigs.nextspan = sigs.endspan;
@@ -354,25 +354,25 @@ static void render_spans_1cycle_complete(struct rdp_state* rdp, int start, int e
             t += dtinc;
             w += dwinc;
 
-            tclod_1cycle_next(rdp, &news, &newt, s, t, w, dsinc, dtinc, dwinc, i, prim_tile, &newtile, &sigs, &prelodfrac);
+            tclod_1cycle_next(wid, &news, &newt, s, t, w, dsinc, dtinc, dwinc, i, prim_tile, &newtile, &sigs, &prelodfrac);
 
-            texture_pipeline_cycle(rdp, &rdp->texel1_color, &rdp->texel1_color, news, newt, newtile, 0);
+            texture_pipeline_cycle(wid, &state[wid].texel1_color, &state[wid].texel1_color, news, newt, newtile, 0);
 
-            rgba_correct(rdp, offx, offy, sr, sg, sb, sa, curpixel_cvg);
-            z_correct(rdp, offx, offy, &sz, curpixel_cvg);
+            rgba_correct(wid, offx, offy, sr, sg, sb, sa, curpixel_cvg);
+            z_correct(wid, offx, offy, &sz, curpixel_cvg);
 
-            if (rdp->other_modes.f.getditherlevel < 2)
-                get_dither_noise(rdp, x, i, &cdith, &adith);
+            if (state[wid].other_modes.f.getditherlevel < 2)
+                get_dither_noise(wid, x, i, &cdith, &adith);
 
-            combiner_1cycle(rdp, adith, &curpixel_cvg);
+            combiner_1cycle(wid, adith, &curpixel_cvg);
 
-            rdp->fbread1_ptr(rdp, curpixel, &curpixel_memcvg);
-            if (z_compare(rdp, zbcur, sz, dzpix, dzpixenc, &blend_en, &prewrap, &curpixel_cvg, curpixel_memcvg))
+            state[wid].fbread1_ptr(wid, curpixel, &curpixel_memcvg);
+            if (z_compare(wid, zbcur, sz, dzpix, dzpixenc, &blend_en, &prewrap, &curpixel_cvg, curpixel_memcvg))
             {
-                if (blender_1cycle(rdp, &fir, &fig, &fib, cdith, blend_en, prewrap, curpixel_cvg, curpixel_cvbit))
+                if (blender_1cycle(wid, &fir, &fig, &fib, cdith, blend_en, prewrap, curpixel_cvg, curpixel_cvbit))
                 {
-                    rdp->fbwrite_ptr(rdp, curpixel, fir, fig, fib, blend_en, curpixel_cvg, curpixel_memcvg);
-                    if (rdp->other_modes.z_update_en)
+                    state[wid].fbwrite_ptr(wid, curpixel, fir, fig, fib, blend_en, curpixel_cvg, curpixel_memcvg);
+                    if (state[wid].other_modes.z_update_en)
                         z_store(zbcur, sz, dzpixenc);
                 }
             }
@@ -395,9 +395,9 @@ static void render_spans_1cycle_complete(struct rdp_state* rdp, int start, int e
 }
 
 
-static void render_spans_1cycle_notexel1(struct rdp_state* rdp, int start, int end, int tilenum, int flip)
+static void render_spans_1cycle_notexel1(uint32_t wid, int start, int end, int tilenum, int flip)
 {
-    int zb = rdp->zb_address >> 1;
+    int zb = state[wid].zb_address >> 1;
     int zbcur;
     uint8_t offx, offy;
     struct spansigs sigs;
@@ -414,36 +414,36 @@ static void render_spans_1cycle_notexel1(struct rdp_state* rdp, int start, int e
     int xinc;
     if (flip)
     {
-        drinc = rdp->spans_dr;
-        dginc = rdp->spans_dg;
-        dbinc = rdp->spans_db;
-        dainc = rdp->spans_da;
-        dzinc = rdp->spans_dz;
-        dsinc = rdp->spans_ds;
-        dtinc = rdp->spans_dt;
-        dwinc = rdp->spans_dw;
+        drinc = state[wid].spans_dr;
+        dginc = state[wid].spans_dg;
+        dbinc = state[wid].spans_db;
+        dainc = state[wid].spans_da;
+        dzinc = state[wid].spans_dz;
+        dsinc = state[wid].spans_ds;
+        dtinc = state[wid].spans_dt;
+        dwinc = state[wid].spans_dw;
         xinc = 1;
     }
     else
     {
-        drinc = -rdp->spans_dr;
-        dginc = -rdp->spans_dg;
-        dbinc = -rdp->spans_db;
-        dainc = -rdp->spans_da;
-        dzinc = -rdp->spans_dz;
-        dsinc = -rdp->spans_ds;
-        dtinc = -rdp->spans_dt;
-        dwinc = -rdp->spans_dw;
+        drinc = -state[wid].spans_dr;
+        dginc = -state[wid].spans_dg;
+        dbinc = -state[wid].spans_db;
+        dainc = -state[wid].spans_da;
+        dzinc = -state[wid].spans_dz;
+        dsinc = -state[wid].spans_ds;
+        dtinc = -state[wid].spans_dt;
+        dwinc = -state[wid].spans_dw;
         xinc = -1;
     }
 
     int dzpix;
-    if (!rdp->other_modes.z_source_sel)
-        dzpix = rdp->spans_dzpix;
+    if (!state[wid].other_modes.z_source_sel)
+        dzpix = state[wid].spans_dzpix;
     else
     {
-        dzpix = rdp->primitive_delta_z;
-        dzinc = rdp->spans_cdz = rdp->spans_dzdy = 0;
+        dzpix = state[wid].primitive_delta_z;
+        dzinc = state[wid].spans_cdz = state[wid].spans_dzdy = 0;
     }
     int dzpixenc = dz_compress(dzpix);
 
@@ -458,36 +458,36 @@ static void render_spans_1cycle_notexel1(struct rdp_state* rdp, int start, int e
 
     for (i = start; i <= end; i++)
     {
-        if (rdp->span[i].validline)
+        if (state[wid].span[i].validline)
         {
 
-        xstart = rdp->span[i].lx;
-        xend = rdp->span[i].unscrx;
-        xendsc = rdp->span[i].rx;
-        r = rdp->span[i].r;
-        g = rdp->span[i].g;
-        b = rdp->span[i].b;
-        a = rdp->span[i].a;
-        z = rdp->other_modes.z_source_sel ? rdp->primitive_z : rdp->span[i].z;
-        s = rdp->span[i].s;
-        t = rdp->span[i].t;
-        w = rdp->span[i].w;
+        xstart = state[wid].span[i].lx;
+        xend = state[wid].span[i].unscrx;
+        xendsc = state[wid].span[i].rx;
+        r = state[wid].span[i].r;
+        g = state[wid].span[i].g;
+        b = state[wid].span[i].b;
+        a = state[wid].span[i].a;
+        z = state[wid].other_modes.z_source_sel ? state[wid].primitive_z : state[wid].span[i].z;
+        s = state[wid].span[i].s;
+        t = state[wid].span[i].t;
+        w = state[wid].span[i].w;
 
         x = xendsc;
-        curpixel = rdp->fb_width * i + x;
+        curpixel = state[wid].fb_width * i + x;
         zbcur = zb + curpixel;
 
         if (!flip)
         {
             length = xendsc - xstart;
             scdiff = xend - xendsc;
-            compute_cvg_noflip(rdp, i);
+            compute_cvg_noflip(wid, i);
         }
         else
         {
             length = xstart - xendsc;
             scdiff = xendsc - xend;
-            compute_cvg_flip(rdp, i);
+            compute_cvg_flip(wid, i);
         }
 
         if (scdiff)
@@ -524,29 +524,29 @@ static void render_spans_1cycle_notexel1(struct rdp_state* rdp, int start, int e
             sigs.endspan = (j == length);
             sigs.preendspan = (j == (length - 1));
 
-            lookup_cvmask_derivatives(rdp->cvgbuf[x], &offx, &offy, &curpixel_cvg, &curpixel_cvbit);
+            lookup_cvmask_derivatives(state[wid].cvgbuf[x], &offx, &offy, &curpixel_cvg, &curpixel_cvbit);
 
-            rdp->tcdiv_ptr(ss, st, sw, &sss, &sst);
+            state[wid].tcdiv_ptr(ss, st, sw, &sss, &sst);
 
-            tclod_1cycle_current_simple(rdp, &sss, &sst, s, t, w, dsinc, dtinc, dwinc, i, prim_tile, &tile1, &sigs);
+            tclod_1cycle_current_simple(wid, &sss, &sst, s, t, w, dsinc, dtinc, dwinc, i, prim_tile, &tile1, &sigs);
 
-            texture_pipeline_cycle(rdp, &rdp->texel0_color, &rdp->texel0_color, sss, sst, tile1, 0);
+            texture_pipeline_cycle(wid, &state[wid].texel0_color, &state[wid].texel0_color, sss, sst, tile1, 0);
 
-            rgba_correct(rdp, offx, offy, sr, sg, sb, sa, curpixel_cvg);
-            z_correct(rdp, offx, offy, &sz, curpixel_cvg);
+            rgba_correct(wid, offx, offy, sr, sg, sb, sa, curpixel_cvg);
+            z_correct(wid, offx, offy, &sz, curpixel_cvg);
 
-            if (rdp->other_modes.f.getditherlevel < 2)
-                get_dither_noise(rdp, x, i, &cdith, &adith);
+            if (state[wid].other_modes.f.getditherlevel < 2)
+                get_dither_noise(wid, x, i, &cdith, &adith);
 
-            combiner_1cycle(rdp, adith, &curpixel_cvg);
+            combiner_1cycle(wid, adith, &curpixel_cvg);
 
-            rdp->fbread1_ptr(rdp, curpixel, &curpixel_memcvg);
-            if (z_compare(rdp, zbcur, sz, dzpix, dzpixenc, &blend_en, &prewrap, &curpixel_cvg, curpixel_memcvg))
+            state[wid].fbread1_ptr(wid, curpixel, &curpixel_memcvg);
+            if (z_compare(wid, zbcur, sz, dzpix, dzpixenc, &blend_en, &prewrap, &curpixel_cvg, curpixel_memcvg))
             {
-                if (blender_1cycle(rdp, &fir, &fig, &fib, cdith, blend_en, prewrap, curpixel_cvg, curpixel_cvbit))
+                if (blender_1cycle(wid, &fir, &fig, &fib, cdith, blend_en, prewrap, curpixel_cvg, curpixel_cvbit))
                 {
-                    rdp->fbwrite_ptr(rdp, curpixel, fir, fig, fib, blend_en, curpixel_cvg, curpixel_memcvg);
-                    if (rdp->other_modes.z_update_en)
+                    state[wid].fbwrite_ptr(wid, curpixel, fir, fig, fib, blend_en, curpixel_cvg, curpixel_memcvg);
+                    if (state[wid].other_modes.z_update_en)
                         z_store(zbcur, sz, dzpixenc);
                 }
             }
@@ -569,9 +569,9 @@ static void render_spans_1cycle_notexel1(struct rdp_state* rdp, int start, int e
 }
 
 
-static void render_spans_1cycle_notex(struct rdp_state* rdp, int start, int end, int tilenum, int flip)
+static void render_spans_1cycle_notex(uint32_t wid, int start, int end, int tilenum, int flip)
 {
-    int zb = rdp->zb_address >> 1;
+    int zb = state[wid].zb_address >> 1;
     int zbcur;
     uint8_t offx, offy;
     uint32_t blend_en;
@@ -585,30 +585,30 @@ static void render_spans_1cycle_notex(struct rdp_state* rdp, int start, int end,
 
     if (flip)
     {
-        drinc = rdp->spans_dr;
-        dginc = rdp->spans_dg;
-        dbinc = rdp->spans_db;
-        dainc = rdp->spans_da;
-        dzinc = rdp->spans_dz;
+        drinc = state[wid].spans_dr;
+        dginc = state[wid].spans_dg;
+        dbinc = state[wid].spans_db;
+        dainc = state[wid].spans_da;
+        dzinc = state[wid].spans_dz;
         xinc = 1;
     }
     else
     {
-        drinc = -rdp->spans_dr;
-        dginc = -rdp->spans_dg;
-        dbinc = -rdp->spans_db;
-        dainc = -rdp->spans_da;
-        dzinc = -rdp->spans_dz;
+        drinc = -state[wid].spans_dr;
+        dginc = -state[wid].spans_dg;
+        dbinc = -state[wid].spans_db;
+        dainc = -state[wid].spans_da;
+        dzinc = -state[wid].spans_dz;
         xinc = -1;
     }
 
     int dzpix;
-    if (!rdp->other_modes.z_source_sel)
-        dzpix = rdp->spans_dzpix;
+    if (!state[wid].other_modes.z_source_sel)
+        dzpix = state[wid].spans_dzpix;
     else
     {
-        dzpix = rdp->primitive_delta_z;
-        dzinc = rdp->spans_cdz = rdp->spans_dzdy = 0;
+        dzpix = state[wid].primitive_delta_z;
+        dzinc = state[wid].spans_cdz = state[wid].spans_dzdy = 0;
     }
     int dzpixenc = dz_compress(dzpix);
 
@@ -622,33 +622,33 @@ static void render_spans_1cycle_notex(struct rdp_state* rdp, int start, int end,
 
     for (i = start; i <= end; i++)
     {
-        if (rdp->span[i].validline)
+        if (state[wid].span[i].validline)
         {
 
-        xstart = rdp->span[i].lx;
-        xend = rdp->span[i].unscrx;
-        xendsc = rdp->span[i].rx;
-        r = rdp->span[i].r;
-        g = rdp->span[i].g;
-        b = rdp->span[i].b;
-        a = rdp->span[i].a;
-        z = rdp->other_modes.z_source_sel ? rdp->primitive_z : rdp->span[i].z;
+        xstart = state[wid].span[i].lx;
+        xend = state[wid].span[i].unscrx;
+        xendsc = state[wid].span[i].rx;
+        r = state[wid].span[i].r;
+        g = state[wid].span[i].g;
+        b = state[wid].span[i].b;
+        a = state[wid].span[i].a;
+        z = state[wid].other_modes.z_source_sel ? state[wid].primitive_z : state[wid].span[i].z;
 
         x = xendsc;
-        curpixel = rdp->fb_width * i + x;
+        curpixel = state[wid].fb_width * i + x;
         zbcur = zb + curpixel;
 
         if (!flip)
         {
             length = xendsc - xstart;
             scdiff = xend - xendsc;
-            compute_cvg_noflip(rdp, i);
+            compute_cvg_noflip(wid, i);
         }
         else
         {
             length = xstart - xendsc;
             scdiff = xendsc - xend;
-            compute_cvg_flip(rdp, i);
+            compute_cvg_flip(wid, i);
         }
 
         if (scdiff)
@@ -669,23 +669,23 @@ static void render_spans_1cycle_notex(struct rdp_state* rdp, int start, int end,
             sa = a >> 14;
             sz = (z >> 10) & 0x3fffff;
 
-            lookup_cvmask_derivatives(rdp->cvgbuf[x], &offx, &offy, &curpixel_cvg, &curpixel_cvbit);
+            lookup_cvmask_derivatives(state[wid].cvgbuf[x], &offx, &offy, &curpixel_cvg, &curpixel_cvbit);
 
-            rgba_correct(rdp, offx, offy, sr, sg, sb, sa, curpixel_cvg);
-            z_correct(rdp, offx, offy, &sz, curpixel_cvg);
+            rgba_correct(wid, offx, offy, sr, sg, sb, sa, curpixel_cvg);
+            z_correct(wid, offx, offy, &sz, curpixel_cvg);
 
-            if (rdp->other_modes.f.getditherlevel < 2)
-                get_dither_noise(rdp, x, i, &cdith, &adith);
+            if (state[wid].other_modes.f.getditherlevel < 2)
+                get_dither_noise(wid, x, i, &cdith, &adith);
 
-            combiner_1cycle(rdp, adith, &curpixel_cvg);
+            combiner_1cycle(wid, adith, &curpixel_cvg);
 
-            rdp->fbread1_ptr(rdp, curpixel, &curpixel_memcvg);
-            if (z_compare(rdp, zbcur, sz, dzpix, dzpixenc, &blend_en, &prewrap, &curpixel_cvg, curpixel_memcvg))
+            state[wid].fbread1_ptr(wid, curpixel, &curpixel_memcvg);
+            if (z_compare(wid, zbcur, sz, dzpix, dzpixenc, &blend_en, &prewrap, &curpixel_cvg, curpixel_memcvg))
             {
-                if (blender_1cycle(rdp, &fir, &fig, &fib, cdith, blend_en, prewrap, curpixel_cvg, curpixel_cvbit))
+                if (blender_1cycle(wid, &fir, &fig, &fib, cdith, blend_en, prewrap, curpixel_cvg, curpixel_cvbit))
                 {
-                    rdp->fbwrite_ptr(rdp, curpixel, fir, fig, fib, blend_en, curpixel_cvg, curpixel_memcvg);
-                    if (rdp->other_modes.z_update_en)
+                    state[wid].fbwrite_ptr(wid, curpixel, fir, fig, fib, blend_en, curpixel_cvg, curpixel_memcvg);
+                    if (state[wid].other_modes.z_update_en)
                         z_store(zbcur, sz, dzpixenc);
                 }
             }
@@ -703,9 +703,9 @@ static void render_spans_1cycle_notex(struct rdp_state* rdp, int start, int end,
     }
 }
 
-static void render_spans_2cycle_complete(struct rdp_state* rdp, int start, int end, int tilenum, int flip)
+static void render_spans_2cycle_complete(uint32_t wid, int start, int end, int tilenum, int flip)
 {
-    int zb = rdp->zb_address >> 1;
+    int zb = state[wid].zb_address >> 1;
     int zbcur;
     uint8_t offx, offy;
     int32_t prelodfrac;
@@ -714,7 +714,7 @@ static void render_spans_2cycle_complete(struct rdp_state* rdp, int start, int e
     uint32_t prewrap;
     uint32_t curpixel_cvg, curpixel_cvbit, curpixel_memcvg;
     uint32_t nextpixel_cvg;
-    int32_t acalpha;
+    uint32_t acalpha;
 
 
 
@@ -729,36 +729,36 @@ static void render_spans_2cycle_complete(struct rdp_state* rdp, int start, int e
     int xinc;
     if (flip)
     {
-        drinc = rdp->spans_dr;
-        dginc = rdp->spans_dg;
-        dbinc = rdp->spans_db;
-        dainc = rdp->spans_da;
-        dzinc = rdp->spans_dz;
-        dsinc = rdp->spans_ds;
-        dtinc = rdp->spans_dt;
-        dwinc = rdp->spans_dw;
+        drinc = state[wid].spans_dr;
+        dginc = state[wid].spans_dg;
+        dbinc = state[wid].spans_db;
+        dainc = state[wid].spans_da;
+        dzinc = state[wid].spans_dz;
+        dsinc = state[wid].spans_ds;
+        dtinc = state[wid].spans_dt;
+        dwinc = state[wid].spans_dw;
         xinc = 1;
     }
     else
     {
-        drinc = -rdp->spans_dr;
-        dginc = -rdp->spans_dg;
-        dbinc = -rdp->spans_db;
-        dainc = -rdp->spans_da;
-        dzinc = -rdp->spans_dz;
-        dsinc = -rdp->spans_ds;
-        dtinc = -rdp->spans_dt;
-        dwinc = -rdp->spans_dw;
+        drinc = -state[wid].spans_dr;
+        dginc = -state[wid].spans_dg;
+        dbinc = -state[wid].spans_db;
+        dainc = -state[wid].spans_da;
+        dzinc = -state[wid].spans_dz;
+        dsinc = -state[wid].spans_ds;
+        dtinc = -state[wid].spans_dt;
+        dwinc = -state[wid].spans_dw;
         xinc = -1;
     }
 
     int dzpix;
-    if (!rdp->other_modes.z_source_sel)
-        dzpix = rdp->spans_dzpix;
+    if (!state[wid].other_modes.z_source_sel)
+        dzpix = state[wid].spans_dzpix;
     else
     {
-        dzpix = rdp->primitive_delta_z;
-        dzinc = rdp->spans_cdz = rdp->spans_dzdy = 0;
+        dzpix = state[wid].primitive_delta_z;
+        dzinc = state[wid].spans_cdz = state[wid].spans_dzdy = 0;
     }
     int dzpixenc = dz_compress(dzpix);
 
@@ -776,36 +776,36 @@ static void render_spans_2cycle_complete(struct rdp_state* rdp, int start, int e
 
     for (i = start; i <= end; i++)
     {
-        if (rdp->span[i].validline)
+        if (state[wid].span[i].validline)
         {
 
-        xstart = rdp->span[i].lx;
-        xend = rdp->span[i].unscrx;
-        xendsc = rdp->span[i].rx;
-        r = rdp->span[i].r;
-        g = rdp->span[i].g;
-        b = rdp->span[i].b;
-        a = rdp->span[i].a;
-        z = rdp->other_modes.z_source_sel ? rdp->primitive_z : rdp->span[i].z;
-        s = rdp->span[i].s;
-        t = rdp->span[i].t;
-        w = rdp->span[i].w;
+        xstart = state[wid].span[i].lx;
+        xend = state[wid].span[i].unscrx;
+        xendsc = state[wid].span[i].rx;
+        r = state[wid].span[i].r;
+        g = state[wid].span[i].g;
+        b = state[wid].span[i].b;
+        a = state[wid].span[i].a;
+        z = state[wid].other_modes.z_source_sel ? state[wid].primitive_z : state[wid].span[i].z;
+        s = state[wid].span[i].s;
+        t = state[wid].span[i].t;
+        w = state[wid].span[i].w;
 
         x = xendsc;
-        curpixel = rdp->fb_width * i + x;
+        curpixel = state[wid].fb_width * i + x;
         zbcur = zb + curpixel;
 
         if (!flip)
         {
             length = xendsc - xstart;
             scdiff = xend - xendsc;
-            compute_cvg_noflip(rdp, i);
+            compute_cvg_noflip(wid, i);
         }
         else
         {
             length = xstart - xendsc;
             scdiff = xendsc - xend;
-            compute_cvg_flip(rdp, i);
+            compute_cvg_flip(wid, i);
         }
 
 
@@ -844,21 +844,21 @@ static void render_spans_2cycle_complete(struct rdp_state* rdp, int start, int e
                 st = t >> 16;
                 sw = w >> 16;
 
-                rdp->tcdiv_ptr(ss, st, sw, &sss, &sst);
+                state[wid].tcdiv_ptr(ss, st, sw, &sss, &sst);
 
-                tclod_2cycle(rdp, &sss, &sst, s, t, w, dsinc, dtinc, dwinc, prim_tile, &tile1, &tile2, &rdp->lod_frac);
+                tclod_2cycle(wid, &sss, &sst, s, t, w, dsinc, dtinc, dwinc, prim_tile, &tile1, &tile2, &state[wid].lod_frac);
 
-                texture_pipeline_cycle(rdp, &rdp->texel0_color, &rdp->texel0_color, sss, sst, tile1, 0);
-                texture_pipeline_cycle(rdp, &rdp->texel1_color, &rdp->texel0_color, sss, sst, tile2, 1);
+                texture_pipeline_cycle(wid, &state[wid].texel0_color, &state[wid].texel0_color, sss, sst, tile1, 0);
+                texture_pipeline_cycle(wid, &state[wid].texel1_color, &state[wid].texel0_color, sss, sst, tile2, 1);
 
-                lookup_cvmask_derivatives(rdp->cvgbuf[x], &offx, &offy, &curpixel_cvg, &curpixel_cvbit);
+                lookup_cvmask_derivatives(state[wid].cvgbuf[x], &offx, &offy, &curpixel_cvg, &curpixel_cvbit);
 
-                rgba_correct(rdp, offx, offy, sr, sg, sb, sa, curpixel_cvg);
+                rgba_correct(wid, offx, offy, sr, sg, sb, sa, curpixel_cvg);
 
-                if (rdp->other_modes.f.getditherlevel < 2)
-                    get_dither_noise(rdp, x, i, &cdith, &adith);
+                if (state[wid].other_modes.f.getditherlevel < 2)
+                    get_dither_noise(wid, x, i, &cdith, &adith);
 
-                combiner_2cycle_cycle0(rdp, adith, curpixel_cvg, &acalpha);
+                combiner_2cycle_cycle0(wid, adith, curpixel_cvg, &acalpha);
             }
 
 
@@ -871,43 +871,43 @@ static void render_spans_2cycle_complete(struct rdp_state* rdp, int start, int e
             st = t >> 16;
             sw = w >> 16;
 
-            rdp->tcdiv_ptr(ss, st, sw, &sss, &sst);
+            state[wid].tcdiv_ptr(ss, st, sw, &sss, &sst);
 
-            if (j < length || !rdp->span[i + 1].validline || lodlength < 3)
+            if (j < length || !state[wid].span[i + 1].validline || lodlength < 3)
             {
-                tclod_2cycle(rdp, &sss, &sst, s, t, w, dsinc, dtinc, dwinc, prim_tile, &tile1, &tile2, &prelodfrac);
+                tclod_2cycle(wid, &sss, &sst, s, t, w, dsinc, dtinc, dwinc, prim_tile, &tile1, &tile2, &prelodfrac);
 
-                texture_pipeline_cycle(rdp, &rdp->nexttexel_color, &rdp->nexttexel_color, sss, sst, tile1, 0);
-                texture_pipeline_cycle(rdp, &nexttexel1_color, &rdp->nexttexel_color, sss, sst, tile2, 1);
+                texture_pipeline_cycle(wid, &state[wid].nexttexel_color, &state[wid].nexttexel_color, sss, sst, tile1, 0);
+                texture_pipeline_cycle(wid, &nexttexel1_color, &state[wid].nexttexel_color, sss, sst, tile2, 1);
             }
             else
             {
                 int sss2, sst2;
 
-                ss = rdp->span[i + 1].s >> 16;
-                st = rdp->span[i + 1].t >> 16;
-                sw = rdp->span[i + 1].w >> 16;
-                rdp->tcdiv_ptr(ss, st, sw, &sss2, &sst2);
+                ss = state[wid].span[i + 1].s >> 16;
+                st = state[wid].span[i + 1].t >> 16;
+                sw = state[wid].span[i + 1].w >> 16;
+                state[wid].tcdiv_ptr(ss, st, sw, &sss2, &sst2);
 
-                tclod_2cycle_next(rdp, &sss, &sst, &sss2, &sst2, s, t, w, dsinc, dtinc, dwinc, prim_tile, &tile1, &tile3, &prelodfrac, i);
+                tclod_2cycle_next(wid, &sss, &sst, &sss2, &sst2, s, t, w, dsinc, dtinc, dwinc, prim_tile, &tile1, &tile3, &prelodfrac, i);
 
-                texture_pipeline_cycle(rdp, &rdp->nexttexel_color, &rdp->nexttexel_color, sss, sst, tile1, 0);
-                texture_pipeline_cycle(rdp, &nexttexel1_color, &rdp->nexttexel_color, sss2, sst2, tile3, 0);
+                texture_pipeline_cycle(wid, &state[wid].nexttexel_color, &state[wid].nexttexel_color, sss, sst, tile1, 0);
+                texture_pipeline_cycle(wid, &nexttexel1_color, &state[wid].nexttexel_color, sss2, sst2, tile3, 0);
             }
 
-            z_correct(rdp, offx, offy, &sz, curpixel_cvg);
+            z_correct(wid, offx, offy, &sz, curpixel_cvg);
 
-            combiner_2cycle_cycle1(rdp, adith, &curpixel_cvg);
+            combiner_2cycle_cycle1(wid, adith, &curpixel_cvg);
 
-            rdp->fbread2_ptr(rdp, curpixel, &curpixel_memcvg);
+            state[wid].fbread2_ptr(wid, curpixel, &curpixel_memcvg);
 
 
-            wen = z_compare(rdp, zbcur, sz, dzpix, dzpixenc, &blend_en, &prewrap, &curpixel_cvg, curpixel_memcvg);
+            wen = z_compare(wid, zbcur, sz, dzpix, dzpixenc, &blend_en, &prewrap, &curpixel_cvg, curpixel_memcvg);
 
             if (wen)
-                wen &= blender_2cycle_cycle0(rdp, curpixel_cvg, curpixel_cvbit);
+                wen &= blender_2cycle_cycle0(wid, curpixel_cvg, curpixel_cvbit);
             else
-                rdp->memory_color = rdp->pre_memory_color;
+                state[wid].memory_color = state[wid].pre_memory_color;
 
 
 
@@ -929,35 +929,35 @@ static void render_spans_2cycle_complete(struct rdp_state* rdp, int start, int e
 
 
 
-            lookup_cvmask_derivatives(j < length ? rdp->cvgbuf[x] : 0, &offx, &offy, &nextpixel_cvg, &curpixel_cvbit);
+            lookup_cvmask_derivatives(j < length ? state[wid].cvgbuf[x] : 0, &offx, &offy, &nextpixel_cvg, &curpixel_cvbit);
 
-            rgba_correct(rdp, offx, offy, sr, sg, sb, sa, nextpixel_cvg);
+            rgba_correct(wid, offx, offy, sr, sg, sb, sa, nextpixel_cvg);
 
-            rdp->lod_frac = prelodfrac;
-            rdp->texel0_color = rdp->nexttexel_color;
-            rdp->texel1_color = nexttexel1_color;
+            state[wid].lod_frac = prelodfrac;
+            state[wid].texel0_color = state[wid].nexttexel_color;
+            state[wid].texel1_color = nexttexel1_color;
 
 
-            combiner_2cycle_cycle0(rdp, adith, nextpixel_cvg, &acalpha);
+            combiner_2cycle_cycle0(wid, adith, nextpixel_cvg, &acalpha);
 
             if (wen)
             {
-                wen &= alpha_compare(rdp, acalpha);
+                wen &= alpha_compare(wid, acalpha);
 
 
 
 
                 if (wen)
                 {
-                    blender_2cycle_cycle1(rdp, &fir, &fig, &fib, cdith, blend_en, prewrap);
-                    rdp->fbwrite_ptr(rdp, curpixel, fir, fig, fib, blend_en, curpixel_cvg, curpixel_memcvg);
-                    if (rdp->other_modes.z_update_en)
+                    blender_2cycle_cycle1(wid, &fir, &fig, &fib, cdith, blend_en, prewrap);
+                    state[wid].fbwrite_ptr(wid, curpixel, fir, fig, fib, blend_en, curpixel_cvg, curpixel_memcvg);
+                    if (state[wid].other_modes.z_update_en)
                         z_store(zbcur, sz, dzpixenc);
                 }
             }
 
-            if (rdp->other_modes.f.getditherlevel < 2)
-                get_dither_noise(rdp, x, i, &cdith, &adith);
+            if (state[wid].other_modes.f.getditherlevel < 2)
+                get_dither_noise(wid, x, i, &cdith, &adith);
 
             curpixel_cvg = nextpixel_cvg;
 
@@ -977,16 +977,16 @@ static void render_spans_2cycle_complete(struct rdp_state* rdp, int start, int e
 
 
 
-static void render_spans_2cycle_notexelnext(struct rdp_state* rdp, int start, int end, int tilenum, int flip)
+static void render_spans_2cycle_notexelnext(uint32_t wid, int start, int end, int tilenum, int flip)
 {
-    int zb = rdp->zb_address >> 1;
+    int zb = state[wid].zb_address >> 1;
     int zbcur;
     uint8_t offx, offy;
     uint32_t blend_en;
     uint32_t prewrap;
     uint32_t curpixel_cvg, curpixel_cvbit, curpixel_memcvg;
     uint32_t nextpixel_cvg;
-    int32_t acalpha;
+    uint32_t acalpha;
 
     int tile2 = (tilenum + 1) & 7;
     int tile1 = tilenum;
@@ -998,36 +998,36 @@ static void render_spans_2cycle_notexelnext(struct rdp_state* rdp, int start, in
     int xinc;
     if (flip)
     {
-        drinc = rdp->spans_dr;
-        dginc = rdp->spans_dg;
-        dbinc = rdp->spans_db;
-        dainc = rdp->spans_da;
-        dzinc = rdp->spans_dz;
-        dsinc = rdp->spans_ds;
-        dtinc = rdp->spans_dt;
-        dwinc = rdp->spans_dw;
+        drinc = state[wid].spans_dr;
+        dginc = state[wid].spans_dg;
+        dbinc = state[wid].spans_db;
+        dainc = state[wid].spans_da;
+        dzinc = state[wid].spans_dz;
+        dsinc = state[wid].spans_ds;
+        dtinc = state[wid].spans_dt;
+        dwinc = state[wid].spans_dw;
         xinc = 1;
     }
     else
     {
-        drinc = -rdp->spans_dr;
-        dginc = -rdp->spans_dg;
-        dbinc = -rdp->spans_db;
-        dainc = -rdp->spans_da;
-        dzinc = -rdp->spans_dz;
-        dsinc = -rdp->spans_ds;
-        dtinc = -rdp->spans_dt;
-        dwinc = -rdp->spans_dw;
+        drinc = -state[wid].spans_dr;
+        dginc = -state[wid].spans_dg;
+        dbinc = -state[wid].spans_db;
+        dainc = -state[wid].spans_da;
+        dzinc = -state[wid].spans_dz;
+        dsinc = -state[wid].spans_ds;
+        dtinc = -state[wid].spans_dt;
+        dwinc = -state[wid].spans_dw;
         xinc = -1;
     }
 
     int dzpix;
-    if (!rdp->other_modes.z_source_sel)
-        dzpix = rdp->spans_dzpix;
+    if (!state[wid].other_modes.z_source_sel)
+        dzpix = state[wid].spans_dzpix;
     else
     {
-        dzpix = rdp->primitive_delta_z;
-        dzinc = rdp->spans_cdz = rdp->spans_dzdy = 0;
+        dzpix = state[wid].primitive_delta_z;
+        dzinc = state[wid].spans_cdz = state[wid].spans_dzdy = 0;
     }
     int dzpixenc = dz_compress(dzpix);
 
@@ -1045,36 +1045,36 @@ static void render_spans_2cycle_notexelnext(struct rdp_state* rdp, int start, in
 
     for (i = start; i <= end; i++)
     {
-        if (rdp->span[i].validline)
+        if (state[wid].span[i].validline)
         {
 
-        xstart = rdp->span[i].lx;
-        xend = rdp->span[i].unscrx;
-        xendsc = rdp->span[i].rx;
-        r = rdp->span[i].r;
-        g = rdp->span[i].g;
-        b = rdp->span[i].b;
-        a = rdp->span[i].a;
-        z = rdp->other_modes.z_source_sel ? rdp->primitive_z : rdp->span[i].z;
-        s = rdp->span[i].s;
-        t = rdp->span[i].t;
-        w = rdp->span[i].w;
+        xstart = state[wid].span[i].lx;
+        xend = state[wid].span[i].unscrx;
+        xendsc = state[wid].span[i].rx;
+        r = state[wid].span[i].r;
+        g = state[wid].span[i].g;
+        b = state[wid].span[i].b;
+        a = state[wid].span[i].a;
+        z = state[wid].other_modes.z_source_sel ? state[wid].primitive_z : state[wid].span[i].z;
+        s = state[wid].span[i].s;
+        t = state[wid].span[i].t;
+        w = state[wid].span[i].w;
 
         x = xendsc;
-        curpixel = rdp->fb_width * i + x;
+        curpixel = state[wid].fb_width * i + x;
         zbcur = zb + curpixel;
 
         if (!flip)
         {
             length = xendsc - xstart;
             scdiff = xend - xendsc;
-            compute_cvg_noflip(rdp, i);
+            compute_cvg_noflip(wid, i);
         }
         else
         {
             length = xstart - xendsc;
             scdiff = xendsc - xend;
-            compute_cvg_flip(rdp, i);
+            compute_cvg_flip(wid, i);
         }
 
         if (scdiff)
@@ -1104,35 +1104,35 @@ static void render_spans_2cycle_notexelnext(struct rdp_state* rdp, int start, in
                 st = t >> 16;
                 sw = w >> 16;
 
-                rdp->tcdiv_ptr(ss, st, sw, &sss, &sst);
+                state[wid].tcdiv_ptr(ss, st, sw, &sss, &sst);
 
-                tclod_2cycle(rdp, &sss, &sst, s, t, w, dsinc, dtinc, dwinc, prim_tile, &tile1, &tile2, &rdp->lod_frac);
+                tclod_2cycle(wid, &sss, &sst, s, t, w, dsinc, dtinc, dwinc, prim_tile, &tile1, &tile2, &state[wid].lod_frac);
 
-                texture_pipeline_cycle(rdp, &rdp->texel0_color, &rdp->texel0_color, sss, sst, tile1, 0);
-                texture_pipeline_cycle(rdp, &rdp->texel1_color, &rdp->texel0_color, sss, sst, tile2, 1);
+                texture_pipeline_cycle(wid, &state[wid].texel0_color, &state[wid].texel0_color, sss, sst, tile1, 0);
+                texture_pipeline_cycle(wid, &state[wid].texel1_color, &state[wid].texel0_color, sss, sst, tile2, 1);
 
-                lookup_cvmask_derivatives(rdp->cvgbuf[x], &offx, &offy, &curpixel_cvg, &curpixel_cvbit);
+                lookup_cvmask_derivatives(state[wid].cvgbuf[x], &offx, &offy, &curpixel_cvg, &curpixel_cvbit);
 
-                rgba_correct(rdp, offx, offy, sr, sg, sb, sa, curpixel_cvg);
+                rgba_correct(wid, offx, offy, sr, sg, sb, sa, curpixel_cvg);
 
-                if (rdp->other_modes.f.getditherlevel < 2)
-                    get_dither_noise(rdp, x, i, &cdith, &adith);
+                if (state[wid].other_modes.f.getditherlevel < 2)
+                    get_dither_noise(wid, x, i, &cdith, &adith);
 
-                combiner_2cycle_cycle0(rdp, adith, curpixel_cvg, &acalpha);
+                combiner_2cycle_cycle0(wid, adith, curpixel_cvg, &acalpha);
             }
 
-            z_correct(rdp, offx, offy, &sz, curpixel_cvg);
+            z_correct(wid, offx, offy, &sz, curpixel_cvg);
 
-            combiner_2cycle_cycle1(rdp, adith, &curpixel_cvg);
+            combiner_2cycle_cycle1(wid, adith, &curpixel_cvg);
 
-            rdp->fbread2_ptr(rdp, curpixel, &curpixel_memcvg);
+            state[wid].fbread2_ptr(wid, curpixel, &curpixel_memcvg);
 
-            wen = z_compare(rdp, zbcur, sz, dzpix, dzpixenc, &blend_en, &prewrap, &curpixel_cvg, curpixel_memcvg);
+            wen = z_compare(wid, zbcur, sz, dzpix, dzpixenc, &blend_en, &prewrap, &curpixel_cvg, curpixel_memcvg);
 
             if (wen)
-                wen &= blender_2cycle_cycle0(rdp, curpixel_cvg, curpixel_cvbit);
+                wen &= blender_2cycle_cycle0(wid, curpixel_cvg, curpixel_cvbit);
             else
-                rdp->memory_color = rdp->pre_memory_color;
+                state[wid].memory_color = state[wid].pre_memory_color;
 
             x += xinc;
 
@@ -1152,34 +1152,34 @@ static void render_spans_2cycle_notexelnext(struct rdp_state* rdp, int start, in
             st = t >> 16;
             sw = w >> 16;
 
-            lookup_cvmask_derivatives(j < length ? rdp->cvgbuf[x] : 0, &offx, &offy, &nextpixel_cvg, &curpixel_cvbit);
+            lookup_cvmask_derivatives(j < length ? state[wid].cvgbuf[x] : 0, &offx, &offy, &nextpixel_cvg, &curpixel_cvbit);
 
-            rgba_correct(rdp, offx, offy, sr, sg, sb, sa, nextpixel_cvg);
+            rgba_correct(wid, offx, offy, sr, sg, sb, sa, nextpixel_cvg);
 
-            rdp->tcdiv_ptr(ss, st, sw, &sss, &sst);
+            state[wid].tcdiv_ptr(ss, st, sw, &sss, &sst);
 
-            tclod_2cycle(rdp, &sss, &sst, s, t, w, dsinc, dtinc, dwinc, prim_tile, &tile1, &tile2, &rdp->lod_frac);
+            tclod_2cycle(wid, &sss, &sst, s, t, w, dsinc, dtinc, dwinc, prim_tile, &tile1, &tile2, &state[wid].lod_frac);
 
-            texture_pipeline_cycle(rdp, &rdp->texel0_color, &rdp->texel0_color, sss, sst, tile1, 0);
-            texture_pipeline_cycle(rdp, &rdp->texel1_color, &rdp->texel0_color, sss, sst, tile2, 1);
+            texture_pipeline_cycle(wid, &state[wid].texel0_color, &state[wid].texel0_color, sss, sst, tile1, 0);
+            texture_pipeline_cycle(wid, &state[wid].texel1_color, &state[wid].texel0_color, sss, sst, tile2, 1);
 
-            combiner_2cycle_cycle0(rdp, adith, nextpixel_cvg, &acalpha);
+            combiner_2cycle_cycle0(wid, adith, nextpixel_cvg, &acalpha);
 
             if (wen)
             {
-                wen &= alpha_compare(rdp, acalpha);
+                wen &= alpha_compare(wid, acalpha);
 
                 if (wen)
                 {
-                    blender_2cycle_cycle1(rdp, &fir, &fig, &fib, cdith, blend_en, prewrap);
-                    rdp->fbwrite_ptr(rdp, curpixel, fir, fig, fib, blend_en, curpixel_cvg, curpixel_memcvg);
-                    if (rdp->other_modes.z_update_en)
+                    blender_2cycle_cycle1(wid, &fir, &fig, &fib, cdith, blend_en, prewrap);
+                    state[wid].fbwrite_ptr(wid, curpixel, fir, fig, fib, blend_en, curpixel_cvg, curpixel_memcvg);
+                    if (state[wid].other_modes.z_update_en)
                         z_store(zbcur, sz, dzpixenc);
                 }
             }
 
-            if (rdp->other_modes.f.getditherlevel < 2)
-                get_dither_noise(rdp, x, i, &cdith, &adith);
+            if (state[wid].other_modes.f.getditherlevel < 2)
+                get_dither_noise(wid, x, i, &cdith, &adith);
 
             curpixel_cvg = nextpixel_cvg;
 
@@ -1193,16 +1193,16 @@ static void render_spans_2cycle_notexelnext(struct rdp_state* rdp, int start, in
 }
 
 
-static void render_spans_2cycle_notexel1(struct rdp_state* rdp, int start, int end, int tilenum, int flip)
+static void render_spans_2cycle_notexel1(uint32_t wid, int start, int end, int tilenum, int flip)
 {
-    int zb = rdp->zb_address >> 1;
+    int zb = state[wid].zb_address >> 1;
     int zbcur;
     uint8_t offx, offy;
     uint32_t blend_en;
     uint32_t prewrap;
     uint32_t curpixel_cvg, curpixel_cvbit, curpixel_memcvg;
     uint32_t nextpixel_cvg;
-    int32_t acalpha;
+    uint32_t acalpha;
 
     int tile1 = tilenum;
     int prim_tile = tilenum;
@@ -1213,36 +1213,36 @@ static void render_spans_2cycle_notexel1(struct rdp_state* rdp, int start, int e
     int xinc;
     if (flip)
     {
-        drinc = rdp->spans_dr;
-        dginc = rdp->spans_dg;
-        dbinc = rdp->spans_db;
-        dainc = rdp->spans_da;
-        dzinc = rdp->spans_dz;
-        dsinc = rdp->spans_ds;
-        dtinc = rdp->spans_dt;
-        dwinc = rdp->spans_dw;
+        drinc = state[wid].spans_dr;
+        dginc = state[wid].spans_dg;
+        dbinc = state[wid].spans_db;
+        dainc = state[wid].spans_da;
+        dzinc = state[wid].spans_dz;
+        dsinc = state[wid].spans_ds;
+        dtinc = state[wid].spans_dt;
+        dwinc = state[wid].spans_dw;
         xinc = 1;
     }
     else
     {
-        drinc = -rdp->spans_dr;
-        dginc = -rdp->spans_dg;
-        dbinc = -rdp->spans_db;
-        dainc = -rdp->spans_da;
-        dzinc = -rdp->spans_dz;
-        dsinc = -rdp->spans_ds;
-        dtinc = -rdp->spans_dt;
-        dwinc = -rdp->spans_dw;
+        drinc = -state[wid].spans_dr;
+        dginc = -state[wid].spans_dg;
+        dbinc = -state[wid].spans_db;
+        dainc = -state[wid].spans_da;
+        dzinc = -state[wid].spans_dz;
+        dsinc = -state[wid].spans_ds;
+        dtinc = -state[wid].spans_dt;
+        dwinc = -state[wid].spans_dw;
         xinc = -1;
     }
 
     int dzpix;
-    if (!rdp->other_modes.z_source_sel)
-        dzpix = rdp->spans_dzpix;
+    if (!state[wid].other_modes.z_source_sel)
+        dzpix = state[wid].spans_dzpix;
     else
     {
-        dzpix = rdp->primitive_delta_z;
-        dzinc = rdp->spans_cdz = rdp->spans_dzdy = 0;
+        dzpix = state[wid].primitive_delta_z;
+        dzinc = state[wid].spans_cdz = state[wid].spans_dzdy = 0;
     }
     int dzpixenc = dz_compress(dzpix);
 
@@ -1260,36 +1260,36 @@ static void render_spans_2cycle_notexel1(struct rdp_state* rdp, int start, int e
 
     for (i = start; i <= end; i++)
     {
-        if (rdp->span[i].validline)
+        if (state[wid].span[i].validline)
         {
 
-        xstart = rdp->span[i].lx;
-        xend = rdp->span[i].unscrx;
-        xendsc = rdp->span[i].rx;
-        r = rdp->span[i].r;
-        g = rdp->span[i].g;
-        b = rdp->span[i].b;
-        a = rdp->span[i].a;
-        z = rdp->other_modes.z_source_sel ? rdp->primitive_z : rdp->span[i].z;
-        s = rdp->span[i].s;
-        t = rdp->span[i].t;
-        w = rdp->span[i].w;
+        xstart = state[wid].span[i].lx;
+        xend = state[wid].span[i].unscrx;
+        xendsc = state[wid].span[i].rx;
+        r = state[wid].span[i].r;
+        g = state[wid].span[i].g;
+        b = state[wid].span[i].b;
+        a = state[wid].span[i].a;
+        z = state[wid].other_modes.z_source_sel ? state[wid].primitive_z : state[wid].span[i].z;
+        s = state[wid].span[i].s;
+        t = state[wid].span[i].t;
+        w = state[wid].span[i].w;
 
         x = xendsc;
-        curpixel = rdp->fb_width * i + x;
+        curpixel = state[wid].fb_width * i + x;
         zbcur = zb + curpixel;
 
         if (!flip)
         {
             length = xendsc - xstart;
             scdiff = xend - xendsc;
-            compute_cvg_noflip(rdp, i);
+            compute_cvg_noflip(wid, i);
         }
         else
         {
             length = xstart - xendsc;
             scdiff = xendsc - xend;
-            compute_cvg_flip(rdp, i);
+            compute_cvg_flip(wid, i);
         }
 
         if (scdiff)
@@ -1319,34 +1319,34 @@ static void render_spans_2cycle_notexel1(struct rdp_state* rdp, int start, int e
                 st = t >> 16;
                 sw = w >> 16;
 
-                rdp->tcdiv_ptr(ss, st, sw, &sss, &sst);
+                state[wid].tcdiv_ptr(ss, st, sw, &sss, &sst);
 
-                tclod_2cycle_notexel1(rdp, &sss, &sst, s, t, w, dsinc, dtinc, dwinc, prim_tile, &tile1);
+                tclod_2cycle_notexel1(wid, &sss, &sst, s, t, w, dsinc, dtinc, dwinc, prim_tile, &tile1);
 
-                texture_pipeline_cycle(rdp, &rdp->texel0_color, &rdp->texel0_color, sss, sst, tile1, 0);
+                texture_pipeline_cycle(wid, &state[wid].texel0_color, &state[wid].texel0_color, sss, sst, tile1, 0);
 
-                lookup_cvmask_derivatives(rdp->cvgbuf[x], &offx, &offy, &curpixel_cvg, &curpixel_cvbit);
+                lookup_cvmask_derivatives(state[wid].cvgbuf[x], &offx, &offy, &curpixel_cvg, &curpixel_cvbit);
 
-                rgba_correct(rdp, offx, offy, sr, sg, sb, sa, curpixel_cvg);
+                rgba_correct(wid, offx, offy, sr, sg, sb, sa, curpixel_cvg);
 
-                if (rdp->other_modes.f.getditherlevel < 2)
-                    get_dither_noise(rdp, x, i, &cdith, &adith);
+                if (state[wid].other_modes.f.getditherlevel < 2)
+                    get_dither_noise(wid, x, i, &cdith, &adith);
 
-                combiner_2cycle_cycle0(rdp, adith, curpixel_cvg, &acalpha);
+                combiner_2cycle_cycle0(wid, adith, curpixel_cvg, &acalpha);
             }
 
-            z_correct(rdp, offx, offy, &sz, curpixel_cvg);
+            z_correct(wid, offx, offy, &sz, curpixel_cvg);
 
-            combiner_2cycle_cycle1(rdp, adith, &curpixel_cvg);
+            combiner_2cycle_cycle1(wid, adith, &curpixel_cvg);
 
-            rdp->fbread2_ptr(rdp, curpixel, &curpixel_memcvg);
+            state[wid].fbread2_ptr(wid, curpixel, &curpixel_memcvg);
 
-            wen = z_compare(rdp, zbcur, sz, dzpix, dzpixenc, &blend_en, &prewrap, &curpixel_cvg, curpixel_memcvg);
+            wen = z_compare(wid, zbcur, sz, dzpix, dzpixenc, &blend_en, &prewrap, &curpixel_cvg, curpixel_memcvg);
 
             if (wen)
-                wen &= blender_2cycle_cycle0(rdp, curpixel_cvg, curpixel_cvbit);
+                wen &= blender_2cycle_cycle0(wid, curpixel_cvg, curpixel_cvbit);
             else
-                rdp->memory_color = rdp->pre_memory_color;
+                state[wid].memory_color = state[wid].pre_memory_color;
 
             x += xinc;
 
@@ -1366,33 +1366,33 @@ static void render_spans_2cycle_notexel1(struct rdp_state* rdp, int start, int e
             st = t >> 16;
             sw = w >> 16;
 
-            lookup_cvmask_derivatives(j < length ? rdp->cvgbuf[x] : 0, &offx, &offy, &nextpixel_cvg, &curpixel_cvbit);
+            lookup_cvmask_derivatives(j < length ? state[wid].cvgbuf[x] : 0, &offx, &offy, &nextpixel_cvg, &curpixel_cvbit);
 
-            rgba_correct(rdp, offx, offy, sr, sg, sb, sa, nextpixel_cvg);
+            rgba_correct(wid, offx, offy, sr, sg, sb, sa, nextpixel_cvg);
 
-            rdp->tcdiv_ptr(ss, st, sw, &sss, &sst);
+            state[wid].tcdiv_ptr(ss, st, sw, &sss, &sst);
 
-            tclod_2cycle_notexel1(rdp, &sss, &sst, s, t, w, dsinc, dtinc, dwinc, prim_tile, &tile1);
+            tclod_2cycle_notexel1(wid, &sss, &sst, s, t, w, dsinc, dtinc, dwinc, prim_tile, &tile1);
 
-            texture_pipeline_cycle(rdp, &rdp->texel0_color, &rdp->texel0_color, sss, sst, tile1, 0);
+            texture_pipeline_cycle(wid, &state[wid].texel0_color, &state[wid].texel0_color, sss, sst, tile1, 0);
 
-            combiner_2cycle_cycle0(rdp, adith, nextpixel_cvg, &acalpha);
+            combiner_2cycle_cycle0(wid, adith, nextpixel_cvg, &acalpha);
 
             if (wen)
             {
-                wen &= alpha_compare(rdp, acalpha);
+                wen &= alpha_compare(wid, acalpha);
 
                 if (wen)
                 {
-                    blender_2cycle_cycle1(rdp, &fir, &fig, &fib, cdith, blend_en, prewrap);
-                    rdp->fbwrite_ptr(rdp, curpixel, fir, fig, fib, blend_en, curpixel_cvg, curpixel_memcvg);
-                    if (rdp->other_modes.z_update_en)
+                    blender_2cycle_cycle1(wid, &fir, &fig, &fib, cdith, blend_en, prewrap);
+                    state[wid].fbwrite_ptr(wid, curpixel, fir, fig, fib, blend_en, curpixel_cvg, curpixel_memcvg);
+                    if (state[wid].other_modes.z_update_en)
                         z_store(zbcur, sz, dzpixenc);
                 }
             }
 
-            if (rdp->other_modes.f.getditherlevel < 2)
-                get_dither_noise(rdp, x, i, &cdith, &adith);
+            if (state[wid].other_modes.f.getditherlevel < 2)
+                get_dither_noise(wid, x, i, &cdith, &adith);
 
             curpixel_cvg = nextpixel_cvg;
 
@@ -1406,16 +1406,16 @@ static void render_spans_2cycle_notexel1(struct rdp_state* rdp, int start, int e
 }
 
 
-static void render_spans_2cycle_notex(struct rdp_state* rdp, int start, int end, int tilenum, int flip)
+static void render_spans_2cycle_notex(uint32_t wid, int start, int end, int tilenum, int flip)
 {
-    int zb = rdp->zb_address >> 1;
+    int zb = state[wid].zb_address >> 1;
     int zbcur;
     uint8_t offx, offy;
     uint32_t blend_en;
     uint32_t prewrap;
     uint32_t curpixel_cvg, curpixel_cvbit, curpixel_memcvg;
     uint32_t nextpixel_cvg;
-    int32_t acalpha;
+    uint32_t acalpha;
 
     int i, j;
 
@@ -1423,30 +1423,30 @@ static void render_spans_2cycle_notex(struct rdp_state* rdp, int start, int end,
     int xinc;
     if (flip)
     {
-        drinc = rdp->spans_dr;
-        dginc = rdp->spans_dg;
-        dbinc = rdp->spans_db;
-        dainc = rdp->spans_da;
-        dzinc = rdp->spans_dz;
+        drinc = state[wid].spans_dr;
+        dginc = state[wid].spans_dg;
+        dbinc = state[wid].spans_db;
+        dainc = state[wid].spans_da;
+        dzinc = state[wid].spans_dz;
         xinc = 1;
     }
     else
     {
-        drinc = -rdp->spans_dr;
-        dginc = -rdp->spans_dg;
-        dbinc = -rdp->spans_db;
-        dainc = -rdp->spans_da;
-        dzinc = -rdp->spans_dz;
+        drinc = -state[wid].spans_dr;
+        dginc = -state[wid].spans_dg;
+        dbinc = -state[wid].spans_db;
+        dainc = -state[wid].spans_da;
+        dzinc = -state[wid].spans_dz;
         xinc = -1;
     }
 
     int dzpix;
-    if (!rdp->other_modes.z_source_sel)
-        dzpix = rdp->spans_dzpix;
+    if (!state[wid].other_modes.z_source_sel)
+        dzpix = state[wid].spans_dzpix;
     else
     {
-        dzpix = rdp->primitive_delta_z;
-        dzinc = rdp->spans_cdz = rdp->spans_dzdy = 0;
+        dzpix = state[wid].primitive_delta_z;
+        dzinc = state[wid].spans_cdz = state[wid].spans_dzdy = 0;
     }
     int dzpixenc = dz_compress(dzpix);
 
@@ -1463,33 +1463,33 @@ static void render_spans_2cycle_notex(struct rdp_state* rdp, int start, int end,
 
     for (i = start; i <= end; i++)
     {
-        if (rdp->span[i].validline)
+        if (state[wid].span[i].validline)
         {
 
-        xstart = rdp->span[i].lx;
-        xend = rdp->span[i].unscrx;
-        xendsc = rdp->span[i].rx;
-        r = rdp->span[i].r;
-        g = rdp->span[i].g;
-        b = rdp->span[i].b;
-        a = rdp->span[i].a;
-        z = rdp->other_modes.z_source_sel ? rdp->primitive_z : rdp->span[i].z;
+        xstart = state[wid].span[i].lx;
+        xend = state[wid].span[i].unscrx;
+        xendsc = state[wid].span[i].rx;
+        r = state[wid].span[i].r;
+        g = state[wid].span[i].g;
+        b = state[wid].span[i].b;
+        a = state[wid].span[i].a;
+        z = state[wid].other_modes.z_source_sel ? state[wid].primitive_z : state[wid].span[i].z;
 
         x = xendsc;
-        curpixel = rdp->fb_width * i + x;
+        curpixel = state[wid].fb_width * i + x;
         zbcur = zb + curpixel;
 
         if (!flip)
         {
             length = xendsc - xstart;
             scdiff = xend - xendsc;
-            compute_cvg_noflip(rdp, i);
+            compute_cvg_noflip(wid, i);
         }
         else
         {
             length = xstart - xendsc;
             scdiff = xendsc - xend;
-            compute_cvg_flip(rdp, i);
+            compute_cvg_flip(wid, i);
         }
 
         if (scdiff)
@@ -1513,28 +1513,28 @@ static void render_spans_2cycle_notex(struct rdp_state* rdp, int start, int end,
                 sb = b >> 14;
                 sa = a >> 14;
 
-                lookup_cvmask_derivatives(rdp->cvgbuf[x], &offx, &offy, &curpixel_cvg, &curpixel_cvbit);
+                lookup_cvmask_derivatives(state[wid].cvgbuf[x], &offx, &offy, &curpixel_cvg, &curpixel_cvbit);
 
-                rgba_correct(rdp, offx, offy, sr, sg, sb, sa, curpixel_cvg);
+                rgba_correct(wid, offx, offy, sr, sg, sb, sa, curpixel_cvg);
 
-                if (rdp->other_modes.f.getditherlevel < 2)
-                    get_dither_noise(rdp, x, i, &cdith, &adith);
+                if (state[wid].other_modes.f.getditherlevel < 2)
+                    get_dither_noise(wid, x, i, &cdith, &adith);
 
-                combiner_2cycle_cycle0(rdp, adith, curpixel_cvg, &acalpha);
+                combiner_2cycle_cycle0(wid, adith, curpixel_cvg, &acalpha);
             }
 
-            z_correct(rdp, offx, offy, &sz, curpixel_cvg);
+            z_correct(wid, offx, offy, &sz, curpixel_cvg);
 
-            combiner_2cycle_cycle1(rdp, adith, &curpixel_cvg);
+            combiner_2cycle_cycle1(wid, adith, &curpixel_cvg);
 
-            rdp->fbread2_ptr(rdp, curpixel, &curpixel_memcvg);
+            state[wid].fbread2_ptr(wid, curpixel, &curpixel_memcvg);
 
-            wen = z_compare(rdp, zbcur, sz, dzpix, dzpixenc, &blend_en, &prewrap, &curpixel_cvg, curpixel_memcvg);
+            wen = z_compare(wid, zbcur, sz, dzpix, dzpixenc, &blend_en, &prewrap, &curpixel_cvg, curpixel_memcvg);
 
             if (wen)
-                wen &= blender_2cycle_cycle0(rdp, curpixel_cvg, curpixel_cvbit);
+                wen &= blender_2cycle_cycle0(wid, curpixel_cvg, curpixel_cvbit);
             else
-                rdp->memory_color = rdp->pre_memory_color;
+                state[wid].memory_color = state[wid].pre_memory_color;
 
             x += xinc;
 
@@ -1548,27 +1548,27 @@ static void render_spans_2cycle_notex(struct rdp_state* rdp, int start, int end,
             sb = b >> 14;
             sa = a >> 14;
 
-            lookup_cvmask_derivatives(j < length ? rdp->cvgbuf[x] : 0, &offx, &offy, &nextpixel_cvg, &curpixel_cvbit);
+            lookup_cvmask_derivatives(j < length ? state[wid].cvgbuf[x] : 0, &offx, &offy, &nextpixel_cvg, &curpixel_cvbit);
 
-            rgba_correct(rdp, offx, offy, sr, sg, sb, sa, nextpixel_cvg);
+            rgba_correct(wid, offx, offy, sr, sg, sb, sa, nextpixel_cvg);
 
-            combiner_2cycle_cycle0(rdp, adith, nextpixel_cvg, &acalpha);
+            combiner_2cycle_cycle0(wid, adith, nextpixel_cvg, &acalpha);
 
             if (wen)
             {
-                wen &= alpha_compare(rdp, acalpha);
+                wen &= alpha_compare(wid, acalpha);
 
                 if (wen)
                 {
-                    blender_2cycle_cycle1(rdp, &fir, &fig, &fib, cdith, blend_en, prewrap);
-                    rdp->fbwrite_ptr(rdp, curpixel, fir, fig, fib, blend_en, curpixel_cvg, curpixel_memcvg);
-                    if (rdp->other_modes.z_update_en)
+                    blender_2cycle_cycle1(wid, &fir, &fig, &fib, cdith, blend_en, prewrap);
+                    state[wid].fbwrite_ptr(wid, curpixel, fir, fig, fib, blend_en, curpixel_cvg, curpixel_memcvg);
+                    if (state[wid].other_modes.z_update_en)
                         z_store(zbcur, sz, dzpixenc);
                 }
             }
 
-            if (rdp->other_modes.f.getditherlevel < 2)
-                get_dither_noise(rdp, x, i, &cdith, &adith);
+            if (state[wid].other_modes.f.getditherlevel < 2)
+                get_dither_noise(wid, x, i, &cdith, &adith);
 
             curpixel_cvg = nextpixel_cvg;
 
@@ -1582,9 +1582,9 @@ static void render_spans_2cycle_notex(struct rdp_state* rdp, int start, int end,
 }
 
 
-static void render_spans_fill(struct rdp_state* rdp, int start, int end, int flip)
+static void render_spans_fill(uint32_t wid, int start, int end, int flip)
 {
-    if (rdp->fb_size == PIXEL_SIZE_4BIT)
+    if (state[wid].fb_size == PIXEL_SIZE_4BIT)
     {
         rdp_pipeline_crashed = 1;
         return;
@@ -1592,8 +1592,8 @@ static void render_spans_fill(struct rdp_state* rdp, int start, int end, int fli
 
     int i, j;
 
-    int fastkillbits = rdp->other_modes.image_read_en || rdp->other_modes.z_compare_en;
-    int slowkillbits = rdp->other_modes.z_update_en && !rdp->other_modes.z_source_sel && !fastkillbits;
+    int fastkillbits = state[wid].other_modes.image_read_en || state[wid].other_modes.z_compare_en;
+    int slowkillbits = state[wid].other_modes.z_update_en && !state[wid].other_modes.z_source_sel && !fastkillbits;
 
     int xinc = flip ? 1 : -1;
 
@@ -1605,20 +1605,20 @@ static void render_spans_fill(struct rdp_state* rdp, int start, int end, int fli
     for (i = start; i <= end; i++)
     {
         prevxstart = xstart;
-        xstart = rdp->span[i].lx;
-        xendsc = rdp->span[i].rx;
+        xstart = state[wid].span[i].lx;
+        xendsc = state[wid].span[i].rx;
 
         x = xendsc;
-        curpixel = rdp->fb_width * i + x;
+        curpixel = state[wid].fb_width * i + x;
         length = flip ? (xstart - xendsc) : (xendsc - xstart);
 
-        if (rdp->span[i].validline)
+        if (state[wid].span[i].validline)
         {
             if (fastkillbits && length >= 0)
             {
                 if (!onetimewarnings.fillmbitcrashes)
                     msg_warning("render_spans_fill: image_read_en %x z_update_en %x z_compare_en %x. RDP crashed",
-                    rdp->other_modes.image_read_en, rdp->other_modes.z_update_en, rdp->other_modes.z_compare_en);
+                    state[wid].other_modes.image_read_en, state[wid].other_modes.z_update_en, state[wid].other_modes.z_compare_en);
                 onetimewarnings.fillmbitcrashes = true;
                 rdp_pipeline_crashed = 1;
                 return;
@@ -1633,20 +1633,20 @@ static void render_spans_fill(struct rdp_state* rdp, int start, int end, int fli
             for (j = 0; j <= length; j++)
             {
 
-                switch(rdp->fb_size)
+                switch(state[wid].fb_size)
                 {
                 case 0:
-                    fbfill_4(rdp, curpixel);
+                    fbfill_4(wid, curpixel);
                     break;
                 case 1:
-                    fbfill_8(rdp, curpixel);
+                    fbfill_8(wid, curpixel);
                     break;
                 case 2:
-                    fbfill_16(rdp, curpixel);
+                    fbfill_16(wid, curpixel);
                     break;
                 case 3:
                 default:
-                    fbfill_32(rdp, curpixel);
+                    fbfill_32(wid, curpixel);
                     break;
                 }
 
@@ -1658,7 +1658,7 @@ static void render_spans_fill(struct rdp_state* rdp, int start, int end, int fli
             {
                 if (!onetimewarnings.fillmbitcrashes)
                     msg_warning("render_spans_fill: image_read_en %x z_update_en %x z_compare_en %x z_source_sel %x. RDP crashed",
-                    rdp->other_modes.image_read_en, rdp->other_modes.z_update_en, rdp->other_modes.z_compare_en, rdp->other_modes.z_source_sel);
+                    state[wid].other_modes.image_read_en, state[wid].other_modes.z_update_en, state[wid].other_modes.z_compare_en, state[wid].other_modes.z_source_sel);
                 onetimewarnings.fillmbitcrashes = 1;
                 rdp_pipeline_crashed = 1;
                 return;
@@ -1667,11 +1667,11 @@ static void render_spans_fill(struct rdp_state* rdp, int start, int end, int fli
     }
 }
 
-static void render_spans_copy(struct rdp_state* rdp, int start, int end, int tilenum, int flip)
+static void render_spans_copy(uint32_t wid, int start, int end, int tilenum, int flip)
 {
     int i, j, k;
 
-    if (rdp->fb_size == PIXEL_SIZE_32BIT)
+    if (state[wid].fb_size == PIXEL_SIZE_32BIT)
     {
         rdp_pipeline_crashed = 1;
         return;
@@ -1684,16 +1684,16 @@ static void render_spans_copy(struct rdp_state* rdp, int start, int end, int til
     int xinc;
     if (flip)
     {
-        dsinc = rdp->spans_ds;
-        dtinc = rdp->spans_dt;
-        dwinc = rdp->spans_dw;
+        dsinc = state[wid].spans_ds;
+        dtinc = state[wid].spans_dt;
+        dwinc = state[wid].spans_dw;
         xinc = 1;
     }
     else
     {
-        dsinc = -rdp->spans_ds;
-        dtinc = -rdp->spans_dt;
-        dwinc = -rdp->spans_dw;
+        dsinc = -state[wid].spans_ds;
+        dtinc = -state[wid].spans_dt;
+        dwinc = -state[wid].spans_dw;
         xinc = -1;
     }
 
@@ -1704,13 +1704,13 @@ static void render_spans_copy(struct rdp_state* rdp, int start, int end, int til
 
     uint32_t hidword = 0, lowdword = 0;
     uint32_t hidword1 = 0, lowdword1 = 0;
-    int fbadvance = (rdp->fb_size == PIXEL_SIZE_4BIT) ? 8 : 16 >> rdp->fb_size;
+    int fbadvance = (state[wid].fb_size == PIXEL_SIZE_4BIT) ? 8 : 16 >> state[wid].fb_size;
     uint32_t fbptr = 0;
     int fbptr_advance = flip ? 8 : -8;
     uint64_t copyqword = 0;
     uint32_t tempdword = 0, tempbyte = 0;
     int copywmask = 0, alphamask = 0;
-    int bytesperpixel = (rdp->fb_size == PIXEL_SIZE_4BIT) ? 1 : (1 << (rdp->fb_size - 1));
+    int bytesperpixel = (state[wid].fb_size == PIXEL_SIZE_4BIT) ? 1 : (1 << (state[wid].fb_size - 1));
     uint32_t fbendptr = 0;
     int32_t threshold, currthreshold;
 
@@ -1718,19 +1718,19 @@ static void render_spans_copy(struct rdp_state* rdp, int start, int end, int til
 
     for (i = start; i <= end; i++)
     {
-        if (rdp->span[i].validline)
+        if (state[wid].span[i].validline)
         {
 
-        s = rdp->span[i].s;
-        t = rdp->span[i].t;
-        w = rdp->span[i].w;
+        s = state[wid].span[i].s;
+        t = state[wid].span[i].t;
+        w = state[wid].span[i].w;
 
-        xstart = rdp->span[i].lx;
-        xendsc = rdp->span[i].rx;
+        xstart = state[wid].span[i].lx;
+        xendsc = state[wid].span[i].rx;
 
-        fb_index = rdp->fb_width * i + xendsc;
-        fbptr = rdp->fb_address + PIXELS_TO_BYTES_SPECIAL4(fb_index, rdp->fb_size);
-        fbendptr = rdp->fb_address + PIXELS_TO_BYTES_SPECIAL4((rdp->fb_width * i + xstart), rdp->fb_size);
+        fb_index = state[wid].fb_width * i + xendsc;
+        fbptr = state[wid].fb_address + PIXELS_TO_BYTES_SPECIAL4(fb_index, state[wid].fb_size);
+        fbendptr = state[wid].fb_address + PIXELS_TO_BYTES_SPECIAL4((state[wid].fb_width * i + xstart), state[wid].fb_size);
         length = flip ? (xstart - xendsc) : (xendsc - xstart);
 
 
@@ -1742,25 +1742,25 @@ static void render_spans_copy(struct rdp_state* rdp, int start, int end, int til
             st = t >> 16;
             sw = w >> 16;
 
-            rdp->tcdiv_ptr(ss, st, sw, &sss, &sst);
+            state[wid].tcdiv_ptr(ss, st, sw, &sss, &sst);
 
-            tclod_copy(rdp, &sss, &sst, s, t, w, dsinc, dtinc, dwinc, prim_tile, &tile1);
-
-
-
-            fetch_qword_copy(rdp, &hidword, &lowdword, sss, sst, tile1);
+            tclod_copy(wid, &sss, &sst, s, t, w, dsinc, dtinc, dwinc, prim_tile, &tile1);
 
 
 
-            if (rdp->fb_size == PIXEL_SIZE_16BIT || rdp->fb_size == PIXEL_SIZE_8BIT)
+            fetch_qword_copy(wid, &hidword, &lowdword, sss, sst, tile1);
+
+
+
+            if (state[wid].fb_size == PIXEL_SIZE_16BIT || state[wid].fb_size == PIXEL_SIZE_8BIT)
                 copyqword = ((uint64_t)hidword << 32) | ((uint64_t)lowdword);
             else
                 copyqword = 0;
 
 
-            if (!rdp->other_modes.alpha_compare_en)
+            if (!state[wid].other_modes.alpha_compare_en)
                 alphamask = 0xff;
-            else if (rdp->fb_size == PIXEL_SIZE_16BIT)
+            else if (state[wid].fb_size == PIXEL_SIZE_16BIT)
             {
                 alphamask = 0;
                 alphamask |= (((copyqword >> 48) & 1) ? 0xC0 : 0);
@@ -1768,11 +1768,11 @@ static void render_spans_copy(struct rdp_state* rdp, int start, int end, int til
                 alphamask |= (((copyqword >> 16) & 1) ? 0xC : 0);
                 alphamask |= ((copyqword & 1) ? 0x3 : 0);
             }
-            else if (rdp->fb_size == PIXEL_SIZE_8BIT)
+            else if (state[wid].fb_size == PIXEL_SIZE_8BIT)
             {
                 alphamask = 0;
-                threshold = (rdp->other_modes.dither_alpha_en) ? (irand(&rdp->rand_dp) & 0xff) : rdp->blend_color.a;
-                if (rdp->other_modes.dither_alpha_en)
+                threshold = (state[wid].other_modes.dither_alpha_en) ? (irand(&state[wid].rseed) & 0xff) : state[wid].blend_color.a;
+                if (state[wid].other_modes.dither_alpha_en)
                 {
                     currthreshold = threshold;
                     alphamask |= (((copyqword >> 24) & 0xff) >= currthreshold ? 0xC0 : 0);
@@ -1821,7 +1821,7 @@ static void render_spans_copy(struct rdp_state* rdp, int start, int end, int til
     }
 }
 
-static void edgewalker_for_prims(struct rdp_state* rdp, int32_t* ewdata)
+static void edgewalker_for_prims(uint32_t wid, int32_t* ewdata)
 {
     int j = 0;
     int xleft = 0, xright = 0, xleft_inc = 0, xright_inc = 0;
@@ -1835,15 +1835,15 @@ static void edgewalker_for_prims(struct rdp_state* rdp, int32_t* ewdata)
     int32_t xl = 0, xm = 0, xh = 0;
     int32_t dxldy = 0, dxhdy = 0, dxmdy = 0;
 
-    if (rdp->other_modes.f.stalederivs)
+    if (state[wid].other_modes.f.stalederivs)
     {
-        deduce_derivatives(rdp);
-        rdp->other_modes.f.stalederivs = 0;
+        deduce_derivatives(wid);
+        state[wid].other_modes.f.stalederivs = 0;
     }
 
 
     flip = (ewdata[0] & 0x800000) != 0;
-    rdp->max_level = (ewdata[0] >> 19) & 7;
+    state[wid].max_level = (ewdata[0] >> 19) & 7;
     tilenum = (ewdata[0] >> 16) & 7;
 
 
@@ -1907,47 +1907,47 @@ static void edgewalker_for_prims(struct rdp_state* rdp, int32_t* ewdata)
 
 
 
-    rdp->spans_ds = dsdx & ~0x1f;
-    rdp->spans_dt = dtdx & ~0x1f;
-    rdp->spans_dw = dwdx & ~0x1f;
-    rdp->spans_dr = drdx & ~0x1f;
-    rdp->spans_dg = dgdx & ~0x1f;
-    rdp->spans_db = dbdx & ~0x1f;
-    rdp->spans_da = dadx & ~0x1f;
-    rdp->spans_dz = dzdx;
+    state[wid].spans_ds = dsdx & ~0x1f;
+    state[wid].spans_dt = dtdx & ~0x1f;
+    state[wid].spans_dw = dwdx & ~0x1f;
+    state[wid].spans_dr = drdx & ~0x1f;
+    state[wid].spans_dg = dgdx & ~0x1f;
+    state[wid].spans_db = dbdx & ~0x1f;
+    state[wid].spans_da = dadx & ~0x1f;
+    state[wid].spans_dz = dzdx;
 
 
-    rdp->spans_drdy = drdy >> 14;
-    rdp->spans_dgdy = dgdy >> 14;
-    rdp->spans_dbdy = dbdy >> 14;
-    rdp->spans_dady = dady >> 14;
-    rdp->spans_dzdy = dzdy >> 10;
-    rdp->spans_drdy = SIGN(rdp->spans_drdy, 13);
-    rdp->spans_dgdy = SIGN(rdp->spans_dgdy, 13);
-    rdp->spans_dbdy = SIGN(rdp->spans_dbdy, 13);
-    rdp->spans_dady = SIGN(rdp->spans_dady, 13);
-    rdp->spans_dzdy = SIGN(rdp->spans_dzdy, 22);
-    rdp->spans_cdr = rdp->spans_dr >> 14;
-    rdp->spans_cdr = SIGN(rdp->spans_cdr, 13);
-    rdp->spans_cdg = rdp->spans_dg >> 14;
-    rdp->spans_cdg = SIGN(rdp->spans_cdg, 13);
-    rdp->spans_cdb = rdp->spans_db >> 14;
-    rdp->spans_cdb = SIGN(rdp->spans_cdb, 13);
-    rdp->spans_cda = rdp->spans_da >> 14;
-    rdp->spans_cda = SIGN(rdp->spans_cda, 13);
-    rdp->spans_cdz = rdp->spans_dz >> 10;
-    rdp->spans_cdz = SIGN(rdp->spans_cdz, 22);
+    state[wid].spans_drdy = drdy >> 14;
+    state[wid].spans_dgdy = dgdy >> 14;
+    state[wid].spans_dbdy = dbdy >> 14;
+    state[wid].spans_dady = dady >> 14;
+    state[wid].spans_dzdy = dzdy >> 10;
+    state[wid].spans_drdy = SIGN(state[wid].spans_drdy, 13);
+    state[wid].spans_dgdy = SIGN(state[wid].spans_dgdy, 13);
+    state[wid].spans_dbdy = SIGN(state[wid].spans_dbdy, 13);
+    state[wid].spans_dady = SIGN(state[wid].spans_dady, 13);
+    state[wid].spans_dzdy = SIGN(state[wid].spans_dzdy, 22);
+    state[wid].spans_cdr = state[wid].spans_dr >> 14;
+    state[wid].spans_cdr = SIGN(state[wid].spans_cdr, 13);
+    state[wid].spans_cdg = state[wid].spans_dg >> 14;
+    state[wid].spans_cdg = SIGN(state[wid].spans_cdg, 13);
+    state[wid].spans_cdb = state[wid].spans_db >> 14;
+    state[wid].spans_cdb = SIGN(state[wid].spans_cdb, 13);
+    state[wid].spans_cda = state[wid].spans_da >> 14;
+    state[wid].spans_cda = SIGN(state[wid].spans_cda, 13);
+    state[wid].spans_cdz = state[wid].spans_dz >> 10;
+    state[wid].spans_cdz = SIGN(state[wid].spans_cdz, 22);
 
-    rdp->spans_dsdy = dsdy & ~0x7fff;
-    rdp->spans_dtdy = dtdy & ~0x7fff;
-    rdp->spans_dwdy = dwdy & ~0x7fff;
+    state[wid].spans_dsdy = dsdy & ~0x7fff;
+    state[wid].spans_dtdy = dtdy & ~0x7fff;
+    state[wid].spans_dwdy = dwdy & ~0x7fff;
 
 
     int dzdy_dz = (dzdy >> 16) & 0xffff;
     int dzdx_dz = (dzdx >> 16) & 0xffff;
 
-    rdp->spans_dzpix = ((dzdy_dz & 0x8000) ? ((~dzdy_dz) & 0x7fff) : dzdy_dz) + ((dzdx_dz & 0x8000) ? ((~dzdx_dz) & 0x7fff) : dzdx_dz);
-    rdp->spans_dzpix = normalize_dzpix(rdp->spans_dzpix & 0xffff) & 0xffff;
+    state[wid].spans_dzpix = ((dzdy_dz & 0x8000) ? ((~dzdy_dz) & 0x7fff) : dzdy_dz) + ((dzdx_dz & 0x8000) ? ((~dzdx_dz) & 0x7fff) : dzdx_dz);
+    state[wid].spans_dzpix = normalize_dzpix(state[wid].spans_dzpix & 0xffff) & 0xffff;
 
 
 
@@ -2009,7 +2009,7 @@ static void edgewalker_for_prims(struct rdp_state* rdp, int32_t* ewdata)
     int xfrac = 0;
 
     int dsdxh, dtdxh, dwdxh, drdxh, dgdxh, dbdxh, dadxh, dzdxh;
-    if (rdp->other_modes.cycle_type != CYCLE_TYPE_COPY)
+    if (state[wid].other_modes.cycle_type != CYCLE_TYPE_COPY)
     {
         dsdxh = (dsdx >> 8) & ~1;
         dtdxh = (dtdx >> 8) & ~1;
@@ -2029,14 +2029,14 @@ static void edgewalker_for_prims(struct rdp_state* rdp, int32_t* ewdata)
 
 #define ADJUST_ATTR_PRIM()      \
 {                           \
-    rdp->span[j].s = ((s & ~0x1ff) + dsdiff - (xfrac * dsdxh)) & ~0x3ff;             \
-    rdp->span[j].t = ((t & ~0x1ff) + dtdiff - (xfrac * dtdxh)) & ~0x3ff;             \
-    rdp->span[j].w = ((w & ~0x1ff) + dwdiff - (xfrac * dwdxh)) & ~0x3ff;             \
-    rdp->span[j].r = ((r & ~0x1ff) + drdiff - (xfrac * drdxh)) & ~0x3ff;             \
-    rdp->span[j].g = ((g & ~0x1ff) + dgdiff - (xfrac * dgdxh)) & ~0x3ff;             \
-    rdp->span[j].b = ((b & ~0x1ff) + dbdiff - (xfrac * dbdxh)) & ~0x3ff;             \
-    rdp->span[j].a = ((a & ~0x1ff) + dadiff - (xfrac * dadxh)) & ~0x3ff;             \
-    rdp->span[j].z = ((z & ~0x1ff) + dzdiff - (xfrac * dzdxh)) & ~0x3ff;             \
+    state[wid].span[j].s = ((s & ~0x1ff) + dsdiff - (xfrac * dsdxh)) & ~0x3ff;             \
+    state[wid].span[j].t = ((t & ~0x1ff) + dtdiff - (xfrac * dtdxh)) & ~0x3ff;             \
+    state[wid].span[j].w = ((w & ~0x1ff) + dwdiff - (xfrac * dwdxh)) & ~0x3ff;             \
+    state[wid].span[j].r = ((r & ~0x1ff) + drdiff - (xfrac * drdxh)) & ~0x3ff;             \
+    state[wid].span[j].g = ((g & ~0x1ff) + dgdiff - (xfrac * dgdxh)) & ~0x3ff;             \
+    state[wid].span[j].b = ((b & ~0x1ff) + dbdiff - (xfrac * dbdxh)) & ~0x3ff;             \
+    state[wid].span[j].a = ((a & ~0x1ff) + dadiff - (xfrac * dadxh)) & ~0x3ff;             \
+    state[wid].span[j].z = ((z & ~0x1ff) + dzdiff - (xfrac * dzdxh)) & ~0x3ff;             \
 }
 
 
@@ -2065,14 +2065,14 @@ static void edgewalker_for_prims(struct rdp_state* rdp, int32_t* ewdata)
     else if (yl & 0x1000)
         yllimit = 0;
     else
-        yllimit = (yl & 0xfff) < rdp->clip.yl;
-    yllimit = yllimit ? yl : rdp->clip.yl;
+        yllimit = (yl & 0xfff) < state[wid].clip.yl;
+    yllimit = yllimit ? yl : state[wid].clip.yl;
 
     int ylfar = yllimit | 3;
     if ((yl >> 2) > (ylfar >> 2))
         ylfar += 4;
     else if ((yllimit >> 2) >= 0 && (yllimit >> 2) < 1023)
-        rdp->span[(yllimit >> 2) + 1].validline = 0;
+        state[wid].span[(yllimit >> 2) + 1].validline = 0;
 
 
     if (yh & 0x2000)
@@ -2080,13 +2080,13 @@ static void edgewalker_for_prims(struct rdp_state* rdp, int32_t* ewdata)
     else if (yh & 0x1000)
         yhlimit = 1;
     else
-        yhlimit = (yh >= rdp->clip.yh);
-    yhlimit = yhlimit ? yh : rdp->clip.yh;
+        yhlimit = (yh >= state[wid].clip.yh);
+    yhlimit = yhlimit ? yh : state[wid].clip.yh;
 
     int yhclose = yhlimit & ~3;
 
-    int32_t clipxlshift = rdp->clip.xl << 1;
-    int32_t clipxhshift = rdp->clip.xh << 1;
+    int32_t clipxlshift = state[wid].clip.xl << 1;
+    int32_t clipxhshift = state[wid].clip.xh << 1;
     int allover = 1, allunder = 1, curover = 0, curunder = 0;
     int allinval = 1;
     int32_t curcross = 0;
@@ -2130,7 +2130,7 @@ static void edgewalker_for_prims(struct rdp_state* rdp, int32_t* ewdata)
             xrsc = curunder ? clipxhshift : (((xright >> 13) & 0x3ffe) | stickybit);
             curover = ((xrsc & 0x2000) || (xrsc & 0x1fff) >= clipxlshift);
             xrsc = curover ? clipxlshift : xrsc;
-            rdp->span[j].majorx[spix] = xrsc & 0x1fff;
+            state[wid].span[j].majorx[spix] = xrsc & 0x1fff;
             allover &= curover;
             allunder &= curunder;
 
@@ -2140,7 +2140,7 @@ static void edgewalker_for_prims(struct rdp_state* rdp, int32_t* ewdata)
             xlsc = curunder ? clipxhshift : (((xleft >> 13) & 0x3ffe) | stickybit);
             curover = ((xlsc & 0x2000) || (xlsc & 0x1fff) >= clipxlshift);
             xlsc = curover ? clipxlshift : xlsc;
-            rdp->span[j].minorx[spix] = xlsc & 0x1fff;
+            state[wid].span[j].minorx[spix] = xlsc & 0x1fff;
             allover &= curover;
             allunder &= curunder;
 
@@ -2150,7 +2150,7 @@ static void edgewalker_for_prims(struct rdp_state* rdp, int32_t* ewdata)
 
 
             invaly |= curcross;
-            rdp->span[j].invalyscan[spix] = invaly;
+            state[wid].span[j].invalyscan[spix] = invaly;
             allinval &= invaly;
 
             if (!invaly)
@@ -2165,16 +2165,16 @@ static void edgewalker_for_prims(struct rdp_state* rdp, int32_t* ewdata)
 
 
 
-                rdp->span[j].unscrx = SIGN(xright >> 16, 12);
+                state[wid].span[j].unscrx = SIGN(xright >> 16, 12);
                 xfrac = (xright >> 8) & 0xff;
                 ADJUST_ATTR_PRIM();
             }
 
             if (spix == 3)
             {
-                rdp->span[j].lx = maxxmx;
-                rdp->span[j].rx = minxhx;
-                rdp->span[j].validline  = !allinval && !allover && !allunder && (!rdp->scfield || (rdp->scfield && !(rdp->sckeepodd ^ (j & 1)))) && (!rdp->stride || j % rdp->stride == rdp->offset);
+                state[wid].span[j].lx = maxxmx;
+                state[wid].span[j].rx = minxhx;
+                state[wid].span[j].validline  = !allinval && !allover && !allunder && (!state[wid].scfield || (state[wid].scfield && !(state[wid].sckeepodd ^ (j & 1)))) && (!state[wid].stride || j % state[wid].stride == state[wid].offset);
 
             }
 
@@ -2224,7 +2224,7 @@ static void edgewalker_for_prims(struct rdp_state* rdp, int32_t* ewdata)
             xrsc = curunder ? clipxhshift : (((xright >> 13) & 0x3ffe) | stickybit);
             curover = ((xrsc & 0x2000) || (xrsc & 0x1fff) >= clipxlshift);
             xrsc = curover ? clipxlshift : xrsc;
-            rdp->span[j].majorx[spix] = xrsc & 0x1fff;
+            state[wid].span[j].majorx[spix] = xrsc & 0x1fff;
             allover &= curover;
             allunder &= curunder;
 
@@ -2234,14 +2234,14 @@ static void edgewalker_for_prims(struct rdp_state* rdp, int32_t* ewdata)
             xlsc = curunder ? clipxhshift : (((xleft >> 13) & 0x3ffe) | stickybit);
             curover = ((xlsc & 0x2000) || (xlsc & 0x1fff) >= clipxlshift);
             xlsc = curover ? clipxlshift : xlsc;
-            rdp->span[j].minorx[spix] = xlsc & 0x1fff;
+            state[wid].span[j].minorx[spix] = xlsc & 0x1fff;
             allover &= curover;
             allunder &= curunder;
 
             curcross = ((xright ^ (1 << 27)) & (0x3fff << 14)) < ((xleft ^ (1 << 27)) & (0x3fff << 14));
 
             invaly |= curcross;
-            rdp->span[j].invalyscan[spix] = invaly;
+            state[wid].span[j].invalyscan[spix] = invaly;
             allinval &= invaly;
 
             if (!invaly)
@@ -2252,16 +2252,16 @@ static void edgewalker_for_prims(struct rdp_state* rdp, int32_t* ewdata)
 
             if (spix == ldflag)
             {
-                rdp->span[j].unscrx  = SIGN(xright >> 16, 12);
+                state[wid].span[j].unscrx  = SIGN(xright >> 16, 12);
                 xfrac = (xright >> 8) & 0xff;
                 ADJUST_ATTR_PRIM();
             }
 
             if (spix == 3)
             {
-                rdp->span[j].lx = minxmx;
-                rdp->span[j].rx = maxxhx;
-                rdp->span[j].validline  = !allinval && !allover && !allunder && (!rdp->scfield || (rdp->scfield && !(rdp->sckeepodd ^ (j & 1)))) && (!rdp->stride || j % rdp->stride == rdp->offset);
+                state[wid].span[j].lx = minxmx;
+                state[wid].span[j].rx = maxxhx;
+                state[wid].span[j].validline  = !allinval && !allover && !allunder && (!state[wid].scfield || (state[wid].scfield && !(state[wid].sckeepodd ^ (j & 1)))) && (!state[wid].stride || j % state[wid].stride == state[wid].offset);
             }
 
         }
@@ -2280,67 +2280,67 @@ static void edgewalker_for_prims(struct rdp_state* rdp, int32_t* ewdata)
 
 
 
-    switch(rdp->other_modes.cycle_type)
+    switch(state[wid].other_modes.cycle_type)
     {
         case CYCLE_TYPE_1:
-            switch (rdp->other_modes.f.textureuselevel0)
+            switch (state[wid].other_modes.f.textureuselevel0)
             {
-                case 0: render_spans_1cycle_complete(rdp, yhlimit >> 2, yllimit >> 2, tilenum, flip); break;
-                case 1: render_spans_1cycle_notexel1(rdp, yhlimit >> 2, yllimit >> 2, tilenum, flip); break;
-                case 2: default: render_spans_1cycle_notex(rdp, yhlimit >> 2, yllimit >> 2, tilenum, flip); break;
+                case 0: render_spans_1cycle_complete(wid, yhlimit >> 2, yllimit >> 2, tilenum, flip); break;
+                case 1: render_spans_1cycle_notexel1(wid, yhlimit >> 2, yllimit >> 2, tilenum, flip); break;
+                case 2: default: render_spans_1cycle_notex(wid, yhlimit >> 2, yllimit >> 2, tilenum, flip); break;
             }
             break;
         case CYCLE_TYPE_2:
-            switch (rdp->other_modes.f.textureuselevel1)
+            switch (state[wid].other_modes.f.textureuselevel1)
             {
-                case 0: render_spans_2cycle_complete(rdp, yhlimit >> 2, yllimit >> 2, tilenum, flip); break;
-                case 1: render_spans_2cycle_notexelnext(rdp, yhlimit >> 2, yllimit >> 2, tilenum, flip); break;
-                case 2: render_spans_2cycle_notexel1(rdp, yhlimit >> 2, yllimit >> 2, tilenum, flip); break;
-                case 3: default: render_spans_2cycle_notex(rdp, yhlimit >> 2, yllimit >> 2, tilenum, flip); break;
+                case 0: render_spans_2cycle_complete(wid, yhlimit >> 2, yllimit >> 2, tilenum, flip); break;
+                case 1: render_spans_2cycle_notexelnext(wid, yhlimit >> 2, yllimit >> 2, tilenum, flip); break;
+                case 2: render_spans_2cycle_notexel1(wid, yhlimit >> 2, yllimit >> 2, tilenum, flip); break;
+                case 3: default: render_spans_2cycle_notex(wid, yhlimit >> 2, yllimit >> 2, tilenum, flip); break;
             }
             break;
-        case CYCLE_TYPE_COPY: render_spans_copy(rdp, yhlimit >> 2, yllimit >> 2, tilenum, flip); break;
-        case CYCLE_TYPE_FILL: render_spans_fill(rdp, yhlimit >> 2, yllimit >> 2, flip); break;
-        default: msg_error("cycle_type %d", rdp->other_modes.cycle_type); break;
+        case CYCLE_TYPE_COPY: render_spans_copy(wid, yhlimit >> 2, yllimit >> 2, tilenum, flip); break;
+        case CYCLE_TYPE_FILL: render_spans_fill(wid, yhlimit >> 2, yllimit >> 2, flip); break;
+        default: msg_error("cycle_type %d", state[wid].other_modes.cycle_type); break;
     }
 
 
 }
 
-static void rasterizer_init(struct rdp_state* rdp)
+static void rasterizer_init(uint32_t wid)
 {
-    rdp->clip.xh = 0x2000;
-    rdp->clip.yh = 0x2000;
+    state[wid].clip.xh = 0x2000;
+    state[wid].clip.yh = 0x2000;
 }
 
-void rdp_tri_noshade(struct rdp_state* rdp, const uint32_t* args)
+void rdp_tri_noshade(uint32_t wid, const uint32_t* args)
 {
     int32_t ewdata[CMD_MAX_INTS];
     memcpy(&ewdata[0], args, 8 * sizeof(int32_t));
     memset(&ewdata[8], 0, 36 * sizeof(int32_t));
-    edgewalker_for_prims(rdp, ewdata);
+    edgewalker_for_prims(wid, ewdata);
 }
 
-void rdp_tri_noshade_z(struct rdp_state* rdp, const uint32_t* args)
+void rdp_tri_noshade_z(uint32_t wid, const uint32_t* args)
 {
     int32_t ewdata[CMD_MAX_INTS];
     memcpy(&ewdata[0], args, 8 * sizeof(int32_t));
     memset(&ewdata[8], 0, 32 * sizeof(int32_t));
     memcpy(&ewdata[40], args + 8, 4 * sizeof(int32_t));
-    edgewalker_for_prims(rdp, ewdata);
+    edgewalker_for_prims(wid, ewdata);
 }
 
-void rdp_tri_tex(struct rdp_state* rdp, const uint32_t* args)
+void rdp_tri_tex(uint32_t wid, const uint32_t* args)
 {
     int32_t ewdata[CMD_MAX_INTS];
     memcpy(&ewdata[0], args, 8 * sizeof(int32_t));
     memset(&ewdata[8], 0, 16 * sizeof(int32_t));
     memcpy(&ewdata[24], args + 8, 16 * sizeof(int32_t));
     memset(&ewdata[40], 0, 4 * sizeof(int32_t));
-    edgewalker_for_prims(rdp, ewdata);
+    edgewalker_for_prims(wid, ewdata);
 }
 
-void rdp_tri_tex_z(struct rdp_state* rdp, const uint32_t* args)
+void rdp_tri_tex_z(uint32_t wid, const uint32_t* args)
 {
     int32_t ewdata[CMD_MAX_INTS];
     memcpy(&ewdata[0], args, 8 * sizeof(int32_t));
@@ -2353,37 +2353,37 @@ void rdp_tri_tex_z(struct rdp_state* rdp, const uint32_t* args)
 
 
 
-    edgewalker_for_prims(rdp, ewdata);
+    edgewalker_for_prims(wid, ewdata);
 
 
 }
 
-void rdp_tri_shade(struct rdp_state* rdp, const uint32_t* args)
+void rdp_tri_shade(uint32_t wid, const uint32_t* args)
 {
     int32_t ewdata[CMD_MAX_INTS];
     memcpy(&ewdata[0], args, 24 * sizeof(int32_t));
     memset(&ewdata[24], 0, 20 * sizeof(int32_t));
-    edgewalker_for_prims(rdp, ewdata);
+    edgewalker_for_prims(wid, ewdata);
 }
 
-void rdp_tri_shade_z(struct rdp_state* rdp, const uint32_t* args)
+void rdp_tri_shade_z(uint32_t wid, const uint32_t* args)
 {
     int32_t ewdata[CMD_MAX_INTS];
     memcpy(&ewdata[0], args, 24 * sizeof(int32_t));
     memset(&ewdata[24], 0, 16 * sizeof(int32_t));
     memcpy(&ewdata[40], args + 24, 4 * sizeof(int32_t));
-    edgewalker_for_prims(rdp, ewdata);
+    edgewalker_for_prims(wid, ewdata);
 }
 
-void rdp_tri_texshade(struct rdp_state* rdp, const uint32_t* args)
+void rdp_tri_texshade(uint32_t wid, const uint32_t* args)
 {
     int32_t ewdata[CMD_MAX_INTS];
     memcpy(&ewdata[0], args, 40 * sizeof(int32_t));
     memset(&ewdata[40], 0, 4 * sizeof(int32_t));
-    edgewalker_for_prims(rdp, ewdata);
+    edgewalker_for_prims(wid, ewdata);
 }
 
-void rdp_tri_texshade_z(struct rdp_state* rdp, const uint32_t* args)
+void rdp_tri_texshade_z(uint32_t wid, const uint32_t* args)
 {
     int32_t ewdata[CMD_MAX_INTS];
     memcpy(&ewdata[0], args, CMD_MAX_SIZE);
@@ -2392,12 +2392,12 @@ void rdp_tri_texshade_z(struct rdp_state* rdp, const uint32_t* args)
 
 
 
-    edgewalker_for_prims(rdp, ewdata);
+    edgewalker_for_prims(wid, ewdata);
 
 
 }
 
-void rdp_tex_rect(struct rdp_state* rdp, const uint32_t* args)
+void rdp_tex_rect(uint32_t wid, const uint32_t* args)
 {
     uint32_t tilenum    = (args[1] >> 24) & 0x7;
     uint32_t xl = (args[0] >> 12) & 0xfff;
@@ -2413,7 +2413,7 @@ void rdp_tex_rect(struct rdp_state* rdp, const uint32_t* args)
     dsdx = SIGN16(dsdx);
     dtdy = SIGN16(dtdy);
 
-    if (rdp->other_modes.cycle_type == CYCLE_TYPE_FILL || rdp->other_modes.cycle_type == CYCLE_TYPE_COPY)
+    if (state[wid].other_modes.cycle_type == CYCLE_TYPE_FILL || state[wid].other_modes.cycle_type == CYCLE_TYPE_COPY)
         yl |= 3;
 
     uint32_t xlint = (xl >> 2) & 0x3ff;
@@ -2449,11 +2449,11 @@ void rdp_tex_rect(struct rdp_state* rdp, const uint32_t* args)
 
 
 
-    edgewalker_for_prims(rdp, ewdata);
+    edgewalker_for_prims(wid, ewdata);
 
 }
 
-void rdp_tex_rect_flip(struct rdp_state* rdp, const uint32_t* args)
+void rdp_tex_rect_flip(uint32_t wid, const uint32_t* args)
 {
     uint32_t tilenum    = (args[1] >> 24) & 0x7;
     uint32_t xl = (args[0] >> 12) & 0xfff;
@@ -2469,7 +2469,7 @@ void rdp_tex_rect_flip(struct rdp_state* rdp, const uint32_t* args)
     dsdx = SIGN16(dsdx);
     dtdy = SIGN16(dtdy);
 
-    if (rdp->other_modes.cycle_type == CYCLE_TYPE_FILL || rdp->other_modes.cycle_type == CYCLE_TYPE_COPY)
+    if (state[wid].other_modes.cycle_type == CYCLE_TYPE_FILL || state[wid].other_modes.cycle_type == CYCLE_TYPE_COPY)
         yl |= 3;
 
     uint32_t xlint = (xl >> 2) & 0x3ff;
@@ -2504,17 +2504,17 @@ void rdp_tex_rect_flip(struct rdp_state* rdp, const uint32_t* args)
     ewdata[39] = 0;
     memset(&ewdata[40], 0, 4 * sizeof(int32_t));
 
-    edgewalker_for_prims(rdp, ewdata);
+    edgewalker_for_prims(wid, ewdata);
 }
 
-void rdp_fill_rect(struct rdp_state* rdp, const uint32_t* args)
+void rdp_fill_rect(uint32_t wid, const uint32_t* args)
 {
     uint32_t xl = (args[0] >> 12) & 0xfff;
     uint32_t yl = (args[0] >>  0) & 0xfff;
     uint32_t xh = (args[1] >> 12) & 0xfff;
     uint32_t yh = (args[1] >>  0) & 0xfff;
 
-    if (rdp->other_modes.cycle_type == CYCLE_TYPE_FILL || rdp->other_modes.cycle_type == CYCLE_TYPE_COPY)
+    if (state[wid].other_modes.cycle_type == CYCLE_TYPE_FILL || state[wid].other_modes.cycle_type == CYCLE_TYPE_COPY)
         yl |= 3;
 
     uint32_t xlint = (xl >> 2) & 0x3ff;
@@ -2531,24 +2531,24 @@ void rdp_fill_rect(struct rdp_state* rdp, const uint32_t* args)
     ewdata[7] = 0;
     memset(&ewdata[8], 0, 36 * sizeof(int32_t));
 
-    edgewalker_for_prims(rdp, ewdata);
+    edgewalker_for_prims(wid, ewdata);
 }
 
-void rdp_set_prim_depth(struct rdp_state* rdp, const uint32_t* args)
+void rdp_set_prim_depth(uint32_t wid, const uint32_t* args)
 {
-    rdp->primitive_z = args[1] & (0x7fff << 16);
+    state[wid].primitive_z = args[1] & (0x7fff << 16);
 
 
-    rdp->primitive_delta_z = (uint16_t)(args[1]);
+    state[wid].primitive_delta_z = (uint16_t)(args[1]);
 }
 
-void rdp_set_scissor(struct rdp_state* rdp, const uint32_t* args)
+void rdp_set_scissor(uint32_t wid, const uint32_t* args)
 {
-    rdp->clip.xh = (args[0] >> 12) & 0xfff;
-    rdp->clip.yh = (args[0] >>  0) & 0xfff;
-    rdp->clip.xl = (args[1] >> 12) & 0xfff;
-    rdp->clip.yl = (args[1] >>  0) & 0xfff;
+    state[wid].clip.xh = (args[0] >> 12) & 0xfff;
+    state[wid].clip.yh = (args[0] >>  0) & 0xfff;
+    state[wid].clip.xl = (args[1] >> 12) & 0xfff;
+    state[wid].clip.yl = (args[1] >>  0) & 0xfff;
 
-    rdp->scfield = (args[1] >> 25) & 1;
-    rdp->sckeepodd = (args[1] >> 24) & 1;
+    state[wid].scfield = (args[1] >> 25) & 1;
+    state[wid].sckeepodd = (args[1] >> 24) & 1;
 }

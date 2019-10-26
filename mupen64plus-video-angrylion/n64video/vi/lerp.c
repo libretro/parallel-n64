@@ -1,4 +1,4 @@
-static STRICTINLINE void vi_vl_lerp(struct ccvg* up, struct ccvg down, uint32_t frac)
+static STRICTINLINE void vi_vl_lerp(struct rgba* up, struct rgba down, uint32_t frac)
 {
     uint32_t r0, g0, b0;
     if (!frac)

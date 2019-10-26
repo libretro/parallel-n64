@@ -1,9 +1,7 @@
 #include "n64video.h"
-#include "rdp.h"
 #include "common.h"
-#include "plugin.h"
 #include "msg.h"
-#include "screen.h"
+#include "vdac.h"
 #include "parallel_al.h"
 
 #include <memory.h>
@@ -39,11 +37,54 @@
 // maximum number of commands to buffer for parallel processing
 #define CMD_BUFFER_SIZE 1024
 
-static struct rdp_state** rdp_states;
-static struct n64video_config config;
-static struct plugin_api* plugin;
+// maximum data size of a single command in bytes
+#define CMD_MAX_SIZE 176
 
-static bool init_lut;
+// maximum data size of a single command in 32 bit integers
+#define CMD_MAX_INTS (CMD_MAX_SIZE / sizeof(int32_t))
+
+// extracts the command ID from a command buffer
+#define CMD_ID(cmd) ((*(cmd) >> 24) & 0x3f)
+
+// list of command IDs
+#define CMD_ID_NO_OP                           0x00
+#define CMD_ID_FILL_TRIANGLE                   0x08
+#define CMD_ID_FILL_ZBUFFER_TRIANGLE           0x09
+#define CMD_ID_TEXTURE_TRIANGLE                0x0a
+#define CMD_ID_TEXTURE_ZBUFFER_TRIANGLE        0x0b
+#define CMD_ID_SHADE_TRIANGLE                  0x0c
+#define CMD_ID_SHADE_ZBUFFER_TRIANGLE          0x0d
+#define CMD_ID_SHADE_TEXTURE_TRIANGLE          0x0e
+#define CMD_ID_SHADE_TEXTURE_Z_BUFFER_TRIANGLE 0x0f
+#define CMD_ID_TEXTURE_RECTANGLE               0x24
+#define CMD_ID_TEXTURE_RECTANGLE_FLIP          0x25
+#define CMD_ID_SYNC_LOAD                       0x26
+#define CMD_ID_SYNC_PIPE                       0x27
+#define CMD_ID_SYNC_TILE                       0x28
+#define CMD_ID_SYNC_FULL                       0x29
+#define CMD_ID_SET_KEY_GB                      0x2a
+#define CMD_ID_SET_KEY_R                       0x2b
+#define CMD_ID_SET_CONVERT                     0x2c
+#define CMD_ID_SET_SCISSOR                     0x2d
+#define CMD_ID_SET_PRIM_DEPTH                  0x2e
+#define CMD_ID_SET_OTHER_MODES                 0x2f
+#define CMD_ID_LOAD_TLUT                       0x30
+#define CMD_ID_SET_TILE_SIZE                   0x32
+#define CMD_ID_LOAD_BLOCK                      0x33
+#define CMD_ID_LOAD_TILE                       0x34
+#define CMD_ID_SET_TILE                        0x35
+#define CMD_ID_FILL_RECTANGLE                  0x36
+#define CMD_ID_SET_FILL_COLOR                  0x37
+#define CMD_ID_SET_FOG_COLOR                   0x38
+#define CMD_ID_SET_BLEND_COLOR                 0x39
+#define CMD_ID_SET_PRIM_COLOR                  0x3a
+#define CMD_ID_SET_ENV_COLOR                   0x3b
+#define CMD_ID_SET_COMBINE                     0x3c
+#define CMD_ID_SET_TEXTURE_IMAGE               0x3d
+#define CMD_ID_SET_MASK_IMAGE                  0x3e
+#define CMD_ID_SET_COLOR_IMAGE                 0x3f
+
+static struct n64video_config config;
 
 static struct
 {
@@ -68,8 +109,8 @@ static STRICTINLINE uint32_t irand(uint32_t* state)
     return ((*state >> 16) & 0x7fff);
 }
 
-#include "rdp/rdp.c"
-#include "vi/vi.c"
+#include "n64video/rdp.c"
+#include "n64video/vi.c"
 
 static uint32_t rdp_cmd_buf[CMD_BUFFER_SIZE][CMD_MAX_INTS];
 static uint32_t rdp_cmd_buf_pos;
@@ -78,78 +119,15 @@ static uint32_t rdp_cmd_pos;
 static uint32_t rdp_cmd_id;
 static uint32_t rdp_cmd_len;
 
-static bool rdp_cmd_sync[] = {
-    false, // No_Op
-    false, // ???
-    false, // ???
-    false, // ???
-    false, // ???
-    false, // ???
-    false, // ???
-    false, // ???
-    false, // Fill_Triangle
-    false, // Fill_ZBuffer_Triangle
-    false, // Texture_Triangle
-    false, // Texture_ZBuffer_Triangle
-    false, // Shade_Triangle
-    false, // Shade_ZBuffer_Triangle
-    false, // Shade_Texture_Triangle
-    false, // Shade_Texture_Z_Buffer_Triangle
-    false, // ???
-    false, // ???
-    false, // ???
-    false, // ???
-    false, // ???
-    false, // ???
-    false, // ???
-    false, // ???
-    false, // ???
-    false, // ???
-    false, // ???
-    false, // ???
-    false, // ???
-    false, // ???
-    false, // ???
-    false, // ???
-    false, // ???
-    false, // ???
-    false, // ???
-    false, // ???
-    false, // Texture_Rectangle
-    false, // Texture_Rectangle_Flip
-    false, // Sync_Load
-    false, // Sync_Pipe
-    false, // Sync_Tile
-    true,  // Sync_Full
-    false, // Set_Key_GB
-    false, // Set_Key_R
-    false, // Set_Convert
-    false, // Set_Scissor
-    false, // Set_Prim_Depth
-    false, // Set_Other_Modes
-    false, // Load_TLUT
-    false, // ???
-    false, // Set_Tile_Size
-    false, // Load_Block
-    false, // Load_Tile
-    false, // Set_Tile
-    false, // Fill_Rectangle
-    false, // Set_Fill_Color
-    false, // Set_Fog_Color
-    false, // Set_Blend_Color
-    false, // Set_Prim_Color
-    false, // Set_Env_Color
-    false, // Set_Combine
-    false, // Set_Texture_Image
-    true,  // Set_Mask_Image
-    true,  // Set_Color_Image
-};
+// table of commands that require thread synchronization in
+// multithreaded mode
+static bool rdp_cmd_sync[64];
 
 static void cmd_run_buffered(uint32_t worker_id)
 {
     uint32_t pos;
     for (pos = 0; pos < rdp_cmd_buf_pos; pos++) {
-        rdp_cmd(rdp_states[worker_id], rdp_cmd_buf[pos]);
+        rdp_cmd(worker_id, rdp_cmd_buf[pos]);
     }
 }
 
@@ -171,19 +149,19 @@ static void cmd_init(void)
     rdp_cmd_len = CMD_MAX_INTS;
 }
 
-void n64video_config_defaults(struct n64video_config* config)
+void n64video_config_init(struct n64video_config* config)
 {
+    memset(config, 0, sizeof(*config));
+
+    // config defaults that aren't false or 0
     config->parallel = true;
-    config->num_workers = 0;
-    config->vi.interp = VI_INTERP_NEAREST;
-    config->vi.mode = VI_MODE_NORMAL;
-    config->vi.widescreen = false;
-    config->vi.hide_overscan = false;
+    config->vi.vsync = true;
+    config->dp.compat = DP_COMPAT_MEDIUM;
 }
 
 void rdp_init_worker(uint32_t worker_id)
 {
-    rdp_create(&rdp_states[worker_id], parallel_num_workers(), worker_id);
+    rdp_init(worker_id, parallel_num_workers());
 }
 
 void n64video_init(struct n64video_config* _config)
@@ -192,20 +170,34 @@ void n64video_init(struct n64video_config* _config)
         config = *_config;
     }
 
-    // initialize static lookup tables, once is enough
-    if (!init_lut) {
+    // initialize static lookup tables and RDP state, once is enough
+    static bool static_init;
+    if (!static_init) {
         blender_init_lut();
         coverage_init_lut();
         combiner_init_lut();
         tex_init_lut();
         z_init_lut();
 
-        init_lut = true;
+        fb_init(0);
+        combiner_init(0);
+        tex_init(0);
+        rasterizer_init(0);
+
+        static_init = true;
     }
 
-    // init externals
-    screen_init(&config);
-    plugin_init();
+    // enable sync switches depending on compatibility mode
+    memset(rdp_cmd_sync, 0, sizeof(rdp_cmd_sync));
+    switch (config.dp.compat) {
+        case DP_COMPAT_HIGH:
+            rdp_cmd_sync[CMD_ID_SET_TEXTURE_IMAGE] = true;
+        case DP_COMPAT_MEDIUM:
+            rdp_cmd_sync[CMD_ID_SET_MASK_IMAGE] = true;
+            rdp_cmd_sync[CMD_ID_SET_COLOR_IMAGE] = true;
+        case DP_COMPAT_LOW:
+            rdp_cmd_sync[CMD_ID_SYNC_FULL] = true;
+    }
 
     // init internals
     rdram_init();
@@ -216,18 +208,24 @@ void n64video_init(struct n64video_config* _config)
     memset(&onetimewarnings, 0, sizeof(onetimewarnings));
 
     if (config.parallel) {
+        // init worker system
         parallel_alinit(config.num_workers);
-        rdp_states = calloc(parallel_num_workers(), sizeof(struct rdp_state*));
+
+        // sync states from main worker
+        for (uint32_t i = 1; i < parallel_num_workers(); i++) {
+            memcpy(&state[i], &state[0], sizeof(struct rdp_state));
+        }
+
+        // init workers
         parallel_run(rdp_init_worker);
     } else {
-        rdp_states = calloc(1, sizeof(struct rdp_state*));
-        rdp_create(&rdp_states[0], 0, 0);
+        rdp_init(0, 1);
     }
 }
 
 void n64video_process_list(void)
 {
-    uint32_t** dp_reg = plugin_get_dp_registers();
+    uint32_t** dp_reg = config.gfx.dp_reg;
     uint32_t dp_current_al = (*dp_reg[DP_CURRENT] & ~7) >> 2;
     uint32_t dp_end_al = (*dp_reg[DP_END] & ~7) >> 2;
 
@@ -240,7 +238,7 @@ void n64video_process_list(void)
     while (dp_end_al - dp_current_al > 0) {
         uint32_t i, toload;
         bool xbus_dma = (*dp_reg[DP_STATUS] & DP_STATUS_XBUS_DMA) != 0;
-        uint32_t* dmem = (uint32_t*)plugin_get_dmem();
+        uint32_t* dmem = (uint32_t*)config.gfx.dmem;
         uint32_t* cmd_buf = rdp_cmd_buf[rdp_cmd_buf_pos];
 
         // when reading the first int, extract the command ID and update the buffer length
@@ -278,7 +276,7 @@ void n64video_process_list(void)
                     cmd_flush();
 
                     // parameters are unused, so NULL is fine
-                    rdp_sync_full(NULL, NULL);
+                    rdp_sync_full(0, NULL);
                 } else {
                     // increment buffer position
                     rdp_cmd_buf_pos++;
@@ -290,7 +288,7 @@ void n64video_process_list(void)
                 }
             } else {
                 // run command directly
-                rdp_cmd(rdp_states[0], cmd_buf);
+                rdp_cmd(0, cmd_buf);
             }
 
             // send Z-buffer address to VI for "depth" output mode
@@ -311,16 +309,4 @@ void n64video_close(void)
 {
     vi_close();
     parallel_close();
-    plugin_close();
-    screen_close();
-
-    if (rdp_states) {
-       uint32_t i;
-        for (i = 0; i < config.num_workers; i++) {
-            rdp_destroy(rdp_states[i]);
-        }
-
-        free(rdp_states);
-        rdp_states = NULL;
-    }
 }

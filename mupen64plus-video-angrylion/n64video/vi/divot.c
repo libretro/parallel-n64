@@ -1,8 +1,8 @@
-static STRICTINLINE void divot_filter(struct ccvg* final, struct ccvg center, struct ccvg left, struct ccvg right)
+static STRICTINLINE void divot_filter(struct rgba* final, struct rgba center, struct rgba left, struct rgba right)
 {
     *final = center;
 
-    if ((center.cvg & left.cvg & right.cvg) == 7)
+    if ((center.a & left.a & right.a) == 7)
     {
         return;
     }

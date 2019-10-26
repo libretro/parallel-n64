@@ -62,15 +62,15 @@ static STRICTINLINE void rgb_dither(int rgb_dither_sel, int* r, int* g, int* b, 
     *b = *b + (ditherdiff & replacesign);
 }
 
-static STRICTINLINE void get_dither_noise(struct rdp_state* rdp, int x, int y, int* cdith, int* adith)
+static STRICTINLINE void get_dither_noise(uint32_t wid, int x, int y, int* cdith, int* adith)
 {
-    if (!rdp->other_modes.f.getditherlevel)
-        rdp->noise = ((irand(&rdp->rand_dp) & 7) << 6) | 0x20;
+    if (!state[wid].other_modes.f.getditherlevel)
+        state[wid].noise = ((irand(&state[wid].rseed) & 7) << 6) | 0x20;
 
-    y >>= rdp->scfield;
+    y >>= state[wid].scfield;
 
     int dithindex;
-    switch(rdp->other_modes.f.rgb_alpha_dither)
+    switch(state[wid].other_modes.f.rgb_alpha_dither)
     {
     case 0:
         dithindex = ((y & 3) << 2) | (x & 3);
@@ -84,7 +84,7 @@ static STRICTINLINE void get_dither_noise(struct rdp_state* rdp, int x, int y, i
     case 2:
         dithindex = ((y & 3) << 2) | (x & 3);
         *cdith = magic_matrix[dithindex];
-        *adith = (rdp->noise >> 6) & 7;
+        *adith = (state[wid].noise >> 6) & 7;
         break;
     case 3:
         dithindex = ((y & 3) << 2) | (x & 3);
@@ -103,7 +103,7 @@ static STRICTINLINE void get_dither_noise(struct rdp_state* rdp, int x, int y, i
     case 6:
         dithindex = ((y & 3) << 2) | (x & 3);
         *cdith = bayer_matrix[dithindex];
-        *adith = (rdp->noise >> 6) & 7;
+        *adith = (state[wid].noise >> 6) & 7;
         break;
     case 7:
         dithindex = ((y & 3) << 2) | (x & 3);
@@ -112,20 +112,20 @@ static STRICTINLINE void get_dither_noise(struct rdp_state* rdp, int x, int y, i
         break;
     case 8:
         dithindex = ((y & 3) << 2) | (x & 3);
-        *cdith = irand(&rdp->rand_dp);
+        *cdith = irand(&state[wid].rseed);
         *adith = magic_matrix[dithindex];
         break;
     case 9:
         dithindex = ((y & 3) << 2) | (x & 3);
-        *cdith = irand(&rdp->rand_dp);
+        *cdith = irand(&state[wid].rseed);
         *adith = (~magic_matrix[dithindex]) & 7;
         break;
     case 10:
-        *cdith = irand(&rdp->rand_dp);
-        *adith = (rdp->noise >> 6) & 7;
+        *cdith = irand(&state[wid].rseed);
+        *adith = (state[wid].noise >> 6) & 7;
         break;
     case 11:
-        *cdith = irand(&rdp->rand_dp);
+        *cdith = irand(&state[wid].rseed);
         *adith = 0;
         break;
     case 12:
@@ -140,7 +140,7 @@ static STRICTINLINE void get_dither_noise(struct rdp_state* rdp, int x, int y, i
         break;
     case 14:
         *cdith = 7;
-        *adith = (rdp->noise >> 6) & 7;
+        *adith = (state[wid].noise >> 6) & 7;
         break;
     case 15:
         *cdith = 7;

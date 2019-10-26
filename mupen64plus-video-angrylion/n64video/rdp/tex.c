@@ -1,48 +1,48 @@
-static STRICTINLINE void tcmask(struct rdp_state* rdp, int32_t* S, int32_t* T, int32_t num)
+static STRICTINLINE void tcmask(uint32_t wid, int32_t* S, int32_t* T, int32_t num)
 {
     int32_t wrap;
 
 
 
-    if (rdp->tile[num].mask_s)
+    if (state[wid].tile[num].mask_s)
     {
-        if (rdp->tile[num].ms)
+        if (state[wid].tile[num].ms)
         {
-            wrap = *S >> rdp->tile[num].f.masksclamped;
+            wrap = *S >> state[wid].tile[num].f.masksclamped;
             wrap &= 1;
             *S ^= (-wrap);
         }
-        *S &= maskbits_table[rdp->tile[num].mask_s];
+        *S &= maskbits_table[state[wid].tile[num].mask_s];
     }
 
-    if (rdp->tile[num].mask_t)
+    if (state[wid].tile[num].mask_t)
     {
-        if (rdp->tile[num].mt)
+        if (state[wid].tile[num].mt)
         {
-            wrap = *T >> rdp->tile[num].f.masktclamped;
+            wrap = *T >> state[wid].tile[num].f.masktclamped;
             wrap &= 1;
             *T ^= (-wrap);
         }
 
-        *T &= maskbits_table[rdp->tile[num].mask_t];
+        *T &= maskbits_table[state[wid].tile[num].mask_t];
     }
 }
 
 
-static STRICTINLINE void tcmask_coupled(struct rdp_state* rdp, int32_t* S, int32_t* sdiff, int32_t* T, int32_t* tdiff, int32_t num)
+static STRICTINLINE void tcmask_coupled(uint32_t wid, int32_t* S, int32_t* sdiff, int32_t* T, int32_t* tdiff, int32_t num)
 {
     int32_t wrap;
     int32_t maskbits;
     int32_t wrapthreshold;
 
 
-    if (rdp->tile[num].mask_s)
+    if (state[wid].tile[num].mask_s)
     {
-        maskbits = maskbits_table[rdp->tile[num].mask_s];
+        maskbits = maskbits_table[state[wid].tile[num].mask_s];
 
-        if (rdp->tile[num].ms)
+        if (state[wid].tile[num].ms)
         {
-            wrapthreshold = rdp->tile[num].f.masksclamped;
+            wrapthreshold = state[wid].tile[num].f.masksclamped;
 
             wrap = (*S >> wrapthreshold) & 1;
             *S ^= (-wrap);
@@ -66,13 +66,13 @@ static STRICTINLINE void tcmask_coupled(struct rdp_state* rdp, int32_t* S, int32
     else
         *sdiff = 1;
 
-    if (rdp->tile[num].mask_t)
+    if (state[wid].tile[num].mask_t)
     {
-        maskbits = maskbits_table[rdp->tile[num].mask_t];
+        maskbits = maskbits_table[state[wid].tile[num].mask_t];
 
-        if (rdp->tile[num].mt)
+        if (state[wid].tile[num].mt)
         {
-            wrapthreshold = rdp->tile[num].f.masktclamped;
+            wrapthreshold = state[wid].tile[num].f.masktclamped;
 
             wrap = (*T >> wrapthreshold) & 1;
             *T ^= (-wrap);
@@ -125,11 +125,11 @@ static INLINE void calculate_tile_derivs(struct tile* t)
     }
 }
 
-static STRICTINLINE void get_texel1_1cycle(struct rdp_state* rdp, int32_t* s1, int32_t* t1, int32_t s, int32_t t, int32_t w, int32_t dsinc, int32_t dtinc, int32_t dwinc, int32_t scanline, struct spansigs* sigs)
+static STRICTINLINE void get_texel1_1cycle(uint32_t wid, int32_t* s1, int32_t* t1, int32_t s, int32_t t, int32_t w, int32_t dsinc, int32_t dtinc, int32_t dwinc, int32_t scanline, struct spansigs* sigs)
 {
     int32_t nexts, nextt, nextsw;
 
-    if (!sigs->endspan || !sigs->longspan || !rdp->span[scanline + 1].validline)
+    if (!sigs->endspan || !sigs->longspan || !state[wid].span[scanline + 1].validline)
     {
 
 
@@ -147,35 +147,35 @@ static STRICTINLINE void get_texel1_1cycle(struct rdp_state* rdp, int32_t* s1, i
 
 
         int32_t nextscan = scanline + 1;
-        nextt = rdp->span[nextscan].t >> 16;
-        nexts = rdp->span[nextscan].s >> 16;
-        nextsw = rdp->span[nextscan].w >> 16;
+        nextt = state[wid].span[nextscan].t >> 16;
+        nexts = state[wid].span[nextscan].s >> 16;
+        nextsw = state[wid].span[nextscan].w >> 16;
     }
 
-    rdp->tcdiv_ptr(nexts, nextt, nextsw, s1, t1);
+    state[wid].tcdiv_ptr(nexts, nextt, nextsw, s1, t1);
 }
 
-static STRICTINLINE void texture_pipeline_cycle(struct rdp_state* rdp, struct color* TEX, struct color* prev, int32_t SSS, int32_t SST, uint32_t tilenum, uint32_t cycle)
+static STRICTINLINE void texture_pipeline_cycle(uint32_t wid, struct color* TEX, struct color* prev, int32_t SSS, int32_t SST, uint32_t tilenum, uint32_t cycle)
 {
     int32_t maxs, maxt, invt3r, invt3g, invt3b, invt3a;
     int32_t sfrac, tfrac, invsf, invtf, sfracrg, invsfrg;
     int upper, upperrg, center, centerrg;
 
 
-    int bilerp = cycle ? rdp->other_modes.bi_lerp1 : rdp->other_modes.bi_lerp0;
-    int convert = rdp->other_modes.convert_one && cycle;
+    int bilerp = cycle ? state[wid].other_modes.bi_lerp1 : state[wid].other_modes.bi_lerp0;
+    int convert = state[wid].other_modes.convert_one && cycle;
     struct color t0, t1, t2, t3;
     int sss1, sst1, sdiff, tdiff;
 
     sss1 = SSS;
     sst1 = SST;
 
-    tcshift_cycle(rdp, &sss1, &sst1, &maxs, &maxt, tilenum);
+    tcshift_cycle(wid, &sss1, &sst1, &maxs, &maxt, tilenum);
 
-    sss1 = TRELATIVE(sss1, rdp->tile[tilenum].sl);
-    sst1 = TRELATIVE(sst1, rdp->tile[tilenum].tl);
+    sss1 = TRELATIVE(sss1, state[wid].tile[tilenum].sl);
+    sst1 = TRELATIVE(sst1, state[wid].tile[tilenum].tl);
 
-    if (rdp->other_modes.sample_type || rdp->other_modes.en_tlut)
+    if (state[wid].other_modes.sample_type || state[wid].other_modes.en_tlut)
     {
         sfrac = sss1 & 0x1f;
         tfrac = sst1 & 0x1f;
@@ -183,14 +183,14 @@ static STRICTINLINE void texture_pipeline_cycle(struct rdp_state* rdp, struct co
 
 
 
-        tcclamp_cycle(rdp, &sss1, &sst1, &sfrac, &tfrac, maxs, maxt, tilenum);
+        tcclamp_cycle(wid, &sss1, &sst1, &sfrac, &tfrac, maxs, maxt, tilenum);
 
 
 
 
 
 
-        tcmask_coupled(rdp, &sss1, &sdiff, &sst1, &tdiff, tilenum);
+        tcmask_coupled(wid, &sss1, &sdiff, &sst1, &tdiff, tilenum);
 
 
 
@@ -203,7 +203,7 @@ static STRICTINLINE void texture_pipeline_cycle(struct rdp_state* rdp, struct co
 
 
 
-        if (rdp->tile[tilenum].format == FORMAT_YUV)
+        if (state[wid].tile[tilenum].format == FORMAT_YUV)
         {
             sfracrg = (sfrac >> 1) | ((sss1 & 1) << 4);
 
@@ -236,14 +236,14 @@ static STRICTINLINE void texture_pipeline_cycle(struct rdp_state* rdp, struct co
         if (bilerp)
         {
 
-            if (!rdp->other_modes.sample_type)
-                fetch_texel_entlut_quadro_nearest(rdp, &t0, &t1, &t2, &t3, sss1, sst1, tilenum, upper, upperrg);
-            else if (rdp->other_modes.en_tlut)
-                fetch_texel_entlut_quadro(rdp, &t0, &t1, &t2, &t3, sss1, sdiff, sst1, tdiff, tilenum, upper, upperrg);
+            if (!state[wid].other_modes.sample_type)
+                fetch_texel_entlut_quadro_nearest(wid, &t0, &t1, &t2, &t3, sss1, sst1, tilenum, upper, upperrg);
+            else if (state[wid].other_modes.en_tlut)
+                fetch_texel_entlut_quadro(wid, &t0, &t1, &t2, &t3, sss1, sdiff, sst1, tdiff, tilenum, upper, upperrg);
             else
-                fetch_texel_quadro(rdp, &t0, &t1, &t2, &t3, sss1, sdiff, sst1, tdiff, tilenum, upper - upperrg);
+                fetch_texel_quadro(wid, &t0, &t1, &t2, &t3, sss1, sdiff, sst1, tdiff, tilenum, upper - upperrg);
 
-            if (!rdp->other_modes.mid_texel)
+            if (!state[wid].other_modes.mid_texel)
                 center = centerrg = 0;
             else
             {
@@ -378,12 +378,12 @@ static STRICTINLINE void texture_pipeline_cycle(struct rdp_state* rdp, struct co
             }
             else
             {
-                if (!rdp->other_modes.sample_type)
-                    fetch_texel_entlut_quadro_nearest(rdp, &t0, &t1, &t2, &t3, sss1, sst1, tilenum, upper, upperrg);
-                else if (rdp->other_modes.en_tlut)
-                    fetch_texel_entlut_quadro(rdp, &t0, &t1, &t2, &t3, sss1, sdiff, sst1, tdiff, tilenum, upper, upperrg);
+                if (!state[wid].other_modes.sample_type)
+                    fetch_texel_entlut_quadro_nearest(wid, &t0, &t1, &t2, &t3, sss1, sst1, tilenum, upper, upperrg);
+                else if (state[wid].other_modes.en_tlut)
+                    fetch_texel_entlut_quadro(wid, &t0, &t1, &t2, &t3, sss1, sdiff, sst1, tdiff, tilenum, upper, upperrg);
                 else
-                    fetch_texel_quadro(rdp, &t0, &t1, &t2, &t3, sss1, sdiff, sst1, tdiff, tilenum, upper - upperrg);
+                    fetch_texel_quadro(wid, &t0, &t1, &t2, &t3, sss1, sdiff, sst1, tdiff, tilenum, upper - upperrg);
             }
 
 
@@ -391,16 +391,16 @@ static STRICTINLINE void texture_pipeline_cycle(struct rdp_state* rdp, struct co
             {
                 if (upper)
                 {
-                    TEX->r = t3.b + ((rdp->k0_tf * t3.g + 0x80) >> 8);
-                    TEX->g = t3.b + ((rdp->k1_tf * t3.r + rdp->k2_tf * t3.g + 0x80) >> 8);
-                    TEX->b = t3.b + ((rdp->k3_tf * t3.r + 0x80) >> 8);
+                    TEX->r = t3.b + ((state[wid].k0_tf * t3.g + 0x80) >> 8);
+                    TEX->g = t3.b + ((state[wid].k1_tf * t3.r + state[wid].k2_tf * t3.g + 0x80) >> 8);
+                    TEX->b = t3.b + ((state[wid].k3_tf * t3.r + 0x80) >> 8);
                     TEX->a = t3.b;
                 }
                 else
                 {
-                    TEX->r = t0.b + ((rdp->k0_tf * t3.g + 0x80) >> 8);
-                    TEX->g = t0.b + ((rdp->k1_tf * t3.r + rdp->k2_tf * t3.g + 0x80) >> 8);
-                    TEX->b = t0.b + ((rdp->k3_tf * t3.r + 0x80) >> 8);
+                    TEX->r = t0.b + ((state[wid].k0_tf * t3.g + 0x80) >> 8);
+                    TEX->g = t0.b + ((state[wid].k1_tf * t3.r + state[wid].k2_tf * t3.g + 0x80) >> 8);
+                    TEX->b = t0.b + ((state[wid].k3_tf * t3.r + 0x80) >> 8);
                     TEX->a = t0.b;
                 }
             }
@@ -408,16 +408,16 @@ static STRICTINLINE void texture_pipeline_cycle(struct rdp_state* rdp, struct co
             {
                 if (upper)
                 {
-                    TEX->r = t3.b + ((rdp->k0_tf * t0.g + 0x80) >> 8);
-                    TEX->g = t3.b + ((rdp->k1_tf * t0.r + rdp->k2_tf * t0.g + 0x80) >> 8);
-                    TEX->b = t3.b + ((rdp->k3_tf * t0.r + 0x80) >> 8);
+                    TEX->r = t3.b + ((state[wid].k0_tf * t0.g + 0x80) >> 8);
+                    TEX->g = t3.b + ((state[wid].k1_tf * t0.r + state[wid].k2_tf * t0.g + 0x80) >> 8);
+                    TEX->b = t3.b + ((state[wid].k3_tf * t0.r + 0x80) >> 8);
                     TEX->a = t3.b;
                 }
                 else
                 {
-                    TEX->r = t0.b + ((rdp->k0_tf * t0.g + 0x80) >> 8);
-                    TEX->g = t0.b + ((rdp->k1_tf * t0.r + rdp->k2_tf * t0.g + 0x80) >> 8);
-                    TEX->b = t0.b + ((rdp->k3_tf * t0.r + 0x80) >> 8);
+                    TEX->r = t0.b + ((state[wid].k0_tf * t0.g + 0x80) >> 8);
+                    TEX->g = t0.b + ((state[wid].k1_tf * t0.r + state[wid].k2_tf * t0.g + 0x80) >> 8);
+                    TEX->b = t0.b + ((state[wid].k3_tf * t0.r + 0x80) >> 8);
                     TEX->a = t0.b;
                 }
             }
@@ -436,9 +436,9 @@ static STRICTINLINE void texture_pipeline_cycle(struct rdp_state* rdp, struct co
 
 
 
-        tcclamp_cycle_light(rdp, &sss1, &sst1, maxs, maxt, tilenum);
+        tcclamp_cycle_light(wid, &sss1, &sst1, maxs, maxt, tilenum);
 
-        tcmask(rdp, &sss1, &sst1, tilenum);
+        tcmask(wid, &sss1, &sst1, tilenum);
 
 
 
@@ -448,7 +448,7 @@ static STRICTINLINE void texture_pipeline_cycle(struct rdp_state* rdp, struct co
             if (!convert)
             {
 
-                fetch_texel(rdp, &t0, sss1, sst1, tilenum);
+                fetch_texel(wid, &t0, sss1, sst1, tilenum);
 
                 TEX->r = t0.r & 0x1ff;
                 TEX->g = t0.g & 0x1ff;
@@ -468,11 +468,11 @@ static STRICTINLINE void texture_pipeline_cycle(struct rdp_state* rdp, struct co
                 t0.b = SIGN(t0.b, 9);
             }
             else
-                fetch_texel(rdp, &t0, sss1, sst1, tilenum);
+                fetch_texel(wid, &t0, sss1, sst1, tilenum);
 
-            TEX->r = t0.b + ((rdp->k0_tf * t0.g + 0x80) >> 8);
-            TEX->g = t0.b + ((rdp->k1_tf * t0.r + rdp->k2_tf * t0.g + 0x80) >> 8);
-            TEX->b = t0.b + ((rdp->k3_tf * t0.r + 0x80) >> 8);
+            TEX->r = t0.b + ((state[wid].k0_tf * t0.g + 0x80) >> 8);
+            TEX->g = t0.b + ((state[wid].k1_tf * t0.r + state[wid].k2_tf * t0.g + 0x80) >> 8);
+            TEX->b = t0.b + ((state[wid].k3_tf * t0.r + 0x80) >> 8);
             TEX->a = t0.b & 0x1ff;
             TEX->r &= 0x1ff;
             TEX->g &= 0x1ff;
@@ -482,7 +482,7 @@ static STRICTINLINE void texture_pipeline_cycle(struct rdp_state* rdp, struct co
 
 }
 
-static void loading_pipeline(struct rdp_state* rdp, int start, int end, int tilenum, int coord_quad, int ltlut)
+static void loading_pipeline(uint32_t wid, int start, int end, int tilenum, int coord_quad, int ltlut)
 {
 
 
@@ -490,8 +490,8 @@ static void loading_pipeline(struct rdp_state* rdp, int start, int end, int tile
     int i, j;
 
     int dsinc, dtinc;
-    dsinc = rdp->spans_ds;
-    dtinc = rdp->spans_dt;
+    dsinc = state[wid].spans_ds;
+    dtinc = state[wid].spans_dt;
 
     int s, t;
     int ss, st;
@@ -514,16 +514,16 @@ static void loading_pipeline(struct rdp_state* rdp, int start, int end, int tile
         return;
     }
 
-    if (rdp->tile[tilenum].format == FORMAT_YUV)
+    if (state[wid].tile[tilenum].format == FORMAT_YUV)
         tmem_formatting = 0;
-    else if (rdp->tile[tilenum].format == FORMAT_RGBA && rdp->tile[tilenum].size == PIXEL_SIZE_32BIT)
+    else if (state[wid].tile[tilenum].format == FORMAT_RGBA && state[wid].tile[tilenum].size == PIXEL_SIZE_32BIT)
         tmem_formatting = 1;
     else
         tmem_formatting = 2;
 
     int tiadvance = 0, spanadvance = 0;
     int tiptr = 0;
-    switch (rdp->ti_size)
+    switch (state[wid].ti_size)
     {
     case PIXEL_SIZE_4BIT:
         rdp_pipeline_crashed = 1;
@@ -553,14 +553,14 @@ static void loading_pipeline(struct rdp_state* rdp, int start, int end, int tile
 
     for (i = start; i <= end; i++)
     {
-        xstart = rdp->span[i].lx;
-        xend = rdp->span[i].unscrx;
-        xendsc = rdp->span[i].rx;
-        s = rdp->span[i].s;
-        t = rdp->span[i].t;
+        xstart = state[wid].span[i].lx;
+        xend = state[wid].span[i].unscrx;
+        xendsc = state[wid].span[i].rx;
+        s = state[wid].span[i].s;
+        t = state[wid].span[i].t;
 
-        ti_index = rdp->ti_width * i + xend;
-        tiptr = rdp->ti_address + PIXELS_TO_BYTES(ti_index, rdp->ti_size);
+        ti_index = state[wid].ti_width * i + xend;
+        tiptr = state[wid].ti_address + PIXELS_TO_BYTES(ti_index, state[wid].ti_size);
 
         length = (xstart - xend + 1) & 0xfff;
 
@@ -578,12 +578,12 @@ static void loading_pipeline(struct rdp_state* rdp, int start, int end, int tile
             sss = ss & 0xffff;
             sst = st & 0xffff;
 
-            tc_pipeline_load(rdp, &sss, &sst, tilenum, coord_quad);
+            tc_pipeline_load(wid, &sss, &sst, tilenum, coord_quad);
 
             dswap = sst & 1;
 
 
-            get_tmem_idx(rdp, sss, sst, tilenum, &tmemidx0, &tmemidx1, &tmemidx2, &tmemidx3, &bit3fl, &hibit);
+            get_tmem_idx(wid, sss, sst, tilenum, &tmemidx0, &tmemidx1, &tmemidx2, &tmemidx3, &bit3fl, &hibit);
 
             readidx32 = (tiptr >> 2) & ~1;
             RREADIDX32(readval0, readidx32);
@@ -733,7 +733,7 @@ static void loading_pipeline(struct rdp_state* rdp, int start, int end, int tile
     }
 }
 
-static void edgewalker_for_loads(struct rdp_state* rdp, int32_t* lewdata)
+static void edgewalker_for_loads(uint32_t wid, int32_t* lewdata)
 {
     int j = 0;
     int xleft = 0, xright = 0;
@@ -751,7 +751,7 @@ static void edgewalker_for_loads(struct rdp_state* rdp, int32_t* lewdata)
     int ltlut = (cmd_id == CMD_ID_LOAD_TLUT);
     int coord_quad = ltlut || (cmd_id == CMD_ID_LOAD_BLOCK);
     flip = 1;
-    rdp->max_level = 0;
+    state[wid].max_level = 0;
     tilenum = (lewdata[0] >> 16) & 7;
 
 
@@ -779,9 +779,9 @@ static void edgewalker_for_loads(struct rdp_state* rdp, int32_t* lewdata)
     dsdy = 0;
     dtdy = (lewdata[8] & 0xffff) << 16;
 
-    rdp->spans_ds = dsdx & ~0x1f;
-    rdp->spans_dt = dtdx & ~0x1f;
-    rdp->spans_dw = 0;
+    state[wid].spans_ds = dsdx & ~0x1f;
+    state[wid].spans_dt = dtdx & ~0x1f;
+    state[wid].spans_dw = 0;
 
 
 
@@ -806,8 +806,8 @@ static void edgewalker_for_loads(struct rdp_state* rdp, int32_t* lewdata)
 
 #define ADJUST_ATTR_LOAD()                                      \
 {                                                               \
-    rdp->span[j].s = s & ~0x3ff;                                     \
-    rdp->span[j].t = t & ~0x3ff;                                     \
+    state[wid].span[j].s = s & ~0x3ff;                                     \
+    state[wid].span[j].t = t & ~0x3ff;                                     \
 }
 
 
@@ -863,14 +863,14 @@ static void edgewalker_for_loads(struct rdp_state* rdp, int32_t* lewdata)
 
             if (spix == 0)
             {
-                rdp->span[j].unscrx = xend;
+                state[wid].span[j].unscrx = xend;
                 ADJUST_ATTR_LOAD();
             }
 
             if (spix == 3)
             {
-                rdp->span[j].lx = maxxmx;
-                rdp->span[j].rx = minxhx;
+                state[wid].span[j].lx = maxxmx;
+                state[wid].span[j].rx = minxhx;
 
 
             }
@@ -887,32 +887,32 @@ static void edgewalker_for_loads(struct rdp_state* rdp, int32_t* lewdata)
 
     }
 
-    loading_pipeline(rdp, yhlimit >> 2, yllimit >> 2, tilenum, coord_quad, ltlut);
+    loading_pipeline(wid, yhlimit >> 2, yllimit >> 2, tilenum, coord_quad, ltlut);
 }
 
-void rdp_set_tile_size(struct rdp_state* rdp, const uint32_t* args)
+void rdp_set_tile_size(uint32_t wid, const uint32_t* args)
 {
     int tilenum = (args[1] >> 24) & 0x7;
-    rdp->tile[tilenum].sl = (args[0] >> 12) & 0xfff;
-    rdp->tile[tilenum].tl = (args[0] >>  0) & 0xfff;
-    rdp->tile[tilenum].sh = (args[1] >> 12) & 0xfff;
-    rdp->tile[tilenum].th = (args[1] >>  0) & 0xfff;
+    state[wid].tile[tilenum].sl = (args[0] >> 12) & 0xfff;
+    state[wid].tile[tilenum].tl = (args[0] >>  0) & 0xfff;
+    state[wid].tile[tilenum].sh = (args[1] >> 12) & 0xfff;
+    state[wid].tile[tilenum].th = (args[1] >>  0) & 0xfff;
 
-    calculate_clamp_diffs(&rdp->tile[tilenum]);
+    calculate_clamp_diffs(&state[wid].tile[tilenum]);
 }
 
-void rdp_load_block(struct rdp_state* rdp, const uint32_t* args)
+void rdp_load_block(uint32_t wid, const uint32_t* args)
 {
     int tilenum = (args[1] >> 24) & 0x7;
     int sl, sh, tl, dxt;
 
 
-    rdp->tile[tilenum].sl = sl = ((args[0] >> 12) & 0xfff);
-    rdp->tile[tilenum].tl = tl = ((args[0] >>  0) & 0xfff);
-    rdp->tile[tilenum].sh = sh = ((args[1] >> 12) & 0xfff);
-    rdp->tile[tilenum].th = dxt  = ((args[1] >>  0) & 0xfff);
+    state[wid].tile[tilenum].sl = sl = ((args[0] >> 12) & 0xfff);
+    state[wid].tile[tilenum].tl = tl = ((args[0] >>  0) & 0xfff);
+    state[wid].tile[tilenum].sh = sh = ((args[1] >> 12) & 0xfff);
+    state[wid].tile[tilenum].th = dxt  = ((args[1] >>  0) & 0xfff);
 
-    calculate_clamp_diffs(&rdp->tile[tilenum]);
+    calculate_clamp_diffs(&state[wid].tile[tilenum]);
 
     int tlclamped = tl & 0x3ff;
 
@@ -925,26 +925,26 @@ void rdp_load_block(struct rdp_state* rdp, const uint32_t* args)
     lewdata[4] = sh << 16;
     lewdata[5] = ((sl << 3) << 16) | (tl << 3);
     lewdata[6] = (dxt & 0xff) << 8;
-    lewdata[7] = ((0x80 >> rdp->ti_size) << 16) | (dxt >> 8);
+    lewdata[7] = ((0x80 >> state[wid].ti_size) << 16) | (dxt >> 8);
     lewdata[8] = 0x20;
     lewdata[9] = 0x20;
 
-    edgewalker_for_loads(rdp, lewdata);
+    edgewalker_for_loads(wid, lewdata);
 
 }
 
-static void tile_tlut_common_cs_decoder(struct rdp_state* rdp, const uint32_t* args)
+static void tile_tlut_common_cs_decoder(uint32_t wid, const uint32_t* args)
 {
     int tilenum = (args[1] >> 24) & 0x7;
     int sl, tl, sh, th;
 
 
-    rdp->tile[tilenum].sl = sl = ((args[0] >> 12) & 0xfff);
-    rdp->tile[tilenum].tl = tl = ((args[0] >>  0) & 0xfff);
-    rdp->tile[tilenum].sh = sh = ((args[1] >> 12) & 0xfff);
-    rdp->tile[tilenum].th = th = ((args[1] >>  0) & 0xfff);
+    state[wid].tile[tilenum].sl = sl = ((args[0] >> 12) & 0xfff);
+    state[wid].tile[tilenum].tl = tl = ((args[0] >>  0) & 0xfff);
+    state[wid].tile[tilenum].sh = sh = ((args[1] >> 12) & 0xfff);
+    state[wid].tile[tilenum].th = th = ((args[1] >>  0) & 0xfff);
 
-    calculate_clamp_diffs(&rdp->tile[tilenum]);
+    calculate_clamp_diffs(&state[wid].tile[tilenum]);
 
 
     int32_t lewdata[10];
@@ -956,67 +956,67 @@ static void tile_tlut_common_cs_decoder(struct rdp_state* rdp, const uint32_t* a
     lewdata[4] = ((sh >> 2) << 16) | ((sh & 3) << 14);
     lewdata[5] = ((sl << 3) << 16) | (tl << 3);
     lewdata[6] = 0;
-    lewdata[7] = (0x200 >> rdp->ti_size) << 16;
+    lewdata[7] = (0x200 >> state[wid].ti_size) << 16;
     lewdata[8] = 0x20;
     lewdata[9] = 0x20;
 
-    edgewalker_for_loads(rdp, lewdata);
+    edgewalker_for_loads(wid, lewdata);
 }
 
-void rdp_load_tlut(struct rdp_state* rdp, const uint32_t* args)
+void rdp_load_tlut(uint32_t wid, const uint32_t* args)
 {
-    tile_tlut_common_cs_decoder(rdp, args);
+    tile_tlut_common_cs_decoder(wid, args);
 }
 
-void rdp_load_tile(struct rdp_state* rdp, const uint32_t* args)
+void rdp_load_tile(uint32_t wid, const uint32_t* args)
 {
-    tile_tlut_common_cs_decoder(rdp, args);
+    tile_tlut_common_cs_decoder(wid, args);
 }
 
-void rdp_set_tile(struct rdp_state* rdp, const uint32_t* args)
+void rdp_set_tile(uint32_t wid, const uint32_t* args)
 {
     int tilenum = (args[1] >> 24) & 0x7;
 
-    rdp->tile[tilenum].format    = (args[0] >> 21) & 0x7;
-    rdp->tile[tilenum].size      = (args[0] >> 19) & 0x3;
-    rdp->tile[tilenum].line      = (args[0] >>  9) & 0x1ff;
-    rdp->tile[tilenum].tmem      = (args[0] >>  0) & 0x1ff;
-    rdp->tile[tilenum].palette   = (args[1] >> 20) & 0xf;
-    rdp->tile[tilenum].ct        = (args[1] >> 19) & 0x1;
-    rdp->tile[tilenum].mt        = (args[1] >> 18) & 0x1;
-    rdp->tile[tilenum].mask_t    = (args[1] >> 14) & 0xf;
-    rdp->tile[tilenum].shift_t   = (args[1] >> 10) & 0xf;
-    rdp->tile[tilenum].cs        = (args[1] >>  9) & 0x1;
-    rdp->tile[tilenum].ms        = (args[1] >>  8) & 0x1;
-    rdp->tile[tilenum].mask_s    = (args[1] >>  4) & 0xf;
-    rdp->tile[tilenum].shift_s   = (args[1] >>  0) & 0xf;
+    state[wid].tile[tilenum].format    = (args[0] >> 21) & 0x7;
+    state[wid].tile[tilenum].size      = (args[0] >> 19) & 0x3;
+    state[wid].tile[tilenum].line      = (args[0] >>  9) & 0x1ff;
+    state[wid].tile[tilenum].tmem      = (args[0] >>  0) & 0x1ff;
+    state[wid].tile[tilenum].palette   = (args[1] >> 20) & 0xf;
+    state[wid].tile[tilenum].ct        = (args[1] >> 19) & 0x1;
+    state[wid].tile[tilenum].mt        = (args[1] >> 18) & 0x1;
+    state[wid].tile[tilenum].mask_t    = (args[1] >> 14) & 0xf;
+    state[wid].tile[tilenum].shift_t   = (args[1] >> 10) & 0xf;
+    state[wid].tile[tilenum].cs        = (args[1] >>  9) & 0x1;
+    state[wid].tile[tilenum].ms        = (args[1] >>  8) & 0x1;
+    state[wid].tile[tilenum].mask_s    = (args[1] >>  4) & 0xf;
+    state[wid].tile[tilenum].shift_s   = (args[1] >>  0) & 0xf;
 
-    calculate_tile_derivs(&rdp->tile[tilenum]);
+    calculate_tile_derivs(&state[wid].tile[tilenum]);
 }
 
-void rdp_set_texture_image(struct rdp_state* rdp, const uint32_t* args)
+void rdp_set_texture_image(uint32_t wid, const uint32_t* args)
 {
-    rdp->ti_format   = (args[0] >> 21) & 0x7;
-    rdp->ti_size     = (args[0] >> 19) & 0x3;
-    rdp->ti_width    = (args[0] & 0x3ff) + 1;
-    rdp->ti_address  = args[1] & 0x0ffffff;
+    state[wid].ti_format   = (args[0] >> 21) & 0x7;
+    state[wid].ti_size     = (args[0] >> 19) & 0x3;
+    state[wid].ti_width    = (args[0] & 0x3ff) + 1;
+    state[wid].ti_address  = args[1] & 0x0ffffff;
 
 
 
 }
 
-void rdp_set_convert(struct rdp_state* rdp, const uint32_t* args)
+void rdp_set_convert(uint32_t wid, const uint32_t* args)
 {
     int32_t k0 = (args[0] >> 13) & 0x1ff;
     int32_t k1 = (args[0] >> 4) & 0x1ff;
     int32_t k2 = ((args[0] & 0xf) << 5) | ((args[1] >> 27) & 0x1f);
     int32_t k3 = (args[1] >> 18) & 0x1ff;
-    rdp->k0_tf = (SIGN(k0, 9) << 1) + 1;
-    rdp->k1_tf = (SIGN(k1, 9) << 1) + 1;
-    rdp->k2_tf = (SIGN(k2, 9) << 1) + 1;
-    rdp->k3_tf = (SIGN(k3, 9) << 1) + 1;
-    rdp->k4 = (args[1] >> 9) & 0x1ff;
-    rdp->k5 = args[1] & 0x1ff;
+    state[wid].k0_tf = (SIGN(k0, 9) << 1) + 1;
+    state[wid].k1_tf = (SIGN(k1, 9) << 1) + 1;
+    state[wid].k2_tf = (SIGN(k2, 9) << 1) + 1;
+    state[wid].k3_tf = (SIGN(k3, 9) << 1) + 1;
+    state[wid].k4 = (args[1] >> 9) & 0x1ff;
+    state[wid].k5 = args[1] & 0x1ff;
 }
 
 static void tex_init_lut(void)
@@ -1025,14 +1025,14 @@ static void tex_init_lut(void)
     tcoord_init_lut();
 }
 
-static void tex_init(struct rdp_state* rdp)
+static void tex_init(uint32_t wid)
 {
     int i;
-    tcoord_init(rdp);
+    tcoord_init(wid);
 
     for (i = 0; i < 8; i++)
     {
-        calculate_tile_derivs(&rdp->tile[i]);
-        calculate_clamp_diffs(&rdp->tile[i]);
+        calculate_tile_derivs(&state[wid].tile[i]);
+        calculate_clamp_diffs(&state[wid].tile[i]);
     }
 }

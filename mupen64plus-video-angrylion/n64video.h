@@ -5,10 +5,7 @@
 
 #define RDRAM_MAX_SIZE 0x800000
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
+// register enums
 enum dp_register
 {
     DP_START,
@@ -41,6 +38,7 @@ enum vi_register
     VI_NUM_REG
 };
 
+// config enums
 enum vi_mode
 {
     VI_MODE_NORMAL,     // color buffer with VI filter
@@ -57,24 +55,42 @@ enum vi_interp
     VI_INTERP_NUM
 };
 
+enum dp_compat_profile
+{
+    DP_COMPAT_LOW,
+    DP_COMPAT_MEDIUM,
+    DP_COMPAT_HIGH,
+    DP_COMPAT_NUM
+};
+
 struct n64video_config
 {
     struct {
-        enum vi_mode mode;
-        enum vi_interp interp;
-        bool widescreen;
-        bool hide_overscan;
+        uint8_t* rdram;             // RDRAM pointer
+        uint32_t rdram_size;        // size of RDRAM, typically 4 or 8 MiB
+        uint8_t* dmem;              // RSP data memory pointer
+        uint32_t** vi_reg;          // video interface registers
+        uint32_t** dp_reg;          // display processor registers
+        uint32_t* mi_intr_reg;      // MIPS interface interrupt register
+        void (*mi_intr_cb)(void);   // interrupt callback function
+    } gfx;
+    struct {
+        enum vi_mode mode;          // output mode
+        enum vi_interp interp;      // output interpolation method
+        bool widescreen;            // force 16:9 aspect ratio if true
+        bool hide_overscan;         // crop to visible area if true
+        bool vsync;                 // enable vsync if true
+        bool exclusive;             // run in exclusive mode when in fullscreen if true
     } vi;
-    bool parallel;
-    uint32_t num_workers;
+    struct {
+        enum dp_compat_profile compat;  // multithreading compatibility mode
+    } dp;
+    bool parallel;                  // use multithreaded renderer if true
+    uint32_t num_workers;           // number of rendering workers
 };
 
-void n64video_config_defaults(struct n64video_config* config);
+void n64video_config_init(struct n64video_config* config);
 void n64video_init(struct n64video_config* config);
 void n64video_update_screen(void);
 void n64video_process_list(void);
 void n64video_close(void);
-
-#ifdef __cplusplus
-}
-#endif
