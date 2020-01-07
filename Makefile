@@ -478,7 +478,7 @@ else ifneq (,$(findstring windows_msvc2017,$(platform)))
 	CC  = cl.exe
 	CXX = cl.exe
 	CC_AS = nasm.exe
-        ASFLAGS += -f win64
+	ASFLAGS += -f win64
 	GL_LIB = opengl32.lib
 	HAVE_PARALLEL=0
 	HAVE_PARALLEL_RSP=0
@@ -487,7 +487,7 @@ else ifneq (,$(findstring windows_msvc2017,$(platform)))
 	reg_query = $(call filter_out2,$(subst $2,,$(shell reg query "$2" -v "$1" 2>nul)))
 	fix_path = $(subst $(SPACE),\ ,$(subst \,/,$1))
 
-	ProgramFiles86w := $(shell cmd /c "echo %PROGRAMFILES(x86)%")
+	ProgramFiles86w := $(shell cmd //c "echo %PROGRAMFILES(x86)%")
 	ProgramFiles86 := $(shell cygpath "$(ProgramFiles86w)")
 
 	WindowsSdkDir ?= $(call reg_query,InstallationFolder,HKEY_LOCAL_MACHINE\SOFTWARE\Wow6432Node\Microsoft\Microsoft SDKs\Windows\v10.0)
@@ -981,7 +981,6 @@ endif
 
 %.o: %.cpp
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -c $< $(OBJOUT)$@
-
 
 clean:
 	rm -f $(OBJECTS) $(TARGET) $(OBJECTS:.o=.d)
