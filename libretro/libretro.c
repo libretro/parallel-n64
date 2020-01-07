@@ -1182,7 +1182,7 @@ void update_variables(bool startup)
    }
 
    
-
+#ifdef HAVE_THR_AL
    var.key = "parallel-n64-angrylion-vioverlay";
    var.value = NULL;
 
@@ -1248,18 +1248,19 @@ void update_variables(bool startup)
    }
    else
       angrylion_set_overscan(0);
+#endif
 
 
    CFG_HLE_GFX = 0;
+
 #ifdef HAVE_THR_AL
    if (gfx_plugin != GFX_ANGRYLION)
       CFG_HLE_GFX = 1;
 #endif
+
 #ifdef HAVE_PARALLEL
    if (gfx_plugin != GFX_PARALLEL)
       CFG_HLE_GFX = 1;
-#else
-   CFG_HLE_GFX = (gfx_plugin != GFX_ANGRYLION) && (gfx_plugin != GFX_PARALLEL) ? 1 : 0;
 #endif
    CFG_HLE_AUD = 0; /* There is no HLE audio code in libretro audio plugin. */
 
