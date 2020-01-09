@@ -99,8 +99,7 @@ static STRICTINLINE int32_t clamp(int32_t value, int32_t min, int32_t max)
         return min;
     else if (value > max)
         return max;
-    else
-        return value;
+    return value;
 }
 
 static STRICTINLINE uint32_t irand(uint32_t* state)
@@ -126,9 +125,8 @@ static bool rdp_cmd_sync[64];
 static void cmd_run_buffered(uint32_t worker_id)
 {
     uint32_t pos;
-    for (pos = 0; pos < rdp_cmd_buf_pos; pos++) {
+    for (pos = 0; pos < rdp_cmd_buf_pos; pos++)
         rdp_cmd(worker_id, rdp_cmd_buf[pos]);
-    }
 }
 
 static void cmd_flush(void)
@@ -166,13 +164,13 @@ void rdp_init_worker(uint32_t worker_id)
 
 void n64video_init(struct n64video_config* _config)
 {
-    if (_config) {
+    if (_config)
         config = *_config;
-    }
 
     // initialize static lookup tables and RDP state, once is enough
     static bool static_init;
-    if (!static_init) {
+    if (!static_init)
+    {
         blender_init_lut();
         coverage_init_lut();
         combiner_init_lut();
@@ -207,20 +205,21 @@ void n64video_init(struct n64video_config* _config)
     rdp_pipeline_crashed = 0;
     memset(&onetimewarnings, 0, sizeof(onetimewarnings));
 
-    if (config.parallel) {
-        // init worker system
-        parallel_alinit(config.num_workers);
+    if (config.parallel)
+    {
+       uint32_t i;
+       // init worker system
+       parallel_alinit(config.num_workers);
 
-        // sync states from main worker
-        for (uint32_t i = 1; i < parallel_num_workers(); i++) {
-            memcpy(&state[i], &state[0], sizeof(struct rdp_state));
-        }
+       // sync states from main worker
+       for (i = 1; i < parallel_num_workers(); i++)
+          memcpy(&state[i], &state[0], sizeof(struct rdp_state));
 
-        // init workers
-        parallel_run(rdp_init_worker);
-    } else {
-        rdp_init(0, 1);
+       // init workers
+       parallel_run(rdp_init_worker);
     }
+    else
+        rdp_init(0, 1);
 }
 
 void n64video_process_list(void)
