@@ -48,7 +48,7 @@ extern uint32_t *blitter_buf_lock;
 extern unsigned int screen_width, screen_height;
 extern uint32_t screen_pitch;
 
-static struct n64video_config config;
+struct n64video_config config;
 
 #include <ctype.h>
 
@@ -360,6 +360,7 @@ void angrylionRomClosed (void)
 
 int angrylionRomOpen(void)
 {
+
    /* TODO/FIXME: For now just force it to 640x480.
     *
     * Later on we might want a low-res mode (320x240)
