@@ -384,7 +384,7 @@ static void setup_variables(void)
        "(Angrylion) VI Overlay; Filtered|Unfiltered|Depth|Coverage"
       },
       { "parallel-n64-angrylion-sync",
-       "(Angrylion) Thread sync level; High|Medium|Low"
+       "(Angrylion) Thread sync level; Medium|High|Low"
       },
        { "parallel-n64-angrylion-multithread",
          "(Angrylion) Multi-threading; enabled|disabled" },
@@ -1217,7 +1217,7 @@ void update_variables(bool startup)
          angrylion_set_synclevel(0);
    }
    else
-      angrylion_set_synclevel(2);
+      angrylion_set_synclevel(1);
 
    var.key = "parallel-n64-angrylion-multithread";
    var.value = NULL;
