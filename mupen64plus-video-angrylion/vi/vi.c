@@ -46,7 +46,10 @@ struct vi_reg_ctrl
     bool dither_filter_enable;
 };
 
-typedef void(*vi_fetch_filter_func)(struct rgba*, uint32_t, uint32_t, struct vi_reg_ctrl, uint32_t, uint32_t);
+struct ccvg
+{
+    uint8_t r, g, b, cvg;
+};
 
 #include "gamma.c"
 #include "lerp.c"
@@ -56,6 +59,7 @@ typedef void(*vi_fetch_filter_func)(struct rgba*, uint32_t, uint32_t, struct vi_
 #include "fetch.c"
 
 // states
+static void(*vi_fetch_filter_ptr)(struct ccvg*, uint32_t, uint32_t, struct vi_reg_ctrl, uint32_t, uint32_t);
 static uint32_t prevvicurrent;
 static int32_t emucontrolsvicurrent;
 static bool prevserrate;
@@ -78,7 +82,7 @@ static uint32_t rseed;
 static uint32_t zb_address;
 
 // prescale buffer
-static struct rgba prescale[PRESCALE_WIDTH * PRESCALE_HEIGHT];
+static uint32_t prescale[PRESCALE_WIDTH * PRESCALE_HEIGHT];
 static uint32_t prescale_ptr;
 static int32_t linecount;
 
@@ -110,23 +114,22 @@ static void vi_init(void)
 static void vi_process_full_parallel(uint32_t worker_id)
 {
     int32_t y;
-    struct rgba viaa_array[0xa10 << 1];
-    struct rgba divot_array[0xa10 << 1];
+    struct ccvg viaa_array[0xa10 << 1];
+    struct ccvg divot_array[0xa10 << 1];
 
     int32_t cache_marker = 0, cache_next_marker = 0, divot_cache_marker = 0, divot_cache_next_marker = 0;
     int32_t cache_marker_init = (x_start >> 10) - 1;
 
-    struct rgba *viaa_cache = &viaa_array[0];
-    struct rgba *viaa_cache_next = &viaa_array[0xa10];
-    struct rgba *divot_cache = &divot_array[0];
-    struct rgba *divot_cache_next = &divot_array[0xa10];
+    struct ccvg *viaa_cache = &viaa_array[0];
+    struct ccvg *viaa_cache_next = &viaa_array[0xa10];
+    struct ccvg *divot_cache = &divot_array[0];
+    struct ccvg *divot_cache_next = &divot_array[0xa10];
 
-    struct rgba color, nextcolor, scancolor, scannextcolor;
-
-    vi_fetch_filter_func vi_fetch_filter_ptr = ctrl.type & 1 ? vi_fetch_filter32 : vi_fetch_filter16;
+    struct ccvg color, nextcolor, scancolor, scannextcolor;
 
     uint32_t pixels = 0, nextpixels = 0, fetchbugstate = 0;
 
+    int32_t r = 0, g = 0, b = 0;
     int32_t xfrac = 0, yfrac = 0;
     int32_t line_x = 0, next_line_x = 0, prev_line_x = 0, far_line_x = 0;
     int32_t prev_scan_x = 0, scan_x = 0, next_scan_x = 0, far_scan_x = 0;
@@ -157,7 +160,7 @@ static void vi_process_full_parallel(uint32_t worker_id)
             divot_cache_marker = divot_cache_next_marker = cache_marker_init;
         }
 
-        struct rgba* pixel_row = &prescale[prescale_ptr + linecount * y];
+        int* d = prescale + prescale_ptr + linecount * y;
 
         yfrac = (curry >> 5) & 0x1f;
         pixels = vi_width_low * prevy;
@@ -272,13 +275,16 @@ static void vi_process_full_parallel(uint32_t worker_id)
                 vi_vl_lerp(&color, nextcolor, xfrac);
             }
 
-            struct rgba* pixel = &pixel_row[x];
+            r = color.r;
+            g = color.g;
+            b = color.b;
+
+            gamma_filters(&r, &g, &b, ctrl, &rseed);
 
             if (x >= minhpass && x < maxhpass) {
-                *pixel = color;
-                gamma_filters(pixel, ctrl, &rseed);
+                d[x] = (r << 16) | (g << 8) | b;
             } else {
-                pixel->r = pixel->g = pixel->b = 0;
+                d[x] = 0;
             }
         }
 
@@ -286,7 +292,7 @@ static void vi_process_full_parallel(uint32_t worker_id)
             cache_marker = cache_next_marker;
             cache_next_marker = cache_marker_init;
 
-            struct rgba* tempccvgptr = viaa_cache;
+            struct ccvg* tempccvgptr = viaa_cache;
             viaa_cache = viaa_cache_next;
             viaa_cache_next = tempccvgptr;
             if (ctrl.divot_enable) {
@@ -304,6 +310,8 @@ static void vi_process_full_parallel(uint32_t worker_id)
 
 static bool vi_process_full(void)
 {
+    vi_fetch_filter_ptr = ctrl.type & 1 ? vi_fetch_filter32 : vi_fetch_filter16;
+
     bool isblank = (ctrl.type & 2) == 0;
     bool validinterlace = !isblank && ctrl.serrate;
 
@@ -469,7 +477,7 @@ static bool vi_process_full(void)
     }
 
     screen_write(&fb, output_height);
-    return fb.width > 0 && fb.height > 0;
+    return true;
 }
 
 static void vi_process_fast_parallel(uint32_t worker_id)
@@ -495,28 +503,27 @@ static void vi_process_fast_parallel(uint32_t worker_id)
     for (y = y_begin; y < y_end; y += y_inc) {
         int32_t x;
         int32_t line = y * vi_width_low;
-
-        struct rgba* pixel_row = &prescale[y * hres_raw];
+        uint32_t* dst = prescale + y * hres_raw;
 
         for (x = 0; x < hres_raw; x++) {
-            struct rgba* pixel = &pixel_row[x];
+            uint32_t r, g, b;
 
             switch (config.vi.mode) {
                 case VI_MODE_COLOR:
                     switch (ctrl.type) {
                         case VI_TYPE_RGBA5551: {
                             uint16_t pix = rdram_read_idx16((frame_buffer >> 1) + line + x);
-                            pixel->r = RGBA16_R(pix);
-                            pixel->g = RGBA16_G(pix);
-                            pixel->b = RGBA16_B(pix);
+                            r = RGBA16_R(pix);
+                            g = RGBA16_G(pix);
+                            b = RGBA16_B(pix);
                             break;
                         }
 
                         case VI_TYPE_RGBA8888: {
                             uint32_t pix = rdram_read_idx32((frame_buffer >> 2) + line + x);
-                            pixel->r = RGBA32_R(pix);
-                            pixel->g = RGBA32_G(pix);
-                            pixel->b = RGBA32_B(pix);
+                            r = RGBA32_R(pix);
+                            g = RGBA32_G(pix);
+                            b = RGBA32_B(pix);
                             break;
                         }
 
@@ -524,12 +531,12 @@ static void vi_process_fast_parallel(uint32_t worker_id)
                             return;
                     }
 
-                    gamma_filters(pixel, ctrl, &rseed);
+                    gamma_filters(&r, &g, &b, ctrl, &rseed);
                     break;
 
                 case VI_MODE_DEPTH: {
                     if (zb_address) {
-                        pixel->r = pixel->g = pixel->b = rdram_read_idx16((zb_address >> 1) + line + x) >> 8;
+                        r = g = b = rdram_read_idx16((zb_address >> 1) + line + x) >> 8;
                     }
                     break;
                 }
@@ -539,13 +546,15 @@ static void vi_process_fast_parallel(uint32_t worker_id)
                     uint8_t hval;
                     uint16_t pix;
                     rdram_read_pair16(&pix, &hval, (frame_buffer >> 1) + line + x);
-                    pixel->r = pixel->g = pixel->b = (((pix & 1) << 2) | hval) << 5;
+                    r = g = b = (((pix & 1) << 2) | hval) << 5;
                     break;
                 }
 
                 default:
                     return;
             }
+
+            dst[x] = (r << 16) | (g << 8) | b;
         }
     }
 }
@@ -599,7 +608,7 @@ static bool vi_process_fast(void)
     }
 
     screen_write(&fb, output_height);
-    return fb.width > 0 && fb.height > 0;
+    return true;
 }
 
 void vi_set_zbuffer_address(uint32_t address)

@@ -272,9 +272,7 @@ void plugin_connect_all(enum gfx_plugin_type gfx_plugin, enum rsp_plugin_type rs
    switch (gfx_plugin)
    {
       case GFX_ANGRYLION:
-#ifdef HAVE_THR_AL
          gfx = gfx_angrylion;
-#endif
          break;
       case GFX_PARALLEL:
 #ifdef HAVE_PARALLEL
@@ -294,7 +292,7 @@ void plugin_connect_all(enum gfx_plugin_type gfx_plugin, enum rsp_plugin_type rs
       default:
 #if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
          gfx = gfx_glide64;
-#elif defined(HAVE_THR_AL)
+#else
          gfx = gfx_angrylion;
 #endif
          break;

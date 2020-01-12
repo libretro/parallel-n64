@@ -190,9 +190,7 @@ static void core_settings_autoselect_gfx_plugin(void)
    }
 #endif
 
-#ifdef HAVE_THR_AL
    gfx_plugin = GFX_ANGRYLION;
-#endif
 }
 
 unsigned libretro_get_gfx_plugin(void)
@@ -227,10 +225,8 @@ static void core_settings_set_defaults(void)
       if(gfx_var.value && !strcmp(gfx_var.value, "glide64") && gl_inited)
          gfx_plugin = GFX_GLIDE64;
 #endif
-#ifdef HAVE_THR_AL
 	  if(gfx_var.value && !strcmp(gfx_var.value, "angrylion"))
          gfx_plugin = GFX_ANGRYLION;
-#endif
 #ifdef HAVE_PARALLEL
 	  if(gfx_var.value && !strcmp(gfx_var.value, "parallel") && vulkan_inited)
          gfx_plugin = GFX_PARALLEL;
@@ -299,10 +295,8 @@ static void core_settings_autoselect_rsp_plugin(void)
 #endif
    }
 
-#ifdef HAVE_THR_AL
    if (gfx_plugin == GFX_ANGRYLION)
       rsp_plugin = RSP_CXD4;
-#endif
 }
 
 static void setup_variables(void)
@@ -382,9 +376,6 @@ static void setup_variables(void)
       },
       { "parallel-n64-angrylion-vioverlay",
        "(Angrylion) VI Overlay; Filtered|Unfiltered|Depth|Coverage"
-      },
-      { "parallel-n64-angrylion-sync",
-       "(Angrylion) Thread sync level; High|Medium|Low"
       },
        { "parallel-n64-angrylion-multithread",
          "(Angrylion) Multi-threading; enabled|disabled" },
@@ -590,9 +581,7 @@ bool emu_step_render(void)
       switch (gfx_plugin)
       {
          case GFX_ANGRYLION:
-#ifdef HAVE_THR_AL
             video_cb(blitter_buf_lock, screen_width, screen_height, screen_pitch);
-#endif
             break;
 
          case GFX_PARALLEL:
@@ -1002,8 +991,6 @@ extern void  angrylion_set_threads(unsigned value);
 extern void parallel_set_dithering(unsigned value);
 extern void  angrylion_set_threads(unsigned value);
 extern void  angrylion_set_overscan(unsigned value);
-
-extern void angrylion_set_synclevel(unsigned value);
 extern void ChangeSize();
 
 static void gfx_set_filtering(void)
@@ -1018,9 +1005,7 @@ static void gfx_set_filtering(void)
 #endif
            break;
         case GFX_ANGRYLION:
-#ifdef HAVE_THR_AL
            angrylion_set_filtering(retro_filtering);
-#endif
            break;
         case GFX_RICE:
 #ifdef HAVE_RICE
@@ -1058,9 +1043,7 @@ static void gfx_set_dithering(void)
 #endif
          break;
       case GFX_ANGRYLION:
-#ifdef HAVE_THR_AL
          angrylion_set_dithering(retro_dithering);
-#endif
          break;
       case GFX_RICE:
 #ifdef HAVE_RICE
@@ -1122,11 +1105,7 @@ void update_variables(bool startup)
       /* TODO/FIXME - hack - force screen width and height back to 640x480 in case
        * we change it with Angrylion. If we ever want to support variable resolution sizes in Angrylion
        * then we need to drop this. */
-      if (
-#ifdef HAVE_THR_AL
-            gfx_plugin == GFX_ANGRYLION || 
-#endif
-            sscanf(var.value ? var.value : "640x480", "%dx%d", &screen_width, &screen_height) != 2)
+      if (gfx_plugin == GFX_ANGRYLION || sscanf(var.value ? var.value : "640x480", "%dx%d", &screen_width, &screen_height) != 2)
       {
          screen_width = 640;
          screen_height = 480;
@@ -1166,10 +1145,8 @@ void update_variables(bool startup)
          if(!strcmp(var.value, "glide64") && gl_inited)
             gfx_plugin = GFX_GLIDE64;
 #endif
-#ifdef HAVE_THR_AL
          if(!strcmp(var.value, "angrylion"))
             gfx_plugin = GFX_ANGRYLION;
-#endif
 #ifdef HAVE_PARALLEL
          if(!strcmp(var.value, "parallel") && vulkan_inited)
             gfx_plugin = GFX_PARALLEL;
@@ -1182,7 +1159,7 @@ void update_variables(bool startup)
    }
 
    
-#ifdef HAVE_THR_AL
+
    var.key = "parallel-n64-angrylion-vioverlay";
    var.value = NULL;
 
@@ -1201,23 +1178,6 @@ void update_variables(bool startup)
    }
    else
       angrylion_set_vi(0);
-
-   var.key = "parallel-n64-angrylion-sync";
-   var.value = NULL;
-
-   environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var);
-
-   if (var.value)
-   {
-      if(!strcmp(var.value, "High"))
-         angrylion_set_synclevel(2);
-      else if(!strcmp(var.value, "Medium"))
-         angrylion_set_synclevel(1);
-      else if(!strcmp(var.value, "Low"))
-         angrylion_set_synclevel(0);
-   }
-   else
-      angrylion_set_synclevel(2);
 
    var.key = "parallel-n64-angrylion-multithread";
    var.value = NULL;
@@ -1248,20 +1208,10 @@ void update_variables(bool startup)
    }
    else
       angrylion_set_overscan(0);
-#endif
 
 
-   CFG_HLE_GFX = 0;
 
-#ifdef HAVE_THR_AL
-   if (gfx_plugin != GFX_ANGRYLION)
-      CFG_HLE_GFX = 1;
-#endif
-
-#ifdef HAVE_PARALLEL
-   if (gfx_plugin != GFX_PARALLEL)
-      CFG_HLE_GFX = 1;
-#endif
+   CFG_HLE_GFX = (gfx_plugin != GFX_ANGRYLION) && (gfx_plugin != GFX_PARALLEL) ? 1 : 0;
    CFG_HLE_AUD = 0; /* There is no HLE audio code in libretro audio plugin. */
 
    var.key = "parallel-n64-filtering";
@@ -1499,13 +1449,11 @@ bool retro_load_game(const struct retro_game_info *game)
 
    init_audio_libretro(audio_buffer_size);
 
-#ifdef HAVE_THR_AL
    if (gfx_plugin != GFX_ANGRYLION)
-#endif
    {
-      unsigned preferred; // This will be set to a const value if GET_PREFERRED_HW_RENDER is unsupported by frontend
-      if (!environ_cb(RETRO_ENVIRONMENT_GET_PREFERRED_HW_RENDER, &preferred)) preferred = 0xFFFFFFFF;
-      if ((preferred == 0xFFFFFFFF || (preferred != RETRO_HW_CONTEXT_OPENGL && preferred != RETRO_HW_CONTEXT_OPENGL_CORE)) && retro_init_vulkan())
+      unsigned preferred;
+      environ_cb(RETRO_ENVIRONMENT_GET_PREFERRED_HW_RENDER, &preferred);
+      if (preferred != RETRO_HW_CONTEXT_OPENGL && preferred != RETRO_HW_CONTEXT_OPENGL_CORE && retro_init_vulkan())
          vulkan_inited = true;
       else if (retro_init_gl())
          gl_inited = true;
@@ -1625,10 +1573,8 @@ static void glsm_exit(void)
 #ifndef HAVE_SHARED_CONTEXT
    if (stop)
       return;
-#ifdef HAVE_THR_AL
    if (gfx_plugin == GFX_ANGRYLION)
       return;
-#endif
 #ifdef HAVE_PARALLEL
    if (gfx_plugin == GFX_PARALLEL)
       return;
@@ -1642,10 +1588,8 @@ static void glsm_enter(void)
 #ifndef HAVE_SHARED_CONTEXT
    if (stop)
       return;
-#ifdef HAVE_THR_AL
    if (gfx_plugin == GFX_ANGRYLION)
       return;
-#endif
 #ifdef HAVE_PARALLEL
    if (gfx_plugin == GFX_PARALLEL)
       return;

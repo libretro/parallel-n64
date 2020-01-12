@@ -1,5 +1,5 @@
-static uint8_t gamma_table[0x100];
-static uint8_t gamma_dither_table[0x4000];
+static uint32_t gamma_table[0x100];
+static uint32_t gamma_dither_table[0x4000];
 
 static uint32_t vi_integer_sqrt(uint32_t a)
 {
@@ -21,39 +21,39 @@ static uint32_t vi_integer_sqrt(uint32_t a)
     return res;
 }
 
-static STRICTINLINE void gamma_filters(struct rgba* pixel, bool gamma_enable, bool gamma_dither_enable, uint32_t* rstate)
+static STRICTINLINE void gamma_filters(uint32_t* r, uint32_t* g, uint32_t* b, struct vi_reg_ctrl ctrl, int32_t* rstate)
 {
     int cdith, dith;
 
-    switch((gamma_enable << 1) | gamma_dither_enable)
+    switch((ctrl.gamma_enable << 1) | ctrl.gamma_dither_enable)
     {
     case 0: // no gamma, no dithering
         return;
     case 1: // no gamma, dithering enabled
         cdith = irand(rstate);
         dith = cdith & 1;
-        if (pixel->r < 255)
-            pixel->r += dith;
+        if (*r < 255)
+            *r += dith;
         dith = (cdith >> 1) & 1;
-        if (pixel->g < 255)
-            pixel->g += dith;
+        if (*g < 255)
+            *g += dith;
         dith = (cdith >> 2) & 1;
-        if (pixel->b < 255)
-            pixel->b += dith;
+        if (*b < 255)
+            *b += dith;
         break;
     case 2: // gamma enabled, no dithering
-        pixel->r = gamma_table[pixel->r];
-        pixel->g = gamma_table[pixel->g];
-        pixel->b = gamma_table[pixel->b];
+        *r = gamma_table[*r];
+        *g = gamma_table[*g];
+        *b = gamma_table[*b];
         break;
     case 3: // gamma and dithering enabled
         cdith = irand(rstate);
         dith = cdith & 0x3f;
-        pixel->r = gamma_dither_table[((pixel->r) << 6)|dith];
+        *r = gamma_dither_table[((*r) << 6)|dith];
         dith = (cdith >> 6) & 0x3f;
-        pixel->g = gamma_dither_table[((pixel->g) << 6)|dith];
+        *g = gamma_dither_table[((*g) << 6)|dith];
         dith = ((cdith >> 9) & 0x38) | (cdith & 7);
-        pixel->b = gamma_dither_table[((pixel->b) << 6)|dith];
+        *b = gamma_dither_table[((*b) << 6)|dith];
         break;
     }
 }

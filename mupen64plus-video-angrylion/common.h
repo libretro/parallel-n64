@@ -28,7 +28,7 @@
 #ifdef _MSC_VER
 #define STRICTINLINE __forceinline
 #elif defined(__GNUC__)
-#define STRICTINLINE __attribute__((always_inline)) inline
+#define STRICTINLINE __attribute__((always_inline))
 #else
 #define STRICTINLINE inline
 #endif
