@@ -332,7 +332,7 @@ void angrylionSetRenderingCallback(void (*callback)(int))
 
 int angrylionInitiateGFX (GFX_INFO Gfx_Info)
 {
-   n64video_config_init(&config);
+
    return 0;
 }
 
@@ -360,6 +360,7 @@ void angrylionRomClosed (void)
 
 int angrylionRomOpen(void)
 {
+     n64video_config_init(&config);
    /* TODO/FIXME: For now just force it to 640x480.
     *
     * Later on we might want a low-res mode (320x240)
@@ -389,7 +390,7 @@ int angrylionRomOpen(void)
     config.gfx.dp_reg = plugin_get_dp_registers();
 
 
-
+     
    n64video_init(&config);
    angrylion_init = true;
    return 1;
