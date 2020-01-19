@@ -504,22 +504,25 @@ ifeq ($(INTENSE_DEBUG), 1)
 	CFLAGS += -DINTENSE_DEBUG
 	CXXFLAGS += -DINTENSE_DEBUG
 endif
-LDFLAGS += -lclangFrontend \
-			  -lclangSerialization \
-			  -lclangDriver \
-			  -lclangCodeGen \
-			  -lclangParse \
-			  -lclangSema \
-			  -lclangStaticAnalyzerFrontend \
-			  -lclangStaticAnalyzerCheckers \
-			  -lclangStaticAnalyzerCore \
-			  -lclangAnalysis \
-			  -lclangRewriteFrontend \
-			  -lclangRewrite \
-			  -lclangEdit \
-			  -lclangAST \
-			  -lclangLex \
-			  -lclangBasic
+LDFLAGS += -lclangFrontendTool \
+	   -lclangFrontend \
+	   -lclangDriver \
+	   -lclangSerialization \
+	   -lclangCodeGen \
+	   -lclangFrontend \
+	   -lclangParse \
+	   -lclangSema \
+	   -lclangStaticAnalyzerFrontend \
+	   -lclangStaticAnalyzerCheckers \
+	   -lclangStaticAnalyzerCore \
+	   -lclangAnalysis \
+	   -lclangRewriteFrontend \
+	   -lclangRewrite \
+	   -lclangEdit \
+	   -lclangASTMatchers \
+	   -lclangAST \
+	   -lclangLex \
+	   -lclangBasic
 LDFLAGS += $(shell llvm-config --ldflags --libs --system-libs)
 
 endif
