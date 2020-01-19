@@ -73,6 +73,8 @@ namespace RSP
       private:
          CPUState state;
          Func blocks[IMEM_WORDS] = {};
+         std::unordered_map<std::string, uint64_t> symbol_table;
+         JIT::LLVMEngine jit_engine;
          std::unordered_map<uint64_t, std::unique_ptr<Block>> cached_blocks[IMEM_WORDS];
 
          void invalidate_code();
@@ -82,7 +84,6 @@ namespace RSP
          std::string full_code;
          std::string body;
 
-         std::unordered_map<std::string, uint64_t> symbol_table;
 
          void init_symbol_table();
          void print_registers();

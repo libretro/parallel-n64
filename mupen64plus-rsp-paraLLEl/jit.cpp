@@ -1,7 +1,5 @@
 #include "jit.hpp"
 
-
-
 #include <clang/CodeGen/CodeGenAction.h>
 #include <clang/Driver/Compilation.h>
 #include <clang/Driver/Driver.h>
@@ -29,177 +27,188 @@
 #include <llvm/Support/TargetSelect.h>
 #include <llvm/Support/raw_ostream.h>
 
+#include <llvm/ExecutionEngine/Orc/CompileUtils.h>
+#include <llvm/ExecutionEngine/Orc/Core.h>
+#include <llvm/ExecutionEngine/Orc/ExecutionUtils.h>
+#include <llvm/ExecutionEngine/Orc/IRCompileLayer.h>
+#include <llvm/ExecutionEngine/Orc/RTDyldObjectLinkingLayer.h>
+
+
 #include <stdio.h>
 using namespace clang;
 using namespace std;
 
-
 namespace JIT
 {
-
 struct Block::Impl
 {
-   Impl(const unordered_map<string, uint64_t> &symbol_table)
-      : symbol_table(symbol_table)
-   {}
+	Impl(LLVMEngine &engine_)
+		: engine(engine_)
+	{}
 
-   Func block = nullptr;
-   size_t block_size = 0;
-   bool compile(const std::string &source);
-   const unordered_map<string, uint64_t> &symbol_table;
+	LLVMEngine &engine;
+	Func block = nullptr;
+	size_t block_size = 0;
+	bool compile(const std::string &source);
 };
 
-Block::Block(const unordered_map<string, uint64_t> &symbol_table)
-   : symbol_table(symbol_table)
+Block::Block(LLVMEngine &engine)
 {
-   impl = std::unique_ptr<Impl>(new Impl(symbol_table));
+	impl = std::unique_ptr<Impl>(new Impl(engine));
 }
 
 Block::~Block()
 {
 }
 
-struct RSPResolver : public llvm::JITSymbolResolver
-{
-public:
-   RSPResolver(const unordered_map<string, uint64_t> &symbol_table)
-      : symbol_table(symbol_table)
-   {}
-
-   llvm::JITSymbol findSymbol(const std::string &name) override
-   {
-      auto itr = symbol_table.find(name);
-      if (itr != end(symbol_table))
-         return llvm::JITSymbol(itr->second, llvm::JITSymbolFlags::None);
-      else
-         return llvm::JITSymbol(nullptr);
-   }
-
-   llvm::JITSymbol findSymbolInLogicalDylib(const std::string &name) override
-   {
-      return llvm::JITSymbol(nullptr);
-   }
-
-   const unordered_map<string, uint64_t> &symbol_table;
-};
-
 struct LLVMHolder
 {
-   LLVMHolder()
-   {
-      llvm::InitializeNativeTarget();
-      llvm::InitializeNativeTargetAsmPrinter();
-      llvm::InitializeNativeTargetAsmParser();
-   }
+	LLVMHolder()
+	{
+		llvm::InitializeNativeTarget();
+		llvm::InitializeNativeTargetAsmPrinter();
+		llvm::InitializeNativeTargetAsmParser();
+	}
 
-   ~LLVMHolder()
-   {
-      llvm::llvm_shutdown();
-   }
+	~LLVMHolder()
+	{
+		llvm::llvm_shutdown();
+	}
 };
 
-struct LLVMEngine
+struct LLVMEngine::Impl
 {
-   LLVMEngine()
-   {
-      SmallVector<const char *, 4> args;
-      args.push_back("__block.c");
-      args.push_back("-std=c99");
-      args.push_back("-O2");
+	Impl(const std::unordered_map<std::string, uint64_t> &symbol_table_)
+		: symbol_table(symbol_table_)
+	{
+		static LLVMHolder llvm_holder;
 
-      static std::string string_buffer;
-      static llvm::raw_string_ostream ss(string_buffer);
+		execution_session = llvm::make_unique<llvm::orc::ExecutionSession>();
+		execution_session->setErrorReporter([](llvm::Error error) {
+			if (error)
+				llvm::errs() << "Error: " << error << "\n";
+		});
 
-      IntrusiveRefCntPtr<DiagnosticOptions> diag_opts = new DiagnosticOptions();
-      TextDiagnosticPrinter *diag_client = new TextDiagnosticPrinter(ss, &*diag_opts);
-      IntrusiveRefCntPtr<DiagnosticIDs> diag_id(new DiagnosticIDs());
-      DiagnosticsEngine diags(diag_id, &*diag_opts, diag_client);
+		llvm::orc::LegacyRTDyldObjectLinkingLayer::Resources resources;
+		resources.MemMgr = llvm::make_unique<llvm::SectionMemoryManager>();
+		resources.Resolver = llvm::orc::createLegacyLookupResolver(
+				*execution_session,
+				[this](const std::string &name) -> llvm::JITSymbol {
+					return findSymbol(name);
+				},
+				[](llvm::Error) {});
 
-      CI = llvm::make_unique<CompilerInvocation>();
-      CompilerInvocation::CreateFromArgs(*CI, args.data(), args.data() + args.size(), diags);
-      invocation = CI.get();
+		object_layer = llvm::make_unique<llvm::orc::LegacyRTDyldObjectLinkingLayer>(*execution_session,
+				[=](llvm::orc::VModuleKey) { return resources; });
 
-      clang = llvm::make_unique<CompilerInstance>();
-      clang->setInvocation(std::move(CI));
-      clang->createDiagnostics();
- 
-      act = llvm::make_unique<EmitLLVMOnlyAction>();
-   }
+		auto host = llvm::orc::JITTargetMachineBuilder::detectHost();
+		target_machine = llvm::cantFail(host->createTargetMachine());
+		target_machine->setOptLevel(llvm::CodeGenOpt::Level::Default);
+		data_layout = llvm::make_unique<llvm::DataLayout>(std::move(*host->getDefaultDataLayoutForTarget()));
+		compile_layer = llvm::make_unique<llvm::orc::LegacyIRCompileLayer<
+			llvm::orc::LegacyRTDyldObjectLinkingLayer, llvm::orc::SimpleCompiler>>(*object_layer, llvm::orc::SimpleCompiler(*target_machine));
+	}
 
-   Func compile(const std::unordered_map<std::string, uint64_t> &symbol_table)
-   {
-      if (!clang->ExecuteAction(*act))
-      {
-         fprintf(stderr, "ExecuteAction failed.");
-         return nullptr;
-      }
+	std::unique_ptr<EmitLLVMOnlyAction> compile_c(const std::string &source)
+	{
+		llvm::SmallVector<const char *, 4> args;
+		args.push_back("__block.c");
+		args.push_back("-std=c99");
+		args.push_back("-O2");
 
-      auto module = act->takeModule();
-      auto *tmp_module = module.get();
+		std::string string_buffer;
+		llvm::raw_string_ostream ss(string_buffer);
 
-      if (!EE)
-      {
-         auto resolver = llvm::make_unique<RSPResolver>(symbol_table);
-         auto memory_manager = llvm::make_unique<llvm::SectionMemoryManager>();
+		IntrusiveRefCntPtr<DiagnosticOptions> diag_opts = new DiagnosticOptions();
+		TextDiagnosticPrinter *diag_client = new TextDiagnosticPrinter(ss, &*diag_opts);
+		IntrusiveRefCntPtr<DiagnosticIDs> diag_id(new DiagnosticIDs());
+		DiagnosticsEngine diags(diag_id, &*diag_opts, diag_client);
 
-        EE = std::unique_ptr<llvm::ExecutionEngine>(llvm::EngineBuilder(std::move(module))
-         .setMCJITMemoryManager(std::move(memory_manager))
-         .setSymbolResolver(std::move(resolver))
-         .create());
-                
-         EE->DisableLazyCompilation(true);
-      }
-      else
-         EE->addModule(std::move(module));
+		auto CI = llvm::make_unique<CompilerInvocation>();
+		auto *invocation = CI.get();
+		CompilerInvocation::CreateFromArgs(*CI, args.data(), args.data() + args.size(), diags);
 
-      if (!EE)
-      {
-         llvm::errs() << "Failed to make execution engine.\n";
-         return nullptr;
-      }
+		auto clang = llvm::make_unique<CompilerInstance>();
+		clang->setInvocation(std::move(CI));
+		clang->createDiagnostics();
 
-      EE->finalizeObject();
-      auto entry_point = EE->getFunctionAddress("block_entry");
-      auto block = reinterpret_cast<Func>(entry_point);
-      EE->removeModule(tmp_module);
-      return block;
-   }
+		auto act = llvm::make_unique<EmitLLVMOnlyAction>();
 
-   std::unique_ptr<LLVMHolder> llvm = llvm::make_unique<LLVMHolder>();
+		StringRef code_data(source);
+		auto buffer = llvm::MemoryBuffer::getMemBufferCopy(code_data);
+		invocation->getPreprocessorOpts().clearRemappedFiles();
+		invocation->getPreprocessorOpts().addRemappedFile("__block.c", buffer.release());
 
-   std::string string_buffer;
-   llvm::raw_string_ostream ss{string_buffer};
+		if (!clang->ExecuteAction(*act))
+		{
+			llvm::errs() << "ExecuteAction failed.\n";
+			return {};
+		}
+		return act;
+	}
 
-   std::unique_ptr<CompilerInvocation> CI;
-   std::unique_ptr<CompilerInstance> clang;
-   std::unique_ptr<CodeGenAction> act;
-   std::unique_ptr<llvm::ExecutionEngine> EE;
-   CompilerInvocation *invocation = nullptr;
+	Func compile(const std::string &source)
+	{
+		auto act = compile_c(source);
+		if (!act)
+			return nullptr;
+
+		auto K = execution_session->allocateVModule();
+		auto error = compile_layer->addModule(K, act->takeModule());
+
+		if (error)
+			return nullptr;
+
+		auto entry_point = compile_layer->findSymbolIn(K, "block_entry", true);
+		auto block = reinterpret_cast<Func>(llvm::cantFail(entry_point.getAddress()));
+		return block;
+	}
+
+	llvm::JITSymbol findSymbol(const std::string &name)
+	{
+		auto itr = symbol_table.find(name);
+		if (itr != symbol_table.end())
+			return llvm::JITSymbol(itr->second, llvm::JITSymbolFlags::None);
+		else
+			return llvm::JITSymbol(nullptr);
+	}
+
+	const std::unordered_map<std::string, uint64_t> &symbol_table;
+
+	llvm::LLVMContext context;
+	std::unique_ptr<llvm::orc::ExecutionSession> execution_session;
+	std::unique_ptr<llvm::orc::LegacyRTDyldObjectLinkingLayer> object_layer;
+	std::unique_ptr<llvm::orc::LegacyIRCompileLayer<
+		llvm::orc::LegacyRTDyldObjectLinkingLayer,
+		llvm::orc::SimpleCompiler>> compile_layer;
+	std::unique_ptr<llvm::TargetMachine> target_machine;
+	std::unique_ptr<llvm::orc::MangleAndInterner> mangler;
+	std::unique_ptr<llvm::DataLayout> data_layout;
 };
+
+LLVMEngine::LLVMEngine(const std::unordered_map<std::string, uint64_t> &symbol_table)
+{
+	impl.reset(new Impl(symbol_table));
+}
+
+LLVMEngine::~LLVMEngine()
+{
+}
 
 bool Block::compile(uint64_t, const std::string &source)
 {
-   impl = std::unique_ptr<Impl>(new Impl(symbol_table));
-   bool ret = impl->compile(source);
-   if (ret)
-   {
-      block = impl->block;
-      block_size = impl->block_size;
-   }
-   return ret;
+	bool ret = impl->compile(source);
+	if (ret)
+	{
+		block = impl->block;
+		block_size = impl->block_size;
+	}
+	return ret;
 }
 
 bool Block::Impl::compile(const std::string &source)
 {
-   static LLVMEngine llvm;
-
-   StringRef code_data(source);
-   auto buffer = llvm::MemoryBuffer::getMemBufferCopy(code_data);
-    llvm.invocation->getPreprocessorOpts().clearRemappedFiles();
-    llvm.invocation->getPreprocessorOpts().addRemappedFile("__block.c", buffer.release());
-
-   block = llvm.compile(symbol_table);
-   return block != nullptr;
+	block = engine.impl->compile(source);
+	return block != nullptr;
 }
-
 }
