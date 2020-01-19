@@ -36,6 +36,7 @@ void RSP_DEBUG(RSP::CPUState *rsp, const char *tag, unsigned pc, unsigned value)
 namespace RSP
 {
 CPU::CPU()
+    : jit_engine(symbol_table)
 {
    init_symbol_table();
 }
@@ -1238,7 +1239,7 @@ DECL_COP2(RESERVED);
    full_code += body;
    full_code += "}\n";
 
-   unique_ptr<Block> block(new Block(symbol_table));
+   unique_ptr<Block> block(new Block(jit_engine));
    if (!block->compile(hash, full_code))
       return nullptr;
 
@@ -1367,7 +1368,7 @@ void CPU::enter(uint32_t pc)
          //static unsigned count;
          //fprintf(stderr, "JIT region #%u\n", ++count);
          block = jit_region(hash, word_pc, end - word_pc);
-         fprintf(stdout, "jit compile");
+         //fprintf(stdout, "jit compile");
       }
    }
    //fprintf(stdout, "jit execute");
