@@ -18,9 +18,9 @@ public:
         // mask for m_tasks_done when all workers have finished their task
         // except for worker 0, which runs in the main thread
         if (m_num_workers == 64)
-            m_all_tasks_done = (~(0LL)) & ~1;
+            m_all_tasks_done = (~(0LL)) & ~(1LL);
         else
-            m_all_tasks_done = ((1LL << m_num_workers) - 1) & ~1;
+            m_all_tasks_done = ((1LL << m_num_workers) - 1) & ~(1LL);
 
         // give workers an empty task
         m_task = [](std::uint32_t) {};
@@ -143,7 +143,11 @@ void parallel_alinit(uint32_t num)
 {
     // auto-select number of workers based on the number of cores
     if (num == 0) {
-        num = std::thread::hardware_concurrency();
+        const char *env = getenv("ANGRYLION_NUM_THREADS");
+        if (env)
+            num = atoi(env);
+        else
+            num = std::thread::hardware_concurrency();
     }
 
     parallel = make_unique<Parallel>(num);
