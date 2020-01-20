@@ -17,7 +17,10 @@ public:
     {
         // mask for m_tasks_done when all workers have finished their task
         // except for worker 0, which runs in the main thread
-        m_all_tasks_done = ((1LL << m_num_workers) - 1) & ~1;
+        if (m_num_workers == 64)
+            m_all_tasks_done = (~(0LL)) & ~1;
+        else
+            m_all_tasks_done = ((1LL << m_num_workers) - 1) & ~1;
 
         // give workers an empty task
         m_task = [](std::uint32_t) {};
