@@ -91,10 +91,12 @@ namespace RSP
          alignas(64) uint32_t cached_imem[IMEM_WORDS]  = {};
 
          // Platform specific.
-#ifdef _WIN32
-         jmp_buf env;
+#ifdef __GNUC__
+         intptr_t env[64];
+         // We're reading this after setjmp returns so need to make sure the read happens when we expect it to.
+         volatile ReturnMode return_mode;
 #else
-         sigjmp_buf env;
+#error "Need __builtin_setjmp/longjmp support alternative for other compilers ..."
 #endif
 
 #define CALL_STACK_SIZE 32
