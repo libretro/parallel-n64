@@ -60,7 +60,7 @@ public:
         }
 
         // prepare task for workers and send signal so they start working
-        m_task = task;
+        m_task = std::move(task);
         start_work();
 
         // run worker 0 directly on main thread
