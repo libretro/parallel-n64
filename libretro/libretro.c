@@ -30,6 +30,10 @@
 #include "plugin/audio_libretro/audio_plugin.h"
 #include "../Graphics/plugin.h"
 
+#ifdef HAVE_THR_AL
+#include "../mupen64plus-video-angrylion/vdac.h"
+#endif
+
 #ifndef PRESCALE_WIDTH
 #define PRESCALE_WIDTH  640
 #endif
@@ -120,9 +124,6 @@ static bool     first_context_reset = false;
 static bool     pushed_frame        = false;
 
 bool frame_dupe                     = false;
-
-uint32_t *blitter_buf               = NULL;
-uint32_t *blitter_buf_lock          = NULL;
 
 uint32_t gfx_plugin_accuracy        = 2;
 static enum rsp_plugin_type
@@ -583,6 +584,10 @@ load_fail:
    return false;
 }
 
+#ifdef HAVE_THR_AL
+extern struct rgba prescale[PRESCALE_WIDTH * PRESCALE_HEIGHT];
+#endif
+
 bool emu_step_render(void)
 {
    if (flip_only)
@@ -591,7 +596,7 @@ bool emu_step_render(void)
       {
          case GFX_ANGRYLION:
 #ifdef HAVE_THR_AL
-            video_cb(blitter_buf_lock, screen_width, screen_height, screen_pitch);
+            video_cb(prescale, screen_width, screen_height, screen_pitch);
 #endif
             break;
 
@@ -606,7 +611,7 @@ bool emu_step_render(void)
 #if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
             video_cb(RETRO_HW_FRAME_BUFFER_VALID, screen_width, screen_height, 0);
 #else
-            video_cb((screen_pitch == 0) ? NULL : blitter_buf_lock, screen_width, screen_height, screen_pitch);
+            video_cb((screen_pitch == 0) ? NULL : prescale, screen_width, screen_height, screen_pitch);
 #endif
             break;
       }
@@ -952,11 +957,6 @@ void retro_init(void)
    environ_cb(RETRO_ENVIRONMENT_SET_SERIALIZATION_QUIRKS, &serialization_quirks);
    initializing = true;
 
-   blitter_buf = (uint32_t*)calloc(
-         PRESCALE_WIDTH * PRESCALE_HEIGHT, sizeof(uint32_t)
-         );
-   blitter_buf_lock = blitter_buf;
-
    /* hacky stuff for Glide64 */
    polygonOffsetUnits = -3.0f;
    polygonOffsetFactor =  -3.0f;
@@ -972,11 +972,6 @@ void retro_deinit(void)
 {
    mupen_main_stop();
    mupen_main_exit();
-
-   if (blitter_buf)
-      free(blitter_buf);
-   blitter_buf      = NULL;
-   blitter_buf_lock = NULL;
 
 #ifndef NO_LIBCO
    co_delete(game_thread);
@@ -1658,8 +1653,6 @@ static void glsm_enter(void)
 void retro_run (void)
 {
    static bool updated = false;
-
-   blitter_buf_lock = blitter_buf;
 
    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE_UPDATE, &updated) && updated)
    {

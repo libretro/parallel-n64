@@ -78,7 +78,7 @@ static uint32_t rseed[PARALLEL_MAX_WORKERS];
 static uint32_t zb_address;
 
 // prescale buffer
-static struct rgba prescale[PRESCALE_WIDTH * PRESCALE_HEIGHT];
+struct rgba prescale[PRESCALE_WIDTH * PRESCALE_HEIGHT];
 static uint32_t prescale_ptr;
 static int32_t linecount;
 

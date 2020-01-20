@@ -44,7 +44,6 @@ extern GFX_INFO gfx_info;
 extern "C" {
 #endif
 
-extern uint32_t *blitter_buf_lock;
 extern unsigned int screen_width, screen_height;
 extern uint32_t screen_pitch;
 
@@ -170,15 +169,12 @@ void vdac_read(struct frame_buffer* fb, bool alpha)
 }
 void vdac_write(struct frame_buffer* fb)
 {
- memcpy(blitter_buf_lock, fb->pixels, screen_width*screen_height * sizeof(uint32_t));
-    screen_width = fb->width;
-    screen_height = fb->height;
-    screen_pitch = fb->pitch * 4;
+   screen_width = fb->width;
+   screen_height = fb->height;
+   screen_pitch = fb->pitch * 4;
 }
 void vdac_sync(bool invalid)
 {
-     if(invalid)
-  memset(blitter_buf_lock,0,625*640*sizeof(uint32_t));
 }
 void vdac_close(void)
 {
