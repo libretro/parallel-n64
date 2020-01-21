@@ -448,10 +448,9 @@ ifeq ($(HAVE_THR_AL), 1)
 CFLAGS      += -DHAVE_THR_AL
 CXXFLAGS    += -DHAVE_THR_AL
 ### Angrylion's renderer ###
-SOURCES_CXX += \
-				  $(VIDEODIR_ANGRYLION)/interface.cpp \
-				  $(VIDEODIR_ANGRYLION)/parallel_al.cpp
-SOURCES_C +=  $(VIDEODIR_ANGRYLION)/n64video.c
+SOURCES_CXX += $(VIDEODIR_ANGRYLION)/parallel_al.cpp
+SOURCES_C   += $(VIDEODIR_ANGRYLION)/interface.c \
+				   $(VIDEODIR_ANGRYLION)/n64video.c
 endif
 
 ifeq ($(HAVE_PARALLEL),1)

@@ -8,10 +8,7 @@
 
 #include "m64p_plugin.h"
 
-#ifdef __cplusplus
-extern "C" {
 extern void DebugMessage(int level, const char *message, ...);
-#endif
 
 #include "Gfx #1.3.h"
 #include "common.h"
@@ -22,10 +19,6 @@ extern void DebugMessage(int level, const char *message, ...);
 
 int retro_return(bool just_flipping);
 
-#ifdef __cplusplus
-}
-#endif
-
 #define DP_INTERRUPT    0x20
 
 static bool angrylion_init = false;
@@ -33,10 +26,6 @@ static bool angrylion_init = false;
 int ProcessDListShown = 0;
 
 extern GFX_INFO gfx_info;
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 extern unsigned int screen_width, screen_height;
 extern uint32_t screen_pitch;
@@ -159,9 +148,9 @@ void vdac_close(void) { }
 void angrylion_set_vi(unsigned value)
 {
  
-   if(config.vi.mode != (vi_mode)value)
+   if(config.vi.mode != (enum vi_mode)value)
    {
-      config.vi.mode = (vi_mode)value;
+      config.vi.mode = (enum vi_mode)value;
       if (angrylion_init)
       {
           n64video_close();
@@ -201,15 +190,15 @@ void angrylion_set_overscan(unsigned value)
 
 void angrylion_set_synclevel(unsigned value)
 {
-if(config.dp.compat != (dp_compat_profile)value)
-{
-    config.dp.compat= (dp_compat_profile)value;
-    if (angrylion_init)
-    {
-        n64video_close();
-        n64video_init(&config);
-    }
-}
+   if(config.dp.compat != (enum dp_compat_profile)value)
+   {
+      config.dp.compat= (enum dp_compat_profile)value;
+      if (angrylion_init)
+      {
+         n64video_close();
+         n64video_init(&config);
+      }
+   }
 }
 
 unsigned angrylion_get_synclevel()
@@ -234,18 +223,19 @@ void angrylion_set_filtering(unsigned filter_type)
       filter_type=1;
    else
       filter_type=0;
-    if(config.vi.interp != (vi_interp)filter_type)
-    {
-       config.vi.interp = (vi_interp)filter_type;
-       if (angrylion_init)
-       {
-          n64video_close();
-          n64video_init(&config);
-       }
-    }
+
+   if(config.vi.interp != (enum vi_interp)filter_type)
+   {
+      config.vi.interp = (enum vi_interp)filter_type;
+      if (angrylion_init)
+      {
+         n64video_close();
+         n64video_init(&config);
+      }
+   }
 }
 
-unsigned angrylion_get_filtering()
+unsigned angrylion_get_filtering(void)
 {
     return  (unsigned)config.vi.interp;
 }
@@ -255,17 +245,11 @@ void angrylion_set_dithering(unsigned dither_type)
    config.dithering    = dither_type;
 }
 
-void angrylionChangeWindow (void)
-{
-}
+void angrylionChangeWindow (void) { }
 
-void angrylionReadScreen2(void *dest, int *width, int *height, int front)
-{
-}
+void angrylionReadScreen2(void *dest, int *width, int *height, int front) { }
  
-void angrylionDrawScreen (void)
-{
-}
+void angrylionDrawScreen (void) { }
 
 void angrylionGetDllInfo(PLUGIN_INFO* PluginInfo)
 {
@@ -278,9 +262,7 @@ void angrylionGetDllInfo(PLUGIN_INFO* PluginInfo)
     PluginInfo -> MemoryBswaped = true;
 }
 
-void angrylionSetRenderingCallback(void (*callback)(int))
-{
-}
+void angrylionSetRenderingCallback(void (*callback)(int)) { }
 
 int angrylionInitiateGFX (GFX_INFO Gfx_Info)
 {
@@ -288,10 +270,7 @@ int angrylionInitiateGFX (GFX_INFO Gfx_Info)
    return 0;
 }
  
-void angrylionMoveScreen (int xpos, int ypos)
-{
-}
-
+void angrylionMoveScreen (int xpos, int ypos) { }
  
 void angrylionProcessDList(void)
 {
@@ -330,18 +309,18 @@ int angrylionRomOpen(void)
 
    screen_pitch  = 640 << 2;
 
-  config.gfx.rdram = plugin_get_rdram();
-    config.gfx.rdram_size = plugin_get_rdram_size();
+  config.gfx.rdram       = plugin_get_rdram();
+  config.gfx.rdram_size  = plugin_get_rdram_size();
 
-    config.gfx.dmem = plugin_get_dmem();
-    config.gfx.mi_intr_reg = (uint32_t*)gfx_info.MI_INTR_REG;
-    config.gfx.mi_intr_cb = gfx_info.CheckInterrupts;
+  config.gfx.dmem        = plugin_get_dmem();
+  config.gfx.mi_intr_reg = (uint32_t*)gfx_info.MI_INTR_REG;
+  config.gfx.mi_intr_cb  = gfx_info.CheckInterrupts;
 
-    config.gfx.vi_reg = plugin_get_vi_registers();
-    config.gfx.dp_reg = plugin_get_dp_registers();
+  config.gfx.vi_reg      = plugin_get_vi_registers();
+  config.gfx.dp_reg      = plugin_get_dp_registers();
 
    n64video_init(&config);
-   angrylion_init = true;
+   angrylion_init        = true;
    return 1;
 }
 
@@ -359,29 +338,19 @@ void angrylionUpdateScreen(void)
 
 void angrylionShowCFB (void)
 {
-    angrylionUpdateScreen();
+   angrylionUpdateScreen();
 }
 
 
-void angrylionViStatusChanged (void)
-{
-}
+void angrylionViStatusChanged (void) { }
 
-void angrylionViWidthChanged (void)
-{
-}
+void angrylionViWidthChanged (void) { }
 
-void angrylionFBWrite(unsigned int addr, unsigned int size)
-{
-}
+void angrylionFBWrite(unsigned int addr, unsigned int size) { }
 
-void angrylionFBRead(unsigned int addr)
-{
-}
+void angrylionFBRead(unsigned int addr) { }
 
-void angrylionFBGetFrameBufferInfo(void *pinfo)
-{
-}
+void angrylionFBGetFrameBufferInfo(void *pinfo) { }
 
 m64p_error angrylionPluginGetVersion(m64p_plugin_type *PluginType, int *PluginVersion, int *APIVersion, const char **PluginNamePtr, int *Capabilities)
 {
@@ -440,7 +409,3 @@ void msg_debug(const char* err, ...)
 
    DebugMessage(M64MSG_INFO, "%s", buffer);
 }
-
-#ifdef __cplusplus
-}
-#endif

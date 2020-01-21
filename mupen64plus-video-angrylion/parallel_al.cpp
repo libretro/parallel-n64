@@ -158,12 +158,12 @@ void parallel_run(void task(uint32_t))
     parallel->run(task);
 }
 
-uint32_t parallel_num_workers()
+uint32_t parallel_num_workers(void)
 {
     return parallel->num_workers();
 }
 
-void parallel_close()
+void parallel_close(void)
 {
     parallel.reset();
 }
