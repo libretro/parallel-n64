@@ -17,49 +17,29 @@ static const uint8_t magic_matrix[16] =
 
 static STRICTINLINE void rgb_dither(int rgb_dither_sel, int* r, int* g, int* b, int dith)
 {
+   int32_t ditherdiff[3];
+   int32_t replacesign[3];
+   int32_t newcol[3];
+   int32_t comp[3];
 
-    int32_t newr = *r, newg = *g, newb = *b;
-    int32_t rcomp, gcomp, bcomp;
+   newcol[0]      = (*r > 247) ? 255 : ((*r & 0xf8) + 8);
+   newcol[1]      = (*g > 247) ? 255 : ((*g & 0xf8) + 8);
+   newcol[2]      = (*b > 247) ? 255 : ((*b & 0xf8) + 8);
 
+   comp[0]        = dith;
+   comp[1]        = (rgb_dither_sel != 2) ? dith : ((dith + 3) & 7);
+   comp[2]        = (rgb_dither_sel != 2) ? dith : ((dith + 5) & 7);
 
-    if (newr > 247)
-        newr = 255;
-    else
-        newr = (newr & 0xf8) + 8;
-    if (newg > 247)
-        newg = 255;
-    else
-        newg = (newg & 0xf8) + 8;
-    if (newb > 247)
-        newb = 255;
-    else
-        newb = (newb & 0xf8) + 8;
+   replacesign[0] = (comp[0] - (*r & 7)) >> 31;
+   replacesign[1] = (comp[1] - (*g & 7)) >> 31;
+   replacesign[2] = (comp[2] - (*b & 7)) >> 31;
+   ditherdiff[0]  = newcol[0] - *r;
+   ditherdiff[1]  = newcol[1] - *g;
+   ditherdiff[2]  = newcol[2] - *b;
 
-    if (rgb_dither_sel != 2)
-        rcomp = gcomp = bcomp = dith;
-    else
-    {
-        rcomp = dith & 7;
-        gcomp = (dith >> 3) & 7;
-        bcomp = (dith >> 6) & 7;
-    }
-
-
-
-
-
-    int32_t replacesign = (rcomp - (*r & 7)) >> 31;
-
-    int32_t ditherdiff = newr - *r;
-    *r = *r + (ditherdiff & replacesign);
-
-    replacesign = (gcomp - (*g & 7)) >> 31;
-    ditherdiff = newg - *g;
-    *g = *g + (ditherdiff & replacesign);
-
-    replacesign = (bcomp - (*b & 7)) >> 31;
-    ditherdiff = newb - *b;
-    *b = *b + (ditherdiff & replacesign);
+   *r            += (ditherdiff[0] & replacesign[0]);
+   *g            += (ditherdiff[1] & replacesign[1]);
+   *b            += (ditherdiff[2] & replacesign[2]);
 }
 
 static STRICTINLINE void get_dither_noise(uint32_t wid, int x, int y, int* cdith, int* adith)
