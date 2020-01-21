@@ -48,7 +48,6 @@ void allocate_register_manually(int reg, uint32_t *addr);
 void allocate_register_manually_w(int reg, uint32_t *addr, int load);
 
 void set_64_register_state(int reg1, int reg2, uint32_t *addr, int dirty);
-void force_32(int reg);
 #endif
 
 void simplify_access(void);
