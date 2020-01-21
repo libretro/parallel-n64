@@ -86,6 +86,7 @@ struct n64video_config
         enum dp_compat_profile compat;  // multithreading compatibility mode
     } dp;
     bool parallel;                  // use multithreaded renderer if true
+    bool dithering;                 // enable dithering
     uint32_t num_workers;           // number of rendering workers
 };
 

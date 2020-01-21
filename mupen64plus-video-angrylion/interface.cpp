@@ -30,7 +30,6 @@ int retro_return(bool just_flipping);
 #define DP_INTERRUPT    0x20
 
 static unsigned angrylion_filtering = 0;
-static unsigned angrylion_dithering = 1;
 static unsigned angrylion_vi = 0;
 static unsigned angrylion_threads = 0;
 static unsigned angrylion_overscan = 1;
@@ -291,12 +290,7 @@ unsigned angrylion_get_filtering()
 
 void angrylion_set_dithering(unsigned dither_type)
 {
-   angrylion_dithering = dither_type;
-}
-
-unsigned angrylion_get_dithering(void)
-{
-   return angrylion_dithering;
+   config.dithering    = dither_type;
 }
 
 void angrylionChangeWindow (void)
