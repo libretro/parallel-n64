@@ -1821,6 +1821,32 @@ static void render_spans_copy(uint32_t wid, int start, int end, int tilenum, int
     }
 }
 
+static void al_clip_x(int32_t xs, int32_t clipxlshift,
+int32_t clipxhshift, int *xsc, int *allover, int *allunder)
+{
+   int curover, curunder;
+   /* Quantize X bounds down to 1/8th pixel resolution.
+    * Apply scissor and clipping in X.
+    * Very finicky math follows, see Angrylion. */
+   int stickybit = (xs & 0x00003FFF) - 1;
+   stickybit = (uint32_t)~(stickybit) >> 31;
+   *xsc = (xs >> 13)&0x1FFE | stickybit;
+
+   /* Clip against left side. */
+   curunder = !!(xs & 0x08000000);
+   curunder = curunder | (uint32_t)(*xsc - clipxhshift)>>31;
+   *xsc = curunder ? clipxhshift : (xs >> 13) & 0x3FFE | stickybit;
+
+   /* Clip against right side. */
+   curover  = !!(*xsc & 0x00002000);
+   *xsc = *xsc & 0x1FFF;
+   curover |= (uint32_t)~(*xsc - clipxlshift) >> 31;
+   *xsc = curover ? clipxlshift : *xsc;
+
+   *allover  &= curover;
+   *allunder &= curunder;
+}
+
 static void edgewalker_for_prims(uint32_t wid, int32_t* ewdata)
 {
     int j = 0;
@@ -2058,7 +2084,7 @@ static void edgewalker_for_prims(uint32_t wid, int32_t* ewdata)
     int ldflag = (sign_dxhdy ^ flip) ? 0 : 3;
     int invaly = 1;
     int length = 0;
-    int32_t xrsc = 0, xlsc = 0, stickybit = 0;
+    int32_t xrsc = 0, xlsc = 0;
     int32_t yllimit = 0, yhlimit = 0;
     if (yl & 0x2000)
         yllimit = 1;
@@ -2121,28 +2147,13 @@ static void edgewalker_for_prims(uint32_t wid, int32_t* ewdata)
                 allinval = 1;
             }
 
-            stickybit = ((xright >> 1) & 0x1fff) > 0;
-            xrsc = ((xright >> 13) & 0x1ffe) | stickybit;
-
-
-            curunder = ((xright & 0x8000000) || (xrsc < clipxhshift && !(xright & 0x4000000)));
-
-            xrsc = curunder ? clipxhshift : (((xright >> 13) & 0x3ffe) | stickybit);
-            curover = ((xrsc & 0x2000) || (xrsc & 0x1fff) >= clipxlshift);
-            xrsc = curover ? clipxlshift : xrsc;
+            al_clip_x(xright, clipxlshift, clipxhshift,
+                  &xrsc, &allover, &allunder);
             state[wid].span[j].majorx[spix] = xrsc & 0x1fff;
-            allover &= curover;
-            allunder &= curunder;
 
-            stickybit = ((xleft >> 1) & 0x1fff) > 0;
-            xlsc = ((xleft >> 13) & 0x1ffe) | stickybit;
-            curunder = ((xleft & 0x8000000) || (xlsc < clipxhshift && !(xleft & 0x4000000)));
-            xlsc = curunder ? clipxhshift : (((xleft >> 13) & 0x3ffe) | stickybit);
-            curover = ((xlsc & 0x2000) || (xlsc & 0x1fff) >= clipxlshift);
-            xlsc = curover ? clipxlshift : xlsc;
+            al_clip_x(xleft, clipxlshift, clipxhshift,
+                  &xlsc, &allover, &allunder);
             state[wid].span[j].minorx[spix] = xlsc & 0x1fff;
-            allover &= curover;
-            allunder &= curunder;
 
 
 
@@ -2218,25 +2229,13 @@ static void edgewalker_for_prims(uint32_t wid, int32_t* ewdata)
                 allinval = 1;
             }
 
-            stickybit = ((xright >> 1) & 0x1fff) > 0;
-            xrsc = ((xright >> 13) & 0x1ffe) | stickybit;
-            curunder = ((xright & 0x8000000) || (xrsc < clipxhshift && !(xright & 0x4000000)));
-            xrsc = curunder ? clipxhshift : (((xright >> 13) & 0x3ffe) | stickybit);
-            curover = ((xrsc & 0x2000) || (xrsc & 0x1fff) >= clipxlshift);
-            xrsc = curover ? clipxlshift : xrsc;
+            al_clip_x(xright, clipxlshift, clipxhshift,
+                  &xrsc, &allover, &allunder);
             state[wid].span[j].majorx[spix] = xrsc & 0x1fff;
-            allover &= curover;
-            allunder &= curunder;
 
-            stickybit = ((xleft >> 1) & 0x1fff) > 0;
-            xlsc = ((xleft >> 13) & 0x1ffe) | stickybit;
-            curunder = ((xleft & 0x8000000) || (xlsc < clipxhshift && !(xleft & 0x4000000)));
-            xlsc = curunder ? clipxhshift : (((xleft >> 13) & 0x3ffe) | stickybit);
-            curover = ((xlsc & 0x2000) || (xlsc & 0x1fff) >= clipxlshift);
-            xlsc = curover ? clipxlshift : xlsc;
+            al_clip_x(xleft, clipxlshift, clipxhshift,
+                  &xlsc, &allover, &allunder);
             state[wid].span[j].minorx[spix] = xlsc & 0x1fff;
-            allover &= curover;
-            allunder &= curunder;
 
             curcross = ((xright ^ (1 << 27)) & (0x3fff << 14)) < ((xleft ^ (1 << 27)) & (0x3fff << 14));
 
