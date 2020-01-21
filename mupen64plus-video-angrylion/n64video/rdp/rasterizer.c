@@ -2514,20 +2514,20 @@ void rdp_fill_rect(uint32_t wid, const uint32_t* args)
     uint32_t xh = (args[1] >> 12) & 0xfff;
     uint32_t yh = (args[1] >>  0) & 0xfff;
 
-    if (state[wid].other_modes.cycle_type == CYCLE_TYPE_FILL || state[wid].other_modes.cycle_type == CYCLE_TYPE_COPY)
-        yl |= 3;
+    /* Convert qpel to 16.16 fixed point format */
+    xl <<= 14;
+    xh <<= 14;
 
-    uint32_t xlint = (xl >> 2) & 0x3ff;
-    uint32_t xhint = (xh >> 2) & 0x3ff;
+    yl |= (state[wid].other_modes.cycle_type & 2) ? 3 : 0; /* FILL or COPY */
 
     int32_t ewdata[CMD_MAX_INTS];
     ewdata[0] = (0x3680 << 16) | yl;
     ewdata[1] = (yl << 16) | yh;
-    ewdata[2] = (xlint << 16) | ((xl & 3) << 14);
+    ewdata[2] = (xl << 16) | xl;
     ewdata[3] = 0;
-    ewdata[4] = (xhint << 16) | ((xh & 3) << 14);
+    ewdata[4] = (xh << 16) | xh;
     ewdata[5] = 0;
-    ewdata[6] = (xlint << 16) | ((xl & 3) << 14);
+    ewdata[6] = (xl << 16) | xl;
     ewdata[7] = 0;
     memset(&ewdata[8], 0, 36 * sizeof(int32_t));
 
