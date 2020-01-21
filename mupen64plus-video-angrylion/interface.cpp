@@ -144,36 +144,17 @@ uint32_t plugin_get_rom_name(char* name, uint32_t name_size)
     return i;
 }
 
-void vdac_init(struct n64video_config* config)
-{
-
-}
-void vdac_read(struct frame_buffer* fb, bool alpha)
-{
-
-}
+void vdac_init(struct n64video_config* config) { }
+void vdac_read(struct frame_buffer* fb, bool alpha) { }
 void vdac_write(struct frame_buffer* fb)
 {
    screen_width = fb->width;
    screen_height = fb->height;
    screen_pitch = fb->pitch * 4;
 }
-void vdac_sync(bool invalid)
-{
-}
-void vdac_close(void)
-{
 
-}
-
-bool screen_get_fullscreen(void)
-{
-   return false;
-}
-
-void screen_close(void)
-{}
-
+void vdac_sync(bool invalid) { }
+void vdac_close(void) { }
 
 void angrylion_set_vi(unsigned value)
 {
@@ -236,17 +217,16 @@ unsigned angrylion_get_synclevel()
     return config.dp.compat;
 }
 
-unsigned angrylion_get_threads()
+unsigned angrylion_get_threads(void)
 {
-    return  config.num_workers;
+   return  config.num_workers;
 }
 
 
-unsigned angrylion_get_vi()
+unsigned angrylion_get_vi(void)
 {
-    return config.vi.mode;
+   return config.vi.mode;
 }
-
 
 void angrylion_set_filtering(unsigned filter_type)
 {
@@ -307,7 +287,6 @@ int angrylionInitiateGFX (GFX_INFO Gfx_Info)
    n64video_config_init(&config);
    return 0;
 }
-
  
 void angrylionMoveScreen (int xpos, int ypos)
 {
