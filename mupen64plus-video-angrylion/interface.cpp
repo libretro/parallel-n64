@@ -15,7 +15,6 @@ extern void DebugMessage(int level, const char *message, ...);
 
 #include "Gfx #1.3.h"
 #include "common.h"
-#include "screen.h"
 #include "n64video.h"
 #include "m64p_types.h"
 #include "m64p_config.h"
@@ -29,10 +28,6 @@ int retro_return(bool just_flipping);
 
 #define DP_INTERRUPT    0x20
 
-static unsigned angrylion_filtering = 0;
-static unsigned angrylion_vi = 0;
-static unsigned angrylion_threads = 0;
-static unsigned angrylion_overscan = 1;
 static bool angrylion_init = false;
 
 int ProcessDListShown = 0;
@@ -47,10 +42,6 @@ extern unsigned int screen_width, screen_height;
 extern uint32_t screen_pitch;
 
 struct n64video_config config;
-
-#include <ctype.h>
-
-
 
 void plugin_init(void)
 {
@@ -153,11 +144,6 @@ uint32_t plugin_get_rom_name(char* name, uint32_t name_size)
     return i;
 }
 
-void screen_init(struct n64video_config* config)
-{
-
-}
-
 void vdac_init(struct n64video_config* config)
 {
 
@@ -179,9 +165,6 @@ void vdac_close(void)
 {
 
 }
-
-void screen_set_fullscreen(bool _fullscreen)
-{}
 
 bool screen_get_fullscreen(void)
 {
@@ -223,17 +206,15 @@ void angrylion_set_threads(unsigned value)
 
 void angrylion_set_overscan(unsigned value)
 {
-  
-    if(config.vi.hide_overscan != (bool)value)
-    
-    {
-    config.vi.hide_overscan = (bool)value;
-    if (angrylion_init)
-    {
-        n64video_close();
-        n64video_init(&config);
-    }
-    }
+   if(config.vi.hide_overscan != (bool)value)
+   {
+      config.vi.hide_overscan = (bool)value;
+      if (angrylion_init)
+      {
+         n64video_close();
+         n64video_init(&config);
+      }
+   }
     
 }
 
@@ -269,17 +250,18 @@ unsigned angrylion_get_vi()
 
 void angrylion_set_filtering(unsigned filter_type)
 {
-    if(filter_type!=2)filter_type=1;
-    else
-    filter_type=0;
+   if (filter_type != 2)
+      filter_type=1;
+   else
+      filter_type=0;
     if(config.vi.interp != (vi_interp)filter_type)
     {
-    config.vi.interp = (vi_interp)filter_type;
-    if (angrylion_init)
-    {
-        n64video_close();
-        n64video_init(&config);
-    }
+       config.vi.interp = (vi_interp)filter_type;
+       if (angrylion_init)
+       {
+          n64video_close();
+          n64video_init(&config);
+       }
     }
 }
 
@@ -378,8 +360,6 @@ int angrylionRomOpen(void)
 
     config.gfx.vi_reg = plugin_get_vi_registers();
     config.gfx.dp_reg = plugin_get_dp_registers();
-
-
 
    n64video_init(&config);
    angrylion_init = true;
