@@ -1057,39 +1057,6 @@ void set_64_register_state(int reg1, int reg2, uint32_t *addr, int d)
    dirty[reg2] = d;
 }
 
-void force_32(int reg)
-{
-   if (r64[reg] != -1)
-   {
-      struct precomp_instr *last = last_access[reg]+1;
-
-      while (last <= dst)
-      {
-         if (dirty[reg])
-            last->reg_cache_infos.needed_registers[reg] = reg_content[reg];
-         else
-            last->reg_cache_infos.needed_registers[reg] = NULL;
-
-         if (dirty[r64[reg]])
-            last->reg_cache_infos.needed_registers[r64[reg]] = reg_content[r64[reg]];
-         else
-            last->reg_cache_infos.needed_registers[r64[reg]] = NULL;
-
-         last++;
-      }
-
-      if (dirty[reg]) 
-      {
-         mov_m32_reg32(reg_content[reg], reg);
-         mov_m32_reg32(reg_content[r64[reg]], r64[reg]);
-         dirty[reg] = 0;
-      }
-      last_access[r64[reg]] = NULL;
-      free_since[r64[reg]] = dst+1;
-      r64[reg] = -1;
-   }
-}
-
 void allocate_register_manually(int reg, uint32_t *addr)
 {
    int i;

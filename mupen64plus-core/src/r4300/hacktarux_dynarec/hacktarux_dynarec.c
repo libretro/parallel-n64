@@ -4196,7 +4196,6 @@ void gendsllv(void)
    else
    {
       int temp1, temp2;
-      force_32(ECX);
       temp1 = lru_register();
       temp2 = lru_register_exc1(temp1);
       free_register(temp1);
@@ -4268,7 +4267,6 @@ void gendsrlv(void)
    else
    {
       int temp1, temp2;
-      force_32(ECX);
       temp1 = lru_register();
       temp2 = lru_register_exc1(temp1);
       free_register(temp1);
@@ -4340,7 +4338,6 @@ void gendsrav(void)
    else
    {
       int temp1, temp2;
-      force_32(ECX);
       temp1 = lru_register();
       temp2 = lru_register_exc1(temp1);
       free_register(temp1);

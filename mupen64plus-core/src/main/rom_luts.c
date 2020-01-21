@@ -507,12 +507,6 @@ static const uint64_t lut_cpop[][2] = {
    { 0xA150743ECF2522CDULL, 1 }, /* Toy Story 2 (U) [!] */
    { 0xFE4B6B43081D29A7ULL, 1 }, /* Triple Play 2000 (U) [!] */
    { 0x28D5562DE4D5AE50ULL, 1 }, /* Uchhannanchan no Hono no Challenger - Denryu IraIra Bou (J) [!] */
-   { 0x151F79F48EEDC8E5ULL, 1 }, /* Vigilante 8 (E) [!] */
-   { 0xE2BC82A2591CD694ULL, 1 }, /* Vigilante 8 (F) [!] */
-   { 0x6EDA5178D396FEC1ULL, 1 }, /* Vigilante 8 (G) [!] */
-   { 0xEA71056AE4214847ULL, 1 }, /* Vigilante 8 (U) [!] */
-   { 0xDD10BC7EF900B351ULL, 1 }, /* Vigilante 8 - 2nd Offence (E) [!] */
-   { 0xF5C5866D052713D9ULL, 1 }, /* Vigilante 8 - 2nd Offense (U) [!] */
    { 0x98F9F2D003D9F09CULL, 1 }, /* Virtual Pool 64 (E) [!] */
    { 0x4E4A7643A37439D7ULL, 1 }, /* Virtual Pool 64 (U) [!] */
    { 0x2F57C9F7F1E29CA6ULL, 1 }, /* Vivid Dolls (J) [ALECK64] */
