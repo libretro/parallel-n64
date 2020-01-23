@@ -15,6 +15,7 @@ enum rdp_dump_cmd
 	RDP_DUMP_CMD_END_FRAME = 4,
 	RDP_DUMP_CMD_SIGNAL_COMPLETE = 5,
 	RDP_DUMP_CMD_EOF = 6,
+	RDP_DUMP_CMD_UPDATE_DRAM_FLUSH = 7,
 	RDP_DUMP_CMD_INT_MAX = 0x7fffffff
 };
 
@@ -86,6 +87,9 @@ void rdp_dump_flush_dram(const void *dram_, uint32_t size)
 			memcpy(rdp_dram_cache + i, dram + i, block_size);
 		}
 	}
+
+	uint32_t cmd = RDP_DUMP_CMD_UPDATE_DRAM_FLUSH;
+	fwrite(&cmd, sizeof(cmd), 1, rdp_file);
 }
 
 void rdp_dump_signal_complete(void)
@@ -116,5 +120,6 @@ void rdp_dump_set_vi_register(uint32_t vi_register, uint32_t value)
 
 	uint32_t cmd = RDP_DUMP_CMD_SET_VI_REGISTER;
 	fwrite(&cmd, sizeof(cmd), 1, rdp_file);
+	fwrite(&vi_register, sizeof(vi_register), 1, rdp_file);
 	fwrite(&value, sizeof(value), 1, rdp_file);
 }
