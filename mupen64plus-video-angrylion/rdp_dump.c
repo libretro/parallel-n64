@@ -16,10 +16,12 @@ enum rdp_dump_cmd
 	RDP_DUMP_CMD_SIGNAL_COMPLETE = 5,
 	RDP_DUMP_CMD_EOF = 6,
 	RDP_DUMP_CMD_UPDATE_DRAM_FLUSH = 7,
+	RDP_DUMP_CMD_UPDATE_HIDDEN_DRAM = 8,
+	RDP_DUMP_CMD_UPDATE_HIDDEN_DRAM_FLUSH = 9,
 	RDP_DUMP_CMD_INT_MAX = 0x7fffffff
 };
 
-bool rdp_dump_init(const char *path, uint32_t dram_size)
+bool rdp_dump_init(const char *path, uint32_t dram_size, uint32_t hidden_dram_size)
 {
 	if (rdp_file)
 		return false;
@@ -39,6 +41,7 @@ bool rdp_dump_init(const char *path, uint32_t dram_size)
 
 	fwrite("RDPDUMP2", 8, 1, rdp_file);
 	fwrite(&dram_size, sizeof(dram_size), 1, rdp_file);
+	fwrite(&hidden_dram_size, sizeof(hidden_dram_size), 1, rdp_file);
 	return true;
 }
 
@@ -66,7 +69,8 @@ void rdp_dump_end(void)
 	rdp_dram_cache = NULL;
 }
 
-void rdp_dump_flush_dram(const void *dram_, uint32_t size)
+static void rdp_dump_flush(const void *dram_, uint32_t size,
+		enum rdp_dump_cmd block_cmd, enum rdp_dump_cmd flush_cmd)
 {
 	if (!rdp_file)
 		return;
@@ -79,7 +83,7 @@ void rdp_dump_flush_dram(const void *dram_, uint32_t size)
 	{
 		if (memcmp(dram + i, rdp_dram_cache + i, block_size))
 		{
-			uint32_t cmd = RDP_DUMP_CMD_UPDATE_DRAM;
+			uint32_t cmd = block_cmd;
 			fwrite(&cmd, sizeof(cmd), 1, rdp_file);
 			fwrite(&i, sizeof(i), 1, rdp_file);
 			fwrite(&block_size, sizeof(block_size), 1, rdp_file);
@@ -88,8 +92,19 @@ void rdp_dump_flush_dram(const void *dram_, uint32_t size)
 		}
 	}
 
-	uint32_t cmd = RDP_DUMP_CMD_UPDATE_DRAM_FLUSH;
+	uint32_t cmd = flush_cmd;
 	fwrite(&cmd, sizeof(cmd), 1, rdp_file);
+
+}
+
+void rdp_dump_flush_dram(const void *dram_, uint32_t size)
+{
+	rdp_dump_flush(dram_, size, RDP_DUMP_CMD_UPDATE_DRAM, RDP_DUMP_CMD_UPDATE_DRAM_FLUSH);
+}
+
+void rdp_dump_flush_hidden_dram(const void *dram_, uint32_t size)
+{
+	rdp_dump_flush(dram_, size, RDP_DUMP_CMD_UPDATE_HIDDEN_DRAM, RDP_DUMP_CMD_UPDATE_HIDDEN_DRAM_FLUSH);
 }
 
 void rdp_dump_signal_complete(void)

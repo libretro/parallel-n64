@@ -197,7 +197,7 @@ void n64video_init(struct n64video_config* _config)
     const char *rdp_dump_path = getenv("RDP_DUMP");
     if (rdp_dump_path)
     {
-        rdp_dump_init(rdp_dump_path, config.gfx.rdram_size);
+        rdp_dump_init(rdp_dump_path, config.gfx.rdram_size, sizeof(rdram_hidden));
         // Force no MT when dumping for sanity.
         config.parallel = false;
     }
@@ -291,6 +291,7 @@ void n64video_process_list(void)
             if (!rdp_dump_in_command_list)
             {
                 rdp_dump_flush_dram(config.gfx.rdram, config.gfx.rdram_size);
+                rdp_dump_flush_hidden_dram(rdram_hidden, sizeof(rdram_hidden));
                 rdp_dump_in_command_list = true;
             }
 

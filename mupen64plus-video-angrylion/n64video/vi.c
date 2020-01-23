@@ -631,6 +631,8 @@ void n64video_update_screen(void)
     vi_reg_ptr = config.gfx.vi_reg;
 
 #ifdef HAVE_RDP_DUMP
+    rdp_dump_flush_dram(config.gfx.rdram, config.gfx.rdram_size);
+    rdp_dump_flush_hidden_dram(rdram_hidden, sizeof(rdram_hidden));
     for (unsigned i = 0; i < VI_NUM_REG; i++)
         rdp_dump_set_vi_register(i, *vi_reg_ptr[i]);
     rdp_dump_end_frame();
