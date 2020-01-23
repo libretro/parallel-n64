@@ -113,6 +113,7 @@ ifneq (,$(findstring unix,$(platform)))
    fpic = -fPIC
 
 	HAVE_THR_AL=1
+	LDFLAGS += -lpthread
 
 #ifeq ($(WITH_DYNAREC), $(filter $(WITH_DYNAREC), x86_64 x64))
 #ifeq ($(HAVE_PARALLEL), 1)
