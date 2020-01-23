@@ -1,5 +1,7 @@
 #include "parallel_al.h"
 
+#include <stdlib.h>
+
 #include <atomic>
 #include <algorithm>
 #include <condition_variable>
