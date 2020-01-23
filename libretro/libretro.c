@@ -382,7 +382,7 @@ static void setup_variables(void)
        "(Glide64) Polygon Offset Units; -3.0|-2.5|-2.0|-1.5|-1.0|-0.5|0.0|0.5|1.0|1.5|2.0|2.5|3.0|3.5|4.0|4.5|5.0|-3.5|-4.0|-4.5|-5.0"
       },
       { "parallel-n64-angrylion-vioverlay",
-       "(Angrylion) VI Overlay; Filtered|Unfiltered|Depth|Coverage"
+       "(Angrylion) VI Overlay; Filtered|AA+Blur|AA+Dedither|AA only|Unfiltered|Depth|Coverage"
       },
       { "parallel-n64-angrylion-sync",
        "(Angrylion) Thread sync level; Medium|High|Low"
@@ -997,6 +997,8 @@ extern void  angrylion_set_threads(unsigned value);
 extern void parallel_set_dithering(unsigned value);
 extern void  angrylion_set_threads(unsigned value);
 extern void  angrylion_set_overscan(unsigned value);
+extern void  angrylion_set_vi_dedither(unsigned value);
+extern void  angrylion_set_vi_blur(unsigned value);
 
 extern void angrylion_set_synclevel(unsigned value);
 extern void ChangeSize();
@@ -1186,16 +1188,54 @@ void update_variables(bool startup)
    if (var.value)
    {
       if(!strcmp(var.value, "Filtered"))
+      {
          angrylion_set_vi(0);
+         angrylion_set_vi_dedither(1);
+         angrylion_set_vi_blur(1);
+      }
+      else if(!strcmp(var.value, "AA+Blur"))
+      {
+         angrylion_set_vi(0);
+         angrylion_set_vi_dedither(0);
+         angrylion_set_vi_blur(1);
+      }
+      else if(!strcmp(var.value, "AA+Dedither"))
+      {
+         angrylion_set_vi(0);
+         angrylion_set_vi_dedither(1);
+         angrylion_set_vi_blur(0);
+      }
+      else if(!strcmp(var.value, "AA only"))
+      {
+         angrylion_set_vi(0);
+         angrylion_set_vi_dedither(0);
+         angrylion_set_vi_blur(0);
+      }
       else if(!strcmp(var.value, "Unfiltered"))
+      {
          angrylion_set_vi(1);
+         angrylion_set_vi_dedither(1);
+         angrylion_set_vi_blur(1);
+      }
       else if(!strcmp(var.value, "Depth"))
+      {
          angrylion_set_vi(2);
+         angrylion_set_vi_dedither(1);
+         angrylion_set_vi_blur(1);
+      }
       else if(!strcmp(var.value, "Coverage"))
+      {
          angrylion_set_vi(3);
+         angrylion_set_vi_dedither(1);
+         angrylion_set_vi_blur(1);
+      }
    }
    else
+   {
       angrylion_set_vi(0);
+      angrylion_set_vi_dedither(1);
+      angrylion_set_vi_blur(1);
+   }
 
    var.key = "parallel-n64-angrylion-sync";
    var.value = NULL;

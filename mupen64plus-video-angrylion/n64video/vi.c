@@ -656,7 +656,7 @@ void n64video_update_screen(void)
     ctrl.type = vi_control & 3;
     ctrl.gamma_dither_enable = (vi_control >> 2) & 1;
     ctrl.gamma_enable = (vi_control >> 3) & 1;
-    ctrl.divot_enable = (vi_control >> 4) & 1;
+    ctrl.divot_enable = (vi_control >> 4) & config.vi.vi_blur;
     ctrl.vbus_clock_enable = (vi_control >> 5) & 1;
     ctrl.serrate = (vi_control >> 6) & 1;
     ctrl.test_mode = (vi_control >> 7) & 1;
@@ -664,7 +664,7 @@ void n64video_update_screen(void)
     ctrl.reserved = (vi_control >> 9) & 1;
     ctrl.kill_we = (vi_control >> 10) & 1;
     ctrl.pixel_advance = (vi_control >> 12) & 0xf;
-    ctrl.dither_filter_enable = (vi_control >> 16) & 1;
+    ctrl.dither_filter_enable = (vi_control >> 16) & config.vi.vi_dedither;
 
     // check for unexpected VI type bits set
     if (ctrl.type & ~3) {
