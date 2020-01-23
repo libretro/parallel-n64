@@ -188,6 +188,34 @@ void angrylion_set_overscan(unsigned value)
     
 }
 
+void angrylion_set_vi_dedither(unsigned value)
+{
+   if(config.vi.vi_dedither != (bool)value)
+   {
+      config.vi.vi_dedither = (bool)value;
+      if (angrylion_init)
+      {
+         n64video_close();
+         n64video_init(&config);
+      }
+   }
+    
+}
+
+void angrylion_set_vi_blur(unsigned value)
+{
+   if(config.vi.vi_blur != (bool)value)
+   {
+      config.vi.vi_blur = (bool)value;
+      if (angrylion_init)
+      {
+         n64video_close();
+         n64video_init(&config);
+      }
+   }
+    
+}
+
 void angrylion_set_synclevel(unsigned value)
 {
    if(config.dp.compat != (enum dp_compat_profile)value)
