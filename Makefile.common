@@ -451,6 +451,11 @@ CXXFLAGS    += -DHAVE_THR_AL
 SOURCES_CXX += $(VIDEODIR_ANGRYLION)/parallel_al.cpp
 SOURCES_C   += $(VIDEODIR_ANGRYLION)/interface.c \
 				   $(VIDEODIR_ANGRYLION)/n64video.c
+ifeq ($(HAVE_RDP_DUMP), 1)
+	SOURCES_C += $(VIDEODIR_ANGRYLION)/rdp_dump.c
+	CFLAGS   += -DHAVE_RDP_DUMP
+	CXXFLAGS += -DHAVE_RDP_DUMP
+endif
 endif
 
 ifeq ($(HAVE_PARALLEL),1)
@@ -467,12 +472,6 @@ CXXFLAGS += -DHAVE_PARALLEL
 					$(VIDEODIR_PARALLEL)/rdp/tmem.cpp \
 					$(VIDEODIR_PARALLEL)/rdp/rdp.cpp \
 					$(VIDEODIR_PARALLEL)/rdp/vulkan_symbol_wrapper.cpp
-
-ifeq ($(HAVE_RDP_DUMP), 1)
-	SOURCES_C += $(VIDEODIR_PARALLEL)/rdp_dump.c
-	CFLAGS   += -DHAVE_RDP_DUMP
-	CXXFLAGS += -DHAVE_RDP_DUMP
-endif
 
 ifneq ($(findstring Haiku,$(shell uname -s)),)
 	LDFLAGS += -lroot

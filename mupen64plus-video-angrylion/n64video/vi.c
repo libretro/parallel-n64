@@ -14,6 +14,10 @@
 #define PRESCALE_WIDTH H_RES_NTSC
 #define PRESCALE_HEIGHT V_SYNC_PAL
 
+#ifdef HAVE_RDP_SYNC
+#include "../rdp_dump.h"
+#endif
+
 enum vi_type
 {
     VI_TYPE_BLANK,      // no data, no sync
@@ -625,6 +629,12 @@ void n64video_update_screen(void)
 
     // parse and check some common registers
     vi_reg_ptr = config.gfx.vi_reg;
+
+#ifdef HAVE_RDP_DUMP
+    for (unsigned i = 0; i < VI_NUM_REG; i++)
+        rdp_dump_set_vi_register(i, *vi_reg_ptr[i]);
+    rdp_dump_end_frame();
+#endif
 
     v_start = (*vi_reg_ptr[VI_V_START] >> 16) & 0x3ff;
     h_start = (*vi_reg_ptr[VI_H_START] >> 16) & 0x3ff;
