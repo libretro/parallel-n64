@@ -591,10 +591,12 @@ static bool vi_process_fast(void)
     int32_t filtered_width = maxhpass - minhpass;
     int32_t filtered_height = (vres << 1) * V_SYNC_NTSC / v_sync;
 
+/*  TOFIX it's cropping the right side atm, bypass to show the full width instead
     // re-calculate cropped 8 pixel area on the left and right from filtered mode
     int32_t border_width = (hres - filtered_width) * hres_raw / hres;
     fb.pixels += (border_width / 2) + 1;
     fb.width -= border_width;
+*/
 
     // force aspect ratio of filtered mode
     fb.height_out = fb.width * filtered_height / filtered_width;
