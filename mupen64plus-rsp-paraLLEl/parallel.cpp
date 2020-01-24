@@ -11,6 +11,8 @@ namespace RSP
 {
    RSP_INFO rsp;
    CPU cpu;
+   short MFC0_count[32];
+   int SP_STATUS_TIMEOUT;
 }
 
 extern "C" {
@@ -49,6 +51,9 @@ EXPORT unsigned int CALL parallelRSPDoRspCycles(unsigned int cycles)
    log_rsp_mem_parallel();
 #endif
 
+   for (auto &count : RSP::MFC0_count)
+	  count = 0;
+
    while (!(*RSP::rsp.SP_STATUS_REG & SP_STATUS_HALT))
    {
       auto mode = RSP::cpu.run();
@@ -56,18 +61,20 @@ EXPORT unsigned int CALL parallelRSPDoRspCycles(unsigned int cycles)
          break;
    }
 
-   *RSP::rsp.SP_PC_REG = 0x04001000 | RSP::cpu.get_state().pc;
-   if (*RSP::cpu.get_state().cp0.irq & 1)
-   {
-#ifdef INTENSE_DEBUG
-      fprintf(stderr, "CHECK IRQ\n");
-#endif
-      RSP::rsp.CheckInterrupts();
-   }
+   *RSP::rsp.SP_PC_REG = 0x04001000 | (RSP::cpu.get_state().pc & 0xffc);
 
-   // Clear halt flag unless we broke, is this right?
-   if (!(*RSP::rsp.SP_STATUS_REG & SP_STATUS_BROKE))
-      *RSP::rsp.SP_STATUS_REG &= ~SP_STATUS_HALT;
+   // From CXD4.
+   if (*RSP::rsp.SP_STATUS_REG & SP_STATUS_BROKE)
+	  return cycles;
+   else if (*RSP::cpu.get_state().cp0.irq & 1)
+	  RSP::rsp.CheckInterrupts();
+   else if (*RSP::rsp.SP_SEMAPHORE_REG != 0) // Semaphore lock fixes.
+	  {}
+   else
+	  RSP::SP_STATUS_TIMEOUT = 16; // From now on, wait 16 times, not 0x7fff
+
+   // CPU restarts with the correct SIGs.
+   *RSP::rsp.SP_STATUS_REG &= ~SP_STATUS_HALT;
 
    return cycles;
 }
@@ -126,6 +133,9 @@ EXPORT void CALL parallelRSPInitiateRSP(RSP_INFO Rsp_Info, unsigned int *CycleCo
 
    *cr[RSP::CP0_REGISTER_SP_STATUS] = SP_STATUS_HALT;
    RSP::cpu.get_state().cp0.irq = RSP::rsp.MI_INTR_REG;
+
+   // From CXD4.
+   RSP::SP_STATUS_TIMEOUT = 0x7fff;
 
    RSP::cpu.set_dmem(reinterpret_cast<uint32_t*>(Rsp_Info.DMEM));
    RSP::cpu.set_imem(reinterpret_cast<uint32_t*>(Rsp_Info.IMEM));

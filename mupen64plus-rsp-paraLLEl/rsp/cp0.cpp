@@ -7,6 +7,8 @@
 namespace RSP
 {
    extern RSP_INFO rsp;
+   extern short MFC0_count[32];
+   extern int SP_STATUS_TIMEOUT;
 }
 #endif
 
@@ -20,9 +22,25 @@ void log_rsp_mem_parallel(void);
 
 int RSP_MFC0(RSP::CPUState *rsp, unsigned rt, unsigned rd)
 {
-   uint32_t res = *rsp->cp0.cr[rd & 15];
+   rd &= 15;
+   uint32_t res = *rsp->cp0.cr[rd];
    if (rt)
       rsp->sr[rt] = res;
+
+   // CFG_MEND_SEMAPHORE_LOCK == 0 by default,
+   // so don't bother implementing semaphores.
+   // It makes Mario Golf run terribly for some reason.
+
+   // WAIT_FOR_CPU_HOST. From CXD4.
+   if (rd == CP0_REGISTER_SP_STATUS)
+   {
+      RSP::MFC0_count[rt] += 1;
+      if (RSP::MFC0_count[rt] >= RSP::SP_STATUS_TIMEOUT)
+      {
+         *RSP::rsp.SP_STATUS_REG |= SP_STATUS_HALT;
+         return MODE_CHECK_FLAGS;
+      }
+   }
 
    //if (rd == 4) // SP_STATUS_REG
    //   fprintf(stderr, "READING STATUS REG!\n");
