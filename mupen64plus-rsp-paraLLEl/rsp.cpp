@@ -36,7 +36,9 @@ void RSP_DEBUG(RSP::CPUState *rsp, const char *tag, unsigned pc, unsigned value)
 namespace RSP
 {
 CPU::CPU()
+#ifndef DEBUG_JIT
     : jit_engine(symbol_table)
+#endif
 {
    init_symbol_table();
 }
@@ -1067,8 +1069,8 @@ struct cpu_state
    unsigned *dmem;
    unsigned *imem;
 };
-#define UNLIKELY(x) __builtin_expect(!!x, 0)
-#define LIKELY(x) __builtin_expect(!!x, 1)
+#define UNLIKELY(x) __builtin_expect(!!(x), 0)
+#define LIKELY(x) __builtin_expect(!!(x), 1)
 #define MASK_SA(x) ((x) & 31)
 
 enum ReturnMode {
@@ -1239,7 +1241,11 @@ DECL_COP2(RESERVED);
    full_code += body;
    full_code += "}\n";
 
+#ifdef DEBUG_JIT
+   unique_ptr<Block> block(new Block(symbol_table));
+#else
    unique_ptr<Block> block(new Block(jit_engine));
+#endif
    if (!block->compile(hash, full_code))
       return nullptr;
 
