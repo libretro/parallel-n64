@@ -484,6 +484,11 @@ endif
 ifeq ($(HAVE_PARALLEL_RSP), 1)
 ### Tiny Tiger's LLE RSP JIT ###
    PARALLEL_RSP_ARCH := x86_64
+
+ifeq ($(WANT_LLVM_OVERRIDE), 1)
+	INCFLAGS += -I/usr/lib/llvm-$(LLVM_VERSION)/include
+endif
+
    SOURCES_CXX += \
 				$(RSPDIR_PARALLEL)/parallel.cpp \
 				$(RSPDIR_PARALLEL)/rsp.cpp \
@@ -522,7 +527,11 @@ LDFLAGS += -lclangFrontendTool \
 	   -lclangAST \
 	   -lclangLex \
 	   -lclangBasic
+ifeq ($(WANT_LLVM_OVERRIDE), 1)
+LDFLAGS += $(shell llvm-config-$(LLVM_VERSION) --ldflags --libs --system-libs)
+else
 LDFLAGS += $(shell llvm-config --ldflags --libs --system-libs)
+endif
 
 endif
 
