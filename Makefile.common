@@ -528,7 +528,7 @@ LDFLAGS += -lclangFrontendTool \
 	   -lclangLex \
 	   -lclangBasic
 ifeq ($(WANT_LLVM_OVERRIDE), 1)
-LDFLAGS += $(shell llvm-config-$(LLVM_VERSION) --ldflags --libs --system-libs)
+LDFLAGS += $(shell llvm-config-$(LLVM_VERSION) --ldflags --libs --link-static --system-libs)
 else
 LDFLAGS += $(shell llvm-config --ldflags --libs --link-static --system-libs)
 endif
