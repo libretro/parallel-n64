@@ -385,7 +385,7 @@ static void setup_variables(void)
        "(Angrylion) VI Overlay; Filtered|AA+Blur|AA+Dedither|AA only|Unfiltered|Depth|Coverage"
       },
       { "parallel-n64-angrylion-sync",
-       "(Angrylion) Thread sync level; Medium|High|Low"
+       "(Angrylion) Thread sync level; Low|Medium|High"
       },
        { "parallel-n64-angrylion-multithread",
          "(Angrylion) Multi-threading; enabled|disabled" },
