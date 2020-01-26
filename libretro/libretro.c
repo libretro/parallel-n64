@@ -1252,7 +1252,7 @@ void update_variables(bool startup)
          angrylion_set_synclevel(0);
    }
    else
-      angrylion_set_synclevel(1);
+      angrylion_set_synclevel(0);
 
    var.key = "parallel-n64-angrylion-multithread";
    var.value = NULL;
