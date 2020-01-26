@@ -5,6 +5,7 @@
 
 static FILE *rdp_file;
 static uint8_t *rdp_dram_cache;
+static uint8_t *rdp_hidden_dram_cache;
 
 enum rdp_dump_cmd
 {
@@ -30,12 +31,21 @@ bool rdp_dump_init(const char *path, uint32_t dram_size, uint32_t hidden_dram_si
 	rdp_dram_cache = calloc(1, dram_size);
 	if (!rdp_dram_cache)
 		return false;
+	rdp_hidden_dram_cache = calloc(1, hidden_dram_size);
+	if (!rdp_hidden_dram_cache)
+	{
+		free(rdp_dram_cache);
+		rdp_dram_cache = NULL;
+		return false;
+	}
 
 	rdp_file = fopen(path, "wb");
 	if (!rdp_file)
 	{
 		free(rdp_dram_cache);
+		free(rdp_hidden_dram_cache);
 		rdp_dram_cache = NULL;
+		rdp_hidden_dram_cache = NULL;
 		return false;
 	}
 
@@ -67,10 +77,12 @@ void rdp_dump_end(void)
 
 	free(rdp_dram_cache);
 	rdp_dram_cache = NULL;
+	free(rdp_hidden_dram_cache);
+	rdp_hidden_dram_cache = NULL;
 }
 
 static void rdp_dump_flush(const void *dram_, uint32_t size,
-		enum rdp_dump_cmd block_cmd, enum rdp_dump_cmd flush_cmd)
+		enum rdp_dump_cmd block_cmd, enum rdp_dump_cmd flush_cmd, uint8_t *cache)
 {
 	if (!rdp_file)
 		return;
@@ -81,14 +93,14 @@ static void rdp_dump_flush(const void *dram_, uint32_t size,
 
 	for (i = 0; i < size; i += block_size)
 	{
-		if (memcmp(dram + i, rdp_dram_cache + i, block_size))
+		if (memcmp(dram + i, cache + i, block_size))
 		{
 			uint32_t cmd = block_cmd;
 			fwrite(&cmd, sizeof(cmd), 1, rdp_file);
 			fwrite(&i, sizeof(i), 1, rdp_file);
 			fwrite(&block_size, sizeof(block_size), 1, rdp_file);
 			fwrite(dram + i, 1, block_size, rdp_file);
-			memcpy(rdp_dram_cache + i, dram + i, block_size);
+			memcpy(cache + i, dram + i, block_size);
 		}
 	}
 
@@ -99,12 +111,12 @@ static void rdp_dump_flush(const void *dram_, uint32_t size,
 
 void rdp_dump_flush_dram(const void *dram_, uint32_t size)
 {
-	rdp_dump_flush(dram_, size, RDP_DUMP_CMD_UPDATE_DRAM, RDP_DUMP_CMD_UPDATE_DRAM_FLUSH);
+	rdp_dump_flush(dram_, size, RDP_DUMP_CMD_UPDATE_DRAM, RDP_DUMP_CMD_UPDATE_DRAM_FLUSH, rdp_dram_cache);
 }
 
 void rdp_dump_flush_hidden_dram(const void *dram_, uint32_t size)
 {
-	rdp_dump_flush(dram_, size, RDP_DUMP_CMD_UPDATE_HIDDEN_DRAM, RDP_DUMP_CMD_UPDATE_HIDDEN_DRAM_FLUSH);
+	rdp_dump_flush(dram_, size, RDP_DUMP_CMD_UPDATE_HIDDEN_DRAM, RDP_DUMP_CMD_UPDATE_HIDDEN_DRAM_FLUSH, rdp_hidden_dram_cache);
 }
 
 void rdp_dump_signal_complete(void)
