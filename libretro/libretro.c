@@ -388,7 +388,7 @@ static void setup_variables(void)
        "(Angrylion) Thread sync level; Low|Medium|High"
       },
        { "parallel-n64-angrylion-multithread",
-         "(Angrylion) Multi-threading; enabled|disabled" },
+         "(Angrylion) Multi-threading; all threads|1|2|3|4|5|6|7|8|9|10|11|12|13|14|15|16|17|18|19|20|21|22|23|24|25|26|27|28|29|30|31|32|33|34|35|36|37|38|39|40|41|42|43|44|45|46|47|48|49|50|51|52|53|54|55|56|57|58|59|60|61|62|63" },
        { "parallel-n64-angrylion-overscan",
          "(Angrylion) Hide overscan; disabled|enabled" },
       { "parallel-n64-virefresh",
@@ -995,7 +995,6 @@ extern void angrylion_set_filtering(unsigned value);
 extern void angrylion_set_dithering(unsigned value);
 extern void  angrylion_set_threads(unsigned value);
 extern void parallel_set_dithering(unsigned value);
-extern void  angrylion_set_threads(unsigned value);
 extern void  angrylion_set_overscan(unsigned value);
 extern void  angrylion_set_vi_dedither(unsigned value);
 extern void  angrylion_set_vi_blur(unsigned value);
@@ -1257,14 +1256,12 @@ void update_variables(bool startup)
    var.key = "parallel-n64-angrylion-multithread";
    var.value = NULL;
 
-   environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var);
-
-   if (var.value)
+   if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
    {
-      if(!strcmp(var.value, "enabled"))
+      if(!strcmp(var.value, "all threads"))
          angrylion_set_threads(0);
-      else if(!strcmp(var.value, "disabled"))
-         angrylion_set_threads(1);
+      else
+         angrylion_set_threads(atoi(var.value));
    }
    else
       angrylion_set_threads(0);
