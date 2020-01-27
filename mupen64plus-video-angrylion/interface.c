@@ -142,7 +142,9 @@ void vdac_write(struct frame_buffer* fb)
    screen_pitch = fb->pitch * 4;
 }
 
-void vdac_sync(bool invalid) { }
+void vdac_sync(bool invalid) { 
+retro_return(!invalid);
+}
 void vdac_close(void) { }
 
 void angrylion_set_vi(unsigned value)
@@ -361,7 +363,7 @@ void angrylionUpdateScreen(void)
     counter = 0;
 #endif
     n64video_update_screen();
-    retro_return(true);
+    
 }
 
 void angrylionShowCFB (void)
