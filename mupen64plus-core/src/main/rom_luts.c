@@ -518,4 +518,6 @@ static const uint64_t lut_cpop[][2] = {
    { 0x54310E7D6B5430D8ULL, 1 }, /* Wipeout 64 (E) [!] */
    { 0x132D2732C70E9118ULL, 1 }, /* Wipeout 64 (U) [!] */
    { 0x9F8B96C3A01194DCULL, 1 }, /* Yakouchuu II - Satsujin Kouro (J) */
+   { 0x0553AE9DEAD8E0C1ULL, 3 }, /* Xena Warrior Princess - The Talisman of Fate (U) [!] */
+   { 0x0A1667C7293346A6ULL, 3 }, /* Xena Warrior Princess - The Talisman of Fate (E) [!] */
 };
