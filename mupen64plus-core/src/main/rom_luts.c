@@ -489,9 +489,6 @@ static const uint64_t lut_cpop[][2] = {
    { 0x51D29418D5B46AE3ULL, 1 }, /* San Francisco Rush 2049 (E) (M6) [!] */
    { 0xB9A9ECA217AAE48EULL, 1 }, /* San Francisco Rush 2049 (U) [!] */
    { 0x315C74663A453265ULL, 1 }, /* Star Soldier - Vanishing Earth (J) [!] [ALECK64] */
-   { 0x53ED2DC406258002ULL, 1 }, /* Star Wars Episode I - Racer (E) (M3) [!] */
-   { 0x61F5B152046122ABULL, 1 }, /* Star Wars Episode I - Racer (J) [!] */
-   { 0x72F703986556A98BULL, 1 }, /* Star Wars Episode I - Racer (U) [!] */
    { 0x60C437E5A2251EE3ULL, 1 }, /* Shadow Man (E) (M3) [!] */
    { 0xEA06F8C307C2DEEDULL, 1 }, /* Shadow Man (F) [!] */
    { 0x84D5FD75BBFD3CDFULL, 1 }, /* Shadow Man (G) [!] */
