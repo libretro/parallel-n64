@@ -482,57 +482,36 @@ endif
 endif
 
 ifeq ($(HAVE_PARALLEL_RSP), 1)
-### Tiny Tiger's LLE RSP JIT ###
-   PARALLEL_RSP_ARCH := x86_64
-
-ifeq ($(WANT_LLVM_OVERRIDE), 1)
-	INCFLAGS += -I/usr/lib/llvm-$(LLVM_VERSION)/include
-endif
-
-   SOURCES_CXX += \
-				$(RSPDIR_PARALLEL)/parallel.cpp \
-				$(RSPDIR_PARALLEL)/rsp.cpp \
-				$(wildcard $(RSPDIR_PARALLEL)/rsp/*.cpp) \
-				$(wildcard $(RSPDIR_PARALLEL)/arch/$(PARALLEL_RSP_ARCH)/rsp/*.cpp)
-	CXXFLAGS += -I$(RSPDIR_PARALLEL)/arch/$(PARALLEL_RSP_ARCH)/rsp
-	CFLAGS += -DHAVE_PARALLEL_RSP -DPARALLEL_INTEGRATION
-	CXXFLAGS += -DHAVE_PARALLEL_RSP -DPARALLEL_INTEGRATION
-ifeq ($(DEBUG_JIT), 1)
+	PARALLEL_RSP_ARCH := x86_64
+	SOURCES_CXX += $(RSPDIR_PARALLEL)/parallel.cpp \
+				   $(RSPDIR_PARALLEL)/rsp_disasm.cpp \
+				   $(wildcard $(RSPDIR_PARALLEL)/rsp/*.cpp) \
+				   $(wildcard $(RSPDIR_PARALLEL)/arch/$(PARALLEL_RSP_ARCH)/rsp/*.cpp)
+ifneq ($(DEBUG_JIT),)
 	CXXFLAGS += -DDEBUG_JIT
-	LDFLAGS += -ldl -rdynamic
-	SOURCES_CXX += $(RSPDIR_PARALLEL)/debug_jit.cpp
+	SOURCES_CXX += $(RSPDIR_PARALLEL)/debug_jit.cpp \
+				   $(RSPDIR_PARALLEL)/rsp.cpp
+	LDFLAGS += -ldl
 else
-	SOURCES_CXX += $(RSPDIR_PARALLEL)/jit.cpp
+	SOURCES_CXX += $(RSPDIR_PARALLEL)/rsp_jit.cpp
+	SOURCES_C += \
+				 $(RSPDIR_PARALLEL)/lightning/lib/jit_disasm.c \
+				 $(RSPDIR_PARALLEL)/lightning/lib/jit_memory.c \
+				 $(RSPDIR_PARALLEL)/lightning/lib/jit_names.c \
+				 $(RSPDIR_PARALLEL)/lightning/lib/jit_note.c \
+				 $(RSPDIR_PARALLEL)/lightning/lib/jit_print.c \
+				 $(RSPDIR_PARALLEL)/lightning/lib/jit_size.c \
+				 $(RSPDIR_PARALLEL)/lightning/lib/lightning.c
+
+ifneq (,$(findstring win,$(platform)))
+	SOURCES_C += $(RSPDIR_PARALLEL)/win32/mman/sys/mman.c
+	CFLAGS += -I$(RSPDIR_PARALLEL)/win32/mman
 endif
-ifeq ($(INTENSE_DEBUG), 1)
-	CFLAGS += -DINTENSE_DEBUG
-	CXXFLAGS += -DINTENSE_DEBUG
-endif
-LDFLAGS += -lclangFrontendTool \
-	   -lclangFrontend \
-	   -lclangDriver \
-	   -lclangSerialization \
-	   -lclangCodeGen \
-	   -lclangFrontend \
-	   -lclangParse \
-	   -lclangSema \
-	   -lclangStaticAnalyzerFrontend \
-	   -lclangStaticAnalyzerCheckers \
-	   -lclangStaticAnalyzerCore \
-	   -lclangAnalysis \
-	   -lclangRewriteFrontend \
-	   -lclangRewrite \
-	   -lclangEdit \
-	   -lclangASTMatchers \
-	   -lclangAST \
-	   -lclangLex \
-	   -lclangBasic
-ifeq ($(WANT_LLVM_OVERRIDE), 1)
-LDFLAGS += $(shell llvm-config-$(LLVM_VERSION) --ldflags --libs --link-static --system-libs)
-else
-LDFLAGS += $(shell llvm-config --ldflags --libs --link-static --system-libs)
 endif
 
+	CXXFLAGS += -I$(RSPDIR_PARALLEL)/arch/$(PARALLEL_RSP_ARCH)/rsp -I$(RSPDIR_PARALLEL)/lightning/include
+	CFLAGS += -DHAVE_PARALLEL_RSP -DPARALLEL_INTEGRATION -I$(RSPDIR_PARALLEL)/lightning/include
+	CXXFLAGS += -DHAVE_PARALLEL_RSP -DPARALLEL_INTEGRATION
 endif
 
 ifeq ($(HAVE_OPENGL),1)
