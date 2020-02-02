@@ -1,0 +1,12 @@
+; DO NOT EDIT (unless you know what you are doing)
+;
+; This subdirectory is a git "subrepo", and this file is maintained by the
+; git-subrepo command. See https://github.com/git-commands/git-subrepo#readme
+;
+[subrepo]
+	remote = https://github.com/Themaister/parallel-rsp.git
+	branch = master
+	commit = b1b3839c7c3f1440e12131775ff785ae07bcd46e
+	parent = dbdea196d7656bb3f25eb052ea707f5c6c7176c9
+	method = rebase
+	cmdver = 0.4.0
