@@ -17,6 +17,12 @@
 #define LOAD_VT() rsp_vect_load_and_shuffle_operand(rsp->cp2.regs[vt].e, e)
 #define STORE_RESULT() rsp_vect_write_operand(rsp->cp2.regs[vd].e, result)
 
+#ifdef TRACE_COP2
+#define TRACE_VU(op) printf(#op " v%u, v%u, v%u[%u]\n", vd, vs, vt, e)
+#else
+#define TRACE_VU(op) ((void)0)
+#endif
+
 extern "C"
 {
 	//
@@ -24,6 +30,7 @@ extern "C"
 	//
 	void RSP_VABS(RSP::CPUState *rsp, unsigned vd, unsigned vs, unsigned vt, unsigned e)
 	{
+		TRACE_VU(VABS);
 		uint16_t *acc = rsp->cp2.acc.e;
 		rsp_vect_t acc_lo;
 		rsp_vect_t result = rsp_vabs(LOAD_VS(), LOAD_VT(), &acc_lo);
@@ -36,6 +43,7 @@ extern "C"
 	//
 	void RSP_VADD(RSP::CPUState *rsp, unsigned vd, unsigned vs, unsigned vt, unsigned e)
 	{
+		TRACE_VU(VADD);
 		uint16_t *acc = rsp->cp2.acc.e;
 		rsp_vect_t carry, acc_lo;
 
@@ -53,6 +61,7 @@ extern "C"
 	//
 	void RSP_VADDC(RSP::CPUState *rsp, unsigned vd, unsigned vs, unsigned vt, unsigned e)
 	{
+		TRACE_VU(VADDC);
 		uint16_t *acc = rsp->cp2.acc.e;
 		rsp_vect_t sn;
 
@@ -69,6 +78,7 @@ extern "C"
 	//
 	void RSP_VAND(RSP::CPUState *rsp, unsigned vd, unsigned vs, unsigned vt, unsigned e)
 	{
+		TRACE_VU(VAND);
 		uint16_t *acc = rsp->cp2.acc.e;
 		rsp_vect_t result = rsp_vand(LOAD_VS(), LOAD_VT());
 		write_acc_lo(acc, result);
@@ -77,6 +87,7 @@ extern "C"
 
 	void RSP_VNAND(RSP::CPUState *rsp, unsigned vd, unsigned vs, unsigned vt, unsigned e)
 	{
+		TRACE_VU(VNAND);
 		uint16_t *acc = rsp->cp2.acc.e;
 		rsp_vect_t result = rsp_vnand(LOAD_VS(), LOAD_VT());
 		write_acc_lo(acc, result);
@@ -88,6 +99,7 @@ extern "C"
 	//
 	void RSP_VCH(RSP::CPUState *rsp, unsigned vd, unsigned vs, unsigned vt, unsigned e)
 	{
+		TRACE_VU(VCH);
 		uint16_t *acc = rsp->cp2.acc.e;
 		rsp_vect_t ge, le, sign, eq, vce;
 
@@ -107,6 +119,7 @@ extern "C"
 	//
 	void RSP_VCL(RSP::CPUState *rsp, unsigned vd, unsigned vs, unsigned vt, unsigned e)
 	{
+		TRACE_VU(VCL);
 		uint16_t *acc = rsp->cp2.acc.e;
 		rsp_vect_t ge, le, eq, sign, vce;
 
@@ -132,6 +145,7 @@ extern "C"
 	//
 	void RSP_VCR(RSP::CPUState *rsp, unsigned vd, unsigned vs, unsigned vt, unsigned e)
 	{
+		TRACE_VU(VCR);
 		uint16_t *acc = rsp->cp2.acc.e;
 		rsp_vect_t ge, le;
 
@@ -159,6 +173,7 @@ extern "C"
 	//
 	void RSP_VEQ(RSP::CPUState *rsp, unsigned vd, unsigned vs, unsigned vt, unsigned e)
 	{
+		TRACE_VU(VEQ);
 		uint16_t *acc = rsp->cp2.acc.e;
 		rsp_vect_t le, eq, sign;
 
@@ -177,6 +192,7 @@ extern "C"
 
 	void RSP_VGE(RSP::CPUState *rsp, unsigned vd, unsigned vs, unsigned vt, unsigned e)
 	{
+		TRACE_VU(VGE);
 		uint16_t *acc = rsp->cp2.acc.e;
 		rsp_vect_t le, eq, sign;
 
@@ -195,6 +211,7 @@ extern "C"
 
 	void RSP_VLT(RSP::CPUState *rsp, unsigned vd, unsigned vs, unsigned vt, unsigned e)
 	{
+		TRACE_VU(VLT);
 		uint16_t *acc = rsp->cp2.acc.e;
 		rsp_vect_t le, eq, sign;
 
@@ -213,6 +230,7 @@ extern "C"
 
 	void RSP_VNE(RSP::CPUState *rsp, unsigned vd, unsigned vs, unsigned vt, unsigned e)
 	{
+		TRACE_VU(VNE);
 		uint16_t *acc = rsp->cp2.acc.e;
 		rsp_vect_t le, eq, sign;
 
@@ -247,6 +265,7 @@ extern "C"
 	//
 	void RSP_VMACF(RSP::CPUState *rsp, unsigned vd, unsigned vs, unsigned vt, unsigned e)
 	{
+		TRACE_VU(VMACF);
 		uint16_t *acc = rsp->cp2.acc.e;
 		rsp_vect_t acc_lo, acc_md, acc_hi, result;
 		acc_lo = read_acc_lo(acc);
@@ -263,6 +282,7 @@ extern "C"
 
 	void RSP_VMACU(RSP::CPUState *rsp, unsigned vd, unsigned vs, unsigned vt, unsigned e)
 	{
+		TRACE_VU(VMACU);
 		uint16_t *acc = rsp->cp2.acc.e;
 		rsp_vect_t acc_lo, acc_md, acc_hi, result;
 		acc_lo = read_acc_lo(acc);
@@ -283,6 +303,7 @@ extern "C"
 	//
 	void RSP_VMADH(RSP::CPUState *rsp, unsigned vd, unsigned vs, unsigned vt, unsigned e)
 	{
+		TRACE_VU(VMADH);
 		uint16_t *acc = rsp->cp2.acc.e;
 		rsp_vect_t acc_lo, acc_md, acc_hi, result;
 
@@ -300,6 +321,7 @@ extern "C"
 
 	void RSP_VMUDH(RSP::CPUState *rsp, unsigned vd, unsigned vs, unsigned vt, unsigned e)
 	{
+		TRACE_VU(VMUDH);
 		uint16_t *acc = rsp->cp2.acc.e;
 		rsp_vect_t acc_lo, acc_md, acc_hi, result;
 
@@ -321,6 +343,7 @@ extern "C"
 	//
 	void RSP_VMADL(RSP::CPUState *rsp, unsigned vd, unsigned vs, unsigned vt, unsigned e)
 	{
+		TRACE_VU(VMADL);
 		uint16_t *acc = rsp->cp2.acc.e;
 		rsp_vect_t acc_lo, acc_md, acc_hi, result;
 
@@ -338,6 +361,7 @@ extern "C"
 
 	void RSP_VMUDL(RSP::CPUState *rsp, unsigned vd, unsigned vs, unsigned vt, unsigned e)
 	{
+		TRACE_VU(VMUDL);
 		uint16_t *acc = rsp->cp2.acc.e;
 		rsp_vect_t acc_lo, acc_md, acc_hi, result;
 
@@ -359,6 +383,7 @@ extern "C"
 	//
 	void RSP_VMADM(RSP::CPUState *rsp, unsigned vd, unsigned vs, unsigned vt, unsigned e)
 	{
+		TRACE_VU(VMADM);
 		uint16_t *acc = rsp->cp2.acc.e;
 		rsp_vect_t acc_lo, acc_md, acc_hi, result;
 
@@ -376,6 +401,7 @@ extern "C"
 
 	void RSP_VMUDM(RSP::CPUState *rsp, unsigned vd, unsigned vs, unsigned vt, unsigned e)
 	{
+		TRACE_VU(VMUDM);
 		uint16_t *acc = rsp->cp2.acc.e;
 		rsp_vect_t acc_lo, acc_md, acc_hi, result;
 
@@ -397,6 +423,7 @@ extern "C"
 	//
 	void RSP_VMADN(RSP::CPUState *rsp, unsigned vd, unsigned vs, unsigned vt, unsigned e)
 	{
+		TRACE_VU(VMADN);
 		uint16_t *acc = rsp->cp2.acc.e;
 		rsp_vect_t acc_lo, acc_md, acc_hi, result;
 
@@ -414,6 +441,7 @@ extern "C"
 
 	void RSP_VMUDN(RSP::CPUState *rsp, unsigned vd, unsigned vs, unsigned vt, unsigned e)
 	{
+		TRACE_VU(VMUDN);
 		uint16_t *acc = rsp->cp2.acc.e;
 		rsp_vect_t acc_lo, acc_md, acc_hi, result;
 
@@ -434,6 +462,7 @@ extern "C"
 	//
 	void RSP_VMOV(RSP::CPUState *rsp, unsigned vd, unsigned vs, unsigned vt, unsigned e)
 	{
+		TRACE_VU(VMOV);
 		uint16_t *acc = rsp->cp2.acc.e;
 		unsigned de = vs & 0x7;
 		write_acc_lo(acc, LOAD_VT());
@@ -446,6 +475,7 @@ extern "C"
 	//
 	void RSP_VMRG(RSP::CPUState *rsp, unsigned vd, unsigned vs, unsigned vt, unsigned e)
 	{
+		TRACE_VU(VMRG);
 		uint16_t *acc = rsp->cp2.acc.e;
 		rsp_vect_t le;
 
@@ -463,6 +493,7 @@ extern "C"
 	//
 	void RSP_VMULF(RSP::CPUState *rsp, unsigned vd, unsigned vs, unsigned vt, unsigned e)
 	{
+		TRACE_VU(VMULF);
 		uint16_t *acc = rsp->cp2.acc.e;
 		rsp_vect_t acc_lo, acc_md, acc_hi, result;
 
@@ -476,6 +507,7 @@ extern "C"
 
 	void RSP_VMULU(RSP::CPUState *rsp, unsigned vd, unsigned vs, unsigned vt, unsigned e)
 	{
+		TRACE_VU(VMULU);
 		uint16_t *acc = rsp->cp2.acc.e;
 		rsp_vect_t acc_lo, acc_md, acc_hi, result;
 
@@ -500,6 +532,7 @@ extern "C"
 	//
 	void RSP_VOR(RSP::CPUState *rsp, unsigned vd, unsigned vs, unsigned vt, unsigned e)
 	{
+		TRACE_VU(VOR);
 		uint16_t *acc = rsp->cp2.acc.e;
 
 		rsp_vect_t result = rsp_vor(LOAD_VS(), LOAD_VT());
@@ -510,6 +543,7 @@ extern "C"
 
 	void RSP_VNOR(RSP::CPUState *rsp, unsigned vd, unsigned vs, unsigned vt, unsigned e)
 	{
+		TRACE_VU(VNOR);
 		uint16_t *acc = rsp->cp2.acc.e;
 
 		rsp_vect_t result = rsp_vnor(LOAD_VS(), LOAD_VT());
@@ -526,6 +560,7 @@ extern "C"
 	//
 	void RSP_VRCP(RSP::CPUState *rsp, unsigned vd, unsigned vs, unsigned vt, unsigned e)
 	{
+		TRACE_VU(VRCP);
 		uint16_t *acc = rsp->cp2.acc.e;
 		unsigned de = vs & 0x7;
 		e &= 0x7;
@@ -539,6 +574,7 @@ extern "C"
 
 	void RSP_VRCPL(RSP::CPUState *rsp, unsigned vd, unsigned vs, unsigned vt, unsigned e)
 	{
+		TRACE_VU(VRCPL);
 		uint16_t *acc = rsp->cp2.acc.e;
 		unsigned de = vs & 0x7;
 		e &= 0x7;
@@ -554,6 +590,7 @@ extern "C"
 
 	void RSP_VRSQ(RSP::CPUState *rsp, unsigned vd, unsigned vs, unsigned vt, unsigned e)
 	{
+		TRACE_VU(VRSQ);
 		uint16_t *acc = rsp->cp2.acc.e;
 		unsigned de = vs & 0x7;
 		e &= 0x7;
@@ -567,6 +604,7 @@ extern "C"
 
 	void RSP_VRSQL(RSP::CPUState *rsp, unsigned vd, unsigned vs, unsigned vt, unsigned e)
 	{
+		TRACE_VU(VRSQL);
 		uint16_t *acc = rsp->cp2.acc.e;
 		unsigned de = vs & 0x7;
 		e &= 0x7;
@@ -586,6 +624,7 @@ extern "C"
 	//
 	void RSP_VRCPH(RSP::CPUState *rsp, unsigned vd, unsigned vs, unsigned vt, unsigned e)
 	{
+		TRACE_VU(VRCPH);
 		uint16_t *acc = rsp->cp2.acc.e;
 		unsigned de = vs & 0x7;
 		e &= 0x7;
@@ -601,6 +640,7 @@ extern "C"
 
 	void RSP_VRSQH(RSP::CPUState *rsp, unsigned vd, unsigned vs, unsigned vt, unsigned e)
 	{
+		TRACE_VU(VRSQH);
 		uint16_t *acc = rsp->cp2.acc.e;
 		unsigned de = vs & 0x7;
 		e &= 0x7;
@@ -619,6 +659,7 @@ extern "C"
 	//
 	void RSP_VSAR(RSP::CPUState *rsp, unsigned vd, unsigned vs, unsigned vt, unsigned e)
 	{
+		TRACE_VU(VSAR);
 		uint16_t *acc = rsp->cp2.acc.e;
 		rsp_vect_t result;
 
@@ -646,6 +687,7 @@ extern "C"
 	//
 	void RSP_VSUB(RSP::CPUState *rsp, unsigned vd, unsigned vs, unsigned vt, unsigned e)
 	{
+		TRACE_VU(VSUB);
 		uint16_t *acc = rsp->cp2.acc.e;
 		rsp_vect_t carry, acc_lo;
 
@@ -664,6 +706,7 @@ extern "C"
 	//
 	void RSP_VSUBC(RSP::CPUState *rsp, unsigned vd, unsigned vs, unsigned vt, unsigned e)
 	{
+		TRACE_VU(VSUBC);
 		uint16_t *acc = rsp->cp2.acc.e;
 		rsp_vect_t eq, sn;
 
@@ -681,6 +724,7 @@ extern "C"
 	//
 	void RSP_VXOR(RSP::CPUState *rsp, unsigned vd, unsigned vs, unsigned vt, unsigned e)
 	{
+		TRACE_VU(VXOR);
 		uint16_t *acc = rsp->cp2.acc.e;
 
 		rsp_vect_t result = rsp_vxor(LOAD_VS(), LOAD_VT());
@@ -691,6 +735,7 @@ extern "C"
 
 	void RSP_VNXOR(RSP::CPUState *rsp, unsigned vd, unsigned vs, unsigned vt, unsigned e)
 	{
+		TRACE_VU(VXNOR);
 		uint16_t *acc = rsp->cp2.acc.e;
 
 		rsp_vect_t result = rsp_vnxor(LOAD_VS(), LOAD_VT());

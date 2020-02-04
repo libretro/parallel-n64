@@ -3248,8 +3248,12 @@ _simplify(jit_state_t *_jit)
 	    case jit_code_ldxi_l:
 	    case jit_code_ldxi_f:	case jit_code_ldxi_d:
 		regno = jit_regno(node->u.w);
+#if __WORDSIZE == 32
+		/* XXX (maister): This is buggy with the sequence of sll, movd-to-reg, movslq-to-reg.
+		 * The sign extension may be elided on 64-bit. */
 		if (simplify_ldxi(prev, node))
 		    simplify_spill(node = prev, regno);
+#endif
 		break;
 	    case jit_code_stxi_c:	case jit_code_stxi_s:
 	    case jit_code_stxi_i:	case jit_code_stxi_l:

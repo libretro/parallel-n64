@@ -22,6 +22,64 @@ namespace JIT
 {
 using Func = jit_pointer_t;
 
+class RegisterCache
+{
+public:
+	enum { COND_BRANCH_TAKEN = 32, SCRATCH_REGISTER0 = 33, SCRATCH_REGISTER1 = 34 };
+
+	// Ensures a mips register is present in a JIT register, lock it,
+	// and ensure register extend state is correct for opcodes which care.
+	unsigned load_mips_register_noext(jit_state_t *_jit, unsigned mips_reg);
+	unsigned load_mips_register_sext(jit_state_t *_jit, unsigned mips_reg);
+	unsigned load_mips_register_zext(jit_state_t *_jit, unsigned mips_reg);
+
+	// Prepare to modify the register and lock it.
+	unsigned modify_mips_register(jit_state_t *_jit, unsigned mips_reg);
+
+	// modify_mips_register + jit_movi helper.
+	unsigned immediate_mips_register(jit_state_t *_jit, unsigned mips_reg, jit_word_t value);
+
+	// Once we no longer require the register to be in register file, free it.
+	void unlock_mips_register(unsigned mips_reg);
+
+	// Before leaving a JIT block, or before branching, we must flush out all live registers.
+	void flush_register_window(jit_state_t *_jit);
+
+	// Similar, but we only need to invalidate caller save registers (JIT_R).
+	void flush_caller_save_registers(jit_state_t *_jit);
+
+	// Flush a single MIPS register.
+	void flush_mips_register(jit_state_t *_jit, unsigned mips_reg);
+
+	void reset();
+
+private:
+	enum { NumFreeRegisters = JIT_R_NUM + (JIT_V_NUM - 3) };
+
+	enum SignState { SExt, ZExt, Unknown };
+
+	struct CacheEntry
+	{
+		unsigned mips_register;
+		unsigned timestamp;
+		unsigned num_locks;
+		SignState sign;
+		bool is_live;
+		bool modified;
+	};
+	CacheEntry entries[NumFreeRegisters] = {};
+	unsigned timestamp = 0;
+
+	CacheEntry *find_live_mips_register(unsigned mips_reg);
+	CacheEntry *find_free_register();
+	CacheEntry *find_oldest_unlocked_register();
+	CacheEntry &find_register(unsigned mips_reg);
+	void writeback_register(jit_state_t *_jit, CacheEntry &entry);
+
+	static unsigned jit_register_to_index(unsigned jit_reg);
+	unsigned entry_to_jit_register(const CacheEntry &entry);
+};
+
 class alignas(64) CPU
 {
 public:
@@ -104,9 +162,7 @@ private:
 	void jit_exit(jit_state_t *_jit, uint32_t pc, const InstructionInfo &last_info, ReturnMode mode, bool first_instruction);
 	void jit_exit_dynamic(jit_state_t *_jit, uint32_t pc, const InstructionInfo &last_info, bool first_instruction);
 	void jit_end_of_block(jit_state_t *_jit, uint32_t pc, const InstructionInfo &last_info);
-	static void jit_load_register(jit_state_t *_jit, unsigned jit_register, unsigned mips_register);
-	static void jit_load_register_zext(jit_state_t *_jit, unsigned jit_register, unsigned mips_register);
-	static void jit_store_register(jit_state_t *_jit, unsigned jit_register, unsigned mips_register);
+
 	void jit_handle_delay_slot(jit_state_t *_jit, const InstructionInfo &last_info, uint32_t base_pc, uint32_t end_pc);
 	void jit_handle_impossible_delay_slot(jit_state_t *_jit, const InstructionInfo &info, const InstructionInfo &last_info,
 	                                      uint32_t base_pc, uint32_t end_pc);
@@ -123,13 +179,12 @@ private:
 	                              uint32_t endian_flip,
 	                              const InstructionInfo &last_info);
 
-	static void jit_save_caller_save_registers(jit_state_t *_jit);
-	static void jit_restore_caller_save_registers(jit_state_t *_jit);
-	static void jit_save_illegal_cond_branch_taken(jit_state_t *_jit);
+	static void jit_begin_call(jit_state_t *_jit);
+	static void jit_end_call(jit_state_t *_jit, jit_pointer_t ptr);
+	void jit_save_illegal_cond_branch_taken(jit_state_t *_jit);
 	static void jit_restore_illegal_cond_branch_taken(jit_state_t *_jit, unsigned reg);
 	static void jit_clear_illegal_cond_branch_taken(jit_state_t *_jit, unsigned tmp_reg);
-	static void jit_clear_cond_branch_taken(jit_state_t *_jit);
-	static void jit_save_indirect_register(jit_state_t *_jit, unsigned mips_register);
+	void jit_save_indirect_register(jit_state_t *_jit, unsigned mips_register);
 	static void jit_load_indirect_register(jit_state_t *_jit, unsigned jit_reg);
 	static void jit_save_illegal_indirect_register(jit_state_t *_jit);
 	static void jit_load_illegal_indirect_register(jit_state_t *_jit, unsigned jit_reg);
@@ -141,6 +196,8 @@ private:
 		unsigned local_index;
 	};
 	std::vector<Link> local_branches;
+
+	RegisterCache regs;
 };
 } // namespace JIT
 } // namespace RSP

@@ -1,8 +1,14 @@
 #include "../state.hpp"
 
+#ifdef TRACE_COP2
+#include <stdio.h>
+#define TRACE_LS(op) printf(#op " v%u, %u, %d(r%u)\n", rt, e, offset, base)
+#else
+#define TRACE_LS(op) ((void)0)
+#endif
+
 extern "C"
 {
-
 	// Using mostly CXD4 implementation as a base here since it's easier to follow.
 	// CEN64's implementation seems much better, but takes more effort to port for now.
 	// Reading wide words together with SSE4 blend, SSSE3 pshufb, etc should make this much faster.
@@ -10,6 +16,7 @@ extern "C"
 	// Load 8-bit
 	void RSP_LBV(RSP::CPUState *rsp, unsigned rt, unsigned e, int offset, unsigned base)
 	{
+		TRACE_LS(LBV);
 		unsigned addr = (rsp->sr[base] + offset * 1) & 0xfff;
 		reinterpret_cast<uint8_t *>(rsp->cp2.regs[rt].e)[MES(e)] = READ_MEM_U8(rsp->dmem, addr);
 	}
@@ -17,6 +24,7 @@ extern "C"
 	// Store 8-bit
 	void RSP_SBV(RSP::CPUState *rsp, unsigned rt, unsigned e, int offset, unsigned base)
 	{
+		TRACE_LS(SBV);
 		unsigned addr = (rsp->sr[base] + offset * 1) & 0xfff;
 		uint8_t v = reinterpret_cast<uint8_t *>(rsp->cp2.regs[rt].e)[MES(e)];
 
@@ -30,6 +38,7 @@ extern "C"
 	// Load 16-bit
 	void RSP_LSV(RSP::CPUState *rsp, unsigned rt, unsigned e, int offset, unsigned base)
 	{
+		TRACE_LS(LSV);
 		if (e & 1)
 			return;
 
@@ -50,6 +59,7 @@ extern "C"
 	// Store 16-bit
 	void RSP_SSV(RSP::CPUState *rsp, unsigned rt, unsigned e, int offset, unsigned base)
 	{
+		TRACE_LS(SSV);
 		unsigned addr = (rsp->sr[base] + offset * 2) & 0xfff;
 		uint8_t v0 = reinterpret_cast<uint8_t *>(rsp->cp2.regs[rt].e)[MES(e)];
 		uint8_t v1 = reinterpret_cast<uint8_t *>(rsp->cp2.regs[rt].e)[MES((e + 1) & 0xf)];
@@ -65,6 +75,7 @@ extern "C"
 	// Load 32-bit
 	void RSP_LLV(RSP::CPUState *rsp, unsigned rt, unsigned e, int offset, unsigned base)
 	{
+		TRACE_LS(LLV);
 		unsigned addr = (rsp->sr[base] + offset * 4) & 0xfff;
 		if (e & 1)
 			return;
@@ -79,6 +90,7 @@ extern "C"
 	// Store 32-bit
 	void RSP_SLV(RSP::CPUState *rsp, unsigned rt, unsigned e, int offset, unsigned base)
 	{
+		TRACE_LS(SLV);
 		if ((e & 1) || (e > 0xc))
 			return;
 		unsigned addr = (rsp->sr[base] + offset * 4) & 0xfff;
@@ -100,6 +112,7 @@ extern "C"
 	// Load 64-bit
 	void RSP_LDV(RSP::CPUState *rsp, unsigned rt, unsigned e, int offset, unsigned base)
 	{
+		TRACE_LS(LDV);
 		if (e & 1)
 			return;
 		unsigned addr = (rsp->sr[base] + offset * 8) & 0xfff;
@@ -125,6 +138,7 @@ extern "C"
 	// Store 64-bit
 	void RSP_SDV(RSP::CPUState *rsp, unsigned rt, unsigned e, int offset, unsigned base)
 	{
+		TRACE_LS(SDV);
 		unsigned addr = (rsp->sr[base] + offset * 8) & 0xfff;
 
 #ifdef INTENSE_DEBUG
@@ -153,6 +167,7 @@ extern "C"
 	// Load 8x8-bit into high bits.
 	void RSP_LPV(RSP::CPUState *rsp, unsigned rt, unsigned e, int offset, unsigned base)
 	{
+		TRACE_LS(LPV);
 		if (e != 0)
 			return;
 
@@ -164,6 +179,7 @@ extern "C"
 
 	void RSP_SPV(RSP::CPUState *rsp, unsigned rt, unsigned e, int offset, unsigned base)
 	{
+		TRACE_LS(SPV);
 		if (e != 0)
 			return;
 		unsigned addr = (rsp->sr[base] + offset * 8) & 0xfff;
@@ -177,6 +193,7 @@ extern "C"
 	// saturation, but weird nonetheless.
 	void RSP_LUV(RSP::CPUState *rsp, unsigned rt, unsigned e, int offset, unsigned base)
 	{
+		TRACE_LS(LUV);
 		unsigned addr = (rsp->sr[base] + offset * 8) & 0xfff;
 		auto *reg = rsp->cp2.regs[rt].e;
 
@@ -201,6 +218,7 @@ extern "C"
 
 	void RSP_SUV(RSP::CPUState *rsp, unsigned rt, unsigned e, int offset, unsigned base)
 	{
+		TRACE_LS(SUV);
 		if (e != 0)
 			return;
 		unsigned addr = (rsp->sr[base] + offset * 8) & 0xfff;
@@ -213,6 +231,7 @@ extern "C"
 	// Seems to differ from LUV in that it loads every other byte instead of packed bytes.
 	void RSP_LHV(RSP::CPUState *rsp, unsigned rt, unsigned e, int offset, unsigned base)
 	{
+		TRACE_LS(LHV);
 		if (e != 0)
 			return;
 		unsigned addr = (rsp->sr[base] + offset * 16) & 0xfff;
@@ -226,6 +245,7 @@ extern "C"
 
 	void RSP_SHV(RSP::CPUState *rsp, unsigned rt, unsigned e, int offset, unsigned base)
 	{
+		TRACE_LS(SHV);
 		if (e != 0)
 			return;
 		unsigned addr = (rsp->sr[base] + offset * 16) & 0xfff;
@@ -237,6 +257,7 @@ extern "C"
 	// No idea what the purpose of this is.
 	void RSP_SFV(RSP::CPUState *rsp, unsigned rt, unsigned e, int offset, unsigned base)
 	{
+		TRACE_LS(SFV);
 		unsigned addr = (rsp->sr[base] + offset * 16) & 0xff3;
 		auto *reg = rsp->cp2.regs[rt].e;
 		switch (e)
@@ -264,6 +285,7 @@ extern "C"
 	// strange way.
 	void RSP_LQV(RSP::CPUState *rsp, unsigned rt, unsigned e, int offset, unsigned base)
 	{
+		TRACE_LS(LQV);
 		if (e & 1)
 			return;
 		unsigned addr = (rsp->sr[base] + offset * 16) & 0xfff;
@@ -285,6 +307,7 @@ extern "C"
 
 	void RSP_SQV(RSP::CPUState *rsp, unsigned rt, unsigned e, int offset, unsigned base)
 	{
+		TRACE_LS(SQV);
 		unsigned addr = (rsp->sr[base] + offset * 16) & 0xfff;
 		if (addr & 1)
 			return;
@@ -312,6 +335,7 @@ extern "C"
 	// Complements LQV?
 	void RSP_LRV(RSP::CPUState *rsp, unsigned rt, unsigned e, int offset, unsigned base)
 	{
+		TRACE_LS(LRV);
 		if (e != 0)
 			return;
 		unsigned addr = (rsp->sr[base] + offset * 16) & 0xfff;
@@ -328,6 +352,7 @@ extern "C"
 
 	void RSP_SRV(RSP::CPUState *rsp, unsigned rt, unsigned e, int offset, unsigned base)
 	{
+		TRACE_LS(SRV);
 		if (e != 0)
 			return;
 		unsigned addr = (rsp->sr[base] + offset * 16) & 0xfff;
@@ -345,6 +370,7 @@ extern "C"
 	// Transposed stuff?
 	void RSP_LTV(RSP::CPUState *rsp, unsigned rt, unsigned e, int offset, unsigned base)
 	{
+		TRACE_LS(LTV);
 		if (e & 1)
 			return;
 		if (rt & 7)
@@ -359,6 +385,7 @@ extern "C"
 
 	void RSP_STV(RSP::CPUState *rsp, unsigned rt, unsigned e, int offset, unsigned base)
 	{
+		TRACE_LS(STV);
 		if (e & 1)
 			return;
 		if (rt & 7)
