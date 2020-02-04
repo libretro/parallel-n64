@@ -25,6 +25,12 @@ int SP_STATUS_TIMEOUT;
 
 extern "C"
 {
+	// Hack entry point to use when loading savestates when we're tracing.
+	void rsp_clear_registers()
+	{
+		memset(RSP::cpu.get_state().sr, 0, sizeof(uint32_t) * 32);
+		memset(&RSP::cpu.get_state().cp2, 0, sizeof(RSP::cpu.get_state().cp2));
+	}
 
 #ifdef INTENSE_DEBUG
 	// Need super-fast hash here.

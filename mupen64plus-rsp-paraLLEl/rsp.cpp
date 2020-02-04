@@ -1060,7 +1060,7 @@ struct cpu_state
    unsigned dirty_blocks;
    unsigned has_delay_slot;
    unsigned branch_target;
-   unsigned sr[32];
+   unsigned sr[33];
    unsigned *dmem;
    unsigned *imem;
 };

@@ -123,7 +123,7 @@ struct CPUState
 	uint32_t has_delay_slot = 0;
 	uint32_t branch_target = 0;
 
-	uint32_t sr[32] = {};
+	uint32_t sr[33] = {}; // r32 is used as a scratch register.
 	uint32_t *dmem = nullptr;
 	uint32_t *imem = nullptr;
 	uint32_t *rdram = nullptr;
