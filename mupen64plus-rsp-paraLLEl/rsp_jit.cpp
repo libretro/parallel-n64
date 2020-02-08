@@ -863,15 +863,6 @@ void CPU::jit_instruction(jit_state_t *_jit, uint32_t pc, uint32_t instr,
 		uint32_t vt = (instr >> 16) & 31;
 		uint32_t e = (instr >> 21) & 15;
 
-		static const char *ops_str[64] = {
-			"VMULF", "VMULU", nullptr, nullptr, "VMUDL", "VMUDM", "VMUDN", "VMUDH", "VMACF", "VMACU", nullptr,
-			nullptr, "VMADL", "VMADM", "VMADN", "VMADH", "VADD",  "VSUB",  nullptr, "VABS",  "VADDC", "VSUBC",
-			nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, "VSAR",  nullptr, nullptr, "VLT",
-			"VEQ",   "VNE",   "VGE",   "VCL",   "VCH",   "VCR",   "VMRG",  "VAND",  "VNAND", "VOR",   "VNOR",
-			"VXOR",  "VNXOR", nullptr, nullptr, "VRCP",  "VRCPL", "VRCPH", "VMOV",  "VRSQ",  "VRSQL", "VRSQH",
-			"VNOP",
-		};
-
 		using VUOp = void (*)(RSP::CPUState *, unsigned vd, unsigned vs, unsigned vt, unsigned e);
 
 		static const VUOp ops[64] = {
@@ -883,16 +874,9 @@ void CPU::jit_instruction(jit_state_t *_jit, uint32_t pc, uint32_t instr,
 			RSP_VNOP,
 		};
 
-		const char *op_str = ops_str[op];
-		VUOp vuop;
-		if (op_str)
-		{
-			vuop = ops[op];
-		}
-		else
-		{
+		auto *vuop = ops[op];
+		if (!vuop)
 			vuop = RSP_RESERVED;
-		}
 
 		regs.flush_caller_save_registers(_jit);
 		jit_begin_call(_jit);

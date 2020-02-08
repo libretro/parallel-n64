@@ -1,4 +1,6 @@
-#include "rsp.hpp"
+#ifdef PARALLEL_RSP_DEBUG_JIT
+#include "debug_rsp.hpp"
+#endif
 #include "rsp_jit.hpp"
 #include <stdio.h>
 #include <vector>
@@ -295,17 +297,21 @@ static void validate_trace(RSP::CPU &cpu, const char *path)
 int main(int argc, char *argv[])
 {
 	RSP::JIT::CPU cpu;
-	RSP::CPU reference_cpu;
 	auto &state = cpu.get_state();
+#ifdef PARALLEL_RSP_DEBUG_JIT
+	RSP::CPU reference_cpu;
 	auto &reference_state = reference_cpu.get_state();
+#endif
 
 	uint32_t cr[16] = {};
 	for (unsigned i = 0; i < 16; i++)
 		state.cp0.cr[i] = &cr[i];
 
+#ifdef PARALLEL_RSP_DEBUG_JIT
 	uint32_t reference_cr[16] = {};
 	for (unsigned i = 0; i < 16; i++)
 		reference_state.cp0.cr[i] = &reference_cr[i];
+#endif
 
 	if (argc == 3)
 	{
@@ -316,13 +322,17 @@ int main(int argc, char *argv[])
 
 		dmem.resize(0x1000);
 		imem.resize(0x1000);
+#ifdef PARALLEL_RSP_DEBUG_JIT
 		auto reference_dmem = dmem;
 		auto reference_imem = imem;
+#endif
 
 		cpu.set_dmem(dmem.data());
 		cpu.set_imem(imem.data());
+#ifdef PARALLEL_RSP_DEBUG_JIT
 		reference_cpu.set_dmem(reference_dmem.data());
 		reference_cpu.set_imem(reference_imem.data());
+#endif
 
 		printf("=== Running Lightning CPU ===\n");
 		fflush(stdout);
@@ -332,6 +342,7 @@ int main(int argc, char *argv[])
 		fflush(stdout);
 		fflush(stderr);
 
+#ifdef PARALLEL_RSP_DEBUG_JIT
 		printf("=== Running reference CPU ===\n");
 		reference_cpu.invalidate_imem();
 		reference_cpu.run();
@@ -381,6 +392,7 @@ int main(int argc, char *argv[])
 
 		if (mismatch)
 			return EXIT_FAILURE;
+#endif
 	}
 #if 0
 	else if (argc == 2)

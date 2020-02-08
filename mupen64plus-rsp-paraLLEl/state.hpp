@@ -1,7 +1,7 @@
 #ifndef STATE_HPP__
 #define STATE_HPP__
 
-#include "rsp.h"
+#include "rsp_common.h"
 
 #define DMEM_SIZE (4 * 1024)
 #define IMEM_SIZE (4 * 1024)

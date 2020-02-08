@@ -12,46 +12,56 @@ endif()
 add_library(parallel-rsp STATIC
 		main.cpp
 		rsp/vfunctions.cpp
-		rsp.cpp rsp.hpp
 		rsp_jit.cpp rsp_jit.hpp
-		debug_jit.cpp debug_jit.hpp
 		rsp_disasm.cpp rsp_disasm.hpp
 		rsp/ls.cpp rsp/pipeline.h
 		rsp/reciprocal.cpp rsp/reciprocal.h
 		rsp_1.1.h
 		rsp/cp0.cpp rsp/cp2.cpp
-		arch/x86_64/rsp/rsp_core.cpp
-		arch/x86_64/rsp/clamp.h
-		arch/x86_64/rsp/rsp.h
-		arch/x86_64/rsp/rsp_impl.h
-		arch/x86_64/rsp/vcr.h
-		arch/x86_64/rsp/vabs.h
-		arch/x86_64/rsp/vadd.h
-		arch/x86_64/rsp/vaddc.h
-		arch/x86_64/rsp/vand.h
-		arch/x86_64/rsp/vch.h
-		arch/x86_64/rsp/vcl.h
-		arch/x86_64/rsp/vcr.h
-		arch/x86_64/rsp/vcmp.h
-		arch/x86_64/rsp/vdivh.h
-		arch/x86_64/rsp/vmac.h
-		arch/x86_64/rsp/vmov.h
-		arch/x86_64/rsp/vmrg.h
-		arch/x86_64/rsp/vmudh.h
-		arch/x86_64/rsp/vmul.h
-		arch/x86_64/rsp/vmull.h
-		arch/x86_64/rsp/vmulh.h
-		arch/x86_64/rsp/vmuln.h
-		arch/x86_64/rsp/vor.h
-		arch/x86_64/rsp/vrcpsq.h
-		arch/x86_64/rsp/vrsq.h
-		arch/x86_64/rsp/vsub.h
-		arch/x86_64/rsp/vsubc.h
-		arch/x86_64/rsp/vxor.h
-		arch/x86_64/rsp/vmulm.h)
+		arch/simd/rsp/rsp_core.cpp
+		arch/simd/rsp/clamp.h
+		arch/simd/rsp/rsp_common.h
+		arch/simd/rsp/SSE2NEON.h
+		arch/simd/rsp/rsp_impl.h
+		arch/simd/rsp/vcr.h
+		arch/simd/rsp/vabs.h
+		arch/simd/rsp/vadd.h
+		arch/simd/rsp/vaddc.h
+		arch/simd/rsp/vand.h
+		arch/simd/rsp/vch.h
+		arch/simd/rsp/vcl.h
+		arch/simd/rsp/vcr.h
+		arch/simd/rsp/vcmp.h
+		arch/simd/rsp/vdivh.h
+		arch/simd/rsp/vmac.h
+		arch/simd/rsp/vmov.h
+		arch/simd/rsp/vmrg.h
+		arch/simd/rsp/vmudh.h
+		arch/simd/rsp/vmul.h
+		arch/simd/rsp/vmull.h
+		arch/simd/rsp/vmulh.h
+		arch/simd/rsp/vmuln.h
+		arch/simd/rsp/vor.h
+		arch/simd/rsp/vrcpsq.h
+		arch/simd/rsp/vrsq.h
+		arch/simd/rsp/vsub.h
+		arch/simd/rsp/vsubc.h
+		arch/simd/rsp/vxor.h
+		arch/simd/rsp/vmulm.h)
+
+option(PARALLEL_RSP_DEBUG_JIT "Enable the debug JIT." ON)
+
+if (PARALLEL_RSP_DEBUG_JIT)
+	if (ANDROID)
+		message("Android does not support debug JIT. Disabling it.")
+	else()
+		target_sources(parallel-rsp PRIVATE debug_rsp.cpp debug_rsp.hpp debug_jit.cpp debug_jit.hpp)
+		target_compile_definitions(parallel-rsp PUBLIC PARALLEL_RSP_DEBUG_JIT)
+	endif()
+endif()
 
 target_include_directories(parallel-rsp PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
-target_include_directories(parallel-rsp PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/arch/x86_64/rsp)
+target_include_directories(parallel-rsp PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/arch/simd/rsp)
 target_compile_options(parallel-rsp PRIVATE ${PARALLEL_RSP_CXX_FLAGS})
 
 option(PARALLEL_RSP_BAKED_LIGHTNING "Use built-in Lightning." ON)
@@ -83,12 +93,27 @@ endif()
 add_executable(rsp-runner main.cpp)
 target_link_libraries(rsp-runner PRIVATE parallel-rsp)
 target_compile_options(rsp-runner PRIVATE ${PARALLEL_RSP_CXX_FLAGS})
-set_target_properties(rsp-runner PROPERTIES LINK_FLAGS "-rdynamic")
+
+if (PARALLEL_RSP_DEBUG_JIT)
+	set_target_properties(rsp-runner PROPERTIES LINK_FLAGS "-rdynamic")
+endif()
 
 option(PARALLEL_RSP_TESTS "Enable unit tests for Lightning CPU." ON)
 
+add_executable(rsp-vu-fuzzer rsp_vu_fuzzer.cpp)
+target_link_libraries(rsp-vu-fuzzer PRIVATE parallel-rsp)
+target_compile_options(rsp-vu-fuzzer PRIVATE ${PARALLEL_RSP_CXX_FLAGS})
+
 if (PARALLEL_RSP_TESTS)
 	enable_testing()
+
+	if (ANDROID)
+		add_test(NAME rsp-vu-fuzz
+				COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/android_fuzz_runner.sh
+				${CMAKE_CURRENT_BINARY_DIR}/rsp-vu-fuzzer)
+	else()
+		add_test(NAME rsp-vu-fuzz COMMAND $<TARGET_FILE:rsp-vu-fuzzer>)
+	endif()
 	add_custom_target(rsp-tests ALL)
 
 	add_custom_target(rsp-test-crt
@@ -103,10 +128,17 @@ if (PARALLEL_RSP_TESTS)
 		add_dependencies(rsp-test-binary-${NAME} rsp-test-crt)
 		add_dependencies(rsp-tests rsp-test-binary-${NAME})
 
-		add_test(NAME rsp-test-${NAME}
-				COMMAND $<TARGET_FILE:rsp-runner>
-				${CMAKE_CURRENT_SOURCE_DIR}/debug-toolchain/${NAME}.global.bin
-				${CMAKE_CURRENT_SOURCE_DIR}/debug-toolchain/${NAME}.bin)
+		if (ANDROID)
+			add_test(NAME rsp-test-${NAME}
+					COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/android_test_runner.sh
+					${CMAKE_CURRENT_BINARY_DIR}/rsp-runner
+					${CMAKE_CURRENT_SOURCE_DIR}/debug-toolchain ${NAME})
+		else()
+			add_test(NAME rsp-test-${NAME}
+					COMMAND $<TARGET_FILE:rsp-runner>
+					${CMAKE_CURRENT_SOURCE_DIR}/debug-toolchain/${NAME}.global.bin
+					${CMAKE_CURRENT_SOURCE_DIR}/debug-toolchain/${NAME}.bin)
+		endif()
 	endfunction()
 
 	rsp_add_test(sll)

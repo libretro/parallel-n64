@@ -1,5 +1,5 @@
 #ifdef DEBUG_JIT
-#include "rsp.hpp"
+#include "debug_rsp.hpp"
 #else
 #include "rsp_jit.hpp"
 #endif

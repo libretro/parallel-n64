@@ -8,7 +8,7 @@
 //
 
 #include "../../../state.hpp"
-#include "rsp.h"
+#include "rsp_common.h"
 #include <string.h>
 
 #ifdef __SSSE3__
