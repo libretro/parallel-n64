@@ -68,7 +68,7 @@ void generic_jump_to(uint32_t address)
    if (r4300emu == CORE_PURE_INTERPRETER)
       PC->addr = address;
    else {
-#ifdef NEW_DYNAREC
+#if NEW_DYNAREC
       if (r4300emu == CORE_DYNAREC)
          last_addr = pcaddr;
       else
@@ -111,7 +111,7 @@ void r4300_init(void)
         r4300emu = CORE_DYNAREC;
         init_blocks();
 
-#ifdef NEW_DYNAREC
+#if NEW_DYNAREC
         new_dynarec_init();
 #else
         dyna_start(dynarec_setup_code);
@@ -142,7 +142,7 @@ void r4300_execute(void)
 #if defined(DYNAREC)
     else if (r4300emu >= 2)
     {
-#ifdef NEW_DYNAREC
+#if NEW_DYNAREC
         new_dyna_start();
         if (stop)
             new_dynarec_cleanup();
