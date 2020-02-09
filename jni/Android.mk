@@ -16,6 +16,7 @@ WITH_DYNAREC  :=
 HAVE_OPENGL   := 1
 GLES          := 1
 HAVE_PARALLEL := 1
+HAVE_PARALLEL_RSP := 1
 HAVE_THR_AL   := 1
 
 ifeq ($(TARGET_ARCH_ABI),arm64-v8a)
