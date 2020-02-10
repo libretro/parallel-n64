@@ -155,6 +155,7 @@ ifneq (,$(findstring unix,$(platform)))
       else
          CPUFLAGS += -DARMv5_ONLY -DNO_ASM
       endif
+      CPUFLAGS += -DARM_FIX
    endif
 
    # ODROIDs
@@ -162,7 +163,7 @@ ifneq (,$(findstring unix,$(platform)))
       BOARD := $(shell cat /proc/cpuinfo | grep -i odroid | awk '{print $$3}')
       GLES = 1
       GL_LIB := -lGLESv2
-      CPUFLAGS += -DNO_ASM -DARM -D__arm__ -DARM_ASM -D__NEON_OPT -DNOSSE
+      CPUFLAGS += -DNO_ASM -DARM -D__arm__ -DARM_ASM -D__NEON_OPT -DNOSSE -DARM_FIX
       CPUFLAGS += -marm -mfloat-abi=hard
       HAVE_NEON = 1
       WITH_DYNAREC=arm
