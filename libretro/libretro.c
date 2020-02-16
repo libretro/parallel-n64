@@ -382,7 +382,7 @@ static void setup_variables(void)
        "(Glide64) Polygon Offset Units; -3.0|-2.5|-2.0|-1.5|-1.0|-0.5|0.0|0.5|1.0|1.5|2.0|2.5|3.0|3.5|4.0|4.5|5.0|-3.5|-4.0|-4.5|-5.0"
       },
       { "parallel-n64-angrylion-vioverlay",
-       "(Angrylion) VI Overlay; Unfiltered (Fast)|Filtered|AA+Blur|AA+Dedither|AA only|Unfiltered|Depth|Coverage"
+       "(Angrylion) VI Overlay; Filtered|AA+Blur|AA+Dedither|AA only|Unfiltered|Depth|Coverage"
       },
       { "parallel-n64-angrylion-sync",
        "(Angrylion) Thread sync level; Low|Medium|High"
@@ -1215,12 +1215,6 @@ void update_variables(bool startup)
          angrylion_set_vi(1);
          angrylion_set_vi_dedither(1);
          angrylion_set_vi_blur(1);
-      }
-      else if (!strcmp(var.value, "Unfiltered (Fast)"))
-      {
-         angrylion_set_vi(1);
-         angrylion_set_vi_dedither(0);
-         angrylion_set_vi_blur(0);
       }
       else if(!strcmp(var.value, "Depth"))
       {
