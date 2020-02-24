@@ -477,8 +477,6 @@ static const uint64_t lut_cpop[][2] = {
    { 0xC851961C78FCAAFAULL, 3 }, /* Pilotwings 64 (U) [!] */
    { 0x9BA10C4E0408ABD3ULL, 1 }, /* Pro Mahjong Kiwame 64 (J) [!] */
    { 0x1BDCB30FA132D876ULL, 1 }, /* Pro Mahjong Tsuwamono 64 - Jansou Battle ni Chousen (J) [!] */
-   { 0x7433D9D72C4322D0ULL, 1 }, /* Quake II (E) [!] */
-   { 0xBDA8F143B1AF2D62ULL, 1 }, /* Quake II (U) [!] */
    { 0x3918834A15B50C29ULL, 1 }, /* Razor Freestyle Scooter (U) [!] */
    { 0xE921953313FBAFBDULL, 1 }, /* Ready 2 Rumble Boxing - Round 2 (U) [!] */
    { 0x02D8366A6CABEF9CULL, 3 }, /* Road Rash 64 (E) [!] */
