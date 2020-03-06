@@ -77,6 +77,7 @@ static uint32_t tvfadeoutstate[PRESCALE_HEIGHT];
 
 // Make sure each thread gets its own cache line.
 #define VI_CACHE_LINE_SIZE 64
+static uint32_t rseed[PARALLEL_MAX_WORKERS * (VI_CACHE_LINE_SIZE / 4)];
 static uint32_t zb_address;
 
 // prescale buffer
@@ -108,6 +109,8 @@ static void vi_init(void)
     oldvstart = 1337;
     prevwasblank = false;
     zb_address = 0;
+
+    memset(rseed, 3, sizeof(rseed));
 }
 
 static void vi_process_full_parallel(uint32_t worker_id)
@@ -280,7 +283,7 @@ static void vi_process_full_parallel(uint32_t worker_id)
             if (x >= minhpass && x < maxhpass) {
                 *pixel = color;
                 // Make sure each thread owns its own cache line. Stride the seed.
-                gamma_filters(pixel, ctrl.gamma_enable, ctrl.gamma_dither_enable, &state[worker_id * (VI_CACHE_LINE_SIZE / 4)].rseed);
+                gamma_filters(pixel, ctrl.gamma_enable, ctrl.gamma_dither_enable, &rseed[worker_id * (VI_CACHE_LINE_SIZE / 4)]);
             } else {
                 pixel->r = pixel->g = pixel->b = 0;
             }
@@ -527,7 +530,7 @@ static void vi_process_fast_parallel(uint32_t worker_id)
                             return;
                     }
 
-                    gamma_filters(pixel, ctrl.gamma_enable, false, &state[worker_id * (VI_CACHE_LINE_SIZE / 4)].rseed);
+                    gamma_filters(pixel, ctrl.gamma_enable, false, &rseed[worker_id * (VI_CACHE_LINE_SIZE / 4)]);
                     break;
 
                 case VI_MODE_DEPTH: {
