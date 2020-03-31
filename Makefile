@@ -15,6 +15,7 @@ HAVE_PARALLEL=0
 HAVE_PARALLEL_RSP=0
 STATIC_LINKING=0
 WANT_LLVM_OVERRIDE=0
+HAVE_LTCG ?= 0
 
 DYNAFLAGS :=
 INCFLAGS  :=
@@ -160,7 +161,7 @@ ifneq (,$(findstring unix,$(platform)))
 
    # ODROIDs
    ifneq (,$(findstring odroid,$(platform)))
-      BOARD := $(shell cat /proc/cpuinfo | grep -i odroid | awk '{print $$3}')
+      BOARD ?= $(shell cat /proc/cpuinfo | grep -i odroid | awk '{print $$3}')
       GLES = 1
       GL_LIB := -lGLESv2
       CPUFLAGS += -DNO_ASM -DARM -D__arm__ -DARM_ASM -D__NEON_OPT -DNOSSE -DARM_FIX
@@ -170,20 +171,9 @@ ifneq (,$(findstring unix,$(platform)))
       ifneq (,$(findstring ODROIDC,$(BOARD)))
          # ODROID-C1
          CPUFLAGS += -mcpu=cortex-a5 -mfpu=neon
-      else ifneq (,$(findstring ODROID-XU3,$(BOARD)))
-         # ODROID-XU4 (on older kernel), XU3 & XU3 Lite
-         ifeq "$(shell expr `gcc -dumpversion` \>= 4.9)" "1"
-            CPUFLAGS += -march=armv7ve -mcpu=cortex-a15.cortex-a7 -mfpu=neon-vfpv4
-         else
-            CPUFLAGS += -mcpu=cortex-a9 -mfpu=neon
-         endif
-      else ifneq (,$(findstring ODROID-XU4,$(BOARD)))
-         # ODROID-XU4 on newer kernels now identify as ODROID-XU4
-         ifeq "$(shell expr `gcc -dumpversion` \>= 4.9)" "1"
-            CPUFLAGS += -march=armv7ve -mcpu=cortex-a15.cortex-a7 -mfpu=neon-vfpv4
-         else
-            CPUFLAGS += -mcpu=cortex-a9 -mfpu=neon
-         endif
+      else ifneq (,$(findstring ODROID-XU,$(BOARD)))
+         # ODROID-XU3 XU4 and XU3-Lite
+         CPUFLAGS += -mcpu=cortex-a15 -mtune=cortex-a15.cortex-a7 -mfpu=neon-vfpv4
       else
          # ODROID-U3, U2, X2 & X
          CPUFLAGS += -mcpu=cortex-a9 -mfpu=neon
@@ -212,14 +202,10 @@ ifneq (,$(findstring unix,$(platform)))
       -fmerge-all-constants -fno-math-errno \
       -marm -mtune=cortex-a7 -mfpu=neon-vfpv4 -mfloat-abi=hard
       LDFLAGS += -marm -mtune=cortex-a7 -mfpu=neon-vfpv4 -mfloat-abi=hard
-      ifeq ($(shell echo `$(CC) -dumpversion` "< 4.9" | bc -l), 1)
-        CPUFLAGS += -march=armv7-a
-      else
-        CPUFLAGS += -march=armv7ve
-        # If gcc is 5.0 or later
-        ifeq ($(shell echo `$(CC) -dumpversion` ">= 5" | bc -l), 1)
-          LDFLAGS += -static-libgcc -static-libstdc++
-        endif
+      CPUFLAGS += -march=armv7ve
+      # If gcc is 5.0 or later
+      ifeq ($(shell echo `$(CC) -dumpversion` ">= 5" | bc -l), 1)
+        LDFLAGS += -static-libgcc -static-libstdc++
       endif
 	endif  
 # (armv8 a35, hard point, neon based) ###
@@ -938,12 +924,22 @@ CFLAGS += -DINLINE="inline"
 CXXFLAGS += -DINLINE="inline"
 endif
 
-ASFLAGS     := $(ASFLAGS) $(CFLAGS)
+# Fix for GCC 10, make sure its added to all stages of the compiler
+ifeq "$(shell expr `gcc -dumpversion` \>= 10)" "1"
+  CPUFLAGS += -fcommon
+endif
+
+# LTO
+ifeq ($(HAVE_LTCG),1)
+  CPUFLAGS += -flto
+endif
+
+ASFLAGS     := $(ASFLAGS) $(CFLAGS) $(CPUFLAGS)
 
 ### Finalize ###
 OBJECTS     += $(SOURCES_CXX:.cpp=.o) $(SOURCES_C:.c=.o) $(SOURCES_ASM:.S=.o)
-CXXFLAGS    += $(CPUOPTS) $(COREFLAGS) $(INCFLAGS) $(INCFLAGS_PLATFORM) $(PLATCFLAGS) $(fpic) $(PLATCFLAGS) $(CPUFLAGS) $(GLFLAGS) $(DYNAFLAGS)
-CFLAGS      += $(CPUOPTS) $(COREFLAGS) $(INCFLAGS) $(INCFLAGS_PLATFORM) $(PLATCFLAGS) $(fpic) $(PLATCFLAGS) $(CPUFLAGS) $(GLFLAGS) $(DYNAFLAGS)
+CXXFLAGS    += $(CPUOPTS) $(COREFLAGS) $(INCFLAGS) $(INCFLAGS_PLATFORM) $(fpic) $(PLATCFLAGS) $(CPUFLAGS) $(GLFLAGS) $(DYNAFLAGS)
+CFLAGS      += $(CPUOPTS) $(COREFLAGS) $(INCFLAGS) $(INCFLAGS_PLATFORM) $(fpic) $(PLATCFLAGS) $(CPUFLAGS) $(GLFLAGS) $(DYNAFLAGS)
 
 ifeq ($(findstring Haiku,$(UNAME)),)
 ifeq (,$(findstring msvc,$(platform)))
@@ -951,7 +947,7 @@ ifeq (,$(findstring msvc,$(platform)))
 endif
 endif
 
-LDFLAGS    += $(fpic)
+LDFLAGS    += $(fpic) $(CPUFLAGS)
 
 ifeq ($(platform), theos_ios)
 COMMON_FLAGS := -DIOS $(COMMON_DEFINES) $(INCFLAGS) $(INCFLAGS_PLATFORM) -I$(THEOS_INCLUDE_PATH) -Wno-error
