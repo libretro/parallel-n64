@@ -144,27 +144,21 @@ void r4300_execute(void)
     {
 #if NEW_DYNAREC
         new_dyna_start();
-        if (stop)
-            new_dynarec_cleanup();
+        new_dynarec_cleanup();
 #else
         dyna_start(dynarec_setup_code);
-        if (stop)
-            PC++;
+        PC++;
 #endif
-        if (stop)
-            free_blocks();
+        free_blocks();
     }
 #endif
     else /* if (r4300emu == CORE_INTERPRETER) */
     {
         r4300_step();
-
-        if (stop)
-            free_blocks();
+        free_blocks();
     }
 
-    if (stop)
-        DebugMessage(M64MSG_INFO, "R4300 emulator finished.");
+    DebugMessage(M64MSG_INFO, "R4300 emulator finished.");
 }
 
 int retro_stop_stepping(void);
