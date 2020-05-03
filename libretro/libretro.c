@@ -994,7 +994,6 @@ extern void angrylion_set_vi(unsigned value);
 extern void angrylion_set_filtering(unsigned value);
 extern void angrylion_set_dithering(unsigned value);
 extern void  angrylion_set_threads(unsigned value);
-extern void parallel_set_dithering(unsigned value);
 extern void  angrylion_set_overscan(unsigned value);
 extern void  angrylion_set_vi_dedither(unsigned value);
 extern void  angrylion_set_vi_blur(unsigned value);
@@ -1064,9 +1063,6 @@ static void gfx_set_dithering(void)
 #endif
          break;
       case GFX_PARALLEL:
-#ifdef HAVE_PARALLEL
-         parallel_set_dithering(retro_dithering);
-#endif
          break;
       case GFX_GLN64:
 #if defined(HAVE_GLN64) || defined(HAVE_GLIDEN64)

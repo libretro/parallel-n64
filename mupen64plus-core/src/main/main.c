@@ -99,7 +99,7 @@ int        g_DDMemHasBeenBSwapped = 0; /* store byte-swapped flag so we don't sw
 int         g_EmulatorRunning = 0;      /* need separate boolean to tell if emulator is running, since --nogui doesn't use a thread */
 
 /* XXX: only global because of new dynarec linkage_x86.asm and plugin.c */
-ALIGN(16, uint32_t g_rdram[RDRAM_MAX_SIZE/4]);
+ALIGN(4 * 1024, uint32_t g_rdram[RDRAM_MAX_SIZE/4]);
 struct device g_dev;
 struct r4300_core g_r4300;
 

@@ -7,34 +7,31 @@
 using namespace Vulkan;
 using namespace std;
 
-extern "C" {
-#include "rdp_dump.h"
-}
+extern retro_log_printf_t log_cb;
+extern retro_environment_t environ_cb;
 
 namespace RDP
 {
-
 const struct retro_hw_render_interface_vulkan *vulkan;
 
-static char rom_name[21] = "DEFAULT";
 static int cmd_cur;
 static int cmd_ptr;
 static uint32_t cmd_data[0x00040000 >> 2];
-static bool rdp_sync;
-static bool pending_scissor_height;
+static uint64_t pending_timeline_value, timeline_value;
 
-unique_ptr<Frontend> frontend;
-unique_ptr<Renderer> renderer;
+unique_ptr<CommandProcessor> frontend;
 unique_ptr<Device> device;
-unique_ptr<VulkanContext> context;
+unique_ptr<Context> context;
+
+static vector<retro_vulkan_image> retro_images;
+static vector<ImageHandle> retro_image_handles;
+unsigned width, height;
+bool synchronous;
 
 static const unsigned cmd_len_lut[64] = {
 	1, 1, 1, 1, 1, 1, 1, 1, 4, 6, 12, 14, 12, 14, 20, 22,
-
 	1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,  1,  1,  1,  1,  1,
-
 	1, 1, 1, 1, 2, 2, 1, 1, 1, 1, 1,  1,  1,  1,  1,  1,
-
 	1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,  1,  1,  1,  1,  1,
 };
 
@@ -95,14 +92,14 @@ void process_commands()
 			return;
 		}
 
-		frontend->command(command, &cmd_data[2 * cmd_cur]);
+		if (command >= 8)
+			frontend->enqueue_command(cmd_length * 2, &cmd_data[2 * cmd_cur]);
 
-		// sync_full
-		if (command == 0x29)
+		if (RDP::Op(command) == RDP::Op::SyncFull)
 		{
-#ifdef ENABLE_LOGS
-			fprintf(stderr, "Signalling RDP IRQ\n");
-#endif
+			// For synchronous RDP:
+			if (synchronous)
+				frontend->wait_for_timeline(frontend->signal_timeline());
 			*gfx_info.MI_INTR_REG |= DP_INTERRUPT;
 			gfx_info.CheckInterrupts();
 		}
@@ -115,94 +112,144 @@ void process_commands()
 	*GET_GFX_INFO(DPC_START_REG) = *GET_GFX_INFO(DPC_CURRENT_REG) = *GET_GFX_INFO(DPC_END_REG);
 }
 
-void set_dithering(unsigned type)
-{
-   if (::RDP::renderer)
-      ::RDP::renderer->set_dithering(type);
-}
-
 void begin_frame()
 {
-	unsigned index = vulkan->get_sync_index(vulkan->handle);
-	vulkan->wait_sync_index(vulkan->handle);
-
-	// If number of sync indices changes, stall, and reinit per-frame
-	// data structures.
 	unsigned mask = vulkan->get_sync_index_mask(vulkan->handle);
-	unsigned frames = 0;
+	unsigned num_frames = 0;
 	for (unsigned i = 0; i < 32; i++)
-		if ((1u << i) & mask)
-			frames = i + 1;
+		if (mask & (1u << i))
+			num_frames = i + 1;
 
-	if (frames != device->get_num_frames())
+	if (num_frames != retro_images.size())
 	{
-		device->set_num_frames(frames);
-		device->begin_index(index);
-		renderer->begin_index(index);
-		::VI::set_num_frames(frames);
+		retro_images.resize(num_frames);
+		retro_image_handles.resize(num_frames);
 	}
 
-	device->begin_index(index);
-	renderer->begin_index(index);
+	vulkan->wait_sync_index(vulkan->handle);
+	frontend->begin_frame_context();
+
+	//frontend->wait_for_timeline(pending_timeline_value);
+	//pending_timeline_value = timeline_value;
 }
 
 bool init()
 {
-	assert(vulkan);
-
-	if (!context)
-	{
-		Vulkan::VulkanContext::init_loader(vulkan->get_instance_proc_addr);
-		context = unique_ptr<VulkanContext>(
-		    new VulkanContext(vulkan->instance, vulkan->gpu, vulkan->device, vulkan->queue, vulkan->queue_index));
-	}
+	if (!context || !vulkan)
+		return false;
 
 	unsigned mask = vulkan->get_sync_index_mask(vulkan->handle);
-	unsigned frames = 0;
+	unsigned num_frames = 0;
+	unsigned num_sync_frames = 0;
 	for (unsigned i = 0; i < 32; i++)
-		if ((1u << i) & mask)
-			frames = i + 1;
+	{
+		if (mask & (1u << i))
+		{
+			num_frames = i + 1;
+			num_sync_frames++;
+		}
+	}
 
-	device = unique_ptr<Device>(new Device(*context, frames));
-	renderer = unique_ptr<Renderer>(new Renderer(*device));
-	renderer->set_synchronous(rdp_sync);
-	frontend = unique_ptr<Frontend>(new Frontend);
-	frontend->set_renderer(renderer.get(), device.get());
-	renderer->set_rdram(DRAM, 8 * 1024 * 1024);
-	::VI::set_num_frames(frames);
+	retro_images.resize(num_frames);
+	retro_image_handles.resize(num_frames);
 
-   if (pending_scissor_height)
-   {
-		::RDP::renderer->set_scissor_variables(rom_name);
-      pending_scissor_height = false;
-   }
+	device.reset(new Device);
+	device->set_context(*context);
+	device->init_frame_contexts(num_sync_frames);
+	device->set_queue_lock(
+			[]() { vulkan->lock_queue(vulkan->handle); },
+			[]() { vulkan->unlock_queue(vulkan->handle); });
+	frontend.reset(new CommandProcessor(*device, gfx_info.RDRAM, 8 * 1024 * 1024, 4 * 1024 * 1024, 0));
 
+	timeline_value = 0;
+	pending_timeline_value = 0;
+	width = 0;
+	height = 0;
+	return true;
 }
 
 void deinit()
 {
-	::VI::deinit();
+	retro_image_handles.clear();
+	retro_images.clear();
 	frontend.reset();
-	renderer.reset();
 	device.reset();
 	context.reset();
 }
 
-void set_scissor_variables(const char *name)
+void complete_frame()
 {
-	if (::RDP::renderer)
-		::RDP::renderer->set_scissor_variables(name);
-   else
-   {
-      unsigned i;
-      pending_scissor_height = true;
+	if (!frontend)
+		return;
 
-      for (i = 0; i < 20; i++)
-         rom_name[i] = name[i];
-      rom_name[20] = 0;
-   }
+	timeline_value = frontend->signal_timeline();
+
+	frontend->set_vi_register(VIRegister::Control, *GET_GFX_INFO(VI_STATUS_REG));
+	frontend->set_vi_register(VIRegister::Origin, *GET_GFX_INFO(VI_ORIGIN_REG));
+	frontend->set_vi_register(VIRegister::Width, *GET_GFX_INFO(VI_WIDTH_REG));
+	frontend->set_vi_register(VIRegister::Intr, *GET_GFX_INFO(VI_INTR_REG));
+	frontend->set_vi_register(VIRegister::VCurrentLine, *GET_GFX_INFO(VI_V_CURRENT_LINE_REG));
+	frontend->set_vi_register(VIRegister::Timing, *GET_GFX_INFO(VI_V_BURST_REG));
+	frontend->set_vi_register(VIRegister::VSync, *GET_GFX_INFO(VI_V_SYNC_REG));
+	frontend->set_vi_register(VIRegister::HSync, *GET_GFX_INFO(VI_H_SYNC_REG));
+	frontend->set_vi_register(VIRegister::Leap, *GET_GFX_INFO(VI_LEAP_REG));
+	frontend->set_vi_register(VIRegister::HStart, *GET_GFX_INFO(VI_H_START_REG));
+	frontend->set_vi_register(VIRegister::VStart, *GET_GFX_INFO(VI_V_START_REG));
+	frontend->set_vi_register(VIRegister::VBurst, *GET_GFX_INFO(VI_V_BURST_REG));
+	frontend->set_vi_register(VIRegister::XScale, *GET_GFX_INFO(VI_X_SCALE_REG));
+	frontend->set_vi_register(VIRegister::YScale, *GET_GFX_INFO(VI_Y_SCALE_REG));
+
+	auto image = frontend->scanout();
+	unsigned index = vulkan->get_sync_index(vulkan->handle);
+
+	if (!image)
+	{
+		auto info = Vulkan::ImageCreateInfo::immutable_2d_image(1, 1, VK_FORMAT_R8G8B8A8_UNORM);
+		info.usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT |
+			VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+		info.misc = IMAGE_MISC_MUTABLE_SRGB_BIT;
+		info.initial_layout = VK_IMAGE_LAYOUT_UNDEFINED;
+		image = device->create_image(info);
+
+		auto cmd = device->request_command_buffer();
+		cmd->image_barrier(*image,
+				VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+				VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, 0,
+				VK_PIPELINE_STAGE_TRANSFER_BIT, VK_ACCESS_TRANSFER_WRITE_BIT);
+		cmd->clear_image(*image, {});
+		cmd->image_barrier(*image,
+				VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+				VK_PIPELINE_STAGE_TRANSFER_BIT, VK_ACCESS_TRANSFER_WRITE_BIT,
+				VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_ACCESS_SHADER_READ_BIT);
+		device->submit(cmd);
+	}
+
+	assert(index < retro_images.size());
+
+	retro_images[index].image_view = image->get_view().get_view();
+	retro_images[index].image_layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+	retro_images[index].create_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+	retro_images[index].create_info.image = image->get_image();
+	retro_images[index].create_info.viewType = VK_IMAGE_VIEW_TYPE_2D;
+	retro_images[index].create_info.format = VK_FORMAT_R8G8B8A8_UNORM;
+	retro_images[index].create_info.subresourceRange.baseMipLevel = 0;
+	retro_images[index].create_info.subresourceRange.baseArrayLayer = 0;
+	retro_images[index].create_info.subresourceRange.levelCount = 1;
+	retro_images[index].create_info.subresourceRange.layerCount = 1;
+	retro_images[index].create_info.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	retro_images[index].create_info.components.r = VK_COMPONENT_SWIZZLE_R;
+	retro_images[index].create_info.components.g = VK_COMPONENT_SWIZZLE_G;
+	retro_images[index].create_info.components.b = VK_COMPONENT_SWIZZLE_B;
+	retro_images[index].create_info.components.a = VK_COMPONENT_SWIZZLE_A;
+
+	vulkan->set_image(vulkan->handle, &retro_images[index], 0, nullptr, VK_QUEUE_FAMILY_IGNORED);
+	width = image->get_width();
+	height = image->get_height();
+	retro_image_handles[index] = image;
+
+	device->flush_frame();
 }
-
 }
 
 bool parallel_create_device(struct retro_vulkan_context *frontend_context, VkInstance instance, VkPhysicalDevice gpu,
@@ -211,39 +258,42 @@ bool parallel_create_device(struct retro_vulkan_context *frontend_context, VkIns
                             const char **required_device_layers, unsigned num_required_device_layers,
                             const VkPhysicalDeviceFeatures *required_features)
 {
-	Vulkan::VulkanContext::init_loader(get_instance_proc_addr);
+	if (!Vulkan::Context::init_loader(get_instance_proc_addr))
+		return false;
 
-	try
+	::RDP::context.reset(new Vulkan::Context);
+	if (!::RDP::context->init_device_from_instance(
+				instance, gpu, surface, required_device_extensions, num_required_device_extensions,
+				required_device_layers, num_required_device_layers, required_features, Vulkan::CONTEXT_CREATION_DISABLE_BINDLESS_BIT))
 	{
-		::RDP::context = unique_ptr<VulkanContext>(
-		    new VulkanContext(instance, gpu, surface, required_device_extensions, num_required_device_extensions,
-		                      required_device_layers, num_required_device_layers, required_features));
-
-		frontend_context->gpu = ::RDP::context->get_gpu();
-		frontend_context->device = ::RDP::context->get_device();
-		frontend_context->queue = ::RDP::context->get_alt_queue();
-		frontend_context->queue_family_index = ::RDP::context->get_alt_queue_family();
-		frontend_context->presentation_queue = ::RDP::context->get_alt_queue();
-		frontend_context->presentation_queue_family_index = ::RDP::context->get_alt_queue_family();
-
-		// Frontend owns the device.
-		::RDP::context->release_device();
-		return true;
-	}
-	catch (const std::exception &e)
-	{
+		::RDP::context.reset();
 		return false;
 	}
+
+	frontend_context->gpu = ::RDP::context->get_gpu();
+	frontend_context->device = ::RDP::context->get_device();
+	frontend_context->queue = ::RDP::context->get_graphics_queue();
+	frontend_context->queue_family_index = ::RDP::context->get_graphics_queue_family();
+	frontend_context->presentation_queue = ::RDP::context->get_graphics_queue();
+	frontend_context->presentation_queue_family_index = ::RDP::context->get_graphics_queue_family();
+
+	// Frontend owns the device.
+	::RDP::context->release_device();
+	return true;
 }
+
+static const VkApplicationInfo parallel_app_info = {
+	VK_STRUCTURE_TYPE_APPLICATION_INFO,
+	nullptr,
+	"paraLLEl-RDP",
+	0,
+	"Granite",
+	0,
+	VK_API_VERSION_1_1,
+};
 
 const VkApplicationInfo *parallel_get_application_info(void)
 {
-	return &Vulkan::VulkanContext::get_application_info();
+	return &parallel_app_info;
 }
 
-void parallel_set_synchronous_rdp(bool enable)
-{
-	if (::RDP::renderer)
-		::RDP::renderer->set_synchronous(enable);
-	::RDP::rdp_sync = enable;
-}

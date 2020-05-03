@@ -1,7 +1,7 @@
 #ifndef PARALLEL_H__
 #define PARALLEL_H__
 
-#include <vulkan/vulkan.h>
+#include <volk.h>
 #include <libretro.h>
 #include <libretro_vulkan.h>
 
