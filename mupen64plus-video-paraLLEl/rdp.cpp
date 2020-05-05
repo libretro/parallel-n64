@@ -11,10 +11,6 @@ extern "C" {
 #include "rdp_dump.h"
 }
 
-#ifdef HAVE_RDP_DUMP
-static bool rdp_dump_active;
-#endif
-
 namespace RDP
 {
 
@@ -55,16 +51,6 @@ void process_commands()
 	length = unsigned(length) >> 3;
 	if ((cmd_ptr + length) & ~(0x0003FFFF >> 3))
 		return;
-
-#ifdef HAVE_RDP_DUMP
-	// Flush out changes in DRAM if anything has changed.
-	if (!rdp_dump_active)
-	{
-		rdp_dump_flush_dram(DRAM, 8 * 1024 * 1024);
-		rdp_dump_begin_command_list();
-		rdp_dump_active = true;
-	}
-#endif
 
 	uint32_t offset = DP_CURRENT;
 	if (*GET_GFX_INFO(DPC_STATUS_REG) & DP_STATUS_XBUS_DMA)
@@ -109,9 +95,6 @@ void process_commands()
 			return;
 		}
 
-#ifdef HAVE_RDP_DUMP
-		rdp_dump_emit_command(command, cmd_data + 2 * cmd_cur, cmd_length * 2);
-#endif
 		frontend->command(command, &cmd_data[2 * cmd_cur]);
 
 		// sync_full
@@ -122,12 +105,6 @@ void process_commands()
 #endif
 			*gfx_info.MI_INTR_REG |= DP_INTERRUPT;
 			gfx_info.CheckInterrupts();
-
-#ifdef HAVE_RDP_DUMP
-			if (rdp_dump_active)
-				rdp_dump_end_command_list();
-			rdp_dump_active = false;
-#endif
 		}
 
 		cmd_cur += cmd_length;

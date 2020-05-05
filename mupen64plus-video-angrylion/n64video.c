@@ -9,6 +9,10 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+#ifdef HAVE_RDP_DUMP
+#include "rdp_dump.h"
+#endif
+
 #define MIN(a, b) (((a) < (b)) ? (a) : (b))
 #define MAX(a, b) (((a) > (b)) ? (a) : (b))
 #define CLAMP(x, lo, hi) (((x) > (hi)) ? (hi) : (((x) < (lo)) ? (lo) : (x)))
@@ -162,6 +166,10 @@ void rdp_init_worker(uint32_t worker_id)
     rdp_init(worker_id, parallel_num_workers());
 }
 
+#ifdef HAVE_RDP_DUMP
+static bool rdp_dump_in_command_list;
+#endif
+
 void n64video_init(struct n64video_config* _config)
 {
     if (_config)
@@ -184,6 +192,17 @@ void n64video_init(struct n64video_config* _config)
 
         static_init = true;
     }
+
+#ifdef HAVE_RDP_DUMP
+    const char *rdp_dump_path = getenv("RDP_DUMP");
+    if (rdp_dump_path)
+    {
+        rdp_dump_init(rdp_dump_path, config.gfx.rdram_size, sizeof(rdram_hidden));
+        // Force no MT when dumping for sanity.
+        config.parallel = false;
+    }
+    rdp_dump_in_command_list = false;
+#endif
 
     // enable sync switches depending on compatibility mode
     memset(rdp_cmd_sync, 0, sizeof(rdp_cmd_sync));
@@ -267,6 +286,26 @@ void n64video_process_list(void)
 
         // if there's enough data for the current command...
         if (rdp_cmd_pos == rdp_cmd_len) {
+
+#ifdef HAVE_RDP_DUMP
+            if (!rdp_dump_in_command_list)
+            {
+                rdp_dump_flush_dram(config.gfx.rdram, config.gfx.rdram_size);
+                rdp_dump_flush_hidden_dram(rdram_hidden, sizeof(rdram_hidden));
+                rdp_dump_in_command_list = true;
+            }
+
+            if (rdp_cmd_id == CMD_ID_SYNC_FULL)
+            {
+                rdp_dump_signal_complete();
+                rdp_dump_in_command_list = false;
+            }
+            else
+            {
+                rdp_dump_emit_command(rdp_cmd_id, cmd_buf, rdp_cmd_len);
+            }
+#endif
+
             // check if parallel processing is enabled
             if (config.parallel) {
                 // special case: sync_full always needs to be run in main thread
@@ -306,6 +345,12 @@ void n64video_process_list(void)
 
 void n64video_close(void)
 {
+#ifdef HAVE_RDP_DUMP
+    if (rdp_dump_in_command_list)
+        rdp_dump_in_command_list = false;
+    rdp_dump_end();
+#endif
+
     vi_close();
     parallel_close();
 }
