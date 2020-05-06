@@ -150,4 +150,34 @@ void parallel_set_synchronous_rdp(bool enable)
 {
 	RDP::synchronous = enable;
 }
+
+void parallel_set_divot_filter(bool enable)
+{
+	RDP::divot_filter = enable;
+}
+
+void parallel_set_gamma_dither(bool enable)
+{
+	RDP::gamma_dither = enable;
+}
+
+void parallel_set_vi_aa(bool enable)
+{
+	RDP::vi_aa = enable;
+}
+
+void parallel_set_vi_scale(bool enable)
+{
+	RDP::vi_scale = enable;
+}
+
+void parallel_set_dither_filter(bool enable)
+{
+	RDP::dither_filter = enable;
+}
+
+void parallel_set_interlacing(bool enable)
+{
+	RDP::interlacing = enable;
+}
 }

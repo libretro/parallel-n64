@@ -27,7 +27,7 @@ extern std::unique_ptr<CommandProcessor> frontend;
 
 extern unsigned width;
 extern unsigned height;
-extern bool synchronous;
+extern bool synchronous, divot_filter, gamma_dither, vi_aa, vi_scale, dither_filter, interlacing;
 
 void complete_frame();
 void deinit();

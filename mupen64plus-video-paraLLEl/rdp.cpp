@@ -26,7 +26,7 @@ unique_ptr<Context> context;
 static vector<retro_vulkan_image> retro_images;
 static vector<ImageHandle> retro_image_handles;
 unsigned width, height;
-bool synchronous;
+bool synchronous, divot_filter, gamma_dither, vi_aa, vi_scale, dither_filter, interlacing;
 
 static const unsigned cmd_len_lut[64] = {
 	1, 1, 1, 1, 1, 1, 1, 1, 4, 6, 12, 14, 12, 14, 20, 22,
@@ -92,13 +92,13 @@ void process_commands()
 			return;
 		}
 
-		if (command >= 8)
+		if (command >= 8 && frontend)
 			frontend->enqueue_command(cmd_length * 2, &cmd_data[2 * cmd_cur]);
 
 		if (RDP::Op(command) == RDP::Op::SyncFull)
 		{
 			// For synchronous RDP:
-			if (synchronous)
+			if (synchronous && frontend)
 				frontend->wait_for_timeline(frontend->signal_timeline());
 			*gfx_info.MI_INTR_REG |= DP_INTERRUPT;
 			gfx_info.CheckInterrupts();
@@ -127,7 +127,10 @@ void begin_frame()
 	}
 
 	vulkan->wait_sync_index(vulkan->handle);
-	frontend->begin_frame_context();
+	if (frontend)
+		frontend->begin_frame_context();
+	else if (device)
+		device->next_frame_context();
 
 	//frontend->wait_for_timeline(pending_timeline_value);
 	//pending_timeline_value = timeline_value;
@@ -159,7 +162,26 @@ bool init()
 	device->set_queue_lock(
 			[]() { vulkan->lock_queue(vulkan->handle); },
 			[]() { vulkan->unlock_queue(vulkan->handle); });
-	frontend.reset(new CommandProcessor(*device, gfx_info.RDRAM, 8 * 1024 * 1024, 4 * 1024 * 1024, 0));
+
+	if (!device->get_device_features().supports_external_memory_host)
+	{
+		log_cb(RETRO_LOG_ERROR, "VK_EXT_external_memory_host is not supported by this device. Got bug your driver vendor or update your driver!\n");
+		return false;
+	}
+
+	size_t align = device->get_device_features().host_memory_properties.minImportedHostPointerAlignment;
+	uintptr_t aligned_rdram = reinterpret_cast<uintptr_t>(gfx_info.RDRAM);
+	uintptr_t offset = aligned_rdram & (align - 1);
+	aligned_rdram -= offset;
+	frontend.reset(new CommandProcessor(*device, reinterpret_cast<void *>(aligned_rdram),
+				offset, 8 * 1024 * 1024, 4 * 1024 * 1024, 0));
+
+	if (!frontend->device_is_supported())
+	{
+		log_cb(RETRO_LOG_ERROR, "This device probably does not support 8/16-bit storage. Make sure you're using up-to-date drivers!\n");
+		frontend.reset();
+		return false;
+	}
 
 	timeline_value = 0;
 	pending_timeline_value = 0;
@@ -177,10 +199,66 @@ void deinit()
 	context.reset();
 }
 
+static void complete_frame_error()
+{
+	static const char error_tex[] =
+		"ooooooooooooooooooooooooo"
+		"ooXXXXXoooXXXXXoooXXXXXoo"
+		"ooXXooooooXoooXoooXoooXoo"
+		"ooXXXXXoooXXXXXoooXXXXXoo"
+		"ooXXXXXoooXoXoooooXoXoooo"
+		"ooXXooooooXooXooooXooXooo"
+		"ooXXXXXoooXoooXoooXoooXoo"
+		"ooooooooooooooooooooooooo";
+
+	auto info = Vulkan::ImageCreateInfo::immutable_2d_image(50, 16, VK_FORMAT_R8G8B8A8_UNORM, false);
+	info.usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+	info.misc = IMAGE_MISC_MUTABLE_SRGB_BIT;
+
+	Vulkan::ImageInitialData data = {};
+
+	uint32_t tex_data[16][50];
+	for (unsigned y = 0; y < 16; y++)
+		for (unsigned x = 0; x < 50; x++)
+			tex_data[y][x] = error_tex[25 * (y >> 1) + (x >> 1)] != 'o' ? 0xffffffffu : 0u;
+	data.data = tex_data;
+	auto image = device->create_image(info, &data);
+
+	unsigned index = vulkan->get_sync_index(vulkan->handle);
+	assert(index < retro_images.size());
+
+	retro_images[index].image_view = image->get_view().get_view();
+	retro_images[index].image_layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+	retro_images[index].create_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+	retro_images[index].create_info.image = image->get_image();
+	retro_images[index].create_info.viewType = VK_IMAGE_VIEW_TYPE_2D;
+	retro_images[index].create_info.format = VK_FORMAT_R8G8B8A8_UNORM;
+	retro_images[index].create_info.subresourceRange.baseMipLevel = 0;
+	retro_images[index].create_info.subresourceRange.baseArrayLayer = 0;
+	retro_images[index].create_info.subresourceRange.levelCount = 1;
+	retro_images[index].create_info.subresourceRange.layerCount = 1;
+	retro_images[index].create_info.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	retro_images[index].create_info.components.r = VK_COMPONENT_SWIZZLE_R;
+	retro_images[index].create_info.components.g = VK_COMPONENT_SWIZZLE_G;
+	retro_images[index].create_info.components.b = VK_COMPONENT_SWIZZLE_B;
+	retro_images[index].create_info.components.a = VK_COMPONENT_SWIZZLE_A;
+
+	vulkan->set_image(vulkan->handle, &retro_images[index], 0, nullptr, VK_QUEUE_FAMILY_IGNORED);
+	width = image->get_width();
+	height = image->get_height();
+	retro_image_handles[index] = image;
+
+	device->flush_frame();
+}
+
 void complete_frame()
 {
 	if (!frontend)
+	{
+		complete_frame_error();
 		return;
+	}
 
 	timeline_value = frontend->signal_timeline();
 
@@ -199,7 +277,15 @@ void complete_frame()
 	frontend->set_vi_register(VIRegister::XScale, *GET_GFX_INFO(VI_X_SCALE_REG));
 	frontend->set_vi_register(VIRegister::YScale, *GET_GFX_INFO(VI_Y_SCALE_REG));
 
-	auto image = frontend->scanout();
+	ScanoutOptions opts;
+	opts.persist_frame_on_invalid_input = true;
+	opts.vi.aa = vi_aa;
+	opts.vi.scale = vi_scale;
+	opts.vi.serrate = interlacing;
+	opts.vi.dither_filter = dither_filter;
+	opts.vi.divot_filter = divot_filter;
+	opts.vi.gamma_dither = gamma_dither;
+	auto image = frontend->scanout(opts);
 	unsigned index = vulkan->get_sync_index(vulkan->handle);
 
 	if (!image)

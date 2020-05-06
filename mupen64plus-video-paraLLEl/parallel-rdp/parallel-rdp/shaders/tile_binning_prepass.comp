@@ -1,0 +1,135 @@
+#version 450
+/* Copyright (c) 2020 Themaister
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining
+ * a copy of this software and associated documentation files (the
+ * "Software"), to deal in the Software without restriction, including
+ * without limitation the rights to use, copy, modify, merge, publish,
+ * distribute, sublicense, and/or sell copies of the Software, and to
+ * permit persons to whom the Software is furnished to do so, subject to
+ * the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be
+ * included in all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+ * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+ * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+ * IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+ * CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+ * TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+ * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ */
+// First pass in binning algorithm.
+#include "small_types.h"
+
+// Implementation architecture from RetroWarp.
+
+#if SUBGROUP
+#extension GL_KHR_shader_subgroup_basic : require
+#extension GL_KHR_shader_subgroup_ballot : require
+layout(local_size_x_id = 0) in;
+#else
+layout(local_size_x = 32) in;
+#endif
+
+#include "debug.h"
+#include "data_structures.h"
+#include "binning.h"
+
+#if !SUBGROUP
+shared uint merged_mask;
+#endif
+
+layout(std430, set = 0, binding = 0) writeonly buffer TileBitmask
+{
+    uint binned_bitmask[];
+};
+
+layout(set = 0, binding = 1, std430) readonly buffer TriangleSetupBuffer
+{
+    TriangleSetupMem elems[];
+} triangle_setup;
+#include "load_triangle_setup.h"
+
+layout(set = 0, binding = 2, std430) readonly buffer ScissorStateBuffer
+{
+    ScissorStateMem elems[];
+} scissor_state;
+#include "load_scissor_state.h"
+
+layout(constant_id = 1) const int TILE_WIDTH = 8;
+layout(constant_id = 2) const int TILE_HEIGHT = 8;
+layout(constant_id = 3) const int TILE_DOWNSAMPLE = 4;
+layout(constant_id = 4) const int MAX_PRIMITIVES = 0x1000;
+layout(constant_id = 5) const int MAX_WIDTH = 1024;
+
+const int TILE_BINNING_STRIDE = MAX_PRIMITIVES / 32;
+const int MAX_TILES_X_LOW_RES = MAX_WIDTH / (TILE_WIDTH * TILE_DOWNSAMPLE);
+
+layout(push_constant, std430) uniform Registers
+{
+    uvec2 resolution;
+    uint primitive_count;
+} fb_info;
+
+void main()
+{
+    ivec2 tile = ivec2(gl_WorkGroupID.yz);
+    ivec2 base_coord = tile * (ivec2(TILE_WIDTH, TILE_HEIGHT) * TILE_DOWNSAMPLE);
+    ivec2 end_coord = min(base_coord + ivec2(TILE_WIDTH, TILE_HEIGHT) * TILE_DOWNSAMPLE, ivec2(fb_info.resolution)) - 1;
+
+#if SUBGROUP
+    uint local_index = gl_SubgroupInvocationID + gl_SubgroupID * gl_SubgroupSize;
+#else
+    uint local_index = gl_LocalInvocationIndex;
+#endif
+
+    uint primitive_index = int(gl_WorkGroupID.x * gl_WorkGroupSize.x + local_index);
+
+    bool bin_to_tile = false;
+    if (primitive_index < fb_info.primitive_count)
+    {
+        ScissorState scissor = load_scissor_state(primitive_index);
+        ivec2 clipped_base_coord = max(base_coord, ivec2(scissor.xlo, scissor.ylo) >> 2);
+        ivec2 clipped_end_coord = min(end_coord, ivec2(scissor.xhi, scissor.yhi) >> 2);
+        TriangleSetup setup = load_triangle_setup(primitive_index);
+
+        bin_to_tile = bin_primitive(setup, clipped_base_coord, clipped_end_coord);
+    }
+
+#if SUBGROUP
+    uvec4 ballot_result = subgroupBallot(bin_to_tile);
+    if (subgroupElect())
+    {
+        int linear_tile = tile.y * MAX_TILES_X_LOW_RES + tile.x;
+        uint binned_bitmask_offset = uint(TILE_BINNING_STRIDE * linear_tile);
+        if (gl_SubgroupSize == 64u)
+        {
+            binned_bitmask[binned_bitmask_offset + 2u * gl_WorkGroupID.x] = ballot_result.x;
+            binned_bitmask[binned_bitmask_offset + 2u * gl_WorkGroupID.x + 1u] = ballot_result.y;
+        }
+        else if (gl_SubgroupSize == 32u)
+        {
+            binned_bitmask[binned_bitmask_offset + gl_SubgroupID + (gl_WorkGroupSize.x / 32u) * gl_WorkGroupID.x] = ballot_result.x;
+        }
+    }
+#else
+    // TODO: Subgroup ballot would be much nicer here.
+    if (local_index == 0u)
+        merged_mask = 0u;
+    barrier();
+
+    if (bin_to_tile)
+        atomicOr(merged_mask, 1u << local_index);
+
+    barrier();
+
+    if (local_index == 0u)
+    {
+        int linear_tile = tile.y * MAX_TILES_X_LOW_RES + tile.x;
+        uint binned_bitmask_offset = uint(TILE_BINNING_STRIDE * linear_tile);
+        binned_bitmask[binned_bitmask_offset + gl_WorkGroupID.x] = merged_mask;
+    }
+#endif
+}

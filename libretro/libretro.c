@@ -348,6 +348,18 @@ static void setup_variables(void)
 #ifdef HAVE_PARALLEL
       { "parallel-n64-parallel-rdp-synchronous",
          "ParaLLEl Synchronous RDP; enabled|disabled" },
+      { "parallel-n64-parallel-rdp-interlacing",
+         "(ParaLLEl-RDP) VI interlacing; enabled|disabled" },
+      { "parallel-n64-parallel-rdp-divot-filter",
+         "(ParaLLEl-RDP) VI divot filter; enabled|disabled" },
+      { "parallel-n64-parallel-rdp-gamma-dither",
+         "(ParaLLEl-RDP) VI gamma dither; enabled|disabled" },
+      { "parallel-n64-parallel-rdp-vi-aa",
+         "(ParaLLEl-RDP) VI AA; enabled|disabled" },
+      { "parallel-n64-parallel-rdp-vi-bilinear",
+         "(ParaLLEl-RDP) VI bilinear; enabled|disabled" },
+      { "parallel-n64-parallel-rdp-dither-filter",
+         "(ParaLLEl-RDP) VI dither filter; enabled|disabled" },
 #endif
       { "parallel-n64-send_allist_to_hle_rsp",
          "Send audio lists to HLE RSP; disabled|enabled" },
@@ -1079,18 +1091,52 @@ void update_variables(bool startup)
 #if defined(HAVE_PARALLEL)
    var.key = "parallel-n64-parallel-rdp-synchronous";
    var.value = NULL;
-
-   bool rdp_sync;
    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
-   {
-      if (!strcmp(var.value, "enabled"))
-         rdp_sync = true;
-      else
-         rdp_sync = false;
-   }
+      parallel_set_synchronous_rdp(!strcmp(var.value, "enabled"));
    else
-      rdp_sync = true;
-   parallel_set_synchronous_rdp(rdp_sync);
+      parallel_set_synchronous_rdp(true);
+
+   var.key = "parallel-n64-parallel-rdp-interlacing";
+   var.value = NULL;
+   if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+	   parallel_set_interlacing(!strcmp(var.value, "enabled"));
+   else
+	   parallel_set_interlacing(true);
+
+   var.key = "parallel-n64-parallel-rdp-divot-filter";
+   var.value = NULL;
+   if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+	   parallel_set_divot_filter(!strcmp(var.value, "enabled"));
+   else
+	   parallel_set_divot_filter(true);
+
+   var.key = "parallel-n64-parallel-rdp-gamma-dither";
+   var.value = NULL;
+   if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+	   parallel_set_gamma_dither(!strcmp(var.value, "enabled"));
+   else
+	   parallel_set_gamma_dither(true);
+
+   var.key = "parallel-n64-parallel-rdp-vi-aa";
+   var.value = NULL;
+   if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+	   parallel_set_vi_aa(!strcmp(var.value, "enabled"));
+   else
+	   parallel_set_vi_aa(true);
+
+   var.key = "parallel-n64-parallel-rdp-vi-bilinear";
+   var.value = NULL;
+   if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+	   parallel_set_vi_scale(!strcmp(var.value, "enabled"));
+   else
+	   parallel_set_vi_scale(true);
+
+   var.key = "parallel-n64-parallel-rdp-dither-filter";
+   var.value = NULL;
+   if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+	   parallel_set_dither_filter(!strcmp(var.value, "enabled"));
+   else
+	   parallel_set_dither_filter(true);
 #endif
 
    var.key   = "parallel-n64-send_allist_to_hle_rsp";
