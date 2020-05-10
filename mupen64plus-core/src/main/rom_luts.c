@@ -349,6 +349,10 @@ static const uint64_t lut_audiosignal[] = {
    0x1FC215320B6466D4ULL, /* Rugrats in Paris - The Movie */
 };
 
+static const uint64_t lut_sidmaduration[][2] = {
+   { 0x963adba6f7d5c89bULL, 0x64}, /* Tetris 64 (J) */
+};
+
 /* Cycles per emulated instruction (aka CountPerOp) */
 static const uint64_t lut_cpop[][2] = {
    { 0xB98BA4565B2B76AFULL, 1 }, /* 64 de Hakken!! Tamagotchi Minna de Tamagotchi World (J) [!] */

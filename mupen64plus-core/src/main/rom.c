@@ -65,7 +65,7 @@ extern bool frame_dupe;
 
 m64p_rom_header   ROM_HEADER;
 rom_params        ROM_PARAMS;
-m64p_rom_settings ROM_SETTINGS;
+m64p_rom_settings ROM_SETTINGS = { "", "", 0, 0, 0, 0, 0x900 };
 
 
 static const uint8_t Z64_SIGNATURE[4] = { 0x80, 0x37, 0x12, 0x40 };
@@ -192,6 +192,8 @@ m64p_error open_rom(const unsigned char* romimage, unsigned int size)
       sprintf(buffer+i*2, "%02X", digest[i]);
    buffer[32] = '\0';
    strcpy(ROM_SETTINGS.MD5, buffer);
+   
+   ROM_SETTINGS.sidmaduration = 0x900;
 
    /* add some useful properties to ROM_PARAMS */
    ROM_PARAMS.systemtype = rom_country_code_to_system_type(ROM_HEADER.destination_code);
@@ -326,6 +328,7 @@ m64p_error open_rom(const unsigned char* romimage, unsigned int size)
       strcpy(ROM_SETTINGS.goodname, ROM_PARAMS.headername);
       strcat(ROM_SETTINGS.goodname, " (unknown rom)");
       ROM_SETTINGS.savetype = NONE;
+      ROM_SETTINGS.sidmaduration = 0x900;
       ROM_SETTINGS.status = 0;
       ROM_SETTINGS.players = 0;
       ROM_SETTINGS.rumble = 0;
@@ -337,6 +340,16 @@ m64p_error open_rom(const unsigned char* romimage, unsigned int size)
       {
          count_per_op = lut_cpop[i][1];
          DebugMessage(M64MSG_INFO, "CountPerOp set to %u.", count_per_op);
+         break;
+      }
+   }
+
+   for (i = 0; i < sizeof(lut_sidmaduration)/sizeof(lut_sidmaduration[0]); ++i)
+   {
+      if (lut_sidmaduration[i][0] == lut_id)
+      {
+         ROM_SETTINGS.sidmaduration = lut_sidmaduration[i][1];
+         DebugMessage(M64MSG_INFO, "SI DMA Duration set to %u.", ROM_SETTINGS.sidmaduration);
          break;
       }
    }

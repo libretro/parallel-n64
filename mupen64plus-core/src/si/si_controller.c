@@ -24,6 +24,7 @@
 #include "../api/m64p_types.h"
 #include "../api/callbacks.h"
 #include "../main/main.h"
+#include "../main/rom.h"
 #include "../memory/memory.h"
 #include "../r4300/r4300_core.h"
 #include "../ri/ri_controller.h"
@@ -58,7 +59,7 @@ static void dma_si_write(struct si_controller* si)
    if (g_delay_si)
    {
       si->regs[SI_STATUS_REG] |= SI_STATUS_DMA_BUSY;
-      add_interrupt_event(SI_INT, /*0x100*/0x900);
+      add_interrupt_event(SI_INT, ROM_SETTINGS.sidmaduration);
    }
    else
    {
@@ -86,7 +87,7 @@ static void dma_si_read(struct si_controller* si)
    if (g_delay_si)
    {
       si->regs[SI_STATUS_REG] |= SI_STATUS_DMA_BUSY;
-      add_interrupt_event(SI_INT, /*0x100*/0x900);
+      add_interrupt_event(SI_INT, ROM_SETTINGS.sidmaduration);
    }
    else
    {
