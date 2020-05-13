@@ -461,22 +461,66 @@ endif
 ifeq ($(HAVE_PARALLEL),1)
 CFLAGS   += -DHAVE_PARALLEL
 CXXFLAGS += -DHAVE_PARALLEL
-### Tiny Tigers's LLE renderer ###
 	SOURCES_CXX += \
 					$(VIDEODIR_PARALLEL)/parallel.cpp \
-					$(VIDEODIR_PARALLEL)/vi.cpp \
-					$(VIDEODIR_PARALLEL)/rdp.cpp \
-					$(VIDEODIR_PARALLEL)/rdp/vulkan.cpp \
-					$(VIDEODIR_PARALLEL)/rdp/vulkan_util.cpp \
-					$(VIDEODIR_PARALLEL)/rdp/frontend.cpp \
-					$(VIDEODIR_PARALLEL)/rdp/tmem.cpp \
-					$(VIDEODIR_PARALLEL)/rdp/rdp.cpp \
-					$(VIDEODIR_PARALLEL)/rdp/vulkan_symbol_wrapper.cpp
+					$(VIDEODIR_PARALLEL)/rdp.cpp
+
+	SOURCES_CXX += \
+					$(wildcard $(VIDEODIR_PARALLEL)/parallel-rdp/parallel-rdp/*.cpp)
+
+	SOURCES_CXX += \
+					$(VIDEODIR_PARALLEL)/parallel-rdp/vulkan/buffer.cpp \
+					$(VIDEODIR_PARALLEL)/parallel-rdp/vulkan/buffer_pool.cpp \
+					$(VIDEODIR_PARALLEL)/parallel-rdp/vulkan/command_buffer.cpp \
+					$(VIDEODIR_PARALLEL)/parallel-rdp/vulkan/command_pool.cpp \
+					$(VIDEODIR_PARALLEL)/parallel-rdp/vulkan/context.cpp \
+					$(VIDEODIR_PARALLEL)/parallel-rdp/vulkan/cookie.cpp \
+					$(VIDEODIR_PARALLEL)/parallel-rdp/vulkan/descriptor_set.cpp \
+					$(VIDEODIR_PARALLEL)/parallel-rdp/vulkan/device.cpp \
+					$(VIDEODIR_PARALLEL)/parallel-rdp/vulkan/event_manager.cpp \
+					$(VIDEODIR_PARALLEL)/parallel-rdp/vulkan/fence.cpp \
+					$(VIDEODIR_PARALLEL)/parallel-rdp/vulkan/fence_manager.cpp \
+					$(VIDEODIR_PARALLEL)/parallel-rdp/vulkan/image.cpp \
+					$(VIDEODIR_PARALLEL)/parallel-rdp/vulkan/memory_allocator.cpp \
+					$(VIDEODIR_PARALLEL)/parallel-rdp/vulkan/pipeline_event.cpp \
+					$(VIDEODIR_PARALLEL)/parallel-rdp/vulkan/query_pool.cpp \
+					$(VIDEODIR_PARALLEL)/parallel-rdp/vulkan/render_pass.cpp \
+					$(VIDEODIR_PARALLEL)/parallel-rdp/vulkan/sampler.cpp \
+					$(VIDEODIR_PARALLEL)/parallel-rdp/vulkan/semaphore.cpp \
+					$(VIDEODIR_PARALLEL)/parallel-rdp/vulkan/semaphore_manager.cpp \
+					$(VIDEODIR_PARALLEL)/parallel-rdp/vulkan/shader.cpp \
+					$(VIDEODIR_PARALLEL)/parallel-rdp/vulkan/texture_format.cpp \
+					$(VIDEODIR_PARALLEL)/parallel-rdp/vulkan/thread_id.cpp \
+					$(VIDEODIR_PARALLEL)/parallel-rdp/util/aligned_alloc.cpp
+
+	SOURCES_CXX += \
+				   $(VIDEODIR_PARALLEL)/parallel-rdp/spirv-cross/spirv_cross.cpp \
+				   $(VIDEODIR_PARALLEL)/parallel-rdp/spirv-cross/spirv_cfg.cpp \
+				   $(VIDEODIR_PARALLEL)/parallel-rdp/spirv-cross/spirv_parser.cpp \
+				   $(VIDEODIR_PARALLEL)/parallel-rdp/spirv-cross/spirv_cross_parsed_ir.cpp
+
+	SOURCES_C += \
+				 $(VIDEODIR_PARALLEL)/parallel-rdp/volk/volk.c
+
+	INCFLAGS += \
+				-I$(VIDEODIR_PARALLEL)/parallel-rdp/parallel-rdp \
+				-I$(VIDEODIR_PARALLEL)/parallel-rdp/volk \
+				-I$(VIDEODIR_PARALLEL)/parallel-rdp/spirv-cross \
+				-I$(VIDEODIR_PARALLEL)/parallel-rdp/vulkan \
+				-I$(VIDEODIR_PARALLEL)/parallel-rdp/vulkan-headers/include \
+				-I$(VIDEODIR_PARALLEL)/parallel-rdp/util
+
+	CXXFLAGS += -DGRANITE_VULKAN_MT
 
 ifneq ($(findstring Haiku,$(shell uname -s)),)
 	LDFLAGS += -lroot
 else
 	LDFLAGS += -pthread
+	ifneq ($(platform),win)
+		LDFLAGS += -ldl
+	else
+		CFLAGS += -DVK_USE_PLATFORM_WIN32_KHR
+	endif
 endif
 endif
 

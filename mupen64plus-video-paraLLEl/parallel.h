@@ -1,7 +1,7 @@
 #ifndef PARALLEL_H__
 #define PARALLEL_H__
 
-#include <vulkan/vulkan.h>
+#include <volk.h>
 #include <libretro.h>
 #include <libretro_vulkan.h>
 
@@ -16,6 +16,13 @@ unsigned parallel_frame_width(void);
 unsigned parallel_frame_height(void);
 void parallel_begin_frame(void);
 void parallel_set_synchronous_rdp(bool enable);
+
+void parallel_set_divot_filter(bool enable);
+void parallel_set_gamma_dither(bool enable);
+void parallel_set_vi_aa(bool enable);
+void parallel_set_vi_scale(bool enable);
+void parallel_set_dither_filter(bool enable);
+void parallel_set_interlacing(bool enable);
 
 const VkApplicationInfo *parallel_get_application_info(void);
 bool parallel_create_device(struct retro_vulkan_context *context,
