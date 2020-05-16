@@ -1209,7 +1209,7 @@ void update_variables(bool startup)
             gfx_plugin = GFX_ANGRYLION;
 #endif
 #ifdef HAVE_PARALLEL
-         if(!strcmp(var.value, "parallel") && vulkan_inited)
+         if(!strcmp(var.value, "parallel"))
             gfx_plugin = GFX_PARALLEL;
 #endif
       }
@@ -1581,6 +1581,11 @@ bool retro_load_game(const struct retro_game_info *game)
       if (!environ_cb(RETRO_ENVIRONMENT_GET_PREFERRED_HW_RENDER, &preferred)) preferred = 0xFFFFFFFF;
       if ((preferred == 0xFFFFFFFF || (preferred != RETRO_HW_CONTEXT_OPENGL && preferred != RETRO_HW_CONTEXT_OPENGL_CORE)) && retro_init_vulkan())
          vulkan_inited = true;
+      else if (gfx_plugin == GFX_PARALLEL)
+      {
+         retro_init_vulkan();
+         vulkan_inited = true;
+      }
       else if (retro_init_gl())
          gl_inited = true;
    }
