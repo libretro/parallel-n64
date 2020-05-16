@@ -263,7 +263,7 @@ static void core_settings_set_defaults(void)
          rsp_plugin = RSP_HLE;
       if (rsp_var.value && !strcmp(rsp_var.value, "cxd4"))
          rsp_plugin = RSP_CXD4;
-      if (rsp_var.value && !strcmp(rsp_var.value, "parallel") && !gl_inited)
+      if (rsp_var.value && !strcmp(rsp_var.value, "parallel"))
          rsp_plugin = RSP_PARALLEL;
    }
 }
@@ -1193,15 +1193,15 @@ void update_variables(bool startup)
       {
          if (!strcmp(var.value, "auto"))
 #if defined(HAVE_GLN64) || defined(HAVE_GLIDEN64)
-         if (!strcmp(var.value, "gln64") && gl_inited)
+         if (!strcmp(var.value, "gln64"))
             gfx_plugin = GFX_GLN64;
 #endif
 #ifdef HAVE_RICE
-         if (!strcmp(var.value, "rice") && gl_inited)
+         if (!strcmp(var.value, "rice"))
             gfx_plugin = GFX_RICE;
 #endif
 #ifdef HAVE_GLIDE64
-         if(!strcmp(var.value, "glide64") && gl_inited)
+         if(!strcmp(var.value, "glide64"))
             gfx_plugin = GFX_GLIDE64;
 #endif
 #ifdef HAVE_THR_AL
@@ -1209,7 +1209,7 @@ void update_variables(bool startup)
             gfx_plugin = GFX_ANGRYLION;
 #endif
 #ifdef HAVE_PARALLEL
-         if(!strcmp(var.value, "parallel") && vulkan_inited)
+         if(!strcmp(var.value, "parallel"))
             gfx_plugin = GFX_PARALLEL;
 #endif
       }
@@ -1577,12 +1577,16 @@ bool retro_load_game(const struct retro_game_info *game)
    if (gfx_plugin != GFX_ANGRYLION)
 #endif
    {
-      unsigned preferred; // This will be set to a const value if GET_PREFERRED_HW_RENDER is unsupported by frontend
-      if (!environ_cb(RETRO_ENVIRONMENT_GET_PREFERRED_HW_RENDER, &preferred)) preferred = 0xFFFFFFFF;
-      if ((preferred == 0xFFFFFFFF || (preferred != RETRO_HW_CONTEXT_OPENGL && preferred != RETRO_HW_CONTEXT_OPENGL_CORE)) && retro_init_vulkan())
+      if (gfx_plugin == GFX_PARALLEL)
+      {
+         retro_init_vulkan();
          vulkan_inited = true;
-      else if (retro_init_gl())
+      }
+      else
+      {
+         retro_init_gl();
          gl_inited = true;
+      }
    }
 
    if (vulkan_inited)
