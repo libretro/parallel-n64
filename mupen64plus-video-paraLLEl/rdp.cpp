@@ -163,16 +163,18 @@ bool init()
 			[]() { vulkan->lock_queue(vulkan->handle); },
 			[]() { vulkan->unlock_queue(vulkan->handle); });
 
-	if (!device->get_device_features().supports_external_memory_host)
-	{
-		log_cb(RETRO_LOG_ERROR, "VK_EXT_external_memory_host is not supported by this device. Got bug your driver vendor or update your driver!\n");
-		return false;
-	}
-
-	size_t align = device->get_device_features().host_memory_properties.minImportedHostPointerAlignment;
 	uintptr_t aligned_rdram = reinterpret_cast<uintptr_t>(gfx_info.RDRAM);
-	uintptr_t offset = aligned_rdram & (align - 1);
-	aligned_rdram -= offset;
+	uintptr_t offset = 0;
+
+	if (device->get_device_features().supports_external_memory_host)
+	{
+		size_t align = device->get_device_features().host_memory_properties.minImportedHostPointerAlignment;
+		offset = aligned_rdram & (align - 1);
+		aligned_rdram -= offset;
+	}
+	else
+		log_cb(RETRO_LOG_WARN, "VK_EXT_external_memory_host is not supported by this device. Application might run slower because of this.\n");
+
 	frontend.reset(new CommandProcessor(*device, reinterpret_cast<void *>(aligned_rdram),
 				offset, 8 * 1024 * 1024, 4 * 1024 * 1024, 0));
 

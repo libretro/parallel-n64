@@ -362,7 +362,7 @@ constexpr unsigned MaxPrimitives = 0x1000;
 constexpr unsigned MaxStaticRasterizationStates = 64;
 constexpr unsigned MaxDepthBlendStates = 256;
 constexpr unsigned MaxTileInfoStates = 256;
-constexpr unsigned NumSyncStates = 4;
+constexpr unsigned NumSyncStates = 8;
 constexpr unsigned MaxNumTiles = 8;
 constexpr unsigned MaxTMEMInstances = 256;
 constexpr unsigned MaxSpanSetups = 512 * 1024;
@@ -383,5 +383,6 @@ constexpr unsigned TileWidthLowres = TileWidth * TileLowresDownsample;
 constexpr unsigned TileHeightLowres = TileHeight * TileLowresDownsample;
 constexpr unsigned MaxTilesX = Limits::MaxWidth / TileWidth;
 constexpr unsigned MaxTilesY = Limits::MaxHeight / TileHeight;
+constexpr unsigned IncoherentPageSize = 1024;
 }
 }

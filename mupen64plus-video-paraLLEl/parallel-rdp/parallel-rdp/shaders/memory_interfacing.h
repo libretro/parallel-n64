@@ -30,6 +30,7 @@
 #include "coverage.h"
 
 layout(constant_id = 0) const uint RDRAM_SIZE = 0;
+layout(constant_id = 7) const bool RDRAM_INCOHERENT = false;
 const uint RDRAM_MASK_8 = RDRAM_SIZE - 1u;
 const uint RDRAM_MASK_16 = RDRAM_MASK_8 >> 1u;
 const uint RDRAM_MASK_32 = RDRAM_MASK_8 >> 2u;
@@ -164,6 +165,15 @@ void store_vram_color(uint index)
 			vram8.data[index ^ 3u] = mem_u8(0);
 			if ((index & 1u) != 0u)
 				hidden_vram.data[index >> 1u] = mem_u8(current_color.a);
+
+			if (RDRAM_INCOHERENT)
+			{
+				// Need this memory barrier to ensure the mask readback does not read
+				// an invalid value from RDRAM. If the mask is seen, the valid RDRAM value is
+				// also coherent.
+				memoryBarrierBuffer();
+				vram8.data[(index ^ 3u) + RDRAM_SIZE] = mem_u8(0xff);
+			}
 			break;
 		}
 
@@ -173,6 +183,15 @@ void store_vram_color(uint index)
 			vram8.data[index ^ 3u] = mem_u8(current_color.r);
 			if ((index & 1u) != 0u)
 				hidden_vram.data[index >> 1u] = mem_u8((current_color.r & 1) * 3);
+
+			if (RDRAM_INCOHERENT)
+			{
+				// Need this memory barrier to ensure the mask readback does not read
+				// an invalid value from RDRAM. If the mask is seen, the valid RDRAM value is
+				// also coherent.
+				memoryBarrierBuffer();
+				vram8.data[(index ^ 3u) + RDRAM_SIZE] = mem_u8(0xff);
+			}
 			break;
 		}
 
@@ -185,6 +204,15 @@ void store_vram_color(uint index)
 			uint word = (c.x << 8u) | (c.y << 3u) | (c.z >> 2u) | (cov >> 2u);
 			vram16.data[index ^ 1u] = mem_u16(word);
 			hidden_vram.data[index] = mem_u8(cov & U8_C(3));
+
+			if (RDRAM_INCOHERENT)
+			{
+				// Need this memory barrier to ensure the mask readback does not read
+				// an invalid value from RDRAM. If the mask is seen, the valid RDRAM value is
+				// also coherent.
+				memoryBarrierBuffer();
+				vram16.data[(index ^ 1u) + (RDRAM_SIZE >> 1u)] = mem_u16(0xffff);
+			}
 			break;
 		}
 
@@ -195,6 +223,15 @@ void store_vram_color(uint index)
 			uint word = (col.x << 8u) | col.y;
 			vram16.data[index ^ 1u] = mem_u16(word);
 			hidden_vram.data[index] = mem_u8((col.y & 1) * 3);
+
+			if (RDRAM_INCOHERENT)
+			{
+				// Need this memory barrier to ensure the mask readback does not read
+				// an invalid value from RDRAM. If the mask is seen, the valid RDRAM value is
+				// also coherent.
+				memoryBarrierBuffer();
+				vram16.data[(index ^ 1u) + (RDRAM_SIZE >> 1u)] = mem_u16(0xffff);
+			}
 			break;
 		}
 
@@ -206,6 +243,15 @@ void store_vram_color(uint index)
 			vram32.data[index] = word;
 			hidden_vram.data[2u * index] = mem_u8((current_color.g & 1) * 3);
 			hidden_vram.data[2u * index + 1u] = mem_u8((current_color.a & 1) * 3);
+
+			if (RDRAM_INCOHERENT)
+			{
+				// Need this memory barrier to ensure the mask readback does not read
+				// an invalid value from RDRAM. If the mask is seen, the valid RDRAM value is
+				// also coherent.
+				memoryBarrierBuffer();
+				vram32.data[index + (RDRAM_SIZE >> 2u)] = ~0u;
+			}
 			break;
 		}
 		}
@@ -222,6 +268,15 @@ void store_vram_depth(uint index)
 			index &= RDRAM_MASK_16;
 			vram16.data[index ^ 1u] = mem_u16((current_depth << U16_C(2)) | (current_dz >> U16_C(2)));
 			hidden_vram.data[index] = mem_u8(current_dz & U16_C(3));
+
+			if (RDRAM_INCOHERENT)
+			{
+				// Need this memory barrier to ensure the mask readback does not read
+				// an invalid value from RDRAM. If the mask is seen, the valid RDRAM value is
+				// also coherent.
+				memoryBarrierBuffer();
+				vram16.data[(index ^ 1) + (RDRAM_SIZE >> 1u)] = mem_u16(0xffff);
+			}
 		}
 	}
 }

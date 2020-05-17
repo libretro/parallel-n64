@@ -161,6 +161,74 @@ static VkAccessFlags layout_to_access(VkImageLayout layout)
 	}
 }
 
+void VideoInterface::scanout_memory_range(unsigned &offset, unsigned &length)
+{
+	int x_start = (vi_registers[unsigned(VIRegister::XScale)] >> 16) & 0xfff;
+	int y_start = (vi_registers[unsigned(VIRegister::YScale)] >> 16) & 0xfff;
+	int h_start = (vi_registers[unsigned(VIRegister::HStart)] >> 16) & 0x3ff;
+	int v_start = (vi_registers[unsigned(VIRegister::VStart)] >> 16) & 0x3ff;
+	int h_end = vi_registers[unsigned(VIRegister::HStart)] & 0x3ff;
+	int v_end = vi_registers[unsigned(VIRegister::VStart)] & 0x3ff;
+	int h_res = h_end - h_start;
+	int v_res = (v_end - v_start) >> 1;
+	int x_add = vi_registers[unsigned(VIRegister::XScale)] & 0xfff;
+	int y_add = vi_registers[unsigned(VIRegister::YScale)] & 0xfff;
+	int v_sync = vi_registers[unsigned(VIRegister::VSync)] & 0x3ff;
+
+	uint32_t status = vi_registers[unsigned(VIRegister::Control)];
+
+	bool divot = (status & VI_CONTROL_DIVOT_ENABLE_BIT) != 0;
+	bool is_pal = unsigned(v_sync) > (VI_V_SYNC_NTSC + 25);
+	h_start -= is_pal ? VI_H_OFFSET_PAL : VI_H_OFFSET_NTSC;
+
+	int v_start_offset = is_pal ? VI_V_OFFSET_PAL : VI_V_OFFSET_NTSC;
+	v_start = (v_start - v_start_offset) / 2;
+
+	if (h_start < 0)
+	{
+		x_start -= x_add * h_start;
+		h_res += h_start;
+		h_start = 0;
+	}
+
+	if (h_start + h_res > 640)
+		h_res = 640 - h_start;
+
+	if (v_start < 0)
+	{
+		y_start -= y_add * v_start;
+		v_start = 0;
+	}
+
+	int max_x = (x_start + h_res * x_add) >> 10;
+	int max_y = (y_start + v_res * y_add) >> 10;
+
+	// Need to sample a 2-pixel border to have room for AA filter and divot.
+	int aa_width = max_x + 2 + 4 + int(divot) * 2;
+	// 1 pixel border on top and bottom.
+	int aa_height = max_y + 1 + 4;
+
+	int x_off = divot ? -3 : -2;
+	int y_off = -2;
+
+	int vi_width = vi_registers[unsigned(VIRegister::Width)] & 0xfff;
+	int vi_offset = vi_registers[unsigned(VIRegister::Origin)] & 0xffffff;
+
+	if (vi_offset == 0 || h_res <= 0 || h_start >= 640)
+	{
+		offset = 0;
+		length = 0;
+		return;
+	}
+
+	int pixel_size = ((status & VI_CONTROL_TYPE_MASK) | VI_CONTROL_TYPE_RGBA5551_BIT) == VI_CONTROL_TYPE_RGBA8888_BIT ? 4 : 2;
+	vi_offset &= ~(pixel_size - 1);
+	vi_offset += (x_off + y_off * vi_width) * pixel_size;
+
+	offset = vi_offset;
+	length = (aa_height * vi_width + aa_width) * pixel_size;
+}
+
 Vulkan::ImageHandle VideoInterface::scanout(VkImageLayout target_layout, const ScanoutOptions &options)
 {
 	Vulkan::ImageHandle scanout;

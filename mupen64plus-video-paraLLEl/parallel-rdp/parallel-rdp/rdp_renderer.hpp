@@ -30,11 +30,11 @@
 
 namespace RDP
 {
+struct CoherencyOperation;
+
 struct SyncObject
 {
 	Vulkan::Fence fence;
-	Vulkan::Semaphore graphics_semaphore;
-	Vulkan::Semaphore compute_semaphore;
 };
 
 enum class FBFormat : uint32_t
@@ -63,12 +63,18 @@ struct LoadTileInfo
 	UploadMode mode;
 };
 
+class CommandProcessor;
+
 class Renderer : public Vulkan::DebugChannelInterface
 {
 public:
+	explicit Renderer(CommandProcessor &processor);
 	~Renderer();
 	bool set_device(Vulkan::Device *device);
-	void set_rdram(Vulkan::Buffer *buffer, size_t offset, size_t size);
+
+	// If coherent is false, RDRAM is a buffer split into data in lower half and writemask state in upper half, each part being size large.
+	// offset must be 0 in this case.
+	void set_rdram(Vulkan::Buffer *buffer, uint8_t *host_rdram, size_t offset, size_t size, bool coherent);
 	void set_hidden_rdram(Vulkan::Buffer *buffer);
 	void set_tmem(Vulkan::Buffer *buffer);
 	void set_shader_bank(const ShaderBank *bank);
@@ -103,11 +109,30 @@ public:
 
 	int resolve_shader_define(const char *name, const char *define) const;
 
+	void resolve_coherency_external(unsigned offset, unsigned length);
+
 private:
+	CommandProcessor &processor;
 	Vulkan::Device *device = nullptr;
 	Vulkan::Buffer *rdram = nullptr;
+
+	struct
+	{
+		uint8_t *host_rdram = nullptr;
+		Vulkan::BufferHandle staging_rdram;
+		Vulkan::BufferHandle staging_readback;
+		std::unique_ptr<std::atomic_uint32_t[]> pending_writes_for_page;
+		std::vector<uint32_t> page_to_direct_copy;
+		std::vector<uint32_t> page_to_masked_copy;
+		std::vector<uint32_t> page_to_pending_readback;
+		unsigned num_pages = 0;
+		unsigned staging_readback_pages = 0;
+		unsigned staging_readback_index = 0; // Ringbuffer the readbacks.
+	} incoherent;
+
 	size_t rdram_offset = 0;
 	size_t rdram_size = 0;
+	bool is_host_coherent = false;
 	Vulkan::Buffer *hidden_rdram = nullptr;
 	Vulkan::Buffer *tmem = nullptr;
 	const ShaderBank *shader_bank = nullptr;
@@ -292,5 +317,12 @@ private:
 	};
 
 	std::unique_ptr<WorkerThread<Vulkan::DeferredPipelineCompile, PipelineExecutor>> pipeline_worker;
+
+	void resolve_coherency_host_to_gpu();
+	void resolve_coherency_gpu_to_host(CoherencyOperation &op, Vulkan::CommandBuffer &cmd);
+	uint32_t get_byte_size_for_bound_color_framebuffer() const;
+	uint32_t get_byte_size_for_bound_depth_framebuffer() const;
+	void mark_pages_for_gpu_read(uint32_t base_addr, uint32_t byte_count);
+	void lock_pages_for_gpu_write(uint32_t base_addr, uint32_t byte_count);
 };
 }

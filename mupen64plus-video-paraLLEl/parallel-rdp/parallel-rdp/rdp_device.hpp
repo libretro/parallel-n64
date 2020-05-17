@@ -50,6 +50,25 @@ enum CommandProcessorFlagBits
 };
 using CommandProcessorFlags = uint32_t;
 
+struct CoherencyCopy
+{
+	size_t src_offset = 0;
+	size_t mask_offset = 0;
+	size_t dst_offset = 0;
+	size_t size = 0;
+	std::atomic_uint32_t *counter = nullptr;
+};
+
+struct CoherencyOperation
+{
+	Vulkan::Fence fence;
+	uint64_t timeline_value = 0;
+
+	uint8_t *dst = nullptr;
+	const Vulkan::Buffer *src = nullptr;
+	std::vector<CoherencyCopy> copies;
+};
+
 class CommandProcessor
 {
 public:
@@ -140,14 +159,26 @@ private:
 
 	struct FenceExecutor
 	{
-		explicit inline FenceExecutor(uint64_t *ptr) : value(ptr) {}
+		explicit inline FenceExecutor(Vulkan::Device *device_, uint64_t *ptr)
+			: device(device_), value(ptr)
+		{
+		}
+
+		Vulkan::Device *device;
 		uint64_t *value;
-		bool is_sentinel(const std::pair<Vulkan::Fence, uint64_t> &work) const;
-		void perform_work(std::pair<Vulkan::Fence, uint64_t> &work);
-		void notify_work_locked(const std::pair<Vulkan::Fence, uint64_t> &work);
+		bool is_sentinel(const CoherencyOperation &work) const;
+		void perform_work(CoherencyOperation &work);
+		void notify_work_locked(const CoherencyOperation &work);
 	};
-	WorkerThread<std::pair<Vulkan::Fence, uint64_t>, FenceExecutor> timeline_worker;
+	WorkerThread<CoherencyOperation, FenceExecutor> timeline_worker;
+
+	uint8_t *host_rdram = nullptr;
 	bool measure_stall_time = false;
 	bool is_supported = false;
+	bool is_host_coherent = true;
+
+	friend class Renderer;
+
+	void enqueue_coherency_operation(CoherencyOperation &&op);
 };
 }
