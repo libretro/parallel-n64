@@ -103,6 +103,16 @@
 			"name": "extract_vram",
 			"path": "extract_vram.comp",
 			"compute": true
+		},
+		{
+			"name": "masked_rdram_resolve",
+			"path": "masked_rdram_resolve.comp",
+			"compute": true
+		},
+		{
+			"name": "clear_write_mask",
+			"path": "clear_write_mask.comp",
+			"compute": true
 		}
 	]
 }
