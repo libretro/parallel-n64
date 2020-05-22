@@ -47,7 +47,7 @@ LOCAL_SRC_FILES    := $(SOURCES_CXX) $(SOURCES_C) $(SOURCES_ASM)
 LOCAL_CFLAGS       := $(COREFLAGS) $(CFLAGS)
 LOCAL_CXXFLAGS     := -std=c++11 $(COREFLAGS) $(CXXFLAGS)
 LOCAL_LDFLAGS      := -Wl,-version-script=$(LIBRETRO_DIR)/link.T
-LOCAL_LDLIBS       := -lGLESv2
+LOCAL_LDLIBS       := -lGLESv2 -llog
 LOCAL_CPP_FEATURES := exceptions
 LOCAL_ARM_NEON     := true
 LOCAL_ARM_MODE     := arm
