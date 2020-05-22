@@ -425,7 +425,7 @@ Vulkan::ImageHandle VideoInterface::scanout(VkImageLayout target_layout, const S
 		async_cmd->set_specialization_constant(1, status & (VI_CONTROL_TYPE_MASK | VI_CONTROL_META_AA_BIT));
 
 		async_cmd->push_constants(&push, 0, sizeof(push));
-		async_cmd->dispatch((aa_width + 15) / 16, (aa_height + 15) / 16, 1);
+		async_cmd->dispatch((aa_width + 15) / 16, (aa_height + 7) / 8, 1);
 		// Just enforce an execution barrier here for rendering work in next frame.
 		async_cmd->barrier(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0,
 		                   VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0);
