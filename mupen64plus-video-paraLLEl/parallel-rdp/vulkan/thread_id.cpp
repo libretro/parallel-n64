@@ -21,7 +21,7 @@
  */
 
 #include "thread_id.hpp"
-#include "util.hpp"
+#include "logging.hpp"
 
 namespace Vulkan
 {

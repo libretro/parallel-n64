@@ -45,12 +45,16 @@ CommandProcessor::CommandProcessor(Vulkan::Device &device_, void *rdram_ptr,
                                    size_t rdram_offset_, size_t rdram_size_, size_t hidden_rdram_size,
                                    CommandProcessorFlags flags)
 	: device(device_), rdram_offset(rdram_offset_), rdram_size(rdram_size_), renderer(*this),
+#ifdef PARALLEL_RDP_SHADER_DIR
+	  timeline_worker(Granite::Global::create_thread_context(), FenceExecutor{&device, &thread_timeline_value})
+#else
 	  timeline_worker(FenceExecutor{&device, &thread_timeline_value})
+#endif
 {
 	BufferCreateInfo info = {};
 	info.size = rdram_size;
 	info.usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
-	info.domain = BufferDomain::CachedHost;
+	info.domain = BufferDomain::CachedCoherentHostPreferCached;
 	info.misc = BUFFER_MISC_ZERO_INITIALIZE_BIT;
 
 	if (rdram_ptr)
@@ -81,7 +85,7 @@ CommandProcessor::CommandProcessor(Vulkan::Device &device_, void *rdram_ptr,
 			                     VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
 
 			if (device.get_gpu_properties().deviceType == VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU)
-				device_rdram.domain = BufferDomain::CachedHost;
+				device_rdram.domain = BufferDomain::CachedCoherentHostPreferCached;
 			else
 				device_rdram.domain = BufferDomain::Device;
 
@@ -96,14 +100,16 @@ CommandProcessor::CommandProcessor(Vulkan::Device &device_, void *rdram_ptr,
 		LOGE("Failed to allocate RDRAM.\n");
 
 	info.size = hidden_rdram_size;
+	// Should be CachedHost, but seeing some insane bug on incoherent Arm systems for time being,
+	// so just forcing coherent memory here for now. Not sure what is going on.
 	info.domain = (flags & COMMAND_PROCESSOR_FLAG_HOST_VISIBLE_HIDDEN_RDRAM_BIT) != 0 ?
-	              BufferDomain::CachedHost : BufferDomain::Device;
+	              BufferDomain::CachedCoherentHostPreferCoherent : BufferDomain::Device;
 	info.misc = 0;
 	hidden_rdram = device.create_buffer(info);
 
 	info.size = 0x1000;
 	info.domain = (flags & COMMAND_PROCESSOR_FLAG_HOST_VISIBLE_TMEM_BIT) != 0 ?
-	              BufferDomain::CachedHost : BufferDomain::Device;
+	              BufferDomain::CachedCoherentHostPreferCoherent : BufferDomain::Device;
 	tmem = device.create_buffer(info);
 
 	clear_hidden_rdram();
@@ -121,6 +127,13 @@ CommandProcessor::CommandProcessor(Vulkan::Device &device_, void *rdram_ptr,
 		measure_stall_time = strtol(env, nullptr, 0) > 0;
 		if (measure_stall_time)
 			LOGI("Will measure stall timings.\n");
+	}
+
+	if (const char *env = getenv("PARALLEL_RDP_SINGLE_THREADED_COMMAND"))
+	{
+		single_threaded_processing = strtol(env, nullptr, 0) > 0;
+		if (single_threaded_processing)
+			LOGI("Will use single threaded command processing.\n");
 	}
 }
 
@@ -182,7 +195,7 @@ void CommandProcessor::clear_tmem()
 
 void CommandProcessor::clear_buffer(Vulkan::Buffer &buffer, uint32_t value)
 {
-	if (buffer.get_create_info().domain == BufferDomain::Device)
+	if (!buffer.get_allocation().is_host_allocation())
 	{
 		auto cmd = device.request_command_buffer();
 		cmd->fill_buffer(buffer, value);
@@ -793,7 +806,10 @@ OP(sync_tile)
 
 void CommandProcessor::enqueue_command(unsigned num_words, const uint32_t *words)
 {
-	ring.enqueue_command(num_words, words);
+	if (single_threaded_processing)
+		enqueue_command_direct(num_words, words);
+	else
+		ring.enqueue_command(num_words, words);
 }
 
 void CommandProcessor::enqueue_command_direct(unsigned num_words, const uint32_t *words)
@@ -981,7 +997,7 @@ void CommandProcessor::scanout_sync(std::vector<RGBA> &colors, unsigned &width, 
 	Vulkan::BufferCreateInfo info = {};
 	info.size = width * height * sizeof(uint32_t);
 	info.usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT;
-	info.domain = Vulkan::BufferDomain::CachedHost;
+	info.domain = Vulkan::BufferDomain::CachedCoherentHostPreferCached;
 	auto readback = device.create_buffer(info);
 
 	auto cmd = device.request_command_buffer();
@@ -1057,9 +1073,12 @@ void CommandProcessor::FenceExecutor::perform_work(CoherencyOperation &work)
 			auto *mapped_data = static_cast<uint8_t *>(device->map_host_buffer(*work.src, MEMORY_ACCESS_READ_BIT, copy.src_offset, copy.size));
 			auto *mapped_mask = static_cast<uint8_t *>(device->map_host_buffer(*work.src, MEMORY_ACCESS_READ_BIT, copy.mask_offset, copy.size));
 			masked_memcpy(work.dst + copy.dst_offset, mapped_data, mapped_mask, copy.size);
-			unsigned val = copy.counter->fetch_sub(1, std::memory_order_release);
-			(void)val;
-			assert(val > 0);
+			for (unsigned i = 0; i < copy.counters; i++)
+			{
+				unsigned val = copy.counter_base[i].fetch_sub(1, std::memory_order_release);
+				(void)val;
+				assert(val > 0);
+			}
 		}
 
 #ifdef __SSE2__

@@ -28,14 +28,25 @@
 #include <condition_variable>
 #include <utility>
 
+#ifdef PARALLEL_RDP_SHADER_DIR
+#include "global_managers.hpp"
+#endif
+
 namespace RDP
 {
 template <typename T, typename Executor>
 class WorkerThread
 {
 public:
-	explicit WorkerThread(Executor exec)
+	explicit WorkerThread(
+#ifdef PARALLEL_RDP_SHADER_DIR
+			Granite::Global::GlobalManagersHandle globals,
+#endif
+			Executor exec)
 		: executor(std::move(exec))
+#ifdef PARALLEL_RDP_SHADER_DIR
+		, handles(std::move(globals))
+#endif
 	{
 		thr = std::thread(&WorkerThread::main_loop, this);
 	}
@@ -76,8 +87,17 @@ private:
 	std::queue<T> work_queue;
 	Executor executor;
 
+#ifdef PARALLEL_RDP_SHADER_DIR
+	Granite::Global::GlobalManagersHandle handles;
+#endif
+
 	void main_loop()
 	{
+#ifdef PARALLEL_RDP_SHADER_DIR
+		Granite::Global::set_thread_context(*handles);
+		handles.reset();
+#endif
+
 		for (;;)
 		{
 			T value;
