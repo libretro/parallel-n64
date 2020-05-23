@@ -24,6 +24,9 @@ void parallel_set_vi_scale(bool enable);
 void parallel_set_dither_filter(bool enable);
 void parallel_set_interlacing(bool enable);
 
+void parallel_profile_video_refresh_begin(void);
+void parallel_profile_video_refresh_end(void);
+
 const VkApplicationInfo *parallel_get_application_info(void);
 bool parallel_create_device(struct retro_vulkan_context *context,
       VkInstance instance,

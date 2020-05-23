@@ -122,7 +122,7 @@ CommandProcessor::CommandProcessor(Vulkan::Device &device_, void *rdram_ptr,
 #endif
 			this, 4 * 1024);
 
-	if (const char *env = getenv("PARALLEL_RDP_MEASURE_SYNC_TIME"))
+	if (const char *env = getenv("PARALLEL_RDP_BENCH"))
 	{
 		measure_stall_time = strtol(env, nullptr, 0) > 0;
 		if (measure_stall_time)
@@ -135,6 +135,9 @@ CommandProcessor::CommandProcessor(Vulkan::Device &device_, void *rdram_ptr,
 		if (single_threaded_processing)
 			LOGI("Will use single threaded command processing.\n");
 	}
+
+	if (const char *env = getenv("PARALLEL_RDP_BENCH"))
+		timestamp = strtol(env, nullptr, 0) > 0;
 }
 
 CommandProcessor::~CommandProcessor()
@@ -145,7 +148,7 @@ CommandProcessor::~CommandProcessor()
 void CommandProcessor::begin_frame_context()
 {
 	flush();
-	ring.drain();
+	drain_command_ring();
 	device.next_frame_context();
 }
 
@@ -213,7 +216,7 @@ void CommandProcessor::clear_buffer(Vulkan::Buffer &buffer, uint32_t value)
 
 void CommandProcessor::op_sync_full(const uint32_t *)
 {
-	renderer.flush();
+	renderer.flush_and_signal();
 }
 
 static void decode_triangle_setup(TriangleSetup &setup, const uint32_t *words, bool copy_cycle)
@@ -852,7 +855,13 @@ void CommandProcessor::enqueue_command_direct(unsigned num_words, const uint32_t
 
 	case Op::MetaFlush:
 	{
-		renderer.flush();
+		renderer.flush_and_signal();
+		break;
+	}
+
+	case Op::MetaIdle:
+	{
+		renderer.notify_idle_command_thread();
 		break;
 	}
 
@@ -939,24 +948,24 @@ uint64_t CommandProcessor::signal_timeline()
 
 void CommandProcessor::wait_for_timeline(uint64_t index)
 {
-	std::chrono::time_point<std::chrono::high_resolution_clock> start_ts, end_ts;
+	Vulkan::QueryPoolHandle start_ts, end_ts;
 	if (measure_stall_time)
-		start_ts = std::chrono::high_resolution_clock::now();
+		start_ts = device.write_calibrated_timestamp();
 	timeline_worker.wait([this, index]() -> bool {
 		return thread_timeline_value >= index;
 	});
 	if (measure_stall_time)
 	{
-		end_ts = std::chrono::high_resolution_clock::now();
-		double ms = std::chrono::duration_cast<std::chrono::nanoseconds>(end_ts - start_ts).count() * 1e-6;
-		LOGI("parallel-RDP sync: Stalled for %.3f ms.\n", ms);
+		end_ts = device.write_calibrated_timestamp();
+		device.register_time_interval("RDP CPU", std::move(start_ts), std::move(end_ts), "wait-for-timeline");
 	}
 }
 
 Vulkan::ImageHandle CommandProcessor::scanout(const ScanoutOptions &opts)
 {
-	ring.drain();
-	renderer.flush();
+	Vulkan::QueryPoolHandle start_ts, end_ts;
+	drain_command_ring();
+	renderer.flush_and_signal();
 
 	if (!is_host_coherent)
 	{
@@ -969,10 +978,23 @@ Vulkan::ImageHandle CommandProcessor::scanout(const ScanoutOptions &opts)
 	return scanout;
 }
 
+void CommandProcessor::drain_command_ring()
+{
+	Vulkan::QueryPoolHandle start_ts, end_ts;
+	if (timestamp)
+		start_ts = device.write_calibrated_timestamp();
+	ring.drain();
+	if (timestamp)
+	{
+		end_ts = device.write_calibrated_timestamp();
+		device.register_time_interval("RDP CPU", std::move(start_ts), std::move(end_ts), "drain-command-ring");
+	}
+}
+
 void CommandProcessor::scanout_sync(std::vector<RGBA> &colors, unsigned &width, unsigned &height)
 {
-	ring.drain();
-	renderer.flush();
+	drain_command_ring();
+	renderer.flush_and_signal();
 
 	if (!is_host_coherent)
 	{
@@ -1065,6 +1087,9 @@ static void masked_memcpy(uint8_t * __restrict dst,
 void CommandProcessor::FenceExecutor::perform_work(CoherencyOperation &work)
 {
 	work.fence->wait();
+
+	if (work.unlock_cookie)
+		work.unlock_cookie->fetch_sub(1, std::memory_order_relaxed);
 
 	if (work.src)
 	{

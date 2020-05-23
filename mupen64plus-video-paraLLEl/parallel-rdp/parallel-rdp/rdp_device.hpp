@@ -68,6 +68,7 @@ struct CoherencyOperation
 	uint8_t *dst = nullptr;
 	const Vulkan::Buffer *src = nullptr;
 	std::vector<CoherencyCopy> copies;
+	std::atomic_uint32_t *unlock_cookie = nullptr;
 };
 
 class CommandProcessor
@@ -178,9 +179,11 @@ private:
 	bool single_threaded_processing = false;
 	bool is_supported = false;
 	bool is_host_coherent = true;
+	bool timestamp = false;
 
 	friend class Renderer;
 
 	void enqueue_coherency_operation(CoherencyOperation &&op);
+	void drain_command_ring();
 };
 }

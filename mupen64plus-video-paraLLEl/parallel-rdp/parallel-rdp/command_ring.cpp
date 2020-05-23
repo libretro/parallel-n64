@@ -20,6 +20,7 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+#include <chrono>
 #include "command_ring.hpp"
 #include "rdp_device.hpp"
 #include "thread_id.hpp"
@@ -99,25 +100,36 @@ void CommandRing::thread_loop()
 
 	for (;;)
 	{
+		bool is_idle = false;
 		{
 			std::unique_lock<std::mutex> holder{lock};
-			cond.wait(holder, [this]() {
-				return write_count > read_count;
-			});
-
-			uint32_t num_words = ring[read_count++ & mask];
-			tmp_buffer.resize(num_words);
-			for (uint32_t i = 0; i < num_words; i++)
-				tmp_buffer[i] = ring[read_count++ & mask];
+			if (cond.wait_for(holder, std::chrono::microseconds(500), [this]() { return write_count > read_count; }))
+			{
+				uint32_t num_words = ring[read_count++ & mask];
+				tmp_buffer.resize(num_words);
+				for (uint32_t i = 0; i < num_words; i++)
+					tmp_buffer[i] = ring[read_count++ & mask];
+			}
+			else
+			{
+				// If we don't receive commands at a steady pace,
+				// notify rendering thread that we should probably kick some work.
+				tmp_buffer.resize(1);
+				tmp_buffer[0] = uint32_t(Op::MetaIdle);
+				is_idle = true;
+			}
 		}
 
 		if (tmp_buffer.empty())
 			break;
 
 		processor->enqueue_command_direct(tmp_buffer.size(), tmp_buffer.data());
-		std::lock_guard<std::mutex> holder{lock};
-		completed_count = read_count;
-		cond.notify_one();
+		if (!is_idle)
+		{
+			std::lock_guard<std::mutex> holder{lock};
+			completed_count = read_count;
+			cond.notify_one();
+		}
 	}
 }
 }

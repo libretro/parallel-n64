@@ -39,57 +39,53 @@ layout(push_constant, std430) uniform Registers
     uint fb_depth_addr_index;
     uint fb_width;
     uint fb_height;
-    int num_primitives_1024;
+    uint group_mask;
 } registers;
 
-layout(constant_id = 5) const int MAX_PRIMITIVES = 0x1000;
+layout(constant_id = 5) const int MAX_PRIMITIVES = 256;
 layout(constant_id = 6) const int MAX_WIDTH = 1024;
 
 const int TILE_BINNING_STRIDE = MAX_PRIMITIVES / 32;
-const int TILE_BINNING_STRIDE_COARSE = TILE_BINNING_STRIDE / 32;
 const int MAX_TILES_X = MAX_WIDTH / int(gl_WorkGroupSize.x);
 
 void main()
 {
-    init_tile(gl_GlobalInvocationID.xy,
-              registers.fb_width, registers.fb_height,
-              registers.fb_addr_index, registers.fb_depth_addr_index);
-
-    uint num_primitives_1024 = registers.num_primitives_1024;
     int x = int(gl_GlobalInvocationID.x);
     int y = int(gl_GlobalInvocationID.y);
     ivec2 tile = ivec2(gl_WorkGroupID.xy);
 
     int linear_tile = tile.x + tile.y * MAX_TILES_X;
     int linear_tile_base = linear_tile * TILE_BINNING_STRIDE;
-    int linear_tile_base_coarse = linear_tile * TILE_BINNING_STRIDE_COARSE;
 
-    int primitive_coarse_mask_count = registers.num_primitives_1024;
-    for (int coarse_mask_index = 0; coarse_mask_index < primitive_coarse_mask_count; coarse_mask_index++)
+    uint coarse_binned = tile_binning_coarse.elems[linear_tile] & registers.group_mask;
+    if (coarse_binned == 0u)
+        return;
+
+    init_tile(gl_GlobalInvocationID.xy,
+              registers.fb_width, registers.fb_height,
+              registers.fb_addr_index, registers.fb_depth_addr_index);
+
+    while (coarse_binned != 0u)
     {
-        uint coarse_binned = tile_binning_coarse.elems[linear_tile_base_coarse + coarse_mask_index];
-        while (coarse_binned != 0u)
-        {
-            int mask_index = findLSB(coarse_binned);
-            coarse_binned &= ~uint(1 << mask_index);
-            mask_index += coarse_mask_index * 32;
-            uint binned = tile_binning.elems[linear_tile_base + mask_index];
-            while (binned != 0u)
-            {
-                int i = findLSB(binned);
-                binned &= ~uint(1 << i);
-                uint primitive_index = uint(i + 32 * mask_index);
+        int mask_index = findLSB(coarse_binned);
+        coarse_binned &= ~uint(1 << mask_index);
 
-                ShadedData shaded;
-                if (shade_pixel(x, y, primitive_index, shaded))
-                {
-                    if ((shaded.coverage_count & COVERAGE_FILL_BIT) != 0)
-                        fill_color(derived_setup.elems[primitive_index].fill_color);
-                    else if ((shaded.coverage_count & COVERAGE_COPY_BIT) != 0)
-                        copy_pipeline(shaded.z_dith, primitive_index);
-                    else
-                        depth_blend(x, y, primitive_index, shaded);
-                }
+        uint binned = tile_binning.elems[linear_tile_base + mask_index];
+        while (binned != 0u)
+        {
+            int i = findLSB(binned);
+            binned &= ~uint(1 << i);
+            uint primitive_index = uint(i + 32 * mask_index);
+
+            ShadedData shaded;
+            if (shade_pixel(x, y, primitive_index, shaded))
+            {
+                if ((shaded.coverage_count & COVERAGE_FILL_BIT) != 0)
+                    fill_color(derived_setup.elems[primitive_index].fill_color);
+                else if ((shaded.coverage_count & COVERAGE_COPY_BIT) != 0)
+                    copy_pipeline(shaded.z_dith, primitive_index);
+                else
+                    depth_blend(x, y, primitive_index, shaded);
             }
         }
     }

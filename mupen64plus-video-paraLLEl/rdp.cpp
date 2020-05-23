@@ -19,9 +19,10 @@ static int cmd_ptr;
 static uint32_t cmd_data[0x00040000 >> 2];
 static uint64_t pending_timeline_value, timeline_value;
 
-unique_ptr<CommandProcessor> frontend;
-unique_ptr<Device> device;
-unique_ptr<Context> context;
+static unique_ptr<CommandProcessor> frontend;
+static unique_ptr<Device> device;
+static unique_ptr<Context> context;
+static QueryPoolHandle begin_ts, end_ts;
 
 static vector<retro_vulkan_image> retro_images;
 static vector<ImageHandle> retro_image_handles;
@@ -112,6 +113,23 @@ void process_commands()
 	*GET_GFX_INFO(DPC_START_REG) = *GET_GFX_INFO(DPC_CURRENT_REG) = *GET_GFX_INFO(DPC_END_REG);
 }
 
+static QueryPoolHandle refresh_begin_ts;
+
+void profile_refresh_begin()
+{
+	if (device)
+		refresh_begin_ts = device->write_calibrated_timestamp();
+}
+
+void profile_refresh_end()
+{
+	if (device)
+	{
+		device->register_time_interval("Emulation", refresh_begin_ts, device->write_calibrated_timestamp(), "refresh");
+		refresh_begin_ts.reset();
+	}
+}
+
 void begin_frame()
 {
 	unsigned mask = vulkan->get_sync_index_mask(vulkan->handle);
@@ -127,10 +145,8 @@ void begin_frame()
 	}
 
 	vulkan->wait_sync_index(vulkan->handle);
-	if (frontend)
-		frontend->begin_frame_context();
-	else if (device)
-		device->next_frame_context();
+	if (!begin_ts)
+		begin_ts = device->write_calibrated_timestamp();
 
 	//frontend->wait_for_timeline(pending_timeline_value);
 	//pending_timeline_value = timeline_value;
@@ -159,6 +175,7 @@ bool init()
 	device.reset(new Device);
 	device->set_context(*context);
 	device->init_frame_contexts(num_sync_frames);
+	log_cb(RETRO_LOG_INFO, "Using %u sync frames for parallel-RDP.\n", num_sync_frames);
 	device->set_queue_lock(
 			[]() { vulkan->lock_queue(vulkan->handle); },
 			[]() { vulkan->unlock_queue(vulkan->handle); });
@@ -194,6 +211,8 @@ bool init()
 
 void deinit()
 {
+	begin_ts.reset();
+	end_ts.reset();
 	retro_image_handles.clear();
 	retro_images.clear();
 	frontend.reset();
@@ -259,6 +278,7 @@ void complete_frame()
 	if (!frontend)
 	{
 		complete_frame_error();
+		device->next_frame_context();
 		return;
 	}
 
@@ -336,7 +356,11 @@ void complete_frame()
 	height = image->get_height();
 	retro_image_handles[index] = image;
 
-	device->flush_frame();
+	end_ts = device->write_calibrated_timestamp();
+	device->register_time_interval("Emulation", begin_ts, end_ts, "frame");
+	begin_ts.reset();
+	end_ts.reset();
+	frontend->begin_frame_context();
 }
 }
 

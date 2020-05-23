@@ -180,4 +180,14 @@ void parallel_set_interlacing(bool enable)
 {
 	RDP::interlacing = enable;
 }
+
+void parallel_profile_video_refresh_begin(void)
+{
+	RDP::profile_refresh_begin();
+}
+
+void parallel_profile_video_refresh_end(void)
+{
+	RDP::profile_refresh_end();
+}
 }
