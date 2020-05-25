@@ -920,11 +920,12 @@ static bool context_framebuffer_lock(void *data)
    return true;
 }
 
-static bool retro_init_gl(void)
+static bool retro_init_gl(unsigned preferred)
 {
 #if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
    glsm_ctx_params_t params     = {0};
 
+   params.context_type          = preferred;
    params.context_reset         = context_reset;
    params.context_destroy       = context_destroy;
    params.environ_cb            = environ_cb;
@@ -933,11 +934,7 @@ static bool retro_init_gl(void)
    params.framebuffer_lock      = context_framebuffer_lock;
 
    if (!glsm_ctl(GLSM_CTL_STATE_CONTEXT_INIT, &params))
-   {
-      if (log_cb)
-         log_cb(RETRO_LOG_ERROR, "mupen64plus: libretro frontend doesn't have OpenGL support.\n");
       return false;
-   }
 
    return true;
 #else
@@ -1584,8 +1581,19 @@ bool retro_load_game(const struct retro_game_info *game)
       }
       else
       {
-         retro_init_gl();
-         gl_inited = true;
+         // get and use current driver
+         unsigned preferred;
+         if (!environ_cb(RETRO_ENVIRONMENT_GET_PREFERRED_HW_RENDER, &preferred))
+            preferred = RETRO_HW_CONTEXT_DUMMY;
+         if (preferred == RETRO_HW_CONTEXT_OPENGL || preferred == RETRO_HW_CONTEXT_OPENGL_CORE)
+            gl_inited = retro_init_gl(preferred);
+         // fallbacks if preferred wasn't found
+         if (!gl_inited)
+            gl_inited = retro_init_gl(RETRO_HW_CONTEXT_OPENGL);
+         if (!gl_inited)
+            gl_inited = retro_init_gl(RETRO_HW_CONTEXT_OPENGL_CORE);
+         if (log_cb && !gl_inited)
+            log_cb(RETRO_LOG_ERROR, "mupen64plus: libretro frontend doesn't have OpenGL support.\n");
       }
    }
 
