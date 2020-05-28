@@ -104,7 +104,9 @@ public:
 	void set_convert(uint16_t k0, uint16_t k1, uint16_t k2, uint16_t k3, uint16_t k4, uint16_t k5);
 	void set_color_key(unsigned component, uint32_t width, uint32_t center, uint32_t scale);
 
-	void flush();
+	// Called when the command thread has not seen any activity in a given period of time.
+	// This is useful so we don't needlessly queue up work when we might as well kick it to the GPU.
+	void notify_idle_command_thread();
 	Vulkan::Fence flush_and_signal();
 
 	int resolve_shader_define(const char *name, const char *define) const;
@@ -172,7 +174,10 @@ private:
 
 		std::vector<UploadInfo> tmem_upload_infos;
 		unsigned max_shaded_tiles = 0;
+		Vulkan::CommandBufferHandle cmd;
 	} stream;
+
+	void ensure_command_buffer();
 
 	TileInfo tiles[Limits::MaxNumTiles];
 	Vulkan::BufferHandle tmem_instances;
@@ -180,7 +185,6 @@ private:
 	Vulkan::BufferHandle blender_divider_lut_buffer;
 	Vulkan::BufferViewHandle blender_divider_buffer;
 
-	Vulkan::BufferHandle tile_binning_buffer_prepass;
 	Vulkan::BufferHandle tile_binning_buffer;
 	Vulkan::BufferHandle tile_binning_buffer_coarse;
 
@@ -222,18 +226,18 @@ private:
 	struct RenderBuffersUpdater
 	{
 		void init(Vulkan::Device &device);
-		void upload(Vulkan::Device &device, const StreamCaches &caches);
+		void upload(Vulkan::Device &device, const StreamCaches &caches, Vulkan::CommandBuffer &cmd);
 
 		template <typename Cache>
-		void upload(Vulkan::CommandBuffer *cmd, Vulkan::Device &device,
-		            const MappedBuffer &gpu, const MappedBuffer &cpu, const Cache &cache);
+		void upload(Vulkan::CommandBuffer &cmd, Vulkan::Device &device,
+		            const MappedBuffer &gpu, const MappedBuffer &cpu, const Cache &cache, bool &did_upload);
 
 		RenderBuffers cpu, gpu;
 	};
 
 	struct InternalSynchronization
 	{
-		SyncObject complete;
+		Vulkan::Fence fence;
 	};
 
 	struct Constants
@@ -258,20 +262,26 @@ private:
 
 	RenderBuffersUpdater buffer_instances[Limits::NumSyncStates];
 	InternalSynchronization internal_sync[Limits::NumSyncStates];
+	uint32_t sync_indices_needs_flush = 0;
 	unsigned buffer_instance = 0;
 	uint32_t base_primitive_index = 0;
+	unsigned pending_render_passes = 0;
+	unsigned pending_primitives = 0;
 
 	bool tmem_upload_needs_flush(uint32_t addr) const;
 
 	void flush_queues();
-	void submit_render_pass();
+	void submit_render_pass(Vulkan::CommandBuffer &cmd);
+	Vulkan::Fence submit_to_queue();
 	void begin_new_context();
+	void reset_context();
 	bool need_flush() const;
+	void maintain_queues();
+	void maintain_queues_idle();
 	void update_tmem_instances(Vulkan::CommandBuffer &cmd);
 	void submit_span_setup_jobs(Vulkan::CommandBuffer &cmd);
 	void update_deduced_height(const TriangleSetup &setup);
-	void submit_tile_binning_prepass(Vulkan::CommandBuffer &cmd);
-	void submit_tile_binning_complete(Vulkan::CommandBuffer &cmd);
+	void submit_tile_binning_combined(Vulkan::CommandBuffer &cmd);
 	void clear_indirect_buffer(Vulkan::CommandBuffer &cmd);
 	void submit_rasterization(Vulkan::CommandBuffer &cmd, Vulkan::Buffer &tmem);
 
@@ -300,11 +310,10 @@ private:
 
 	struct Caps
 	{
-		bool timestamp = false;
+		int timestamp = 0;
 		bool force_sync = false;
 		bool ubershader = false;
 		bool supports_small_integer_arithmetic = false;
-		bool subgroup_tile_binning_prepass = false;
 		bool subgroup_tile_binning = false;
 	} caps;
 
@@ -318,11 +327,15 @@ private:
 
 	std::unique_ptr<WorkerThread<Vulkan::DeferredPipelineCompile, PipelineExecutor>> pipeline_worker;
 
-	void resolve_coherency_host_to_gpu();
+	void resolve_coherency_host_to_gpu(Vulkan::CommandBuffer &cmd);
 	void resolve_coherency_gpu_to_host(CoherencyOperation &op, Vulkan::CommandBuffer &cmd);
 	uint32_t get_byte_size_for_bound_color_framebuffer() const;
 	uint32_t get_byte_size_for_bound_depth_framebuffer() const;
 	void mark_pages_for_gpu_read(uint32_t base_addr, uint32_t byte_count);
 	void lock_pages_for_gpu_write(uint32_t base_addr, uint32_t byte_count);
+
+	std::atomic_uint32_t active_submissions;
+	void enqueue_fence_wait(Vulkan::Fence fence);
+	uint64_t last_submit_ns = 0;
 };
 }

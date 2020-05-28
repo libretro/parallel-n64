@@ -148,13 +148,6 @@ struct SpanInfoOffsetsMem
 };
 #define SpanInfoOffsets SpanInfoOffsetsMem
 
-struct SpanInterpolationJob
-{
-	int primitive_index;
-	int offset;
-	int padding0, padding1;
-};
-
 struct DerivedSetupMem
 {
 	mem_u8x4 constant_muladd0;

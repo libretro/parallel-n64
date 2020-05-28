@@ -42,6 +42,7 @@
 #include <vector>
 #include <functional>
 #include <unordered_map>
+#include <stdio.h>
 
 #ifdef GRANITE_VULKAN_FILESYSTEM
 #include "shader_manager.hpp"
@@ -172,6 +173,7 @@ public:
 	                                          uint32_t *count,
 	                                          const VkPerformanceCounterKHR **counters,
 	                                          const VkPerformanceCounterDescriptionKHR **desc);
+	bool init_timestamp_trace(const char *path);
 
 	ImageView &get_swapchain_view();
 	ImageView &get_swapchain_view(unsigned index);
@@ -217,7 +219,8 @@ public:
 	                  Semaphore *semaphore = nullptr);
 	void add_wait_semaphore(CommandBuffer::Type type, Semaphore semaphore, VkPipelineStageFlags stages, bool flush);
 	CommandBuffer::Type get_physical_queue_type(CommandBuffer::Type queue_type) const;
-	void register_time_interval(QueryPoolHandle start_ts, QueryPoolHandle end_ts, const char *tag);
+	void register_time_interval(std::string tid, QueryPoolHandle start_ts, QueryPoolHandle end_ts,
+	                            std::string tag, std::string extra = {});
 
 	// Request shaders and programs. These objects are owned by the Device.
 	Shader *request_shader(const uint32_t *code, size_t size);
@@ -332,6 +335,8 @@ public:
 	bool swapchain_touched() const;
 
 	double convert_timestamp_delta(uint64_t start_ticks, uint64_t end_ticks) const;
+	// Writes a timestamp on host side, which is calibrated to the GPU timebase.
+	QueryPoolHandle write_calibrated_timestamp();
 
 private:
 	VkInstance instance = VK_NULL_HANDLE;
@@ -377,8 +382,36 @@ private:
 	void init_bindless();
 	void deinit_timeline_semaphores();
 
+	struct JSONTraceFileDeleter { void operator()(FILE *file); };
+	std::unique_ptr<FILE, JSONTraceFileDeleter> json_trace_file;
+	int64_t json_base_timestamp_value = 0;
+	int64_t json_timestamp_origin = 0;
+	int64_t convert_timestamp_to_absolute_usec(uint64_t ts);
+	uint64_t update_wrapped_base_timestamp(uint64_t ts);
+	void write_json_timestamp_range(unsigned frame_index, const char *tid, const char *name, const char *extra,
+	                                uint64_t start_ts, uint64_t end_ts,
+	                                int64_t &min_us, int64_t &max_us);
+	void write_json_timestamp_range_us(unsigned frame_index, const char *tid, const char *name, int64_t start_us, int64_t end_us);
+
+	QueryPoolHandle write_timestamp_nolock(VkCommandBuffer cmd, VkPipelineStageFlagBits stage);
+	QueryPoolHandle write_calibrated_timestamp_nolock();
+	void register_time_interval_nolock(std::string tid, QueryPoolHandle start_ts, QueryPoolHandle end_ts, std::string tag, std::string extra);
+
 	// Make sure this is deleted last.
 	HandlePool handle_pool;
+
+	// Calibrated timestamps.
+	void init_calibrated_timestamps();
+	void recalibrate_timestamps_fallback();
+	void recalibrate_timestamps();
+	bool resample_calibrated_timestamps();
+	VkTimeDomainEXT calibrated_time_domain = VK_TIME_DOMAIN_DEVICE_EXT;
+	int64_t calibrated_timestamp_device = 0;
+	int64_t calibrated_timestamp_host = 0;
+	int64_t last_calibrated_timestamp_host = 0; // To ensure monotonicity after a recalibration.
+	unsigned timestamp_calibration_counter = 0;
+	int64_t get_calibrated_timestamp();
+	Vulkan::QueryPoolHandle frame_context_begin_ts;
 
 	struct Managers
 	{
@@ -399,12 +432,10 @@ private:
 #endif
 		unsigned counter = 0;
 	} lock;
-	void add_frame_counter();
-	void decrement_frame_counter();
 
 	struct PerFrame
 	{
-		explicit PerFrame(Device *device);
+		PerFrame(Device *device, unsigned index);
 		~PerFrame();
 		void operator=(const PerFrame &) = delete;
 		PerFrame(const PerFrame &) = delete;
@@ -412,6 +443,7 @@ private:
 		void begin();
 
 		Device &device;
+		unsigned frame_index;
 		const VolkDeviceTable &table;
 		Managers &managers;
 		std::vector<CommandPool> graphics_cmd_pool;
@@ -461,11 +493,15 @@ private:
 
 		struct TimestampIntervalHandles
 		{
+			std::string tid;
 			QueryPoolHandle start_ts;
 			QueryPoolHandle end_ts;
 			TimestampInterval *timestamp_tag;
+			std::string extra;
 		};
 		std::vector<TimestampIntervalHandles> timestamp_intervals;
+
+		bool in_destructor = false;
 	};
 	// The per frame structure must be destroyed after
 	// the hashmap data structures below, so it must be declared before.

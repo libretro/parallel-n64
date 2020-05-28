@@ -191,8 +191,6 @@ bool shade_pixel(int x, int y, uint primitive_index, out ShadedData shaded)
 		                   tex_lod_en, sharpen_lod_en, detail_lod_en);
 	}
 
-	// TODO: Specialization constant overrides for texture format/size/clamping etc could work well here if all accessible tile infos
-	// have same value.
 	i16x4 texel0, texel1;
 
 	if (uses_texel0)

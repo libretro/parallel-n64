@@ -25,6 +25,7 @@
 #include "logging.hpp"
 #include "bitops.hpp"
 #include "luts.hpp"
+#include "timer.hpp"
 #ifdef PARALLEL_RDP_SHADER_DIR
 #include "global_managers.hpp"
 #include "os_filesystem.hpp"
@@ -37,6 +38,7 @@ namespace RDP
 Renderer::Renderer(CommandProcessor &processor_)
 	: processor(processor_)
 {
+	active_submissions = 0;
 }
 
 Renderer::~Renderer()
@@ -107,7 +109,7 @@ bool Renderer::init_caps()
 
 	if (const char *timestamp = getenv("PARALLEL_RDP_BENCH"))
 	{
-		caps.timestamp = strtol(timestamp, nullptr, 0) > 0;
+		caps.timestamp = strtol(timestamp, nullptr, 0);
 		LOGI("Enabling timestamps = %d\n", caps.timestamp);
 	}
 
@@ -159,9 +161,10 @@ bool Renderer::init_caps()
 			LOGW("Current proprietary AMD driver is known to be buggy with 8/16-bit integer arithmetic, disabling support for time being.\n");
 			allow_small_types = false;
 		}
-		else if (features.driver_properties.driverID == VK_DRIVER_ID_AMD_OPEN_SOURCE_KHR)
+		else if (features.driver_properties.driverID == VK_DRIVER_ID_AMD_OPEN_SOURCE_KHR ||
+		         features.driver_properties.driverID == VK_DRIVER_ID_MESA_RADV_KHR)
 		{
-			LOGW("Current RADV driver is known to be slightly faster without 8/16-bit integer arithmetic.\n");
+			LOGW("Current open-source AMD drivers are known to be slightly faster without 8/16-bit integer arithmetic.\n");
 			allow_small_types = false;
 		}
 		else if (features.driver_properties.driverID == VK_DRIVER_ID_NVIDIA_PROPRIETARY_KHR)
@@ -194,15 +197,6 @@ bool Renderer::init_caps()
 	}
 
 	uint32_t subgroup_size = features.subgroup_properties.subgroupSize;
-	const VkSubgroupFeatureFlags required_prepass =
-			VK_SUBGROUP_FEATURE_BALLOT_BIT |
-			VK_SUBGROUP_FEATURE_BASIC_BIT;
-
-	caps.subgroup_tile_binning_prepass =
-			allow_subgroup &&
-			(features.subgroup_properties.supportedOperations & required_prepass) == required_prepass &&
-			(features.subgroup_properties.supportedStages & VK_SHADER_STAGE_COMPUTE_BIT) != 0 &&
-			can_support_minimum_subgroup_size(32) && subgroup_size <= 64;
 
 	const VkSubgroupFeatureFlags required =
 			VK_SUBGROUP_FEATURE_BALLOT_BIT |
@@ -229,9 +223,7 @@ int Renderer::resolve_shader_define(const char *name, const char *define) const
 		return int(caps.supports_small_integer_arithmetic);
 	else if (strcmp(define, "SUBGROUP") == 0)
 	{
-		if (strcmp(name, "tile_binning_prepass") == 0)
-			return int(caps.subgroup_tile_binning_prepass);
-		else if (strcmp(name, "tile_binning") == 0)
+		if (strcmp(name, "tile_binning_combined") == 0)
 			return int(caps.subgroup_tile_binning);
 		else
 			return 0;
@@ -247,45 +239,31 @@ void Renderer::init_buffers()
 	info.domain = Vulkan::BufferDomain::Device;
 	info.misc = Vulkan::BUFFER_MISC_ZERO_INITIALIZE_BIT;
 
-	static_assert((Limits::MaxPrimitives % (32 * 32)) == 0, "MaxPrimitives must be divisble by 1024.");
-	static_assert((Limits::MaxWidth % ImplementationConstants::TileWidthLowres) == 0, "MaxWidth must be divisible by maximum tile width.");
-	static_assert((Limits::MaxHeight % ImplementationConstants::TileHeightLowres) == 0, "MaxHeight must be divisible by maximum tile height.");
+	static_assert((Limits::MaxPrimitives % 32) == 0, "MaxPrimitives must be divisble by 32.");
+	static_assert(Limits::MaxPrimitives <= (32 * 32), "MaxPrimitives must be less-or-equal than 1024.");
 
 	info.size = sizeof(uint32_t) *
 	            (Limits::MaxPrimitives / 32) *
 	            (Limits::MaxWidth / ImplementationConstants::TileWidth) *
 	            (Limits::MaxHeight / ImplementationConstants::TileHeight);
+
 	tile_binning_buffer = device->create_buffer(info);
 	device->set_name(*tile_binning_buffer, "tile-binning-buffer");
 
 	info.size = sizeof(uint32_t) *
-	            (Limits::MaxPrimitives / 1024) *
 	            (Limits::MaxWidth / ImplementationConstants::TileWidth) *
 	            (Limits::MaxHeight / ImplementationConstants::TileHeight);
+
 	tile_binning_buffer_coarse = device->create_buffer(info);
 	device->set_name(*tile_binning_buffer_coarse, "tile-binning-buffer-coarse");
 
-	info.size = sizeof(uint32_t) *
-	            (Limits::MaxPrimitives / 32) *
-	            (Limits::MaxWidth / ImplementationConstants::TileWidthLowres) *
-	            (Limits::MaxHeight / ImplementationConstants::TileHeightLowres);
-	tile_binning_buffer_prepass = device->create_buffer(info);
-	device->set_name(*tile_binning_buffer_prepass, "tile-binning-buffer-prepass");
-
 	if (!caps.ubershader)
 	{
-		Vulkan::BufferCreateInfo indirect_info = {};
-		indirect_info.size = 4 * sizeof(uint32_t) * Limits::MaxStaticRasterizationStates;
-		indirect_info.domain = Vulkan::BufferDomain::Device;
-		indirect_info.usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT;
-		indirect_info.misc = Vulkan::BUFFER_MISC_ZERO_INITIALIZE_BIT;
-		indirect_dispatch_buffer = device->create_buffer(indirect_info);
-		device->set_name(*indirect_dispatch_buffer, "indirect-dispatch-buffer");
-
 		info.size = sizeof(uint32_t) *
 		            (Limits::MaxPrimitives / 32) *
 		            (Limits::MaxWidth / ImplementationConstants::TileWidth) *
 		            (Limits::MaxHeight / ImplementationConstants::TileHeight);
+
 		per_tile_offsets = device->create_buffer(info);
 		device->set_name(*per_tile_offsets, "per-tile-offsets");
 
@@ -485,7 +463,7 @@ void Renderer::RenderBuffers::init(Vulkan::Device &device, Vulkan::BufferDomain 
 	{
 		Vulkan::BufferViewCreateInfo info = {};
 		info.buffer = span_info_jobs.buffer.get();
-		info.format = VK_FORMAT_R32G32_UINT;
+		info.format = VK_FORMAT_R16G16B16A16_UINT;
 		info.range = span_info_jobs.buffer->get_create_info().size;
 		span_info_jobs_view = device.create_buffer_view(info);
 	}
@@ -498,7 +476,7 @@ Renderer::MappedBuffer Renderer::RenderBuffers::create_buffer(
 	Vulkan::BufferCreateInfo info = {};
 	info.domain = domain;
 
-	if (domain == Vulkan::BufferDomain::Device)
+	if (domain == Vulkan::BufferDomain::Device || domain == Vulkan::BufferDomain::LinkedDeviceHostPreferDevice)
 	{
 		info.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT |
 		             VK_BUFFER_USAGE_TRANSFER_DST_BIT |
@@ -523,7 +501,7 @@ Renderer::MappedBuffer Renderer::RenderBuffers::create_buffer(
 
 void Renderer::RenderBuffersUpdater::init(Vulkan::Device &device)
 {
-	gpu.init(device, Vulkan::BufferDomain::Device, nullptr);
+	gpu.init(device, Vulkan::BufferDomain::LinkedDeviceHostPreferDevice, nullptr);
 	cpu.init(device, Vulkan::BufferDomain::Host, &gpu);
 }
 
@@ -596,19 +574,10 @@ void Renderer::set_tmem(Vulkan::Buffer *buffer)
 	device->set_name(*tmem, "tmem");
 }
 
-void Renderer::flush()
-{
-	flush_queues();
-	device->flush_frame();
-}
-
 Vulkan::Fence Renderer::flush_and_signal()
 {
 	flush_queues();
-
-	Vulkan::Fence fence;
-	device->submit_empty(Vulkan::CommandBuffer::Type::AsyncCompute, &fence);
-	return fence;
+	return submit_to_queue();
 }
 
 void Renderer::set_color_framebuffer(uint32_t addr, uint32_t width, FBFormat fmt)
@@ -1350,6 +1319,7 @@ void Renderer::draw_shaded_primitive(const TriangleSetup &setup, const Attribute
 	fb.color_write_pending = true;
 	if (stream.depth_blend_state.flags & DEPTH_BLEND_DEPTH_UPDATE_BIT)
 		fb.depth_write_pending = true;
+	pending_primitives++;
 
 	if (need_flush())
 		flush_queues();
@@ -1357,11 +1327,14 @@ void Renderer::draw_shaded_primitive(const TriangleSetup &setup, const Attribute
 
 SpanInfoOffsets Renderer::allocate_span_jobs(const TriangleSetup &setup)
 {
-	int min_active_sub_scanline = std::min(int(setup.yh), int(stream.scissor_state.yhi));
+	int min_active_sub_scanline = std::max(int(setup.yh), int(stream.scissor_state.ylo));
 	int min_active_line = min_active_sub_scanline >> 2;
 
 	int max_active_sub_scanline = std::min(setup.yl - 1, int(stream.scissor_state.yhi) - 1);
 	int max_active_line = max_active_sub_scanline >> 2;
+
+	if (max_active_line < min_active_line)
+		return { 0, 0, -1, 0 };
 
 	// Need to poke into next scanline validation for certain workarounds.
 	int height = std::max(max_active_line - min_active_line + 2, 0);
@@ -1379,6 +1352,7 @@ SpanInfoOffsets Renderer::allocate_span_jobs(const TriangleSetup &setup)
 		SpanInterpolationJob interpolation_job = {};
 		interpolation_job.primitive_index = uint32_t(stream.triangle_setup.size());
 		interpolation_job.base_y = min_active_line + ImplementationConstants::DefaultWorkgroupSize * i;
+		interpolation_job.max_y = max_active_line + 1;
 		stream.span_info_jobs.add(interpolation_job);
 	}
 	return offsets;
@@ -1421,57 +1395,44 @@ bool Renderer::need_flush() const
 }
 
 template <typename Cache>
-void Renderer::RenderBuffersUpdater::upload(Vulkan::CommandBuffer *cmd, Vulkan::Device &device,
-                                            const MappedBuffer &gpu, const MappedBuffer &cpu, const Cache &cache)
+void Renderer::RenderBuffersUpdater::upload(Vulkan::CommandBuffer &cmd, Vulkan::Device &device,
+                                            const MappedBuffer &gpu, const MappedBuffer &cpu, const Cache &cache,
+                                            bool &did_upload)
 {
 	if (!cache.empty())
 	{
 		memcpy(device.map_host_buffer(*cpu.buffer, Vulkan::MEMORY_ACCESS_WRITE_BIT), cache.data(), cache.byte_size());
 		device.unmap_host_buffer(*cpu.buffer, Vulkan::MEMORY_ACCESS_WRITE_BIT);
-		if (cmd)
-			cmd->copy_buffer(*gpu.buffer, 0, *cpu.buffer, 0, cache.byte_size());
+		if (gpu.buffer != cpu.buffer)
+		{
+			cmd.copy_buffer(*gpu.buffer, 0, *cpu.buffer, 0, cache.byte_size());
+			did_upload = true;
+		}
 	}
 }
 
-void Renderer::RenderBuffersUpdater::upload(Vulkan::Device &device, const Renderer::StreamCaches &caches)
+void Renderer::RenderBuffersUpdater::upload(Vulkan::Device &device, const Renderer::StreamCaches &caches,
+                                            Vulkan::CommandBuffer &cmd)
 {
-	Vulkan::CommandBufferHandle cmd;
-	if (!gpu.triangle_setup.is_host)
-		cmd = device.request_command_buffer(Vulkan::CommandBuffer::Type::AsyncCompute);
+	bool did_upload = false;
 
-//#define UPLOAD_TRANSFER_TIMESTAMPS
-#ifdef UPLOAD_TRANSFER_TIMESTAMPS
-	Vulkan::QueryPoolHandle start_ts, end_ts;
-	if (cmd)
-		start_ts = cmd->write_timestamp(VK_PIPELINE_STAGE_TRANSFER_BIT);
-#endif
+	upload(cmd, device, gpu.triangle_setup, cpu.triangle_setup, caches.triangle_setup, did_upload);
+	upload(cmd, device, gpu.attribute_setup, cpu.attribute_setup, caches.attribute_setup, did_upload);
+	upload(cmd, device, gpu.derived_setup, cpu.derived_setup, caches.derived_setup, did_upload);
+	upload(cmd, device, gpu.scissor_setup, cpu.scissor_setup, caches.scissor_setup, did_upload);
 
-	upload(cmd.get(), device, gpu.triangle_setup, cpu.triangle_setup, caches.triangle_setup);
-	upload(cmd.get(), device, gpu.attribute_setup, cpu.attribute_setup, caches.attribute_setup);
-	upload(cmd.get(), device, gpu.derived_setup, cpu.derived_setup, caches.derived_setup);
-	upload(cmd.get(), device, gpu.scissor_setup, cpu.scissor_setup, caches.scissor_setup);
+	upload(cmd, device, gpu.static_raster_state, cpu.static_raster_state, caches.static_raster_state_cache, did_upload);
+	upload(cmd, device, gpu.depth_blend_state, cpu.depth_blend_state, caches.depth_blend_state_cache, did_upload);
+	upload(cmd, device, gpu.tile_info_state, cpu.tile_info_state, caches.tile_info_state_cache, did_upload);
 
-	upload(cmd.get(), device, gpu.static_raster_state, cpu.static_raster_state, caches.static_raster_state_cache);
-	upload(cmd.get(), device, gpu.depth_blend_state, cpu.depth_blend_state, caches.depth_blend_state_cache);
-	upload(cmd.get(), device, gpu.tile_info_state, cpu.tile_info_state, caches.tile_info_state_cache);
+	upload(cmd, device, gpu.state_indices, cpu.state_indices, caches.state_indices, did_upload);
+	upload(cmd, device, gpu.span_info_offsets, cpu.span_info_offsets, caches.span_info_offsets, did_upload);
+	upload(cmd, device, gpu.span_info_jobs, cpu.span_info_jobs, caches.span_info_jobs, did_upload);
 
-	upload(cmd.get(), device, gpu.state_indices, cpu.state_indices, caches.state_indices);
-	upload(cmd.get(), device, gpu.span_info_offsets, cpu.span_info_offsets, caches.span_info_offsets);
-	upload(cmd.get(), device, gpu.span_info_jobs, cpu.span_info_jobs, caches.span_info_jobs);
-
-#ifdef UPLOAD_TRANSFER_TIMESTAMPS
-	if (cmd)
+	if (did_upload)
 	{
-		end_ts = cmd->write_timestamp(VK_PIPELINE_STAGE_TRANSFER_BIT);
-		device.register_time_interval(std::move(start_ts), std::move(end_ts), "render-pass-upload");
-	}
-#endif
-
-	if (cmd)
-	{
-		cmd->barrier(VK_PIPELINE_STAGE_TRANSFER_BIT, VK_ACCESS_TRANSFER_WRITE_BIT,
-		             VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_ACCESS_SHADER_READ_BIT);
-		device.submit(cmd);
+		cmd.barrier(VK_PIPELINE_STAGE_TRANSFER_BIT, VK_ACCESS_TRANSFER_WRITE_BIT,
+		            VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_ACCESS_SHADER_READ_BIT);
 	}
 }
 
@@ -1497,19 +1458,16 @@ void Renderer::update_tmem_instances(Vulkan::CommandBuffer &cmd)
 	cmd.set_specialization_constant_mask(1);
 	cmd.set_specialization_constant(0, ImplementationConstants::DefaultWorkgroupSize);
 
-#ifdef FINE_GRAINED_TIMESTAMP
 	Vulkan::QueryPoolHandle start_ts, end_ts;
-	if (caps.timestamp)
+	if (caps.timestamp >= 2)
 		start_ts = cmd.write_timestamp(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
-#endif
 	cmd.dispatch(2048 / ImplementationConstants::DefaultWorkgroupSize, 1, 1);
-#ifdef FINE_GRAINED_TIMESTAMP
-	if (caps.timestamp)
+	if (caps.timestamp >= 2)
 	{
 		end_ts = cmd.write_timestamp(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
-		device->register_time_interval(std::move(start_ts), std::move(end_ts), "tmem-update");
+		device->register_time_interval("RDP GPU", std::move(start_ts), std::move(end_ts),
+		                               "tmem-update", std::to_string(stream.tmem_upload_infos.size()));
 	}
-#endif
 }
 
 void Renderer::submit_span_setup_jobs(Vulkan::CommandBuffer &cmd)
@@ -1531,111 +1489,15 @@ void Renderer::submit_span_setup_jobs(Vulkan::CommandBuffer &cmd)
 	cmd.set_specialization_constant_mask(1);
 	cmd.set_specialization_constant(0, ImplementationConstants::DefaultWorkgroupSize);
 
-#ifdef FINE_GRAINED_TIMESTAMP
 	Vulkan::QueryPoolHandle begin_ts, end_ts;
-	if (caps.timestamp)
+	if (caps.timestamp >= 2)
 		begin_ts = cmd.write_timestamp(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
-#endif
 	cmd.dispatch(stream.span_info_jobs.size(), 1, 1);
-#ifdef FINE_GRAINED_TIMESTAMP
-	if (caps.timestamp)
+	if (caps.timestamp >= 2)
 	{
 		end_ts = cmd.write_timestamp(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
-		device->register_time_interval(std::move(begin_ts), std::move(end_ts), "span-info-jobs");
+		device->register_time_interval("RDP GPU", std::move(begin_ts), std::move(end_ts), "span-info-jobs");
 	}
-#endif
-	cmd.end_region();
-}
-
-void Renderer::submit_tile_binning_prepass(Vulkan::CommandBuffer &cmd)
-{
-	cmd.begin_region("tile-binning-prepass");
-	auto &instance = buffer_instances[buffer_instance];
-	cmd.set_storage_buffer(0, 0, *tile_binning_buffer_prepass);
-	cmd.set_storage_buffer(0, 1, *instance.gpu.triangle_setup.buffer);
-	cmd.set_storage_buffer(0, 2, *instance.gpu.scissor_setup.buffer);
-
-	cmd.set_specialization_constant_mask(0x3f);
-	cmd.set_specialization_constant(1, ImplementationConstants::TileWidth);
-	cmd.set_specialization_constant(2, ImplementationConstants::TileHeight);
-	cmd.set_specialization_constant(3, ImplementationConstants::TileLowresDownsample);
-	cmd.set_specialization_constant(4, Limits::MaxPrimitives);
-	cmd.set_specialization_constant(5, Limits::MaxWidth);
-
-	struct PushData
-	{
-		uint32_t width, height;
-		uint32_t num_primitives;
-	} push = {};
-	push.width = fb.width;
-	push.height = fb.deduced_height;
-	push.num_primitives = uint32_t(stream.triangle_setup.size());
-
-	cmd.push_constants(&push, 0, sizeof(push));
-
-	auto &features = device->get_device_features();
-	uint32_t subgroup_size = features.subgroup_properties.subgroupSize;
-
-#ifdef FINE_GRAINED_TIMESTAMP
-	Vulkan::QueryPoolHandle begin_ts, end_ts;
-	if (caps.timestamp)
-		begin_ts = cmd.write_timestamp(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
-#endif
-
-	if (caps.subgroup_tile_binning_prepass)
-	{
-#ifdef PARALLEL_RDP_SHADER_DIR
-		cmd.set_program("rdp://tile_binning_prepass.comp", {
-			{ "DEBUG_ENABLE", debug_channel ? 1 : 0 },
-			{ "SUBGROUP", 1 },
-			{ "SMALL_TYPES", caps.supports_small_integer_arithmetic ? 1 : 0 },
-		});
-#else
-		cmd.set_program(shader_bank->tile_binning_prepass);
-#endif
-
-		cmd.set_specialization_constant(0, subgroup_size);
-		if (supports_subgroup_size_control(32, subgroup_size))
-		{
-			cmd.enable_subgroup_size_control(true);
-			cmd.set_subgroup_size_log2(true, 5, trailing_zeroes(subgroup_size));
-		}
-
-		cmd.dispatch((push.num_primitives + subgroup_size - 1) / subgroup_size,
-		             (push.width + ImplementationConstants::TileWidthLowres - 1) /
-		             ImplementationConstants::TileWidthLowres,
-		             (push.height + ImplementationConstants::TileHeightLowres - 1) /
-		             ImplementationConstants::TileHeightLowres);
-	}
-	else
-	{
-#ifdef PARALLEL_RDP_SHADER_DIR
-		cmd.set_program("rdp://tile_binning_prepass.comp", {
-			{ "DEBUG_ENABLE", debug_channel ? 1 : 0 },
-			{ "SUBGROUP", 0 },
-			{ "SMALL_TYPES", caps.supports_small_integer_arithmetic ? 1 : 0 },
-		});
-#else
-		cmd.set_program(shader_bank->tile_binning_prepass);
-#endif
-
-		cmd.set_specialization_constant(0, 32);
-		cmd.dispatch((push.num_primitives + 31) / 32,
-		             (push.width + ImplementationConstants::TileWidthLowres - 1) /
-		             ImplementationConstants::TileWidthLowres,
-		             (push.height + ImplementationConstants::TileHeightLowres - 1) /
-		             ImplementationConstants::TileHeightLowres);
-	}
-
-#ifdef FINE_GRAINED_TIMESTAMP
-	if (caps.timestamp)
-	{
-		end_ts = cmd.write_timestamp(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
-		device->register_time_interval(std::move(begin_ts), std::move(end_ts), "tile-binning-prepass");
-	}
-#endif
-
-	cmd.enable_subgroup_size_control(false);
 	cmd.end_region();
 }
 
@@ -1721,11 +1583,9 @@ void Renderer::submit_rasterization(Vulkan::CommandBuffer &cmd, Vulkan::Buffer &
 	cmd.set_specialization_constant(0, ImplementationConstants::TileWidth);
 	cmd.set_specialization_constant(1, ImplementationConstants::TileHeight);
 
-#ifdef FINE_GRAINED_TIMESTAMP
 	Vulkan::QueryPoolHandle start_ts, end_ts;
-	if (caps.timestamp)
+	if (caps.timestamp >= 2)
 		start_ts = cmd.write_timestamp(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
-#endif
 
 	for (size_t i = 0; i < stream.static_raster_state_cache.size(); i++)
 	{
@@ -1758,219 +1618,194 @@ void Renderer::submit_rasterization(Vulkan::CommandBuffer &cmd, Vulkan::Buffer &
 		cmd.dispatch_indirect(*indirect_dispatch_buffer, 4 * sizeof(uint32_t) * i);
 	}
 
-#ifdef FINE_GRAINED_TIMESTAMP
-	if (caps.timestamp)
+	if (caps.timestamp >= 2)
 	{
 		end_ts = cmd.write_timestamp(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
-		device->register_time_interval(std::move(start_ts), std::move(end_ts), "shading");
+		device->register_time_interval("RDP GPU", std::move(start_ts), std::move(end_ts), "shading");
 	}
-#endif
 	cmd.end_region();
 }
 
-void Renderer::submit_tile_binning_complete(Vulkan::CommandBuffer &cmd)
+void Renderer::submit_tile_binning_combined(Vulkan::CommandBuffer &cmd)
 {
-	cmd.begin_region("tile-binning-complete");
+	cmd.begin_region("tile-binning-combined");
 	auto &instance = buffer_instances[buffer_instance];
 	cmd.set_storage_buffer(0, 0, *instance.gpu.triangle_setup.buffer);
 	cmd.set_storage_buffer(0, 1, *instance.gpu.scissor_setup.buffer);
 	cmd.set_storage_buffer(0, 2, *instance.gpu.state_indices.buffer);
 	cmd.set_storage_buffer(0, 3, *tile_binning_buffer);
-	cmd.set_storage_buffer(0, 4, *tile_binning_buffer_prepass);
-	cmd.set_storage_buffer(0, 5, *tile_binning_buffer_coarse);
+	cmd.set_storage_buffer(0, 4, *tile_binning_buffer_coarse);
 
 	if (!caps.ubershader)
 	{
-		cmd.set_storage_buffer(0, 6, *per_tile_offsets);
-		cmd.set_storage_buffer(0, 7, *indirect_dispatch_buffer);
-		cmd.set_storage_buffer(0, 8, *tile_work_list);
+		cmd.set_storage_buffer(0, 5, *per_tile_offsets);
+		cmd.set_storage_buffer(0, 6, *indirect_dispatch_buffer);
+		cmd.set_storage_buffer(0, 7, *tile_work_list);
 	}
 
-	cmd.set_specialization_constant_mask(0x7f);
+	cmd.set_specialization_constant_mask(0x3f);
 	cmd.set_specialization_constant(1, ImplementationConstants::TileWidth);
 	cmd.set_specialization_constant(2, ImplementationConstants::TileHeight);
-	cmd.set_specialization_constant(3, ImplementationConstants::TileLowresDownsampleLog2);
-	cmd.set_specialization_constant(4, Limits::MaxPrimitives);
-	cmd.set_specialization_constant(5, Limits::MaxWidth);
-	cmd.set_specialization_constant(6, Limits::MaxTileInstances);
+	cmd.set_specialization_constant(3, Limits::MaxPrimitives);
+	cmd.set_specialization_constant(4, Limits::MaxWidth);
+	cmd.set_specialization_constant(5, Limits::MaxTileInstances);
 
 	struct PushData
 	{
 		uint32_t width, height;
 		uint32_t num_primitives;
-		uint32_t num_primitives_32;
 	} push = {};
 	push.width = fb.width;
 	push.height = fb.deduced_height;
 	push.num_primitives = uint32_t(stream.triangle_setup.size());
-	push.num_primitives_32 = (push.num_primitives + 31) / 32;
+	unsigned num_primitives_32 = (push.num_primitives + 31) / 32;
 
 	cmd.push_constants(&push, 0, sizeof(push));
 
 	auto &features = device->get_device_features();
 	uint32_t subgroup_size = features.subgroup_properties.subgroupSize;
 
-#ifdef FINE_GRAINED_TIMESTAMP
 	Vulkan::QueryPoolHandle start_ts, end_ts;
-	if (caps.timestamp)
+	if (caps.timestamp >= 2)
 		start_ts = cmd.write_timestamp(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
-#endif
 
 	if (caps.subgroup_tile_binning)
 	{
 #ifdef PARALLEL_RDP_SHADER_DIR
-		cmd.set_program("rdp://tile_binning.comp", {
-			{ "DEBUG_ENABLE", debug_channel ? 1 : 0 },
-			{ "SUBGROUP", 1 },
-			{ "UBERSHADER", int(caps.ubershader) },
-			{ "SMALL_TYPES", caps.supports_small_integer_arithmetic ? 1 : 0 },
+		cmd.set_program("rdp://tile_binning_combined.comp", {
+				{ "DEBUG_ENABLE", debug_channel ? 1 : 0 },
+				{ "SUBGROUP", 1 },
+				{ "UBERSHADER", int(caps.ubershader) },
+				{ "SMALL_TYPES", caps.supports_small_integer_arithmetic ? 1 : 0 },
 		});
 #else
-		cmd.set_program(shader_bank->tile_binning);
+		cmd.set_program(shader_bank->tile_binning_combined);
 #endif
 
-		cmd.set_specialization_constant(0, subgroup_size);
 		if (supports_subgroup_size_control(32, subgroup_size))
 		{
 			cmd.enable_subgroup_size_control(true);
 			cmd.set_subgroup_size_log2(true, 5, trailing_zeroes(subgroup_size));
 		}
-
-		cmd.dispatch((push.num_primitives_32 + subgroup_size - 1) / subgroup_size,
-		             (push.width + ImplementationConstants::TileWidth - 1) / ImplementationConstants::TileWidth,
-		             (push.height + ImplementationConstants::TileHeight - 1) / ImplementationConstants::TileHeight);
 	}
 	else
 	{
 #ifdef PARALLEL_RDP_SHADER_DIR
-		cmd.set_program("rdp://tile_binning.comp", {
-			{ "DEBUG_ENABLE", debug_channel ? 1 : 0 },
-			{ "SUBGROUP", 0 },
-			{ "UBERSHADER", int(caps.ubershader) },
-			{ "SMALL_TYPES", caps.supports_small_integer_arithmetic ? 1 : 0 },
+		cmd.set_program("rdp://tile_binning_combined.comp", {
+				{ "DEBUG_ENABLE", debug_channel ? 1 : 0 },
+				{ "SUBGROUP", 0 },
+				{ "UBERSHADER", int(caps.ubershader) },
+				{ "SMALL_TYPES", caps.supports_small_integer_arithmetic ? 1 : 0 },
 		});
 #else
-		cmd.set_program(shader_bank->tile_binning);
+		cmd.set_program(shader_bank->tile_binning_combined);
 #endif
 
-		cmd.set_specialization_constant(0, 32);
-		cmd.dispatch((push.num_primitives_32 + 31) / 32,
-		             (push.width + ImplementationConstants::TileWidth - 1) / ImplementationConstants::TileWidth,
-		             (push.height + ImplementationConstants::TileHeight - 1) / ImplementationConstants::TileHeight);
+		subgroup_size = 32;
 	}
 
-#ifdef FINE_GRAINED_TIMESTAMP
-	if (caps.timestamp)
+	cmd.set_specialization_constant(0, subgroup_size);
+	unsigned meta_tiles_x = 8;
+	unsigned meta_tiles_y = subgroup_size / meta_tiles_x;
+	unsigned num_tiles_x = (push.width + ImplementationConstants::TileWidth - 1) / ImplementationConstants::TileWidth;
+	unsigned num_tiles_y = (push.height + ImplementationConstants::TileHeight - 1) / ImplementationConstants::TileHeight;
+	unsigned num_meta_tiles_x = (num_tiles_x + meta_tiles_x - 1) / meta_tiles_x;
+	unsigned num_meta_tiles_y = (num_tiles_y + meta_tiles_y - 1) / meta_tiles_y;
+	cmd.dispatch(num_primitives_32, num_meta_tiles_x, num_meta_tiles_y);
+
+	if (caps.timestamp >= 2)
 	{
 		end_ts = cmd.write_timestamp(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
-		device->register_time_interval(std::move(start_ts), std::move(end_ts), "tile-binning");
+		device->register_time_interval("RDP GPU", std::move(start_ts), std::move(end_ts), "tile-binning");
 	}
-#endif
 
 	cmd.enable_subgroup_size_control(false);
 	cmd.end_region();
 }
 
-void Renderer::submit_render_pass()
+void Renderer::submit_render_pass(Vulkan::CommandBuffer &cmd)
 {
-	bool need_render_pass = fb.width != 0 && fb.deduced_height != 0 && !stream.triangle_setup.empty();
+	bool need_render_pass = fb.width != 0 && fb.deduced_height != 0 && !stream.span_info_jobs.empty();
 	bool need_tmem_upload = !stream.tmem_upload_infos.empty();
 	bool need_submit = need_render_pass || need_tmem_upload;
 	if (!need_submit)
 		return;
 
-	auto cmd = device->request_command_buffer(Vulkan::CommandBuffer::Type::AsyncCompute);
-
 	Vulkan::QueryPoolHandle render_pass_start, render_pass_end;
-	if (caps.timestamp)
-		render_pass_start = cmd->write_timestamp(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
+	if (caps.timestamp >= 1)
+		render_pass_start = cmd.write_timestamp(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
 
 	if (debug_channel)
-		cmd->begin_debug_channel(this, "Debug", 16 * 1024 * 1024);
+		cmd.begin_debug_channel(this, "Debug", 16 * 1024 * 1024);
 
 	// Here we run 3 dispatches in parallel. Span setup and TMEM instances are low occupancy kind of jobs, but the binning
 	// pass should dominate here unless the workload is trivial.
 	if (need_render_pass)
 	{
-		submit_span_setup_jobs(*cmd);
-		submit_tile_binning_prepass(*cmd);
-		if (!caps.ubershader)
-			clear_indirect_buffer(*cmd);
+		submit_span_setup_jobs(cmd);
+		submit_tile_binning_combined(cmd);
 	}
+	else
+		base_primitive_index += stream.triangle_setup.size();
 
 	if (need_tmem_upload)
-		update_tmem_instances(*cmd);
+		update_tmem_instances(cmd);
 
-	cmd->barrier(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_ACCESS_SHADER_WRITE_BIT,
-	             VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
-	             VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT);
+	cmd.barrier(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_ACCESS_SHADER_WRITE_BIT,
+	            VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT | (!caps.ubershader ? VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT : 0),
+	            VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT |
+	            (!caps.ubershader ? VK_ACCESS_INDIRECT_COMMAND_READ_BIT : 0));
 
-	if (need_render_pass)
+	if (need_render_pass && !caps.ubershader)
 	{
-		submit_tile_binning_complete(*cmd);
-
-		if (caps.ubershader)
-		{
-			cmd->barrier(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_ACCESS_SHADER_WRITE_BIT,
-			             VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_ACCESS_SHADER_READ_BIT);
-		}
-		else
-		{
-			cmd->barrier(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_ACCESS_SHADER_WRITE_BIT,
-			             VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT,
-			             VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_INDIRECT_COMMAND_READ_BIT);
-
-			submit_rasterization(*cmd, need_tmem_upload ? *tmem_instances : *tmem);
-
-			cmd->barrier(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_ACCESS_SHADER_WRITE_BIT,
-			             VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_ACCESS_SHADER_READ_BIT);
-		}
+		submit_rasterization(cmd, need_tmem_upload ? *tmem_instances : *tmem);
+		cmd.barrier(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_ACCESS_SHADER_WRITE_BIT,
+		            VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_ACCESS_SHADER_READ_BIT);
 	}
 
-	auto &sync = internal_sync[buffer_instance];
 	if (need_render_pass)
 	{
-		cmd->begin_region("render-pass");
+		cmd.begin_region("render-pass");
 		auto &instance = buffer_instances[buffer_instance];
 
-		cmd->set_specialization_constant_mask(0xff);
-		cmd->set_specialization_constant(0, uint32_t(rdram_size));
-		cmd->set_specialization_constant(1, uint32_t(fb.fmt));
-		cmd->set_specialization_constant(2, int(fb.addr == fb.depth_addr));
-		cmd->set_specialization_constant(3, ImplementationConstants::TileWidth);
-		cmd->set_specialization_constant(4, ImplementationConstants::TileHeight);
-		cmd->set_specialization_constant(5, Limits::MaxPrimitives);
-		cmd->set_specialization_constant(6, Limits::MaxWidth);
-		cmd->set_specialization_constant(7, uint32_t(!is_host_coherent));
+		cmd.set_specialization_constant_mask(0xff);
+		cmd.set_specialization_constant(0, uint32_t(rdram_size));
+		cmd.set_specialization_constant(1, uint32_t(fb.fmt));
+		cmd.set_specialization_constant(2, int(fb.addr == fb.depth_addr));
+		cmd.set_specialization_constant(3, ImplementationConstants::TileWidth);
+		cmd.set_specialization_constant(4, ImplementationConstants::TileHeight);
+		cmd.set_specialization_constant(5, Limits::MaxPrimitives);
+		cmd.set_specialization_constant(6, Limits::MaxWidth);
+		cmd.set_specialization_constant(7, uint32_t(!is_host_coherent));
 
-		cmd->set_storage_buffer(0, 0, *rdram, rdram_offset, rdram_size * (is_host_coherent ? 1 : 2));
-		cmd->set_storage_buffer(0, 1, *hidden_rdram);
-		cmd->set_storage_buffer(0, 2, need_tmem_upload ? *tmem_instances : *tmem);
+		cmd.set_storage_buffer(0, 0, *rdram, rdram_offset, rdram_size * (is_host_coherent ? 1 : 2));
+		cmd.set_storage_buffer(0, 1, *hidden_rdram);
+		cmd.set_storage_buffer(0, 2, need_tmem_upload ? *tmem_instances : *tmem);
 
 		if (!caps.ubershader)
 		{
-			cmd->set_storage_buffer(0, 3, *per_tile_shaded_color);
-			cmd->set_storage_buffer(0, 4, *per_tile_shaded_depth);
-			cmd->set_storage_buffer(0, 5, *per_tile_shaded_shaded_alpha);
-			cmd->set_storage_buffer(0, 6, *per_tile_shaded_coverage);
-			cmd->set_storage_buffer(0, 7, *per_tile_offsets);
+			cmd.set_storage_buffer(0, 3, *per_tile_shaded_color);
+			cmd.set_storage_buffer(0, 4, *per_tile_shaded_depth);
+			cmd.set_storage_buffer(0, 5, *per_tile_shaded_shaded_alpha);
+			cmd.set_storage_buffer(0, 6, *per_tile_shaded_coverage);
+			cmd.set_storage_buffer(0, 7, *per_tile_offsets);
 		}
 
-		cmd->set_storage_buffer(1, 0, *instance.gpu.triangle_setup.buffer);
-		cmd->set_storage_buffer(1, 1, *instance.gpu.attribute_setup.buffer);
-		cmd->set_storage_buffer(1, 2, *instance.gpu.derived_setup.buffer);
-		cmd->set_storage_buffer(1, 3, *instance.gpu.scissor_setup.buffer);
-		cmd->set_storage_buffer(1, 4, *instance.gpu.static_raster_state.buffer);
-		cmd->set_storage_buffer(1, 5, *instance.gpu.depth_blend_state.buffer);
-		cmd->set_storage_buffer(1, 6, *instance.gpu.state_indices.buffer);
-		cmd->set_storage_buffer(1, 7, *instance.gpu.tile_info_state.buffer);
-		cmd->set_storage_buffer(1, 8, *span_setups);
-		cmd->set_storage_buffer(1, 9, *instance.gpu.span_info_offsets.buffer);
-		cmd->set_buffer_view(1, 10, *blender_divider_buffer);
-		cmd->set_storage_buffer(1, 11, *tile_binning_buffer);
-		cmd->set_storage_buffer(1, 12, *tile_binning_buffer_coarse);
+		cmd.set_storage_buffer(1, 0, *instance.gpu.triangle_setup.buffer);
+		cmd.set_storage_buffer(1, 1, *instance.gpu.attribute_setup.buffer);
+		cmd.set_storage_buffer(1, 2, *instance.gpu.derived_setup.buffer);
+		cmd.set_storage_buffer(1, 3, *instance.gpu.scissor_setup.buffer);
+		cmd.set_storage_buffer(1, 4, *instance.gpu.static_raster_state.buffer);
+		cmd.set_storage_buffer(1, 5, *instance.gpu.depth_blend_state.buffer);
+		cmd.set_storage_buffer(1, 6, *instance.gpu.state_indices.buffer);
+		cmd.set_storage_buffer(1, 7, *instance.gpu.tile_info_state.buffer);
+		cmd.set_storage_buffer(1, 8, *span_setups);
+		cmd.set_storage_buffer(1, 9, *instance.gpu.span_info_offsets.buffer);
+		cmd.set_buffer_view(1, 10, *blender_divider_buffer);
+		cmd.set_storage_buffer(1, 11, *tile_binning_buffer);
+		cmd.set_storage_buffer(1, 12, *tile_binning_buffer_coarse);
 
-		auto *global_fb_info = cmd->allocate_typed_constant_data<GlobalFBInfo>(2, 0, 1);
+		auto *global_fb_info = cmd.allocate_typed_constant_data<GlobalFBInfo>(2, 0, 1);
 
 		GlobalState push = {};
 		push.fb_width = fb.width;
@@ -2010,93 +1845,155 @@ void Renderer::submit_render_pass()
 		global_fb_info->base_primitive_index = base_primitive_index;
 
 		push.depth_addr_index = fb.depth_addr >> 1;
-		push.num_primitives_1024 = (uint32_t(stream.triangle_setup.size()) + 1023) / 1024;
-		cmd->push_constants(&push, 0, sizeof(push));
+		unsigned num_primitives_32 = (stream.triangle_setup.size() + 31) / 32;
+		push.group_mask = (1u << num_primitives_32) - 1;
+		cmd.push_constants(&push, 0, sizeof(push));
 
 		if (caps.ubershader)
 		{
 #ifdef PARALLEL_RDP_SHADER_DIR
-			cmd->set_program("rdp://ubershader.comp", {
+			cmd.set_program("rdp://ubershader.comp", {
 				{ "DEBUG_ENABLE", debug_channel ? 1 : 0 },
 				{ "SMALL_TYPES", caps.supports_small_integer_arithmetic ? 1 : 0 },
 			});
 #else
-			cmd->set_program(shader_bank->ubershader);
+			cmd.set_program(shader_bank->ubershader);
 #endif
 		}
 		else
 		{
 #ifdef PARALLEL_RDP_SHADER_DIR
-			cmd->set_program("rdp://depth_blend.comp", {
+			cmd.set_program("rdp://depth_blend.comp", {
 				{ "DEBUG_ENABLE", debug_channel ? 1 : 0 },
 				{ "SMALL_TYPES", caps.supports_small_integer_arithmetic ? 1 : 0 },
 			});
 #else
-			cmd->set_program(shader_bank->depth_blend);
+			cmd.set_program(shader_bank->depth_blend);
 #endif
 		}
 
-#ifdef FINE_GRAINED_TIMESTAMP
 		Vulkan::QueryPoolHandle start_ts, end_ts;
-		if (caps.timestamp)
-			start_ts = cmd->write_timestamp(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
-#endif
+		if (caps.timestamp >= 2)
+			start_ts = cmd.write_timestamp(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
 
-		cmd->dispatch((push.fb_width + 7) / 8, (push.fb_height + 7) / 8, 1);
+		cmd.dispatch((push.fb_width + 7) / 8, (push.fb_height + 7) / 8, 1);
 
-#ifdef FINE_GRAINED_TIMESTAMP
-		if (caps.timestamp)
+		if (caps.timestamp >= 2)
 		{
-			end_ts = cmd->write_timestamp(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
-			device->register_time_interval(std::move(start_ts), std::move(end_ts), "depth-blending");
+			end_ts = cmd.write_timestamp(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
+			device->register_time_interval("RDP GPU", std::move(start_ts), std::move(end_ts), "depth-blending");
 		}
-#endif
 
-		cmd->end_region();
+		cmd.end_region();
 
 		base_primitive_index += uint32_t(stream.triangle_setup.size());
 	}
 
+	if (caps.timestamp >= 1)
+	{
+		render_pass_end = cmd.write_timestamp(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
+		std::string tag;
+		tag = "(" + std::to_string(fb.width) + " x " + std::to_string(fb.deduced_height) + ")";
+		tag += " (" + std::to_string(stream.triangle_setup.size()) + " triangles)";
+		device->register_time_interval("RDP GPU", std::move(render_pass_start), std::move(render_pass_end), "render-pass", std::move(tag));
+	}
+
+	if (need_render_pass && !caps.ubershader)
+		clear_indirect_buffer(cmd);
+
+	cmd.barrier(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_ACCESS_SHADER_WRITE_BIT,
+	            VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+	            VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT);
+}
+
+void Renderer::maintain_queues()
+{
+	// Some conditions dictate if we should flush a render pass.
+	// These heuristics ensures we don't wait too long to flush render passes,
+	// and also ensure that we don't spam submissions too often, causing massive bubbles on GPU.
+
+	// If we get a lot of small render passes in a row, it makes sense to batch them up, e.g. 8 at a time.
+	// If we get 2 full render passes of ~256 primitives, that's also a good indication we should flush since we're getting spammed.
+	// If we have no pending submissions, the GPU is idle and there is no reason not to submit.
+	// If we haven't submitted anything in a while (1.0 ms), it's probably fine to submit again.
+	if (pending_render_passes >= ImplementationConstants::MaxPendingRenderPassesBeforeFlush ||
+	    pending_primitives >= Limits::MaxPrimitives ||
+	    active_submissions.load(std::memory_order_relaxed) == 0 ||
+	    int64_t(Util::get_current_time_nsecs() - last_submit_ns) > 1000000)
+	{
+		submit_to_queue();
+	}
+}
+
+void Renderer::maintain_queues_idle()
+{
+	if (pending_primitives >= ImplementationConstants::MinimumPrimitivesForIdleFlush ||
+	    pending_render_passes >= ImplementationConstants::MinimumRenderPassesForIdleFlush)
+	{
+		flush_queues();
+		submit_to_queue();
+	}
+}
+
+void Renderer::enqueue_fence_wait(Vulkan::Fence fence)
+{
+	CoherencyOperation op;
+	op.fence = std::move(fence);
+	op.unlock_cookie = &active_submissions;
+	active_submissions.fetch_add(1, std::memory_order_relaxed);
+	processor.enqueue_coherency_operation(std::move(op));
+	last_submit_ns = Util::get_current_time_nsecs();
+}
+
+Vulkan::Fence Renderer::submit_to_queue()
+{
+	pending_render_passes = 0;
+	pending_primitives = 0;
+
+	if (!stream.cmd)
+	{
+		Vulkan::Fence fence;
+		device->submit_empty(Vulkan::CommandBuffer::Type::AsyncCompute, &fence);
+		enqueue_fence_wait(fence);
+		return fence;
+	}
+
 	bool need_host_barrier = is_host_coherent || !incoherent.staging_readback;
 
-	cmd->barrier(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_ACCESS_SHADER_WRITE_BIT,
-	             VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT |
-	             (need_host_barrier ? VK_PIPELINE_STAGE_HOST_BIT : VK_PIPELINE_STAGE_TRANSFER_BIT),
-	             VK_ACCESS_SHADER_WRITE_BIT | VK_ACCESS_SHADER_READ_BIT |
-	             (need_host_barrier ? VK_ACCESS_HOST_READ_BIT : VK_ACCESS_TRANSFER_READ_BIT));
-
-	if (caps.timestamp)
-	{
-		render_pass_end = cmd->write_timestamp(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
-		device->register_time_interval(std::move(render_pass_start), std::move(render_pass_end), "render-pass");
-	}
+	// Only need execution barrier here for compute since memory is already flushed.
+	stream.cmd->barrier(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0,
+	                    (need_host_barrier ? VK_PIPELINE_STAGE_HOST_BIT : VK_PIPELINE_STAGE_TRANSFER_BIT),
+	                    (need_host_barrier ? VK_ACCESS_HOST_READ_BIT : VK_ACCESS_TRANSFER_READ_BIT));
 
 	Vulkan::Fence fence;
 
 	if (is_host_coherent)
 	{
-		device->submit(cmd, &fence);
-		sync.complete.fence = std::move(fence);
+		device->submit(stream.cmd, &fence);
+		enqueue_fence_wait(fence);
 	}
 	else
 	{
 		CoherencyOperation op;
-		if (need_render_pass)
-			resolve_coherency_gpu_to_host(op, *cmd);
-		device->submit(cmd, &fence);
-		if (need_render_pass)
-		{
-			op.fence = fence;
-			if (!op.copies.empty())
-				processor.enqueue_coherency_operation(std::move(op));
-		}
-		sync.complete.fence = std::move(fence);
+		resolve_coherency_gpu_to_host(op, *stream.cmd);
+		device->submit(stream.cmd, &fence);
+		enqueue_fence_wait(fence);
+		op.fence = fence;
+		if (!op.copies.empty())
+			processor.enqueue_coherency_operation(std::move(op));
 	}
+
+	Util::for_each_bit(sync_indices_needs_flush, [&](unsigned bit) {
+		auto &sync = internal_sync[bit];
+		sync.fence = fence;
+	});
+	sync_indices_needs_flush = 0;
+	stream.cmd.reset();
+	return fence;
 }
 
-void Renderer::begin_new_context()
+void Renderer::reset_context()
 {
-	buffer_instance = (buffer_instance + 1) % Limits::NumSyncStates;
 	stream.scissor_setup.reset();
 	stream.static_raster_state_cache.reset();
 	stream.depth_blend_state_cache.reset();
@@ -2114,6 +2011,12 @@ void Renderer::begin_new_context()
 	fb.depth_write_pending = false;
 
 	stream.tmem_upload_infos.clear();
+}
+
+void Renderer::begin_new_context()
+{
+	buffer_instance = (buffer_instance + 1) % Limits::NumSyncStates;
+	reset_context();
 }
 
 uint32_t Renderer::get_byte_size_for_bound_color_framebuffer() const
@@ -2157,7 +2060,8 @@ void Renderer::mark_pages_for_gpu_read(uint32_t base_addr, uint32_t byte_count)
 	uint32_t page = start_page;
 	while (page != end_page)
 	{
-		bool pending_writes = incoherent.pending_writes_for_page[page].load(std::memory_order_relaxed) != 0;
+		bool pending_writes = (incoherent.page_to_pending_readback[page / 32] & (1u << (page & 31))) != 0 ||
+		                      incoherent.pending_writes_for_page[page].load(std::memory_order_relaxed) != 0;
 
 		// We'll do an acquire memory barrier later before we start memcpy-ing from host memory.
 		if (pending_writes)
@@ -2297,7 +2201,7 @@ void Renderer::resolve_coherency_gpu_to_host(CoherencyOperation &op, Vulkan::Com
 			device->register_time_interval(std::move(start_ts), std::move(end_ts), "coherency-readback");
 #endif
 			cmd.barrier(VK_PIPELINE_STAGE_TRANSFER_BIT, VK_ACCESS_TRANSFER_WRITE_BIT,
-			            VK_PIPELINE_STAGE_HOST_BIT,
+			            VK_PIPELINE_STAGE_HOST_BIT | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
 			            VK_ACCESS_HOST_READ_BIT);
 		}
 	}
@@ -2306,15 +2210,22 @@ void Renderer::resolve_coherency_gpu_to_host(CoherencyOperation &op, Vulkan::Com
 void Renderer::resolve_coherency_external(unsigned offset, unsigned length)
 {
 	mark_pages_for_gpu_read(offset, length);
-	resolve_coherency_host_to_gpu();
+	ensure_command_buffer();
+	resolve_coherency_host_to_gpu(*stream.cmd);
+	device->submit(stream.cmd);
+	stream.cmd.reset();
 }
 
-void Renderer::resolve_coherency_host_to_gpu()
+void Renderer::resolve_coherency_host_to_gpu(Vulkan::CommandBuffer &cmd)
 {
 	// Now, ensure that the GPU sees a coherent view of the CPU memory writes up until now.
 	// Writes made by the GPU which are not known to be resolved on the timeline waiter thread will always
 	// "win" over writes made by CPU, since CPU is not allowed to meaningfully overwrite data which the GPU
 	// is going to touch.
+
+	Vulkan::QueryPoolHandle start_ts, end_ts;
+	if (caps.timestamp)
+		start_ts = device->write_calibrated_timestamp();
 
 	std::atomic_thread_fence(std::memory_order_acquire);
 
@@ -2409,98 +2320,106 @@ void Renderer::resolve_coherency_host_to_gpu()
 		device->unmap_host_buffer(*incoherent.staging_rdram, Vulkan::MEMORY_ACCESS_WRITE_BIT);
 	}
 
-	if (!masked_page_copies.empty() || !to_clear_write_mask.empty())
+	if (!masked_page_copies.empty())
 	{
-		auto cmd = device->request_command_buffer(Vulkan::CommandBuffer::Type::AsyncCompute);
-
-		if (!masked_page_copies.empty())
-		{
 #ifdef PARALLEL_RDP_SHADER_DIR
-			cmd->set_program("rdp://masked_rdram_resolve.comp");
+		cmd.set_program("rdp://masked_rdram_resolve.comp");
 #else
-			cmd->set_program(shader_bank->masked_rdram_resolve);
+		cmd.set_program(shader_bank->masked_rdram_resolve);
 #endif
-			cmd->set_specialization_constant_mask(3);
-			cmd->set_specialization_constant(0, ImplementationConstants::IncoherentPageSize / 4);
-			cmd->set_specialization_constant(1, ImplementationConstants::IncoherentPageSize / 4);
+		cmd.set_specialization_constant_mask(3);
+		cmd.set_specialization_constant(0, ImplementationConstants::IncoherentPageSize / 4);
+		cmd.set_specialization_constant(1, ImplementationConstants::IncoherentPageSize / 4);
 
-			cmd->set_storage_buffer(0, 0, *rdram, rdram_offset, rdram_size);
-			cmd->set_storage_buffer(0, 1, *incoherent.staging_rdram);
-			cmd->set_storage_buffer(0, 2, *rdram, rdram_offset + rdram_size, rdram_size);
+		cmd.set_storage_buffer(0, 0, *rdram, rdram_offset, rdram_size);
+		cmd.set_storage_buffer(0, 1, *incoherent.staging_rdram);
+		cmd.set_storage_buffer(0, 2, *rdram, rdram_offset + rdram_size, rdram_size);
 
 //#define COHERENCY_MASK_TIMESTAMPS
 #ifdef COHERENCY_MASK_TIMESTAMPS
-			Vulkan::QueryPoolHandle start_ts, end_ts;
-			start_ts = cmd->write_timestamp(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
+		Vulkan::QueryPoolHandle start_ts, end_ts;
+		start_ts = cmd->write_timestamp(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
 #endif
 
-			for (size_t i = 0; i < masked_page_copies.size(); i += 4096)
-			{
-				size_t to_copy = std::min(masked_page_copies.size() - i, size_t(4096));
-				memcpy(cmd->allocate_typed_constant_data<uint32_t>(1, 0, to_copy),
-				       masked_page_copies.data() + i,
-				       to_copy * sizeof(uint32_t));
-				cmd->dispatch(to_copy, 1, 1);
-			}
+		for (size_t i = 0; i < masked_page_copies.size(); i += 4096)
+		{
+			size_t to_copy = std::min(masked_page_copies.size() - i, size_t(4096));
+			memcpy(cmd.allocate_typed_constant_data<uint32_t>(1, 0, to_copy),
+				   masked_page_copies.data() + i,
+				   to_copy * sizeof(uint32_t));
+			cmd.dispatch(to_copy, 1, 1);
+		}
 
 #ifdef COHERENCY_MASK_TIMESTAMPS
-			end_ts = cmd->write_timestamp(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
-			device->register_time_interval(std::move(start_ts), std::move(end_ts), "coherent-mask-copy");
+		end_ts = cmd->write_timestamp(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
+		device->register_time_interval(std::move(start_ts), std::move(end_ts), "coherent-mask-copy");
 #endif
-		}
+	}
 
-		// Could use FillBuffer here, but would need to use TRANSFER stage, and introduce more barriers than needed.
-		if (!to_clear_write_mask.empty())
-		{
+	// Could use FillBuffer here, but would need to use TRANSFER stage, and introduce more barriers than needed.
+	if (!to_clear_write_mask.empty())
+	{
 #ifdef PARALLEL_RDP_SHADER_DIR
-			cmd->set_program("rdp://clear_write_mask.comp");
+		cmd.set_program("rdp://clear_write_mask.comp");
 #else
-			cmd->set_program(shader_bank->clear_write_mask);
+		cmd.set_program(shader_bank->clear_write_mask);
 #endif
-			cmd->set_specialization_constant_mask(3);
-			cmd->set_specialization_constant(0, ImplementationConstants::IncoherentPageSize / 4);
-			cmd->set_specialization_constant(1, ImplementationConstants::IncoherentPageSize / 4);
-			cmd->set_storage_buffer(0, 0, *rdram, rdram_offset + rdram_size, rdram_size);
-			for (size_t i = 0; i < to_clear_write_mask.size(); i += 4096)
-			{
-				size_t to_copy = std::min(to_clear_write_mask.size() - i, size_t(4096));
-				memcpy(cmd->allocate_typed_constant_data<uint32_t>(1, 0, to_copy),
-				       to_clear_write_mask.data() + i,
-				       to_copy * sizeof(uint32_t));
-				cmd->dispatch(to_copy, 1, 1);
-			}
+		cmd.set_specialization_constant_mask(3);
+		cmd.set_specialization_constant(0, ImplementationConstants::IncoherentPageSize / 4);
+		cmd.set_specialization_constant(1, ImplementationConstants::IncoherentPageSize / 4);
+		cmd.set_storage_buffer(0, 0, *rdram, rdram_offset + rdram_size, rdram_size);
+		for (size_t i = 0; i < to_clear_write_mask.size(); i += 4096)
+		{
+			size_t to_copy = std::min(to_clear_write_mask.size() - i, size_t(4096));
+			memcpy(cmd.allocate_typed_constant_data<uint32_t>(1, 0, to_copy),
+				   to_clear_write_mask.data() + i,
+				   to_copy * sizeof(uint32_t));
+			cmd.dispatch(to_copy, 1, 1);
 		}
+	}
 
-		cmd->barrier(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_ACCESS_SHADER_WRITE_BIT,
-		             VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_ACCESS_SHADER_READ_BIT);
-		device->submit(cmd);
+	if (!to_clear_write_mask.empty() || !masked_page_copies.empty())
+	{
+		cmd.barrier(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_ACCESS_SHADER_WRITE_BIT,
+		            VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_ACCESS_SHADER_READ_BIT);
 	}
 
 	// If we cannot map the device memory, use the copy queue.
 	if (!buffer_copies.empty())
 	{
-		auto cmd = device->request_command_buffer(Vulkan::CommandBuffer::Type::AsyncCompute);
+		cmd.barrier(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0,
+		            VK_PIPELINE_STAGE_TRANSFER_BIT, VK_ACCESS_TRANSFER_WRITE_BIT);
 
 //#define COHERENCY_COPY_TIMESTAMPS
 #ifdef COHERENCY_COPY_TIMESTAMPS
 		Vulkan::QueryPoolHandle start_ts, end_ts;
 		start_ts = cmd->write_timestamp(VK_PIPELINE_STAGE_ALL_COMMANDS_BIT);
 #endif
-		cmd->copy_buffer(*rdram, *incoherent.staging_rdram, buffer_copies.data(), buffer_copies.size());
+		cmd.copy_buffer(*rdram, *incoherent.staging_rdram, buffer_copies.data(), buffer_copies.size());
 #ifdef COHERENCY_COPY_TIMESTAMPS
 		end_ts = cmd->write_timestamp(VK_PIPELINE_STAGE_TRANSFER_BIT);
 		device->register_time_interval(std::move(start_ts), std::move(end_ts), "coherent-copy");
 #endif
-		cmd->barrier(VK_PIPELINE_STAGE_TRANSFER_BIT, VK_ACCESS_TRANSFER_WRITE_BIT,
+
+		cmd.barrier(VK_PIPELINE_STAGE_TRANSFER_BIT, VK_ACCESS_TRANSFER_WRITE_BIT,
 		             VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_ACCESS_SHADER_READ_BIT);
-		device->submit(cmd);
+	}
+
+	if (caps.timestamp)
+	{
+		end_ts = device->write_calibrated_timestamp();
+		device->register_time_interval("RDP CPU", std::move(start_ts), std::move(end_ts), "coherency-host-to-gpu");
 	}
 }
 
 void Renderer::flush_queues()
 {
-	if (stream.triangle_setup.empty() && stream.tmem_upload_infos.empty())
+	if (stream.tmem_upload_infos.empty() && stream.span_info_jobs.empty())
+	{
+		base_primitive_index += stream.triangle_setup.size();
+		reset_context();
 		return;
+	}
 
 	if (!is_host_coherent)
 	{
@@ -2510,22 +2429,59 @@ void Renderer::flush_queues()
 		// We're going to write to these pages, so lock them down.
 		lock_pages_for_gpu_write(fb.addr, get_byte_size_for_bound_color_framebuffer());
 		lock_pages_for_gpu_write(fb.depth_addr, get_byte_size_for_bound_depth_framebuffer());
-
-		resolve_coherency_host_to_gpu();
 	}
 
 	auto &instance = buffer_instances[buffer_instance];
 	auto &sync = internal_sync[buffer_instance];
-	if (sync.complete.fence)
+	if (sync_indices_needs_flush & (1u << buffer_instance))
+		submit_to_queue();
+	sync_indices_needs_flush |= 1u << buffer_instance;
+
+	if (sync.fence)
 	{
-		sync.complete.fence->wait();
-		sync.complete.fence.reset();
+		Vulkan::QueryPoolHandle start_ts, end_ts;
+		if (caps.timestamp)
+			start_ts = device->write_calibrated_timestamp();
+		sync.fence->wait();
+		if (caps.timestamp)
+		{
+			end_ts = device->write_calibrated_timestamp();
+			device->register_time_interval("RDP CPU", std::move(start_ts), std::move(end_ts), "render-pass-fence");
+		}
+		sync.fence.reset();
 	}
 
-	instance.upload(*device, stream);
+	ensure_command_buffer();
 
-	submit_render_pass();
+	if (!is_host_coherent)
+		resolve_coherency_host_to_gpu(*stream.cmd);
+	instance.upload(*device, stream, *stream.cmd);
+	submit_render_pass(*stream.cmd);
+	pending_render_passes++;
 	begin_new_context();
+
+	maintain_queues();
+}
+
+void Renderer::ensure_command_buffer()
+{
+	if (!stream.cmd)
+		stream.cmd = device->request_command_buffer(Vulkan::CommandBuffer::Type::AsyncCompute);
+
+	if (!caps.ubershader && !indirect_dispatch_buffer)
+	{
+		Vulkan::BufferCreateInfo indirect_info = {};
+		indirect_info.size = 4 * sizeof(uint32_t) * Limits::MaxStaticRasterizationStates;
+		indirect_info.domain = Vulkan::BufferDomain::Device;
+		indirect_info.usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT;
+
+		indirect_dispatch_buffer = device->create_buffer(indirect_info);
+		device->set_name(*indirect_dispatch_buffer, "indirect-dispatch-buffer");
+
+		clear_indirect_buffer(*stream.cmd);
+		stream.cmd->barrier(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_ACCESS_SHADER_WRITE_BIT,
+		                    VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_ACCESS_SHADER_WRITE_BIT | VK_ACCESS_SHADER_READ_BIT);
+	}
 }
 
 void Renderer::set_tile(uint32_t tile, const TileMeta &meta)
@@ -2539,6 +2495,11 @@ void Renderer::set_tile_size(uint32_t tile, uint32_t slo, uint32_t shi, uint32_t
 	tiles[tile].size.shi = shi;
 	tiles[tile].size.tlo = tlo;
 	tiles[tile].size.thi = thi;
+}
+
+void Renderer::notify_idle_command_thread()
+{
+	maintain_queues_idle();
 }
 
 bool Renderer::tmem_upload_needs_flush(uint32_t addr) const
@@ -3050,7 +3011,11 @@ bool Renderer::supports_subgroup_size_control(uint32_t minimum_size, uint32_t ma
 
 void Renderer::PipelineExecutor::perform_work(const Vulkan::DeferredPipelineCompile &compile) const
 {
+	auto start_ts = device->write_calibrated_timestamp();
 	Vulkan::CommandBuffer::build_compute_pipeline(device, compile);
+	auto end_ts = device->write_calibrated_timestamp();
+	device->register_time_interval("RDP Pipeline", std::move(start_ts), std::move(end_ts),
+	                               "pipeline-compilation", std::to_string(compile.hash));
 }
 
 bool Renderer::PipelineExecutor::is_sentinel(const Vulkan::DeferredPipelineCompile &compile) const

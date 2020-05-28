@@ -40,6 +40,9 @@ void VideoInterface::set_device(Vulkan::Device *device_)
 		filter_debug_channel_x = strtol(env, nullptr, 0);
 	if (const char *env = getenv("VI_DEBUG_Y"))
 		filter_debug_channel_y = strtol(env, nullptr, 0);
+
+	if (const char *timestamp_env = getenv("PARALLEL_RDP_BENCH"))
+		timestamp = strtol(timestamp_env, nullptr, 0) > 0;
 }
 
 int VideoInterface::resolve_shader_define(const char *name, const char *define) const
@@ -341,7 +344,9 @@ Vulkan::ImageHandle VideoInterface::scanout(VkImageLayout target_layout, const S
 	{
 		frame_count++;
 
-		if (options.persist_frame_on_invalid_input)
+		// A dirty hack to make it work for games which strobe the invalid state (but expect the image to persist),
+		// and games which legitimately render invalid frames for long stretches where a black screen is expected.
+		if (options.persist_frame_on_invalid_input && (frame_count - last_valid_frame_count < 4))
 		{
 			scanout = prev_scanout_image;
 
@@ -361,15 +366,23 @@ Vulkan::ImageHandle VideoInterface::scanout(VkImageLayout target_layout, const S
 		return scanout;
 	}
 
+	last_valid_frame_count = frame_count;
+
 	bool degenerate = h_res <= 0 || v_res <= 0;
 
 	// First we copy data out of VRAM into a texture which we will then perform our post-AA on.
 	// We do this on the async queue so we don't have to stall async queue on graphics work to deal with WAR hazards.
 	// After the copy, we can immediately begin rendering new frames while we do post in parallel.
 	Vulkan::ImageHandle vram_image;
+	Vulkan::QueryPoolHandle start_ts, end_ts;
+
 	if (!degenerate)
 	{
 		auto async_cmd = device->request_command_buffer(Vulkan::CommandBuffer::Type::AsyncCompute);
+
+		if (timestamp)
+			start_ts = async_cmd->write_timestamp(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
+
 		int max_x = (x_start + h_res * x_add) >> 10;
 		int max_y = (y_start + v_res * y_add) >> 10;
 
@@ -429,6 +442,12 @@ Vulkan::ImageHandle VideoInterface::scanout(VkImageLayout target_layout, const S
 		// Just enforce an execution barrier here for rendering work in next frame.
 		async_cmd->barrier(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0,
 		                   VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0);
+
+		if (timestamp)
+		{
+			end_ts = async_cmd->write_timestamp(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
+			device->register_time_interval("VI GPU", std::move(start_ts), std::move(end_ts), "extract-vram");
+		}
 
 		Vulkan::Semaphore sem;
 		device->submit(async_cmd, nullptr, 1, &sem);
@@ -506,6 +525,9 @@ Vulkan::ImageHandle VideoInterface::scanout(VkImageLayout target_layout, const S
 		                   VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, 0,
 		                   VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT);
 
+		if (timestamp)
+			start_ts = cmd->write_timestamp(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
+
 		cmd->begin_render_pass(rp);
 		cmd->set_opaque_state();
 
@@ -538,6 +560,12 @@ Vulkan::ImageHandle VideoInterface::scanout(VkImageLayout target_layout, const S
 		cmd->set_texture(0, 0, vram_image->get_view());
 		cmd->draw(3);
 		cmd->end_render_pass();
+
+		if (timestamp)
+		{
+			end_ts = cmd->write_timestamp(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
+			device->register_time_interval("VI GPU", std::move(start_ts), std::move(end_ts), "vi-fetch");
+		}
 
 		cmd->image_barrier(*aa_image, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
 		                   VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
@@ -597,6 +625,9 @@ Vulkan::ImageHandle VideoInterface::scanout(VkImageLayout target_layout, const S
 		                   VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, 0,
 		                   VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT);
 
+		if (timestamp)
+			start_ts = cmd->write_timestamp(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
+
 		cmd->begin_render_pass(rp);
 		cmd->set_opaque_state();
 
@@ -612,6 +643,12 @@ Vulkan::ImageHandle VideoInterface::scanout(VkImageLayout target_layout, const S
 		cmd->set_texture(0, 0, aa_image->get_view());
 		cmd->draw(3);
 		cmd->end_render_pass();
+
+		if (timestamp)
+		{
+			end_ts = cmd->write_timestamp(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
+			device->register_time_interval("VI GPU", std::move(start_ts), std::move(end_ts), "vi-divot");
+		}
 
 		cmd->image_barrier(*divot_image, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
 		                   VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
@@ -650,6 +687,9 @@ Vulkan::ImageHandle VideoInterface::scanout(VkImageLayout target_layout, const S
 			                   VK_PIPELINE_STAGE_TRANSFER_BIT, 0,
 			                   VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_ACCESS_SHADER_READ_BIT);
 		}
+
+		if (timestamp)
+			start_ts = cmd->write_timestamp(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
 
 		cmd->begin_render_pass(rp);
 
@@ -782,6 +822,12 @@ Vulkan::ImageHandle VideoInterface::scanout(VkImageLayout target_layout, const S
 		}
 
 		cmd->end_render_pass();
+
+		if (timestamp)
+		{
+			end_ts = cmd->write_timestamp(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
+			device->register_time_interval("VI GPU", std::move(start_ts), std::move(end_ts), "vi-scale");
+		}
 	}
 
 	VkImageLayout src_layout;

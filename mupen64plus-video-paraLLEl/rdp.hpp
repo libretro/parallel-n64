@@ -21,16 +21,15 @@ void begin_frame();
 void process_commands();
 extern const struct retro_hw_render_interface_vulkan *vulkan;
 
-extern std::unique_ptr<Vulkan::Context> context;
-extern std::unique_ptr<Vulkan::Device> device;
-extern std::unique_ptr<CommandProcessor> frontend;
-
 extern unsigned width;
 extern unsigned height;
 extern bool synchronous, divot_filter, gamma_dither, vi_aa, vi_scale, dither_filter, interlacing;
 
 void complete_frame();
 void deinit();
+
+void profile_refresh_begin();
+void profile_refresh_end();
 }
 
 #endif

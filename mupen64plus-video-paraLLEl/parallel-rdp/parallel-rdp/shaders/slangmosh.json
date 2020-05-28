@@ -20,19 +20,9 @@
 			"path": "clear_indirect_buffer.comp"
 		},
 		{
-			"name": "tile_binning_prepass",
+			"name": "tile_binning_combined",
 			"compute": true,
-			"path": "tile_binning_prepass.comp",
-			"variants": [
-				{ "define": "DEBUG_ENABLE", "count": 2, "resolve": true },
-				{ "define": "SUBGROUP", "count": 2, "resolve": true },
-				{ "define": "SMALL_TYPES", "count": 2, "resolve": true }
-			]
-		},
-		{
-			"name": "tile_binning",
-			"compute": true,
-			"path": "tile_binning.comp",
+			"path": "tile_binning_combined.comp",
 			"variants": [
 				{ "define": "DEBUG_ENABLE", "count": 2, "resolve": true },
 				{ "define": "SUBGROUP", "count": 2, "resolve": true },

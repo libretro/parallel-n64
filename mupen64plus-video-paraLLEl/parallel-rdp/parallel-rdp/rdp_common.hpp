@@ -40,6 +40,7 @@ enum class Op
 
 	MetaSignalTimeline = 1,
 	MetaFlush = 2,
+	MetaIdle = 3,
 
 	FillTriangle = 0x08,
 	FillZBufferTriangle = 0x09,

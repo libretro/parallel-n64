@@ -491,7 +491,8 @@ CXXFLAGS += -DHAVE_PARALLEL
 					$(VIDEODIR_PARALLEL)/parallel-rdp/vulkan/shader.cpp \
 					$(VIDEODIR_PARALLEL)/parallel-rdp/vulkan/texture_format.cpp \
 					$(VIDEODIR_PARALLEL)/parallel-rdp/vulkan/thread_id.cpp \
-					$(VIDEODIR_PARALLEL)/parallel-rdp/util/aligned_alloc.cpp
+					$(VIDEODIR_PARALLEL)/parallel-rdp/util/aligned_alloc.cpp \
+					$(VIDEODIR_PARALLEL)/parallel-rdp/util/timer.cpp \
 
 	SOURCES_CXX += \
 				   $(VIDEODIR_PARALLEL)/parallel-rdp/spirv-cross/spirv_cross.cpp \

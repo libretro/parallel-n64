@@ -139,7 +139,7 @@ u8x3 blender(BlendInputs inputs, u8x4 blend_modes,
 		rgb0.b = u8(texelFetch(uBlenderDividerLUT, (blend_sum << 11) | blended.z).x);
 	}
 
-	return rgb0;
+	return rgb0 & U8_C(0xff);
 }
 
 #endif
