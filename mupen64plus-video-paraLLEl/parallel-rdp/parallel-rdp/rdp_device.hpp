@@ -46,7 +46,10 @@ struct RGBA
 enum CommandProcessorFlagBits
 {
 	COMMAND_PROCESSOR_FLAG_HOST_VISIBLE_HIDDEN_RDRAM_BIT = 1 << 0,
-	COMMAND_PROCESSOR_FLAG_HOST_VISIBLE_TMEM_BIT = 1 << 1
+	COMMAND_PROCESSOR_FLAG_HOST_VISIBLE_TMEM_BIT = 1 << 1,
+	COMMAND_PROCESSOR_FLAG_UPSCALING_2X_BIT = 1 << 2,
+	COMMAND_PROCESSOR_FLAG_UPSCALING_4X_BIT = 1 << 3,
+	COMMAND_PROCESSOR_FLAG_UPSCALING_8X_BIT = 1 << 4
 };
 using CommandProcessorFlags = uint32_t;
 
@@ -69,6 +72,41 @@ struct CoherencyOperation
 	const Vulkan::Buffer *src = nullptr;
 	std::vector<CoherencyCopy> copies;
 	std::atomic_uint32_t *unlock_cookie = nullptr;
+};
+
+// These options control various behavior when upscaling to workaround glitches which arise naturally as part of upscaling.
+struct Quirks
+{
+	inline Quirks()
+	{
+		u.options.native_resolution_tex_rect = true;
+		u.options.native_texture_lod = false;
+	}
+
+	inline void set_native_resolution_tex_rect(bool enable)
+	{
+		u.options.native_resolution_tex_rect = enable;
+	}
+
+	inline void set_native_texture_lod(bool enable)
+	{
+		u.options.native_texture_lod = enable;
+	}
+
+	union
+	{
+		struct Opts
+		{
+			// If true, force TEX_RECT and TEX_RECT_FLIP to render without upscaling.
+			// Works around bilinear filtering bugs in Cycle1/Cycle2 mode where game assumed 1:1 pixel transfer.
+			bool native_resolution_tex_rect;
+
+			// Forces LOD to be computed as 1x upscale.
+			// Fixes content which relies on LOD computation to select textures in clever ways.
+			bool native_texture_lod;
+		} options;
+		uint32_t words[1];
+	} u;
 };
 
 class CommandProcessor
@@ -96,6 +134,8 @@ public:
 	void enqueue_command(unsigned num_words, const uint32_t *words);
 	void enqueue_command_direct(unsigned num_words, const uint32_t *words);
 
+	void set_quirks(const Quirks &quirks);
+
 	// Interact with memory.
 	void *begin_read_rdram();
 	void end_write_rdram();
@@ -118,6 +158,7 @@ private:
 	Vulkan::BufferHandle tmem;
 	size_t rdram_offset;
 	size_t rdram_size;
+	CommandProcessorFlags flags;
 #ifndef PARALLEL_RDP_SHADER_DIR
 	std::unique_ptr<ShaderBank> shader_bank;
 #endif
@@ -185,5 +226,8 @@ private:
 
 	void enqueue_coherency_operation(CoherencyOperation &&op);
 	void drain_command_ring();
+	void decode_triangle_setup(TriangleSetup &setup, const uint32_t *words) const;
+
+	Quirks quirks;
 };
 }

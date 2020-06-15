@@ -28,21 +28,21 @@
 #include "blender.h"
 #include "depth_test.h"
 #include "coverage.h"
+#include "fb_formats.h"
 
 layout(constant_id = 0) const uint RDRAM_SIZE = 0;
-layout(constant_id = 7) const bool RDRAM_INCOHERENT = false;
+
+layout(constant_id = 7) const int RDRAM_INCOHERENT_SCALING = 0;
+const bool RDRAM_INCOHERENT = (RDRAM_INCOHERENT_SCALING & 1) != 0;
+const int SCALING_LOG2 = RDRAM_INCOHERENT_SCALING >> 1;
+const int SCALING_FACTOR = 1 << SCALING_LOG2;
+
 const uint RDRAM_MASK_8 = RDRAM_SIZE - 1u;
 const uint RDRAM_MASK_16 = RDRAM_MASK_8 >> 1u;
 const uint RDRAM_MASK_32 = RDRAM_MASK_8 >> 2u;
 
 layout(constant_id = 1) const int FB_FMT = 0;
 layout(constant_id = 2) const bool FB_COLOR_DEPTH_ALIAS = false;
-
-const int FB_FMT_I4 = 0;
-const int FB_FMT_I8 = 1;
-const int FB_FMT_RGBA5551 = 2;
-const int FB_FMT_IA88 = 3;
-const int FB_FMT_RGBA8888 = 4;
 
 u8x4 current_color;
 bool current_color_dirty;
@@ -51,7 +51,7 @@ u16 current_depth;
 u8 current_dz;
 bool current_depth_dirty;
 
-void load_vram_color(uint index)
+void load_vram_color(uint index, uint slice)
 {
 	switch (FB_FMT)
 	{
@@ -59,6 +59,7 @@ void load_vram_color(uint index)
 	case FB_FMT_I8:
 	{
 		index &= RDRAM_MASK_8;
+		index += slice * RDRAM_SIZE;
 		u8 word = u8(vram8.data[index ^ 3u]);
 		current_color = u8x4(word, word, word, u8(hidden_vram.data[index >> 1]));
 		break;
@@ -67,6 +68,7 @@ void load_vram_color(uint index)
 	case FB_FMT_RGBA5551:
 	{
 		index &= RDRAM_MASK_16;
+		index += slice * (RDRAM_SIZE >> 1);
 		uint word = uint(vram16.data[index ^ 1u]);
 		uvec3 rgb = uvec3(word >> 8u, word >> 3u, word << 2u) & 0xf8u;
 		current_color = u8x4(rgb, (u8(hidden_vram.data[index]) << U8_C(5)) | u8((word & 1) << 7));
@@ -76,6 +78,7 @@ void load_vram_color(uint index)
 	case FB_FMT_IA88:
 	{
 		index &= RDRAM_MASK_16;
+		index += slice * (RDRAM_SIZE >> 1);
 		uint word = uint(vram16.data[index ^ 1u]);
 		current_color = u8x4(u8x3(word >> 8u), word & 0xff);
 		break;
@@ -84,6 +87,7 @@ void load_vram_color(uint index)
 	case FB_FMT_RGBA8888:
 	{
 		index &= RDRAM_MASK_32;
+		index += slice * (RDRAM_SIZE >> 2);
 		uint word = vram32.data[index];
 		current_color = u8x4((uvec4(word) >> uvec4(24, 16, 8, 0)) & uvec4(0xff));
 		break;
@@ -144,15 +148,16 @@ void alias_depth_to_color()
 	current_color_dirty = true;
 }
 
-void load_vram_depth(uint index)
+void load_vram_depth(uint index, uint slice)
 {
 	index &= RDRAM_MASK_16;
+	index += slice * (RDRAM_SIZE >> 1);
 	u16 word = u16(vram16.data[index ^ 1u]);
 	current_depth = word >> U16_C(2);
 	current_dz = u8(hidden_vram.data[index]) | u8((word & U16_C(3)) << U16_C(2));
 }
 
-void store_vram_color(uint index)
+void store_vram_color(uint index, uint slice)
 {
 	//GENERIC_MESSAGE1(index);
 	if (current_color_dirty)
@@ -162,6 +167,7 @@ void store_vram_color(uint index)
 		case FB_FMT_I4:
 		{
 			index &= RDRAM_MASK_8;
+			index += slice * RDRAM_SIZE;
 			vram8.data[index ^ 3u] = mem_u8(0);
 			if ((index & 1u) != 0u)
 				hidden_vram.data[index >> 1u] = mem_u8(current_color.a);
@@ -180,6 +186,7 @@ void store_vram_color(uint index)
 		case FB_FMT_I8:
 		{
 			index &= RDRAM_MASK_8;
+			index += slice * RDRAM_SIZE;
 			vram8.data[index ^ 3u] = mem_u8(current_color.r);
 			if ((index & 1u) != 0u)
 				hidden_vram.data[index >> 1u] = mem_u8((current_color.r & 1) * 3);
@@ -198,6 +205,7 @@ void store_vram_color(uint index)
 		case FB_FMT_RGBA5551:
 		{
 			index &= RDRAM_MASK_16;
+			index += slice * (RDRAM_SIZE >> 1);
 			uvec4 c = uvec4(current_color);
 			c.rgb &= 0xf8u;
 			uint cov = c.w >> 5u;
@@ -219,6 +227,7 @@ void store_vram_color(uint index)
 		case FB_FMT_IA88:
 		{
 			index &= RDRAM_MASK_16;
+			index += slice * (RDRAM_SIZE >> 1);
 			uvec2 col = current_color.ra;
 			uint word = (col.x << 8u) | col.y;
 			vram16.data[index ^ 1u] = mem_u16(word);
@@ -238,6 +247,7 @@ void store_vram_color(uint index)
 		case FB_FMT_RGBA8888:
 		{
 			index &= RDRAM_MASK_32;
+			index += slice * (RDRAM_SIZE >> 2);
 			uvec4 col = current_color;
 			uint word = (col.r << 24u) | (col.g << 16u) | (col.b << 8u) | (col.a << 0u);
 			vram32.data[index] = word;
@@ -258,7 +268,7 @@ void store_vram_color(uint index)
 	}
 }
 
-void store_vram_depth(uint index)
+void store_vram_depth(uint index, uint slice)
 {
 	if (!FB_COLOR_DEPTH_ALIAS)
 	{
@@ -266,6 +276,7 @@ void store_vram_depth(uint index)
 		if (current_depth_dirty)
 		{
 			index &= RDRAM_MASK_16;
+			index += slice * (RDRAM_SIZE >> 1);
 			vram16.data[index ^ 1u] = mem_u16((current_depth << U16_C(2)) | (current_dz >> U16_C(2)));
 			hidden_vram.data[index] = mem_u8(current_dz & U16_C(3));
 
@@ -289,12 +300,16 @@ void init_tile(uvec2 coord, uint fb_width, uint fb_height, uint fb_addr_index, u
 	current_depth_dirty = false;
 	if (all(lessThan(coord, uvec2(fb_width, fb_height))))
 	{
-		uint index = fb_addr_index + fb_width * coord.y + coord.x;
-		color_fb_index = index;
-		load_vram_color(index);
+		uvec2 slice2d = coord & (SCALING_FACTOR - 1);
+		coord >>= SCALING_LOG2;
+		uint slice = slice2d.y * SCALING_FACTOR + slice2d.x;
 
-		index = fb_depth_addr_index + fb_width * coord.y + coord.x;
-		load_vram_depth(index);
+		uint index = fb_addr_index + (fb_width >> SCALING_LOG2) * coord.y + coord.x;
+		color_fb_index = index;
+		load_vram_color(index, slice);
+
+		index = fb_depth_addr_index + (fb_width >> SCALING_LOG2) * coord.y + coord.x;
+		load_vram_depth(index, slice);
 	}
 }
 
@@ -302,11 +317,15 @@ void finish_tile(uvec2 coord, uint fb_width, uint fb_height, uint fb_addr_index,
 {
 	if (all(lessThan(coord, uvec2(fb_width, fb_height))))
 	{
-		uint index = fb_addr_index + fb_width * coord.y + coord.x;
-		store_vram_color(index);
+		uvec2 slice2d = coord & (SCALING_FACTOR - 1);
+		coord >>= SCALING_LOG2;
+		uint slice = slice2d.y * SCALING_FACTOR + slice2d.x;
 
-		index = fb_depth_addr_index + fb_width * coord.y + coord.x;
-		store_vram_depth(index);
+		uint index = fb_addr_index + (fb_width >> SCALING_LOG2) * coord.y + coord.x;
+		store_vram_color(index, slice);
+
+		index = fb_depth_addr_index + (fb_width >> SCALING_LOG2) * coord.y + coord.x;
+		store_vram_depth(index, slice);
 	}
 }
 

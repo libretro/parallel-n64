@@ -27,6 +27,10 @@ static QueryPoolHandle begin_ts, end_ts;
 static vector<retro_vulkan_image> retro_images;
 static vector<ImageHandle> retro_image_handles;
 unsigned width, height;
+unsigned upscaling = 1;
+unsigned downscaling_steps = 0;
+bool native_texture_lod = false;
+bool native_tex_rect = true;
 bool synchronous, divot_filter, gamma_dither, vi_aa, vi_scale, dither_filter, interlacing;
 
 static const unsigned cmd_len_lut[64] = {
@@ -192,8 +196,30 @@ bool init()
 	else
 		log_cb(RETRO_LOG_WARN, "VK_EXT_external_memory_host is not supported by this device. Application might run slower because of this.\n");
 
+	CommandProcessorFlags flags = 0;
+	switch (upscaling)
+	{
+		case 2:
+			flags |= COMMAND_PROCESSOR_FLAG_UPSCALING_2X_BIT;
+			log_cb(RETRO_LOG_INFO, "Using 2x upscaling!\n");
+			break;
+
+		case 4:
+			flags |= COMMAND_PROCESSOR_FLAG_UPSCALING_4X_BIT;
+			log_cb(RETRO_LOG_INFO, "Using 4x upscaling!\n");
+			break;
+
+		case 8:
+			flags |= COMMAND_PROCESSOR_FLAG_UPSCALING_8X_BIT;
+			log_cb(RETRO_LOG_INFO, "Using 8x upscaling!\n");
+			break;
+
+		default:
+			break;
+	}
+
 	frontend.reset(new CommandProcessor(*device, reinterpret_cast<void *>(aligned_rdram),
-				offset, 8 * 1024 * 1024, 4 * 1024 * 1024, 0));
+				offset, 8 * 1024 * 1024, 4 * 1024 * 1024, flags));
 
 	if (!frontend->device_is_supported())
 	{
@@ -201,6 +227,11 @@ bool init()
 		frontend.reset();
 		return false;
 	}
+
+	RDP::Quirks quirks;
+	quirks.set_native_texture_lod(native_texture_lod);
+	quirks.set_native_resolution_tex_rect(native_tex_rect);
+	frontend->set_quirks(quirks);
 
 	timeline_value = 0;
 	pending_timeline_value = 0;
@@ -307,6 +338,7 @@ void complete_frame()
 	opts.vi.dither_filter = dither_filter;
 	opts.vi.divot_filter = divot_filter;
 	opts.vi.gamma_dither = gamma_dither;
+	opts.downscale_steps = downscaling_steps;
 	auto image = frontend->scanout(opts);
 	unsigned index = vulkan->get_sync_index(vulkan->handle);
 
@@ -360,6 +392,12 @@ void complete_frame()
 	device->register_time_interval("Emulation", begin_ts, end_ts, "frame");
 	begin_ts.reset();
 	end_ts.reset();
+
+	RDP::Quirks quirks;
+	quirks.set_native_texture_lod(native_texture_lod);
+	quirks.set_native_resolution_tex_rect(native_tex_rect);
+	frontend->set_quirks(quirks);
+
 	frontend->begin_frame_context();
 }
 }

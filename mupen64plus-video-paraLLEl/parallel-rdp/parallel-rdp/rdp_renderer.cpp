@@ -50,9 +50,16 @@ void Renderer::set_shader_bank(const ShaderBank *bank)
 	shader_bank = bank;
 }
 
-bool Renderer::set_device(Vulkan::Device *device_)
+bool Renderer::init_renderer(const RendererOptions &options)
 {
-	device = device_;
+	if (options.upscaling_factor == 0)
+		return false;
+
+	caps.max_width = options.upscaling_factor * Limits::MaxWidth;
+	caps.max_height = options.upscaling_factor * Limits::MaxHeight;
+	caps.max_tiles_x = options.upscaling_factor * ImplementationConstants::MaxTilesX;
+	caps.max_tiles_y = options.upscaling_factor * ImplementationConstants::MaxTilesY;
+	caps.max_num_tile_instances = options.upscaling_factor * options.upscaling_factor * Limits::MaxTileInstances;
 
 #ifdef PARALLEL_RDP_SHADER_DIR
 	pipeline_worker.reset(new WorkerThread<Vulkan::DeferredPipelineCompile, PipelineExecutor>(
@@ -90,7 +97,7 @@ bool Renderer::set_device(Vulkan::Device *device_)
 
 	{
 		Vulkan::BufferCreateInfo info = {};
-		info.size = Limits::MaxSpanSetups * sizeof(SpanSetup);
+		info.size = options.upscaling_factor * Limits::MaxSpanSetups * sizeof(SpanSetup);
 		info.usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
 		info.domain = Vulkan::BufferDomain::Device;
 		info.misc = Vulkan::BUFFER_MISC_ZERO_INITIALIZE_BIT;
@@ -99,8 +106,15 @@ bool Renderer::set_device(Vulkan::Device *device_)
 	}
 
 	init_blender_lut();
-	init_buffers();
+	init_buffers(options);
+	if (options.upscaling_factor > 1 && !init_internal_upscaling_factor(options))
+		return false;
 	return init_caps();
+}
+
+void Renderer::set_device(Vulkan::Device *device_)
+{
+	device = device_;
 }
 
 bool Renderer::init_caps()
@@ -232,7 +246,7 @@ int Renderer::resolve_shader_define(const char *name, const char *define) const
 		return 0;
 }
 
-void Renderer::init_buffers()
+void Renderer::init_buffers(const RendererOptions &options)
 {
 	Vulkan::BufferCreateInfo info = {};
 	info.usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
@@ -244,15 +258,15 @@ void Renderer::init_buffers()
 
 	info.size = sizeof(uint32_t) *
 	            (Limits::MaxPrimitives / 32) *
-	            (Limits::MaxWidth / ImplementationConstants::TileWidth) *
-	            (Limits::MaxHeight / ImplementationConstants::TileHeight);
+	            (caps.max_width / ImplementationConstants::TileWidth) *
+	            (caps.max_height / ImplementationConstants::TileHeight);
 
 	tile_binning_buffer = device->create_buffer(info);
 	device->set_name(*tile_binning_buffer, "tile-binning-buffer");
 
 	info.size = sizeof(uint32_t) *
-	            (Limits::MaxWidth / ImplementationConstants::TileWidth) *
-	            (Limits::MaxHeight / ImplementationConstants::TileHeight);
+	            (caps.max_width / ImplementationConstants::TileWidth) *
+	            (caps.max_height / ImplementationConstants::TileHeight);
 
 	tile_binning_buffer_coarse = device->create_buffer(info);
 	device->set_name(*tile_binning_buffer_coarse, "tile-binning-buffer-coarse");
@@ -261,18 +275,18 @@ void Renderer::init_buffers()
 	{
 		info.size = sizeof(uint32_t) *
 		            (Limits::MaxPrimitives / 32) *
-		            (Limits::MaxWidth / ImplementationConstants::TileWidth) *
-		            (Limits::MaxHeight / ImplementationConstants::TileHeight);
+		            (caps.max_width / ImplementationConstants::TileWidth) *
+		            (caps.max_height / ImplementationConstants::TileHeight);
 
 		per_tile_offsets = device->create_buffer(info);
 		device->set_name(*per_tile_offsets, "per-tile-offsets");
 
-		info.size = sizeof(TileRasterWork) * Limits::MaxStaticRasterizationStates * Limits::MaxTileInstances;
+		info.size = sizeof(TileRasterWork) * Limits::MaxStaticRasterizationStates * caps.max_num_tile_instances;
 		tile_work_list = device->create_buffer(info);
 		device->set_name(*tile_work_list, "tile-work-list");
 
 		info.size = sizeof(uint32_t) *
-		            Limits::MaxTileInstances *
+		            caps.max_num_tile_instances *
 		            ImplementationConstants::TileWidth *
 		            ImplementationConstants::TileHeight;
 		per_tile_shaded_color = device->create_buffer(info);
@@ -281,7 +295,7 @@ void Renderer::init_buffers()
 		device->set_name(*per_tile_shaded_depth, "per-tile-shaded-depth");
 
 		info.size = sizeof(uint8_t) *
-		            Limits::MaxTileInstances *
+		            caps.max_num_tile_instances *
 		            ImplementationConstants::TileWidth *
 		            ImplementationConstants::TileHeight;
 		per_tile_shaded_coverage = device->create_buffer(info);
@@ -505,6 +519,54 @@ void Renderer::RenderBuffersUpdater::init(Vulkan::Device &device)
 	cpu.init(device, Vulkan::BufferDomain::Host, &gpu);
 }
 
+bool Renderer::init_internal_upscaling_factor(const RendererOptions &options)
+{
+	unsigned factor = options.upscaling_factor;
+	if (!device || !rdram || !hidden_rdram)
+	{
+		LOGE("Renderer is not initialized.\n");
+		return false;
+	}
+
+	caps.upscaling = factor;
+
+	if (factor == 1)
+	{
+		upscaling_multisampled_hidden_rdram.reset();
+		upscaling_reference_rdram.reset();
+		upscaling_multisampled_rdram.reset();
+		return true;
+	}
+
+	Vulkan::BufferCreateInfo info;
+	info.domain = Vulkan::BufferDomain::Device;
+	info.usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
+	info.misc = Vulkan::BUFFER_MISC_ZERO_INITIALIZE_BIT;
+
+	info.size = rdram_size;
+	upscaling_reference_rdram = device->create_buffer(info);
+	device->set_name(*upscaling_reference_rdram, "reference-rdram");
+
+	info.size = rdram_size * factor * factor;
+	upscaling_multisampled_rdram = device->create_buffer(info);
+	device->set_name(*upscaling_multisampled_rdram, "multisampled-rdram");
+
+	info.size = hidden_rdram->get_create_info().size * factor * factor;
+	upscaling_multisampled_hidden_rdram = device->create_buffer(info);
+	device->set_name(*upscaling_multisampled_hidden_rdram, "multisampled-hidden-rdram");
+
+	{
+		auto cmd = device->request_command_buffer();
+		cmd->fill_buffer(*upscaling_multisampled_hidden_rdram, 0x03030303);
+		cmd->barrier(VK_PIPELINE_STAGE_TRANSFER_BIT, VK_ACCESS_TRANSFER_WRITE_BIT,
+		             VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
+		             VK_ACCESS_MEMORY_READ_BIT | VK_ACCESS_MEMORY_WRITE_BIT);
+		device->submit(cmd);
+	}
+
+	return true;
+}
+
 void Renderer::set_rdram(Vulkan::Buffer *buffer, uint8_t *host_rdram, size_t offset, size_t size, bool coherent)
 {
 	rdram = buffer;
@@ -574,10 +636,10 @@ void Renderer::set_tmem(Vulkan::Buffer *buffer)
 	device->set_name(*tmem, "tmem");
 }
 
-Vulkan::Fence Renderer::flush_and_signal()
+void Renderer::flush_and_signal()
 {
 	flush_queues();
-	return submit_to_queue();
+	submit_to_queue();
 }
 
 void Renderer::set_color_framebuffer(uint32_t addr, uint32_t width, FBFormat fmt)
@@ -853,19 +915,21 @@ DerivedSetup Renderer::build_derived_attributes(const AttributeSetup &attr) cons
 
 static constexpr unsigned SUBPIXELS_Y = 4;
 
-static std::pair<int, int> interpolate_x(const TriangleSetup &setup, int y, bool flip)
+static std::pair<int, int> interpolate_x(const TriangleSetup &setup, int y, bool flip, int scaling)
 {
 	int yh_interpolation_base = setup.yh & ~(SUBPIXELS_Y - 1);
 	int ym_interpolation_base = setup.ym;
+	yh_interpolation_base *= scaling;
+	ym_interpolation_base *= scaling;
 
-	int xh = setup.xh + (y - yh_interpolation_base) * setup.dxhdy;
-	int xm = setup.xm + (y - yh_interpolation_base) * setup.dxmdy;
-	int xl = setup.xl + (y - ym_interpolation_base) * setup.dxldy;
-	if (y < setup.ym)
+	int xh = scaling * setup.xh + (y - yh_interpolation_base) * setup.dxhdy;
+	int xm = scaling * setup.xm + (y - yh_interpolation_base) * setup.dxmdy;
+	int xl = scaling * setup.xl + (y - ym_interpolation_base) * setup.dxldy;
+	if (y < scaling * setup.ym)
 		xl = xm;
 
-	int xh_shifted = xh >> 16;
-	int xl_shifted = xl >> 16;
+	int xh_shifted = xh >> 15;
+	int xl_shifted = xl >> 15;
 
 	int xleft, xright;
 	if (flip)
@@ -887,11 +951,14 @@ unsigned Renderer::compute_conservative_max_num_tiles(const TriangleSetup &setup
 	if (setup.yl <= setup.yh)
 		return 0;
 
+	int scaling = int(caps.upscaling);
 	int start_y = setup.yh & ~(SUBPIXELS_Y - 1);
 	int end_y = (setup.yl - 1) | (SUBPIXELS_Y - 1);
 
 	start_y = std::max(int(stream.scissor_state.ylo), start_y);
-	end_y = std::min(int(stream.scissor_state.yhi), end_y);
+	end_y = std::min(int(stream.scissor_state.yhi) - 1, end_y);
+	start_y *= scaling;
+	end_y *= scaling;
 
 	// Y is clipped out, exit early.
 	if (end_y < start_y)
@@ -899,21 +966,23 @@ unsigned Renderer::compute_conservative_max_num_tiles(const TriangleSetup &setup
 
 	bool flip = (setup.flags & TRIANGLE_SETUP_FLIP_BIT) != 0;
 
-	auto upper = interpolate_x(setup, start_y, flip);
-	auto lower = interpolate_x(setup, end_y, flip);
+	auto upper = interpolate_x(setup, start_y, flip, scaling);
+	auto lower = interpolate_x(setup, end_y, flip, scaling);
 	auto mid = upper;
 	auto mid1 = upper;
-	if (setup.ym > start_y && setup.ym < end_y)
+
+	int ym = scaling * setup.ym;
+	if (ym > start_y && ym < end_y)
 	{
-		mid = interpolate_x(setup, setup.ym, flip);
-		mid1 = interpolate_x(setup, setup.ym - 1, flip);
+		mid = interpolate_x(setup, ym, flip, scaling);
+		mid1 = interpolate_x(setup, ym - 1, flip, scaling);
 	}
 
 	int start_x = std::min(std::min(upper.first, lower.first), std::min(mid.first, mid1.first));
 	int end_x = std::max(std::max(upper.second, lower.second), std::max(mid.second, mid1.second));
 
-	start_x = std::max(start_x, int(stream.scissor_state.xlo) >> 2);
-	end_x = std::min(end_x, int(stream.scissor_state.xhi) >> 2);
+	start_x = std::max(start_x, scaling * (int(stream.scissor_state.xlo) >> 2));
+	end_x = std::min(end_x, scaling * ((int(stream.scissor_state.xhi) + 3) >> 2) - 1);
 
 	if (end_x < start_x)
 		return 0;
@@ -1378,7 +1447,7 @@ bool Renderer::need_flush() const
 	bool span_info_full =
 			(stream.span_info_jobs.size() * ImplementationConstants::DefaultWorkgroupSize + Limits::MaxHeight > Limits::MaxSpanSetups);
 	bool max_shaded_tiles =
-			(stream.max_shaded_tiles + ImplementationConstants::MaxTilesX * ImplementationConstants::MaxTilesY > Limits::MaxTileInstances);
+			(stream.max_shaded_tiles + caps.max_tiles_x * caps.max_tiles_y > caps.max_num_tile_instances);
 
 #ifdef VULKAN_DEBUG
 	if (cache_full)
@@ -1470,7 +1539,7 @@ void Renderer::update_tmem_instances(Vulkan::CommandBuffer &cmd)
 	}
 }
 
-void Renderer::submit_span_setup_jobs(Vulkan::CommandBuffer &cmd)
+void Renderer::submit_span_setup_jobs(Vulkan::CommandBuffer &cmd, bool upscale)
 {
 	cmd.begin_region("span-setup");
 	auto &instance = buffer_instances[buffer_instance];
@@ -1486,8 +1555,9 @@ void Renderer::submit_span_setup_jobs(Vulkan::CommandBuffer &cmd)
 #endif
 
 	cmd.set_buffer_view(1, 0, *instance.gpu.span_info_jobs_view);
-	cmd.set_specialization_constant_mask(1);
-	cmd.set_specialization_constant(0, ImplementationConstants::DefaultWorkgroupSize);
+	cmd.set_specialization_constant_mask(3);
+	cmd.set_specialization_constant(0, (upscale ? caps.upscaling : 1) * ImplementationConstants::DefaultWorkgroupSize);
+	cmd.set_specialization_constant(1, upscale ? trailing_zeroes(caps.upscaling) : 0u);
 
 	Vulkan::QueryPoolHandle begin_ts, end_ts;
 	if (caps.timestamp >= 2)
@@ -1520,7 +1590,7 @@ void Renderer::clear_indirect_buffer(Vulkan::CommandBuffer &cmd)
 	cmd.end_region();
 }
 
-void Renderer::submit_rasterization(Vulkan::CommandBuffer &cmd, Vulkan::Buffer &tmem)
+void Renderer::submit_rasterization(Vulkan::CommandBuffer &cmd, Vulkan::Buffer &tmem, bool upscaling)
 {
 	cmd.begin_region("rasterization");
 	auto &instance = buffer_instances[buffer_instance];
@@ -1587,20 +1657,24 @@ void Renderer::submit_rasterization(Vulkan::CommandBuffer &cmd, Vulkan::Buffer &
 	if (caps.timestamp >= 2)
 		start_ts = cmd.write_timestamp(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
 
+	uint32_t scale_log2_bit = (upscaling ? trailing_zeroes(caps.upscaling) : 0u) << RASTERIZATION_UPSCALING_LOG2_BIT_OFFSET;
+
 	for (size_t i = 0; i < stream.static_raster_state_cache.size(); i++)
 	{
 		cmd.set_storage_buffer(1, 0, *tile_work_list,
-		                       i * sizeof(TileRasterWork) * Limits::MaxTileInstances,
-		                       sizeof(TileRasterWork) * Limits::MaxTileInstances);
+		                       i * sizeof(TileRasterWork) * caps.max_num_tile_instances,
+		                       sizeof(TileRasterWork) * caps.max_num_tile_instances);
 
 		auto &state = stream.static_raster_state_cache.data()[i];
-		cmd.set_specialization_constant(2, state.flags | RASTERIZATION_USE_SPECIALIZATION_CONSTANT_BIT);
+		cmd.set_specialization_constant(2, state.flags | RASTERIZATION_USE_SPECIALIZATION_CONSTANT_BIT | scale_log2_bit);
 		cmd.set_specialization_constant(3, state.combiner[0].rgb);
 		cmd.set_specialization_constant(4, state.combiner[0].alpha);
 		cmd.set_specialization_constant(5, state.combiner[1].rgb);
 		cmd.set_specialization_constant(6, state.combiner[1].alpha);
 
-		cmd.set_specialization_constant(7, state.dither | (state.texture_size << 8) | (state.texture_fmt << 16));
+		cmd.set_specialization_constant(7, state.dither |
+		                                   (state.texture_size << 8u) |
+		                                   (state.texture_fmt << 16u));
 		cmd.set_specialization_constant_mask(0xff);
 
 		if (!caps.force_sync && !cmd.flush_pipeline_state_without_blocking())
@@ -1612,7 +1686,8 @@ void Renderer::submit_rasterization(Vulkan::CommandBuffer &cmd, Vulkan::Buffer &
 				pending_async_pipelines.insert(compile.hash);
 				pipeline_worker->push(std::move(compile));
 			}
-			cmd.set_specialization_constant_mask(3);
+			cmd.set_specialization_constant_mask(7);
+			cmd.set_specialization_constant(2, scale_log2_bit);
 		}
 
 		cmd.dispatch_indirect(*indirect_dispatch_buffer, 4 * sizeof(uint32_t) * i);
@@ -1626,7 +1701,7 @@ void Renderer::submit_rasterization(Vulkan::CommandBuffer &cmd, Vulkan::Buffer &
 	cmd.end_region();
 }
 
-void Renderer::submit_tile_binning_combined(Vulkan::CommandBuffer &cmd)
+void Renderer::submit_tile_binning_combined(Vulkan::CommandBuffer &cmd, bool upscale)
 {
 	cmd.begin_region("tile-binning-combined");
 	auto &instance = buffer_instances[buffer_instance];
@@ -1643,12 +1718,13 @@ void Renderer::submit_tile_binning_combined(Vulkan::CommandBuffer &cmd)
 		cmd.set_storage_buffer(0, 7, *tile_work_list);
 	}
 
-	cmd.set_specialization_constant_mask(0x3f);
+	cmd.set_specialization_constant_mask(0x7f);
 	cmd.set_specialization_constant(1, ImplementationConstants::TileWidth);
 	cmd.set_specialization_constant(2, ImplementationConstants::TileHeight);
 	cmd.set_specialization_constant(3, Limits::MaxPrimitives);
-	cmd.set_specialization_constant(4, Limits::MaxWidth);
-	cmd.set_specialization_constant(5, Limits::MaxTileInstances);
+	cmd.set_specialization_constant(4, upscale ? caps.max_width : Limits::MaxWidth);
+	cmd.set_specialization_constant(5, caps.max_num_tile_instances);
+	cmd.set_specialization_constant(6, upscale ? caps.upscaling : 1u);
 
 	struct PushData
 	{
@@ -1657,6 +1733,13 @@ void Renderer::submit_tile_binning_combined(Vulkan::CommandBuffer &cmd)
 	} push = {};
 	push.width = fb.width;
 	push.height = fb.deduced_height;
+
+	if (upscale)
+	{
+		push.width *= caps.upscaling;
+		push.height *= caps.upscaling;
+	}
+
 	push.num_primitives = uint32_t(stream.triangle_setup.size());
 	unsigned num_primitives_32 = (push.num_primitives + 31) / 32;
 
@@ -1673,10 +1756,10 @@ void Renderer::submit_tile_binning_combined(Vulkan::CommandBuffer &cmd)
 	{
 #ifdef PARALLEL_RDP_SHADER_DIR
 		cmd.set_program("rdp://tile_binning_combined.comp", {
-				{ "DEBUG_ENABLE", debug_channel ? 1 : 0 },
-				{ "SUBGROUP", 1 },
-				{ "UBERSHADER", int(caps.ubershader) },
-				{ "SMALL_TYPES", caps.supports_small_integer_arithmetic ? 1 : 0 },
+			{ "DEBUG_ENABLE", debug_channel ? 1 : 0 },
+			{ "SUBGROUP", 1 },
+			{ "UBERSHADER", int(caps.ubershader) },
+			{ "SMALL_TYPES", caps.supports_small_integer_arithmetic ? 1 : 0 },
 		});
 #else
 		cmd.set_program(shader_bank->tile_binning_combined);
@@ -1692,10 +1775,10 @@ void Renderer::submit_tile_binning_combined(Vulkan::CommandBuffer &cmd)
 	{
 #ifdef PARALLEL_RDP_SHADER_DIR
 		cmd.set_program("rdp://tile_binning_combined.comp", {
-				{ "DEBUG_ENABLE", debug_channel ? 1 : 0 },
-				{ "SUBGROUP", 0 },
-				{ "UBERSHADER", int(caps.ubershader) },
-				{ "SMALL_TYPES", caps.supports_small_integer_arithmetic ? 1 : 0 },
+			{ "DEBUG_ENABLE", debug_channel ? 1 : 0 },
+			{ "SUBGROUP", 0 },
+			{ "UBERSHADER", int(caps.ubershader) },
+			{ "SMALL_TYPES", caps.supports_small_integer_arithmetic ? 1 : 0 },
 		});
 #else
 		cmd.set_program(shader_bank->tile_binning_combined);
@@ -1723,6 +1806,217 @@ void Renderer::submit_tile_binning_combined(Vulkan::CommandBuffer &cmd)
 	cmd.end_region();
 }
 
+void Renderer::submit_update_upscaled_domain_external(Vulkan::CommandBuffer &cmd,
+                                                      unsigned addr, unsigned length, unsigned pixel_size_log2)
+{
+	submit_update_upscaled_domain(cmd, ResolveStage::Pre, addr, addr, length, pixel_size_log2);
+}
+
+void Renderer::submit_update_upscaled_domain(Vulkan::CommandBuffer &cmd, ResolveStage stage,
+                                             unsigned addr, unsigned depth_addr,
+                                             unsigned num_pixels, unsigned pixel_size_log2)
+{
+#ifdef PARALLEL_RDP_SHADER_DIR
+	if (stage == ResolveStage::Pre)
+		cmd.set_program("rdp://update_upscaled_domain_pre.comp");
+	else
+		cmd.set_program("rdp://update_upscaled_domain_post.comp");
+#else
+	if (stage == ResolveStage::Pre)
+		cmd.set_program(shader_bank->update_upscaled_domain_pre);
+	else
+		cmd.set_program(shader_bank->update_upscaled_domain_post);
+#endif
+
+	cmd.set_storage_buffer(0, 0, *rdram, rdram_offset, rdram_size);
+	cmd.set_storage_buffer(0, 1, *hidden_rdram);
+	cmd.set_storage_buffer(0, 2, *upscaling_reference_rdram);
+	cmd.set_storage_buffer(0, 3, *upscaling_multisampled_rdram);
+	cmd.set_storage_buffer(0, 4, *upscaling_multisampled_hidden_rdram);
+
+	cmd.set_specialization_constant_mask(0x1f);
+	cmd.set_specialization_constant(0, uint32_t(rdram_size));
+	cmd.set_specialization_constant(1, pixel_size_log2);
+	cmd.set_specialization_constant(2, int(addr == depth_addr));
+	cmd.set_specialization_constant(3, ImplementationConstants::DefaultWorkgroupSize);
+	cmd.set_specialization_constant(4, caps.upscaling * caps.upscaling);
+
+	unsigned num_workgroups =
+			(num_pixels + ImplementationConstants::DefaultWorkgroupSize - 1) /
+			ImplementationConstants::DefaultWorkgroupSize;
+
+	struct Push
+	{
+		uint32_t pixels;
+		uint32_t fb_addr, fb_depth_addr;
+	} push = {};
+	push.pixels = num_pixels;
+	push.fb_addr = addr >> pixel_size_log2;
+	push.fb_depth_addr = depth_addr >> 1;
+
+	cmd.push_constants(&push, 0, sizeof(push));
+	cmd.dispatch(num_workgroups, 1, 1);
+}
+
+void Renderer::submit_update_upscaled_domain(Vulkan::CommandBuffer &cmd, ResolveStage stage)
+{
+	unsigned num_pixels = fb.width * fb.deduced_height;
+	unsigned pixel_size_log2;
+
+	switch (fb.fmt)
+	{
+	case FBFormat::RGBA8888:
+		pixel_size_log2 = 2;
+		break;
+
+	case FBFormat::RGBA5551:
+	case FBFormat::IA88:
+		pixel_size_log2 = 1;
+		break;
+
+	default:
+		pixel_size_log2 = 0;
+		break;
+	}
+
+	submit_update_upscaled_domain(cmd, stage, fb.addr, fb.depth_addr, num_pixels, pixel_size_log2);
+}
+
+void Renderer::submit_depth_blend(Vulkan::CommandBuffer &cmd, Vulkan::Buffer &tmem, bool upscaled)
+{
+	cmd.begin_region("render-pass");
+	auto &instance = buffer_instances[buffer_instance];
+
+	cmd.set_specialization_constant_mask(0xff);
+	cmd.set_specialization_constant(0, uint32_t(rdram_size));
+	cmd.set_specialization_constant(1, uint32_t(fb.fmt));
+	cmd.set_specialization_constant(2, int(fb.addr == fb.depth_addr));
+	cmd.set_specialization_constant(3, ImplementationConstants::TileWidth);
+	cmd.set_specialization_constant(4, ImplementationConstants::TileHeight);
+	cmd.set_specialization_constant(5, Limits::MaxPrimitives);
+	cmd.set_specialization_constant(6, upscaled ? caps.max_width : Limits::MaxWidth);
+	cmd.set_specialization_constant(7, uint32_t(!is_host_coherent && !upscaled) |
+	                                   ((upscaled ? trailing_zeroes(caps.upscaling) : 0u) << 1u));
+
+	if (upscaled)
+		cmd.set_storage_buffer(0, 0, *upscaling_multisampled_rdram);
+	else
+		cmd.set_storage_buffer(0, 0, *rdram, rdram_offset, rdram_size * (is_host_coherent ? 1 : 2));
+	cmd.set_storage_buffer(0, 1, upscaled ? *upscaling_multisampled_hidden_rdram : *hidden_rdram);
+	cmd.set_storage_buffer(0, 2, tmem);
+
+	if (!caps.ubershader)
+	{
+		cmd.set_storage_buffer(0, 3, *per_tile_shaded_color);
+		cmd.set_storage_buffer(0, 4, *per_tile_shaded_depth);
+		cmd.set_storage_buffer(0, 5, *per_tile_shaded_shaded_alpha);
+		cmd.set_storage_buffer(0, 6, *per_tile_shaded_coverage);
+		cmd.set_storage_buffer(0, 7, *per_tile_offsets);
+	}
+
+	cmd.set_storage_buffer(1, 0, *instance.gpu.triangle_setup.buffer);
+	cmd.set_storage_buffer(1, 1, *instance.gpu.attribute_setup.buffer);
+	cmd.set_storage_buffer(1, 2, *instance.gpu.derived_setup.buffer);
+	cmd.set_storage_buffer(1, 3, *instance.gpu.scissor_setup.buffer);
+	cmd.set_storage_buffer(1, 4, *instance.gpu.static_raster_state.buffer);
+	cmd.set_storage_buffer(1, 5, *instance.gpu.depth_blend_state.buffer);
+	cmd.set_storage_buffer(1, 6, *instance.gpu.state_indices.buffer);
+	cmd.set_storage_buffer(1, 7, *instance.gpu.tile_info_state.buffer);
+	cmd.set_storage_buffer(1, 8, *span_setups);
+	cmd.set_storage_buffer(1, 9, *instance.gpu.span_info_offsets.buffer);
+	cmd.set_buffer_view(1, 10, *blender_divider_buffer);
+	cmd.set_storage_buffer(1, 11, *tile_binning_buffer);
+	cmd.set_storage_buffer(1, 12, *tile_binning_buffer_coarse);
+
+	auto *global_fb_info = cmd.allocate_typed_constant_data<GlobalFBInfo>(2, 0, 1);
+
+	GlobalState push = {};
+	push.fb_width = fb.width;
+	push.fb_height = fb.deduced_height;
+
+	if (upscaled)
+	{
+		push.fb_width *= caps.upscaling;
+		push.fb_height *= caps.upscaling;
+	}
+
+	switch (fb.fmt)
+	{
+	case FBFormat::I4:
+		push.addr_index = fb.addr;
+		global_fb_info->fb_size = 0;
+		global_fb_info->dx_mask = 0;
+		global_fb_info->dx_shift = 0;
+		break;
+
+	case FBFormat::I8:
+		push.addr_index = fb.addr;
+		global_fb_info->fb_size = 1;
+		global_fb_info->dx_mask = ~7u;
+		global_fb_info->dx_shift = 3;
+		break;
+
+	case FBFormat::RGBA5551:
+	case FBFormat::IA88:
+		push.addr_index = fb.addr >> 1u;
+		global_fb_info->fb_size = 2;
+		global_fb_info->dx_mask = ~3u;
+		global_fb_info->dx_shift = 2;
+		break;
+
+	case FBFormat::RGBA8888:
+		push.addr_index = fb.addr >> 2u;
+		global_fb_info->fb_size = 4;
+		global_fb_info->dx_mask = ~1u;
+		global_fb_info->dx_shift = 1;
+		break;
+	}
+
+	global_fb_info->base_primitive_index = base_primitive_index;
+
+	push.depth_addr_index = fb.depth_addr >> 1;
+	unsigned num_primitives_32 = (stream.triangle_setup.size() + 31) / 32;
+	push.group_mask = (1u << num_primitives_32) - 1;
+	cmd.push_constants(&push, 0, sizeof(push));
+
+	if (caps.ubershader)
+	{
+#ifdef PARALLEL_RDP_SHADER_DIR
+		cmd.set_program("rdp://ubershader.comp", {
+				{ "DEBUG_ENABLE", debug_channel ? 1 : 0 },
+				{ "SMALL_TYPES", caps.supports_small_integer_arithmetic ? 1 : 0 },
+		});
+#else
+		cmd.set_program(shader_bank->ubershader);
+#endif
+	}
+	else
+	{
+#ifdef PARALLEL_RDP_SHADER_DIR
+		cmd.set_program("rdp://depth_blend.comp", {
+				{ "DEBUG_ENABLE", debug_channel ? 1 : 0 },
+				{ "SMALL_TYPES", caps.supports_small_integer_arithmetic ? 1 : 0 },
+		});
+#else
+		cmd.set_program(shader_bank->depth_blend);
+#endif
+	}
+
+	Vulkan::QueryPoolHandle start_ts, end_ts;
+	if (caps.timestamp >= 2)
+		start_ts = cmd.write_timestamp(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
+
+	cmd.dispatch((push.fb_width + 7) / 8, (push.fb_height + 7) / 8, 1);
+
+	if (caps.timestamp >= 2)
+	{
+		end_ts = cmd.write_timestamp(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
+		device->register_time_interval("RDP GPU", std::move(start_ts), std::move(end_ts), "depth-blending");
+	}
+
+	cmd.end_region();
+}
+
 void Renderer::submit_render_pass(Vulkan::CommandBuffer &cmd)
 {
 	bool need_render_pass = fb.width != 0 && fb.deduced_height != 0 && !stream.span_info_jobs.empty();
@@ -1742,11 +2036,11 @@ void Renderer::submit_render_pass(Vulkan::CommandBuffer &cmd)
 	// pass should dominate here unless the workload is trivial.
 	if (need_render_pass)
 	{
-		submit_span_setup_jobs(cmd);
-		submit_tile_binning_combined(cmd);
+		submit_span_setup_jobs(cmd, false);
+		submit_tile_binning_combined(cmd, false);
+		if (caps.upscaling > 1)
+			submit_update_upscaled_domain(cmd, ResolveStage::Pre);
 	}
-	else
-		base_primitive_index += stream.triangle_setup.size();
 
 	if (need_tmem_upload)
 		update_tmem_instances(cmd);
@@ -1758,135 +2052,26 @@ void Renderer::submit_render_pass(Vulkan::CommandBuffer &cmd)
 
 	if (need_render_pass && !caps.ubershader)
 	{
-		submit_rasterization(cmd, need_tmem_upload ? *tmem_instances : *tmem);
+		submit_rasterization(cmd, need_tmem_upload ? *tmem_instances : *tmem, false);
 		cmd.barrier(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_ACCESS_SHADER_WRITE_BIT,
 		            VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_ACCESS_SHADER_READ_BIT);
 	}
 
 	if (need_render_pass)
+		submit_depth_blend(cmd, need_tmem_upload ? *tmem_instances : *tmem, false);
+
+	if (!caps.ubershader)
+		clear_indirect_buffer(cmd);
+
+	if (render_pass_is_upscaled())
 	{
-		cmd.begin_region("render-pass");
-		auto &instance = buffer_instances[buffer_instance];
+		cmd.barrier(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_ACCESS_SHADER_WRITE_BIT,
+		            VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+		            VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT);
 
-		cmd.set_specialization_constant_mask(0xff);
-		cmd.set_specialization_constant(0, uint32_t(rdram_size));
-		cmd.set_specialization_constant(1, uint32_t(fb.fmt));
-		cmd.set_specialization_constant(2, int(fb.addr == fb.depth_addr));
-		cmd.set_specialization_constant(3, ImplementationConstants::TileWidth);
-		cmd.set_specialization_constant(4, ImplementationConstants::TileHeight);
-		cmd.set_specialization_constant(5, Limits::MaxPrimitives);
-		cmd.set_specialization_constant(6, Limits::MaxWidth);
-		cmd.set_specialization_constant(7, uint32_t(!is_host_coherent));
-
-		cmd.set_storage_buffer(0, 0, *rdram, rdram_offset, rdram_size * (is_host_coherent ? 1 : 2));
-		cmd.set_storage_buffer(0, 1, *hidden_rdram);
-		cmd.set_storage_buffer(0, 2, need_tmem_upload ? *tmem_instances : *tmem);
-
-		if (!caps.ubershader)
-		{
-			cmd.set_storage_buffer(0, 3, *per_tile_shaded_color);
-			cmd.set_storage_buffer(0, 4, *per_tile_shaded_depth);
-			cmd.set_storage_buffer(0, 5, *per_tile_shaded_shaded_alpha);
-			cmd.set_storage_buffer(0, 6, *per_tile_shaded_coverage);
-			cmd.set_storage_buffer(0, 7, *per_tile_offsets);
-		}
-
-		cmd.set_storage_buffer(1, 0, *instance.gpu.triangle_setup.buffer);
-		cmd.set_storage_buffer(1, 1, *instance.gpu.attribute_setup.buffer);
-		cmd.set_storage_buffer(1, 2, *instance.gpu.derived_setup.buffer);
-		cmd.set_storage_buffer(1, 3, *instance.gpu.scissor_setup.buffer);
-		cmd.set_storage_buffer(1, 4, *instance.gpu.static_raster_state.buffer);
-		cmd.set_storage_buffer(1, 5, *instance.gpu.depth_blend_state.buffer);
-		cmd.set_storage_buffer(1, 6, *instance.gpu.state_indices.buffer);
-		cmd.set_storage_buffer(1, 7, *instance.gpu.tile_info_state.buffer);
-		cmd.set_storage_buffer(1, 8, *span_setups);
-		cmd.set_storage_buffer(1, 9, *instance.gpu.span_info_offsets.buffer);
-		cmd.set_buffer_view(1, 10, *blender_divider_buffer);
-		cmd.set_storage_buffer(1, 11, *tile_binning_buffer);
-		cmd.set_storage_buffer(1, 12, *tile_binning_buffer_coarse);
-
-		auto *global_fb_info = cmd.allocate_typed_constant_data<GlobalFBInfo>(2, 0, 1);
-
-		GlobalState push = {};
-		push.fb_width = fb.width;
-		push.fb_height = fb.deduced_height;
-		switch (fb.fmt)
-		{
-		case FBFormat::I4:
-			push.addr_index = fb.addr;
-			global_fb_info->fb_size = 0;
-			global_fb_info->dx_mask = 0;
-			global_fb_info->dx_shift = 0;
-			break;
-
-		case FBFormat::I8:
-			push.addr_index = fb.addr;
-			global_fb_info->fb_size = 1;
-			global_fb_info->dx_mask = ~7u;
-			global_fb_info->dx_shift = 3;
-			break;
-
-		case FBFormat::RGBA5551:
-		case FBFormat::IA88:
-			push.addr_index = fb.addr >> 1u;
-			global_fb_info->fb_size = 2;
-			global_fb_info->dx_mask = ~3u;
-			global_fb_info->dx_shift = 2;
-			break;
-
-		case FBFormat::RGBA8888:
-			push.addr_index = fb.addr >> 2u;
-			global_fb_info->fb_size = 4;
-			global_fb_info->dx_mask = ~1u;
-			global_fb_info->dx_shift = 1;
-			break;
-		}
-
-		global_fb_info->base_primitive_index = base_primitive_index;
-
-		push.depth_addr_index = fb.depth_addr >> 1;
-		unsigned num_primitives_32 = (stream.triangle_setup.size() + 31) / 32;
-		push.group_mask = (1u << num_primitives_32) - 1;
-		cmd.push_constants(&push, 0, sizeof(push));
-
-		if (caps.ubershader)
-		{
-#ifdef PARALLEL_RDP_SHADER_DIR
-			cmd.set_program("rdp://ubershader.comp", {
-				{ "DEBUG_ENABLE", debug_channel ? 1 : 0 },
-				{ "SMALL_TYPES", caps.supports_small_integer_arithmetic ? 1 : 0 },
-			});
-#else
-			cmd.set_program(shader_bank->ubershader);
-#endif
-		}
-		else
-		{
-#ifdef PARALLEL_RDP_SHADER_DIR
-			cmd.set_program("rdp://depth_blend.comp", {
-				{ "DEBUG_ENABLE", debug_channel ? 1 : 0 },
-				{ "SMALL_TYPES", caps.supports_small_integer_arithmetic ? 1 : 0 },
-			});
-#else
-			cmd.set_program(shader_bank->depth_blend);
-#endif
-		}
-
-		Vulkan::QueryPoolHandle start_ts, end_ts;
-		if (caps.timestamp >= 2)
-			start_ts = cmd.write_timestamp(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
-
-		cmd.dispatch((push.fb_width + 7) / 8, (push.fb_height + 7) / 8, 1);
-
-		if (caps.timestamp >= 2)
-		{
-			end_ts = cmd.write_timestamp(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
-			device->register_time_interval("RDP GPU", std::move(start_ts), std::move(end_ts), "depth-blending");
-		}
-
-		cmd.end_region();
-
-		base_primitive_index += uint32_t(stream.triangle_setup.size());
+		// TODO: Could probably do this reference update in the render pass itself,
+		// just write output to two buffers ... This is more composable for now.
+		submit_update_upscaled_domain(cmd, ResolveStage::Post);
 	}
 
 	if (caps.timestamp >= 1)
@@ -1897,10 +2082,47 @@ void Renderer::submit_render_pass(Vulkan::CommandBuffer &cmd)
 		tag += " (" + std::to_string(stream.triangle_setup.size()) + " triangles)";
 		device->register_time_interval("RDP GPU", std::move(render_pass_start), std::move(render_pass_end), "render-pass", std::move(tag));
 	}
+}
 
-	if (need_render_pass && !caps.ubershader)
+void Renderer::submit_render_pass_upscaled(Vulkan::CommandBuffer &cmd)
+{
+	Vulkan::QueryPoolHandle start_ts, end_ts;
+	if (caps.timestamp >= 1)
+		start_ts = cmd.write_timestamp(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
+
+	bool need_tmem_upload = !stream.tmem_upload_infos.empty();
+	submit_span_setup_jobs(cmd, true);
+	submit_tile_binning_combined(cmd, true);
+
+	cmd.barrier(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_ACCESS_SHADER_WRITE_BIT,
+	            VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT |
+	            (!caps.ubershader ? VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT : 0),
+	            VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT |
+	            (!caps.ubershader ? VK_ACCESS_INDIRECT_COMMAND_READ_BIT : 0));
+
+	if (!caps.ubershader)
+	{
+		submit_rasterization(cmd, need_tmem_upload ? *tmem_instances : *tmem, true);
+		cmd.barrier(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+		            VK_ACCESS_SHADER_WRITE_BIT,
+		            VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+		            VK_ACCESS_SHADER_READ_BIT);
+	}
+
+	submit_depth_blend(cmd, need_tmem_upload ? *tmem_instances : *tmem, true);
+	if (!caps.ubershader)
 		clear_indirect_buffer(cmd);
 
+	if (caps.timestamp >= 1)
+	{
+		end_ts = cmd.write_timestamp(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
+		device->register_time_interval("RDP GPU", std::move(start_ts), std::move(end_ts), "render-pass-upscaled");
+	}
+}
+
+void Renderer::submit_render_pass_end(Vulkan::CommandBuffer &cmd)
+{
+	base_primitive_index += uint32_t(stream.triangle_setup.size());
 	cmd.barrier(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_ACCESS_SHADER_WRITE_BIT,
 	            VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
 	            VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT);
@@ -1945,17 +2167,22 @@ void Renderer::enqueue_fence_wait(Vulkan::Fence fence)
 	last_submit_ns = Util::get_current_time_nsecs();
 }
 
-Vulkan::Fence Renderer::submit_to_queue()
+void Renderer::submit_to_queue()
 {
+	bool pending_host_visible_render_passes = pending_render_passes != 0;
 	pending_render_passes = 0;
+	pending_render_passes_upscaled = 0;
 	pending_primitives = 0;
 
 	if (!stream.cmd)
 	{
-		Vulkan::Fence fence;
-		device->submit_empty(Vulkan::CommandBuffer::Type::AsyncCompute, &fence);
-		enqueue_fence_wait(fence);
-		return fence;
+		if (pending_host_visible_render_passes)
+		{
+			Vulkan::Fence fence;
+			device->submit_empty(Vulkan::CommandBuffer::Type::AsyncCompute, &fence);
+			enqueue_fence_wait(fence);
+		}
+		return;
 	}
 
 	bool need_host_barrier = is_host_coherent || !incoherent.staging_readback;
@@ -1970,17 +2197,24 @@ Vulkan::Fence Renderer::submit_to_queue()
 	if (is_host_coherent)
 	{
 		device->submit(stream.cmd, &fence);
-		enqueue_fence_wait(fence);
+		if (pending_host_visible_render_passes)
+			enqueue_fence_wait(fence);
 	}
 	else
 	{
 		CoherencyOperation op;
-		resolve_coherency_gpu_to_host(op, *stream.cmd);
+		if (pending_host_visible_render_passes)
+			resolve_coherency_gpu_to_host(op, *stream.cmd);
+
 		device->submit(stream.cmd, &fence);
-		enqueue_fence_wait(fence);
-		op.fence = fence;
-		if (!op.copies.empty())
-			processor.enqueue_coherency_operation(std::move(op));
+
+		if (pending_host_visible_render_passes)
+		{
+			enqueue_fence_wait(fence);
+			op.fence = fence;
+			if (!op.copies.empty())
+				processor.enqueue_coherency_operation(std::move(op));
+		}
 	}
 
 	Util::for_each_bit(sync_indices_needs_flush, [&](unsigned bit) {
@@ -1989,7 +2223,6 @@ Vulkan::Fence Renderer::submit_to_queue()
 	});
 	sync_indices_needs_flush = 0;
 	stream.cmd.reset();
-	return fence;
 }
 
 void Renderer::reset_context()
@@ -2214,6 +2447,21 @@ void Renderer::resolve_coherency_external(unsigned offset, unsigned length)
 	resolve_coherency_host_to_gpu(*stream.cmd);
 	device->submit(stream.cmd);
 	stream.cmd.reset();
+}
+
+unsigned Renderer::get_scaling_factor() const
+{
+	return caps.upscaling;
+}
+
+const Vulkan::Buffer *Renderer::get_upscaled_rdram_buffer() const
+{
+	return upscaling_multisampled_rdram.get();
+}
+
+const Vulkan::Buffer *Renderer::get_upscaled_hidden_rdram_buffer() const
+{
+	return upscaling_multisampled_hidden_rdram.get();
 }
 
 void Renderer::resolve_coherency_host_to_gpu(Vulkan::CommandBuffer &cmd)
@@ -2456,11 +2704,37 @@ void Renderer::flush_queues()
 	if (!is_host_coherent)
 		resolve_coherency_host_to_gpu(*stream.cmd);
 	instance.upload(*device, stream, *stream.cmd);
+
 	submit_render_pass(*stream.cmd);
 	pending_render_passes++;
-	begin_new_context();
 
+	if (render_pass_is_upscaled())
+	{
+		maintain_queues();
+		ensure_command_buffer();
+		submit_render_pass_upscaled(*stream.cmd);
+		pending_render_passes_upscaled++;
+	}
+
+	submit_render_pass_end(*stream.cmd);
+
+	begin_new_context();
 	maintain_queues();
+}
+
+bool Renderer::render_pass_is_upscaled() const
+{
+	bool need_render_pass = fb.width != 0 && fb.deduced_height != 0 && !stream.span_info_jobs.empty();
+	return caps.upscaling > 1 && need_render_pass && should_render_upscaled();
+}
+
+bool Renderer::should_render_upscaled() const
+{
+	// A heuristic. There is no point to render upscaled for purely off-screen passes.
+	// We should ideally only upscale the final pass which hits screen.
+	// From a heuristic point-of-view we expect only 16-bit/32-bit frame buffers to be relevant,
+	// and only frame buffers with at least 256 pixels.
+	return (fb.fmt == FBFormat::RGBA5551 || fb.fmt == FBFormat::RGBA8888) && fb.width >= 256;
 }
 
 void Renderer::ensure_command_buffer()

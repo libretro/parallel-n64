@@ -190,4 +190,24 @@ void parallel_profile_video_refresh_end(void)
 {
 	RDP::profile_refresh_end();
 }
+
+void parallel_set_upscaling(unsigned factor)
+{
+	RDP::upscaling = factor;
+}
+
+void parallel_set_downscaling_steps(unsigned steps)
+{
+	RDP::downscaling_steps = steps;
+}
+
+void parallel_set_native_texture_lod(bool enable)
+{
+	RDP::native_texture_lod = enable;
+}
+
+void parallel_set_native_tex_rect(bool enable)
+{
+	RDP::native_tex_rect = enable;
+}
 }

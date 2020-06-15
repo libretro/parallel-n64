@@ -30,8 +30,8 @@ void store_span_setup(uint index, SpanSetup setup)
 #else
 	span_setups.elems[index].rgba = setup.rgba;
 	span_setups.elems[index].stzw = setup.stzw;
-	span_setups.elems[index].xleft = mem_i16x4(setup.xleft);
-	span_setups.elems[index].xright = mem_i16x4(setup.xright);
+	span_setups.elems[index].xleft = mem_u16x4(uvec4(setup.xleft));
+	span_setups.elems[index].xright = mem_u16x4(uvec4(setup.xright));
 	span_setups.elems[index].interpolation_base_x = setup.interpolation_base_x;
 	span_setups.elems[index].start_x = setup.start_x;
 	span_setups.elems[index].end_x = setup.end_x;

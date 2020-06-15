@@ -360,6 +360,14 @@ static void setup_variables(void)
          "(ParaLLEl-RDP) VI bilinear; enabled|disabled" },
       { "parallel-n64-parallel-rdp-dither-filter",
          "(ParaLLEl-RDP) VI dither filter; enabled|disabled" },
+      { "parallel-n64-parallel-rdp-upscaling",
+         "(ParaLLEl-RDP) Upscaling factor (restart); 1x|2x|4x|8x" },
+      { "parallel-n64-parallel-rdp-downscaling",
+         "(ParaLLEl-RDP) Downsampling; disable|1/2|1/4|1/8" },
+      { "parallel-n64-parallel-rdp-native-texture-lod",
+         "(ParaLLEl-RDP) Use native texture LOD when upscaling; disabled|enabled" },
+      { "parallel-n64-parallel-rdp-native-tex-rect",
+         "(ParaLLEl-RDP) Use native resolution for TEX_RECT; enabled|disabled" },
 #endif
       { "parallel-n64-send_allist_to_hle_rsp",
          "Send audio lists to HLE RSP; disabled|enabled" },
@@ -1139,6 +1147,43 @@ void update_variables(bool startup)
 	   parallel_set_dither_filter(!strcmp(var.value, "enabled"));
    else
 	   parallel_set_dither_filter(true);
+
+   var.key = "parallel-n64-parallel-rdp-upscaling";
+   var.value = NULL;
+   if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+       parallel_set_upscaling(strtol(var.value, NULL, 0));
+   else
+       parallel_set_upscaling(1);
+
+   var.key = "parallel-n64-parallel-rdp-downscaling";
+   var.value = NULL;
+   if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+   {
+       if (!strcmp(var.value, "disable"))
+           parallel_set_downscaling_steps(0);
+       else if (!strcmp(var.value, "1/2"))
+           parallel_set_downscaling_steps(1);
+       else if (!strcmp(var.value, "1/4"))
+           parallel_set_downscaling_steps(2);
+       else if (!strcmp(var.value, "1/8"))
+           parallel_set_downscaling_steps(3);
+   }
+   else
+       parallel_set_downscaling_steps(0);
+
+   var.key = "parallel-n64-parallel-rdp-native-texture-lod";
+   var.value = NULL;
+   if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+       parallel_set_native_texture_lod(!strcmp(var.value, "enabled"));
+   else
+       parallel_set_native_texture_lod(false);
+
+   var.key = "parallel-n64-parallel-rdp-native-tex-rect";
+   var.value = NULL;
+   if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+       parallel_set_native_tex_rect(!strcmp(var.value, "enabled"));
+   else
+       parallel_set_native_tex_rect(true);
 #endif
 
    var.key   = "parallel-n64-send_allist_to_hle_rsp";

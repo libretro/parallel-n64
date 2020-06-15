@@ -30,8 +30,8 @@ layout(local_size_x_id = 3, local_size_y_id = 4) in;
 #include "data_structures_buffers.h"
 
 #include "noise.h"
-#include "shading.h"
 #include "memory_interfacing.h"
+#include "shading.h"
 
 layout(push_constant, std430) uniform Registers
 {

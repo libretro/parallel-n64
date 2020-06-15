@@ -23,6 +23,11 @@
 #ifndef SHADING_H_
 #define SHADING_H_
 
+#ifdef RASTERIZER_SPEC_CONSTANT
+const int SCALING_LOG2 = (STATIC_STATE_FLAGS >> RASTERIZATION_UPSCALING_LOG2_BIT_OFFSET) & 3;
+const int SCALING_FACTOR = 1 << SCALING_LOG2;
+#endif
+
 #include "coverage.h"
 #include "interpolation.h"
 #include "perspective.h"
@@ -33,14 +38,23 @@
 bool shade_pixel(int x, int y, uint primitive_index, out ShadedData shaded)
 {
 	SpanInfoOffsets span_offsets = load_span_offsets(primitive_index);
-	if (y < span_offsets.ylo || y > span_offsets.yhi)
-		return false;
-
-	SpanSetup span_setup = load_span_setup(span_offsets.offset + (y - span_offsets.ylo));
-	if (span_setup.valid_line == U16_C(0))
+	if ((y < (SCALING_FACTOR * span_offsets.ylo)) || (y > (span_offsets.yhi * SCALING_FACTOR + (SCALING_FACTOR - 1))))
 		return false;
 
 	uint setup_flags = uint(triangle_setup.elems[primitive_index].flags);
+	if (SCALING_FACTOR > 1)
+	{
+		if ((setup_flags & TRIANGLE_SETUP_DISABLE_UPSCALING_BIT) != 0u)
+		{
+			x &= ~(SCALING_FACTOR - 1);
+			y &= ~(SCALING_FACTOR - 1);
+		}
+	}
+
+	SpanSetup span_setup = load_span_setup(SCALING_FACTOR * span_offsets.offset + (y - SCALING_FACTOR * span_offsets.ylo));
+	if (span_setup.valid_line == U16_C(0))
+		return false;
+
 	uint setup_tile = uint(triangle_setup.elems[primitive_index].tile);
 	AttributeSetup attr = load_attribute_setup(primitive_index);
 
@@ -175,8 +189,14 @@ bool shade_pixel(int x, int y, uint primitive_index, out ShadedData shaded)
 	ivec2 st, st_dx, st_dy;
 	int z;
 	bool perspective_overflow = false;
+
+	int tex_interpolation_direction = interpolation_direction;
+	if (SCALING_FACTOR > 1 && uses_lod)
+		if ((setup_flags & TRIANGLE_SETUP_NATIVE_LOD_BIT) != 0)
+			tex_interpolation_direction *= SCALING_FACTOR;
+
 	interpolate_stz(span_setup.stzw, attr.dstzw_dx, attr.dstzw_dy, dx, coverage, perspective, uses_lod,
-	                interpolation_direction, st, st_dx, st_dy, z, perspective_overflow);
+	                tex_interpolation_direction, st, st_dx, st_dy, z, perspective_overflow);
 
 	// Sample textures.
 	uint tile0 = uint(setup_tile) & 7u;
@@ -212,13 +232,13 @@ bool shade_pixel(int x, int y, uint primitive_index, out ShadedData shaded)
 	// A very awkward mechanism where we peek into the next pixel, or in some cases, the next scanline's first pixel.
 	if (uses_pipelined_texel1)
 	{
-		bool valid_line = uint(span_setups.elems[span_offsets.offset + (y - span_offsets.ylo + 1)].valid_line) != 0u;
+		bool valid_line = uint(span_setups.elems[SCALING_FACTOR * span_offsets.offset + (y - SCALING_FACTOR * span_offsets.ylo + 1)].valid_line) != 0u;
 		bool long_span = span_setup.lodlength >= 8;
 		bool end_span = x == (flip ? span_setup.end_x : span_setup.start_x);
 
 		if (end_span && long_span && valid_line)
 		{
-			ivec3 stw = span_setups.elems[span_offsets.offset + (y - span_offsets.ylo + 1)].stzw.xyw >> 16;
+			ivec3 stw = span_setups.elems[SCALING_FACTOR * span_offsets.offset + (y - SCALING_FACTOR * span_offsets.ylo + 1)].stzw.xyw >> 16;
 			if (perspective)
 			{
 				bool st_overflow;
@@ -228,7 +248,7 @@ bool shade_pixel(int x, int y, uint primitive_index, out ShadedData shaded)
 				st = no_perspective_divide(stw);
 		}
 		else
-			st = interpolate_st_single(span_setup.stzw, attr.dstzw_dx, dx + interpolation_direction, perspective);
+			st = interpolate_st_single(span_setup.stzw, attr.dstzw_dx, dx + interpolation_direction * SCALING_FACTOR, perspective);
 
 		tile1 = tile0;
 		uses_texel1 = true;
