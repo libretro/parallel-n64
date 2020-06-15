@@ -29,7 +29,7 @@
 
 u8x4 interpolate_rgba(ivec4 rgba, ivec4 drgba_dx, ivec4 drgba_dy, int dx, int coverage)
 {
-	rgba += (drgba_dx & ~0x1f) * dx;
+	rgba += ((drgba_dx & ~0x1f) >> SCALING_LOG2) * dx;
 
 	// RGBA is interpolated to 9-bit. The last bit is used to deal with clamping.
 	// Slight underflow below 0 is clamped to 0 and slight overflow above 0xff is clamped to 0xff.
@@ -46,9 +46,9 @@ u8x4 interpolate_rgba(ivec4 rgba, ivec4 drgba_dx, ivec4 drgba_dy, int dx, int co
 	int first_coverage = findLSB(coverage);
 	i16 yoff = i16(first_coverage >> 1);
 	i16 xoff = i16((first_coverage & 1) << 1) + (yoff & I16_C(1));
-	snapped_rgba <<= I16_C(2);
+	snapped_rgba <<= I16_C(2 + SCALING_LOG2);
 	snapped_rgba += xoff * i16x4(drgba_dx >> 14) + yoff * i16x4(drgba_dy >> 14);
-	snapped_rgba >>= I16_C(4);
+	snapped_rgba >>= I16_C(4 + SCALING_LOG2);
 	return clamp_9bit(snapped_rgba);
 }
 
@@ -56,6 +56,10 @@ void interpolate_st_copy(SpanSetup span, ivec4 dstzw_dx, int x, bool perspective
                          out ivec2 st, out int s_offset)
 {
 	int dx = flip ? (x - span.start_x) : (span.end_x - x);
+
+	// For copy pipe, we should duplicate pixels when scaling, there is no filtering we can (or should!) do.
+	dx >>= SCALING_LOG2;
+
 	// Snap DX to where we perform interpolation (once per N output pixels).
 	int snapped_dx = dx & global_constants.fb_info.dx_mask;
 	s_offset = dx - snapped_dx;
@@ -73,7 +77,7 @@ void interpolate_st_copy(SpanSetup span, ivec4 dstzw_dx, int x, bool perspective
 
 ivec2 interpolate_st_single(ivec4 stzw, ivec4 dstzw_dx, int dx, bool perspective)
 {
-	ivec3 stw = stzw.xyw + (dstzw_dx.xyw & ~0x1f) * dx;
+	ivec3 stw = stzw.xyw + ((dstzw_dx.xyw & ~0x1f) >> SCALING_LOG2) * dx;
 	stw >>= 16;
 	ivec2 st;
 
@@ -91,13 +95,16 @@ ivec2 interpolate_st_single(ivec4 stzw, ivec4 dstzw_dx, int dx, bool perspective
 void interpolate_stz(ivec4 stzw, ivec4 dstzw_dx, ivec4 dstzw_dy, int dx, int coverage, bool perspective, bool uses_lod,
                      int flip_direction, out ivec2 st, out ivec2 st_dx, out ivec2 st_dy, out int z, inout bool st_overflow)
 {
-	ivec3 stw = stzw.xyw + (dstzw_dx.xyw & ~0x1f) * dx;
+	ivec3 stw = stzw.xyw + ((dstzw_dx.xyw & ~0x1f) >> SCALING_LOG2) * dx;
 	ivec3 stw_dx, stw_dy;
 
 	if (uses_lod)
 	{
-		stw_dx = stw + flip_direction * (dstzw_dx.xyw & ~0x1f);
-		stw_dy = stw + (dstzw_dy.xyw & ~0x7fff);
+		stw_dx = stw + flip_direction * ((dstzw_dx.xyw & ~0x1f) >> SCALING_LOG2);
+		if (SCALING_FACTOR > 1)
+			stw_dy = stw + abs(flip_direction) * ((dstzw_dy.xyw & ~0x7fff) >> SCALING_LOG2);
+		else
+			stw_dy = stw + ((dstzw_dy.xyw & ~0x7fff) >> SCALING_LOG2);
 	}
 
 	if (perspective)
@@ -119,14 +126,17 @@ void interpolate_stz(ivec4 stzw, ivec4 dstzw_dx, ivec4 dstzw_dy, int dx, int cov
 		}
 	}
 
-	z = stzw.z + dstzw_dx.z * dx;
+	// Ensure that interpolation snaps as we expect on every "main" pixel,
+	// for subpixels, interpolate with quantized step factor.
+	z = stzw.z + dstzw_dx.z * (dx >> SCALING_LOG2) + (dstzw_dx.z >> SCALING_LOG2) * (dx & (SCALING_FACTOR - 1));
+
 	int snapped_z = z >> 10;
 	int first_coverage = findLSB(coverage);
 	int yoff = first_coverage >> 1;
 	int xoff = ((first_coverage & 1) << 1) + (yoff & I16_C(1));
-	snapped_z <<= 2;
+	snapped_z <<= 2 + SCALING_LOG2;
 	snapped_z += xoff * (dstzw_dx.z >> 10) + yoff * (dstzw_dy.z >> 10);
-	snapped_z >>= 5;
+	snapped_z >>= 5 + SCALING_LOG2;
 
 	z = clamp_z(snapped_z);
 }

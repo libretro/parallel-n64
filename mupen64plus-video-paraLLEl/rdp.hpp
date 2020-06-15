@@ -23,7 +23,10 @@ extern const struct retro_hw_render_interface_vulkan *vulkan;
 
 extern unsigned width;
 extern unsigned height;
+extern unsigned upscaling;
+extern unsigned downscaling_steps;
 extern bool synchronous, divot_filter, gamma_dither, vi_aa, vi_scale, dither_filter, interlacing;
+extern bool native_texture_lod, native_tex_rect;
 
 void complete_frame();
 void deinit();

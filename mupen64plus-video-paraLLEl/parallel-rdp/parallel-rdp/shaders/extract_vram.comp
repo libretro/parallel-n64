@@ -53,16 +53,23 @@ layout(constant_id = 0) const int RDRAM_SIZE = 0;
 const int RDRAM_MASK_8 = RDRAM_SIZE - 1;
 const int RDRAM_MASK_16 = RDRAM_MASK_8 >> 1;
 const int RDRAM_MASK_32 = RDRAM_MASK_16 >> 1;
+layout(constant_id = 2) const int SCALING_LOG2 = 0;
+const int SCALING_FACTOR = 1 << SCALING_LOG2;
 
 #include "vi_status.h"
 
 uvec4 fetch_color(ivec2 coord)
 {
+	ivec2 slice2d = coord & (SCALING_FACTOR - 1);
+	coord >>= SCALING_LOG2;
+	int slice = slice2d.y * SCALING_FACTOR + slice2d.x;
+
 	uvec4 color;
 	if (FMT_RGBA8888)
 	{
 		int linear_coord = coord.y * registers.fb_width + coord.x + registers.fb_offset;
 		linear_coord &= RDRAM_MASK_32;
+		linear_coord += slice * (RDRAM_SIZE >> 2);
 		uint word = uint(vram32.elems[linear_coord]);
 		color = (uvec4(word) >> uvec4(24, 16, 8, 5)) & uvec4(0xff, 0xff, 0xff, 7);
 	}
@@ -70,6 +77,7 @@ uvec4 fetch_color(ivec2 coord)
 	{
 		int linear_coord = coord.y * registers.fb_width + coord.x + registers.fb_offset;
 		linear_coord &= RDRAM_MASK_16;
+		linear_coord += slice * (RDRAM_SIZE >> 1);
 		uint word = uint(vram16.elems[linear_coord ^ 1]);
 		uint hidden_word = uint(hidden_vram.elems[linear_coord]);
 

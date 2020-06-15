@@ -65,12 +65,17 @@ struct LoadTileInfo
 
 class CommandProcessor;
 
+struct RendererOptions
+{
+	unsigned upscaling_factor = 1;
+};
+
 class Renderer : public Vulkan::DebugChannelInterface
 {
 public:
 	explicit Renderer(CommandProcessor &processor);
 	~Renderer();
-	bool set_device(Vulkan::Device *device);
+	void set_device(Vulkan::Device *device);
 
 	// If coherent is false, RDRAM is a buffer split into data in lower half and writemask state in upper half, each part being size large.
 	// offset must be 0 in this case.
@@ -78,6 +83,8 @@ public:
 	void set_hidden_rdram(Vulkan::Buffer *buffer);
 	void set_tmem(Vulkan::Buffer *buffer);
 	void set_shader_bank(const ShaderBank *bank);
+
+	bool init_renderer(const RendererOptions &options);
 
 	void draw_flat_primitive(const TriangleSetup &setup);
 	void draw_shaded_primitive(const TriangleSetup &setup, const AttributeSetup &attr);
@@ -107,16 +114,26 @@ public:
 	// Called when the command thread has not seen any activity in a given period of time.
 	// This is useful so we don't needlessly queue up work when we might as well kick it to the GPU.
 	void notify_idle_command_thread();
-	Vulkan::Fence flush_and_signal();
+	void flush_and_signal();
 
 	int resolve_shader_define(const char *name, const char *define) const;
 
 	void resolve_coherency_external(unsigned offset, unsigned length);
+	void submit_update_upscaled_domain_external(Vulkan::CommandBuffer &cmd,
+	                                            unsigned addr, unsigned length, unsigned pixel_size_log2);
+	unsigned get_scaling_factor() const;
+
+	const Vulkan::Buffer *get_upscaled_rdram_buffer() const;
+	const Vulkan::Buffer *get_upscaled_hidden_rdram_buffer() const;
 
 private:
 	CommandProcessor &processor;
 	Vulkan::Device *device = nullptr;
 	Vulkan::Buffer *rdram = nullptr;
+
+	Vulkan::BufferHandle upscaling_reference_rdram;
+	Vulkan::BufferHandle upscaling_multisampled_rdram;
+	Vulkan::BufferHandle upscaling_multisampled_hidden_rdram;
 
 	struct
 	{
@@ -141,7 +158,8 @@ private:
 
 	bool init_caps();
 	void init_blender_lut();
-	void init_buffers();
+	void init_buffers(const RendererOptions &options);
+	bool init_internal_upscaling_factor(const RendererOptions &options);
 
 	struct
 	{
@@ -266,24 +284,36 @@ private:
 	unsigned buffer_instance = 0;
 	uint32_t base_primitive_index = 0;
 	unsigned pending_render_passes = 0;
+	unsigned pending_render_passes_upscaled = 0;
 	unsigned pending_primitives = 0;
 
 	bool tmem_upload_needs_flush(uint32_t addr) const;
 
+	bool render_pass_is_upscaled() const;
+	bool should_render_upscaled() const;
+
 	void flush_queues();
 	void submit_render_pass(Vulkan::CommandBuffer &cmd);
-	Vulkan::Fence submit_to_queue();
+	void submit_render_pass_upscaled(Vulkan::CommandBuffer &cmd);
+	void submit_render_pass_end(Vulkan::CommandBuffer &cmd);
+	void submit_to_queue();
 	void begin_new_context();
 	void reset_context();
 	bool need_flush() const;
 	void maintain_queues();
 	void maintain_queues_idle();
 	void update_tmem_instances(Vulkan::CommandBuffer &cmd);
-	void submit_span_setup_jobs(Vulkan::CommandBuffer &cmd);
+	void submit_span_setup_jobs(Vulkan::CommandBuffer &cmd, bool upscaled);
 	void update_deduced_height(const TriangleSetup &setup);
-	void submit_tile_binning_combined(Vulkan::CommandBuffer &cmd);
+	void submit_tile_binning_combined(Vulkan::CommandBuffer &cmd, bool upscaled);
 	void clear_indirect_buffer(Vulkan::CommandBuffer &cmd);
-	void submit_rasterization(Vulkan::CommandBuffer &cmd, Vulkan::Buffer &tmem);
+	void submit_rasterization(Vulkan::CommandBuffer &cmd, Vulkan::Buffer &tmem, bool upscaled);
+	void submit_depth_blend(Vulkan::CommandBuffer &cmd, Vulkan::Buffer &tmem, bool upscaled);
+
+	enum class ResolveStage { Pre, Post };
+	void submit_update_upscaled_domain(Vulkan::CommandBuffer &cmd, ResolveStage stage);
+	void submit_update_upscaled_domain(Vulkan::CommandBuffer &cmd, ResolveStage stage,
+	                                   unsigned addr, unsigned depth_addr, unsigned length, unsigned pixel_size_log2);
 
 	SpanInfoOffsets allocate_span_jobs(const TriangleSetup &setup);
 
@@ -315,6 +345,12 @@ private:
 		bool ubershader = false;
 		bool supports_small_integer_arithmetic = false;
 		bool subgroup_tile_binning = false;
+		unsigned upscaling = 1;
+		unsigned max_num_tile_instances = Limits::MaxTileInstances;
+		unsigned max_tiles_x = ImplementationConstants::MaxTilesX;
+		unsigned max_tiles_y = ImplementationConstants::MaxTilesY;
+		unsigned max_width = Limits::MaxWidth;
+		unsigned max_height = Limits::MaxHeight;
 	} caps;
 
 	struct PipelineExecutor

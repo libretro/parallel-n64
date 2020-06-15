@@ -28,17 +28,9 @@
 const int SUBPIXELS_LOG2 = 2;
 const int SUBPIXELS = 1 << SUBPIXELS_LOG2;
 
-// Convert a 16.16 signed value to 16.3. We have 8 subpixels in X direction after snapping.
-i16x4 quantize_x(ivec4 x)
+u8 compute_coverage(u16x4 xleft, u16x4 xright, int x)
 {
-	i16x4 sticky = i16x4(notEqual(x & 0x3fff, ivec4(0)));
-	i16x4 snapped = i16x4(((x >> 13) & ~1) | sticky);
-	return snapped;
-}
-
-u8 compute_coverage(i16x4 xleft, i16x4 xright, int x)
-{
-	i16x4 xshift = i16x4(0, 4, 2, 6) + (i16(x) << I16_C(3));
+	u16x4 xshift = u16x4(0, 4, 2, 6) + (u16(x) << U16_C(3));
 	bvec4 clip_lo_x01 = lessThan(xshift, xleft.xxyy);
 	bvec4 clip_lo_x23 = lessThan(xshift, xleft.zzww);
 	bvec4 clip_hi_x01 = greaterThanEqual(xshift, xright.xxyy);

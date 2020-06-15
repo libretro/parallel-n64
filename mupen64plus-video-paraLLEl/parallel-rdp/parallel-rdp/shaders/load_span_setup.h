@@ -31,8 +31,8 @@ SpanSetup load_span_setup(uint index)
 	return SpanSetup(
 			span_setups.elems[index].rgba,
 			span_setups.elems[index].stzw,
-			i16x4(span_setups.elems[index].xleft),
-			i16x4(span_setups.elems[index].xright),
+			u16x4(uvec4(span_setups.elems[index].xleft)),
+			u16x4(uvec4(span_setups.elems[index].xright)),
 			span_setups.elems[index].interpolation_base_x,
 			span_setups.elems[index].start_x,
 			span_setups.elems[index].end_x,
