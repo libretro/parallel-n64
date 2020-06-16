@@ -640,6 +640,7 @@ void Renderer::flush_and_signal()
 {
 	flush_queues();
 	submit_to_queue();
+	assert(!stream.cmd);
 }
 
 void Renderer::set_color_framebuffer(uint32_t addr, uint32_t width, FBFormat fmt)
@@ -1507,6 +1508,7 @@ void Renderer::RenderBuffersUpdater::upload(Vulkan::Device &device, const Render
 
 void Renderer::update_tmem_instances(Vulkan::CommandBuffer &cmd)
 {
+	cmd.begin_region("tmem-update");
 	cmd.set_storage_buffer(0, 0, *rdram, rdram_offset, rdram_size);
 	cmd.set_storage_buffer(0, 1, *tmem);
 	cmd.set_storage_buffer(0, 2, *tmem_instances);
@@ -1537,6 +1539,7 @@ void Renderer::update_tmem_instances(Vulkan::CommandBuffer &cmd)
 		device->register_time_interval("RDP GPU", std::move(start_ts), std::move(end_ts),
 		                               "tmem-update", std::to_string(stream.tmem_upload_infos.size()));
 	}
+	cmd.end_region();
 }
 
 void Renderer::submit_span_setup_jobs(Vulkan::CommandBuffer &cmd, bool upscale)
@@ -2086,6 +2089,7 @@ void Renderer::submit_render_pass(Vulkan::CommandBuffer &cmd)
 
 void Renderer::submit_render_pass_upscaled(Vulkan::CommandBuffer &cmd)
 {
+	cmd.begin_region("render-pass-upscaled");
 	Vulkan::QueryPoolHandle start_ts, end_ts;
 	if (caps.timestamp >= 1)
 		start_ts = cmd.write_timestamp(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
@@ -2118,6 +2122,7 @@ void Renderer::submit_render_pass_upscaled(Vulkan::CommandBuffer &cmd)
 		end_ts = cmd.write_timestamp(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
 		device->register_time_interval("RDP GPU", std::move(start_ts), std::move(end_ts), "render-pass-upscaled");
 	}
+	cmd.end_region();
 }
 
 void Renderer::submit_render_pass_end(Vulkan::CommandBuffer &cmd)
@@ -2140,6 +2145,7 @@ void Renderer::maintain_queues()
 	// If we haven't submitted anything in a while (1.0 ms), it's probably fine to submit again.
 	if (pending_render_passes >= ImplementationConstants::MaxPendingRenderPassesBeforeFlush ||
 	    pending_primitives >= Limits::MaxPrimitives ||
+	    pending_primitives_upscaled >= Limits::MaxPrimitives ||
 	    active_submissions.load(std::memory_order_relaxed) == 0 ||
 	    int64_t(Util::get_current_time_nsecs() - last_submit_ns) > 1000000)
 	{
@@ -2147,8 +2153,19 @@ void Renderer::maintain_queues()
 	}
 }
 
+void Renderer::lock_command_processing()
+{
+	idle_lock.lock();
+}
+
+void Renderer::unlock_command_processing()
+{
+	idle_lock.unlock();
+}
+
 void Renderer::maintain_queues_idle()
 {
+	std::lock_guard<std::mutex> holder{idle_lock};
 	if (pending_primitives >= ImplementationConstants::MinimumPrimitivesForIdleFlush ||
 	    pending_render_passes >= ImplementationConstants::MinimumRenderPassesForIdleFlush)
 	{
@@ -2170,9 +2187,11 @@ void Renderer::enqueue_fence_wait(Vulkan::Fence fence)
 void Renderer::submit_to_queue()
 {
 	bool pending_host_visible_render_passes = pending_render_passes != 0;
+	bool pending_upscaled_passes = pending_render_passes_upscaled != 0;
 	pending_render_passes = 0;
 	pending_render_passes_upscaled = 0;
 	pending_primitives = 0;
+	pending_primitives_upscaled = 0;
 
 	if (!stream.cmd)
 	{
@@ -2187,8 +2206,11 @@ void Renderer::submit_to_queue()
 
 	bool need_host_barrier = is_host_coherent || !incoherent.staging_readback;
 
-	// Only need execution barrier here for compute since memory is already flushed.
-	stream.cmd->barrier(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0,
+	// If we maintain queues in-between doing 1x render pass and upscaled render pass,
+	// we haven't flushed memory yet.
+	bool need_memory_flush = pending_host_visible_render_passes && !pending_upscaled_passes;
+	stream.cmd->barrier(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+	                    need_memory_flush ? VK_ACCESS_MEMORY_WRITE_BIT : 0,
 	                    (need_host_barrier ? VK_PIPELINE_STAGE_HOST_BIT : VK_PIPELINE_STAGE_TRANSFER_BIT),
 	                    (need_host_barrier ? VK_ACCESS_HOST_READ_BIT : VK_ACCESS_TRANSFER_READ_BIT));
 
@@ -2323,6 +2345,7 @@ void Renderer::lock_pages_for_gpu_write(uint32_t base_addr, uint32_t byte_count)
 
 void Renderer::resolve_coherency_gpu_to_host(CoherencyOperation &op, Vulkan::CommandBuffer &cmd)
 {
+	cmd.begin_region("resolve-coherency-gpu-to-host");
 	if (!incoherent.staging_readback)
 	{
 		// iGPU path.
@@ -2438,6 +2461,7 @@ void Renderer::resolve_coherency_gpu_to_host(CoherencyOperation &op, Vulkan::Com
 			            VK_ACCESS_HOST_READ_BIT);
 		}
 	}
+	cmd.end_region();
 }
 
 void Renderer::resolve_coherency_external(unsigned offset, unsigned length)
@@ -2470,6 +2494,8 @@ void Renderer::resolve_coherency_host_to_gpu(Vulkan::CommandBuffer &cmd)
 	// Writes made by the GPU which are not known to be resolved on the timeline waiter thread will always
 	// "win" over writes made by CPU, since CPU is not allowed to meaningfully overwrite data which the GPU
 	// is going to touch.
+
+	cmd.begin_region("resolve-coherency-host-to-gpu");
 
 	Vulkan::QueryPoolHandle start_ts, end_ts;
 	if (caps.timestamp)
@@ -2658,6 +2684,8 @@ void Renderer::resolve_coherency_host_to_gpu(Vulkan::CommandBuffer &cmd)
 		end_ts = device->write_calibrated_timestamp();
 		device->register_time_interval("RDP CPU", std::move(start_ts), std::move(end_ts), "coherency-host-to-gpu");
 	}
+
+	cmd.end_region();
 }
 
 void Renderer::flush_queues()
@@ -2705,15 +2733,21 @@ void Renderer::flush_queues()
 		resolve_coherency_host_to_gpu(*stream.cmd);
 	instance.upload(*device, stream, *stream.cmd);
 
+	stream.cmd->begin_region("render-pass-1x");
 	submit_render_pass(*stream.cmd);
+	stream.cmd->end_region();
 	pending_render_passes++;
 
 	if (render_pass_is_upscaled())
 	{
 		maintain_queues();
 		ensure_command_buffer();
+		// We're going to keep reading the same data structures, so make sure
+		// we signal fence after upscaled render pass is submitted.
+		sync_indices_needs_flush |= 1u << buffer_instance;
 		submit_render_pass_upscaled(*stream.cmd);
 		pending_render_passes_upscaled++;
+		pending_primitives_upscaled += uint32_t(stream.triangle_setup.size());
 	}
 
 	submit_render_pass_end(*stream.cmd);

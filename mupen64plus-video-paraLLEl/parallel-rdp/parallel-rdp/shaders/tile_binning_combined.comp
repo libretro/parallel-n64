@@ -125,7 +125,6 @@ layout(push_constant, std430) uniform Registers
 {
     uvec2 resolution;
     int primitive_count;
-    int primitive_count_32;
 } fb_info;
 
 #if !SUBGROUP
@@ -170,7 +169,6 @@ void main()
     ivec2 end_coord = min(base_coord + ivec2(TILE_WIDTH, TILE_HEIGHT), ivec2(fb_info.resolution)) - 1;
 
     int primitive_count = fb_info.primitive_count;
-    int primitive_count_32 = fb_info.primitive_count_32;
 
 #if !SUBGROUP
     if (local_index == 0)

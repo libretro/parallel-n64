@@ -126,6 +126,9 @@ public:
 	const Vulkan::Buffer *get_upscaled_rdram_buffer() const;
 	const Vulkan::Buffer *get_upscaled_hidden_rdram_buffer() const;
 
+	void lock_command_processing();
+	void unlock_command_processing();
+
 private:
 	CommandProcessor &processor;
 	Vulkan::Device *device = nullptr;
@@ -286,6 +289,7 @@ private:
 	unsigned pending_render_passes = 0;
 	unsigned pending_render_passes_upscaled = 0;
 	unsigned pending_primitives = 0;
+	unsigned pending_primitives_upscaled = 0;
 
 	bool tmem_upload_needs_flush(uint32_t addr) const;
 
@@ -373,5 +377,7 @@ private:
 	std::atomic_uint32_t active_submissions;
 	void enqueue_fence_wait(Vulkan::Fence fence);
 	uint64_t last_submit_ns = 0;
+
+	std::mutex idle_lock;
 };
 }
