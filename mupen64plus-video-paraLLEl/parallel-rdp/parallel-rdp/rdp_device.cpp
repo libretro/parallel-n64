@@ -116,12 +116,6 @@ CommandProcessor::CommandProcessor(Vulkan::Device &device_, void *rdram_ptr,
 	clear_tmem();
 	init_renderer();
 
-	ring.init(
-#ifdef PARALLEL_RDP_SHADER_DIR
-			Granite::Global::create_thread_context(),
-#endif
-			this, 4 * 1024);
-
 	if (const char *env = getenv("PARALLEL_RDP_BENCH"))
 	{
 		measure_stall_time = strtol(env, nullptr, 0) > 0;
@@ -134,6 +128,15 @@ CommandProcessor::CommandProcessor(Vulkan::Device &device_, void *rdram_ptr,
 		single_threaded_processing = strtol(env, nullptr, 0) > 0;
 		if (single_threaded_processing)
 			LOGI("Will use single threaded command processing.\n");
+	}
+
+	if (!single_threaded_processing)
+	{
+		ring.init(
+#ifdef PARALLEL_RDP_SHADER_DIR
+				Granite::Global::create_thread_context(),
+#endif
+				this, 4 * 1024);
 	}
 
 	if (const char *env = getenv("PARALLEL_RDP_BENCH"))
@@ -962,6 +965,7 @@ void *CommandProcessor::get_tmem()
 
 void CommandProcessor::idle()
 {
+	flush();
 	wait_for_timeline(signal_timeline());
 }
 
@@ -1006,14 +1010,19 @@ Vulkan::ImageHandle CommandProcessor::scanout(const ScanoutOptions &opts)
 {
 	Vulkan::QueryPoolHandle start_ts, end_ts;
 	drain_command_ring();
-	renderer.flush_and_signal();
 
-	if (!is_host_coherent)
+	// Block idle callbacks triggering while we're doing this.
+	renderer.lock_command_processing();
 	{
-		unsigned offset, length;
-		vi.scanout_memory_range(offset, length);
-		renderer.resolve_coherency_external(offset, length);
+		renderer.flush_and_signal();
+		if (!is_host_coherent)
+		{
+			unsigned offset, length;
+			vi.scanout_memory_range(offset, length);
+			renderer.resolve_coherency_external(offset, length);
+		}
 	}
+	renderer.unlock_command_processing();
 
 	auto scanout = vi.scanout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, opts, renderer.get_scaling_factor());
 	return scanout;

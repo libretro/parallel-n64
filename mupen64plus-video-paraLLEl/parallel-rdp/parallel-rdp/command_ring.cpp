@@ -115,7 +115,7 @@ void CommandRing::thread_loop()
 				// If we don't receive commands at a steady pace,
 				// notify rendering thread that we should probably kick some work.
 				tmp_buffer.resize(1);
-				tmp_buffer[0] = uint32_t(Op::MetaIdle);
+				tmp_buffer[0] = uint32_t(Op::MetaIdle) << 24;
 				is_idle = true;
 			}
 		}
