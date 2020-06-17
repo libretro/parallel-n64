@@ -159,9 +159,29 @@ int pad_present[4] = {1, 1, 1, 1};
 static void n64DebugCallback(void* aContext, int aLevel, const char* aMessage)
 {
     char buffer[1024];
+    if (!log_cb)
+       return;
+
     sprintf(buffer, "mupen64plus: %s\n", aMessage);
-    if (log_cb)
-       log_cb(RETRO_LOG_INFO, buffer);
+
+    switch (aLevel)
+    {
+       case M64MSG_ERROR:
+          log_cb(RETRO_LOG_ERROR, buffer);
+          break;
+       case M64MSG_INFO:
+          log_cb(RETRO_LOG_INFO, buffer);
+          break;
+       case M64MSG_WARNING:
+          log_cb(RETRO_LOG_WARN, buffer);
+          break;
+       case M64MSG_VERBOSE:
+       case M64MSG_STATUS:
+          log_cb(RETRO_LOG_DEBUG, buffer);
+          break;
+       default:
+          break;
+    }
 }
 
 extern m64p_rom_header ROM_HEADER;
