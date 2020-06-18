@@ -369,7 +369,7 @@ static void setup_variables(void)
       { "parallel-n64-parallel-rdp-synchronous",
          "ParaLLEl Synchronous RDP; enabled|disabled" },
       { "parallel-n64-parallel-rdp-overscan",
-         "(ParaLLEl-RDP) Crop pixel border pixels; 0|8|10|12|14|16" },
+         "(ParaLLEl-RDP) Crop pixel border pixels; 0|2|4|6|8|10|12|14|16|18|20|22|24|26|28|30|32|34|36|38|40|42|44|46|48|50|52|54|56|58|60|62|64" },
       { "parallel-n64-parallel-rdp-divot-filter",
          "(ParaLLEl-RDP) VI divot filter; enabled|disabled" },
       { "parallel-n64-parallel-rdp-gamma-dither",
