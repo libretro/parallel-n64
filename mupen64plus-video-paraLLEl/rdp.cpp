@@ -27,6 +27,7 @@ static QueryPoolHandle begin_ts, end_ts;
 static vector<retro_vulkan_image> retro_images;
 static vector<ImageHandle> retro_image_handles;
 unsigned width, height;
+unsigned overscan;
 unsigned upscaling = 1;
 unsigned downscaling_steps = 0;
 bool native_texture_lod = false;
@@ -334,11 +335,11 @@ void complete_frame()
 	opts.persist_frame_on_invalid_input = true;
 	opts.vi.aa = vi_aa;
 	opts.vi.scale = vi_scale;
-	opts.vi.serrate = interlacing;
 	opts.vi.dither_filter = dither_filter;
 	opts.vi.divot_filter = divot_filter;
 	opts.vi.gamma_dither = gamma_dither;
 	opts.downscale_steps = downscaling_steps;
+	opts.crop_overscan_pixels = overscan;
 	auto image = frontend->scanout(opts);
 	unsigned index = vulkan->get_sync_index(vulkan->handle);
 

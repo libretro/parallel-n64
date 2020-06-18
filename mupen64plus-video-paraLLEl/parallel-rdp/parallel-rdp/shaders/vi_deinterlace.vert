@@ -20,14 +20,22 @@
  * TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-#extension GL_EXT_samplerless_texture_functions : require
 
-layout(location = 0) out vec4 FragColor;
-layout(set = 0, binding = 0) uniform texture2D uImage;
+layout(location = 0) out vec2 vUV;
+
+layout(push_constant) uniform UBO
+{
+    float y_offset;
+} registers;
 
 void main()
 {
-    // A persistent pixel does not propagate more than one frame.
-    vec4 input_pixel = texelFetch(uImage, ivec2(gl_FragCoord.xy), 0);
-    FragColor = vec4(input_pixel.rgb * input_pixel.a, 0.0);
+    if (gl_VertexIndex == 0)
+        gl_Position = vec4(-1.0, -1.0, 0.0, 1.0);
+    else if (gl_VertexIndex == 1)
+        gl_Position = vec4(-1.0, +3.0, 0.0, 1.0);
+    else
+        gl_Position = vec4(+3.0, -1.0, 0.0, 1.0);
+
+    vUV = vec2(gl_Position.x * 0.5 + 0.5, gl_Position.y * 0.5 + 0.5 + registers.y_offset);
 }
