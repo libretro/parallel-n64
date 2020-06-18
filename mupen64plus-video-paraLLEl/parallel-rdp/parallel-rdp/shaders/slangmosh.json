@@ -113,6 +113,14 @@
 			"name": "update_upscaled_domain_pre",
 			"path": "update_upscaled_domain_pre.comp",
 			"compute": true
+		},
+		{
+			"name": "vi_deinterlace_vert",
+			"path": "vi_deinterlace.vert"
+		},
+		{
+			"name": "vi_deinterlace_frag",
+			"path": "vi_deinterlace.frag"
 		}
 	]
 }

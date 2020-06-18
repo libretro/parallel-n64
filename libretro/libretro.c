@@ -368,8 +368,8 @@ static void setup_variables(void)
 #ifdef HAVE_PARALLEL
       { "parallel-n64-parallel-rdp-synchronous",
          "ParaLLEl Synchronous RDP; enabled|disabled" },
-      { "parallel-n64-parallel-rdp-interlacing",
-         "(ParaLLEl-RDP) VI interlacing; enabled|disabled" },
+      { "parallel-n64-parallel-rdp-overscan",
+         "(ParaLLEl-RDP) Crop pixel border pixels; 0|8|10|12|14|16" },
       { "parallel-n64-parallel-rdp-divot-filter",
          "(ParaLLEl-RDP) VI divot filter; enabled|disabled" },
       { "parallel-n64-parallel-rdp-gamma-dither",
@@ -1126,12 +1126,12 @@ void update_variables(bool startup)
    else
       parallel_set_synchronous_rdp(true);
 
-   var.key = "parallel-n64-parallel-rdp-interlacing";
+   var.key = "parallel-n64-parallel-rdp-overscan";
    var.value = NULL;
    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
-	   parallel_set_interlacing(!strcmp(var.value, "enabled"));
+	   parallel_set_overscan_crop(strtol(var.value, NULL, 0));
    else
-	   parallel_set_interlacing(true);
+	   parallel_set_overscan_crop(0);
 
    var.key = "parallel-n64-parallel-rdp-divot-filter";
    var.value = NULL;

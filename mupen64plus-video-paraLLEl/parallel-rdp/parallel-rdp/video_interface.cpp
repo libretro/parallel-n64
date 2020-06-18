@@ -558,18 +558,23 @@ Vulkan::ImageHandle VideoInterface::divot_stage(Vulkan::CommandBuffer &cmd, Vulk
 
 Vulkan::ImageHandle VideoInterface::scale_stage(Vulkan::CommandBuffer &cmd, Vulkan::Image &divot_image,
                                                 Registers regs, unsigned scaling_factor, bool degenerate,
-                                                bool &can_crop, VkRect2D &crop_rect) const
+                                                const ScanoutOptions &options) const
 {
 	Vulkan::ImageHandle scale_image;
 	Vulkan::QueryPoolHandle start_ts, end_ts;
 	bool fetch_bug = need_fetch_bug_emulation(regs, scaling_factor);
-	bool serrate = (regs.status & VI_CONTROL_SERRATE_BIT) != 0;
-	bool field_state = regs.v_current_line == 0;
+	bool serrate = (regs.status & VI_CONTROL_SERRATE_BIT) != 0 && !options.upscale_deinterlacing;
+
+	unsigned crop_pixels_x = options.crop_overscan_pixels * scaling_factor;
+	unsigned crop_pixels_y = crop_pixels_x * (serrate ? 2 : 1);
 
 	Vulkan::ImageCreateInfo rt_info = Vulkan::ImageCreateInfo::render_target(
 			VI_SCANOUT_WIDTH * scaling_factor,
 			((regs.is_pal ? VI_V_RES_PAL: VI_V_RES_NTSC) >> int(!serrate)) * scaling_factor,
 			VK_FORMAT_R8G8B8A8_UNORM);
+
+	rt_info.width -= 2 * crop_pixels_x;
+	rt_info.height -= 2 * crop_pixels_y;
 
 	rt_info.usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
 	rt_info.initial_layout = VK_IMAGE_LAYOUT_UNDEFINED;
@@ -626,13 +631,14 @@ Vulkan::ImageHandle VideoInterface::scale_stage(Vulkan::CommandBuffer &cmd, Vulk
 		regs.v_res *= 2;
 		push.serrate_shift = 1;
 		push.serrate_mask = 1;
+		bool field_state = regs.v_current_line == 0;
 		push.serrate_select = int(field_state);
 	}
 
 	push.x_offset = regs.x_start;
 	push.y_offset = regs.y_start;
-	push.h_offset = regs.h_start;
-	push.v_offset = regs.v_start;
+	push.h_offset = int(crop_pixels_x) - regs.h_start;
+	push.v_offset = int(crop_pixels_y) - regs.v_start;
 	push.x_add = regs.x_add;
 	push.y_add = regs.y_add;
 	push.frame_count = frame_count;
@@ -661,23 +667,39 @@ Vulkan::ImageHandle VideoInterface::scale_stage(Vulkan::CommandBuffer &cmd, Vulk
 
 	cmd.push_constants(&push, 0, sizeof(push));
 
-	if (!degenerate && regs.h_res > 0 && regs.v_res > 0)
+	if (!degenerate && regs.h_res > int(crop_pixels_x) && regs.v_res > int(crop_pixels_y))
 	{
-		cmd.set_texture(0, 0, divot_image.get_view());
-		cmd.set_scissor({{ regs.h_start, regs.v_start }, { uint32_t(regs.h_res), uint32_t(regs.v_res) }});
-		cmd.draw(3);
+		VkRect2D rect = {{ regs.h_start, regs.v_start }, { uint32_t(regs.h_res), uint32_t(regs.v_res) }};
+		rect.offset.x -= crop_pixels_x;
+		rect.offset.y -= crop_pixels_y;
+		rect.extent.width -= 2 * crop_pixels_x;
+		rect.extent.height -= 2 * crop_pixels_y;
 
-		can_crop = true;
-		crop_rect.offset.x = regs.h_start;
-		crop_rect.offset.y = regs.v_start;
-		crop_rect.extent.width = regs.h_res;
-		crop_rect.extent.height = regs.v_res;
+		if (rect.offset.x < 0)
+		{
+			rect.extent.width -= rect.offset.x;
+			rect.offset.x = 0;
+		}
+
+		if (rect.offset.y < 0)
+		{
+			rect.extent.height -= rect.offset.y;
+			rect.offset.y = 0;
+		}
+
+		// Check for signed overflow without relying on -fwrapv.
+		if (((rect.extent.width | rect.extent.height) & 0x80000000u) == 0u)
+		{
+			cmd.set_texture(0, 0, divot_image.get_view());
+			cmd.set_scissor(rect);
+			cmd.draw(3);
+		}
 	}
 
-	// To deal with interlacing and other "persistence effects", we blend in previous frame's result.
+	// To deal with weave interlacing and other "persistence effects", we blend in previous frame's result.
 	// This is somewhat arbitrary, but seems to work well enough in practice.
 
-	if (prev_scanout_image)
+	if (prev_scanout_image && options.blend_previous_frame)
 	{
 		cmd.set_blend_enable(true);
 		cmd.set_blend_factors(VK_BLEND_FACTOR_ONE_MINUS_DST_ALPHA, VK_BLEND_FACTOR_DST_ALPHA);
@@ -738,33 +760,6 @@ Vulkan::ImageHandle VideoInterface::scale_stage(Vulkan::CommandBuffer &cmd, Vulk
 	return scale_image;
 }
 
-Vulkan::ImageHandle VideoInterface::crop_stage(Vulkan::CommandBuffer &cmd, Vulkan::Image &scale_image, const VkRect2D &crop_rect) const
-{
-	Vulkan::ImageHandle crop_image;
-	cmd.image_barrier(scale_image, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-	                  VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-	                  VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
-	                  VK_PIPELINE_STAGE_TRANSFER_BIT, VK_ACCESS_TRANSFER_READ_BIT);
-
-	Vulkan::ImageCreateInfo rt_info = Vulkan::ImageCreateInfo::render_target(
-			crop_rect.extent.width, crop_rect.extent.height, VK_FORMAT_R8G8B8A8_UNORM);
-	rt_info.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
-	rt_info.initial_layout = VK_IMAGE_LAYOUT_UNDEFINED;
-	rt_info.misc = Vulkan::IMAGE_MISC_MUTABLE_SRGB_BIT;
-	crop_image = device->create_image(rt_info);
-
-	cmd.image_barrier(*crop_image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-	                  VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, 0,
-	                  VK_PIPELINE_STAGE_TRANSFER_BIT, VK_ACCESS_TRANSFER_WRITE_BIT);
-
-	cmd.copy_image(*crop_image, scale_image, {}, { crop_rect.offset.x, crop_rect.offset.y, 0 },
-	               { crop_rect.extent.width, crop_rect.extent.height, 1 },
-	               { VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1 },
-	               { VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1 });
-
-	return crop_image;
-}
-
 Vulkan::ImageHandle VideoInterface::downscale_stage(Vulkan::CommandBuffer &cmd, Vulkan::Image &scale_image,
                                                     unsigned scaling_factor, unsigned downscale_steps) const
 {
@@ -772,6 +767,7 @@ Vulkan::ImageHandle VideoInterface::downscale_stage(Vulkan::CommandBuffer &cmd, 
 	const Vulkan::Image *input = &scale_image;
 	Vulkan::ImageHandle holder;
 
+	// TODO: Could optimize this to happen in one pass, but ... eh.
 	while (scaling_factor > 1 && downscale_steps)
 	{
 		if (input != &scale_image)
@@ -811,6 +807,53 @@ Vulkan::ImageHandle VideoInterface::downscale_stage(Vulkan::CommandBuffer &cmd, 
 	}
 
 	return downscale_image;
+}
+
+Vulkan::ImageHandle VideoInterface::upscale_deinterlace(Vulkan::CommandBuffer &cmd, Vulkan::Image &scale_image,
+                                                        unsigned scaling_factor, bool field_select) const
+{
+	Vulkan::ImageHandle deinterlaced_image;
+
+	// If we're running upscaled, upscaling Y further is somewhat meaningless and bandwidth intensive.
+	Vulkan::ImageCreateInfo rt_info = Vulkan::ImageCreateInfo::render_target(
+			scale_image.get_width(), scale_image.get_height() * (scaling_factor == 1 ? 2 : 1),
+			VK_FORMAT_R8G8B8A8_UNORM);
+
+	rt_info.usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+	rt_info.initial_layout = VK_IMAGE_LAYOUT_UNDEFINED;
+	rt_info.misc = Vulkan::IMAGE_MISC_MUTABLE_SRGB_BIT;
+	deinterlaced_image = device->create_image(rt_info);
+
+	Vulkan::RenderPassInfo rp;
+	rp.color_attachments[0] = &deinterlaced_image->get_view();
+	rp.num_color_attachments = 1;
+	rp.store_attachments = 1;
+
+	cmd.image_barrier(*deinterlaced_image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+	                  VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, 0,
+	                  VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT);
+
+	cmd.begin_render_pass(rp);
+	cmd.set_opaque_state();
+
+	struct Push
+	{
+		float y_offset;
+	} push = {};
+	push.y_offset = (float(scaling_factor) * (field_select ? -0.25f : +0.25f)) / float(scale_image.get_height());
+	cmd.push_constants(&push, 0, sizeof(push));
+
+#ifdef PARALLEL_RDP_SHADER_DIR
+	cmd.set_program("rdp://vi_deinterlace.vert", "rdp://vi_deinterlace.frag", {
+		{ "DEBUG_ENABLE", debug_channel ? 1 : 0 },
+	});
+#else
+	cmd.set_program(device->request_program(shader_bank->vi_deinterlace_vert, shader_bank->vi_deinterlace_frag));
+#endif
+	cmd.set_texture(0, 0, scale_image.get_view(), Vulkan::StockSampler::LinearClamp);
+	cmd.draw(3);
+	cmd.end_render_pass();
+	return deinterlaced_image;
 }
 
 Vulkan::ImageHandle VideoInterface::scanout(VkImageLayout target_layout, const ScanoutOptions &options, unsigned scaling_factor)
@@ -937,31 +980,11 @@ Vulkan::ImageHandle VideoInterface::scanout(VkImageLayout target_layout, const S
 	else
 		divot_image = std::move(aa_image);
 
-	VkRect2D crop_rect = {};
-	bool can_crop = false;
-
 	// Scale pass
 	auto scale_image = scale_stage(*cmd, *divot_image,
-	                               regs, scaling_factor, degenerate,
-	                               can_crop, crop_rect);
+	                               regs, scaling_factor, degenerate, options);
 
-	VkImageLayout src_layout;
-
-	// Need separate copy pass so we can keep a full reference frame around for interlacing, etc.
-	// TODO: Figure out if we can optimize this safely.
-	if (options.crop_overscan && can_crop)
-	{
-		prev_image_layout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-		prev_scanout_image = scale_image;
-		scale_image = crop_stage(*cmd, *scale_image, crop_rect);
-		src_layout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-	}
-	else
-	{
-		src_layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-		prev_image_layout = target_layout;
-		prev_scanout_image = scale_image;
-	}
+	auto src_layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
 	if (options.downscale_steps && scaling_factor > 1)
 	{
@@ -970,17 +993,28 @@ Vulkan::ImageHandle VideoInterface::scanout(VkImageLayout target_layout, const S
 		                   VK_PIPELINE_STAGE_TRANSFER_BIT, VK_ACCESS_TRANSFER_READ_BIT);
 
 		scale_image = downscale_stage(*cmd, *scale_image, scaling_factor, options.downscale_steps);
+		src_layout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+	}
 
-		cmd->image_barrier(*scale_image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, target_layout,
-		                   VK_PIPELINE_STAGE_TRANSFER_BIT, VK_ACCESS_TRANSFER_WRITE_BIT,
-		                   layout_to_stage(target_layout), layout_to_access(target_layout));
-	}
-	else
+	bool serrate = (regs.status & VI_CONTROL_SERRATE_BIT) != 0;
+	if (serrate && options.upscale_deinterlacing)
 	{
-		cmd->image_barrier(*scale_image, src_layout, target_layout,
+		cmd->image_barrier(*scale_image, src_layout, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
 		                   layout_to_stage(src_layout), layout_to_access(src_layout),
-		                   layout_to_stage(target_layout), layout_to_access(target_layout));
+		                   VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_ACCESS_SHADER_READ_BIT);
+
+		bool field_state = regs.v_current_line == 0;
+		scale_image = upscale_deinterlace(*cmd, *scale_image,
+		                                  std::max(1u, scaling_factor >> options.downscale_steps), field_state);
+		src_layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 	}
+
+	cmd->image_barrier(*scale_image, src_layout, target_layout,
+	                   layout_to_stage(src_layout), layout_to_access(src_layout),
+	                   layout_to_stage(target_layout), layout_to_access(target_layout));
+
+	prev_image_layout = target_layout;
+	prev_scanout_image = scale_image;
 
 	device->submit(cmd);
 	scanout = std::move(scale_image);

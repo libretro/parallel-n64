@@ -35,8 +35,8 @@ layout(push_constant, std430) uniform Registers
 {
     int x_base;
     int y_base;
-    int h_base;
-    int v_base;
+    int h_offset;
+    int v_offset;
     int x_add;
     int y_add;
     int frame_count;
@@ -76,7 +76,7 @@ layout(constant_id = 2) const bool FETCH_BUG = false;
 
 void main()
 {
-    ivec2 coord = ivec2(gl_FragCoord.xy) - ivec2(registers.h_base, registers.v_base);
+    ivec2 coord = ivec2(gl_FragCoord.xy) + ivec2(registers.h_offset, registers.v_offset);
 
     if ((coord.y & registers.serrate_mask) != registers.serrate_select)
         discard;

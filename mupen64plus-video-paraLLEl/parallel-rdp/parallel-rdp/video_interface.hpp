@@ -30,9 +30,21 @@ namespace RDP
 {
 struct ScanoutOptions
 {
-	bool crop_overscan = false;
-	bool persist_frame_on_invalid_input = false;
+	unsigned crop_overscan_pixels = 0;
 	unsigned downscale_steps = 0;
+
+	// Works around certain game bugs. Considered a hack if enabled.
+	bool persist_frame_on_invalid_input = false;
+
+	// To be equivalent to reference behavior where
+	// pixels persist for an extra frame.
+	// Not hardware accurate, but needed for weave interlace mode.
+	bool blend_previous_frame = false;
+
+	// Upscale deinterlacing deinterlaces by upscaling in Y, with an Y coordinate offset matching the field.
+	// If disabled, weave interlacing is used.
+	// Weave deinterlacing should *not* be used, except to run test suite!
+	bool upscale_deinterlacing = true;
 
 	struct
 	{
@@ -124,15 +136,15 @@ private:
 	                                Vulkan::Image &divot_image,
 	                                Registers registers,
 	                                unsigned scaling_factor,
-	                                bool degenerate, bool &can_crop,
-	                                VkRect2D &crop_rect) const;
-	Vulkan::ImageHandle crop_stage(Vulkan::CommandBuffer &cmd,
-	                               Vulkan::Image &scale_image,
-	                               const VkRect2D &crop_rect) const;
+	                                bool degenerate,
+	                                const ScanoutOptions &options) const;
 	Vulkan::ImageHandle downscale_stage(Vulkan::CommandBuffer &cmd,
 	                                    Vulkan::Image &scale_image,
 	                                    unsigned scaling_factor,
 	                                    unsigned downscale_factor) const;
+	Vulkan::ImageHandle upscale_deinterlace(Vulkan::CommandBuffer &cmd,
+	                                        Vulkan::Image &scale_image,
+	                                        unsigned scaling_factor, bool field_select) const;
 	static bool need_fetch_bug_emulation(const Registers &reg, unsigned scaling_factor);
 };
 }

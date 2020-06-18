@@ -29,6 +29,8 @@ void parallel_set_downscaling_steps(unsigned steps);
 void parallel_set_native_texture_lod(bool enable);
 void parallel_set_native_tex_rect(bool enable);
 
+void parallel_set_overscan_crop(unsigned pixels);
+
 void parallel_profile_video_refresh_begin(void);
 void parallel_profile_video_refresh_end(void);
 
