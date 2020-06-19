@@ -672,18 +672,16 @@ Vulkan::ImageHandle VideoInterface::scale_stage(Vulkan::CommandBuffer &cmd, Vulk
 		VkRect2D rect = {{ regs.h_start, regs.v_start }, { uint32_t(regs.h_res), uint32_t(regs.v_res) }};
 		rect.offset.x -= crop_pixels_x;
 		rect.offset.y -= crop_pixels_y;
-		rect.extent.width -= 2 * crop_pixels_x;
-		rect.extent.height -= 2 * crop_pixels_y;
 
 		if (rect.offset.x < 0)
 		{
-			rect.extent.width -= rect.offset.x;
+			rect.extent.width += rect.offset.x;
 			rect.offset.x = 0;
 		}
 
 		if (rect.offset.y < 0)
 		{
-			rect.extent.height -= rect.offset.y;
+			rect.extent.height += rect.offset.y;
 			rect.offset.y = 0;
 		}
 
