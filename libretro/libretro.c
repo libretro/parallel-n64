@@ -412,7 +412,7 @@ static void setup_variables(void)
       { "parallel-n64-aspectratiohint",
          "Aspect ratio hint (reinit); normal|widescreen" },
       { "parallel-n64-filtering",
-		 "Texture Filtering; automatic|N64 3-point|bilinear|nearest" },
+		 "(Glide64) Texture Filtering; automatic|N64 3-point|bilinear|nearest" },
       { "parallel-n64-dithering",
 		 "Dithering; enabled|disabled" },
       { "parallel-n64-polyoffset-factor",
