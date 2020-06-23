@@ -274,7 +274,7 @@ bool shade_pixel(int x, int y, uint primitive_index, out ShadedData shaded)
 			texel1 = sample_texture(tile_info1, tmem_instance_index, st, tlut, tlut_type, sample_quad, mid_texel,
 			                        convert_one, texel0);
 
-			if (!sample_quad && !tlut)
+			if (!sample_quad && !tlut && !bilerp1)
 				texel1 = texture_convert_factors(texel1, derived.factors);
 		}
 	}
