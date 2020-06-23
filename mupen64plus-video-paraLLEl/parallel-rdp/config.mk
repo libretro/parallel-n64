@@ -46,7 +46,7 @@ PARALLEL_RDP_INCLUDE_DIRS := \
         -I$(PARALLEL_RDP_IMPLEMENTATION)/util
 
 PARALLEL_RDP_LDFLAGS := -pthread
-ifneq ($(platform),win)
+ifeq (,$(findstring win,$(platform)))
     PARALLEL_RDP_LDFLAGS += -ldl
 else
     PARALLEL_RDP_CFLAGS += -DVK_USE_PLATFORM_WIN32_KHR
