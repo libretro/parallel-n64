@@ -10,7 +10,6 @@ elseif (MSVC)
 endif()
 
 add_library(parallel-rsp STATIC
-		main.cpp
 		rsp/vfunctions.cpp
 		rsp_jit.cpp rsp_jit.hpp
 		rsp_disasm.cpp rsp_disasm.hpp
