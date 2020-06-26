@@ -483,7 +483,8 @@ ifneq ($(DEBUG_JIT),)
 else
 	INCFLAGS += -I$(RSPDIR_PARALLEL)/arch/simd/rsp
 	SOURCES_CXX += $(RSPDIR_PARALLEL)/rsp_jit.cpp \
-						$(RSPDIR_PARALLEL)/arch/simd/rsp/rsp_core.cpp
+				   $(RSPDIR_PARALLEL)/jit_allocator.cpp \
+				   $(RSPDIR_PARALLEL)/arch/simd/rsp/rsp_core.cpp
 	SOURCES_C += \
 				 $(RSPDIR_PARALLEL)/lightning/lib/jit_disasm.c \
 				 $(RSPDIR_PARALLEL)/lightning/lib/jit_memory.c \
