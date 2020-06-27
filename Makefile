@@ -831,7 +831,7 @@ else
 ifneq (,$(findstring msvc,$(platform)))
    CPUOPTS += -O2
 else
-	CPUOPTS += -O3
+	CPUOPTS += -Ofast
 endif
    CPUOPTS += -DNDEBUG
 ifneq ($(findstring Darwin,$(UNAME)),)
