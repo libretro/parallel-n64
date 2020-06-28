@@ -414,7 +414,7 @@ static void setup_variables(void)
       { "parallel-n64-filtering",
 		 "(Glide64) Texture Filtering; automatic|N64 3-point|bilinear|nearest" },
       { "parallel-n64-dithering",
-		 "Dithering; enabled|disabled" },
+		 "(Angrylion) Dithering; enabled|disabled" },
       { "parallel-n64-polyoffset-factor",
        "(Glide64) Polygon Offset Factor; -3.0|-2.5|-2.0|-1.5|-1.0|-0.5|0.0|0.5|1.0|1.5|2.0|2.5|3.0|3.5|4.0|4.5|5.0|-3.5|-4.0|-4.5|-5.0"
       },
@@ -1096,6 +1096,7 @@ static void gfx_set_dithering(void)
          break;
       case GFX_ANGRYLION:
 #ifdef HAVE_THR_AL
+         angrylion_set_vi_dedither(!retro_dithering);
          angrylion_set_dithering(retro_dithering);
 #endif
          break;
