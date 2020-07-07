@@ -102,26 +102,22 @@ CC_AS ?= $(CC)
 
 GIT_VERSION ?= " $(shell git rev-parse --short HEAD || echo unknown)"
 ifneq ($(GIT_VERSION)," unknown")
-	COREFLAGS += -DGIT_VERSION=\"$(GIT_VERSION)\"
+   COREFLAGS += -DGIT_VERSION=\"$(GIT_VERSION)\"
 endif
 
 # Unix
 ifneq (,$(findstring unix,$(platform)))
    TARGET := $(TARGET_NAME)_libretro.so
    LDFLAGS += -shared -Wl,--no-undefined
-	ifeq ($(DEBUG_JIT),)
-	   LDFLAGS += -Wl,--version-script=$(LIBRETRO_DIR)/link.T
-	endif
+   ifeq ($(DEBUG_JIT),)
+      LDFLAGS += -Wl,--version-script=$(LIBRETRO_DIR)/link.T
+   endif
    fpic = -fPIC
 
-	HAVE_THR_AL=1
-	LDFLAGS += -lpthread
+   HAVE_THR_AL=1
+   LDFLAGS += -lpthread
 
-#ifeq ($(WITH_DYNAREC), $(filter $(WITH_DYNAREC), x86_64 x64))
-#ifeq ($(HAVE_PARALLEL), 1)
-	#HAVE_PARALLEL_RSP=1
-#endif
-#endif
+
 
    ifeq ($(FORCE_GLES),1)
       GLES = 1
@@ -176,9 +172,10 @@ ifneq (,$(findstring unix,$(platform)))
          CPUFLAGS += -mcpu=cortex-a15 -mtune=cortex-a15.cortex-a7 -mfpu=neon-vfpv4
       else
          # ODROID-U3, U2, X2 & X
-         CPUFLAGS += -mcpu=cortex-a9 -mfpu=neon
+          CPUFLAGS += -mcpu=cortex-a9 -mfpu=neon
       endif
    endif
+   
    
    # Classic Platforms ####################
    # Platform affix = classic_<ISA>_<µARCH>
@@ -205,33 +202,36 @@ ifneq (,$(findstring unix,$(platform)))
       CPUFLAGS += -march=armv7ve
       # If gcc is 5.0 or later
       ifeq ($(shell echo `$(CC) -dumpversion` ">= 5" | bc -l), 1)
-        LDFLAGS += -static-libgcc -static-libstdc++
+         LDFLAGS += -static-libgcc -static-libstdc++
       endif
-	endif  
-# (armv8 a35, hard point, neon based) ###
-# PlayStation Classic
-ifneq (,$(findstring classic_armv8_a35, $(platform)))
-	GLES = 1
-	GL_LIB := -lGLESv2
-	HAVE_NEON = 1
-	WITH_DYNAREC=arm
-	ASFLAGS += -D__ARM_NEON__ -marm -mtune=cortex-a35 -mfpu=neon-fp-armv8 -mfloat-abi=hard
-	CPUFLAGS += -DNO_ASM -DARM -D__arm__ -DARM_ASM -D__NEON_OPT -DNOSSE -DARM_FIX -DCLASSIC
-	CPUFLAGS += -Ofast \
-	-flto -fwhole-program -fuse-linker-plugin \
-	-fdata-sections -ffunction-sections -Wl,--gc-sections \
-	-fno-stack-protector -fno-ident -fomit-frame-pointer \
-	-falign-functions=1 -falign-jumps=1 -falign-loops=1 \
-	-fno-unwind-tables -fno-asynchronous-unwind-tables -fno-unroll-loops \
-	-fmerge-all-constants -fno-math-errno \
-	-marm -mtune=cortex-a35 -mfpu=neon-fp-armv8 -mfloat-abi=hard
-	LDFLAGS += -marm -mtune=cortex-a35 -mfpu=neon-fp-armv8 -mfloat-abi=hard
-        CPUFLAGS += -march=armv8-a
-        LDFLAGS += -static-libgcc -static-libstdc++
-	endif
- #######################################
+   endif  
+   
+   
+   # (armv8 a35, hard point, neon based) ###
+   # PlayStation Classic
+   ifneq (,$(findstring classic_armv8_a35, $(platform)))
+      GLES = 1
+      GL_LIB := -lGLESv2
+      HAVE_NEON = 1
+      WITH_DYNAREC=arm
+      ASFLAGS += -D__ARM_NEON__ -marm -mtune=cortex-a35 -mfpu=neon-fp-armv8 -mfloat-abi=hard
+      CPUFLAGS += -DNO_ASM -DARM -D__arm__ -DARM_ASM -D__NEON_OPT -DNOSSE -DARM_FIX -DCLASSIC
+      CPUFLAGS += -Ofast \
+      -flto -fwhole-program -fuse-linker-plugin \
+      -fdata-sections -ffunction-sections -Wl,--gc-sections \
+      -fno-stack-protector -fno-ident -fomit-frame-pointer \
+      -falign-functions=1 -falign-jumps=1 -falign-loops=1 \
+      -fno-unwind-tables -fno-asynchronous-unwind-tables -fno-unroll-loops \
+      -fmerge-all-constants -fno-math-errno \
+      -marm -mtune=cortex-a35 -mfpu=neon-fp-armv8 -mfloat-abi=hard
+      LDFLAGS += -marm -mtune=cortex-a35 -mfpu=neon-fp-armv8 -mfloat-abi=hard
+      CPUFLAGS += -march=armv8-a
+      LDFLAGS += -static-libgcc -static-libstdc++
+   endif
+
+   #######################################
    # Generic ARMV8 - cross - No GL 
-   else ifneq (,$(findstring armv8,$(platform)))
+   ifneq (,$(findstring armv8,$(platform)))
       CC = aarch64-linux-gnu-gcc
       CXX = aarch64-linux-gnu-g++
       CPUFLAGS += -DNO_ASM -DARM -DARM_ASM -DDONT_WANT_ARM_OPTIMIZATIONS -DARM_FIX -DCLASSIC -DARM64
@@ -243,18 +243,19 @@ ifneq (,$(findstring classic_armv8_a35, $(platform)))
          CPUFLAGS += -D__NEON_OPT -mfpu=neon
          HAVE_NEON = 1
       endif
- #######################################
-   
+   endif
+
+   #######################################
    # Generic ARM
-   else ifneq (,$(findstring armv,$(platform)))
+   ifneq (,$(findstring armv,$(platform)))
       CPUFLAGS += -DNO_ASM -DARM -D__arm__ -DARM_ASM -DNOSSE
       WITH_DYNAREC=arm
       ifneq (,$(findstring neon,$(platform)))
          CPUFLAGS += -D__NEON_OPT -mfpu=neon
          HAVE_NEON = 1
       endif
-
-   PLATFORM_EXT := unix
+      PLATFORM_EXT := unix
+   endif
 
 # i.MX6
 else ifneq (,$(findstring imx6,$(platform)))
@@ -274,11 +275,11 @@ else ifneq (,$(findstring osx,$(platform)))
    LDFLAGS += -dynamiclib
    OSXVER = `sw_vers -productVersion | cut -d. -f 2`
    OSX_LT_MAVERICKS = `(( $(OSXVER) <= 9)) && echo "YES"`
-        LDFLAGS += -mmacosx-version-min=10.7
+   LDFLAGS += -mmacosx-version-min=10.7
    LDFLAGS += -stdlib=libc++
    fpic = -fPIC
 
-	HAVE_THR_AL=1
+   HAVE_THR_AL=1
    HAVE_PARALLEL=0
    PLATCFLAGS += -D__MACOSX__ -DOSX
    GL_LIB := -framework OpenGL
@@ -298,7 +299,7 @@ else ifneq (,$(findstring ios,$(platform)))
    TARGET := $(TARGET_NAME)_libretro_ios.dylib
    DEFINES += -DIOS
    GLES = 1
-	WITH_DYNAREC=
+   WITH_DYNAREC=
    PLATFORM_EXT := unix
 
    HAVE_PARALLEL=0
