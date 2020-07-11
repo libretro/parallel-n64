@@ -58,7 +58,7 @@ extern m64p_rom_header ROM_HEADER;
 
 #define FRAME_DURATION 24
 
-bool alternate_mapping;
+extern bool alternate_mapping;
 
 /* global data definitions */
 struct

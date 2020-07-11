@@ -192,7 +192,7 @@ uint32_t uc_crc;
 static int reset = 0;
 int old_ucode = -1;
 
-
+void (*_gSPVertex)(uint32_t addr, uint32_t n, uint32_t v0);
 
 void rdp_setfuncs(void)
 {

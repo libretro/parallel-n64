@@ -39,8 +39,8 @@
 #include "si/pif.h"
 #include "si/si_controller.h"
 
-int dd_bm_mode_read;
-int CUR_BLOCK;
+extern int dd_bm_mode_read;
+extern int CUR_BLOCK;
 int dd_bm_reset_hold;
 struct tm* timeinfo;
 
