@@ -754,8 +754,8 @@ else ifneq (,$(findstring win,$(platform)))
    LDFLAGS += -shared -static-libgcc -static-libstdc++ -Wl,--version-script=$(LIBRETRO_DIR)/link.T -lwinmm -lgdi32 
    GL_LIB := -lopengl32
    PLATFORM_EXT := win32
-   CC = gcc
-   CXX = g++
+   CC ?= gcc
+   CXX ?= g++
    HAVE_THR_AL=1
 
 #ifeq ($(WITH_DYNAREC), $(filter $(WITH_DYNAREC), x86_64 x64))
