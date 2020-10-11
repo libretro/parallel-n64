@@ -1,0 +1,27 @@
+.core-defs:
+  variables:
+    CORENAME: parallel_n64
+
+include:
+  - template: Jobs/Code-Quality.gitlab-ci.yml
+  - project: 'libretro-infrastructure/ci-templates'
+    file: '/linux-x64.yml'
+  - project: 'libretro-infrastructure/ci-templates'
+    file: '/windows-x64-mingw.yml'
+
+stages:
+  - build-prepare
+  - build-shared
+  - build-static
+  - test
+
+#Desktop
+libretro-build-linux-x64:
+  extends:
+    - .core-defs
+    - .libretro-linux-x64-make-default
+
+libretro-build-windows-x64:
+  extends:
+    - .core-defs
+    - .libretro-windows-x64-mingw-make-default
