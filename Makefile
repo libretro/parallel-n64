@@ -132,6 +132,8 @@ ifneq (,$(findstring unix,$(platform)))
    # Raspberry Pi
    ifneq (,$(findstring rpi,$(platform)))
       GLES = 1
+      WITH_DYNAREC=arm
+      CPUFLAGS += -DARM_FIX
 
       ifneq (,$(findstring mesa,$(platform)))
          GL_LIB := -lGLESv2
@@ -140,7 +142,6 @@ ifneq (,$(findstring unix,$(platform)))
          INCFLAGS += -I/opt/vc/include -I/opt/vc/include/interface/vcos -I/opt/vc/include/interface/vcos/pthreads
       endif
 
-      WITH_DYNAREC=arm
       ifneq (,$(findstring rpi2,$(platform)))
          CPUFLAGS += -DNO_ASM -DARM -D__arm__ -DARM_ASM -D__NEON_OPT -DNOSSE
          CPUFLAGS += -mcpu=cortex-a7 -mfpu=neon-vfpv4 -mfloat-abi=hard
@@ -149,12 +150,22 @@ ifneq (,$(findstring unix,$(platform)))
          CPUFLAGS += -DNO_ASM -DARM -D__arm__ -DARM_ASM -D__NEON_OPT -DNOSSE
          CPUFLAGS += -mcpu=cortex-a53 -mfpu=neon-fp-armv8 -mfloat-abi=hard
          HAVE_NEON = 1
+      # Raspberry pi 4 in 64bit mode with VULKAN
+      else ifneq (,$(findstring rpi4_64,$(platform)))
+         CPUFLAGS += -DNO_ASM -DARM -DARM_ASM -DDONT_WANT_ARM_OPTIMIZATIONS -DARM_FIX -DCLASSIC -DARM64
+         CPUFLAGS += -march=armv8-a+crc+simd -mtune=cortex-a72
+         HAVE_PARALLEL = 1
+         WITH_DYNAREC = aarch64
+         HAVE_NEON = 0
+         HAVE_OPENGL = 0
+         GLES = 0
+         GL_LIB :=
       else
          CPUFLAGS += -DARMv5_ONLY -DNO_ASM
       endif
-      CPUFLAGS += -DARM_FIX
-   endif
 
+   endif
+   
    # ODROIDs
    ifneq (,$(findstring odroid,$(platform)))
       BOARD ?= $(shell cat /proc/cpuinfo | grep -i odroid | awk '{print $$3}')
