@@ -50,8 +50,8 @@
 unsigned int r4300emu = 0;
 unsigned int count_per_op = COUNT_PER_OP_DEFAULT;
 unsigned int llbit;
-#if NEW_DYNAREC < NEW_DYNAREC_ARM
 int stop;
+#if NEW_DYNAREC < NEW_DYNAREC_ARM
 int64_t reg[32], hi, lo;
 uint32_t next_interrupt;
 struct precomp_instr *PC;
@@ -144,21 +144,27 @@ void r4300_execute(void)
     {
 #if NEW_DYNAREC
         new_dyna_start();
-        new_dynarec_cleanup();
+        if (stop)
+            new_dynarec_cleanup();
 #else
         dyna_start(dynarec_setup_code);
-        PC++;
+        if (stop)
+            PC++;
 #endif
-        free_blocks();
+        if (stop)
+            free_blocks();
     }
 #endif
     else /* if (r4300emu == CORE_INTERPRETER) */
     {
         r4300_step();
-        free_blocks();
+
+        if (stop)
+            free_blocks();
     }
 
-    DebugMessage(M64MSG_INFO, "R4300 emulator finished.");
+    if (stop)
+        DebugMessage(M64MSG_INFO, "R4300 emulator finished.");
 }
 
 int retro_stop_stepping(void);
