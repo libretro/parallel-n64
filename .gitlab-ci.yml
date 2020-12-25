@@ -37,7 +37,10 @@ libretro-build-windows-x64:
     - .core-defs
     - .libretro-windows-x64-mingw-make-default
   variables:
-    PLATFORM_ARGS: WITH_DYNAREC=x86_64 HAVE_THR_AL=1 HAVE_PARALLEL=1 HAVE_PARALLEL_RSP=1
+    WITH_DYNAREC: x86_64
+    HAVE_THR_AL: 1
+    HAVE_PARALLEL: 1
+    HAVE_PARALLEL_RSP: 1
     
 # Linux 64-bit
 libretro-build-linux-x64:
@@ -45,4 +48,7 @@ libretro-build-linux-x64:
     - .core-defs
     - .libretro-linux-x64-make-default
   variables:
-    PLATFORM_ARGS: WITH_DYNAREC=x86_64 HAVE_THR_AL=1 HAVE_PARALLEL=1 HAVE_PARALLEL_RSP=1
+    WITH_DYNAREC: x86_64
+    HAVE_THR_AL: 1
+    HAVE_PARALLEL: 1
+    HAVE_PARALLEL_RSP: 1
