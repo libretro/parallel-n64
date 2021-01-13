@@ -58,6 +58,12 @@ else ifneq (,$(findstring rpi,$(platform)))
    override platform += unix
 else ifneq (,$(findstring odroid,$(platform)))
    override platform += unix
+else ifneq (,$(findstring rockpro64,$(platform)))
+   override platform += unix
+else ifneq (,$(findstring n2,$(platform)))
+   override platform += unix
+else ifneq (,$(findstring h5,$(platform)))
+   override platform += unix
 endif
 
 # system platform
@@ -150,6 +156,10 @@ ifneq (,$(findstring unix,$(platform)))
          CPUFLAGS += -DNO_ASM -DARM -D__arm__ -DARM_ASM -D__NEON_OPT -DNOSSE
          CPUFLAGS += -mcpu=cortex-a53 -mfpu=neon-fp-armv8 -mfloat-abi=hard
          HAVE_NEON = 1
+      else ifneq (,$(findstring rpi4,$(platform)))
+         CPUFLAGS += -DNO_ASM -DARM -D__arm__ -DARM_ASM -D__NEON_OPT -DNOSSE
+         CPUFLAGS += -mcpu=cortex-a72 -mfpu=neon-fp-armv8 -mfloat-abi=hard
+         HAVE_NEON = 1
       # Raspberry pi 4 in 64bit mode with VULKAN
       else ifneq (,$(findstring rpi4_64,$(platform)))
          CPUFLAGS += -DNO_ASM -DARM -DARM_ASM -DDONT_WANT_ARM_OPTIMIZATIONS -DARM_FIX -DCLASSIC -DARM64
@@ -164,6 +174,37 @@ ifneq (,$(findstring unix,$(platform)))
          CPUFLAGS += -DARMv5_ONLY -DNO_ASM
       endif
 
+   endif
+
+   # RockPro64
+   ifneq (,$(findstring rockpro64,$(platform)))
+      GLES = 1
+      GL_LIB := -lGLESv2
+      CPUFLAGS += -DNO_ASM -DARM -D__arm__ -DARM_ASM -D__NEON_OPT -DNOSSE -DARM_FIX
+     CPUFLAGS += -marm -mfloat-abi=hard -mfpu=neon
+      HAVE_NEON = 1
+      WITH_DYNAREC=arm
+      CPUFLAGS += -march=armv7ve -mcpu=cortex-a72 -mtune=cortex-a72.cortex-a53
+   endif
+
+   # ODROIDN2
+   ifneq (,$(findstring n2,$(platform)))
+      GLES = 1
+      GL_LIB := -lGLESv2
+      CPUFLAGS += -DNO_ASM -DARM -DARM_ASM -DDONT_WANT_ARM_OPTIMIZATIONS -DARM_FIX -DCLASSIC -DARM64
+      HAVE_NEON = 1
+      WITH_DYNAREC=aarch64
+      CPUFLAGS += -D__NEON_OPT -march=armv8-a+crc -mcpu=cortex-a73 -mtune=cortex-a73.cortex-a53
+   endif
+   
+   # Allwinner H5
+   ifneq (,$(findstring h5,$(platform)))
+      GLES = 1
+      GL_LIB := -lGLESv2
+      CPUFLAGS += -DNO_ASM -DARM -DARM_ASM -DDONT_WANT_ARM_OPTIMIZATIONS -DARM_FIX -DCLASSIC -DARM64
+      HAVE_NEON = 1
+      WITH_DYNAREC=aarch64
+      CPUFLAGS += -D__NEON_OPT -march=armv8-a+crc -mcpu=cortex-a53 -mtune=cortex-a53
    endif
    
    # ODROIDs
@@ -184,6 +225,9 @@ ifneq (,$(findstring unix,$(platform)))
       else
          # ODROID-U3, U2, X2 & X
           CPUFLAGS += -mcpu=cortex-a9 -mfpu=neon
+          # ODROIDGOA
+      else ifneq (,$(findstring ODROIDGOA,$(BOARD)))
+         CPUFLAGS += -march=armv8-a+crc -mfpu=neon-fp-armv8 -mcpu=cortex-a35 -mtune=cortex-a35
       endif
    endif
    
