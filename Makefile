@@ -295,6 +295,7 @@ else ifneq (,$(findstring osx,$(platform)))
    PLATCFLAGS += -D__MACOSX__ -DOSX
    GL_LIB := -framework OpenGL
    PLATFORM_EXT := unix
+   PLATCFLAGS += -DHAVE_POSIX_MEMALIGN
 
    # Target Dynarec
    ifeq ($(ARCH), $(filter $(ARCH), ppc))
