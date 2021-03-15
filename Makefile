@@ -10,6 +10,8 @@ GLIDEN64CORE=0
 GLIDEN64ES=0
 HAVE_RSP_DUMP=0
 HAVE_RDP_DUMP=0
+HAVE_GLIDE64=1
+HAVE_GLN64=1
 HAVE_RICE=1
 HAVE_PARALLEL?=0
 HAVE_PARALLEL_RSP?=0
@@ -68,6 +70,9 @@ ifeq ($(shell uname -a),)
 else ifneq ($(findstring Darwin,$(shell uname -a)),)
    system_platform = osx
    arch = intel
+	ifeq ($(shell uname -p),arm)
+		arch = arm
+	endif
 ifeq ($(shell uname -p),powerpc)
    arch = ppc
 endif
@@ -284,23 +289,50 @@ else ifneq (,$(findstring imx6,$(platform)))
 else ifneq (,$(findstring osx,$(platform)))
    TARGET := $(TARGET_NAME)_libretro.dylib
    LDFLAGS += -dynamiclib
+   MINVERSION := -mmacosx-version-min=10.7
    OSXVER = `sw_vers -productVersion | cut -d. -f 2`
    OSX_LT_MAVERICKS = `(( $(OSXVER) <= 9)) && echo "YES"`
-   LDFLAGS += -mmacosx-version-min=10.7
+   LDFLAGS += $(MINVERSION)
    LDFLAGS += -stdlib=libc++
    fpic = -fPIC
 
    HAVE_THR_AL=1
    HAVE_PARALLEL=0
    PLATCFLAGS += -D__MACOSX__ -DOSX
-   GL_LIB := -framework OpenGL
    PLATFORM_EXT := unix
    PLATCFLAGS += -DHAVE_POSIX_MEMALIGN
+
+   # Disable hardware rendered graphics plugins for ARM for now
+   ifeq ($(shell uname -p),arm)
+	WITH_DYNAREC = 
+	CFLAGS += -DDONT_WANT_ARM_OPTIMIZATIONS
+	HAVE_OPENGL=0
+   else
+        GL_LIB := -framework OpenGL
+   endif
 
    # Target Dynarec
    ifeq ($(ARCH), $(filter $(ARCH), ppc))
       WITH_DYNAREC =
    endif
+
+   ifeq ($(CROSS_COMPILE),1)
+		TARGET_RULE   = -target $(LIBRETRO_APPLE_PLATFORM) -isysroot $(LIBRETRO_APPLE_ISYSROOT)
+		CFLAGS   += $(TARGET_RULE)
+		CPPFLAGS += $(TARGET_RULE)
+		CXXFLAGS += $(TARGET_RULE)
+		LDFLAGS  += $(TARGET_RULE)
+
+       ifeq ($(arch),arm)
+	HAVE_OPENGL=0
+	WITH_DYNAREC = 
+	CFLAGS += -DDONT_WANT_ARM_OPTIMIZATIONS
+       endif
+   endif
+
+	CFLAGS  += $(ARCHFLAGS)
+	CXXFLAGS  += $(ARCHFLAGS)
+	LDFLAGS += $(ARCHFLAGS)
 
 # iOS
 else ifneq (,$(findstring ios,$(platform)))
@@ -313,6 +345,7 @@ else ifneq (,$(findstring ios,$(platform)))
    GLES = 1
    WITH_DYNAREC=
    PLATFORM_EXT := unix
+   MINVERSION :=
 
    HAVE_PARALLEL=0
    PLATCFLAGS += -DHAVE_POSIX_MEMALIGN -DNO_ASM
@@ -337,17 +370,43 @@ else ifneq (,$(findstring ios,$(platform)))
       HAVE_NEON=1
    endif
    CC_AS = perl ./tools/gas-preprocessor.pl $(CC)
-   ifeq ($(platform),ios9)
-      CC         += -miphoneos-version-min=8.0
-      CC_AS      += -miphoneos-version-min=8.0
-      CXX        += -miphoneos-version-min=8.0
-      PLATCFLAGS += -miphoneos-version-min=8.0
+ifeq ($(platform),$(filter $(platform),ios9 ios-arm64))
+      MINVERSION = -miphoneos-version-min=8.0
    else
-      CC += -miphoneos-version-min=5.0
-      CC_AS += -miphoneos-version-min=5.0
-      CXX += -miphoneos-version-min=5.0
-      PLATCFLAGS += -miphoneos-version-min=5.0
+      MINVERSION = -miphoneos-version-min=5.0
    endif
+   PLATCFLAGS += $(MINVERSION)
+
+else ifeq ($(platform), tvos-arm64)
+   ifeq ($(IOSSDK),)
+      IOSSDK := $(shell xcodebuild -version -sdk appletvos Path)
+   endif
+
+   TARGET := $(TARGET_NAME)_libretro_tvos.dylib
+   DEFINES += -DIOS
+   GLES = 1
+   WITH_DYNAREC=
+   PLATFORM_EXT := unix
+   MINVERSION :=
+
+   HAVE_PARALLEL=0
+   PLATCFLAGS += -DHAVE_POSIX_MEMALIGN -DNO_ASM
+   PLATCFLAGS += -DIOS -marm
+   CPUFLAGS += -DNO_ASM  -DARM -D__arm__ -DARM_ASM -D__NEON_OPT
+   LDFLAGS += -dynamiclib
+
+   fpic = -fPIC
+   GL_LIB := -framework OpenGLES
+      CC = cc -arch arm64 -isysroot $(IOSSDK)
+      CXX = c++ -arch arm64 -isysroot $(IOSSDK)
+      CFLAGS += -DDONT_WANT_ARM_OPTIMIZATIONS
+      FORCE_GLES=1
+      CXXFLAGS += -Wc++11-extensions -std=c++11 -stdlib=libc++ -Wc++11-long-long
+      CPUFLAGS += -marm -mfpu=neon -mfloat-abi=softfp
+      HAVE_NEON=0
+   CC_AS = perl ./tools/gas-preprocessor.pl $(CC)
+   MINVERSION = -miphoneos-version-min=8.0
+   PLATCFLAGS += $(MINVERSION)
 
 # Theos iOS
 else ifneq (,$(findstring theos_ios,$(platform)))
