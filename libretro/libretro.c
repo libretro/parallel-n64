@@ -281,8 +281,10 @@ static void core_settings_set_defaults(void)
    {
       if (rsp_var.value && !strcmp(rsp_var.value, "auto"))
          core_settings_autoselect_rsp_plugin();
+#ifdef HAVE_OPENGL
       if (rsp_var.value && !strcmp(rsp_var.value, "hle") && !vulkan_inited)
          rsp_plugin = RSP_HLE;
+#endif
       if (rsp_var.value && !strcmp(rsp_var.value, "cxd4"))
          rsp_plugin = RSP_CXD4;
       if (rsp_var.value && !strcmp(rsp_var.value, "parallel"))
@@ -404,7 +406,11 @@ static void setup_variables(void)
 #endif
       },
       { "parallel-n64-rspplugin",
-         "RSP Plugin; auto|hle|cxd4"
+         "RSP Plugin; auto"
+#ifdef HAVE_OPENGL
+		 "|hle"
+#endif
+		 "|cxd4"
 #ifdef HAVE_PARALLEL_RSP
          "|parallel"
 #endif
