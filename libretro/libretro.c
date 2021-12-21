@@ -235,6 +235,7 @@ static void core_settings_set_defaults(void)
    {
       if (gfx_var.value && !strcmp(gfx_var.value, "auto"))
          core_settings_autoselect_gfx_plugin();
+#ifdef HAVE_OPENGL
 #if defined(HAVE_GLN64) || defined(HAVE_GLIDEN64)
       if (gfx_var.value && !strcmp(gfx_var.value, "gln64") && gl_inited)
          gfx_plugin = GFX_GLN64;
@@ -247,6 +248,7 @@ static void core_settings_set_defaults(void)
 #ifdef HAVE_GLIDE64
       if(gfx_var.value && !strcmp(gfx_var.value, "glide64") && gl_inited)
          gfx_plugin = GFX_GLIDE64;
+#endif
 #endif
 #ifdef HAVE_THR_AL
 	  if(gfx_var.value && !strcmp(gfx_var.value, "angrylion"))
@@ -279,8 +281,10 @@ static void core_settings_set_defaults(void)
    {
       if (rsp_var.value && !strcmp(rsp_var.value, "auto"))
          core_settings_autoselect_rsp_plugin();
+#ifdef HAVE_OPENGL
       if (rsp_var.value && !strcmp(rsp_var.value, "hle") && !vulkan_inited)
          rsp_plugin = RSP_HLE;
+#endif
       if (rsp_var.value && !strcmp(rsp_var.value, "cxd4"))
          rsp_plugin = RSP_CXD4;
       if (rsp_var.value && !strcmp(rsp_var.value, "parallel"))
@@ -392,17 +396,26 @@ static void setup_variables(void)
       { "parallel-n64-send_allist_to_hle_rsp",
          "Send audio lists to HLE RSP; disabled|enabled" },
       { "parallel-n64-gfxplugin",
-         "GFX Plugin; auto|glide64|gln64|rice|angrylion"
-#if defined(HAVE_PARALLEL)
+         "GFX Plugin; auto"
+#ifdef HAVE_OPENGL
+         "|glide64|gln64|rice"
+#endif         
+         "|angrylion"
+#ifdef HAVE_PARALLEL
             "|parallel"
 #endif
       },
       { "parallel-n64-rspplugin",
-         "RSP Plugin; auto|hle|cxd4"
+         "RSP Plugin; auto"
+#ifdef HAVE_OPENGL
+		 "|hle"
+#endif
+		 "|cxd4"
 #ifdef HAVE_PARALLEL_RSP
          "|parallel"
 #endif
          },
+#if defined(HAVE_OPENGL)||defined(HAVE_PARALLEL)
       { "parallel-n64-screensize",
 #ifdef CLASSIC
          "Resolution (restart); 320x240|640x480|960x720|1280x960|1440x1080|1600x1200|1920x1440|2240x1680|2880x2160|5760x4320" },
@@ -421,6 +434,7 @@ static void setup_variables(void)
       { "parallel-n64-polyoffset-units",
        "(Glide64) Polygon Offset Units; -3.0|-2.5|-2.0|-1.5|-1.0|-0.5|0.0|0.5|1.0|1.5|2.0|2.5|3.0|3.5|4.0|4.5|5.0|-3.5|-4.0|-4.5|-5.0"
       },
+#endif
       { "parallel-n64-angrylion-vioverlay",
        "(Angrylion) VI Overlay; Filtered|AA+Blur|AA+Dedither|AA only|Unfiltered|Depth|Coverage"
       },
@@ -442,7 +456,7 @@ static void setup_variables(void)
       { "parallel-n64-alt-map",
         "Independent C-button Controls; disabled|enabled" },
 
-#ifndef HAVE_PARALLEL
+#if defined(HAVE_PARALLEL)||!defined(HAVE_OPENGL)
       { "parallel-n64-vcache-vbo",
          "(Glide64) Vertex cache VBO (restart); disabled|enabled" },
 #endif
