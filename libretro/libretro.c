@@ -638,7 +638,9 @@ load_fail:
    return false;
 }
 
+#ifdef HAVE_THR_AL
 extern struct rgba prescale[PRESCALE_WIDTH * PRESCALE_HEIGHT];
+#endif
 
 bool emu_step_render(void)
 {
@@ -664,8 +666,10 @@ bool emu_step_render(void)
          default:
 #if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
             video_cb(RETRO_HW_FRAME_BUFFER_VALID, screen_width, screen_height, 0);
-#else
+#elif defined(HAVE_THR_AL)
             video_cb((screen_pitch == 0) ? NULL : prescale, screen_width, screen_height, screen_pitch);
+#else
+            video_cb(NULL, screen_width, screen_height, screen_pitch);
 #endif
             break;
       }
