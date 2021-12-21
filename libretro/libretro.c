@@ -638,9 +638,7 @@ load_fail:
    return false;
 }
 
-#ifdef HAVE_THR_AL
 extern struct rgba prescale[PRESCALE_WIDTH * PRESCALE_HEIGHT];
-#endif
 
 bool emu_step_render(void)
 {
