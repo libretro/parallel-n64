@@ -1275,6 +1275,7 @@ void update_variables(bool startup)
 
       if (var.value)
       {
+#if defined(HAVE_GLN64) || defined(HAVE_GLIDEN64) || defined(HAVE_RICE) || defined(HAVE_GLIDE64) || defined(HAVE_THR_AL) || defined(HAVE_PARALLEL)
          if (!strcmp(var.value, "auto"))
 #if defined(HAVE_GLN64) || defined(HAVE_GLIDEN64)
          if (!strcmp(var.value, "gln64"))
@@ -1296,11 +1297,10 @@ void update_variables(bool startup)
          if(!strcmp(var.value, "parallel"))
             gfx_plugin = GFX_PARALLEL;
 #endif
+#endif
       }
       else
-      {
          core_settings_autoselect_gfx_plugin();
-      }
    }
 
    
