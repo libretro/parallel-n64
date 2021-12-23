@@ -235,7 +235,7 @@ static void core_settings_set_defaults(void)
    {
       if (gfx_var.value && !strcmp(gfx_var.value, "auto"))
          core_settings_autoselect_gfx_plugin();
-#if defined(HAVE_OPENGL) || defined(FORCE_GLES)
+#if defined(HAVE_OPENGL) || defined(GLES)
 #if defined(HAVE_GLN64) || defined(HAVE_GLIDEN64)
       if (gfx_var.value && !strcmp(gfx_var.value, "gln64") && gl_inited)
          gfx_plugin = GFX_GLN64;
@@ -281,7 +281,7 @@ static void core_settings_set_defaults(void)
    {
       if (rsp_var.value && !strcmp(rsp_var.value, "auto"))
          core_settings_autoselect_rsp_plugin();
-#if defined(HAVE_OPENGL) || defined(FORCE_GLES)
+#if defined(HAVE_OPENGL) || defined(GLES)
       if (rsp_var.value && !strcmp(rsp_var.value, "hle") && !vulkan_inited)
          rsp_plugin = RSP_HLE;
 #endif
@@ -397,7 +397,7 @@ static void setup_variables(void)
          "Send audio lists to HLE RSP; disabled|enabled" },
       { "parallel-n64-gfxplugin",
          "GFX Plugin; auto"
-#if defined(HAVE_OPENGL) || defined(FORCE_GLES)
+#if defined(HAVE_OPENGL) || defined(GLES)
          "|glide64|gln64|rice"
 #endif         
          "|angrylion"
@@ -407,7 +407,7 @@ static void setup_variables(void)
       },
       { "parallel-n64-rspplugin",
          "RSP Plugin; auto"
-#if defined(HAVE_OPENGL) || defined(FORCE_GLES)
+#if defined(HAVE_OPENGL) || defined(GLES)
 		 "|hle"
 #endif
 		 "|cxd4"
@@ -415,7 +415,7 @@ static void setup_variables(void)
          "|parallel"
 #endif
          },
-#if defined(HAVE_OPENGL) || defined(FORCE_GLES) || defined(HAVE_PARALLEL)
+#if defined(HAVE_OPENGL) || defined(GLES) || defined(HAVE_PARALLEL)
       { "parallel-n64-screensize",
 #ifdef CLASSIC
          "Resolution (restart); 320x240|640x480|960x720|1280x960|1440x1080|1600x1200|1920x1440|2240x1680|2880x2160|5760x4320" },
@@ -456,7 +456,7 @@ static void setup_variables(void)
       { "parallel-n64-alt-map",
         "Independent C-button Controls; disabled|enabled" },
 
-#if defined(HAVE_PARALLEL) || !defined(HAVE_OPENGL) || !defined(FORCE_GLES)
+#if defined(HAVE_PARALLEL) || !defined(HAVE_OPENGL) || !defined(GLES)
       { "parallel-n64-vcache-vbo",
          "(Glide64) Vertex cache VBO (restart); disabled|enabled" },
 #endif
