@@ -666,8 +666,10 @@ bool emu_step_render(void)
          default:
 #if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
             video_cb(RETRO_HW_FRAME_BUFFER_VALID, screen_width, screen_height, 0);
-#else
+#elif defined(HAVE_THR_AL)
             video_cb((screen_pitch == 0) ? NULL : prescale, screen_width, screen_height, screen_pitch);
+#else
+            video_cb(NULL, screen_width, screen_height, screen_pitch);
 #endif
             break;
       }
@@ -1273,6 +1275,7 @@ void update_variables(bool startup)
 
       if (var.value)
       {
+#if defined(HAVE_GLN64) || defined(HAVE_GLIDEN64) || defined(HAVE_RICE) || defined(HAVE_GLIDE64) || defined(HAVE_THR_AL) || defined(HAVE_PARALLEL)
          if (!strcmp(var.value, "auto"))
 #if defined(HAVE_GLN64) || defined(HAVE_GLIDEN64)
          if (!strcmp(var.value, "gln64"))
@@ -1294,11 +1297,10 @@ void update_variables(bool startup)
          if(!strcmp(var.value, "parallel"))
             gfx_plugin = GFX_PARALLEL;
 #endif
+#endif
       }
       else
-      {
          core_settings_autoselect_gfx_plugin();
-      }
    }
 
    
