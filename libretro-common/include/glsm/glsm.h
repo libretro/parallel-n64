@@ -1,4 +1,4 @@
-/* Copyright (C) 2010-2018 The RetroArch team
+/* Copyright (C) 2010-2019 The RetroArch team
  *
  * ---------------------------------------------------------------------------------------
  * The following license statement only applies to this libretro SDK code part (glsm.h).
@@ -31,10 +31,26 @@
 
 RETRO_BEGIN_DECLS
 
-#ifdef HAVE_OPENGLES2
-typedef double GLdouble;
+#if defined(HAVE_OPENGLES2)
 typedef double GLclampd;
+typedef double GLdouble;
+typedef struct __GLsync* GLsync;
+typedef uint64_t GLuint64;
+typedef int64_t GLint64;
+#define ptrdiff_t khronos_ssize_t
 #endif
+
+#if defined(HAVE_OPENGLES3)
+typedef double GLclampd;
+typedef double GLdouble;
+// These will get redefined by other GL headers.
+#undef GL_DRAW_FRAMEBUFFER_BINDING
+#undef GL_COPY_READ_BUFFER_BINDING
+#undef GL_COPY_WRITE_BUFFER_BINDING
+#ifndef IOS
+#define ptrdiff_t khronos_ssize_t
+#endif // !IOS
+#endif // HAVE_OPENGLES3
 
 #if defined(HAVE_OPENGLES2)
 #define RARCH_GL_RENDERBUFFER GL_RENDERBUFFER
@@ -86,45 +102,8 @@ typedef double GLclampd;
 
 #define MAX_ATTRIB 8
 
-enum
-{
-   SGL_DEPTH_TEST             = 0,
-   SGL_BLEND,
-   SGL_POLYGON_OFFSET_FILL,
-   SGL_FOG,
-   SGL_CULL_FACE,
-   SGL_ALPHA_TEST,
-   SGL_SCISSOR_TEST,
-   SGL_STENCIL_TEST,
-#if !defined(HAVE_OPENGLES)
-   SGL_DEPTH_CLAMP,
-   SGL_CLIP_DISTANCE0,
-#endif
-   SGL_DITHER,
-   SGL_SAMPLE_ALPHA_TO_COVERAGE,
-   SGL_SAMPLE_COVERAGE,
-#ifndef HAVE_OPENGLES
-   SGL_COLOR_LOGIC_OP,
-#endif
-   SGL_CAP_MAX
-};
-
-enum glsm_state_ctl
-{
-   GLSM_CTL_NONE = 0,
-   GLSM_CTL_STATE_SETUP,
-   GLSM_CTL_STATE_BIND,
-   GLSM_CTL_STATE_UNBIND,
-   GLSM_CTL_STATE_CONTEXT_RESET,
-   GLSM_CTL_STATE_CONTEXT_DESTROY,
-   GLSM_CTL_STATE_CONTEXT_INIT,
-   GLSM_CTL_IS_IMM_VBO,
-   GLSM_CTL_SET_IMM_VBO,
-   GLSM_CTL_UNSET_IMM_VBO,
-   GLSM_CTL_IMM_VBO_DISABLE,
-   GLSM_CTL_IMM_VBO_DRAW,
-   GLSM_CTL_PROC_ADDRESS_GET
-};
+#include "glsm_caps.h"
+#include "glsm_state_ctl.h"
 
 typedef bool (*glsm_imm_vbo_draw)(void *);
 typedef bool (*glsm_imm_vbo_disable)(void *);
@@ -134,6 +113,7 @@ typedef struct glsm_ctx_proc_address
 {
    retro_get_proc_address_t addr;
 } glsm_ctx_proc_address_t;
+void* glsm_get_proc_address(const char* sym);
 
 typedef struct glsm_ctx_params
 {
@@ -150,8 +130,6 @@ typedef struct glsm_ctx_params
 } glsm_ctx_params_t;
 
 GLuint glsm_get_current_framebuffer(void);
-
-bool glsm_ctl(enum glsm_state_ctl state, void *data);
 
 RETRO_END_DECLS
 

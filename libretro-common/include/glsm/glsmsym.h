@@ -1,4 +1,4 @@
-/* Copyright (C) 2010-2018 The RetroArch team
+/* Copyright (C) 2010-2019 The RetroArch team
  *
  * ---------------------------------------------------------------------------------------
  * The following license statement only applies to this libretro SDK code part (glsmsym.h).
@@ -24,6 +24,10 @@
 #define LIBRETRO_SDK_GLSM_SYM_H
 
 #include <glsm/glsm.h>
+
+#ifdef HAVE_GLSYM_PRIVATE
+#include "glsym_private.h"
+#endif
 
 #include <retro_common_api.h>
 
@@ -150,7 +154,7 @@ RETRO_BEGIN_DECLS
 #define glUniformBlockBinding       rglUniformBlockBinding
 #define glGetUniformBlockIndex      rglGetUniformBlockIndex
 #define glGetActiveUniformBlockiv   rglGetActiveUniformBlockiv
-#define glBindBufferBase            rglBindBufferBase 
+#define glBindBufferBase            rglBindBufferBase
 #define glGetUniformIndices         rglGetUniformIndices
 #define glGetActiveUniformsiv       rglGetActiveUniformsiv
 #define glGetError                  rglGetError
@@ -182,7 +186,9 @@ RETRO_BEGIN_DECLS
 #define glFlushMappedBufferRange    rglFlushMappedBufferRange
 #define glClientWaitSync            rglClientWaitSync
 #define glDrawElementsBaseVertex    rglDrawElementsBaseVertex
+#define glReadPixels                rglReadPixels
 
+void rglReadPixels(GLint x, GLint y, GLsizei width, GLsizei height, GLenum format, GLenum type, GLvoid * data);
 const GLubyte* rglGetStringi(GLenum name, GLuint index);
 void rglTexBuffer(GLenum target, GLenum internalFormat, GLuint buffer);
 void rglClearBufferfv( 	GLenum buffer,
@@ -227,10 +233,7 @@ void rglGetActiveUniformsiv( 	GLuint program,
   	const GLuint *uniformIndices,
   	GLenum pname,
   	GLint *params);
-void rglGetUniformIndices( 	GLuint program,
-  	GLsizei uniformCount,
-  	const GLchar **uniformNames,
-  	GLuint *uniformIndices);
+void rglGetUniformIndices(GLuint program, GLsizei uniformCount, const GLchar *const*uniformNames, GLuint *uniformIndices);
 void rglBindBufferBase( 	GLenum target,
   	GLuint index,
   	GLuint buffer);
@@ -286,8 +289,8 @@ void rglLinkProgram(GLuint program);
 void rglGetProgramiv(GLuint shader, GLenum pname, GLint *params);
 void rglGetShaderiv(GLuint shader, GLenum pname, GLint *params);
 void rglAttachShader(GLuint program, GLuint shader);
-void rglShaderSource(GLuint shader, GLsizei count,
-      const GLchar **string, const GLint *length);
+void rglShaderSource(GLuint shader, GLsizei count, const GLchar *const*string, const GLint *length);
+
 void rglCompileShader(GLuint shader);
 GLuint rglCreateProgram(void);
 void rglGetShaderInfoLog(GLuint shader, GLsizei maxLength,
@@ -342,7 +345,7 @@ void rglPolygonOffset(GLfloat factor, GLfloat units);
 void rglDrawArrays(GLenum mode, GLint first, GLsizei count);
 void rglVertexAttrib4f(GLuint name, GLfloat x, GLfloat y,
       GLfloat z, GLfloat w);
-void rglVertexAttrib4fv(GLuint name, GLfloat* v);
+void rglVertexAttrib4fv(GLuint name, const GLfloat* v);
 void rglDeleteProgram(GLuint program);
 void rglDeleteBuffers(GLsizei n, const GLuint *buffers);
 void rglUniform2uiv(	GLint location,
@@ -447,12 +450,12 @@ void rglTexSubImage2D( 	GLenum target,
   	GLenum type,
   	const GLvoid * pixels);
 void rglDeleteVertexArrays(GLsizei n, const GLuint *arrays);
-void *rglFenceSync(GLenum condition, GLbitfield flags);
-void rglDeleteSync(void *sync);
+GLsync rglFenceSync(GLenum condition, GLbitfield flags);
+void rglDeleteSync(GLsync sync);
 void rglWaitSync(void *sync, GLbitfield flags, uint64_t timeout);
 void rglBufferStorage(GLenum target, GLsizeiptr size, const GLvoid *data, GLbitfield flags);
 void rglFlushMappedBufferRange(GLenum target, GLintptr offset, GLsizeiptr length);
-GLenum rglClientWaitSync(void *sync, GLbitfield flags, uint64_t timeout);
+GLenum rglClientWaitSync(GLsync sync, GLbitfield flags, GLuint64 timeout);
 void rglDrawElementsBaseVertex(GLenum mode, GLsizei count, GLenum type,
 			       GLvoid *indices, GLint basevertex);
 void rglGetBufferSubData(	GLenum target,
@@ -472,7 +475,7 @@ void rglUniform2iv(	GLint location,
  	GLsizei count,
  	const GLint *value);
 void rglProvokingVertex(	GLenum provokeMode);
-void rglDrawRangeElementsBaseVertex(GLenum mode, GLuint start, GLuint end, GLsizei count, GLenum type, GLvoid *indices, GLint basevertex);
+void rglDrawRangeElementsBaseVertex(GLenum mode, GLuint start, GLuint end, GLsizei count, GLenum type, const void *indices, GLint basevertex);
 
 RETRO_END_DECLS
 

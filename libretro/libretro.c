@@ -34,6 +34,8 @@
 #include "../mupen64plus-video-angrylion/vdac.h"
 #endif
 
+#include <glsm/glsmsym.h>
+
 #ifndef PRESCALE_WIDTH
 #define PRESCALE_WIDTH  640
 #endif
@@ -721,7 +723,8 @@ void reinit_gfx_plugin(void)
 #endif
           break;
        case GFX_GLN64:
-#if defined(HAVE_GLN64) || defined(HAVE_GLIDEN64)
+       // TODO: wtf is this 
+#if defined(HAVE_GLN64)
           gles2n64_reset();
 #endif
           break;
@@ -755,6 +758,8 @@ void deinit_gfx_plugin(void)
 #if defined(HAVE_PARALLEL)
           parallel_deinit();
 #endif
+      case GFX_GLN64:
+          glsm_ctl(GLSM_CTL_STATE_CONTEXT_DESTROY, NULL);
           break;
        default:
           break;
