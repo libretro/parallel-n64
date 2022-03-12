@@ -30,7 +30,7 @@ gDPInfo gDP;
 bool isCurrentColorImageDepthImage()
 {
 	return (gDP.colorImage.address == gDP.depthImageAddress) ||
-		(gDP.fillColor.color == DepthClearColor && gDP.otherMode.cycleType == G_CYC_FILL);
+		(gDP.fillColor.color == gliden64DepthClearColor && gDP.otherMode.cycleType == G_CYC_FILL);
 }
 
 bool isDepthCompareEnabled()
@@ -813,7 +813,7 @@ void gDPFillRectangle( s32 ulx, s32 uly, s32 lrx, s32 lry )
 	if (gDP.depthImageAddress == gDP.colorImage.address) {
 		// Game may use depth texture as auxilary color texture. Example: Mario Tennis
 		// If color is not depth clear color, that is most likely the case
-		if (gDP.fillColor.color == DepthClearColor) {
+		if (gDP.fillColor.color == gliden64DepthClearColor) {
 			depthBuffer = dbFound;
 			if (config.generalEmulation.enableFragmentDepthWrite == 0) {
 				drawer.clearDepthBuffer();
@@ -821,7 +821,7 @@ void gDPFillRectangle( s32 ulx, s32 uly, s32 lrx, s32 lry )
 			} else
 				depthBufferList().setCleared(true);
 		}
-	} else if (gDP.fillColor.color == DepthClearColor && gDP.otherMode.cycleType == G_CYC_FILL) {
+	} else if (gDP.fillColor.color == gliden64DepthClearColor && gDP.otherMode.cycleType == G_CYC_FILL) {
 		depthBuffer = dbFound;
 		depthBufferList().saveBuffer(gDP.colorImage.address);
 		if (config.generalEmulation.enableFragmentDepthWrite == 0 ||

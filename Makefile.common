@@ -24,7 +24,7 @@ else
 ifneq ($(platform), vita)
 	HAVE_GLIDE64  = 1
 	HAVE_GLIDEN64 = 1
-	HAVE_GLN64    = 0
+	HAVE_GLN64    = 1
 	HAVE_RICE     = 1
 else
 	HAVE_GLIDE64 = 0

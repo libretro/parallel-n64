@@ -19,6 +19,44 @@ extern "C" {
 
 Config config;
 
+extern "C" uint32_t CoreOptionCategoriesSupported;
+extern "C" uint32_t CoreOptionUpdateDisplayCbSupported;
+
+extern "C" uint32_t bilinearMode;
+extern "C" uint32_t EnableHWLighting;
+extern "C" uint32_t CorrectTexrectCoords;
+extern "C" uint32_t EnableInaccurateTextureCoordinates;
+extern "C" uint32_t enableNativeResTexrects;
+extern "C" uint32_t enableLegacyBlending;
+extern "C" uint32_t EnableCopyColorToRDRAM;
+extern "C" uint32_t EnableCopyDepthToRDRAM;
+extern "C" uint32_t AspectRatio;
+extern "C" uint32_t txFilterMode;
+extern "C" uint32_t txEnhancementMode;
+extern "C" uint32_t txHiresEnable;
+extern "C" uint32_t txHiresFullAlphaChannel;
+extern "C" uint32_t txFilterIgnoreBG;
+extern "C" uint32_t EnableFXAA;
+extern "C" uint32_t MultiSampling;
+extern "C" uint32_t EnableFragmentDepthWrite;
+extern "C" uint32_t EnableShadersStorage;
+extern "C" uint32_t EnableTextureCache;
+extern "C" uint32_t EnableFBEmulation;
+extern "C" uint32_t EnableLODEmulation;
+extern "C" uint32_t BackgroundMode; // 0 is bgOnePiece
+extern "C" uint32_t EnableHiResAltCRC;
+extern "C" uint32_t EnableTxCacheCompression;
+extern "C" uint32_t EnableNativeResFactor;
+extern "C" uint32_t EnableN64DepthCompare;
+extern "C" uint32_t EnableCopyAuxToRDRAM;
+extern "C" uint32_t GLideN64IniBehaviour;
+
+extern "C" uint32_t EnableOverscan;
+extern "C" uint32_t OverscanTop;
+extern "C" uint32_t OverscanLeft;
+extern "C" uint32_t OverscanRight;
+extern "C" uint32_t OverscanBottom;
+
 std::string replaceChars(std::string myString)
 {
 	for (size_t pos = myString.find(' '); pos != std::string::npos; pos = myString.find(' ', pos))
@@ -90,7 +128,7 @@ void LoadCustomSettings(bool internal)
 						// I know this is a bit counter productive
 						// Maybe needs a "Auto" mode in the future, since it soon has a "fast" mode too.
 						// Currently its often not supported anyway or causes crippling issues otherwise
-						// if(EnableN64DepthCompare)
+						if(EnableN64DepthCompare)
 						{
 							// Set to config val, ignoring the actual pre-set, see above.
 							config.frameBufferEmulation.N64DepthCompare = atoi(l.value);
@@ -129,13 +167,12 @@ extern "C" void Config_LoadConfig()
 	config.resetToDefaults();
 
 	// Early
-	// if(GLideN64IniBehaviour == 1)
+	if(GLideN64IniBehaviour == 1)
 	{
 		LoadCustomSettings(true);
 		LoadCustomSettings(false);
 	}
 
-	/*
 	config.frameBufferEmulation.aspect = AspectRatio;
 	config.frameBufferEmulation.enable = EnableFBEmulation;
 	config.frameBufferEmulation.N64DepthCompare = EnableN64DepthCompare;
@@ -192,17 +229,13 @@ extern "C" void Config_LoadConfig()
 
 	config.graphics2D.bgMode = BackgroundMode;
 
-	config.textureFilter.txEnhancedTextureFileStorage = EnableEnhancedTextureStorage;
 	config.textureFilter.txHresAltCRC = EnableHiResAltCRC;
-	config.textureFilter.txHiresTextureFileStorage = EnableEnhancedHighResStorage;
-	config.textureFilter.txHiresVramLimit = MaxHiResTxVramLimit;
 	config.frameBufferEmulation.nativeResFactor = EnableNativeResFactor;
 
 	config.generalEmulation.hacks = hacks;
-	*/
 
 	// Late
-	// if(GLideN64IniBehaviour == 0)
+	if(GLideN64IniBehaviour == 0)
 	{
 		LoadCustomSettings(true);
 		LoadCustomSettings(false);

@@ -39,7 +39,7 @@
 #include "Graphics/Context.h"
 #include "Graphics/Parameters.h"
 
-u32 last_good_ucode = (u32) -1;
+static u32 last_good_ucode = (u32) -1;
 
 struct SpecialMicrocodeInfo
 {

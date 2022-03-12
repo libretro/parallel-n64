@@ -1,0 +1,6 @@
+{
+    "files.associations": {
+        "gles2n64.h": "c",
+        "gsp_state.h": "c"
+    }
+}
