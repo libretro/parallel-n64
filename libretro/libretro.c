@@ -1673,54 +1673,54 @@ void update_variables(bool startup)
       }
    }
 
-   var.key = CORE_NAME "-BilinearMode";
+   var.key = CORE_NAME "-gliden64-BilinearMode";
    var.value = NULL;
    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
    {
       bilinearMode = !strcmp(var.value, "3point") ? 0 : 1;
    }
 
-   var.key = CORE_NAME "-FXAA";
+   var.key = CORE_NAME "-gliden64-FXAA";
    var.value = NULL;
    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
    {
       EnableFXAA = atoi(var.value);
    }
 
-   var.key = CORE_NAME "-MultiSampling";
+   var.key = CORE_NAME "-gliden64-MultiSampling";
    var.value = NULL;
    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
    {
       MultiSampling = atoi(var.value);
    }
 
-   var.key = CORE_NAME "-EnableLODEmulation";
+   var.key = CORE_NAME "-gliden64-EnableLODEmulation";
    var.value = NULL;
    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
    {
       EnableLODEmulation = !strcmp(var.value, "False") ? 0 : 1;
    }
 
-   var.key = CORE_NAME "-EnableFBEmulation";
+   var.key = CORE_NAME "-gliden64-EnableFBEmulation";
    var.value = NULL;
    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
    {
       EnableFBEmulation = !strcmp(var.value, "False") ? 0 : 1;
    }
 
-   var.key = CORE_NAME "-EnableN64DepthCompare";
+   var.key = CORE_NAME "-gliden64-EnableN64DepthCompare";
    var.value = NULL;
    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
    {
       if (!strcmp(var.value, "Compatible"))
-         EnableN64DepthCompare = 2; // dcCompatible
+         EnableN64DepthCompare = 1; // dcCompatible
       else if (!strcmp(var.value, "True"))
          EnableN64DepthCompare = 1; // dcFast
       else
          EnableN64DepthCompare = 0; // dcDisable
    }
 
-   var.key = CORE_NAME "-EnableCopyColorToRDRAM";
+   var.key = CORE_NAME "-gliden64-EnableCopyColorToRDRAM";
    var.value = NULL;
    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
    {
@@ -1734,7 +1734,7 @@ void update_variables(bool startup)
          EnableCopyColorToRDRAM = 0;
    }
 
-   var.key = CORE_NAME "-EnableCopyDepthToRDRAM";
+   var.key = CORE_NAME "-gliden64-EnableCopyDepthToRDRAM";
    var.value = NULL;
    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
    {
@@ -1746,14 +1746,14 @@ void update_variables(bool startup)
          EnableCopyDepthToRDRAM = 0;
    }
 
-   var.key = CORE_NAME "-EnableHWLighting";
+   var.key = CORE_NAME "-gliden64-EnableHWLighting";
    var.value = NULL;
    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
    {
       EnableHWLighting = !strcmp(var.value, "False") ? 0 : 1;
    }
 
-   var.key = CORE_NAME "-CorrectTexrectCoords";
+   var.key = CORE_NAME "-gliden64-CorrectTexrectCoords";
    var.value = NULL;
    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
    {
@@ -1765,21 +1765,21 @@ void update_variables(bool startup)
          CorrectTexrectCoords = 0;
    }
 
-   var.key = CORE_NAME "-EnableInaccurateTextureCoordinates";
+   var.key = CORE_NAME "-gliden64-EnableInaccurateTextureCoordinates";
    var.value = NULL;
    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
    {
       EnableInaccurateTextureCoordinates = !strcmp(var.value, "False") ? 0 : 1;
    }
 
-   var.key = CORE_NAME "-BackgroundMode";
+   var.key = CORE_NAME "-gliden64-BackgroundMode";
    var.value = NULL;
    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
    {
       BackgroundMode = !strcmp(var.value, "OnePiece") ? 0 : 1;
    }
 
-   var.key = CORE_NAME "-EnableNativeResTexrects";
+   var.key = CORE_NAME "-gliden64-EnableNativeResTexrects";
    var.value = NULL;
    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
    {
@@ -1797,7 +1797,7 @@ void update_variables(bool startup)
       }
    }
 
-   var.key = CORE_NAME "-txFilterMode";
+   var.key = CORE_NAME "-gliden64-txFilterMode";
    var.value = NULL;
    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
    {
@@ -1817,7 +1817,7 @@ void update_variables(bool startup)
          txFilterMode = 0;
    }
 
-   var.key = CORE_NAME "-txEnhancementMode";
+   var.key = CORE_NAME "-gliden64-txEnhancementMode";
    var.value = NULL;
    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
    {
@@ -1851,7 +1851,7 @@ void update_variables(bool startup)
          txEnhancementMode = 0;
    }
 
-   var.key = CORE_NAME "-txFilterIgnoreBG";
+   var.key = CORE_NAME "-gliden64-txFilterIgnoreBG";
    var.value = NULL;
    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
    {
@@ -1859,70 +1859,70 @@ void update_variables(bool startup)
       txFilterIgnoreBG = !strcmp(var.value, "False") ? 1 : 0;
    }
 
-   var.key = CORE_NAME "-txHiresEnable";
+   var.key = CORE_NAME "-gliden64-txHiresEnable";
    var.value = NULL;
    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
    {
       txHiresEnable = !strcmp(var.value, "False") ? 0 : 1;
    }
 
-   var.key = CORE_NAME "-txCacheCompression";
+   var.key = CORE_NAME "-gliden64-txCacheCompression";
    var.value = NULL;
    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
    {
       EnableTxCacheCompression = !strcmp(var.value, "False") ? 0 : 1;
    }
 
-   var.key = CORE_NAME "-txHiresFullAlphaChannel";
+   var.key = CORE_NAME "-gliden64-txHiresFullAlphaChannel";
    var.value = NULL;
    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
    {
       txHiresFullAlphaChannel = !strcmp(var.value, "False") ? 0 : 1;
    }
 
-   var.key = CORE_NAME "-EnableLegacyBlending";
+   var.key = CORE_NAME "-gliden64-EnableLegacyBlending";
    var.value = NULL;
    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
    {
       enableLegacyBlending = !strcmp(var.value, "False") ? 0 : 1;
    }
 
-   var.key = CORE_NAME "-EnableFragmentDepthWrite";
+   var.key = CORE_NAME "-gliden64-EnableFragmentDepthWrite";
    var.value = NULL;
    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
    {
       EnableFragmentDepthWrite = !strcmp(var.value, "False") ? 0 : 1;
    }
 
-   var.key = CORE_NAME "-EnableShadersStorage";
+   var.key = CORE_NAME "-gliden64-gliden64-EnableShadersStorage";
    var.value = NULL;
    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
    {
       EnableShadersStorage = !strcmp(var.value, "False") ? 0 : 1;
    }
 
-   var.key = CORE_NAME "-EnableTextureCache";
+   var.key = CORE_NAME "-gliden64-EnableTextureCache";
    var.value = NULL;
    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
    {
       EnableTextureCache = !strcmp(var.value, "False") ? 0 : 1;
    }
 
-   var.key = CORE_NAME "-EnableHiResAltCRC";
+   var.key = CORE_NAME "-gliden64-EnableHiResAltCRC";
    var.value = NULL;
    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
    {
       EnableHiResAltCRC = !strcmp(var.value, "False") ? 0 : 1;
    }
 
-   var.key = CORE_NAME "-EnableCopyAuxToRDRAM";
+   var.key = CORE_NAME "-gliden64-EnableCopyAuxToRDRAM";
    var.value = NULL;
    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
    {
       EnableCopyAuxToRDRAM = !strcmp(var.value, "False") ? 0 : 1;
    }
 
-   var.key = CORE_NAME "-GLideN64IniBehaviour";
+   var.key = CORE_NAME "-gliden64-GLideN64IniBehaviour";
    var.value = NULL;
    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
    {
@@ -1939,7 +1939,7 @@ void update_variables(bool startup)
 
    bool stretch = environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value && 0 == strcmp(var.value, "widescreen");
 
-   var.key = CORE_NAME "-viewport-hack";
+   var.key = CORE_NAME "-gliden64-viewport-hack";
    var.value = NULL;
    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
    {
@@ -1950,7 +1950,7 @@ void update_variables(bool startup)
       }
    }
 
-   var.key = CORE_NAME "-EnableNativeResFactor";
+   var.key = CORE_NAME "-gliden64-EnableNativeResFactor";
    var.value = NULL;
    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
    {

@@ -240,6 +240,4 @@ extern "C" void Config_LoadConfig()
 		LoadCustomSettings(true);
 		LoadCustomSettings(false);
 	}
-
-	printf("%d\n", config.video.multisampling);
 }
