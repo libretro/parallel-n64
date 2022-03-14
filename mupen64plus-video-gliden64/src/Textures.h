@@ -5,6 +5,8 @@
 #include <unordered_map>
 #include <list>
 
+#include <stddef.h>
+
 #include "CRC.h"
 #include "convert.h"
 #include "Graphics/ObjectHandle.h"
