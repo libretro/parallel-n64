@@ -482,7 +482,8 @@ void rglReadBuffer(GLenum mode)
 #endif
 #if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES) && defined(HAVE_OPENGLES3)
    glReadBuffer(mode);
-   gl_state.readbuffer.mode = mode;
+   if (gl_state.framebuf[1].desired_location == default_framebuffer)
+      gl_state.readbuffer.mode = mode;
 #endif
 }
 
@@ -502,8 +503,11 @@ void rglClearDepth(GLdouble depth)
 #else
    glClearDepth(depth);
 #endif
-   gl_state.cleardepth.used  = true;
-   gl_state.cleardepth.depth = depth;
+   if (gl_state.framebuf[0].desired_location == default_framebuffer)
+   {
+      gl_state.cleardepth.used  = true;
+      gl_state.cleardepth.depth = depth;
+   }
 }
 
 /*
@@ -688,12 +692,19 @@ void rglClearColor(GLclampf red, GLclampf green,
    log_cb(RETRO_LOG_INFO, "glClearColor.\n");
 #endif
    glsm_ctl(GLSM_CTL_IMM_VBO_DRAW, NULL);
-   if (gl_state.clear_color.r != red || gl_state.clear_color.g != green || gl_state.clear_color.b != blue || gl_state.clear_color.a != alpha) {
+   if (gl_state.framebuf[0].desired_location == default_framebuffer)
+   {
+      if (gl_state.clear_color.r != red || gl_state.clear_color.g != green || gl_state.clear_color.b != blue || gl_state.clear_color.a != alpha) {
+         glClearColor(red, green, blue, alpha);
+         gl_state.clear_color.r = red;
+         gl_state.clear_color.g = green;
+         gl_state.clear_color.b = blue;
+         gl_state.clear_color.a = alpha;
+      }
+   }
+   else
+   {
       glClearColor(red, green, blue, alpha);
-      gl_state.clear_color.r = red;
-      gl_state.clear_color.g = green;
-      gl_state.clear_color.b = blue;
-      gl_state.clear_color.a = alpha;
    }
 }
 
@@ -729,7 +740,6 @@ void rglViewport(GLint x, GLint y, GLsizei width, GLsizei height)
    log_cb(RETRO_LOG_INFO, "glViewport.\n");
 #endif
    glsm_ctl(GLSM_CTL_IMM_VBO_DRAW, NULL);
-
    if (gl_state.viewport.x != x || gl_state.viewport.y != y || gl_state.viewport.w != width || gl_state.viewport.h != height) {
       glViewport(x, y, width, height);
       gl_state.viewport.x = x;
@@ -945,8 +955,9 @@ void rglBindBuffer(GLenum target, GLuint buffer)
          glBindBuffer(target, buffer);
       }
    }
-   else
+   else {
       glBindBuffer(target, buffer);
+   }
 }
 
 /*
@@ -3130,8 +3141,8 @@ static void glsm_state_bind(void)
    glPixelStorei(GL_PACK_ALIGNMENT, gl_state.pixelstore.pack);
 
    if (false) {
-      gl_state.framebuf[0].location = 0;
-      gl_state.framebuf[1].location = 0;
+      gl_state.framebuf[0].location = gl_state.framebuf[0].desired_location = 0;
+      gl_state.framebuf[1].location = gl_state.framebuf[1].desired_location = 0;
    } else {
       glBindFramebuffer(GL_FRAMEBUFFER, default_framebuffer);
       gl_state.framebuf[0].location = default_framebuffer;

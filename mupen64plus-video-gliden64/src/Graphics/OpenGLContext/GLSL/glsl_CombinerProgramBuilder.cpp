@@ -986,8 +986,8 @@ public:
 				;
 			if (_glinfo.imageTextures) {
 				m_part +=
-					"layout(binding = 2, r32f) highp uniform restrict image2D uDepthImageZ;		\n"
-					"layout(binding = 3, r32f) highp uniform restrict image2D uDepthImageDeltaZ;	\n"
+					"coherent layout(binding = 2, r32f) highp uniform restrict image2D uDepthImageZ;		\n"
+					"coherent layout(binding = 3, r32f) highp uniform restrict image2D uDepthImageDeltaZ;	\n"
 					;
 			}
 		}

@@ -68,7 +68,7 @@ namespace glsl {
 
 			if (config.frameBufferEmulation.N64DepthCompare != 0) {
 				if (_glinfo.imageTextures)
-					m_part += "layout(binding = 2, r32f) highp uniform restrict readonly image2D uDepthImageZ;		\n";
+					m_part += "coherent layout(binding = 2, r32f) highp uniform restrict readonly image2D uDepthImageZ;		\n";
 
 				if (_glinfo.ext_fetch) {
 					m_part +=
