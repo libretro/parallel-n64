@@ -538,6 +538,7 @@ else ifneq (,$(findstring windows_msvc2017,$(platform)))
 	CC  = cl.exe
 	CXX = cl.exe
 	CC_AS = nasm.exe
+	COREFLAGS += -DOS_WINDOWS -DUNICODE
 	ASFLAGS += -f win64
 	GL_LIB = opengl32.lib
 	HAVE_PARALLEL=0
@@ -616,6 +617,7 @@ else ifeq ($(platform), windows_msvc2013_x86)
 	CC  = cl.exe
 	CXX = cl.exe
 	CC_AS = nasm.exe
+	COREFLAGS += -DOS_WINDOWS -DUNICODE
 
 PATH := $(shell IFS=$$'\n'; cygpath "$(VS120COMNTOOLS)../../VC/bin"):$(PATH)
 PATH := $(PATH):$(shell IFS=$$'\n'; cygpath "$(VS120COMNTOOLS)../IDE")
@@ -643,6 +645,7 @@ else ifeq ($(platform), windows_msvc2013_x64)
 	CC  = cl.exe
 	CXX = cl.exe
 	CC_AS = nasm.exe
+	COREFLAGS += -DOS_WINDOWS -DUNICODE
 
 PATH := $(shell IFS=$$'\n'; cygpath "$(VS120COMNTOOLS)../../VC/bin/amd64"):$(PATH)
 PATH := $(PATH):$(shell IFS=$$'\n'; cygpath "$(VS120COMNTOOLS)../IDE")
@@ -669,6 +672,7 @@ else ifeq ($(platform), windows_msvc2015_x64)
 	CC  = cl.exe
 	CXX = cl.exe
 	CC_AS = nasm.exe
+	COREFLAGS += -DOS_WINDOWS -DUNICODE
 
 PATH := $(shell IFS=$$'\n'; cygpath "$(VS140COMNTOOLS)../../VC/bin/amd64"):$(PATH)
 PATH := $(PATH):$(shell IFS=$$'\n'; cygpath "$(VS140COMNTOOLS)../IDE")
@@ -703,6 +707,7 @@ else ifeq ($(platform), windows_msvc2015_x86)
 	CC  = cl.exe
 	CXX = cl.exe
 	CC_AS = nasm.exe
+	COREFLAGS += -DOS_WINDOWS -DUNICODE
 
 PATH := $(shell IFS=$$'\n'; cygpath "$(VS140COMNTOOLS)../../VC/bin"):$(PATH)
 PATH := $(PATH):$(shell IFS=$$'\n'; cygpath "$(VS140COMNTOOLS)../IDE")
@@ -737,6 +742,7 @@ else ifeq ($(platform), windows_msvc2010_x64)
 	CC  = cl.exe
 	CXX = cl.exe
 	CC_AS = nasm.exe
+	COREFLAGS += -DOS_WINDOWS -DUNICODE
 
 PATH := $(shell IFS=$$'\n'; cygpath "$(VS100COMNTOOLS)../../VC/bin/amd64"):$(PATH)
 PATH := $(PATH):$(shell IFS=$$'\n'; cygpath "$(VS100COMNTOOLS)../IDE")
@@ -766,6 +772,7 @@ else ifeq ($(platform), windows_msvc2010_x86)
 	CC  = cl.exe
 	CXX = cl.exe
 	CC_AS = nasm.exe
+	COREFLAGS += -DOS_WINDOWS -DUNICODE
 
 PATH := $(shell IFS=$$'\n'; cygpath "$(VS100COMNTOOLS)../../VC/bin"):$(PATH)
 PATH := $(PATH):$(shell IFS=$$'\n'; cygpath "$(VS100COMNTOOLS)../IDE")
@@ -795,6 +802,7 @@ else ifeq ($(platform), windows_msvc2005_x86)
 	CC  = cl.exe
 	CXX = cl.exe
 	CC_AS = nasm.exe
+	COREFLAGS += -DOS_WINDOWS -DUNICODE
 	HAS_GCC := 0
 
 PATH := $(shell IFS=$$'\n'; cygpath "$(VS80COMNTOOLS)../../VC/bin"):$(PATH)
@@ -827,6 +835,7 @@ else ifneq (,$(findstring win,$(platform)))
    CC ?= gcc
    CXX ?= g++
    HAVE_THR_AL=1
+	COREFLAGS += -DOS_WINDOWS -DUNICODE
 
 #ifeq ($(WITH_DYNAREC), $(filter $(WITH_DYNAREC), x86_64 x64))
 #ifeq ($(HAVE_PARALLEL), 1)
