@@ -742,9 +742,9 @@ void reinit_gfx_plugin(void)
           gles2n64_reset();
 #endif
        case GFX_GLIDEN64:
-       // TODO: wtf is this??? 
 #ifdef HAVE_GLIDEN64
-          /* TODO/FIXME */
+          gliden64RomClosed();
+          gliden64RomOpen();
 #endif
           break;
        case GFX_RICE:
