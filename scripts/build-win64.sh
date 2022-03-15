@@ -1,3 +1,5 @@
+#!/bin/bash
+# To be used on Manjaro with MinGW packages installed
 platform=win64 \
 ARCH=x86_64 \
 MSYSTEM=MINGW64 \
