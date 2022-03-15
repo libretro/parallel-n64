@@ -2953,6 +2953,61 @@ void rglDrawElementsBaseVertex(GLenum mode, GLsizei count, GLenum type,
 #endif
 }
 
+void rglTexParameteri( GLenum target, GLenum pname, GLint param )
+{
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES) && defined(HAVE_OPENGLES3)
+   return glTexParameteri(target, pname, param);
+#endif
+}
+
+void rglTexImage2D( GLenum target, GLint level,
+                    GLint internalFormat,
+                    GLsizei width, GLsizei height,
+                    GLint border, GLenum format, GLenum type,
+                    const GLvoid *pixels )
+{
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES) && defined(HAVE_OPENGLES3)
+   return glTexImage2D(target, level, internalFormat, width, height, border, format, type, pixels);
+#endif
+}
+
+void rglGetIntegerv (GLenum pname, GLint *data)
+{
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES) && defined(HAVE_OPENGLES3)
+   return glGetIntegerv(pname, data);
+#endif
+}
+
+void rglFlush(void)
+{
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES) && defined(HAVE_OPENGLES3)
+   glFlush();
+#endif
+}
+
+const GLubyte* rglGetString (GLenum name)
+{
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES) && defined(HAVE_OPENGLES3)
+   return glGetString(name);
+#else
+   return NULL;
+#endif
+}
+
+void rglGetTexParameteriv (GLenum target, GLenum pname, GLint *params)
+{
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES) && defined(HAVE_OPENGLES3)
+   return glGetTexParameteriv(target, pname, params);
+#endif
+}
+
+void rglGetFloatv (GLenum pname, GLfloat *data)
+{
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES) && defined(HAVE_OPENGLES3)
+   return glGetFloatv(pname, data);
+#endif
+}
+
 /* GLSM-side */
 
 bool isExtensionSupported(const char *extension)

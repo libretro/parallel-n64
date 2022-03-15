@@ -232,6 +232,43 @@ typedef void (GL_APIENTRYP RGLSYMGLTEXTUREVIEWEXTPROC) (GLuint texture, GLenum t
 typedef void (GL_APIENTRYP RGLSYMGLWINDOWRECTANGLESEXTPROC) (GLenum mode, GLsizei count, const GLint *box);
 typedef void (GL_APIENTRYP RGLSYMGLFRAMEBUFFERTEXTUREMULTIVIEWOVRPROC) (GLenum target, GLenum attachment, GLuint texture, GLint level, GLint baseViewIndex, GLsizei numViews);
 typedef void (GL_APIENTRYP RGLSYMGLFRAMEBUFFERTEXTUREMULTISAMPLEMULTIVIEWOVRPROC) (GLenum target, GLenum attachment, GLuint texture, GLint level, GLsizei samples, GLint baseViewIndex, GLsizei numViews);
+typedef void (APIENTRYP RGLSYMGLTEXPARAMETERIPROC) (GLenum target, GLenum pname, GLint param);
+typedef void (APIENTRYP RGLSYMGLREADBUFFERPROC) (GLenum src);
+typedef void (APIENTRYP RGLSYMGLTEXIMAGE2DPROC) (GLenum target, GLint level, GLint internalformat, GLsizei width, GLsizei height, GLint border, GLenum format, GLenum type, const void *pixels);
+typedef void (APIENTRYP RGLSYMGLPIXELSTOREIPROC) (GLenum pname, GLint param);
+typedef void (APIENTRYP RGLSYMGLDEPTHRANGEPROC) (GLdouble near, GLdouble far);
+typedef void (APIENTRYP RGLSYMGLBLENDFUNCPROC) (GLenum sfactor, GLenum dfactor);
+typedef void (APIENTRYP RGLSYMGLCLEARCOLORPROC) (GLfloat red, GLfloat green, GLfloat blue, GLfloat alpha);
+typedef void (APIENTRYP RGLSYMGLSTENCILMASKPROC) (GLuint mask);
+typedef void (APIENTRYP RGLSYMGLFRONTFACEPROC) (GLenum mode);
+typedef void (APIENTRYP RGLSYMGLDISABLEPROC) (GLenum cap);
+typedef void (APIENTRYP RGLSYMGLSTENCILFUNCPROC) (GLenum func, GLint ref, GLuint mask);
+typedef void (APIENTRYP RGLSYMGLSTENCILOPPROC) (GLenum fail, GLenum zfail, GLenum zpass);
+typedef void (APIENTRYP RGLSYMGLDEPTHFUNCPROC) (GLenum func);
+typedef void (APIENTRYP RGLSYMGLPOLYGONOFFSETPROC) (GLfloat factor, GLfloat units);
+typedef void (APIENTRYP RGLSYMGLDEPTHMASKPROC) (GLboolean flag);
+typedef void (APIENTRYP RGLSYMGLCOLORMASKPROC) (GLboolean red, GLboolean green, GLboolean blue, GLboolean alpha);
+typedef void (APIENTRYP RGLSYMGLCULLFACEPROC) (GLenum mode);
+typedef void (APIENTRYP RGLSYMGLGETINTEGERVPROC) (GLenum pname, GLint *data);
+typedef void (APIENTRYP RGLSYMGLVIEWPORTPROC) (GLint x, GLint y, GLsizei width, GLsizei height);
+typedef void (APIENTRYP RGLSYMGLBINDTEXTUREPROC) (GLenum target, GLuint texture);
+typedef void (APIENTRYP RGLSYMGLSCISSORPROC) (GLint x, GLint y, GLsizei width, GLsizei height);
+typedef void (APIENTRYP RGLSYMGLENABLEPROC) (GLenum cap);
+typedef void (APIENTRYP RGLSYMGLCLEARDEPTHPROC) (GLdouble depth);
+typedef GLenum (APIENTRYP RGLSYMGLGETERRORPROC) (void);
+typedef void (APIENTRYP RGLSYMGLCLEARPROC) (GLbitfield mask);
+typedef void (APIENTRYP RGLSYMGLPOLYGONMODEPROC) (GLenum face, GLenum mode);
+typedef void (APIENTRYP RGLSYMGLTEXSUBIMAGE2DPROC) (GLenum target, GLint level, GLint xoffset, GLint yoffset, GLsizei width, GLsizei height, GLenum format, GLenum type, const void *pixels);
+typedef void (APIENTRYP RGLSYMGLLINEWIDTHPROC) (GLfloat width);
+typedef void (APIENTRYP RGLSYMGLREADPIXELSPROC) (GLint x, GLint y, GLsizei width, GLsizei height, GLenum format, GLenum type, void *pixels);
+typedef void (APIENTRYP RGLSYMGLDRAWARRAYSPROC) (GLenum mode, GLint first, GLsizei count);
+typedef void (APIENTRYP RGLSYMGLDRAWELEMENTSPROC) (GLenum mode, GLsizei count, GLenum type, const void *indices);
+typedef void (APIENTRYP RGLSYMGLDELETETEXTURESPROC) (GLsizei n, const GLuint *textures);
+typedef void (APIENTRYP RGLSYMGLGENTEXTURESPROC) (GLsizei n, GLuint *textures);
+typedef void (APIENTRYP RGLSYMGLFLUSHPROC) (void);
+typedef const GLubyte *(APIENTRYP RGLSYMGLGETSTRINGPROC) (GLenum name);
+typedef void (APIENTRYP RGLSYMGLGETTEXPARAMETERIVPROC) (GLenum target, GLenum pname, GLint *params);
+typedef void (APIENTRYP PFNGLGETFLOATVPROC) (GLenum pname, GLfloat *data);
 
 #define glBlendBarrierKHR __rglgen_glBlendBarrierKHR
 #define glDebugMessageControlKHR __rglgen_glDebugMessageControlKHR
@@ -437,6 +474,43 @@ typedef void (GL_APIENTRYP RGLSYMGLFRAMEBUFFERTEXTUREMULTISAMPLEMULTIVIEWOVRPROC
 #define glesEXT __rglgen_glesEXT
 #define glFramebufferTextureMultiviewOVR __rglgen_glFramebufferTextureMultiviewOVR
 #define glFramebufferTextureMultisampleMultiviewOVR __rglgen_glFramebufferTextureMultisampleMultiviewOVR
+#define glTexParameteri __rglgen_glTexParameteri
+#define glReadBuffer __rglgen_glReadBuffer
+#define glTexImage2D __rglgen_glTexImage2D
+#define glPixelStorei __rglgen_glPixelStorei
+#define glDepthRange __rglgen_glDepthRange
+#define glBlendFunc __rglgen_glBlendFunc
+#define glClearColor __rglgen_glClearColor
+#define glStencilMask __rglgen_glStencilMask
+#define glFrontFace __rglgen_glFrontFace
+#define glDisable __rglgen_glDisable
+#define glStencilFunc __rglgen_glStencilFunc
+#define glStencilOp __rglgen_glStencilOp
+#define glDepthFunc __rglgen_glDepthFunc
+#define glPolygonOffset __rglgen_glPolygonOffset
+#define glDepthMask __rglgen_glDepthMask
+#define glColorMask __rglgen_glColorMask
+#define glCullFace __rglgen_glCullFace
+#define glGetIntegerv __rglgen_glGetIntegerv
+#define glViewport __rglgen_glViewport
+#define glBindTexture __rglgen_glBindTexture
+#define glScissor __rglgen_glScissor
+#define glEnable __rglgen_glEnable
+#define glClearDepth __rglgen_glClearDepth
+#define glGetError __rglgen_glGetError
+#define glClear __rglgen_glClear
+#define glPolygonMode __rglgen_glPolygonMode
+#define glTexSubImage2D __rglgen_glTexSubImage2D
+#define glLineWidth __rglgen_glLineWidth
+#define glReadPixels __rglgen_glReadPixels
+#define glDrawArrays __rglgen_glDrawArrays
+#define glDrawElements __rglgen_glDrawElements
+#define glDeleteTextures __rglgen_glDeleteTextures
+#define glGenTextures __rglgen_glGenTextures
+#define glFlush __rglgen_glFlush
+#define glGetString __rglgen_glGetString
+#define glGetTexParameteriv __rglgen_glGetTexParameteriv
+#define glGetFloatv __rglgen_glGetFloatv
 
 extern RGLSYMGLBLENDBARRIERKHRPROC __rglgen_glBlendBarrierKHR;
 extern RGLSYMGLDEBUGMESSAGECONTROLKHRPROC __rglgen_glDebugMessageControlKHR;
@@ -641,6 +715,43 @@ extern RGLSYMGLTEXTURESTORAGE3DEXTPROC __rglgen_glTextureStorage3DEXT;
 extern RGLSYMGLTEXTUREVIEWEXTPROC __rglgen_glTextureViewEXT;
 extern RGLSYMGLFRAMEBUFFERTEXTUREMULTIVIEWOVRPROC __rglgen_glFramebufferTextureMultiviewOVR;
 extern RGLSYMGLFRAMEBUFFERTEXTUREMULTISAMPLEMULTIVIEWOVRPROC __rglgen_glFramebufferTextureMultisampleMultiviewOVR;
+extern RGLSYMGLTEXPARAMETERIPROC __rglgen_glTexParameteri;
+extern RGLSYMGLREADBUFFERPROC __rglgen_glReadBuffer;
+extern RGLSYMGLTEXIMAGE2DPROC __rglgen_glTexImage2D;
+extern RGLSYMGLPIXELSTOREIPROC __rglgen_glPixelStorei;
+extern RGLSYMGLDEPTHRANGEPROC __rglgen_glDepthRange;
+extern RGLSYMGLBLENDFUNCPROC __rglgen_glBlendFunc;
+extern RGLSYMGLCLEARCOLORPROC __rglgen_glClearColor;
+extern RGLSYMGLSTENCILMASKPROC __rglgen_glStencilMask;
+extern RGLSYMGLFRONTFACEPROC __rglgen_glFrontFace;
+extern RGLSYMGLDISABLEPROC __rglgen_glDisable;
+extern RGLSYMGLSTENCILFUNCPROC __rglgen_glStencilFunc;
+extern RGLSYMGLSTENCILOPPROC __rglgen_glStencilOp;
+extern RGLSYMGLDEPTHFUNCPROC __rglgen_glDepthFunc;
+extern RGLSYMGLPOLYGONOFFSETPROC __rglgen_glPolygonOffset;
+extern RGLSYMGLDEPTHMASKPROC __rglgen_glDepthMask;
+extern RGLSYMGLCOLORMASKPROC __rglgen_glColorMask;
+extern RGLSYMGLCULLFACEPROC __rglgen_glCullFace;
+extern RGLSYMGLGETINTEGERVPROC __rglgen_glGetIntegerv;
+extern RGLSYMGLVIEWPORTPROC __rglgen_glViewport;
+extern RGLSYMGLBINDTEXTUREPROC __rglgen_glBindTexture;
+extern RGLSYMGLSCISSORPROC __rglgen_glScissor;
+extern RGLSYMGLENABLEPROC __rglgen_glEnable;
+extern RGLSYMGLCLEARDEPTHPROC __rglgen_glClearDepth;
+extern RGLSYMGLGETERRORPROC __rglgen_glGetError;
+extern RGLSYMGLCLEARPROC __rglgen_glClear;
+extern RGLSYMGLPOLYGONMODEPROC __rglgen_glPolygonMode;
+extern RGLSYMGLTEXSUBIMAGE2DPROC __rglgen_glTexSubImage2D;
+extern RGLSYMGLLINEWIDTHPROC __rglgen_glLineWidth;
+extern RGLSYMGLREADPIXELSPROC __rglgen_glReadPixels;
+extern RGLSYMGLDRAWARRAYSPROC __rglgen_glDrawArrays;
+extern RGLSYMGLDRAWELEMENTSPROC __rglgen_glDrawElements;
+extern RGLSYMGLDELETETEXTURESPROC __rglgen_glDeleteTextures;
+extern RGLSYMGLGENTEXTURESPROC __rglgen_glGenTextures;
+extern RGLSYMGLFLUSHPROC __rglgen_glFlush;
+extern RGLSYMGLGETSTRINGPROC __rglgen_glGetString;
+extern RGLSYMGLGETTEXPARAMETERIVPROC __rglgen_glGetTexParameteriv;
+extern PFNGLGETFLOATVPROC __rglgen_glGetFloatv;
 
 struct rglgen_sym_map { const char *sym; void *ptr; };
 extern const struct rglgen_sym_map rglgen_symbol_map[];

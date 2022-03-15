@@ -127,12 +127,8 @@ ifneq (,$(findstring unix,$(platform)))
 
    ifeq ($(FORCE_GLES),1)
       GLES = 1
-      GL_LIB := -lGLESv2
    else ifneq (,$(findstring gles,$(platform)))
       GLES = 1
-      GL_LIB := -lGLESv2
-   else ifeq ($(HAVE_OPENGL),1)
-      GL_LIB := -lGL
    endif
 
    # Raspberry Pi
@@ -141,10 +137,7 @@ ifneq (,$(findstring unix,$(platform)))
       WITH_DYNAREC=arm
       CPUFLAGS += -DARM_FIX
 
-      ifneq (,$(findstring mesa,$(platform)))
-         GL_LIB := -lGLESv2
-      else
-         GL_LIB := -L/opt/vc/lib -lbrcmGLESv2
+      ifeq (,$(findstring mesa,$(platform)))
          INCFLAGS += -I/opt/vc/include -I/opt/vc/include/interface/vcos -I/opt/vc/include/interface/vcos/pthreads
       endif
 
@@ -165,7 +158,6 @@ ifneq (,$(findstring unix,$(platform)))
          HAVE_NEON = 0
          HAVE_OPENGL = 0
          GLES = 0
-         GL_LIB :=
       else
          CPUFLAGS += -DARMv5_ONLY -DNO_ASM
       endif
@@ -176,7 +168,6 @@ ifneq (,$(findstring unix,$(platform)))
    ifneq (,$(findstring odroid,$(platform)))
       BOARD ?= $(shell cat /proc/cpuinfo | grep -i odroid | awk '{print $$3}')
       GLES = 1
-      GL_LIB := -lGLESv2
       CPUFLAGS += -DNO_ASM -DARM -D__arm__ -DARM_ASM -D__NEON_OPT -DNOSSE -DARM_FIX
       CPUFLAGS += -marm -mfloat-abi=hard
       HAVE_NEON = 1
@@ -202,7 +193,6 @@ ifneq (,$(findstring unix,$(platform)))
    # NESC, SNESC, C64 mini 
    ifneq (,$(findstring classic_armv7_a7, $(platform)))
       GLES = 1
-      GL_LIB := -lGLESv2
       HAVE_NEON = 1
       WITH_DYNAREC=arm
       ASFLAGS += -D__ARM_NEON__ -marm -mtune=cortex-a7 -mfpu=neon-vfpv4 -mfloat-abi=hard
@@ -228,7 +218,6 @@ ifneq (,$(findstring unix,$(platform)))
    # PlayStation Classic
    ifneq (,$(findstring classic_armv8_a35, $(platform)))
       GLES = 1
-      GL_LIB := -lGLESv2
       HAVE_NEON = 1
       WITH_DYNAREC=arm
       ASFLAGS += -D__ARM_NEON__ -marm -mtune=cortex-a35 -mfpu=neon-fp-armv8 -mfloat-abi=hard
@@ -280,7 +269,6 @@ else ifneq (,$(findstring imx6,$(platform)))
    LDFLAGS += -shared -Wl,--version-script=$(LIBRETRO_DIR)/link.T
    fpic = -fPIC
    GLES = 1
-   GL_LIB := -lGLESv2
    CPUFLAGS += -DNO_ASM
    PLATFORM_EXT := unix
    WITH_DYNAREC=arm
@@ -432,7 +420,6 @@ else ifneq (,$(findstring android,$(platform)))
    fpic = -fPIC
    TARGET := $(TARGET_NAME)_libretro_android.so
    LDFLAGS += -shared -Wl,--version-script=$(LIBRETRO_DIR)/link.T -Wl,--no-undefined -Wl,--warn-common
-   GL_LIB := -lGLESv2
 
    CC = arm-linux-androideabi-gcc
    CXX = arm-linux-androideabi-g++
@@ -451,7 +438,6 @@ else ifeq ($(platform), qnx)
    fpic = -fPIC
    TARGET := $(TARGET_NAME)_libretro_$(platform).so
    LDFLAGS += -shared -Wl,--version-script=$(LIBRETRO_DIR)/link.T -Wl,--no-undefined -Wl,--warn-common
-   GL_LIB := -lGLESv2
 
    CC = qcc -Vgcc_ntoarmv7le
    CC_AS = qcc -Vgcc_ntoarmv7le
@@ -540,7 +526,6 @@ else ifneq (,$(findstring windows_msvc2017,$(platform)))
 	CC_AS = nasm.exe
 	COREFLAGS += -DOS_WINDOWS -DUNICODE
 	ASFLAGS += -f win64
-	GL_LIB = opengl32.lib
 	HAVE_PARALLEL=0
 	HAVE_PARALLEL_RSP=0
 	HAVE_THR_AL=1
@@ -635,7 +620,6 @@ TARGET := $(TARGET_NAME)_libretro.dll
 PSS_STYLE :=2
 ASFLAGS += -f win32
 LDFLAGS += -DLL -MACHINE:X86
-GL_LIB = opengl32.lib
 HAVE_PARALLEL=0
 HAVE_PARALLEL_RSP=0
 WITH_DYNAREC=x86
@@ -663,7 +647,6 @@ TARGET := $(TARGET_NAME)_libretro.dll
 PSS_STYLE :=2
 ASFLAGS += -f win64
 LDFLAGS += -DLL -MACHINE:X64
-GL_LIB = opengl32.lib
 HAVE_PARALLEL=0
 HAVE_PARALLEL_RSP=0
 
@@ -698,7 +681,6 @@ INCFLAGS_PLATFORM = -I"$(WindowsSDKVersion)um" -I"$(WindowsSDKVersion)shared"
 TARGET := $(TARGET_NAME)_libretro.dll
 PSS_STYLE :=2
 LDFLAGS += -DLL -MACHINE:X64
-GL_LIB = opengl32.lib
 HAVE_PARALLEL=0
 HAVE_PARALLEL_RSP=0
 
@@ -733,7 +715,6 @@ INCFLAGS_PLATFORM = -I"$(WindowsSDKVersion)um" -I"$(WindowsSDKVersion)shared"
 TARGET := $(TARGET_NAME)_libretro.dll
 PSS_STYLE :=2
 LDFLAGS += -DLL -MACHINE:X86
-GL_LIB = opengl32.lib
 HAVE_PARALLEL=0
 HAVE_PARALLEL_RSP=0
 
@@ -763,7 +744,6 @@ TARGET := $(TARGET_NAME)_libretro.dll
 PSS_STYLE :=2
 ASFLAGS += -f win64
 LDFLAGS += -DLL -MACHINE:X64
-GL_LIB = opengl32.lib
 HAVE_PARALLEL=0
 HAVE_PARALLEL_RSP=0
 
@@ -793,7 +773,6 @@ TARGET := $(TARGET_NAME)_libretro.dll
 PSS_STYLE :=2
 ASFLAGS += -f win32
 LDFLAGS += -DLL -MACHINE:X86
-GL_LIB = opengl32.lib
 HAVE_PARALLEL=0
 HAVE_PARALLEL_RSP=0
 
@@ -821,7 +800,6 @@ ASFLAGS += -f win32
 LDFLAGS += -DLL -MACHINE:X86
 CFLAGS += -D_CRT_SECURE_NO_DEPRECATE
 LIBS =
-GL_LIB = opengl32.lib
 HAVE_PARALLEL=0
 HAVE_PARALLEL_RSP=0
 NOSSE=1
@@ -829,8 +807,7 @@ NOSSE=1
 # Windows
 else ifneq (,$(findstring win,$(platform)))
    TARGET := $(TARGET_NAME)_libretro.dll
-   LDFLAGS += -shared -static-libgcc -static-libstdc++ -Wl,--version-script=$(LIBRETRO_DIR)/link.T -lwinmm -lgdi32 
-   GL_LIB := -lopengl32
+   LDFLAGS += -shared -static-libgcc -static-libstdc++ -Wl,--version-script=$(LIBRETRO_DIR)/link.T -lwinmm -lgdi32
    PLATFORM_EXT := win32
    CC ?= gcc
    CXX ?= g++
@@ -1044,7 +1021,7 @@ $(TARGET): $(OBJECTS)
 ifeq ($(STATIC_LINKING), 1)
 	$(AR) rcs $@ $(OBJECTS)
 else
-	$(LD) $(LINKOUT)$@ $(OBJECTS) $(LDFLAGS) $(GL_LIB) $(LIBS)
+	$(LD) $(LINKOUT)$@ $(OBJECTS) $(LDFLAGS) $(LIBS)
 endif
 
 

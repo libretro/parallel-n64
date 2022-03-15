@@ -187,6 +187,13 @@ RETRO_BEGIN_DECLS
 #define glClientWaitSync            rglClientWaitSync
 #define glDrawElementsBaseVertex    rglDrawElementsBaseVertex
 #define glReadPixels                rglReadPixels
+#define glTexParameteri				rglTexParameteri
+#define glTexImage2D				rglTexImage2D
+#define glGetIntegerv				rglGetIntegerv
+#define glFlush						rglFlush
+#define glGetString					rglGetString
+#define glGetTexParameteriv			rglGetTexParameteriv
+#define glGetFloatv					rglGetFloatv
 
 void rglReadPixels(GLint x, GLint y, GLsizei width, GLsizei height, GLenum format, GLenum type, GLvoid * data);
 const GLubyte* rglGetStringi(GLenum name, GLuint index);
@@ -476,6 +483,17 @@ void rglUniform2iv(	GLint location,
  	const GLint *value);
 void rglProvokingVertex(	GLenum provokeMode);
 void rglDrawRangeElementsBaseVertex(GLenum mode, GLuint start, GLuint end, GLsizei count, GLenum type, const void *indices, GLint basevertex);
+void rglTexParameteri( GLenum target, GLenum pname, GLint param );
+void rglTexImage2D( GLenum target, GLint level,
+                    GLint internalFormat,
+                    GLsizei width, GLsizei height,
+                    GLint border, GLenum format, GLenum type,
+                    const GLvoid *pixels );
+void rglGetIntegerv (GLenum pname, GLint *data);
+void rglFlush(void);
+const GLubyte* rglGetString (GLenum name);
+void rglGetTexParameteriv (GLenum target, GLenum pname, GLint *params);
+void rglGetFloatv (GLenum pname, GLfloat *data);
 
 RETRO_END_DECLS
 

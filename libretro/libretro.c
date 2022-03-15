@@ -133,7 +133,7 @@ static enum rsp_plugin_type
                  rsp_plugin;
 uint32_t screen_width               = 640;
 uint32_t screen_height              = 480;
-float    screen_aspect_ratio        = 4.3;
+float    screen_aspect_ratio        = 4.0 / 3.0;
 uint32_t screen_pitch               = 0;
 uint32_t screen_aspectmodehint;
 uint32_t send_allist_to_hle_rsp     = 0;
@@ -1947,19 +1947,19 @@ void update_variables(bool startup)
       if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
       {
          if (!strcmp(var.value, "enabled")) {
-            screen_aspect_ratio = 16.0f / 9.0f;
+            screen_aspect_ratio = 16.0 / 9.0;
             screen_width = screen_height * screen_aspect_ratio;
             AspectRatio = 3; // Aspect::aAdjust
          } 
          else if (stretch)
          {
-            screen_aspect_ratio = 16.0f / 9.0f;
+            screen_aspect_ratio = 16.0 / 9.0;
             screen_width = screen_height * screen_aspect_ratio;
             AspectRatio = 2; // Aspect::a169
          }
          else
          {
-            screen_aspect_ratio = 4.0f / 3.0f;
+            screen_aspect_ratio = 4.0 / 3.0;
             AspectRatio = 1; // Aspect::a43
          }
       }
