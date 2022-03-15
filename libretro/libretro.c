@@ -133,6 +133,7 @@ static enum rsp_plugin_type
                  rsp_plugin;
 uint32_t screen_width               = 640;
 uint32_t screen_height              = 480;
+float    screen_aspect_ratio        = 4.3;
 uint32_t screen_pitch               = 0;
 uint32_t screen_aspectmodehint;
 uint32_t send_allist_to_hle_rsp     = 0;
@@ -906,7 +907,7 @@ void retro_get_system_av_info(struct retro_system_av_info *info)
    info->geometry.base_height  = screen_height;
    info->geometry.max_width    = screen_width;
    info->geometry.max_height   = screen_height;
-   info->geometry.aspect_ratio = 4.0 / 3.0;
+   info->geometry.aspect_ratio = screen_aspect_ratio;
    info->timing.fps = (region == SYSTEM_PAL) ? 50.0 : (60.13);                /* TODO: Actual timing  */
    info->timing.sample_rate = 44100.0;
 }
@@ -1939,14 +1940,28 @@ void update_variables(bool startup)
 
    bool stretch = environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value && 0 == strcmp(var.value, "widescreen");
 
-   var.key = CORE_NAME "-gliden64-viewport-hack";
-   var.value = NULL;
-   if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+   if (gfx_plugin == GFX_GLIDEN64)
    {
-      if (!strcmp(var.value, "enabled")) {
-         AspectRatio = 3; // Aspect::aAdjust
-      } else {
-         AspectRatio = stretch ? 2 : 1; // Aspect::a169 / Aspect::a43
+      var.key = CORE_NAME "-gliden64-viewport-hack";
+      var.value = NULL;
+      if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+      {
+         if (!strcmp(var.value, "enabled")) {
+            screen_aspect_ratio = 16.0f / 9.0f;
+            screen_width = screen_height * screen_aspect_ratio;
+            AspectRatio = 3; // Aspect::aAdjust
+         } 
+         else if (stretch)
+         {
+            screen_aspect_ratio = 16.0f / 9.0f;
+            screen_width = screen_height * screen_aspect_ratio;
+            AspectRatio = 2; // Aspect::a169
+         }
+         else
+         {
+            screen_aspect_ratio = 4.0f / 3.0f;
+            AspectRatio = 1; // Aspect::a43
+         }
       }
    }
 
