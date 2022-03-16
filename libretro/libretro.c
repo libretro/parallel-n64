@@ -187,6 +187,9 @@ uint32_t OverscanLeft = 0;
 uint32_t OverscanRight = 0;
 uint32_t OverscanBottom = 0;
 
+uint32_t LegacySm64ToolsHacks = 0;
+uint32_t RemoveFBBlackBars = 0;
+
 /* after the controller's CONTROL* member has been assigned we can update
  * them straight from here... */
 extern struct
@@ -1969,7 +1972,29 @@ void update_variables(bool startup)
    var.value = NULL;
    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
    {
-   EnableNativeResFactor = atoi(var.value);
+      EnableNativeResFactor = atoi(var.value);
+   }
+
+   var.key = CORE_NAME "-gliden64-LegacySm64ToolsHacks";
+   var.value = NULL;
+   if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+   {
+      LegacySm64ToolsHacks = !strcmp(var.value, "enabled");
+   }
+   else
+   {
+      LegacySm64ToolsHacks = 1;
+   }
+
+   var.key = CORE_NAME "-gliden64-RemoveFBBlackBars";
+   var.value = NULL;
+   if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+   {
+      RemoveFBBlackBars = !strcmp(var.value, "enabled");
+   }
+   else
+   {
+      RemoveFBBlackBars = 1;
    }
 }
 

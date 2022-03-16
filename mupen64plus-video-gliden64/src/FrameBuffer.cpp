@@ -1322,6 +1322,7 @@ void FrameBufferList::OverscanBuffer::draw(u32 _fullHeight, bool _PAL)
 	drawer.copyTexturedRect(blitParams);
 }
 
+extern "C" uint32_t RemoveFBBlackBars;
 void FrameBufferList::renderBuffer()
 {
 	if (g_debugger.isDebugMode()) {
@@ -1342,6 +1343,14 @@ void FrameBufferList::renderBuffer()
 		if (m_pCurrent != nullptr)
 			gfxContext.bindFramebuffer(bufferTarget::DRAW_FRAMEBUFFER, m_pCurrent->m_FBO);
 		return;
+	}
+
+	if (RemoveFBBlackBars)
+	{
+		rdpRes.vi_vres = 240;
+		rdpRes.vi_minhpass = 0;
+		rdpRes.vi_maxhpass = 0;
+		rdpRes.vi_v_start = 0;
 	}
 
 	FrameBuffer *pBuffer = findBuffer(rdpRes.vi_origin);
