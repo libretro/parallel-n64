@@ -285,21 +285,11 @@ else ifneq (,$(findstring osx,$(platform)))
    LDFLAGS += -stdlib=libc++
    fpic = -fPIC
 
-   HAVE_THR_AL=1
-   HAVE_PARALLEL=0
    PLATCFLAGS += -D__MACOSX__ -DOSX
    PLATFORM_EXT := unix
    PLATCFLAGS += -DHAVE_POSIX_MEMALIGN
 
-   # Disable hardware rendered graphics plugins for ARM for now
-   ifeq ($(shell uname -p),arm)
-	WITH_DYNAREC = 
-	CFLAGS += -DDONT_WANT_ARM_OPTIMIZATIONS
-	HAVE_OPENGL=0
-   else
-   # OpenGL is broken on non-ARM now, too
-   HAVE_OPENGL=0
-   endif
+	COREFLAGS += -DOS_MAC_OS_X -stdlib=libc++
 
    # Target Dynarec
    ifeq ($(ARCH), $(filter $(ARCH), ppc))
@@ -307,17 +297,11 @@ else ifneq (,$(findstring osx,$(platform)))
    endif
 
    ifeq ($(CROSS_COMPILE),1)
-		TARGET_RULE   = -target $(LIBRETRO_APPLE_PLATFORM) -isysroot $(LIBRETRO_APPLE_ISYSROOT)
+		TARGET_RULE   = -target $(LIBRETRO_APPLE_PLATFORM)
 		CFLAGS   += $(TARGET_RULE)
 		CPPFLAGS += $(TARGET_RULE)
 		CXXFLAGS += $(TARGET_RULE)
 		LDFLAGS  += $(TARGET_RULE)
-
-       ifeq ($(arch),arm)
-	HAVE_OPENGL=0
-	WITH_DYNAREC = 
-	CFLAGS += -DDONT_WANT_ARM_OPTIMIZATIONS
-       endif
    endif
 
 	CFLAGS  += $(ARCHFLAGS)
@@ -1031,6 +1015,12 @@ ifneq (,$(findstring msvc,$(platform)))
 else
 	$(CC_AS) $(ASFLAGS) -c $< $(OBJOUT)$@
 endif
+
+mupen64plus-video-gliden64/src/%.o: mupen64plus-video-gliden64/src/%.c
+	$(CC) -I$(VIDEODIR_GLIDEN64)/src -I$(VIDEODIR_GLIDEN64)/src/osal $(CPPFLAGS) $(CFLAGS) -c $< $(OBJOUT)$@
+
+mupen64plus-video-gliden64/src/%.o: mupen64plus-video-gliden64/src/%.cpp
+	$(CXX) -I$(VIDEODIR_GLIDEN64)/src -I$(VIDEODIR_GLIDEN64)/src/osal $(CPPFLAGS) $(CXXFLAGS) -c $< $(OBJOUT)$@
 
 %.o: %.c
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c $< $(OBJOUT)$@

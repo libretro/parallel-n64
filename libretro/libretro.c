@@ -723,6 +723,8 @@ static void emu_step_initialize(void)
    CoreDoCommand(M64CMD_EXECUTE, 0, NULL);
 }
 
+extern void gliden64RomOpen();
+extern void gliden64RomClosed();
 void reinit_gfx_plugin(void)
 {
     if(first_context_reset)

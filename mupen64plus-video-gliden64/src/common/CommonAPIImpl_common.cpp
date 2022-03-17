@@ -19,6 +19,8 @@
 #include "Graphics/Context.h"
 #include <DisplayWindow.h>
 
+extern "C" void Config_LoadConfig();
+
 PluginAPI & PluginAPI::get()
 {
 	static PluginAPI api;

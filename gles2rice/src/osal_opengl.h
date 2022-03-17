@@ -62,4 +62,10 @@
 #define glTexEnvi(x,y,z)
 #define glTexEnvfv(x,y,z)
 
+#ifdef __APPLE__
+#define GL_CLAMP                          0x2900
+#define GL_MAX_TEXTURE_UNITS 8
+#define GL_INTERPOLATE                    0x8575
+#endif
+
 #endif // OSAL_OPENGL_H

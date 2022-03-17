@@ -21,6 +21,21 @@
 #include <stddef.h>
 #include <OpenGL/gl3.h>
 
+// This is going to blow up so badly
+typedef void (APIENTRYP PFNGLBUFFERSTORAGEPROC) (GLenum target, GLsizeiptr size, const void *data, GLbitfield flags);
+typedef void (APIENTRYP PFNGLTEXTURESTORAGE2DPROC) (GLuint texture, GLsizei levels, GLenum internalformat, GLsizei width, GLsizei height);
+typedef void (APIENTRYP PFNGLTEXTURESUBIMAGE2DPROC) (GLuint texture, GLint level, GLint xoffset, GLint yoffset, GLsizei width, GLsizei height, GLenum format, GLenum type, const void *pixels);
+typedef void (APIENTRYP PFNGLTEXTUREPARAMETERIPROC) (GLuint texture, GLenum pname, GLint param);
+typedef void (APIENTRYP PFNGLTEXTUREPARAMETERFPROC) (GLuint texture, GLenum pname, GLfloat param);
+typedef void (APIENTRYP PFNGLCREATETEXTURESPROC) (GLenum target, GLsizei n, GLuint *textures);
+typedef void (APIENTRYP PFNGLCREATEFRAMEBUFFERSPROC) (GLsizei n, GLuint *framebuffers);
+typedef void (APIENTRYP PFNGLNAMEDFRAMEBUFFERTEXTUREPROC) (GLuint framebuffer, GLenum attachment, GLuint texture, GLint level);
+typedef void (APIENTRYP PFNGLTEXTUREBARRIERPROC) (void);
+typedef void (APIENTRYP PFNGLCREATEBUFFERSPROC) (GLsizei n, GLuint *buffers);
+
+#define GL_MAP_PERSISTENT_BIT             0x0040
+#define GL_MAP_COHERENT_BIT               0x0080
+#define GL_CLIENT_STORAGE_BIT             0x0200
 #elif defined(OS_IOS)
 #include <OpenGLES/ES3/gl.h>
 #include <OpenGLES/ES3/glext.h>
@@ -69,6 +84,9 @@ typedef void (APIENTRYP PFNGLBLENDCOLORPROC) (GLfloat red, GLfloat green, GLfloa
 #define CHECKED_GL_FUNCTION_WITH_RETURN(proc_name, ReturnType, ...) proc_name(__VA_ARGS__)
 #endif
 
+#define CHECKED_GL_FUNCTION_UNCHECKED(proc_name, ...) proc_name(__VA_ARGS__)
+#define CHECKED_GL_FUNCTION_UNCHECKED_WITH_RETURN(proc_name, ReturnType, ...) proc_name(__VA_ARGS__)
+
 #define IS_GL_FUNCTION_VALID(proc_name) g_##proc_name != nullptr
 #define GET_GL_FUNCTION(proc_name) g_##proc_name
 
@@ -87,8 +105,8 @@ typedef void (APIENTRYP PFNGLBLENDCOLORPROC) (GLfloat red, GLfloat green, GLfloa
 #define glBindTexture(...) CHECKED_GL_FUNCTION(g_glBindTexture, __VA_ARGS__)
 #define glTexImage2D(...) CHECKED_GL_FUNCTION(g_glTexImage2D, __VA_ARGS__)
 #define glTexParameteri(...) CHECKED_GL_FUNCTION(g_glTexParameteri, __VA_ARGS__)
-#define glGetIntegerv(...) CHECKED_GL_FUNCTION(g_glGetIntegerv, __VA_ARGS__)
-#define glGetString(...) CHECKED_GL_FUNCTION_WITH_RETURN(g_glGetString, const GLubyte*, __VA_ARGS__)
+#define glGetIntegerv(...) CHECKED_GL_FUNCTION_UNCHECKED(g_glGetIntegerv, __VA_ARGS__)
+#define glGetString(...) CHECKED_GL_FUNCTION_UNCHECKED_WITH_RETURN(g_glGetString, const GLubyte*, __VA_ARGS__)
 #define glReadPixels(...) CHECKED_GL_FUNCTION(g_glReadPixels, __VA_ARGS__)
 #define glTexSubImage2D(...) CHECKED_GL_FUNCTION(g_glTexSubImage2D, __VA_ARGS__)
 #define glDrawArrays(...) CHECKED_GL_FUNCTION(g_glDrawArrays, __VA_ARGS__)

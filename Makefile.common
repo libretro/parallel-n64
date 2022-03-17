@@ -40,8 +40,6 @@ INCFLAGS += \
 	-I$(CORE_DIR)/src \
 	-I$(CORE_DIR)/src/api \
 	-I$(ROOT_DIR)/include \
-	-I$(VIDEODIR_GLIDEN64)/src \
-	-I$(VIDEODIR_GLIDEN64)/src/osal \
 	-I$(AUDIO_LIBRETRO_DIR) \
 	-I$(LIBRETRO_COMM_DIR)/include \
 	-I$(LIBRETRO_DIR)

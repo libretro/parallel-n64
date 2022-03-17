@@ -3,6 +3,12 @@
  * For conditions of distribution and use, see copyright notice in zlib.h
  */
 
+#ifdef __APPLE__
+#include <sys/types.h>
+#include <sys/uio.h>
+#include <unistd.h>
+#endif
+
 #ifdef _LARGEFILE64_SOURCE
 #  ifndef _LARGEFILE_SOURCE
 #    define _LARGEFILE_SOURCE 1
