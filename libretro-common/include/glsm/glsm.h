@@ -124,6 +124,7 @@ typedef struct glsm_ctx_params
    retro_hw_context_reset_t context_destroy;
    retro_environment_t environ_cb;
    bool stencil;
+   bool core;
    unsigned major;
    unsigned minor;
    enum retro_hw_context_type context_type;

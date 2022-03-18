@@ -3370,17 +3370,22 @@ static bool glsm_state_ctx_init(glsm_ctx_params_t *params)
    hw_render.context_type       = RETRO_HW_CONTEXT_OPENGLES2;
 #endif
 #else
-#if defined(CORE) && !defined(HAVE_LIBNX)
-   hw_render.context_type       = RETRO_HW_CONTEXT_OPENGL_CORE;
-   hw_render.version_major      = 3;
-   hw_render.version_minor      = 3;
-#else
-   hw_render.context_type       = RETRO_HW_CONTEXT_OPENGL;
-   if (params->major != 0)
-      hw_render.version_major   = params->major;
-   if (params->minor != 0)
-      hw_render.version_minor   = params->minor;
-#endif // defined(CORE) && !defined(HAVE_LIBNX)
+#if !defined(HAVE_LIBNX)
+   if (params->core)
+   {
+      hw_render.context_type       = RETRO_HW_CONTEXT_OPENGL_CORE;
+      hw_render.version_major      = params->major;
+      hw_render.version_minor      = params->minor;
+   }
+   else
+#endif // HAVE_LIBNX
+   {
+      hw_render.context_type       = RETRO_HW_CONTEXT_OPENGL;
+      if (params->major != 0)
+         hw_render.version_major   = params->major;
+      if (params->minor != 0)
+         hw_render.version_minor   = params->minor;
+   }
 #endif
 
    hw_render.context_reset      = params->context_reset;

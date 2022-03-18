@@ -746,6 +746,7 @@ void reinit_gfx_plugin(void)
 #ifdef HAVE_GLN64
           gles2n64_reset();
 #endif
+          break;
        case GFX_GLIDEN64:
 #ifdef HAVE_GLIDEN64
           gliden64RomClosed();
@@ -996,7 +997,7 @@ static bool context_framebuffer_lock(void *data)
    return true;
 }
 
-static bool retro_init_gl(void)
+static bool retro_init_gl(bool core)
 {
 #if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
    glsm_ctx_params_t params     = {0};
@@ -1005,6 +1006,22 @@ static bool retro_init_gl(void)
    params.context_destroy       = context_destroy;
    params.environ_cb            = environ_cb;
    params.stencil               = false;
+#ifndef HAVE_OPENGLES
+   if (core)
+   {
+      params.core               = core;
+      if (EnableFBEmulation)
+      {
+         params.major = 4;
+         params.minor = 3;
+      }
+      else
+      {
+         params.major = 3;
+         params.minor = 3;
+      }
+   }
+#endif
 
    params.framebuffer_lock      = context_framebuffer_lock;
 
@@ -2032,7 +2049,7 @@ bool retro_load_game(const struct retro_game_info *game)
       }
       else
       {
-         retro_init_gl();
+         retro_init_gl(gfx_plugin == GFX_GLIDEN64 /*core*/);
          gl_inited = true;
       }
    }
