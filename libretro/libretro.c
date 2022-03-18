@@ -2044,30 +2044,24 @@ bool retro_load_game(const struct retro_game_info *game)
    {
       if (gfx_plugin == GFX_PARALLEL)
       {
-         retro_init_vulkan();
-         vulkan_inited = true;
+         vulkan_inited = retro_init_vulkan();
       }
       else
       {
-         retro_init_gl(gfx_plugin == GFX_GLIDEN64 /*core*/);
+         vulkan_inited = false;
+      }
+
+      if (!vulkan_inited)
+      {
+         retro_init_gl(/*core*/ (gfx_plugin == GFX_GLIDEN64)
+                             || (gfx_plugin == GFX_PARALLEL));
          gl_inited = true;
       }
    }
 
    if (vulkan_inited)
    {
-      switch (gfx_plugin)
-      {
-         case GFX_GLIDE64:
-         case GFX_GLN64:
-         case GFX_GLIDEN64:
-         case GFX_RICE:
-            gfx_plugin = GFX_PARALLEL;
-            break;
-         default:
-            break;
-      }
-
+      // success condition - vulkan inited which means we are parallel
       switch (rsp_plugin)
       {
          case RSP_HLE:
@@ -2083,10 +2077,11 @@ bool retro_load_game(const struct retro_game_info *game)
    }
    else if (gl_inited)
    {
+      // we are not vulkan, defer to opengl - it is assumed it always exists, otherwise fail
       switch (gfx_plugin)
       {
          case GFX_PARALLEL:
-            gfx_plugin = GFX_GLIDE64;
+            gfx_plugin = GFX_GLIDEN64;
             break;
          default:
             break;
