@@ -187,6 +187,7 @@ uint32_t OverscanLeft = 0;
 uint32_t OverscanRight = 0;
 uint32_t OverscanBottom = 0;
 
+uint32_t AllowUnalignedDMA = 1;
 uint32_t LegacySm64ToolsHacks = 0;
 uint32_t RemoveFBBlackBars = 0;
 
@@ -1694,6 +1695,13 @@ void update_variables(bool startup)
          else
             pad_pak_types[3] = p4_pak;
       }
+   }
+   
+   var.key = CORE_NAME "-allow-unaligned-dma";
+   var.value = NULL;
+   if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+   {
+      AllowUnalignedDMA = !strcmp(var.value, "False") ? 0 : 1;
    }
 
    var.key = CORE_NAME "-gliden64-BilinearMode";

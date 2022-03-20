@@ -871,6 +871,20 @@ struct retro_core_option_v2_definition option_defs_us[] = {
         "disabled"
     },
     {
+        CORE_NAME "-allow-unaligned-dma",
+        "Unaligned DMA Behaviour",
+        NULL,
+        "'Allow Unaligned' causes minor issues on Taz Express; 'Force Alignment' is accurate to N64, but breaks some romhacks.",
+        NULL,
+        NULL,
+        {
+            {"True", "Allow Unaligned"},
+            {"False", "Force Alignment"},
+            { NULL, NULL }
+        },
+        "True"
+    },
+    {
         CORE_NAME "-gliden64-viewport-hack",
         "Widescreen Hack",
         NULL,
