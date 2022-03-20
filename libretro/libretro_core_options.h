@@ -1611,6 +1611,24 @@ struct retro_core_option_v2_definition option_defs_us[] = {
         },
         "enabled"
     },
+    {
+        CORE_NAME "-FallbackSaveType",
+        "Save type for unknown ROMs",
+        NULL,
+        "Sets the save type used by unknown ROMs",
+        NULL,
+        NULL,
+        {
+            {"EEPROM_4KB", "EEPROM (4kB)"},
+            {"EEPROM_16KB", "EEPROM (16kB)"},
+            {"SRAM", "SRAM"},
+            {"FLASH_RAM", "FlashRAM"},
+            {"CONTROLLER_PACK", "MemPak"},
+            {"NONE", "Guess"},
+            { NULL, NULL }
+        },
+        "NONE"
+    },
     { NULL, NULL, NULL, NULL, NULL, NULL, {{0}}, NULL },
 };
 

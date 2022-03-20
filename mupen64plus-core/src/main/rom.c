@@ -62,6 +62,7 @@ unsigned alternate_vi_timing = 0;
 int           g_vi_refresh_rate = DEFAULT_COUNT_PER_SCANLINE;
 
 extern bool frame_dupe;
+extern uint32_t FallbackSaveType;
 
 m64p_rom_header   ROM_HEADER;
 rom_params        ROM_PARAMS;
@@ -327,7 +328,14 @@ m64p_error open_rom(const unsigned char* romimage, unsigned int size)
    {
       strcpy(ROM_SETTINGS.goodname, ROM_PARAMS.headername);
       strcat(ROM_SETTINGS.goodname, " (unknown rom)");
-      ROM_SETTINGS.savetype = NONE;
+      switch( FallbackSaveType ) {
+         case 0: ROM_SETTINGS.savetype = EEPROM_4KB; break;
+         case 1: ROM_SETTINGS.savetype = EEPROM_16KB; break;
+         case 2: ROM_SETTINGS.savetype = SRAM; break;
+         case 3: ROM_SETTINGS.savetype = FLASH_RAM; break;
+         case 4: ROM_SETTINGS.savetype = CONTROLLER_PACK; break;
+         default: ROM_SETTINGS.savetype = NONE; break;
+      }
       ROM_SETTINGS.sidmaduration = 0x900;
       ROM_SETTINGS.status = 0;
       ROM_SETTINGS.players = 0;
