@@ -77,8 +77,8 @@ struct retro_core_option_v2_definition option_defs_us[] = {
         NULL,
         NULL,
         {
-            {"cached_interpreter", "Angrylion"},
-            {"pure_interpreter", "ParaLLEl-RDP"},
+            {"cached_interpreter", "Cached Interpreter"},
+            {"pure_interpreter", "Pure Interpreter"},
 #ifdef DYNAREC
             {"dynamic_recompiler", "Dynamic Recompiler"},
 #endif
