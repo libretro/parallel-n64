@@ -353,6 +353,11 @@ m64p_error open_rom(const unsigned char* romimage, unsigned int size)
       case 4: ROM_SETTINGS.savetype = FLASH_RAM; break;
       case 5: ROM_SETTINGS.savetype = CONTROLLER_PACK; break;
       case 6: ROM_SETTINGS.savetype = NONE; break;
+      default:
+      {
+         if (!patch_applied)
+            ROM_SETTINGS.savetype = NONE;
+      }
    }
 
    if (!patch_applied)
