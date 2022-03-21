@@ -1052,6 +1052,42 @@ const struct rglgen_sym_map rglgen_symbol_map[] = {
     SYM(ImageTransformParameterfvHP),
     SYM(GetImageTransformParameterivHP),
     SYM(GetImageTransformParameterfvHP),
+    SYM(TexParameteri),
+    SYM(TexImage2D),
+    SYM(PixelStorei),
+    SYM(DepthRange),
+    SYM(BlendFunc),
+    SYM(ClearColor),
+    SYM(StencilMask),
+    SYM(FrontFace),
+    SYM(Disable),
+    SYM(StencilFunc),
+    SYM(StencilOp),
+    SYM(DepthFunc),
+    SYM(PolygonOffset),
+    SYM(DepthMask),
+    SYM(ColorMask),
+    SYM(CullFace),
+    SYM(GetIntegerv),
+    SYM(Viewport),
+    SYM(BindTexture),
+    SYM(Scissor),
+    SYM(Enable),
+    SYM(ClearDepth),
+    SYM(GetError),
+    SYM(Clear),
+    SYM(PolygonMode),
+    SYM(TexSubImage2D),
+    SYM(LineWidth),
+    SYM(ReadPixels),
+    SYM(DrawArrays),
+    SYM(DrawElements),
+    SYM(DeleteTextures),
+    SYM(GenTextures),
+    SYM(Flush),
+    SYM(GetString),
+    SYM(GetTexParameteriv),
+    SYM(GetFloatv),
 
     { NULL, NULL },
 };
@@ -2080,4 +2116,40 @@ RGLSYMGLIMAGETRANSFORMPARAMETERIVHPPROC __rglgen_glImageTransformParameterivHP;
 RGLSYMGLIMAGETRANSFORMPARAMETERFVHPPROC __rglgen_glImageTransformParameterfvHP;
 RGLSYMGLGETIMAGETRANSFORMPARAMETERIVHPPROC __rglgen_glGetImageTransformParameterivHP;
 RGLSYMGLGETIMAGETRANSFORMPARAMETERFVHPPROC __rglgen_glGetImageTransformParameterfvHP;
-
+RGLSYMGLTEXPARAMETERIPROC __rglgen_glTexParameteri;
+RGLSYMGLREADBUFFERPROC __rglgen_glReadBuffer;
+RGLSYMGLTEXIMAGE2DPROC __rglgen_glTexImage2D;
+RGLSYMGLPIXELSTOREIPROC __rglgen_glPixelStorei;
+RGLSYMGLDEPTHRANGEPROC __rglgen_glDepthRange;
+RGLSYMGLBLENDFUNCPROC __rglgen_glBlendFunc;
+RGLSYMGLCLEARCOLORPROC __rglgen_glClearColor;
+RGLSYMGLSTENCILMASKPROC __rglgen_glStencilMask;
+RGLSYMGLFRONTFACEPROC __rglgen_glFrontFace;
+RGLSYMGLDISABLEPROC __rglgen_glDisable;
+RGLSYMGLSTENCILFUNCPROC __rglgen_glStencilFunc;
+RGLSYMGLSTENCILOPPROC __rglgen_glStencilOp;
+RGLSYMGLDEPTHFUNCPROC __rglgen_glDepthFunc;
+RGLSYMGLPOLYGONOFFSETPROC __rglgen_glPolygonOffset;
+RGLSYMGLDEPTHMASKPROC __rglgen_glDepthMask;
+RGLSYMGLCOLORMASKPROC __rglgen_glColorMask;
+RGLSYMGLCULLFACEPROC __rglgen_glCullFace;
+RGLSYMGLGETINTEGERVPROC __rglgen_glGetIntegerv;
+RGLSYMGLVIEWPORTPROC __rglgen_glViewport;
+RGLSYMGLBINDTEXTUREPROC __rglgen_glBindTexture;
+RGLSYMGLSCISSORPROC __rglgen_glScissor;
+RGLSYMGLENABLEPROC __rglgen_glEnable;
+RGLSYMGLCLEARDEPTHPROC __rglgen_glClearDepth;
+RGLSYMGLGETERRORPROC __rglgen_glGetError;
+RGLSYMGLCLEARPROC __rglgen_glClear;
+RGLSYMGLPOLYGONMODEPROC __rglgen_glPolygonMode; 
+RGLSYMGLTEXSUBIMAGE2DPROC __rglgen_glTexSubImage2D;
+RGLSYMGLLINEWIDTHPROC __rglgen_glLineWidth;
+RGLSYMGLREADPIXELSPROC __rglgen_glReadPixels;
+RGLSYMGLDRAWARRAYSPROC __rglgen_glDrawArrays;
+RGLSYMGLDRAWELEMENTSPROC __rglgen_glDrawElements;
+RGLSYMGLDELETETEXTURESPROC __rglgen_glDeleteTextures;
+RGLSYMGLGENTEXTURESPROC __rglgen_glGenTextures;
+RGLSYMGLFLUSHPROC __rglgen_glFlush;
+RGLSYMGLGETSTRINGPROC __rglgen_glGetString;
+RGLSYMGLGETTEXPARAMETERIVPROC __rglgen_glGetTexParameteriv;
+PFNGLGETFLOATVPROC __rglgen_glGetFloatv;

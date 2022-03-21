@@ -102,6 +102,9 @@ DEFINE_GFX(rice);
 #ifdef HAVE_GLN64
 DEFINE_GFX(gln64);
 #endif
+#ifdef HAVE_GLIDEN64
+DEFINE_GFX(gliden64);
+#endif
 #ifdef HAVE_GLIDE64
 DEFINE_GFX(glide64);
 #endif
@@ -282,13 +285,18 @@ void plugin_connect_all(enum gfx_plugin_type gfx_plugin, enum rsp_plugin_type rs
 #endif
          break;
       case GFX_RICE:
-#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
+#ifdef HAVE_RICE
          gfx = gfx_rice;
          break;
 #endif
       case GFX_GLN64:
-#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
+#ifdef HAVE_GLN64
          gfx = gfx_gln64;
+         break;
+#endif
+      case GFX_GLIDEN64:
+#ifdef HAVE_GLIDEN64
+         gfx = gfx_gliden64;
          break;
 #endif
       default:

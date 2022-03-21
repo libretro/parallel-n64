@@ -24,6 +24,13 @@
 #include "glitchmain.h"
 #include "uthash.h"
 
+#ifdef __APPLE__
+#define GL_LUMINANCE8 0x8040
+#define GL_INTENSITY8 0x804b
+#define GL_LUMINANCE 0x1909
+#define GL_LUMINANCE8_ALPHA8 0x8045
+#endif
+
 /* Napalm extensions to GrTextureFormat_t */
 #define GR_TEXFMT_ARGB_8888               0x12
 #define GR_TEXFMT_YUYV_422                0x13
