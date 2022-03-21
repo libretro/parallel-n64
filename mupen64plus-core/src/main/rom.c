@@ -324,6 +324,32 @@ m64p_error open_rom(const unsigned char* romimage, unsigned int size)
       }
    }
 
+   // Cartridge ID is 'ED'
+   if (17477 == ROM_HEADER.Cartridge_ID)
+   {
+      if (0x32 == ROM_HEADER.mask_ROM_version)
+      {
+         ROM_SETTINGS.savetype = SRAM;
+         patch_applied = 1;
+      }
+      if (0x22 == ROM_HEADER.mask_ROM_version)
+      {
+         ROM_SETTINGS.savetype = EEPROM_16KB;
+         patch_applied = 1;
+      }
+      if (0x42 == ROM_HEADER.mask_ROM_version)
+      {
+         // SRAM768K is not supported - neither does HackerSM64
+         // ROM_SETTINGS.savetype = SRAM;
+         patch_applied = 1;
+      }
+      if (0x52 == ROM_HEADER.mask_ROM_version)
+      {
+         ROM_SETTINGS.savetype = FLASH_RAM;
+         patch_applied = 1;
+      }
+   }
+
    if (!patch_applied)
    {
       strcpy(ROM_SETTINGS.goodname, ROM_PARAMS.headername);
@@ -334,7 +360,7 @@ m64p_error open_rom(const unsigned char* romimage, unsigned int size)
          case 2: ROM_SETTINGS.savetype = SRAM; break;
          case 3: ROM_SETTINGS.savetype = FLASH_RAM; break;
          case 4: ROM_SETTINGS.savetype = CONTROLLER_PACK; break;
-         default: ROM_SETTINGS.savetype = NONE; break;
+         default: ROM_SETTINGS.savetype = EEPROM_4KB; break;
       }
       ROM_SETTINGS.sidmaduration = 0x900;
       ROM_SETTINGS.status = 0;
