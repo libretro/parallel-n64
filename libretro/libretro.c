@@ -189,7 +189,7 @@ uint32_t OverscanBottom = 0;
 
 uint32_t LegacySm64ToolsHacks = 0;
 uint32_t RemoveFBBlackBars = 0;
-uint32_t FallbackSaveType = 0;
+uint32_t OverrideSaveType = 0;
 
 /* after the controller's CONTROL* member has been assigned we can update
  * them straight from here... */
@@ -2017,29 +2017,29 @@ void update_variables(bool startup)
       RemoveFBBlackBars = 1;
    }
    
-   var.key = CORE_NAME "-FallbackSaveType";
+   var.key = CORE_NAME "-OverrideSaveType";
    var.value = NULL;
    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
    {
       if( !strcmp(var.value, "EEPROM_4KB") ) {
-         FallbackSaveType = 1;
+         OverrideSaveType = 1;
       } else if( !strcmp(var.value, "EEPROM_16KB") ) {
-         FallbackSaveType = 2;
+         OverrideSaveType = 2;
       } else if( !strcmp(var.value, "SRAM") ) {
-         FallbackSaveType = 3;
+         OverrideSaveType = 3;
       } else if( !strcmp(var.value, "FLASH_RAM") ) {
-         FallbackSaveType = 4;
+         OverrideSaveType = 4;
       } else if( !strcmp(var.value, "CONTROLLER_PACK") ) {
-         FallbackSaveType = 5;
+         OverrideSaveType = 5;
       } else if( !strcmp(var.value, "NONE") ) {
-         FallbackSaveType = 6;
+         OverrideSaveType = 6;
       } else {
-         FallbackSaveType = 0;
+         OverrideSaveType = 0;
       }
    }
    else
    {
-      FallbackSaveType = 5;
+      OverrideSaveType = 5;
    }
 }
 

@@ -62,7 +62,7 @@ unsigned alternate_vi_timing = 0;
 int           g_vi_refresh_rate = DEFAULT_COUNT_PER_SCANLINE;
 
 extern bool frame_dupe;
-extern uint32_t FallbackSaveType;
+extern uint32_t OverrideSaveType;
 
 m64p_rom_header   ROM_HEADER;
 rom_params        ROM_PARAMS;
@@ -346,7 +346,7 @@ m64p_error open_rom(const unsigned char* romimage, unsigned int size)
       }
    }
 
-   switch( FallbackSaveType ) {
+   switch( OverrideSaveType ) {
       case 1: ROM_SETTINGS.savetype = EEPROM_4KB; break;
       case 2: ROM_SETTINGS.savetype = EEPROM_16KB; break;
       case 3: ROM_SETTINGS.savetype = SRAM; break;

@@ -1612,7 +1612,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
         "enabled"
     },
     {
-        CORE_NAME "-FallbackSaveType",
+        CORE_NAME "-OverrideSaveType",
         "Save type for unknown ROMs",
         NULL,
         "Sets the save type used by unknown ROMs",
