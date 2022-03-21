@@ -1619,6 +1619,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
         NULL,
         NULL,
         {
+            {"IGNORE", "Do not force savetype"},
             {"EEPROM_4KB", "EEPROM (4kB)"},
             {"EEPROM_16KB", "EEPROM (16kB)"},
             {"SRAM", "SRAM"},
