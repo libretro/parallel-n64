@@ -106,11 +106,11 @@ void pifbootrom_hle_execute(struct device *dev)
       memcpy((unsigned char*)dev->sp.mem+0x40, dev->pi.cart_rom.rom+0x40, 0xfc0);
     }
 
-    reg[19] = rom_type;     /* s3 */
-    reg[20] = tv_type;      /* s4 */
-    reg[21] = reset_type;   /* s5 */
-    reg[22] = dev->si.pif.cic.seed;/* s6 */
-    reg[23] = s7;           /* s7 */
+    mupencorereg[19] = rom_type;     /* s3 */
+    mupencorereg[20] = tv_type;      /* s4 */
+    mupencorereg[21] = reset_type;   /* s5 */
+    mupencorereg[22] = dev->si.pif.cic.seed;/* s6 */
+    mupencorereg[23] = s7;           /* s7 */
 
     /* required by CIC x105 */
     dev->sp.mem[0x1000/4] = 0x3c0dbfc0;
@@ -123,9 +123,9 @@ void pifbootrom_hle_execute(struct device *dev)
     dev->sp.mem[0x101c/4] = 0x3c0bb000;
 
     /* required by CIC x105 */
-    reg[11] = INT64_C(0xffffffffa4000040); /* t3 */
-    reg[29] = INT64_C(0xffffffffa4001ff0); /* sp */
-    reg[31] = INT64_C(0xffffffffa4001550); /* ra */
+    mupencorereg[11] = INT64_C(0xffffffffa4000040); /* t3 */
+    mupencorereg[29] = INT64_C(0xffffffffa4001ff0); /* sp */
+    mupencorereg[31] = INT64_C(0xffffffffa4001550); /* ra */
 
     /* ready to execute IPL3 */
 }

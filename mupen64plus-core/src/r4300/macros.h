@@ -26,37 +26,37 @@
 #define SE16(a) ((int64_t) ((int16_t) (a)))
 #define SE32(a) ((int64_t) ((int32_t) (a)))
 
-#define rrt *PC->f.r.rt
-#define rrd *PC->f.r.rd
-#define rfs PC->f.r.nrd
-#define rrs *PC->f.r.rs
-#define rsa PC->f.r.sa
-#define irt *PC->f.i.rt
-#define ioffset PC->f.i.immediate
-#define iimmediate PC->f.i.immediate
-#define irs *PC->f.i.rs
-#define ibase *PC->f.i.rs
-#define jinst_index PC->f.j.inst_index
-#define lfbase PC->f.lf.base
-#define lfft PC->f.lf.ft
-#define lfoffset PC->f.lf.offset
-#define cfft PC->f.cf.ft
-#define cffs PC->f.cf.fs
-#define cffd PC->f.cf.fd
+#define rrt *mupencorePC->f.r.rt
+#define rrd *mupencorePC->f.r.rd
+#define rfs mupencorePC->f.r.nrd
+#define rrs *mupencorePC->f.r.rs
+#define rsa mupencorePC->f.r.sa
+#define irt *mupencorePC->f.i.rt
+#define ioffset mupencorePC->f.i.immediate
+#define iimmediate mupencorePC->f.i.immediate
+#define irs *mupencorePC->f.i.rs
+#define ibase *mupencorePC->f.i.rs
+#define jinst_index mupencorePC->f.j.inst_index
+#define lfbase mupencorePC->f.lf.base
+#define lfft mupencorePC->f.lf.ft
+#define lfoffset mupencorePC->f.lf.offset
+#define cfft mupencorePC->f.cf.ft
+#define cffs mupencorePC->f.cf.fs
+#define cffd mupencorePC->f.cf.fd
 
 /* 32 bits macros */
 #ifdef MSB_FIRST
-#define rrt32 *((int32_t*) PC->f.r.rt + 1)
-#define rrd32 *((int32_t*) PC->f.r.rd + 1)
-#define rrs32 *((int32_t*) PC->f.r.rs + 1)
-#define irs32 *((int32_t*) PC->f.i.rs + 1)
-#define irt32 *((int32_t*) PC->f.i.rt + 1)
+#define rrt32 *((int32_t*) mupencorePC->f.r.rt + 1)
+#define rrd32 *((int32_t*) mupencorePC->f.r.rd + 1)
+#define rrs32 *((int32_t*) mupencorePC->f.r.rs + 1)
+#define irs32 *((int32_t*) mupencorePC->f.i.rs + 1)
+#define irt32 *((int32_t*) mupencorePC->f.i.rt + 1)
 #else
-#define rrt32 *((int32_t*) PC->f.r.rt)
-#define rrd32 *((int32_t*) PC->f.r.rd)
-#define rrs32 *((int32_t*) PC->f.r.rs)
-#define irs32 *((int32_t*) PC->f.i.rs)
-#define irt32 *((int32_t*) PC->f.i.rt)
+#define rrt32 *((int32_t*) mupencorePC->f.r.rt)
+#define rrd32 *((int32_t*) mupencorePC->f.r.rd)
+#define rrs32 *((int32_t*) mupencorePC->f.r.rs)
+#define irs32 *((int32_t*) mupencorePC->f.i.rs)
+#define irt32 *((int32_t*) mupencorePC->f.i.rt)
 #endif
 
 #endif /* M64P_R4300_MACROS_H */

@@ -34,10 +34,12 @@
 #endif
 
 /* global variable */
+#if !defined(__APPLE__) || !defined(__arm64__)
 #if NEW_DYNAREC < NEW_DYNAREC_ARM
 /* ARM backend requires a different memory layout
  * and therefore manually allocate that variable */
 uint32_t g_cp0_regs[CP0_REGS_COUNT];
+#endif
 #endif
 
 void init_cp0(unsigned int _count_per_op)
@@ -90,8 +92,8 @@ void cp0_update_count(void)
    if (r4300emu != CORE_DYNAREC)
    {
 #endif
-      g_cp0_regs[CP0_COUNT_REG] += ((PC->addr - last_addr) >> 2) * count_per_op;
-      last_addr = PC->addr;
+      g_cp0_regs[CP0_COUNT_REG] += ((mupencorePC->addr - last_addr) >> 2) * count_per_op;
+      last_addr = mupencorePC->addr;
 #ifdef NEW_DYNAREC
    }
 #endif

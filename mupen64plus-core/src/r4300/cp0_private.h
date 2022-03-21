@@ -24,7 +24,12 @@
 
 #include "cp0.h"
 
+#if !defined(__APPLE__) || !defined(__arm64__)
 extern uint32_t g_cp0_regs[CP0_REGS_COUNT];
+#else
+#include "new_dynarec/arm64/apple_memory_layout.h"
+#define g_cp0_regs (RECOMPILER_MEMORY->rml_g_cp0_regs)
+#endif
 
 int check_cop1_unusable(void);
 

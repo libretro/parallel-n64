@@ -51,10 +51,12 @@ unsigned int r4300emu = 0;
 unsigned int count_per_op = COUNT_PER_OP_DEFAULT;
 unsigned int llbit;
 int stop;
+#if !defined(__APPLE__) || !defined(__arm64__)
 #if NEW_DYNAREC < NEW_DYNAREC_ARM
 int64_t reg[32], hi, lo;
 uint32_t next_interrupt;
 struct precomp_instr *PC;
+#endif
 #endif
 long long int local_rs;
 uint32_t skip_jump = 0;
@@ -66,7 +68,7 @@ cpu_instruction_table current_instruction_table;
 void generic_jump_to(uint32_t address)
 {
    if (r4300emu == CORE_PURE_INTERPRETER)
-      PC->addr = address;
+      mupencorePC = address;
    else {
 #if NEW_DYNAREC
       if (r4300emu == CORE_DYNAREC)
@@ -129,7 +131,7 @@ void r4300_init(void)
         if (!actual->block)
             return;
 
-        last_addr = PC->addr;
+        last_addr = mupencorePC->addr;
     }
 }
 
@@ -149,7 +151,7 @@ void r4300_execute(void)
 #else
         dyna_start(dynarec_setup_code);
         if (stop)
-            PC++;
+            mupencorePC++;
 #endif
         if (stop)
             free_blocks();
@@ -173,6 +175,6 @@ void r4300_step(void)
 {
    while (!stop && !retro_stop_stepping())
    {
-      PC->ops();
+      mupencorePC->ops();
    }
 }

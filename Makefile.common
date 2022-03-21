@@ -245,6 +245,10 @@ endif
 
 ifeq ($(WITH_DYNAREC), aarch64)
 		SOURCES_C += $(CORE_DIR)/src/r4300/new_dynarec/new_dynarec_64.c
+		SOURCES_C += $(CORE_DIR)/src/r4300/new_dynarec/mips_dasm.c
+		SOURCES_C += $(CORE_DIR)/src/r4300/new_dynarec/arm64/apple_jit_protect.c
+
+		SOURCES_CXX += $(CORE_DIR)/src/r4300/new_dynarec/arm64/trampoline_arm64.cpp
 
 		SOURCES_ASM += \
 			$(CORE_DIR)/src/r4300/new_dynarec/arm64/linkage_$(WITH_DYNAREC).S

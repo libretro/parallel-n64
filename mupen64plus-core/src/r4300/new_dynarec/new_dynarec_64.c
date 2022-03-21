@@ -26,9 +26,6 @@
 
 #if defined(__APPLE__)
 #include <sys/types.h> // needed for u_int, u_char, etc
-#ifdef __arm64__
-#include <pthread.h>
-#endif
 #define MAP_ANONYMOUS MAP_ANON
 #endif
 
@@ -65,6 +62,7 @@
 #include "arm/arm_cpu_features.h"
 #include "arm/assem_arm.h"
 #elif NEW_DYNAREC == NEW_DYNAREC_ARM64
+#include "arm64/apple_jit_protect.h"
 #include "arm64/assem_arm64.h"
 #else
 #error Unsupported dynarec architecture
@@ -108,7 +106,7 @@ struct ll_entry
   struct ll_entry *next;
 };
 
-void *base_addr;
+void *base_addr = NULL;
 u_char *out;
 ALIGN(16, uintptr_t hash_table[65536][4]);
 struct ll_entry *jump_in[4096];
@@ -264,14 +262,14 @@ static void add_to_linker(intptr_t addr,u_int target,int ext);
 static int verify_dirty(void *addr);
 static int internal_branch(uint64_t i_is32, int addr);
 
-static void nullf() {}
+static void nullf(const char* fmt, ...) {}
 #if defined( ASSEM_DEBUG )
-    #define assem_debug(...) DebugMessage(M64MSG_VERBOSE, __VA_ARGS__)
+    #define assem_debug(fmt, ...) DebugMessage(M64MSG_INFO, "%p " fmt, out, ##__VA_ARGS__)
 #else
     #define assem_debug nullf
 #endif
 #if defined( INV_DEBUG )
-    #define inv_debug(...) DebugMessage(M64MSG_VERBOSE, __VA_ARGS__)
+    #define inv_debug(...) DebugMessage(M64MSG_INFO, __VA_ARGS__)
 #else
     #define inv_debug nullf
 #endif
@@ -305,7 +303,7 @@ static int gpr_checksum(void)
   int i;
   int sum=0;
   for(i=0;i<64;i++)
-    sum^=((u_int *)reg)[i];
+    sum^=((u_int *)mupencorereg)[i];
   return sum;
 }
 
@@ -1242,6 +1240,7 @@ static void invalidate_page(u_int page)
 }
 void invalidate_block(u_int block)
 {
+  apple_jit_wx_unprotect_enter();
   u_int page,vpage;
   page=vpage=block^0x80000;
   if(page>262143&&tlb_LUT_r[block]) page=(tlb_LUT_r[block]^0x80000000)>>12;
@@ -1300,6 +1299,7 @@ void invalidate_block(u_int block)
   #ifdef USE_MINI_HT
   memset(mini_ht,-1,sizeof(mini_ht));
   #endif
+  apple_jit_wx_unprotect_exit();
 }
 
 void invalidate_cached_code_new_dynarec(uint32_t addr, size_t size)
@@ -7662,6 +7662,8 @@ static void clean_registers(int istart,int iend,int wr)
   }
 }
 
+#include <sys/errno.h>
+
 #ifdef NEW_DYNAREC_DEBUG
   /* disassembly */
 static void disassemble_inst(int i)
@@ -7744,6 +7746,54 @@ static void disassemble_inst(int i)
 }
 #endif
 
+#if defined(__APPLE__) && defined(__arm64__)
+#include "arm64/trampoline_arm64.h"
+
+void new_dynarec_create_mapping(void)
+{
+  // For Mac ARM (and it can be ported to other ARM64 platforms), we want a special layout
+  //  <-  0x2000000  -> |
+  // -------------------|-------------------|------------------- 
+  //        RW^X        ^         RW^X      ^     RW
+  //                    base_addr           dynarec_local
+
+  // pre base_addr is trampolines we need to have, growing like a stack downwards
+  // after base_addr is normal JIT stuff generated
+  // We also want addresses to be in 32-bit space because there are some casts to 32bit unsigned int
+
+  // On macOS we are not allowed to use MAP_FIXED with MAP_JIT so allocate first 2 segments together, then use MAP_FIXED for RW segment
+  // This is a stupid hack - we want part of mapping to be RWX and other part of map to be RW
+  // We hope that the 2nd map wont fail but really this should just do it couple hundred times
+
+#define ATTEMPTS_COUNT 1000
+
+  for (int i = 0; i < ATTEMPTS_COUNT; i++)
+  {
+    char* addr = (char*) mmap(NULL, 2 * (1<<TARGET_SIZE_2), PROT_READ | PROT_WRITE | PROT_EXEC, MAP_ANON | MAP_PRIVATE | MAP_JIT, -1, 0);
+    if (addr == MAP_FAILED)
+    {
+      DebugMessage(M64MSG_ERROR, "mmap() for JIT failed: %d[%s]", errno, strerror(errno));
+      return;
+    }
+
+    // now we need need to attach the RW buffer right after
+    void* expected_rw_addr = addr + 2 * (1<<TARGET_SIZE_2);
+    void* rw_addr = mmap(expected_rw_addr, 1 << TARGET_SIZE_2, PROT_READ | PROT_WRITE, MAP_FIXED | MAP_ANON | MAP_PRIVATE, -1, 0);
+    if (rw_addr == MAP_FAILED)
+    {
+      DebugMessage(M64MSG_WARNING, "Failed to append RW pages at %p after JIT pages to %p", expected_rw_addr, addr);
+      continue;
+    }
+
+    // We have everything setup now, can use base_addr
+    base_addr = addr + (1<<TARGET_SIZE_2);
+    trampoline_init(base_addr);
+    // TODO DK: debug without this break for large addresses
+    break;
+  }
+}
+#endif
+
 void new_dynarec_init(void)
 {
 #ifdef NEW_DYNAREC_DEBUG
@@ -7755,6 +7805,8 @@ void new_dynarec_init(void)
 #endif
 #ifndef PROFILER
   DebugMessage(M64MSG_INFO, "Init new dynarec");
+
+#if !defined(__APPLE__) || !defined(__arm64__)
 #if NEW_DYNAREC >= NEW_DYNAREC_ARM
   if ((base_addr = mmap ((u_char *)BASE_ADDR, 1<<TARGET_SIZE_2,
             PROT_READ | PROT_WRITE | PROT_EXEC,
@@ -7774,6 +7826,8 @@ void new_dynarec_init(void)
             -1, 0)) <= 0) {DebugMessage(M64MSG_ERROR, "mmap() failed");}
 #endif
 #endif
+#endif
+
 #endif
   out=(u_char *)base_addr;
 
@@ -7849,6 +7903,9 @@ void new_dynarec_cleanup(void)
   VirtualFree(base_addr, 0, MEM_RELEASE);
 #else
   if (munmap (base_addr, 1<<TARGET_SIZE_2) < 0) {DebugMessage(M64MSG_ERROR, "munmap() failed");}
+#if NEW_DYNAREC >= NEW_DYNAREC_ARM
+  if (munmap (base_addr + (1<<TARGET_SIZE_2), 1<<TARGET_SIZE_2) < 0) {DebugMessage(M64MSG_ERROR, "munmap() failed");}
+#endif
 #endif
   for(n=0;n<4096;n++) ll_clear(jump_in+n);
   for(n=0;n<4096;n++) ll_clear(jump_out+n);
@@ -7862,9 +7919,9 @@ static int new_recompile_block_impl(int addr);
 int new_recompile_block(int addr)
 {
 #if defined(__APPLE__) && defined(__arm64__)
-  pthread_jit_write_protect_np(0);
+  apple_jit_wx_unprotect_enter();
   int r = new_recompile_block_impl(addr);
-  pthread_jit_write_protect_np(1);
+  apple_jit_wx_unprotect_exit();
   return r;
 #else
   return new_recompile_block_impl(addr);

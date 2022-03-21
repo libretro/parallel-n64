@@ -26,9 +26,17 @@
 
 #include "cp1.h"
 
+#if !defined(__APPLE__) || !defined(__arm64__)
 extern float *reg_cop1_simple[32];
 extern double *reg_cop1_double[32];
 extern uint32_t FCR0, FCR31;
+#else
+#include "new_dynarec/arm64/apple_memory_layout.h"
+#define reg_cop1_simple (RECOMPILER_MEMORY->rml_reg_cop1_simple)
+#define reg_cop1_double (RECOMPILER_MEMORY->rml_reg_cop1_double)
+#define FCR0            (RECOMPILER_MEMORY->rml_FCR0)
+#define FCR31           (RECOMPILER_MEMORY->rml_FCR31)
+#endif
 extern int64_t reg_cop1_fgr_64[32];
 extern uint32_t rounding_mode;
 

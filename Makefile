@@ -300,6 +300,7 @@ else ifneq (,$(findstring osx,$(platform)))
 			CFLAGS +=   -DNO_ASM -DDONT_WANT_ARM_OPTIMIZATIONS -D__NEON_OPT -DARM_FIX
 			CPPFLAGS += -DNO_ASM -DDONT_WANT_ARM_OPTIMIZATIONS -D__NEON_OPT -DARM_FIX
 			CXXFLAGS += -DNO_ASM -DDONT_WANT_ARM_OPTIMIZATIONS -D__NEON_OPT -DARM_FIX
+			CPUFLAGS += -fno-stack-protector -fomit-frame-pointer
 			HAVE_NEON=1
 			MINVERSION := -mmacosx-version-min=11.0
 		endif
@@ -873,6 +874,7 @@ ifeq ($(DEBUG), 1)
 
       LDFLAGS += -DEBUG
    else
+      CFLAGS += -DNEW_DYNAREC_DEBUG -DASSEM_DEBUG=1
       CPUOPTS += -O0 -g
    endif
 else

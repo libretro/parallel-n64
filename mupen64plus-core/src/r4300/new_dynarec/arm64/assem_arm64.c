@@ -19,6 +19,7 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "../clear_cache.h"
+#include "trampoline_arm64.h"
 
 typedef enum {
   EQ,
@@ -301,7 +302,20 @@ static void set_jump_target(intptr_t addr,uintptr_t target)
     assert(0); /*Should not happen*/
 }
 
+static void *dynamic_linker_impl(void * src, u_int vaddr);
 static void *dynamic_linker(void * src, u_int vaddr)
+{
+#if defined(__APPLE__) && defined(__arm64__)
+  apple_jit_wx_unprotect_enter();
+  void* r = dynamic_linker_impl(src, vaddr);
+  apple_jit_wx_unprotect_exit();
+  return r;
+#else
+  return dynamic_linker_impl(src, vaddr);
+#endif
+}
+
+static void *dynamic_linker_impl(void * src, u_int vaddr)
 {
   u_int page=(vaddr^0x80000000)>>12;
   u_int vpage=page;
@@ -402,7 +416,20 @@ static void *dynamic_linker(void * src, u_int vaddr)
   return get_addr_ht(0x80000000);
 }
 
+static void *dynamic_linker_ds_impl(void * src, u_int vaddr);
 static void *dynamic_linker_ds(void * src, u_int vaddr)
+{
+#if defined(__APPLE__) && defined(__arm64__)
+  apple_jit_wx_unprotect_enter();
+  void* r = dynamic_linker_ds_impl(src, vaddr);
+  apple_jit_wx_unprotect_exit();
+  return r;
+#else
+  return dynamic_linker_ds_impl(src, vaddr);
+#endif
+}
+
+static void *dynamic_linker_ds_impl(void * src, u_int vaddr)
 {
   u_int page=(vaddr^0x80000000)>>12;
   u_int vpage=page;
@@ -592,7 +619,7 @@ static int verify_dirty(void *addr)
   if((*ptr&0xfc000000)!=0x94000000) ptr++;
   assert((*ptr&0xfc000000)==0x94000000); // bl instruction
 
-  uintptr_t verifier=((signed int)(*ptr<<6)>>4)+(intptr_t)ptr;
+  uintptr_t verifier=(uintptr_t) trampoline_convert_trampoline_to_func(((signed int)(*ptr<<6)>>4)+(intptr_t)ptr);
   assert(verifier==(uintptr_t)verify_code||verifier==(uintptr_t)verify_code_vm||verifier==(uintptr_t)verify_code_ds);
 
   if(verifier==(uintptr_t)verify_code_vm||verifier==(uintptr_t)verify_code_ds) {
@@ -663,7 +690,7 @@ static void get_bounds(intptr_t addr,uintptr_t *start,uintptr_t *end)
   if((*ptr&0xfc000000)!=0x94000000) ptr++;
   assert((*ptr&0xfc000000)==0x94000000); // bl instruction
 
-  uintptr_t verifier=((signed int)(*ptr<<6)>>4)+(intptr_t)ptr;
+  uintptr_t verifier=(uintptr_t) trampoline_convert_trampoline_to_func(((signed int)(*ptr<<6)>>4)+(intptr_t)ptr);
   assert(verifier==(uintptr_t)verify_code||verifier==(uintptr_t)verify_code_vm||verifier==(uintptr_t)verify_code_ds);
 
   if(verifier==(uintptr_t)verify_code_vm||verifier==(uintptr_t)verify_code_ds) {
@@ -1646,7 +1673,7 @@ static void emit_loadreg(int r, int hr)
     output_w32(0xf9400000|((offset>>3)<<10)|(FP<<5)|hr);
   }
   else {
-    intptr_t addr=((intptr_t)reg)+((r&63)<<3)+((r&64)>>4);
+    intptr_t addr=((intptr_t)mupencorereg)+((r&63)<<3)+((r&64)>>4);
     if((r&63)==HIREG) addr=(intptr_t)&hi+((r&64)>>4);
     if((r&63)==LOREG) addr=(intptr_t)&lo+((r&64)>>4);
     if(r==CCREG) addr=(intptr_t)&cycle_count;
@@ -1663,7 +1690,7 @@ static void emit_loadreg(int r, int hr)
 static void emit_storereg(int r, int hr)
 {
   assert(hr!=29);
-  intptr_t addr=((intptr_t)reg)+((r&63)<<3)+((r&64)>>4);
+  intptr_t addr=((intptr_t)mupencorereg)+((r&63)<<3)+((r&64)>>4);
   if((r&63)==HIREG) addr=(intptr_t)&hi+((r&64)>>4);
   if((r&63)==LOREG) addr=(intptr_t)&lo+((r&64)>>4);
   if(r==CCREG) addr=(intptr_t)&cycle_count;
@@ -1679,7 +1706,7 @@ static void emit_storereg64(int r, int hr)
 {
   assert(hr!=29);
   assert(r<FSREG);
-  intptr_t addr=(intptr_t)&reg[r];
+  intptr_t addr=(intptr_t)&mupencorereg[r];
   if(r==HIREG) addr=(intptr_t)&hi;
   if(r==LOREG) addr=(intptr_t)&lo;
   u_int offset = addr-(intptr_t)&dynarec_local;
@@ -2429,14 +2456,26 @@ static void emit_set_if_carry64_32(int u1, int l1, int u2, int l2, int rt)
 static void emit_call(intptr_t a)
 {
   assem_debug("bl %x (%x+%x)",a,(intptr_t)out,a-(intptr_t)out);
-  u_int offset=genjmp(a);
+  intptr_t offset=a-(intptr_t)out;
+  if (!(offset>=-134217728&&offset<134217728))
+  {
+    a = (intptr_t) trampoline_jump_alloc_or_find((void*) a);
+  }
+  assem_debug("bl %x (%x+%x)",a,(intptr_t)out,a-(intptr_t)out);
+  offset=genjmp(a);
   output_w32(0x94000000|offset);
 }
 
 static void emit_jmp(intptr_t a)
 {
   assem_debug("b %x (%x+%x)",a,(intptr_t)out,a-(intptr_t)out);
-  u_int offset=genjmp(a);
+  intptr_t offset=a-(intptr_t)out;
+  if (!(offset>=-134217728&&offset<134217728))
+  {
+    a = (intptr_t) trampoline_jump_alloc_or_find((void*) a);
+  }
+  assem_debug("b %x (%x+%x)",a,(intptr_t)out,a-(intptr_t)out);
+  offset=genjmp(a);
   output_w32(0x14000000|offset);
 }
 
@@ -3463,13 +3502,15 @@ static void emit_read_ptr(intptr_t addr, int rt)
     output_w32(0x10000000|((u_int)offset&0x3)<<29|(((u_int)offset>>2)&0x7ffff)<<5|rt);
   }
   else{
-    offset=((addr&(intptr_t)~0xfff)-((intptr_t)out&(intptr_t)~0xfff))>>12;
-    assert((((intptr_t)out&(intptr_t)~0xfff)+(offset<<12))==(addr&(intptr_t)~0xfff));
-    assem_debug("adrp %d,#%d",regname64[rt],offset);
-    output_w32(0x90000000|((u_int)offset&0x3)<<29|(((u_int)offset>>2)&0x7ffff)<<5|rt);
+    intptr_t offset64 = ((addr&(intptr_t)~0xfff)-((intptr_t)out&(intptr_t)~0xfff))>>12;
+    assert((((intptr_t)out&(intptr_t)~0xfff)+(offset64<<12))==(addr&(intptr_t)~0xfff));
+    assem_debug("adrp %d,#%d",regname64[rt],offset64);
+    output_w32(0x90000000|((u_int)offset64&0x3)<<29|(((u_int)offset64>>2)&0x7ffff)<<5|rt);
     if((addr&(intptr_t)0xfff)!=0)
+    {
       assem_debug("add %s, %s, #%d",regname64[rt],regname64[rt],addr&0xfff);
       output_w32(0x91000000|(addr&0xfff)<<10|rt<<5|rt);
+    }
   }
 }
 
@@ -3884,7 +3925,7 @@ static void do_readstub(int n)
     ftable=(intptr_t)readmem;
   if(type==LOADD_STUB)
     ftable=(intptr_t)readmemd;
-  emit_writeword(rs,(intptr_t)&address);
+  emit_writeword(rs,(intptr_t)&mupencoreaddress);
   //emit_pusha();
   save_regs(reglist);
   ds=i_regs!=&regs[i];
@@ -3958,7 +3999,7 @@ static void inline_readstub(int type, int i, u_int addr, signed char regmap[], i
     ftable=(intptr_t)readmem;
   if(type==LOADD_STUB)
     ftable=(intptr_t)readmemd;
-  emit_writeword(rs,(intptr_t)&address);
+  emit_writeword(rs,(intptr_t)&mupencoreaddress);
   //emit_pusha();
   save_regs(reglist);
   if((signed int)addr>=(signed int)0xC0000000) {
@@ -4053,7 +4094,7 @@ static void do_writestub(int n)
     ftable=(intptr_t)writemem;
   if(type==STORED_STUB)
     ftable=(intptr_t)writememd;
-  emit_writeword(rs,(intptr_t)&address);
+  emit_writeword(rs,(intptr_t)&mupencoreaddress);
   //emit_shrimm(rs,16,rs);
   //emit_movmem_indexedx4(ftable,rs,rs);
   if(type==STOREB_STUB)
@@ -4120,7 +4161,7 @@ static void inline_writestub(int type, int i, u_int addr, signed char regmap[], 
     ftable=(intptr_t)writemem;
   if(type==STORED_STUB)
     ftable=(intptr_t)writememd;
-  emit_writeword(rs,(intptr_t)&address);
+  emit_writeword(rs,(intptr_t)&mupencoreaddress);
   //emit_shrimm(rs,16,rs);
   //emit_movmem_indexedx4(ftable,rs,rs);
   if(type==STOREB_STUB)
@@ -5356,7 +5397,7 @@ static void cop0_assemble(int i,struct regstat *i_regs)
       if(t>=0) {
         emit_addimm64(FP,(intptr_t)&fake_pc-(intptr_t)&dynarec_local,0);
         emit_movimm((source[i]>>11)&0x1f,1);
-        emit_writeword64(0,(intptr_t)&PC);
+        emit_writeword64(0,(intptr_t)&mupencorePC);
         emit_writebyte(1,(intptr_t)&(fake_pc.f.r.nrd));
         if(copr==9) {
           emit_readword((intptr_t)&last_count,ECX);
@@ -5379,7 +5420,7 @@ static void cop0_assemble(int i,struct regstat *i_regs)
     wb_register(rs1[i],i_regs->regmap,i_regs->dirty,i_regs->is32);
     emit_addimm64(FP,(intptr_t)&fake_pc-(intptr_t)&dynarec_local,0);
     emit_movimm((source[i]>>11)&0x1f,1);
-    emit_writeword64(0,(intptr_t)&PC);
+    emit_writeword64(0,(intptr_t)&mupencorePC);
     emit_writebyte(1,(intptr_t)&(fake_pc.f.r.nrd));
     if(copr==9||copr==11||copr==12) {
       emit_readword((intptr_t)&last_count,ECX);
@@ -6680,7 +6721,7 @@ static void do_clear_cache(void)
       for(j=0;j<32;j++) 
       {
         if(bitmap&(1<<j)) {
-          start=BASE_ADDR+i*131072+j*4096;
+          start=((uintptr_t)base_addr)+i*131072+j*4096;
           end=start+4095;
           j++;
           while(j<32) {

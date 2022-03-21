@@ -68,7 +68,7 @@ void poweron_r4300(struct r4300_core* r4300)
 
 int64_t* r4300_regs(void)
 {
-    return reg;
+    return mupencorereg;
 }
 
 int64_t* r4300_mult_hi(void)
@@ -92,7 +92,7 @@ uint32_t* r4300_pc(void)
    if (r4300emu == CORE_DYNAREC)
       return (uint32_t*)&pcaddr;
 #endif
-   return &PC->addr;
+   return &mupencorePC->addr;
 }
 
 uint32_t* r4300_last_addr(void)

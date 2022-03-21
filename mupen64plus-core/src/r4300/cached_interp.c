@@ -62,13 +62,13 @@ uint32_t jump_to_address;
 // Cached interpreter functions (and fallback for dynarec).
 // -----------------------------------------------------------
 #ifdef DBG
-#define UPDATE_DEBUGGER() if (g_DebuggerActive) update_debugger(PC->addr)
+#define UPDATE_DEBUGGER() if (g_DebuggerActive) update_debugger(mupencorePC->addr)
 #else
 #define UPDATE_DEBUGGER() do { } while(0)
 #endif
 
-#define PCADDR PC->addr
-#define ADD_TO_PC(x) PC += x;
+#define PCADDR mupencorePC->addr
+#define ADD_TO_PC(x) mupencorePC += x;
 #define DECLARE_INSTRUCTION(name) static void name(void)
 
 #define DECLARE_JUMP(name, destination, condition, link, likely, cop1) \
@@ -78,29 +78,29 @@ uint32_t jump_to_address;
       const uint32_t jump_target = (destination); \
       int64_t *link_register = (link); \
       if (cop1 && check_cop1_unusable()) return; \
-      if (link_register != &reg[0]) \
+      if (link_register != &mupencorereg[0]) \
       { \
-         *link_register = SE32(PC->addr + 8); \
+         *link_register = SE32(mupencorePC->addr + 8); \
       } \
       if (!likely || take_jump) \
       { \
-         PC++; \
+         mupencorePC++; \
          g_dev.r4300.delay_slot=1; \
          UPDATE_DEBUGGER(); \
-         PC->ops(); \
+         mupencorePC->ops(); \
          cp0_update_count(); \
          g_dev.r4300.delay_slot=0; \
          if (take_jump && !skip_jump) \
          { \
-            PC=actual->block+((jump_target-actual->start)>>2); \
+            mupencorePC=actual->block+((jump_target-actual->start)>>2); \
          } \
       } \
       else \
       { \
-         PC += 2; \
+         mupencorePC += 2; \
          cp0_update_count(); \
       } \
-      last_addr = PC->addr; \
+      last_addr = mupencorePC->addr; \
       if (next_interrupt <= g_cp0_regs[CP0_COUNT_REG]) gen_interrupt(); \
    } \
    static void name##_OUT(void) \
@@ -109,16 +109,16 @@ uint32_t jump_to_address;
       const uint32_t jump_target = (destination); \
       int64_t *link_register = (link); \
       if (cop1 && check_cop1_unusable()) return; \
-      if (link_register != &reg[0]) \
+      if (link_register != &mupencorereg[0]) \
       { \
-         *link_register = SE32(PC->addr + 8); \
+         *link_register = SE32(mupencorePC->addr + 8); \
       } \
       if (!likely || take_jump) \
       { \
-         PC++; \
+         mupencorePC++; \
          g_dev.r4300.delay_slot=1; \
          UPDATE_DEBUGGER(); \
-         PC->ops(); \
+         mupencorePC->ops(); \
          cp0_update_count(); \
          g_dev.r4300.delay_slot=0; \
          if (take_jump && !skip_jump) \
@@ -128,10 +128,10 @@ uint32_t jump_to_address;
       } \
       else \
       { \
-         PC += 2; \
+         mupencorePC += 2; \
          cp0_update_count(); \
       } \
-      last_addr = PC->addr; \
+      last_addr = mupencorePC->addr; \
       if (next_interrupt <= g_cp0_regs[CP0_COUNT_REG]) gen_interrupt(); \
    } \
    static void name##_IDLE(void) \
@@ -150,10 +150,10 @@ uint32_t jump_to_address;
    }
 
 #define CHECK_MEMORY() \
-   if (!invalid_code[address>>12]) \
-      if (blocks[address>>12]->block[(address&0xFFF)/4].ops != \
+   if (!invalid_code[mupencoreaddress>>12]) \
+      if (blocks[mupencoreaddress>>12]->block[(mupencoreaddress&0xFFF)/4].ops != \
           current_instruction_table.NOTCOMPILED) \
-         invalid_code[address>>12] = 1;
+         invalid_code[mupencoreaddress>>12] = 1;
 
 // two functions are defined from the macros above but never used
 // these prototype declarations will prevent a warning
@@ -171,36 +171,36 @@ static void FIN_BLOCK(void)
 {
    if (!g_dev.r4300.delay_slot)
    {
-      jump_to((PC-1)->addr+4);
+      jump_to((mupencorePC-1)->addr+4);
 #if 0
 #ifdef DBG
-      if (g_DebuggerActive) update_debugger(PC->addr);
+      if (g_DebuggerActive) update_debugger(mupencorePC->addr);
 #endif
       /* Used by dynarec only, check should be unnecessary */
 #endif
-      PC->ops();
+      mupencorePC->ops();
       if (r4300emu == CORE_DYNAREC) dyna_jump();
    }
    else
    {
       struct precomp_block *blk = actual;
-      struct precomp_instr *inst = PC;
-      jump_to((PC-1)->addr+4);
+      struct precomp_instr *inst = mupencorePC;
+      jump_to((mupencorePC-1)->addr+4);
 
 #if 0
 #ifdef DBG
-      if (g_DebuggerActive) update_debugger(PC->addr);
+      if (g_DebuggerActive) update_debugger(mupencorePC->addr);
 #endif
       /* Used by dynarec only, check should be unnecessary */
 #endif
       if (!skip_jump)
       {
-         PC->ops();
+         mupencorePC->ops();
          actual = blk;
-         PC = inst+1;
+         mupencorePC = inst+1;
       }
       else
-         PC->ops();
+         mupencorePC->ops();
 
       if (r4300emu == CORE_DYNAREC) dyna_jump();
    }
@@ -208,24 +208,24 @@ static void FIN_BLOCK(void)
 
 static void NOTCOMPILED(void)
 {
-   uint32_t *mem = fast_mem_access(blocks[PC->addr>>12]->start);
+   uint32_t *mem = fast_mem_access(blocks[mupencorePC->addr>>12]->start);
 #ifdef CORE_DBG
-   DebugMessage(M64MSG_INFO, "NOTCOMPILED: addr = %x ops = %lx", PC->addr, (long) PC->ops);
+   DebugMessage(M64MSG_INFO, "NOTCOMPILED: addr = %x ops = %lx", mupencorePC->addr, (long) mupencorePC->ops);
 #endif
 
    if (mem != NULL)
-      recompile_block(mem, blocks[PC->addr >> 12], PC->addr);
+      recompile_block(mem, blocks[mupencorePC->addr >> 12], mupencorePC->addr);
    else
       DebugMessage(M64MSG_ERROR, "not compiled exception");
 
 #if 0
 #ifdef DBG
-   if (g_DebuggerActive) update_debugger(PC->addr);
+   if (g_DebuggerActive) update_debugger(mupencorePC->addr);
 #endif
    /* The preceeding update_debugger SHOULD be unnecessary since it should have been
       called before NOTCOMPILED would have been executed */
 #endif
-   PC->ops();
+   mupencorePC->ops();
    if (r4300emu == CORE_DYNAREC)
       dyna_jump();
 }
@@ -564,7 +564,7 @@ void jump_to_func(void)
       blocks[addr>>12]->end = (addr & ~0xFFF) + 0x1000;
       init_block(blocks[addr>>12]);
    }
-   PC=actual->block+((addr-actual->start)>>2);
+   mupencorePC=actual->block+((addr-actual->start)>>2);
 
    if (r4300emu == CORE_DYNAREC) dyna_jump();
 }

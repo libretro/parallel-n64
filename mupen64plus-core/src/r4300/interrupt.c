@@ -472,7 +472,7 @@ static void nmi_int_handler(void)
    /* clear the audio status register so that subsequent write_ai() calls will work properly */
    g_dev.ai.regs[AI_STATUS_REG] = 0;
    /* set ErrorEPC with the last instruction address */
-   g_cp0_regs[CP0_ERROREPC_REG] = PC->addr;
+   g_cp0_regs[CP0_ERROREPC_REG] = mupencorePC->addr;
    /* reset the r4300 internal state */
    if (r4300emu != CORE_PURE_INTERPRETER)
    {

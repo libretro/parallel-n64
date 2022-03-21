@@ -34,85 +34,8 @@
     .type   name, %object;           \
     .size   name, size_
 
-#define BSS_SECTION .bss
 #define TEXT_SECTION .text
 #define END_SECTION
-
-BSS_SECTION
-
-    .align 12
-    GLOBAL_VARIABLE(extra_memory, 33554432)
-    GLOBAL_VARIABLE(dynarec_local, 256)
-    GLOBAL_VARIABLE(next_interrupt, 4)
-    GLOBAL_VARIABLE(cycle_count, 4)
-    GLOBAL_VARIABLE(last_count, 4)
-    GLOBAL_VARIABLE(pending_exception, 4)
-    GLOBAL_VARIABLE(pcaddr, 4)
-    GLOBAL_VARIABLE(stop, 4)
-    GLOBAL_VARIABLE(invc_ptr, 8)
-    GLOBAL_VARIABLE(address, 4)
-    GLOBAL_VARIABLE(readmem_dword, 8)
-    GLOBAL_VARIABLE(cpu_dword, 8)
-    GLOBAL_VARIABLE(cpu_word, 4)
-    GLOBAL_VARIABLE(cpu_hword, 2)
-    GLOBAL_VARIABLE(cpu_byte, 1)
-    GLOBAL_VARIABLE(FCR0, 4)
-    GLOBAL_VARIABLE(FCR31, 4)
-    GLOBAL_VARIABLE(reg, 256)
-    GLOBAL_VARIABLE(hi, 8)
-    GLOBAL_VARIABLE(lo, 8)
-    GLOBAL_VARIABLE(g_cp0_regs, 128)
-    GLOBAL_VARIABLE(reg_cop1_simple, 256)
-    GLOBAL_VARIABLE(reg_cop1_double, 256)
-    GLOBAL_VARIABLE(rounding_modes, 16)
-    GLOBAL_VARIABLE(branch_target, 4)
-    GLOBAL_VARIABLE(PC, 8)
-    GLOBAL_VARIABLE(fake_pc, 208)
-    GLOBAL_VARIABLE(ram_offset, 8)
-    GLOBAL_VARIABLE(mini_ht, 512)
-    GLOBAL_VARIABLE(restore_candidate, 512)
-    GLOBAL_VARIABLE(instr_addr, 4)
-    GLOBAL_VARIABLE(link_register, 8)
-    GLOBAL_VARIABLE(memory_map, 8388608)
-
-.align 16;
-_extra_memory:
-    .space    33554432+256+4+4+4+4+4+4+8+8+8+8+4+2+4+4+4+256+8+8+128+256+256+16+8+8+208+8+512+512+8+8+8388608
-
-    _dynarec_local     = _extra_memory      + 33554432
-    _next_interrupt     = _dynarec_local     + 256
-    _cycle_count       = _next_interrupt     + 4
-    _last_count        = _cycle_count       + 4
-    _pending_exception = _last_count        + 4
-    _pcaddr            = _pending_exception + 4
-    _stop              = _pcaddr            + 4
-    _invc_ptr          = _stop              + 4
-    _address           = _invc_ptr          + 8
-    _readmem_dword     = _address           + 8 /* 4 bytes free */
-    _cpu_dword         = _readmem_dword     + 8
-    _cpu_word          = _cpu_dword         + 8
-    _cpu_hword         = _cpu_word          + 4
-    _cpu_byte          = _cpu_hword         + 2 /* 1 byte free */
-    _FCR0              = _cpu_hword         + 4
-    _FCR31             = _FCR0              + 4
-    _reg               = _FCR31             + 4
-    _hi                = _reg               + 256
-    _lo                = _hi                + 8
-    _g_cp0_regs        = _lo                + 8
-    _reg_cop1_simple   = _g_cp0_regs        + 128
-    _reg_cop1_double   = _reg_cop1_simple   + 256
-    _rounding_modes    = _reg_cop1_double   + 256
-    _branch_target     = _rounding_modes    + 16
-    _PC                = _branch_target     + 8 /* 4 bytes free */
-    _fake_pc           = _PC                + 8
-    _ram_offset        = _fake_pc           + 208
-    _mini_ht           = _ram_offset        + 8
-    _restore_candidate = _mini_ht           + 512
-    _instr_addr        = _restore_candidate + 512
-    _link_register     = _instr_addr        + 8 /* 4 bytes free */
-    _memory_map        = _link_register     + 8
-
-END_SECTION
 
 TEXT_SECTION
 
@@ -447,7 +370,7 @@ GLOBAL_FUNCTION(_fp_exception):
     br     x0
     
 GLOBAL_FUNCTION(_fp_exception_ds):
-    brk    0
+    /* brk    0 */
     mov    w2, #0x90000000 /* Set high bit if delay slot */
     b      .F1
     
@@ -517,10 +440,13 @@ GLOBAL_FUNCTION(_jump_eret):
     bl     _cc_interrupt
     ldr    w0, [x29, #272 ] /* pcaddr */
     b      .E8
-    
+
 GLOBAL_FUNCTION(_new_dyna_start):
-    adrp   x16, _dynarec_local@PAGE
-    add    x16, x16, _dynarec_local@PAGEOFF
+    adrp   x1, _base_addr@PAGE
+    add    x1, x1, _base_addr@PAGEOFF
+    ldr    x16, [x1] /* _extra_memory=base_addr */
+    mov    x19, #33554432
+    add    x16, x16, x19 /* _dynarec_local */
     add    x16, x16, #152
     mov    w0, #0xa4000000
     stp    x19,x20,[x16,#0]

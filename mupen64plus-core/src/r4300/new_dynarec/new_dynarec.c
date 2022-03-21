@@ -361,7 +361,7 @@ void *TLB_refill_exception_new(u_int inst_addr, u_int mem_addr, int w);
 #ifdef __cplusplus
 static void nullf(...) {}
 #else
-static void nullf() {}
+static void nullf(const char* fmt, ...) {}
 #endif
 
 #if defined( ASSEM_DEBUG )
