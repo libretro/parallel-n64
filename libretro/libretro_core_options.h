@@ -1613,7 +1613,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
     },
     {
         CORE_NAME "-gliden64-RemoveFBBlackBars",
-        "Patch SM64 Hacks made with SM64 Editor",
+        "Fix VI Resolution",
         NULL,
         "(GLideN64) Remove the black bars added by VI emulation of the FrameBuffer.",
         "Remove the black bars added by VI emulation of the FrameBuffer.",

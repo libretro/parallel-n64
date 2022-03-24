@@ -1345,7 +1345,7 @@ void FrameBufferList::renderBuffer()
 		return;
 	}
 
-	if (RemoveFBBlackBars)
+	if (RemoveFBBlackBars && !rdpRes.vi_ispal)
 	{
 		rdpRes.vi_vres = 240;
 		rdpRes.vi_minhpass = 0;
