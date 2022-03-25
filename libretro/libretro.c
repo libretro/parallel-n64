@@ -1006,7 +1006,8 @@ static bool retro_init_gl(bool core)
    params.context_destroy       = context_destroy;
    params.environ_cb            = environ_cb;
    params.stencil               = false;
-#ifndef HAVE_OPENGLES
+   // Requesting core for Windows breaks fullscreen
+#if !defined(HAVE_OPENGLES) && !defined(OS_WINDOWS)
    if (core)
    {
       params.core               = core;
