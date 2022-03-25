@@ -191,6 +191,7 @@ uint32_t AllowUnalignedDMA = 1;
 uint32_t LegacySm64ToolsHacks = 0;
 uint32_t RemoveFBBlackBars = 0;
 uint32_t OverrideSaveType = 0;
+uint32_t ParallelRemoveBorders = 0;
 
 /* after the controller's CONTROL* member has been assigned we can update
  * them straight from here... */
@@ -1206,6 +1207,13 @@ void update_variables(bool startup)
 	   parallel_set_overscan_crop(strtol(var.value, NULL, 0));
    else
 	   parallel_set_overscan_crop(0);
+   
+   var.key = "parallel-n64-remove-vi-borders";
+   var.value = NULL;
+   if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+      ParallelRemoveBorders = !strcmp(var.value, "enabled");
+   else
+      ParallelRemoveBorders = 0;
 
    var.key = "parallel-n64-parallel-rdp-divot-filter";
    var.value = NULL;

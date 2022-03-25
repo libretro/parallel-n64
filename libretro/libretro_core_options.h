@@ -316,6 +316,20 @@ struct retro_core_option_v2_definition option_defs_us[] = {
         "0"
     },
     {
+        CORE_NAME "-remove-vi-borders",
+        "(ParaLLEl-RDP) Remove VI borders",
+        NULL,
+        "Removes the black borders on the left and right sides of the video. Since these pixels are never rendered on real hardware, results will vary depending on the game.",
+        NULL,
+        "parallel",
+        {
+            { "enabled", NULL },
+            { "disabled", NULL },
+            { NULL, NULL },
+        },
+        "disabled"
+    },
+    {
         CORE_NAME "-parallel-rdp-divot-filter",
         "(ParaLLEl-RDP) VI divot filter",
         NULL,
