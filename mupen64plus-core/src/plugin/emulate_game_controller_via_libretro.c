@@ -25,6 +25,7 @@
 #include "api/m64p_plugin.h"
 #include <libretro.h>
 #include "si/game_controller.h"
+#include "si/pif.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -44,15 +45,6 @@ extern int astick_deadzone;
 extern int astick_sensitivity;
 
 extern m64p_rom_header ROM_HEADER;
-
-// Some stuff from n-rage plugin
-#define RD_GETSTATUS        0x00        // get status
-#define RD_READKEYS         0x01        // read button values
-#define RD_READPAK          0x02        // read from controllerpack
-#define RD_WRITEPAK         0x03        // write to controllerpack
-#define RD_RESETCONTROLLER  0xff        // reset controller
-#define RD_READEEPROM       0x04        // read eeprom
-#define RD_WRITEEPROM       0x05        // write eeprom
 
 #define PAK_IO_RUMBLE       0xC000      // the address where rumble-commands are sent to
 
@@ -232,11 +224,26 @@ EXPORT void CALL inputControllerCommand(int Control, unsigned char *Command)
 
     switch (Command[2])
     {
-        case RD_GETSTATUS:
+        case PIF_CMD_STATUS:
             break;
-        case RD_READKEYS:
+        case PIF_CMD_GCN_SHORTPOLL:
+            if (controller[Control].control->Plugin == CONT_GCN)
+            {
+               if (Command[4])
+               {
+                  rumble.set_rumble_state(Control, RETRO_RUMBLE_WEAK, 0xFFFF);
+                  rumble.set_rumble_state(Control, RETRO_RUMBLE_STRONG, 0xFFFF);
+               }
+               else
+               {
+                  rumble.set_rumble_state(Control, RETRO_RUMBLE_WEAK, 0);
+                  rumble.set_rumble_state(Control, RETRO_RUMBLE_STRONG, 0);
+               }
+            }
             break;
-        case RD_READPAK:
+        case PIF_CMD_CONTROLLER_READ:
+            break;
+        case PIF_CMD_PAK_READ:
             if (controller[Control].control->Plugin == PLUGIN_RAW)
             {
                 unsigned int dwAddress = (Command[3] << 8) + (Command[4] & 0xE0);
@@ -249,7 +256,7 @@ EXPORT void CALL inputControllerCommand(int Control, unsigned char *Command)
                 Data[32] = DataCRC( Data, 32 );
             }
             break;
-        case RD_WRITEPAK:
+        case PIF_CMD_PAK_WRITE:
             if (controller[Control].control->Plugin == PLUGIN_RAW)
             {
                 unsigned int dwAddress = (Command[3] << 8) + (Command[4] & 0xE0);
@@ -271,11 +278,11 @@ EXPORT void CALL inputControllerCommand(int Control, unsigned char *Command)
             }
 
             break;
-        case RD_RESETCONTROLLER:
+        case PIF_CMD_RESET:
             break;
-        case RD_READEEPROM:
+        case PIF_CMD_EEPROM_READ:
             break;
-        case RD_WRITEEPROM:
+        case PIF_CMD_EEPROM_WRITE:
             break;
         }
 }
@@ -302,19 +309,12 @@ int timeout = 0;
 
 extern void inputInitiateCallback(const char *headername);
 
-
-static void inputGetKeys_reuse(int16_t analogX, int16_t analogY, int Control, BUTTONS* Keys)
+void scale_joystick(int max, int x, int y, int* outX, int* outY)
 {
    double radius, angle;
-   //  Keys->Value |= input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_XX)    ? 0x4000 : 0; // Mempak switch
-   //  Keys->Value |= input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_XX)    ? 0x8000 : 0; // Rumblepak switch
-
-   analogX = input_cb(Control, RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_LEFT, RETRO_DEVICE_ID_ANALOG_X);
-   analogY = input_cb(Control, RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_LEFT, RETRO_DEVICE_ID_ANALOG_Y);
-
    // Convert cartesian coordinate analog stick to polar coordinates
-   radius = sqrt(analogX * analogX + analogY * analogY);
-   angle = atan2(analogY, analogX);
+   radius = sqrt(x * x + y * y);
+   angle = atan2(y, x);
 
    if (radius > astick_deadzone)
    {
@@ -323,14 +323,28 @@ static void inputGetKeys_reuse(int16_t analogX, int16_t analogY, int Control, BU
       // N64 Analog stick range is from -80 to 80
       radius *= 80.0 / ASTICK_MAX * (astick_sensitivity / 100.0);
       // Convert back to cartesian coordinates
-      Keys->X_AXIS = +(int32_t)ROUND(radius * cos(angle));
-      Keys->Y_AXIS = -(int32_t)ROUND(radius * sin(angle));
+      *outX = +(int32_t)ROUND(radius * cos(angle));
+      *outY = -(int32_t)ROUND(radius * sin(angle));
    }
    else
    {
-      Keys->X_AXIS = 0;
-      Keys->Y_AXIS = 0;
+      *outX = 0;
+      *outY = 0;
    }
+}
+
+static void inputGetKeys_reuse(int16_t analogX, int16_t analogY, int Control, BUTTONS* Keys)
+{
+   int scaledX, scaledY;
+   //  Keys->Value |= input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_XX)    ? 0x4000 : 0; // Mempak switch
+   //  Keys->Value |= input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_XX)    ? 0x8000 : 0; // Rumblepak switch
+
+   analogX = input_cb(Control, RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_LEFT, RETRO_DEVICE_ID_ANALOG_X);
+   analogY = input_cb(Control, RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_LEFT, RETRO_DEVICE_ID_ANALOG_Y);
+
+   scale_joystick(ASTICK_MAX, analogX, analogY, &scaledX, &scaledY);
+   Keys->X_AXIS = scaledX;
+   Keys->Y_AXIS = scaledY;
 
    Keys->R_DPAD = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_RIGHT);
    Keys->L_DPAD = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_LEFT);
@@ -633,7 +647,7 @@ static void inputGetKeys_default( int Control, BUTTONS *Keys )
    int16_t analogY = 0;
    Keys->Value = 0;
 
-   if (controller[Control].control->Present == 2)
+   if (controller[Control].control->Present == CONT_MOUSE)
    {
       inputGetKeys_mouse(Control, Keys);
       return;
@@ -683,6 +697,111 @@ static void inputGetKeys_default( int Control, BUTTONS *Keys )
       Keys->Value |= (analogY < 0) ? CSTICK_UP : CSTICK_DOWN;
 
    inputGetKeys_reuse(analogX, analogY, Control, Keys);
+}
+
+static int32_t clamp16(int32_t input) {
+   if (input > SHRT_MAX) {
+      input = SHRT_MAX;
+   }
+   if (input < SHRT_MIN) {
+      input = SHRT_MIN;
+   }
+   return input;
+}
+
+
+static void inputGetKeys_gamecube(int Control, int analogMode, BUTTONS_GCN *Keys)
+{
+   bool hold_cstick = false;
+   int32_t analogX = 0;
+   int32_t analogY = 0;
+   int cstickX, cstickY;
+   int32_t trigL, trigR;
+   memset(Keys, 0, sizeof(*Keys));
+
+   // Assumes alternate_mapping is set
+   
+   analogX =
+      input_cb(Control, RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_BUTTON, RETRO_DEVICE_ID_JOYPAD_R) - 
+      input_cb(Control, RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_BUTTON, RETRO_DEVICE_ID_JOYPAD_L);
+
+   analogY =
+      input_cb(Control, RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_BUTTON, RETRO_DEVICE_ID_JOYPAD_A) -
+      input_cb(Control, RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_BUTTON, RETRO_DEVICE_ID_JOYPAD_X);
+
+   scale_joystick(ASTICK_MAX, analogX, analogY, &cstickX, &cstickY);
+
+   cstickX += 128;
+   cstickY += 128;
+
+   Keys->A_BUTTON = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_B);
+   Keys->B_BUTTON = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_Y);
+   Keys->X_BUTTON = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_L3);
+   Keys->Y_BUTTON = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_R3);
+   Keys->Z_TRIG = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_L2);
+
+   trigL = input_cb(Control, RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_BUTTON, RETRO_DEVICE_ID_JOYPAD_SELECT) / (SHRT_MAX / UCHAR_MAX);
+   if (trigL == 0) {
+      trigL = 255 * input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_SELECT);
+   }
+   trigR = input_cb(Control, RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_BUTTON, RETRO_DEVICE_ID_JOYPAD_R2) / (SHRT_MAX / UCHAR_MAX);
+   if (trigR == 0) {
+      trigR = 255 * input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_R2);
+   }
+
+   switch (analogMode) {
+      case 0:
+         Keys->MODE0.C_X = cstickX;
+         Keys->MODE0.C_Y = cstickY; 
+         Keys->MODE0.L_TRIG = trigL >> 4;
+         Keys->MODE0.R_TRIG = trigR >> 4;
+         break;
+      case 1:
+         Keys->MODE1.C_X = cstickX  >> 4;
+         Keys->MODE1.C_Y = cstickY  >> 4; 
+         Keys->MODE1.L_TRIG = trigL;
+         Keys->MODE1.R_TRIG = trigR;
+         break;
+      case 2:
+         Keys->MODE2.C_X = cstickX >> 4;
+         Keys->MODE2.C_Y = cstickY >> 4; 
+         Keys->MODE2.L_TRIG = trigL >> 4;
+         Keys->MODE2.R_TRIG = trigR >> 4;
+         break;
+      case 3:
+         Keys->MODE3.C_X = cstickX;
+         Keys->MODE3.C_Y = cstickY; 
+         Keys->MODE3.L_TRIG = trigL;
+         Keys->MODE3.R_TRIG = trigR;
+         break;
+      case 4:
+         Keys->MODE4.C_X = cstickX;
+         Keys->MODE4.C_Y = cstickY; 
+         break;
+      default:
+         // error
+         break;
+   }
+
+   
+   Keys->L_BUTTON = (trigL > 225) ? 1 : 0;
+   Keys->R_BUTTON = (trigR > 225) ? 1 : 0;
+
+   analogX = input_cb(Control, RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_LEFT, RETRO_DEVICE_ID_ANALOG_X);
+   analogY = input_cb(Control, RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_LEFT, RETRO_DEVICE_ID_ANALOG_Y);
+
+   int scaledX, scaledY;
+
+   scale_joystick(ASTICK_MAX, analogX, analogY, &scaledX, &scaledY);
+   Keys->X_AXIS = scaledX + 128;
+   Keys->Y_AXIS = scaledY + 128;
+
+   Keys->R_DPAD = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_RIGHT);
+   Keys->L_DPAD = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_LEFT);
+   Keys->D_DPAD = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_DOWN);
+   Keys->U_DPAD = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_UP);
+
+   Keys->START_BUTTON = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_START);
 }
 
 void inputInitiateCallback(const char *headername)
@@ -905,4 +1024,14 @@ uint32_t egcvip_get_input(void* opaque)
 
     return keys.Value;
 
+}
+
+BUTTONS_GCN egcvip_get_gcn_input(void* opaque, int analogMode)
+{
+    BUTTONS_GCN ret = { 0 };
+    int channel = *(int*)opaque;
+
+   inputGetKeys_gamecube(channel, analogMode, &ret);
+
+   return ret;
 }
