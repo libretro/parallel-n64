@@ -54,6 +54,7 @@ enum pif_commands
    PIF_CMD_AF_RTC_STATUS   = 0x06,
    PIF_CMD_AF_RTC_READ     = 0x07,
    PIF_CMD_AF_RTC_WRITE    = 0x08,
+   PIF_CMD_GCN_SHORTPOLL   = 0x40,
    PIF_CMD_RESET           = 0xff
 };
 

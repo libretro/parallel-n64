@@ -204,7 +204,7 @@ extern struct
 /* ...but it won't be at least the first time we're called, in that case set
  * these instead for input_plugin to read. */
 int pad_pak_types[4];
-int pad_present[4] = {1, 1, 1, 1};
+int pad_present[4] = {CONT_JOYPAD, CONT_JOYPAD, CONT_JOYPAD, CONT_JOYPAD};
 
 static void n64DebugCallback(void* aContext, int aLevel, const char* aMessage)
 {
@@ -484,13 +484,14 @@ static void setup_variables(void)
       { "Controller", RETRO_DEVICE_JOYPAD },
       { "Mouse", RETRO_DEVICE_MOUSE },
       { "RetroPad", RETRO_DEVICE_JOYPAD },
+      { "Analog", RETRO_DEVICE_ANALOG },
    };
 
    static const struct retro_controller_info ports[] = {
-      { port, 3 },
-      { port, 3 },
-      { port, 3 },
-      { port, 3 },
+      { port, 4 },
+      { port, 4 },
+      { port, 4 },
+      { port, 4 },
       { 0, 0 }
    };
 
@@ -2460,29 +2461,38 @@ void retro_set_controller_port_device(unsigned in_port, unsigned device)
       {
          case RETRO_DEVICE_NONE:
             if (controller[in_port].control){
-               controller[in_port].control->Present = 0;
+               controller[in_port].control->Present = CONT_NONE;
                break;
             } else {
-               pad_present[in_port] = 0;
+               pad_present[in_port] = CONT_NONE;
                break;
             }
 
          case RETRO_DEVICE_MOUSE:
             if (controller[in_port].control){
-               controller[in_port].control->Present = 2;
+               controller[in_port].control->Present = CONT_MOUSE;
                break;
             } else {
-               pad_present[in_port] = 2;
+               pad_present[in_port] = CONT_MOUSE;
+               break;
+            }
+
+         case RETRO_DEVICE_ANALOG:
+            if (controller[in_port].control){
+               controller[in_port].control->Present = CONT_GCN;
+               break;
+            } else {
+               pad_present[in_port] = CONT_GCN;
                break;
             }
 
          case RETRO_DEVICE_JOYPAD:
          default:
             if (controller[in_port].control){
-               controller[in_port].control->Present = 1;
+               controller[in_port].control->Present = CONT_JOYPAD;
                break;
             } else {
-               pad_present[in_port] = 1;
+               pad_present[in_port] = CONT_JOYPAD;
                break;
             }
       }

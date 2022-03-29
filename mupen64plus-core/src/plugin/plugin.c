@@ -199,7 +199,7 @@ static m64p_error plugin_start_input(void)
    control_info.Controls = Controls;
    for (i=0; i<4; i++)
    {
-      Controls[i].Present = 0;
+      Controls[i].Present = CONT_NONE;
       Controls[i].RawData = 0;
       Controls[i].Plugin = PLUGIN_NONE;
    }

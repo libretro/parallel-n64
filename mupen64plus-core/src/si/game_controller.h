@@ -29,6 +29,8 @@
 #include "rumblepak.h"
 #include "transferpak.h"
 
+#include "api/m64p_plugin.h"
+
 enum pak_type
 {
     PAK_NONE,
@@ -41,7 +43,8 @@ enum cont_type
 {
     CONT_NONE = 0,
     CONT_JOYPAD = 1,
-    CONT_MOUSE = 2
+    CONT_MOUSE = 2,
+    CONT_GCN = 3,
 };
 
 struct game_controller
@@ -50,6 +53,7 @@ struct game_controller
     void* user_data;
     int (*is_connected)(void*,enum pak_type*);
     uint32_t (*get_input)(void*);
+    BUTTONS_GCN (*get_gcn_input)(void*, uint8_t analogMode);
 
     struct mempak mempak;
     struct rumblepak rumblepak;
@@ -60,6 +64,7 @@ void init_game_controller(struct game_controller *cont,
       void *cont_user_data,
       int (*cont_is_connected)(void*,enum pak_type*),
       uint32_t (*cont_get_input)(void*),
+      BUTTONS_GCN (*cont_get_gcn_input)(void*, int),
       void* mpk_user_data,
       void (*mpk_save)(void*),
       uint8_t* mpk_data,
@@ -68,6 +73,7 @@ void init_game_controller(struct game_controller *cont,
 
 int game_controller_is_connected(struct game_controller* cont, enum pak_type* pak);
 uint32_t game_controller_get_input(struct game_controller* cont);
+BUTTONS_GCN game_controller_gcn_get_input(struct game_controller* cont, int analogMode);
 
 void process_controller_command(struct game_controller* cont, uint8_t* cmd);
 void read_controller(struct game_controller* cont, uint8_t* cmd);
