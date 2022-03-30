@@ -305,11 +305,15 @@ EXPORT void CALL inputControllerCommand(int Control, unsigned char *Command)
 #define CSTICK_UP 0x800
 #define CSTICK_DOWN 0x400
 
+#define N64_MAX_ANALOG 80.0f
+#define GCN_MAX_ANALOG 100.0f
+#define GCN_MAX_CSTICK 95.0f
+
 int timeout = 0;
 
 extern void inputInitiateCallback(const char *headername);
 
-void scale_joystick(int max, int x, int y, int* outX, int* outY)
+void scale_joystick(int max, int x, int y, int* outX, int* outY, float maximum)
 {
    double radius, angle;
    // Convert cartesian coordinate analog stick to polar coordinates
@@ -320,8 +324,8 @@ void scale_joystick(int max, int x, int y, int* outX, int* outY)
    {
       // Re-scale analog stick range to negate deadzone (makes slow movements possible)
       radius = (radius - astick_deadzone)*((float)ASTICK_MAX/(ASTICK_MAX - astick_deadzone));
-      // N64 Analog stick range is from -80 to 80
-      radius *= 80.0 / ASTICK_MAX * (astick_sensitivity / 100.0);
+      // Scale to the given maximum value
+      radius *= maximum / ASTICK_MAX * (astick_sensitivity / 100.0);
       // Convert back to cartesian coordinates
       *outX = +(int32_t)ROUND(radius * cos(angle));
       *outY = -(int32_t)ROUND(radius * sin(angle));
@@ -331,6 +335,7 @@ void scale_joystick(int max, int x, int y, int* outX, int* outY)
       *outX = 0;
       *outY = 0;
    }
+
 }
 
 static void inputGetKeys_reuse(int16_t analogX, int16_t analogY, int Control, BUTTONS* Keys)
@@ -342,7 +347,7 @@ static void inputGetKeys_reuse(int16_t analogX, int16_t analogY, int Control, BU
    analogX = input_cb(Control, RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_LEFT, RETRO_DEVICE_ID_ANALOG_X);
    analogY = input_cb(Control, RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_LEFT, RETRO_DEVICE_ID_ANALOG_Y);
 
-   scale_joystick(ASTICK_MAX, analogX, analogY, &scaledX, &scaledY);
+   scale_joystick(ASTICK_MAX, analogX, analogY, &scaledX, &scaledY, N64_MAX_ANALOG);
    Keys->X_AXIS = scaledX;
    Keys->Y_AXIS = scaledY;
 
@@ -729,7 +734,7 @@ static void inputGetKeys_gamecube(int Control, int analogMode, BUTTONS_GCN *Keys
       input_cb(Control, RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_BUTTON, RETRO_DEVICE_ID_JOYPAD_A) -
       input_cb(Control, RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_BUTTON, RETRO_DEVICE_ID_JOYPAD_X);
 
-   scale_joystick(ASTICK_MAX, analogX, analogY, &cstickX, &cstickY);
+   scale_joystick(ASTICK_MAX, analogX, analogY, &cstickX, &cstickY, GCN_MAX_CSTICK);
 
    cstickX += 128;
    cstickY += 128;
@@ -792,7 +797,7 @@ static void inputGetKeys_gamecube(int Control, int analogMode, BUTTONS_GCN *Keys
 
    int scaledX, scaledY;
 
-   scale_joystick(ASTICK_MAX, analogX, analogY, &scaledX, &scaledY);
+   scale_joystick(ASTICK_MAX, analogX, analogY, &scaledX, &scaledY, GCN_MAX_ANALOG);
    Keys->X_AXIS = scaledX + 128;
    Keys->Y_AXIS = scaledY + 128;
 
