@@ -24,8 +24,20 @@
 
 #include "vulkan_headers.hpp"
 #include "logging.hpp"
+#include "vulkan_common.hpp"
 #include <memory>
 #include <functional>
+
+namespace Util
+{
+class TimelineTraceFile;
+}
+
+namespace Granite
+{
+class Filesystem;
+class ThreadGroup;
+}
 
 namespace Vulkan
 {
@@ -35,7 +47,6 @@ struct DeviceFeatures
 	bool supports_external = false;
 	bool supports_dedicated = false;
 	bool supports_image_format_list = false;
-	bool supports_debug_marker = false;
 	bool supports_debug_utils = false;
 	bool supports_mirror_clamp_to_edge = false;
 	bool supports_google_display_timing = false;
@@ -57,6 +68,12 @@ struct DeviceFeatures
 	bool supports_draw_parameters = false;
 	bool supports_driver_properties = false;
 	bool supports_calibrated_timestamps = false;
+	bool supports_memory_budget = false;
+	bool supports_astc_decode_mode = false;
+	bool supports_sync2 = false;
+	bool supports_video_queue = false;
+	bool supports_video_decode_queue = false;
+	bool supports_video_decode_h264 = false;
 	VkPhysicalDeviceSubgroupProperties subgroup_properties = {};
 	VkPhysicalDevice8BitStorageFeaturesKHR storage_8bit_features = {};
 	VkPhysicalDevice16BitStorageFeaturesKHR storage_16bit_features = {};
@@ -64,7 +81,6 @@ struct DeviceFeatures
 	VkPhysicalDeviceFeatures enabled_features = {};
 	VkPhysicalDeviceExternalMemoryHostPropertiesEXT host_memory_properties = {};
 	VkPhysicalDeviceMultiviewFeaturesKHR multiview_features = {};
-	VkPhysicalDeviceImagelessFramebufferFeaturesKHR imageless_features = {};
 	VkPhysicalDeviceSubgroupSizeControlFeaturesEXT subgroup_size_control_features = {};
 	VkPhysicalDeviceSubgroupSizeControlPropertiesEXT subgroup_size_control_properties = {};
 	VkPhysicalDeviceComputeShaderDerivativesFeaturesNV compute_shader_derivative_features = {};
@@ -79,6 +95,12 @@ struct DeviceFeatures
 	VkPhysicalDevicePerformanceQueryFeaturesKHR performance_query_features = {};
 	VkPhysicalDeviceSamplerYcbcrConversionFeaturesKHR sampler_ycbcr_conversion_features = {};
 	VkPhysicalDeviceDriverPropertiesKHR driver_properties = {};
+	VkPhysicalDeviceMemoryPriorityFeaturesEXT memory_priority_features = {};
+	VkPhysicalDeviceASTCDecodeFeaturesEXT astc_decode_features = {};
+	VkPhysicalDeviceTextureCompressionASTCHDRFeaturesEXT astc_hdr_features = {};
+	VkPhysicalDeviceSynchronization2FeaturesKHR sync2_features = {};
+	VkPhysicalDevicePresentIdFeaturesKHR present_id_features = {};
+	VkPhysicalDevicePresentWaitFeaturesKHR present_wait_features = {};
 };
 
 enum VendorID
@@ -96,6 +118,14 @@ enum ContextCreationFlagBits
 };
 using ContextCreationFlags = uint32_t;
 
+struct QueueInfo
+{
+	QueueInfo();
+	VkQueue queues[QUEUE_INDEX_COUNT] = {};
+	uint32_t family_indices[QUEUE_INDEX_COUNT];
+	uint32_t timestamp_valid_bits = 0;
+};
+
 class Context
 {
 public:
@@ -111,6 +141,7 @@ public:
 	Context(const Context &) = delete;
 	void operator=(const Context &) = delete;
 	static bool init_loader(PFN_vkGetInstanceProcAddr addr);
+	static PFN_vkGetInstanceProcAddr get_instance_proc_addr();
 
 	~Context();
 
@@ -129,19 +160,9 @@ public:
 		return device;
 	}
 
-	VkQueue get_graphics_queue() const
+	const QueueInfo &get_queue_info() const
 	{
-		return graphics_queue;
-	}
-
-	VkQueue get_compute_queue() const
-	{
-		return compute_queue;
-	}
-
-	VkQueue get_transfer_queue() const
-	{
-		return transfer_queue;
+		return queue_info;
 	}
 
 	const VkPhysicalDeviceProperties &get_gpu_props() const
@@ -152,26 +173,6 @@ public:
 	const VkPhysicalDeviceMemoryProperties &get_mem_props() const
 	{
 		return mem_props;
-	}
-
-	uint32_t get_graphics_queue_family() const
-	{
-		return graphics_queue_family;
-	}
-
-	uint32_t get_compute_queue_family() const
-	{
-		return compute_queue_family;
-	}
-
-	uint32_t get_transfer_queue_family() const
-	{
-		return transfer_queue_family;
-	}
-
-	uint32_t get_timestamp_valid_bits() const
-	{
-		return timestamp_valid_bits;
 	}
 
 	void release_instance()
@@ -209,22 +210,34 @@ public:
 		return device_table;
 	}
 
+	struct SystemHandles
+	{
+		Util::TimelineTraceFile *timeline_trace_file = nullptr;
+		Granite::Filesystem *filesystem = nullptr;
+		Granite::ThreadGroup *thread_group = nullptr;
+	};
+
+	void set_system_handles(const SystemHandles &handles_)
+	{
+		handles = handles_;
+	}
+
+	const SystemHandles &get_system_handles() const
+	{
+		return handles;
+	}
+
 private:
 	VkDevice device = VK_NULL_HANDLE;
 	VkInstance instance = VK_NULL_HANDLE;
 	VkPhysicalDevice gpu = VK_NULL_HANDLE;
 	VolkDeviceTable device_table = {};
+	SystemHandles handles;
 
 	VkPhysicalDeviceProperties gpu_props = {};
 	VkPhysicalDeviceMemoryProperties mem_props = {};
 
-	VkQueue graphics_queue = VK_NULL_HANDLE;
-	VkQueue compute_queue = VK_NULL_HANDLE;
-	VkQueue transfer_queue = VK_NULL_HANDLE;
-	uint32_t graphics_queue_family = VK_QUEUE_FAMILY_IGNORED;
-	uint32_t compute_queue_family = VK_QUEUE_FAMILY_IGNORED;
-	uint32_t transfer_queue_family = VK_QUEUE_FAMILY_IGNORED;
-	uint32_t timestamp_valid_bits = 0;
+	QueueInfo queue_info;
 	unsigned num_thread_indices = 1;
 
 	bool create_instance(const char **instance_ext, uint32_t instance_ext_count);
@@ -238,7 +251,6 @@ private:
 	DeviceFeatures ext;
 
 #ifdef VULKAN_DEBUG
-	VkDebugReportCallbackEXT debug_callback = VK_NULL_HANDLE;
 	VkDebugUtilsMessengerEXT debug_messenger = VK_NULL_HANDLE;
 #endif
 	std::function<void (const char *)> message_callback;

@@ -22,19 +22,37 @@
 
 #include "shader.hpp"
 #include "device.hpp"
+#ifdef GRANITE_VULKAN_SPIRV_CROSS
 #include "spirv_cross.hpp"
-
-#ifdef GRANITE_SPIRV_DUMP
-#include "filesystem.hpp"
+using namespace spirv_cross;
 #endif
 
 using namespace std;
-using namespace spirv_cross;
 using namespace Util;
 
 namespace Vulkan
 {
-PipelineLayout::PipelineLayout(Hash hash, Device *device_, const CombinedResourceLayout &layout_)
+void ImmutableSamplerBank::hash(Util::Hasher &h, const ImmutableSamplerBank *sampler_bank)
+{
+	if (sampler_bank)
+	{
+		for (auto &set : sampler_bank->samplers)
+		{
+			for (auto *binding : set)
+			{
+				if (binding)
+					h.u64(binding->get_hash());
+				else
+					h.u32(0);
+			}
+		}
+	}
+	else
+		h.u32(0);
+}
+
+PipelineLayout::PipelineLayout(Hash hash, Device *device_, const CombinedResourceLayout &layout_,
+                               const ImmutableSamplerBank *immutable_samplers)
 	: IntrusiveHashMapEnabled<PipelineLayout>(hash)
 	, device(device_)
 	, layout(layout_)
@@ -43,7 +61,8 @@ PipelineLayout::PipelineLayout(Hash hash, Device *device_, const CombinedResourc
 	unsigned num_sets = 0;
 	for (unsigned i = 0; i < VULKAN_NUM_DESCRIPTOR_SETS; i++)
 	{
-		set_allocators[i] = device->request_descriptor_set_allocator(layout.sets[i], layout.stages_for_bindings[i]);
+		set_allocators[i] = device->request_descriptor_set_allocator(layout.sets[i], layout.stages_for_bindings[i],
+		                                                             immutable_samplers ? immutable_samplers->samplers[i] : nullptr);
 		layouts[i] = set_allocators[i]->get_layout();
 		if (layout.descriptor_set_mask & (1u << i))
 			num_sets = i + 1;
@@ -255,37 +274,49 @@ const char *Shader::stage_to_name(ShaderStage stage)
 	}
 }
 
-static bool get_stock_sampler(StockSampler &sampler, const string &name)
+// Implicitly also checks for endian issues.
+static const uint16_t reflection_magic[] = { 'G', 'R', 'A', ResourceLayout::Version };
+
+size_t ResourceLayout::serialization_size()
 {
-	if (name.find("NearestClamp") != string::npos)
-		sampler = StockSampler::NearestClamp;
-	else if (name.find("LinearClamp") != string::npos)
-		sampler = StockSampler::LinearClamp;
-	else if (name.find("TrilinearClamp") != string::npos)
-		sampler = StockSampler::TrilinearClamp;
-	else if (name.find("NearestWrap") != string::npos)
-		sampler = StockSampler::NearestWrap;
-	else if (name.find("LinearWrap") != string::npos)
-		sampler = StockSampler::LinearWrap;
-	else if (name.find("TrilinearWrap") != string::npos)
-		sampler = StockSampler::TrilinearWrap;
-	else if (name.find("NearestShadow") != string::npos)
-		sampler = StockSampler::NearestShadow;
-	else if (name.find("LinearShadow") != string::npos)
-		sampler = StockSampler::LinearShadow;
-	else if (name.find("LinearYUV420P") != string::npos)
-		sampler = StockSampler::LinearYUV420P;
-	else if (name.find("LinearYUV422P") != string::npos)
-		sampler = StockSampler::LinearYUV422P;
-	else if (name.find("LinearYUV444P") != string::npos)
-		sampler = StockSampler::LinearYUV444P;
-	else
+	return sizeof(ResourceLayout) + sizeof(reflection_magic);
+}
+
+bool ResourceLayout::serialize(uint8_t *data, size_t size) const
+{
+	if (size != serialization_size())
 		return false;
 
+	// Cannot serialize externally defined immutable samplers.
+	for (auto &set : sets)
+		if (set.immutable_sampler_mask != 0)
+			return false;
+
+	memcpy(data, reflection_magic, sizeof(reflection_magic));
+	memcpy(data + sizeof(reflection_magic), this, sizeof(*this));
 	return true;
 }
 
-void Shader::update_array_info(const SPIRType &type, unsigned set, unsigned binding)
+bool ResourceLayout::unserialize(const uint8_t *data, size_t size)
+{
+	if (size != sizeof(*this) + sizeof(reflection_magic))
+	{
+		LOGE("Reflection size mismatch.\n");
+		return false;
+	}
+
+	if (memcmp(data, reflection_magic, sizeof(reflection_magic)) != 0)
+	{
+		LOGE("Magic mismatch.\n");
+		return false;
+	}
+
+	memcpy(this, data + sizeof(reflection_magic), sizeof(*this));
+	return true;
+}
+
+#ifdef GRANITE_VULKAN_SPIRV_CROSS
+static void update_array_info(ResourceLayout &layout, const SPIRType &type, unsigned set, unsigned binding)
 {
 	auto &size = layout.sets[set].array_size[binding];
 	if (!type.array.empty())
@@ -298,10 +329,6 @@ void Shader::update_array_info(const SPIRType &type, unsigned set, unsigned bind
 		{
 			if (type.array.front() == 0)
 			{
-				// Runtime array.
-				if (!device->get_device_features().supports_descriptor_indexing)
-					LOGE("Sufficient features for descriptor indexing is not supported on this device.\n");
-
 				if (binding != 0)
 					LOGE("Bindless textures can only be used with binding = 0 in a set.\n");
 
@@ -328,30 +355,8 @@ void Shader::update_array_info(const SPIRType &type, unsigned set, unsigned bind
 	}
 }
 
-Shader::Shader(Hash hash, Device *device_, const uint32_t *data, size_t size)
-	: IntrusiveHashMapEnabled<Shader>(hash)
-	, device(device_)
+bool Shader::reflect_resource_layout(ResourceLayout &layout, const uint32_t *data, size_t size)
 {
-#ifdef GRANITE_SPIRV_DUMP
-	if (!Granite::Filesystem::get().write_buffer_to_file(string("cache://spirv/") + to_string(hash) + ".spv", data, size))
-		LOGE("Failed to dump shader to file.\n");
-#endif
-
-	VkShaderModuleCreateInfo info = { VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO };
-	info.codeSize = size;
-	info.pCode = data;
-
-#ifdef VULKAN_DEBUG
-	LOGI("Creating shader module.\n");
-#endif
-	auto &table = device->get_device_table();
-	if (table.vkCreateShaderModule(device->get_device(), &info, nullptr, &module) != VK_SUCCESS)
-		LOGE("Failed to create shader module.\n");
-
-#ifdef GRANITE_VULKAN_FOSSILIZE
-	device->register_shader_module(module, get_hash(), info);
-#endif
-
 	Compiler compiler(data, size / sizeof(uint32_t));
 
 	auto resources = compiler.get_shader_resources();
@@ -368,20 +373,7 @@ Shader::Shader(Hash hash, Device *device_, const uint32_t *data, size_t size)
 		if (compiler.get_type(type.image.type).basetype == SPIRType::BaseType::Float)
 			layout.sets[set].fp_mask |= 1u << binding;
 
-		const string &name = image.name;
-		StockSampler sampler;
-		if (type.image.dim != spv::DimBuffer && get_stock_sampler(sampler, name))
-		{
-			if (has_immutable_sampler(layout.sets[set], binding))
-			{
-				if (sampler != get_immutable_sampler(layout.sets[set], binding))
-					LOGE("Immutable sampler mismatch detected!\n");
-			}
-			else
-				set_immutable_sampler(layout.sets[set], binding, sampler);
-		}
-
-		update_array_info(type, set, binding);
+		update_array_info(layout, type, set, binding);
 	}
 
 	for (auto &image : resources.subpass_inputs)
@@ -393,7 +385,7 @@ Shader::Shader(Hash hash, Device *device_, const uint32_t *data, size_t size)
 		auto &type = compiler.get_type(image.type_id);
 		if (compiler.get_type(type.image.type).basetype == SPIRType::BaseType::Float)
 			layout.sets[set].fp_mask |= 1u << binding;
-		update_array_info(type, set, binding);
+		update_array_info(layout, type, set, binding);
 	}
 
 	for (auto &image : resources.separate_images)
@@ -410,7 +402,7 @@ Shader::Shader(Hash hash, Device *device_, const uint32_t *data, size_t size)
 		else
 			layout.sets[set].separate_image_mask |= 1u << binding;
 
-		update_array_info(type, set, binding);
+		update_array_info(layout, type, set, binding);
 	}
 
 	for (auto &image : resources.separate_samplers)
@@ -418,21 +410,7 @@ Shader::Shader(Hash hash, Device *device_, const uint32_t *data, size_t size)
 		auto set = compiler.get_decoration(image.id, spv::DecorationDescriptorSet);
 		auto binding = compiler.get_decoration(image.id, spv::DecorationBinding);
 		layout.sets[set].sampler_mask |= 1u << binding;
-
-		const string &name = image.name;
-		StockSampler sampler;
-		if (get_stock_sampler(sampler, name))
-		{
-			if (has_immutable_sampler(layout.sets[set], binding))
-			{
-				if (sampler != get_immutable_sampler(layout.sets[set], binding))
-					LOGE("Immutable sampler mismatch detected!\n");
-			}
-			else
-				set_immutable_sampler(layout.sets[set], binding, sampler);
-		}
-
-		update_array_info(compiler.get_type(image.type_id), set, binding);
+		update_array_info(layout, compiler.get_type(image.type_id), set, binding);
 	}
 
 	for (auto &image : resources.storage_images)
@@ -445,7 +423,7 @@ Shader::Shader(Hash hash, Device *device_, const uint32_t *data, size_t size)
 		if (compiler.get_type(type.image.type).basetype == SPIRType::BaseType::Float)
 			layout.sets[set].fp_mask |= 1u << binding;
 
-		update_array_info(type, set, binding);
+		update_array_info(layout, type, set, binding);
 	}
 
 	for (auto &buffer : resources.uniform_buffers)
@@ -453,7 +431,7 @@ Shader::Shader(Hash hash, Device *device_, const uint32_t *data, size_t size)
 		auto set = compiler.get_decoration(buffer.id, spv::DecorationDescriptorSet);
 		auto binding = compiler.get_decoration(buffer.id, spv::DecorationBinding);
 		layout.sets[set].uniform_buffer_mask |= 1u << binding;
-		update_array_info(compiler.get_type(buffer.type_id), set, binding);
+		update_array_info(layout, compiler.get_type(buffer.type_id), set, binding);
 	}
 
 	for (auto &buffer : resources.storage_buffers)
@@ -461,7 +439,7 @@ Shader::Shader(Hash hash, Device *device_, const uint32_t *data, size_t size)
 		auto set = compiler.get_decoration(buffer.id, spv::DecorationDescriptorSet);
 		auto binding = compiler.get_decoration(buffer.id, spv::DecorationBinding);
 		layout.sets[set].storage_buffer_mask |= 1u << binding;
-		update_array_info(compiler.get_type(buffer.type_id), set, binding);
+		update_array_info(layout, compiler.get_type(buffer.type_id), set, binding);
 	}
 
 	for (auto &attrib : resources.stage_inputs)
@@ -483,7 +461,7 @@ Shader::Shader(Hash hash, Device *device_, const uint32_t *data, size_t size)
 		// it did not do a static analysis to determine similar information, so we got a lot
 		// of false positives.
 		layout.push_constant_size =
-		    compiler.get_declared_struct_size(compiler.get_type(resources.push_constant_buffers.front().base_type_id));
+				compiler.get_declared_struct_size(compiler.get_type(resources.push_constant_buffers.front().base_type_id));
 	}
 
 	auto spec_constants = compiler.get_specialization_constants();
@@ -497,6 +475,56 @@ Shader::Shader(Hash hash, Device *device_, const uint32_t *data, size_t size)
 
 		layout.spec_constant_mask |= 1u << c.constant_id;
 	}
+
+	return true;
+}
+#else
+bool Shader::reflect_resource_layout(ResourceLayout &, const uint32_t *, size_t)
+{
+	return false;
+}
+#endif
+
+Shader::Shader(Hash hash, Device *device_, const uint32_t *data, size_t size,
+               const ResourceLayout *resource_layout, const ImmutableSamplerBank *sampler_bank)
+	: IntrusiveHashMapEnabled<Shader>(hash)
+	, device(device_)
+{
+	VkShaderModuleCreateInfo info = { VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO };
+	info.codeSize = size;
+	info.pCode = data;
+
+#ifdef VULKAN_DEBUG
+	LOGI("Creating shader module.\n");
+#endif
+	auto &table = device->get_device_table();
+	if (table.vkCreateShaderModule(device->get_device(), &info, nullptr, &module) != VK_SUCCESS)
+		LOGE("Failed to create shader module.\n");
+
+#ifdef GRANITE_VULKAN_FOSSILIZE
+	device->register_shader_module(module, get_hash(), info);
+#endif
+
+	if (resource_layout)
+		layout = *resource_layout;
+#ifdef GRANITE_VULKAN_SPIRV_CROSS
+	else if (!reflect_resource_layout(layout, data, size))
+		LOGE("Failed to reflect resource layout.\n");
+#endif
+
+	if (sampler_bank)
+		immutable_sampler_bank = *sampler_bank;
+
+	for (unsigned set = 0; set < VULKAN_NUM_DESCRIPTOR_SETS; set++)
+	{
+		for_each_bit(layout.sets[set].sampler_mask | layout.sets[set].sampled_image_mask, [&](unsigned binding) {
+			if (sampler_bank && sampler_bank->samplers[set][binding])
+				layout.sets[set].immutable_sampler_mask |= 1u << binding;
+		});
+	}
+
+	if (layout.bindless_set_mask != 0 && !device->get_device_features().supports_descriptor_indexing)
+		LOGE("Sufficient features for descriptor indexing is not supported on this device.\n");
 }
 
 Shader::~Shader()
@@ -537,14 +565,31 @@ VkPipeline Program::add_pipeline(Hash hash, VkPipeline pipeline)
 	return pipelines.emplace_yield(hash, pipeline)->get();
 }
 
+void Program::destroy_pipeline(VkPipeline pipeline)
+{
+	if (internal_sync)
+		device->destroy_pipeline_nolock(pipeline);
+	else
+		device->destroy_pipeline(pipeline);
+}
+
+void Program::promote_read_write_to_read_only()
+{
+#ifdef GRANITE_VULKAN_MT
+	pipelines.move_to_read_only();
+#endif
+}
+
 Program::~Program()
 {
+#ifdef GRANITE_VULKAN_MT
+	for (auto &pipe : pipelines.get_read_only())
+		destroy_pipeline(pipe.get());
+	for (auto &pipe : pipelines.get_read_write())
+		destroy_pipeline(pipe.get());
+#else
 	for (auto &pipe : pipelines)
-	{
-		if (internal_sync)
-			device->destroy_pipeline_nolock(pipe.get());
-		else
-			device->destroy_pipeline(pipe.get());
-	}
+		destroy_pipeline(pipe.get());
+#endif
 }
 }

@@ -68,6 +68,8 @@ class CommandProcessor;
 struct RendererOptions
 {
 	unsigned upscaling_factor = 1;
+	bool super_sampled_readback = false;
+	bool super_sampled_readback_dither = false;
 };
 
 class Renderer : public Vulkan::DebugChannelInterface
@@ -86,8 +88,9 @@ public:
 
 	bool init_renderer(const RendererOptions &options);
 
-	void draw_flat_primitive(const TriangleSetup &setup);
-	void draw_shaded_primitive(const TriangleSetup &setup, const AttributeSetup &attr);
+	// setup may be mutated to apply various fixups to triangle setup.
+	void draw_flat_primitive(TriangleSetup &setup);
+	void draw_shaded_primitive(TriangleSetup &setup, const AttributeSetup &attr);
 
 	void set_color_framebuffer(uint32_t addr, uint32_t width, FBFormat fmt);
 	void set_depth_framebuffer(uint32_t addr);
@@ -120,7 +123,7 @@ public:
 
 	void resolve_coherency_external(unsigned offset, unsigned length);
 	void submit_update_upscaled_domain_external(Vulkan::CommandBuffer &cmd,
-	                                            unsigned addr, unsigned length, unsigned pixel_size_log2);
+	                                            unsigned addr, unsigned pixels, unsigned pixel_size_log2);
 	unsigned get_scaling_factor() const;
 
 	const Vulkan::Buffer *get_upscaled_rdram_buffer() const;
@@ -312,12 +315,15 @@ private:
 	void submit_tile_binning_combined(Vulkan::CommandBuffer &cmd, bool upscaled);
 	void clear_indirect_buffer(Vulkan::CommandBuffer &cmd);
 	void submit_rasterization(Vulkan::CommandBuffer &cmd, Vulkan::Buffer &tmem, bool upscaled);
-	void submit_depth_blend(Vulkan::CommandBuffer &cmd, Vulkan::Buffer &tmem, bool upscaled);
+	void submit_depth_blend(Vulkan::CommandBuffer &cmd, Vulkan::Buffer &tmem, bool upscaled, bool force_write_mask);
 
-	enum class ResolveStage { Pre, Post };
+	enum class ResolveStage { Pre, Post, SSAAResolve };
 	void submit_update_upscaled_domain(Vulkan::CommandBuffer &cmd, ResolveStage stage);
 	void submit_update_upscaled_domain(Vulkan::CommandBuffer &cmd, ResolveStage stage,
-	                                   unsigned addr, unsigned depth_addr, unsigned length, unsigned pixel_size_log2);
+	                                   unsigned addr, unsigned depth_addr,
+	                                   unsigned width, unsigned height,
+	                                   unsigned pixel_size_log2);
+	void submit_clear_super_sample_write_mask(Vulkan::CommandBuffer &cmd, unsigned width, unsigned height);
 
 	SpanInfoOffsets allocate_span_jobs(const TriangleSetup &setup);
 
@@ -341,6 +347,7 @@ private:
 	void deduce_static_texture_state(unsigned tile, unsigned max_lod_level);
 	void deduce_noise_state();
 	static StaticRasterizationState normalize_static_state(StaticRasterizationState state);
+	void fixup_triangle_setup(TriangleSetup &setup) const;
 
 	struct Caps
 	{
@@ -349,6 +356,9 @@ private:
 		bool ubershader = false;
 		bool supports_small_integer_arithmetic = false;
 		bool subgroup_tile_binning = false;
+		bool subgroup_depth_blend = false;
+		bool super_sample_readback = false;
+		bool super_sample_readback_dither = false;
 		unsigned upscaling = 1;
 		unsigned max_num_tile_instances = Limits::MaxTileInstances;
 		unsigned max_tiles_x = ImplementationConstants::MaxTilesX;
