@@ -23,6 +23,8 @@
 #include "command_buffer.hpp"
 #include "device.hpp"
 #include "format.hpp"
+#include "thread_id.hpp"
+#include "vulkan_prerotate.hpp"
 #include <string.h>
 
 //#define FULL_BACKTRACE_CHECKPOINTS
@@ -49,6 +51,13 @@ CommandBuffer::CommandBuffer(Device *device_, VkCommandBuffer cmd_, VkPipelineCa
 	set_opaque_state();
 	memset(&pipeline_state.static_state, 0, sizeof(pipeline_state.static_state));
 	memset(&bindings, 0, sizeof(bindings));
+
+	// Set up extra state which PSO creation depends on implicitly.
+	// This needs to affect hashing to make Fossilize path behave as expected.
+	auto &features = device->get_device_features();
+	pipeline_state.subgroup_size_tag =
+			(features.subgroup_size_control_properties.minSubgroupSize << 0) |
+			(features.subgroup_size_control_properties.maxSubgroupSize << 8);
 }
 
 CommandBuffer::~CommandBuffer()
@@ -458,6 +467,7 @@ void CommandBuffer::begin_context()
 	current_pipeline_layout = VK_NULL_HANDLE;
 	current_layout = nullptr;
 	pipeline_state.program = nullptr;
+	pipeline_state.potential_static_state.spec_constant_mask = 0;
 	memset(bindings.cookies, 0, sizeof(bindings.cookies));
 	memset(bindings.secondary_cookies, 0, sizeof(bindings.secondary_cookies));
 	memset(&index_state, 0, sizeof(index_state));
@@ -477,17 +487,33 @@ void CommandBuffer::begin_graphics()
 {
 	is_compute = false;
 	begin_context();
+
+	// Vertex shaders which support prerotate are expected to include inc/prerotate.h and
+	// call prerotate_fixup_clip_xy().
+	if (current_framebuffer_surface_transform != VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR)
+		set_surface_transform_specialization_constants(0);
 }
 
 void CommandBuffer::init_viewport_scissor(const RenderPassInfo &info, const Framebuffer *fb)
 {
 	VkRect2D rect = info.render_area;
-	rect.offset.x = min(fb->get_width(), uint32_t(rect.offset.x));
-	rect.offset.y = min(fb->get_height(), uint32_t(rect.offset.y));
-	rect.extent.width = min(fb->get_width() - rect.offset.x, rect.extent.width);
-	rect.extent.height = min(fb->get_height() - rect.offset.y, rect.extent.height);
 
-	viewport = { 0.0f, 0.0f, float(fb->get_width()), float(fb->get_height()), 0.0f, 1.0f };
+	uint32_t fb_width = fb->get_width();
+	uint32_t fb_height = fb->get_height();
+
+	rect.offset.x = min(fb_width, uint32_t(rect.offset.x));
+	rect.offset.y = min(fb_height, uint32_t(rect.offset.y));
+	rect.extent.width = min(fb_width - rect.offset.x, rect.extent.width);
+	rect.extent.height = min(fb_height - rect.offset.y, rect.extent.height);
+
+	if (surface_transform_swaps_xy(current_framebuffer_surface_transform))
+		rect2d_swap_xy(rect);
+
+	viewport = {
+		float(rect.offset.x), float(rect.offset.y),
+		float(rect.extent.width), float(rect.extent.height),
+		0.0f, 1.0f
+	};
 	scissor = rect;
 }
 
@@ -496,6 +522,7 @@ CommandBufferHandle CommandBuffer::request_secondary_command_buffer(Device &devi
 {
 	auto *fb = &device.request_framebuffer(info);
 	auto cmd = device.request_secondary_command_buffer_for_thread(thread_index, fb, subpass);
+	cmd->init_surface_transform(info);
 	cmd->begin_graphics();
 
 	cmd->framebuffer = fb;
@@ -558,6 +585,55 @@ void CommandBuffer::next_subpass(VkSubpassContents contents)
 	begin_graphics();
 }
 
+void CommandBuffer::set_surface_transform_specialization_constants(unsigned base_index)
+{
+	float transform[4];
+
+	set_specialization_constant_mask(0xf << base_index);
+	build_prerotate_matrix_2x2(current_framebuffer_surface_transform, transform);
+	for (unsigned i = 0; i < 4; i++)
+		set_specialization_constant(base_index + i, transform[i]);
+}
+
+void CommandBuffer::init_surface_transform(const RenderPassInfo &info)
+{
+	// Validate that all prerotate state matches, unless the attachments are transient, since we don't really care,
+	// and it gets messy to forward rotation state to them.
+	VkSurfaceTransformFlagBitsKHR prerorate = VK_SURFACE_TRANSFORM_FLAG_BITS_MAX_ENUM_KHR;
+	for (unsigned i = 0; i < info.num_color_attachments; i++)
+	{
+		auto usage = info.color_attachments[i]->get_image().get_create_info().usage;
+		if ((usage & VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT) == 0)
+		{
+			auto image_prerotate = info.color_attachments[i]->get_image().get_surface_transform();
+			if (prerorate == VK_SURFACE_TRANSFORM_FLAG_BITS_MAX_ENUM_KHR)
+			{
+				prerorate = image_prerotate;
+			}
+			else if (prerorate != image_prerotate)
+			{
+				LOGE("Mismatch in prerotate state for color attachment %u! (%u != %u)\n",
+				     i, unsigned(prerorate), unsigned(image_prerotate));
+			}
+		}
+	}
+
+	if (prerorate != VK_SURFACE_TRANSFORM_FLAG_BITS_MAX_ENUM_KHR && info.depth_stencil)
+	{
+		auto usage = info.depth_stencil->get_image().get_create_info().usage;
+		if ((usage & VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT) == 0)
+		{
+			auto image_prerotate = info.depth_stencil->get_image().get_surface_transform();
+			if (prerorate != image_prerotate)
+				LOGE("Mismatch in prerotate state for depth-stencil! (%u != %u)\n", unsigned(prerorate), unsigned(image_prerotate));
+		}
+	}
+
+	if (prerorate == VK_SURFACE_TRANSFORM_FLAG_BITS_MAX_ENUM_KHR)
+		prerorate = VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR;
+	current_framebuffer_surface_transform = prerorate;
+}
+
 void CommandBuffer::begin_render_pass(const RenderPassInfo &info, VkSubpassContents contents)
 {
 	VK_ASSERT(!framebuffer);
@@ -565,6 +641,7 @@ void CommandBuffer::begin_render_pass(const RenderPassInfo &info, VkSubpassConte
 	VK_ASSERT(!actual_render_pass);
 
 	framebuffer = &device->request_framebuffer(info);
+	init_surface_transform(info);
 	pipeline_state.compatible_render_pass = &framebuffer->get_compatible_render_pass();
 	actual_render_pass = &device->request_render_pass(info, false);
 	pipeline_state.subpass_index = 0;
@@ -591,7 +668,7 @@ void CommandBuffer::begin_render_pass(const RenderPassInfo &info, VkSubpassConte
 		}
 
 		if (info.color_attachments[i]->get_image().is_swapchain_image())
-			uses_swapchain = true;
+			swapchain_touch_in_stages(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
 	}
 
 	if (info.depth_stencil && (info.op_flags & RENDER_PASS_OP_CLEAR_DEPTH_STENCIL_BIT) != 0)
@@ -601,22 +678,16 @@ void CommandBuffer::begin_render_pass(const RenderPassInfo &info, VkSubpassConte
 	}
 
 	VkRenderPassBeginInfo begin_info = { VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO };
-	VkRenderPassAttachmentBeginInfoKHR attachment_info = { VK_STRUCTURE_TYPE_RENDER_PASS_ATTACHMENT_BEGIN_INFO_KHR };
 	begin_info.renderPass = actual_render_pass->get_render_pass();
 	begin_info.framebuffer = framebuffer->get_framebuffer();
 	begin_info.renderArea = scissor;
 	begin_info.clearValueCount = num_clear_values;
 	begin_info.pClearValues = clear_values;
 
-	auto &features = device->get_device_features();
-	bool imageless = features.imageless_features.imagelessFramebuffer == VK_TRUE;
-	VkImageView immediate_views[VULKAN_NUM_ATTACHMENTS + 1];
-	if (imageless)
-	{
-		attachment_info.attachmentCount = Framebuffer::setup_raw_views(immediate_views, info);
-		attachment_info.pAttachments = immediate_views;
-		begin_info.pNext = &attachment_info;
-	}
+	// In the render pass interface, we pretend we are rendering with normal
+	// un-rotated coordinates.
+	if (surface_transform_swaps_xy(current_framebuffer_surface_transform))
+		rect2d_swap_xy(begin_info.renderArea);
 
 	table.vkCmdBeginRenderPass(cmd, &begin_info, contents);
 
@@ -647,12 +718,6 @@ VkPipeline CommandBuffer::build_compute_pipeline(Device *device, const DeferredP
 	info.stage.module = shader.get_module();
 	info.stage.pName = "main";
 	info.stage.stage = VK_SHADER_STAGE_COMPUTE_BIT;
-
-#ifdef GRANITE_SPIRV_DUMP
-	LOGI("Compiling SPIR-V file: (%s) %s\n",
-		     Shader::stage_to_name(ShaderStage::Compute),
-		     (to_string(shader.get_hash()) + ".spv").c_str());
-#endif
 
 	VkSpecializationInfo spec_info = {};
 	VkSpecializationMapEntry spec_entries[VULKAN_NUM_SPEC_CONSTANTS];
@@ -685,24 +750,17 @@ VkPipeline CommandBuffer::build_compute_pipeline(Device *device, const DeferredP
 
 	if (compile.static_state.state.subgroup_control_size)
 	{
-		auto &features = device->get_device_features();
-
-		if (!features.subgroup_size_control_features.subgroupSizeControl)
+		if (!device->supports_subgroup_size_log2(compile.static_state.state.subgroup_full_group,
+		                                         compile.static_state.state.subgroup_minimum_size_log2,
+		                                         compile.static_state.state.subgroup_maximum_size_log2))
 		{
-			LOGE("Device does not support subgroup size control.\n");
+			LOGE("Subgroup size configuration not supported.\n");
 			return VK_NULL_HANDLE;
 		}
+		auto &features = device->get_device_features();
 
 		if (compile.static_state.state.subgroup_full_group)
-		{
-			if (!features.subgroup_size_control_features.computeFullSubgroups)
-			{
-				LOGE("Device does not support full subgroups.\n");
-				return VK_NULL_HANDLE;
-			}
-
 			info.stage.flags |= VK_PIPELINE_SHADER_STAGE_CREATE_REQUIRE_FULL_SUBGROUPS_BIT_EXT;
-		}
 
 		uint32_t min_subgroups = 1u << compile.static_state.state.subgroup_minimum_size_log2;
 		uint32_t max_subgroups = 1u << compile.static_state.state.subgroup_maximum_size_log2;
@@ -720,19 +778,6 @@ VkPipeline CommandBuffer::build_compute_pipeline(Device *device, const DeferredP
 				subgroup_size_info.requiredSubgroupSize = min_subgroups;
 
 			info.stage.pNext = &subgroup_size_info;
-
-			if (subgroup_size_info.requiredSubgroupSize < features.subgroup_size_control_properties.minSubgroupSize ||
-			    subgroup_size_info.requiredSubgroupSize > features.subgroup_size_control_properties.maxSubgroupSize)
-			{
-				LOGE("Requested subgroup size is out of range.\n");
-				return VK_NULL_HANDLE;
-			}
-
-			if ((features.subgroup_size_control_properties.requiredSubgroupSizeStages & VK_SHADER_STAGE_COMPUTE_BIT) == 0)
-			{
-				LOGE("Cannot request specific subgroup size in compute.\n");
-				return VK_NULL_HANDLE;
-			}
 		}
 	}
 
@@ -751,7 +796,10 @@ VkPipeline CommandBuffer::build_compute_pipeline(Device *device, const DeferredP
 		return VK_NULL_HANDLE;
 	}
 
-	return compile.program->add_pipeline(compile.hash, compute_pipeline);
+	auto returned_pipeline = compile.program->add_pipeline(compile.hash, compute_pipeline);
+	if (returned_pipeline != compute_pipeline)
+		table.vkDestroyPipeline(device->get_device(), compute_pipeline, nullptr);
+	return returned_pipeline;
 }
 
 void CommandBuffer::extract_pipeline_state(DeferredPipelineCompile &compile) const
@@ -928,11 +976,6 @@ VkPipeline CommandBuffer::build_graphics_pipeline(Device *device, const Deferred
 			auto &s = stages[num_stages++];
 			s = { VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO };
 			s.module = compile.program->get_shader(stage)->get_module();
-#ifdef GRANITE_SPIRV_DUMP
-			LOGI("Compiling SPIR-V file: (%s) %s\n",
-			     Shader::stage_to_name(stage),
-			     (to_string(compile.program->get_shader(stage)->get_hash()) + ".spv").c_str());
-#endif
 			s.pName = "main";
 			s.stage = static_cast<VkShaderStageFlagBits>(1u << i);
 
@@ -990,7 +1033,10 @@ VkPipeline CommandBuffer::build_graphics_pipeline(Device *device, const Deferred
 		return VK_NULL_HANDLE;
 	}
 
-	return compile.program->add_pipeline(compile.hash, pipeline);
+	auto returned_pipeline = compile.program->add_pipeline(compile.hash, pipeline);
+	if (returned_pipeline != pipeline)
+		table.vkDestroyPipeline(device->get_device(), pipeline, nullptr);
+	return returned_pipeline;
 }
 
 bool CommandBuffer::flush_compute_pipeline(bool synchronous)
@@ -1022,7 +1068,10 @@ void CommandBuffer::update_hash_compute_pipeline(DeferredPipelineCompile &compil
 		h.s32(1);
 		h.u32(compile.static_state.state.subgroup_minimum_size_log2);
 		h.u32(compile.static_state.state.subgroup_maximum_size_log2);
-		h.s32(compile.static_state.state.subgroup_full_group);
+		h.u32(compile.static_state.state.subgroup_full_group);
+		// Required for Fossilize since we don't know exactly how to lower these requirements to a PSO
+		// without knowing some device state.
+		h.u32(compile.subgroup_size_tag);
 	}
 	else
 		h.s32(0);
@@ -1170,9 +1219,29 @@ bool CommandBuffer::flush_render_state(bool synchronous)
 	}
 
 	if (get_and_clear(COMMAND_BUFFER_DIRTY_VIEWPORT_BIT))
-		table.vkCmdSetViewport(cmd, 0, 1, &viewport);
+	{
+		if (surface_transform_swaps_xy(current_framebuffer_surface_transform))
+		{
+			auto tmp_viewport = viewport;
+			viewport_swap_xy(tmp_viewport);
+			table.vkCmdSetViewport(cmd, 0, 1, &tmp_viewport);
+		}
+		else
+			table.vkCmdSetViewport(cmd, 0, 1, &viewport);
+	}
+
 	if (get_and_clear(COMMAND_BUFFER_DIRTY_SCISSOR_BIT))
-		table.vkCmdSetScissor(cmd, 0, 1, &scissor);
+	{
+		if (surface_transform_swaps_xy(current_framebuffer_surface_transform))
+		{
+			auto tmp_scissor = scissor;
+			rect2d_swap_xy(tmp_scissor);
+			table.vkCmdSetScissor(cmd, 0, 1, &tmp_scissor);
+		}
+		else
+			table.vkCmdSetScissor(cmd, 0, 1, &scissor);
+	}
+
 	if (pipeline_state.static_state.state.depth_bias_enable && get_and_clear(COMMAND_BUFFER_DIRTY_DEPTH_BIAS_BIT))
 		table.vkCmdSetDepthBias(cmd, dynamic_state.depth_bias_constant, 0.0f, dynamic_state.depth_bias_slope);
 	if (pipeline_state.static_state.state.stencil_test && get_and_clear(COMMAND_BUFFER_DIRTY_STENCIL_REFERENCE_BIT))
@@ -1216,6 +1285,9 @@ void CommandBuffer::wait_events(unsigned num_events, const VkEvent *events,
 	VK_ASSERT(!framebuffer);
 	VK_ASSERT(!actual_render_pass);
 
+	VK_ASSERT(src_stages != 0);
+	VK_ASSERT(dst_stages != 0);
+
 	if (device->get_workarounds().emulate_event_as_pipeline_barrier)
 	{
 		barrier(src_stages, dst_stages,
@@ -1232,13 +1304,18 @@ void CommandBuffer::wait_events(unsigned num_events, const VkEvent *events,
 
 PipelineEvent CommandBuffer::signal_event(VkPipelineStageFlags stages)
 {
+	auto event = device->begin_signal_event(stages);
+	complete_signal_event(*event);
+	return event;
+}
+
+void CommandBuffer::complete_signal_event(const EventHolder &event)
+{
 	VK_ASSERT(!framebuffer);
 	VK_ASSERT(!actual_render_pass);
-	auto event = device->request_pipeline_event();
+	VK_ASSERT(event.get_stages() != 0);
 	if (!device->get_workarounds().emulate_event_as_pipeline_barrier)
-		table.vkCmdSetEvent(cmd, event->get_event(), stages);
-	event->set_stages(stages);
-	return event;
+		table.vkCmdSetEvent(cmd, event.get_event(), event.get_stages());
 }
 
 void CommandBuffer::set_vertex_attrib(uint32_t attrib, uint32_t binding, VkFormat format, VkDeviceSize offset)
@@ -1325,8 +1402,8 @@ void CommandBuffer::set_program(const std::string &compute, const std::vector<st
 	auto *p = device->get_shader_manager().register_compute(compute);
 	if (p)
 	{
-		unsigned variant = p->register_variant(defines);
-		set_program(p->get_program(variant));
+		auto *variant = p->register_variant(defines);
+		set_program(variant->get_program());
 	}
 	else
 		set_program(nullptr);
@@ -1338,8 +1415,8 @@ void CommandBuffer::set_program(const std::string &vertex, const std::string &fr
 	auto *p = device->get_shader_manager().register_graphics(vertex, fragment);
 	if (p)
 	{
-		unsigned variant = p->register_variant(defines);
-		set_program(p->get_program(variant));
+		auto *variant = p->register_variant(defines);
+		set_program(variant->get_program());
 	}
 	else
 		set_program(nullptr);
@@ -1701,6 +1778,15 @@ void CommandBuffer::set_storage_texture(unsigned set, unsigned binding, const Im
 	            view.get_image().get_layout(VK_IMAGE_LAYOUT_GENERAL), view.get_cookie());
 }
 
+void CommandBuffer::set_unorm_storage_texture(unsigned set, unsigned binding, const ImageView &view)
+{
+	VK_ASSERT(view.get_image().get_create_info().usage & VK_IMAGE_USAGE_STORAGE_BIT);
+	auto unorm_view = view.get_unorm_view();
+	VK_ASSERT(unorm_view != VK_NULL_HANDLE);
+	set_texture(set, binding, unorm_view, unorm_view,
+	            view.get_image().get_layout(VK_IMAGE_LAYOUT_GENERAL), view.get_cookie() | COOKIE_BIT_UNORM);
+}
+
 static void update_descriptor_set_legacy(Device &device, VkDescriptorSet desc_set,
                                          const DescriptorSetLayout &set_layout, const ResourceBinding *bindings)
 {
@@ -1951,7 +2037,7 @@ void CommandBuffer::flush_descriptor_set(uint32_t set)
 		for (unsigned i = 0; i < array_size; i++)
 		{
 			h.u64(bindings.cookies[set][binding + i]);
-			if (!has_immutable_sampler(set_layout, binding + i))
+			if ((set_layout.immutable_sampler_mask & (1u << (binding + i))) == 0)
 			{
 				h.u64(bindings.secondary_cookies[set][binding + i]);
 				VK_ASSERT(bindings.bindings[set][binding + i].image.fp.sampler != VK_NULL_HANDLE);
@@ -2356,12 +2442,31 @@ void CommandBuffer::set_backtrace_checkpoint()
 #endif
 }
 
-void CommandBuffer::end()
+void CommandBuffer::end_threaded_recording()
 {
 	VK_ASSERT(!debug_channel_buffer);
 
+	if (is_ended)
+		return;
+
+	is_ended = true;
+
+	// We must end a command buffer on the same thread index we started it on.
+	VK_ASSERT(get_current_thread_index() == thread_index);
+
+	if (has_profiling())
+	{
+		auto &query_pool = device->get_performance_query_pool(device->get_physical_queue_type(type));
+		query_pool.end_command_buffer(cmd);
+	}
+
 	if (table.vkEndCommandBuffer(cmd) != VK_SUCCESS)
 		LOGE("Failed to end command buffer.\n");
+}
+
+void CommandBuffer::end()
+{
+	end_threaded_recording();
 
 	if (vbo_block.mapped)
 		device->request_vertex_block_nolock(vbo_block, 0);
@@ -2393,23 +2498,6 @@ void CommandBuffer::begin_region(const char *name, const float *color)
 		if (vkCmdBeginDebugUtilsLabelEXT)
 			vkCmdBeginDebugUtilsLabelEXT(cmd, &info);
 	}
-	else if (device->ext.supports_debug_marker)
-	{
-		VkDebugMarkerMarkerInfoEXT info = { VK_STRUCTURE_TYPE_DEBUG_MARKER_MARKER_INFO_EXT };
-		if (color)
-		{
-			for (unsigned i = 0; i < 4; i++)
-				info.color[i] = color[i];
-		}
-		else
-		{
-			for (unsigned i = 0; i < 4; i++)
-				info.color[i] = 1.0f;
-		}
-
-		info.pMarkerName = name;
-		table.vkCmdDebugMarkerBeginEXT(cmd, &info);
-	}
 }
 
 void CommandBuffer::end_region()
@@ -2419,8 +2507,6 @@ void CommandBuffer::end_region()
 		if (vkCmdEndDebugUtilsLabelEXT)
 			vkCmdEndDebugUtilsLabelEXT(cmd);
 	}
-	else if (device->ext.supports_debug_marker)
-		table.vkCmdDebugMarkerEndEXT(cmd);
 }
 
 void CommandBuffer::enable_profiling()

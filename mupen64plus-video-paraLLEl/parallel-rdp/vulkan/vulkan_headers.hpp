@@ -22,13 +22,18 @@
 
 #pragma once
 
-#ifdef _WIN32
+#if defined(_WIN32) && !defined(VK_USE_PLATFORM_WIN32_KHR)
 #define VK_USE_PLATFORM_WIN32_KHR
+#endif
+
+#if defined(GRANITE_VULKAN_BETA) && !defined(VK_ENABLE_BETA_EXTENSIONS)
+#define VK_ENABLE_BETA_EXTENSIONS
 #endif
 
 #include "volk.h"
 #include <stdlib.h>
 #include "logging.hpp"
+#include <utility>
 
 #ifdef VK_USE_PLATFORM_XLIB_XRANDR_EXT
 // Workaround silly Xlib headers that define macros for these globally :(
