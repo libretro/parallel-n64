@@ -1,4 +1,4 @@
-/* Copyright (c) 2017-2020 Hans-Kristian Arntzen
+/* Copyright (c) 2017-2022 Hans-Kristian Arntzen
  *
  * Permission is hereby granted, free of charge, to any person obtaining
  * a copy of this software and associated documentation files (the
@@ -124,18 +124,18 @@ Semaphore Device::request_external_semaphore(VkSemaphore semaphore, bool signall
 }
 
 #ifndef _WIN32
-Semaphore Device::request_imported_semaphore(int fd, VkExternalSemaphoreHandleTypeFlagBitsKHR handle_type)
+Semaphore Device::request_imported_semaphore(int fd, VkExternalSemaphoreHandleTypeFlagBits handle_type)
 {
 	LOCK();
 	if (!ext.supports_external)
 		return {};
 
-	VkExternalSemaphorePropertiesKHR props = { VK_STRUCTURE_TYPE_EXTERNAL_SEMAPHORE_PROPERTIES_KHR };
-	VkPhysicalDeviceExternalSemaphoreInfoKHR info = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTERNAL_SEMAPHORE_INFO_KHR };
+	VkExternalSemaphoreProperties props = { VK_STRUCTURE_TYPE_EXTERNAL_SEMAPHORE_PROPERTIES };
+	VkPhysicalDeviceExternalSemaphoreInfo info = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTERNAL_SEMAPHORE_INFO };
 	info.handleType = handle_type;
 
-	vkGetPhysicalDeviceExternalSemaphorePropertiesKHR(gpu, &info, &props);
-	if ((props.externalSemaphoreFeatures & VK_EXTERNAL_SEMAPHORE_FEATURE_IMPORTABLE_BIT_KHR) == 0)
+	vkGetPhysicalDeviceExternalSemaphoreProperties(gpu, &info, &props);
+	if ((props.externalSemaphoreFeatures & VK_EXTERNAL_SEMAPHORE_FEATURE_IMPORTABLE_BIT) == 0)
 		return Semaphore(nullptr);
 
 	auto semaphore = managers.semaphore.request_cleared_semaphore();
@@ -144,7 +144,7 @@ Semaphore Device::request_imported_semaphore(int fd, VkExternalSemaphoreHandleTy
 	import.fd = fd;
 	import.semaphore = semaphore;
 	import.handleType = handle_type;
-	import.flags = VK_SEMAPHORE_IMPORT_TEMPORARY_BIT_KHR;
+	import.flags = VK_SEMAPHORE_IMPORT_TEMPORARY_BIT;
 	Semaphore ptr(handle_pool.semaphores.allocate(this, semaphore, false));
 
 	if (table->vkImportSemaphoreFdKHR(device, &import) != VK_SUCCESS)
@@ -303,11 +303,7 @@ Shader *Device::request_shader(const uint32_t *data, size_t size,
                                const ResourceLayout *layout,
                                const ImmutableSamplerBank *sampler_bank)
 {
-	Util::Hasher hasher;
-	hasher.data(data, size);
-	ImmutableSamplerBank::hash(hasher, sampler_bank);
-
-	auto hash = hasher.get();
+	auto hash = Shader::hash(data, size, sampler_bank);
 	auto *ret = shaders.find(hash);
 	if (!ret)
 		ret = shaders.emplace_yield(hash, hash, this, data, size, layout, sampler_bank);
@@ -446,7 +442,8 @@ void Device::bake_program(Program &program)
 			layout.sets[set].storage_image_mask |= shader_layout.sets[set].storage_image_mask;
 			layout.sets[set].uniform_buffer_mask |= shader_layout.sets[set].uniform_buffer_mask;
 			layout.sets[set].storage_buffer_mask |= shader_layout.sets[set].storage_buffer_mask;
-			layout.sets[set].sampled_buffer_mask |= shader_layout.sets[set].sampled_buffer_mask;
+			layout.sets[set].sampled_texel_buffer_mask |= shader_layout.sets[set].sampled_texel_buffer_mask;
+			layout.sets[set].storage_texel_buffer_mask |= shader_layout.sets[set].storage_texel_buffer_mask;
 			layout.sets[set].input_attachment_mask |= shader_layout.sets[set].input_attachment_mask;
 			layout.sets[set].sampler_mask |= shader_layout.sets[set].sampler_mask;
 			layout.sets[set].separate_image_mask |= shader_layout.sets[set].separate_image_mask;
@@ -473,7 +470,8 @@ void Device::bake_program(Program &program)
 					shader_layout.sets[set].storage_image_mask |
 					shader_layout.sets[set].uniform_buffer_mask|
 					shader_layout.sets[set].storage_buffer_mask |
-					shader_layout.sets[set].sampled_buffer_mask |
+					shader_layout.sets[set].sampled_texel_buffer_mask |
+					shader_layout.sets[set].storage_texel_buffer_mask |
 					shader_layout.sets[set].input_attachment_mask |
 					shader_layout.sets[set].sampler_mask |
 					shader_layout.sets[set].separate_image_mask;
@@ -556,9 +554,10 @@ void Device::bake_program(Program &program)
 bool Device::init_pipeline_cache(const uint8_t *data, size_t size)
 {
 	static const auto uuid_size = sizeof(gpu_props.pipelineCacheUUID);
+	static const auto hash_size = sizeof(Util::Hash);
 
 	VkPipelineCacheCreateInfo info = { VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO };
-	if (!data || size < uuid_size)
+	if (!data || size < uuid_size + hash_size)
 	{
 		LOGI("Creating a fresh pipeline cache.\n");
 	}
@@ -568,9 +567,24 @@ bool Device::init_pipeline_cache(const uint8_t *data, size_t size)
 	}
 	else
 	{
-		info.initialDataSize = size - uuid_size;
-		info.pInitialData = data + uuid_size;
-		LOGI("Initializing pipeline cache.\n");
+		Util::Hash reference_hash;
+		memcpy(&reference_hash, data + uuid_size, sizeof(reference_hash));
+
+		info.initialDataSize = size - uuid_size - hash_size;
+		data += uuid_size + hash_size;
+		info.pInitialData = data;
+
+		Util::Hasher h;
+		h.data(data, info.initialDataSize);
+
+		if (h.get() == reference_hash)
+			LOGI("Initializing pipeline cache.\n");
+		else
+		{
+			LOGW("Pipeline cache is corrupt, creating a fresh cache.\n");
+			info.pInitialData = nullptr;
+			info.initialDataSize = 0;
+		}
 	}
 
 	if (pipeline_cache != VK_NULL_HANDLE)
@@ -579,35 +593,12 @@ bool Device::init_pipeline_cache(const uint8_t *data, size_t size)
 	return table->vkCreatePipelineCache(device, &info, nullptr, &pipeline_cache) == VK_SUCCESS;
 }
 
-static inline char to_hex(uint8_t v)
-{
-	if (v < 10)
-		return char('0' + v);
-	else
-		return char('a' + (v - 10));
-}
-
-string Device::get_pipeline_cache_string() const
-{
-	string res;
-	res.reserve(sizeof(gpu_props.pipelineCacheUUID) * 2);
-
-	for (auto &c : gpu_props.pipelineCacheUUID)
-	{
-		res += to_hex(uint8_t((c >> 4) & 0xf));
-		res += to_hex(uint8_t(c & 0xf));
-	}
-
-	return res;
-}
-
 void Device::init_pipeline_cache()
 {
 #ifdef GRANITE_VULKAN_FILESYSTEM
 	if (!system_handles.filesystem)
 		return;
-	auto file = system_handles.filesystem->open(Util::join("cache://pipeline_cache_", get_pipeline_cache_string(), ".bin"),
-	                                            Granite::FileMode::ReadOnly);
+	auto file = system_handles.filesystem->open("cache://pipeline_cache.bin", Granite::FileMode::ReadOnly);
 	if (file)
 	{
 		auto size = file->get_size();
@@ -626,6 +617,7 @@ size_t Device::get_pipeline_cache_size()
 		return 0;
 
 	static const auto uuid_size = sizeof(gpu_props.pipelineCacheUUID);
+	static const auto hash_size = sizeof(Util::Hash);
 	size_t size = 0;
 	if (table->vkGetPipelineCacheData(device, pipeline_cache, &size, nullptr) != VK_SUCCESS)
 	{
@@ -633,7 +625,7 @@ size_t Device::get_pipeline_cache_size()
 		return 0;
 	}
 
-	return size + uuid_size;
+	return size + uuid_size + hash_size;
 }
 
 bool Device::get_pipeline_cache_data(uint8_t *data, size_t size)
@@ -642,18 +634,26 @@ bool Device::get_pipeline_cache_data(uint8_t *data, size_t size)
 		return false;
 
 	static const auto uuid_size = sizeof(gpu_props.pipelineCacheUUID);
-	if (size < uuid_size)
+	static const auto hash_size = sizeof(Util::Hash);
+	if (size < uuid_size + hash_size)
 		return false;
 
-	size -= uuid_size;
+	auto *hash_data = data + uuid_size;
+
+	size -= uuid_size + hash_size;
 	memcpy(data, gpu_props.pipelineCacheUUID, uuid_size);
-	data += uuid_size;
+	data = hash_data + hash_size;
 
 	if (table->vkGetPipelineCacheData(device, pipeline_cache, &size, data) != VK_SUCCESS)
 	{
 		LOGE("Failed to get pipeline cache data.\n");
 		return false;
 	}
+
+	Util::Hasher h;
+	h.data(data, size);
+	auto blob_hash = h.get();
+	memcpy(hash_data, &blob_hash, sizeof(blob_hash));
 
 	return true;
 }
@@ -671,8 +671,10 @@ void Device::flush_pipeline_cache()
 		return;
 	}
 
-	auto file = system_handles.filesystem->open(Util::join("cache://pipeline_cache_", get_pipeline_cache_string(), ".bin"),
-	                                            Granite::FileMode::WriteOnly);
+	auto file = system_handles.filesystem->open(
+			"cache://pipeline_cache.bin",
+			Granite::FileMode::WriteOnlyTransactional);
+
 	if (!file)
 	{
 		LOGE("Failed to get pipeline cache data.\n");
@@ -700,36 +702,16 @@ void Device::init_workarounds()
 
 #ifdef __APPLE__
 	// Events are not supported in MoltenVK.
+	// TODO: Use VK_KHR_portability_subset to determine this.
 	workarounds.emulate_event_as_pipeline_barrier = true;
 	LOGW("Emulating events as pipeline barriers on Metal emulation.\n");
 #else
-	if (gpu_props.vendorID == VENDOR_ID_NVIDIA &&
-#ifdef _WIN32
-	    VK_VERSION_MAJOR(gpu_props.driverVersion) < 417)
-#else
-	    VK_VERSION_MAJOR(gpu_props.driverVersion) < 415)
-#endif
-	{
-		workarounds.force_store_in_render_pass = true;
-		LOGW("Detected workaround for render pass STORE_OP_STORE.\n");
-	}
-
-	if (gpu_props.vendorID == VENDOR_ID_QCOM)
-	{
-		// Apparently, we need to use STORE_OP_STORE in all render passes no matter what ...
-		workarounds.force_store_in_render_pass = true;
-		workarounds.broken_color_write_mask = true;
-		LOGW("Detected workaround for render pass STORE_OP_STORE.\n");
-		LOGW("Detected workaround for broken color write masks.\n");
-	}
-
-	// UNDEFINED -> COLOR_ATTACHMENT_OPTIMAL stalls, so need to acquire async.
 	if (gpu_props.vendorID == VENDOR_ID_ARM)
 	{
 		LOGW("Workaround applied: Emulating events as pipeline barriers.\n");
 		LOGW("Workaround applied: Optimize ALL_GRAPHICS_BIT barriers.\n");
 
-		// All performance related workarounds.
+		// Both are performance related workarounds.
 		workarounds.emulate_event_as_pipeline_barrier = true;
 		workarounds.optimize_all_graphics_barrier = true;
 
@@ -759,6 +741,7 @@ void Device::set_context(const Context &context)
 	mem_props = context.get_mem_props();
 	gpu_props = context.get_gpu_props();
 	ext = context.get_enabled_device_features();
+	system_handles = context.get_system_handles();
 
 	init_workarounds();
 
@@ -814,14 +797,14 @@ void Device::set_context(const Context &context)
 			queue_data[i].performance_query_pool.init_device(this, queue_info.family_indices[i]);
 	}
 
-#ifdef GRANITE_VULKAN_FOSSILIZE
-	init_pipeline_state();
-#endif
 #ifdef GRANITE_VULKAN_FILESYSTEM
 	init_shader_manager_cache();
 #endif
 
-	system_handles = context.get_system_handles();
+#ifdef GRANITE_VULKAN_FOSSILIZE
+	init_pipeline_state(context.get_feature_filter());
+#endif
+
 	if (system_handles.timeline_trace_file)
 		init_calibrated_timestamps();
 }
@@ -2997,20 +2980,18 @@ public:
 	bool setup_view_usage_info(VkImageViewCreateInfo &create_info, VkImageUsageFlags usage,
 	                           VkImageViewUsageCreateInfo &usage_info) const
 	{
-		if (device->get_device_features().supports_maintenance_2)
-		{
-			usage_info.usage = usage;
-			usage_info.usage &= VK_IMAGE_USAGE_SAMPLED_BIT |
-			                    VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT |
-			                    VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT |
-			                    VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT;
+		usage_info.usage = usage;
+		usage_info.usage &= VK_IMAGE_USAGE_SAMPLED_BIT |
+		                    VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT |
+		                    VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT |
+		                    VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT |
+		                    vk_video_image_usage_flags;
 
-			if (format_is_srgb(create_info.format))
-				usage_info.usage &= ~VK_IMAGE_USAGE_STORAGE_BIT;
+		if (format_is_srgb(create_info.format))
+			usage_info.usage &= ~VK_IMAGE_USAGE_STORAGE_BIT;
 
-			usage_info.pNext = create_info.pNext;
-			create_info.pNext = &usage_info;
-		}
+		usage_info.pNext = create_info.pNext;
+		create_info.pNext = &usage_info;
 
 		return true;
 	}
@@ -3276,7 +3257,7 @@ ImageViewHandle Device::create_image_view(const ImageViewCreateInfo &create_info
 
 #ifndef _WIN32
 ImageHandle Device::create_imported_image(int fd, VkDeviceSize size, uint32_t memory_type,
-                                          VkExternalMemoryHandleTypeFlagBitsKHR handle_type,
+                                          VkExternalMemoryHandleTypeFlagBits handle_type,
                                           const ImageCreateInfo &create_info)
 {
 	if (!ext.supports_external)
@@ -3301,7 +3282,7 @@ ImageHandle Device::create_imported_image(int fd, VkDeviceSize size, uint32_t me
 	info.pNext = create_info.pnext;
 	VK_ASSERT(create_info.domain != ImageDomain::Transient);
 
-	VkExternalMemoryImageCreateInfoKHR externalInfo = { VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_IMAGE_CREATE_INFO_KHR };
+	VkExternalMemoryImageCreateInfo externalInfo = { VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_IMAGE_CREATE_INFO };
 	externalInfo.handleTypes = handle_type;
 	externalInfo.pNext = info.pNext;
 	info.pNext = &externalInfo;
@@ -3315,7 +3296,7 @@ ImageHandle Device::create_imported_image(int fd, VkDeviceSize size, uint32_t me
 	alloc_info.allocationSize = size;
 	alloc_info.memoryTypeIndex = memory_type;
 
-	VkMemoryDedicatedAllocateInfoKHR dedicated_info = { VK_STRUCTURE_TYPE_MEMORY_DEDICATED_ALLOCATE_INFO_KHR };
+	VkMemoryDedicatedAllocateInfo dedicated_info = { VK_STRUCTURE_TYPE_MEMORY_DEDICATED_ALLOCATE_INFO };
 	dedicated_info.image = holder.image;
 	alloc_info.pNext = &dedicated_info;
 
@@ -3537,24 +3518,21 @@ bool Device::allocate_image_memory(DeviceAllocation *allocation, const ImageCrea
 		}
 		else
 		{
-			if (!ext.supports_bind_memory2 || !ext.supports_get_memory_requirements2)
-				return false;
-
 			VkBindImageMemoryInfo bind_infos[3];
 			VkBindImagePlaneMemoryInfo bind_plane_infos[3];
 			VK_ASSERT(num_planes <= 3);
 
 			for (unsigned plane = 0; plane < num_planes; plane++)
 			{
-				VkMemoryRequirements2KHR memory_req = {VK_STRUCTURE_TYPE_MEMORY_REQUIREMENTS_2_KHR };
-				VkImageMemoryRequirementsInfo2KHR image_info = {VK_STRUCTURE_TYPE_IMAGE_MEMORY_REQUIREMENTS_INFO_2_KHR };
+				VkMemoryRequirements2 memory_req = {VK_STRUCTURE_TYPE_MEMORY_REQUIREMENTS_2 };
+				VkImageMemoryRequirementsInfo2 image_info = {VK_STRUCTURE_TYPE_IMAGE_MEMORY_REQUIREMENTS_INFO_2 };
 				image_info.image = image;
 
-				VkImagePlaneMemoryRequirementsInfo plane_info = { VK_STRUCTURE_TYPE_IMAGE_PLANE_MEMORY_REQUIREMENTS_INFO_KHR };
+				VkImagePlaneMemoryRequirementsInfo plane_info = { VK_STRUCTURE_TYPE_IMAGE_PLANE_MEMORY_REQUIREMENTS_INFO };
 				plane_info.planeAspect = static_cast<VkImageAspectFlagBits>(VK_IMAGE_ASPECT_PLANE_0_BIT << plane);
 				image_info.pNext = &plane_info;
 
-				table->vkGetImageMemoryRequirements2KHR(device, &image_info, &memory_req);
+				table->vkGetImageMemoryRequirements2(device, &image_info, &memory_req);
 				auto &reqs = memory_req.memoryRequirements;
 				auto &alias = *info.memory_aliases[plane];
 
@@ -3576,7 +3554,7 @@ bool Device::allocate_image_memory(DeviceAllocation *allocation, const ImageCrea
 				bind_plane_infos[plane].planeAspect = static_cast<VkImageAspectFlagBits>(VK_IMAGE_ASPECT_PLANE_0_BIT << plane);
 			}
 
-			if (table->vkBindImageMemory2KHR(device, num_planes, bind_infos) != VK_SUCCESS)
+			if (table->vkBindImageMemory2(device, num_planes, bind_infos) != VK_SUCCESS)
 				return false;
 		}
 	}
@@ -4146,7 +4124,7 @@ BufferHandle Device::create_imported_host_buffer(const BufferCreateInfo &create_
 		return BufferHandle{};
 	}
 
-	VkExternalMemoryBufferCreateInfo external_info = { VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_BUFFER_CREATE_INFO_KHR };
+	VkExternalMemoryBufferCreateInfo external_info = { VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_BUFFER_CREATE_INFO };
 	external_info.handleTypes = type;
 
 	VkMemoryHostPointerPropertiesEXT host_pointer_props = { VK_STRUCTURE_TYPE_MEMORY_HOST_POINTER_PROPERTIES_EXT };
@@ -4817,9 +4795,8 @@ ShaderManager &Device::get_shader_manager()
 #ifdef GRANITE_VULKAN_FILESYSTEM
 void Device::init_shader_manager_cache()
 {
-	//if (!shader_manager.load_shader_cache("assets://shader_cache.json"))
-	//	shader_manager.load_shader_cache("cache://shader_cache.json");
-	shader_manager.load_shader_cache("assets://shader_cache.json");
+	if (!shader_manager.load_shader_cache("assets://shader_cache.json"))
+		shader_manager.load_shader_cache("cache://shader_cache.json");
 }
 
 void Device::flush_shader_manager_cache()
@@ -4879,6 +4856,87 @@ bool Device::supports_subgroup_size_log2(bool subgroup_full_group, uint8_t subgr
 
 	// We need requiredSubgroupSizeStages support here.
 	return (ext.subgroup_size_control_properties.requiredSubgroupSizeStages & VK_SHADER_STAGE_COMPUTE_BIT) != 0;
+}
+
+const QueueInfo &Device::get_queue_info() const
+{
+	return queue_info;
+}
+
+void Device::timestamp_log_reset()
+{
+	managers.timestamps.reset();
+}
+
+void Device::timestamp_log(const TimestampIntervalReportCallback &cb) const
+{
+	managers.timestamps.log_simple(cb);
+}
+
+CommandBufferHandle request_command_buffer_with_ownership_transfer(
+		Device &device,
+		const Vulkan::Image &image,
+		const OwnershipTransferInfo &info,
+		const Vulkan::Semaphore &semaphore)
+{
+	auto &queue_info = device.get_queue_info();
+	unsigned old_family = queue_info.family_indices[device.get_physical_queue_type(info.old_queue)];
+	unsigned new_family = queue_info.family_indices[device.get_physical_queue_type(info.new_queue)];
+	bool image_is_concurrent = (image.get_create_info().misc &
+	                            (Vulkan::IMAGE_MISC_CONCURRENT_QUEUE_ASYNC_TRANSFER_BIT |
+	                             Vulkan::IMAGE_MISC_CONCURRENT_QUEUE_GRAPHICS_BIT |
+	                             Vulkan::IMAGE_MISC_CONCURRENT_QUEUE_ASYNC_COMPUTE_BIT |
+	                             Vulkan::IMAGE_MISC_CONCURRENT_QUEUE_ASYNC_GRAPHICS_BIT)) != 0;
+	bool need_ownership_transfer = old_family != new_family && !image_is_concurrent;
+
+	VkImageMemoryBarrier ownership = { VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER };
+	ownership.image = image.get_image();
+	ownership.srcAccessMask = 0;
+	ownership.dstAccessMask = 0;
+	ownership.subresourceRange.aspectMask = format_to_aspect_mask(image.get_format());
+	ownership.subresourceRange.levelCount = VK_REMAINING_MIP_LEVELS;
+	ownership.subresourceRange.layerCount = VK_REMAINING_ARRAY_LAYERS;
+	ownership.oldLayout = info.old_image_layout;
+	ownership.newLayout = info.new_image_layout;
+
+	if (need_ownership_transfer)
+	{
+		ownership.srcQueueFamilyIndex = old_family;
+		ownership.dstQueueFamilyIndex = new_family;
+
+		if (semaphore)
+			device.add_wait_semaphore(info.old_queue, semaphore, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, true);
+		auto release_cmd = device.request_command_buffer(info.old_queue);
+
+		release_cmd->image_barriers(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
+		                            VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
+		                            1, &ownership);
+
+		Semaphore sem;
+		device.submit(release_cmd, nullptr, 1, &sem);
+		device.add_wait_semaphore(info.new_queue, sem, info.dst_pipeline_stage, true);
+	}
+	else
+	{
+		ownership.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+		ownership.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+		if (semaphore)
+			device.add_wait_semaphore(info.new_queue, semaphore, info.dst_pipeline_stage, true);
+	}
+
+	// Ownership transfers may perform writes, so make those operations visible.
+	// If we require neither layout transition nor ownership transfer,
+	// visibility is ensured by semaphores.
+	bool need_dst_barrier = need_ownership_transfer || info.old_image_layout != info.new_image_layout;
+
+	auto acquire_cmd = device.request_command_buffer(info.new_queue);
+	if (need_dst_barrier)
+	{
+		ownership.dstAccessMask = info.dst_access;
+		acquire_cmd->image_barriers(info.dst_pipeline_stage, info.dst_pipeline_stage, 1, &ownership);
+	}
+
+	return acquire_cmd;
 }
 
 static ImplementationQuirks implementation_quirks;
