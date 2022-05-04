@@ -1,7 +1,7 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
- *   Mupen64plus-rsp-hle - audio.h                                         *
+ *   Mupen64plus-ui-console - osal_dynamiclib.h                            *
  *   Mupen64Plus homepage: https://mupen64plus.org/                        *
- *   Copyright (C) 2014 Bobby Smiles                                       *
+ *   Copyright (C) 2009 Richard Goedeken                                   *
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
  *   it under the terms of the GNU General Public License as published by  *
@@ -19,27 +19,16 @@
  *   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.          *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef AUDIO_H
-#define AUDIO_H
+#if !defined(OSAL_DYNAMICLIB_H)
+#define OSAL_DYNAMICLIB_H
 
-#include <stddef.h>
-#include <stdint.h>
+#include "m64p_types.h"
 
-#include "common.h"
+m64p_error osal_dynlib_open(m64p_dynlib_handle *pLibHandle, const char *pccLibraryPath);
 
-extern const int16_t RESAMPLE_LUT[64 * 4];
+void *     osal_dynlib_getproc(m64p_dynlib_handle LibHandle, const char *pccProcedureName);
 
-int32_t rdot(size_t n, const int16_t *x, const int16_t *y);
+m64p_error osal_dynlib_close(m64p_dynlib_handle LibHandle);
 
-static inline int16_t adpcm_predict_sample(uint8_t byte, uint8_t mask,
-        unsigned lshift, unsigned rshift)
-{
-    int16_t sample = (uint16_t)(byte & mask) << lshift;
-    sample >>= rshift; /* signed */
-    return sample;
-}
+#endif /* #define OSAL_DYNAMICLIB_H */
 
-void adpcm_compute_residuals(int16_t* dst, const int16_t* src,
-        const int16_t* cb_entry, const int16_t* last_samples, size_t count);
-
-#endif

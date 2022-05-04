@@ -1,6 +1,6 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *   Mupen64plus-rsp-hle - audio.c                                         *
- *   Mupen64Plus homepage: http://code.google.com/p/mupen64plus/           *
+ *   Mupen64Plus homepage: https://mupen64plus.org/                        *
  *   Copyright (C) 2014 Bobby Smiles                                       *
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
@@ -94,29 +94,35 @@ const int16_t RESAMPLE_LUT[64 * 4] = {
 
 int32_t rdot(size_t n, const int16_t *x, const int16_t *y)
 {
-   int32_t accu = 0;
+    int32_t accu = 0;
 
-   while (n-- != 0)
-      accu += *(x++) * *(--y);
+    y += n;
 
-   return accu;
+    while (n != 0) {
+        accu += *(x++) * *(--y);
+        --n;
+    }
+
+    return accu;
 }
 
 void adpcm_compute_residuals(int16_t* dst, const int16_t* src,
         const int16_t* cb_entry, const int16_t* last_samples, size_t count)
 {
-   size_t i;
-   const int16_t* const book1 = cb_entry;
-   const int16_t* const book2 = cb_entry + 8;
+    const int16_t* const book1 = cb_entry;
+    const int16_t* const book2 = cb_entry + 8;
 
-   const int16_t l1           = last_samples[0];
-   const int16_t l2           = last_samples[1];
+    const int16_t l1 = last_samples[0];
+    const int16_t l2 = last_samples[1];
 
-   for(i = 0; i < count; ++i)
-   {
-      int32_t accu  = (int32_t)src[i] << 11;
-      accu         += book1[i]*l1 + book2[i]*l2 + rdot(i, book2, src + i);
-      dst[i]        = clamp_s16(accu >> 11);
+    size_t i;
+
+    assert(count <= 8);
+
+    for(i = 0; i < count; ++i) {
+        int32_t accu = (int32_t)src[i] << 11;
+        accu += book1[i]*l1 + book2[i]*l2 + rdot(i, book2, src);
+        dst[i] = clamp_s16(accu >> 11);
    }
 }
 
