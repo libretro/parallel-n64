@@ -76,7 +76,7 @@ public:
         return m_num_workers;
     }
 
-private:
+protected:
     std::function<void(std::uint32_t)> m_task;
     std::vector<std::thread> m_workers;
     std::mutex m_signal_mutex;
@@ -87,7 +87,12 @@ private:
     std::atomic<bool> m_accept_work;
     const std::uint32_t m_num_workers;
 
-    void start_work() {
+    virtual void create_worker(std::uint32_t worker_id)
+    {
+        m_workers.emplace_back(std::thread(&Parallel::do_work, this, worker_id));
+    }
+
+    virtual void start_work() {
         std::unique_lock<std::mutex> ul(m_signal_mutex);
 
         // clear task bits for all workers
@@ -97,7 +102,7 @@ private:
         m_signal_work.notify_all();
     }
 
-    void do_work(std::uint32_t worker_id) {
+    virtual void do_work(std::uint32_t worker_id) {
         const std::uint64_t worker_mask = 1LL << worker_id;
 
         while (m_accept_work) {
@@ -121,7 +126,7 @@ private:
         }
     }
 
-    void wait() {
+    virtual void wait() {
         // wait for all workers to set their task bits
         std::unique_lock<std::mutex> ul(m_signal_mutex);
         m_signal_done.wait(ul, [this] {
@@ -133,6 +138,51 @@ private:
     Parallel(const Parallel&) = delete;
 };
 
+class ParallelBusy : public Parallel
+{
+public:
+    ParallelBusy(std::uint32_t num_workers) : Parallel(num_workers)
+    {
+    }
+
+    virtual void create_worker(std::uint32_t worker_id)
+    {
+        m_workers.emplace_back(std::thread(&ParallelBusy::do_work, this, worker_id));
+    }
+
+    virtual void start_work()
+    {
+        // clear task bits for all workers
+        m_tasks_done = 0;
+    }
+
+    virtual void do_work(std::uint32_t worker_id)
+    {
+        const std::uint64_t worker_mask = 1LL << worker_id;
+
+        while (m_accept_work) {
+            if ((m_tasks_done & worker_mask) != 0) {
+                std::this_thread::yield();
+                continue;
+            }
+
+            // do the work
+            m_task(worker_id);
+
+            // mark task as done
+            m_tasks_done |= worker_mask;
+        }
+    }
+
+    virtual void wait()
+    {
+        while (m_tasks_done != m_all_tasks_done) {
+            std::this_thread::yield();
+        }
+    }
+};
+
+
 // C interface for the Parallel class
 static std::unique_ptr<Parallel> parallel;
 
@@ -141,7 +191,7 @@ std::unique_ptr<T> make_unique(Args&&... args) {
     return std::unique_ptr<T>(new T(std::forward<Args>(args)...));
 }
 
-void parallel_alinit(uint32_t num)
+void parallel_alinit(uint32_t num, bool busy)
 {
     // auto-select number of workers based on the number of cores
     if (num == 0) {
@@ -151,6 +201,13 @@ void parallel_alinit(uint32_t num)
         else
             num = std::thread::hardware_concurrency();
     }
+
+     if (busy) {
+        parallel = make_unique<ParallelBusy>(num);
+    } else {
+        parallel = make_unique<Parallel>(num);
+    }
+
 
     parallel = make_unique<Parallel>(num);
 }

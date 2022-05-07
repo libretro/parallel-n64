@@ -1,3 +1,5 @@
+#ifdef N64VIDEO_C
+
 static const uint8_t bayer_matrix[16] =
 {
      0,  4,  1, 5,
@@ -62,15 +64,35 @@ static STRICTINLINE void rgb_dither(int rgb_dither_sel, int* r, int* g, int* b, 
     *b = *b + (ditherdiff & replacesign);
 }
 
-static STRICTINLINE void get_dither_noise(uint32_t wid, int x, int y, int* cdith, int* adith)
+static STRICTINLINE void rgb_dither_gval(int rgb_dither_sel, int* g, int dith)
 {
-    if (!state[wid].other_modes.f.getditherlevel)
-        state[wid].noise = ((irand(&state[wid].rseed) & 7) << 6) | 0x20;
+    int32_t newg = *g;
+    int32_t gcomp;
 
-    y >>= state[wid].scfield;
+    if (newg > 247)
+        newg = 255;
+    else
+        newg = (newg & 0xf8) + 8;
+
+    if (rgb_dither_sel != 2)
+        gcomp = dith;
+    else
+        gcomp = (dith >> 3) & 7;
+
+    int32_t replacesign = (gcomp - (*g & 7)) >> 31;
+    int32_t ditherdiff = newg - *g;
+    *g = *g + (ditherdiff & replacesign);
+}
+
+static STRICTINLINE void get_dither_noise(struct rdp_state* wstate, int x, int y, int* cdith, int* adith)
+{
+    if (!wstate->other_modes.f.getditherlevel)
+        wstate->noise = ((irand(&wstate->rseed) & 7) << 6) | 0x20;
+
+    y >>= wstate->scfield;
 
     int dithindex;
-    switch(state[wid].other_modes.f.rgb_alpha_dither)
+    switch(wstate->other_modes.f.rgb_alpha_dither)
     {
     case 0:
         dithindex = ((y & 3) << 2) | (x & 3);
@@ -84,7 +106,7 @@ static STRICTINLINE void get_dither_noise(uint32_t wid, int x, int y, int* cdith
     case 2:
         dithindex = ((y & 3) << 2) | (x & 3);
         *cdith = magic_matrix[dithindex];
-        *adith = (state[wid].noise >> 6) & 7;
+        *adith = (wstate->noise >> 6) & 7;
         break;
     case 3:
         dithindex = ((y & 3) << 2) | (x & 3);
@@ -103,7 +125,7 @@ static STRICTINLINE void get_dither_noise(uint32_t wid, int x, int y, int* cdith
     case 6:
         dithindex = ((y & 3) << 2) | (x & 3);
         *cdith = bayer_matrix[dithindex];
-        *adith = (state[wid].noise >> 6) & 7;
+        *adith = (wstate->noise >> 6) & 7;
         break;
     case 7:
         dithindex = ((y & 3) << 2) | (x & 3);
@@ -112,20 +134,20 @@ static STRICTINLINE void get_dither_noise(uint32_t wid, int x, int y, int* cdith
         break;
     case 8:
         dithindex = ((y & 3) << 2) | (x & 3);
-        *cdith = irand(&state[wid].rseed);
+        *cdith = irand(&wstate->rseed);
         *adith = magic_matrix[dithindex];
         break;
     case 9:
         dithindex = ((y & 3) << 2) | (x & 3);
-        *cdith = irand(&state[wid].rseed);
+        *cdith = irand(&wstate->rseed);
         *adith = (~magic_matrix[dithindex]) & 7;
         break;
     case 10:
-        *cdith = irand(&state[wid].rseed);
-        *adith = (state[wid].noise >> 6) & 7;
+        *cdith = irand(&wstate->rseed);
+        *adith = (wstate->noise >> 6) & 7;
         break;
     case 11:
-        *cdith = irand(&state[wid].rseed);
+        *cdith = irand(&wstate->rseed);
         *adith = 0;
         break;
     case 12:
@@ -140,7 +162,7 @@ static STRICTINLINE void get_dither_noise(uint32_t wid, int x, int y, int* cdith
         break;
     case 14:
         *cdith = 7;
-        *adith = (state[wid].noise >> 6) & 7;
+        *adith = (wstate->noise >> 6) & 7;
         break;
     case 15:
         *cdith = 7;
@@ -148,3 +170,5 @@ static STRICTINLINE void get_dither_noise(uint32_t wid, int x, int y, int* cdith
         break;
     }
 }
+
+#endif // N64VIDEO_C

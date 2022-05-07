@@ -8,7 +8,7 @@ extern "C" {
 
 #define PARALLEL_MAX_WORKERS 64u
 
-void parallel_alinit(uint32_t num);
+void parallel_alinit(uint32_t num, bool busyloop);
 
 void parallel_run(void task(uint32_t));
 

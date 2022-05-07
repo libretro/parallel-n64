@@ -52,6 +52,7 @@ enum vi_interp
 {
     VI_INTERP_NEAREST,
     VI_INTERP_LINEAR,
+    VI_INTERP_HYBRID,
     VI_INTERP_NUM
 };
 
@@ -61,6 +62,24 @@ enum dp_compat_profile
     DP_COMPAT_MEDIUM,
     DP_COMPAT_HIGH,
     DP_COMPAT_NUM
+};
+
+struct n64video_pixel
+{
+    uint8_t r;
+    uint8_t g;
+    uint8_t b;
+    uint8_t a;
+};
+
+struct n64video_frame_buffer
+{
+    struct n64video_pixel* pixels;
+    uint32_t width;
+    uint32_t height;
+    uint32_t height_out;
+    uint32_t pitch;
+    bool valid;
 };
 
 struct n64video_config
@@ -80,20 +99,22 @@ struct n64video_config
         bool widescreen;            // force 16:9 aspect ratio if true
         bool hide_overscan;         // crop to visible area if true
         bool vsync;                 // enable vsync if true
-        bool exclusive;             // run in exclusive mode when in fullscreen if true
         bool vi_dedither;           // enable dedithering if true
         bool vi_blur;               // enable bilateral blur if true
+        bool exclusive;             // run in exclusive mode when in fullscreen if true
+        bool integer_scaling;       // one native pixel is displayed as a multiple of a screen pixel if true
     } vi;
     struct {
         enum dp_compat_profile compat;  // multithreading compatibility mode
     } dp;
-    bool parallel;                  // use multithreaded renderer if true
     bool dithering;                 // enable dithering
+    bool parallel;                  // use multithreaded renderer if true
+    bool busyloop;                  // use a busyloop while waiting for work
     uint32_t num_workers;           // number of rendering workers
 };
 
 void n64video_config_init(struct n64video_config* config);
 void n64video_init(struct n64video_config* config);
-void n64video_update_screen(void);
+void n64video_update_screen(struct n64video_frame_buffer* fb);
 void n64video_process_list(void);
 void n64video_close(void);
