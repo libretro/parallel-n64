@@ -19,7 +19,7 @@
  *   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.          *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include <stdbool.h>
+#include <boolean.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <string.h>
