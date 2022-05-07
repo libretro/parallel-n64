@@ -22,7 +22,7 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include <assert.h>
-#include <stdbool.h>
+#include <boolean.h>
 #include <stdint.h>
 #include <string.h>
 

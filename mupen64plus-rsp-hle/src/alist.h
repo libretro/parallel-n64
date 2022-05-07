@@ -22,7 +22,7 @@
 #ifndef ALIST_INTERNAL_H
 #define ALIST_INTERNAL_H
 
-#include <stdbool.h>
+#include <boolean.h>
 #include <stddef.h>
 #include <stdint.h>
 
