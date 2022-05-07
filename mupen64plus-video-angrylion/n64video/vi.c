@@ -79,7 +79,7 @@ static uint32_t zb_address;
 static int32_t vinnglitch;
 
 // prescale buffer
-static struct n64video_pixel prescale[PRESCALE_WIDTH * PRESCALE_HEIGHT];
+struct n64video_pixel prescale[PRESCALE_WIDTH * PRESCALE_HEIGHT];
 static uint32_t prescale_ptr;
 static int32_t linecount;
 
