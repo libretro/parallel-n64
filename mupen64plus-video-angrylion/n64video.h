@@ -66,9 +66,9 @@ enum dp_compat_profile
 
 struct n64video_pixel
 {
-    uint8_t r;
-    uint8_t g;
     uint8_t b;
+    uint8_t g;
+    uint8_t r;
     uint8_t a;
 };
 
