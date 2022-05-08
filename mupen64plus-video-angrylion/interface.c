@@ -134,8 +134,8 @@ uint32_t plugin_get_rom_name(char* name, uint32_t name_size)
 }
 
 void vdac_init(struct n64video_config* config) { }
-void vdac_read(struct frame_buffer* fb, bool alpha) { }
-void vdac_write(struct frame_buffer* fb)
+void vdac_read(struct n64video_frame_buffer* fb, bool alpha) { }
+void vdac_write(struct n64video_frame_buffer* fb)
 {
    screen_width = fb->width;
    screen_height = fb->height;
@@ -362,7 +362,8 @@ void angrylionUpdateScreen(void)
         return;
     counter = 0;
 #endif
-    n64video_update_screen();
+ struct n64video_frame_buffer fb;
+ n64video_update_screen(&fb);
     
 }
 

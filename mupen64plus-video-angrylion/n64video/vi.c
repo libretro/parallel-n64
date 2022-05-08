@@ -16,9 +16,6 @@
 #define PRESCALE_WIDTH H_RES_NTSC
 #define PRESCALE_HEIGHT V_SYNC_PAL
 
-#ifdef HAVE_RDP_SYNC
-#include "../rdp_dump.h"
-#endif
 enum vi_type
 {
     VI_TYPE_BLANK,      // no data, no sync
@@ -460,8 +457,9 @@ static bool vi_process_full()
         vi_process_full_parallel(0);
     }
 
-    // finish and send buffer to screen
     struct n64video_frame_buffer fb;
+
+    // finish and send buffer to screen
     fb.pixels = prescale;
     fb.pitch = PRESCALE_WIDTH;
 
@@ -484,8 +482,9 @@ static bool vi_process_full()
     if (config.vi.widescreen) {
         fb.height_out = fb.height_out * 3 / 4;
     }
-    
+
     vdac_write(&fb);
+
 
     return fb.width > 0 && fb.height > 0;
 }
@@ -592,8 +591,9 @@ static bool vi_process_fast()
         vi_process_fast_parallel(0);
     }
 
-    // finish and send buffer to screen
     struct n64video_frame_buffer fb;
+
+    // finish and send buffer to screen
     fb.pixels = prescale;
     fb.width = hres_raw;
     fb.height = vres_raw;
@@ -602,13 +602,12 @@ static bool vi_process_fast()
     // get display size of filtered mode
     int32_t filtered_width = maxhpass - minhpass;
     int32_t filtered_height = (vres << 1) * V_SYNC_NTSC / v_sync;
-
 /*
     // re-calculate cropped 8 pixel area on the left and right from filtered mode
     int32_t border_width = (hres - filtered_width) * hres_raw / hres;
     fb->pixels += (border_width / 2) + 1;
     fb->width -= border_width;
-*/
+    */
 
     // force aspect ratio of filtered mode
     fb.height_out = fb.width * filtered_height / filtered_width;
@@ -617,8 +616,9 @@ static bool vi_process_fast()
     if (config.vi.widescreen) {
         fb.height_out = fb.height_out * 3 / 4;
     }
-    
+
     vdac_write(&fb);
+
 
     return fb.width > 0 && fb.height > 0;
 }
@@ -638,13 +638,6 @@ void n64video_update_screen()
     // parse and check some common registers
     vi_reg_ptr = config.gfx.vi_reg;
 
-#ifdef HAVE_RDP_DUMP
-    rdp_dump_flush_dram(config.gfx.rdram, config.gfx.rdram_size);
-    rdp_dump_flush_hidden_dram(rdram_hidden, sizeof(rdram_hidden));
-    for (unsigned i = 0; i < VI_NUM_REG; i++)
-        rdp_dump_set_vi_register(i, *vi_reg_ptr[i]);
-    rdp_dump_end_frame();
-#endif
     v_start = (*vi_reg_ptr[VI_V_START] >> 16) & 0x3ff;
     h_start = (*vi_reg_ptr[VI_H_START] >> 16) & 0x3ff;
 
@@ -672,7 +665,7 @@ void n64video_update_screen()
 
     // cancel if the frame buffer contains no valid address
     if (!frame_buffer) {
-        vdac_sync(true);
+         vdac_sync(true);
         return;
     }
 
@@ -688,7 +681,7 @@ void n64video_update_screen()
     ctrl.aa_mode = (vi_control >> 8) & 3;
     ctrl.kill_we = (vi_control >> 11) & 1;
     ctrl.pixel_advance = (vi_control >> 12) & 0x7;
-    ctrl.dither_filter_enable = (vi_control >> 16) & config.vi.vi_dedither;
+     ctrl.dither_filter_enable = (vi_control >> 16) & config.vi.vi_dedither;
 
     // check for unexpected VI type bits set
     if (ctrl.type & ~3) {
@@ -748,6 +741,7 @@ void n64video_update_screen()
 
     bool valid = true;
 
+
     if (vactivelines >= 0) {
         uint32_t lineshifter = !ctrl.serrate;
         vactivelines >>= lineshifter;
@@ -756,18 +750,18 @@ void n64video_update_screen()
         maxhpass = hres_clamped ? hres : (hres - 7);
 
         // run filter update in parallel if enabled
-         if (config.vi.mode == VI_MODE_NORMAL) {
+        if (config.vi.mode == VI_MODE_NORMAL) {
             valid = vi_process_full();
         } else {
             valid = vi_process_fast();
         }
     }
     vdac_sync(!valid);
+
 }
 
 static void vi_close(void)
 {
-  vdac_close();
 }
 
 #endif // N64VIDEO_C

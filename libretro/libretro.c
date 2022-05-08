@@ -639,7 +639,7 @@ load_fail:
 }
 
 #ifdef HAVE_THR_AL
-extern struct rgba prescale[PRESCALE_WIDTH * PRESCALE_HEIGHT];
+extern struct n64video_pixel prescale[PRESCALE_WIDTH * PRESCALE_HEIGHT];
 #endif
 
 bool emu_step_render(void)
