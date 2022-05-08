@@ -1,3 +1,5 @@
+#ifdef N64VIDEO_C
+
 #define ZMODE_OPAQUE            0
 #define ZMODE_INTERPENETRATING  1
 #define ZMODE_TRANSPARENT       2
@@ -8,14 +10,14 @@ static uint32_t z_complete_dec_table[0x4000];
 static uint16_t deltaz_comparator_lut[0x10000];
 
 static struct {uint32_t shift; uint32_t add;} z_dec_table[8] = {
-     6, 0x00000,
-     5, 0x20000,
-     4, 0x30000,
-     3, 0x38000,
-     2, 0x3c000,
-     1, 0x3e000,
-     0, 0x3f000,
-     0, 0x3f800,
+     { 6, 0x00000 },
+     { 5, 0x20000 },
+     { 4, 0x30000 },
+     { 3, 0x38000 },
+     { 2, 0x3c000 },
+     { 1, 0x3e000 },
+     { 0, 0x3f000 },
+     { 0, 0x3f800 },
 };
 
 static STRICTINLINE uint32_t z_decompress(uint32_t zb)
@@ -188,9 +190,10 @@ static INLINE void z_build_com_table(void)
 
 static STRICTINLINE void z_store(uint32_t zcurpixel, uint32_t z, int dzpixenc)
 {
-    uint16_t zval = z_com_table[z & 0x3ffff]|(dzpixenc >> 2);
+    uint16_t zval = z_com_table[z & 0x3ffff]|(uint16_t)(dzpixenc >> 2);
     uint8_t hval = dzpixenc & 3;
-    PAIRWRITE16(zcurpixel, zval, hval);
+
+    rdram_write_pair16(zcurpixel, zval, hval, 0);
 }
 
 static STRICTINLINE uint32_t dz_decompress(uint32_t dz_compressed)
@@ -213,7 +216,7 @@ static STRICTINLINE uint32_t dz_compress(uint32_t value)
     return j;
 }
 
-static STRICTINLINE uint32_t z_compare(uint32_t wid, uint32_t zcurpixel, uint32_t sz, uint16_t dzpix, int dzpixenc, uint32_t* blend_en, uint32_t* prewrap, uint32_t* curpixel_cvg, uint32_t curpixel_memcvg)
+static STRICTINLINE uint32_t z_compare(struct rdp_state* wstate, uint32_t zcurpixel, uint32_t sz, uint16_t dzpix, int dzpixenc, uint32_t* blend_en, uint32_t* prewrap, uint32_t* curpixel_cvg, uint32_t curpixel_memcvg)
 {
 
 
@@ -225,7 +228,7 @@ static STRICTINLINE uint32_t z_compare(uint32_t wid, uint32_t zcurpixel, uint32_
     uint32_t oz, dzmem;
     int32_t rawdzmem;
 
-    if (state[wid].other_modes.z_compare_en)
+    if (wstate->other_modes.z_compare_en)
     {
         PAIRREAD16(zval, hval, zcurpixel);
         oz = z_decompress(zval);
@@ -234,21 +237,21 @@ static STRICTINLINE uint32_t z_compare(uint32_t wid, uint32_t zcurpixel, uint32_
 
 
 
-        if (state[wid].other_modes.f.realblendershiftersneeded)
+        if (wstate->other_modes.f.realblendershiftersneeded)
         {
-            state[wid].blshifta = clamp(dzpixenc - rawdzmem, 0, 4);
-            state[wid].blshiftb = clamp(rawdzmem - dzpixenc, 0, 4);
+            wstate->blshifta = clamp(dzpixenc - rawdzmem, 0, 4);
+            wstate->blshiftb = clamp(rawdzmem - dzpixenc, 0, 4);
 
         }
 
 
-        if (state[wid].other_modes.f.interpixelblendershiftersneeded)
+        if (wstate->other_modes.f.interpixelblendershiftersneeded)
         {
-            state[wid].pastblshifta = clamp(dzpixenc - state[wid].pastrawdzmem, 0, 4);
-            state[wid].pastblshiftb = clamp(state[wid].pastrawdzmem - dzpixenc, 0, 4);
+            wstate->pastblshifta = clamp(dzpixenc - wstate->pastrawdzmem, 0, 4);
+            wstate->pastblshiftb = clamp(wstate->pastrawdzmem - dzpixenc, 0, 4);
         }
 
-        state[wid].pastrawdzmem = rawdzmem;
+        wstate->pastrawdzmem = rawdzmem;
 
         int precision_factor = (zval >> 13) & 0xf;
 
@@ -287,7 +290,7 @@ static STRICTINLINE uint32_t z_compare(uint32_t wid, uint32_t zcurpixel, uint32_
         uint32_t farther = force_coplanar || ((sz + dznew) >= oz);
 
         int overflow = (curpixel_memcvg + *curpixel_cvg) & 8;
-        *blend_en = state[wid].other_modes.force_blend || (!overflow && state[wid].other_modes.antialias_en && farther);
+        *blend_en = wstate->other_modes.force_blend || (!overflow && wstate->other_modes.antialias_en && farther);
 
         *prewrap = overflow;
 
@@ -299,7 +302,7 @@ static STRICTINLINE uint32_t z_compare(uint32_t wid, uint32_t zcurpixel, uint32_
         int32_t diff;
         uint32_t nearer, max, infront;
 
-        switch(state[wid].other_modes.z_mode)
+        switch(wstate->other_modes.z_mode)
         {
         case ZMODE_OPAQUE:
             infront = sz < oz;
@@ -343,37 +346,37 @@ static STRICTINLINE uint32_t z_compare(uint32_t wid, uint32_t zcurpixel, uint32_
     {
 
 
-        if (state[wid].other_modes.f.realblendershiftersneeded)
+        if (wstate->other_modes.f.realblendershiftersneeded)
         {
-            state[wid].blshifta = 0;
+            wstate->blshifta = 0;
             if (dzpixenc < 0xb)
-                state[wid].blshiftb = 4;
+                wstate->blshiftb = 4;
             else
-                state[wid].blshiftb = 0xf - dzpixenc;
+                wstate->blshiftb = 0xf - dzpixenc;
         }
 
-        if (state[wid].other_modes.f.interpixelblendershiftersneeded)
+        if (wstate->other_modes.f.interpixelblendershiftersneeded)
         {
-            state[wid].pastblshifta = 0;
+            wstate->pastblshifta = 0;
             if (dzpixenc < 0xb)
-                state[wid].pastblshiftb = 4;
+                wstate->pastblshiftb = 4;
             else
-                state[wid].pastblshiftb = 0xf - dzpixenc;
+                wstate->pastblshiftb = 0xf - dzpixenc;
         }
 
-        state[wid].pastrawdzmem = 0xf;
+        wstate->pastrawdzmem = 0xf;
 
         int overflow = (curpixel_memcvg + *curpixel_cvg) & 8;
-        *blend_en = state[wid].other_modes.force_blend || (!overflow && state[wid].other_modes.antialias_en);
+        *blend_en = wstate->other_modes.force_blend || (!overflow && wstate->other_modes.antialias_en);
         *prewrap = overflow;
 
         return 1;
     }
 }
 
-void rdp_set_mask_image(uint32_t wid, const uint32_t* args)
+void rdp_set_mask_image(struct rdp_state* wstate, const uint32_t* args)
 {
-    state[wid].zb_address  = args[1] & 0x0ffffff;
+    wstate->zb_address  = args[1] & 0x0ffffff;
 }
 
 void z_init_lut(void)
@@ -404,3 +407,5 @@ void z_init_lut(void)
         }
     }
 }
+
+#endif // N64VIDEO_C

@@ -1,8 +1,8 @@
 #include "n64video.h"
 #include "common.h"
 #include "msg.h"
-#include "vdac.h"
 #include "parallel_al.h"
+#include "vdac.h"
 
 #include <memory.h>
 #include <string.h>
@@ -12,7 +12,6 @@
 #ifdef HAVE_RDP_DUMP
 #include "rdp_dump.h"
 #endif
-
 #define MIN(a, b) (((a) < (b)) ? (a) : (b))
 #define MAX(a, b) (((a) > (b)) ? (a) : (b))
 #define CLAMP(x, lo, hi) (((x) > (hi)) ? (hi) : (((x) < (lo)) ? (lo) : (x)))
@@ -92,7 +91,7 @@ static struct n64video_config config;
 
 static struct
 {
-    bool fillmbitcrashes, vbusclock, nolerp;
+    bool fillmbitcrashes, vbusclock;
 } onetimewarnings;
 
 static int rdp_pipeline_crashed = 0;
@@ -103,7 +102,8 @@ static STRICTINLINE int32_t clamp(int32_t value, int32_t min, int32_t max)
         return min;
     else if (value > max)
         return max;
-    return value;
+    else
+        return value;
 }
 
 static STRICTINLINE uint32_t irand(uint32_t* state)
@@ -111,6 +111,10 @@ static STRICTINLINE uint32_t irand(uint32_t* state)
     *state = *state * 0x343fd + 0x269ec3;
     return ((*state >> 16) & 0x7fff);
 }
+
+// include guard to prevent compilation of code modules
+// as translation units
+#define N64VIDEO_C
 
 #include "n64video/rdp.c"
 #include "n64video/vi.c"
@@ -129,8 +133,9 @@ static bool rdp_cmd_sync[64];
 static void cmd_run_buffered(uint32_t worker_id)
 {
     uint32_t pos;
-    for (pos = 0; pos < rdp_cmd_buf_pos; pos++)
-        rdp_cmd(worker_id, rdp_cmd_buf[pos]);
+    for (pos = 0; pos < rdp_cmd_buf_pos; pos++) {
+        rdp_cmd(&state[worker_id], rdp_cmd_buf[pos]);
+    }
 }
 
 static void cmd_flush(void)
@@ -151,44 +156,43 @@ static void cmd_init(void)
     rdp_cmd_len = CMD_MAX_INTS;
 }
 
-void n64video_config_init(struct n64video_config* config)
+void n64video_config_init(struct n64video_config* conf)
 {
-    memset(config, 0, sizeof(*config));
+    memset(conf, 0, sizeof(*conf));
 
     // config defaults that aren't false or 0
-    config->parallel = true;
-    config->vi.vsync = true;
-    config->dp.compat = DP_COMPAT_MEDIUM;
+    conf->parallel = true;
+    conf->vi.vsync = true;
+    conf->vi.interp = VI_INTERP_HYBRID;
 }
 
-void rdp_init_worker(uint32_t worker_id)
+static void n64video_init_parallel(uint32_t worker_id)
 {
-    rdp_init(worker_id, parallel_num_workers());
-}
+    struct rdp_state* wstate = &state[worker_id];
 
-#ifdef HAVE_RDP_DUMP
-static bool rdp_dump_in_command_list;
-#endif
+    wstate->stride = parallel_num_workers();
+    wstate->offset = worker_id;
+    wstate->rseed = wstate->vi_rseed = 3 + worker_id * 13;
+}
 
 void n64video_init(struct n64video_config* _config)
 {
-    if (_config)
+    if (_config) {
         config = *_config;
+    }
 
     // initialize static lookup tables and RDP state, once is enough
     static bool static_init;
-    if (!static_init)
-    {
+    if (!static_init) {
         blender_init_lut();
         coverage_init_lut();
         combiner_init_lut();
         tex_init_lut();
         z_init_lut();
 
-        fb_init(0);
-        combiner_init(0);
-        tex_init(0);
-        rasterizer_init(0);
+        for (uint32_t i = 1; i < PARALLEL_MAX_WORKERS; i++) {
+            rdp_init(&state[i]);
+        }
 
         static_init = true;
     }
@@ -203,7 +207,6 @@ void n64video_init(struct n64video_config* _config)
     }
     rdp_dump_in_command_list = false;
 #endif
-
     // enable sync switches depending on compatibility mode
     memset(rdp_cmd_sync, 0, sizeof(rdp_cmd_sync));
     switch (config.dp.compat) {
@@ -224,21 +227,23 @@ void n64video_init(struct n64video_config* _config)
     rdp_pipeline_crashed = 0;
     memset(&onetimewarnings, 0, sizeof(onetimewarnings));
 
-    if (config.parallel)
-    {
-       uint32_t i;
-       // init worker system
-       parallel_alinit(config.num_workers);
+    if (config.parallel) {
+        // init worker system, use busy looping
+        parallel_alinit(config.num_workers);
 
-       // sync states from main worker
-       for (i = 1; i < parallel_num_workers(); i++)
-          memcpy(&state[i], &state[0], sizeof(struct rdp_state));
+        // sync states from main worker
+        for (uint32_t i = 1; i < parallel_num_workers(); i++) {
+            memcpy(&state[i], &state[0], sizeof(struct rdp_state));
+        }
 
-       // init workers
-       parallel_run(rdp_init_worker);
+        // init workers
+        parallel_run(n64video_init_parallel);
+    } else {
+        struct rdp_state* wstate = &state[0];
+        wstate->stride = 1;
+        wstate->offset = 0;
+        wstate->rseed = 3;
     }
-    else
-        rdp_init(0, 1);
 }
 
 void n64video_process_list(void)
@@ -286,7 +291,6 @@ void n64video_process_list(void)
 
         // if there's enough data for the current command...
         if (rdp_cmd_pos == rdp_cmd_len) {
-
 #ifdef HAVE_RDP_DUMP
             if (!rdp_dump_in_command_list)
             {
@@ -305,7 +309,6 @@ void n64video_process_list(void)
                 rdp_dump_emit_command(rdp_cmd_id, cmd_buf, rdp_cmd_len);
             }
 #endif
-
             // check if parallel processing is enabled
             if (config.parallel) {
                 // special case: sync_full always needs to be run in main thread
@@ -314,7 +317,7 @@ void n64video_process_list(void)
                     cmd_flush();
 
                     // parameters are unused, so NULL is fine
-                    rdp_sync_full(0, NULL);
+                    rdp_sync_full(NULL, NULL);
                 } else {
                     // increment buffer position
                     rdp_cmd_buf_pos++;
@@ -326,7 +329,7 @@ void n64video_process_list(void)
                 }
             } else {
                 // run command directly
-                rdp_cmd(0, cmd_buf);
+                rdp_cmd(&state[0], cmd_buf);
             }
 
             // send Z-buffer address to VI for "depth" output mode
@@ -350,7 +353,6 @@ void n64video_close(void)
         rdp_dump_in_command_list = false;
     rdp_dump_end();
 #endif
-
     vi_close();
     parallel_close();
 }

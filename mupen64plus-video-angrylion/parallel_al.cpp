@@ -1,6 +1,4 @@
-#include "parallel_al.h"
-
-#include <stdlib.h>
+#include "parallel.h"
 
 #include <atomic>
 #include <algorithm>
@@ -14,31 +12,28 @@
 class Parallel
 {
 public:
-    Parallel(std::uint32_t num_workers) :
-        m_num_workers(std::min(num_workers, PARALLEL_MAX_WORKERS))
+    Parallel(std::uint32_t num_workers)
     {
-        // mask for m_tasks_done when all workers have finished their task
-        // except for worker 0, which runs in the main thread
-        if (m_num_workers == 64)
-            m_all_tasks_done = (~(0LL)) & ~(1LL);
-        else
-            m_all_tasks_done = ((1LL << m_num_workers) - 1) & ~(1LL);
-
-        // give workers an empty task
-        m_task = [](std::uint32_t) {};
-        m_accept_work = true;
-        start_work();
-
-        // create worker threads
-        for (std::uint32_t worker_id = 1; worker_id < m_num_workers; worker_id++) {
-            m_workers.emplace_back(std::thread(&Parallel::do_work, this, worker_id));
+        if (num_workers == 0) {
+            // auto-select number of workers based on the number of cores
+            m_num_workers = std::thread::hardware_concurrency();
+        } else {
+            m_num_workers = std::min(num_workers, PARALLEL_MAX_WORKERS);
         }
 
-        // synchronize workers to prepare them for real tasks
-        wait();
+        // mask for m_tasks_done when all workers have finished their task
+        if (m_num_workers == PARALLEL_MAX_WORKERS) {
+            m_all_tasks_done = ~0ULL;
+        } else {
+            m_all_tasks_done = (1ULL << m_num_workers) - 1;
+        }
+
+        // except worker 0, which runs in the main thread
+        m_all_tasks_done--;
     }
 
-    ~Parallel() {
+    virtual ~Parallel()
+    {
         // wait for all workers to finish their current work
         wait();
 
@@ -55,7 +50,24 @@ public:
         m_workers.clear();
     }
 
-    void run(std::function<void(std::uint32_t)>&& task) {
+    void begin()
+    {
+        // give workers an empty task
+        m_task = [](std::uint32_t) {};
+        m_accept_work = true;
+        start_work();
+
+        // create worker threads
+        for (std::uint32_t worker_id = 1; worker_id < m_num_workers; worker_id++) {
+            create_worker(worker_id);
+        }
+
+        // synchronize workers to prepare them for real tasks
+        wait();
+    }
+
+    void run(std::function<void(std::uint32_t)>&& task)
+    {
         // don't allow more tasks if workers are stopping
         if (!m_accept_work) {
             throw std::runtime_error("Workers are exiting and no longer accept work");
@@ -72,11 +84,12 @@ public:
         wait();
     }
 
-    std::uint32_t num_workers() {
+    std::uint32_t num_workers()
+    {
         return m_num_workers;
     }
 
-private:
+protected:
     std::function<void(std::uint32_t)> m_task;
     std::vector<std::thread> m_workers;
     std::mutex m_signal_mutex;
@@ -85,9 +98,15 @@ private:
     std::atomic<uint64_t> m_tasks_done;
     std::uint64_t m_all_tasks_done;
     std::atomic<bool> m_accept_work;
-    const std::uint32_t m_num_workers;
+    std::uint32_t m_num_workers;
 
-    void start_work() {
+    virtual void create_worker(std::uint32_t worker_id)
+    {
+        m_workers.emplace_back(std::thread(&Parallel::do_work, this, worker_id));
+    }
+
+    virtual void start_work()
+    {
         std::unique_lock<std::mutex> ul(m_signal_mutex);
 
         // clear task bits for all workers
@@ -97,7 +116,8 @@ private:
         m_signal_work.notify_all();
     }
 
-    void do_work(std::uint32_t worker_id) {
+    virtual void do_work(std::uint32_t worker_id)
+    {
         const std::uint64_t worker_mask = 1LL << worker_id;
 
         while (m_accept_work) {
@@ -121,7 +141,8 @@ private:
         }
     }
 
-    void wait() {
+    virtual void wait()
+    {
         // wait for all workers to set their task bits
         std::unique_lock<std::mutex> ul(m_signal_mutex);
         m_signal_done.wait(ul, [this] {
@@ -133,26 +154,63 @@ private:
     Parallel(const Parallel&) = delete;
 };
 
-// C interface for the Parallel class
-static std::unique_ptr<Parallel> parallel;
-
-template<typename T, typename... Args>
-std::unique_ptr<T> make_unique(Args&&... args) {
-    return std::unique_ptr<T>(new T(std::forward<Args>(args)...));
-}
-
-void parallel_alinit(uint32_t num)
+// busy-looping variant that is more suitable for ARM processors
+class ParallelBusy : public Parallel
 {
-    // auto-select number of workers based on the number of cores
-    if (num == 0) {
-        const char *env = getenv("ANGRYLION_NUM_THREADS");
-        if (env)
-            num = atoi(env);
-        else
-            num = std::thread::hardware_concurrency();
+public:
+    ParallelBusy(std::uint32_t num_workers) : Parallel(num_workers)
+    {
     }
 
-    parallel = make_unique<Parallel>(num);
+    virtual void create_worker(std::uint32_t worker_id)
+    {
+        m_workers.emplace_back(std::thread(&ParallelBusy::do_work, this, worker_id));
+    }
+
+    virtual void start_work()
+    {
+        // clear task bits for all workers
+        m_tasks_done = 0;
+    }
+
+    virtual void do_work(std::uint32_t worker_id)
+    {
+        const std::uint64_t worker_mask = 1LL << worker_id;
+
+        while (m_accept_work) {
+            if ((m_tasks_done & worker_mask) != 0) {
+                std::this_thread::yield();
+                continue;
+            }
+
+            // do the work
+            m_task(worker_id);
+
+            // mark task as done
+            m_tasks_done |= worker_mask;
+        }
+    }
+
+    virtual void wait()
+    {
+        while (m_tasks_done != m_all_tasks_done) {
+            std::this_thread::yield();
+        }
+    }
+};
+
+// C interface for the Parallel class
+static std::shared_ptr<Parallel> parallel;
+
+void parallel_init(uint32_t num, bool busy)
+{
+    if (busy) {
+        parallel = std::make_unique<ParallelBusy>(num);
+    } else {
+        parallel = std::make_unique<Parallel>(num);
+    }
+
+    parallel->begin();
 }
 
 void parallel_run(void task(uint32_t))
@@ -160,12 +218,12 @@ void parallel_run(void task(uint32_t))
     parallel->run(task);
 }
 
-uint32_t parallel_num_workers(void)
+uint32_t parallel_num_workers()
 {
     return parallel->num_workers();
 }
 
-void parallel_close(void)
+void parallel_close()
 {
     parallel.reset();
 }
