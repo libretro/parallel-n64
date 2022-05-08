@@ -1,4 +1,4 @@
-#include "parallel.h"
+#include "parallel_al.h"
 
 #include <atomic>
 #include <algorithm>
@@ -202,13 +202,14 @@ public:
 // C interface for the Parallel class
 static std::shared_ptr<Parallel> parallel;
 
-void parallel_init(uint32_t num, bool busy)
+template<typename T, typename... Args>
+std::unique_ptr<T> make_unique(Args&&... args) {
+    return std::unique_ptr<T>(new T(std::forward<Args>(args)...));
+}
+
+void parallel_alinit(uint32_t num)
 {
-    if (busy) {
-        parallel = std::make_unique<ParallelBusy>(num);
-    } else {
-        parallel = std::make_unique<Parallel>(num);
-    }
+    parallel = make_unique<Parallel>(num);
 
     parallel->begin();
 }
