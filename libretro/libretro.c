@@ -874,7 +874,7 @@ void retro_set_environment(retro_environment_t cb)
 void retro_get_system_info(struct retro_system_info *info)
 {
    info->library_name = "ParaLLEl N64";
-   info->library_version = "2.2.1 (Parallel Launcher Edition)";
+   info->library_version = "2.3.0 (Parallel Launcher Edition)";
    info->valid_extensions = "n64|v64|z64|bin|u1|ndd";
    info->need_fullpath = false;
    info->block_extract = false;
@@ -1988,7 +1988,12 @@ void update_variables(bool startup)
             screen_aspect_ratio = 16.0 / 9.0;
             screen_width = screen_height * screen_aspect_ratio;
             AspectRatio = 3; // Aspect::aAdjust
-         } 
+         }
+         else if (!strcmp(var.value, "steamdeck")) {
+            screen_aspect_ratio = 16.0 / 10.0;
+            screen_width = screen_height * screen_aspect_ratio;
+            AspectRatio = 3; // Aspect::aAdjust
+         }
          else if (stretch)
          {
             screen_aspect_ratio = 16.0 / 9.0;

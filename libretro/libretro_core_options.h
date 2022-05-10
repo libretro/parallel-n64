@@ -906,8 +906,9 @@ struct retro_core_option_v2_definition option_defs_us[] = {
         "Hack that adjusts the viewport to allow unstretched 16:9",
         "gliden64",
         {
-            {"enabled", NULL },
+            {"enabled", NULL},
             {"disabled", NULL},
+            {"steamdeck", "Steam Deck (16:10)"},
             { NULL, NULL },
         },
         "disabled"
