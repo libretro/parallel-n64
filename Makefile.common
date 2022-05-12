@@ -63,6 +63,7 @@ SOURCES_C += $(RSPDIR)/src/alist.c \
     $(RSPDIR)/src/mp3.c \
     $(RSPDIR)/src/musyx.c \
     $(RSPDIR)/src/re2.c \
+	$(RSPDIR)/src/hvqm.c \
     $(RSPDIR)/src/hle_plugin.c
 
 SOURCES_C += $(CXD4DIR)/rsp.c

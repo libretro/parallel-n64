@@ -1,6 +1,6 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *   Mupen64plus-rsp-hle - arithmetics.h                                   *
- *   Mupen64Plus homepage: http://code.google.com/p/mupen64plus/           *
+ *   Mupen64Plus homepage: https://mupen64plus.org/                        *
  *   Copyright (C) 2014 Bobby Smiles                                       *
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
@@ -22,11 +22,11 @@
 #ifndef ARITHMETICS_H
 #define ARITHMETICS_H
 
-#include <retro_inline.h>
-
 #include <stdint.h>
 
-static INLINE int16_t clamp_s16(int_fast32_t x)
+#include "common.h"
+
+static inline int16_t clamp_s16(int_fast32_t x)
 {
     x = (x < INT16_MIN) ? INT16_MIN: x;
     x = (x > INT16_MAX) ? INT16_MAX: x;
@@ -34,9 +34,9 @@ static INLINE int16_t clamp_s16(int_fast32_t x)
     return x;
 }
 
-static INLINE int32_t vmulf(int16_t x, int16_t y)
+static inline int32_t vmulf(int16_t x, int16_t y)
 {
-   return (((int32_t)(x))*((int32_t)(y))+0x4000)>>15;
+    return (((int32_t)(x))*((int32_t)(y))+0x4000)>>15;
 }
 
 #endif
