@@ -733,7 +733,21 @@ static void inputGetKeys_gamecube(int Control, int analogMode, BUTTONS_GCN *Keys
    analogY =
       input_cb(Control, RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_BUTTON, RETRO_DEVICE_ID_JOYPAD_A) -
       input_cb(Control, RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_BUTTON, RETRO_DEVICE_ID_JOYPAD_X);
-
+      
+   if( analogX == 0 && analogY == 0 ) {
+      // Check for keyboard input
+      
+      analogX = 0x7FFF * (
+         input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_R) - 
+         input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_L)
+      );
+      
+      analogY = 0x7FFF * (
+         input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_A) -
+         input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_X)
+      );
+   }
+      
    scale_joystick(ASTICK_MAX, analogX, analogY, &cstickX, &cstickY, GCN_MAX_CSTICK);
 
    cstickX += 128;
