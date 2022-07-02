@@ -1,4 +1,4 @@
-/* Copyright (c) 2017-2022 Hans-Kristian Arntzen
+/* Copyright (c) 2017-2020 Hans-Kristian Arntzen
  *
  * Permission is hereby granted, free of charge, to any person obtaining
  * a copy of this software and associated documentation files (the
@@ -113,17 +113,17 @@ public:
 		IntrusiveListEnabled<T> *node = nullptr;
 	};
 
-	Iterator begin() const
+	Iterator begin()
 	{
 		return Iterator(head);
 	}
 
-	Iterator rbegin() const
+	Iterator rbegin()
 	{
 		return Iterator(tail);
 	}
 
-	Iterator end() const
+	Iterator end()
 	{
 		return Iterator();
 	}

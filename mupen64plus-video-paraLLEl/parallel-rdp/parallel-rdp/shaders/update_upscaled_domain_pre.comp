@@ -102,13 +102,12 @@ void update_rdram_8(uint index)
 
     if (real_word != reference_word)
     {
-        uint mirrored_index = index ^ 3u;
-        uint real_hidden_word = uint(hidden_vram.elems[mirrored_index >> 1u]);
+        uint real_hidden_word = uint(hidden_vram.elems[index >> 1u]);
         for (int i = 0; i < NUM_SAMPLES; i++)
         {
             vram_upscaled8.elems[index + i * RDRAM_SIZE] = uint8_t(real_word);
-            if ((mirrored_index & 1u) != 0u)
-                hidden_vram_upscaled.elems[(mirrored_index >> 1u) + i * (RDRAM_SIZE >> 1)] = uint8_t(real_hidden_word);
+            if ((index & 1u) != 0u)
+                hidden_vram_upscaled.elems[(index >> 1u) + i * (RDRAM_SIZE >> 1)] = uint8_t(real_hidden_word);
         }
         vram_reference8.elems[index] = uint8_t(real_word);
     }
@@ -123,12 +122,11 @@ void update_rdram_16(uint index)
 
     if (real_word != reference_word)
     {
-        uint mirrored_index = index ^ 1u;
-        uint real_hidden_word = uint(hidden_vram.elems[mirrored_index]);
+        uint real_hidden_word = uint(hidden_vram.elems[index]);
         for (int i = 0; i < NUM_SAMPLES; i++)
         {
             vram_upscaled16.elems[index + i * (RDRAM_SIZE >> 1)] = uint16_t(real_word);
-            hidden_vram_upscaled.elems[mirrored_index + i * (RDRAM_SIZE >> 1)] = uint8_t(real_hidden_word);
+            hidden_vram_upscaled.elems[index + i * (RDRAM_SIZE >> 1)] = uint8_t(real_hidden_word);
         }
         vram_reference16.elems[index] = uint16_t(real_word);
     }

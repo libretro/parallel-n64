@@ -2,9 +2,19 @@
 #define VULKAN_ANDROID_H_ 1
 
 /*
-** Copyright 2015-2022 The Khronos Group Inc.
+** Copyright (c) 2015-2020 The Khronos Group Inc.
 **
-** SPDX-License-Identifier: Apache-2.0
+** Licensed under the Apache License, Version 2.0 (the "License");
+** you may not use this file except in compliance with the License.
+** You may obtain a copy of the License at
+**
+**     http://www.apache.org/licenses/LICENSE-2.0
+**
+** Unless required by applicable law or agreed to in writing, software
+** distributed under the License is distributed on an "AS IS" BASIS,
+** WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+** See the License for the specific language governing permissions and
+** limitations under the License.
 */
 
 /*
@@ -44,7 +54,7 @@ VKAPI_ATTR VkResult VKAPI_CALL vkCreateAndroidSurfaceKHR(
 
 #define VK_ANDROID_external_memory_android_hardware_buffer 1
 struct AHardwareBuffer;
-#define VK_ANDROID_EXTERNAL_MEMORY_ANDROID_HARDWARE_BUFFER_SPEC_VERSION 5
+#define VK_ANDROID_EXTERNAL_MEMORY_ANDROID_HARDWARE_BUFFER_SPEC_VERSION 3
 #define VK_ANDROID_EXTERNAL_MEMORY_ANDROID_HARDWARE_BUFFER_EXTENSION_NAME "VK_ANDROID_external_memory_android_hardware_buffer"
 typedef struct VkAndroidHardwareBufferUsageANDROID {
     VkStructureType    sType;
@@ -89,19 +99,6 @@ typedef struct VkExternalFormatANDROID {
     void*              pNext;
     uint64_t           externalFormat;
 } VkExternalFormatANDROID;
-
-typedef struct VkAndroidHardwareBufferFormatProperties2ANDROID {
-    VkStructureType                  sType;
-    void*                            pNext;
-    VkFormat                         format;
-    uint64_t                         externalFormat;
-    VkFormatFeatureFlags2            formatFeatures;
-    VkComponentMapping               samplerYcbcrConversionComponents;
-    VkSamplerYcbcrModelConversion    suggestedYcbcrModel;
-    VkSamplerYcbcrRange              suggestedYcbcrRange;
-    VkChromaLocation                 suggestedXChromaOffset;
-    VkChromaLocation                 suggestedYChromaOffset;
-} VkAndroidHardwareBufferFormatProperties2ANDROID;
 
 typedef VkResult (VKAPI_PTR *PFN_vkGetAndroidHardwareBufferPropertiesANDROID)(VkDevice device, const struct AHardwareBuffer* buffer, VkAndroidHardwareBufferPropertiesANDROID* pProperties);
 typedef VkResult (VKAPI_PTR *PFN_vkGetMemoryAndroidHardwareBufferANDROID)(VkDevice device, const VkMemoryGetAndroidHardwareBufferInfoANDROID* pInfo, struct AHardwareBuffer** pBuffer);

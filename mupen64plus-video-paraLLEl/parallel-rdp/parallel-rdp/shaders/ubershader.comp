@@ -23,14 +23,7 @@
 
 // RIP to any GPU which attempts to execute this monstrosity :)
 
-#if SUBGROUP
-#extension GL_KHR_shader_subgroup_basic : require
-#extension GL_KHR_shader_subgroup_vote : require
-#extension GL_KHR_shader_subgroup_ballot : require
-#extension GL_KHR_shader_subgroup_arithmetic : require
-#endif
 #include "small_types.h"
-
 layout(local_size_x_id = 3, local_size_y_id = 4) in;
 
 #include "debug.h"

@@ -1,4 +1,4 @@
-/* Copyright (c) 2017-2022 Hans-Kristian Arntzen
+/* Copyright (c) 2017-2020 Hans-Kristian Arntzen
  *
  * Permission is hereby granted, free of charge, to any person obtaining
  * a copy of this software and associated documentation files (the
@@ -160,8 +160,7 @@ enum ImageMiscFlagBits
 	IMAGE_MISC_CONCURRENT_QUEUE_ASYNC_TRANSFER_BIT = 1 << 6,
 	IMAGE_MISC_VERIFY_FORMAT_FEATURE_SAMPLED_LINEAR_FILTER_BIT = 1 << 7,
 	IMAGE_MISC_LINEAR_IMAGE_IGNORE_DEVICE_LOCAL_BIT = 1 << 8,
-	IMAGE_MISC_FORCE_NO_DEDICATED_BIT = 1 << 9,
-	IMAGE_MISC_NO_DEFAULT_VIEWS_BIT = 1 << 10
+	IMAGE_MISC_FORCE_NO_DEDICATED_BIT = 1 << 9
 };
 using ImageMiscFlags = uint32_t;
 
@@ -175,13 +174,13 @@ class Image;
 
 struct ImageViewCreateInfo
 {
-	const Image *image = nullptr;
+	Image *image = nullptr;
 	VkFormat format = VK_FORMAT_UNDEFINED;
 	unsigned base_level = 0;
 	unsigned levels = VK_REMAINING_MIP_LEVELS;
 	unsigned base_layer = 0;
 	unsigned layers = VK_REMAINING_ARRAY_LAYERS;
-	VkImageViewType view_type = VK_IMAGE_VIEW_TYPE_MAX_ENUM;
+	VkImageViewType view_type = VK_IMAGE_VIEW_TYPE_RANGE_SIZE;
 	ImageViewMiscFlags misc = 0;
 	VkComponentMapping swizzle = {
 			VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_G, VK_COMPONENT_SWIZZLE_B, VK_COMPONENT_SWIZZLE_A,
@@ -276,6 +275,11 @@ public:
 		return *info.image;
 	}
 
+	Image &get_image()
+	{
+		return *info.image;
+	}
+
 	const ImageViewCreateInfo &get_create_info() const
 	{
 		return info;
@@ -302,8 +306,6 @@ enum class ImageDomain
 	LinearHost
 };
 
-class ImmutableYcbcrConversion;
-
 struct ImageCreateInfo
 {
 	ImageDomain domain = ImageDomain::Physical;
@@ -324,25 +326,6 @@ struct ImageCreateInfo
 	};
 	const DeviceAllocation **memory_aliases = nullptr;
 	unsigned num_memory_aliases = 0;
-	const ImmutableYcbcrConversion *ycbcr_conversion = nullptr;
-	void *pnext = nullptr;
-
-	static ImageCreateInfo immutable_image(const TextureFormatLayout &layout)
-	{
-		Vulkan::ImageCreateInfo info;
-		info.width = layout.get_width();
-		info.height = layout.get_height();
-		info.type = layout.get_image_type();
-		info.depth = layout.get_depth();
-		info.format = layout.get_format();
-		info.layers = layout.get_layers();
-		info.levels = layout.get_levels();
-		info.usage = VK_IMAGE_USAGE_SAMPLED_BIT;
-		info.initial_layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-		info.samples = VK_SAMPLE_COUNT_1_BIT;
-		info.domain = ImageDomain::Physical;
-		return info;
-	}
 
 	static ImageCreateInfo immutable_2d_image(unsigned width, unsigned height, VkFormat format, bool mipmapped = false)
 	{
@@ -388,9 +371,7 @@ struct ImageCreateInfo
 		info.samples = VK_SAMPLE_COUNT_1_BIT;
 		info.flags = 0;
 		info.misc = 0;
-		info.initial_layout = format_has_depth_or_stencil_aspect(format) ?
-		                      VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL :
-		                      VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+		info.initial_layout = VK_IMAGE_LAYOUT_GENERAL;
 		return info;
 	}
 
@@ -446,11 +427,20 @@ struct ImageCreateInfo
 	}
 };
 
+struct YCbCrImageCreateInfo
+{
+	YCbCrFormat format = YCbCrFormat::YUV420P_3PLANE;
+	unsigned width = 0;
+	unsigned height = 0;
+};
+
 class Image;
+class YCbCrImage;
 
 struct ImageDeleter
 {
 	void operator()(Image *image);
+	void operator()(YCbCrImage *image);
 };
 
 enum class Layout
@@ -570,31 +560,6 @@ public:
 
 	void disown_image();
 	void disown_memory_allocation();
-	DeviceAllocation take_allocation_ownership();
-
-	void set_surface_transform(VkSurfaceTransformFlagBitsKHR transform)
-	{
-		surface_transform = transform;
-		if (transform != VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR)
-		{
-			const VkImageUsageFlags safe_usage_flags =
-					VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT |
-					VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |
-					VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT |
-					VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT;
-
-			if ((create_info.usage & ~safe_usage_flags) != 0)
-			{
-				LOGW("Using surface transform for non-pure render target image (usage: %u). This can lead to weird results.\n",
-				     create_info.usage);
-			}
-		}
-	}
-
-	VkSurfaceTransformFlagBitsKHR get_surface_transform() const
-	{
-		return surface_transform;
-	}
 
 private:
 	friend class Util::ObjectPool<Image>;
@@ -612,12 +577,34 @@ private:
 	VkPipelineStageFlags stage_flags = 0;
 	VkAccessFlags access_flags = 0;
 	VkImageLayout swapchain_layout = VK_IMAGE_LAYOUT_UNDEFINED;
-	VkSurfaceTransformFlagBitsKHR surface_transform = VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR;
 	bool owns_image = true;
 	bool owns_memory_allocation = true;
 };
 
 using ImageHandle = Util::IntrusivePtr<Image>;
+
+class YCbCrImage : public Util::IntrusivePtrEnabled<YCbCrImage, ImageDeleter, HandleCounter>
+{
+public:
+	friend struct ImageDeleter;
+	~YCbCrImage();
+	Image &get_ycbcr_image();
+	Image &get_plane_image(unsigned plane);
+	unsigned get_num_planes() const;
+	YCbCrFormat get_ycbcr_format() const;
+
+private:
+	friend class Util::ObjectPool<YCbCrImage>;
+	YCbCrImage(Device *device, YCbCrFormat format, ImageHandle image, const ImageHandle *planes, unsigned num_planes);
+
+	Device *device;
+	YCbCrFormat format;
+	ImageHandle image;
+	ImageHandle planes[3];
+	unsigned num_planes;
+};
+
+using YCbCrImageHandle = Util::IntrusivePtr<YCbCrImage>;
 
 class LinearHostImage;
 struct LinearHostImageDeleter

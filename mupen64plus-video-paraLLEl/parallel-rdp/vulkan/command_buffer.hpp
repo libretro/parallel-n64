@@ -1,4 +1,4 @@
-/* Copyright (c) 2017-2022 Hans-Kristian Arntzen
+/* Copyright (c) 2017-2020 Hans-Kristian Arntzen
  *
  * Permission is hereby granted, free of charge, to any person obtaining
  * a copy of this software and associated documentation files (the
@@ -158,12 +158,16 @@ enum CommandBufferSavedStateBits
 	COMMAND_BUFFER_SAVED_BINDINGS_1_BIT = 1u << 1,
 	COMMAND_BUFFER_SAVED_BINDINGS_2_BIT = 1u << 2,
 	COMMAND_BUFFER_SAVED_BINDINGS_3_BIT = 1u << 3,
-	COMMAND_BUFFER_SAVED_VIEWPORT_BIT = 1u << 4,
-	COMMAND_BUFFER_SAVED_SCISSOR_BIT = 1u << 5,
-	COMMAND_BUFFER_SAVED_RENDER_STATE_BIT = 1u << 6,
-	COMMAND_BUFFER_SAVED_PUSH_CONSTANT_BIT = 1u << 7
+	COMMAND_BUFFER_SAVED_BINDINGS_4_BIT = 1u << 4,
+	COMMAND_BUFFER_SAVED_BINDINGS_5_BIT = 1u << 5,
+	COMMAND_BUFFER_SAVED_BINDINGS_6_BIT = 1u << 6,
+	COMMAND_BUFFER_SAVED_BINDINGS_7_BIT = 1u << 7,
+	COMMAND_BUFFER_SAVED_VIEWPORT_BIT = 1u << 8,
+	COMMAND_BUFFER_SAVED_SCISSOR_BIT = 1u << 9,
+	COMMAND_BUFFER_SAVED_RENDER_STATE_BIT = 1u << 10,
+	COMMAND_BUFFER_SAVED_PUSH_CONSTANT_BIT = 1u << 11
 };
-static_assert(VULKAN_NUM_DESCRIPTOR_SETS == 4, "Number of descriptor sets != 4.");
+static_assert(VULKAN_NUM_DESCRIPTOR_SETS == 8, "Number of descriptor sets != 8.");
 using CommandBufferSaveStateFlags = uint32_t;
 
 struct CommandBufferSavedState
@@ -191,7 +195,6 @@ struct DeferredPipelineCompile
 	unsigned subpass_index;
 	Util::Hash hash;
 	VkPipelineCache cache;
-	uint32_t subgroup_size_tag;
 };
 
 class CommandBuffer;
@@ -207,11 +210,10 @@ public:
 	friend struct CommandBufferDeleter;
 	enum class Type
 	{
-		Generic = QUEUE_INDEX_GRAPHICS,
-		AsyncCompute = QUEUE_INDEX_COMPUTE,
-		AsyncTransfer = QUEUE_INDEX_TRANSFER,
-		VideoDecode = QUEUE_INDEX_VIDEO_DECODE,
-		AsyncGraphics = QUEUE_INDEX_COUNT, // Aliases with either Generic or AsyncCompute queue
+		Generic,
+		AsyncGraphics,
+		AsyncCompute,
+		AsyncTransfer,
 		Count
 	};
 
@@ -229,15 +231,9 @@ public:
 		return *device;
 	}
 
-	VkPipelineStageFlags swapchain_touched_in_stages() const
+	bool swapchain_touched() const
 	{
-		return uses_swapchain_in_stages;
-	}
-
-	// Only used when using swapchain in non-obvious ways, like compute or transfer.
-	void swapchain_touch_in_stages(VkPipelineStageFlags stages)
-	{
-		uses_swapchain_in_stages |= stages;
+		return uses_swapchain;
 	}
 
 	void set_thread_index(unsigned index_)
@@ -295,8 +291,6 @@ public:
 	             VkAccessFlags dst_access);
 
 	PipelineEvent signal_event(VkPipelineStageFlags stages);
-	void complete_signal_event(const EventHolder &event);
-
 	void wait_events(unsigned num_events, const VkEvent *events,
 	                 VkPipelineStageFlags src_stages, VkPipelineStageFlags dst_stages,
 	                 unsigned barriers, const VkMemoryBarrier *globals,
@@ -314,11 +308,6 @@ public:
 	void image_barrier(const Image &image, VkImageLayout old_layout, VkImageLayout new_layout,
 	                   VkPipelineStageFlags src_stage, VkAccessFlags src_access, VkPipelineStageFlags dst_stage,
 	                   VkAccessFlags dst_access);
-
-	void buffer_barriers(VkPipelineStageFlags src_stages, VkPipelineStageFlags dst_stages,
-	                     unsigned buffer_barriers, const VkBufferMemoryBarrier *buffers);
-	void image_barriers(VkPipelineStageFlags src_stages, VkPipelineStageFlags dst_stages,
-	                    unsigned image_barriers, const VkImageMemoryBarrier *images);
 
 	void blit_image(const Image &dst,
 	                const Image &src,
@@ -358,7 +347,6 @@ public:
 #endif
 
 	void set_buffer_view(unsigned set, unsigned binding, const BufferView &view);
-	void set_storage_buffer_view(unsigned set, unsigned binding, const BufferView &view);
 	void set_input_attachments(unsigned set, unsigned start_binding);
 	void set_texture(unsigned set, unsigned binding, const ImageView &view);
 	void set_unorm_texture(unsigned set, unsigned binding, const ImageView &view);
@@ -366,7 +354,6 @@ public:
 	void set_texture(unsigned set, unsigned binding, const ImageView &view, const Sampler &sampler);
 	void set_texture(unsigned set, unsigned binding, const ImageView &view, StockSampler sampler);
 	void set_storage_texture(unsigned set, unsigned binding, const ImageView &view);
-	void set_unorm_storage_texture(unsigned set, unsigned binding, const ImageView &view);
 	void set_sampler(unsigned set, unsigned binding, const Sampler &sampler);
 	void set_sampler(unsigned set, unsigned binding, StockSampler sampler);
 	void set_uniform_buffer(unsigned set, unsigned binding, const Buffer &buffer);
@@ -589,13 +576,6 @@ public:
 		}
 	}
 
-	inline void set_specialization_constant(unsigned index, bool value)
-	{
-		set_specialization_constant(index, uint32_t(value));
-	}
-
-	void set_surface_transform_specialization_constants(unsigned base_index);
-
 	inline void enable_subgroup_size_control(bool subgroup_control_size)
 	{
 		SET_STATIC_STATE(subgroup_control_size);
@@ -663,10 +643,6 @@ public:
 	void add_checkpoint(const char *tag);
 	void set_backtrace_checkpoint();
 
-	// Used when recording command buffers in a thread, and submitting them in a different thread.
-	// Need to make sure that no further commands on the VkCommandBuffer happen.
-	void end_threaded_recording();
-	// End is called automatically by Device in submission. Should not be called by application.
 	void end();
 	void enable_profiling();
 	bool has_profiling() const;
@@ -675,10 +651,8 @@ public:
 	void end_debug_channel();
 
 	void extract_pipeline_state(DeferredPipelineCompile &compile) const;
-	static VkPipeline build_graphics_pipeline(Device *device, const DeferredPipelineCompile &compile,
-	                                          bool synchronous = true);
-	static VkPipeline build_compute_pipeline(Device *device, const DeferredPipelineCompile &compile,
-	                                         bool synchronous = true);
+	static VkPipeline build_graphics_pipeline(Device *device, const DeferredPipelineCompile &compile);
+	static VkPipeline build_compute_pipeline(Device *device, const DeferredPipelineCompile &compile);
 
 	bool flush_pipeline_state_without_blocking();
 
@@ -715,10 +689,9 @@ private:
 	uint32_t dirty_sets_dynamic = 0;
 	uint32_t dirty_vbos = 0;
 	uint32_t active_vbos = 0;
-	VkPipelineStageFlags uses_swapchain_in_stages = 0;
+	bool uses_swapchain = false;
 	bool is_compute = true;
 	bool is_secondary = false;
-	bool is_ended = false;
 
 	void set_dirty(CommandBufferDirtyFlags flags)
 	{
@@ -760,11 +733,8 @@ private:
 	void set_texture(unsigned set, unsigned binding, VkImageView float_view, VkImageView integer_view,
 	                 VkImageLayout layout,
 	                 uint64_t cookie);
-	void set_buffer_view_common(unsigned set, unsigned binding, const BufferView &view);
 
 	void init_viewport_scissor(const RenderPassInfo &info, const Framebuffer *framebuffer);
-	void init_surface_transform(const RenderPassInfo &info);
-	VkSurfaceTransformFlagBitsKHR current_framebuffer_surface_transform = VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR;
 
 	bool profiling = false;
 	std::string debug_channel_tag;

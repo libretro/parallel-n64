@@ -1,4 +1,4 @@
-/* Copyright (c) 2017-2022 Hans-Kristian Arntzen
+/* Copyright (c) 2017-2020 Hans-Kristian Arntzen
  *
  * Permission is hereby granted, free of charge, to any person obtaining
  * a copy of this software and associated documentation files (the
@@ -31,8 +31,7 @@ CommandPool::CommandPool(Device *device_, uint32_t queue_family_index)
 	VkCommandPoolCreateInfo info = { VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO };
 	info.flags = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT;
 	info.queueFamilyIndex = queue_family_index;
-	if (queue_family_index != VK_QUEUE_FAMILY_IGNORED)
-		table->vkCreateCommandPool(device->get_device(), &info, nullptr, &pool);
+	table->vkCreateCommandPool(device->get_device(), &info, nullptr, &pool);
 }
 
 CommandPool::CommandPool(CommandPool &&other) noexcept
@@ -87,8 +86,6 @@ void CommandPool::signal_submitted(VkCommandBuffer cmd)
 
 VkCommandBuffer CommandPool::request_secondary_command_buffer()
 {
-	VK_ASSERT(pool != VK_NULL_HANDLE);
-
 	if (secondary_index < secondary_buffers.size())
 	{
 		auto ret = secondary_buffers[secondary_index++];
@@ -119,8 +116,6 @@ VkCommandBuffer CommandPool::request_secondary_command_buffer()
 
 VkCommandBuffer CommandPool::request_command_buffer()
 {
-	VK_ASSERT(pool != VK_NULL_HANDLE);
-
 	if (index < buffers.size())
 	{
 		auto ret = buffers[index++];
@@ -151,9 +146,6 @@ VkCommandBuffer CommandPool::request_command_buffer()
 
 void CommandPool::begin()
 {
-	if (pool == VK_NULL_HANDLE)
-		return;
-
 #ifdef VULKAN_DEBUG
 	VK_ASSERT(in_flight.empty());
 #endif
@@ -161,20 +153,5 @@ void CommandPool::begin()
 		table->vkResetCommandPool(device->get_device(), pool, 0);
 	index = 0;
 	secondary_index = 0;
-}
-
-void CommandPool::trim()
-{
-	if (pool == VK_NULL_HANDLE)
-		return;
-
-	table->vkResetCommandPool(device->get_device(), pool, VK_COMMAND_POOL_RESET_RELEASE_RESOURCES_BIT);
-	if (!buffers.empty())
-		table->vkFreeCommandBuffers(device->get_device(), pool, buffers.size(), buffers.data());
-	if (!secondary_buffers.empty())
-		table->vkFreeCommandBuffers(device->get_device(), pool, secondary_buffers.size(), secondary_buffers.data());
-	buffers.clear();
-	secondary_buffers.clear();
-	table->vkTrimCommandPool(device->get_device(), pool, 0);
 }
 }

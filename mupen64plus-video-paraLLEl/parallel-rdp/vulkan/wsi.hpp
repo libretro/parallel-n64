@@ -1,4 +1,4 @@
-/* Copyright (c) 2017-2022 Hans-Kristian Arntzen
+/* Copyright (c) 2017-2020 Hans-Kristian Arntzen
  *
  * Permission is hereby granted, free of charge, to any person obtaining
  * a copy of this software and associated documentation files (the
@@ -29,8 +29,6 @@
 #include "wsi_timing.hpp"
 #include <memory>
 #include <vector>
-#include <thread>
-#include <chrono>
 
 namespace Vulkan
 {
@@ -58,12 +56,9 @@ public:
 		return resize;
 	}
 
-	virtual void notify_current_swapchain_dimensions(unsigned width, unsigned height)
+	void acknowledge_resize()
 	{
 		resize = false;
-		current_swapchain_width = width;
-		current_swapchain_height = height;
-		swapchain_dimension_update_timestamp++;
 	}
 
 	virtual uint32_t get_surface_width() = 0;
@@ -79,17 +74,6 @@ public:
 	virtual bool has_external_swapchain()
 	{
 		return false;
-	}
-
-	virtual void block_until_wsi_forward_progress(Vulkan::WSI &wsi)
-	{
-		get_frame_timer().enter_idle();
-		while (!resize && alive(wsi))
-		{
-			poll_input();
-			std::this_thread::sleep_for(std::chrono::milliseconds(10));
-		}
-		get_frame_timer().leave_idle();
 	}
 
 	Util::FrameTimer &get_frame_timer()
@@ -117,12 +101,7 @@ public:
 
 	virtual uintptr_t get_fullscreen_monitor();
 
-	virtual const VkApplicationInfo *get_application_info();
-
 protected:
-	unsigned current_swapchain_width = 0;
-	unsigned current_swapchain_height = 0;
-	uint64_t swapchain_dimension_update_timestamp = 0;
 	bool resize = false;
 
 private:
@@ -145,7 +124,6 @@ public:
 	void set_present_mode(PresentMode mode);
 	void set_backbuffer_srgb(bool enable);
 	void set_support_prerotate(bool enable);
-	void set_extra_usage_flags(VkImageUsageFlags usage);
 	VkSurfaceTransformFlagBitsKHR get_current_prerotate() const;
 
 	PresentMode get_present_mode() const
@@ -158,7 +136,7 @@ public:
 		return srgb_backbuffer_enable;
 	}
 
-	bool init(unsigned num_thread_indices, const Context::SystemHandles &system_handles);
+	bool init(unsigned num_thread_indices);
 	bool init_external_context(std::unique_ptr<Vulkan::Context> context);
 	bool init_external_swapchain(std::vector<Vulkan::ImageHandle> external_images);
 	void deinit_external();
@@ -202,6 +180,8 @@ public:
 		return timing;
 	}
 
+	static void build_prerotate_matrix_2x2(VkSurfaceTransformFlagBitsKHR pre_rotate, float mat[4]);
+
 private:
 	void update_framebuffer(unsigned width, unsigned height);
 
@@ -219,9 +199,6 @@ private:
 	VkFormat swapchain_format = VK_FORMAT_UNDEFINED;
 	PresentMode current_present_mode = PresentMode::SyncToVBlank;
 	PresentMode present_mode = PresentMode::SyncToVBlank;
-	VkImageUsageFlags current_extra_usage = 0;
-	VkImageUsageFlags extra_usage = 0;
-	bool swapchain_is_suboptimal = false;
 
 	enum class SwapchainError
 	{
@@ -255,15 +232,9 @@ private:
 	double smooth_frame_time = 0.0;
 	double smooth_elapsed_time = 0.0;
 
-	uint64_t present_id = 0;
-	uint64_t present_last_id = 0;
-	unsigned present_frame_latency = 0;
-
 	WSITiming timing;
 
 	void tear_down_swapchain();
 	void drain_swapchain();
-
-	VkSurfaceFormatKHR find_suitable_present_format(const std::vector<VkSurfaceFormatKHR> &formats) const;
 };
 }

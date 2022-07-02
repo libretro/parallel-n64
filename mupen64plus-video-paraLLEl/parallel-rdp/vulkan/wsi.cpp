@@ -1,4 +1,4 @@
-/* Copyright (c) 2017-2022 Hans-Kristian Arntzen
+/* Copyright (c) 2017-2020 Hans-Kristian Arntzen
  *
  * Permission is hereby granted, free of charge, to any person obtaining
  * a copy of this software and associated documentation files (the
@@ -22,27 +22,17 @@
 
 #include "wsi.hpp"
 #include "quirks.hpp"
+#include <thread>
+
+using namespace std;
 
 namespace Vulkan
 {
 WSI::WSI()
 {
-	// With frame latency of 1, we get the ideal latency where
-	// we present, and then wait for the previous present to complete.
-	// Once this unblocks, it means that the present we just queued up is scheduled to complete next vblank,
-	// and the next frame to be recorded will have to be ready in 2 frames.
-	// This is ideal, since worst case for full performance, we will have a pipeline of CPU -> GPU,
-	// where CPU can spend 1 frame's worth of time, and GPU can spend one frame's worth of time.
-	// For mobile, opt for 2 frames of latency, since TBDR likes deeper pipelines and we can absorb more
-	// surfaceflinger jank.
-#ifdef ANDROID
-	present_frame_latency = 2;
-#else
-	present_frame_latency = 1;
-#endif
 }
 
-void WSIPlatform::set_window_title(const std::string &)
+void WSIPlatform::set_window_title(const string &)
 {
 }
 
@@ -51,12 +41,7 @@ uintptr_t WSIPlatform::get_fullscreen_monitor()
 	return 0;
 }
 
-const VkApplicationInfo *WSIPlatform::get_application_info()
-{
-	return nullptr;
-}
-
-void WSI::set_window_title(const std::string &title)
+void WSI::set_window_title(const string &title)
 {
 	if (platform)
 		platform->set_window_title(title);
@@ -104,7 +89,7 @@ float WSI::get_estimated_video_latency()
 	}
 }
 
-bool WSI::init_external_context(std::unique_ptr<Context> fresh_context)
+bool WSI::init_external_context(unique_ptr<Context> fresh_context)
 {
 	context = move(fresh_context);
 
@@ -117,13 +102,13 @@ bool WSI::init_external_context(std::unique_ptr<Context> fresh_context)
 	return true;
 }
 
-bool WSI::init_external_swapchain(std::vector<ImageHandle> swapchain_images_)
+bool WSI::init_external_swapchain(vector<ImageHandle> swapchain_images_)
 {
 	swapchain_width = platform->get_surface_width();
 	swapchain_height = platform->get_surface_height();
 	swapchain_aspect_ratio = platform->get_aspect_ratio();
 
-	external_swapchain_images = std::move(swapchain_images_);
+	external_swapchain_images = move(swapchain_images_);
 
 	swapchain_width = external_swapchain_images.front()->get_width();
 	swapchain_height = external_swapchain_images.front()->get_height();
@@ -150,15 +135,12 @@ void WSI::set_platform(WSIPlatform *platform_)
 	platform = platform_;
 }
 
-bool WSI::init(unsigned num_thread_indices, const Context::SystemHandles &system_handles)
+bool WSI::init(unsigned num_thread_indices)
 {
 	auto instance_ext = platform->get_instance_extensions();
 	auto device_ext = platform->get_device_extensions();
 	context.reset(new Context);
-
-	context->set_application_info(platform->get_application_info());
 	context->set_num_thread_indices(num_thread_indices);
-	context->set_system_handles(system_handles);
 	if (!context->init_instance_and_device(instance_ext.data(), instance_ext.size(), device_ext.data(), device_ext.size()))
 		return false;
 
@@ -177,31 +159,14 @@ bool WSI::init(unsigned num_thread_indices, const Context::SystemHandles &system
 	swapchain_aspect_ratio = platform->get_aspect_ratio();
 
 	VkBool32 supported = VK_FALSE;
-	uint32_t queue_present_support = 0;
-
-	for (auto &index : context->get_queue_info().family_indices)
-	{
-		if (index != VK_QUEUE_FAMILY_IGNORED)
-		{
-			if (vkGetPhysicalDeviceSurfaceSupportKHR(context->get_gpu(), index, surface, &supported) == VK_SUCCESS &&
-			    supported)
-			{
-				queue_present_support |= 1u << index;
-			}
-		}
-	}
-
-	if ((queue_present_support & (1u << context->get_queue_info().family_indices[QUEUE_INDEX_GRAPHICS])) == 0)
+	vkGetPhysicalDeviceSurfaceSupportKHR(context->get_gpu(), context->get_graphics_queue_family(), surface, &supported);
+	if (!supported)
 		return false;
-
-	device->set_swapchain_queue_family_support(queue_present_support);
 
 	if (!blocking_init_swapchain(width, height))
 		return false;
 
-	device->init_swapchain(swapchain_images, swapchain_width, swapchain_height, swapchain_format,
-	                       swapchain_current_prerotate,
-	                       current_extra_usage | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT);
+	device->init_swapchain(swapchain_images, swapchain_width, swapchain_height, swapchain_format);
 	platform->get_frame_timer().reset();
 	return true;
 }
@@ -233,15 +198,9 @@ void WSI::tear_down_swapchain()
 	drain_swapchain();
 
 	if (swapchain != VK_NULL_HANDLE)
-	{
-		if (device->get_device_features().present_wait_features.presentWait && present_last_id)
-			table->vkWaitForPresentKHR(context->get_device(), swapchain, present_last_id, UINT64_MAX);
 		table->vkDestroySwapchainKHR(context->get_device(), swapchain, nullptr);
-	}
 	swapchain = VK_NULL_HANDLE;
 	has_acquired_swapchain_index = false;
-	present_id = 0;
-	present_last_id = 0;
 }
 
 void WSI::deinit_surface_and_swapchain()
@@ -260,7 +219,7 @@ void WSI::deinit_surface_and_swapchain()
 void WSI::set_external_frame(unsigned index, Semaphore acquire_semaphore, double frame_time)
 {
 	external_frame_index = index;
-	external_acquire = std::move(acquire_semaphore);
+	external_acquire = move(acquire_semaphore);
 	frame_is_external = true;
 	external_frame_time = frame_time;
 }
@@ -295,7 +254,7 @@ bool WSI::begin_frame_external()
 Semaphore WSI::consume_external_release_semaphore()
 {
 	Semaphore sem;
-	std::swap(external_release, sem);
+	swap(external_release, sem);
 	return sem;
 }
 
@@ -317,8 +276,11 @@ bool WSI::begin_frame()
 	LOGI("Waited for vacant frame context for %.3f ms.\n", (next_frame_end - next_frame_start) * 1e-6);
 #endif
 
-	if (swapchain == VK_NULL_HANDLE || platform->should_resize() || swapchain_is_suboptimal)
+	if (swapchain == VK_NULL_HANDLE || platform->should_resize())
+	{
 		update_framebuffer(platform->get_surface_width(), platform->get_surface_height());
+		platform->acknowledge_resize();
+	}
 
 	if (swapchain == VK_NULL_HANDLE)
 	{
@@ -353,14 +315,14 @@ bool WSI::begin_frame()
 		                                      fence ? fence->get_fence() : VK_NULL_HANDLE, &swapchain_index);
 		device->register_time_interval("WSI", std::move(acquire_ts), device->write_calibrated_timestamp(), "acquire");
 
-#if defined(ANDROID)
+#ifdef ANDROID
 		// Android 10 can return suboptimal here, only because of pre-transform.
 		// We don't care about that, and treat this as success.
-		if (result == VK_SUBOPTIMAL_KHR && !support_prerotate)
+		if (result == VK_SUBOPTIMAL_KHR)
 			result = VK_SUCCESS;
 #endif
 
-		if ((result >= 0) && fence)
+		if (result == VK_SUCCESS && fence)
 			fence->wait();
 
 		if (result == VK_ERROR_FULL_SCREEN_EXCLUSIVE_MODE_LOST_EXT)
@@ -373,15 +335,7 @@ bool WSI::begin_frame()
 		LOGI("vkAcquireNextImageKHR took %.3f ms.\n", (acquire_end - acquire_start) * 1e-6);
 #endif
 
-		if (result == VK_SUBOPTIMAL_KHR)
-		{
-#ifdef VULKAN_DEBUG
-			LOGI("AcquireNextImageKHR is suboptimal, will recreate.\n");
-#endif
-			swapchain_is_suboptimal = true;
-		}
-
-		if (result >= 0)
+		if (result == VK_SUCCESS)
 		{
 			has_acquired_swapchain_index = true;
 			acquire->signal_external();
@@ -401,9 +355,25 @@ bool WSI::begin_frame()
 
 			platform->event_swapchain_index(device.get(), swapchain_index);
 
+			if (device->get_workarounds().wsi_acquire_barrier_is_expensive)
+			{
+				// Acquire async. Use the async graphics queue, as it's most likely not being used right away.
+				device->add_wait_semaphore(CommandBuffer::Type::AsyncGraphics, acquire, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, true);
+				auto cmd = device->request_command_buffer(CommandBuffer::Type::AsyncGraphics);
+				cmd->image_barrier(device->get_swapchain_view(swapchain_index).get_image(),
+				                   VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+				                   VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, 0,
+				                   VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, 0);
+
+				// Get a new acquire semaphore.
+				acquire.reset();
+				device->submit(cmd, nullptr, 1, &acquire);
+			}
+
 			device->set_acquire_semaphore(swapchain_index, acquire);
 		}
-		else if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_ERROR_FULL_SCREEN_EXCLUSIVE_MODE_LOST_EXT)
+		else if (result == VK_SUBOPTIMAL_KHR || result == VK_ERROR_OUT_OF_DATE_KHR ||
+		         result == VK_ERROR_FULL_SCREEN_EXCLUSIVE_MODE_LOST_EXT)
 		{
 			VK_ASSERT(swapchain_width != 0);
 			VK_ASSERT(swapchain_height != 0);
@@ -412,15 +382,13 @@ bool WSI::begin_frame()
 
 			if (!blocking_init_swapchain(swapchain_width, swapchain_height))
 				return false;
-			device->init_swapchain(swapchain_images, swapchain_width, swapchain_height,
-			                       swapchain_format, swapchain_current_prerotate,
-			                       current_extra_usage | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT);
+			device->init_swapchain(swapchain_images, swapchain_width, swapchain_height, swapchain_format);
 		}
 		else
 		{
 			return false;
 		}
-	} while (result < 0);
+	} while (result != VK_SUCCESS);
 	return true;
 }
 
@@ -461,23 +429,12 @@ bool WSI::end_frame()
 
 		VkPresentTimeGOOGLE present_time;
 		VkPresentTimesInfoGOOGLE present_timing = { VK_STRUCTURE_TYPE_PRESENT_TIMES_INFO_GOOGLE };
+		present_timing.swapchainCount = 1;
+		present_timing.pTimes = &present_time;
 
 		if (using_display_timing && timing.fill_present_info_timing(present_time))
 		{
-			present_timing.swapchainCount = 1;
-			present_timing.pTimes = &present_time;
-			present_timing.pNext = info.pNext;
 			info.pNext = &present_timing;
-		}
-
-		VkPresentIdKHR present_id_info = { VK_STRUCTURE_TYPE_PRESENT_ID_KHR };
-		if (device->get_device_features().present_id_features.presentId)
-		{
-			present_id_info.swapchainCount = 1;
-			present_id_info.pPresentIds = &present_id;
-			present_id++;
-			present_id_info.pNext = info.pNext;
-			info.pNext = &present_id_info;
 		}
 
 #ifdef VULKAN_WSI_TIMING_DEBUG
@@ -485,15 +442,15 @@ bool WSI::end_frame()
 #endif
 
 		auto present_ts = device->write_calibrated_timestamp();
-		VkResult overall = table->vkQueuePresentKHR(device->get_current_present_queue(), &info);
+		VkResult overall = table->vkQueuePresentKHR(context->get_graphics_queue(), &info);
 		device->register_time_interval("WSI", std::move(present_ts), device->write_calibrated_timestamp(), "present");
 
-#if defined(ANDROID)
+#ifdef ANDROID
 		// Android 10 can return suboptimal here, only because of pre-transform.
 		// We don't care about that, and treat this as success.
-		if (overall == VK_SUBOPTIMAL_KHR && !support_prerotate)
+		if (overall == VK_SUBOPTIMAL_KHR)
 			overall = VK_SUCCESS;
-		if (result == VK_SUBOPTIMAL_KHR && !support_prerotate)
+		if (result == VK_SUBOPTIMAL_KHR)
 			result = VK_SUCCESS;
 #endif
 
@@ -508,45 +465,7 @@ bool WSI::end_frame()
 		LOGI("vkQueuePresentKHR took %.3f ms.\n", (present_end - present_start) * 1e-6);
 #endif
 
-		// The presentID only seems to get updated if QueuePresent returns success.
-		// This makes sense I guess. Record the latest present ID which was successfully presented
-		// so we don't risk deadlock.
-		if ((result == VK_SUCCESS || result == VK_SUBOPTIMAL_KHR) &&
-		    device->get_device_features().present_wait_features.presentWait)
-		{
-			if (present_id > present_frame_latency)
-			{
-				uint64_t target = present_id - present_frame_latency;
-				// In case there are weird gaps which present IDs got a successful present.
-				if (target > present_last_id)
-					target = present_last_id;
-#ifdef VULKAN_WSI_TIMING_DEBUG
-				auto begin_wait = Util::get_current_time_nsecs();
-#endif
-				auto wait_ts = device->write_calibrated_timestamp();
-				VkResult wait_result = table->vkWaitForPresentKHR(context->get_device(), swapchain,
-				                                                  target, UINT64_MAX);
-				device->register_time_interval("WSI", std::move(wait_ts),
-				                               device->write_calibrated_timestamp(), "wait_frame_latency");
-				if (wait_result != VK_SUCCESS)
-					LOGE("vkWaitForPresentKHR failed, vr %d.\n", wait_result);
-#ifdef VULKAN_WSI_TIMING_DEBUG
-				auto end_wait = Util::get_current_time_nsecs();
-				LOGI("WaitForPresentKHR took %.3f ms.\n", 1e-6 * double(end_wait - begin_wait));
-#endif
-			}
-			present_last_id = present_id;
-		}
-
-		if (overall == VK_SUBOPTIMAL_KHR || result == VK_SUBOPTIMAL_KHR)
-		{
-#ifdef VULKAN_DEBUG
-			LOGI("QueuePresent is suboptimal, will recreate.\n");
-#endif
-			swapchain_is_suboptimal = true;
-		}
-
-		if (overall < 0 || result < 0)
+		if (overall != VK_SUCCESS || result != VK_SUCCESS)
 		{
 			LOGE("vkQueuePresentKHR failed.\n");
 			tear_down_swapchain();
@@ -561,12 +480,10 @@ bool WSI::end_frame()
 		}
 
 		// Re-init swapchain.
-		if (present_mode != current_present_mode || srgb_backbuffer_enable != current_srgb_backbuffer_enable ||
-		    extra_usage != current_extra_usage)
+		if (present_mode != current_present_mode || srgb_backbuffer_enable != current_srgb_backbuffer_enable)
 		{
 			current_present_mode = present_mode;
 			current_srgb_backbuffer_enable = srgb_backbuffer_enable;
-			current_extra_usage = extra_usage;
 			update_framebuffer(swapchain_width, swapchain_height);
 		}
 	}
@@ -580,15 +497,8 @@ void WSI::update_framebuffer(unsigned width, unsigned height)
 	{
 		drain_swapchain();
 		if (blocking_init_swapchain(width, height))
-		{
-			device->init_swapchain(swapchain_images, swapchain_width, swapchain_height, swapchain_format,
-			                       swapchain_current_prerotate,
-			                       current_extra_usage | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT);
-		}
+			device->init_swapchain(swapchain_images, swapchain_width, swapchain_height, swapchain_format);
 	}
-
-	if (platform)
-		platform->notify_current_swapchain_dimensions(swapchain_width, swapchain_height);
 }
 
 void WSI::set_present_mode(PresentMode mode)
@@ -597,16 +507,6 @@ void WSI::set_present_mode(PresentMode mode)
 	if (!has_acquired_swapchain_index && present_mode != current_present_mode)
 	{
 		current_present_mode = present_mode;
-		update_framebuffer(swapchain_width, swapchain_height);
-	}
-}
-
-void WSI::set_extra_usage_flags(VkImageUsageFlags usage)
-{
-	extra_usage = usage;
-	if (!has_acquired_swapchain_index && extra_usage != current_extra_usage)
-	{
-		current_extra_usage = extra_usage;
 		update_framebuffer(swapchain_width, swapchain_height);
 	}
 }
@@ -654,10 +554,6 @@ bool WSI::blocking_init_swapchain(unsigned width, unsigned height)
 	{
 		swapchain_aspect_ratio = platform->get_aspect_ratio();
 		err = init_swapchain(width, height);
-
-		if (err != SwapchainError::None)
-			platform->notify_current_swapchain_dimensions(0, 0);
-
 		if (err == SwapchainError::Error)
 		{
 			if (++retry_counter > 3)
@@ -666,61 +562,14 @@ bool WSI::blocking_init_swapchain(unsigned width, unsigned height)
 			// Try to not reuse the swapchain.
 			tear_down_swapchain();
 		}
-		else if (err == SwapchainError::NoSurface)
+		else if (err == SwapchainError::NoSurface && platform->alive(*this))
 		{
-			LOGW("WSI cannot make forward progress due to minimization, blocking ...\n");
-			platform->block_until_wsi_forward_progress(*this);
-			LOGW("Woke up!\n");
+			platform->poll_input();
+			this_thread::sleep_for(chrono::milliseconds(10));
 		}
 	} while (err != SwapchainError::None);
 
 	return swapchain != VK_NULL_HANDLE;
-}
-
-VkSurfaceFormatKHR WSI::find_suitable_present_format(const std::vector<VkSurfaceFormatKHR> &formats) const
-{
-	size_t format_count = formats.size();
-	VkSurfaceFormatKHR format = { VK_FORMAT_UNDEFINED };
-
-	VkFormatFeatureFlags features = VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT |
-	                                VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BLEND_BIT;
-	if ((current_extra_usage & VK_IMAGE_USAGE_STORAGE_BIT) != 0)
-		features |= VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT;
-
-	if (format_count == 0)
-	{
-		LOGE("Surface has no formats?\n");
-		return format;
-	}
-
-	for (size_t i = 0; i < format_count; i++)
-	{
-		if (!device->image_format_is_supported(formats[i].format, features))
-			continue;
-
-		if (current_srgb_backbuffer_enable)
-		{
-			if (formats[i].format == VK_FORMAT_R8G8B8A8_SRGB ||
-			    formats[i].format == VK_FORMAT_B8G8R8A8_SRGB ||
-			    formats[i].format == VK_FORMAT_A8B8G8R8_SRGB_PACK32)
-			{
-				format = formats[i];
-				break;
-			}
-		}
-		else
-		{
-			if (formats[i].format == VK_FORMAT_R8G8B8A8_UNORM ||
-			    formats[i].format == VK_FORMAT_B8G8R8A8_UNORM ||
-			    formats[i].format == VK_FORMAT_A8B8G8R8_UNORM_PACK32)
-			{
-				format = formats[i];
-				break;
-			}
-		}
-	}
-
-	return format;
 }
 
 WSI::SwapchainError WSI::init_swapchain(unsigned width, unsigned height)
@@ -817,19 +666,19 @@ WSI::SwapchainError WSI::init_swapchain(unsigned width, unsigned height)
 			return SwapchainError::Error;
 	}
 
-	// Happens on Windows when you minimize a window.
+	// Happens on nVidia Windows when you minimize a window.
 	if (surface_properties.maxImageExtent.width == 0 && surface_properties.maxImageExtent.height == 0)
 		return SwapchainError::NoSurface;
 
 	uint32_t format_count;
-	std::vector<VkSurfaceFormatKHR> formats;
+	vector<VkSurfaceFormatKHR> formats;
 
 	if (use_surface_info)
 	{
 		if (vkGetPhysicalDeviceSurfaceFormats2KHR(gpu, &surface_info, &format_count, nullptr) != VK_SUCCESS)
 			return SwapchainError::Error;
 
-		std::vector<VkSurfaceFormat2KHR> formats2(format_count);
+		vector<VkSurfaceFormat2KHR> formats2(format_count);
 
 		for (auto &f : formats2)
 		{
@@ -853,26 +702,45 @@ WSI::SwapchainError WSI::init_swapchain(unsigned width, unsigned height)
 			return SwapchainError::Error;
 	}
 
-	if (current_extra_usage && support_prerotate)
+	VkSurfaceFormatKHR format;
+	if (format_count == 1 && formats[0].format == VK_FORMAT_UNDEFINED)
 	{
-		LOGW("Disabling prerotate support due to extra usage flags in swapchain.\n");
-		support_prerotate = false;
+		format = formats[0];
+		format.format = VK_FORMAT_B8G8R8A8_UNORM;
 	}
-
-	if (current_extra_usage & ~surface_properties.supportedUsageFlags)
+	else
 	{
-		LOGW("Attempting to use unsupported usage flags 0x%x for swapchain.\n", current_extra_usage);
-		current_extra_usage &= surface_properties.supportedUsageFlags;
-		extra_usage = current_extra_usage;
-	}
+		if (format_count == 0)
+		{
+			LOGE("Surface has no formats.\n");
+			return SwapchainError::Error;
+		}
 
-	auto surface_format = find_suitable_present_format(formats);
-	if (surface_format.format == VK_FORMAT_UNDEFINED)
-	{
-		LOGW("Could not find supported format for swapchain usage flags 0x%x.\n", current_extra_usage);
-		current_extra_usage = 0;
-		extra_usage = 0;
-		surface_format = find_suitable_present_format(formats);
+		bool found = false;
+		for (unsigned i = 0; i < format_count; i++)
+		{
+			if (current_srgb_backbuffer_enable)
+			{
+				if (formats[i].format == VK_FORMAT_R8G8B8A8_SRGB || formats[i].format == VK_FORMAT_B8G8R8A8_SRGB ||
+				    formats[i].format == VK_FORMAT_A8B8G8R8_SRGB_PACK32)
+				{
+					format = formats[i];
+					found = true;
+				}
+			}
+			else
+			{
+				if (formats[i].format == VK_FORMAT_R8G8B8A8_UNORM || formats[i].format == VK_FORMAT_B8G8R8A8_UNORM ||
+				    formats[i].format == VK_FORMAT_A8B8G8R8_UNORM_PACK32)
+				{
+					format = formats[i];
+					found = true;
+				}
+			}
+		}
+
+		if (!found)
+			format = formats[0];
 	}
 
 	static const char *transform_names[] = {
@@ -899,17 +767,7 @@ WSI::SwapchainError WSI::init_swapchain(unsigned width, unsigned height)
 	if (!support_prerotate && (surface_properties.supportedTransforms & VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR) != 0)
 		pre_transform = VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR;
 	else
-	{
-		// Only attempt to use prerotate if we can deal with it purely using a XY clip fixup.
-		// For horizontal flip we need to start flipping front-face as well ...
-		if ((surface_properties.currentTransform & (
-				VK_SURFACE_TRANSFORM_ROTATE_90_BIT_KHR |
-				VK_SURFACE_TRANSFORM_ROTATE_180_BIT_KHR |
-				VK_SURFACE_TRANSFORM_ROTATE_270_BIT_KHR)) != 0)
-			pre_transform = surface_properties.currentTransform;
-		else
-			pre_transform = VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR;
-	}
+		pre_transform = surface_properties.currentTransform;
 
 	if (pre_transform != surface_properties.currentTransform)
 	{
@@ -924,30 +782,12 @@ WSI::SwapchainError WSI::init_swapchain(unsigned width, unsigned height)
 	     int(surface_properties.currentExtent.width),
 	     int(surface_properties.currentExtent.height));
 
-	if (width == 0)
-	{
-		if (surface_properties.currentExtent.width != ~0u)
-			width = surface_properties.currentExtent.width;
-		else
-			width = 1280;
-		LOGI("Auto selected width = %u.\n", width);
-	}
-
-	if (height == 0)
-	{
-		if (surface_properties.currentExtent.height != ~0u)
-			height = surface_properties.currentExtent.height;
-		else
-			height = 720;
-		LOGI("Auto selected height = %u.\n", height);
-	}
-
-	// Try to match the swapchain size up with what we expect w.r.t. aspect ratio.
+	// Try to match the swapchain size up with what we expect.
 	float target_aspect_ratio = float(width) / float(height);
 	if ((swapchain_aspect_ratio > 1.0f && target_aspect_ratio < 1.0f) ||
 	    (swapchain_aspect_ratio < 1.0f && target_aspect_ratio > 1.0f))
 	{
-		std::swap(width, height);
+		swap(width, height);
 	}
 
 	// If we are using pre-rotate of 90 or 270 degrees, we need to flip width and height again.
@@ -956,18 +796,18 @@ WSI::SwapchainError WSI::init_swapchain(unsigned width, unsigned height)
 	     VK_SURFACE_TRANSFORM_HORIZONTAL_MIRROR_ROTATE_90_BIT_KHR |
 	     VK_SURFACE_TRANSFORM_HORIZONTAL_MIRROR_ROTATE_270_BIT_KHR))
 	{
-		std::swap(width, height);
+		swap(width, height);
 	}
 
 	// Clamp the target width, height to boundaries.
 	swapchain_size.width =
-	    std::max(std::min(width, surface_properties.maxImageExtent.width), surface_properties.minImageExtent.width);
+	    max(min(width, surface_properties.maxImageExtent.width), surface_properties.minImageExtent.width);
 	swapchain_size.height =
-	    std::max(std::min(height, surface_properties.maxImageExtent.height), surface_properties.minImageExtent.height);
+	    max(min(height, surface_properties.maxImageExtent.height), surface_properties.minImageExtent.height);
 
 	uint32_t num_present_modes;
 
-	std::vector<VkPresentModeKHR> present_modes;
+	vector<VkPresentModeKHR> present_modes;
 
 #ifdef _WIN32
 	if (use_surface_info && device->get_device_features().supports_full_screen_exclusive)
@@ -1035,40 +875,32 @@ WSI::SwapchainError WSI::init_swapchain(unsigned width, unsigned height)
 		desired_swapchain_images = surface_properties.maxImageCount;
 
 	VkCompositeAlphaFlagBitsKHR composite_mode = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
+	if (surface_properties.supportedCompositeAlpha & VK_COMPOSITE_ALPHA_INHERIT_BIT_KHR)
+		composite_mode = VK_COMPOSITE_ALPHA_INHERIT_BIT_KHR;
 	if (surface_properties.supportedCompositeAlpha & VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR)
 		composite_mode = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
-	else if (surface_properties.supportedCompositeAlpha & VK_COMPOSITE_ALPHA_INHERIT_BIT_KHR)
-		composite_mode = VK_COMPOSITE_ALPHA_INHERIT_BIT_KHR;
-	else if (surface_properties.supportedCompositeAlpha & VK_COMPOSITE_ALPHA_POST_MULTIPLIED_BIT_KHR)
+	if (surface_properties.supportedCompositeAlpha & VK_COMPOSITE_ALPHA_POST_MULTIPLIED_BIT_KHR)
 		composite_mode = VK_COMPOSITE_ALPHA_POST_MULTIPLIED_BIT_KHR;
-	else if (surface_properties.supportedCompositeAlpha & VK_COMPOSITE_ALPHA_PRE_MULTIPLIED_BIT_KHR)
+	if (surface_properties.supportedCompositeAlpha & VK_COMPOSITE_ALPHA_PRE_MULTIPLIED_BIT_KHR)
 		composite_mode = VK_COMPOSITE_ALPHA_PRE_MULTIPLIED_BIT_KHR;
-	else
-		LOGW("No sensible composite mode supported?\n");
 
 	VkSwapchainKHR old_swapchain = swapchain;
 
 	VkSwapchainCreateInfoKHR info = { VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR };
 	info.surface = surface;
 	info.minImageCount = desired_swapchain_images;
-	info.imageFormat = surface_format.format;
-	info.imageColorSpace = surface_format.colorSpace;
+	info.imageFormat = format.format;
+	info.imageColorSpace = format.colorSpace;
 	info.imageExtent.width = swapchain_size.width;
 	info.imageExtent.height = swapchain_size.height;
 	info.imageArrayLayers = 1;
-	info.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | current_extra_usage;
+	info.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
 	info.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
 	info.preTransform = pre_transform;
 	info.compositeAlpha = composite_mode;
 	info.presentMode = swapchain_present_mode;
 	info.clipped = VK_TRUE;
 	info.oldSwapchain = old_swapchain;
-
-	if (device->get_device_features().present_wait_features.presentWait &&
-	    old_swapchain != VK_NULL_HANDLE && present_last_id)
-	{
-		table->vkWaitForPresentKHR(context->get_device(), old_swapchain, present_last_id, UINT64_MAX);
-	}
 
 #ifdef _WIN32
 	if (device->get_device_features().supports_full_screen_exclusive)
@@ -1079,8 +911,6 @@ WSI::SwapchainError WSI::init_swapchain(unsigned width, unsigned height)
 	if (old_swapchain != VK_NULL_HANDLE)
 		table->vkDestroySwapchainKHR(context->get_device(), old_swapchain, nullptr);
 	has_acquired_swapchain_index = false;
-	present_id = 0;
-	present_last_id = 0;
 
 #ifdef _WIN32
 	if (use_application_controlled_exclusive_fullscreen)
@@ -1116,11 +946,10 @@ WSI::SwapchainError WSI::init_swapchain(unsigned width, unsigned height)
 
 	swapchain_width = swapchain_size.width;
 	swapchain_height = swapchain_size.height;
-	swapchain_format = surface_format.format;
-	swapchain_is_suboptimal = false;
+	swapchain_format = format.format;
 
-	LOGI("Created swapchain %u x %u (fmt: %u, transform: %u).\n", swapchain_width, swapchain_height,
-	     unsigned(swapchain_format), unsigned(swapchain_current_prerotate));
+	LOGI("Created swapchain %u x %u (fmt: %u).\n", swapchain_width, swapchain_height,
+	     static_cast<unsigned>(swapchain_format));
 
 	uint32_t image_count;
 	if (table->vkGetSwapchainImagesKHR(context->get_device(), swapchain, &image_count, nullptr) != VK_SUCCESS)
@@ -1163,6 +992,41 @@ VkSurfaceTransformFlagBitsKHR WSI::get_current_prerotate() const
 WSI::~WSI()
 {
 	deinit_external();
+}
+
+void WSI::build_prerotate_matrix_2x2(VkSurfaceTransformFlagBitsKHR pre_rotate, float mat[4])
+{
+	// TODO: HORIZONTAL_MIRROR.
+	switch (pre_rotate)
+	{
+	default:
+		mat[0] = 1.0f;
+		mat[1] = 0.0f;
+		mat[2] = 0.0f;
+		mat[3] = 1.0f;
+		break;
+
+	case VK_SURFACE_TRANSFORM_ROTATE_90_BIT_KHR:
+		mat[0] = 0.0f;
+		mat[1] = 1.0f;
+		mat[2] = -1.0f;
+		mat[3] = 0.0f;
+		break;
+
+	case VK_SURFACE_TRANSFORM_ROTATE_270_BIT_KHR:
+		mat[0] = 0.0f;
+		mat[1] = -1.0f;
+		mat[2] = 1.0f;
+		mat[3] = 0.0f;
+		break;
+
+	case VK_SURFACE_TRANSFORM_ROTATE_180_BIT_KHR:
+		mat[0] = -1.0f;
+		mat[1] = 0.0f;
+		mat[2] = 0.0f;
+		mat[3] = -1.0f;
+		break;
+	}
 }
 
 void WSIPlatform::event_device_created(Device *) {}
