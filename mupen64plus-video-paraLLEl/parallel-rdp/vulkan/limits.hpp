@@ -1,4 +1,4 @@
-/* Copyright (c) 2017-2020 Hans-Kristian Arntzen
+/* Copyright (c) 2017-2022 Hans-Kristian Arntzen
  *
  * Permission is hereby granted, free of charge, to any person obtaining
  * a copy of this software and associated documentation files (the
@@ -24,10 +24,9 @@
 
 namespace Vulkan
 {
-constexpr unsigned VULKAN_NUM_DESCRIPTOR_SETS = 8;
-constexpr unsigned VULKAN_NUM_BINDINGS = 16;
-constexpr unsigned VULKAN_NUM_BINDINGS_BINDLESS_VARYING = 64 * 1024;
-constexpr unsigned VULKAN_NUM_BINDINGS_BINDLESS = 4 * 1024;
+constexpr unsigned VULKAN_NUM_DESCRIPTOR_SETS = 4;
+constexpr unsigned VULKAN_NUM_BINDINGS = 32;
+constexpr unsigned VULKAN_NUM_BINDINGS_BINDLESS_VARYING = 16 * 1024;
 constexpr unsigned VULKAN_NUM_ATTACHMENTS = 8;
 constexpr unsigned VULKAN_NUM_VERTEX_ATTRIBS = 16;
 constexpr unsigned VULKAN_NUM_VERTEX_BUFFERS = 4;

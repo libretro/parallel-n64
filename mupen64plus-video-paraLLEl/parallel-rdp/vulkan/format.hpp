@@ -1,4 +1,4 @@
-/* Copyright (c) 2017-2020 Hans-Kristian Arntzen
+/* Copyright (c) 2017-2022 Hans-Kristian Arntzen
  *
  * Permission is hereby granted, free of charge, to any person obtaining
  * a copy of this software and associated documentation files (the
@@ -27,6 +27,105 @@
 
 namespace Vulkan
 {
+enum class FormatCompressionType
+{
+	Uncompressed,
+	BC,
+	ETC,
+	ASTC
+};
+
+static inline FormatCompressionType format_compression_type(VkFormat format)
+{
+	switch (format)
+	{
+	case VK_FORMAT_BC1_RGBA_SRGB_BLOCK:
+	case VK_FORMAT_BC1_RGBA_UNORM_BLOCK:
+	case VK_FORMAT_BC1_RGB_SRGB_BLOCK:
+	case VK_FORMAT_BC1_RGB_UNORM_BLOCK:
+	case VK_FORMAT_BC2_SRGB_BLOCK:
+	case VK_FORMAT_BC2_UNORM_BLOCK:
+	case VK_FORMAT_BC3_SRGB_BLOCK:
+	case VK_FORMAT_BC3_UNORM_BLOCK:
+	case VK_FORMAT_BC4_UNORM_BLOCK:
+	case VK_FORMAT_BC4_SNORM_BLOCK:
+	case VK_FORMAT_BC5_UNORM_BLOCK:
+	case VK_FORMAT_BC5_SNORM_BLOCK:
+	case VK_FORMAT_BC6H_SFLOAT_BLOCK:
+	case VK_FORMAT_BC6H_UFLOAT_BLOCK:
+	case VK_FORMAT_BC7_SRGB_BLOCK:
+	case VK_FORMAT_BC7_UNORM_BLOCK:
+		return FormatCompressionType::BC;
+
+	case VK_FORMAT_ETC2_R8G8B8A1_SRGB_BLOCK:
+	case VK_FORMAT_ETC2_R8G8B8A1_UNORM_BLOCK:
+	case VK_FORMAT_ETC2_R8G8B8A8_SRGB_BLOCK:
+	case VK_FORMAT_ETC2_R8G8B8A8_UNORM_BLOCK:
+	case VK_FORMAT_ETC2_R8G8B8_SRGB_BLOCK:
+	case VK_FORMAT_ETC2_R8G8B8_UNORM_BLOCK:
+	case VK_FORMAT_EAC_R11G11_SNORM_BLOCK:
+	case VK_FORMAT_EAC_R11G11_UNORM_BLOCK:
+	case VK_FORMAT_EAC_R11_SNORM_BLOCK:
+	case VK_FORMAT_EAC_R11_UNORM_BLOCK:
+		return FormatCompressionType::ETC;
+
+#define astc_fmt(w, h) \
+	case VK_FORMAT_ASTC_##w##x##h##_UNORM_BLOCK: \
+	case VK_FORMAT_ASTC_##w##x##h##_SRGB_BLOCK: \
+	case VK_FORMAT_ASTC_##w##x##h##_SFLOAT_BLOCK_EXT
+	astc_fmt(4, 4):
+	astc_fmt(5, 4):
+	astc_fmt(5, 5):
+	astc_fmt(6, 5):
+	astc_fmt(6, 6):
+	astc_fmt(8, 5):
+	astc_fmt(8, 6):
+	astc_fmt(8, 8):
+	astc_fmt(10, 5):
+	astc_fmt(10, 6):
+	astc_fmt(10, 8):
+	astc_fmt(10, 10):
+	astc_fmt(12, 10):
+	astc_fmt(12, 12):
+		return FormatCompressionType::ASTC;
+#undef astc_fmt
+
+	default:
+		return FormatCompressionType::Uncompressed;
+	}
+}
+
+static inline bool format_is_compressed_hdr(VkFormat format)
+{
+	switch (format)
+	{
+#define astc_fmt(w, h) case VK_FORMAT_ASTC_##w##x##h##_SFLOAT_BLOCK_EXT
+	astc_fmt(4, 4):
+	astc_fmt(5, 4):
+	astc_fmt(5, 5):
+	astc_fmt(6, 5):
+	astc_fmt(6, 6):
+	astc_fmt(8, 5):
+	astc_fmt(8, 6):
+	astc_fmt(8, 8):
+	astc_fmt(10, 5):
+	astc_fmt(10, 6):
+	astc_fmt(10, 8):
+	astc_fmt(10, 10):
+	astc_fmt(12, 10):
+	astc_fmt(12, 12):
+#undef astc_fmt
+		return true;
+
+	case VK_FORMAT_BC6H_SFLOAT_BLOCK:
+	case VK_FORMAT_BC6H_UFLOAT_BLOCK:
+		return true;
+
+	default:
+		return false;
+	}
+}
+
 static inline bool format_is_srgb(VkFormat format)
 {
 	switch (format)
@@ -38,6 +137,28 @@ static inline bool format_is_srgb(VkFormat format)
 	case VK_FORMAT_R8G8_SRGB:
 	case VK_FORMAT_R8G8B8_SRGB:
 	case VK_FORMAT_B8G8R8_SRGB:
+	case VK_FORMAT_BC1_RGB_SRGB_BLOCK:
+	case VK_FORMAT_BC1_RGBA_SRGB_BLOCK:
+	case VK_FORMAT_BC2_SRGB_BLOCK:
+	case VK_FORMAT_BC3_SRGB_BLOCK:
+	case VK_FORMAT_BC7_SRGB_BLOCK:
+	case VK_FORMAT_ETC2_R8G8B8_SRGB_BLOCK:
+	case VK_FORMAT_ETC2_R8G8B8A1_SRGB_BLOCK:
+	case VK_FORMAT_ETC2_R8G8B8A8_SRGB_BLOCK:
+	case VK_FORMAT_ASTC_4x4_SRGB_BLOCK:
+	case VK_FORMAT_ASTC_5x4_SRGB_BLOCK:
+	case VK_FORMAT_ASTC_5x5_SRGB_BLOCK:
+	case VK_FORMAT_ASTC_6x5_SRGB_BLOCK:
+	case VK_FORMAT_ASTC_6x6_SRGB_BLOCK:
+	case VK_FORMAT_ASTC_8x5_SRGB_BLOCK:
+	case VK_FORMAT_ASTC_8x6_SRGB_BLOCK:
+	case VK_FORMAT_ASTC_8x8_SRGB_BLOCK:
+	case VK_FORMAT_ASTC_10x5_SRGB_BLOCK:
+	case VK_FORMAT_ASTC_10x6_SRGB_BLOCK:
+	case VK_FORMAT_ASTC_10x8_SRGB_BLOCK:
+	case VK_FORMAT_ASTC_10x10_SRGB_BLOCK:
+	case VK_FORMAT_ASTC_12x10_SRGB_BLOCK:
+	case VK_FORMAT_ASTC_12x12_SRGB_BLOCK:
 		return true;
 
 	default:
@@ -134,14 +255,6 @@ static inline VkDeviceSize format_get_layer_size(VkFormat format, VkImageAspectF
 	return size;
 }
 
-enum class YCbCrFormat
-{
-	YUV420P_3PLANE,
-	YUV444P_3PLANE,
-	YUV422P_3PLANE,
-	Count
-};
-
 static inline unsigned format_ycbcr_num_planes(VkFormat format)
 {
 	switch (format)
@@ -172,20 +285,6 @@ static inline unsigned format_ycbcr_num_planes(VkFormat format)
 
 	default:
 		return 1;
-	}
-}
-
-static inline unsigned format_ycbcr_num_planes(YCbCrFormat format)
-{
-	switch (format)
-	{
-	case YCbCrFormat::YUV420P_3PLANE:
-	case YCbCrFormat::YUV422P_3PLANE:
-	case YCbCrFormat::YUV444P_3PLANE:
-		return 3;
-
-	default:
-		return 0;
 	}
 }
 
@@ -231,51 +330,4 @@ static inline void format_ycbcr_downsample_dimensions(VkFormat format, VkImageAs
 	}
 #undef fmt
 }
-
-static inline unsigned format_ycbcr_downsample_ratio_log2(YCbCrFormat format, unsigned dim, unsigned plane)
-{
-	switch (format)
-	{
-	case YCbCrFormat::YUV420P_3PLANE:
-		return plane > 0 ? 1 : 0;
-	case YCbCrFormat::YUV422P_3PLANE:
-		return plane > 0 && dim == 0 ? 1 : 0;
-
-	default:
-		return 0;
-	}
-}
-
-static inline VkFormat format_ycbcr_plane_vk_format(YCbCrFormat format, unsigned plane)
-{
-	switch (format)
-	{
-	case YCbCrFormat::YUV420P_3PLANE:
-		return VK_FORMAT_R8_UNORM;
-	case YCbCrFormat::YUV422P_3PLANE:
-		return plane > 0 ? VK_FORMAT_R8G8_UNORM : VK_FORMAT_R8_UNORM;
-	case YCbCrFormat::YUV444P_3PLANE:
-		return VK_FORMAT_R8_UNORM;
-
-	default:
-		return VK_FORMAT_UNDEFINED;
-	}
-}
-
-static inline VkFormat format_ycbcr_planar_vk_format(YCbCrFormat format)
-{
-	switch (format)
-	{
-	case YCbCrFormat::YUV420P_3PLANE:
-		return VK_FORMAT_G8_B8_R8_3PLANE_420_UNORM;
-	case YCbCrFormat::YUV422P_3PLANE:
-		return VK_FORMAT_G8_B8_R8_3PLANE_422_UNORM;
-	case YCbCrFormat::YUV444P_3PLANE:
-		return VK_FORMAT_G8_B8_R8_3PLANE_444_UNORM;
-
-	default:
-		return VK_FORMAT_UNDEFINED;
-	}
-}
-
 }

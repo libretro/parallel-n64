@@ -1,4 +1,4 @@
-/* Copyright (c) 2017-2020 Hans-Kristian Arntzen
+/* Copyright (c) 2017-2022 Hans-Kristian Arntzen
  *
  * Permission is hereby granted, free of charge, to any person obtaining
  * a copy of this software and associated documentation files (the
@@ -168,9 +168,6 @@ private:
 	std::vector<SubpassInfo> subpasses_info;
 
 	void setup_subpasses(const VkRenderPassCreateInfo &create_info);
-
-	void fixup_render_pass_workaround(VkRenderPassCreateInfo &create_info, VkAttachmentDescription *attachments);
-	void fixup_wsi_barrier(VkRenderPassCreateInfo &create_info, VkAttachmentDescription *attachments);
 };
 
 class Framebuffer : public Cookie, public NoCopyNoMove, public InternalSyncEnabled
@@ -241,16 +238,16 @@ private:
 #endif
 };
 
-class AttachmentAllocator
+class TransientAttachmentAllocator
 {
 public:
-	AttachmentAllocator(Device *device_, bool transient_)
-		: device(device_), transient(transient_)
+	TransientAttachmentAllocator(Device *device_)
+		: device(device_)
 	{
 	}
 
-	ImageView &request_attachment(unsigned width, unsigned height, VkFormat format,
-	                              unsigned index = 0, unsigned samples = 1, unsigned layers = 1);
+	ImageHandle request_attachment(unsigned width, unsigned height, VkFormat format,
+	                               unsigned index = 0, unsigned samples = 1, unsigned layers = 1);
 
 	void begin_frame();
 	void clear();
@@ -271,26 +268,6 @@ private:
 #ifdef GRANITE_VULKAN_MT
 	std::mutex lock;
 #endif
-	bool transient;
 };
-
-class TransientAttachmentAllocator : public AttachmentAllocator
-{
-public:
-	explicit TransientAttachmentAllocator(Device *device_)
-		: AttachmentAllocator(device_, true)
-	{
-	}
-};
-
-class PhysicalAttachmentAllocator : public AttachmentAllocator
-{
-public:
-	explicit PhysicalAttachmentAllocator(Device *device_)
-		: AttachmentAllocator(device_, false)
-	{
-	}
-};
-
 }
 

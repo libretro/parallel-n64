@@ -1,4 +1,4 @@
-/* Copyright (c) 2017-2020 Hans-Kristian Arntzen
+/* Copyright (c) 2017-2022 Hans-Kristian Arntzen
  *
  * Permission is hereby granted, free of charge, to any person obtaining
  * a copy of this software and associated documentation files (the
@@ -52,13 +52,19 @@ enum class ShaderStage
 
 struct ResourceLayout
 {
+	DescriptorSetLayout sets[VULKAN_NUM_DESCRIPTOR_SETS];
 	uint32_t input_mask = 0;
 	uint32_t output_mask = 0;
 	uint32_t push_constant_size = 0;
 	uint32_t spec_constant_mask = 0;
 	uint32_t bindless_set_mask = 0;
-	DescriptorSetLayout sets[VULKAN_NUM_DESCRIPTOR_SETS];
+	enum { Version = 3 };
+
+	bool unserialize(const uint8_t *data, size_t size);
+	bool serialize(uint8_t *data, size_t size) const;
+	static size_t serialization_size();
 };
+static_assert(sizeof(DescriptorSetLayout) % 8 == 0, "Size of DescriptorSetLayout does not align to 64 bits.");
 
 struct CombinedResourceLayout
 {
@@ -97,10 +103,17 @@ struct ResourceBindings
 	uint8_t push_constant_data[VULKAN_PUSH_CONSTANT_SIZE];
 };
 
+struct ImmutableSamplerBank
+{
+	const ImmutableSampler *samplers[VULKAN_NUM_DESCRIPTOR_SETS][VULKAN_NUM_BINDINGS];
+	static void hash(Util::Hasher &h, const ImmutableSamplerBank *bank);
+};
+
 class PipelineLayout : public HashedObject<PipelineLayout>
 {
 public:
-	PipelineLayout(Util::Hash hash, Device *device, const CombinedResourceLayout &layout);
+	PipelineLayout(Util::Hash hash, Device *device, const CombinedResourceLayout &layout,
+	               const ImmutableSamplerBank *sampler_bank);
 	~PipelineLayout();
 
 	const CombinedResourceLayout &get_resource_layout() const
@@ -118,7 +131,7 @@ public:
 		return set_allocators[set];
 	}
 
-	VkDescriptorUpdateTemplateKHR get_update_template(unsigned set) const
+	VkDescriptorUpdateTemplate get_update_template(unsigned set) const
 	{
 		return update_template[set];
 	}
@@ -128,14 +141,16 @@ private:
 	VkPipelineLayout pipe_layout = VK_NULL_HANDLE;
 	CombinedResourceLayout layout;
 	DescriptorSetAllocator *set_allocators[VULKAN_NUM_DESCRIPTOR_SETS] = {};
-	VkDescriptorUpdateTemplateKHR update_template[VULKAN_NUM_DESCRIPTOR_SETS] = {};
+	VkDescriptorUpdateTemplate update_template[VULKAN_NUM_DESCRIPTOR_SETS] = {};
 	void create_update_templates();
 };
 
 class Shader : public HashedObject<Shader>
 {
 public:
-	Shader(Util::Hash hash, Device *device, const uint32_t *data, size_t size);
+	Shader(Util::Hash binding, Device *device, const uint32_t *data, size_t size,
+	       const ResourceLayout *layout = nullptr,
+	       const ImmutableSamplerBank *sampler_bank = nullptr);
 	~Shader();
 
 	const ResourceLayout &get_layout() const
@@ -143,19 +158,25 @@ public:
 		return layout;
 	}
 
+	const ImmutableSamplerBank &get_immutable_sampler_bank() const
+	{
+		return immutable_sampler_bank;
+	}
+
 	VkShaderModule get_module() const
 	{
 		return module;
 	}
 
+	static bool reflect_resource_layout(ResourceLayout &layout, const uint32_t *spirv_data, size_t spirv_size);
 	static const char *stage_to_name(ShaderStage stage);
+	static Util::Hash hash(const uint32_t *data, size_t size, const ImmutableSamplerBank *sampler_bank);
 
 private:
 	Device *device;
-	VkShaderModule module;
+	VkShaderModule module = VK_NULL_HANDLE;
 	ResourceLayout layout;
-
-	void update_array_info(const spirv_cross::SPIRType &type, unsigned set, unsigned binding);
+	ImmutableSamplerBank immutable_sampler_bank;
 };
 
 class Program : public HashedObject<Program>, public InternalSyncEnabled
@@ -183,11 +204,14 @@ public:
 	VkPipeline get_pipeline(Util::Hash hash) const;
 	VkPipeline add_pipeline(Util::Hash hash, VkPipeline pipeline);
 
+	void promote_read_write_to_read_only();
+
 private:
 	void set_shader(ShaderStage stage, Shader *handle);
 	Device *device;
 	Shader *shaders[Util::ecast(ShaderStage::Count)] = {};
 	PipelineLayout *layout = nullptr;
 	VulkanCache<Util::IntrusivePODWrapper<VkPipeline>> pipelines;
+	void destroy_pipeline(VkPipeline pipeline);
 };
 }

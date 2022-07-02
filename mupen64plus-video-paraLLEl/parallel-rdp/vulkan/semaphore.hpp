@@ -1,4 +1,4 @@
-/* Copyright (c) 2017-2020 Hans-Kristian Arntzen
+/* Copyright (c) 2017-2022 Hans-Kristian Arntzen
  *
  * Permission is hereby granted, free of charge, to any person obtaining
  * a copy of this software and associated documentation files (the
@@ -112,6 +112,8 @@ public:
 		return pending;
 	}
 
+	SemaphoreHolder &operator=(SemaphoreHolder &&other) noexcept;
+
 private:
 	friend class Util::ObjectPool<SemaphoreHolder>;
 	SemaphoreHolder(Device *device_, VkSemaphore semaphore_, bool signalled_)
@@ -128,9 +130,16 @@ private:
 		VK_ASSERT(timeline > 0);
 	}
 
+	explicit SemaphoreHolder(Device *device_)
+		: device(device_)
+	{
+	}
+
+	void recycle_semaphore();
+
 	Device *device;
-	VkSemaphore semaphore;
-	uint64_t timeline;
+	VkSemaphore semaphore = VK_NULL_HANDLE;
+	uint64_t timeline = 0;
 	bool signalled = true;
 	bool pending = false;
 	bool should_destroy_on_consume = false;

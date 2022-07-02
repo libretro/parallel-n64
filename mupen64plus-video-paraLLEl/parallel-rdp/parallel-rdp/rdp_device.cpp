@@ -57,6 +57,21 @@ CommandProcessor::CommandProcessor(Vulkan::Device &device_, void *rdram_ptr,
 	info.domain = BufferDomain::CachedCoherentHostPreferCached;
 	info.misc = BUFFER_MISC_ZERO_INITIALIZE_BIT;
 
+	if (const char *env = getenv("PARALLEL_RDP_DUMP_PATH"))
+	{
+		dump_writer.reset(new RDPDumpWriter);
+		if (!dump_writer->init(env, rdram_size, hidden_rdram_size))
+		{
+			LOGE("Failed to init RDP dump: %s.\n", env);
+			dump_writer.reset();
+		}
+		else
+		{
+			LOGI("Dumping RDP commands to: %s.\n", env);
+			flags |= COMMAND_PROCESSOR_FLAG_HOST_VISIBLE_HIDDEN_RDRAM_BIT;
+		}
+	}
+
 	if (rdram_ptr)
 	{
 		bool allow_memory_host = true;
@@ -70,10 +85,13 @@ CommandProcessor::CommandProcessor(Vulkan::Device &device_, void *rdram_ptr,
 			import_size = (import_size + align - 1) & ~(align - 1);
 			info.size = import_size;
 			rdram = device.create_imported_host_buffer(info, VK_EXTERNAL_MEMORY_HANDLE_TYPE_HOST_ALLOCATION_BIT_EXT, rdram_ptr);
+			if (!rdram)
+				LOGE("Failed to allocate RDRAM with VK_EXT_external_memory_host.\n");
 		}
-		else
+
+		if (!rdram)
 		{
-			LOGW("VK_EXT_external_memory_host is not supported on this device. Falling back to a slower path.\n");
+			LOGW("VK_EXT_external_memory_host not supported or failed, falling back to a slower path.\n");
 			is_host_coherent = false;
 			rdram_offset = 0;
 			host_rdram = static_cast<uint8_t *>(rdram_ptr) + rdram_offset_;
@@ -181,6 +199,8 @@ void CommandProcessor::init_renderer()
 
 	RendererOptions opts;
 	opts.upscaling_factor = factor;
+	opts.super_sampled_readback = (flags & COMMAND_PROCESSOR_FLAG_SUPER_SAMPLED_READ_BACK_BIT) != 0;
+	opts.super_sampled_readback_dither = (flags & COMMAND_PROCESSOR_FLAG_SUPER_SAMPLED_DITHER_BIT) != 0;
 
 	is_supported = renderer.init_renderer(opts);
 
@@ -190,7 +210,8 @@ void CommandProcessor::init_renderer()
 	vi.set_renderer(&renderer);
 
 #ifndef PARALLEL_RDP_SHADER_DIR
-	shader_bank.reset(new ShaderBank(device, [&](const char *name, const char *define) -> int {
+	Vulkan::ResourceLayout layout;
+	shader_bank.reset(new ShaderBank(device, layout, [&](const char *name, const char *define) -> int {
 		if (strncmp(name, "vi_", 3) == 0)
 			return vi.resolve_shader_define(name, define);
 		else
@@ -837,12 +858,37 @@ OP(sync_load) OP(sync_pipe)
 OP(sync_tile)
 #undef OP
 
-void CommandProcessor::enqueue_command(unsigned num_words, const uint32_t *words)
+void CommandProcessor::enqueue_command_inner(unsigned num_words, const uint32_t *words)
 {
 	if (single_threaded_processing)
 		enqueue_command_direct(num_words, words);
 	else
 		ring.enqueue_command(num_words, words);
+}
+
+void CommandProcessor::enqueue_command(unsigned num_words, const uint32_t *words)
+{
+	if (dump_writer && !dump_in_command_list)
+	{
+		wait_for_timeline(signal_timeline());
+		dump_writer->flush_dram(begin_read_rdram(), rdram_size);
+		dump_writer->flush_hidden_dram(begin_read_hidden_rdram(), hidden_rdram->get_create_info().size);
+		dump_in_command_list = true;
+	}
+
+	enqueue_command_inner(num_words, words);
+
+	if (dump_writer)
+	{
+		uint32_t cmd_id = (words[0] >> 24) & 63;
+		if (Op(cmd_id) == Op::SyncFull)
+		{
+			dump_writer->signal_complete();
+			dump_in_command_list = false;
+		}
+		else
+			dump_writer->emit_command(cmd_id, words, num_words);
+	}
 }
 
 void CommandProcessor::enqueue_command_direct(unsigned, const uint32_t *words)
@@ -913,12 +959,34 @@ void CommandProcessor::set_quirks(const Quirks &quirks_)
 		uint32_t(Op::MetaSetQuirks) << 24u,
 		quirks_.u.words[0],
 	};
-	enqueue_command(2, words);
+	enqueue_command_inner(2, words);
 }
 
 void CommandProcessor::set_vi_register(VIRegister reg, uint32_t value)
 {
 	vi.set_vi_register(reg, value);
+	if (dump_writer)
+		dump_writer->set_vi_register(uint32_t(reg), value);
+}
+
+void CommandProcessor::begin_vi_register_per_scanline(VideoInterface::PerScanlineRegisterFlags vi_flags)
+{
+	vi.begin_vi_register_per_scanline(vi_flags);
+}
+
+void CommandProcessor::set_vi_register_for_scanline(VideoInterface::PerScanlineRegisterBits reg, uint32_t value)
+{
+	vi.set_vi_register_for_scanline(reg, value);
+}
+
+void CommandProcessor::latch_vi_register_for_scanline(unsigned vi_line)
+{
+	vi.latch_vi_register_for_scanline(vi_line);
+}
+
+void CommandProcessor::end_vi_register_per_scanline()
+{
+	vi.end_vi_register_per_scanline();
 }
 
 void *CommandProcessor::begin_read_rdram()
@@ -974,7 +1042,7 @@ void CommandProcessor::flush()
 	const uint32_t words[1] = {
 		uint32_t(Op::MetaFlush) << 24,
 	};
-	enqueue_command(1, words);
+	enqueue_command_inner(1, words);
 }
 
 uint64_t CommandProcessor::signal_timeline()
@@ -986,7 +1054,7 @@ uint64_t CommandProcessor::signal_timeline()
 		uint32_t(timeline_value),
 		uint32_t(timeline_value >> 32),
 	};
-	enqueue_command(3, words);
+	enqueue_command_inner(3, words);
 
 	return timeline_value;
 }
@@ -1006,10 +1074,18 @@ void CommandProcessor::wait_for_timeline(uint64_t index)
 	}
 }
 
-Vulkan::ImageHandle CommandProcessor::scanout(const ScanoutOptions &opts)
+Vulkan::ImageHandle CommandProcessor::scanout(const ScanoutOptions &opts, VkImageLayout target_layout)
 {
 	Vulkan::QueryPoolHandle start_ts, end_ts;
 	drain_command_ring();
+
+	if (dump_writer)
+	{
+		wait_for_timeline(signal_timeline());
+		dump_writer->flush_dram(begin_read_rdram(), rdram_size);
+		dump_writer->flush_hidden_dram(begin_read_hidden_rdram(), hidden_rdram->get_create_info().size);
+		dump_writer->end_frame();
+	}
 
 	// Block idle callbacks triggering while we're doing this.
 	renderer.lock_command_processing();
@@ -1024,8 +1100,13 @@ Vulkan::ImageHandle CommandProcessor::scanout(const ScanoutOptions &opts)
 	}
 	renderer.unlock_command_processing();
 
-	auto scanout = vi.scanout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, opts, renderer.get_scaling_factor());
+	auto scanout = vi.scanout(target_layout, opts, renderer.get_scaling_factor());
 	return scanout;
+}
+
+Vulkan::ImageHandle CommandProcessor::scanout(const ScanoutOptions &opts)
+{
+	return scanout(opts, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 }
 
 void CommandProcessor::drain_command_ring()
@@ -1041,27 +1122,43 @@ void CommandProcessor::drain_command_ring()
 	}
 }
 
-void CommandProcessor::scanout_sync(std::vector<RGBA> &colors, unsigned &width, unsigned &height)
+void CommandProcessor::scanout_async_buffer(VIScanoutBuffer &buffer, const ScanoutOptions &opts)
 {
-	drain_command_ring();
-	renderer.flush_and_signal();
-
-	if (!is_host_coherent)
+	auto handle = scanout(opts, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+	if (!handle)
 	{
-		unsigned offset, length;
-		vi.scanout_memory_range(offset, length);
-		renderer.resolve_coherency_external(offset, length);
+		buffer.width = 0;
+		buffer.height = 0;
+		buffer.fence.reset();
+		return;
 	}
 
-	ScanoutOptions opts = {};
-	// Downscale down to 1x, always.
-	opts.downscale_steps = 32;
-	opts.blend_previous_frame = true;
-	opts.upscale_deinterlacing = false;
+	buffer.width = handle->get_width();
+	buffer.height = handle->get_height();
 
-	auto handle = vi.scanout(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, opts, renderer.get_scaling_factor());
+	Vulkan::BufferCreateInfo info = {};
+	info.size = buffer.width * buffer.height * sizeof(uint32_t);
+	info.usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+	info.domain = Vulkan::BufferDomain::CachedHost;
+	if (!buffer.buffer || buffer.buffer->get_create_info().size < info.size)
+		buffer.buffer = device.create_buffer(info);
 
-	if (!handle)
+	auto cmd = device.request_command_buffer();
+	cmd->copy_image_to_buffer(*buffer.buffer, *handle, 0, {}, { buffer.width, buffer.height, 1 }, 0, 0, { VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1 });
+	cmd->barrier(VK_PIPELINE_STAGE_TRANSFER_BIT, VK_ACCESS_TRANSFER_WRITE_BIT,
+	             VK_PIPELINE_STAGE_HOST_BIT, VK_ACCESS_HOST_READ_BIT);
+
+	buffer.fence.reset();
+	device.submit(cmd, &buffer.fence);
+}
+
+void CommandProcessor::scanout_sync(std::vector<RGBA> &colors, unsigned &width, unsigned &height,
+                                    const ScanoutOptions &opts)
+{
+	VIScanoutBuffer scanout;
+	scanout_async_buffer(scanout, opts);
+
+	if (!scanout.width || !scanout.height)
 	{
 		width = 0;
 		height = 0;
@@ -1069,28 +1166,14 @@ void CommandProcessor::scanout_sync(std::vector<RGBA> &colors, unsigned &width, 
 		return;
 	}
 
-	width = handle->get_width();
-	height = handle->get_height();
-
-	Vulkan::BufferCreateInfo info = {};
-	info.size = width * height * sizeof(uint32_t);
-	info.usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT;
-	info.domain = Vulkan::BufferDomain::CachedHost;
-	auto readback = device.create_buffer(info);
-
-	auto cmd = device.request_command_buffer();
-	cmd->copy_image_to_buffer(*readback, *handle, 0, {}, { width, height, 1 }, 0, 0, { VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1 });
-	cmd->barrier(VK_PIPELINE_STAGE_TRANSFER_BIT, VK_ACCESS_TRANSFER_WRITE_BIT,
-	             VK_PIPELINE_STAGE_HOST_BIT, VK_ACCESS_HOST_READ_BIT);
-
-	Vulkan::Fence fence;
-	device.submit(cmd, &fence);
-	fence->wait();
-
+	width = scanout.width;
+	height = scanout.height;
 	colors.resize(width * height);
-	memcpy(colors.data(), device.map_host_buffer(*readback, Vulkan::MEMORY_ACCESS_READ_BIT),
+
+	scanout.fence->wait();
+	memcpy(colors.data(), device.map_host_buffer(*scanout.buffer, Vulkan::MEMORY_ACCESS_READ_BIT),
 	       width * height * sizeof(uint32_t));
-	device.unmap_host_buffer(*readback, Vulkan::MEMORY_ACCESS_READ_BIT);
+	device.unmap_host_buffer(*scanout.buffer, Vulkan::MEMORY_ACCESS_READ_BIT);
 }
 
 void CommandProcessor::FenceExecutor::notify_work_locked(const CoherencyOperation &work)

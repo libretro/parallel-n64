@@ -423,10 +423,10 @@ bool parallel_create_device(struct retro_vulkan_context *frontend_context, VkIns
 
 	frontend_context->gpu = ::RDP::context->get_gpu();
 	frontend_context->device = ::RDP::context->get_device();
-	frontend_context->queue = ::RDP::context->get_graphics_queue();
-	frontend_context->queue_family_index = ::RDP::context->get_graphics_queue_family();
-	frontend_context->presentation_queue = ::RDP::context->get_graphics_queue();
-	frontend_context->presentation_queue_family_index = ::RDP::context->get_graphics_queue_family();
+	frontend_context->queue = ::RDP::context->get_queue_info().queues[Vulkan::QUEUE_INDEX_GRAPHICS];
+	frontend_context->queue_family_index = ::RDP::context->get_queue_info().family_indices[Vulkan::QUEUE_INDEX_GRAPHICS];
+	frontend_context->presentation_queue = ::RDP::context->get_queue_info().queues[Vulkan::QUEUE_INDEX_GRAPHICS];
+	frontend_context->presentation_queue_family_index = ::RDP::context->get_queue_info().family_indices[Vulkan::QUEUE_INDEX_GRAPHICS];
 
 	// Frontend owns the device.
 	::RDP::context->release_device();

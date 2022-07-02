@@ -1,4 +1,4 @@
-/* Copyright (c) 2017-2020 Hans-Kristian Arntzen
+/* Copyright (c) 2017-2022 Hans-Kristian Arntzen
  *
  * Permission is hereby granted, free of charge, to any person obtaining
  * a copy of this software and associated documentation files (the
@@ -107,7 +107,7 @@ int64_t get_current_time_nsecs()
 	return int64_t(double(li.QuadPart) * static_qpc_freq.inv_freq);
 #else
 	struct timespec ts = {};
-	if (clock_gettime(CLOCK_MONOTONIC, &ts) < 0)
+	if (clock_gettime(CLOCK_MONOTONIC_RAW, &ts) < 0)
 		return 0;
 	return ts.tv_sec * 1000000000ll + ts.tv_nsec;
 #endif

@@ -1,4 +1,4 @@
-/* Copyright (c) 2017-2020 Hans-Kristian Arntzen
+/* Copyright (c) 2017-2022 Hans-Kristian Arntzen
  *
  * Permission is hereby granted, free of charge, to any person obtaining
  * a copy of this software and associated documentation files (the
@@ -42,6 +42,11 @@ void BufferPool::init(Device *device_, VkDeviceSize block_size_,
 void BufferPool::set_spill_region_size(VkDeviceSize spill_size_)
 {
 	spill_size = spill_size_;
+}
+
+void BufferPool::set_max_retained_blocks(size_t max_blocks)
+{
+	max_retained_blocks = max_blocks;
 }
 
 BufferBlock::~BufferBlock()
@@ -114,10 +119,14 @@ BufferBlock BufferPool::request_block(VkDeviceSize minimum_size)
 	}
 }
 
-void BufferPool::recycle_block(BufferBlock &&block)
+void BufferPool::recycle_block(BufferBlock &block)
 {
 	VK_ASSERT(block.size == block_size);
-	blocks.push_back(move(block));
+
+	if (blocks.size() < max_retained_blocks)
+		blocks.push_back(move(block));
+	else
+		block = {};
 }
 
 BufferPool::~BufferPool()
