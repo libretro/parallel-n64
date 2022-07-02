@@ -1,6 +1,6 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *   Mupen64plus-rsp-hle - alist.h                                         *
- *   Mupen64Plus homepage: http://code.google.com/p/mupen64plus/           *
+ *   Mupen64Plus homepage: https://mupen64plus.org/                        *
  *   Copyright (C) 2014 Bobby Smiles                                       *
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
@@ -22,9 +22,9 @@
 #ifndef ALIST_INTERNAL_H
 #define ALIST_INTERNAL_H
 
-#include <stdint.h>
-#include <stddef.h>
 #include <boolean.h>
+#include <stddef.h>
+#include <stdint.h>
 
 struct hle_t;
 
@@ -142,13 +142,21 @@ void alist_polef(
         uint32_t address);
 
 void alist_iirf(
-      struct hle_t* hle,
-      bool init,
-      uint16_t dmemo,
-      uint16_t dmemi,
-      uint16_t count,
-      int16_t* table,
-      uint32_t address);
+        struct hle_t* hle,
+        bool init,
+        uint16_t dmemo,
+        uint16_t dmemi,
+        uint16_t count,
+        int16_t* table,
+        uint32_t address);
+
+void alist_overload(
+        struct hle_t* hle,
+        uint16_t dmem,
+        int16_t count,
+        int16_t gain,
+        uint16_t attenuation);
+
 /*
  * Audio flags
  */
