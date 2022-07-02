@@ -36,8 +36,6 @@ layout(constant_id = 7) const int RDRAM_INCOHERENT_SCALING = 0;
 const bool RDRAM_INCOHERENT = (RDRAM_INCOHERENT_SCALING & 1) != 0;
 const int SCALING_LOG2 = RDRAM_INCOHERENT_SCALING >> 1;
 const int SCALING_FACTOR = 1 << SCALING_LOG2;
-const bool RDRAM_UNSCALED_WRITE_MASK = RDRAM_INCOHERENT && SCALING_LOG2 == 0;
-const bool RDRAM_SCALED_WRITE_MASK = RDRAM_INCOHERENT && SCALING_LOG2 != 0;
 
 const uint RDRAM_MASK_8 = RDRAM_SIZE - 1u;
 const uint RDRAM_MASK_16 = RDRAM_MASK_8 >> 1u;
@@ -174,7 +172,7 @@ void store_vram_color(uint index, uint slice)
 			if ((index & 1u) != 0u)
 				hidden_vram.data[index >> 1u] = mem_u8(current_color.a);
 
-			if (RDRAM_UNSCALED_WRITE_MASK)
+			if (RDRAM_INCOHERENT)
 			{
 				// Need this memory barrier to ensure the mask readback does not read
 				// an invalid value from RDRAM. If the mask is seen, the valid RDRAM value is
@@ -193,7 +191,7 @@ void store_vram_color(uint index, uint slice)
 			if ((index & 1u) != 0u)
 				hidden_vram.data[index >> 1u] = mem_u8((current_color.r & 1) * 3);
 
-			if (RDRAM_UNSCALED_WRITE_MASK)
+			if (RDRAM_INCOHERENT)
 			{
 				// Need this memory barrier to ensure the mask readback does not read
 				// an invalid value from RDRAM. If the mask is seen, the valid RDRAM value is
@@ -215,7 +213,7 @@ void store_vram_color(uint index, uint slice)
 			vram16.data[index ^ 1u] = mem_u16(word);
 			hidden_vram.data[index] = mem_u8(cov & U8_C(3));
 
-			if (RDRAM_UNSCALED_WRITE_MASK)
+			if (RDRAM_INCOHERENT)
 			{
 				// Need this memory barrier to ensure the mask readback does not read
 				// an invalid value from RDRAM. If the mask is seen, the valid RDRAM value is
@@ -235,7 +233,7 @@ void store_vram_color(uint index, uint slice)
 			vram16.data[index ^ 1u] = mem_u16(word);
 			hidden_vram.data[index] = mem_u8((col.y & 1) * 3);
 
-			if (RDRAM_UNSCALED_WRITE_MASK)
+			if (RDRAM_INCOHERENT)
 			{
 				// Need this memory barrier to ensure the mask readback does not read
 				// an invalid value from RDRAM. If the mask is seen, the valid RDRAM value is
@@ -256,7 +254,7 @@ void store_vram_color(uint index, uint slice)
 			hidden_vram.data[2u * index] = mem_u8((current_color.g & 1) * 3);
 			hidden_vram.data[2u * index + 1u] = mem_u8((current_color.a & 1) * 3);
 
-			if (RDRAM_UNSCALED_WRITE_MASK)
+			if (RDRAM_INCOHERENT)
 			{
 				// Need this memory barrier to ensure the mask readback does not read
 				// an invalid value from RDRAM. If the mask is seen, the valid RDRAM value is
@@ -282,7 +280,7 @@ void store_vram_depth(uint index, uint slice)
 			vram16.data[index ^ 1u] = mem_u16((current_depth << U16_C(2)) | (current_dz >> U16_C(2)));
 			hidden_vram.data[index] = mem_u8(current_dz & U16_C(3));
 
-			if (RDRAM_UNSCALED_WRITE_MASK)
+			if (RDRAM_INCOHERENT)
 			{
 				// Need this memory barrier to ensure the mask readback does not read
 				// an invalid value from RDRAM. If the mask is seen, the valid RDRAM value is
@@ -315,58 +313,19 @@ void init_tile(uvec2 coord, uint fb_width, uint fb_height, uint fb_addr_index, u
 	}
 }
 
-void emit_scaled_write_masks(uvec2 unscaled_coord, uint unscaled_fb_width)
-{
-	// Merge write masks across pixels.
-	// We reserved a chunk of memory after scaled RDRAM to store 2 bits per pixel holding
-	// a write mask for color and depth. The resolve stage will only resolve a pixel
-	// and trigger a write if any sub-sample was marked as written.
-
-	// Write masks are organized in 4x4 blocks of unscaled pixels for locality purposes.
-	// This guarantees a minimum number of loop iterations to resolve the write masks.
-	uint unscaled_block = (unscaled_coord.y >> 2u) * ((unscaled_fb_width + 3u) >> 2u) + (unscaled_coord.x >> 2u);
-	uvec2 unscaled_sub = unscaled_coord & 3u;
-	uint word = uint(current_color_dirty) + 2u * uint(current_depth_dirty);
-	word <<= 2u * (unscaled_sub.x + unscaled_sub.y * 4u);
-
-#if SUBGROUP
-	// This should only need one iteration .
-	bool is_active = true;
-	do
-	{
-		if (subgroupBroadcastFirst(unscaled_block) == unscaled_block)
-		{
-			uint merged = subgroupOr(word);
-			if (subgroupElect())
-				atomicOr(vram32.data[SCALING_FACTOR * SCALING_FACTOR * (RDRAM_SIZE >> 2) + unscaled_block], merged);
-			is_active = false;
-		}
-	} while (is_active);
-#else
-	// Just use atomics directly. With subgroup support, we can be a bit smarter about it.
-	if (word != 0u)
-		atomicOr(vram32.data[SCALING_FACTOR * SCALING_FACTOR * (RDRAM_SIZE >> 2) + unscaled_block], word);
-#endif
-}
-
 void finish_tile(uvec2 coord, uint fb_width, uint fb_height, uint fb_addr_index, uint fb_depth_addr_index)
 {
 	if (all(lessThan(coord, uvec2(fb_width, fb_height))))
 	{
-		uint unscaled_fb_width = fb_width >> SCALING_LOG2;
-
 		uvec2 slice2d = coord & (SCALING_FACTOR - 1);
 		coord >>= SCALING_LOG2;
 		uint slice = slice2d.y * SCALING_FACTOR + slice2d.x;
 
-		uint index = fb_addr_index + unscaled_fb_width * coord.y + coord.x;
+		uint index = fb_addr_index + (fb_width >> SCALING_LOG2) * coord.y + coord.x;
 		store_vram_color(index, slice);
 
-		index = fb_depth_addr_index + unscaled_fb_width * coord.y + coord.x;
+		index = fb_depth_addr_index + (fb_width >> SCALING_LOG2) * coord.y + coord.x;
 		store_vram_depth(index, slice);
-
-		if (RDRAM_SCALED_WRITE_MASK)
-			emit_scaled_write_masks(coord, unscaled_fb_width);
 	}
 }
 

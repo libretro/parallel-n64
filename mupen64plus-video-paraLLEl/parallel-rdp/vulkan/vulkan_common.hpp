@@ -1,4 +1,4 @@
-/* Copyright (c) 2017-2022 Hans-Kristian Arntzen
+/* Copyright (c) 2017-2020 Hans-Kristian Arntzen
  *
  * Permission is hereby granted, free of charge, to any person obtaining
  * a copy of this software and associated documentation files (the
@@ -38,24 +38,11 @@ using HandleCounter = Util::SingleThreadCounter;
 template <typename T>
 using VulkanObjectPool = Util::ThreadSafeObjectPool<T>;
 template <typename T>
-using VulkanCache = Util::ThreadSafeIntrusiveHashMapReadCached<T>;
-template <typename T>
-using VulkanCacheReadWrite = Util::ThreadSafeIntrusiveHashMap<T>;
+using VulkanCache = Util::ThreadSafeIntrusiveHashMap<T>;
 #else
 template <typename T>
 using VulkanObjectPool = Util::ObjectPool<T>;
 template <typename T>
 using VulkanCache = Util::IntrusiveHashMap<T>;
-template <typename T>
-using VulkanCacheReadWrite = Util::IntrusiveHashMap<T>;
 #endif
-
-enum QueueIndices
-{
-	QUEUE_INDEX_GRAPHICS,
-	QUEUE_INDEX_COMPUTE,
-	QUEUE_INDEX_TRANSFER,
-	QUEUE_INDEX_VIDEO_DECODE,
-	QUEUE_INDEX_COUNT
-};
 }

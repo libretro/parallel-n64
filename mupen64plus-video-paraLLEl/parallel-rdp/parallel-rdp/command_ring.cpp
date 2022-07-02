@@ -85,7 +85,7 @@ void CommandRing::enqueue_command(unsigned num_words, const uint32_t *words)
 
 void CommandRing::thread_loop()
 {
-	Util::register_thread_index(0);
+	Vulkan::register_thread_index(0);
 
 #ifdef PARALLEL_RDP_SHADER_DIR
 	// Here to let the RDP play nice with full Granite.

@@ -1,4 +1,4 @@
-/* Copyright (c) 2017-2022 Hans-Kristian Arntzen
+/* Copyright (c) 2017-2020 Hans-Kristian Arntzen
  *
  * Permission is hereby granted, free of charge, to any person obtaining
  * a copy of this software and associated documentation files (the
@@ -25,7 +25,6 @@
 #include "vulkan_headers.hpp"
 #include "vulkan_common.hpp"
 #include "object_pool.hpp"
-#include <functional>
 
 namespace Vulkan
 {
@@ -85,22 +84,16 @@ public:
 		return has_timestamp;
 	}
 
-	bool is_device_timebase() const
-	{
-		return device_timebase;
-	}
-
 private:
 	friend class Util::ObjectPool<QueryPoolResult>;
 
-	explicit QueryPoolResult(Device *device_, bool device_timebase_)
-		: device(device_), device_timebase(device_timebase_)
+	explicit QueryPoolResult(Device *device_)
+		: device(device_)
 	{}
 
 	Device *device;
 	uint64_t timestamp_ticks = 0;
 	bool has_timestamp = false;
-	bool device_timebase = false;
 };
 
 using QueryPoolHandle = Util::IntrusivePtr<QueryPoolResult>;
@@ -143,14 +136,12 @@ public:
 
 	void accumulate_time(double t);
 	double get_time_per_iteration() const;
-	double get_time_per_accumulation() const;
 	const std::string &get_tag() const;
 	void mark_end_of_frame_context();
 
 	double get_total_time() const;
 	uint64_t get_total_frame_iterations() const;
 	uint64_t get_total_accumulations() const;
-	void reset();
 
 private:
 	std::string tag;
@@ -159,22 +150,13 @@ private:
 	uint64_t total_accumulations = 0;
 };
 
-struct TimestampIntervalReport
-{
-	double time_per_accumulation;
-	double time_per_frame_context;
-	double accumulations_per_frame_context;
-};
-
-using TimestampIntervalReportCallback = std::function<void (const std::string &, const TimestampIntervalReport &)>;
-
 class TimestampIntervalManager
 {
 public:
 	TimestampInterval *get_timestamp_tag(const char *tag);
 	void mark_end_of_frame_context();
-	void reset();
-	void log_simple(const TimestampIntervalReportCallback &func = {}) const;
+
+	void log_simple();
 
 private:
 	Util::IntrusiveHashMap<TimestampInterval> timestamps;

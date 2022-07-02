@@ -26,7 +26,6 @@
 #include "bitops.hpp"
 #include "luts.hpp"
 #include "timer.hpp"
-#include <limits>
 #ifdef PARALLEL_RDP_SHADER_DIR
 #include "global_managers.hpp"
 #include "os_filesystem.hpp"
@@ -55,8 +54,6 @@ bool Renderer::init_renderer(const RendererOptions &options)
 {
 	if (options.upscaling_factor == 0)
 		return false;
-	if (options.upscaling_factor == 1 && options.super_sampled_readback)
-		return false;
 
 	caps.max_width = options.upscaling_factor * Limits::MaxWidth;
 	caps.max_height = options.upscaling_factor * Limits::MaxHeight;
@@ -72,8 +69,8 @@ bool Renderer::init_renderer(const RendererOptions &options)
 #endif
 
 #ifdef PARALLEL_RDP_SHADER_DIR
-	if (!GRANITE_FILESYSTEM()->get_backend("rdp"))
-		GRANITE_FILESYSTEM()->register_protocol("rdp", std::make_unique<Granite::OSFilesystem>(PARALLEL_RDP_SHADER_DIR));
+	if (!Granite::Global::filesystem()->get_backend("rdp"))
+		Granite::Global::filesystem()->register_protocol("rdp", std::make_unique<Granite::OSFilesystem>(PARALLEL_RDP_SHADER_DIR));
 	device->get_shader_manager().add_include_directory("builtin://shaders/inc");
 #endif
 
@@ -227,12 +224,6 @@ bool Renderer::init_caps()
 			(features.subgroup_properties.supportedStages & VK_SHADER_STAGE_COMPUTE_BIT) != 0 &&
 			can_support_minimum_subgroup_size(32) && subgroup_size <= 64;
 
-	caps.subgroup_depth_blend =
-			caps.super_sample_readback &&
-			allow_subgroup &&
-			(features.subgroup_properties.supportedOperations & required) == required &&
-			(features.subgroup_properties.supportedStages & VK_SHADER_STAGE_COMPUTE_BIT) != 0;
-
 	return true;
 }
 
@@ -248,8 +239,6 @@ int Renderer::resolve_shader_define(const char *name, const char *define) const
 	{
 		if (strcmp(name, "tile_binning_combined") == 0)
 			return int(caps.subgroup_tile_binning);
-		else if (strcmp(name, "depth_blend") == 0 || strcmp(name, "ubershader") == 0)
-			return int(caps.subgroup_depth_blend);
 		else
 			return 0;
 	}
@@ -540,8 +529,6 @@ bool Renderer::init_internal_upscaling_factor(const RendererOptions &options)
 	}
 
 	caps.upscaling = factor;
-	caps.super_sample_readback = options.super_sampled_readback;
-	caps.super_sample_readback_dither = options.super_sampled_readback_dither;
 
 	if (factor == 1)
 	{
@@ -561,14 +548,6 @@ bool Renderer::init_internal_upscaling_factor(const RendererOptions &options)
 	device->set_name(*upscaling_reference_rdram, "reference-rdram");
 
 	info.size = rdram_size * factor * factor;
-	// If we're super-sampling we'll need to carry forward a u8 writemask per unscaled pixel.
-	// The resolve pass will conditionally write a resolved pixel to avoid potential race conditions.
-	// We allocate 2 bits per pixel (color / depth write).
-	// The SSAA resolve shader will convert this to a VRAM write mask if we also need to handle incoherent
-	// RDRAM.
-	if (caps.super_sample_readback)
-		info.size += 2 * Limits::MaxWidth * Limits::MaxHeight / 8;
-
 	upscaling_multisampled_rdram = device->create_buffer(info);
 	device->set_name(*upscaling_multisampled_rdram, "multisampled-rdram");
 
@@ -697,7 +676,7 @@ void Renderer::set_depth_blend_state(const DepthBlendState &state)
 	stream.depth_blend_state = state;
 }
 
-void Renderer::draw_flat_primitive(TriangleSetup &setup)
+void Renderer::draw_flat_primitive(const TriangleSetup &setup)
 {
 	draw_shaded_primitive(setup, {});
 }
@@ -937,34 +916,23 @@ DerivedSetup Renderer::build_derived_attributes(const AttributeSetup &attr) cons
 
 static constexpr unsigned SUBPIXELS_Y = 4;
 
-static int32_t clamp_int32(int64_t v)
+static std::pair<int, int> interpolate_x(const TriangleSetup &setup, int y, bool flip, int scaling)
 {
-	if (v < std::numeric_limits<int32_t>::min())
-		return std::numeric_limits<int32_t>::min();
-	else if (v > std::numeric_limits<int32_t>::max())
-		return std::numeric_limits<int32_t>::max();
-	else
-		return int32_t(v);
-}
-
-static std::pair<int32_t, int32_t> interpolate_x(const TriangleSetup &setup, int y, bool flip, int scaling)
-{
-	// Interpolate in 64-bit so we are guaranteed to catch any overflow scenario.
-	int64_t yh_interpolation_base = setup.yh & ~(SUBPIXELS_Y - 1);
-	int64_t ym_interpolation_base = setup.ym;
+	int yh_interpolation_base = setup.yh & ~(SUBPIXELS_Y - 1);
+	int ym_interpolation_base = setup.ym;
 	yh_interpolation_base *= scaling;
 	ym_interpolation_base *= scaling;
 
-	int64_t xh = scaling * setup.xh + int64_t(y - yh_interpolation_base) * setup.dxhdy;
-	int64_t xm = scaling * setup.xm + int64_t(y - yh_interpolation_base) * setup.dxmdy;
-	int64_t xl = scaling * setup.xl + int64_t(y - ym_interpolation_base) * setup.dxldy;
+	int xh = scaling * setup.xh + (y - yh_interpolation_base) * setup.dxhdy;
+	int xm = scaling * setup.xm + (y - yh_interpolation_base) * setup.dxmdy;
+	int xl = scaling * setup.xl + (y - ym_interpolation_base) * setup.dxldy;
 	if (y < scaling * setup.ym)
 		xl = xm;
 
-	int64_t xh_shifted = xh >> 15;
-	int64_t xl_shifted = xl >> 15;
+	int xh_shifted = xh >> 15;
+	int xl_shifted = xl >> 15;
 
-	int64_t xleft, xright;
+	int xleft, xright;
 	if (flip)
 	{
 		xleft = xh_shifted;
@@ -976,7 +944,7 @@ static std::pair<int32_t, int32_t> interpolate_x(const TriangleSetup &setup, int
 		xright = xh_shifted;
 	}
 
-	return { clamp_int32(xleft), clamp_int32(xright) };
+	return { xleft, xright };
 }
 
 unsigned Renderer::compute_conservative_max_num_tiles(const TriangleSetup &setup) const
@@ -1011,27 +979,8 @@ unsigned Renderer::compute_conservative_max_num_tiles(const TriangleSetup &setup
 		mid1 = interpolate_x(setup, ym - 1, flip, scaling);
 	}
 
-	// Robustness, check if we overflow the X rasterizer precision.
-	// After shifting down, we should have 12 bits signed.
-	// If we detect any overflow here we need to assume X range is scissor rect.
-	// This really should never happen, but it's possible to write tests that intentionally trigger weird
-	// overflow behavior that needs to be specially handled.
-	// There might be freak scenarios where we cannot detect overflow since we're only sampling at 4 scanlines
-	// and we have ~32 overflows happening at once,
-	// So we need to interpolate in 64-bit to make this work.
-
-	auto start_x = std::min(std::min(upper.first, lower.first), std::min(mid.first, mid1.first));
-	auto end_x = std::max(std::max(upper.second, lower.second), std::max(mid.second, mid1.second));
-
-	auto max_range_x = std::max(std::abs(start_x), std::abs(end_x));
-	// Effective X range is [-2048, 2047], but just make it [-2047, 2047] to match binning shader.
-	// If we interpolate X to something outside that range,
-	// we must assume the entire X range will be covered.
-	if (max_range_x > 2047 * scaling)
-	{
-		start_x = 0;
-		end_x = 0x7fffffff;
-	}
+	int start_x = std::min(std::min(upper.first, lower.first), std::min(mid.first, mid1.first));
+	int end_x = std::max(std::max(upper.second, lower.second), std::max(mid.second, mid1.second));
 
 	start_x = std::max(start_x, scaling * (int(stream.scissor_state.xlo) >> 2));
 	end_x = std::min(end_x, scaling * ((int(stream.scissor_state.xhi) + 3) >> 2) - 1);
@@ -1304,7 +1253,7 @@ StaticRasterizationState Renderer::normalize_static_state(StaticRasterizationSta
 		return state;
 	}
 
-	if ((state.flags & (RASTERIZATION_MULTI_CYCLE_BIT | RASTERIZATION_USES_PIPELINED_TEXEL1_BIT)) == 0)
+	if ((state.flags & RASTERIZATION_MULTI_CYCLE_BIT) == 0)
 		state.flags &= ~(RASTERIZATION_BILERP_1_BIT | RASTERIZATION_CONVERT_ONE_BIT);
 
 	normalize_combiner(state.combiner[0]);
@@ -1381,28 +1330,8 @@ void Renderer::deduce_static_texture_state(unsigned tile, unsigned max_lod_level
 	state.texture_size = uint32_t(siz);
 }
 
-void Renderer::fixup_triangle_setup(TriangleSetup &setup) const
+void Renderer::draw_shaded_primitive(const TriangleSetup &setup, const AttributeSetup &attr)
 {
-	// If YM is lower than the first sub-scanline we rasterize, we will never observe YM at all.
-	// To account for this, fixup here so that YM is out of range.
-	// No known content actually triggers this, but some public tests triggered it.
-	int start_y = setup.yh & ~(SUBPIXELS_Y - 1);
-	if (setup.ym < start_y)
-		setup.ym = std::numeric_limits<int16_t>::max();
-
-	if ((stream.static_raster_state.flags & RASTERIZATION_INTERLACE_FIELD_BIT) != 0)
-	{
-		setup.flags |= (stream.static_raster_state.flags & RASTERIZATION_INTERLACE_FIELD_BIT) ?
-		               TRIANGLE_SETUP_INTERLACE_FIELD_BIT : 0;
-		setup.flags |= (stream.static_raster_state.flags & RASTERIZATION_INTERLACE_KEEP_ODD_BIT) ?
-		               TRIANGLE_SETUP_INTERLACE_KEEP_ODD_BIT : 0;
-	}
-}
-
-void Renderer::draw_shaded_primitive(TriangleSetup &setup, const AttributeSetup &attr)
-{
-	fixup_triangle_setup(setup);
-
 	unsigned num_tiles = compute_conservative_max_num_tiles(setup);
 
 #if 0
@@ -1416,7 +1345,18 @@ void Renderer::draw_shaded_primitive(TriangleSetup &setup, const AttributeSetup 
 
 	update_deduced_height(setup);
 	stream.span_info_offsets.add(allocate_span_jobs(setup));
-	stream.triangle_setup.add(setup);
+
+	if ((stream.static_raster_state.flags & RASTERIZATION_INTERLACE_FIELD_BIT) != 0)
+	{
+		auto tmp = setup;
+		tmp.flags |= (stream.static_raster_state.flags & RASTERIZATION_INTERLACE_FIELD_BIT) ?
+				TRIANGLE_SETUP_INTERLACE_FIELD_BIT : 0;
+		tmp.flags |= (stream.static_raster_state.flags & RASTERIZATION_INTERLACE_KEEP_ODD_BIT) ?
+				TRIANGLE_SETUP_INTERLACE_KEEP_ODD_BIT : 0;
+		stream.triangle_setup.add(tmp);
+	}
+	else
+		stream.triangle_setup.add(setup);
 
 	if (constants.use_prim_depth)
 	{
@@ -1872,130 +1812,58 @@ void Renderer::submit_tile_binning_combined(Vulkan::CommandBuffer &cmd, bool ups
 void Renderer::submit_update_upscaled_domain_external(Vulkan::CommandBuffer &cmd,
                                                       unsigned addr, unsigned length, unsigned pixel_size_log2)
 {
-	submit_update_upscaled_domain(cmd, ResolveStage::Pre, addr, addr, length, 1, pixel_size_log2);
+	submit_update_upscaled_domain(cmd, ResolveStage::Pre, addr, addr, length, pixel_size_log2);
 }
 
 void Renderer::submit_update_upscaled_domain(Vulkan::CommandBuffer &cmd, ResolveStage stage,
                                              unsigned addr, unsigned depth_addr,
-                                             unsigned width, unsigned height,
-                                             unsigned pixel_size_log2)
+                                             unsigned num_pixels, unsigned pixel_size_log2)
 {
 #ifdef PARALLEL_RDP_SHADER_DIR
 	if (stage == ResolveStage::Pre)
 		cmd.set_program("rdp://update_upscaled_domain_pre.comp");
-	else if (stage == ResolveStage::Post)
-		cmd.set_program("rdp://update_upscaled_domain_post.comp");
 	else
-		cmd.set_program("rdp://update_upscaled_domain_resolve.comp");
+		cmd.set_program("rdp://update_upscaled_domain_post.comp");
 #else
 	if (stage == ResolveStage::Pre)
 		cmd.set_program(shader_bank->update_upscaled_domain_pre);
-	else if (stage == ResolveStage::Post)
-		cmd.set_program(shader_bank->update_upscaled_domain_post);
 	else
-		cmd.set_program(shader_bank->update_upscaled_domain_resolve);
+		cmd.set_program(shader_bank->update_upscaled_domain_post);
 #endif
 
-	unsigned num_pixels = width * height;
-
-	if (stage != ResolveStage::SSAAResolve)
-	{
-		// Ensure that we always process entire words, thus we avoid having to do weird swizzles,
-		// and memory access patterns are linear with gl_GlobalInvocationID.x.
-		addr &= ~3u;
-		depth_addr &= ~3u;
-		unsigned align_pixels = 4u >> pixel_size_log2;
-		num_pixels = (num_pixels + align_pixels - 1u) & ~(align_pixels - 1u);
-	}
-
-	cmd.set_storage_buffer(0, 0, *rdram, rdram_offset,
-	                       (stage == ResolveStage::SSAAResolve && !is_host_coherent ? 2 : 1) * rdram_size);
+	cmd.set_storage_buffer(0, 0, *rdram, rdram_offset, rdram_size);
 	cmd.set_storage_buffer(0, 1, *hidden_rdram);
 	cmd.set_storage_buffer(0, 2, *upscaling_reference_rdram);
 	cmd.set_storage_buffer(0, 3, *upscaling_multisampled_rdram);
 	cmd.set_storage_buffer(0, 4, *upscaling_multisampled_hidden_rdram);
 
-	cmd.set_specialization_constant_mask(0x7f);
+	cmd.set_specialization_constant_mask(0x1f);
 	cmd.set_specialization_constant(0, uint32_t(rdram_size));
 	cmd.set_specialization_constant(1, pixel_size_log2);
 	cmd.set_specialization_constant(2, int(addr == depth_addr));
 	cmd.set_specialization_constant(3, ImplementationConstants::DefaultWorkgroupSize);
 	cmd.set_specialization_constant(4, caps.upscaling * caps.upscaling);
-	if (stage == ResolveStage::SSAAResolve)
-	{
-		cmd.set_specialization_constant(5, uint32_t(caps.super_sample_readback_dither));
-		cmd.set_specialization_constant(6, uint32_t(!is_host_coherent));
-	}
 
-	uint32_t num_workgroups_x, num_workgroups_y;
-
-	if (stage == ResolveStage::SSAAResolve)
-	{
-		num_workgroups_x =
-				(width + ImplementationConstants::DefaultWorkgroupSize - 1) /
-				ImplementationConstants::DefaultWorkgroupSize;
-		num_workgroups_y = height;
-	}
-	else
-	{
-		num_workgroups_x =
-				(num_pixels + ImplementationConstants::DefaultWorkgroupSize - 1) /
-				ImplementationConstants::DefaultWorkgroupSize;
-		num_workgroups_y = 1;
-	}
+	unsigned num_workgroups =
+			(num_pixels + ImplementationConstants::DefaultWorkgroupSize - 1) /
+			ImplementationConstants::DefaultWorkgroupSize;
 
 	struct Push
 	{
 		uint32_t pixels;
 		uint32_t fb_addr, fb_depth_addr;
-		uint32_t width, height;
 	} push = {};
 	push.pixels = num_pixels;
 	push.fb_addr = addr >> pixel_size_log2;
 	push.fb_depth_addr = depth_addr >> 1;
-	push.width = width;
-	push.height = height;
 
 	cmd.push_constants(&push, 0, sizeof(push));
-
-	Vulkan::QueryPoolHandle start_ts, end_ts;
-	if (caps.timestamp >= 2 && stage == ResolveStage::SSAAResolve)
-		start_ts = cmd.write_timestamp(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
-	cmd.dispatch(num_workgroups_x, num_workgroups_y, 1);
-	if (caps.timestamp >= 2 && stage == ResolveStage::SSAAResolve)
-	{
-		end_ts = cmd.write_timestamp(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
-		device->register_time_interval("RDP GPU", std::move(start_ts), std::move(end_ts), "ssaa-resolve");
-	}
-}
-
-void Renderer::submit_clear_super_sample_write_mask(Vulkan::CommandBuffer &cmd, unsigned width, unsigned height)
-{
-	// Pack 4x4 block of pixel's writemasks in one u32. Allows for one depth_blend workgroup to target a single u32
-	// in all cases, which is nice :)
-	unsigned blocks_x = (width + 3) / 4;
-	unsigned blocks_y = (height + 3) / 4;
-	unsigned num_words = blocks_x * blocks_y;
-	unsigned num_workgroups = (num_words + ImplementationConstants::DefaultWorkgroupSize - 1) /
-	                          ImplementationConstants::DefaultWorkgroupSize;
-
-#ifdef PARALLEL_RDP_SHADER_DIR
-	cmd.set_program("rdp://clear_super_sampled_write_mask.comp");
-#else
-	cmd.set_program(shader_bank->clear_super_sampled_write_mask);
-#endif
-
-	cmd.set_storage_buffer(0, 0, *upscaling_multisampled_rdram, rdram_size * caps.upscaling * caps.upscaling,
-	                       2 * Limits::MaxWidth * Limits::MaxHeight / 8);
-
-	cmd.set_specialization_constant_mask(1);
-	cmd.set_specialization_constant(0, ImplementationConstants::DefaultWorkgroupSize);
 	cmd.dispatch(num_workgroups, 1, 1);
-	cmd.set_specialization_constant_mask(0);
 }
 
 void Renderer::submit_update_upscaled_domain(Vulkan::CommandBuffer &cmd, ResolveStage stage)
 {
+	unsigned num_pixels = fb.width * fb.deduced_height;
 	unsigned pixel_size_log2;
 
 	switch (fb.fmt)
@@ -2014,11 +1882,10 @@ void Renderer::submit_update_upscaled_domain(Vulkan::CommandBuffer &cmd, Resolve
 		break;
 	}
 
-	submit_update_upscaled_domain(cmd, stage, fb.addr, fb.depth_addr,
-	                              fb.width, fb.deduced_height, pixel_size_log2);
+	submit_update_upscaled_domain(cmd, stage, fb.addr, fb.depth_addr, num_pixels, pixel_size_log2);
 }
 
-void Renderer::submit_depth_blend(Vulkan::CommandBuffer &cmd, Vulkan::Buffer &tmem, bool upscaled, bool force_write_mask)
+void Renderer::submit_depth_blend(Vulkan::CommandBuffer &cmd, Vulkan::Buffer &tmem, bool upscaled)
 {
 	cmd.begin_region("render-pass");
 	auto &instance = buffer_instances[buffer_instance];
@@ -2031,7 +1898,7 @@ void Renderer::submit_depth_blend(Vulkan::CommandBuffer &cmd, Vulkan::Buffer &tm
 	cmd.set_specialization_constant(4, ImplementationConstants::TileHeight);
 	cmd.set_specialization_constant(5, Limits::MaxPrimitives);
 	cmd.set_specialization_constant(6, upscaled ? caps.max_width : Limits::MaxWidth);
-	cmd.set_specialization_constant(7, uint32_t(force_write_mask || (!is_host_coherent && !upscaled)) |
+	cmd.set_specialization_constant(7, uint32_t(!is_host_coherent && !upscaled) |
 	                                   ((upscaled ? trailing_zeroes(caps.upscaling) : 0u) << 1u));
 
 	if (upscaled)
@@ -2121,7 +1988,6 @@ void Renderer::submit_depth_blend(Vulkan::CommandBuffer &cmd, Vulkan::Buffer &tm
 		cmd.set_program("rdp://ubershader.comp", {
 				{ "DEBUG_ENABLE", debug_channel ? 1 : 0 },
 				{ "SMALL_TYPES", caps.supports_small_integer_arithmetic ? 1 : 0 },
-				{ "SUBGROUP", caps.subgroup_depth_blend ? 1 : 0 },
 		});
 #else
 		cmd.set_program(shader_bank->ubershader);
@@ -2133,7 +1999,6 @@ void Renderer::submit_depth_blend(Vulkan::CommandBuffer &cmd, Vulkan::Buffer &tm
 		cmd.set_program("rdp://depth_blend.comp", {
 				{ "DEBUG_ENABLE", debug_channel ? 1 : 0 },
 				{ "SMALL_TYPES", caps.supports_small_integer_arithmetic ? 1 : 0 },
-				{ "SUBGROUP", caps.subgroup_depth_blend ? 1 : 0 },
 		});
 #else
 		cmd.set_program(shader_bank->depth_blend);
@@ -2196,7 +2061,7 @@ void Renderer::submit_render_pass(Vulkan::CommandBuffer &cmd)
 	}
 
 	if (need_render_pass)
-		submit_depth_blend(cmd, need_tmem_upload ? *tmem_instances : *tmem, false, false);
+		submit_depth_blend(cmd, need_tmem_upload ? *tmem_instances : *tmem, false);
 
 	if (!caps.ubershader)
 		clear_indirect_buffer(cmd);
@@ -2230,16 +2095,8 @@ void Renderer::submit_render_pass_upscaled(Vulkan::CommandBuffer &cmd)
 		start_ts = cmd.write_timestamp(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
 
 	bool need_tmem_upload = !stream.tmem_upload_infos.empty();
-
 	submit_span_setup_jobs(cmd, true);
 	submit_tile_binning_combined(cmd, true);
-	if (caps.super_sample_readback)
-	{
-		submit_update_upscaled_domain(cmd, ResolveStage::Pre);
-		submit_clear_super_sample_write_mask(cmd, fb.width, fb.deduced_height);
-		if (need_tmem_upload)
-			update_tmem_instances(cmd);
-	}
 
 	cmd.barrier(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_ACCESS_SHADER_WRITE_BIT,
 	            VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT |
@@ -2256,20 +2113,9 @@ void Renderer::submit_render_pass_upscaled(Vulkan::CommandBuffer &cmd)
 		            VK_ACCESS_SHADER_READ_BIT);
 	}
 
-	submit_depth_blend(cmd, need_tmem_upload ? *tmem_instances : *tmem, true, caps.super_sample_readback);
+	submit_depth_blend(cmd, need_tmem_upload ? *tmem_instances : *tmem, true);
 	if (!caps.ubershader)
 		clear_indirect_buffer(cmd);
-
-	if (caps.super_sample_readback)
-	{
-		cmd.begin_region("ssaa-resolve");
-		cmd.barrier(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_ACCESS_SHADER_WRITE_BIT,
-		            VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
-		            VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT);
-
-		submit_update_upscaled_domain(cmd, ResolveStage::SSAAResolve);
-		cmd.end_region();
-	}
 
 	if (caps.timestamp >= 1)
 	{
@@ -2298,7 +2144,6 @@ void Renderer::maintain_queues()
 	// If we have no pending submissions, the GPU is idle and there is no reason not to submit.
 	// If we haven't submitted anything in a while (1.0 ms), it's probably fine to submit again.
 	if (pending_render_passes >= ImplementationConstants::MaxPendingRenderPassesBeforeFlush ||
-	    (caps.super_sample_readback && pending_render_passes_upscaled >= ImplementationConstants::MaxPendingRenderPassesBeforeFlush) ||
 	    pending_primitives >= Limits::MaxPrimitives ||
 	    pending_primitives_upscaled >= Limits::MaxPrimitives ||
 	    active_submissions.load(std::memory_order_relaxed) == 0 ||
@@ -2341,8 +2186,7 @@ void Renderer::enqueue_fence_wait(Vulkan::Fence fence)
 
 void Renderer::submit_to_queue()
 {
-	bool pending_host_visible_render_passes =
-			(caps.super_sample_readback ? pending_render_passes_upscaled : pending_render_passes) != 0;
+	bool pending_host_visible_render_passes = pending_render_passes != 0;
 	bool pending_upscaled_passes = pending_render_passes_upscaled != 0;
 	pending_render_passes = 0;
 	pending_render_passes_upscaled = 0;
@@ -2814,7 +2658,7 @@ void Renderer::resolve_coherency_host_to_gpu(Vulkan::CommandBuffer &cmd)
 		            VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_ACCESS_SHADER_READ_BIT);
 	}
 
-	// If we cannot map the device memory, copy. We're latency sensitive, so don't use DMA queue.
+	// If we cannot map the device memory, use the copy queue.
 	if (!buffer_copies.empty())
 	{
 		cmd.barrier(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0,
@@ -2832,7 +2676,7 @@ void Renderer::resolve_coherency_host_to_gpu(Vulkan::CommandBuffer &cmd)
 #endif
 
 		cmd.barrier(VK_PIPELINE_STAGE_TRANSFER_BIT, VK_ACCESS_TRANSFER_WRITE_BIT,
-		            VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_ACCESS_SHADER_READ_BIT);
+		             VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_ACCESS_SHADER_READ_BIT);
 	}
 
 	if (caps.timestamp)
@@ -2889,29 +2733,18 @@ void Renderer::flush_queues()
 		resolve_coherency_host_to_gpu(*stream.cmd);
 	instance.upload(*device, stream, *stream.cmd);
 
-	// If we have super-sampled readback, then this is meaningless.
-	bool has_single_sampled_render_pass = !caps.super_sample_readback;
-
-	if (has_single_sampled_render_pass)
-	{
-		stream.cmd->begin_region("render-pass-1x");
-		submit_render_pass(*stream.cmd);
-		stream.cmd->end_region();
-		pending_render_passes++;
-	}
+	stream.cmd->begin_region("render-pass-1x");
+	submit_render_pass(*stream.cmd);
+	stream.cmd->end_region();
+	pending_render_passes++;
 
 	if (render_pass_is_upscaled())
 	{
-		if (has_single_sampled_render_pass)
-		{
-			maintain_queues();
-			ensure_command_buffer();
-
-			// We're going to keep reading the same data structures, so make sure
-			// we signal fence after upscaled render pass is submitted.
-			sync_indices_needs_flush |= 1u << buffer_instance;
-		}
-
+		maintain_queues();
+		ensure_command_buffer();
+		// We're going to keep reading the same data structures, so make sure
+		// we signal fence after upscaled render pass is submitted.
+		sync_indices_needs_flush |= 1u << buffer_instance;
 		submit_render_pass_upscaled(*stream.cmd);
 		pending_render_passes_upscaled++;
 		pending_primitives_upscaled += uint32_t(stream.triangle_setup.size());
@@ -2925,25 +2758,17 @@ void Renderer::flush_queues()
 
 bool Renderer::render_pass_is_upscaled() const
 {
-	if (caps.super_sample_readback)
-		return true;
-
 	bool need_render_pass = fb.width != 0 && fb.deduced_height != 0 && !stream.span_info_jobs.empty();
-	return need_render_pass && should_render_upscaled();
+	return caps.upscaling > 1 && need_render_pass && should_render_upscaled();
 }
 
 bool Renderer::should_render_upscaled() const
 {
-	if (caps.upscaling > 1)
-	{
-		// A heuristic. There is no point to render upscaled for purely off-screen passes.
-		// We should ideally only upscale the final pass which hits screen.
-		// From a heuristic point-of-view we expect only 16-bit/32-bit frame buffers to be relevant,
-		// and only frame buffers with at least 256 pixels.
-		return (fb.fmt == FBFormat::RGBA5551 || fb.fmt == FBFormat::RGBA8888) && fb.width >= 256;
-	}
-	else
-		return false;
+	// A heuristic. There is no point to render upscaled for purely off-screen passes.
+	// We should ideally only upscale the final pass which hits screen.
+	// From a heuristic point-of-view we expect only 16-bit/32-bit frame buffers to be relevant,
+	// and only frame buffers with at least 256 pixels.
+	return (fb.fmt == FBFormat::RGBA5551 || fb.fmt == FBFormat::RGBA8888) && fb.width >= 256;
 }
 
 void Renderer::ensure_command_buffer()
@@ -3085,6 +2910,9 @@ void Renderer::load_tile(uint32_t tile, const LoadTileInfo &info)
 		auto &meta = tiles[tile].meta;
 		unsigned pixels_coverered_per_line = (((info.shi >> 2) - (info.slo >> 2)) + 1) & 0xfff;
 
+		if (meta.fmt == TextureFormat::YUV)
+			pixels_coverered_per_line *= 2;
+
 		// Technically, 32-bpp TMEM upload and YUV upload will work like 16bpp, just split into two halves, but that also means
 		// we get 2kB wraparound instead of 4kB wraparound, so this works out just fine for our purposes.
 		unsigned quad_words_covered_per_line = ((pixels_coverered_per_line << unsigned(meta.size)) + 15) >> 4;
@@ -3098,22 +2926,16 @@ void Renderer::load_tile(uint32_t tile, const LoadTileInfo &info)
 		// Compute a conservative estimate for how many bytes we're going to splat down into TMEM.
 		unsigned bytes_covered_per_line = std::max<unsigned>(quad_words_covered_per_line * 8, meta.stride);
 
-		unsigned max_bytes_per_line = 0x1000;
-		// We need to write lower and upper halves at once,
-		// so we need to wrap around at 2k boundary.
-		if (meta.fmt == TextureFormat::YUV)
-			max_bytes_per_line /= 2;
-
 		unsigned num_lines = ((info.thi >> 2) - (info.tlo >> 2)) + 1;
 		unsigned total_bytes_covered = bytes_covered_per_line * num_lines;
 
-		if (total_bytes_covered > max_bytes_per_line)
+		if (total_bytes_covered > 0x1000)
 		{
 			// Welp, for whatever reason, the game wants to write more than 4k of texture data to TMEM in one go.
 			// We can only handle 4kB in one go due to wrap-around effects,
 			// so split up the upload in multiple chunks.
 
-			unsigned max_lines_per_iteration = max_bytes_per_line / bytes_covered_per_line;
+			unsigned max_lines_per_iteration = 0x1000u / bytes_covered_per_line;
 			// Align T-state.
 			max_lines_per_iteration &= ~1u;
 

@@ -44,17 +44,6 @@ int maximum4(ivec4 v)
 	return max(maximum2.x, maximum2.y);
 }
 
-ivec4 madd_32_64(ivec4 a, int b, int c, out ivec4 hi_bits)
-{
-	ivec4 lo, hi;
-	imulExtended(a, ivec4(b), hi, lo);
-	uvec4 carry;
-	lo = ivec4(uaddCarry(lo, uvec4(c), carry));
-	hi += ivec4(carry);
-	hi_bits = hi;
-	return lo;
-}
-
 ivec2 interpolate_xs(TriangleSetup setup, ivec4 ys, bool flip, int scaling)
 {
 	int yh_interpolation_base = setup.yh & ~(SUBPIXELS_Y - 1);
@@ -63,19 +52,10 @@ ivec2 interpolate_xs(TriangleSetup setup, ivec4 ys, bool flip, int scaling)
 	yh_interpolation_base *= scaling;
 	ym_interpolation_base *= scaling;
 
-	// Interpolate in 64-bit so we can detect quirky overflow scenarios.
-	ivec4 xh_hi, xm_hi, xl_hi;
-	ivec4 xh = madd_32_64(ys - yh_interpolation_base, setup.dxhdy, scaling * setup.xh, xh_hi);
-	ivec4 xm = madd_32_64(ys - yh_interpolation_base, setup.dxmdy, scaling * setup.xm, xm_hi);
-	ivec4 xl = madd_32_64(ys - ym_interpolation_base, setup.dxldy, scaling * setup.xl, xl_hi);
+	ivec4 xh = scaling * setup.xh + (ys - yh_interpolation_base) * setup.dxhdy;
+	ivec4 xm = scaling * setup.xm + (ys - yh_interpolation_base) * setup.dxmdy;
+	ivec4 xl = scaling * setup.xl + (ys - ym_interpolation_base) * setup.dxldy;
 	xl = mix(xl, xm, lessThan(ys, ivec4(scaling * setup.ym)));
-	xl_hi = mix(xl_hi, xm_hi, lessThan(ys, ivec4(scaling * setup.ym)));
-
-	// Handle overflow scenarios. Saturate 64-bit signed to 32-bit signed without 64-bit math.
-	xh = mix(xh, ivec4(0x7fffffff), greaterThan(xh_hi, ivec4(0)));
-	xh = mix(xh, ivec4(-0x80000000), lessThan(xh_hi, ivec4(-1)));
-	xl = mix(xl, ivec4(0x7fffffff), greaterThan(xl_hi, ivec4(0)));
-	xl = mix(xl, ivec4(-0x80000000), lessThan(xl_hi, ivec4(-1)));
 
 	ivec4 xh_shifted = quantize_x(xh);
 	ivec4 xl_shifted = quantize_x(xl);
@@ -92,37 +72,28 @@ ivec2 interpolate_xs(TriangleSetup setup, ivec4 ys, bool flip, int scaling)
 		xright = xh_shifted;
 	}
 
-	// If one of the results are out of range, we have overflow, and we need to be conservative when binning.
-	int max_range = maximum4(max(abs(xleft), abs(xright)));
-	ivec2 range;
-	if (max_range <= 2047 * scaling)
-		range = ivec2(minimum4(xleft), maximum4(xright));
-	else
-		range = ivec2(0, 0x7fffffff);
-
-	return range;
+	return ivec2(minimum4(xleft), maximum4(xright));
 }
 
 bool bin_primitive(TriangleSetup setup, ivec2 lo, ivec2 hi, int scaling)
 {
-	int start_y = lo.y * SUBPIXELS_Y;
-	int end_y = (hi.y * SUBPIXELS_Y) + (SUBPIXELS_Y - 1);
+    int start_y = lo.y * SUBPIXELS_Y;
+    int end_y = (hi.y * SUBPIXELS_Y) + (SUBPIXELS_Y - 1);
 
-	// First, we clip start/end against y_lo, y_hi.
-	start_y = max(start_y, scaling * int(setup.yh));
-	end_y = min(end_y, scaling * int(setup.yl) - 1);
+    // First, we clip start/end against y_lo, y_hi.
+    start_y = max(start_y, scaling * int(setup.yh));
+    end_y = min(end_y, scaling * int(setup.yl) - 1);
 
-	// Y is clipped out, exit early.
-	if (end_y < start_y)
-		return false;
+    // Y is clipped out, exit early.
+    if (end_y < start_y)
+        return false;
 
-	bool flip = (setup.flags & TRIANGLE_SETUP_FLIP_BIT) != 0;
+    bool flip = (setup.flags & TRIANGLE_SETUP_FLIP_BIT) != 0;
 
-	// Sample the X ranges for min and max Y, and potentially the mid-point as well.
-	ivec4 ys = ivec4(start_y, end_y, clamp(setup.ym * scaling + ivec2(-1, 0), ivec2(start_y), ivec2(end_y)));
-	ivec2 x_range = interpolate_xs(setup, ys, flip, scaling);
-
-	x_range.x = max(x_range.x, lo.x);
+    // Sample the X ranges for min and max Y, and potentially the mid-point as well.
+    ivec4 ys = ivec4(start_y, end_y, clamp(setup.ym * scaling + ivec2(-1, 0), ivec2(start_y), ivec2(end_y)));
+    ivec2 x_range = interpolate_xs(setup, ys, flip, scaling);
+    x_range.x = max(x_range.x, lo.x);
 	x_range.y = min(x_range.y, hi.x);
 	return x_range.x <= x_range.y;
 }

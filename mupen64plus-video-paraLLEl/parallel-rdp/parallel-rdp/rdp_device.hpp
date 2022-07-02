@@ -31,7 +31,6 @@
 #include "rdp_common.hpp"
 #include "command_ring.hpp"
 #include "worker_thread.hpp"
-#include "rdp_dump_write.hpp"
 
 #ifndef GRANITE_VULKAN_MT
 #error "Granite Vulkan backend must be built with multithreading support."
@@ -50,9 +49,7 @@ enum CommandProcessorFlagBits
 	COMMAND_PROCESSOR_FLAG_HOST_VISIBLE_TMEM_BIT = 1 << 1,
 	COMMAND_PROCESSOR_FLAG_UPSCALING_2X_BIT = 1 << 2,
 	COMMAND_PROCESSOR_FLAG_UPSCALING_4X_BIT = 1 << 3,
-	COMMAND_PROCESSOR_FLAG_UPSCALING_8X_BIT = 1 << 4,
-	COMMAND_PROCESSOR_FLAG_SUPER_SAMPLED_READ_BACK_BIT = 1 << 5,
-	COMMAND_PROCESSOR_FLAG_SUPER_SAMPLED_DITHER_BIT = 1 << 6
+	COMMAND_PROCESSOR_FLAG_UPSCALING_8X_BIT = 1 << 4
 };
 using CommandProcessorFlags = uint32_t;
 
@@ -152,51 +149,7 @@ public:
 	void set_vi_register(VIRegister reg, uint32_t value);
 
 	Vulkan::ImageHandle scanout(const ScanoutOptions &opts = {});
-	void scanout_sync(std::vector<RGBA> &colors, unsigned &width, unsigned &height, const ScanoutOptions &opts = {});
-	void scanout_async_buffer(VIScanoutBuffer &buffer, const ScanoutOptions &opts = {});
-
-	// Support for modifying certain registers per-scanline.
-	// The idea is that before we scanout(), we use set_vi_register() to
-	// set frame-global VI register state.
-	// While scanning out, we can support changing some state, in particular HStart and XStart
-	// which allows various raster effects ala HDMA.
-	// For sanity's sake, scanout() reads all memory at once. A fully beam-raced implementation
-	// would render out images every scanline, but that would cripple performance and it's questionable
-	// how this is useful, especially on a 3D console. The only failure case of this style of implementation
-	// would be if a demo attempted to modify VRAM *after* it has been scanned out, i.e. a write-after-read
-	// hazard.
-
-	// Latch registers are initialized to the values in set_vi_register() for each respective register.
-	// After scanout(), the flags state is cleared to 0.
-	void begin_vi_register_per_scanline(VideoInterface::PerScanlineRegisterFlags flags);
-	void set_vi_register_for_scanline(VideoInterface::PerScanlineRegisterBits reg, uint32_t value);
-
-	// Between begin_vi_register_per_scanline() and scanout(), line must be monotonically increasing,
-	// or the call is ignored. Initial value for the line counter is 0
-	// (to set parameters for line 0, use global VI register state).
-	// Currently set registers in set_vi_register_for_scanline() are considered to be the active VI register
-	// values starting with VI line "vi_line", until the bottom of the frame or a new vi_line is set.
-	// Register state is assumed to have been fixed from the last latched scanline up until vi_line.
-	//
-	// The units used for this value matches the hardware YStart registers,
-	// i.e. the first active scanline is not 0, but VI_H_OFFSET_{NTSC,PAL}.
-	// For every scanned line, vi_line should increment by 2.
-	// vi_line must be less than VI_V_END_MAX (really, VI_V_END_{NTSC,PAL}), or it is ignored.
-	void latch_vi_register_for_scanline(unsigned vi_line);
-
-	// Assumes that scanline register state does not change until end of frame.
-	// Must be called before scanout(), or all per-scanline register state is ignored for the scanout.
-	void end_vi_register_per_scanline();
-
-	// Intended flow is something like:
-	// set_vi_register(reg, value0) // value0 used for line [0, 99]
-	// begin_vi_register_per_scanline(flags);
-	// set_vi_register_for_scanline(reg, value1); // value1 used for line [100, 199]
-	// latch_vi_register_for_scanline(100);
-	// set_vi_register_for_scanline(reg, value2);
-	// latch_vi_register_for_scanline(200); // value2 used for line [200, VBlank]
-	// end_vi_register_per_scanline();
-	// scanout();
+	void scanout_sync(std::vector<RGBA> &colors, unsigned &width, unsigned &height);
 
 private:
 	Vulkan::Device &device;
@@ -219,9 +172,6 @@ private:
 	void clear_tmem();
 	void clear_buffer(Vulkan::Buffer &buffer, uint32_t value);
 	void init_renderer();
-	void enqueue_command_inner(unsigned num_words, const uint32_t *words);
-
-	Vulkan::ImageHandle scanout(const ScanoutOptions &opts, VkImageLayout target_layout);
 
 #define OP(x) void op_##x(const uint32_t *words)
 	OP(fill_triangle); OP(fill_z_buffer_triangle); OP(texture_triangle); OP(texture_z_buffer_triangle);
@@ -279,8 +229,5 @@ private:
 	void decode_triangle_setup(TriangleSetup &setup, const uint32_t *words) const;
 
 	Quirks quirks;
-
-	std::unique_ptr<RDPDumpWriter> dump_writer;
-	bool dump_in_command_list = false;
 };
 }

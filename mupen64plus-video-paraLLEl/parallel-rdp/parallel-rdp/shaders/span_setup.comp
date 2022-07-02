@@ -169,13 +169,6 @@ void main()
     ivec4 xl = setup.xl * SCALING_FACTOR + (y_subs - ym_interpolation_base) * setup.dxldy;
     xl = mix(xl, xm, lessThan(y_subs, ivec4(SCALING_FACTOR * setup.ym)));
 
-    // If we have overflows, we can become sensitive to this in invalid_line check, where
-    // checks that should pass fail, and vice versa.
-    // Note that we shaved off one bit in triangle setup for upscaling purposes,
-    // so this should be 28 bits normally.
-    xl = bitfieldExtract(xl, 0, 27 + SCALING_LOG2);
-    xh = bitfieldExtract(xh, 0, 27 + SCALING_LOG2);
-
     ivec4 xh_shifted = quantize_x(xh);
     ivec4 xl_shifted = quantize_x(xl);
 
