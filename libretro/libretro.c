@@ -188,6 +188,7 @@ uint32_t OverscanRight = 0;
 uint32_t OverscanBottom = 0;
 
 uint32_t AllowUnalignedDMA = 1;
+uint32_t AllowLargeRoms = 1;
 uint32_t LegacySm64ToolsHacks = 0;
 uint32_t RemoveFBBlackBars = 0;
 uint32_t OverrideSaveType = 0;
@@ -1710,6 +1711,13 @@ void update_variables(bool startup)
    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
    {
       AllowUnalignedDMA = !strcmp(var.value, "False") ? 0 : 1;
+   }
+
+   var.key = CORE_NAME "-allow-large-roms";
+   var.value = NULL;
+   if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+   {
+      AllowLargeRoms = !strcmp(var.value, "False") ? 0 : 1;
    }
 
    var.key = CORE_NAME "-gliden64-BilinearMode";

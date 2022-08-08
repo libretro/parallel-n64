@@ -37,6 +37,7 @@
 #include <string.h>
 
 extern uint32_t AllowUnalignedDMA;
+extern uint32_t AllowLargeRoms;
 
 enum
 {
@@ -262,8 +263,7 @@ static void dma_pi_write(struct pi_controller *pi)
       /* CART ROM */
       length = (pi->regs[PI_WR_LEN_REG] &  0xFFFFFE) + 2;
       i = (pi->regs[PI_CART_ADDR_REG] - 0x10000000);
-      if (!AllowUnalignedDMA)
-      {
+      if (!AllowLargeRoms) {
          i &= 0x3ffffff;
       }
       length = (i + length) > pi->cart_rom.rom_size ?
@@ -286,8 +286,7 @@ static void dma_pi_write(struct pi_controller *pi)
 
       dram_address = pi->regs[PI_DRAM_ADDR_REG];
       rom_address = (pi->regs[PI_CART_ADDR_REG] - 0x10000000);
-      if (!AllowUnalignedDMA)
-      {
+      if (!AllowLargeRoms) {
          rom_address &= 0x3ffffff;
       }
       dram = (uint8_t*)pi->ri->rdram.dram;

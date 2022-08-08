@@ -899,6 +899,20 @@ struct retro_core_option_v2_definition option_defs_us[] = {
         "True"
     },
     {
+        CORE_NAME "-allow-large-roms",
+        "Allow Large Roms",
+        NULL,
+        "Enable support for roms that are larger than 64 MiB.",
+        NULL,
+        NULL,
+        {
+            {"True", "Yes"},
+            {"False", "No"},
+            { NULL, NULL }
+        },
+        "True"
+    },
+    {
         CORE_NAME "-gliden64-viewport-hack",
         "Widescreen Hack",
         NULL,
