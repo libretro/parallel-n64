@@ -261,7 +261,11 @@ static void dma_pi_write(struct pi_controller *pi)
    {
       /* CART ROM */
       length = (pi->regs[PI_WR_LEN_REG] &  0xFFFFFE) + 2;
-      i = (pi->regs[PI_CART_ADDR_REG] - 0x10000000) & 0x3FFFFFF;
+      i = (pi->regs[PI_CART_ADDR_REG] - 0x10000000);
+      if (!AllowUnalignedDMA)
+      {
+         i &= 0x3ffffff;
+      }
       length = (i + length) > pi->cart_rom.rom_size ?
          (pi->cart_rom.rom_size - i) : length;
       length = (pi->regs[PI_DRAM_ADDR_REG] + length) > 0x7FFFFF ?
@@ -281,7 +285,11 @@ static void dma_pi_write(struct pi_controller *pi)
       }
 
       dram_address = pi->regs[PI_DRAM_ADDR_REG];
-      rom_address = (pi->regs[PI_CART_ADDR_REG] - 0x10000000) & 0x3ffffff;
+      rom_address = (pi->regs[PI_CART_ADDR_REG] - 0x10000000);
+      if (!AllowUnalignedDMA)
+      {
+         rom_address &= 0x3ffffff;
+      }
       dram = (uint8_t*)pi->ri->rdram.dram;
       rom = pi->cart_rom.rom;
    }
