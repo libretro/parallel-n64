@@ -25,11 +25,7 @@
 #include "luts.hpp"
 
 #ifndef PARALLEL_RDP_SHADER_DIR
-#ifdef __APPLE__
-#include "shaders/slangmosh_mac.hpp"
-#else
 #include "shaders/slangmosh.hpp"
-#endif
 #endif
 
 extern uint32_t ParallelRemoveBorders;
