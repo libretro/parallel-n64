@@ -24,7 +24,6 @@
 #define DEBUG_H_
 
 #if defined(DEBUG_ENABLE) && DEBUG_ENABLE
-#include "debug_channel.h"
 
 const uint CODE_ASSERT_EQUAL = 0;
 const uint CODE_ASSERT_NOT_EQUAL = 1;

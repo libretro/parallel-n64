@@ -30,11 +30,7 @@
 #include "global_managers.hpp"
 #include "os_filesystem.hpp"
 #else
-#ifdef __APPLE__
-#include "shaders/slangmosh_mac.hpp"
-#else
 #include "shaders/slangmosh.hpp"
-#endif
 #endif
 
 namespace RDP
