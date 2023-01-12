@@ -296,6 +296,14 @@ else ifneq (,$(findstring osx,$(platform)))
    endif
 
    ifeq ($(CROSS_COMPILE),1)
+		ifneq (,$(findstring arm,$(LIBRETRO_APPLE_PLATFORM)))
+			CFLAGS +=   -DNO_ASM -DDONT_WANT_ARM_OPTIMIZATIONS -D__NEON_OPT
+			CPPFLAGS += -DNO_ASM -DDONT_WANT_ARM_OPTIMIZATIONS -D__NEON_OPT
+			CXXFLAGS += -DNO_ASM -DDONT_WANT_ARM_OPTIMIZATIONS -D__NEON_OPT
+			HAVE_NEON=1
+			MINVERSION := -mmacosx-version-min=11.0
+		endif
+
 		TARGET_RULE   = -target $(LIBRETRO_APPLE_PLATFORM)
 		CFLAGS   += $(TARGET_RULE)
 		CPPFLAGS += $(TARGET_RULE)

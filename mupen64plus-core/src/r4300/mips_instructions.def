@@ -1654,25 +1654,46 @@ DECLARE_INSTRUCTION(DDIVU)
 
 DECLARE_INSTRUCTION(ADD)
 {
+   // Adding two signed integers with overflow is UB
+   // clang O1: 0x2d8dc32c + 0x78ddf55d = 0xa66bb889
+   // clang O0: 0x2d8dc32c + 0x78ddf55d = 0xffffffffa66bb889
+   // We want sign extended cast but it seems to be implementation dependent
+   // This implementation works fine on clang but might cause issues on other platforms
+#ifdef __clang__
+   rrd = SE32(((uint32_t)rrs32) + ((uint32_t) rrt32));
+#else
    rrd = SE32(rrs32 + rrt32);
+#endif
    ADD_TO_PC(1);
 }
 
 DECLARE_INSTRUCTION(ADDU)
 {
+#ifdef __clang__
+   rrd = SE32(((uint32_t)rrs32) + ((uint32_t) rrt32));
+#else
    rrd = SE32(rrs32 + rrt32);
+#endif
    ADD_TO_PC(1);
 }
 
 DECLARE_INSTRUCTION(SUB)
 {
+#ifdef __clang__
+   rrd = SE32(((uint32_t)rrs32) - ((uint32_t) rrt32));
+#else
    rrd = SE32(rrs32 - rrt32);
+#endif
    ADD_TO_PC(1);
 }
 
 DECLARE_INSTRUCTION(SUBU)
 {
+#ifdef __clang__
+   rrd = SE32(((uint32_t)rrs32) - ((uint32_t) rrt32));
+#else
    rrd = SE32(rrs32 - rrt32);
+#endif
    ADD_TO_PC(1);
 }
 
