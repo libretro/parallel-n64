@@ -26,8 +26,13 @@
 
 #if defined(__APPLE__)
 #include <sys/types.h> // needed for u_int, u_char, etc
+#ifdef __arm64__
+#include <pthread.h>
+#endif
 #define MAP_ANONYMOUS MAP_ANON
 #endif
+
+#include "clear_cache.h"
 
 #include "../../main/main.h"
 #include "../../main/device.h"
@@ -1340,7 +1345,7 @@ void invalidate_all_pages(void)
     }
   }
   #if NEW_DYNAREC >= NEW_DYNAREC_ARM
-  __clear_cache((char *)base_addr,(char *)base_addr+(1<<TARGET_SIZE_2));
+  clear_instruction_cache((char *)base_addr,(char *)base_addr+(1<<TARGET_SIZE_2));
   //cacheflush((void *)base_addr,(void *)base_addr+(1<<TARGET_SIZE_2),0);
   #endif
   #ifdef USE_MINI_HT
@@ -7753,7 +7758,11 @@ void new_dynarec_init(void)
 #if NEW_DYNAREC >= NEW_DYNAREC_ARM
   if ((base_addr = mmap ((u_char *)BASE_ADDR, 1<<TARGET_SIZE_2,
             PROT_READ | PROT_WRITE | PROT_EXEC,
-            MAP_FIXED | MAP_PRIVATE | MAP_ANONYMOUS,
+            MAP_FIXED | MAP_PRIVATE | MAP_ANONYMOUS
+#ifdef __APPLE__
+            | MAP_JIT
+#endif
+            ,
             -1, 0)) <= 0) {DebugMessage(M64MSG_ERROR, "mmap() failed");}
 #else
 #if defined(WIN32)
@@ -7849,7 +7858,20 @@ void new_dynarec_cleanup(void)
   #endif
 }
 
+static int new_recompile_block_impl(int addr);
 int new_recompile_block(int addr)
+{
+#if defined(__APPLE__) && defined(__arm64__)
+  pthread_jit_write_protect_np(0);
+  int r = new_recompile_block_impl(addr);
+  pthread_jit_write_protect_np(1);
+  return r;
+#else
+  return new_recompile_block_impl(addr);
+#endif
+}
+
+static int new_recompile_block_impl(int addr)
 {
 #if defined(NEW_DYNAREC_PROFILER) && !defined(PROFILER)
   copy_mapping(&memory_map);
@@ -11078,7 +11100,7 @@ int new_recompile_block(int addr)
   copy+=slen*4;
 
   #if NEW_DYNAREC >= NEW_DYNAREC_ARM
-  __clear_cache((void *)beginning,out);
+  clear_instruction_cache((void *)beginning,out);
   //cacheflush((void *)beginning,out,0);
   #endif
 

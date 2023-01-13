@@ -17,6 +17,25 @@
  *	Paulo Cesar Pereira de Andrade
  */
 
+#if defined(__arm64__) || defined(__arm__)
+
+#ifdef __APPLE__
+#include <libkern/OSCacheControl.h>
+#else
+extern void __clear_cache(void *, void *);
+#endif
+
+static inline void clear_instruction_cache(char* start, char* end)
+{
+#ifdef __APPLE__
+    return sys_icache_invalidate(start, end - start);
+#else
+    return __clear_cache(start, end);
+#endif
+}
+
+#endif
+
 #define jit_arg_reg_p(i)		((i) >= 0 && (i) < 8)
 #define jit_arg_f_reg_p(i)		((i) >= 0 && (i) < 8)
 
@@ -1531,7 +1550,7 @@ jit_flush(void *fptr, void *tptr)
     s = sysconf(_SC_PAGE_SIZE);
     f = (jit_word_t)fptr & -s;
     t = (((jit_word_t)tptr) + s - 1) & -s;
-    __clear_cache((void *)f, (void *)t);
+    clear_instruction_cache((void *)f, (void *)t);
 #endif
 }
 

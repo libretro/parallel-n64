@@ -18,6 +18,8 @@
  *   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.          *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
+#include "../clear_cache.h"
+
 typedef enum {
   EQ,
   NE,
@@ -325,7 +327,7 @@ static void *dynamic_linker(void * src, u_int vaddr)
         //assert((ptr2[4]&0xfffffc1f)==0xd61f0000); //br
         add_link(vaddr, ptr2);
         set_jump_target((intptr_t)ptr, (uintptr_t)head->addr);
-        __clear_cache((void*)ptr, (void*)((uintptr_t)ptr+4));
+        clear_instruction_cache((void*)ptr, (void*)((uintptr_t)ptr+4));
       }
       #ifdef NEW_DYNAREC_DEBUG
       print_debug_info(vaddr);
@@ -426,7 +428,7 @@ static void *dynamic_linker_ds(void * src, u_int vaddr)
         //assert((ptr2[4]&0xfffffc1f)==0xd61f0000); //br
         add_link(vaddr, ptr2);
         set_jump_target((intptr_t)ptr, (uintptr_t)head->addr);
-        __clear_cache((void*)ptr, (void*)((uintptr_t)ptr+4));
+        clear_instruction_cache((void*)ptr, (void*)((uintptr_t)ptr+4));
       }
       #ifdef NEW_DYNAREC_DEBUG
       print_debug_info(vaddr);
@@ -6686,7 +6688,7 @@ static void do_clear_cache(void)
               end+=4096;
               j++;
             }else{
-              __clear_cache((char *)start,(char *)end);
+              clear_instruction_cache((char *)start,(char *)end);
               //cacheflush((void *)start,(void *)end,0);
               break;
             }

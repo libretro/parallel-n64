@@ -21,6 +21,8 @@
 #include "../../cp0_private.h"
 #include "main/main.h"
 
+#include "../clear_cache.h"
+
 void *dynamic_linker(void * src, u_int vaddr);
 void *dynamic_linker_ds(void * src, u_int vaddr);
 
@@ -339,7 +341,7 @@ void *dynamic_linker(void * src, u_int vaddr)
 #endif
       add_link(vaddr, ptr2);
       *ptr=(*ptr&0xFF000000)|((((u_int)head->addr-(u_int)ptr-8)<<6)>>8);
-      __clear_cache((void*)ptr, (void*)((u_int)ptr+4));
+      clear_instruction_cache((void*)ptr, (void*)((u_int)ptr+4));
       return head->addr;
     }
     head=head->next;
@@ -423,7 +425,7 @@ void *dynamic_linker_ds(void * src, u_int vaddr)
 #endif
       add_link(vaddr, ptr2);
       *ptr=(*ptr&0xFF000000)|((((u_int)head->addr-(u_int)ptr-8)<<6)>>8);
-      __clear_cache((void*)ptr, (void*)((u_int)ptr+4));
+      clear_instruction_cache((void*)ptr, (void*)((u_int)ptr+4));
       return head->addr;
     }
     head=head->next;
@@ -4788,7 +4790,7 @@ static void do_clear_cache()
               end+=4096;
               j++;
             }else{
-              __clear_cache((void *)start,(void *)end);
+              clear_instruction_cache((void *)start,(void *)end);
               //cacheflush((void *)start,(void *)end,0);
               break;
             }
