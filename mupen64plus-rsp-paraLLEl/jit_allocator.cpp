@@ -9,6 +9,22 @@
 
 #include "jit_allocator.hpp"
 
+#ifndef _WIN32
+#include <unistd.h>
+static int sPageSize = 0;
+static inline int PAGE_SIZE()
+{
+	if (__builtin_expect(0 == sPageSize, false))
+	{
+		sPageSize = getpagesize();
+	}
+
+	return sPageSize;
+}
+#else
+#define PAGE_SIZE() 4096
+#endif
+
 namespace RSP
 {
 namespace JIT
@@ -31,7 +47,7 @@ Allocator::~Allocator()
 
 static size_t align_page(size_t offset)
 {
-	return (offset + 4095) & ~size_t(4095);
+	return (offset + PAGE_SIZE() - 1) & ~size_t(PAGE_SIZE() - 1);
 }
 
 static bool commit_read_write(void *ptr, size_t size)
