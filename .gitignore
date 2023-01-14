@@ -28,3 +28,6 @@ Release/
 **/*.vcxproj
 **/*.vcxproj.filters
 .DS_Store
+
+
+.vscode
