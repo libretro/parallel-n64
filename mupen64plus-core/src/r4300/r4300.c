@@ -50,8 +50,8 @@
 unsigned int r4300emu = 0;
 unsigned int count_per_op = COUNT_PER_OP_DEFAULT;
 unsigned int llbit;
-int stop;
 #if !defined(__APPLE__) || !defined(__arm64__)
+int stop;
 #if NEW_DYNAREC < NEW_DYNAREC_ARM
 int64_t reg[32], hi, lo;
 uint32_t next_interrupt;
@@ -98,7 +98,7 @@ void r4300_init(void)
 {
     current_instruction_table = cached_interpreter_table;
 
-    stop = 0;
+    mupencorestop = 0;
 
     if (r4300emu == CORE_PURE_INTERPRETER)
     {
@@ -146,14 +146,14 @@ void r4300_execute(void)
     {
 #if NEW_DYNAREC
         new_dyna_start();
-        if (stop)
+        if (mupencorestop)
             new_dynarec_cleanup();
 #else
         dyna_start(dynarec_setup_code);
-        if (stop)
+        if (mupencorestop)
             mupencorePC++;
 #endif
-        if (stop)
+        if (mupencorestop)
             free_blocks();
     }
 #endif
@@ -161,11 +161,11 @@ void r4300_execute(void)
     {
         r4300_step();
 
-        if (stop)
+        if (mupencorestop)
             free_blocks();
     }
 
-    if (stop)
+    if (mupencorestop)
         DebugMessage(M64MSG_INFO, "R4300 emulator finished.");
 }
 
@@ -173,7 +173,7 @@ int retro_stop_stepping(void);
 
 void r4300_step(void)
 {
-   while (!stop && !retro_stop_stepping())
+   while (!mupencorestop && !retro_stop_stepping())
    {
       mupencorePC->ops();
    }

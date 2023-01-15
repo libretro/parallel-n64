@@ -46,36 +46,36 @@ static void invalidate_addr(u_int addr);
 
 static unsigned int needs_clear_cache[1<<(TARGET_SIZE_2-17)];
 
-static const uintptr_t jump_vaddr_reg[32] = {
-  (intptr_t)jump_vaddr_x0,
-  (intptr_t)jump_vaddr_x1,
-  (intptr_t)jump_vaddr_x2,
-  (intptr_t)jump_vaddr_x3,
-  (intptr_t)jump_vaddr_x4,
-  (intptr_t)jump_vaddr_x5,
-  (intptr_t)jump_vaddr_x6,
-  (intptr_t)jump_vaddr_x7,
-  (intptr_t)jump_vaddr_x8,
-  (intptr_t)jump_vaddr_x9,
-  (intptr_t)jump_vaddr_x10,
-  (intptr_t)jump_vaddr_x11,
-  (intptr_t)jump_vaddr_x12,
-  (intptr_t)jump_vaddr_x13,
-  (intptr_t)jump_vaddr_x14,
-  (intptr_t)jump_vaddr_x15,
-  (intptr_t)jump_vaddr_x16,
-  (intptr_t)jump_vaddr_x17,
-  (intptr_t)jump_vaddr_x18,
-  (intptr_t)jump_vaddr_x19,
-  (intptr_t)jump_vaddr_x20,
-  (intptr_t)jump_vaddr_x21,
-  (intptr_t)jump_vaddr_x22,
-  (intptr_t)jump_vaddr_x23,
-  (intptr_t)jump_vaddr_x24,
-  (intptr_t)jump_vaddr_x25,
-  (intptr_t)jump_vaddr_x26,
-  (intptr_t)jump_vaddr_x27,
-  (intptr_t)jump_vaddr_x28,
+static uintptr_t jump_vaddr_reg[32] = {
+  (intptr_t)0 /*x0*/,
+  (intptr_t)0 /*x1*/,
+  (intptr_t)0 /*x2*/,
+  (intptr_t)0 /*x3*/,
+  (intptr_t)0 /*x4*/,
+  (intptr_t)0 /*x5*/,
+  (intptr_t)0 /*x6*/,
+  (intptr_t)0 /*x7*/,
+  (intptr_t)0 /*x8*/,
+  (intptr_t)0 /*x9*/,
+  (intptr_t)0 /*x10*/,
+  (intptr_t)0 /*x11*/,
+  (intptr_t)0 /*x12*/,
+  (intptr_t)0 /*x13*/,
+  (intptr_t)0 /*x14*/,
+  (intptr_t)0 /*x15*/,
+  (intptr_t)0 /*x16*/,
+  (intptr_t)0 /*x17*/,
+  (intptr_t)0 /*x18*/,
+  (intptr_t)0 /*x19*/,
+  (intptr_t)0 /*x20*/,
+  (intptr_t)0 /*x21*/,
+  (intptr_t)0 /*x22*/,
+  (intptr_t)0 /*x23*/,
+  (intptr_t)0 /*x24*/,
+  (intptr_t)0 /*x25*/,
+  (intptr_t)0 /*x26*/,
+  (intptr_t)0 /*x27*/,
+  (intptr_t)0 /*x28*/,
   (intptr_t)breakpoint,
   (intptr_t)breakpoint,
   (intptr_t)breakpoint};
@@ -114,6 +114,13 @@ static const uintptr_t invalidate_addr_reg[32] = {
   (intptr_t)breakpoint,
   (intptr_t)breakpoint};
 
+static struct
+{
+  intptr_t indexed;
+  intptr_t regular;
+} indirect_jumps = { 0 };
+
+#if 0
 static uintptr_t jump_table_symbols[] = {
   (intptr_t)invalidate_addr,
   (intptr_t)jump_vaddr,
@@ -271,6 +278,7 @@ static uintptr_t jump_table_symbols[] = {
   (intptr_t)mov_d,
   (intptr_t)neg_d
 };
+#endif
 
 /* Linker */
 
@@ -619,7 +627,7 @@ static int verify_dirty(void *addr)
   if((*ptr&0xfc000000)!=0x94000000) ptr++;
   assert((*ptr&0xfc000000)==0x94000000); // bl instruction
 
-  uintptr_t verifier=(uintptr_t) trampoline_convert_trampoline_to_func(((signed int)(*ptr<<6)>>4)+(intptr_t)ptr);
+  uintptr_t verifier=(uintptr_t) trampoline_convert_trampoline_to_func((void*)(((signed int)(*ptr<<6)>>4)+(intptr_t)ptr));
   assert(verifier==(uintptr_t)verify_code||verifier==(uintptr_t)verify_code_vm||verifier==(uintptr_t)verify_code_ds);
 
   if(verifier==(uintptr_t)verify_code_vm||verifier==(uintptr_t)verify_code_ds) {
@@ -690,7 +698,7 @@ static void get_bounds(intptr_t addr,uintptr_t *start,uintptr_t *end)
   if((*ptr&0xfc000000)!=0x94000000) ptr++;
   assert((*ptr&0xfc000000)==0x94000000); // bl instruction
 
-  uintptr_t verifier=(uintptr_t) trampoline_convert_trampoline_to_func(((signed int)(*ptr<<6)>>4)+(intptr_t)ptr);
+  uintptr_t verifier=(uintptr_t) trampoline_convert_trampoline_to_func((void*)(((signed int)(*ptr<<6)>>4)+(intptr_t)ptr));
   assert(verifier==(uintptr_t)verify_code||verifier==(uintptr_t)verify_code_vm||verifier==(uintptr_t)verify_code_ds);
 
   if(verifier==(uintptr_t)verify_code_vm||verifier==(uintptr_t)verify_code_ds) {
@@ -2457,7 +2465,7 @@ static void emit_call(intptr_t a)
 {
   assem_debug("bl %x (%x+%x)",a,(intptr_t)out,a-(intptr_t)out);
   intptr_t offset=a-(intptr_t)out;
-  if (!(offset>=-134217728&&offset<134217728))
+  if (a && !(offset>=-134217728&&offset<134217728))
   {
     a = (intptr_t) trampoline_jump_alloc_or_find((void*) a);
   }
@@ -2470,7 +2478,7 @@ static void emit_jmp(intptr_t a)
 {
   assem_debug("b %x (%x+%x)",a,(intptr_t)out,a-(intptr_t)out);
   intptr_t offset=a-(intptr_t)out;
-  if (!(offset>=-134217728&&offset<134217728))
+  if (a && !(offset>=-134217728&&offset<134217728))
   {
     a = (intptr_t) trampoline_jump_alloc_or_find((void*) a);
   }
@@ -3946,7 +3954,7 @@ static void do_readstub(int n)
   //emit_add(cc,temp,cc);
   //emit_writeword(cc,(int)&g_cp0_regs[CP0_COUNT_REG]);
   //emit_mov(15,14);
-  emit_call((intptr_t)&indirect_jump_indexed);
+  emit_call(indirect_jumps.indexed);
   //emit_callreg(rs);
   //emit_readword_dualindexedx4(rs,HOST_TEMPREG,15);
   // We really shouldn't need to update the count here,
@@ -4029,7 +4037,7 @@ static void inline_readstub(int type, int i, u_int addr, signed char regmap[], i
   //emit_add(12,2,2);
   //emit_writeword(2,(int)&g_cp0_regs[CP0_COUNT_REG]);
   //emit_call(((u_int *)ftable)[addr>>16]);
-  emit_call((intptr_t)&indirect_jump);
+  emit_call(indirect_jumps.regular);
   // We really shouldn't need to update the count here,
   // but not doing so causes random crashes...
   emit_readword((intptr_t)&g_cp0_regs[CP0_COUNT_REG],HOST_TEMPREG);
@@ -4127,7 +4135,7 @@ static void do_writestub(int n)
   //emit_addimm(cc,2*stubs[n][5]+2,cc);
   //emit_add(cc,temp,cc);
   //emit_writeword(cc,(int)&g_cp0_regs[CP0_COUNT_REG]);
-  emit_call((intptr_t)&indirect_jump_indexed);
+  emit_call(indirect_jumps.indexed);
   //emit_callreg(rs);
   emit_readword((intptr_t)&g_cp0_regs[CP0_COUNT_REG],HOST_TEMPREG);
   emit_readword((intptr_t)&next_interrupt,2);
@@ -4203,7 +4211,7 @@ static void inline_writestub(int type, int i, u_int addr, signed char regmap[], 
   //emit_add(12,2,2);
   //emit_writeword(2,(int)&g_cp0_regs[CP0_COUNT_REG]);
   //emit_call(((u_int *)ftable)[addr>>16]);
-  emit_call((intptr_t)&indirect_jump);
+  emit_call(indirect_jumps.regular);
   emit_readword((intptr_t)&g_cp0_regs[CP0_COUNT_REG],HOST_TEMPREG);
   emit_readword((intptr_t)&next_interrupt,2);
   emit_addimm(HOST_TEMPREG,-(int)CLOCK_DIVIDER*(adj+1),HOST_TEMPREG);
@@ -6748,10 +6756,23 @@ static void arch_init(void) {
   rounding_modes[2]=0x1<<22; // ceil
   rounding_modes[3]=0x2<<22; // floor
 
+#if 0
   jump_table_symbols[15] = (intptr_t) cached_interpreter_table.MFC0;
   jump_table_symbols[16] = (intptr_t) cached_interpreter_table.MTC0;
   jump_table_symbols[17] = (intptr_t) cached_interpreter_table.TLBR;
   jump_table_symbols[18] = (intptr_t) cached_interpreter_table.TLBP;
+#endif
+
+  apple_jit_wx_unprotect_enter();
+  trampolines_reg_jump_t jumps = trampoline_alloc_reg_jump(&jump_vaddr);
+  apple_jit_wx_unprotect_exit();
+
+  indirect_jumps.indexed = (intptr_t) jumps.indirect_jump_indexed;
+  indirect_jumps.regular = (intptr_t) jumps.indirect_jump;
+  for (int i = 0; i < 29; i++)
+  {
+    jump_vaddr_reg[i] = jumps.jump_vaddr_reg[i];
+  }
 
   #ifdef RAM_OFFSET
   ram_offset=((intptr_t)g_rdram-(intptr_t)0x80000000)>>2;

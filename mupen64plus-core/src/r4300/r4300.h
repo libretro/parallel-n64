@@ -32,8 +32,10 @@
 extern struct precomp_instr *PC;
 extern int64_t reg[32], hi, lo;
 extern uint32_t next_interrupt;
+extern int stop;
 #define mupencorePC PC
 #define mupencorereg reg
+#define mupencorestop stop
 #else
 #include "new_dynarec/arm64/apple_memory_layout.h"
 #define mupencorePC    (RECOMPILER_MEMORY->rml_PC)
@@ -41,8 +43,8 @@ extern uint32_t next_interrupt;
 #define hi             (RECOMPILER_MEMORY->rml_hi)
 #define next_interrupt (RECOMPILER_MEMORY->rml_next_interrupt)
 #define lo             (RECOMPILER_MEMORY->rml_lo)
+#define mupencorestop  (RECOMPILER_MEMORY->rml_stop)
 #endif
-extern int stop;
 extern unsigned int llbit;
 extern long long int local_rs;
 extern uint32_t skip_jump;

@@ -44,8 +44,8 @@ typedef struct recompiler_memory_layout
     uint64_t rml_memory_map[1048576];
 } recompiler_memory_layout_t;
 
-extern void* base_addr;
-#define RECOMPILER_MEMORY ((recompiler_memory_layout_t*)base_addr)
+extern recompiler_memory_layout_t* base_addr;
+#define RECOMPILER_MEMORY (base_addr)
 
 // Copied from linkage_aarch64.S declaration
 #define RML_SIZE_EXTRA_MEMORY 0

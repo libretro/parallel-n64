@@ -505,7 +505,7 @@ static void nmi_int_handler(void)
 
 void gen_interrupt(void)
 {
-   if (stop == 1)
+   if (mupencorestop == 1)
    {
       g_gs_vi_counter = 0; /* debug */
       dyna_stop();

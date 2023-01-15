@@ -738,14 +738,14 @@ int retro_stop_stepping(void);
 
 void pure_interpreter_init(void)
 {
-   stop = 0;
+   mupencorestop = 0;
    mupencorePC = &interp_PC;
    mupencorePC->addr = last_addr = 0xa4000040;
 }
 
 void pure_interpreter(void)
 {
-   while (!stop && !retro_stop_stepping())
+   while (!mupencorestop && !retro_stop_stepping())
    {
 #ifdef DBG
      if (g_DebuggerActive) update_debugger(mupencorePC->addr);

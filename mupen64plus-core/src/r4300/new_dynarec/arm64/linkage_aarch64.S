@@ -44,150 +44,7 @@ GLOBAL_FUNCTION(_dyna_linker):
     
 GLOBAL_FUNCTION(_dyna_linker_ds):
     brk 0
-    
-GLOBAL_FUNCTION(_jump_vaddr_x0):
-    /*eor    w2, w0, w0, lsl #16*/
-    b      _jump_vaddr
-    
-GLOBAL_FUNCTION(_jump_vaddr_x1):
-    /*eor    w2, w1, w1, lsl #16*/
-    mov    w0, w1
-    b      _jump_vaddr
-    
-GLOBAL_FUNCTION(_jump_vaddr_x2):
-    mov    w0, w2
-    /*eor    w2, w2, w2, lsl #16*/
-    b      _jump_vaddr
-    
-GLOBAL_FUNCTION(_jump_vaddr_x3):
-    /*eor    w2, w3, w3, lsl #16*/
-    mov    w0, w3
-    b      _jump_vaddr
-    
-GLOBAL_FUNCTION(_jump_vaddr_x4):
-    /*eor    w2, w4, w4, lsl #16*/
-    mov    w0, w4
-    b      _jump_vaddr
-    
-GLOBAL_FUNCTION(_jump_vaddr_x5):
-    /*eor    w2, w5, w5, lsl #16*/
-    mov    w0, w5
-    b      _jump_vaddr
-    
-GLOBAL_FUNCTION(_jump_vaddr_x6):
-    /*eor    w2, w6, w6, lsl #16*/
-    mov    w0, w6
-    b      _jump_vaddr
-    
-GLOBAL_FUNCTION(_jump_vaddr_x8):
-    /*eor    w2, w8, w8, lsl #16*/
-    mov    w0, w8
-    b      _jump_vaddr
 
-GLOBAL_FUNCTION(_jump_vaddr_x9):
-    /*eor    w2, w9, w9, lsl #16*/
-    mov    w0, w9
-    b      _jump_vaddr
-    
-GLOBAL_FUNCTION(_jump_vaddr_x10):
-    /*eor    w2, w10, w10, lsl #16*/
-    mov    w0, w10
-    b      _jump_vaddr
-    
-GLOBAL_FUNCTION(_jump_vaddr_x11):
-    /*eor    w2, w11, w11, lsl #16*/
-    mov    w0, w11
-    b      _jump_vaddr
-    
-GLOBAL_FUNCTION(_jump_vaddr_x12):
-    /*eor    w2, w12, w12, lsl #16*/
-    mov    w0, w12
-    b      _jump_vaddr
-    
-GLOBAL_FUNCTION(_jump_vaddr_x13):
-    /*eor    w2, w13, w13, lsl #16*/
-    mov    w0, w13
-    b      _jump_vaddr
-    
-GLOBAL_FUNCTION(_jump_vaddr_x14):
-    /*eor    w2, w14, w14, lsl #16*/
-    mov    w0, w14
-    b      _jump_vaddr
-    
-GLOBAL_FUNCTION(_jump_vaddr_x15):
-    /*eor    w2, w15, w15, lsl #16*/
-    mov    w0, w15
-    b      _jump_vaddr
-    
-GLOBAL_FUNCTION(_jump_vaddr_x16):
-    /*eor    w2, w16, w16, lsl #16*/
-    mov    w0, w16
-    b      _jump_vaddr
-    
-GLOBAL_FUNCTION(_jump_vaddr_x17):
-    /*eor    w2, w17, w17, lsl #16*/
-    mov    w0, w17
-    b      _jump_vaddr
-    
-GLOBAL_FUNCTION(_jump_vaddr_x18):
-    /*eor    w2, w18, w18, lsl #16*/
-    mov    w0, w18
-    b      _jump_vaddr
-    
-GLOBAL_FUNCTION(_jump_vaddr_x19):
-    /*eor    w2, w19, w19, lsl #16*/
-    mov    w0, w19
-    b      _jump_vaddr
-    
-GLOBAL_FUNCTION(_jump_vaddr_x20):
-    /*eor    w2, w20, w20, lsl #16*/
-    mov    w0, w20
-    b      _jump_vaddr
-    
-GLOBAL_FUNCTION(_jump_vaddr_x21):
-    /*eor    w2, w21, w21, lsl #16*/
-    mov    w0, w21
-    b      _jump_vaddr
-    
-GLOBAL_FUNCTION(_jump_vaddr_x22):
-    /*eor    w2, w22, w22, lsl #16*/
-    mov    w0, w22
-    b      _jump_vaddr
-    
-GLOBAL_FUNCTION(_jump_vaddr_x23):
-    /*eor    w2, w23, w23, lsl #16*/
-    mov    w0, w23
-    b      _jump_vaddr
-    
-GLOBAL_FUNCTION(_jump_vaddr_x24):
-    /*eor    w2, w24, w24, lsl #16*/
-    mov    w0, w24
-    b      _jump_vaddr
-    
-GLOBAL_FUNCTION(_jump_vaddr_x25):
-    /*eor    w2, w25, w25, lsl #16*/
-    mov    w0, w25
-    b      _jump_vaddr
-    
-GLOBAL_FUNCTION(_jump_vaddr_x26):
-    /*eor    w2, w26, w26, lsl #16*/
-    mov    w0, w26
-    b      _jump_vaddr
-    
-GLOBAL_FUNCTION(_jump_vaddr_x27):
-    /*eor    w2, w27, w27, lsl #16*/
-    mov    w0, w27
-    b      _jump_vaddr
-    
-GLOBAL_FUNCTION(_jump_vaddr_x28):
-    /*eor    w2, w28, w28, lsl #16*/
-    mov    w0, w28
-    b      _jump_vaddr
-    
-GLOBAL_FUNCTION(_jump_vaddr_x7):
-    /*eor    w2, w7, w7, lsl #16*/
-    mov    w0, w7
- 
 GLOBAL_FUNCTION(_jump_vaddr):
     str    w20, [x29, #260 ] /* cycle_count */
     ldr    w18, [x29, #264 ] /* last_count */
@@ -226,7 +83,7 @@ GLOBAL_FUNCTION(_verify_code_vm):
     /* w3 = length */
     mov    w4, #0xC0000000
     cmp    w1, w4
-    b.lt   .verify_code_apple
+    b.lt   _verify_code
     add    x8, x29, #2528 /* memory_map */
     lsr    w4, w1, #12
     add    w5, w1, w3
@@ -248,7 +105,6 @@ GLOBAL_FUNCTION(_verify_code_vm):
     
 /*TOBEDONE: Optimize for 64bit*/
 GLOBAL_FUNCTION(_verify_code):
-.verify_code_apple:
     /* x1 = source */
     /* x2 = copy */
     /* w3 = length */
@@ -385,16 +241,7 @@ GLOBAL_FUNCTION(_jump_syscall):
     add    w0, w3, #0x180
     bl     _get_addr_ht
     br     x0
-    
-GLOBAL_FUNCTION(_indirect_jump_indexed):
-    ldr    x0, [x0, x1, lsl #3]
 
-GLOBAL_FUNCTION(_indirect_jump):
-    ldr    w18, [x29, #264 ] /* last_count */
-    add    w2, w2, w18 
-    str    w2, [x29, #636 ] /* g_cp0_regs+36 */ /* Count */
-    br     x0
-    
 GLOBAL_FUNCTION(_jump_eret):
     ldr    w1, [x29, #648 ] /* g_cp0_regs+48 */ /* Status */
     ldr    w0, [x29, #264 ] /* last_count */
@@ -445,7 +292,7 @@ GLOBAL_FUNCTION(_new_dyna_start):
     adrp   x1, _base_addr@PAGE
     add    x1, x1, _base_addr@PAGEOFF
     ldr    x16, [x1] /* _extra_memory=base_addr */
-    mov    x19, #33554432
+    mov    x19, #0x2000000
     add    x16, x16, x19 /* _dynarec_local */
     add    x16, x16, #152
     mov    w0, #0xa4000000
@@ -608,7 +455,7 @@ GLOBAL_FUNCTION(_read_nomem_new):
     ldr    x4, [x4, x0, lsl #3]
     mov    w1, #8
     tst    x4, x4
-    b.mi   .tlb_exception_apple
+    b.mi   _tlb_exception
     ldr    w0, [x2, x4, lsl #2]
     str    w0, [x29, #296 ] /* readmem_dword */
     ret
@@ -621,7 +468,7 @@ GLOBAL_FUNCTION(_read_nomemb_new):
     ldr    x4, [x4, x0, lsl #3]
     mov    w1, #8
     tst    x4, x4
-    b.mi   .tlb_exception_apple
+    b.mi   _tlb_exception
     eor    w2, w2, #3
     lsl    x4, x4, #2
     ldrb   w0, [x2, x4]
@@ -636,7 +483,7 @@ GLOBAL_FUNCTION(_read_nomemh_new):
     ldr    x4, [x4, x0, lsl #3]
     mov    w1, #8
     tst    x4, x4
-    b.mi   .tlb_exception_apple
+    b.mi   _tlb_exception
     lsl    x4, x4, #2
     eor    w2, w2, #2
     ldrh   w0, [x2, x4]
@@ -651,7 +498,7 @@ GLOBAL_FUNCTION(_read_nomemd_new):
     ldr    x4, [x4, x0, lsl #3]
     mov    w1, #8
     tst    x4, x4
-    b.mi   .tlb_exception_apple
+    b.mi   _tlb_exception
     add    x4, x2, x4, lsl #2
     ldr    w0, [x4]
     ldr    w1, [x4, #4]
@@ -672,7 +519,7 @@ GLOBAL_FUNCTION(_write_nomem_new):
     ldr    x4, [x4, x0, lsl #3]
     mov    w1, #0xc
     tst    x4, #0x4000000000000000
-    b.ne   .tlb_exception_apple
+    b.ne   _tlb_exception
     ldr    w0, [x29, #312 ] /* cpu_word */
     str    w0, [x2, x4, lsl #2]
     ret
@@ -690,7 +537,7 @@ GLOBAL_FUNCTION(_write_nomemb_new):
     ldr    x4, [x4, x0, lsl #3]
     mov    w1, #0xc
     tst    x4, #0x4000000000000000
-    b.ne   .tlb_exception_apple
+    b.ne   _tlb_exception
     lsl    x4, x4, #2
     eor    w2, w2, #3
     ldrb   w0, [x29, #318 ] /* cpu_byte */
@@ -710,7 +557,7 @@ GLOBAL_FUNCTION(_write_nomemh_new):
     ldr    x4, [x4, x0, lsl #3]
     mov    w1, #0xc
     tst    x4, #0x4000000000000000
-    b.ne   .tlb_exception_apple
+    b.ne   _tlb_exception
     lsl    x4, x4, #2
     eor    w2, w2, #2
     ldrh   w0, [x29, #316 ] /* cpu_hword */
@@ -730,7 +577,7 @@ GLOBAL_FUNCTION(_write_nomemd_new):
     ldr    x4, [x4, x0, lsl #3]
     mov    w1, #0xc
     tst    x4, #0x4000000000000000
-    b.ne   .tlb_exception_apple
+    b.ne   _tlb_exception
     lsl    x4, x4, #2
     ldr    w0, [x29, #308 ] /* cpu_dword+4 */
     ldr    w1, [x29, #304 ] /* cpu_dword */
@@ -739,7 +586,6 @@ GLOBAL_FUNCTION(_write_nomemd_new):
     ret
 
 LOCAL_FUNCTION(_tlb_exception):
-.tlb_exception_apple:
     /* w1 = cause */
     /* w2 = address */
     /* w3 = instr addr/flags */

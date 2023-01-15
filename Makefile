@@ -874,7 +874,8 @@ ifeq ($(DEBUG), 1)
 
       LDFLAGS += -DEBUG
    else
-      CFLAGS += -DNEW_DYNAREC_DEBUG -DASSEM_DEBUG=1
+	  LDFLAGS += -fsanitize=address
+      CFLAGS += -fsanitize=address
       CPUOPTS += -O0 -g
    endif
 else

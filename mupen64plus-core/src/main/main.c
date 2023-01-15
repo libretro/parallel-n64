@@ -313,12 +313,8 @@ static void dummy_save(void *user_data)
 /*********************************************************************************************************
 * emulation thread - runs the core
 */
-extern void new_dynarec_create_mapping();
 m64p_error main_init(void)
 {
-#if defined(__APPLE__) && defined(__arm64__)
-   new_dynarec_create_mapping();
-#endif
    size_t i;
    unsigned int disable_extra_mem;
    /* take the r4300 emulator mode from the config file at this point and cache it in a global variable */
@@ -418,7 +414,7 @@ void mupen_main_stop(void)
       return;
 
    DebugMessage(M64MSG_STATUS, "Stopping emulation.");
-   stop = 1;
+   mupencorestop = 1;
 #ifdef DBG
    if(g_DebuggerActive)
       debugger_step();

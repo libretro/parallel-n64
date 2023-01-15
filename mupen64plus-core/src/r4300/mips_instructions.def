@@ -53,13 +53,13 @@ DECLARE_INSTRUCTION(NI)
 {
    DebugMessage(M64MSG_ERROR, "NI() @ 0x%" PRIX32, PCADDR);
    DebugMessage(M64MSG_ERROR, "opcode not implemented: %" PRIX32 ":%" PRIX32, PCADDR, *fast_mem_access(PCADDR));
-   stop=1;
+   mupencorestop=1;
 }
 
 DECLARE_INSTRUCTION(RESERVED)
 {
    DebugMessage(M64MSG_ERROR, "reserved opcode: %" PRIX32 ":%" PRIX32, PCADDR, *fast_mem_access(PCADDR));
-   stop=1;
+   mupencorestop=1;
 }
 
 /* R4300 */
@@ -642,7 +642,7 @@ DECLARE_INSTRUCTION(MTC0)
       if ((g_cp0_regs[CP0_INDEX_REG] & UINT32_C(0x3F)) > UINT32_C(31))
       {
         DebugMessage(M64MSG_ERROR, "MTC0 instruction writing Index register with TLB index > 31");
-        stop=1;
+        mupencorestop=1;
       }
       break;
     case CP0_RANDOM_REG:
@@ -703,7 +703,7 @@ DECLARE_INSTRUCTION(MTC0)
       if (rrt32!=0)
       {
          DebugMessage(M64MSG_ERROR, "MTC0 instruction trying to write Cause register with non-0 value");
-         stop = 1;
+         mupencorestop = 1;
       }
       else g_cp0_regs[CP0_CAUSE_REG] = rrt32;
       break;
@@ -732,7 +732,7 @@ DECLARE_INSTRUCTION(MTC0)
       break;
     default:
       DebugMessage(M64MSG_ERROR, "Unknown MTC0 write: %d", rfs);
-      stop=1;
+      mupencorestop=1;
   }
   ADD_TO_PC(1);
 }
@@ -1002,7 +1002,7 @@ DECLARE_INSTRUCTION(C_SF_D)
    if (isnan(*reg_cop1_double[cffs]) || isnan(*reg_cop1_double[cfft]))
    {
      DebugMessage(M64MSG_ERROR, "Invalid operation exception in C opcode");
-     stop=1;
+     mupencorestop=1;
    }
    c_sf_d(reg_cop1_double[cffs], reg_cop1_double[cfft]);
    ADD_TO_PC(1);
@@ -1013,7 +1013,7 @@ DECLARE_INSTRUCTION(C_NGLE_D)
    if (isnan(*reg_cop1_double[cffs]) || isnan(*reg_cop1_double[cfft]))
    {
      DebugMessage(M64MSG_ERROR, "Invalid operation exception in C opcode");
-     stop=1;
+     mupencorestop=1;
    }
    c_ngle_d(reg_cop1_double[cffs], reg_cop1_double[cfft]);
    ADD_TO_PC(1);
@@ -1024,7 +1024,7 @@ DECLARE_INSTRUCTION(C_SEQ_D)
    if (isnan(*reg_cop1_double[cffs]) || isnan(*reg_cop1_double[cfft]))
    {
      DebugMessage(M64MSG_ERROR, "Invalid operation exception in C opcode");
-     stop=1;
+     mupencorestop=1;
    }
    c_seq_d(reg_cop1_double[cffs], reg_cop1_double[cfft]);
    ADD_TO_PC(1);
@@ -1035,7 +1035,7 @@ DECLARE_INSTRUCTION(C_NGL_D)
    if (isnan(*reg_cop1_double[cffs]) || isnan(*reg_cop1_double[cfft]))
    {
      DebugMessage(M64MSG_ERROR, "Invalid operation exception in C opcode");
-     stop=1;
+     mupencorestop=1;
    }
    c_ngl_d(reg_cop1_double[cffs], reg_cop1_double[cfft]);
    ADD_TO_PC(1);
@@ -1047,7 +1047,7 @@ DECLARE_INSTRUCTION(C_LT_D)
    if (isnan(*reg_cop1_double[cffs]) || isnan(*reg_cop1_double[cfft]))
    {
      DebugMessage(M64MSG_ERROR, "Invalid operation exception in C opcode");
-     stop=1;
+     mupencorestop=1;
    }
    c_lt_d(reg_cop1_double[cffs], reg_cop1_double[cfft]);
    ADD_TO_PC(1);
@@ -1059,7 +1059,7 @@ DECLARE_INSTRUCTION(C_NGE_D)
    if (isnan(*reg_cop1_double[cffs]) || isnan(*reg_cop1_double[cfft]))
    {
      DebugMessage(M64MSG_ERROR, "Invalid operation exception in C opcode");
-     stop=1;
+     mupencorestop=1;
    }
    c_nge_d(reg_cop1_double[cffs], reg_cop1_double[cfft]);
    ADD_TO_PC(1);
@@ -1071,7 +1071,7 @@ DECLARE_INSTRUCTION(C_LE_D)
    if (isnan(*reg_cop1_double[cffs]) || isnan(*reg_cop1_double[cfft]))
    {
      DebugMessage(M64MSG_ERROR, "Invalid operation exception in C opcode");
-     stop=1;
+     mupencorestop=1;
    }
    c_le_d(reg_cop1_double[cffs], reg_cop1_double[cfft]);
    ADD_TO_PC(1);
@@ -1083,7 +1083,7 @@ DECLARE_INSTRUCTION(C_NGT_D)
    if (isnan(*reg_cop1_double[cffs]) || isnan(*reg_cop1_double[cfft]))
    {
      DebugMessage(M64MSG_ERROR, "Invalid operation exception in C opcode");
-     stop=1;
+     mupencorestop=1;
    }
    c_ngt_d(reg_cop1_double[cffs], reg_cop1_double[cfft]);
    ADD_TO_PC(1);
@@ -1304,7 +1304,7 @@ DECLARE_INSTRUCTION(C_SF_S)
    if (isnan(*reg_cop1_simple[cffs]) || isnan(*reg_cop1_simple[cfft]))
    {
      DebugMessage(M64MSG_ERROR, "Invalid operation exception in C opcode");
-     stop=1;
+     mupencorestop=1;
    }
    c_sf_s(reg_cop1_simple[cffs], reg_cop1_simple[cfft]);
    ADD_TO_PC(1);
@@ -1316,7 +1316,7 @@ DECLARE_INSTRUCTION(C_NGLE_S)
    if (isnan(*reg_cop1_simple[cffs]) || isnan(*reg_cop1_simple[cfft]))
    {
      DebugMessage(M64MSG_ERROR, "Invalid operation exception in C opcode");
-     stop=1;
+     mupencorestop=1;
    }
    c_ngle_s(reg_cop1_simple[cffs], reg_cop1_simple[cfft]);
    ADD_TO_PC(1);
@@ -1328,7 +1328,7 @@ DECLARE_INSTRUCTION(C_SEQ_S)
    if (isnan(*reg_cop1_simple[cffs]) || isnan(*reg_cop1_simple[cfft]))
    {
      DebugMessage(M64MSG_ERROR, "Invalid operation exception in C opcode");
-     stop=1;
+     mupencorestop=1;
    }
    c_seq_s(reg_cop1_simple[cffs], reg_cop1_simple[cfft]);
    ADD_TO_PC(1);
@@ -1340,7 +1340,7 @@ DECLARE_INSTRUCTION(C_NGL_S)
    if (isnan(*reg_cop1_simple[cffs]) || isnan(*reg_cop1_simple[cfft]))
    {
      DebugMessage(M64MSG_ERROR, "Invalid operation exception in C opcode");
-     stop=1;
+     mupencorestop=1;
    }
    c_ngl_s(reg_cop1_simple[cffs], reg_cop1_simple[cfft]);
    ADD_TO_PC(1);
@@ -1352,7 +1352,7 @@ DECLARE_INSTRUCTION(C_LT_S)
    if (isnan(*reg_cop1_simple[cffs]) || isnan(*reg_cop1_simple[cfft]))
    {
      DebugMessage(M64MSG_ERROR, "Invalid operation exception in C opcode");
-     stop=1;
+     mupencorestop=1;
    }
    c_lt_s(reg_cop1_simple[cffs], reg_cop1_simple[cfft]);
    ADD_TO_PC(1);
@@ -1364,7 +1364,7 @@ DECLARE_INSTRUCTION(C_NGE_S)
    if (isnan(*reg_cop1_simple[cffs]) || isnan(*reg_cop1_simple[cfft]))
    {
      DebugMessage(M64MSG_ERROR, "Invalid operation exception in C opcode");
-     stop=1;
+     mupencorestop=1;
    }
    c_nge_s(reg_cop1_simple[cffs], reg_cop1_simple[cfft]);
    ADD_TO_PC(1);
@@ -1376,7 +1376,7 @@ DECLARE_INSTRUCTION(C_LE_S)
    if (isnan(*reg_cop1_simple[cffs]) || isnan(*reg_cop1_simple[cfft]))
    {
      DebugMessage(M64MSG_ERROR, "Invalid operation exception in C opcode");
-     stop=1;
+     mupencorestop=1;
    }
    c_le_s(reg_cop1_simple[cffs], reg_cop1_simple[cfft]);
    ADD_TO_PC(1);
@@ -1388,7 +1388,7 @@ DECLARE_INSTRUCTION(C_NGT_S)
    if (isnan(*reg_cop1_simple[cffs]) || isnan(*reg_cop1_simple[cfft]))
    {
      DebugMessage(M64MSG_ERROR, "Invalid operation exception in C opcode");
-     stop=1;
+     mupencorestop=1;
    }
    c_ngt_s(reg_cop1_simple[cffs], reg_cop1_simple[cfft]);
    ADD_TO_PC(1);
@@ -1765,7 +1765,7 @@ DECLARE_INSTRUCTION(TEQ)
    if (rrs == rrt)
    {
      DebugMessage(M64MSG_ERROR, "trap exception in TEQ");
-     stop=1;
+     mupencorestop=1;
    }
    ADD_TO_PC(1);
 }
@@ -2032,7 +2032,7 @@ DECLARE_INSTRUCTION(ERET)
    if (g_cp0_regs[CP0_STATUS_REG] & CP0_STATUS_ERL)
    {
      DebugMessage(M64MSG_ERROR, "error in ERET");
-     stop=1;
+     mupencorestop=1;
    }
    else
    {

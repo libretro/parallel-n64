@@ -92,7 +92,7 @@ const uint16_t floor_mode = 0x73F;
 
 void dyna_jump(void)
 {
-    if (stop == 1)
+    if (mupencorestop == 1)
     {
         dyna_stop();
         return;

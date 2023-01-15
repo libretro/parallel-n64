@@ -63,6 +63,7 @@
 #include "arm/assem_arm.h"
 #elif NEW_DYNAREC == NEW_DYNAREC_ARM64
 #include "arm64/apple_jit_protect.h"
+#include "arm64/apple_memory_layout.h"
 #include "arm64/assem_arm64.h"
 #else
 #error Unsupported dynarec architecture
@@ -106,7 +107,12 @@ struct ll_entry
   struct ll_entry *next;
 };
 
+#ifdef __APPLE__
+recompiler_memory_layout_t* base_addr = NULL;
+#else
 void *base_addr = NULL;
+#endif
+
 u_char *out;
 ALIGN(16, uintptr_t hash_table[65536][4]);
 struct ll_entry *jump_in[4096];
@@ -7751,6 +7757,9 @@ static void disassemble_inst(int i)
 
 void new_dynarec_create_mapping(void)
 {
+  if (base_addr)
+    return;
+
   // For Mac ARM (and it can be ported to other ARM64 platforms), we want a special layout
   //  <-  0x2000000  -> |
   // -------------------|-------------------|------------------- 
@@ -7786,7 +7795,7 @@ void new_dynarec_create_mapping(void)
     }
 
     // We have everything setup now, can use base_addr
-    base_addr = addr + (1<<TARGET_SIZE_2);
+    base_addr = (recompiler_memory_layout_t*) (addr + (1<<TARGET_SIZE_2));
     trampoline_init(base_addr);
     // TODO DK: debug without this break for large addresses
     break;
@@ -7899,6 +7908,10 @@ void new_dynarec_cleanup(void)
   profiler_cleanup();
 #endif
   int n;
+
+#if defined(__APPLE__) && defined(__arm64__)
+  // We are not doing anything, too unsafe
+#else
 #if defined(WIN32)
   VirtualFree(base_addr, 0, MEM_RELEASE);
 #else
@@ -7907,6 +7920,8 @@ void new_dynarec_cleanup(void)
   if (munmap (base_addr + (1<<TARGET_SIZE_2), 1<<TARGET_SIZE_2) < 0) {DebugMessage(M64MSG_ERROR, "munmap() failed");}
 #endif
 #endif
+#endif
+
   for(n=0;n<4096;n++) ll_clear(jump_in+n);
   for(n=0;n<4096;n++) ll_clear(jump_out+n);
   for(n=0;n<4096;n++) ll_clear(jump_dirty+n);
@@ -7967,7 +7982,8 @@ static int new_recompile_block_impl(int addr)
     }
     else {
       assem_debug("Compile at unmapped memory address: %x ", (int)addr);
-      //assem_debug("start: %x next: %x",memory_map[start>>12],memory_map[(start+4096)>>12]);
+      assem_debug("start: %x next: %x",memory_map[start>>12],memory_map[(start+4096)>>12]);
+      __builtin_debugtrap();
       return 1; // Caller will invoke exception handler
     }
     //DebugMessage(M64MSG_VERBOSE, "source= %x",(intptr_t)source);
