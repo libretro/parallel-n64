@@ -3655,10 +3655,10 @@ static void c1ls_assemble(int i,struct regstat *i_regs)
     #endif
   }else{
     if (opcode[i]==0x31||opcode[i]==0x35) { // LWC1/LDC1
-      do_tlb_r_branch(map,c,constmap[i][s]+offset,&jaddr2);
+      do_tlb_r_branch(map,c,constmap[i][s >= 0 ? s : 0]+offset,&jaddr2);
     }
     if (opcode[i]==0x39||opcode[i]==0x3D) { // SWC1/SDC1
-      do_tlb_w_branch(map,c,constmap[i][s]+offset,&jaddr2);
+      do_tlb_w_branch(map,c,constmap[i][s >= 0 ? s : 0]+offset,&jaddr2);
     }
   }
   if (opcode[i]==0x31) { // LWC1

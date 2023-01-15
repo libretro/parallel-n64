@@ -292,8 +292,8 @@ GLOBAL_FUNCTION(_new_dyna_start):
     adrp   x1, _base_addr@PAGE
     add    x1, x1, _base_addr@PAGEOFF
     ldr    x16, [x1] /* _extra_memory=base_addr */
-    mov    x19, #0x2000000
-    add    x16, x16, x19 /* _dynarec_local */
+    mov    x17, #0x2000000
+    add    x16, x16, x17 /* _dynarec_local */
     add    x16, x16, #152
     mov    w0, #0xa4000000
     stp    x19,x20,[x16,#0]

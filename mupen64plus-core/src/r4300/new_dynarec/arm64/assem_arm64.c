@@ -4591,8 +4591,8 @@ static void load_assemble_arm64(int i,struct regstat *i_regs)
     cache=get_reg(i_regs->regmap,MMREG);
     assert(map>=0);
     reglist&=~(1<<map);
-    map=do_tlb_r(addr,tl,map,cache,x,-1,-1,c,constmap[i][s]+offset);
-    do_tlb_r_branch(map,c,constmap[i][s]+offset,&jaddr);
+    map=do_tlb_r(addr,tl,map,cache,x,-1,-1,c,constmap[i][s >= 0 ? s : 0]+offset);
+    do_tlb_r_branch(map,c,constmap[i][s >= 0 ? s : 0]+offset,&jaddr);
   }
   #ifdef RAM_OFFSET
   if(map<0) {
@@ -5018,8 +5018,8 @@ static void store_assemble_arm64(int i,struct regstat *i_regs)
     cache=get_reg(i_regs->regmap,MMREG);
     assert(map>=0);
     reglist&=~(1<<map);
-    map=do_tlb_w(addr,temp,map,cache,x,c,constmap[i][s]+offset);
-    do_tlb_w_branch(map,c,constmap[i][s]+offset,&jaddr);
+    map=do_tlb_w(addr,temp,map,cache,x,c,constmap[i][s >= 0 ? s : 0]+offset);
+    do_tlb_w_branch(map,c,constmap[i][s >= 0 ? s : 0]+offset,&jaddr);
   }
   #ifdef RAM_OFFSET
   if(map<0) {
@@ -5641,10 +5641,10 @@ static void c1ls_assemble_arm64(int i,struct regstat *i_regs)
     assert(map>=0);
     reglist&=~(1<<map);
     if (opcode[i]==0x31||opcode[i]==0x35) { // LWC1/LDC1
-      map=do_tlb_r(offset||c||s<0?ar:s,ar,map,cache,0,-1,-1,c,constmap[i][s]+offset);
+      map=do_tlb_r(offset||c||s<0?ar:s,ar,map,cache,0,-1,-1,c,constmap[i][s >= 0 ? s : 0]+offset);
     }
     if (opcode[i]==0x39||opcode[i]==0x3D) { // SWC1/SDC1
-      map=do_tlb_w(offset||c||s<0?ar:s,ar,map,cache,0,c,constmap[i][s]+offset);
+      map=do_tlb_w(offset||c||s<0?ar:s,ar,map,cache,0,c,constmap[i][s >= 0 ? s : 0]+offset);
     }
   }
   #ifdef RAM_OFFSET
@@ -5683,10 +5683,10 @@ static void c1ls_assemble_arm64(int i,struct regstat *i_regs)
     #endif
   }else{
     if (opcode[i]==0x31||opcode[i]==0x35) { // LWC1/LDC1
-      do_tlb_r_branch(map,c,constmap[i][s]+offset,&jaddr2);
+      do_tlb_r_branch(map,c,constmap[i][s >= 0 ? s : 0]+offset,&jaddr2);
     }
     if (opcode[i]==0x39||opcode[i]==0x3D) { // SWC1/SDC1
-      do_tlb_w_branch(map,c,constmap[i][s]+offset,&jaddr2);
+      do_tlb_w_branch(map,c,constmap[i][s >= 0 ? s : 0]+offset,&jaddr2);
     }
   }
   if (opcode[i]==0x31) { // LWC1
