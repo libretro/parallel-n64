@@ -297,9 +297,10 @@ else ifneq (,$(findstring osx,$(platform)))
 
    ifeq ($(CROSS_COMPILE),1)
 		ifneq (,$(findstring arm,$(LIBRETRO_APPLE_PLATFORM)))
-			CFLAGS +=   -DNO_ASM -DDONT_WANT_ARM_OPTIMIZATIONS -D__NEON_OPT
-			CPPFLAGS += -DNO_ASM -DDONT_WANT_ARM_OPTIMIZATIONS -D__NEON_OPT
-			CXXFLAGS += -DNO_ASM -DDONT_WANT_ARM_OPTIMIZATIONS -D__NEON_OPT
+			CFLAGS +=   -DNO_ASM -DDONT_WANT_ARM_OPTIMIZATIONS -D__NEON_OPT -DARM_FIX
+			CPPFLAGS += -DNO_ASM -DDONT_WANT_ARM_OPTIMIZATIONS -D__NEON_OPT -DARM_FIX
+			CXXFLAGS += -DNO_ASM -DDONT_WANT_ARM_OPTIMIZATIONS -D__NEON_OPT -DARM_FIX
+			CPUFLAGS += -fno-stack-protector -fomit-frame-pointer
 			HAVE_NEON=1
 			MINVERSION := -mmacosx-version-min=11.0
 		endif
@@ -314,7 +315,7 @@ else ifneq (,$(findstring osx,$(platform)))
 	CFLAGS  += $(ARCHFLAGS)
 	CXXFLAGS  += $(ARCHFLAGS)
 	LDFLAGS += $(ARCHFLAGS)
-
+	CC_AS = perl ./tools/gas-preprocessor-new.pl -arch arm64 -- $(CC)
 # iOS
 else ifneq (,$(findstring ios,$(platform)))
    ifeq ($(IOSSDK),)

@@ -28,3 +28,9 @@ Release/
 **/*.vcxproj
 **/*.vcxproj.filters
 .DS_Store
+
+
+.vscode
+
+new_dynarec_debug.txt
+new_dynarec_disasm.txt

@@ -44,35 +44,6 @@
 #define JUMP_TABLE_SIZE (0)
 
 void jump_vaddr(void);
-void jump_vaddr_x0(void);
-void jump_vaddr_x1(void);
-void jump_vaddr_x2(void);
-void jump_vaddr_x3(void);
-void jump_vaddr_x4(void);
-void jump_vaddr_x5(void);
-void jump_vaddr_x6(void);
-void jump_vaddr_x7(void);
-void jump_vaddr_x8(void);
-void jump_vaddr_x9(void);
-void jump_vaddr_x10(void);
-void jump_vaddr_x11(void);
-void jump_vaddr_x12(void);
-void jump_vaddr_x13(void);
-void jump_vaddr_x14(void);
-void jump_vaddr_x15(void);
-void jump_vaddr_x16(void);
-void jump_vaddr_x17(void);
-void jump_vaddr_x18(void);
-void jump_vaddr_x19(void);
-void jump_vaddr_x20(void);
-void jump_vaddr_x21(void);
-void jump_vaddr_x22(void);
-void jump_vaddr_x23(void);
-void jump_vaddr_x24(void);
-void jump_vaddr_x25(void);
-void jump_vaddr_x26(void);
-void jump_vaddr_x27(void);
-void jump_vaddr_x28(void);
 void invalidate_addr_x0(void);
 void invalidate_addr_x1(void);
 void invalidate_addr_x2(void);
@@ -102,8 +73,6 @@ void invalidate_addr_x25(void);
 void invalidate_addr_x26(void);
 void invalidate_addr_x27(void);
 void invalidate_addr_x28(void);
-void indirect_jump_indexed(void);
-void indirect_jump(void);
 void verify_code(void);
 void verify_code_vm(void);
 void verify_code_ds(void);
@@ -127,6 +96,21 @@ void write_rdramh_new(void);
 void write_rdramd_new(void);
 void breakpoint(void);
 
+#ifdef __APPLE__
+#include "apple_memory_layout.h"
+#define invc_ptr          (RECOMPILER_MEMORY->rml_invc_ptr)
+#define cycle_count       (RECOMPILER_MEMORY->rml_cycle_count)
+#define last_count        (RECOMPILER_MEMORY->rml_last_count)
+#define branch_target     (RECOMPILER_MEMORY->rml_branch_target)
+#define ram_offset        (RECOMPILER_MEMORY->rml_ram_offset)
+#define readmem_dword     (RECOMPILER_MEMORY->rml_readmem_dword)
+#define fake_pc           (RECOMPILER_MEMORY->rml_fake_pc)
+#define dynarec_local     (RECOMPILER_MEMORY->rml_dynarec_local)
+#define memory_map        (RECOMPILER_MEMORY->rml_memory_map)
+#define mini_ht           (RECOMPILER_MEMORY->rml_mini_ht)
+#define rounding_modes    (RECOMPILER_MEMORY->rml_rounding_modes)
+#define restore_candidate (RECOMPILER_MEMORY->rml_restore_candidate)
+#else
 extern char *invc_ptr;
 extern char extra_memory[33554432];
 extern int cycle_count;
@@ -140,5 +124,6 @@ extern uint64_t memory_map[1048576];
 extern uint64_t mini_ht[32][2];
 extern u_int rounding_modes[4];
 extern u_char restore_candidate[512];
+#endif
 
 #endif /* M64P_R4300_ASSEM_ARM64_H */

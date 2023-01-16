@@ -28,15 +28,28 @@
 #include "r4300_core.h"
 #include "recomp.h"
 
+#if !defined(__APPLE__) || !defined(__arm64__)
 extern struct precomp_instr *PC;
-extern int stop;
-extern unsigned int llbit;
 extern int64_t reg[32], hi, lo;
+extern uint32_t next_interrupt;
+extern int stop;
+#define mupencorePC PC
+#define mupencorereg reg
+#define mupencorestop stop
+#else
+#include "new_dynarec/arm64/apple_memory_layout.h"
+#define mupencorePC    (RECOMPILER_MEMORY->rml_PC)
+#define mupencorereg   (RECOMPILER_MEMORY->rml_reg)
+#define hi             (RECOMPILER_MEMORY->rml_hi)
+#define next_interrupt (RECOMPILER_MEMORY->rml_next_interrupt)
+#define lo             (RECOMPILER_MEMORY->rml_lo)
+#define mupencorestop  (RECOMPILER_MEMORY->rml_stop)
+#endif
+extern unsigned int llbit;
 extern long long int local_rs;
 extern uint32_t skip_jump;
 extern unsigned int dyna_interp;
 extern unsigned int r4300emu;
-extern uint32_t next_interrupt;
 extern uint32_t last_addr;
 #define COUNT_PER_OP_DEFAULT 2
 extern unsigned int count_per_op;

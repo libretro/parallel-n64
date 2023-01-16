@@ -26,16 +26,20 @@
 
 #include "new_dynarec/new_dynarec.h"
 
+#if !defined(__APPLE__) || !defined(__arm64__)
 #if NEW_DYNAREC < NEW_DYNAREC_ARM
 float *reg_cop1_simple[32];
 double *reg_cop1_double[32];
 uint32_t FCR0, FCR31;
+#endif
 #else
 /* ARM backend requires a different memory layout
  * and therefore manually allocates these variables */
-extern float *reg_cop1_simple[32];
-extern double *reg_cop1_double[32];
-extern uint32_t FCR0, FCR31;
+#include "new_dynarec/arm64/apple_memory_layout.h"
+#define reg_cop1_simple (RECOMPILER_MEMORY->rml_reg_cop1_simple)
+#define reg_cop1_double (RECOMPILER_MEMORY->rml_reg_cop1_double)
+#define FCR0            (RECOMPILER_MEMORY->rml_FCR0)
+#define FCR31           (RECOMPILER_MEMORY->rml_FCR31)
 #endif
 
 int64_t reg_cop1_fgr_64[32];
@@ -50,9 +54,9 @@ uint32_t rounding_mode = UINT32_C(0x33F);
 /* XXX: This shouldn't really be here, but rounding_mode is used by the
  * Hacktarux JIT and updated by CTC1 and saved states. Figure out a better
  * place for this. */
-void update_x86_rounding_mode(uint32_t FCR31)
+void update_x86_rounding_mode(uint32_t _FCR31)
 {
-   switch (FCR31 & 3)
+   switch (_FCR31 & 3)
    {
       case 0: /* Round to nearest, or to even if equidistant */
          rounding_mode = UINT32_C(0x33F);

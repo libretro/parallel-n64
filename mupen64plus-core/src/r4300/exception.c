@@ -53,11 +53,11 @@ void TLB_refill_exception(uint32_t address, int w)
       if (r4300emu != CORE_PURE_INTERPRETER) 
       {
          if (w!=2)
-            g_cp0_regs[CP0_EPC_REG] = PC->addr;
+            g_cp0_regs[CP0_EPC_REG] = mupencorePC->addr;
          else
             g_cp0_regs[CP0_EPC_REG] = address;
       }
-      else g_cp0_regs[CP0_EPC_REG] = PC->addr;
+      else g_cp0_regs[CP0_EPC_REG] = mupencorePC->addr;
 
       g_cp0_regs[CP0_CAUSE_REG] &= ~CP0_CAUSE_BD;
       g_cp0_regs[CP0_STATUS_REG] |= CP0_STATUS_EXL;
@@ -93,7 +93,7 @@ void TLB_refill_exception(uint32_t address, int w)
    }
    if(w != 2) g_cp0_regs[CP0_EPC_REG]-=4;
 
-   last_addr = PC->addr;
+   last_addr = mupencorePC->addr;
 
    if (r4300emu == CORE_DYNAREC) 
    {
@@ -106,7 +106,7 @@ void TLB_refill_exception(uint32_t address, int w)
       dyna_interp = 0;
       if (g_dev.r4300.delay_slot)
       {
-         skip_jump = PC->addr;
+         skip_jump = mupencorePC->addr;
          next_interrupt = 0;
       }
    }
@@ -117,7 +117,7 @@ void exception_general(void)
    cp0_update_count();
    g_cp0_regs[CP0_STATUS_REG] |= CP0_STATUS_EXL;
 
-   g_cp0_regs[CP0_EPC_REG] = PC->addr;
+   g_cp0_regs[CP0_EPC_REG] = mupencorePC->addr;
 
    if(g_dev.r4300.delay_slot==1 || g_dev.r4300.delay_slot==3)
    {
@@ -129,7 +129,7 @@ void exception_general(void)
       g_cp0_regs[CP0_CAUSE_REG] &= ~CP0_CAUSE_BD;
    }
    generic_jump_to(UINT32_C(0x80000180));
-   last_addr = PC->addr;
+   last_addr = mupencorePC->addr;
    if (r4300emu == CORE_DYNAREC)
    {
       dyna_jump();
@@ -140,7 +140,7 @@ void exception_general(void)
       dyna_interp = 0;
       if (g_dev.r4300.delay_slot)
       {
-         skip_jump = PC->addr;
+         skip_jump = mupencorePC->addr;
          next_interrupt = 0;
       }
    }

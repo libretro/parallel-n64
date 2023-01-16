@@ -33,19 +33,30 @@
 #define AI_STATUS_FIFO_FULL	0x80000000		/* Bit 31: full */
 #define AI_STATUS_DMA_BUSY	   0x40000000		/* Bit 30: busy */
 
-#define read_word_in_memory() readmem[address>>16]()
-#define read_byte_in_memory() readmemb[address>>16]()
-#define read_hword_in_memory() readmemh[address>>16]()
-#define read_dword_in_memory() readmemd[address>>16]()
-#define write_word_in_memory() writemem[address>>16]()
-#define write_byte_in_memory() writememb[address >>16]()
-#define write_hword_in_memory() writememh[address >>16]()
-#define write_dword_in_memory() writememd[address >>16]()
+#define read_word_in_memory() readmem[mupencoreaddress>>16]()
+#define read_byte_in_memory() readmemb[mupencoreaddress>>16]()
+#define read_hword_in_memory() readmemh[mupencoreaddress>>16]()
+#define read_dword_in_memory() readmemd[mupencoreaddress>>16]()
+#define write_word_in_memory() writemem[mupencoreaddress>>16]()
+#define write_byte_in_memory() writememb[mupencoreaddress >>16]()
+#define write_hword_in_memory() writememh[mupencoreaddress >>16]()
+#define write_dword_in_memory() writememd[mupencoreaddress >>16]()
 
+#if !defined(__APPLE__) || !defined(__arm64__)
 extern uint32_t address, cpu_word;
 extern uint8_t cpu_byte;
 extern uint16_t cpu_hword;
-extern uint64_t cpu_dword, *rdword;
+extern uint64_t cpu_dword;
+#define mupencoreaddress address
+#else
+#include "../r4300/new_dynarec/arm64/apple_memory_layout.h"
+#define mupencoreaddress (RECOMPILER_MEMORY->rml_address)
+#define cpu_word         (RECOMPILER_MEMORY->rml_cpu_word)
+#define cpu_byte         (RECOMPILER_MEMORY->rml_cpu_byte)
+#define cpu_hword        (RECOMPILER_MEMORY->rml_cpu_hword)
+#define cpu_dword        (RECOMPILER_MEMORY->rml_cpu_dword)
+#endif
+extern uint64_t *rdword;
 
 extern void (*readmem[0x10000])(void);
 extern void (*readmemb[0x10000])(void);

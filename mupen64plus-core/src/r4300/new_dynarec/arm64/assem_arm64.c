@@ -18,6 +18,9 @@
  *   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.          *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
+#include "../clear_cache.h"
+#include "trampoline_arm64.h"
+
 typedef enum {
   EQ,
   NE,
@@ -43,36 +46,36 @@ static void invalidate_addr(u_int addr);
 
 static unsigned int needs_clear_cache[1<<(TARGET_SIZE_2-17)];
 
-static const uintptr_t jump_vaddr_reg[32] = {
-  (intptr_t)jump_vaddr_x0,
-  (intptr_t)jump_vaddr_x1,
-  (intptr_t)jump_vaddr_x2,
-  (intptr_t)jump_vaddr_x3,
-  (intptr_t)jump_vaddr_x4,
-  (intptr_t)jump_vaddr_x5,
-  (intptr_t)jump_vaddr_x6,
-  (intptr_t)jump_vaddr_x7,
-  (intptr_t)jump_vaddr_x8,
-  (intptr_t)jump_vaddr_x9,
-  (intptr_t)jump_vaddr_x10,
-  (intptr_t)jump_vaddr_x11,
-  (intptr_t)jump_vaddr_x12,
-  (intptr_t)jump_vaddr_x13,
-  (intptr_t)jump_vaddr_x14,
-  (intptr_t)jump_vaddr_x15,
-  (intptr_t)jump_vaddr_x16,
-  (intptr_t)jump_vaddr_x17,
-  (intptr_t)jump_vaddr_x18,
-  (intptr_t)jump_vaddr_x19,
-  (intptr_t)jump_vaddr_x20,
-  (intptr_t)jump_vaddr_x21,
-  (intptr_t)jump_vaddr_x22,
-  (intptr_t)jump_vaddr_x23,
-  (intptr_t)jump_vaddr_x24,
-  (intptr_t)jump_vaddr_x25,
-  (intptr_t)jump_vaddr_x26,
-  (intptr_t)jump_vaddr_x27,
-  (intptr_t)jump_vaddr_x28,
+static uintptr_t jump_vaddr_reg[32] = {
+  (intptr_t)0 /*x0*/,
+  (intptr_t)0 /*x1*/,
+  (intptr_t)0 /*x2*/,
+  (intptr_t)0 /*x3*/,
+  (intptr_t)0 /*x4*/,
+  (intptr_t)0 /*x5*/,
+  (intptr_t)0 /*x6*/,
+  (intptr_t)0 /*x7*/,
+  (intptr_t)0 /*x8*/,
+  (intptr_t)0 /*x9*/,
+  (intptr_t)0 /*x10*/,
+  (intptr_t)0 /*x11*/,
+  (intptr_t)0 /*x12*/,
+  (intptr_t)0 /*x13*/,
+  (intptr_t)0 /*x14*/,
+  (intptr_t)0 /*x15*/,
+  (intptr_t)0 /*x16*/,
+  (intptr_t)0 /*x17*/,
+  (intptr_t)0 /*x18*/,
+  (intptr_t)0 /*x19*/,
+  (intptr_t)0 /*x20*/,
+  (intptr_t)0 /*x21*/,
+  (intptr_t)0 /*x22*/,
+  (intptr_t)0 /*x23*/,
+  (intptr_t)0 /*x24*/,
+  (intptr_t)0 /*x25*/,
+  (intptr_t)0 /*x26*/,
+  (intptr_t)0 /*x27*/,
+  (intptr_t)0 /*x28*/,
   (intptr_t)breakpoint,
   (intptr_t)breakpoint,
   (intptr_t)breakpoint};
@@ -111,6 +114,13 @@ static const uintptr_t invalidate_addr_reg[32] = {
   (intptr_t)breakpoint,
   (intptr_t)breakpoint};
 
+static struct
+{
+  intptr_t indexed;
+  intptr_t regular;
+} indirect_jumps = { 0 };
+
+#if 0
 static uintptr_t jump_table_symbols[] = {
   (intptr_t)invalidate_addr,
   (intptr_t)jump_vaddr,
@@ -268,6 +278,7 @@ static uintptr_t jump_table_symbols[] = {
   (intptr_t)mov_d,
   (intptr_t)neg_d
 };
+#endif
 
 /* Linker */
 
@@ -299,7 +310,20 @@ static void set_jump_target(intptr_t addr,uintptr_t target)
     assert(0); /*Should not happen*/
 }
 
+static void *dynamic_linker_impl(void * src, u_int vaddr);
 static void *dynamic_linker(void * src, u_int vaddr)
+{
+#if defined(__APPLE__) && defined(__arm64__)
+  apple_jit_wx_unprotect_enter();
+  void* r = dynamic_linker_impl(src, vaddr);
+  apple_jit_wx_unprotect_exit();
+  return r;
+#else
+  return dynamic_linker_impl(src, vaddr);
+#endif
+}
+
+static void *dynamic_linker_impl(void * src, u_int vaddr)
 {
   u_int page=(vaddr^0x80000000)>>12;
   u_int vpage=page;
@@ -325,7 +349,7 @@ static void *dynamic_linker(void * src, u_int vaddr)
         //assert((ptr2[4]&0xfffffc1f)==0xd61f0000); //br
         add_link(vaddr, ptr2);
         set_jump_target((intptr_t)ptr, (uintptr_t)head->addr);
-        __clear_cache((void*)ptr, (void*)((uintptr_t)ptr+4));
+        clear_instruction_cache((void*)ptr, (void*)((uintptr_t)ptr+4));
       }
       #ifdef NEW_DYNAREC_DEBUG
       print_debug_info(vaddr);
@@ -400,7 +424,20 @@ static void *dynamic_linker(void * src, u_int vaddr)
   return get_addr_ht(0x80000000);
 }
 
+static void *dynamic_linker_ds_impl(void * src, u_int vaddr);
 static void *dynamic_linker_ds(void * src, u_int vaddr)
+{
+#if defined(__APPLE__) && defined(__arm64__)
+  apple_jit_wx_unprotect_enter();
+  void* r = dynamic_linker_ds_impl(src, vaddr);
+  apple_jit_wx_unprotect_exit();
+  return r;
+#else
+  return dynamic_linker_ds_impl(src, vaddr);
+#endif
+}
+
+static void *dynamic_linker_ds_impl(void * src, u_int vaddr)
 {
   u_int page=(vaddr^0x80000000)>>12;
   u_int vpage=page;
@@ -426,7 +463,7 @@ static void *dynamic_linker_ds(void * src, u_int vaddr)
         //assert((ptr2[4]&0xfffffc1f)==0xd61f0000); //br
         add_link(vaddr, ptr2);
         set_jump_target((intptr_t)ptr, (uintptr_t)head->addr);
-        __clear_cache((void*)ptr, (void*)((uintptr_t)ptr+4));
+        clear_instruction_cache((void*)ptr, (void*)((uintptr_t)ptr+4));
       }
       #ifdef NEW_DYNAREC_DEBUG
       print_debug_info(vaddr);
@@ -590,7 +627,7 @@ static int verify_dirty(void *addr)
   if((*ptr&0xfc000000)!=0x94000000) ptr++;
   assert((*ptr&0xfc000000)==0x94000000); // bl instruction
 
-  uintptr_t verifier=((signed int)(*ptr<<6)>>4)+(intptr_t)ptr;
+  uintptr_t verifier=(uintptr_t) trampoline_convert_trampoline_to_func((void*)(((signed int)(*ptr<<6)>>4)+(intptr_t)ptr));
   assert(verifier==(uintptr_t)verify_code||verifier==(uintptr_t)verify_code_vm||verifier==(uintptr_t)verify_code_ds);
 
   if(verifier==(uintptr_t)verify_code_vm||verifier==(uintptr_t)verify_code_ds) {
@@ -661,7 +698,7 @@ static void get_bounds(intptr_t addr,uintptr_t *start,uintptr_t *end)
   if((*ptr&0xfc000000)!=0x94000000) ptr++;
   assert((*ptr&0xfc000000)==0x94000000); // bl instruction
 
-  uintptr_t verifier=((signed int)(*ptr<<6)>>4)+(intptr_t)ptr;
+  uintptr_t verifier=(uintptr_t) trampoline_convert_trampoline_to_func((void*)(((signed int)(*ptr<<6)>>4)+(intptr_t)ptr));
   assert(verifier==(uintptr_t)verify_code||verifier==(uintptr_t)verify_code_vm||verifier==(uintptr_t)verify_code_ds);
 
   if(verifier==(uintptr_t)verify_code_vm||verifier==(uintptr_t)verify_code_ds) {
@@ -1644,7 +1681,7 @@ static void emit_loadreg(int r, int hr)
     output_w32(0xf9400000|((offset>>3)<<10)|(FP<<5)|hr);
   }
   else {
-    intptr_t addr=((intptr_t)reg)+((r&63)<<3)+((r&64)>>4);
+    intptr_t addr=((intptr_t)mupencorereg)+((r&63)<<3)+((r&64)>>4);
     if((r&63)==HIREG) addr=(intptr_t)&hi+((r&64)>>4);
     if((r&63)==LOREG) addr=(intptr_t)&lo+((r&64)>>4);
     if(r==CCREG) addr=(intptr_t)&cycle_count;
@@ -1661,7 +1698,7 @@ static void emit_loadreg(int r, int hr)
 static void emit_storereg(int r, int hr)
 {
   assert(hr!=29);
-  intptr_t addr=((intptr_t)reg)+((r&63)<<3)+((r&64)>>4);
+  intptr_t addr=((intptr_t)mupencorereg)+((r&63)<<3)+((r&64)>>4);
   if((r&63)==HIREG) addr=(intptr_t)&hi+((r&64)>>4);
   if((r&63)==LOREG) addr=(intptr_t)&lo+((r&64)>>4);
   if(r==CCREG) addr=(intptr_t)&cycle_count;
@@ -1677,7 +1714,7 @@ static void emit_storereg64(int r, int hr)
 {
   assert(hr!=29);
   assert(r<FSREG);
-  intptr_t addr=(intptr_t)&reg[r];
+  intptr_t addr=(intptr_t)&mupencorereg[r];
   if(r==HIREG) addr=(intptr_t)&hi;
   if(r==LOREG) addr=(intptr_t)&lo;
   u_int offset = addr-(intptr_t)&dynarec_local;
@@ -2427,14 +2464,26 @@ static void emit_set_if_carry64_32(int u1, int l1, int u2, int l2, int rt)
 static void emit_call(intptr_t a)
 {
   assem_debug("bl %x (%x+%x)",a,(intptr_t)out,a-(intptr_t)out);
-  u_int offset=genjmp(a);
+  intptr_t offset=a-(intptr_t)out;
+  if (a && !(offset>=-134217728&&offset<134217728))
+  {
+    a = (intptr_t) trampoline_jump_alloc_or_find((void*) a);
+  }
+  assem_debug("bl %x (%x+%x)",a,(intptr_t)out,a-(intptr_t)out);
+  offset=genjmp(a);
   output_w32(0x94000000|offset);
 }
 
 static void emit_jmp(intptr_t a)
 {
   assem_debug("b %x (%x+%x)",a,(intptr_t)out,a-(intptr_t)out);
-  u_int offset=genjmp(a);
+  intptr_t offset=a-(intptr_t)out;
+  if (a && !(offset>=-134217728&&offset<134217728))
+  {
+    a = (intptr_t) trampoline_jump_alloc_or_find((void*) a);
+  }
+  assem_debug("b %x (%x+%x)",a,(intptr_t)out,a-(intptr_t)out);
+  offset=genjmp(a);
   output_w32(0x14000000|offset);
 }
 
@@ -3461,13 +3510,15 @@ static void emit_read_ptr(intptr_t addr, int rt)
     output_w32(0x10000000|((u_int)offset&0x3)<<29|(((u_int)offset>>2)&0x7ffff)<<5|rt);
   }
   else{
-    offset=((addr&(intptr_t)~0xfff)-((intptr_t)out&(intptr_t)~0xfff))>>12;
-    assert((((intptr_t)out&(intptr_t)~0xfff)+(offset<<12))==(addr&(intptr_t)~0xfff));
-    assem_debug("adrp %d,#%d",regname64[rt],offset);
-    output_w32(0x90000000|((u_int)offset&0x3)<<29|(((u_int)offset>>2)&0x7ffff)<<5|rt);
+    intptr_t offset64 = ((addr&(intptr_t)~0xfff)-((intptr_t)out&(intptr_t)~0xfff))>>12;
+    assert((((intptr_t)out&(intptr_t)~0xfff)+(offset64<<12))==(addr&(intptr_t)~0xfff));
+    assem_debug("adrp %d,#%d",regname64[rt],offset64);
+    output_w32(0x90000000|((u_int)offset64&0x3)<<29|(((u_int)offset64>>2)&0x7ffff)<<5|rt);
     if((addr&(intptr_t)0xfff)!=0)
+    {
       assem_debug("add %s, %s, #%d",regname64[rt],regname64[rt],addr&0xfff);
       output_w32(0x91000000|(addr&0xfff)<<10|rt<<5|rt);
+    }
   }
 }
 
@@ -3882,7 +3933,7 @@ static void do_readstub(int n)
     ftable=(intptr_t)readmem;
   if(type==LOADD_STUB)
     ftable=(intptr_t)readmemd;
-  emit_writeword(rs,(intptr_t)&address);
+  emit_writeword(rs,(intptr_t)&mupencoreaddress);
   //emit_pusha();
   save_regs(reglist);
   ds=i_regs!=&regs[i];
@@ -3903,7 +3954,7 @@ static void do_readstub(int n)
   //emit_add(cc,temp,cc);
   //emit_writeword(cc,(int)&g_cp0_regs[CP0_COUNT_REG]);
   //emit_mov(15,14);
-  emit_call((intptr_t)&indirect_jump_indexed);
+  emit_call(indirect_jumps.indexed);
   //emit_callreg(rs);
   //emit_readword_dualindexedx4(rs,HOST_TEMPREG,15);
   // We really shouldn't need to update the count here,
@@ -3956,7 +4007,7 @@ static void inline_readstub(int type, int i, u_int addr, signed char regmap[], i
     ftable=(intptr_t)readmem;
   if(type==LOADD_STUB)
     ftable=(intptr_t)readmemd;
-  emit_writeword(rs,(intptr_t)&address);
+  emit_writeword(rs,(intptr_t)&mupencoreaddress);
   //emit_pusha();
   save_regs(reglist);
   if((signed int)addr>=(signed int)0xC0000000) {
@@ -3986,7 +4037,7 @@ static void inline_readstub(int type, int i, u_int addr, signed char regmap[], i
   //emit_add(12,2,2);
   //emit_writeword(2,(int)&g_cp0_regs[CP0_COUNT_REG]);
   //emit_call(((u_int *)ftable)[addr>>16]);
-  emit_call((intptr_t)&indirect_jump);
+  emit_call(indirect_jumps.regular);
   // We really shouldn't need to update the count here,
   // but not doing so causes random crashes...
   emit_readword((intptr_t)&g_cp0_regs[CP0_COUNT_REG],HOST_TEMPREG);
@@ -4051,7 +4102,7 @@ static void do_writestub(int n)
     ftable=(intptr_t)writemem;
   if(type==STORED_STUB)
     ftable=(intptr_t)writememd;
-  emit_writeword(rs,(intptr_t)&address);
+  emit_writeword(rs,(intptr_t)&mupencoreaddress);
   //emit_shrimm(rs,16,rs);
   //emit_movmem_indexedx4(ftable,rs,rs);
   if(type==STOREB_STUB)
@@ -4084,7 +4135,7 @@ static void do_writestub(int n)
   //emit_addimm(cc,2*stubs[n][5]+2,cc);
   //emit_add(cc,temp,cc);
   //emit_writeword(cc,(int)&g_cp0_regs[CP0_COUNT_REG]);
-  emit_call((intptr_t)&indirect_jump_indexed);
+  emit_call(indirect_jumps.indexed);
   //emit_callreg(rs);
   emit_readword((intptr_t)&g_cp0_regs[CP0_COUNT_REG],HOST_TEMPREG);
   emit_readword((intptr_t)&next_interrupt,2);
@@ -4118,7 +4169,7 @@ static void inline_writestub(int type, int i, u_int addr, signed char regmap[], 
     ftable=(intptr_t)writemem;
   if(type==STORED_STUB)
     ftable=(intptr_t)writememd;
-  emit_writeword(rs,(intptr_t)&address);
+  emit_writeword(rs,(intptr_t)&mupencoreaddress);
   //emit_shrimm(rs,16,rs);
   //emit_movmem_indexedx4(ftable,rs,rs);
   if(type==STOREB_STUB)
@@ -4160,7 +4211,7 @@ static void inline_writestub(int type, int i, u_int addr, signed char regmap[], 
   //emit_add(12,2,2);
   //emit_writeword(2,(int)&g_cp0_regs[CP0_COUNT_REG]);
   //emit_call(((u_int *)ftable)[addr>>16]);
-  emit_call((intptr_t)&indirect_jump);
+  emit_call(indirect_jumps.regular);
   emit_readword((intptr_t)&g_cp0_regs[CP0_COUNT_REG],HOST_TEMPREG);
   emit_readword((intptr_t)&next_interrupt,2);
   emit_addimm(HOST_TEMPREG,-(int)CLOCK_DIVIDER*(adj+1),HOST_TEMPREG);
@@ -4540,8 +4591,8 @@ static void load_assemble_arm64(int i,struct regstat *i_regs)
     cache=get_reg(i_regs->regmap,MMREG);
     assert(map>=0);
     reglist&=~(1<<map);
-    map=do_tlb_r(addr,tl,map,cache,x,-1,-1,c,constmap[i][s]+offset);
-    do_tlb_r_branch(map,c,constmap[i][s]+offset,&jaddr);
+    map=do_tlb_r(addr,tl,map,cache,x,-1,-1,c,constmap[i][s >= 0 ? s : 0]+offset);
+    do_tlb_r_branch(map,c,constmap[i][s >= 0 ? s : 0]+offset,&jaddr);
   }
   #ifdef RAM_OFFSET
   if(map<0) {
@@ -4967,8 +5018,8 @@ static void store_assemble_arm64(int i,struct regstat *i_regs)
     cache=get_reg(i_regs->regmap,MMREG);
     assert(map>=0);
     reglist&=~(1<<map);
-    map=do_tlb_w(addr,temp,map,cache,x,c,constmap[i][s]+offset);
-    do_tlb_w_branch(map,c,constmap[i][s]+offset,&jaddr);
+    map=do_tlb_w(addr,temp,map,cache,x,c,constmap[i][s >= 0 ? s : 0]+offset);
+    do_tlb_w_branch(map,c,constmap[i][s >= 0 ? s : 0]+offset,&jaddr);
   }
   #ifdef RAM_OFFSET
   if(map<0) {
@@ -5354,7 +5405,7 @@ static void cop0_assemble(int i,struct regstat *i_regs)
       if(t>=0) {
         emit_addimm64(FP,(intptr_t)&fake_pc-(intptr_t)&dynarec_local,0);
         emit_movimm((source[i]>>11)&0x1f,1);
-        emit_writeword64(0,(intptr_t)&PC);
+        emit_writeword64(0,(intptr_t)&mupencorePC);
         emit_writebyte(1,(intptr_t)&(fake_pc.f.r.nrd));
         if(copr==9) {
           emit_readword((intptr_t)&last_count,ECX);
@@ -5377,7 +5428,7 @@ static void cop0_assemble(int i,struct regstat *i_regs)
     wb_register(rs1[i],i_regs->regmap,i_regs->dirty,i_regs->is32);
     emit_addimm64(FP,(intptr_t)&fake_pc-(intptr_t)&dynarec_local,0);
     emit_movimm((source[i]>>11)&0x1f,1);
-    emit_writeword64(0,(intptr_t)&PC);
+    emit_writeword64(0,(intptr_t)&mupencorePC);
     emit_writebyte(1,(intptr_t)&(fake_pc.f.r.nrd));
     if(copr==9||copr==11||copr==12) {
       emit_readword((intptr_t)&last_count,ECX);
@@ -5590,10 +5641,10 @@ static void c1ls_assemble_arm64(int i,struct regstat *i_regs)
     assert(map>=0);
     reglist&=~(1<<map);
     if (opcode[i]==0x31||opcode[i]==0x35) { // LWC1/LDC1
-      map=do_tlb_r(offset||c||s<0?ar:s,ar,map,cache,0,-1,-1,c,constmap[i][s]+offset);
+      map=do_tlb_r(offset||c||s<0?ar:s,ar,map,cache,0,-1,-1,c,constmap[i][s >= 0 ? s : 0]+offset);
     }
     if (opcode[i]==0x39||opcode[i]==0x3D) { // SWC1/SDC1
-      map=do_tlb_w(offset||c||s<0?ar:s,ar,map,cache,0,c,constmap[i][s]+offset);
+      map=do_tlb_w(offset||c||s<0?ar:s,ar,map,cache,0,c,constmap[i][s >= 0 ? s : 0]+offset);
     }
   }
   #ifdef RAM_OFFSET
@@ -5632,10 +5683,10 @@ static void c1ls_assemble_arm64(int i,struct regstat *i_regs)
     #endif
   }else{
     if (opcode[i]==0x31||opcode[i]==0x35) { // LWC1/LDC1
-      do_tlb_r_branch(map,c,constmap[i][s]+offset,&jaddr2);
+      do_tlb_r_branch(map,c,constmap[i][s >= 0 ? s : 0]+offset,&jaddr2);
     }
     if (opcode[i]==0x39||opcode[i]==0x3D) { // SWC1/SDC1
-      do_tlb_w_branch(map,c,constmap[i][s]+offset,&jaddr2);
+      do_tlb_w_branch(map,c,constmap[i][s >= 0 ? s : 0]+offset,&jaddr2);
     }
   }
   if (opcode[i]==0x31) { // LWC1
@@ -6678,7 +6729,7 @@ static void do_clear_cache(void)
       for(j=0;j<32;j++) 
       {
         if(bitmap&(1<<j)) {
-          start=BASE_ADDR+i*131072+j*4096;
+          start=((uintptr_t)base_addr)+i*131072+j*4096;
           end=start+4095;
           j++;
           while(j<32) {
@@ -6686,7 +6737,7 @@ static void do_clear_cache(void)
               end+=4096;
               j++;
             }else{
-              __clear_cache((char *)start,(char *)end);
+              clear_instruction_cache((char *)start,(char *)end);
               //cacheflush((void *)start,(void *)end,0);
               break;
             }
@@ -6705,10 +6756,23 @@ static void arch_init(void) {
   rounding_modes[2]=0x1<<22; // ceil
   rounding_modes[3]=0x2<<22; // floor
 
+#if 0
   jump_table_symbols[15] = (intptr_t) cached_interpreter_table.MFC0;
   jump_table_symbols[16] = (intptr_t) cached_interpreter_table.MTC0;
   jump_table_symbols[17] = (intptr_t) cached_interpreter_table.TLBR;
   jump_table_symbols[18] = (intptr_t) cached_interpreter_table.TLBP;
+#endif
+
+  apple_jit_wx_unprotect_enter();
+  trampolines_reg_jump_t jumps = trampoline_alloc_reg_jump(&jump_vaddr);
+  apple_jit_wx_unprotect_exit();
+
+  indirect_jumps.indexed = (intptr_t) jumps.indirect_jump_indexed;
+  indirect_jumps.regular = (intptr_t) jumps.indirect_jump;
+  for (int i = 0; i < 29; i++)
+  {
+    jump_vaddr_reg[i] = jumps.jump_vaddr_reg[i];
+  }
 
   #ifdef RAM_OFFSET
   ram_offset=((intptr_t)g_rdram-(intptr_t)0x80000000)>>2;

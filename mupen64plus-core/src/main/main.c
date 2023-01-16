@@ -414,7 +414,7 @@ void mupen_main_stop(void)
       return;
 
    DebugMessage(M64MSG_STATUS, "Stopping emulation.");
-   stop = 1;
+   mupencorestop = 1;
 #ifdef DBG
    if(g_DebuggerActive)
       debugger_step();
