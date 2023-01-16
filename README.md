@@ -19,6 +19,7 @@ Contributors for the modifications specific to this fork:
     * GLideN64 modifications for supporting old SM64 romhacks
     * Support for detecting save types based on EverDrive headers
     * Support for ROMs larger than 64 MiB
+    * Native ARM support for MacOS
 
 ### Platform Builds
 
