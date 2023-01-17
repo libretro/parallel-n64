@@ -28,7 +28,7 @@
 #include "r4300_core.h"
 #include "recomp.h"
 
-#if !defined(__APPLE__) || !defined(__arm64__)
+#if !defined(__arm64__)
 extern struct precomp_instr *PC;
 extern int64_t reg[32], hi, lo;
 extern uint32_t next_interrupt;
@@ -37,7 +37,7 @@ extern int stop;
 #define mupencorereg reg
 #define mupencorestop stop
 #else
-#include "new_dynarec/arm64/apple_memory_layout.h"
+#include "new_dynarec/arm64/memory_layout_arm64.h"
 #define mupencorePC    (RECOMPILER_MEMORY->rml_PC)
 #define mupencorereg   (RECOMPILER_MEMORY->rml_reg)
 #define hi             (RECOMPILER_MEMORY->rml_hi)

@@ -50,7 +50,7 @@
 unsigned int r4300emu = 0;
 unsigned int count_per_op = COUNT_PER_OP_DEFAULT;
 unsigned int llbit;
-#if !defined(__APPLE__) || !defined(__arm64__)
+#if !defined(__arm64__)
 int stop;
 #if NEW_DYNAREC < NEW_DYNAREC_ARM
 int64_t reg[32], hi, lo;

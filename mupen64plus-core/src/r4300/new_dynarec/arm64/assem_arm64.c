@@ -313,14 +313,10 @@ static void set_jump_target(intptr_t addr,uintptr_t target)
 static void *dynamic_linker_impl(void * src, u_int vaddr);
 static void *dynamic_linker(void * src, u_int vaddr)
 {
-#if defined(__APPLE__) && defined(__arm64__)
   apple_jit_wx_unprotect_enter();
   void* r = dynamic_linker_impl(src, vaddr);
   apple_jit_wx_unprotect_exit();
   return r;
-#else
-  return dynamic_linker_impl(src, vaddr);
-#endif
 }
 
 static void *dynamic_linker_impl(void * src, u_int vaddr)
@@ -427,14 +423,10 @@ static void *dynamic_linker_impl(void * src, u_int vaddr)
 static void *dynamic_linker_ds_impl(void * src, u_int vaddr);
 static void *dynamic_linker_ds(void * src, u_int vaddr)
 {
-#if defined(__APPLE__) && defined(__arm64__)
   apple_jit_wx_unprotect_enter();
   void* r = dynamic_linker_ds_impl(src, vaddr);
   apple_jit_wx_unprotect_exit();
   return r;
-#else
-  return dynamic_linker_ds_impl(src, vaddr);
-#endif
 }
 
 static void *dynamic_linker_ds_impl(void * src, u_int vaddr)
@@ -6763,6 +6755,7 @@ static void arch_init(void) {
   jump_table_symbols[18] = (intptr_t) cached_interpreter_table.TLBP;
 #endif
 
+  trampoline_init(base_addr);
   apple_jit_wx_unprotect_enter();
   trampolines_reg_jump_t jumps = trampoline_alloc_reg_jump(&jump_vaddr);
   apple_jit_wx_unprotect_exit();

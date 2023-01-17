@@ -42,14 +42,14 @@
 #define write_hword_in_memory() writememh[mupencoreaddress >>16]()
 #define write_dword_in_memory() writememd[mupencoreaddress >>16]()
 
-#if !defined(__APPLE__) || !defined(__arm64__)
+#if !defined(__arm64__)
 extern uint32_t address, cpu_word;
 extern uint8_t cpu_byte;
 extern uint16_t cpu_hword;
 extern uint64_t cpu_dword;
 #define mupencoreaddress address
 #else
-#include "../r4300/new_dynarec/arm64/apple_memory_layout.h"
+#include "../r4300/new_dynarec/arm64/memory_layout_arm64.h"
 #define mupencoreaddress (RECOMPILER_MEMORY->rml_address)
 #define cpu_word         (RECOMPILER_MEMORY->rml_cpu_word)
 #define cpu_byte         (RECOMPILER_MEMORY->rml_cpu_byte)

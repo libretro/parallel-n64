@@ -97,7 +97,7 @@ void write_rdramd_new(void);
 void breakpoint(void);
 
 #ifdef __APPLE__
-#include "apple_memory_layout.h"
+#include "memory_layout_arm64.h"
 #define invc_ptr          (RECOMPILER_MEMORY->rml_invc_ptr)
 #define cycle_count       (RECOMPILER_MEMORY->rml_cycle_count)
 #define last_count        (RECOMPILER_MEMORY->rml_last_count)

@@ -34,3 +34,4 @@ Release/
 
 new_dynarec_debug.txt
 new_dynarec_disasm.txt
+*.zip

@@ -21,10 +21,10 @@
 
 #include <stdint.h>
 
-#if !defined(__APPLE__) || !defined(__arm64__)
+#if !defined(__arm64__)
 #define mupencorereg reg
 #else
-#include "new_dynarec/arm64/apple_memory_layout.h"
+#include "new_dynarec/arm64/memory_layout_arm64.h"
 #define mupencorereg (RECOMPILER_MEMORY->rml_reg)
 #endif
 

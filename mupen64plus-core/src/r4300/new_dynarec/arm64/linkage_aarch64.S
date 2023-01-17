@@ -289,11 +289,8 @@ GLOBAL_FUNCTION(_jump_eret):
     b      .E8
 
 GLOBAL_FUNCTION(_new_dyna_start):
-    adrp   x1, _base_addr@PAGE
-    add    x1, x1, _base_addr@PAGEOFF
-    ldr    x16, [x1] /* _extra_memory=base_addr */
-    mov    x17, #0x2000000
-    add    x16, x16, x17 /* _dynarec_local */
+    adrp   x16, _memory_layout@PAGE
+    add    x16, x16, _memory_layout@PAGEOFF
     add    x16, x16, #152
     mov    w0, #0xa4000000
     stp    x19,x20,[x16,#0]
@@ -303,6 +300,8 @@ GLOBAL_FUNCTION(_new_dyna_start):
     stp    x27,x28,[x16,#64]
     stp    x29,x30,[x16,#80]
     sub    x29, x16, #152
+    adrp   x1, _base_addr@PAGE
+    add    x1, x1, _base_addr@PAGEOFF
     ldr    x19, [x1]
     add    w0, w0, #0x40
     bl     _new_recompile_block
