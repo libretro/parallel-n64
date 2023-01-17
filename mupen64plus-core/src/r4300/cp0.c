@@ -34,7 +34,7 @@
 #endif
 
 /* global variable */
-#if !defined(__APPLE__) || !defined(__arm64__)
+#if !defined(__arm64__)
 #if NEW_DYNAREC < NEW_DYNAREC_ARM
 /* ARM backend requires a different memory layout
  * and therefore manually allocate that variable */

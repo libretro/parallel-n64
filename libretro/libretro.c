@@ -2085,10 +2085,6 @@ static void format_saved_memory(void)
 
 bool retro_load_game(const struct retro_game_info *game)
 {
-#if defined(__APPLE__) && defined(__arm64__)
-   extern void new_dynarec_create_mapping();
-   new_dynarec_create_mapping();
-#endif
    format_saved_memory();
 
    update_variables(true);

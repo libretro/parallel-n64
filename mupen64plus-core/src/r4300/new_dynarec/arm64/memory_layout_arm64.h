@@ -1,13 +1,15 @@
-#pragma once
+#ifndef M64P_MEMORY_LAYOUT_ARM64_H
+#define M64P_MEMORY_LAYOUT_ARM64_H
 
-#ifdef __APPLE__
 #include <stdint.h>
+#ifdef __APPLE__
 #include <sys/types.h>
+#endif
+
 #include "../../recomp_types.h"
 
 typedef struct recompiler_memory_layout
 {
-    char rml_extra_memory[0x2000000]; // rwx memory
     char rml_dynarec_local[256];
     uint32_t rml_next_interrupt;
     int rml_cycle_count;
@@ -44,12 +46,12 @@ typedef struct recompiler_memory_layout
     uint64_t rml_memory_map[1048576];
 } recompiler_memory_layout_t;
 
-extern recompiler_memory_layout_t* base_addr;
-#define RECOMPILER_MEMORY (base_addr)
+extern recompiler_memory_layout_t memory_layout;
+#define RECOMPILER_MEMORY (&memory_layout)
 
 // Copied from linkage_aarch64.S declaration
 #define RML_SIZE_EXTRA_MEMORY 0
-#define RML_SIZE_DYNAREC_LOCAL     RML_SIZE_EXTRA_MEMORY      + 33554432
+#define RML_SIZE_DYNAREC_LOCAL     RML_SIZE_EXTRA_MEMORY      + 0
 #define RML_SIZE_NEXT_INTERRUPT    RML_SIZE_DYNAREC_LOCAL     + 256
 #define RML_SIZE_CYCLE_COUNT       RML_SIZE_NEXT_INTERRUPT    + 4
 #define RML_SIZE_LAST_COUNT        RML_SIZE_CYCLE_COUNT       + 4
@@ -82,6 +84,7 @@ extern recompiler_memory_layout_t* base_addr;
 #define RML_SIZE_LINK_REGISTER     RML_SIZE_INSTR_ADDR        + 8
 #define RML_SIZE_MEMORY_MAP        RML_SIZE_LINK_REGISTER     + 8
 
+#if __STDC_VERSION__ > 201112L
 #define RML_CHECK_SIZE(name, off) _Static_assert(offsetof(recompiler_memory_layout_t, name) == (off), "Recompiler layout for '" #name "' does not match asm")
 RML_CHECK_SIZE(rml_dynarec_local    , RML_SIZE_DYNAREC_LOCAL);
 RML_CHECK_SIZE(rml_next_interrupt   , RML_SIZE_NEXT_INTERRUPT);
@@ -116,5 +119,6 @@ RML_CHECK_SIZE(rml_instr_addr       , RML_SIZE_INSTR_ADDR);
 RML_CHECK_SIZE(rml_link_register    , RML_SIZE_LINK_REGISTER);
 RML_CHECK_SIZE(rml_memory_map       , RML_SIZE_MEMORY_MAP);
 #undef RML_CHECK_SIZE
+#endif
 
 #endif
