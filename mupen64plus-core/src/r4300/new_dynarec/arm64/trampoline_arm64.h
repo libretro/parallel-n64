@@ -21,14 +21,24 @@ typedef struct
 // Initializes trampolines to be generated from 'base'
 void trampoline_init(void* base);
 
+// Hint trampolines where data is. Greatly helps with data fragmentation.
+void trampoline_add_data_hint(void* ptr, size_t size);
+
 // Create jump trampolines that are needed for 'jump_vaddr'
 trampolines_reg_jump_t trampoline_alloc_reg_jump(void* jump_vaddr_fn);
 
 // Returns a trampoline that allows jumping to a given 'func' near 'base'
 void* trampoline_jump_alloc_or_find(void* func);
 
+typedef struct
+{
+    void** base;
+    // Base is guaranteed to be reachable within 16MB so pair of 'add' call
+    int off;
+} trampoline_data_alloc_or_find_return_t;
+
 // Returns a pointer that can be deferenced to get 'data' near 'base'
-void** trampoline_data_alloc_or_find(void* pdata);
+trampoline_data_alloc_or_find_return_t trampoline_data_alloc_or_find(void* pdata);
 
 // Given jump 'tramp' returns original 'func'
 // 'tramp' does not have to be returned from 'trampoline_jump_alloc_or_find' in which case 'tramp' is returned

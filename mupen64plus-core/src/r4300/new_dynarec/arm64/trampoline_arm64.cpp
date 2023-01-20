@@ -4,7 +4,7 @@
 #include <map>
 #include <vector>
 
-#define TRAMPOLINE_DEBUG
+// #define TRAMPOLINE_DEBUG
 
 #ifdef TRAMPOLINE_DEBUG
 #include <dlfcn.h>
@@ -69,16 +69,21 @@ struct CachedDataTrampoline : SymbolDesc
 {
 public:
     CachedDataTrampoline() = default;
-    CachedDataTrampoline(void** tr, void* orig)
+    CachedDataTrampoline(void** tr, size_t size, void* orig)
     : SymbolDesc(orig)
     , trampoline_(tr)
+    , size_(size)
     { }
 
     void** trampoline() const
     { return trampoline_; }
+    size_t size() const
+    { return size_; }
 
 private:
     void** trampoline_;
+    // This size is merely a suggestion
+    size_t size_;
 };
 
 static std::map<void*, CachedFuncTrampoline> FuncToTrampolines;
@@ -124,6 +129,35 @@ static void add_holes(void* ustart, void* uend)
     }
 }
 
+// Allocates data directly without being smart about offsets etc
+static void** data_alloc_or_find(void* data, size_t size = sizeof(void*))
+{
+    auto res = DataToTrampolines.emplace(data, CachedDataTrampoline{});
+    auto it = res.first;
+    auto inserted = res.second;
+    auto& desc = it->second;
+
+    // If 'emplace' succeeded, it inserted tmp pointer that is not assigned yet
+    if (inserted)
+    {
+        if (VacantDataHoles.empty())
+        {
+            // If there are no holes, add a few by ways of allocating useless trampoline
+            Trampoline tr = alloc_internal_trampoline();
+            add_holes(tr, ((char*)tr) + MAX_TRAMPOLINE_SIZE);
+        }
+
+        assert(!VacantDataHoles.empty());
+        void** hole = VacantDataHoles.back();
+        VacantDataHoles.pop_back();
+        *hole = data;
+        desc = CachedDataTrampoline{ hole, size, data };
+    }
+
+    assert(desc.trampoline());
+    return desc.trampoline();
+}
+
 void trampoline_init(void* base)
 {
     DataBase = (char*) base;
@@ -135,6 +169,11 @@ void trampoline_init(void* base)
     TrampolineToFuncs.reserve(POINTERS_TO_RESERVE);
     VacantDataHoles.clear();
     VacantDataHoles.reserve(POINTERS_TO_RESERVE);
+}
+
+void trampoline_add_data_hint(void* ptr, size_t size)
+{
+    return (void) data_alloc_or_find(ptr, size);
 }
 
 class CodeEmitter
@@ -174,7 +213,7 @@ public:
         else
         {
             // far jump via loading the data, takes extra space in the trampoline
-            void** pfunc = trampoline_data_alloc_or_find(func);
+            void** pfunc = data_alloc_or_find(func);
             intptr_t tiny_off = ((intptr_t) pfunc) - out;
             assert(tiny_off>=-1048576&&tiny_off<1048576);
             // adr xRT, pdata
@@ -296,32 +335,37 @@ void* trampoline_jump_alloc_or_find(void* func)
     return desc.trampoline();
 }
 
-void** trampoline_data_alloc_or_find(void* data)
+trampoline_data_alloc_or_find_return_t trampoline_data_alloc_or_find(void* data)
 {
-    auto res = DataToTrampolines.emplace(data, CachedDataTrampoline{});
-    auto it = res.first;
-    auto inserted = res.second;
-    auto& desc = it->second;
-
-    // If 'emplace' succeeded, it inserted tmp pointer that is not assigned yet
-    if (inserted)
+    // Try to find the address that is close enough (4096*4096 distance)
+    // It can return minimal s.t. it->first >= data
+    auto it = DataToTrampolines.lower_bound(data);
+    if (it->first == data)
     {
-        if (VacantDataHoles.empty())
-        {
-            // If there are no holes, add a few by ways of allocating useless trampoline
-            Trampoline tr = alloc_internal_trampoline();
-            add_holes(tr, ((char*)tr) + MAX_TRAMPOLINE_SIZE);
-        }
-
-        assert(!VacantDataHoles.empty());
-        void** hole = VacantDataHoles.back();
-        VacantDataHoles.pop_back();
-        *hole = data;
-        desc = CachedDataTrampoline{ hole, data };
+        return { it->second.trampoline(), 0 };
     }
 
-    assert(desc.trampoline());
-    return desc.trampoline();
+    uintptr_t vdata = (uintptr_t) data;
+    if (DataToTrampolines.begin() != it)
+    {
+        // we need the previous element that might encompass 'data'
+        --it;
+        uintptr_t vtrdata = (uintptr_t) it->first;
+        // must be positive
+        uintptr_t dist = vdata - vtrdata;
+#ifdef TRAMPOLINE_DEBUG
+        size_t limit = it->second.size();
+#else
+        constexpr size_t limit = 4096*4096;
+#endif
+        if (dist < limit)
+        {
+            return { it->second.trampoline(), (int) dist };
+        }
+    }
+
+    void** trampoline = data_alloc_or_find(data);
+    return { trampoline, 0 };
 }
 
 void* trampoline_convert_trampoline_to_func(void* tramp)
