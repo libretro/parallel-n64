@@ -590,6 +590,20 @@ static int verify_dirty(void *addr)
       source|=(*ptr>>10)&0xfff;
       ptr++;
     }
+    uintptr_t deref_source = (uintptr_t) trampoline_convert_trampoline_to_data((void**) source);
+    if (deref_source != source)
+    {
+      source = deref_source;
+      ptr++;
+      if((*ptr&0xff400000)==0x91400000){//add lsl #12
+        source += (((*ptr>>10)&0xfff) << 12);
+        ptr++;
+      }
+      if((*ptr&0xff400000)==0x91000000){//add
+        source += (*ptr>>10)&0xfff;
+        ptr++;
+      }
+    }
   }
   else
     assert(0); /*Should not happen*/
@@ -607,6 +621,20 @@ static int verify_dirty(void *addr)
     if((*ptr&0xff000000)==0x91000000){//add
       copy|=(*ptr>>10)&0xfff;
       ptr++;
+    }
+    uintptr_t deref_copy = (uintptr_t) trampoline_convert_trampoline_to_data((void**) copy);
+    if (deref_copy != copy)
+    {
+      copy = deref_copy;
+      ptr++;
+      if((*ptr&0xff400000)==0x91400000){//add lsl #12
+        copy += (((*ptr>>10)&0xfff) << 12);
+        ptr++;
+      }
+      if((*ptr&0xff400000)==0x91000000){//add
+        copy += (*ptr>>10)&0xfff;
+        ptr++;
+      }
     }
   }
   else
@@ -677,12 +705,30 @@ static void get_bounds(intptr_t addr,uintptr_t *start,uintptr_t *end)
       source|=(*ptr>>10)&0xfff;
       ptr++;
     }
+    uintptr_t deref_source = (uintptr_t) trampoline_convert_trampoline_to_data((void**) source);
+    if (deref_source != source)
+    {
+      source = deref_source;
+      ptr++;
+      if((*ptr&0xff400000)==0x91400000){//add lsl #12
+        source += (((*ptr>>10)&0xfff) << 12);
+        ptr++;
+      }
+      if((*ptr&0xff400000)==0x91000000){//add
+        source += (*ptr>>10)&0xfff;
+        ptr++;
+      }
+    }
   }
   else
     assert(0); /*Should not happen*/
 
+  // skip over emit_jmp, it might be from 1 to 5 instructions long
   ptr++;
-  if((*ptr&0xffe00000)!=0x52800000) ptr++;
+  for (int k = 0; k < 4; k++)
+  {
+    if((*ptr&0xffe00000)!=0x52800000) ptr++;
+  }
   assert((*ptr&0xffe00000)==0x52800000); //movz
   u_int len=(*ptr>>5)&0xffff;
   ptr+=2;
@@ -3503,6 +3549,16 @@ static void emit_read_ptr(intptr_t addr, int rt)
   }
   else{
     intptr_t offset64 = ((addr&(intptr_t)~0xfff)-((intptr_t)out&(intptr_t)~0xfff))>>12;
+    int need_ldr = 0;
+    int after_ldr_off = 0;
+    if(!(-0xfffff <= offset64 && offset64 <= 0xfffff))
+    {
+      trampoline_data_alloc_or_find_return_t ret = trampoline_data_alloc_or_find((void*) addr);
+      addr = (intptr_t) ret.base;
+      after_ldr_off = ret.off;
+      offset64 = ((addr&(intptr_t)~0xfff)-((intptr_t)out&(intptr_t)~0xfff))>>12;
+      need_ldr = 1;
+    }
     assert((((intptr_t)out&(intptr_t)~0xfff)+(offset64<<12))==(addr&(intptr_t)~0xfff));
     assem_debug("adrp %d,#%d",regname64[rt],offset64);
     output_w32(0x90000000|((u_int)offset64&0x3)<<29|(((u_int)offset64>>2)&0x7ffff)<<5|rt);
@@ -3510,6 +3566,23 @@ static void emit_read_ptr(intptr_t addr, int rt)
     {
       assem_debug("add %s, %s, #%d",regname64[rt],regname64[rt],addr&0xfff);
       output_w32(0x91000000|(addr&0xfff)<<10|rt<<5|rt);
+    }
+    if (need_ldr)
+    {
+      assem_debug("tr ldr %s, [%s]",regname64[rt],regname64[rt]);
+      output_w32(0xf9400000|rt<<5|rt);
+      if (after_ldr_off)
+      {
+        int after_ldr_off_hi = (after_ldr_off>>12)&0xfff;
+        if (after_ldr_off_hi != 0) {
+          assem_debug("add %s, %s, #%d lsl #%d",regname[rt],regname[rt],after_ldr_off_hi,12);
+          output_w32(0x91400000|(after_ldr_off_hi)<<10|rt<<5|rt);
+        }
+        if((after_ldr_off&0xfff)!=0) {
+          assem_debug("add %s, %s, #%d",regname[rt],regname[rt],after_ldr_off&0xfff);
+          output_w32(0x91000000|(after_ldr_off&0xfff)<<10|rt<<5|rt);
+        }
+      }
     }
   }
 }
@@ -6757,6 +6830,16 @@ static void arch_init(void) {
 
   trampoline_init(base_addr);
   apple_jit_wx_unprotect_enter();
+  trampoline_add_data_hint(shadow, sizeof(shadow));
+  trampoline_add_data_hint(g_rdram, sizeof(g_rdram));
+  trampoline_add_data_hint(readmem, sizeof(readmem));
+  trampoline_add_data_hint(readmemb, sizeof(readmem));
+  trampoline_add_data_hint(readmemh, sizeof(readmem));
+  trampoline_add_data_hint(readmemd, sizeof(readmemd));
+  trampoline_add_data_hint(writemem, sizeof(writemem));
+  trampoline_add_data_hint(writememb, sizeof(writememb));
+  trampoline_add_data_hint(writememd, sizeof(writememd));
+  trampoline_add_data_hint(writememh, sizeof(writememh));
   trampolines_reg_jump_t jumps = trampoline_alloc_reg_jump(&jump_vaddr);
   apple_jit_wx_unprotect_exit();
 
