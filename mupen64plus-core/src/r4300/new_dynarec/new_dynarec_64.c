@@ -7765,9 +7765,10 @@ void new_dynarec_init(void)
   DebugMessage(M64MSG_INFO, "Init new dynarec");
 
 #if defined(__arm64__)
+#define TRAMPOLINES_SIZE (1024*1024)
   // trampolines are put behind the base_addr so allocate a bit extra memory
   // TODO: Don't allocate 32MB, it is definitely too much 
-  if ((base_addr = mmap (NULL, 2 * (1<<TARGET_SIZE_2),
+  if ((base_addr = mmap (NULL, TRAMPOLINES_SIZE + (1<<TARGET_SIZE_2),
             PROT_READ | PROT_WRITE | PROT_EXEC,
             MAP_PRIVATE | MAP_ANONYMOUS
 #ifdef __APPLE__
@@ -7777,7 +7778,7 @@ void new_dynarec_init(void)
             -1, 0)) <= 0) {DebugMessage(M64MSG_ERROR, "mmap() failed");}
 
   DebugMessage(M64MSG_INFO, "MAP_JIT pages are allocated at %p", base_addr);
-  base_addr = ((char*)base_addr) + (1<<TARGET_SIZE_2);
+  base_addr = ((char*)base_addr) + TRAMPOLINES_SIZE;
 #else
 #if NEW_DYNAREC >= NEW_DYNAREC_ARM
   if ((base_addr = mmap ((u_char *)BASE_ADDR, 1<<TARGET_SIZE_2,
@@ -7869,7 +7870,7 @@ void new_dynarec_cleanup(void)
   int n;
 
 #if defined(__arm64__)
-  if (munmap (((char*)base_addr) - (1<<TARGET_SIZE_2), 2 * (1<<TARGET_SIZE_2)) < 0) {DebugMessage(M64MSG_ERROR, "munmap() failed");}
+  if (munmap (((char*)base_addr) - TRAMPOLINES_SIZE, TRAMPOLINES_SIZE + (1<<TARGET_SIZE_2)) < 0) {DebugMessage(M64MSG_ERROR, "munmap() failed");}
 #else
 #if defined(WIN32)
   VirtualFree(base_addr, 0, MEM_RELEASE);

@@ -2,7 +2,7 @@
 #include "trampoline_arm64.h"
 
 #ifdef __APPLE__
-static __thread int Count = 0;
+static int Count = 0;
 
 #include <pthread.h>
 

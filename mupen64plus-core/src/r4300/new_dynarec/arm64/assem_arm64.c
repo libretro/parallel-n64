@@ -590,6 +590,12 @@ static int verify_dirty(void *addr)
       source|=(*ptr>>10)&0xfff;
       ptr++;
     }
+    uintptr_t deref_source = (uintptr_t) trampoline_convert_trampoline_to_data((void**) source);
+    if (deref_source != source)
+    {
+      source = deref_source;
+      ptr++;
+    }
   }
   else
     assert(0); /*Should not happen*/
@@ -606,6 +612,12 @@ static int verify_dirty(void *addr)
     ptr++;
     if((*ptr&0xff000000)==0x91000000){//add
       copy|=(*ptr>>10)&0xfff;
+      ptr++;
+    }
+    uintptr_t deref_copy = (uintptr_t) trampoline_convert_trampoline_to_data((void**) copy);
+    if (deref_copy != copy)
+    {
+      copy = deref_copy;
       ptr++;
     }
   }
@@ -677,11 +689,19 @@ static void get_bounds(intptr_t addr,uintptr_t *start,uintptr_t *end)
       source|=(*ptr>>10)&0xfff;
       ptr++;
     }
+    uintptr_t deref_source = (uintptr_t) trampoline_convert_trampoline_to_data((void**) source);
+    if (deref_source != source)
+    {
+      source = deref_source;
+      ptr++;
+    }
   }
   else
     assert(0); /*Should not happen*/
 
+  // skip over emit_jmp, it might be from 1 to 3 instructions long
   ptr++;
+  if((*ptr&0xffe00000)!=0x52800000) ptr++;
   if((*ptr&0xffe00000)!=0x52800000) ptr++;
   assert((*ptr&0xffe00000)==0x52800000); //movz
   u_int len=(*ptr>>5)&0xffff;
@@ -3503,6 +3523,13 @@ static void emit_read_ptr(intptr_t addr, int rt)
   }
   else{
     intptr_t offset64 = ((addr&(intptr_t)~0xfff)-((intptr_t)out&(intptr_t)~0xfff))>>12;
+    int need_ldr = 0;
+    if(!(-0xfffff <= offset64 && offset64 <= 0xfffff))
+    {
+      addr = (intptr_t) trampoline_data_alloc_or_find((void*) addr);
+      offset64 = ((addr&(intptr_t)~0xfff)-((intptr_t)out&(intptr_t)~0xfff))>>12;
+      need_ldr = 1;
+    }
     assert((((intptr_t)out&(intptr_t)~0xfff)+(offset64<<12))==(addr&(intptr_t)~0xfff));
     assem_debug("adrp %d,#%d",regname64[rt],offset64);
     output_w32(0x90000000|((u_int)offset64&0x3)<<29|(((u_int)offset64>>2)&0x7ffff)<<5|rt);
@@ -3510,6 +3537,11 @@ static void emit_read_ptr(intptr_t addr, int rt)
     {
       assem_debug("add %s, %s, #%d",regname64[rt],regname64[rt],addr&0xfff);
       output_w32(0x91000000|(addr&0xfff)<<10|rt<<5|rt);
+    }
+    if (need_ldr)
+    {
+      assem_debug("tr ldr %s, [%s]",regname64[rt],regname64[rt]);
+      output_w32(0xf9400000|rt<<5|rt);
     }
   }
 }
