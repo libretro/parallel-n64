@@ -40,6 +40,8 @@
 #include "../vi/vi_controller.h"
 #include "../dd/dd_controller.h"
 
+#include "../pi/is_viewer.h"
+
 #ifdef DBG
 #include "../debugger/dbg_types.h"
 #include "../debugger/dbg_memory.h"
@@ -1012,6 +1014,38 @@ static void write_ddipl(void)
    writew(write_dd_ipl, &g_dev.pi, mupencoreaddress, cpu_word);
 }
 
+static void read_isvb(void) {
+    readb(read_is_viewer, NULL, mupencoreaddress, rdword);
+}
+
+static void read_isvh(void) {
+    readh(read_is_viewer, NULL, mupencoreaddress, rdword);
+}
+
+static void read_isv(void) {
+    readw(read_is_viewer, NULL, mupencoreaddress, rdword);
+}
+
+static void read_isvd(void) {
+    readd(read_is_viewer, NULL, mupencoreaddress, rdword);
+}
+
+static void write_isvb(void) {
+    writeb(write_is_viewer, NULL, mupencoreaddress, cpu_byte);
+}
+
+static void write_isvh(void) {
+    writeh(write_is_viewer, NULL, mupencoreaddress, cpu_hword);
+}
+
+static void write_isv(void) {
+    writew(write_is_viewer, NULL, mupencoreaddress, cpu_word);
+}
+
+static void write_isvd(void) {
+    writed(write_is_viewer, NULL, mupencoreaddress, cpu_dword);
+}
+
 #ifdef DBG
 static int memtype[0x10000];
 static void (*saved_readmemb[0x10000])(void);
@@ -1358,6 +1392,9 @@ void poweron_memory(void)
       map_region(0x9000+i, M64P_MEM_NOTHING, RW(nothing));
       map_region(0xb000+i, M64P_MEM_NOTHING, RW(nothing));
    }
+   
+   /* map IS-Viewer */
+   map_region(0xb3ff, M64P_MEM_NOTHING, RW(isv));
 }
 
 static void map_region_t(uint16_t region, int type)

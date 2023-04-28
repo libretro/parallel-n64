@@ -186,7 +186,8 @@ SOURCES_C += \
 	$(CORE_DIR)/src/pi/pi_controller.c \
 	$(CORE_DIR)/src/pi/sram.c \
 	$(CORE_DIR)/src/pi/flashram.c \
-	$(CORE_DIR)/src/pi/cart_rom.c
+	$(CORE_DIR)/src/pi/cart_rom.c \
+	$(CORE_DIR)/src/pi/is_viewer.c
 
 #	$(CORE_DIR)/src/api/debugger.c \
 #	$(CORE_DIR)/src/main/ini_reader.c \

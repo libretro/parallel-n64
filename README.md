@@ -11,6 +11,7 @@ Contributors for the modifications specific to this fork:
    * Black border fix for ParaLLEl
    * Config to enable/disable unaligned DMA support
    * 16:10 (SteamDeck) widescreen support for GLideN64
+   * Support for IS Viewer logging
  * [Wiseguy](https://gitlab.com/Mr-Wiseguy)
     * Raw gamecube controller support
  * [Aglab2](https://gitlab.com/aglab2)
