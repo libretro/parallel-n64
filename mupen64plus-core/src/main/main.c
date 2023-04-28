@@ -55,6 +55,7 @@
 #include "../memory/memory.h"
 #include "../osal/preproc.h"
 #include "../pi/pi_controller.h"
+#include "../pi/is_viewer.h"
 #include "../plugin/plugin.h"
 #include "../plugin/emulate_game_controller_via_input_plugin.h"
 #include "../plugin/get_time_using_C_localtime.h"
@@ -268,6 +269,7 @@ void mupen_main_exit(void)
    if (rsp.romClosed) rsp.romClosed();
    if (input.romClosed) input.romClosed();
    if (gfx.romClosed) gfx.romClosed();
+   poweroff_is_viewer();
 
    // clean up
    g_EmulatorRunning = 0;

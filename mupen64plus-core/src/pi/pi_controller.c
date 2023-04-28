@@ -33,6 +33,7 @@
 #include "../ri/rdram_detection_hack.h"
 #include "../ri/ri_controller.h"
 #include "../dd/dd_controller.h"
+#include "./is_viewer.h"
 
 #include <string.h>
 
@@ -342,6 +343,7 @@ void poweron_pi(struct pi_controller* pi)
     poweron_cart_rom(&pi->cart_rom);
     poweron_dd_rom(&pi->dd_rom);
     poweron_flashram(&pi->flashram);
+    poweron_is_viewer();
 
 }
 
