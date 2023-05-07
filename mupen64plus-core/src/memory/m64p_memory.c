@@ -41,6 +41,7 @@
 #include "../dd/dd_controller.h"
 
 #include "../pi/is_viewer.h"
+#include "../pi/summercart.h"
 
 #ifdef DBG
 #include "../debugger/dbg_types.h"
@@ -1046,6 +1047,46 @@ static void write_isvd(void) {
     writed(write_is_viewer, NULL, mupencoreaddress, cpu_dword);
 }
 
+static void read_screg(void)
+{
+    readw(read_summercart_regs, &g_dev.pi, mupencoreaddress, rdword);
+}
+
+static void read_scregb(void)
+{
+    readb(read_summercart_regs, &g_dev.pi, mupencoreaddress, rdword);
+}
+
+static void read_scregh(void)
+{
+    readh(read_summercart_regs, &g_dev.pi, mupencoreaddress, rdword);
+}
+
+static void read_scregd(void)
+{
+    readd(read_summercart_regs, &g_dev.pi, mupencoreaddress, rdword);
+}
+
+static void write_screg(void)
+{
+    writew(write_summercart_regs, &g_dev.pi, mupencoreaddress, cpu_word);
+}
+
+static void write_scregb(void)
+{
+    writeb(write_summercart_regs, &g_dev.pi, mupencoreaddress, cpu_byte);
+}
+
+static void write_scregh(void)
+{
+    writeh(write_summercart_regs, &g_dev.pi, mupencoreaddress, cpu_hword);
+}
+
+static void write_scregd(void)
+{
+    writed(write_summercart_regs, &g_dev.pi, mupencoreaddress, cpu_dword);
+}
+
 #ifdef DBG
 static int memtype[0x10000];
 static void (*saved_readmemb[0x10000])(void);
@@ -1395,6 +1436,10 @@ void poweron_memory(void)
    
    /* map IS-Viewer */
    map_region(0xb3ff, M64P_MEM_NOTHING, RW(isv));
+
+   /* map SummerCart64 */
+   map_region(0x9fff, M64P_MEM_NOTHING, RW(screg));
+   map_region(0xbfff, M64P_MEM_NOTHING, RW(screg));
 }
 
 static void map_region_t(uint16_t region, int type)
