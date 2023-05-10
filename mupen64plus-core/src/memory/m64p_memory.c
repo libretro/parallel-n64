@@ -87,6 +87,8 @@ void (*writememh[0x10000])(void);
 typedef int (*readfn)(void*,uint32_t,uint32_t*);
 typedef int (*writefn)(void*,uint32_t,uint32_t,uint32_t);
 
+extern uint32_t SdCardEmulationEnabled;
+
 #ifndef BYTE4_XOR_BE
 #ifdef MSB_FIRST
 #define BYTE4_XOR_BE(a) (a)
@@ -1438,8 +1440,10 @@ void poweron_memory(void)
    map_region(0xb3ff, M64P_MEM_NOTHING, RW(isv));
 
    /* map SummerCart64 */
-   map_region(0x9fff, M64P_MEM_NOTHING, RW(screg));
-   map_region(0xbfff, M64P_MEM_NOTHING, RW(screg));
+   if( SdCardEmulationEnabled ) {
+      map_region(0x9fff, M64P_MEM_NOTHING, RW(screg));
+      map_region(0xbfff, M64P_MEM_NOTHING, RW(screg));
+   }
 }
 
 static void map_region_t(uint16_t region, int type)

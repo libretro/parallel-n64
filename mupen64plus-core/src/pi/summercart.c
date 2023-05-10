@@ -6,6 +6,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+extern uint32_t SdCardEmulationEnabled;
+
 static uint8_t* summercart_sd_addr(struct pi_controller* pi)
 {
     uint32_t sector = pi->summercart.sd_sector;
@@ -38,6 +40,7 @@ static char summercart_sd_byteswap(struct pi_controller* pi)
 
 static void summercart_sd_init(struct summercart* summercart)
 {
+    if( !SdCardEmulationEnabled ) return;
     if( summercart->file ) filestream_close( summercart->file );
     
     summercart->file = NULL;
