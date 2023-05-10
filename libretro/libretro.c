@@ -194,6 +194,7 @@ uint32_t RemoveFBBlackBars = 0;
 uint32_t OverrideSaveType = 0;
 uint32_t ParallelRemoveBorders = 0;
 uint32_t IsvEmulationMode = 0;
+uint32_t SdCardEmulationEnabled = 0;
 
 /* after the controller's CONTROL* member has been assigned we can update
  * them straight from here... */
@@ -876,7 +877,7 @@ void retro_set_environment(retro_environment_t cb)
 void retro_get_system_info(struct retro_system_info *info)
 {
    info->library_name = "ParaLLEl N64";
-   info->library_version = "2.9.0 (Parallel Launcher Edition)";
+   info->library_version = "2.10.0 (Parallel Launcher Edition)";
    info->valid_extensions = "n64|v64|z64|bin|u1|ndd";
    info->need_fullpath = false;
    info->block_extract = false;
@@ -2080,6 +2081,14 @@ void update_variables(bool startup)
          IsvEmulationMode = 2;
       } else if( !strcmp(var.value, "parallel") ) {
          IsvEmulationMode = 3;
+      }
+   }
+   
+   var.key = CORE_NAME "-sdcard";
+   var.value = NULL;
+   if( environ_cb( RETRO_ENVIRONMENT_GET_VARIABLE, &var ) && var.value ) {
+      if( !strcmp(var.value, "SummerCart64") ) {
+         SdCardEmulationEnabled = 1;
       }
    }
 }

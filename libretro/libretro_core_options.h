@@ -1689,6 +1689,20 @@ struct retro_core_option_v2_definition option_defs_us[] = {
         },
         "silent"
     },
+    {
+        CORE_NAME "-sdcard",
+        "Emulate flashcart SD drive",
+        NULL,
+        NULL,
+        NULL,
+        NULL,
+        {
+            {"disabled", "Disabled"},
+            {"SummerCart64", "SummerCart64"},
+            { NULL, NULL }
+        },
+        "disabled"
+    },
     { NULL, NULL, NULL, NULL, NULL, NULL, {{0}}, NULL },
 };
 

@@ -21,6 +21,8 @@ Contributors for the modifications specific to this fork:
     * Support for detecting save types based on EverDrive headers
     * Support for ROMs larger than 64 MiB
     * Native ARM support for MacOS
+ * [devwizard](https://gitlab.com/devwizard64)
+    * Added support for SummerCart64 SD card emulation
 
 ### Platform Builds
 

@@ -29,6 +29,7 @@
 #include "flashram.h"
 #include "sram.h"
 #include "../dd/dd_rom.h"
+#include "summercart.h"
 
 #ifndef PI_REG
 #define PI_REG(a) ((a & 0xffff) >> 2)
@@ -63,6 +64,7 @@ struct pi_controller
     struct flashram flashram;
     struct sram sram;
     struct dd_rom dd_rom;
+    struct summercart summercart;
 
     int use_flashram;
 
