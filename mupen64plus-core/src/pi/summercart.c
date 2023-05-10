@@ -38,6 +38,8 @@ static char summercart_sd_byteswap(struct pi_controller* pi)
 
 static void summercart_sd_init(struct summercart* summercart)
 {
+    if( summercart->file ) filestream_close( summercart->file );
+    
     summercart->file = NULL;
     summercart->sd_size = 0;
     
@@ -52,6 +54,8 @@ static void summercart_sd_init(struct summercart* summercart)
         if( summercart->file ) {
             summercart->sd_size = filestream_get_size( summercart->file );
             summercart->status = 0;
+        } else {
+            summercart->status = 0x40000000;
         }
     }
 }
