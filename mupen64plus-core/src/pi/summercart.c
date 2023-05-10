@@ -1,84 +1,124 @@
 #include "pi_controller.h"
 
 #define M64P_CORE_PROTOTYPES 1
-#include "../memory/memory.h"
+#include "../main/util.h"
 
 #include <stdlib.h>
 #include <string.h>
-#include <stdio.h>
 
-static uint8_t* summercart_sd_addr(struct pi_controller* pi, size_t size)
+#include <streams/file_stream.h>
+
+static uint8_t* summercart_sd_addr(struct pi_controller* pi)
 {
+    uint32_t sector = pi->summercart.sd_sector;
     uint32_t addr = pi->summercart.data0 & 0x1fffffff;
-    if (addr >= 0x1ffe0000 && addr+size < 0x1ffe0000+8192)
+    uint32_t count = pi->summercart.data1;
+    int64_t size = (int64_t)512 * count;
+    if ((int64_t)sector+count > pi->summercart.sd_size) return NULL;
+    if (addr >= 0x1ffe0000 && addr+size <= 0x1ffe0000+8192)
     {
         return pi->summercart.buffer + (addr - 0x1ffe0000);
     }
-    if (addr >= 0x10000000 && addr+size < 0x10000000+0x4000000)
+    if (addr >= 0x10000000 && addr+size <= 0x10000000+0x4000000)
     {
         return pi->cart_rom.rom + (addr - 0x10000000);
     }
     return NULL;
 }
 
-static uint32_t summercart_sd_init(struct pi_controller* pi)
+static char summercart_sd_byteswap(struct pi_controller* pi)
 {
-    FILE* fp;
-    if (!pi->summercart.sd_path) return 0x40000000;
-    if (!(fp = fopen(pi->summercart.sd_path, "rb"))) return 0x40000000;
-    fseek(fp, 0, SEEK_END);
-    pi->summercart.sd_size = ftell(fp);
-    fclose(fp);
+    uint32_t addr = pi->summercart.data0 & 0x1fffffff;
+    uint32_t count = pi->summercart.data1;
+    int64_t size = (int64_t)512 * count;
+    if (addr >= 0x10000000 && addr+size <= 0x10000000+0x4000000)
+    {
+        return pi->summercart.sd_byteswap;
+    }
     return 0;
 }
 
-static uint32_t summercart_sd_read(struct pi_controller* pi)
+static void summercart_sd_init(struct pi_controller* pi)
 {
-    size_t i;
-    FILE* fp;
-    uint8_t* ptr;
-    long offset = 512 * pi->summercart.sd_sector;
-    size_t size = 512 * pi->summercart.data1;
-    if (offset+size > pi->summercart.sd_size) return 0x40000000;
-    if (!(ptr = summercart_sd_addr(pi, size))) return 0x40000000;
-    if (!(fp = fopen(pi->summercart.sd_path, "rb"))) return 0x40000000;
-    fseek(fp, offset, SEEK_SET);
-    for (i = 0; i < size; ++i)
+    RFILE* stream;
+    if ((stream = filestream_open(
+        pi->summercart.sd_path,
+        RETRO_VFS_FILE_ACCESS_READ,
+        RETRO_VFS_FILE_ACCESS_HINT_NONE
+    )))
     {
-        int c = fgetc(fp);
-        if (c < 0)
-        {
-            fclose(fp);
-            return 0x40000000;
-        }
-        ptr[i^pi->summercart.sd_byteswap^S8] = c;
+        pi->summercart.sd_size = filestream_get_size(stream);
+        if (!filestream_error(stream)) pi->summercart.status = 0;
+        filestream_close(stream);
     }
-    fclose(fp);
-    return 0;
 }
 
-static uint32_t summercart_sd_write(struct pi_controller* pi)
+static void summercart_sd_read(struct pi_controller* pi)
 {
-    size_t i;
-    FILE* fp;
-    uint8_t* ptr;
-    long offset = 512 * pi->summercart.sd_sector;
-    size_t size = 512 * pi->summercart.data1;
-    if (offset+size > pi->summercart.sd_size) return 0x40000000;
-    if (!(ptr = summercart_sd_addr(pi, size))) return 0x40000000;
-    if (!(fp = fopen(pi->summercart.sd_path, "r+b"))) return 0x40000000;
-    fseek(fp, offset, SEEK_SET);
-    for (i = 0; i < size; ++i)
+    RFILE* stream;
+    uint8_t* ptr = summercart_sd_addr(pi);
+    uint32_t sector = pi->summercart.sd_sector;
+    uint32_t count = pi->summercart.data1;
+    int64_t offset = (int64_t)512 * sector;
+    int64_t size = (int64_t)512 * count;
+    if (ptr && (stream = filestream_open(
+        pi->summercart.sd_path,
+        RETRO_VFS_FILE_ACCESS_READ,
+        RETRO_VFS_FILE_ACCESS_HINT_NONE
+    )))
     {
-        int c = fputc(ptr[i^S8], fp);
-        if (c < 0)
+        filestream_seek(stream, offset, RETRO_VFS_SEEK_POSITION_START);
+        if (!filestream_error(stream))
         {
-            fclose(fp);
-            return 0x40000000;
+#ifndef MSB_FIRST
+            swap_buffer(ptr, 4, 512/4*count);
+#endif
+            if (filestream_read(stream, ptr, size) == size)
+            {
+                if (summercart_sd_byteswap(pi))
+                {
+                    swap_buffer(ptr, 2, 512/2*count);
+                }
+                pi->summercart.status = 0;
+            }
+#ifndef MSB_FIRST
+            swap_buffer(ptr, 4, 512/4*count);
+#endif
         }
+        filestream_close(stream);
     }
-    fclose(fp);
-    return 0;
+}
+
+static void summercart_sd_write(struct pi_controller* pi)
+{
+    RFILE* stream;
+    uint8_t* ptr = summercart_sd_addr(pi);
+    uint32_t sector = pi->summercart.sd_sector;
+    uint32_t count = pi->summercart.data1;
+    int64_t offset = (int64_t)512 * sector;
+    int64_t size = (int64_t)512 * count;
+    if (ptr && (stream = filestream_open(
+        pi->summercart.sd_path,
+        RETRO_VFS_FILE_ACCESS_WRITE|RETRO_VFS_FILE_ACCESS_UPDATE_EXISTING,
+        RETRO_VFS_FILE_ACCESS_HINT_NONE
+    )))
+    {
+        filestream_seek(stream, offset, RETRO_VFS_SEEK_POSITION_START);
+        if (!filestream_error(stream))
+        {
+#ifndef MSB_FIRST
+            swap_buffer(ptr, 4, 512/4*count);
+#endif
+            if (filestream_write(stream, ptr, size) == size)
+            {
+                pi->summercart.status = 0;
+            }
+#ifndef MSB_FIRST
+            swap_buffer(ptr, 4, 512/4*count);
+#endif
+        }
+        filestream_close(stream);
+    }
 }
 
 void init_summercart(struct summercart* summercart)
@@ -157,7 +197,7 @@ int write_summercart_regs(void* opaque, uint32_t address, uint32_t value, uint32
     switch (addr)
     {
     case 0x00:
-        pi->summercart.status = 0;
+        pi->summercart.status = 0x40000000;
         switch (value & mask)
         {
         case 'c':
@@ -165,15 +205,15 @@ int write_summercart_regs(void* opaque, uint32_t address, uint32_t value, uint32
             {
             case 1:
                 pi->summercart.data1 = pi->summercart.cfg_rom_write;
+                pi->summercart.status = 0;
                 break;
             case 3:
                 pi->summercart.data1 = 0;
+                pi->summercart.status = 0;
                 break;
             case 6:
                 pi->summercart.data1 = 0;
-                break;
-            default:
-                pi->summercart.status = 0x40000000;
+                pi->summercart.status = 0;
                 break;
             }
             break;
@@ -191,9 +231,7 @@ int write_summercart_regs(void* opaque, uint32_t address, uint32_t value, uint32
                     pi->summercart.data1 = pi->summercart.cfg_rom_write;
                     pi->summercart.cfg_rom_write = 0;
                 }
-                break;
-            default:
-                pi->summercart.status = 0x40000000;
+                pi->summercart.status = 0;
                 break;
             }
             break;
@@ -201,32 +239,30 @@ int write_summercart_regs(void* opaque, uint32_t address, uint32_t value, uint32
             switch (pi->summercart.data1)
             {
             case 0:
+                pi->summercart.status = 0;
                 break;
             case 1:
-                pi->summercart.status = summercart_sd_init(pi);
+                if (pi->summercart.sd_path) summercart_sd_init(pi);
                 break;
             case 4:
                 pi->summercart.sd_byteswap = 1;
+                pi->summercart.status = 0;
                 break;
             case 5:
                 pi->summercart.sd_byteswap = 0;
-                break;
-            default:
-                pi->summercart.status = 0x40000000;
+                pi->summercart.status = 0;
                 break;
             }
             break;
         case 'I':
             pi->summercart.sd_sector = pi->summercart.data0;
+            pi->summercart.status = 0;
             break;
         case 's':
-            pi->summercart.status = summercart_sd_read(pi);
+            summercart_sd_read(pi);
             break;
         case 'S':
-            pi->summercart.status = summercart_sd_write(pi);
-            break;
-        default:
-            pi->summercart.status = 0x40000000;
+            summercart_sd_write(pi);
             break;
         }
         break;

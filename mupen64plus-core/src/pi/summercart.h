@@ -7,8 +7,8 @@
 struct summercart
 {
     uint8_t buffer[8192];
+    int64_t sd_size;
     const char *sd_path;
-    long sd_size;
     uint32_t status;
     uint32_t data0;
     uint32_t data1;
