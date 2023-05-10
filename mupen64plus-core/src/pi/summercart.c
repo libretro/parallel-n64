@@ -6,8 +6,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <streams/file_stream.h>
-
 static uint8_t* summercart_sd_addr(struct pi_controller* pi)
 {
     uint32_t sector = pi->summercart.sd_sector;
@@ -38,34 +36,45 @@ static char summercart_sd_byteswap(struct pi_controller* pi)
     return 0;
 }
 
-static void summercart_sd_init(struct pi_controller* pi)
+static void summercart_sd_init(struct summercart* summercart)
 {
-    RFILE* stream;
-    if ((stream = filestream_open(
-        pi->summercart.sd_path,
-        RETRO_VFS_FILE_ACCESS_READ,
-        RETRO_VFS_FILE_ACCESS_HINT_NONE
-    )))
-    {
-        pi->summercart.sd_size = filestream_get_size(stream);
-        if (!filestream_error(stream)) pi->summercart.status = 0;
-        filestream_close(stream);
+    summercart->file = NULL;
+    summercart->sd_size = 0;
+    
+    const char *const path = getenv("PL_SD_CARD_IMAGE");
+    if( path && path[0] ) {
+        summercart->file = filestream_open(
+            path,
+            RETRO_VFS_FILE_ACCESS_READ_WRITE | RETRO_VFS_FILE_ACCESS_UPDATE_EXISTING,
+            RETRO_VFS_FILE_ACCESS_HINT_NONE
+        );
+        
+        if( summercart->file ) {
+            summercart->sd_size = filestream_get_size( summercart->file );
+            summercart->status = 0;
+        }
+    }
+}
+
+static void summercart_sd_deinit(struct summercart* summercart)
+{
+    summercart->status = 0;
+    if( summercart->file ) {
+        filestream_close( summercart->file );
+        summercart->file = NULL;
+        summercart->sd_size = 0;
     }
 }
 
 static void summercart_sd_read(struct pi_controller* pi)
 {
-    RFILE* stream;
+    RFILE* stream = pi->summercart.file;
     uint8_t* ptr = summercart_sd_addr(pi);
     uint32_t sector = pi->summercart.sd_sector;
     uint32_t count = pi->summercart.data1;
     int64_t offset = (int64_t)512 * sector;
     int64_t size = (int64_t)512 * count;
-    if (ptr && (stream = filestream_open(
-        pi->summercart.sd_path,
-        RETRO_VFS_FILE_ACCESS_READ,
-        RETRO_VFS_FILE_ACCESS_HINT_NONE
-    )))
+    if (ptr && stream)
     {
         filestream_seek(stream, offset, RETRO_VFS_SEEK_POSITION_START);
         if (!filestream_error(stream))
@@ -85,23 +94,19 @@ static void summercart_sd_read(struct pi_controller* pi)
             swap_buffer(ptr, 4, 512/4*count);
 #endif
         }
-        filestream_close(stream);
+        filestream_flush(stream);
     }
 }
 
 static void summercart_sd_write(struct pi_controller* pi)
 {
-    RFILE* stream;
+    RFILE* stream = pi->summercart.file;
     uint8_t* ptr = summercart_sd_addr(pi);
     uint32_t sector = pi->summercart.sd_sector;
     uint32_t count = pi->summercart.data1;
     int64_t offset = (int64_t)512 * sector;
     int64_t size = (int64_t)512 * count;
-    if (ptr && (stream = filestream_open(
-        pi->summercart.sd_path,
-        RETRO_VFS_FILE_ACCESS_WRITE|RETRO_VFS_FILE_ACCESS_UPDATE_EXISTING,
-        RETRO_VFS_FILE_ACCESS_HINT_NONE
-    )))
+    if (ptr && stream)
     {
         filestream_seek(stream, offset, RETRO_VFS_SEEK_POSITION_START);
         if (!filestream_error(stream))
@@ -117,27 +122,13 @@ static void summercart_sd_write(struct pi_controller* pi)
             swap_buffer(ptr, 4, 512/4*count);
 #endif
         }
-        filestream_close(stream);
+        filestream_flush(stream);
     }
 }
 
 void init_summercart(struct summercart* summercart)
 {
-    summercart->sd_path = getenv("PL_SD_CARD_IMAGE");
-}
-
-void poweron_summercart(struct summercart* summercart)
-{
-    memset(summercart->buffer, 0, 8192);
-    summercart->sd_size = -1;
-    summercart->status = 0;
-    summercart->data0 = 0;
-    summercart->data1 = 0;
-    summercart->sd_sector = 0;
-    summercart->cfg_rom_write = 0;
-    summercart->sd_byteswap = 0;
-    summercart->unlock = 0;
-    summercart->lock_seq = 0;
+    memset(summercart, 0, sizeof(struct summercart));
 }
 
 int read_summercart_regs(void* opaque, uint32_t address, uint32_t* value)
@@ -239,10 +230,10 @@ int write_summercart_regs(void* opaque, uint32_t address, uint32_t value, uint32
             switch (pi->summercart.data1)
             {
             case 0:
-                pi->summercart.status = 0;
+                summercart_sd_deinit(&pi->summercart);
                 break;
             case 1:
-                if (pi->summercart.sd_path) summercart_sd_init(pi);
+                summercart_sd_init(&pi->summercart);
                 break;
             case 4:
                 pi->summercart.sd_byteswap = 1;

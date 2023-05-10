@@ -3,12 +3,13 @@
 
 #include <stddef.h>
 #include <stdint.h>
+#include <streams/file_stream.h>
 
 struct summercart
 {
     uint8_t buffer[8192];
     int64_t sd_size;
-    const char *sd_path;
+    RFILE *file;
     uint32_t status;
     uint32_t data0;
     uint32_t data1;
@@ -20,7 +21,6 @@ struct summercart
 };
 
 void init_summercart(struct summercart* summercart);
-void poweron_summercart(struct summercart* summercart);
 int read_summercart_regs(void* opaque, uint32_t address, uint32_t* value);
 int write_summercart_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mask);
 
