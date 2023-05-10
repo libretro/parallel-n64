@@ -39,6 +39,7 @@
 
 extern uint32_t AllowUnalignedDMA;
 extern uint32_t AllowLargeRoms;
+extern uint32_t SdCardEmulationEnabled;
 
 enum
 {
@@ -300,7 +301,7 @@ static void dma_pi_write(struct pi_controller *pi)
       return;
    }
 
-   if (pi->regs[PI_CART_ADDR_REG] >= 0x06000000 && pi->regs[PI_CART_ADDR_REG] < 0x08000000)
+   if (SdCardEmulationEnabled && pi->regs[PI_CART_ADDR_REG] >= 0x06000000 && pi->regs[PI_CART_ADDR_REG] < 0x08000000)
    {
       /* 64DD IPL */
       length = (pi->regs[PI_WR_LEN_REG] & 0xFFFFFE) + 2;
