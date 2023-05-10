@@ -111,6 +111,71 @@ static void dma_pi_read(struct pi_controller *pi)
          dma_write_flashram(pi);
       }
    }
+   else if (pi->regs[PI_CART_ADDR_REG] >= 0x10000000
+         && pi->regs[PI_CART_ADDR_REG] < 0x14000000)
+   {
+      //CART ROM
+      length = (pi->regs[PI_RD_LEN_REG] & 0xFFFFFF) + 1;
+      i = (pi->regs[PI_CART_ADDR_REG] - 0x10000000);
+
+      length = (i + length) > pi->cart_rom.rom_size ?
+         (pi->cart_rom.rom_size - i) : length;
+      length = (pi->regs[PI_DRAM_ADDR_REG] + length) > 0x7FFFFF ?
+         (0x7FFFFF - pi->regs[PI_DRAM_ADDR_REG]) : length;
+
+      if (i > pi->cart_rom.rom_size || pi->regs[PI_DRAM_ADDR_REG] > 0x7FFFFF || !pi->summercart.cfg_rom_write)
+      {
+         /* mark both DMA and IO as busy */
+         pi->regs[PI_STATUS_REG] |=
+            PI_STATUS_DMA_BUSY | PI_STATUS_IO_BUSY;
+
+         /* schedule end of dma interrupt event */
+         cp0_update_count();
+         add_interrupt_event(PI_INT, length / 8);
+
+         return;
+      }
+
+      dram_address = pi->regs[PI_DRAM_ADDR_REG];
+      rom_address = (pi->regs[PI_CART_ADDR_REG] - 0x10000000);
+      dram = (uint8_t*)pi->ri->rdram.dram;
+      rom = pi->cart_rom.rom;
+
+      for (i = 0; i < length; ++i)
+         rom[(rom_address + i) ^ S8] = dram[(dram_address + i) ^ S8];
+   }
+   else if (pi->regs[PI_CART_ADDR_REG] >= 0x1ffe0000
+         && pi->regs[PI_CART_ADDR_REG] < 0x1fff0000)
+   {
+      //SC64 BUFFER
+      length = (pi->regs[PI_RD_LEN_REG] & 0xFFFFFF) + 1;
+      i = (pi->regs[PI_CART_ADDR_REG] - 0x1ffe0000);
+
+      length = (i + length) > 8192 ? (8192 - i) : length;
+      length = (pi->regs[PI_DRAM_ADDR_REG] + length) > 0x7FFFFF ?
+         (0x7FFFFF - pi->regs[PI_DRAM_ADDR_REG]) : length;
+
+      if (i > 8192 || pi->regs[PI_DRAM_ADDR_REG] > 0x7FFFFF || !pi->summercart.unlock)
+      {
+         /* mark both DMA and IO as busy */
+         pi->regs[PI_STATUS_REG] |=
+            PI_STATUS_DMA_BUSY | PI_STATUS_IO_BUSY;
+
+         /* schedule end of dma interrupt event */
+         cp0_update_count();
+         add_interrupt_event(PI_INT, length / 8);
+
+         return;
+      }
+
+      dram_address = pi->regs[PI_DRAM_ADDR_REG];
+      rom_address = (pi->regs[PI_CART_ADDR_REG] - 0x1ffe0000);
+      dram = (uint8_t*)pi->ri->rdram.dram;
+      rom = pi->summercart.buffer;
+
+      for (i = 0; i < length; ++i)
+         rom[(rom_address + i) ^ S8] = dram[(dram_address + i) ^ S8];
+   }
    else
    {
       DebugMessage(M64MSG_WARNING, "Unknown dma read at 0x%08X in dma_pi_read()", pi->regs[PI_CART_ADDR_REG]);
@@ -223,7 +288,7 @@ static void dma_pi_write(struct pi_controller *pi)
    }
 
    /* XXX: why need special treatment ? */
-   if (pi->regs[PI_CART_ADDR_REG] >= 0x1fc00000) /* for paper mario */
+   if (pi->regs[PI_CART_ADDR_REG] >= 0x1fc00000 && pi->regs[PI_CART_ADDR_REG] < 0x1fd00000) /* for paper mario */
    {
       /* mark DMA as busy */
       pi->regs[PI_STATUS_REG] |= PI_STATUS_DMA_BUSY;
@@ -258,6 +323,33 @@ static void dma_pi_write(struct pi_controller *pi)
       rom_address = (pi->regs[PI_CART_ADDR_REG] - 0x06000000) & 0x3fffff;
       dram = (uint8_t*)pi->ri->rdram.dram;
       rom = pi->dd_rom.rom;
+   }
+   else if (pi->regs[PI_CART_ADDR_REG] >= 0x1ffe0000 && pi->regs[PI_CART_ADDR_REG] < 0x1fff0000)
+   {
+      /* SC64 BUFFER */
+      length = (pi->regs[PI_WR_LEN_REG] &  0xFFFFFE) + 2;
+      i = (pi->regs[PI_CART_ADDR_REG] - 0x1ffe0000);
+      length = (i + length) > 8192 ? (8192 - i) : length;
+      length = (pi->regs[PI_DRAM_ADDR_REG] + length) > 0x7FFFFF ?
+         (0x7FFFFF - pi->regs[PI_DRAM_ADDR_REG]) : length;
+
+      if (i > 8192 || pi->regs[PI_DRAM_ADDR_REG] > 0x7FFFFF || !pi->summercart.unlock)
+      {
+         /* mark both DMA and IO as busy */
+         pi->regs[PI_STATUS_REG] |=
+            PI_STATUS_DMA_BUSY | PI_STATUS_IO_BUSY;
+
+         /* schedule end of dma interrupt event */
+         cp0_update_count();
+         add_interrupt_event(PI_INT, length / 8);
+
+         return;
+      }
+
+      dram_address = pi->regs[PI_DRAM_ADDR_REG];
+      rom_address = (pi->regs[PI_CART_ADDR_REG] - 0x1ffe0000);
+      dram = (uint8_t*)pi->ri->rdram.dram;
+      rom = pi->summercart.buffer;
    }
    else
    {
@@ -328,6 +420,7 @@ void init_pi(struct pi_controller* pi,
    init_dd_rom(&pi->dd_rom, ddrom, ddrom_size);
    init_flashram(&pi->flashram, flashram_user_data, flashram_save, flashram_data);
    init_sram(&pi->sram, sram_user_data, sram_save, sram_data);
+   init_summercart(&pi->summercart);
 
    pi->use_flashram = 0;
 
@@ -344,7 +437,7 @@ void poweron_pi(struct pi_controller* pi)
     poweron_dd_rom(&pi->dd_rom);
     poweron_flashram(&pi->flashram);
     poweron_is_viewer();
-
+    poweron_summercart(&pi->summercart);
 }
 
 /* Reads a word from the PI MMIO register space. */
