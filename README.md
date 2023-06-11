@@ -12,6 +12,8 @@ Contributors for the modifications specific to this fork:
    * Config to enable/disable unaligned DMA support
    * 16:10 (SteamDeck) widescreen support for GLideN64
    * Support for IS Viewer logging
+   * Support for changing the time on the RTC
+   * Support for storing the RTC state in savestates
  * [Wiseguy](https://gitlab.com/Mr-Wiseguy)
     * Raw gamecube controller support
  * [Aglab2](https://gitlab.com/aglab2)
