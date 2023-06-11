@@ -34,6 +34,7 @@ struct af_rtc
 };
 
 const struct tm* af_rtc_get_time(struct af_rtc* rtc);
+void af_rtc_set_time(struct af_rtc* rtc, struct tm* timestamp);
 
 void init_af_rtc(struct af_rtc* rtc,
       void* user_data,

@@ -1703,6 +1703,20 @@ struct retro_core_option_v2_definition option_defs_us[] = {
         },
         "disabled"
     },
+    {
+        CORE_NAME "-rtc-savestate",
+        "Rollback N64 system clock on savestate load",
+        NULL,
+        NULL,
+        NULL,
+        NULL,
+        {
+            {"enabled", "Yes"},
+            {"disabled", "No"},
+            { NULL, NULL }
+        },
+        "disabled"
+    },
     { NULL, NULL, NULL, NULL, NULL, NULL, {{0}}, NULL },
 };
 

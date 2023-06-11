@@ -24,6 +24,7 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 #define M64P_CORE_PROTOTYPES 1
 #include "api/m64p_types.h"
@@ -48,10 +49,13 @@
 #include "../rsp/rsp_core.h"
 #include "../si/si_controller.h"
 #include "../vi/vi_controller.h"
+#include "../si/af_rtc.h"
 #include "osal/preproc.h"
 
+extern uint32_t RollbackRtcOnLoadState;
+
 static const char* savestate_magic = "M64+SAVE";
-static const int savestate_latest_version = 0x00010000;  /* 1.0 */
+static const int savestate_latest_version = 0x00010001;  /* 1.1 */
 
 #define GETARRAY(buff, type, count) \
     (to_little_endian_buffer(buff, sizeof(type),count), \
@@ -89,7 +93,7 @@ int savestates_load_m64p(const unsigned char *data, size_t size)
    version = (version << 8) | *curr++;
    version = (version << 8) | *curr++;
 
-   if(version != 0x00010000)
+   if(version != 0x00010000 && version != 0x00010001)
       return 0;
 
    if(memcmp((char *)curr, ROM_SETTINGS.MD5, 32))
@@ -284,8 +288,16 @@ int savestates_load_m64p(const unsigned char *data, size_t size)
    memcpy(queue, curr, sizeof(queue));
    to_little_endian_buffer(queue, 4, 256);
    load_eventqueue_infos(queue);
+   curr += sizeof(queue);
 
    *r4300_last_addr() = *r4300_pc();
+   
+   if( RollbackRtcOnLoadState && version >= 0x00010001 ) {
+      struct tm timestamp;
+      COPYARRAY( ((void*)&timestamp), curr, int, 9 );
+      to_little_endian_buffer( (int*)&timestamp, 4, 9 );
+      af_rtc_set_time( &g_dev.si.pif.af_rtc, &timestamp );
+   }
 
    /* deliver callback to indicate 
     * completion of state loading operation */
@@ -521,6 +533,15 @@ int savestates_save_m64p(unsigned char *data, size_t size)
 
    to_little_endian_buffer(queue, 4, queuelength/4);
    PUTARRAY(queue, curr, char, queuelength);
+   
+   if( queuelength < sizeof(queue) ) {
+      memset( curr, 0, sizeof(queue) - queuelength );
+      curr += sizeof(queue) - queuelength;
+   }
+
+   const struct tm *timestamp = af_rtc_get_time( &g_dev.si.pif.af_rtc );
+   PUTARRAY( timestamp, curr, int, 9 );
+   to_little_endian_buffer( (curr - 36), 4, 9 );
 
    /* Deliver callback to indicate completion 
     * of state saving operation */
