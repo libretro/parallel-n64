@@ -113,6 +113,11 @@ void init_af_rtc(struct af_rtc* rtc,
    rtc->get_time = get_time;
    
    errno = 0;
-   const long offset = strtol( getenv( "PL_RTC_OFFSET" ), NULL, 10 );
-   s_rtcOffset = (errno == 0 && offset >= (long)INT_MIN && offset <= (long)INT_MAX - 61l) ? (int)offset : 0;
+   const char *offsetStr = getenv( "PL_RTC_OFFSET" );
+   if( offsetStr && offsetStr[0] != '\0' ) {
+      const long offset = strtol( offsetStr, NULL, 10 );
+      s_rtcOffset = (errno == 0 && offset >= (long)INT_MIN && offset <= (long)INT_MAX - 61l) ? (int)offset : 0;
+   } else {
+      s_rtcOffset = 0;
+   }
 }

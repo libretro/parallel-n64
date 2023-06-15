@@ -878,7 +878,7 @@ void retro_set_environment(retro_environment_t cb)
 void retro_get_system_info(struct retro_system_info *info)
 {
    info->library_name = "ParaLLEl N64";
-   info->library_version = "2.11.0 (Parallel Launcher Edition)";
+   info->library_version = "2.11.1 (Parallel Launcher Edition)";
    info->valid_extensions = "n64|v64|z64|bin|u1|ndd";
    info->need_fullpath = false;
    info->block_extract = false;
