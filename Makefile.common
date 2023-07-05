@@ -188,7 +188,10 @@ SOURCES_C += \
 	$(CORE_DIR)/src/pi/flashram.c \
 	$(CORE_DIR)/src/pi/cart_rom.c \
 	$(CORE_DIR)/src/pi/is_viewer.c \
-	$(CORE_DIR)/src/pi/summercart.c
+	$(CORE_DIR)/src/pi/summercart.c \
+	$(CORE_DIR)/src/ext/libpl.c \
+	$(CORE_DIR)/src/util/array_io.c \
+	$(CORE_DIR)/src/util/random.c
 
 #	$(CORE_DIR)/src/api/debugger.c \
 #	$(CORE_DIR)/src/main/ini_reader.c \

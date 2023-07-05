@@ -50,6 +50,7 @@
 #include "../si/si_controller.h"
 #include "../vi/vi_controller.h"
 #include "../si/af_rtc.h"
+#include "../ext/libpl.h"
 #include "osal/preproc.h"
 
 extern uint32_t RollbackRtcOnLoadState;
@@ -298,6 +299,8 @@ int savestates_load_m64p(const unsigned char *data, size_t size)
       to_little_endian_buffer( (int*)&timestamp, 4, 9 );
       af_rtc_set_time( &g_dev.si.pif.af_rtc, &timestamp );
    }
+   
+   libpl_change_savestate_token();
 
    /* deliver callback to indicate 
     * completion of state loading operation */

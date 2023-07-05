@@ -43,6 +43,8 @@
 #include "../pi/is_viewer.h"
 #include "../pi/summercart.h"
 
+#include "../ext/libpl.h"
+
 #ifdef DBG
 #include "../debugger/dbg_types.h"
 #include "../debugger/dbg_memory.h"
@@ -1049,6 +1051,38 @@ static void write_isvd(void) {
     writed(write_is_viewer, NULL, mupencoreaddress, cpu_dword);
 }
 
+static void read_lplb(void) {
+    readb(read_libpl, NULL, mupencoreaddress, rdword);
+}
+
+static void read_lplh(void) {
+    readh(read_libpl, NULL, mupencoreaddress, rdword);
+}
+
+static void read_lpl(void) {
+    readw(read_libpl, NULL, mupencoreaddress, rdword);
+}
+
+static void read_lpld(void) {
+    readd(read_libpl, NULL, mupencoreaddress, rdword);
+}
+
+static void write_lplb(void) {
+    writeb(write_libpl, NULL, mupencoreaddress, cpu_byte);
+}
+
+static void write_lplh(void) {
+    writeh(write_libpl, NULL, mupencoreaddress, cpu_hword);
+}
+
+static void write_lpl(void) {
+    writew(write_libpl, NULL, mupencoreaddress, cpu_word);
+}
+
+static void write_lpld(void) {
+    writed(write_libpl, NULL, mupencoreaddress, cpu_dword);
+}
+
 static void read_screg(void)
 {
     readw(read_summercart_regs, &g_dev.pi, mupencoreaddress, rdword);
@@ -1437,7 +1471,12 @@ void poweron_memory(void)
    }
    
    /* map IS-Viewer */
-   map_region(0xb3ff, M64P_MEM_NOTHING, RW(isv));
+   if( g_dev.pi.cart_rom.rom_size < 0x04000000u ) {
+      map_region(0xb3ff, M64P_MEM_NOTHING, RW(isv));
+   }
+   
+   /* libpl extensions */
+   map_region(0xbffe, M64P_MEM_NOTHING, RW(lpl));
 
    /* map SummerCart64 */
    if( SdCardEmulationEnabled ) {

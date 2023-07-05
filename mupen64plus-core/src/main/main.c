@@ -72,6 +72,7 @@
 #include "../dd/dd_controller.h"
 #include "../dd/dd_rom.h"
 #include "../dd/dd_disk.h"
+#include "../ext/libpl.h"
 
 #ifdef DBG
 #include "../debugger/dbg_types.h"
@@ -270,6 +271,7 @@ void mupen_main_exit(void)
    if (input.romClosed) input.romClosed();
    if (gfx.romClosed) gfx.romClosed();
    poweroff_is_viewer();
+   free_libpl();
 
    // clean up
    g_EmulatorRunning = 0;
@@ -388,6 +390,7 @@ m64p_error main_init(void)
    StateChanged(M64CORE_EMU_STATE, M64EMU_RUNNING);
 
    /* call r4300 CPU core and run the game */
+   init_libpl();
    poweron_device(&g_dev);
    pifbootrom_hle_execute(&g_dev);
 
