@@ -1503,7 +1503,7 @@ void poweron_memory(void)
    }
    
    /* libpl extensions */
-   map_region(0xbffe, M64P_MEM_NOTHING, RW(lpl));
+   map_region(0xbffb, M64P_MEM_NOTHING, RW(lpl));
 
    /* map SummerCart64 */
    if( SdCardEmulationEnabled ) {
