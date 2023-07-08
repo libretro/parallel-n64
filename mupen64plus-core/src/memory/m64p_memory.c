@@ -1498,7 +1498,7 @@ void poweron_memory(void)
    }
    
    /* map IS-Viewer */
-   if( g_dev.pi.cart_rom.rom_size < 0x04000000u ) {
+   if( g_dev.pi.cart_rom.rom_size <= 0x04000000u ) {
       map_region(0xb3ff, M64P_MEM_NOTHING, RW(isv));
    }
    
