@@ -7,6 +7,8 @@
 #include "../util/array_io.h"
 #include "../util/random.h"
 #include "../util/version.h"
+#include "../../../Graphics/plugin.h"
+#include "../../../mupen64plus-video-paraLLEl/parallel.h"
 
 #define LIBPL_PIPE_BUFFER_SIZE 4096
 
@@ -18,6 +20,22 @@ static FILE* g_inPipe = NULL;
 
 static char g_outPipeBuffer[LIBPL_PIPE_BUFFER_SIZE];
 static char g_inPipeBuffer[LIBPL_PIPE_BUFFER_SIZE];
+
+extern uint32_t LegacySm64ToolsHacks;
+extern uint32_t EnableFBEmulation;
+extern uint32_t EnableN64DepthCompare;
+
+#define PLUGIN_ID_PARALLELN64     0x00010000u
+#define PLUGIN_ID_GLIDEN64        0x00020000u
+#define PLUGIN_ID_OGRE            0x00030000u
+#define PLUGIN_ID_GLIDE64         0x00040000u
+#define PLUGIN_ID_ANGRYLION       0x00050000u
+#define PLUGIN_ID_RICE            0x00060000u
+#define PLUGIN_ID_GLN64           0x00070000u
+
+#define PLUGIN_CAPABILITY_UPSCALE 0x0001u
+#define PLUGIN_CAPABILITY_FBE     0x0002u
+#define PLUGIN_CAPABILITY_DEPTH   0x0004u
 
 static inline void handle_emu_cmd( uint16_t commandId, uint16_t payloadSize ) {
 	switch( commandId ) {
@@ -35,6 +53,69 @@ static inline void handle_emu_cmd( uint16_t commandId, uint16_t payloadSize ) {
 			break;
 		case 3:
 			g_libplBuffer[0] = g_cheatStatus;
+			break;
+		case 4:
+			switch( gfx_plugin ) {
+				case GFX_GLIDE64: {
+					g_libplBuffer[0] = 12;
+					g_libplBuffer[1] = PLUGIN_ID_GLIDE64 | PLUGIN_CAPABILITY_UPSCALE;
+					g_libplBuffer[2] = 0x476c6964u;
+					g_libplBuffer[3] = 0x65363400u;
+					break;
+				}
+				case GFX_RICE: {
+					g_libplBuffer[0] = 9;
+					g_libplBuffer[1] = PLUGIN_ID_RICE | PLUGIN_CAPABILITY_UPSCALE;
+					g_libplBuffer[2] = 0x52696365u;
+					g_libplBuffer[3] = 0;
+					break;
+				}
+				case GFX_GLN64: {
+					g_libplBuffer[0] = 10;
+					g_libplBuffer[1] = PLUGIN_ID_GLN64 | PLUGIN_CAPABILITY_UPSCALE;
+					g_libplBuffer[2] = 0x676c6e36u;
+					g_libplBuffer[3] = 0x34000000u;
+					break;
+				}
+				case GFX_ANGRYLION: {
+					g_libplBuffer[0] = 14;
+					g_libplBuffer[1] = PLUGIN_ID_ANGRYLION | PLUGIN_CAPABILITY_FBE | PLUGIN_CAPABILITY_DEPTH;
+					g_libplBuffer[2] = 0x416e6772u;
+					g_libplBuffer[3] = 0x796c696fu;
+					g_libplBuffer[4] = 0x6e000000u;
+					break;
+				}
+				case GFX_PARALLEL: {
+					g_libplBuffer[0] = 13;
+					g_libplBuffer[1] = PLUGIN_ID_PARALLELN64 | PLUGIN_CAPABILITY_FBE | PLUGIN_CAPABILITY_DEPTH;
+					if( parallel_get_upscaling() ) g_libplBuffer[1] |= PLUGIN_CAPABILITY_UPSCALE;
+					g_libplBuffer[2] = 0x50617261u;
+					g_libplBuffer[3] = 0x4c4c456cu;
+					g_libplBuffer[4] = 0;
+					break;
+				}
+				case GFX_GLIDEN64: {
+					if( LegacySm64ToolsHacks ) {
+						g_libplBuffer[0] = 9;
+						g_libplBuffer[1] = PLUGIN_ID_OGRE | PLUGIN_CAPABILITY_UPSCALE;
+						g_libplBuffer[2] = 0x4f475245u;
+						g_libplBuffer[3] = 0;
+					} else {
+						g_libplBuffer[0] = 13;
+						g_libplBuffer[1] = PLUGIN_ID_GLIDEN64 | PLUGIN_CAPABILITY_UPSCALE;
+						g_libplBuffer[2] = 0x476c6964u;
+						g_libplBuffer[3] = 0x654e3634u;
+						g_libplBuffer[4] = 0;
+					}
+					if( EnableFBEmulation ) g_libplBuffer[1] |= PLUGIN_CAPABILITY_FBE;
+					if( EnableN64DepthCompare ) g_libplBuffer[1] |= PLUGIN_CAPABILITY_DEPTH;
+					break;
+				}
+				default: {
+					g_libplBuffer[0] = 0x00010000u;
+					break;
+				}
+			}
 			break;
 		default:
 			g_libplBuffer[0] = 0x01000000u;
