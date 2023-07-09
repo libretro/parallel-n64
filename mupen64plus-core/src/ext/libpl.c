@@ -176,15 +176,12 @@ void init_libpl(void) {
 		return;
 	}
 	
-	g_inPipe = fopen( inputPipeName, "rb" );
 	g_outPipe = fopen( outputPipeName, "wb" );
-	
-	if( !g_inPipe || !g_outPipe ) {
+	if( !g_outPipe ) {
 		free_libpl();
 		return;
 	}
 	
-	setvbuf( g_inPipe, g_inPipeBuffer, _IOFBF, LIBPL_PIPE_BUFFER_SIZE );
 	setvbuf( g_outPipe, g_outPipeBuffer, _IOFBF, LIBPL_PIPE_BUFFER_SIZE );
 	
 	fputc( 0x06, g_outPipe );
@@ -194,6 +191,14 @@ void init_libpl(void) {
 		free_libpl();
 		return;
 	}
+	
+	g_inPipe = fopen( inputPipeName, "rb" );
+	if( !g_inPipe ) {
+		free_libpl();
+		return;
+	}
+	
+	setvbuf( g_inPipe, g_inPipeBuffer, _IOFBF, LIBPL_PIPE_BUFFER_SIZE );
 	
 	if( fgetc( g_inPipe ) != 6 ) {
 		free_libpl();
