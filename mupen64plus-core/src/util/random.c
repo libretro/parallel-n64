@@ -4,6 +4,7 @@
 
 #ifdef _WIN32
 
+#include <windows.h>
 #include <ntsecapi.h>
 
 static inline int random_u32_impl( uint32_t *value ) {
