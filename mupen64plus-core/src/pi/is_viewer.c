@@ -4,6 +4,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <errno.h>
+#include "../util/array_io.h"
 
 static uint32_t g_isvBuffer[0x4000];
 static FILE* g_outFile = NULL;
@@ -43,17 +44,6 @@ int read_is_viewer(void* opaque, uint32_t address, uint32_t* value) {
 	return 0;
 }
 
-static inline void write_partial_word( uint32_t word, uint32_t bytes ) {
-	if( !bytes ) return;
-	fputc( (int)(word >> 24), g_outFile );
-	if( !--bytes ) return;
-	fputc( (int)((word >> 16) & 0xFFu), g_outFile );
-	if( !--bytes ) return;
-	fputc( (int)((word >> 8) & 0xFFu), g_outFile );
-	if( !--bytes ) return;
-	fputc( (int)(word & 0xFFu), g_outFile );
-}
-
 int write_is_viewer(void* opaque, uint32_t address, uint32_t value, uint32_t mask) {
 	if( IsvEmulationMode == 0 ) return 0;
 	
@@ -82,16 +72,7 @@ int write_is_viewer(void* opaque, uint32_t address, uint32_t value, uint32_t mas
 			fputc( (int)(numBytes & 0xff), g_outFile );
 		}
 		
-		const uint32_t numWords = numBytes >> 2;
-		for( uint32_t j = 0; j < numWords; j++ ) {
-			const uint32_t word = g_isvBuffer[8 + j];
-			fputc( (int)(word >> 24), g_outFile );
-			fputc( (int)((word >> 16) & 0xFFu), g_outFile );
-			fputc( (int)((word >> 8) & 0xFFu), g_outFile );
-			fputc( (int)(word & 0xFFu), g_outFile );
-		}
-		
-		write_partial_word( g_isvBuffer[numWords + 8], numBytes % 4 );
+		write_bytes_from_u32_array( &g_isvBuffer[8], g_outFile, (size_t)numBytes );
 		fflush( g_outFile );
 
 		int status = ferror( g_outFile );

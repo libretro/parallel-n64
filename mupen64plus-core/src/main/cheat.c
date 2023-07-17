@@ -27,6 +27,7 @@
 #include "api/config.h"
 
 #include "memory/memory.h"
+#include "ext/libpl.h"
 #include "cheat.h"
 #include "main.h"
 #include "device.h"
@@ -291,6 +292,7 @@ void cheat_apply_cheats(int entry)
     {
         if (cheat->enabled)
         {
+            libpl_set_cheats_used();
             cheat->was_enabled = 1;
             switch(entry)
             {

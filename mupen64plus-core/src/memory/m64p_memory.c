@@ -43,6 +43,8 @@
 #include "../pi/is_viewer.h"
 #include "../pi/summercart.h"
 
+#include "../ext/libpl.h"
+
 #ifdef DBG
 #include "../debugger/dbg_types.h"
 #include "../debugger/dbg_memory.h"
@@ -209,6 +211,28 @@ static void write_nothingh(void)
 
 static void write_nothingd(void)
 {
+}
+
+static void read_echo(void)
+{
+    const uint32_t w = mupencoreaddress & 0xFFFFu;
+    *rdword = w | (w << 16);
+}
+
+static void read_echob(void)
+{
+    *rdword = ((mupencoreaddress % 2) ? mupencoreaddress : (mupencoreaddress >> 8)) & 0xFFu;
+}
+
+static void read_echoh(void)
+{
+    *rdword = mupencoreaddress & 0xFFFFu;
+}
+
+static void read_echod(void)
+{
+    // This is a crash on console, so just read 0
+    *rdword = 0;
 }
 
 static void read_nomem(void)
@@ -1049,6 +1073,38 @@ static void write_isvd(void) {
     writed(write_is_viewer, NULL, mupencoreaddress, cpu_dword);
 }
 
+static void read_lplb(void) {
+    readb(read_libpl, NULL, mupencoreaddress, rdword);
+}
+
+static void read_lplh(void) {
+    readh(read_libpl, NULL, mupencoreaddress, rdword);
+}
+
+static void read_lpl(void) {
+    readw(read_libpl, NULL, mupencoreaddress, rdword);
+}
+
+static void read_lpld(void) {
+    readd(read_libpl, NULL, mupencoreaddress, rdword);
+}
+
+static void write_lplb(void) {
+    writeb(write_libpl, NULL, mupencoreaddress, cpu_byte);
+}
+
+static void write_lplh(void) {
+    writeh(write_libpl, NULL, mupencoreaddress, cpu_hword);
+}
+
+static void write_lpl(void) {
+    writew(write_libpl, NULL, mupencoreaddress, cpu_word);
+}
+
+static void write_lpld(void) {
+    writed(write_libpl, NULL, mupencoreaddress, cpu_dword);
+}
+
 static void read_screg(void)
 {
     readw(read_summercart_regs, &g_dev.pi, mupencoreaddress, rdword);
@@ -1430,14 +1486,24 @@ void poweron_memory(void)
    /* map PIF RAM */
    map_region(0x9fc0, M64P_MEM_PIF, RW(pif));
    map_region(0xbfc0, M64P_MEM_PIF, RW(pif));
-   for(i = 0xfc1; i < 0x1000; ++i)
+   for(i = 0xfc1; i < 0xfd0; ++i)
    {
       map_region(0x9000+i, M64P_MEM_NOTHING, RW(nothing));
       map_region(0xb000+i, M64P_MEM_NOTHING, RW(nothing));
    }
+   for(i = 0xfd0; i < 0x1000; ++i)
+   {
+      map_region(0x9000+i, M64P_MEM_NOTHING, RW(nothing));
+      map_region(0xb000+i, M64P_MEM_NOTHING, R(echo), W(nothing));
+   }
    
    /* map IS-Viewer */
-   map_region(0xb3ff, M64P_MEM_NOTHING, RW(isv));
+   if( g_dev.pi.cart_rom.rom_size <= 0x04000000u ) {
+      map_region(0xb3ff, M64P_MEM_NOTHING, RW(isv));
+   }
+   
+   /* libpl extensions */
+   map_region(0xbffb, M64P_MEM_NOTHING, RW(lpl));
 
    /* map SummerCart64 */
    if( SdCardEmulationEnabled ) {
