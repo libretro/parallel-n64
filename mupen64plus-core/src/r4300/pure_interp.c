@@ -380,12 +380,22 @@ void InterpretOpcode(void)
 			else                                     BGEZL(op);
 			break;
 		case 8: /* REGIMM opcode 8: TGEI (Not implemented) */
+			TGEI(op);
+			break;
 		case 9: /* REGIMM opcode 9: TGEIU (Not implemented) */
+			TGEIU(op);
+			break;
 		case 10: /* REGIMM opcode 10: TLTI (Not implemented) */
+			TLTI(op);
+			break;
 		case 11: /* REGIMM opcode 11: TLTIU (Not implemented) */
+			TLTIU(op);
+			break;
 		case 12: /* REGIMM opcode 12: TEQI (Not implemented) */
+			TEQI(op);
+			break;
 		case 14: /* REGIMM opcode 14: TNEI (Not implemented) */
-			NI(op);
+			TNEI(op);
 			break;
 		case 16: /* REGIMM opcode 16: BLTZAL */
 			if (IS_RELATIVE_IDLE_LOOP(op, mupencorePC->addr)) BLTZAL_IDLE(op);

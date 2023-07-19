@@ -631,38 +631,44 @@ static void RBGEZL(void)
 
 static void RTGEI(void)
 {
-   dst->ops = current_instruction_table.NI;
-   recomp_func = genni;
+   dst->ops = current_instruction_table.TGEI;
+   recomp_func = gentgei;
+   recompile_standard_i_type();
 }
 
 static void RTGEIU(void)
 {
-   dst->ops = current_instruction_table.NI;
-   recomp_func = genni;
+   dst->ops = current_instruction_table.TGEIU;
+   recomp_func = gentgeiu;
+   recompile_standard_i_type();
 }
 
 static void RTLTI(void)
 {
-   dst->ops = current_instruction_table.NI;
-   recomp_func = genni;
+   dst->ops = current_instruction_table.TLTI;
+   recomp_func = gentlti;
+   recompile_standard_i_type();
 }
 
 static void RTLTIU(void)
 {
-   dst->ops = current_instruction_table.NI;
-   recomp_func = genni;
+   dst->ops = current_instruction_table.TLTIU;
+   recomp_func = gentltiu;
+   recompile_standard_i_type();
 }
 
 static void RTEQI(void)
 {
-   dst->ops = current_instruction_table.NI;
-   recomp_func = genni;
+   dst->ops = current_instruction_table.TEQI;
+   recomp_func = genteqi;
+   recompile_standard_i_type();
 }
 
 static void RTNEI(void)
 {
-   dst->ops = current_instruction_table.NI;
-   recomp_func = genni;
+   dst->ops = current_instruction_table.TNEI;
+   recomp_func = gentnei;
+   recompile_standard_i_type();
 }
 
 static void RBLTZAL(void)

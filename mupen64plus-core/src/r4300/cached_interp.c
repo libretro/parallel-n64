@@ -512,6 +512,12 @@ const cpu_instruction_table cached_interpreter_table = {
    TGEU,
    TLT,
    TLTU,
+   TEQI,
+   TNEI,
+   TGEI,
+   TGEIU,
+   TLTI,
+   TLTIU,
 
    NOP,
    RESERVED,

@@ -1820,6 +1820,66 @@ DECLARE_INSTRUCTION(TLTU)
    ADD_TO_PC(1);
 }
 
+DECLARE_INSTRUCTION(TEQI)
+{
+   if (rrs == iimmediate)
+   {
+     DebugMessage(M64MSG_ERROR, "trap exception in TEQI");
+     mupencorestop=1;
+   }
+   ADD_TO_PC(1);
+}
+
+DECLARE_INSTRUCTION(TNEI)
+{
+   if (rrs != iimmediate)
+   {
+     DebugMessage(M64MSG_ERROR, "trap exception in TNEI");
+     mupencorestop=1;
+   }
+   ADD_TO_PC(1);
+}
+
+DECLARE_INSTRUCTION(TGEI)
+{
+   if (rrs >= iimmediate)
+   {
+     DebugMessage(M64MSG_ERROR, "trap exception in TGEI");
+     mupencorestop=1;
+   }
+   ADD_TO_PC(1);
+}
+
+DECLARE_INSTRUCTION(TGEIU)
+{
+   if ((uint64_t)rrs >= (uint64_t)iimmediate)
+   {
+     DebugMessage(M64MSG_ERROR, "trap exception in TGEIU");
+     mupencorestop=1;
+   }
+   ADD_TO_PC(1);
+}
+
+DECLARE_INSTRUCTION(TLTI)
+{
+   if (rrs < iimmediate)
+   {
+     DebugMessage(M64MSG_ERROR, "trap exception in TLTI");
+     mupencorestop=1;
+   }
+   ADD_TO_PC(1);
+}
+
+DECLARE_INSTRUCTION(TLTIU)
+{
+   if ((uint64_t)rrs == (uint64_t)iimmediate)
+   {
+     DebugMessage(M64MSG_ERROR, "trap exception in TLTIU");
+     mupencorestop=1;
+   }
+   ADD_TO_PC(1);
+}
+
 DECLARE_INSTRUCTION(DSLL)
 {
    rrd = rrt << rsa;

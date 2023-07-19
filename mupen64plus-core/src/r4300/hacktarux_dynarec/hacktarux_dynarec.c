@@ -5190,6 +5190,36 @@ void gentltu(void)
    gencallinterp((native_type)cached_interpreter_table.TLTU, 0);
 }
 
+void genteqi(void)
+{
+   gencallinterp((native_type)cached_interpreter_table.TEQI, 0);
+}
+
+void gentnei(void)
+{
+   gencallinterp((native_type)cached_interpreter_table.TNEI, 0);
+}
+
+void gentgei(void)
+{
+   gencallinterp((native_type)cached_interpreter_table.TGEI, 0);
+}
+
+void gentgeiu(void)
+{
+   gencallinterp((native_type)cached_interpreter_table.TGEIU, 0);
+}
+
+void gentlti(void)
+{
+   gencallinterp((native_type)cached_interpreter_table.TLTI, 0);
+}
+
+void gentltiu(void)
+{
+   gencallinterp((native_type)cached_interpreter_table.TLTIU, 0);
+}
+
 void gendsll(void)
 {
 #ifdef INTERPRET_DSLL
