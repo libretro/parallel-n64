@@ -68,7 +68,7 @@ cpu_instruction_table current_instruction_table;
 void generic_jump_to(uint32_t address)
 {
    if (r4300emu == CORE_PURE_INTERPRETER)
-      mupencorePC = address;
+      mupencorePC->addr = address;
    else {
 #if NEW_DYNAREC
       if (r4300emu == CORE_DYNAREC)
