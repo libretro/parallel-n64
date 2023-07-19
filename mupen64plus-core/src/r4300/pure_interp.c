@@ -313,15 +313,23 @@ void InterpretOpcode(void)
 			if (RD_OF(op) != 0) DSUBU(op);
 			else                NOP(0);
 			break;
-		case 48: /* SPECIAL opcode 48: TGE (Not implemented) */
-		case 49: /* SPECIAL opcode 49: TGEU (Not implemented) */
-		case 50: /* SPECIAL opcode 50: TLT (Not implemented) */
-		case 51: /* SPECIAL opcode 51: TLTU (Not implemented) */
-			NI(op);
+		case 48: /* SPECIAL opcode 48: TGE */
+			TGE(op);
 			break;
-		case 52: TEQ(op); break;
-		case 54: /* SPECIAL opcode 54: TNE (Not implemented) */
-			NI(op);
+		case 49: /* SPECIAL opcode 49: TGEU */
+			TGEU(op);
+			break;
+		case 50: /* SPECIAL opcode 50: TLT */
+			TLT(op);
+			break;
+		case 51: /* SPECIAL opcode 51: TLTU */
+			TLTU(op);
+			break;
+		case 52: /* SPECIAL opcode 54: TEQ */
+			TEQ(op);
+			break;
+		case 54: /* SPECIAL opcode 54: TNE */
+			TNE(op);
 			break;
 		case 56: /* SPECIAL opcode 56: DSLL */
 			if (RD_OF(op) != 0) DSLL(op);

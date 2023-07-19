@@ -507,6 +507,11 @@ const cpu_instruction_table cached_interpreter_table = {
    SYSCALL,
 
    TEQ,
+   TNE,
+   TGE,
+   TGEU,
+   TLT,
+   TLTU,
 
    NOP,
    RESERVED,

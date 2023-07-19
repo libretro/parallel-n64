@@ -5165,6 +5165,31 @@ void genteq(void)
    gencallinterp((native_type)cached_interpreter_table.TEQ, 0);
 }
 
+void gentne(void)
+{
+   gencallinterp((native_type)cached_interpreter_table.TNE, 0);
+}
+
+void gentge(void)
+{
+   gencallinterp((native_type)cached_interpreter_table.TGE, 0);
+}
+
+void gentgeu(void)
+{
+   gencallinterp((native_type)cached_interpreter_table.TGEU, 0);
+}
+
+void gentlt(void)
+{
+   gencallinterp((native_type)cached_interpreter_table.TLT, 0);
+}
+
+void gentltu(void)
+{
+   gencallinterp((native_type)cached_interpreter_table.TLTU, 0);
+}
+
 void gendsll(void)
 {
 #ifdef INTERPRET_DSLL

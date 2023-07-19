@@ -1770,6 +1770,56 @@ DECLARE_INSTRUCTION(TEQ)
    ADD_TO_PC(1);
 }
 
+DECLARE_INSTRUCTION(TNE)
+{
+   if (rrs != rrt)
+   {
+     DebugMessage(M64MSG_ERROR, "trap exception in TNE");
+     mupencorestop=1;
+   }
+   ADD_TO_PC(1);
+}
+
+DECLARE_INSTRUCTION(TGE)
+{
+   if (rrs >= rrt)
+   {
+     DebugMessage(M64MSG_ERROR, "trap exception in TGE");
+     mupencorestop=1;
+   }
+   ADD_TO_PC(1);
+}
+
+DECLARE_INSTRUCTION(TGEU)
+{
+   if ((uint64_t)rrs >= (uint64_t)rrt)
+   {
+     DebugMessage(M64MSG_ERROR, "trap exception in TGEU");
+     mupencorestop=1;
+   }
+   ADD_TO_PC(1);
+}
+
+DECLARE_INSTRUCTION(TLT)
+{
+   if (rrs < rrt)
+   {
+     DebugMessage(M64MSG_ERROR, "trap exception in TLT");
+     mupencorestop=1;
+   }
+   ADD_TO_PC(1);
+}
+
+DECLARE_INSTRUCTION(TLTU)
+{
+   if ((uint64_t)rrs < (uint64_t)rrt)
+   {
+     DebugMessage(M64MSG_ERROR, "trap exception in TLTU");
+     mupencorestop=1;
+   }
+   ADD_TO_PC(1);
+}
+
 DECLARE_INSTRUCTION(DSLL)
 {
    rrd = rrt << rsa;
