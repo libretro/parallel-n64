@@ -981,6 +981,50 @@ void genteq()
 {
 }
 
+void gentne()
+{
+}
+
+void gentge()
+{
+}
+
+void gentgeu()
+{
+}
+
+void gentlt()
+{
+}
+
+void gentltu()
+{
+}
+
+void genteqi()
+{
+}
+
+void gentnei()
+{
+}
+
+void gentgei()
+{
+}
+
+void gentgeiu()
+{
+}
+
+void gentlti()
+{
+}
+
+void gentltiu()
+{
+}
+
 void gendsll()
 {
 }
