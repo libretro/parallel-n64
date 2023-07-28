@@ -156,7 +156,7 @@ static inline void handle_pl_cmd( uint16_t payloadSize ) {
 	if( ferror( g_inPipe ) ) {
 		g_libplBuffer[0] = 0x03000000u;
 		free_libpl();
-	} else if( header[0] > 4 ) {
+	} else if( header[0] > 6 ) {
 		g_libplBuffer[0] = 0x03000000u;
 	} else {
 		g_libplBuffer[0] = (uint32_t)responseSize | ((uint32_t)header[1] << 16) | ((uint32_t)header[0] << 24);
