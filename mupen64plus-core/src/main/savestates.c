@@ -301,6 +301,7 @@ int savestates_load_m64p(const unsigned char *data, size_t size)
    }
    
    libpl_change_savestate_token();
+   g_cheatStatus |= LPL_USED_SAVESTATES;
 
    /* deliver callback to indicate 
     * completion of state loading operation */

@@ -3,6 +3,13 @@
 
 #include <stdint.h>
 
+#define LPL_USED_CHEATS 0x1
+#define LPL_USED_SAVESTATES 0x2
+#define LPL_USED_SLOWDOWN 0x4
+#define LPL_USED_FRAME_ADVANCE 0x8
+
+extern uint8_t g_cheatStatus;
+
 void init_libpl(void);
 void free_libpl(void);
 

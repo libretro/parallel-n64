@@ -26,6 +26,7 @@
 #include "util/version.h"
 #include "libretro_memory.h"
 #include "libretro_core_options.h"
+#include "ext/libpl.h"
 
 /* Cxd4 RSP */
 #include "../mupen64plus-rsp-cxd4/config.h"
@@ -2404,6 +2405,19 @@ void retro_run (void)
 #ifdef NO_LIBCO
          EmuThreadInit();
 #endif
+      }
+      
+      struct retro_throttle_state throttleState;
+      environ_cb( RETRO_ENVIRONMENT_GET_THROTTLE_STATE, &throttleState );
+      switch( throttleState.mode ) {
+         case RETRO_THROTTLE_FRAME_STEPPING:
+            g_cheatStatus |= LPL_USED_FRAME_ADVANCE;
+            break;
+         case RETRO_THROTTLE_SLOW_MOTION:
+            g_cheatStatus |= LPL_USED_SLOWDOWN;
+            break;
+         default:
+            break;
       }
 
 #ifdef NO_LIBCO

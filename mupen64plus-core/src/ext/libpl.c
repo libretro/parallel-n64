@@ -14,9 +14,11 @@
 
 static uint32_t g_libplBuffer[0x4000];
 static uint32_t g_savestateToken = 0;
-static uint32_t g_cheatStatus = 0;
 static FILE* g_outPipe = NULL;
 static FILE* g_inPipe = NULL;
+
+static uint8_t g_usedCheats = 0;
+uint8_t g_cheatStatus = 0;
 
 static char g_outPipeBuffer[LIBPL_PIPE_BUFFER_SIZE];
 static char g_inPipeBuffer[LIBPL_PIPE_BUFFER_SIZE];
@@ -52,7 +54,7 @@ static inline void handle_emu_cmd( uint16_t commandId, uint16_t payloadSize ) {
 			g_libplBuffer[1] = g_savestateToken;
 			break;
 		case 3:
-			g_libplBuffer[0] = g_cheatStatus;
+			g_libplBuffer[0] = (uint32_t)g_usedCheats << 16;
 			break;
 		case 4:
 			switch( gfx_plugin ) {
@@ -117,6 +119,25 @@ static inline void handle_emu_cmd( uint16_t commandId, uint16_t payloadSize ) {
 				}
 			}
 			break;
+		case 5:
+			g_libplBuffer[0] = (uint32_t)g_cheatStatus << 16;
+			break;
+		case 6: {
+			switch( payloadSize ) {
+				case 0:
+					g_cheatStatus &= LPL_USED_CHEATS;
+					g_libplBuffer[0] = (uint32_t)g_cheatStatus << 16;
+					break;
+				case 1:
+					g_cheatStatus &= ~(uint8_t)(g_libplBuffer[1] >> 24);
+					g_libplBuffer[0] = (uint32_t)g_cheatStatus << 16;
+					break;
+				default:
+					g_libplBuffer[0] = 0x02000000u;
+					break;
+			}
+			break;
+		}
 		default:
 			g_libplBuffer[0] = 0x01000000u;
 			break;
@@ -251,5 +272,6 @@ void libpl_change_savestate_token(void) {
 }
 
 void libpl_set_cheats_used(void) {
-	g_cheatStatus = 0x00010000u;
+	g_usedCheats = 0x00010000u;
+	g_cheatStatus |= LPL_USED_CHEATS;
 }
