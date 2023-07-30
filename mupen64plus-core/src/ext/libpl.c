@@ -18,6 +18,7 @@ static FILE* g_outPipe = NULL;
 static FILE* g_inPipe = NULL;
 
 static uint8_t g_usedCheats = 0;
+uint8_t g_frameCheatStatus = 0;
 uint8_t g_cheatStatus = 0;
 
 static char g_outPipeBuffer[LIBPL_PIPE_BUFFER_SIZE];
@@ -126,10 +127,12 @@ static inline void handle_emu_cmd( uint16_t commandId, uint16_t payloadSize ) {
 			switch( payloadSize ) {
 				case 0:
 					g_cheatStatus &= LPL_USED_CHEATS;
+					g_cheatStatus |= g_frameCheatStatus;
 					g_libplBuffer[0] = (uint32_t)g_cheatStatus << 16;
 					break;
 				case 1:
 					g_cheatStatus &= ~(uint8_t)(g_libplBuffer[1] >> 24);
+					g_cheatStatus |= g_frameCheatStatus;
 					g_libplBuffer[0] = (uint32_t)g_cheatStatus << 16;
 					break;
 				default:
@@ -274,4 +277,5 @@ void libpl_change_savestate_token(void) {
 void libpl_set_cheats_used(void) {
 	g_usedCheats = 0x00010000u;
 	g_cheatStatus |= LPL_USED_CHEATS;
+	g_frameCheatStatus |= LPL_USED_CHEATS;
 }

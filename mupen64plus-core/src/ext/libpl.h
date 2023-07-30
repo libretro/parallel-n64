@@ -9,6 +9,7 @@
 #define LPL_USED_FRAME_ADVANCE 0x8
 
 extern uint8_t g_cheatStatus;
+extern uint8_t g_frameCheatStatus;
 
 void init_libpl(void);
 void free_libpl(void);
