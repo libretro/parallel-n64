@@ -24,6 +24,7 @@ void poweron_is_viewer(void) {
 			g_outFile = fopen( isvFile, "wb" );
 			if( g_outFile ) {
 				fputc( 0x06, g_outFile );
+				fflush( g_outFile );
 			} else {
 				g_fileStatus = errno;
 			}
