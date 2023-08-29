@@ -81,7 +81,7 @@ void init_pif(struct pif *pif,
 
    for (i = 0; i < GAME_CONTROLLERS_COUNT; ++i)
    {
-      static  channels[] = { 0, 1, 2, 3 };
+      static int32_t channels[] = { 0, 1, 2, 3 };
       init_game_controller(
             &pif->controllers[i], 
             (void*)&channels[i],

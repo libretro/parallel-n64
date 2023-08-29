@@ -473,7 +473,8 @@ else ifeq ($(platform), emscripten)
    WITH_DYNAREC :=
 
    HAVE_PARALLEL = 0
-   CPUFLAGS += -DNOSSE -DEMSCRIPTEN -DNO_ASM -DNO_LIBCO -s USE_ZLIB=1 -s PRECISE_F32=1
+   HAVE_THR_AL = 1
+   CPUFLAGS += -DNOSSE -DEMSCRIPTEN -DNO_ASM -DNO_LIBCO
 
    WITH_DYNAREC =
    CC = emcc
@@ -899,6 +900,8 @@ ifeq ($(DEBUG), 1)
    endif
 else
 ifneq (,$(findstring msvc,$(platform)))
+   CPUOPTS += -O2
+else ifeq ($(platform), emscripten)
    CPUOPTS += -O2
 else
 	CPUOPTS += -Ofast
