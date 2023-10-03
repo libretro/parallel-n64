@@ -3,6 +3,7 @@
 
 #include <stddef.h>
 #include <stdint.h>
+#include <boolean.h>
 #include <streams/file_stream.h>
 
 struct summercart
@@ -21,6 +22,7 @@ struct summercart
 };
 
 void init_summercart(struct summercart* summercart);
+bool load_sdcard(struct summercart* summercart, const char *path);
 int read_summercart_regs(void* opaque, uint32_t address, uint32_t* value);
 int write_summercart_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mask);
 

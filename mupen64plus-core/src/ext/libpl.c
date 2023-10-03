@@ -4,6 +4,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <errno.h>
+#include "../pi/summercart.h"
 #include "../util/array_io.h"
 #include "../util/random.h"
 #include "../util/version.h"
@@ -11,6 +12,8 @@
 #include "../../../mupen64plus-video-paraLLEl/parallel.h"
 
 #define LIBPL_PIPE_BUFFER_SIZE 4096
+
+static struct device *s_device = NULL;
 
 static uint32_t g_libplBuffer[0x4000];
 static uint32_t g_savestateToken = 0;
@@ -147,9 +150,83 @@ static inline void handle_emu_cmd( uint16_t commandId, uint16_t payloadSize ) {
 	}
 }
 
+static inline void handle_sdcard_load_cmd( uint16_t payloadSize, uint8_t cmd ) {
+	if( s_device->pi.summercart.file ) {
+		g_libplBuffer[0] = 0x00010000u;
+		return;
+	}
+	
+	switch( cmd ) {
+		case 2:
+			if( payloadSize >= 5 && payloadSize <= 50 ) break;
+			g_libplBuffer[0] = 0x02000000u;
+			return;
+		case 3:
+			if( payloadSize == 2 ) break;
+			g_libplBuffer[0] = 0x02000000u;
+			return;
+		case 4:
+			if( payloadSize != 0 && payloadSize <= 36 ) break;
+			g_libplBuffer[0] = 0x02000000u;
+			return;
+		default:
+			g_libplBuffer[0] = 0x01000000u;
+			return;
+	}
+	
+	write_bytes_from_u32_array( g_libplBuffer, g_outPipe, (size_t)payloadSize + 4 );
+	fflush( g_outPipe );
+	
+	if( ferror( g_outPipe ) ) {
+		g_libplBuffer[0] = 0x03000000u;
+		free_libpl();
+		return;
+	}
+	
+	uint8_t header[4];
+	if( fread( header, 1, 4, g_inPipe ) < 4 ) {
+		g_libplBuffer[0] = 0x03000000u;
+		free_libpl();
+		return;
+	}
+	
+	if( header[0] > 6 ) {
+		g_libplBuffer[0] = 0x03000000u;
+		free_libpl();
+		return;
+	} else if( header[0] || header[1] ) {
+		if( header[2] || header[3] ) {
+			g_libplBuffer[0] = 0x03000000u;
+			free_libpl();
+		} else {
+			g_libplBuffer[0] = ((uint32_t)header[0] << 24) | ((uint32_t)header[1] << 16 );
+		}
+		return;
+	}
+	
+	uint16_t pathLength = ((uint16_t)header[2] << 8) | (uint16_t)header[3];
+	char *path = (char*)malloc( pathLength + 1 );
+	if( fread( path, 1, pathLength, g_inPipe ) < (size_t)pathLength ) {
+		g_libplBuffer[0] = 0x03000000u;
+		free( path );
+		free_libpl();
+		return;
+	}
+
+	path[pathLength] = '\0';
+	g_libplBuffer[0] = load_sdcard( &s_device->pi.summercart, path ) ? 0u : 0x00020000u;
+	free( path );
+}
+
 static inline void handle_pl_cmd( uint16_t payloadSize ) {
 	if( !g_outPipe || !g_inPipe ) {
 		g_libplBuffer[0] = 0x03000000u;
+		return;
+	}
+	
+	const uint8_t cmd = (uint8_t)((g_libplBuffer[0] >> 16) & 0xFFu);
+	if( cmd >= 2 && cmd <= 4 ) {
+		handle_sdcard_load_cmd( payloadSize, cmd );
 		return;
 	}
 	
@@ -187,8 +264,10 @@ static inline void handle_pl_cmd( uint16_t payloadSize ) {
 	}
 }
 
-void init_libpl(void) {
+void init_libpl( struct device *dev ) {
 	free_libpl();
+	
+	s_device = dev;
 	
 	memset( g_libplBuffer, 0, 0x10000 );
 	libpl_change_savestate_token();
@@ -239,6 +318,8 @@ void free_libpl(void) {
 		fclose( g_inPipe );
 		g_inPipe = NULL;
 	}
+	
+	s_device = NULL;
 }
 
 int read_libpl(void* opaque, uint32_t address, uint32_t* value) {

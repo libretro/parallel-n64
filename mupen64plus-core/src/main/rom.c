@@ -63,7 +63,6 @@ int           g_vi_refresh_rate = DEFAULT_COUNT_PER_SCANLINE;
 
 extern bool frame_dupe;
 extern uint32_t OverrideSaveType;
-extern uint32_t SdCardEmulationEnabled;
 
 m64p_rom_header   ROM_HEADER;
 rom_params        ROM_PARAMS;
@@ -175,7 +174,7 @@ m64p_error open_rom(const unsigned char* romimage, unsigned int size)
    /* Clear Byte-swapped flag, since ROM is now deleted. */
    g_MemHasBeenBSwapped = 0;
    /* allocate new buffer for ROM and copy into this buffer */
-   g_rom_size = (!SdCardEmulationEnabled || size > 0x4000000) ? size : 0x4000000;
+   g_rom_size = (size > 0x4000000) ? size : 0x4000000;
    g_rom = (unsigned char *) malloc(g_rom_size);
    alternate_vi_timing = 0;
    g_vi_refresh_rate = DEFAULT_COUNT_PER_SCANLINE;

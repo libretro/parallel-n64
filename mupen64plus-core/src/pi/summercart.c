@@ -63,6 +63,27 @@ static void summercart_sd_init(struct summercart* summercart)
     }
 }
 
+bool load_sdcard( struct summercart* summercart, const char *path ) {
+    if( summercart->file ) return false;
+    
+    summercart->file = filestream_open(
+        path,
+        RETRO_VFS_FILE_ACCESS_READ_WRITE | RETRO_VFS_FILE_ACCESS_UPDATE_EXISTING,
+        RETRO_VFS_FILE_ACCESS_HINT_NONE
+    );
+    
+    if( summercart->file ) {
+        summercart->sd_size = filestream_get_size( summercart->file );
+        summercart->status = 0;
+        
+        SdCardEmulationEnabled = 1;
+        return true;
+    }
+    
+    summercart->status = 0x40000000;
+    return false;
+}
+
 static void summercart_sd_deinit(struct summercart* summercart)
 {
     summercart->status = 0;
@@ -144,6 +165,7 @@ int read_summercart_regs(void* opaque, uint32_t address, uint32_t* value)
     uint32_t addr               = address & 0xFFFF;
 
     *value = 0;
+    if( !SdCardEmulationEnabled ) return 0;
 
     if (!pi->summercart.unlock) return 0;
 
@@ -160,6 +182,8 @@ int read_summercart_regs(void* opaque, uint32_t address, uint32_t* value)
 
 int write_summercart_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mask)
 {
+    if( !SdCardEmulationEnabled ) return 0;
+    
     struct pi_controller* pi    = (struct pi_controller*)opaque;
     uint32_t addr               = address & 0xFFFF;
 
