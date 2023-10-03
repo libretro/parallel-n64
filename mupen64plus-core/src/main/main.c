@@ -390,7 +390,7 @@ m64p_error main_init(void)
    StateChanged(M64CORE_EMU_STATE, M64EMU_RUNNING);
 
    /* call r4300 CPU core and run the game */
-   init_libpl();
+   init_libpl(&g_dev);
    poweron_device(&g_dev);
    pifbootrom_hle_execute(&g_dev);
 
