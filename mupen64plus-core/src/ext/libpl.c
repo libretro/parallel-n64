@@ -224,9 +224,9 @@ static inline void handle_pl_cmd( uint16_t payloadSize ) {
 		return;
 	}
 	
-	const uint8_t cmd = (uint8_t)((g_libplBuffer[0] >> 16) & 0xFFu);
-	if( cmd >= 2 && cmd <= 4 ) {
-		handle_sdcard_load_cmd( payloadSize, cmd );
+	const uint16_t cmd = (uint16_t)((g_libplBuffer[0] >> 16));
+	if( cmd >= 0x102 && cmd <= 0x104 ) {
+		handle_sdcard_load_cmd( payloadSize, (uint8_t)(cmd & 0xFFu) );
 		return;
 	}
 	
