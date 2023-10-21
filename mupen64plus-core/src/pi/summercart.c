@@ -7,6 +7,8 @@
 #include <string.h>
 
 extern uint32_t SdCardEmulationEnabled;
+static char s_sdCardPath[4096];
+static int s_pathInitialized = 0;
 
 static uint8_t* summercart_sd_addr(struct pi_controller* pi)
 {
@@ -38,6 +40,23 @@ static char summercart_sd_byteswap(struct pi_controller* pi)
     return 0;
 }
 
+static inline int initSdCardPath() {
+    if( s_pathInitialized ) {
+        return s_sdCardPath[0] != '\0' && s_sdCardPath[4096] == '\0';
+    }
+    
+    const char *const path = getenv("PL_SD_CARD_IMAGE");
+    if( path && path[0] ) {
+        strncpy( s_sdCardPath, path, 4096 );
+        s_pathInitialized = 1;
+        return s_sdCardPath[4096] == '\0';
+    } else {
+        s_sdCardPath[0] = '\0';
+        s_pathInitialized = 1;
+        return 0;
+    }
+}
+
 static void summercart_sd_init(struct summercart* summercart)
 {
     if( !SdCardEmulationEnabled ) return;
@@ -46,10 +65,9 @@ static void summercart_sd_init(struct summercart* summercart)
     summercart->file = NULL;
     summercart->sd_size = 0;
     
-    const char *const path = getenv("PL_SD_CARD_IMAGE");
-    if( path && path[0] ) {
+    if( initSdCardPath() ) {
         summercart->file = filestream_open(
-            path,
+            s_sdCardPath,
             RETRO_VFS_FILE_ACCESS_READ_WRITE | RETRO_VFS_FILE_ACCESS_UPDATE_EXISTING,
             RETRO_VFS_FILE_ACCESS_HINT_NONE
         );
@@ -76,7 +94,9 @@ bool load_sdcard( struct summercart* summercart, const char *path ) {
         summercart->sd_size = filestream_get_size( summercart->file );
         summercart->status = 0;
         
-        setenv( "PL_SD_CARD_IMAGE", path, 1 );
+        strncpy( s_sdCardPath, path, 4096 );
+        s_pathInitialized = 1;
+        
         SdCardEmulationEnabled = 1;
         return true;
     }
