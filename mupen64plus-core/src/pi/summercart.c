@@ -76,6 +76,7 @@ bool load_sdcard( struct summercart* summercart, const char *path ) {
         summercart->sd_size = filestream_get_size( summercart->file );
         summercart->status = 0;
         
+        setenv( "PL_SD_CARD_IMAGE", path, 1 );
         SdCardEmulationEnabled = 1;
         return true;
     }
