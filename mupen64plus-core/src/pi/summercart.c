@@ -42,14 +42,14 @@ static char summercart_sd_byteswap(struct pi_controller* pi)
 
 static inline int initSdCardPath() {
     if( s_pathInitialized ) {
-        return s_sdCardPath[0] != '\0' && s_sdCardPath[4096] == '\0';
+        return s_sdCardPath[0] != '\0' && s_sdCardPath[4095] == '\0';
     }
     
     const char *const path = getenv("PL_SD_CARD_IMAGE");
     if( path && path[0] ) {
         strncpy( s_sdCardPath, path, 4096 );
         s_pathInitialized = 1;
-        return s_sdCardPath[4096] == '\0';
+        return s_sdCardPath[4095] == '\0';
     } else {
         s_sdCardPath[0] = '\0';
         s_pathInitialized = 1;
