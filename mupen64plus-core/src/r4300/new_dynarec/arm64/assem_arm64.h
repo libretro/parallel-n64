@@ -4,7 +4,19 @@
 #define HOST_REGS 29
 #define HOST_CCREG 20 /* callee-save */
 #define HOST_BTREG 19 /* callee-save */
-#define EXCLUDE_REG 29 /* FP */
+// https://stackoverflow.com/questions/71152539/consequence-of-violating-macoss-arm64-calling-convention
+/*
+macOS 13 did indeed change this! While macOS 11 and 12 would unconditionally preserve x18,
+macOS 13 now has more complicated rules. x18 is now only preserved for processes running
+under Rosetta as well as processes that were either built against a macOS 12 SDK or older,
+or hold the com.apple.private.uexc or com.apple.private.custom-x18-abi entitlements.
+
+The same rules apply to iOS 16, with the caveats that there is no Rosetta and you cannot run
+binaries built against the macOS SDK. So as of iOS 16, x18 has to be considered off-limits again for all devices.
+
+WHY IS THAT A THING????
+*/
+#define EXCLUDE_REG 18
 
 #define HOST_IMM8 1
 //#define HAVE_CMOV_IMM 1

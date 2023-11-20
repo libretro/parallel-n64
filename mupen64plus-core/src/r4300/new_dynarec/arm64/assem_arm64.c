@@ -756,10 +756,10 @@ static void get_bounds(intptr_t addr,uintptr_t *start,uintptr_t *end)
 static void alloc_reg(struct regstat *cur,int i,signed char tr)
 {
   int r,hr;
-  int preferred_reg=19+(tr%10); // Try to allocate callee-save register first
+  int preferred_reg=20+(tr%9); // Try to allocate callee-save register first
   if(tr==CCREG) preferred_reg=HOST_CCREG;
   if(tr==BTREG) preferred_reg=HOST_BTREG;
-  if(tr==PTEMP||tr==FTEMP) preferred_reg=18;
+  if(tr==PTEMP||tr==FTEMP) preferred_reg=19;
   
   // Don't allocate unused registers
   if((cur->u>>tr)&1) return;
