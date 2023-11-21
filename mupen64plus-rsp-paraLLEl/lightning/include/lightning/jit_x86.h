@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012-2019  Free Software Foundation, Inc.
+ * Copyright (C) 2012-2023  Free Software Foundation, Inc.
  *
  * This file is part of GNU lightning.
  *
@@ -189,6 +189,14 @@ typedef struct {
     jit_uint32_t avx		: 1;
     /* lahf/sahf available in 64 bits mode */
     jit_uint32_t lahf		: 1;
+    /* lzcnt and tzcnt? */
+    jit_uint32_t abm		: 1;
+    /* adcx and adox instructions available? */
+    jit_uint32_t adx		: 1;
+    /* pdep and pext instructions available? */
+    jit_uint32_t bmi2		: 1;
+    /* fma 4 arguments instruction available? */
+    jit_uint32_t fma4		: 1;
 } jit_cpu_t;
 
 /*
