@@ -2,6 +2,7 @@
 #define RSP_DISASM_HPP_
 
 #include <string>
+#include <stdint.h>
 
 namespace RSP
 {

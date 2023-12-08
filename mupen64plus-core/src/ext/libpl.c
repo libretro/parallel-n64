@@ -356,7 +356,7 @@ void libpl_change_savestate_token(void) {
 }
 
 void libpl_set_cheats_used(void) {
-	g_usedCheats = 0x00010000u;
+	g_usedCheats = 1;
 	g_cheatStatus |= LPL_USED_CHEATS;
 	g_frameCheatStatus |= LPL_USED_CHEATS;
 }
