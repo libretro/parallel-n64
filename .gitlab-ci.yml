@@ -1,0 +1,21 @@
+stages: 
+  - build
+
+default:
+  image: archlinux
+  before_script:
+    - pacman -Sy --noconfirm make mingw-w64-gcc mingw-w64-binutils binutils
+  artifacts:
+    paths:
+      - parallel_n64_libretro.dll
+    expire_in: 4 hours
+  
+build-win64:
+  stage: build
+  script:
+    - ./scripts/build-win64.sh
+
+build-win32:
+  stage: build
+  script:
+    - ./scripts/build-win32.sh 
