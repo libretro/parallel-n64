@@ -1,6 +1,8 @@
 #include "trampoline_arm64.h"
 #include "../clear_cache.h"
 
+#include <assert.h>
+
 #include <map>
 #include <vector>
 
