@@ -1340,6 +1340,7 @@ static void invalidate_addr(u_int addr)
 // Anything could have changed, so invalidate everything.
 void invalidate_all_pages(void)
 {
+  apple_jit_wx_unprotect_enter();
   u_int page;
   for(page=0;page<4096;page++)
     invalidate_page(page);
@@ -1368,6 +1369,7 @@ void invalidate_all_pages(void)
     if(page==0x80000) page=0xC0000;
   }
   tlb_hacks();
+  apple_jit_wx_unprotect_exit();
 }
 
 // Add an entry to jump_out after making a link
