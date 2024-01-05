@@ -168,24 +168,25 @@ extern "C"
 	void RSP_LPV(RSP::CPUState *rsp, unsigned rt, unsigned e, int offset, unsigned base)
 	{
 		TRACE_LS(LPV);
-		if (e != 0)
-			return;
-
 		unsigned addr = (rsp->sr[base] + offset * 8) & 0xfff;
+		const unsigned index = (addr & 7) - e;
+		addr &= ~7;
+
 		auto *reg = rsp->cp2.regs[rt].e;
 		for (unsigned i = 0; i < 8; i++)
-			reg[i] = READ_MEM_U8(rsp->dmem, (addr + i) & 0xfff) << 8;
+			reg[i] = READ_MEM_U8(rsp->dmem, (addr + (i + index & 0xf)) & 0xfff) << 8;
 	}
 
 	void RSP_SPV(RSP::CPUState *rsp, unsigned rt, unsigned e, int offset, unsigned base)
 	{
 		TRACE_LS(SPV);
-		if (e != 0)
-			return;
 		unsigned addr = (rsp->sr[base] + offset * 8) & 0xfff;
 		auto *reg = rsp->cp2.regs[rt].e;
-		for (unsigned i = 0; i < 8; i++)
-			WRITE_MEM_U8(rsp->dmem, (addr + i) & 0xfff, int16_t(reg[i]) >> 8);
+
+		for (unsigned i = e; i < e + 8; i++) {
+			const unsigned shift = ((i & 0xf) < 8) ? 8 : 7;
+			WRITE_MEM_U8(rsp->dmem, addr++ & 0xfff, int16_t(reg[i & 7]) >> shift);
+		}
 	}
 
 	// Load 8x8-bit into high bits, but shift by 7 instead of 8.
@@ -195,36 +196,24 @@ extern "C"
 	{
 		TRACE_LS(LUV);
 		unsigned addr = (rsp->sr[base] + offset * 8) & 0xfff;
-		auto *reg = rsp->cp2.regs[rt].e;
+		const unsigned index = (addr & 7) - e;
+		addr &= ~7;
 
-		if (e != 0)
-		{
-			// Special path for Mia Hamm soccer.
-			addr += -e & 0xf;
-			for (unsigned b = 0; b < 8; b++)
-			{
-				reg[b] = READ_MEM_U8(rsp->dmem, addr) << 7;
-				--e;
-				addr -= e ? 0 : 16;
-				++addr;
-			}
-		}
-		else
-		{
-			for (unsigned i = 0; i < 8; i++)
-				reg[i] = READ_MEM_U8(rsp->dmem, (addr + i) & 0xfff) << 7;
-		}
+		auto *reg = rsp->cp2.regs[rt].e;
+		for (unsigned i = 0; i < 8; i++)
+			reg[i] = READ_MEM_U8(rsp->dmem, (addr + (i + index & 0xf)) & 0xfff) << 7;
 	}
 
 	void RSP_SUV(RSP::CPUState *rsp, unsigned rt, unsigned e, int offset, unsigned base)
 	{
 		TRACE_LS(SUV);
-		if (e != 0)
-			return;
 		unsigned addr = (rsp->sr[base] + offset * 8) & 0xfff;
 		auto *reg = rsp->cp2.regs[rt].e;
-		for (unsigned i = 0; i < 8; i++)
-			WRITE_MEM_U8(rsp->dmem, (addr + i) & 0xfff, int16_t(reg[i]) >> 7);
+
+		for (unsigned i = e; i < e + 8; i++) {
+			const unsigned shift = ((i & 0xf) < 8) ? 7 : 8;
+			WRITE_MEM_U8(rsp->dmem, addr++ & 0xfff, int16_t(reg[i & 7]) >> shift);
+		}
 	}
 
 	// Load 8x8-bits into high bits, but shift by 7 instead of 8.
