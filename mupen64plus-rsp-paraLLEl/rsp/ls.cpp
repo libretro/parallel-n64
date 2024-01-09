@@ -18,6 +18,15 @@ extern "C"
 			(uint8_t)(arr[i >> 1] >> 8);
 	}
 	
+	static inline void writeByteToHalfWords(uint16_t *arr, unsigned i, uint8_t b)
+	{
+		const unsigned n = i >> 1;
+		if (i & 1)
+			arr[n] = (arr[n] & 0xff00) | (uint16_t)b;
+		else
+			arr[n] = (arr[n] & 0xff) | ((uint16_t)b << 8);
+	}
+	
 	// Load 8-bit
 	void RSP_LBV(RSP::CPUState *rsp, unsigned rt, unsigned e, int offset, unsigned base)
 	{
@@ -44,22 +53,10 @@ extern "C"
 	void RSP_LSV(RSP::CPUState *rsp, unsigned rt, unsigned e, int offset, unsigned base)
 	{
 		TRACE_LS(LSV);
-		if (e & 1)
-			return;
-
-		unsigned addr = (rsp->sr[base] + offset * 2) & 0xfff;
-		unsigned correction = addr & 3;
-		if (correction == 3)
-			return;
-
-		uint16_t result;
-		if (correction == 1)
-			result = (READ_MEM_U8(rsp->dmem, addr + 0) << 8) | (READ_MEM_U8(rsp->dmem, addr + 1) << 0);
-		else
-			result = READ_MEM_U16(rsp->dmem, addr);
-
-		rsp->cp2.regs[rt].e[e >> 1] = result;
-
+		unsigned addr = rsp->sr[base] + offset * 2;
+		const unsigned end = (e > 14) ? 16 : (e + 2);
+		for (unsigned i = e; i < end; i++)
+			writeByteToHalfWords(rsp->cp2.regs[rt].e, i & 0xf, READ_MEM_U8(rsp->dmem, addr++ & 0xfff));
 	}
 
 	// Store 16-bit
@@ -82,15 +79,10 @@ extern "C"
 	void RSP_LLV(RSP::CPUState *rsp, unsigned rt, unsigned e, int offset, unsigned base)
 	{
 		TRACE_LS(LLV);
-		unsigned addr = (rsp->sr[base] + offset * 4) & 0xfff;
-		if (e & 1)
-			return;
-		if (addr & 1)
-			return;
-		e >>= 1;
-
-		rsp->cp2.regs[rt].e[e] = READ_MEM_U16(rsp->dmem, addr);
-		rsp->cp2.regs[rt].e[(e + 1) & 7] = READ_MEM_U16(rsp->dmem, (addr + 2) & 0xfff);
+		unsigned addr = rsp->sr[base] + offset * 4;
+		const unsigned end = (e > 12) ? 16 : (e + 4);
+		for (unsigned i = e; i < end; i++)
+			writeByteToHalfWords(rsp->cp2.regs[rt].e, i & 0xf, READ_MEM_U8(rsp->dmem, addr++ & 0xfff));
 	}
 
 	// Store 32-bit
@@ -111,26 +103,10 @@ extern "C"
 	void RSP_LDV(RSP::CPUState *rsp, unsigned rt, unsigned e, int offset, unsigned base)
 	{
 		TRACE_LS(LDV);
-		if (e & 1)
-			return;
-		unsigned addr = (rsp->sr[base] + offset * 8) & 0xfff;
-		auto *reg = rsp->cp2.regs[rt].e;
-		e >>= 1;
-
-		if (addr & 1)
-		{
-			reg[e + 0] = (READ_MEM_U8(rsp->dmem, addr + 0) << 8) | READ_MEM_U8(rsp->dmem, addr + 1);
-			reg[e + 1] = (READ_MEM_U8(rsp->dmem, addr + 2) << 8) | READ_MEM_U8(rsp->dmem, addr + 3);
-			reg[e + 2] = (READ_MEM_U8(rsp->dmem, addr + 4) << 8) | READ_MEM_U8(rsp->dmem, addr + 5);
-			reg[e + 3] = (READ_MEM_U8(rsp->dmem, addr + 6) << 8) | READ_MEM_U8(rsp->dmem, addr + 7);
-		}
-		else
-		{
-			reg[e + 0] = READ_MEM_U16(rsp->dmem, addr);
-			reg[e + 1] = READ_MEM_U16(rsp->dmem, (addr + 2) & 0xfff);
-			reg[e + 2] = READ_MEM_U16(rsp->dmem, (addr + 4) & 0xfff);
-			reg[e + 3] = READ_MEM_U16(rsp->dmem, (addr + 6) & 0xfff);
-		}
+		unsigned addr = rsp->sr[base] + offset * 8;
+		const unsigned end = (e > 8) ? 16 : (e + 8);
+		for (unsigned i = e; i < end; i++)
+			writeByteToHalfWords(rsp->cp2.regs[rt].e, i & 0xf, READ_MEM_U8(rsp->dmem, addr++ & 0xfff));
 	}
 
 	// Store 64-bit
@@ -219,21 +195,18 @@ extern "C"
 	void RSP_LHV(RSP::CPUState *rsp, unsigned rt, unsigned e, int offset, unsigned base)
 	{
 		TRACE_LS(LHV);
-		if (e != 0)
-			return;
-		unsigned addr = (rsp->sr[base] + offset * 16) & 0xfff;
-		if (addr & 0xe)
-			return;
+		unsigned addr = rsp->sr[base] + offset * 16;
+		const unsigned index = (addr & 7) - e;
+		addr &= ~7;
 
 		auto *reg = rsp->cp2.regs[rt].e;
 		for (unsigned i = 0; i < 8; i++)
-			reg[i] = READ_MEM_U8(rsp->dmem, addr + 2 * i) << 7;
+			reg[i] = (uint16_t)READ_MEM_U8(rsp->dmem, (addr + (index + i * 2 & 0xf)) & 0xfff) << 7;
 	}
 
 	void RSP_SHV(RSP::CPUState *rsp, unsigned rt, unsigned e, int offset, unsigned base)
 	{
 		TRACE_LS(SHV);
-
 		unsigned addr = (rsp->sr[base] + offset * 16) & 0xfff;
 		const unsigned index = addr & 7;
 		addr &= ~7;
@@ -247,6 +220,26 @@ extern "C"
 		}
 	}
 
+	void RSP_LFV(RSP::CPUState *rsp, unsigned rt, unsigned e, int offset, unsigned base)
+	{
+		TRACE_LS(LFV);
+		uint16_t temp[8];
+
+		unsigned addr = rsp->sr[base] + offset * 16;
+		const unsigned index = (addr & 7) - e;
+		const unsigned end = (e > 8) ? 16 : (e + 8);
+		addr &= ~7;
+
+		for (unsigned i = 0; i < 4; i++)
+		{
+			temp[i] = (uint16_t)READ_MEM_U8(rsp->dmem, (addr + (index + i * 4 & 0xf)) & 0xfff) << 7;
+			temp[i+4] = (uint16_t)READ_MEM_U8(rsp->dmem, (addr + (index + i * 4 + 8 & 0xf)) & 0xfff) << 7;
+		}
+
+		for (unsigned i = e; i < end; i++)
+			writeByteToHalfWords(rsp->cp2.regs[rt].e, i, byteFromHalfWords(temp, i));
+	}
+
 #define RSP_SFV_CASE(a,b,c,d) \
 	WRITE_MEM_U8(rsp->dmem, addr + base, int16_t(reg[a]) >> 7); \
 	WRITE_MEM_U8(rsp->dmem, addr + 4 + base, int16_t(reg[b]) >> 7); \
@@ -256,7 +249,6 @@ extern "C"
 	void RSP_SFV(RSP::CPUState *rsp, unsigned rt, unsigned e, int offset, unsigned base)
 	{
 		TRACE_LS(SFV);
-
 		unsigned addr = (rsp->sr[base] + offset * 16) & 0xfff;
 		base = addr & 7;
 		addr &= ~7;
@@ -294,7 +286,18 @@ extern "C"
 			break;
 		}
 	}
-	
+
+	void RSP_LWV(RSP::CPUState *rsp, unsigned rt, unsigned e, int offset, unsigned base)
+	{
+		TRACE_LS(LWV);
+		unsigned addr = rsp->sr[base] + offset * 16;
+		for (unsigned i = 16 - e; i < 16 + e; i++)
+		{
+			writeByteToHalfWords(rsp->cp2.regs[rt].e, i & 0xf, READ_MEM_U8(rsp->dmem, addr & 0xfff));
+			addr += 4;
+		}
+	}
+
 	void RSP_SWV(RSP::CPUState *rsp, unsigned rt, unsigned e, int offset, unsigned base)
 	{
 		TRACE_LS(SWV);
@@ -307,28 +310,15 @@ extern "C"
 			WRITE_MEM_U8(rsp->dmem, addr + (base++ & 0xf), byteFromHalfWords(rsp->cp2.regs[rt].e, i & 0xf));
 	}
 
-	// Loads full 128-bit register, however, it seems to handle unaligned addresses in a very
-	// strange way.
 	void RSP_LQV(RSP::CPUState *rsp, unsigned rt, unsigned e, int offset, unsigned base)
 	{
 		TRACE_LS(LQV);
-		if (e & 1)
-			return;
-		unsigned addr = (rsp->sr[base] + offset * 16) & 0xfff;
+		unsigned addr = rsp->sr[base] + offset * 16;
+		unsigned end = 16 + e - (addr & 0xf);
+		if (end > 16) end = 16;
 
-#ifdef INTENSE_DEBUG
-		fprintf(stderr, "LQV: 0x%x, e = %u, vt = %u, base = %u\n", addr, e, rt, base);
-#endif
-
-		if (addr & 1)
-			return;
-
-		unsigned b = (addr & 0xf) >> 1;
-		e >>= 1;
-
-		auto *reg = rsp->cp2.regs[rt].e;
-		for (unsigned i = b; i < 8; i++, e++, addr += 2)
-			reg[e] = READ_MEM_U16(rsp->dmem, addr & 0xfff);
+		for (unsigned i = e; i < end; i++)
+			writeByteToHalfWords(rsp->cp2.regs[rt].e, i & 0xf, READ_MEM_U8(rsp->dmem, addr++ & 0xfff));
 	}
 
 	void RSP_SQV(RSP::CPUState *rsp, unsigned rt, unsigned e, int offset, unsigned base)
@@ -341,28 +331,20 @@ extern "C"
 			WRITE_MEM_U8(rsp->dmem, addr++, byteFromHalfWords(rsp->cp2.regs[rt].e, i & 15));
 	}
 
-	// Complements LQV?
 	void RSP_LRV(RSP::CPUState *rsp, unsigned rt, unsigned e, int offset, unsigned base)
 	{
 		TRACE_LS(LRV);
-		if (e != 0)
-			return;
-		unsigned addr = (rsp->sr[base] + offset * 16) & 0xfff;
-		if (addr & 1)
-			return;
-
-		unsigned b = (addr & 0xf) >> 1;
+		unsigned addr = rsp->sr[base] + offset * 16;
+		const unsigned start = 16 - ((addr & 0xf) - e);
 		addr &= ~0xf;
 
-		auto *reg = rsp->cp2.regs[rt].e;
-		for (e = 8 - b; e < 8; e++, addr += 2)
-			reg[e] = READ_MEM_U16(rsp->dmem, addr & 0xfff);
+		for (unsigned i = start; i < 16; i++)
+			writeByteToHalfWords(rsp->cp2.regs[rt].e, i & 0xf, READ_MEM_U8(rsp->dmem, addr++ & 0xfff));
 	}
 
 	void RSP_SRV(RSP::CPUState *rsp, unsigned rt, unsigned e, int offset, unsigned base)
 	{
 		TRACE_LS(SRV);
-
 		unsigned addr = (rsp->sr[base] + offset * 16) & 0xfff;
 		const unsigned end = e + (addr & 0xf);
 		base = 16 - (addr & 0xf);
@@ -372,26 +354,28 @@ extern "C"
 			WRITE_MEM_U8(rsp->dmem, addr++, byteFromHalfWords(rsp->cp2.regs[rt].e, i + base & 0xf));
 	}
 
-	// Transposed stuff?
 	void RSP_LTV(RSP::CPUState *rsp, unsigned rt, unsigned e, int offset, unsigned base)
 	{
 		TRACE_LS(LTV);
-		if (e & 1)
-			return;
-		if (rt & 7)
-			return;
-		unsigned addr = (rsp->sr[base] + offset * 16) & 0xfff;
-		if (addr & 0xf)
-			return;
+		unsigned addr = rsp->sr[base] + offset * 16;
+		const unsigned start = addr & ~7;
+		const unsigned vt0 = rt & ~7;
+		addr = start + ((e + (addr & 8)) & 0xf);
+		unsigned j = e >> 1;
 
-		for (unsigned i = 0; i < 8; i++)
-			rsp->cp2.regs[rt + i].e[(-e / 2 + i) & 7] = READ_MEM_U16(rsp->dmem, addr + 2 * i);
+		for (unsigned i = 0; i < 16; j++)
+		{
+			j &= 7;
+			writeByteToHalfWords(rsp->cp2.regs[vt0+j].e, i++, READ_MEM_U8(rsp->dmem, addr++ & 0xfff));
+			if (addr == start + 16) addr = start;
+			writeByteToHalfWords(rsp->cp2.regs[vt0+j].e, i++, READ_MEM_U8(rsp->dmem, addr++ & 0xfff));
+			if (addr == start + 16) addr = start;
+		}
 	}
 
 	void RSP_STV(RSP::CPUState *rsp, unsigned rt, unsigned e, int offset, unsigned base)
 	{
 		TRACE_LS(STV);
-
 		e &= ~1;
 		rt &= ~7;
 
