@@ -305,7 +305,7 @@ EXPORT void CALL inputControllerCommand(int Control, unsigned char *Command)
 #define CSTICK_UP 0x800
 #define CSTICK_DOWN 0x400
 
-#define N64_MAX_ANALOG 80.0f
+#define N64_MAX_ANALOG 85.0f
 #define GCN_MAX_ANALOG 100.0f
 #define GCN_MAX_CSTICK 95.0f
 
