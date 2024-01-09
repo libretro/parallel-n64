@@ -11,11 +11,11 @@ extern "C"
 {
 	// Using mostly Ares' implementation as a base here
 
-	static inline uint8_t byteFromHalfWords(const uint16_t *arr, unsigned b)
+	static inline uint8_t byteFromHalfWords(const uint16_t *arr, unsigned i)
 	{
-		return (b & 1) ?
-			(uint8_t)(arr[b >> 1] & 0xff) :
-			(uint8_t)(arr[b >> 1] >> 8);
+		return (i & 1) ?
+			(uint8_t)(arr[i >> 1] & 0xff) :
+			(uint8_t)(arr[i >> 1] >> 8);
 	}
 	
 	// Load 8-bit
@@ -59,6 +59,7 @@ extern "C"
 			result = READ_MEM_U16(rsp->dmem, addr);
 
 		rsp->cp2.regs[rt].e[e >> 1] = result;
+
 	}
 
 	// Store 16-bit
@@ -292,6 +293,18 @@ extern "C"
 			WRITE_MEM_U8(rsp->dmem, addr + (12 + base & 0xf), 0);
 			break;
 		}
+	}
+	
+	void RSP_SWV(RSP::CPUState *rsp, unsigned rt, unsigned e, int offset, unsigned base)
+	{
+		TRACE_LS(SWV);
+
+		unsigned addr = (rsp->sr[base] + offset * 16) & 0xfff;
+		base = addr & 7;
+		addr &= ~7;
+
+		for (unsigned i = e; i < e + 16; i++)
+			WRITE_MEM_U8(rsp->dmem, addr + (base++ & 0xf), byteFromHalfWords(rsp->cp2.regs[rt].e, i & 0xf));
 	}
 
 	// Loads full 128-bit register, however, it seems to handle unaligned addresses in a very
