@@ -985,6 +985,7 @@ void CPU::jit_instruction(jit_state_t *_jit, uint32_t pc, uint32_t instr,
 
 		case 007: // SRAV
 		{
+			NOP_IF_RD_ZERO();
 			unsigned rt_reg = regs.load_mips_register_sext(_jit, rt);
 			unsigned rs_reg = regs.load_mips_register_noext(_jit, rs);
 			unsigned rs_tmp_reg = regs.modify_mips_register(_jit, RegisterCache::SCRATCH_REGISTER0);
