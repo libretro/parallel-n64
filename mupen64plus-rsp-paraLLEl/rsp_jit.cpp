@@ -1386,7 +1386,8 @@ void CPU::jit_instruction(jit_state_t *_jit, uint32_t pc, uint32_t instr,
 
 	case 013: // SLTIU
 	{
-		TWO_REG_IMM_OP(lti_u, uint16_t, zext);
+		// SLTIU sign extends the immediate to 32 bit but then does an unsigned comparison
+		TWO_REG_IMM_OP(lti_u, int16_t, sext);
 		break;
 	}
 
