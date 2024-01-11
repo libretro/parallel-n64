@@ -1565,6 +1565,7 @@ void CPU::jit_instruction(jit_state_t *_jit, uint32_t pc, uint32_t instr,
 	}
 
 	case 043: // LW
+	case 047: // LWU
 	{
 		jit_emit_load_operation(_jit, pc, instr,
 		                        [](jit_state_t *_jit, unsigned a, unsigned b, unsigned c) { jit_ldxr_i(a, b, c); },
