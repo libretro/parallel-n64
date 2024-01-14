@@ -490,10 +490,9 @@ extern "C"
 	{
 		TRACE_VU(VMOV);
 		uint16_t *acc = rsp->cp2.acc.e;
-		unsigned de = vs & 0x7;
 		write_acc_lo(acc, LOAD_VT());
-		__m128i result = rsp_vmov(rsp, vt, e, vd, de);
-		STORE_RESULT();
+		vs &= 0x7;
+		rsp->cp2.regs[vd].e[vs] = rsp->cp2.acc.e[16+vs];
 	}
 
 	//
@@ -538,7 +537,7 @@ extern "C"
 		uint16_t *vde = rsp->cp2.regs[vd].e;
 		int16_t *vse = (int16_t*)rsp->cp2.regs[vs].e;
 
-		int16_t vte[16];
+		int16_t vte[8];
 		rsp_vect_t vtt = LOAD_VT();
 		rsp_vect_write_operand((uint16_t*)vte, vtt);
 
