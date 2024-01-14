@@ -25,6 +25,13 @@
 
 extern "C"
 {
+	static inline int32_t clamp16s(int32_t x)
+	{
+		if (x > 0x7fff) return 0x7fff;
+		if (x < -0x8000) return -0x8000;
+		return x;
+	}
+
 	//
 	// VABS
 	//
@@ -312,13 +319,7 @@ extern "C"
 			acc[i] = prod >> 16;
 			acc[8+i] = prod & 0xffffu;
 
-			prod >>= 1;
-			if (prod > 0x7fff)
-				prod = 0x7fff;
-			else if (prod < -0x8000)
-				prod = -0x8000;
-			
-			rsp->cp2.regs[vd].e[i] = prod & ~15;
+			rsp->cp2.regs[vd].e[i] = clamp16s(prod >> 1) & ~15;
 		}
 	}
 
@@ -528,6 +529,28 @@ extern "C"
 		write_acc_md(acc, acc_md);
 		write_acc_hi(acc, acc_hi);
 		STORE_RESULT();
+	}
+
+	void RSP_VMULQ(RSP::CPUState *rsp, unsigned vd, unsigned vs, unsigned vt, unsigned e)
+	{
+		TRACE_VU(VMULQ);
+		uint16_t *acc = rsp->cp2.acc.e;
+		uint16_t *vde = rsp->cp2.regs[vd].e;
+		int16_t *vse = (int16_t*)rsp->cp2.regs[vs].e;
+
+		int16_t vte[16];
+		rsp_vect_t vtt = LOAD_VT();
+		rsp_vect_write_operand((uint16_t*)vte, vtt);
+
+		for (unsigned i = 0; i < 8; i++)
+		{
+			int32_t prod = vse[i] * vte[i];
+			if (prod < 0) prod += 31;
+			acc[i] = prod >> 16;
+			acc[8+i] = prod & 0xffff;
+			acc[16+i] = 0;
+			vde[i] = clamp16s(prod >> 1) & ~15;
+		}
 	}
 
 	void RSP_VMULU(RSP::CPUState *rsp, unsigned vd, unsigned vs, unsigned vt, unsigned e)
