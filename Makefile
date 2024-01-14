@@ -957,7 +957,7 @@ endif
 
 ifeq ($(WANT_CXX11),1)
 ifeq (,$(findstring msvc,$(platform)))
-CXXFLAGS += -std=c++0x
+CXXFLAGS += -std=c++11
 endif
 endif
 
