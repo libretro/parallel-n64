@@ -297,6 +297,31 @@ extern "C"
 		STORE_RESULT();
 	}
 
+	void RSP_VMACQ(RSP::CPUState *rsp, unsigned vd, unsigned, unsigned, unsigned)
+	{
+		TRACE_VU(VMACQ);
+		uint16_t *acc = rsp->cp2.acc.e;
+		for (unsigned i = 0; i < 8; i++)
+		{
+			int32_t prod = (int16_t)acc[i] << 16;
+			prod |= acc[8+i];
+			if (prod < 0 && !(prod & 1 << 5))
+				prod += 32;
+			else if (prod >= 32 && !(prod & 1 << 5))
+				prod -= 32;
+			acc[i] = prod >> 16;
+			acc[8+i] = prod & 0xffffu;
+
+			prod >>= 1;
+			if (prod > 0x7fff)
+				prod = 0x7fff;
+			else if (prod < -0x8000)
+				prod = -0x8000;
+			
+			rsp->cp2.regs[vd].e[i] = prod & ~15;
+		}
+	}
+
 	//
 	// VMADH
 	// VMUDH
