@@ -610,7 +610,6 @@ extern "C"
 		TRACE_VU(VRCP);
 		uint16_t *acc = rsp->cp2.acc.e;
 		unsigned de = vs & 0x7;
-		e &= 0x7;
 
 		write_acc_lo(acc, LOAD_VT());
 
@@ -624,7 +623,6 @@ extern "C"
 		TRACE_VU(VRCPL);
 		uint16_t *acc = rsp->cp2.acc.e;
 		unsigned de = vs & 0x7;
-		e &= 0x7;
 
 		write_acc_lo(acc, LOAD_VT());
 
@@ -640,7 +638,6 @@ extern "C"
 		TRACE_VU(VRSQ);
 		uint16_t *acc = rsp->cp2.acc.e;
 		unsigned de = vs & 0x7;
-		e &= 0x7;
 
 		write_acc_lo(acc, LOAD_VT());
 
@@ -654,7 +651,6 @@ extern "C"
 		TRACE_VU(VRSQL);
 		uint16_t *acc = rsp->cp2.acc.e;
 		unsigned de = vs & 0x7;
-		e &= 0x7;
 
 		write_acc_lo(acc, LOAD_VT());
 
@@ -674,7 +670,6 @@ extern "C"
 		TRACE_VU(VRCPH);
 		uint16_t *acc = rsp->cp2.acc.e;
 		unsigned de = vs & 0x7;
-		e &= 0x7;
 
 		write_acc_lo(acc, LOAD_VT());
 
@@ -690,7 +685,6 @@ extern "C"
 		TRACE_VU(VRSQH);
 		uint16_t *acc = rsp->cp2.acc.e;
 		unsigned de = vs & 0x7;
-		e &= 0x7;
 
 		write_acc_lo(acc, LOAD_VT());
 
