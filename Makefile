@@ -902,7 +902,7 @@ else
 ifneq (,$(findstring msvc,$(platform)))
    CPUOPTS += -O2
 else ifeq ($(platform), emscripten)
-   CPUOPTS += -O2
+   CPUOPTS += -O3
 else
 	CPUOPTS += -Ofast
 endif
@@ -998,8 +998,11 @@ CXXFLAGS += -DINLINE="inline"
 endif
 
 # Fix for GCC 10, make sure its added to all stages of the compiler
+ifneq ($(platform), emscripten)
 ifeq "$(shell expr `gcc -dumpversion` \>= 10)" "1"
   CPUFLAGS += -fcommon
+endif
+CFLAGS += -fcommon
 endif
 
 # LTO
@@ -1012,7 +1015,7 @@ ASFLAGS     := $(ASFLAGS) $(CFLAGS) $(CPUFLAGS)
 ### Finalize ###
 OBJECTS     += $(SOURCES_CXX:.cpp=.o) $(SOURCES_C:.c=.o) $(SOURCES_ASM:.S=.o)
 CXXFLAGS    += $(CPUOPTS) $(COREFLAGS) $(INCFLAGS) $(INCFLAGS_PLATFORM) $(fpic) $(PLATCFLAGS) $(CPUFLAGS) $(GLFLAGS) $(DYNAFLAGS)
-CFLAGS      += -fcommon $(CPUOPTS) $(COREFLAGS) $(INCFLAGS) $(INCFLAGS_PLATFORM) $(fpic) $(PLATCFLAGS) $(CPUFLAGS) $(GLFLAGS) $(DYNAFLAGS)
+CFLAGS      += $(CPUOPTS) $(COREFLAGS) $(INCFLAGS) $(INCFLAGS_PLATFORM) $(fpic) $(PLATCFLAGS) $(CPUFLAGS) $(GLFLAGS) $(DYNAFLAGS)
 
 ifeq ($(findstring Haiku,$(UNAME)),)
 ifeq (,$(findstring msvc,$(platform)))
