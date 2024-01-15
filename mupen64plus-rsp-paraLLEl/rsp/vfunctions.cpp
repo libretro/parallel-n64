@@ -514,6 +514,7 @@ extern "C"
 
 	//
 	// VMULF
+	// VMULQ
 	// VMULU
 	//
 	void RSP_VMULF(RSP::CPUState *rsp, unsigned vd, unsigned vs, unsigned vt, unsigned e)
@@ -564,6 +565,52 @@ extern "C"
 		write_acc_md(acc, acc_md);
 		write_acc_hi(acc, acc_hi);
 		STORE_RESULT();
+	}
+
+	//
+	// VRNDP
+	// VRNDN
+	//
+	static inline void RSP_VRND(RSP::CPUState *rsp, unsigned vd, unsigned vs, unsigned vt, unsigned e, uint_fast8_t variant)
+	{
+		int16_t vte[8];
+		rsp_vect_t vtt = LOAD_VT();
+		rsp_vect_write_operand((uint16_t*)vte, vtt);
+		uint16_t *acc = rsp->cp2.acc.e;
+		uint16_t *vde = rsp->cp2.regs[vd].e;
+
+		for (unsigned i = 0; i < 8; i++)
+		{
+			int64_t acc48 =
+					((int64_t)(int16_t)acc[i] << 32) |
+					((int64_t)acc[8+i] << 16) |
+					(int64_t)acc[16+i];
+
+			const uint_fast8_t negative_acc = acc48 < 0;
+			if (!!variant xor !!negative_acc)
+			{
+				int64_t value = (int64_t)(int16_t)vte[i];
+				if (vs & 1) value <<= 16;
+				acc48 += value;
+			}
+
+			acc[i] = (acc48 >> 32) & 0xffff;
+			acc[8+i] = (acc48 >> 16) & 0xffff;
+			acc[16+i] = acc48 & 0xffff;
+			vde[i] = clamp16s((int32_t)(acc48 >> 16));
+		}
+	}
+
+	void RSP_VRNDN(RSP::CPUState *rsp, unsigned vd, unsigned vs, unsigned vt, unsigned e)
+	{
+		TRACE_VU(RSP_VRNDN);
+		RSP_VRND(rsp, vd, vs, vt, e, 0);
+	}
+
+	void RSP_VRNDP(RSP::CPUState *rsp, unsigned vd, unsigned vs, unsigned vt, unsigned e)
+	{
+		TRACE_VU(RSP_VRNDP);
+		RSP_VRND(rsp, vd, vs, vt, e, 1);
 	}
 
 	//
