@@ -44,12 +44,14 @@ extern "C"
 		{
 			if (*rsp->cp0.cr[CP0_REGISTER_SP_SEMAPHORE])
 			{
+#ifdef PARALLEL_INTEGRATION
 				RSP::MFC0_count[rt] += 8; // Almost certainly waiting on the CPU. Timeout faster.
 				if (RSP::MFC0_count[rt] >= RSP::SP_STATUS_TIMEOUT)
 				{
 					*RSP::rsp.SP_STATUS_REG |= SP_STATUS_HALT;
 					return MODE_CHECK_FLAGS;
 				}
+#endif
 			}
 			else
 				*rsp->cp0.cr[CP0_REGISTER_SP_SEMAPHORE] = 1;
