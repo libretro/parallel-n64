@@ -303,9 +303,10 @@ else ifneq (,$(findstring osx,$(platform)))
 			CPUFLAGS += -fno-stack-protector -fomit-frame-pointer
 			HAVE_NEON=1
 			MINVERSION := -mmacosx-version-min=11.0
+			WITH_DYNAREC = aarch64
 		endif
 
-		TARGET_RULE   = -target $(LIBRETRO_APPLE_PLATFORM)
+		TARGET_RULE   = -target $(LIBRETRO_APPLE_PLATFORM) -isysroot $(LIBRETRO_APPLE_ISYSROOT)
 		CFLAGS   += $(TARGET_RULE)
 		CPPFLAGS += $(TARGET_RULE)
 		CXXFLAGS += $(TARGET_RULE)

@@ -9,7 +9,9 @@
 #include "../util/random.h"
 #include "../util/version.h"
 #include "../../../Graphics/plugin.h"
+#if defined(HAVE_PARALLEL)
 #include "../../../mupen64plus-video-paraLLEl/parallel.h"
+#endif
 
 #define LIBPL_PIPE_BUFFER_SIZE 4096
 
@@ -91,6 +93,7 @@ static inline void handle_emu_cmd( uint16_t commandId, uint16_t payloadSize ) {
 					g_libplBuffer[4] = 0x6e000000u;
 					break;
 				}
+#if defined(HAVE_PARALLEL)
 				case GFX_PARALLEL: {
 					g_libplBuffer[0] = 13;
 					g_libplBuffer[1] = PLUGIN_ID_PARALLELN64 | PLUGIN_CAPABILITY_FBE | PLUGIN_CAPABILITY_DEPTH;
@@ -100,6 +103,7 @@ static inline void handle_emu_cmd( uint16_t commandId, uint16_t payloadSize ) {
 					g_libplBuffer[4] = 0;
 					break;
 				}
+#endif
 				case GFX_GLIDEN64: {
 					if( LegacySm64ToolsHacks ) {
 						g_libplBuffer[0] = 9;

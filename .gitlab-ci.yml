@@ -32,6 +32,10 @@ include:
   - project: 'libretro-infrastructure/ci-templates'
     file: '/osx-x64.yml'
 
+  # MacOS arm 64-bit
+  - project: 'libretro-infrastructure/ci-templates'
+    file: '/osx-arm64.yml'
+
   ################################## CELLULAR ################################
   # iOS
   - project: 'libretro-infrastructure/ci-templates'
@@ -105,16 +109,31 @@ libretro-build-osx-x64:
   extends:
     - .libretro-osx-x64-make-default
     - .core-defs
+  variables:
+    HAVE_THR_AL: 1
+
+# MacOS arm64
+libretro-build-osx-arm64:
+  extends:
+    - .libretro-osx-arm64-make-default
+    - .core-defs
+  variables:
+    HAVE_THR_AL: 1
+    WITH_DYNAREC: aarch64
 
 ################################### CELLULAR #################################
-# iOS
-libretro-build-ios-arm64:
-  extends:
-    - .libretro-ios-arm64-make-default
-    - .core-defs
+# # iOS
+# libretro-build-ios-arm64:
+#   extends:
+#     - .libretro-ios-arm64-make-default
+#     - .core-defs
+#   variables:
+#     HAVE_THR_AL: 1
 
-# iOS (armv7) [iOS 9 and up]
-libretro-build-ios9:
-  extends:
-    - .libretro-ios9-make-default
-    - .core-defs
+# # iOS (armv7) [iOS 9 and up]
+# libretro-build-ios9:
+#   extends:
+#     - .libretro-ios9-make-default
+#     - .core-defs
+#   variables:
+#     HAVE_THR_AL: 1
