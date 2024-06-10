@@ -29,6 +29,7 @@
 #include "r4300/r4300_core.h"
 #include "../rdp/rdp_core.h"
 #include "../ri/ri_controller.h"
+#include "../ri/safe_rdram.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -46,7 +47,7 @@ static void dma_sp_write(struct rsp_core* sp, unsigned length, unsigned count, u
     {
         for(i = 0; i < length; i++)
         {
-            spmem[memaddr^S8] = dram[dramaddr^S8];
+            spmem[(memaddr^S8) & 0xfffu] = rdram_safe_read_byte(dram, dramaddr^S8);
             memaddr++;
             dramaddr++;
         }
@@ -67,7 +68,7 @@ static void dma_sp_read(struct rsp_core* sp, unsigned length, unsigned count, un
     {
         for(i = 0; i < length; i++)
         {
-            dram[dramaddr^S8] = spmem[memaddr^S8];
+            rdram_safe_write_byte(dram, dramaddr^S8, spmem[(memaddr^S8) & 0xfffu]);
             memaddr++;
             dramaddr++;
         }

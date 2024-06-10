@@ -25,6 +25,7 @@
 #include "memory/memory.h"
 
 #include "ri/ri_controller.h"
+#include "ri/safe_rdram.h"
 
 #include <stddef.h>
 #include <stdint.h>
@@ -58,7 +59,11 @@ void dma_write_sram(struct pi_controller* pi)
    uint32_t dram_addr = pi->regs[PI_DRAM_ADDR_REG];
 
    for(i = 0; i < length; ++i)
-      sram[(cart_addr+i)^S8] = dram[(dram_addr+i)^S8];
+   {
+      const unsigned int sram_i = (cart_addr+i)^S8;
+      if (sram_i >= (unsigned)SRAM_SIZE) continue;
+      sram[sram_i] = rdram_safe_read_byte(dram, (dram_addr+i)^S8);
+   }
 
    sram_save(&pi->sram);
 }
@@ -74,5 +79,8 @@ void dma_read_sram(struct pi_controller* pi)
    uint32_t dram_addr = pi->regs[PI_DRAM_ADDR_REG];
 
    for(i = 0; i < length; ++i)
-      dram[(dram_addr+i)^S8] = sram[(cart_addr+i)^S8];
+   {
+      const unsigned int sram_i = (cart_addr+i)^S8;
+      rdram_safe_write_byte(dram, (dram_addr+i)^S8, (sram_i < (unsigned)SRAM_SIZE) ? sram[sram_i] : 0);
+   }
 }
