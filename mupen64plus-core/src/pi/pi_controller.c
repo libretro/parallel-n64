@@ -32,9 +32,12 @@
 #include "../r4300/r4300_core.h"
 #include "../ri/rdram_detection_hack.h"
 #include "../ri/ri_controller.h"
+#include "../ri/safe_rdram.h"
 #include "../dd/dd_controller.h"
 
 #include <string.h>
+
+extern int g_rom_size;
 
 enum
 {
@@ -87,7 +90,11 @@ static void dma_pi_read(struct pi_controller *pi)
       dram = (uint8_t*)pi->ri->rdram.dram;
 
       for (i = 0; i < length; ++i)
-         rom[(rom_address + i) ^ S8] = dram[(dram_address + i) ^ S8];
+      {
+         const unsigned int rom_i = (rom_address + i) ^ S8;
+         if (rom_i >= (uint32_t)g_rom_size) continue;
+         rom[rom_i] = rdram_safe_read_byte(dram, (dram_address + i) ^ S8);
+      }
    }
    else if (pi->regs[PI_CART_ADDR_REG] >= 0x08000000
          && pi->regs[PI_CART_ADDR_REG] < 0x08010000)
@@ -181,7 +188,10 @@ static void dma_pi_write(struct pi_controller *pi)
          dram = (uint8_t*)pi->ri->rdram.dram;
 
          for (i = 0; i < length; ++i)
-            dram[(dram_address + i) ^ S8] = rom[(rom_address + i) ^ S8];
+         {
+            const unsigned int rom_i = (rom_address + i) ^ S8;
+            rdram_safe_write_byte(dram, (dram_address + i) ^ S8, (rom_i < (uint32_t)g_rom_size) ? rom[rom_i] : 0u);
+         }
 
          invalidate_r4300_cached_code(0x80000000 + dram_address, length);
          invalidate_r4300_cached_code(0xa0000000 + dram_address, length);
@@ -274,8 +284,10 @@ static void dma_pi_write(struct pi_controller *pi)
       rom = pi->cart_rom.rom;
    }
 
-   for (i = 0; i < length; ++i)
-      dram[(dram_address + i) ^ S8] = rom[(rom_address + i) ^ S8];
+   for (i = 0; i < length; ++i) {
+      const unsigned int rom_i = (rom_address + i) ^ S8;
+      rdram_safe_write_byte(dram, (dram_address + i) ^ S8, (rom_i < (uint32_t)g_rom_size) ? rom[rom_i] : 0);
+   }
 
    invalidate_r4300_cached_code(0x80000000 + dram_address, length);
    invalidate_r4300_cached_code(0xa0000000 + dram_address, length);

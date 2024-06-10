@@ -29,10 +29,6 @@
 #define RDRAM_REG(a)    ((a & 0x3ff) >> 2)
 #endif
 
-#ifndef RDRAM_DRAM_ADDR
-#define RDRAM_DRAM_ADDR(a) ((address & 0xffffff) >> 2)
-#endif
-
 enum rdram_registers
 {
     RDRAM_CONFIG_REG,

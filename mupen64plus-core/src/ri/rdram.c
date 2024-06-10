@@ -23,6 +23,7 @@
 #include "ri_controller.h"
 
 #include "../memory/memory.h"
+#include "./safe_rdram.h"
 
 #include <string.h>
 
@@ -65,19 +66,13 @@ int write_rdram_regs(void* opaque, uint32_t address, uint32_t value, uint32_t ma
 int read_rdram_dram(void* opaque, uint32_t address, uint32_t* value)
 {
     struct ri_controller* ri = (struct ri_controller*)opaque;
-    uint32_t addr            = RDRAM_DRAM_ADDR(address);
-
-    *value = ri->rdram.dram[addr];
-
+    *value = rdram_safe_read_word(ri->rdram.dram, address);
     return 0;
 }
 
 int write_rdram_dram(void* opaque, uint32_t address, uint32_t value, uint32_t mask)
 {
     struct ri_controller* ri = (struct ri_controller*)opaque;
-    uint32_t addr            = RDRAM_DRAM_ADDR(address);
-
-    ri->rdram.dram[addr] = MASKED_WRITE(&ri->rdram.dram[addr], value, mask);
-
+    rdram_safe_masked_write_word(ri->rdram.dram, address, value, mask);
     return 0;
 }

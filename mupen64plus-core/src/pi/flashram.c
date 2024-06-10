@@ -26,6 +26,7 @@
 #include "../api/callbacks.h"
 #include "../memory/memory.h"
 #include "../ri/ri_controller.h"
+#include "../ri/safe_rdram.h"
 
 #include <string.h>
 
@@ -70,14 +71,21 @@ static void flashram_command(struct pi_controller *pi, uint32_t command)
             case FLASHRAM_MODE_ERASE:
                {
                   for (i=flashram->erase_offset; i<(flashram->erase_offset+128); ++i)
-                     flashram->data[i^S8] = 0xff;
+                  {
+                     if ((i^S8) < (unsigned)FLASHRAM_SIZE)
+                        flashram->data[i^S8] = 0xff;
+                  }
                   flashram_save(flashram);
                }
                break;
             case FLASHRAM_MODE_WRITE:
                {
                   for(i = 0; i < 128; ++i)
-                     flashram->data[(flashram->erase_offset+i)^S8]= dram[(flashram->write_pointer+i)^S8];
+                  {
+                     const unsigned int flash_i = (flashram->erase_offset+i)^S8;
+                     if (flash_i >= (unsigned)FLASHRAM_SIZE) continue;
+                     flashram->data[flash_i] = rdram_safe_read_byte(dram, (flashram->write_pointer+i)^S8);
+                  }
                   flashram_save(flashram);
                }
                break;
@@ -169,7 +177,10 @@ void dma_read_flashram(struct pi_controller *pi)
          cart_addr = ((pi->regs[PI_CART_ADDR_REG]-0x08000000)&0xffff)*2;
 
          for (i = 0; i < length; ++i)
-            ((uint8_t*)dram)[(dram_addr+i)^S8] = mem[(cart_addr+i)^S8];
+         {
+            const unsigned int cart_i = (cart_addr+i)^S8;
+            rdram_safe_write_byte(dram, (dram_addr+i)^S8, (cart_i < (unsigned)FLASHRAM_SIZE) ? mem[cart_i] : 0);
+         }
          break;
       default:
          DebugMessage(M64MSG_WARNING, "unknown dma_read_flashram: %x", flashram->mode);
