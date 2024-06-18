@@ -37,7 +37,7 @@ extern int g_MemHasBeenBSwapped;
 extern int g_DDMemHasBeenBSwapped;
 extern int g_EmulatorRunning;
 
-extern ALIGN(4 * 1024, uint32_t g_rdram[RDRAM_MAX_SIZE/4]);
+extern ALIGN(4096, uint32_t g_rdram[RDRAM_MAX_SIZE/4]);
 
 extern struct device g_dev;
 
