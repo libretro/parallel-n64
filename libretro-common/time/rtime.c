@@ -1,7 +1,7 @@
 /* Copyright  (C) 2010-2020 The RetroArch team
  *
  * ---------------------------------------------------------------------------------------
- * The following license statement only applies to this file (config_file_userdata.h).
+ * The following license statement only applies to this file (rtime.c).
  * ---------------------------------------------------------------------------------------
  *
  * Permission is hereby granted, free of charge,
@@ -20,45 +20,59 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef _LIBRETRO_SDK_CONFIG_FILE_USERDATA_H
-#define _LIBRETRO_SDK_CONFIG_FILE_USERDATA_H
+#ifdef HAVE_THREADS
+#include <rthreads/rthreads.h>
+#include <stdlib.h>
+#endif
 
 #include <string.h>
+#include <time/rtime.h>
 
-#include <file/config_file.h>
-
-#include <retro_common_api.h>
-
-RETRO_BEGIN_DECLS
-
-struct config_file_userdata
-{
-   config_file_t *conf;
-   const char *prefix[2];
-};
-
-int config_userdata_get_float(void *userdata, const char *key_str,
-      float *value, float default_value);
-
-int config_userdata_get_int(void *userdata, const char *key_str,
-      int *value, int default_value);
-
-int config_userdata_get_hex(void *userdata, const char *key_str,
-      unsigned *value, unsigned default_value);
-
-int config_userdata_get_float_array(void *userdata, const char *key_str,
-      float **values, unsigned *out_num_values,
-      const float *default_values, unsigned num_default_values);
-
-int config_userdata_get_int_array(void *userdata, const char *key_str,
-      int **values, unsigned *out_num_values,
-      const int *default_values, unsigned num_default_values);
-
-int config_userdata_get_string(void *userdata, const char *key_str,
-      char **output, const char *default_output);
-
-void config_userdata_free(void *ptr);
-
-RETRO_END_DECLS
-
+#ifdef HAVE_THREADS
+/* TODO/FIXME - global */
+slock_t *rtime_localtime_lock = NULL;
 #endif
+
+/* Must be called before using rtime_localtime() */
+void rtime_init(void)
+{
+   rtime_deinit();
+#ifdef HAVE_THREADS
+   if (!rtime_localtime_lock)
+      rtime_localtime_lock = slock_new();
+#endif
+}
+
+/* Must be called upon program termination */
+void rtime_deinit(void)
+{
+#ifdef HAVE_THREADS
+   if (rtime_localtime_lock)
+   {
+      slock_free(rtime_localtime_lock);
+      rtime_localtime_lock = NULL;
+   }
+#endif
+}
+
+/* Thread-safe wrapper for localtime() */
+struct tm *rtime_localtime(const time_t *timep, struct tm *result)
+{
+   struct tm *time_info = NULL;
+
+   /* Lock mutex */
+#ifdef HAVE_THREADS
+   slock_lock(rtime_localtime_lock);
+#endif
+
+   time_info = localtime(timep);
+   if (time_info)
+      memcpy(result, time_info, sizeof(struct tm));
+
+   /* Unlock mutex */
+#ifdef HAVE_THREADS
+   slock_unlock(rtime_localtime_lock);
+#endif
+
+   return result;
+}

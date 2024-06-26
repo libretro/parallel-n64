@@ -24,10 +24,13 @@ static thread_local cothread_t co_active_handle;
 
 __asm__ (
 #if defined(__thumb2__)
-      ".thumb\n"
       ".align 2\n"
       ".globl co_switch_arm\n"
       ".globl _co_switch_arm\n"
+      ".thumb\n"
+      ".thumb_func\n"
+      ".type   co_switch_arm, %function\n"
+      ".type   _co_switch_arm, %function\n"
       "co_switch_arm:\n"
       "_co_switch_arm:\n"
       " mov r3, sp\n"
@@ -55,8 +58,9 @@ void co_switch_arm(cothread_t handle, cothread_t current);
 
 cothread_t co_create(unsigned int size, void (*entrypoint)(void))
 {
-   size = (size + 1023) & ~1023;
+   uint32_t *ptr     = NULL;
    cothread_t handle = 0;
+   size              = (size + 1023) & ~1023;
 #if defined(__APPLE__) || HAVE_POSIX_MEMALIGN >= 1
    if (posix_memalign(&handle, 1024, size + 256) < 0)
       return 0;
@@ -67,7 +71,7 @@ cothread_t co_create(unsigned int size, void (*entrypoint)(void))
    if (!handle)
       return handle;
 
-   uint32_t *ptr = (uint32_t*)handle;
+   ptr    = (uint32_t*)handle;
    /* Non-volatiles.  */
    ptr[0] = 0; /* r4  */
    ptr[1] = 0; /* r5  */

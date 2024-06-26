@@ -1,4 +1,4 @@
-/* Copyright  (C) 2010-2018 The RetroArch team
+/* Copyright  (C) 2010-2020 The RetroArch team
  *
  * ---------------------------------------------------------------------------------------
  * The following license statement only applies to this file (msvc.h).
@@ -29,20 +29,17 @@
 extern "C"  {
 #endif
 
-/* Pre-MSVC 2015 compilers don't implement snprintf in a cross-platform manner. */
+/* Pre-MSVC 2015 compilers don't implement snprintf, vsnprintf in a cross-platform manner. */
 #if _MSC_VER < 1900
+   #include <stdio.h>
+   #include <stdarg.h>
    #include <stdlib.h>
+
    #ifndef snprintf
       #define snprintf c99_snprintf_retro__
    #endif
-
    int c99_snprintf_retro__(char *outBuf, size_t size, const char *format, ...);
-#endif
 
-/* Pre-MSVC 2010 compilers don't implement vsnprintf in a cross-platform manner? Not sure about this one. */
-#if _MSC_VER < 1600
-   #include <stdarg.h>
-   #include <stdlib.h>
    #ifndef vsnprintf
       #define vsnprintf c99_vsnprintf_retro__
    #endif
@@ -56,6 +53,8 @@ extern "C"  {
 #undef UNICODE /* Do not bother with UNICODE at this time. */
 #include <direct.h>
 #include <stddef.h>
+
+#define _USE_MATH_DEFINES
 #include <math.h>
 
 /* Python headers defines ssize_t and sets HAVE_SSIZE_T.
@@ -125,4 +124,3 @@ typedef int ssize_t;
 
 #endif
 #endif
-

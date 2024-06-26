@@ -1,4 +1,4 @@
-/* Copyright  (C) 2010-2018 The RetroArch team
+/* Copyright  (C) 2010-2021 The RetroArch team
  *
  * ---------------------------------------------------------------------------------------
  * The following license statement only applies to this file (s16_to_float.c).
@@ -29,28 +29,71 @@
 #include <features/features_cpu.h>
 #include <audio/conversion/s16_to_float.h>
 
-#if defined(__ARM_NEON__) && !defined(DONT_WANT_ARM_OPTIMIZATIONS)
+#if (defined(__ARM_NEON__) || defined(HAVE_NEON))
 static bool s16_to_float_neon_enabled = false;
 
+#ifdef HAVE_ARM_NEON_ASM_OPTIMIZATIONS
 /* Avoid potential hard-float/soft-float ABI issues. */
 void convert_s16_float_asm(float *out, const int16_t *in,
       size_t samples, const float *gain);
+#else
+#include <arm_neon.h>
 #endif
 
-/**
- * convert_s16_to_float:
- * @out               : output buffer
- * @in                : input buffer
- * @samples           : size of samples to be converted
- * @gain              : gain applied (.e.g. audio volume)
- *
- * Converts from signed integer 16-bit
- * to floating point.
- **/
 void convert_s16_to_float(float *out,
       const int16_t *in, size_t samples, float gain)
 {
-   size_t i      = 0;
+   unsigned i      = 0;
+
+   if (s16_to_float_neon_enabled)
+   {
+#ifdef HAVE_ARM_NEON_ASM_OPTIMIZATIONS
+      size_t aligned_samples = samples & ~7;
+      if (aligned_samples)
+         convert_s16_float_asm(out, in, aligned_samples, &gain);
+
+      /* Could do all conversion in ASM, but keep it simple for now. */
+      out                   += aligned_samples;
+      in                    += aligned_samples;
+      samples               -= aligned_samples;
+      i                      = 0;
+#else
+      float        gf        = gain / (1 << 15);
+      float32x4_t vgf        = {gf, gf, gf, gf};
+      while (samples >= 8)
+      {
+         float32x4x2_t oreg;
+         int16x4x2_t inreg   = vld2_s16(in);
+         int32x4_t      p1   = vmovl_s16(inreg.val[0]);
+         int32x4_t      p2   = vmovl_s16(inreg.val[1]);
+         oreg.val[0]         = vmulq_f32(vcvtq_f32_s32(p1), vgf);
+         oreg.val[1]         = vmulq_f32(vcvtq_f32_s32(p2), vgf);
+         vst2q_f32(out, oreg);
+         in                 += 8;
+         out                += 8;
+         samples            -= 8;
+      }
+#endif
+   }
+
+   gain /= 0x8000;
+
+   for (; i < samples; i++)
+      out[i] = (float)in[i] * gain;
+}
+
+void convert_s16_to_float_init_simd(void)
+{
+   uint64_t cpu = cpu_features_get();
+
+   if (cpu & RETRO_SIMD_NEON)
+      s16_to_float_neon_enabled = true;
+}
+#else
+void convert_s16_to_float(float *out,
+      const int16_t *in, size_t samples, float gain)
+{
+   unsigned i      = 0;
 
 #if defined(__SSE2__)
    float fgain   = gain / UINT32_C(0x80000000);
@@ -77,7 +120,6 @@ void convert_s16_to_float(float *out,
     * optimize for the good path (very likely). */
    if (((uintptr_t)out & 15) + ((uintptr_t)in & 15) == 0)
    {
-      size_t i;
       const vector float gain_vec = { gain, gain , gain, gain };
       const vector float zero_vec = { 0.0f, 0.0f, 0.0f, 0.0f};
 
@@ -98,22 +140,11 @@ void convert_s16_to_float(float *out,
 
    samples = samples_in;
    i       = 0;
+#endif
 
-#elif defined(__ARM_NEON__) && !defined(DONT_WANT_ARM_OPTIMIZATIONS)
-   if (s16_to_float_neon_enabled)
-   {
-      size_t aligned_samples = samples & ~7;
-      if (aligned_samples)
-         convert_s16_float_asm(out, in, aligned_samples, &gain);
+   gain   /= 0x8000;
 
-      /* Could do all conversion in ASM, but keep it simple for now. */
-      out     = out + aligned_samples;
-      in      = in  + aligned_samples;
-      samples = samples - aligned_samples;
-      i       = 0;
-   }
-
-#elif defined(_MIPS_ARCH_ALLEGREX)
+#if defined(_MIPS_ARCH_ALLEGREX)
 #ifdef DEBUG
    /* Make sure the buffer is 16 byte aligned, this should be the
     * default behaviour of malloc in the PSPSDK.
@@ -121,7 +152,6 @@ void convert_s16_to_float(float *out,
    retro_assert(((uintptr_t)out & 0xf) == 0);
 #endif
 
-   gain = gain / 0x8000;
    __asm__ (
          ".set    push                    \n"
          ".set    noreorder               \n"
@@ -164,26 +194,12 @@ void convert_s16_to_float(float *out,
             ".set    pop                  \n"
             :: "r"(in + i), "r"(out + i));
    }
-
 #endif
-   gain    = gain / 0x8000;
 
    for (; i < samples; i++)
       out[i] = (float)in[i] * gain;
 }
 
-/**
- * convert_s16_to_float_init_simd:
- *
- * Sets up function pointers for conversion
- * functions based on CPU features.
- **/
-void convert_s16_to_float_init_simd(void)
-{
-#if defined(__ARM_NEON__) && !defined(DONT_WANT_ARM_OPTIMIZATIONS)
-   unsigned cpu = cpu_features_get();
-
-   if (cpu & RETRO_SIMD_NEON)
-      s16_to_float_neon_enabled = true;
+void convert_s16_to_float_init_simd(void) { }
 #endif
-}
+
