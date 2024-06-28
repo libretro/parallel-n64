@@ -1,4 +1,4 @@
-/* Copyright  (C) 2010-2018 The RetroArch team
+/* Copyright  (C) 2010-2020 The RetroArch team
  *
  * ---------------------------------------------------------------------------------------
  * The following license statement only applies to this file (nearest_resampler.c).
@@ -40,11 +40,11 @@ static void resampler_nearest_process(
    audio_frame_float_t  *outp    = (audio_frame_float_t*)data->data_out;
    float                   ratio = 1.0 / data->ratio;
 
-   while(inp != inp_max)
+   while (inp != inp_max)
    {
-      while(re->fraction > 1)
+      while (re->fraction > 1)
       {
-         *outp++ = *inp;
+         *outp++       = *inp;
          re->fraction -= ratio;
       }
       re->fraction++;
@@ -62,21 +62,15 @@ static void resampler_nearest_free(void *re_)
 }
 
 static void *resampler_nearest_init(const struct resampler_config *config,
-      double bandwidth_mod, 
+      double bandwidth_mod,
       enum resampler_quality quality,
       resampler_simd_mask_t mask)
 {
    rarch_nearest_resampler_t *re = (rarch_nearest_resampler_t*)
       calloc(1, sizeof(rarch_nearest_resampler_t));
-
-   (void)config;
-   (void)mask;
-
    if (!re)
       return NULL;
-
    re->fraction = 0;
-
    return re;
 }
 

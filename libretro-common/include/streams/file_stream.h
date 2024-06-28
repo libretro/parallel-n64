@@ -1,4 +1,4 @@
-/* Copyright  (C) 2010-2018 The RetroArch team
+/* Copyright  (C) 2010-2020 The RetroArch team
  *
  * ---------------------------------------------------------------------------------------
  * The following license statement only applies to this file (file_stream.h).
@@ -36,18 +36,21 @@
 #include <boolean.h>
 
 #include <stdarg.h>
+#include <vfs/vfs_implementation.h>
 
-#define FILESTREAM_REQUIRED_VFS_VERSION 1
+#define FILESTREAM_REQUIRED_VFS_VERSION 2
 
 RETRO_BEGIN_DECLS
 
 typedef struct RFILE RFILE;
 
-#define FILESTREAM_REQUIRED_VFS_VERSION 1
+#define FILESTREAM_REQUIRED_VFS_VERSION 2
 
 void filestream_vfs_init(const struct retro_vfs_interface_info* vfs_info);
 
 int64_t filestream_get_size(RFILE *stream);
+
+int64_t filestream_truncate(RFILE *stream, int64_t length);
 
 /**
  * filestream_open:
@@ -56,9 +59,9 @@ int64_t filestream_get_size(RFILE *stream);
  * @bufsize            : optional buffer size (-1 or 0 to use default)
  *
  * Opens a file for reading or writing, depending on the requested mode.
- * Returns a pointer to an RFILE if opened successfully, otherwise NULL.
+ * @return A pointer to an RFILE if opened successfully, otherwise NULL.
  **/
-RFILE *filestream_open(const char *path, unsigned mode, unsigned hints);
+RFILE* filestream_open(const char *path, unsigned mode, unsigned hints);
 
 int64_t filestream_seek(RFILE *stream, int64_t offset, int seek_position);
 
@@ -72,14 +75,39 @@ void filestream_rewind(RFILE *stream);
 
 int filestream_close(RFILE *stream);
 
+/**
+ * filestream_read_file:
+ * @path             : path to file.
+ * @buf              : buffer to allocate and read the contents of the
+ *                     file into. Needs to be freed manually.
+ * @len              : optional output integer containing bytes read.
+ *
+ * Read the contents of a file into @buf.
+ *
+ * @return Non-zero on success.
+ */
 int64_t filestream_read_file(const char *path, void **buf, int64_t *len);
 
-char *filestream_gets(RFILE *stream, char *s, size_t len);
+char* filestream_gets(RFILE *stream, char *s, size_t len);
 
 int filestream_getc(RFILE *stream);
 
+int filestream_vscanf(RFILE *stream, const char* format, va_list *args);
+
+int filestream_scanf(RFILE *stream, const char* format, ...);
+
 int filestream_eof(RFILE *stream);
 
+/**
+ * filestream_write_file:
+ * @path             : path to file.
+ * @data             : contents to write to the file.
+ * @size             : size of the contents.
+ *
+ * Writes data to a file.
+ *
+ * @return true on success, otherwise false.
+ **/
 bool filestream_write_file(const char *path, const void *data, int64_t size);
 
 int filestream_putc(RFILE *stream, int c);
@@ -96,11 +124,18 @@ int filestream_delete(const char *path);
 
 int filestream_rename(const char *old_path, const char *new_path);
 
-const char *filestream_get_path(RFILE *stream);
+const char* filestream_get_path(RFILE *stream);
 
 bool filestream_exists(const char *path);
 
-char *filestream_getline(RFILE *stream);
+/**
+ * filestream_getline:
+ *
+ * Returned pointer must be freed by the caller.
+ **/
+char* filestream_getline(RFILE *stream);
+
+libretro_vfs_implementation_file* filestream_get_vfs_handle(RFILE *stream);
 
 RETRO_END_DECLS
 

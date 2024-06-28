@@ -1,4 +1,4 @@
-/* Copyright  (C) 2010-2018 The RetroArch team
+/* Copyright  (C) 2010-2020 The RetroArch team
  *
  * ---------------------------------------------------------------------------------------
  * The following license statement only applies to this file (string_list.h).
@@ -41,6 +41,7 @@ union string_list_elem_attr
 struct string_list_elem
 {
    char *data;
+   void *userdata;
    union string_list_elem_attr attr;
 };
 
@@ -58,7 +59,7 @@ struct string_list
  *
  * Searches for an element (@elem) inside the string list.
  *
- * Returns: true (1) if element could be found, otherwise false (0).
+ * @return Number of elements found, otherwise 0.
  */
 int string_list_find_elem(const struct string_list *list, const char *elem);
 
@@ -87,13 +88,36 @@ bool string_list_find_elem_prefix(const struct string_list *list,
  */
 struct string_list *string_split(const char *str, const char *delim);
 
+bool string_split_noalloc(struct string_list *list,
+      const char *str, const char *delim);
+
+/**
+ * string_separate:
+ * @str              : string to turn into a string list
+ * @delim            : delimiter character to use for separating the string.
+ *
+ * Creates a new string list based on string @str, delimited by @delim.
+ * Includes empty strings - i.e. two adjacent delimiters will resolve
+ * to a string list element of "".
+ *
+ * @return New string list if successful, otherwise NULL.
+ **/
+struct string_list *string_separate(char *str, const char *delim);
+
+bool string_separate_noalloc(struct string_list *list, 
+      char *str, const char *delim);
+
+bool string_list_deinitialize(struct string_list *list);
+
+bool string_list_initialize(struct string_list *list);
+
 /**
  * string_list_new:
  *
  * Creates a new string list. Has to be freed manually.
  *
- * Returns: new string list if successful, otherwise NULL.
- */
+ * @return New string list if successful, otherwise NULL.
+ **/
 struct string_list *string_list_new(void);
 
 /**
@@ -103,8 +127,12 @@ struct string_list *string_list_new(void);
  * @attr             : attributes of new element.
  *
  * Appends a new element to the string list.
+
+ * Hidden non-leaf function cost:
+ * - Calls string_list_capacity()
+ * - Calls strdup
  *
- * Returns: true (1) if successful, otherwise false (0).
+ * @return true if successful, otherwise false.
  **/
 bool string_list_append(struct string_list *list, const char *elem,
       union string_list_elem_attr attr);
@@ -118,7 +146,12 @@ bool string_list_append(struct string_list *list, const char *elem,
  *
  * Appends a new element to the string list.
  *
- * Returns: true (1) if successful, otherwise false (0).
+ * Hidden non-leaf function cost:
+ * - Calls string_list_capacity()
+ * - Calls malloc
+ * - Calls strlcpy
+ *
+ * @return true if successful, otherwise false.
  **/
 bool string_list_append_n(struct string_list *list, const char *elem,
       unsigned length, union string_list_elem_attr attr);
@@ -128,7 +161,7 @@ bool string_list_append_n(struct string_list *list, const char *elem,
  * @list             : pointer to string list object
  *
  * Frees a string list.
- */
+ **/
 void string_list_free(struct string_list *list);
 
 /**
@@ -140,7 +173,13 @@ void string_list_free(struct string_list *list);
  *
  * A string list will be joined/concatenated as a
  * string to @buffer, delimited by @delim.
- */
+ *
+ * NOTE: @buffer must be NULL-terminated.
+ *
+ * Hidden non-leaf function cost:
+ * - Calls strlen_size()
+ * - Calls strlcat x times in a loop
+ **/
 void string_list_join_concat(char *buffer, size_t size,
       const struct string_list *list, const char *sep);
 
@@ -151,9 +190,15 @@ void string_list_join_concat(char *buffer, size_t size,
  * @str              : value for the element.
  *
  * Set value of element inside string list.
+ *
+ * Hidden non-leaf function cost:
+ * - Calls free
+ * - Calls strdup
  **/
 void string_list_set(struct string_list *list, unsigned idx,
       const char *str);
+
+struct string_list *string_list_clone(const struct string_list *src);
 
 RETRO_END_DECLS
 

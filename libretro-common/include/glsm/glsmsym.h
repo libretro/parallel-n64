@@ -25,6 +25,10 @@
 
 #include <glsm/glsm.h>
 
+#ifdef HAVE_GLSYM_PRIVATE
+#include "glsym_private.h"
+#endif
+
 #include <retro_common_api.h>
 
 RETRO_BEGIN_DECLS
@@ -150,7 +154,7 @@ RETRO_BEGIN_DECLS
 #define glUniformBlockBinding       rglUniformBlockBinding
 #define glGetUniformBlockIndex      rglGetUniformBlockIndex
 #define glGetActiveUniformBlockiv   rglGetActiveUniformBlockiv
-#define glBindBufferBase            rglBindBufferBase 
+#define glBindBufferBase            rglBindBufferBase
 #define glGetUniformIndices         rglGetUniformIndices
 #define glGetActiveUniformsiv       rglGetActiveUniformsiv
 #define glGetError                  rglGetError

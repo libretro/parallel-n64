@@ -1,4 +1,4 @@
-/* Copyright  (C) 2010-2018 The RetroArch team
+/* Copyright  (C) 2010-2020 The RetroArch team
  *
  * ---------------------------------------------------------------------------------------
  * The following license statement only applies to this file (compat_strl.c).
@@ -60,10 +60,3 @@ size_t strlcat(char *dest, const char *source, size_t size)
    return len + strlcpy(dest, source, size);
 }
 #endif
-
-char *strldup(const char *s, size_t n)
-{
-   char *dst = (char*)malloc(sizeof(char) * (n + 1));
-   strlcpy(dst, s, n);
-   return dst;
-}
