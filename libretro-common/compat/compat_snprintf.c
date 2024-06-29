@@ -1,4 +1,4 @@
-/* Copyright  (C) 2010-2020 The RetroArch team
+/* Copyright  (C) 2010-2018 The RetroArch team
  *
  * ---------------------------------------------------------------------------------------
  * The following license statement only applies to this file (compat_snprintf.c).
@@ -23,7 +23,10 @@
 /* THIS FILE HAS NOT BEEN VALIDATED ON PLATFORMS BESIDES MSVC */
 #ifdef _MSC_VER
 
-#include <stdio.h>
+#include <retro_common.h>
+#if _MSC_VER >= 1900
+#include <stdio.h> /* added for _vsnprintf_s and _vscprintf on VS2015 and VS2017 */
+#endif
 #include <stdarg.h>
 
 #if _MSC_VER < 1800
@@ -33,12 +36,12 @@
 #if _MSC_VER < 1300
 #define _vscprintf c89_vscprintf_retro__
 
-static int c89_vscprintf_retro__(const char *fmt, va_list pargs)
+static int c89_vscprintf_retro__(const char *format, va_list pargs)
 {
    int retval;
    va_list argcopy;
    va_copy(argcopy, pargs);
-   retval = vsnprintf(NULL, 0, fmt, argcopy);
+   retval = vsnprintf(NULL, 0, format, argcopy);
    va_end(argcopy);
    return retval;
 }
@@ -46,36 +49,29 @@ static int c89_vscprintf_retro__(const char *fmt, va_list pargs)
 
 /* http://stackoverflow.com/questions/2915672/snprintf-and-visual-studio-2010 */
 
-int c99_vsnprintf_retro__(char *s, size_t len, const char *fmt, va_list ap)
+int c99_vsnprintf_retro__(char *outBuf, size_t size, const char *format, va_list ap)
 {
    int count = -1;
 
-   if (len != 0)
-   {
+   if (size != 0)
 #if (_MSC_VER <= 1310)
-      count = _vsnprintf(s, len - 1, fmt, ap);
+       count = _vsnprintf(outBuf, size, format, ap);
 #else
-      count = _vsnprintf_s(s, len, len - 1, fmt, ap);
+       count = _vsnprintf_s(outBuf, size, _TRUNCATE, format, ap);
 #endif
-   }
-
    if (count == -1)
-       count = _vscprintf(fmt, ap);
-
-   /* there was no room for a NULL, so truncate the last character */
-   if (count == len && len)
-      s[len - 1] = '\0';
+       count = _vscprintf(format, ap);
 
    return count;
 }
 
-int c99_snprintf_retro__(char *s, size_t len, const char *fmt, ...)
+int c99_snprintf_retro__(char *outBuf, size_t size, const char *format, ...)
 {
    int count;
    va_list ap;
 
-   va_start(ap, fmt);
-   count = c99_vsnprintf_retro__(s, len, fmt, ap);
+   va_start(ap, format);
+   count = c99_vsnprintf_retro__(outBuf, size, format, ap);
    va_end(ap);
 
    return count;

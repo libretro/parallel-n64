@@ -1,4 +1,4 @@
-/* Copyright  (C) 2010-2020 The RetroArch team
+/* Copyright  (C) 2010-2018 The RetroArch team
  *
  * ---------------------------------------------------------------------------------------
  * The following license statement only applies to this file (filters.h).
@@ -31,11 +31,6 @@
 #include <retro_inline.h>
 #include <retro_math.h>
 
-/**
- * sinc:
- *
- * Pure function.
- **/
 static INLINE double sinc(double val)
 {
    if (fabs(val) < 0.00001)
@@ -43,12 +38,7 @@ static INLINE double sinc(double val)
    return sin(val) / val;
 }
 
-/**
- * paeth:
- *
- * Pure function.
- * Paeth prediction filter.
- **/
+/* Paeth prediction filter. */
 static INLINE int paeth(int a, int b, int c)
 {
    int p  = a + b - c;
@@ -63,17 +53,11 @@ static INLINE int paeth(int a, int b, int c)
    return c;
 }
 
-/**
- * besseli0:
- *
- * Pure function.
- *
- * Modified Bessel function of first order.
- * Check Wiki for mathematical definition ...
- **/
+/* Modified Bessel function of first order.
+ * Check Wiki for mathematical definition ... */
 static INLINE double besseli0(double x)
 {
-   int i;
+   unsigned i;
    double sum            = 0.0;
    double factorial      = 1.0;
    double factorial_mult = 0.0;
@@ -85,11 +69,12 @@ static INLINE double besseli0(double x)
     * Luckily, it converges rather fast. */
    for (i = 0; i < 18; i++)
    {
-      sum            += x_pow * two_div_pow / (factorial * factorial);
+      sum += x_pow * two_div_pow / (factorial * factorial);
+
       factorial_mult += 1.0;
-      x_pow          *= x_sqr;
-      two_div_pow    *= 0.25;
-      factorial      *= factorial_mult;
+      x_pow *= x_sqr;
+      two_div_pow *= 0.25;
+      factorial *= factorial_mult;
    }
 
    return sum;
@@ -98,6 +83,11 @@ static INLINE double besseli0(double x)
 static INLINE double kaiser_window_function(double index, double beta)
 {
    return besseli0(beta * sqrtf(1 - index * index));
+}
+
+static INLINE double lanzcos_window_function(double index)
+{
+   return sinc(M_PI * index);
 }
 
 #endif

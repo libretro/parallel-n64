@@ -1,4 +1,4 @@
-/* Copyright  (C) 2010-2020 The RetroArch team
+/* Copyright  (C) 2010-2018 The RetroArch team
  *
  * ---------------------------------------------------------------------------------------
  * The following license statement only applies to this file (compat_getopt.c).
@@ -34,6 +34,8 @@
 #include <compat/strl.h>
 #include <compat/strcasestr.h>
 #include <compat/posix_string.h>
+
+#include <retro_assert.h>
 
 char *optarg;
 int optind, opterr, optopt;
@@ -124,37 +126,18 @@ static int parse_short(const char *optstring, char * const *argv)
 static int parse_long(const struct option *longopts, char * const *argv)
 {
    size_t indice;
-   char *save  = NULL;
-   char *argv0 = strdup(&argv[0][2]);
-   char *token = strtok_r(argv0, "=", &save);
    const struct option *opt = NULL;
-
    for (indice = 0; longopts[indice].name; indice++)
    {
-      if (token && !strcmp(longopts[indice].name, token))
+      if (!strcmp(longopts[indice].name, &argv[0][2]))
       {
          opt = &longopts[indice];
          break;
       }
    }
 
-   free(argv0);
-   argv0 = NULL;
-
    if (!opt)
       return '?';
-
-   /* Handle args with '=' instead of space */
-   if (opt->has_arg)
-   {
-      char *special_arg = strchr(argv[0], '=');
-      if (special_arg)
-      {
-         optarg = ++special_arg;
-         optind++;
-         return opt->val;
-      }
-   }
 
    /* getopt_long has an "optional" arg, but we don't bother with that. */
    if (opt->has_arg && !argv[1])
@@ -182,6 +165,8 @@ static void shuffle_block(char **begin, char **last, char **end)
    ptrdiff_t    len = last - begin;
    const char **tmp = (const char**)calloc(len, sizeof(const char*));
 
+   retro_assert(tmp);
+
    memcpy((void*)tmp, begin, len * sizeof(const char*));
    memmove(begin, last, (end - last) * sizeof(const char*));
    memcpy(end - len, tmp, len * sizeof(const char*));
@@ -193,6 +178,8 @@ int getopt_long(int argc, char *argv[],
       const char *optstring, const struct option *longopts, int *longindex)
 {
    int short_index, long_index;
+
+   (void)longindex;
 
    if (optind == 0)
       optind = 1;
@@ -220,6 +207,8 @@ int getopt_long(int argc, char *argv[],
       shuffle_block(&argv[optind], &argv[optind + long_index], &argv[argc]);
       long_index = 0;
    }
+
+   retro_assert(short_index == 0 || long_index == 0);
 
    if (short_index == 0)
       return parse_short(optstring, &argv[optind]);

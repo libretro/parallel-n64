@@ -67,6 +67,7 @@ extern "C" {
 #  endif
 #endif
 
+
 /* 7.18.1 Integer types. */
 
 /* 7.18.1.1 Exact-width integer types. */
@@ -92,6 +93,7 @@ extern "C" {
 #endif
 typedef signed __int64       int64_t;
 typedef unsigned __int64     uint64_t;
+
 
 /* 7.18.1.2 Minimum-width integer types. */
 typedef int8_t    int_least8_t;
@@ -253,3 +255,4 @@ typedef uint64_t  uintmax_t;
 #endif
 
 #endif
+

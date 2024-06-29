@@ -1,4 +1,4 @@
-/* Copyright  (C) 2010-2020 The RetroArch team
+/* Copyright  (C) 2010-2018 The RetroArch team
  *
  * ---------------------------------------------------------------------------------------
  * The following license statement only applies to this file (sinc_resampler_neon.S).
@@ -20,7 +20,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#if defined(__ARM_NEON__) && defined(HAVE_ARM_NEON_ASM_OPTIMIZATIONS)
+#if defined(__ARM_NEON__) && !defined(DONT_WANT_ARM_OPTIMIZATIONS)
 
 #ifndef __MACH__
 .arm
@@ -39,7 +39,7 @@
 process_sinc_neon_asm:
 _process_sinc_neon_asm:
 
-   push {r4, lr}
+   push {r4, lr}   
    vmov.f32 q0, #0.0
    vmov.f32 q8, #0.0
 
@@ -68,7 +68,7 @@ _process_sinc_neon_asm:
    vadd.f32 d16, d16, d17
    vpadd.f32 d0, d0, d16
    vst1.f32 d0, [r0]
-
+   
    pop {r4, pc}
 
 #endif
