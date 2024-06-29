@@ -1,4 +1,4 @@
-/* Copyright  (C) 2010-2020 The RetroArch team
+/* Copyright  (C) 2010-2018 The RetroArch team
  *
  * ---------------------------------------------------------------------------------------
  * The following license statement only applies to this file (sinc_resampler.c).
@@ -27,7 +27,6 @@
 #include <math.h>
 #include <string.h>
 
-#include <retro_environment.h>
 #include <retro_inline.h>
 #include <filters.h>
 #include <memalign.h>
@@ -68,13 +67,7 @@ enum sinc_window
 
 typedef struct rarch_sinc_resampler
 {
-   /* A buffer for phase_table, buffer_l and buffer_r
-    * are created in a single calloc().
-    * Ensure that we get as good cache locality as we can hope for. */
-   float *main_buffer;
-   float *phase_table;
-   float *buffer_l;
-   float *buffer_r;
+   unsigned enable_avx;
    unsigned phase_bits;
    unsigned subphase_bits;
    unsigned subphase_mask;
@@ -83,102 +76,39 @@ typedef struct rarch_sinc_resampler
    uint32_t time;
    float subphase_mod;
    float kaiser_beta;
+   enum sinc_window window_type;
+
+   /* A buffer for phase_table, buffer_l and buffer_r
+    * are created in a single calloc().
+    * Ensure that we get as good cache locality as we can hope for. */
+   float *main_buffer;
+   float *phase_table;
+   float *buffer_l;
+   float *buffer_r;
 } rarch_sinc_resampler_t;
 
-#if (defined(__ARM_NEON__) || defined(HAVE_NEON))
-
-#ifdef HAVE_ARM_NEON_ASM_OPTIMIZATIONS
-void process_sinc_neon_asm(float *out, const float *left,
-      const float *right, const float *coeff, unsigned taps);
+#if defined(__ARM_NEON__) && !defined(DONT_WANT_ARM_OPTIMIZATIONS)
+#if TARGET_OS_IPHONE
 #else
-#include <arm_neon.h>
-
-/* Assumes that taps >= 8, and that taps is a multiple of 8.
- * Not bothering to reimplement this one for the external .S
- */
-static void resampler_sinc_process_neon_kaiser(void *re_, struct resampler_data *data)
-{
-   rarch_sinc_resampler_t *resamp = (rarch_sinc_resampler_t*)re_;
-   unsigned phases                = 1 << (resamp->phase_bits + resamp->subphase_bits);
-   uint32_t ratio                 = phases / data->ratio;
-   const float *input             = data->data_in;
-   float *output                  = data->data_out;
-   size_t frames                  = data->input_frames;
-   size_t out_frames              = 0;
-   unsigned taps                  = resamp->taps;
-   while (frames)
-   {
-      while (frames && resamp->time >= phases)
-      {
-         /* Push in reverse to make filter more obvious. */
-         if (!resamp->ptr)
-            resamp->ptr = taps;
-         resamp->ptr--;
-
-         resamp->buffer_l[resamp->ptr + taps] =
-            resamp->buffer_l[resamp->ptr]     = *input++;
-
-         resamp->buffer_r[resamp->ptr + taps] =
-            resamp->buffer_r[resamp->ptr]     = *input++;
-
-         resamp->time                        -= phases;
-         frames--;
-      }
-
-      {
-         const float *buffer_l    = resamp->buffer_l + resamp->ptr;
-         const float *buffer_r    = resamp->buffer_r + resamp->ptr;
-         while (resamp->time < phases)
-         {
-            unsigned phase           = resamp->time >> resamp->subphase_bits;
-            const float *phase_table = resamp->phase_table + phase * taps * 2;
-            const float *delta_table = phase_table + taps;
-            float32x4_t delta        = vdupq_n_f32((resamp->time & resamp->subphase_mask) * resamp->subphase_mod);
-            int i;
-            float32x4_t p1 = {0, 0, 0, 0}, p2 = {0, 0, 0, 0};
-            float32x2_t p3, p4;
-
-            for (i = 0; i < (int)taps; i += 8)
-            {
-               float32x4x2_t coeff8  = vld2q_f32(&phase_table[i]);
-               float32x4x2_t delta8  = vld2q_f32(&delta_table[i]);
-               float32x4x2_t left8   = vld2q_f32(&buffer_l[i]);
-               float32x4x2_t right8  = vld2q_f32(&buffer_r[i]);
-
-               coeff8.val[0] = vmlaq_f32(coeff8.val[0], delta8.val[0], delta);
-               coeff8.val[1] = vmlaq_f32(coeff8.val[1], delta8.val[1], delta);
-
-               p1 = vmlaq_f32(p1,  left8.val[0], coeff8.val[0]);
-               p2 = vmlaq_f32(p2, right8.val[0], coeff8.val[0]);
-               p1 = vmlaq_f32(p1,  left8.val[1], coeff8.val[1]);
-               p2 = vmlaq_f32(p2, right8.val[1], coeff8.val[1]);
-            }
-
-            p3 = vadd_f32(vget_low_f32(p1), vget_high_f32(p1));
-            p4 = vadd_f32(vget_low_f32(p2), vget_high_f32(p2));
-            vst1_f32(output, vpadd_f32(p3, p4));
-            output                 += 2;
-            out_frames++;
-            resamp->time           += ratio;
-         }
-      }
-   }
-
-   data->output_frames = out_frames;
-}
+#define WANT_NEON
+#endif
 #endif
 
+#ifdef WANT_NEON
 /* Assumes that taps >= 8, and that taps is a multiple of 8. */
+void process_sinc_neon_asm(float *out, const float *left,
+      const float *right, const float *coeff, unsigned taps);
+
 static void resampler_sinc_process_neon(void *re_, struct resampler_data *data)
 {
    rarch_sinc_resampler_t *resamp = (rarch_sinc_resampler_t*)re_;
    unsigned phases                = 1 << (resamp->phase_bits + resamp->subphase_bits);
+
    uint32_t ratio                 = phases / data->ratio;
    const float *input             = data->data_in;
    float *output                  = data->data_out;
    size_t frames                  = data->input_frames;
    size_t out_frames              = 0;
-   unsigned taps                  = resamp->taps;
 
    while (frames)
    {
@@ -186,53 +116,32 @@ static void resampler_sinc_process_neon(void *re_, struct resampler_data *data)
       {
          /* Push in reverse to make filter more obvious. */
          if (!resamp->ptr)
-            resamp->ptr = taps;
+            resamp->ptr = resamp->taps;
          resamp->ptr--;
 
-         resamp->buffer_l[resamp->ptr + taps] =
-            resamp->buffer_l[resamp->ptr]     = *input++;
+         resamp->buffer_l[resamp->ptr + resamp->taps] =
+         resamp->buffer_l[resamp->ptr]                = *input++;
 
-         resamp->buffer_r[resamp->ptr + taps] =
-            resamp->buffer_r[resamp->ptr]     = *input++;
+         resamp->buffer_r[resamp->ptr + resamp->taps] =
+         resamp->buffer_r[resamp->ptr]                = *input++;
 
-         resamp->time                        -= phases;
+         resamp->time                                -= phases;
          frames--;
       }
 
+      while (resamp->time < phases)
       {
          const float *buffer_l    = resamp->buffer_l + resamp->ptr;
          const float *buffer_r    = resamp->buffer_r + resamp->ptr;
-         while (resamp->time < phases)
-         {
-            unsigned phase           = resamp->time >> resamp->subphase_bits;
-            const float *phase_table = resamp->phase_table + phase * taps;
-#ifdef HAVE_ARM_NEON_ASM_OPTIMIZATIONS
-            process_sinc_neon_asm(output, buffer_l, buffer_r, phase_table, taps);
-#else
-            int i;
-            float32x4_t p1 = {0, 0, 0, 0}, p2 = {0, 0, 0, 0};
-            float32x2_t p3, p4;
+         unsigned taps            = resamp->taps;
+         unsigned phase           = resamp->time >> resamp->subphase_bits;
+         const float *phase_table = resamp->phase_table + phase * taps;
 
-            for (i = 0; i < (int)taps; i += 8)
-            {
-               float32x4x2_t coeff8  = vld2q_f32(&phase_table[i]);
-               float32x4x2_t left8   = vld2q_f32(&buffer_l[i]);
-               float32x4x2_t right8  = vld2q_f32(&buffer_r[i]);
+         process_sinc_neon_asm(output, buffer_l, buffer_r, phase_table, taps);
 
-               p1 = vmlaq_f32(p1,  left8.val[0], coeff8.val[0]);
-               p2 = vmlaq_f32(p2, right8.val[0], coeff8.val[0]);
-               p1 = vmlaq_f32(p1,  left8.val[1], coeff8.val[1]);
-               p2 = vmlaq_f32(p2, right8.val[1], coeff8.val[1]);
-            }
-
-            p3 = vadd_f32(vget_low_f32(p1), vget_high_f32(p1));
-            p4 = vadd_f32(vget_low_f32(p2), vget_high_f32(p2));
-            vst1_f32(output, vpadd_f32(p3, p4));
-#endif
-            output                 += 2;
-            out_frames++;
-            resamp->time           += ratio;
-         }
+         output += 2;
+         out_frames++;
+         resamp->time += ratio;
       }
    }
 
@@ -241,91 +150,6 @@ static void resampler_sinc_process_neon(void *re_, struct resampler_data *data)
 #endif
 
 #if defined(__AVX__)
-static void resampler_sinc_process_avx_kaiser(void *re_, struct resampler_data *data)
-{
-   rarch_sinc_resampler_t *resamp = (rarch_sinc_resampler_t*)re_;
-   unsigned phases                = 1 << (resamp->phase_bits + resamp->subphase_bits);
-
-   uint32_t ratio                 = phases / data->ratio;
-   const float *input             = data->data_in;
-   float *output                  = data->data_out;
-   size_t frames                  = data->input_frames;
-   size_t out_frames              = 0;
-   unsigned taps                  = resamp->taps;
-
-   {
-      while (frames)
-      {
-         while (frames && resamp->time >= phases)
-         {
-            /* Push in reverse to make filter more obvious. */
-            if (!resamp->ptr)
-               resamp->ptr = taps;
-            resamp->ptr--;
-
-            resamp->buffer_l[resamp->ptr + taps] =
-               resamp->buffer_l[resamp->ptr]     = *input++;
-
-            resamp->buffer_r[resamp->ptr + taps] =
-               resamp->buffer_r[resamp->ptr]     = *input++;
-
-            resamp->time                                -= phases;
-            frames--;
-         }
-
-         {
-            const float *buffer_l    = resamp->buffer_l + resamp->ptr;
-            const float *buffer_r    = resamp->buffer_r + resamp->ptr;
-            while (resamp->time < phases)
-            {
-               int i;
-               unsigned phase           = resamp->time >> resamp->subphase_bits;
-
-               float *phase_table       = resamp->phase_table + phase * taps * 2;
-               float *delta_table       = phase_table + taps;
-               __m256 delta             = _mm256_set1_ps((float)
-                     (resamp->time & resamp->subphase_mask) * resamp->subphase_mod);
-
-               __m256 sum_l             = _mm256_setzero_ps();
-               __m256 sum_r             = _mm256_setzero_ps();
-
-               for (i = 0; i < (int)taps; i += 8)
-               {
-                  __m256 buf_l  = _mm256_loadu_ps(buffer_l + i);
-                  __m256 buf_r  = _mm256_loadu_ps(buffer_r + i);
-                  __m256 deltas = _mm256_load_ps(delta_table + i);
-                  __m256 sinc   = _mm256_add_ps(_mm256_load_ps((const float*)phase_table + i),
-                        _mm256_mul_ps(deltas, delta));
-
-                  sum_l         = _mm256_add_ps(sum_l, _mm256_mul_ps(buf_l, sinc));
-                  sum_r         = _mm256_add_ps(sum_r, _mm256_mul_ps(buf_r, sinc));
-               }
-
-               /* hadd on AVX is weird, and acts on low-lanes
-                * and high-lanes separately. */
-               __m256 res_l = _mm256_hadd_ps(sum_l, sum_l);
-               __m256 res_r = _mm256_hadd_ps(sum_r, sum_r);
-               res_l        = _mm256_hadd_ps(res_l, res_l);
-               res_r        = _mm256_hadd_ps(res_r, res_r);
-               res_l        = _mm256_add_ps(_mm256_permute2f128_ps(res_l, res_l, 1), res_l);
-               res_r        = _mm256_add_ps(_mm256_permute2f128_ps(res_r, res_r, 1), res_r);
-
-               /* This is optimized to mov %xmmN, [mem].
-                * There doesn't seem to be any _mm256_store_ss intrinsic. */
-               _mm_store_ss(output + 0, _mm256_extractf128_ps(res_l, 0));
-               _mm_store_ss(output + 1, _mm256_extractf128_ps(res_r, 0));
-
-               output += 2;
-               out_frames++;
-               resamp->time += ratio;
-            }
-         }
-      }
-   }
-
-   data->output_frames = out_frames;
-}
-
 static void resampler_sinc_process_avx(void *re_, struct resampler_data *data)
 {
    rarch_sinc_resampler_t *resamp = (rarch_sinc_resampler_t*)re_;
@@ -336,8 +160,8 @@ static void resampler_sinc_process_avx(void *re_, struct resampler_data *data)
    float *output                  = data->data_out;
    size_t frames                  = data->input_frames;
    size_t out_frames              = 0;
-   unsigned taps                  = resamp->taps;
 
+   if (resamp->window_type == SINC_WINDOW_KAISER)
    {
       while (frames)
       {
@@ -345,60 +169,127 @@ static void resampler_sinc_process_avx(void *re_, struct resampler_data *data)
          {
             /* Push in reverse to make filter more obvious. */
             if (!resamp->ptr)
-               resamp->ptr = taps;
+               resamp->ptr = resamp->taps;
             resamp->ptr--;
 
-            resamp->buffer_l[resamp->ptr + taps] =
-               resamp->buffer_l[resamp->ptr]     = *input++;
+            resamp->buffer_l[resamp->ptr + resamp->taps] =
+               resamp->buffer_l[resamp->ptr]                = *input++;
 
-            resamp->buffer_r[resamp->ptr + taps] =
-               resamp->buffer_r[resamp->ptr]     = *input++;
+            resamp->buffer_r[resamp->ptr + resamp->taps] =
+               resamp->buffer_r[resamp->ptr]                = *input++;
 
-            resamp->time                        -= phases;
+            resamp->time                                -= phases;
             frames--;
          }
 
+         while (resamp->time < phases)
          {
+            unsigned i;
             const float *buffer_l    = resamp->buffer_l + resamp->ptr;
             const float *buffer_r    = resamp->buffer_r + resamp->ptr;
-            while (resamp->time < phases)
+            unsigned taps            = resamp->taps;
+            unsigned phase           = resamp->time >> resamp->subphase_bits;
+            float *phase_table       = resamp->phase_table + phase * taps * 2;
+            float *delta_table       = phase_table + taps;
+            __m256 delta             = _mm256_set1_ps((float)
+                  (resamp->time & resamp->subphase_mask) * resamp->subphase_mod);
+
+            __m256 sum_l             = _mm256_setzero_ps();
+            __m256 sum_r             = _mm256_setzero_ps();
+
+            for (i = 0; i < taps; i += 8)
             {
-               int i;
-               __m256 delta;
-               unsigned phase           = resamp->time >> resamp->subphase_bits;
-               float *phase_table       = resamp->phase_table + phase * taps;
+               __m256 buf_l  = _mm256_loadu_ps(buffer_l + i);
+               __m256 buf_r  = _mm256_loadu_ps(buffer_r + i);
+               __m256 deltas = _mm256_load_ps(delta_table + i);
+               __m256 sinc   = _mm256_add_ps(_mm256_load_ps((const float*)phase_table + i),
+                     _mm256_mul_ps(deltas, delta));
 
-               __m256 sum_l             = _mm256_setzero_ps();
-               __m256 sum_r             = _mm256_setzero_ps();
-
-               for (i = 0; i < (int)taps; i += 8)
-               {
-                  __m256 buf_l  = _mm256_loadu_ps(buffer_l + i);
-                  __m256 buf_r  = _mm256_loadu_ps(buffer_r + i);
-                  __m256 sinc   = _mm256_load_ps((const float*)phase_table + i);
-
-                  sum_l         = _mm256_add_ps(sum_l, _mm256_mul_ps(buf_l, sinc));
-                  sum_r         = _mm256_add_ps(sum_r, _mm256_mul_ps(buf_r, sinc));
-               }
-
-               /* hadd on AVX is weird, and acts on low-lanes
-                * and high-lanes separately. */
-               __m256 res_l = _mm256_hadd_ps(sum_l, sum_l);
-               __m256 res_r = _mm256_hadd_ps(sum_r, sum_r);
-               res_l        = _mm256_hadd_ps(res_l, res_l);
-               res_r        = _mm256_hadd_ps(res_r, res_r);
-               res_l        = _mm256_add_ps(_mm256_permute2f128_ps(res_l, res_l, 1), res_l);
-               res_r        = _mm256_add_ps(_mm256_permute2f128_ps(res_r, res_r, 1), res_r);
-
-               /* This is optimized to mov %xmmN, [mem].
-                * There doesn't seem to be any _mm256_store_ss intrinsic. */
-               _mm_store_ss(output + 0, _mm256_extractf128_ps(res_l, 0));
-               _mm_store_ss(output + 1, _mm256_extractf128_ps(res_r, 0));
-
-               output += 2;
-               out_frames++;
-               resamp->time += ratio;
+               sum_l         = _mm256_add_ps(sum_l, _mm256_mul_ps(buf_l, sinc));
+               sum_r         = _mm256_add_ps(sum_r, _mm256_mul_ps(buf_r, sinc));
             }
+
+            /* hadd on AVX is weird, and acts on low-lanes
+             * and high-lanes separately. */
+            __m256 res_l = _mm256_hadd_ps(sum_l, sum_l);
+            __m256 res_r = _mm256_hadd_ps(sum_r, sum_r);
+            res_l        = _mm256_hadd_ps(res_l, res_l);
+            res_r        = _mm256_hadd_ps(res_r, res_r);
+            res_l        = _mm256_add_ps(_mm256_permute2f128_ps(res_l, res_l, 1), res_l);
+            res_r        = _mm256_add_ps(_mm256_permute2f128_ps(res_r, res_r, 1), res_r);
+
+            /* This is optimized to mov %xmmN, [mem].
+             * There doesn't seem to be any _mm256_store_ss intrinsic. */
+            _mm_store_ss(output + 0, _mm256_extractf128_ps(res_l, 0));
+            _mm_store_ss(output + 1, _mm256_extractf128_ps(res_r, 0));
+
+            output += 2;
+            out_frames++;
+            resamp->time += ratio;
+         }
+      }
+   }
+   else
+   {
+      while (frames)
+      {
+         while (frames && resamp->time >= phases)
+         {
+            /* Push in reverse to make filter more obvious. */
+            if (!resamp->ptr)
+               resamp->ptr = resamp->taps;
+            resamp->ptr--;
+
+            resamp->buffer_l[resamp->ptr + resamp->taps] =
+               resamp->buffer_l[resamp->ptr]                = *input++;
+
+            resamp->buffer_r[resamp->ptr + resamp->taps] =
+               resamp->buffer_r[resamp->ptr]                = *input++;
+
+            resamp->time                                -= phases;
+            frames--;
+         }
+
+         while (resamp->time < phases)
+         {
+            unsigned i;
+            __m256 delta;
+            const float *buffer_l    = resamp->buffer_l + resamp->ptr;
+            const float *buffer_r    = resamp->buffer_r + resamp->ptr;
+            unsigned taps            = resamp->taps;
+            unsigned phase           = resamp->time >> resamp->subphase_bits;
+            float *phase_table       = resamp->phase_table + phase * taps;
+
+            __m256 sum_l             = _mm256_setzero_ps();
+            __m256 sum_r             = _mm256_setzero_ps();
+
+            for (i = 0; i < taps; i += 8)
+            {
+               __m256 buf_l  = _mm256_loadu_ps(buffer_l + i);
+               __m256 buf_r  = _mm256_loadu_ps(buffer_r + i);
+               __m256 sinc   = _mm256_load_ps((const float*)phase_table + i);
+
+               sum_l         = _mm256_add_ps(sum_l, _mm256_mul_ps(buf_l, sinc));
+               sum_r         = _mm256_add_ps(sum_r, _mm256_mul_ps(buf_r, sinc));
+            }
+
+            /* hadd on AVX is weird, and acts on low-lanes
+             * and high-lanes separately. */
+            __m256 res_l = _mm256_hadd_ps(sum_l, sum_l);
+            __m256 res_r = _mm256_hadd_ps(sum_r, sum_r);
+            res_l        = _mm256_hadd_ps(res_l, res_l);
+            res_r        = _mm256_hadd_ps(res_r, res_r);
+            res_l        = _mm256_add_ps(_mm256_permute2f128_ps(res_l, res_l, 1), res_l);
+            res_r        = _mm256_add_ps(_mm256_permute2f128_ps(res_r, res_r, 1), res_r);
+
+            /* This is optimized to mov %xmmN, [mem].
+             * There doesn't seem to be any _mm256_store_ss intrinsic. */
+            _mm_store_ss(output + 0, _mm256_extractf128_ps(res_l, 0));
+            _mm_store_ss(output + 1, _mm256_extractf128_ps(res_r, 0));
+
+            output += 2;
+            out_frames++;
+            resamp->time += ratio;
          }
       }
    }
@@ -408,101 +299,6 @@ static void resampler_sinc_process_avx(void *re_, struct resampler_data *data)
 #endif
 
 #if defined(__SSE__)
-static void resampler_sinc_process_sse_kaiser(void *re_, struct resampler_data *data)
-{
-   rarch_sinc_resampler_t *resamp = (rarch_sinc_resampler_t*)re_;
-   unsigned phases                = 1 << (resamp->phase_bits + resamp->subphase_bits);
-
-   uint32_t ratio                 = phases / data->ratio;
-   const float *input             = data->data_in;
-   float *output                  = data->data_out;
-   size_t frames                  = data->input_frames;
-   size_t out_frames              = 0;
-   unsigned taps                  = resamp->taps;
-
-   {
-      while (frames)
-      {
-         while (frames && resamp->time >= phases)
-         {
-            /* Push in reverse to make filter more obvious. */
-            if (!resamp->ptr)
-               resamp->ptr = taps;
-            resamp->ptr--;
-
-            resamp->buffer_l[resamp->ptr + taps] =
-               resamp->buffer_l[resamp->ptr]     = *input++;
-
-            resamp->buffer_r[resamp->ptr + taps] =
-               resamp->buffer_r[resamp->ptr]     = *input++;
-
-            resamp->time                        -= phases;
-            frames--;
-         }
-
-         {
-            const float *buffer_l    = resamp->buffer_l + resamp->ptr;
-            const float *buffer_r    = resamp->buffer_r + resamp->ptr;
-            while (resamp->time < phases)
-            {
-               int i;
-               __m128 sum;
-               unsigned phase           = resamp->time >> resamp->subphase_bits;
-               float *phase_table       = resamp->phase_table + phase * taps * 2;
-               float *delta_table       = phase_table + taps;
-               __m128 delta             = _mm_set1_ps((float)
-                     (resamp->time & resamp->subphase_mask) * resamp->subphase_mod);
-
-               __m128 sum_l             = _mm_setzero_ps();
-               __m128 sum_r             = _mm_setzero_ps();
-
-               for (i = 0; i < (int)taps; i += 4)
-               {
-                  __m128 buf_l = _mm_loadu_ps(buffer_l + i);
-                  __m128 buf_r = _mm_loadu_ps(buffer_r + i);
-                  __m128 deltas = _mm_load_ps(delta_table + i);
-                  __m128 _sinc  = _mm_add_ps(_mm_load_ps((const float*)phase_table + i),
-                        _mm_mul_ps(deltas, delta));
-                  sum_l        = _mm_add_ps(sum_l, _mm_mul_ps(buf_l, _sinc));
-                  sum_r        = _mm_add_ps(sum_r, _mm_mul_ps(buf_r, _sinc));
-               }
-
-               /* Them annoying shuffles.
-                * sum_l = { l3, l2, l1, l0 }
-                * sum_r = { r3, r2, r1, r0 }
-                */
-
-               sum = _mm_add_ps(_mm_shuffle_ps(sum_l, sum_r,
-                        _MM_SHUFFLE(1, 0, 1, 0)),
-                     _mm_shuffle_ps(sum_l, sum_r, _MM_SHUFFLE(3, 2, 3, 2)));
-
-               /* sum   = { r1, r0, l1, l0 } + { r3, r2, l3, l2 }
-                * sum   = { R1, R0, L1, L0 }
-                */
-
-               sum = _mm_add_ps(_mm_shuffle_ps(sum, sum, _MM_SHUFFLE(3, 3, 1, 1)), sum);
-
-               /* sum   = {R1, R1, L1, L1 } + { R1, R0, L1, L0 }
-                * sum   = { X,  R,  X,  L }
-                */
-
-               /* Store L */
-               _mm_store_ss(output + 0, sum);
-
-               /* movehl { X, R, X, L } == { X, R, X, R } */
-               _mm_store_ss(output + 1, _mm_movehl_ps(sum, sum));
-
-               output += 2;
-               out_frames++;
-               resamp->time += ratio;
-            }
-         }
-      }
-   }
-
-   data->output_frames = out_frames;
-}
-
 static void resampler_sinc_process_sse(void *re_, struct resampler_data *data)
 {
    rarch_sinc_resampler_t *resamp = (rarch_sinc_resampler_t*)re_;
@@ -513,8 +309,8 @@ static void resampler_sinc_process_sse(void *re_, struct resampler_data *data)
    float *output                  = data->data_out;
    size_t frames                  = data->input_frames;
    size_t out_frames              = 0;
-   unsigned taps                  = resamp->taps;
 
+   if (resamp->window_type == SINC_WINDOW_KAISER)
    {
       while (frames)
       {
@@ -522,70 +318,150 @@ static void resampler_sinc_process_sse(void *re_, struct resampler_data *data)
          {
             /* Push in reverse to make filter more obvious. */
             if (!resamp->ptr)
-               resamp->ptr = taps;
+               resamp->ptr = resamp->taps;
             resamp->ptr--;
 
-            resamp->buffer_l[resamp->ptr + taps] =
-               resamp->buffer_l[resamp->ptr]     = *input++;
+            resamp->buffer_l[resamp->ptr + resamp->taps] =
+               resamp->buffer_l[resamp->ptr]                = *input++;
 
-            resamp->buffer_r[resamp->ptr + taps] =
-               resamp->buffer_r[resamp->ptr]     = *input++;
+            resamp->buffer_r[resamp->ptr + resamp->taps] =
+               resamp->buffer_r[resamp->ptr]                = *input++;
 
-            resamp->time                        -= phases;
+            resamp->time                                -= phases;
             frames--;
          }
 
+         while (resamp->time < phases)
          {
+            unsigned i;
+            __m128 sum;
             const float *buffer_l    = resamp->buffer_l + resamp->ptr;
             const float *buffer_r    = resamp->buffer_r + resamp->ptr;
-            while (resamp->time < phases)
+            unsigned taps            = resamp->taps;
+            unsigned phase           = resamp->time >> resamp->subphase_bits;
+            float *phase_table       = resamp->phase_table + phase * taps * 2;
+            float *delta_table       = phase_table + taps;
+            __m128 delta             = _mm_set1_ps((float)
+                  (resamp->time & resamp->subphase_mask) * resamp->subphase_mod);
+
+            __m128 sum_l             = _mm_setzero_ps();
+            __m128 sum_r             = _mm_setzero_ps();
+
+            for (i = 0; i < taps; i += 4)
             {
-               int i;
-               __m128 sum;
-               unsigned phase           = resamp->time >> resamp->subphase_bits;
-               float *phase_table       = resamp->phase_table + phase * taps;
+               __m128 buf_l  = _mm_loadu_ps(buffer_l + i);
+               __m128 buf_r  = _mm_loadu_ps(buffer_r + i);
 
-               __m128 sum_l             = _mm_setzero_ps();
-               __m128 sum_r             = _mm_setzero_ps();
-
-               for (i = 0; i < (int)taps; i += 4)
-               {
-                  __m128 buf_l = _mm_loadu_ps(buffer_l + i);
-                  __m128 buf_r = _mm_loadu_ps(buffer_r + i);
-                  __m128 _sinc = _mm_load_ps((const float*)phase_table + i);
-                  sum_l        = _mm_add_ps(sum_l, _mm_mul_ps(buf_l, _sinc));
-                  sum_r        = _mm_add_ps(sum_r, _mm_mul_ps(buf_r, _sinc));
-               }
-
-               /* Them annoying shuffles.
-                * sum_l = { l3, l2, l1, l0 }
-                * sum_r = { r3, r2, r1, r0 }
-                */
-
-               sum = _mm_add_ps(_mm_shuffle_ps(sum_l, sum_r,
-                        _MM_SHUFFLE(1, 0, 1, 0)),
-                     _mm_shuffle_ps(sum_l, sum_r, _MM_SHUFFLE(3, 2, 3, 2)));
-
-               /* sum   = { r1, r0, l1, l0 } + { r3, r2, l3, l2 }
-                * sum   = { R1, R0, L1, L0 }
-                */
-
-               sum = _mm_add_ps(_mm_shuffle_ps(sum, sum, _MM_SHUFFLE(3, 3, 1, 1)), sum);
-
-               /* sum   = {R1, R1, L1, L1 } + { R1, R0, L1, L0 }
-                * sum   = { X,  R,  X,  L }
-                */
-
-               /* Store L */
-               _mm_store_ss(output + 0, sum);
-
-               /* movehl { X, R, X, L } == { X, R, X, R } */
-               _mm_store_ss(output + 1, _mm_movehl_ps(sum, sum));
-
-               output += 2;
-               out_frames++;
-               resamp->time += ratio;
+               __m128 deltas = _mm_load_ps(delta_table + i);
+               __m128 _sinc  = _mm_add_ps(_mm_load_ps((const float*)phase_table + i),
+                     _mm_mul_ps(deltas, delta));
+               sum_l         = _mm_add_ps(sum_l, _mm_mul_ps(buf_l, _sinc));
+               sum_r         = _mm_add_ps(sum_r, _mm_mul_ps(buf_r, _sinc));
             }
+
+            /* Them annoying shuffles.
+             * sum_l = { l3, l2, l1, l0 }
+             * sum_r = { r3, r2, r1, r0 }
+             */
+
+            sum = _mm_add_ps(_mm_shuffle_ps(sum_l, sum_r,
+                     _MM_SHUFFLE(1, 0, 1, 0)),
+                  _mm_shuffle_ps(sum_l, sum_r, _MM_SHUFFLE(3, 2, 3, 2)));
+
+            /* sum   = { r1, r0, l1, l0 } + { r3, r2, l3, l2 }
+             * sum   = { R1, R0, L1, L0 }
+             */
+
+            sum = _mm_add_ps(_mm_shuffle_ps(sum, sum, _MM_SHUFFLE(3, 3, 1, 1)), sum);
+
+            /* sum   = {R1, R1, L1, L1 } + { R1, R0, L1, L0 }
+             * sum   = { X,  R,  X,  L }
+             */
+
+            /* Store L */
+            _mm_store_ss(output + 0, sum);
+
+            /* movehl { X, R, X, L } == { X, R, X, R } */
+            _mm_store_ss(output + 1, _mm_movehl_ps(sum, sum));
+
+            output += 2;
+            out_frames++;
+            resamp->time += ratio;
+         }
+      }
+   }
+   else
+   {
+      while (frames)
+      {
+         while (frames && resamp->time >= phases)
+         {
+            /* Push in reverse to make filter more obvious. */
+            if (!resamp->ptr)
+               resamp->ptr = resamp->taps;
+            resamp->ptr--;
+
+            resamp->buffer_l[resamp->ptr + resamp->taps] =
+               resamp->buffer_l[resamp->ptr]                = *input++;
+
+            resamp->buffer_r[resamp->ptr + resamp->taps] =
+               resamp->buffer_r[resamp->ptr]                = *input++;
+
+            resamp->time                                -= phases;
+            frames--;
+         }
+
+         while (resamp->time < phases)
+         {
+            unsigned i;
+            __m128 sum, sum_l, sum_r, delta;
+            const float *buffer_l    = resamp->buffer_l + resamp->ptr;
+            const float *buffer_r    = resamp->buffer_r + resamp->ptr;
+            unsigned taps            = resamp->taps;
+            unsigned phase           = resamp->time >> resamp->subphase_bits;
+            float *phase_table       = resamp->phase_table + phase * taps;
+
+            sum_l                    = _mm_setzero_ps();
+            sum_r                    = _mm_setzero_ps();
+
+            for (i = 0; i < taps; i += 4)
+            {
+               __m128 deltas;
+               __m128 buf_l = _mm_loadu_ps(buffer_l + i);
+               __m128 buf_r = _mm_loadu_ps(buffer_r + i);
+               __m128 _sinc = _mm_load_ps((const float*)phase_table + i);
+               sum_l        = _mm_add_ps(sum_l, _mm_mul_ps(buf_l, _sinc));
+               sum_r        = _mm_add_ps(sum_r, _mm_mul_ps(buf_r, _sinc));
+            }
+
+            /* Them annoying shuffles.
+             * sum_l = { l3, l2, l1, l0 }
+             * sum_r = { r3, r2, r1, r0 }
+             */
+
+            sum = _mm_add_ps(_mm_shuffle_ps(sum_l, sum_r,
+                     _MM_SHUFFLE(1, 0, 1, 0)),
+                  _mm_shuffle_ps(sum_l, sum_r, _MM_SHUFFLE(3, 2, 3, 2)));
+
+            /* sum   = { r1, r0, l1, l0 } + { r3, r2, l3, l2 }
+             * sum   = { R1, R0, L1, L0 }
+             */
+
+            sum = _mm_add_ps(_mm_shuffle_ps(sum, sum, _MM_SHUFFLE(3, 3, 1, 1)), sum);
+
+            /* sum   = {R1, R1, L1, L1 } + { R1, R0, L1, L0 }
+             * sum   = { X,  R,  X,  L }
+             */
+
+            /* Store L */
+            _mm_store_ss(output + 0, sum);
+
+            /* movehl { X, R, X, L } == { X, R, X, R } */
+            _mm_store_ss(output + 1, _mm_movehl_ps(sum, sum));
+
+            output += 2;
+            out_frames++;
+            resamp->time += ratio;
          }
       }
    }
@@ -593,75 +469,6 @@ static void resampler_sinc_process_sse(void *re_, struct resampler_data *data)
    data->output_frames = out_frames;
 }
 #endif
-
-static void resampler_sinc_process_c_kaiser(void *re_, struct resampler_data *data)
-{
-   rarch_sinc_resampler_t *resamp = (rarch_sinc_resampler_t*)re_;
-   unsigned phases                = 1 << (resamp->phase_bits + resamp->subphase_bits);
-
-   uint32_t ratio                 = phases / data->ratio;
-   const float *input             = data->data_in;
-   float *output                  = data->data_out;
-   size_t frames                  = data->input_frames;
-   size_t out_frames              = 0;
-   unsigned taps                  = resamp->taps;
-
-   {
-      while (frames)
-      {
-         while (frames && resamp->time >= phases)
-         {
-            /* Push in reverse to make filter more obvious. */
-            if (!resamp->ptr)
-               resamp->ptr = taps;
-            resamp->ptr--;
-
-            resamp->buffer_l[resamp->ptr + taps]    =
-               resamp->buffer_l[resamp->ptr]        = *input++;
-
-            resamp->buffer_r[resamp->ptr + taps]    =
-               resamp->buffer_r[resamp->ptr]        = *input++;
-
-            resamp->time                           -= phases;
-            frames--;
-         }
-
-         {
-            const float *buffer_l    = resamp->buffer_l + resamp->ptr;
-            const float *buffer_r    = resamp->buffer_r + resamp->ptr;
-            while (resamp->time < phases)
-            {
-               int i;
-               float sum_l              = 0.0f;
-               float sum_r              = 0.0f;
-               unsigned phase           = resamp->time >> resamp->subphase_bits;
-               float *phase_table       = resamp->phase_table + phase * taps * 2;
-               float *delta_table       = phase_table + taps;
-               float delta              = (float)
-                  (resamp->time & resamp->subphase_mask) * resamp->subphase_mod;
-
-               for (i = 0; i < (int)taps; i++)
-               {
-                  float sinc_val        = phase_table[i] + delta_table[i] * delta;
-
-                  sum_l                += buffer_l[i] * sinc_val;
-                  sum_r                += buffer_r[i] * sinc_val;
-               }
-
-               output[0]                = sum_l;
-               output[1]                = sum_r;
-
-               output                  += 2;
-               out_frames++;
-               resamp->time            += ratio;
-            }
-         }
-
-      }
-   }
-
-   data->output_frames = out_frames;
-}
 
 static void resampler_sinc_process_c(void *re_, struct resampler_data *data)
 {
@@ -673,8 +480,8 @@ static void resampler_sinc_process_c(void *re_, struct resampler_data *data)
    float *output                  = data->data_out;
    size_t frames                  = data->input_frames;
    size_t out_frames              = 0;
-   unsigned taps                  = resamp->taps;
 
+   if (resamp->window_type == SINC_WINDOW_KAISER)
    {
       while (frames)
       {
@@ -682,45 +489,99 @@ static void resampler_sinc_process_c(void *re_, struct resampler_data *data)
          {
             /* Push in reverse to make filter more obvious. */
             if (!resamp->ptr)
-               resamp->ptr = taps;
+               resamp->ptr = resamp->taps;
             resamp->ptr--;
 
-            resamp->buffer_l[resamp->ptr + taps]    =
-               resamp->buffer_l[resamp->ptr]        = *input++;
+            resamp->buffer_l[resamp->ptr + resamp->taps]    =
+               resamp->buffer_l[resamp->ptr]                = *input++;
 
-            resamp->buffer_r[resamp->ptr + taps]    =
-               resamp->buffer_r[resamp->ptr]        = *input++;
+            resamp->buffer_r[resamp->ptr + resamp->taps]    =
+               resamp->buffer_r[resamp->ptr]                = *input++;
 
-            resamp->time                           -= phases;
+            resamp->time                                   -= phases;
             frames--;
          }
 
+         while (resamp->time < phases)
          {
+            unsigned i;
+            float sum_l              = 0.0f;
+            float sum_r              = 0.0f;
             const float *buffer_l    = resamp->buffer_l + resamp->ptr;
             const float *buffer_r    = resamp->buffer_r + resamp->ptr;
-            while (resamp->time < phases)
+            unsigned taps            = resamp->taps;
+            unsigned phase           = resamp->time >> resamp->subphase_bits;
+            float *phase_table       = resamp->phase_table + phase * taps * 2;
+            float *delta_table       = phase_table + taps;
+            float delta              = (float)
+               (resamp->time & resamp->subphase_mask) * resamp->subphase_mod;
+
+            for (i = 0; i < taps; i++)
             {
-               int i;
-               float sum_l              = 0.0f;
-               float sum_r              = 0.0f;
-               unsigned phase           = resamp->time >> resamp->subphase_bits;
-               float *phase_table       = resamp->phase_table + phase * taps;
+               float sinc_val        = phase_table[i];
+               sinc_val              = sinc_val + delta_table[i] * delta;
 
-               for (i = 0; i < (int)taps; i++)
-               {
-                  float sinc_val        = phase_table[i];
-
-                  sum_l                += buffer_l[i] * sinc_val;
-                  sum_r                += buffer_r[i] * sinc_val;
-               }
-
-               output[0]                = sum_l;
-               output[1]                = sum_r;
-
-               output                  += 2;
-               out_frames++;
-               resamp->time            += ratio;
+               sum_l                += buffer_l[i] * sinc_val;
+               sum_r                += buffer_r[i] * sinc_val;
             }
+
+            output[0]                = sum_l;
+            output[1]                = sum_r;
+
+            output                  += 2;
+            out_frames++;
+            resamp->time            += ratio;
+         }
+
+      }
+   }
+   else
+   {
+      while (frames)
+      {
+         while (frames && resamp->time >= phases)
+         {
+            /* Push in reverse to make filter more obvious. */
+            if (!resamp->ptr)
+               resamp->ptr = resamp->taps;
+            resamp->ptr--;
+
+            resamp->buffer_l[resamp->ptr + resamp->taps]    =
+               resamp->buffer_l[resamp->ptr]                = *input++;
+
+            resamp->buffer_r[resamp->ptr + resamp->taps]    =
+               resamp->buffer_r[resamp->ptr]                = *input++;
+
+            resamp->time                                   -= phases;
+            frames--;
+         }
+
+         while (resamp->time < phases)
+         {
+            unsigned i;
+            float delta              = 0.0f;
+            float sum_l              = 0.0f;
+            float sum_r              = 0.0f;
+            const float *buffer_l    = resamp->buffer_l + resamp->ptr;
+            const float *buffer_r    = resamp->buffer_r + resamp->ptr;
+            unsigned taps            = resamp->taps;
+            unsigned phase           = resamp->time >> resamp->subphase_bits;
+            float *phase_table       = resamp->phase_table + phase * taps;
+
+            for (i = 0; i < taps; i++)
+            {
+               float sinc_val        = phase_table[i];
+
+               sum_l                += buffer_l[i] * sinc_val;
+               sum_r                += buffer_r[i] * sinc_val;
+            }
+
+            output[0]                = sum_l;
+            output[1]                = sum_r;
+
+            output                  += 2;
+            out_frames++;
+            resamp->time            += ratio;
          }
 
       }
@@ -742,9 +603,7 @@ static void sinc_init_table_kaiser(rarch_sinc_resampler_t *resamp,
       float *phase_table, int phases, int taps, bool calculate_delta)
 {
    int i, j;
-   /* Kaiser window function - need to normalize w(0) to 1.0f */
-   float kaiser_beta    = resamp->kaiser_beta;
-   double    window_mod = besseli0(kaiser_beta);
+   double    window_mod = kaiser_window_function(0.0, resamp->kaiser_beta); /* Need to normalize w(0) to 1.0. */
    int           stride = calculate_delta ? 2 : 1;
    double     sidelobes = taps / 2.0;
 
@@ -752,15 +611,14 @@ static void sinc_init_table_kaiser(rarch_sinc_resampler_t *resamp,
    {
       for (j = 0; j < taps; j++)
       {
-         float val;
          double sinc_phase;
+         float val;
          int               n = j * phases + i;
          double window_phase = (double)n / (phases * taps); /* [0, 1). */
          window_phase        = 2.0 * window_phase - 1.0; /* [-1, 1) */
          sinc_phase          = sidelobes * window_phase;
          val                 = cutoff * sinc(M_PI * sinc_phase * cutoff) *
-              besseli0(kaiser_beta * sqrtf(1 - window_phase * window_phase))
-            / window_mod;
+            kaiser_window_function(window_phase, resamp->kaiser_beta) / window_mod;
          phase_table[i * stride * taps + j] = val;
       }
    }
@@ -791,21 +649,18 @@ static void sinc_init_table_kaiser(rarch_sinc_resampler_t *resamp,
          sinc_phase          = sidelobes * window_phase;
 
          val                 = cutoff * sinc(M_PI * sinc_phase * cutoff) *
-              besseli0(resamp->kaiser_beta * sqrtf(1 - window_phase *
-window_phase)) / window_mod;
+            kaiser_window_function(window_phase, resamp->kaiser_beta) / window_mod;
          delta = (val - phase_table[phase * stride * taps + j]);
          phase_table[(phase * stride + 1) * taps + j] = delta;
       }
    }
 }
 
-static void sinc_init_table_lanczos(
-      rarch_sinc_resampler_t *resamp, double cutoff,
+static void sinc_init_table_lanczos(rarch_sinc_resampler_t *resamp, double cutoff,
       float *phase_table, int phases, int taps, bool calculate_delta)
 {
    int i, j;
-   /* Lanczos window function - need to normalize w(0) to 1.0f */
-   double    window_mod = 1.0;
+   double    window_mod = lanzcos_window_function(0.0); /* Need to normalize w(0) to 1.0. */
    int           stride = calculate_delta ? 2 : 1;
    double     sidelobes = taps / 2.0;
 
@@ -820,7 +675,7 @@ static void sinc_init_table_lanczos(
          window_phase        = 2.0 * window_phase - 1.0; /* [-1, 1) */
          sinc_phase          = sidelobes * window_phase;
          val                 = cutoff * sinc(M_PI * sinc_phase * cutoff) *
-            sinc(M_PI * window_phase) / window_mod;
+            lanzcos_window_function(window_phase) / window_mod;
          phase_table[i * stride * taps + j] = val;
       }
    }
@@ -851,7 +706,7 @@ static void sinc_init_table_lanczos(
          sinc_phase          = sidelobes * window_phase;
 
          val                 = cutoff * sinc(M_PI * sinc_phase * cutoff) *
-            sinc(M_PI * window_phase) / window_mod;
+            lanzcos_window_function(window_phase) / window_mod;
          delta = (val - phase_table[phase * stride * taps + j]);
          phase_table[(phase * stride + 1) * taps + j] = delta;
       }
@@ -859,20 +714,20 @@ static void sinc_init_table_lanczos(
 }
 
 static void *resampler_sinc_new(const struct resampler_config *config,
-      double bandwidth_mod, enum resampler_quality quality,
+      double bandwidth_mod, enum resampler_quality quality, 
       resampler_simd_mask_t mask)
 {
    double cutoff                  = 0.0;
    size_t phase_elems             = 0;
    size_t elems                   = 0;
-   unsigned enable_avx            = 0;
    unsigned sidelobes             = 0;
-   enum sinc_window window_type   = SINC_WINDOW_NONE;
    rarch_sinc_resampler_t *re     = (rarch_sinc_resampler_t*)
       calloc(1, sizeof(*re));
 
    if (!re)
       return NULL;
+
+   re->window_type                = SINC_WINDOW_NONE;
 
    switch (quality)
    {
@@ -881,32 +736,34 @@ static void *resampler_sinc_new(const struct resampler_config *config,
          sidelobes         = 2;
          re->phase_bits    = 12;
          re->subphase_bits = 10;
-         window_type       = SINC_WINDOW_LANCZOS;
+         re->window_type   = SINC_WINDOW_LANCZOS;
+         re->enable_avx    = 0;
          break;
       case RESAMPLER_QUALITY_LOWER:
          cutoff            = 0.98;
          sidelobes         = 4;
          re->phase_bits    = 12;
          re->subphase_bits = 10;
-         window_type       = SINC_WINDOW_LANCZOS;
+         re->window_type   = SINC_WINDOW_LANCZOS;
+         re->enable_avx    = 0;
          break;
       case RESAMPLER_QUALITY_HIGHER:
          cutoff            = 0.90;
          sidelobes         = 32;
          re->phase_bits    = 10;
          re->subphase_bits = 14;
-         window_type       = SINC_WINDOW_KAISER;
+         re->window_type   = SINC_WINDOW_KAISER;
          re->kaiser_beta   = 10.5;
-         enable_avx        = 1;
+         re->enable_avx    = 1;
          break;
       case RESAMPLER_QUALITY_HIGHEST:
          cutoff            = 0.962;
          sidelobes         = 128;
          re->phase_bits    = 10;
          re->subphase_bits = 14;
-         window_type       = SINC_WINDOW_KAISER;
+         re->window_type   = SINC_WINDOW_KAISER;
          re->kaiser_beta   = 14.5;
-         enable_avx        = 1;
+         re->enable_avx    = 1;
          break;
       case RESAMPLER_QUALITY_NORMAL:
       case RESAMPLER_QUALITY_DONTCARE:
@@ -914,8 +771,9 @@ static void *resampler_sinc_new(const struct resampler_config *config,
          sidelobes         = 8;
          re->phase_bits    = 8;
          re->subphase_bits = 16;
-         window_type       = SINC_WINDOW_KAISER;
+         re->window_type   = SINC_WINDOW_KAISER;
          re->kaiser_beta   = 5.5;
+         re->enable_avx    = 0;
          break;
    }
 
@@ -927,18 +785,18 @@ static void *resampler_sinc_new(const struct resampler_config *config,
     * taps accordingly to keep same stopband attenuation. */
    if (bandwidth_mod < 1.0)
    {
-      cutoff  *= bandwidth_mod;
+      cutoff *= bandwidth_mod;
       re->taps = (unsigned)ceil(re->taps / bandwidth_mod);
    }
 
    /* Be SIMD-friendly. */
 #if defined(__AVX__)
-   if (enable_avx)
+   if (re->enable_avx)
       re->taps  = (re->taps + 7) & ~7;
    else
 #endif
    {
-#if (defined(__ARM_NEON__) || defined(HAVE_NEON))
+#if defined(WANT_NEON)
       re->taps     = (re->taps + 7) & ~7;
 #else
       re->taps     = (re->taps + 3) & ~3;
@@ -946,7 +804,7 @@ static void *resampler_sinc_new(const struct resampler_config *config,
    }
 
    phase_elems     = ((1 << re->phase_bits) * re->taps);
-   if (window_type == SINC_WINDOW_KAISER)
+   if (re->window_type == SINC_WINDOW_KAISER)
       phase_elems  = phase_elems * 2;
    elems           = phase_elems + 4 * re->taps;
 
@@ -954,13 +812,11 @@ static void *resampler_sinc_new(const struct resampler_config *config,
    if (!re->main_buffer)
       goto error;
 
-   memset(re->main_buffer, 0, sizeof(float) * elems);
-
    re->phase_table = re->main_buffer;
    re->buffer_l    = re->main_buffer + phase_elems;
    re->buffer_r    = re->buffer_l + 2 * re->taps;
 
-   switch (window_type)
+   switch (re->window_type)
    {
       case SINC_WINDOW_LANCZOS:
          sinc_init_table_lanczos(re, cutoff, re->phase_table,
@@ -975,36 +831,23 @@ static void *resampler_sinc_new(const struct resampler_config *config,
    }
 
    sinc_resampler.process = resampler_sinc_process_c;
-   if (window_type == SINC_WINDOW_KAISER)
-      sinc_resampler.process    = resampler_sinc_process_c_kaiser;
 
-   if (mask & RESAMPLER_SIMD_AVX && enable_avx)
+   if (mask & RESAMPLER_SIMD_AVX && re->enable_avx)
    {
 #if defined(__AVX__)
-      sinc_resampler.process    = resampler_sinc_process_avx;
-      if (window_type == SINC_WINDOW_KAISER)
-         sinc_resampler.process = resampler_sinc_process_avx_kaiser;
+      sinc_resampler.process = resampler_sinc_process_avx;
 #endif
    }
    else if (mask & RESAMPLER_SIMD_SSE)
    {
 #if defined(__SSE__)
       sinc_resampler.process = resampler_sinc_process_sse;
-      if (window_type == SINC_WINDOW_KAISER)
-         sinc_resampler.process = resampler_sinc_process_sse_kaiser;
 #endif
    }
-   else if (mask & RESAMPLER_SIMD_NEON)
+   else if (mask & RESAMPLER_SIMD_NEON && re->window_type != SINC_WINDOW_KAISER)
    {
-#if (defined(__ARM_NEON__) || defined(HAVE_NEON))
-#ifdef HAVE_ARM_NEON_ASM_OPTIMIZATIONS
-      if (window_type != SINC_WINDOW_KAISER)
-         sinc_resampler.process = resampler_sinc_process_neon;
-#else
+#if defined(WANT_NEON)
       sinc_resampler.process = resampler_sinc_process_neon;
-      if (window_type == SINC_WINDOW_KAISER)
-         sinc_resampler.process = resampler_sinc_process_neon_kaiser;
-#endif
 #endif
    }
 
@@ -1023,3 +866,5 @@ retro_resampler_t sinc_resampler = {
    "sinc",
    "sinc"
 };
+
+#undef WANT_NEON

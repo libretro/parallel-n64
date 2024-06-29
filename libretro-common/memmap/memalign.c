@@ -1,4 +1,4 @@
-/* Copyright  (C) 2010-2020 The RetroArch team
+/* Copyright  (C) 2010-2018 The RetroArch team
  *
  * ---------------------------------------------------------------------------------------
  * The following license statement only applies to this file (memalign.c).
@@ -24,6 +24,7 @@
 #include <stdlib.h>
 
 #include <memalign.h>
+
 
 void *memalign_alloc(size_t boundary, size_t size)
 {
@@ -53,9 +54,9 @@ void memalign_free(void *ptr)
 
 void *memalign_alloc_aligned(size_t size)
 {
-#if defined(__x86_64__) || defined(__LP64) || defined(__IA64__) || defined(_M_X64) || defined(_M_X64) || defined(_WIN64)
+#if defined(__x86_64__) || defined(__LP64) || defined(__IA64__) || defined(_M_X64) || defined(_WIN64)
    return memalign_alloc(64, size);
-#elif defined(__i386__) || defined(__i486__) || defined(__i686__) || defined(GEKKO) || defined(_M_IX86)
+#elif defined(__i386__) || defined(__i486__) || defined(__i686__) || defined(GEKKO)
    return memalign_alloc(32, size);
 #else
    return memalign_alloc(32, size);

@@ -31,6 +31,7 @@
   Jean-loup Gailly        Mark Adler
   jloup@gzip.org          madler@alumni.caltech.edu
 
+
   The data format used by the zlib library is described by RFCs (Request for
   Comments) 1950 to 1952 in the files http://tools.ietf.org/html/rfc1950
   (zlib format), rfc1951 (deflate format) and rfc1952 (gzip format).
@@ -219,6 +220,7 @@ typedef gz_header FAR *gz_headerp;
 #define zlib_version zlibVersion()
 /* for compatibility with versions < 1.0.2 */
 
+
                         /* basic functions */
 
  const char * zlibVersion (void);
@@ -249,6 +251,7 @@ typedef gz_header FAR *gz_headerp;
    if there is no error message.  deflateInit does not perform any compression:
    this will be done by deflate().
 */
+
 
  int deflate (z_streamp strm, int flush);
 /*
@@ -356,6 +359,7 @@ typedef gz_header FAR *gz_headerp;
   space to continue compressing.
 */
 
+
  int deflateEnd (z_streamp strm);
 /*
      All dynamically allocated data structures for this stream are freed.
@@ -368,6 +372,7 @@ typedef gz_header FAR *gz_headerp;
    may be set but then points to a static string (which must not be
    deallocated).
 */
+
 
 /*
  int inflateInit (z_streamp strm);
@@ -392,6 +397,7 @@ typedef gz_header FAR *gz_headerp;
    of inflateInit() does not process any header information -- that is deferred
    until inflate() is called.
 */
+
 
  int inflate (z_streamp strm, int flush);
 /*
@@ -508,6 +514,7 @@ typedef gz_header FAR *gz_headerp;
   recovery of the data is desired.
 */
 
+
  int inflateEnd (z_streamp strm);
 /*
      All dynamically allocated data structures for this stream are freed.
@@ -518,6 +525,7 @@ typedef gz_header FAR *gz_headerp;
    was inconsistent.  In the error case, msg may be set but then points to a
    static string (which must not be deallocated).
 */
+
 
                         /* Advanced functions */
 
@@ -1196,8 +1204,8 @@ typedef int (*out_func) (void FAR *, unsigned char FAR *, unsigned);
    compress() or compress2() call to allocate the destination buffer.
 */
 
- int  uncompress (Bytef *dest,   uLongf *destLen,
-       const Bytef *source, uLongf sourceLen);
+ int  uncompress (unsigned char *dest,   uint32_t *destLen,
+       const unsigned char *source, uint32_t sourceLen);
 /*
      Decompresses the source buffer into the destination buffer.  sourceLen is
    the byte length of the source buffer.  Upon entry, destLen is the total size
@@ -1626,6 +1634,7 @@ uint32_t adler32 (uint32_t adler, const uint8_t *buf, size_t len);
    len2.
 */
 
+
                         /* various hacks, don't look :) */
 
 /* deflateInit and inflateInit are macros to allow checking the zlib version
@@ -1742,9 +1751,8 @@ uint32_t adler32 (uint32_t adler, const uint8_t *buf, size_t len);
  const char   *  zError           (int);
  int             inflateSyncPoint (z_streamp);
 
- const uint32_t * get_crc_table(void);
+const uint32_t * get_crc_table(void);
  int             inflateUndermine (z_streamp, int);
- int             inflateValidate  (z_streamp, int);
  int             inflateResetKeep (z_streamp);
  int             deflateResetKeep (z_streamp);
 #if defined(_WIN32) && !defined(Z_SOLO)

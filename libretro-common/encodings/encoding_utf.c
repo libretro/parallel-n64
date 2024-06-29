@@ -1,4 +1,4 @@
-/* Copyright  (C) 2010-2020 The RetroArch team
+/* Copyright  (C) 2010-2018 The RetroArch team
  *
  * ---------------------------------------------------------------------------------------
  * The following license statement only applies to this file (encoding_utf.c).
@@ -37,8 +37,6 @@
 #include <xtl.h>
 #endif
 
-#define UTF8_WALKBYTE(string) (*((*(string))++))
-
 static unsigned leading_ones(uint8_t c)
 {
    unsigned ones = 0;
@@ -51,12 +49,9 @@ static unsigned leading_ones(uint8_t c)
    return ones;
 }
 
-/**
- * utf8_conv_utf32:
- *
- * Simple implementation. Assumes the sequence is
- * properly synchronized and terminated.
- **/
+/* Simple implementation. Assumes the sequence is
+ * properly synchronized and terminated. */
+
 size_t utf8_conv_utf32(uint32_t *out, size_t out_chars,
       const char *in, size_t in_size)
 {
@@ -82,7 +77,7 @@ size_t utf8_conv_utf32(uint32_t *out, size_t out_chars,
       for (i = 0; i < extra; i++, in++, shift -= 6)
          c |= (*in & 0x3f) << shift;
 
-      *out++   = c;
+      *out++ = c;
       in_size -= 1 + extra;
       out_chars--;
       ret++;
@@ -91,22 +86,16 @@ size_t utf8_conv_utf32(uint32_t *out, size_t out_chars,
    return ret;
 }
 
-/**
- * utf16_conv_utf8:
- *
- * Leaf function.
- **/
 bool utf16_conv_utf8(uint8_t *out, size_t *out_chars,
      const uint16_t *in, size_t in_size)
 {
-   size_t out_pos            = 0;
-   size_t in_pos             = 0;
-   static const 
-      uint8_t utf8_limits[5] = { 0xC0, 0xE0, 0xF0, 0xF8, 0xFC };
+   static uint8_t kUtf8Limits[5] = { 0xC0, 0xE0, 0xF0, 0xF8, 0xFC };
+   size_t out_pos = 0;
+   size_t in_pos  = 0;
 
    for (;;)
    {
-      unsigned num_adds;
+      unsigned numAdds;
       uint32_t value;
 
       if (in_pos == in_size)
@@ -135,41 +124,37 @@ bool utf16_conv_utf8(uint8_t *out, size_t *out_chars,
          value = (((value - 0xD800) << 10) | (c2 - 0xDC00)) + 0x10000;
       }
 
-      for (num_adds = 1; num_adds < 5; num_adds++)
-         if (value < (((uint32_t)1) << (num_adds * 5 + 6)))
+      for (numAdds = 1; numAdds < 5; numAdds++)
+         if (value < (((uint32_t)1) << (numAdds * 5 + 6)))
             break;
       if (out)
-         out[out_pos] = (char)(utf8_limits[num_adds - 1]
-               + (value >> (6 * num_adds)));
+         out[out_pos] = (char)(kUtf8Limits[numAdds - 1]
+               + (value >> (6 * numAdds)));
       out_pos++;
       do
       {
-         num_adds--;
+         numAdds--;
          if (out)
             out[out_pos] = (char)(0x80
-                  + ((value >> (6 * num_adds)) & 0x3F));
+                  + ((value >> (6 * numAdds)) & 0x3F));
          out_pos++;
-      }while (num_adds != 0);
+      }while (numAdds != 0);
    }
 
    *out_chars = out_pos;
    return false;
 }
 
-/**
- * utf8cpy:
- *
- * Acts mostly like strlcpy.
+/* Acts mostly like strlcpy.
  *
  * Copies the given number of UTF-8 characters,
- * but at most @d_len bytes.
+ * but at most d_len bytes.
  *
- * Always NULL terminates. Does not copy half a character.
- * @s is assumed valid UTF-8.
- * Use only if @chars is considerably less than @d_len. 
+ * Always NULL terminates.
+ * Does not copy half a character.
  *
- * @return Number of bytes. 
- **/
+ * Returns number of bytes. 's' is assumed valid UTF-8.
+ * Use only if 'chars' is considerably less than 'd_len'. */
 size_t utf8cpy(char *d, size_t d_len, const char *s, size_t chars)
 {
    const uint8_t *sb     = (const uint8_t*)s;
@@ -181,15 +166,13 @@ size_t utf8cpy(char *d, size_t d_len, const char *s, size_t chars)
    while (*sb && chars-- > 0)
    {
       sb++;
-      while ((*sb & 0xC0) == 0x80)
-         sb++;
+      while ((*sb & 0xC0) == 0x80) sb++;
    }
 
    if ((size_t)(sb - sb_org) > d_len-1 /* NUL */)
    {
       sb = sb_org + d_len-1;
-      while ((*sb & 0xC0) == 0x80)
-         sb--;
+      while ((*sb & 0xC0) == 0x80) sb--;
    }
 
    memcpy(d, sb_org, sb-sb_org);
@@ -198,34 +181,20 @@ size_t utf8cpy(char *d, size_t d_len, const char *s, size_t chars)
    return sb-sb_org;
 }
 
-/**
- * utf8skip:
- *
- * Leaf function
- **/
 const char *utf8skip(const char *str, size_t chars)
 {
    const uint8_t *strb = (const uint8_t*)str;
-
    if (!chars)
       return str;
-
    do
    {
       strb++;
-      while ((*strb & 0xC0)==0x80)
-         strb++;
+      while ((*strb & 0xC0)==0x80) strb++;
       chars--;
-   }while (chars);
-
+   } while(chars);
    return (const char*)strb;
 }
 
-/**
- * utf8len:
- *
- * Leaf function.
- **/
 size_t utf8len(const char *string)
 {
    size_t ret = 0;
@@ -242,35 +211,30 @@ size_t utf8len(const char *string)
    return ret;
 }
 
-/** 
- * utf8_walk:
- *
- * Does not validate the input.
- *
- * Leaf function.
- *
- * @return Returns garbage if it's not UTF-8.
- **/
+static uint8_t utf8_walkbyte(const char **string)
+{
+   return *((*string)++);
+}
+
+/* Does not validate the input, returns garbage if it's not UTF-8. */
 uint32_t utf8_walk(const char **string)
 {
-   uint8_t first = UTF8_WALKBYTE(string);
+   uint8_t first = utf8_walkbyte(string);
    uint32_t ret  = 0;
 
    if (first < 128)
       return first;
 
-   ret    = (ret << 6) | (UTF8_WALKBYTE(string) & 0x3F);
+   ret    = (ret << 6) | (utf8_walkbyte(string) & 0x3F);
    if (first >= 0xE0)
-   {
-      ret = (ret << 6) | (UTF8_WALKBYTE(string) & 0x3F);
-      if (first >= 0xF0)
-      {
-         ret = (ret << 6) | (UTF8_WALKBYTE(string) & 0x3F);
-         return ret | (first & 7) << 18;
-      }
-      return ret | (first & 15) << 12;
-   }
+      ret = (ret << 6) | (utf8_walkbyte(string) & 0x3F);
+   if (first >= 0xF0)
+      ret = (ret << 6) | (utf8_walkbyte(string) & 0x3F);
 
+   if (first >= 0xF0)
+      return ret | (first & 7) << 18;
+   if (first >= 0xE0)
+      return ret | (first & 15) << 12;
    return ret | (first & 31) << 6;
 }
 
@@ -278,23 +242,24 @@ static bool utf16_to_char(uint8_t **utf_data,
       size_t *dest_len, const uint16_t *in)
 {
    unsigned len    = 0;
+
    while (in[len] != '\0')
       len++;
+
    utf16_conv_utf8(NULL, dest_len, in, len);
    *dest_len  += 1;
-   if ((*utf_data = (uint8_t*)malloc(*dest_len)) != 0)
-      return utf16_conv_utf8(*utf_data, dest_len, in, len);
-   return false;
+   *utf_data   = (uint8_t*)malloc(*dest_len);
+   if (*utf_data == 0)
+      return false;
+
+   return utf16_conv_utf8(*utf_data, dest_len, in, len);
 }
 
-/**
- * utf16_to_char_string:
- **/
 bool utf16_to_char_string(const uint16_t *in, char *s, size_t len)
 {
-   size_t     dest_len     = 0;
-   uint8_t *utf16_data     = NULL;
-   bool            ret     = utf16_to_char(&utf16_data, &dest_len, in);
+   size_t     dest_len  = 0;
+   uint8_t *utf16_data  = NULL;
+   bool            ret  = utf16_to_char(&utf16_data, &dest_len, in);
 
    if (ret)
    {
@@ -303,228 +268,247 @@ bool utf16_to_char_string(const uint16_t *in, char *s, size_t len)
    }
 
    free(utf16_data);
-   utf16_data              = NULL;
+   utf16_data = NULL;
 
    return ret;
 }
 
-#if defined(_WIN32) && !defined(_XBOX) && !defined(UNICODE)
-/**
- * mb_to_mb_string_alloc:
- *
- * @return Returned pointer MUST be freed by the caller if non-NULL.
- **/
-static char *mb_to_mb_string_alloc(const char *str,
+/* Returned pointer MUST be freed by the caller if non-NULL. */
+static char* mb_to_mb_string_alloc(const char *str,
       enum CodePage cp_in, enum CodePage cp_out)
 {
+   char *path_buf         = NULL;
    wchar_t *path_buf_wide = NULL;
-   int path_buf_wide_len  = MultiByteToWideChar(cp_in, 0, str, -1, NULL, 0);
+   int path_buf_len       = 0;
+   int path_buf_wide_len  = 0;
 
-   /* Windows 95 will return 0 from these functions with 
-    * a UTF8 codepage set without MSLU.
-    *
-    * From an unknown MSDN version (others omit this info):
-    *   - CP_UTF8 Windows 98/Me, Windows NT 4.0 and later: 
-    *   Translate using UTF-8. When this is set, dwFlags must be zero.
-    *   - Windows 95: Under the Microsoft Layer for Unicode, 
-    *   MultiByteToWideChar also supports CP_UTF7 and CP_UTF8.
+   if (!str || !*str)
+      return NULL;
+
+   (void)path_buf;
+   (void)path_buf_wide;
+   (void)path_buf_len;
+   (void)path_buf_wide_len;
+
+#if !defined(_WIN32) || defined(_XBOX)
+   /* assume string needs no modification if not on Windows */
+   return strdup(str);
+#else
+#ifdef UNICODE
+   /* TODO/FIXME: Not implemented. */
+   return strdup(str);
+#else
+
+   /* Windows 95 will return 0 from these functions with a UTF8 codepage set without MSLU. From an unknown MSDN version (others omit this info):
+    *   - CP_UTF8 Windows 98/Me, Windows NT 4.0 and later: Translate using UTF-8. When this is set, dwFlags must be zero.
+    *   - Windows 95: Under the Microsoft Layer for Unicode, MultiByteToWideChar also supports CP_UTF7 and CP_UTF8.
     */
+   path_buf_wide_len = MultiByteToWideChar(cp_in, 0, str, -1, NULL, 0);
 
-   if (!path_buf_wide_len)
-      return strdup(str);
-
-   if ((path_buf_wide = (wchar_t*)
-      calloc(path_buf_wide_len + sizeof(wchar_t), sizeof(wchar_t))))
+   if (path_buf_wide_len)
    {
-      MultiByteToWideChar(cp_in, 0,
-            str, -1, path_buf_wide, path_buf_wide_len);
+      path_buf_wide = (wchar_t*)
+         calloc(path_buf_wide_len + sizeof(wchar_t), sizeof(wchar_t));
 
-      if (*path_buf_wide)
+      if (path_buf_wide)
       {
-         int path_buf_len = WideCharToMultiByte(cp_out, 0,
-               path_buf_wide, -1, NULL, 0, NULL, NULL);
+         MultiByteToWideChar(cp_in, 0,
+               str, -1, path_buf_wide, path_buf_wide_len);
 
-         if (path_buf_len)
+         if (*path_buf_wide)
          {
-            char *path_buf = (char*)
-               calloc(path_buf_len + sizeof(char), sizeof(char));
+            path_buf_len = WideCharToMultiByte(cp_out, 0,
+                  path_buf_wide, -1, NULL, 0, NULL, NULL);
 
-            if (path_buf)
+            if (path_buf_len)
             {
-               WideCharToMultiByte(cp_out, 0,
-                     path_buf_wide, -1, path_buf,
-                     path_buf_len, NULL, NULL);
+               path_buf = (char*)
+                  calloc(path_buf_len + sizeof(char), sizeof(char));
 
+               if (path_buf)
+               {
+                  WideCharToMultiByte(cp_out, 0,
+                        path_buf_wide, -1, path_buf,
+                        path_buf_len, NULL, NULL);
+
+                  free(path_buf_wide);
+
+                  if (*path_buf)
+                     return path_buf;
+
+                  free(path_buf);
+                  return NULL;
+               }
+            }
+            else
+            {
                free(path_buf_wide);
-
-               if (*path_buf)
-                  return path_buf;
-
-               free(path_buf);
-               return NULL;
+               return strdup(str);
             }
          }
-         else
-         {
-            free(path_buf_wide);
-            return strdup(str);
-         }
       }
-
-      free(path_buf_wide);
    }
+   else
+      return strdup(str);
+
+   if (path_buf_wide)
+      free(path_buf_wide);
 
    return NULL;
-}
 #endif
+#endif
+}
 
-/**
- * utf8_to_local_string_alloc:
- *
- * @return Returned pointer MUST be freed by the caller if non-NULL.
- **/
+/* Returned pointer MUST be freed by the caller if non-NULL. */
 char* utf8_to_local_string_alloc(const char *str)
 {
-   if (str && *str)
-#if defined(_WIN32) && !defined(_XBOX) && !defined(UNICODE)
-      return mb_to_mb_string_alloc(str, CODEPAGE_UTF8, CODEPAGE_LOCAL);
-#else
-      return strdup(str); /* Assume string needs no modification if not on Windows */
-#endif
-   return NULL;
+   return mb_to_mb_string_alloc(str, CODEPAGE_UTF8, CODEPAGE_LOCAL);
 }
 
-/**
- * local_to_utf8_string_alloc:
- *
- * @return Returned pointer MUST be freed by the caller if non-NULL.
- **/
-char *local_to_utf8_string_alloc(const char *str)
+/* Returned pointer MUST be freed by the caller if non-NULL. */
+char* local_to_utf8_string_alloc(const char *str)
 {
-	if (str && *str)
-#if defined(_WIN32) && !defined(_XBOX) && !defined(UNICODE)
-		return mb_to_mb_string_alloc(str, CODEPAGE_LOCAL, CODEPAGE_UTF8);
-#else
-      return strdup(str); /* Assume string needs no modification if not on Windows */
-#endif
-	return NULL;
+   return mb_to_mb_string_alloc(str, CODEPAGE_LOCAL, CODEPAGE_UTF8);
 }
 
-/**
- * utf8_to_utf16_string_alloc:
- * 
- * @return Returned pointer MUST be freed by the caller if non-NULL.
- **/
+/* Returned pointer MUST be freed by the caller if non-NULL. */
 wchar_t* utf8_to_utf16_string_alloc(const char *str)
 {
 #ifdef _WIN32
-   int len        = 0;
+   int len = 0;
+   int out_len = 0;
 #else
-   size_t len     = 0;
+   size_t len = 0;
+   size_t out_len = 0;
 #endif
-   wchar_t *buf   = NULL;
+   wchar_t *buf = NULL;
 
    if (!str || !*str)
       return NULL;
 
 #ifdef _WIN32
-   if ((len = MultiByteToWideChar(CP_UTF8, 0, str, -1, NULL, 0)))
+   len = MultiByteToWideChar(CP_UTF8, 0, str, -1, NULL, 0);
+
+   if (len)
    {
-      if (!(buf = (wchar_t*)calloc(len, sizeof(wchar_t))))
+      buf = (wchar_t*)calloc(len, sizeof(wchar_t));
+
+      if (!buf)
          return NULL;
 
-      if ((MultiByteToWideChar(CP_UTF8, 0, str, -1, buf, len)) < 0)
-      {
-         free(buf);
-         return NULL;
-      }
+      out_len = MultiByteToWideChar(CP_UTF8, 0, str, -1, buf, len);
    }
    else
    {
-      /* Fallback to ANSI codepage instead */
-      if ((len = MultiByteToWideChar(CP_ACP, 0, str, -1, NULL, 0)))
+      /* fallback to ANSI codepage instead */
+      len = MultiByteToWideChar(CP_ACP, 0, str, -1, NULL, 0);
+
+      if (len)
       {
-         if (!(buf = (wchar_t*)calloc(len, sizeof(wchar_t))))
+         buf = (wchar_t*)calloc(len, sizeof(wchar_t));
+
+         if (!buf)
             return NULL;
 
-         if ((MultiByteToWideChar(CP_ACP, 0, str, -1, buf, len)) < 0)
-         {
-            free(buf);
-            return NULL;
-         }
+         out_len = MultiByteToWideChar(CP_ACP, 0, str, -1, buf, len);
       }
+   }
+
+   if (out_len < 0)
+   {
+      free(buf);
+      return NULL;
    }
 #else
    /* NOTE: For now, assume non-Windows platforms' locale is already UTF-8. */
-   if ((len = mbstowcs(NULL, str, 0) + 1))
+   len = mbstowcs(NULL, str, 0) + 1;
+
+   if (len)
    {
-      if (!(buf = (wchar_t*)calloc(len, sizeof(wchar_t))))
+      buf = (wchar_t*)calloc(len, sizeof(wchar_t));
+
+      if (!buf)
          return NULL;
 
-      if ((mbstowcs(buf, str, len)) == (size_t)-1)
-      {
-         free(buf);
-         return NULL;
-      }
+      out_len = mbstowcs(buf, str, len);
+   }
+
+   if (out_len == (size_t)-1)
+   {
+      free(buf);
+      return NULL;
    }
 #endif
 
    return buf;
 }
 
-/**
- * utf16_to_utf8_string_alloc:
- *
- * @return Returned pointer MUST be freed by the caller if non-NULL.
- **/
+/* Returned pointer MUST be freed by the caller if non-NULL. */
 char* utf16_to_utf8_string_alloc(const wchar_t *str)
 {
 #ifdef _WIN32
-   int len        = 0;
+   int len = 0;
+   int out_len = 0;
 #else
-   size_t len     = 0;
+   size_t len = 0;
+   size_t out_len = 0;
 #endif
-   char *buf      = NULL;
+   char *buf = NULL;
 
    if (!str || !*str)
       return NULL;
 
 #ifdef _WIN32
+   len = WideCharToMultiByte(CP_UTF8, 0, str, -1, NULL, 0, NULL, NULL);
+
+   if (len)
    {
-      UINT code_page = CP_UTF8;
+      buf = (char*)calloc(len, sizeof(char));
 
+      if (!buf)
+         return NULL;
+
+      out_len = WideCharToMultiByte(CP_UTF8, 0, str, -1, buf, len, NULL, NULL);
+   }
+   else
+   {
       /* fallback to ANSI codepage instead */
-      if (!(len = WideCharToMultiByte(code_page,
-            0, str, -1, NULL, 0, NULL, NULL)))
-      {
-         code_page   = CP_ACP;
-         len         = WideCharToMultiByte(code_page,
-               0, str, -1, NULL, 0, NULL, NULL);
-      }
+      len = WideCharToMultiByte(CP_ACP, 0, str, -1, NULL, 0, NULL, NULL);
 
-      if (!(buf = (char*)calloc(len, sizeof(char))))
-         return NULL;
-
-      if (WideCharToMultiByte(code_page,
-            0, str, -1, buf, len, NULL, NULL) < 0)
+      if (len)
       {
-         free(buf);
-         return NULL;
+         buf = (char*)calloc(len, sizeof(char));
+
+         if (!buf)
+            return NULL;
+
+         out_len = WideCharToMultiByte(CP_ACP, 0, str, -1, buf, len, NULL, NULL);
       }
    }
-#else
-   /* NOTE: For now, assume non-Windows platforms' 
-    * locale is already UTF-8. */
-   if ((len = wcstombs(NULL, str, 0) + 1))
+
+   if (out_len < 0)
    {
-      if (!(buf = (char*)calloc(len, sizeof(char))))
+      free(buf);
+      return NULL;
+   }
+#else
+   /* NOTE: For now, assume non-Windows platforms' locale is already UTF-8. */
+   len = wcstombs(NULL, str, 0) + 1;
+
+   if (len)
+   {
+      buf = (char*)calloc(len, sizeof(char));
+
+      if (!buf)
          return NULL;
 
-      if (wcstombs(buf, str, len) == (size_t)-1)
-      {
-         free(buf);
-         return NULL;
-      }
+      out_len = wcstombs(buf, str, len);
+   }
+
+   if (out_len == (size_t)-1)
+   {
+      free(buf);
+      return NULL;
    }
 #endif
 
