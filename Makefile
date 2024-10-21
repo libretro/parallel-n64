@@ -375,6 +375,7 @@ ifeq ($(platform),$(filter $(platform),ios9 ios-arm64))
       MINVERSION = -miphoneos-version-min=5.0
    endif
    PLATCFLAGS += $(MINVERSION)
+   LDFLAGS += $(MINVERSION)
 
 else ifeq ($(platform), tvos-arm64)
    ifeq ($(IOSSDK),)
