@@ -2093,14 +2093,20 @@ void retro_cheat_set(unsigned index, bool enabled, const char* codeLine)
       {
          if (matchLength)
          {
-            char *codePartS = (char*)calloc(matchLength, sizeof(*codePartS));
+            char *codePartS = (char*)calloc(matchLength + 1, sizeof(*codePartS));
+            if (codePartS == NULL)
+            {
+               log_cb(RETRO_LOG_ERROR, "Unable to calloc memory in retro_cheat_set. Cheat will not be applied\n");
+            }
+            else 
+            {
+               strncpy(codePartS,codeLine+cursor-matchLength,matchLength);
+               codePartS[matchLength]=0;
+               codeParts[partCount++]=strtoul(codePartS,NULL,16);
+               matchLength=0;
 
-            strncpy(codePartS,codeLine+cursor-matchLength,matchLength);
-            codePartS[matchLength]=0;
-            codeParts[partCount++]=strtoul(codePartS,NULL,16);
-            matchLength=0;
-
-            free(codePartS);
+               free(codePartS);
+            }
          }
       }
       if (!codeLine[cursor])
