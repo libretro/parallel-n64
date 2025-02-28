@@ -104,6 +104,8 @@ static bool vulkan_inited           = false;
 static bool gl_inited               = false;
 
 int astick_deadzone                 = 0;
+int astick_snap_active              = 0;
+int astick_snap_max_angle           = 15;
 int astick_sensitivity              = 100;
 int first_time                      = 1;
 bool flip_only                      = false;
@@ -349,6 +351,10 @@ static void setup_variables(void)
         "Analog Deadzone (percent); 15|20|25|30|0|5|10"},
       {"parallel-n64-astick-sensitivity",
         "Analog Sensitivity (percent); 100|105|110|115|120|125|130|135|140|145|150|200|50|55|60|65|70|75|80|85|90|95"},
+      { "parallel-n64-snap-angle-active",
+      "Snap Controller Angle; disabled|enabled" },
+      { "parallel-n64-snap-max-angle",
+         "Maximum Snap Angle (value of 5 would mean 85 to 95 degrees are snapped to 90); 1|2|3|4|5|6|7|8|9|10|11|12|13|14|15|16|17|18|19|20|21" },
       {"parallel-n64-pak1",
 #ifdef CLASSIC
         "Player 1 Pak; memory|rumble|none"},
@@ -1492,6 +1498,25 @@ void update_variables(bool startup)
 
    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
       astick_deadzone = (int)(atoi(var.value) * 0.01f * 0x8000);
+
+   var.key = "parallel-n64-snap-angle-active";
+   var.value = NULL;
+
+   if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+   {
+      if (!strcmp(var.value, "enabled"))
+         astick_snap_active = 1;
+      else if (!strcmp(var.value, "disabled"))
+         astick_snap_active = 0;
+   }
+
+   var.key = "parallel-n64-snap-angle";
+   var.value = NULL;
+
+   if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+   {
+      astick_snap_max_angle = (int)(atoi(var.value));
+   }
 
    var.key = "parallel-n64-astick-sensitivity";
    var.value = NULL;
