@@ -31,6 +31,9 @@
 #include <math.h>
 
 #define ROUND(x)    floor((x) + 0.5)
+#ifndef  M_PI
+#define  M_PI  3.1415926535897932384626433
+#endif
 
 /* snprintf not available in MSVC 2010 and earlier */
 #include "api/msvc_compat.h"
@@ -42,6 +45,9 @@ extern int pad_pak_types[4];
 extern int pad_present[4];
 extern int astick_deadzone;
 extern int astick_sensitivity;
+extern int astick_snap_active;
+extern int astick_snap_max_angle;
+extern int astick_snap_min_displacement_percent;
 
 extern m64p_rom_header ROM_HEADER;
 
@@ -305,7 +311,8 @@ extern void inputInitiateCallback(const char *headername);
 
 static void inputGetKeys_reuse(int16_t analogX, int16_t analogY, int Control, BUTTONS* Keys)
 {
-   double radius, angle;
+   double radius, angle, circular_degrees, difference, nearest_45;
+   
    //  Keys->Value |= input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_XX)    ? 0x4000 : 0; // Mempak switch
    //  Keys->Value |= input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_XX)    ? 0x8000 : 0; // Rumblepak switch
 
@@ -320,6 +327,17 @@ static void inputGetKeys_reuse(int16_t analogX, int16_t analogY, int Control, BU
    {
       // Re-scale analog stick range to negate deadzone (makes slow movements possible)
       radius = (radius - astick_deadzone)*((float)ASTICK_MAX/(ASTICK_MAX - astick_deadzone));
+
+      // Angle Snapping for beter support of circular design controllers to behave like classic controllers
+      if (astick_snap_active) {
+         circular_degrees = (int)(ROUND(angle * (180.0/M_PI)));
+         nearest_45 = round(circular_degrees / 45.0) * 45.0;
+         difference = fabs(circular_degrees - nearest_45);
+         if (difference <= astick_snap_max_angle && (100*(radius / ASTICK_MAX)) >= astick_snap_min_displacement_percent) {
+            angle = nearest_45 * (M_PI / 180.0);
+         }
+      }
+
       // N64 Analog stick range is from -80 to 80
       radius *= 80.0 / ASTICK_MAX * (astick_sensitivity / 100.0);
       // Convert back to cartesian coordinates
