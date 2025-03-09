@@ -344,7 +344,7 @@ int read_pi_regs(void* opaque, uint32_t address, uint32_t* value)
     struct pi_controller* pi = (struct pi_controller*)opaque;
     uint32_t reg             = PI_REG(address);
 
-    *value                   = pi->regs[reg];
+    *value                   = (reg < PI_REGS_COUNT) ? pi->regs[reg] : 0u;
 
     return 0;
 }
@@ -399,7 +399,8 @@ int write_pi_regs(void* opaque, uint32_t address,
          return 0;
    }
 
-   pi->regs[reg] = MASKED_WRITE(&pi->regs[reg], value, mask);
+   if (reg < PI_REGS_COUNT)
+       pi->regs[reg] = MASKED_WRITE(&pi->regs[reg], value, mask);
 
    return 0;
 }
