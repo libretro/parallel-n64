@@ -78,7 +78,7 @@ int read_mi_regs(void* opaque, uint32_t address, uint32_t* value)
     struct r4300_core* r4300 = (struct r4300_core*)opaque;
     uint32_t reg = mi_reg(address);
 
-    *value = r4300->mi.regs[reg];
+    *value = (reg < MI_REGS_COUNT) ? r4300->mi.regs[reg] : 0u;
 
     return 0;
 }
