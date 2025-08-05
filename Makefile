@@ -203,6 +203,7 @@ ifneq (,$(findstring unix,$(platform)))
       HAVE_NEON = 1
       WITH_DYNAREC=arm
       CPUFLAGS += -mcpu=cortex-a9 -mfpu=neon
+      LDFLAGS += -static-libgcc -static-libstdc++
    endif
 
    # Classic Platforms ####################
