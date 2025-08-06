@@ -104,7 +104,7 @@ int read_vi_regs(void* opaque, uint32_t address, uint32_t *word)
         vi->regs[VI_CURRENT_REG] = (vi->regs[VI_CURRENT_REG] & (~1)) | vi->field;
     }
 
-    *word = vi->regs[reg];
+    *word = (reg < VI_REGS_COUNT) ? vi->regs[reg] : 0u;
 
     return 0;
 }
@@ -139,7 +139,8 @@ int write_vi_regs(void* opaque, uint32_t address,
           return 0;
     }
 
-    vi->regs[reg] = MASKED_WRITE(&vi->regs[reg], word, mask);
+    if (reg < VI_REGS_COUNT)
+        vi->regs[reg] = MASKED_WRITE(&vi->regs[reg], word, mask);
 
     return 0;
 }

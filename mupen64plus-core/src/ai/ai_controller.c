@@ -189,7 +189,7 @@ int read_ai_regs(void* opaque, uint32_t address, uint32_t* value)
 		  ai->last_read = *value;
     }
     else
-        *value = ai->regs[reg];
+        *value = (reg < AI_REGS_COUNT) ? ai->regs[reg] : 0u;
 
     return 0;
 }
@@ -230,7 +230,8 @@ int write_ai_regs(void* opaque, uint32_t address,
          return 0;
    }
 
-   ai->regs[reg] = MASKED_WRITE(&ai->regs[reg], value, mask);
+   if (reg < AI_REGS_COUNT)
+       ai->regs[reg] = MASKED_WRITE(&ai->regs[reg], value, mask);
 
    return 0;
 }
