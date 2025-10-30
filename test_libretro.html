@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Parallel N64 WebAssembly Test</title>
+    <style>
+        body {
+            font-family: monospace;
+            max-width: 1200px;
+            margin: 20px auto;
+            padding: 20px;
+            background: #1e1e1e;
+            color: #d4d4d4;
+        }
+        h1 {
+            color: #4ec9b0;
+        }
+        h2 {
+            color: #569cd6;
+            margin-top: 30px;
+        }
+        .test-section {
+            background: #2d2d2d;
+            border: 1px solid #3e3e3e;
+            border-radius: 4px;
+            padding: 15px;
+            margin: 10px 0;
+        }
+        .success {
+            color: #4ec9b0;
+        }
+        .error {
+            color: #f48771;
+        }
+        .info {
+            color: #569cd6;
+        }
+        .status {
+            padding: 5px 10px;
+            border-radius: 3px;
+            display: inline-block;
+            margin: 5px 0;
+        }
+        .status.pending {
+            background: #3e3e42;
+            color: #cccccc;
+        }
+        .status.running {
+            background: #1e3a5f;
+            color: #569cd6;
+        }
+        .status.success {
+            background: #1e3a2f;
+            color: #4ec9b0;
+        }
+        .status.failed {
+            background: #3e2a2a;
+            color: #f48771;
+        }
+        pre {
+            background: #1e1e1e;
+            border: 1px solid #3e3e3e;
+            padding: 10px;
+            overflow-x: auto;
+            border-radius: 3px;
+        }
+        button {
+            background: #0e639c;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 3px;
+            cursor: pointer;
+            font-family: monospace;
+            font-size: 14px;
+            margin: 5px;
+        }
+        button:hover {
+            background: #1177bb;
+        }
+        button:disabled {
+            background: #3e3e3e;
+            color: #666;
+            cursor: not-allowed;
+        }
+        #log {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>Parallel N64 WebAssembly Test</h1>
+    <p>Testing parallel-n64 libretro core compiled to WebAssembly.</p>
+
+    <div class="test-section">
+        <h2>Module Loading</h2>
+        <div id="load-status" class="status pending">Pending</div>
+        <div id="load-info"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>API Tests</h2>
+        <button id="test-btn" onclick="runTests()" disabled>Run Tests</button>
+        <div id="test-results"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Console Log</h2>
+        <div id="log"></div>
+    </div>
+
+    <script>
+        // Logging helper
+        function log(message, type = 'info') {
+            const logDiv = document.getElementById('log');
+            const timestamp = new Date().toLocaleTimeString();
+            const className = type === 'error' ? 'error' : type === 'success' ? 'success' : 'info';
+            logDiv.innerHTML += `<div class="${className}">[${timestamp}] ${message}</div>`;
+            logDiv.scrollTop = logDiv.scrollHeight;
+            console.log(message);
+        }
+
+        // Update status helper
+        function updateStatus(elementId, status, text) {
+            const el = document.getElementById(elementId);
+            el.className = `status ${status}`;
+            el.textContent = text;
+        }
+
+        // Global module reference
+        let isModuleReady = false;
+
+        // Emscripten module configuration
+        var Module = {
+            print: function(text) {
+                log('stdout: ' + text);
+            },
+            printErr: function(text) {
+                log('stderr: ' + text, 'error');
+            },
+            onRuntimeInitialized: function() {
+                log('WebAssembly runtime initialized', 'success');
+                isModuleReady = true;
+                updateStatus('load-status', 'success', 'Module Loaded');
+
+                // Show module info
+                const info = document.getElementById('load-info');
+                const heapSize = Module.HEAP8 ? Module.HEAP8.length : (Module.wasmMemory ? Module.wasmMemory.buffer.byteLength : 'Unknown');
+                info.innerHTML = `
+                    <pre>WASM Module Ready
+HEAP Size: ${typeof heapSize === 'number' ? heapSize.toLocaleString() : heapSize} bytes
+Total Memory: ${typeof heapSize === 'number' ? (heapSize / 1024 / 1024).toFixed(2) : 'N/A'} MB</pre>
+                `;
+
+                // Enable test button
+                document.getElementById('test-btn').disabled = false;
+
+                log('Ready to run tests!', 'success');
+            },
+            onAbort: function(what) {
+                log('Module aborted: ' + what, 'error');
+                updateStatus('load-status', 'failed', 'Failed');
+            }
+        };
+
+        // Start loading
+        log('Starting to load parallel_n64_libretro.js...');
+        updateStatus('load-status', 'running', 'Loading...');
+
+        // Test functions
+        function runTests() {
+            if (!isModuleReady) {
+                log('Module not ready yet!', 'error');
+                return;
+            }
+
+            const resultsDiv = document.getElementById('test-results');
+            resultsDiv.innerHTML = '<h3>Running Tests...</h3>';
+
+            let testsPassed = 0;
+            let testsFailed = 0;
+            let results = '';
+
+            // Helper function to run a test
+            function test(name, fn) {
+                try {
+                    results += `<div style="margin: 10px 0;"><strong>Test: ${name}</strong><br>`;
+                    const result = fn();
+                    results += `<span class="success">✓ PASSED</span>`;
+                    if (result) {
+                        results += `<pre>${result}</pre>`;
+                    }
+                    results += '</div>';
+                    testsPassed++;
+                    log(`Test "${name}" passed`, 'success');
+                } catch (error) {
+                    results += `<span class="error">✗ FAILED: ${error.message}</span></div>`;
+                    testsFailed++;
+                    log(`Test "${name}" failed: ${error.message}`, 'error');
+                }
+            }
+
+            // Test 1: retro_api_version
+            test('retro_api_version()', () => {
+                const version = Module._retro_api_version();
+                if (version !== 1) {
+                    throw new Error(`Expected version 1, got ${version}`);
+                }
+                return `API Version: ${version}`;
+            });
+
+            // Test 2: retro_get_system_info
+            test('retro_get_system_info()', () => {
+                // Allocate memory for the struct
+                const structSize = 32; // sizeof(retro_system_info) - approximate
+                const ptr = Module._malloc(structSize);
+
+                // Zero out the memory using HEAPU8 (use HEAPU8 instead of HEAP8)
+                for (let i = 0; i < structSize; i++) {
+                    Module.HEAPU8[ptr + i] = 0;
+                }
+
+                // Call the function
+                Module._retro_get_system_info(ptr);
+
+                // Read the struct (assuming layout: char *library_name, char *library_version, ...)
+                const namePtr = Module.HEAPU32[ptr >> 2];
+                const versionPtr = Module.HEAPU32[(ptr + 4) >> 2];
+
+                let name = '';
+                let version = '';
+
+                if (namePtr) {
+                    name = Module.UTF8ToString(namePtr);
+                }
+                if (versionPtr) {
+                    version = Module.UTF8ToString(versionPtr);
+                }
+
+                Module._free(ptr);
+
+                return `Library: ${name}\nVersion: ${version}`;
+            });
+
+            // Test 3: retro_set_environment (required before retro_init)
+            test('retro_set_environment()', () => {
+                // Create a dummy environment callback
+                // The callback signature is: bool (*)(unsigned cmd, void *data)
+                const envCallback = Module.addFunction((cmd, data) => {
+                    // Minimal implementation - just return false for all queries
+                    // In a real implementation, you'd handle various RETRO_ENVIRONMENT_* commands
+                    return 0; // false
+                }, 'iii'); // return int, params: int, pointer
+
+                Module._retro_set_environment(envCallback);
+                return 'Environment callback set successfully';
+            });
+
+            // Test 4: retro_init
+            test('retro_init()', () => {
+                Module._retro_init();
+                return 'Core initialized successfully';
+            });
+
+            // Test 5: retro_deinit
+            test('retro_deinit()', () => {
+                Module._retro_deinit();
+                return 'Core deinitialized successfully';
+            });
+
+            // Test 6: Re-init for further tests
+            test('retro_init() again', () => {
+                Module._retro_init();
+                return 'Core re-initialized successfully';
+            });
+
+            // Display results summary
+            results += `<div style="margin-top: 20px; padding: 10px; background: #2d2d2d; border-radius: 3px;">
+                <strong>Test Summary:</strong><br>
+                <span class="success">Passed: ${testsPassed}</span><br>
+                <span class="${testsFailed === 0 ? 'success' : 'error'}">Failed: ${testsFailed}</span><br>
+                <strong>Total: ${testsPassed + testsFailed}</strong>
+            </div>`;
+
+            resultsDiv.innerHTML = results;
+        }
+
+        // Load the module
+        log('Loading WebAssembly module...');
+    </script>
+
+    <!-- Load the Emscripten-generated JavaScript -->
+    <script src="parallel_n64_libretro.js"></script>
+</body>
+</html>

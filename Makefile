@@ -481,7 +481,7 @@ else ifeq ($(platform), qnx)
 
 # emscripten
 else ifeq ($(platform), emscripten)
-   TARGET := $(TARGET_NAME)_libretro_$(platform).bc
+   TARGET := $(TARGET_NAME)_libretro.js
    GLES := 1
    WITH_DYNAREC :=
 
@@ -492,10 +492,23 @@ else ifeq ($(platform), emscripten)
    WITH_DYNAREC =
    CC = emcc
    CXX = em++
+   LD = emcc
    HAVE_NEON = 0
    PLATFORM_EXT := unix
-   STATIC_LINKING = 1
-   SOURCES_C += $(CORE_DIR)/src/r4300/empty_dynarec.c
+   STATIC_LINKING = 0
+
+   # Emscripten linker flags
+   LDFLAGS += -s WASM=1 \
+              -s EXPORTED_FUNCTIONS='["_retro_init","_retro_deinit","_retro_api_version","_retro_get_system_info","_retro_get_system_av_info","_retro_set_environment","_retro_set_video_refresh","_retro_set_audio_sample","_retro_set_audio_sample_batch","_retro_set_input_poll","_retro_set_input_state","_retro_set_controller_port_device","_retro_reset","_retro_run","_retro_serialize_size","_retro_serialize","_retro_unserialize","_retro_cheat_reset","_retro_cheat_set","_retro_load_game","_retro_load_game_special","_retro_unload_game","_retro_get_region","_retro_get_memory_data","_retro_get_memory_size","_malloc","_free"]' \
+              -s EXPORTED_RUNTIME_METHODS='["ccall","cwrap","UTF8ToString","addFunction","HEAPU8","HEAPU32"]' \
+              -s ALLOW_MEMORY_GROWTH=1 \
+              -s MAXIMUM_MEMORY=512MB \
+              -s INITIAL_MEMORY=256MB \
+              -s STACK_SIZE=5MB \
+              -s NO_EXIT_RUNTIME=1 \
+              -s ASSERTIONS=0 \
+              -s ALLOW_TABLE_GROWTH=1 \
+              --no-entry
 
 # PlayStation Vita
 else ifneq (,$(findstring vita,$(platform)))
