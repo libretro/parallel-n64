@@ -107,19 +107,104 @@
     </div>
 
     <div class="test-section">
+        <h2>ROM Loading (Milestone 08)</h2>
+        <button id="rom-test-btn" onclick="runRomTests()" disabled>Load ROM & Test</button>
+        <div id="rom-results"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Graphics + First Frame (Milestone 09)</h2>
+        <button id="graphics-test-btn" onclick="runGraphicsTests()" disabled>Setup Graphics & Render First Frame</button>
+        <button id="run-frames-btn" onclick="runMultipleFrames()" disabled>Run 60 Frames</button>
+        <button id="continuous-btn" onclick="toggleContinuous()" disabled>Start Continuous</button>
+        <div style="margin: 10px 0;">
+            <canvas id="gameCanvas" width="640" height="480" style="border: 1px solid #3e3e3e; background: #000; display: block; margin: 10px auto;"></canvas>
+            <div style="text-align: center; margin-top: 10px;">
+                <strong>Performance:</strong>
+                <span id="fps-display" style="color: #4ec9b0;">-- FPS</span> |
+                <span id="frame-time-display" style="color: #569cd6;">-- ms/frame</span> |
+                <span id="total-frames" style="color: #dcdcaa;">0 frames</span>
+            </div>
+        </div>
+        <div id="graphics-results"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Input + Audio (Milestone 10)</h2>
+        <div style="margin: 10px 0;">
+            <strong>Audio:</strong> <span id="audio-status" style="color: #f48771;">Not initialized</span> |
+            <button id="init-audio-btn" onclick="initAudio()">Initialize Audio</button>
+            <span id="audio-info" style="margin-left: 10px;"></span>
+        </div>
+        <div style="margin: 10px 0;">
+            <strong>Gamepad:</strong> <span id="gamepad-status" style="color: #cccccc;">No gamepad detected</span>
+        </div>
+        <details style="margin-top: 10px;">
+            <summary style="cursor: pointer; color: #569cd6;"><strong>Controls Guide</strong></summary>
+            <div style="margin-top: 10px; font-size: 12px;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; max-width: 600px;">
+                    <div>
+                        <strong>Keyboard Controls:</strong>
+                        <pre style="font-size: 11px; margin: 5px 0; padding: 5px;">
+Arrow Keys  = D-Pad / Analog Stick
+X           = A Button
+Z           = B Button
+Enter       = Start
+A           = L Trigger
+S           = R Trigger
+Q           = Z Trigger
+I/K/J/L     = C-Buttons (Up/Down/Left/Right)</pre>
+                    </div>
+                    <div>
+                        <strong>Gamepad Controls:</strong>
+                        <pre style="font-size: 11px; margin: 5px 0; padding: 5px;">
+D-Pad/Left Stick = D-Pad / Analog
+Button 0 (A)     = A Button
+Button 1 (B)     = B Button
+Button 9 (Start) = Start
+L1/L2            = L/Z Triggers
+R1               = R Trigger
+Right Stick      = C-Buttons</pre>
+                    </div>
+                </div>
+            </div>
+        </details>
+    </div>
+
+    <div class="test-section">
         <h2>Console Log</h2>
+        <button onclick="copyLogToClipboard()">Copy to Clipboard</button>
+        <button onclick="clearLog()">Clear Log</button>
         <div id="log"></div>
     </div>
 
     <script>
         // Logging helper
+        let logMessages = [];
         function log(message, type = 'info') {
             const logDiv = document.getElementById('log');
             const timestamp = new Date().toLocaleTimeString();
             const className = type === 'error' ? 'error' : type === 'success' ? 'success' : 'info';
             logDiv.innerHTML += `<div class="${className}">[${timestamp}] ${message}</div>`;
             logDiv.scrollTop = logDiv.scrollHeight;
+            logMessages.push(`[${timestamp}] ${message}`);
             console.log(message);
+        }
+
+        function copyLogToClipboard() {
+            const logText = logMessages.join('\n');
+            navigator.clipboard.writeText(logText).then(() => {
+                alert('Console log copied to clipboard!');
+            }).catch(err => {
+                console.error('Failed to copy: ', err);
+                alert('Failed to copy log to clipboard');
+            });
+        }
+
+        function clearLog() {
+            document.getElementById('log').innerHTML = '';
+            logMessages = [];
+            log('Log cleared');
         }
 
         // Update status helper
@@ -127,6 +212,224 @@
             const el = document.getElementById(elementId);
             el.className = `status ${status}`;
             el.textContent = text;
+        }
+
+        // ============================================================
+        // INPUT SYSTEM (Milestone 10)
+        // ============================================================
+
+        // Input state tracking
+        const inputState = {
+            buttons: new Set(),  // Pressed button IDs
+            analogX: 0,          // -32768 to 32767
+            analogY: 0           // -32768 to 32767
+        };
+
+        // N64 button IDs (from libretro.h)
+        const N64_BUTTONS = {
+            B: 0,           // RETRO_DEVICE_ID_JOYPAD_B
+            Y: 1,           // RETRO_DEVICE_ID_JOYPAD_Y (C-Down)
+            SELECT: 2,      // RETRO_DEVICE_ID_JOYPAD_SELECT
+            START: 3,       // RETRO_DEVICE_ID_JOYPAD_START
+            UP: 4,          // RETRO_DEVICE_ID_JOYPAD_UP
+            DOWN: 5,        // RETRO_DEVICE_ID_JOYPAD_DOWN
+            LEFT: 6,        // RETRO_DEVICE_ID_JOYPAD_LEFT
+            RIGHT: 7,       // RETRO_DEVICE_ID_JOYPAD_RIGHT
+            A: 8,           // RETRO_DEVICE_ID_JOYPAD_A
+            X: 9,           // RETRO_DEVICE_ID_JOYPAD_X (C-Up)
+            L: 10,          // RETRO_DEVICE_ID_JOYPAD_L
+            R: 11,          // RETRO_DEVICE_ID_JOYPAD_R
+            L2: 12,         // RETRO_DEVICE_ID_JOYPAD_L2 (Z trigger)
+            R2: 13,         // RETRO_DEVICE_ID_JOYPAD_R2
+            L3: 14,         // RETRO_DEVICE_ID_JOYPAD_L3 (C-Left)
+            R3: 15          // RETRO_DEVICE_ID_JOYPAD_R3 (C-Right)
+        };
+
+        // Keyboard mapping
+        const keyMap = {
+            'KeyX': N64_BUTTONS.A,      // A button
+            'KeyZ': N64_BUTTONS.B,      // B button
+            'Enter': N64_BUTTONS.START, // Start
+            'ArrowUp': N64_BUTTONS.UP,  // D-Pad Up
+            'ArrowDown': N64_BUTTONS.DOWN,
+            'ArrowLeft': N64_BUTTONS.LEFT,
+            'ArrowRight': N64_BUTTONS.RIGHT,
+            'KeyA': N64_BUTTONS.L,      // L trigger
+            'KeyS': N64_BUTTONS.R,      // R trigger
+            'KeyQ': N64_BUTTONS.L2,     // Z trigger
+            'KeyI': N64_BUTTONS.X,      // C-Up
+            'KeyK': N64_BUTTONS.Y,      // C-Down
+            'KeyJ': N64_BUTTONS.L3,     // C-Left
+            'KeyL': N64_BUTTONS.R3      // C-Right
+        };
+
+        // Keyboard event handlers
+        window.addEventListener('keydown', (e) => {
+            if (keyMap[e.code] !== undefined) {
+                inputState.buttons.add(keyMap[e.code]);
+                e.preventDefault();
+            }
+
+            // Arrow keys also control analog stick
+            if (e.code === 'ArrowUp') inputState.analogY = -32767;
+            if (e.code === 'ArrowDown') inputState.analogY = 32767;
+            if (e.code === 'ArrowLeft') inputState.analogX = -32767;
+            if (e.code === 'ArrowRight') inputState.analogX = 32767;
+        });
+
+        window.addEventListener('keyup', (e) => {
+            if (keyMap[e.code] !== undefined) {
+                inputState.buttons.delete(keyMap[e.code]);
+            }
+
+            // Reset analog when arrow keys released
+            if (e.code === 'ArrowUp' || e.code === 'ArrowDown') {
+                inputState.analogY = 0;
+            }
+            if (e.code === 'ArrowLeft' || e.code === 'ArrowRight') {
+                inputState.analogX = 0;
+            }
+        });
+
+        // Gamepad support
+        let lastGamepadState = null;
+
+        function updateGamepad() {
+            const gamepads = navigator.getGamepads();
+            const gamepad = gamepads[0]; // Use first gamepad
+
+            if (!gamepad) {
+                if (lastGamepadState !== null) {
+                    document.getElementById('gamepad-status').textContent = 'No gamepad detected';
+                    document.getElementById('gamepad-status').style.color = '#cccccc';
+                    lastGamepadState = null;
+                }
+                return;
+            }
+
+            // Update status on first detection
+            if (lastGamepadState === null) {
+                document.getElementById('gamepad-status').textContent = `Connected: ${gamepad.id}`;
+                document.getElementById('gamepad-status').style.color = '#4ec9b0';
+                log(`Gamepad connected: ${gamepad.id}`, 'success');
+            }
+            lastGamepadState = true;
+
+            // Clear keyboard buttons (gamepad takes priority)
+            inputState.buttons.clear();
+
+            // Map gamepad buttons to N64 buttons
+            if (gamepad.buttons[0]?.pressed) inputState.buttons.add(N64_BUTTONS.A);     // A/Cross
+            if (gamepad.buttons[1]?.pressed) inputState.buttons.add(N64_BUTTONS.B);     // B/Circle
+            if (gamepad.buttons[2]?.pressed) inputState.buttons.add(N64_BUTTONS.X);     // X/Square (C-Up)
+            if (gamepad.buttons[3]?.pressed) inputState.buttons.add(N64_BUTTONS.Y);     // Y/Triangle (C-Down)
+            if (gamepad.buttons[4]?.pressed) inputState.buttons.add(N64_BUTTONS.L);     // L1
+            if (gamepad.buttons[5]?.pressed) inputState.buttons.add(N64_BUTTONS.R);     // R1
+            if (gamepad.buttons[6]?.pressed) inputState.buttons.add(N64_BUTTONS.L2);    // L2 (Z)
+            if (gamepad.buttons[7]?.pressed) inputState.buttons.add(N64_BUTTONS.R2);    // R2
+            if (gamepad.buttons[8]?.pressed) inputState.buttons.add(N64_BUTTONS.SELECT); // Select
+            if (gamepad.buttons[9]?.pressed) inputState.buttons.add(N64_BUTTONS.START); // Start
+            if (gamepad.buttons[12]?.pressed) inputState.buttons.add(N64_BUTTONS.UP);    // D-Pad Up
+            if (gamepad.buttons[13]?.pressed) inputState.buttons.add(N64_BUTTONS.DOWN);  // D-Pad Down
+            if (gamepad.buttons[14]?.pressed) inputState.buttons.add(N64_BUTTONS.LEFT);  // D-Pad Left
+            if (gamepad.buttons[15]?.pressed) inputState.buttons.add(N64_BUTTONS.RIGHT); // D-Pad Right
+
+            // Left analog stick (primary control)
+            if (gamepad.axes[0] !== undefined && gamepad.axes[1] !== undefined) {
+                inputState.analogX = Math.round(gamepad.axes[0] * 32767);
+                inputState.analogY = Math.round(gamepad.axes[1] * 32767);
+            }
+
+            // Right analog stick mapped to C-buttons
+            if (gamepad.axes[2] !== undefined && gamepad.axes[3] !== undefined) {
+                const deadzone = 0.3;
+                const rx = gamepad.axes[2];
+                const ry = gamepad.axes[3];
+
+                if (rx < -deadzone) inputState.buttons.add(N64_BUTTONS.L3);  // C-Left
+                if (rx > deadzone) inputState.buttons.add(N64_BUTTONS.R3);   // C-Right
+                if (ry < -deadzone) inputState.buttons.add(N64_BUTTONS.X);   // C-Up
+                if (ry > deadzone) inputState.buttons.add(N64_BUTTONS.Y);    // C-Down
+            }
+        }
+
+        // ============================================================
+        // AUDIO SYSTEM (Milestone 10)
+        // ============================================================
+
+        let audioContext = null;
+        let audioQueue = [];
+        let audioStartTime = 0;
+        const audioBufferSize = 2048;
+        let audioInitialized = false;
+        let audioSamplesProcessed = 0;
+
+        function initAudio() {
+            if (audioInitialized) {
+                log('Audio already initialized', 'info');
+                return;
+            }
+
+            try {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)({
+                    sampleRate: 44100,
+                    latencyHint: 'interactive'
+                });
+
+                audioStartTime = audioContext.currentTime;
+                audioInitialized = true;
+
+                document.getElementById('audio-status').textContent = 'Initialized';
+                document.getElementById('audio-status').style.color = '#4ec9b0';
+                document.getElementById('audio-info').textContent = `${audioContext.sampleRate} Hz`;
+
+                log(`Audio context initialized: ${audioContext.sampleRate} Hz`, 'success');
+
+                // Resume context if suspended (required by browser autoplay policy)
+                if (audioContext.state === 'suspended') {
+                    audioContext.resume().then(() => {
+                        log('Audio context resumed', 'success');
+                    });
+                }
+
+            } catch (error) {
+                log(`Failed to initialize audio: ${error.message}`, 'error');
+                document.getElementById('audio-status').textContent = 'Failed';
+                document.getElementById('audio-status').style.color = '#f48771';
+            }
+        }
+
+        function flushAudioBuffer() {
+            if (!audioContext || audioQueue.length === 0) return;
+
+            try {
+                const frames = audioQueue.length / 2;
+                const buffer = audioContext.createBuffer(2, frames, audioContext.sampleRate);
+
+                const leftChannel = buffer.getChannelData(0);
+                const rightChannel = buffer.getChannelData(1);
+
+                for (let i = 0; i < frames; i++) {
+                    leftChannel[i] = audioQueue[i * 2];
+                    rightChannel[i] = audioQueue[i * 2 + 1];
+                }
+
+                const source = audioContext.createBufferSource();
+                source.buffer = buffer;
+                source.connect(audioContext.destination);
+
+                const playTime = Math.max(audioContext.currentTime, audioStartTime);
+                source.start(playTime);
+                audioStartTime = playTime + buffer.duration;
+
+                audioSamplesProcessed += frames;
+
+                // Clear queue
+                audioQueue.length = 0;
+
+            } catch (error) {
+                log(`Audio buffer flush error: ${error.message}`, 'error');
+            }
         }
 
         // Global module reference
@@ -154,8 +457,10 @@ HEAP Size: ${typeof heapSize === 'number' ? heapSize.toLocaleString() : heapSize
 Total Memory: ${typeof heapSize === 'number' ? (heapSize / 1024 / 1024).toFixed(2) : 'N/A'} MB</pre>
                 `;
 
-                // Enable test button
+                // Enable test buttons
                 document.getElementById('test-btn').disabled = false;
+                document.getElementById('rom-test-btn').disabled = false;
+                document.getElementById('graphics-test-btn').disabled = false;
 
                 log('Ready to run tests!', 'success');
             },
@@ -285,6 +590,703 @@ Total Memory: ${typeof heapSize === 'number' ? (heapSize / 1024 / 1024).toFixed(
             </div>`;
 
             resultsDiv.innerHTML = results;
+        }
+
+        // ROM Loading Tests
+        let romData = null;
+        let romPtr = 0;
+        let envCallback = null;
+        let coreInitialized = false;
+
+        async function runRomTests() {
+            if (!isModuleReady) {
+                log('Module not ready yet!', 'error');
+                return;
+            }
+
+            const resultsDiv = document.getElementById('rom-results');
+            resultsDiv.innerHTML = '<h3>Running ROM Loading Tests...</h3>';
+
+            let testsPassed = 0;
+            let testsFailed = 0;
+            let results = '';
+
+            // Helper function to run a test
+            function test(name, fn) {
+                try {
+                    results += `<div style="margin: 10px 0;"><strong>Test: ${name}</strong><br>`;
+                    const result = fn();
+                    results += `<span class="success">✓ PASSED</span>`;
+                    if (result) {
+                        results += `<pre>${result}</pre>`;
+                    }
+                    results += '</div>';
+                    testsPassed++;
+                    log(`Test "${name}" passed`, 'success');
+                } catch (error) {
+                    results += `<span class="error">✗ FAILED: ${error.message}</span></div>`;
+                    testsFailed++;
+                    log(`Test "${name}" failed: ${error.message}`, 'error');
+                    throw error; // Re-throw to stop further tests
+                }
+            }
+
+            // Helper for async tests
+            async function testAsync(name, fn) {
+                try {
+                    results += `<div style="margin: 10px 0;"><strong>Test: ${name}</strong><br>`;
+                    const result = await fn();
+                    results += `<span class="success">✓ PASSED</span>`;
+                    if (result) {
+                        results += `<pre>${result}</pre>`;
+                    }
+                    results += '</div>';
+                    testsPassed++;
+                    log(`Test "${name}" passed`, 'success');
+                    resultsDiv.innerHTML = results; // Update display
+                } catch (error) {
+                    results += `<span class="error">✗ FAILED: ${error.message}</span></div>`;
+                    testsFailed++;
+                    log(`Test "${name}" failed: ${error.message}`, 'error');
+                    resultsDiv.innerHTML = results; // Update display
+                    throw error; // Re-throw to stop further tests
+                }
+            }
+
+            try {
+                // Test 0a: Set environment callback (required before init)
+                test('retro_set_environment()', () => {
+                    if (!envCallback) {
+                        envCallback = Module.addFunction((cmd, data) => {
+                            // Minimal environment callback
+                            // In a real implementation, handle RETRO_ENVIRONMENT_* commands
+                            return 0; // false for most queries
+                        }, 'iii'); // return int, params: int, pointer
+                    }
+                    Module._retro_set_environment(envCallback);
+                    log('Environment callback set');
+                    return 'Environment callback registered';
+                });
+
+                // Test 0b: Initialize core (required before loading game)
+                test('retro_init()', () => {
+                    if (!coreInitialized) {
+                        Module._retro_init();
+                        coreInitialized = true;
+                        log('Core initialized');
+                    }
+                    return 'Core initialized successfully';
+                });
+
+                // Test 1: Fetch ROM file
+                await testAsync('Fetch ROM (WaveRace.n64)', async () => {
+                    log('Fetching roms/WaveRace.n64...');
+                    const response = await fetch('roms/WaveRace.n64');
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    }
+                    const arrayBuffer = await response.arrayBuffer();
+                    romData = new Uint8Array(arrayBuffer);
+                    log(`ROM loaded: ${romData.length} bytes (${(romData.length / 1024 / 1024).toFixed(2)} MB)`);
+                    return `ROM Size: ${romData.length.toLocaleString()} bytes (${(romData.length / 1024 / 1024).toFixed(2)} MB)`;
+                });
+
+                // Test 2: Allocate memory for ROM in WASM
+                test('Allocate WASM memory for ROM', () => {
+                    romPtr = Module._malloc(romData.length);
+                    if (romPtr === 0) {
+                        throw new Error('malloc returned NULL');
+                    }
+                    log(`ROM allocated at WASM address: 0x${romPtr.toString(16)}`);
+                    return `WASM Address: 0x${romPtr.toString(16)}\nSize: ${romData.length.toLocaleString()} bytes`;
+                });
+
+                // Test 3: Copy ROM data to WASM memory
+                test('Copy ROM data to WASM memory', () => {
+                    const startTime = performance.now();
+                    Module.HEAPU8.set(romData, romPtr);
+                    const elapsed = performance.now() - startTime;
+                    log(`ROM copied in ${elapsed.toFixed(2)} ms`);
+                    return `Copy time: ${elapsed.toFixed(2)} ms`;
+                });
+
+                // Test 4: Create retro_game_info structure
+                let gameInfoPtr = 0;
+                test('Create retro_game_info structure', () => {
+                    // struct retro_game_info {
+                    //     const char *path;    // offset 0
+                    //     const void *data;    // offset 4 (32-bit) or 8 (64-bit)
+                    //     size_t size;         // offset 8 or 16
+                    //     const char *meta;    // offset 12 or 24
+                    // }
+                    // For 32-bit WASM: 16 bytes total
+                    gameInfoPtr = Module._malloc(16);
+                    if (gameInfoPtr === 0) {
+                        throw new Error('malloc returned NULL for game info struct');
+                    }
+
+                    // Set path = NULL (we're providing data directly)
+                    Module.HEAPU32[gameInfoPtr/4 + 0] = 0;
+                    // Set data pointer to ROM buffer
+                    Module.HEAPU32[gameInfoPtr/4 + 1] = romPtr;
+                    // Set size
+                    Module.HEAPU32[gameInfoPtr/4 + 2] = romData.length;
+                    // Set meta = NULL
+                    Module.HEAPU32[gameInfoPtr/4 + 3] = 0;
+
+                    log(`retro_game_info struct created at 0x${gameInfoPtr.toString(16)}`);
+                    return `Struct Address: 0x${gameInfoPtr.toString(16)}\nData Pointer: 0x${romPtr.toString(16)}\nSize: ${romData.length}`;
+                });
+
+                // Test 5: Call retro_load_game()
+                test('retro_load_game()', () => {
+                    log('Calling retro_load_game()...');
+                    const result = Module._retro_load_game(gameInfoPtr);
+                    if (!result) {
+                        throw new Error('retro_load_game() returned false');
+                    }
+                    log('retro_load_game() succeeded!');
+                    return 'ROM loaded successfully!';
+                });
+
+                // Test 6: Check system RAM
+                test('Verify System RAM allocation', () => {
+                    const RETRO_MEMORY_SYSTEM_RAM = 0;
+                    const ramSize = Module._retro_get_memory_size(RETRO_MEMORY_SYSTEM_RAM);
+                    const ramPtr = Module._retro_get_memory_data(RETRO_MEMORY_SYSTEM_RAM);
+
+                    if (ramSize === 0) {
+                        throw new Error('System RAM size is 0');
+                    }
+                    if (ramPtr === 0) {
+                        throw new Error('System RAM pointer is NULL');
+                    }
+
+                    log(`System RAM: ${(ramSize / 1024 / 1024).toFixed(2)} MB at 0x${ramPtr.toString(16)}`);
+                    return `RAM Size: ${(ramSize / 1024 / 1024).toFixed(2)} MB\nRAM Address: 0x${ramPtr.toString(16)}`;
+                });
+
+                // Test 7: Get AV info
+                test('retro_get_system_av_info()', () => {
+                    // Allocate retro_system_av_info struct
+                    // struct retro_system_av_info {
+                    //     struct retro_game_geometry geometry; // 20 bytes (5 uints)
+                    //     struct retro_system_timing timing;   // 16 bytes (2 doubles)
+                    // }
+                    const avInfoPtr = Module._malloc(64); // Generous size
+
+                    Module._retro_get_system_av_info(avInfoPtr);
+
+                    // Parse geometry: base_width, base_height, max_width, max_height, aspect_ratio
+                    const baseWidth = Module.HEAPU32[avInfoPtr/4 + 0];
+                    const baseHeight = Module.HEAPU32[avInfoPtr/4 + 1];
+                    const maxWidth = Module.HEAPU32[avInfoPtr/4 + 2];
+                    const maxHeight = Module.HEAPU32[avInfoPtr/4 + 3];
+                    // aspect_ratio is a float at offset 16
+                    const aspectRatio = Module.HEAPF32[avInfoPtr/4 + 4];
+
+                    // Parse timing: fps (double), sample_rate (double)
+                    // Timing struct starts after geometry
+                    // On 32-bit WASM, doubles need 8-byte alignment
+                    // So timing likely starts at offset 24 (not 20) due to padding
+                    const timingOffset = 24;
+                    const fps = Module.HEAPF64[(avInfoPtr + timingOffset)/8];
+                    const sampleRate = Module.HEAPF64[(avInfoPtr + timingOffset + 8)/8];
+
+                    Module._free(avInfoPtr);
+
+                    // Validate values before using toFixed
+                    const fpsStr = (typeof fps === 'number' && !isNaN(fps)) ? fps.toFixed(2) : 'Unknown';
+                    const sampleRateStr = (typeof sampleRate === 'number' && !isNaN(sampleRate)) ? sampleRate.toFixed(0) : 'Unknown';
+                    const aspectStr = (typeof aspectRatio === 'number' && !isNaN(aspectRatio)) ? aspectRatio.toFixed(3) : 'Unknown';
+
+                    log(`Display: ${baseWidth}x${baseHeight} @ ${fpsStr} Hz`);
+                    log(`Max Resolution: ${maxWidth}x${maxHeight}`);
+                    log(`Aspect Ratio: ${aspectStr}`);
+                    log(`Audio Sample Rate: ${sampleRateStr} Hz`);
+
+                    return `Base Resolution: ${baseWidth}x${baseHeight}\nMax Resolution: ${maxWidth}x${maxHeight}\nAspect Ratio: ${aspectStr}\nFPS: ${fpsStr}\nSample Rate: ${sampleRateStr} Hz`;
+                });
+
+                // Display results summary
+                results += `<div style="margin-top: 20px; padding: 10px; background: #2d2d2d; border-radius: 3px;">
+                    <strong>Test Summary:</strong><br>
+                    <span class="success">Passed: ${testsPassed}</span><br>
+                    <span class="${testsFailed === 0 ? 'success' : 'error'}">Failed: ${testsFailed}</span><br>
+                    <strong>Total: ${testsPassed + testsFailed}</strong>
+                </div>`;
+
+                resultsDiv.innerHTML = results;
+                log('ROM loading tests completed successfully!', 'success');
+
+            } catch (error) {
+                // Error already logged by test helper
+                results += `<div style="margin-top: 20px; padding: 10px; background: #3e2a2a; border-radius: 3px;">
+                    <strong>Test Summary:</strong><br>
+                    <span class="success">Passed: ${testsPassed}</span><br>
+                    <span class="error">Failed: ${testsFailed}</span><br>
+                    <strong>Total: ${testsPassed + testsFailed}</strong><br>
+                    <span class="error">Testing stopped due to failure</span>
+                </div>`;
+                resultsDiv.innerHTML = results;
+            }
+        }
+
+        // Graphics + First Frame Tests (Milestone 09)
+        let gl = null;
+        let shaderProgram = null;
+        let frameTexture = null;
+        let quadVAO = null;
+        let videoRefreshCallback = null;
+        let audioSampleCallback = null;
+        let audioSampleBatchCallback = null;
+        let inputPollCallback = null;
+        let inputStateCallback = null;
+
+        function runGraphicsTests() {
+            if (!isModuleReady) {
+                log('Module not ready yet!', 'error');
+                return;
+            }
+
+            if (!coreInitialized || !romData) {
+                log('Please run ROM loading test first!', 'error');
+                alert('Please click "Load ROM & Test" button first to initialize the core and load a ROM.');
+                return;
+            }
+
+            const resultsDiv = document.getElementById('graphics-results');
+            resultsDiv.innerHTML = '<h3>Running Graphics Tests...</h3>';
+
+            let testsPassed = 0;
+            let testsFailed = 0;
+            let results = '';
+
+            function test(name, fn) {
+                try {
+                    results += `<div style="margin: 10px 0;"><strong>Test: ${name}</strong><br>`;
+                    const result = fn();
+                    results += `<span class="success">✓ PASSED</span>`;
+                    if (result) {
+                        results += `<pre>${result}</pre>`;
+                    }
+                    results += '</div>';
+                    testsPassed++;
+                    log(`Test "${name}" passed`, 'success');
+                    resultsDiv.innerHTML = results;
+                } catch (error) {
+                    results += `<span class="error">✗ FAILED: ${error.message}</span></div>`;
+                    testsFailed++;
+                    log(`Test "${name}" failed: ${error.message}`, 'error');
+                    resultsDiv.innerHTML = results;
+                    throw error;
+                }
+            }
+
+            try {
+                // Test 1: Initialize WebGL2 context
+                test('Initialize WebGL2 context', () => {
+                    const canvas = document.getElementById('gameCanvas');
+                    gl = canvas.getContext('webgl2');
+                    if (!gl) {
+                        throw new Error('WebGL2 not supported in this browser');
+                    }
+                    log('WebGL2 context created successfully');
+                    return `Canvas: ${canvas.width}x${canvas.height}`;
+                });
+
+                // Test 2: Compile shaders
+                test('Compile vertex and fragment shaders', () => {
+                    // Vertex shader - simple passthrough with texture coordinates
+                    const vertexShaderSource = `#version 300 es
+                        in vec2 a_position;
+                        in vec2 a_texCoord;
+                        out vec2 v_texCoord;
+                        void main() {
+                            gl_Position = vec4(a_position, 0.0, 1.0);
+                            v_texCoord = a_texCoord;
+                        }
+                    `;
+
+                    // Fragment shader - sample from texture
+                    const fragmentShaderSource = `#version 300 es
+                        precision mediump float;
+                        in vec2 v_texCoord;
+                        uniform sampler2D u_texture;
+                        out vec4 fragColor;
+                        void main() {
+                            fragColor = texture(u_texture, v_texCoord);
+                        }
+                    `;
+
+                    // Compile vertex shader
+                    const vertexShader = gl.createShader(gl.VERTEX_SHADER);
+                    gl.shaderSource(vertexShader, vertexShaderSource);
+                    gl.compileShader(vertexShader);
+                    if (!gl.getShaderParameter(vertexShader, gl.COMPILE_STATUS)) {
+                        throw new Error('Vertex shader compilation failed: ' + gl.getShaderInfoLog(vertexShader));
+                    }
+
+                    // Compile fragment shader
+                    const fragmentShader = gl.createShader(gl.FRAGMENT_SHADER);
+                    gl.shaderSource(fragmentShader, fragmentShaderSource);
+                    gl.compileShader(fragmentShader);
+                    if (!gl.getShaderParameter(fragmentShader, gl.COMPILE_STATUS)) {
+                        throw new Error('Fragment shader compilation failed: ' + gl.getShaderInfoLog(fragmentShader));
+                    }
+
+                    // Link program
+                    shaderProgram = gl.createProgram();
+                    gl.attachShader(shaderProgram, vertexShader);
+                    gl.attachShader(shaderProgram, fragmentShader);
+                    gl.linkProgram(shaderProgram);
+                    if (!gl.getProgramParameter(shaderProgram, gl.LINK_STATUS)) {
+                        throw new Error('Shader program linking failed: ' + gl.getProgramInfoLog(shaderProgram));
+                    }
+
+                    log('Shaders compiled and linked successfully');
+                    return 'Vertex and fragment shaders ready';
+                });
+
+                // Test 3: Set up quad geometry
+                test('Create fullscreen quad geometry', () => {
+                    const positions = new Float32Array([
+                        -1, -1,  0, 1,  // Bottom left
+                         1, -1,  1, 1,  // Bottom right
+                        -1,  1,  0, 0,  // Top left
+                         1,  1,  1, 0   // Top right
+                    ]);
+
+                    const vao = gl.createVertexArray();
+                    gl.bindVertexArray(vao);
+
+                    const buffer = gl.createBuffer();
+                    gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+                    gl.bufferData(gl.ARRAY_BUFFER, positions, gl.STATIC_DRAW);
+
+                    const a_position = gl.getAttribLocation(shaderProgram, 'a_position');
+                    const a_texCoord = gl.getAttribLocation(shaderProgram, 'a_texCoord');
+
+                    gl.enableVertexAttribArray(a_position);
+                    gl.vertexAttribPointer(a_position, 2, gl.FLOAT, false, 16, 0);
+
+                    gl.enableVertexAttribArray(a_texCoord);
+                    gl.vertexAttribPointer(a_texCoord, 2, gl.FLOAT, false, 16, 8);
+
+                    quadVAO = vao;
+
+                    log('Fullscreen quad geometry created');
+                    return 'Vertex array object ready';
+                });
+
+                // Test 4: Create frame texture
+                test('Create texture for frame buffer', () => {
+                    frameTexture = gl.createTexture();
+                    gl.bindTexture(gl.TEXTURE_2D, frameTexture);
+                    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+                    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+                    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+                    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+
+                    // Initialize with black texture
+                    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 320, 240, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+
+                    log('Frame texture created (320x240 RGBA)');
+                    return 'Texture ready for frame data';
+                });
+
+                // Test 5: Implement video refresh callback
+                test('Implement video refresh callback', () => {
+                    let videoCallbackCount = 0;
+                    let detectedPixelFormat = null;
+
+                    videoRefreshCallback = Module.addFunction((data, width, height, pitch) => {
+                        if (data === 0) {
+                            // NULL frame (duplicate previous) - this is normal
+                            return;
+                        }
+
+                        videoCallbackCount++;
+
+                        // Only log first frame for debugging
+                        if (videoCallbackCount === 1) {
+                            const bytesPerPixel = pitch / width;
+                            log(`Video refresh: ${width}x${height}, pitch=${pitch}, bpp=${bytesPerPixel}`);
+                            detectedPixelFormat = bytesPerPixel === 4 ? 'XRGB8888' : 'RGB565';
+                            log(`Detected pixel format: ${detectedPixelFormat}`);
+                        }
+
+                        // Read pixel data from WASM memory
+                        const bytesPerPixel = pitch / width;
+                        const frameSize = height * pitch;
+                        const frameData = new Uint8Array(Module.HEAPU8.buffer, data, frameSize);
+
+                        // Upload to texture
+                        gl.bindTexture(gl.TEXTURE_2D, frameTexture);
+
+                        if (bytesPerPixel === 4) {
+                            // XRGB8888 format - direct upload
+                            gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, width, height, 0, gl.RGBA, gl.UNSIGNED_BYTE, frameData);
+                        } else if (bytesPerPixel === 2) {
+                            // RGB565 format - needs conversion (this is slower)
+                            const rgba = new Uint8Array(width * height * 4);
+                            for (let i = 0; i < width * height; i++) {
+                                const rgb565 = (frameData[i * 2 + 1] << 8) | frameData[i * 2];
+                                const r = ((rgb565 >> 11) & 0x1F) << 3;
+                                const g = ((rgb565 >> 5) & 0x3F) << 2;
+                                const b = (rgb565 & 0x1F) << 3;
+                                rgba[i * 4 + 0] = r;
+                                rgba[i * 4 + 1] = g;
+                                rgba[i * 4 + 2] = b;
+                                rgba[i * 4 + 3] = 255;
+                            }
+                            gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, width, height, 0, gl.RGBA, gl.UNSIGNED_BYTE, rgba);
+                        }
+
+                        // Render to canvas
+                        gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
+                        gl.clearColor(0, 0, 0, 1);
+                        gl.clear(gl.COLOR_BUFFER_BIT);
+
+                        gl.useProgram(shaderProgram);
+                        gl.bindVertexArray(quadVAO);
+                        gl.bindTexture(gl.TEXTURE_2D, frameTexture);
+                        gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+                    }, 'viiii'); // void return, 4 int params
+
+                    Module._retro_set_video_refresh(videoRefreshCallback);
+                    log('Video refresh callback registered');
+                    return 'Video callback ready';
+                });
+
+                // Test 6: Implement REAL audio callbacks (Milestone 10)
+                test('Implement Web Audio API callbacks', () => {
+                    // Single sample callback
+                    audioSampleCallback = Module.addFunction((left, right) => {
+                        if (!audioInitialized) return;
+
+                        // Convert int16 samples to float32 [-1.0, 1.0]
+                        const leftFloat = ((left << 16) >> 16) / 32768.0;  // Sign extend
+                        const rightFloat = ((right << 16) >> 16) / 32768.0;
+
+                        audioQueue.push(leftFloat, rightFloat);
+
+                        // Flush when buffer is full
+                        if (audioQueue.length >= audioBufferSize * 2) {
+                            flushAudioBuffer();
+                        }
+                    }, 'vii');
+
+                    // Batch sample callback (more efficient)
+                    audioSampleBatchCallback = Module.addFunction((data, frames) => {
+                        if (!audioInitialized) return frames;
+
+                        // data = pointer to int16 stereo samples
+                        // frames = number of stereo sample pairs
+                        for (let i = 0; i < frames; i++) {
+                            const left = Module.HEAP16[data/2 + i*2];
+                            const right = Module.HEAP16[data/2 + i*2 + 1];
+
+                            audioQueue.push(left / 32768.0, right / 32768.0);
+                        }
+
+                        // Flush periodically
+                        if (audioQueue.length >= audioBufferSize * 2) {
+                            flushAudioBuffer();
+                        }
+
+                        return frames;
+                    }, 'iii');
+
+                    Module._retro_set_audio_sample(audioSampleCallback);
+                    Module._retro_set_audio_sample_batch(audioSampleBatchCallback);
+                    log('Web Audio API callbacks registered');
+                    return 'Audio callbacks ready (use "Initialize Audio" button to enable sound)';
+                });
+
+                // Test 7: Implement REAL input callbacks (Milestone 10)
+                test('Implement keyboard and gamepad input callbacks', () => {
+                    // Input poll callback - called before checking input state
+                    inputPollCallback = Module.addFunction(() => {
+                        // Update gamepad state
+                        updateGamepad();
+                    }, 'v');
+
+                    // Input state callback - queries button/analog state
+                    inputStateCallback = Module.addFunction((port, device, index, id) => {
+                        // port: controller port (0-3)
+                        // device: RETRO_DEVICE_JOYPAD (1) or RETRO_DEVICE_ANALOG (2)
+                        // index: for analog (0=left stick, 1=right stick)
+                        // id: button ID or axis ID
+
+                        if (port !== 0) return 0; // Only port 0 supported
+
+                        if (device === 1) {
+                            // RETRO_DEVICE_JOYPAD - digital buttons
+                            return inputState.buttons.has(id) ? 1 : 0;
+                        } else if (device === 2) {
+                            // RETRO_DEVICE_ANALOG - analog sticks
+                            if (index === 0) { // Left stick (index 0)
+                                if (id === 0) return inputState.analogX; // X axis
+                                if (id === 1) return inputState.analogY; // Y axis
+                            }
+                        }
+
+                        return 0;
+                    }, 'iiiii');
+
+                    Module._retro_set_input_poll(inputPollCallback);
+                    Module._retro_set_input_state(inputStateCallback);
+                    log('Input callbacks registered - keyboard and gamepad ready!');
+                    return 'Input callbacks ready (press keys or connect gamepad to test)';
+                });
+
+                // Test 8: Execute first frame
+                test('Execute retro_run() - First Frame', () => {
+                    log('Calling retro_run() to execute first frame...');
+                    const startTime = performance.now();
+                    Module._retro_run();
+                    const elapsed = performance.now() - startTime;
+                    log(`retro_run() completed in ${elapsed.toFixed(2)} ms`);
+                    return `Frame time: ${elapsed.toFixed(2)} ms`;
+                });
+
+                // Display results summary
+                results += `<div style="margin-top: 20px; padding: 10px; background: #2d2d2d; border-radius: 3px;">
+                    <strong>Test Summary:</strong><br>
+                    <span class="success">Passed: ${testsPassed}</span><br>
+                    <span class="${testsFailed === 0 ? 'success' : 'error'}">Failed: ${testsFailed}</span><br>
+                    <strong>Total: ${testsPassed + testsFailed}</strong>
+                </div>`;
+
+                resultsDiv.innerHTML = results;
+                log('Graphics tests completed! Check the canvas above for rendered frame.', 'success');
+
+                // Enable frame execution buttons
+                document.getElementById('run-frames-btn').disabled = false;
+                document.getElementById('continuous-btn').disabled = false;
+
+            } catch (error) {
+                results += `<div style="margin-top: 20px; padding: 10px; background: #3e2a2a; border-radius: 3px;">
+                    <strong>Test Summary:</strong><br>
+                    <span class="success">Passed: ${testsPassed}</span><br>
+                    <span class="error">Failed: ${testsFailed}</span><br>
+                    <strong>Total: ${testsPassed + testsFailed}</strong><br>
+                    <span class="error">Testing stopped due to failure</span>
+                </div>`;
+                resultsDiv.innerHTML = results;
+            }
+        }
+
+        // Multi-frame execution with FPS counter
+        let frameCount = 0;
+        let isContinuous = false;
+        let animationFrameId = null;
+        let lastFpsTime = 0;
+        let fpsFrameCount = 0;
+        let lastFrameTime = 0;
+
+        function updateFpsDisplay() {
+            const now = performance.now();
+            const elapsed = now - lastFpsTime;
+
+            if (elapsed >= 1000) { // Update every second
+                const fps = (fpsFrameCount * 1000 / elapsed).toFixed(1);
+                const avgFrameTime = (elapsed / fpsFrameCount).toFixed(2);
+
+                document.getElementById('fps-display').textContent = `${fps} FPS`;
+                document.getElementById('frame-time-display').textContent = `${avgFrameTime} ms/frame`;
+                document.getElementById('total-frames').textContent = `${frameCount} frames`;
+
+                // Color code FPS
+                const fpsDisplay = document.getElementById('fps-display');
+                if (fps >= 55) {
+                    fpsDisplay.style.color = '#4ec9b0'; // green
+                } else if (fps >= 30) {
+                    fpsDisplay.style.color = '#dcdcaa'; // yellow
+                } else {
+                    fpsDisplay.style.color = '#f48771'; // red
+                }
+
+                lastFpsTime = now;
+                fpsFrameCount = 0;
+            }
+        }
+
+        function runMultipleFrames() {
+            if (!gl || !shaderProgram) {
+                log('Please run graphics setup first!', 'error');
+                return;
+            }
+
+            log('Running 60 frames...');
+            const startTime = performance.now();
+
+            for (let i = 0; i < 60; i++) {
+                Module._retro_run();
+                frameCount++;
+            }
+
+            const elapsed = performance.now() - startTime;
+            log(`Executed 60 frames in ${elapsed.toFixed(2)} ms (${(elapsed / 60).toFixed(2)} ms/frame, ${(60000 / elapsed).toFixed(1)} FPS)`);
+        }
+
+        function toggleContinuous() {
+            isContinuous = !isContinuous;
+            const btn = document.getElementById('continuous-btn');
+
+            if (isContinuous) {
+                btn.textContent = 'Stop Continuous';
+                lastFpsTime = performance.now();
+                fpsFrameCount = 0;
+                log('Starting continuous emulation loop...');
+                continuousLoop();
+            } else {
+                btn.textContent = 'Start Continuous';
+                if (animationFrameId) {
+                    cancelAnimationFrame(animationFrameId);
+                }
+                log('Stopped continuous emulation');
+            }
+        }
+
+        // Performance profiling
+        let cpuTimeTotal = 0;
+        let gpuTimeTotal = 0;
+        let profileSamples = 0;
+
+        function continuousLoop() {
+            if (!isContinuous) return;
+
+            const frameStart = performance.now();
+            const cpuStart = performance.now();
+
+            Module._retro_run();
+
+            const cpuTime = performance.now() - cpuStart;
+            const gpuStart = performance.now();
+
+            // GPU work happens during run, but we can estimate overhead
+            const gpuTime = performance.now() - gpuStart;
+
+            cpuTimeTotal += cpuTime;
+            gpuTimeTotal += gpuTime;
+            profileSamples++;
+
+            // Log profiling every 5 seconds
+            if (profileSamples >= 300 && profileSamples % 300 === 0) {
+                const avgCpu = (cpuTimeTotal / profileSamples).toFixed(2);
+                const avgGpu = (gpuTimeTotal / profileSamples).toFixed(2);
+                log(`Profiling: CPU=${avgCpu}ms/frame, GPU=${avgGpu}ms/frame (${profileSamples} samples)`);
+            }
+
+            frameCount++;
+            fpsFrameCount++;
+
+            lastFrameTime = performance.now() - frameStart;
+            updateFpsDisplay();
+
+            animationFrameId = requestAnimationFrame(continuousLoop);
         }
 
         // Load the module
