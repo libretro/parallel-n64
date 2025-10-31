@@ -137,6 +137,16 @@
             <span id="audio-info" style="margin-left: 10px;"></span>
         </div>
         <div style="margin: 10px 0;">
+            <strong>Audio-Sync Timing:</strong>
+            <label style="cursor: pointer; color: #dcdcaa;">
+                <input type="checkbox" id="audio-sync-checkbox" onchange="toggleAudioSync()" style="margin-left: 5px;">
+                Enable audio-driven frame timing (recommended for accurate speed)
+            </label>
+            <div style="font-size: 11px; color: #858585; margin-top: 5px; margin-left: 20px;">
+                When enabled, emulation speed is locked to audio playback for perfect timing.
+            </div>
+        </div>
+        <div style="margin: 10px 0;">
             <strong>Gamepad:</strong> <span id="gamepad-status" style="color: #cccccc;">No gamepad detected</span>
         </div>
         <details style="margin-top: 10px;">
@@ -354,15 +364,20 @@ Right Stick      = C-Buttons</pre>
         }
 
         // ============================================================
-        // AUDIO SYSTEM (Milestone 10)
+        // AUDIO SYSTEM - AUDIO-SYNC TIMING (Based on N64Wasm approach)
         // ============================================================
 
         let audioContext = null;
-        let audioQueue = [];
-        let audioStartTime = 0;
-        const audioBufferSize = 2048;
+        let scriptProcessor = null;
         let audioInitialized = false;
-        let audioSamplesProcessed = 0;
+        let audioSyncEnabled = false;
+
+        // Ring buffer for audio samples (stereo pairs)
+        const AUDIO_RING_BUFFER_SIZE = 64000; // samples per channel
+        const AUDIO_CALLBACK_BUFFER_SIZE = 1024; // samples per audio callback
+        let audioRingBuffer = new Float32Array(AUDIO_RING_BUFFER_SIZE * 2); // stereo
+        let audioWritePosition = 0;
+        let audioReadPosition = 0;
 
         function initAudio() {
             if (audioInitialized) {
@@ -376,14 +391,25 @@ Right Stick      = C-Buttons</pre>
                     latencyHint: 'interactive'
                 });
 
-                audioStartTime = audioContext.currentTime;
+                // Create ScriptProcessor for audio callback
+                // Note: ScriptProcessor is deprecated but still widely supported
+                // For production, consider migrating to AudioWorklet
+                scriptProcessor = audioContext.createScriptProcessor(
+                    AUDIO_CALLBACK_BUFFER_SIZE,
+                    2, // 2 input channels
+                    2  // 2 output channels (stereo)
+                );
+
+                scriptProcessor.onaudioprocess = audioProcessCallback;
+                scriptProcessor.connect(audioContext.destination);
+
                 audioInitialized = true;
 
                 document.getElementById('audio-status').textContent = 'Initialized';
                 document.getElementById('audio-status').style.color = '#4ec9b0';
-                document.getElementById('audio-info').textContent = `${audioContext.sampleRate} Hz`;
+                document.getElementById('audio-info').textContent = `${audioContext.sampleRate} Hz (ring buffer)`;
 
-                log(`Audio context initialized: ${audioContext.sampleRate} Hz`, 'success');
+                log(`Audio context initialized: ${audioContext.sampleRate} Hz with audio-sync timing`, 'success');
 
                 // Resume context if suspended (required by browser autoplay policy)
                 if (audioContext.state === 'suspended') {
@@ -399,36 +425,82 @@ Right Stick      = C-Buttons</pre>
             }
         }
 
-        function flushAudioBuffer() {
-            if (!audioContext || audioQueue.length === 0) return;
+        // Check if we have enough samples in the ring buffer
+        function hasEnoughSamples() {
+            const available = (audioWritePosition - audioReadPosition + AUDIO_RING_BUFFER_SIZE) % AUDIO_RING_BUFFER_SIZE;
+            return available >= AUDIO_CALLBACK_BUFFER_SIZE;
+        }
 
-            try {
-                const frames = audioQueue.length / 2;
-                const buffer = audioContext.createBuffer(2, frames, audioContext.sampleRate);
+        // Audio callback - this drives frame generation when audio-sync is enabled
+        function audioProcessCallback(event) {
+            if (!audioInitialized || !coreInitialized || !romData) {
+                return; // Not ready yet
+            }
 
-                const leftChannel = buffer.getChannelData(0);
-                const rightChannel = buffer.getChannelData(1);
+            const outputBuffer = event.outputBuffer;
+            const outputL = outputBuffer.getChannelData(0);
+            const outputR = outputBuffer.getChannelData(1);
 
-                for (let i = 0; i < frames; i++) {
-                    leftChannel[i] = audioQueue[i * 2];
-                    rightChannel[i] = audioQueue[i * 2 + 1];
+            // If audio-sync is enabled, generate frames as needed to fill audio buffer
+            if (audioSyncEnabled && isContinuous) {
+                // Run emulator frames until we have enough audio samples
+                let attempts = 0;
+                while (!hasEnoughSamples() && attempts < 3) {
+                    Module._retro_run();
+                    frameCount++;
+                    fpsFrameCount++;
+                    attempts++;
                 }
+            }
 
-                const source = audioContext.createBufferSource();
-                source.buffer = buffer;
-                source.connect(audioContext.destination);
+            // Copy samples from ring buffer to output
+            for (let i = 0; i < AUDIO_CALLBACK_BUFFER_SIZE; i++) {
+                const available = (audioWritePosition - audioReadPosition + AUDIO_RING_BUFFER_SIZE) % AUDIO_RING_BUFFER_SIZE;
 
-                const playTime = Math.max(audioContext.currentTime, audioStartTime);
-                source.start(playTime);
-                audioStartTime = playTime + buffer.duration;
+                if (available > 0) {
+                    // Read from ring buffer
+                    const readIdx = audioReadPosition * 2; // stereo
+                    outputL[i] = audioRingBuffer[readIdx];
+                    outputR[i] = audioRingBuffer[readIdx + 1];
 
-                audioSamplesProcessed += frames;
+                    audioReadPosition = (audioReadPosition + 1) % AUDIO_RING_BUFFER_SIZE;
+                } else {
+                    // Buffer underrun - output silence
+                    outputL[i] = 0;
+                    outputR[i] = 0;
+                }
+            }
+        }
 
-                // Clear queue
-                audioQueue.length = 0;
+        // Write samples to ring buffer (called from libretro audio callbacks)
+        function writeToRingBuffer(leftSample, rightSample) {
+            const writeIdx = audioWritePosition * 2; // stereo
+            audioRingBuffer[writeIdx] = leftSample;
+            audioRingBuffer[writeIdx + 1] = rightSample;
+            audioWritePosition = (audioWritePosition + 1) % AUDIO_RING_BUFFER_SIZE;
+        }
 
-            } catch (error) {
-                log(`Audio buffer flush error: ${error.message}`, 'error');
+        // Toggle audio-sync mode
+        function toggleAudioSync() {
+            const checkbox = document.getElementById('audio-sync-checkbox');
+            audioSyncEnabled = checkbox.checked;
+
+            if (audioSyncEnabled) {
+                log('Audio-sync timing ENABLED - emulation will be driven by audio callback', 'success');
+                if (!audioInitialized) {
+                    log('Please initialize audio first to use audio-sync timing', 'info');
+                }
+            } else {
+                log('Audio-sync timing DISABLED - using classic RAF timing', 'info');
+            }
+
+            // If emulation is running, restart with new timing mode
+            if (isContinuous) {
+                const wasRunning = isContinuous;
+                toggleContinuous(); // Stop
+                setTimeout(() => {
+                    toggleContinuous(); // Restart with new timing
+                }, 100);
             }
         }
 
@@ -1059,9 +1131,9 @@ Total Memory: ${typeof heapSize === 'number' ? (heapSize / 1024 / 1024).toFixed(
                     return 'Video callback ready';
                 });
 
-                // Test 6: Implement REAL audio callbacks (Milestone 10)
-                test('Implement Web Audio API callbacks', () => {
-                    // Single sample callback
+                // Test 6: Implement audio callbacks with ring buffer
+                test('Implement audio callbacks with ring buffer', () => {
+                    // Single sample callback - writes directly to ring buffer
                     audioSampleCallback = Module.addFunction((left, right) => {
                         if (!audioInitialized) return;
 
@@ -1069,15 +1141,10 @@ Total Memory: ${typeof heapSize === 'number' ? (heapSize / 1024 / 1024).toFixed(
                         const leftFloat = ((left << 16) >> 16) / 32768.0;  // Sign extend
                         const rightFloat = ((right << 16) >> 16) / 32768.0;
 
-                        audioQueue.push(leftFloat, rightFloat);
-
-                        // Flush when buffer is full
-                        if (audioQueue.length >= audioBufferSize * 2) {
-                            flushAudioBuffer();
-                        }
+                        writeToRingBuffer(leftFloat, rightFloat);
                     }, 'vii');
 
-                    // Batch sample callback (more efficient)
+                    // Batch sample callback (more efficient) - writes directly to ring buffer
                     audioSampleBatchCallback = Module.addFunction((data, frames) => {
                         if (!audioInitialized) return frames;
 
@@ -1087,12 +1154,7 @@ Total Memory: ${typeof heapSize === 'number' ? (heapSize / 1024 / 1024).toFixed(
                             const left = Module.HEAP16[data/2 + i*2];
                             const right = Module.HEAP16[data/2 + i*2 + 1];
 
-                            audioQueue.push(left / 32768.0, right / 32768.0);
-                        }
-
-                        // Flush periodically
-                        if (audioQueue.length >= audioBufferSize * 2) {
-                            flushAudioBuffer();
+                            writeToRingBuffer(left / 32768.0, right / 32768.0);
                         }
 
                         return frames;
@@ -1239,8 +1301,17 @@ Total Memory: ${typeof heapSize === 'number' ? (heapSize / 1024 / 1024).toFixed(
                 btn.textContent = 'Stop Continuous';
                 lastFpsTime = performance.now();
                 fpsFrameCount = 0;
-                log('Starting continuous emulation loop...');
-                continuousLoop();
+
+                if (audioSyncEnabled && audioInitialized) {
+                    log('Starting continuous emulation with AUDIO-SYNC timing...');
+                    log('Frames will be generated by audio callback, not RAF');
+                    // Audio callback will drive frame generation
+                    // We still need RAF for FPS display updates
+                    rafForDisplayOnly();
+                } else {
+                    log('Starting continuous emulation with RAF timing (classic mode)...');
+                    continuousLoopRAF();
+                }
             } else {
                 btn.textContent = 'Start Continuous';
                 if (animationFrameId) {
@@ -1250,12 +1321,21 @@ Total Memory: ${typeof heapSize === 'number' ? (heapSize / 1024 / 1024).toFixed(
             }
         }
 
+        // RAF loop for display updates only (when audio-sync is active)
+        function rafForDisplayOnly() {
+            if (!isContinuous) return;
+
+            updateFpsDisplay();
+            animationFrameId = requestAnimationFrame(rafForDisplayOnly);
+        }
+
         // Performance profiling
         let cpuTimeTotal = 0;
         let gpuTimeTotal = 0;
         let profileSamples = 0;
 
-        function continuousLoop() {
+        // Classic RAF-driven emulation loop (fallback when audio-sync disabled)
+        function continuousLoopRAF() {
             if (!isContinuous) return;
 
             const frameStart = performance.now();
@@ -1286,7 +1366,7 @@ Total Memory: ${typeof heapSize === 'number' ? (heapSize / 1024 / 1024).toFixed(
             lastFrameTime = performance.now() - frameStart;
             updateFpsDisplay();
 
-            animationFrameId = requestAnimationFrame(continuousLoop);
+            animationFrameId = requestAnimationFrame(continuousLoopRAF);
         }
 
         // Load the module
