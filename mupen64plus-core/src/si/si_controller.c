@@ -139,7 +139,7 @@ int read_si_regs(void* opaque, uint32_t address, uint32_t* value)
     struct si_controller* si = (struct si_controller*)opaque;
     uint32_t reg             = SI_REG(address);
 
-    *value                   = si->regs[reg];
+    *value                   = (reg < SI_REGS_COUNT) ? si->regs[reg] : 0u;
 
     return 0;
 }
