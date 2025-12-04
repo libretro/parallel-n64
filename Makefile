@@ -10,9 +10,9 @@ GLIDEN64CORE=0
 GLIDEN64ES=0
 HAVE_RSP_DUMP=0
 HAVE_RDP_DUMP=0
-HAVE_GLIDE64=1
+HAVE_GLIDE64=0
 HAVE_GLN64=1
-HAVE_RICE=1
+HAVE_RICE=0
 HAVE_PARALLEL?=0
 HAVE_PARALLEL_RSP?=0
 STATIC_LINKING=0
@@ -482,21 +482,38 @@ else ifeq ($(platform), qnx)
 
 # emscripten
 else ifeq ($(platform), emscripten)
-   TARGET := $(TARGET_NAME)_libretro_$(platform).bc
+   TARGET := $(TARGET_NAME)_libretro.js
    GLES := 1
    WITH_DYNAREC :=
 
    HAVE_PARALLEL = 0
    HAVE_THR_AL = 1
-   CPUFLAGS += -DNOSSE -DEMSCRIPTEN -DNO_ASM -DNO_LIBCO
+   CPUFLAGS += -DNOSSE -DEMSCRIPTEN -DNO_ASM -DNO_LIBCO -msimd128
 
    WITH_DYNAREC =
    CC = emcc
    CXX = em++
+   LD = emcc
    HAVE_NEON = 0
    PLATFORM_EXT := unix
-   STATIC_LINKING = 1
-   SOURCES_C += $(CORE_DIR)/src/r4300/empty_dynarec.c
+   STATIC_LINKING = 0
+
+   # Emscripten linker flags
+   LDFLAGS += -O3 \
+              -s WASM=1 \
+              -s EXPORTED_FUNCTIONS='["_retro_init","_retro_deinit","_retro_api_version","_retro_get_system_info","_retro_get_system_av_info","_retro_set_environment","_retro_set_video_refresh","_retro_set_audio_sample","_retro_set_audio_sample_batch","_retro_set_input_poll","_retro_set_input_state","_retro_set_controller_port_device","_retro_reset","_retro_run","_retro_serialize_size","_retro_serialize","_retro_unserialize","_retro_cheat_reset","_retro_cheat_set","_retro_load_game","_retro_load_game_special","_retro_unload_game","_retro_get_region","_retro_get_memory_data","_retro_get_memory_size","_malloc","_free"]' \
+              -s EXPORTED_RUNTIME_METHODS='["ccall","cwrap","UTF8ToString","addFunction","HEAPU8","HEAPU32","HEAP16","HEAPF32","HEAPF64"]' \
+              -s ALLOW_MEMORY_GROWTH=1 \
+              -s MAXIMUM_MEMORY=512MB \
+              -s INITIAL_MEMORY=256MB \
+              -s STACK_SIZE=5MB \
+              -s NO_EXIT_RUNTIME=1 \
+              -s ASSERTIONS=0 \
+              -s ALLOW_TABLE_GROWTH=1 \
+              -s AGGRESSIVE_VARIABLE_ELIMINATION=1 \
+              -s ELIMINATE_DUPLICATE_FUNCTIONS=1 \
+              --closure 0 \
+              --no-entry
 
 # PlayStation Vita
 else ifneq (,$(findstring vita,$(platform)))
