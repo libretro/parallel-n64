@@ -27,10 +27,8 @@ u32 SR[32];
 typedef VECTOR_OPERATION(*p_vector_func)(v16, v16);
 
 pu8 DRAM;
-
-// NOTE: Links against GLideN64\src\N64.cpp due to conflicts and maintenance efforts
-extern pu8 DMEM;
-extern pu8 IMEM;
+pu8 DMEM;
+pu8 IMEM;
 
 NOINLINE void res_S(void)
 {
