@@ -2855,7 +2855,7 @@ static void load_assemble(int i,struct regstat *i_regs)
   int s,th,tl,addr,map=-1,cache=-1;
   int offset;
   int jaddr=0;
-  int memtarget,c=0;
+  int memtarget=0,c=0;
   u_int hr,reglist=0;
   th=get_reg(i_regs->regmap,rt1[i]|64);
   tl=get_reg(i_regs->regmap,rt1[i]);
@@ -3128,7 +3128,7 @@ static void store_assemble(int i,struct regstat *i_regs)
   int addr,temp;
   int offset;
   int jaddr=0,jaddr2,type;
-  int memtarget,c=0;
+  int memtarget=0,c=0;
   int agr=AGEN1+(i&1);
   u_int hr,reglist=0;
   th=get_reg(i_regs->regmap,rs2[i]|64);
@@ -3320,7 +3320,7 @@ static void storelr_assemble(int i,struct regstat *i_regs)
   int jaddr=0,jaddr2;
   int case1,case2,case3;
   int done0,done1,done2;
-  int memtarget,c=0;
+  int memtarget=0,c=0;
   int agr=AGEN1+(i&1);
   u_int hr,reglist=0;
   th=get_reg(i_regs->regmap,rs2[i]|64);
