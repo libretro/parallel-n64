@@ -219,7 +219,7 @@ public:
             intptr_t tiny_off = ((intptr_t) pfunc) - out;
             assert(tiny_off>=-1048576&&tiny_off<1048576);
             // adr xRT, pdata
-            next() = 0x10000000|((u_int)tiny_off&0x3)<<29|(((u_int)tiny_off>>2)&0x7ffff)<<5|rt;
+            next() = 0x10000000|((uint32_t)tiny_off&0x3)<<29|(((uint32_t)tiny_off>>2)&0x7ffff)<<5|rt;
             // ldr xRT, [xRT]
             next() = 0xf9400000|rt<<5|rt;
         }

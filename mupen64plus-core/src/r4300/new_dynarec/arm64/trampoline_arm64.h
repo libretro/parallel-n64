@@ -1,6 +1,7 @@
 #pragma once
 
 #include <stdint.h>
+#include <stddef.h>
 #ifdef __APPLE__
 #include <sys/types.h>
 #endif

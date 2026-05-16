@@ -1,6 +1,6 @@
 #pragma once
 
-#if defined(__arm64__) || defined(__arm__)
+#if defined(__arm64__) || defined(__aarch64__) || defined(__arm__)
 
 #ifdef __APPLE__
 #include <libkern/OSCacheControl.h>
