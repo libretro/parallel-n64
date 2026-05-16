@@ -22,6 +22,7 @@
 #include "rsp_core.h"
 
 #include "main/main.h"
+#include "main/device.h"
 #include "main/profile.h"
 #include "main/rom.h"
 #include "memory/memory.h"
