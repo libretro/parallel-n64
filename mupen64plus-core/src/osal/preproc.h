@@ -53,7 +53,14 @@
 
   #include <limits.h>  // for PATH_MAX
 
+  /* MinGW builds take this branch (it skips the MSVC-only redefines
+   * above) but still target Windows, where backslash is the native
+   * path separator. */
+#if defined(_WIN32)
+  #define OSAL_DIR_SEPARATORS           "\\/"
+#else
   #define OSAL_DIR_SEPARATORS           "/"
+#endif
 
   /* PATH_MAX only may be defined by limits.h */
   #ifndef PATH_MAX
