@@ -24,7 +24,7 @@
 
 /* This fixes compilation for classic and rpi platforms by adding some stubs */
 
-#ifdef ARM_FIX
+#ifndef HAVE_DYNAREC_HACKTARUX
 
 void init_assembler(void *block_jumps_table, int block_jumps_number, void *block_riprel_table, int block_riprel_number)
 {
