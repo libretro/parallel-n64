@@ -244,21 +244,21 @@ static void remove_interrupt_event(void)
       : 0;
 }
 
-unsigned int get_event(int type)
+unsigned int* get_event(int type)
 {
    struct node* e = q.first;
 
    if (e == NULL)
-      return 0;
+      return NULL;
 
    if (e->data.type == type)
-      return e->data.count;
+      return &e->data.count;
 
    for(; e->next != NULL && e->next->data.type != type; e = e->next);
 
    return (e->next != NULL)
-      ? e->next->data.count
-      : 0;
+      ? &e->next->data.count
+      : NULL;
 }
 
 int get_next_event_type(void)
