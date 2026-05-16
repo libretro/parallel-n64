@@ -27,11 +27,11 @@
 #include "fb.h"
 
 #ifndef DPC_REG
-#define DPC_REG(a)   ((a & 0xffff) >> 2)
+#define DPC_REG(a)   ((a & 0x1f) >> 2)
 #endif
 
 #ifndef DPS_REG
-#define DPS_REG(a)   ((a & 0xffff) >> 2)
+#define DPS_REG(a)   ((a & 0x1f) >> 2)
 #endif
 
 struct r4300_core;

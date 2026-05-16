@@ -32,7 +32,7 @@
 #include "summercart.h"
 
 #ifndef PI_REG
-#define PI_REG(a) ((a & 0xffff) >> 2)
+#define PI_REG(a) ((a & 0x3f) >> 2)
 #endif
 
 struct r4300_core;

@@ -27,7 +27,7 @@
 #include "api/m64p_types.h"
 
 #ifndef VI_REG
-#define VI_REG(a) ((a & 0xFFFF) >> 2)
+#define VI_REG(a) ((a & 0x3f) >> 2)
 #endif
 
 struct r4300_core;

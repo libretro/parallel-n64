@@ -29,11 +29,11 @@
 #endif
 
 #ifndef RSP_REG
-#define RSP_REG(a)      ((a & 0xffff) >> 2)
+#define RSP_REG(a)      ((a & 0x1f) >> 2)
 #endif
 
 #ifndef RSP_REG2
-#define RSP_REG2(a)     ((a & 0xffff) >> 2)
+#define RSP_REG2(a)     ((a & 0x1f) >> 2)
 #endif
 
 struct r4300_core;

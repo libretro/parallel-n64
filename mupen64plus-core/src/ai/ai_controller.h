@@ -28,7 +28,7 @@
 #include <stdint.h>
 
 #ifndef AI_REG
-#define AI_REG(a) ((a & 0xFFFF) >> 2)
+#define AI_REG(a) ((a & 0x1f) >> 2)
 #endif
 
 struct r4300_core;

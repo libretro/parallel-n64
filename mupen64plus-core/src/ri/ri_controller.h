@@ -27,7 +27,7 @@
 #include "rdram.h"
 
 #ifndef RI_REG
-#define RI_REG(a) ((a & 0xffff) >> 2)
+#define RI_REG(a) ((a & 0x1f) >> 2)
 #endif
 
 enum ri_registers

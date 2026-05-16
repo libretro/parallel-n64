@@ -27,7 +27,7 @@
 #include "pif.h"
 
 #ifndef SI_REG
-#define SI_REG(a) ((a & 0xffff) >> 2)
+#define SI_REG(a) ((a & 0x1f) >> 2)
 #endif
 
 struct r4300_core;
