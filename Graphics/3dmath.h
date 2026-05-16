@@ -32,7 +32,7 @@ static INLINE void NormalizeVector(float *v)
    v[2] /= len;
 }
 
-void TransformVectorNormalize(float vec[3], float mtx[4][4]);
+void TransformVectorNormalize(float *vec, float mtx[4][4]);
 
 #ifdef __cplusplus
 }

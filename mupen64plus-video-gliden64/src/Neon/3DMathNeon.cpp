@@ -50,7 +50,7 @@ void MultMatrix2(float m0[4][4], float m1[4][4])
     MultMatrix(m0, m1, m0);
 }
 
-void TransformVectorNormalize(float vec[3], float mtx[4][4])
+void TransformVectorNormalize(float *vec, float mtx[4][4])
 {
     // Load mtx
     float32x4x4_t _mtx;
@@ -94,7 +94,7 @@ void TransformVectorNormalize(float vec[3], float mtx[4][4])
     vec[2] = product[2];
 }
 
-void InverseTransformVectorNormalize(float src[3], float dst[3], float mtx[4][4])
+void InverseTransformVectorNormalize(float *src, float *dst, float mtx[4][4])
 {
     // Load mtx
     float32x4x4_t _mtx = vld4q_f32(mtx[0]);
@@ -351,7 +351,7 @@ void InverseTransformVectorNormalize7(float src[4][3], float dst[4][3], float mt
 
 }
 
-void Normalize(float v[3])
+void Normalize(float *v)
 {
     // Load vector
     float32x4_t product = {v[0], v[1], v[2], 0.0};

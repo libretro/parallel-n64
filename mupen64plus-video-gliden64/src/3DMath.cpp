@@ -20,7 +20,7 @@ void MultMatrix2(float m0[4][4], float m1[4][4])
 	memcpy( m0, dst, sizeof(float) * 16 );
 }
 
-void TransformVectorNormalize(float vec[3], float mtx[4][4])
+void TransformVectorNormalize(float *vec, float mtx[4][4])
 {
 	float vres[3];
 	vres[0] = mtx[0][0] * vec[0] + mtx[1][0] * vec[1] + mtx[2][0] * vec[2];
@@ -33,7 +33,7 @@ void TransformVectorNormalize(float vec[3], float mtx[4][4])
 	Normalize(vec);
 }
 
-void InverseTransformVectorNormalize(float src[3], float dst[3], float mtx[4][4])
+void InverseTransformVectorNormalize(float *src, float *dst, float mtx[4][4])
 {
 	dst[0] = mtx[0][0] * src[0] + mtx[0][1] * src[1] + mtx[0][2] * src[2];
 	dst[1] = mtx[1][0] * src[0] + mtx[1][1] * src[1] + mtx[1][2] * src[2];
@@ -42,7 +42,7 @@ void InverseTransformVectorNormalize(float src[3], float dst[3], float mtx[4][4]
 	Normalize(dst);
 }
 
-void Normalize(float v[3])
+void Normalize(float *v)
 {
 #ifdef WIN32_ASM
 	__asm {
