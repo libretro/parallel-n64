@@ -29,12 +29,32 @@
 #endif
 #include <rhash.h>
 #include <retro_miscellaneous.h>
-#include <retro_endianness.h>
 #include <streams/file_stream.h>
 
 #define LSL32(x, n) ((uint32_t)(x) << (n))
 #define LSR32(x, n) ((uint32_t)(x) >> (n))
 #define ROR32(x, n) (LSR32(x, n) | LSL32(x, 32 - (n)))
+
+/* SHA-256 ingests/produces big-endian 32-bit words. On big-endian
+ * hosts (MSB_FIRST) load/store are plain dereferences; on little-
+ * endian hosts byte-swap on the way in/out. Compile-time only;
+ * no runtime endian detection. */
+#ifdef MSB_FIRST
+#define rhash_load32be(addr)       (*(addr))
+#define rhash_store32be(addr, v)   (*(addr) = (v))
+#else
+#define rhash_load32be(addr)       \
+   ((((uint32_t)(*(addr)) & 0x000000ffU) << 24) | \
+    (((uint32_t)(*(addr)) & 0x0000ff00U) <<  8) | \
+    (((uint32_t)(*(addr)) & 0x00ff0000U) >>  8) | \
+    (((uint32_t)(*(addr)) & 0xff000000U) >> 24))
+#define rhash_store32be(addr, v)                                  \
+   (*(addr) =                                                     \
+      ((((uint32_t)(v) & 0x000000ffU) << 24) |                    \
+       (((uint32_t)(v) & 0x0000ff00U) <<  8) |                    \
+       (((uint32_t)(v) & 0x00ff0000U) >>  8) |                    \
+       (((uint32_t)(v) & 0xff000000U) >> 24)))
+#endif
 
 /* First 32 bits of the fractional parts of the square roots of the first 8 primes 2..19 */
 static const uint32_t T_H[8] = {
@@ -82,7 +102,7 @@ static void sha256_block(struct sha256_ctx *p)
    uint32_t a, b, c, d, e, f, g, h;
 
    for (i = 0; i < 16; i++)
-      p->w[i] = load32be(p->in.u32 + i);
+      p->w[i] = rhash_load32be(p->in.u32 + i);
 
    for (i = 16; i < 64; i++)
    {
@@ -159,8 +179,8 @@ static void sha256_final(struct sha256_ctx *p)
    memset(p->in.u8 + p->inlen, 0, 56 - p->inlen);
 
    len = p->len << 3;
-   store32be(p->in.u32 + 14, (uint32_t)(len >> 32));
-   store32be(p->in.u32 + 15, (uint32_t)len);
+   rhash_store32be(p->in.u32 + 14, (uint32_t)(len >> 32));
+   rhash_store32be(p->in.u32 + 15, (uint32_t)len);
    sha256_block(p);
 }
 
@@ -168,7 +188,7 @@ static void sha256_subhash(struct sha256_ctx *p, uint32_t *t)
 {
    unsigned i;
    for (i = 0; i < 8; i++)
-      store32be(t++, p->h[i]);
+      rhash_store32be(t++, p->h[i]);
 }
 
 /**
