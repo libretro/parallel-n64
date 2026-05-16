@@ -24,6 +24,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/types.h> // needed for u_int, u_char, etc
 #ifdef __MACH__
 #include <libkern/OSCacheControl.h>
 #endif
@@ -37,8 +38,6 @@ int getVMBlock();
 #endif
 
 #if defined(__APPLE__)
-#include <sys/types.h> // needed for u_int, u_char, etc
-
 #define MAP_ANONYMOUS MAP_ANON
 #endif
 
