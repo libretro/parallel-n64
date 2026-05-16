@@ -7916,7 +7916,11 @@ static int new_recompile_block_impl(int addr)
 #endif
   start = (u_int)addr&~3;
   //assert(((u_int)addr&1)==0);
-  if ((int)addr >= 0xa4000000 && (int)addr < 0xa4001000) {
+  if ((int)addr >= 0xa0000000 && (int)addr < 0xa07fffff) {
+    source = (u_int *)((uintptr_t)g_dev.ri.rdram.dram+start-0xa0000000);
+    pagelimit = 0xa07fffff;
+  }
+  else if ((int)addr >= 0xa4000000 && (int)addr < 0xa4001000) {
     source = (u_int *)((uintptr_t)g_dev.sp.mem+start-0xa4000000);
     pagelimit = 0xa4001000;
   }
