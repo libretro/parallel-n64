@@ -84,6 +84,8 @@ static void post_framebuffer_write(struct fb* fb, uint32_t address, uint32_t mas
                 case 0xff000000: addr += (0 ^ S8);  size = 1; break;
                 case 0x0000ffff: addr += (2 ^ S16); size = 2; break;
                 case 0xffff0000: addr += (0 ^ S16); size = 2; break;
+                case 0xffffff00: addr += (0 ^ Sh16); size = 3; break;
+                case 0x00ffffff: addr += (1 ^ Sh16); size = 3; break;
                 case 0xffffffff: size = 4; break;
                 default: break; /* unknown mask: fall back to full word */
                 }
