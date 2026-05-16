@@ -53,6 +53,10 @@ static void dma_sp_write(struct rsp_core* sp, unsigned length, unsigned count, u
         }
         dramaddr+=skip;
     }
+
+    sp->regs[SP_MEM_ADDR_REG]  = memaddr  & 0xfff;
+    sp->regs[SP_DRAM_ADDR_REG] = dramaddr & 0xffffff;
+    sp->regs[SP_RD_LEN_REG]    = 0xff8;
 }
 
 static void dma_sp_read(struct rsp_core* sp, unsigned length, unsigned count, unsigned skip)
@@ -74,6 +78,10 @@ static void dma_sp_read(struct rsp_core* sp, unsigned length, unsigned count, un
         }
         dramaddr+=skip;
     }
+
+    sp->regs[SP_MEM_ADDR_REG]  = memaddr  & 0xfff;
+    sp->regs[SP_DRAM_ADDR_REG] = dramaddr & 0xffffff;
+    sp->regs[SP_RD_LEN_REG]    = 0xff8;
 }
 
 static void update_sp_status(struct rsp_core* sp, uint32_t w)
@@ -166,6 +174,8 @@ void poweron_rsp(struct rsp_core* sp)
 
     sp->rsp_task_locked     = 0;
     sp->regs[SP_STATUS_REG] = 1;
+    sp->regs[SP_RD_LEN_REG] = 0xff8;
+    sp->regs[SP_WR_LEN_REG] = 0xff8;
 }
 
 
