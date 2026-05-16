@@ -42,6 +42,9 @@
 
 #else  /* Not _WIN32 */
 
+  /* for strcasecmp */
+  #include <strings.h>
+
   // macros
   #define ALIGN(BYTES,DATA) DATA __attribute__((aligned(BYTES)))
 
