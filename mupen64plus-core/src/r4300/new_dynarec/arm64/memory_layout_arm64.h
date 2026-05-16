@@ -2,9 +2,7 @@
 #define M64P_MEMORY_LAYOUT_ARM64_H
 
 #include <stdint.h>
-#ifdef __APPLE__
 #include <sys/types.h>
-#endif
 
 #include "../../recomp_types.h"
 
