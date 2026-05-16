@@ -8477,6 +8477,9 @@ static int new_recompile_block_impl(int addr)
           if(ba[j]==start+i*4+4) done=j=0;
           if(ba[j]==start+i*4+8) done=j=0;
         }
+        // Tonic trouble is weird!
+        if(type==CJUMP)
+          done=0;
       }
       else {
         if(stop_after_jal) done=1;
