@@ -1295,7 +1295,7 @@ void invalidate_block(u_int block)
   if(tlb_LUT_w[block]) {
     assert(tlb_LUT_r[block]==tlb_LUT_w[block]);
     // CHECK: Is this right?
-    memory_map[block]=((tlb_LUT_w[block]&0xFFFFF000)-(block<<12)+(uintptr_t)g_dev.ri.rdram.dram-0x80000000)>>2;
+    memory_map[block]=((uintptr_t)g_dev.ri.rdram.dram+(uintptr_t)((tlb_LUT_w[block]&0xFFFFF000)-0x80000000)-(block<<12))>>2;
     u_int real_block=tlb_LUT_w[block]>>12;
     invalid_code[real_block]=1;
     if(real_block>=0x80000&&real_block<0x80800) memory_map[real_block]=((uintptr_t)g_dev.ri.rdram.dram-0x80000000)>>2;
@@ -1361,7 +1361,7 @@ void invalidate_all_pages(void)
   // TLB
   for(page=0;page<0x100000;page++) {
     if(tlb_LUT_r[page]) {
-      memory_map[page]=((tlb_LUT_r[page]&0xFFFFF000)-(page<<12)+(uintptr_t)g_dev.ri.rdram.dram-0x80000000)>>2;
+      memory_map[page]=((uintptr_t)g_dev.ri.rdram.dram+(uintptr_t)((tlb_LUT_r[page]&0xFFFFF000)-0x80000000)-(page<<12))>>2;
       if(!tlb_LUT_w[page]||!invalid_code[page])
         memory_map[page]|=WRITE_PROTECT; // Write protect
     }
@@ -11243,7 +11243,7 @@ void TLBWI_new(void)
     if(i<0x80000||i>0xBFFFF)
     {
       if(tlb_LUT_r[i]) {
-        memory_map[i]=((tlb_LUT_r[i]&0xFFFFF000)-(i<<12)+(uintptr_t)g_dev.ri.rdram.dram-0x80000000)>>2;
+        memory_map[i]=((uintptr_t)g_dev.ri.rdram.dram+(uintptr_t)((tlb_LUT_r[i]&0xFFFFF000)-0x80000000)-(i<<12))>>2;
         // FIXME: should make sure the physical page is invalid too
         if(!tlb_LUT_w[i]||!invalid_code[i]) {
           memory_map[i]|=WRITE_PROTECT; // Write protect
@@ -11267,7 +11267,7 @@ void TLBWI_new(void)
     if(i<0x80000||i>0xBFFFF)
     {
       if(tlb_LUT_r[i]) {
-        memory_map[i]=((tlb_LUT_r[i]&0xFFFFF000)-(i<<12)+(uintptr_t)g_dev.ri.rdram.dram-0x80000000)>>2;
+        memory_map[i]=((uintptr_t)g_dev.ri.rdram.dram+(uintptr_t)((tlb_LUT_r[i]&0xFFFFF000)-0x80000000)-(i<<12))>>2;
         // FIXME: should make sure the physical page is invalid too
         if(!tlb_LUT_w[i]||!invalid_code[i]) {
           memory_map[i]|=WRITE_PROTECT; // Write protect
@@ -11321,7 +11321,7 @@ void TLBWR_new(void)
     if(i<0x80000||i>0xBFFFF)
     {
       if(tlb_LUT_r[i]) {
-        memory_map[i]=((tlb_LUT_r[i]&0xFFFFF000)-(i<<12)+(uintptr_t)g_dev.ri.rdram.dram-0x80000000)>>2;
+        memory_map[i]=((uintptr_t)g_dev.ri.rdram.dram+(uintptr_t)((tlb_LUT_r[i]&0xFFFFF000)-0x80000000)-(i<<12))>>2;
         // FIXME: should make sure the physical page is invalid too
         if(!tlb_LUT_w[i]||!invalid_code[i]) {
           memory_map[i]|=WRITE_PROTECT; // Write protect
@@ -11345,7 +11345,7 @@ void TLBWR_new(void)
     if(i<0x80000||i>0xBFFFF)
     {
       if(tlb_LUT_r[i]) {
-        memory_map[i]=((tlb_LUT_r[i]&0xFFFFF000)-(i<<12)+(uintptr_t)g_dev.ri.rdram.dram-0x80000000)>>2;
+        memory_map[i]=((uintptr_t)g_dev.ri.rdram.dram+(uintptr_t)((tlb_LUT_r[i]&0xFFFFF000)-0x80000000)-(i<<12))>>2;
         // FIXME: should make sure the physical page is invalid too
         if(!tlb_LUT_w[i]||!invalid_code[i]) {
           memory_map[i]|=WRITE_PROTECT; // Write protect
