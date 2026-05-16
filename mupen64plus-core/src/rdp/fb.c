@@ -59,7 +59,7 @@ static void pre_framebuffer_read(struct fb* fb, uint32_t address)
     }
 }
 
-static void pre_framebuffer_write(struct fb* fb, uint32_t address, uint32_t mask)
+static void post_framebuffer_write(struct fb* fb, uint32_t address, uint32_t mask)
 {
     size_t i;
 
@@ -104,8 +104,9 @@ int read_rdram_fb(void* opaque, uint32_t address, uint32_t* value)
 int write_rdram_fb(void* opaque, uint32_t address, uint32_t value, uint32_t mask)
 {
     struct rdp_core* dp = (struct rdp_core*)opaque;
-    pre_framebuffer_write(&dp->fb, address, mask);
-    return write_rdram_dram(dp->ri, address, value, mask);
+    int rval = write_rdram_dram(dp->ri, address, value, mask);
+    post_framebuffer_write(&dp->fb, address, mask);
+    return rval;
 }
 
 
