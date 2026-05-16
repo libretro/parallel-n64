@@ -843,7 +843,7 @@ static void build_wrapper(struct precomp_instr *instr, unsigned char* pCode, str
         if (riprel >= 0x7fffffffLL || riprel < -0x80000000LL)
         {
            DebugMessage(M64MSG_ERROR, "build_wrapper error: reg[%i] offset too big for relative address from %p to %p",
-                 i, (&reg[0]), instr->reg_cache_infos.needed_registers[i]);
+                 i, (void*)(&reg[0]), instr->reg_cache_infos.needed_registers[i]);
 #if !defined(_MSC_VER)
            asm(" int $3; ");
 #endif

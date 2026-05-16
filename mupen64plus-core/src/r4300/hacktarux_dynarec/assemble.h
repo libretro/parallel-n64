@@ -135,7 +135,7 @@ static INLINE int rel_r15_offset(void *dest, const char *op_name)
 #ifdef DEBUG
    if (LLABS(rel_offset) > 0x7fffffff)
    {
-      DebugMessage(M64MSG_ERROR, "Error: destination %p more than 2GB away from r15 base %p in %s()", dest, reg, op_name);
+      DebugMessage(M64MSG_ERROR, "Error: destination %p more than 2GB away from r15 base %p in %s()", dest, (void*)reg, op_name);
 #if 0
       OSAL_BREAKPOINT_INTERRUPT;
 #endif
