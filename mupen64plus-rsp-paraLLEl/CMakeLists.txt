@@ -12,6 +12,7 @@ endif()
 add_library(parallel-rsp STATIC
 		rsp/vfunctions.cpp
 		rsp_jit.cpp rsp_jit.hpp
+		jit_allocator.cpp jit_allocator.hpp
 		rsp_disasm.cpp rsp_disasm.hpp
 		rsp/ls.cpp rsp/pipeline.h
 		rsp/reciprocal.cpp rsp/reciprocal.h
@@ -80,6 +81,7 @@ if (PARALLEL_RSP_BAKED_LIGHTNING)
 		target_sources(lightning PRIVATE win32/mman/sys/mman.c)
 		target_include_directories(lightning PRIVATE win32/mman)
 	endif()
+	target_compile_definitions(lightning PUBLIC HAVE_MMAP=1)
 endif()
 target_link_libraries(parallel-rsp PUBLIC lightning)
 target_compile_definitions(parallel-rsp PUBLIC DEBUG_JIT)
