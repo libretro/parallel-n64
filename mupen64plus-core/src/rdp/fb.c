@@ -59,7 +59,7 @@ static void pre_framebuffer_read(struct fb* fb, uint32_t address)
     }
 }
 
-static void pre_framebuffer_write(struct fb* fb, uint32_t address)
+static void pre_framebuffer_write(struct fb* fb, uint32_t address, uint32_t mask)
 {
     size_t i;
 
@@ -72,7 +72,24 @@ static void pre_framebuffer_write(struct fb* fb, uint32_t address)
                                fb->infos[i].height*
                                fb->infos[i].size - 1;
             if ((address & 0x7FFFFF) >= start && (address & 0x7FFFFF) <= end)
-                gfx.fBWrite(address, 4);
+            {
+                uint32_t addr = address & ~UINT32_C(0x3);
+                size_t size = 4;
+
+                switch (mask)
+                {
+                case 0x000000ff: addr += (3 ^ S8);  size = 1; break;
+                case 0x0000ff00: addr += (2 ^ S8);  size = 1; break;
+                case 0x00ff0000: addr += (1 ^ S8);  size = 1; break;
+                case 0xff000000: addr += (0 ^ S8);  size = 1; break;
+                case 0x0000ffff: addr += (2 ^ S16); size = 2; break;
+                case 0xffff0000: addr += (0 ^ S16); size = 2; break;
+                case 0xffffffff: size = 4; break;
+                default: break; /* unknown mask: fall back to full word */
+                }
+
+                gfx.fBWrite(addr, size);
+            }
         }
     }
 }
@@ -87,7 +104,7 @@ int read_rdram_fb(void* opaque, uint32_t address, uint32_t* value)
 int write_rdram_fb(void* opaque, uint32_t address, uint32_t value, uint32_t mask)
 {
     struct rdp_core* dp = (struct rdp_core*)opaque;
-    pre_framebuffer_write(&dp->fb, address);
+    pre_framebuffer_write(&dp->fb, address, mask);
     return write_rdram_dram(dp->ri, address, value, mask);
 }
 
