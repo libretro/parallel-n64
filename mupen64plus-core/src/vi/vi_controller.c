@@ -69,9 +69,9 @@ unsigned int vi_expected_refresh_rate_from_tv_standard(m64p_system_type tv_stand
    switch (tv_standard)
    {
       case SYSTEM_PAL:
-      case SYSTEM_MPAL:
          return 50;
 
+      case SYSTEM_MPAL:
       case SYSTEM_NTSC:
       default:
          return 60;
