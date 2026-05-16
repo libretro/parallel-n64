@@ -80,21 +80,21 @@ static void ZSort_DrawObject (uint8_t * _addr, uint32_t _type)
    for (i = 0; i < vnum; ++i)
    {
       struct SPVertex *vtx = (struct SPVertex*)&OGL.triangles.vertices[i];
-      vtx->x = _FIXED2FLOAT(((int16_t*)_addr)[0 ^ 1], 2);
-      vtx->y = _FIXED2FLOAT(((int16_t*)_addr)[1 ^ 1], 2);
+      vtx->x = _FIXED2FLOAT(((int16_t*)_addr)[0x0 ^ 0x1], 2);
+      vtx->y = _FIXED2FLOAT(((int16_t*)_addr)[0x1 ^ 0x1], 2);
       vtx->z = 0.0f;
-      vtx->r = _addr[4^3] * 0.0039215689f;
-      vtx->g = _addr[5^3] * 0.0039215689f;
-      vtx->b = _addr[6^3] * 0.0039215689f;
-      vtx->a = _addr[7^3] * 0.0039215689f;
+      vtx->r = _addr[0x4^0x3] * 0.0039215689f;
+      vtx->g = _addr[0x5^0x3] * 0.0039215689f;
+      vtx->b = _addr[0x6^0x3] * 0.0039215689f;
+      vtx->a = _addr[0x7^0x3] * 0.0039215689f;
       vtx->flag    = 0;
       vtx->HWLight = 0;
       vtx->clip    = 0;
       vtx->w       = 1.0f;
       if (textured != 0)
       {
-         vtx->s = _FIXED2FLOAT(((int16_t*)_addr)[4^1], 5 );
-         vtx->t = _FIXED2FLOAT(((int16_t*)_addr)[5^1], 5 );
+         vtx->s = _FIXED2FLOAT(((int16_t*)_addr)[0x4^0x1], 5 );
+         vtx->t = _FIXED2FLOAT(((int16_t*)_addr)[0x5^0x1], 5 );
          vtx->w = ZSort_Calc_invw(((int*)_addr)[3]) / 31.0f;
       }
 

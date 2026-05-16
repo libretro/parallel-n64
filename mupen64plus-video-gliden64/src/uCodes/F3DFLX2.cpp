@@ -15,12 +15,12 @@ void F3DFLX2_LoadAlphaLight(u32 _a)
 
 	const s16* const data = reinterpret_cast<const s16*>(RDRAM + address);
 
-//	gSP.lookat.xyz[0][X] = static_cast<f32>(data[4 ^ 1]);
-//	gSP.lookat.xyz[0][Y] = static_cast<f32>(data[5 ^ 1]);
-//	gSP.lookat.xyz[0][Z] = static_cast<f32>(data[6 ^ 1]);
-	gSP.lookat.xyz[0][X] = _FIXED2FLOAT(data[4 ^ 1], 8);
-	gSP.lookat.xyz[0][Y] = _FIXED2FLOAT(data[5 ^ 1], 8);
-	gSP.lookat.xyz[0][Z] = _FIXED2FLOAT(data[6 ^ 1], 8);
+//	gSP.lookat.xyz[0][X] = static_cast<f32>(data[0x4 ^ 0x1]);
+//	gSP.lookat.xyz[0][Y] = static_cast<f32>(data[0x5 ^ 0x1]);
+//	gSP.lookat.xyz[0][Z] = static_cast<f32>(data[0x6 ^ 0x1]);
+	gSP.lookat.xyz[0][X] = _FIXED2FLOAT(data[0x4 ^ 0x1], 8);
+	gSP.lookat.xyz[0][Y] = _FIXED2FLOAT(data[0x5 ^ 0x1], 8);
+	gSP.lookat.xyz[0][Z] = _FIXED2FLOAT(data[0x6 ^ 0x1], 8);
 
 	gSP.lookatEnable = true;
 

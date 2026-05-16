@@ -377,23 +377,23 @@ void ZSortBOSS_DrawObject(u8 * _addr, u32 _type)
 
 	for(u32 i = 0; i < vnum; ++i) {
 		SPVertex & vtx = pVtx[i];
-		vtx.x = _FIXED2FLOAT(((s16*)_addr)[0 ^ 1], 2);
-		vtx.y = _FIXED2FLOAT(((s16*)_addr)[1 ^ 1], 2);
+		vtx.x = _FIXED2FLOAT(((s16*)_addr)[0x0 ^ 0x1], 2);
+		vtx.y = _FIXED2FLOAT(((s16*)_addr)[0x1 ^ 0x1], 2);
 		vtx.z = 0.0f;
-		vtx.r = _FIXED2FLOATCOLOR(_addr[4^3], 8 );
-		vtx.g = _FIXED2FLOATCOLOR(_addr[5^3], 8 );
-		vtx.b = _FIXED2FLOATCOLOR(_addr[6^3], 8 );
-		vtx.a = _FIXED2FLOATCOLOR(_addr[7^3], 8 );
+		vtx.r = _FIXED2FLOATCOLOR(_addr[0x4^0x3], 8 );
+		vtx.g = _FIXED2FLOATCOLOR(_addr[0x5^0x3], 8 );
+		vtx.b = _FIXED2FLOATCOLOR(_addr[0x6^0x3], 8 );
+		vtx.a = _FIXED2FLOATCOLOR(_addr[0x7^0x3], 8 );
 		vtx.flag = 0;
 		vtx.HWLight = 0;
 		vtx.clip = 0;
 		if(textured != 0) {
 			if (gDP.otherMode.texturePersp != 0) {
-				vtx.s = _FIXED2FLOAT(((s16*)_addr)[4 ^ 1], 5);
-				vtx.t = _FIXED2FLOAT(((s16*)_addr)[5 ^ 1], 5);
+				vtx.s = _FIXED2FLOAT(((s16*)_addr)[0x4 ^ 0x1], 5);
+				vtx.t = _FIXED2FLOAT(((s16*)_addr)[0x5 ^ 0x1], 5);
 			} else {
-				vtx.s = _FIXED2FLOAT(((s16*)_addr)[4 ^ 1], 6);
-				vtx.t = _FIXED2FLOAT(((s16*)_addr)[5 ^ 1], 6);
+				vtx.s = _FIXED2FLOAT(((s16*)_addr)[0x4 ^ 0x1], 6);
+				vtx.t = _FIXED2FLOAT(((s16*)_addr)[0x5 ^ 0x1], 6);
 			}
 
 			int invw = ((int*)_addr)[3];
@@ -765,8 +765,8 @@ void ZSortBOSS_Audio4( u32 _w0, u32 _w1 )
 
 				dst[i^1] = (res1*c2 + res2*c2) >> 16;
 			}
-			v1 = dst[6^1];
-			v2 = dst[7^1];
+			v1 = dst[0x6^0x1];
+			v2 = dst[0x7^0x1];
 			dst += 8;
 		}
 	}

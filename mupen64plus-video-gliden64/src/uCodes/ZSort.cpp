@@ -99,23 +99,23 @@ void ZSort_DrawObject (u8 * _addr, u32 _type)
 	SPVertex * pVtx = drawer.getDMAVerticesData();
 	for (u32 i = 0; i < vnum; ++i) {
 		SPVertex & vtx = pVtx[i];
-		vtx.x = _FIXED2FLOAT(((s16*)_addr)[0 ^ 1], 2);
-		vtx.y = _FIXED2FLOAT(((s16*)_addr)[1 ^ 1], 2);
+		vtx.x = _FIXED2FLOAT(((s16*)_addr)[0x0 ^ 0x1], 2);
+		vtx.y = _FIXED2FLOAT(((s16*)_addr)[0x1 ^ 0x1], 2);
 		vtx.z = 0.0f;
-		vtx.r = _addr[4^3] * 0.0039215689f;
-		vtx.g = _addr[5^3] * 0.0039215689f;
-		vtx.b = _addr[6^3] * 0.0039215689f;
-		vtx.a = _addr[7^3] * 0.0039215689f;
+		vtx.r = _addr[0x4^0x3] * 0.0039215689f;
+		vtx.g = _addr[0x5^0x3] * 0.0039215689f;
+		vtx.b = _addr[0x6^0x3] * 0.0039215689f;
+		vtx.a = _addr[0x7^0x3] * 0.0039215689f;
 		vtx.flag = 0;
 		vtx.HWLight = 0;
 		vtx.clip = 0;
 		if (textured != 0) {
 			if (gDP.otherMode.texturePersp != 0) {
-				vtx.s = _FIXED2FLOAT(((s16*)_addr)[4 ^ 1], 5);
-				vtx.t = _FIXED2FLOAT(((s16*)_addr)[5 ^ 1], 5);
+				vtx.s = _FIXED2FLOAT(((s16*)_addr)[0x4 ^ 0x1], 5);
+				vtx.t = _FIXED2FLOAT(((s16*)_addr)[0x5 ^ 0x1], 5);
 			} else {
-				vtx.s = _FIXED2FLOAT(((s16*)_addr)[4 ^ 1], 6);
-				vtx.t = _FIXED2FLOAT(((s16*)_addr)[5 ^ 1], 6);
+				vtx.s = _FIXED2FLOAT(((s16*)_addr)[0x4 ^ 0x1], 6);
+				vtx.t = _FIXED2FLOAT(((s16*)_addr)[0x5 ^ 0x1], 6);
 			}
 			vtx.w = Calc_invw(((int*)_addr)[3]) / 31.0f;
 		} else
