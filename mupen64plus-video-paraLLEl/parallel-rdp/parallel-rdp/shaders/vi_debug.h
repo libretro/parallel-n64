@@ -24,6 +24,7 @@
 #define VI_DEBUG_H_
 
 #if defined(DEBUG_ENABLE) && DEBUG_ENABLE
+#include "debug_channel.h"
 
 void GENERIC_MESSAGE_(int line)
 {

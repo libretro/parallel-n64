@@ -1,4 +1,4 @@
-/* Copyright (c) 2017-2020 Hans-Kristian Arntzen
+/* Copyright (c) 2017-2022 Hans-Kristian Arntzen
  *
  * Permission is hereby granted, free of charge, to any person obtaining
  * a copy of this software and associated documentation files (the
@@ -31,6 +31,8 @@ namespace Util
 void *memalign_alloc(size_t boundary, size_t size);
 void *memalign_calloc(size_t boundary, size_t size);
 void memalign_free(void *ptr);
+
+struct AlignedDeleter { void operator()(void *ptr) { memalign_free(ptr); }};
 
 template <typename T>
 struct AlignedAllocation

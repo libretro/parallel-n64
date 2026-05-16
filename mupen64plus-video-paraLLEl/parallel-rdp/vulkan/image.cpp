@@ -1,4 +1,4 @@
-/* Copyright (c) 2017-2020 Hans-Kristian Arntzen
+/* Copyright (c) 2017-2022 Hans-Kristian Arntzen
  *
  * Permission is hereby granted, free of charge, to any person obtaining
  * a copy of this software and associated documentation files (the
@@ -24,11 +24,8 @@
 #include "device.hpp"
 #include "buffer.hpp"
 
-using namespace std;
-
 namespace Vulkan
 {
-
 ImageView::ImageView(Device *device_, VkImageView view_, const ImageViewCreateInfo &info_)
     : Cookie(device_)
     , device(device_)
@@ -88,6 +85,21 @@ ImageView::~ImageView()
 	}
 }
 
+unsigned ImageView::get_view_width() const
+{
+	return info.image->get_width(info.base_level);
+}
+
+unsigned ImageView::get_view_height() const
+{
+	return info.image->get_height(info.base_level);
+}
+
+unsigned ImageView::get_view_depth() const
+{
+	return info.image->get_depth(info.base_level);
+}
+
 Image::Image(Device *device_, VkImage image_, VkImageView default_view, const DeviceAllocation &alloc_,
              const ImageCreateInfo &create_info_, VkImageViewType view_type)
     : Cookie(device_)
@@ -108,6 +120,18 @@ Image::Image(Device *device_, VkImage image_, VkImageView default_view, const De
 		info.layers = create_info.layers;
 		view = ImageViewHandle(device->handle_pool.image_views.allocate(device, default_view, info));
 	}
+}
+
+DeviceAllocation Image::take_allocation_ownership()
+{
+	DeviceAllocation ret = {};
+	std::swap(ret, alloc);
+	return ret;
+}
+
+ExternalHandle Image::export_handle()
+{
+	return alloc.export_handle(*device);
 }
 
 void Image::disown_image()
@@ -137,47 +161,6 @@ Image::~Image()
 		else
 			device->free_memory(alloc);
 	}
-}
-
-YCbCrImage::YCbCrImage(Device *device_, YCbCrFormat format_, ImageHandle image_, const ImageHandle *planes_, unsigned num_planes_)
-	: device(device_), format(format_), num_planes(num_planes_)
-{
-	VK_ASSERT(num_planes <= 3);
-	image = std::move(image_);
-	image->set_internal_sync_object();
-	image->get_view().set_internal_sync_object();
-
-	for (unsigned i = 0; i < num_planes; i++)
-	{
-		planes[i] = planes_[i];
-		planes[i]->set_internal_sync_object();
-		planes[i]->get_view().set_internal_sync_object();
-	}
-}
-
-YCbCrImage::~YCbCrImage()
-{
-}
-
-Image &YCbCrImage::get_ycbcr_image()
-{
-	return *image;
-}
-
-Image &YCbCrImage::get_plane_image(unsigned plane)
-{
-	VK_ASSERT(plane < num_planes);
-	return *planes[plane];
-}
-
-unsigned YCbCrImage::get_num_planes() const
-{
-	return num_planes;
-}
-
-YCbCrFormat YCbCrImage::get_ycbcr_format() const
-{
-	return format;
 }
 
 const Buffer &LinearHostImage::get_host_visible_buffer() const
@@ -222,7 +205,7 @@ VkPipelineStageFlags LinearHostImage::get_used_pipeline_stages() const
 }
 
 LinearHostImage::LinearHostImage(Device *device_, ImageHandle gpu_image_, BufferHandle cpu_image_, VkPipelineStageFlags stages_)
-	: device(device_), gpu_image(move(gpu_image_)), cpu_image(move(cpu_image_)), stages(stages_)
+	: device(device_), gpu_image(std::move(gpu_image_)), cpu_image(std::move(cpu_image_)), stages(stages_)
 {
 	if (gpu_image->get_create_info().domain == ImageDomain::LinearHostCached ||
 	    gpu_image->get_create_info().domain == ImageDomain::LinearHost)
@@ -252,11 +235,6 @@ void ImageViewDeleter::operator()(ImageView *view)
 void ImageDeleter::operator()(Image *image)
 {
 	image->device->handle_pool.images.free(image);
-}
-
-void ImageDeleter::operator()(YCbCrImage *image)
-{
-	image->device->handle_pool.ycbcr_images.free(image);
 }
 
 void LinearHostImageDeleter::operator()(LinearHostImage *image)

@@ -1,4 +1,4 @@
-/* Copyright (c) 2017-2020 Hans-Kristian Arntzen
+/* Copyright (c) 2017-2022 Hans-Kristian Arntzen
  *
  * Permission is hereby granted, free of charge, to any person obtaining
  * a copy of this software and associated documentation files (the
@@ -20,26 +20,10 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include "thread_id.hpp"
-#include "logging.hpp"
+#pragma once
 
-namespace Vulkan
+namespace Util
 {
-static thread_local unsigned thread_id_to_index = ~0u;
-
-unsigned get_current_thread_index()
-{
-	auto ret = thread_id_to_index;
-	if (ret == ~0u)
-	{
-		LOGE("Thread does not exist in thread manager or is not the main thread.\n");
-		return 0;
-	}
-	return ret;
-}
-
-void register_thread_index(unsigned index)
-{
-	thread_id_to_index = index;
-}
+unsigned get_current_thread_index();
+void register_thread_index(unsigned thread_index);
 }

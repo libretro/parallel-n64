@@ -1,4 +1,4 @@
-/* Copyright (c) 2017-2020 Hans-Kristian Arntzen
+/* Copyright (c) 2017-2022 Hans-Kristian Arntzen
  *
  * Permission is hereby granted, free of charge, to any person obtaining
  * a copy of this software and associated documentation files (the
@@ -34,7 +34,7 @@ void *memalign_alloc(size_t boundary, size_t size)
 #if defined(_WIN32)
     return _aligned_malloc(size, boundary);
 #elif defined(_ISOC11_SOURCE)
-    return aligned_alloc(boundary, size);
+    return aligned_alloc(boundary, (size + boundary - 1) & ~(boundary - 1));
 #elif (_POSIX_C_SOURCE >= 200112L) || (_XOPEN_SOURCE >= 600)
 	void *ptr = nullptr;
 	if (posix_memalign(&ptr, boundary, size) < 0)

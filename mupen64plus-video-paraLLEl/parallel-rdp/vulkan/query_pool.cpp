@@ -1,4 +1,4 @@
-/* Copyright (c) 2017-2020 Hans-Kristian Arntzen
+/* Copyright (c) 2017-2022 Hans-Kristian Arntzen
  *
  * Permission is hereby granted, free of charge, to any person obtaining
  * a copy of this software and associated documentation files (the
@@ -24,8 +24,6 @@
 #include "device.hpp"
 #include <utility>
 
-using namespace std;
-
 namespace Vulkan
 {
 static const char *storage_to_str(VkPerformanceCounterStorageKHR storage)
@@ -35,7 +33,7 @@ static const char *storage_to_str(VkPerformanceCounterStorageKHR storage)
 	case VK_PERFORMANCE_COUNTER_STORAGE_FLOAT32_KHR:
 		return "float32";
 	case VK_PERFORMANCE_COUNTER_STORAGE_FLOAT64_KHR:
-		return "float32";
+		return "float64";
 	case VK_PERFORMANCE_COUNTER_STORAGE_INT32_KHR:
 		return "int32";
 	case VK_PERFORMANCE_COUNTER_STORAGE_INT64_KHR:
@@ -95,6 +93,19 @@ static const char *unit_to_str(VkPerformanceCounterUnitKHR unit)
 	}
 }
 
+void PerformanceQueryPool::log_available_counters(const VkPerformanceCounterKHR *counters,
+                                                  const VkPerformanceCounterDescriptionKHR *descs,
+                                                  uint32_t count)
+{
+	for (uint32_t i = 0; i < count; i++)
+	{
+		LOGI("  %s: %s\n", descs[i].name, descs[i].description);
+		LOGI("    Storage: %s\n", storage_to_str(counters[i].storage));
+		LOGI("    Scope: %s\n", scope_to_str(counters[i].scope));
+		LOGI("    Unit: %s\n", unit_to_str(counters[i].unit));
+	}
+}
+
 void PerformanceQueryPool::init_device(Device *device_, uint32_t queue_family_index_)
 {
 	device = device_;
@@ -114,8 +125,8 @@ void PerformanceQueryPool::init_device(Device *device_, uint32_t queue_family_in
 		return;
 	}
 
-	counters.resize(num_counters);
-	counter_descriptions.resize(num_counters);
+	counters.resize(num_counters, { VK_STRUCTURE_TYPE_PERFORMANCE_COUNTER_KHR });
+	counter_descriptions.resize(num_counters, { VK_STRUCTURE_TYPE_PERFORMANCE_COUNTER_DESCRIPTION_KHR });
 
 	if (vkEnumeratePhysicalDeviceQueueFamilyPerformanceQueryCountersKHR(
 			device->get_physical_device(),
@@ -125,15 +136,6 @@ void PerformanceQueryPool::init_device(Device *device_, uint32_t queue_family_in
 	{
 		LOGE("Failed to enumerate performance counters.\n");
 		return;
-	}
-
-	LOGI("Available performance counters for queue family: %u\n", queue_family_index);
-	for (uint32_t i = 0; i < num_counters; i++)
-	{
-		LOGI("  %s: %s\n", counter_descriptions[i].name, counter_descriptions[i].description);
-		LOGI("    Storage: %s\n", storage_to_str(counters[i].storage));
-		LOGI("    Scope: %s\n", scope_to_str(counters[i].scope));
-		LOGI("    Unit: %s\n", unit_to_str(counters[i].unit));
 	}
 }
 
@@ -149,7 +151,7 @@ void PerformanceQueryPool::begin_command_buffer(VkCommandBuffer cmd)
 		return;
 
 	auto &table = device->get_device_table();
-	table.vkResetQueryPoolEXT(device->get_device(), pool, 0, 0);
+	table.vkResetQueryPoolEXT(device->get_device(), pool, 0, 1);
 	table.vkCmdBeginQuery(cmd, pool, 0, 0);
 
 	VkMemoryBarrier barrier = { VK_STRUCTURE_TYPE_MEMORY_BARRIER };
@@ -176,13 +178,19 @@ void PerformanceQueryPool::end_command_buffer(VkCommandBuffer cmd)
 
 void PerformanceQueryPool::report()
 {
+	if (pool == VK_NULL_HANDLE)
+	{
+		LOGE("No query pool is set up.\n");
+		return;
+	}
+
 	auto &table = device->get_device_table();
 	if (table.vkGetQueryPoolResults(device->get_device(), pool,
 	                                0, 1,
 	                                results.size() * sizeof(VkPerformanceCounterResultKHR),
 	                                results.data(),
 	                                sizeof(VkPerformanceCounterResultKHR),
-	                                0) != VK_SUCCESS)
+	                                VK_QUERY_RESULT_WAIT_BIT) != VK_SUCCESS)
 	{
 		LOGE("Getting performance counters did not succeed.\n");
 	}
@@ -372,7 +380,7 @@ void QueryPool::add_pool()
 	if (device->get_device_features().host_query_reset_features.hostQueryReset)
 		table.vkResetQueryPoolEXT(device->get_device(), pool.pool, 0, pool.size);
 
-	pools.push_back(move(pool));
+	pools.push_back(std::move(pool));
 }
 
 QueryPoolHandle QueryPool::write_timestamp(VkCommandBuffer cmd, VkPipelineStageFlagBits stage)
@@ -391,7 +399,7 @@ QueryPoolHandle QueryPool::write_timestamp(VkCommandBuffer cmd, VkPipelineStageF
 
 	auto &pool = pools[pool_index];
 
-	auto cookie = QueryPoolHandle(device->handle_pool.query.allocate(device));
+	auto cookie = QueryPoolHandle(device->handle_pool.query.allocate(device, true));
 	pool.cookies[pool.index] = cookie;
 
 	if (!device->get_device_features().host_query_reset_features.hostQueryReset)
@@ -442,13 +450,28 @@ double TimestampInterval::get_time_per_iteration() const
 		return 0.0;
 }
 
-const string &TimestampInterval::get_tag() const
+double TimestampInterval::get_time_per_accumulation() const
+{
+	if (total_accumulations)
+		return total_time / double(total_accumulations);
+	else
+		return 0.0;
+}
+
+const std::string &TimestampInterval::get_tag() const
 {
 	return tag;
 }
 
-TimestampInterval::TimestampInterval(string tag_)
-	: tag(move(tag_))
+void TimestampInterval::reset()
+{
+	total_time = 0.0;
+	total_accumulations = 0;
+	total_frame_iterations = 0;
+}
+
+TimestampInterval::TimestampInterval(std::string tag_)
+	: tag(std::move(tag_))
 {
 }
 
@@ -465,16 +488,35 @@ void TimestampIntervalManager::mark_end_of_frame_context()
 		timestamp.mark_end_of_frame_context();
 }
 
-void TimestampIntervalManager::log_simple()
+void TimestampIntervalManager::reset()
+{
+	for (auto &timestamp : timestamps)
+		timestamp.reset();
+}
+
+void TimestampIntervalManager::log_simple(const TimestampIntervalReportCallback &func) const
 {
 	for (auto &timestamp : timestamps)
 	{
-		LOGI("Timestamp tag report: %s\n", timestamp.get_tag().c_str());
 		if (timestamp.get_total_frame_iterations())
 		{
-			LOGI("  %.3f ms / frame context\n", 1000.0 * timestamp.get_time_per_iteration());
-			LOGI("  %.3f iterations / frame context\n",
-			     double(timestamp.get_total_accumulations()) / double(timestamp.get_total_frame_iterations()));
+			TimestampIntervalReport report = {};
+			report.time_per_accumulation = timestamp.get_time_per_accumulation();
+			report.time_per_frame_context = timestamp.get_time_per_iteration();
+			report.accumulations_per_frame_context =
+					double(timestamp.get_total_accumulations()) / double(timestamp.get_total_frame_iterations());
+
+			if (func)
+			{
+				func(timestamp.get_tag(), report);
+			}
+			else
+			{
+				LOGI("Timestamp tag report: %s\n", timestamp.get_tag().c_str());
+				LOGI("  %.3f ms / iteration\n", 1000.0 * report.time_per_accumulation);
+				LOGI("  %.3f ms / frame context\n", 1000.0 * report.time_per_frame_context);
+				LOGI("  %.3f iterations / frame context\n", report.accumulations_per_frame_context);
+			}
 		}
 	}
 }

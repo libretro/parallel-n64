@@ -32,6 +32,7 @@
 			"path": "ubershader.comp",
 			"compute": true,
 			"variants": [
+				{ "define": "SUBGROUP", "count": 2, "resolve": true },
 				{ "define": "SMALL_TYPES", "count": 2, "resolve": true }
 			]
 		},
@@ -40,6 +41,7 @@
 			"path": "depth_blend.comp",
 			"compute": true,
 			"variants": [
+				{ "define": "SUBGROUP", "count": 2, "resolve": true },
 				{ "define": "SMALL_TYPES", "count": 2, "resolve": true }
 			]
 		},
@@ -100,6 +102,16 @@
 		{
 			"name": "update_upscaled_domain_pre",
 			"path": "update_upscaled_domain_pre.comp",
+			"compute": true
+		},
+		{
+			"name": "update_upscaled_domain_resolve",
+			"path": "update_upscaled_domain_resolve.comp",
+			"compute": true
+		},
+		{
+			"name": "clear_super_sampled_write_mask",
+			"path": "clear_super_sampled_write_mask.comp",
 			"compute": true
 		},
 		{

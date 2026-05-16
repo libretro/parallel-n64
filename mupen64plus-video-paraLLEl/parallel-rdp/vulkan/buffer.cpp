@@ -1,4 +1,4 @@
-/* Copyright (c) 2017-2020 Hans-Kristian Arntzen
+/* Copyright (c) 2017-2022 Hans-Kristian Arntzen
  *
  * Permission is hereby granted, free of charge, to any person obtaining
  * a copy of this software and associated documentation files (the
@@ -32,6 +32,11 @@ Buffer::Buffer(Device *device_, VkBuffer buffer_, const DeviceAllocation &alloc_
     , alloc(alloc_)
     , info(info_)
 {
+}
+
+ExternalHandle Buffer::export_handle()
+{
+	return alloc.export_handle(*device);
 }
 
 Buffer::~Buffer()

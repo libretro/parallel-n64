@@ -1,4 +1,4 @@
-/* Copyright (c) 2017-2020 Hans-Kristian Arntzen
+/* Copyright (c) 2017-2022 Hans-Kristian Arntzen
  *
  * Permission is hereby granted, free of charge, to any person obtaining
  * a copy of this software and associated documentation files (the
@@ -57,6 +57,7 @@ public:
 
 	uint64_t get_timeline_value() const
 	{
+		VK_ASSERT(!owned && semaphore_type == VK_SEMAPHORE_TYPE_TIMELINE_KHR);
 		return timeline;
 	}
 
@@ -67,6 +68,7 @@ public:
 		VK_ASSERT(signalled);
 		semaphore = VK_NULL_HANDLE;
 		signalled = false;
+		owned = false;
 		return ret;
 	}
 
@@ -75,12 +77,8 @@ public:
 		auto ret = semaphore;
 		semaphore = VK_NULL_HANDLE;
 		signalled = false;
+		owned = false;
 		return ret;
-	}
-
-	bool can_recycle() const
-	{
-		return !should_destroy_on_consume;
 	}
 
 	void wait_external()
@@ -97,43 +95,102 @@ public:
 		signalled = true;
 	}
 
-	void destroy_on_consume()
+	void set_pending_wait()
 	{
-		should_destroy_on_consume = true;
-	}
-
-	void signal_pending_wait()
-	{
-		pending = true;
+		pending_wait = true;
 	}
 
 	bool is_pending_wait() const
 	{
-		return pending;
+		return pending_wait;
 	}
+
+	void set_external_object_compatible(VkExternalSemaphoreHandleTypeFlagBits handle_type,
+	                                    VkExternalSemaphoreFeatureFlags features)
+	{
+		external_compatible_handle_type = handle_type;
+		external_compatible_features = features;
+	}
+
+	bool is_external_object_compatible() const
+	{
+		return external_compatible_features != 0;
+	}
+
+	VkSemaphoreTypeKHR get_semaphore_type() const
+	{
+		return semaphore_type;
+	}
+
+	bool is_proxy_timeline() const
+	{
+		return proxy_timeline;
+	}
+
+	void set_proxy_timeline()
+	{
+		proxy_timeline = true;
+		signalled = false;
+	}
+
+	// If successful, importing takes ownership of the handle/fd.
+	// Application can use dup() / DuplicateHandle() to keep a reference.
+	// Imported semaphores are assumed to be signalled, or pending to be signalled.
+	// All imports are performed with TEMPORARY permanence.
+	ExternalHandle export_to_handle();
+	bool import_from_handle(ExternalHandle handle);
+
+	VkExternalSemaphoreFeatureFlags get_external_features() const
+	{
+		return external_compatible_features;
+	}
+
+	VkExternalSemaphoreHandleTypeFlagBits get_external_handle_type() const
+	{
+		return external_compatible_handle_type;
+	}
+
+	SemaphoreHolder &operator=(SemaphoreHolder &&other) noexcept;
 
 private:
 	friend class Util::ObjectPool<SemaphoreHolder>;
-	SemaphoreHolder(Device *device_, VkSemaphore semaphore_, bool signalled_)
+	SemaphoreHolder(Device *device_, VkSemaphore semaphore_, bool signalled_, bool owned_)
 		: device(device_)
 		, semaphore(semaphore_)
 		, timeline(0)
+		, semaphore_type(VK_SEMAPHORE_TYPE_BINARY_KHR)
 		, signalled(signalled_)
+		, owned(owned_)
 	{
 	}
 
-	SemaphoreHolder(Device *device_, uint64_t timeline_, VkSemaphore semaphore_)
-		: device(device_), semaphore(semaphore_), timeline(timeline_)
+	SemaphoreHolder(Device *device_, uint64_t timeline_, VkSemaphore semaphore_, bool owned_)
+		: device(device_)
+		, semaphore(semaphore_)
+		, timeline(timeline_)
+		, semaphore_type(VK_SEMAPHORE_TYPE_TIMELINE_KHR)
+		, owned(owned_)
 	{
-		VK_ASSERT(timeline > 0);
+		VK_ASSERT((owned && timeline == 0) || (!owned && timeline != 0));
 	}
+
+	explicit SemaphoreHolder(Device *device_)
+		: device(device_)
+	{
+	}
+
+	void recycle_semaphore();
 
 	Device *device;
-	VkSemaphore semaphore;
-	uint64_t timeline;
-	bool signalled = true;
-	bool pending = false;
-	bool should_destroy_on_consume = false;
+	VkSemaphore semaphore = VK_NULL_HANDLE;
+	uint64_t timeline = 0;
+	VkSemaphoreTypeKHR semaphore_type = VK_SEMAPHORE_TYPE_BINARY_KHR;
+	bool signalled = false;
+	bool pending_wait = false;
+	bool owned = false;
+	bool proxy_timeline = false;
+	VkExternalSemaphoreHandleTypeFlagBits external_compatible_handle_type = {};
+	VkExternalSemaphoreFeatureFlags external_compatible_features = 0;
 };
 
 using Semaphore = Util::IntrusivePtr<SemaphoreHolder>;

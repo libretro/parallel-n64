@@ -24,6 +24,7 @@
 #define DEBUG_H_
 
 #if defined(DEBUG_ENABLE) && DEBUG_ENABLE
+#include "debug_channel.h"
 
 const uint CODE_ASSERT_EQUAL = 0;
 const uint CODE_ASSERT_NOT_EQUAL = 1;
@@ -120,10 +121,10 @@ void HEX_MESSAGE_(int line, uvec3 v)
 	add_debug_message(CODE_HEX, gl_GlobalInvocationID, uvec4(line, v));
 }
 
-#define ASERT_EQUAL(a, b) ASSERT_EQUAL_(__LINE__, a, b)
-#define ASERT_NOT_EQUAL(a, b) ASSERT_NOT_EQUAL_(__LINE__, a, b)
-#define ASERT_LESS_THAN(a, b) ASSERT_LESS_THAN_(__LINE__, a, b)
-#define ASERT_LESS_THAN_EQUAL(a, b) ASSERT_LESS_THAN_EQUAL_(__LINE__, a, b)
+#define ASSERT_EQUAL(a, b) ASSERT_EQUAL_(__LINE__, a, b)
+#define ASSERT_NOT_EQUAL(a, b) ASSERT_NOT_EQUAL_(__LINE__, a, b)
+#define ASSERT_LESS_THAN(a, b) ASSERT_LESS_THAN_(__LINE__, a, b)
+#define ASSERT_LESS_THAN_EQUAL(a, b) ASSERT_LESS_THAN_EQUAL_(__LINE__, a, b)
 #define GENERIC_MESSAGE0() GENERIC_MESSAGE_(__LINE__)
 #define GENERIC_MESSAGE1(a) GENERIC_MESSAGE_(__LINE__, a)
 #define GENERIC_MESSAGE2(a, b) GENERIC_MESSAGE_(__LINE__, uvec2(a, b))
@@ -133,10 +134,10 @@ void HEX_MESSAGE_(int line, uvec3 v)
 #define HEX_MESSAGE2(a, b) HEX_MESSAGE_(__LINE__, uvec2(a, b))
 #define HEX_MESSAGE3(a, b, c) HEX_MESSAGE_(__LINE__, uvec3(a, b, c))
 #else
-#define ASERT_EQUAL(a, b)
-#define ASERT_NOT_EQUAL(a, b)
-#define ASERT_LESS_THAN(a, b)
-#define ASERT_LESS_THAN_EQUAL(a, b)
+#define ASSERT_EQUAL(a, b)
+#define ASSERT_NOT_EQUAL(a, b)
+#define ASSERT_LESS_THAN(a, b)
+#define ASSERT_LESS_THAN_EQUAL(a, b)
 #define GENERIC_MESSAGE0()
 #define GENERIC_MESSAGE1(a)
 #define GENERIC_MESSAGE2(a, b)

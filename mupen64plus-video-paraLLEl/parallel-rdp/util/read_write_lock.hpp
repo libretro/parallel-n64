@@ -1,4 +1,4 @@
-/* Copyright (c) 2017-2020 Hans-Kristian Arntzen
+/* Copyright (c) 2017-2022 Hans-Kristian Arntzen
  *
  * Permission is hereby granted, free of charge, to any person obtaining
  * a copy of this software and associated documentation files (the
@@ -88,6 +88,6 @@ public:
 	}
 
 private:
-	std::atomic<uint32_t> counter;
+	std::atomic_uint32_t counter;
 };
 }
