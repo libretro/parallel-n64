@@ -37,6 +37,92 @@
 #define TEXT_SECTION .text
 #define END_SECTION
 
+/* Page-relative addressing syntax differs between Mach-O (Apple) and
+ * ELF (Linux, *BSD). On Apple, the high/low halves of a 4 KiB-aligned
+ * address use @PAGE / @PAGEOFF; on ELF, the high half is the bare
+ * symbol and the low half uses the :lo12: prefix. */
+#if defined(__APPLE__)
+#define SYM_HI(sym) sym@PAGE
+#define SYM_LO(sym) sym@PAGEOFF
+#else
+#define SYM_HI(sym) sym
+#define SYM_LO(sym) :lo12:sym
+
+/* The Mach-O assembler adds a leading underscore to every symbol so
+ * that `_foo` in asm matches `foo` in C. ELF does no such thing: the
+ * asm name is taken literally. Rename every externally-visible asm
+ * symbol in this file from `_name` to `name` so it links against the
+ * C declarations (e.g. new_recompile_block in assem_arm64.c). Keeping
+ * the rename here, rather than rewriting every callsite, lets the
+ * unchanged Apple sources continue to use their `_name` convention. */
+#define _base_addr              base_addr
+#define _breakpoint             breakpoint
+#define _cc_interrupt           cc_interrupt
+#define _check_interrupt        check_interrupt
+#define _clean_blocks           clean_blocks
+#define _do_interrupt           do_interrupt
+#define _do_invalidate          do_invalidate
+#define _dyna_linker            dyna_linker
+#define _dyna_linker_ds         dyna_linker_ds
+#define _fp_exception           fp_exception
+#define _fp_exception_ds        fp_exception_ds
+#define _gen_interrupt          gen_interrupt
+#define _get_addr               get_addr
+#define _get_addr_32            get_addr_32
+#define _get_addr_ht            get_addr_ht
+#define _invalidate_addr_x0     invalidate_addr_x0
+#define _invalidate_addr_x1     invalidate_addr_x1
+#define _invalidate_addr_x2     invalidate_addr_x2
+#define _invalidate_addr_x3     invalidate_addr_x3
+#define _invalidate_addr_x4     invalidate_addr_x4
+#define _invalidate_addr_x5     invalidate_addr_x5
+#define _invalidate_addr_x6     invalidate_addr_x6
+#define _invalidate_addr_x7     invalidate_addr_x7
+#define _invalidate_addr_x8     invalidate_addr_x8
+#define _invalidate_addr_x9     invalidate_addr_x9
+#define _invalidate_addr_x10    invalidate_addr_x10
+#define _invalidate_addr_x11    invalidate_addr_x11
+#define _invalidate_addr_x12    invalidate_addr_x12
+#define _invalidate_addr_x13    invalidate_addr_x13
+#define _invalidate_addr_x14    invalidate_addr_x14
+#define _invalidate_addr_x15    invalidate_addr_x15
+#define _invalidate_addr_x16    invalidate_addr_x16
+#define _invalidate_addr_x17    invalidate_addr_x17
+#define _invalidate_addr_x18    invalidate_addr_x18
+#define _invalidate_addr_x19    invalidate_addr_x19
+#define _invalidate_addr_x20    invalidate_addr_x20
+#define _invalidate_addr_x21    invalidate_addr_x21
+#define _invalidate_addr_x22    invalidate_addr_x22
+#define _invalidate_addr_x23    invalidate_addr_x23
+#define _invalidate_addr_x24    invalidate_addr_x24
+#define _invalidate_addr_x25    invalidate_addr_x25
+#define _invalidate_addr_x26    invalidate_addr_x26
+#define _invalidate_addr_x27    invalidate_addr_x27
+#define _invalidate_addr_x28    invalidate_addr_x28
+#define _invalidate_block       invalidate_block
+#define _jump_eret              jump_eret
+#define _jump_syscall           jump_syscall
+#define _jump_vaddr             jump_vaddr
+#define _memory_layout          memory_layout
+#define _new_dyna_start         new_dyna_start
+#define _new_recompile_block    new_recompile_block
+#define _read_nomem_new         read_nomem_new
+#define _read_nomemb_new        read_nomemb_new
+#define _read_nomemd_new        read_nomemd_new
+#define _read_nomemh_new        read_nomemh_new
+#define _verify_code            verify_code
+#define _verify_code_ds         verify_code_ds
+#define _verify_code_vm         verify_code_vm
+#define _write_nomem_new        write_nomem_new
+#define _write_nomemb_new       write_nomemb_new
+#define _write_nomemd_new       write_nomemd_new
+#define _write_nomemh_new       write_nomemh_new
+#define _write_rdram_new        write_rdram_new
+#define _write_rdramb_new       write_rdramb_new
+#define _write_rdramd_new       write_rdramd_new
+#define _write_rdramh_new       write_rdramh_new
+#endif
+
 TEXT_SECTION
 
 GLOBAL_FUNCTION(_dyna_linker):
@@ -289,8 +375,8 @@ GLOBAL_FUNCTION(_jump_eret):
     b      .E8
 
 GLOBAL_FUNCTION(_new_dyna_start):
-    adrp   x16, _memory_layout@PAGE
-    add    x16, x16, _memory_layout@PAGEOFF
+    adrp   x16, SYM_HI(_memory_layout)
+    add    x16, x16, SYM_LO(_memory_layout)
     add    x16, x16, #152
     mov    w0, #0xa4000000
     stp    x19,x20,[x16,#0]
@@ -300,8 +386,8 @@ GLOBAL_FUNCTION(_new_dyna_start):
     stp    x27,x28,[x16,#64]
     stp    x29,x30,[x16,#80]
     sub    x29, x16, #152
-    adrp   x1, _base_addr@PAGE
-    add    x1, x1, _base_addr@PAGEOFF
+    adrp   x1, SYM_HI(_base_addr)
+    add    x1, x1, SYM_LO(_base_addr)
     ldr    x19, [x1]
     add    w0, w0, #0x40
     bl     _new_recompile_block
