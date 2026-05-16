@@ -661,7 +661,7 @@ DECLARE_INSTRUCTION(MTC0)
       g_cp0_regs[CP0_PAGEMASK_REG] = rrt32 & UINT32_C(0x01FFE000);
       break;
     case CP0_WIRED_REG:
-      g_cp0_regs[CP0_WIRED_REG] = rrt32;
+      g_cp0_regs[CP0_WIRED_REG] = rrt32 & UINT32_C(0x0000003F);
       g_cp0_regs[CP0_RANDOM_REG] = UINT32_C(31);
       break;
     case CP0_BADVADDR_REG:
