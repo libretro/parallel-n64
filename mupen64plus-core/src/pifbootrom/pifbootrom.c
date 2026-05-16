@@ -75,7 +75,7 @@ void pifbootrom_hle_execute(struct device *dev)
     }
 
     g_cp0_regs[CP0_STATUS_REG] = 0x34000000;
-    g_cp0_regs[CP0_CONFIG_REG] = 0x0006e463;
+    g_cp0_regs[CP0_CONFIG_REG] = 0x7006e463;
 
     dev->sp.regs[SP_STATUS_REG] = 1;
     dev->sp.regs2[SP_PC_REG] = 0;
