@@ -51,13 +51,11 @@
 #  define md5_INCLUDED
 
 /*
- * This package supports both compile-time and run-time determination of CPU
- * byte order.  If ARCH_IS_BIG_ENDIAN is defined as 0, the code will be
- * compiled to run only on little-endian CPUs; if ARCH_IS_BIG_ENDIAN is
- * defined as non-zero, the code will be compiled to run only on big-endian
- * CPUs; if ARCH_IS_BIG_ENDIAN is not defined, the code will be compiled to
- * run on either big- or little-endian CPUs, but will run slightly less
- * efficiently on either one than if ARCH_IS_BIG_ENDIAN is defined.
+ * This package supports compile-time determination of CPU byte order
+ * via the MSB_FIRST macro: if MSB_FIRST is defined the code compiles
+ * for a big-endian host, otherwise it compiles for little-endian.
+ * The Makefile is responsible for setting MSB_FIRST on big-endian
+ * targets; nothing is auto-detected at runtime.
  */
 
 typedef unsigned char md5_byte_t; /* 8-bit byte */
