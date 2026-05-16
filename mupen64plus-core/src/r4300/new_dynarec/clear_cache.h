@@ -5,7 +5,13 @@
 #ifdef __APPLE__
 #include <libkern/OSCacheControl.h>
 #else
+#ifdef __cplusplus
+extern "C" {
+#endif
 extern void __clear_cache(void *, void *);
+#ifdef __cplusplus
+}
+#endif
 #endif
 
 static inline void clear_instruction_cache(void* start, void* end)
