@@ -685,6 +685,8 @@ DECLARE_INSTRUCTION(MTC0)
       g_cp0_regs[CP0_CAUSE_REG] &= ~CP0_CAUSE_IP7;
       break;
     case CP0_STATUS_REG:
+      rrt32 &= ~(1 << 19); /* 19th bit isn't writable */
+
       if((rrt32 & CP0_STATUS_FR) != (g_cp0_regs[CP0_STATUS_REG] & CP0_STATUS_FR))
       {
           shuffle_fpr_data(g_cp0_regs[CP0_STATUS_REG], rrt32);
