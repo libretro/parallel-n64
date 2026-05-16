@@ -7695,10 +7695,14 @@ void new_dynarec_init(void)
   sceKernelOpenVMDomain();
   printf("translation_cache = 0x%08X \n ", base_addr);
 #elif NEW_DYNAREC == NEW_DYNAREC_ARM
-  if ((base_addr = mmap ((u_char *)BASE_ADDR, 1<<TARGET_SIZE_2,
-            PROT_READ | PROT_WRITE | PROT_EXEC,
-            MAP_FIXED | MAP_PRIVATE | MAP_ANONYMOUS,
-            -1, 0)) <= 0) {DebugMessage(M64MSG_ERROR, "mmap() failed");}
+  /* extra_memory is a statically-allocated buffer in BSS; we must not
+   * mmap MAP_FIXED over it (and definitely must not munmap it later).
+   * Use mprotect to grant it execute permission and use the buffer
+   * itself as the code-cache base. */
+  if (mprotect ((u_char *)BASE_ADDR, 1<<TARGET_SIZE_2,
+            PROT_READ | PROT_WRITE | PROT_EXEC) < 0)
+            {DebugMessage(M64MSG_ERROR, "mprotect() failed");}
+  base_addr = (void *)BASE_ADDR;
 #elif defined(_MSC_VER)
   base_addr = VirtualAlloc(NULL, 1<<TARGET_SIZE_2, MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
 #else
@@ -7785,6 +7789,9 @@ void new_dynarec_cleanup(void)
 #ifndef VITA
 #if defined(_MSC_VER)
   VirtualFree(base_addr, 0, MEM_RELEASE);
+#elif NEW_DYNAREC == NEW_DYNAREC_ARM
+  /* base_addr points at the statically-allocated extra_memory buffer;
+   * never munmap a buffer the loader handed us. */
 #else
   if (munmap (base_addr, 1<<TARGET_SIZE_2) < 0) {DebugMessage(M64MSG_ERROR, "munmap() failed");}
 #endif
