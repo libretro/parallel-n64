@@ -49,7 +49,9 @@
   static __inline float roundf(float x) { return (float) floor(x + 0.5); }
   static __inline double trunc(double x) { return (double) (int) x; }
   static __inline float truncf(float x) { return (float) (int) x; }
-  #define isnan _isnan
+  #if !defined(isnan)
+    #define isnan _isnan
+  #endif
 #else
   #define M64P_FPU_INLINE static inline
 #ifndef VITA

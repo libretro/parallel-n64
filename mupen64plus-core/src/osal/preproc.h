@@ -35,7 +35,6 @@
 
   /* for isnan() */
   #include <float.h>
-  #define isnan _isnan
 
   #define OSAL_DIR_SEPARATORS           "\\/"
   #define PATH_MAX _MAX_PATH
