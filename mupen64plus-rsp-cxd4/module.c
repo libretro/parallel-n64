@@ -49,7 +49,6 @@ NOINLINE void update_conf(const char* source)
     memset(conf, 0, sizeof(conf));
 #if 0
 #ifndef __LIBRETRO__
-    //yomoma: do not override config settings if running under libretro
     CFG_HLE_GFX = ConfigGetParamBool(l_ConfigRsp, "DisplayListToGraphicsPlugin");
     CFG_HLE_AUD = ConfigGetParamBool(l_ConfigRsp, "AudioListToAudioPlugin");
     CFG_WAIT_FOR_CPU_HOST = ConfigGetParamBool(l_ConfigRsp, "WaitForCPUHost");
