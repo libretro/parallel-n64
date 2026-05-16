@@ -29,7 +29,7 @@
 #include "common.h"
 #include "hle_internal.h"
 
-#ifdef M64P_BIG_ENDIAN
+#ifdef MSB_FIRST
 #define S 0
 #define S16 0
 #define S8 0
