@@ -34,6 +34,8 @@ extern "C" {
 #define OSAL_DIR_SEPARATOR_CHAR      L'/'
 
 #if defined(OS_WINDOWS)
+#undef EXPORT
+#undef CALL
 #define EXPORT	__declspec(dllexport)
 #define CALL		__cdecl
 #ifndef PATH_MAX
@@ -41,6 +43,8 @@ extern "C" {
 #endif
 #define strdup _strdup
 #else  /* Not WIN32 */
+#undef EXPORT
+#undef CALL
 #define EXPORT 	__attribute__((visibility("default")))
 #define CALL
 #ifndef PATH_MAX
