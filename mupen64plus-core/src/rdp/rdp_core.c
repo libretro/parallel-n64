@@ -52,6 +52,12 @@ static int update_dpc_status(struct rdp_core* dp, uint32_t w)
    if (w & DPC_STATUS_CLR_FLUSH) dp->dpc_regs[DPC_STATUS_REG] &= ~DPC_STATUS_FLUSH;
    if (w & DPC_STATUS_SET_FLUSH) dp->dpc_regs[DPC_STATUS_REG] |= DPC_STATUS_FLUSH;
 
+   /* clear hardware counters */
+   if (w & DPC_STATUS_CLR_TMEM_CTR)  dp->dpc_regs[DPC_TMEM_REG]     = 0;
+   if (w & DPC_STATUS_CLR_PIPE_CTR)  dp->dpc_regs[DPC_PIPEBUSY_REG] = 0;
+   if (w & DPC_STATUS_CLR_CMD_CTR)   dp->dpc_regs[DPC_BUFBUSY_REG]  = 0;
+   if (w & DPC_STATUS_CLR_CLOCK_CTR) dp->dpc_regs[DPC_CLOCK_REG]    = 0;
+
    return do_sp_task_on_unfreeze;
 }
 
@@ -70,6 +76,7 @@ void poweron_rdp(struct rdp_core* dp)
 {
     memset(dp->dpc_regs, 0, DPC_REGS_COUNT*sizeof(uint32_t));
     memset(dp->dps_regs, 0, DPS_REGS_COUNT*sizeof(uint32_t));
+    dp->dpc_regs[DPC_STATUS_REG] |= DPC_STATUS_START_GCLK;
 
     poweron_fb(&dp->fb);
 }
