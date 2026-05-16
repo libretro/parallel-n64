@@ -1215,9 +1215,9 @@ void invalidate_block(u_int block)
 {
   u_int page,vpage;
   page=vpage=block^0x80000;
-  if(page>262143&&tlb_LUT_r[block]) page=(tlb_LUT_r[block]^0x80000000)>>12;
+  if(block<0x100000&&page>262143&&tlb_LUT_r[block]) page=(tlb_LUT_r[block]^0x80000000)>>12;
   if(page>2048) page=2048+(page&2047);
-  if(vpage>262143&&tlb_LUT_r[block]) vpage&=2047; // jump_dirty uses a hash of the virtual address instead
+  if(block<0x100000&&vpage>262143&&tlb_LUT_r[block]) vpage&=2047; // jump_dirty uses a hash of the virtual address instead
   if(vpage>2048) vpage=2048+(vpage&2047);
   inv_debug("INVALIDATE: %x (%d)\n",block<<12,page);
   //inv_debug("invalid_code[block]=%d\n",invalid_code[block]);
@@ -1263,9 +1263,11 @@ void invalidate_block(u_int block)
   #endif
 
   // Don't trap writes
-  invalid_code[block]=1;
+  if(block<0x100000) {
+    invalid_code[block]=1;
+  }
   // If there is a valid TLB entry for this page, remove write protect
-  if(tlb_LUT_w[block]) {
+  if(block<0x100000&&tlb_LUT_w[block]) {
     assert(tlb_LUT_r[block]==tlb_LUT_w[block]);
     // CHECK: Is this right?
     memory_map[block]=((tlb_LUT_w[block]&0xFFFFF000)-(block<<12)+(unsigned int)g_dev.ri.rdram.dram-0x80000000)>>2;
