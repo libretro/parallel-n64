@@ -833,7 +833,7 @@ void GraphicsDrawer::drawDMATriangles(u32 _numVtx)
 	}
 }
 
-void GraphicsDrawer::_drawThickLine(int _v0, int _v1, float _width)
+void GraphicsDrawer::_drawThickLine(u32 _v0, u32 _v1, float _width, u32 _flag)
 {
 	if ((gSP.geometryMode & G_LIGHTING) == 0) {
 		if ((gSP.geometryMode & G_SHADE) == 0) {
@@ -850,7 +850,7 @@ void GraphicsDrawer::_drawThickLine(int _v0, int _v1, float _width)
 		}
 		else if ((gSP.geometryMode & G_SHADING_SMOOTH) == 0) {
 			// Flat shading
-			SPVertex & vtx0 = triangles.vertices[_v0 + ((RSP.w1 >> 24) & 3)];
+			SPVertex & vtx0 = triangles.vertices[_flag];
 			SPVertex & vtx1 = triangles.vertices[_v0];
 			vtx1.r = vtx1.flat_r = vtx0.r;
 			vtx1.g = vtx1.flat_g = vtx0.g;
@@ -911,7 +911,7 @@ void GraphicsDrawer::_drawThickLine(int _v0, int _v1, float _width)
 	drawScreenSpaceTriangle(4);
 }
 
-void GraphicsDrawer::drawLine(int _v0, int _v1, float _width)
+void GraphicsDrawer::drawLine(u32 _v0, u32 _v1, float _width, u32 _flag)
 {
 	m_texrectDrawer.draw();
 
@@ -924,7 +924,7 @@ void GraphicsDrawer::drawLine(int _v0, int _v1, float _width)
 	else
 		lineWidth *= config.frameBufferEmulation.nativeResFactor;
 	if (lineWidth > m_maxLineWidth) {
-		_drawThickLine(_v0, _v1, _width * 0.5f);
+		_drawThickLine(_v0, _v1, _width * 0.5f, _flag);
 		return;
 	}
 
