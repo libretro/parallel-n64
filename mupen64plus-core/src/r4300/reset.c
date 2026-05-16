@@ -52,6 +52,7 @@ void reset_hard(void)
       free_blocks();
       init_blocks();
    }
+   invalidate_r4300_cached_code(0, 0);
    generic_jump_to(last_addr);
 }
 
