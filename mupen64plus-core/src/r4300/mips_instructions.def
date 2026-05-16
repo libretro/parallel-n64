@@ -1472,6 +1472,12 @@ DECLARE_INSTRUCTION(SYSCALL)
    exception_general();
 }
 
+DECLARE_INSTRUCTION(BREAK)
+{
+   g_cp0_regs[CP0_CAUSE_REG] = CP0_CAUSE_EXCCODE_BP;
+   exception_general();
+}
+
 DECLARE_INSTRUCTION(SYNC)
 {
    ADD_TO_PC(1);

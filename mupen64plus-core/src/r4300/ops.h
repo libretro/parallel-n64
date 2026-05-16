@@ -307,6 +307,7 @@ typedef struct _cpu_instruction_table
 
 	// Special instructions
 	void (*SYSCALL)(void);
+	void (*BREAK)(void);
 
 	// Exception instructions
 	void (*TEQ)(void);

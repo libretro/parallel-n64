@@ -203,8 +203,8 @@ static void RSYSCALL(void)
 
 static void RBREAK(void)
 {
-   dst->ops = current_instruction_table.NI;
-   recomp_func = genni;
+   dst->ops = current_instruction_table.BREAK;
+   recomp_func = genbreak;
 }
 
 static void RSYNC(void)

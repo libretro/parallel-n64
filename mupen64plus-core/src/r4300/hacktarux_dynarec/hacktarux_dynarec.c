@@ -4054,6 +4054,11 @@ void gensyscall(void)
 #endif
 }
 
+void genbreak(void)
+{
+   gencallinterp((native_type)cached_interpreter_table.BREAK, 0);
+}
+
 void gensync(void)
 {
 }

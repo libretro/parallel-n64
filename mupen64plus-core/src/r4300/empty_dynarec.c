@@ -857,6 +857,10 @@ void gensyscall()
 {
 }
 
+void genbreak()
+{
+}
+
 void gensync()
 {
 }

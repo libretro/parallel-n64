@@ -175,6 +175,7 @@ void genjal_idle(void);
 void genjal_out(void);
 void genbeq_out(void);
 void gensyscall(void);
+void genbreak(void);
 void gensync(void);
 void gendadd(void);
 void gendaddu(void);

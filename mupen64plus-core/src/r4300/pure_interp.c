@@ -223,8 +223,8 @@ void InterpretOpcode(void)
 			JALR(op);
 			break;
 		case 12: SYSCALL(op); break;
-		case 13: /* SPECIAL opcode 13: BREAK (Not implemented) */
-			NI(op);
+		case 13: /* SPECIAL opcode 13: BREAK */
+			BREAK(op);
 			break;
 		case 15: SYNC(op); break;
 		case 16: /* SPECIAL opcode 16: MFHI */
