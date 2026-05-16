@@ -279,7 +279,7 @@ static u_int get_clean_addr(int addr)
   u_char *ptr=(u_char *)addr;
   assert(ptr[20]==0xE8); // call instruction
   assert(ptr[25]==0x83); // pop (add esp,4) instruction
-  if(ptr[28]==0xE9) return *(u_int *)(ptr+29)+addr+33; // follow jmp
+  if(ptr[28]==0xE9) return *(int *)(ptr+29)+addr+33; // follow jmp
   else return(addr+28);
 }
 
@@ -1100,6 +1100,7 @@ static void emit_storereg(int r, int hr)
   if((r&63)==LOREG) addr=(int)&lo+((r&64)>>4);
   if(r==CCREG) addr=(int)&cycle_count;
   if(r==FSREG) addr=(int)&FCR31;
+  assert((r&63)<=CCREG);
   assem_debug("mov %%%s,%x+%d",regname[hr],addr,r);
   output_byte(0x89);
   output_modrm(0,5,hr);
