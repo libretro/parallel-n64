@@ -1,20 +1,31 @@
-[![Build Status](https://travis-ci.org/libretro/parallel-n64.svg?branch=master)](https://travis-ci.org/libretro/parallel-n64)
-[![Build status](https://ci.appveyor.com/api/projects/status/iqe836smfugoy8ey/branch/master?svg=true)](https://ci.appveyor.com/project/bparker06/parallel-n64/branch/master)
+# ParallelN64 (Parallel Launcher Edition)
 
-# mupen64plus-libretro
+A fork of [ParallelN64](https://git.libretro.com/libretro/parallel-n64) that adds the GLideN64 graphics plugin and some additional settings and features. Designed to be used with Parallel Launcher.
 
-To enable a dynarec CPU core you must pass the WITH_DYNAREC value to make:
-* make WITH_DYNAREC=x86
-* make WITH_DYNAREC=x86_64
-* make WITH_DYNAREC=arm
-* make WITH_DYNAREC=aarch64
+# Credits
 
-New make options:
-* USE_CXD4_NEW - use the most recent version of CXD4 that was verified on Android
-* USE_SSE2NEON - enable SSE2 vectorized routines on ARMv7+ via hacked SSE2NEON library
+The original ParallelN64 can be found here: https://git.libretro.com/libretro/parallel-n64  
 
-To build Android hardfp library with the new CXD4 RSP + NEON + Parallel RDP do:
-* ndk-build -j8 USE_SSE2NEON=1 APP_ABI=armeabi-v7a-hard
+Contributors for the modifications specific to this fork:
+ * [Matt Pharoah](https://gitlab.com/mpharoah)
+   * Black border fix for ParaLLEl
+   * Config to enable/disable unaligned DMA support
+   * 16:10 (SteamDeck) widescreen support for GLideN64
+   * Support for IS Viewer logging
+   * Support for changing the time on the RTC
+   * Support for storing the RTC state in savestates
+ * [Wiseguy](https://gitlab.com/Mr-Wiseguy)
+    * Raw gamecube controller support
+ * [Aglab2](https://gitlab.com/aglab2)
+    * MoltenVK (MacOS) support for ParaLLEl
+    * Black border fix for NTSC roms in GLideN64
+    * GLideN64 modifications for supporting old SM64 romhacks
+    * Support for detecting save types based on EverDrive headers
+    * Support for ROMs larger than 64 MiB
+    * Native ARM support for MacOS
+ * [devwizard](https://gitlab.com/devwizard64)
+    * Added support for SummerCart64 SD card emulation
 
-To build Android arm64 library with the new CXD4 RSP + Parallel RDP + dynarec do:
-* ndk-build APP_ABI=arm64-v8a
+### Platform Builds
+
+Build scripts are found [here](https://gitlab.com/parallel-launcher/parallel-n64/-/tree/master/scripts).

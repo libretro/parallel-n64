@@ -756,7 +756,8 @@ void Device::set_context(const Context &context)
 	init_shader_manager_cache();
 #endif
 
-	init_calibrated_timestamps();
+	if (json_trace_file)
+		init_calibrated_timestamps();
 }
 
 void Device::init_bindless()

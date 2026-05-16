@@ -310,6 +310,17 @@ typedef struct _cpu_instruction_table
 
 	// Exception instructions
 	void (*TEQ)(void);
+	void (*TNE)(void);
+	void (*TGE)(void);
+	void (*TGEU)(void);
+	void (*TLT)(void);
+	void (*TLTU)(void);
+	void (*TEQI)(void);
+	void (*TNEI)(void);
+	void (*TGEI)(void);
+	void (*TGEIU)(void);
+	void (*TLTI)(void);
+	void (*TLTIU)(void);
 
 	// Emulator helper functions
 	void (*NOP)(void);          // No operation (used to nullify R0 writes)

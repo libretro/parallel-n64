@@ -92,7 +92,7 @@ const uint16_t floor_mode = 0x73F;
 
 void dyna_jump(void)
 {
-    if (stop == 1)
+    if (mupencorestop == 1)
     {
         dyna_stop();
         return;
@@ -5163,6 +5163,61 @@ void gendsubu(void)
 void genteq(void)
 {
    gencallinterp((native_type)cached_interpreter_table.TEQ, 0);
+}
+
+void gentne(void)
+{
+   gencallinterp((native_type)cached_interpreter_table.TNE, 0);
+}
+
+void gentge(void)
+{
+   gencallinterp((native_type)cached_interpreter_table.TGE, 0);
+}
+
+void gentgeu(void)
+{
+   gencallinterp((native_type)cached_interpreter_table.TGEU, 0);
+}
+
+void gentlt(void)
+{
+   gencallinterp((native_type)cached_interpreter_table.TLT, 0);
+}
+
+void gentltu(void)
+{
+   gencallinterp((native_type)cached_interpreter_table.TLTU, 0);
+}
+
+void genteqi(void)
+{
+   gencallinterp((native_type)cached_interpreter_table.TEQI, 0);
+}
+
+void gentnei(void)
+{
+   gencallinterp((native_type)cached_interpreter_table.TNEI, 0);
+}
+
+void gentgei(void)
+{
+   gencallinterp((native_type)cached_interpreter_table.TGEI, 0);
+}
+
+void gentgeiu(void)
+{
+   gencallinterp((native_type)cached_interpreter_table.TGEIU, 0);
+}
+
+void gentlti(void)
+{
+   gencallinterp((native_type)cached_interpreter_table.TLTI, 0);
+}
+
+void gentltiu(void)
+{
+   gencallinterp((native_type)cached_interpreter_table.TLTIU, 0);
 }
 
 void gendsll(void)

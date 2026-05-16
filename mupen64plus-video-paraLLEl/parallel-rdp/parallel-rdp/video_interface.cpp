@@ -28,6 +28,8 @@
 #include "shaders/slangmosh.hpp"
 #endif
 
+extern uint32_t ParallelRemoveBorders;
+
 namespace RDP
 {
 void VideoInterface::set_device(Vulkan::Device *device_)
@@ -564,7 +566,12 @@ Vulkan::ImageHandle VideoInterface::scale_stage(Vulkan::CommandBuffer &cmd, Vulk
 	Vulkan::QueryPoolHandle start_ts, end_ts;
 	bool fetch_bug = need_fetch_bug_emulation(regs, scaling_factor);
 	bool serrate = (regs.status & VI_CONTROL_SERRATE_BIT) != 0 && !options.upscale_deinterlacing;
-
+	
+	if( ParallelRemoveBorders ) {
+		regs.left_clamp = true;
+		regs.right_clamp = true;
+	}
+	
 	unsigned crop_pixels_x = options.crop_overscan_pixels * scaling_factor;
 	unsigned crop_pixels_y = crop_pixels_x * (serrate ? 2 : 1);
 

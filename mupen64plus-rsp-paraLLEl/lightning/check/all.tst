@@ -2,15 +2,16 @@
 .code
 	prolog
 	allocai 32 $buf
-	arg $c
-	arg $uc
-	arg $s
-	arg $us
-	arg $i
+	arg_c $c
+	arg_c $uc
+	arg_s $s
+	arg_s $us
+	arg_i $i
+	arg_i $ui
 #if __WORDSIZE == 64
-	arg $ui
-	arg $l
+	arg_l $l
 #endif
+	arg $a
 	getarg_c %r0 $c
 	getarg_uc %r0 $uc
 	getarg_s %r0 $s
@@ -20,6 +21,25 @@
 	getarg_ui %r0 $ui
 	getarg_l %r0 $l
 #endif
+	getarg %r0 $a
+	putargr_c %r0 $c
+	putargi_c 1 $c
+	putargr_uc %r0 $uc
+	putargi_uc 1 $uc
+	putargr_s %r0 $s
+	putargi_s 1 $s
+	putargr_us %r0 $us
+	putargi_us 1 $us
+	putargr_i %r0 $i
+	putargi_i 1 $ui
+#if __WORDSIZE == 64
+	putargr_ui %r0 $ui
+	putargi_ui 1 $ui
+	putargr_l %r0 $l
+	putargi_l 1 $l
+#endif
+	putargr %r0 $a
+	putargi 1 $a
 	addr %r0 %r1 %r2
 	addi %r0 %r1 2
 	addcr %r0 %r1 %r2
@@ -63,7 +83,25 @@
 	rshr_u %r0 %r1 %r2
 	rshi_u %r0 %r1 2
 	negr %r0 %r1
+	negi %r0 1
 	comr %r0 %r1
+	comi %r0 1
+	clor %r0 %r1
+	cloi %r0 0xfffffffe
+	clzr %r0 %r1
+	clzi %r0 1
+	ctor %r0 %r1
+	ctoi %r0 -1
+	ctzi %r0 0x80000000
+	ctzr %r0 %r1
+	rbitr %r0 %r1
+	rbiti %r0 0x02468ace
+	popcntr %r0 %r1
+	popcnti %r0 0x8a13c851
+	lrotr %r0 %r1 %r2
+	lroti %r0 %r1 0x1f
+	rrotr %r0 %r1 %r2
+	rroti %r0 %r1 0x1f
 	ltr %r0 %r1 %r2
 	lti %r0 %r1 2
 	ltr_u %r0 %r1 %r2
@@ -86,16 +124,48 @@
 	nei %r0 %r1 2
 	movr %r0 %r1
 	movi %r0 1
+	extr %r0 %r1 4 3
+	exti %r0 0xa5a5a584 4 3
+	extr_u %r0 %r1 4 3
+	exti_u %r0 0xa5a5a584 4 3
+	depr %r0 %r1 4 3
+	depi %r0 0xa5a5a584 4 3
 	extr_c %r0 %r1
+	exti_c %r0 0xfff
 	extr_uc %r0 %r1
+	exti_uc %r0 0xfff
 	extr_s %r0 %r1
+	exti_s %r0 0xfffff
 	extr_us %r0 %r1
+	exti_us %r0 0xfffff
 #if __WORDSIZE == 64
 	extr_i %r0 %r1
+	exti_i %r0 0x80000000
 	extr_ui %r0 %r1
+	exti_ui %r0 0x80000000
+#endif
+	htonr_us %r0 %r1
+	htoni_us %r0 0xff1234
+	htonr_ui %r0 %r1
+	htoni_ui %r0 0x12345678
+#if __WORDSIZE == 64
+	htonr_ul %r0 %r1
+	htoni_ul %r0 0x123456789abcdef0
 #endif
 	htonr %r0 %r1
 	ntohr %r0 %r1
+	htoni %r0 0x12345678
+	ntohi %r0 0x12345678
+	bswapr_us %r0 %r1
+	bswapi_us %r0 0xff1234
+	bswapr_ui %r0 %r1
+	bswapi_ui %r0 0x12345678
+#if __WORDSIZE == 64
+	bswapr_ul %r0 %r1
+	bswapi_ul %r0 0x123456789abcdef0
+#endif
+	bswapr %r0 %r1
+	bswapi %r0 0x12345678
 	ldr_c %r0 %r1
 	ldi_c %r0 0x80000000
 	ldr_uc %r0 %r1
@@ -205,6 +275,15 @@ label:
 	callr %r0
 	calli label
 	prepare
+	pushargr_c %r0
+	pushargr_uc %r0
+	pushargr_s %r0
+	pushargr_us %r0
+	pushargr_i %r0
+#if __WORDSIZE == 64
+	pushargr_ui %r0
+	pushargr_l %r0
+#endif
 	pushargr %r0
 	finishr %r0
 	prepare
@@ -212,6 +291,15 @@ label:
 	ellipsis
 	finishi 0x80000000
 	ret
+	retr_c %r1
+	retr_uc %r1
+	retr_s %r1
+	retr_us %r1
+	retr_i %r1
+#if __WORDSIZE == 64
+	retr_ui %r1
+	retr_l %r1
+#endif
 	retr %r1
 	reti 2
 	retval_c %r1
@@ -225,6 +313,8 @@ label:
 #endif
 	arg_f $f
 	getarg_f %f1 $f
+	putargr_f %f1 $f
+	putargi_f 1.0 $f
 	addr_f %f0 %f1 %f2
 	addi_f %f0 %f1 0.5
 	subr_f %f0 %f1 %f2
@@ -234,8 +324,11 @@ label:
 	divr_f %f0 %f1 %f2
 	divi_f %f0 %f1 0.5
 	negr_f %f0 %f1
+	negi_f %f0 -1
 	absr_f %f0 %f1
+	absi_f %f0 -1
 	sqrtr_f %f0 %f1
+	sqrti_f %f0 -1
 	ltr_f %r0 %f0 %f1
 	lti_f %r0 %f0 0.5
 	ler_f %r0 %f0 %f1
@@ -323,6 +416,8 @@ unordi:
 	retval_f %f1
 	arg_d $f
 	getarg_d %f1 $f
+	putargr_d %f1 $f
+	putargi_d 1.0 $f
 	addr_d %f0 %f1 %f2
 	addi_d %f0 %f1 0.5
 	subr_d %f0 %f1 %f2
@@ -332,8 +427,11 @@ unordi:
 	divr_d %f0 %f1 %f2
 	divi_d %f0 %f1 0.5
 	negr_d %f0 %f1
+	negi_d %f0 -1
 	absr_d %f0 %f1
+	absi_d %f0 -1
 	sqrtr_d %f0 %f1
+	sqrti_d %f0 -1
 	ltr_d %r0 %f0 %f1
 	lti_d %r0 %f0 0.5
 	ler_d %r0 %f0 %f1

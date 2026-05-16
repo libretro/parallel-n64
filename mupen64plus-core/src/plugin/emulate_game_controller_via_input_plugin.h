@@ -23,11 +23,13 @@
 #define M64P_PLUGIN_EMULATE_GAME_CONTROLLER_VIA_INPUT_PLUGIN_H
 
 #include <stdint.h>
+#include <api/m64p_plugin.h>
 
 enum pak_type;
 
 int egcvip_is_connected(void* opaque, enum pak_type* pak);
 
 uint32_t egcvip_get_input(void* opaque);
+BUTTONS_GCN egcvip_get_gcn_input(void* opaque, int analogMode);
 
 #endif

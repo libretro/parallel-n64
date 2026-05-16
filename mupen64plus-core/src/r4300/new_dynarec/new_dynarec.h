@@ -30,6 +30,7 @@
 #define NEW_DYNAREC_ARM 3
 #define NEW_DYNAREC_ARM64 4
 
+#if !defined(__arm64__)
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -37,6 +38,11 @@ extern int pcaddr;
 extern int pending_exception;
 #ifdef __cplusplus
 }
+#endif
+#else
+#include "arm64/memory_layout_arm64.h"
+#define pcaddr            (RECOMPILER_MEMORY->rml_pcaddr)
+#define pending_exception (RECOMPILER_MEMORY->rml_pending_exception)
 #endif
 
 void invalidate_all_pages(void);

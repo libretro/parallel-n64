@@ -196,6 +196,11 @@ void parallel_set_upscaling(unsigned factor)
 	RDP::upscaling = factor;
 }
 
+unsigned parallel_get_upscaling()
+{
+	return RDP::upscaling;
+}
+
 void parallel_set_downscaling_steps(unsigned steps)
 {
 	RDP::downscaling_steps = steps;

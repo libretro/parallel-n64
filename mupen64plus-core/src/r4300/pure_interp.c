@@ -21,6 +21,13 @@
 
 #include <stdint.h>
 
+#if !defined(__arm64__)
+#define mupencorereg reg
+#else
+#include "new_dynarec/arm64/memory_layout_arm64.h"
+#define mupencorereg (RECOMPILER_MEMORY->rml_reg)
+#endif
+
 #define __STDC_FORMAT_MACROS
 #ifdef _MSC_VER
 #define PRIx32 "x"
@@ -64,7 +71,7 @@ static void InterpretOpcode(void);
       const uint32_t jump_target = (destination); \
       int64_t *link_register = (link); \
       if (cop1 && check_cop1_unusable()) return; \
-      if (link_register != &reg[0]) \
+      if (link_register != &mupencorereg[0]) \
       { \
           *link_register = SE32(interp_PC.addr + 8); \
       } \
@@ -136,16 +143,16 @@ static void InterpretOpcode(void);
 #define SE32(a) ((int64_t) ((int32_t) (a)))
 
 /* These macros are like those in macros.h, but they parse opcode fields. */
-#define rrt reg[RT_OF(op)]
-#define rrd reg[RD_OF(op)]
+#define rrt mupencorereg[RT_OF(op)]
+#define rrd mupencorereg[RD_OF(op)]
 #define rfs FS_OF(op)
-#define rrs reg[RS_OF(op)]
+#define rrs mupencorereg[RS_OF(op)]
 #define rsa SA_OF(op)
-#define irt reg[RT_OF(op)]
+#define irt mupencorereg[RT_OF(op)]
 #define ioffset IMM16S_OF(op)
 #define iimmediate IMM16S_OF(op)
-#define irs reg[RS_OF(op)]
-#define ibase reg[RS_OF(op)]
+#define irs mupencorereg[RS_OF(op)]
+#define ibase mupencorereg[RS_OF(op)]
 #define jinst_index JUMP_OF(op)
 #define lfbase RS_OF(op)
 #define lfft FT_OF(op)
@@ -156,17 +163,17 @@ static void InterpretOpcode(void);
 
 /* 32 bits macros */
 #ifdef MSB_FIRST
-#define rrt32 *((int32_t*) &reg[RT_OF(op)] + 1)
-#define rrd32 *((int32_t*) &reg[RD_OF(op)] + 1)
-#define rrs32 *((int32_t*) &reg[RS_OF(op)] + 1)
-#define irs32 *((int32_t*) &reg[RS_OF(op)] + 1)
-#define irt32 *((int32_t*) &reg[RT_OF(op)] + 1)
+#define rrt32 *((int32_t*) &mupencorereg[RT_OF(op)] + 1)
+#define rrd32 *((int32_t*) &mupencorereg[RD_OF(op)] + 1)
+#define rrs32 *((int32_t*) &mupencorereg[RS_OF(op)] + 1)
+#define irs32 *((int32_t*) &mupencorereg[RS_OF(op)] + 1)
+#define irt32 *((int32_t*) &mupencorereg[RT_OF(op)] + 1)
 #else
-#define rrt32 *((int32_t*) &reg[RT_OF(op)])
-#define rrd32 *((int32_t*) &reg[RD_OF(op)])
-#define rrs32 *((int32_t*) &reg[RS_OF(op)])
-#define irs32 *((int32_t*) &reg[RS_OF(op)])
-#define irt32 *((int32_t*) &reg[RT_OF(op)])
+#define rrt32 *((int32_t*) &mupencorereg[RT_OF(op)])
+#define rrd32 *((int32_t*) &mupencorereg[RD_OF(op)])
+#define rrs32 *((int32_t*) &mupencorereg[RS_OF(op)])
+#define irs32 *((int32_t*) &mupencorereg[RS_OF(op)])
+#define irt32 *((int32_t*) &mupencorereg[RT_OF(op)])
 #endif
 
 /* two functions are defined from the macros above but never used
@@ -180,7 +187,7 @@ static void InterpretOpcode(void);
 
 void InterpretOpcode(void)
 {
-	uint32_t op = *fast_mem_access(PC->addr);
+	uint32_t op = *fast_mem_access(mupencorePC->addr);
 	switch ((op >> 26) & 0x3F) {
 	case 0: /* SPECIAL prefix */
 		switch (op & 0x3F) {
@@ -306,15 +313,23 @@ void InterpretOpcode(void)
 			if (RD_OF(op) != 0) DSUBU(op);
 			else                NOP(0);
 			break;
-		case 48: /* SPECIAL opcode 48: TGE (Not implemented) */
-		case 49: /* SPECIAL opcode 49: TGEU (Not implemented) */
-		case 50: /* SPECIAL opcode 50: TLT (Not implemented) */
-		case 51: /* SPECIAL opcode 51: TLTU (Not implemented) */
-			NI(op);
+		case 48: /* SPECIAL opcode 48: TGE */
+			TGE(op);
 			break;
-		case 52: TEQ(op); break;
-		case 54: /* SPECIAL opcode 54: TNE (Not implemented) */
-			NI(op);
+		case 49: /* SPECIAL opcode 49: TGEU */
+			TGEU(op);
+			break;
+		case 50: /* SPECIAL opcode 50: TLT */
+			TLT(op);
+			break;
+		case 51: /* SPECIAL opcode 51: TLTU */
+			TLTU(op);
+			break;
+		case 52: /* SPECIAL opcode 54: TEQ */
+			TEQ(op);
+			break;
+		case 54: /* SPECIAL opcode 54: TNE */
+			TNE(op);
 			break;
 		case 56: /* SPECIAL opcode 56: DSLL */
 			if (RD_OF(op) != 0) DSLL(op);
@@ -349,43 +364,53 @@ void InterpretOpcode(void)
 	case 1: /* REGIMM prefix */
 		switch ((op >> 16) & 0x1F) {
 		case 0: /* REGIMM opcode 0: BLTZ */
-			if (IS_RELATIVE_IDLE_LOOP(op, PC->addr)) BLTZ_IDLE(op);
+			if (IS_RELATIVE_IDLE_LOOP(op, mupencorePC->addr)) BLTZ_IDLE(op);
 			else                                     BLTZ(op);
 			break;
 		case 1: /* REGIMM opcode 1: BGEZ */
-			if (IS_RELATIVE_IDLE_LOOP(op, PC->addr)) BGEZ_IDLE(op);
+			if (IS_RELATIVE_IDLE_LOOP(op, mupencorePC->addr)) BGEZ_IDLE(op);
 			else                                     BGEZ(op);
 			break;
 		case 2: /* REGIMM opcode 2: BLTZL */
-			if (IS_RELATIVE_IDLE_LOOP(op, PC->addr)) BLTZL_IDLE(op);
+			if (IS_RELATIVE_IDLE_LOOP(op, mupencorePC->addr)) BLTZL_IDLE(op);
 			else                                     BLTZL(op);
 			break;
 		case 3: /* REGIMM opcode 3: BGEZL */
-			if (IS_RELATIVE_IDLE_LOOP(op, PC->addr)) BGEZL_IDLE(op);
+			if (IS_RELATIVE_IDLE_LOOP(op, mupencorePC->addr)) BGEZL_IDLE(op);
 			else                                     BGEZL(op);
 			break;
 		case 8: /* REGIMM opcode 8: TGEI (Not implemented) */
+			TGEI(op);
+			break;
 		case 9: /* REGIMM opcode 9: TGEIU (Not implemented) */
+			TGEIU(op);
+			break;
 		case 10: /* REGIMM opcode 10: TLTI (Not implemented) */
+			TLTI(op);
+			break;
 		case 11: /* REGIMM opcode 11: TLTIU (Not implemented) */
+			TLTIU(op);
+			break;
 		case 12: /* REGIMM opcode 12: TEQI (Not implemented) */
+			TEQI(op);
+			break;
 		case 14: /* REGIMM opcode 14: TNEI (Not implemented) */
-			NI(op);
+			TNEI(op);
 			break;
 		case 16: /* REGIMM opcode 16: BLTZAL */
-			if (IS_RELATIVE_IDLE_LOOP(op, PC->addr)) BLTZAL_IDLE(op);
+			if (IS_RELATIVE_IDLE_LOOP(op, mupencorePC->addr)) BLTZAL_IDLE(op);
 			else                                     BLTZAL(op);
 			break;
 		case 17: /* REGIMM opcode 17: BGEZAL */
-			if (IS_RELATIVE_IDLE_LOOP(op, PC->addr)) BGEZAL_IDLE(op);
+			if (IS_RELATIVE_IDLE_LOOP(op, mupencorePC->addr)) BGEZAL_IDLE(op);
 			else                                     BGEZAL(op);
 			break;
 		case 18: /* REGIMM opcode 18: BLTZALL */
-			if (IS_RELATIVE_IDLE_LOOP(op, PC->addr)) BLTZALL_IDLE(op);
+			if (IS_RELATIVE_IDLE_LOOP(op, mupencorePC->addr)) BLTZALL_IDLE(op);
 			else                                     BLTZALL(op);
 			break;
 		case 19: /* REGIMM opcode 19: BGEZALL */
-			if (IS_RELATIVE_IDLE_LOOP(op, PC->addr)) BGEZALL_IDLE(op);
+			if (IS_RELATIVE_IDLE_LOOP(op, mupencorePC->addr)) BGEZALL_IDLE(op);
 			else                                     BGEZALL(op);
 			break;
 		default: /* REGIMM opcodes 4..7, 13, 15, 20..31:
@@ -395,27 +420,27 @@ void InterpretOpcode(void)
 		} /* switch ((op >> 16) & 0x1F) for the REGIMM prefix */
 		break;
 	case 2: /* Major opcode 2: J */
-		if (IS_ABSOLUTE_IDLE_LOOP(op, PC->addr)) J_IDLE(op);
+		if (IS_ABSOLUTE_IDLE_LOOP(op, mupencorePC->addr)) J_IDLE(op);
 		else                                     J(op);
 		break;
 	case 3: /* Major opcode 3: JAL */
-		if (IS_ABSOLUTE_IDLE_LOOP(op, PC->addr)) JAL_IDLE(op);
+		if (IS_ABSOLUTE_IDLE_LOOP(op, mupencorePC->addr)) JAL_IDLE(op);
 		else                                     JAL(op);
 		break;
 	case 4: /* Major opcode 4: BEQ */
-		if (IS_RELATIVE_IDLE_LOOP(op, PC->addr)) BEQ_IDLE(op);
+		if (IS_RELATIVE_IDLE_LOOP(op, mupencorePC->addr)) BEQ_IDLE(op);
 		else                                     BEQ(op);
 		break;
 	case 5: /* Major opcode 5: BNE */
-		if (IS_RELATIVE_IDLE_LOOP(op, PC->addr)) BNE_IDLE(op);
+		if (IS_RELATIVE_IDLE_LOOP(op, mupencorePC->addr)) BNE_IDLE(op);
 		else                                     BNE(op);
 		break;
 	case 6: /* Major opcode 6: BLEZ */
-		if (IS_RELATIVE_IDLE_LOOP(op, PC->addr)) BLEZ_IDLE(op);
+		if (IS_RELATIVE_IDLE_LOOP(op, mupencorePC->addr)) BLEZ_IDLE(op);
 		else                                     BLEZ(op);
 		break;
 	case 7: /* Major opcode 7: BGTZ */
-		if (IS_RELATIVE_IDLE_LOOP(op, PC->addr)) BGTZ_IDLE(op);
+		if (IS_RELATIVE_IDLE_LOOP(op, mupencorePC->addr)) BGTZ_IDLE(op);
 		else                                     BGTZ(op);
 		break;
 	case 8: /* Major opcode 8: ADDI */
@@ -496,19 +521,19 @@ void InterpretOpcode(void)
 		case 8: /* Coprocessor 1 opcode 8: Branch on C1 condition... */
 			switch ((op >> 16) & 0x3) {
 			case 0: /* opcode 0: BC1F */
-				if (IS_RELATIVE_IDLE_LOOP(op, PC->addr)) BC1F_IDLE(op);
+				if (IS_RELATIVE_IDLE_LOOP(op, mupencorePC->addr)) BC1F_IDLE(op);
 				else                                     BC1F(op);
 				break;
 			case 1: /* opcode 1: BC1T */
-				if (IS_RELATIVE_IDLE_LOOP(op, PC->addr)) BC1T_IDLE(op);
+				if (IS_RELATIVE_IDLE_LOOP(op, mupencorePC->addr)) BC1T_IDLE(op);
 				else                                     BC1T(op);
 				break;
 			case 2: /* opcode 2: BC1FL */
-				if (IS_RELATIVE_IDLE_LOOP(op, PC->addr)) BC1FL_IDLE(op);
+				if (IS_RELATIVE_IDLE_LOOP(op, mupencorePC->addr)) BC1FL_IDLE(op);
 				else                                     BC1FL(op);
 				break;
 			case 3: /* opcode 3: BC1TL */
-				if (IS_RELATIVE_IDLE_LOOP(op, PC->addr)) BC1TL_IDLE(op);
+				if (IS_RELATIVE_IDLE_LOOP(op, mupencorePC->addr)) BC1TL_IDLE(op);
 				else                                     BC1TL(op);
 				break;
 			} /* switch ((op >> 16) & 0x3) for branches on C1 condition */
@@ -626,19 +651,19 @@ void InterpretOpcode(void)
 		} /* switch ((op >> 21) & 0x1F) for the Coprocessor 1 prefix */
 		break;
 	case 20: /* Major opcode 20: BEQL */
-		if (IS_RELATIVE_IDLE_LOOP(op, PC->addr)) BEQL_IDLE(op);
+		if (IS_RELATIVE_IDLE_LOOP(op, mupencorePC->addr)) BEQL_IDLE(op);
 		else                                     BEQL(op);
 		break;
 	case 21: /* Major opcode 21: BNEL */
-		if (IS_RELATIVE_IDLE_LOOP(op, PC->addr)) BNEL_IDLE(op);
+		if (IS_RELATIVE_IDLE_LOOP(op, mupencorePC->addr)) BNEL_IDLE(op);
 		else                                     BNEL(op);
 		break;
 	case 22: /* Major opcode 22: BLEZL */
-		if (IS_RELATIVE_IDLE_LOOP(op, PC->addr)) BLEZL_IDLE(op);
+		if (IS_RELATIVE_IDLE_LOOP(op, mupencorePC->addr)) BLEZL_IDLE(op);
 		else                                     BLEZL(op);
 		break;
 	case 23: /* Major opcode 23: BGTZL */
-		if (IS_RELATIVE_IDLE_LOOP(op, PC->addr)) BGTZL_IDLE(op);
+		if (IS_RELATIVE_IDLE_LOOP(op, mupencorePC->addr)) BGTZL_IDLE(op);
 		else                                     BGTZL(op);
 		break;
 	case 24: /* Major opcode 24: DADDI */
@@ -731,17 +756,17 @@ int retro_stop_stepping(void);
 
 void pure_interpreter_init(void)
 {
-   stop = 0;
-   PC = &interp_PC;
-   PC->addr = last_addr = 0xa4000040;
+   mupencorestop = 0;
+   mupencorePC = &interp_PC;
+   mupencorePC->addr = last_addr = 0xa4000040;
 }
 
 void pure_interpreter(void)
 {
-   while (!stop && !retro_stop_stepping())
+   while (!mupencorestop && !retro_stop_stepping())
    {
 #ifdef DBG
-     if (g_DebuggerActive) update_debugger(PC->addr);
+     if (g_DebuggerActive) update_debugger(mupencorePC->addr);
 #endif
      InterpretOpcode();
    }

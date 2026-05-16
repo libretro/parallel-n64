@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012-2019  Free Software Foundation, Inc.
+ * Copyright (C) 2012-2023  Free Software Foundation, Inc.
  *
  * This file is part of GNU lightning.
  *
@@ -120,6 +120,30 @@ static void _x87_negr_d(jit_state_t*, jit_int32_t, jit_int32_t);
 #  define x87_sqrtr_f(r0, r1)		_x87_sqrtr_d(_jit, r0, r1)
 #  define x87_sqrtr_d(r0, r1)		_x87_sqrtr_d(_jit, r0, r1)
 static void _x87_sqrtr_d(jit_state_t*, jit_int32_t, jit_int32_t);
+#  define x87_fmar_f(r0, r1, r2, r3)	_x87_fmar_f(_jit, r0, r1, r2, r3)
+static void _x87_fmar_f(jit_state_t*,
+			jit_int32_t,jit_int32_t,jit_int32_t,jit_int32_t);
+#  define x87_fmar_d(r0, r1, r2, r3)	_x87_fmar_d(_jit, r0, r1, r2, r3)
+static void _x87_fmar_d(jit_state_t*,
+			jit_int32_t,jit_int32_t,jit_int32_t,jit_int32_t);
+#  define x87_fmsr_f(r0, r1, r2, r3)	_x87_fmsr_f(_jit, r0, r1, r2, r3)
+static void _x87_fmsr_f(jit_state_t*,
+			jit_int32_t,jit_int32_t,jit_int32_t,jit_int32_t);
+#  define x87_fmsr_d(r0, r1, r2, r3)	_x87_fmsr_d(_jit, r0, r1, r2, r3)
+static void _x87_fmsr_d(jit_state_t*,
+			jit_int32_t,jit_int32_t,jit_int32_t,jit_int32_t);
+#  define x87_fnmar_f(r0, r1, r2, r3)	_x87_fnmar_f(_jit, r0, r1, r2, r3)
+static void _x87_fnmar_f(jit_state_t*,
+			 jit_int32_t,jit_int32_t,jit_int32_t,jit_int32_t);
+#  define x87_fnmar_d(r0, r1, r2, r3)	_x87_fnmar_d(_jit, r0, r1, r2, r3)
+static void _x87_fnmar_d(jit_state_t*,
+			 jit_int32_t,jit_int32_t,jit_int32_t,jit_int32_t);
+#  define x87_fnmsr_f(r0, r1, r2, r3)	_x87_fnmsr_f(_jit, r0, r1, r2, r3)
+static void _x87_fnmsr_f(jit_state_t*,
+			 jit_int32_t,jit_int32_t,jit_int32_t,jit_int32_t);
+#  define x87_fnmsr_d(r0, r1, r2, r3)	_x87_fnmsr_d(_jit, r0, r1, r2, r3)
+static void _x87_fnmsr_d(jit_state_t*,
+			 jit_int32_t,jit_int32_t,jit_int32_t,jit_int32_t);
 #  define x87_truncr_f_i(r0, r1)	_x87_truncr_d_i(_jit, r0, r1)
 #  define x87_truncr_d_i(r0, r1)	_x87_truncr_d_i(_jit, r0, r1)
 static void _x87_truncr_d_i(jit_state_t*, jit_int32_t, jit_int32_t);
@@ -147,6 +171,12 @@ static jit_word_t
 _x87jcc2(jit_state_t*, jit_int32_t, jit_word_t, jit_int32_t, jit_int32_t);
 #define x87_movi_f(r0,i0)		_x87_movi_f(_jit,r0,i0)
 static void _x87_movi_f(jit_state_t*, jit_int32_t, jit_float32_t*);
+#define x87_movr_w_f(r0,r1)		_x87_movr_w_f(_jit,r0,r1)
+static void _x87_movr_w_f(jit_state_t*, jit_int32_t, jit_int32_t);
+#define x87_movr_f_w(r0,r1)		_x87_movr_f_w(_jit,r0,r1)
+static void _x87_movr_f_w(jit_state_t*, jit_int32_t, jit_int32_t);
+#define x87_movi_w_f(r0, i0)		_x87_movi_w_f(_jit, r0, i0)
+static void _x87_movi_w_f(jit_state_t*, jit_int32_t, jit_word_t);
 #  define x87_ldr_f(r0, r1)		_x87_ldr_f(_jit, r0, r1)
 static void _x87_ldr_f(jit_state_t*, jit_int32_t, jit_int32_t);
 #  define x87_ldi_f(r0, i0)		_x87_ldi_f(_jit, r0, i0)
@@ -155,6 +185,10 @@ static void _x87_ldi_f(jit_state_t*, jit_int32_t, jit_word_t);
 static void _x87_ldxr_f(jit_state_t*, jit_int32_t, jit_int32_t, jit_int32_t);
 #  define x87_ldxi_f(r0, r1, i0)	_x87_ldxi_f(_jit, r0, r1, i0)
 static void _x87_ldxi_f(jit_state_t*, jit_int32_t, jit_int32_t, jit_word_t);
+#  define x87_unldr_x(r0, r1, i0)	_x87_unldr_x(_jit, r0, r1, i0)
+static void _x87_unldr_x(jit_state_t*, jit_int32_t, jit_int32_t, jit_word_t);
+#  define x87_unldi_x(r0, i0, i1)	_x87_unldi_x(_jit, r0, i0, i1)
+static void _x87_unldi_x(jit_state_t*, jit_int32_t, jit_word_t, jit_word_t);
 #  define x87_str_f(r0, r1)		_x87_str_f(_jit, r0, r1)
 static void _x87_str_f(jit_state_t*,jit_int32_t,jit_int32_t);
 #  define x87_sti_f(i0, r0)		_x87_sti_f(_jit, i0, r0)
@@ -163,6 +197,10 @@ static void _x87_sti_f(jit_state_t*,jit_word_t, jit_int32_t);
 static void _x87_stxr_f(jit_state_t*,jit_int32_t,jit_int32_t,jit_int32_t);
 #  define x87_stxi_f(i0, r0, r1)	_x87_stxi_f(_jit, i0, r0, r1)
 static void _x87_stxi_f(jit_state_t*,jit_word_t,jit_int32_t,jit_int32_t);
+#define x87_unstr_x(r0, r1, i0)		_x87_unstr_x(_jit, r0, r1, i0)
+static void _x87_unstr_x(jit_state_t*, jit_int32_t, jit_int32_t, jit_word_t);
+#define x87_unsti_x(i0, r0, i1)		_x87_unsti_x(_jit, i0, r0, i1)
+static void _x87_unsti_x(jit_state_t*, jit_word_t, jit_int32_t, jit_word_t);
 #  define x87_ltr_f(r0, r1, r2)		x87cmp(X86_CC_A, r0, r2, r1)
 #  define x87_lti_f(r0, r1, i0)		_x87_lti_f(_jit, r0, r1, i0)
 static void _x87_lti_f(jit_state_t*,jit_int32_t,jit_int32_t,jit_float32_t*);
@@ -255,6 +293,21 @@ static void _x87_unordi_d(jit_state_t*,jit_int32_t,jit_int32_t,jit_float64_t*);
 static void _x87_movr_d(jit_state_t*, jit_int32_t, jit_int32_t);
 #define x87_movi_d(r0,i0)		_x87_movi_d(_jit,r0,i0)
 static void _x87_movi_d(jit_state_t*, jit_int32_t, jit_float64_t*);
+#if __X32 || __X64_32
+#  define x87_movr_ww_d(r0,r1,r2)	_x87_movr_ww_d(_jit,r0,r1,r2)
+static void _x87_movr_ww_d(jit_state_t*, jit_int32_t, jit_int32_t,jit_int32_t);
+#  define x87_movr_d_ww(r0,r1,r2)	_x87_movr_d_ww(_jit,r0,r1,r2)
+static void _x87_movr_d_ww(jit_state_t*, jit_int32_t, jit_int32_t,jit_int32_t);
+#  define x87_movi_ww_d(r0, i0, i1)	_x87_movi_ww_d(_jit, r0, i0, i1)
+static void _x87_movi_ww_d(jit_state_t*, jit_int32_t, jit_word_t, jit_word_t);
+#else
+#  define x87_movr_w_d(r0,r1)		_x87_movr_w_d(_jit,r0,r1)
+static void _x87_movr_w_d(jit_state_t*, jit_int32_t, jit_int32_t);
+#  define x87_movr_d_w(r0,r1)		_x87_movr_d_w(_jit,r0,r1)
+static void _x87_movr_d_w(jit_state_t*, jit_int32_t, jit_int32_t);
+#define x87_movi_w_d(r0, i0)		_x87_movi_w_d(_jit, r0, i0)
+static void _x87_movi_w_d(jit_state_t*, jit_int32_t, jit_word_t);
+#endif
 #  define x87_ldr_d(r0, r1)		_x87_ldr_d(_jit, r0, r1)
 static void _x87_ldr_d(jit_state_t*, jit_int32_t, jit_int32_t);
 #  define x87_ldi_d(r0, i0)		_x87_ldi_d(_jit, r0, i0)
@@ -408,14 +461,14 @@ _x87_b##name##i_##type(jit_state_t *_jit,				\
 		       jit_word_t i0, jit_int32_t r0,			\
 		       jit_float##size##_t *i1)				\
 {									\
-    jit_word_t		word;						\
+    jit_word_t		w;						\
     jit_int32_t		reg = jit_get_reg(jit_class_fpr|		\
 					  jit_class_nospill);		\
     assert(jit_x87_reg_p(reg));						\
     x87_movi_##type(rn(reg), i1);					\
-    word = x87_b##name##r_##type(i0, r0, rn(reg));			\
+    w = x87_b##name##r_##type(i0, r0, rn(reg));				\
     jit_unget_reg(reg);							\
-    return (word);							\
+    return (w);								\
 }
 #  define fopi(name)			fpr_opi(name, f, 32)
 #  define fbopi(name)			fpr_bopi(name, f, 32)
@@ -660,8 +713,129 @@ _x87_sqrtr_d(jit_state_t *_jit, jit_int32_t r0, jit_int32_t r1)
 }
 
 static void
+_x87_fmar_f(jit_state_t *_jit,
+	    jit_int32_t r0, jit_int32_t r1, jit_int32_t r2, jit_int32_t r3)
+{
+    jit_int32_t		t0;
+    if (r0 != r3) {
+	x87_mulr_f(r0, r1, r2);
+	x87_addr_f(r0, r0, r3);
+    }
+    else {
+	t0 = jit_get_reg(jit_class_fpr);
+	assert(jit_x87_reg_p(t0));
+	x87_mulr_f(rn(t0), r1, r2);
+	x87_addr_f(r0, rn(t0), r3);
+	jit_unget_reg(t0);
+    }
+}
+
+static void
+_x87_fmar_d(jit_state_t *_jit,
+	    jit_int32_t r0, jit_int32_t r1, jit_int32_t r2, jit_int32_t r3)
+{
+    jit_int32_t		t0;
+    if (r0 != r3) {
+	x87_mulr_d(r0, r1, r2);
+	x87_addr_d(r0, r0, r3);
+    }
+    else {
+	t0 = jit_get_reg(jit_class_fpr);
+	assert(jit_x87_reg_p(t0));
+	x87_mulr_d(rn(t0), r1, r2);
+	x87_addr_d(r0, rn(t0), r3);
+	jit_unget_reg(t0);
+    }
+}
+
+static void
+_x87_fmsr_f(jit_state_t *_jit,
+	    jit_int32_t r0, jit_int32_t r1, jit_int32_t r2, jit_int32_t r3)
+{
+    jit_int32_t		t0;
+    if (r0 != r3) {
+	x87_mulr_f(r0, r1, r2);
+	x87_subr_f(r0, r0, r3);
+    }
+    else {
+	t0 = jit_get_reg(jit_class_fpr);
+	assert(jit_x87_reg_p(t0));
+	x87_mulr_f(rn(t0), r1, r2);
+	x87_subr_f(r0, rn(t0), r3);
+	jit_unget_reg(t0);
+    }
+}
+
+static void
+_x87_fmsr_d(jit_state_t *_jit,
+	    jit_int32_t r0, jit_int32_t r1, jit_int32_t r2, jit_int32_t r3)
+{
+    jit_int32_t		t0;
+    if (r0 != r3) {
+	x87_mulr_d(r0, r1, r2);
+	x87_subr_d(r0, r0, r3);
+    }
+    else {
+	t0 = jit_get_reg(jit_class_fpr);
+	assert(jit_x87_reg_p(t0));
+	x87_mulr_d(rn(t0), r1, r2);
+	x87_subr_d(r0, rn(t0), r3);
+	jit_unget_reg(t0);
+    }
+}
+
+static void
+_x87_fnmar_f(jit_state_t *_jit,
+	     jit_int32_t r0, jit_int32_t r1, jit_int32_t r2, jit_int32_t r3)
+{
+    jit_int32_t		t0;
+    t0 = jit_get_reg(jit_class_fpr);
+    x87_negr_f(rn(t0), r1);
+    x87_mulr_f(rn(t0), rn(t0), r2);
+    x87_subr_f(r0, rn(t0), r3);
+    jit_unget_reg(t0);
+}
+
+static void
+_x87_fnmar_d(jit_state_t *_jit,
+	     jit_int32_t r0, jit_int32_t r1, jit_int32_t r2, jit_int32_t r3)
+{
+    jit_int32_t		t0;
+    t0 = jit_get_reg(jit_class_fpr);
+    x87_negr_d(rn(t0), r1);
+    x87_mulr_d(rn(t0), rn(t0), r2);
+    x87_subr_d(r0, rn(t0), r3);
+    jit_unget_reg(t0);
+}
+
+static void
+_x87_fnmsr_f(jit_state_t *_jit,
+	     jit_int32_t r0, jit_int32_t r1, jit_int32_t r2, jit_int32_t r3)
+{
+    jit_int32_t		t0;
+    t0 = jit_get_reg(jit_class_fpr);
+    x87_negr_f(rn(t0), r1);
+    x87_mulr_f(rn(t0), rn(t0), r2);
+    x87_addr_f(r0, rn(t0), r3);
+    jit_unget_reg(t0);
+}
+
+static void
+_x87_fnmsr_d(jit_state_t *_jit,
+	     jit_int32_t r0, jit_int32_t r1, jit_int32_t r2, jit_int32_t r3)
+{
+    jit_int32_t		t0;
+    t0 = jit_get_reg(jit_class_fpr);
+    x87_negr_d(rn(t0), r1);
+    x87_mulr_d(rn(t0), rn(t0), r2);
+    x87_addr_d(r0, rn(t0), r3);
+    jit_unget_reg(t0);
+}
+
+static void
 _x87_truncr_d_i(jit_state_t *_jit, jit_int32_t r0, jit_int32_t r1)
 {
+    CHECK_CVT_OFFSET();
 #if defined(sun)
     /* for the sake of passing test cases in x87 mode, otherwise only sse
      * is supported */
@@ -692,6 +866,7 @@ _x87_truncr_d_i(jit_state_t *_jit, jit_int32_t r0, jit_int32_t r1)
 static void
 _x87_truncr_d_l(jit_state_t *_jit, jit_int32_t r0, jit_int32_t r1)
 {
+    CHECK_CVT_OFFSET();
     fldr(r1);
     fisttpqm(CVT_OFFSET, _RBP_REGNO, _NOREG, _SCL1);
     ldxi(r0, _RBP_REGNO, CVT_OFFSET);
@@ -701,6 +876,7 @@ _x87_truncr_d_l(jit_state_t *_jit, jit_int32_t r0, jit_int32_t r1)
 static void
 _x87_extr_d(jit_state_t *_jit, jit_int32_t r0, jit_int32_t r1)
 {
+    CHECK_CVT_OFFSET();
     stxi(CVT_OFFSET, _RBP_REGNO, r1);
 #  if __X32
     fildlm(CVT_OFFSET, _RBP_REGNO, _NOREG, _SCL1);
@@ -771,8 +947,7 @@ _x87jcc(jit_state_t *_jit, jit_int32_t code,
 	fldr(r0);
 	fucomipr(r1 + 1);
     }
-    jcc(code, i0);
-    return (_jit->pc.w);
+    return (jcc(code, i0));
 }
 
 static jit_word_t
@@ -788,8 +963,7 @@ _x87jcc2(jit_state_t *_jit, jit_int32_t code,
 	fldr(f0);
 	fucomipr(f1 + 1);
     }
-    jcc(code, i0);
-    return (_jit->pc.w);
+    return (jcc(code, i0));
 }
 
 fopi(lt)
@@ -847,6 +1021,7 @@ _x87_movi_f(jit_state_t *_jit, jit_int32_t r0, jit_float32_t *i0)
 	fldln2();
     else {
 	if (_jitc->no_data) {
+	    CHECK_CVT_OFFSET();
 	    reg = jit_get_reg(jit_class_gpr);
 	    movi(rn(reg), data.i);
 	    stxi_i(CVT_OFFSET, _RBP_REGNO, rn(reg));
@@ -858,6 +1033,34 @@ _x87_movi_f(jit_state_t *_jit, jit_int32_t r0, jit_float32_t *i0)
 	return;
     }
     fstpr(r0 + 1);
+}
+
+static void
+_x87_movr_w_f(jit_state_t *_jit, jit_int32_t r0, jit_int32_t r1)
+{
+    CHECK_CVT_OFFSET();
+    stxi_i(CVT_OFFSET, _RBP_REGNO, r1);
+    x87_ldxi_f(r0, _RBP_REGNO, CVT_OFFSET);
+}
+
+static void
+_x87_movr_f_w(jit_state_t *_jit, jit_int32_t r0, jit_int32_t r1)
+{
+    CHECK_CVT_OFFSET();
+    x87_stxi_f(CVT_OFFSET, _RBP_REGNO, r1);
+    ldxi_i(r0, _RBP_REGNO, CVT_OFFSET);
+}
+
+static void
+_x87_movi_w_f(jit_state_t *_jit, jit_int32_t r0, jit_word_t i0)
+{
+    jit_int32_t		reg;
+    CHECK_CVT_OFFSET();
+    reg = jit_get_reg(jit_class_gpr);
+    movi(rn(reg), i0);
+    stxi_i(CVT_OFFSET, _RBP_REGNO, rn(reg));
+    jit_unget_reg(reg);
+    x87_ldxi_f(r0, _RBP_REGNO, CVT_OFFSET);
 }
 
 static void
@@ -917,6 +1120,26 @@ _x87_ldxi_f(jit_state_t *_jit, jit_int32_t r0, jit_int32_t r1, jit_word_t i0)
 #endif
 	jit_unget_reg(reg);
     }
+}
+
+static void
+_x87_unldr_x(jit_state_t *_jit, jit_int32_t r0, jit_int32_t r1, jit_word_t i0)
+{
+    assert(i0 == 4 || i0 == 8);
+    if (i0 == 4)
+	x87_ldr_f(r0, r1);
+    else
+	x87_ldr_d(r0, r1);
+}
+
+static void
+_x87_unldi_x(jit_state_t *_jit, jit_int32_t r0, jit_word_t i0, jit_word_t i1)
+{
+    assert(i1 == 4 || i1 == 8);
+    if (i1 == 4)
+	x87_ldi_f(r0, i0);
+    else
+	x87_ldi_d(r0, i0);
 }
 
 static void
@@ -995,6 +1218,26 @@ _x87_stxi_f(jit_state_t *_jit, jit_word_t i0, jit_int32_t r0, jit_int32_t r1)
 }
 
 static void
+_x87_unstr_x(jit_state_t *_jit, jit_int32_t r0, jit_int32_t r1, jit_word_t i0)
+{
+    assert(i0 == 4 || i0 == 8);
+    if (i0 == 4)
+	x87_str_f(r0, r1);
+    else
+	x87_str_d(r0, r1);
+}
+
+static void
+_x87_unsti_x(jit_state_t *_jit, jit_word_t i0, jit_int32_t r0, jit_word_t i1)
+{
+    assert(i1 == 4 || i1 == 8);
+    if (i1 == 4)
+	x87_sti_f(i0, r0);
+    else
+	x87_sti_d(i0, r0);
+}
+
+static void
 _x87_movr_d(jit_state_t *_jit, jit_int32_t r0, jit_int32_t r1)
 {
     if (r0 != r1) {
@@ -1038,6 +1281,7 @@ _x87_movi_d(jit_state_t *_jit, jit_int32_t r0, jit_float64_t *i0)
 	fldln2();
     else {
 	if (_jitc->no_data) {
+	    CHECK_CVT_OFFSET();
 	    reg = jit_get_reg(jit_class_gpr);
 #if __X32 || __X64_32
 	    movi(rn(reg), data.ii[0]);
@@ -1057,6 +1301,71 @@ _x87_movi_d(jit_state_t *_jit, jit_int32_t r0, jit_float64_t *i0)
     }
     fstpr(r0 + 1);
 }
+
+#if __X32 || __X64_32
+static void
+_x87_movr_ww_d(jit_state_t *_jit,
+	       jit_int32_t r0, jit_int32_t r1, jit_int32_t r2)
+{
+    CHECK_CVT_OFFSET();
+    stxi_i(CVT_OFFSET, _RBP_REGNO, r1);
+    stxi_i(CVT_OFFSET + 4, _RBP_REGNO, r2);
+    x87_ldxi_d(r0, _RBP_REGNO, CVT_OFFSET);
+}
+
+static void
+_x87_movr_d_ww(jit_state_t *_jit,
+	       jit_int32_t r0, jit_int32_t r1, jit_int32_t r2)
+{
+    CHECK_CVT_OFFSET();
+    x87_stxi_d(CVT_OFFSET, _RBP_REGNO, r2);
+    ldxi_i(r0, _RBP_REGNO, CVT_OFFSET);
+    ldxi_i(r1, _RBP_REGNO, CVT_OFFSET + 4);
+}
+
+static void
+_x87_movi_ww_d(jit_state_t *_jit, jit_int32_t r0, jit_word_t i0, jit_word_t i1)
+{
+    jit_int32_t		reg;
+    CHECK_CVT_OFFSET();
+    reg = jit_get_reg(jit_class_gpr);
+    movi(rn(reg), i0);
+    stxi_i(CVT_OFFSET, _RBP_REGNO, rn(reg));
+    movi(rn(reg), i1);
+    stxi_i(CVT_OFFSET + 4, _RBP_REGNO, rn(reg));
+    jit_unget_reg(reg);
+    x87_ldxi_d(r0, _RBP_REGNO, CVT_OFFSET);
+}
+#else
+
+static void
+_x87_movr_w_d(jit_state_t *_jit, jit_int32_t r0, jit_int32_t r1)
+{
+    CHECK_CVT_OFFSET();
+    stxi_l(CVT_OFFSET, _RBP_REGNO, r1);
+    x87_ldxi_d(r0, _RBP_REGNO, CVT_OFFSET);
+}
+
+static void
+_x87_movr_d_w(jit_state_t *_jit, jit_int32_t r0, jit_int32_t r1)
+{
+    CHECK_CVT_OFFSET();
+    x87_stxi_d(CVT_OFFSET, _RBP_REGNO, r1);
+    ldxi_l(r0, _RBP_REGNO, CVT_OFFSET);
+}
+
+static void
+_x87_movi_w_d(jit_state_t *_jit, jit_int32_t r0, jit_word_t i0)
+{
+    jit_int32_t		reg;
+    CHECK_CVT_OFFSET();
+    reg = jit_get_reg(jit_class_gpr);
+    movi(rn(reg), i0);
+    stxi(CVT_OFFSET, _RBP_REGNO, rn(reg));
+    jit_unget_reg(reg);
+    x87_ldxi_d(r0, _RBP_REGNO, CVT_OFFSET);
+}
+#endif
 
 dopi(lt)
 dopi(le)
@@ -1082,10 +1391,9 @@ _x87_eqr_d(jit_state_t *_jit, jit_int32_t r0, jit_int32_t r1, jit_int32_t r2)
 	fldr(f1);
 	fucomipr(f2 + 1);
     }
-    jpes(0);
-    jp_code = _jit->pc.w;
+    jp_code = jpes(0);
     cc(X86_CC_E, reg);
-    patch_rel_char(jp_code, _jit->pc.w);
+    patch_at(jp_code, _jit->pc.w);
     if (!rc)
 	xchgr(r0, reg);
 }
@@ -1115,10 +1423,9 @@ _x87_ner_d(jit_state_t *_jit, jit_int32_t r0, jit_int32_t r1, jit_int32_t r2)
 	fldr(f1);
 	fucomipr(f2 + 1);
     }
-    jpes(0);
-    jp_code = _jit->pc.w;
+    jp_code = jpes(0);
     cc(X86_CC_NE, reg);
-    patch_rel_char(jp_code, _jit->pc.w);
+    patch_at(jp_code, _jit->pc.w);
     if (!rc)
 	xchgr(r0, reg);
 }
@@ -1283,6 +1590,7 @@ dbopi(le)
 static jit_word_t
 _x87_beqr_d(jit_state_t *_jit, jit_word_t i0, jit_int32_t r0, jit_int32_t r1)
 {
+    jit_word_t			w;
     jit_int32_t			f0, f1;
     jit_word_t			jp_code;
     if (r1 == _ST0_REGNO)	f0 = r1, f1 = r0;
@@ -1293,11 +1601,10 @@ _x87_beqr_d(jit_state_t *_jit, jit_word_t i0, jit_int32_t r0, jit_int32_t r1)
 	fldr(f0);
 	fucomipr(f1 + 1);
     }
-    jpes(0);
-    jp_code = _jit->pc.w;
-    jcc(X86_CC_E, i0);
-    patch_rel_char(jp_code, _jit->pc.w);
-    return (_jit->pc.w);
+    jp_code = jpes(0);
+    w = jcc(X86_CC_E, i0);
+    patch_at(jp_code, _jit->pc.w);
+    return (w);
 }
 dbopi(eq)
 dbopi(ge)
@@ -1306,6 +1613,7 @@ dbopi(gt)
 static jit_word_t
 _x87_bner_d(jit_state_t *_jit, jit_word_t i0, jit_int32_t r0, jit_int32_t r1)
 {
+    jit_word_t			w;
     jit_int32_t			f0, f1;
     jit_word_t			jp_code;
     jit_word_t			jz_code;
@@ -1317,14 +1625,12 @@ _x87_bner_d(jit_state_t *_jit, jit_word_t i0, jit_int32_t r0, jit_int32_t r1)
 	fldr(f0);
 	fucomipr(f1 + 1);
     }
-    jpes(0);
-    jp_code = _jit->pc.w;
-    jzs(0);
-    jz_code = _jit->pc.w;
-    patch_rel_char(jp_code, _jit->pc.w);
-    jmpi(i0);
-    patch_rel_char(jz_code, _jit->pc.w);
-    return (_jit->pc.w);
+    jp_code = jpes(0);
+    jz_code = jzs(0);
+    patch_at(jp_code, _jit->pc.w);
+    w = jmpi(i0);
+    patch_at(jz_code, _jit->pc.w);
+    return (w);
 }
 dbopi(ne)
 dbopi(unlt)

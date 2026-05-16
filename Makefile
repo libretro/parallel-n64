@@ -6,11 +6,11 @@ FORCE_GLES=0
 HAVE_OPENGL=1
 HAVE_VULKAN_DEBUG=0
 GLIDEN64=0
-GLIDEN64CORE=0
 GLIDEN64ES=0
 HAVE_RSP_DUMP=0
 HAVE_RDP_DUMP=0
 HAVE_GLIDE64=1
+HAVE_GLIDEN64=1
 HAVE_GLN64=1
 HAVE_RICE=1
 HAVE_PARALLEL?=0
@@ -128,12 +128,8 @@ ifneq (,$(findstring unix,$(platform)))
 
    ifeq ($(FORCE_GLES),1)
       GLES = 1
-      GL_LIB := -lGLESv2
    else ifneq (,$(findstring gles,$(platform)))
       GLES = 1
-      GL_LIB := -lGLESv2
-   else ifeq ($(HAVE_OPENGL),1)
-      GL_LIB := -lGL
    endif
 
    # Raspberry Pi
@@ -142,10 +138,7 @@ ifneq (,$(findstring unix,$(platform)))
       WITH_DYNAREC=arm
       CPUFLAGS += -DARM_FIX
 
-      ifneq (,$(findstring mesa,$(platform)))
-         GL_LIB := -lGLESv2
-      else
-         GL_LIB := -L/opt/vc/lib -lbrcmGLESv2
+      ifeq (,$(findstring mesa,$(platform)))
          INCFLAGS += -I/opt/vc/include -I/opt/vc/include/interface/vcos -I/opt/vc/include/interface/vcos/pthreads
       endif
 
@@ -166,7 +159,6 @@ ifneq (,$(findstring unix,$(platform)))
          HAVE_NEON = 0
          HAVE_OPENGL = 0
          GLES = 0
-         GL_LIB :=
       else
          CPUFLAGS += -DARMv5_ONLY -DNO_ASM
       endif
@@ -177,7 +169,6 @@ ifneq (,$(findstring unix,$(platform)))
    ifneq (,$(findstring odroid,$(platform)))
       BOARD ?= $(shell cat /proc/cpuinfo | grep -i odroid | awk '{print $$3}')
       GLES = 1
-      GL_LIB := -lGLESv2
       CPUFLAGS += -DNO_ASM -DARM -D__arm__ -DARM_ASM -D__NEON_OPT -DNOSSE -DARM_FIX
       CPUFLAGS += -marm -mfloat-abi=hard
       HAVE_NEON = 1
@@ -214,7 +205,6 @@ ifneq (,$(findstring unix,$(platform)))
    # NESC, SNESC, C64 mini 
    ifneq (,$(findstring classic_armv7_a7, $(platform)))
       GLES = 1
-      GL_LIB := -lGLESv2
       HAVE_NEON = 1
       WITH_DYNAREC=arm
       ASFLAGS += -D__ARM_NEON__ -marm -mtune=cortex-a7 -mfpu=neon-vfpv4 -mfloat-abi=hard
@@ -240,7 +230,6 @@ ifneq (,$(findstring unix,$(platform)))
    # PlayStation Classic
    ifneq (,$(findstring classic_armv8_a35, $(platform)))
       GLES = 1
-      GL_LIB := -lGLESv2
       HAVE_NEON = 1
       WITH_DYNAREC=arm
       ASFLAGS += -D__ARM_NEON__ -marm -mtune=cortex-a35 -mfpu=neon-fp-armv8 -mfloat-abi=hard
@@ -292,7 +281,6 @@ else ifneq (,$(findstring imx6,$(platform)))
    LDFLAGS += -shared -Wl,--version-script=$(LIBRETRO_DIR)/link.T
    fpic = -fPIC
    GLES = 1
-   GL_LIB := -lGLESv2
    CPUFLAGS += -DNO_ASM
    PLATFORM_EXT := unix
    WITH_DYNAREC=arm
@@ -309,21 +297,11 @@ else ifneq (,$(findstring osx,$(platform)))
    LDFLAGS += -stdlib=libc++
    fpic = -fPIC
 
-   HAVE_THR_AL=1
-   HAVE_PARALLEL=0
    PLATCFLAGS += -D__MACOSX__ -DOSX
    PLATFORM_EXT := unix
    PLATCFLAGS += -DHAVE_POSIX_MEMALIGN
 
-   # Disable hardware rendered graphics plugins for ARM for now
-   ifeq ($(shell uname -p),arm)
-	WITH_DYNAREC = 
-	CFLAGS += -DDONT_WANT_ARM_OPTIMIZATIONS
-	HAVE_OPENGL=0
-   else
-   # OpenGL is broken on non-ARM now, too
-   HAVE_OPENGL=0
-   endif
+	COREFLAGS += -DOS_MAC_OS_X -stdlib=libc++
 
    # Target Dynarec
    ifeq ($(ARCH), $(filter $(ARCH), ppc))
@@ -331,23 +309,27 @@ else ifneq (,$(findstring osx,$(platform)))
    endif
 
    ifeq ($(CROSS_COMPILE),1)
+		ifneq (,$(findstring arm,$(LIBRETRO_APPLE_PLATFORM)))
+			CFLAGS +=   -DNO_ASM -DDONT_WANT_ARM_OPTIMIZATIONS -D__NEON_OPT -DARM_FIX
+			CPPFLAGS += -DNO_ASM -DDONT_WANT_ARM_OPTIMIZATIONS -D__NEON_OPT -DARM_FIX
+			CXXFLAGS += -DNO_ASM -DDONT_WANT_ARM_OPTIMIZATIONS -D__NEON_OPT -DARM_FIX
+			CPUFLAGS += -fno-stack-protector -fomit-frame-pointer
+			HAVE_NEON=1
+			MINVERSION := -mmacosx-version-min=11.0
+			WITH_DYNAREC = aarch64
+		endif
+
 		TARGET_RULE   = -target $(LIBRETRO_APPLE_PLATFORM) -isysroot $(LIBRETRO_APPLE_ISYSROOT)
 		CFLAGS   += $(TARGET_RULE)
 		CPPFLAGS += $(TARGET_RULE)
 		CXXFLAGS += $(TARGET_RULE)
 		LDFLAGS  += $(TARGET_RULE)
-
-       ifeq ($(arch),arm)
-	HAVE_OPENGL=0
-	WITH_DYNAREC = 
-	CFLAGS += -DDONT_WANT_ARM_OPTIMIZATIONS
-       endif
    endif
 
 	CFLAGS  += $(ARCHFLAGS)
 	CXXFLAGS  += $(ARCHFLAGS)
 	LDFLAGS += $(ARCHFLAGS)
-
+	CC_AS = perl ./tools/gas-preprocessor-new.pl -arch arm64 -- $(CC)
 # iOS
 else ifneq (,$(findstring ios,$(platform)))
    ifeq ($(IOSSDK),)
@@ -445,7 +427,6 @@ else ifneq (,$(findstring android,$(platform)))
    fpic = -fPIC
    TARGET := $(TARGET_NAME)_libretro_android.so
    LDFLAGS += -shared -Wl,--version-script=$(LIBRETRO_DIR)/link.T -Wl,--no-undefined -Wl,--warn-common
-   GL_LIB := -lGLESv2
 
    CC = arm-linux-androideabi-gcc
    CXX = arm-linux-androideabi-g++
@@ -464,7 +445,6 @@ else ifeq ($(platform), qnx)
    fpic = -fPIC
    TARGET := $(TARGET_NAME)_libretro_$(platform).so
    LDFLAGS += -shared -Wl,--version-script=$(LIBRETRO_DIR)/link.T -Wl,--no-undefined -Wl,--warn-common
-   GL_LIB := -lGLESv2
 
    CC = qcc -Vgcc_ntoarmv7le
    CC_AS = qcc -Vgcc_ntoarmv7le
@@ -552,8 +532,8 @@ else ifneq (,$(findstring windows_msvc2017,$(platform)))
 	CC  = cl.exe
 	CXX = cl.exe
 	CC_AS = nasm.exe
+	COREFLAGS += -DOS_WINDOWS -DUNICODE
 	ASFLAGS += -f win64
-	GL_LIB = opengl32.lib
 	HAVE_PARALLEL=0
 	HAVE_PARALLEL_RSP=0
 	HAVE_THR_AL=1
@@ -630,6 +610,7 @@ else ifeq ($(platform), windows_msvc2013_x86)
 	CC  = cl.exe
 	CXX = cl.exe
 	CC_AS = nasm.exe
+	COREFLAGS += -DOS_WINDOWS -DUNICODE
 
 PATH := $(shell IFS=$$'\n'; cygpath "$(VS120COMNTOOLS)../../VC/bin"):$(PATH)
 PATH := $(PATH):$(shell IFS=$$'\n'; cygpath "$(VS120COMNTOOLS)../IDE")
@@ -647,7 +628,6 @@ TARGET := $(TARGET_NAME)_libretro.dll
 PSS_STYLE :=2
 ASFLAGS += -f win32
 LDFLAGS += -DLL -MACHINE:X86
-GL_LIB = opengl32.lib
 HAVE_PARALLEL=0
 HAVE_PARALLEL_RSP=0
 WITH_DYNAREC=x86
@@ -657,6 +637,7 @@ else ifeq ($(platform), windows_msvc2013_x64)
 	CC  = cl.exe
 	CXX = cl.exe
 	CC_AS = nasm.exe
+	COREFLAGS += -DOS_WINDOWS -DUNICODE
 
 PATH := $(shell IFS=$$'\n'; cygpath "$(VS120COMNTOOLS)../../VC/bin/amd64"):$(PATH)
 PATH := $(PATH):$(shell IFS=$$'\n'; cygpath "$(VS120COMNTOOLS)../IDE")
@@ -674,7 +655,6 @@ TARGET := $(TARGET_NAME)_libretro.dll
 PSS_STYLE :=2
 ASFLAGS += -f win64
 LDFLAGS += -DLL -MACHINE:X64
-GL_LIB = opengl32.lib
 HAVE_PARALLEL=0
 HAVE_PARALLEL_RSP=0
 
@@ -683,6 +663,7 @@ else ifeq ($(platform), windows_msvc2015_x64)
 	CC  = cl.exe
 	CXX = cl.exe
 	CC_AS = nasm.exe
+	COREFLAGS += -DOS_WINDOWS -DUNICODE
 
 PATH := $(shell IFS=$$'\n'; cygpath "$(VS140COMNTOOLS)../../VC/bin/amd64"):$(PATH)
 PATH := $(PATH):$(shell IFS=$$'\n'; cygpath "$(VS140COMNTOOLS)../IDE")
@@ -708,7 +689,6 @@ INCFLAGS_PLATFORM = -I"$(WindowsSDKVersion)um" -I"$(WindowsSDKVersion)shared"
 TARGET := $(TARGET_NAME)_libretro.dll
 PSS_STYLE :=2
 LDFLAGS += -DLL -MACHINE:X64
-GL_LIB = opengl32.lib
 HAVE_PARALLEL=0
 HAVE_PARALLEL_RSP=0
 
@@ -717,6 +697,7 @@ else ifeq ($(platform), windows_msvc2015_x86)
 	CC  = cl.exe
 	CXX = cl.exe
 	CC_AS = nasm.exe
+	COREFLAGS += -DOS_WINDOWS -DUNICODE
 
 PATH := $(shell IFS=$$'\n'; cygpath "$(VS140COMNTOOLS)../../VC/bin"):$(PATH)
 PATH := $(PATH):$(shell IFS=$$'\n'; cygpath "$(VS140COMNTOOLS)../IDE")
@@ -742,7 +723,6 @@ INCFLAGS_PLATFORM = -I"$(WindowsSDKVersion)um" -I"$(WindowsSDKVersion)shared"
 TARGET := $(TARGET_NAME)_libretro.dll
 PSS_STYLE :=2
 LDFLAGS += -DLL -MACHINE:X86
-GL_LIB = opengl32.lib
 HAVE_PARALLEL=0
 HAVE_PARALLEL_RSP=0
 
@@ -751,6 +731,7 @@ else ifeq ($(platform), windows_msvc2010_x64)
 	CC  = cl.exe
 	CXX = cl.exe
 	CC_AS = nasm.exe
+	COREFLAGS += -DOS_WINDOWS -DUNICODE
 
 PATH := $(shell IFS=$$'\n'; cygpath "$(VS100COMNTOOLS)../../VC/bin/amd64"):$(PATH)
 PATH := $(PATH):$(shell IFS=$$'\n'; cygpath "$(VS100COMNTOOLS)../IDE")
@@ -771,7 +752,6 @@ TARGET := $(TARGET_NAME)_libretro.dll
 PSS_STYLE :=2
 ASFLAGS += -f win64
 LDFLAGS += -DLL -MACHINE:X64
-GL_LIB = opengl32.lib
 HAVE_PARALLEL=0
 HAVE_PARALLEL_RSP=0
 
@@ -780,6 +760,7 @@ else ifeq ($(platform), windows_msvc2010_x86)
 	CC  = cl.exe
 	CXX = cl.exe
 	CC_AS = nasm.exe
+	COREFLAGS += -DOS_WINDOWS -DUNICODE
 
 PATH := $(shell IFS=$$'\n'; cygpath "$(VS100COMNTOOLS)../../VC/bin"):$(PATH)
 PATH := $(PATH):$(shell IFS=$$'\n'; cygpath "$(VS100COMNTOOLS)../IDE")
@@ -800,7 +781,6 @@ TARGET := $(TARGET_NAME)_libretro.dll
 PSS_STYLE :=2
 ASFLAGS += -f win32
 LDFLAGS += -DLL -MACHINE:X86
-GL_LIB = opengl32.lib
 HAVE_PARALLEL=0
 HAVE_PARALLEL_RSP=0
 
@@ -809,6 +789,7 @@ else ifeq ($(platform), windows_msvc2005_x86)
 	CC  = cl.exe
 	CXX = cl.exe
 	CC_AS = nasm.exe
+	COREFLAGS += -DOS_WINDOWS -DUNICODE
 	HAS_GCC := 0
 
 PATH := $(shell IFS=$$'\n'; cygpath "$(VS80COMNTOOLS)../../VC/bin"):$(PATH)
@@ -827,7 +808,6 @@ ASFLAGS += -f win32
 LDFLAGS += -DLL -MACHINE:X86
 CFLAGS += -D_CRT_SECURE_NO_DEPRECATE
 LIBS =
-GL_LIB = opengl32.lib
 HAVE_PARALLEL=0
 HAVE_PARALLEL_RSP=0
 NOSSE=1
@@ -835,12 +815,12 @@ NOSSE=1
 # Windows
 else ifneq (,$(findstring win,$(platform)))
    TARGET := $(TARGET_NAME)_libretro.dll
-   LDFLAGS += -shared -static-libgcc -static-libstdc++ -Wl,--version-script=$(LIBRETRO_DIR)/link.T -lwinmm -lgdi32 
-   GL_LIB := -lopengl32
+   LDFLAGS += -shared -static-libgcc -static-libstdc++ -Wl,--version-script=$(LIBRETRO_DIR)/link.T -lwinmm -lgdi32
    PLATFORM_EXT := win32
    CC ?= gcc
    CXX ?= g++
    HAVE_THR_AL=1
+	COREFLAGS += -DOS_WINDOWS -DUNICODE
 
 #ifeq ($(WITH_DYNAREC), $(filter $(WITH_DYNAREC), x86_64 x64))
 #ifeq ($(HAVE_PARALLEL), 1)
@@ -987,10 +967,6 @@ ifeq ($(GLIDEN64ES),1)
    CFLAGS   += -DGLIDEN64ES
    CXXFLAGS += -DGLIDEN64ES
 endif
-ifeq ($(GLIDEN64CORE),1)
-   CFLAGS += -DCORE
-   CXXFLAGS += -DCORE
-endif
 endif
 
 ifeq ($(HAVE_THR_AL), 1)
@@ -999,7 +975,7 @@ endif
 
 ifeq ($(WANT_CXX11),1)
 ifeq (,$(findstring msvc,$(platform)))
-CXXFLAGS += -std=c++0x
+CXXFLAGS += -std=c++11
 endif
 endif
 
@@ -1029,7 +1005,7 @@ ASFLAGS     := $(ASFLAGS) $(CFLAGS) $(CPUFLAGS)
 ### Finalize ###
 OBJECTS     += $(SOURCES_CXX:.cpp=.o) $(SOURCES_C:.c=.o) $(SOURCES_ASM:.S=.o)
 CXXFLAGS    += $(CPUOPTS) $(COREFLAGS) $(INCFLAGS) $(INCFLAGS_PLATFORM) $(fpic) $(PLATCFLAGS) $(CPUFLAGS) $(GLFLAGS) $(DYNAFLAGS)
-CFLAGS      += $(CPUOPTS) $(COREFLAGS) $(INCFLAGS) $(INCFLAGS_PLATFORM) $(fpic) $(PLATCFLAGS) $(CPUFLAGS) $(GLFLAGS) $(DYNAFLAGS)
+CFLAGS      += -fcommon $(CPUOPTS) $(COREFLAGS) $(INCFLAGS) $(INCFLAGS_PLATFORM) $(fpic) $(PLATCFLAGS) $(CPUFLAGS) $(GLFLAGS) $(DYNAFLAGS)
 
 ifeq ($(findstring Haiku,$(UNAME)),)
 ifeq (,$(findstring msvc,$(platform)))
@@ -1054,7 +1030,7 @@ $(TARGET): $(OBJECTS)
 ifeq ($(STATIC_LINKING), 1)
 	$(AR) rcs $@ $(OBJECTS)
 else
-	$(LD) $(LINKOUT)$@ $(OBJECTS) $(LDFLAGS) $(GL_LIB) $(LIBS)
+	$(LD) $(LINKOUT)$@ $(OBJECTS) $(LDFLAGS) $(LIBS)
 endif
 
 
@@ -1064,6 +1040,12 @@ ifneq (,$(findstring msvc,$(platform)))
 else
 	$(CC_AS) $(ASFLAGS) -c $< $(OBJOUT)$@
 endif
+
+mupen64plus-video-gliden64/src/%.o: mupen64plus-video-gliden64/src/%.c
+	$(CC) -I$(VIDEODIR_GLIDEN64)/src -I$(VIDEODIR_GLIDEN64)/src/osal $(CPPFLAGS) $(CFLAGS) -c $< $(OBJOUT)$@
+
+mupen64plus-video-gliden64/src/%.o: mupen64plus-video-gliden64/src/%.cpp
+	$(CXX) -I$(VIDEODIR_GLIDEN64)/src -I$(VIDEODIR_GLIDEN64)/src/osal $(CPPFLAGS) $(CXXFLAGS) -c $< $(OBJOUT)$@
 
 %.o: %.c
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c $< $(OBJOUT)$@

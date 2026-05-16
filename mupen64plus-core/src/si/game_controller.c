@@ -24,6 +24,7 @@
 #include "si_controller.h"
 
 #include "api/m64p_types.h"
+#include "api/m64p_plugin.h"
 #include "api/callbacks.h"
 
 #include "../../libretro/libretro_memory.h"
@@ -57,10 +58,23 @@ static void read_controller_read_buttons(struct game_controller* cont, uint8_t* 
     enum pak_type pak;
     int connected = game_controller_is_connected(cont, &pak);
 
-    if (!connected)
+    if (connected != CONT_JOYPAD && connected != CONT_MOUSE)
         return;
 
     *((uint32_t*)(cmd + 3)) = game_controller_get_input(cont);
+}
+
+static void read_controller_read_gcn_buttons(struct game_controller* cont, uint8_t* cmd)
+{
+    enum pak_type pak;
+    int connected = game_controller_is_connected(cont, &pak);
+
+    if (connected != CONT_GCN)
+        return;
+    
+    uint8_t analogMode = cmd[3];
+
+    *((BUTTONS_GCN*)(cmd + 5)) = game_controller_gcn_get_input(cont, analogMode);
 }
 
 
@@ -82,6 +96,8 @@ static void controller_status_command(struct game_controller* cont, uint8_t* cmd
       cmd[3] = 0x05;
     else if (connected == CONT_MOUSE)
       cmd[3] = 0x02;
+    else if (connected == CONT_GCN)
+      cmd[3] = 0x09;
     cmd[4] = 0x00;
 
     switch(pak)
@@ -187,12 +203,27 @@ static void controller_write_pak_command(struct game_controller* cont, uint8_t* 
     *crc = pak_data_crc(data);
 }
 
+static void controller_gcn_shortpoll_command(struct game_controller* cont, uint8_t* cmd)
+{
+    enum pak_type pak;
+    int connected = game_controller_is_connected(cont, &pak);
+
+    if (connected != CONT_GCN)
+    {
+        cmd[1] |= 0x80;
+        return;
+    }
+
+    /* NOTE: buttons reading is done in read_controller_read_gcn_buttons instead */
+}
+
 extern struct si_controller g_si;
 
 void init_game_controller(struct game_controller *cont,
       void *cont_user_data,
       int (*cont_is_connected)(void*,enum pak_type*),
       uint32_t (*cont_get_input)(void*),
+      BUTTONS_GCN (*cont_get_gcn_input)(void*, int),
       void* mpk_user_data,
       void (*mpk_save)(void*),
       uint8_t* mpk_data,
@@ -203,6 +234,7 @@ void init_game_controller(struct game_controller *cont,
    cont->user_data    = cont_user_data;
    cont->is_connected = cont_is_connected;
    cont->get_input    = cont_get_input;
+   cont->get_gcn_input = cont_get_gcn_input;
 
    init_mempak(&cont->mempak, mpk_user_data, mpk_save, mpk_data);
    init_rumblepak(&cont->rumblepak, rpk_user_data, rpk_rumble);
@@ -218,6 +250,10 @@ uint32_t game_controller_get_input(struct game_controller* cont)
     return cont->get_input(cont->user_data);
 }
 
+BUTTONS_GCN game_controller_gcn_get_input(struct game_controller* cont, int analogMode)
+{
+    return cont->get_gcn_input(cont->user_data, analogMode);
+}
 
 void process_controller_command(struct game_controller* cont, uint8_t* cmd)
 {
@@ -236,6 +272,9 @@ void process_controller_command(struct game_controller* cont, uint8_t* cmd)
       case PIF_CMD_PAK_WRITE:
          controller_write_pak_command(cont, cmd);
          break;
+      case PIF_CMD_GCN_SHORTPOLL:
+         controller_gcn_shortpoll_command(cont, cmd);
+         break;
    }
 }
 
@@ -245,5 +284,7 @@ void read_controller(struct game_controller* cont, uint8_t* cmd)
     {
        case PIF_CMD_CONTROLLER_READ:
           read_controller_read_buttons(cont, cmd); break;
+       case PIF_CMD_GCN_SHORTPOLL:
+          read_controller_read_gcn_buttons(cont, cmd); break;
     }
 }

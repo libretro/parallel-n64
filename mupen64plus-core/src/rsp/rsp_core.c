@@ -142,7 +142,7 @@ static void update_sp_status(struct rsp_core* sp, uint32_t w)
     if (!(w & 0x1) && !(w & 0x4) && !sp->rsp_task_locked)
         return;
 
-    if (!(sp->regs[SP_STATUS_REG] & (SP_STATUS_HALT | SP_STATUS_BROKE)))
+    if (!(sp->regs[SP_STATUS_REG] & SP_STATUS_HALT))
         do_SP_Task(sp);
 }
 
@@ -213,6 +213,7 @@ int write_rsp_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mask
     {
        case SP_STATUS_REG:
           update_sp_status(sp, value & mask);
+          return 0;
        case SP_DMA_FULL_REG:
        case SP_DMA_BUSY_REG:
           return 0;
@@ -254,6 +255,9 @@ int read_rsp_regs2(void* opaque, uint32_t address, uint32_t* value)
 
     *value = (reg < SP_REGS2_COUNT) ? sp->regs2[reg] : 0u;
 
+    if (reg == SP_PC_REG)
+        *value &= 0xffc;
+
     return 0;
 }
 
@@ -261,6 +265,9 @@ int write_rsp_regs2(void* opaque, uint32_t address, uint32_t value, uint32_t mas
 {
     struct rsp_core* sp = (struct rsp_core*)opaque;
     uint32_t reg        = RSP_REG2(address);
+
+    if (reg == SP_PC_REG)
+        mask &= 0xffc;
 
     if (reg < SP_REGS2_COUNT)
         sp->regs2[reg] = MASKED_WRITE(&sp->regs2[reg], value, mask);

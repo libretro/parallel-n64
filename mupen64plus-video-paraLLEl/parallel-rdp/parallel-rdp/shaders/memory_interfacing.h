@@ -157,9 +157,31 @@ void load_vram_depth(uint index, uint slice)
 	current_dz = u8(hidden_vram.data[index]) | u8((word & U16_C(3)) << U16_C(2));
 }
 
+void store_unscaled_write_mask(uint index)
+{
+	if (current_color_dirty)
+	{
+		switch (FB_FMT)
+		{
+		case FB_FMT_I4:
+		case FB_FMT_I8:
+			vram8.data[(index ^ 3u) + RDRAM_SIZE] = mem_u8(0xff);
+			break;
+
+		case FB_FMT_RGBA5551:
+		case FB_FMT_IA88:
+			vram16.data[(index ^ 1u) + (RDRAM_SIZE >> 1u)] = mem_u16(0xffff);
+			break;
+
+		case FB_FMT_RGBA8888:
+			vram32.data[index + (RDRAM_SIZE >> 2u)] = ~0u;
+			break;
+		}
+	}
+}
+
 void store_vram_color(uint index, uint slice)
 {
-	//GENERIC_MESSAGE1(index);
 	if (current_color_dirty)
 	{
 		switch (FB_FMT)
@@ -172,14 +194,6 @@ void store_vram_color(uint index, uint slice)
 			if ((index & 1u) != 0u)
 				hidden_vram.data[index >> 1u] = mem_u8(current_color.a);
 
-			if (RDRAM_INCOHERENT)
-			{
-				// Need this memory barrier to ensure the mask readback does not read
-				// an invalid value from RDRAM. If the mask is seen, the valid RDRAM value is
-				// also coherent.
-				memoryBarrierBuffer();
-				vram8.data[(index ^ 3u) + RDRAM_SIZE] = mem_u8(0xff);
-			}
 			break;
 		}
 
@@ -191,14 +205,6 @@ void store_vram_color(uint index, uint slice)
 			if ((index & 1u) != 0u)
 				hidden_vram.data[index >> 1u] = mem_u8((current_color.r & 1) * 3);
 
-			if (RDRAM_INCOHERENT)
-			{
-				// Need this memory barrier to ensure the mask readback does not read
-				// an invalid value from RDRAM. If the mask is seen, the valid RDRAM value is
-				// also coherent.
-				memoryBarrierBuffer();
-				vram8.data[(index ^ 3u) + RDRAM_SIZE] = mem_u8(0xff);
-			}
 			break;
 		}
 
@@ -213,14 +219,6 @@ void store_vram_color(uint index, uint slice)
 			vram16.data[index ^ 1u] = mem_u16(word);
 			hidden_vram.data[index] = mem_u8(cov & U8_C(3));
 
-			if (RDRAM_INCOHERENT)
-			{
-				// Need this memory barrier to ensure the mask readback does not read
-				// an invalid value from RDRAM. If the mask is seen, the valid RDRAM value is
-				// also coherent.
-				memoryBarrierBuffer();
-				vram16.data[(index ^ 1u) + (RDRAM_SIZE >> 1u)] = mem_u16(0xffff);
-			}
 			break;
 		}
 
@@ -233,14 +231,6 @@ void store_vram_color(uint index, uint slice)
 			vram16.data[index ^ 1u] = mem_u16(word);
 			hidden_vram.data[index] = mem_u8((col.y & 1) * 3);
 
-			if (RDRAM_INCOHERENT)
-			{
-				// Need this memory barrier to ensure the mask readback does not read
-				// an invalid value from RDRAM. If the mask is seen, the valid RDRAM value is
-				// also coherent.
-				memoryBarrierBuffer();
-				vram16.data[(index ^ 1u) + (RDRAM_SIZE >> 1u)] = mem_u16(0xffff);
-			}
 			break;
 		}
 
@@ -254,17 +244,18 @@ void store_vram_color(uint index, uint slice)
 			hidden_vram.data[2u * index] = mem_u8((current_color.g & 1) * 3);
 			hidden_vram.data[2u * index + 1u] = mem_u8((current_color.a & 1) * 3);
 
-			if (RDRAM_INCOHERENT)
-			{
-				// Need this memory barrier to ensure the mask readback does not read
-				// an invalid value from RDRAM. If the mask is seen, the valid RDRAM value is
-				// also coherent.
-				memoryBarrierBuffer();
-				vram32.data[index + (RDRAM_SIZE >> 2u)] = ~0u;
-			}
 			break;
 		}
 		}
+	}
+
+	if (RDRAM_INCOHERENT)
+	{
+		// Need this memory barrier to ensure the mask readback does not read
+		// an invalid value from RDRAM. If the mask is seen, the valid RDRAM value is
+		// also coherent.
+		memoryBarrierBuffer();
+		store_unscaled_write_mask(index);
 	}
 }
 
@@ -272,22 +263,22 @@ void store_vram_depth(uint index, uint slice)
 {
 	if (!FB_COLOR_DEPTH_ALIAS)
 	{
-		//GENERIC_MESSAGE1(index);
 		if (current_depth_dirty)
 		{
 			index &= RDRAM_MASK_16;
 			index += slice * (RDRAM_SIZE >> 1);
 			vram16.data[index ^ 1u] = mem_u16((current_depth << U16_C(2)) | (current_dz >> U16_C(2)));
 			hidden_vram.data[index] = mem_u8(current_dz & U16_C(3));
+		}
 
-			if (RDRAM_INCOHERENT)
-			{
-				// Need this memory barrier to ensure the mask readback does not read
-				// an invalid value from RDRAM. If the mask is seen, the valid RDRAM value is
-				// also coherent.
-				memoryBarrierBuffer();
+		if (RDRAM_INCOHERENT)
+		{
+			// Need this memory barrier to ensure the mask readback does not read
+			// an invalid value from RDRAM. If the mask is seen, the valid RDRAM value is
+			// also coherent.
+			memoryBarrierBuffer();
+			if (current_depth_dirty)
 				vram16.data[(index ^ 1) + (RDRAM_SIZE >> 1u)] = mem_u16(0xffff);
-			}
 		}
 	}
 }
@@ -315,18 +306,24 @@ void init_tile(uvec2 coord, uint fb_width, uint fb_height, uint fb_addr_index, u
 
 void finish_tile(uvec2 coord, uint fb_width, uint fb_height, uint fb_addr_index, uint fb_depth_addr_index)
 {
-	if (all(lessThan(coord, uvec2(fb_width, fb_height))))
+	// MSL portability: Need to maintain uniform control flow.
+	if (any(greaterThanEqual(coord, uvec2(fb_width, fb_height))))
 	{
-		uvec2 slice2d = coord & (SCALING_FACTOR - 1);
-		coord >>= SCALING_LOG2;
-		uint slice = slice2d.y * SCALING_FACTOR + slice2d.x;
-
-		uint index = fb_addr_index + (fb_width >> SCALING_LOG2) * coord.y + coord.x;
-		store_vram_color(index, slice);
-
-		index = fb_depth_addr_index + (fb_width >> SCALING_LOG2) * coord.y + coord.x;
-		store_vram_depth(index, slice);
+		current_color_dirty = false;
+		current_depth_dirty = false;
 	}
+
+	uint unscaled_fb_width = fb_width >> SCALING_LOG2;
+
+	uvec2 slice2d = coord & (SCALING_FACTOR - 1);
+	coord >>= SCALING_LOG2;
+	uint slice = slice2d.y * SCALING_FACTOR + slice2d.x;
+
+	uint index = fb_addr_index + unscaled_fb_width * coord.y + coord.x;
+	store_vram_color(index, slice);
+
+	index = fb_depth_addr_index + unscaled_fb_width * coord.y + coord.x;
+	store_vram_depth(index, slice);
 }
 
 u8x4 decode_memory_color(bool image_read_en)

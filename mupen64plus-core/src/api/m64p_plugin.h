@@ -158,6 +158,58 @@ typedef union {
 } BUTTONS;
 
 typedef struct {
+    
+    uint16_t A_BUTTON     : 1;
+    uint16_t B_BUTTON     : 1;
+    uint16_t X_BUTTON     : 1;
+    uint16_t Y_BUTTON     : 1;
+    uint16_t START_BUTTON : 1;
+    uint16_t GET_ORIGIN   : 1;
+    uint16_t              : 2;
+
+    uint16_t L_DPAD       : 1;
+    uint16_t R_DPAD       : 1;
+    uint16_t D_DPAD       : 1;
+    uint16_t U_DPAD       : 1;
+    uint16_t Z_TRIG       : 1;
+    uint16_t R_BUTTON     : 1;
+    uint16_t L_BUTTON     : 1;
+    uint16_t USE_ORIGIN   : 1;
+
+    uint8_t  X_AXIS;
+    uint8_t  Y_AXIS;
+	union {
+		struct {
+            uint8_t C_X      : 8, C_Y      : 8;
+			uint8_t L_TRIG   : 4, R_TRIG   : 4;
+			uint8_t A_ANALOG : 4, B_ANALOG : 4;
+		} MODE0;
+
+		struct {
+            uint8_t C_X      : 4, C_Y      : 4;
+			uint8_t L_TRIG   : 8, R_TRIG   : 8;
+            uint8_t A_ANALOG : 4, B_ANALOG : 4;
+		} MODE1;
+
+		struct {
+            uint8_t C_X      : 4, C_Y      : 4;
+			uint8_t L_TRIG   : 4, R_TRIG   : 4;
+            uint8_t A_ANALOG : 8, B_ANALOG : 8;
+		} MODE2;
+
+		struct {
+            uint8_t C_X      : 8, C_Y      : 8;
+			uint8_t L_TRIG   : 8, R_TRIG   : 8;
+		} MODE3;
+
+		struct {
+            uint8_t C_X      : 8, C_Y      : 8;
+            uint8_t A_ANALOG : 8, B_ANALOG : 8;
+		} MODE4;
+	};
+} BUTTONS_GCN;
+
+typedef struct {
     CONTROL *Controls;      /* A pointer to an array of 4 controllers .. eg:
                                CONTROL Controls[4]; */
 } CONTROL_INFO;
@@ -244,6 +296,7 @@ EXPORT const char * CALL VolumeGetString(void);
 /* input plugin function pointers */
 typedef void (*ptr_ControllerCommand)(int Control, uint8_t *Command);
 typedef void (*ptr_GetKeys)(int Control, BUTTONS *Keys);
+typedef void (*ptr_GetKeysGCN)(int Control, BUTTONS_GCN *Keys);
 typedef void (*ptr_InitiateControllers)(CONTROL_INFO ControlInfo);
 typedef void (*ptr_ReadController)(int Control, uint8_t *Command);
 #if defined(M64P_PLUGIN_PROTOTYPES)

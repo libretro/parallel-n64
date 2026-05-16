@@ -11,7 +11,7 @@ void GSPCombineMatrices(void)
 #endif
          break;
       case GFX_GLN64:
-#if defined(HAVE_GLN64) || defined(HAVE_GLIDEN64)
+#ifdef HAVE_GLN64
          gln64gSPCombineMatrices();
 #endif
          break;
@@ -37,7 +37,7 @@ void GSPDlistCount(uint32_t count, uint32_t v)
 #endif
          break;
       case GFX_GLN64:
-#if defined(HAVE_GLN64) || defined(HAVE_GLIDEN64)
+#ifdef HAVE_GLN64
          gln64gSPDlistCount(count, v);
 #endif
          break;
@@ -63,7 +63,7 @@ void GSPClipVertex(uint32_t v)
 #endif
          break;
       case GFX_GLN64:
-#if defined(HAVE_GLN64) || defined(HAVE_GLIDEN64)
+#ifdef HAVE_GLN64
          gln64gSPClipVertex(v);
 #endif
          break;
@@ -94,7 +94,7 @@ void GSPLookAt(uint32_t l, uint32_t n)
 #endif
          break;
       case GFX_GLN64:
-#if defined(HAVE_GLN64) || defined(HAVE_GLIDEN64)
+#ifdef HAVE_GLN64
          gln64gSPLookAt(l, n);
 #endif
          break;
@@ -125,7 +125,7 @@ void GSPLight(uint32_t l, int32_t n)
 #endif
          break;
       case GFX_GLN64:
-#if defined(HAVE_GLN64) || defined(HAVE_GLIDEN64)
+#ifdef HAVE_GLN64
          gln64gSPLight(l, n);
 #endif
          break;
@@ -194,7 +194,7 @@ void GSPViewport(uint32_t v)
 #endif
          break;
       case GFX_GLN64:
-#if defined(HAVE_GLN64) || defined(HAVE_GLIDEN64)
+#ifdef HAVE_GLN64
          gln64gSPViewport(v);
 #endif
          break;
@@ -220,7 +220,7 @@ void GSPForceMatrix(uint32_t mptr)
 #endif
          break;
       case GFX_GLN64:
-#if defined(HAVE_GLN64) || defined(HAVE_GLIDEN64)
+#ifdef HAVE_GLN64
          gln64gSPForceMatrix(mptr);
 #endif
          break;

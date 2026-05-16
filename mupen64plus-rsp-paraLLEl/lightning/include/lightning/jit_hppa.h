@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013-2019  Free Software Foundation, Inc.
+ * Copyright (C) 2013-2023  Free Software Foundation, Inc.
  *
  * This file is part of GNU lightning.
  *
@@ -130,5 +130,19 @@ typedef enum {
 #define JIT_NOREG		_NOREG
     _NOREG,
 } jit_reg_t;
+
+typedef struct {
+    /* Need this to pass unldst.tst on . This is very strange, because
+     * even for aligned addresses it is required, but all other load/store
+     * tests *work* with index immediates. Possibly a qemu (7.0.0) bug,
+     * and for the moment, by default keep failing. Need to test in
+     * actual hardware. */
+    jit_uint32_t imm_idx	: 1;
+} jit_cpu_t;
+
+/*
+ * Initialization
+ */
+extern jit_cpu_t		jit_cpu;
 
 #endif /* _jit_hppa */

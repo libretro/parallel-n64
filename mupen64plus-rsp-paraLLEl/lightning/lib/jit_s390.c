@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013-2019  Free Software Foundation, Inc.
+ * Copyright (C) 2013-2023  Free Software Foundation, Inc.
  *
  * This file is part of GNU lightning.
  *
@@ -16,6 +16,12 @@
  * Authors:
  *	Paulo Cesar Pereira de Andrade
  */
+#define CHECK_FLOGR	0
+
+#if CHECK_FLOGR
+#include <signal.h>
+#include <setjmp.h>
+#endif
 
 #include <lightning.h>
 #include <lightning/jit_private.h>
@@ -88,11 +94,13 @@ extern void __clear_cache(void *, void *);
 #define PROTO				1
 #  include "jit_s390-cpu.c"
 #  include "jit_s390-fpu.c"
+#  include "jit_fallback.c"
 #undef PROTO
 
 /*
  * Initialization
  */
+jit_cpu_t		jit_cpu;
 jit_register_t		_rvs[] = {
     { rc(gpr) | 0x0,			"%r0" },
     { rc(gpr) | 0x1,			"%r1" },
@@ -129,13 +137,48 @@ jit_register_t		_rvs[] = {
     { rc(fpr) | rc(arg) | 0x0,		"%f0" },
     { _NOREG,				"<none>" },
 };
+#if CHECK_FLOGR
+static sigjmp_buf	jit_env;
+#endif
 
 /*
  * Implementation
  */
+#if CHECK_FLOGR
+static void
+sigill_handler(int signum)
+{
+    jit_cpu.flogr = 0;
+    siglongjmp(jit_env, 1);
+}
+#endif
+
 void
 jit_get_cpu(void)
 {
+#if CHECK_FLOGR
+    int			r12, r13;
+    struct		sigaction new_action, old_action;
+    new_action.sa_handler = sigill_handler;
+    sigemptyset(&new_action.sa_mask);
+    new_action.sa_flags = 0;
+    sigaction(SIGILL, NULL, &old_action);
+    if (old_action.sa_handler != SIG_IGN) {
+	sigaction(SIGILL, &new_action, NULL);
+	if (!sigsetjmp(jit_env, 1)) {
+	    jit_cpu.flogr = 1;
+	    /* flogr %r12, %r12 */
+	    __asm__ volatile("lgr %%r12, %0; lgr %%r13, %1;"
+			     "flogr %%r12, %%r12;"
+			     "lgr %1, %%r13; lgr %0, %%r12;"
+			     : "=r" (r12), "=r" (r13));
+	    sigaction(SIGILL, &old_action, NULL);
+	}
+    }
+#else
+    /* By default, assume it is available */
+    jit_cpu.flogr = 1;
+#endif
 }
 
 void
@@ -240,18 +283,18 @@ _jit_ret(jit_state_t *_jit)
 }
 
 void
-_jit_retr(jit_state_t *_jit, jit_int32_t u)
+_jit_retr(jit_state_t *_jit, jit_int32_t u, jit_code_t code)
 {
-    jit_inc_synth_w(retr, u);
+    jit_code_inc_synth_w(code, u);
     jit_movr(JIT_RET, u);
     jit_ret();
     jit_dec_synth();
 }
 
 void
-_jit_reti(jit_state_t *_jit, jit_word_t u)
+_jit_reti(jit_state_t *_jit, jit_word_t u, jit_code_t code)
 {
-    jit_inc_synth_w(reti, u);
+    jit_code_inc_synth_w(code, u);
     jit_movi(JIT_RET, u);
     jit_ret();
     jit_dec_synth();
@@ -305,7 +348,7 @@ _jit_epilog(jit_state_t *_jit)
 jit_bool_t
 _jit_arg_register_p(jit_state_t *_jit, jit_node_t *u)
 {
-    if (u->code == jit_code_arg)
+    if (u->code >= jit_code_arg_c && u->code <= jit_code_arg)
 	return (jit_arg_reg_p(u->u.w));
     assert(u->code == jit_code_arg_f || u->code == jit_code_arg_d);
     return (jit_arg_f_reg_p(u->u.w));
@@ -352,18 +395,22 @@ _jit_va_push(jit_state_t *_jit, jit_int32_t u)
 }
 
 jit_node_t *
-_jit_arg(jit_state_t *_jit)
+_jit_arg(jit_state_t *_jit, jit_code_t code)
 {
     jit_node_t		*node;
     jit_int32_t		 offset;
     assert(_jitc->function);
+    assert(!(_jitc->function->self.call & jit_call_varargs));
+#if STRONG_TYPE_CHECKING
+    assert(code >= jit_code_arg_c && code <= jit_code_arg);
+#endif
     if (jit_arg_reg_p(_jitc->function->self.argi))
 	offset = _jitc->function->self.argi++;
     else {
 	offset = _jitc->function->self.size;
 	_jitc->function->self.size += sizeof(jit_word_t);
     }
-    node = jit_new_node_ww(jit_code_arg, offset,
+    node = jit_new_node_ww(code, offset,
 			   ++_jitc->function->self.argn);
     jit_link_prolog();
     return (node);
@@ -408,7 +455,7 @@ _jit_arg_d(jit_state_t *_jit)
 void
 _jit_getarg_c(jit_state_t *_jit, jit_int32_t u, jit_node_t *v)
 {
-    assert(v->code == jit_code_arg);
+    assert_arg_type(v->code, jit_code_arg_c);
     jit_inc_synth_wp(getarg_c, u, v);
     if (jit_arg_reg_p(v->u.w))
 	jit_extr_c(u, _R2 - v->u.w);
@@ -421,7 +468,7 @@ _jit_getarg_c(jit_state_t *_jit, jit_int32_t u, jit_node_t *v)
 void
 _jit_getarg_uc(jit_state_t *_jit, jit_int32_t u, jit_node_t *v)
 {
-    assert(v->code == jit_code_arg);
+    assert_arg_type(v->code, jit_code_arg_c);
     jit_inc_synth_wp(getarg_uc, u, v);
     if (jit_arg_reg_p(v->u.w))
 	jit_extr_uc(u, _R2 - v->u.w);
@@ -434,7 +481,7 @@ _jit_getarg_uc(jit_state_t *_jit, jit_int32_t u, jit_node_t *v)
 void
 _jit_getarg_s(jit_state_t *_jit, jit_int32_t u, jit_node_t *v)
 {
-    assert(v->code == jit_code_arg);
+    assert_arg_type(v->code, jit_code_arg_s);
     jit_inc_synth_wp(getarg_s, u, v);
     if (jit_arg_reg_p(v->u.w))
 	jit_extr_s(u, _R2 - v->u.w);
@@ -447,7 +494,7 @@ _jit_getarg_s(jit_state_t *_jit, jit_int32_t u, jit_node_t *v)
 void
 _jit_getarg_us(jit_state_t *_jit, jit_int32_t u, jit_node_t *v)
 {
-    assert(v->code == jit_code_arg);
+    assert_arg_type(v->code, jit_code_arg_s);
     jit_inc_synth_wp(getarg_us, u, v);
     if (jit_arg_reg_p(v->u.w))
 	jit_extr_us(u, _R2 - v->u.w);
@@ -460,7 +507,7 @@ _jit_getarg_us(jit_state_t *_jit, jit_int32_t u, jit_node_t *v)
 void
 _jit_getarg_i(jit_state_t *_jit, jit_int32_t u, jit_node_t *v)
 {
-    assert(v->code == jit_code_arg);
+    assert_arg_type(v->code, jit_code_arg_i);
     jit_inc_synth_wp(getarg_i, u, v);
     if (jit_arg_reg_p(v->u.w)) {
 #if __WORDSIZE == 32
@@ -479,7 +526,7 @@ _jit_getarg_i(jit_state_t *_jit, jit_int32_t u, jit_node_t *v)
 void
 _jit_getarg_ui(jit_state_t *_jit, jit_int32_t u, jit_node_t *v)
 {
-    assert(v->code == jit_code_arg);
+    assert_arg_type(v->code, jit_code_arg_i);
     jit_inc_synth_wp(getarg_ui, u, v);
     if (jit_arg_reg_p(v->u.w))
 	jit_extr_ui(u, _R2 - v->u.w);
@@ -492,7 +539,7 @@ _jit_getarg_ui(jit_state_t *_jit, jit_int32_t u, jit_node_t *v)
 void
 _jit_getarg_l(jit_state_t *_jit, jit_int32_t u, jit_node_t *v)
 {
-    assert(v->code == jit_code_arg);
+    assert_arg_type(v->code, jit_code_arg_l);
     jit_inc_synth_wp(getarg_l, u, v);
     if (jit_arg_reg_p(v->u.w))
 	jit_movr(u, _R2 - v->u.w);
@@ -503,10 +550,10 @@ _jit_getarg_l(jit_state_t *_jit, jit_int32_t u, jit_node_t *v)
 #endif
 
 void
-_jit_putargr(jit_state_t *_jit, jit_int32_t u, jit_node_t *v)
+_jit_putargr(jit_state_t *_jit, jit_int32_t u, jit_node_t *v, jit_code_t code)
 {
-    assert(v->code == jit_code_arg);
-    jit_inc_synth_wp(putargr, u, v);
+    assert_putarg_type(code, v->code);
+    jit_code_inc_synth_wp(code, u, v);
     if (jit_arg_reg_p(v->u.w))
 	jit_movr(_R2 - v->u.w, u);
     else
@@ -515,11 +562,11 @@ _jit_putargr(jit_state_t *_jit, jit_int32_t u, jit_node_t *v)
 }
 
 void
-_jit_putargi(jit_state_t *_jit, jit_word_t u, jit_node_t *v)
+_jit_putargi(jit_state_t *_jit, jit_word_t u, jit_node_t *v, jit_code_t code)
 {
     jit_int32_t		regno;
-    assert(v->code == jit_code_arg);
-    jit_inc_synth_wp(putargi, u, v);
+    assert_putarg_type(code, v->code);
+    jit_code_inc_synth_wp(code, u, v);
     if (jit_arg_reg_p(v->u.w))
 	jit_movi(_R2 - v->u.w, u);
     else {
@@ -627,10 +674,10 @@ _jit_putargi_d(jit_state_t *_jit, jit_float64_t u, jit_node_t *v)
 }
 
 void
-_jit_pushargr(jit_state_t *_jit, jit_int32_t u)
+_jit_pushargr(jit_state_t *_jit, jit_int32_t u, jit_code_t code)
 {
     assert(_jitc->function);
-    jit_inc_synth_w(pushargr, u);
+    jit_code_inc_synth_w(code, u);
     jit_link_prepare();
     if (jit_arg_reg_p(_jitc->function->call.argi)) {
 	jit_movr(_R2 - _jitc->function->call.argi, u);
@@ -644,11 +691,11 @@ _jit_pushargr(jit_state_t *_jit, jit_int32_t u)
 }
 
 void
-_jit_pushargi(jit_state_t *_jit, jit_word_t u)
+_jit_pushargi(jit_state_t *_jit, jit_word_t u, jit_code_t code)
 {
     jit_int32_t		 regno;
     assert(_jitc->function);
-    jit_inc_synth_w(pushargi, u);
+    jit_code_inc_synth_w(code, u);
     jit_link_prepare();
     if (jit_arg_reg_p(_jitc->function->call.argi)) {
 	jit_movi(_R2 - _jitc->function->call.argi, u);
@@ -890,6 +937,7 @@ _emit_code(jit_state_t *_jit)
     struct {
 	jit_node_t	*node;
 	jit_word_t	 word;
+	jit_function_t	 func;
 #if DEVEL_DISASSEMBLER
 	jit_word_t	 prevw;
 #endif
@@ -930,6 +978,12 @@ _emit_code(jit_state_t *_jit)
 		name##r##type(rn(node->u.q.l), rn(node->u.q.h),		\
 			      rn(node->v.w), rn(node->w.w));		\
 		break
+#define case_rqr(name, type)						\
+	    case jit_code_##name##r##type:				\
+		name##r##type(rn(node->u.w), rn(node->v.q.l),		\
+			      rn(node->v.q.h), rn(node->w.w));		\
+	    case jit_code_##name##i##type:				\
+		break;
 #define case_rrw(name, type)						\
 	    case jit_code_##name##i##type:				\
 		name##i##type(rn(node->u.w), rn(node->v.w), node->w.w);	\
@@ -1027,11 +1081,13 @@ _emit_code(jit_state_t *_jit)
 	jit_regarg_set(node, value);
 	switch (node->code) {
 	    case jit_code_align:
-		assert(!(node->u.w & (node->u.w - 1)) &&
-		       node->u.w <= sizeof(jit_word_t));
-		if (node->u.w == sizeof(jit_word_t) &&
-		    (word = _jit->pc.w & (sizeof(jit_word_t) - 1)))
-		    nop(sizeof(jit_word_t) - word);
+		/* Must align to a power of two */
+		assert(!(node->u.w & (node->u.w - 1)));
+		if ((word = _jit->pc.w & (node->u.w - 1)))
+		    nop(node->u.w - word);
+		break;
+	    case jit_code_skip:
+		nop((node->u.w + 1) & ~1);
 		break;
 	    case jit_code_note:		case jit_code_name:
 		node->u.w = _jit->pc.w;
@@ -1077,12 +1133,40 @@ _emit_code(jit_state_t *_jit)
 		case_rrrw(qdiv, _u);
 		case_rrr(lsh,);
 		case_rrw(lsh,);
+#define qlshr(r0, r1, r2, r3)	fallback_qlshr(r0, r1, r2, r3)
+#define qlshi(r0, r1, r2, i0)	fallback_qlshi(r0, r1, r2, i0)
+#define qlshr_u(r0, r1, r2, r3)	fallback_qlshr_u(r0, r1, r2, r3)
+#define qlshi_u(r0, r1, r2, i0)	fallback_qlshi_u(r0, r1, r2, i0)
+		case_rrrr(qlsh,);
+		case_rrrw(qlsh,);
+		case_rrrr(qlsh, _u);
+		case_rrrw(qlsh, _u);
 		case_rrr(rsh,);
 		case_rrw(rsh,);
 		case_rrr(rsh, _u);
 		case_rrw(rsh, _u);
+#define qrshr(r0, r1, r2, r3)	fallback_qrshr(r0, r1, r2, r3)
+#define qrshi(r0, r1, r2, i0)	fallback_qrshi(r0, r1, r2, i0)
+#define qrshr_u(r0, r1, r2, r3)	fallback_qrshr_u(r0, r1, r2, r3)
+#define qrshi_u(r0, r1, r2, i0)	fallback_qrshi_u(r0, r1, r2, i0)
+		case_rrrr(qrsh,);
+		case_rrrw(qrsh,);
+		case_rrrr(qrsh, _u);
+		case_rrrw(qrsh, _u);
+		case_rrr(lrot,);
+		case_rrw(lrot,);
+		case_rrr(rrot,);
+		case_rrw(rrot,);
 		case_rr(neg,);
 		case_rr(com,);
+		case_rr(clo,);
+		case_rr(clz,);
+		case_rr(cto,);
+		case_rr(ctz,);
+#define rbitr(r0, r1)	fallback_rbit(r0, r1)
+#define popcntr(r0, r1)	fallback_popcnt(r0, r1)
+		case_rr(rbit,);
+		case_rr(popcnt,);
 		case_rrr(and,);
 		case_rrw(and,);
 		case_rrr(or,);
@@ -1127,6 +1211,22 @@ _emit_code(jit_state_t *_jit)
 		case_rrr(ldx, _l);
 		case_rrw(ldx, _l);
 #endif
+#define unldr(r0, r1, i0)	fallback_unldr(r0, r1, i0)
+	    case jit_code_unldr:
+		unldr(rn(node->u.w), rn(node->v.w), node->w.w);
+		break;
+#define unldi(r0, i0, i1)	fallback_unldi(r0, i0, i1)
+	    case jit_code_unldi:
+		unldi(rn(node->u.w), node->v.w, node->w.w);
+		break;
+#define unldr_u(r0, r1, i0)	fallback_unldr_u(r0, r1, i0)
+	    case jit_code_unldr_u:
+		unldr_u(rn(node->u.w), rn(node->v.w), node->w.w);
+		break;
+#define unldi_u(r0, i0, i1)	fallback_unldi_u(r0, i0, i1)
+	    case jit_code_unldi_u:
+		unldi_u(rn(node->u.w), node->v.w, node->w.w);
+		break;
 		case_rr(st, _c);
 		case_wr(st, _c);
 		case_rr(st, _s);
@@ -1147,11 +1247,36 @@ _emit_code(jit_state_t *_jit)
 		case_rrr(stx, _l);
 		case_wrr(stx, _l);
 #endif
+#define unstr(r0, r1, i0)	fallback_unstr(r0, r1, i0)
+	    case jit_code_unstr:
+		unstr(rn(node->u.w), rn(node->v.w), node->w.w);
+		break;
+#define unsti(i0, r0, i1)	fallback_unsti(i0, r0, i1)
+	    case jit_code_unsti:
+		unsti(node->u.w, rn(node->v.w), node->w.w);
+		break;
 		case_rr(hton, _us);
 		case_rr(hton, _ui);
 #if __WORDSIZE == 64
 		case_rr(hton, _ul);
 #endif
+		case_rr(bswap, _us);
+		case_rr(bswap, _ui);
+#if __WORDSIZE == 64
+		case_rr(bswap, _ul);
+#endif
+	    case jit_code_extr:
+		extr(rn(node->u.w), rn(node->v.w), node->w.q.l, node->w.q.h);
+		break;
+	    case jit_code_extr_u:
+		extr_u(rn(node->u.w), rn(node->v.w), node->w.q.l, node->w.q.h);
+		break;
+	    case jit_code_depr:
+		depr(rn(node->u.w), rn(node->v.w), node->w.q.l, node->w.q.h);
+		break;
+	    case jit_code_depi:
+		depi(rn(node->u.w), node->v.w, node->w.q.l, node->w.q.h);
+		break;
 		case_rr(ext, _c);
 		case_rr(ext, _uc);
 		case_rr(ext, _s);
@@ -1160,6 +1285,16 @@ _emit_code(jit_state_t *_jit)
 		case_rr(ext, _i);
 		case_rr(ext, _ui);
 #endif
+	    case jit_code_casr:
+		casr(rn(node->u.w), rn(node->v.w),
+		     rn(node->w.q.l), rn(node->w.q.h));
+		break;
+	    case jit_code_casi:
+		casi(rn(node->u.w), node->v.w,
+		     rn(node->w.q.l), rn(node->w.q.h));
+		break;
+		case_rrr(movn,);
+		case_rrr(movz,);
 		case_rr(mov,);
 	    case jit_code_movi:
 		if (node->flag & jit_flag_node) {
@@ -1250,15 +1385,35 @@ _emit_code(jit_state_t *_jit)
 		case_rr(abs, _f);
 		case_rr(neg, _f);
 		case_rr(sqrt, _f);
+		case_rqr(fma, _f);
+		case_rqr(fms, _f);
+		case_rqr(fnma, _f);
+		case_rqr(fnms, _f);
 		case_rr(ext, _f);
 		case_rr(ld, _f);
 		case_rw(ld, _f);
 		case_rrr(ldx, _f);
 		case_rrw(ldx, _f);
+#define unldr_x(r0, r1, i0)	fallback_unldr_x(r0, r1, i0)
+	    case jit_code_unldr_x:
+		unldr_x(rn(node->u.w), rn(node->v.w), node->w.w);
+		break;
+#define unldi_x(r0, i0, i1)	fallback_unldi_x(r0, i0, i1)
+	    case jit_code_unldi_x:
+		unldi_x(rn(node->u.w), node->v.w, node->w.w);
+		break;
 		case_rr(st, _f);
 		case_wr(st, _f);
 		case_rrr(stx, _f);
 		case_wrr(stx, _f);
+#define unstr_x(r0, r1, i0)	fallback_unstr_x(r0, r1, i0)
+	    case jit_code_unstr_x:
+		unstr_x(rn(node->u.w), rn(node->v.w), node->w.w);
+		break;
+#define unsti_x(i0, r0, i1)	fallback_unsti_x(i0, r0, i1)
+	    case jit_code_unsti_x:
+		unsti_x(node->u.w, rn(node->v.w), node->w.w);
+		break;
 		case_rr(mov, _f);
 	    case jit_code_movi_f:
 		assert_data(node);
@@ -1333,6 +1488,10 @@ _emit_code(jit_state_t *_jit)
 		case_rr(abs, _d);
 		case_rr(neg, _d);
 		case_rr(sqrt, _d);
+		case_rqr(fma, _d);
+		case_rqr(fms, _d);
+		case_rqr(fnma, _d);
+		case_rqr(fnms, _d);
 		case_rr(ext, _d);
 		case_rr(ld, _d);
 		case_rw(ld, _d);
@@ -1413,14 +1572,21 @@ _emit_code(jit_state_t *_jit)
 		    assert(temp->code == jit_code_label ||
 			   temp->code == jit_code_epilog);
 		    if (temp->flag & jit_flag_patch)
-			jmpi(temp->u.w);
+			jmpi(temp->u.w, 1);
 		    else {
-			word = jmpi_p(_jit->pc.w);
+			word = _jit->code.length -
+			    (_jit->pc.uc - _jit->code.ptr);
+			if (s32_p(word)) {
+			    offset = s16_p(word);
+			    word = jmpi(_jit->pc.w, offset);
+			}
+			else
+			    word = jmpi_p(_jit->pc.w);
 			patch(word, node);
 		    }
 		}
 		else
-		    jmpi(node->u.w);
+		    jmpi(node->u.w, 1);
 		break;
 	    case jit_code_callr:
 		callr(rn(node->u.w));
@@ -1431,19 +1597,27 @@ _emit_code(jit_state_t *_jit)
 		    assert(temp->code == jit_code_label ||
 			   temp->code == jit_code_epilog);
 		    if (temp->flag & jit_flag_patch)
-			calli(temp->u.w);
+			calli(temp->u.w, 1);
 		    else {
-			word = calli_p(_jit->pc.w);
+			word = _jit->code.length -
+			    (_jit->pc.uc - _jit->code.ptr);
+			if (s32_p(word)) {
+			    offset =s16_p(word);
+			    word = calli(_jit->pc.w, offset);
+			}
+			else
+			    word = calli_p(_jit->pc.w);
 			patch(word, node);
 		    }
 		}
 		else
-		    calli(node->u.w);
+		    calli(node->u.w, 1);
 		break;
 	    case jit_code_prolog:
 		_jitc->function = _jitc->functions.ptr + node->w.w;
 		undo.node = node;
 		undo.word = _jit->pc.w;
+		memcpy(&undo.func, _jitc->function, sizeof(undo.func));
 #if DEVEL_DISASSEMBLER
 		undo.prevw = prevw;
 #endif
@@ -1464,6 +1638,18 @@ _emit_code(jit_state_t *_jit)
 		    temp->flag &= ~jit_flag_patch;
 		    node = undo.node;
 		    _jit->pc.w = undo.word;
+		    /* undo.func.self.aoff and undo.func.regset should not
+		     * be undone, as they will be further updated, and are
+		     * the reason of the undo. */
+		    undo.func.self.aoff = _jitc->function->frame +
+			_jitc->function->self.aoff;
+		    jit_regset_set(&undo.func.regset, &_jitc->function->regset);
+		    /* allocar information also does not need to be undone */
+		    undo.func.aoffoff = _jitc->function->aoffoff;
+		    undo.func.allocar = _jitc->function->allocar;
+		    /* cvt_offset must also not be undone */
+		    undo.func.cvt_offset = _jitc->function->cvt_offset;
+		    memcpy(_jitc->function, &undo.func, sizeof(undo.func));
 #if DEVEL_DISASSEMBLER
 		    prevw = undo.prevw;
 #endif
@@ -1478,6 +1664,49 @@ _emit_code(jit_state_t *_jit)
 		epilog(node);
 		_jitc->function = NULL;
 		break;
+	    case jit_code_movr_w_f:
+		movr_w_f(rn(node->u.w), rn(node->v.w));
+		break;
+	    case jit_code_movr_f_w:
+		movr_f_w(rn(node->u.w), rn(node->v.w));
+		break;
+	    case jit_code_movi_f_w:
+		assert(node->flag & jit_flag_data);
+		movi_f_w(rn(node->u.w), *(jit_float32_t *)node->v.n->u.w);
+		break;
+	    case jit_code_movi_w_f:
+		movi_w_f(rn(node->u.w), node->v.w);
+		break;
+#if __WORDSIZE == 32
+	    case jit_code_movr_ww_d:
+		movr_ww_d(rn(node->u.w), rn(node->v.w), rn(node->w.w));
+		break;
+	    case jit_code_movr_d_ww:
+		movr_d_ww(rn(node->u.w), rn(node->v.w), rn(node->w.w));
+		break;
+	    case jit_code_movi_d_ww:
+		assert(node->flag & jit_flag_data);
+		movi_d_ww(rn(node->u.w), rn(node->v.w),
+			  *(jit_float64_t *)node->w.n->u.w);
+		break;
+	    case jit_code_movi_ww_d:
+		movi_ww_d(rn(node->u.w), node->v.w, node->w.w);
+		break;
+#else
+	    case jit_code_movr_w_d:
+		movr_w_d(rn(node->u.w), rn(node->v.w));
+		break;
+	    case jit_code_movr_d_w:
+		movr_d_w(rn(node->u.w), rn(node->v.w));
+		break;
+	    case jit_code_movi_d_w:
+		assert(node->flag & jit_flag_data);
+		movi_d_w(rn(node->u.w), *(jit_float64_t *)node->v.n->u.w);
+		break;
+	    case jit_code_movi_w_d:
+		movi_w_d(rn(node->u.w), node->v.w);
+		break;
+#endif
 	    case jit_code_va_start:
 		vastart(rn(node->u.w));
 		break;
@@ -1490,11 +1719,23 @@ _emit_code(jit_state_t *_jit)
 	    case jit_code_live:			case jit_code_ellipsis:
 	    case jit_code_va_push:
 	    case jit_code_allocai:		case jit_code_allocar:
-	    case jit_code_arg:
+	    case jit_code_arg_c:		case jit_code_arg_s:
+	    case jit_code_arg_i:
+#  if __WORDSIZE == 64
+	    case jit_code_arg_l:
+#  endif
 	    case jit_code_arg_f:		case jit_code_arg_d:
 	    case jit_code_va_end:
 	    case jit_code_ret:
-	    case jit_code_retr:			case jit_code_reti:
+	    case jit_code_retr_c:		case jit_code_reti_c:
+	    case jit_code_retr_uc:		case jit_code_reti_uc:
+	    case jit_code_retr_s:		case jit_code_reti_s:
+	    case jit_code_retr_us:		case jit_code_reti_us:
+	    case jit_code_retr_i:		case jit_code_reti_i:
+#if __WORDSIZE == 64
+	    case jit_code_retr_ui:		case jit_code_reti_ui:
+	    case jit_code_retr_l:		case jit_code_reti_l:
+#endif
 	    case jit_code_retr_f:		case jit_code_reti_f:
 	    case jit_code_retr_d:		case jit_code_reti_d:
 	    case jit_code_getarg_c:		case jit_code_getarg_uc:
@@ -1504,10 +1745,26 @@ _emit_code(jit_state_t *_jit)
 	    case jit_code_getarg_ui:		case jit_code_getarg_l:
 #endif
 	    case jit_code_getarg_f:		case jit_code_getarg_d:
-	    case jit_code_putargr:		case jit_code_putargi:
+	    case jit_code_putargr_c:		case jit_code_putargi_c:
+	    case jit_code_putargr_uc:		case jit_code_putargi_uc:
+	    case jit_code_putargr_s:		case jit_code_putargi_s:
+	    case jit_code_putargr_us:		case jit_code_putargi_us:
+	    case jit_code_putargr_i:		case jit_code_putargi_i:
+#if __WORDSIZE == 64
+	    case jit_code_putargr_ui:		case jit_code_putargi_ui:
+	    case jit_code_putargr_l:		case jit_code_putargi_l:
+#endif
 	    case jit_code_putargr_f:		case jit_code_putargi_f:
 	    case jit_code_putargr_d:		case jit_code_putargi_d:
-	    case jit_code_pushargr:		case jit_code_pushargi:
+	    case jit_code_pushargr_c:		case jit_code_pushargi_c:
+	    case jit_code_pushargr_uc:		case jit_code_pushargi_uc:
+	    case jit_code_pushargr_s:		case jit_code_pushargi_s:
+	    case jit_code_pushargr_us:		case jit_code_pushargi_us:
+	    case jit_code_pushargr_i:		case jit_code_pushargi_i:
+#if __WORDSIZE == 64
+	    case jit_code_pushargr_ui:		case jit_code_pushargi_ui:
+	    case jit_code_pushargr_l:		case jit_code_pushargi_l:
+#endif
 	    case jit_code_pushargr_f:		case jit_code_pushargi_f:
 	    case jit_code_pushargr_d:		case jit_code_pushargi_d:
 	    case jit_code_retval_c:		case jit_code_retval_uc:
@@ -1519,6 +1776,77 @@ _emit_code(jit_state_t *_jit)
 	    case jit_code_retval_f:		case jit_code_retval_d:
 	    case jit_code_prepare:
 	    case jit_code_finishr:		case jit_code_finishi:
+	    case jit_code_negi_f:		case jit_code_absi_f:
+	    case jit_code_sqrti_f:		case jit_code_negi_d:
+	    case jit_code_absi_d:		case jit_code_sqrti_d:
+		break;
+	    case jit_code_negi:
+		negi(rn(node->u.w), node->v.w);
+		break;
+	    case jit_code_comi:
+		comi(rn(node->u.w), node->v.w);
+		break;
+	    case jit_code_exti_c:
+		exti_c(rn(node->u.w), node->v.w);
+		break;
+	    case jit_code_exti_uc:
+		exti_uc(rn(node->u.w), node->v.w);
+		break;
+	    case jit_code_exti_s:
+		exti_s(rn(node->u.w), node->v.w);
+		break;
+	    case jit_code_exti_us:
+		exti_us(rn(node->u.w), node->v.w);
+		break;
+	    case jit_code_bswapi_us:
+		bswapi_us(rn(node->u.w), node->v.w);
+		break;
+	    case jit_code_bswapi_ui:
+		bswapi_ui(rn(node->u.w), node->v.w);
+		break;
+	    case jit_code_htoni_us:
+		htoni_us(rn(node->u.w), node->v.w);
+		break;
+	    case jit_code_htoni_ui:
+		htoni_ui(rn(node->u.w), node->v.w);
+		break;
+#if __WORDSIZE == 64
+	    case jit_code_exti_i:
+		exti_i(rn(node->u.w), node->v.w);
+		break;
+	    case jit_code_exti_ui:
+		exti_ui(rn(node->u.w), node->v.w);
+		break;
+	    case jit_code_bswapi_ul:
+		bswapi_ul(rn(node->u.w), node->v.w);
+		break;
+	    case jit_code_htoni_ul:
+		htoni_ul(rn(node->u.w), node->v.w);
+		break;
+#endif
+	    case jit_code_cloi:
+		cloi(rn(node->u.w), node->v.w);
+		break;
+	    case jit_code_clzi:
+		clzi(rn(node->u.w), node->v.w);
+		break;
+	    case jit_code_ctoi:
+		ctoi(rn(node->u.w), node->v.w);
+		break;
+	    case jit_code_ctzi:
+		ctzi(rn(node->u.w), node->v.w);
+		break;
+	    case jit_code_rbiti:
+		rbiti(rn(node->u.w), node->v.w);
+		break;
+	    case jit_code_popcnti:
+		popcnti(rn(node->u.w), node->v.w);
+		break;
+	    case jit_code_exti:
+		exti(rn(node->u.w), node->v.w, node->w.q.l, node->w.q.h);
+		break;
+	    case jit_code_exti_u:
+		exti_u(rn(node->u.w), node->v.w, node->w.q.l, node->w.q.h);
 		break;
 	    default:
 		abort();
@@ -1551,6 +1879,7 @@ _emit_code(jit_state_t *_jit)
 #define CODE				1
 #  include "jit_s390-cpu.c"
 #  include "jit_s390-fpu.c"
+#  include "jit_fallback.c"
 #undef CODE
 
 void
