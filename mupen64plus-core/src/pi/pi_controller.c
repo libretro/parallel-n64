@@ -30,6 +30,7 @@
 #include "../r4300/cp0.h"
 #include "../r4300/cp0_private.h"
 #include "../r4300/r4300_core.h"
+#include "../rdp/fb.h"
 #include "../ri/rdram_detection_hack.h"
 #include "../ri/ri_controller.h"
 #include "../ri/safe_rdram.h"
@@ -98,6 +99,8 @@ static void dma_pi_read(struct pi_controller *pi)
       dram_address = pi->regs[PI_DRAM_ADDR_REG];
       dram = (uint8_t*)pi->ri->rdram.dram;
 
+      pre_framebuffer_dma_read(&g_dev.dp.fb, dram_address, length);
+
       for (i = 0; i < length; ++i)
       {
          const unsigned int rom_i = (rom_address + i) ^ S8;
@@ -148,6 +151,8 @@ static void dma_pi_read(struct pi_controller *pi)
       dram = (uint8_t*)pi->ri->rdram.dram;
       rom = pi->cart_rom.rom;
 
+      pre_framebuffer_dma_read(&g_dev.dp.fb, dram_address, length);
+
       for (i = 0; i < length; ++i)
          rom[(rom_address + i) ^ S8] = dram[(dram_address + i) ^ S8];
    }
@@ -179,6 +184,8 @@ static void dma_pi_read(struct pi_controller *pi)
       rom_address = (pi->regs[PI_CART_ADDR_REG] - 0x1ffe0000);
       dram = (uint8_t*)pi->ri->rdram.dram;
       rom = pi->summercart.buffer;
+
+      pre_framebuffer_dma_read(&g_dev.dp.fb, dram_address, length);
 
       for (i = 0; i < length; ++i)
          rom[(rom_address + i) ^ S8] = dram[(dram_address + i) ^ S8];
@@ -274,6 +281,7 @@ static void dma_pi_write(struct pi_controller *pi)
 
          invalidate_r4300_cached_code(0x80000000 + dram_address, length);
          invalidate_r4300_cached_code(0xa0000000 + dram_address, length);
+         post_framebuffer_dma_write(&g_dev.dp.fb, dram_address, length);
       }
       else
       {
@@ -403,6 +411,7 @@ static void dma_pi_write(struct pi_controller *pi)
 
    invalidate_r4300_cached_code(0x80000000 + dram_address, length);
    invalidate_r4300_cached_code(0xa0000000 + dram_address, length);
+   post_framebuffer_dma_write(&g_dev.dp.fb, dram_address, length);
 
    /* HACK: monitor PI DMA to trigger RDRAM size detection
     * hack just before initial cart ROM loading. */

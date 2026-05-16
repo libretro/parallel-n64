@@ -111,6 +111,39 @@ int write_rdram_fb(void* opaque, uint32_t address, uint32_t value, uint32_t mask
     return rval;
 }
 
+/* Notify the GFX plugin that an upcoming PI DMA *read* from RDRAM
+ * (i.e. dram-to-cart save / screenshot dumps) overlaps a tracked
+ * framebuffer; the plugin may need to flush pending writes back into
+ * RDRAM before we transfer it out. Fast no-op when nothing is
+ * registered. */
+void pre_framebuffer_dma_read(struct fb* fb, uint32_t address, uint32_t length)
+{
+    uint32_t addr;
+    uint32_t end = address + length;
+
+    if (!fb->infos[0].addr)
+        return;
+
+    for (addr = address & ~UINT32_C(3); addr < end; addr += 4)
+        pre_framebuffer_read(fb, addr);
+}
+
+/* Notify the GFX plugin that a PI DMA *write* into RDRAM (cart-to-dram,
+ * the common case for streamed framebuffer effects) modified bytes that
+ * overlap a tracked framebuffer; the plugin needs to re-upload the
+ * affected texels. Fast no-op when nothing is registered. */
+void post_framebuffer_dma_write(struct fb* fb, uint32_t address, uint32_t length)
+{
+    uint32_t addr;
+    uint32_t end = address + length;
+
+    if (!fb->infos[0].addr)
+        return;
+
+    for (addr = address & ~UINT32_C(3); addr < end; addr += 4)
+        post_framebuffer_write(fb, addr, UINT32_C(0xffffffff));
+}
+
 
 #define R(x) read_ ## x ## b, read_ ## x ## h, read_ ## x, read_ ## x ## d
 #define W(x) write_ ## x ## b, write_ ## x ## h, write_ ## x, write_ ## x ## d
