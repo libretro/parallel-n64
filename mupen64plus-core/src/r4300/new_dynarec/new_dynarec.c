@@ -2071,6 +2071,7 @@ static void pagespan_alloc(struct regstat *current,int i)
 
 static void add_stub(int type,int addr,int retaddr,int a,int b,int c,int d,int e)
 {
+  assert(stubcount<MAXBLOCK*3);
   stubs[stubcount][0]=type;
   stubs[stubcount][1]=addr;
   stubs[stubcount][2]=retaddr;
@@ -4341,7 +4342,7 @@ static void wb_dirtys(signed char i_regmap[],uint64_t i_is32,uint64_t i_dirty)
       if(i_regmap[hr]>0) {
         if(i_regmap[hr]!=CCREG) {
           if((i_dirty>>hr)&1) {
-            if(i_regmap[hr]<64) {
+            if((i_regmap[hr]<64)&&((i_regmap[hr]&63)<CCREG)) {
               emit_storereg(i_regmap[hr],hr);
               if( ((i_is32>>i_regmap[hr])&1) ) {
                 #ifdef DESTRUCTIVE_WRITEBACK
@@ -4352,7 +4353,7 @@ static void wb_dirtys(signed char i_regmap[],uint64_t i_is32,uint64_t i_dirty)
                 emit_storereg(i_regmap[hr]|64,HOST_TEMPREG);
                 #endif
               }
-            }else{
+            }else if((i_regmap[hr]&63)<CCREG){
               if( !((i_is32>>(i_regmap[hr]&63))&1) ) {
                 emit_storereg(i_regmap[hr],hr);
               }
@@ -5061,6 +5062,7 @@ static void do_ccstub(int n)
 
 static void add_to_linker(int addr,int target,int ext)
 {
+  assert(linkcount<MAXBLOCK);
   link_addr[linkcount][0]=addr;
   link_addr[linkcount][1]=target;
   link_addr[linkcount][2]=ext;
