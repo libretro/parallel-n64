@@ -39,6 +39,7 @@
 #include "../main/cheat.h"
 
 #include "main/main.h"
+#include "main/device.h"
 #include "main/rom.h"
 #include "main/version.h"
 #include "main/util.h"
@@ -71,6 +72,9 @@ EXPORT m64p_error CALL CoreStartup(int APIVersion, const char *ConfigPath, const
                      VERSION_PRINTF_SPLIT(APIVersion), VERSION_PRINTF_SPLIT(FRONTEND_API_VERSION));
         return M64ERR_INCOMPATIBLE;
     }
+
+    /* Initialize the main device structure to all zeros */
+    memset(&g_dev, 0, sizeof(struct device));
 
     /* next, start up the configuration handling code by loading and parsing the config file */
     if (ConfigInit(ConfigPath, DataPath) != M64ERR_SUCCESS)
