@@ -9941,6 +9941,8 @@ int new_recompile_block(int addr)
                 }
                 if(itype[j]==CJUMP||itype[j]==SJUMP||itype[j]==FJUMP)
                 {
+                  if(branch_regs[j].regmap[hr]>=0)
+                    break;
                   if(ooo[j]) {
                     if(count_free_regs(regs[j].regmap)<=minimum_free_regs[j+1])
                       break;
