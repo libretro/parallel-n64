@@ -45,7 +45,7 @@
  *
  * Unfortunately, most op-codes are optimized to require this to be TRUE.
  */
-#if (ENDIAN_M == 0)
+#ifdef MSB_FIRST
 #define USE_CLIENT_ENDIAN       0
 #else
 #define USE_CLIENT_ENDIAN       1

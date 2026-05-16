@@ -444,26 +444,29 @@ typedef union {
 } word_64;
 
 /*
- * helper macros for indexing memory in the above unions
- * EEP!  Currently concentrates mostly on 32-bit endianness.
+ * Helper macros for indexing memory in the above unions.
+ *
+ * The RSP DMEM/IMEM is laid out in big-endian byte order. On a big-
+ * endian host (MSB_FIRST defined) byte-, half-, and word-level access
+ * uses the natural address. On a little-endian host the lowest bits
+ * of the address are XOR'd to flip byte order within a 32-bit word:
+ *
+ *   BES(a) = a ^ 3  byte access (8-bit  within a 32-bit word)
+ *   HES(a) = a ^ 2  half access (16-bit within a 32-bit word)
+ *   MES(a) = a ^ 1  byte access (8-bit  within a 16-bit halfword)
+ *   WES(a) = a      word access (32-bit, no swap)
  */
-#ifndef ENDIAN_M
-#if defined(__BIG_ENDIAN__)
-#define ENDIAN_M    ( 0U)
+#ifdef MSB_FIRST
+#define BES(address)    (address)
+#define HES(address)    (address)
+#define MES(address)    (address)
+#define WES(address)    (address)
 #else
-#define ENDIAN_M    (~0U)
+#define BES(address)    ((address) ^ 3)
+#define HES(address)    ((address) ^ 2)
+#define MES(address)    ((address) ^ 1)
+#define WES(address)    (address)
 #endif
-#endif
-
-#define ENDIAN_SWAP_BYTE    (ENDIAN_M & 7U & 3U)
-#define ENDIAN_SWAP_HALF    (ENDIAN_M & 6U & 2U)
-#define ENDIAN_SWAP_BIMI    (ENDIAN_M & 5U & 1U)
-#define ENDIAN_SWAP_WORD    (ENDIAN_M & 4U & 0U)
-
-#define BES(address)    ((address) ^ ENDIAN_SWAP_BYTE)
-#define HES(address)    ((address) ^ ENDIAN_SWAP_HALF)
-#define MES(address)    ((address) ^ ENDIAN_SWAP_BIMI)
-#define WES(address)    ((address) ^ ENDIAN_SWAP_WORD)
 
 /*
  * extra types of encoding for the well-known MIPS RISC architecture
