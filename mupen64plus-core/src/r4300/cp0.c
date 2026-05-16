@@ -56,7 +56,7 @@ void poweron_cp0(void)
    g_cp0_regs[CP0_STATUS_REG]= UINT32_C(0x34000000);
    set_fpr_pointers(g_cp0_regs[CP0_STATUS_REG]);
    g_cp0_regs[CP0_CONFIG_REG]= UINT32_C(0x6e463);
-   g_cp0_regs[CP0_PREVID_REG] = UINT32_C(0xb00);
+   g_cp0_regs[CP0_PREVID_REG] = UINT32_C(0xb10);
    g_cp0_regs[CP0_COUNT_REG] = UINT32_C(0x5000);
    g_cp0_regs[CP0_CAUSE_REG] = UINT32_C(0x5C);
    g_cp0_regs[CP0_CONTEXT_REG] = UINT32_C(0x7FFFF0);
