@@ -114,7 +114,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
         NULL,
         "Analog Deadzone (percent)",
         NULL,
-        NULL,
+        "input",
         {
             { "0", NULL },
             { "5", NULL },
@@ -133,7 +133,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
         NULL,
         "Analog Sensitivity (percent)",
         NULL,
-        NULL,
+        "input",
         {
             { "50", NULL },
             { "55", NULL },
@@ -167,7 +167,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
         NULL,
         "Snap analog stick angle to multiples of 45 degrees, to better support circular design controllers that should behave like classic N64 controllers.",
         NULL,
-        NULL,
+        "input",
         {
             { "disabled", NULL },
             { "enabled",  NULL },
@@ -181,7 +181,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
         NULL,
         "Maximum deviation from a 45-degree multiple at which snapping is applied (e.g. value of 5 means 85 to 95 degrees are snapped to 90).",
         NULL,
-        NULL,
+        "input",
         {
             { "1",  NULL },
             { "2",  NULL },
@@ -214,7 +214,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
         NULL,
         "Percentage of stick displacement from the center required before snapping activates (0 means always).",
         NULL,
-        NULL,
+        "input",
         {
             { "0",  NULL },
             { "10", NULL },
@@ -240,7 +240,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
         NULL,
         "Player 1 Pak",
         NULL,
-        NULL,
+        "input",
         {
             { "none", NULL },
             { "memory", NULL },
@@ -255,7 +255,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
         NULL,
         "Player 2 Pak",
         NULL,
-        NULL,
+        "input",
         {
             { "none", NULL },
             { "memory", NULL },
@@ -270,7 +270,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
         NULL,
         "Player 3 Pak",
         NULL,
-        NULL,
+        "input",
         {
             { "none", NULL },
             { "memory", NULL },
@@ -285,7 +285,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
         NULL,
         "Player 4 Pak",
         NULL,
-        NULL,
+        "input",
         {
             { "none", NULL },
             { "memory", NULL },
@@ -335,7 +335,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
         NULL,
         "ParaLLEl Synchronous RDP",
         NULL,
-        NULL,
+        "parallel",
         {
             { "enabled", NULL },
             { "disabled", NULL },
@@ -346,7 +346,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
     {
         CORE_NAME "-parallel-rdp-overscan",
         "(ParaLLEl-RDP) Crop pixel border pixels",
-        NULL,
+        "Crop pixel border pixels",
         "Crop pixel border pixels",
         NULL,
         "parallel",
@@ -391,7 +391,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
     {
         CORE_NAME "-remove-vi-borders",
         "(ParaLLEl-RDP) Remove VI borders",
-        NULL,
+        "Remove VI borders",
         "Removes the black borders on the left and right sides of the video. Since these pixels are never rendered on real hardware, results will vary depending on the game.",
         NULL,
         "parallel",
@@ -405,7 +405,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
     {
         CORE_NAME "-parallel-rdp-divot-filter",
         "(ParaLLEl-RDP) VI divot filter",
-        NULL,
+        "VI divot filter",
         "VI divot filter",
         NULL,
         "parallel",
@@ -419,7 +419,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
     {
         CORE_NAME "-parallel-rdp-gamma-dither",
         "(ParaLLEl-RDP) VI gamma dither",
-        NULL,
+        "VI gamma dither",
         "VI gamma dither",
         NULL,
         "parallel",
@@ -433,7 +433,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
     {
         CORE_NAME "-parallel-rdp-vi-aa",
         "(ParaLLEl-RDP) VI AA",
-        NULL,
+        "VI AA",
         "VI AntiAliasing",
         NULL,
         "parallel",
@@ -447,7 +447,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
     {
         CORE_NAME "-parallel-rdp-vi-bilinear",
         "(ParaLLEl-RDP) VI bilinear",
-        NULL,
+        "VI bilinear",
         "VI bilinear filtering",
         NULL,
         "parallel",
@@ -461,7 +461,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
     {
         CORE_NAME "-parallel-rdp-dither-filter",
         "(ParaLLEl-RDP) VI dither filter",
-        NULL,
+        "VI dither filter",
         "VI dither filter",
         NULL,
         "parallel",
@@ -475,7 +475,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
     {
         CORE_NAME "-parallel-rdp-upscaling",
         "(ParaLLEl-RDP) Upscaling factor (restart)",
-        NULL,
+        "Upscaling factor (restart)",
         "Upscaling factor (restart)",
         NULL,
         "parallel",
@@ -491,7 +491,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
     {
         CORE_NAME "-parallel-rdp-downscaling",
         "(ParaLLEl-RDP) Downsampling",
-        NULL,
+        "Downsampling",
         "Downsampling",
         NULL,
         "parallel",
@@ -507,7 +507,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
     {
         CORE_NAME "-parallel-rdp-native-texture-lod",
         "(ParaLLEl-RDP) Use native texture LOD when upscaling",
-        NULL,
+        "Use native texture LOD when upscaling",
         "Use native texture LOD when upscaling",
         NULL,
         "parallel",
@@ -521,7 +521,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
     {
         CORE_NAME "-parallel-rdp-native-tex-rect",
         "(ParaLLEl-RDP) Use native resolution for TEX_RECT",
-        NULL,
+        "Use native resolution for TEX_RECT",
         "Use native resolution for TEX_RECT",
         NULL,
         "parallel",
@@ -638,7 +638,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
     {
         CORE_NAME "-filtering",
         "(Glide64) Texture Filtering",
-        NULL,
+        "Texture Filtering",
         "Texture Filtering",
         NULL,
         "glide64",
@@ -654,7 +654,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
     {
         CORE_NAME "-dithering",
         "(Angrylion) Dithering",
-        NULL,
+        "Dithering",
         "Dithering",
         NULL,
         "angrylion",
@@ -668,7 +668,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
     {
         CORE_NAME "-polyoffset-factor",
         "(Glide64) Polygon Offset Factor",
-        NULL,
+        "Polygon Offset Factor",
         "Polygon Offset Factor",
         NULL,
         "glide64",
@@ -701,7 +701,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
     {
         CORE_NAME "-polyoffset-units",
         "(Glide64) Polygon Offset Units",
-        NULL,
+        "Polygon Offset Units",
         "Polygon Offset Units",
         NULL,
         "glide64",
@@ -735,7 +735,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
     {
         CORE_NAME "-angrylion-vioverlay",
         "(Angrylion) VI Overlay",
-        NULL,
+        "VI Overlay",
         "VI Overlay",
         NULL,
         "angrylion",
@@ -754,7 +754,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
     {
         CORE_NAME "-angrylion-sync",
         "(Angrylion) Thread sync level",
-        NULL,
+        "Thread sync level",
         "Thread sync level",
         NULL,
         "angrylion",
@@ -769,7 +769,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
     {
         CORE_NAME "-angrylion-multithread",
         "(Angrylion) Multi-threading",
-        NULL,
+        "Multi-threading",
         "Multi-threading",
         NULL,
         "angrylion",
@@ -845,7 +845,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
     {
         CORE_NAME "-angrylion-overscan",
         "(Angrylion) Hide overscan",
-        NULL,
+        "Hide overscan",
         "Hide overscan",
         NULL,
         "angrylion",
@@ -905,7 +905,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
         NULL,
         "Independent C-button Controls",
         NULL,
-        NULL,
+        "input",
         {
             { "disabled", NULL },
             { "enabled", NULL },
@@ -917,7 +917,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
     {
         CORE_NAME "-vcache-vbo",
         "(Glide64) Vertex cache VBO",
-        NULL,
+        "Vertex cache VBO",
         "Vertex cache VBO (restart)",
         NULL,
         "glide64",
