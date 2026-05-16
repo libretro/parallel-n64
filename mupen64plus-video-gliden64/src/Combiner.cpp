@@ -313,12 +313,19 @@ void CombinerInfo::update()
 					{
 						gDP.combine.aA1 = G_CCMUX_COMBINED;
 						gDP.combine.aRGB1 = G_CCMUX_COMBINED;
-						gDP.combine.mA1 = G_CCMUX_0;
+						/* G_CCMUX_0 = 31 is the all-bits-set encoding of
+						 * "zero source" in the N64 RDP combiner. Each sub-
+						 * mux has its own bit width and reads "zero" as
+						 * its own all-bits-set value: 3-bit fields use 7,
+						 * 4-bit fields use 15, 5-bit fields use 31. Mask
+						 * to the field width to document the truncation
+						 * and silence -Woverflow. */
+						gDP.combine.mA1 = G_CCMUX_0 & 0x7;
 						gDP.combine.mRGB1 = G_CCMUX_0;
-						gDP.combine.saA1 = G_CCMUX_0;
-						gDP.combine.saRGB1 = G_CCMUX_0;
-						gDP.combine.sbA1 = G_CCMUX_0;
-						gDP.combine.sbRGB1 = G_CCMUX_0;
+						gDP.combine.saA1 = G_CCMUX_0 & 0x7;
+						gDP.combine.saRGB1 = G_CCMUX_0 & 0xF;
+						gDP.combine.sbA1 = G_CCMUX_0 & 0x7;
+						gDP.combine.sbRGB1 = G_CCMUX_0 & 0xF;
 					}
 				}
 			}
