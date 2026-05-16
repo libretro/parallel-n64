@@ -211,6 +211,12 @@ void update_pif_write(struct si_controller *si)
          default:
             if (!(pif->ram[i] & 0xC0))
             {
+               if (i+1 >= PIF_RAM_SIZE)
+               {
+                  DebugMessage(M64MSG_WARNING, "Truncated PIF command ! Stopping PIF channel processing");
+                  i=0x40;
+                  break;
+               }
                if (channel < 4)
                {
                   if (Controls[channel].Present && Controls[channel].RawData)
@@ -268,6 +274,12 @@ void update_pif_read(struct si_controller *si)
          default:
             if (!(pif->ram[i] & 0xC0))
             {
+               if (i+1 >= PIF_RAM_SIZE)
+               {
+                  DebugMessage(M64MSG_WARNING, "Truncated PIF command ! Stopping PIF channel processing");
+                  i=0x40;
+                  break;
+               }
                if (channel < 4)
                {
                   if (Controls[channel].Present &&
