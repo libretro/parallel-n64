@@ -40,18 +40,6 @@
 #define MAX_DRAM_DMA_ADDR       (MAX_DRAM_ADDR & ~7)
 
 /*
- * Interact with memory using server-side byte order (MIPS big-endian) or
- * client-side (VM host's) native byte order on a 32-bit boundary.
- *
- * Unfortunately, most op-codes are optimized to require this to be TRUE.
- */
-#ifdef MSB_FIRST
-#define USE_CLIENT_ENDIAN       0
-#else
-#define USE_CLIENT_ENDIAN       1
-#endif
-
-/*
  * Always keep this enabled for faster interpreter CPU.
  *
  * If you disable this, the branch delay slot algorithm will match the
