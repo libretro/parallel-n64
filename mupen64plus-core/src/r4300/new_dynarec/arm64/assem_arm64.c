@@ -286,6 +286,7 @@ static void set_jump_target(intptr_t addr,uintptr_t target)
 {
   u_char *ptr=(u_char *)addr;
   u_int *ptr2=(u_int *)ptr;
+  if(ptr==NULL) return;
 
   int offset=target-(intptr_t)addr;
 
