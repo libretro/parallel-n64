@@ -37,7 +37,6 @@ typedef double GLdouble;
 typedef struct __GLsync* GLsync;
 typedef uint64_t GLuint64;
 typedef int64_t GLint64;
-#define ptrdiff_t khronos_ssize_t
 #endif
 
 #if defined(HAVE_OPENGLES3)
@@ -47,9 +46,6 @@ typedef double GLdouble;
 #undef GL_DRAW_FRAMEBUFFER_BINDING
 #undef GL_COPY_READ_BUFFER_BINDING
 #undef GL_COPY_WRITE_BUFFER_BINDING
-#ifndef IOS
-#define ptrdiff_t khronos_ssize_t
-#endif // !IOS
 #endif // HAVE_OPENGLES3
 
 #if defined(HAVE_OPENGLES2)
