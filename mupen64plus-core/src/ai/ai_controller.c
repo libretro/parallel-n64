@@ -244,6 +244,7 @@ void ai_end_of_dma_event(struct ai_controller* ai)
       unsigned char *p = (unsigned char*)&ai->ri->rdram.dram[ai->fifo[0].address/4];
       ai->push_audio_samples(&ai->backend,
          p + diff, ai->last_read);
+      ai->last_read = 0;
    } 
  
    fifo_pop(ai);
