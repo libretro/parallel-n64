@@ -3455,21 +3455,19 @@ static void shift_assemble_arm(int i,struct regstat *i_regs)
         }
         else
         {
-          // FIXME: What if shift==tl ?
-          assert(shift!=tl);
           int temp=get_reg(i_regs->regmap,-1);
           int real_th=th;
           if(th<0&&opcode2[i]!=0x14) {th=temp;} // DSLLV doesn't need a temporary register
           assert(sl>=0);
           assert(sh>=0);
+          emit_testimm(shift,32);
           emit_andimm(shift,31,HOST_TEMPREG);
           if(opcode2[i]==0x14) // DSLLV
           {
             if(th>=0) emit_shl(sh,HOST_TEMPREG,th);
             emit_rsbimm(HOST_TEMPREG,32,HOST_TEMPREG);
             emit_orrshr(sl,HOST_TEMPREG,th);
-            emit_andimm(shift,31,HOST_TEMPREG);
-            emit_testimm(shift,32);
+            emit_rsbimm(HOST_TEMPREG,32,HOST_TEMPREG);
             emit_shl(sl,HOST_TEMPREG,tl);
             if(th>=0) emit_cmovne_reg(tl,th);
             emit_cmovne_imm(0,tl);
@@ -3480,8 +3478,7 @@ static void shift_assemble_arm(int i,struct regstat *i_regs)
             emit_shr(sl,HOST_TEMPREG,tl);
             emit_rsbimm(HOST_TEMPREG,32,HOST_TEMPREG);
             emit_orrshl(sh,HOST_TEMPREG,tl);
-            emit_andimm(shift,31,HOST_TEMPREG);
-            emit_testimm(shift,32);
+            emit_rsbimm(HOST_TEMPREG,32,HOST_TEMPREG);
             emit_shr(sh,HOST_TEMPREG,th);
             emit_cmovne_reg(th,tl);
             if(real_th>=0) emit_cmovne_imm(0,th);
@@ -3496,8 +3493,7 @@ static void shift_assemble_arm(int i,struct regstat *i_regs)
               emit_sarimm(th,31,temp);
             }
             emit_orrshl(sh,HOST_TEMPREG,tl);
-            emit_andimm(shift,31,HOST_TEMPREG);
-            emit_testimm(shift,32);
+            emit_rsbimm(HOST_TEMPREG,32,HOST_TEMPREG);
             emit_sar(sh,HOST_TEMPREG,th);
             emit_cmovne_reg(th,tl);
             if(real_th>=0) emit_cmovne_reg(temp,th);
