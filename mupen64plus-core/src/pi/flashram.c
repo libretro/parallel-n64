@@ -100,6 +100,7 @@ static void flashram_command(struct pi_controller *pi, uint32_t command)
       case 0xe1000000:
          flashram->mode = FLASHRAM_MODE_STATUS;
          flashram->status = 0x1111800100c20000LL;
+         flashram->status |= 0x01; /* Needed for Pokemon Puzzle League */
          break;
       case 0xf0000000:
          flashram->mode = FLASHRAM_MODE_READ;
