@@ -3439,12 +3439,16 @@ bool glsm_ctl(enum glsm_state_ctl state, void *data)
          break;
       case GLSM_CTL_STATE_CONTEXT_RESET:
          rglgen_resolve_symbols(hw_render.get_proc_address);
+#ifdef HAVE_GLIDEN64
          initGLFunctions();
-         
+#endif
+
          if (window_first > 0) {
             resetting_context = 1;
             glsm_state_setup();
+#ifdef HAVE_GLIDEN64
             retroChangeWindow();
+#endif
             glsm_state_unbind();
             resetting_context = 0;
 	      }
