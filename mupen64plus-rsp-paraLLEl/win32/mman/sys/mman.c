@@ -141,7 +141,7 @@ int munmap(void *addr, size_t len)
     return -1;
 }
 
-int _mprotect(void *addr, size_t len, int prot)
+int mprotect(void *addr, size_t len, int prot)
 {
     DWORD newProtect = __map_mmap_prot_page(prot);
     DWORD oldProtect = 0;

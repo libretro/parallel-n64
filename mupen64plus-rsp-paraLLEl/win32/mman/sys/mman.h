@@ -64,7 +64,7 @@ extern "C" {
 
 MMANSHARED_EXPORT void*   mmap(void *addr, size_t len, int prot, int flags, int fildes, OffsetType off);
 MMANSHARED_EXPORT int     munmap(void *addr, size_t len);
-MMANSHARED_EXPORT int     _mprotect(void *addr, size_t len, int prot);
+MMANSHARED_EXPORT int     mprotect(void *addr, size_t len, int prot);
 MMANSHARED_EXPORT int     msync(void *addr, size_t len, int flags);
 MMANSHARED_EXPORT int     mlock(const void *addr, size_t len);
 MMANSHARED_EXPORT int     munlock(const void *addr, size_t len);
