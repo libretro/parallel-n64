@@ -24,7 +24,7 @@
 
 #include "cp0.h"
 
-#if !defined(__arm64__)
+#if !defined(__arm64__) && !defined(__aarch64__)
 extern uint32_t g_cp0_regs[CP0_REGS_COUNT];
 #else
 #include "new_dynarec/arm64/memory_layout_arm64.h"

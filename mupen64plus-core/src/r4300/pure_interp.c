@@ -21,7 +21,7 @@
 
 #include <stdint.h>
 
-#if !defined(__arm64__)
+#if !defined(__arm64__) && !defined(__aarch64__)
 #define mupencorereg reg
 #else
 #include "new_dynarec/arm64/memory_layout_arm64.h"

@@ -107,7 +107,7 @@ struct ll_entry
   struct ll_entry *next;
 };
 
-#ifdef __arm64__
+#if defined(__arm64__) || defined(__aarch64__)
 recompiler_memory_layout_t memory_layout;
 #endif
 void *base_addr = NULL;
@@ -7766,7 +7766,7 @@ void new_dynarec_init(void)
 #ifndef PROFILER
   DebugMessage(M64MSG_INFO, "Init new dynarec");
 
-#if defined(__arm64__)
+#if defined(__arm64__) || defined(__aarch64__)
 #define TRAMPOLINES_SIZE (1024*1024)
   // trampolines are put behind the base_addr so allocate a bit extra memory
   // TODO: Don't allocate 32MB, it is definitely too much 
@@ -7871,7 +7871,7 @@ void new_dynarec_cleanup(void)
 #endif
   int n;
 
-#if defined(__arm64__)
+#if defined(__arm64__) || defined(__aarch64__)
   if (munmap (((char*)base_addr) - TRAMPOLINES_SIZE, TRAMPOLINES_SIZE + (1<<TARGET_SIZE_2)) < 0) {DebugMessage(M64MSG_ERROR, "munmap() failed");}
 #else
 #if defined(WIN32)

@@ -26,7 +26,7 @@
 
 #include "new_dynarec/new_dynarec.h"
 
-#if !defined(__arm64__)
+#if !defined(__arm64__) && !defined(__aarch64__)
 #if NEW_DYNAREC < NEW_DYNAREC_ARM
 float *reg_cop1_simple[32];
 double *reg_cop1_double[32];

@@ -28,7 +28,7 @@
 #include "r4300_core.h"
 #include "recomp.h"
 
-#if !defined(__arm64__)
+#if !defined(__arm64__) && !defined(__aarch64__)
 extern struct precomp_instr *PC;
 extern int64_t reg[32], hi, lo;
 extern uint32_t next_interrupt;

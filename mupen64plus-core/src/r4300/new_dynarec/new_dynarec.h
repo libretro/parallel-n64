@@ -30,7 +30,7 @@
 #define NEW_DYNAREC_ARM 3
 #define NEW_DYNAREC_ARM64 4
 
-#if !defined(__arm64__)
+#if !defined(__arm64__) && !defined(__aarch64__)
 #ifdef __cplusplus
 extern "C" {
 #endif

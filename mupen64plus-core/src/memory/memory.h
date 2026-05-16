@@ -42,7 +42,7 @@
 #define write_hword_in_memory() writememh[mupencoreaddress >>16]()
 #define write_dword_in_memory() writememd[mupencoreaddress >>16]()
 
-#if !defined(__arm64__)
+#if !defined(__arm64__) && !defined(__aarch64__)
 extern uint32_t address, cpu_word;
 extern uint8_t cpu_byte;
 extern uint16_t cpu_hword;

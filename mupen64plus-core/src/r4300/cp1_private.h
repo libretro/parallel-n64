@@ -26,7 +26,7 @@
 
 #include "cp1.h"
 
-#if !defined(__arm64__)
+#if !defined(__arm64__) && !defined(__aarch64__)
 extern float *reg_cop1_simple[32];
 extern double *reg_cop1_double[32];
 extern uint32_t FCR0, FCR31;

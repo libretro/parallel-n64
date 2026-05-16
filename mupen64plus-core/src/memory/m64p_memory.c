@@ -56,7 +56,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#if !defined(__arm64__)
+#if !defined(__arm64__) && !defined(__aarch64__)
 #if NEW_DYNAREC < NEW_DYNAREC_ARM
 // address : address of the read/write operation being done
 uint32_t address = 0;
