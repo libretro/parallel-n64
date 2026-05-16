@@ -31,9 +31,17 @@
 float *reg_cop1_simple[32];
 double *reg_cop1_double[32];
 uint32_t FCR0, FCR31;
+#else
+/* The ARM32 new_dynarec backend manually allocates these variables as
+ * part of the extra_memory blob in linkage_arm.S (see GLOBAL_VARIABLE
+ * entries there). They are real globals at the linker level; this file
+ * just needs extern declarations so the C compiler can reference them. */
+extern float *reg_cop1_simple[32];
+extern double *reg_cop1_double[32];
+extern uint32_t FCR0, FCR31;
 #endif
 #else
-/* ARM backend requires a different memory layout
+/* ARM64 backend requires a different memory layout
  * and therefore manually allocates these variables */
 #include "new_dynarec/arm64/memory_layout_arm64.h"
 #define reg_cop1_simple (RECOMPILER_MEMORY->rml_reg_cop1_simple)
