@@ -3175,6 +3175,7 @@ static void do_unalignedwritestub(int n)
 
 static void do_invstub(int n)
 {
+  if(stubs[n][4]==-1) return;
   set_jump_target(stubs[n][1],(int)out);
   emit_call(invalidate_block_reg[stubs[n][4]]);
   emit_jmp(stubs[n][2]); // return address

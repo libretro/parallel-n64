@@ -4299,6 +4299,7 @@ static void do_unalignedwritestub(int n)
 
 static void do_invstub(int n)
 {
+  if(stubs[n][4]==-1) return;
   literal_pool(20);
   u_int reglist=stubs[n][3];
   set_jump_target(stubs[n][1],(intptr_t)out);

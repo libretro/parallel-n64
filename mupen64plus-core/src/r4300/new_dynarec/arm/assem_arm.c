@@ -3220,6 +3220,7 @@ void printregs(int edi,int esi,int ebp,int esp,int b,int d,int c,int a)
 
 static void do_invstub(int n)
 {
+  if(stubs[n][4]==-1) return;
   literal_pool(20);
   u_int reglist=stubs[n][3];
   set_jump_target(stubs[n][1],(int)out);
