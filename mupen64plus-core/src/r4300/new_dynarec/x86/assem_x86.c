@@ -2234,6 +2234,7 @@ static void emit_xchg(int rs, int rt)
 }
 static void emit_writeword(int rt, int addr)
 {
+  if(rt<0) return;
   assem_debug("movl %%%s,%x",regname[rt],addr);
   output_byte(0x89);
   output_modrm(0,5,rt);

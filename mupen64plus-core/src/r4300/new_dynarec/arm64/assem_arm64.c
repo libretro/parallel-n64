@@ -2916,6 +2916,7 @@ static void emit_writebyte_indexed_tlb(int rt, int addr, int rs, int map, int te
 
 static void emit_writeword(int rt, intptr_t addr)
 {
+  if(rt<0) return;
   assert(rt!=29);
   u_int offset = addr-(uintptr_t)&dynarec_local;
   assert(offset<16380);
