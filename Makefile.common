@@ -33,6 +33,14 @@ else
 	HAVE_RICE     = 0
 endif
 
+# GLideN64 needs OpenGL 3.3 Core or OpenGL ES 3.x (UBOs, integer textures,
+# glcorearb.h, etc.) and does not work on GLES2-only targets. The Makefile's
+# GLES=1 switch maps to -DHAVE_OPENGLES2 with no GLES3 path, so force it off
+# there. Other GLES2-only configurations should also unset HAVE_GLIDEN64.
+ifeq ($(GLES),1)
+	HAVE_GLIDEN64 = 0
+endif
+
 INCFLAGS += -I$(VIDEODIR_GLIDE)/Glitch64/inc
 endif
 
