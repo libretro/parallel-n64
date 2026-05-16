@@ -336,7 +336,10 @@ m64p_error main_init(void)
    if (g_vi_refresh_rate == 0)
       g_vi_refresh_rate = 1500;
 
-   /* do byte-swapping if it's not been done yet */
+   /* do byte-swapping if it's not been done yet
+    * (only needed on little-endian hosts -- on big-endian hosts the ROM
+    * is already in the native N64 byte order after open_rom) */
+#ifndef MSB_FIRST
    if (g_MemHasBeenBSwapped == 0)
    {
       swap_buffer(g_rom, 4, g_rom_size / 4);
@@ -348,6 +351,7 @@ m64p_error main_init(void)
       swap_buffer(g_ddrom, 4, g_ddrom_size / 4);
       g_DDMemHasBeenBSwapped = 1;
    }
+#endif
 
    init_device(
          &g_dev,
