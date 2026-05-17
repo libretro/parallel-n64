@@ -791,7 +791,7 @@ void gln64gDPFillRectangle( int32_t ulx, int32_t uly, int32_t lrx, int32_t lry )
    {
 		/* Game may use depth texture as auxilary color texture. Example: Mario Tennis
        * If color is not depth clear color, that is most likely the case */
-      if (gDP.fillColor.color == DepthClearColor)
+      if (gDP.fillColor.color == gles2n64_DepthClearColor)
       {
          gln64gDPFillRDRAM(gDP.colorImage.address, ulx, uly, lrx, lry,
                gDP.colorImage.width, gDP.colorImage.size, gDP.fillColor.color, true);
@@ -799,7 +799,7 @@ void gln64gDPFillRectangle( int32_t ulx, int32_t uly, int32_t lrx, int32_t lry )
          return;
       }
    }
-   else if (gDP.fillColor.color == DepthClearColor && gDP.otherMode.cycleType == G_CYC_FILL)
+   else if (gDP.fillColor.color == gles2n64_DepthClearColor && gDP.otherMode.cycleType == G_CYC_FILL)
    {
 #ifdef NEW
 		depthBufferList().saveBuffer(gDP.colorImage.address);

@@ -152,18 +152,18 @@ void RSP_SetDefaultState(void)
    gDP.otherMode._u64 = 0U;
 }
 
-uint32_t DepthClearColor = 0xfffcfffc;
+uint32_t gles2n64_DepthClearColor = 0xfffcfffc;
 
 static void setDepthClearColor(void)
 {
 	if (strstr(__RSP.romname, (const char *)"Elmo's") != NULL)
-		DepthClearColor = 0xFFFFFFFF;
+		gles2n64_DepthClearColor = 0xFFFFFFFF;
 	else if (strstr(__RSP.romname, (const char *)"Taz Express") != NULL)
-		DepthClearColor = 0xFFBCFFBC;
+		gles2n64_DepthClearColor = 0xFFBCFFBC;
 	else if (strstr(__RSP.romname, (const char *)"NFL QBC 2000") != NULL || strstr(__RSP.romname, (const char *)"NFL Quarterback Club") != NULL || strstr(__RSP.romname, (const char *)"Jeremy McGrath Super") != NULL)
-		DepthClearColor = 0xFFFDFFFC;
+		gles2n64_DepthClearColor = 0xFFFDFFFC;
 	else
-		DepthClearColor = 0xFFFCFFFC;
+		gles2n64_DepthClearColor = 0xFFFCFFFC;
 }
 
 void RSP_Init(void)

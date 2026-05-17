@@ -21,7 +21,7 @@ extern "C" {
 #define RSPMSG_DESTROYTEXTURES  4
 #define RSPMSG_INITTEXTURES     5
 
-extern uint32_t DepthClearColor;
+extern uint32_t gles2n64_DepthClearColor;
 
 #define RSP_SegmentToPhysical( segaddr ) ((gSP.segment[(segaddr >> 24) & 0x0F] + (segaddr & 0x00FFFFFF)) & 0x00FFFFFF)
 
