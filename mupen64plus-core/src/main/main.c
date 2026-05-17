@@ -364,27 +364,34 @@ m64p_error main_init(void)
     * CoreStartup time. */
    memset(&g_dev, 0, sizeof(struct device));
 
-   /* Pick the joybus EEPROM type response for this ROM.
-    * Pre-fix, eeprom_id was 16-bit and the conditional below sent
-    * JDT_EEPROM_4K (0x8000) for everything except the 16K save type
-    * -- meaning a ROM that uses SRAM, FlashRAM, Controller Pak or
-    * no save backup at all would still tell the running program
-    * "yes, I have a 4K EEPROM". Most games never query the EEPROM
-    * in that situation so the misreport went unnoticed, but a few
-    * homebrew / ROM-hack environments do query it and expect
-    * JDT_EEPROM_NONE (0xffffff). Now compute the real type. The
-    * eeprom_size we send to init_device is still 0x200 for 4K /
-    * 0x800 for 16K so the libretro saved_memory.eeprom backing
-    * (which is statically sized) is left undisturbed -- size only
-    * affects address-mask behaviour inside eeprom.c which the
-    * non-EEPROM case never reaches anyway. */
-   uint32_t eeprom_id;
-   switch (ROM_SETTINGS.savetype)
-   {
-      case EEPROM_4KB:  eeprom_id = JDT_EEPROM_4K;   break;
-      case EEPROM_16KB: eeprom_id = JDT_EEPROM_16K;  break;
-      default:          eeprom_id = JDT_EEPROM_NONE; break;
-   }
+   /* Joybus EEPROM type response. Historically the parameter was a
+    * uint16_t hard-wired to 0x8000 (4K) or 0xc000 (16K), and the
+    * eeprom_status_command in eeprom.c hard-wired cmd[5] (the high
+    * wire byte) to 0, so the wire response was always one of
+    * 0x008000 / 0x00c000 regardless of whether the ROM actually
+    * carries an EEPROM.
+    *
+    * 4ad4dc5b widened this to uint32_t and started sending
+    * JDT_EEPROM_NONE (0xffffff) for ROMs whose save type is SRAM,
+    * FlashRAM, Controller Pak, or none -- the truthful "no EEPROM
+    * here" response. That change broke game boot across the
+    * majority of the N64 catalogue: real N64 hardware signals
+    * "no device on this Joybus channel" by setting the high bit
+    * of the response-count byte (cmd[1] |= 0x80), NOT by stuffing
+    * 0xffffff into the type-ID bytes. The PIF / IPL3 boot path
+    * sees an apparently-present device with an impossible ID and
+    * takes a wrong branch, and the game never finishes booting --
+    * visible to the user as a black screen.
+    *
+    * Restore the pre-4ad4dc5b wire response for now. The
+    * JDT_EEPROM_NONE / cmd[1] |= 0x80 signalling fix can land as
+    * a separate patch once it's been verified end-to-end against
+    * the IPL3 boot path. The uint32_t parameter widening stays --
+    * it's harmless and leaves the door open for the proper fix
+    * without another cross-TU ABI change. */
+   uint32_t eeprom_id = (ROM_SETTINGS.savetype != EEPROM_16KB)
+      ? JDT_EEPROM_4K
+      : JDT_EEPROM_16K;
 
    init_device(
          &g_dev,

@@ -53,12 +53,17 @@ void format_eeprom(uint8_t* eeprom, size_t size)
 
 void eeprom_status_command(struct eeprom* eeprom, uint8_t* cmd)
 {
-   /* The Joybus EEPROM status response is three bytes wide; the
-    * top byte (cmd[5]) used to be hard-coded to 0 because eeprom->id
-    * was only 16 bits and the "no EEPROM" sentinel JDT_EEPROM_NONE
-    * (0xffffff) couldn't be represented. With id widened to 32 bits,
-    * propagate bits 16..23 so the wire response can be 0xffffff
-    * when the ROM doesn't use EEPROM. */
+   /* Restore the pre-4ad4dc5b wire shape: cmd[5] is hard-zeroed
+    * rather than carrying bits 16..23 of eeprom->id. The wider
+    * id field exists so a future patch can signal "no EEPROM
+    * present" properly (via cmd[1] |= 0x80, the standard PIF
+    * "no device on channel" flag), but until that lands, leaving
+    * the high byte at zero keeps the response shape identical
+    * to what every released N64 game expected. The '& 0xff'
+    * masks on the low/mid byte writes survive the revert: they
+    * are no-ops for 4K (0x008000) and 16K (0x00c000) but defend
+    * the wire bytes against a future widening of id beyond
+    * 0xffff. */
    if (cmd[1] != 3)
    {
       cmd[1] |= 0x40;
@@ -67,13 +72,13 @@ void eeprom_status_command(struct eeprom* eeprom, uint8_t* cmd)
       if ((cmd[1] & 3) > 1)
          cmd[4] = (eeprom->id >> 8) & 0xff;
       if ((cmd[1] & 3) > 2)
-         cmd[5] = (eeprom->id >> 16) & 0xff;
+         cmd[5] = 0;
    }
    else
    {
       cmd[3] = (eeprom->id & 0xff);
       cmd[4] = (eeprom->id >> 8) & 0xff;
-      cmd[5] = (eeprom->id >> 16) & 0xff;
+      cmd[5] = 0;
    }
 }
 
