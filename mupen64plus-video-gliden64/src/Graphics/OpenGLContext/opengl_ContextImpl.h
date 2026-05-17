@@ -126,8 +126,6 @@ namespace opengl {
 
 		graphics::ShaderProgram * createGammaCorrectionShader() override;
 
-		graphics::ShaderProgram * createOrientationCorrectionShader() override;
-
 		graphics::ShaderProgram * createFXAAShader() override;
 
 		graphics::TextDrawerShaderProgram * createTextDrawerShader() override;
