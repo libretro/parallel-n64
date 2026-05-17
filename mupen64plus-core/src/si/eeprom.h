@@ -25,6 +25,18 @@
 #include <stddef.h>
 #include <stdint.h>
 
+/* Joybus EEPROM status type field as it appears on the wire (3 bytes).
+ * 0xffffff means "no EEPROM present"; the 4K and 16K constants are
+ * what the relevant N64 silicon reports for the two real EEPROM
+ * variants. Stored 32-bit so the all-ones "none" value can be carried
+ * unambiguously alongside the 16-bit hardware IDs. */
+enum
+{
+   JDT_EEPROM_NONE = UINT32_C(0xffffff),
+   JDT_EEPROM_4K   = UINT32_C(0x008000),
+   JDT_EEPROM_16K  = UINT32_C(0x00c000)
+};
+
 struct eeprom
 {
     /* external eep storage */
@@ -32,7 +44,7 @@ struct eeprom
     void (*save)(void*);
     uint8_t* data;
     size_t size;
-    uint16_t id;
+    uint32_t id;
 };
 
 void init_eeprom(struct eeprom *eeprom,
@@ -40,7 +52,7 @@ void init_eeprom(struct eeprom *eeprom,
       void (*save)(void*),
       uint8_t *data,
       size_t size,
-      uint16_t id);
+      uint32_t id);
 
 void eeprom_save(struct eeprom* eeprom);
 

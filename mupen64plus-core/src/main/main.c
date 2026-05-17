@@ -68,6 +68,7 @@
 #include "../rsp/rsp_core.h"
 #include "../ri/ri_controller.h"
 #include "../si/si_controller.h"
+#include "../si/eeprom.h"
 #include "../vi/vi_controller.h"
 #include "../dd/dd_controller.h"
 #include "../dd/dd_rom.h"
@@ -363,6 +364,28 @@ m64p_error main_init(void)
     * CoreStartup time. */
    memset(&g_dev, 0, sizeof(struct device));
 
+   /* Pick the joybus EEPROM type response for this ROM.
+    * Pre-fix, eeprom_id was 16-bit and the conditional below sent
+    * JDT_EEPROM_4K (0x8000) for everything except the 16K save type
+    * -- meaning a ROM that uses SRAM, FlashRAM, Controller Pak or
+    * no save backup at all would still tell the running program
+    * "yes, I have a 4K EEPROM". Most games never query the EEPROM
+    * in that situation so the misreport went unnoticed, but a few
+    * homebrew / ROM-hack environments do query it and expect
+    * JDT_EEPROM_NONE (0xffffff). Now compute the real type. The
+    * eeprom_size we send to init_device is still 0x200 for 4K /
+    * 0x800 for 16K so the libretro saved_memory.eeprom backing
+    * (which is statically sized) is left undisturbed -- size only
+    * affects address-mask behaviour inside eeprom.c which the
+    * non-EEPROM case never reaches anyway. */
+   uint32_t eeprom_id;
+   switch (ROM_SETTINGS.savetype)
+   {
+      case EEPROM_4KB:  eeprom_id = JDT_EEPROM_4K;   break;
+      case EEPROM_16KB: eeprom_id = JDT_EEPROM_16K;  break;
+      default:          eeprom_id = JDT_EEPROM_NONE; break;
+   }
+
    init_device(
          &g_dev,
          emumode,
@@ -378,7 +401,7 @@ m64p_error main_init(void)
          g_rdram, (disable_extra_mem == 0) ? 0x800000 : 0x400000,
          NULL,dummy_save,saved_memory.eeprom,
          ROM_SETTINGS.savetype != EEPROM_16KB ? 0x200  : 0x800,   /* eeprom_size */
-         ROM_SETTINGS.savetype != EEPROM_16KB ? 0x8000 : 0xc000,  /* eeprom_id   */
+         eeprom_id,                                               /* eeprom_id   */
          NULL,                                                    /* af_rtc_userdata */
          get_time_using_C_localtime,                              /* af_rtc_get_time */
 	 ROM_PARAMS.audiosignal,

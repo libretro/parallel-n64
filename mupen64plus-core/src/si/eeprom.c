@@ -31,7 +31,7 @@ void init_eeprom(struct eeprom *eeprom,
       void (*save)(void*),
       uint8_t *data,
       size_t size,
-      uint16_t id)
+      uint32_t id)
 {
    /* connect saved_memory.eeprom to eeprom */
    eeprom->user_data = user_data;
@@ -53,22 +53,27 @@ void format_eeprom(uint8_t* eeprom, size_t size)
 
 void eeprom_status_command(struct eeprom* eeprom, uint8_t* cmd)
 {
-   /* check size */
+   /* The Joybus EEPROM status response is three bytes wide; the
+    * top byte (cmd[5]) used to be hard-coded to 0 because eeprom->id
+    * was only 16 bits and the "no EEPROM" sentinel JDT_EEPROM_NONE
+    * (0xffffff) couldn't be represented. With id widened to 32 bits,
+    * propagate bits 16..23 so the wire response can be 0xffffff
+    * when the ROM doesn't use EEPROM. */
    if (cmd[1] != 3)
    {
       cmd[1] |= 0x40;
       if ((cmd[1] & 3) > 0)
          cmd[3] = (eeprom->id & 0xff);
       if ((cmd[1] & 3) > 1)
-         cmd[4] = (eeprom->id >> 8);
+         cmd[4] = (eeprom->id >> 8) & 0xff;
       if ((cmd[1] & 3) > 2)
-         cmd[5] = 0;
+         cmd[5] = (eeprom->id >> 16) & 0xff;
    }
    else
    {
       cmd[3] = (eeprom->id & 0xff);
-      cmd[4] = (eeprom->id >> 8);
-      cmd[5] = 0;
+      cmd[4] = (eeprom->id >> 8) & 0xff;
+      cmd[5] = (eeprom->id >> 16) & 0xff;
    }
 }
 
