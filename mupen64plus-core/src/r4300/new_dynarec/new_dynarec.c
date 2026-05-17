@@ -367,6 +367,14 @@ static void nullf(const char* fmt, ...) {}
     #define assem_debug(...) DebugMessage(M64MSG_VERBOSE, __VA_ARGS__)
 #else
     #define assem_debug nullf
+    /* When ASSEM_DEBUG is off the 200+ insn[i] strcpy calls in
+     * new_recompile_block run their bodies and then their output
+     * is dropped on the floor by nullf. Define strcpy as a no-op
+     * macro for the rest of this TU so the compiler can elide
+     * those calls entirely; this is the only file in the tree
+     * that uses strcpy for debug-string composition. Defined
+     * after all #include lines so headers see the real strcpy. */
+    #define strcpy(...)
 #endif
 #if defined( INV_DEBUG )
     #define inv_debug(...) DebugMessage(M64MSG_VERBOSE, __VA_ARGS__)
