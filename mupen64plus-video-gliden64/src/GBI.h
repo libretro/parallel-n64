@@ -35,8 +35,9 @@
 #define F5Indi_Naboo	26
 #define S2DEX_1_03		27
 #define S2DEX_1_05		28
-#define F3DEX095		29
-#define NONE			30
+#define F3DEX3			29
+#define F3DEX095		30
+#define NONE			31
 
 // Fixed point conversion factors
 #define FIXED2FLOATRECIP1	0.5f
@@ -383,6 +384,7 @@ extern u32 G_RDPHALF_1, G_RDPHALF_2, G_RDPHALF_CONT;
 extern u32 G_SPNOOP;
 extern u32 G_SETOTHERMODE_H, G_SETOTHERMODE_L;
 extern u32 G_DL, G_ENDDL, G_CULLDL, G_BRANCH_Z, G_BRANCH_W;
+extern u32 G_TRISTRIP, G_TRIFAN, G_LIGHTTORDP, G_RELSEGMENT;
 extern u32 G_LOAD_UCODE;
 extern u32 G_MOVEMEM, G_MOVEWORD;
 extern u32 G_MTX, G_POPMTX;
@@ -490,6 +492,13 @@ struct MicrocodeInfo
 	bool fast3DPersp = false;
 	bool texturePersp = true;
 	bool combineMatrices = false;
+	struct
+	{
+		// LVP is how microcodes other than F3DEX3 function
+		bool legacyVertexPipeline = true;
+		bool noOcclusionPlane = false;
+		bool branchOnZ = false;
+	} f3dex3;
 };
 
 struct GBIInfo
@@ -510,6 +519,9 @@ struct GBIInfo
 	bool isNegativeY() const { return m_pCurrent != nullptr ? m_pCurrent->negativeY : true; }
 	bool isTexturePersp() const { return m_pCurrent != nullptr ? m_pCurrent->texturePersp: true; }
 	bool isCombineMatrices() const { return m_pCurrent != nullptr ? m_pCurrent->combineMatrices: false; }
+	bool isLegacyVertexPipeline() const { return m_pCurrent != nullptr ? m_pCurrent->f3dex3.legacyVertexPipeline : true; }
+	bool isNoOcclusionPlane() const { return m_pCurrent != nullptr ? m_pCurrent->f3dex3.noOcclusionPlane : false; }
+	bool isBranchOnZ() const { return m_pCurrent != nullptr ? m_pCurrent->f3dex3.branchOnZ : false; }
 
 private:
 	void _flushCommands();

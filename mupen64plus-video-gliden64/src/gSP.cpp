@@ -1591,6 +1591,18 @@ void gSPSegment( s32 seg, s32 base )
 	DebugMsg(DEBUG_NORMAL, "gSPSegment( %s, 0x%08X );\n", SegmentText[seg], base );
 }
 
+void gSPRelSegment( s32 seg, s32 base )
+{
+	// F3DEX3 G_RELSEGMENT: like G_MW_SEGMENT (gSPSegment) but the address
+	// is encoded as 0x0?123456 where the upper nibble selects an existing
+	// segment to add to the 24-bit offset.
+	const s32 offset = base & 0x00FFFFFF;
+	const s32 rel    = (base >> 24) & 0xf;
+	gSP.segment[seg] = offset + gSP.segment[rel];
+
+	DebugMsg(DEBUG_NORMAL, "gSPRelSegment( %s, 0x%08X ) -> rel=0x%08X;\n", SegmentText[seg], base, gSP.segment[seg]);
+}
+
 void gSPClipRatio(u32 ratio)
 {
 	gSP.clipRatio = std::abs(static_cast<s16>(ratio & 0xFFFF));

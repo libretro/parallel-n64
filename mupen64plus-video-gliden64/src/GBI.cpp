@@ -1,6 +1,8 @@
 #include <algorithm>
 #include <assert.h>
 #include <cctype>
+#include <set>
+#include <sstream>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -14,6 +16,7 @@
 #include "uCodes/F3DEX.h"
 #include "uCodes/F3DEX095.h"
 #include "uCodes/F3DEX2.h"
+#include "uCodes/F3DEX3.h"
 #include "uCodes/L3D.h"
 #include "uCodes/L3DEX.h"
 #include "uCodes/L3DEX2.h"
@@ -96,6 +99,7 @@ u32 G_RDPHALF_1, G_RDPHALF_2, G_RDPHALF_CONT;
 u32 G_SPNOOP;
 u32 G_SETOTHERMODE_H, G_SETOTHERMODE_L;
 u32 G_DL, G_ENDDL, G_CULLDL, G_BRANCH_Z, G_BRANCH_W;
+u32 G_TRISTRIP, G_TRIFAN, G_LIGHTTORDP, G_RELSEGMENT;
 u32 G_LOAD_UCODE;
 u32 G_MOVEMEM, G_MOVEWORD;
 u32 G_MTX, G_POPMTX;
@@ -208,6 +212,10 @@ void GBIInfo::_makeCurrent(MicrocodeInfo * _pCurrent)
 			break;
 			case F3DEX095:
 				F3DEX095_Init();
+				m_hwlSupported = true;
+			break;
+			case F3DEX3:
+				F3DEX3_Init();
 				m_hwlSupported = true;
 			break;
 			case F3DEX2:
@@ -350,6 +358,12 @@ bool GBIInfo::_makeExistingMicrocodeCurrent(u32 uc_start, u32 uc_dstart, u32 uc_
 	return true;
 }
 
+static inline int ascii_tolower(int c)
+{
+	if (isupper(c)) return c | 32;
+	return c;
+}
+
 void GBIInfo::loadMicrocode(u32 uc_start, u32 uc_dstart, u16 uc_dsize)
 {
 	if (_makeExistingMicrocodeCurrent(uc_start, uc_dstart, uc_dsize))
@@ -384,6 +398,51 @@ void GBIInfo::loadMicrocode(u32 uc_start, u32 uc_dstart, u16 uc_dsize)
 	UnswapCopyWrap(RDRAM, uc_dstart & 0x1FFFFFFF, (u8*)uc_data, 0, 0x7FF, 2048);
 	char uc_str[256];
 	strcpy(uc_str, "Not Found");
+
+	// Check for F3DEX3 microcode. Tharo's F3DEX3 places its name string
+	// at offset 0x138 in the microcode data segment, in the form
+	// "F3DEX3_LVP_BrZ_NOC" (uppercase). Existence of the literal "f3dex3"
+	// prefix (case-insensitive) at that offset is the detection signal;
+	// the underscore-separated suffix encodes which compile-time features
+	// the microcode was built with.
+	{
+		static const char F3DEX3_NAME[] = "f3dex3";
+		const char* probe = &uc_data[0x138];
+		char name_buffer[sizeof(F3DEX3_NAME) - 1];
+		memcpy(name_buffer, probe, sizeof(F3DEX3_NAME) - 1);
+		std::transform(name_buffer, name_buffer + sizeof(F3DEX3_NAME) - 1, name_buffer, ascii_tolower);
+		if (0 == memcmp(name_buffer, F3DEX3_NAME, sizeof(F3DEX3_NAME) - 1))
+		{
+			current.type = F3DEX3;
+			current.NoN = true;
+			current.negativeY = false;
+			current.fast3DPersp = false;
+			current.combineMatrices = false;
+
+			std::set<std::string> features;
+			{
+				// 0x180 is generous; the name field is space-terminated.
+				const char* name_end = (const char*)memchr(probe, ' ', 0x180);
+				size_t name_len = name_end != nullptr ? (size_t)(name_end - probe) : 0;
+				std::string feature;
+				std::string name = std::string(probe, name_len);
+				std::transform(name.begin(), name.end(), name.begin(), ascii_tolower);
+				std::stringstream name_stream(name);
+				while (std::getline(name_stream, feature, '_'))
+				{
+					features.emplace(std::move(feature));
+				}
+			}
+
+			current.f3dex3.legacyVertexPipeline = features.find("lvp") != features.end();
+			current.f3dex3.noOcclusionPlane    = features.find("noc") != features.end();
+			current.f3dex3.branchOnZ           = features.find("brz") != features.end();
+
+			LOG(LOG_VERBOSE, "Load microcode (F3DEX3) type: %d crc: 0x%08x romname: %s\n", current.type, uc_crc, RSP.romname);
+			_makeCurrent(&current);
+			return;
+		}
+	}
 
 	for (u32 i = 0; i < 2046; ++i) {
 		if ((uc_data[i] == 'R') && (uc_data[i+1] == 'S') && (uc_data[i+2] == 'P')) {
