@@ -180,7 +180,7 @@ TxImage::readPNG(FILE* fp, int* width, int* height, ColorFormat *format)
 	png_read_update_info(png_ptr, info_ptr);
 
 	/* we only get here if RGBA8888 */
-	row_bytes = png_get_rowbytes(png_ptr, info_ptr);
+	row_bytes = static_cast<int>(png_get_rowbytes(png_ptr, info_ptr));
 
 	/* allocate memory to read in image */
 	image = (uint8*)malloc(row_bytes * o_height);
@@ -560,78 +560,4 @@ TxImage::readBMP(FILE* fp, int* width, int* height, ColorFormat *format)
 #endif
 
 	return image;
-}
-
-boolean
-TxImage::getDDSInfo(FILE *fp, DDSFILEHEADER *dds_fhdr)
-{
-	/*
-   * read in DDSFILEHEADER
-   */
-
-	/* is this a DDS file? */
-	if (fread(&dds_fhdr->dwMagic, 4, 1, fp) != 1)
-		return 0;
-
-	if (memcmp(&dds_fhdr->dwMagic, "DDS ", 4) != 0)
-		return 0;
-
-	if (fread(&dds_fhdr->dwSize, 4, 1, fp) != 1)
-		return 0;
-
-	/* get file flags */
-	if (fread(&dds_fhdr->dwFlags, 4, 1, fp) != 1)
-		return 0;
-
-	/* height of dds in pixels */
-	if (fread(&dds_fhdr->dwHeight, 4, 1, fp) != 1)
-		return 0;
-
-	/* width of dds in pixels */
-	if (fread(&dds_fhdr->dwWidth, 4, 1, fp) != 1)
-		return 0;
-
-	if (fread(&dds_fhdr->dwLinearSize, 4, 1, fp) != 1)
-		return 0;
-
-	if (fread(&dds_fhdr->dwDepth, 4, 1, fp) != 1)
-		return 0;
-
-	if (fread(&dds_fhdr->dwMipMapCount, 4, 1, fp) != 1)
-		return 0;
-
-	if (fread(&dds_fhdr->dwReserved1, 4 * 11, 1, fp) != 1)
-		return 0;
-
-	if (fread(&dds_fhdr->ddpf.dwSize, 4, 1, fp) != 1)
-		return 0;
-
-	if (fread(&dds_fhdr->ddpf.dwFlags, 4, 1, fp) != 1)
-		return 0;
-
-	if (fread(&dds_fhdr->ddpf.dwFourCC, 4, 1, fp) != 1)
-		return 0;
-
-	if (fread(&dds_fhdr->ddpf.dwRGBBitCount, 4, 1, fp) != 1)
-		return 0;
-
-	if (fread(&dds_fhdr->ddpf.dwRBitMask, 4, 1, fp) != 1)
-		return 0;
-
-	if (fread(&dds_fhdr->ddpf.dwGBitMask, 4, 1, fp) != 1)
-		return 0;
-
-	if (fread(&dds_fhdr->ddpf.dwBBitMask, 4, 1, fp) != 1)
-		return 0;
-
-	if (fread(&dds_fhdr->ddpf.dwRGBAlphaBitMask, 4, 1, fp) != 1)
-		return 0;
-
-	if (fread(&dds_fhdr->dwCaps1, 4, 1, fp) != 1)
-		return 0;
-
-	if (fread(&dds_fhdr->dwCaps2, 4, 1, fp) != 1)
-		return 0;
-
-	return 1;
 }
