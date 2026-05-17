@@ -3844,12 +3844,12 @@ static void wb_valid(signed char pre[],signed char entry[],u_int dirty_pre,u_int
 }
 
 // Write back consts using LR so we don't disturb the other registers
-static void wb_consts(signed char i_regmap[],uint64_t i_is32,u_int i_dirty,int i)
+static void wb_consts(signed char i_regmap[],uint64_t i_is32,u_int i_dirty,u_int isconst,int i)
 {
   int hr;
   for(hr=0;hr<HOST_REGS;hr++) {
     if(hr!=EXCLUDE_REG&&i_regmap[hr]>=0&&((i_dirty>>hr)&1)) {
-      if(((regs[i].isconst>>hr)&1)&&i_regmap[hr]>0) {
+      if(((isconst>>hr)&1)&&i_regmap[hr]>0) {
         if(i_regmap[hr]<64 || !((i_is32>>(i_regmap[hr]&63))&1) ) {
           int value=constmap[i][hr];
           if(value==0) {
@@ -4006,9 +4006,9 @@ static void do_readstub(int n)
   ds=i_regs!=&regs[i];
   int real_rs=(itype[i]==LOADLR)?-1:get_reg(i_regmap,rs1[i]);
   u_int cmask=ds?-1:(0x7ffff|~i_regs->wasconst);
-  if(!ds) load_all_consts(regs[i].regmap_entry,regs[i].was32,regs[i].wasdirty&~(1<<addr)&(real_rs<0?-1:~(1<<real_rs))&0x7ffff,i);
+  if(!ds) load_all_consts(regs[i].regmap_entry,regs[i].was32,regs[i].wasdirty&~(1<<addr)&(real_rs<0?-1:~(1<<real_rs))&0x7ffff,regs[i].wasconst,i);
   wb_dirtys(i_regs->regmap_entry,i_regs->was32,i_regs->wasdirty&cmask&~(1<<addr)&(real_rs<0?-1:~(1<<real_rs)));
-  if(!ds) wb_consts(regs[i].regmap_entry,regs[i].was32,regs[i].wasdirty&~(1<<addr)&(real_rs<0?-1:~(1<<real_rs))&~0x7ffff,i);
+  if(!ds) wb_consts(regs[i].regmap_entry,regs[i].was32,regs[i].wasdirty&~(1<<addr)&(real_rs<0?-1:~(1<<real_rs))&~0x7ffff,regs[i].wasconst,i);
   emit_shrimm(rs,16,1);
   int cc=get_reg(i_regmap,CCREG);
   if(cc<0) {
@@ -4083,7 +4083,7 @@ static void inline_readstub(int type, int i, u_int addr, signed char regmap[], i
     // Write out the registers so the pagefault can be handled.  This is
     // a very rare case and likely represents a bug.
     int ds=regmap!=regs[i].regmap;
-    if(!ds) load_all_consts(regs[i].regmap_entry,regs[i].was32,regs[i].wasdirty,i);
+    if(!ds) load_all_consts(regs[i].regmap_entry,regs[i].was32,regs[i].wasdirty,regs[i].wasconst,i);
     if(!ds) wb_dirtys(regs[i].regmap_entry,regs[i].was32,regs[i].wasdirty);
     else wb_dirtys(branch_regs[i-1].regmap_entry,branch_regs[i-1].was32,branch_regs[i-1].wasdirty);
   }
@@ -4187,9 +4187,9 @@ static void do_writestub(int n)
   ds=i_regs!=&regs[i];
   int real_rs=get_reg(i_regmap,rs1[i]);
   u_int cmask=ds?-1:(0x7ffff|~i_regs->wasconst);
-  if(!ds) load_all_consts(regs[i].regmap_entry,regs[i].was32,regs[i].wasdirty&~(1<<addr)&(real_rs<0?-1:~(1<<real_rs))&0x7ffff,i);
+  if(!ds) load_all_consts(regs[i].regmap_entry,regs[i].was32,regs[i].wasdirty&~(1<<addr)&(real_rs<0?-1:~(1<<real_rs))&0x7ffff,regs[i].wasconst,i);
   wb_dirtys(i_regs->regmap_entry,i_regs->was32,i_regs->wasdirty&cmask&~(1<<addr)&(real_rs<0?-1:~(1<<real_rs)));
-  if(!ds) wb_consts(regs[i].regmap_entry,regs[i].was32,regs[i].wasdirty&~(1<<addr)&(real_rs<0?-1:~(1<<real_rs))&~0x7ffff,i);
+  if(!ds) wb_consts(regs[i].regmap_entry,regs[i].was32,regs[i].wasdirty&~(1<<addr)&(real_rs<0?-1:~(1<<real_rs))&~0x7ffff,regs[i].wasconst,i);
   emit_shrimm(rs,16,1);
   int cc=get_reg(i_regmap,CCREG);
   if(cc<0) {
@@ -4257,7 +4257,7 @@ static void inline_writestub(int type, int i, u_int addr, signed char regmap[], 
     // Write out the registers so the pagefault can be handled.  This is
     // a very rare case and likely represents a bug.
     int ds=regmap!=regs[i].regmap;
-    if(!ds) load_all_consts(regs[i].regmap_entry,regs[i].was32,regs[i].wasdirty,i);
+    if(!ds) load_all_consts(regs[i].regmap_entry,regs[i].was32,regs[i].wasdirty,regs[i].wasconst,i);
     if(!ds) wb_dirtys(regs[i].regmap_entry,regs[i].was32,regs[i].wasdirty);
     else wb_dirtys(branch_regs[i-1].regmap_entry,branch_regs[i-1].was32,branch_regs[i-1].wasdirty);
   }
@@ -4362,7 +4362,7 @@ static void do_cop1stub(int n)
   struct regstat *i_regs=(struct regstat *)stubs[n][5];
   int ds=stubs[n][6];
   if(!ds) {
-    load_all_consts(regs[i].regmap_entry,regs[i].was32,regs[i].wasdirty,i);
+    load_all_consts(regs[i].regmap_entry,regs[i].was32,regs[i].wasdirty,regs[i].wasconst,i);
     //if(i_regs!=&regs[i]) DebugMessage(M64MSG_VERBOSE, "oops: regs[i]=%x i_regs=%x",(int)&regs[i],(int)i_regs);
   }
   //else {DebugMessage(M64MSG_ERROR, "fp exception in delay slot");}

@@ -2840,7 +2840,7 @@ static void do_readstub(int n)
   emit_pusha();
   ds=i_regs!=&regs[i];
   int real_rs=(itype[i]==LOADLR)?-1:get_reg(i_regmap,rs1[i]);
-  if(!ds) load_all_consts(regs[i].regmap_entry,regs[i].was32,regs[i].wasdirty&~(1<<addr)&(real_rs<0?-1:~(1<<real_rs)),i);
+  if(!ds) load_all_consts(regs[i].regmap_entry,regs[i].was32,regs[i].wasdirty&~(1<<addr)&(real_rs<0?-1:~(1<<real_rs)),regs[i].wasconst,i);
   wb_dirtys(i_regs->regmap_entry,i_regs->was32,i_regs->wasdirty&~(1<<addr)&(real_rs<0?-1:~(1<<real_rs)));
   
   int temp;
@@ -2930,7 +2930,7 @@ static void inline_readstub(int type, int i, u_int addr, signed char regmap[], i
     // Write out the registers so the pagefault can be handled.  This is
     // a very rare case and likely represents a bug.
     int ds=regmap!=regs[i].regmap;
-    if(!ds) load_all_consts(regs[i].regmap_entry,regs[i].was32,regs[i].wasdirty,i);
+    if(!ds) load_all_consts(regs[i].regmap_entry,regs[i].was32,regs[i].wasdirty,regs[i].wasconst,i);
     if(!ds) wb_dirtys(regs[i].regmap_entry,regs[i].was32,regs[i].wasdirty);
     else wb_dirtys(branch_regs[i-1].regmap_entry,branch_regs[i-1].was32,branch_regs[i-1].wasdirty);
   }
@@ -3043,7 +3043,7 @@ static void do_writestub(int n)
   emit_pusha();
   ds=i_regs!=&regs[i];
   int real_rs=get_reg(i_regmap,rs1[i]);
-  if(!ds) load_all_consts(regs[i].regmap_entry,regs[i].was32,regs[i].wasdirty&~(1<<addr)&(real_rs<0?-1:~(1<<real_rs)),i);
+  if(!ds) load_all_consts(regs[i].regmap_entry,regs[i].was32,regs[i].wasdirty&~(1<<addr)&(real_rs<0?-1:~(1<<real_rs)),regs[i].wasconst,i);
   wb_dirtys(i_regs->regmap_entry,i_regs->was32,i_regs->wasdirty&~(1<<addr)&(real_rs<0?-1:~(1<<real_rs)));
   
   int temp;
@@ -3121,7 +3121,7 @@ static void inline_writestub(int type, int i, u_int addr, signed char regmap[], 
     // Write out the registers so the pagefault can be handled.  This is
     // a very rare case and likely represents a bug.
     int ds=regmap!=regs[i].regmap;
-    if(!ds) load_all_consts(regs[i].regmap_entry,regs[i].was32,regs[i].wasdirty,i);
+    if(!ds) load_all_consts(regs[i].regmap_entry,regs[i].was32,regs[i].wasdirty,regs[i].wasconst,i);
     if(!ds) wb_dirtys(regs[i].regmap_entry,regs[i].was32,regs[i].wasdirty);
     else wb_dirtys(branch_regs[i-1].regmap_entry,branch_regs[i-1].was32,branch_regs[i-1].wasdirty);
   }
@@ -3217,7 +3217,7 @@ static void do_cop1stub(int n)
   struct regstat *i_regs=(struct regstat *)stubs[n][5];
   int ds=stubs[n][6];
   if(!ds) {
-    load_all_consts(regs[i].regmap_entry,regs[i].was32,regs[i].wasdirty,i);
+    load_all_consts(regs[i].regmap_entry,regs[i].was32,regs[i].wasdirty,regs[i].wasconst,i);
     //if(i_regs!=&regs[i]) DebugMessage(M64MSG_VERBOSE, "oops: regs[i]=%x i_regs=%x",(int)&regs[i],(int)i_regs);
   }
   //else {DebugMessage(M64MSG_VERBOSE, "fp exception in delay slot");}

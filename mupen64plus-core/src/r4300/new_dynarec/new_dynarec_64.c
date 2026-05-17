@@ -261,7 +261,7 @@ void TLBWR_new(void);
 static void wb_register(signed char r,signed char regmap[],uint64_t dirty,uint64_t is32);
 static void wb_dirtys(signed char i_regmap[],uint64_t i_is32,uint64_t i_dirty);
 static void load_regs_entry(int t);
-static void load_all_consts(signed char regmap[],int is32,u_int dirty,int i);
+static void load_all_consts(signed char regmap[],int is32,u_int dirty,u_int isconst,int i);
 static void add_stub(int type,intptr_t addr,intptr_t retaddr,int a,intptr_t b,intptr_t c,int d,int e);
 static void add_to_linker(intptr_t addr,u_int target,int ext);
 static int verify_dirty(void *addr);
@@ -4363,13 +4363,13 @@ static void load_consts(signed char pre[],signed char regmap[],int is32,int i)
     }
   }
 }
-static void load_all_consts(signed char regmap[],int is32,u_int dirty,int i)
+static void load_all_consts(signed char regmap[],int is32,u_int dirty,u_int isconst,int i)
 {
   int hr;
   // Load 32-bit regs
   for(hr=0;hr<HOST_REGS;hr++) {
     if(hr!=EXCLUDE_REG&&regmap[hr]>=0&&((dirty>>hr)&1)) {
-      if(((regs[i].isconst>>hr)&1)&&regmap[hr]<64&&regmap[hr]>0) {
+      if(((isconst>>hr)&1)&&regmap[hr]<64&&regmap[hr]>0) {
         int value=constmap[i][hr];
         if(value==0) {
           emit_zeroreg(hr);
@@ -4383,7 +4383,7 @@ static void load_all_consts(signed char regmap[],int is32,u_int dirty,int i)
   // Load 64-bit regs
   for(hr=0;hr<HOST_REGS;hr++) {
     if(hr!=EXCLUDE_REG&&regmap[hr]>=0&&((dirty>>hr)&1)) {
-      if(((regs[i].isconst>>hr)&1)&&regmap[hr]>64) {
+      if(((isconst>>hr)&1)&&regmap[hr]>64) {
         if((is32>>(regmap[hr]&63))&1) {
           int lr=get_reg(regmap,regmap[hr]-64);
           assert(lr>=0);
