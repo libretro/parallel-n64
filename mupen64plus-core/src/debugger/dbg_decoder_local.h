@@ -1254,6 +1254,43 @@ do {									\
  */
  
  
+#ifdef MSB_FIRST
+/* Big Endian */
+typedef union {
+	unsigned word;
+	struct {
+		unsigned op: 6;
+		unsigned rs: 5;
+		unsigned rt: 5;
+		unsigned imm: 16;
+	} IType;
+
+	struct {
+		unsigned op: 6;
+		unsigned target: 26;
+	} JType;
+
+	struct {
+		unsigned op: 6;
+		unsigned rs: 5;
+		unsigned rt: 5;
+		unsigned rd: 5;
+		unsigned shamt: 5;
+		unsigned func: 6;
+	} RType;
+
+	struct {
+		unsigned op: 6;		/* always '0x11' */
+		unsigned : 1;		/* always '1' */
+		unsigned fmt: 4;
+		unsigned ft: 5;
+		unsigned fs: 5;
+		unsigned fd: 5;
+		unsigned func: 6;
+	} FRType;
+} InstFmt;
+#else
+/* Little Endian */
 typedef union {
 	unsigned word;
 	struct {
@@ -1287,6 +1324,7 @@ typedef union {
 		unsigned op: 6;		/* always '0x11' */
 	} FRType;
 } InstFmt;
+#endif
 
 /*
  * Values for the 'op' field.
