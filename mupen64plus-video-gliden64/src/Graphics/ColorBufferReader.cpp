@@ -18,7 +18,7 @@ namespace graphics {
 	const u8* ColorBufferReader::_convertFloatTextureBuffer(const u8* _gpuData, u32 _width, u32 _height,
 		u32 _heightOffset, u32 _stride)
 	{
-		int bytesToCopy = m_pTexture->realWidth * _height * 16;
+		int bytesToCopy = m_pTexture->width * _height * 16;
 		std::copy_n(_gpuData, bytesToCopy, m_tempPixelData.data());
 		u8* pixelDataAlloc = m_pixelData.data();
 		float* pixelData = reinterpret_cast<float*>(m_tempPixelData.data());
