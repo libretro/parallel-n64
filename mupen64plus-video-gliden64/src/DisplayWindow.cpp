@@ -31,6 +31,18 @@ void DisplayWindow::restart()
 	m_bResizeWindow = true;
 }
 
+void DisplayWindow::destroyGfxContext()
+{
+	m_drawer._destroyData();
+	gfxContext.destroy();
+}
+
+void DisplayWindow::reinitGfxContext()
+{
+	gfxContext.init();
+	m_drawer._initData();
+}
+
 void DisplayWindow::swapBuffers()
 {
 	m_drawer.drawOSD();

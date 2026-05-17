@@ -935,6 +935,20 @@ unsigned retro_get_region (void)
 }
 
 #if defined(HAVE_PARALLEL) || defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
+#ifdef HAVE_GLIDEN64
+/* gliden64's BufferedDrawer / ColorBufferReaderWithBufferStorage use
+ * GL_MAP_PERSISTENT_BIT mappings that become invalid when the GL context
+ * is destroyed and recreated (e.g. RetroArch fullscreen toggle). RetroArch
+ * does not call context_destroy() before recreating the context, so we
+ * detect the second-and-subsequent context_reset() by checking
+ * 'emu_initialized' and tear down + re-init the gliden64 graphics state
+ * around it. Forward-declared here rather than via a header to keep the
+ * dependency in one place; the C linkage matches the gliden64 EXPORT.
+ */
+extern void gliden64DestroyGfxContext(void);
+extern void gliden64ReinitGfxContext(void);
+#endif
+
 static void context_reset(void)
 {
    switch (gfx_plugin)
@@ -955,6 +969,13 @@ static void context_reset(void)
                first_init = false;
             }
          }
+#ifdef HAVE_GLIDEN64
+         if (gfx_plugin == GFX_GLIDEN64 && emu_initialized)
+         {
+            gliden64DestroyGfxContext();
+            gliden64ReinitGfxContext();
+         }
+#endif
 #endif
          break;
    }
