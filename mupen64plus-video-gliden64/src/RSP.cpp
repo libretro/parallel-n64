@@ -229,19 +229,19 @@ void RSP_SetDefaultState()
 	gDP.otherMode.bi_lerp0 = gDP.otherMode.bi_lerp1 = 1;
 }
 
-u32 gliden64DepthClearColor = 0xfffcfffc;
+u32 DepthClearColor = 0xfffcfffc;
 
 static
 void setDepthClearColor()
 {
 	if (strstr(RSP.romname, (const char *)"Elmo's") != nullptr)
-		gliden64DepthClearColor = 0xFFFFFFFF;
+		DepthClearColor = 0xFFFFFFFF;
 	else if (strstr(RSP.romname, (const char *)"Taz Express") != nullptr)
-		gliden64DepthClearColor = 0xFFBCFFBC;
+		DepthClearColor = 0xFFBCFFBC;
 	else if (strstr(RSP.romname, (const char *)"NFL QBC 2000") != nullptr || strstr(RSP.romname, (const char *)"NFL Quarterback Club") != nullptr || strstr(RSP.romname, (const char *)"Jeremy McGrath Super") != nullptr)
-		gliden64DepthClearColor = 0xFFFDFFFC;
+		DepthClearColor = 0xFFFDFFFC;
 	else
-		gliden64DepthClearColor = 0xFFFCFFFC;
+		DepthClearColor = 0xFFFCFFFC;
 }
 
 void RSP_Init()
