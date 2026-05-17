@@ -32,12 +32,19 @@ void GLInfo::init() {
 	const GLubyte * strRenderer = glGetString(GL_RENDERER);
 	const GLubyte * strDriverVersion = glGetString(GL_VERSION);
 
+	bool isAnyAdreno    = strstr((const char*)strRenderer, "Adreno") != nullptr;
+	bool isFreedreno    = strstr((const char*)strRenderer, "FD") != nullptr;  // freedreno uses "FDxxx" naming
+	bool isAdrenoFamily = isAnyAdreno || isFreedreno;
+
 	if (std::regex_match(std::string((const char*)strRenderer), std::regex("Adreno.*530")))
 		renderer = Renderer::Adreno530;
 	else if (std::regex_match(std::string((const char*)strRenderer), std::regex("Adreno.*540")) ||
-		std::regex_match(std::string((const char*)strRenderer), std::regex("Adreno.*6\\d\\d")))
+		std::regex_match(std::string((const char*)strRenderer), std::regex("Adreno.*6\\d\\d")) ||
+		std::regex_match(std::string((const char*)strRenderer), std::regex(".*FD6\\d\\d.*")))  // freedreno 6xx series
 		renderer = Renderer::Adreno_no_bugs;
-	else if (strstr((const char*)strRenderer, "Adreno") != nullptr)
+	else if (std::regex_match(std::string((const char*)strRenderer), std::regex(".*FD5\\d\\d.*")))  // freedreno 5xx series
+		renderer = Renderer::Adreno;
+	else if (isAdrenoFamily)
 		renderer = Renderer::Adreno;
 	else if (strstr((const char*)strRenderer, "VideoCore IV") != nullptr)
 		renderer = Renderer::VideoCore;
