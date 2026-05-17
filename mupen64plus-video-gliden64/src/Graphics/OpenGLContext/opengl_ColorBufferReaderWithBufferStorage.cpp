@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <Config.h>
 #include <Graphics/Context.h>
 #include "opengl_ColorBufferReaderWithBufferStorage.h"
@@ -19,7 +20,7 @@ ColorBufferReaderWithBufferStorage::~ColorBufferReaderWithBufferStorage()
 
 void ColorBufferReaderWithBufferStorage::_initBuffers()
 {
-	m_numPBO = config.frameBufferEmulation.copyToRDRAM;
+	m_numPBO = std::max(1u, config.frameBufferEmulation.copyToRDRAM);
 	if (m_numPBO > _maxPBO)
 		m_numPBO = _maxPBO;
 
@@ -55,7 +56,7 @@ const u8 * ColorBufferReaderWithBufferStorage::_readPixels(const ReadColorBuffer
 	GLenum type = GLenum(_params.colorType);
 
 	m_bindBuffer->bind(Parameter(GL_PIXEL_PACK_BUFFER), ObjectHandle(m_PBO[m_curIndex]));
-	glReadPixels(_params.x0, _params.y0, m_pTexture->realWidth, _params.height, format, type, 0);
+	glReadPixels(_params.x0, _params.y0, m_pTexture->width, _params.height, format, type, 0);
 
 	if (!_params.sync) {
 		//Setup a fence sync object so that we know when glReadPixels completes
@@ -72,7 +73,7 @@ const u8 * ColorBufferReaderWithBufferStorage::_readPixels(const ReadColorBuffer
 	}
 
 	_heightOffset = 0;
-	_stride = m_pTexture->realWidth;
+	_stride = m_pTexture->width;
 
 	return reinterpret_cast<u8*>(m_PBOData[m_curIndex]);
 }
