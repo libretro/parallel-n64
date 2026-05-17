@@ -154,7 +154,7 @@ private:
 
 void PluginAPI::ProcessDList()
 {
-	LOG(LOG_APIFUNC, "ProcessDList\n");
+	LOG(LOG_APIFUNC, "ProcessDList");
 #ifdef RSPTHREAD
 	_callAPICommand(ProcessDListCommand());
 #else
@@ -164,7 +164,7 @@ void PluginAPI::ProcessDList()
 
 void PluginAPI::ProcessRDPList()
 {
-	LOG(LOG_APIFUNC, "ProcessRDPList\n");
+	LOG(LOG_APIFUNC, "ProcessRDPList");
 #ifdef RSPTHREAD
 	_callAPICommand(ProcessRDPListCommand());
 #else
@@ -174,8 +174,12 @@ void PluginAPI::ProcessRDPList()
 
 void PluginAPI::RomClosed()
 {
-	LOG(LOG_APIFUNC, "RomClosed\n");
+	if (!m_bRomOpen)
+		return;
+
 	m_bRomOpen = false;
+
+	LOG(LOG_APIFUNC, "RomClosed");
 #ifdef RSPTHREAD
 	_callAPICommand(RomClosedCommand(
 					&m_rspThreadMtx,
@@ -194,7 +198,7 @@ void PluginAPI::RomClosed()
 
 void PluginAPI::RomOpen()
 {
-	LOG(LOG_APIFUNC, "RomOpen\n");
+	LOG(LOG_APIFUNC, "RomOpen");
 #ifdef RSPTHREAD
 	m_pluginThreadMtx.lock();
 	m_pRspThread = new std::thread(RSP_ThreadProc, &m_rspThreadMtx, &m_pluginThreadMtx, &m_rspThreadCv, &m_pluginThreadCv, &m_pCommand);
@@ -217,7 +221,7 @@ void PluginAPI::ShowCFB()
 
 void PluginAPI::UpdateScreen()
 {
-	LOG(LOG_APIFUNC, "UpdateScreen\n");
+	LOG(LOG_APIFUNC, "UpdateScreen");
 #ifdef RSPTHREAD
 	_callAPICommand(ProcessUpdateScreenCommand());
 #else
@@ -263,7 +267,7 @@ void PluginAPI::_initiateGFX(const GFX_INFO & _gfxInfo) const {
 
 void PluginAPI::ChangeWindow()
 {
-	LOG(LOG_APIFUNC, "ChangeWindow\n");
+	LOG(LOG_APIFUNC, "ChangeWindow");
 	dwnd().setToggleFullscreen();
 	if (!m_bRomOpen)
 		dwnd().closeWindow();
