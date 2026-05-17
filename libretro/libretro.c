@@ -78,6 +78,17 @@ retro_input_state_t input_cb                      = NULL;
 retro_audio_sample_batch_t audio_batch_cb         = NULL;
 retro_environment_t environ_cb                    = NULL;
 
+/* Implemented in mupen64plus-core/src/plugin/audio_libretro/
+ * audio_backend_libretro.c. flush_audio_libretro drains the per-frame
+ * accumulator into a single audio_batch_cb at end-of-retro_run;
+ * get_audio_sample_rate_libretro returns the most recent rate the N64
+ * game requested via MTC0 of AI_DACRATE_REG, or a sane default before
+ * the game's first AI write. */
+extern void     init_audio_libretro(void);
+extern void     deinit_audio_libretro(void);
+extern void     flush_audio_libretro(void);
+extern unsigned get_audio_sample_rate_libretro(void);
+
 struct retro_rumble_interface rumble;
 
 #define SUBSYSTEM_CART_DISK 0x0101
@@ -123,7 +134,6 @@ static uint32_t disk_size           = 0;
 
 static bool     emu_initialized     = false;
 static unsigned initial_boot        = true;
-static unsigned audio_buffer_size   = 2048;
 
 static unsigned retro_filtering     = 0;
 static unsigned retro_dithering     = 0;
@@ -925,7 +935,7 @@ void retro_get_system_av_info(struct retro_system_av_info *info)
    info->geometry.max_height   = screen_height;
    info->geometry.aspect_ratio = screen_aspect_ratio;
    info->timing.fps = (region == SYSTEM_PAL) ? 50.0 : (60.13);                /* TODO: Actual timing  */
-   info->timing.sample_rate = 44100.0;
+   info->timing.sample_rate = (double)get_audio_sample_rate_libretro();
 }
 
 unsigned retro_get_region (void)
@@ -1338,12 +1348,6 @@ void update_variables(bool startup)
 
    if (startup)
    {
-      var.key = "parallel-n64-audio-buffer-size";
-      var.value = NULL;
-
-      if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
-         audio_buffer_size = atoi(var.value);
-
       var.key = "parallel-n64-gfxplugin";
       var.value = NULL;
 
@@ -2153,7 +2157,7 @@ bool retro_load_game(const struct retro_game_info *game)
    update_variables(true);
    initial_boot = false;
 
-   init_audio_libretro(audio_buffer_size);
+   init_audio_libretro();
 
 #ifdef HAVE_THR_AL
    if (gfx_plugin != GFX_ANGRYLION)
@@ -2479,6 +2483,12 @@ void retro_run (void)
             break;
       }
    } while (emu_step_render());
+
+   /* Exactly one audio batch per retro_run iteration. The accumulator
+    * holds every sample the AI controller produced this frame; drain
+    * it now so the frontend receives the frame's audio in one call,
+    * paired with the frame's video. */
+   flush_audio_libretro();
 }
 
 void retro_reset (void)

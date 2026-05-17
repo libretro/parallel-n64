@@ -24,7 +24,9 @@
 
 #include <stddef.h>
 
-void init_audio_libretro(unsigned max_frames);
-void deinit_audio_libretro(void);
+void     init_audio_libretro(void);
+void     deinit_audio_libretro(void);
+void     flush_audio_libretro(void);
+unsigned get_audio_sample_rate_libretro(void);
 
 #endif
