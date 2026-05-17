@@ -44,9 +44,9 @@ bool Utils::checkShaderCompileStatus(GLuint obj)
 	return true;
 }
 
-bool Utils::checkProgramLinkStatus(GLuint obj)
+static
+bool _checkProgramLinkStatus(GLuint obj)
 {
-#ifdef GL_DEBUG
 	GLint status;
 	glGetProgramiv(obj, GL_LINK_STATUS, &status);
 	if (status == GL_FALSE) {
@@ -56,8 +56,18 @@ bool Utils::checkProgramLinkStatus(GLuint obj)
 		LOG(LOG_ERROR, "shader_link error: %s\n", shader_log);
 		return false;
 	}
-#endif
 	return true;
+}
+
+bool Utils::checkProgramLinkStatus(GLuint obj, bool _force)
+{
+#ifdef GL_DEBUG
+	return _checkProgramLinkStatus(obj);
+#else
+	if (_force)
+		return _checkProgramLinkStatus(obj);
+	return true;
+#endif
 }
 
 void Utils::logErrorShader(GLenum _shaderType, const std::string & _strShader)
