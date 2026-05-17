@@ -5076,6 +5076,24 @@ static void ujump_assemble(int i,struct regstat *i_regs)
   #endif
   if(i==(ba[i]-start)>>2) assem_debug("idle loop");
   address_generation(i+1,i_regs,regs[i].regmap_entry);
+
+  /* Handle a ROM-hack pattern where a JAL's delay slot overwrites
+   * the link register $31 itself (e.g. ORI $31, $31, imm). Without
+   * the early link-register write, our normal post-delay-slot
+   * link-write at the bottom of this function would be clobbered
+   * by the delay slot's own store, and the called subroutine would
+   * never see the right return address. Emit the link-register
+   * write here, before ds_assemble runs the delay slot, when we
+   * can see that rt1[i+1]==31. The matching post-ds path below
+   * skips its own link-write in that case. */
+  if(rt1[i+1]==31)
+  {
+    assert(rs1[i+1]==31);
+    signed char rt=get_reg(branch_regs[i].regmap,31);
+    assert(get_reg(i_regs->regmap,31)==rt);
+    if(rt>=0) emit_movimm(start+i*4+8,rt);
+  }
+
   #ifdef REG_PREFETCH
   int temp=get_reg(branch_regs[i].regmap,PTEMP);
   if(rt1[i]==31&&temp>=0)
@@ -5093,10 +5111,9 @@ static void ujump_assemble(int i,struct regstat *i_regs)
   wb_invalidate(regs[i].regmap,branch_regs[i].regmap,regs[i].dirty,regs[i].is32,
                 bc_unneeded,bc_unneeded_upper);
   load_regs(regs[i].regmap,branch_regs[i].regmap,regs[i].was32,CCREG,CCREG);
-  if(rt1[i]==31) {
+  if(rt1[i]==31&&rt1[i+1]!=31) {
     int rt;
     unsigned int return_address;
-    assert(rt1[i+1]!=31);
     assert(rt2[i+1]!=31);
     rt=get_reg(branch_regs[i].regmap,31);
     assem_debug("branch(%d): eax=%d ecx=%d edx=%d ebx=%d ebp=%d esi=%d edi=%d",i,branch_regs[i].regmap[0],branch_regs[i].regmap[1],branch_regs[i].regmap[2],branch_regs[i].regmap[3],branch_regs[i].regmap[5],branch_regs[i].regmap[6],branch_regs[i].regmap[7]);
@@ -8779,7 +8796,7 @@ int new_recompile_block(int addr)
           if (rt1[i]==31) {
             alloc_reg(&current,i,31);
             dirty_reg(&current,31);
-            assert(rs1[i+1]!=31&&rs2[i+1]!=31);
+            assert(rs2[i+1]!=31);
             #ifdef REG_PREFETCH
             alloc_reg(&current,i,PTEMP);
             #endif
