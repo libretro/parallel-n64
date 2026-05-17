@@ -353,6 +353,16 @@ m64p_error main_init(void)
    }
 #endif
 
+   /* Zero the main device structure before each game load. The static
+    * globals start zero-initialized by the C runtime, but the libretro
+    * core is loaded once per host process and reused across game changes
+    * (retro_unload_game / retro_load_game), so any stale linked-list
+    * pointers or DMA bookkeeping from the previous ROM would otherwise
+    * leak into init_device's setup of the new ROM. Cheap to do and
+    * matches upstream mupen64plus-core 8a8286ca which does the same at
+    * CoreStartup time. */
+   memset(&g_dev, 0, sizeof(struct device));
+
    init_device(
          &g_dev,
          emumode,
