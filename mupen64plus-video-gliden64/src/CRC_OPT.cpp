@@ -45,16 +45,16 @@ u32 CRC_Calculate_Strict( u32 crc, const void * buffer, u32 count )
 	return crc ^ orig;
 }
 
-u32 CRC_Calculate( u32 crc, const void * buffer, u32 count )
+u64 CRC_Calculate( u64 crc, const void * buffer, u32 count )
 {
-	return XXH32(buffer, count, crc);
+	return XXH64(buffer, count, crc);
 }
 
-u32 CRC_CalculatePalette(u32 crc, const void * buffer, u32 count )
+u64 CRC_CalculatePalette(u64 crc, const void * buffer, u32 count )
 {
 	u8 *p = (u8*) buffer;
 	while (count--) {
-		crc = XXH32(p, 2, crc);
+		crc = XXH64(p, 2, crc);
 		p += 8;
 	}
 	return crc;
