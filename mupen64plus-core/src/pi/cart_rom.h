@@ -26,7 +26,7 @@
 #include <stdint.h>
 
 #ifndef ROM_ADDR
-#define ROM_ADDR(a)  ((a & 0x03fffffc))
+#define ROM_ADDR(a)  ((a & 0x0ffffffc))
 #endif
 
 struct cart_rom
