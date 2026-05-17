@@ -39,8 +39,8 @@
 static void dma_sp_write(struct rsp_core* sp, unsigned length, unsigned count, unsigned skip)
 {
     unsigned int i,j;
-    unsigned int memaddr  = sp->regs[SP_MEM_ADDR_REG] & 0xfff;
-    unsigned int dramaddr = sp->regs[SP_DRAM_ADDR_REG] & 0xffffff;
+    unsigned int memaddr  = sp->regs[SP_MEM_ADDR_REG] & 0xff8;
+    unsigned int dramaddr = sp->regs[SP_DRAM_ADDR_REG] & 0xfffff8;
 
     unsigned char *spmem  = (unsigned char*)sp->mem + (sp->regs[SP_MEM_ADDR_REG] & 0x1000);
     unsigned char *dram   = (unsigned char*)sp->ri->rdram.dram;
@@ -66,8 +66,8 @@ static void dma_sp_write(struct rsp_core* sp, unsigned length, unsigned count, u
 static void dma_sp_read(struct rsp_core* sp, unsigned length, unsigned count, unsigned skip)
 {
     unsigned int i,j;
-    unsigned int memaddr  = sp->regs[SP_MEM_ADDR_REG] & 0xfff;
-    unsigned int dramaddr = sp->regs[SP_DRAM_ADDR_REG] & 0xffffff;
+    unsigned int memaddr  = sp->regs[SP_MEM_ADDR_REG] & 0xff8;
+    unsigned int dramaddr = sp->regs[SP_DRAM_ADDR_REG] & 0xfffff8;
 
     unsigned char *spmem  = (unsigned char*)sp->mem + (sp->regs[SP_MEM_ADDR_REG] & 0x1000);
     unsigned char *dram   = (unsigned char*)sp->ri->rdram.dram;
