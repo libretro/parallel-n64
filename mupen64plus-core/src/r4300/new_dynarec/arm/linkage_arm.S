@@ -1036,3 +1036,17 @@ GLOBAL_FUNCTION(__clear_cache_bugfix):
     pop    {r7, pc}
 
 END_SECTION
+
+/* Mark the stack as non-executable on ELF targets (Linux/Android/webOS/
+ * etc.). Without this directive the linker has no way to know the
+ * assembly TU does not need an executable stack and falls back to RWX
+ * for the whole final image, which both the modern Binutils linker
+ * warns about as deprecated and which makes the binary fail W^X
+ * hardening checks on platforms like webOS that ship a hardened ld.
+ * The directive is a no-op on platforms that do not use ELF (Apple
+ * Mach-O, Windows PE/COFF); guarding on __ELF__ keeps those
+ * toolchains from complaining about the unrecognised section name.
+ */
+#if defined(__ELF__)
+    .section .note.GNU-stack, "", %progbits
+#endif
