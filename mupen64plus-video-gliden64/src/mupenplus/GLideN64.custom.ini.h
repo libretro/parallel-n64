@@ -18,7 +18,7 @@ char customini[] =
 "Good_Name=Bio F.R.E.A.K.S. (E)(U)\n"
 "frameBufferEmulation\\copyToRDRAM=1\n"
 "\n"
-"[BioHazard%20II]\n"
+"[BIOHAZARD%20II]\n"
 "frameBufferEmulation\\copyFromRDRAM=1\n"
 "frameBufferEmulation\\copyToRDRAM=0\n"
 "frameBufferEmulation\\copyDepthToRDRAM=0\n"
