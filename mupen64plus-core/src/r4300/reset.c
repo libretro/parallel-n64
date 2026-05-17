@@ -32,6 +32,9 @@
 #include "r4300.h"
 #include "r4300_core.h"
 #include "reset.h"
+#ifdef NEW_DYNAREC
+#include "new_dynarec/new_dynarec.h"
+#endif
 
 int reset_hard_job = 0;
 
@@ -51,6 +54,22 @@ void reset_hard(void)
    {
       free_blocks();
       init_blocks();
+#ifdef NEW_DYNAREC
+      if (r4300emu == CORE_DYNAREC)
+      {
+         /* Drop the new_dynarec JIT cache (base_addr) and the
+          * memory_map[] TLB mapping table on hard reset, then
+          * re-init from scratch. Without this the cache stays
+          * full of dead blocks compiled from the pre-reset
+          * code; subsequent compilations append after them
+          * and base_addr eventually fills up. The cached_
+          * interp blocks[] array is already cleared by the
+          * free_blocks/init_blocks pair above; this is the
+          * companion step for new_dynarec backends. */
+         new_dynarec_cleanup();
+         new_dynarec_init();
+      }
+#endif
    }
    invalidate_r4300_cached_code(0, 0);
    generic_jump_to(last_addr);
