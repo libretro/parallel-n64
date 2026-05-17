@@ -319,7 +319,15 @@ int savestates_save_m64p(unsigned char *data, size_t size)
    unsigned char *curr = (unsigned char*)data;
 
    if (!curr)
+   {
+      /* Deliver callback to indicate failure of state saving
+       * operation; without this, listeners waiting for the
+       * SAVECOMPLETE notification block forever when the
+       * caller hands us a NULL buffer. Matches the upstream
+       * mupen64plus-core fix for issue #1031. */
+      StateChanged(M64CORE_STATE_SAVECOMPLETE, 0);
       return 0;
+   }
 
    queuelength = save_eventqueue_infos(queue);
 
