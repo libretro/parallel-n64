@@ -725,6 +725,15 @@ DECLARE_INSTRUCTION(MTC0)
     case CP0_WATCHHI_REG:
       g_cp0_regs[CP0_WATCHHI_REG] = rrt32;
       break;
+    case CP0_XCONTEXT_REG:
+      /* hardware ignores writes */
+      break;
+    case CP0_CACHEERR_REG:
+      /* hardware ignores writes to the cache-error register */
+      break;
+    case CP0_PARITYERR_REG:
+      g_cp0_regs[CP0_PARITYERR_REG] = rrt32 & UINT32_C(0x000000FF);
+      break;
     case CP0_TAGLO_REG:
       g_cp0_regs[CP0_TAGLO_REG] = rrt32 & UINT32_C(0x0FFFFFC0);
       break;
