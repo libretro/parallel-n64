@@ -28,11 +28,8 @@
 
 #include <string.h>
 
-static int update_dpc_status(struct rdp_core* dp, uint32_t w)
+static void update_dpc_status(struct rdp_core* dp, uint32_t w)
 {
-   /* see do_SP_Task for more info */
-   int do_sp_task_on_unfreeze = 0;
-
    /* clear / set xbus_dmem_dma */
    if (w & DPC_STATUS_CLR_XBUS_DMEM_DMA) dp->dpc_regs[DPC_STATUS_REG] &= ~DPC_STATUS_XBUS_DMEM_DMA;
    if (w & DPC_STATUS_SET_XBUS_DMEM_DMA) dp->dpc_regs[DPC_STATUS_REG] |= DPC_STATUS_XBUS_DMEM_DMA;
@@ -42,8 +39,14 @@ static int update_dpc_status(struct rdp_core* dp, uint32_t w)
    {
       dp->dpc_regs[DPC_STATUS_REG] &= ~DPC_STATUS_FREEZE;
 
-      if (!(dp->sp->regs[SP_STATUS_REG] & (SP_STATUS_HALT | SP_STATUS_BROKE)))
-         do_sp_task_on_unfreeze = 1;
+      /* flush work that was deferred while DP was frozen.
+       * See do_SP_Task and vi_vertical_interrupt_event for the
+       * stalls that set these flags. */
+      if (dp->do_on_unfreeze & DELAY_DP_INT)
+         signal_rcp_interrupt(dp->r4300, MI_INTR_DP);
+      if (dp->do_on_unfreeze & DELAY_UPDATESCREEN)
+         gfx.updateScreen();
+      dp->do_on_unfreeze = 0;
    }
 
    if (w & DPC_STATUS_SET_FREEZE) dp->dpc_regs[DPC_STATUS_REG] |= DPC_STATUS_FREEZE;
@@ -57,8 +60,6 @@ static int update_dpc_status(struct rdp_core* dp, uint32_t w)
    if (w & DPC_STATUS_CLR_PIPE_CTR)  dp->dpc_regs[DPC_PIPEBUSY_REG] = 0;
    if (w & DPC_STATUS_CLR_CMD_CTR)   dp->dpc_regs[DPC_BUFBUSY_REG]  = 0;
    if (w & DPC_STATUS_CLR_CLOCK_CTR) dp->dpc_regs[DPC_CLOCK_REG]    = 0;
-
-   return do_sp_task_on_unfreeze;
 }
 
 
@@ -77,6 +78,7 @@ void poweron_rdp(struct rdp_core* dp)
     memset(dp->dpc_regs, 0, DPC_REGS_COUNT*sizeof(uint32_t));
     memset(dp->dps_regs, 0, DPS_REGS_COUNT*sizeof(uint32_t));
     dp->dpc_regs[DPC_STATUS_REG] |= DPC_STATUS_START_GCLK;
+    dp->do_on_unfreeze = 0;
 
     poweron_fb(&dp->fb);
 }
@@ -100,8 +102,7 @@ int write_dpc_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mask
    switch(reg)
    {
       case DPC_STATUS_REG:
-         if (update_dpc_status(dp, value & mask) != 0)
-            do_SP_Task(dp->sp);
+         update_dpc_status(dp, value & mask);
       case DPC_CURRENT_REG:
       case DPC_CLOCK_REG:
       case DPC_BUFBUSY_REG:

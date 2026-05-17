@@ -22,11 +22,13 @@
 #include "vi_controller.h"
 
 #include "main/main.h"
+#include "main/device.h"
 #include "main/rom.h"
 #include "memory/memory.h"
 #include "plugin/plugin.h"
 #include "r4300/r4300_core.h"
 #include "r4300/interrupt.h"
+#include "rdp/rdp_core.h"
 
 #include <string.h>
 
@@ -147,7 +149,17 @@ int write_vi_regs(void* opaque, uint32_t address,
 
 void vi_vertical_interrupt_event(struct vi_controller* vi)
 {
-   gfx.updateScreen();
+   /* If the DP is currently frozen and there is already a pending
+    * deferred DP interrupt, hold off on the screen update too --
+    * letting the screen update fire before the DP interrupt that
+    * produced its contents lets the user see half-rendered frames
+    * (DK64 / Banjo-Kazooie boot logos are the classic repros).
+    * The deferred screen update is flushed by update_dpc_status()
+    * when CLR_FREEZE is written, paired with the deferred DP_INT. */
+   if (g_dev.dp.do_on_unfreeze & DELAY_DP_INT)
+      g_dev.dp.do_on_unfreeze |= DELAY_UPDATESCREEN;
+   else
+      gfx.updateScreen();
 
    /* allow main module to do things on VI event */
    new_vi();

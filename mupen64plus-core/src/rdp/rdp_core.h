@@ -59,6 +59,14 @@ enum
    DPC_STATUS_CLR_CLOCK_CTR     = 0x200,
 };
 
+/* Work that was deferred while DPC_STATUS_FREEZE was set; flushed
+ * when CLR_FREEZE is written to DPC_STATUS_REG. */
+enum
+{
+   DELAY_DP_INT        = 0x001,
+   DELAY_UPDATESCREEN  = 0x002
+};
+
 enum dpc_registers
 {
     DPC_START_REG,
@@ -86,6 +94,7 @@ struct rdp_core
 {
     uint32_t dpc_regs[DPC_REGS_COUNT];
     uint32_t dps_regs[DPS_REGS_COUNT];
+    unsigned char do_on_unfreeze;
 
     struct fb fb;
 

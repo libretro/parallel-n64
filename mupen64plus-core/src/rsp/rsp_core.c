@@ -300,16 +300,6 @@ void do_SP_Task(struct rsp_core* sp)
 
     if (sp->mem[0xfc0/4] == 1)
     {
-	if (ROM_PARAMS.special_rom != PERFECT_DARK)
-	{
-	   /* Display list */
-	   /* don't do the task now
-	    * the task will be done when
-	    * DP is unfreezed (see update_dpc_status) */
-	   if (sp->dp->dpc_regs[DPC_STATUS_REG] & DPC_STATUS_FREEZE) /* DP frozen (DK64, BC) */
-	      return;
-	}
-
         unprotect_framebuffers(sp->dp);
 
         sp->regs2[SP_PC_REG] &= 0xfff;
@@ -321,9 +311,23 @@ void do_SP_Task(struct rsp_core* sp)
 
         if (sp->r4300->mi.regs[MI_INTR_REG] & MI_INTR_DP)
 	{
-	    cp0_update_count();
-            add_interrupt_event(DP_INT, 4000);
 	    sp->r4300->mi.regs[MI_INTR_REG] &= ~MI_INTR_DP;
+	    /* If the DP is frozen the game expects no DP interrupt
+	     * to be observed until it later clears FREEZE -- holding
+	     * the interrupt back avoids races between the gfx task
+	     * we just ran and the game's freeze-window bookkeeping
+	     * (DK64 / Banjo-Kazooie / Perfect Dark are the classic
+	     * repros). The deferred interrupt fires in
+	     * update_dpc_status() when CLR_FREEZE is written. */
+	    if (sp->dp->dpc_regs[DPC_STATUS_REG] & DPC_STATUS_FREEZE)
+	    {
+	        sp->dp->do_on_unfreeze |= DELAY_DP_INT;
+	    }
+	    else
+	    {
+	        cp0_update_count();
+	        add_interrupt_event(DP_INT, 4000);
+	    }
 	}
 
         protect_framebuffers(sp->dp);
