@@ -6,7 +6,6 @@
 #define L3D_TRI1				0xBF
 
 void L3D_Line3D( u32 w0, u32 w1 );
-void L3D_Tri1( u32 w0, u32 w1 );
 void L3D_Init();
 #endif
 

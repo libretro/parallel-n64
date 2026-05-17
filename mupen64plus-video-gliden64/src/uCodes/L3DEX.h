@@ -7,8 +7,6 @@
 #define L3DEX_LINE3D			0xB5
 
 void L3DEX_Line3D( u32 w0, u32 w1 );
-void L3DEX_Tri1( u32 w0, u32 w1 );
-void L3DEX_Tri2( u32 w0, u32 w1 );
 void L3DEX_Init();
 #endif
 
