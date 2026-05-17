@@ -27,8 +27,25 @@ u32 SR[32];
 typedef VECTOR_OPERATION(*p_vector_func)(v16, v16);
 
 pu8 DRAM;
-extern pu8 DMEM;
-extern pu8 IMEM;
+/*
+ * DMEM and IMEM are the canonical pointer storage for the RSP scratch
+ * memories. cxd4 is built unconditionally on every libretro target,
+ * which is not true of mupen64plus-video-gliden64 (HAVE_OPENGL=0
+ * builds, e.g. webOS, set HAVE_GLIDEN64=0 and drop N64.cpp from the
+ * source list). The previous arrangement parked the strong definition
+ * in N64.cpp and left su.c with extern declarations, which links fine
+ * when gliden64 is in the build and fails with 'undefined reference
+ * to DMEM/IMEM' when it is not. Owning the storage here in cxd4 -
+ * which is always linked - keeps the build self-consistent across
+ * every target.
+ *
+ * Explicit '= NULL' initialisers turn these into unambiguous strong
+ * definitions independent of the -fcommon / -fno-common toggle. The
+ * gliden64 side declares them 'extern u8 *' inside an extern "C"
+ * block so the C and C++ TUs resolve to the same symbol.
+ */
+pu8 DMEM = NULL;
+pu8 IMEM = NULL;
 
 NOINLINE void res_S(void)
 {

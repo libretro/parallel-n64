@@ -3,19 +3,16 @@
 u8 *HEADER;
 
 /*
-    DMEM and IMEM conflict with CXD4 with GCC 10.x and later default
-    -fno-common builds: both N64.cpp and cxd4's su.c historically held
-    tentative definitions of the same names, and only -fcommon symbol
-    merging hid the multiple-definition error. Make N64.cpp the single
-    strong definition and give it C linkage so cxd4 (which is built as
-    C and declares the same names with C linkage) sees the same symbol.
-    The pointer type stays u8 *; cxd4's pu8 is a typedef of the same.
-    GLideN64 and cxd4 are never active in the same render path, so
-    sharing the storage is harmless.
+    DMEM and IMEM live in mupen64plus-rsp-cxd4/su.c. cxd4 is built on
+    every libretro target; this TU (N64.cpp) is part of gliden64 and is
+    excluded on HAVE_OPENGL=0 / HAVE_GLIDEN64=0 builds such as webOS,
+    so it cannot be the canonical owner. Declare the symbols extern
+    with C linkage so this C++ TU resolves to cxd4's C-linkage
+    definitions.
 */
 extern "C" {
-    u8 *DMEM;
-    u8 *IMEM;
+    extern u8 *DMEM;
+    extern u8 *IMEM;
 }
 
 u64 TMEM[512];
