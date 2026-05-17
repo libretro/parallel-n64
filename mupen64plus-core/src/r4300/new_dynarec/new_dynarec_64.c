@@ -8586,6 +8586,14 @@ static int new_recompile_block_impl(int addr)
       }
       current.isconst=0;
     }
+    /* Snapshot the entry regmap BEFORE any 32-bit-optim eviction
+     * runs below. The BNE/BNEL r0-source optimization may decide
+     * that the live source register is 32-bit and drop its upper
+     * half from the regmap; if that eviction happens before the
+     * regmap_pre snapshot, the upper-half is missing from
+     * regmap_pre and never gets written back at the branch, so
+     * the called code reads a stale upper half. */
+    memcpy(regmap_pre[i],current.regmap,sizeof(current.regmap));
     if(i>1)
     {
       if((opcode[i-2]&0x2f)==0x05) // BNE/BNEL
@@ -8640,7 +8648,6 @@ static int new_recompile_block_impl(int addr)
         current.is32=temp_is32;
       }
     }
-    memcpy(regmap_pre[i],current.regmap,sizeof(current.regmap));
     regs[i].wasconst=current.isconst;
     regs[i].was32=current.is32;
     regs[i].wasdirty=current.dirty;
