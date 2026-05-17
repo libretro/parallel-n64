@@ -60,6 +60,7 @@ struct ai_controller
    uint32_t regs[AI_REGS_COUNT];
    struct ai_dma fifo[AI_DMA_FIFO_SIZE];
    unsigned int samples_format_changed;
+   unsigned int delayed_carry;
 
    struct m64p_audio_backend backend;
 

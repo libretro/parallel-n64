@@ -93,7 +93,7 @@ static unsigned int get_dma_duration(struct ai_controller* ai)
    return ai->regs[AI_LEN_REG] * (cpu_counts_per_sec / (bytes_per_sample * samples_per_sec));
 }
 
-static void do_dma(struct ai_controller* ai, const struct ai_dma* dma)
+static void do_dma(struct ai_controller* ai, struct ai_dma* dma)
 {
    /* lazy initialization of sample format */
    if (ai->samples_format_changed)
@@ -113,6 +113,24 @@ static void do_dma(struct ai_controller* ai, const struct ai_dma* dma)
    }
 
    ai->last_read = dma->length;
+
+   /* Hardware AI address-carry behavior: when the previous DMA ended
+    * exactly on a 0x2000 boundary, the next DMA's effective address
+    * is offset by 0x2000. Without this carry the second buffer of
+    * audio in Twisted Edge Snowboarding (and a handful of similar
+    * titles that ping-pong two 0x2000-aligned buffers) is read from
+    * the wrong DRAM offset and produces stuttering/looping audio.
+    * Set delayed_carry now for the *next* DMA when this one ends
+    * on a 0x2000 boundary; clear it otherwise. fifo_pop clears it
+    * when the engine drains to idle so a fresh start doesn't inherit
+    * a stale carry. */
+   if (ai->delayed_carry)
+      dma->address += 0x2000;
+
+   if (((dma->address + dma->length) & 0x1FFF) == 0)
+      ai->delayed_carry = 1;
+   else
+      ai->delayed_carry = 0;
 
    /* schedule end of dma event */
    cp0_update_count();
@@ -158,6 +176,7 @@ static void fifo_pop(struct ai_controller* ai)
    else
    {
       ai->regs[AI_STATUS_REG] &= ~AI_STATUS_BUSY;
+      ai->delayed_carry = 0;
    }
 }
 
@@ -167,6 +186,7 @@ void poweron_ai(struct ai_controller* ai)
     memset(ai->regs, 0, AI_REGS_COUNT*sizeof(uint32_t));
     memset(ai->fifo, 0, AI_DMA_FIFO_SIZE*sizeof(struct ai_dma));
     ai->samples_format_changed = 0;
+    ai->delayed_carry          = 0;
     ai->audio_pos = 0;
 	  ai->last_read = 0;
 }
