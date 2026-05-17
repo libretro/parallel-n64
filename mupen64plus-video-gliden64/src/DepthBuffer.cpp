@@ -17,17 +17,6 @@
 using namespace graphics;
 
 DepthBuffer::DepthBuffer()
-	: m_address(0)
-	, m_width(0)
-	, m_pDepthImageZTexture(nullptr)
-	, m_pDepthImageDeltaZTexture(nullptr)
-	, m_pDepthBufferTexture(nullptr)
-	, m_depthRenderbufferWidth(0)
-	, m_cleared(false)
-	, m_pResolveDepthBufferTexture(nullptr)
-	, m_resolved(false)
-	, m_pDepthBufferCopyTexture(nullptr)
-	, m_copied(false)
 {
 	m_copyFBO = gfxContext.createFramebuffer();
 }
