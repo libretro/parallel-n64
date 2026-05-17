@@ -97,7 +97,7 @@ void update_control_variables(bool startup)
    }
 }
 
-static void inputGetKeys_default_descriptor(void)
+void inputGetKeys_default_descriptor(void)
 {
    if (alternate_mapping){
    #define digital_cbuttons_map(PAD) { PAD, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_LEFT,  "D-Pad Left" },\

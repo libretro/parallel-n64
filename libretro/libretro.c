@@ -68,6 +68,15 @@ static const struct retro_hw_render_interface_vulkan *vulkan;
 
 #define ISHEXDEC ((codeLine[cursor]>='0') && (codeLine[cursor]<='9')) || ((codeLine[cursor]>='a') && (codeLine[cursor]<='f')) || ((codeLine[cursor]>='A') && (codeLine[cursor]<='F'))
 
+/* Forward declarations.
+ * inputGetKeys_default_descriptor lives in
+ * mupen64plus-core/src/plugin/emulate_game_controller_via_libretro.c
+ * and re-publishes the libretro input descriptors based on the current
+ * value of alternate_mapping. Called from update_variables() so a flip
+ * of the alt-map core option takes effect without restarting the core.
+ */
+extern void inputGetKeys_default_descriptor(void);
+
 struct retro_perf_callback perf_cb;
 retro_get_cpu_features_t perf_get_cpu_features_cb = NULL;
 
@@ -1681,12 +1690,23 @@ void update_variables(bool startup)
    var.key = "parallel-n64-alt-map";
    var.value = NULL;
 
-   if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value && startup)
+   if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
    {
+      bool prev_alternate_mapping = alternate_mapping;
       if (!strcmp(var.value, "disabled"))
          alternate_mapping = false;
       else if (!strcmp(var.value, "enabled"))
          alternate_mapping = true;
+      /* Re-publish the input descriptors immediately if the user
+       * flipped the option mid-run. inputGetKeys_default_descriptor()
+       * picks the alt-map vs standard layout based on the current
+       * 'alternate_mapping' value and pushes a fresh
+       * RETRO_ENVIRONMENT_SET_INPUT_DESCRIPTORS array. Skip the
+       * resubmit when nothing changed - including on the startup
+       * pass, where inputPluginStartup() will set the descriptors
+       * shortly anyway via its own call. */
+      if (!startup && alternate_mapping != prev_alternate_mapping)
+         inputGetKeys_default_descriptor();
    }
 
 
