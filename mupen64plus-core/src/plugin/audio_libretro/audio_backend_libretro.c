@@ -1,5 +1,5 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
- *   Mupen64plus - audio_backend_libretro.c                                *
+ *   Mupen64plus - audio_backend_compat.c                                  *
  *   Mupen64Plus homepage: http://code.google.com/p/mupen64plus/           *
  *   Copyright (C) 2014 Bobby Smiles                                       *
  *                                                                         *
@@ -19,38 +19,6 @@
  *   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.          *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-/* libretro audio backend for parallel-n64.
- *
- * Design:
- *
- *   The N64 AI hardware always emits 16-bit stereo samples regardless of
- *   the BITRATE register (which controls the serial-DAC transfer rate,
- *   not the sample depth). The libretro frontend's audio mixer accepts
- *   variable-rate input via retro_get_system_av_info / RETRO_ENVIRONMENT
- *   _SET_SYSTEM_AV_INFO and resamples to the host audio device at high
- *   quality. There is therefore no reason to resample inside the core;
- *   we declare the actual N64 sample rate to the frontend and pass the
- *   samples through with a single byteswap-on-copy step into a per-
- *   retro_run accumulator. The accumulator is drained exactly once per
- *   retro_run iteration (immediately after emu_step_render in the
- *   libretro entry point), so each video frame is paired with exactly
- *   one audio batch -- the determinism contract a well-behaved libretro
- *   core promises its frontend.
- *
- * Memory:
- *
- *   The accumulator is a single statically-sized int16_t array; no heap
- *   allocations, no float scratch buffers, no resampler state. The
- *   capacity is derived from the libretro lifecycle: worst case is PAL
- *   at 50 Hz video with the N64 game producing audio at 48 kHz (the
- *   highest rate the AI controller's BITRATE divider permits, well
- *   above any actual N64 game's choice). 48000 / 50 = 960 stereo
- *   frames per video frame. Doubling that absorbs the bursty mid-frame
- *   push schedule that some games use (multiple smaller AI DMAs per
- *   frame instead of one large one) plus any momentary phase drift
- *   between AI DMA completion scheduling and VI vertical-interrupt
- *   scheduling. 2048 stereo frames * 4 bytes = 8 KB total. */
-
 #include "api/m64p_types.h"
 #include <libretro.h>
 #include "ai/ai_controller.h"
@@ -61,162 +29,170 @@
 #include "ri/ri_controller.h"
 #include "vi/vi_controller.h"
 
-#include <stdint.h>
+#include <stdio.h>
 #include <stddef.h>
+#include <stdint.h>
+#include <stdlib.h>
 #include <string.h>
+#include <stdarg.h>
+
+#include <audio/conversion/float_to_s16.h>
+#include <audio/conversion/s16_to_float.h>
+#include <audio/audio_resampler.h>
 
 extern retro_audio_sample_batch_t audio_batch_cb;
-extern retro_environment_t        environ_cb;
 
-#define AUDIO_ACC_FRAMES   2048u
+static unsigned MAX_AUDIO_FRAMES = 2048;
 
-static int16_t  audio_acc[AUDIO_ACC_FRAMES * 2];
-static size_t   audio_acc_frames;        /* stereo frames currently held */
-static unsigned current_sample_rate;     /* 0 until first set_audio_format */
+#define VI_INTR_TIME 500000
 
-void init_audio_libretro(void)
-{
-   audio_acc_frames = 0;
-   current_sample_rate = 0;
-}
+/* Read header for type definition */
+static int GameFreq = 33600;
+static unsigned CountsPerSecond;
+static unsigned BytesPerSecond;
+static unsigned CountsPerByte;
+
+static const retro_resampler_t *resampler;
+static void *resampler_audio_data;
+static float *audio_in_buffer_float;
+static float *audio_out_buffer_float;
+static int16_t *audio_out_buffer_s16;
+
+void (*audio_convert_s16_to_float_arm)(float *out,
+      const int16_t *in, size_t samples, float gain);
+void (*audio_convert_float_to_s16_arm)(int16_t *out,
+      const float *in, size_t samples);
 
 void deinit_audio_libretro(void)
 {
-   audio_acc_frames = 0;
-   current_sample_rate = 0;
-}
-
-unsigned get_audio_sample_rate_libretro(void)
-{
-   /* 32040 Hz is by far the most common N64 game rate and a reasonable
-    * fallback when retro_get_system_av_info is queried before the game
-    * has had a chance to issue its first AI register write. */
-   return current_sample_rate ? current_sample_rate : 32040u;
-}
-
-/* Drain the per-frame accumulator to the libretro frontend in a single
- * audio_batch_cb call (looped only to absorb partial-consume by the
- * frontend; in practice the first call accepts all frames). */
-void flush_audio_libretro(void)
-{
-   const int16_t *out;
-   size_t         remaining;
-
-   if (audio_acc_frames == 0)
-      return;
-
-   out       = audio_acc;
-   remaining = audio_acc_frames;
-
-   while (remaining)
+   if (resampler && resampler_audio_data)
    {
-      size_t ret = audio_batch_cb(out, remaining);
-      if (ret == 0)
-         break;                          /* frontend backpressure; drop the
-                                          * remainder rather than stall the
-                                          * emulator */
-      remaining -= ret;
-      out       += ret * 2;
+      resampler->free(resampler_audio_data);
+      resampler = NULL;
+      resampler_audio_data = NULL;
+      free(audio_in_buffer_float);
+      free(audio_out_buffer_float);
+      free(audio_out_buffer_s16);
    }
-
-   audio_acc_frames = 0;
 }
 
-/* bits is ignored: the AI controller always produces 16-bit stereo.
- * frequency is the N64 game's chosen sample rate; we forward it to the
- * frontend via RETRO_ENVIRONMENT_SET_SYSTEM_AV_INFO when it changes. */
-void set_audio_format_via_libretro(void *user_data,
+void init_audio_libretro(unsigned max_audio_frames)
+{
+   retro_resampler_realloc(&resampler_audio_data, &resampler, "sinc", RESAMPLER_QUALITY_DONTCARE, 1.0);
+
+   MAX_AUDIO_FRAMES = max_audio_frames;
+
+   audio_in_buffer_float  = malloc(2 * MAX_AUDIO_FRAMES * sizeof(float));
+   audio_out_buffer_float = malloc(2 * MAX_AUDIO_FRAMES * sizeof(float));
+   audio_out_buffer_s16   = malloc(2 * MAX_AUDIO_FRAMES * sizeof(int16_t));
+
+   convert_s16_to_float_init_simd();
+   convert_float_to_s16_init_simd();
+}
+
+static void aiDacrateChanged(void *user_data, unsigned int frequency, unsigned int bits)
+{
+   GameFreq        = frequency;
+   BytesPerSecond  = frequency * 4;
+   CountsPerSecond = VI_INTR_TIME * 60 /* TODO/FIXME - dehardcode */;
+   CountsPerByte   = CountsPerSecond / BytesPerSecond;
+
+#if 0
+   printf("CountsPerByte: %d, GameFreq: %d\n", CountsPerByte, GameFreq);
+#endif
+}
+
+/* A fully compliant implementation is not really possible with just the zilmar spec.
+ * We assume bits == 16 (assumption compatible with audio-sdl plugin implementation)
+ */
+void set_audio_format_via_libretro(void* user_data,
       unsigned int frequency, unsigned int bits)
 {
-   (void)user_data;
-   (void)bits;
+   struct ai_controller* ai = (struct ai_controller*)user_data;
+   uint32_t saved_ai_dacrate = ai->regs[AI_DACRATE_REG];
 
-   if (frequency == 0 || frequency == current_sample_rate)
-      return;
+   /* notify plugin of the new frequency (can't do the same for bits) */
+   ai->regs[AI_DACRATE_REG] = ai->vi->clock / frequency - 1;
 
-   current_sample_rate = frequency;
+   aiDacrateChanged(user_data, frequency, bits);
 
-   if (environ_cb)
+   /* restore original registers values */
+   ai->regs[AI_DACRATE_REG] = saved_ai_dacrate;
+}
+
+static void aiLenChanged(void* user_data, const void* buffer, size_t size)
+{
+   size_t max_frames, remain_frames;
+   uint32_t i;
+   double ratio;
+   struct resampler_data data = {0};
+   int16_t *out      = NULL;
+   int16_t *raw_data = (int16_t*)buffer;
+   size_t frames     = size / 4;
+   uint8_t *p        = (uint8_t*)buffer;
+
+   for (i = 0; i < size; i += 4)
    {
-      struct retro_system_av_info info;
-      extern void retro_get_system_av_info(struct retro_system_av_info *info);
-      retro_get_system_av_info(&info);
-      info.timing.sample_rate = (double)frequency;
-      environ_cb(RETRO_ENVIRONMENT_SET_SYSTEM_AV_INFO, &info);
+      p[i ] ^= p[i + 2];
+      p[i + 2] ^= p[i ];
+      p[i ] ^= p[i + 2];
+      p[i + 1] ^= p[i + 3];
+      p[i + 3] ^= p[i + 1];
+      p[i + 1] ^= p[i + 3];
+   }
+
+audio_batch:
+   out               = NULL;
+   ratio             = 44100.0 / GameFreq;
+   max_frames        = (GameFreq > 44100) ? MAX_AUDIO_FRAMES : (size_t)(MAX_AUDIO_FRAMES / ratio - 1);
+   remain_frames     = 0;
+
+   if (frames > max_frames)
+   {
+      remain_frames = frames - max_frames;
+      frames = max_frames;
+   }
+
+   data.data_in      = audio_in_buffer_float;
+   data.data_out     = audio_out_buffer_float;
+   data.input_frames = frames;
+   data.ratio        = ratio;
+
+   convert_s16_to_float(audio_in_buffer_float, raw_data, frames * 2, 1.0f);
+   resampler->process(resampler_audio_data, &data);
+   convert_float_to_s16(audio_out_buffer_s16, audio_out_buffer_float, data.output_frames * 2);
+
+   out                    = audio_out_buffer_s16;
+
+   while (data.output_frames)
+   {
+      size_t ret          = audio_batch_cb(out, data.output_frames);
+      data.output_frames -= ret;
+      out                += ret * 2;
+   }
+   if (remain_frames)
+   {
+      raw_data = raw_data + frames * 2;
+      frames   = remain_frames;
+      goto audio_batch;
    }
 }
 
-/* Append size bytes of N64 AI audio (BE s16 stereo, (L, R) interleaved
- * per the AI controller's storage convention) to the per-frame
- * accumulator. Performs a single byteswap-on-copy that materialises
- * host-native (L, R) interleaved int16 in the destination, with
- * channel selection determined by the host endianness and the address
- * swizzle macros (S8) that map N64 logical byte addresses to physical
- * byte addresses in our RDRAM buffer.
- *
- *   On LE host (S8=3): a 32-bit BE stereo sample (L_hi L_lo R_hi R_lo)
- *   written by the N64 CPU through the swizzle lands in physical
- *   dram[] as bytes (R_lo R_hi L_lo L_hi); we rebuild L from p[3..2]
- *   and R from p[1..0] in host LE order.
- *
- *   On BE host (S8=0): no swizzle; p[0..3] already in (L_hi L_lo R_hi
- *   R_lo) logical order; rebuild L from p[0..1] and R from p[2..3] in
- *   host BE order.
- *
- * If the new push would overflow the remaining accumulator capacity we
- * flush what we have first. If a single push exceeds the full
- * accumulator capacity (only possible with a pathologically large AI
- * DMA buffer that no real game uses) we feed it through the
- * accumulator in chunks, each chunk causing one extra audio_batch_cb
- * call; the determinism contract degrades to "one batch per frame plus
- * one batch per AUDIO_ACC_FRAMES-sized chunk", still bounded and still
- * deterministic given identical inputs. */
-void push_audio_samples_via_libretro(void *user_data,
-      const void *buffer, size_t size)
+/* Abuse core & audio plugin implementation details to obtain the desired effect. */
+void push_audio_samples_via_libretro(void* user_data, const void* buffer, size_t size)
 {
-   const uint8_t *src;
-   size_t         frames;
-   size_t         off;
+   struct ai_controller* ai = (struct ai_controller*)user_data;
+   uint32_t saved_ai_length = ai->regs[AI_LEN_REG];
+   uint32_t saved_ai_dram = ai->regs[AI_DRAM_ADDR_REG];
 
-   (void)user_data;
+   /* notify plugin of new samples to play.
+    * Exploit the fact that buffer points in ai->ri->rdram.dram to retrieve dram_addr_reg value */
+   ai->regs[AI_DRAM_ADDR_REG] = (uint8_t*)buffer - (uint8_t*)g_dev.ri.rdram.dram;
+   ai->regs[AI_LEN_REG] = size;
 
-   if (buffer == NULL || size < 4)
-      return;
+   aiLenChanged(user_data, buffer, size);
 
-   src    = (const uint8_t*)buffer;
-   frames = size >> 2;                   /* 4 bytes per stereo frame */
-
-   if (audio_acc_frames + frames > AUDIO_ACC_FRAMES)
-      flush_audio_libretro();
-
-   off = 0;
-   while (off < frames)
-   {
-      size_t   chunk = frames - off;
-      size_t   i;
-      int16_t *dst;
-
-      if (chunk > AUDIO_ACC_FRAMES - audio_acc_frames)
-         chunk = AUDIO_ACC_FRAMES - audio_acc_frames;
-
-      dst = audio_acc + audio_acc_frames * 2;
-
-      for (i = 0; i < chunk; ++i)
-      {
-         const uint8_t *p = src + (off + i) * 4;
-#ifdef MSB_FIRST
-         dst[i*2 + 0] = (int16_t)((p[0] << 8) | p[1]);   /* L */
-         dst[i*2 + 1] = (int16_t)((p[2] << 8) | p[3]);   /* R */
-#else
-         dst[i*2 + 0] = (int16_t)((p[3] << 8) | p[2]);   /* L */
-         dst[i*2 + 1] = (int16_t)((p[1] << 8) | p[0]);   /* R */
-#endif
-      }
-
-      audio_acc_frames += chunk;
-      off              += chunk;
-
-      if (audio_acc_frames == AUDIO_ACC_FRAMES && off < frames)
-         flush_audio_libretro();
-   }
+   /* restore original registers vlaues */
+   ai->regs[AI_LEN_REG]       = saved_ai_length;
+   ai->regs[AI_DRAM_ADDR_REG] = saved_ai_dram;
 }

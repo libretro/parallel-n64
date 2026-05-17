@@ -95,6 +95,20 @@ struct retro_core_option_v2_definition option_defs_us[] = {
 #endif
     },
     {
+        CORE_NAME "-audio-buffer-size",
+        "Audio Buffer Size",
+        NULL,
+        "Audio Buffer Size (restart)",
+        NULL,
+        NULL,
+        {
+            { "1024", NULL },
+            { "2048", NULL },
+            { NULL, NULL },
+        },
+        "2048"
+    },
+    {
         CORE_NAME "-astick-deadzone",
         "Analog Deadzone",
         NULL,
