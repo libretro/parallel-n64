@@ -31,6 +31,9 @@ extern uint32_t g_cp0_regs[CP0_REGS_COUNT];
 #define g_cp0_regs (RECOMPILER_MEMORY->rml_g_cp0_regs)
 #endif
 
+/* CP0 write latch, see cp0.c for details. */
+extern uint64_t cp0_latch;
+
 int check_cop1_unusable(void);
 
 #endif /* M64P_R4300_CP0_PRIVATE_H */

@@ -42,6 +42,16 @@ uint32_t g_cp0_regs[CP0_REGS_COUNT];
 #endif
 #endif
 
+/* CP0 write latch: every MTC0 stores its source-register value here
+ * regardless of which CP0 register was targeted. Reads from CP0
+ * registers that don't physically exist (rfs == 7, 21..25, 31)
+ * return this latched value instead of zero, matching real R4300
+ * hardware. Defined as a plain global rather than going through the
+ * arm64 memory_layout_arm64 struct since the dynarec backends invoke
+ * MFC0/MTC0 via cached_interpreter_table function pointers and never
+ * access the latch directly from JIT code. */
+uint64_t cp0_latch;
+
 void init_cp0(unsigned int _count_per_op)
 {
 #if 0

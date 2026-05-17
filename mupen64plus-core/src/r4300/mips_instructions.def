@@ -627,6 +627,19 @@ DECLARE_INSTRUCTION(MFC0)
       case CP0_COUNT_REG:
          cp0_update_count();
          break;
+      /* CP0 registers 7 and 21..25 and 31 don't physically exist on
+       * R4300. Reads return the value last written via any MTC0
+       * (the CP0 write latch). */
+      case 7:
+      case 21:
+      case 22:
+      case 23:
+      case 24:
+      case 25:
+      case 31:
+         rrt = (int64_t)cp0_latch;
+         ADD_TO_PC(1);
+         return;
    }
 
    rrt = SE32(g_cp0_regs[rfs]);
@@ -635,6 +648,11 @@ DECLARE_INSTRUCTION(MFC0)
 
 DECLARE_INSTRUCTION(MTC0)
 {
+  /* Every MTC0 latches the source value regardless of which CP0
+   * register was targeted. Reads of the non-existent CP0 registers
+   * (7, 21..25, 31) return this latched value in MFC0. */
+  cp0_latch = (uint32_t)rrt32;
+
   switch(rfs)
   {
     case CP0_INDEX_REG:
@@ -742,6 +760,19 @@ DECLARE_INSTRUCTION(MTC0)
       break;
     case CP0_ERROREPC_REG:
       g_cp0_regs[CP0_ERROREPC_REG] = rrt32;
+      break;
+    /* CP0 registers 7 and 21..25 and 31 don't physically exist on
+     * R4300. Writes are absorbed by the CP0 write latch (set above
+     * the switch) and otherwise do nothing here. Without an
+     * explicit case the default below would halt the core on any
+     * MTC0 to one of these slots. */
+    case 7:
+    case 21:
+    case 22:
+    case 23:
+    case 24:
+    case 25:
+    case 31:
       break;
     default:
       DebugMessage(M64MSG_ERROR, "Unknown MTC0 write: %d", rfs);
