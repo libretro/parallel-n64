@@ -1100,6 +1100,8 @@ static void emit_storereg(int r, int hr)
   if((r&63)==LOREG) addr=(int)&lo+((r&64)>>4);
   if(r==CCREG) addr=(int)&cycle_count;
   if(r==FSREG) addr=(int)&FCR31;
+  assert((r&63)!=CSREG);
+  assert((r&63)!=0);
   assert((r&63)<=CCREG);
   assem_debug("mov %%%s,%x+%d",regname[hr],addr,r);
   output_byte(0x89);
