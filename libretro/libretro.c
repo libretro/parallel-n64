@@ -129,6 +129,7 @@ static unsigned retro_filtering     = 0;
 static unsigned retro_dithering     = 0;
 static bool     reinit_screen       = false;
 static bool     first_context_reset = false;
+static bool     context_setup_first_init = false;
 static bool     pushed_frame        = false;
 
 bool frame_dupe                     = false;
@@ -959,14 +960,13 @@ static void context_reset(void)
       default:
 #if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
          {
-            static bool first_init = true;
             printf("context_reset.\n");
             glsm_ctl(GLSM_CTL_STATE_CONTEXT_RESET, NULL);
 
-            if (first_init)
+            if (!context_setup_first_init)
             {
                glsm_ctl(GLSM_CTL_STATE_SETUP, NULL);
-               first_init = false;
+               context_setup_first_init = true;
             }
          }
 #ifdef HAVE_GLIDEN64
@@ -2294,6 +2294,7 @@ void retro_unload_game(void)
 
     CoreDoCommand(M64CMD_ROM_CLOSE, 0, NULL);
     emu_initialized = false;
+    context_setup_first_init = false;
 }
 
 #if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
