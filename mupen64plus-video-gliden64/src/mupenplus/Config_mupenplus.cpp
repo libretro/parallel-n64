@@ -29,6 +29,7 @@ extern "C" uint32_t EnableInaccurateTextureCoordinates;
 extern "C" uint32_t enableNativeResTexrects;
 extern "C" uint32_t enableLegacyBlending;
 extern "C" uint32_t EnableCopyColorToRDRAM;
+extern "C" uint32_t EnableCopyColorFromRDRAM;
 extern "C" uint32_t EnableCopyDepthToRDRAM;
 extern "C" uint32_t AspectRatio;
 extern "C" uint32_t txFilterMode;
@@ -184,6 +185,7 @@ extern "C" void Config_LoadConfig()
 	
 	config.frameBufferEmulation.copyDepthToRDRAM = EnableCopyDepthToRDRAM;
 	config.frameBufferEmulation.copyToRDRAM = EnableCopyColorToRDRAM;
+	config.frameBufferEmulation.copyFromRDRAM = EnableCopyColorFromRDRAM;
 
 	// TODO: Make this a Core options or maybe only default to bsOnVerticalInterrupt on Android with Thr Renderer
 	config.frameBufferEmulation.bufferSwapMode = Config::bsOnVerticalInterrupt;

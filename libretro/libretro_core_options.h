@@ -1137,6 +1137,20 @@ struct retro_core_option_v2_definition option_defs_us[] = {
 #endif // HAVE_OPENGLES2
     },
     {
+        CORE_NAME "-gliden64-EnableCopyColorFromRDRAM",
+        "Color buffer from RDRAM",
+        NULL,
+        "(GLideN64) Enable color buffer copy from RDRAM. Required for the few titles that draw to the colour buffer with the CPU and expect the GPU to re-upload it (Donkey Kong 64 anti-aliased shadows, some Indiana Jones effects). Default off for the performance cost.",
+        "Enable color buffer copy from RDRAM. Required for the few titles that draw to the colour buffer with the CPU and expect the GPU to re-upload it. Default off for the performance cost.",
+        "gliden64",
+        {
+            {"False", NULL},
+            {"True", NULL},
+            { NULL, NULL },
+        },
+        "False"
+    },
+    {
         CORE_NAME "-gliden64-EnableCopyDepthToRDRAM",
         "Depth buffer to RDRAM",
         NULL,
