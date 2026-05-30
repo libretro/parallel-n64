@@ -189,11 +189,17 @@ ifneq (,$(findstring unix,$(platform)))
    ifneq (,$(findstring webos,$(platform)))
       GLES = 1
       GL_LIB := -lGLESv2
-      CPUFLAGS += -DNO_ASM -DARM -D__arm__ -DARM_ASM -D__NEON_OPT -DNOSSE -DARM_FIX
-      CPUFLAGS += -marm -mfloat-abi=softfp
-      HAVE_NEON = 1
-      WITH_DYNAREC=arm
-      CPUFLAGS += -mcpu=cortex-a9 -mfpu=neon
+      ifneq (,$(findstring aarch64,$(CROSS_COMPILE)))
+         CPUFLAGS += -DARM -DDONT_WANT_ARM_OPTIMIZATIONS -DARM64
+         WITH_DYNAREC=aarch64
+         HAVE_NEON = 0
+      else
+         CPUFLAGS += -DARM -D__arm__ -D__NEON_OPT -DNOSSE
+         CPUFLAGS += -marm -mfloat-abi=softfp
+         CPUFLAGS += -mcpu=cortex-a9 -mfpu=neon
+         WITH_DYNAREC=arm
+         HAVE_NEON = 1
+      endif
       LDFLAGS += -static-libgcc -static-libstdc++
    endif
 
