@@ -56,6 +56,42 @@ void GLInfo::init() {
 		renderer = Renderer::Tegra;
 	LOG(LOG_VERBOSE, "OpenGL renderer: %s\n", strRenderer);
 
+	/* ANGLE (Microsoft's GLES translator over D3D11 / D3D12 / Vulkan /
+	 * Metal) reports its underlying device through GL_RENDERER and is
+	 * therefore caught by one of the entries above on most platforms.
+	 * The fact that the underlying device is talking through ANGLE
+	 * shows up in GL_VERSION instead, where the driver-version string
+	 * contains the substring "ANGLE". On Windows/Edge, Apple/Metal,
+	 * and Android-with-ANGLE this needs to win over the underlying
+	 * device classification because the ANGLE translation layer has
+	 * its own quirks - notably the fragment-depth-write paths below.
+	 * Apply the override after the chain. */
+	if (strstr((const char*)strDriverVersion, "ANGLE") != nullptr)
+		renderer = Renderer::Angle;
+
+	/* Renderer-specific config overrides:
+	 *
+	 *   PowerVR (Apple A4-A10, some embedded ARM SoCs): the GLES driver
+	 *   has a long-standing bug where gl_FragDepth writes are silently
+	 *   dropped and forceDepthBufferClear=1 is required to keep the
+	 *   depth attachment in a sane state across frames.
+	 *
+	 *   Angle on Android: the D3D / Vulkan translation path does not
+	 *   forward fragment depth writes through the GLES emulation layer.
+	 *   Disable the gliden64 fragment-depth-write path on the
+	 *   combination; the desktop ANGLE flavours handle it fine.
+	 */
+	if (renderer == Renderer::PowerVR) {
+		config.frameBufferEmulation.forceDepthBufferClear = 1;
+		config.generalEmulation.enableFragmentDepthWrite = 0;
+	}
+
+#ifdef OS_ANDROID
+	if (renderer == Renderer::Angle) {
+		config.generalEmulation.enableFragmentDepthWrite = 0;
+	}
+#endif
+
 	int numericVersion = majorVersion * 10 + minorVersion;
 	if (isGLES2) {
 		imageTextures = false;
