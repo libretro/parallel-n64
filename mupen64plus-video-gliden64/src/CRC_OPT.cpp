@@ -48,14 +48,14 @@ u32 CRC_Calculate_Strict( u32 crc, const void * buffer, u32 count )
 
 u64 CRC_Calculate( u64 crc, const void * buffer, u32 count )
 {
-	return XXH64(buffer, count, crc);
+	return XXH3_64bits_withSeed(buffer, count, crc);
 }
 
 u64 CRC_CalculatePalette(u64 crc, const void * buffer, u32 count )
 {
 	u8 *p = (u8*) buffer;
 	while (count--) {
-		crc = XXH64(p, 2, crc);
+		crc = XXH3_64bits_withSeed(p, 2, crc);
 		p += 8;
 	}
 	return crc;
