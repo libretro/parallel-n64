@@ -39,6 +39,7 @@ namespace graphics {
 	namespace textureTarget {
 		extern TextureTargetParam TEXTURE_2D;
 		extern TextureTargetParam TEXTURE_2D_MULTISAMPLE;
+		extern TextureTargetParam TEXTURE_EXTERNAL;
 		extern TextureTargetParam RENDERBUFFER;
 	}
 
@@ -116,6 +117,10 @@ namespace graphics {
 		extern BlendParam ONE_MINUS_SRC_ALPHA;
 		extern BlendParam CONSTANT_ALPHA;
 		extern BlendParam ONE_MINUS_CONSTANT_ALPHA;
+		extern BlendParam SRC1_COLOR;
+		extern BlendParam ONE_MINUS_SRC1_COLOR;
+		extern BlendParam SRC1_ALPHA;
+		extern BlendParam ONE_MINUS_SRC1_ALPHA;
 	}
 
 	namespace drawmode {

@@ -89,6 +89,7 @@ namespace graphics {
 		struct InitTextureParams {
 			ObjectHandle handle;
 			TextureUnitParam textureUnitIndex{0};
+			TextureTargetParam target = textureTarget::TEXTURE_2D;
 			u32 msaaLevel = 0;
 			u32 width = 0;
 			u32 height = 0;
