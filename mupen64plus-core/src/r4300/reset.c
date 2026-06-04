@@ -55,7 +55,7 @@ void reset_hard(void)
       free_blocks();
       init_blocks();
 #ifdef NEW_DYNAREC
-      if (r4300emu == CORE_DYNAREC)
+      if (r4300emu == CORE_DYNAREC_ARI64)
       {
          /* Drop the new_dynarec JIT cache (base_addr) and the
           * memory_map[] TLB mapping table on hard reset, then

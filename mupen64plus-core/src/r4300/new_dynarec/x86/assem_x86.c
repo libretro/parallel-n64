@@ -26,7 +26,7 @@ int pcaddr;
 int pending_exception;
 int branch_target;
 uint64_t readmem_dword;
-static precomp_instr fake_pc;
+static struct precomp_instr fake_pc;
 u_int memory_map[1048576];
 ALIGN(8, static u_int mini_ht[32][2]);
 ALIGN(4, u_char restore_candidate[512]);

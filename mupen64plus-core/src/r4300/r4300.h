@@ -62,6 +62,7 @@ void r4300_step(void);
 // r4300 emulators
 #define CORE_PURE_INTERPRETER 0
 #define CORE_INTERPRETER      1
-#define CORE_DYNAREC          2
+#define CORE_DYNAREC          2 /* Hacktarux dynarec */
+#define CORE_DYNAREC_ARI64    3 /* Ari64 new_dynarec */
 
 #endif /* M64P_R4300_R4300_H */

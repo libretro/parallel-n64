@@ -89,7 +89,7 @@ unsigned int* r4300_llbit(void)
 uint32_t* r4300_pc(void)
 {
 #ifdef NEW_DYNAREC
-   if (r4300emu == CORE_DYNAREC)
+   if (r4300emu == CORE_DYNAREC_ARI64)
       return (uint32_t*)&pcaddr;
 #endif
    return &mupencorePC->addr;
@@ -116,7 +116,7 @@ void invalidate_r4300_cached_code(uint32_t address, size_t size)
       return;
 
 #ifdef NEW_DYNAREC
-   if (r4300emu == CORE_DYNAREC)
+   if (r4300emu == CORE_DYNAREC_ARI64)
       invalidate_cached_code_new_dynarec(address, size);
    else
 #endif
@@ -127,7 +127,7 @@ void invalidate_r4300_cached_code(uint32_t address, size_t size)
 void savestates_load_set_pc(uint32_t pc)
 {
 #ifdef NEW_DYNAREC
-    if (r4300emu == CORE_DYNAREC)
+    if (r4300emu == CORE_DYNAREC_ARI64)
     {
         pcaddr = pc;
         pending_exception = 1;

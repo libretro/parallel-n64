@@ -71,7 +71,7 @@ void generic_jump_to(uint32_t address)
       mupencorePC->addr = address;
    else {
 #if NEW_DYNAREC
-      if (r4300emu == CORE_DYNAREC)
+      if (r4300emu == CORE_DYNAREC_ARI64)
          last_addr = pcaddr;
       else
          jump_to(address);
@@ -109,13 +109,31 @@ void r4300_init(void)
 #if defined(DYNAREC)
     else if (r4300emu >= 2)
     {
-        DebugMessage(M64MSG_INFO, "Starting R4300 emulator: Dynamic Recompiler");
-        r4300emu = CORE_DYNAREC;
+#if NEW_DYNAREC && defined(HAVE_DYNAREC_HACKTARUX)
+        /* Both dynarecs are built in: emumode 3 selects Ari64,
+         * anything else (2, legacy values) selects Hacktarux. */
+        if (r4300emu == CORE_DYNAREC_ARI64)
+        {
+            DebugMessage(M64MSG_INFO, "Starting R4300 emulator: Dynamic Recompiler (Ari64)");
+            init_blocks();
+            new_dynarec_init();
+        }
+        else
+        {
+            DebugMessage(M64MSG_INFO, "Starting R4300 emulator: Dynamic Recompiler (Hacktarux)");
+            r4300emu = CORE_DYNAREC;
+            init_blocks();
+            dyna_start(dynarec_setup_code);
+        }
+#elif NEW_DYNAREC
+        DebugMessage(M64MSG_INFO, "Starting R4300 emulator: Dynamic Recompiler (Ari64)");
+        r4300emu = CORE_DYNAREC_ARI64;
         init_blocks();
-
-#if NEW_DYNAREC
         new_dynarec_init();
 #else
+        DebugMessage(M64MSG_INFO, "Starting R4300 emulator: Dynamic Recompiler (Hacktarux)");
+        r4300emu = CORE_DYNAREC;
+        init_blocks();
         dyna_start(dynarec_setup_code);
 #endif
     }
@@ -144,7 +162,20 @@ void r4300_execute(void)
 #if defined(DYNAREC)
     else if (r4300emu >= 2)
     {
-#if NEW_DYNAREC
+#if NEW_DYNAREC && defined(HAVE_DYNAREC_HACKTARUX)
+        if (r4300emu == CORE_DYNAREC_ARI64)
+        {
+            new_dyna_start();
+            if (mupencorestop)
+                new_dynarec_cleanup();
+        }
+        else
+        {
+            dyna_start(dynarec_setup_code);
+            if (mupencorestop)
+                mupencorePC++;
+        }
+#elif NEW_DYNAREC
         new_dyna_start();
         if (mupencorestop)
             new_dynarec_cleanup();

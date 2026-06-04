@@ -7889,8 +7889,8 @@ static void end_tcache_write(void *start, void *end)
 static void *start_block(void)
 {
   u_char *end = out + MAX_OUTPUT_BLOCK_SIZE;
-  if (end > (u_char *)BASE_ADDR + (1<<TARGET_SIZE_2))
-    end = (u_char *)BASE_ADDR + (1<<TARGET_SIZE_2);
+  if (end > (u_char *)base_addr + (1<<TARGET_SIZE_2))
+    end = (u_char *)base_addr + (1<<TARGET_SIZE_2);
   start_tcache_write(out, end);
   return out;
 }

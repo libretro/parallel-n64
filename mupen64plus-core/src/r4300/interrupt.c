@@ -388,7 +388,7 @@ void check_interrupt(void)
 static void wrapped_exception_general(void)
 {
 #ifdef NEW_DYNAREC
-   if (r4300emu == CORE_DYNAREC)
+   if (r4300emu == CORE_DYNAREC_ARI64)
    {
       g_cp0_regs[CP0_EPC_REG] = (pcaddr&~3)-(pcaddr&1)*4;
       pcaddr = 0x80000180;
@@ -492,7 +492,7 @@ static void nmi_int_handler(void)
    generic_jump_to(UINT32_C(0xa4000040));
 
 #ifdef NEW_DYNAREC
-   if (r4300emu == CORE_DYNAREC)
+   if (r4300emu == CORE_DYNAREC_ARI64)
    {
       g_cp0_regs[CP0_ERROREPC_REG]=(pcaddr&~3)-(pcaddr&1)*4;
       pcaddr = 0xa4000040;

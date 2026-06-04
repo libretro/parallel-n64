@@ -99,7 +99,7 @@ int check_cop1_unusable(void)
 void cp0_update_count(void)
 {
 #ifdef NEW_DYNAREC
-   if (r4300emu != CORE_DYNAREC)
+   if (r4300emu != CORE_DYNAREC_ARI64)
    {
 #endif
       g_cp0_regs[CP0_COUNT_REG] += ((mupencorePC->addr - last_addr) >> 2) * count_per_op;
