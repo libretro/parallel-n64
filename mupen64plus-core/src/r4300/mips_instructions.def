@@ -1587,7 +1587,14 @@ DECLARE_INSTRUCTION(MULTU)
 
 DECLARE_INSTRUCTION(DIV)
 {
-   if (rrt32)
+   if (rrt32 == -1)
+   {
+     /* INT32_MIN / -1 overflows the host division (SIGFPE on x86);
+      * the R4300 wraps: quotient = -dividend, remainder = 0 */
+     lo = SE32((int32_t)(0 - (uint32_t)rrs32));
+     hi = 0;
+   }
+   else if (rrt32)
    {
      lo = SE32(rrs32 / rrt32);
      hi = SE32(rrs32 % rrt32);
@@ -1682,7 +1689,14 @@ DECLARE_INSTRUCTION(DMULTU)
 
 DECLARE_INSTRUCTION(DDIV)
 {
-   if (rrt)
+   if (rrt == -1)
+   {
+     /* INT64_MIN / -1 overflows the host division (SIGFPE on x86);
+      * the R4300 wraps: quotient = -dividend, remainder = 0 */
+     lo = (int64_t)(0 - (uint64_t)rrs);
+     hi = 0;
+   }
+   else if (rrt)
    {
      lo = rrs / rrt;
      hi = rrs % rrt;
