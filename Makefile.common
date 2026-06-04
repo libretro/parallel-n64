@@ -382,7 +382,10 @@ ifeq ($(HAVE_GLIDEN64),1)
 CFLAGS   += -DHAVE_GLIDEN64 -DMUPENPLUSAPI
 CXXFLAGS += -DHAVE_GLIDEN64 -DMUPENPLUSAPI
 
-SOURCES_C += $(VIDEODIR_GLIDEN64)/src/xxHash/xxhash.c
+# xxhash 0.8 is a single-header library; the implementation is inlined
+# into CRC_OPT.cpp via #define XXH_INLINE_ALL. No separate xxhash.c
+# translation unit is required - the 0.6.5 xxhash.c was deleted on the
+# library bump and is no longer present in the tree.
 
 SOURCES_CXX   += \
 	$(VIDEODIR_GLIDEN64)/src/Combiner.cpp                                                         \

@@ -1,4 +1,5 @@
 #include "CRC.h"
+#define XXH_INLINE_ALL
 #include "xxHash/xxhash.h"
 
 #define CRC32_POLYNOMIAL     0x04C11DB7
