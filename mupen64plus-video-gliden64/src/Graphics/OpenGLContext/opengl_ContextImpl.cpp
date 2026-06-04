@@ -16,6 +16,16 @@
 #include "GLSL/glsl_SpecialShadersFactory.h"
 #include "GLSL/glsl_ShaderStorage.h"
 
+/* GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT is part of GL_EXT_texture_filter_
+ * anisotropic. The per-texture parameter constant
+ * GL_TEXTURE_MAX_ANISOTROPY_EXT (0x84FE) gets a similar fallback
+ * #define in opengl_TextureManipulationObjectFactory.cpp; we need
+ * the maximum-supported-anisotropy query constant (0x84FF) here.
+ */
+#ifndef GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT
+#define GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT 0x84FF
+#endif
+
 #ifdef OS_ANDROID
 #include <Graphics/OpenGLContext/GraphicBuffer/GraphicBufferWrapper.h>
 #endif
@@ -160,6 +170,11 @@ void ContextImpl::setBlending(graphics::BlendParam _sfactor, graphics::BlendPara
 	m_cachedFunctions->getCachedBlending()->setBlending(_sfactor, _dfactor);
 }
 
+void ContextImpl::setBlendingSeparate(graphics::BlendParam _sfactorcolor, graphics::BlendParam _dfactorcolor, graphics::BlendParam _sfactoralpha, graphics::BlendParam _dfactoralpha)
+{
+	m_cachedFunctions->getCachedBlendingSeparate()->setBlendingSeparate(_sfactorcolor, _dfactorcolor, _sfactoralpha, _dfactoralpha);
+}
+
 void ContextImpl::setBlendColor(f32 _red, f32 _green, f32 _blue, f32 _alpha)
 {
 	m_cachedFunctions->getCachedBlendColor()->setBlendColor(_red, _green, _blue, _alpha);
@@ -255,6 +270,14 @@ s32 ContextImpl::getMaxTextureSize() const
 	GLint maxTextureSize;
 	glGetIntegerv(GL_MAX_TEXTURE_SIZE, &maxTextureSize);
 	return maxTextureSize;
+}
+
+f32 ContextImpl::getMaxAnisotropy() const
+{
+	GLfloat maxAniso = 0.0f;
+	if (m_glInfo.anisotropic_filtering)
+		glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT, &maxAniso);
+	return maxAniso;
 }
 
 void ContextImpl::bindImageTexture(const graphics::Context::BindImageTextureParameters & _params)
@@ -468,6 +491,14 @@ f32 ContextImpl::getMaxLineWidth()
 	return lineWidthRange[1];
 }
 
+s32 ContextImpl::getMaxMSAALevel()
+{
+	GLint maxSamples = 0;
+	if (m_glInfo.msaa)
+		glGetIntegerv(GL_MAX_SAMPLES, &maxSamples);
+	return maxSamples;
+}
+
 bool ContextImpl::isSupported(graphics::SpecialFeatures _feature) const
 {
 	switch (_feature) {
@@ -491,6 +522,12 @@ bool ContextImpl::isSupported(graphics::SpecialFeatures _feature) const
 		return m_glInfo.ext_fetch;
 	case graphics::SpecialFeatures::TextureBarrier:
 		return m_glInfo.texture_barrier || m_glInfo.texture_barrierNV;
+	case graphics::SpecialFeatures::EglImage:
+		return m_glInfo.eglImage;
+	case graphics::SpecialFeatures::EglImageFramebuffer:
+		return m_glInfo.eglImageFramebuffer;
+	case graphics::SpecialFeatures::DualSourceBlending:
+		return m_glInfo.dual_source_blending;
 	}
 	return false;
 }

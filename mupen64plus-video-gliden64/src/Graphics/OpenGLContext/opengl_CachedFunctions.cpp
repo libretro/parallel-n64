@@ -169,6 +169,14 @@ void CachedBlending::setBlending(Parameter _sfactor, Parameter _dfactor)
 		glBlendFunc(GLenum(_sfactor), GLenum(_dfactor));
 }
 
+/*---------------CachedBlendingSeparate-------------*/
+
+void CachedBlendingSeparate::setBlendingSeparate(Parameter _sfactorcolor, Parameter _dfactorcolor, Parameter _sfactoralpha, Parameter _dfactoralpha)
+{
+	if (update(_sfactorcolor, _dfactorcolor, _sfactoralpha, _dfactoralpha))
+		glBlendFuncSeparate(GLenum(_sfactorcolor), GLenum(_dfactorcolor), GLenum(_sfactoralpha), GLenum(_dfactoralpha));
+}
+
 /*---------------CachedBlendColor-------------*/
 
 void CachedBlendColor::setBlendColor(f32 _red, f32 _green, f32 _blue, f32 _alpha)
@@ -322,6 +330,11 @@ CachedBlending * CachedFunctions::getCachedBlending()
 CachedBlendColor * CachedFunctions::getCachedBlendColor()
 {
 	return &m_blendColor;
+}
+
+CachedBlendingSeparate * CachedFunctions::getCachedBlendingSeparate()
+{
+	return &m_blendingSeparate;
 }
 
 CachedClearColor * CachedFunctions::getCachedClearColor()
