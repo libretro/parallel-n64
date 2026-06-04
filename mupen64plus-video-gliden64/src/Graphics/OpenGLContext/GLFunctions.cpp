@@ -22,6 +22,7 @@ extern "C" void* glsm_get_proc_address(const char*);
 //GL Fucntions
 
 PFNGLBLENDFUNCPROC g_glBlendFunc;
+PFNGLBLENDFUNCSEPARATEPROC g_glBlendFuncSeparate;
 PFNGLPIXELSTOREIPROC g_glPixelStorei;
 PFNGLCLEARCOLORPROC g_glClearColor;
 PFNGLCULLFACEPROC g_glCullFace;
@@ -166,6 +167,7 @@ void initGLFunctions()
        void *gles2so = dlopen("/opt/vero3/lib/libGLESv2.so", RTLD_NOW);
 #endif
 	ASSIGN_PROC_ADR(PFNGLBLENDFUNCPROC, glBlendFunc);
+	ASSIGN_PROC_ADR(PFNGLBLENDFUNCSEPARATEPROC, glBlendFuncSeparate);
 	ASSIGN_PROC_ADR(PFNGLPIXELSTOREIPROC, glPixelStorei);
 	ASSIGN_PROC_ADR(PFNGLCLEARCOLORPROC, glClearColor);
 	ASSIGN_PROC_ADR(PFNGLCULLFACEPROC, glCullFace);

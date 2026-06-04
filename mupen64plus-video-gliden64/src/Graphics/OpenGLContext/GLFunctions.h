@@ -94,6 +94,8 @@ typedef void (APIENTRYP PFNGLBLENDCOLORPROC) (GLfloat red, GLfloat green, GLfloa
 #define glGetError g_glGetError
 #undef glBlendFunc
 #define glBlendFunc(...) CHECKED_GL_FUNCTION(g_glBlendFunc, __VA_ARGS__)
+#undef glBlendFuncSeparate
+#define glBlendFuncSeparate(...) CHECKED_GL_FUNCTION(g_glBlendFuncSeparate, __VA_ARGS__)
 #undef glPixelStorei
 #define glPixelStorei(...) CHECKED_GL_FUNCTION(g_glPixelStorei, __VA_ARGS__)
 #undef glClearColor
@@ -157,6 +159,7 @@ typedef void (APIENTRYP PFNGLBLENDCOLORPROC) (GLfloat red, GLfloat green, GLfloa
 #endif
 
 extern PFNGLBLENDFUNCPROC g_glBlendFunc;
+extern PFNGLBLENDFUNCSEPARATEPROC g_glBlendFuncSeparate;
 extern PFNGLPIXELSTOREIPROC g_glPixelStorei;
 extern PFNGLCLEARCOLORPROC g_glClearColor;
 extern PFNGLCULLFACEPROC g_glCullFace;
