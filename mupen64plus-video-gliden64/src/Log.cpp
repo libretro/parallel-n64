@@ -1,6 +1,7 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <cwchar>
 #include "Log.h"
 #include "PluginAPI.h"
@@ -28,8 +29,20 @@ void LOG(u16 type, const char * format, ...) {
 	va_list va;
 	va_start(va, format);
 	vfprintf(dumpFile, format, va);
-	fclose(dumpFile);
 	va_end(va);
+	/* Most callers terminate their format string with '\n', but a
+	 * persistent ~39/92 do not, which under the default LOG_LEVEL
+	 * (LOG_WARNING) makes the log file run consecutive entries
+	 * together on the same line. Appending a newline only when the
+	 * format string did not already end in one keeps the well-
+	 * formed callers unchanged and reflows the malformed ones into
+	 * their own log lines. */
+	{
+		size_t fmt_len = strlen(format);
+		if (fmt_len == 0 || format[fmt_len - 1] != '\n')
+			fputc('\n', dumpFile);
+	}
+	fclose(dumpFile);
 }
 
 #if defined(OS_WINDOWS) && !defined(MINGW)
