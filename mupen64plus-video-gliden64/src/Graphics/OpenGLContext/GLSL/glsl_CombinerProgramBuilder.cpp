@@ -452,6 +452,10 @@ public:
 				"#else							\n"
 				"# define IN varying			\n"
 				"# define OUT					\n"
+				"#ifndef GL_FRAGMENT_PRECISION_HIGH \n"
+				"precision mediump float;		\n"
+				"# define highp mediump			\n"
+				"#endif							\n"
 				"#endif // __VERSION __			\n"
 			;
 		} else if (_glinfo.isGLESX) {
