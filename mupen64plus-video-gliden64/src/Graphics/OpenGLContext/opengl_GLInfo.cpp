@@ -190,6 +190,21 @@ void GLInfo::init() {
 	ext_fetch = Utils::isExtensionSupported(*this, "GL_EXT_shader_framebuffer_fetch") && !isGLES2 && (!isGLESX || ext_draw_buffers_indexed) && !imageTextures;
 	eglImage = (Utils::isEGLExtensionSupported("EGL_KHR_image_base") || Utils::isEGLExtensionSupported("EGL_KHR_image"));
 
+	/* Mesa freedreno running on the desktop OpenGL profile (not GLES)
+	 * advertises GL_EXT_shader_framebuffer_fetch but the implementation
+	 * miscompiles fragment shaders that read from gl_LastFragData,
+	 * which produces rendering issues whenever the N64 depth compare
+	 * path is engaged. The GLES-profile freedreno path is fine -
+	 * exposure to the bug only happens through the desktop GL entry
+	 * point. Force the framebuffer-fetch path off for that specific
+	 * combination so the renderer falls back to imageTextures (or to
+	 * disabling N64DepthCompare entirely on devices without either).
+	 * isFreedreno is declared at the top of this function and stays
+	 * in scope here.
+	 */
+	if (isFreedreno && !isGLESX)
+		ext_fetch = false;
+
 #ifdef OS_ANDROID
 	eglImage = eglImage &&
 	        ( (isGLES2 && GraphicBufferWrapper::isSupportAvailable()) || (isGLESX && GraphicBufferWrapper::isPublicSupportAvailable()) ) &&
