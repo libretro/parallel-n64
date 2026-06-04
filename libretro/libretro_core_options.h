@@ -80,7 +80,14 @@ struct retro_core_option_v2_definition option_defs_us[] = {
             {"cached_interpreter", "Cached Interpreter"},
             {"pure_interpreter", "Pure Interpreter"},
 #ifdef DYNAREC
+#if defined(HAVE_DYNAREC_HACKTARUX) && defined(NEW_DYNAREC)
+            {"dynamic_recompiler", "Dynamic Recompiler (Hacktarux)"},
+            {"dynamic_recompiler_ari64", "Dynamic Recompiler (Ari64)"},
+#elif defined(NEW_DYNAREC)
+            {"dynamic_recompiler", "Dynamic Recompiler (Ari64)"},
+#else
             {"dynamic_recompiler", "Dynamic Recompiler"},
+#endif
 #endif
             { NULL, NULL },
         },

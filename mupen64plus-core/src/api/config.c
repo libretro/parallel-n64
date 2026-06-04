@@ -1015,7 +1015,7 @@ EXPORT int CALL ConfigGetParamInt(m64p_handle ConfigSectionHandle, const char *P
       const value_pair Values[32];
    }   libretro_translate[] =
    {
-      { "R4300Emulator", "parallel-n64-cpucore", { { 0, "pure_interpreter" }, { 1, "cached_interpreter" }, { 2, "dynamic_recompiler" }, { 3, "neb_dynamic_recompiler" }, { 0, 0 } } },
+      { "R4300Emulator", "parallel-n64-cpucore", { { 0, "pure_interpreter" }, { 1, "cached_interpreter" }, { 2, "dynamic_recompiler" }, { 3, "dynamic_recompiler_ari64" }, { 3, "neb_dynamic_recompiler" }, { 0, 0 } } },
       { "ScreenWidth", "parallel-n64-screensize", { 
                                                 { 320, "320x200" },
                                                 { 320, "320x240" },

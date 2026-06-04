@@ -850,6 +850,39 @@ ifeq ($(HAVE_OPENGL),0)
 	HAVE_RICE=0
 endif
 
+# Ari64 new_dynarec on x86/x86_64: assembled with nasm. Enabled on the
+# desktop targets where the static code cache and linkage are wired up.
+NASM ?= nasm
+ifeq (,$(findstring msvc,$(platform)))
+ifeq ($(WITH_DYNAREC), $(filter $(WITH_DYNAREC), x86_64 x64))
+   ifneq (,$(findstring unix,$(platform)))
+      HAVE_ARI64_X64 = 1
+      NASMFLAGS = -f elf64
+   else ifneq (,$(findstring osx,$(platform)))
+      HAVE_ARI64_X64 = 1
+      NASMFLAGS = -f macho64 -DLEADING_UNDERSCORE
+   else ifneq (,$(findstring win,$(platform)))
+      HAVE_ARI64_X64 = 1
+      NASMFLAGS = -f win64 -DWIN64
+   endif
+endif
+ifeq ($(WITH_DYNAREC), x86)
+   ifneq (,$(findstring unix,$(platform)))
+      HAVE_ARI64_X86 = 1
+      NASMFLAGS = -f elf32 -DELF_TYPE
+   else ifneq (,$(findstring win,$(platform)))
+      HAVE_ARI64_X86 = 1
+      NASMFLAGS = -f win32
+   endif
+   ifeq ($(HAVE_ARI64_X86), 1)
+      # The generated code and linkage only keep 4-byte stack alignment
+      # (the pre-SSE i386 ABI); have gcc realign in functions that spill
+      # SSE registers instead of assuming 16-byte incoming alignment.
+      CPUFLAGS += -mincoming-stack-boundary=2
+   endif
+endif
+endif
+
 include Makefile.common
 
 ifeq ($(HAVE_NEON), 1)
@@ -1010,6 +1043,7 @@ ASFLAGS     := $(ASFLAGS) $(CFLAGS) $(CPUFLAGS)
 
 ### Finalize ###
 OBJECTS     += $(SOURCES_CXX:.cpp=.o) $(SOURCES_C:.c=.o) $(SOURCES_ASM:.S=.o)
+OBJECTS     += $(SOURCES_NASM:.asm=.o)
 CXXFLAGS    += $(CPUOPTS) $(COREFLAGS) $(INCFLAGS) $(INCFLAGS_PLATFORM) $(fpic) $(PLATCFLAGS) $(CPUFLAGS) $(GLFLAGS) $(DYNAFLAGS)
 CFLAGS      += -fcommon $(CPUOPTS) $(COREFLAGS) $(INCFLAGS) $(INCFLAGS_PLATFORM) $(fpic) $(PLATCFLAGS) $(CPUFLAGS) $(GLFLAGS) $(DYNAFLAGS)
 
@@ -1046,6 +1080,9 @@ ifneq (,$(findstring msvc,$(platform)))
 else
 	$(CC_AS) $(ASFLAGS) -c $< $(OBJOUT)$@
 endif
+
+%.o: %.asm
+	$(NASM) $(NASMFLAGS) -o $@ $<
 
 mupen64plus-video-gliden64/src/%.o: mupen64plus-video-gliden64/src/%.c
 	$(CC) -I$(VIDEODIR_GLIDEN64)/src -I$(VIDEODIR_GLIDEN64)/src/osal $(CPPFLAGS) $(CFLAGS) -c $< $(OBJOUT)$@

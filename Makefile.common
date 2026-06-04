@@ -227,12 +227,22 @@ ifdef WITH_DYNAREC
 		DYNAFLAGS += -D_M_IX86
 		CFLAGS += -DARCH_MIN_SSE2 
 		CXXFLAGS += -DARCH_MIN_SSE2
+		ifeq ($(HAVE_ARI64_X86), 1)
+			DYNAFLAGS += -DNEW_DYNAREC=1
+			SOURCES_C += $(CORE_DIR)/src/r4300/new_dynarec/new_dynarec.c
+			SOURCES_NASM += $(CORE_DIR)/src/r4300/new_dynarec/x86/linkage_x86.asm
+		endif
 	endif
 
 	ifeq ($(WITH_DYNAREC), x86_64)
 		DYNAFLAGS += -D_M_X64
 		CFLAGS += -DARCH_MIN_SSE2
 		CXXFLAGS += -DARCH_MIN_SSE2
+		ifeq ($(HAVE_ARI64_X64), 1)
+			DYNAFLAGS += -DNEW_DYNAREC=2
+			SOURCES_C += $(CORE_DIR)/src/r4300/new_dynarec/new_dynarec_64.c
+			SOURCES_NASM += $(CORE_DIR)/src/r4300/new_dynarec/x64/linkage_x64.asm
+		endif
 
 ifneq (,$(findstring msvc,$(platform)))
 ifeq ($(WITH_DYNAREC), $(filter $(WITH_DYNAREC), x86_64 x64))

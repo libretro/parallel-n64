@@ -58,6 +58,8 @@
 
 #if NEW_DYNAREC == NEW_DYNAREC_X86
 #include "x86/assem_x86.h"
+#elif NEW_DYNAREC == NEW_DYNAREC_AMD64
+#include "x64/assem_x64.h"
 #elif NEW_DYNAREC == NEW_DYNAREC_ARM
 #include "arm/arm_cpu_features.h"
 #include "arm/assem_arm.h"
@@ -1068,6 +1070,8 @@ static uint64_t ldr_merge(uint64_t original,uint64_t loaded,u_int bits)
 
 #if NEW_DYNAREC == NEW_DYNAREC_X86
 #include "x86/assem_x86.c"
+#elif NEW_DYNAREC == NEW_DYNAREC_AMD64
+#include "x64/assem_x64.c"
 #elif NEW_DYNAREC == NEW_DYNAREC_ARM
 #include "arm/assem_arm.c"
 #elif NEW_DYNAREC == NEW_DYNAREC_ARM64
@@ -2913,10 +2917,6 @@ static void load_assemble(int i,struct regstat *i_regs)
   if(th>=0) reglist&=~(1<<th);
   if(!using_tlb) {
     if(!c) {
-      #ifdef RAM_OFFSET
-      map=get_reg(i_regs->regmap,ROREG);
-      if(map<0) emit_loadreg(ROREG,map=HOST_TEMPREG);
-      #endif
 //#define R29_HACK 1
       #ifdef R29_HACK
       // Strmnnrmn's speed hack
@@ -2945,6 +2945,14 @@ static void load_assemble(int i,struct regstat *i_regs)
     map=do_tlb_r(addr,tl,map,cache,x,-1,-1,c,constmap[i][s]+offset);
     do_tlb_r_branch(map,c,constmap[i][s]+offset,&jaddr);
   }
+  #ifdef RAM_OFFSET
+  // Constant-address loads need the ram offset too; fetch it outside
+  // the !c path (same as load_assemble_arm64) so map is never -1 here.
+  if(map<0) {
+    map=get_reg(i_regs->regmap,ROREG);
+    if(map<0) emit_loadreg(ROREG,map=HOST_TEMPREG);
+  }
+  #endif
   int dummy=(rt1[i]==0)||(tl!=get_reg(i_regs->regmap,rt1[i])); // ignore loads to r0 and unneeded reg
   if (opcode[i]==0x20) { // LB
     if(!c||memtarget) {
@@ -3542,7 +3550,11 @@ static void storelr_assemble(int i,struct regstat *i_regs)
     emit_testimm(temp,4);
     done0=(intptr_t)out;
     emit_jne(0);
+    #if NEW_DYNAREC==NEW_DYNAREC_AMD64
+    emit_andimm64(temp,~3,temp); // temp holds a 64-bit host address here
+    #else
     emit_andimm(temp,~3,temp);
+    #endif
     emit_writeword_indexed(temp2,4,temp);
     set_jump_target(done0,(intptr_t)out);
   }
@@ -3550,7 +3562,11 @@ static void storelr_assemble(int i,struct regstat *i_regs)
     emit_testimm(temp,4);
     done0=(intptr_t)out;
     emit_jeq(0);
+    #if NEW_DYNAREC==NEW_DYNAREC_AMD64
+    emit_andimm64(temp,~3,temp); // temp holds a 64-bit host address here
+    #else
     emit_andimm(temp,~3,temp);
+    #endif
     emit_writeword_indexed(temp2,-4,temp);
     set_jump_target(done0,(intptr_t)out);
   }
@@ -3645,19 +3661,24 @@ static void c1ls_assemble(int i,struct regstat *i_regs)
     cop1_usable=1;
   }
   if (opcode[i]==0x39) { // SWC1 (get float address)
+    #if NEW_DYNAREC==NEW_DYNAREC_AMD64
+    emit_readptr((intptr_t)&reg_cop1_simple[(source[i]>>16)&0x1f],tl); // 8-byte FPR pointer
+#else
     emit_readword((intptr_t)&reg_cop1_simple[(source[i]>>16)&0x1f],tl);
+#endif
   }
   if (opcode[i]==0x3D) { // SDC1 (get double address)
+    #if NEW_DYNAREC==NEW_DYNAREC_AMD64
+    emit_readptr((intptr_t)&reg_cop1_double[(source[i]>>16)&0x1f],tl); // 8-byte FPR pointer
+#else
     emit_readword((intptr_t)&reg_cop1_double[(source[i]>>16)&0x1f],tl);
+#endif
   }
   // Generate address + offset
   if(!using_tlb) {
     #ifdef RAM_OFFSET
-    if (!c||opcode[i]==0x39||opcode[i]==0x3D) // SWC1/SDC1
-    {
-      map=get_reg(i_regs->regmap,ROREG);
-      if(map<0) emit_loadreg(ROREG,map=HOST_TEMPREG);
-    }
+    map=get_reg(i_regs->regmap,ROREG);
+    if(map<0) emit_loadreg(ROREG,map=HOST_TEMPREG);
     #endif
     if(!c) 
       emit_cmpimm(offset||c||s<0?ar:s,0x800000);
@@ -3683,10 +3704,18 @@ static void c1ls_assemble(int i,struct regstat *i_regs)
     emit_readword_indexed(0,tl,tl);
   }
   if (opcode[i]==0x31) { // LWC1 (get target address)
+    #if NEW_DYNAREC==NEW_DYNAREC_AMD64
+    emit_readptr((intptr_t)&reg_cop1_simple[(source[i]>>16)&0x1f],temp); // 8-byte FPR pointer
+#else
     emit_readword((intptr_t)&reg_cop1_simple[(source[i]>>16)&0x1f],temp);
+#endif
   }
   if (opcode[i]==0x35) { // LDC1 (get target address)
+    #if NEW_DYNAREC==NEW_DYNAREC_AMD64
+    emit_readptr((intptr_t)&reg_cop1_double[(source[i]>>16)&0x1f],temp); // 8-byte FPR pointer
+#else
     emit_readword((intptr_t)&reg_cop1_double[(source[i]>>16)&0x1f],temp);
+#endif
   }
   if(!using_tlb) {
     if(!c) {
@@ -4116,7 +4145,7 @@ static void address_generation(int i,struct regstat *i_regs,signed char entry[])
             if (opcode[i]==0x22||opcode[i]==0x26) { // LWL/LWR
               #ifdef RAM_OFFSET
               if((signed int)constmap[i][rs]+offset<(signed int)0x80800000) {
-                #if NEW_DYNAREC==NEW_DYNAREC_ARM64
+                #if NEW_DYNAREC==NEW_DYNAREC_ARM64 || NEW_DYNAREC==NEW_DYNAREC_AMD64
                 emit_movimm(((constmap[i][rs]+offset)&0xFFFFFFFC),ra);
                 #else
                 emit_movimm(((constmap[i][rs]+offset)&0xFFFFFFFC)+(intptr_t)g_dev.ri.rdram.dram-0x80000000,ra);
@@ -4127,7 +4156,7 @@ static void address_generation(int i,struct regstat *i_regs,signed char entry[])
             }else if (opcode[i]==0x1a||opcode[i]==0x1b) { // LDL/LDR
               #ifdef RAM_OFFSET
               if((signed int)constmap[i][rs] + offset<(signed int)0x80800000) {
-                #if NEW_DYNAREC==NEW_DYNAREC_ARM64
+                #if NEW_DYNAREC==NEW_DYNAREC_ARM64 || NEW_DYNAREC==NEW_DYNAREC_AMD64
                 emit_movimm(((constmap[i][rs]+offset)&0xFFFFFFF8),ra);
                 #else
                 emit_movimm(((constmap[i][rs]+offset)&0xFFFFFFF8)+(intptr_t)g_dev.ri.rdram.dram-0x80000000,ra);
@@ -4142,7 +4171,7 @@ static void address_generation(int i,struct regstat *i_regs,signed char entry[])
               #endif
               #ifdef RAM_OFFSET
               if((itype[i]==LOAD||opcode[i]==0x31||opcode[i]==0x35)&&(signed int)constmap[i][rs]+offset<(signed int)0x80800000) {
-                #if NEW_DYNAREC==NEW_DYNAREC_ARM64
+                #if NEW_DYNAREC==NEW_DYNAREC_ARM64 || NEW_DYNAREC==NEW_DYNAREC_AMD64
                 emit_movimm(constmap[i][rs]+offset,ra);
                 #else
                 emit_movimm(constmap[i][rs]+offset+(intptr_t)g_dev.ri.rdram.dram-0x80000000,ra);
@@ -4203,7 +4232,7 @@ static void address_generation(int i,struct regstat *i_regs,signed char entry[])
         if (opcode[i+1]==0x22||opcode[i+1]==0x26) { // LWL/LWR
           #ifdef RAM_OFFSET
           if((signed int)constmap[i+1][rs]+offset<(signed int)0x80800000) {
-            #if NEW_DYNAREC==NEW_DYNAREC_ARM64
+            #if NEW_DYNAREC==NEW_DYNAREC_ARM64 || NEW_DYNAREC==NEW_DYNAREC_AMD64
             emit_movimm(((constmap[i+1][rs]+offset)&0xFFFFFFFC),ra);
             #else
             emit_movimm(((constmap[i+1][rs]+offset)&0xFFFFFFFC)+(intptr_t)g_dev.ri.rdram.dram-0x80000000,ra);
@@ -4214,7 +4243,7 @@ static void address_generation(int i,struct regstat *i_regs,signed char entry[])
         }else if (opcode[i+1]==0x1a||opcode[i+1]==0x1b) { // LDL/LDR
           #ifdef RAM_OFFSET
           if((signed int)constmap[i+1][rs]+offset<(signed int)0x80800000) {
-            #if NEW_DYNAREC==NEW_DYNAREC_ARM64
+            #if NEW_DYNAREC==NEW_DYNAREC_ARM64 || NEW_DYNAREC==NEW_DYNAREC_AMD64
             emit_movimm(((constmap[i+1][rs]+offset)&0xFFFFFFF8),ra);
             #else
             emit_movimm(((constmap[i+1][rs]+offset)&0xFFFFFFF8)+(intptr_t)g_dev.ri.rdram.dram-0x80000000,ra);
@@ -4229,7 +4258,7 @@ static void address_generation(int i,struct regstat *i_regs,signed char entry[])
           #endif
           #ifdef RAM_OFFSET
           if((itype[i+1]==LOAD||opcode[i+1]==0x31||opcode[i+1]==0x35)&&(signed int)constmap[i+1][rs]+offset<(signed int)0x80800000) {
-            #if NEW_DYNAREC==NEW_DYNAREC_ARM64
+            #if NEW_DYNAREC==NEW_DYNAREC_ARM64 || NEW_DYNAREC==NEW_DYNAREC_AMD64
             emit_movimm(constmap[i+1][rs]+offset,ra);
             #else
             emit_movimm(constmap[i+1][rs]+offset+(intptr_t)g_dev.ri.rdram.dram-0x80000000,ra);
@@ -4277,7 +4306,7 @@ static int get_final_value(int hr, int i, int *value)
           #endif
           #ifdef RAM_OFFSET
           if((signed int)constmap[i][hr]+imm[i+2]<(signed int)0x80800000) {
-            #if NEW_DYNAREC==NEW_DYNAREC_ARM64
+            #if NEW_DYNAREC==NEW_DYNAREC_ARM64 || NEW_DYNAREC==NEW_DYNAREC_AMD64
             *value=constmap[i][hr]+imm[i+2];
             #else
             *value=constmap[i][hr]+imm[i+2]+(intptr_t)g_dev.ri.rdram.dram-0x80000000;
@@ -4296,7 +4325,7 @@ static int get_final_value(int hr, int i, int *value)
         #endif
         #ifdef RAM_OFFSET
         if((signed int)constmap[i][hr]+imm[i+1]<(signed int)0x80800000) {
-          #if NEW_DYNAREC==NEW_DYNAREC_ARM64
+          #if NEW_DYNAREC==NEW_DYNAREC_ARM64 || NEW_DYNAREC==NEW_DYNAREC_AMD64
           *value=constmap[i][hr]+imm[i+1];
           #else
           *value=constmap[i][hr]+imm[i+1]+(intptr_t)g_dev.ri.rdram.dram-0x80000000;
@@ -7822,7 +7851,25 @@ void new_dynarec_init(void)
   DebugMessage(M64MSG_INFO, "MAP_JIT pages are allocated at %p", base_addr);
   base_addr = ((char*)base_addr) + TRAMPOLINES_SIZE;
 #else
-#if NEW_DYNAREC >= NEW_DYNAREC_ARM
+#if NEW_DYNAREC == NEW_DYNAREC_AMD64
+  /* x64 generated code addresses globals RIP-relative with 32-bit
+   * displacements (and calls C helpers with rel32), so the code cache
+   * must live within +/-2GB of the core's data and text. A static BSS
+   * blob guarantees that; just flip on execute permission. Never
+   * munmap it -- it is not a mapping we own. */
+#if defined(WIN32)
+  {
+    DWORD old_protect;
+    VirtualProtect(extra_memory, 1<<TARGET_SIZE_2, PAGE_EXECUTE_READWRITE, &old_protect);
+  }
+  base_addr = extra_memory;
+#else
+  if (mprotect (extra_memory, 1<<TARGET_SIZE_2,
+            PROT_READ | PROT_WRITE | PROT_EXEC) < 0)
+            {DebugMessage(M64MSG_ERROR, "mprotect() failed");}
+  base_addr = extra_memory;
+#endif
+#elif NEW_DYNAREC >= NEW_DYNAREC_ARM
   if ((base_addr = mmap ((u_char *)BASE_ADDR, 1<<TARGET_SIZE_2,
             PROT_READ | PROT_WRITE | PROT_EXEC,
             MAP_FIXED | MAP_PRIVATE | MAP_ANONYMOUS,
@@ -7913,6 +7960,18 @@ void new_dynarec_cleanup(void)
 
 #if defined(__arm64__) || defined(__aarch64__)
   if (munmap (((char*)base_addr) - TRAMPOLINES_SIZE, TRAMPOLINES_SIZE + (1<<TARGET_SIZE_2)) < 0) {DebugMessage(M64MSG_ERROR, "munmap() failed");}
+#elif NEW_DYNAREC == NEW_DYNAREC_AMD64
+  /* Static BSS code cache: revoke execute permission, never unmap. */
+#if defined(WIN32)
+  {
+    DWORD old_protect;
+    VirtualProtect(extra_memory, 1<<TARGET_SIZE_2, PAGE_READWRITE, &old_protect);
+  }
+#else
+  if (mprotect (extra_memory, 1<<TARGET_SIZE_2,
+            PROT_READ | PROT_WRITE) < 0)
+            {DebugMessage(M64MSG_ERROR, "mprotect() failed");}
+#endif
 #else
 #if defined(WIN32)
   VirtualFree(base_addr, 0, MEM_RELEASE);
