@@ -205,6 +205,48 @@ void GLInfo::init() {
 	if (isFreedreno && !isGLESX)
 		ext_fetch = false;
 
+	/* GLInfo struct-widening foundation for the BlueNoise / Coverage /
+	 * DualSourceBlending / 4-way texrect / TMEM port cluster. All seven
+	 * fields below are NEW. They are populated here so future rounds
+	 * that consume them (round 32+ for DualSourceBlending, round 33+
+	 * for Coverage, etc.) find sensible values without re-touching
+	 * GLInfo init.
+	 *
+	 * dual_source_blending is hardcoded false to match upstream nx's
+	 * conservative posture: the upstream dual-source-blending shader
+	 * path has known bugs across drivers, so the field's main use is
+	 * a gate that future shader code can check. pn64 does not yet
+	 * have any dual-source-blending consumer, so the value is dormant
+	 * but the gate is wired up for the round that adds the consumer.
+	 *
+	 * Notably NOT done here: upstream's cascade that clears
+	 *     ext_fetch / ext_fetch_arm / n64DepthWithFbFetch
+	 * when dual_source_blending is false. Upstream needs that cascade
+	 * because its ext_fetch shader path REQUIRES the dual-source-
+	 * blending shader output to function; pn64's ext_fetch shader
+	 * path in glsl_CombinerProgramBuilder.cpp (lines 470, 494, 801,
+	 * 877, 2120, 2164) and glsl_SpecialShadersFactory.cpp (lines 73,
+	 * 100, 107) does NOT use dual-source-blending output - it uses
+	 * the simpler gl_LastFragData read directly. Applying upstream's
+	 * cascade would silently disable the working ext_fetch path on
+	 * every pn64 build that currently uses it for N64DepthCompare,
+	 * which is a regression. Defer that coupling to whichever round
+	 * actually wires up a dual-source-blending shader consumer.
+	 */
+	ext_fetch_arm = Utils::isExtensionSupported(*this, "GL_ARM_shader_framebuffer_fetch") && !ext_fetch;
+	n64DepthWithFbFetch = ext_fetch;
+	eglImageFramebuffer = eglImage && !isGLES2;
+	dual_source_blending = false;
+	anisotropic_filtering = Utils::isExtensionSupported(*this, "GL_EXT_texture_filter_anisotropic");
+	coverage = dual_source_blending || ext_fetch || ext_fetch_arm;
+	if (coverage) {
+		GLint maxVertexAttribs = 0;
+		glGetIntegerv(GL_MAX_VERTEX_ATTRIBS, &maxVertexAttribs);
+		coverage = maxVertexAttribs >= 10;
+	}
+	drawElementsBaseVertex = !isGLESX ||
+		(Utils::isExtensionSupported(*this, "GL_EXT_draw_elements_base_vertex") || numericVersion >= 32);
+
 #ifdef OS_ANDROID
 	eglImage = eglImage &&
 	        ( (isGLES2 && GraphicBufferWrapper::isSupportAvailable()) || (isGLESX && GraphicBufferWrapper::isPublicSupportAvailable()) ) &&
