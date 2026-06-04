@@ -5,7 +5,7 @@
 #include "Types.h"
 
 #define CONFIG_WITH_PROFILES 23U
-#define CONFIG_VERSION_CURRENT 26U
+#define CONFIG_VERSION_CURRENT 29U
 
 #define BILINEAR_3POINT   0
 #define BILINEAR_STANDARD 1
@@ -23,15 +23,19 @@ struct Config
 	struct
 	{
 		u32 fullscreen;
+		u32 borderless;
 		u32 windowedWidth, windowedHeight;
 		u32 fullscreenWidth, fullscreenHeight, fullscreenRefresh;
 		u32 fxaa;
-		u32 multisampling;
+		u32 multisampling, maxMultiSampling;
 		u32 verticalSync;
+		u32 threadedVideo;
+		wchar_t deviceName[32];
 	} video;
 
 	struct
 	{
+		u32 anisotropy;
 		u32 maxAnisotropy;
 		f32 maxAnisotropyF;
 		u32 bilinearMode;
@@ -45,13 +49,28 @@ struct Config
 		tcForce
 	};
 
+	enum BufferDitheringMode {
+		bdmDisable = 0,
+		bdmBayer,
+		bdmMagicSquare,
+		bdmBlueNoise
+	};
+
 	struct {
 		u32 enableNoise;
+		u32 enableDitheringPattern;
+		u32 enableDitheringQuantization;
+		u32 enableHiresNoiseDithering;
+		u32 rdramImageDitheringMode;
 		u32 enableLOD;
 		u32 enableHWLighting;
+		u32 enableCoverage;
+		u32 enableClipping;
 		u32 enableCustomSettings;
 		u32 enableShadersStorage;
 		u32 enableLegacyBlending;
+		u32 enableHybridFilter;
+		u32 enableInaccurateTextureCoordinates;
 		u32 enableFragmentDepthWrite;
 		u32 hacks;
 #if defined(OS_ANDROID) || defined(OS_IOS)
@@ -66,10 +85,17 @@ struct Config
 		bgStripped = 1
 	};
 
+	enum NativeResTexrectsMode {
+		ntDisable = 0,
+		ntOptimized,
+		ntUnptimized
+	};
+
 	struct {
 		u32 correctTexrectCoords;
 		u32 enableNativeResTexrects;
 		u32 bgMode;
+		u32 enableTexCoordBounds;
 	} graphics2D;
 
 	enum Aspect {
@@ -99,6 +125,12 @@ struct Config
 		cdSoftwareRender = 2
 	};
 
+	enum N64DepthCompareMode {
+		dcDisable = 0,
+		dcFast,
+		dcCompatible
+	};
+
 	struct {
 		u32 enable;
 		u32 aspect; // 0: stretch ; 1: 4/3 ; 2: 16/9; 3: adjust
@@ -117,6 +149,9 @@ struct Config
 		u32 fbInfoDisabled;
 		u32 fbInfoReadColorChunk;
 		u32 fbInfoReadDepthChunk;
+
+		// Depth buffer copy. For Reshade.
+		u32 copyDepthToMainDepthBuffer;
 
 		// Overscan
 		u32 enableOverscan;
@@ -140,10 +175,17 @@ struct Config
 		u32 txHiresFullAlphaChannel;	// Use alpha channel fully
 		u32 txHresAltCRC;				// Use alternative method of paletted textures CRC calculation
 		u32 txDump;						// Dump textures
+		u32 txStrongCRC;                // Dump textures with alternative (strong) CRC
 
 		u32 txForce16bpp;				// Force use 16bit color textures
 		u32 txCacheCompression;			// Zip textures cache
 		u32 txSaveCache;				// Save texture cache to hard disk
+
+		u32 txEnhancedTextureFileStorage;	// Use file storage instead of memory cache for enhanced textures.
+		u32 txHiresTextureFileStorage;		// Use file storage instead of memory cache for hires textures.
+		u32 txNoTextureFileStorage;			// Use no file storage or cache for hires textures.
+
+		u32 txHiresVramLimit; // Limit of uploading hi-res textures to VRAM (in MB)
 
 		wchar_t txPath[PLUGIN_PATH_SIZE]; // Path to texture packs
 		wchar_t txCachePath[PLUGIN_PATH_SIZE]; // Path to store texture cache, that is .htc files
@@ -180,6 +222,7 @@ struct Config
 		u32 percent;
 		u32 internalResolution;
 		u32 renderingResolution;
+		u32 statistics;
 		u32 pos;
 	} onScreenDisplay;
 
@@ -214,6 +257,7 @@ struct Config
 #define hack_ZeldaMonochrome		(1<<20) //Hack for Zeldas monochrome effects.
 #define hack_TonyHawk				(1<<21) //Hack for Tony Hawk blend mode.
 #define hack_WCWNitro				(1<<22) //Hack for WCW Nitro backgrounds.
+#define hack_fbTextureOffset		(1<<23) //Hack to offset Conker's shadow in CBFD and Bob-ombs in Mario Tennis.
 
 #define config gliden64Config
 extern Config gliden64Config;

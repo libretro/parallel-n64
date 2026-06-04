@@ -27,6 +27,10 @@ void Config::resetToDefaults()
 	video.fullscreenRefresh = 60;
 	video.fxaa = 0;
 	video.multisampling = 0;
+	video.maxMultiSampling = 0;
+	video.borderless = 0;
+	video.threadedVideo = 0;
+	video.deviceName[0] = 0;
 	video.verticalSync = 0;
 
 	config.video.fullscreenHeight = screen_height;
@@ -35,16 +39,25 @@ void Config::resetToDefaults()
 	config.video.windowedWidth = screen_width;
 	
 	texture.maxAnisotropy = 0;
+	texture.anisotropy = 0;
 	texture.bilinearMode = BILINEAR_STANDARD;
 	texture.enableHalosRemoval = 0;
 	texture.screenShotFormat = 0;
 
 	generalEmulation.enableLOD = 1;
 	generalEmulation.enableNoise = 1;
+	generalEmulation.enableDitheringPattern = 0;
+	generalEmulation.enableDitheringQuantization = 0;
+	generalEmulation.enableHiresNoiseDithering = 0;
+	generalEmulation.rdramImageDitheringMode = bdmDisable;
 	generalEmulation.enableHWLighting = 0;
+	generalEmulation.enableCoverage = 0;
+	generalEmulation.enableClipping = 1;
 	generalEmulation.enableCustomSettings = 1;
 	generalEmulation.enableShadersStorage = 1;
 	generalEmulation.enableLegacyBlending = 0;
+	generalEmulation.enableHybridFilter = 0;
+	generalEmulation.enableInaccurateTextureCoordinates = 0;
 	generalEmulation.hacks = 0;
 #if defined(OS_ANDROID) || defined(OS_IOS)
 	generalEmulation.enableFragmentDepthWrite = 0;
@@ -58,12 +71,14 @@ void Config::resetToDefaults()
 	graphics2D.correctTexrectCoords = tcDisable;
 	graphics2D.enableNativeResTexrects = 0;
 	graphics2D.bgMode = BGMode::bgStripped;
+	graphics2D.enableTexCoordBounds = 0;
 
 	frameBufferEmulation.enable = 0;
 	frameBufferEmulation.copyDepthToRDRAM = cdSoftwareRender;
 	frameBufferEmulation.copyFromRDRAM = 0;
 	frameBufferEmulation.copyAuxToRDRAM = 0;
 	frameBufferEmulation.copyToRDRAM = ctDoubleBuffer;
+	frameBufferEmulation.copyDepthToMainDepthBuffer = 0;
 	frameBufferEmulation.N64DepthCompare = 0;
 	frameBufferEmulation.forceDepthBufferClear = 0;
 	frameBufferEmulation.aspect = a43;
@@ -88,10 +103,16 @@ void Config::resetToDefaults()
 	textureFilter.txHiresFullAlphaChannel = 1;
 	textureFilter.txHresAltCRC = 0;
 	textureFilter.txDump = 0;
+	textureFilter.txStrongCRC = 0;
 
 	textureFilter.txForce16bpp = 0;
 	textureFilter.txCacheCompression = 1;
 	textureFilter.txSaveCache = 1;
+
+	textureFilter.txEnhancedTextureFileStorage = 0;
+	textureFilter.txHiresTextureFileStorage = 0;
+	textureFilter.txNoTextureFileStorage = 0;
+	textureFilter.txHiresVramLimit = 0;
 
 	api().GetUserDataPath(textureFilter.txPath);
 	gln_wcscat(textureFilter.txPath, wst("/hires_texture"));
@@ -123,6 +144,7 @@ void Config::resetToDefaults()
 	onScreenDisplay.vis = 0;
 	onScreenDisplay.fps = 0;
 	onScreenDisplay.percent = 0;
+	onScreenDisplay.statistics = 0;
 	onScreenDisplay.pos = posBottomLeft;
 
 	debug.dumpMode = 0;
