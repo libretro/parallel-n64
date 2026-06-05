@@ -24,6 +24,8 @@
 #include "interrupt.h"
 
 #include <stddef.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
 
@@ -584,10 +586,18 @@ void gen_interrupt(void)
          break;
 
       case HW2_INT:
+         /* The reset interrupts redirect execution; from an unsafe
+          * context (a JIT store handler) the ari64 redirect would be
+          * lost, so leave the event queued for the next gen_interrupt
+          * issued from the cc stub, at most one block away. */
+         if (interrupt_unsafe_state)
+            return;
          hw2_int_handler();
          break;
 
       case NMI_INT:
+         if (interrupt_unsafe_state)
+            return;
          nmi_int_handler();
          break;
 

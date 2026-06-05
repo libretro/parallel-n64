@@ -102,7 +102,19 @@ int write_mi_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mask)
 
         check_interrupt();
         cp0_update_count();
-        if (next_interrupt <= cp0_regs[CP0_COUNT_REG]) gen_interrupt();
+        if (next_interrupt <= cp0_regs[CP0_COUNT_REG])
+        {
+            /* This call runs in the middle of a JIT store handler.  On
+             * the ari64 backend that context has no consumer for the
+             * pcaddr/pending_exception redirect (cc_interrupt clears
+             * pending_exception before, and checks it only after, its
+             * own gen_interrupt call), so gen_interrupt must not process
+             * events that redirect execution from here -- see the
+             * interrupt_unsafe_state checks in gen_interrupt. */
+            interrupt_unsafe_state = 1;
+            gen_interrupt();
+            interrupt_unsafe_state = 0;
+        }
         break;
     }
 
