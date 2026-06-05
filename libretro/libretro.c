@@ -2479,7 +2479,13 @@ void retro_run (void)
 
 void retro_reset (void)
 {
-    CoreDoCommand(M64CMD_RESET, 1, (void*)0);
+    /* Soft reset (console RESET button): raises the pre-NMI interrupt
+     * immediately and the NMI half a second later, giving the game's
+     * libultra reset handler its grace window to finish in-flight work
+     * such as EEPROM writes before the reboot.  The previous hard reset
+     * (power cycle) instead re-ran poweron_device() from inside
+     * gen_interrupt(), tearing down live device state mid-transaction. */
+    CoreDoCommand(M64CMD_RESET, 0, (void*)0);
 }
 
 void *retro_get_memory_data(unsigned type)
