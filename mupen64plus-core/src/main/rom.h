@@ -24,7 +24,6 @@
 #define __ROM_H__
 
 #include "api/m64p_types.h"
-#include "md5.h"
 
 /* ROM Loading and Saving functions */
 

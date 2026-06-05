@@ -33,7 +33,6 @@
 #include "api/config.h"
 #include "api/m64p_config.h"
 
-#include "md5.h"
 #include "rom.h"
 #include "main.h"
 #include "util.h"
@@ -151,8 +150,6 @@ static void swap_rom(unsigned char* localrom, unsigned char* imagetype, int load
 m64p_error open_rom(const unsigned char* romimage, unsigned int size)
 {
 #include "rom_luts.c"
-   md5_state_t state;
-   md5_byte_t digest[16];
    char buffer[256];
    unsigned char imagetype;
    int i;
@@ -186,14 +183,20 @@ m64p_error open_rom(const unsigned char* romimage, unsigned int size)
 
    memcpy(&ROM_HEADER, g_rom, sizeof(m64p_rom_header));
 
-   /* Calculate MD5 hash  */
-   md5_init(&state);
-   md5_append(&state, (const md5_byte_t*)g_rom, size);
-   md5_finish(&state, digest);
-   for ( i = 0; i < 16; ++i )
-      sprintf(buffer+i*2, "%02X", digest[i]);
-   buffer[32] = '\0';
-   strcpy(ROM_SETTINGS.MD5, buffer);
+   /* Identity string for savestate validation: derived from the header
+    * (CRC words, cartridge ID, region) instead of an MD5 of the whole
+    * image, which cost a full-ROM hash on every open.  Savestates made
+    * before this change carry a real MD5 here; savestates_load_m64p
+    * accepts those without an identity check. */
+   memset(buffer, 0, sizeof(buffer));
+   sprintf(buffer, "M64H%08X%08X%c%c%c%c",
+         sl(ROM_HEADER.CRC1), sl(ROM_HEADER.CRC2),
+         (char)((ROM_HEADER.Manufacturer_ID >> 24) & 0xff),
+         (char)(ROM_HEADER.Cartridge_ID & 0xff),
+         (char)((ROM_HEADER.Cartridge_ID >> 8) & 0xff),
+         ROM_HEADER.destination_code);
+   memcpy(ROM_SETTINGS.MD5, buffer, 32);
+   ROM_SETTINGS.MD5[32] = '\0';
    
    ROM_SETTINGS.sidmaduration = 0x900;
 

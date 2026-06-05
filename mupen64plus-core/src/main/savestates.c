@@ -97,7 +97,13 @@ int savestates_load_m64p(const unsigned char *data, size_t size)
    if(version != 0x00010000 && version != 0x00010001)
       return 0;
 
-   if(memcmp((char *)curr, ROM_SETTINGS.MD5, 32))
+   /* Identity check.  New states carry the "M64H"-prefixed header
+    * identity written by open_rom; reject those only on a real mismatch
+    * (a state from a different game or build).  States written before
+    * the MD5 removal carry an MD5 of the image here, which can no
+    * longer be verified without hashing the ROM, so they are accepted
+    * as-is. */
+   if(!memcmp((char *)curr, "M64H", 4) && memcmp((char *)curr, ROM_SETTINGS.MD5, 32))
       return 0;
 
    curr += 32;
