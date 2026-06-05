@@ -66,6 +66,8 @@ extern "C" {
 
 #if defined(VITA)
 #include <psp2/kernel/sysmem.h>
+#elif defined(_WIN32)
+#include <windows.h> // VirtualAlloc for the code cache
 #elif !defined(_MSC_VER)
 #include <sys/mman.h>
 #endif
@@ -7739,7 +7741,7 @@ void new_dynarec_init(void)
             PROT_READ | PROT_WRITE | PROT_EXEC) < 0)
             {DebugMessage(M64MSG_ERROR, "mprotect() failed");}
   base_addr = (void *)BASE_ADDR;
-#elif defined(_MSC_VER)
+#elif defined(_MSC_VER) || defined(_WIN32)
   base_addr = VirtualAlloc(NULL, 1<<TARGET_SIZE_2, MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
 #else
   if ((base_addr = mmap (NULL, 1<<TARGET_SIZE_2,

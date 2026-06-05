@@ -48,12 +48,14 @@
 #include "../tlb.h"
 #include "../fpu.h"
 
-#if !defined(WIN32)
+#if !defined(WIN32) && !defined(_WIN32)
 #ifndef HAVE_LIBNX
 #include <sys/mman.h>
 #else
 #include "../../../../switch/mman.h"
 #endif // HAVE_LIBNX
+#else
+#include <windows.h> // VirtualProtect for the code-cache W^X flip
 #endif
 
 #if NEW_DYNAREC == NEW_DYNAREC_X86
@@ -7739,7 +7741,6 @@ static void clean_registers(int istart,int iend,int wr)
   }
 }
 
-#include <sys/errno.h>
 
 #ifdef NEW_DYNAREC_DEBUG
   /* disassembly */
@@ -7857,7 +7858,7 @@ void new_dynarec_init(void)
    * must live within +/-2GB of the core's data and text. A static BSS
    * blob guarantees that; just flip on execute permission. Never
    * munmap it -- it is not a mapping we own. */
-#if defined(WIN32)
+#if defined(WIN32) || defined(_WIN32)
   {
     DWORD old_protect;
     VirtualProtect(extra_memory, 1<<TARGET_SIZE_2, PAGE_EXECUTE_READWRITE, &old_protect);
