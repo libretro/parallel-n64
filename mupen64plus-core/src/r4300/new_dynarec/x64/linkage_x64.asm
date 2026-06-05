@@ -291,8 +291,25 @@ _D5:
     jmp     rax
 
 cc_interrupt:
+    ;The register allocator assumes the constant-caching host registers
+    ;(ROREG/MMREG/INVCP) survive this call: load_needed_regs and
+    ;load_regs_entry never reload them.  On arm64 the allocatable set is
+    ;callee-saved so the C calls below preserve them for free; here the
+    ;volatile allocatables must be saved explicitly (same invariant the
+    ;invalidate_block thunk already honors).
     add     CCREG,    [rel last_count]
-    sub     rsp,    56    ;align stack (entry: rsp == 8 mod 16)
+    push    rax
+    push    rcx
+    push    rdx
+%ifdef WIN64
+    ;CCREG is esi here and is recomputed below, so it must NOT be in the
+    ;save/restore set; rsi/rdi are callee-saved on WIN64 anyway.
+    sub     rsp,    64    ;align stack (entry: rsp == 8 mod 16, +24 saved)
+%else
+    push    rsi
+    push    rdi
+    sub     rsp,    48    ;align stack (entry: rsp == 8 mod 16, +40 saved)
+%endif
     mov     [rel g_cp0_regs+36],    CCREG    ;Count
     shr     CCREG,    19
     mov     dword [rel pending_exception],    0
@@ -306,31 +323,47 @@ _E1:
     mov     eax,    [rel next_interrupt]
     mov     ecx,    [rel pending_exception]
     mov     edx,    [rel stop]
-    add     rsp,    56
+%ifdef WIN64
+    add     rsp,    64
+%else
+    add     rsp,    48
+%endif
     mov     [rel last_count],    eax
     sub     CCREG,    eax
     test    edx,    edx
     jne     _E3
     test    ecx,    ecx
     jne     _E2
+%ifndef WIN64
+    pop     rdi
+    pop     rsi
+%endif
+    pop     rdx
+    pop     rcx
+    pop     rax
     ret
 _E2:
     ;Pending exception: jump to the handler instead of returning
     mov     ARG1_REG,    [rel pcaddr]
     mov     [rel cycle_count],    CCREG
-%ifdef WIN64
-    sub     rsp,    40
-    call    get_addr_ht
-    add     rsp,    48
-%else
-    sub     rsp,    8
-    call    get_addr_ht
-    add     rsp,    16
-%endif
+    CALL_C  get_addr_ht    ;rsp == 0 mod 16 here
     mov     CCREG,    [rel cycle_count]
-    jmp     rax
+    mov     r10,    rax
+%ifndef WIN64
+    pop     rdi
+    pop     rsi
+%endif
+    pop     rdx
+    pop     rcx
+    pop     rax
+    add     rsp,    8    ;discard our return address, we jump to the handler
+    jmp     r10
 _E3:
-    add     rsp,    64    ;pop our return address + new_dyna_start scratch
+%ifdef WIN64
+    add     rsp,    88     ;saved regs + our return address + new_dyna_start scratch
+%else
+    add     rsp,    104    ;saved regs + our return address + new_dyna_start scratch
+%endif
     ;restore callee-save registers
     pop     rbp
     pop     r15

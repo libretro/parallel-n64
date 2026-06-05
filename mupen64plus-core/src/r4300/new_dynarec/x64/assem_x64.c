@@ -136,8 +136,8 @@ static void *add_pointer(void *src, void* addr)
   int *ptr=(int*)src;
   int *ptr2=(int*)((uintptr_t)ptr+(uintptr_t)*ptr+4);
   u_char *ptr3=(u_char*)ptr2;
-  assert((*(ptr3+1)&0xFF)==0x8d); //lea
-  assert((*(ptr3+12)&0xFF)==0xe8); //call
+  assert((*(ptr3+10)&0xFF)==0x8d); //lea (after the 9-byte save prologue)
+  assert((*(ptr3+21)&0xFF)==0xe8); //call
   u_int offset=(uintptr_t)addr-(uintptr_t)ptr-4;
   *ptr=offset;
   return (void*)ptr2;
@@ -145,14 +145,14 @@ static void *add_pointer(void *src, void* addr)
 
 static void *kill_pointer(void *stub)
 {
-  intptr_t ptr=(intptr_t)stub+3;
+  intptr_t ptr=(intptr_t)stub+12; /* lea rel32 field, after the save prologue */
   uintptr_t i_ptr=(intptr_t)ptr+*((int *)ptr)+4; // rip relative
   *((int *)i_ptr)=(intptr_t)stub-(intptr_t)i_ptr-4;
   return (void *)i_ptr;
 }
 static intptr_t get_pointer(void *stub)
 {
-  intptr_t ptr=(intptr_t)stub+3;
+  intptr_t ptr=(intptr_t)stub+12; /* lea rel32 field, after the save prologue */
   uintptr_t i_ptr=(intptr_t)ptr+*((int *)ptr)+4; // rip relative
   return *((int *)i_ptr)+(intptr_t)i_ptr+4;
 }
@@ -2011,9 +2011,11 @@ static void emit_callreg(u_int r)
 static void emit_jmpreg(u_int r)
 {
   assem_debug("jmp *%%%s",regname[r]);
-  assert(r<8);
+  assert(r<16);
+  if(r>=8)
+    output_rex(0,0,0,r>>3);
   output_byte(0xFF);
-  output_modrm(3,r,4);
+  output_modrm(3,r&7,4);
 }
 static void emit_jmpmem_indexed(u_int addr,u_int r)
 {
@@ -3158,6 +3160,22 @@ static void emit_extjump2(intptr_t addr, int target, intptr_t linker)
     assert(*ptr==0xe8||*ptr==0xe9);
     addr++;
   }
+  /* Save the volatile allocatable registers: the target block's entry
+   * map may claim ROREG/MMREG/INVCP in any of them, inherited from the
+   * source block, and neither the argument setup below nor the C
+   * linker may destroy that.  NOTE: the byte offsets of this stub are
+   * parsed by add_pointer/kill_pointer/get_pointer and the dynamic
+   * linkers; keep them in sync. */
+  emit_pushreg(EAX);
+  emit_pushreg(ECX);
+  emit_pushreg(EDX);
+  emit_pushreg(ESI);
+  emit_pushreg(EDI);
+#ifdef _WIN32
+  emit_addimm64(ESP,-40,ESP); /* shadow space + alignment */
+#else
+  emit_addimm64(ESP,-8,ESP);  /* alignment */
+#endif
   emit_lea_rip(addr,ARG1_REG);
   emit_movimm(target,ARG2_REG);
 //DEBUG >
@@ -3171,7 +3189,18 @@ static void emit_extjump2(intptr_t addr, int target, intptr_t linker)
 #endif
 //DEBUG <
   emit_call(linker);
-  emit_jmpreg(RAX);
+  emit_mov64(EAX,10); /* jump target out of the restored set */
+#ifdef _WIN32
+  emit_addimm64(ESP,40,ESP);
+#else
+  emit_addimm64(ESP,8,ESP);
+#endif
+  emit_popreg(EDI);
+  emit_popreg(ESI);
+  emit_popreg(EDX);
+  emit_popreg(ECX);
+  emit_popreg(EAX);
+  emit_jmpreg(10);
 }
 
 /* x64 "pusha": save the seven allocatable GPRs with an alignment pad,
@@ -3697,7 +3726,10 @@ static int do_tlb_r_branch(int map, int c, u_int addr, intptr_t *jaddr)
     emit_test64(map,map);
     *jaddr=(intptr_t)out;
     emit_js(0);
-    emit_shlimm64(map,2,map);
+    /* Keep the map raw: the indexed-tlb readers and gen_tlb_addr_r
+     * scale it by 4 themselves.  The shl here was a leftover from the
+     * classic x86 convention of pre-shifted 32-bit map entries and
+     * made every TLB-path access address at entry*16. */
   }
   return map;
 }
@@ -3707,9 +3739,18 @@ static int do_tlb_r_branch_debug(int map, int c, u_int addr, intptr_t *jaddr)
     emit_test64(map,map);
     *jaddr=(intptr_t)out;
     emit_js(0);
-    emit_shlimm64(map,2,map);
   }
   return map;
+}
+
+static void emit_btimm64(int r,int b)
+{
+  assem_debug("bt $%d,%%%s",b,regname[r]);
+  output_rex(1,0,0,r>>3);
+  output_byte(0x0F);
+  output_byte(0xBA);
+  output_modrm(3,r&7,4);
+  output_byte(b);
 }
 
 static int do_tlb_w(int s,int ar,int map,int cache,int x,int c,u_int addr)
@@ -3733,7 +3774,10 @@ static int do_tlb_w(int s,int ar,int map,int cache,int x,int c,u_int addr)
     //if(x) emit_xorimm(s,x,addr);
     emit_readdword_dualindexedx8(cache,map,map);
   }
-  emit_shlimm64(map,2,map);
+  /* Set CF from the WRITE_PROTECT bit for do_tlb_w_branch without
+   * modifying the map: the indexed-tlb writers and gen_tlb_addr_w
+   * scale the raw map by 4 themselves, like the read side. */
+  emit_btimm64(map,62);
   return map;
 }
 static void do_tlb_w_branch(int map, int c, u_int addr, intptr_t *jaddr)
@@ -5186,8 +5230,8 @@ static void *dynamic_linker(void * src, u_int vaddr)
     if(head->vaddr==vaddr&&head->reg32==0) {
       int *ptr=(int*)src;
       u_char *ptr2=(u_char*)((intptr_t)ptr+*ptr+4);
-      assert(ptr2[0]==0x48&&ptr2[1]==0x8D);  // lea rip (extjump stub)
-      assert(ptr2[12]==0xE8);                // call linker
+      assert(ptr2[9]==0x48&&ptr2[10]==0x8D);  // lea rip (after the extjump save prologue)
+      assert(ptr2[21]==0xE8);                 // call linker
       add_link(vaddr, ptr2);
       *ptr=(int)((uintptr_t)head->addr-(uintptr_t)ptr-4);
       return head->addr;
@@ -5259,8 +5303,8 @@ static void *dynamic_linker_ds(void * src, u_int vaddr)
     if(head->vaddr==vaddr&&head->reg32==0) {
       int *ptr=(int*)src;
       u_char *ptr2=(u_char*)((intptr_t)ptr+*ptr+4);
-      assert(ptr2[0]==0x48&&ptr2[1]==0x8D);  // lea rip (extjump stub)
-      assert(ptr2[12]==0xE8);                // call linker
+      assert(ptr2[9]==0x48&&ptr2[10]==0x8D);  // lea rip (after the extjump save prologue)
+      assert(ptr2[21]==0xE8);                 // call linker
       add_link(vaddr, ptr2);
       *ptr=(int)((uintptr_t)head->addr-(uintptr_t)ptr-4);
       return head->addr;

@@ -3985,7 +3985,13 @@ static void wb_invalidate(signed char pre[],signed char entry[],uint64_t dirty,u
         if(pre[hr]>=0&&(pre[hr]&63)<TEMPREG) {
           int nr;
           if((nr=get_reg(entry,pre[hr]))>=0) {
-            emit_mov(hr,nr);
+            /* INVCP/MMREG/ROREG cache 64-bit host pointers/offsets; a
+             * 32-bit move would truncate them.  Only matters on hosts
+             * with enough register pressure to ever relocate them. */
+            if((pre[hr]&63)>=INVCP&&(pre[hr]&63)<=ROREG)
+              emit_mov64(hr,nr);
+            else
+              emit_mov(hr,nr);
           }
         }
       }
