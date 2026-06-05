@@ -49,7 +49,6 @@ void process_commands()
 {
 	const uint32_t DP_CURRENT = *GET_GFX_INFO(DPC_CURRENT_REG) & 0x00FFFFF8;
 	const uint32_t DP_END = *GET_GFX_INFO(DPC_END_REG) & 0x00FFFFF8;
-	*GET_GFX_INFO(DPC_STATUS_REG) &= ~DP_STATUS_FREEZE;
 
 	int length = DP_END - DP_CURRENT;
 	if (length <= 0)
