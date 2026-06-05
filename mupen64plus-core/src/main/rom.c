@@ -157,6 +157,7 @@ m64p_error open_rom(const unsigned char* romimage, unsigned int size)
    unsigned char imagetype;
    int i;
    uint64_t lut_id;
+   char cart_id[4];
    int patch_applied = 0;
 
    /* check input requirements */
@@ -205,18 +206,20 @@ m64p_error open_rom(const unsigned char* romimage, unsigned int size)
    ROM_PARAMS.headername[20] = '\0';
    trim(ROM_PARAMS.headername); /* Remove trailing whitespace from ROM name. */
 
+   /* lut_id survives only for the handful of ALECK64/homebrew dumps in
+    * the residual lut_cpop table; every retail override is keyed on the
+    * cartridge ID below. */
    lut_id = (((uint64_t)sl(ROM_HEADER.CRC1)) << 32) | sl(ROM_HEADER.CRC2);
+
+   cart_id[0] = (char)((ROM_HEADER.Manufacturer_ID >> 24) & 0xff);
+   cart_id[1] = (char)(ROM_HEADER.Cartridge_ID & 0xff);
+   cart_id[2] = (char)((ROM_HEADER.Cartridge_ID >> 8) & 0xff);
+   cart_id[3] = '\0';
 
    {
       /* Save hardware from the cartridge ID (header 0x3B-0x3D), plus the
        * region byte (0x3E) for the few region-dependent titles.  See the
        * lut_cart_save provenance comment in rom_luts.c. */
-      char cart_id[4];
-      cart_id[0] = (char)((ROM_HEADER.Manufacturer_ID >> 24) & 0xff);
-      cart_id[1] = (char)(ROM_HEADER.Cartridge_ID & 0xff);
-      cart_id[2] = (char)((ROM_HEADER.Cartridge_ID >> 8) & 0xff);
-      cart_id[3] = '\0';
-
       /* Hoshi no Kirby 64 (J) revisions 0 and 1 shipped with SRAM before
        * moving to 16Kbit EEPROM (ares: mia/medium/nintendo-64.cpp). */
       if (!strncmp(cart_id, "NK4", 3) && ROM_HEADER.destination_code == 'J'
@@ -245,9 +248,9 @@ m64p_error open_rom(const unsigned char* romimage, unsigned int size)
       }
    }
 
-   for (i = 0; i < sizeof(lut_audiosignal)/sizeof(lut_audiosignal[0]); ++i)
+   for (i = 0; i < sizeof(lut_audiosignal_id)/sizeof(lut_audiosignal_id[0]); ++i)
    {
-      if (lut_audiosignal[i] == lut_id)
+      if (!strncmp(lut_audiosignal_id[i], cart_id, 3))
       {
          strcpy(ROM_SETTINGS.goodname, ROM_PARAMS.headername);
          ROM_PARAMS.audiosignal = 1;
@@ -258,9 +261,9 @@ m64p_error open_rom(const unsigned char* romimage, unsigned int size)
       }
    }
 
-   for (i = 0; i < sizeof(lut_fixedaudiopos)/sizeof(lut_fixedaudiopos[0]); ++i)
+   for (i = 0; i < sizeof(lut_fixedaudiopos_id)/sizeof(lut_fixedaudiopos_id[0]); ++i)
    {
-      if (lut_fixedaudiopos[i] == lut_id)
+      if (!strncmp(lut_fixedaudiopos_id[i], cart_id, 3))
       {
          strcpy(ROM_SETTINGS.goodname, ROM_PARAMS.headername);
          ROM_PARAMS.fixedaudiopos = 1;
@@ -271,9 +274,9 @@ m64p_error open_rom(const unsigned char* romimage, unsigned int size)
       }
    }
 
-   for (i = 0; i < sizeof(lut_alternate_vi)/sizeof(lut_alternate_vi[0]); ++i)
+   for (i = 0; i < sizeof(lut_alternate_vi_id)/sizeof(lut_alternate_vi_id[0]); ++i)
    {
-      if (lut_alternate_vi[i] == lut_id)
+      if (!strncmp(lut_alternate_vi_id[i], cart_id, 3))
       {
          strcpy(ROM_SETTINGS.goodname, ROM_PARAMS.headername);
          alternate_vi_timing = 1;
@@ -284,9 +287,9 @@ m64p_error open_rom(const unsigned char* romimage, unsigned int size)
       }
    }
 
-   for (i = 0; i < sizeof(lut_vi_clock_1500)/sizeof(lut_vi_clock_1500[0]); ++i)
+   for (i = 0; i < sizeof(lut_vi_clock_1500_id)/sizeof(lut_vi_clock_1500_id[0]); ++i)
    {
-      if (lut_vi_clock_1500[i] == lut_id)
+      if (!strncmp(lut_vi_clock_1500_id[i], cart_id, 3))
       {
          strcpy(ROM_SETTINGS.goodname, ROM_PARAMS.headername);
          DebugMessage(M64MSG_INFO, "%s INI patches applied.", ROM_PARAMS.headername);
@@ -297,9 +300,9 @@ m64p_error open_rom(const unsigned char* romimage, unsigned int size)
       }
    }
 
-   for (i = 0; i < sizeof(lut_vi_clock_1600)/sizeof(lut_vi_clock_1600[0]); ++i)
+   for (i = 0; i < sizeof(lut_vi_clock_1600_id)/sizeof(lut_vi_clock_1600_id[0]); ++i)
    {
-      if (lut_vi_clock_1600[i] == lut_id)
+      if (!strncmp(lut_vi_clock_1600_id[i], cart_id, 3))
       {
          strcpy(ROM_SETTINGS.goodname, ROM_PARAMS.headername);
          DebugMessage(M64MSG_INFO, "%s INI patches applied.", ROM_PARAMS.headername);
@@ -310,9 +313,9 @@ m64p_error open_rom(const unsigned char* romimage, unsigned int size)
       }
    }
 
-   for (i = 0; i < sizeof(lut_vi_clock_2200)/sizeof(lut_vi_clock_2200[0]); ++i)
+   for (i = 0; i < sizeof(lut_vi_clock_2200_id)/sizeof(lut_vi_clock_2200_id[0]); ++i)
    {
-      if (lut_vi_clock_2200[i] == lut_id)
+      if (!strncmp(lut_vi_clock_2200_id[i], cart_id, 3))
       {
          strcpy(ROM_SETTINGS.goodname, ROM_PARAMS.headername);
          DebugMessage(M64MSG_INFO, "%s INI patches applied.", ROM_PARAMS.headername);
@@ -369,21 +372,23 @@ m64p_error open_rom(const unsigned char* romimage, unsigned int size)
       ROM_SETTINGS.rumble = 0;
    }
 
+   for (i = 0; i < sizeof(lut_cpop_id)/sizeof(lut_cpop_id[0]); ++i)
    {
-      char cart_id[4];
-      cart_id[0] = (char)((ROM_HEADER.Manufacturer_ID >> 24) & 0xff);
-      cart_id[1] = (char)(ROM_HEADER.Cartridge_ID & 0xff);
-      cart_id[2] = (char)((ROM_HEADER.Cartridge_ID >> 8) & 0xff);
-      cart_id[3] = '\0';
-      for (i = 0; i < sizeof(lut_cpop_id)/sizeof(lut_cpop_id[0]); ++i)
+      if (!strncmp(lut_cpop_id[i].id, cart_id, 3))
       {
-         if (!strncmp(lut_cpop_id[i].id, cart_id, 3))
-         {
-            count_per_op = lut_cpop_id[i].cpop;
-            DebugMessage(M64MSG_INFO, "CountPerOp set to %u.", count_per_op);
-            break;
-         }
+         count_per_op = lut_cpop_id[i].cpop;
+         DebugMessage(M64MSG_INFO, "CountPerOp set to %u.", count_per_op);
+         break;
       }
+   }
+
+   /* Wave Race 64 Shindou Edition (rev 2) carries a CountPerOp override
+    * the original releases do not (ares: mia/medium/nintendo-64.cpp). */
+   if (!strncmp(cart_id, "NWR", 3) && ROM_HEADER.destination_code == 'J'
+         && ROM_HEADER.mask_ROM_version >= 2)
+   {
+      count_per_op = 3;
+      DebugMessage(M64MSG_INFO, "CountPerOp set to %u.", count_per_op);
    }
 
    for (i = 0; i < sizeof(lut_cpop)/sizeof(lut_cpop[0]); ++i)
@@ -396,11 +401,11 @@ m64p_error open_rom(const unsigned char* romimage, unsigned int size)
       }
    }
 
-   for (i = 0; i < sizeof(lut_sidmaduration)/sizeof(lut_sidmaduration[0]); ++i)
+   for (i = 0; i < sizeof(lut_sidmaduration_id)/sizeof(lut_sidmaduration_id[0]); ++i)
    {
-      if (lut_sidmaduration[i][0] == lut_id)
+      if (!strncmp(lut_sidmaduration_id[i].id, cart_id, 3))
       {
-         ROM_SETTINGS.sidmaduration = lut_sidmaduration[i][1];
+         ROM_SETTINGS.sidmaduration = lut_sidmaduration_id[i].sidmaduration;
          DebugMessage(M64MSG_INFO, "SI DMA Duration set to %u.", ROM_SETTINGS.sidmaduration);
          break;
       }
@@ -411,11 +416,21 @@ m64p_error open_rom(const unsigned char* romimage, unsigned int size)
 
    g_delay_si = 1; /* default */
 
+   for (i = 0; i < sizeof(lut_delaysi_id)/sizeof(lut_delaysi_id[0]); ++i)
+   {
+      if (!strncmp(lut_delaysi_id[i].id, cart_id, 3))
+      {
+         g_delay_si = lut_delaysi_id[i].delaysi;
+         DebugMessage(M64MSG_INFO, "DelaySI set to %u.", g_delay_si);
+         break;
+      }
+   }
+
    for (i = 0; i < sizeof(lut_delaysi)/sizeof(lut_delaysi[0]); ++i)
    {
       if (lut_delaysi[i][0] == lut_id)
       {
-         g_delay_si = lut_delaysi[i][1];
+         g_delay_si = (unsigned char)lut_delaysi[i][1];
          DebugMessage(M64MSG_INFO, "DelaySI set to %u.", g_delay_si);
          break;
       }
