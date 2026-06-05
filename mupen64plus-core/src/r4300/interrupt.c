@@ -392,13 +392,16 @@ static void wrapped_exception_general(void)
 #ifdef NEW_DYNAREC
    if (r4300emu == CORE_DYNAREC_ARI64)
    {
+      /* Bit 0 of pcaddr is the ari64 backend's delay-slot flag; it must
+       * be tested before pcaddr is repointed at the exception vector,
+       * or CAUSE.BD is computed from the vector address and never set. */
       g_cp0_regs[CP0_EPC_REG] = (pcaddr&~3)-(pcaddr&1)*4;
-      pcaddr = 0x80000180;
-      g_cp0_regs[CP0_STATUS_REG] |= CP0_STATUS_EXL;
       if(pcaddr&1)
          g_cp0_regs[CP0_CAUSE_REG] |= CP0_CAUSE_BD;
       else
          g_cp0_regs[CP0_CAUSE_REG] &= ~CP0_CAUSE_BD;
+      pcaddr = 0x80000180;
+      g_cp0_regs[CP0_STATUS_REG] |= CP0_STATUS_EXL;
       pending_exception=1;
    }
    else
