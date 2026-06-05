@@ -894,14 +894,14 @@ struct retro_core_option_v2_definition option_defs_us[] = {
     },
     {
         CORE_NAME "-framerate",
-        "Framerate (restart)",
+        "Frame Duplication (restart)",
         NULL,
-        "Framerate (restart)",
+        "Send a duplicate frame to the frontend whenever the game does not render a new image for a video interrupt. Enabled delivers exactly one frame per emulated VI, which frontend pacing, fast-forward, run-ahead and netplay expect; the frame rate counter then reads the full VI rate (~60 fps NTSC) even in games that render fewer frames, such as those holding the RDP frozen across VIs (Donkey Kong 64, Banjo-Kazooie). Disabled skips the duplicate frame uploads as a performance optimization for slow video paths; the counter then reflects only newly presented frames.",
         NULL,
         NULL,
         {
-            { "original", NULL },
-            { "fullspeed", NULL },
+            { "original", "Disabled (Performance)" },
+            { "fullspeed", "Enabled (Consistent Pacing)" },
             { NULL, NULL },
         },
         "original"
