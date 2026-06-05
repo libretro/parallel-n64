@@ -238,6 +238,7 @@ static const uint64_t lut_ee4k[] = {
    0x4EAA3D0E74757C24ULL, /* Super Mario 64 (J) [!] */
    0x635A2BFF8B022326ULL, /* Super Mario 64 (U) [!] */
    0x85a772f1d5e7cdcaULL, /* Super Mario 64 60fps */
+   0xe5e9f5fbe1c4551dULL, /* Super Mario 64 60fps V2 */
    0xD6FBA4A86326AA2CULL, /* Super Mario 64 - Shindou Edition (J) [!] */
    0x0FE684A98BB77AC4ULL, /* Tetrisphere (E) [!] */
    0x3C1FDABE02A4E0BAULL, /* Tetrisphere (U) [!] */
@@ -335,6 +336,13 @@ static const uint64_t lut_delaysi[][2] = {
    { 0x0B93051B603D81F9ULL, 0 }, /* Mischief Makers (U) [!] */
    { 0x9FE6162DE97E4037ULL, 0 }, /* Yuke Yuke!! Trouble Makers (J) [!] */
    { 0x9F8B96C3A01194DCULL, 0 }, /* Yakouchuu II - Satsujin Kouro (J) */
+   { 0xe5e9f5fbe1c4551dULL, 0 }, /* Super Mario 64 60fps V2: the hack's
+      per-frame controller polling bypasses the SI access arbitration, so
+      its in-game save races the EEPROM transaction's SI completion event
+      and loses the wakeup when the interrupt is delayed: the save thread
+      sleeps forever in osRecvMesg and the game freezes on 'SAVE &
+      CONTINUE'.  Immediate SI completion closes the window, like the
+      Banjo titles above. */
 };
 
 static const uint64_t lut_audiosignal[] = {
