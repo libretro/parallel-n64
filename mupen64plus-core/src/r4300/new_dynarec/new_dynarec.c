@@ -7722,7 +7722,7 @@ uintptr_t dyna_entry_rsp; /* host esp saved by new_dyna_start; the stop/frame un
 
 void new_dynarec_init(void)
 {
-  pcaddr = 0xa4000040; /* NO_LIBCO: new_dyna_start resumes at pcaddr */
+  pcaddr = 0xa4000040; /* new_dyna_start resumes at pcaddr */
   DebugMessage(M64MSG_INFO, "Init new dynarec");
 
 #if defined(VITA)

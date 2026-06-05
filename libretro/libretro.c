@@ -3,9 +3,6 @@
 #include <string.h>
 
 #include <libretro.h>
-#ifndef NO_LIBCO
-#include <libco.h>
-#endif
 
 #if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
 #include <glsm/glsmsym.h>
@@ -47,8 +44,6 @@
 #define PRESCALE_HEIGHT 625
 #endif
 
-/* NO_LIBCO now supports all CPU cores: the dynarecs unwind at the
- * frame boundary via frame_break and resume at pcaddr/last_addr. */
 
 /* forward declarations */
 int InitGfx(void);
@@ -103,13 +98,8 @@ static const struct retro_subsystem_info subsystems[] = {
 
 save_memory_data saved_memory;
 
-#ifdef NO_LIBCO
 static bool stop_stepping;
 extern int frame_break; /* r4300: unwinds the CPU cores at the frame boundary */
-#else
-cothread_t main_thread;
-static cothread_t game_thread;
-#endif
 
 float polygonOffsetFactor           = 0.0f;
 float polygonOffsetUnits            = 0.0f;
@@ -755,15 +745,10 @@ void reinit_gfx_plugin(void)
     if(first_context_reset)
     {
         first_context_reset = false;
-#ifdef NO_LIBCO
-        /* The libco build switched into the emu thread here, which ran
-         * emu_step_initialize before the plugin RomOpen calls below.
-         * Preserve that ordering: GLideN64's RomOpen dereferences core
-         * state (RSP, memory) that only exists after initialization. */
+        /* Runs emu_step_initialize before the plugin RomOpen calls below:
+         * GLideN64's RomOpen dereferences core state (RSP, memory) that
+         * only exists after initialization. */
         EmuThreadInit();
-#else
-        co_switch(game_thread);
-#endif
     }
 
     switch (gfx_plugin)
@@ -823,7 +808,6 @@ void deinit_gfx_plugin(void)
     }
 }
 
-#ifdef NO_LIBCO
 static void EmuThreadInit(void)
 {
     /* May be reached twice: from the first context_reset (GL plugins) and
@@ -852,42 +836,6 @@ static void EmuThreadStep(void)
     frame_break = 0;
     main_run();
 }
-#else
-static void EmuThreadFunction(void)
-{
-    if (!emu_step_load_data())
-       goto load_fail;
-
-    /* ROM is loaded, switch back to main thread
-     * so retro_load_game can return (returning failure if needed).
-     * We'll continue here once the context is reset. */
-    co_switch(main_thread);
-
-    emu_step_initialize();
-
-    /*Context is reset too, everything is safe to use.
-     * Now back to main thread so we don't start pushing
-     * frames outside retro_run. */
-    co_switch(main_thread);
-
-    initializing = false;
-    main_pre_run();
-    main_run();
-    if (log_cb)
-       log_cb(RETRO_LOG_INFO, "EmuThread: co_switch main_thread.\n");
-
-    co_switch(main_thread);
-
-load_fail:
-    /*NEVER RETURN! That's how libco rolls */
-    while(1)
-    {
-       if (log_cb)
-          log_cb(RETRO_LOG_ERROR, "Running Dead N64 Emulator\n");
-       co_switch(main_thread);
-    }
-}
-#endif
 
 const char* retro_get_system_directory(void)
 {
@@ -1129,21 +1077,12 @@ void retro_init(void)
    polygonOffsetUnits = -3.0f;
    polygonOffsetFactor =  -3.0f;
 
-#ifndef NO_LIBCO
-   main_thread = co_active();
-   game_thread = co_create(65536 * sizeof(void*) * 16, EmuThreadFunction);
-#endif
-
 }
 
 void retro_deinit(void)
 {
    mupen_main_stop();
    mupen_main_exit();
-
-#ifndef NO_LIBCO
-   co_delete(game_thread);
-#endif
 
    deinit_audio_libretro();
 
@@ -2299,11 +2238,7 @@ bool retro_load_game(const struct retro_game_info *game)
    mupencorestop      = false;
    /* Finish ROM load before doing anything funny,
     * so we can return failure if needed. */
-#ifdef NO_LIBCO
-    emu_step_load_data();
-#else
-   co_switch(game_thread);
-#endif
+   emu_step_load_data();
 
    if (mupencorestop)
       return false;
@@ -2335,11 +2270,7 @@ void retro_unload_game(void)
     mupencorestop = 1;
     first_time = 1;
 
-#ifdef NO_LIBCO
     EmuThreadStep();
-#else
-    co_switch(game_thread);
-#endif
 
     CoreDoCommand(M64CMD_ROM_CLOSE, 0, NULL);
     emu_initialized = false;
@@ -2503,9 +2434,7 @@ void retro_run (void)
          /* Additional check for vioverlay not set at start */
          update_variables(false);
          gfx_set_filtering();
-#ifdef NO_LIBCO
          EmuThreadInit();
-#endif
       }
       
       g_frameCheatStatus &= ~(LPL_USED_SLOWDOWN | LPL_USED_FRAME_ADVANCE | LPL_USED_SPEEDUP);
@@ -2529,11 +2458,7 @@ void retro_run (void)
             break;
       }
 
-#ifdef NO_LIBCO
       EmuThreadStep();
-#else
-      co_switch(game_thread);
-#endif
 
       switch (gfx_plugin)
       {
@@ -2726,11 +2651,7 @@ void vbo_disable(void);
 
 int retro_stop_stepping(void)
 {
-#ifdef NO_LIBCO
     return stop_stepping;
-#else
-    return false;
-#endif
 }
 
 int retro_return(bool just_flipping)
@@ -2742,11 +2663,10 @@ int retro_return(bool just_flipping)
    vbo_disable();
 #endif
 
-#ifdef NO_LIBCO
    if (just_flipping)
    {
-      /* HACK: in case the VI comes before the render? is that possible?
-       * remove this when we totally remove libco */
+      /* The VI can fire before the render: present the frame from here
+       * so the flip is not lost across the frame break. */
       flip_only = 1;
       emu_step_render();
       flip_only = 0;
@@ -2756,10 +2676,6 @@ int retro_return(bool just_flipping)
 
    stop_stepping = true;
    frame_break = 1;
-#else
-   flip_only = just_flipping;
-   co_switch(main_thread);
-#endif
 
    return 0;
 }

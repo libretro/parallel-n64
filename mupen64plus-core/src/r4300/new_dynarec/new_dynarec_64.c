@@ -7834,7 +7834,7 @@ uintptr_t dyna_entry_rsp; /* host rsp saved by new_dyna_start; _E3 unwinds via t
 
 void new_dynarec_init(void)
 {
-  pcaddr = 0xa4000040; /* NO_LIBCO: new_dyna_start resumes at pcaddr */
+  pcaddr = 0xa4000040; /* new_dyna_start resumes at pcaddr */
 #ifdef NEW_DYNAREC_DEBUG
   pDebugFile = fopen("new_dynarec_debug.txt","w");
   pDisasmFile = fopen("new_dynarec_disasm.txt","w");

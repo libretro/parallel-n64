@@ -50,7 +50,7 @@
 unsigned int r4300emu = 0;
 unsigned int count_per_op = COUNT_PER_OP_DEFAULT;
 unsigned int llbit;
-/* Set at the frame boundary (VI) in NO_LIBCO builds: every CPU core
+/* Set at the frame boundary (VI): every CPU core
  * unwinds out of its execution loop back to retro_run, and the next
  * retro_run re-enters where it left off.  Unlike 'stop' this does not
  * tear anything down.  A plain global on every arch, including arm64
@@ -93,12 +93,8 @@ static void dynarec_setup_code(void)
 {
    // The dynarec jumps here after we call dyna_start and it prepares
    // Here we need to prepare the initial code block and jump to it
-#ifdef NO_LIBCO
    /* Re-entrant: resume wherever the last frame break left us. */
    jump_to(last_addr);
-#else
-   jump_to(UINT32_C(0xa4000040));
-#endif
 
    // Prevent segfault on failed jump_to
    if (!actual->block || !actual->code)
@@ -135,11 +131,7 @@ void r4300_init(void)
             DebugMessage(M64MSG_INFO, "Starting R4300 emulator: Dynamic Recompiler (Hacktarux)");
             r4300emu = CORE_DYNAREC;
             init_blocks();
-#ifdef NO_LIBCO
             last_addr = UINT32_C(0xa4000040);
-#else
-            dyna_start(dynarec_setup_code);
-#endif
         }
 #elif NEW_DYNAREC
         DebugMessage(M64MSG_INFO, "Starting R4300 emulator: Dynamic Recompiler (Ari64)");
@@ -150,11 +142,7 @@ void r4300_init(void)
         DebugMessage(M64MSG_INFO, "Starting R4300 emulator: Dynamic Recompiler (Hacktarux)");
         r4300emu = CORE_DYNAREC;
         init_blocks();
-#ifdef NO_LIBCO
         last_addr = UINT32_C(0xa4000040);
-#else
-        dyna_start(dynarec_setup_code);
-#endif
 #endif
     }
 #endif

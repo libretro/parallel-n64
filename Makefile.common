@@ -107,11 +107,6 @@ else
 	SOURCES_C += $(ZLIB_SOURCES_C)
 endif
 
-# libco
-ifneq ($(platform), emscripten)
-SOURCES_C += $(LIBRETRO_COMM_DIR)/libco/libco.c
-endif
-
 SOURCES_C += $(RSPDIR)/src/alist.c \
     $(RSPDIR)/src/alist_audio.c \
     $(RSPDIR)/src/alist_naudio.c \
