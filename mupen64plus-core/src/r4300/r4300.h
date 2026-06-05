@@ -45,6 +45,7 @@ extern int stop;
 #define lo             (RECOMPILER_MEMORY->rml_lo)
 #define mupencorestop  (RECOMPILER_MEMORY->rml_stop)
 #endif
+extern int frame_break;
 extern unsigned int llbit;
 extern long long int local_rs;
 extern uint32_t skip_jump;

@@ -7830,8 +7830,11 @@ static void disassemble_inst(int i)
 }
 #endif
 
+uintptr_t dyna_entry_rsp; /* host rsp saved by new_dyna_start; _E3 unwinds via this, independent of call depth */
+
 void new_dynarec_init(void)
 {
+  pcaddr = 0xa4000040; /* NO_LIBCO: new_dyna_start resumes at pcaddr */
 #ifdef NEW_DYNAREC_DEBUG
   pDebugFile = fopen("new_dynarec_debug.txt","w");
   pDisasmFile = fopen("new_dynarec_disasm.txt","w");

@@ -143,6 +143,8 @@ cextern cycle_count
 cextern last_count
 cextern next_interrupt
 cextern stop
+cextern frame_break
+cextern dyna_entry_rsp
 cextern g_cp0_regs
 cextern reg
 cextern hi
@@ -323,6 +325,7 @@ _E1:
     mov     eax,    [rel next_interrupt]
     mov     ecx,    [rel pending_exception]
     mov     edx,    [rel stop]
+    or      edx,    [rel frame_break]    ;frame boundary: unwind like stop, without teardown
 %ifdef WIN64
     add     rsp,    64
 %else
@@ -359,11 +362,10 @@ _E2:
     add     rsp,    8    ;discard our return address, we jump to the handler
     jmp     r10
 _E3:
-%ifdef WIN64
-    add     rsp,    88     ;saved regs + our return address + new_dyna_start scratch
-%else
-    add     rsp,    104    ;saved regs + our return address + new_dyna_start scratch
-%endif
+    ;Unwind straight to new_dyna_start's frame.  A fixed constant is not
+    ;enough: cc_interrupt is also reached through jump_eret (_E11), one
+    ;call level deeper, and with NO_LIBCO this path runs every frame.
+    mov     rsp,    [rel dyna_entry_rsp]
     ;restore callee-save registers
     pop     rbp
     pop     r15
@@ -492,14 +494,16 @@ new_dyna_start:
     push    r14
     push    r15
     push    rbp
+    mov     [rel dyna_entry_rsp],    rsp
     add     rsp,    -56
-    mov     ARG1_REG,    0a4000040h
-    call    new_recompile_block
-    mov     eax,    [rel next_interrupt]
+    ;Resume at pcaddr (seeded to the boot vector by new_dynarec_init):
+    ;NO_LIBCO re-enters here once per frame.
+    mov     ARG1_REG,    [rel pcaddr]
+    CALL_C  get_addr_ht
+    mov     ecx,    [rel next_interrupt]
     mov     CCREG,    [rel g_cp0_regs+36]
-    mov     [rel last_count],    eax
-    sub     CCREG,    eax
-    mov     rax,    [rel base_addr]
+    mov     [rel last_count],    ecx
+    sub     CCREG,    ecx
     jmp     rax
 
 invalidate_block_eax:

@@ -92,7 +92,7 @@ const uint16_t floor_mode = 0x73F;
 
 void dyna_jump(void)
 {
-    if (mupencorestop == 1)
+    if (mupencorestop == 1 || frame_break)
     {
         dyna_stop();
         return;
@@ -116,6 +116,74 @@ void dyna_start(void *code)
   /* It will jump to label 2, restore the base and stack pointers, and exit this function */
 #if defined(__x86_64__)
 #if defined(__GNUC__)
+#if defined(_WIN32)
+  /* Win64 additionally treats rsi, rdi and xmm6-xmm15 as callee-saved.
+   * The generated code clobbers them freely (it was written against the
+   * SysV ABI, where they are scratch), which was harmless while libco
+   * meant dyna_start never returned into live C frames.  Without libco
+   * dyna_start returns once per video frame, so the full Win64
+   * callee-saved set must survive the round trip. */
+  asm volatile
+    (" push %%rbx              \n"  /* we must push an even # of registers to keep stack 16-byte aligned */
+     " push %%r12              \n"
+     " push %%r13              \n"
+     " push %%r14              \n"
+     " push %%r15              \n"
+     " push %%rbp              \n"
+     " push %%rsi              \n"
+     " push %%rdi              \n"
+     " sub  $0xa0, %%rsp       \n"
+     " movups %%xmm6,  0x00(%%rsp)\n"
+     " movups %%xmm7,  0x10(%%rsp)\n"
+     " movups %%xmm8,  0x20(%%rsp)\n"
+     " movups %%xmm9,  0x30(%%rsp)\n"
+     " movups %%xmm10, 0x40(%%rsp)\n"
+     " movups %%xmm11, 0x50(%%rsp)\n"
+     " movups %%xmm12, 0x60(%%rsp)\n"
+     " movups %%xmm13, 0x70(%%rsp)\n"
+     " movups %%xmm14, 0x80(%%rsp)\n"
+     " movups %%xmm15, 0x90(%%rsp)\n"
+     " mov  %%rsp, %[save_rsp] \n"
+     " lea  %[reg], %%r15      \n" /* store the base location of the r4300 registers in r15 for addressing */
+     " call 1f                 \n"
+     " jmp 2f                  \n"
+     "1:                       \n"
+     " pop  %%rax              \n"
+     " mov  %%rax, %[save_rip] \n"
+
+     " sub $0x10, %%rsp        \n"
+     " and $-16, %%rsp         \n" /* ensure that stack is 16-byte aligned */
+     " mov %%rsp, %%rax        \n"
+     " sub $8, %%rax           \n"
+     " mov %%rax, %[return_address]\n"
+
+     " call *%%rbx             \n"
+     "2:                       \n"
+     " mov  %[save_rsp], %%rsp \n"
+     " movups 0x00(%%rsp), %%xmm6 \n"
+     " movups 0x10(%%rsp), %%xmm7 \n"
+     " movups 0x20(%%rsp), %%xmm8 \n"
+     " movups 0x30(%%rsp), %%xmm9 \n"
+     " movups 0x40(%%rsp), %%xmm10\n"
+     " movups 0x50(%%rsp), %%xmm11\n"
+     " movups 0x60(%%rsp), %%xmm12\n"
+     " movups 0x70(%%rsp), %%xmm13\n"
+     " movups 0x80(%%rsp), %%xmm14\n"
+     " movups 0x90(%%rsp), %%xmm15\n"
+     " add  $0xa0, %%rsp       \n"
+     " pop  %%rdi              \n"
+     " pop  %%rsi              \n"
+     " pop  %%rbp              \n"
+     " pop  %%r15              \n"
+     " pop  %%r14              \n"
+     " pop  %%r13              \n"
+     " pop  %%r12              \n"
+     " pop  %%rbx              \n"
+     : [save_rsp]"=m"(save_rsp), [save_rip]"=m"(save_rip), [return_address]"=m"(return_address)
+     : "b" (code), [reg]"m"(*reg)
+     : "%rax", "memory"
+     );
+#else
   asm volatile
     (" push %%rbx              \n"  /* we must push an even # of registers to keep stack 16-byte aligned */
      " push %%r12              \n"
@@ -150,6 +218,7 @@ void dyna_start(void *code)
      : "b" (code), [reg]"m"(*reg)
      : "%rax", "memory"
      );
+#endif
 #endif
 
     /* clear the registers so we don't return here a second time; that would be a bug */

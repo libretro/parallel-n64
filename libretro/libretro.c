@@ -47,9 +47,8 @@
 #define PRESCALE_HEIGHT 625
 #endif
 
-#if defined(NO_LIBCO) && defined(DYNAREC)
-#error cannot currently use dynarecs without libco
-#endif
+/* NO_LIBCO now supports all CPU cores: the dynarecs unwind at the
+ * frame boundary via frame_break and resume at pcaddr/last_addr. */
 
 /* forward declarations */
 int InitGfx(void);
@@ -106,6 +105,7 @@ save_memory_data saved_memory;
 
 #ifdef NO_LIBCO
 static bool stop_stepping;
+extern int frame_break; /* r4300: unwinds the CPU cores at the frame boundary */
 #else
 cothread_t main_thread;
 static cothread_t game_thread;
@@ -749,12 +749,19 @@ static void emu_step_initialize(void)
 
 extern void gliden64RomOpen();
 extern void gliden64RomClosed();
+static void EmuThreadInit(void);
 void reinit_gfx_plugin(void)
 {
     if(first_context_reset)
     {
         first_context_reset = false;
-#ifndef NO_LIBCO
+#ifdef NO_LIBCO
+        /* The libco build switched into the emu thread here, which ran
+         * emu_step_initialize before the plugin RomOpen calls below.
+         * Preserve that ordering: GLideN64's RomOpen dereferences core
+         * state (RSP, memory) that only exists after initialization. */
+        EmuThreadInit();
+#else
         co_switch(game_thread);
 #endif
     }
@@ -819,6 +826,12 @@ void deinit_gfx_plugin(void)
 #ifdef NO_LIBCO
 static void EmuThreadInit(void)
 {
+    /* May be reached twice: from the first context_reset (GL plugins) and
+     * from the first retro_run (angrylion/parallel have no context reset).
+     * Only the first call may initialize. */
+    if (!initializing)
+        return;
+
     emu_step_initialize();
 
     initializing = false;
@@ -828,7 +841,15 @@ static void EmuThreadInit(void)
 
 static void EmuThreadStep(void)
 {
+    /* Once the core has genuinely stopped (CoreDoCommand STOP, fatal
+     * condition in the emulated CPU, ...), r4300_execute has already torn
+     * the dynarec down -- never re-enter it.  This mirrors the libco
+     * behaviour of switching into a dead emulator thread. */
+    if (mupencorestop)
+        return;
+
     stop_stepping = false;
+    frame_break = 0;
     main_run();
 }
 #else
@@ -2734,6 +2755,7 @@ int retro_return(bool just_flipping)
       flip_only = just_flipping;
 
    stop_stepping = true;
+   frame_break = 1;
 #else
    flip_only = just_flipping;
    co_switch(main_thread);

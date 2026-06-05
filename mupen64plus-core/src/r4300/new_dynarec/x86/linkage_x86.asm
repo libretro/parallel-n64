@@ -107,6 +107,8 @@ cextern restore_candidate
 cextern gen_interrupt
 cextern next_interrupt
 cextern stop
+cextern frame_break
+cextern dyna_entry_rsp
 cextern last_count
 cextern pcaddr
 cextern clean_blocks
@@ -481,6 +483,7 @@ _E1:
     mov     eax,    [next_interrupt]
     mov     ebx,    [pending_exception]
     mov     ecx,    [stop]
+    or      ecx,    [frame_break]    ;frame boundary: unwind like stop, without teardown
     add     esp,    28
     mov     [last_count],    eax
     sub     esi,    eax
@@ -499,7 +502,10 @@ _E2:
     add     esp,    16
     jmp     eax
 _E3:
-    add     esp,    16     ;pop stack
+    ;Unwind straight to new_dyna_start's frame.  Depth-independent so the
+    ;frame_break exit is safe from every cc_interrupt call site, and this
+    ;path runs every frame with NO_LIBCO.
+    mov     esp,    [dyna_entry_rsp]
     pop     edi            ;restore edi
     pop     esi            ;restore esi
     pop     ebx            ;restore ebx
@@ -625,14 +631,17 @@ new_dyna_start:
     push    ebx
     push    esi
     push    edi
+    mov     [dyna_entry_rsp],    esp
     add     esp,    -8    ;align stack
-    push    0a4000040h
-    call    new_recompile_block
+    ;Resume at pcaddr (seeded to the boot vector by new_dynarec_init):
+    ;NO_LIBCO re-enters here once per frame.
+    push    DWORD [pcaddr]
+    call    get_addr_ht
     mov     edi,    DWORD [next_interrupt]
     mov     esi,    DWORD [g_cp0_regs+36]
     mov     DWORD [last_count],    edi
     sub     esi,    edi
-    jmp     DWORD [base_addr]
+    jmp     eax
 
 invalidate_block_eax:
     push    eax

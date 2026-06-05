@@ -105,6 +105,7 @@
 #define _jump_vaddr             jump_vaddr
 #define _memory_layout          memory_layout
 #define _new_dyna_start         new_dyna_start
+#define _frame_break            frame_break
 #define _new_recompile_block    new_recompile_block
 #define _read_nomem_new         read_nomem_new
 #define _read_nomemb_new        read_nomemb_new
@@ -250,6 +251,10 @@ GLOBAL_FUNCTION(_cc_interrupt):
     ldr    w0, [x29, #256 ] /* next_interrupt */
     ldr    w1, [x29, #268 ] /* pending_exception */
     ldr    w2, [x29, #276 ] /* stop */
+    adrp   x3, SYM_HI(_frame_break)
+    add    x3, x3, SYM_LO(_frame_break)
+    ldr    w3, [x3]
+    orr    w2, w2, w3 /* frame boundary: unwind like stop, without teardown */
     str    w0, [x29, #264 ] /* last_count */
     sub    w20, w20, w0
     tst    w2, w2
@@ -378,7 +383,6 @@ GLOBAL_FUNCTION(_new_dyna_start):
     adrp   x16, SYM_HI(_memory_layout)
     add    x16, x16, SYM_LO(_memory_layout)
     add    x16, x16, #152
-    mov    w0, #0xa4000000
     stp    x19,x20,[x16,#0]
     stp    x21,x22,[x16,#16]
     stp    x23,x24,[x16,#32]
@@ -386,16 +390,15 @@ GLOBAL_FUNCTION(_new_dyna_start):
     stp    x27,x28,[x16,#64]
     stp    x29,x30,[x16,#80]
     sub    x29, x16, #152
-    adrp   x1, SYM_HI(_base_addr)
-    add    x1, x1, SYM_LO(_base_addr)
-    ldr    x19, [x1]
-    add    w0, w0, #0x40
-    bl     _new_recompile_block
-    ldr    w0, [x29, #256 ] /* next_interrupt */
+    /* Resume at pcaddr (seeded to the boot vector by new_dynarec_init):
+     * NO_LIBCO re-enters here once per frame. */
+    ldr    w0, [x29, #272 ] /* pcaddr */
+    bl     _get_addr_ht
+    ldr    w1, [x29, #256 ] /* next_interrupt */
     ldr    w20, [x29, #636 ] /* g_cp0_regs+36 */ /* Count */
-    str    w0, [x29, #264 ] /* last_count */
-    sub    w20, w20, w0
-    br     x19
+    str    w1, [x29, #264 ] /* last_count */
+    sub    w20, w20, w1
+    br     x0
     
 GLOBAL_FUNCTION(_invalidate_addr_x0):
     brk 0

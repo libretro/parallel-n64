@@ -68,6 +68,15 @@ void reset_hard(void)
           * companion step for new_dynarec backends. */
          new_dynarec_cleanup();
          new_dynarec_init();
+         /* gen_interrupt returns into the pre-reset JIT block after this.
+          * Redirect the dynarec to the boot vector through its exception
+          * channel instead of letting stale code continue against the
+          * powered-on memory: the cc_interrupt tail sees pending_exception
+          * and re-enters via get_addr_ht(pcaddr).  (The old behaviour only
+          * recovered by accident, when the stale block's NOP-sled was
+          * interrupted before walking off the end of RDRAM.) */
+         pcaddr = (int)UINT32_C(0xa4000040);
+         pending_exception = 1;
       }
 #endif
    }

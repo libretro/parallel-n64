@@ -7718,8 +7718,11 @@ static void disassemble_inst(int i)
 }
 #endif
 
+uintptr_t dyna_entry_rsp; /* host esp saved by new_dyna_start; the stop/frame unwind uses this, independent of call depth */
+
 void new_dynarec_init(void)
 {
+  pcaddr = 0xa4000040; /* NO_LIBCO: new_dyna_start resumes at pcaddr */
   DebugMessage(M64MSG_INFO, "Init new dynarec");
 
 #if defined(VITA)
