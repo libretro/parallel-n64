@@ -79,6 +79,15 @@ void ColorBufferToRDRAM::_initFBTexture(void)
 	//cause slowdowns in the glReadPixels call, at least on Android
 	m_pTexture->realWidth = m_lastBufferWidth;
 	m_pTexture->realHeight = VI_GetMaxBufferHeight(m_lastBufferWidth);
+	/* The color-buffer readers size their glReadPixels rows and source
+	 * stride from width, not realWidth.  addFrameBufferTexture recycles
+	 * CachedTexture objects, so without this the readback runs with
+	 * whatever width the previous owner left behind (Killer Instinct
+	 * Gold reliably inherits ~48k) and glReadPixels overflows the PBO:
+	 * heap corruption with copy color buffer to RDRAM enabled.
+	 * DepthBufferToRDRAM already initializes its textures this way. */
+	m_pTexture->width = m_pTexture->realWidth;
+	m_pTexture->height = m_pTexture->realHeight;
 	m_pTexture->textureBytes = m_pTexture->realWidth * m_pTexture->realHeight * fbTexFormat.colorFormatBytes;
 
 	{
