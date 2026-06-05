@@ -2660,6 +2660,8 @@ int retro_stop_stepping(void)
     return stop_stepping;
 }
 
+int retro_return_skip_break = 0;
+
 int retro_return(bool just_flipping)
 {
    if (mupencorestop)
@@ -2679,6 +2681,11 @@ int retro_return(bool just_flipping)
    }
    else
       flip_only = just_flipping;
+
+   /* A deferred-screen-update flush presents without ending the
+    * frame slice; the frame boundary belongs to the VI interrupt. */
+   if (retro_return_skip_break)
+      return 0;
 
    stop_stepping = true;
    frame_break = 1;

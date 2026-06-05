@@ -45,7 +45,18 @@ static void update_dpc_status(struct rdp_core* dp, uint32_t w)
       if (dp->do_on_unfreeze & DELAY_DP_INT)
          signal_rcp_interrupt(dp->r4300, MI_INTR_DP);
       if (dp->do_on_unfreeze & DELAY_UPDATESCREEN)
+      {
+         /* Present the deferred frame, but do not end the libretro
+          * frame slice: the VI interrupt remains the only frame
+          * boundary, keeping retro_run at one VI per call.  Without
+          * this, freeze-protocol games (DK64, Banjo-Kazooie, Perfect
+          * Dark) return from retro_run an extra time per gfx task --
+          * ~90 returns per emulated second instead of 60. */
+         extern int retro_return_skip_break;
+         retro_return_skip_break = 1;
          gfx.updateScreen();
+         retro_return_skip_break = 0;
+      }
       dp->do_on_unfreeze = 0;
    }
 
