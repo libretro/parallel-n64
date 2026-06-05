@@ -369,6 +369,23 @@ m64p_error open_rom(const unsigned char* romimage, unsigned int size)
       ROM_SETTINGS.rumble = 0;
    }
 
+   {
+      char cart_id[4];
+      cart_id[0] = (char)((ROM_HEADER.Manufacturer_ID >> 24) & 0xff);
+      cart_id[1] = (char)(ROM_HEADER.Cartridge_ID & 0xff);
+      cart_id[2] = (char)((ROM_HEADER.Cartridge_ID >> 8) & 0xff);
+      cart_id[3] = '\0';
+      for (i = 0; i < sizeof(lut_cpop_id)/sizeof(lut_cpop_id[0]); ++i)
+      {
+         if (!strncmp(lut_cpop_id[i].id, cart_id, 3))
+         {
+            count_per_op = lut_cpop_id[i].cpop;
+            DebugMessage(M64MSG_INFO, "CountPerOp set to %u.", count_per_op);
+            break;
+         }
+      }
+   }
+
    for (i = 0; i < sizeof(lut_cpop)/sizeof(lut_cpop[0]); ++i)
    {
       if (lut_cpop[i][0] == lut_id)
