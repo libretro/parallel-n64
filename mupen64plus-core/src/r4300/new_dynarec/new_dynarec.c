@@ -7828,7 +7828,11 @@ void new_dynarec_cleanup(void)
 {
   int n;
 #ifndef VITA
-#if defined(_MSC_VER)
+#if defined(_MSC_VER) || defined(_WIN32)
+  /* Matches the VirtualAlloc in new_dynarec_init: MinGW builds fell
+   * through to munmap on memory that was never mmap'd, which does not
+   * even link (mingw-w64 has no munmap), and with NO_LIBCO this path
+   * runs on every hard reset rather than only at shutdown. */
   VirtualFree(base_addr, 0, MEM_RELEASE);
 #elif NEW_DYNAREC == NEW_DYNAREC_ARM
   /* base_addr points at the statically-allocated extra_memory buffer;
