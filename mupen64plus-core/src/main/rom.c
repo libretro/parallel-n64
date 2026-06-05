@@ -207,16 +207,41 @@ m64p_error open_rom(const unsigned char* romimage, unsigned int size)
 
    lut_id = (((uint64_t)sl(ROM_HEADER.CRC1)) << 32) | sl(ROM_HEADER.CRC2);
 
-   for (i = 0; i < sizeof(lut_ee16k)/sizeof(lut_ee16k[0]); ++i)
    {
-      if (lut_ee16k[i] == lut_id)
+      /* Save hardware from the cartridge ID (header 0x3B-0x3D), plus the
+       * region byte (0x3E) for the few region-dependent titles.  See the
+       * lut_cart_save provenance comment in rom_luts.c. */
+      char cart_id[4];
+      cart_id[0] = (char)((ROM_HEADER.Manufacturer_ID >> 24) & 0xff);
+      cart_id[1] = (char)(ROM_HEADER.Cartridge_ID & 0xff);
+      cart_id[2] = (char)((ROM_HEADER.Cartridge_ID >> 8) & 0xff);
+      cart_id[3] = '\0';
+
+      /* Hoshi no Kirby 64 (J) revisions 0 and 1 shipped with SRAM before
+       * moving to 16Kbit EEPROM (ares: mia/medium/nintendo-64.cpp). */
+      if (!strncmp(cart_id, "NK4", 3) && ROM_HEADER.destination_code == 'J'
+            && ROM_HEADER.mask_ROM_version < 2)
       {
          strcpy(ROM_SETTINGS.goodname, ROM_PARAMS.headername);
-         ROM_SETTINGS.savetype = EEPROM_16KB;
-         DebugMessage(M64MSG_INFO, "%s INI patches applied.", ROM_PARAMS.headername);
-
+         ROM_SETTINGS.savetype = SRAM;
          patch_applied = 1;
-         break;
+      }
+      else
+      {
+         for (i = 0; i < sizeof(lut_cart_save)/sizeof(lut_cart_save[0]); ++i)
+         {
+            if (!strncmp(lut_cart_save[i].id, cart_id, 3) &&
+                (!lut_cart_save[i].region ||
+                 lut_cart_save[i].region == ROM_HEADER.destination_code))
+            {
+               strcpy(ROM_SETTINGS.goodname, ROM_PARAMS.headername);
+               ROM_SETTINGS.savetype = lut_cart_save[i].savetype;
+               DebugMessage(M64MSG_INFO, "%s: save type %u from cartridge ID %s.",
+                     ROM_PARAMS.headername, ROM_SETTINGS.savetype, cart_id);
+               patch_applied = 1;
+               break;
+            }
+         }
       }
    }
 
@@ -292,32 +317,6 @@ m64p_error open_rom(const unsigned char* romimage, unsigned int size)
          strcpy(ROM_SETTINGS.goodname, ROM_PARAMS.headername);
          DebugMessage(M64MSG_INFO, "%s INI patches applied.", ROM_PARAMS.headername);
 	 g_vi_refresh_rate = 2200;
-
-         patch_applied = 1;
-         break;
-      }
-   }
-
-   for (i = 0; i < sizeof(lut_ee4k)/sizeof(lut_ee4k[0]); ++i)
-   {
-      if (lut_ee4k[i] == lut_id)
-      {
-         strcpy(ROM_SETTINGS.goodname, ROM_PARAMS.headername);
-         ROM_SETTINGS.savetype = EEPROM_4KB;
-         DebugMessage(M64MSG_INFO, "%s INI patches applied.", ROM_PARAMS.headername);
-
-         patch_applied = 1;
-         break;
-      }
-   }
-
-   for (i = 0; i < sizeof(lut_flashram)/sizeof(lut_flashram[0]); ++i)
-   {
-      if (lut_flashram[i] == lut_id)
-      {
-         strcpy(ROM_SETTINGS.goodname, ROM_PARAMS.headername);
-         ROM_SETTINGS.savetype = FLASH_RAM;
-         DebugMessage(M64MSG_INFO, "%s INI patches applied.", ROM_PARAMS.headername);
 
          patch_applied = 1;
          break;

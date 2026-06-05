@@ -37,296 +37,206 @@ static const uint64_t lut_fixedaudiopos[] = {
 };
 
 /* Games that use 16Kbit EEPROM */
-static const uint64_t lut_ee16k[] = {
-   0x975B7845A2505C18ULL, /* 77a Special Edition by Count0 (PD) */
-   0x514B6900B4B19881ULL, /* Banjo to Kazooie no Daibouken 2 (J) [!] */
-   0x155B7CDFF0DA7325ULL, /* Banjo-Tooie (A) [!] */
-   0xC9176D39EA4779D1ULL, /* Banjo-Tooie (E) (M4) [!] */
-   0xC2E9AA9A475D70AAULL, /* Banjo-Tooie (U) [!] */
-   0x373F58899A6CA80AULL, /* Conker's Bad Fur Day (E) [!] */
-   0x30C7AC507704072DULL, /* Conker's Bad Fur Day (U) [!] */
-   0x83F3931ECB72223DULL, /* Cruis'n World (E) [!] */
-   0xDFE61153D76118E6ULL, /* Cruis'n World (U) [!] */
-   0x11936D8C6F2C4B43ULL, /* Donkey Kong 64 (E) [!] */
-   0x053C89A7A5064302ULL, /* Donkey Kong 64 (J) [!] */
-   0x0DD4ABABB5A2A91EULL, /* Donkey Kong 64 (U) (Kiosk Demo) [!] */
-   0xEC58EABFAD7C7169ULL, /* Donkey Kong 64 (U) [!] */
-   0xB6306E99B63ED2B2ULL, /* Doraemon 2 - Nobita to Hikari no Shinden (J) [!] */
-   0xA8275140B9B056E8ULL, /* Doraemon 3 - Nobita no Machi SOS! (J) [!] */
-   0x202A8EE483F88B89ULL, /* Excitebike 64 (E) [!] */
-   0x861C3519F6091CE5ULL, /* Excitebike 64 (J) [!] */
-   0xAF754F7B1DD17381ULL, /* Excitebike 64 (U) (Kiosk Demo) [!] */
-   0x07861842A12EBC9FULL, /* Excitebike 64 (U) [!] */
-   0x1739EFBAD0B43A68ULL, /* Kobe Bryant in NBA Courtside (E) [!] */
-   0x616B84948A509210ULL, /* Kobe Bryant's NBA Courtside (U) [!] */
-   0xA197CB527520DE0EULL, /* Madden Football 64 (E) [!] */
-   0x13836389265B3C76ULL, /* Madden Football 64 (U) [!] */
-   0xC56741600F5F453CULL, /* Mario Party 3 (E) (M4) [!] */
-   0x0B0AB4CD7B158937ULL, /* Mario Party 3 (J) [!] */
-   0x7C3829D96E8247CEULL, /* Mario Party 3 (U) [!] */
-   0x839F3AD5406D15FAULL, /* Mario Tennis (E) [!] */
-   0x5001CF4FF30CB3BDULL, /* Mario Tennis (U) [!] */
-   0x3A6C42B51ACADA1BULL, /* Mario Tennis 64 (J) [!] */
-   0x147E0EDB36C5B12CULL, /* Neon Genesis Evangelion (J) [!] */
-   0xF468118CE32EE44EULL, /* PD Ultraman Battle Collection 64 (J) [!] */
-   0xE4B08007A602FF33ULL, /* Perfect Dark (E) (M5) [!] */
-   0x96747EB4104BB243ULL, /* Perfect Dark (J) [!] */
-   0xDDF460CC3CA634C0ULL, /* Perfect Dark (U) (V1.0) [!] */
-   0x41F2B98FB458B466ULL, /* Perfect Dark (U) (V1.1) [!] */
-   0xFEE970104E94A9A0ULL, /* RR64 - Ridge Racer 64 (E) [!] */
-   0x2500267E2A7EC3CEULL, /* RR64 - Ridge Racer 64 (U) [!] */
-   0x53ED2DC406258002ULL, /* Star Wars Episode I - Racer (E) (M3) [!] */
-   0x61F5B152046122ABULL, /* Star Wars Episode I - Racer (J) [!] */
-   0x72F703986556A98BULL, /* Star Wars Episode I - Racer (U) [!] */
-   0x2DCFCA608354B147ULL, /* Yoshi Story (J) [!] */
-   0xD3F97D496924135BULL, /* Yoshi's Story (E) (M3) [!] */
-   0x2337D8E86B8E7CECULL  /* Yoshi's Story (U) (M2) [!] */
-};
-
 
 /* Games that use 4Kbit EEPROM */
-static const uint64_t lut_ee4k[] = {
-   0xB98BA4565B2B76AFULL, /* 64 de Hakken!! Tamagotchi Minna de Tamagotchi World (J) [!] */
-   0x36F22FBF318912F2ULL, /* 64 Hanafuda - Tenshi no Yakusoku (J) [!] */
-   0x7A6081FCFF8F7A78ULL, /* 64 Trump Collection - Alice no Wakuwaku Trump World (J) [!] */
-   0x62F6BE95F102D6D6ULL, /* AeroFighters Assault (E) (M3) [!] */
-   0x1B598BF1ECA29B45ULL, /* AeroFighters Assault (U) [!] */
-   0x8CC182A6C2D0CAB0ULL, /* AI Shougi 3 (J) [!] */
-   0xDFD784ADAE426603ULL, /* All Star Tennis '99 (E) (M5) [!] */
-   0xE185E2914E50766DULL, /* All Star Tennis '99 (U) [!] */
-   0xE340A49C74318D41ULL, /* Baku Bomberman (J) [!] */
-   0xE73C7C4FAF93B838ULL, /* Baku Bomberman 2 (J) [!] */
-   0x5168D520CA5FCD0DULL, /* Banjo to Kazooie no Daibouken (J) [!] */
-   0x733FCCB1444892F9ULL, /* Banjo-Kazooie (E) (M3) [!] */
-   0xA4BF9306BF0CDFD1ULL, /* Banjo-Kazooie (U) (V1.0) [!] */
-   0xB088FBB4441E4B1DULL, /* Bass Hunter 64 (E) [!] */
-   0x08FFA4B701F453B6ULL, /* Big Mountain 2000 (U) [!] */
-   0x7C64E6DB55B924DBULL, /* Blast Corps (E) (M2) [!] */
-   0x7C647C25D9D901E6ULL, /* Blast Corps (U) (V1.0) [!] */
-   0x7C647E651948D305ULL, /* Blast Corps (U) (V1.1) [!] */
-   0x65234451EBD3346FULL, /* Blast Dozer (J) [!] */
-   0x0B58B8CDB7B291D2ULL, /* Body Harvest (E) (M3) [!] */
-   0x5326696FFE9A99C3ULL, /* Body Harvest (U) [!] */
-   0x5A160336BC7B37B0ULL, /* Bomberman 64 (E) [!] */
-   0xF568D51E7E49BA1EULL, /* Bomberman 64 (U) [!] */
-   0x237E73B4D63B6B37ULL, /* Bomberman 64 - The Second Attack! (U) [!] */
-   0xD85C4E2988E276AFULL, /* Bomberman Hero (E) [!] */
-   0x4446FDD6E3788208ULL, /* Bomberman Hero (U) [!] */
-   0x67FF12CC76BF0212ULL, /* Bomberman Hero - Mirian Oujo wo Sukue! (J) [!] */
-   0xB9AF8CC6DEC9F19FULL, /* Chameleon Twist (E) [!] */
-   0xA4F2F521F0EB168EULL, /* Chameleon Twist (J) [!] */
-   0x6420535A50028062ULL, /* Chameleon Twist (U) [!] */
-   0x2E3593393FA5EDA6ULL, /* Chopper Attack (E) [!] */
-   0x214CAD94BE1A3B24ULL, /* Chopper Attack (U) [!] */
-   0x2BCCF9C4403D9F6FULL, /* Choro Q 64 (J) [!] */
-   0xA794152861F1199DULL, /* Chou Snobow Kids (J) [!] */
-   0xF8009DB06B291823ULL, /* City-Tour GP - Zennihon GT Senshuken (J) [!] */
-   0x46A3F7AF0F7591D0ULL, /* Cruis'n Exotica (U) [!] */
-   0x503EA760E1300E96ULL, /* Cruis'n USA (E) [!] */
-   0xFF2F2FB4D161149AULL, /* Cruis'n USA (U) (V1.0) [!] */
-   0x5306CF45CBC49250ULL, /* Cruis'n USA (U) (V1.1) [!] */
-   0xB34025547340C004ULL, /* Cruis'n USA (U) (V1.2) [!] */
-   0xFD73F7759724755AULL, /* Diddy Kong Racing (E) (M3) (V1.0) [!] */
-   0x596E145BF7D9879FULL, /* Diddy Kong Racing (E) (M3) (V1.1) [!] */
-   0xF389A35A17785562ULL, /* Diddy Kong Racing (J) [f1] (Z64) */
-   0x7435C9BB39763CF4ULL, /* Diddy Kong Racing (J) */
-   0x53D440E77519B011ULL, /* Diddy Kong Racing (U) (M2) (V1.0) [!] */
-   0xE402430DD2FCFC9DULL, /* Diddy Kong Racing (U) (M2) (V1.1) [!] */
-   0xC16C421BA21580F7ULL, /* Disney's Donald Duck - Goin' Quackers (U) [!] */
-   0x3DF17480193DED5AULL, /* Donald Duck - Quack Attack (E) (M5) [!] */
-   0xD52FE29D8EA6A759ULL, /* Donchan Puzzle Hanabi de Doon! (J) [ALECK64] */
-   0x492B9DE8C6CCC81CULL, /* Earthworm Jim 3D (E) (M6) [!] */
-   0xDF5741919EB5123DULL, /* Earthworm Jim 3D (U) [!] */
-   0x6D9D1FE484D10BEAULL, /* Eleven Beat - World Tournament (J) [ALECK64] */
-   0xCC3CC8B30EC405A4ULL, /* F-1 World Grand Prix (E) [!] */
-   0xB70BAEE53A5005A8ULL, /* F-1 World Grand Prix (F) [!] */
-   0x3844263466B3F060ULL, /* F-1 World Grand Prix (G) [!] */
-   0x64BF47C4F4BD22BAULL, /* F-1 World Grand Prix (J) [!] */
-   0x36F1C74BF2029939ULL, /* Fighter's Destiny (E) [!] */
-   0x0C41F9C201717A0DULL, /* Fighter's Destiny (F) [!] */
-   0xFE94E570E4873A9CULL, /* Fighter's Destiny (G) [!] */
-   0x52F788058B8FCAB7ULL, /* Fighter's Destiny (U) [!] */
-   0x49E46C2D7B1A110CULL, /* Fighting Cup (J) [!] */
-   0xF523730199E3EE93ULL, /* Glover (E) (M3) [!] */
-   0x8E6E01FFCCB4F948ULL, /* Glover (U) [!] */
-   0x0414CA612E57B8AAULL, /* GoldenEye 007 (E) [!] */
-   0xA24F4CF1A82327BAULL, /* GoldenEye 007 (J) [!] */
-   0xB57D4EB4345E09E5ULL, /* Guru - Kuru Kuru Fever (J) [ALECK64] */
-   0xEE4A0E338FD588C9ULL, /* GT 64 - Championship Edition (E) (M3) [!] */
-   0xC49ADCA2F1501B62ULL, /* GT 64 - Championship Edition (U) [!] */
-   0xD3F10E5D052EA579ULL, /* Hey You, Pikachu! (U) [!] */
-   0xC1D702BD6D416547ULL, /* Hoshi no Kirby 64 (J) (V1.0) [!] */
-   0xCA1BB86F41CCA5C5ULL, /* Hoshi no Kirby 64 (J) (V1.1) [!] */
-   0x0C581C7A3D6E20E4ULL, /* Hoshi no Kirby 64 (J) (V1.2) [!] */
-   0xBCB1F89F060752A2ULL, /* Hoshi no Kirby 64 (J) (V1.3) [!] */
-   0x8C138BE095700E46ULL, /* In-Fisherman Bass Hunter 64 (U) [!] */
-   0xAF9DCC151A723D88ULL, /* Indiana Jones and the Infernal Machine (U) [!] */
-   0x3A6F8C6B2897BAEBULL, /* Indiana Jones and the Infernal Machine (E) */
-   0xE436467A82DE8F9BULL, /* Indy Racing 2000 (U) [!] */
-   0x979B263EF8470004ULL, /* Killer Instinct Gold (E) [!] */
-   0x9E8FE2BA8B270770ULL, /* Killer Instinct Gold (U) (V1.0) [!] */
-   0x9E8FCDFA49F5652BULL, /* Killer Instinct Gold (U) (V1.1) [!] */
-   0xF908CA4C36464327ULL, /* Killer Instinct Gold (U) (V1.2) [!] */
-   0x0D93BA11683868A6ULL, /* Kirby 64 - The Crystal Shards (E) [!] */
-   0x46039FB40337822CULL, /* Kirby 64 - The Crystal Shards (U) [!] */
-   0x60460680305F0E72ULL, /* Lode Runner 3-D (E) (M5) [!] */
-   0x964ADD0BB29213DBULL, /* Lode Runner 3-D (J) [!] */
-   0x255018DF57D6AE3AULL, /* Lode Runner 3-D (U) [!] */
-   0x2483F22B136E025EULL, /* Lylat Wars (A) (M3) [!] */
-   0xF4CBE92CB392ED12ULL, /* Lylat Wars (E) (M3) [!] */
-   0xD5356BAC97AE69D2ULL, /* Magical Tetris Challenge Featuring Mickey (J) [ALECK64] */
-   0xC3B6DE9D65D2DE76ULL, /* Mario Kart 64 (E) (V1.0) [!] */
-   0x2577C7D4D18FAAAEULL, /* Mario Kart 64 (E) (V1.1) [!] */
-   0x6BFF4758E5FF5D5EULL, /* Mario Kart 64 (J) (V1.0) [!] */
-   0xC9C3A9875810344CULL, /* Mario Kart 64 (J) (V1.1) [!] */
-   0x3E5055B62E92DA52ULL, /* Mario Kart 64 (U) [!] */
-   0x9C66306980F24A80ULL, /* Mario Party (E) (M3) [!] */
-   0xADA815BE6028622FULL, /* Mario Party (J) [!] */
-   0x2829657EA0621877ULL, /* Mario Party (U) [!] */
-   0x82380387DFC744D9ULL, /* Mario Party 2 (E) (M5) [!] */
-   0xED567D0F38B08915ULL, /* Mario Party 2 (J) [!] */
-   0x9EA95858AF72B618ULL, /* Mario Party 2 (U) [!] */
-   0x736AE6AF4117E9C7ULL, /* Mickey no Racing Challenge USA (J) [!] */
-   0xDED0DD9AE78225A7ULL, /* Mickey's Speedway USA (E) (M5) [!] */
-   0xFA8C4571BBE7F9C0ULL, /* Mickey's Speedway USA (U) [!] */
-   0x418BDA98248A0F58ULL, /* Mischief Makers (E) [!] */
-   0x0B93051B603D81F9ULL, /* Mischief Makers (U) [!] */
-   0x2256ECDA71AB1B9CULL, /* Mission Impossible (E) [!] */
-   0x20095B34343D9E87ULL, /* Mission Impossible (F) [!] */
-   0x93EB3F7E81675E44ULL, /* Mission Impossible (G) [!] */
-   0xEBA949DC39BAECBDULL, /* Mission Impossible (I) [!] */
-   0x5F6A04E2D4FA070DULL, /* Mission Impossible (S) [!] */
-   0x26035CF8802B9135ULL, /* Mission Impossible (U) [!] */
-   0x5AC383E1D712E387ULL, /* Monopoly (U) [!] */
-   0xB8F0BD034479189EULL, /* MRC - Multi Racing Championship (E) (M3) [!] */
-   0xA6B6B41315D113CCULL, /* MRC - Multi Racing Championship (J) [!] */
-   0x2AF9B65C85E2A2D7ULL, /* MRC - Multi Racing Championship (U) [!] */
-   0xC83CEB83FDC56219ULL, /* Penny Racers (E) [!] */
-   0x73ABB1FB9CCA6093ULL, /* Penny Racers (U) [!] */
-   0xEE08C6026BC2D5A6ULL, /* PGA European Tour (E) (M5) [!] */
-   0xB54CE881BCCB6126ULL, /* PGA European Tour (U) [!] */
-   0x3F245305FC0B74AAULL, /* Pikachu Genki Dechu (J) [!] */
-   0x1AA05AD546F52D80ULL, /* Pilotwings 64 (E) (M3) [!] */
-   0x09CC4801E42EE491ULL, /* Pilotwings 64 (J) [!] */
-   0xC851961C78FCAAFAULL, /* Pilotwings 64 (U) [!] */
-   0x9FD375F845F32DC8ULL, /* Rocket - Robot on Wheels (E) (M3) [!] */
-   0x0C5EE085A167DD3EULL, /* Rocket - Robot on Wheels (U) [!] */
-   0x2EF4D519C64A0C5EULL, /* Snow Speeder (J) [!] */
-   0xC2751D1AF8C19BFFULL, /* Snowboard Kids 2 (E) [!] */
-   0x222123514046594BULL, /* Sonic Wings Assault (J) [!] */
-   0xFC70E27208FFE7AAULL, /* Space Station Silicon Valley (E) (M7) [!] */
-   0xBFE23884EF48EAAFULL, /* Space Station Silicon Valley (J) [!] */
-   0xFFCAA7C168858537ULL, /* Star Fox 64 (J) [!] */
-   0xA7D015F82289AA43ULL, /* Star Fox 64 (U) (V1.0) [!] */
-   0xBA780BA00F21DB34ULL, /* Star Fox 64 (U) (V1.1) [!] */
-   0xB703EB2328AAE53AULL, /* Star Soldier - Vanishing Earth (J) [!] */
-   0x315C74663A453265ULL, /* Star Soldier - Vanishing Earth (J) [!] [ALECK64] */
-   0xDDD93C85DAE381E8ULL, /* Star Soldier - Vanishing Earth (U) [!] */
-   0x7EE0E8BB49E411AAULL, /* Star Wars - Rogue Squadron (E) (M3) (V1.0) [!] */
-   0x219191C133183C61ULL, /* Star Wars - Rogue Squadron (E) (M3) (V1.1) [!] */
-   0x66A24BEC2EADD94FULL, /* Star Wars - Rogue Squadron (U) (M3) [!] */
-   0x4D486681AB7D9245ULL, /* Star Wars - Shadows of the Empire (E) [!] */
-   0x264D7E5C18874622ULL, /* Star Wars - Shadows of the Empire (U) (V1.0) [!] */
-   0x4147B09163251060ULL, /* Star Wars - Shadows of the Empire (U) (V1.1) [!] */
-   0x4DD7ED5474F9287DULL, /* Star Wars - Shadows of the Empire (U) (V1.2) [!] */
-   0x827E4890958468DCULL, /* Star Wars - Shutsugeki! Rogue Chuutai (J) [!] */
-   0xEAE6ACE2020B4384ULL, /* Star Wars Episode I - Battle for Naboo (E) [!] */
-   0x3D02989BD4A381E2ULL, /* Star Wars Episode I - Battle for Naboo (U) [!] */
-   0xD89E0E55B17AA99AULL, /* Starshot - Space Circus Fever (E) (M3) [!] */
-   0x94EDA5B88673E903ULL, /* Starshot - Space Circus Fever (U) (M3) [!] */
-   0xA03CF036BCC1C5D2ULL, /* Super Mario 64 (E) (M3) [!] */
-   0x4EAA3D0E74757C24ULL, /* Super Mario 64 (J) [!] */
-   0x635A2BFF8B022326ULL, /* Super Mario 64 (U) [!] */
-   0x85a772f1d5e7cdcaULL, /* Super Mario 64 60fps */
-   0xe5e9f5fbe1c4551dULL, /* Super Mario 64 60fps V2 */
-   0xD6FBA4A86326AA2CULL, /* Super Mario 64 - Shindou Edition (J) [!] */
-   0x0FE684A98BB77AC4ULL, /* Tetrisphere (E) [!] */
-   0x3C1FDABE02A4E0BAULL, /* Tetrisphere (U) [!] */
-   0x2B4F4EFB43C511FEULL, /* Tom and Jerry in Fists of Furry (E) (M6) [!] */
-   0x63E7391CE6CCEA33ULL, /* Tom and Jerry in Fists of Furry (U) [!] */
-   0xD09BA5381C1A5489ULL, /* Top Gear Overdrive (E) [!] */
-   0x0578F24F9175BF17ULL, /* Top Gear Overdrive (J) [!] */
-   0xD741CD80ACA9B912ULL, /* Top Gear Overdrive (U) [!] */
-   0x90AF8D2CE1AC1B37ULL, /* Tower & Shaft (J) [ALECK64] */
-   0x636E6B19E57DDC5FULL, /* V-Rally Edition 99 (E) (M3) [!] */
-   0x4D0224A51BEB5794ULL, /* V-Rally Edition 99 (J) [!] */
-   0x3C059038C8BF2182ULL, /* V-Rally Edition 99 (U) [!] */
-   0x2F57C9F7F1E29CA6ULL, /* Vivid Dolls (J) [ALECK64] */
-   0x93053075261E0F43ULL, /* Waialae Country Club - True Golf Classics (E) (M4) (V1.0) [!] */
-   0x0C5057AD046E126EULL, /* Waialae Country Club - True Golf Classics (E) (M4) (V1.1) [!] */
-   0x8066D58AC3DECAC1ULL, /* Waialae Country Club - True Golf Classics (U) (V1.0) [!] */
-   0x650EFA9630DDF9A7ULL, /* Wave Race 64 (E) (M2) [!] */
-   0x5C9191D6B30AC306ULL, /* Wave Race 64 (J) [!] */
-   0x7DE11F5374872F9DULL, /* Wave Race 64 (U) (V1.0) [!] */
-   0x492F4B6104E5146AULL, /* Wave Race 64 (U) (V1.1) [!] */
-   0x535DF3E2609789F1ULL, /* Wave Race 64 - Shindou Edition (J) (V1.2) [!] */
-   0x0CEBC4C70C9CE932ULL, /* Wild Choppers (J) [!] */
-   0x2D21C57B8FE4C58CULL, /* Worms - Armageddon (E) (M6) [!] */
-   0x13E959A00E93CAB0ULL, /* Worms - Armageddon (U) (M3) [!] */
-   0x9FE6162DE97E4037ULL  /* Yuke Yuke!! Trouble Makers (J) [!] */
-};
-
 /* Games that use Flash RAM */
-static const uint64_t lut_flashram[] = {
-   0xAE5B9465C54D6576ULL, /* Command & Conquer (E) (M2) [!] */
-   0xB5025BADD32675FDULL, /* Command & Conquer (G) [!] */
-   0x95286EB4B76AD58FULL, /* Command & Conquer (U) [!] */
-   0x68D7A1DE0079834AULL, /* Jet Force Gemini (E) (M4) [!] */
-   0x8A6009B694ACE150ULL, /* Jet Force Gemini (U) [!] */
-   0x36281F23009756CFULL, /* Ken Griffey Jr.'s Slugfest (U) [!] */
-   0xE97955C6BC338D38ULL, /* Legend of Zelda, The - Majora's Mask (E) (M4) (V1.0) [!] */
-   0x0A5D8F8398C5371AULL, /* Legend of Zelda, The - Majora's Mask (E) (M4) (V1.1) */
-   0x5354631C03A2DEF0ULL, /* Legend of Zelda, The - Majora's Mask (U) [!] */
-   0xB443EB084DB31193ULL, /* Legend of Zelda, The - Majora's Mask (U) (GC) */
-   0x0EC158F5FB3E6896ULL, /* Mega Man 64 (U) [!] */
-   0x916852D873DBEAEFULL, /* NBA Courtside 2 - Featuring Kobe Bryant (U) [!] */
-   0x3BA7CDDC464E52A0ULL, /* Mario Story (J) [!] */
-   0x19AB29AFC71BCD28ULL, /* Paper Mario (E) (M4) [!] */
-   0x65EEE53AED7D733CULL, /* Paper Mario (U) [!] */
-   0xEC0F690D32A7438CULL, /* Pocket Monsters Snap (J) [!] */
-   0x637758865FB80E7BULL, /* Pocket Monsters Stadium 2 (J) [!] */
-   0xEE4FD7C29CF1D938ULL, /* Pocket Monsters Stadium Kin Gin (J) [!] */
-   0x4A1CD153D830AEF8ULL, /* Pokemon Puzzle League (E) [!] */
-   0x3EB2E6F3062F9EFEULL, /* Pokemon Puzzle League (F) [!] */
-   0x7A4747AC44EEEC23ULL, /* Pokemon Puzzle League (G) [!] */
-   0x19C553A7A70F4B52ULL, /* Pokemon Puzzle League (U) [!] */
-   0x7BB18D4083138559ULL, /* Pokemon Snap (A) [!] */
-   0x4FF5976FACF559D8ULL, /* Pokemon Snap (E) [!] */
-   0xBA6C293A9FAFA338ULL, /* Pokemon Snap (F) [!] */
-   0x5753720D2A8A884DULL, /* Pokemon Snap (G) [!] */
-   0xC0C8504661051B05ULL, /* Pokemon Snap (I) [!] */
-   0x817D286AEF417416ULL, /* Pokemon Snap (S) [!] */
-   0xCA12B54771FA4EE4ULL, /* Pokemon Snap (U) [!] */
-   0x8407727557315B9CULL, /* Pokemon Stadium (E) (V1.0) [!] */
-   0x91C9E05DAD3AAFB9ULL, /* Pokemon Stadium (E) (V1.1) [!] */
-   0xA23553A342BF2D39ULL, /* Pokemon Stadium (F) [!] */
-   0x42011E1BE3552DB5ULL, /* Pokemon Stadium (G) [!] */
-   0xA53FA82DDAE2C15DULL, /* Pokemon Stadium (I) [!] */
-   0xB6E549CEDC8134C0ULL, /* Pokemon Stadium (S) [!] */
-   0x90F5D9B39D0EDCF0ULL, /* Pokemon Stadium (U) (V1.0) [!] */
-   0x1A122D43C17DAF0FULL, /* Pokemon Stadium (U) (V1.1) [!] */
-   0x2952369CB6E4C3A8ULL, /* Pokemon Stadium 2 (E) [!] */
-   0xAC5AA5C7A9B0CDC3ULL, /* Pokemon Stadium 2 (F) [!] */
-   0x439B7E7EC1A1495DULL, /* Pokemon Stadium 2 (G) [!] */
-   0xEFCEAF0022094848ULL, /* Pokemon Stadium 2 (I) [!] */
-   0xD0A1FC5B2FB8074BULL, /* Pokemon Stadium 2 (S) [!] */
-   0x03571182892FD06DULL, /* Pokemon Stadium 2 (U) [!] */
-   0xD666593BD7A25C07ULL, /* Rockman Dash (J) [!] */
-   0xF163A242F2449B3BULL, /* Star Twins (J) [!] */
-   0xBC9B2CC34ED04DA5ULL, /* StarCraft 64 (Beta) */
-   0x42CF5EA39A1334DFULL, /* StarCraft 64 (E) [!] */
-   0x0684FBFB5D3EA8A5ULL, /* StarCraft 64 (U) [!] */
-   0xE0C4F72F769E1506ULL, /* Tigger's Honey Hunt (E) (M7) [!] */
-   0x4EBFDD33664C9D84ULL, /* Tigger's Honey Hunt (U) [!] */
-   0x6D8DF08ED008C3CFULL, /* WWF No Mercy (E) (V1.0) [!] */
-   0x8CDB94C2CB46C6F0ULL, /* WWF No Mercy (E) (V1.1) [!] */
-   0x4E4B06401B49BCFBULL, /* WWF No Mercy (U) (V1.0) [!] */
-   0xF7F52DB82195E636ULL, /* Zelda no Densetsu - Toki no Ocarina - Zelda Collection Version (J) (GC) [!] */
-   0xF611F4BAC584135CULL, /* Zelda no Densetsu - Toki no Ocarina GC (J) (GC) [!] */
-   0xF43B45BA2F0E9B6FULL  /* Zelda no Densetsu - Toki no Ocarina GC URA (J) (GC) [!] */
+/* (Delay SI) */
+/* Cartridge-ID keyed save-type database.
+ *
+ * Keyed on ROM header bytes 0x3B-0x3D (media format + 2-character game
+ * code) plus, for a handful of titles, the region byte at 0x3E; rows
+ * with a specific region must precede the wildcard row for the same
+ * id.  This is the scheme EverDrive save databases use, so romhacks --
+ * which change the header CRCs but keep the game code -- inherit the
+ * base game's save hardware automatically.  Derived from ares'
+ * mia/medium/nintendo-64.cpp (ISC licensed) save-type research. */
+static const struct cart_save_entry { char id[4]; char region; unsigned char savetype; } lut_cart_save[] = {
+   { "CDZ", 0  , SRAM        /* 96KiB unsupported; 32KiB attached */ }, /* Dezaemon 3D */
+   { "CFZ", 0  , SRAM }, /* F-Zero X (J) */
+   { "CLB", 0  , EEPROM_4KB }, /* Mario Party (NTSC) */
+   { "CP2", 0  , FLASH_RAM }, /* Pocket Monsters Stadium 2 (J) */
+   { "CPS", 0  , SRAM }, /* Pocket Monsters Stadium (J) */
+   { "CZL", 0  , SRAM }, /* Legend of Zelda: Ocarina of Time [Zelda no Densetsu - Toki no Ocarina (J)] */
+   { "N3D", 0  , EEPROM_16KB }, /* Doraemon 3: Nobita no Machi SOS! */
+   { "N3H", 'J', SRAM }, /* Ganbare! Nippon! Olympics 2000 (J) */
+   { "NA2", 0  , SRAM }, /* Virtual Pro Wrestling 2 */
+   { "NAB", 0  , EEPROM_4KB }, /* Air Boarder 64 */
+   { "NAD", 0  , EEPROM_4KB }, /* Worms Armageddon (U) */
+   { "NAF", 0  , FLASH_RAM }, /* Doubutsu no Mori */
+   { "NAG", 0  , EEPROM_4KB }, /* AeroGauge */
+   { "NAL", 0  , SRAM }, /* Super Smash Bros. [Nintendo All-Star! Dairantou Smash Brothers (J)] */
+   { "NB5", 0  , SRAM }, /* Biohazard 2 (J) */
+   { "NB6", 0  , EEPROM_4KB }, /* Super B-Daman: Battle Phoenix 64 */
+   { "NB7", 0  , EEPROM_16KB }, /* Banjo-Tooie [Banjo to Kazooie no Daiboken 2 (J)] */
+   { "NBC", 0  , EEPROM_4KB }, /* Blast Corps */
+   { "NBD", 0  , EEPROM_4KB }, /* Bomberman Hero [Mirian Ojo o Sukue! (J)] */
+   { "NBH", 0  , EEPROM_4KB }, /* Body Harvest */
+   { "NBK", 0  , EEPROM_4KB }, /* Banjo-Kazooie [Banjo to Kazooie no Daiboken (J)] */
+   { "NBM", 0  , EEPROM_4KB }, /* Bomberman 64 [Baku Bomberman (J)] */
+   { "NBN", 0  , EEPROM_4KB }, /* Bakuretsu Muteki Bangaioh */
+   { "NBV", 0  , EEPROM_4KB }, /* Bomberman 64: The Second Attack! [Baku Bomberman 2 (J)] */
+   { "NCC", 0  , FLASH_RAM }, /* Command & Conquer */
+   { "NCG", 0  , EEPROM_4KB }, /* Choro Q 64 II - Hacha Mecha Grand Prix Race (J) */
+   { "NCH", 0  , EEPROM_4KB }, /* Chopper Attack */
+   { "NCK", 0  , FLASH_RAM }, /* NBA Courtside 2 featuring Kobe Bryant */
+   { "NCR", 0  , EEPROM_4KB }, /* Penny Racers [Choro Q 64 (J)] */
+   { "NCT", 0  , EEPROM_4KB }, /* Chameleon Twist */
+   { "NCU", 0  , EEPROM_4KB }, /* Cruis'n USA */
+   { "NCV", 0  , FLASH_RAM }, /* Cubivore [English translation/patch of Doubutsu Banchou (J)] */
+   { "NCW", 0  , EEPROM_16KB }, /* Cruis'n World */
+   { "NCX", 0  , EEPROM_4KB }, /* Custom Robo */
+   { "NCZ", 0  , EEPROM_16KB }, /* Custom Robo V2 */
+   { "ND2", 0  , EEPROM_16KB }, /* Doraemon 2: Nobita to Hikari no Shinden */
+   { "ND3", 'J', EEPROM_16KB }, /* Akumajou Dracula Mokushiroku (J) */
+   { "ND4", 'J', EEPROM_16KB }, /* Akumajou Dracula Mokushiroku Gaiden: Legend of Cornell (J) */
+   { "ND6", 0  , EEPROM_16KB }, /* Densha de Go! 64 */
+   { "NDA", 0  , FLASH_RAM }, /* Derby Stallion 64 */
+   { "NDK", 'J', EEPROM_4KB }, /* Space Dynamites (J) [Dark Rift] */
+   { "NDO", 0  , EEPROM_16KB }, /* Donkey Kong 64 */
+   { "NDP", 0  , FLASH_RAM }, /* Dinosaur Planet (Unlicensed) */
+   { "NDQ", 0  , EEPROM_4KB }, /* Disney's Donald Duck - Goin' Quackers [Quack Attack (E)] */
+   { "NDR", 0  , EEPROM_4KB }, /* Doraemon: Nobita to 3tsu no Seireiseki */
+   { "NDU", 0  , EEPROM_4KB }, /* Duck Dodgers starring Daffy Duck */
+   { "NDY", 0  , EEPROM_4KB }, /* Diddy Kong Racing */
+   { "NEA", 0  , EEPROM_4KB }, /* PGA European Tour */
+   { "NEP", 0  , EEPROM_16KB }, /* Star Wars Episode I: Racer */
+   { "NER", 0  , EEPROM_4KB }, /* Aero Fighters Assault [Sonic Wings Assault (J)] */
+   { "NEV", 0  , EEPROM_16KB }, /* Neon Genesis Evangelion */
+   { "NF2", 0  , EEPROM_4KB }, /* F-1 World Grand Prix II */
+   { "NFG", 0  , EEPROM_4KB }, /* Fighter Destiny 2 */
+   { "NFH", 0  , EEPROM_4KB }, /* In-Fisherman Bass Hunter 64 */
+   { "NFU", 0  , EEPROM_16KB }, /* Conker's Bad Fur Day */
+   { "NFW", 0  , EEPROM_4KB }, /* F-1 World Grand Prix */
+   { "NFX", 0  , EEPROM_4KB }, /* Star Fox 64 [Lylat Wars (E)] */
+   { "NFY", 0  , EEPROM_4KB }, /* Kakutou Denshou: F-Cup Maniax */
+   { "NFZ", 0  , SRAM }, /* F-Zero X (U + E) */
+   { "NG6", 0  , SRAM }, /* Ganmare Goemon: Dero Dero Douchuu Obake Tenkomori */
+   { "NGC", 0  , EEPROM_16KB }, /* GT 64: Championship Edition */
+   { "NGE", 0  , EEPROM_4KB }, /* GoldenEye 007 */
+   { "NGL", 0  , EEPROM_4KB }, /* Getter Love!! */
+   { "NGP", 0  , SRAM }, /* Goemon: Mononoke Sugoroku */
+   { "NGT", 0  , EEPROM_16KB }, /* City Tour GrandPrix - Zen Nihon GT Senshuken */
+   { "NGU", 0  , EEPROM_4KB }, /* Tsumi to Batsu: Hoshi no Keishousha (Sin and Punishment) */
+   { "NGV", 0  , EEPROM_4KB }, /* Glover */
+   { "NHA", 0  , EEPROM_4KB }, /* Bomberman 64: Arcade Edition (J) */
+   { "NHF", 0  , EEPROM_4KB }, /* 64 Hanafuda: Tenshi no Yakusoku */
+   { "NHP", 0  , EEPROM_4KB }, /* Heiwa Pachinko World 64 */
+   { "NHY", 0  , SRAM }, /* Hybrid Heaven (J) */
+   { "NIB", 0  , SRAM }, /* Itoi Shigesato no Bass Tsuri No. 1 Kettei Ban! */
+   { "NIC", 0  , EEPROM_4KB }, /* Indy Racing 2000 */
+   { "NIJ", 0  , EEPROM_4KB }, /* Indiana Jones and the Infernal Machine */
+   { "NIM", 0  , EEPROM_16KB }, /* Ide Yosuke no Mahjong Juku */
+   { "NIR", 0  , EEPROM_4KB }, /* Utchan Nanchan no Hono no Challenger: Denryuu Ira Ira Bou */
+   { "NJ5", 0  , SRAM }, /* Jikkyou Powerful Pro Yakyuu 5 */
+   { "NJF", 0  , FLASH_RAM }, /* Jet Force Gemini [Star Twins (J)] */
+   { "NJG", 0  , SRAM }, /* Jinsei Game 64 */
+   { "NJK", 0  , EEPROM_4KB }, /* Viewpoint 2064 (Master) */
+   { "NJM", 0  , EEPROM_4KB }, /* Earthworm Jim 3D */
+   { "NK2", 0  , EEPROM_4KB }, /* Snowboard Kids 2 [Chou Snobow Kids (J)] */
+   { "NK4", 0  , EEPROM_16KB }, /* Kirby 64: The Crystal Shards (J rev>=2 + world) */
+   { "NKA", 0  , EEPROM_4KB }, /* Fighters Destiny [Fighting Cup (J)] */
+   { "NKG", 0  , SRAM }, /* Major League Baseball featuring Ken Griffey Jr. */
+   { "NKI", 0  , EEPROM_4KB }, /* Killer Instinct Gold */
+   { "NKJ", 0  , FLASH_RAM }, /* Ken Griffey Jr.'s Slugfest */
+   { "NKT", 0  , EEPROM_4KB }, /* Mario Kart 64 */
+   { "NLB", 0  , EEPROM_4KB }, /* Mario Party (PAL) */
+   { "NLL", 0  , EEPROM_4KB }, /* Last Legion UX */
+   { "NLR", 0  , EEPROM_4KB }, /* Lode Runner 3-D */
+   { "NM6", 0  , FLASH_RAM }, /* Mega Man 64 */
+   { "NM8", 0  , EEPROM_16KB }, /* Mario Tennis */
+   { "NMF", 0  , SRAM }, /* Mario Golf 64 */
+   { "NMG", 0  , EEPROM_4KB }, /* Monaco Grand Prix [Racing Simulation 2 (G)] */
+   { "NMI", 0  , EEPROM_4KB }, /* Mission: Impossible */
+   { "NML", 0  , EEPROM_4KB }, /* Mickey's Speedway USA [Mickey no Racing Challenge USA (J)] */
+   { "NMO", 0  , EEPROM_4KB }, /* Monopoly */
+   { "NMQ", 0  , FLASH_RAM }, /* Paper Mario */
+   { "NMR", 0  , EEPROM_4KB }, /* Multi-Racing Championship */
+   { "NMS", 0  , EEPROM_4KB }, /* Morita Shougi 64 */
+   { "NMU", 0  , EEPROM_4KB }, /* Big Mountain 2000 */
+   { "NMV", 0  , EEPROM_16KB }, /* Mario Party 3 */
+   { "NMW", 0  , EEPROM_4KB }, /* Mario Party 2 */
+   { "NMX", 0  , EEPROM_16KB }, /* Excitebike 64 */
+   { "NMZ", 0  , EEPROM_4KB }, /* Zool - Majou Tsukai Densetsu (J) */
+   { "NN6", 0  , EEPROM_4KB }, /* Dr. Mario 64 */
+   { "NNA", 0  , EEPROM_4KB }, /* Star Wars Episode I: Battle for Naboo */
+   { "NNB", 0  , EEPROM_16KB }, /* Kobe Bryant in NBA Courtside */
+   { "NOB", 0  , SRAM }, /* Ogre Battle 64: Person of Lordly Caliber */
+   { "NOS", 0  , EEPROM_4KB }, /* 64 Oozumou */
+   { "NP2", 0  , EEPROM_4KB }, /* Chou Kuukan Night Pro Yakyuu King 2 (J) */
+   { "NP3", 0  , FLASH_RAM }, /* Pokemon Stadium 2 [Pocket Monsters Stadium - Kin Gin (J)] */
+   { "NP4", 0  , SRAM }, /* Jikkyou Powerful Pro Yakyuu 4 */
+   { "NP6", 0  , SRAM }, /* Jikkyou Powerful Pro Yakyuu 6 */
+   { "NPA", 0  , SRAM }, /* Jikkyou Powerful Pro Yakyuu 2000 */
+   { "NPD", 0  , EEPROM_16KB }, /* Perfect Dark */
+   { "NPE", 0  , SRAM }, /* Jikkyou Powerful Pro Yakyuu Basic Ban 2001 */
+   { "NPF", 0  , FLASH_RAM }, /* Pokemon Snap [Pocket Monsters Snap (J)] */
+   { "NPG", 0  , EEPROM_4KB }, /* Hey You, Pikachu! [Pikachu Genki Dechu (J)] */
+   { "NPM", 0  , SRAM }, /* Premier Manager 64 */
+   { "NPN", 0  , FLASH_RAM }, /* Pokemon Puzzle League */
+   { "NPO", 0  , FLASH_RAM }, /* Pokemon Stadium */
+   { "NPP", 0  , EEPROM_16KB }, /* Parlor! Pro 64: Pachinko Jikki Simulation Game */
+   { "NPS", 0  , SRAM }, /* Jikkyou J.League 1999: Perfect Striker 2 */
+   { "NPT", 0  , EEPROM_4KB }, /* Puyo Puyon Party */
+   { "NPW", 0  , EEPROM_4KB }, /* Pilotwings 64 */
+   { "NPY", 0  , EEPROM_4KB }, /* Puyo Puyo Sun 64 */
+   { "NR7", 0  , EEPROM_16KB }, /* Robot Poncots 64: 7tsu no Umi no Caramel */
+   { "NRA", 0  , EEPROM_4KB }, /* Rally '99 (J) */
+   { "NRC", 0  , EEPROM_4KB }, /* Top Gear Overdrive */
+   { "NRE", 0  , SRAM }, /* Resident Evil 2 */
+   { "NRH", 0  , FLASH_RAM }, /* Rockman Dash - Hagane no Boukenshin (J) */
+   { "NRI", 0  , SRAM }, /* New Tetris, The */
+   { "NRS", 0  , EEPROM_4KB }, /* Star Wars: Rogue Squadron [Shutsugeki! Rogue Chuutai (J)] */
+   { "NRZ", 0  , EEPROM_16KB }, /* Ridge Racer 64 */
+   { "NS3", 0  , EEPROM_4KB }, /* AI Shougi 3 */
+   { "NS4", 0  , SRAM }, /* Super Robot Taisen 64 */
+   { "NS6", 0  , EEPROM_4KB }, /* Star Soldier: Vanishing Earth */
+   { "NSA", 0  , EEPROM_4KB }, /* Sonic Wings Assault (J) */
+   { "NSC", 0  , EEPROM_4KB }, /* Starshot: Space Circus Fever */
+   { "NSI", 0  , SRAM }, /* Fushigi no Dungeon: Fuurai no Shiren 2 */
+   { "NSM", 0  , EEPROM_4KB }, /* Super Mario 64 (+ Shindou Edition) */
+   { "NSN", 0  , EEPROM_4KB }, /* Snow Speeder (J) */
+   { "NSQ", 0  , FLASH_RAM }, /* StarCraft 64 */
+   { "NSS", 0  , EEPROM_4KB }, /* Super Robot Spirits */
+   { "NSU", 0  , EEPROM_4KB }, /* Rocket: Robot on Wheels */
+   { "NSV", 0  , EEPROM_4KB }, /* Space Station Silicon Valley */
+   { "NSW", 0  , EEPROM_4KB }, /* Star Wars: Shadows of the Empire [Teikoku no Kage (J)] */
+   { "NT3", 0  , SRAM }, /* Shin Nihon Pro Wrestling - Toukon Road 2 - The Next Generation (J) */
+   { "NT6", 0  , EEPROM_4KB }, /* Tetris 64 */
+   { "NT9", 0  , FLASH_RAM }, /* Tigger's Honey Hunt */
+   { "NTB", 0  , EEPROM_4KB }, /* Transformers: Beast Wars Metals 64 (J) */
+   { "NTC", 0  , EEPROM_4KB }, /* 64 Trump Collection */
+   { "NTE", 0  , SRAM }, /* 1080 Snowboarding */
+   { "NTJ", 0  , EEPROM_4KB }, /* Tom & Jerry in Fists of Fury */
+   { "NTM", 0  , EEPROM_4KB }, /* Mischief Makers [Yuke Yuke!! Trouble Makers (J)] */
+   { "NTN", 0  , EEPROM_4KB }, /* All Star Tennis '99 */
+   { "NTP", 0  , EEPROM_4KB }, /* Tetrisphere */
+   { "NTR", 0  , EEPROM_4KB }, /* Top Gear Rally (J + E) */
+   { "NTW", 0  , EEPROM_4KB }, /* 64 de Hakken!! Tamagotchi */
+   { "NTX", 0  , EEPROM_4KB }, /* Taz Express */
+   { "NUB", 0  , EEPROM_16KB }, /* PD Ultraman Battle Collection 64 */
+   { "NUM", 0  , SRAM }, /* Nushi Zuri 64: Shiokaze ni Notte */
+   { "NUT", 0  , SRAM }, /* Nushi Zuri 64 */
+   { "NVB", 0  , SRAM }, /* Bass Rush - ECOGEAR PowerWorm Championship (J) */
+   { "NVL", 0  , EEPROM_4KB }, /* V-Rally Edition '99 */
+   { "NVP", 0  , SRAM }, /* Virtual Pro Wrestling 64 */
+   { "NVY", 0  , EEPROM_4KB }, /* V-Rally Edition '99 (J) */
+   { "NW2", 0  , SRAM }, /* WCW-nWo Revenge */
+   { "NW4", 0  , FLASH_RAM }, /* WWF No Mercy */
+   { "NWC", 0  , EEPROM_4KB }, /* Wild Choppers */
+   { "NWL", 0  , SRAM }, /* Waialae Country Club: True Golf Classics */
+   { "NWQ", 0  , EEPROM_4KB }, /* Rally Challenge 2000 */
+   { "NWR", 0  , EEPROM_4KB }, /* Wave Race 64 (+ Shindou Edition) */
+   { "NWT", 'J', EEPROM_4KB }, /* Wetrix (J) */
+   { "NWU", 0  , EEPROM_4KB }, /* Worms Armageddon (E) */
+   { "NWX", 0  , SRAM }, /* WWF WrestleMania 2000 */
+   { "NXO", 0  , EEPROM_4KB }, /* Cruis'n Exotica */
+   { "NYK", 0  , EEPROM_4KB }, /* Yakouchuu II: Satsujin Kouro */
+   { "NYS", 0  , EEPROM_16KB }, /* Yoshi's Story */
+   { "NYW", 0  , SRAM }, /* Harvest Moon 64 */
+   { "NZL", 0  , SRAM }, /* Legend of Zelda: Ocarina of Time (E) */
+   { "NZS", 0  , FLASH_RAM }, /* Legend of Zelda: Majora's Mask [Zelda no Densetsu - Mujura no Kamen (J)] */
 };
 
-/* (Delay SI) */
 static const uint64_t lut_delaysi[][2] = {
    { 0x514B6900B4B19881ULL, 0 }, /* Banjo to Kazooie no Daibouken 2 (J) [!] */
    { 0xC2E9AA9A475D70AAULL, 0 }, /* Banjo-Tooie (U) [!] */
