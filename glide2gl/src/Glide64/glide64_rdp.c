@@ -2127,7 +2127,16 @@ static void glide64ProcessRDPList_internal(void)
 {
    uint32_t i;
    bool set_zero                  = true;
-   const uint32_t length          = (*(uint32_t*)gfx_info.DPC_END_REG) - (*(uint32_t*)gfx_info.DPC_CURRENT_REG);
+   const uint32_t dp_current      = *(uint32_t*)gfx_info.DPC_CURRENT_REG;
+   const uint32_t dp_end          = *(uint32_t*)gfx_info.DPC_END_REG;
+   const uint32_t length          = dp_end - dp_current;
+
+   /* Don't do anything if the registers are not set up correctly:
+    * an END at or below CURRENT (e.g. a command list pointer reset)
+    * would underflow 'length' and walk the load loop far past RDRAM.
+    * Same guard as Angrylion's n64video_process_list(). */
+   if (dp_end <= dp_current)
+      return;
 
    (*(uint32_t*)gfx_info.DPC_STATUS_REG) &= ~0x0002;
 
