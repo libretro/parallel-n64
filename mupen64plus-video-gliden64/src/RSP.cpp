@@ -54,7 +54,14 @@ void _ProcessDList()
 		u32 pci = RSP.PCi;
 		if (RSP.count == 1)
 			--pci;
-		RSP.nextCmd = _SHIFTR(*(u32*)&RDRAM[RSP.PC[pci]], 24, 8);
+		/* The loop guard above only validated the current command at the
+		 * pre-increment PC; this prefetch reads a word at the advanced PC
+		 * (or, when count==1, a shallower stack level), which can sit one
+		 * word past RDRAM at the buffer boundary. Bound it the same way. */
+		if ((RSP.PC[pci] + 4) <= RDRAMSize)
+			RSP.nextCmd = _SHIFTR(*(u32*)&RDRAM[RSP.PC[pci]], 24, 8);
+		else
+			RSP.nextCmd = 0;
 
 		GBI.cmd[RSP.cmd](RSP.w0, RSP.w1);
 		RSP_CheckDLCounter();
@@ -87,7 +94,12 @@ void _ProcessDListFactor5()
 		DebugMsg(DEBUG_LOW, "0x%08lX: CMD=0x%02lX W0=0x%08lX W1=0x%08lX\n", RSP.PC[RSP.PCi], _SHIFTR(RSP.w0, 24, 8), RSP.w0, RSP.w1);
 #endif
 
-		RSP.nextCmd = _SHIFTR(*(u32*)&RDRAM[RSP.PC[RSP.PCi] + 8], 24, 8);
+		/* Same boundary case as _ProcessDList: the guard validated the
+		 * current command, but this prefetch reads a word at PC + 8. */
+		if ((RSP.PC[RSP.PCi] + 8 + 4) <= RDRAMSize)
+			RSP.nextCmd = _SHIFTR(*(u32*)&RDRAM[RSP.PC[RSP.PCi] + 8], 24, 8);
+		else
+			RSP.nextCmd = 0;
 
 		GBI.cmd[RSP.cmd](RSP.w0, RSP.w1);
 		RSP.PC[RSP.PCi] += 8;
