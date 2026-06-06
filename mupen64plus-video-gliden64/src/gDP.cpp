@@ -772,6 +772,11 @@ void gDPLoadTLUT( u32 tile, u32 uls, u32 ult, u32 lrs, u32 lrt )
 	int i = 0;
 	while (i < count) {
 		for (u16 j = 0; (j < 16) && (i < count); ++j, ++i) {
+			/* address is guest-derived and advances per entry; stop if
+			 * the 2-byte read would leave RDRAM. The TMEM destination is
+			 * already masked to 0x07FF. */
+			if ((address + 2) > RDRAMSize)
+				break;
 			dest[(destIdx | 0x0400) & 0x07FF] = swapword(*(u16*)(RDRAM + (address ^ 2)));
 			address += 2;
 			destIdx += 4;
@@ -786,7 +791,19 @@ void gDPLoadTLUT( u32 tile, u32 uls, u32 ult, u32 lrs, u32 lrt )
 	if (TFH.isInited()) {
 		const u16 start = gDP.tiles[tile].tmem - 256; // starting location in the palettes
 		u16 *spal = (u16*)(RDRAM + gDP.textureImage.address);
-		memcpy((u8*)(gDP.TexFilterPalette + start), spal, count<<1);
+		/* Clamp the copy to the TexFilterPalette[512] destination and to
+		 * RDRAM: both 'count' and the source address come from the tile
+		 * descriptor. */
+		u32 words = count;
+		if (start >= 512)
+			words = 0;
+		else if (start + words > 512)
+			words = 512 - start;
+		if (gDP.textureImage.address + (words << 1) > RDRAMSize)
+			words = (gDP.textureImage.address < RDRAMSize)
+				? (RDRAMSize - gDP.textureImage.address) >> 1 : 0;
+		if (words != 0)
+			memcpy((u8*)(gDP.TexFilterPalette + start), spal, words << 1);
 	}
 
 	gDP.changed |= CHANGED_TMEM;
