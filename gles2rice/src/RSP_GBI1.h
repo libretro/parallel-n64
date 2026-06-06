@@ -34,6 +34,12 @@ void RSP_GBI1_Vtx(Gfx *gfx)
     if ((v0 + n) > 80)
         return;
 
+    /* addr passing the test above only bounds the first vertex; the read
+     * inside ProcessVertexData spans n*16 bytes, so bound the end too
+     * (GBI0 and GBI2 already check addr + n*16). */
+    if ((addr + n * 16) > g_dwRamSize)
+        return;
+
     ProcessVertexData(addr, v0, n);
     status.dwNumVertices += n;
     DisplayVertexInfo(addr, v0, n);
