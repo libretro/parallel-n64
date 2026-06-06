@@ -1012,7 +1012,7 @@ else ifeq ($(HAVE_PARALLEL), 1)
 else ifeq (,$(findstring msvc,$(platform)))
     CFLAGS   += -MMD
     ifneq ($(platform),ios-arm64)
-        CXXFLAGS += -std=c++98 -MMD
+        CXXFLAGS += -std=c++11 -MMD
     endif
 endif
 ifeq ($(GLIDEN64ES),1)
