@@ -1650,7 +1650,7 @@ static INLINE void fchs(void)
 }
 
 
-static INLINE void fsqrt(void)
+static INLINE void fsqrt_(void)
 {
    put8(0xD9);
    put8(0xFA);
