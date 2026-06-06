@@ -733,10 +733,15 @@ static void _loadBackground( CachedTexture *pTexture )
 	bpl = gSP.bgImage.width << gSP.bgImage.size >> 1;
 	numBytes = bpl * gSP.bgImage.height;
 	pSwapped = (uint8_t*)malloc(numBytes);
-	//assert(pSwapped != NULL);
+	if (pSwapped == NULL)
+		return;
 	UnswapCopyWrap(gfx_info.RDRAM, gSP.bgImage.address, pSwapped, 0, RDRAMSize, numBytes);
 	pDest = (uint32_t*)malloc(pTexture->textureBytes);
-	//assert(pDest != NULL);
+	if (pDest == NULL)
+	{
+		free(pSwapped);
+		return;
+	}
 
 	clampSClamp = pTexture->width - 1;
 	clampTClamp = pTexture->height - 1;
@@ -777,6 +782,7 @@ static void _loadBackground( CachedTexture *pTexture )
       glTexImage2D(GL_TEXTURE_2D, 0, glInternalFormat, pTexture->realWidth, pTexture->realHeight, 0, GL_RGBA, glType, pDest);
    }
 	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+	free(pSwapped);
 	free(pDest);
 }
 

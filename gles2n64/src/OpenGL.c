@@ -1141,13 +1141,19 @@ void OGL_ReadScreen( void *dest, int *width, int *height )
    *width  = OGL_GetScreenWidth();
    *height = OGL_GetScreenHeight();
 
-   dest = malloc(OGL_GetScreenHeight() * OGL_GetScreenWidth() * 3);
-   if (dest == NULL)
+   /* ReadScreen2 contract: a NULL dest is a dimension query; otherwise
+    * dest is a caller-owned width*height*3 buffer expecting tightly
+    * packed RGB rows. The old code instead leaked a malloc into the
+    * by-value parameter - the caller's buffer was never written - and
+    * read GL_RGBA, overflowing its own *3-sized allocation. */
+   if (!dest)
       return;
 
+   glPixelStorei(GL_PACK_ALIGNMENT, 1);
    glReadPixels(0, OGL_GetHeightOffset(),
          OGL_GetScreenWidth(), OGL_GetScreenHeight(),
-         GL_RGBA, GL_UNSIGNED_BYTE, dest );
+         GL_RGB, GL_UNSIGNED_BYTE, dest );
+   glPixelStorei(GL_PACK_ALIGNMENT, 4);
 }
 
 void _setSpecialTexrect(void)

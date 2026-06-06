@@ -173,11 +173,15 @@ static int program_compare(ShaderProgram *prog, DecodedMux *dmux, uint32_t flags
 
 static void glcompiler_error(GLint shader)
 {
-   int len, i;
+   int len = 0, i;
    char* log;
 
    glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &len);
-   log = (char*) malloc(len + 1);
+   if (len <= 0 || !(log = (char*) malloc(len + 1)))
+   {
+      LOG(LOG_ERROR, "COMPILE ERROR (no log available) \n");
+      return;
+   }
    glGetShaderInfoLog(shader, len, &i, log);
    log[len] = 0;
    LOG(LOG_ERROR, "COMPILE ERROR: %s \n", log);
@@ -186,11 +190,15 @@ static void glcompiler_error(GLint shader)
 
 static void gllinker_error(GLint program)
 {
-   int len, i;
+   int len = 0, i;
    char* log;
 
    glGetProgramiv(program, GL_INFO_LOG_LENGTH, &len);
-   log = (char*)malloc(len + 1);
+   if (len <= 0 || !(log = (char*) malloc(len + 1)))
+   {
+      LOG(LOG_ERROR, "LINK ERROR (no log available) \n");
+      return;
+   }
    glGetProgramInfoLog(program, len, &i, log);
    log[len] = 0;
    LOG(LOG_ERROR, "LINK ERROR: %s \n", log);
@@ -299,6 +307,8 @@ static ShaderProgram *ShaderCombiner_Compile(DecodedMux *dmux, int flags)
 
    buffer = (char*)frag;
    prog = (ShaderProgram*) malloc(sizeof(ShaderProgram));
+   if (!prog)
+      return NULL;
 
    prog->left = prog->right = NULL;
    prog->usesT0 = prog->usesT1 = prog->usesCol = prog->usesNoise = 0;
@@ -529,8 +539,10 @@ void ShaderCombiner_Set(DecodedMux *dmux, int flags)
    //build new program
    if (!prog)
    {
-      scProgramCount++;
       prog = ShaderCombiner_Compile(dmux, flags);
+      if (!prog)
+         return;
+      scProgramCount++;
       if (!root)
          scProgramRoot = prog;
       else if (root->combine.mux < dmux->combine.mux)
