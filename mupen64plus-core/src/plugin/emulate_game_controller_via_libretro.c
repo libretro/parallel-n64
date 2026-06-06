@@ -311,7 +311,6 @@ EXPORT void CALL inputControllerCommand(int Control, unsigned char *Command)
 #define CSTICK_UP 0x800
 #define CSTICK_DOWN 0x400
 
-#define N64_MAX_ANALOG 85.0f
 #define GCN_MAX_ANALOG 100.0f
 #define GCN_MAX_CSTICK 95.0f
 
@@ -356,6 +355,115 @@ void scale_joystick(int max, int x, int y, int* outX, int* outY, float maximum)
 
 }
 
+/* kev4cards' N64 analog gate mapping, ported from ares via
+ * mupen64plus-libretro-nx PR #581. Maps the circular range of a modern
+ * analog stick onto the N64 stick's octagonal gate (cardinal max 85,
+ * diagonal max 69) with an axial inner dead-zone and a response curve
+ * that rescales the live range, instead of the polar deadzone/scale in
+ * scale_joystick. This is the standard N64 stick path; scale_joystick
+ * remains for the GameCube controller modes. The ares original
+ * supports a re-centering offset; the nx port fixes it at zero, so the
+ * offset terms are folded out here. The angle-snapping options do not
+ * apply to this path: the gate mapping is the measured-hardware answer
+ * to the circular-controller problem that snapping approximated.
+ * Like scale_joystick, outY is returned already negated. */
+#define GATE_CARDINAL_MAX   85.0
+#define GATE_DIAGONAL_MAX   69.0
+#define GATE_INNER_DEADZONE  7.0
+
+static void scale_joystick_n64_gate(int x, int y, int *outX, int *outY)
+{
+   /* The dead-zone and saturation radius only change when the
+    * dead-zone core option does; cache them across input polls. */
+   static int cached_astick_deadzone = -1;
+   static double inner_deadzone     = 0.0;
+   static double saturation_radius  = 0.0;
+   double ax, ay, length, sens;
+
+   if (astick_deadzone != cached_astick_deadzone)
+   {
+      double t, discriminant;
+      cached_astick_deadzone = astick_deadzone;
+      /* astick_deadzone holds percent * 0.01 * 0x8000; recover the
+       * percentage and widen the built-in dead-zone by it 1:1. */
+      inner_deadzone = GATE_INNER_DEADZONE
+            + (double)astick_deadzone / ASTICK_MAX / 0.01;
+      t            = inner_deadzone + GATE_DIAGONAL_MAX;
+      discriminant = t * t
+            - 2.0 * sqrt(2.0) * GATE_DIAGONAL_MAX * inner_deadzone;
+      saturation_radius = (t + sqrt(discriminant)) / sqrt(2.0);
+   }
+
+   /* Scale the raw [-32767, 32767] range into gate units */
+   ax = x * saturation_radius / 32767.0;
+   ay = y * saturation_radius / 32767.0;
+
+   /* Axial inner dead-zone and response curve: rescale the live range
+    * back up to the saturation radius so slow movements stay possible */
+   length = fabs(ax);
+   if (length <= inner_deadzone)
+      ax = 0.0;
+   else
+      ax *= (length - inner_deadzone) * saturation_radius
+            / (saturation_radius - inner_deadzone) / length;
+
+   length = fabs(ay);
+   if (length <= inner_deadzone)
+      ay = 0.0;
+   else
+      ay *= (length - inner_deadzone) * saturation_radius
+            / (saturation_radius - inner_deadzone) / length;
+
+   sens = astick_sensitivity / 100.0;
+   ax *= sens;
+   ay *= sens;
+
+   /* Clamp the combined length to the saturation radius */
+   length = hypot(ax, ay);
+   if (length > saturation_radius)
+   {
+      double scale = saturation_radius / length;
+      ax *= scale;
+      ay *= scale;
+      length = saturation_radius;
+   }
+
+   /* Clamp to the octagonal gate boundary: intersect the deflection
+    * ray with the gate edge for this octant */
+   if (ax != 0.0 && ay != 0.0)
+   {
+      double slope = ay / ax;
+      double k     = (GATE_CARDINAL_MAX - GATE_DIAGONAL_MAX)
+            / GATE_DIAGONAL_MAX;
+      double edgey_candidate =
+            fabs((GATE_CARDINAL_MAX / (fabs(slope) + k)) * slope);
+      double edgey_limit = GATE_CARDINAL_MAX / (1.0 / fabs(slope) + k);
+      double edgey = copysign(edgey_candidate < edgey_limit
+            ? edgey_candidate : edgey_limit, ay);
+      double edgex = edgey / slope;
+
+      if (length > hypot(edgex, edgey))
+      {
+         ax = edgex;
+         ay = edgey;
+      }
+   }
+
+   /* Per-axis cardinal clamp */
+   if (fabs(ax) > GATE_CARDINAL_MAX)
+      ax = copysign(GATE_CARDINAL_MAX, ax);
+   if (fabs(ay) > GATE_CARDINAL_MAX)
+      ay = copysign(GATE_CARDINAL_MAX, ay);
+
+   /* Nudge away from representational error (84.999...) before the
+    * truncating conversion */
+   ax = copysign(fabs(ax) + 1e-9, ax);
+   ay = copysign(fabs(ay) + 1e-9, ay);
+
+   *outX = +(int)ax;
+   *outY = -(int)ay;
+}
+
 static void inputGetKeys_reuse(int16_t analogX, int16_t analogY, int Control, BUTTONS* Keys)
 {
    int scaledX, scaledY;
@@ -365,7 +473,7 @@ static void inputGetKeys_reuse(int16_t analogX, int16_t analogY, int Control, BU
    analogX = input_cb(Control, RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_LEFT, RETRO_DEVICE_ID_ANALOG_X);
    analogY = input_cb(Control, RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_LEFT, RETRO_DEVICE_ID_ANALOG_Y);
 
-   scale_joystick(ASTICK_MAX, analogX, analogY, &scaledX, &scaledY, N64_MAX_ANALOG);
+   scale_joystick_n64_gate(analogX, analogY, &scaledX, &scaledY);
    Keys->X_AXIS = scaledX;
    Keys->Y_AXIS = scaledY;
 
