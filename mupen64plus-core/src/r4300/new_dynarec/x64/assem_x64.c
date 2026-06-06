@@ -5214,6 +5214,40 @@ static void get_bounds(intptr_t addr,uintptr_t *start,uintptr_t *end)
 /* Runtime side of emit_extjump: look up or compile the target block,
  * patch the rel32 of the branch that got us here, and return the host
  * address to jump to.  src points at the rel32 displacement field. */
+/* Raise a TLB-refill exception for an instruction fetch from an unmapped
+ * page (port of the exception-raise portion of TLB_refill_exception_new
+ * from the 32-bit backend; the base-register writeback in
+ * new_dynarec_tlb_refill below does not apply to fetch faults).  Bit 0 of
+ * vaddr is the dynarec's internal delay-slot flag: architecturally the
+ * fault must report EPC = the branch address with CAUSE.BD set, and
+ * BadVAddr = the delay slot's address, never the flagged key itself. */
+static void *instruction_fetch_pagefault(u_int vaddr)
+{
+  int i;
+  u_int mem_addr=vaddr&~1;
+
+  if (g_dev.r4300.special_rom == RAT_ATTACK)
+    return get_addr_ht(0x80000000);
+
+  g_cp0_regs[CP0_CAUSE_REG]=(vaddr<<31)|CP0_CAUSE_EXCCODE_TLBL;
+  g_cp0_regs[CP0_BADVADDR_REG]=mem_addr;
+  g_cp0_regs[CP0_CONTEXT_REG]=(g_cp0_regs[CP0_CONTEXT_REG]&0xFF80000F)|((mem_addr>>9)&0x007FFFF0);
+  g_cp0_regs[CP0_ENTRYHI_REG]=mem_addr&0xFFFFE000;
+
+  g_cp0_regs[CP0_EPC_REG]=(vaddr&~3)-(vaddr&1)*4;
+  g_cp0_regs[CP0_STATUS_REG]|=CP0_STATUS_EXL;
+
+  for(i=0;i<32;i++)
+  {
+    if((mem_addr>=tlb_e[i].start_even)&&(mem_addr<=tlb_e[i].end_even))
+      return get_addr_ht(0x80000180);
+    if((mem_addr>=tlb_e[i].start_odd)&&(mem_addr<=tlb_e[i].end_odd))
+      return get_addr_ht(0x80000180);
+  }
+
+  return get_addr_ht(0x80000000);
+}
+
 static void *dynamic_linker(void * src, u_int vaddr)
 {
   assert((vaddr&1)==0);
@@ -5279,13 +5313,7 @@ static void *dynamic_linker(void * src, u_int vaddr)
   int r=new_recompile_block(vaddr);
   if(r==0) return dynamic_linker(src, vaddr);
   // Execute in unmapped page, generate pagefault exception
-  g_cp0_regs[CP0_STATUS_REG]|=2;
-  g_cp0_regs[CP0_CAUSE_REG]=0x8;
-  g_cp0_regs[CP0_EPC_REG]=vaddr;
-  g_cp0_regs[CP0_BADVADDR_REG]=vaddr;
-  g_cp0_regs[CP0_CONTEXT_REG]=(g_cp0_regs[CP0_CONTEXT_REG]&0xFF80000F)|((g_cp0_regs[CP0_BADVADDR_REG]>>9)&0x007FFFF0);
-  g_cp0_regs[CP0_ENTRYHI_REG]=g_cp0_regs[CP0_BADVADDR_REG]&0xFFFFE000;
-  return get_addr_ht(0x80000000);
+  return instruction_fetch_pagefault(vaddr);
 }
 
 static void *dynamic_linker_ds(void * src, u_int vaddr)
@@ -5352,13 +5380,7 @@ static void *dynamic_linker_ds(void * src, u_int vaddr)
   int r=new_recompile_block((vaddr&0xFFFFFFF8)+1);
   if(r==0) return dynamic_linker_ds(src, vaddr);
   // Execute in unmapped page, generate pagefault exception
-  g_cp0_regs[CP0_STATUS_REG]|=2;
-  g_cp0_regs[CP0_CAUSE_REG]=0x8;
-  g_cp0_regs[CP0_EPC_REG]=vaddr;
-  g_cp0_regs[CP0_BADVADDR_REG]=vaddr;
-  g_cp0_regs[CP0_CONTEXT_REG]=(g_cp0_regs[CP0_CONTEXT_REG]&0xFF80000F)|((g_cp0_regs[CP0_BADVADDR_REG]>>9)&0x007FFFF0);
-  g_cp0_regs[CP0_ENTRYHI_REG]=g_cp0_regs[CP0_BADVADDR_REG]&0xFFFFE000;
-  return get_addr_ht(0x80000000);
+  return instruction_fetch_pagefault(vaddr);
 }
 
 static void emit_extjump(intptr_t addr, int target)
