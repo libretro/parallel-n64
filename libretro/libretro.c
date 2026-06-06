@@ -113,7 +113,8 @@ int astick_snap_max_angle                 = 15;
 int astick_snap_min_displacement_percent  = 70;
 int astick_sensitivity                    = 100;
 int first_time                            = 1;
-bool flip_only                            = false;
+static bool frame_latched                 = false; /* present at end of slice */
+static bool frame_presented               = false; /* a video_cb was issued this slice */
 
 static uint8_t* cart_data           = NULL;
 static uint32_t cart_size           = 0;
@@ -129,7 +130,6 @@ static unsigned retro_dithering     = 0;
 static bool     reinit_screen       = false;
 static bool     first_context_reset = false;
 static bool     context_setup_first_init = false;
-static bool     pushed_frame        = false;
 
 bool frame_dupe                     = false;
 
@@ -676,12 +676,10 @@ load_fail:
 extern struct rgba prescale[PRESCALE_WIDTH * PRESCALE_HEIGHT];
 #endif
 
-bool emu_step_render(void)
+static void present_frame(void)
 {
-   if (flip_only)
+   switch (gfx_plugin)
    {
-      switch (gfx_plugin)
-      {
          case GFX_ANGRYLION:
 #ifdef HAVE_THR_AL
             video_cb(prescale, screen_width, screen_height, screen_pitch);
@@ -706,16 +704,26 @@ bool emu_step_render(void)
             video_cb(NULL, screen_width, screen_height, screen_pitch);
 #endif
             break;
-      }
-
-      pushed_frame = true;
-      return true;
    }
+   frame_presented = true;
+}
 
-   if (!pushed_frame && frame_dupe) /* Dupe. Not duping violates libretro API, consider it a speedhack. */
+/* End of the frame slice: presents the frame a plugin latched via
+ * retro_return(true), or a duplicate when nothing was presented during
+ * the slice.  Exactly one video frame reaches the frontend per
+ * retro_run, except for the legacy direct-FBO plugins (see
+ * retro_return), whose presents happen at their swap points. */
+void emu_step_render(void)
+{
+   if (frame_latched)
+   {
+      frame_latched = false;
+      present_frame();
+   }
+   else if (!frame_presented && frame_dupe) /* Not duping violates the libretro API; skipping it is a speedhack. */
       video_cb(NULL, screen_width, screen_height, screen_pitch);
 
-   return false;
+   frame_presented = false;
 }
 
 static void emu_step_initialize(void)
@@ -2386,7 +2394,6 @@ void retro_run (void)
    }
 
    FAKE_SDL_TICKS += 16;
-   pushed_frame = false;
 
    if (reinit_screen)
    {
@@ -2406,7 +2413,6 @@ void retro_run (void)
       reinit_screen = false;
    }
 
-   do
    {
       switch (gfx_plugin)
       {
@@ -2474,7 +2480,9 @@ void retro_run (void)
          case GFX_ANGRYLION:
             break;
       }
-   } while (emu_step_render());
+   }
+
+   emu_step_render();
 }
 
 void retro_reset (void)
@@ -2660,32 +2668,43 @@ int retro_stop_stepping(void)
     return stop_stepping;
 }
 
-int retro_return_skip_break = 0;
-
+/* retro_return(true): a plugin finished a frame.  This is a remnant of
+ * the libco days, when the plugin's buffer swap was the point where the
+ * emulator coroutine yielded back to retro_run.  With libco gone it
+ * only latches the frame for presentation at the end of the current
+ * slice; it neither presents nor ends the slice.
+ *
+ * retro_return(false): the VI interrupt - the one and only frame
+ * boundary.  Ends the slice; emu_step_render() then presents the
+ * latched frame, or a duplicate if nothing was latched. */
 int retro_return(bool just_flipping)
 {
    if (mupencorestop)
       return 0;
 
-#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
-   vbo_disable();
-#endif
-
    if (just_flipping)
    {
-      /* The VI can fire before the render: present the frame from here
-       * so the flip is not lost across the frame break. */
-      flip_only = 1;
-      emu_step_render();
-      flip_only = 0;
-   }
-   else
-      flip_only = just_flipping;
-
-   /* A deferred-screen-update flush presents without ending the
-    * frame slice; the frame boundary belongs to the VI interrupt. */
-   if (retro_return_skip_break)
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
+      vbo_disable();
+#endif
+      switch (gfx_plugin)
+      {
+         case GFX_GLIDE64:
+         case GFX_GLN64:
+         case GFX_RICE:
+            /* These render straight into the single hardware FBO and
+             * clear it when the next frame begins, so the completed
+             * image only exists right now: present immediately. */
+            present_frame();
+            break;
+         default:
+            /* The frame persists (offscreen blit, set_image, software
+             * buffer): present once at the end of the slice. */
+            frame_latched = true;
+            break;
+      }
       return 0;
+   }
 
    stop_stepping = true;
    frame_break = 1;
