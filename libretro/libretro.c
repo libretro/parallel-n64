@@ -143,7 +143,6 @@ uint32_t screen_pitch               = 0;
 uint32_t screen_aspectmodehint;
 uint32_t send_allist_to_hle_rsp     = 0;
 
-unsigned int BUFFERSWAP             = 0;
 unsigned int FAKE_SDL_TICKS         = 0;
 
 bool alternate_mapping;
@@ -1631,17 +1630,6 @@ void update_variables(bool startup)
          g_vi_refresh_rate = 1500;
       else if (!strcmp(var.value, "2200"))
          g_vi_refresh_rate = 2200;
-   }
-
-   var.key = "parallel-n64-bufferswap";
-   var.value = NULL;
-
-   if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
-   {
-      if (!strcmp(var.value, "enabled"))
-         BUFFERSWAP = true;
-      else if (!strcmp(var.value, "disabled"))
-         BUFFERSWAP = false;
    }
 
    var.key = "parallel-n64-framerate";

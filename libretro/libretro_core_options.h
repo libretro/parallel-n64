@@ -879,20 +879,6 @@ struct retro_core_option_v2_definition option_defs_us[] = {
         "auto"
     },
     {
-        CORE_NAME "-bufferswap",
-        "Buffer Swap",
-        NULL,
-        "Buffer Swap",
-        NULL,
-        NULL,
-        {
-            { "disabled", NULL },
-            { "enabled", NULL },
-            { NULL, NULL },
-        },
-        "disabled"
-    },
-    {
         CORE_NAME "-framerate",
         "Frame Duplication (restart)",
         NULL,

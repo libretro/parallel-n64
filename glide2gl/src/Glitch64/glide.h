@@ -532,7 +532,6 @@ grLfbReadRegion( int32_t src_buffer,
    fogEnd = (farZ) / 255.0f; \
 }
 
-extern unsigned int BUFFERSWAP;
 
 #define NUM_TMU 2
 

@@ -195,7 +195,6 @@ typedef struct
    int fog;
    int buff_clear;
    int swapmode;
-   bool swapmode_retro;
    int lodmode;
    int aspectmode;
 
