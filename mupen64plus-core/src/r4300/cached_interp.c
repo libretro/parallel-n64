@@ -227,7 +227,18 @@ static void NOTCOMPILED(void)
 #endif
    mupencorePC->ops();
    if (r4300emu == CORE_DYNAREC)
+   {
+      /* ops() above interpreted one guest instruction, advancing guest
+       * state past last_addr (which still points at the block entry that
+       * brought us here).  If dyna_jump() bails out on a pending frame
+       * break, the next dyna_start() resumes via jump_to(last_addr) and
+       * would re-execute that instruction (e.g. double-executing an
+       * "addiu sp,sp,-imm" prologue, permanently corrupting the guest
+       * stack pointer).  Account the executed instruction's cycles and
+       * re-anchor last_addr so the resume point matches guest state. */
+      cp0_update_count();
       dyna_jump();
+   }
 }
 
 static void NOTCOMPILED2(void)
