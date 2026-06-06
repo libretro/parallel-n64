@@ -2670,11 +2670,15 @@ int retro_return(bool just_flipping)
    if (mupencorestop)
       return 0;
 
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
+   /* Flush Glitch64's buffered vertices on every return - including
+    * the VI frame break, which can land mid-draw: the VBO state must
+    * not span glsm_exit()/glsm_enter() across the slice boundary. */
+   vbo_disable();
+#endif
+
    if (just_flipping)
    {
-#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
-      vbo_disable();
-#endif
       switch (gfx_plugin)
       {
          case GFX_GLIDE64:
