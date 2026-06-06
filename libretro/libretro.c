@@ -156,6 +156,14 @@ uint32_t send_allist_to_hle_rsp     = 0;
 unsigned int FAKE_SDL_TICKS         = 0;
 
 bool alternate_mapping;
+bool mouse_mode;
+int mouse_sensitivity_x;
+int mouse_sensitivity_y;
+int mouse_left_btn;
+int mouse_right_btn;
+int mouse_middle_btn;
+int mouse_wheel_up_btn;
+int mouse_wheel_down_btn;
 
 static bool initializing            = true;
 
@@ -1220,6 +1228,23 @@ static void gfx_set_dithering(void)
      }
 }
 
+/* Maps a mouse-button option value to the button codes consumed by
+ * apply_mouse_button() in emulate_game_controller_via_libretro.c */
+static int parse_mouse_button(const char* value)
+{
+   static const char* const names[] = {
+      "Z", "A", "B", "L", "R", "Start",
+      "C-Up", "C-Down", "C-Left", "C-Right"
+   };
+   int i;
+   for (i = 0; i < (int)(sizeof(names) / sizeof(names[0])); i++)
+   {
+      if (!strcmp(value, names[i]))
+         return i + 1;
+   }
+   return 0; /* "None" or unrecognized */
+}
+
 void update_variables(bool startup)
 {
    struct retro_variable var;
@@ -1626,6 +1651,60 @@ void update_variables(bool startup)
 
    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
       astick_sensitivity = atoi(var.value);
+
+   var.key = "parallel-n64-mouse-mode";
+   var.value = NULL;
+
+   if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+      mouse_mode = !strcmp(var.value, "True");
+
+   var.key = "parallel-n64-mouse-sensitivity-x";
+   var.value = NULL;
+
+   if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+   {
+      int val = atoi(var.value);
+      mouse_sensitivity_x = (val < -500) ? -500 : (val > 500) ? 500 : val;
+   }
+
+   var.key = "parallel-n64-mouse-sensitivity-y";
+   var.value = NULL;
+
+   if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+   {
+      int val = atoi(var.value);
+      mouse_sensitivity_y = (val < -500) ? -500 : (val > 500) ? 500 : val;
+   }
+
+   var.key = "parallel-n64-mouse-left";
+   var.value = NULL;
+
+   if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+      mouse_left_btn = parse_mouse_button(var.value);
+
+   var.key = "parallel-n64-mouse-right";
+   var.value = NULL;
+
+   if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+      mouse_right_btn = parse_mouse_button(var.value);
+
+   var.key = "parallel-n64-mouse-middle";
+   var.value = NULL;
+
+   if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+      mouse_middle_btn = parse_mouse_button(var.value);
+
+   var.key = "parallel-n64-mouse-wheel-up";
+   var.value = NULL;
+
+   if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+      mouse_wheel_up_btn = parse_mouse_button(var.value);
+
+   var.key = "parallel-n64-mouse-wheel-down";
+   var.value = NULL;
+
+   if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+      mouse_wheel_down_btn = parse_mouse_button(var.value);
 
    var.key = "parallel-n64-gfxplugin-accuracy";
    var.value = NULL;

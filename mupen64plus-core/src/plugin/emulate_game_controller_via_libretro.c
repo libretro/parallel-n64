@@ -57,6 +57,14 @@ extern m64p_rom_header ROM_HEADER;
 #define FRAME_DURATION 24
 
 extern bool alternate_mapping;
+extern bool mouse_mode;
+extern int mouse_sensitivity_x;
+extern int mouse_sensitivity_y;
+extern int mouse_left_btn;
+extern int mouse_right_btn;
+extern int mouse_middle_btn;
+extern int mouse_wheel_up_btn;
+extern int mouse_wheel_down_btn;
 
 /* global data definitions */
 struct
@@ -464,6 +472,24 @@ static void scale_joystick_n64_gate(int x, int y, int *outX, int *outY)
    *outY = -(int)ay;
 }
 
+static void apply_mouse_button(BUTTONS* Keys, int btn_mapping)
+{
+   switch (btn_mapping)
+   {
+      case 1:  Keys->Z_TRIG       = 1; break;
+      case 2:  Keys->A_BUTTON     = 1; break;
+      case 3:  Keys->B_BUTTON     = 1; break;
+      case 4:  Keys->L_TRIG       = 1; break;
+      case 5:  Keys->R_TRIG       = 1; break;
+      case 6:  Keys->START_BUTTON = 1; break;
+      case 7:  Keys->U_CBUTTON    = 1; break;
+      case 8:  Keys->D_CBUTTON    = 1; break;
+      case 9:  Keys->L_CBUTTON    = 1; break;
+      case 10: Keys->R_CBUTTON    = 1; break;
+      default: break;
+   }
+}
+
 static void inputGetKeys_reuse(int16_t analogX, int16_t analogY, int Control, BUTTONS* Keys)
 {
    int scaledX, scaledY;
@@ -476,6 +502,35 @@ static void inputGetKeys_reuse(int16_t analogX, int16_t analogY, int Control, BU
    scale_joystick_n64_gate(analogX, analogY, &scaledX, &scaledY);
    Keys->X_AXIS = scaledX;
    Keys->Y_AXIS = scaledY;
+
+   /* Mouse-to-analog-stick mode (player 1 only): the mouse drives the
+    * stick whenever the real stick is neutral. Deltas are scaled by
+    * sensitivity percent (negative inverts the axis; the Y default is
+    * negative because positive mouse Y is downward) and clamped to the
+    * N64 cardinal range. Integer arithmetic only: delta * sensitivity
+    * stays well inside 32 bits and truncates toward zero exactly like
+    * the float expression it replaces. */
+   if (mouse_mode && Control == 0 && Keys->X_AXIS == 0 && Keys->Y_AXIS == 0)
+   {
+      int stickX = (int)input_cb(Control, RETRO_DEVICE_MOUSE, 0,
+            RETRO_DEVICE_ID_MOUSE_X) * mouse_sensitivity_x / 50;
+      int stickY = (int)input_cb(Control, RETRO_DEVICE_MOUSE, 0,
+            RETRO_DEVICE_ID_MOUSE_Y) * mouse_sensitivity_y / 50;
+
+      Keys->X_AXIS = (stickX > 80) ? 80 : (stickX < -80) ? -80 : stickX;
+      Keys->Y_AXIS = (stickY > 80) ? 80 : (stickY < -80) ? -80 : stickY;
+
+      if (input_cb(Control, RETRO_DEVICE_MOUSE, 0, RETRO_DEVICE_ID_MOUSE_LEFT))
+         apply_mouse_button(Keys, mouse_left_btn);
+      if (input_cb(Control, RETRO_DEVICE_MOUSE, 0, RETRO_DEVICE_ID_MOUSE_RIGHT))
+         apply_mouse_button(Keys, mouse_right_btn);
+      if (input_cb(Control, RETRO_DEVICE_MOUSE, 0, RETRO_DEVICE_ID_MOUSE_MIDDLE))
+         apply_mouse_button(Keys, mouse_middle_btn);
+      if (input_cb(Control, RETRO_DEVICE_MOUSE, 0, RETRO_DEVICE_ID_MOUSE_WHEELUP))
+         apply_mouse_button(Keys, mouse_wheel_up_btn);
+      if (input_cb(Control, RETRO_DEVICE_MOUSE, 0, RETRO_DEVICE_ID_MOUSE_WHEELDOWN))
+         apply_mouse_button(Keys, mouse_wheel_down_btn);
+   }
 
    Keys->R_DPAD = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_RIGHT);
    Keys->L_DPAD = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_LEFT);
