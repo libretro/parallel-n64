@@ -493,13 +493,23 @@ void gDPLoadTile32b(u32 uls, u32 ult, u32 lrs, u32 lrt)
 	const u32 * src = (const u32*)RDRAM;
 	u16 * tmem16 = (u16*)TMEM;
 	u32 c, ptr, tline, s, xorval;
+	/* RDRAMSize is a byte mask (size - 1); src is indexed in 32-bit
+	 * words. The source index addr + s + i is built from guest tile
+	 * geometry and is otherwise unbounded, unlike the non-32b path
+	 * below which clamps each row to RDRAMSize. Skip any word that
+	 * would read past RDRAM. The TMEM destination is already safe
+	 * (ptr is masked to 0x3ff). */
+	const u32 ramWords = (RDRAMSize >> 2) + 1;
 
 	for (u32 j = 0; j < height; ++j) {
 		tline = tbase + line * j;
 		s = ((j + ult) * gDP.textureImage.width) + uls;
 		xorval = (j & 1) ? 3 : 1;
 		for (u32 i = 0; i < width; ++i) {
-			c = src[addr + s + i];
+			const u32 srcIdx = addr + s + i;
+			if (srcIdx >= ramWords)
+				continue;
+			c = src[srcIdx];
 			ptr = ((tline + i) ^ xorval) & 0x3ff;
 			tmem16[ptr] = c >> 16;
 			tmem16[ptr | 0x400] = c & 0xffff;
@@ -614,6 +624,10 @@ void gDPLoadBlock32(u32 uls,u32 lrs, u32 dxt)
 	u16 *tmem16 = (u16*)TMEM;
 	u32 addr = gDP.loadTile->imageAddress >> 2;
 	u32 width = (lrs - uls + 1) << 2;
+	/* As in gDPLoadTile32b: src is indexed in 32-bit words from a
+	 * guest-derived base/width and is otherwise unbounded. Skip any
+	 * word past RDRAM; the TMEM destination is masked to 0x3ff. */
+	const u32 ramWords = (RDRAMSize >> 2) + 1;
 	if (width == 4) // lr_s == 0, 1x1 texture
 		width = 1;
 	else if (width & 7)
@@ -631,19 +645,25 @@ void gDPLoadBlock32(u32 uls,u32 lrs, u32 dxt)
 			t = ((j >> 11) & 1) ? 3 : 1;
 			if (t != oldt)
 				i += line;
-			ptr = ((tb + i) ^ t) & 0x3ff;
-			c = src[addr + i];
-			tmem16[ptr] = c >> 16;
-			tmem16[ptr | 0x400] = c & 0xffff;
-			ptr = ((tb + i + 1) ^ t) & 0x3ff;
-			c = src[addr + i + 1];
-			tmem16[ptr] = c >> 16;
-			tmem16[ptr | 0x400] = c & 0xffff;
+			if ((addr + i) < ramWords) {
+				ptr = ((tb + i) ^ t) & 0x3ff;
+				c = src[addr + i];
+				tmem16[ptr] = c >> 16;
+				tmem16[ptr | 0x400] = c & 0xffff;
+			}
+			if ((addr + i + 1) < ramWords) {
+				ptr = ((tb + i + 1) ^ t) & 0x3ff;
+				c = src[addr + i + 1];
+				tmem16[ptr] = c >> 16;
+				tmem16[ptr | 0x400] = c & 0xffff;
+			}
 			j += dxt;
 		}
 	} else {
 		u32 c, ptr;
 		for (u32 i = 0; i < width; i++) {
+			if ((addr + i) >= ramWords)
+				continue;
 			ptr = ((tb + i) ^ 1) & 0x3ff;
 			c = src[addr + i];
 			tmem16[ptr] = c >> 16;
