@@ -114,10 +114,13 @@ static bool mux_replace(DecodedMux *dmux, int cycle, int src, int dest)
    return r;
 }
 
-static void *mux_new(uint64_t dmux, bool cycle2)
+/* Decodes the combiner mux into caller-provided storage. The result
+ * used to be heap-allocated and freed by the only caller within the
+ * same call (and dereferenced before any NULL check - issue #543);
+ * the struct is small and short-lived, so build it on the stack. */
+static void mux_init(DecodedMux *mux, uint64_t dmux, bool cycle2)
 {
    int i;
-   DecodedMux *mux = malloc(sizeof(DecodedMux)); 
 
    mux->combine.mux = dmux;
    mux->flags = 0;
@@ -226,7 +229,6 @@ static void *mux_new(uint64_t dmux, bool cycle2)
          mux->flags |= SC_IGNORE_ALPHA1;
    }
 
-   return mux;
 }
 
 void Combiner_Init(void)
@@ -241,7 +243,7 @@ void Combiner_Destroy(void)
 
 void Combiner_Set(uint64_t mux, int flags)
 {
-   DecodedMux *dmux;
+   DecodedMux dmux;
 
    //determine flags
    if (flags == -1)
@@ -266,10 +268,7 @@ void Combiner_Set(uint64_t mux, int flags)
          flags |= SC_2CYCLE;
    }
 
-   dmux = (DecodedMux*)mux_new(mux, flags & SC_2CYCLE);
+   mux_init(&dmux, mux, flags & SC_2CYCLE);
 
-   ShaderCombiner_Set(dmux, flags);
-
-   if (dmux)
-      free(dmux);
+   ShaderCombiner_Set(&dmux, flags);
 }
