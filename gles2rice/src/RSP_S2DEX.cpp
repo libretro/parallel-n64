@@ -45,7 +45,10 @@ void RSP_S2DEX_BG_COPY(Gfx *gfx)
 
     uint8_t *rdram_u8 = (uint8_t*)gfx_info.RDRAM;
     uint32_t dwAddr = RSPSegmentAddr((gfx->words.w1));
-    uObjBg *sbgPtr = (uObjBg*)(rdram_u8 + dwAddr);
+    uObjBg *sbgPtr;
+    if (dwAddr + sizeof(uObjBg) > g_dwRamSize)
+        return;
+    sbgPtr = (uObjBg*)(rdram_u8 + dwAddr);
     CRender::g_pRender->LoadObjBGCopy(*sbgPtr);
     CRender::g_pRender->DrawObjBGCopy(*sbgPtr);
 }
@@ -55,9 +58,12 @@ void RSP_S2DEX_OBJ_RECTANGLE(Gfx *gfx)
 {
    uint8_t *rdram_u8 = (uint8_t*)gfx_info.RDRAM;
     uint32_t dwAddr = RSPSegmentAddr((gfx->words.w1));
-    uObjSprite *ptr = (uObjSprite*)(rdram_u8 + dwAddr);
+    uObjSprite *ptr;
 
     uObjTxSprite objtx;
+    if (dwAddr + sizeof(uObjSprite) > g_dwRamSize)
+        return;
+    ptr = (uObjSprite*)(rdram_u8 + dwAddr);
     memcpy(&objtx.sprite,ptr,sizeof(uObjSprite));
 
     if( g_TxtLoadBy == CMD_LOAD_OBJ_TXTR )
@@ -77,9 +83,13 @@ void RSP_S2DEX_OBJ_SPRITE(Gfx *gfx)
 {
    uint8_t *rdram_u8 = (uint8_t*)gfx_info.RDRAM;
     uint32_t dwAddr = RSPSegmentAddr((gfx->words.w1));
-    uObjSprite *info = (uObjSprite*)(rdram_u8 + dwAddr);
+    uObjSprite *info;
 
     uint32_t dwTile   = gRSP.curTile;
+
+    if (dwAddr + sizeof(uObjSprite) > g_dwRamSize)
+        return;
+    info = (uObjSprite*)(rdram_u8 + dwAddr);
     status.bAllowLoadFromTMEM = false;  // Because we need to use TLUT loaded by the ObjTlut command
     PrepareTextures();
     status.bAllowLoadFromTMEM = true;
@@ -300,7 +310,10 @@ void RSP_S2DEX_BG_1CYC(Gfx *gfx)
 
     uint8_t *rdram_u8 = (uint8_t*)gfx_info.RDRAM;
     uint32_t dwAddr = RSPSegmentAddr((gfx->words.w1));
-    uObjScaleBg *sbgPtr = (uObjScaleBg *)(rdram_u8 + dwAddr);
+    uObjScaleBg *sbgPtr;
+    if (dwAddr + sizeof(uObjScaleBg) > g_dwRamSize)
+        return;
+    sbgPtr = (uObjScaleBg *)(rdram_u8 + dwAddr);
     CRender::g_pRender->LoadObjBG1CYC(*sbgPtr);
     CRender::g_pRender->DrawObjBG1CYC(*sbgPtr, true);
 }
@@ -322,9 +335,12 @@ void RSP_S2DEX_OBJ_RECTANGLE_R(Gfx *gfx)
 {
     uint8_t *rdram_u8 = (uint8_t*)gfx_info.RDRAM;
     uint32_t dwAddr = RSPSegmentAddr((gfx->words.w1));
-    uObjSprite *ptr = (uObjSprite*)(rdram_u8 + dwAddr);
+    uObjSprite *ptr;
 
     uObjTxSprite objtx;
+    if (dwAddr + sizeof(uObjSprite) > g_dwRamSize)
+        return;
+    ptr = (uObjSprite*)(rdram_u8 + dwAddr);
     memcpy(&objtx.sprite, ptr, sizeof(uObjSprite));
 
     //Now draw the sprite
