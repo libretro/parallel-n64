@@ -639,14 +639,20 @@ uint32_t DLParser_CheckUcode(uint32_t ucStart, uint32_t ucDStart, uint32_t ucSiz
     if( base < g_dwRamSize+0x1000 )
     {
        int8_t *rdram_s8 = (int8_t*)gfx_info.RDRAM;
-        for ( uint32_t i = 0; i < 0x1000; i++ )
+        for ( uint32_t i = 0; i < 0x1000 - 2; i++ )
         {
             if ( rdram_s8[ base + BYTE4_XOR_BE(i+0) ] == 'R' &&
                  rdram_s8[ base + BYTE4_XOR_BE(i+1) ] == 'S' &&
                  rdram_s8[ base + BYTE4_XOR_BE(i+2) ] == 'P' )
             {
                 unsigned char * p = str;
-                while ( rdram_s8[ base + BYTE4_XOR_BE(i) ] >= ' ')
+                /* str is later strcpy'd verbatim into rspstr[200] and
+                 * gLastMicrocodeString[300]; rdram is guest data, so
+                 * bound the copy to the smallest destination and to the
+                 * 0x1000 scan window to keep it in RDRAM. */
+                while ( i < 0x1000
+                        && (uint32_t)(p - str) < sizeof(UsedUcodes[0].rspstr) - 1
+                        && rdram_s8[ base + BYTE4_XOR_BE(i) ] >= ' ')
                 {
                     *p++ = rdram_s8[ base + BYTE4_XOR_BE(i) ];
                     i++;

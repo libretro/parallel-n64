@@ -447,7 +447,10 @@ void GBIInfo::loadMicrocode(u32 uc_start, u32 uc_dstart, u16 uc_dsize)
 	for (u32 i = 0; i < 2046; ++i) {
 		if ((uc_data[i] == 'R') && (uc_data[i+1] == 'S') && (uc_data[i+2] == 'P')) {
 			u32 j = 0;
-			while (uc_data[i+j] > 0x0A) {
+			// uc_data is guest-controlled; bound the copy to uc_str
+			// and to the source buffer.
+			while ((i + j) < 2048 && j < sizeof(uc_str) - 1 &&
+				uc_data[i+j] > 0x0A) {
 				uc_str[j] = uc_data[i+j];
 				j++;
 			}
