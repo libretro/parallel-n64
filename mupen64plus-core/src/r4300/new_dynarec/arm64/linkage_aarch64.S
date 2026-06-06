@@ -134,8 +134,8 @@ GLOBAL_FUNCTION(_dyna_linker_ds):
 
 GLOBAL_FUNCTION(_jump_vaddr):
     str    w20, [x29, #260 ] /* cycle_count */
-    ldr    w18, [x29, #264 ] /* last_count */
-    add    w20, w18, w20 /* Count */
+    ldr    w16, [x29, #264 ] /* last_count */
+    add    w20, w16, w20 /* Count */
     str    w20, [x29, #636 ] /* g_cp0_regs+36 */ /* Count */
     bl     _get_addr_ht
     ldr    w20, [x29, #260 ] /* cycle_count */

@@ -276,16 +276,18 @@ trampolines_reg_jump_t trampoline_alloc_reg_jump(void* jump_vaddr_fn)
 #endif
         // ldr    x0, [x0, x1, lsl #3]
         // nop
-        // ldr    w18, [x29, #264 ]
-        // add    w2, w2, w18 
+        // ldr    w16, [x29, #264 ]
+        // add    w2, w2, w16
         // str    w2, [x29, #636 ]
         // br     x0
+        // (w16 as scratch: x18 is reserved by the OS on Apple platforms
+        // and can be clobbered asynchronously - see EXCLUDE_REG.)
         {
             CodeEmitter emit{ indirects };
             emit.put_asm(0xf8617800);
             emit.put_asm(0xd503201f);
-            emit.put_asm(0xb9410bb2);
-            emit.put_asm(0x0b120042);
+            emit.put_asm(0xb9410bb0);
+            emit.put_asm(0x0b100042);
             emit.put_asm(0xb9027fa2);
             emit.put_asm(0xd61f0000);
         }
@@ -330,6 +332,12 @@ void* trampoline_jump_alloc_or_find(void* func)
             CodeEmitter emit{ trampoline };
             emit.far_jump(func);
         }
+#ifndef __APPLE__
+        /* On Apple the flush is batched in trampoline_commit(), driven by
+         * the W^X unprotect exit. Nothing drives that on other platforms,
+         * so flush the freshly written jump code immediately. */
+        clear_instruction_cache(trampoline, (char*)trampoline + MAX_TRAMPOLINE_SIZE);
+#endif
         desc = CachedFuncTrampoline{ trampoline, func };
     }
 
@@ -342,7 +350,7 @@ trampoline_data_alloc_or_find_return_t trampoline_data_alloc_or_find(void* data)
     // Try to find the address that is close enough (4096*4096 distance)
     // It can return minimal s.t. it->first >= data
     auto it = DataToTrampolines.lower_bound(data);
-    if (it->first == data)
+    if (it != DataToTrampolines.end() && it->first == data)
     {
         return { it->second.trampoline(), 0 };
     }
@@ -375,7 +383,10 @@ void* trampoline_convert_trampoline_to_func(void* tramp)
     uintptr_t val = (uintptr_t) tramp;
     uintptr_t max = (uintptr_t) DataBase;
     uintptr_t min = (uintptr_t) CurrentData;
-    if (min < val && val <= max)
+    /* Slots are allocated downward and start at CurrentData, so the
+     * newest trampoline sits exactly at 'min' and DataBase itself is
+     * never a slot: the valid range is [min, max). */
+    if (min <= val && val < max)
     {
         assert(0 == (val % MAX_TRAMPOLINE_SIZE));
         int off = (max - val) / MAX_TRAMPOLINE_SIZE - 1;
@@ -398,7 +409,7 @@ void* trampoline_convert_trampoline_to_data(void** tramp)
     // short: adrp _pdata@PAGE + add _pdata@PAGEOFF
     // far:   adrp _tramp@PAGE + add _tramp@PAGEOFF + ldr [_tramp]
     // This means if we are not in 'far' case, '_tramp' is '_pdata'
-    if (min < val && val <= max)
+    if (min <= val && val < max)
     {
         return *tramp;
     }
