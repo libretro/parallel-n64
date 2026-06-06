@@ -11271,11 +11271,26 @@ static int new_recompile_block_impl(int addr)
     invalid_code[i]=0;
     memory_map[i]|=WRITE_PROTECT;
     if((signed int)start>=(signed int)0xC0000000) {
+      uintptr_t map_addr=((uintptr_t)i<<12)+(uintptr_t)(memory_map[i]<<2);
       assert(using_tlb);
-      j=(((uintptr_t)i<<12)+(uintptr_t)(memory_map[i]<<2)-(uintptr_t)g_dev.ri.rdram.dram+(uintptr_t)0x80000000)>>12;
-      invalid_code[j]=0;
-      memory_map[j]|=WRITE_PROTECT;
-      //DebugMessage(M64MSG_VERBOSE, "write protect physical page: %x (virtual %x)",j<<12,start);
+      /* The physical-alias write protect only applies to TLB pages
+       * backed by RDRAM.  GoldenEye's tlb_hacks() maps the 0x7F000000
+       * code pages directly at the ROM image, and an unmapped page
+       * yields an all-ones entry; in both cases the index computed
+       * below is garbage built from unrelated host pointers.  The
+       * 32-bit dynarec's wrapping u_int arithmetic kept that garbage
+       * inside memory_map (silently corrupting one entry); in 64-bit
+       * arithmetic the store lands outside the array entirely, at an
+       * offset that depends on where the allocator placed the ROM
+       * relative to RDRAM - on Windows this crashed GoldenEye 007
+       * shortly after boot.  Skip pages that do not resolve into
+       * RDRAM, matching the guard used by the dirty-restore path. */
+      if(map_addr-(uintptr_t)g_dev.ri.rdram.dram<0x800000) {
+        j=(map_addr-(uintptr_t)g_dev.ri.rdram.dram+(uintptr_t)0x80000000)>>12;
+        invalid_code[j]=0;
+        memory_map[j]|=WRITE_PROTECT;
+        //DebugMessage(M64MSG_VERBOSE, "write protect physical page: %x (virtual %x)",j<<12,start);
+      }
     }
   }
   
