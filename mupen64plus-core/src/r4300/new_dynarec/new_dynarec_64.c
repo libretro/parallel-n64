@@ -5359,7 +5359,7 @@ static void rjump_assemble(int i,struct regstat *i_regs)
   #ifdef USE_MINI_HT
   int rh=get_reg(branch_regs[i].regmap,RHASH);
   int ht=get_reg(branch_regs[i].regmap,RHTBL);
-  if(rs1[i]==31) {
+  if(rs1[i]==31&&rh>=0&&ht>=0) {
     if(regs[i].regmap[rh]!=RHASH) do_preload_rhash(rh);
     do_preload_rhtbl(ht);
     do_rhash(rs,rh);
@@ -5377,7 +5377,7 @@ static void rjump_assemble(int i,struct regstat *i_regs)
   if(rt1[i]==31&&temp>=0) emit_prefetchreg(temp);
   #endif
   #ifdef USE_MINI_HT
-  if(rs1[i]==31) {
+  if(rs1[i]==31&&rh>=0&&ht>=0) {
     do_miniht_load(ht,rh);
   }
   #endif
@@ -5389,7 +5389,7 @@ static void rjump_assemble(int i,struct regstat *i_regs)
   emit_jns(0);
   //load_regs_bt(branch_regs[i].regmap,branch_regs[i].is32,branch_regs[i].dirty,-1);
   #ifdef USE_MINI_HT
-  if(rs1[i]==31) {
+  if(rs1[i]==31&&rh>=0&&ht>=0) {
     do_miniht_jump(rs,rh,ht);
   }
   else
@@ -8934,7 +8934,18 @@ static int new_recompile_block_impl(int addr)
               #endif
             }
             #ifdef USE_MINI_HT
-            if(rs1[i]==31) { // JALR
+            /* On 64-bit hosts the mini hash table needs both RHASH and
+             * RHTBL (the table base does not fit in an immediate), and
+             * together with CCREG that leaves only four registers for
+             * the delay slot.  A TLB-mode memory op in the delay slot
+             * can need five (e.g. C1LS: CSREG, FTEMP, TLREG, the base
+             * register and an address-generation temporary), in which
+             * case alloc_reg_temp() comes up empty and the assembler
+             * emits a store stub with register -1 - garbage code that
+             * crashes GoldenEye 007 during mission load.  Skip the
+             * mini-ht optimization for such slots; rjump_assemble
+             * falls back to the generic jump_vaddr path. */
+            if(rs1[i]==31&&!(using_tlb&&(itype[i+1]==LOAD||itype[i+1]==LOADLR||itype[i+1]==STORE||itype[i+1]==STORELR||itype[i+1]==C1LS))) { // JALR
               alloc_reg(&current,i,RHASH);
               #ifndef HOST_IMM_ADDR32
               alloc_reg(&current,i,RHTBL);
@@ -9315,7 +9326,10 @@ static int new_recompile_block_impl(int addr)
             branch_regs[i-1].is32|=1LL<<rt1[i-1];
           }
           #ifdef USE_MINI_HT
-          if(rs1[i-1]==31) { // JALR
+          /* Must mirror the condition used when allocating RHASH/RHTBL
+           * for the delay slot above: register-hungry TLB memory ops in
+           * the delay slot get no mini-ht registers. */
+          if(rs1[i-1]==31&&!(using_tlb&&(itype[i]==LOAD||itype[i]==LOADLR||itype[i]==STORE||itype[i]==STORELR||itype[i]==C1LS))) { // JALR
             alloc_reg(&branch_regs[i-1],i-1,RHASH);
             #ifndef HOST_IMM_ADDR32
             alloc_reg(&branch_regs[i-1],i-1,RHTBL);
