@@ -104,18 +104,26 @@ static inline void QWordInterleave( void *mem, uint32_t numDWords )
 
 static void SetTmemFlag(uint32_t tmemAddr, uint32_t size)
 {
+    /* g_TmemFlag has TMEM_FLAG_COUNT 32-bit words. index comes from a
+     * 9-bit tmem address so it is in range on its own, but index + (size>>5)
+     * is driven by guest tile dimensions and can run past the array; bound
+     * every access below to keep the writes in-bounds. */
+    const uint32_t TMEM_FLAG_COUNT = sizeof(g_TmemFlag) / sizeof(g_TmemFlag[0]);
     uint32_t index    = tmemAddr>>5;
     uint32_t bitIndex = (tmemAddr&0x1F);
+
+    if( index >= TMEM_FLAG_COUNT )
+        return;
 
     if( bitIndex == 0 )
     {
         uint32_t i;
-        for( i=0; i< (size>>5); i++ )
+        for( i=0; i< (size>>5) && (index+i) < TMEM_FLAG_COUNT; i++ )
         {
             g_TmemFlag[index+i] = 0;
         }
 
-        if( (size&0x1F) != 0 )
+        if( (size&0x1F) != 0 && (index+i) < TMEM_FLAG_COUNT )
         {
             //ErrorMsg("Check me: tmemaddr=%X, size=%x", tmemAddr, size);
             g_TmemFlag[index+i] &= ~((1<<(size&0x1F))-1);
@@ -145,16 +153,19 @@ static void SetTmemFlag(uint32_t tmemAddr, uint32_t size)
             index++;
             size -= (0x20-bitIndex);
 
-            uint32_t i;
-            for( i=0; i< (size>>5); i++ )
+            if( index < TMEM_FLAG_COUNT )
             {
-                g_TmemFlag[index+i] = 0;
-            }
+                uint32_t i;
+                for( i=0; i< (size>>5) && (index+i) < TMEM_FLAG_COUNT; i++ )
+                {
+                    g_TmemFlag[index+i] = 0;
+                }
 
-            if( (size&0x1F) != 0 )
-            {
-                //ErrorMsg("Check me: tmemaddr=%X, size=%x", tmemAddr, size);
-                g_TmemFlag[index+i] &= ~((1<<(size&0x1F))-1);
+                if( (size&0x1F) != 0 && (index+i) < TMEM_FLAG_COUNT )
+                {
+                    //ErrorMsg("Check me: tmemaddr=%X, size=%x", tmemAddr, size);
+                    g_TmemFlag[index+i] &= ~((1<<(size&0x1F))-1);
+                }
             }
         }
     }
