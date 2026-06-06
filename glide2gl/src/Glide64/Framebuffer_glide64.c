@@ -992,6 +992,33 @@ void CopyFrameBuffer(int32_t buffer)
          height -= rdp.ci_upper_bound;
    }
 
+   /* Under LLE, rdp.frame_buffers[]/ci bookkeeping is HLE-only state
+    * that is never populated, so 'height' can be garbage here; an
+    * oversized copy then writes past the end of RDRAM into unrelated
+    * globals (GoldenEye 007 corrupts gfx_info from rdp_setcolorimage
+    * this way and crashes).  Clamp the destination extent to RDRAM,
+    * like the texture load paths already do.  One trailing element of
+    * slack: the 16bpp paths store through index (x + y * width) ^ 1,
+    * which can touch one pixel past width * height - 1. */
+   {
+      uint32_t dst_bpp   = (g_gdp.fb_size == G_IM_SIZ_16b) ? 2 : 4;
+      uint32_t dst_avail;
+      uint32_t max_height;
+
+      if (width == 0 || gDP.colorImage.address >= BMASK)
+         return;
+
+      dst_avail  = (BMASK + 1) - gDP.colorImage.address;
+      if (dst_avail <= dst_bpp)
+         return;
+      max_height = (dst_avail - dst_bpp) / (width * dst_bpp);
+
+      if (height > max_height)
+         height = max_height;
+      if (height == 0)
+         return;
+   }
+
    if (rdp.scale_x < 1.1f)
    {
       uint16_t * ptr_src = (uint16_t*)glide64_frameBuffer;
