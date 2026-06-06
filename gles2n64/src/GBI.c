@@ -242,14 +242,18 @@ MicrocodeInfo *GBI_DetectMicrocode( uint32_t uc_start, uint32_t uc_dstart, uint1
    UnswapCopyWrap(gfx_info.RDRAM, uc_dstart & 0x1FFFFFFF, (uint8_t*)uc_data, 0, 0x7FF, 2048);
    strcpy( uc_str, "Not Found" );
 
-   for (i = 0; i < 2048; i++)
+   for (i = 0; i < 2046; i++)
    {
       if ((uc_data[i] == 'R') && (uc_data[i+1] == 'S') && (uc_data[i+2] == 'P'))
       {
          uint32_t j = 0;
          int type = NONE;
 
-         while (uc_data[i+j] > 0x0A)
+         /* uc_data is guest-controlled; bound the copy to uc_str and to
+          * the source buffer so a crafted microcode string can neither
+          * overflow uc_str[256] nor read past uc_data[2048]. */
+         while ((i + j) < 2048 && j < sizeof(uc_str) - 1
+               && uc_data[i+j] > 0x0A)
          {
             uc_str[j] = uc_data[i+j];
             j++;
