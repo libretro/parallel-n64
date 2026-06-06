@@ -95,7 +95,7 @@ ifeq ($(ARCH), $(filter $(ARCH), i386 i686))
    WITH_DYNAREC = x86
 else ifeq ($(ARCH), $(filter $(ARCH), arm))
    WITH_DYNAREC = arm
-else ifeq ($(ARCH), $(filter $(ARCH), aarch64))
+else ifeq ($(ARCH), $(filter $(ARCH), aarch64 arm64))
    WITH_DYNAREC = aarch64
 endif
 
@@ -314,11 +314,24 @@ else ifneq (,$(findstring osx,$(platform)))
       WITH_DYNAREC =
    endif
 
+   # Native Apple Silicon: uname -m reports arm64, the dynarec backend is
+   # the same aarch64 one the cross-compile path uses. NO_ASM must stay
+   # off - it compiles out dynarec_setup_code() in r4300.c, which would
+   # leave the dynarec selectable but broken.
+   ifeq ($(arch), arm)
+		CFLAGS +=   -DDONT_WANT_ARM_OPTIMIZATIONS -D__NEON_OPT -DARM_FIX
+		CPPFLAGS += -DDONT_WANT_ARM_OPTIMIZATIONS -D__NEON_OPT -DARM_FIX
+		CXXFLAGS += -DDONT_WANT_ARM_OPTIMIZATIONS -D__NEON_OPT -DARM_FIX
+		HAVE_NEON=1
+		MINVERSION := -mmacosx-version-min=11.0
+		WITH_DYNAREC = aarch64
+   endif
+
    ifeq ($(CROSS_COMPILE),1)
 		ifneq (,$(findstring arm,$(LIBRETRO_APPLE_PLATFORM)))
-			CFLAGS +=   -DNO_ASM -DDONT_WANT_ARM_OPTIMIZATIONS -D__NEON_OPT -DARM_FIX
-			CPPFLAGS += -DNO_ASM -DDONT_WANT_ARM_OPTIMIZATIONS -D__NEON_OPT -DARM_FIX
-			CXXFLAGS += -DNO_ASM -DDONT_WANT_ARM_OPTIMIZATIONS -D__NEON_OPT -DARM_FIX
+			CFLAGS +=   -DDONT_WANT_ARM_OPTIMIZATIONS -D__NEON_OPT -DARM_FIX
+			CPPFLAGS += -DDONT_WANT_ARM_OPTIMIZATIONS -D__NEON_OPT -DARM_FIX
+			CXXFLAGS += -DDONT_WANT_ARM_OPTIMIZATIONS -D__NEON_OPT -DARM_FIX
 			CPUFLAGS += -fno-stack-protector -fomit-frame-pointer
 			HAVE_NEON=1
 			MINVERSION := -mmacosx-version-min=11.0
