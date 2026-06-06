@@ -254,6 +254,7 @@ static void n64DebugCallback(void* aContext, int aLevel, const char* aMessage)
 }
 
 extern m64p_rom_header ROM_HEADER;
+extern int g_force_parallel_sync;
 
 static void core_settings_autoselect_gfx_plugin(void)
 {
@@ -563,6 +564,17 @@ static bool emu_step_load_data()
             log_cb(RETRO_LOG_ERROR, "mupen64plus: Failed to load ROM\n");
          goto load_fail;
       }
+
+#if defined(HAVE_PARALLEL)
+      /* The per-game override is only known once the ROM header has been
+       * parsed, which happens after the initial update_variables(). */
+      if (g_force_parallel_sync)
+      {
+         if (log_cb)
+            log_cb(RETRO_LOG_INFO, "mupen64plus: forcing synchronous RDP for this game.\n");
+         parallel_set_synchronous_rdp(true);
+      }
+#endif
 
       free(cart_data);
       cart_data = NULL;
@@ -1215,7 +1227,13 @@ void update_variables(bool startup)
 #if defined(HAVE_PARALLEL)
    var.key = "parallel-n64-parallel-rdp-synchronous";
    var.value = NULL;
-   if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+   if (g_force_parallel_sync)
+   {
+      /* This game reads rendered frames back from RDRAM and soft-locks
+       * with asynchronous RDP; ignore the core option. */
+      parallel_set_synchronous_rdp(true);
+   }
+   else if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
       parallel_set_synchronous_rdp(!strcmp(var.value, "enabled"));
    else
       parallel_set_synchronous_rdp(true);

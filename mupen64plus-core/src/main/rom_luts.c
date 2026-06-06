@@ -28,6 +28,16 @@ static const char lut_vi_clock_2200_id[][4] = {
    "NRE", /* Resident Evil 2 */
 };
 
+/* Games that read back parallel-rdp rendered frames from RDRAM during
+ * normal play and therefore require synchronous RDP. In asynchronous
+ * mode the CPU never waits on the GPU timeline, the readback sees stale
+ * data and the game soft-locks (Resident Evil 2 stops at the N64 logo
+ * and never starts the intro FMV). */
+static const char lut_parallel_sync_id[][4] = {
+   "NB5", /* Biohazard 2 (J) */
+   "NRE", /* Resident Evil 2 */
+};
+
 static const char lut_fixedaudiopos_id[][4] = {
    "NSB", /* Twisted Edge / King Hill 64 - Extreme Snowboarding */
 };

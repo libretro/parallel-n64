@@ -33,6 +33,7 @@ m64p_error close_rom(void);
 extern unsigned char* g_rom;
 extern int g_rom_size;
 extern int g_vi_refresh_rate;
+extern int g_force_parallel_sync;
 extern unsigned char g_fixed_audio_pos;
 
 typedef struct _rom_params

@@ -59,6 +59,7 @@ unsigned char* g_rom = NULL;
 int g_rom_size = 0;
 unsigned alternate_vi_timing = 0;
 int           g_vi_refresh_rate = DEFAULT_COUNT_PER_SCANLINE;
+int           g_force_parallel_sync = 0;
 
 extern bool frame_dupe;
 extern uint32_t OverrideSaveType;
@@ -176,6 +177,7 @@ m64p_error open_rom(const unsigned char* romimage, unsigned int size)
    g_rom = (unsigned char *) malloc(g_rom_size);
    alternate_vi_timing = 0;
    g_vi_refresh_rate = DEFAULT_COUNT_PER_SCANLINE;
+   g_force_parallel_sync = 0;
    if (g_rom == NULL)
       return M64ERR_NO_MEMORY;
    memcpy(g_rom, romimage, size);
@@ -325,6 +327,15 @@ m64p_error open_rom(const unsigned char* romimage, unsigned int size)
 	 g_vi_refresh_rate = 2200;
 
          patch_applied = 1;
+         break;
+      }
+   }
+
+   for (i = 0; i < sizeof(lut_parallel_sync_id)/sizeof(lut_parallel_sync_id[0]); ++i)
+   {
+      if (!strncmp(lut_parallel_sync_id[i], cart_id, 3))
+      {
+         g_force_parallel_sync = 1;
          break;
       }
    }

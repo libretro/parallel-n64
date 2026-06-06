@@ -326,7 +326,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
         CORE_NAME "-parallel-rdp-synchronous",
         "ParaLLEl Synchronous RDP",
         NULL,
-        "ParaLLEl Synchronous RDP",
+        "Make the CPU wait for the GPU to finish rendering at RDP full sync. Disabling can improve performance but breaks games that read rendered frames back from memory (e.g. Resident Evil 2 never starts its intro FMV); such games force this on automatically.",
         NULL,
         "parallel",
         {
