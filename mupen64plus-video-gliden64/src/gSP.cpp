@@ -1285,7 +1285,17 @@ void gSPT3DUXVertex(u32 a, u32 n, u32 ci)
 		u8 r;
 	} *color = (T3DUXColor*)&RDRAM[colors];
 
+	/* The sibling vertex loaders bound the destination to INDEXMAP_SIZE
+	 * (here v0 is implicitly 0) and both source spans to RDRAM. This one
+	 * only checked the vertex source: add the destination and colour
+	 * source bounds too. */
+	if (n > INDEXMAP_SIZE)
+		return;
+
 	if ((address + sizeof(T3DUXVertex)* n) > RDRAMSize)
+		return;
+
+	if ((colors + sizeof(T3DUXColor)* n) > RDRAMSize)
 		return;
 
 	SPVertex * spVtx = dwnd().getDrawer().getVertexPtr(0);
