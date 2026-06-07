@@ -1715,6 +1715,39 @@ static STRICTINLINE void texture_quadro_lerp_ci4_simd(uint32_t wid, struct color
     texel_quad_tlut_finish_simd(wid, TEX, ta0, ta1, ta2, ta3, xorrg, sfrac, tfrac, upper, center);
 }
 
+/* Fused fetch + lerp for nearest-sampled TLUT CI textures: a single
+ * index per pixel (CI4 nibble + palette merge, or CI8 byte), but the
+ * hardware still reads one entry from each of the four replicated
+ * TLUT banks at that index -- the bank copies are not guaranteed
+ * coherent, so the quad is fetched for real and runs the real lerp
+ * through the shared TLUT finish rather than collapsing to the
+ * texel. Equivalent to fetch_texel_entlut_quadro_nearest for
+ * tlutswitch 0..2 / 4..6 (note the unmasked t coordinate). The body
+ * is ISA-independent. */
+static STRICTINLINE void texture_quadro_lerp_cinear_simd(uint32_t wid, struct color* TEX, int s0, int t0, uint32_t tilenum, int sfrac, int tfrac, int upper, int center, int isupperrg, int is_ci4)
+{
+    uint32_t tbase0 = state[wid].tile[tilenum].line * t0 + state[wid].tile[tilenum].tmem;
+    uint32_t xort0 = (t0 & 1) ? BYTE_XOR_DWORD_SWAP : BYTE_ADDR_XOR;
+    uint32_t xorrg = isupperrg ? (WORD_ADDR_XOR ^ 3) : WORD_ADDR_XOR;
+    uint32_t ta0;
+
+    if (is_ci4)
+    {
+        uint32_t tpal = state[wid].tile[tilenum].palette << 4;
+        uint32_t taddr0 = ((((tbase0 << 4) + s0) >> 1) ^ xort0) & 0x7ff;
+        uint32_t p0 = state[wid].tmem[taddr0];
+        uint32_t c0 = (s0 & 1) ? (p0 & 0xf) : (p0 >> 4);
+        ta0 = (tpal | c0) << 2;
+    }
+    else
+    {
+        uint32_t taddr0 = (((tbase0 << 3) + s0) ^ xort0) & 0x7ff;
+        ta0 = (uint32_t)state[wid].tmem[taddr0] << 2;
+    }
+
+    texel_quad_tlut_finish_simd(wid, TEX, ta0, ta0 + 1, ta0 + 2, ta0 + 3, xorrg, sfrac, tfrac, upper, center);
+}
+
 #elif defined(AL_SIMD_NEON)
 /* Shared tail of the fused texture kernels: transpose texel-lane
  * channel vectors into per-texel RGBA vectors and run the triangular
@@ -2056,6 +2089,39 @@ static STRICTINLINE void texture_quadro_lerp_ci4_simd(uint32_t wid, struct color
     uint32_t xorrg = isupperrg ? (WORD_ADDR_XOR ^ 3) : WORD_ADDR_XOR;
 
     texel_quad_tlut_finish_simd(wid, TEX, ta0, ta1, ta2, ta3, xorrg, sfrac, tfrac, upper, center);
+}
+
+/* Fused fetch + lerp for nearest-sampled TLUT CI textures: a single
+ * index per pixel (CI4 nibble + palette merge, or CI8 byte), but the
+ * hardware still reads one entry from each of the four replicated
+ * TLUT banks at that index -- the bank copies are not guaranteed
+ * coherent, so the quad is fetched for real and runs the real lerp
+ * through the shared TLUT finish rather than collapsing to the
+ * texel. Equivalent to fetch_texel_entlut_quadro_nearest for
+ * tlutswitch 0..2 / 4..6 (note the unmasked t coordinate). The body
+ * is ISA-independent. */
+static STRICTINLINE void texture_quadro_lerp_cinear_simd(uint32_t wid, struct color* TEX, int s0, int t0, uint32_t tilenum, int sfrac, int tfrac, int upper, int center, int isupperrg, int is_ci4)
+{
+    uint32_t tbase0 = state[wid].tile[tilenum].line * t0 + state[wid].tile[tilenum].tmem;
+    uint32_t xort0 = (t0 & 1) ? BYTE_XOR_DWORD_SWAP : BYTE_ADDR_XOR;
+    uint32_t xorrg = isupperrg ? (WORD_ADDR_XOR ^ 3) : WORD_ADDR_XOR;
+    uint32_t ta0;
+
+    if (is_ci4)
+    {
+        uint32_t tpal = state[wid].tile[tilenum].palette << 4;
+        uint32_t taddr0 = ((((tbase0 << 4) + s0) >> 1) ^ xort0) & 0x7ff;
+        uint32_t p0 = state[wid].tmem[taddr0];
+        uint32_t c0 = (s0 & 1) ? (p0 & 0xf) : (p0 >> 4);
+        ta0 = (tpal | c0) << 2;
+    }
+    else
+    {
+        uint32_t taddr0 = (((tbase0 << 3) + s0) ^ xort0) & 0x7ff;
+        ta0 = (uint32_t)state[wid].tmem[taddr0] << 2;
+    }
+
+    texel_quad_tlut_finish_simd(wid, TEX, ta0, ta0 + 1, ta0 + 2, ta0 + 3, xorrg, sfrac, tfrac, upper, center);
 }
 
 #endif

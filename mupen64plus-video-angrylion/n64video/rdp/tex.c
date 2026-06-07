@@ -244,27 +244,47 @@ static STRICTINLINE void texture_pipeline_cycle(uint32_t wid, struct color* TEX,
              * average tail), so the scalar code below this block is
              * unreachable territory for these spans and the fused
              * path is exact. */
-            if (state[wid].other_modes.sample_type
-                && state[wid].other_modes.en_tlut
+            if (state[wid].other_modes.en_tlut
                 && !convert
                 && state[wid].tile[tilenum].format != FORMAT_YUV)
             {
                 int fcenter = state[wid].other_modes.mid_texel
                     && sfrac == 0x10 && tfrac == 0x10;
-                switch (state[wid].tile[tilenum].f.tlutswitch)
+                if (state[wid].other_modes.sample_type)
                 {
-                case 0:
-                case 1:
-                case 2:
-                    texture_quadro_lerp_ci4_simd(wid, TEX, sss1, sdiff, sst1, tdiff, tilenum, sfrac, tfrac, upper, fcenter, upperrg);
-                    return;
-                case 4:
-                case 5:
-                case 6:
-                    texture_quadro_lerp_ci8_simd(wid, TEX, sss1, sdiff, sst1, tdiff, tilenum, sfrac, tfrac, upper, fcenter, upperrg);
-                    return;
-                default:
-                    break;
+                    switch (state[wid].tile[tilenum].f.tlutswitch)
+                    {
+                    case 0:
+                    case 1:
+                    case 2:
+                        texture_quadro_lerp_ci4_simd(wid, TEX, sss1, sdiff, sst1, tdiff, tilenum, sfrac, tfrac, upper, fcenter, upperrg);
+                        return;
+                    case 4:
+                    case 5:
+                    case 6:
+                        texture_quadro_lerp_ci8_simd(wid, TEX, sss1, sdiff, sst1, tdiff, tilenum, sfrac, tfrac, upper, fcenter, upperrg);
+                        return;
+                    default:
+                        break;
+                    }
+                }
+                else
+                {
+                    switch (state[wid].tile[tilenum].f.tlutswitch)
+                    {
+                    case 0:
+                    case 1:
+                    case 2:
+                        texture_quadro_lerp_cinear_simd(wid, TEX, sss1, sst1, tilenum, sfrac, tfrac, upper, fcenter, upperrg, 1);
+                        return;
+                    case 4:
+                    case 5:
+                    case 6:
+                        texture_quadro_lerp_cinear_simd(wid, TEX, sss1, sst1, tilenum, sfrac, tfrac, upper, fcenter, upperrg, 0);
+                        return;
+                    default:
+                        break;
+                    }
                 }
             }
 
