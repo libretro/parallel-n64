@@ -238,35 +238,38 @@ static STRICTINLINE void texture_pipeline_cycle(uint32_t wid, struct color* TEX,
 
 #if defined(AL_SIMD_SSE2) || defined(AL_SIMD_NEON)
             /* fused fetch+lerp for the dominant path; the gate is
-             * mode- and tile-constant. RGBA16 without a TLUT implies
-             * upperrg == upper, sfracrg == sfrac (non-YUV), and
-             * mid_texel off implies center == centerrg == 0, so the
-             * scalar code below this block is unreachable territory
-             * for these spans and the single fused lerp is exact. */
+             * mode- and tile-constant. Non-TLUT non-YUV implies
+             * upperrg == upper and sfracrg == sfrac, and mid_texel
+             * is served by the per-pixel center flag (the 4-texel
+             * average tail), so the scalar code below this block is
+             * unreachable territory for these spans and the fused
+             * path is exact. */
             if (state[wid].other_modes.sample_type
                 && !state[wid].other_modes.en_tlut
-                && !state[wid].other_modes.mid_texel
                 && !convert)
             {
+                int fcenter = state[wid].other_modes.mid_texel
+                    && sfrac == 0x10 && tfrac == 0x10;
+
                 switch (state[wid].tile[tilenum].f.notlutswitch)
                 {
                 case TEXEL_RGBA16:
-                    texture_quadro_lerp_rgba16_simd(wid, TEX, sss1, sdiff, sst1, tdiff, tilenum, sfrac, tfrac, upper);
+                    texture_quadro_lerp_rgba16_simd(wid, TEX, sss1, sdiff, sst1, tdiff, tilenum, sfrac, tfrac, upper, fcenter);
                     return;
                 case TEXEL_IA8:
-                    texture_quadro_lerp_bytefmt_simd(wid, TEX, sss1, sdiff, sst1, tdiff, tilenum, sfrac, tfrac, upper, 1);
+                    texture_quadro_lerp_bytefmt_simd(wid, TEX, sss1, sdiff, sst1, tdiff, tilenum, sfrac, tfrac, upper, 1, fcenter);
                     return;
                 case TEXEL_I8:
-                    texture_quadro_lerp_bytefmt_simd(wid, TEX, sss1, sdiff, sst1, tdiff, tilenum, sfrac, tfrac, upper, 0);
+                    texture_quadro_lerp_bytefmt_simd(wid, TEX, sss1, sdiff, sst1, tdiff, tilenum, sfrac, tfrac, upper, 0, fcenter);
                     return;
                 case TEXEL_I4:
-                    texture_quadro_lerp_i4_simd(wid, TEX, sss1, sdiff, sst1, tdiff, tilenum, sfrac, tfrac, upper);
+                    texture_quadro_lerp_i4_simd(wid, TEX, sss1, sdiff, sst1, tdiff, tilenum, sfrac, tfrac, upper, fcenter);
                     return;
                 case TEXEL_IA16:
-                    texture_quadro_lerp_ia16_simd(wid, TEX, sss1, sdiff, sst1, tdiff, tilenum, sfrac, tfrac, upper);
+                    texture_quadro_lerp_ia16_simd(wid, TEX, sss1, sdiff, sst1, tdiff, tilenum, sfrac, tfrac, upper, fcenter);
                     return;
                 case TEXEL_RGBA32:
-                    texture_quadro_lerp_rgba32_simd(wid, TEX, sss1, sdiff, sst1, tdiff, tilenum, sfrac, tfrac, upper);
+                    texture_quadro_lerp_rgba32_simd(wid, TEX, sss1, sdiff, sst1, tdiff, tilenum, sfrac, tfrac, upper, fcenter);
                     return;
                 default:
                     break;

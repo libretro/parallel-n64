@@ -1425,7 +1425,48 @@ static STRICTINLINE void texel_quad_transpose_lerp_simd(struct color* TEX, __m12
     _mm_storeu_si128((__m128i*)&TEX->r, res);
 }
 
-static STRICTINLINE void texture_quadro_lerp_rgba16_simd(uint32_t wid, struct color* TEX, int s0, int sdiff, int t0, int tdiff, uint32_t tilenum, int sfrac, int tfrac, int upper)
+/* Center (mid_texel) tail: the scalar center formula
+ *   t3 + ((((t1+t2)<<6) - (t3<<7) + ((~t3+t0)<<6) + 0xc0) >> 8)
+ * folds, via ~t3 + t0 == t0 - t3 - 1, to
+ *   t3 + ((t0 + t1 + t2 - 3*t3 + 2) >> 2)
+ * which stays inside signed 16-bit lanes (|S|+2 <= 767) and lands in
+ * [0,255], so the same pack/widen framing as the lerp tail applies
+ * and the trailing &0x1ff remains a no-op. */
+static STRICTINLINE void texel_quad_transpose_avg_simd(struct color* TEX, __m128i r8, __m128i g8, __m128i b8, __m128i a8)
+{
+    __m128i rg_lo = _mm_unpacklo_epi32(r8, g8);
+    __m128i rg_hi = _mm_unpackhi_epi32(r8, g8);
+    __m128i ba_lo = _mm_unpacklo_epi32(b8, a8);
+    __m128i ba_hi = _mm_unpackhi_epi32(b8, a8);
+    __m128i t0v = _mm_unpacklo_epi64(rg_lo, ba_lo);
+    __m128i t1v = _mm_unpackhi_epi64(rg_lo, ba_lo);
+    __m128i t2v = _mm_unpacklo_epi64(rg_hi, ba_hi);
+    __m128i t3v = _mm_unpackhi_epi64(rg_hi, ba_hi);
+
+    __m128i t0 = _mm_packs_epi32(t0v, t0v);
+    __m128i t1 = _mm_packs_epi32(t1v, t1v);
+    __m128i t2 = _mm_packs_epi32(t2v, t2v);
+    __m128i t3 = _mm_packs_epi32(t3v, t3v);
+
+    __m128i acc = _mm_add_epi16(_mm_add_epi16(t0, t1), t2);
+    acc = _mm_sub_epi16(acc, _mm_add_epi16(t3, _mm_add_epi16(t3, t3)));
+    acc = _mm_add_epi16(acc, _mm_set1_epi16(2));
+    acc = _mm_srai_epi16(acc, 2);
+    acc = _mm_add_epi16(acc, t3);
+
+    __m128i res = _mm_srai_epi32(_mm_unpacklo_epi16(acc, acc), 16);
+    _mm_storeu_si128((__m128i*)&TEX->r, res);
+}
+
+static STRICTINLINE void texel_quad_transpose_finish_simd(struct color* TEX, __m128i r8, __m128i g8, __m128i b8, __m128i a8, int sfrac, int tfrac, int upper, int center)
+{
+    if (center)
+        texel_quad_transpose_avg_simd(TEX, r8, g8, b8, a8);
+    else
+        texel_quad_transpose_lerp_simd(TEX, r8, g8, b8, a8, sfrac, tfrac, upper);
+}
+
+static STRICTINLINE void texture_quadro_lerp_rgba16_simd(uint32_t wid, struct color* TEX, int s0, int sdiff, int t0, int tdiff, uint32_t tilenum, int sfrac, int tfrac, int upper, int center)
 {
     uint32_t tbase0 = state[wid].tile[tilenum].line * (t0 & 0xff) + state[wid].tile[tilenum].tmem;
     int t1 = (t0 & 0xff) + tdiff;
@@ -1463,7 +1504,7 @@ static STRICTINLINE void texture_quadro_lerp_rgba16_simd(uint32_t wid, struct co
     __m128i one32 = _mm_set1_epi32(1);
     __m128i a8 = _mm_and_si128(_mm_cmpeq_epi32(_mm_and_si128(v, one32), one32), _mm_set1_epi32(0xff));
 
-    texel_quad_transpose_lerp_simd(TEX, r8, g8, b8, a8, sfrac, tfrac, upper);
+    texel_quad_transpose_finish_simd(TEX, r8, g8, b8, a8, sfrac, tfrac, upper, center);
 }
 
 /* Fused fetch + lerp for the byte texel formats: IA8 (high nibble is
@@ -1472,7 +1513,7 @@ static STRICTINLINE void texture_quadro_lerp_rgba16_simd(uint32_t wid, struct co
  * addressing is copied verbatim from the TEXEL_IA8/TEXEL_I8 quadro
  * cases above; aliasing the channel vectors reuses the shared
  * transpose and lerp unchanged. */
-static STRICTINLINE void texture_quadro_lerp_bytefmt_simd(uint32_t wid, struct color* TEX, int s0, int sdiff, int t0, int tdiff, uint32_t tilenum, int sfrac, int tfrac, int upper, int is_ia8)
+static STRICTINLINE void texture_quadro_lerp_bytefmt_simd(uint32_t wid, struct color* TEX, int s0, int sdiff, int t0, int tdiff, uint32_t tilenum, int sfrac, int tfrac, int upper, int is_ia8, int center)
 {
     uint32_t tbase0 = state[wid].tile[tilenum].line * (t0 & 0xff) + state[wid].tile[tilenum].tmem;
     int t1 = (t0 & 0xff) + tdiff;
@@ -1506,11 +1547,11 @@ static STRICTINLINE void texture_quadro_lerp_bytefmt_simd(uint32_t wid, struct c
         iv = _mm_or_si128(iv, _mm_srli_epi32(iv, 4));
         __m128i av = _mm_and_si128(v, _mm_set1_epi32(0x0f));
         av = _mm_or_si128(_mm_slli_epi32(av, 4), av);
-        texel_quad_transpose_lerp_simd(TEX, iv, iv, iv, av, sfrac, tfrac, upper);
+        texel_quad_transpose_finish_simd(TEX, iv, iv, iv, av, sfrac, tfrac, upper, center);
     }
     else
     {
-        texel_quad_transpose_lerp_simd(TEX, v, v, v, v, sfrac, tfrac, upper);
+        texel_quad_transpose_finish_simd(TEX, v, v, v, v, sfrac, tfrac, upper, center);
     }
 }
 
@@ -1522,7 +1563,7 @@ static STRICTINLINE void texture_quadro_lerp_bytefmt_simd(uint32_t wid, struct c
  * channels, so the shared tail is called with the same vector in
  * every channel slot, exactly as for I8. The TMEM addressing is
  * copied verbatim from the TEXEL_I4 quadro case above. */
-static STRICTINLINE void texture_quadro_lerp_i4_simd(uint32_t wid, struct color* TEX, int s0, int sdiff, int t0, int tdiff, uint32_t tilenum, int sfrac, int tfrac, int upper)
+static STRICTINLINE void texture_quadro_lerp_i4_simd(uint32_t wid, struct color* TEX, int s0, int sdiff, int t0, int tdiff, uint32_t tilenum, int sfrac, int tfrac, int upper, int center)
 {
     uint32_t tbase0 = state[wid].tile[tilenum].line * (t0 & 0xff) + state[wid].tile[tilenum].tmem;
     int t1 = (t0 & 0xff) + tdiff;
@@ -1557,7 +1598,7 @@ static STRICTINLINE void texture_quadro_lerp_i4_simd(uint32_t wid, struct color*
     __m128i c = _mm_or_si128(_mm_and_si128(lo, msk), _mm_andnot_si128(msk, hi));
     __m128i iv = _mm_or_si128(c, _mm_slli_epi32(c, 4));
 
-    texel_quad_transpose_lerp_simd(TEX, iv, iv, iv, iv, sfrac, tfrac, upper);
+    texel_quad_transpose_finish_simd(TEX, iv, iv, iv, iv, sfrac, tfrac, upper, center);
 }
 
 /* Fused fetch + lerp for IA16: 16-bit texels addressed exactly like
@@ -1565,7 +1606,7 @@ static STRICTINLINE void texture_quadro_lerp_i4_simd(uint32_t wid, struct color*
  * quadro case above); the high byte is intensity across r/g/b and
  * the low byte is alpha, so the decode is two ops and the shared
  * transpose+lerp tail runs unchanged. */
-static STRICTINLINE void texture_quadro_lerp_ia16_simd(uint32_t wid, struct color* TEX, int s0, int sdiff, int t0, int tdiff, uint32_t tilenum, int sfrac, int tfrac, int upper)
+static STRICTINLINE void texture_quadro_lerp_ia16_simd(uint32_t wid, struct color* TEX, int s0, int sdiff, int t0, int tdiff, uint32_t tilenum, int sfrac, int tfrac, int upper, int center)
 {
     uint32_t tbase0 = state[wid].tile[tilenum].line * (t0 & 0xff) + state[wid].tile[tilenum].tmem;
     int t1 = (t0 & 0xff) + tdiff;
@@ -1594,7 +1635,7 @@ static STRICTINLINE void texture_quadro_lerp_ia16_simd(uint32_t wid, struct colo
     __m128i iv = _mm_srli_epi32(v, 8);
     __m128i av = _mm_and_si128(v, _mm_set1_epi32(0xff));
 
-    texel_quad_transpose_lerp_simd(TEX, iv, iv, iv, av, sfrac, tfrac, upper);
+    texel_quad_transpose_finish_simd(TEX, iv, iv, iv, av, sfrac, tfrac, upper, center);
 }
 
 /* Fused fetch + lerp for RGBA32: split-bank 16-bit fetches (the
@@ -1602,7 +1643,7 @@ static STRICTINLINE void texture_quadro_lerp_ia16_simd(uint32_t wid, struct colo
  * above, with the 0x3ff half-space mask); the low bank word carries
  * r/g and the high bank word (|0x400) carries b/a, giving four
  * independent channel vectors for the shared transpose+lerp tail. */
-static STRICTINLINE void texture_quadro_lerp_rgba32_simd(uint32_t wid, struct color* TEX, int s0, int sdiff, int t0, int tdiff, uint32_t tilenum, int sfrac, int tfrac, int upper)
+static STRICTINLINE void texture_quadro_lerp_rgba32_simd(uint32_t wid, struct color* TEX, int s0, int sdiff, int t0, int tdiff, uint32_t tilenum, int sfrac, int tfrac, int upper, int center)
 {
     uint32_t tbase0 = state[wid].tile[tilenum].line * (t0 & 0xff) + state[wid].tile[tilenum].tmem;
     int t1 = (t0 & 0xff) + tdiff;
@@ -1637,7 +1678,7 @@ static STRICTINLINE void texture_quadro_lerp_rgba32_simd(uint32_t wid, struct co
     __m128i b8 = _mm_srli_epi32(vhi, 8);
     __m128i a8 = _mm_and_si128(vhi, m8);
 
-    texel_quad_transpose_lerp_simd(TEX, r8, g8, b8, a8, sfrac, tfrac, upper);
+    texel_quad_transpose_finish_simd(TEX, r8, g8, b8, a8, sfrac, tfrac, upper, center);
 }
 
 #elif defined(AL_SIMD_NEON)
@@ -1688,7 +1729,45 @@ static STRICTINLINE void texel_quad_transpose_lerp_simd(struct color* TEX, uint3
     vst1q_s32(&TEX->r, vmovl_s16(acc));
 }
 
-static STRICTINLINE void texture_quadro_lerp_rgba16_simd(uint32_t wid, struct color* TEX, int s0, int sdiff, int t0, int tdiff, uint32_t tilenum, int sfrac, int tfrac, int upper)
+/* Center (mid_texel) tail: the scalar center formula
+ *   t3 + ((((t1+t2)<<6) - (t3<<7) + ((~t3+t0)<<6) + 0xc0) >> 8)
+ * folds, via ~t3 + t0 == t0 - t3 - 1, to
+ *   t3 + ((t0 + t1 + t2 - 3*t3 + 2) >> 2)
+ * which stays inside signed 16-bit lanes (|S|+2 <= 767) and lands in
+ * [0,255], so the same pack/widen framing as the lerp tail applies
+ * and the trailing &0x1ff remains a no-op. */
+static STRICTINLINE void texel_quad_transpose_avg_simd(struct color* TEX, uint32x4_t r8, uint32x4_t g8, uint32x4_t b8, uint32x4_t a8)
+{
+    uint32x4x2_t rg = vtrnq_u32(r8, g8);
+    uint32x4x2_t ba = vtrnq_u32(b8, a8);
+    int32x4_t t0v = vreinterpretq_s32_u32(vcombine_u32(vget_low_u32(rg.val[0]), vget_low_u32(ba.val[0])));
+    int32x4_t t1v = vreinterpretq_s32_u32(vcombine_u32(vget_low_u32(rg.val[1]), vget_low_u32(ba.val[1])));
+    int32x4_t t2v = vreinterpretq_s32_u32(vcombine_u32(vget_high_u32(rg.val[0]), vget_high_u32(ba.val[0])));
+    int32x4_t t3v = vreinterpretq_s32_u32(vcombine_u32(vget_high_u32(rg.val[1]), vget_high_u32(ba.val[1])));
+
+    int16x4_t t0 = vmovn_s32(t0v);
+    int16x4_t t1 = vmovn_s32(t1v);
+    int16x4_t t2 = vmovn_s32(t2v);
+    int16x4_t t3 = vmovn_s32(t3v);
+
+    int16x4_t acc = vadd_s16(vadd_s16(t0, t1), t2);
+    acc = vsub_s16(acc, vadd_s16(t3, vadd_s16(t3, t3)));
+    acc = vadd_s16(acc, vdup_n_s16(2));
+    acc = vshr_n_s16(acc, 2);
+    acc = vadd_s16(acc, t3);
+
+    vst1q_s32(&TEX->r, vmovl_s16(acc));
+}
+
+static STRICTINLINE void texel_quad_transpose_finish_simd(struct color* TEX, uint32x4_t r8, uint32x4_t g8, uint32x4_t b8, uint32x4_t a8, int sfrac, int tfrac, int upper, int center)
+{
+    if (center)
+        texel_quad_transpose_avg_simd(TEX, r8, g8, b8, a8);
+    else
+        texel_quad_transpose_lerp_simd(TEX, r8, g8, b8, a8, sfrac, tfrac, upper);
+}
+
+static STRICTINLINE void texture_quadro_lerp_rgba16_simd(uint32_t wid, struct color* TEX, int s0, int sdiff, int t0, int tdiff, uint32_t tilenum, int sfrac, int tfrac, int upper, int center)
 {
     uint32_t tbase0 = state[wid].tile[tilenum].line * (t0 & 0xff) + state[wid].tile[tilenum].tmem;
     int t1 = (t0 & 0xff) + tdiff;
@@ -1730,10 +1809,10 @@ static STRICTINLINE void texture_quadro_lerp_rgba16_simd(uint32_t wid, struct co
     uint32x4_t b8 = vorrq_u32(vshlq_n_u32(b5, 3), vshrq_n_u32(b5, 2));
     uint32x4_t a8 = vandq_u32(vceqq_u32(vandq_u32(v, vdupq_n_u32(1)), vdupq_n_u32(1)), vdupq_n_u32(0xff));
 
-    texel_quad_transpose_lerp_simd(TEX, r8, g8, b8, a8, sfrac, tfrac, upper);
+    texel_quad_transpose_finish_simd(TEX, r8, g8, b8, a8, sfrac, tfrac, upper, center);
 }
 
-static STRICTINLINE void texture_quadro_lerp_bytefmt_simd(uint32_t wid, struct color* TEX, int s0, int sdiff, int t0, int tdiff, uint32_t tilenum, int sfrac, int tfrac, int upper, int is_ia8)
+static STRICTINLINE void texture_quadro_lerp_bytefmt_simd(uint32_t wid, struct color* TEX, int s0, int sdiff, int t0, int tdiff, uint32_t tilenum, int sfrac, int tfrac, int upper, int is_ia8, int center)
 {
     uint32_t tbase0 = state[wid].tile[tilenum].line * (t0 & 0xff) + state[wid].tile[tilenum].tmem;
     int t1 = (t0 & 0xff) + tdiff;
@@ -1771,16 +1850,16 @@ static STRICTINLINE void texture_quadro_lerp_bytefmt_simd(uint32_t wid, struct c
         iv = vorrq_u32(iv, vshrq_n_u32(iv, 4));
         uint32x4_t av = vandq_u32(v, vdupq_n_u32(0x0f));
         av = vorrq_u32(vshlq_n_u32(av, 4), av);
-        texel_quad_transpose_lerp_simd(TEX, iv, iv, iv, av, sfrac, tfrac, upper);
+        texel_quad_transpose_finish_simd(TEX, iv, iv, iv, av, sfrac, tfrac, upper, center);
     }
     else
     {
-        texel_quad_transpose_lerp_simd(TEX, v, v, v, v, sfrac, tfrac, upper);
+        texel_quad_transpose_finish_simd(TEX, v, v, v, v, sfrac, tfrac, upper, center);
     }
 }
 
 
-static STRICTINLINE void texture_quadro_lerp_i4_simd(uint32_t wid, struct color* TEX, int s0, int sdiff, int t0, int tdiff, uint32_t tilenum, int sfrac, int tfrac, int upper)
+static STRICTINLINE void texture_quadro_lerp_i4_simd(uint32_t wid, struct color* TEX, int s0, int sdiff, int t0, int tdiff, uint32_t tilenum, int sfrac, int tfrac, int upper, int center)
 {
     uint32_t tbase0 = state[wid].tile[tilenum].line * (t0 & 0xff) + state[wid].tile[tilenum].tmem;
     int t1 = (t0 & 0xff) + tdiff;
@@ -1821,7 +1900,7 @@ static STRICTINLINE void texture_quadro_lerp_i4_simd(uint32_t wid, struct color*
     uint32x4_t c = vbslq_u32(msk, lo, hi);
     uint32x4_t iv = vorrq_u32(c, vshlq_n_u32(c, 4));
 
-    texel_quad_transpose_lerp_simd(TEX, iv, iv, iv, iv, sfrac, tfrac, upper);
+    texel_quad_transpose_finish_simd(TEX, iv, iv, iv, iv, sfrac, tfrac, upper, center);
 }
 
 /* Fused fetch + lerp for IA16: 16-bit texels addressed exactly like
@@ -1829,7 +1908,7 @@ static STRICTINLINE void texture_quadro_lerp_i4_simd(uint32_t wid, struct color*
  * quadro case above); the high byte is intensity across r/g/b and
  * the low byte is alpha, so the decode is two ops and the shared
  * transpose+lerp tail runs unchanged. */
-static STRICTINLINE void texture_quadro_lerp_ia16_simd(uint32_t wid, struct color* TEX, int s0, int sdiff, int t0, int tdiff, uint32_t tilenum, int sfrac, int tfrac, int upper)
+static STRICTINLINE void texture_quadro_lerp_ia16_simd(uint32_t wid, struct color* TEX, int s0, int sdiff, int t0, int tdiff, uint32_t tilenum, int sfrac, int tfrac, int upper, int center)
 {
     uint32_t tbase0 = state[wid].tile[tilenum].line * (t0 & 0xff) + state[wid].tile[tilenum].tmem;
     int t1 = (t0 & 0xff) + tdiff;
@@ -1863,7 +1942,7 @@ static STRICTINLINE void texture_quadro_lerp_ia16_simd(uint32_t wid, struct colo
     uint32x4_t iv = vshrq_n_u32(v, 8);
     uint32x4_t av = vandq_u32(v, vdupq_n_u32(0xff));
 
-    texel_quad_transpose_lerp_simd(TEX, iv, iv, iv, av, sfrac, tfrac, upper);
+    texel_quad_transpose_finish_simd(TEX, iv, iv, iv, av, sfrac, tfrac, upper, center);
 }
 
 /* Fused fetch + lerp for RGBA32: split-bank 16-bit fetches (the
@@ -1871,7 +1950,7 @@ static STRICTINLINE void texture_quadro_lerp_ia16_simd(uint32_t wid, struct colo
  * above, with the 0x3ff half-space mask); the low bank word carries
  * r/g and the high bank word (|0x400) carries b/a, giving four
  * independent channel vectors for the shared transpose+lerp tail. */
-static STRICTINLINE void texture_quadro_lerp_rgba32_simd(uint32_t wid, struct color* TEX, int s0, int sdiff, int t0, int tdiff, uint32_t tilenum, int sfrac, int tfrac, int upper)
+static STRICTINLINE void texture_quadro_lerp_rgba32_simd(uint32_t wid, struct color* TEX, int s0, int sdiff, int t0, int tdiff, uint32_t tilenum, int sfrac, int tfrac, int upper, int center)
 {
     uint32_t tbase0 = state[wid].tile[tilenum].line * (t0 & 0xff) + state[wid].tile[tilenum].tmem;
     int t1 = (t0 & 0xff) + tdiff;
@@ -1914,7 +1993,7 @@ static STRICTINLINE void texture_quadro_lerp_rgba32_simd(uint32_t wid, struct co
     uint32x4_t b8 = vshrq_n_u32(vhi, 8);
     uint32x4_t a8 = vandq_u32(vhi, m8);
 
-    texel_quad_transpose_lerp_simd(TEX, r8, g8, b8, a8, sfrac, tfrac, upper);
+    texel_quad_transpose_finish_simd(TEX, r8, g8, b8, a8, sfrac, tfrac, upper, center);
 }
 
 #endif
