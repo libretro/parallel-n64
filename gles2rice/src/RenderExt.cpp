@@ -269,6 +269,19 @@ void CRender::LoadSprite2D(Sprite2DInfo &info, uint32_t ucode)
         gti.Pitch   = info.spritePtr->Stride << gti.Size >> 1;
     }
 
+    /* SubImageWidth/Height are signed shorts and, in the HACK_FOR_NITRO
+     * path, are divided by a scale factor before being cast to unsigned.
+     * A degenerate sprite (e.g. Wipeout 64's exploding-car effect, which
+     * emits a SubImageWidth that works out to -2) would wrap to a huge
+     * width/height here and then be walked as a buffer extent by
+     * CalculateRDRAMCRC/CalculateMaxCI/the decompressor, reading far off
+     * the end of RDRAM and crashing. Reject non-positive dimensions. */
+    if( (int)gti.WidthToCreate <= 0 || (int)gti.HeightToCreate <= 0 )
+    {
+        TRACE0("Skip Sprite image, degenerate dimensions");
+        return;
+    }
+
     if( gti.Address + gti.Pitch*gti.HeightToCreate > g_dwRamSize )
     {
         TRACE0("Skip Sprite image decompress, memory out of bound");

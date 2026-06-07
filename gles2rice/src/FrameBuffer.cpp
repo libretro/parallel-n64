@@ -548,6 +548,24 @@ uint32_t CalculateRDRAMCRC(void *pPhysicalAddress, uint32_t left, uint32_t top, 
     dwAsmCRC = 0;
     dwAsmdwBytesPerLine = ((width<<size)+1)/2;
 
+    /* Defensive bound: the loops below walk height rows, and within
+     * each row read up to dwAsmdwBytesPerLine bytes (the fast path in
+     * dwords, the slow path in bytes). Callers derive width/height from
+     * guest data (e.g. a degenerate Sprite2D whose width wraps to a huge
+     * unsigned value), so verify the whole walked region stays inside
+     * RDRAM and bail with a harmless CRC rather than reading off the end. */
+    {
+        uint8_t *ramBase = (uint8_t*)gfx_info.RDRAM;
+        uint8_t *region  = (uint8_t*)pPhysicalAddress;
+        uint64_t span    = height ? ((uint64_t)(height - 1) * pitchInBytes
+                                     + dwAsmdwBytesPerLine) : 0;
+        if (region < ramBase ||
+            (uint64_t)(region - ramBase) + span > g_dwRamSize)
+        {
+            return 0;
+        }
+    }
+
     if (currentRomOptions.bFastTexCRC && !options.bLoadHiResTextures && (height>=32 || (dwAsmdwBytesPerLine>>2)>=16))
     {
         uint32_t realWidthInDWORD = dwAsmdwBytesPerLine>>2;
