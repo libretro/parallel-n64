@@ -1376,45 +1376,12 @@ static INLINE void fetch_texel_quadro(uint32_t wid, struct color *color0, struct
  * 16-bit lanes: channels are at most 255, fractions at most 0x20, so
  * |f1*d1 + f2*d2 + 0x10| <= 16336. */
 #if defined(AL_SIMD_SSE2)
-static STRICTINLINE void texture_quadro_lerp_rgba16_simd(uint32_t wid, struct color* TEX, int s0, int sdiff, int t0, int tdiff, uint32_t tilenum, int sfrac, int tfrac, int upper)
+/* Shared tail of the fused texture kernels: transpose texel-lane
+ * channel vectors into per-texel RGBA vectors and run the triangular
+ * lerp vertically. See the RGBA16 kernel below for the range
+ * argument; all intermediates fit signed 16-bit lanes. */
+static STRICTINLINE void texel_quad_transpose_lerp_simd(struct color* TEX, __m128i r8, __m128i g8, __m128i b8, __m128i a8, int sfrac, int tfrac, int upper)
 {
-    uint32_t tbase0 = state[wid].tile[tilenum].line * (t0 & 0xff) + state[wid].tile[tilenum].tmem;
-    int t1 = (t0 & 0xff) + tdiff;
-    int s1 = s0 + sdiff;
-    uint32_t tbase2 = state[wid].tile[tilenum].line * t1 + state[wid].tile[tilenum].tmem;
-    uint32_t xort;
-    uint32_t taddr0, taddr1, taddr2, taddr3;
-
-    taddr0 = (tbase0 << 2) + s0;
-    taddr1 = (tbase0 << 2) + s1;
-    taddr2 = (tbase2 << 2) + s0;
-    taddr3 = (tbase2 << 2) + s1;
-    xort = (t0 & 1) ? WORD_XOR_DWORD_SWAP : WORD_ADDR_XOR;
-    taddr0 ^= xort;
-    taddr1 ^= xort;
-    xort = (t1 & 1) ? WORD_XOR_DWORD_SWAP : WORD_ADDR_XOR;
-    taddr2 ^= xort;
-    taddr3 ^= xort;
-
-    taddr0 &= 0x7ff;
-    taddr1 &= 0x7ff;
-    taddr2 &= 0x7ff;
-    taddr3 &= 0x7ff;
-
-    __m128i v = _mm_set_epi32(tc16[taddr3], tc16[taddr2], tc16[taddr1], tc16[taddr0]);
-    __m128i m5 = _mm_set1_epi32(0x1f);
-
-    __m128i r5 = _mm_and_si128(_mm_srli_epi32(v, 11), m5);
-    __m128i g5 = _mm_and_si128(_mm_srli_epi32(v, 6), m5);
-    __m128i b5 = _mm_and_si128(_mm_srli_epi32(v, 1), m5);
-
-    __m128i r8 = _mm_or_si128(_mm_slli_epi32(r5, 3), _mm_srli_epi32(r5, 2));
-    __m128i g8 = _mm_or_si128(_mm_slli_epi32(g5, 3), _mm_srli_epi32(g5, 2));
-    __m128i b8 = _mm_or_si128(_mm_slli_epi32(b5, 3), _mm_srli_epi32(b5, 2));
-    __m128i one32 = _mm_set1_epi32(1);
-    __m128i a8 = _mm_and_si128(_mm_cmpeq_epi32(_mm_and_si128(v, one32), one32), _mm_set1_epi32(0xff));
-
-    /* transpose texel-lane channels into per-texel RGBA vectors */
     __m128i rg_lo = _mm_unpacklo_epi32(r8, g8);
     __m128i rg_hi = _mm_unpackhi_epi32(r8, g8);
     __m128i ba_lo = _mm_unpacklo_epi32(b8, a8);
@@ -1457,7 +1424,101 @@ static STRICTINLINE void texture_quadro_lerp_rgba16_simd(uint32_t wid, struct co
     __m128i res = _mm_srai_epi32(_mm_unpacklo_epi16(acc, acc), 16);
     _mm_storeu_si128((__m128i*)&TEX->r, res);
 }
+
+static STRICTINLINE void texture_quadro_lerp_rgba16_simd(uint32_t wid, struct color* TEX, int s0, int sdiff, int t0, int tdiff, uint32_t tilenum, int sfrac, int tfrac, int upper)
+{
+    uint32_t tbase0 = state[wid].tile[tilenum].line * (t0 & 0xff) + state[wid].tile[tilenum].tmem;
+    int t1 = (t0 & 0xff) + tdiff;
+    int s1 = s0 + sdiff;
+    uint32_t tbase2 = state[wid].tile[tilenum].line * t1 + state[wid].tile[tilenum].tmem;
+    uint32_t xort;
+    uint32_t taddr0, taddr1, taddr2, taddr3;
+
+    taddr0 = (tbase0 << 2) + s0;
+    taddr1 = (tbase0 << 2) + s1;
+    taddr2 = (tbase2 << 2) + s0;
+    taddr3 = (tbase2 << 2) + s1;
+    xort = (t0 & 1) ? WORD_XOR_DWORD_SWAP : WORD_ADDR_XOR;
+    taddr0 ^= xort;
+    taddr1 ^= xort;
+    xort = (t1 & 1) ? WORD_XOR_DWORD_SWAP : WORD_ADDR_XOR;
+    taddr2 ^= xort;
+    taddr3 ^= xort;
+
+    taddr0 &= 0x7ff;
+    taddr1 &= 0x7ff;
+    taddr2 &= 0x7ff;
+    taddr3 &= 0x7ff;
+
+    __m128i v = _mm_set_epi32(tc16[taddr3], tc16[taddr2], tc16[taddr1], tc16[taddr0]);
+    __m128i m5 = _mm_set1_epi32(0x1f);
+
+    __m128i r5 = _mm_and_si128(_mm_srli_epi32(v, 11), m5);
+    __m128i g5 = _mm_and_si128(_mm_srli_epi32(v, 6), m5);
+    __m128i b5 = _mm_and_si128(_mm_srli_epi32(v, 1), m5);
+
+    __m128i r8 = _mm_or_si128(_mm_slli_epi32(r5, 3), _mm_srli_epi32(r5, 2));
+    __m128i g8 = _mm_or_si128(_mm_slli_epi32(g5, 3), _mm_srli_epi32(g5, 2));
+    __m128i b8 = _mm_or_si128(_mm_slli_epi32(b5, 3), _mm_srli_epi32(b5, 2));
+    __m128i one32 = _mm_set1_epi32(1);
+    __m128i a8 = _mm_and_si128(_mm_cmpeq_epi32(_mm_and_si128(v, one32), one32), _mm_set1_epi32(0xff));
+
+    texel_quad_transpose_lerp_simd(TEX, r8, g8, b8, a8, sfrac, tfrac, upper);
+}
+
+/* Fused fetch + lerp for the byte texel formats: IA8 (high nibble is
+ * intensity, low nibble alpha, both replicated to 8 bits) and I8
+ * (the byte replicated across all four channels). The byte TMEM
+ * addressing is copied verbatim from the TEXEL_IA8/TEXEL_I8 quadro
+ * cases above; aliasing the channel vectors reuses the shared
+ * transpose and lerp unchanged. */
+static STRICTINLINE void texture_quadro_lerp_bytefmt_simd(uint32_t wid, struct color* TEX, int s0, int sdiff, int t0, int tdiff, uint32_t tilenum, int sfrac, int tfrac, int upper, int is_ia8)
+{
+    uint32_t tbase0 = state[wid].tile[tilenum].line * (t0 & 0xff) + state[wid].tile[tilenum].tmem;
+    int t1 = (t0 & 0xff) + tdiff;
+    int s1 = s0 + sdiff;
+    uint32_t tbase2 = state[wid].tile[tilenum].line * t1 + state[wid].tile[tilenum].tmem;
+    uint32_t xort;
+    uint32_t taddr0, taddr1, taddr2, taddr3;
+
+    taddr0 = (tbase0 << 3) + s0;
+    taddr1 = (tbase0 << 3) + s1;
+    taddr2 = (tbase2 << 3) + s0;
+    taddr3 = (tbase2 << 3) + s1;
+    xort = (t0 & 1) ? BYTE_XOR_DWORD_SWAP : BYTE_ADDR_XOR;
+    taddr0 ^= xort;
+    taddr1 ^= xort;
+    xort = (t1 & 1) ? BYTE_XOR_DWORD_SWAP : BYTE_ADDR_XOR;
+    taddr2 ^= xort;
+    taddr3 ^= xort;
+
+    taddr0 &= 0xfff;
+    taddr1 &= 0xfff;
+    taddr2 &= 0xfff;
+    taddr3 &= 0xfff;
+
+    __m128i v = _mm_set_epi32(state[wid].tmem[taddr3], state[wid].tmem[taddr2],
+                              state[wid].tmem[taddr1], state[wid].tmem[taddr0]);
+
+    if (is_ia8)
+    {
+        __m128i iv = _mm_and_si128(v, _mm_set1_epi32(0xf0));
+        iv = _mm_or_si128(iv, _mm_srli_epi32(iv, 4));
+        __m128i av = _mm_and_si128(v, _mm_set1_epi32(0x0f));
+        av = _mm_or_si128(_mm_slli_epi32(av, 4), av);
+        texel_quad_transpose_lerp_simd(TEX, iv, iv, iv, av, sfrac, tfrac, upper);
+    }
+    else
+    {
+        texel_quad_transpose_lerp_simd(TEX, v, v, v, v, sfrac, tfrac, upper);
+    }
+}
 #elif defined(AL_SIMD_NEON)
+static STRICTINLINE void texel_quad_transpose_lerp_simd(struct color* TEX, uint32x4_t r8, uint32x4_t g8, uint32x4_t b8, uint32x4_t a8, int sfrac, int tfrac, int upper)
+{
+    texel_quad_transpose_lerp_simd(TEX, r8, g8, b8, a8, sfrac, tfrac, upper);
+}
+
 static STRICTINLINE void texture_quadro_lerp_rgba16_simd(uint32_t wid, struct color* TEX, int s0, int sdiff, int t0, int tdiff, uint32_t tilenum, int sfrac, int tfrac, int upper)
 {
     uint32_t tbase0 = state[wid].tile[tilenum].line * (t0 & 0xff) + state[wid].tile[tilenum].tmem;
@@ -1500,43 +1561,55 @@ static STRICTINLINE void texture_quadro_lerp_rgba16_simd(uint32_t wid, struct co
     uint32x4_t b8 = vorrq_u32(vshlq_n_u32(b5, 3), vshrq_n_u32(b5, 2));
     uint32x4_t a8 = vandq_u32(vceqq_u32(vandq_u32(v, vdupq_n_u32(1)), vdupq_n_u32(1)), vdupq_n_u32(0xff));
 
-    /* register transpose: zip channel vectors pairwise, then join
-     * 64-bit halves into per-texel RGBA vectors */
-    uint32x4x2_t zrg = vzipq_u32(r8, g8);
-    uint32x4x2_t zba = vzipq_u32(b8, a8);
-    int32x4_t t0v = vreinterpretq_s32_u32(vcombine_u32(vget_low_u32(zrg.val[0]), vget_low_u32(zba.val[0])));
-    int32x4_t t1v = vreinterpretq_s32_u32(vcombine_u32(vget_high_u32(zrg.val[0]), vget_high_u32(zba.val[0])));
-    int32x4_t t2v = vreinterpretq_s32_u32(vcombine_u32(vget_low_u32(zrg.val[1]), vget_low_u32(zba.val[1])));
-    int32x4_t t3v = vreinterpretq_s32_u32(vcombine_u32(vget_high_u32(zrg.val[1]), vget_high_u32(zba.val[1])));
+    texel_quad_transpose_lerp_simd(TEX, r8, g8, b8, a8, sfrac, tfrac, upper);
+}
 
-    int16x4_t bt, av, bv;
-    int f1, f2;
-    if (upper)
+static STRICTINLINE void texture_quadro_lerp_bytefmt_simd(uint32_t wid, struct color* TEX, int s0, int sdiff, int t0, int tdiff, uint32_t tilenum, int sfrac, int tfrac, int upper, int is_ia8)
+{
+    uint32_t tbase0 = state[wid].tile[tilenum].line * (t0 & 0xff) + state[wid].tile[tilenum].tmem;
+    int t1 = (t0 & 0xff) + tdiff;
+    int s1 = s0 + sdiff;
+    uint32_t tbase2 = state[wid].tile[tilenum].line * t1 + state[wid].tile[tilenum].tmem;
+    uint32_t xort;
+    uint32_t taddr0, taddr1, taddr2, taddr3;
+
+    taddr0 = (tbase0 << 3) + s0;
+    taddr1 = (tbase0 << 3) + s1;
+    taddr2 = (tbase2 << 3) + s0;
+    taddr3 = (tbase2 << 3) + s1;
+    xort = (t0 & 1) ? BYTE_XOR_DWORD_SWAP : BYTE_ADDR_XOR;
+    taddr0 ^= xort;
+    taddr1 ^= xort;
+    xort = (t1 & 1) ? BYTE_XOR_DWORD_SWAP : BYTE_ADDR_XOR;
+    taddr2 ^= xort;
+    taddr3 ^= xort;
+
+    taddr0 &= 0xfff;
+    taddr1 &= 0xfff;
+    taddr2 &= 0xfff;
+    taddr3 &= 0xfff;
+
+    uint32_t craw[4];
+    craw[0] = state[wid].tmem[taddr0];
+    craw[1] = state[wid].tmem[taddr1];
+    craw[2] = state[wid].tmem[taddr2];
+    craw[3] = state[wid].tmem[taddr3];
+    uint32x4_t v = vld1q_u32(craw);
+
+    if (is_ia8)
     {
-        bt = vmovn_s32(t3v);
-        av = vmovn_s32(t2v);
-        bv = vmovn_s32(t1v);
-        f1 = 0x20 - sfrac;
-        f2 = 0x20 - tfrac;
+        uint32x4_t iv = vandq_u32(v, vdupq_n_u32(0xf0));
+        iv = vorrq_u32(iv, vshrq_n_u32(iv, 4));
+        uint32x4_t av = vandq_u32(v, vdupq_n_u32(0x0f));
+        av = vorrq_u32(vshlq_n_u32(av, 4), av);
+        texel_quad_transpose_lerp_simd(TEX, iv, iv, iv, av, sfrac, tfrac, upper);
     }
     else
     {
-        bt = vmovn_s32(t0v);
-        av = vmovn_s32(t1v);
-        bv = vmovn_s32(t2v);
-        f1 = sfrac;
-        f2 = tfrac;
+        texel_quad_transpose_lerp_simd(TEX, v, v, v, v, sfrac, tfrac, upper);
     }
-
-    int16x4_t acc = vadd_s16(
-        vmul_s16(vsub_s16(av, bt), vdup_n_s16((int16_t)f1)),
-        vmul_s16(vsub_s16(bv, bt), vdup_n_s16((int16_t)f2)));
-    acc = vadd_s16(acc, vdup_n_s16(0x10));
-    acc = vshr_n_s16(acc, 5);
-    acc = vadd_s16(acc, bt);
-
-    vst1q_s32(&TEX->r, vmovl_s16(acc));
 }
+
 #endif
 
 static INLINE void fetch_texel_entlut_quadro(uint32_t wid, struct color *color0, struct color *color1, struct color *color2, struct color *color3, int s0, int sdiff, int t0, int tdiff, uint32_t tilenum, int isupper, int isupperrg)

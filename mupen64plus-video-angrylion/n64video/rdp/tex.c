@@ -246,11 +246,22 @@ static STRICTINLINE void texture_pipeline_cycle(uint32_t wid, struct color* TEX,
             if (state[wid].other_modes.sample_type
                 && !state[wid].other_modes.en_tlut
                 && !state[wid].other_modes.mid_texel
-                && !convert
-                && state[wid].tile[tilenum].f.notlutswitch == TEXEL_RGBA16)
+                && !convert)
             {
-                texture_quadro_lerp_rgba16_simd(wid, TEX, sss1, sdiff, sst1, tdiff, tilenum, sfrac, tfrac, upper);
-                return;
+                switch (state[wid].tile[tilenum].f.notlutswitch)
+                {
+                case TEXEL_RGBA16:
+                    texture_quadro_lerp_rgba16_simd(wid, TEX, sss1, sdiff, sst1, tdiff, tilenum, sfrac, tfrac, upper);
+                    return;
+                case TEXEL_IA8:
+                    texture_quadro_lerp_bytefmt_simd(wid, TEX, sss1, sdiff, sst1, tdiff, tilenum, sfrac, tfrac, upper, 1);
+                    return;
+                case TEXEL_I8:
+                    texture_quadro_lerp_bytefmt_simd(wid, TEX, sss1, sdiff, sst1, tdiff, tilenum, sfrac, tfrac, upper, 0);
+                    return;
+                default:
+                    break;
+                }
             }
 #endif
 
