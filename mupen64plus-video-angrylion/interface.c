@@ -179,6 +179,25 @@ void angrylion_set_threads(unsigned value)
     
 }
 
+void angrylion_set_synchronous(unsigned value)
+{
+   /* value != 0 selects the fully synchronous renderer: no worker
+    * pool, no command buffering, no synchronization primitives -
+    * every RDP command executes on the emulator thread at
+    * submission. Numeric thread counts use the threaded pipeline,
+    * including '1' (one worker, which is the calling thread). */
+   bool parallel = (value == 0);
+   if(config.parallel != parallel)
+   {
+      config.parallel = parallel;
+      if (angrylion_init)
+      {
+         n64video_close();
+         n64video_init(&config);
+      }
+   }
+}
+
 void angrylion_set_overscan(unsigned value)
 {
    if(config.vi.hide_overscan != (bool)value)

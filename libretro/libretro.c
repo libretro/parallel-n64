@@ -1141,6 +1141,7 @@ extern void angrylion_set_vi(unsigned value);
 extern void angrylion_set_filtering(unsigned value);
 extern void angrylion_set_dithering(unsigned value);
 extern void  angrylion_set_threads(unsigned value);
+extern void  angrylion_set_synchronous(unsigned value);
 extern void  angrylion_set_overscan(unsigned value);
 extern void  angrylion_set_vi_dedither(unsigned value);
 extern void  angrylion_set_vi_blur(unsigned value);
@@ -1510,13 +1511,22 @@ void update_variables(bool startup)
 
    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
    {
-      if(!strcmp(var.value, "all threads"))
-         angrylion_set_threads(0);
+      if(!strcmp(var.value, "off"))
+         angrylion_set_synchronous(1);
       else
-         angrylion_set_threads(atoi(var.value));
+      {
+         angrylion_set_synchronous(0);
+         if(!strcmp(var.value, "all threads"))
+            angrylion_set_threads(0);
+         else
+            angrylion_set_threads(atoi(var.value));
+      }
    }
    else
+   {
+      angrylion_set_synchronous(0);
       angrylion_set_threads(0);
+   }
 
    var.key = "parallel-n64-angrylion-overscan";
    var.value = NULL;
