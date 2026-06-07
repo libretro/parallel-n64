@@ -52,6 +52,7 @@ struct vi_reg_ctrl
 
 typedef void(*vi_fetch_filter_func)(struct rgba*, uint32_t, uint32_t, struct vi_reg_ctrl, uint32_t, uint32_t);
 
+#include "vi/vi_simd.h"
 #include "vi/gamma.c"
 #include "vi/lerp.c"
 #include "vi/divot.c"

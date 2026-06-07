@@ -1,24 +1,11 @@
 static int vi_restore_table[0x400];
 
-/* SIMD kernels for the restore (dither) filter. Compile-time dispatch
- * in the prboom style: SSE2 is baseline on x86-64, NEON on AArch64.
- * The scalar path below is kept verbatim as the fallback and as the
- * bit-exactness reference - vi_restore_table[i] is sign((i & 0x1f) -
- * ((i >> 5) & 0x1f)), i.e. a memoized three-way compare of the
- * neighbor's 5-bit channel against the center's, so the 24 table
- * lookups per pixel reduce to two vector compares and a subtract per
- * channel. */
-#if defined(__SSE2__) || (defined(_M_IX86_FP) && _M_IX86_FP >= 2) || defined(_M_X64)
-#define AL_VI_RESTORE_SSE2 1
-#include <emmintrin.h>
-#elif (defined(__ARM_NEON) || defined(__ARM_NEON__)) && (defined(__aarch64__) || defined(_M_ARM64))
-/* AArch64 only: the horizontal reduction uses vaddvq_s16, which does
- * not exist on ARMv7 NEON. 32-bit ARM keeps the scalar path. */
-#define AL_VI_RESTORE_NEON 1
-#include <arm_neon.h>
-#endif
-
-#if defined(AL_VI_RESTORE_SSE2)
+/* SIMD kernels for the restore (dither) filter; dispatch comes from
+ * vi_simd.h. vi_restore_table[i] is sign((i & 0x1f) - ((i >> 5) &
+ * 0x1f)), i.e. a memoized three-way compare of the neighbor's 5-bit
+ * channel against the center's, so the 24 table lookups per pixel
+ * reduce to two vector compares and a subtract per channel. */
+#if defined(AL_VI_SSE2)
 static STRICTINLINE void restore_filter16_simd(int* r, int* g, int* b, const uint16_t* pix8)
 {
     __m128i pix = _mm_loadu_si128((const __m128i*)pix8);
@@ -58,7 +45,7 @@ static STRICTINLINE void restore_filter16_simd(int* r, int* g, int* b, const uin
     *g += _mm_cvtsi128_si32(sg);
     *b += _mm_cvtsi128_si32(sb);
 }
-#elif defined(AL_VI_RESTORE_NEON)
+#elif defined(AL_VI_NEON)
 static STRICTINLINE void restore_filter16_simd(int* r, int* g, int* b, const uint16_t* pix8)
 {
     uint16x8_t pix = vld1q_u16(pix8);
@@ -125,7 +112,7 @@ static STRICTINLINE void restore_filter16(int* r, int* g, int* b, uint32_t fboff
 
     if (rdram_valid_idx16(maxpix) && rdram_valid_idx16(leftuppix))
     {
-#if defined(AL_VI_RESTORE_SSE2) || defined(AL_VI_RESTORE_NEON)
+#if defined(AL_VI_SSE2) || defined(AL_VI_NEON)
         uint16_t pix8[8];
         for (i = 0; i < 8; i++)
             pix8[i] = rdram_read_idx16_fast(dirs[i]);
