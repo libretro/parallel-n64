@@ -245,6 +245,25 @@ static STRICTINLINE void texture_pipeline_cycle(uint32_t wid, struct color* TEX,
              * unreachable territory for these spans and the fused
              * path is exact. */
             if (state[wid].other_modes.sample_type
+                && state[wid].other_modes.en_tlut
+                && !convert
+                && state[wid].tile[tilenum].format != FORMAT_YUV)
+            {
+                int fcenter = state[wid].other_modes.mid_texel
+                    && sfrac == 0x10 && tfrac == 0x10;
+                switch (state[wid].tile[tilenum].f.tlutswitch)
+                {
+                case 4:
+                case 5:
+                case 6:
+                    texture_quadro_lerp_ci8_simd(wid, TEX, sss1, sdiff, sst1, tdiff, tilenum, sfrac, tfrac, upper, fcenter, upperrg);
+                    return;
+                default:
+                    break;
+                }
+            }
+
+            if (state[wid].other_modes.sample_type
                 && !state[wid].other_modes.en_tlut
                 && !convert)
             {

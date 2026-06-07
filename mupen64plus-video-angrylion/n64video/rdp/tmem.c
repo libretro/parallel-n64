@@ -1618,6 +1618,66 @@ static STRICTINLINE void texture_quadro_lerp_rgba32_simd(uint32_t wid, struct co
     texel_quad_transpose_finish_simd(TEX, r8, g8, b8, a8, sfrac, tfrac, upper, center);
 }
 
+/* Shared TLUT finish for the CI kernels: gather one palette entry per
+ * replicated TLUT bank (texel n reads copy n, bank parity rotated by
+ * isupperrg via the precomputed xor) and decode per tlut_type --
+ * RGBA16 exactly as in texture_quadro_lerp_rgba16_simd (the
+ * replicated_rgba table is (i << 3) | (i >> 2), so the shifted
+ * replicate is bit-identical), or IA16 as in the IA16 kernel. Only
+ * for non-YUV tiles (isupper == isupperrg), which the dispatch gate
+ * guarantees; the crossed bank assignment stays scalar. */
+static STRICTINLINE void texel_quad_tlut_finish_simd(uint32_t wid, struct color* TEX, uint32_t ta0, uint32_t ta1, uint32_t ta2, uint32_t ta3, uint32_t xorrg, int sfrac, int tfrac, int upper, int center)
+{
+    __m128i v = _mm_set_epi32(tlut[ta3 ^ xorrg], tlut[ta2 ^ xorrg],
+                              tlut[ta1 ^ xorrg], tlut[ta0 ^ xorrg]);
+
+    if (!state[wid].other_modes.tlut_type)
+    {
+        __m128i m5 = _mm_set1_epi32(0x1f);
+        __m128i r5 = _mm_and_si128(_mm_srli_epi32(v, 11), m5);
+        __m128i g5 = _mm_and_si128(_mm_srli_epi32(v, 6), m5);
+        __m128i b5 = _mm_and_si128(_mm_srli_epi32(v, 1), m5);
+        __m128i r8 = _mm_or_si128(_mm_slli_epi32(r5, 3), _mm_srli_epi32(r5, 2));
+        __m128i g8 = _mm_or_si128(_mm_slli_epi32(g5, 3), _mm_srli_epi32(g5, 2));
+        __m128i b8 = _mm_or_si128(_mm_slli_epi32(b5, 3), _mm_srli_epi32(b5, 2));
+        __m128i one32 = _mm_set1_epi32(1);
+        __m128i a8 = _mm_and_si128(_mm_cmpeq_epi32(_mm_and_si128(v, one32), one32), _mm_set1_epi32(0xff));
+        texel_quad_transpose_finish_simd(TEX, r8, g8, b8, a8, sfrac, tfrac, upper, center);
+    }
+    else
+    {
+        __m128i iv = _mm_srli_epi32(v, 8);
+        __m128i av = _mm_and_si128(v, _mm_set1_epi32(0xff));
+        texel_quad_transpose_finish_simd(TEX, iv, iv, iv, av, sfrac, tfrac, upper, center);
+    }
+}
+
+/* Fused fetch + lerp for CI8 under a TLUT (tlutswitch 4..6): the
+ * byte index fetch is equivalent to the corresponding
+ * fetch_texel_entlut_quadro case (including the 0x7ff low-half
+ * fetch mask and per-texel TLUT lane offsets); the palette decode
+ * and lerp run through the shared TLUT finish. */
+static STRICTINLINE void texture_quadro_lerp_ci8_simd(uint32_t wid, struct color* TEX, int s0, int sdiff, int t0, int tdiff, uint32_t tilenum, int sfrac, int tfrac, int upper, int center, int isupperrg)
+{
+    uint32_t tbase0 = state[wid].tile[tilenum].line * (t0 & 0xff) + state[wid].tile[tilenum].tmem;
+    int t1 = (t0 & 0xff) + tdiff;
+    int s1 = s0 + sdiff;
+    uint32_t tbase2 = state[wid].tile[tilenum].line * t1 + state[wid].tile[tilenum].tmem;
+    uint32_t xort0 = (t0 & 1) ? BYTE_XOR_DWORD_SWAP : BYTE_ADDR_XOR;
+    uint32_t xort2 = (t1 & 1) ? BYTE_XOR_DWORD_SWAP : BYTE_ADDR_XOR;
+    uint32_t taddr0 = (((tbase0 << 3) + s0) ^ xort0) & 0x7ff;
+    uint32_t taddr1 = (((tbase0 << 3) + s1) ^ xort0) & 0x7ff;
+    uint32_t taddr2 = (((tbase2 << 3) + s0) ^ xort2) & 0x7ff;
+    uint32_t taddr3 = (((tbase2 << 3) + s1) ^ xort2) & 0x7ff;
+    uint32_t ta0 = (uint32_t)state[wid].tmem[taddr0] << 2;
+    uint32_t ta1 = ((uint32_t)state[wid].tmem[taddr1] << 2) + 1;
+    uint32_t ta2 = ((uint32_t)state[wid].tmem[taddr2] << 2) + 2;
+    uint32_t ta3 = ((uint32_t)state[wid].tmem[taddr3] << 2) + 3;
+    uint32_t xorrg = isupperrg ? (WORD_ADDR_XOR ^ 3) : WORD_ADDR_XOR;
+
+    texel_quad_tlut_finish_simd(wid, TEX, ta0, ta1, ta2, ta3, xorrg, sfrac, tfrac, upper, center);
+}
+
 #elif defined(AL_SIMD_NEON)
 /* Shared tail of the fused texture kernels: transpose texel-lane
  * channel vectors into per-texel RGBA vectors and run the triangular
@@ -1861,6 +1921,67 @@ static STRICTINLINE void texture_quadro_lerp_rgba32_simd(uint32_t wid, struct co
     uint32x4_t a8 = vandq_u32(vhi, m8);
 
     texel_quad_transpose_finish_simd(TEX, r8, g8, b8, a8, sfrac, tfrac, upper, center);
+}
+
+/* Shared TLUT finish for the CI kernels: gather one palette entry per
+ * replicated TLUT bank (texel n reads copy n, bank parity rotated by
+ * isupperrg via the precomputed xor) and decode per tlut_type --
+ * RGBA16 exactly as in texture_quadro_lerp_rgba16_simd (the
+ * replicated_rgba table is (i << 3) | (i >> 2), so the shifted
+ * replicate is bit-identical), or IA16 as in the IA16 kernel. Only
+ * for non-YUV tiles (isupper == isupperrg), which the dispatch gate
+ * guarantees; the crossed bank assignment stays scalar. */
+static STRICTINLINE void texel_quad_tlut_finish_simd(uint32_t wid, struct color* TEX, uint32_t ta0, uint32_t ta1, uint32_t ta2, uint32_t ta3, uint32_t xorrg, int sfrac, int tfrac, int upper, int center)
+{
+    uint32x4_t v = vsetq_lane_u32(tlut[ta3 ^ xorrg],
+        vsetq_lane_u32(tlut[ta2 ^ xorrg],
+        vsetq_lane_u32(tlut[ta1 ^ xorrg],
+        vdupq_n_u32(tlut[ta0 ^ xorrg]), 1), 2), 3);
+
+    if (!state[wid].other_modes.tlut_type)
+    {
+        uint32x4_t m5 = vdupq_n_u32(0x1f);
+        uint32x4_t r5 = vandq_u32(vshrq_n_u32(v, 11), m5);
+        uint32x4_t g5 = vandq_u32(vshrq_n_u32(v, 6), m5);
+        uint32x4_t b5 = vandq_u32(vshrq_n_u32(v, 1), m5);
+        uint32x4_t r8 = vorrq_u32(vshlq_n_u32(r5, 3), vshrq_n_u32(r5, 2));
+        uint32x4_t g8 = vorrq_u32(vshlq_n_u32(g5, 3), vshrq_n_u32(g5, 2));
+        uint32x4_t b8 = vorrq_u32(vshlq_n_u32(b5, 3), vshrq_n_u32(b5, 2));
+        uint32x4_t a8 = vandq_u32(vceqq_u32(vandq_u32(v, vdupq_n_u32(1)), vdupq_n_u32(1)), vdupq_n_u32(0xff));
+        texel_quad_transpose_finish_simd(TEX, r8, g8, b8, a8, sfrac, tfrac, upper, center);
+    }
+    else
+    {
+        uint32x4_t iv = vshrq_n_u32(v, 8);
+        uint32x4_t av = vandq_u32(v, vdupq_n_u32(0xff));
+        texel_quad_transpose_finish_simd(TEX, iv, iv, iv, av, sfrac, tfrac, upper, center);
+    }
+}
+
+/* Fused fetch + lerp for CI8 under a TLUT (tlutswitch 4..6): the
+ * byte index fetch is equivalent to the corresponding
+ * fetch_texel_entlut_quadro case (including the 0x7ff low-half
+ * fetch mask and per-texel TLUT lane offsets); the palette decode
+ * and lerp run through the shared TLUT finish. */
+static STRICTINLINE void texture_quadro_lerp_ci8_simd(uint32_t wid, struct color* TEX, int s0, int sdiff, int t0, int tdiff, uint32_t tilenum, int sfrac, int tfrac, int upper, int center, int isupperrg)
+{
+    uint32_t tbase0 = state[wid].tile[tilenum].line * (t0 & 0xff) + state[wid].tile[tilenum].tmem;
+    int t1 = (t0 & 0xff) + tdiff;
+    int s1 = s0 + sdiff;
+    uint32_t tbase2 = state[wid].tile[tilenum].line * t1 + state[wid].tile[tilenum].tmem;
+    uint32_t xort0 = (t0 & 1) ? BYTE_XOR_DWORD_SWAP : BYTE_ADDR_XOR;
+    uint32_t xort2 = (t1 & 1) ? BYTE_XOR_DWORD_SWAP : BYTE_ADDR_XOR;
+    uint32_t taddr0 = (((tbase0 << 3) + s0) ^ xort0) & 0x7ff;
+    uint32_t taddr1 = (((tbase0 << 3) + s1) ^ xort0) & 0x7ff;
+    uint32_t taddr2 = (((tbase2 << 3) + s0) ^ xort2) & 0x7ff;
+    uint32_t taddr3 = (((tbase2 << 3) + s1) ^ xort2) & 0x7ff;
+    uint32_t ta0 = (uint32_t)state[wid].tmem[taddr0] << 2;
+    uint32_t ta1 = ((uint32_t)state[wid].tmem[taddr1] << 2) + 1;
+    uint32_t ta2 = ((uint32_t)state[wid].tmem[taddr2] << 2) + 2;
+    uint32_t ta3 = ((uint32_t)state[wid].tmem[taddr3] << 2) + 3;
+    uint32_t xorrg = isupperrg ? (WORD_ADDR_XOR ^ 3) : WORD_ADDR_XOR;
+
+    texel_quad_tlut_finish_simd(wid, TEX, ta0, ta1, ta2, ta3, xorrg, sfrac, tfrac, upper, center);
 }
 
 #endif
