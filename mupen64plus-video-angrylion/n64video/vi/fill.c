@@ -124,3 +124,56 @@ static void vi_fill_cache16(struct rgba* cache, int32_t lo, int32_t hi, uint32_t
     for (; k <= hi; k++)
         vi_fetch_filter16(&cache[k], fboffset, pixels + (uint32_t)k - 1, ctrl, hres, fetchstate);
 }
+
+/* Batched divot pass over one cache row: divot[k] is the per-channel
+ * median of viaa[k-1], viaa[k], viaa[k+1] unless all three carry
+ * full coverage, in which case the center passes through; the alpha
+ * channel always carries the center's coverage. The branchy
+ * pick-left/pick-right chain in divot_filter selects exactly the
+ * median value (ties included), so the vector form is a byte-wise
+ * max(min(L,C), min(max(L,C), R)) with a per-pixel alpha-lane
+ * compare for the full-coverage gate. Four pixels per iteration;
+ * the head and tail run the scalar filter. */
+static void vi_fill_divot_row(struct rgba* dcache, const struct rgba* acache, int32_t lo, int32_t hi)
+{
+    int32_t k = lo;
+
+#if defined(AL_VI_SSE2)
+    while (k + 3 <= hi)
+    {
+        __m128i c = _mm_loadu_si128((const __m128i*)&acache[k]);
+        __m128i l = _mm_loadu_si128((const __m128i*)&acache[k - 1]);
+        __m128i r = _mm_loadu_si128((const __m128i*)&acache[k + 1]);
+        __m128i mn = _mm_min_epu8(l, c);
+        __m128i mx = _mm_max_epu8(l, c);
+        __m128i med = _mm_max_epu8(mn, _mm_min_epu8(mx, r));
+        __m128i and3 = _mm_and_si128(_mm_and_si128(c, l), r);
+        __m128i amask = _mm_set1_epi32(0xff000000);
+        __m128i keep = _mm_cmpeq_epi32(_mm_and_si128(and3, amask), _mm_set1_epi32(0x07000000));
+        __m128i res = _mm_or_si128(_mm_and_si128(keep, c), _mm_andnot_si128(keep, med));
+        res = _mm_or_si128(_mm_andnot_si128(amask, res), _mm_and_si128(c, amask));
+        _mm_storeu_si128((__m128i*)&dcache[k], res);
+        k += 4;
+    }
+#elif defined(AL_VI_NEON)
+    while (k + 3 <= hi)
+    {
+        uint8x16_t c = vld1q_u8((const uint8_t*)&acache[k]);
+        uint8x16_t l = vld1q_u8((const uint8_t*)&acache[k - 1]);
+        uint8x16_t r = vld1q_u8((const uint8_t*)&acache[k + 1]);
+        uint8x16_t mn = vminq_u8(l, c);
+        uint8x16_t mx = vmaxq_u8(l, c);
+        uint8x16_t med = vmaxq_u8(mn, vminq_u8(mx, r));
+        uint32x4_t and3 = vandq_u32(vandq_u32(vreinterpretq_u32_u8(c), vreinterpretq_u32_u8(l)), vreinterpretq_u32_u8(r));
+        uint32x4_t amask = vdupq_n_u32(0xff000000);
+        uint32x4_t keep = vceqq_u32(vandq_u32(and3, amask), vdupq_n_u32(0x07000000));
+        uint8x16_t res = vbslq_u8(vreinterpretq_u8_u32(keep), c, med);
+        res = vbslq_u8(vreinterpretq_u8_u32(amask), c, res);
+        vst1q_u8((uint8_t*)&dcache[k], res);
+        k += 4;
+    }
+#endif
+
+    for (; k <= hi; k++)
+        divot_filter(&dcache[k], acache[k], acache[k - 1], acache[k + 1]);
+}

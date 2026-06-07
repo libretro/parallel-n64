@@ -195,6 +195,20 @@ static void vi_process_full_parallel(uint32_t worker_id)
                 vi_fill_cache16(viaa_cache_next, cache_next_marker + 1, row_max, frame_buffer, nextpixels, ctrl, vi_width_low, fetchbugstate);
                 cache_next_marker = row_max;
             }
+            if (ctrl.divot_enable) {
+                int32_t dlo = (int32_t)(x_offs >> 10) + 1;
+                int32_t dhi = row_max - 1;
+                if (dhi > divot_cache_marker) {
+                    int32_t from = divot_cache_marker + 1 > dlo ? divot_cache_marker + 1 : dlo;
+                    vi_fill_divot_row(divot_cache, viaa_cache, from, dhi);
+                    divot_cache_marker = dhi;
+                }
+                if (dhi > divot_cache_next_marker) {
+                    int32_t from = divot_cache_next_marker + 1 > dlo ? divot_cache_next_marker + 1 : dlo;
+                    vi_fill_divot_row(divot_cache_next, viaa_cache_next, from, dhi);
+                    divot_cache_next_marker = dhi;
+                }
+            }
         }
 
         for (x = 0; x < hres; x++, x_offs += x_add) {
