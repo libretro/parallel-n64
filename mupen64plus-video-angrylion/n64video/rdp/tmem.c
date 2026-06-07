@@ -1678,6 +1678,43 @@ static STRICTINLINE void texture_quadro_lerp_ci8_simd(uint32_t wid, struct color
     texel_quad_tlut_finish_simd(wid, TEX, ta0, ta1, ta2, ta3, xorrg, sfrac, tfrac, upper, center);
 }
 
+/* Fused fetch + lerp for CI4 under a TLUT (tlutswitch 0..2): two
+ * indices per TMEM byte, the nibble chosen by the texel's s parity
+ * and merged with the tile palette; equivalent to the corresponding
+ * fetch_texel_entlut_quadro case (including the 0x7ff low-half
+ * fetch mask and per-texel TLUT lane offsets). The index fetch is
+ * scalar; the palette decode and lerp run through the shared TLUT
+ * finish, so this body is ISA-independent. */
+static STRICTINLINE void texture_quadro_lerp_ci4_simd(uint32_t wid, struct color* TEX, int s0, int sdiff, int t0, int tdiff, uint32_t tilenum, int sfrac, int tfrac, int upper, int center, int isupperrg)
+{
+    uint32_t tbase0 = state[wid].tile[tilenum].line * (t0 & 0xff) + state[wid].tile[tilenum].tmem;
+    int t1 = (t0 & 0xff) + tdiff;
+    int s1 = s0 + sdiff;
+    uint32_t tbase2 = state[wid].tile[tilenum].line * t1 + state[wid].tile[tilenum].tmem;
+    uint32_t tpal = state[wid].tile[tilenum].palette << 4;
+    uint32_t xort0 = (t0 & 1) ? BYTE_XOR_DWORD_SWAP : BYTE_ADDR_XOR;
+    uint32_t xort2 = (t1 & 1) ? BYTE_XOR_DWORD_SWAP : BYTE_ADDR_XOR;
+    uint32_t taddr0 = ((((tbase0 << 4) + s0) >> 1) ^ xort0) & 0x7ff;
+    uint32_t taddr1 = ((((tbase0 << 4) + s1) >> 1) ^ xort0) & 0x7ff;
+    uint32_t taddr2 = ((((tbase2 << 4) + s0) >> 1) ^ xort2) & 0x7ff;
+    uint32_t taddr3 = ((((tbase2 << 4) + s1) >> 1) ^ xort2) & 0x7ff;
+    uint32_t p0 = state[wid].tmem[taddr0];
+    uint32_t p1 = state[wid].tmem[taddr1];
+    uint32_t p2 = state[wid].tmem[taddr2];
+    uint32_t p3 = state[wid].tmem[taddr3];
+    uint32_t c0 = (s0 & 1) ? (p0 & 0xf) : (p0 >> 4);
+    uint32_t c1 = (s1 & 1) ? (p1 & 0xf) : (p1 >> 4);
+    uint32_t c2 = (s0 & 1) ? (p2 & 0xf) : (p2 >> 4);
+    uint32_t c3 = (s1 & 1) ? (p3 & 0xf) : (p3 >> 4);
+    uint32_t ta0 = (tpal | c0) << 2;
+    uint32_t ta1 = ((tpal | c1) << 2) + 1;
+    uint32_t ta2 = ((tpal | c2) << 2) + 2;
+    uint32_t ta3 = ((tpal | c3) << 2) + 3;
+    uint32_t xorrg = isupperrg ? (WORD_ADDR_XOR ^ 3) : WORD_ADDR_XOR;
+
+    texel_quad_tlut_finish_simd(wid, TEX, ta0, ta1, ta2, ta3, xorrg, sfrac, tfrac, upper, center);
+}
+
 #elif defined(AL_SIMD_NEON)
 /* Shared tail of the fused texture kernels: transpose texel-lane
  * channel vectors into per-texel RGBA vectors and run the triangular
@@ -1979,6 +2016,43 @@ static STRICTINLINE void texture_quadro_lerp_ci8_simd(uint32_t wid, struct color
     uint32_t ta1 = ((uint32_t)state[wid].tmem[taddr1] << 2) + 1;
     uint32_t ta2 = ((uint32_t)state[wid].tmem[taddr2] << 2) + 2;
     uint32_t ta3 = ((uint32_t)state[wid].tmem[taddr3] << 2) + 3;
+    uint32_t xorrg = isupperrg ? (WORD_ADDR_XOR ^ 3) : WORD_ADDR_XOR;
+
+    texel_quad_tlut_finish_simd(wid, TEX, ta0, ta1, ta2, ta3, xorrg, sfrac, tfrac, upper, center);
+}
+
+/* Fused fetch + lerp for CI4 under a TLUT (tlutswitch 0..2): two
+ * indices per TMEM byte, the nibble chosen by the texel's s parity
+ * and merged with the tile palette; equivalent to the corresponding
+ * fetch_texel_entlut_quadro case (including the 0x7ff low-half
+ * fetch mask and per-texel TLUT lane offsets). The index fetch is
+ * scalar; the palette decode and lerp run through the shared TLUT
+ * finish, so this body is ISA-independent. */
+static STRICTINLINE void texture_quadro_lerp_ci4_simd(uint32_t wid, struct color* TEX, int s0, int sdiff, int t0, int tdiff, uint32_t tilenum, int sfrac, int tfrac, int upper, int center, int isupperrg)
+{
+    uint32_t tbase0 = state[wid].tile[tilenum].line * (t0 & 0xff) + state[wid].tile[tilenum].tmem;
+    int t1 = (t0 & 0xff) + tdiff;
+    int s1 = s0 + sdiff;
+    uint32_t tbase2 = state[wid].tile[tilenum].line * t1 + state[wid].tile[tilenum].tmem;
+    uint32_t tpal = state[wid].tile[tilenum].palette << 4;
+    uint32_t xort0 = (t0 & 1) ? BYTE_XOR_DWORD_SWAP : BYTE_ADDR_XOR;
+    uint32_t xort2 = (t1 & 1) ? BYTE_XOR_DWORD_SWAP : BYTE_ADDR_XOR;
+    uint32_t taddr0 = ((((tbase0 << 4) + s0) >> 1) ^ xort0) & 0x7ff;
+    uint32_t taddr1 = ((((tbase0 << 4) + s1) >> 1) ^ xort0) & 0x7ff;
+    uint32_t taddr2 = ((((tbase2 << 4) + s0) >> 1) ^ xort2) & 0x7ff;
+    uint32_t taddr3 = ((((tbase2 << 4) + s1) >> 1) ^ xort2) & 0x7ff;
+    uint32_t p0 = state[wid].tmem[taddr0];
+    uint32_t p1 = state[wid].tmem[taddr1];
+    uint32_t p2 = state[wid].tmem[taddr2];
+    uint32_t p3 = state[wid].tmem[taddr3];
+    uint32_t c0 = (s0 & 1) ? (p0 & 0xf) : (p0 >> 4);
+    uint32_t c1 = (s1 & 1) ? (p1 & 0xf) : (p1 >> 4);
+    uint32_t c2 = (s0 & 1) ? (p2 & 0xf) : (p2 >> 4);
+    uint32_t c3 = (s1 & 1) ? (p3 & 0xf) : (p3 >> 4);
+    uint32_t ta0 = (tpal | c0) << 2;
+    uint32_t ta1 = ((tpal | c1) << 2) + 1;
+    uint32_t ta2 = ((tpal | c2) << 2) + 2;
+    uint32_t ta3 = ((tpal | c3) << 2) + 3;
     uint32_t xorrg = isupperrg ? (WORD_ADDR_XOR ^ 3) : WORD_ADDR_XOR;
 
     texel_quad_tlut_finish_simd(wid, TEX, ta0, ta1, ta2, ta3, xorrg, sfrac, tfrac, upper, center);

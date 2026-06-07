@@ -253,6 +253,11 @@ static STRICTINLINE void texture_pipeline_cycle(uint32_t wid, struct color* TEX,
                     && sfrac == 0x10 && tfrac == 0x10;
                 switch (state[wid].tile[tilenum].f.tlutswitch)
                 {
+                case 0:
+                case 1:
+                case 2:
+                    texture_quadro_lerp_ci4_simd(wid, TEX, sss1, sdiff, sst1, tdiff, tilenum, sfrac, tfrac, upper, fcenter, upperrg);
+                    return;
                 case 4:
                 case 5:
                 case 6:
