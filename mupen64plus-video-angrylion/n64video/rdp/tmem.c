@@ -1560,6 +1560,43 @@ static STRICTINLINE void texture_quadro_lerp_i4_simd(uint32_t wid, struct color*
     texel_quad_transpose_lerp_simd(TEX, iv, iv, iv, iv, sfrac, tfrac, upper);
 }
 
+/* Fused fetch + lerp for IA16: 16-bit texels addressed exactly like
+ * RGBA16 (the taddr math is copied verbatim from the TEXEL_IA16
+ * quadro case above); the high byte is intensity across r/g/b and
+ * the low byte is alpha, so the decode is two ops and the shared
+ * transpose+lerp tail runs unchanged. */
+static STRICTINLINE void texture_quadro_lerp_ia16_simd(uint32_t wid, struct color* TEX, int s0, int sdiff, int t0, int tdiff, uint32_t tilenum, int sfrac, int tfrac, int upper)
+{
+    uint32_t tbase0 = state[wid].tile[tilenum].line * (t0 & 0xff) + state[wid].tile[tilenum].tmem;
+    int t1 = (t0 & 0xff) + tdiff;
+    int s1 = s0 + sdiff;
+    uint32_t tbase2 = state[wid].tile[tilenum].line * t1 + state[wid].tile[tilenum].tmem;
+    uint32_t xort;
+    uint32_t taddr0, taddr1, taddr2, taddr3;
+
+    taddr0 = (tbase0 << 2) + s0;
+    taddr1 = (tbase0 << 2) + s1;
+    taddr2 = (tbase2 << 2) + s0;
+    taddr3 = (tbase2 << 2) + s1;
+    xort = (t0 & 1) ? WORD_XOR_DWORD_SWAP : WORD_ADDR_XOR;
+    taddr0 ^= xort;
+    taddr1 ^= xort;
+    xort = (t1 & 1) ? WORD_XOR_DWORD_SWAP : WORD_ADDR_XOR;
+    taddr2 ^= xort;
+    taddr3 ^= xort;
+
+    taddr0 &= 0x7ff;
+    taddr1 &= 0x7ff;
+    taddr2 &= 0x7ff;
+    taddr3 &= 0x7ff;
+
+    __m128i v = _mm_set_epi32(tc16[taddr3], tc16[taddr2], tc16[taddr1], tc16[taddr0]);
+    __m128i iv = _mm_srli_epi32(v, 8);
+    __m128i av = _mm_and_si128(v, _mm_set1_epi32(0xff));
+
+    texel_quad_transpose_lerp_simd(TEX, iv, iv, iv, av, sfrac, tfrac, upper);
+}
+
 #elif defined(AL_SIMD_NEON)
 static STRICTINLINE void texel_quad_transpose_lerp_simd(struct color* TEX, uint32x4_t r8, uint32x4_t g8, uint32x4_t b8, uint32x4_t a8, int sfrac, int tfrac, int upper)
 {
@@ -1700,6 +1737,48 @@ static STRICTINLINE void texture_quadro_lerp_i4_simd(uint32_t wid, struct color*
     uint32x4_t iv = vorrq_u32(c, vshlq_n_u32(c, 4));
 
     texel_quad_transpose_lerp_simd(TEX, iv, iv, iv, iv, sfrac, tfrac, upper);
+}
+
+/* Fused fetch + lerp for IA16: 16-bit texels addressed exactly like
+ * RGBA16 (the taddr math is copied verbatim from the TEXEL_IA16
+ * quadro case above); the high byte is intensity across r/g/b and
+ * the low byte is alpha, so the decode is two ops and the shared
+ * transpose+lerp tail runs unchanged. */
+static STRICTINLINE void texture_quadro_lerp_ia16_simd(uint32_t wid, struct color* TEX, int s0, int sdiff, int t0, int tdiff, uint32_t tilenum, int sfrac, int tfrac, int upper)
+{
+    uint32_t tbase0 = state[wid].tile[tilenum].line * (t0 & 0xff) + state[wid].tile[tilenum].tmem;
+    int t1 = (t0 & 0xff) + tdiff;
+    int s1 = s0 + sdiff;
+    uint32_t tbase2 = state[wid].tile[tilenum].line * t1 + state[wid].tile[tilenum].tmem;
+    uint32_t xort;
+    uint32_t taddr0, taddr1, taddr2, taddr3;
+
+    taddr0 = (tbase0 << 2) + s0;
+    taddr1 = (tbase0 << 2) + s1;
+    taddr2 = (tbase2 << 2) + s0;
+    taddr3 = (tbase2 << 2) + s1;
+    xort = (t0 & 1) ? WORD_XOR_DWORD_SWAP : WORD_ADDR_XOR;
+    taddr0 ^= xort;
+    taddr1 ^= xort;
+    xort = (t1 & 1) ? WORD_XOR_DWORD_SWAP : WORD_ADDR_XOR;
+    taddr2 ^= xort;
+    taddr3 ^= xort;
+
+    taddr0 &= 0x7ff;
+    taddr1 &= 0x7ff;
+    taddr2 &= 0x7ff;
+    taddr3 &= 0x7ff;
+
+    uint32_t craw[4];
+    craw[0] = tc16[taddr0];
+    craw[1] = tc16[taddr1];
+    craw[2] = tc16[taddr2];
+    craw[3] = tc16[taddr3];
+    uint32x4_t v = vld1q_u32(craw);
+    uint32x4_t iv = vshrq_n_u32(v, 8);
+    uint32x4_t av = vandq_u32(v, vdupq_n_u32(0xff));
+
+    texel_quad_transpose_lerp_simd(TEX, iv, iv, iv, av, sfrac, tfrac, upper);
 }
 
 #endif
