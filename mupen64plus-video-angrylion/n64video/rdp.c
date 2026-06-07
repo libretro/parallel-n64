@@ -252,6 +252,9 @@ struct rdp_state
 
     // irand
     uint32_t rseed;
+    // per-primitive counter for the per-span noise seed; every worker
+    // walks every primitive, so this advances in lockstep across workers
+    uint32_t noise_seq;
 
     // blender
     int32_t *blender1a_r[2];
@@ -564,6 +567,7 @@ void rdp_init(uint32_t wid, uint32_t num_workers)
     state[wid].stride = num_workers;
     state[wid].offset = wid;
     state[wid].rseed = 3 + wid * 13;
+    state[wid].noise_seq = 0;
 
     uint32_t tmp[2] = { 0 };
     rdp_set_other_modes(wid, tmp);
@@ -589,8 +593,18 @@ void rdp_sync_tile(uint32_t wid, const uint32_t* args)
 {
 }
 
+/* Advances once per SYNC_FULL, which executes exactly once on the main
+ * thread in both threaded and synchronous modes. Read-only while spans
+ * are in flight. Combined with the per-primitive counter and the span
+ * scanline, it seeds the RDP noise stream per span so noise output is
+ * a pure function of the command stream - identical for every worker
+ * count and across runs - while still varying over time. */
+uint32_t rdp_noise_field;
+
 void rdp_sync_full(uint32_t wid, const uint32_t* args)
 {
+    rdp_noise_field++;
+
     // signal DP interrupt
     *config.gfx.mi_intr_reg |= DP_INTERRUPT;
     config.gfx.mi_intr_cb();

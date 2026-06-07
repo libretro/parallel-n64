@@ -254,6 +254,11 @@ static void render_spans_1cycle_complete(uint32_t wid, int start, int end, int t
         if (state[wid].span[i].validline)
         {
 
+        extern uint32_t rdp_noise_field;
+        state[wid].rseed = (rdp_noise_field * 0x9e3779b9u)
+                         ^ (state[wid].noise_seq * 0x6c078965u)
+                         ^ ((uint32_t)i * 0x85ebca6bu) ^ 3u;
+
         xstart = state[wid].span[i].lx;
         xend = state[wid].span[i].unscrx;
         xendsc = state[wid].span[i].rx;
@@ -461,6 +466,11 @@ static void render_spans_1cycle_notexel1(uint32_t wid, int start, int end, int t
         if (state[wid].span[i].validline)
         {
 
+        extern uint32_t rdp_noise_field;
+        state[wid].rseed = (rdp_noise_field * 0x9e3779b9u)
+                         ^ (state[wid].noise_seq * 0x6c078965u)
+                         ^ ((uint32_t)i * 0x85ebca6bu) ^ 3u;
+
         xstart = state[wid].span[i].lx;
         xend = state[wid].span[i].unscrx;
         xendsc = state[wid].span[i].rx;
@@ -625,6 +635,11 @@ static void render_spans_1cycle_notex(uint32_t wid, int start, int end, int tile
         if (state[wid].span[i].validline)
         {
 
+        extern uint32_t rdp_noise_field;
+        state[wid].rseed = (rdp_noise_field * 0x9e3779b9u)
+                         ^ (state[wid].noise_seq * 0x6c078965u)
+                         ^ ((uint32_t)i * 0x85ebca6bu) ^ 3u;
+
         xstart = state[wid].span[i].lx;
         xend = state[wid].span[i].unscrx;
         xendsc = state[wid].span[i].rx;
@@ -778,6 +793,11 @@ static void render_spans_2cycle_complete(uint32_t wid, int start, int end, int t
     {
         if (state[wid].span[i].validline)
         {
+
+        extern uint32_t rdp_noise_field;
+        state[wid].rseed = (rdp_noise_field * 0x9e3779b9u)
+                         ^ (state[wid].noise_seq * 0x6c078965u)
+                         ^ ((uint32_t)i * 0x85ebca6bu) ^ 3u;
 
         xstart = state[wid].span[i].lx;
         xend = state[wid].span[i].unscrx;
@@ -1048,6 +1068,11 @@ static void render_spans_2cycle_notexelnext(uint32_t wid, int start, int end, in
         if (state[wid].span[i].validline)
         {
 
+        extern uint32_t rdp_noise_field;
+        state[wid].rseed = (rdp_noise_field * 0x9e3779b9u)
+                         ^ (state[wid].noise_seq * 0x6c078965u)
+                         ^ ((uint32_t)i * 0x85ebca6bu) ^ 3u;
+
         xstart = state[wid].span[i].lx;
         xend = state[wid].span[i].unscrx;
         xendsc = state[wid].span[i].rx;
@@ -1263,6 +1288,11 @@ static void render_spans_2cycle_notexel1(uint32_t wid, int start, int end, int t
         if (state[wid].span[i].validline)
         {
 
+        extern uint32_t rdp_noise_field;
+        state[wid].rseed = (rdp_noise_field * 0x9e3779b9u)
+                         ^ (state[wid].noise_seq * 0x6c078965u)
+                         ^ ((uint32_t)i * 0x85ebca6bu) ^ 3u;
+
         xstart = state[wid].span[i].lx;
         xend = state[wid].span[i].unscrx;
         xendsc = state[wid].span[i].rx;
@@ -1465,6 +1495,11 @@ static void render_spans_2cycle_notex(uint32_t wid, int start, int end, int tile
     {
         if (state[wid].span[i].validline)
         {
+
+        extern uint32_t rdp_noise_field;
+        state[wid].rseed = (rdp_noise_field * 0x9e3779b9u)
+                         ^ (state[wid].noise_seq * 0x6c078965u)
+                         ^ ((uint32_t)i * 0x85ebca6bu) ^ 3u;
 
         xstart = state[wid].span[i].lx;
         xend = state[wid].span[i].unscrx;
@@ -1823,6 +1858,7 @@ static void render_spans_copy(uint32_t wid, int start, int end, int tilenum, int
 
 static void edgewalker_for_prims(uint32_t wid, int32_t* ewdata)
 {
+    state[wid].noise_seq++;
     int j = 0;
     int xleft = 0, xright = 0, xleft_inc = 0, xright_inc = 0;
     int r = 0, g = 0, b = 0, a = 0, z = 0, s = 0, t = 0, w = 0;
