@@ -44,13 +44,19 @@ public:
         *((COLOR*)this) = (unsigned int) rgba;
     }
 
-    inline IColor operator = (const IColor &sec) const
+    /* Canonical assignment: return by reference (the old by-value
+     * return constructed a throwaway IColor copy per assignment) and
+     * non-const (the old 'const' qualifier was a lie - the body writes
+     * *this through a cast that stripped constness, which is undefined
+     * behaviour on a genuinely const object). No caller assigns to a
+     * const IColor, so the relaxed qualifier changes nothing else. */
+    inline IColor& operator = (const IColor &sec)
     {
         *((COLOR*)this) = *((COLOR*)&sec);
         return *this;
     }
 
-    inline IColor operator = (COLOR col) const
+    inline IColor& operator = (COLOR col)
     {
         *((COLOR*)this) = col;
         return *this;
