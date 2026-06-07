@@ -1641,9 +1641,51 @@ static STRICTINLINE void texture_quadro_lerp_rgba32_simd(uint32_t wid, struct co
 }
 
 #elif defined(AL_SIMD_NEON)
+/* Shared tail of the fused texture kernels: transpose texel-lane
+ * channel vectors into per-texel RGBA vectors and run the triangular
+ * lerp vertically in signed 16-bit lanes; see the SSE2 variant above
+ * for the range argument. vtrnq pairs the even/odd lanes so that
+ * combining low/high halves yields {r,g,b,a} per texel. */
 static STRICTINLINE void texel_quad_transpose_lerp_simd(struct color* TEX, uint32x4_t r8, uint32x4_t g8, uint32x4_t b8, uint32x4_t a8, int sfrac, int tfrac, int upper)
 {
-    texel_quad_transpose_lerp_simd(TEX, r8, g8, b8, a8, sfrac, tfrac, upper);
+    uint32x4x2_t rg = vtrnq_u32(r8, g8);
+    uint32x4x2_t ba = vtrnq_u32(b8, a8);
+    int32x4_t t0v = vreinterpretq_s32_u32(vcombine_u32(vget_low_u32(rg.val[0]), vget_low_u32(ba.val[0])));
+    int32x4_t t1v = vreinterpretq_s32_u32(vcombine_u32(vget_low_u32(rg.val[1]), vget_low_u32(ba.val[1])));
+    int32x4_t t2v = vreinterpretq_s32_u32(vcombine_u32(vget_high_u32(rg.val[0]), vget_high_u32(ba.val[0])));
+    int32x4_t t3v = vreinterpretq_s32_u32(vcombine_u32(vget_high_u32(rg.val[1]), vget_high_u32(ba.val[1])));
+
+    int32x4_t base, ta, tb;
+    int f1, f2;
+    if (upper)
+    {
+        base = t3v;
+        ta = t2v;
+        tb = t1v;
+        f1 = 0x20 - sfrac;
+        f2 = 0x20 - tfrac;
+    }
+    else
+    {
+        base = t0v;
+        ta = t1v;
+        tb = t2v;
+        f1 = sfrac;
+        f2 = tfrac;
+    }
+
+    int16x4_t b16 = vmovn_s32(base);
+    int16x4_t a16 = vmovn_s32(ta);
+    int16x4_t c16 = vmovn_s32(tb);
+
+    int16x4_t acc = vadd_s16(
+        vmul_s16(vsub_s16(a16, b16), vdup_n_s16((short)f1)),
+        vmul_s16(vsub_s16(c16, b16), vdup_n_s16((short)f2)));
+    acc = vadd_s16(acc, vdup_n_s16(0x10));
+    acc = vshr_n_s16(acc, 5);
+    acc = vadd_s16(acc, b16);
+
+    vst1q_s32(&TEX->r, vmovl_s16(acc));
 }
 
 static STRICTINLINE void texture_quadro_lerp_rgba16_simd(uint32_t wid, struct color* TEX, int s0, int sdiff, int t0, int tdiff, uint32_t tilenum, int sfrac, int tfrac, int upper)
