@@ -62,6 +62,14 @@ public:
             throw std::runtime_error("Workers are exiting and no longer accept work");
         }
 
+        // single-worker mode has no one to synchronize with: worker 0 is
+        // the calling thread, so the whole signal/wait protocol reduces
+        // to a plain call
+        if (m_num_workers <= 1) {
+            task(0);
+            return;
+        }
+
         // prepare task for workers and send signal so they start working
         m_task = std::move(task);
         start_work();
@@ -105,16 +113,23 @@ private:
             // do the work
             m_task(worker_id);
 
-            {
-                std::unique_lock<std::mutex> ul(m_signal_mutex);
-
-                // mark task as done
-                m_tasks_done |= worker_mask;
-
-                // notify main thread
+            // mark task as done; m_tasks_done is atomic, so the bit can
+            // be set without the mutex. Only the worker whose bit
+            // completes the set wakes the main thread - the others used
+            // to issue a redundant notify (and a futex wake) each.
+            if ((m_tasks_done.fetch_or(worker_mask) | worker_mask)
+                    == m_all_tasks_done) {
+                // the empty lock pairs with wait()'s predicate check so
+                // the notify cannot fall between the main thread's check
+                // and its sleep (the classic lost-wakeup window)
+                { std::unique_lock<std::mutex> ul(m_signal_mutex); }
                 m_signal_done.notify_one();
+            }
 
-                // take a break and wait for more work
+            // if the next task already started (our bit was cleared),
+            // skip the sleep entirely; otherwise wait as before
+            if ((m_tasks_done.load() & worker_mask) != 0) {
+                std::unique_lock<std::mutex> ul(m_signal_mutex);
                 m_signal_work.wait(ul, [worker_mask, this] {
                     return (m_tasks_done & worker_mask) == 0;
                 });
@@ -123,6 +138,10 @@ private:
     }
 
     void wait() {
+        // fast path: all workers already finished, no need to lock
+        if (m_tasks_done.load() == m_all_tasks_done)
+            return;
+
         // wait for all workers to set their task bits
         std::unique_lock<std::mutex> ul(m_signal_mutex);
         m_signal_done.wait(ul, [this] {
