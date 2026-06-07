@@ -1759,6 +1759,38 @@ static STRICTINLINE void texture_quadro_lerp_cinear_simd(uint32_t wid, struct co
     texel_quad_tlut_finish_simd(wid, TEX, ta0, ta0 + 1, ta0 + 2, ta0 + 3, xorrg, sfrac, tfrac, upper, center);
 }
 
+/* Fused fetch + lerp for 16-bit texels used as TLUT indices
+ * (tlutswitch 8..10 and 12..14, which share one scalar body): the
+ * word fetch is equivalent to the corresponding
+ * fetch_texel_entlut_quadro case (including the 0x3ff low-half
+ * fetch mask), the index is bits 15..6 of the texel forced to the
+ * texel's TLUT bank lane, and the palette decode and lerp run
+ * through the shared TLUT finish. The body is ISA-independent. */
+static STRICTINLINE void texture_quadro_lerp_ci16_simd(uint32_t wid, struct color* TEX, int s0, int sdiff, int t0, int tdiff, uint32_t tilenum, int sfrac, int tfrac, int upper, int center, int isupperrg)
+{
+    uint32_t tbase0 = state[wid].tile[tilenum].line * (t0 & 0xff) + state[wid].tile[tilenum].tmem;
+    int t1 = (t0 & 0xff) + tdiff;
+    int s1 = s0 + sdiff;
+    uint32_t tbase2 = state[wid].tile[tilenum].line * t1 + state[wid].tile[tilenum].tmem;
+    uint32_t xort0 = (t0 & 1) ? WORD_XOR_DWORD_SWAP : WORD_ADDR_XOR;
+    uint32_t xort2 = (t1 & 1) ? WORD_XOR_DWORD_SWAP : WORD_ADDR_XOR;
+    uint32_t taddr0 = (((tbase0 << 2) + s0) ^ xort0) & 0x3ff;
+    uint32_t taddr1 = (((tbase0 << 2) + s1) ^ xort0) & 0x3ff;
+    uint32_t taddr2 = (((tbase2 << 2) + s0) ^ xort2) & 0x3ff;
+    uint32_t taddr3 = (((tbase2 << 2) + s1) ^ xort2) & 0x3ff;
+    uint32_t c0 = tc16[taddr0];
+    uint32_t c1 = tc16[taddr1];
+    uint32_t c2 = tc16[taddr2];
+    uint32_t c3 = tc16[taddr3];
+    uint32_t ta0 = (c0 >> 6) & ~3;
+    uint32_t ta1 = ((c1 >> 6) & ~3) + 1;
+    uint32_t ta2 = ((c2 >> 6) & ~3) + 2;
+    uint32_t ta3 = (c3 >> 6) | 3;
+    uint32_t xorrg = isupperrg ? (WORD_ADDR_XOR ^ 3) : WORD_ADDR_XOR;
+
+    texel_quad_tlut_finish_simd(wid, TEX, ta0, ta1, ta2, ta3, xorrg, sfrac, tfrac, upper, center);
+}
+
 #elif defined(AL_SIMD_NEON)
 /* Shared tail of the fused texture kernels: transpose texel-lane
  * channel vectors into per-texel RGBA vectors and run the triangular
@@ -2143,6 +2175,38 @@ static STRICTINLINE void texture_quadro_lerp_cinear_simd(uint32_t wid, struct co
     }
 
     texel_quad_tlut_finish_simd(wid, TEX, ta0, ta0 + 1, ta0 + 2, ta0 + 3, xorrg, sfrac, tfrac, upper, center);
+}
+
+/* Fused fetch + lerp for 16-bit texels used as TLUT indices
+ * (tlutswitch 8..10 and 12..14, which share one scalar body): the
+ * word fetch is equivalent to the corresponding
+ * fetch_texel_entlut_quadro case (including the 0x3ff low-half
+ * fetch mask), the index is bits 15..6 of the texel forced to the
+ * texel's TLUT bank lane, and the palette decode and lerp run
+ * through the shared TLUT finish. The body is ISA-independent. */
+static STRICTINLINE void texture_quadro_lerp_ci16_simd(uint32_t wid, struct color* TEX, int s0, int sdiff, int t0, int tdiff, uint32_t tilenum, int sfrac, int tfrac, int upper, int center, int isupperrg)
+{
+    uint32_t tbase0 = state[wid].tile[tilenum].line * (t0 & 0xff) + state[wid].tile[tilenum].tmem;
+    int t1 = (t0 & 0xff) + tdiff;
+    int s1 = s0 + sdiff;
+    uint32_t tbase2 = state[wid].tile[tilenum].line * t1 + state[wid].tile[tilenum].tmem;
+    uint32_t xort0 = (t0 & 1) ? WORD_XOR_DWORD_SWAP : WORD_ADDR_XOR;
+    uint32_t xort2 = (t1 & 1) ? WORD_XOR_DWORD_SWAP : WORD_ADDR_XOR;
+    uint32_t taddr0 = (((tbase0 << 2) + s0) ^ xort0) & 0x3ff;
+    uint32_t taddr1 = (((tbase0 << 2) + s1) ^ xort0) & 0x3ff;
+    uint32_t taddr2 = (((tbase2 << 2) + s0) ^ xort2) & 0x3ff;
+    uint32_t taddr3 = (((tbase2 << 2) + s1) ^ xort2) & 0x3ff;
+    uint32_t c0 = tc16[taddr0];
+    uint32_t c1 = tc16[taddr1];
+    uint32_t c2 = tc16[taddr2];
+    uint32_t c3 = tc16[taddr3];
+    uint32_t ta0 = (c0 >> 6) & ~3;
+    uint32_t ta1 = ((c1 >> 6) & ~3) + 1;
+    uint32_t ta2 = ((c2 >> 6) & ~3) + 2;
+    uint32_t ta3 = (c3 >> 6) | 3;
+    uint32_t xorrg = isupperrg ? (WORD_ADDR_XOR ^ 3) : WORD_ADDR_XOR;
+
+    texel_quad_tlut_finish_simd(wid, TEX, ta0, ta1, ta2, ta3, xorrg, sfrac, tfrac, upper, center);
 }
 
 #endif
