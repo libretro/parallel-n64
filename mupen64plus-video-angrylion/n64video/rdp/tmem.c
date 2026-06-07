@@ -85,9 +85,9 @@ static INLINE void fetch_texel(uint32_t wid, struct color *color, int s, int t, 
     {
     case TEXEL_RGBA4:
         {
+            uint8_t byteval, c;
             taddr = ((tbase << 4) + s) >> 1;
             taddr ^= ((t & 1) ? BYTE_XOR_DWORD_SWAP : BYTE_ADDR_XOR);
-            uint8_t byteval, c;
 
             byteval = state[wid].tmem[taddr & 0xfff];
             c = ((s & 1)) ? (byteval & 0xf) : (byteval >> 4);
@@ -100,10 +100,9 @@ static INLINE void fetch_texel(uint32_t wid, struct color *color, int s, int t, 
         break;
     case TEXEL_RGBA8:
         {
+            uint8_t p;
             taddr = (tbase << 3) + s;
             taddr ^= ((t & 1) ? BYTE_XOR_DWORD_SWAP : BYTE_ADDR_XOR);
-
-            uint8_t p;
 
             p = state[wid].tmem[taddr & 0xfff];
             color->r = p;
@@ -114,11 +113,10 @@ static INLINE void fetch_texel(uint32_t wid, struct color *color, int s, int t, 
         break;
     case TEXEL_RGBA16:
         {
+            uint16_t c;
             taddr = (tbase << 2) + s;
             taddr ^= ((t & 1) ? WORD_XOR_DWORD_SWAP : WORD_ADDR_XOR);
 
-
-            uint16_t c;
 
             c = tc16[taddr & 0x7ff];
             color->r = GET_HI_RGBA16_TMEM(c);
@@ -129,13 +127,12 @@ static INLINE void fetch_texel(uint32_t wid, struct color *color, int s, int t, 
         break;
     case TEXEL_RGBA32:
         {
+            uint16_t c;
 
 
 
             taddr = (tbase << 2) + s;
             taddr ^= ((t & 1) ? WORD_XOR_DWORD_SWAP : WORD_ADDR_XOR);
-
-            uint16_t c;
 
 
             taddr &= 0x3ff;
@@ -149,11 +146,10 @@ static INLINE void fetch_texel(uint32_t wid, struct color *color, int s, int t, 
         break;
     case TEXEL_YUV4:
         {
+            int32_t u, save;
             taddr = (tbase << 3) + s;
 
             taddr ^= ((t & 1) ? BYTE_XOR_DWORD_SWAP : BYTE_ADDR_XOR);
-
-            int32_t u, save;
 
             save = state[wid].tmem[taddr & 0x7ff];
 
@@ -170,11 +166,10 @@ static INLINE void fetch_texel(uint32_t wid, struct color *color, int s, int t, 
         break;
     case TEXEL_YUV8:
         {
+            int32_t u, save;
             taddr = (tbase << 3) + s;
 
             taddr ^= ((t & 1) ? BYTE_XOR_DWORD_SWAP : BYTE_ADDR_XOR);
-
-            int32_t u, save;
 
             save = u = state[wid].tmem[taddr & 0x7ff];
 
@@ -188,8 +183,11 @@ static INLINE void fetch_texel(uint32_t wid, struct color *color, int s, int t, 
         break;
     case TEXEL_YUV16:
         {
+            int taddrlow;
+            int32_t y, u, v;
+            uint16_t c;
             taddr = (tbase << 3) + s;
-            int taddrlow = taddr >> 1;
+            taddrlow = taddr >> 1;
 
             taddr ^= ((t & 1) ? BYTE_XOR_DWORD_SWAP : BYTE_ADDR_XOR);
             taddrlow ^= ((t & 1) ? WORD_XOR_DWORD_SWAP : WORD_ADDR_XOR);
@@ -197,9 +195,8 @@ static INLINE void fetch_texel(uint32_t wid, struct color *color, int s, int t, 
             taddr &= 0x7ff;
             taddrlow &= 0x3ff;
 
-            uint16_t c = tc16[taddrlow];
+            c = tc16[taddrlow];
 
-            int32_t y, u, v;
             y = state[wid].tmem[taddr | 0x800];
             u = c >> 8;
             v = c & 0xff;
@@ -259,10 +256,9 @@ static INLINE void fetch_texel(uint32_t wid, struct color *color, int s, int t, 
         break;
     case TEXEL_CI4:
         {
+            uint8_t p;
             taddr = ((tbase << 4) + s) >> 1;
             taddr ^= ((t & 1) ? BYTE_XOR_DWORD_SWAP : BYTE_ADDR_XOR);
-
-            uint8_t p;
 
 
 
@@ -274,10 +270,9 @@ static INLINE void fetch_texel(uint32_t wid, struct color *color, int s, int t, 
         break;
     case TEXEL_CI8:
         {
+            uint8_t p;
             taddr = (tbase << 3) + s;
             taddr ^= ((t & 1) ? BYTE_XOR_DWORD_SWAP : BYTE_ADDR_XOR);
-
-            uint8_t p;
 
 
             p = state[wid].tmem[taddr & 0xfff];
@@ -290,10 +285,9 @@ static INLINE void fetch_texel(uint32_t wid, struct color *color, int s, int t, 
     case TEXEL_CI16:
     case TEXEL_CI32:
         {
+            uint16_t c;
             taddr = (tbase << 2) + s;
             taddr ^= ((t & 1) ? WORD_XOR_DWORD_SWAP : WORD_ADDR_XOR);
-
-            uint16_t c;
 
             c = tc16[taddr & 0x7ff];
             color->r = c >> 8;
@@ -304,10 +298,9 @@ static INLINE void fetch_texel(uint32_t wid, struct color *color, int s, int t, 
         break;
     case TEXEL_IA4:
         {
+            uint8_t p, i;
             taddr = ((tbase << 4) + s) >> 1;
             taddr ^= ((t & 1) ? BYTE_XOR_DWORD_SWAP : BYTE_ADDR_XOR);
-
-            uint8_t p, i;
 
 
             p = state[wid].tmem[taddr & 0xfff];
@@ -322,10 +315,9 @@ static INLINE void fetch_texel(uint32_t wid, struct color *color, int s, int t, 
         break;
     case TEXEL_IA8:
         {
+            uint8_t p, i;
             taddr = (tbase << 3) + s;
             taddr ^= ((t & 1) ? BYTE_XOR_DWORD_SWAP : BYTE_ADDR_XOR);
-
-            uint8_t p, i;
 
 
             p = state[wid].tmem[taddr & 0xfff];
@@ -339,12 +331,11 @@ static INLINE void fetch_texel(uint32_t wid, struct color *color, int s, int t, 
         break;
     case TEXEL_IA16:
         {
+            uint16_t c;
 
 
             taddr = (tbase << 2) + s;
             taddr ^= ((t & 1) ? WORD_XOR_DWORD_SWAP : WORD_ADDR_XOR);
-
-            uint16_t c;
 
             c = tc16[taddr & 0x7ff];
             color->r = color->g = color->b = (c >> 8);
@@ -353,10 +344,9 @@ static INLINE void fetch_texel(uint32_t wid, struct color *color, int s, int t, 
         break;
     case TEXEL_IA32:
         {
+            uint16_t c;
             taddr = (tbase << 2) + s;
             taddr ^= ((t & 1) ? WORD_XOR_DWORD_SWAP : WORD_ADDR_XOR);
-
-            uint16_t c;
 
             c = tc16[taddr & 0x7ff];
             color->r = c >> 8;
@@ -367,10 +357,9 @@ static INLINE void fetch_texel(uint32_t wid, struct color *color, int s, int t, 
         break;
     case TEXEL_I4:
         {
+            uint8_t byteval, c;
             taddr = ((tbase << 4) + s) >> 1;
             taddr ^= ((t & 1) ? BYTE_XOR_DWORD_SWAP : BYTE_ADDR_XOR);
-
-            uint8_t byteval, c;
 
             byteval = state[wid].tmem[taddr & 0xfff];
             c = (s & 1) ? (byteval & 0xf) : (byteval >> 4);
@@ -383,10 +372,9 @@ static INLINE void fetch_texel(uint32_t wid, struct color *color, int s, int t, 
         break;
     case TEXEL_I8:
         {
+            uint8_t c;
             taddr = (tbase << 3) + s;
             taddr ^= ((t & 1) ? BYTE_XOR_DWORD_SWAP : BYTE_ADDR_XOR);
-
-            uint8_t c;
 
             c = state[wid].tmem[taddr & 0xfff];
             color->r = c;
@@ -399,10 +387,9 @@ static INLINE void fetch_texel(uint32_t wid, struct color *color, int s, int t, 
     case TEXEL_I32:
     default:
         {
+            uint16_t c;
             taddr = (tbase << 2) + s;
             taddr ^= ((t & 1) ? WORD_XOR_DWORD_SWAP : WORD_ADDR_XOR);
-
-            uint16_t c;
 
             c = tc16[taddr & 0x7ff];
             color->r = c >> 8;
@@ -439,6 +426,7 @@ static INLINE void fetch_texel_quadro(uint32_t wid, struct color *color0, struct
     {
     case TEXEL_RGBA4:
         {
+            uint32_t byteval, c;
             taddr0 = ((tbase0 << 4) + s0) >> 1;
             taddr1 = ((tbase0 << 4) + s1) >> 1;
             taddr2 = ((tbase2 << 4) + s0) >> 1;
@@ -449,8 +437,6 @@ static INLINE void fetch_texel_quadro(uint32_t wid, struct color *color0, struct
             xort = (t1 & 1) ? BYTE_XOR_DWORD_SWAP : BYTE_ADDR_XOR;
             taddr2 ^= xort;
             taddr3 ^= xort;
-
-            uint32_t byteval, c;
 
             taddr0 &= 0xfff;
             taddr1 &= 0xfff;
@@ -491,6 +477,7 @@ static INLINE void fetch_texel_quadro(uint32_t wid, struct color *color0, struct
         break;
     case TEXEL_RGBA8:
         {
+            uint32_t p;
             taddr0 = (tbase0 << 3) + s0;
             taddr1 = (tbase0 << 3) + s1;
             taddr2 = (tbase2 << 3) + s0;
@@ -501,8 +488,6 @@ static INLINE void fetch_texel_quadro(uint32_t wid, struct color *color0, struct
             xort = (t1 & 1) ? BYTE_XOR_DWORD_SWAP : BYTE_ADDR_XOR;
             taddr2 ^= xort;
             taddr3 ^= xort;
-
-            uint32_t p;
 
             taddr0 &= 0xfff;
             taddr1 &= 0xfff;
@@ -532,6 +517,7 @@ static INLINE void fetch_texel_quadro(uint32_t wid, struct color *color0, struct
         break;
     case TEXEL_RGBA16:
         {
+            uint32_t c0, c1, c2, c3;
             taddr0 = (tbase0 << 2) + s0;
             taddr1 = (tbase0 << 2) + s1;
             taddr2 = (tbase2 << 2) + s0;
@@ -542,8 +528,6 @@ static INLINE void fetch_texel_quadro(uint32_t wid, struct color *color0, struct
             xort = (t1 & 1) ? WORD_XOR_DWORD_SWAP : WORD_ADDR_XOR;
             taddr2 ^= xort;
             taddr3 ^= xort;
-
-            uint32_t c0, c1, c2, c3;
 
             taddr0 &= 0x7ff;
             taddr1 &= 0x7ff;
@@ -573,6 +557,7 @@ static INLINE void fetch_texel_quadro(uint32_t wid, struct color *color0, struct
         break;
     case TEXEL_RGBA32:
         {
+            uint16_t c0, c1, c2, c3;
             taddr0 = (tbase0 << 2) + s0;
             taddr1 = (tbase0 << 2) + s1;
             taddr2 = (tbase2 << 2) + s0;
@@ -583,8 +568,6 @@ static INLINE void fetch_texel_quadro(uint32_t wid, struct color *color0, struct
             xort = (t1 & 1) ? WORD_XOR_DWORD_SWAP : WORD_ADDR_XOR;
             taddr2 ^= xort;
             taddr3 ^= xort;
-
-            uint16_t c0, c1, c2, c3;
 
             taddr0 &= 0x3ff;
             taddr1 &= 0x3ff;
@@ -618,6 +601,7 @@ static INLINE void fetch_texel_quadro(uint32_t wid, struct color *color0, struct
         break;
     case TEXEL_YUV4:
         {
+            int32_t u0, u1, u2, u3, save0, save1, save2, save3;
             taddr0 = (tbase0 << 3) + s0;
             taddr1 = (tbase0 << 3) + s1 + sdiff;
             taddr2 = (tbase2 << 3) + s0;
@@ -630,8 +614,6 @@ static INLINE void fetch_texel_quadro(uint32_t wid, struct color *color0, struct
             xort = (t1 & 1) ? BYTE_XOR_DWORD_SWAP : BYTE_ADDR_XOR;
             taddr2 ^= xort;
             taddr3 ^= xort;
-
-            int32_t u0, u1, u2, u3, save0, save1, save2, save3;
 
             save0 = state[wid].tmem[taddr0 & 0x7ff];
             save0 &= 0xf0;
@@ -680,6 +662,7 @@ static INLINE void fetch_texel_quadro(uint32_t wid, struct color *color0, struct
         break;
     case TEXEL_YUV8:
         {
+            int32_t u0, u1, u2, u3, save0, save1, save2, save3;
             taddr0 = (tbase0 << 3) + s0;
             taddr1 = (tbase0 << 3) + s1 + sdiff;
             taddr2 = (tbase2 << 3) + s0;
@@ -691,8 +674,6 @@ static INLINE void fetch_texel_quadro(uint32_t wid, struct color *color0, struct
             xort = (t1 & 1) ? BYTE_XOR_DWORD_SWAP : BYTE_ADDR_XOR;
             taddr2 ^= xort;
             taddr3 ^= xort;
-
-            int32_t u0, u1, u2, u3, save0, save1, save2, save3;
 
             save0 = u0 = state[wid].tmem[taddr0 & 0x7ff];
             u0 = u0 - 0x80;
@@ -730,6 +711,8 @@ static INLINE void fetch_texel_quadro(uint32_t wid, struct color *color0, struct
         break;
     case TEXEL_YUV16:
         {
+            int32_t y0, y1, y2, y3, u0, u1, u2, u3, v0, v1, v2, v3;
+            uint16_t c0, c1, c2, c3;
             taddr0 = (tbase0 << 3) + s0;
             taddr1 = (tbase0 << 3) + s1;
             taddr2 = (tbase2 << 3) + s0;
@@ -762,9 +745,6 @@ static INLINE void fetch_texel_quadro(uint32_t wid, struct color *color0, struct
             taddrlow1 &= 0x3ff;
             taddrlow2 &= 0x3ff;
             taddrlow3 &= 0x3ff;
-
-            uint16_t c0, c1, c2, c3;
-            int32_t y0, y1, y2, y3, u0, u1, u2, u3, v0, v1, v2, v3;
 
             c0 = tc16[taddrlow0];
             c1 = tc16[taddrlow1];
@@ -930,6 +910,7 @@ static INLINE void fetch_texel_quadro(uint32_t wid, struct color *color0, struct
         break;
     case TEXEL_CI4:
         {
+            uint32_t p;
             taddr0 = ((tbase0 << 4) + s0) >> 1;
             taddr1 = ((tbase0 << 4) + s1) >> 1;
             taddr2 = ((tbase2 << 4) + s0) >> 1;
@@ -940,8 +921,6 @@ static INLINE void fetch_texel_quadro(uint32_t wid, struct color *color0, struct
             xort = (t1 & 1) ? BYTE_XOR_DWORD_SWAP : BYTE_ADDR_XOR;
             taddr2 ^= xort;
             taddr3 ^= xort;
-
-            uint32_t p;
 
             taddr0 &= 0xfff;
             taddr1 &= 0xfff;
@@ -970,6 +949,7 @@ static INLINE void fetch_texel_quadro(uint32_t wid, struct color *color0, struct
         break;
     case TEXEL_CI8:
         {
+            uint32_t p;
             taddr0 = (tbase0 << 3) + s0;
             taddr1 = (tbase0 << 3) + s1;
             taddr2 = (tbase2 << 3) + s0;
@@ -980,8 +960,6 @@ static INLINE void fetch_texel_quadro(uint32_t wid, struct color *color0, struct
             xort = (t1 & 1) ? BYTE_XOR_DWORD_SWAP : BYTE_ADDR_XOR;
             taddr2 ^= xort;
             taddr3 ^= xort;
-
-            uint32_t p;
 
             taddr0 &= 0xfff;
             taddr1 &= 0xfff;
@@ -1012,6 +990,7 @@ static INLINE void fetch_texel_quadro(uint32_t wid, struct color *color0, struct
     case TEXEL_CI16:
     case TEXEL_CI32:
         {
+            uint16_t c0, c1, c2, c3;
             taddr0 = (tbase0 << 2) + s0;
             taddr1 = (tbase0 << 2) + s1;
             taddr2 = (tbase2 << 2) + s0;
@@ -1022,8 +1001,6 @@ static INLINE void fetch_texel_quadro(uint32_t wid, struct color *color0, struct
             xort = (t1 & 1) ? WORD_XOR_DWORD_SWAP : WORD_ADDR_XOR;
             taddr2 ^= xort;
             taddr3 ^= xort;
-
-            uint16_t c0, c1, c2, c3;
 
             taddr0 &= 0x7ff;
             taddr1 &= 0x7ff;
@@ -1053,6 +1030,7 @@ static INLINE void fetch_texel_quadro(uint32_t wid, struct color *color0, struct
         break;
     case TEXEL_IA4:
         {
+            uint32_t p, i;
             taddr0 = ((tbase0 << 4) + s0) >> 1;
             taddr1 = ((tbase0 << 4) + s1) >> 1;
             taddr2 = ((tbase2 << 4) + s0) >> 1;
@@ -1063,8 +1041,6 @@ static INLINE void fetch_texel_quadro(uint32_t wid, struct color *color0, struct
             xort = (t1 & 1) ? BYTE_XOR_DWORD_SWAP : BYTE_ADDR_XOR;
             taddr2 ^= xort;
             taddr3 ^= xort;
-
-            uint32_t p, i;
 
             taddr0 &= 0xfff;
             taddr1 &= 0xfff;
@@ -1109,6 +1085,7 @@ static INLINE void fetch_texel_quadro(uint32_t wid, struct color *color0, struct
         break;
     case TEXEL_IA8:
         {
+            uint32_t p, i;
             taddr0 = (tbase0 << 3) + s0;
             taddr1 = (tbase0 << 3) + s1;
             taddr2 = (tbase2 << 3) + s0;
@@ -1119,8 +1096,6 @@ static INLINE void fetch_texel_quadro(uint32_t wid, struct color *color0, struct
             xort = (t1 & 1) ? BYTE_XOR_DWORD_SWAP : BYTE_ADDR_XOR;
             taddr2 ^= xort;
             taddr3 ^= xort;
-
-            uint32_t p, i;
 
             taddr0 &= 0xfff;
             taddr1 &= 0xfff;
@@ -1158,6 +1133,7 @@ static INLINE void fetch_texel_quadro(uint32_t wid, struct color *color0, struct
         break;
     case TEXEL_IA16:
         {
+            uint16_t c0, c1, c2, c3;
             taddr0 = (tbase0 << 2) + s0;
             taddr1 = (tbase0 << 2) + s1;
             taddr2 = (tbase2 << 2) + s0;
@@ -1168,8 +1144,6 @@ static INLINE void fetch_texel_quadro(uint32_t wid, struct color *color0, struct
             xort = (t1 & 1) ? WORD_XOR_DWORD_SWAP : WORD_ADDR_XOR;
             taddr2 ^= xort;
             taddr3 ^= xort;
-
-            uint16_t c0, c1, c2, c3;
 
             taddr0 &= 0x7ff;
             taddr1 &= 0x7ff;
@@ -1192,6 +1166,7 @@ static INLINE void fetch_texel_quadro(uint32_t wid, struct color *color0, struct
         break;
     case TEXEL_IA32:
         {
+            uint16_t c0, c1, c2, c3;
             taddr0 = (tbase0 << 2) + s0;
             taddr1 = (tbase0 << 2) + s1;
             taddr2 = (tbase2 << 2) + s0;
@@ -1202,8 +1177,6 @@ static INLINE void fetch_texel_quadro(uint32_t wid, struct color *color0, struct
             xort = (t1 & 1) ? WORD_XOR_DWORD_SWAP : WORD_ADDR_XOR;
             taddr2 ^= xort;
             taddr3 ^= xort;
-
-            uint16_t c0, c1, c2, c3;
 
             taddr0 &= 0x7ff;
             taddr1 &= 0x7ff;
@@ -1234,6 +1207,7 @@ static INLINE void fetch_texel_quadro(uint32_t wid, struct color *color0, struct
         break;
     case TEXEL_I4:
         {
+            uint32_t p, c0, c1, c2, c3;
             taddr0 = ((tbase0 << 4) + s0) >> 1;
             taddr1 = ((tbase0 << 4) + s1) >> 1;
             taddr2 = ((tbase2 << 4) + s0) >> 1;
@@ -1244,8 +1218,6 @@ static INLINE void fetch_texel_quadro(uint32_t wid, struct color *color0, struct
             xort = (t1 & 1) ? BYTE_XOR_DWORD_SWAP : BYTE_ADDR_XOR;
             taddr2 ^= xort;
             taddr3 ^= xort;
-
-            uint32_t p, c0, c1, c2, c3;
 
             taddr0 &= 0xfff;
             taddr1 &= 0xfff;
@@ -1275,6 +1247,7 @@ static INLINE void fetch_texel_quadro(uint32_t wid, struct color *color0, struct
         break;
     case TEXEL_I8:
         {
+            uint32_t p;
             taddr0 = (tbase0 << 3) + s0;
             taddr1 = (tbase0 << 3) + s1;
             taddr2 = (tbase2 << 3) + s0;
@@ -1285,8 +1258,6 @@ static INLINE void fetch_texel_quadro(uint32_t wid, struct color *color0, struct
             xort = (t1 & 1) ? BYTE_XOR_DWORD_SWAP : BYTE_ADDR_XOR;
             taddr2 ^= xort;
             taddr3 ^= xort;
-
-            uint32_t p;
 
             taddr0 &= 0xfff;
             taddr1 &= 0xfff;
@@ -1319,6 +1290,7 @@ static INLINE void fetch_texel_quadro(uint32_t wid, struct color *color0, struct
     case TEXEL_I32:
     default:
         {
+            uint16_t c0, c1, c2, c3;
             taddr0 = (tbase0 << 2) + s0;
             taddr1 = (tbase0 << 2) + s1;
             taddr2 = (tbase2 << 2) + s0;
@@ -1329,8 +1301,6 @@ static INLINE void fetch_texel_quadro(uint32_t wid, struct color *color0, struct
             xort = (t1 & 1) ? WORD_XOR_DWORD_SWAP : WORD_ADDR_XOR;
             taddr2 ^= xort;
             taddr3 ^= xort;
-
-            uint16_t c0, c1, c2, c3;
 
             taddr0 &= 0x7ff;
             taddr1 &= 0x7ff;
@@ -2715,10 +2685,12 @@ static INLINE void fetch_texel_entlut_quadro_nearest(uint32_t wid, struct color 
 static void get_tmem_idx(uint32_t wid, int s, int t, uint32_t tilenum, uint32_t* idx0, uint32_t* idx1, uint32_t* idx2, uint32_t* idx3, uint32_t* bit3flipped, uint32_t* hibit)
 {
     uint32_t tbase = (state[wid].tile[tilenum].line * t) & 0x1ff;
-    tbase += state[wid].tile[tilenum].tmem;
     uint32_t tsize = state[wid].tile[tilenum].size;
     uint32_t tformat = state[wid].tile[tilenum].format;
     uint32_t sshorts = 0;
+    int tidx_a, tidx_b, tidx_c, tidx_d;
+
+    tbase += state[wid].tile[tilenum].tmem;
 
 
     if (tsize == PIXEL_SIZE_8BIT || tformat == FORMAT_YUV)
@@ -2731,10 +2703,10 @@ static void get_tmem_idx(uint32_t wid, int s, int t, uint32_t tilenum, uint32_t*
 
     *bit3flipped = ((sshorts & 2) != 0) ^ (t & 1);
 
-    int tidx_a = ((tbase << 2) + sshorts) & 0x7fd;
-    int tidx_b = (tidx_a + 1) & 0x7ff;
-    int tidx_c = (tidx_a + 2) & 0x7ff;
-    int tidx_d = (tidx_a + 3) & 0x7ff;
+    tidx_a = ((tbase << 2) + sshorts) & 0x7fd;
+    tidx_b = (tidx_a + 1) & 0x7ff;
+    tidx_c = (tidx_a + 2) & 0x7ff;
+    tidx_d = (tidx_a + 3) & 0x7ff;
 
     *hibit = (tidx_a & 0x400) != 0;
 
@@ -2755,13 +2727,16 @@ static void get_tmem_idx(uint32_t wid, int s, int t, uint32_t tilenum, uint32_t*
 
 static void read_tmem_copy(uint32_t wid, int s, int s1, int s2, int s3, int t, uint32_t tilenum, uint32_t* sortshort, int* hibits, int* lowbits)
 {
+    int tidx_a, tidx_blow, tidx_bhi, tidx_c, tidx_dlow, tidx_dhi;
+    uint32_t short0, short1, short2, short3;
     uint32_t tbase = (state[wid].tile[tilenum].line * t) & 0x1ff;
-    tbase += state[wid].tile[tilenum].tmem;
     uint32_t tsize = state[wid].tile[tilenum].size;
     uint32_t tformat = state[wid].tile[tilenum].format;
     uint32_t shbytes = 0, shbytes1 = 0, shbytes2 = 0, shbytes3 = 0;
     int32_t delta = 0;
     uint32_t sortidx[8];
+
+    tbase += state[wid].tile[tilenum].tmem;
 
 
     if (tsize == PIXEL_SIZE_8BIT || tformat == FORMAT_YUV)
@@ -2790,8 +2765,6 @@ static void read_tmem_copy(uint32_t wid, int s, int s1, int s2, int s3, int t, u
     shbytes1 &= 0x1fff;
     shbytes2 &= 0x1fff;
     shbytes3 &= 0x1fff;
-
-    int tidx_a, tidx_blow, tidx_bhi, tidx_c, tidx_dlow, tidx_dhi;
 
     tbase <<= 4;
     tidx_a = (tbase + shbytes) & 0x1fff;
@@ -2833,8 +2806,6 @@ static void read_tmem_copy(uint32_t wid, int s, int s1, int s2, int s3, int t, u
     lowbits[3] = tidx_c & 0xf;
     lowbits[4] = tidx_dlow & 0xf;
     lowbits[5] = tidx_dhi & 0xf;
-
-    uint32_t short0, short1, short2, short3;
 
 
     tidx_a >>= 2;
