@@ -265,6 +265,9 @@ static STRICTINLINE void texture_pipeline_cycle(uint32_t wid, struct color* TEX,
                 case TEXEL_IA16:
                     texture_quadro_lerp_ia16_simd(wid, TEX, sss1, sdiff, sst1, tdiff, tilenum, sfrac, tfrac, upper);
                     return;
+                case TEXEL_RGBA32:
+                    texture_quadro_lerp_rgba32_simd(wid, TEX, sss1, sdiff, sst1, tdiff, tilenum, sfrac, tfrac, upper);
+                    return;
                 default:
                     break;
                 }
