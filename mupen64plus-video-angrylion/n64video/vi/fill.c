@@ -177,3 +177,169 @@ static void vi_fill_divot_row(struct rgba* dcache, const struct rgba* acache, in
     for (; k <= hi; k++)
         divot_filter(&dcache[k], acache[k], acache[k - 1], acache[k + 1]);
 }
+
+/* Batched resample/lerp pass producing one output row from the
+ * prefilled (and possibly divot-filtered) cache rows. vi_vl_lerp's
+ * blend is the identity at frac 0, so the per-pixel lerping test
+ * vanishes and the bilinear runs branchless: the three blends
+ * compute a + (((b - a) * frac + 16) >> 5) in signed 16-bit lanes
+ * (the result provably stays in 0..255, so the byte pack is exact),
+ * with the alpha channel carried from the center source exactly as
+ * the scalar path leaves it untouched. Source pixels gather through
+ * the resample stepping, so any x_add works; VI_AA_REPLICATE
+ * reduces to a gathered copy. Pixels outside the horizontal pass
+ * bounds zero r/g/b in place and preserve the prescale alpha, as
+ * the scalar store does. */
+static void vi_lerp_row(struct rgba* row, int32_t hres, int32_t minh, int32_t maxh, const struct rgba* src, const struct rgba* srcn, uint32_t x_offs0, uint32_t x_add, uint32_t yfrac, int do_lerp)
+{
+    int32_t lo = minh > 0 ? minh : 0;
+    int32_t hi = maxh < hres ? maxh : hres;
+    int32_t x;
+    uint32_t xo;
+
+    for (x = 0; x < lo && x < hres; x++)
+        row[x].r = row[x].g = row[x].b = 0;
+    for (x = hi > lo ? hi : lo; x < hres; x++)
+        row[x].r = row[x].g = row[x].b = 0;
+
+    x = lo;
+    xo = x_offs0 + (uint32_t)lo * x_add;
+
+#if defined(AL_VI_SSE2)
+    {
+        __m128i zero = _mm_setzero_si128();
+        __m128i yf = _mm_set1_epi16((short)yfrac);
+        __m128i rnd = _mm_set1_epi16(16);
+        __m128i amask = _mm_set1_epi32(0xff000000);
+        while (x + 3 < hi)
+        {
+            int32_t lx0 = (int32_t)(xo >> 10) + 1;
+            int32_t xf0 = (int32_t)((xo >> 5) & 0x1f);
+            int32_t lx1 = (int32_t)((xo + x_add) >> 10) + 1;
+            int32_t xf1 = (int32_t)(((xo + x_add) >> 5) & 0x1f);
+            int32_t lx2 = (int32_t)((xo + 2 * x_add) >> 10) + 1;
+            int32_t xf2 = (int32_t)(((xo + 2 * x_add) >> 5) & 0x1f);
+            int32_t lx3 = (int32_t)((xo + 3 * x_add) >> 10) + 1;
+            int32_t xf3 = (int32_t)(((xo + 3 * x_add) >> 5) & 0x1f);
+            __m128i c = _mm_set_epi32(*(const int32_t*)&src[lx3], *(const int32_t*)&src[lx2],
+                                      *(const int32_t*)&src[lx1], *(const int32_t*)&src[lx0]);
+            if (do_lerp)
+            {
+                __m128i cn = _mm_set_epi32(*(const int32_t*)&src[lx3 + 1], *(const int32_t*)&src[lx2 + 1],
+                                           *(const int32_t*)&src[lx1 + 1], *(const int32_t*)&src[lx0 + 1]);
+                __m128i d = _mm_set_epi32(*(const int32_t*)&srcn[lx3], *(const int32_t*)&srcn[lx2],
+                                          *(const int32_t*)&srcn[lx1], *(const int32_t*)&srcn[lx0]);
+                __m128i dn = _mm_set_epi32(*(const int32_t*)&srcn[lx3 + 1], *(const int32_t*)&srcn[lx2 + 1],
+                                           *(const int32_t*)&srcn[lx1 + 1], *(const int32_t*)&srcn[lx0 + 1]);
+                __m128i xf_lo = _mm_set_epi16((short)xf1, (short)xf1, (short)xf1, (short)xf1,
+                                              (short)xf0, (short)xf0, (short)xf0, (short)xf0);
+                __m128i xf_hi = _mm_set_epi16((short)xf3, (short)xf3, (short)xf3, (short)xf3,
+                                              (short)xf2, (short)xf2, (short)xf2, (short)xf2);
+#define VI_LERP16(a, b, f) _mm_add_epi16(a, _mm_srai_epi16(_mm_add_epi16(_mm_mullo_epi16(_mm_sub_epi16(b, a), f), rnd), 5))
+                __m128i c_lo = _mm_unpacklo_epi8(c, zero);
+                __m128i c_hi = _mm_unpackhi_epi8(c, zero);
+                __m128i cn_lo = _mm_unpacklo_epi8(cn, zero);
+                __m128i cn_hi = _mm_unpackhi_epi8(cn, zero);
+                __m128i d_lo = _mm_unpacklo_epi8(d, zero);
+                __m128i d_hi = _mm_unpackhi_epi8(d, zero);
+                __m128i dn_lo = _mm_unpacklo_epi8(dn, zero);
+                __m128i dn_hi = _mm_unpackhi_epi8(dn, zero);
+                __m128i cy_lo = VI_LERP16(c_lo, d_lo, yf);
+                __m128i cy_hi = VI_LERP16(c_hi, d_hi, yf);
+                __m128i ny_lo = VI_LERP16(cn_lo, dn_lo, yf);
+                __m128i ny_hi = VI_LERP16(cn_hi, dn_hi, yf);
+                __m128i o_lo = VI_LERP16(cy_lo, ny_lo, xf_lo);
+                __m128i o_hi = VI_LERP16(cy_hi, ny_hi, xf_hi);
+#undef VI_LERP16
+                __m128i out = _mm_packus_epi16(o_lo, o_hi);
+                out = _mm_or_si128(_mm_andnot_si128(amask, out), _mm_and_si128(c, amask));
+                _mm_storeu_si128((__m128i*)&row[x], out);
+            }
+            else
+            {
+                _mm_storeu_si128((__m128i*)&row[x], c);
+            }
+            xo += 4 * x_add;
+            x += 4;
+        }
+    }
+#elif defined(AL_VI_NEON)
+    {
+        int16x8_t yf = vdupq_n_s16((int16_t)yfrac);
+        int16x8_t rnd = vdupq_n_s16(16);
+        uint32x4_t amask = vdupq_n_u32(0xff000000);
+        while (x + 3 < hi)
+        {
+            int32_t lx0 = (int32_t)(xo >> 10) + 1;
+            int32_t xf0 = (int32_t)((xo >> 5) & 0x1f);
+            int32_t lx1 = (int32_t)((xo + x_add) >> 10) + 1;
+            int32_t xf1 = (int32_t)(((xo + x_add) >> 5) & 0x1f);
+            int32_t lx2 = (int32_t)((xo + 2 * x_add) >> 10) + 1;
+            int32_t xf2 = (int32_t)(((xo + 2 * x_add) >> 5) & 0x1f);
+            int32_t lx3 = (int32_t)((xo + 3 * x_add) >> 10) + 1;
+            int32_t xf3 = (int32_t)(((xo + 3 * x_add) >> 5) & 0x1f);
+            uint32x4_t c = vsetq_lane_u32(*(const uint32_t*)&src[lx3],
+                vsetq_lane_u32(*(const uint32_t*)&src[lx2],
+                vsetq_lane_u32(*(const uint32_t*)&src[lx1],
+                vdupq_n_u32(*(const uint32_t*)&src[lx0]), 1), 2), 3);
+            if (do_lerp)
+            {
+                uint32x4_t cn = vsetq_lane_u32(*(const uint32_t*)&src[lx3 + 1],
+                    vsetq_lane_u32(*(const uint32_t*)&src[lx2 + 1],
+                    vsetq_lane_u32(*(const uint32_t*)&src[lx1 + 1],
+                    vdupq_n_u32(*(const uint32_t*)&src[lx0 + 1]), 1), 2), 3);
+                uint32x4_t d = vsetq_lane_u32(*(const uint32_t*)&srcn[lx3],
+                    vsetq_lane_u32(*(const uint32_t*)&srcn[lx2],
+                    vsetq_lane_u32(*(const uint32_t*)&srcn[lx1],
+                    vdupq_n_u32(*(const uint32_t*)&srcn[lx0]), 1), 2), 3);
+                uint32x4_t dn = vsetq_lane_u32(*(const uint32_t*)&srcn[lx3 + 1],
+                    vsetq_lane_u32(*(const uint32_t*)&srcn[lx2 + 1],
+                    vsetq_lane_u32(*(const uint32_t*)&srcn[lx1 + 1],
+                    vdupq_n_u32(*(const uint32_t*)&srcn[lx0 + 1]), 1), 2), 3);
+                int16x8_t xf_lo = vcombine_s16(vdup_n_s16((int16_t)xf0), vdup_n_s16((int16_t)xf1));
+                int16x8_t xf_hi = vcombine_s16(vdup_n_s16((int16_t)xf2), vdup_n_s16((int16_t)xf3));
+#define VI_LERP16(a, b, f) vaddq_s16(a, vshrq_n_s16(vaddq_s16(vmulq_s16(vsubq_s16(b, a), f), rnd), 5))
+                int16x8_t c_lo = vreinterpretq_s16_u16(vmovl_u8(vget_low_u8(vreinterpretq_u8_u32(c))));
+                int16x8_t c_hi = vreinterpretq_s16_u16(vmovl_u8(vget_high_u8(vreinterpretq_u8_u32(c))));
+                int16x8_t cn_lo = vreinterpretq_s16_u16(vmovl_u8(vget_low_u8(vreinterpretq_u8_u32(cn))));
+                int16x8_t cn_hi = vreinterpretq_s16_u16(vmovl_u8(vget_high_u8(vreinterpretq_u8_u32(cn))));
+                int16x8_t d_lo = vreinterpretq_s16_u16(vmovl_u8(vget_low_u8(vreinterpretq_u8_u32(d))));
+                int16x8_t d_hi = vreinterpretq_s16_u16(vmovl_u8(vget_high_u8(vreinterpretq_u8_u32(d))));
+                int16x8_t dn_lo = vreinterpretq_s16_u16(vmovl_u8(vget_low_u8(vreinterpretq_u8_u32(dn))));
+                int16x8_t dn_hi = vreinterpretq_s16_u16(vmovl_u8(vget_high_u8(vreinterpretq_u8_u32(dn))));
+                int16x8_t cy_lo = VI_LERP16(c_lo, d_lo, yf);
+                int16x8_t cy_hi = VI_LERP16(c_hi, d_hi, yf);
+                int16x8_t ny_lo = VI_LERP16(cn_lo, dn_lo, yf);
+                int16x8_t ny_hi = VI_LERP16(cn_hi, dn_hi, yf);
+                int16x8_t o_lo = VI_LERP16(cy_lo, ny_lo, xf_lo);
+                int16x8_t o_hi = VI_LERP16(cy_hi, ny_hi, xf_hi);
+#undef VI_LERP16
+                uint8x16_t out = vcombine_u8(vqmovun_s16(o_lo), vqmovun_s16(o_hi));
+                out = vbslq_u8(vreinterpretq_u8_u32(amask), vreinterpretq_u8_u32(c), out);
+                vst1q_u8((uint8_t*)&row[x], out);
+            }
+            else
+            {
+                vst1q_u8((uint8_t*)&row[x], vreinterpretq_u8_u32(c));
+            }
+            xo += 4 * x_add;
+            x += 4;
+        }
+    }
+#endif
+
+    for (; x < hi; x++, xo += x_add)
+    {
+        int32_t lx = (int32_t)(xo >> 10) + 1;
+        int32_t xf = (int32_t)((xo >> 5) & 0x1f);
+        struct rgba color = src[lx];
+        if (do_lerp && (xf || yfrac))
+        {
+            struct rgba nextcolor = src[lx + 1];
+            vi_vl_lerp(&color, srcn[lx], yfrac);
+            vi_vl_lerp(&nextcolor, srcn[lx + 1], yfrac);
+            vi_vl_lerp(&color, nextcolor, (uint32_t)xf);
+        }
+        row[x] = color;
+    }
+}

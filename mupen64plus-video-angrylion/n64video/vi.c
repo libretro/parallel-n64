@@ -209,8 +209,20 @@ static void vi_process_full_parallel(uint32_t worker_id)
                     divot_cache_next_marker = dhi;
                 }
             }
-        }
 
+            {
+                const struct rgba* lsrc = ctrl.divot_enable ? divot_cache : viaa_cache;
+                const struct rgba* lsrcn = ctrl.divot_enable ? divot_cache_next : viaa_cache_next;
+                vi_lerp_row(pixel_row, hres, minhpass, maxhpass, lsrc, lsrcn, x_offs, x_add, (uint32_t)yfrac, ctrl.aa_mode != VI_AA_REPLICATE);
+            }
+
+            if (ctrl.gamma_enable || ctrl.gamma_dither_enable) {
+                int32_t gx_hi = maxhpass < hres ? maxhpass : hres;
+                for (x = minhpass > 0 ? minhpass : 0; x < gx_hi; x++) {
+                    gamma_filters(&pixel_row[x], ctrl.gamma_enable, ctrl.gamma_dither_enable, &line_rseed);
+                }
+            }
+        } else
         for (x = 0; x < hres; x++, x_offs += x_add) {
             line_x = x_offs >> 10;
             prev_line_x = line_x - 1;
