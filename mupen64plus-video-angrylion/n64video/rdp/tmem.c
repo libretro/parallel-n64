@@ -1528,7 +1528,7 @@ static STRICTINLINE void texture_quadro_lerp_bytefmt_simd(uint32_t wid, struct c
     }
 }
 
-/* Fused fetch + lerp for I4: two texels per TMEM byte, the nibble
+/* Fused fetch + lerp for I4 and IA4: two texels per TMEM byte, the nibble
  * chosen by the texel's s parity. Texels 0 and 2 share s0's parity
  * and texels 1 and 3 share s1's, so the per-lane nibble selection is
  * a blend between the high- and low-nibble vectors under a mask
@@ -1536,7 +1536,7 @@ static STRICTINLINE void texture_quadro_lerp_bytefmt_simd(uint32_t wid, struct c
  * channels, so the shared tail is called with the same vector in
  * every channel slot, exactly as for I8. The TMEM addressing is
  * equivalent to the TEXEL_I4 quadro case above. */
-static STRICTINLINE void texture_quadro_lerp_i4_simd(uint32_t wid, struct color* TEX, int s0, int sdiff, int t0, int tdiff, uint32_t tilenum, int sfrac, int tfrac, int upper, int center)
+static STRICTINLINE void texture_quadro_lerp_i4_simd(uint32_t wid, struct color* TEX, int s0, int sdiff, int t0, int tdiff, uint32_t tilenum, int sfrac, int tfrac, int upper, int is_ia4, int center)
 {
     uint32_t tbase0 = state[wid].tile[tilenum].line * (t0 & 0xff) + state[wid].tile[tilenum].tmem;
     int t1 = (t0 & 0xff) + tdiff;
@@ -1557,9 +1557,20 @@ static STRICTINLINE void texture_quadro_lerp_i4_simd(uint32_t wid, struct color*
     __m128i lo = _mm_and_si128(v, _mm_set1_epi32(0x0f));
     __m128i hi = _mm_srli_epi32(v, 4);
     __m128i c = _mm_or_si128(_mm_and_si128(lo, msk), _mm_andnot_si128(msk, hi));
-    __m128i iv = _mm_or_si128(c, _mm_slli_epi32(c, 4));
 
-    texel_quad_transpose_finish_simd(TEX, iv, iv, iv, iv, sfrac, tfrac, upper, center);
+    if (is_ia4)
+    {
+        __m128i i3 = _mm_and_si128(c, _mm_set1_epi32(0xe));
+        __m128i iv = _mm_or_si128(_mm_or_si128(_mm_slli_epi32(i3, 4), _mm_slli_epi32(i3, 1)), _mm_srli_epi32(i3, 2));
+        __m128i one32 = _mm_set1_epi32(1);
+        __m128i av = _mm_and_si128(_mm_cmpeq_epi32(_mm_and_si128(c, one32), one32), _mm_set1_epi32(0xff));
+        texel_quad_transpose_finish_simd(TEX, iv, iv, iv, av, sfrac, tfrac, upper, center);
+    }
+    else
+    {
+        __m128i iv = _mm_or_si128(c, _mm_slli_epi32(c, 4));
+        texel_quad_transpose_finish_simd(TEX, iv, iv, iv, iv, sfrac, tfrac, upper, center);
+    }
 }
 
 /* Fused fetch + lerp for IA16: 16-bit texels addressed exactly like
@@ -1899,7 +1910,7 @@ static STRICTINLINE void texture_quadro_lerp_bytefmt_simd(uint32_t wid, struct c
 }
 
 
-static STRICTINLINE void texture_quadro_lerp_i4_simd(uint32_t wid, struct color* TEX, int s0, int sdiff, int t0, int tdiff, uint32_t tilenum, int sfrac, int tfrac, int upper, int center)
+static STRICTINLINE void texture_quadro_lerp_i4_simd(uint32_t wid, struct color* TEX, int s0, int sdiff, int t0, int tdiff, uint32_t tilenum, int sfrac, int tfrac, int upper, int is_ia4, int center)
 {
     uint32_t tbase0 = state[wid].tile[tilenum].line * (t0 & 0xff) + state[wid].tile[tilenum].tmem;
     int t1 = (t0 & 0xff) + tdiff;
@@ -1924,9 +1935,19 @@ static STRICTINLINE void texture_quadro_lerp_i4_simd(uint32_t wid, struct color*
     uint32x4_t lo = vandq_u32(v, vdupq_n_u32(0x0f));
     uint32x4_t hi = vshrq_n_u32(v, 4);
     uint32x4_t c = vbslq_u32(msk, lo, hi);
-    uint32x4_t iv = vorrq_u32(c, vshlq_n_u32(c, 4));
 
-    texel_quad_transpose_finish_simd(TEX, iv, iv, iv, iv, sfrac, tfrac, upper, center);
+    if (is_ia4)
+    {
+        uint32x4_t i3 = vandq_u32(c, vdupq_n_u32(0xe));
+        uint32x4_t iv = vorrq_u32(vorrq_u32(vshlq_n_u32(i3, 4), vshlq_n_u32(i3, 1)), vshrq_n_u32(i3, 2));
+        uint32x4_t av = vandq_u32(vceqq_u32(vandq_u32(c, vdupq_n_u32(1)), vdupq_n_u32(1)), vdupq_n_u32(0xff));
+        texel_quad_transpose_finish_simd(TEX, iv, iv, iv, av, sfrac, tfrac, upper, center);
+    }
+    else
+    {
+        uint32x4_t iv = vorrq_u32(c, vshlq_n_u32(c, 4));
+        texel_quad_transpose_finish_simd(TEX, iv, iv, iv, iv, sfrac, tfrac, upper, center);
+    }
 }
 
 /* Fused fetch + lerp for IA16: 16-bit texels addressed exactly like

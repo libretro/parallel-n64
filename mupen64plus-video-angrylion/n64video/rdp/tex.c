@@ -307,7 +307,10 @@ static STRICTINLINE void texture_pipeline_cycle(uint32_t wid, struct color* TEX,
                     texture_quadro_lerp_bytefmt_simd(wid, TEX, sss1, sdiff, sst1, tdiff, tilenum, sfrac, tfrac, upper, 0, fcenter);
                     return;
                 case TEXEL_I4:
-                    texture_quadro_lerp_i4_simd(wid, TEX, sss1, sdiff, sst1, tdiff, tilenum, sfrac, tfrac, upper, fcenter);
+                    texture_quadro_lerp_i4_simd(wid, TEX, sss1, sdiff, sst1, tdiff, tilenum, sfrac, tfrac, upper, 0, fcenter);
+                    return;
+                case TEXEL_IA4:
+                    texture_quadro_lerp_i4_simd(wid, TEX, sss1, sdiff, sst1, tdiff, tilenum, sfrac, tfrac, upper, 1, fcenter);
                     return;
                 case TEXEL_IA16:
                     texture_quadro_lerp_ia16_simd(wid, TEX, sss1, sdiff, sst1, tdiff, tilenum, sfrac, tfrac, upper, fcenter);
