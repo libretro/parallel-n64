@@ -863,6 +863,18 @@ ifeq ($(HAVE_OPENGL),0)
 	HAVE_RICE=0
 endif
 
+# A GLES build compiles glsym_es2.c, which references the GLESv2 entry
+# points directly (the desktop glsym_gl.c resolves them at runtime), so
+# the library must be linked. Only the webOS block set GL_LIB, leaving
+# the generic unix/rpi/odroid GLES paths to fail at link with undefined
+# references to glUseProgram etc. Default it here for any GLES build
+# that has not already chosen a GL library.
+ifeq ($(GLES),1)
+   ifeq ($(GL_LIB),)
+      GL_LIB := -lGLESv2
+   endif
+endif
+
 # Ari64 new_dynarec on x86/x86_64: assembled with nasm. Enabled on the
 # desktop targets where the static code cache and linkage are wired up.
 NASM ?= nasm
