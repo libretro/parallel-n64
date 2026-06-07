@@ -236,6 +236,24 @@ static STRICTINLINE void texture_pipeline_cycle(uint32_t wid, struct color* TEX,
         if (bilerp)
         {
 
+#if defined(AL_SIMD_SSE2) || defined(AL_SIMD_NEON)
+            /* fused fetch+lerp for the dominant path; the gate is
+             * mode- and tile-constant. RGBA16 without a TLUT implies
+             * upperrg == upper, sfracrg == sfrac (non-YUV), and
+             * mid_texel off implies center == centerrg == 0, so the
+             * scalar code below this block is unreachable territory
+             * for these spans and the single fused lerp is exact. */
+            if (state[wid].other_modes.sample_type
+                && !state[wid].other_modes.en_tlut
+                && !state[wid].other_modes.mid_texel
+                && !convert
+                && state[wid].tile[tilenum].f.notlutswitch == TEXEL_RGBA16)
+            {
+                texture_quadro_lerp_rgba16_simd(wid, TEX, sss1, sdiff, sst1, tdiff, tilenum, sfrac, tfrac, upper);
+                return;
+            }
+#endif
+
             if (!state[wid].other_modes.sample_type)
                 fetch_texel_entlut_quadro_nearest(wid, &t0, &t1, &t2, &t3, sss1, sst1, tilenum, upper, upperrg);
             else if (state[wid].other_modes.en_tlut)
