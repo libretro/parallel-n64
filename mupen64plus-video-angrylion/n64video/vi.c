@@ -79,9 +79,11 @@ static int32_t vi_width_low;
 static uint32_t frame_buffer;
 static uint32_t tvfadeoutstate[PRESCALE_HEIGHT];
 
-// Make sure each thread gets its own cache line.
-#define VI_CACHE_LINE_SIZE 64
-static uint32_t rseed[PARALLEL_MAX_WORKERS * (VI_CACHE_LINE_SIZE / 4)];
+/* Advances once per processed field (single-threaded section). Each
+ * scanline seeds its gamma-dither stream from (vi_field_count, y), so
+ * the noise varies over time but is a pure function of field and line:
+ * identical for every worker count, including the synchronous mode. */
+static uint32_t vi_field_count;
 static uint32_t zb_address;
 
 // prescale buffer
@@ -114,7 +116,7 @@ static void vi_init(void)
     prevwasblank = false;
     zb_address = 0;
 
-    memset(rseed, 3, sizeof(rseed));
+    vi_field_count = 0;
 }
 
 static void vi_process_full_parallel(uint32_t worker_id)
@@ -161,6 +163,8 @@ static void vi_process_full_parallel(uint32_t worker_id)
         uint32_t curry = y_start + y * y_add;
         uint32_t nexty = y_start + (y + 1) * y_add;
         uint32_t prevy = curry >> 10;
+        uint32_t line_rseed = (vi_field_count * 0x9e3779b9u)
+                            ^ ((uint32_t)y * 0x85ebca6bu) ^ 3u;
 
         cache_marker = cache_next_marker = cache_marker_init;
         if (ctrl.divot_enable) {
@@ -286,8 +290,7 @@ static void vi_process_full_parallel(uint32_t worker_id)
 
             if (x >= minhpass && x < maxhpass) {
                 *pixel = color;
-                // Make sure each thread owns its own cache line. Stride the seed.
-                gamma_filters(pixel, ctrl.gamma_enable, ctrl.gamma_dither_enable, &rseed[worker_id * (VI_CACHE_LINE_SIZE / 4)]);
+                gamma_filters(pixel, ctrl.gamma_enable, ctrl.gamma_dither_enable, &line_rseed);
             } else {
                 pixel->r = pixel->g = pixel->b = 0;
             }
@@ -505,6 +508,8 @@ static void vi_process_fast_parallel(uint32_t worker_id)
     for (y = y_begin; y < y_end; y += y_inc) {
         int32_t x;
         int32_t line = y * vi_width_low;
+        uint32_t line_rseed = (vi_field_count * 0x9e3779b9u)
+                            ^ ((uint32_t)y * 0x85ebca6bu) ^ 3u;
 
         struct rgba* pixel_row = &prescale[y * hres_raw];
 
@@ -534,7 +539,7 @@ static void vi_process_fast_parallel(uint32_t worker_id)
                             return;
                     }
 
-                    gamma_filters(pixel, ctrl.gamma_enable, false, &rseed[worker_id * (VI_CACHE_LINE_SIZE / 4)]);
+                    gamma_filters(pixel, ctrl.gamma_enable, false, &line_rseed);
                     break;
 
                 case VI_MODE_DEPTH: {
@@ -753,6 +758,10 @@ void n64video_update_screen(void)
 
         minhpass = h_start_clamped ? 0 : 8;
         maxhpass = hres_clamped ? hres : (hres - 7);
+
+        // advance the gamma-dither seed once per processed field;
+        // single-threaded here, before the workers are dispatched
+        vi_field_count++;
 
         // run filter update in parallel if enabled
         if (config.vi.mode == VI_MODE_NORMAL) {
