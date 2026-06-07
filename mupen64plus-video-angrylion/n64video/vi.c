@@ -59,6 +59,7 @@ typedef void(*vi_fetch_filter_func)(struct rgba*, uint32_t, uint32_t, struct vi_
 #include "vi/video.c"
 #include "vi/restore.c"
 #include "vi/fetch.c"
+#include "vi/fill.c"
 
 // states
 static uint32_t prevvicurrent;
@@ -182,6 +183,18 @@ static void vi_process_full_parallel(uint32_t worker_id)
             fetchbugstate = 2;
         } else {
             fetchbugstate >>= 1;
+        }
+
+        if (hres > 0 && !(ctrl.type & 1)) {
+            int32_t row_max = (int32_t)((x_offs + (uint32_t)(hres - 1) * x_add) >> 10) + (ctrl.divot_enable ? 3 : 2);
+            if (row_max > cache_marker) {
+                vi_fill_cache16(viaa_cache, cache_marker + 1, row_max, frame_buffer, pixels, ctrl, vi_width_low, 0);
+                cache_marker = row_max;
+            }
+            if (row_max > cache_next_marker) {
+                vi_fill_cache16(viaa_cache_next, cache_next_marker + 1, row_max, frame_buffer, nextpixels, ctrl, vi_width_low, fetchbugstate);
+                cache_next_marker = row_max;
+            }
         }
 
         for (x = 0; x < hres; x++, x_offs += x_add) {
