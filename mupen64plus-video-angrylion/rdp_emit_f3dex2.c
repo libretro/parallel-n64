@@ -49,11 +49,19 @@ static unsigned int rd_u32_be(const unsigned char *r, unsigned int a)
  * the KSEG0 0x80-based pointers resolve to a 0 base, i.e. physical == offset. */
 static unsigned int s_seg_table[16];
 
+/* RDP render state is global on the real RSP (one set of mode registers),
+ * not per-display-list. Track it module-wide so a mode set in one DL is seen
+ * by sibling DLs drawn afterward; reset per frame alongside the segments. */
+static int s_textured;
+static int s_zbuffered;
+
 static void seg_reset(void)
 {
     int i;
     for (i = 0; i < 16; i++)
         s_seg_table[i] = 0u;
+    s_textured  = 0;
+    s_zbuffered = 0;
 }
 
 void f3dex2_seg_reset(void)
@@ -103,11 +111,11 @@ void f3dex2_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
     int guard = 0;
     unsigned int pc = addr;
     int running = 1;
-    /* render-state tracked across the list, used to pick the triangle
-     * variant. Seeded from the caller's defaults; updated as the gDP state
-     * commands flow past. */
-    int st_textured  = textured;
-    int st_zbuffered = z_buffered;
+    /* render-state is shared module-wide (see s_textured/s_zbuffered) so it
+     * persists across DL recursion; the textured/z_buffered arguments only
+     * seed it when non-zero (callers pass the current state down). */
+    if (textured)   s_textured  = textured;
+    if (z_buffered) s_zbuffered = z_buffered;
 
     while (running && guard++ < 100000)
     {
@@ -149,7 +157,7 @@ void f3dex2_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
             int b = (int)((w0 >> 9) & 0x7f);
             int c = (int)((w0 >> 1) & 0x7f);
             int32_t cmdw[44];
-            int nc = gsp_triangle(gsp, cmdw, a, b, c, st_textured, st_zbuffered);
+            int nc = gsp_triangle(gsp, cmdw, a, b, c, s_textured, s_zbuffered);
             if (nc > 0) rdp_fifo_append(fifo, cmdw, nc);
             break;
         }
@@ -165,9 +173,9 @@ void f3dex2_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
             int c1 = (int)((w1 >> 1) & 0x7f);
             int32_t cmdw[44];
             int nc;
-            nc = gsp_triangle(gsp, cmdw, a0, b0, c0, st_textured, st_zbuffered);
+            nc = gsp_triangle(gsp, cmdw, a0, b0, c0, s_textured, s_zbuffered);
             if (nc > 0) rdp_fifo_append(fifo, cmdw, nc);
-            nc = gsp_triangle(gsp, cmdw, a1, b1, c1, st_textured, st_zbuffered);
+            nc = gsp_triangle(gsp, cmdw, a1, b1, c1, s_textured, s_zbuffered);
             if (nc > 0) rdp_fifo_append(fifo, cmdw, nc);
             break;
         }
@@ -175,7 +183,7 @@ void f3dex2_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
         case F3DEX2_DL:
         {
             int nopush = (int)((w0 >> 16) & 0xff) & DL_NOPUSH;
-            f3dex2_run_dl(gsp, fifo, seg_addr(w1), st_textured, st_zbuffered);
+            f3dex2_run_dl(gsp, fifo, seg_addr(w1), s_textured, s_zbuffered);
             if (nopush)
                 running = 0; /* branch (no return) ends this list */
             break;
@@ -224,7 +232,7 @@ void f3dex2_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
             int tile  = (int)((w0 >> 8) & 0x07);
             float ss  = (float)((w1 >> 16) & 0xffff) / 65536.0f;
             float ts  = (float)(w1 & 0xffff) / 65536.0f;
-            st_textured = (on != 0) ? 1 : 0;
+            s_textured = (on != 0) ? 1 : 0;
             gsp_set_texture(gsp, ss, ts, tile, level, gsp->tex_w, gsp->tex_h);
             break;
         }
@@ -261,7 +269,7 @@ void f3dex2_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
                 {
                     int zc = (int)((w1 >> 4) & 1);
                     int zu = (int)((w1 >> 5) & 1);
-                    st_zbuffered = (zc || zu) ? 1 : 0;
+                    s_zbuffered = (zc || zu) ? 1 : 0;
                 }
                 /* 0x24..0x3f are the RDP non-triangle commands angrylion
                  * implements; 0x31 (G_SETKEY*) is not, so skip it. */
