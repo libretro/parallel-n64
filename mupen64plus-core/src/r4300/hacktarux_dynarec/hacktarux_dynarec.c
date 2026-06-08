@@ -264,15 +264,20 @@ void dyna_start(void *code)
 # endif
 #endif
 
-    /* for -fPIC (shared libraries) */
-#if defined(ANDROID_X86) || __GNUC_PREREQ (4, 7)
-#  define GET_PC_THUNK_STR(reg) "__x86.get_pc_thunk." #reg
-#else
-#  define GET_PC_THUNK_STR(reg) "__i686.get_pc_thunk." #reg
-#endif
+    /* for -fPIC (shared libraries): reload the GOT base into %ebx after
+     * the call into recompiled code (which may clobber it).  Use a
+     * self-contained PC-relative sequence rather than calling the
+     * compiler-internal __x86/__i686.get_pc_thunk.bx helper: clang reports
+     * itself as GCC 4.2, so the old __GNUC_PREREQ(4,7) test selected the
+     * "__i686" spelling, and clang emits neither helper for an inline-asm
+     * reference -- breaking the -fPIC build with "undefined reference to
+     * __i686.get_pc_thunk.bx". The sequence below works on gcc and clang. */
 #define STORE_EBX
-#define LOAD_EBX "call  " GET_PC_THUNK_STR(bx) "     \n" \
-    "addl $_GLOBAL_OFFSET_TABLE_, %%ebx \n"
+#define LOAD_EBX \
+    "call  3f                                  \n" \
+    "3:                                        \n" \
+    "popl %%ebx                                \n" \
+    "addl $_GLOBAL_OFFSET_TABLE_+[.-3b], %%ebx \n"
 #else
     /* for non-PIC binaries */
 #define STORE_EBX "movl %%ebx, %[save_ebx] \n"
