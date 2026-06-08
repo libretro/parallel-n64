@@ -3972,6 +3972,20 @@ static void wb_invalidate(signed char pre[],signed char entry[],uint64_t dirty,u
                   emit_storereg(pre[hr],hr);
                 }
               }
+            }else{
+              /* The register is being relocated to a different host
+               * register (handled by the move loop below).  However, a
+               * subsequent load_regs() for a (likely-)branch delay-slot
+               * operand reloads that register from its memory home, which
+               * would clobber the moved value with a stale one if this
+               * dirty value was never written back (e.g. a byte loaded by
+               * an lbu immediately before a bnel whose delay slot uses it
+               * - Daikatana fall-through-floor).  Flush the low word so the
+               * reload reads the current value.  Do NOT sign-extend here:
+               * hr is still needed intact by the move loop. */
+              if(pre[hr]<64 && !((u>>pre[hr])&1)) {
+                emit_storereg(pre[hr],hr);
+              }
             }
           }
         }
