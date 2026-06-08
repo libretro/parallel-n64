@@ -22,6 +22,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdint.h>
 
 #include "plugin.h"
 
@@ -233,6 +234,9 @@ DEFINE_RSP(parallelRSP);
 rsp_plugin_functions rsp;
 RSP_INFO rsp_info;
 
+/* Set from the libretro core option "send audio lists to HLE RSP". */
+extern uint32_t send_allist_to_hle_rsp;
+
 static m64p_error plugin_start_rsp(void)
 {
    /* fill in the RSP_INFO data structure */
@@ -266,7 +270,40 @@ static m64p_error plugin_start_rsp(void)
    /* call the RSP plugin  */
    rsp.initiateRSP(rsp_info, NULL);
 
+   /* See plugin_ensure_hle_audio_ready(): when the user routes audio
+    * lists to the HLE RSP under a different primary RSP, the HLE plugin
+    * state must be initialized before any audio task is dispatched to
+    * it. Do it now if the option is already on at load; the lazy hook in
+    * do_SP_Task() covers the case where it is toggled on later. */
+   plugin_ensure_hle_audio_ready();
+
    return M64ERR_SUCCESS;
+}
+
+/* HLE's global state is set up only by hleInitiateRSP(), which normally
+ * runs only when HLE is the selected RSP. When "send audio lists to HLE
+ * RSP" is enabled with cxd4/parallel as the primary RSP, do_SP_Task()
+ * still calls hleDoRspCycles() for audio tasks, which would otherwise
+ * run on uninitialized state and crash. This initializes HLE on demand
+ * from the rsp_info captured in plugin_start_rsp(). Idempotent and safe
+ * to call every audio task: it only does work once, and never when HLE
+ * is already the primary RSP. */
+void plugin_ensure_hle_audio_ready(void)
+{
+   static int hle_audio_ready = 0;
+
+   if (hle_audio_ready)
+      return;
+   if (!send_allist_to_hle_rsp)
+      return;
+   if (rsp.initiateRSP == hleInitiateRSP)
+   {
+      hle_audio_ready = 1; /* HLE is primary; already initialized */
+      return;
+   }
+
+   hleInitiateRSP(rsp_info, NULL);
+   hle_audio_ready = 1;
 }
 
 /* global functions */

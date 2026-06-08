@@ -29,6 +29,7 @@
 #include "../../../Graphics/plugin.h"
 
 extern void plugin_connect_all(enum gfx_plugin_type gfx_plugin, enum rsp_plugin_type);
+extern void plugin_ensure_hle_audio_ready(void);
 
 extern GFX_INFO gfx_info;
 

@@ -340,7 +340,13 @@ void do_SP_Task(struct rsp_core* sp)
         if (send_allist_to_hle_rsp == 0)
            rsp.doRspCycles(0xffffffff);
         else
+        {
+           /* Ensure HLE state is live before the first audio task is
+            * routed to it; covers the option being toggled on at
+            * runtime, not just enabled at load. Idempotent. */
+           plugin_ensure_hle_audio_ready();
            hleDoRspCycles(0xffffffff);
+        }
         timed_section_end(TIMED_SECTION_AUDIO);
         sp->regs2[SP_PC_REG] |= save_pc;
     }
