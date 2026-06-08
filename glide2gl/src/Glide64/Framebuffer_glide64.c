@@ -1234,7 +1234,16 @@ void drawViRegBG(void)
    fb_info.ul_y   = 0;
    fb_info.lr_y   = fb_info.height - 1;
    fb_info.opaque = 1;
-   fb_info.addr   = *gfx_info.VI_ORIGIN_REG;
+   /* VI_ORIGIN holds the CPU-written framebuffer pointer, which is
+    * frequently a segmented (KSEG0/KSEG1) virtual address such as
+    * 0xA0100000 rather than a bare physical RDRAM offset.  Mask it down
+    * to the RDRAM address space (as the VI hardware and the angrylion
+    * renderer both do) before it is used to form RDRAM pointers and the
+    * read-bound in DrawFrameBufferToScreen: left raw, 'image = RDRAM +
+    * addr' becomes a wild pointer and 'bound = (BMASK+1) - addr'
+    * underflows, defeating the bounds check and crashing on
+    * framebuffer-direct content such as krom's CPU test ROMs. */
+   fb_info.addr   = *gfx_info.VI_ORIGIN_REG & BMASK;
    fb_info.size   = *gfx_info.VI_STATUS_REG & 3;
 
    rdp.last_bg    = fb_info.addr;
