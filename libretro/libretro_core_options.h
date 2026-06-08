@@ -677,14 +677,14 @@ struct retro_core_option_v2_definition option_defs_us[] = {
 
     {
         CORE_NAME "-send_allist_to_hle_rsp",
-        "Send audio lists to HLE RSP",
+        "Audio Processing (HLE RSP)",
         NULL,
-        "Send audio lists to HLE RSP",
+        "Run N64 audio on the fast high-level (HLE) RSP while graphics stay on the selected accurate RSP (cxd4/parallel). Audio lists are emulated at a higher level instead of cycle-by-cycle, which noticeably increases performance with little to no audible difference in most games. Recommended when using the angrylion or parallel-RDP graphics plugins for a speed boost. Disable if a game has audio glitches.",
         NULL,
         NULL,
         {
-            { "enabled", NULL },
-            { "disabled", NULL },
+            { "enabled", "Fast (HLE)" },
+            { "disabled", "Accurate (selected RSP)" },
             { NULL, NULL },
         },
         "disabled"
