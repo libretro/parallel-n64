@@ -170,7 +170,7 @@ GLOBAL_FUNCTION(_verify_code_vm):
     /* w3 = length */
     mov    w4, #0xC0000000
     cmp    w1, w4
-    b.lt   _verify_code
+    b.lt   .verify_code_thunk
     add    x8, x29, #2528 /* memory_map */
     lsr    w4, w1, #12
     add    w5, w1, w3
@@ -535,6 +535,17 @@ LOCAL_FUNCTION(_do_invalidate):
 .invalidate_block_apple:
     b _invalidate_block
 
+/* Mach-O's assembler only allows b.cond to target assembler-local
+ * labels, so conditional branches to these in-file routines are
+ * funnelled through local thunks (an unconditional b is fine). On
+ * ELF this is equally valid and costs nothing on the hot path, as
+ * both targets are slow exception/verify routines. */
+.verify_code_thunk:
+    b _verify_code
+
+.tlb_exception_thunk:
+    b _tlb_exception
+
 GLOBAL_FUNCTION(_read_nomem_new):
     /* w3 = instr addr/flags */
     ldr    w2, [x29, #288 ] /* address */
@@ -543,7 +554,7 @@ GLOBAL_FUNCTION(_read_nomem_new):
     ldr    x4, [x4, x0, lsl #3]
     mov    w1, #8
     tst    x4, x4
-    b.mi   _tlb_exception
+    b.mi   .tlb_exception_thunk
     ldr    w0, [x2, x4, lsl #2]
     str    w0, [x29, #296 ] /* readmem_dword */
     ret
@@ -556,7 +567,7 @@ GLOBAL_FUNCTION(_read_nomemb_new):
     ldr    x4, [x4, x0, lsl #3]
     mov    w1, #8
     tst    x4, x4
-    b.mi   _tlb_exception
+    b.mi   .tlb_exception_thunk
     eor    w2, w2, #3
     lsl    x4, x4, #2
     ldrb   w0, [x2, x4]
@@ -571,7 +582,7 @@ GLOBAL_FUNCTION(_read_nomemh_new):
     ldr    x4, [x4, x0, lsl #3]
     mov    w1, #8
     tst    x4, x4
-    b.mi   _tlb_exception
+    b.mi   .tlb_exception_thunk
     lsl    x4, x4, #2
     eor    w2, w2, #2
     ldrh   w0, [x2, x4]
@@ -586,7 +597,7 @@ GLOBAL_FUNCTION(_read_nomemd_new):
     ldr    x4, [x4, x0, lsl #3]
     mov    w1, #8
     tst    x4, x4
-    b.mi   _tlb_exception
+    b.mi   .tlb_exception_thunk
     add    x4, x2, x4, lsl #2
     ldr    w0, [x4]
     ldr    w1, [x4, #4]
@@ -607,7 +618,7 @@ GLOBAL_FUNCTION(_write_nomem_new):
     ldr    x4, [x4, x0, lsl #3]
     mov    w1, #0xc
     tst    x4, #0x4000000000000000
-    b.ne   _tlb_exception
+    b.ne   .tlb_exception_thunk
     ldr    w0, [x29, #312 ] /* cpu_word */
     str    w0, [x2, x4, lsl #2]
     ret
@@ -625,7 +636,7 @@ GLOBAL_FUNCTION(_write_nomemb_new):
     ldr    x4, [x4, x0, lsl #3]
     mov    w1, #0xc
     tst    x4, #0x4000000000000000
-    b.ne   _tlb_exception
+    b.ne   .tlb_exception_thunk
     lsl    x4, x4, #2
     eor    w2, w2, #3
     ldrb   w0, [x29, #318 ] /* cpu_byte */
@@ -645,7 +656,7 @@ GLOBAL_FUNCTION(_write_nomemh_new):
     ldr    x4, [x4, x0, lsl #3]
     mov    w1, #0xc
     tst    x4, #0x4000000000000000
-    b.ne   _tlb_exception
+    b.ne   .tlb_exception_thunk
     lsl    x4, x4, #2
     eor    w2, w2, #2
     ldrh   w0, [x29, #316 ] /* cpu_hword */
@@ -665,7 +676,7 @@ GLOBAL_FUNCTION(_write_nomemd_new):
     ldr    x4, [x4, x0, lsl #3]
     mov    w1, #0xc
     tst    x4, #0x4000000000000000
-    b.ne   _tlb_exception
+    b.ne   .tlb_exception_thunk
     lsl    x4, x4, #2
     ldr    w0, [x29, #308 ] /* cpu_dword+4 */
     ldr    w1, [x29, #304 ] /* cpu_dword */
