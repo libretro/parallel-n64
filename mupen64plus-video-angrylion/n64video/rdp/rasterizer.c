@@ -1617,6 +1617,78 @@ static void render_spans_2cycle_notex(uint32_t wid, int start, int end, int tile
 }
 
 
+
+#if defined(AL_SIMD_SSE2) || defined(AL_SIMD_NEON)
+/* Vectorized 16-bit fill: a fill writes fill_color as a 32-bit word to
+ * each physical framebuffer word (the (fb&1) half-select + WORD_ADDR_XOR
+ * swizzle compose to exactly this), with hidden bytes following an
+ * even->hi, odd->lo alternating pattern. Bit-exact to fbfill_16 over a
+ * contiguous ascending run; the renderer's per-pixel order is immaterial
+ * since fill has no read dependency. */
+static void render_fill_row_16(uint32_t wid, uint32_t fb_lo, int count)
+{
+    uint32_t mask = RDRAM_MASK >> 1;
+    uint32_t fc32 = state[wid].fill_color;
+    uint32_t vhi = (fc32 >> 16) & 0xffff;
+    uint32_t vlo = fc32 & 0xffff;
+    uint8_t hhi = (uint8_t)(((vhi & 1) << 1) | (vhi & 1));
+    uint8_t hlo = (uint8_t)(((vlo & 1) << 1) | (vlo & 1));
+    uint32_t in_lo = fb_lo & mask;
+    uint32_t in_hi;
+    int n = count;
+
+    /* Bail to scalar on wrap or out-of-range; common spans are interior. */
+    if (count <= 0)
+        return;
+    in_hi = (fb_lo + (uint32_t)(count - 1)) & mask;
+    if (in_hi < in_lo || in_hi > idxlim16)
+    {
+        int k;
+        for (k = 0; k < count; k++)
+            fbfill_16(wid, (fb_lo - (state[wid].fb_address >> 1)) + k);
+        return;
+    }
+
+    {
+        uint32_t in = in_lo;
+#if defined(AL_SIMD_SSE2)
+        __m128i vfc = _mm_set1_epi32((int)fc32);
+#else
+        uint32x4_t vfc = vreinterpretq_u32_u16(vdupq_n_u16(0));
+        vfc = vdupq_n_u32(fc32);
+#endif
+        /* The vector body always begins on an even index, so the hidden
+         * byte pattern is fixed: [hhi, hlo, hhi, hlo, ...]. */
+        uint64_t hpat = (((uint64_t)hlo << 8) | hhi) * 0x0001000100010001ULL;
+        /* scalar pixels until 'in' is even (start of a physical 32-bit word) */
+        while (n > 0 && (in & 1))
+        {
+            rdram16[in ^ WORD_ADDR_XOR] = (uint16_t)vlo;
+            rdram_hidden[in] = hlo;
+            in++; n--;
+        }
+        /* 8-pixel (16-byte rdram16 + 8-byte hidden) vector body */
+        while (n >= 8)
+        {
+#if defined(AL_SIMD_SSE2)
+            _mm_storeu_si128((__m128i*)(rdram16 + in), vfc);
+#else
+            vst1q_u16(rdram16 + in, vreinterpretq_u16_u32(vfc));
+#endif
+            *(uint64_t*)(rdram_hidden + in) = hpat;
+            in += 8; n -= 8;
+        }
+        /* scalar tail */
+        while (n > 0)
+        {
+            if (in & 1) { rdram16[in ^ WORD_ADDR_XOR] = (uint16_t)vlo; rdram_hidden[in] = hlo; }
+            else        { rdram16[in ^ WORD_ADDR_XOR] = (uint16_t)vhi; rdram_hidden[in] = hhi; }
+            in++; n--;
+        }
+    }
+}
+#endif
+
 static void render_spans_fill(uint32_t wid, int start, int end, int flip)
 {
     if (state[wid].fb_size == PIXEL_SIZE_4BIT)
@@ -1665,6 +1737,16 @@ static void render_spans_fill(uint32_t wid, int start, int end, int flip)
 
 
 
+#if defined(AL_SIMD_SSE2) || defined(AL_SIMD_NEON)
+            if (state[wid].fb_size == PIXEL_SIZE_16BIT && length >= 0)
+            {
+                uint32_t fb_base = (state[wid].fb_address >> 1) + (uint32_t)(state[wid].fb_width * i);
+                uint32_t fb_lo = flip ? (fb_base + (uint32_t)xendsc)
+                                      : (fb_base + (uint32_t)(xendsc - length));
+                render_fill_row_16(wid, fb_lo, length + 1);
+            }
+            else
+#endif
             for (j = 0; j <= length; j++)
             {
 
