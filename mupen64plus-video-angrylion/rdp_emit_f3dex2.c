@@ -31,10 +31,34 @@
 
 #define DL_NOPUSH         0x01
 
+#define F3DEX2_MOVEWORD   0xDB
+#define G_MW_SEGMENT      0x06
+
+#define F3DEX2_MOVEMEM    0xDC
+#define G_MV_VIEWPORT     0x08
+
+/* RDRAM/DMEM 32-bit words are stored host-native in this core (the RSP's
+ * u32() accessor reads them directly with no byteswap), so read native. */
 static unsigned int rd_u32_be(const unsigned char *r, unsigned int a)
 {
-    return ((unsigned int)r[a] << 24) | ((unsigned int)r[a + 1] << 16)
-         | ((unsigned int)r[a + 2] << 8) | (unsigned int)r[a + 3];
+    return *(const unsigned int *)(r + a);
+}
+
+/* F3DEX2 segment table: addresses are (segment << 24) | offset, resolved as
+ * seg_table[segment] + offset. Set by G_MOVEWORD/G_MW_SEGMENT. Segment 0 and
+ * the KSEG0 0x80-based pointers resolve to a 0 base, i.e. physical == offset. */
+static unsigned int s_seg_table[16];
+
+static void seg_reset(void)
+{
+    int i;
+    for (i = 0; i < 16; i++)
+        s_seg_table[i] = 0u;
+}
+
+void f3dex2_seg_reset(void)
+{
+    seg_reset();
 }
 
 void rdp_fifo_init(RdpFifo *f, unsigned char *rdram,
@@ -63,10 +87,14 @@ void rdp_fifo_append(RdpFifo *f, const int32_t *words, int count)
     f->used += (unsigned int)count * 4u;
 }
 
-/* mask the lower 24 bits to an RDRAM byte address */
+/* Resolve an N64 segmented/virtual address to a physical RDRAM byte address:
+ * physical = seg_table[(addr >> 24) & 0xf] + (addr & 0xffffff). For KSEG0
+ * pointers (top byte 0x80/0xA0) the segment index is 0 (table base 0), so the
+ * result is just the low 24 bits -- the standard virtual->physical strip. */
 static unsigned int seg_addr(unsigned int w1)
 {
-    return w1 & 0x00ffffffu;
+    unsigned int seg = (w1 >> 24) & 0x0fu;
+    return (s_seg_table[seg] + (w1 & 0x00ffffffu)) & 0x00ffffffu;
 }
 
 void f3dex2_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
@@ -117,9 +145,9 @@ void f3dex2_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
 
         case F3DEX2_TRI1:
         {
-            int a = (int)((w0 >> 17) & 0x7f) / 2;
-            int b = (int)((w0 >> 9) & 0x7f) / 2;
-            int c = (int)((w0 >> 1) & 0x7f) / 2;
+            int a = (int)((w0 >> 17) & 0x7f);
+            int b = (int)((w0 >> 9) & 0x7f);
+            int c = (int)((w0 >> 1) & 0x7f);
             int32_t cmdw[44];
             int nc = gsp_triangle(gsp, cmdw, a, b, c, st_textured, st_zbuffered);
             if (nc > 0) rdp_fifo_append(fifo, cmdw, nc);
@@ -129,12 +157,12 @@ void f3dex2_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
         case F3DEX2_TRI2:
         case F3DEX2_QUAD:
         {
-            int a0 = (int)((w0 >> 17) & 0x7f) / 2;
-            int b0 = (int)((w0 >> 9) & 0x7f) / 2;
-            int c0 = (int)((w0 >> 1) & 0x7f) / 2;
-            int a1 = (int)((w1 >> 17) & 0x7f) / 2;
-            int b1 = (int)((w1 >> 9) & 0x7f) / 2;
-            int c1 = (int)((w1 >> 1) & 0x7f) / 2;
+            int a0 = (int)((w0 >> 17) & 0x7f);
+            int b0 = (int)((w0 >> 9) & 0x7f);
+            int c0 = (int)((w0 >> 1) & 0x7f);
+            int a1 = (int)((w1 >> 17) & 0x7f);
+            int b1 = (int)((w1 >> 9) & 0x7f);
+            int c1 = (int)((w1 >> 1) & 0x7f);
             int32_t cmdw[44];
             int nc;
             nc = gsp_triangle(gsp, cmdw, a0, b0, c0, st_textured, st_zbuffered);
@@ -150,6 +178,34 @@ void f3dex2_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
             f3dex2_run_dl(gsp, fifo, seg_addr(w1), st_textured, st_zbuffered);
             if (nopush)
                 running = 0; /* branch (no return) ends this list */
+            break;
+        }
+
+        case F3DEX2_MOVEWORD:
+        {
+            /* G_MOVEWORD with index G_MW_SEGMENT (0x06) sets a segment-table
+             * base: segment = (w0 >> 2) & 0xf, base = w1 & 0xffffff. Other
+             * MOVEWORD indices (numlight, fog, clip, ...) don't affect address
+             * resolution here, so ignore them. */
+            int index = (int)((w0 >> 16) & 0xff);
+            if (index == G_MW_SEGMENT)
+            {
+                unsigned int seg = (w0 >> 2) & 0x0fu;
+                s_seg_table[seg] = w1 & 0x00ffffffu;
+            }
+            break;
+        }
+
+        case F3DEX2_MOVEMEM:
+        {
+            /* G_MOVEMEM with index G_MV_VIEWPORT (0x08) loads the viewport
+             * (vscale/vtrans) from the segmented address in w1. Other MOVEMEM
+             * targets (lights, matrices) are not needed for screen mapping. */
+            int index = (int)(w0 & 0xff);
+            if (index == G_MV_VIEWPORT)
+            {
+                gsp_set_viewport(gsp, r, seg_addr(w1));
+            }
             break;
         }
 
@@ -213,7 +269,16 @@ void f3dex2_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
                 {
                     int32_t two[2];
                     two[0] = (int32_t)w0;
-                    two[1] = (int32_t)w1;
+                    /* SET_COLOR_IMAGE (0x3f), SET_Z_IMAGE (0x3e) and
+                     * SET_TEXTURE_IMAGE (0x3d) carry a DRAM pointer in the low
+                     * 24 bits of w1 that may be a segmented/virtual address.
+                     * angrylion masks args[1] & 0x00ffffff with no segment
+                     * table, so resolve to a physical address here. The format
+                     * and width fields in the upper bits of w1 are preserved. */
+                    if (rdp_id == 0x3f || rdp_id == 0x3e || rdp_id == 0x3d)
+                        two[1] = (int32_t)((w1 & 0xff000000u) | (seg_addr(w1) & 0x00ffffffu));
+                    else
+                        two[1] = (int32_t)w1;
                     rdp_fifo_append(fifo, two, 2);
                 }
             }

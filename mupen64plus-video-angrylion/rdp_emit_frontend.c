@@ -11,16 +11,35 @@
 #include "rdp_emit_frontend.h"
 
 /* read a signed 16-bit big-endian halfword from RDRAM (N64 byte order) */
+/* RDRAM is stored as host-native 32-bit words in this core, so a sub-word
+ * read must undo the in-word byte order: on a little-endian host the N64
+ * (big-endian) byte at offset a lives at (a ^ 2) for 16-bit and (a ^ 3) for
+ * 8-bit, exactly as the RSP's u16()/u8() accessors do via S16/S8. */
+#ifdef MSB_FIRST
+#define RDRAM_S16 0u
+#define RDRAM_S8  0u
+#else
+#define RDRAM_S16 2u
+#define RDRAM_S8  3u
+#endif
+
+static int read_u8_n64(const unsigned char *rdram, unsigned int addr)
+{
+    return (int)rdram[addr ^ RDRAM_S8];
+}
+
 static int read_s16_be(const unsigned char *rdram, unsigned int addr)
 {
-    int v = (int)((rdram[addr] << 8) | rdram[addr + 1]);
+    const unsigned short *p = (const unsigned short *)(rdram + (addr ^ RDRAM_S16));
+    int v = (int)*p;
     if (v & 0x8000) v -= 0x10000;
     return v;
 }
 
 static int read_u16_be(const unsigned char *rdram, unsigned int addr)
 {
-    return (int)((rdram[addr] << 8) | rdram[addr + 1]);
+    const unsigned short *p = (const unsigned short *)(rdram + (addr ^ RDRAM_S16));
+    return (int)*p;
 }
 
 static void mtx_identity(float m[4][4])
@@ -62,7 +81,7 @@ static void mtx_mul(float d[4][4], float a[4][4], float b[4][4])
  * with column index xor 1 for the N64 word swap. */
 static void load_n64_matrix(float m[4][4], const unsigned char *rdram, unsigned int addr)
 {
-    int i, j, jj;
+    int i, j;
     unsigned int int_base = addr;
     unsigned int frac_base = addr + 32;
     for (i = 0; i < 4; i++)
@@ -71,8 +90,9 @@ static void load_n64_matrix(float m[4][4], const unsigned char *rdram, unsigned 
         {
             int ofs;
             int ip, fp;
-            jj = j ^ 1;
-            ofs = (i * 4 + jj) * 2;
+            /* read_s16_be/read_u16_be already apply the in-word byte-swap,
+             * so element (i,j) is at its natural offset; no column XOR. */
+            ofs = (i * 4 + j) * 2;
             ip = read_s16_be(rdram, int_base + (unsigned int)ofs);
             fp = read_u16_be(rdram, frac_base + (unsigned int)ofs);
             m[i][j] = (float)ip + (float)fp / 65536.0f;
@@ -146,10 +166,10 @@ void gsp_set_viewport(GSPState *s, const unsigned char *rdram, unsigned int addr
 {
     /* N64 Vp: vscale[0..3] then vtrans[0..3], s16 in 2.10/2 fixed; the X/Y
      * scale and translate are the .2 fixed fields (divide by 4). */
-    float sx = (float)read_s16_be(rdram, addr + 2) / 4.0f;
-    float sy = (float)read_s16_be(rdram, addr + 0) / 4.0f;
-    float tx = (float)read_s16_be(rdram, addr + 10) / 4.0f;
-    float ty = (float)read_s16_be(rdram, addr + 8) / 4.0f;
+    float sx = (float)read_s16_be(rdram, addr + 0) / 4.0f;
+    float sy = (float)read_s16_be(rdram, addr + 2) / 4.0f;
+    float tx = (float)read_s16_be(rdram, addr + 8) / 4.0f;
+    float ty = (float)read_s16_be(rdram, addr + 10) / 4.0f;
     s->viewport.vscale_x = sx;
     s->viewport.vscale_y = sy;
     s->viewport.vtrans_x = tx;
@@ -208,10 +228,10 @@ void gsp_vertex(GSPState *s, const unsigned char *rdram, unsigned int addr,
         vt->t = ((float)st_t / 32.0f) * s->tex_scale_t / (float)s->tex_h;
 
         /* vertex color (RGBA bytes at offset 12) -> 0..1 */
-        vt->r = (float)rdram[base + 12] / 255.0f;
-        vt->g = (float)rdram[base + 13] / 255.0f;
-        vt->b = (float)rdram[base + 14] / 255.0f;
-        vt->a = (float)rdram[base + 15] / 255.0f;
+        vt->r = (float)read_u8_n64(rdram, base + 12) / 255.0f;
+        vt->g = (float)read_u8_n64(rdram, base + 13) / 255.0f;
+        vt->b = (float)read_u8_n64(rdram, base + 14) / 255.0f;
+        vt->a = (float)read_u8_n64(rdram, base + 15) / 255.0f;
 
         vt->clip = 0;
     }

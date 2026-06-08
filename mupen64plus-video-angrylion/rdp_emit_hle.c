@@ -34,10 +34,11 @@ static GSPState s_gsp;
 static RdpFifo  s_fifo;
 static int      s_inited = 0;
 
+/* DMEM/RDRAM 32-bit words are host-native in this core (the RSP's u32()
+ * accessor reads them directly); read native, not big-endian. */
 static unsigned int read_dmem_u32(const unsigned char *dmem, unsigned int ofs)
 {
-    return ((unsigned int)dmem[ofs] << 24) | ((unsigned int)dmem[ofs + 1] << 16)
-         | ((unsigned int)dmem[ofs + 2] << 8) | (unsigned int)dmem[ofs + 3];
+    return *(const unsigned int *)(dmem + ofs);
 }
 
 void rdp_emit_hle_process_dlist(void)
@@ -74,7 +75,18 @@ void rdp_emit_hle_process_dlist(void)
     /* walk the display list, emitting RDP commands into the FIFO. textured/
      * z_buffered default off here; a gDP/state-translation follow-up sets the
      * render mode and the per-frame setup commands. */
+    f3dex2_seg_reset();
     f3dex2_run_dl(&s_gsp, &s_fifo, dl_addr, 0, 0);
+
+    /* terminate the command list with SYNC_FULL (RDP cmd 0x29). angrylion
+     * needs this to flush/complete the frame; without it batched commands
+     * are never executed and nothing is rasterized. */
+    {
+        int32_t sync[2];
+        sync[0] = (int32_t)0x29000000u;
+        sync[1] = 0;
+        rdp_fifo_append(&s_fifo, sync, 2);
+    }
 
     if (s_fifo.used == 0)
         return;

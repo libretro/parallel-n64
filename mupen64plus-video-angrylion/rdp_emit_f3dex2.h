@@ -32,6 +32,9 @@ void rdp_fifo_append(RdpFifo *f, const int32_t *words, int count);
  * `textured`/`z_buffered` select the triangle variant for emitted tris
  * (a fuller implementation derives these from the gDP render state).
  * Recurses into nested display lists up to a small depth. */
+/* reset the F3DEX2 segment table; call before each top-level display list */
+void f3dex2_seg_reset(void);
+
 void f3dex2_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
                    int textured, int z_buffered);
 
