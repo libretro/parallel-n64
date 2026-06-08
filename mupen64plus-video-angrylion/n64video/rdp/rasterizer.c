@@ -1938,6 +1938,17 @@ static void render_spans_copy(uint32_t wid, int start, int end, int tilenum, int
     }
 }
 
+#if defined(AL_SIMD_SSE2)
+/* 4-lane 32x32 -> low 32 multiply (SSE2 lacks _mm_mullo_epi32). Low 32 bits
+ * are signedness-independent, so the unsigned _mm_mul_epu32 pair is exact. */
+static INLINE __m128i ew_mul32(__m128i a, __m128i b)
+{
+    __m128i e = _mm_mul_epu32(a, b);
+    __m128i o = _mm_mul_epu32(_mm_srli_si128(a, 4), _mm_srli_si128(b, 4));
+    return _mm_unpacklo_epi32(_mm_shuffle_epi32(e, 0x08), _mm_shuffle_epi32(o, 0x08));
+}
+#endif
+
 static void edgewalker_for_prims(uint32_t wid, int32_t* ewdata)
 {
     state[wid].noise_seq++;
@@ -2145,6 +2156,58 @@ static void edgewalker_for_prims(uint32_t wid, int32_t* ewdata)
 
 
 
+#if defined(AL_SIMD_SSE2)
+    /* The 8 span attributes are accumulated (ADDVALUES) and consumed (ADJUST)
+     * only here, so they live in two vectors across the walk: no transpose,
+     * no scalar round-trip. Lane order matches struct span {r,g,b,a,s,t,w,z}. */
+    __m128i ew_av0 = _mm_set_epi32(a, b, g, r);
+    __m128i ew_av1 = _mm_set_epi32(z, w, t, s);
+    const __m128i ew_dev0 = _mm_set_epi32(dade, dbde, dgde, drde);
+    const __m128i ew_dev1 = _mm_set_epi32(dzde, dwde, dtde, dsde);
+    const __m128i ew_diff0 = _mm_set_epi32(dadiff, dbdiff, dgdiff, drdiff);
+    const __m128i ew_diff1 = _mm_set_epi32(dzdiff, dwdiff, dtdiff, dsdiff);
+    const __m128i ew_dxh0 = _mm_set_epi32(dadxh, dbdxh, dgdxh, drdxh);
+    const __m128i ew_dxh1 = _mm_set_epi32(dzdxh, dwdxh, dtdxh, dsdxh);
+    const __m128i ew_m1 = _mm_set1_epi32(~0x1ff), ew_m3 = _mm_set1_epi32(~0x3ff);
+#define ADJUST_ATTR_PRIM()                                                      \
+{                                                                               \
+    __m128i ew_xf = _mm_set1_epi32(xfrac);                                      \
+    _mm_storeu_si128((__m128i*)&state[wid].span[j].r,                           \
+        _mm_and_si128(_mm_sub_epi32(_mm_add_epi32(_mm_and_si128(ew_av0, ew_m1), \
+            ew_diff0), ew_mul32(ew_xf, ew_dxh0)), ew_m3));                      \
+    _mm_storeu_si128((__m128i*)&state[wid].span[j].s,                           \
+        _mm_and_si128(_mm_sub_epi32(_mm_add_epi32(_mm_and_si128(ew_av1, ew_m1), \
+            ew_diff1), ew_mul32(ew_xf, ew_dxh1)), ew_m3));                      \
+}
+#define ADDVALUES_PRIM()                                                        \
+{                                                                               \
+    ew_av0 = _mm_add_epi32(ew_av0, ew_dev0);                                    \
+    ew_av1 = _mm_add_epi32(ew_av1, ew_dev1);                                    \
+}
+#elif defined(AL_SIMD_NEON)
+    int32x4_t ew_av0 = { r, g, b, a };
+    int32x4_t ew_av1 = { s, t, w, z };
+    const int32x4_t ew_dev0 = { drde, dgde, dbde, dade };
+    const int32x4_t ew_dev1 = { dsde, dtde, dwde, dzde };
+    const int32x4_t ew_diff0 = { drdiff, dgdiff, dbdiff, dadiff };
+    const int32x4_t ew_diff1 = { dsdiff, dtdiff, dwdiff, dzdiff };
+    const int32x4_t ew_dxh0 = { drdxh, dgdxh, dbdxh, dadxh };
+    const int32x4_t ew_dxh1 = { dsdxh, dtdxh, dwdxh, dzdxh };
+    const int32x4_t ew_m1 = vdupq_n_s32(~0x1ff), ew_m3 = vdupq_n_s32(~0x3ff);
+#define ADJUST_ATTR_PRIM()                                                      \
+{                                                                               \
+    int32x4_t ew_xf = vdupq_n_s32(xfrac);                                       \
+    vst1q_s32(&state[wid].span[j].r, vandq_s32(vsubq_s32(vaddq_s32(             \
+        vandq_s32(ew_av0, ew_m1), ew_diff0), vmulq_s32(ew_xf, ew_dxh0)), ew_m3)); \
+    vst1q_s32(&state[wid].span[j].s, vandq_s32(vsubq_s32(vaddq_s32(             \
+        vandq_s32(ew_av1, ew_m1), ew_diff1), vmulq_s32(ew_xf, ew_dxh1)), ew_m3)); \
+}
+#define ADDVALUES_PRIM()                                                        \
+{                                                                               \
+    ew_av0 = vaddq_s32(ew_av0, ew_dev0);                                        \
+    ew_av1 = vaddq_s32(ew_av1, ew_dev1);                                        \
+}
+#else
 #define ADJUST_ATTR_PRIM()      \
 {                           \
     state[wid].span[j].s = ((s & ~0x1ff) + dsdiff - (xfrac * dsdxh)) & ~0x3ff;             \
@@ -2168,6 +2231,7 @@ static void edgewalker_for_prims(uint32_t wid, int32_t* ewdata)
             a += dade; \
             z += dzde; \
 }
+#endif
 
     int32_t maxxmx, minxmx, maxxhx, minxhx;
 
