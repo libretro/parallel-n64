@@ -245,3 +245,25 @@ int emit_texshade_triangle(int32_t *ew,
 
     return 40;
 }
+
+/* 0x0f texshade_z = the 40-word texshade triangle plus the same 4-word Z
+ * block used by 0x0d, at ewdata[40..43]: z (s15.16), dzdx, dzde, dzdy.
+ * Constant-depth (planar) like the shade_z path. */
+int emit_texshade_z_triangle(int32_t *ew,
+                             const EmitVertex *va, const EmitVertex *vb,
+                             const EmitVertex *vc, int tex_w, int tex_h,
+                             int tile, int max_level)
+{
+    float zf;
+
+    emit_texshade_triangle(ew, va, vb, vc, tex_w, tex_h, tile, max_level);
+
+    zf = (va->z + vb->z + vc->z) / 3.0f;
+    if (zf < 0.0f) zf = 0.0f;
+    if (zf > 1.0f) zf = 1.0f;
+    ew[40] = (int32_t)((uint32_t)((int32_t)(zf * 32767.0f)) << 16);
+    ew[41] = 0;
+    ew[42] = 0;
+    ew[43] = 0;
+    return 44;
+}

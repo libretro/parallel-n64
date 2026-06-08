@@ -42,14 +42,17 @@ int bridge_add_triangle(int32_t *cmd,
     clip_to_emit(&b, v1, vp);
     clip_to_emit(&c, v2, vp);
 
-    if (textured)
+    if (textured && z_buffered)
+        n = emit_texshade_z_triangle(cmd, &a, &b, &c, tex_w, tex_h, tile, max_level);
+    else if (textured)
         n = emit_texshade_triangle(cmd, &a, &b, &c, tex_w, tex_h, tile, max_level);
     else if (z_buffered)
         n = emit_shaded_z_triangle(cmd, &a, &b, &c, tile, max_level);
     else
         n = emit_shaded_triangle(cmd, &a, &b, &c, tile, max_level);
 
-    id = textured ? 0x0e : (z_buffered ? 0x0d : 0x0c);
+    id = (textured && z_buffered) ? 0x0f
+       : (textured ? 0x0e : (z_buffered ? 0x0d : 0x0c));
     cmd[0] = (int32_t)(((uint32_t)cmd[0] & 0x00ffffffu) | ((uint32_t)id << 24));
     return n;
 }

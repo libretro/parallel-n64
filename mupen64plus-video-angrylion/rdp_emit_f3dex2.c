@@ -75,6 +75,11 @@ void f3dex2_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
     int guard = 0;
     unsigned int pc = addr;
     int running = 1;
+    /* render-state tracked across the list, used to pick the triangle
+     * variant. Seeded from the caller's defaults; updated as the gDP state
+     * commands flow past. */
+    int st_textured  = textured;
+    int st_zbuffered = z_buffered;
 
     while (running && guard++ < 100000)
     {
@@ -116,7 +121,7 @@ void f3dex2_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
             int b = (int)((w0 >> 9) & 0x7f) / 2;
             int c = (int)((w0 >> 1) & 0x7f) / 2;
             int32_t cmdw[44];
-            int nc = gsp_triangle(gsp, cmdw, a, b, c, textured, z_buffered);
+            int nc = gsp_triangle(gsp, cmdw, a, b, c, st_textured, st_zbuffered);
             if (nc > 0) rdp_fifo_append(fifo, cmdw, nc);
             break;
         }
@@ -132,9 +137,9 @@ void f3dex2_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
             int c1 = (int)((w1 >> 1) & 0x7f) / 2;
             int32_t cmdw[44];
             int nc;
-            nc = gsp_triangle(gsp, cmdw, a0, b0, c0, textured, z_buffered);
+            nc = gsp_triangle(gsp, cmdw, a0, b0, c0, st_textured, st_zbuffered);
             if (nc > 0) rdp_fifo_append(fifo, cmdw, nc);
-            nc = gsp_triangle(gsp, cmdw, a1, b1, c1, textured, z_buffered);
+            nc = gsp_triangle(gsp, cmdw, a1, b1, c1, st_textured, st_zbuffered);
             if (nc > 0) rdp_fifo_append(fifo, cmdw, nc);
             break;
         }
@@ -142,7 +147,7 @@ void f3dex2_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
         case F3DEX2_DL:
         {
             int nopush = (int)((w0 >> 16) & 0xff) & DL_NOPUSH;
-            f3dex2_run_dl(gsp, fifo, seg_addr(w1), textured, z_buffered);
+            f3dex2_run_dl(gsp, fifo, seg_addr(w1), st_textured, st_zbuffered);
             if (nopush)
                 running = 0; /* branch (no return) ends this list */
             break;
@@ -154,13 +159,16 @@ void f3dex2_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
 
         case F3DEX2_TEXTURE:
             /* G_TEXTURE sets the texture scale/tile/level the frontend uses
-             * for emitted texcoords. w1 holds the S/T scale (s.16 each),
-             * w0 bits select tile and max LOD level. */
+             * for emitted texcoords, and the on/off flag that selects whether
+             * subsequent triangles are textured. w1 holds the S/T scale
+             * (s.16 each); w0 bits select tile, max LOD level, and on. */
         {
+            int on    = (int)((w0 >> 1) & 0x7f);
             int level = (int)((w0 >> 11) & 0x07);
             int tile  = (int)((w0 >> 8) & 0x07);
             float ss  = (float)((w1 >> 16) & 0xffff) / 65536.0f;
             float ts  = (float)(w1 & 0xffff) / 65536.0f;
+            st_textured = (on != 0) ? 1 : 0;
             gsp_set_texture(gsp, ss, ts, tile, level, gsp->tex_w, gsp->tex_h);
             break;
         }
@@ -190,6 +198,15 @@ void f3dex2_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
             if (cmd >= 0xc8 && cmd != F3DEX2_DL && cmd != F3DEX2_ENDDL)
             {
                 int rdp_id = cmd & 0x3f;
+                /* sniff Set Other Modes (0xEF -> 0x2f) for the depth-test
+                 * enables so subsequent triangles pick the Z variant.
+                 * z_update_en = word1 bit 5, z_compare_en = word1 bit 4. */
+                if (rdp_id == 0x2f)
+                {
+                    int zc = (int)((w1 >> 4) & 1);
+                    int zu = (int)((w1 >> 5) & 1);
+                    st_zbuffered = (zc || zu) ? 1 : 0;
+                }
                 /* 0x24..0x3f are the RDP non-triangle commands angrylion
                  * implements; 0x31 (G_SETKEY*) is not, so skip it. */
                 if (rdp_id >= 0x24 && rdp_id <= 0x3f && rdp_id != 0x31)

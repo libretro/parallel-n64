@@ -30,6 +30,10 @@ int emit_texshade_triangle(int32_t *ew,
                            const EmitVertex *va, const EmitVertex *vb,
                            const EmitVertex *vc, int tex_w, int tex_h,
                            int tile, int max_level);
+int emit_texshade_z_triangle(int32_t *ew,
+                             const EmitVertex *va, const EmitVertex *vb,
+                             const EmitVertex *vc, int tex_w, int tex_h,
+                             int tile, int max_level);
 
 #ifdef __cplusplus
 }
