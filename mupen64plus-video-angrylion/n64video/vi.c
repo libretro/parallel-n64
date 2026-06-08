@@ -187,11 +187,12 @@ static void vi_process_full_parallel(uint32_t worker_id)
 
         if (hres > 0 && !(ctrl.type & 1)) {
             int32_t row_max = (int32_t)((x_offs + (uint32_t)(hres - 1) * x_add) >> 10) + (ctrl.divot_enable ? 3 : 2);
+            int need_next = ctrl.aa_mode != VI_AA_REPLICATE && yfrac != 0;
             if (row_max > cache_marker) {
                 vi_fill_cache16(viaa_cache, cache_marker + 1, row_max, frame_buffer, pixels, ctrl, vi_width_low, 0);
                 cache_marker = row_max;
             }
-            if (row_max > cache_next_marker) {
+            if (need_next && row_max > cache_next_marker) {
                 vi_fill_cache16(viaa_cache_next, cache_next_marker + 1, row_max, frame_buffer, nextpixels, ctrl, vi_width_low, fetchbugstate);
                 cache_next_marker = row_max;
             }
@@ -203,7 +204,7 @@ static void vi_process_full_parallel(uint32_t worker_id)
                     vi_fill_divot_row(divot_cache, viaa_cache, from, dhi);
                     divot_cache_marker = dhi;
                 }
-                if (dhi > divot_cache_next_marker) {
+                if (need_next && dhi > divot_cache_next_marker) {
                     int32_t from = divot_cache_next_marker + 1 > dlo ? divot_cache_next_marker + 1 : dlo;
                     vi_fill_divot_row(divot_cache_next, viaa_cache_next, from, dhi);
                     divot_cache_next_marker = dhi;

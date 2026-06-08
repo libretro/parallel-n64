@@ -130,6 +130,7 @@ static void vi_fill_cache16(struct rgba* cache, int32_t lo, int32_t hi, uint32_t
         vi_fetch_filter16(&cache[k], fboffset, pixels + (uint32_t)k - 1, ctrl, hres, fetchstate);
 }
 
+
 /* Batched divot pass over one cache row: divot[k] is the per-channel
  * median of viaa[k-1], viaa[k], viaa[k+1] unless all three carry
  * full coverage, in which case the center passes through; the alpha
@@ -183,6 +184,7 @@ static void vi_fill_divot_row(struct rgba* dcache, const struct rgba* acache, in
         divot_filter(&dcache[k], acache[k], acache[k - 1], acache[k + 1]);
 }
 
+
 /* Batched resample/lerp pass producing one output row from the
  * prefilled (and possibly divot-filtered) cache rows. vi_vl_lerp's
  * blend is the identity at frac 0, so the per-pixel lerping test
@@ -210,6 +212,19 @@ static void vi_lerp_row(struct rgba* row, int32_t hres, int32_t minh, int32_t ma
     x = lo;
     xo = x_offs0 + (uint32_t)lo * x_add;
 
+    /* When the x stepping and start offset carry no fractional bits
+     * and the row's y fraction is zero, every per-pixel blend is the
+     * identity; demote to the copy path instead of computing it. */
+    if (do_lerp && yfrac == 0 && (x_offs0 & 0x3ff) == 0 && (x_add & 0x3ff) == 0)
+        do_lerp = 0;
+
+    /* 1:1 stepping copies a contiguous source span. */
+    if (!do_lerp && x_add == 0x400 && x < hi)
+    {
+        memcpy(&row[x], &src[(int32_t)(xo >> 10) + 1], (size_t)(hi - x) * sizeof(struct rgba));
+        return;
+    }
+
 #if defined(AL_VI_SSE2)
     {
         __m128i zero = _mm_setzero_si128();
@@ -232,10 +247,6 @@ static void vi_lerp_row(struct rgba* row, int32_t hres, int32_t minh, int32_t ma
             {
                 __m128i cn = _mm_set_epi32(*(const int32_t*)&src[lx3 + 1], *(const int32_t*)&src[lx2 + 1],
                                            *(const int32_t*)&src[lx1 + 1], *(const int32_t*)&src[lx0 + 1]);
-                __m128i d = _mm_set_epi32(*(const int32_t*)&srcn[lx3], *(const int32_t*)&srcn[lx2],
-                                          *(const int32_t*)&srcn[lx1], *(const int32_t*)&srcn[lx0]);
-                __m128i dn = _mm_set_epi32(*(const int32_t*)&srcn[lx3 + 1], *(const int32_t*)&srcn[lx2 + 1],
-                                           *(const int32_t*)&srcn[lx1 + 1], *(const int32_t*)&srcn[lx0 + 1]);
                 __m128i xf_lo = _mm_set_epi16((short)xf1, (short)xf1, (short)xf1, (short)xf1,
                                               (short)xf0, (short)xf0, (short)xf0, (short)xf0);
                 __m128i xf_hi = _mm_set_epi16((short)xf3, (short)xf3, (short)xf3, (short)xf3,
@@ -245,16 +256,33 @@ static void vi_lerp_row(struct rgba* row, int32_t hres, int32_t minh, int32_t ma
                 __m128i c_hi = _mm_unpackhi_epi8(c, zero);
                 __m128i cn_lo = _mm_unpacklo_epi8(cn, zero);
                 __m128i cn_hi = _mm_unpackhi_epi8(cn, zero);
-                __m128i d_lo = _mm_unpacklo_epi8(d, zero);
-                __m128i d_hi = _mm_unpackhi_epi8(d, zero);
-                __m128i dn_lo = _mm_unpacklo_epi8(dn, zero);
-                __m128i dn_hi = _mm_unpackhi_epi8(dn, zero);
-                __m128i cy_lo = VI_LERP16(c_lo, d_lo, yf);
-                __m128i cy_hi = VI_LERP16(c_hi, d_hi, yf);
-                __m128i ny_lo = VI_LERP16(cn_lo, dn_lo, yf);
-                __m128i ny_hi = VI_LERP16(cn_hi, dn_hi, yf);
-                __m128i o_lo = VI_LERP16(cy_lo, ny_lo, xf_lo);
-                __m128i o_hi = VI_LERP16(cy_hi, ny_hi, xf_hi);
+                __m128i cy_lo, cy_hi, ny_lo, ny_hi, o_lo, o_hi;
+                /* yfrac == 0 keeps the vertical blends as identities and
+                 * the next-scanline cache unread (it may be unfilled). */
+                if (yfrac == 0)
+                {
+                    cy_lo = c_lo;
+                    cy_hi = c_hi;
+                    ny_lo = cn_lo;
+                    ny_hi = cn_hi;
+                }
+                else
+                {
+                    __m128i d = _mm_set_epi32(*(const int32_t*)&srcn[lx3], *(const int32_t*)&srcn[lx2],
+                                              *(const int32_t*)&srcn[lx1], *(const int32_t*)&srcn[lx0]);
+                    __m128i dn = _mm_set_epi32(*(const int32_t*)&srcn[lx3 + 1], *(const int32_t*)&srcn[lx2 + 1],
+                                               *(const int32_t*)&srcn[lx1 + 1], *(const int32_t*)&srcn[lx0 + 1]);
+                    __m128i d_lo = _mm_unpacklo_epi8(d, zero);
+                    __m128i d_hi = _mm_unpackhi_epi8(d, zero);
+                    __m128i dn_lo = _mm_unpacklo_epi8(dn, zero);
+                    __m128i dn_hi = _mm_unpackhi_epi8(dn, zero);
+                    cy_lo = VI_LERP16(c_lo, d_lo, yf);
+                    cy_hi = VI_LERP16(c_hi, d_hi, yf);
+                    ny_lo = VI_LERP16(cn_lo, dn_lo, yf);
+                    ny_hi = VI_LERP16(cn_hi, dn_hi, yf);
+                }
+                o_lo = VI_LERP16(cy_lo, ny_lo, xf_lo);
+                o_hi = VI_LERP16(cy_hi, ny_hi, xf_hi);
 #undef VI_LERP16
                 __m128i out = _mm_packus_epi16(o_lo, o_hi);
                 out = _mm_or_si128(_mm_andnot_si128(amask, out), _mm_and_si128(c, amask));
@@ -293,14 +321,6 @@ static void vi_lerp_row(struct rgba* row, int32_t hres, int32_t minh, int32_t ma
                     vsetq_lane_u32(*(const uint32_t*)&src[lx2 + 1],
                     vsetq_lane_u32(*(const uint32_t*)&src[lx1 + 1],
                     vdupq_n_u32(*(const uint32_t*)&src[lx0 + 1]), 1), 2), 3);
-                uint32x4_t d = vsetq_lane_u32(*(const uint32_t*)&srcn[lx3],
-                    vsetq_lane_u32(*(const uint32_t*)&srcn[lx2],
-                    vsetq_lane_u32(*(const uint32_t*)&srcn[lx1],
-                    vdupq_n_u32(*(const uint32_t*)&srcn[lx0]), 1), 2), 3);
-                uint32x4_t dn = vsetq_lane_u32(*(const uint32_t*)&srcn[lx3 + 1],
-                    vsetq_lane_u32(*(const uint32_t*)&srcn[lx2 + 1],
-                    vsetq_lane_u32(*(const uint32_t*)&srcn[lx1 + 1],
-                    vdupq_n_u32(*(const uint32_t*)&srcn[lx0 + 1]), 1), 2), 3);
                 int16x8_t xf_lo = vcombine_s16(vdup_n_s16((int16_t)xf0), vdup_n_s16((int16_t)xf1));
                 int16x8_t xf_hi = vcombine_s16(vdup_n_s16((int16_t)xf2), vdup_n_s16((int16_t)xf3));
 #define VI_LERP16(a, b, f) vaddq_s16(a, vshrq_n_s16(vaddq_s16(vmulq_s16(vsubq_s16(b, a), f), rnd), 5))
@@ -308,16 +328,37 @@ static void vi_lerp_row(struct rgba* row, int32_t hres, int32_t minh, int32_t ma
                 int16x8_t c_hi = vreinterpretq_s16_u16(vmovl_u8(vget_high_u8(vreinterpretq_u8_u32(c))));
                 int16x8_t cn_lo = vreinterpretq_s16_u16(vmovl_u8(vget_low_u8(vreinterpretq_u8_u32(cn))));
                 int16x8_t cn_hi = vreinterpretq_s16_u16(vmovl_u8(vget_high_u8(vreinterpretq_u8_u32(cn))));
-                int16x8_t d_lo = vreinterpretq_s16_u16(vmovl_u8(vget_low_u8(vreinterpretq_u8_u32(d))));
-                int16x8_t d_hi = vreinterpretq_s16_u16(vmovl_u8(vget_high_u8(vreinterpretq_u8_u32(d))));
-                int16x8_t dn_lo = vreinterpretq_s16_u16(vmovl_u8(vget_low_u8(vreinterpretq_u8_u32(dn))));
-                int16x8_t dn_hi = vreinterpretq_s16_u16(vmovl_u8(vget_high_u8(vreinterpretq_u8_u32(dn))));
-                int16x8_t cy_lo = VI_LERP16(c_lo, d_lo, yf);
-                int16x8_t cy_hi = VI_LERP16(c_hi, d_hi, yf);
-                int16x8_t ny_lo = VI_LERP16(cn_lo, dn_lo, yf);
-                int16x8_t ny_hi = VI_LERP16(cn_hi, dn_hi, yf);
-                int16x8_t o_lo = VI_LERP16(cy_lo, ny_lo, xf_lo);
-                int16x8_t o_hi = VI_LERP16(cy_hi, ny_hi, xf_hi);
+                int16x8_t cy_lo, cy_hi, ny_lo, ny_hi, o_lo, o_hi;
+                /* yfrac == 0 keeps the vertical blends as identities and
+                 * the next-scanline cache unread (it may be unfilled). */
+                if (yfrac == 0)
+                {
+                    cy_lo = c_lo;
+                    cy_hi = c_hi;
+                    ny_lo = cn_lo;
+                    ny_hi = cn_hi;
+                }
+                else
+                {
+                    uint32x4_t d = vsetq_lane_u32(*(const uint32_t*)&srcn[lx3],
+                        vsetq_lane_u32(*(const uint32_t*)&srcn[lx2],
+                        vsetq_lane_u32(*(const uint32_t*)&srcn[lx1],
+                        vdupq_n_u32(*(const uint32_t*)&srcn[lx0]), 1), 2), 3);
+                    uint32x4_t dn = vsetq_lane_u32(*(const uint32_t*)&srcn[lx3 + 1],
+                        vsetq_lane_u32(*(const uint32_t*)&srcn[lx2 + 1],
+                        vsetq_lane_u32(*(const uint32_t*)&srcn[lx1 + 1],
+                        vdupq_n_u32(*(const uint32_t*)&srcn[lx0 + 1]), 1), 2), 3);
+                    int16x8_t d_lo = vreinterpretq_s16_u16(vmovl_u8(vget_low_u8(vreinterpretq_u8_u32(d))));
+                    int16x8_t d_hi = vreinterpretq_s16_u16(vmovl_u8(vget_high_u8(vreinterpretq_u8_u32(d))));
+                    int16x8_t dn_lo = vreinterpretq_s16_u16(vmovl_u8(vget_low_u8(vreinterpretq_u8_u32(dn))));
+                    int16x8_t dn_hi = vreinterpretq_s16_u16(vmovl_u8(vget_high_u8(vreinterpretq_u8_u32(dn))));
+                    cy_lo = VI_LERP16(c_lo, d_lo, yf);
+                    cy_hi = VI_LERP16(c_hi, d_hi, yf);
+                    ny_lo = VI_LERP16(cn_lo, dn_lo, yf);
+                    ny_hi = VI_LERP16(cn_hi, dn_hi, yf);
+                }
+                o_lo = VI_LERP16(cy_lo, ny_lo, xf_lo);
+                o_hi = VI_LERP16(cy_hi, ny_hi, xf_hi);
 #undef VI_LERP16
                 uint8x16_t out = vcombine_u8(vqmovun_s16(o_lo), vqmovun_s16(o_hi));
                 out = vbslq_u8(vreinterpretq_u8_u32(amask), vreinterpretq_u8_u32(c), out);
@@ -341,13 +382,17 @@ static void vi_lerp_row(struct rgba* row, int32_t hres, int32_t minh, int32_t ma
         if (do_lerp && (xf || yfrac))
         {
             struct rgba nextcolor = src[lx + 1];
-            vi_vl_lerp(&color, srcn[lx], yfrac);
-            vi_vl_lerp(&nextcolor, srcn[lx + 1], yfrac);
+            if (yfrac != 0)
+            {
+                vi_vl_lerp(&color, srcn[lx], yfrac);
+                vi_vl_lerp(&nextcolor, srcn[lx + 1], yfrac);
+            }
             vi_vl_lerp(&color, nextcolor, (uint32_t)xf);
         }
         row[x] = color;
     }
 }
+
 
 /* Batched gamma stage over the in-bounds span of one output row.
  * The dither-only mode is exact saturating-add SIMD: the scalar
