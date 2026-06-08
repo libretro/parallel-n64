@@ -76,6 +76,7 @@ void rdp_emit_hle_process_dlist(void)
      * z_buffered default off here; a gDP/state-translation follow-up sets the
      * render mode and the per-frame setup commands. */
     f3dex2_seg_reset();
+    f3dex2_set_rdram_size(rdram_size);
     f3dex2_run_dl(&s_gsp, &s_fifo, dl_addr, 0, 0);
 
     /* terminate the command list with exactly one SYNC_FULL (RDP cmd 0x29).

@@ -39,8 +39,13 @@
 
 /* RDRAM/DMEM 32-bit words are stored host-native in this core (the RSP's
  * u32() accessor reads them directly with no byteswap), so read native. */
+static unsigned int s_rdram_size;   /* set per frame; 0 => assume 8 MiB */
+
 static unsigned int rd_u32_be(const unsigned char *r, unsigned int a)
 {
+    unsigned int limit = s_rdram_size ? s_rdram_size : (8u * 1024u * 1024u);
+    if (a + 4u > limit)
+        return 0u;          /* out of range: treat as G_SPNOOP */
     return *(const unsigned int *)(r + a);
 }
 
@@ -55,6 +60,14 @@ static unsigned int s_seg_table[16];
 static int s_textured;
 static int s_zbuffered;
 
+/* RDRAM size and recursion depth bound the display-list walk so a malformed
+ * or mis-segmented list cannot read past RDRAM or recurse without limit (both
+ * would hard-hang the core). s_rdram_size (declared above) is set per frame by
+ * the activation; 0 means "unknown", reads then assume the default 8 MiB. */
+static int          s_dl_depth;
+
+#define DL_MAX_DEPTH 32
+
 static void seg_reset(void)
 {
     int i;
@@ -62,11 +75,17 @@ static void seg_reset(void)
         s_seg_table[i] = 0u;
     s_textured  = 0;
     s_zbuffered = 0;
+    s_dl_depth  = 0;
 }
 
 void f3dex2_seg_reset(void)
 {
     seg_reset();
+}
+
+void f3dex2_set_rdram_size(unsigned int size)
+{
+    s_rdram_size = size;
 }
 
 void rdp_fifo_init(RdpFifo *f, unsigned char *rdram,
@@ -105,6 +124,14 @@ static unsigned int seg_addr(unsigned int w1)
     return (s_seg_table[seg] + (w1 & 0x00ffffffu)) & 0x00ffffffu;
 }
 
+/* true if [a, a+bytes) lies within RDRAM; used to reject mis-segmented
+ * geometry pointers before the frontend dereferences them. */
+static int addr_in_range(unsigned int a, unsigned int bytes)
+{
+    unsigned int limit = s_rdram_size ? s_rdram_size : (8u * 1024u * 1024u);
+    return (a < limit) && (bytes <= limit) && (a + bytes <= limit);
+}
+
 void f3dex2_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
                    int textured, int z_buffered)
 {
@@ -116,6 +143,12 @@ void f3dex2_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
      * seed it when non-zero (callers pass the current state down). */
     if (textured)   s_textured  = textured;
     if (z_buffered) s_zbuffered = z_buffered;
+
+    /* bound recursion: a malformed or mis-segmented G_DL chain could otherwise
+     * recurse until the C stack overflows and the core hard-hangs. */
+    if (s_dl_depth >= DL_MAX_DEPTH)
+        return;
+    s_dl_depth++;
 
     while (running && guard++ < 100000)
     {
@@ -136,7 +169,9 @@ void f3dex2_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
             int projection = (param & MTX_PROJECTION) ? 1 : 0;
             int load = (param & MTX_LOAD) ? 1 : 0;
             int push = (param & MTX_PUSH) ? 1 : 0;
-            gsp_matrix_load(gsp, r, seg_addr(w1), projection, load, push);
+            unsigned int ma = seg_addr(w1);
+            if (addr_in_range(ma, 64u))     /* 16 s16 ints + 16 u16 fracs */
+                gsp_matrix_load(gsp, r, ma, projection, load, push);
             break;
         }
         case F3DEX2_POPMTX:
@@ -147,7 +182,9 @@ void f3dex2_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
         {
             int n  = (int)((w0 >> 12) & 0xff);
             int v0 = (int)((w0 >> 1) & 0x7f) - n;
-            gsp_vertex(gsp, r, seg_addr(w1), n, v0);
+            unsigned int va = seg_addr(w1);
+            if (n > 0 && addr_in_range(va, (unsigned int)n * 16u))
+                gsp_vertex(gsp, r, va, n, v0);
             break;
         }
 
@@ -183,7 +220,9 @@ void f3dex2_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
         case F3DEX2_DL:
         {
             int nopush = (int)((w0 >> 16) & 0xff) & DL_NOPUSH;
-            f3dex2_run_dl(gsp, fifo, seg_addr(w1), s_textured, s_zbuffered);
+            unsigned int da = seg_addr(w1);
+            if (addr_in_range(da, 8u))      /* need at least one command word */
+                f3dex2_run_dl(gsp, fifo, da, s_textured, s_zbuffered);
             if (nopush)
                 running = 0; /* branch (no return) ends this list */
             break;
@@ -212,7 +251,9 @@ void f3dex2_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
             int index = (int)(w0 & 0xff);
             if (index == G_MV_VIEWPORT)
             {
-                gsp_set_viewport(gsp, r, seg_addr(w1));
+                unsigned int vp = seg_addr(w1);
+                if (addr_in_range(vp, 16u))     /* 8 s16: vscale + vtrans */
+                    gsp_set_viewport(gsp, r, vp);
             }
             break;
         }
@@ -301,4 +342,6 @@ void f3dex2_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
             break;
         }
     }
+
+    s_dl_depth--;
 }
