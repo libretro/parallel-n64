@@ -153,10 +153,53 @@ void f3dex2_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
             break;
 
         case F3DEX2_TEXTURE:
+            /* G_TEXTURE sets the texture scale/tile/level the frontend uses
+             * for emitted texcoords. w1 holds the S/T scale (s.16 each),
+             * w0 bits select tile and max LOD level. */
+        {
+            int level = (int)((w0 >> 11) & 0x07);
+            int tile  = (int)((w0 >> 8) & 0x07);
+            float ss  = (float)((w1 >> 16) & 0xffff) / 65536.0f;
+            float ts  = (float)(w1 & 0xffff) / 65536.0f;
+            gsp_set_texture(gsp, ss, ts, tile, level, gsp->tex_w, gsp->tex_h);
+            break;
+        }
+
         case F3DEX2_GEOMETRY:
+            /* geometry-mode bits (lighting, shading, culling). The render
+             * state these imply is reflected by the gDP commands that follow;
+             * no direct RDP command to emit here. */
+            break;
+
         default:
-            /* state-affecting commands handled by the gDP/state layer;
-             * ignored here so geometry walking stays correct. */
+            /* RDP render-state commands embedded in the display list
+             * (G_SETxIMG, G_SETSCISSOR, G_SETCOMBINE, G_RDPSETOTHERMODE,
+             * G_SETTILE/SIZE, G_LOADBLOCK/TILE/TLUT, the SET_*_COLOR commands,
+             * the sync commands, and the rectangles) are already in RDP wire
+             * format: angrylion decodes the command as (word0 >> 24) & 0x3f,
+             * and the GBI bytes 0xE0..0xFF map exactly onto the RDP command
+             * ids under that mask. So these are forwarded to the FIFO
+             * verbatim -- this is the gDP -> RDP "translation", which for the
+             * shared commands is a pass-through.
+             *
+             * The geometry commands (handled above) are the only ones the RSP
+             * actually computes; everything else the RSP passes to the RDP
+             * unchanged, and so do we. Commands outside the RDP range are
+             * RSP-only (matrix/vertex/etc, already handled) or unknown and
+             * are skipped. */
+            if (cmd >= 0xc8 && cmd != F3DEX2_DL && cmd != F3DEX2_ENDDL)
+            {
+                int rdp_id = cmd & 0x3f;
+                /* 0x24..0x3f are the RDP non-triangle commands angrylion
+                 * implements; 0x31 (G_SETKEY*) is not, so skip it. */
+                if (rdp_id >= 0x24 && rdp_id <= 0x3f && rdp_id != 0x31)
+                {
+                    int32_t two[2];
+                    two[0] = (int32_t)w0;
+                    two[1] = (int32_t)w1;
+                    rdp_fifo_append(fifo, two, 2);
+                }
+            }
             break;
         }
     }
