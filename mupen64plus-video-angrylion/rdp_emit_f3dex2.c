@@ -26,6 +26,10 @@
 #define F3DEX2_SETOTHERMODE_L 0xE2
 #define F3DEX2_SETOTHERMODE_H 0xE3
 #define F3DEX2_RDPSETOTHERMODE 0xEF
+#define F3DEX2_TEXRECT        0xE4
+#define F3DEX2_TEXRECTFLIP    0xE5
+#define F3DEX2_RDPHALF_1      0xF1
+#define F3DEX2_RDPHALF_2      0xE1
 
 /* matrix param bits */
 #define MTX_PROJECTION    0x04
@@ -304,6 +308,49 @@ void f3dex2_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
         case F3DEX2_ENDDL:
             running = 0;
             break;
+
+        case F3DEX2_TEXRECT:
+        case F3DEX2_TEXRECTFLIP:
+        {
+            /* TEXTURE_RECTANGLE is a 4-word RDP command (angrylion reads 16
+             * bytes for ids 0x24/0x25), but F3DEX2 delivers it as three DL
+             * commands: the G_TEXRECT(FLIP) word pair carries the rectangle
+             * (xl/yl/xh/yh + tile) and the following two G_RDPHALF commands
+             * carry the texture coordinates -- RDPHALF_2 (0xE1) the s/t pair
+             * and RDPHALF_1 (0xF1) the dsdx/dtdy pair. The previous pass-through
+             * forwarded only the first 2 words, so angrylion consumed the next
+             * command (typically the following G_SETTIMG) as the texrect's tail,
+             * dropping that SET_TEXTURE_IMAGE and corrupting the rectangle's
+             * coordinates. Assemble the full 4-word command and skip the two
+             * RDPHALF words we consumed. */
+            unsigned int h0 = 0u, h1 = 0u;
+            unsigned int c0, c1;
+            int rdp_id = cmd & 0x3f;
+            int32_t tr[4];
+            c0 = rd_u32_be(r, pc);
+            c1 = rd_u32_be(r, pc + 4);
+            /* first RDPHALF */
+            if (((c0 >> 24) & 0xff) == F3DEX2_RDPHALF_2)
+                h0 = rd_u32_be(r, pc + 4);
+            else if (((c0 >> 24) & 0xff) == F3DEX2_RDPHALF_1)
+                h1 = rd_u32_be(r, pc + 4);
+            pc += 8;
+            /* second RDPHALF */
+            c0 = rd_u32_be(r, pc);
+            c1 = rd_u32_be(r, pc + 4);
+            if (((c0 >> 24) & 0xff) == F3DEX2_RDPHALF_2)
+                h0 = rd_u32_be(r, pc + 4);
+            else if (((c0 >> 24) & 0xff) == F3DEX2_RDPHALF_1)
+                h1 = rd_u32_be(r, pc + 4);
+            pc += 8;
+            (void)c1;
+            tr[0] = (int32_t)(((unsigned int)rdp_id << 24) | (w0 & 0x00ffffffu));
+            tr[1] = (int32_t)w1;
+            tr[2] = (int32_t)h0;   /* s, t   (RDPHALF_2) */
+            tr[3] = (int32_t)h1;   /* dsdx, dtdy (RDPHALF_1) */
+            rdp_fifo_append(fifo, tr, 4);
+            break;
+        }
 
         case F3DEX2_SETOTHERMODE_H:
         case F3DEX2_SETOTHERMODE_L:
