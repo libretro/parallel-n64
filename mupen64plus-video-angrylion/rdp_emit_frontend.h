@@ -40,6 +40,8 @@ typedef struct GSPState
     float          tex_scale_s, tex_scale_t;
     int            tex_tile, tex_level, tex_w, tex_h;
 
+    unsigned int   geometry_mode;
+
     GSPVertex vtx[GSP_MAX_VERTICES];
 } GSPState;
 
@@ -63,6 +65,11 @@ void gsp_vertex(GSPState *s, const unsigned char *rdram, unsigned int addr,
 
 /* emit a triangle from three cached vertex indices via the bridge.
  * Writes the RDP command words to cmd; returns the word count. */
+/* F3DEX2 geometry mode (cull bits etc). Set by G_GEOMETRYMODE; consulted by
+ * gsp_triangle to reject back/front-facing triangles the RSP would cull. */
+void gsp_set_geometry_mode(GSPState *s, unsigned int mode);
+unsigned int gsp_get_geometry_mode(const GSPState *s);
+
 int gsp_triangle(GSPState *s, int32_t *cmd, int i0, int i1, int i2,
                  int textured, int z_buffered);
 

@@ -237,6 +237,19 @@ void gsp_vertex(GSPState *s, const unsigned char *rdram, unsigned int addr,
     }
 }
 
+#define GEOM_CULL_FRONT 0x00000200u
+#define GEOM_CULL_BACK  0x00000400u
+
+void gsp_set_geometry_mode(GSPState *s, unsigned int mode)
+{
+    s->geometry_mode = mode;
+}
+
+unsigned int gsp_get_geometry_mode(const GSPState *s)
+{
+    return s->geometry_mode;
+}
+
 int gsp_triangle(GSPState *s, int32_t *cmd, int i0, int i1, int i2,
                  int textured, int z_buffered)
 {
@@ -249,6 +262,33 @@ int gsp_triangle(GSPState *s, int32_t *cmd, int i0, int i1, int i2,
         return 0;
 
     a = &s->vtx[i0]; b = &s->vtx[i1]; c = &s->vtx[i2];
+
+    /* Backface culling, applied to the screen-space triangle exactly as the
+     * RSP does it (the RDP performs no culling of its own). The stored vertex
+     * x/y are clip-space, so project them -- perspective divide then viewport
+     * scale -- before taking the signed area; the sign of that area is the
+     * triangle's winding. Under this projection a back-facing triangle has a
+     * positive area. The RDP receives only the surviving triangles. */
+    if (s->geometry_mode & (GEOM_CULL_FRONT | GEOM_CULL_BACK))
+    {
+        unsigned int cull = s->geometry_mode & (GEOM_CULL_FRONT | GEOM_CULL_BACK);
+        float wa = (a->w != 0.0f) ? 1.0f / a->w : 0.0f;
+        float wb = (b->w != 0.0f) ? 1.0f / b->w : 0.0f;
+        float wc = (c->w != 0.0f) ? 1.0f / c->w : 0.0f;
+        float sxa = a->x * wa * s->viewport.vscale_x;
+        float sya = a->y * wa * s->viewport.vscale_y;
+        float sxb = b->x * wb * s->viewport.vscale_x;
+        float syb = b->y * wb * s->viewport.vscale_y;
+        float sxc = c->x * wc * s->viewport.vscale_x;
+        float syc = c->y * wc * s->viewport.vscale_y;
+        float cross = (sxb - sxa) * (syc - sya) - (sxc - sxa) * (syb - sya);
+        if (cull == (GEOM_CULL_FRONT | GEOM_CULL_BACK))
+            return 0;                       /* cull both: nothing drawn */
+        if (cull == GEOM_CULL_BACK  && cross > 0.0f)
+            return 0;                       /* back-facing rejected */
+        if (cull == GEOM_CULL_FRONT && cross < 0.0f)
+            return 0;                       /* front-facing rejected */
+    }
 
     v0[0]=a->x; v0[1]=a->y; v0[2]=a->z; v0[3]=a->w;
     v0[4]=a->r; v0[5]=a->g; v0[6]=a->b; v0[7]=a->a; v0[8]=a->s; v0[9]=a->t;

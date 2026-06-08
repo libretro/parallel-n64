@@ -238,9 +238,13 @@ void f3dex2_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
         }
 
         case F3DEX2_GEOMETRY:
-            /* geometry-mode bits (lighting, shading, culling). The render
-             * state these imply is reflected by the gDP commands that follow;
-             * no direct RDP command to emit here. */
+            /* G_GEOMETRYMODE clears the bits in ~(w0 & 0xffffff) and sets the
+             * bits in w1: mode = (mode & (w0 & 0xffffff)) | w1. The cull-enable
+             * bits (G_CULL_FRONT/G_CULL_BACK) drive backface rejection, which
+             * the RSP does on the CPU before submitting triangles -- angrylion
+             * (software RDP) performs no culling, so we must apply it here. */
+            gsp_set_geometry_mode(gsp,
+                (gsp_get_geometry_mode(gsp) & (w0 & 0x00ffffffu)) | w1);
             break;
 
         default:
