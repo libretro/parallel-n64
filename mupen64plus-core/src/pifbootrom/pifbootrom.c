@@ -56,7 +56,7 @@ static unsigned int get_tv_type(void)
 /* Simulates end result of PIFBootROM execution */
 void pifbootrom_hle_execute(struct device *dev)
 {
-    uint32_t bsd_dom1_config;
+    uint32_t bsd_dom1_config = 0;
     unsigned int rom_type   = 0;              /* 0:Cart, 1:DD */
     unsigned int reset_type = 0;              /* 0:ColdReset, 1:NMI */
     unsigned int s7         = 0;              /* ??? */
@@ -68,11 +68,13 @@ void pifbootrom_hle_execute(struct device *dev)
       bsd_dom1_config = *(uint32_t*)g_ddrom;
       rom_type = 1;
     }
-    else
+    else if (dev->pi.cart_rom.rom != NULL)
     {
-      //N64 ROM
+      /* N64 ROM */
       bsd_dom1_config = *(uint32_t*)dev->pi.cart_rom.rom;
     }
+    /* else: neither a cart ROM nor a valid 64DD IPL is present; leave
+     * bsd_dom1_config at 0 instead of dereferencing a NULL rom pointer */
 
     g_cp0_regs[CP0_STATUS_REG] = 0x34000000;
     g_cp0_regs[CP0_CONFIG_REG] = 0x7006e463;
