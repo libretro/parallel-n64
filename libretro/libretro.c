@@ -2375,6 +2375,16 @@ void retro_unload_game(void)
 
     EmuThreadStep();
 
+    /* The run loop has stopped (mupencorestop above; r4300_execute torn
+     * down).  Mark the emulator stopped so the core lets us release the
+     * ROM image now: M64CMD_ROM_CLOSE bails while g_EmulatorRunning is
+     * set, which leaked the ROM buffer (up to 64 MiB, allocated by
+     * open_rom()) on every unload and made a subsequent load fail
+     * open_rom()'s "previous ROM image was not freed" guard.  The plugin
+     * romClosed teardown still runs later from mupen_main_exit() in
+     * retro_deinit(), unchanged. */
+    g_EmulatorRunning = 0;
+
     CoreDoCommand(M64CMD_ROM_CLOSE, 0, NULL);
     emu_initialized = false;
     context_setup_first_init = false;
