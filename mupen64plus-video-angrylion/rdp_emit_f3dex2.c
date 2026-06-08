@@ -23,6 +23,9 @@
 #define F3DEX2_MTX        0xDA
 #define F3DEX2_DL         0xDE
 #define F3DEX2_ENDDL      0xDF
+#define F3DEX2_SETOTHERMODE_L 0xE2
+#define F3DEX2_SETOTHERMODE_H 0xE3
+#define F3DEX2_RDPSETOTHERMODE 0xEF
 
 /* matrix param bits */
 #define MTX_PROJECTION    0x04
@@ -62,6 +65,19 @@ static unsigned int s_seg_table[16];
 static int s_textured;
 static int s_zbuffered;
 
+/* The RSP maintains the RDP "other modes" as two 32-bit words (high and low).
+ * F3DEX2 updates them either wholesale (G_RDPSETOTHERMODE / 0xEF) or, far more
+ * commonly, as partial bitfield writes (G_SETOTHERMODE_H/L / 0xE3/0xE2) that
+ * read-modify-write a sub-range and then have the RSP emit a full RDP
+ * SET_OTHER_MODES (0x2f). The cycle type (1- vs 2-cycle) lives in the high word
+ * at bits 20-21 and on OoT is set through G_SETOTHERMODE_H, so the partial
+ * writes MUST be merged and re-emitted as a full 0x2f or every such triangle
+ * renders with a stale cycle type. We mirror that register here. The high word
+ * keeps 0x2f in its command byte (bits 29-24) so the merged word is a valid
+ * SET_OTHER_MODES when forwarded. */
+static unsigned int s_othermode_h;
+static unsigned int s_othermode_l;
+
 /* RDRAM size and recursion depth bound the display-list walk so a malformed
  * or mis-segmented list cannot read past RDRAM or recurse without limit (both
  * would hard-hang the core). s_rdram_size (declared above) is set per frame by
@@ -78,6 +94,10 @@ static void seg_reset(void)
     s_textured  = 0;
     s_zbuffered = 0;
     s_dl_depth  = 0;
+    /* command byte 0x2f in bits 29-24 so the high word is a valid
+     * SET_OTHER_MODES when forwarded; mode bits start cleared (1-cycle). */
+    s_othermode_h = 0x2fu << 24;
+    s_othermode_l = 0u;
 }
 
 void f3dex2_seg_reset(void)
@@ -284,6 +304,59 @@ void f3dex2_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
         case F3DEX2_ENDDL:
             running = 0;
             break;
+
+        case F3DEX2_SETOTHERMODE_H:
+        case F3DEX2_SETOTHERMODE_L:
+        {
+            /* Partial other-modes update. F3DEX2 encodes a bitfield write as
+             * length = (w0 & 0xff) + 1 bits, placed at
+             * shift = 32 - ((w0 >> 8) & 0xff) - length (clamped at 0); the new
+             * bits come from w1. Merge into the mirrored high (0xE3) or low
+             * (0xE2) word, then emit a full RDP SET_OTHER_MODES so angrylion
+             * sees the resulting cycle type / render mode. */
+            unsigned int len = ((w0 >> 0) & 0xffu) + 1u;
+            unsigned int shb = (w0 >> 8) & 0xffu;
+            unsigned int shift;
+            unsigned int mask;
+            int32_t two[2];
+            if ((32u - shb) < len)
+                shift = 0u;
+            else
+                shift = 32u - shb - len;
+            if (len >= 32u)
+                mask = 0xffffffffu;
+            else
+                mask = ((1u << len) - 1u) << shift;
+            if (cmd == F3DEX2_SETOTHERMODE_H)
+                s_othermode_h = (s_othermode_h & ~mask)
+                              | ((unsigned int)w1 & mask)
+                              | (0x2fu << 24);
+            else
+                s_othermode_l = (s_othermode_l & ~mask)
+                              | ((unsigned int)w1 & mask);
+            s_zbuffered = (((s_othermode_l >> 4) & 1u) ||
+                           ((s_othermode_l >> 5) & 1u)) ? 1 : 0;
+            two[0] = (int32_t)(s_othermode_h | (0x2fu << 24));
+            two[1] = (int32_t)s_othermode_l;
+            rdp_fifo_append(fifo, two, 2);
+            break;
+        }
+
+        case F3DEX2_RDPSETOTHERMODE:
+        {
+            /* Wholesale other-modes write: w0 carries the high word (with the
+             * command byte already in bits 29-24), w1 the low word. Mirror both
+             * and forward verbatim as SET_OTHER_MODES. */
+            int32_t two[2];
+            s_othermode_h = (unsigned int)w0;
+            s_othermode_l = (unsigned int)w1;
+            s_zbuffered = (((s_othermode_l >> 4) & 1u) ||
+                           ((s_othermode_l >> 5) & 1u)) ? 1 : 0;
+            two[0] = (int32_t)w0;
+            two[1] = (int32_t)w1;
+            rdp_fifo_append(fifo, two, 2);
+            break;
+        }
 
         case F3DEX2_TEXTURE:
             /* G_TEXTURE sets the texture scale/tile/level the frontend uses
