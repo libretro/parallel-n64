@@ -348,3 +348,127 @@ static void vi_lerp_row(struct rgba* row, int32_t hres, int32_t minh, int32_t ma
         row[x] = color;
     }
 }
+
+/* Batched gamma stage over the in-bounds span of one output row.
+ * The dither-only mode is exact saturating-add SIMD: the scalar
+ * guard if (c < 255) c += dith with dith in {0,1} is precisely a
+ * saturating byte add, with the random bits spread to their channel
+ * byte lanes. The gamma modes are bound by their per-channel table
+ * gathers, so they run as tight four-wide unrolled loops over the
+ * whole-pixel words, keeping the LCG advance inline and exact. The
+ * seed advances once per pixel in row order in every mode, matching
+ * the scalar sequence. */
+static void vi_gamma_row(struct rgba* row, int32_t lo, int32_t hi, bool gamma, bool gdither, uint32_t* rstate)
+{
+    int32_t x = lo;
+    uint32_t st = *rstate;
+
+    switch (((int)gamma << 1) | (int)gdither)
+    {
+    case 0:
+        return;
+
+    case 1:
+#if defined(AL_VI_SSE2)
+        {
+            while (x + 3 < hi)
+            {
+                __m128i pix = _mm_loadu_si128((__m128i*)&row[x]);
+                uint32_t c0, c1, c2, c3;
+                __m128i cd, dith;
+                st = st * 0x343fd + 0x269ec3;
+                c0 = (st >> 16) & 0x7fff;
+                st = st * 0x343fd + 0x269ec3;
+                c1 = (st >> 16) & 0x7fff;
+                st = st * 0x343fd + 0x269ec3;
+                c2 = (st >> 16) & 0x7fff;
+                st = st * 0x343fd + 0x269ec3;
+                c3 = (st >> 16) & 0x7fff;
+                cd = _mm_set_epi32((int)c3, (int)c2, (int)c1, (int)c0);
+                /* cdith bit 0 -> r (byte 2), bit 1 -> g (byte 1), bit 2 -> b
+                 * (byte 0); each bit isolated before its shift */
+                dith = _mm_or_si128(_mm_slli_epi32(_mm_and_si128(cd, _mm_set1_epi32(1)), 16),
+                       _mm_or_si128(_mm_slli_epi32(_mm_and_si128(cd, _mm_set1_epi32(2)), 7),
+                                    _mm_srli_epi32(_mm_and_si128(cd, _mm_set1_epi32(4)), 2)));
+                pix = _mm_adds_epu8(pix, dith);
+                _mm_storeu_si128((__m128i*)&row[x], pix);
+                x += 4;
+            }
+        }
+#elif defined(AL_VI_NEON)
+        {
+            while (x + 3 < hi)
+            {
+                uint8x16_t pix = vld1q_u8((uint8_t*)&row[x]);
+                uint32_t c0, c1, c2, c3;
+                uint32x4_t cd, dith;
+                st = st * 0x343fd + 0x269ec3;
+                c0 = (st >> 16) & 0x7fff;
+                st = st * 0x343fd + 0x269ec3;
+                c1 = (st >> 16) & 0x7fff;
+                st = st * 0x343fd + 0x269ec3;
+                c2 = (st >> 16) & 0x7fff;
+                st = st * 0x343fd + 0x269ec3;
+                c3 = (st >> 16) & 0x7fff;
+                cd = vsetq_lane_u32(c3, vsetq_lane_u32(c2, vsetq_lane_u32(c1, vdupq_n_u32(c0), 1), 2), 3);
+                dith = vorrq_u32(vshlq_n_u32(vandq_u32(cd, vdupq_n_u32(1)), 16),
+                       vorrq_u32(vshlq_n_u32(vandq_u32(cd, vdupq_n_u32(2)), 7),
+                                 vshrq_n_u32(vandq_u32(cd, vdupq_n_u32(4)), 2)));
+                pix = vqaddq_u8(pix, vreinterpretq_u8_u32(dith));
+                vst1q_u8((uint8_t*)&row[x], pix);
+                x += 4;
+            }
+        }
+#endif
+        for (; x < hi; x++)
+        {
+            uint32_t cdith = (uint32_t)((st = st * 0x343fd + 0x269ec3) >> 16) & 0x7fff;
+            uint32_t dith = cdith & 1;
+            if (row[x].r < 255)
+                row[x].r += dith;
+            dith = (cdith >> 1) & 1;
+            if (row[x].g < 255)
+                row[x].g += dith;
+            dith = (cdith >> 2) & 1;
+            if (row[x].b < 255)
+                row[x].b += dith;
+        }
+        break;
+
+    case 2:
+        for (; x + 3 < hi; x += 4)
+        {
+            row[x].r = gamma_table[row[x].r];
+            row[x].g = gamma_table[row[x].g];
+            row[x].b = gamma_table[row[x].b];
+            row[x + 1].r = gamma_table[row[x + 1].r];
+            row[x + 1].g = gamma_table[row[x + 1].g];
+            row[x + 1].b = gamma_table[row[x + 1].b];
+            row[x + 2].r = gamma_table[row[x + 2].r];
+            row[x + 2].g = gamma_table[row[x + 2].g];
+            row[x + 2].b = gamma_table[row[x + 2].b];
+            row[x + 3].r = gamma_table[row[x + 3].r];
+            row[x + 3].g = gamma_table[row[x + 3].g];
+            row[x + 3].b = gamma_table[row[x + 3].b];
+        }
+        for (; x < hi; x++)
+        {
+            row[x].r = gamma_table[row[x].r];
+            row[x].g = gamma_table[row[x].g];
+            row[x].b = gamma_table[row[x].b];
+        }
+        break;
+
+    case 3:
+        for (; x < hi; x++)
+        {
+            uint32_t cdith = (uint32_t)((st = st * 0x343fd + 0x269ec3) >> 16) & 0x7fff;
+            row[x].r = gamma_dither_table[((uint32_t)row[x].r << 6) | (cdith & 0x3f)];
+            row[x].g = gamma_dither_table[((uint32_t)row[x].g << 6) | ((cdith >> 6) & 0x3f)];
+            row[x].b = gamma_dither_table[((uint32_t)row[x].b << 6) | (((cdith >> 9) & 0x38) | (cdith & 7))];
+        }
+        break;
+    }
+
+    *rstate = st;
+}

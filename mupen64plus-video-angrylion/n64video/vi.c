@@ -218,9 +218,7 @@ static void vi_process_full_parallel(uint32_t worker_id)
 
             if (ctrl.gamma_enable || ctrl.gamma_dither_enable) {
                 int32_t gx_hi = maxhpass < hres ? maxhpass : hres;
-                for (x = minhpass > 0 ? minhpass : 0; x < gx_hi; x++) {
-                    gamma_filters(&pixel_row[x], ctrl.gamma_enable, ctrl.gamma_dither_enable, &line_rseed);
-                }
+                vi_gamma_row(pixel_row, minhpass > 0 ? minhpass : 0, gx_hi, ctrl.gamma_enable, ctrl.gamma_dither_enable, &line_rseed);
             }
         } else
         for (x = 0; x < hres; x++, x_offs += x_add) {
