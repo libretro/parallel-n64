@@ -276,8 +276,12 @@ void f3dex2_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
                     s_zbuffered = (zc || zu) ? 1 : 0;
                 }
                 /* 0x24..0x3f are the RDP non-triangle commands angrylion
-                 * implements; 0x31 (G_SETKEY*) is not, so skip it. */
-                if (rdp_id >= 0x24 && rdp_id <= 0x3f && rdp_id != 0x31)
+                 * implements; 0x31 (G_SETKEY*) is not, so skip it. SYNC_FULL
+                 * (0x29) is dropped here too: the activation appends exactly
+                 * one frame terminator, and forwarding the list's own trailing
+                 * G_RDPFULLSYNC as well would complete the frame twice. */
+                if (rdp_id >= 0x24 && rdp_id <= 0x3f &&
+                    rdp_id != 0x31 && rdp_id != 0x29)
                 {
                     int32_t two[2];
                     two[0] = (int32_t)w0;

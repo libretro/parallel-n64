@@ -78,9 +78,10 @@ void rdp_emit_hle_process_dlist(void)
     f3dex2_seg_reset();
     f3dex2_run_dl(&s_gsp, &s_fifo, dl_addr, 0, 0);
 
-    /* terminate the command list with SYNC_FULL (RDP cmd 0x29). angrylion
-     * needs this to flush/complete the frame; without it batched commands
-     * are never executed and nothing is rasterized. */
+    /* terminate the command list with exactly one SYNC_FULL (RDP cmd 0x29).
+     * angrylion needs this to flush/complete the frame; the dispatcher drops
+     * the display list's own trailing G_RDPFULLSYNC (see rdp_emit_f3dex2.c) so
+     * that the frame is completed once, not twice. */
     {
         int32_t sync[2];
         sync[0] = (int32_t)0x29000000u;
