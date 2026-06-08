@@ -15,31 +15,7 @@
 
 #include <string.h>
 
-#if defined(_MSC_VER) && (_MSC_VER < 1600)
-typedef signed   __int32 int32_t;
-typedef unsigned __int32 uint32_t;
-typedef unsigned __int16 uint16_t;
-#else
-#include <stdint.h>
-#endif
-
-typedef struct EmitVertex
-{
-    float x, y, z, w;
-    float r, g, b, a;
-    float s, t;
-} EmitVertex;
-
-int emit_shaded_triangle(int32_t *ew, const EmitVertex *va,
-                         const EmitVertex *vb, const EmitVertex *vc,
-                         int tile, int max_level);
-int emit_shaded_z_triangle(int32_t *ew, const EmitVertex *va,
-                           const EmitVertex *vb, const EmitVertex *vc,
-                           int tile, int max_level);
-int emit_texshade_triangle(int32_t *ew,
-                           const EmitVertex *va, const EmitVertex *vb,
-                           const EmitVertex *vc, int tex_w, int tex_h,
-                           int tile, int max_level);
+#include "rdp_emit.h"
 
 static int32_t to_fix(float v, int frac_bits)
 {

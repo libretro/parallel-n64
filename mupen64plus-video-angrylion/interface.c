@@ -26,6 +26,7 @@ static bool angrylion_init = false;
 int ProcessDListShown = 0;
 
 extern GFX_INFO gfx_info;
+#include "rdp_emit_hle.h"
 
 extern unsigned int screen_width, screen_height;
 extern uint32_t screen_pitch;
@@ -328,6 +329,10 @@ void angrylionProcessDList(void)
 {
    if (!ProcessDListShown)
       ProcessDListShown = 1;
+   /* HLE-graphics path. The core only routes display lists here when the RSP
+    * plugin is HLE; under cxd4/parallel the RDP is fed via ProcessRDPList and
+    * this entry is unused, so there is no cost to the low-level path. */
+   rdp_emit_hle_process_dlist();
 }
 
 void angrylionProcessRDPList(void)

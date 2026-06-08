@@ -407,10 +407,6 @@ static void core_settings_autoselect_rsp_plugin(void)
 #endif
    }
 
-#ifdef HAVE_THR_AL
-   if (gfx_plugin == GFX_ANGRYLION)
-      rsp_plugin = RSP_CXD4;
-#endif
 }
 
 static bool set_variable_visibility(void)
