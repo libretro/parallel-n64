@@ -28,10 +28,6 @@
 #include "r4300.h"
 #include "recomp.h"
 
-#ifdef DBG
-#include "debugger/dbg_debugger.h"
-#include "debugger/dbg_types.h"
-#endif
 
 /* global variable */
 #if !defined(__arm64__) && !defined(__aarch64__)

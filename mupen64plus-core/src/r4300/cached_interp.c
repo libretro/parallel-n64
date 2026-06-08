@@ -47,10 +47,6 @@
 #include "recomp.h"
 #include "tlb.h"
 
-#ifdef DBG
-#include "debugger/dbg_debugger.h"
-#include "debugger/dbg_types.h"
-#endif
 
 /* global variables */
 char invalid_code[0x100000];
@@ -61,11 +57,7 @@ uint32_t jump_to_address;
 // -----------------------------------------------------------
 // Cached interpreter functions (and fallback for dynarec).
 // -----------------------------------------------------------
-#ifdef DBG
-#define UPDATE_DEBUGGER() if (g_DebuggerActive) update_debugger(mupencorePC->addr)
-#else
 #define UPDATE_DEBUGGER() do { } while(0)
-#endif
 
 #define PCADDR mupencorePC->addr
 #define ADD_TO_PC(x) mupencorePC += x;
@@ -173,9 +165,6 @@ static void FIN_BLOCK(void)
    {
       jump_to((mupencorePC-1)->addr+4);
 #if 0
-#ifdef DBG
-      if (g_DebuggerActive) update_debugger(mupencorePC->addr);
-#endif
       /* Used by dynarec only, check should be unnecessary */
 #endif
       mupencorePC->ops();
@@ -188,9 +177,6 @@ static void FIN_BLOCK(void)
       jump_to((mupencorePC-1)->addr+4);
 
 #if 0
-#ifdef DBG
-      if (g_DebuggerActive) update_debugger(mupencorePC->addr);
-#endif
       /* Used by dynarec only, check should be unnecessary */
 #endif
       if (!skip_jump)
@@ -219,9 +205,6 @@ static void NOTCOMPILED(void)
       DebugMessage(M64MSG_ERROR, "not compiled exception");
 
 #if 0
-#ifdef DBG
-   if (g_DebuggerActive) update_debugger(mupencorePC->addr);
-#endif
    /* The preceeding update_debugger SHOULD be unnecessary since it should have been
       called before NOTCOMPILED would have been executed */
 #endif

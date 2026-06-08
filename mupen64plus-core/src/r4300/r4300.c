@@ -42,10 +42,6 @@
 #include "recomph.h"
 #include "tlb.h"
 
-#ifdef DBG
-#include "debugger/dbg_debugger.h"
-#include "debugger/dbg_types.h"
-#endif
 
 unsigned int r4300emu = 0;
 unsigned int count_per_op = COUNT_PER_OP_DEFAULT;

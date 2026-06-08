@@ -52,10 +52,6 @@
 #include "r4300.h"
 #include "tlb.h"
 
-#ifdef DBG
-#include "debugger/dbg_debugger.h"
-#include "debugger/dbg_types.h"
-#endif
 
 static struct precomp_instr interp_PC;
 
@@ -765,9 +761,6 @@ void pure_interpreter(void)
 {
    while (!mupencorestop && !retro_stop_stepping())
    {
-#ifdef DBG
-     if (g_DebuggerActive) update_debugger(mupencorePC->addr);
-#endif
      InterpretOpcode();
    }
 }

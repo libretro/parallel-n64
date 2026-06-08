@@ -123,12 +123,5 @@ void write_rdramFBd(void);
  * Useful for getting fast access to a zone with executable code. */
 uint32_t *fast_mem_access(uint32_t address);
 
-#ifdef DBG
-void activate_memory_break_read(uint32_t address);
-void deactivate_memory_break_read(uint32_t address);
-void activate_memory_break_write(uint32_t address);
-void deactivate_memory_break_write(uint32_t address);
-int get_memory_type(uint32_t address);
-#endif
 
 #endif

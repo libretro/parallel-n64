@@ -48,9 +48,6 @@ EXPORT m64p_error CALL PluginGetVersion(m64p_plugin_type *PluginType, int *Plugi
     if (Capabilities != NULL)
     {
         *Capabilities = 0;
-#if defined(DBG)
-        *Capabilities |= M64CAPS_DEBUGGER;
-#endif
 #if defined(DYNAREC)
         *Capabilities |= M64CAPS_DYNAREC;
 #endif

@@ -195,7 +195,6 @@ SOURCES_C += \
 	$(CORE_DIR)/src/util/array_io.c \
 	$(CORE_DIR)/src/util/random.c
 
-#	$(CORE_DIR)/src/api/debugger.c \
 #	$(CORE_DIR)/src/main/ini_reader.c \
 
 ifeq ($(PLATFORM_EXT), win32)

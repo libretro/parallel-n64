@@ -75,10 +75,6 @@
 #include "../dd/dd_disk.h"
 #include "../ext/libpl.h"
 
-#ifdef DBG
-#include "../debugger/dbg_types.h"
-#include "../debugger/debugger.h"
-#endif
 
 #include <libretro.h>
 
@@ -263,10 +259,6 @@ void new_frame(void)
 void mupen_main_exit(void)
 {
    /* now begin to shut down */
-#ifdef DBG
-   if (g_DebuggerActive)
-      destroy_debugger();
-#endif
 
    if (rsp.romClosed) rsp.romClosed();
    if (input.romClosed) input.romClosed();
@@ -425,10 +417,6 @@ m64p_error main_init(void)
       return M64ERR_PLUGIN_FAIL;
    }
 
-#ifdef DBG
-   if (ConfigGetParamBool(g_CoreConfig, "EnableDebugger"))
-      init_debugger();
-#endif
 
    g_EmulatorRunning = 1;
    StateChanged(M64CORE_EMU_STATE, M64EMU_RUNNING);
@@ -464,10 +452,6 @@ void mupen_main_stop(void)
 
    DebugMessage(M64MSG_STATUS, "Stopping emulation.");
    mupencorestop = 1;
-#ifdef DBG
-   if(g_DebuggerActive)
-      debugger_step();
-#endif
 }
 
 void main_check_inputs(void)

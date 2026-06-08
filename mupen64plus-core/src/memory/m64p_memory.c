@@ -45,13 +45,6 @@
 
 #include "../ext/libpl.h"
 
-#ifdef DBG
-#include "../debugger/dbg_types.h"
-#include "../debugger/dbg_memory.h"
-#include "../debugger/dbg_breakpoints.h"
-
-#include <string.h>
-#endif
 
 #include <stddef.h>
 #include <stdint.h>
@@ -1143,154 +1136,6 @@ static void write_scregd(void)
     writed(write_summercart_regs, &g_dev.pi, mupencoreaddress, cpu_dword);
 }
 
-#ifdef DBG
-static int memtype[0x10000];
-static void (*saved_readmemb[0x10000])(void);
-static void (*saved_readmemh[0x10000])(void);
-static void (*saved_readmem [0x10000])(void);
-static void (*saved_readmemd[0x10000])(void);
-static void (*saved_writememb[0x10000])(void);
-static void (*saved_writememh[0x10000])(void);
-static void (*saved_writemem [0x10000])(void);
-static void (*saved_writememd[0x10000])(void);
-
-static void readmemb_with_bp_checks(void)
-{
-   check_breakpoints_on_mem_access((*r4300_pc())-0x4, mupencoreaddress, 1,
-         M64P_BKP_FLAG_ENABLED | M64P_BKP_FLAG_READ);
-
-   saved_readmemb[mupencoreaddress>>16]();
-}
-
-static void readmemh_with_bp_checks(void)
-{
-   check_breakpoints_on_mem_access((*r4300_pc())-0x4, mupencoreaddress, 2,
-         M64P_BKP_FLAG_ENABLED | M64P_BKP_FLAG_READ);
-
-   saved_readmemh[mupencoreaddress>>16]();
-}
-
-static void readmem_with_bp_checks(void)
-{
-   check_breakpoints_on_mem_access((*r4300_pc())-0x4, mupencoreaddress, 4,
-         M64P_BKP_FLAG_ENABLED | M64P_BKP_FLAG_READ);
-
-   saved_readmem[mupencoreaddress>>16]();
-}
-
-static void readmemd_with_bp_checks(void)
-{
-   check_breakpoints_on_mem_access((*r4300_pc())-0x4, mupencoreaddress, 8,
-         M64P_BKP_FLAG_ENABLED | M64P_BKP_FLAG_READ);
-
-   saved_readmemd[mupencoreaddress>>16]();
-}
-
-static void writememb_with_bp_checks(void)
-{
-   check_breakpoints_on_mem_access((*r4300_pc())-0x4, mupencoreaddress, 1,
-         M64P_BKP_FLAG_ENABLED | M64P_BKP_FLAG_WRITE);
-
-   return saved_writememb[mupencoreaddress>>16]();
-}
-
-static void writememh_with_bp_checks(void)
-{
-   check_breakpoints_on_mem_access((*r4300_pc())-0x4, mupencoreaddress, 2,
-         M64P_BKP_FLAG_ENABLED | M64P_BKP_FLAG_WRITE);
-
-   return saved_writememh[mupencoreaddress>>16]();
-}
-
-static void writemem_with_bp_checks(void)
-{
-   check_breakpoints_on_mem_access((*r4300_pc())-0x4, mupencoreaddress, 4,
-         M64P_BKP_FLAG_ENABLED | M64P_BKP_FLAG_WRITE);
-
-   return saved_writemem[mupencoreaddress>>16]();
-}
-
-static void writememd_with_bp_checks(void)
-{
-   check_breakpoints_on_mem_access((*r4300_pc())-0x4, mupencoreaddress, 8,
-         M64P_BKP_FLAG_ENABLED | M64P_BKP_FLAG_WRITE);
-
-   return saved_writememd[mupencoreaddress>>16]();
-}
-
-void activate_memory_break_read(uint32_t address)
-{
-   uint16_t region = address >> 16;
-
-   if (saved_readmem[region] != NULL)
-      return;
-
-   saved_readmemb[region] = readmemb[region];
-   saved_readmemh[region] = readmemh[region];
-   saved_readmem [region] = readmem [region];
-   saved_readmemd[region] = readmemd[region];
-   readmemb[region] = readmemb_with_bp_checks;
-   readmemh[region] = readmemh_with_bp_checks;
-   readmem [region] = readmem_with_bp_checks;
-   readmemd[region] = readmemd_with_bp_checks;
-}
-
-void deactivate_memory_break_read(uint32_t address)
-{
-   uint16_t region = address >> 16;
-
-   if (saved_readmem[region] == NULL)
-      return;
-
-   readmemb[region] = saved_readmemb[region];
-   readmemh[region] = saved_readmemh[region];
-   readmem [region] = saved_readmem [region];
-   readmemd[region] = saved_readmemd[region];
-   saved_readmemb[region] = NULL;
-   saved_readmemh[region] = NULL;
-   saved_readmem [region] = NULL;
-   saved_readmemd[region] = NULL;
-}
-
-void activate_memory_break_write(uint32_t address)
-{
-   uint16_t region = address >> 16;
-
-   if (saved_writemem[region] != NULL)
-      return;
-
-   saved_writememb[region] = writememb[region];
-   saved_writememh[region] = writememh[region];
-   saved_writemem [region] = writemem [region];
-   saved_writememd[region] = writememd[region];
-   writememb[region] = writememb_with_bp_checks;
-   writememh[region] = writememh_with_bp_checks;
-   writemem [region] = writemem_with_bp_checks;
-   writememd[region] = writememd_with_bp_checks;
-}
-
-void deactivate_memory_break_write(uint32_t address)
-{
-   uint16_t region = address >> 16;
-
-   if (saved_writemem[region] == NULL)
-      return;
-
-   writememb[region] = saved_writememb[region];
-   writememh[region] = saved_writememh[region];
-   writemem [region] = saved_writemem [region];
-   writememd[region] = saved_writememd[region];
-   saved_writememb[region] = NULL;
-   saved_writememh[region] = NULL;
-   saved_writemem [region] = NULL;
-   saved_writememd[region] = NULL;
-}
-
-int get_memory_type(uint32_t address)
-{
-   return memtype[address >> 16];
-}
-#endif
 
 #define R(x) read_ ## x ## b, read_ ## x ## h, read_ ## x, read_ ## x ## d
 #define W(x) write_ ## x ## b, write_ ## x ## h, write_ ## x, write_ ## x ## d
@@ -1300,10 +1145,6 @@ void poweron_memory(void)
 {
    int i;
 
-#ifdef DBG
-   memset(saved_readmem, 0, 0x10000*sizeof(saved_readmem[0]));
-   memset(saved_writemem, 0, 0x10000*sizeof(saved_writemem[0]));
-#endif
 
    /* clear mappings */
    for (i = 0; i < 0x10000; ++i)
@@ -1510,12 +1351,8 @@ void poweron_memory(void)
 
 static void map_region_t(uint16_t region, int type)
 {
-#ifdef DBG
-   memtype[region] = type;
-#else
    (void)region;
    (void)type;
-#endif
 }
 
 static void map_region_r(uint16_t region,
@@ -1524,21 +1361,6 @@ static void map_region_r(uint16_t region,
  void (*read32)(void),
  void (*read64)(void))
 {
-#ifdef DBG
-   if (lookup_breakpoint(((uint32_t)region << 16), 0x10000,
-            M64P_BKP_FLAG_ENABLED | M64P_BKP_FLAG_READ) != -1)
-   {
-      saved_readmemb[region] = read8;
-      saved_readmemh[region] = read16;
-      saved_readmem [region] = read32;
-      saved_readmemd[region] = read64;
-      readmemb[region] = readmemb_with_bp_checks;
-      readmemh[region] = readmemh_with_bp_checks;
-      readmem [region] = readmem_with_bp_checks;
-      readmemd[region] = readmemd_with_bp_checks;
-   }
-   else
-#endif
    {
       readmemb[region] = read8;
       readmemh[region] = read16;
@@ -1553,21 +1375,6 @@ void map_region_w(uint16_t region,
  void (*write32)(void),
  void (*write64)(void))
 {
-#ifdef DBG
-   if (lookup_breakpoint(((uint32_t)region << 16), 0x10000,
-            M64P_BKP_FLAG_ENABLED | M64P_BKP_FLAG_WRITE) != -1)
-   {
-      saved_writememb[region] = write8;
-      saved_writememh[region] = write16;
-      saved_writemem [region] = write32;
-      saved_writememd[region] = write64;
-      writememb[region] = writememb_with_bp_checks;
-      writememh[region] = writememh_with_bp_checks;
-      writemem [region] = writemem_with_bp_checks;
-      writememd[region] = writememd_with_bp_checks;
-   }
-   else
-#endif
    {
       writememb[region] = write8;
       writememh[region] = write16;

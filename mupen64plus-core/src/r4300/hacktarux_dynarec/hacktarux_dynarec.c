@@ -367,7 +367,6 @@ void gencheck_cop1_unusable(void)
 
 static void genupdate_count(unsigned int addr)
 {
-#ifndef DBG
    mov_reg32_imm32(EAX, addr);
 #ifdef __x86_64__
    sub_xreg32_m32rel(EAX, (unsigned int*)(&last_addr));
@@ -383,19 +382,6 @@ static void genupdate_count(unsigned int addr)
    add_m32_reg32((unsigned int*)(&g_cp0_regs[CP0_COUNT_REG]), EAX);
 #endif
 
-#else
-
-#ifdef __x86_64__
-   mov_reg64_imm64(RAX, (uint64_t) (dst+1));
-   mov_m64rel_xreg64((uint64_t *)(&PC), RAX);
-   mov_reg64_imm64(RAX, (uint64_t)update_count);
-   call_reg64(RAX);
-#else
-   mov_m32_imm32((unsigned int*)(&PC), (unsigned int)(dst+1));
-   mov_reg32_imm32(EAX, (unsigned int)update_count);
-   call_reg32(EAX);
-#endif
-#endif
 }
 
 static void gencheck_interrupt(uint64_t instr_structure)
