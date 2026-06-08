@@ -40,6 +40,7 @@ static void vi_fill_cache16(struct rgba* cache, int32_t lo, int32_t hi, uint32_t
             __m128i a16 = _mm_set1_epi16(7);
 
             uint32_t fullbits = 0xffffu;
+            uint16_t pixbuf[8], cvgbuf[8];
             if (aa_reads_cvg)
             {
                 __m128i h8 = _mm_loadl_epi64((const __m128i*)&rdram_hidden[base]);
@@ -47,6 +48,11 @@ static void vi_fill_cache16(struct rgba* cache, int32_t lo, int32_t hi, uint32_t
                 __m128i cvg = _mm_or_si128(_mm_slli_epi16(_mm_and_si128(pix, _mm_set1_epi16(1)), 2), h16);
                 __m128i full = _mm_cmpeq_epi16(cvg, a16);
                 fullbits = (uint32_t)_mm_movemask_epi8(full);
+                if (fullbits != 0xffffu)
+                {
+                    _mm_storeu_si128((__m128i*)pixbuf, pix);
+                    _mm_storeu_si128((__m128i*)cvgbuf, cvg);
+                }
             }
 
             {
@@ -64,7 +70,16 @@ static void vi_fill_cache16(struct rgba* cache, int32_t lo, int32_t hi, uint32_t
                 int32_t e;
                 for (e = 0; e < 8; e++)
                     if (((fullbits >> (2 * e)) & 3u) != 3u)
-                        vi_fetch_filter16(&cache[k + e], fboffset, pixels + (uint32_t)(k + e) - 1, ctrl, hres, fetchstate);
+                    {
+                        int rr = RGBA16_R(pixbuf[e]);
+                        int gg = RGBA16_G(pixbuf[e]);
+                        int bb = RGBA16_B(pixbuf[e]);
+                        video_filter16(&rr, &gg, &bb, fboffset, pixels + (uint32_t)(k + e) - 1, hres, cvgbuf[e], fetchstate);
+                        cache[k + e].r = rr;
+                        cache[k + e].g = gg;
+                        cache[k + e].b = bb;
+                        cache[k + e].a = cvgbuf[e];
+                    }
             }
             k += 8;
             base += 8;
@@ -85,7 +100,7 @@ static void vi_fill_cache16(struct rgba* cache, int32_t lo, int32_t hi, uint32_t
             uint16x8_t pix = vrev32q_u16(raw);
             uint16x8_t a16 = vdupq_n_u16(7);
 
-            uint16_t fullbuf[8];
+            uint16_t fullbuf[8], pixbuf[8], cvgbuf[8];
             int allfull = 1;
             if (aa_reads_cvg)
             {
@@ -94,7 +109,11 @@ static void vi_fill_cache16(struct rgba* cache, int32_t lo, int32_t hi, uint32_t
                 uint16x8_t full = vceqq_u16(cvg, a16);
                 allfull = vminvq_u16(full) == 0xffff;
                 if (!allfull)
+                {
                     vst1q_u16(fullbuf, full);
+                    vst1q_u16(pixbuf, pix);
+                    vst1q_u16(cvgbuf, cvg);
+                }
             }
 
             {
@@ -113,7 +132,16 @@ static void vi_fill_cache16(struct rgba* cache, int32_t lo, int32_t hi, uint32_t
                 int32_t e;
                 for (e = 0; e < 8; e++)
                     if (fullbuf[e] != 0xffff)
-                        vi_fetch_filter16(&cache[k + e], fboffset, pixels + (uint32_t)(k + e) - 1, ctrl, hres, fetchstate);
+                    {
+                        int rr = RGBA16_R(pixbuf[e]);
+                        int gg = RGBA16_G(pixbuf[e]);
+                        int bb = RGBA16_B(pixbuf[e]);
+                        video_filter16(&rr, &gg, &bb, fboffset, pixels + (uint32_t)(k + e) - 1, hres, cvgbuf[e], fetchstate);
+                        cache[k + e].r = rr;
+                        cache[k + e].g = gg;
+                        cache[k + e].b = bb;
+                        cache[k + e].a = cvgbuf[e];
+                    }
             }
             k += 8;
             base += 8;
