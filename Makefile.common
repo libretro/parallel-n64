@@ -608,7 +608,8 @@ CXXFLAGS    += -DHAVE_THR_AL
 ### Angrylion's renderer ###
 SOURCES_CXX += $(VIDEODIR_ANGRYLION)/parallel_al.cpp
 SOURCES_C   += $(VIDEODIR_ANGRYLION)/interface.c \
-				   $(VIDEODIR_ANGRYLION)/n64video.c
+				   $(VIDEODIR_ANGRYLION)/n64video.c \
+				   $(VIDEODIR_ANGRYLION)/rdp_emit.c
 ifeq ($(HAVE_RDP_DUMP), 1)
 	SOURCES_C += $(VIDEODIR_ANGRYLION)/rdp_dump.c
 	CFLAGS   += -DHAVE_RDP_DUMP
