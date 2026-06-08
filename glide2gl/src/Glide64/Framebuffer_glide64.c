@@ -300,6 +300,15 @@ static void DepthBufferRasterize(struct vertexi * vtx, int vertices, int dzdx)
          int             z = left_z + IMUL16(prestep, dzdx);
          uint16_t *ptr_dst = (uint16_t*)(gfx_info.RDRAM + g_gdp.zb_address);
          int         shift = x1 + y1 * rdp.zi_width;
+         /* Number of 16-bit depth entries that fit between zb_address and
+          * the end of RDRAM. DK64 (and others) can present a zb_address /
+          * geometry pair that indexes past the 8 MiB RDRAM, which used to
+          * fault in this software rasterizer; clamp the write to RDRAM like
+          * the colour-image paths in this file already do, rather than
+          * dropping the depth write entirely. */
+         int        zb_max = (g_gdp.zb_address < BMASK)
+                           ? (int)((BMASK - g_gdp.zb_address) >> 1)
+                           : 0;
 
          /* draw to depth buffer */
          for (x = 0; x < width; x++)
@@ -313,7 +322,7 @@ static void DepthBufferRasterize(struct vertexi * vtx, int vertices, int dzdx)
                trueZ = 0x3FFFF;
             encodedZ = zLUT[trueZ];
             idx = (shift+x)^1;
-            if(encodedZ < ptr_dst[idx]) 
+            if(idx >= 0 && idx < zb_max && encodedZ < ptr_dst[idx])
                ptr_dst[idx] = encodedZ;
             z += dzdx;
          }
