@@ -366,6 +366,35 @@ int gsp_triangle(GSPState *s, int32_t *cmd, int i0, int i1, int i2,
 
     a = &s->vtx[i0]; b = &s->vtx[i1]; c = &s->vtx[i2];
 
+    /* Trivial-reject clipping, matching the RSP/GLideN64 model: compute a clip
+     * outcode per vertex against the homogeneous clip volume (x,y in [-w,+w])
+     * and the near plane (w < a small epsilon), then drop the whole triangle if
+     * all three vertices lie outside the SAME plane. This removes triangles
+     * fully behind the camera (w <= 0, whose perspective divide would otherwise
+     * explode into garbage screen coordinates) and triangles fully off one
+     * screen edge -- both of which the real microcode discards. Partly-visible
+     * triangles are kept (angrylion's rasterizer scissors them). */
+    {
+        int ca = 0, cb = 0, cc = 0;
+        if (a->x >  a->w) ca |= 1;
+        if (a->x < -a->w) ca |= 2;
+        if (a->y >  a->w) ca |= 4;
+        if (a->y < -a->w) ca |= 8;
+        if (a->w < 0.01f) ca |= 16;
+        if (b->x >  b->w) cb |= 1;
+        if (b->x < -b->w) cb |= 2;
+        if (b->y >  b->w) cb |= 4;
+        if (b->y < -b->w) cb |= 8;
+        if (b->w < 0.01f) cb |= 16;
+        if (c->x >  c->w) cc |= 1;
+        if (c->x < -c->w) cc |= 2;
+        if (c->y >  c->w) cc |= 4;
+        if (c->y < -c->w) cc |= 8;
+        if (c->w < 0.01f) cc |= 16;
+        if (ca & cb & cc)
+            return 0;
+    }
+
     /* Backface culling, applied to the screen-space triangle exactly as the
      * RSP does it (the RDP performs no culling of its own). The stored vertex
      * x/y are clip-space, so project them -- perspective divide then viewport
