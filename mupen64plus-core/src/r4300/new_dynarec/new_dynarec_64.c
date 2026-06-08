@@ -1950,6 +1950,13 @@ static void cop1_alloc(struct regstat *current,int i)
       alloc_reg(current,i,rt1[i]); // MFC1/CFC1
       current->is32|=1LL<<rt1[i];
     }
+    /* CFC1 reading FCR31 must see the FP condition bit that an inline
+     * fcomp leaves in the FSREG register (its value is not written back
+     * to the FCR31 memory home until FSREG is spilled).  Keep FSREG live
+     * so the CFC1 assemble can read it directly (MRC water-instead-of-
+     * road: the game reads the compare result via cfc1, not bc1t/bc1f). */
+    if(opcode2[i]==2 && ((source[i]>>11)&0x1f)==31)
+      alloc_reg(current,i,FSREG);
     dirty_reg(current,rt1[i]);
     alloc_reg_temp(current,i,-1);
   }

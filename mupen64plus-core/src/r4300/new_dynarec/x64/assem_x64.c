@@ -4282,7 +4282,14 @@ static void cop1_assemble(int i,struct regstat *i_regs)
     if(tl>=0) {
       u_int copr=(source[i]>>11)&0x1f;
       if(copr==0) emit_readword((intptr_t)&FCR0,tl);
-      if(copr==31) emit_readword((intptr_t)&FCR31,tl);
+      if(copr==31) {
+        /* Prefer the live FSREG register: an inline fcomp updates the FP
+         * condition bit there but not in the FCR31 memory home, so a bare
+         * memory read would return a stale condition bit. */
+        signed char fs=get_reg(i_regs->regmap,FSREG);
+        if(fs>=0) emit_mov(fs,tl);
+        else emit_readword((intptr_t)&FCR31,tl);
+      }
     }
   }
   else if (opcode2[i]==6) // CTC1
