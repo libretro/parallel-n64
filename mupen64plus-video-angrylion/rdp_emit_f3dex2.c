@@ -33,9 +33,11 @@
 
 #define F3DEX2_MOVEWORD   0xDB
 #define G_MW_SEGMENT      0x06
+#define G_MW_NUMLIGHT     0x02
 
 #define F3DEX2_MOVEMEM    0xDC
 #define G_MV_VIEWPORT     0x08
+#define G_MV_LIGHT        0x0a
 
 /* RDRAM/DMEM 32-bit words are stored host-native in this core (the RSP's
  * u32() accessor reads them directly with no byteswap), so read native. */
@@ -240,6 +242,11 @@ void f3dex2_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
                 unsigned int seg = (w0 >> 2) & 0x0fu;
                 s_seg_table[seg] = w1 & 0x00ffffffu;
             }
+            else if (index == G_MW_NUMLIGHT)
+            {
+                /* number of directional lights = w1 / 24 */
+                gsp_set_num_lights(gsp, (int)(w1 / 24u));
+            }
             break;
         }
 
@@ -254,6 +261,22 @@ void f3dex2_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
                 unsigned int vp = seg_addr(w1);
                 if (addr_in_range(vp, 16u))     /* 8 s16: vscale + vtrans */
                     gsp_set_viewport(gsp, r, vp);
+            }
+            else if (index == G_MV_LIGHT)
+            {
+                /* G_MOVEMEM/G_MV_LIGHT loads one light. The destination slot is
+                 * encoded in w0 bits 5..15 as a byte offset: offset =
+                 * ((w0 >> 5) & 0x7ff) & 0x7f8, n = offset / 24. n < 2 selects a
+                 * LookAt entry (ignored -- only used for texture-coord gen);
+                 * n >= 2 is directional/ambient light slot n - 2. */
+                unsigned int offset = ((w0 >> 5) & 0x7ffu) & 0x7f8u;
+                int n = (int)(offset / 24u);
+                if (n >= 2)
+                {
+                    unsigned int la = seg_addr(w1);
+                    if (addr_in_range(la, 24u))
+                        gsp_set_light(gsp, r, la, n - 2);
+                }
             }
             break;
         }

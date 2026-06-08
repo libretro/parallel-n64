@@ -18,6 +18,7 @@ extern "C" {
 
 #define GSP_MAX_VERTICES 64   /* N64 vertex buffer holds up to 32/64 */
 #define GSP_MTX_STACK    16
+#define GSP_MAX_LIGHTS   10   /* up to 8 directional + ambient (+ slack) */
 
 /* one loaded+transformed vertex, kept in the frontend's cache */
 typedef struct GSPVertex
@@ -41,6 +42,13 @@ typedef struct GSPState
     int            tex_tile, tex_level, tex_w, tex_h;
 
     unsigned int   geometry_mode;
+
+    /* Vertex lighting state. lights[0..num_lights-1] are directional lights
+     * (rgb + normalized direction); lights[num_lights] holds the ambient
+     * color. Used when G_LIGHTING is set in geometry_mode. */
+    int   num_lights;
+    float light_rgb[GSP_MAX_LIGHTS][3];
+    float light_dir[GSP_MAX_LIGHTS][3];
 
     GSPVertex vtx[GSP_MAX_VERTICES];
 } GSPState;
@@ -69,6 +77,14 @@ void gsp_vertex(GSPState *s, const unsigned char *rdram, unsigned int addr,
  * gsp_triangle to reject back/front-facing triangles the RSP would cull. */
 void gsp_set_geometry_mode(GSPState *s, unsigned int mode);
 unsigned int gsp_get_geometry_mode(const GSPState *s);
+
+/* Vertex lighting. gsp_set_num_lights sets the directional-light count (the
+ * ambient color is the entry just past the last directional light, matching
+ * the RSP layout). gsp_set_light loads one light structure (24 bytes) from
+ * RDRAM at byte address `addr` into slot `index`. */
+void gsp_set_num_lights(GSPState *s, int n);
+void gsp_set_light(GSPState *s, const unsigned char *rdram,
+                   unsigned int addr, int index);
 
 int gsp_triangle(GSPState *s, int32_t *cmd, int i0, int i1, int i2,
                  int textured, int z_buffered);
