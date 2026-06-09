@@ -1,15 +1,19 @@
 /* rdp_emit.c -- self-contained RDP triangle-command encoder for angrylion.
  *
  * Encodes screen-space triangles (per-vertex color, texcoords, perspective
- * W) into the low-level RDP triangle commands angrylion's edgewalker
- * decodes: 0x0c shade, 0x0d shade+Z, 0x0e texshade. The packing is the exact
- * inverse of angrylion's edgewalker_for_prims decode, verified bit-for-bit
- * and pixel-for-pixel against captured real RSP commands.
+ * W, depth) into the low-level RDP triangle commands angrylion's edgewalker
+ * decodes: 0x0c shade, 0x0d shade+Z, 0x0e texshade, 0x0f texshade+Z. The
+ * packing is the exact inverse of angrylion's edgewalker_for_prims decode.
+ *
+ * Integer-only: the RSP/RDP never use floating point. Every coordinate,
+ * attribute and slope is an integer fixed-point quantity, computed with
+ * 64-bit accumulators and integer division exactly as the RSP triangle setup
+ * does. (The previous float implementation was a GLideN64-ism and produced
+ * non-bit-exact slopes -- especially Z.)
  *
  * Language: ISO C89 (ANSI C), MSVC-compatible. No C99/C++ constructs:
  * all declarations at the top of each block; no for-loop initial
- * declarations; no // comments; no compound literals or non-constant
- * aggregate initializers; no C99 <math.h>. Build check:
+ * declarations; no // comments. Build check:
  *   gcc -std=c89 -pedantic -Wall -Wdeclaration-after-statement -Werror
  */
 
@@ -17,12 +21,16 @@
 
 #include "rdp_emit.h"
 
-static int32_t to_fix(float v, int frac_bits)
+/* Signed 64/64 division returning a 32-bit s15.16 result. The plane attribute
+ * slopes are (delta_attr_cross) / (signed area); both are s15.16-derived
+ * integers. The attribute deltas are s15.16 and the area is s15.16*s15.16>>16
+ * scaled below, so the quotient lands back in s15.16. Guards divide-by-zero. */
+static int32_t idiv_fix(int64_t num, int64_t den)
 {
-    double scaled = (double)v * (double)(1L << frac_bits);
-    if (scaled >= 0.0)
-        return (int32_t)(scaled + 0.5);
-    return (int32_t)(scaled - 0.5);
+    if (den == 0)
+        return 0;
+    /* num is already pre-shifted by the caller (<<16) so the quotient is s15.16 */
+    return (int32_t)(num / den);
 }
 
 static void pack_attr(int32_t *ew, int base, int hi_half, int32_t val)
@@ -41,68 +49,123 @@ static void pack_attr(int32_t *ew, int base, int hi_half, int32_t val)
     }
 }
 
+static void pack32(int32_t *ew, int base, int part, int32_t v)
+{
+    if (part == 0)
+    {
+        ew[base]     = (int32_t)(((uint32_t)ew[base]     & 0x0000ffffu) | ((uint32_t)v & 0xffff0000u));
+        ew[base + 4] = (int32_t)(((uint32_t)ew[base + 4] & 0x0000ffffu) | (((uint32_t)v << 16) & 0xffff0000u));
+    }
+    else
+    {
+        ew[base]     = (int32_t)(((uint32_t)ew[base]     & 0xffff0000u) | (((uint32_t)v >> 16) & 0xffffu));
+        ew[base + 4] = (int32_t)(((uint32_t)ew[base + 4] & 0xffff0000u) | ((uint32_t)v & 0xffffu));
+    }
+}
+
+/* x/y are s15.16 screen coordinates. The RDP edge X fields are s15.16 too; the
+ * Y fields (YH/YM/YL) are 11.2 fixed (sub-pixel /4), so the s15.16 y is shifted
+ * down by 14 to land in .2 fixed. The dxXdy edge slopes are s15.16. */
+
+/* shared edge + screen setup; fills ew[0..7] and returns sort order + geometry
+ * (vh/vm/vl pointers, the s15.16 inv-area in *inv_out scaled, dxhdy in
+ * *dxhdy_out) for the attribute solves. */
+static void emit_edges(int32_t *ew, const EmitVertex *va, const EmitVertex *vb,
+                       const EmitVertex *vc, int tile, int max_level,
+                       const EmitVertex **pvh, const EmitVertex **pvm,
+                       const EmitVertex **pvl,
+                       int64_t *area_out, int32_t *dxhdy_out)
+{
+    const EmitVertex *v[3];
+    const EmitVertex *vh, *vm, *vl, *tmp;
+    int i, j, flip;
+    int64_t ex1, ey1, ex2, ey2, cross, area;
+    int32_t dyh, dym, dyl, dxhdy, dxmdy, dxldy;
+
+    v[0] = va; v[1] = vb; v[2] = vc;
+    for (i = 0; i < 2; i++)
+        for (j = i + 1; j < 3; j++)
+            if (v[j]->y < v[i]->y) { tmp = v[i]; v[i] = v[j]; v[j] = tmp; }
+    vh = v[0]; vm = v[1]; vl = v[2];
+
+    /* winding from the signed area of the screen triangle (s15.16 coords) */
+    ex1 = (int64_t)vm->x - vh->x; ey1 = (int64_t)vm->y - vh->y;
+    ex2 = (int64_t)vl->x - vh->x; ey2 = (int64_t)vl->y - vh->y;
+    cross = ex1 * ey2 - ex2 * ey1;          /* s15.16 * s15.16 -> .32 */
+    flip = (cross > 0) ? 1 : 0;
+
+    /* edge slopes dx/dy in s15.16: ((vl.x-vh.x)<<16)/(vl.y-vh.y) */
+    dyh = vl->y - vh->y; dym = vm->y - vh->y; dyl = vl->y - vm->y;
+    dxhdy = dyh ? (int32_t)((((int64_t)(vl->x - vh->x)) << 16) / dyh) : 0;
+    dxmdy = dym ? (int32_t)((((int64_t)(vm->x - vh->x)) << 16) / dym) : 0;
+    dxldy = dyl ? (int32_t)((((int64_t)(vl->x - vm->x)) << 16) / dyl) : 0;
+
+    memset(ew, 0, 24 * sizeof(int32_t));
+
+    /* YH/YM/YL: s15.16 y -> .2 fixed = y >> 14, masked to 14 bits */
+    ew[0] = (int32_t)(((uint32_t)(flip ? 1 : 0) << 23)
+          | ((uint32_t)(max_level & 7) << 19)
+          | ((uint32_t)(tile & 7) << 16)
+          | (((uint32_t)(vl->y >> 14)) & 0x3fffu));
+    ew[1] = (int32_t)((((uint32_t)(vm->y >> 14) & 0x3fffu) << 16)
+          |  ((uint32_t)(vh->y >> 14) & 0x3fffu));
+
+    ew[2] = vm->x;   /* xL: s15.16 screen x */
+    ew[3] = dxldy;
+    ew[4] = vh->x;   /* xH */
+    ew[5] = dxhdy;
+    ew[6] = vh->x;   /* xM */
+    ew[7] = dxmdy;
+
+    /* signed area (s15.16*s15.16 >> 16 -> s15.16) used as plane divisor */
+    area = ((int64_t)(vm->x - vh->x) * (int64_t)(vl->y - vh->y)
+          - (int64_t)(vl->x - vh->x) * (int64_t)(vm->y - vh->y)) >> 16;
+
+    *pvh = vh; *pvm = vm; *pvl = vl;
+    *area_out = area;
+    *dxhdy_out = dxhdy;
+}
+
+/* Solve one attribute plane: given the three sorted-vertex attribute values
+ * a0(vh),a1(vm),a2(vl) (s15.16) and the screen geometry, return dx/dy/de.
+ * dadx = ((a1-a0)*(Y2-Y0) - (a2-a0)*(Y1-Y0)) / area  (the (<<16)/area gives
+ * s15.16); de = dy + (dxhdy * dx >> 16). */
+static void solve_plane(int32_t a0, int32_t a1, int32_t a2,
+                        int32_t X0, int32_t Y0, int32_t X1, int32_t Y1,
+                        int32_t X2, int32_t Y2, int64_t area, int32_t dxhdy,
+                        int32_t *dx, int32_t *dy, int32_t *de)
+{
+    int64_t nx = ((int64_t)(a1 - a0) * (int64_t)((Y2 - Y0) >> 8)
+                - (int64_t)(a2 - a0) * (int64_t)((Y1 - Y0) >> 8));
+    int64_t ny = ((int64_t)(a2 - a0) * (int64_t)((X1 - X0) >> 8)
+                - (int64_t)(a1 - a0) * (int64_t)((X2 - X0) >> 8));
+    /* nx,ny are attr(s15.16) * coord(s7.16>>8 = s15.8) = s.24; divide by
+     * area(s15.16) then renormalise: result*256 keeps s15.16. */
+    int32_t ddx = idiv_fix(nx << 8, area);
+    int32_t ddy = idiv_fix(ny << 8, area);
+    *dx = ddx;
+    *dy = ddy;
+    *de = ddy + (int32_t)(((int64_t)dxhdy * ddx) >> 16);
+}
+
 int emit_shaded_triangle(int32_t *ew, const EmitVertex *va,
                          const EmitVertex *vb, const EmitVertex *vc,
                          int tile, int max_level)
 {
-    const EmitVertex *v[3];
-    const EmitVertex *vh;
-    const EmitVertex *vm;
-    const EmitVertex *vl;
-    const EmitVertex *tmp;
-    int i, j, chan;
-    float ex1, ey1, ex2, ey2, cross;
-    int flip;
-    float dyh, dym, dyl, dxhdy_f, dxmdy_f, dxldy_f;
-    float x0, y0, x1, y1, x2, y2, area, inv;
+    const EmitVertex *vh, *vm, *vl;
+    int64_t area;
+    int32_t dxhdy;
+    int32_t X0, Y0, X1, Y1, X2, Y2;
+    int chan;
     int32_t base_c[4], dx_c[4], dy_c[4], de_c[4];
 
-    v[0] = va; v[1] = vb; v[2] = vc;
+    emit_edges(ew, va, vb, vc, tile, max_level, &vh, &vm, &vl, &area, &dxhdy);
 
-    for (i = 0; i < 2; i++)
-    {
-        for (j = i + 1; j < 3; j++)
-        {
-            if (v[j]->y < v[i]->y) { tmp = v[i]; v[i] = v[j]; v[j] = tmp; }
-        }
-    }
-    vh = v[0]; vm = v[1]; vl = v[2];
-
-    ex1 = vm->x - vh->x; ey1 = vm->y - vh->y;
-    ex2 = vl->x - vh->x; ey2 = vl->y - vh->y;
-    cross = ex1 * ey2 - ex2 * ey1;
-    flip = (cross > 0.0f) ? 1 : 0;
-
-    dyh = vl->y - vh->y; dym = vm->y - vh->y; dyl = vl->y - vm->y;
-    dxhdy_f = (dyh != 0.0f) ? (vl->x - vh->x) / dyh : 0.0f;
-    dxmdy_f = (dym != 0.0f) ? (vm->x - vh->x) / dym : 0.0f;
-    dxldy_f = (dyl != 0.0f) ? (vl->x - vm->x) / dyl : 0.0f;
-
-    memset(ew, 0, 24 * sizeof(int32_t));
-
-    ew[0] = (int32_t)(((uint32_t)(flip ? 1 : 0) << 23)
-          | ((uint32_t)(max_level & 7) << 19)
-          | ((uint32_t)(tile & 7) << 16)
-          | ((uint32_t)to_fix(vl->y, 2) & 0x3fffu));
-    ew[1] = (int32_t)((((uint32_t)to_fix(vm->y, 2) & 0x3fffu) << 16)
-          |  ((uint32_t)to_fix(vh->y, 2) & 0x3fffu));
-
-    ew[2] = to_fix(vm->x, 16);
-    ew[3] = to_fix(dxldy_f, 16);
-    ew[4] = to_fix(vh->x, 16);
-    ew[5] = to_fix(dxhdy_f, 16);
-    ew[6] = to_fix(vh->x, 16);
-    ew[7] = to_fix(dxmdy_f, 16);
-
-    x0 = vh->x; y0 = vh->y;
-    x1 = vm->x; y1 = vm->y;
-    x2 = vl->x; y2 = vl->y;
-    area = (x1 - x0) * (y2 - y0) - (x2 - x0) * (y1 - y0);
-    inv  = (area != 0.0f) ? 1.0f / area : 0.0f;
+    X0 = vh->x; Y0 = vh->y; X1 = vm->x; Y1 = vm->y; X2 = vl->x; Y2 = vl->y;
 
     for (chan = 0; chan < 4; chan++)
     {
-        float c0, c1, c2, dcdx, dcdy, dcde;
+        int32_t c0, c1, c2, dcdx, dcdy, dcde;
         switch (chan)
         {
         case 0:  c0 = vh->r; c1 = vm->r; c2 = vl->r; break;
@@ -110,14 +173,12 @@ int emit_shaded_triangle(int32_t *ew, const EmitVertex *va,
         case 2:  c0 = vh->b; c1 = vm->b; c2 = vl->b; break;
         default: c0 = vh->a; c1 = vm->a; c2 = vl->a; break;
         }
-        c0 *= 255.0f; c1 *= 255.0f; c2 *= 255.0f;
-        dcdx = ((c1 - c0) * (y2 - y0) - (c2 - c0) * (y1 - y0)) * inv;
-        dcdy = ((c2 - c0) * (x1 - x0) - (c1 - c0) * (x2 - x0)) * inv;
-        dcde = dcdy + dxhdy_f * dcdx;
-        base_c[chan] = to_fix(c0, 16);
-        dx_c[chan]   = to_fix(dcdx, 16);
-        dy_c[chan]   = to_fix(dcdy, 16);
-        de_c[chan]   = to_fix(dcde, 16);
+        solve_plane(c0, c1, c2, X0, Y0, X1, Y1, X2, Y2, area, dxhdy,
+                    &dcdx, &dcdy, &dcde);
+        base_c[chan] = c0;
+        dx_c[chan]   = dcdx;
+        dy_c[chan]   = dcdy;
+        de_c[chan]   = dcde;
     }
 
     pack_attr(ew, 8, 1, base_c[0]);
@@ -140,37 +201,54 @@ int emit_shaded_triangle(int32_t *ew, const EmitVertex *va,
     return 24;
 }
 
+/* Z block: z (s15.16 screen depth) and dz plane, packed as full 32-bit words at
+ * ewdata[base..base+3]. The depth coefficient domain: the rasterizer walks z
+ * linearly and per-pixel does sz=(z>>10); the 18-bit stored z = (z_int<<6). So
+ * the s15.16 screen z (e->z) feeds the plane directly -- no extra scale. */
+static void emit_z_block(int32_t *ew, int base,
+                         const EmitVertex *va, const EmitVertex *vb,
+                         const EmitVertex *vc)
+{
+    const EmitVertex *vh = va, *vm = vb, *vl = vc, *tmp;
+    int64_t area;
+    int32_t X0, Y0, X1, Y1, X2, Y2;
+    int32_t dyh2, dxhdy2, zdx, zdy, zde;
+    int32_t z0, z1, z2;
+
+    if (vm->y < vh->y) { tmp = vh; vh = vm; vm = tmp; }
+    if (vl->y < vh->y) { tmp = vh; vh = vl; vl = tmp; }
+    if (vl->y < vm->y) { tmp = vm; vm = vl; vl = tmp; }
+
+    X0 = vh->x; Y0 = vh->y; X1 = vm->x; Y1 = vm->y; X2 = vl->x; Y2 = vl->y;
+    area = ((int64_t)(X1 - X0) * (int64_t)(Y2 - Y0)
+          - (int64_t)(X2 - X0) * (int64_t)(Y1 - Y0)) >> 16;
+    dyh2 = vl->y - vh->y;
+    dxhdy2 = dyh2 ? (int32_t)((((int64_t)(vl->x - vh->x)) << 16) / dyh2) : 0;
+
+    /* The depth coefficient domain is the screen z (e->z, 0..G_MAXZ=1023 in
+     * s15.16) scaled to the RDP's sub-precision z: coeff_z = screen_z * 32
+     * (G_MAXZ 10-bit screen z -> 15-bit z range), i.e. << 5 of the s15.16 z.
+     * Verified against the cxd4 LLE oracle (z base 31732 == screen 991.5 * 32). */
+    z0 = (int32_t)(((int64_t)vh->z * 32) >> 0);
+    z1 = (int32_t)(((int64_t)vm->z * 32) >> 0);
+    z2 = (int32_t)(((int64_t)vl->z * 32) >> 0);
+
+    solve_plane(z0, z1, z2, X0, Y0, X1, Y1, X2, Y2, area, dxhdy2,
+                &zdx, &zdy, &zde);
+
+    ew[base + 0] = z0;      /* z at top vertex, coefficient domain s15.16 */
+    ew[base + 1] = zdx;
+    ew[base + 2] = zde;
+    ew[base + 3] = zdy;
+}
+
 int emit_shaded_z_triangle(int32_t *ew, const EmitVertex *va,
                            const EmitVertex *vb, const EmitVertex *vc,
                            int tile, int max_level)
 {
-    float zf;
-
     emit_shaded_triangle(ew, va, vb, vc, tile, max_level);
-
-    zf = (va->z + vb->z + vc->z) / 3.0f;
-    zf = zf * (32767.0f / 1023.0f);
-    if (zf < 0.0f) zf = 0.0f;
-    if (zf > 32767.0f) zf = 32767.0f;
-    ew[24] = (int32_t)((uint32_t)((int32_t)zf) << 16);
-    ew[25] = 0;
-    ew[26] = 0;
-    ew[27] = 0;
+    emit_z_block(ew, 24, va, vb, vc);
     return 28;
-}
-
-static void pack32(int32_t *ew, int base, int part, int32_t v)
-{
-    if (part == 0)
-    {
-        ew[base]     = (int32_t)(((uint32_t)ew[base]     & 0x0000ffffu) | ((uint32_t)v & 0xffff0000u));
-        ew[base + 4] = (int32_t)(((uint32_t)ew[base + 4] & 0x0000ffffu) | (((uint32_t)v << 16) & 0xffff0000u));
-    }
-    else
-    {
-        ew[base]     = (int32_t)(((uint32_t)ew[base]     & 0xffff0000u) | (((uint32_t)v >> 16) & 0xffffu));
-        ew[base + 4] = (int32_t)(((uint32_t)ew[base + 4] & 0xffff0000u) | ((uint32_t)v & 0xffffu));
-    }
 }
 
 int emit_texshade_triangle(int32_t *ew,
@@ -178,103 +256,73 @@ int emit_texshade_triangle(int32_t *ew,
                            const EmitVertex *vc, int tex_w, int tex_h,
                            int tile, int max_level)
 {
-    const EmitVertex *vh;
-    const EmitVertex *vm;
-    const EmitVertex *vl;
-    const EmitVertex *tmp;
-    float X0, Y0, X1, Y1, X2, Y2, det2, inv, dyh2, dxhdy2;
-    float wh, wm, wl;
-    float s0, s1, s2, t0, t1, t2, w0, w1, w2;
-    float sdx, sdy, sde, tdx, tdy, tde, wdx, wdy, wde;
-    float a0, a1, a2;
+    const EmitVertex *vh, *vm, *vl;
+    int64_t area;
+    int32_t dxhdy;
+    int32_t X0, Y0, X1, Y1, X2, Y2;
+    int32_t s0, t0, w0;
+    int32_t sdx, sdy, sde, tdx, tdy, tde, wdx, wdy, wde;
+    int32_t sv[3], tv[3], wv[3];
     int i;
 
     emit_shaded_triangle(ew, va, vb, vc, tile, max_level);
 
-    vh = va; vm = vb; vl = vc;
-    if (vm->y < vh->y) { tmp = vh; vh = vm; vm = tmp; }
-    if (vl->y < vh->y) { tmp = vh; vh = vl; vl = tmp; }
-    if (vl->y < vm->y) { tmp = vm; vm = vl; vl = tmp; }
+    /* sort vh/vm/vl by y, same as emit_edges */
+    {
+        const EmitVertex *v[3], *tmp;
+        int a, b;
+        v[0] = va; v[1] = vb; v[2] = vc;
+        for (a = 0; a < 2; a++)
+            for (b = a + 1; b < 3; b++)
+                if (v[b]->y < v[a]->y) { tmp = v[a]; v[a] = v[b]; v[b] = tmp; }
+        vh = v[0]; vm = v[1]; vl = v[2];
+    }
 
     X0 = vh->x; Y0 = vh->y; X1 = vm->x; Y1 = vm->y; X2 = vl->x; Y2 = vl->y;
-    det2 = (X1 - X0) * (Y2 - Y0) - (X2 - X0) * (Y1 - Y0);
-    if (det2 == 0.0f) det2 = 1.0f;
-    inv = 1.0f / det2;
-    dyh2 = vl->y - vh->y;
-    dxhdy2 = (dyh2 != 0.0f) ? ((vl->x - vh->x) / dyh2) : 0.0f;
-
-    /* Texture / inverse-w coefficients in the RDP's native format -- no fitted
-     * envelope. e->w holds (1/w) renormalised to a plain inverse w; the RDP
-     * inverse-w coefficient is (1/w) * 2^16 so its integer part lands in the
-     * [0, 0x7fff] range the edgewalker reads as w >> 16. The S/T coefficient is
-     * the texel coordinate (S10.5) times that same inverse-w coefficient, so
-     * the per-pixel ss/sw divide recovers the texel. The scale is the hardware
-     * 2^16, not a 2^30 window fitted to the LLE output. */
-    /* vh->w already holds the RDP inverse-w coefficient (1/w) * 2^16. */
-    wh = vh->w;
-    wm = vm->w;
-    wl = vl->w;
-
-    /* W coefficient is the perspNorm-scaled inverse-w (vh->w). The S/T
-     * coefficient is the raw texel times that inverse-w, scaled so S/W recovers
-     * the texel: S = texel * W / 2^16 (the W already carries the 2^16 the
-     * edgewalker reads as the integer part). */
-    s0 = vh->s * wh / 65536.0f; s1 = vm->s * wm / 65536.0f; s2 = vl->s * wl / 65536.0f;
-    t0 = vh->t * wh / 65536.0f; t1 = vm->t * wm / 65536.0f; t2 = vl->t * wl / 65536.0f;
-    w0 = wh; w1 = wm; w2 = wl;
+    area = ((int64_t)(X1 - X0) * (int64_t)(Y2 - Y0)
+          - (int64_t)(X2 - X0) * (int64_t)(Y1 - Y0)) >> 16;
+    dxhdy = (vl->y - vh->y)
+          ? (int32_t)((((int64_t)(vl->x - vh->x)) << 16) / (vl->y - vh->y)) : 0;
     (void)tex_w; (void)tex_h;
 
+    /* The texture S/T coefficient is texel(S10.5 as s15.16) * inverse-w / 2^16;
+     * w coefficient is the inverse-w itself. vh->w holds (1/w)-style coeff. */
+    sv[0] = (int32_t)(((int64_t)vh->s * vh->w) >> 16);
+    sv[1] = (int32_t)(((int64_t)vm->s * vm->w) >> 16);
+    sv[2] = (int32_t)(((int64_t)vl->s * vl->w) >> 16);
+    tv[0] = (int32_t)(((int64_t)vh->t * vh->w) >> 16);
+    tv[1] = (int32_t)(((int64_t)vm->t * vm->w) >> 16);
+    tv[2] = (int32_t)(((int64_t)vl->t * vl->w) >> 16);
+    wv[0] = vh->w; wv[1] = vm->w; wv[2] = vl->w;
 
-    a0 = s0; a1 = s1; a2 = s2;
-    sdx = ((a1 - a0) * (Y2 - Y0) - (a2 - a0) * (Y1 - Y0)) * inv;
-    sdy = ((a2 - a0) * (X1 - X0) - (a1 - a0) * (X2 - X0)) * inv;
-    sde = sdy + dxhdy2 * sdx;
-    a0 = t0; a1 = t1; a2 = t2;
-    tdx = ((a1 - a0) * (Y2 - Y0) - (a2 - a0) * (Y1 - Y0)) * inv;
-    tdy = ((a2 - a0) * (X1 - X0) - (a1 - a0) * (X2 - X0)) * inv;
-    tde = tdy + dxhdy2 * tdx;
-    a0 = w0; a1 = w1; a2 = w2;
-    wdx = ((a1 - a0) * (Y2 - Y0) - (a2 - a0) * (Y1 - Y0)) * inv;
-    wdy = ((a2 - a0) * (X1 - X0) - (a1 - a0) * (X2 - X0)) * inv;
-    wde = wdy + dxhdy2 * wdx;
+    s0 = sv[0]; t0 = tv[0]; w0 = wv[0];
+    solve_plane(sv[0], sv[1], sv[2], X0, Y0, X1, Y1, X2, Y2, area, dxhdy,
+                &sdx, &sdy, &sde);
+    solve_plane(tv[0], tv[1], tv[2], X0, Y0, X1, Y1, X2, Y2, area, dxhdy,
+                &tdx, &tdy, &tde);
+    solve_plane(wv[0], wv[1], wv[2], X0, Y0, X1, Y1, X2, Y2, area, dxhdy,
+                &wdx, &wdy, &wde);
 
     for (i = 24; i < 40; i++) ew[i] = 0;
 
-    /* s0/t0/w0 and the deltas are integer coefficient values (e.g. W = (1/w) *
-     * 2^16 with integer part ~16419). The edgewalker reads them as s15.16 and
-     * takes the integer part via >> 16, so the coefficient must occupy the
-     * integer half: store value << 16. */
-    pack32(ew, 24, 0, (int32_t)(s0 * 65536.0f));  pack32(ew, 24, 1, (int32_t)(t0 * 65536.0f));
-    pack32(ew, 25, 0, (int32_t)(w0 * 65536.0f));
-    pack32(ew, 26, 0, (int32_t)(sdx * 65536.0f)); pack32(ew, 26, 1, (int32_t)(tdx * 65536.0f));
-    pack32(ew, 27, 0, (int32_t)(wdx * 65536.0f));
-    pack32(ew, 32, 0, (int32_t)(sde * 65536.0f)); pack32(ew, 32, 1, (int32_t)(tde * 65536.0f));
-    pack32(ew, 33, 0, (int32_t)(wde * 65536.0f));
-    pack32(ew, 34, 0, (int32_t)(sdy * 65536.0f)); pack32(ew, 34, 1, (int32_t)(tdy * 65536.0f));
-    pack32(ew, 35, 0, (int32_t)(wdy * 65536.0f));
+    pack32(ew, 24, 0, s0);  pack32(ew, 24, 1, t0);
+    pack32(ew, 25, 0, w0);
+    pack32(ew, 26, 0, sdx); pack32(ew, 26, 1, tdx);
+    pack32(ew, 27, 0, wdx);
+    pack32(ew, 32, 0, sde); pack32(ew, 32, 1, tde);
+    pack32(ew, 33, 0, wde);
+    pack32(ew, 34, 0, sdy); pack32(ew, 34, 1, tdy);
+    pack32(ew, 35, 0, wdy);
 
     return 40;
 }
 
-/* 0x0f texshade_z = the 40-word texshade triangle plus the same 4-word Z
- * block used by 0x0d, at ewdata[40..43]: z (s15.16), dzdx, dzde, dzdy.
- * Constant-depth (planar) like the shade_z path. */
 int emit_texshade_z_triangle(int32_t *ew,
                              const EmitVertex *va, const EmitVertex *vb,
                              const EmitVertex *vc, int tex_w, int tex_h,
                              int tile, int max_level)
 {
-    float zf;
-
     emit_texshade_triangle(ew, va, vb, vc, tex_w, tex_h, tile, max_level);
-
-    zf = (va->z + vb->z + vc->z) / 3.0f;
-    zf = zf * (32767.0f / 1023.0f);
-    if (zf < 0.0f) zf = 0.0f;
-    if (zf > 32767.0f) zf = 32767.0f;
-    ew[40] = (int32_t)((uint32_t)((int32_t)zf) << 16);
-    ew[41] = 0;
-    ew[42] = 0;
-    ew[43] = 0;
+    emit_z_block(ew, 40, va, vb, vc);
     return 44;
 }

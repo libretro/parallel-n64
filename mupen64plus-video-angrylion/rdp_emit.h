@@ -13,11 +13,16 @@ typedef signed   __int32 rdp_emit_int32_t;
 extern "C" {
 #endif
 
+/* One projected vertex in the RSP's native fixed-point forms (no float). The
+ * RSP/RDP are integer-only. x,y are s15.16 screen coordinates; z is s15.16
+ * screen depth (0..0x3ffff range in the integer part path); w is the RDP
+ * inverse-w coefficient (perspNorm-scaled 1/w); r,g,b,a are 0..255 color held
+ * as s15.16; s,t are the S10.5 texel coordinate held as s15.16. */
 typedef struct EmitVertex
 {
-    float x, y, z, w;
-    float r, g, b, a;
-    float s, t;
+    int32_t x, y, z, w;
+    int32_t r, g, b, a;
+    int32_t s, t;
 } EmitVertex;
 
 int emit_shaded_triangle(int32_t *ew, const EmitVertex *va,

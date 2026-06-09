@@ -20,14 +20,13 @@ extern "C" {
 #define GSP_MTX_STACK    16
 #define GSP_MAX_LIGHTS   10   /* up to 8 directional + ambient (+ slack) */
 
-/* one loaded+transformed vertex, kept in the frontend's cache */
+/* one loaded+transformed vertex, kept in the frontend's cache (no float) */
 typedef struct GSPVertex
 {
-    int   cx, cy, cz, cw; /* clip-space s15.16 (exact, post combined transform) */
-    float x, y, z, w;     /* clip-space float mirror (legacy consumers) */
-    float r, g, b, a;     /* 0..1 color (from vertex color or lighting) */
-    float s, t;           /* 0..1 texture coordinates (after tex scale) */
-    int   clip;           /* clip flags (outcode) */
+    int32_t cx, cy, cz, cw; /* clip-space s15.16 (exact, post combined transform) */
+    int32_t r, g, b, a;     /* 0..255 color as s15.16 (vertex color or lighting) */
+    int32_t s, t;           /* S10.5 texel coordinate as s15.16 */
+    int     clip;           /* clip flags (outcode) */
 } GSPVertex;
 
 typedef struct GSPState
@@ -50,12 +49,13 @@ typedef struct GSPState
 
     unsigned int   geometry_mode;
 
-    /* Vertex lighting state. lights[0..num_lights-1] are directional lights
-     * (rgb + normalized direction); lights[num_lights] holds the ambient
-     * color. Used when G_LIGHTING is set in geometry_mode. */
+    /* Vertex lighting state (integer, like the RSP). lights[0..num_lights-1]
+     * are directional lights; lights[num_lights] holds the ambient color.
+     * light_rgb is 0..255 per channel; light_dir is the normalized direction
+     * as s.15 fixed (i.e. value/32768). Used when G_LIGHTING is set. */
     int   num_lights;
-    float light_rgb[GSP_MAX_LIGHTS][3];
-    float light_dir[GSP_MAX_LIGHTS][3];
+    int32_t light_rgb[GSP_MAX_LIGHTS][3];
+    int32_t light_dir[GSP_MAX_LIGHTS][3];
 
     GSPVertex vtx[GSP_MAX_VERTICES];
 } GSPState;

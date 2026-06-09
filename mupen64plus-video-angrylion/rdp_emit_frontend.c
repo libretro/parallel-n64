@@ -9,7 +9,7 @@
  */
 
 #include "rdp_emit_frontend.h"
-#include <math.h>
+#include "rdp_emit_recip.h"
 
 /* read a signed 16-bit big-endian halfword from RDRAM (N64 byte order) */
 /* RDRAM is stored as host-native 32-bit words in this core, so a sub-word
@@ -119,28 +119,28 @@ void gsp_init(GSPState *s)
     s->modelview_top = 0;
     mtx_identity(s->combined);
     s->combined_valid = 0;
-    s->viewport.vscale_x = 160.0f;
-    s->viewport.vscale_y = -120.0f;
-    s->viewport.vtrans_x = 160.0f;
-    s->viewport.vtrans_y = 120.0f;
-    s->viewport.vscale_z = 511.0f;
-    s->viewport.vtrans_z = 511.0f;
+    s->viewport.vscale_x = 160 << 16;
+    s->viewport.vscale_y = -120 << 16;
+    s->viewport.vtrans_x = 160 << 16;
+    s->viewport.vtrans_y = 120 << 16;
+    s->viewport.vscale_z = 511 << 16;
+    s->viewport.vtrans_z = 511 << 16;
     s->tex_scale_s = 0x10000u;
     s->tex_scale_t = 0x10000u;
     s->persp_norm = 0xffffu; /* default until gSPPerspNormalize sets it */
     s->viewport.persp_norm = 0xffffu;
 
-    /* default lighting: no directional lights, white ambient so geometry
+    /* default lighting: no directional lights, white ambient (255) so geometry
      * flagged G_LIGHTING before any light load is not pure black. */
     s->num_lights = 0;
     for (i = 0; i < GSP_MAX_LIGHTS; i++)
     {
-        s->light_rgb[i][0] = 1.0f;
-        s->light_rgb[i][1] = 1.0f;
-        s->light_rgb[i][2] = 1.0f;
-        s->light_dir[i][0] = 0.0f;
-        s->light_dir[i][1] = 0.0f;
-        s->light_dir[i][2] = 0.0f;
+        s->light_rgb[i][0] = 255;
+        s->light_rgb[i][1] = 255;
+        s->light_rgb[i][2] = 255;
+        s->light_dir[i][0] = 0;
+        s->light_dir[i][1] = 0;
+        s->light_dir[i][2] = 0;
     }
     s->tex_tile = 0;
     s->tex_level = 0;
@@ -191,20 +191,16 @@ void gsp_combine_matrices(GSPState *s)
 
 void gsp_set_viewport(GSPState *s, const unsigned char *rdram, unsigned int addr)
 {
-    /* N64 Vp: vscale[0..3] then vtrans[0..3], s16 in 2.10/2 fixed; the X/Y
-     * scale and translate are the .2 fixed fields (divide by 4). */
-    float sx = (float)read_s16_be(rdram, addr + 0) / 4.0f;
-    float sy = (float)read_s16_be(rdram, addr + 2) / 4.0f;
-    float sz = (float)read_s16_be(rdram, addr + 4);
-    float tx = (float)read_s16_be(rdram, addr + 8) / 4.0f;
-    float ty = (float)read_s16_be(rdram, addr + 10) / 4.0f;
-    float tz = (float)read_s16_be(rdram, addr + 12);
-    s->viewport.vscale_x = sx;
-    s->viewport.vscale_y = sy;
-    s->viewport.vscale_z = sz;
-    s->viewport.vtrans_x = tx;
-    s->viewport.vtrans_y = ty;
-    s->viewport.vtrans_z = tz;
+    /* N64 Vp: vscale[0..3] then vtrans[0..3] (s16). X/Y are 10.2 fixed (the .2
+     * sub-pixel), so the pixel value is raw/4 -> in s15.16 that is raw<<14. Z
+     * (vscale[2]/vtrans[2] = G_MAXZ/2 = 511) is a plain integer -> raw<<16. All
+     * stored as s15.16, integer-only (no float). */
+    s->viewport.vscale_x = (int32_t)read_s16_be(rdram, addr + 0) << 14;
+    s->viewport.vscale_y = (int32_t)read_s16_be(rdram, addr + 2) << 14;
+    s->viewport.vscale_z = (int32_t)read_s16_be(rdram, addr + 4) << 16;
+    s->viewport.vtrans_x = (int32_t)read_s16_be(rdram, addr + 8) << 14;
+    s->viewport.vtrans_y = (int32_t)read_s16_be(rdram, addr + 10) << 14;
+    s->viewport.vtrans_z = (int32_t)read_s16_be(rdram, addr + 12) << 16;
 }
 
 void gsp_set_texture(GSPState *s, unsigned int scale_s, unsigned int scale_t,
@@ -257,19 +253,8 @@ void gsp_vertex(GSPState *s, const unsigned char *rdram, unsigned int addr,
         cw = (int64_t)ox * s->combined[0][3] + (int64_t)oy * s->combined[1][3]
            + (int64_t)oz * s->combined[2][3] + (int64_t)s->combined[3][3];
 
-        /* clip coords as s15.16 -> float (the perspective divide is still
-         * float this step; the fixed-point reciprocal is a later step). The
-         * [3][*] translation term is s15.16 with no model-coord factor, so it
-         * is already at the right scale; the ox*M terms are integer*s15.16 =
-         * s15.16 too, so the whole sum is s15.16 and divides by 65536. */
-        /* Store the exact s15.16 clip coordinates; keep float mirrors only for
-         * the legacy cull/backface math that still reads them. The bridge uses
-         * the integer coordinates for the perspective divide. */
-        vt->cx = (int)cx; vt->cy = (int)cy; vt->cz = (int)cz; vt->cw = (int)cw;
-        vt->x = (float)cx / 65536.0f;
-        vt->y = (float)cy / 65536.0f;
-        vt->z = (float)cz / 65536.0f;
-        vt->w = (float)cw / 65536.0f;
+        vt->cx = (int32_t)cx; vt->cy = (int32_t)cy;
+        vt->cz = (int32_t)cz; vt->cw = (int32_t)cw;
 
         st_s = read_s16_be(rdram, base + 10); /* s */
         st_t = read_s16_be(rdram, base + 8);  /* t */
@@ -286,62 +271,74 @@ void gsp_vertex(GSPState *s, const unsigned char *rdram, unsigned int addr,
          * the cxd4 LLE oracle's S coefficient matches raw_st * (1/w) * perspNorm
          * with no extra scale, and the rasterizer's tcshift_cycle applies the
          * tile shift to the recovered texel. */
-        vt->s = (float)st_s;
-        vt->t = (float)st_t;
+        vt->s = (int32_t)st_s << 16;
+        vt->t = (int32_t)st_t << 16;
 
         if (s->geometry_mode & 0x00020000u)     /* G_LIGHTING */
         {
-            /* [12..14] are a signed normal, not a color. Transform by the
-             * modelview rotation, normalize, and sum the directional lights:
-             * shade = ambient + S max(0, n.L_i) * rgb_i. */
+            /* [12..14] are a signed s8 normal. Transform by the modelview
+             * rotation (s15.16), normalize, and sum directional lights:
+             * shade = ambient + S max(0, n.L_i) * rgb_i. All integer. */
             int nxb = (int)(signed char)read_u8_n64(rdram, base + 12);
             int nyb = (int)(signed char)read_u8_n64(rdram, base + 13);
             int nzb = (int)(signed char)read_u8_n64(rdram, base + 14);
-            float nx = (float)nxb, ny = (float)nyb, nz = (float)nzb;
-            float tx = nx * (float)s->modelview[s->modelview_top][0][0] / 65536.0f
-                     + ny * (float)s->modelview[s->modelview_top][1][0] / 65536.0f
-                     + nz * (float)s->modelview[s->modelview_top][2][0] / 65536.0f;
-            float ty = nx * (float)s->modelview[s->modelview_top][0][1] / 65536.0f
-                     + ny * (float)s->modelview[s->modelview_top][1][1] / 65536.0f
-                     + nz * (float)s->modelview[s->modelview_top][2][1] / 65536.0f;
-            float tz = nx * (float)s->modelview[s->modelview_top][0][2] / 65536.0f
-                     + ny * (float)s->modelview[s->modelview_top][1][2] / 65536.0f
-                     + nz * (float)s->modelview[s->modelview_top][2][2] / 65536.0f;
-            float len = tx * tx + ty * ty + tz * tz;
-            float cr, cg, cb;
+            int32_t (*M)[4] = s->modelview[s->modelview_top];
+            /* tx,ty,tz: s8 * s15.16 >> 0 accumulated, then >>16 -> s15.16 normal */
+            int32_t tx = (int32_t)(((int64_t)nxb * M[0][0]
+                       + (int64_t)nyb * M[1][0] + (int64_t)nzb * M[2][0]) >> 16);
+            int32_t ty = (int32_t)(((int64_t)nxb * M[0][1]
+                       + (int64_t)nyb * M[1][1] + (int64_t)nzb * M[2][1]) >> 16);
+            int32_t tz = (int32_t)(((int64_t)nxb * M[0][2]
+                       + (int64_t)nyb * M[1][2] + (int64_t)nzb * M[2][2]) >> 16);
+            int64_t len2 = (int64_t)tx * tx + (int64_t)ty * ty + (int64_t)tz * tz;
+            int32_t cr, cg, cb;
             int li;
-            if (len > 0.0f)
+            if (len2 > 0)
             {
-                len = (float)sqrt((double)len);
-                tx /= len; ty /= len; tz /= len;
+                /* integer sqrt of len2 (s15.16^2 -> the magnitude in s15.16) */
+                int64_t lo = 0, hi = 0x7fffffff, mid, lenfx;
+                while (lo < hi)
+                {
+                    mid = (lo + hi + 1) >> 1;
+                    if (mid * mid <= len2) lo = mid; else hi = mid - 1;
+                }
+                lenfx = lo;                 /* sqrt(len2) in s15.16 */
+                if (lenfx != 0)
+                {
+                    /* normalize to s.15: n/len, scaled by 32768 */
+                    tx = (int32_t)(((int64_t)tx << 15) / lenfx);
+                    ty = (int32_t)(((int64_t)ty << 15) / lenfx);
+                    tz = (int32_t)(((int64_t)tz << 15) / lenfx);
+                }
             }
             cr = s->light_rgb[s->num_lights][0];
             cg = s->light_rgb[s->num_lights][1];
             cb = s->light_rgb[s->num_lights][2];
             for (li = 0; li < s->num_lights; li++)
             {
-                float d = tx * s->light_dir[li][0]
-                        + ty * s->light_dir[li][1]
-                        + tz * s->light_dir[li][2];
-                if (d > 0.0f)
+                /* d = n . L, both s.15 -> product >>15 gives s.15 cosine */
+                int32_t d = (int32_t)(((int64_t)tx * s->light_dir[li][0]
+                          + (int64_t)ty * s->light_dir[li][1]
+                          + (int64_t)tz * s->light_dir[li][2]) >> 15);
+                if (d > 0)
                 {
-                    cr += s->light_rgb[li][0] * d;
-                    cg += s->light_rgb[li][1] * d;
-                    cb += s->light_rgb[li][2] * d;
+                    cr += (int32_t)(((int64_t)s->light_rgb[li][0] * d) >> 15);
+                    cg += (int32_t)(((int64_t)s->light_rgb[li][1] * d) >> 15);
+                    cb += (int32_t)(((int64_t)s->light_rgb[li][2] * d) >> 15);
                 }
             }
-            if (cr > 1.0f) cr = 1.0f;
-            if (cg > 1.0f) cg = 1.0f;
-            if (cb > 1.0f) cb = 1.0f;
-            vt->r = cr; vt->g = cg; vt->b = cb;
-            vt->a = (float)read_u8_n64(rdram, base + 15) / 255.0f;
+            if (cr > 255) cr = 255;
+            if (cg > 255) cg = 255;
+            if (cb > 255) cb = 255;
+            vt->r = cr << 16; vt->g = cg << 16; vt->b = cb << 16;
+            vt->a = (int32_t)read_u8_n64(rdram, base + 15) << 16;
         }
         else
         {
-            vt->r = (float)read_u8_n64(rdram, base + 12) / 255.0f;
-            vt->g = (float)read_u8_n64(rdram, base + 13) / 255.0f;
-            vt->b = (float)read_u8_n64(rdram, base + 14) / 255.0f;
-            vt->a = (float)read_u8_n64(rdram, base + 15) / 255.0f;
+            vt->r = (int32_t)read_u8_n64(rdram, base + 12) << 16;
+            vt->g = (int32_t)read_u8_n64(rdram, base + 13) << 16;
+            vt->b = (int32_t)read_u8_n64(rdram, base + 14) << 16;
+            vt->a = (int32_t)read_u8_n64(rdram, base + 15) << 16;
         }
 
         vt->clip = 0;
@@ -379,39 +376,55 @@ void gsp_set_light(GSPState *s, const unsigned char *rdram,
                    unsigned int addr, int index)
 {
     int dx, dy, dz;
-    float len;
+    int64_t len2;
     if (index < 0 || index >= GSP_MAX_LIGHTS)
         return;
 
     /* Light struct: bytes [0..2] = r,g,b (0..255); the direction is a signed
-     * s8 vector at bytes [8..10]. (Ambient lights carry only color.) */
-    s->light_rgb[index][0] = (float)read_u8_n64(rdram, addr + 0) / 255.0f;
-    s->light_rgb[index][1] = (float)read_u8_n64(rdram, addr + 1) / 255.0f;
-    s->light_rgb[index][2] = (float)read_u8_n64(rdram, addr + 2) / 255.0f;
+     * s8 vector at bytes [8..10]. rgb kept as 0..255 ints; direction normalized
+     * to s.15 (value/32768). Integer-only. */
+    s->light_rgb[index][0] = (int32_t)read_u8_n64(rdram, addr + 0);
+    s->light_rgb[index][1] = (int32_t)read_u8_n64(rdram, addr + 1);
+    s->light_rgb[index][2] = (int32_t)read_u8_n64(rdram, addr + 2);
 
     dx = (int)(signed char)read_u8_n64(rdram, addr + 8);
     dy = (int)(signed char)read_u8_n64(rdram, addr + 9);
     dz = (int)(signed char)read_u8_n64(rdram, addr + 10);
-    len = (float)(dx * dx + dy * dy + dz * dz);
-    if (len > 0.0f)
+    len2 = (int64_t)dx * dx + (int64_t)dy * dy + (int64_t)dz * dz;
+    if (len2 > 0)
     {
-        len = (float)sqrt((double)len);
-        s->light_dir[index][0] = (float)dx / len;
-        s->light_dir[index][1] = (float)dy / len;
-        s->light_dir[index][2] = (float)dz / len;
+        int64_t lo = 0, hi = 0x10000, mid, lenfx = 0;
+        while (lo < hi)                     /* integer sqrt(len2<<? ) */
+        {
+            mid = (lo + hi + 1) >> 1;
+            if (mid * mid <= len2) lo = mid; else hi = mid - 1;
+        }
+        lenfx = lo;
+        if (lenfx != 0)
+        {
+            s->light_dir[index][0] = (int32_t)(((int64_t)dx << 15) / lenfx);
+            s->light_dir[index][1] = (int32_t)(((int64_t)dy << 15) / lenfx);
+            s->light_dir[index][2] = (int32_t)(((int64_t)dz << 15) / lenfx);
+        }
+        else
+        {
+            s->light_dir[index][0] = 0;
+            s->light_dir[index][1] = 0;
+            s->light_dir[index][2] = 0;
+        }
     }
     else
     {
-        s->light_dir[index][0] = 0.0f;
-        s->light_dir[index][1] = 0.0f;
-        s->light_dir[index][2] = 0.0f;
+        s->light_dir[index][0] = 0;
+        s->light_dir[index][1] = 0;
+        s->light_dir[index][2] = 0;
     }
 }
 
 int gsp_triangle(GSPState *s, int32_t *cmd, int i0, int i1, int i2,
                  int textured, int z_buffered)
 {
-    float v0[10], v1[10], v2[10];
+    BridgeVertex v0, v1, v2;
     const GSPVertex *a, *b, *c;
 
     if (i0 < 0 || i0 >= GSP_MAX_VERTICES ||
@@ -421,110 +434,67 @@ int gsp_triangle(GSPState *s, int32_t *cmd, int i0, int i1, int i2,
 
     a = &s->vtx[i0]; b = &s->vtx[i1]; c = &s->vtx[i2];
 
-    /* The RDP triangle command's Z bit (0x0d/0x0f vs 0x0c/0x0e) is set by the
-     * RSP from the G_ZBUFFER geometry-mode bit, NOT from the RDP othermode
-     * render-mode Z_CMP/Z_UPD bits. Those render-mode bits toggle per blender
-     * pass (AA, decals, translucency) and do not change which command id the
-     * RSP emits; deriving Z-buffering from them mis-declassifies depth-tested
-     * triangles to the non-Z command. Read the geometry-mode bit directly. */
+    /* Z bit comes from the G_ZBUFFER geometry-mode bit, not the othermode. */
     z_buffered = (s->geometry_mode & GEOM_ZBUFFER) ? 1 : 0;
 
-    /* Trivial-reject clipping, matching the RSP/GLideN64 model: compute a clip
-     * outcode per vertex against the homogeneous clip volume (x,y in [-w,+w])
-     * and the near plane (w < a small epsilon), then drop the whole triangle if
-     * all three vertices lie outside the SAME plane. This removes triangles
-     * fully behind the camera (w <= 0, whose perspective divide would otherwise
-     * explode into garbage screen coordinates) and triangles fully off one
-     * screen edge -- both of which the real microcode discards. Partly-visible
-     * triangles are kept (angrylion's rasterizer scissors them). */
+    /* Trivial-reject (x/y vs +-w) only when all w > 0 (NoN microcode: behind
+     * the near plane is passed through). Clip coords are s15.16. */
+    if (a->cw > 0 && b->cw > 0 && c->cw > 0)
     {
-        /* OoT/MM run the F3DZEX2.NoN microcode ("No Near clipping"): geometry
-         * at or behind the near plane is neither clipped nor culled, it is
-         * passed straight to the RDP. So there is no near-plane reject here.
-         * The screen-edge (x/y) trivial-reject is only meaningful when a
-         * vertex is in front of the camera (w > 0); comparing x against a
-         * negative w is nonsense, so a triangle with any non-positive w is
-         * never trivially rejected and is handed to the rasterizer, which
-         * scissors it to the screen -- matching NoN behavior. */
-        if (a->w > 0.0f && b->w > 0.0f && c->w > 0.0f)
-        {
-            int ca = 0, cb = 0, cc = 0;
-            if (a->x >  a->w) ca |= 1;
-            if (a->x < -a->w) ca |= 2;
-            if (a->y >  a->w) ca |= 4;
-            if (a->y < -a->w) ca |= 8;
-            if (b->x >  b->w) cb |= 1;
-            if (b->x < -b->w) cb |= 2;
-            if (b->y >  b->w) cb |= 4;
-            if (b->y < -b->w) cb |= 8;
-            if (c->x >  c->w) cc |= 1;
-            if (c->x < -c->w) cc |= 2;
-            if (c->y >  c->w) cc |= 4;
-            if (c->y < -c->w) cc |= 8;
-            if (ca & cb & cc)
-                return 0;
-        }
-    }
-
-    /* Backface culling, applied to the screen-space triangle exactly as the
-     * RSP does it (the RDP performs no culling of its own). The stored vertex
-     * x/y are clip-space, so project them -- perspective divide then viewport
-     * scale -- before taking the signed area; the sign of that area is the
-     * triangle's winding. Under this projection a back-facing triangle has a
-     * positive area. The RDP receives only the surviving triangles. */
-    if (s->geometry_mode & (GEOM_CULL_FRONT | GEOM_CULL_BACK))
-    {
-        unsigned int cull = s->geometry_mode & (GEOM_CULL_FRONT | GEOM_CULL_BACK);
-        float wa = (a->w != 0.0f) ? 1.0f / a->w : 0.0f;
-        float wb = (b->w != 0.0f) ? 1.0f / b->w : 0.0f;
-        float wc = (c->w != 0.0f) ? 1.0f / c->w : 0.0f;
-        float sxa = a->x * wa * s->viewport.vscale_x;
-        float sya = a->y * wa * s->viewport.vscale_y;
-        float sxb = b->x * wb * s->viewport.vscale_x;
-        float syb = b->y * wb * s->viewport.vscale_y;
-        float sxc = c->x * wc * s->viewport.vscale_x;
-        float syc = c->y * wc * s->viewport.vscale_y;
-        float cross = (sxb - sxa) * (syc - sya) - (sxc - sxa) * (syb - sya);
-        if (cull == (GEOM_CULL_FRONT | GEOM_CULL_BACK))
-            return 0;                       /* cull both: nothing drawn */
-        if (cull == GEOM_CULL_BACK  && cross > 0.0f)
-            return 0;                       /* back-facing rejected */
-        if (cull == GEOM_CULL_FRONT && cross < 0.0f)
-            return 0;                       /* front-facing rejected */
-    }
-
-    /* Degenerate-triangle reject. The RSP computes the triangle's screen-space
-     * signed area during its triangle setup and does not emit an RDP command
-     * for a zero-area (collinear or coincident-vertex) triangle: such a
-     * triangle covers no pixels and the microcode's edge-walk setup would
-     * divide by a zero major-edge slope. Project to screen space (perspective
-     * divide then viewport scale) and drop the triangle when the signed area is
-     * zero, matching the RSP, which otherwise leaves a large population of
-     * collapsed triangles (e.g. quad edges seen exactly edge-on) in the
-     * command stream that the real hardware never produces. */
-    {
-        float wa = (a->w != 0.0f) ? 1.0f / a->w : 0.0f;
-        float wb = (b->w != 0.0f) ? 1.0f / b->w : 0.0f;
-        float wc = (c->w != 0.0f) ? 1.0f / c->w : 0.0f;
-        float sxa = a->x * wa * s->viewport.vscale_x;
-        float sya = a->y * wa * s->viewport.vscale_y;
-        float sxb = b->x * wb * s->viewport.vscale_x;
-        float syb = b->y * wb * s->viewport.vscale_y;
-        float sxc = c->x * wc * s->viewport.vscale_x;
-        float syc = c->y * wc * s->viewport.vscale_y;
-        float darea = (sxb - sxa) * (syc - sya) - (sxc - sxa) * (syb - sya);
-        if (darea == 0.0f)
+        int ca = 0, cb = 0, cc = 0;
+        if (a->cx >  a->cw) ca |= 1;
+        if (a->cx < -a->cw) ca |= 2;
+        if (a->cy >  a->cw) ca |= 4;
+        if (a->cy < -a->cw) ca |= 8;
+        if (b->cx >  b->cw) cb |= 1;
+        if (b->cx < -b->cw) cb |= 2;
+        if (b->cy >  b->cw) cb |= 4;
+        if (b->cy < -b->cw) cb |= 8;
+        if (c->cx >  c->cw) cc |= 1;
+        if (c->cx < -c->cw) cc |= 2;
+        if (c->cy >  c->cw) cc |= 4;
+        if (c->cy < -c->cw) cc |= 8;
+        if (ca & cb & cc)
             return 0;
     }
 
-    v0[0]=a->x; v0[1]=a->y; v0[2]=a->z; v0[3]=a->w;
-    v0[4]=a->r; v0[5]=a->g; v0[6]=a->b; v0[7]=a->a; v0[8]=a->s; v0[9]=a->t;
-    v1[0]=b->x; v1[1]=b->y; v1[2]=b->z; v1[3]=b->w;
-    v1[4]=b->r; v1[5]=b->g; v1[6]=b->b; v1[7]=b->a; v1[8]=b->s; v1[9]=b->t;
-    v2[0]=c->x; v2[1]=c->y; v2[2]=c->z; v2[3]=c->w;
-    v2[4]=c->r; v2[5]=c->g; v2[6]=c->b; v2[7]=c->a; v2[8]=c->s; v2[9]=c->t;
+    /* Backface cull and degenerate reject on the screen-space signed area.
+     * Project with the RSP fixed reciprocal of w and the viewport x/y scale,
+     * then take the signed area; its sign is the winding. Integer-only. */
+    {
+        int32_t ra = rsp_recip_div(a->cw);
+        int32_t rb = rsp_recip_div(b->cw);
+        int32_t rc = rsp_recip_div(c->cw);
+        int32_t sxa = (int32_t)((((int64_t)a->cx * ra) >> 15) * (int64_t)s->viewport.vscale_x >> 16);
+        int32_t sya = (int32_t)((((int64_t)a->cy * ra) >> 15) * (int64_t)s->viewport.vscale_y >> 16);
+        int32_t sxb = (int32_t)((((int64_t)b->cx * rb) >> 15) * (int64_t)s->viewport.vscale_x >> 16);
+        int32_t syb = (int32_t)((((int64_t)b->cy * rb) >> 15) * (int64_t)s->viewport.vscale_y >> 16);
+        int32_t sxc = (int32_t)((((int64_t)c->cx * rc) >> 15) * (int64_t)s->viewport.vscale_x >> 16);
+        int32_t syc = (int32_t)((((int64_t)c->cy * rc) >> 15) * (int64_t)s->viewport.vscale_y >> 16);
+        int64_t cross = (int64_t)(sxb - sxa) * (syc - sya)
+                      - (int64_t)(sxc - sxa) * (syb - sya);
+        if (s->geometry_mode & (GEOM_CULL_FRONT | GEOM_CULL_BACK))
+        {
+            unsigned int cull = s->geometry_mode & (GEOM_CULL_FRONT | GEOM_CULL_BACK);
+            if (cull == (GEOM_CULL_FRONT | GEOM_CULL_BACK))
+                return 0;
+            if (cull == GEOM_CULL_BACK  && cross > 0)
+                return 0;
+            if (cull == GEOM_CULL_FRONT && cross < 0)
+                return 0;
+        }
+        if (cross == 0)
+            return 0;                       /* degenerate */
+    }
 
-    return bridge_add_triangle(cmd, v0, v1, v2, &s->viewport,
+    v0.cx = a->cx; v0.cy = a->cy; v0.cz = a->cz; v0.cw = a->cw;
+    v0.r = a->r; v0.g = a->g; v0.b = a->b; v0.a = a->a; v0.s = a->s; v0.t = a->t;
+    v1.cx = b->cx; v1.cy = b->cy; v1.cz = b->cz; v1.cw = b->cw;
+    v1.r = b->r; v1.g = b->g; v1.b = b->b; v1.a = b->a; v1.s = b->s; v1.t = b->t;
+    v2.cx = c->cx; v2.cy = c->cy; v2.cz = c->cz; v2.cw = c->cw;
+    v2.r = c->r; v2.g = c->g; v2.b = c->b; v2.a = c->a; v2.s = c->s; v2.t = c->t;
+
+    return bridge_add_triangle(cmd, &v0, &v1, &v2, &s->viewport,
                                textured, z_buffered,
                                s->tex_tile, s->tex_level, s->tex_w, s->tex_h);
 }
