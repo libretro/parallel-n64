@@ -125,8 +125,8 @@ void gsp_init(GSPState *s)
     s->viewport.vtrans_y = 120 << 16;
     s->viewport.vscale_z = 511 << 16;
     s->viewport.vtrans_z = 511 << 16;
-    s->tex_scale_s = 0x10000u;
-    s->tex_scale_t = 0x10000u;
+    s->tex_scale_s = 0x8000u;   /* G_TEXTURE scale, S0.16 with 0x8000 == 1.0 */
+    s->tex_scale_t = 0x8000u;
     s->persp_norm = 0xffffu; /* default until gSPPerspNormalize sets it */
     s->viewport.persp_norm = 0xffffu;
 
@@ -275,14 +275,16 @@ void gsp_vertex(GSPState *s, const unsigned char *rdram, unsigned int addr,
          * collapsed the sampled coordinate toward 0 and drove the texture
          * combiner black. The encoder scales these into the fixed-point
          * inverse-w envelope angrylion expects. */
-        /* Carry the RAW S10.5 texel coordinate into the perspective texture
-         * coefficient. The G_TEXTURE S0.16 scale is applied by the RDP tile
-         * (SETTILE shift), NOT folded into the edge coefficient: empirically
-         * the cxd4 LLE oracle's S coefficient matches raw_st * (1/w) * perspNorm
-         * with no extra scale, and the rasterizer's tcshift_cycle applies the
-         * tile shift to the recovered texel. */
-        vt->s = (int32_t)st_s << 16;
-        vt->t = (int32_t)st_t << 16;
+        /* The RSP texel coordinate is (raw S10.5 st * G_TEXTURE scale) >> 15:
+         * the S0.16 scale field reads 0x8000 as 1.0 (so gSPTexture(0xFFFF)
+         * roughly doubles). Calibrated against the cxd4 LLE oracle on the
+         * pause menu: draws with scale 0x8000 match raw st exactly, draws
+         * with scale 0xFFFF carry exactly twice the raw value; folding the
+         * scale at >> 16 (or not at all) halves the sampled texel for the
+         * 0xFFFF case. Result kept in s15.16:
+         * (st << 16) * scale >> 15 == (st * scale) << 1. */
+        vt->s = (int32_t)(((int64_t)st_s * (int64_t)s->tex_scale_s) << 1);
+        vt->t = (int32_t)(((int64_t)st_t * (int64_t)s->tex_scale_t) << 1);
 
         if (s->geometry_mode & 0x00020000u)     /* G_LIGHTING */
         {

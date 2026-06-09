@@ -508,13 +508,14 @@ void f3dex2_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
                     int32_t two[2];
                     two[0] = (int32_t)w0;
                     /* SET_COLOR_IMAGE (0x3f), SET_Z_IMAGE (0x3e) and
-                     * SET_TEXTURE_IMAGE (0x3d) carry a DRAM pointer in the low
-                     * 24 bits of w1 that may be a segmented/virtual address.
-                     * angrylion masks args[1] & 0x00ffffff with no segment
-                     * table, so resolve to a physical address here. The format
-                     * and width fields in the upper bits of w1 are preserved. */
+                     * SET_TEXTURE_IMAGE (0x3d): w1 is the image DRAM pointer
+                     * and may be a segmented address (segment id in the top
+                     * byte); the format/size/width fields all live in w0.
+                     * The RSP resolves the segment before the command reaches
+                     * the RDP, so resolve fully here -- keeping the segment id
+                     * byte only works for identity-mapped segments. */
                     if (rdp_id == 0x3f || rdp_id == 0x3e || rdp_id == 0x3d)
-                        two[1] = (int32_t)((w1 & 0xff000000u) | (seg_addr(w1) & 0x00ffffffu));
+                        two[1] = (int32_t)seg_addr(w1);
                     else
                         two[1] = (int32_t)w1;
                     rdp_fifo_append(fifo, two, 2);
