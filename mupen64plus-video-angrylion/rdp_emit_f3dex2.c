@@ -232,7 +232,7 @@ void f3dex2_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
             int a = (int)((w0 >> 17) & 0x7f);
             int b = (int)((w0 >> 9) & 0x7f);
             int c = (int)((w0 >> 1) & 0x7f);
-            int32_t cmdw[44];
+            int32_t cmdw[220];
             int nc = gsp_triangle(gsp, cmdw, a, b, c, s_textured, s_zbuffered);
             if (nc > 0) rdp_fifo_append(fifo, cmdw, nc);
             break;
@@ -247,7 +247,7 @@ void f3dex2_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
             int a1 = (int)((w1 >> 17) & 0x7f);
             int b1 = (int)((w1 >> 9) & 0x7f);
             int c1 = (int)((w1 >> 1) & 0x7f);
-            int32_t cmdw[44];
+            int32_t cmdw[220];
             int nc;
             nc = gsp_triangle(gsp, cmdw, a0, b0, c0, s_textured, s_zbuffered);
             if (nc > 0) rdp_fifo_append(fifo, cmdw, nc);
