@@ -16,7 +16,7 @@
 #include "rdp_emit_recip.h"
 
 static void clip_to_emit(EmitVertex *e, const BridgeVertex *v,
-                         const BridgeViewport *vp)
+                         const BridgeViewport *vp, int64_t *w_raw)
 {
     /* Perspective divide. The RSP uses the double-precision reciprocal (VRCPL,
      * refined from the VRCP div_ROM estimate) for the screen-coordinate divide,
@@ -47,21 +47,27 @@ static void clip_to_emit(EmitVertex *e, const BridgeVertex *v,
     e->y = vp->vtrans_y - (int32_t)(((int64_t)ndcy * vp->vscale_y) >> 16);
     e->z = (int32_t)(((int64_t)ndcz * vp->vscale_z) >> 16) + vp->vtrans_z;
 
-    /* Inverse-w coefficient: the RDP coefficient is (1/w) * perspNorm in s1.30
-     * (perspNorm = (1<<17)/(near+far), gSPPerspNormalize), so for a vertex at
-     * the normalisation depth the integer part (w >> 16) lands in the tcdiv
-     * reciprocal LUT domain. Verified against the cxd4 LLE stream: cxd4 W ~
-     * 0x40000000 * pn/w; the previous (VRCP_estimate * pn) << 4 was 2^14 too
-     * small (w >> 16 == 1), which sent every per-pixel S/W,T/W texture divide
-     * out of range and flattened all textures. Computed at full precision
-     * ((pn << 41) / cw, then << 8) -- the RSP's double-precision VRCPL. */
+    /* Inverse-w: hand the caller the full-precision (1/w) * perspNorm as a
+     * 64-bit value, (pn << 41) / cw. The absolute scale of the RDP W
+     * coefficient is free -- the rasterizer's tcdiv normalises the leading
+     * bit of w and only the S:T:W ratios matter -- but its precision is not:
+     * the RSP stores the reciprocal mantissa-normalised, so the emitted W
+     * always lands near 2^30 regardless of the actual depth. Verified against
+     * the cxd4 LLE stream: a pause-menu wall at w ~ 80 under perspNorm 10 and
+     * an ortho HUD quad at w == 1 under perspNorm 0xFFFF both carry W ~
+     * 0x40000000. A fixed post-shift (the previous << 8) is only correct for
+     * one w * pn regime and overflowed int32 for the ortho HUD (negative
+     * garbage W made the per-pixel texture divide collapse, e.g. the A-button
+     * oval vanished). bridge_add_triangle normalises the triangle's three raw
+     * values with one common shift instead. */
     {
         unsigned int pn = vp->persp_norm ? vp->persp_norm : 0xffffu;
         if (v->cw > 0)
-            e->w = (int32_t)((((int64_t)(int)pn << 41) / v->cw) << 8);
+            *w_raw = ((int64_t)(int)pn << 41) / v->cw;
         else
-            e->w = 0;
+            *w_raw = 0;
     }
+    e->w = 0; /* set by the caller after triangle-wide normalisation */
 
     e->r = v->r; e->g = v->g; e->b = v->b; e->a = v->a;
     e->s = v->s; e->t = v->t;
@@ -77,10 +83,34 @@ int bridge_add_triangle(int32_t *cmd,
     EmitVertex a, b, c;
     int n;
     int id;
+    int64_t wa, wb, wc, wmax;
 
-    clip_to_emit(&a, v0, vp);
-    clip_to_emit(&b, v1, vp);
-    clip_to_emit(&c, v2, vp);
+    clip_to_emit(&a, v0, vp, &wa);
+    clip_to_emit(&b, v1, vp, &wb);
+    clip_to_emit(&c, v2, vp, &wc);
+
+    /* Normalise the inverse-w trio with one common power-of-two shift so the
+     * largest value lands in [2^30, 2^31), matching the RSP's mantissa-
+     * normalised reciprocal. One shared shift keeps the three vertices --
+     * and therefore the interpolated plane and the S/T coefficients derived
+     * from them -- in a consistent scale. */
+    wmax = wa;
+    if (wb > wmax) wmax = wb;
+    if (wc > wmax) wmax = wc;
+    if (wmax > 0)
+    {
+        while (wmax >= ((int64_t)1 << 31))
+        {
+            wmax >>= 1; wa >>= 1; wb >>= 1; wc >>= 1;
+        }
+        while (wmax < ((int64_t)1 << 30))
+        {
+            wmax <<= 1; wa <<= 1; wb <<= 1; wc <<= 1;
+        }
+    }
+    a.w = (int32_t)wa;
+    b.w = (int32_t)wb;
+    c.w = (int32_t)wc;
 
     if (textured && z_buffered)
         n = emit_texshade_z_triangle(cmd, &a, &b, &c, tex_w, tex_h, tile, max_level);
