@@ -11230,11 +11230,21 @@ int new_recompile_block(int addr)
 void TLBWI_new(void)
 {
   unsigned int i;
+  unsigned int old_start_even, old_end_even, old_start_odd, old_end_odd;
+  /* The interpreter now ignores INDEX values >= 32 (the TLB has 32
+     entries) rather than halting. Mirror that here so the block
+     invalidation bookkeeping below never indexes tlb_e[] out of bounds
+     for INDEX 32..63 (backport companion to mupen64plus-core#1178). */
+  if ((g_cp0_regs[CP0_INDEX_REG] & 0x3F) >= 32)
+  {
+    cached_interpreter_table.TLBWI();
+    return;
+  }
   /* Remove old entries */
-  unsigned int old_start_even=tlb_e[g_cp0_regs[CP0_INDEX_REG]&0x3F].start_even;
-  unsigned int old_end_even=tlb_e[g_cp0_regs[CP0_INDEX_REG]&0x3F].end_even;
-  unsigned int old_start_odd=tlb_e[g_cp0_regs[CP0_INDEX_REG]&0x3F].start_odd;
-  unsigned int old_end_odd=tlb_e[g_cp0_regs[CP0_INDEX_REG]&0x3F].end_odd;
+  old_start_even=tlb_e[g_cp0_regs[CP0_INDEX_REG]&0x3F].start_even;
+  old_end_even=tlb_e[g_cp0_regs[CP0_INDEX_REG]&0x3F].end_even;
+  old_start_odd=tlb_e[g_cp0_regs[CP0_INDEX_REG]&0x3F].start_odd;
+  old_end_odd=tlb_e[g_cp0_regs[CP0_INDEX_REG]&0x3F].end_odd;
   for (i=old_start_even>>12; i<=old_end_even>>12; i++)
   {
     if(i<0x80000||i>0xBFFFF)
