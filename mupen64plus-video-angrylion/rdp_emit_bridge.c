@@ -34,7 +34,11 @@ static void clip_to_emit(EmitVertex *e, const float *v, const BridgeViewport *vp
     e->x = ndcx * vp->vscale_x + vp->vtrans_x;
     e->y = ndcy * vp->vscale_y + vp->vtrans_y;
     e->z = ndcz * vp->vscale_z + vp->vtrans_z;
-    e->w = (float)recip / 32768.0f / 65536.0f; /* approx 1/w for the encoder */
+    /* Carry the RDP inverse-w coefficient directly: recip is (1/w) * 2^15
+     * (the div_ROM reciprocal), so recip * 2 is (1/w) * 2^16, the coefficient
+     * the edgewalker reads as w >> 16. No lossy round-trip through a tiny
+     * float -- store the integer coefficient as the vertex's w. */
+    e->w = (float)((int32_t)recip * 2);
     e->r = v[4]; e->g = v[5]; e->b = v[6]; e->a = v[7];
     e->s = v[8]; e->t = v[9];
 }

@@ -210,9 +210,10 @@ int emit_texshade_triangle(int32_t *ew,
      * the texel coordinate (S10.5) times that same inverse-w coefficient, so
      * the per-pixel ss/sw divide recovers the texel. The scale is the hardware
      * 2^16, not a 2^30 window fitted to the LLE output. */
-    wh = vh->w * 4294967296.0f; /* (1/w)/2^16 stored * 2^32 = (1/w) * 2^16 */
-    wm = vm->w * 4294967296.0f;
-    wl = vl->w * 4294967296.0f;
+    /* vh->w already holds the RDP inverse-w coefficient (1/w) * 2^16. */
+    wh = vh->w;
+    wm = vm->w;
+    wl = vl->w;
 
     s0 = vh->s * wh; s1 = vm->s * wm; s2 = vl->s * wl;
     t0 = vh->t * wh; t1 = vm->t * wm; t2 = vl->t * wl;
