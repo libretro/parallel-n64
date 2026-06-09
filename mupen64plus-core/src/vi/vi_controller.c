@@ -98,11 +98,28 @@ int read_vi_regs(void* opaque, uint32_t address, uint32_t *word)
 
     if (reg == VI_CURRENT_REG)
     {
+        uint32_t until_next;
+        uint32_t elapsed;
+
         cp0_update_count();
+
+        /* Cycles elapsed within the current field. Guard the unsigned wrap
+         * for the narrow window where the VI event is momentarily overdue
+         * (CP0 Count has just passed next_vi but the event has not been
+         * serviced yet): without this, (next_vi - Count) underflows and
+         * VI_CURRENT reads back garbage for a game polling it in a
+         * raster/vblank wait loop. In the normal case (Count < next_vi)
+         * the value is unchanged. */
+        until_next = (vi->next_vi > cp0_regs[CP0_COUNT_REG])
+                   ? (vi->next_vi - cp0_regs[CP0_COUNT_REG]) : 0u;
+        elapsed    = (until_next < vi->delay) ? (vi->delay - until_next) : vi->delay;
+
+        /* alternate_vi_timing is off by default; its line mapping is an
+         * approximation (elapsed cycles folded into the field height). */
         if (alternate_vi_timing)
-           vi->regs[VI_CURRENT_REG] = (vi->delay - (vi->next_vi - cp0_regs[CP0_COUNT_REG])) % (NTSC_VERTICAL_RESOLUTION + 1);
+           vi->regs[VI_CURRENT_REG] = elapsed % (NTSC_VERTICAL_RESOLUTION + 1);
         else
-           vi->regs[VI_CURRENT_REG] = (vi->delay - (vi->next_vi - cp0_regs[CP0_COUNT_REG])) / g_count_per_scanline;
+           vi->regs[VI_CURRENT_REG] = elapsed / g_count_per_scanline;
         vi->regs[VI_CURRENT_REG] = (vi->regs[VI_CURRENT_REG] & (~1)) | vi->field;
     }
 
@@ -149,13 +166,29 @@ int write_vi_regs(void* opaque, uint32_t address,
 
 void vi_vertical_interrupt_event(struct vi_controller* vi)
 {
-   /* If the DP is currently frozen and there is already a pending
-    * deferred DP interrupt, hold off on the screen update too --
-    * letting the screen update fire before the DP interrupt that
-    * produced its contents lets the user see half-rendered frames
-    * (DK64 / Banjo-Kazooie boot logos are the classic repros).
-    * The deferred screen update is flushed by update_dpc_status()
-    * when CLR_FREEZE is written, paired with the deferred DP_INT. */
+   /* Re-arm the next VI event FIRST, before any of the per-frame work
+    * below. The VI interrupt is the sole frame boundary for the libretro
+    * frame loop -- interrupt.c calls retro_return(false) right after this
+    * handler -- so the next retro_run can only terminate once another
+    * VI_INT is queued. Scheduling it up front keeps that heartbeat
+    * guaranteed even if the screen-update / cheat / input path below were
+    * ever changed to bail out early. The target cycle depends only on
+    * V_SYNC and g_count_per_scanline (cheats touch RDRAM, never VI MMIO),
+    * so this is behaviourally identical to scheduling it last. */
+   if (vi->regs[VI_V_SYNC_REG] == 0)
+      vi->delay = 500000;
+   else
+      vi->delay = (vi->regs[VI_V_SYNC_REG] + 1) * g_count_per_scanline;
+
+   vi->next_vi += vi->delay;
+   add_interrupt_event_count(VI_INT, vi->next_vi);
+
+   /* Present the completed frame. If the DP is frozen with a pending
+    * deferred DP interrupt, hold off the screen update too -- letting it
+    * fire before the DP interrupt that produced its contents would show a
+    * half-rendered frame (DK64 / Banjo-Kazooie boot logos are the classic
+    * repros). The deferred update is flushed by update_dpc_status() when
+    * CLR_FREEZE is written, paired with the deferred DP_INT. */
    if (g_dev.dp.do_on_unfreeze & DELAY_DP_INT)
       g_dev.dp.do_on_unfreeze |= DELAY_UPDATESCREEN;
    else
@@ -167,16 +200,6 @@ void vi_vertical_interrupt_event(struct vi_controller* vi)
 
    /* toggle vi field if in interlaced mode */
    vi->field ^= (vi->regs[VI_STATUS_REG] >> 6) & 0x1;
-
-   /* schedule next vertical interrupt */
-   if (vi->regs[VI_V_SYNC_REG] == 0)
-      vi->delay = 500000;
-   else
-      vi->delay = (vi->regs[VI_V_SYNC_REG] + 1) * g_count_per_scanline;
-
-   vi->next_vi += vi->delay;
-
-   add_interrupt_event_count(VI_INT, vi->next_vi);
 
    /* trigger interrupt */
    raise_rcp_interrupt(vi->r4300, MI_INTR_VI);
