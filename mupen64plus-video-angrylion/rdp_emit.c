@@ -295,14 +295,17 @@ int emit_texshade_triangle(int32_t *ew,
           ? (int32_t)((((int64_t)(vl->x - vh->x)) << 16) / (vl->y - vh->y)) : 0;
     (void)tex_w; (void)tex_h;
 
-    /* The texture S/T coefficient is texel(S10.5 as s15.16) * inverse-w / 2^16;
-     * w coefficient is the inverse-w itself. vh->w holds (1/w)-style coeff. */
-    sv[0] = (int32_t)(((int64_t)vh->s * vh->w) >> 16);
-    sv[1] = (int32_t)(((int64_t)vm->s * vm->w) >> 16);
-    sv[2] = (int32_t)(((int64_t)vl->s * vl->w) >> 16);
-    tv[0] = (int32_t)(((int64_t)vh->t * vh->w) >> 16);
-    tv[1] = (int32_t)(((int64_t)vm->t * vm->w) >> 16);
-    tv[2] = (int32_t)(((int64_t)vl->t * vl->w) >> 16);
+    /* The texture S/T coefficient is texel(raw S10.5) * W_coeff / 2^16, where
+     * W_coeff is the s1.30 (1/w)*perspNorm inverse-w. The per-pixel tcdiv
+     * recovers texel = (S>>16) / (W>>16). The stored vt->s is the raw S10.5
+     * texel in s15.16 (raw << 16), so the product needs >> 32 total. Verified
+     * against cxd4: S/W == texel_s10.5 / 65536 exactly. */
+    sv[0] = (int32_t)(((int64_t)vh->s * vh->w) >> 32);
+    sv[1] = (int32_t)(((int64_t)vm->s * vm->w) >> 32);
+    sv[2] = (int32_t)(((int64_t)vl->s * vl->w) >> 32);
+    tv[0] = (int32_t)(((int64_t)vh->t * vh->w) >> 32);
+    tv[1] = (int32_t)(((int64_t)vm->t * vm->w) >> 32);
+    tv[2] = (int32_t)(((int64_t)vl->t * vl->w) >> 32);
     wv[0] = vh->w; wv[1] = vm->w; wv[2] = vl->w;
 
     s0 = sv[0]; t0 = tv[0]; w0 = wv[0];

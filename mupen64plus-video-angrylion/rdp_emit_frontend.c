@@ -120,7 +120,7 @@ void gsp_init(GSPState *s)
     mtx_identity(s->combined);
     s->combined_valid = 0;
     s->viewport.vscale_x = 160 << 16;
-    s->viewport.vscale_y = -120 << 16;
+    s->viewport.vscale_y = 120 << 16;
     s->viewport.vtrans_x = 160 << 16;
     s->viewport.vtrans_y = 120 << 16;
     s->viewport.vscale_z = 511 << 16;
@@ -240,8 +240,8 @@ void gsp_vertex(GSPState *s, const unsigned char *rdram, unsigned int addr,
          * and the column sum is accumulated at 64-bit width like the RSP's
          * vector accumulator, then read back as s15.16 (>> 16 of the .16
          * product of integer*fixed cancels to leave the s15.16 result). */
-        ox = read_s16_be(rdram, base + 2); /* x */
-        oy = read_s16_be(rdram, base + 0); /* y */
+        ox = read_s16_be(rdram, base + 0); /* x */
+        oy = read_s16_be(rdram, base + 2); /* y */
         oz = read_s16_be(rdram, base + 4); /* z */
 
         cx = (int64_t)ox * s->combined[0][0] + (int64_t)oy * s->combined[1][0]
@@ -256,8 +256,8 @@ void gsp_vertex(GSPState *s, const unsigned char *rdram, unsigned int addr,
         vt->cx = (int32_t)cx; vt->cy = (int32_t)cy;
         vt->cz = (int32_t)cz; vt->cw = (int32_t)cw;
 
-        st_s = read_s16_be(rdram, base + 10); /* s */
-        st_t = read_s16_be(rdram, base + 8);  /* t */
+        st_s = read_s16_be(rdram, base + 8);  /* s */
+        st_t = read_s16_be(rdram, base + 10); /* t */
         /* Carry the raw S10.5 texel coordinate (modulated by the G_TEXTURE
          * scale, an S0.16 fraction), NOT a [0,1]-normalized value. The
          * angrylion edgewalker and texel pipeline consume S10.5 texel units
@@ -466,11 +466,11 @@ int gsp_triangle(GSPState *s, int32_t *cmd, int i0, int i1, int i2,
         int32_t rb = rsp_recip_div(b->cw);
         int32_t rc = rsp_recip_div(c->cw);
         int32_t sxa = (int32_t)((((int64_t)a->cx * ra) >> 15) * (int64_t)s->viewport.vscale_x >> 16);
-        int32_t sya = (int32_t)((((int64_t)a->cy * ra) >> 15) * (int64_t)s->viewport.vscale_y >> 16);
+        int32_t sya = -(int32_t)((((int64_t)a->cy * ra) >> 15) * (int64_t)s->viewport.vscale_y >> 16);
         int32_t sxb = (int32_t)((((int64_t)b->cx * rb) >> 15) * (int64_t)s->viewport.vscale_x >> 16);
-        int32_t syb = (int32_t)((((int64_t)b->cy * rb) >> 15) * (int64_t)s->viewport.vscale_y >> 16);
+        int32_t syb = -(int32_t)((((int64_t)b->cy * rb) >> 15) * (int64_t)s->viewport.vscale_y >> 16);
         int32_t sxc = (int32_t)((((int64_t)c->cx * rc) >> 15) * (int64_t)s->viewport.vscale_x >> 16);
-        int32_t syc = (int32_t)((((int64_t)c->cy * rc) >> 15) * (int64_t)s->viewport.vscale_y >> 16);
+        int32_t syc = -(int32_t)((((int64_t)c->cy * rc) >> 15) * (int64_t)s->viewport.vscale_y >> 16);
         int64_t cross = (int64_t)(sxb - sxa) * (syc - sya)
                       - (int64_t)(sxc - sxa) * (syb - sya);
         if (s->geometry_mode & (GEOM_CULL_FRONT | GEOM_CULL_BACK))

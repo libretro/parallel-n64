@@ -28,7 +28,6 @@ static void clip_to_emit(EmitVertex *e, const BridgeVertex *v,
      * ndc = (clip << 16) / cw (s15.16), matching VRCPL. cw>0 is guaranteed by
      * the caller's clip/cull (degenerate and w<=0 triangles are dropped). */
     int32_t ndcx, ndcy, ndcz;
-    int32_t recip;
     if (v->cw != 0)
     {
         ndcx = (int32_t)(((int64_t)v->cx << 16) / v->cw);
@@ -41,16 +40,27 @@ static void clip_to_emit(EmitVertex *e, const BridgeVertex *v,
     }
 
     e->x = (int32_t)(((int64_t)ndcx * vp->vscale_x) >> 16) + vp->vtrans_x;
-    e->y = (int32_t)(((int64_t)ndcy * vp->vscale_y) >> 16) + vp->vtrans_y;
+    /* NDC +y points up (guPerspective), screen y grows downward and the Vp
+     * vscale[1] is stored positive (View_ViewportToVp: height*2), so the RSP
+     * screen map negates the y term: y = vtrans - ndc_y * vscale. Verified
+     * against the cxd4 stream (single-pass triangle y sets match exactly). */
+    e->y = vp->vtrans_y - (int32_t)(((int64_t)ndcy * vp->vscale_y) >> 16);
     e->z = (int32_t)(((int64_t)ndcz * vp->vscale_z) >> 16) + vp->vtrans_z;
 
-    /* Inverse-w coefficient for perspective-correct texture: the texture divide
-     * tolerates the single-precision reciprocal, and the tcdiv LUT expects that
-     * format, so keep the VRCP path for W (perspNorm-scaled). */
-    recip = rsp_recip_div(v->cw);
+    /* Inverse-w coefficient: the RDP coefficient is (1/w) * perspNorm in s1.30
+     * (perspNorm = (1<<17)/(near+far), gSPPerspNormalize), so for a vertex at
+     * the normalisation depth the integer part (w >> 16) lands in the tcdiv
+     * reciprocal LUT domain. Verified against the cxd4 LLE stream: cxd4 W ~
+     * 0x40000000 * pn/w; the previous (VRCP_estimate * pn) << 4 was 2^14 too
+     * small (w >> 16 == 1), which sent every per-pixel S/W,T/W texture divide
+     * out of range and flattened all textures. Computed at full precision
+     * ((pn << 41) / cw, then << 8) -- the RSP's double-precision VRCPL. */
     {
         unsigned int pn = vp->persp_norm ? vp->persp_norm : 0xffffu;
-        e->w = (int32_t)(((int64_t)recip * (int64_t)(int)pn) << 4);
+        if (v->cw > 0)
+            e->w = (int32_t)((((int64_t)(int)pn << 41) / v->cw) << 8);
+        else
+            e->w = 0;
     }
 
     e->r = v->r; e->g = v->g; e->b = v->b; e->a = v->a;
