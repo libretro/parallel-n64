@@ -56,7 +56,7 @@
 extern uint32_t RollbackRtcOnLoadState;
 
 static const char* savestate_magic = "M64+SAVE";
-static const int savestate_latest_version = 0x00010001;  /* 1.1 */
+static const int savestate_latest_version = 0x00010002;  /* 1.2 */
 
 #define GETARRAY(buff, type, count) \
     (to_little_endian_buffer(buff, sizeof(type),count), \
@@ -94,7 +94,7 @@ int savestates_load_m64p(const unsigned char *data, size_t size)
    version = (version << 8) | *curr++;
    version = (version << 8) | *curr++;
 
-   if(version != 0x00010000 && version != 0x00010001)
+   if(version != 0x00010000 && version != 0x00010001 && version != 0x00010002)
       return 0;
 
    /* Identity check.  New states carry the "M64H"-prefixed header
@@ -229,6 +229,13 @@ int savestates_load_m64p(const unsigned char *data, size_t size)
    COPYARRAY(g_dev.ri.rdram.dram, curr, uint32_t, RDRAM_MAX_SIZE/4);
    COPYARRAY(g_dev.sp.mem, curr, uint32_t, SP_MEM_SIZE/4);
    COPYARRAY(g_dev.si.pif.ram, curr, uint8_t, PIF_RAM_SIZE);
+
+   /* extra rsp handshake state (since 1.2) - companion to the
+    * parallel-rsp accuracy backport; upstream mupen64plus-core#1153
+    * persists rsp_status/first_run/rsp_wait, whose fork-equivalent
+    * here is the rsp_task_locked flag. */
+   if (version >= 0x00010002)
+      g_dev.sp.rsp_task_locked = GETDATA(curr, uint32_t);
 
    g_dev.pi.use_flashram = GETDATA(curr, int);
    g_dev.pi.flashram.mode = GETDATA(curr, int);
@@ -492,6 +499,9 @@ int savestates_save_m64p(unsigned char *data, size_t size)
    PUTARRAY(g_dev.ri.rdram.dram, curr, uint32_t, RDRAM_MAX_SIZE/4);
    PUTARRAY(g_dev.sp.mem, curr, uint32_t, SP_MEM_SIZE/4);
    PUTARRAY(g_dev.si.pif.ram, curr, uint8_t, PIF_RAM_SIZE);
+
+   /* extra rsp handshake state (since 1.2) - see savestates_load_m64p */
+   PUTDATA(curr, uint32_t, g_dev.sp.rsp_task_locked);
 
    PUTDATA(curr, int, g_dev.pi.use_flashram);
    PUTDATA(curr, int, g_dev.pi.flashram.mode);
