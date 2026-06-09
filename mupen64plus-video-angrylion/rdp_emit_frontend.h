@@ -23,7 +23,8 @@ extern "C" {
 /* one loaded+transformed vertex, kept in the frontend's cache */
 typedef struct GSPVertex
 {
-    float x, y, z, w;     /* clip-space (post combined-matrix transform) */
+    int   cx, cy, cz, cw; /* clip-space s15.16 (exact, post combined transform) */
+    float x, y, z, w;     /* clip-space float mirror (legacy consumers) */
     float r, g, b, a;     /* 0..1 color (from vertex color or lighting) */
     float s, t;           /* 0..1 texture coordinates (after tex scale) */
     int   clip;           /* clip flags (outcode) */

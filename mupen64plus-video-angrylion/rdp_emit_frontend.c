@@ -260,6 +260,10 @@ void gsp_vertex(GSPState *s, const unsigned char *rdram, unsigned int addr,
          * [3][*] translation term is s15.16 with no model-coord factor, so it
          * is already at the right scale; the ox*M terms are integer*s15.16 =
          * s15.16 too, so the whole sum is s15.16 and divides by 65536. */
+        /* Store the exact s15.16 clip coordinates; keep float mirrors only for
+         * the legacy cull/backface math that still reads them. The bridge uses
+         * the integer coordinates for the perspective divide. */
+        vt->cx = (int)cx; vt->cy = (int)cy; vt->cz = (int)cz; vt->cw = (int)cw;
         vt->x = (float)cx / 65536.0f;
         vt->y = (float)cy / 65536.0f;
         vt->z = (float)cz / 65536.0f;
