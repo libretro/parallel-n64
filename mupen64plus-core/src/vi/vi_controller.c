@@ -102,7 +102,7 @@ int read_vi_regs(void* opaque, uint32_t address, uint32_t *word)
         if (alternate_vi_timing)
            vi->regs[VI_CURRENT_REG] = (vi->delay - (vi->next_vi - cp0_regs[CP0_COUNT_REG])) % (NTSC_VERTICAL_RESOLUTION + 1);
         else
-           vi->regs[VI_CURRENT_REG] = (vi->delay - (vi->next_vi - cp0_regs[CP0_COUNT_REG])) / g_vi_refresh_rate;
+           vi->regs[VI_CURRENT_REG] = (vi->delay - (vi->next_vi - cp0_regs[CP0_COUNT_REG])) / g_count_per_scanline;
         vi->regs[VI_CURRENT_REG] = (vi->regs[VI_CURRENT_REG] & (~1)) | vi->field;
     }
 
@@ -161,8 +161,9 @@ void vi_vertical_interrupt_event(struct vi_controller* vi)
    else
       gfx.updateScreen();
 
-   /* allow main module to do things on VI event */
-   new_vi();
+   /* per-frame main-module work: apply cheats and poll input (the single
+    * libretro poll_cb() for this retro_run) */
+   main_on_vi_event();
 
    /* toggle vi field if in interlaced mode */
    vi->field ^= (vi->regs[VI_STATUS_REG] >> 6) & 0x1;
@@ -171,7 +172,7 @@ void vi_vertical_interrupt_event(struct vi_controller* vi)
    if (vi->regs[VI_V_SYNC_REG] == 0)
       vi->delay = 500000;
    else
-      vi->delay = (vi->regs[VI_V_SYNC_REG] + 1) * g_vi_refresh_rate;
+      vi->delay = (vi->regs[VI_V_SYNC_REG] + 1) * g_count_per_scanline;
 
    vi->next_vi += vi->delay;
 

@@ -58,7 +58,11 @@ unsigned char* g_rom = NULL;
 /* Global loaded rom size. */
 int g_rom_size = 0;
 unsigned alternate_vi_timing = 0;
-int           g_vi_refresh_rate = DEFAULT_COUNT_PER_SCANLINE;
+/* CPU (CP0 Count) cycles per VI scanline -- a per-game VI timing value
+ * (1500 default, overridden to 1500/1600/2200 for specific titles below).
+ * Drives the VI vertical-interrupt period: delay = (V_SYNC+1) * this.
+ * NB: this is a cycles-per-scanline count, NOT a refresh rate in Hz. */
+int           g_count_per_scanline = DEFAULT_COUNT_PER_SCANLINE;
 int           g_force_parallel_sync = 0;
 
 extern bool frame_dupe;
@@ -176,7 +180,7 @@ m64p_error open_rom(const unsigned char* romimage, unsigned int size)
    g_rom_size = (size > 0x4000000) ? size : 0x4000000;
    g_rom = (unsigned char *) malloc(g_rom_size);
    alternate_vi_timing = 0;
-   g_vi_refresh_rate = DEFAULT_COUNT_PER_SCANLINE;
+   g_count_per_scanline = DEFAULT_COUNT_PER_SCANLINE;
    g_force_parallel_sync = 0;
    if (g_rom == NULL)
       return M64ERR_NO_MEMORY;
@@ -298,7 +302,7 @@ m64p_error open_rom(const unsigned char* romimage, unsigned int size)
       {
          strcpy(ROM_SETTINGS.goodname, ROM_PARAMS.headername);
          DebugMessage(M64MSG_INFO, "%s INI patches applied.", ROM_PARAMS.headername);
-	 g_vi_refresh_rate = 1500;
+	 g_count_per_scanline = 1500;
 
          patch_applied = 1;
          break;
@@ -311,7 +315,7 @@ m64p_error open_rom(const unsigned char* romimage, unsigned int size)
       {
          strcpy(ROM_SETTINGS.goodname, ROM_PARAMS.headername);
          DebugMessage(M64MSG_INFO, "%s INI patches applied.", ROM_PARAMS.headername);
-	 g_vi_refresh_rate = 1600;
+	 g_count_per_scanline = 1600;
 
          patch_applied = 1;
          break;
@@ -324,7 +328,7 @@ m64p_error open_rom(const unsigned char* romimage, unsigned int size)
       {
          strcpy(ROM_SETTINGS.goodname, ROM_PARAMS.headername);
          DebugMessage(M64MSG_INFO, "%s INI patches applied.", ROM_PARAMS.headername);
-	 g_vi_refresh_rate = 2200;
+	 g_count_per_scanline = 2200;
 
          patch_applied = 1;
          break;

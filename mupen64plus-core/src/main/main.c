@@ -288,7 +288,11 @@ static void gs_apply_cheats(void)
 
 /* called on vertical interrupt.
  * Allow the core to perform various things */
-void new_vi(void)
+/* Called once per VI vertical interrupt (the per-frame boundary).
+ * This is the single point at which libretro input is polled -- exactly
+ * one poll_cb() per retro_run, as the libretro API requires. All emulated
+ * controller reads during the frame then read this one snapshot. */
+void main_on_vi_event(void)
 {
    gs_apply_cheats();
 
@@ -326,8 +330,8 @@ m64p_error main_init(void)
 
    if (count_per_op <= 0)
       count_per_op = 2;
-   if (g_vi_refresh_rate == 0)
-      g_vi_refresh_rate = 1500;
+   if (g_count_per_scanline == 0)
+      g_count_per_scanline = 1500;
 
    /* do byte-swapping if it's not been done yet
     * (only needed on little-endian hosts -- on big-endian hosts the ROM

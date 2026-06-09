@@ -61,7 +61,7 @@ void main_toggle_pause(void);
 void main_advance_one(void);
 void main_check_inputs(void);
 
-void new_vi(void);
+void main_on_vi_event(void);
 
 m64p_error main_core_state_query(m64p_core_param param, int *rval);
 m64p_error main_core_state_set(m64p_core_param param, int val);

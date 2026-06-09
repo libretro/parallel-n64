@@ -167,7 +167,7 @@ int mouse_wheel_down_btn;
 
 static bool initializing            = true;
 
-extern int g_vi_refresh_rate;
+extern int g_count_per_scanline;
 
 static char rdp_plugin_last[32] = {0};
 
@@ -1734,9 +1734,9 @@ void update_variables(bool startup)
    {
       if (!strcmp(var.value, "auto")) { }
       else if (!strcmp(var.value, "1500"))
-         g_vi_refresh_rate = 1500;
+         g_count_per_scanline = 1500;
       else if (!strcmp(var.value, "2200"))
-         g_vi_refresh_rate = 2200;
+         g_count_per_scanline = 2200;
    }
 
    var.key = "parallel-n64-framerate";

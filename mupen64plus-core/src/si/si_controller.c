@@ -176,8 +176,18 @@ int write_si_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mask)
 
 void si_end_of_dma_event(struct si_controller* si)
 {
-   main_check_inputs();
-
+   /* Do NOT poll input here. Input is polled exactly once per frame from
+    * main_on_vi_event() (the VI frame boundary), which is the single
+    * poll_cb() call libretro expects per retro_run. The SI DMA can
+    * complete one or more times per frame (every controller read, plus
+    * controller-pak/rumble writes), so polling here produced multiple,
+    * input-count-dependent poll_cb() calls per retro_run -- breaking the
+    * libretro polling contract and making the input the game reads depend
+    * on sub-frame SI timing rather than being a clean per-frame value
+    * (a determinism hazard for run-ahead / netplay / movie replay). The
+    * controller data is filled by update_pif_read() in dma_si_read()
+    * BEFORE this event fires anyway, so this poll never freshened the
+    * read it preceded -- it was both wrong and useless. */
    si->pif.ram[0x3f] = 0x0;
 
    /* trigger SI interrupt */
