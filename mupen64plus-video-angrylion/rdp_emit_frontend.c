@@ -336,6 +336,7 @@ void gsp_vertex(GSPState *s, const unsigned char *rdram, unsigned int addr,
     }
 }
 
+#define GEOM_ZBUFFER    0x00000001u
 #define GEOM_CULL_FRONT 0x00000200u
 #define GEOM_CULL_BACK  0x00000400u
 
@@ -401,6 +402,14 @@ int gsp_triangle(GSPState *s, int32_t *cmd, int i0, int i1, int i2,
         return 0;
 
     a = &s->vtx[i0]; b = &s->vtx[i1]; c = &s->vtx[i2];
+
+    /* The RDP triangle command's Z bit (0x0d/0x0f vs 0x0c/0x0e) is set by the
+     * RSP from the G_ZBUFFER geometry-mode bit, NOT from the RDP othermode
+     * render-mode Z_CMP/Z_UPD bits. Those render-mode bits toggle per blender
+     * pass (AA, decals, translucency) and do not change which command id the
+     * RSP emits; deriving Z-buffering from them mis-declassifies depth-tested
+     * triangles to the non-Z command. Read the geometry-mode bit directly. */
+    z_buffered = (s->geometry_mode & GEOM_ZBUFFER) ? 1 : 0;
 
     /* Trivial-reject clipping, matching the RSP/GLideN64 model: compute a clip
      * outcode per vertex against the homogeneous clip volume (x,y in [-w,+w])
