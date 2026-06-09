@@ -246,7 +246,7 @@ void gsp_vertex(GSPState *s, const unsigned char *rdram, unsigned int addr,
          * product of integer*fixed cancels to leave the s15.16 result). */
         ox = read_s16_be(rdram, base + 2); /* x */
         oy = read_s16_be(rdram, base + 0); /* y */
-        oz = read_s16_be(rdram, base + 6); /* z */
+        oz = read_s16_be(rdram, base + 4); /* z */
 
         cx = (int64_t)ox * s->combined[0][0] + (int64_t)oy * s->combined[1][0]
            + (int64_t)oz * s->combined[2][0] + (int64_t)s->combined[3][0];
