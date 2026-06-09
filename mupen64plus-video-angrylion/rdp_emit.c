@@ -225,13 +225,23 @@ static void emit_z_block(int32_t *ew, int base,
     dyh2 = vl->y - vh->y;
     dxhdy2 = dyh2 ? (int32_t)((((int64_t)(vl->x - vh->x)) << 16) / dyh2) : 0;
 
-    /* The depth coefficient domain is the screen z (e->z, 0..G_MAXZ=1023 in
-     * s15.16) scaled to the RDP's sub-precision z: coeff_z = screen_z * 32
-     * (G_MAXZ 10-bit screen z -> 15-bit z range), i.e. << 5 of the s15.16 z.
-     * Verified against the cxd4 LLE oracle (z base 31732 == screen 991.5 * 32). */
-    z0 = (int32_t)(((int64_t)vh->z * 32) >> 0);
-    z1 = (int32_t)(((int64_t)vm->z * 32) >> 0);
-    z2 = (int32_t)(((int64_t)vl->z * 32) >> 0);
+    /* The depth coefficient domain is the screen z (e->z, in s15.16) scaled to
+     * the RDP sub-precision z: coeff_z = screen_z * 32 (G_MAXZ 10-bit screen z
+     * -> 15-bit z range). Verified against the cxd4 LLE oracle (z base 31732 ==
+     * screen 991.5 * 32). screen_z MUST be clamped to [0, G_MAXZ=1023] first:
+     * the N64 z-buffer range is 0..0x3ffff and the hardware clamps z to it;
+     * without the clamp, vertices at/behind the far plane (screen_z >= ~1023,
+     * very common) make screen_z*32 overflow the int32 coefficient and wrap to a
+     * large negative value, randomising the per-vertex depth (the scrambled-N
+     * bug). G_MAXZ in s15.16 is 1023<<16; clamp there, then * 32 fits. */
+    {
+        int32_t zc0 = vh->z, zc1 = vm->z, zc2 = vl->z;
+        int32_t zmax = 1023 << 16;
+        if (zc0 < 0) zc0 = 0; if (zc0 > zmax) zc0 = zmax;
+        if (zc1 < 0) zc1 = 0; if (zc1 > zmax) zc1 = zmax;
+        if (zc2 < 0) zc2 = 0; if (zc2 > zmax) zc2 = zmax;
+        z0 = zc0 << 5; z1 = zc1 << 5; z2 = zc2 << 5;
+    }
 
     solve_plane(z0, z1, z2, X0, Y0, X1, Y1, X2, Y2, area, dxhdy2,
                 &zdx, &zdy, &zde);
