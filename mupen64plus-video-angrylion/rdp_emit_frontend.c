@@ -91,9 +91,17 @@ static void load_n64_matrix(float m[4][4], const unsigned char *rdram, unsigned 
         {
             int ofs;
             int ip, fp;
-            /* read_s16_be/read_u16_be already apply the in-word byte-swap,
-             * so element (i,j) is at its natural offset; no column XOR. */
-            ofs = (i * 4 + j) * 2;
+            /* The N64 stores its matrices column-major relative to the
+             * row-vector convention used here (v' = v * M): element (i,j) of
+             * the matrix we want lives at linear slot (j*4 + i) in RDRAM, not
+             * (i*4 + j). Loading it the naive row-major way transposes the
+             * matrix, which scrambles the perspective/translation column -- a
+             * vertex at the model origin then gets w = m[3][3] ~ 0 and nearby
+             * vertices get negative w (behind the camera), so the whole scene's
+             * geometry trivially clips away. Read element (i,j) from slot
+             * (j*4 + i) to load it in the orientation the transform expects.
+             * read_s16_be/read_u16_be already apply the in-word byte-swap. */
+            ofs = (j * 4 + i) * 2;
             ip = read_s16_be(rdram, int_base + (unsigned int)ofs);
             fp = read_u16_be(rdram, frac_base + (unsigned int)ofs);
             m[i][j] = (float)ip + (float)fp / 65536.0f;
