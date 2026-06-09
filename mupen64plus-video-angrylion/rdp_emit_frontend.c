@@ -394,24 +394,32 @@ int gsp_triangle(GSPState *s, int32_t *cmd, int i0, int i1, int i2,
      * screen edge -- both of which the real microcode discards. Partly-visible
      * triangles are kept (angrylion's rasterizer scissors them). */
     {
-        int ca = 0, cb = 0, cc = 0;
-        if (a->x >  a->w) ca |= 1;
-        if (a->x < -a->w) ca |= 2;
-        if (a->y >  a->w) ca |= 4;
-        if (a->y < -a->w) ca |= 8;
-        if (a->w < 0.01f) ca |= 16;
-        if (b->x >  b->w) cb |= 1;
-        if (b->x < -b->w) cb |= 2;
-        if (b->y >  b->w) cb |= 4;
-        if (b->y < -b->w) cb |= 8;
-        if (b->w < 0.01f) cb |= 16;
-        if (c->x >  c->w) cc |= 1;
-        if (c->x < -c->w) cc |= 2;
-        if (c->y >  c->w) cc |= 4;
-        if (c->y < -c->w) cc |= 8;
-        if (c->w < 0.01f) cc |= 16;
-        if (ca & cb & cc)
-            return 0;
+        /* OoT/MM run the F3DZEX2.NoN microcode ("No Near clipping"): geometry
+         * at or behind the near plane is neither clipped nor culled, it is
+         * passed straight to the RDP. So there is no near-plane reject here.
+         * The screen-edge (x/y) trivial-reject is only meaningful when a
+         * vertex is in front of the camera (w > 0); comparing x against a
+         * negative w is nonsense, so a triangle with any non-positive w is
+         * never trivially rejected and is handed to the rasterizer, which
+         * scissors it to the screen -- matching NoN behavior. */
+        if (a->w > 0.0f && b->w > 0.0f && c->w > 0.0f)
+        {
+            int ca = 0, cb = 0, cc = 0;
+            if (a->x >  a->w) ca |= 1;
+            if (a->x < -a->w) ca |= 2;
+            if (a->y >  a->w) ca |= 4;
+            if (a->y < -a->w) ca |= 8;
+            if (b->x >  b->w) cb |= 1;
+            if (b->x < -b->w) cb |= 2;
+            if (b->y >  b->w) cb |= 4;
+            if (b->y < -b->w) cb |= 8;
+            if (c->x >  c->w) cc |= 1;
+            if (c->x < -c->w) cc |= 2;
+            if (c->y >  c->w) cc |= 4;
+            if (c->y < -c->w) cc |= 8;
+            if (ca & cb & cc)
+                return 0;
+        }
     }
 
     /* Backface culling, applied to the screen-space triangle exactly as the
