@@ -43,15 +43,21 @@ static int read_u16_be(const unsigned char *rdram, unsigned int addr)
     return (int)*p;
 }
 
-static void mtx_identity(float m[4][4])
+/* Matrices are s15.16 fixed point: element = (integer << 16) | fraction,
+ * held in an int32. 1.0 is 0x00010000. This matches the RSP's representation
+ * (it keeps the integer and fractional s16 halves separately; an s15.16 int32
+ * is the concatenation of the two). */
+#define FX_ONE 0x00010000
+
+static void mtx_identity(int32_t m[4][4])
 {
     int i, j;
     for (i = 0; i < 4; i++)
         for (j = 0; j < 4; j++)
-            m[i][j] = (i == j) ? 1.0f : 0.0f;
+            m[i][j] = (i == j) ? FX_ONE : 0;
 }
 
-static void mtx_copy(float d[4][4], float s[4][4])
+static void mtx_copy(int32_t d[4][4], int32_t s[4][4])
 {
     int i, j;
     for (i = 0; i < 4; i++)
@@ -59,28 +65,35 @@ static void mtx_copy(float d[4][4], float s[4][4])
             d[i][j] = s[i][j];
 }
 
-/* d = a * b (row-vector convention: v' = v * d, matching the N64 RSP) */
-static void mtx_mul(float d[4][4], float a[4][4], float b[4][4])
+/* d = a * b (row-vector convention: v' = v * d, matching the N64 RSP).
+ * Each product of two s15.16 values is a 64-bit s31.32 intermediate; the
+ * column sum is accumulated at full 64-bit width and then truncated back to
+ * s15.16 (>> 16), which is the "middle 32 bits retained" behaviour the RSP's
+ * 48-bit vector accumulator produces for the matrix concatenation. */
+static void mtx_mul(int32_t d[4][4], int32_t a[4][4], int32_t b[4][4])
 {
-    float r[4][4];
+    int32_t r[4][4];
     int i, j, k;
     for (i = 0; i < 4; i++)
     {
         for (j = 0; j < 4; j++)
         {
-            float s = 0.0f;
+            int64_t acc = 0;
             for (k = 0; k < 4; k++)
-                s += a[i][k] * b[k][j];
-            r[i][j] = s;
+                acc += (int64_t)a[i][k] * (int64_t)b[k][j];
+            r[i][j] = (int32_t)(acc >> 16);
         }
     }
     mtx_copy(d, r);
 }
 
-/* load an N64 fixed-point 4x4 matrix from RDRAM: layout is
- * s16 integer[4][4] then u16 fraction[4][4]; element = int + frac/65536,
- * with column index xor 1 for the N64 word swap. */
-static void load_n64_matrix(float m[4][4], const unsigned char *rdram, unsigned int addr)
+/* Load an N64 fixed-point 4x4 matrix from RDRAM. The RSP stores the integer
+ * s16 halves of all 16 elements first (offset +0), then the fractional u16
+ * halves (offset +32); an element's s15.16 value is (int << 16) | frac. The
+ * matrix is stored transposed for the row-vector transform, with the
+ * translation in the last row, so element (i,j) is read from linear slot
+ * (i*4 + j). read_s16_be/read_u16_be apply the in-word byte swap. */
+static void load_n64_matrix(int32_t m[4][4], const unsigned char *rdram, unsigned int addr)
 {
     int i, j;
     unsigned int int_base = addr;
@@ -89,22 +102,10 @@ static void load_n64_matrix(float m[4][4], const unsigned char *rdram, unsigned 
     {
         for (j = 0; j < 4; j++)
         {
-            int ofs;
-            int ip, fp;
-            /* The N64 stores its matrices column-major relative to the
-             * row-vector convention used here (v' = v * M): element (i,j) of
-             * the matrix we want lives at linear slot (j*4 + i) in RDRAM, not
-             * (i*4 + j). Loading it the naive row-major way transposes the
-             * matrix, which scrambles the perspective/translation column -- a
-             * vertex at the model origin then gets w = m[3][3] ~ 0 and nearby
-             * vertices get negative w (behind the camera), so the whole scene's
-             * geometry trivially clips away. Read element (i,j) from slot
-             * (j*4 + i) to load it in the orientation the transform expects.
-             * read_s16_be/read_u16_be already apply the in-word byte-swap. */
-            ofs = (i * 4 + j) * 2;
-            ip = read_s16_be(rdram, int_base + (unsigned int)ofs);
-            fp = read_u16_be(rdram, frac_base + (unsigned int)ofs);
-            m[i][j] = (float)ip + (float)fp / 65536.0f;
+            int ofs = (i * 4 + j) * 2;
+            int ip = read_s16_be(rdram, int_base + (unsigned int)ofs);
+            int fp = read_u16_be(rdram, frac_base + (unsigned int)ofs);
+            m[i][j] = (int32_t)(((uint32_t)(int16_t)ip << 16) | ((uint32_t)fp & 0xffffu));
         }
     }
 }
@@ -148,7 +149,7 @@ void gsp_init(GSPState *s)
 void gsp_matrix_load(GSPState *s, const unsigned char *rdram, unsigned int addr,
                      int projection, int load, int push)
 {
-    float m[4][4];
+    int32_t m[4][4];
     load_n64_matrix(m, rdram, addr);
 
     if (projection)
@@ -228,25 +229,41 @@ void gsp_vertex(GSPState *s, const unsigned char *rdram, unsigned int addr,
     {
         unsigned int base = addr + (unsigned int)i * 16;
         int idx = v0 + i;
-        float ox, oy, oz;
+        int32_t ox, oy, oz;
+        int64_t cx, cy, cz, cw;
         int st_s, st_t;
         GSPVertex *vt;
         if (idx < 0 || idx >= GSP_MAX_VERTICES)
             continue;
         vt = &s->vtx[idx];
 
-        ox = (float)read_s16_be(rdram, base + 2); /* x */
-        oy = (float)read_s16_be(rdram, base + 0); /* y */
-        oz = (float)read_s16_be(rdram, base + 6); /* z */
+        /* Model-space position is an integer s16; the combined matrix is
+         * s15.16. The product (integer * s15.16) is already an s15.16 value,
+         * and the column sum is accumulated at 64-bit width like the RSP's
+         * vector accumulator, then read back as s15.16 (>> 16 of the .16
+         * product of integer*fixed cancels to leave the s15.16 result). */
+        ox = read_s16_be(rdram, base + 2); /* x */
+        oy = read_s16_be(rdram, base + 0); /* y */
+        oz = read_s16_be(rdram, base + 6); /* z */
 
-        vt->x = ox * s->combined[0][0] + oy * s->combined[1][0]
-              + oz * s->combined[2][0] + s->combined[3][0];
-        vt->y = ox * s->combined[0][1] + oy * s->combined[1][1]
-              + oz * s->combined[2][1] + s->combined[3][1];
-        vt->z = ox * s->combined[0][2] + oy * s->combined[1][2]
-              + oz * s->combined[2][2] + s->combined[3][2];
-        vt->w = ox * s->combined[0][3] + oy * s->combined[1][3]
-              + oz * s->combined[2][3] + s->combined[3][3];
+        cx = (int64_t)ox * s->combined[0][0] + (int64_t)oy * s->combined[1][0]
+           + (int64_t)oz * s->combined[2][0] + (int64_t)s->combined[3][0];
+        cy = (int64_t)ox * s->combined[0][1] + (int64_t)oy * s->combined[1][1]
+           + (int64_t)oz * s->combined[2][1] + (int64_t)s->combined[3][1];
+        cz = (int64_t)ox * s->combined[0][2] + (int64_t)oy * s->combined[1][2]
+           + (int64_t)oz * s->combined[2][2] + (int64_t)s->combined[3][2];
+        cw = (int64_t)ox * s->combined[0][3] + (int64_t)oy * s->combined[1][3]
+           + (int64_t)oz * s->combined[2][3] + (int64_t)s->combined[3][3];
+
+        /* clip coords as s15.16 -> float (the perspective divide is still
+         * float this step; the fixed-point reciprocal is a later step). The
+         * [3][*] translation term is s15.16 with no model-coord factor, so it
+         * is already at the right scale; the ox*M terms are integer*s15.16 =
+         * s15.16 too, so the whole sum is s15.16 and divides by 65536. */
+        vt->x = (float)cx / 65536.0f;
+        vt->y = (float)cy / 65536.0f;
+        vt->z = (float)cz / 65536.0f;
+        vt->w = (float)cw / 65536.0f;
 
         st_s = read_s16_be(rdram, base + 10); /* s */
         st_t = read_s16_be(rdram, base + 8);  /* t */
@@ -269,15 +286,15 @@ void gsp_vertex(GSPState *s, const unsigned char *rdram, unsigned int addr,
             int nyb = (int)(signed char)read_u8_n64(rdram, base + 13);
             int nzb = (int)(signed char)read_u8_n64(rdram, base + 14);
             float nx = (float)nxb, ny = (float)nyb, nz = (float)nzb;
-            float tx = nx * s->modelview[s->modelview_top][0][0]
-                     + ny * s->modelview[s->modelview_top][1][0]
-                     + nz * s->modelview[s->modelview_top][2][0];
-            float ty = nx * s->modelview[s->modelview_top][0][1]
-                     + ny * s->modelview[s->modelview_top][1][1]
-                     + nz * s->modelview[s->modelview_top][2][1];
-            float tz = nx * s->modelview[s->modelview_top][0][2]
-                     + ny * s->modelview[s->modelview_top][1][2]
-                     + nz * s->modelview[s->modelview_top][2][2];
+            float tx = nx * (float)s->modelview[s->modelview_top][0][0] / 65536.0f
+                     + ny * (float)s->modelview[s->modelview_top][1][0] / 65536.0f
+                     + nz * (float)s->modelview[s->modelview_top][2][0] / 65536.0f;
+            float ty = nx * (float)s->modelview[s->modelview_top][0][1] / 65536.0f
+                     + ny * (float)s->modelview[s->modelview_top][1][1] / 65536.0f
+                     + nz * (float)s->modelview[s->modelview_top][2][1] / 65536.0f;
+            float tz = nx * (float)s->modelview[s->modelview_top][0][2] / 65536.0f
+                     + ny * (float)s->modelview[s->modelview_top][1][2] / 65536.0f
+                     + nz * (float)s->modelview[s->modelview_top][2][2] / 65536.0f;
             float len = tx * tx + ty * ty + tz * tz;
             float cr, cg, cb;
             int li;

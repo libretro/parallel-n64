@@ -31,10 +31,15 @@ typedef struct GSPVertex
 
 typedef struct GSPState
 {
-    float projection[4][4];
-    float modelview[GSP_MTX_STACK][4][4];
+    /* Matrices are stored in the RSP's fixed-point form: each element is an
+     * s15.16 value held in an int32 (integer part in the high 16 bits, the
+     * 1/65536 fraction in the low 16). The transform and multiply accumulate
+     * these the way the RSP vector unit does, rather than in float, so the
+     * emitted coordinates match the LLE path bit-for-bit. */
+    int32_t projection[4][4];
+    int32_t modelview[GSP_MTX_STACK][4][4];
     int   modelview_top;
-    float combined[4][4];
+    int32_t combined[4][4];
     int   combined_valid;
 
     BridgeViewport viewport;
