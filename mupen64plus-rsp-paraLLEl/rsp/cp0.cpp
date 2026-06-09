@@ -109,14 +109,9 @@ extern "C"
 	static int rsp_dma_read(RSP::CPUState *rsp)
 	{
 		uint32_t length_reg = *rsp->cp0.cr[CP0_REGISTER_DMA_READ_LENGTH];
-		uint32_t length = (length_reg & 0xFFF) + 1;
-		uint32_t skip = (length_reg >> 20) & 0xFFF;
-		unsigned count = (length_reg >> 12) & 0xFF;
-
-		// Force alignment.
-		length = (length + 0x7) & ~0x7;
-		*rsp->cp0.cr[CP0_REGISTER_DMA_CACHE] &= ~0x3;
-		*rsp->cp0.cr[CP0_REGISTER_DMA_DRAM] &= ~0x7;
+		uint32_t length = ((length_reg & 0xFFF) | 7) + 1;
+		uint32_t skip = (length_reg >> 20) & 0xFF8;
+		unsigned count = ((length_reg >> 12) & 0xFF) + 1;
 
 		// Check length.
 		if (((*rsp->cp0.cr[CP0_REGISTER_DMA_CACHE] & 0xFFF) + length) > 0x1000)
@@ -156,7 +151,7 @@ extern "C"
 
 			source += length + skip;
 			dest += length;
-		} while (++i <= count);
+		} while (++i < count);
 
 		*rsp->cp0.cr[CP0_REGISTER_DMA_DRAM] = source;
 		*rsp->cp0.cr[CP0_REGISTER_DMA_CACHE] = dest;
@@ -171,14 +166,9 @@ extern "C"
 	static void rsp_dma_write(RSP::CPUState *rsp)
 	{
 		uint32_t length_reg = *rsp->cp0.cr[CP0_REGISTER_DMA_WRITE_LENGTH];
-		uint32_t length = (length_reg & 0xFFF) + 1;
-		uint32_t skip = (length_reg >> 20) & 0xFFF;
-		unsigned count = (length_reg >> 12) & 0xFF;
-
-		// Force alignment.
-		length = (length + 0x7) & ~0x7;
-		*rsp->cp0.cr[CP0_REGISTER_DMA_CACHE] &= ~0x3;
-		*rsp->cp0.cr[CP0_REGISTER_DMA_DRAM] &= ~0x7;
+		uint32_t length = ((length_reg & 0xFFF) | 7) + 1;
+		uint32_t skip = (length_reg >> 20) & 0xFF8;
+		unsigned count = ((length_reg >> 12) & 0xFF) + 1;
 
 		// Check length.
 		if (((*rsp->cp0.cr[CP0_REGISTER_DMA_CACHE] & 0xFFF) + length) > 0x1000)
@@ -210,7 +200,7 @@ extern "C"
 
 			source += length;
 			dest += length + skip;
-		} while (++i <= count);
+		} while (++i < count);
 
 		*rsp->cp0.cr[CP0_REGISTER_DMA_CACHE] = source;
 		*rsp->cp0.cr[CP0_REGISTER_DMA_DRAM] = dest;
@@ -228,11 +218,11 @@ extern "C"
 		switch (static_cast<CP0Registers>(rd & 15))
 		{
 		case CP0_REGISTER_DMA_CACHE:
-			*rsp->cp0.cr[CP0_REGISTER_DMA_CACHE] = val & 0x1fff;
+			*rsp->cp0.cr[CP0_REGISTER_DMA_CACHE] = val & 0x1ff8;
 			break;
 
 		case CP0_REGISTER_DMA_DRAM:
-			*rsp->cp0.cr[CP0_REGISTER_DMA_DRAM] = val & 0xffffff;
+			*rsp->cp0.cr[CP0_REGISTER_DMA_DRAM] = val & 0xfffff8;
 			break;
 
 		case CP0_REGISTER_DMA_READ_LENGTH:
