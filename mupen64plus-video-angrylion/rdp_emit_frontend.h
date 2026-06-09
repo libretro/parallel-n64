@@ -45,6 +45,7 @@ typedef struct GSPState
     BridgeViewport viewport;
     unsigned int   tex_scale_s, tex_scale_t; /* raw S0.16 from G_TEXTURE */
     unsigned int   persp_norm;               /* G_MW_PERSPNORM u16 (gSPPerspNormalize) */
+    int            fog_m, fog_o;             /* G_MW_FOG multiplier/offset (s16 each) */
     int            tex_tile, tex_level, tex_w, tex_h;
 
     unsigned int   geometry_mode;
@@ -62,6 +63,9 @@ typedef struct GSPState
 
 /* lifecycle */
 void gsp_init(GSPState *s);
+
+/* G_MW_FOG: fog multiplier (w1 >> 16) and offset (w1 & 0xffff), both s16. */
+void gsp_set_fog(GSPState *s, int fm, int fo);
 
 /* per-RSP-task reset: the microcode's DRAM matrix-stack pointer is
  * re-initialised at every task boot, so an unbalanced push/pop count within

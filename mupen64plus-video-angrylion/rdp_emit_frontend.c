@@ -128,6 +128,8 @@ void gsp_init(GSPState *s)
     s->tex_scale_s = 0x8000u;   /* G_TEXTURE scale, S0.16 with 0x8000 == 1.0 */
     s->tex_scale_t = 0x8000u;
     s->persp_norm = 0xffffu; /* default until gSPPerspNormalize sets it */
+    s->fog_m = 0;
+    s->fog_o = 0;
     s->viewport.persp_norm = 0xffffu;
 
     /* default lighting: no directional lights, white ambient (255) so geometry
@@ -181,6 +183,12 @@ void gsp_matrix_pop(GSPState *s)
     if (s->modelview_top > 0)
         s->modelview_top--;
     s->combined_valid = 0;
+}
+
+void gsp_set_fog(GSPState *s, int fm, int fo)
+{
+    s->fog_m = fm;
+    s->fog_o = fo;
 }
 
 void gsp_task_reset(GSPState *s)
@@ -351,6 +359,29 @@ void gsp_vertex(GSPState *s, const unsigned char *rdram, unsigned int addr,
             vt->g = (int32_t)read_u8_n64(rdram, base + 13) << 16;
             vt->b = (int32_t)read_u8_n64(rdram, base + 14) << 16;
             vt->a = (int32_t)read_u8_n64(rdram, base + 15) << 16;
+        }
+
+        if (s->geometry_mode & 0x00010000u)     /* G_FOG */
+        {
+            /* With fog enabled the RSP replaces the shade alpha with the fog
+             * factor: alpha = clamp(ndc_z * fog_m + fog_o, 0, 255), where
+             * fog_m/fog_o come from the G_MW_FOG moveword (gSPFogPosition).
+             * Verified against the cxd4 LLE oracle: indoors every actor
+             * triangle carries shade alpha 0 (no fog at any visible depth);
+             * passing the vertex alpha (255) through instead makes the
+             * G_RM_FOG_SHADE_A blender output pure fog colour, which is what
+             * rendered every lit actor as a black silhouette. ndc_z is the
+             * exact s15.16 z/w; for w <= 0 the vertex is headed for the
+             * clipper and the factor is irrelevant, so 0 is used. */
+            int32_t fa = 0;
+            if (vt->cw > 0)
+            {
+                int32_t ndcz = (int32_t)(((int64_t)vt->cz << 16) / vt->cw);
+                fa = (int32_t)((((int64_t)ndcz * s->fog_m) >> 16) + s->fog_o);
+                if (fa < 0)   fa = 0;
+                if (fa > 255) fa = 255;
+            }
+            vt->a = fa << 16;
         }
 
         vt->clip = 0;
