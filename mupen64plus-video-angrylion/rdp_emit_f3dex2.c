@@ -414,8 +414,8 @@ void f3dex2_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
             int on    = (int)((w0 >> 1) & 0x7f);
             int level = (int)((w0 >> 11) & 0x07);
             int tile  = (int)((w0 >> 8) & 0x07);
-            float ss  = (float)((w1 >> 16) & 0xffff) / 65536.0f;
-            float ts  = (float)(w1 & 0xffff) / 65536.0f;
+            unsigned int ss = (unsigned int)((w1 >> 16) & 0xffff);
+            unsigned int ts = (unsigned int)(w1 & 0xffff);
             s_textured = (on != 0) ? 1 : 0;
             gsp_set_texture(gsp, ss, ts, tile, level, gsp->tex_w, gsp->tex_h);
             break;

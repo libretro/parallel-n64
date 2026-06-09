@@ -125,8 +125,8 @@ void gsp_init(GSPState *s)
     s->viewport.vtrans_y = 120.0f;
     s->viewport.vscale_z = 511.0f;
     s->viewport.vtrans_z = 511.0f;
-    s->tex_scale_s = 1.0f;
-    s->tex_scale_t = 1.0f;
+    s->tex_scale_s = 0x10000u;
+    s->tex_scale_t = 0x10000u;
 
     /* default lighting: no directional lights, white ambient so geometry
      * flagged G_LIGHTING before any light load is not pure black. */
@@ -205,7 +205,7 @@ void gsp_set_viewport(GSPState *s, const unsigned char *rdram, unsigned int addr
     s->viewport.vtrans_z = tz;
 }
 
-void gsp_set_texture(GSPState *s, float scale_s, float scale_t,
+void gsp_set_texture(GSPState *s, unsigned int scale_s, unsigned int scale_t,
                      int tile, int level, int tex_w, int tex_h)
 {
     s->tex_scale_s = scale_s;
@@ -274,8 +274,12 @@ void gsp_vertex(GSPState *s, const unsigned char *rdram, unsigned int addr,
          * collapsed the sampled coordinate toward 0 and drove the texture
          * combiner black. The encoder scales these into the fixed-point
          * inverse-w envelope angrylion expects. */
-        vt->s = (float)st_s * s->tex_scale_s;
-        vt->t = (float)st_t * s->tex_scale_t;
+        /* Texture coordinate = raw S10.5 texel coord * the G_TEXTURE S0.16
+         * scale, done in fixed point as the RSP does (vmudn/vmadm against the
+         * scale vector): (st * scale) >> 16 keeps the S10.5 result. No float
+         * scale factor. */
+        vt->s = (float)(((int64_t)st_s * (int64_t)s->tex_scale_s) >> 16);
+        vt->t = (float)(((int64_t)st_t * (int64_t)s->tex_scale_t) >> 16);
 
         if (s->geometry_mode & 0x00020000u)     /* G_LIGHTING */
         {

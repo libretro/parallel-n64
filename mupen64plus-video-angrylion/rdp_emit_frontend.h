@@ -43,7 +43,7 @@ typedef struct GSPState
     int   combined_valid;
 
     BridgeViewport viewport;
-    float          tex_scale_s, tex_scale_t;
+    unsigned int   tex_scale_s, tex_scale_t; /* raw S0.16 from G_TEXTURE */
     int            tex_tile, tex_level, tex_w, tex_h;
 
     unsigned int   geometry_mode;
@@ -69,7 +69,7 @@ void gsp_combine_matrices(GSPState *s);
 
 /* viewport (addr -> N64 Vp struct in RDRAM), and texture scale state */
 void gsp_set_viewport(GSPState *s, const unsigned char *rdram, unsigned int addr);
-void gsp_set_texture(GSPState *s, float scale_s, float scale_t,
+void gsp_set_texture(GSPState *s, unsigned int scale_s, unsigned int scale_t,
                      int tile, int level, int tex_w, int tex_h);
 
 /* load+transform n vertices starting at index v0 from RDRAM addr */
