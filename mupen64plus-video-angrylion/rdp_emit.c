@@ -183,7 +183,7 @@ int emit_texshade_triangle(int32_t *ew,
     const EmitVertex *vl;
     const EmitVertex *tmp;
     float X0, Y0, X1, Y1, X2, Y2, det2, inv, dyh2, dxhdy2;
-    float wh, wm, wl, wmax, WSCALE, Wh, Wm, Wl, F;
+    float wh, wm, wl;
     float s0, s1, s2, t0, t1, t2, w0, w1, w2;
     float sdx, sdy, sde, tdx, tdy, tde, wdx, wdy, wde;
     float a0, a1, a2;
@@ -203,38 +203,20 @@ int emit_texshade_triangle(int32_t *ew,
     dyh2 = vl->y - vh->y;
     dxhdy2 = (dyh2 != 0.0f) ? ((vl->x - vh->x) / dyh2) : 0.0f;
 
-    wh = (vh->w != 0.0f) ? (1.0f / vh->w) : 1.0f;
-    wm = (vm->w != 0.0f) ? (1.0f / vm->w) : 1.0f;
-    wl = (vl->w != 0.0f) ? (1.0f / vl->w) : 1.0f;
-    wmax = wh; if (wm > wmax) wmax = wm; if (wl > wmax) wmax = wl;
-    if (wmax <= 0.0f) wmax = 1.0f;
+    /* Texture / inverse-w coefficients in the RDP's native format -- no fitted
+     * envelope. e->w holds (1/w) renormalised to a plain inverse w; the RDP
+     * inverse-w coefficient is (1/w) * 2^16 so its integer part lands in the
+     * [0, 0x7fff] range the edgewalker reads as w >> 16. The S/T coefficient is
+     * the texel coordinate (S10.5) times that same inverse-w coefficient, so
+     * the per-pixel ss/sw divide recovers the texel. The scale is the hardware
+     * 2^16, not a 2^30 window fitted to the LLE output. */
+    wh = vh->w * 4294967296.0f; /* (1/w)/2^16 stored * 2^32 = (1/w) * 2^16 */
+    wm = vm->w * 4294967296.0f;
+    wl = vl->w * 4294967296.0f;
 
-    /* Build the texture coordinate / inverse-w edge coefficients in the
-     * fixed-point envelope the angrylion edgewalker expects, matching what the
-     * real RSP (and the cxd4 LLE oracle) produce. The edgewalker forms the
-     * per-pixel coordinate by taking ss = s >> 16, sw = w >> 16 and feeding the
-     * reciprocal unit tcdiv_persp, which expects sw to land in the s.15 range:
-     * the LLE oracle's inverse-w coefficient sits at roughly 2^30. So scale the
-     * largest 1/w to 2^30 (WSCALE) and carry the perspective-premultiplied
-     * S10.5 texel coordinate as s_texel * (1/w) * WSCALE.
-     *
-     * vh->s / vh->t already hold the raw S10.5 texel coordinate (the frontend
-     * no longer normalizes to [0,1] for a GL sampler). The S10.5 value divided
-     * by 32 is the integer texel count; carrying (s10.5/32) * Wperspective keeps
-     * s and w in the same 2^30 envelope so that ss/sw recovers the texel and the
-     * int32 coefficients never saturate (the previous s * tex_w * 32 * (1/w) *
-     * 65536 form overflowed past INT_MAX and clamped s/t to 0x80000000). */
-    WSCALE = 1073741824.0f / wmax;    /* 2^30 / max(1/w) */
-    Wh = wh * WSCALE; Wm = wm * WSCALE; Wl = wl * WSCALE;
-
-    F = 1.0f / 16384.0f;              /* S10.5 texel coord -> inverse-w envelope */
-    s0 = vh->s * F * Wh;
-    s1 = vm->s * F * Wm;
-    s2 = vl->s * F * Wl;
-    t0 = vh->t * F * Wh;
-    t1 = vm->t * F * Wm;
-    t2 = vl->t * F * Wl;
-    w0 = Wh; w1 = Wm; w2 = Wl;
+    s0 = vh->s * wh; s1 = vm->s * wm; s2 = vl->s * wl;
+    t0 = vh->t * wh; t1 = vm->t * wm; t2 = vl->t * wl;
+    w0 = wh; w1 = wm; w2 = wl;
     (void)tex_w; (void)tex_h;
 
 
