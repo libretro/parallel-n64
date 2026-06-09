@@ -18,28 +18,36 @@
 static void clip_to_emit(EmitVertex *e, const BridgeVertex *v,
                          const BridgeViewport *vp)
 {
-    /* Perspective divide using the RSP's exact fixed-point reciprocal of w
-     * (the div_ROM-table VRCP/VRCPL). The clip coords are s15.16; rsp_recip_div
-     * returns (1/w) in the RSP's scaled reciprocal format (~2^15 magnitude, the
-     * extra factor-of-2 the microcode applies). The ndc product is
-     * (clip_fx * recip) >> 15, yielding a s15.16 ndc in [-1,+1] range. The
-     * viewport map is then (ndc * vscale >> 16) + vtrans, all s15.16 -- exactly
-     * the RSP's integer screen-coordinate generation, with NO float round-trip
-     * (the float round-trip was the GLideN64-ism that broke the Z slope). */
-    int32_t recip = rsp_recip_div(v->cw);
-    int32_t ndcx  = (int32_t)(((int64_t)v->cx * recip) >> 15);
-    int32_t ndcy  = (int32_t)(((int64_t)v->cy * recip) >> 15);
-    int32_t ndcz  = (int32_t)(((int64_t)v->cz * recip) >> 15);
+    /* Perspective divide. The RSP uses the double-precision reciprocal (VRCPL,
+     * refined from the VRCP div_ROM estimate) for the screen-coordinate divide,
+     * which is full 32-bit precision. The single VRCP estimate (rsp_recip_div)
+     * has only ~10-bit mantissa -- fine for X/Y (sub-pixel) but far too coarse
+     * for the Z plane, where near-coplanar vertices differ only in the low bits
+     * of z and the coarse reciprocal turned those differences into noise (the
+     * scrambled-depth bug). Compute the NDC with the exact full-precision divide
+     * ndc = (clip << 16) / cw (s15.16), matching VRCPL. cw>0 is guaranteed by
+     * the caller's clip/cull (degenerate and w<=0 triangles are dropped). */
+    int32_t ndcx, ndcy, ndcz;
+    int32_t recip;
+    if (v->cw != 0)
+    {
+        ndcx = (int32_t)(((int64_t)v->cx << 16) / v->cw);
+        ndcy = (int32_t)(((int64_t)v->cy << 16) / v->cw);
+        ndcz = (int32_t)(((int64_t)v->cz << 16) / v->cw);
+    }
+    else
+    {
+        ndcx = ndcy = ndcz = 0;
+    }
 
     e->x = (int32_t)(((int64_t)ndcx * vp->vscale_x) >> 16) + vp->vtrans_x;
     e->y = (int32_t)(((int64_t)ndcy * vp->vscale_y) >> 16) + vp->vtrans_y;
     e->z = (int32_t)(((int64_t)ndcz * vp->vscale_z) >> 16) + vp->vtrans_z;
 
-    /* Inverse-w coefficient, perspNorm-scaled. recip is (1/w) * 2^15; the RSP
-     * multiplies by the gSPPerspNormalize scale (vVpMisc[4]) so the stored
-     * inverse-w lands in the upper range of the 15-bit tcdiv reciprocal LUT.
-     * The <<4 brings it to the edgewalker's expected magnitude (matching the
-     * prior path's ((recip*pn)<<4), now kept as a plain integer). */
+    /* Inverse-w coefficient for perspective-correct texture: the texture divide
+     * tolerates the single-precision reciprocal, and the tcdiv LUT expects that
+     * format, so keep the VRCP path for W (perspNorm-scaled). */
+    recip = rsp_recip_div(v->cw);
     {
         unsigned int pn = vp->persp_norm ? vp->persp_norm : 0xffffu;
         e->w = (int32_t)(((int64_t)recip * (int64_t)(int)pn) << 4);
