@@ -61,6 +61,7 @@ void rdp_emit_hle_process_dlist(void)
         gsp_init(&s_gsp);
         s_inited = 1;
     }
+    gsp_task_reset(&s_gsp);
 
     /* park the RDP command FIFO in the top 256 KiB of RDRAM */
     if (rdram_size < (512u * 1024u))

@@ -64,6 +64,10 @@ static unsigned int rd_u32_be(const unsigned char *r, unsigned int a)
  * the KSEG0 0x80-based pointers resolve to a 0 base, i.e. physical == offset. */
 static unsigned int s_seg_table[16];
 
+/* G_RDPHALF_1 (0xE1) latch: F3DZEX2's G_BRANCH_W (0x04) branches to the DL
+ * address staged here by the preceding RDPHALF_1. */
+static unsigned int s_half1;
+
 /* RDP render state is global on the real RSP (one set of mode registers),
  * not per-display-list. Track it module-wide so a mode set in one DL is seen
  * by sibling DLs drawn afterward; reset per frame alongside the segments. */
@@ -202,8 +206,16 @@ void f3dex2_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
             break;
         }
         case F3DEX2_POPMTX:
-            gsp_matrix_pop(gsp);
+        {
+            /* F3DEX2 G_POPMTX pops w1 / 64 matrices (64 bytes per matrix), not
+             * always one. Skeleton rendering pops several levels at once; only
+             * popping one leaves the stack too deep and transforms subsequent
+             * draws with a stale limb matrix. */
+            unsigned int npop = w1 >> 6;
+            while (npop--)
+                gsp_matrix_pop(gsp);
             break;
+        }
 
         case F3DEX2_VTX:
         {
@@ -309,6 +321,25 @@ void f3dex2_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
                         gsp_set_light(gsp, r, la, n - 2);
                 }
             }
+            break;
+        }
+
+        case 0xE1:                       /* G_RDPHALF_1: stage branch target */
+            s_half1 = w1;
+            break;
+
+        case 0x04:                       /* F3DZEX2 G_BRANCH_W (gSPBranchLessW) */
+        {
+            /* Branch (no return) to the DL staged by the preceding RDPHALF_1
+             * when vertex[(w0>>1)&0x7f]'s clip-space w integer part is less
+             * than w1. OoT's F3DZEX2 uses this for LOD selection and
+             * distance-based skip; ignoring it renders the wrong variant. */
+            int bv = (int)((w0 >> 1) & 0x7f);
+            unsigned int ba = seg_addr(s_half1);
+            if (bv >= 0 && bv < GSP_MAX_VERTICES &&
+                (gsp->vtx[bv].cw >> 16) < (int32_t)w1 &&
+                addr_in_range(ba, 8u))
+                pc = ba;
             break;
         }
 

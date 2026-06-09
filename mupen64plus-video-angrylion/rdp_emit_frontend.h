@@ -63,6 +63,11 @@ typedef struct GSPState
 /* lifecycle */
 void gsp_init(GSPState *s);
 
+/* per-RSP-task reset: the microcode's DRAM matrix-stack pointer is
+ * re-initialised at every task boot, so an unbalanced push/pop count within
+ * one display list (which games rely on) cannot leak into the next frame. */
+void gsp_task_reset(GSPState *s);
+
 /* matrix ops (addr is an RDRAM byte address to a 4x4 N64 fixed-point matrix) */
 void gsp_matrix_load(GSPState *s, const unsigned char *rdram, unsigned int addr,
                      int projection, int load, int push);

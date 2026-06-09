@@ -183,6 +183,16 @@ void gsp_matrix_pop(GSPState *s)
     s->combined_valid = 0;
 }
 
+void gsp_task_reset(GSPState *s)
+{
+    /* The RSP task boot resets the matrix-stack pointer; display lists are
+     * free to leave pushes unbalanced. Without this per-task reset the HLE
+     * stack ratchets up to its cap over a few frames and every pushed
+     * (skeleton/nested) draw transforms with a stale top-of-stack matrix. */
+    s->modelview_top = 0;
+    s->combined_valid = 0;
+}
+
 void gsp_combine_matrices(GSPState *s)
 {
     mtx_mul(s->combined, s->modelview[s->modelview_top], s->projection);
