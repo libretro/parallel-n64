@@ -236,10 +236,15 @@ void gsp_vertex(GSPState *s, const unsigned char *rdram, unsigned int addr,
 
         st_s = read_s16_be(rdram, base + 10); /* s */
         st_t = read_s16_be(rdram, base + 8);  /* t */
-        /* N64 texcoords are s10.5 scaled by the tile/scale; normalize to 0..1
-         * over the texture size for the encoder (which re-scales). */
-        vt->s = ((float)st_s / 32.0f) * s->tex_scale_s / (float)s->tex_w;
-        vt->t = ((float)st_t / 32.0f) * s->tex_scale_t / (float)s->tex_h;
+        /* Carry the raw S10.5 texel coordinate (modulated by the G_TEXTURE
+         * scale, an S0.16 fraction), NOT a [0,1]-normalized value. The
+         * angrylion edgewalker and texel pipeline consume S10.5 texel units
+         * directly; normalizing here (the GLideN64/GL-sampler convention)
+         * collapsed the sampled coordinate toward 0 and drove the texture
+         * combiner black. The encoder scales these into the fixed-point
+         * inverse-w envelope angrylion expects. */
+        vt->s = (float)st_s * s->tex_scale_s;
+        vt->t = (float)st_t * s->tex_scale_t;
 
         if (s->geometry_mode & 0x00020000u)     /* G_LIGHTING */
         {

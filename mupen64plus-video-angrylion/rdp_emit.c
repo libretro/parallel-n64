@@ -207,17 +207,35 @@ int emit_texshade_triangle(int32_t *ew,
     wl = (vl->w != 0.0f) ? (1.0f / vl->w) : 1.0f;
     wmax = wh; if (wm > wmax) wmax = wm; if (wl > wmax) wmax = wl;
     if (wmax <= 0.0f) wmax = 1.0f;
-    WSCALE = 16384.0f / wmax;
+
+    /* Build the texture coordinate / inverse-w edge coefficients in the
+     * fixed-point envelope the angrylion edgewalker expects, matching what the
+     * real RSP (and the cxd4 LLE oracle) produce. The edgewalker forms the
+     * per-pixel coordinate by taking ss = s >> 16, sw = w >> 16 and feeding the
+     * reciprocal unit tcdiv_persp, which expects sw to land in the s.15 range:
+     * the LLE oracle's inverse-w coefficient sits at roughly 2^30. So scale the
+     * largest 1/w to 2^30 (WSCALE) and carry the perspective-premultiplied
+     * S10.5 texel coordinate as s_texel * (1/w) * WSCALE.
+     *
+     * vh->s / vh->t already hold the raw S10.5 texel coordinate (the frontend
+     * no longer normalizes to [0,1] for a GL sampler). The S10.5 value divided
+     * by 32 is the integer texel count; carrying (s10.5/32) * Wperspective keeps
+     * s and w in the same 2^30 envelope so that ss/sw recovers the texel and the
+     * int32 coefficients never saturate (the previous s * tex_w * 32 * (1/w) *
+     * 65536 form overflowed past INT_MAX and clamped s/t to 0x80000000). */
+    WSCALE = 1073741824.0f / wmax;    /* 2^30 / max(1/w) */
     Wh = wh * WSCALE; Wm = wm * WSCALE; Wl = wl * WSCALE;
 
-    F = 65536.0f;
-    s0 = vh->s * (float)tex_w * 32.0f * Wh * F;
-    s1 = vm->s * (float)tex_w * 32.0f * Wm * F;
-    s2 = vl->s * (float)tex_w * 32.0f * Wl * F;
-    t0 = vh->t * (float)tex_h * 32.0f * Wh * F;
-    t1 = vm->t * (float)tex_h * 32.0f * Wm * F;
-    t2 = vl->t * (float)tex_h * 32.0f * Wl * F;
-    w0 = Wh * F; w1 = Wm * F; w2 = Wl * F;
+    F = 1.0f / 16384.0f;              /* S10.5 texel coord -> inverse-w envelope */
+    s0 = vh->s * F * Wh;
+    s1 = vm->s * F * Wm;
+    s2 = vl->s * F * Wl;
+    t0 = vh->t * F * Wh;
+    t1 = vm->t * F * Wm;
+    t2 = vl->t * F * Wl;
+    w0 = Wh; w1 = Wm; w2 = Wl;
+    (void)tex_w; (void)tex_h;
+
 
     a0 = s0; a1 = s1; a2 = s2;
     sdx = ((a1 - a0) * (Y2 - Y0) - (a2 - a0) * (Y1 - Y0)) * inv;
