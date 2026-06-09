@@ -12,18 +12,29 @@
 
 #include "rdp_emit.h"
 #include "rdp_emit_bridge.h"
+#include "rdp_emit_recip.h"
 
 static void clip_to_emit(EmitVertex *e, const float *v, const BridgeViewport *vp)
 {
-    float cw = v[3];
-    float rhw = (cw != 0.0f) ? (1.0f / cw) : 1.0f;
-    float ndcx = v[0] * rhw;
-    float ndcy = v[1] * rhw;
-    float ndcz = v[2] * rhw;
+    /* Perspective divide using the RSP's exact fixed-point reciprocal of w
+     * (the div_ROM-table VRCP/VRCPL) rather than a float 1.0/w, so the screen
+     * coordinates match the LLE path. The clip coordinates are s15.16; w is
+     * converted back to s15.16, run through rsp_recip_div (whose result is
+     * (1/w) scaled by 1/2, the RSP's reciprocal format), and the ndc product
+     * is (clip * DivOut) >> 15 -- the >>16 to renormalise the s15.16*s15.16
+     * product combined with the *2 the microcode applies to undo that 1/2. */
+    int32_t cw_fx = (int32_t)(v[3] * 65536.0f);
+    int32_t cx_fx = (int32_t)(v[0] * 65536.0f);
+    int32_t cy_fx = (int32_t)(v[1] * 65536.0f);
+    int32_t cz_fx = (int32_t)(v[2] * 65536.0f);
+    int32_t recip = rsp_recip_div(cw_fx);
+    float ndcx = (float)(((int64_t)cx_fx * recip) >> 15) / 65536.0f;
+    float ndcy = (float)(((int64_t)cy_fx * recip) >> 15) / 65536.0f;
+    float ndcz = (float)(((int64_t)cz_fx * recip) >> 15) / 65536.0f;
     e->x = ndcx * vp->vscale_x + vp->vtrans_x;
     e->y = ndcy * vp->vscale_y + vp->vtrans_y;
     e->z = ndcz * vp->vscale_z + vp->vtrans_z;
-    e->w = rhw;
+    e->w = (float)recip / 32768.0f / 65536.0f; /* approx 1/w for the encoder */
     e->r = v[4]; e->g = v[5]; e->b = v[6]; e->a = v[7];
     e->s = v[8]; e->t = v[9];
 }
