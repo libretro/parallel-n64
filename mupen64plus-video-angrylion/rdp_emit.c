@@ -236,14 +236,18 @@ int emit_texshade_triangle(int32_t *ew,
 
     for (i = 24; i < 40; i++) ew[i] = 0;
 
-    pack32(ew, 24, 0, (int32_t)s0);  pack32(ew, 24, 1, (int32_t)t0);
-    pack32(ew, 25, 0, (int32_t)w0);
-    pack32(ew, 26, 0, (int32_t)sdx); pack32(ew, 26, 1, (int32_t)tdx);
-    pack32(ew, 27, 0, (int32_t)wdx);
-    pack32(ew, 32, 0, (int32_t)sde); pack32(ew, 32, 1, (int32_t)tde);
-    pack32(ew, 33, 0, (int32_t)wde);
-    pack32(ew, 34, 0, (int32_t)sdy); pack32(ew, 34, 1, (int32_t)tdy);
-    pack32(ew, 35, 0, (int32_t)wdy);
+    /* s0/t0/w0 and the deltas are integer coefficient values (e.g. W = (1/w) *
+     * 2^16 with integer part ~16419). The edgewalker reads them as s15.16 and
+     * takes the integer part via >> 16, so the coefficient must occupy the
+     * integer half: store value << 16. */
+    pack32(ew, 24, 0, (int32_t)(s0 * 65536.0f));  pack32(ew, 24, 1, (int32_t)(t0 * 65536.0f));
+    pack32(ew, 25, 0, (int32_t)(w0 * 65536.0f));
+    pack32(ew, 26, 0, (int32_t)(sdx * 65536.0f)); pack32(ew, 26, 1, (int32_t)(tdx * 65536.0f));
+    pack32(ew, 27, 0, (int32_t)(wdx * 65536.0f));
+    pack32(ew, 32, 0, (int32_t)(sde * 65536.0f)); pack32(ew, 32, 1, (int32_t)(tde * 65536.0f));
+    pack32(ew, 33, 0, (int32_t)(wde * 65536.0f));
+    pack32(ew, 34, 0, (int32_t)(sdy * 65536.0f)); pack32(ew, 34, 1, (int32_t)(tdy * 65536.0f));
+    pack32(ew, 35, 0, (int32_t)(wdy * 65536.0f));
 
     return 40;
 }
