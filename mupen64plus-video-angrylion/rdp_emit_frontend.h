@@ -45,6 +45,7 @@ typedef struct GSPState
 
     BridgeViewport viewport;
     unsigned int   tex_scale_s, tex_scale_t; /* raw S0.16 from G_TEXTURE */
+    unsigned int   persp_norm;               /* G_MW_PERSPNORM u16 (gSPPerspNormalize) */
     int            tex_tile, tex_level, tex_w, tex_h;
 
     unsigned int   geometry_mode;
@@ -82,6 +83,7 @@ void gsp_vertex(GSPState *s, const unsigned char *rdram, unsigned int addr,
 /* F3DEX2 geometry mode (cull bits etc). Set by G_GEOMETRYMODE; consulted by
  * gsp_triangle to reject back/front-facing triangles the RSP would cull. */
 void gsp_set_geometry_mode(GSPState *s, unsigned int mode);
+void gsp_set_persp_norm(GSPState *s, unsigned int pn);
 unsigned int gsp_get_geometry_mode(const GSPState *s);
 
 /* Vertex lighting. gsp_set_num_lights sets the directional-light count (the

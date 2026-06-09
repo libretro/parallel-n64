@@ -41,6 +41,7 @@
 #define F3DEX2_MOVEWORD   0xDB
 #define G_MW_SEGMENT      0x06
 #define G_MW_NUMLIGHT     0x02
+#define G_MW_PERSPNORM    0x0e
 
 #define F3DEX2_MOVEMEM    0xDC
 #define G_MV_VIEWPORT     0x08
@@ -270,6 +271,12 @@ void f3dex2_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
             {
                 /* number of directional lights = w1 / 24 */
                 gsp_set_num_lights(gsp, (int)(w1 / 24u));
+            }
+            else if (index == G_MW_PERSPNORM)
+            {
+                /* gSPPerspNormalize: the low 16 bits are the perspective
+                 * normalization scale the RSP applies to 1/w. */
+                gsp_set_persp_norm(gsp, w1 & 0xffffu);
             }
             break;
         }

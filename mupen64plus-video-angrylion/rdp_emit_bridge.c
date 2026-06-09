@@ -34,11 +34,22 @@ static void clip_to_emit(EmitVertex *e, const float *v, const BridgeViewport *vp
     e->x = ndcx * vp->vscale_x + vp->vtrans_x;
     e->y = ndcy * vp->vscale_y + vp->vtrans_y;
     e->z = ndcz * vp->vscale_z + vp->vtrans_z;
-    /* Carry the RDP inverse-w coefficient directly: recip is (1/w) * 2^15
-     * (the div_ROM reciprocal), so recip * 2 is (1/w) * 2^16, the coefficient
-     * the edgewalker reads as w >> 16. No lossy round-trip through a tiny
-     * float -- store the integer coefficient as the vertex's w. */
-    e->w = (float)((int32_t)recip * 2);
+    /* Carry the RDP inverse-w coefficient, scaled by perspNorm. recip is
+     * (1/w) * 2^15 (the div_ROM reciprocal); the RSP multiplies the reciprocal
+     * by the gSPPerspNormalize scale (vVpMisc[4]) so the stored inverse-w lands
+     * in the upper range of the 15-bit tcdiv reciprocal LUT, maximising the
+     * texture divide precision (the manual's "scale the transformed w down
+     * prior to dividing"). perspNorm cancels in the screen ratio and in the
+     * texture s/w ratio, but sets the absolute coefficient magnitude. Apply it
+     * to the full-width reciprocal before truncation:
+     *   W = (1/w) * 2^15 * perspNorm  (then *2 for the *2^16 edgewalker form
+     *   would overflow; the SDK perspNorm is ~2/(near+far) in s.16, so the
+     *   product (1/w)*2^15 * perspNorm/2^15 keeps the coefficient bounded). */
+    {
+        unsigned int pn = vp->persp_norm ? vp->persp_norm : 0xffffu;
+        int64_t scaled = ((int64_t)recip * (int64_t)(int)pn) << 4;
+        e->w = (float)scaled;
+    }
     e->r = v[4]; e->g = v[5]; e->b = v[6]; e->a = v[7];
     e->s = v[8]; e->t = v[9];
 }

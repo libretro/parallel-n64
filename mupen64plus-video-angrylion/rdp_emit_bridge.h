@@ -13,6 +13,7 @@ typedef struct BridgeViewport
 {
     float vscale_x, vscale_y, vscale_z;
     float vtrans_x, vtrans_y, vtrans_z;
+    unsigned int persp_norm; /* G_MW_PERSPNORM u16, applied to 1/w */
 } BridgeViewport;
 
 int bridge_add_triangle(int32_t *cmd,

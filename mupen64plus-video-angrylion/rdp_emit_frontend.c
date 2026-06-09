@@ -127,6 +127,8 @@ void gsp_init(GSPState *s)
     s->viewport.vtrans_z = 511.0f;
     s->tex_scale_s = 0x10000u;
     s->tex_scale_t = 0x10000u;
+    s->persp_norm = 0xffffu; /* default until gSPPerspNormalize sets it */
+    s->viewport.persp_norm = 0xffffu;
 
     /* default lighting: no directional lights, white ambient so geometry
      * flagged G_LIGHTING before any light load is not pure black. */
@@ -278,12 +280,14 @@ void gsp_vertex(GSPState *s, const unsigned char *rdram, unsigned int addr,
          * collapsed the sampled coordinate toward 0 and drove the texture
          * combiner black. The encoder scales these into the fixed-point
          * inverse-w envelope angrylion expects. */
-        /* Texture coordinate = raw S10.5 texel coord * the G_TEXTURE S0.16
-         * scale, done in fixed point as the RSP does (vmudn/vmadm against the
-         * scale vector): (st * scale) >> 16 keeps the S10.5 result. No float
-         * scale factor. */
-        vt->s = (float)(((int64_t)st_s * (int64_t)s->tex_scale_s) >> 16);
-        vt->t = (float)(((int64_t)st_t * (int64_t)s->tex_scale_t) >> 16);
+        /* Carry the RAW S10.5 texel coordinate into the perspective texture
+         * coefficient. The G_TEXTURE S0.16 scale is applied by the RDP tile
+         * (SETTILE shift), NOT folded into the edge coefficient: empirically
+         * the cxd4 LLE oracle's S coefficient matches raw_st * (1/w) * perspNorm
+         * with no extra scale, and the rasterizer's tcshift_cycle applies the
+         * tile shift to the recovered texel. */
+        vt->s = (float)st_s;
+        vt->t = (float)st_t;
 
         if (s->geometry_mode & 0x00020000u)     /* G_LIGHTING */
         {
@@ -347,6 +351,12 @@ void gsp_vertex(GSPState *s, const unsigned char *rdram, unsigned int addr,
 #define GEOM_ZBUFFER    0x00000001u
 #define GEOM_CULL_FRONT 0x00000200u
 #define GEOM_CULL_BACK  0x00000400u
+
+void gsp_set_persp_norm(GSPState *s, unsigned int pn)
+{
+    s->persp_norm = pn & 0xffffu;
+    s->viewport.persp_norm = pn & 0xffffu;
+}
 
 void gsp_set_geometry_mode(GSPState *s, unsigned int mode)
 {

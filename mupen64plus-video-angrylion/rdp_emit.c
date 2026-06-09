@@ -215,8 +215,12 @@ int emit_texshade_triangle(int32_t *ew,
     wm = vm->w;
     wl = vl->w;
 
-    s0 = vh->s * wh; s1 = vm->s * wm; s2 = vl->s * wl;
-    t0 = vh->t * wh; t1 = vm->t * wm; t2 = vl->t * wl;
+    /* W coefficient is the perspNorm-scaled inverse-w (vh->w). The S/T
+     * coefficient is the raw texel times that inverse-w, scaled so S/W recovers
+     * the texel: S = texel * W / 2^16 (the W already carries the 2^16 the
+     * edgewalker reads as the integer part). */
+    s0 = vh->s * wh / 65536.0f; s1 = vm->s * wm / 65536.0f; s2 = vl->s * wl / 65536.0f;
+    t0 = vh->t * wh / 65536.0f; t1 = vm->t * wm / 65536.0f; t2 = vl->t * wl / 65536.0f;
     w0 = wh; w1 = wm; w2 = wl;
     (void)tex_w; (void)tex_h;
 
