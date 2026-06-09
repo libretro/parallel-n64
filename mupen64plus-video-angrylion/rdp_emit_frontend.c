@@ -456,7 +456,7 @@ int gsp_triangle(GSPState *s, int32_t *cmd, int i0, int i1, int i2,
     v2[0]=c->x; v2[1]=c->y; v2[2]=c->z; v2[3]=c->w;
     v2[4]=c->r; v2[5]=c->g; v2[6]=c->b; v2[7]=c->a; v2[8]=c->s; v2[9]=c->t;
 
-    return bridge_add_triangle_clipped(cmd, v0, v1, v2, &s->viewport,
+    return bridge_add_triangle(cmd, v0, v1, v2, &s->viewport,
                                textured, z_buffered,
                                s->tex_tile, s->tex_level, s->tex_w, s->tex_h);
 }

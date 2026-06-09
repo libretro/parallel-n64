@@ -21,12 +21,6 @@ int bridge_add_triangle(int32_t *cmd,
                         int textured, int z_buffered,
                         int tile, int max_level, int tex_w, int tex_h);
 
-int bridge_add_triangle_clipped(int32_t *cmd,
-                                const float *v0, const float *v1, const float *v2,
-                                const BridgeViewport *vp,
-                                int textured, int z_buffered,
-                                int tile, int max_level, int tex_w, int tex_h);
-
 #ifdef __cplusplus
 }
 #endif
