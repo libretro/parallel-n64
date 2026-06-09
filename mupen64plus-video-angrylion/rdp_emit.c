@@ -149,9 +149,10 @@ int emit_shaded_z_triangle(int32_t *ew, const EmitVertex *va,
     emit_shaded_triangle(ew, va, vb, vc, tile, max_level);
 
     zf = (va->z + vb->z + vc->z) / 3.0f;
+    zf = zf * (32767.0f / 1023.0f);
     if (zf < 0.0f) zf = 0.0f;
-    if (zf > 1.0f) zf = 1.0f;
-    ew[24] = (int32_t)((uint32_t)((int32_t)(zf * 32767.0f)) << 16);
+    if (zf > 32767.0f) zf = 32767.0f;
+    ew[24] = (int32_t)((uint32_t)((int32_t)zf) << 16);
     ew[25] = 0;
     ew[26] = 0;
     ew[27] = 0;
@@ -277,9 +278,10 @@ int emit_texshade_z_triangle(int32_t *ew,
     emit_texshade_triangle(ew, va, vb, vc, tex_w, tex_h, tile, max_level);
 
     zf = (va->z + vb->z + vc->z) / 3.0f;
+    zf = zf * (32767.0f / 1023.0f);
     if (zf < 0.0f) zf = 0.0f;
-    if (zf > 1.0f) zf = 1.0f;
-    ew[40] = (int32_t)((uint32_t)((int32_t)(zf * 32767.0f)) << 16);
+    if (zf > 32767.0f) zf = 32767.0f;
+    ew[40] = (int32_t)((uint32_t)((int32_t)zf) << 16);
     ew[41] = 0;
     ew[42] = 0;
     ew[43] = 0;

@@ -101,7 +101,7 @@ static void load_n64_matrix(float m[4][4], const unsigned char *rdram, unsigned 
              * geometry trivially clips away. Read element (i,j) from slot
              * (j*4 + i) to load it in the orientation the transform expects.
              * read_s16_be/read_u16_be already apply the in-word byte-swap. */
-            ofs = (j * 4 + i) * 2;
+            ofs = (i * 4 + j) * 2;
             ip = read_s16_be(rdram, int_base + (unsigned int)ofs);
             fp = read_u16_be(rdram, frac_base + (unsigned int)ofs);
             m[i][j] = (float)ip + (float)fp / 65536.0f;
@@ -122,6 +122,8 @@ void gsp_init(GSPState *s)
     s->viewport.vscale_y = -120.0f;
     s->viewport.vtrans_x = 160.0f;
     s->viewport.vtrans_y = 120.0f;
+    s->viewport.vscale_z = 511.0f;
+    s->viewport.vtrans_z = 511.0f;
     s->tex_scale_s = 1.0f;
     s->tex_scale_t = 1.0f;
 
@@ -190,12 +192,16 @@ void gsp_set_viewport(GSPState *s, const unsigned char *rdram, unsigned int addr
      * scale and translate are the .2 fixed fields (divide by 4). */
     float sx = (float)read_s16_be(rdram, addr + 0) / 4.0f;
     float sy = (float)read_s16_be(rdram, addr + 2) / 4.0f;
+    float sz = (float)read_s16_be(rdram, addr + 4);
     float tx = (float)read_s16_be(rdram, addr + 8) / 4.0f;
     float ty = (float)read_s16_be(rdram, addr + 10) / 4.0f;
+    float tz = (float)read_s16_be(rdram, addr + 12);
     s->viewport.vscale_x = sx;
     s->viewport.vscale_y = sy;
+    s->viewport.vscale_z = sz;
     s->viewport.vtrans_x = tx;
     s->viewport.vtrans_y = ty;
+    s->viewport.vtrans_z = tz;
 }
 
 void gsp_set_texture(GSPState *s, float scale_s, float scale_t,

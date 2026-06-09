@@ -11,8 +11,8 @@ extern "C" {
 
 typedef struct BridgeViewport
 {
-    float vscale_x, vscale_y;
-    float vtrans_x, vtrans_y;
+    float vscale_x, vscale_y, vscale_z;
+    float vtrans_x, vtrans_y, vtrans_z;
 } BridgeViewport;
 
 int bridge_add_triangle(int32_t *cmd,

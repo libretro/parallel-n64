@@ -22,7 +22,7 @@ static void clip_to_emit(EmitVertex *e, const float *v, const BridgeViewport *vp
     float ndcz = v[2] * rhw;
     e->x = ndcx * vp->vscale_x + vp->vtrans_x;
     e->y = ndcy * vp->vscale_y + vp->vtrans_y;
-    e->z = ndcz;
+    e->z = ndcz * vp->vscale_z + vp->vtrans_z;
     e->w = rhw;
     e->r = v[4]; e->g = v[5]; e->b = v[6]; e->a = v[7];
     e->s = v[8]; e->t = v[9];
