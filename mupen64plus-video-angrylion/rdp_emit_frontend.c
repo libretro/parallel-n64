@@ -483,6 +483,30 @@ int gsp_triangle(GSPState *s, int32_t *cmd, int i0, int i1, int i2,
             return 0;                       /* front-facing rejected */
     }
 
+    /* Degenerate-triangle reject. The RSP computes the triangle's screen-space
+     * signed area during its triangle setup and does not emit an RDP command
+     * for a zero-area (collinear or coincident-vertex) triangle: such a
+     * triangle covers no pixels and the microcode's edge-walk setup would
+     * divide by a zero major-edge slope. Project to screen space (perspective
+     * divide then viewport scale) and drop the triangle when the signed area is
+     * zero, matching the RSP, which otherwise leaves a large population of
+     * collapsed triangles (e.g. quad edges seen exactly edge-on) in the
+     * command stream that the real hardware never produces. */
+    {
+        float wa = (a->w != 0.0f) ? 1.0f / a->w : 0.0f;
+        float wb = (b->w != 0.0f) ? 1.0f / b->w : 0.0f;
+        float wc = (c->w != 0.0f) ? 1.0f / c->w : 0.0f;
+        float sxa = a->x * wa * s->viewport.vscale_x;
+        float sya = a->y * wa * s->viewport.vscale_y;
+        float sxb = b->x * wb * s->viewport.vscale_x;
+        float syb = b->y * wb * s->viewport.vscale_y;
+        float sxc = c->x * wc * s->viewport.vscale_x;
+        float syc = c->y * wc * s->viewport.vscale_y;
+        float darea = (sxb - sxa) * (syc - sya) - (sxc - sxa) * (syb - sya);
+        if (darea == 0.0f)
+            return 0;
+    }
+
     v0[0]=a->x; v0[1]=a->y; v0[2]=a->z; v0[3]=a->w;
     v0[4]=a->r; v0[5]=a->g; v0[6]=a->b; v0[7]=a->a; v0[8]=a->s; v0[9]=a->t;
     v1[0]=b->x; v1[1]=b->y; v1[2]=b->z; v1[3]=b->w;
