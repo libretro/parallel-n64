@@ -58,6 +58,10 @@ typedef struct GSPState
     int32_t light_rgb[GSP_MAX_LIGHTS][3];
     int32_t light_dir[GSP_MAX_LIGHTS][3]; /* cached model-space unit dirs (s8) */
     int32_t light_raw[GSP_MAX_LIGHTS][3]; /* raw s8 dirs as loaded by MOVEMEM */
+    int32_t light_kc[GSP_MAX_LIGHTS];     /* point light constant attenuation (0 = directional) */
+    int32_t light_kl[GSP_MAX_LIGHTS];     /* point light linear attenuation */
+    int32_t light_kq[GSP_MAX_LIGHTS];     /* point light quadratic attenuation */
+    int32_t light_pos[GSP_MAX_LIGHTS][3]; /* point light position, s16 camera-space */
     int32_t lookat[2][3];     /* cached model-space lookat X/Y dirs (s8) */
     int32_t lookat_raw[2][3]; /* raw s8 lookat dirs as loaded */
     int     lights_valid;     /* cache flag, mirrors the RSP's lightsValid */

@@ -146,6 +146,12 @@ void gsp_init(GSPState *s)
         s->light_raw[i][0] = 0;
         s->light_raw[i][1] = 0;
         s->light_raw[i][2] = 0;
+        s->light_kc[i] = 0;
+        s->light_kl[i] = 0;
+        s->light_kq[i] = 0;
+        s->light_pos[i][0] = 0;
+        s->light_pos[i][1] = 0;
+        s->light_pos[i][2] = 0;
         if (i < 2)
         {
             s->lookat[i][0] = 0;
@@ -445,9 +451,88 @@ void gsp_vertex(GSPState *s, const unsigned char *rdram, unsigned int addr,
             cb = s->light_rgb[s->num_lights][2];
             for (li = 0; li < s->num_lights; li++)
             {
-                int32_t d = 2 * (nxb * s->light_dir[li][0]
-                               + nyb * s->light_dir[li][1]
-                               + nzb * s->light_dir[li][2]);
+                int32_t d;
+                if ((s->geometry_mode & 0x00400000u) && s->light_kc[li] != 0)
+                {
+                    /* F3DZEX point light (light_point in the microcode). The
+                     * s16 light position is in camera space; the vertex is
+                     * transformed there by the modelview, the vertex-to-light
+                     * vector is normalized against its camera-space length
+                     * and rotated back into model space with the modelview
+                     * transpose (valid up to non-uniform scale, same as
+                     * hardware), then dotted with the raw s8 normal like a
+                     * directional light. Intensity is divided by the
+                     * attenuation polynomial kc + kl*len + kq*len^2 in the
+                     * microcode's fixed point: A(s15.16) = kc<<12 +
+                     * 2*kl*len + kq*len^2/8. The x4 on the normalized
+                     * vector (with saturation) matches the microcode's
+                     * 0x0004 alignment multiply. */
+                    int32_t (*MV)[4] = s->modelview[s->modelview_top];
+                    int32_t vcx = (int32_t)(((int64_t)ox * MV[0][0] + (int64_t)oy * MV[1][0]
+                               + (int64_t)oz * MV[2][0] + MV[3][0]) >> 16);
+                    int32_t vcy = (int32_t)(((int64_t)ox * MV[0][1] + (int64_t)oy * MV[1][1]
+                               + (int64_t)oz * MV[2][1] + MV[3][1]) >> 16);
+                    int32_t vcz = (int32_t)(((int64_t)ox * MV[0][2] + (int64_t)oy * MV[1][2]
+                               + (int64_t)oz * MV[2][2] + MV[3][2]) >> 16);
+                    int32_t dx = s->light_pos[li][0] - vcx;
+                    int32_t dy = s->light_pos[li][1] - vcy;
+                    int32_t dz = s->light_pos[li][2] - vcz;
+                    int64_t len2 = (int64_t)dx * dx + (int64_t)dy * dy
+                                 + (int64_t)dz * dz;
+                    d = 0;
+                    if (len2 > 0)
+                    {
+                        int64_t lo = 0, hi = 0x7fffffff, mid;
+                        int32_t ks, dmx, dmy, dmz, lx, ly, lz, V;
+                        int64_t t, dfx;
+                        while (lo < hi)
+                        {
+                            mid = (lo + hi + 1) >> 1;
+                            if (mid * mid <= len2) lo = mid; else hi = mid - 1;
+                        }
+                        ks = (int32_t)lo;
+                        if (ks > 0)
+                        {
+                            dmx = (int32_t)(((int64_t)dx * MV[0][0] + (int64_t)dy * MV[0][1]
+                                + (int64_t)dz * MV[0][2]) >> 16);
+                            dmy = (int32_t)(((int64_t)dx * MV[1][0] + (int64_t)dy * MV[1][1]
+                                + (int64_t)dz * MV[1][2]) >> 16);
+                            dmz = (int32_t)(((int64_t)dx * MV[2][0] + (int64_t)dy * MV[2][1]
+                                + (int64_t)dz * MV[2][2]) >> 16);
+                            t = ((int64_t)dmx << 17) / ks;
+                            if (t >  32767) t =  32767;
+                            if (t < -32768) t = -32768;
+                            lx = (int32_t)t;
+                            t = ((int64_t)dmy << 17) / ks;
+                            if (t >  32767) t =  32767;
+                            if (t < -32768) t = -32768;
+                            ly = (int32_t)t;
+                            t = ((int64_t)dmz << 17) / ks;
+                            if (t >  32767) t =  32767;
+                            if (t < -32768) t = -32768;
+                            lz = (int32_t)t;
+                            V = (int32_t)(((int64_t)nxb * lx + (int64_t)nyb * ly
+                              + (int64_t)nzb * lz) >> 7);
+                            if (V > 32767) V = 32767;
+                            if (V > 0)
+                            {
+                                dfx = ((int64_t)s->light_kc[li] << 12)
+                                    + 2 * (int64_t)s->light_kl[li] * ks
+                                    + (((int64_t)s->light_kq[li] * ks * ks) >> 3);
+                                if (dfx < 1) dfx = 1;
+                                t = ((int64_t)V << 16) / dfx;
+                                if (t > 0xffff) t = 0xffff;
+                                d = (int32_t)t;
+                            }
+                        }
+                    }
+                }
+                else
+                {
+                    d = 2 * (nxb * s->light_dir[li][0]
+                           + nyb * s->light_dir[li][1]
+                           + nzb * s->light_dir[li][2]);
+                }
                 if (d > 0)
                 {
                     if (d > 0xffff) d = 0xffff;
@@ -592,6 +677,20 @@ void gsp_set_light(GSPState *s, const unsigned char *rdram,
     s->light_raw[index][1] = (int)(signed char)read_u8_n64(rdram, addr + 9);
     s->light_raw[index][2] = (int)(signed char)read_u8_n64(rdram, addr + 10);
 
+    /* F3DZEX point light fields. A nonzero byte at +3 (constant attenuation
+     * kc) marks the light as positional: the struct then carries an s16
+     * camera-space position at +8 (overlapping the s8 direction of the
+     * directional layout), a linear factor kl at +7 and a quadratic factor
+     * kq at +14. kc == 0 keeps the plain directional interpretation. */
+    s->light_kc[index] = (int32_t)read_u8_n64(rdram, addr + 3);
+    s->light_kl[index] = (int32_t)read_u8_n64(rdram, addr + 7);
+    s->light_kq[index] = (int32_t)read_u8_n64(rdram, addr + 14);
+    s->light_pos[index][0] = (int32_t)(short)((read_u8_n64(rdram, addr + 8) << 8)
+                                             | read_u8_n64(rdram, addr + 9));
+    s->light_pos[index][1] = (int32_t)(short)((read_u8_n64(rdram, addr + 10) << 8)
+                                             | read_u8_n64(rdram, addr + 11));
+    s->light_pos[index][2] = (int32_t)(short)((read_u8_n64(rdram, addr + 12) << 8)
+                                             | read_u8_n64(rdram, addr + 13));
     s->lights_valid = 0;
 }
 
