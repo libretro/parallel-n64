@@ -117,6 +117,9 @@ static STRICTINLINE uint32_t irand(uint32_t* state)
 
 static uint32_t rdp_cmd_buf[CMD_BUFFER_SIZE][CMD_MAX_INTS];
 static uint32_t rdp_cmd_buf_pos;
+static uint32_t prev_img_addr[2];   /* [0]=color image, [1]=depth image */
+static uint32_t prev_img_extent[2];
+static bool prev_img_valid[2];
 
 static uint32_t rdp_cmd_pos;
 static uint32_t rdp_cmd_id;
@@ -221,6 +224,7 @@ void n64video_init(struct n64video_config* _config)
     vi_init();
     cmd_init();
 
+    prev_img_valid[0] = prev_img_valid[1] = false;
     rdp_pipeline_crashed = 0;
     memset(&onetimewarnings, 0, sizeof(onetimewarnings));
 
@@ -308,6 +312,75 @@ void n64video_process_list(void)
 
             // check if parallel processing is enabled
             if (config.parallel) {
+                // A mid-frame SET_COLOR_IMAGE that overlaps the previous
+                // color image (render-to-subimage, e.g. Ocarina of Time's
+                // pause-screen character box) makes draws before and after
+                // the switch target the same RDRAM through different
+                // scanline layouts. Workers replay the buffer at
+                // independent paces, so without a barrier the two draw
+                // groups race and produce interleaved-scanline streaks.
+                // Ordinary buffer switches (cfb/zbuf/next frame) do not
+                // overlap and keep the fast path at every sync level.
+                if (rdp_cmd_id == CMD_ID_SET_COLOR_IMAGE ||
+                    rdp_cmd_id == CMD_ID_SET_MASK_IMAGE) {
+                    // Mid-frame retargeting hazard: when a new color or
+                    // depth image overlaps memory that the previous color
+                    // or depth image covers, draws before and after the
+                    // switch address the same RDRAM through different
+                    // scanline layouts (render-to-subimage and
+                    // buffer-as-zbuffer tricks; Ocarina of Time's pause
+                    // screen does both for the character box). Workers
+                    // replay the command buffer at independent paces, so
+                    // without a barrier the two draw groups race and leave
+                    // interleaved-scanline streaks. A switch with an
+                    // identical configuration, or to a region one full
+                    // image away (the standard cfb/zbuf layout), keeps the
+                    // fast path at every sync level.
+                    uint32_t naddr = cmd_buf[1] & 0xffffff;
+                    uint32_t next;
+                    bool hazard = false;
+                    int k;
+                    if (rdp_cmd_id == CMD_ID_SET_COLOR_IMAGE) {
+                        uint32_t siz   = (cmd_buf[0] >> 19) & 3;
+                        uint32_t width = (cmd_buf[0] & 0x3ff) + 1;
+                        uint32_t rowb  = (siz == 3) ? width * 4
+                                       : (siz == 2) ? width * 2
+                                       : (siz == 1) ? width
+                                       : width / 2;
+                        next = rowb * 240;
+                    } else {
+                        // depth image: fixed 16-bit, width follows the
+                        // color image; use the color image's extent as the
+                        // estimate.
+                        next = prev_img_valid[0] ? prev_img_extent[0]
+                                                 : 320 * 2 * 240;
+                    }
+                    for (k = 0; k < 2; k++) {
+                        uint32_t d, lim;
+                        if (!prev_img_valid[k])
+                            continue;
+                        d   = naddr > prev_img_addr[k]
+                            ? naddr - prev_img_addr[k]
+                            : prev_img_addr[k] - naddr;
+                        lim = prev_img_extent[k] > next
+                            ? prev_img_extent[k] : next;
+                        if (d < lim &&
+                            !(naddr == prev_img_addr[k] && next == prev_img_extent[k]))
+                            hazard = true;
+                    }
+                    if (hazard) {
+                        // the words of this command were parsed into the
+                        // slot at the pre-flush buffer position; the flush
+                        // rewinds the position to 0, so move them to the
+                        // slot that is about to be registered.
+                        cmd_flush();
+                        memcpy(rdp_cmd_buf[0], cmd_buf, rdp_cmd_len * sizeof(uint32_t));
+                    }
+                    k = (rdp_cmd_id == CMD_ID_SET_COLOR_IMAGE) ? 0 : 1;
+                    prev_img_addr[k]   = naddr;
+                    prev_img_extent[k] = next;
+                    prev_img_valid[k]  = true;
+                }
                 // special case: sync_full always needs to be run in main thread
                 if (rdp_cmd_id == CMD_ID_SYNC_FULL) {
                     // first, run all pending commands
