@@ -485,6 +485,173 @@ void rsp_light_vtx(const int32_t n[3], const int32_t amb[3],
         out[c] = (lt[c] >> 7) & 0xff;
 }
 
+/* ---- clipping ---------------------------------------------------------- */
+
+/* The clip-ratio-scaled W the vertex pipeline compares against for the
+ * scaled outcodes: ratio (2) times the s15.16 w through the vmudn/vmadh
+ * pair, whose mid read clamps. */
+int32_t rsp_clip_scale_w(int32_t w)
+{
+    RspAcc acc = p_udn(w & 0xffff, 2) + p_udh((w >> 16) & 0xffff, 2);
+    int32_t f = acc_clamp_low(acc);
+    int32_t i = acc_clamp_mid(acc);
+    return (int32_t)(((uint32_t)U16(i) << 16) | (uint32_t)U16(f));
+}
+
+/* The F3DEX2 2.04H clip subdivision: compute the fade factor between the
+ * on-screen and off-screen vertex against one clip condition's plane
+ * (the clipRatio row), and lerp position and attributes, mirroring the
+ * microcode's vector chain op for op, including the
+ * BUG_CLIPPING_FAIL_WHEN_SUM_ZERO variant of the reciprocal sign fixup.
+ *
+ * on_pos/off_pos are the s15.16 clip-space x,y,z,w. cr is the four-short
+ * clipRatio row. attr lanes are the stored vertex attribute shorts: colors
+ * as byte << 7 (luv domain) in lanes 0..3 and the s10.5 texture coords in
+ * lanes 4..5. Outputs: lerped position (s15.16) and the eight lerped
+ * attribute lanes (acc mid clamps, exactly vPairST). */
+void rsp_clip_lerp(const int32_t on_pos[4], const int32_t off_pos[4],
+                   const int16_t cr[4],
+                   const int16_t on_attr[8], const int16_t off_attr[8],
+                   int32_t out_pos[4], int16_t out_attr[8])
+{
+    int32_t v8[4], v9[4], v10[4], v11[4]; /* frac/int lanes */
+    int32_t co[4];
+    int32_t rcp_lo, rcp_hi, abs2, fade, onfade;
+    int32_t r2_lo, r2_hi, x_lo, x_hi;
+    RspAcc acc;
+    int L;
+
+    /* on * cr and (on - off) * cr per lane, i:f */
+    for (L = 0; L < 4; L++)
+    {
+        int32_t onf = on_pos[L] & 0xffff, oni = (on_pos[L] >> 16) & 0xffff;
+        int32_t off = off_pos[L] & 0xffff, ofi = (off_pos[L] >> 16) & 0xffff;
+        int32_t crv = S16(cr[L]);
+        int32_t ncr = clamp_s16(-crv);          /* vmudh by -1 */
+        acc = p_udn(onf, crv) + p_udh(oni, crv);
+        v8[L] = (int32_t)(acc & 0xffff);
+        v9[L] = (int32_t)((acc >> 16) & 0xffff);
+        acc += p_udn(off, ncr) + p_udh(ofi, ncr);
+        v10[L] = (int32_t)(acc & 0xffff);
+        v11[L] = (int32_t)((acc >> 16) & 0xffff);
+    }
+    /* vaddc/vadd lane sums: [0q] then [1h]; only lanes 1 and 3 are
+     * consumed downstream but the carries are per lane. */
+    {
+        int32_t s;
+        s = U16(v8[1]) + U16(v8[0]);  co[1] = (s >> 16) & 1; v8[1] = s & 0xffff;
+        s = U16(v8[3]) + U16(v8[2]);  co[3] = (s >> 16) & 1; v8[3] = s & 0xffff;
+        v9[1] = clamp_s16(S16(v9[1]) + S16(v9[0]) + co[1]);
+        v9[3] = clamp_s16(S16(v9[3]) + S16(v9[2]) + co[3]);
+        s = U16(v10[1]) + U16(v10[0]); co[1] = (s >> 16) & 1; v10[1] = s & 0xffff;
+        s = U16(v10[3]) + U16(v10[2]); co[3] = (s >> 16) & 1; v10[3] = s & 0xffff;
+        v11[1] = clamp_s16(S16(v11[1]) + S16(v11[0]) + co[1]);
+        v11[3] = clamp_s16(S16(v11[3]) + S16(v11[2]) + co[3]);
+        s = U16(v8[3]) + U16(v8[1]);  co[3] = (s >> 16) & 1; v8[3] = s & 0xffff;
+        v9[3] = clamp_s16(S16(v9[3]) + S16(v9[1]) + co[3]);
+        s = U16(v10[3]) + U16(v10[1]); co[3] = (s >> 16) & 1; v10[3] = s & 0xffff;
+        v11[3] = clamp_s16(S16(v11[3]) + S16(v11[1]) + co[3]);
+    }
+    /* Double-precision reciprocal of the difference sum (the leading
+     * vrcph of the 2.04H build only primes DivIn; its result is
+     * discarded). */
+    {
+        int32_t r = rsp_rcp32((int32_t)(((uint32_t)U16(v11[3]) << 16)
+                                       | (uint32_t)U16(v10[3])));
+        rcp_lo = r & 0xffff;
+        rcp_hi = (r >> 16) & 0xffff;
+    }
+    /* vabs $v29, $v11, 2: +/- 2 by the sign of the int sum, 0 if it is 0
+     * (the 2.04H sum-zero bug). */
+    if (S16(v11[3]) > 0)      abs2 = 2;
+    else if (S16(v11[3]) < 0) abs2 = -2;
+    else                      abs2 = 0;
+    acc = p_udn(rcp_lo, abs2);
+    rcp_lo = acc_clamp_low(acc);
+    acc += p_udh(rcp_hi, abs2);
+    rcp_hi = acc_clamp_mid(acc);
+    /* veq/vmrg: keep the low half if the scaled high half is 0, else
+     * saturate to 0xFFFF. */
+    if (S16(rcp_hi) != 0)
+        rcp_lo = 0xffff;
+    /* (v11:v10) = diff * rcp ~= 1 */
+    acc = p_udl(v10[3], rcp_lo) + p_udm(v11[3], rcp_lo);
+    v11[3] = acc_clamp_mid(acc);
+    v10[3] = acc_clamp_low(acc);
+    /* second reciprocal, of the ~1 value */
+    {
+        int32_t r = rsp_rcp32((int32_t)(((uint32_t)U16(v11[3]) << 16)
+                                       | (uint32_t)U16(v10[3])));
+        r2_lo = r & 0xffff;
+        r2_hi = (r >> 16) & 0xffff;
+    }
+    /* Newton-Raphson: x = r * v; v' = 4 - 4x; r' = r * v' */
+    acc = p_udl(r2_lo, v10[3]) + p_udm(r2_hi, v10[3]);
+    acc += p_udn(r2_lo, v11[3]);
+    x_lo = acc_clamp_low(acc);
+    acc += p_udh(r2_hi, v11[3]);
+    x_hi = acc_clamp_mid(acc);
+    acc = ((RspAcc)4 << 16);
+    acc += p_udn(x_lo, -4);
+    x_lo = acc_clamp_low(acc);
+    acc += p_udh(x_hi, -4);
+    x_hi = acc_clamp_mid(acc);
+    acc = p_udl(r2_lo, x_lo) + p_udm(r2_hi, x_lo);
+    acc += p_udn(r2_lo, x_hi);
+    r2_lo = acc_clamp_low(acc);
+    acc += p_udh(r2_hi, x_hi);
+    r2_hi = acc_clamp_mid(acc);
+    /* A * refined reciprocal, then * rcp again */
+    acc = p_udl(v8[3], r2_lo) + p_udm(v9[3], r2_lo);
+    acc += p_udn(v8[3], r2_hi);
+    v10[3] = acc_clamp_low(acc);
+    acc += p_udh(v9[3], r2_hi);
+    v11[3] = acc_clamp_mid(acc);
+    acc = p_udl(v10[3], rcp_lo) + p_udm(v11[3], rcp_lo);
+    v11[3] = acc_clamp_mid(acc);
+    v10[3] = acc_clamp_low(acc);
+    /* Clamp the factor to (0, 1]: vlt/vmrg/vsubc/vge/vmrg on lane 3.
+     * vlt: VCC = (int < 1); vmrg picks frac or 0xFFFF.
+     * vsubc frac - 1 sets VCO: co = borrow (frac == 0), ne = (frac != 1).
+     * vge: VCC = (int > 0) | ((int == 0) & !(ne & co)); vmrg picks frac
+     * or 1. */
+    {
+        int32_t fi = S16(v11[3]);
+        int32_t ff = U16(v10[3]);
+        int32_t vcc = (fi < 1);
+        int32_t ne, cob;
+        ff = vcc ? ff : 0xffff;
+        fi = (fi < 1) ? fi : 1;            /* vlt result = min */
+        cob = (ff - 1 < 0);
+        ne  = (ff != 1);
+        vcc = (fi > 0) | ((fi == 0) & !(ne & cob));
+        fade = vcc ? ff : 1;
+    }
+    acc = p_udn(fade, -1);
+    onfade = acc_clamp_low(acc);            /* 0x10000 - fade, low half */
+    /* Position lerp: off * fade + on * onfade through the i:f MAC chain */
+    for (L = 0; L < 4; L++)
+    {
+        int32_t onf = on_pos[L] & 0xffff, oni = (on_pos[L] >> 16) & 0xffff;
+        int32_t off = off_pos[L] & 0xffff, ofi = (off_pos[L] >> 16) & 0xffff;
+        int32_t pi, pf;
+        acc  = p_udl(off, fade) + p_udm(ofi, fade);
+        acc += p_udl(onf, onfade);
+        acc += p_udm(oni, onfade);
+        pi = acc_clamp_mid(acc);
+        pf = acc_clamp_low(acc);
+        out_pos[L] = (int32_t)(((uint32_t)U16(pi) << 16) | (uint32_t)U16(pf));
+    }
+    /* Attribute lerp: one vmudm/vmadm round (signed attrs, unsigned
+     * factors), acc mid clamps out. */
+    for (L = 0; L < 8; L++)
+    {
+        acc  = p_udm(S16(off_attr[L]) & 0xffff, fade);
+        acc += p_udm(S16(on_attr[L]) & 0xffff, onfade);
+        out_attr[L] = (int16_t)acc_clamp_mid(acc);
+    }
+}
+
 /* ---- vertex screen transform ------------------------------------------ */
 
 /* The microcode's vertex write, transcribed: the clip-space position is
@@ -961,14 +1128,17 @@ int rsp_tri_write(int32_t *ew,
         int32_t w0;
         int id = 0xc8 | (z_buffered ? 1 : 0) | 4 /* G_TRI_FILL base */
                | (textured ? 2 : 0);
+        /* The microcode stores YL/YM/YH with plain 16-bit ssv: no 14-bit
+         * masking, so negative values keep their full sign bits in the
+         * command words (the RDP only decodes the low 14 bits). */
         w0 = (int32_t)(((uint32_t)id << 24)
            | ((uint32_t)lft << 23)
            | ((uint32_t)(level & 7) << 19)
            | ((uint32_t)(tile & 7) << 16)
-           | ((uint32_t)vl->y & 0x3fff));
+           | ((uint32_t)vl->y & 0xffff));
         ew[0] = w0;
-        ew[1] = (int32_t)((((uint32_t)vm->y & 0x3fff) << 16)
-              | ((uint32_t)vh->y & 0x3fff));
+        ew[1] = (int32_t)((((uint32_t)vm->y & 0xffff) << 16)
+              | ((uint32_t)vh->y & 0xffff));
         /* XL = M.x << 14 stored as one 32-bit word (int<<16 | frac) */
         ew[2] = (int32_t)((uint32_t)((int32_t)S16(vm->x) << 14));
         ew[3] = (int32_t)(((uint32_t)U16(dxldy.i) << 16) | (uint32_t)U16(dxldy.f));

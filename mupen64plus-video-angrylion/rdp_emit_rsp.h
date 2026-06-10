@@ -8,6 +8,11 @@ int32_t rsp_rcp16(int32_t in16);
 int32_t rsp_rsq32(int32_t in32);
 void rsp_light_dir_xfrm_one(const int32_t mv[4][4],
                             const int32_t dir[3], int32_t out[3]);
+int32_t rsp_clip_scale_w(int32_t w);
+void rsp_clip_lerp(const int32_t on_pos[4], const int32_t off_pos[4],
+                   const int16_t cr[4],
+                   const int16_t on_attr[8], const int16_t off_attr[8],
+                   int32_t out_pos[4], int16_t out_attr[8]);
 void rsp_light_vtx(const int32_t n[3], const int32_t amb[3],
                    const int32_t (*rgb)[3], const int32_t (*dirs)[3],
                    int num, int32_t out[3]);

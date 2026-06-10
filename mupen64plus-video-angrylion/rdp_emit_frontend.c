@@ -11,6 +11,7 @@
 #include "rdp_emit_frontend.h"
 #include "rdp_emit_rsp.h"
 #include <stdio.h>
+#include <stdlib.h>
 #include "rdp_emit_recip.h"
 
 /* read a signed 16-bit big-endian halfword from RDRAM (N64 byte order) */
@@ -598,6 +599,8 @@ void gsp_vertex(GSPState *s, const unsigned char *rdram, unsigned int addr,
 
         vt->s = (int32_t)(((int64_t)st_s * (int64_t)s->tex_scale_s) << 1);
         vt->t = (int32_t)(((int64_t)st_t * (int64_t)s->tex_scale_t) << 1);
+        vt->sv = (int16_t)(((int64_t)st_s * (int64_t)s->tex_scale_s) >> 16);
+        vt->tv = (int16_t)(((int64_t)st_t * (int64_t)s->tex_scale_t) >> 16);
 
         if (s->geometry_mode & 0x00010000u)     /* G_FOG */
         {
@@ -644,6 +647,22 @@ void gsp_vertex(GSPState *s, const unsigned char *rdram, unsigned int addr,
                 int pb = sn ? (vt->cw < 0) : (comps[ax] >= vt->cw);
                 if (nb) fl |= 1u << (4 + ax);   /* CLIP_NX..CLIP_NW */
                 if (pb) fl |= 1u << (12 + ax);  /* CLIP_PX..CLIP_PW */
+            }
+            /* The scaled (clip-ratio) half of VTX_CLIP: the same VCH
+             * sign-aware compare against ratio * w (the default ratio is
+             * 2; the products need 33 bits). The clipper's x/y conditions
+             * test these bits. */
+            {
+                int32_t w2 = rsp_clip_scale_w(vt->cw);
+                for (ax = 0; ax < 3; ax++)
+                {
+                    int32_t cp = comps[ax];
+                    int sn = ((cp ^ w2) < 0);
+                    int nb = sn ? (cp <= -w2) : (w2 < 0);
+                    int pb = sn ? (w2 < 0) : (cp >= w2);
+                    if (nb) fl |= 1u << (20 + ax);
+                    if (pb) fl |= 1u << (28 + ax);
+                }
             }
             vt->clip = (int)fl;
         }
@@ -726,136 +745,153 @@ void gsp_set_light(GSPState *s, const unsigned char *rdram,
  * them alone also disposes of behind-the-eye (w <= 0) vertices, which is the
  * NoN ("no near clip") microcode behaviour. Evaluated in 64-bit: |2w| + |x|
  * can exceed 31 bits. */
-static int64_t clip_plane_dist(const GSPVertex *v, int p)
+/* The microcode's polygon clipper (ovl3). Conditions run in the order
+ * near, far, +y, +x, -y, -x; each pass walks the polygon edges starting
+ * from the last vertex and subdivides edges whose endpoints differ in the
+ * condition's outcode bit, producing the boundary vertex with the
+ * RSP-exact rsp_clip_lerp. The new vertex's outcodes are recomputed from
+ * the lerped clip-space position with the same VCH rules the vertex
+ * pipeline uses, since later conditions test them. Attribute lanes are
+ * lerped in the stored domains: colors as byte << 7, texture coordinates
+ * as the raw S10.5 shorts. */
+#define GSP_CLIP_MAX 16
+
+static const int16_t gsp_clip_ratio_rows[6][4] = {
+    { 0, 0, 0,  1 },   /* near (NoN: w)        */
+    { 0, 0, 1, -1 },   /* far  (z - w)         */
+    { 0, 1, 0, -2 },   /* +y                   */
+    { 1, 0, 0, -2 },   /* +x                   */
+    { 0, 1, 0,  2 },   /* -y                   */
+    { 1, 0, 0,  2 }    /* -x                   */
+};
+
+static const unsigned int gsp_clip_cond_mask[6] = {
+    1u << 7,            /* CLIP_NEAR = CLIP_NW << SCRN (NoN) */
+    1u << 14,           /* CLIP_FAR  = CLIP_PZ << SCRN       */
+    1u << 29,           /* CLIP_PY << SCAL                   */
+    1u << 28,           /* CLIP_PX << SCAL                   */
+    1u << 21,           /* CLIP_NY << SCAL                   */
+    1u << 20            /* CLIP_NX << SCAL                   */
+};
+
+/* Recompute the stored VCH outcodes for a clip-generated vertex. */
+static void gsp_clip_vertex_flags(GSPVertex *vt)
 {
-    int64_t w2 = (int64_t)v->cw * 2;
-    switch (p)
+    int32_t comps[4];
+    int ax;
+    unsigned int fl = 0;
+    int32_t w2;
+    comps[0] = vt->cx; comps[1] = vt->cy;
+    comps[2] = vt->cz; comps[3] = vt->cw;
+    for (ax = 0; ax < 4; ax++)
     {
-        case 0:  return w2 - v->cx;
-        case 1:  return w2 + v->cx;
-        case 2:  return w2 - v->cy;
-        default: return w2 + v->cy;
+        int sn = ((comps[ax] ^ vt->cw) < 0);
+        int nb = sn ? (comps[ax] <= -vt->cw) : (vt->cw < 0);
+        int pb = sn ? (vt->cw < 0) : (comps[ax] >= vt->cw);
+        if (nb) fl |= 1u << (4 + ax);
+        if (pb) fl |= 1u << (12 + ax);
     }
+    w2 = rsp_clip_scale_w(vt->cw);
+    for (ax = 0; ax < 3; ax++)
+    {
+        int sn = ((comps[ax] ^ w2) < 0);
+        int nb = sn ? (comps[ax] <= -w2) : (w2 < 0);
+        int pb = sn ? (w2 < 0) : (comps[ax] >= w2);
+        if (nb) fl |= 1u << (20 + ax);
+        if (pb) fl |= 1u << (28 + ax);
+    }
+    vt->clip = (int)fl;
 }
 
-/* Lerp all components of a clip-space vertex: out = v0 + (v1 - v0) * t where
- * t = d0 / (d0 - d1) is formed as a 0.30 fixed fraction. d0 >= 0 > d1, so
- * 0 <= t <= 1 and den = d0 - d1 > 0. The >> 4 pre-shift keeps d << 30 inside
- * 64 bits (the distances are at most a few times 2^31). */
-static void clip_lerp_vertex(GSPVertex *out, const GSPVertex *v0,
-                             const GSPVertex *v1, int64_t d0, int64_t d1)
+static void gsp_clip_subdivide(GSPVertex *out, const GSPVertex *onv,
+                               const GSPVertex *offv, const int16_t cr[4])
 {
-    int64_t num = d0 >> 4;
-    int64_t den = (d0 - d1) >> 4;
-    int64_t t30;
-    if (den <= 0)
-    {
-        *out = *v0;
-        return;
-    }
-    t30 = (num << 30) / den;
-    if (t30 < 0)               t30 = 0;
-    if (t30 > ((int64_t)1 << 30)) t30 = (int64_t)1 << 30;
-    out->cx = v0->cx + (int32_t)(((int64_t)(v1->cx - v0->cx) * t30) >> 30);
-    out->cy = v0->cy + (int32_t)(((int64_t)(v1->cy - v0->cy) * t30) >> 30);
-    out->cz = v0->cz + (int32_t)(((int64_t)(v1->cz - v0->cz) * t30) >> 30);
-    out->cw = v0->cw + (int32_t)(((int64_t)(v1->cw - v0->cw) * t30) >> 30);
-    out->r  = v0->r  + (int32_t)(((int64_t)(v1->r  - v0->r ) * t30) >> 30);
-    out->g  = v0->g  + (int32_t)(((int64_t)(v1->g  - v0->g ) * t30) >> 30);
-    out->b  = v0->b  + (int32_t)(((int64_t)(v1->b  - v0->b ) * t30) >> 30);
-    out->a  = v0->a  + (int32_t)(((int64_t)(v1->a  - v0->a ) * t30) >> 30);
-    out->s  = v0->s  + (int32_t)(((int64_t)(v1->s  - v0->s ) * t30) >> 30);
-    out->t  = v0->t  + (int32_t)(((int64_t)(v1->t  - v0->t ) * t30) >> 30);
-    out->clip = 0;
+    int32_t on_pos[4], off_pos[4], out_pos[4];
+    int16_t on_attr[8], off_attr[8], out_attr[8];
+    on_pos[0] = onv->cx;  on_pos[1] = onv->cy;
+    on_pos[2] = onv->cz;  on_pos[3] = onv->cw;
+    off_pos[0] = offv->cx; off_pos[1] = offv->cy;
+    off_pos[2] = offv->cz; off_pos[3] = offv->cw;
+    on_attr[0] = (int16_t)(((onv->r >> 16) & 0xff) << 7);
+    on_attr[1] = (int16_t)(((onv->g >> 16) & 0xff) << 7);
+    on_attr[2] = (int16_t)(((onv->b >> 16) & 0xff) << 7);
+    on_attr[3] = (int16_t)(((onv->a >> 16) & 0xff) << 7);
+    /* The vertex pipeline stores the texture coordinates as the vmudm mid
+     * read of st * texscale -- HALF the value this pipeline carries (the
+     * doubling the triangle write needs is applied at the bridge). The
+     * RSP's clip lerp interpolates the stored halves; lerping the doubled
+     * values truncates differently in the low bit, so convert to the
+     * stored domain here (>> 17 is exact: the stored mid read always fits
+     * 15 bits plus sign) and back after. */
+    on_attr[4] = onv->sv;
+    on_attr[5] = onv->tv;
+    on_attr[6] = 0; on_attr[7] = 0;
+    off_attr[0] = (int16_t)(((offv->r >> 16) & 0xff) << 7);
+    off_attr[1] = (int16_t)(((offv->g >> 16) & 0xff) << 7);
+    off_attr[2] = (int16_t)(((offv->b >> 16) & 0xff) << 7);
+    off_attr[3] = (int16_t)(((offv->a >> 16) & 0xff) << 7);
+    off_attr[4] = offv->sv;
+    off_attr[5] = offv->tv;
+    off_attr[6] = 0; off_attr[7] = 0;
+    rsp_clip_lerp(on_pos, off_pos, cr, on_attr, off_attr, out_pos, out_attr);
+    out->cx = out_pos[0]; out->cy = out_pos[1];
+    out->cz = out_pos[2]; out->cw = out_pos[3];
+    /* suv truncates the lerped color lanes to bytes (>> 7). */
+    out->r = (int32_t)(((out_attr[0] >> 7) & 0xff) << 16);
+    out->g = (int32_t)(((out_attr[1] >> 7) & 0xff) << 16);
+    out->b = (int32_t)(((out_attr[2] >> 7) & 0xff) << 16);
+    out->a = (int32_t)(((out_attr[3] >> 7) & 0xff) << 16);
+    out->sv = out_attr[4];
+    out->tv = out_attr[5];
+    out->s = (int32_t)((uint32_t)(int32_t)out_attr[4] << 17);
+    out->t = (int32_t)((uint32_t)(int32_t)out_attr[5] << 17);
+    gsp_clip_vertex_flags(out);
 }
-
-/* Sutherland-Hodgman polygon clip against the four guard-band planes.
- * in/out arrays hold up to GSP_CLIP_MAX vertices; returns the vertex count
- * (0..GSP_CLIP_MAX). A triangle gains at most one vertex per plane. */
-#define GSP_CLIP_MAX 8
 
 static int clip_polygon_guard(GSPVertex *poly, int n)
 {
     GSPVertex tmp[GSP_CLIP_MAX];
-    int p;
-    for (p = 0; p < 4 && n > 0; p++)
+    int cond;
+    for (cond = 0; cond < 6 && n > 0; cond++)
     {
+        unsigned int mask = gsp_clip_cond_mask[cond];
+        const int16_t *cr = gsp_clip_ratio_rows[cond];
         int i, m = 0;
+        unsigned int f3 = (unsigned int)poly[n - 1].clip & mask;
+        int i3 = n - 1;
         for (i = 0; i < n; i++)
         {
-            const GSPVertex *cur = &poly[i];
-            const GSPVertex *nxt = &poly[(i + 1) % n];
-            int64_t dc = clip_plane_dist(cur, p);
-            int64_t dn = clip_plane_dist(nxt, p);
-            if (dc >= 0)
+            unsigned int f2 = (unsigned int)poly[i].clip & mask;
+            if (f2 != f3)
             {
+                const GSPVertex *onv  = f2 ? &poly[i3] : &poly[i];
+                const GSPVertex *offv = f2 ? &poly[i]  : &poly[i3];
                 if (m < GSP_CLIP_MAX)
-                    tmp[m++] = *cur;
-                if (dn < 0 && m < GSP_CLIP_MAX)
                 {
-                    clip_lerp_vertex(&tmp[m], cur, nxt, dc, dn);
+                    gsp_clip_subdivide(&tmp[m], onv, offv, cr);
                     m++;
                 }
             }
-            else if (dn >= 0)
-            {
-                if (m < GSP_CLIP_MAX)
-                {
-                    clip_lerp_vertex(&tmp[m], nxt, cur, dn, dc);
-                    m++;
-                }
-            }
+            if (!f2 && m < GSP_CLIP_MAX)
+                tmp[m++] = poly[i];
+            f3 = f2;
+            i3 = i;
         }
         for (i = 0; i < m; i++)
             poly[i] = tmp[i];
         n = m;
+        if (n < 3)
+            return 0;
     }
     return n;
 }
 
-int gsp_triangle(GSPState *s, int32_t *cmd, int i0, int i1, int i2,
-                 int textured, int z_buffered)
+/* Fold and recenter the S10.5 texture coordinates of one triangle onto a
+ * coherent wrap branch, and emit the bias. Runs per emitted triangle,
+ * after clipping, like the rasterizer-facing coordinate handling: the
+ * RSP's clip lerp itself operates on the raw stored S10.5 values. */
+static void gsp_fold_st(GSPState *s, GSPVertex *v)
 {
-    GSPVertex poly[GSP_CLIP_MAX];
-    int np;
-    const GSPVertex *a, *b, *c;
-    unsigned int oa, ob, oc;
-    int k;
-
-    if (i0 < 0 || i0 >= GSP_MAX_VERTICES ||
-        i1 < 0 || i1 >= GSP_MAX_VERTICES ||
-        i2 < 0 || i2 >= GSP_MAX_VERTICES)
-        return 0;
-
-    a = &s->vtx[i0]; b = &s->vtx[i1]; c = &s->vtx[i2];
-
-    /* Z bit comes from the G_ZBUFFER geometry-mode bit, not the othermode. */
-    z_buffered = (s->geometry_mode & GEOM_ZBUFFER) ? 1 : 0;
-
-    /* Trivial reject: the RSP tests the AND of the three vertices' stored
-     * VCH clip outcodes against CLIP_ALL_SCRN -- if every vertex lies
-     * outside the same screen plane (including the z lanes, and including
-     * the behind-the-eye encodings the VCH compare produces for w <= 0),
-     * the triangle is dropped before any clipping. The guard-band clipper
-     * below only sees triangles that survive this. */
-    if (a->clip & b->clip & c->clip & GSP_CLIP_REJECT)
-        return 0;
-
-    /* Guard-band outcodes (ratio-2 planes, w <= 0 handled implicitly). */
-    oa = ob = oc = 0;
-    for (k = 0; k < 4; k++)
-    {
-        if (clip_plane_dist(a, k) < 0) oa |= (1u << k);
-        if (clip_plane_dist(b, k) < 0) ob |= (1u << k);
-        if (clip_plane_dist(c, k) < 0) oc |= (1u << k);
-    }
-    if (oa & ob & oc)
-        return 0;                           /* all out the same guard plane */
-
-    poly[0] = *a;
-    poly[1] = *b;
-    poly[2] = *c;
-
     /* Fold the S10.5 texture coordinates of b and c onto a's wrap branch.
      * The 16-bit S10.5 texel coordinates are only meaningful modulo 65536:
      * games author vertices on either side of the signed wrap (e.g. +29976
@@ -870,8 +906,8 @@ int gsp_triangle(GSPState *s, int32_t *cmd, int i0, int i1, int i2,
      * the guard-band clip so the clip lerp interpolates on the coherent
      * branch as the RSP's 16-bit lerp does. */
     {
-        int32_t sref = poly[0].s >> 16;
-        int32_t tref = poly[0].t >> 16;
+        int32_t sref = v[0].s >> 16;
+        int32_t tref = v[0].t >> 16;
         int k2;
         int32_t sv[3], tv[3], mn, mx;
 
@@ -879,8 +915,8 @@ int gsp_triangle(GSPState *s, int32_t *cmd, int i0, int i1, int i2,
         tv[0] = tref;
         for (k2 = 1; k2 < 3; k2++)
         {
-            sv[k2] = sref + (((((poly[k2].s >> 16) - sref) + 0x8000) & 0xffff) - 0x8000);
-            tv[k2] = tref + (((((poly[k2].t >> 16) - tref) + 0x8000) & 0xffff) - 0x8000);
+            sv[k2] = sref + (((((v[k2].s >> 16) - sref) + 0x8000) & 0xffff) - 0x8000);
+            tv[k2] = tref + (((((v[k2].t >> 16) - tref) + 0x8000) & 0xffff) - 0x8000);
         }
         /* The folded branch can leave the representable S10.5 range (e.g.
          * folding -27658 onto +29976's branch gives +37878, whose s15.16
@@ -936,13 +972,91 @@ int gsp_triangle(GSPState *s, int32_t *cmd, int i0, int i1, int i2,
             if (fit)
                 for (k2 = 0; k2 < 3; k2++)
                 {
-                    poly[k2].s = sv[k2] << 16;
-                    poly[k2].t = tv[k2] << 16;
+                    v[k2].s = sv[k2] << 16;
+                    v[k2].t = tv[k2] << 16;
                 }
         }
     }
+}
+
+/* Backface cull and degenerate reject on the screen-space signed area of
+ * one triangle, mirroring the test the microcode's triangle write applies
+ * to every triangle individually -- the clipper's subdivision loop routes
+ * each fan triangle through the full triangle write, so each sub-triangle
+ * is culled on its own orientation (near-plane slivers whose projection
+ * flips are dropped here, as the RSP drops them). Returns nonzero when
+ * the triangle should be skipped. */
+static int gsp_cull_tri(const GSPState *s, const GSPVertex *v)
+{
+    int32_t ra = rsp_recip_div(v[0].cw);
+    int32_t rb = rsp_recip_div(v[1].cw);
+    int32_t rc = rsp_recip_div(v[2].cw);
+    int32_t sxa = (int32_t)((((int64_t)v[0].cx * ra) >> 15) * (int64_t)s->viewport.vscale_x >> 16);
+    int32_t sya = -(int32_t)((((int64_t)v[0].cy * ra) >> 15) * (int64_t)s->viewport.vscale_y >> 16);
+    int32_t sxb = (int32_t)((((int64_t)v[1].cx * rb) >> 15) * (int64_t)s->viewport.vscale_x >> 16);
+    int32_t syb = -(int32_t)((((int64_t)v[1].cy * rb) >> 15) * (int64_t)s->viewport.vscale_y >> 16);
+    int32_t sxc = (int32_t)((((int64_t)v[2].cx * rc) >> 15) * (int64_t)s->viewport.vscale_x >> 16);
+    int32_t syc = -(int32_t)((((int64_t)v[2].cy * rc) >> 15) * (int64_t)s->viewport.vscale_y >> 16);
+    int64_t cross = (int64_t)(sxb - sxa) * (syc - sya)
+                  - (int64_t)(sxc - sxa) * (syb - sya);
+    if (s->geometry_mode & (GEOM_CULL_FRONT | GEOM_CULL_BACK))
+    {
+        unsigned int cull = s->geometry_mode & (GEOM_CULL_FRONT | GEOM_CULL_BACK);
+        if (cull == (GEOM_CULL_FRONT | GEOM_CULL_BACK))
+            return 1;
+        if (cull == GEOM_CULL_BACK  && cross > 0)
+            return 1;
+        if (cull == GEOM_CULL_FRONT && cross < 0)
+            return 1;
+    }
+    if (cross == 0)
+        return 1;                           /* degenerate */
+    return 0;
+}
+
+int gsp_triangle(GSPState *s, int32_t *cmd, int i0, int i1, int i2,
+                 int textured, int z_buffered)
+{
+    GSPVertex poly[GSP_CLIP_MAX];
+    int np;
+    const GSPVertex *a, *b, *c;
+    unsigned int oa, ob, oc;
+    int k;
+
+    if (i0 < 0 || i0 >= GSP_MAX_VERTICES ||
+        i1 < 0 || i1 >= GSP_MAX_VERTICES ||
+        i2 < 0 || i2 >= GSP_MAX_VERTICES)
+        return 0;
+
+    a = &s->vtx[i0]; b = &s->vtx[i1]; c = &s->vtx[i2];
+
+    /* Z bit comes from the G_ZBUFFER geometry-mode bit, not the othermode. */
+    z_buffered = (s->geometry_mode & GEOM_ZBUFFER) ? 1 : 0;
+
+    /* Trivial reject: the RSP tests the AND of the three vertices' stored
+     * VCH clip outcodes against CLIP_ALL_SCRN -- if every vertex lies
+     * outside the same screen plane (including the z lanes, and including
+     * the behind-the-eye encodings the VCH compare produces for w <= 0),
+     * the triangle is dropped before any clipping. The guard-band clipper
+     * below only sees triangles that survive this. */
+    if (a->clip & b->clip & c->clip & GSP_CLIP_REJECT)
+        return 0;
+
+    /* The RSP enters the clipper when any vertex's stored outcode has any
+     * bit of the scaled x/y conditions or the screen near/far conditions
+     * set; otherwise the triangle is drawn directly. */
+    oa = (unsigned int)a->clip;
+    ob = (unsigned int)b->clip;
+    oc = (unsigned int)c->clip;
+
+    poly[0] = *a;
+    poly[1] = *b;
+    poly[2] = *c;
+
     np = 3;
-    if (oa | ob | oc)
+#define GSP_CLIP_TRIGGER ((1u << 20) | (1u << 21) | (1u << 28) | (1u << 29) \
+                        | (1u << 14) | (1u << 7))
+    if ((oa | ob | oc) & GSP_CLIP_TRIGGER)
     {
         /* Polygon clip against the guard band the way the RSP microcode
          * does: triangles that straddle w <= 0 cannot be passed through to
@@ -955,52 +1069,33 @@ int gsp_triangle(GSPState *s, int32_t *cmd, int i0, int i1, int i2,
             return 0;
     }
 
-    /* Backface cull and degenerate reject on the screen-space signed area of
-     * the first (clipped) triangle; clipping preserves winding and leaves
-     * every vertex with w > 0, so the fixed reciprocal is valid. */
-    {
-        int32_t ra = rsp_recip_div(poly[0].cw);
-        int32_t rb = rsp_recip_div(poly[1].cw);
-        int32_t rc = rsp_recip_div(poly[2].cw);
-        int32_t sxa = (int32_t)((((int64_t)poly[0].cx * ra) >> 15) * (int64_t)s->viewport.vscale_x >> 16);
-        int32_t sya = -(int32_t)((((int64_t)poly[0].cy * ra) >> 15) * (int64_t)s->viewport.vscale_y >> 16);
-        int32_t sxb = (int32_t)((((int64_t)poly[1].cx * rb) >> 15) * (int64_t)s->viewport.vscale_x >> 16);
-        int32_t syb = -(int32_t)((((int64_t)poly[1].cy * rb) >> 15) * (int64_t)s->viewport.vscale_y >> 16);
-        int32_t sxc = (int32_t)((((int64_t)poly[2].cx * rc) >> 15) * (int64_t)s->viewport.vscale_x >> 16);
-        int32_t syc = -(int32_t)((((int64_t)poly[2].cy * rc) >> 15) * (int64_t)s->viewport.vscale_y >> 16);
-        int64_t cross = (int64_t)(sxb - sxa) * (syc - sya)
-                      - (int64_t)(sxc - sxa) * (syb - sya);
-        if (s->geometry_mode & (GEOM_CULL_FRONT | GEOM_CULL_BACK))
-        {
-            unsigned int cull = s->geometry_mode & (GEOM_CULL_FRONT | GEOM_CULL_BACK);
-            if (cull == (GEOM_CULL_FRONT | GEOM_CULL_BACK))
-                return 0;
-            if (cull == GEOM_CULL_BACK  && cross > 0)
-                return 0;
-            if (cull == GEOM_CULL_FRONT && cross < 0)
-                return 0;
-        }
-        if (cross == 0)
-            return 0;                       /* degenerate */
-    }
-
     /* Fan-triangulate the (possibly clipped) polygon and emit. */
     {
         int total = 0;
         int i;
-        for (i = 1; i + 1 < np; i++)
+        for (i = 0; i + 2 < np; i++)
         {
             BridgeVertex v0, v1, v2;
+            GSPVertex tv[3];
             int nc;
-            v0.cx = poly[0].cx; v0.cy = poly[0].cy; v0.cz = poly[0].cz; v0.cw = poly[0].cw;
-            v0.r = poly[0].r; v0.g = poly[0].g; v0.b = poly[0].b; v0.a = poly[0].a;
-            v0.s = poly[0].s; v0.t = poly[0].t;
-            v1.cx = poly[i].cx; v1.cy = poly[i].cy; v1.cz = poly[i].cz; v1.cw = poly[i].cw;
-            v1.r = poly[i].r; v1.g = poly[i].g; v1.b = poly[i].b; v1.a = poly[i].a;
-            v1.s = poly[i].s; v1.t = poly[i].t;
-            v2.cx = poly[i + 1].cx; v2.cy = poly[i + 1].cy; v2.cz = poly[i + 1].cz; v2.cw = poly[i + 1].cw;
-            v2.r = poly[i + 1].r; v2.g = poly[i + 1].g; v2.b = poly[i + 1].b; v2.a = poly[i + 1].a;
-            v2.s = poly[i + 1].s; v2.t = poly[i + 1].t;
+            /* The microcode's subdivision draws (0,1,n-1), (1,2,n-1),
+             * (2,3,n-1): consecutive vertex pairs fanned from the LAST
+             * polygon vertex, not from vertex 0. */
+            tv[0] = poly[i];
+            tv[1] = poly[i + 1];
+            tv[2] = poly[np - 1];
+            if (gsp_cull_tri(s, tv))
+                continue;
+            gsp_fold_st(s, tv);
+            v0.cx = tv[0].cx; v0.cy = tv[0].cy; v0.cz = tv[0].cz; v0.cw = tv[0].cw;
+            v0.r = tv[0].r; v0.g = tv[0].g; v0.b = tv[0].b; v0.a = tv[0].a;
+            v0.s = tv[0].s; v0.t = tv[0].t;
+            v1.cx = tv[1].cx; v1.cy = tv[1].cy; v1.cz = tv[1].cz; v1.cw = tv[1].cw;
+            v1.r = tv[1].r; v1.g = tv[1].g; v1.b = tv[1].b; v1.a = tv[1].a;
+            v1.s = tv[1].s; v1.t = tv[1].t;
+            v2.cx = tv[2].cx; v2.cy = tv[2].cy; v2.cz = tv[2].cz; v2.cw = tv[2].cw;
+            v2.r = tv[2].r; v2.g = tv[2].g; v2.b = tv[2].b; v2.a = tv[2].a;
+            v2.s = tv[2].s; v2.t = tv[2].t;
             nc = bridge_add_triangle(cmd + total, &v0, &v1, &v2, &s->viewport,
                                      textured, z_buffered,
                                      (s->geometry_mode & 0x00200000u) ? 1 : 0,

@@ -26,6 +26,11 @@ typedef struct GSPVertex
     int32_t cx, cy, cz, cw; /* clip-space s15.16 (exact, post combined transform) */
     int32_t r, g, b, a;     /* 0..255 color as s15.16 (vertex color or lighting) */
     int32_t s, t;           /* S10.5 texel coordinate as s15.16 */
+    int16_t sv, tv;         /* the RSP's stored VTX_TC shorts (the vmudm mid
+                               read of st * texscale): the exact values the
+                               clip lerp interpolates. The s/t fields above
+                               are these doubled (with int32 wrap for large
+                               coordinates), which the emit path expects. */
     int     clip;           /* clip flags (outcode) */
 } GSPVertex;
 
