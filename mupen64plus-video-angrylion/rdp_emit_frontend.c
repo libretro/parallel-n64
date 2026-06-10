@@ -553,35 +553,19 @@ void gsp_set_light(GSPState *s, const unsigned char *rdram,
     dx = (int)(signed char)read_u8_n64(rdram, addr + 8);
     dy = (int)(signed char)read_u8_n64(rdram, addr + 9);
     dz = (int)(signed char)read_u8_n64(rdram, addr + 10);
-    len2 = (int64_t)dx * dx + (int64_t)dy * dy + (int64_t)dz * dz;
-    if (len2 > 0)
-    {
-        int64_t lo = 0, hi = 0x10000, mid, lenfx = 0;
-        while (lo < hi)                     /* integer sqrt(len2<<? ) */
-        {
-            mid = (lo + hi + 1) >> 1;
-            if (mid * mid <= len2) lo = mid; else hi = mid - 1;
-        }
-        lenfx = lo;
-        if (lenfx != 0)
-        {
-            s->light_dir[index][0] = (int32_t)(((int64_t)dx << 15) / lenfx);
-            s->light_dir[index][1] = (int32_t)(((int64_t)dy << 15) / lenfx);
-            s->light_dir[index][2] = (int32_t)(((int64_t)dz << 15) / lenfx);
-        }
-        else
-        {
-            s->light_dir[index][0] = 0;
-            s->light_dir[index][1] = 0;
-            s->light_dir[index][2] = 0;
-        }
-    }
-    else
-    {
-        s->light_dir[index][0] = 0;
-        s->light_dir[index][1] = 0;
-        s->light_dir[index][2] = 0;
-    }
+    /* The RSP does not normalize the light direction: the s8 vector is used
+     * as a fraction of 128, so its magnitude scales the contribution. OoT
+     * relies on this -- Lights_BindPoint encodes its CPU-side point lights
+     * with the distance attenuation in the color and a direction of
+     * magnitude 120 (not 127), and other binders pass scene-authored
+     * vectors of arbitrary magnitude straight through. Normalizing here
+     * over-brightened any light authored below full magnitude (Link under
+     * the house's bound point light gained a flat +40-ish cast).
+     * s8/128 in s.15 is simply dir << 8. */
+    (void)len2;
+    s->light_dir[index][0] = (int32_t)(dx << 8);
+    s->light_dir[index][1] = (int32_t)(dy << 8);
+    s->light_dir[index][2] = (int32_t)(dz << 8);
 }
 
 /* Guard-band plane distance for clip-space vertex v (s15.16) against plane p:
