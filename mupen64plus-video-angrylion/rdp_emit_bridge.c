@@ -30,9 +30,23 @@ static void clip_to_emit(EmitVertex *e, const BridgeVertex *v,
     int32_t ndcx, ndcy, ndcz;
     if (v->cw != 0)
     {
-        ndcx = (int32_t)(((int64_t)v->cx << 16) / v->cw);
-        ndcy = (int32_t)(((int64_t)v->cy << 16) / v->cw);
-        ndcz = (int32_t)(((int64_t)v->cz << 16) / v->cw);
+        /* Saturate the s15.16 NDC instead of letting the int32 cast wrap: a
+         * vertex barely in front of the eye (tiny cw) projects to coordinates
+         * far beyond the s15.16 range, and wrapped values would masquerade as
+         * sane screen positions. */
+        int64_t nx64 = ((int64_t)v->cx << 16) / v->cw;
+        int64_t ny64 = ((int64_t)v->cy << 16) / v->cw;
+        int64_t nz64 = ((int64_t)v->cz << 16) / v->cw;
+        int64_t lim = (int64_t)1 << 30;
+        if (nx64 >  lim) nx64 =  lim;
+        if (nx64 < -lim) nx64 = -lim;
+        if (ny64 >  lim) ny64 =  lim;
+        if (ny64 < -lim) ny64 = -lim;
+        if (nz64 >  lim) nz64 =  lim;
+        if (nz64 < -lim) nz64 = -lim;
+        ndcx = (int32_t)nx64;
+        ndcy = (int32_t)ny64;
+        ndcz = (int32_t)nz64;
     }
     else
     {

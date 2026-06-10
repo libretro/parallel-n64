@@ -835,6 +835,91 @@ int gsp_triangle(GSPState *s, int32_t *cmd, int i0, int i1, int i2,
     poly[1] = *b;
     poly[2] = *c;
 
+    /* Fold the S10.5 texture coordinates of b and c onto a's wrap branch.
+     * The 16-bit S10.5 texel coordinates are only meaningful modulo 65536:
+     * games author vertices on either side of the signed wrap (e.g. +29976
+     * and -30145 on the Kokiri Forest ground, truly 5415 apart) and rely on
+     * the hardware's 16-bit attribute deltas taking the short way around;
+     * the per-pixel tile mask absorbs the absolute offset (65536 S10.5 =
+     * 2048 texels, a multiple of every power-of-two mask). Differencing the
+     * values in wider arithmetic instead takes the long way -- here it made
+     * the S plane sweep ~60000 instead of ~5400 across the giant clipped
+     * ground triangles, painting the floor texture at a ~10x wrong
+     * frequency (the scanline-streak artifact). Folding must happen before
+     * the guard-band clip so the clip lerp interpolates on the coherent
+     * branch as the RSP's 16-bit lerp does. */
+    {
+        int32_t sref = poly[0].s >> 16;
+        int32_t tref = poly[0].t >> 16;
+        int k2;
+        int32_t sv[3], tv[3], mn, mx;
+
+        sv[0] = sref;
+        tv[0] = tref;
+        for (k2 = 1; k2 < 3; k2++)
+        {
+            sv[k2] = sref + (((((poly[k2].s >> 16) - sref) + 0x8000) & 0xffff) - 0x8000);
+            tv[k2] = tref + (((((poly[k2].t >> 16) - tref) + 0x8000) & 0xffff) - 0x8000);
+        }
+        /* The folded branch can leave the representable S10.5 range (e.g.
+         * folding -27658 onto +29976's branch gives +37878, whose s15.16
+         * form overflows int32), and the coherent interval can even cross
+         * the +/-32768 boundary so that no 65536-aligned shift fits.
+         * Recenter the whole triangle around zero in steps of the tile's
+         * wrap period (mask texels * 32 in S10.5; 65536 when the tile
+         * geometry is unavailable or not a power of two): shifting all
+         * three vertices by a multiple of the mask period lands on the
+         * same texels after the per-pixel mask, so the offset is
+         * invisible. Coordinates needing the fold only occur on
+         * wrap-reliant content, where the mask is active by construction.
+         * If recentring still cannot fit the values, leave the originals
+         * untouched (the pre-fold behaviour). */
+        {
+            int32_t pers = 0, pert = 0, sh;
+            int32_t sh_s = 0, sh_t = 0;
+            int fit = 1;
+            int ti = s->tex_tile & 7;
+            if (s->tile_mask_s[ti])
+                pers = 32 << s->tile_mask_s[ti];
+            if (s->tile_mask_t[ti])
+                pert = 32 << s->tile_mask_t[ti];
+            mn = sv[0]; mx = sv[0];
+            for (k2 = 1; k2 < 3; k2++)
+            {
+                if (sv[k2] < mn) mn = sv[k2];
+                if (sv[k2] > mx) mx = sv[k2];
+            }
+            sh = pers ? (int32_t)((((int64_t)mn + mx) / 2) / pers) * pers : 0;
+            if (mn - sh < -32768 || mx - sh > 32767)
+                fit = 0;
+            else
+            {
+                for (k2 = 0; k2 < 3; k2++) sv[k2] -= sh;
+                sh_s = sh;
+            }
+            mn = tv[0]; mx = tv[0];
+            for (k2 = 1; k2 < 3; k2++)
+            {
+                if (tv[k2] < mn) mn = tv[k2];
+                if (tv[k2] > mx) mx = tv[k2];
+            }
+            sh = pert ? (int32_t)((((int64_t)mn + mx) / 2) / pert) * pert : 0;
+            if (mn - sh < -32768 || mx - sh > 32767)
+                fit = 0;
+            else
+            {
+                for (k2 = 0; k2 < 3; k2++) tv[k2] -= sh;
+                sh_t = sh;
+            }
+            emit_set_st_bias(fit ? sh_s : 0, fit ? sh_t : 0);
+            if (fit)
+                for (k2 = 0; k2 < 3; k2++)
+                {
+                    poly[k2].s = sv[k2] << 16;
+                    poly[k2].t = tv[k2] << 16;
+                }
+        }
+    }
     np = 3;
     if (oa | ob | oc)
     {

@@ -322,6 +322,19 @@ int emit_shaded_z_triangle(int32_t *ew, const EmitVertex *va,
     return 28;
 }
 
+/* Per-triangle S/T branch bias, in raw S10.5 units. The wrap fold in the
+ * frontend recenters a triangle's texture coordinates so they fit the
+ * s15.16 vertex storage; the amount subtracted is restored here, in the
+ * 64-bit product domain, so the emitted coefficients carry the hardware's
+ * absolute coordinate branch (clamp and mirror phases depend on it). */
+static int32_t st_bias_s, st_bias_t;
+
+void emit_set_st_bias(int32_t bias_s, int32_t bias_t)
+{
+    st_bias_s = bias_s;
+    st_bias_t = bias_t;
+}
+
 int emit_texshade_triangle(int32_t *ew,
                            const EmitVertex *va, const EmitVertex *vb,
                            const EmitVertex *vc, int tex_w, int tex_h,
@@ -361,12 +374,12 @@ int emit_texshade_triangle(int32_t *ew,
      * recovers texel = (S>>16) / (W>>16). The stored vt->s is the raw S10.5
      * texel in s15.16 (raw << 16), so the product needs >> 32 total. Verified
      * against cxd4: S/W == texel_s10.5 / 65536 exactly. */
-    sv[0] = (int32_t)(((int64_t)vh->s * vh->w) >> 32);
-    sv[1] = (int32_t)(((int64_t)vm->s * vm->w) >> 32);
-    sv[2] = (int32_t)(((int64_t)vl->s * vl->w) >> 32);
-    tv[0] = (int32_t)(((int64_t)vh->t * vh->w) >> 32);
-    tv[1] = (int32_t)(((int64_t)vm->t * vm->w) >> 32);
-    tv[2] = (int32_t)(((int64_t)vl->t * vl->w) >> 32);
+    sv[0] = (int32_t)(((((int64_t)st_bias_s << 16) + vh->s) * vh->w) >> 32);
+    sv[1] = (int32_t)(((((int64_t)st_bias_s << 16) + vm->s) * vm->w) >> 32);
+    sv[2] = (int32_t)(((((int64_t)st_bias_s << 16) + vl->s) * vl->w) >> 32);
+    tv[0] = (int32_t)(((((int64_t)st_bias_t << 16) + vh->t) * vh->w) >> 32);
+    tv[1] = (int32_t)(((((int64_t)st_bias_t << 16) + vm->t) * vm->w) >> 32);
+    tv[2] = (int32_t)(((((int64_t)st_bias_t << 16) + vl->t) * vl->w) >> 32);
     wv[0] = vh->w; wv[1] = vm->w; wv[2] = vl->w;
 
     solve_plane(sv[0], sv[1], sv[2], X0, Y0, X1, Y1, X2, Y2, area, dxhdy,

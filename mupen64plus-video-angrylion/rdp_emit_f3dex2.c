@@ -633,6 +633,17 @@ void f3dex2_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
                     int zu = (int)((w1 >> 5) & 1);
                     s_zbuffered = (zc || zu) ? 1 : 0;
                 }
+                /* sniff Set Tile (0xF5 -> 0x35) for the wrap masks: the
+                 * texture-coordinate wrap fold in gsp_triangle may shift a
+                 * triangle's S/T plane only by multiples of the tile's mask
+                 * period, so it needs the mask exponents of the tile the
+                 * draw will sample. */
+                if (rdp_id == 0x35)
+                {
+                    unsigned int ti = (w1 >> 24) & 7;
+                    gsp->tile_mask_t[ti] = (unsigned char)((w1 >> 14) & 0xf);
+                    gsp->tile_mask_s[ti] = (unsigned char)((w1 >> 4) & 0xf);
+                }
                 /* 0x24..0x3f are the RDP non-triangle commands angrylion
                  * implements; 0x31 (G_SETKEY*) is not, so skip it. SYNC_FULL
                  * (0x29) is dropped here too: the activation appends exactly

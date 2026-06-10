@@ -25,12 +25,18 @@ typedef struct EmitVertex
     int32_t s, t;
 } EmitVertex;
 
+/* Optional wide-basis plane override for clip fragments: gradients are solved
+ * over these three vertices (the unclipped parent triangle) instead of the
+ * fragment's own sliver basis. Pass NULLs to clear. */
+
 int emit_shaded_triangle(int32_t *ew, const EmitVertex *va,
                          const EmitVertex *vb, const EmitVertex *vc,
                          int tile, int max_level);
 int emit_shaded_z_triangle(int32_t *ew, const EmitVertex *va,
                            const EmitVertex *vb, const EmitVertex *vc,
                            int tile, int max_level);
+void emit_set_st_bias(int32_t bias_s, int32_t bias_t);
+
 int emit_texshade_triangle(int32_t *ew,
                            const EmitVertex *va, const EmitVertex *vb,
                            const EmitVertex *vc, int tex_w, int tex_h,
