@@ -383,32 +383,50 @@ void gsp_vertex(GSPState *s, const unsigned char *rdram, unsigned int addr,
             int nyb = (int)(signed char)read_u8_n64(rdram, base + 13);
             int nzb = (int)(signed char)read_u8_n64(rdram, base + 14);
             int32_t (*M)[4] = s->modelview[s->modelview_top];
-            /* tx,ty,tz: s8 * s15.16 >> 0 accumulated, then >>16 -> s15.16 normal */
-            int32_t tx = (int32_t)(((int64_t)nxb * M[0][0]
-                       + (int64_t)nyb * M[1][0] + (int64_t)nzb * M[2][0]) >> 16);
-            int32_t ty = (int32_t)(((int64_t)nxb * M[0][1]
-                       + (int64_t)nyb * M[1][1] + (int64_t)nzb * M[2][1]) >> 16);
-            int32_t tz = (int32_t)(((int64_t)nxb * M[0][2]
-                       + (int64_t)nyb * M[1][2] + (int64_t)nzb * M[2][2]) >> 16);
-            int64_t len2 = (int64_t)tx * tx + (int64_t)ty * ty + (int64_t)tz * tz;
+            /* Accumulate the rotated normal at full s8 * s15.16 precision
+             * (up to ~2^40) and normalize the 64-bit vector directly. The
+             * previous >>16 before normalization quantized the components
+             * to a handful of integer steps whenever the modelview carried
+             * a small scale -- OoT actors draw their limbs at ~0.01 matrix
+             * scale (entries ~655), so s8 * 655 >> 16 left only -2..2 and
+             * every normal collapsed onto a few axis directions, flattening
+             * the per-vertex shading (Link's hair and face rendered an
+             * unshaded constant grey). An adaptive pre-shift keeps the
+             * squared length inside int64 for any matrix scale. */
+            int64_t ax = (int64_t)nxb * M[0][0]
+                       + (int64_t)nyb * M[1][0] + (int64_t)nzb * M[2][0];
+            int64_t ay = (int64_t)nxb * M[0][1]
+                       + (int64_t)nyb * M[1][1] + (int64_t)nzb * M[2][1];
+            int64_t az = (int64_t)nxb * M[0][2]
+                       + (int64_t)nyb * M[1][2] + (int64_t)nzb * M[2][2];
+            int32_t tx = 0, ty = 0, tz = 0;
+            int64_t mx, len2;
             int32_t cr, cg, cb;
             int li;
+            mx = ax < 0 ? -ax : ax;
+            if ((ay < 0 ? -ay : ay) > mx) mx = ay < 0 ? -ay : ay;
+            if ((az < 0 ? -az : az) > mx) mx = az < 0 ? -az : az;
+            while (mx >= ((int64_t)1 << 30))
+            {
+                ax >>= 1; ay >>= 1; az >>= 1; mx >>= 1;
+            }
+            len2 = ax * ax + ay * ay + az * az;
             if (len2 > 0)
             {
-                /* integer sqrt of len2 (s15.16^2 -> the magnitude in s15.16) */
+                /* integer sqrt; result fits 31 bits since len2 < 3 * 2^60 */
                 int64_t lo = 0, hi = 0x7fffffff, mid, lenfx;
                 while (lo < hi)
                 {
                     mid = (lo + hi + 1) >> 1;
                     if (mid * mid <= len2) lo = mid; else hi = mid - 1;
                 }
-                lenfx = lo;                 /* sqrt(len2) in s15.16 */
+                lenfx = lo;
                 if (lenfx != 0)
                 {
                     /* normalize to s.15: n/len, scaled by 32768 */
-                    tx = (int32_t)(((int64_t)tx << 15) / lenfx);
-                    ty = (int32_t)(((int64_t)ty << 15) / lenfx);
-                    tz = (int32_t)(((int64_t)tz << 15) / lenfx);
+                    tx = (int32_t)((ax << 15) / lenfx);
+                    ty = (int32_t)((ay << 15) / lenfx);
+                    tz = (int32_t)((az << 15) / lenfx);
                 }
             }
             cr = s->light_rgb[s->num_lights][0];
