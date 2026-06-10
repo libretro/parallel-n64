@@ -199,7 +199,12 @@ int emit_shaded_triangle(int32_t *ew, const EmitVertex *va,
         }
         solve_plane(c0, c1, c2, X0, Y0, X1, Y1, X2, Y2, area, dxhdy,
                     &dcdx, &dcdy, &dcde);
-        base_c[chan] = c0 + (int32_t)(((int64_t)dcde * s_dyfix) >> 16);
+        /* The RSP's triangle write initialises every vertex colour
+         * fraction to 0x8000 (vnxor vtx_attrs_*_f, vZero, 0x8000): the
+         * shade attribute carries the 8-bit colour plus half an LSB.
+         * Adding the half to the base is exact -- all three vertices
+         * shift together, so the gradients are unchanged. */
+        base_c[chan] = c0 + 0x8000 + (int32_t)(((int64_t)dcde * s_dyfix) >> 16);
         dx_c[chan]   = dcdx;
         dy_c[chan]   = dcdy;
         de_c[chan]   = dcde;
