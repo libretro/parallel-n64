@@ -56,8 +56,11 @@ typedef struct GSPState
      * as s.15 fixed (i.e. value/32768). Used when G_LIGHTING is set. */
     int   num_lights;
     int32_t light_rgb[GSP_MAX_LIGHTS][3];
-    int32_t light_dir[GSP_MAX_LIGHTS][3];
-    int32_t lookat[2][3];   /* texgen lookat X/Y directions, normalized s.15 */
+    int32_t light_dir[GSP_MAX_LIGHTS][3]; /* cached model-space unit dirs (s8) */
+    int32_t light_raw[GSP_MAX_LIGHTS][3]; /* raw s8 dirs as loaded by MOVEMEM */
+    int32_t lookat[2][3];     /* cached model-space lookat X/Y dirs (s8) */
+    int32_t lookat_raw[2][3]; /* raw s8 lookat dirs as loaded */
+    int     lights_valid;     /* cache flag, mirrors the RSP's lightsValid */
 
     GSPVertex vtx[GSP_MAX_VERTICES];
 } GSPState;

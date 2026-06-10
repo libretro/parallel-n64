@@ -143,11 +143,18 @@ void gsp_init(GSPState *s)
         s->light_dir[i][0] = 0;
         s->light_dir[i][1] = 0;
         s->light_dir[i][2] = 0;
+        s->light_raw[i][0] = 0;
+        s->light_raw[i][1] = 0;
+        s->light_raw[i][2] = 0;
         if (i < 2)
         {
             s->lookat[i][0] = 0;
             s->lookat[i][1] = 0;
             s->lookat[i][2] = 0;
+            s->lookat_raw[i][0] = 0;
+            s->lookat_raw[i][1] = 0;
+            s->lookat_raw[i][2] = 0;
+            s->lights_valid = 0;
         }
     }
     s->tex_tile = 0;
@@ -180,6 +187,7 @@ void gsp_matrix_load(GSPState *s, const unsigned char *rdram, unsigned int addr,
             mtx_copy(s->modelview[s->modelview_top], m);
         else
             mtx_mul(s->modelview[s->modelview_top], m, s->modelview[s->modelview_top]);
+        s->lights_valid = 0;
     }
     s->combined_valid = 0;
 }
@@ -189,37 +197,73 @@ void gsp_matrix_pop(GSPState *s)
     if (s->modelview_top > 0)
         s->modelview_top--;
     s->combined_valid = 0;
+    s->lights_valid = 0;
 }
 
 void gsp_set_lookat(GSPState *s, const unsigned char *rdram,
                     unsigned int addr, int index)
 {
-    int dx, dy, dz;
-    int64_t len2;
     if (index < 0 || index > 1)
         return;
-    dx = (int)(signed char)read_u8_n64(rdram, addr + 8);
-    dy = (int)(signed char)read_u8_n64(rdram, addr + 9);
-    dz = (int)(signed char)read_u8_n64(rdram, addr + 10);
-    len2 = (int64_t)dx * dx + (int64_t)dy * dy + (int64_t)dz * dz;
-    s->lookat[index][0] = 0;
-    s->lookat[index][1] = 0;
-    s->lookat[index][2] = 0;
-    if (len2 > 0)
+    /* Raw s8 lookat direction; transformed into model space together with
+     * the directional lights under the same lightsValid cache. */
+    s->lookat_raw[index][0] = (int)(signed char)read_u8_n64(rdram, addr + 8);
+    s->lookat_raw[index][1] = (int)(signed char)read_u8_n64(rdram, addr + 9);
+    s->lookat_raw[index][2] = (int)(signed char)read_u8_n64(rdram, addr + 10);
+    s->lights_valid = 0;
+}
+
+/* Transform the lookat and directional light vectors from world space into
+ * model space and normalize them, mirroring the RSP's lazy
+ * continue_light_dir_xfrm pass: newDir = origDir * transpose(MV[0:2][0:2]),
+ * normalized and stored as s8. Vertex shading then dots these unit s8
+ * directions against the raw (untransformed, unnormalized) s8 vertex
+ * normal, so authored normal magnitudes scale the contribution exactly as
+ * on the RSP, while light vector magnitudes are normalized away. The pass
+ * runs at most once per matrix/light change (lightsValid). */
+static void gsp_light_dir_xfrm(GSPState *s)
+{
+    int32_t (*M)[4] = s->modelview[s->modelview_top];
+    int k;
+    for (k = -2; k < s->num_lights; k++)
     {
-        int64_t lo = 0, hi = 0x10000, mid;
-        while (lo < hi)
+        const int32_t *raw = (k < 0) ? s->lookat_raw[k + 2] : s->light_raw[k];
+        int32_t *out       = (k < 0) ? s->lookat[k + 2]     : s->light_dir[k];
+        int64_t vx = (int64_t)raw[0] * M[0][0] + (int64_t)raw[1] * M[0][1]
+                   + (int64_t)raw[2] * M[0][2];
+        int64_t vy = (int64_t)raw[0] * M[1][0] + (int64_t)raw[1] * M[1][1]
+                   + (int64_t)raw[2] * M[1][2];
+        int64_t vz = (int64_t)raw[0] * M[2][0] + (int64_t)raw[1] * M[2][1]
+                   + (int64_t)raw[2] * M[2][2];
+        int64_t mx, len2;
+        out[0] = out[1] = out[2] = 0;
+        mx = vx < 0 ? -vx : vx;
+        if ((vy < 0 ? -vy : vy) > mx) mx = vy < 0 ? -vy : vy;
+        if ((vz < 0 ? -vz : vz) > mx) mx = vz < 0 ? -vz : vz;
+        while (mx >= ((int64_t)1 << 30))
         {
-            mid = (lo + hi + 1) >> 1;
-            if (mid * mid <= len2) lo = mid; else hi = mid - 1;
+            vx >>= 1; vy >>= 1; vz >>= 1; mx >>= 1;
         }
-        if (lo != 0)
+        len2 = vx * vx + vy * vy + vz * vz;
+        if (len2 > 0)
         {
-            s->lookat[index][0] = (int32_t)(((int64_t)dx << 15) / lo);
-            s->lookat[index][1] = (int32_t)(((int64_t)dy << 15) / lo);
-            s->lookat[index][2] = (int32_t)(((int64_t)dz << 15) / lo);
+            int64_t lo = 0, hi = 0x7fffffff, mid;
+            while (lo < hi)
+            {
+                mid = (lo + hi + 1) >> 1;
+                if (mid * mid <= len2) lo = mid; else hi = mid - 1;
+            }
+            if (lo != 0)
+            {
+                /* unit vector in s.15, stored as s8 (top byte), exactly the
+                 * RSP's spv of the normalized result */
+                out[0] = (int32_t)(((vx << 15) / lo) >> 8);
+                out[1] = (int32_t)(((vy << 15) / lo) >> 8);
+                out[2] = (int32_t)(((vz << 15) / lo) >> 8);
+            }
         }
     }
+    s->lights_valid = 1;
 }
 
 /* acos(x)/pi * 1024 for x = i/128, i in [0,128]; the G_TEXTURE_GEN_LINEAR
@@ -376,73 +420,40 @@ void gsp_vertex(GSPState *s, const unsigned char *rdram, unsigned int addr,
 
         if (s->geometry_mode & 0x00020000u)     /* G_LIGHTING */
         {
-            /* [12..14] are a signed s8 normal. Transform by the modelview
-             * rotation (s15.16), normalize, and sum directional lights:
-             * shade = ambient + S max(0, n.L_i) * rgb_i. All integer. */
+            /* [12..14] are a signed s8 normal, used RAW: the RSP does not
+             * transform or normalize vertex normals. Instead the light
+             * (and lookat) directions are lazily rotated into model space
+             * and normalized under the lightsValid cache, and the shade is
+             * shade = ambient + S max(0, 2 * (n . L_i)) * rgb_i >> 15,
+             * where n is the raw s8 normal and L_i the unit s8 model-space
+             * direction. The factor 2 is the VMULU accumulator doubling;
+             * for a full-length normal aligned with a light this reaches
+             * ~32258/32768 of the light colour. Authored sub-length
+             * normals dim exactly as on hardware, and non-orthonormal
+             * model matrices (squash/stretch animation) light correctly
+             * because the rotation is applied to the directions, not the
+             * normal. */
             int nxb = (int)(signed char)read_u8_n64(rdram, base + 12);
             int nyb = (int)(signed char)read_u8_n64(rdram, base + 13);
             int nzb = (int)(signed char)read_u8_n64(rdram, base + 14);
-            int32_t (*M)[4] = s->modelview[s->modelview_top];
-            /* Accumulate the rotated normal at full s8 * s15.16 precision
-             * (up to ~2^40) and normalize the 64-bit vector directly. The
-             * previous >>16 before normalization quantized the components
-             * to a handful of integer steps whenever the modelview carried
-             * a small scale -- OoT actors draw their limbs at ~0.01 matrix
-             * scale (entries ~655), so s8 * 655 >> 16 left only -2..2 and
-             * every normal collapsed onto a few axis directions, flattening
-             * the per-vertex shading (Link's hair and face rendered an
-             * unshaded constant grey). An adaptive pre-shift keeps the
-             * squared length inside int64 for any matrix scale. */
-            int64_t ax = (int64_t)nxb * M[0][0]
-                       + (int64_t)nyb * M[1][0] + (int64_t)nzb * M[2][0];
-            int64_t ay = (int64_t)nxb * M[0][1]
-                       + (int64_t)nyb * M[1][1] + (int64_t)nzb * M[2][1];
-            int64_t az = (int64_t)nxb * M[0][2]
-                       + (int64_t)nyb * M[1][2] + (int64_t)nzb * M[2][2];
-            int32_t tx = 0, ty = 0, tz = 0;
-            int64_t mx, len2;
             int32_t cr, cg, cb;
             int li;
-            mx = ax < 0 ? -ax : ax;
-            if ((ay < 0 ? -ay : ay) > mx) mx = ay < 0 ? -ay : ay;
-            if ((az < 0 ? -az : az) > mx) mx = az < 0 ? -az : az;
-            while (mx >= ((int64_t)1 << 30))
-            {
-                ax >>= 1; ay >>= 1; az >>= 1; mx >>= 1;
-            }
-            len2 = ax * ax + ay * ay + az * az;
-            if (len2 > 0)
-            {
-                /* integer sqrt; result fits 31 bits since len2 < 3 * 2^60 */
-                int64_t lo = 0, hi = 0x7fffffff, mid, lenfx;
-                while (lo < hi)
-                {
-                    mid = (lo + hi + 1) >> 1;
-                    if (mid * mid <= len2) lo = mid; else hi = mid - 1;
-                }
-                lenfx = lo;
-                if (lenfx != 0)
-                {
-                    /* normalize to s.15: n/len, scaled by 32768 */
-                    tx = (int32_t)((ax << 15) / lenfx);
-                    ty = (int32_t)((ay << 15) / lenfx);
-                    tz = (int32_t)((az << 15) / lenfx);
-                }
-            }
+            if (!s->lights_valid)
+                gsp_light_dir_xfrm(s);
             cr = s->light_rgb[s->num_lights][0];
             cg = s->light_rgb[s->num_lights][1];
             cb = s->light_rgb[s->num_lights][2];
             for (li = 0; li < s->num_lights; li++)
             {
-                /* d = n . L, both s.15 -> product >>15 gives s.15 cosine */
-                int32_t d = (int32_t)(((int64_t)tx * s->light_dir[li][0]
-                          + (int64_t)ty * s->light_dir[li][1]
-                          + (int64_t)tz * s->light_dir[li][2]) >> 15);
+                int32_t d = 2 * (nxb * s->light_dir[li][0]
+                               + nyb * s->light_dir[li][1]
+                               + nzb * s->light_dir[li][2]);
                 if (d > 0)
                 {
-                    cr += (int32_t)(((int64_t)s->light_rgb[li][0] * d) >> 15);
-                    cg += (int32_t)(((int64_t)s->light_rgb[li][1] * d) >> 15);
-                    cb += (int32_t)(((int64_t)s->light_rgb[li][2] * d) >> 15);
+                    if (d > 0xffff) d = 0xffff;
+                    cr += (s->light_rgb[li][0] * d) >> 15;
+                    cg += (s->light_rgb[li][1] * d) >> 15;
+                    cb += (s->light_rgb[li][2] * d) >> 15;
                 }
             }
             if (cr > 255) cr = 255;
@@ -460,12 +471,16 @@ void gsp_vertex(GSPState *s, const unsigned char *rdram, unsigned int addr,
                  * G_TEXTURE-scale path below. The boot-logo N is the OoT
                  * test case (TEXTURE_GEN_LINEAR, scale 0x0ED8). */
                 int linear = (s->geometry_mode & 0x00080000u) ? 1 : 0;
-                int32_t d0 = (int32_t)(((int64_t)tx * s->lookat[0][0]
-                            + (int64_t)ty * s->lookat[0][1]
-                            + (int64_t)tz * s->lookat[0][2]) >> 15);
-                int32_t d1 = (int32_t)(((int64_t)tx * s->lookat[1][0]
-                            + (int64_t)ty * s->lookat[1][1]
-                            + (int64_t)tz * s->lookat[1][2]) >> 15);
+                int32_t d0 = 2 * (nxb * s->lookat[0][0]
+                                + nyb * s->lookat[0][1]
+                                + nzb * s->lookat[0][2]);
+                int32_t d1 = 2 * (nxb * s->lookat[1][0]
+                                + nyb * s->lookat[1][1]
+                                + nzb * s->lookat[1][2]);
+                if (d0 >  32767) d0 =  32767;
+                if (d0 < -32768) d0 = -32768;
+                if (d1 >  32767) d1 =  32767;
+                if (d1 < -32768) d1 = -32768;
                 st_s = texgen_coord(d0, linear);
                 st_t = texgen_coord(d1, linear);
             }
@@ -554,39 +569,30 @@ void gsp_set_num_lights(GSPState *s, int n)
     if (n < 0) n = 0;
     if (n > GSP_MAX_LIGHTS - 1) n = GSP_MAX_LIGHTS - 1;
     s->num_lights = n;
+    /* The RSP zeroes lightsValid whenever numLightsx18 is written. */
+    s->lights_valid = 0;
 }
 
 void gsp_set_light(GSPState *s, const unsigned char *rdram,
                    unsigned int addr, int index)
 {
-    int dx, dy, dz;
-    int64_t len2;
     if (index < 0 || index >= GSP_MAX_LIGHTS)
         return;
 
     /* Light struct: bytes [0..2] = r,g,b (0..255); the direction is a signed
-     * s8 vector at bytes [8..10]. rgb kept as 0..255 ints; direction normalized
-     * to s.15 (value/32768). Integer-only. */
+     * s8 vector at bytes [8..10]. The raw direction is cached as loaded; the
+     * RSP transforms all directions into model space (modelview transpose)
+     * and normalizes them lazily at vertex-processing time, gated by
+     * lightsValid -- see gsp_light_dir_xfrm(). */
     s->light_rgb[index][0] = (int32_t)read_u8_n64(rdram, addr + 0);
     s->light_rgb[index][1] = (int32_t)read_u8_n64(rdram, addr + 1);
     s->light_rgb[index][2] = (int32_t)read_u8_n64(rdram, addr + 2);
 
-    dx = (int)(signed char)read_u8_n64(rdram, addr + 8);
-    dy = (int)(signed char)read_u8_n64(rdram, addr + 9);
-    dz = (int)(signed char)read_u8_n64(rdram, addr + 10);
-    /* The RSP does not normalize the light direction: the s8 vector is used
-     * as a fraction of 128, so its magnitude scales the contribution. OoT
-     * relies on this -- Lights_BindPoint encodes its CPU-side point lights
-     * with the distance attenuation in the color and a direction of
-     * magnitude 120 (not 127), and other binders pass scene-authored
-     * vectors of arbitrary magnitude straight through. Normalizing here
-     * over-brightened any light authored below full magnitude (Link under
-     * the house's bound point light gained a flat +40-ish cast).
-     * s8/128 in s.15 is simply dir << 8. */
-    (void)len2;
-    s->light_dir[index][0] = (int32_t)(dx << 8);
-    s->light_dir[index][1] = (int32_t)(dy << 8);
-    s->light_dir[index][2] = (int32_t)(dz << 8);
+    s->light_raw[index][0] = (int)(signed char)read_u8_n64(rdram, addr + 8);
+    s->light_raw[index][1] = (int)(signed char)read_u8_n64(rdram, addr + 9);
+    s->light_raw[index][2] = (int)(signed char)read_u8_n64(rdram, addr + 10);
+
+    s->lights_valid = 0;
 }
 
 /* Guard-band plane distance for clip-space vertex v (s15.16) against plane p:
@@ -729,6 +735,7 @@ int gsp_triangle(GSPState *s, int32_t *cmd, int i0, int i1, int i2,
     poly[0] = *a;
     poly[1] = *b;
     poly[2] = *c;
+
     np = 3;
     if (oa | ob | oc)
     {
