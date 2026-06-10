@@ -979,8 +979,8 @@ int rsp_tri_write(int32_t *ew,
         nw = 8;
 
         /* shade block */
-        ew[nw + 0] = (int32_t)(((uint32_t)U16(at_i[0][0]) << 16) | (uint32_t)U16(at_i[0][1]));
-        ew[nw + 1] = (int32_t)(((uint32_t)U16(at_i[0][2]) << 16) | (uint32_t)U16(at_i[0][3]));
+        ew[nw + 0] = (int32_t)(((uint32_t)U16(base[0].i) << 16) | (uint32_t)U16(base[1].i));
+        ew[nw + 1] = (int32_t)(((uint32_t)U16(base[2].i) << 16) | (uint32_t)U16(base[3].i));
         ew[nw + 2] = (int32_t)(((uint32_t)U16(dAdX[0].i) << 16) | (uint32_t)U16(dAdX[1].i));
         ew[nw + 3] = (int32_t)(((uint32_t)U16(dAdX[2].i) << 16) | (uint32_t)U16(dAdX[3].i));
         ew[nw + 4] = (int32_t)(((uint32_t)U16(base[0].f) << 16) | (uint32_t)U16(base[1].f));
