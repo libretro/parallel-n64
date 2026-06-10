@@ -9,6 +9,7 @@
  */
 
 #include "rdp_emit_frontend.h"
+#include "rdp_emit_rsp.h"
 #include "rdp_emit_recip.h"
 
 /* read a signed 16-bit big-endian halfword from RDRAM (N64 byte order) */
@@ -67,9 +68,13 @@ static void mtx_copy(int32_t d[4][4], int32_t s[4][4])
 
 /* d = a * b (row-vector convention: v' = v * d, matching the N64 RSP).
  * Each product of two s15.16 values is a 64-bit s31.32 intermediate; the
- * column sum is accumulated at full 64-bit width and then truncated back to
- * s15.16 (>> 16), which is the "middle 32 bits retained" behaviour the RSP's
- * 48-bit vector accumulator produces for the matrix concatenation. */
+ * column sum follows the microcode's mtx_multiply MAC chain exactly: the
+ * frac*frac partial of every product is truncated to its high half before
+ * accumulation (vmadl), unlike an exact 64-bit dot product which would keep
+ * those low bits until a single final shift. The difference is only a few
+ * LSBs per element, but the vertex w values -- and the 1/w reciprocals the
+ * triangle write derives from them -- inherit it, so the exact behaviour is
+ * required for bit-identical RDP commands. */
 static void mtx_mul(int32_t d[4][4], int32_t a[4][4], int32_t b[4][4])
 {
     int32_t r[4][4];
@@ -80,8 +85,26 @@ static void mtx_mul(int32_t d[4][4], int32_t a[4][4], int32_t b[4][4])
         {
             int64_t acc = 0;
             for (k = 0; k < 4; k++)
-                acc += (int64_t)a[i][k] * (int64_t)b[k][j];
-            r[i][j] = (int32_t)(acc >> 16);
+            {
+                int32_t ai = a[i][k] >> 16;
+                int32_t af = a[i][k] & 0xffff;
+                int32_t bi = b[k][j] >> 16;
+                int32_t bf = b[k][j] & 0xffff;
+                acc += (int64_t)((uint32_t)((uint32_t)af * (uint32_t)bf) >> 16);
+                acc += (int64_t)ai * bf;
+                acc += (int64_t)af * bi;
+                acc += ((int64_t)ai * bi) << 16;
+            }
+            /* vmadn/vmadh extraction: low half with the unsigned-low clamp,
+             * high half signed-clamped. In-range sums pass through. */
+            {
+                int64_t hi = acc >> 16;
+                int32_t out_i, out_f;
+                if (hi < -32768)      { out_i = -32768; out_f = 0x0000; }
+                else if (hi > 32767)  { out_i =  32767; out_f = 0xffff; }
+                else                  { out_i = (int32_t)hi; out_f = (int32_t)(acc & 0xffff); }
+                r[i][j] = (int32_t)(((uint32_t)out_i << 16) | (uint32_t)out_f);
+            }
         }
     }
     mtx_copy(d, r);
@@ -596,10 +619,12 @@ void gsp_vertex(GSPState *s, const unsigned char *rdram, unsigned int addr,
             int32_t fa = 0;
             if (vt->cw > 0)
             {
-                int32_t ndcz = (int32_t)(((int64_t)vt->cz << 16) / vt->cw);
-                fa = (int32_t)((((int64_t)ndcz * s->fog_m) >> 16) + s->fog_o);
-                if (fa < 0)   fa = 0;
-                if (fa > 255) fa = 255;
+                /* RSP-exact fog: the microcode's vertex chain, so the
+                 * triangle write's alpha lane is bit-identical to the LLE
+                 * RSP. */
+                fa = rsp_vtx_fog(vt->cz, vt->cw,
+                                 (int32_t)(s->persp_norm ? s->persp_norm : 0xffffu),
+                                 s->fog_m, s->fog_o);
             }
             vt->a = fa << 16;
         }
@@ -983,6 +1008,7 @@ int gsp_triangle(GSPState *s, int32_t *cmd, int i0, int i1, int i2,
             v2.s = poly[i + 1].s; v2.t = poly[i + 1].t;
             nc = bridge_add_triangle(cmd + total, &v0, &v1, &v2, &s->viewport,
                                      textured, z_buffered,
+                                     (s->geometry_mode & 0x00200000u) ? 1 : 0,
                                      s->tex_tile, s->tex_level, s->tex_w, s->tex_h);
             if (nc > 0)
                 total += nc;

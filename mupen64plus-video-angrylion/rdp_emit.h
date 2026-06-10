@@ -23,6 +23,11 @@ typedef struct EmitVertex
     int32_t x, y, z, w;
     int32_t r, g, b, a;
     int32_t s, t;
+    /* Filled when the RSP-exact vertex transform was in-domain: the 10.2
+     * screen position is then exactly the microcode's, and rsp_invw is the
+     * VTX_INV_W value its triangle write would read back. */
+    int32_t rsp_invw;
+    int rsp_ok;
 } EmitVertex;
 
 /* Optional wide-basis plane override for clip fragments: gradients are solved
@@ -36,6 +41,7 @@ int emit_shaded_z_triangle(int32_t *ew, const EmitVertex *va,
                            const EmitVertex *vb, const EmitVertex *vc,
                            int tile, int max_level);
 void emit_set_st_bias(int32_t bias_s, int32_t bias_t);
+void emit_get_st_bias(int32_t *bias_s, int32_t *bias_t);
 
 int emit_texshade_triangle(int32_t *ew,
                            const EmitVertex *va, const EmitVertex *vb,

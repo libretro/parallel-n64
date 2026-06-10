@@ -340,6 +340,12 @@ void emit_set_st_bias(int32_t bias_s, int32_t bias_t)
     st_bias_t = bias_t;
 }
 
+void emit_get_st_bias(int32_t *bias_s, int32_t *bias_t)
+{
+    *bias_s = st_bias_s;
+    *bias_t = st_bias_t;
+}
+
 int emit_texshade_triangle(int32_t *ew,
                            const EmitVertex *va, const EmitVertex *vb,
                            const EmitVertex *vc, int tex_w, int tex_h,

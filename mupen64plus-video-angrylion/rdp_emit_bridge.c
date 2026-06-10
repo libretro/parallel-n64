@@ -14,6 +14,7 @@
 #include "rdp_emit.h"
 #include "rdp_emit_bridge.h"
 #include "rdp_emit_recip.h"
+#include "rdp_emit_rsp.h"
 
 static void clip_to_emit(EmitVertex *e, const BridgeVertex *v,
                          const BridgeViewport *vp, int64_t *w_raw)
@@ -99,13 +100,88 @@ static void clip_to_emit(EmitVertex *e, const BridgeVertex *v,
 
     e->r = v->r; e->g = v->g; e->b = v->b; e->a = v->a;
     e->s = v->s; e->t = v->t;
+
+    /* RSP-exact vertex transform: when in-domain it supersedes the screen
+     * position computed above with the microcode's own MAC-chain results,
+     * making the downstream triangle write bit-identical to the LLE RSP. */
+    e->rsp_ok = 0;
+    e->rsp_invw = 0;
+    {
+        int32_t sx, sy, sz, iw;
+        if (rsp_vtx_screen(v->cx, v->cy, v->cz, v->cw,
+                           (int32_t)(vp->persp_norm ? vp->persp_norm : 0xffffu),
+                           vp->vscale_x >> 14, vp->vscale_y >> 14,
+                           vp->vscale_z >> 16,
+                           vp->vtrans_x >> 14, vp->vtrans_y >> 14,
+                           vp->vtrans_z >> 16,
+                           &sx, &sy, &sz, &iw))
+        {
+            e->x = sx << 14;
+            e->y = sy << 14;
+            e->z = sz;
+            e->rsp_ok = 1;
+            e->rsp_invw = iw;
+        }
+    }
+}
+
+/* RSP-exact path: convert the bridge vertices into the microcode's
+ * per-vertex domain and run the transcribed triangle write. Returns the
+ * word count (0 for a degenerate cull) or -1 when the inputs fall outside
+ * the RSP's representable domain and the caller must use the legacy
+ * emitters. */
+static int try_rsp_tri_write(int32_t *cmd,
+                             const EmitVertex *ea, const EmitVertex *eb,
+                             const EmitVertex *ec,
+                             const BridgeVertex *v0, const BridgeVertex *v1,
+                             const BridgeVertex *v2,
+                             int textured, int z_buffered, int smooth,
+                             int tile, int level)
+{
+    RspTriVtx r[3];
+    const EmitVertex *ev[3];
+    const BridgeVertex *bv[3];
+    int32_t bs, bt;
+    int i;
+
+    ev[0] = ea; ev[1] = eb; ev[2] = ec;
+    bv[0] = v0; bv[1] = v1; bv[2] = v2;
+    emit_get_st_bias(&bs, &bt);
+
+    for (i = 0; i < 3; i++)
+    {
+        int32_t x102 = ev[i]->x >> 14;
+        int32_t y102 = ev[i]->y >> 14;
+        int32_t tcs = ((ev[i]->s >> 16) + bs) >> 1;
+        int32_t tct = ((ev[i]->t >> 16) + bt) >> 1;
+        if (!ev[i]->rsp_ok)
+            return -1;
+        if (x102 < -32768 || x102 > 32767 ||
+            y102 < -32768 || y102 > 32767)
+            return -1;
+        if (textured &&
+            (tcs < -32768 || tcs > 32767 || tct < -32768 || tct > 32767))
+            return -1;
+        r[i].x = (int16_t)x102;
+        r[i].y = (int16_t)y102;
+        r[i].z = ev[i]->z;
+        r[i].r = (ev[i]->r >> 16) & 0xff;
+        r[i].g = (ev[i]->g >> 16) & 0xff;
+        r[i].b = (ev[i]->b >> 16) & 0xff;
+        r[i].a = (ev[i]->a >> 16) & 0xff;
+        r[i].s = tcs;
+        r[i].t = tct;
+        r[i].invw = ev[i]->rsp_invw;
+    }
+    return rsp_tri_write(cmd, &r[0], &r[1], &r[2],
+                         textured, z_buffered, smooth, tile, level);
 }
 
 int bridge_add_triangle(int32_t *cmd,
                         const BridgeVertex *v0, const BridgeVertex *v1,
                         const BridgeVertex *v2,
                         const BridgeViewport *vp,
-                        int textured, int z_buffered,
+                        int textured, int z_buffered, int smooth,
                         int tile, int max_level, int tex_w, int tex_h)
 {
     EmitVertex a, b, c;
@@ -116,6 +192,11 @@ int bridge_add_triangle(int32_t *cmd,
     clip_to_emit(&a, v0, vp, &wa);
     clip_to_emit(&b, v1, vp, &wb);
     clip_to_emit(&c, v2, vp, &wc);
+
+    n = try_rsp_tri_write(cmd, &a, &b, &c, v0, v1, v2,
+                          textured, z_buffered, smooth, tile, max_level);
+    if (n >= 0)
+        return n;
 
     /* Normalise the inverse-w trio with one common power-of-two shift so the
      * largest value lands in [2^30, 2^31), matching the RSP's mantissa-

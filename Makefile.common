@@ -610,6 +610,7 @@ SOURCES_C   += $(VIDEODIR_ANGRYLION)/interface.c \
 				   $(VIDEODIR_ANGRYLION)/n64video.c \
 				   $(VIDEODIR_ANGRYLION)/rdp_emit.c \
 				   $(VIDEODIR_ANGRYLION)/rdp_emit_bridge.c \
+				   $(VIDEODIR_ANGRYLION)/rdp_emit_rsp.c \
 				   $(VIDEODIR_ANGRYLION)/rdp_emit_frontend.c \
 				   $(VIDEODIR_ANGRYLION)/rdp_emit_f3dex2.c \
 				   $(VIDEODIR_ANGRYLION)/rdp_emit_hle.c

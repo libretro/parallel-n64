@@ -1,0 +1,33 @@
+#ifndef RDP_EMIT_RSP_H
+#define RDP_EMIT_RSP_H
+
+#include <stdint.h>
+
+int32_t rsp_rcp32(int32_t in32);
+int32_t rsp_rcp16(int32_t in16);
+int32_t rsp_vtx_invw(int32_t w);
+int32_t rsp_vtx_fog(int32_t cz, int32_t cw, int32_t pn,
+                    int32_t fog_m, int32_t fog_o);
+int rsp_vtx_screen(int32_t cx, int32_t cy, int32_t cz, int32_t cw,
+                   int32_t pn,
+                   int32_t vsx, int32_t vsy, int32_t vsz,
+                   int32_t vtx_, int32_t vty, int32_t vtz,
+                   int32_t *sx102, int32_t *sy102, int32_t *sz1616,
+                   int32_t *invw_out);
+
+typedef struct RspTriVtx
+{
+    int16_t  x, y;      /* screen position, 10.2 */
+    int32_t  z;         /* screen z, 16.16 */
+    int32_t  r, g, b, a;/* 8-bit colour values */
+    int32_t  s, t;      /* texture coordinates as stored in VTX_TC_VEC */
+    int32_t  invw;      /* VTX_INV_W 32-bit value (rsp_vtx_invw) */
+} RspTriVtx;
+
+int rsp_tri_write(int32_t *ew,
+                  const RspTriVtx *v1c, const RspTriVtx *v2c,
+                  const RspTriVtx *v3c,
+                  int textured, int z_buffered, int smooth,
+                  int tile, int level);
+
+#endif
