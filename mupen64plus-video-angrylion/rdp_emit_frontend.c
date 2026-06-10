@@ -504,7 +504,28 @@ void gsp_vertex(GSPState *s, const unsigned char *rdram, unsigned int addr,
             vt->a = fa << 16;
         }
 
-        vt->clip = 0;
+        /* Store the RSP's per-vertex clip outcode (the VCH sign-aware
+         * screen-plane compare, bits N/P per x, y, z axis -- the SCRN half
+         * of VTX_CLIP). G_CULLDL and the triangle trivial reject test the
+         * AND of these flags, and unlike a plain w > 0 frustum test the
+         * VCH rule also flags vertices behind the eye, which is what lets
+         * the RSP reject the near geometry slivers a guard-band clipper
+         * would otherwise rasterize. */
+        {
+            int32_t comps[3];
+            int ax;
+            unsigned int fl = 0;
+            comps[0] = vt->cx; comps[1] = vt->cy; comps[2] = vt->cz;
+            for (ax = 0; ax < 3; ax++)
+            {
+                int sn = ((comps[ax] ^ vt->cw) < 0);
+                int nb = sn ? (comps[ax] <= -vt->cw) : (vt->cw < 0);
+                int pb = sn ? (vt->cw < 0) : (comps[ax] >= vt->cw);
+                if (nb) fl |= 1u << (ax * 2);
+                if (pb) fl |= 2u << (ax * 2);
+            }
+            vt->clip = (int)fl;
+        }
     }
 }
 
@@ -685,26 +706,14 @@ int gsp_triangle(GSPState *s, int32_t *cmd, int i0, int i1, int i2,
     /* Z bit comes from the G_ZBUFFER geometry-mode bit, not the othermode. */
     z_buffered = (s->geometry_mode & GEOM_ZBUFFER) ? 1 : 0;
 
-    /* Trivial-reject (x/y vs +-w) only when all w > 0 (NoN microcode: behind
-     * the near plane is passed through). Clip coords are s15.16. */
-    if (a->cw > 0 && b->cw > 0 && c->cw > 0)
-    {
-        int ca = 0, cb = 0, cc = 0;
-        if (a->cx >  a->cw) ca |= 1;
-        if (a->cx < -a->cw) ca |= 2;
-        if (a->cy >  a->cw) ca |= 4;
-        if (a->cy < -a->cw) ca |= 8;
-        if (b->cx >  b->cw) cb |= 1;
-        if (b->cx < -b->cw) cb |= 2;
-        if (b->cy >  b->cw) cb |= 4;
-        if (b->cy < -b->cw) cb |= 8;
-        if (c->cx >  c->cw) cc |= 1;
-        if (c->cx < -c->cw) cc |= 2;
-        if (c->cy >  c->cw) cc |= 4;
-        if (c->cy < -c->cw) cc |= 8;
-        if (ca & cb & cc)
-            return 0;
-    }
+    /* Trivial reject: the RSP tests the AND of the three vertices' stored
+     * VCH clip outcodes against CLIP_ALL_SCRN -- if every vertex lies
+     * outside the same screen plane (including the z lanes, and including
+     * the behind-the-eye encodings the VCH compare produces for w <= 0),
+     * the triangle is dropped before any clipping. The guard-band clipper
+     * below only sees triangles that survive this. */
+    if (a->clip & b->clip & c->clip)
+        return 0;
 
     /* Guard-band outcodes (ratio-2 planes, w <= 0 handled implicitly). */
     oa = ob = oc = 0;

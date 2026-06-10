@@ -438,6 +438,32 @@ void f3dex2_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
             s_half1 = w1;
             break;
 
+        case 0x03:                       /* G_CULLDL (gSPCullDisplayList) */
+        {
+            /* The RSP tests the AND of the clip flags of vertices
+             * vstart..vend (inclusive): if every vertex lies outside the
+             * same screen frustum plane (x or y beyond +-w), it jumps to
+             * the ENDDL handler, terminating the remainder of the current
+             * display list. OoT bounds each room mesh section and many
+             * actors this way; without it the walker renders sub-lists the
+             * RSP rejects, and their guard-band-clipped remnants land as
+             * extra layers over near geometry. Vertices with w <= 0 carry
+             * no outside flags here, which can only under-cull (render
+             * more), never over-cull. */
+            int v0 = (int)((w0 & 0xffffu) >> 1);
+            int v1 = (int)((w1 & 0xffffu) >> 1);
+            if (v0 >= 0 && v1 >= v0 && v1 < GSP_MAX_VERTICES)
+            {
+                unsigned int all = 0x3fu;
+                int vi;
+                for (vi = v0; vi <= v1 && all; vi++)
+                    all &= (unsigned int)gsp->vtx[vi].clip;
+                if (all)
+                    running = 0;
+            }
+            break;
+        }
+
         case 0x04:                       /* F3DZEX2 G_BRANCH_W (gSPBranchLessW) */
         {
             /* Branch (no return) to the DL staged by the preceding RDPHALF_1
