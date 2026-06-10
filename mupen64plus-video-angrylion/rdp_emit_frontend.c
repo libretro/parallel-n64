@@ -10,6 +10,7 @@
 
 #include "rdp_emit_frontend.h"
 #include "rdp_emit_rsp.h"
+#include <stdio.h>
 #include "rdp_emit_recip.h"
 
 /* read a signed 16-bit big-endian halfword from RDRAM (N64 byte order) */
@@ -216,17 +217,23 @@ void gsp_matrix_load(GSPState *s, const unsigned char *rdram, unsigned int addr,
             mtx_copy(s->modelview[s->modelview_top], m);
         else
             mtx_mul(s->modelview[s->modelview_top], m, s->modelview[s->modelview_top]);
-        s->lights_valid = 0;
     }
+    /* load_mtx zeroes mvpValid with a word write that also covers
+     * lightsValid, for projection loads as well as modelview. */
+    s->lights_valid = 0;
     s->combined_valid = 0;
 }
 
 void gsp_matrix_pop(GSPState *s)
 {
+    /* do_popmtx only zeroes mvpValid/lightsValid when bytes were
+     * actually popped from the matrix stack. */
     if (s->modelview_top > 0)
+    {
         s->modelview_top--;
-    s->combined_valid = 0;
-    s->lights_valid = 0;
+        s->combined_valid = 0;
+        s->lights_valid = 0;
+    }
 }
 
 void gsp_set_lookat(GSPState *s, const unsigned char *rdram,
@@ -239,7 +246,9 @@ void gsp_set_lookat(GSPState *s, const unsigned char *rdram,
     s->lookat_raw[index][0] = (int)(signed char)read_u8_n64(rdram, addr + 8);
     s->lookat_raw[index][1] = (int)(signed char)read_u8_n64(rdram, addr + 9);
     s->lookat_raw[index][2] = (int)(signed char)read_u8_n64(rdram, addr + 10);
-    s->lights_valid = 0;
+    /* G_MOVEMEM does not touch lightsValid: the RSP keeps using the
+     * previously transformed directions until a matrix load, a real
+     * matrix pop, or a G_MW_NUMLIGHT write invalidates them. */
 }
 
 /* Transform the lookat and directional light vectors from world space into
@@ -258,39 +267,7 @@ static void gsp_light_dir_xfrm(GSPState *s)
     {
         const int32_t *raw = (k < 0) ? s->lookat_raw[k + 2] : s->light_raw[k];
         int32_t *out       = (k < 0) ? s->lookat[k + 2]     : s->light_dir[k];
-        int64_t vx = (int64_t)raw[0] * M[0][0] + (int64_t)raw[1] * M[0][1]
-                   + (int64_t)raw[2] * M[0][2];
-        int64_t vy = (int64_t)raw[0] * M[1][0] + (int64_t)raw[1] * M[1][1]
-                   + (int64_t)raw[2] * M[1][2];
-        int64_t vz = (int64_t)raw[0] * M[2][0] + (int64_t)raw[1] * M[2][1]
-                   + (int64_t)raw[2] * M[2][2];
-        int64_t mx, len2;
-        out[0] = out[1] = out[2] = 0;
-        mx = vx < 0 ? -vx : vx;
-        if ((vy < 0 ? -vy : vy) > mx) mx = vy < 0 ? -vy : vy;
-        if ((vz < 0 ? -vz : vz) > mx) mx = vz < 0 ? -vz : vz;
-        while (mx >= ((int64_t)1 << 30))
-        {
-            vx >>= 1; vy >>= 1; vz >>= 1; mx >>= 1;
-        }
-        len2 = vx * vx + vy * vy + vz * vz;
-        if (len2 > 0)
-        {
-            int64_t lo = 0, hi = 0x7fffffff, mid;
-            while (lo < hi)
-            {
-                mid = (lo + hi + 1) >> 1;
-                if (mid * mid <= len2) lo = mid; else hi = mid - 1;
-            }
-            if (lo != 0)
-            {
-                /* unit vector in s.15, stored as s8 (top byte), exactly the
-                 * RSP's spv of the normalized result */
-                out[0] = (int32_t)(((vx << 15) / lo) >> 8);
-                out[1] = (int32_t)(((vy << 15) / lo) >> 8);
-                out[2] = (int32_t)(((vz << 15) / lo) >> 8);
-            }
-        }
+        rsp_light_dir_xfrm_one((const int32_t (*)[4])M, raw, out);
     }
     s->lights_valid = 1;
 }
@@ -469,6 +446,23 @@ void gsp_vertex(GSPState *s, const unsigned char *rdram, unsigned int addr,
             int li;
             if (!s->lights_valid)
                 gsp_light_dir_xfrm(s);
+            if (!(s->geometry_mode & 0x00400000u))
+            {
+                /* Pure directional lighting (no G_LIGHTING_POSITIONAL):
+                 * the microcode's lights_dircoloraccum2 loop, bit-exact. */
+                int32_t nrm[3], out[3];
+                nrm[0] = nxb; nrm[1] = nyb; nrm[2] = nzb;
+                rsp_light_vtx(nrm, s->light_rgb[s->num_lights],
+                              (const int32_t (*)[3])s->light_rgb,
+                              (const int32_t (*)[3])s->light_dir,
+                              s->num_lights, out);
+                vt->r = out[0] << 16;
+                vt->g = out[1] << 16;
+                vt->b = out[2] << 16;
+                vt->a = (int32_t)read_u8_n64(rdram, base + 15) << 16;
+            }
+            else
+            {
             cr = s->light_rgb[s->num_lights][0];
             cg = s->light_rgb[s->num_lights][1];
             cb = s->light_rgb[s->num_lights][2];
@@ -569,6 +563,7 @@ void gsp_vertex(GSPState *s, const unsigned char *rdram, unsigned int addr,
             if (cb > 255) cb = 255;
             vt->r = cr << 16; vt->g = cg << 16; vt->b = cb << 16;
             vt->a = (int32_t)read_u8_n64(rdram, base + 15) << 16;
+            }
 
             if (s->geometry_mode & 0x00040000u) /* G_TEXTURE_GEN */
             {
@@ -717,7 +712,7 @@ void gsp_set_light(GSPState *s, const unsigned char *rdram,
                                              | read_u8_n64(rdram, addr + 11));
     s->light_pos[index][2] = (int32_t)(short)((read_u8_n64(rdram, addr + 12) << 8)
                                              | read_u8_n64(rdram, addr + 13));
-    s->lights_valid = 0;
+    /* G_MOVEMEM does not touch lightsValid (see gsp_set_lookat). */
 }
 
 /* Guard-band plane distance for clip-space vertex v (s15.16) against plane p:

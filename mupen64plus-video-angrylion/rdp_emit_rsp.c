@@ -190,6 +190,41 @@ int32_t rsp_rcp16(int32_t in16)
     return rsp_div_core((int32_t)(int16_t)in16);
 }
 
+/* The vrsq (reciprocal square root) table path: the second half of the
+ * divide ROM, addressed with the normalization shift's parity in bit 0,
+ * and the result shift halved. */
+int32_t rsp_rsq32(int32_t in32)
+{
+    int32_t data = in32;
+    int32_t addr;
+    int shift;
+    int32_t out;
+
+    if (data < 0)
+        data = (data >= -32768) ? -data : ~data;
+
+    addr = data;
+    shift = 0;
+    if (data != 0)
+    {
+        for (shift = 0; addr >= 0; addr <<= 1, shift++)
+            ;
+    }
+    addr = (addr >> 22) & 0x1ff;
+    addr &= 0x1fe;
+    addr |= 0x200 | (shift & 1);
+    shift ^= 31;
+    shift >>= 1;
+    out = (int32_t)((0x40000000u | ((uint32_t)div_rom[addr] << 14)) >> shift);
+    if (in32 == 0)
+        out = 0x7fffffff;
+    else if (in32 == -32768)
+        out = (int32_t)0xffff0000;
+    else if (in32 < 0)
+        out = ~out;
+    return out;
+}
+
 /* ---- RSP vector-unit scalar models ----------------------------------- */
 
 /* Per-lane 48-bit accumulator, kept sign-extended in 64 bits. */
@@ -289,6 +324,165 @@ int32_t rsp_vtx_invw(int32_t w)
     /* r' = u * r */
     o = mac32(u, r, 0);
     return (int32_t)(((uint32_t)U16(o.i) << 16) | (uint32_t)U16(o.f));
+}
+
+/* ---- lighting ---------------------------------------------------------- */
+
+/* VMULF/VMACF accumulator helpers: product terms are doubled, VMULF seeds
+ * the +0x8000 rounding bias, and the result reads are the signed (vmacf) or
+ * unsigned (vmacu) clamps of accumulator bits 47..16. */
+static RspAcc acc48(RspAcc a)
+{
+    a &= (((RspAcc)1 << 48) - 1);
+    if (a & ((RspAcc)1 << 47))
+        a -= ((RspAcc)1 << 48);
+    return a;
+}
+
+static int32_t acc_read_signed(RspAcc a)
+{
+    int64_t hi = acc48(a) >> 16;
+    if (hi < -32768) return 0x8000;
+    if (hi >  32767) return 0x7fff;
+    return (int32_t)(hi & 0xffff);
+}
+
+static int32_t acc_read_unsigned(RspAcc a)
+{
+    int64_t sa = acc48(a);
+    int64_t hi = sa >> 16;
+    if (sa < 0)      return 0x0000;
+    if (hi > 32767)  return 0xffff;
+    return (int32_t)(hi & 0xffff);
+}
+
+/* The continue_light_dir_xfrm pass: one s8 direction is rotated from camera
+ * to model space by the modelview 3x3 transpose with the exact MAC chain
+ * (direction bytes enter as s8 << 8 from lpv), the squared length is summed
+ * with the vaddc/vadd carry adds, the vrsq reciprocal square root
+ * normalizes, the result is scaled by 0x100, and the s8 the microcode
+ * stores with spv is the top byte of the integer lane. mv is the s15.16
+ * modelview matrix; dir/out are s8 triples. */
+void rsp_light_dir_xfrm_one(const int32_t mv[4][4],
+                            const int32_t dir[3], int32_t out[3])
+{
+    int32_t t_mid[3], t_hi[3];
+    int32_t sq_lo[3], sq_mid[3];
+    int32_t lo, ci, si;
+    Rsp32 r;
+    int L;
+
+    for (L = 0; L < 3; L++)
+    {
+        RspAcc acc = 0;
+        int ax;
+        for (ax = 0; ax < 3; ax++)
+        {
+            int32_t d = (int32_t)(int16_t)((dir[ax] & 0xff) << 8);
+            int32_t mi = (mv[L][ax] >> 16) & 0xffff;
+            int32_t mf = mv[L][ax] & 0xffff;
+            acc += p_udn(mf, d);
+            acc += p_udh(mi, d);
+        }
+        acc = acc48(acc);
+        t_mid[L] = (int32_t)((acc >> 16) & 0xffff);
+        t_hi[L]  = (int32_t)((acc >> 32) & 0xffff);
+    }
+    for (L = 0; L < 3; L++)
+    {
+        RspAcc acc = p_udl(t_mid[L], t_mid[L]);
+        acc += p_udm(t_hi[L], t_mid[L]);
+        acc += p_udn(t_mid[L], t_hi[L]);
+        sq_lo[L] = acc_clamp_low(acc);
+        acc += p_udh(t_hi[L], t_hi[L]);
+        sq_mid[L] = acc_clamp_mid(acc);
+    }
+    /* vaddc / vadd pair adds: X^2 + Y^2, then + Z^2 */
+    {
+        int32_t sum = U16(sq_lo[0]) + U16(sq_lo[1]);
+        int32_t carry = (sum >> 16) & 1;
+        lo = sum & 0xffff;
+        si = clamp_s16(S16(sq_mid[0]) + S16(sq_mid[1]) + carry);
+        sum = U16(lo) + U16(sq_lo[2]);
+        carry = (sum >> 16) & 1;
+        lo = sum & 0xffff;
+        si = clamp_s16(si + S16(sq_mid[2]) + carry);
+    }
+    r = mk32(rsp_rsq32((int32_t)(((uint32_t)U16(si) << 16) | (uint32_t)U16(lo))));
+    for (L = 0; L < 3; L++)
+    {
+        int32_t n_lo, n_mid;
+        RspAcc acc = p_udl(t_mid[L], r.f);
+        acc += p_udm(t_hi[L], r.f);
+        acc += p_udn(t_mid[L], r.i);
+        n_lo = acc_clamp_low(acc);
+        acc += p_udh(t_hi[L], r.i);
+        n_mid = acc_clamp_mid(acc);
+        /* x 0x100 (vmudn / vmadh), then spv stores the int lane's top byte */
+        acc = p_udn(n_lo, 0x100);
+        acc += p_udh(n_mid, 0x100);
+        n_mid = acc_clamp_mid(acc);
+        out[L] = (int32_t)(signed char)((n_mid >> 8) & 0xff);
+    }
+}
+
+/* One directional-light dot product: raw s8 vertex normal against the
+ * transformed s8 light direction, both entering the lanes as byte << 8
+ * (lpv), through the doubled vmulu/vmacu accumulator with the unsigned
+ * read clamp and the & 0x7FFF mask. */
+static int32_t rsp_light_dot(const int32_t n[3], const int32_t d[3])
+{
+    RspAcc acc = 0x8000;
+    int ax;
+    for (ax = 0; ax < 3; ax++)
+    {
+        int32_t nl = (int32_t)(int16_t)((n[ax] & 0xff) << 8);
+        int32_t dl = (int32_t)(int16_t)((d[ax] & 0xff) << 8);
+        acc += 2 * (RspAcc)nl * dl;
+    }
+    return acc_read_unsigned(acc) & 0x7fff;
+}
+
+/* The lights_dircoloraccum2 loop: colors live in the lanes as byte << 7
+ * (luv), and every accumulator round folds the running color back in with
+ * vmulf(color, 0x7FFF) -- two lights per round walking down from the top,
+ * with a single-light tail for an odd count. The stored byte is the suv
+ * lane >> 7. dirs are the transformed s8 triples; rgb byte triples; amb
+ * the ambient byte triple. */
+void rsp_light_vtx(const int32_t n[3], const int32_t amb[3],
+                   const int32_t (*rgb)[3], const int32_t (*dirs)[3],
+                   int num, int32_t out[3])
+{
+    int32_t lt[3];
+    int c, i;
+    for (c = 0; c < 3; c++)
+        lt[c] = (amb[c] & 0xff) << 7;
+    i = num - 1;
+    while (i >= 1)
+    {
+        int32_t d1 = rsp_light_dot(n, dirs[i]);
+        int32_t d2 = rsp_light_dot(n, dirs[i - 1]);
+        for (c = 0; c < 3; c++)
+        {
+            RspAcc acc = 2 * (RspAcc)S16(lt[c]) * 0x7fff + 0x8000;
+            acc += 2 * (RspAcc)((rgb[i][c] & 0xff) << 7) * d1;
+            acc += 2 * (RspAcc)((rgb[i - 1][c] & 0xff) << 7) * d2;
+            lt[c] = acc_read_signed(acc);
+        }
+        i -= 2;
+    }
+    if (i == 0)
+    {
+        int32_t d1 = rsp_light_dot(n, dirs[0]);
+        for (c = 0; c < 3; c++)
+        {
+            RspAcc acc = 2 * (RspAcc)S16(lt[c]) * 0x7fff + 0x8000;
+            acc += 2 * (RspAcc)((rgb[0][c] & 0xff) << 7) * d1;
+            lt[c] = acc_read_signed(acc);
+        }
+    }
+    for (c = 0; c < 3; c++)
+        out[c] = (lt[c] >> 7) & 0xff;
 }
 
 /* ---- vertex screen transform ------------------------------------------ */

@@ -5,6 +5,12 @@
 
 int32_t rsp_rcp32(int32_t in32);
 int32_t rsp_rcp16(int32_t in16);
+int32_t rsp_rsq32(int32_t in32);
+void rsp_light_dir_xfrm_one(const int32_t mv[4][4],
+                            const int32_t dir[3], int32_t out[3]);
+void rsp_light_vtx(const int32_t n[3], const int32_t amb[3],
+                   const int32_t (*rgb)[3], const int32_t (*dirs)[3],
+                   int num, int32_t out[3]);
 int32_t rsp_vtx_invw(int32_t w);
 int32_t rsp_vtx_fog(int32_t cz, int32_t cw, int32_t pn,
                     int32_t fog_m, int32_t fog_o);
