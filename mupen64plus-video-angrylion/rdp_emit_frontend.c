@@ -143,6 +143,12 @@ void gsp_init(GSPState *s)
         s->light_dir[i][0] = 0;
         s->light_dir[i][1] = 0;
         s->light_dir[i][2] = 0;
+        if (i < 2)
+        {
+            s->lookat[i][0] = 0;
+            s->lookat[i][1] = 0;
+            s->lookat[i][2] = 0;
+        }
     }
     s->tex_tile = 0;
     s->tex_level = 0;
@@ -183,6 +189,81 @@ void gsp_matrix_pop(GSPState *s)
     if (s->modelview_top > 0)
         s->modelview_top--;
     s->combined_valid = 0;
+}
+
+void gsp_set_lookat(GSPState *s, const unsigned char *rdram,
+                    unsigned int addr, int index)
+{
+    int dx, dy, dz;
+    int64_t len2;
+    if (index < 0 || index > 1)
+        return;
+    dx = (int)(signed char)read_u8_n64(rdram, addr + 8);
+    dy = (int)(signed char)read_u8_n64(rdram, addr + 9);
+    dz = (int)(signed char)read_u8_n64(rdram, addr + 10);
+    len2 = (int64_t)dx * dx + (int64_t)dy * dy + (int64_t)dz * dz;
+    s->lookat[index][0] = 0;
+    s->lookat[index][1] = 0;
+    s->lookat[index][2] = 0;
+    if (len2 > 0)
+    {
+        int64_t lo = 0, hi = 0x10000, mid;
+        while (lo < hi)
+        {
+            mid = (lo + hi + 1) >> 1;
+            if (mid * mid <= len2) lo = mid; else hi = mid - 1;
+        }
+        if (lo != 0)
+        {
+            s->lookat[index][0] = (int32_t)(((int64_t)dx << 15) / lo);
+            s->lookat[index][1] = (int32_t)(((int64_t)dy << 15) / lo);
+            s->lookat[index][2] = (int32_t)(((int64_t)dz << 15) / lo);
+        }
+    }
+}
+
+/* acos(x)/pi * 1024 for x = i/128, i in [0,128]; the G_TEXTURE_GEN_LINEAR
+ * texture coordinate is acos(-n.L)/pi in S10.5 raw units (0..1024). */
+static const short acos_pi_1024[129] = {
+    512, 509, 507, 504, 502, 499, 497, 494, 492, 489, 487, 484,
+    481, 479, 476, 474, 471, 469, 466, 463, 461, 458, 456, 453,
+    451, 448, 445, 443, 440, 438, 435, 432, 430, 427, 424, 422,
+    419, 416, 414, 411, 408, 406, 403, 400, 398, 395, 392, 389,
+    387, 384, 381, 378, 376, 373, 370, 367, 364, 362, 359, 356,
+    353, 350, 347, 344, 341, 338, 335, 332, 329, 326, 323, 320,
+    317, 314, 311, 308, 305, 302, 298, 295, 292, 289, 285, 282,
+    279, 275, 272, 268, 265, 261, 258, 254, 251, 247, 243, 239,
+    236, 232, 228, 224, 220, 216, 211, 207, 203, 198, 194, 189,
+    185, 180, 175, 170, 165, 159, 154, 148, 142, 136, 130, 123,
+    116, 108, 100, 91, 82, 71, 58, 41, 0
+};
+
+/* Texture-coordinate generation (G_TEXTURE_GEN): map the cosine d = n . L
+ * (s.15) to a raw S10.5 coordinate in [0, 32768] (0..1024 texels):
+ *   plain:  raw = (d + 1) * 16384      == (d + 32768) >> 1
+ *   linear: raw = acos(-d) / pi * 32768 (table + linear interpolation)
+ * The result feeds the same G_TEXTURE-scale path as a vertex-supplied
+ * coordinate. Calibrated against the cxd4 LLE oracle on the N64 boot logo
+ * (G_TEXTURE_GEN_LINEAR, scale 0x0ED8, lookat Y zero): the constant
+ * generated T at the d == 0 midpoint, 16384 * 0x0ED8 * 2 / 65536 == 1900
+ * raw S10.5, matches the oracle's T coefficient exactly. */
+static int texgen_coord(int32_t d, int linear)
+{
+    if (!linear)
+        return (int)((d + 32768) >> 1);
+    else
+    {
+        int neg = (d < 0);
+        int32_t a = neg ? -d : d;
+        int idx  = (int)(a >> 8);
+        int frac = (int)(a & 0xff);
+        int v0, v1, v;
+        if (idx > 128) idx = 128;
+        v0 = acos_pi_1024[idx];
+        v1 = acos_pi_1024[idx < 128 ? idx + 1 : 128];
+        v  = v0 + (((v1 - v0) * frac) >> 8);
+        return (neg ? v : 1024 - v) << 5;
+    }
 }
 
 void gsp_set_fog(GSPState *s, int fm, int fo)
@@ -291,8 +372,7 @@ void gsp_vertex(GSPState *s, const unsigned char *rdram, unsigned int addr,
          * scale at >> 16 (or not at all) halves the sampled texel for the
          * 0xFFFF case. Result kept in s15.16:
          * (st << 16) * scale >> 15 == (st * scale) << 1. */
-        vt->s = (int32_t)(((int64_t)st_s * (int64_t)s->tex_scale_s) << 1);
-        vt->t = (int32_t)(((int64_t)st_t * (int64_t)s->tex_scale_t) << 1);
+        /* (assigned below; G_TEXTURE_GEN overrides st_s/st_t first) */
 
         if (s->geometry_mode & 0x00020000u)     /* G_LIGHTING */
         {
@@ -352,6 +432,25 @@ void gsp_vertex(GSPState *s, const unsigned char *rdram, unsigned int addr,
             if (cb > 255) cb = 255;
             vt->r = cr << 16; vt->g = cg << 16; vt->b = cb << 16;
             vt->a = (int32_t)read_u8_n64(rdram, base + 15) << 16;
+
+            if (s->geometry_mode & 0x00040000u) /* G_TEXTURE_GEN */
+            {
+                /* Generate texture coordinates from the transformed,
+                 * normalized normal dotted with the lookat X/Y vectors
+                 * (MOVEMEM light slots 0/1). The generated S10.5 raw values
+                 * replace the vertex-supplied ones and take the same
+                 * G_TEXTURE-scale path below. The boot-logo N is the OoT
+                 * test case (TEXTURE_GEN_LINEAR, scale 0x0ED8). */
+                int linear = (s->geometry_mode & 0x00080000u) ? 1 : 0;
+                int32_t d0 = (int32_t)(((int64_t)tx * s->lookat[0][0]
+                            + (int64_t)ty * s->lookat[0][1]
+                            + (int64_t)tz * s->lookat[0][2]) >> 15);
+                int32_t d1 = (int32_t)(((int64_t)tx * s->lookat[1][0]
+                            + (int64_t)ty * s->lookat[1][1]
+                            + (int64_t)tz * s->lookat[1][2]) >> 15);
+                st_s = texgen_coord(d0, linear);
+                st_t = texgen_coord(d1, linear);
+            }
         }
         else
         {
@@ -360,6 +459,9 @@ void gsp_vertex(GSPState *s, const unsigned char *rdram, unsigned int addr,
             vt->b = (int32_t)read_u8_n64(rdram, base + 14) << 16;
             vt->a = (int32_t)read_u8_n64(rdram, base + 15) << 16;
         }
+
+        vt->s = (int32_t)(((int64_t)st_s * (int64_t)s->tex_scale_s) << 1);
+        vt->t = (int32_t)(((int64_t)st_t * (int64_t)s->tex_scale_t) << 1);
 
         if (s->geometry_mode & 0x00010000u)     /* G_FOG */
         {

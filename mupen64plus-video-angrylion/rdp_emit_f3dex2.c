@@ -410,6 +410,13 @@ void f3dex2_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
                     if (addr_in_range(la, 24u))
                         gsp_set_light(gsp, r, la, n - 2);
                 }
+                else
+                {
+                    /* slots 0/1: the texgen lookat X/Y directions */
+                    unsigned int la = seg_addr(w1);
+                    if (addr_in_range(la, 24u))
+                        gsp_set_lookat(gsp, r, la, n);
+                }
             }
             break;
         }

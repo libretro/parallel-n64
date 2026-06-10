@@ -57,12 +57,18 @@ typedef struct GSPState
     int   num_lights;
     int32_t light_rgb[GSP_MAX_LIGHTS][3];
     int32_t light_dir[GSP_MAX_LIGHTS][3];
+    int32_t lookat[2][3];   /* texgen lookat X/Y directions, normalized s.15 */
 
     GSPVertex vtx[GSP_MAX_VERTICES];
 } GSPState;
 
 /* lifecycle */
 void gsp_init(GSPState *s);
+
+/* MOVEMEM G_MV_LIGHT slots 0 and 1: the texture-coordinate-generation
+ * lookat X/Y direction vectors (s8 at bytes 8..10 of the Light struct). */
+void gsp_set_lookat(GSPState *s, const unsigned char *rdram,
+                    unsigned int addr, int index);
 
 /* G_MW_FOG: fog multiplier (w1 >> 16) and offset (w1 & 0xffff), both s16. */
 void gsp_set_fog(GSPState *s, int fm, int fo);
