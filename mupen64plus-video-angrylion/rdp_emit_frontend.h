@@ -29,6 +29,23 @@ typedef struct GSPVertex
     int     clip;           /* clip flags (outcode) */
 } GSPVertex;
 
+/* VCH clip outcode bits, matching the F3DEX2 VTX_CLIP screen layout:
+ * N flags at bits 4..7 (x, y, z, w), P flags at bits 12..15. The reject
+ * mask is CLIP_ALL for the NoN microcode family: near clipping tests the
+ * W lane (CLIP_NW), not NZ -- content drawn past the z near plane but in
+ * front of the eye (ortho overlays, decals near the camera) must render.
+ * For non-NoN F3DEX2 this under-culls only (the guard-band clipper still
+ * handles the geometry), never over-culls. */
+#define GSP_CLIP_NX 0x0010
+#define GSP_CLIP_NY 0x0020
+#define GSP_CLIP_NZ 0x0040
+#define GSP_CLIP_NW 0x0080
+#define GSP_CLIP_PX 0x1000
+#define GSP_CLIP_PY 0x2000
+#define GSP_CLIP_PZ 0x4000
+#define GSP_CLIP_REJECT (GSP_CLIP_NX | GSP_CLIP_NY | GSP_CLIP_PX | \
+                         GSP_CLIP_PY | GSP_CLIP_PZ | GSP_CLIP_NW)
+
 typedef struct GSPState
 {
     /* Matrices are stored in the RSP's fixed-point form: each element is an

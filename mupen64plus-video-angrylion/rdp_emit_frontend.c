@@ -612,17 +612,18 @@ void gsp_vertex(GSPState *s, const unsigned char *rdram, unsigned int addr,
          * the RSP reject the near geometry slivers a guard-band clipper
          * would otherwise rasterize. */
         {
-            int32_t comps[3];
+            int32_t comps[4];
             int ax;
             unsigned int fl = 0;
-            comps[0] = vt->cx; comps[1] = vt->cy; comps[2] = vt->cz;
-            for (ax = 0; ax < 3; ax++)
+            comps[0] = vt->cx; comps[1] = vt->cy;
+            comps[2] = vt->cz; comps[3] = vt->cw;
+            for (ax = 0; ax < 4; ax++)
             {
                 int sn = ((comps[ax] ^ vt->cw) < 0);
                 int nb = sn ? (comps[ax] <= -vt->cw) : (vt->cw < 0);
                 int pb = sn ? (vt->cw < 0) : (comps[ax] >= vt->cw);
-                if (nb) fl |= 1u << (ax * 2);
-                if (pb) fl |= 2u << (ax * 2);
+                if (nb) fl |= 1u << (4 + ax);   /* CLIP_NX..CLIP_NW */
+                if (pb) fl |= 1u << (12 + ax);  /* CLIP_PX..CLIP_PW */
             }
             vt->clip = (int)fl;
         }
@@ -817,7 +818,7 @@ int gsp_triangle(GSPState *s, int32_t *cmd, int i0, int i1, int i2,
      * the behind-the-eye encodings the VCH compare produces for w <= 0),
      * the triangle is dropped before any clipping. The guard-band clipper
      * below only sees triangles that survive this. */
-    if (a->clip & b->clip & c->clip)
+    if (a->clip & b->clip & c->clip & GSP_CLIP_REJECT)
         return 0;
 
     /* Guard-band outcodes (ratio-2 planes, w <= 0 handled implicitly). */

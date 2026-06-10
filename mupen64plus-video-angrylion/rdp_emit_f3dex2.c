@@ -454,7 +454,7 @@ void f3dex2_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
             int v1 = (int)((w1 & 0xffffu) >> 1);
             if (v0 >= 0 && v1 >= v0 && v1 < GSP_MAX_VERTICES)
             {
-                unsigned int all = 0x3fu;
+                unsigned int all = GSP_CLIP_REJECT;
                 int vi;
                 for (vi = v0; vi <= v1 && all; vi++)
                     all &= (unsigned int)gsp->vtx[vi].clip;
