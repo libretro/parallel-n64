@@ -237,7 +237,7 @@ static void emit_z_block(int32_t *ew, int base,
     int64_t area;
     int32_t X0, Y0, X1, Y1, X2, Y2;
     int32_t dyh2, dxhdy2, zdx, zdy, zde;
-    int32_t z0, z1, z2;
+    int32_t z0, z1, z2, zb;
 
     if (vm->y < vh->y) { tmp = vh; vh = vm; vm = tmp; }
     if (vl->y < vh->y) { tmp = vh; vh = vl; vl = tmp; }
@@ -258,20 +258,56 @@ static void emit_z_block(int32_t *ew, int base,
      * very common) make screen_z*32 overflow the int32 coefficient and wrap to a
      * large negative value, randomising the per-vertex depth (the scrambled-N
      * bug). G_MAXZ in s15.16 is 1023<<16; clamp there, then * 32 fits. */
+    /* Solve the depth gradients on the true vertex plane and anchor the
+     * base at the top vertex, clamped to the z-buffer range. Pre-clamping
+     * every vertex to [0, G_MAXZ] before the solve (the previous behaviour)
+     * bends the plane whenever a guard-band clip fragment carries a vertex
+     * past the range, tilting the depth gradient across the whole visible
+     * part; the rasterizer's per-pixel clamp already covers any walked
+     * value outside the buffer range. */
     {
-        int32_t zc0 = vh->z, zc1 = vm->z, zc2 = vl->z;
+        int32_t zcb = vh->z;
         int32_t zmax = 1023 << 16;
-        if (zc0 < 0) zc0 = 0; if (zc0 > zmax) zc0 = zmax;
-        if (zc1 < 0) zc1 = 0; if (zc1 > zmax) zc1 = zmax;
-        if (zc2 < 0) zc2 = 0; if (zc2 > zmax) zc2 = zmax;
-        z0 = zc0 << 5; z1 = zc1 << 5; z2 = zc2 << 5;
+        int32_t zlim = (int32_t)1 << 26;
+        z0 = vh->z; z1 = vm->z; z2 = vl->z;
+        if (zcb < 0) zcb = 0; if (zcb > zmax) zcb = zmax;
+        zb = zcb << 5;
+
+        if (z0 > -zlim && z0 < zlim && z1 > -zlim && z1 < zlim &&
+            z2 > -zlim && z2 < zlim)
+        {
+            /* In-range vertices: solve in the x32 coefficient domain
+             * directly, keeping the full sub-coefficient gradient
+             * precision (bit-for-bit the pre-existing path when z is
+             * within the buffer range). */
+            solve_plane(z0 << 5, z1 << 5, z2 << 5, X0, Y0, X1, Y1, X2, Y2,
+                        area, dxhdy2, &zdx, &zdy, &zde);
+        }
+        else
+        {
+            /* A vertex lies far outside the z range (z << 5 would wrap):
+             * solve on the raw s15.16 z and scale the gradients
+             * afterwards, saturating. */
+            int64_t g;
+            solve_plane(z0, z1, z2, X0, Y0, X1, Y1, X2, Y2, area, dxhdy2,
+                        &zdx, &zdy, &zde);
+            g = (int64_t)zdx * 32;
+            if (g >  0x7fffffffl) g =  0x7fffffffl;
+            if (g < -0x7fffffffl) g = -0x7fffffffl;
+            zdx = (int32_t)g;
+            g = (int64_t)zdy * 32;
+            if (g >  0x7fffffffl) g =  0x7fffffffl;
+            if (g < -0x7fffffffl) g = -0x7fffffffl;
+            zdy = (int32_t)g;
+            g = (int64_t)zde * 32;
+            if (g >  0x7fffffffl) g =  0x7fffffffl;
+            if (g < -0x7fffffffl) g = -0x7fffffffl;
+            zde = (int32_t)g;
+        }
     }
 
-    solve_plane(z0, z1, z2, X0, Y0, X1, Y1, X2, Y2, area, dxhdy2,
-                &zdx, &zdy, &zde);
-
-    z0 += (int32_t)(((int64_t)zde * s_dyfix) >> 16);
-    ew[base + 0] = z0;      /* z at the floor(yh) anchor, s15.16 */
+    zb += (int32_t)(((int64_t)zde * s_dyfix) >> 16);
+    ew[base + 0] = zb;      /* z at the floor(yh) anchor, s15.16 */
     ew[base + 1] = zdx;
     ew[base + 2] = zde;
     ew[base + 3] = zdy;
