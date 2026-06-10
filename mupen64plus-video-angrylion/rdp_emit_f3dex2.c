@@ -127,14 +127,27 @@ void rdp_fifo_init(RdpFifo *f, unsigned char *rdram,
     f->base  = base;
     f->used  = 0;
     f->cap   = cap;
+    f->flush = 0;
 }
 
 void rdp_fifo_append(RdpFifo *f, const int32_t *words, int count)
 {
     int i;
-    unsigned int off = f->base + f->used;
+    unsigned int off;
     if (f->used + (unsigned int)count * 4u > f->cap)
-        return;
+    {
+        /* Heavy frames (camera swings over a full scene) can exceed the
+         * FIFO; drain it mid-frame the way real hardware streams the DP
+         * command buffer, then continue. Dropping commands here is not an
+         * option: losing the frame-final SYNC_FULL (RDP 0x29) means the
+         * DP interrupt is never raised and the game's graphics thread
+         * blocks forever on the task completion. */
+        if (f->flush)
+            f->flush(f);
+        if (f->used + (unsigned int)count * 4u > f->cap)
+            return;
+    }
+    off = f->base + f->used;
     for (i = 0; i < count; i++)
     {
         unsigned int w = (unsigned int)words[i];

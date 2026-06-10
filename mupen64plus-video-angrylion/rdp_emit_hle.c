@@ -41,6 +41,27 @@ static unsigned int read_dmem_u32(const unsigned char *dmem, unsigned int ofs)
     return *(const unsigned int *)(dmem + ofs);
 }
 
+/* Drain the FIFO through the rasterizer and reset it. Used both as the
+ * mid-frame overflow flush (no SYNC_FULL involved; angrylion just executes
+ * the batch) and by the activation below for the final batch. */
+static void fifo_flush_to_rdp(RdpFifo *f)
+{
+    unsigned int **dp;
+    if (f->used == 0)
+        return;
+    dp = plugin_get_dp_registers();
+    if (dp == 0)
+    {
+        f->used = 0;
+        return;
+    }
+    *dp[DPC_START]   = (unsigned int)f->base;
+    *dp[DPC_CURRENT] = (unsigned int)f->base;
+    *dp[DPC_END]     = (unsigned int)(f->base + f->used);
+    n64video_process_list();
+    f->used = 0;
+}
+
 void rdp_emit_hle_process_dlist(void)
 {
     unsigned char *rdram;
@@ -48,7 +69,6 @@ void rdp_emit_hle_process_dlist(void)
     unsigned int   rdram_size;
     unsigned int   dl_addr;
     unsigned int   fifo_base;
-    unsigned int **dp;
 
     rdram      = plugin_get_rdram();
     dmem       = plugin_get_dmem();
@@ -68,6 +88,7 @@ void rdp_emit_hle_process_dlist(void)
         return;
     fifo_base = rdram_size - (256u * 1024u);
     rdp_fifo_init(&s_fifo, rdram, fifo_base, 256u * 1024u);
+    s_fifo.flush = fifo_flush_to_rdp;
 
     dl_addr = read_dmem_u32(dmem, TASK_DATA_PTR_DMEM) & 0x00ffffffu;
     if (dl_addr == 0 || dl_addr >= rdram_size)
@@ -91,15 +112,7 @@ void rdp_emit_hle_process_dlist(void)
         rdp_fifo_append(&s_fifo, sync, 2);
     }
 
-    if (s_fifo.used == 0)
-        return;
-
-    dp = plugin_get_dp_registers();
-    if (dp == 0)
-        return;
-    *dp[DPC_START]   = (unsigned int)fifo_base;
-    *dp[DPC_CURRENT] = (unsigned int)fifo_base;
-    *dp[DPC_END]     = (unsigned int)(fifo_base + s_fifo.used);
-
-    n64video_process_list();
+    /* submit the final batch (everything since the last overflow flush,
+     * or the whole frame when no flush happened). */
+    fifo_flush_to_rdp(&s_fifo);
 }

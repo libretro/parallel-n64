@@ -21,6 +21,13 @@ typedef struct RdpFifo
     unsigned int   base;    /* byte offset of the FIFO in RDRAM */
     unsigned int   used;    /* bytes written so far */
     unsigned int   cap;     /* capacity in bytes */
+    /* Called when an append would overflow the FIFO: must drain the
+     * pending commands (e.g. run the rasterizer over [base, base+used))
+     * and reset `used` so the append can proceed. Without a flush hook a
+     * full FIFO silently drops commands -- including a frame's final
+     * SYNC_FULL, which leaves the game waiting forever on the RDP
+     * interrupt (video freezes while audio keeps running). */
+    void         (*flush)(struct RdpFifo *f);
 } RdpFifo;
 
 void rdp_fifo_init(RdpFifo *f, unsigned char *rdram,
