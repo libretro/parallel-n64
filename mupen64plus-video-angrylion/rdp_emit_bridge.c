@@ -45,6 +45,20 @@ static void clip_to_emit(EmitVertex *e, const BridgeVertex *v,
      * screen map negates the y term: y = vtrans - ndc_y * vscale. Verified
      * against the cxd4 stream (single-pass triangle y sets match exactly). */
     e->y = vp->vtrans_y - (int32_t)(((int64_t)ndcy * vp->vscale_y) >> 16);
+
+    /* The RSP stores vertex screen coordinates as S13.2 -- quarter-pixel
+     * precision -- and ALL of its edge and attribute setup happens on the
+     * quantized values. Keeping the full s15.16 here made the emitted edge
+     * slopes inconsistent with the .2-quantized YH/YM/YL fields the
+     * rasterizer walks from (up to ~6% on short edges), so silhouette
+     * edges overshot their true vertices by up to half a pixel: on OoT
+     * actors a closer surface leaked single-pixel runs past its boundary
+     * (hair past the hat/face seam -- the in-game "streak" artifact).
+     * Truncate to the .25 grid before any setup; the oracle's coefficient
+     * sets (xh == xm at the shared top vertex, dxm == (xl-xh)/(ym-yh)
+     * exactly over the quantized deltas) confirm the RSP convention. */
+    e->x = (int32_t)((uint32_t)e->x & ~0x3fffu);
+    e->y = (int32_t)((uint32_t)e->y & ~0x3fffu);
     e->z = (int32_t)(((int64_t)ndcz * vp->vscale_z) >> 16) + vp->vtrans_z;
 
     /* Inverse-w: hand the caller the full-precision (1/w) * perspNorm as a

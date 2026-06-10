@@ -67,6 +67,16 @@ static void pack32(int32_t *ew, int base, int part, int32_t v)
  * Y fields (YH/YM/YL) are 11.2 fixed (sub-pixel /4), so the s15.16 y is shifted
  * down by 14 to land in .2 fixed. The dxXdy edge slopes are s15.16. */
 
+/* Edge-start context shared from emit_edges to the attribute emitters: the
+ * top-scanline correction floor(yh) - yh (s15.16, <= 0). The RSP anchors
+ * the major/middle edge x and the attribute bases at the INTEGER scanline
+ * containing the top vertex, walking them back from the vertex along the
+ * edge; the low edge starts at the mid vertex itself. Solved from the cxd4
+ * LLE oracle: for every triangle with distinct h/m slopes,
+ * (xm - xh) / (dxmdy - dxhdy) lands exactly on floor(yh) - yh, and the
+ * low-edge start solves to ym itself. Single-threaded DL walk. */
+static int32_t s_dyfix = 0;
+
 /* shared edge + screen setup; fills ew[0..7] and returns sort order + geometry
  * (vh/vm/vl pointers, the s15.16 inv-area in *inv_out scaled, dxhdy in
  * *dxhdy_out) for the attribute solves. */
@@ -94,11 +104,25 @@ static void emit_edges(int32_t *ew, const EmitVertex *va, const EmitVertex *vb,
     cross = ex1 * ey2 - ex2 * ey1;          /* s15.16 * s15.16 -> .32 */
     flip = (cross > 0) ? 1 : 0;
 
-    /* edge slopes dx/dy in s15.16: ((vl.x-vh.x)<<16)/(vl.y-vh.y) */
+    /* edge slopes dx/dy in s15.16: ((vl.x-vh.x)<<16)/(vl.y-vh.y). The
+     * vertex coordinates arrive quantized to the RSP's S13.2 storage (see
+     * clip_to_emit), so these deltas are already consistent with the .2
+     * YH/YM/YL fields the rasterizer walks from. */
     dyh = vl->y - vh->y; dym = vm->y - vh->y; dyl = vl->y - vm->y;
     dxhdy = dyh ? (int32_t)((((int64_t)(vl->x - vh->x)) << 16) / dyh) : 0;
     dxmdy = dym ? (int32_t)((((int64_t)(vm->x - vh->x)) << 16) / dym) : 0;
     dxldy = dyl ? (int32_t)((((int64_t)(vl->x - vm->x)) << 16) / dyl) : 0;
+
+    /* The RSP anchors the h/m edge starts and the attribute bases at the
+     * integer scanline floor(yh), walking back from the top vertex along
+     * each edge slope (the low edge starts at the mid vertex). With the
+     * slopes consistent with the quantized vertices, the walked edges then
+     * pass exactly through the true vertices; the previous vertex-anchored
+     * starts overshot silhouettes by up to half a pixel on short edges
+     * (hair leaking past the hat/face seam: the in-game streak artifact).
+     * Oracle-verified: the emitted edge words now match cxd4's bit-for-bit
+     * on the dissected triangles. */
+    s_dyfix = (int32_t)(((uint32_t)vh->y & ~0xffffu)) - vh->y;
 
     memset(ew, 0, 24 * sizeof(int32_t));
 
@@ -110,11 +134,11 @@ static void emit_edges(int32_t *ew, const EmitVertex *va, const EmitVertex *vb,
     ew[1] = (int32_t)((((uint32_t)(vm->y >> 14) & 0x3fffu) << 16)
           |  ((uint32_t)(vh->y >> 14) & 0x3fffu));
 
-    ew[2] = vm->x;   /* xL: s15.16 screen x */
+    ew[2] = vm->x;   /* xL: starts at the mid vertex (s15.16 screen x) */
     ew[3] = dxldy;
-    ew[4] = vh->x;   /* xH */
+    ew[4] = vh->x + (int32_t)(((int64_t)dxhdy * s_dyfix) >> 16);  /* xH */
     ew[5] = dxhdy;
-    ew[6] = vh->x;   /* xM */
+    ew[6] = vh->x + (int32_t)(((int64_t)dxmdy * s_dyfix) >> 16);  /* xM */
     ew[7] = dxmdy;
 
     /* signed area (s15.16*s15.16 >> 16 -> s15.16) used as plane divisor */
@@ -175,7 +199,7 @@ int emit_shaded_triangle(int32_t *ew, const EmitVertex *va,
         }
         solve_plane(c0, c1, c2, X0, Y0, X1, Y1, X2, Y2, area, dxhdy,
                     &dcdx, &dcdy, &dcde);
-        base_c[chan] = c0;
+        base_c[chan] = c0 + (int32_t)(((int64_t)dcde * s_dyfix) >> 16);
         dx_c[chan]   = dcdx;
         dy_c[chan]   = dcdy;
         de_c[chan]   = dcde;
@@ -246,7 +270,8 @@ static void emit_z_block(int32_t *ew, int base,
     solve_plane(z0, z1, z2, X0, Y0, X1, Y1, X2, Y2, area, dxhdy2,
                 &zdx, &zdy, &zde);
 
-    ew[base + 0] = z0;      /* z at top vertex, coefficient domain s15.16 */
+    z0 += (int32_t)(((int64_t)zde * s_dyfix) >> 16);
+    ew[base + 0] = z0;      /* z at the floor(yh) anchor, s15.16 */
     ew[base + 1] = zdx;
     ew[base + 2] = zde;
     ew[base + 3] = zdy;
@@ -308,13 +333,15 @@ int emit_texshade_triangle(int32_t *ew,
     tv[2] = (int32_t)(((int64_t)vl->t * vl->w) >> 32);
     wv[0] = vh->w; wv[1] = vm->w; wv[2] = vl->w;
 
-    s0 = sv[0]; t0 = tv[0]; w0 = wv[0];
     solve_plane(sv[0], sv[1], sv[2], X0, Y0, X1, Y1, X2, Y2, area, dxhdy,
                 &sdx, &sdy, &sde);
     solve_plane(tv[0], tv[1], tv[2], X0, Y0, X1, Y1, X2, Y2, area, dxhdy,
                 &tdx, &tdy, &tde);
     solve_plane(wv[0], wv[1], wv[2], X0, Y0, X1, Y1, X2, Y2, area, dxhdy,
                 &wdx, &wdy, &wde);
+    s0 = sv[0] + (int32_t)(((int64_t)sde * s_dyfix) >> 16);
+    t0 = tv[0] + (int32_t)(((int64_t)tde * s_dyfix) >> 16);
+    w0 = wv[0] + (int32_t)(((int64_t)wde * s_dyfix) >> 16);
 
     for (i = 24; i < 40; i++) ew[i] = 0;
 
