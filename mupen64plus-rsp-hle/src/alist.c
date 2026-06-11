@@ -592,6 +592,18 @@ void alist_multQ44(struct hle_t* hle, uint16_t dmem, uint16_t count, int8_t gain
     }
 }
 
+/* nead ADDMIXER (opcode 0x04). One known, deliberate inexactness: the
+ * microcode handler opens with vaddc $v31,$v31,$v31 before its vadd
+ * loop, so the first eight output samples pick up VCO carry bits
+ * derived from doubling whatever the previous command left in $v31
+ * (commonly the DMEM constant vector [0,1,2,0xffff,...], i.e. a +1 on
+ * lane 3; data-dependent after FILTER). Reproducing it would require a
+ * per-command shadow of $v31. No nead title in the validation corpus
+ * (Majora's Mask, ~20k tasks) issues ADDMIXER at all, and the
+ * divergence is at most +1 LSB on at most 8 samples, so the plain
+ * saturating add below is kept. Verified against cxd4 with synthetic
+ * probe alists; revisit with $v31 tracking if a real consumer shows
+ * up in A/B testing. */
 void alist_add(struct hle_t* hle, uint16_t dmemo, uint16_t dmemi, uint16_t count)
 {
     int16_t       *dst = (int16_t*)(hle->alist_buffer + dmemo);
