@@ -624,3 +624,299 @@ void s2dex_bg_1cyc(const unsigned char *rdram, unsigned int rdram_bytes,
         }
     }
 }
+
+/* ---- G_BG_COPY ----------------------------------------------------------
+ * Transcribed from the S2DEX2 copy-mode handler (IMEM 0x210-0x4d0 in the
+ * resident main text). Unlike BG_1CYC, the strip parameters come from the
+ * guS2DInitBg-precomputed tmem fields of uObjBg, the loads use LOADBLOCK
+ * or LOADTILE per imageLoad, and the texrects are COPY-cycle (inclusive
+ * coordinates, dsdx 4.0 from the v30 lane template, 0xE4 opcode byte). */
+
+void s2dex_bg_copy(const unsigned char *rdram, unsigned int rdram_bytes,
+                   unsigned int bg_addr, RdpFifo *fifo)
+{
+    unsigned int image_x, image_w, image_y, image_h;
+    int          frame_x, frame_y;
+    unsigned int frame_w, frame_h;
+    unsigned int image_ptr, image_load, image_fmt, image_siz, image_pal;
+    unsigned int tmem_w, tmem_h, tmem_load_sh, tmem_load_th;
+    unsigned int tmem_size_w, tmem_size;
+    unsigned int image_flip_c;
+    unsigned int clip_ulx, clip_uly, draw_w_q, draw_h_q;
+    unsigned int copy_clip_t_q;             /* top clip, 10.2 */
+    unsigned int settimg_w0, load_w0, load_w1, line_field;
+    unsigned int ptr, t1, rows, adv, s_flip_coord;
+    unsigned int clip_skip, x_units;
+    int          a0;
+    int32_t cw[16];
+
+    if (bg_addr + 0x28u > rdram_bytes)
+        return;
+
+    image_x    = bg_rd_u16(rdram, bg_addr + 0x00);
+    image_w    = bg_rd_u16(rdram, bg_addr + 0x02);
+    frame_x    = (int)(short)bg_rd_u16(rdram, bg_addr + 0x04);
+    frame_w    = bg_rd_u16(rdram, bg_addr + 0x06);
+    image_y    = bg_rd_u16(rdram, bg_addr + 0x08);
+    image_h    = bg_rd_u16(rdram, bg_addr + 0x0a);
+    frame_y    = (int)(short)bg_rd_u16(rdram, bg_addr + 0x0c);
+    frame_h    = bg_rd_u16(rdram, bg_addr + 0x0e);
+    image_ptr  = bg_rd_u32(rdram, bg_addr + 0x10) & 0x00ffffffu;
+    image_load = bg_rd_u16(rdram, bg_addr + 0x14);
+    image_fmt  = rdram[(bg_addr + 0x16) ^ 3];
+    image_siz  = rdram[(bg_addr + 0x17) ^ 3];
+    image_pal  = bg_rd_u16(rdram, bg_addr + 0x18);
+    image_flip_c = bg_rd_u16(rdram, bg_addr + 0x1a);
+    tmem_w       = bg_rd_u16(rdram, bg_addr + 0x1c);
+    tmem_h       = bg_rd_u16(rdram, bg_addr + 0x1e);
+    tmem_load_sh = bg_rd_u16(rdram, bg_addr + 0x20);
+    tmem_load_th = bg_rd_u16(rdram, bg_addr + 0x22);
+    tmem_size_w  = bg_rd_u16(rdram, bg_addr + 0x24);
+    tmem_size    = bg_rd_u16(rdram, bg_addr + 0x26);
+
+    /* imageX/imageY scrolling is not transcribed for the copy variant:
+     * a nonzero imageY shifts the start pointer, the row budget, and the
+     * wrap phase together (the LLE stream shows non-grid strip tops), and
+     * no validating content uses it -- gSPBgRectCopy backgrounds are
+     * static full-frame images. Pin it against the synthetic harness
+     * before relying on these fields. */
+    (void)image_x; (void)image_y;
+
+    if (tmem_h == 0u || tmem_w == 0u)
+        return;
+
+    /* scissor intersection (IMEM 0x1b4-0x204); copy mode is 1:1 so the
+     * clip works in 10.2 directly. */
+    {
+        int clip_l, clip_t, clip_r, clip_b, draw_w, draw_h;
+        clip_l = (int)s_scis_ulx - frame_x;
+        if (clip_l < 0) clip_l = 0;
+        clip_t = (int)s_scis_uly - frame_y;
+        if (clip_t < 0) clip_t = 0;
+        clip_r = frame_x + (int)frame_w - (int)s_scis_lrx;
+        if (clip_r < 0) clip_r = 0;
+        clip_b = frame_y + (int)frame_h - (int)s_scis_lry;
+        if (clip_b < 0) clip_b = 0;
+        draw_w = (int)frame_w - clip_l - clip_r;
+        draw_h = (int)frame_h - clip_t - clip_b;
+        if (draw_w < 1 || draw_h < 1)
+            return;
+        clip_ulx = (unsigned int)(frame_x + clip_l) & 0xfffu;
+        clip_uly = (unsigned int)(frame_y + clip_t) & 0xfffu;
+        draw_w_q = (unsigned int)draw_w & 0xfffcu;
+        draw_h_q = (unsigned int)draw_h & 0xfffcu;
+
+        /* image start offset from the scissored top-left (IMEM 0x278-0x2c4):
+         * rows via tmemSizeW * clipped pixel rows, the X part via the
+         * per-size 0x800<<siz lane fold, then halved and 8-byte scaled. */
+        copy_clip_t_q = (unsigned int)clip_t;
+        x_units = (((unsigned int)clip_l) << image_siz) >> 5;
+        {
+            unsigned int raw = tmem_size_w * (((unsigned int)clip_t) >> 2)
+                + x_units;
+            clip_skip = (raw >> 1) << 3;
+        }
+    }
+
+    /* preamble (IMEM 0x208-0x264): SETTILE 7 (line only in LOADTILE mode),
+     * SETTILESIZE 0, SETTILE 0 with the render line and palette. */
+    line_field = (tmem_w << 9) & 0x3fe00u;
+    if (!(image_load & 0x8000u))
+        line_field = 0u;                    /* LOADBLOCK: linear, line 0 */
+    else
+        line_field = (tmem_w << 9) & 0x3fe00u;
+    /* the AND against the sign-extended imageLoad high byte: 0xff keeps
+     * the line (LOADTILE 0xfff4), 0x00 clears it (LOADBLOCK 0x0033) */
+    {
+        unsigned int hib = (image_load >> 8) & 0xffu;
+        line_field = ((tmem_w << 9) & ((hib & 0x80u) ? 0xffffffffu : 0u))
+                   & 0x3fe00u;
+    }
+    cw[0] = (int32_t)(0x35100000u | line_field);
+    cw[1] = (int32_t)0x27000000u;
+    cw[2] = (int32_t)0x32000000u;
+    cw[3] = 0;
+    cw[4] = (int32_t)(0x35000000u | ((image_fmt & 7u) << 21) |
+                      ((image_siz & 3u) << 19) | ((tmem_w << 9) & 0x3fe00u));
+    cw[5] = (int32_t)(((image_pal & 0xfu) << 20) | S2DEX_SETTILE_W1);
+    rdp_fifo_append(fifo, cw, 6);
+
+    /* per-strip constants (IMEM 0x324-0x37c) */
+    settimg_w0 = 0x3d100000u | ((image_fmt & 7u) << 21) |
+                 ((image_siz & 3u) << 19) | ((tmem_size_w * 2u - 1u) & 0xfffu);
+    if (image_load & 0x8000u)
+    {
+        /* LOADTILE: lrs is computed from the drawn width (IMEM 0x338-0x340,
+         * v10[4]*4-1), lrt comes from the struct */
+        load_w0 = 0xf4000000u;
+        load_w1 = ((((draw_w_q - 1u) & 0xfffu) | 0x7000u) << 12)
+                | tmem_load_th;
+        adv     = (tmem_size << 16) | tmem_load_sh;
+    }
+    else
+    {
+        /* LOADBLOCK */
+        load_w0 = 0x33000000u;
+        load_w1 = (((tmem_load_sh | 0x7000u) << 12) | tmem_load_th);
+        adv     = tmem_size;
+    }
+
+    /* horizontal flip mirrors about the inclusive right edge: S becomes
+     * -(drawW-0.25px) in s10.5 into the always-mirrored render tile */
+    s_flip_coord = (image_flip_c & 1u)
+                 ? ((0u - (draw_w_q - 1u) * 8u) & 0xffffu) : 0u;
+
+    ptr  = image_ptr + clip_skip;
+    t1   = clip_uly;
+    rows = tmem_h;
+
+    /* row budget (IMEM image 0x2f4-0x364, live +0x80): a0 = rows the image
+     * can supply past the clipped start, capped by the frame's drawn rows;
+     * the difference wraps. An X skip makes every row load cross into the
+     * next row, so the final supplied row would read past the image -- it
+     * is reserved (a0 -= 4) and drawn by the seam block below. */
+    a0 = (int)(image_h & 0xfffcu) - (int)copy_clip_t_q;
+    if (a0 <= 0)
+        return;
+    {
+        int at = (int)draw_h_q;
+        if (x_units != 0u)
+            a0 -= 4;
+        if (a0 - at > 0)
+            a0 = at;
+        at -= a0;
+
+    while (a0 > 0)
+    {
+        unsigned int n = rows;
+        unsigned int w1 = load_w1;
+        unsigned int gp;
+        a0 -= (int)rows;
+        if (a0 < 0)
+        {
+            /* final partial strip (IMEM 0x384-0x3c8): shrink the rows by
+             * the 10.2 overshoot and rebuild the load. LOADBLOCK rebuilds
+             * lrs from the shrunk byte advance ((adv-2 | 0xe000) << 11
+             * carries the tile-7 bits); LOADTILE only shortens lrt. */
+            int32_t over = (int32_t)tmem_size_w * a0;   /* bytes, negative */
+            n = (unsigned int)((int)rows + a0);
+            if (n == 0u)
+                break;
+            adv = (unsigned int)((int32_t)adv + over);
+            if (image_load & 0x8000u)
+                w1 = (load_w1 & 0xfffff000u) | ((n - 1u) & 0xfffu);
+            else
+                w1 = (((adv - 2u) | 0xe000u) << 11) | tmem_load_th;
+        }
+        gp = t1 + n - 1u;
+
+        cw[0] = (int32_t)0x26000000u;       /* loadsync */
+        cw[1] = 0;
+        cw[2] = (int32_t)settimg_w0;
+        cw[3] = (int32_t)ptr;
+        cw[4] = (int32_t)load_w0;
+        cw[5] = (int32_t)w1;
+        cw[6] = (int32_t)0x27000000u;       /* pipesync */
+        cw[7] = 0;
+        cw[8] = (int32_t)(0xe4000000u |
+                (((clip_ulx + draw_w_q - 1u) & 0xfffu) << 12) |
+                (gp & 0xfffu));
+        cw[9] = (int32_t)(((clip_ulx & 0xfffu) << 12) | (t1 & 0xfffu));
+        cw[10] = (int32_t)(s_flip_coord << 16);     /* s, t */
+        cw[11] = (int32_t)0x10000400u;       /* copy dsdx 4.0 */
+        rdp_fifo_append(fifo, cw, 12);
+
+        t1   = gp + 1u;
+        ptr += adv;
+    }
+
+    /* Y-wrap seam (IMEM image 0x418-0x4d0): while frame rows remain, draw
+     * the reserved row with a split load -- the in-bounds piece from the
+     * current pointer into TMEM 0, and x_units words from the image base
+     * appended after it -- then continue from the wrapped image top. */
+    if (at > 0)
+    {
+        if (x_units != 0u)
+        {
+        unsigned int s5a = (tmem_size_w >> 1) - (x_units >> 1);
+        cw[0]  = (int32_t)0x26000000u;      /* loadsync */
+        cw[1]  = 0;
+        cw[2]  = (int32_t)settimg_w0;
+        cw[3]  = (int32_t)ptr;
+        cw[4]  = (int32_t)0x35100000u;      /* settile 7 at TMEM 0 */
+        cw[5]  = (int32_t)0x06000000u;
+        cw[6]  = (int32_t)0x33000000u;
+        cw[7]  = (int32_t)((((s5a << 14) - 0x1000u) | 0x06000000u));
+        cw[8]  = (int32_t)0x27000000u;      /* pipesync */
+        cw[9]  = 0;
+        rdp_fifo_append(fifo, cw, 10);
+        cw[0]  = (int32_t)settimg_w0;
+        cw[1]  = (int32_t)image_ptr;
+        cw[2]  = (int32_t)(0x35100000u | (s5a & 0x1ffu));
+        cw[3]  = (int32_t)0x06000000u;
+        cw[4]  = (int32_t)0x33000000u;
+        cw[5]  = (int32_t)(((((x_units >> 1) << 14) - 0x1000u)
+                            | 0x06000000u));
+        cw[6]  = (int32_t)0x27000000u;      /* pipesync */
+        cw[7]  = 0;
+        cw[8]  = (int32_t)(0xe4000000u |
+                (((clip_ulx + draw_w_q - 1u) & 0xfffu) << 12) |
+                (t1 & 0xfffu));
+        cw[9]  = (int32_t)(((clip_ulx & 0xfffu) << 12) | (t1 & 0xfffu));
+        cw[10] = (int32_t)(s_flip_coord << 16);
+        cw[11] = (int32_t)0x10000400u;
+        rdp_fifo_append(fifo, cw, 12);
+        t1 += 4u;
+        at -= 4;
+        }
+        if (at <= 0)
+            goto wrap_done;
+        /* continue from the wrapped image top: the seam block halved the
+         * X units (image 0x444 srl), and the rejoin restages the advance
+         * from the struct (image 0x368 lhu) */
+        ptr = image_ptr + (x_units >> 1) * 8u;
+        adv = (image_load & 0x8000u) ? ((tmem_size << 16) | tmem_load_sh)
+                                     : tmem_size;
+        a0  = at;
+        while (a0 > 0)
+        {
+            unsigned int n2 = rows;
+            unsigned int w12 = load_w1;
+            unsigned int gp2;
+            a0 -= (int)rows;
+            if (a0 < 0)
+            {
+                int32_t over2 = (int32_t)tmem_size_w * a0;
+                n2 = (unsigned int)((int)rows + a0);
+                if (n2 == 0u)
+                    break;
+                adv = (unsigned int)((int32_t)adv + over2);
+                if (image_load & 0x8000u)
+                    w12 = (load_w1 & 0xfffff000u) | ((n2 - 1u) & 0xfffu);
+                else
+                    w12 = (((adv - 2u) | 0xe000u) << 11) | tmem_load_th;
+            }
+            gp2 = t1 + n2 - 1u;
+            cw[0] = (int32_t)0x26000000u;
+            cw[1] = 0;
+            cw[2] = (int32_t)settimg_w0;
+            cw[3] = (int32_t)ptr;
+            cw[4] = (int32_t)load_w0;
+            cw[5] = (int32_t)w12;
+            cw[6] = (int32_t)0x27000000u;
+            cw[7] = 0;
+            cw[8] = (int32_t)(0xe4000000u |
+                    (((clip_ulx + draw_w_q - 1u) & 0xfffu) << 12) |
+                    (gp2 & 0xfffu));
+            cw[9] = (int32_t)(((clip_ulx & 0xfffu) << 12) | (t1 & 0xfffu));
+            cw[10] = (int32_t)(s_flip_coord << 16);
+            cw[11] = (int32_t)0x10000400u;
+            rdp_fifo_append(fifo, cw, 12);
+            t1   = gp2 + 1u;
+            ptr += adv;
+        }
+        /* a single wrap pass, matching the LLE stream */
+    }
+wrap_done:;
+    }
+}

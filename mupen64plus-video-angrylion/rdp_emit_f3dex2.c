@@ -283,73 +283,12 @@ void f3dex2_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
 
         case 0x0a: /* S2DEX2 G_BG_COPY */
         {
-            /* gSPBgRectCopy (OoT's image rooms). The copy-mode handler
-             * (S2DEX2 IMEM 0x210) is not transcribed yet -- it draws from
-             * the guS2DInitBg-precomputed tmem fields with COPY-cycle
-             * texrects. Until a validating scene is available, keep the
-             * approximate strip synthesizer so the backgrounds still
-             * render; this stream is NOT byte-exact against the LLE RSP. */
+            /* gSPBgRectCopy: the transcribed copy-mode renderer */
             unsigned int bga = seg_addr(w1);
             if (addr_in_range(bga, 40u))
-            {
-                unsigned int t0 = rd_u32_be(r, bga);
-                unsigned int t1 = rd_u32_be(r, bga + 4);
-                unsigned int t2 = rd_u32_be(r, bga + 8);
-                unsigned int t3 = rd_u32_be(r, bga + 12);
-                unsigned int t4 = rd_u32_be(r, bga + 16);
-                unsigned int t5 = rd_u32_be(r, bga + 20);
-                unsigned int img_w   = (t0 & 0xffffu) >> 2;      /* texels */
-                int          frame_x = (int)(short)(t1 >> 16);   /* s10.2 */
-                unsigned int img_h   = (t2 & 0xffffu) >> 2;      /* rows */
-                int          frame_y = (int)(short)(t3 >> 16);   /* s10.2 */
-                unsigned int ptr     = seg_addr(t4);
-                unsigned int fmt     = (t5 >> 8) & 0xffu;
-                unsigned int siz     = t5 & 0xffu;
-                unsigned int bpr     = (img_w << siz) >> 1;      /* bytes/row */
-                unsigned int rows, strip, line;
-                int32_t cw[16];
-                if (img_w >= 1u && img_w <= 1024u && img_h >= 1u &&
-                    img_h <= 1024u && bpr >= 1u && frame_x >= 0 && frame_y >= 0)
-                {
-                    rows = 4096u / bpr;          /* rows per TMEM strip */
-                    if (rows == 0) rows = 1;
-                    if (rows > img_h) rows = img_h;
-                    line = (bpr + 7u) >> 3;      /* row stride in 8-byte units */
-
-                    cw[0] = (int32_t)(0xf5000000u | (fmt << 21) | (siz << 19) | (line << 9));
-                    cw[1] = (int32_t)(7u << 24);
-                    cw[2] = (int32_t)0xf2000000u;            /* settilesize 0 */
-                    cw[3] = 0;
-                    cw[4] = cw[0];                           /* settile 0 */
-                    cw[5] = (int32_t)0x0007c1f0u;            /* clamp, mask 15 */
-                    rdp_fifo_append(fifo, cw, 6);
-
-                    for (strip = 0; strip < img_h; strip += rows)
-                    {
-                        unsigned int n = img_h - strip;
-                        unsigned int y0, y1;
-                        if (n > rows) n = rows;
-                        y0 = (unsigned int)frame_y + strip * 4u;
-                        y1 = (unsigned int)frame_y + (strip + n) * 4u - 1u;
-                        cw[0]  = (int32_t)0xe6000000u;       /* tilesync */
-                        cw[1]  = 0;
-                        cw[2]  = (int32_t)(0xfd000000u | (fmt << 21) | (siz << 19) | (img_w - 1u));
-                        cw[3]  = (int32_t)(ptr + strip * bpr);
-                        cw[4]  = (int32_t)0xf4000000u;       /* loadtile (0,0).. */
-                        cw[5]  = (int32_t)((7u << 24) | ((img_w * 4u - 1u) << 12) | (n * 4u - 1u));
-                        cw[6]  = (int32_t)0xe7000000u;       /* pipesync */
-                        cw[7]  = 0;
-                        cw[8]  = (int32_t)(0xe4000000u |
-                                 (((unsigned int)frame_x + img_w * 4u - 1u) << 12) | (y1 & 0xfffu));
-                        cw[9]  = (int32_t)((((unsigned int)frame_x & 0xfffu) << 12) | (y0 & 0xfffu));
-                        cw[10] = 0;                          /* s=0, t=0 */
-                        cw[11] = (int32_t)0x10000400u;       /* copy: dsdx 4.0 */
-                        cw[12] = (int32_t)0xe7000000u;       /* pipesync */
-                        cw[13] = 0;
-                        rdp_fifo_append(fifo, cw, 14);
-                    }
-                }
-            }
+                s2dex_bg_copy(r, s_rdram_size ? s_rdram_size
+                                              : (8u * 1024u * 1024u),
+                              bga, fifo);
             break;
         }
 

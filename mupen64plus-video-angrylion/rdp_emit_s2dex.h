@@ -23,4 +23,9 @@ void s2dex_reset(void);
 void s2dex_bg_1cyc(const unsigned char *rdram, unsigned int rdram_bytes,
                    unsigned int bg_addr, RdpFifo *fifo);
 
+/* G_BG_COPY (S2DEX2 opcode 0x0a): copy-mode background from the
+ * guS2DInitBg-precomputed tmem fields. */
+void s2dex_bg_copy(const unsigned char *rdram, unsigned int rdram_bytes,
+                   unsigned int bg_addr, RdpFifo *fifo);
+
 #endif
