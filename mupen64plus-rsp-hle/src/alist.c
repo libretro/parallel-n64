@@ -666,11 +666,24 @@ void alist_resample(
     while (count != 0) {
         const int16_t* lut = RESAMPLE_LUT + ((pitch_accu & 0xfc00) >> 8);
 
-        *sample(hle, opos++) = clamp_s16( (
-            (*sample(hle, ipos    ) * lut[0]) +
-            (*sample(hle, ipos + 1) * lut[1]) +
-            (*sample(hle, ipos + 2) * lut[2]) +
-            (*sample(hle, ipos + 3) * lut[3]) ) >> 15);
+        /* The microcode computes each tap with vmulf (independently
+         * rounded and clamped Q15 product: (2*a*b + 0x8000) >> 16) and
+         * combines them with a tree of saturating vadds:
+         * sat(sat(q0+q1) + sat(q2+q3)). Summing raw products and
+         * shifting once is up to a few LSBs off, which is audible as a
+         * DC bias on near-silent material and breaks bit-exactness
+         * against LLE. */
+        int32_t q0 = (int32_t)(((int64_t)2 * *sample(hle, ipos    ) * lut[0] + 0x8000) >> 16);
+        int32_t q1 = (int32_t)(((int64_t)2 * *sample(hle, ipos + 1) * lut[1] + 0x8000) >> 16);
+        int32_t q2 = (int32_t)(((int64_t)2 * *sample(hle, ipos + 2) * lut[2] + 0x8000) >> 16);
+        int32_t q3 = (int32_t)(((int64_t)2 * *sample(hle, ipos + 3) * lut[3] + 0x8000) >> 16);
+
+        q0 = clamp_s16(q0);
+        q1 = clamp_s16(q1);
+        q2 = clamp_s16(q2);
+        q3 = clamp_s16(q3);
+
+        *sample(hle, opos++) = clamp_s16(clamp_s16(q0 + q1) + clamp_s16(q2 + q3));
 
         pitch_accu += pitch;
         ipos += (pitch_accu >> 16);
