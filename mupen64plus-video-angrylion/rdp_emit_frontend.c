@@ -140,6 +140,7 @@ void gsp_init(GSPState *s)
     int i;
     s->clip_ratio = 2;
     s->clip_near_z = 0;
+    s->clip_fan_first = 0;
     s->tri_dx_scale  = 0x4000;
     s->tri_idy_scale = 0x0008;
     s->tri_frac_mask = (int32_t)0xffff;
@@ -301,6 +302,7 @@ void gsp_task_reset(GSPState *s)
      * ratio; a list that wants another ratio re-sends G_MW_CLIP. */
     s->clip_ratio = 2;
     s->clip_near_z = 0;
+    s->clip_fan_first = 0;
 }
 
 void gsp_combine_matrices(GSPState *s)
@@ -1046,12 +1048,26 @@ int gsp_triangle(GSPState *s, int32_t *cmd, int i0, int i1, int i2,
             BridgeVertex v0, v1, v2;
             GSPVertex tv[3];
             int nc;
-            /* The microcode's subdivision draws (0,1,n-1), (1,2,n-1),
-             * (2,3,n-1): consecutive vertex pairs fanned from the LAST
-             * polygon vertex, not from vertex 0. */
-            tv[0] = poly[i];
-            tv[1] = poly[i + 1];
-            tv[2] = poly[np - 1];
+            /* Two fan styles, selected per microcode (see the fan probe
+             * in rdp_emit_hle.c): F3DEX2 2.05+/F3DZEX2 draws (0,1,n-1),
+             * (1,2,n-1), (2,3,n-1) -- consecutive ascending pairs fanned
+             * from the LAST polygon vertex -- while the 2.04H build keeps
+             * the FIRST vertex and walks the pairs downward from the end:
+             * (0,n-2,n-1), (0,n-3,n-2), ..., (0,1,2). The triangle sets
+             * differ (different pivot), so this is visible wherever a
+             * clipped polygon has more than three vertices. */
+            if (s->clip_fan_first)
+            {
+                tv[0] = poly[0];
+                tv[1] = poly[np - 2 - i];
+                tv[2] = poly[np - 1 - i];
+            }
+            else
+            {
+                tv[0] = poly[i];
+                tv[1] = poly[i + 1];
+                tv[2] = poly[np - 1];
+            }
             /* The fan loop routes each sub-triangle through the full
              * triangle write, whose AND trivial-reject against the screen
              * outcodes (the CLIP_ALL_SCRN constant, not the temporarily

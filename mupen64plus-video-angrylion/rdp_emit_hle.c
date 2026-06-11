@@ -224,6 +224,32 @@ void rdp_emit_hle_process_dlist(void)
         }
         rsp_set_clip_lerp_204h(!found);
     }
+
+    /* Clip-fan probe: the 2.04H clipper triangulates its output polygon
+     * from the FIRST vertex with descending pairs (its draw loop reads
+     * the pair through the output cursor: lhu v0, 0x3cc(s5) = 96a203cc),
+     * where 2.05+/F3DZEX2 fans ascending pairs from the LAST vertex
+     * (lhu v0, 0x3cc(s2)). Scan the text image for the 2.04H form. */
+    {
+        unsigned int ut = read_dmem_u32(dmem, 0xfd0) & 0x00ffffffu;
+        int first = 0;
+        if (ut != 0 && ut + 0x1800 <= rdram_size)
+        {
+            unsigned int k;
+            for (k = 0; k + 4 <= 0x1800; k += 4)
+            {
+                if (rdram[(ut + k + 0) ^ 3] == 0x96u
+                    && rdram[(ut + k + 1) ^ 3] == 0xa2u
+                    && rdram[(ut + k + 2) ^ 3] == 0x03u
+                    && rdram[(ut + k + 3) ^ 3] == 0xccu)
+                {
+                    first = 1;
+                    break;
+                }
+            }
+        }
+        s_gsp.clip_fan_first = first;
+    }
     f3dex2_set_rdram(rdram);
     f3dex2_set_rdram_size(rdram_size);
     f3dex2_run_dl(&s_gsp, &s_fifo, dl_addr, 0, 0);

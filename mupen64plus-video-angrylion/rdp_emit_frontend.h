@@ -84,6 +84,10 @@ typedef struct GSPState
      * clipping (z + w >= 0). Selects the near plane the polygon clipper
      * uses and the VCH outcode bit that gates and rejects against it. */
     int clip_near_z;
+    /* Fan pivot of the polygon clipper's triangulation: 0 = fan from the
+     * last polygon vertex with ascending pairs (F3DEX2 2.05+/F3DZEX2),
+     * 1 = fan from the first vertex with descending pairs (2.04H). */
+    int clip_fan_first;
     unsigned int   tex_scale_s, tex_scale_t; /* raw S0.16 from G_TEXTURE */
     unsigned int   persp_norm;               /* G_MW_PERSPNORM u16 (gSPPerspNormalize) */
     int            fog_m, fog_o;             /* G_MW_FOG multiplier/offset (s16 each) */
