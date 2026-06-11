@@ -11,6 +11,7 @@
  */
 
 #include "rdp_emit_f3dex2.h"
+#include "rdp_emit_s2dex.h"
 
 /* F3DEX2 command bytes (high byte of w0) */
 #define F3DEX2_VTX        0x01
@@ -112,6 +113,7 @@ static void seg_reset(void)
 
 void f3dex2_seg_reset(void)
 {
+    s2dex_reset();
     seg_reset();
 }
 
@@ -266,86 +268,22 @@ void f3dex2_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
         }
 
         case 0x09: /* S2DEX2 G_BG_1CYC */
-        case 0x0a: /* S2DEX2 G_BG_COPY */
         {
-            /* OoT's pre-rendered image rooms switch the RSP to the S2DEX2
-             * microcode (gSPLoadUcodeL) for one command: gSPBgRectCopy or
-             * gSPBgRect1Cyc, drawing the JPEG-decoded background. The BG
-             * opcodes (0x09/0x0a) are unused in F3DZEX2, so handle them
-             * directly. The blit structure mirrors the cxd4 LLE RDP stream
-             * byte-for-byte in form: per TMEM-sized strip of rows --
-             * TILESYNC, SETTIMG (pointer advanced per strip), LOADTILE into
-             * tile 7, PIPESYNC, copy/1-cycle TEXRECT from tile 0, PIPESYNC.
-             * uObjBg fields (all big-endian): +0 imageX u10.5, +2 imageW
-             * u10.2, +4 frameX s10.2, +6 frameW u10.2, +8 imageY, +10
-             * imageH, +12 frameY, +14 frameH, +16 imagePtr, +20 imageLoad,
-             * +22 imageFmt u8, +23 imageSiz u8. */
+            /* Zelda's pre-rendered backgrounds switch the RSP to the
+             * S2DEX2 microcode (gSPLoadUcodeL) for one gSPBgRect1Cyc
+             * command. The BG opcodes are unused in F3DZEX2, so route
+             * them to the transcribed S2DEX2 background renderer. */
             unsigned int bga = seg_addr(w1);
             if (addr_in_range(bga, 40u))
-            {
-                unsigned int t0 = rd_u32_be(r, bga);
-                unsigned int t1 = rd_u32_be(r, bga + 4);
-                unsigned int t2 = rd_u32_be(r, bga + 8);
-                unsigned int t3 = rd_u32_be(r, bga + 12);
-                unsigned int t4 = rd_u32_be(r, bga + 16);
-                unsigned int t5 = rd_u32_be(r, bga + 20);
-                unsigned int img_w   = (t0 & 0xffffu) >> 2;      /* texels */
-                int          frame_x = (int)(short)(t1 >> 16);   /* s10.2 */
-                unsigned int img_h   = (t2 & 0xffffu) >> 2;      /* rows */
-                int          frame_y = (int)(short)(t3 >> 16);   /* s10.2 */
-                unsigned int ptr     = seg_addr(t4);
-                unsigned int fmt     = (t5 >> 8) & 0xffu;
-                unsigned int siz     = t5 & 0xffu;
-                unsigned int bpr     = (img_w << siz) >> 1;      /* bytes/row */
-                unsigned int rows, strip, line;
-                int32_t cw[16];
-                if (img_w >= 1u && img_w <= 1024u && img_h >= 1u &&
-                    img_h <= 1024u && bpr >= 1u && frame_x >= 0 && frame_y >= 0)
-                {
-                    rows = 4096u / bpr;          /* rows per TMEM strip */
-                    if (rows == 0) rows = 1;
-                    if (rows > img_h) rows = img_h;
-                    line = (bpr + 7u) >> 3;      /* row stride in 8-byte units */
-
-                    /* tile setup: load tile 7 and render tile 0, identical
-                     * fmt/siz/line, render tile clamped with mask 15. */
-                    cw[0] = (int32_t)(0xf5000000u | (fmt << 21) | (siz << 19) | (line << 9));
-                    cw[1] = (int32_t)(7u << 24);
-                    cw[2] = (int32_t)0xf2000000u;            /* settilesize 0 */
-                    cw[3] = 0;
-                    cw[4] = cw[0];                           /* settile 0 */
-                    cw[5] = (int32_t)0x0007c1f0u;            /* clamp, mask 15 */
-                    rdp_fifo_append(fifo, cw, 6);
-
-                    for (strip = 0; strip < img_h; strip += rows)
-                    {
-                        unsigned int n = img_h - strip;
-                        unsigned int y0, y1;
-                        if (n > rows) n = rows;
-                        y0 = (unsigned int)frame_y + strip * 4u;
-                        y1 = (unsigned int)frame_y + (strip + n) * 4u - 1u;
-                        cw[0]  = (int32_t)0xe6000000u;       /* tilesync */
-                        cw[1]  = 0;
-                        cw[2]  = (int32_t)(0xfd000000u | (fmt << 21) | (siz << 19) | (img_w - 1u));
-                        cw[3]  = (int32_t)(ptr + strip * bpr);
-                        cw[4]  = (int32_t)0xf4000000u;       /* loadtile (0,0).. */
-                        cw[5]  = (int32_t)((7u << 24) | ((img_w * 4u - 1u) << 12) | (n * 4u - 1u));
-                        cw[6]  = (int32_t)0xe7000000u;       /* pipesync */
-                        cw[7]  = 0;
-                        cw[8]  = (int32_t)(0xe4000000u |
-                                 (((unsigned int)frame_x + img_w * 4u - 1u) << 12) | (y1 & 0xfffu));
-                        cw[9]  = (int32_t)((((unsigned int)frame_x & 0xfffu) << 12) | (y0 & 0xfffu));
-                        cw[10] = 0;                          /* s=0, t=0 */
-                        cw[11] = (cmd == 0x0a) ? (int32_t)0x10000400u   /* copy: dsdx 4.0 */
-                                               : (int32_t)0x04000400u;  /* 1cyc: dsdx 1.0 */
-                        cw[12] = (int32_t)0xe7000000u;       /* pipesync */
-                        cw[13] = 0;
-                        rdp_fifo_append(fifo, cw, 14);
-                    }
-                }
-            }
+                s2dex_bg_1cyc(r, s_rdram_size ? s_rdram_size
+                                              : (8u * 1024u * 1024u),
+                              bga, fifo);
             break;
         }
+
+        case 0x0b: /* S2DEX2 G_OBJ_RENDERMODE */
+            s2dex_set_obj_rendermode(w1);
+            break;
 
         case F3DEX2_TRI1:
         {
@@ -677,6 +615,10 @@ void f3dex2_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
                     int zu = (int)((w1 >> 5) & 1);
                     s_zbuffered = (zc || zu) ? 1 : 0;
                 }
+                /* sniff Set Scissor (0xED -> 0x2d) for the S2DEX background
+                 * renderer, mirroring the microcode's command splitter. */
+                if (rdp_id == 0x2d)
+                    s2dex_set_scissor(w0, w1);
                 /* sniff Set Tile (0xF5 -> 0x35) for the wrap masks: the
                  * texture-coordinate wrap fold in gsp_triangle may shift a
                  * triangle's S/T plane only by multiples of the tile's mask
