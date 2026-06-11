@@ -77,6 +77,29 @@ static void mtx_copy(int32_t d[4][4], int32_t s[4][4])
  * LSBs per element, but the vertex w values -- and the 1/w reciprocals the
  * triangle write derives from them -- inherit it, so the exact behaviour is
  * required for bit-identical RDP commands. */
+/* Read one component of the RSP vertex transform out of the exact 64-bit
+ * accumulator sum, with the microcode's register-readback semantics: the
+ * integer half is the final vmadh's signed clamp of accumulator bits
+ * 47:16, the fraction half is the preceding vmadn's register -- clamped
+ * to 0xffff/0x0000 when the PARTIAL accumulator (total minus the final
+ * z*int_row term, which the last vmadh has not yet added) overflows the
+ * same window, and the raw low 16 bits otherwise. */
+static int32_t gsp_mvp_readback(int64_t total, int64_t last_int_term)
+{
+    int64_t part = total - (last_int_term << 16);
+    int32_t hi = (int32_t)(uint32_t)((uint64_t)total >> 16);
+    int32_t pw = (int32_t)(uint32_t)((uint64_t)part >> 16);
+    int32_t out_i, out_f;
+    out_i = (hi > 32767) ? 32767 : (hi < -32768) ? -32768 : hi;
+    if (pw > 32767)
+        out_f = 0xffff;
+    else if (pw < -32768)
+        out_f = 0x0000;
+    else
+        out_f = (int32_t)((uint64_t)total & 0xffff);
+    return (int32_t)(((uint32_t)(uint16_t)out_i << 16) | (uint32_t)out_f);
+}
+
 static void mtx_mul(int32_t d[4][4], int32_t a[4][4], int32_t b[4][4])
 {
     int32_t r[4][4];
@@ -373,8 +396,20 @@ void gsp_vertex(GSPState *s, const unsigned char *rdram, unsigned int addr,
         /* Model-space position is an integer s16; the combined matrix is
          * s15.16. The product (integer * s15.16) is already an s15.16 value,
          * and the column sum is accumulated at 64-bit width like the RSP's
-         * vector accumulator, then read back as s15.16 (>> 16 of the .16
-         * product of integer*fixed cancels to leave the s15.16 result). */
+         * 48-bit vector accumulator. The stored value is NOT a plain int32
+         * truncation of the sum: the microcode's transform chain is
+         * vmudn/vmadh of the translation row, then the vmadn/vmadh pairs
+         * for x, y, z, with the result registers taken from the FINAL pair
+         * -- so the integer half is the last vmadh's signed clamp of the
+         * accumulator's 47:16 window, and the fraction half is the last
+         * vmadn's register, whose clamp tests the PARTIAL accumulator
+         * (before the final z*int term is added) and otherwise passes the
+         * raw low bits through. Identical chain in F3DEX2 2.04H and
+         * F3DZEX2 (trans, x, y, z order). Super Smash Bros.' attract
+         * letterbox geometry overflows the s15.16 clip range in y, where
+         * cxd4 stores 0x7fff:raw -- a plain cast wrapped to a large
+         * negative value and sent whole triangle fans down different clip
+         * paths. */
         ox = read_s16_be(rdram, base + 0); /* x */
         oy = read_s16_be(rdram, base + 2); /* y */
         oz = read_s16_be(rdram, base + 4); /* z */
@@ -388,8 +423,14 @@ void gsp_vertex(GSPState *s, const unsigned char *rdram, unsigned int addr,
         cw = (int64_t)ox * s->combined[0][3] + (int64_t)oy * s->combined[1][3]
            + (int64_t)oz * s->combined[2][3] + (int64_t)s->combined[3][3];
 
-        vt->cx = (int32_t)cx; vt->cy = (int32_t)cy;
-        vt->cz = (int32_t)cz; vt->cw = (int32_t)cw;
+        vt->cx = gsp_mvp_readback(cx,
+                     (int64_t)oz * (s->combined[2][0] >> 16));
+        vt->cy = gsp_mvp_readback(cy,
+                     (int64_t)oz * (s->combined[2][1] >> 16));
+        vt->cz = gsp_mvp_readback(cz,
+                     (int64_t)oz * (s->combined[2][2] >> 16));
+        vt->cw = gsp_mvp_readback(cw,
+                     (int64_t)oz * (s->combined[2][3] >> 16));
 
         st_s = read_s16_be(rdram, base + 8);  /* s */
         st_t = read_s16_be(rdram, base + 10); /* t */
