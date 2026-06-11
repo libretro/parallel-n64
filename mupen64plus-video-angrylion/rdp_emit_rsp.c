@@ -485,6 +485,149 @@ void rsp_light_vtx(const int32_t n[3], const int32_t amb[3],
         out[c] = (lt[c] >> 7) & 0xff;
 }
 
+/* ---- positional lighting (light_point) -------------------------------- */
+
+/* Exported single directional dot for the positional-mode loop, which
+ * dots one light per iteration instead of the two-per-round pairing of
+ * lights_dircoloraccum2. */
+int32_t rsp_light_dirdot(const int32_t n[3], const int32_t d[3])
+{
+    return rsp_light_dot(n, d);
+}
+
+/* One positional-loop color fold: vmulf(color, 0x7FFF) decays the running
+ * <<7-domain color and vmacf adds one light's contribution. */
+void rsp_light_fold1(int32_t lt[3], const int32_t rgb[3], int32_t d)
+{
+    int c;
+    for (c = 0; c < 3; c++)
+    {
+        RspAcc acc = 2 * (RspAcc)S16(lt[c]) * 0x7fff + 0x8000;
+        acc += 2 * (RspAcc)((rgb[c] & 0xff) << 7) * (RspAcc)S16(d);
+        lt[c] = acc_read_signed(acc);
+    }
+}
+
+/* The microcode's light_point chain, bit-exact. Per vertex and light:
+ * the vertex goes to camera space through the modelview with the
+ * vmudn/vmadh row sums and the vmadh mid clamp; the vertex-to-light
+ * delta is the saturating vsub; the squared length is the vmudh squares
+ * folded with the vaddc/vadd carry tree (the high adds saturate); vrsq
+ * gives the reciprocal square root of that 32-bit value; the delta is
+ * rotated back to model space with the modelview transpose and
+ * normalized by the rsq pair through the early-writeback vmudm/vmadh
+ * then the x4 vmudn/vmadh; the dot against the s8<<8 normal lanes runs
+ * through the unsigned vmulu/vmacu clamp and the & 0x7FFF mask. For the
+ * attenuation, vrcp of the rsq value recovers the length (only the low
+ * half survives the register reuse), the quadratic input is the vmudh
+ * clamp of len*16 squared down by vmudl, and the polynomial accumulates
+ * as vmulf(len, kl) -- raw u8 kl, with the +0x8000 rounding bias --
+ * + vmadm(q, kq<<5) + vmadn(kc<<4, 0x100); the 32-bit accumulator
+ * reading is { vsar mid : vmadn low }. vrcp of that, masked to 0x7FFF,
+ * scales the dot with a final vmulf. */
+int32_t rsp_light_point_factor(const int32_t mv[4][4], const int32_t n[3],
+                               const int32_t vtx[3], const int32_t pos[3],
+                               int32_t kc, int32_t kl, int32_t kq)
+{
+    int32_t vc[3], d[3], dm[3], l[3];
+    int32_t sq_mid[3], sq_hi[3];
+    int32_t lo, si, carry, sum;
+    int32_t rsq, len16, c16, q;
+    int32_t att_lo, att_mid, att32, fpre, dot;
+    Rsp32 r;
+    RspAcc acc;
+    int c, ax;
+
+    for (c = 0; c < 3; c++)
+    {
+        acc  = p_udn(mv[3][c] & 0xffff, 1);
+        acc += p_udh(mv[3][c] >> 16,    1);
+        for (ax = 0; ax < 3; ax++)
+        {
+            acc += p_udn(mv[ax][c] & 0xffff, vtx[ax]);
+            acc += p_udh(mv[ax][c] >> 16,    vtx[ax]);
+        }
+        vc[c] = acc_clamp_mid(acc);
+    }
+
+    for (c = 0; c < 3; c++)
+        d[c] = clamp_s16(S16(pos[c]) - vc[c]);
+
+    for (c = 0; c < 3; c++)
+    {
+        acc = p_udh(d[c], d[c]);
+        sq_mid[c] = (int32_t)((acc >> 16) & 0xffff);
+        sq_hi[c]  = (int32_t)((acc >> 32) & 0xffff);
+    }
+    /* The vaddc/vadd pair tree: the [0q] round adds lane 0 into lane 1
+     * and -- because the quarter pattern maps lane 2 onto itself --
+     * doubles the z square; the [2h] round then folds the doubled lane 2
+     * into lane 1. The "squared length" the microcode normalizes and
+     * attenuates against is therefore dx*dx + dy*dy + 2*dz*dz, with dz in
+     * camera space. This is the well-known F3DZEX point-light distance
+     * bug; console-accurate output requires reproducing it. */
+    {
+        int32_t lo2, si2;
+        sum = U16(sq_mid[0]) + U16(sq_mid[1]);
+        carry = (sum >> 16) & 1;
+        lo = sum & 0xffff;
+        si = clamp_s16(S16(sq_hi[0]) + S16(sq_hi[1]) + carry);
+        sum = U16(sq_mid[2]) + U16(sq_mid[2]);
+        carry = (sum >> 16) & 1;
+        lo2 = sum & 0xffff;
+        si2 = clamp_s16(S16(sq_hi[2]) + S16(sq_hi[2]) + carry);
+        sum = U16(lo) + U16(lo2);
+        carry = (sum >> 16) & 1;
+        lo = sum & 0xffff;
+        si = clamp_s16(si + si2 + carry);
+    }
+
+    rsq = rsp_rsq32((int32_t)(((uint32_t)U16(si) << 16) | (uint32_t)U16(lo)));
+    r = mk32(rsq);
+
+    for (c = 0; c < 3; c++)
+    {
+        acc = 0;
+        for (ax = 0; ax < 3; ax++)
+        {
+            acc += p_udn(mv[c][ax] & 0xffff, d[ax]);
+            acc += p_udh(mv[c][ax] >> 16,    d[ax]);
+        }
+        dm[c] = acc_clamp_mid(acc);
+    }
+
+    for (c = 0; c < 3; c++)
+    {
+        int32_t v2i, v20i;
+        acc = p_udm(dm[c], r.f);
+        v2i = acc_clamp_mid(acc);
+        acc += p_udh(dm[c], r.i);
+        v20i = acc_clamp_mid(acc);
+        acc  = p_udn(v2i, 4);
+        acc += p_udh(v20i, 4);
+        l[c] = acc_clamp_mid(acc);
+    }
+
+    acc = 0x8000;
+    for (ax = 0; ax < 3; ax++)
+        acc += 2 * (RspAcc)S16((n[ax] & 0xff) << 8) * (RspAcc)S16(l[ax]);
+    dot = acc_read_unsigned(acc) & 0x7fff;
+
+    len16 = (int32_t)(int16_t)((uint32_t)rsp_rcp32(rsq) & 0xffff);
+    c16 = acc_clamp_mid(p_udh(len16, 0x10));
+    q = acc_clamp_low(p_udl(c16, c16));
+    acc  = 2 * (RspAcc)S16(len16) * (RspAcc)(kl & 0xff) + 0x8000;
+    acc += p_udm(q, (kq & 0xff) << 5);
+    acc += p_udn((kc & 0xff) << 4, 0x100);
+    att_lo  = acc_clamp_low(acc);
+    att_mid = (int32_t)((acc >> 16) & 0xffff);
+    att32 = (int32_t)(((uint32_t)att_mid << 16) | (uint32_t)att_lo);
+    fpre = (int32_t)((uint32_t)rsp_rcp32(att32) & 0x7fff);
+
+    acc = 2 * (RspAcc)S16(fpre) * (RspAcc)S16(dot) + 0x8000;
+    return acc_read_signed(acc);
+}
+
 /* The lights_texgenmain chain (G_TEXTURE_GEN): texture coordinates from
  * the raw s8 vertex normal dotted with the two transformed s8 lookat
  * directions, all entering the lanes as byte << 8 (lpv), through the

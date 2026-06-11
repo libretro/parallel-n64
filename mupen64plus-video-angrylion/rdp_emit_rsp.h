@@ -15,6 +15,11 @@ void rsp_clip_lerp(const int32_t on_pos[4], const int32_t off_pos[4],
                    int32_t out_pos[4], int16_t out_attr[8]);
 void rsp_texgen(const int32_t n[3], const int32_t l0[3], const int32_t l1[3],
                 int linear, int32_t *s_out, int32_t *t_out);
+int32_t rsp_light_dirdot(const int32_t n[3], const int32_t d[3]);
+void rsp_light_fold1(int32_t lt[3], const int32_t rgb[3], int32_t d);
+int32_t rsp_light_point_factor(const int32_t mv[4][4], const int32_t n[3],
+                               const int32_t vtx[3], const int32_t pos[3],
+                               int32_t kc, int32_t kl, int32_t kq);
 void rsp_light_vtx(const int32_t n[3], const int32_t amb[3],
                    const int32_t (*rgb)[3], const int32_t (*dirs)[3],
                    int num, int32_t out[3]);
