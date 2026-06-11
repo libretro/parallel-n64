@@ -37,10 +37,14 @@ typedef struct RspTriVtx
     int32_t  invw;      /* VTX_INV_W 32-bit value (rsp_vtx_invw) */
 } RspTriVtx;
 
+/* dx_scale/idy_scale/frac_mask/vcr_bound are the per-microcode triangle
+ * setup constants; see GSPState tri_dx_scale and friends. */
 int rsp_tri_write(int32_t *ew,
                   const RspTriVtx *v1c, const RspTriVtx *v2c,
                   const RspTriVtx *v3c,
                   int textured, int z_buffered, int smooth,
-                  int tile, int level);
+                  int tile, int level,
+                  int32_t dx_scale, int32_t idy_scale,
+                  int32_t frac_mask, int32_t vcr_bound);
 
 #endif

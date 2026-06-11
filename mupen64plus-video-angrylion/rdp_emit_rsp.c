@@ -869,14 +869,19 @@ int32_t rsp_vtx_fog(int32_t cz, int32_t cw, int32_t pn,
 
 /* ---- triangle write ---------------------------------------------------- */
 
-/* VCR against +0x1CC (the CFG_OLD_TRI_WRITE constant used by the F3DEX2
- * 2.0xH-era microcodes OoT ships): clamp lane to [-461, +460]. */
-static int32_t vcr_old(int32_t v)
+/* VCR crimp of the slope integer lanes against the microcode's v30[3]:
+ * values at or above the bound clamp to it, values below its ones'
+ * complement clamp to the complement. The 2.0xH-era F3DEX2 OoT ships
+ * uses 0x1CC; F3DZEX2 ships 0x100. */
+static int32_t vcr_bound_clamp(int32_t v, int32_t bound)
 {
     int32_t s = S16(v);
-    if (s >= 0)
-        return (s >= 0x1cc) ? 0x1cc : s;
-    return (s <= -461) ? -461 : s;
+    int32_t nb = ~bound;
+    if (s >= bound)
+        return bound;
+    if (s <= nb)
+        return nb;
+    return s;
 }
 
 /* 32-bit double-precision subtract (vsubc on frac, vsub on int with the
@@ -894,7 +899,9 @@ int rsp_tri_write(int32_t *ew,
                   const RspTriVtx *v1c, const RspTriVtx *v2c,
                   const RspTriVtx *v3c,
                   int textured, int z_buffered, int smooth,
-                  int tile, int level)
+                  int tile, int level,
+                  int32_t dx_scale, int32_t idy_scale,
+                  int32_t frac_mask, int32_t vcr_bound)
 {
     const RspTriVtx *vh, *vm, *vl, *tmpv;
     int32_t cross_i, cross_f;
@@ -992,12 +999,12 @@ int rsp_tri_write(int32_t *ew,
             idy = mk32(idy32);
             /* inv_dy_scaled: vmudl idy_f*32 ; vmadm idy_i*32 -> mid out (int),
              * vmadn -> low out (frac) */
-            acc = p_udl(idy.f, 8);
-            acc += p_udm(idy.i, 8);
+            acc = p_udl(idy.f, idy_scale);
+            acc += p_udm(idy.i, idy_scale);
             inv_dy_lm_sc.i = acc_clamp_mid(acc);
             inv_dy_lm_sc.f = acc_clamp_low(acc);
             /* dX_scaled: vmudm dX*0x1000 -> mid out (int), vmadn -> low (frac) */
-            acc = p_udm(dx_lane, 0x4000);
+            acc = p_udm(dx_lane, dx_scale);
             dxs_i = acc_clamp_mid(acc);
             dxs_f = acc_clamp_low(acc);
             /* dXdY = dX_scaled * inv_dy_scaled (canonical 32x32) */
@@ -1007,17 +1014,19 @@ int rsp_tri_write(int32_t *ew,
         (void)inv_dy_m_sc; (void)inv_dy_l_sc;
     }
 
-    /* The old tri write does not mask the dXdY fraction (the & 0xFFF8 of
-     * the anchor walk is a newer-microcode change). */
-    dxldy_f2 = dxldy.f;
-    dxmdy_f2 = dxmdy.f;
-    dxhdy_f2 = dxhdy.f;
+    /* The slope fraction feeding the anchor walk is masked with the
+     * microcode's v30[5] (the vand before the XH/XM accumulation):
+     * 0xFFF8 on F3DZEX2 and revisions that share its constant vector.
+     * The emitted dXdY command words stay unmasked. */
+    dxldy_f2 = dxldy.f & frac_mask;
+    dxmdy_f2 = dxmdy.f & frac_mask;
+    dxhdy_f2 = dxhdy.f & frac_mask;
     (void)dxldy_f2;
 
     /* vcr clamp on the integer parts */
-    dxldy.i = vcr_old(dxldy.i) & 0xffff;
-    dxmdy.i = vcr_old(dxmdy.i) & 0xffff;
-    dxhdy.i = vcr_old(dxhdy.i) & 0xffff;
+    dxldy.i = vcr_bound_clamp(dxldy.i, vcr_bound) & 0xffff;
+    dxmdy.i = vcr_bound_clamp(dxmdy.i, vcr_bound) & 0xffff;
+    dxhdy.i = vcr_bound_clamp(dxhdy.i, vcr_bound) & 0xffff;
 
     /* ---- y_spx = floor(H.y) - H.y in 15.16 (negated fraction) ---- */
     {

@@ -139,6 +139,10 @@ void gsp_init(GSPState *s)
 {
     int i;
     s->clip_ratio = 2;
+    s->tri_dx_scale  = 0x4000;
+    s->tri_idy_scale = 0x0008;
+    s->tri_frac_mask = (int32_t)0xffff;
+    s->tri_vcr_bound = 0x1cc;
     mtx_identity(s->projection);
     for (i = 0; i < GSP_MTX_STACK; i++)
         mtx_identity(s->modelview[i]);
@@ -157,6 +161,10 @@ void gsp_init(GSPState *s)
     s->fog_m = 0;
     s->fog_o = 0;
     s->viewport.persp_norm = 0xffffu;
+    s->viewport.tri_dx_scale  = s->tri_dx_scale;
+    s->viewport.tri_idy_scale = s->tri_idy_scale;
+    s->viewport.tri_frac_mask = s->tri_frac_mask;
+    s->viewport.tri_vcr_bound = s->tri_vcr_bound;
 
     /* default lighting: no directional lights, white ambient (255) so geometry
      * flagged G_LIGHTING before any light load is not pure black. */
@@ -636,6 +644,23 @@ void gsp_vertex(GSPState *s, const unsigned char *rdram, unsigned int addr,
 }
 
 #define GEOM_ZBUFFER    0x00000001u
+
+void gsp_set_tri_scales(GSPState *s, int32_t dx_scale, int32_t idy_scale,
+                        int32_t frac_mask, int32_t vcr_bound)
+{
+    if (dx_scale > 0 && idy_scale > 0)
+    {
+        s->tri_dx_scale = dx_scale;
+        s->tri_idy_scale = idy_scale;
+        s->tri_frac_mask = frac_mask & 0xffff;
+        if (vcr_bound > 0)
+            s->tri_vcr_bound = vcr_bound;
+        s->viewport.tri_dx_scale = dx_scale;
+        s->viewport.tri_idy_scale = idy_scale;
+        s->viewport.tri_frac_mask = s->tri_frac_mask;
+        s->viewport.tri_vcr_bound = s->tri_vcr_bound;
+    }
+}
 
 void gsp_set_persp_norm(GSPState *s, unsigned int pn)
 {

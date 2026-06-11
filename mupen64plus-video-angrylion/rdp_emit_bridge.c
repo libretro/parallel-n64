@@ -162,7 +162,9 @@ static int try_rsp_tri_write(int32_t *cmd,
                              const BridgeVertex *v0, const BridgeVertex *v1,
                              const BridgeVertex *v2,
                              int textured, int z_buffered, int smooth,
-                             int tile, int level)
+                             int tile, int level,
+                             int32_t dx_scale, int32_t idy_scale,
+                             int32_t frac_mask, int32_t vcr_bound)
 {
     RspTriVtx r[3];
     const EmitVertex *ev[3];
@@ -203,7 +205,8 @@ static int try_rsp_tri_write(int32_t *cmd,
         r[i].invw = ev[i]->rsp_invw;
     }
     return rsp_tri_write(cmd, &r[0], &r[1], &r[2],
-                         textured, z_buffered, smooth, tile, level);
+                         textured, z_buffered, smooth, tile, level,
+                         dx_scale, idy_scale, frac_mask, vcr_bound);
 }
 
 int bridge_add_triangle(int32_t *cmd,
@@ -255,7 +258,11 @@ int bridge_add_triangle(int32_t *cmd,
     }
 
     n = try_rsp_tri_write(cmd, &a, &b, &c, v0, v1, v2,
-                          textured, z_buffered, smooth, tile, max_level);
+                          textured, z_buffered, smooth, tile, max_level,
+                          vp->tri_dx_scale ? vp->tri_dx_scale : 0x4000,
+                          vp->tri_idy_scale ? vp->tri_idy_scale : 0x0008,
+                          vp->tri_frac_mask ? vp->tri_frac_mask : (int32_t)0xffff,
+                          vp->tri_vcr_bound ? vp->tri_vcr_bound : 0x1cc);
     if (n >= 0)
         return n;
 

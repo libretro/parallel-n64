@@ -104,6 +104,16 @@ typedef struct GSPState
     int     lights_valid;     /* cache flag, mirrors the RSP's lightsValid */
 
     GSPVertex vtx[GSP_MAX_VERTICES];
+    /* per-microcode triangle-setup scale constants from the ucode data
+     * segment's v30 vector (DMEM 0x1C0): lane 2 scales the edge dX, lane 7
+     * scales the inverse-dY reciprocal. F3DEX2 2.08 ships 0x4000/0x0008;
+     * F3DZEX2 ships 0x1000/0x0020. The intermediate vmudl/vmadm clamp
+     * points depend on the split, so the pair is not interchangeable even
+     * though the products agree. */
+    int32_t tri_dx_scale;
+    int32_t tri_idy_scale;
+    int32_t tri_frac_mask;
+    int32_t tri_vcr_bound;
 } GSPState;
 
 /* lifecycle */
@@ -142,6 +152,8 @@ void gsp_vertex(GSPState *s, const unsigned char *rdram, unsigned int addr,
 /* F3DEX2 geometry mode (cull bits etc). Set by G_GEOMETRYMODE; consulted by
  * gsp_triangle to reject back/front-facing triangles the RSP would cull. */
 void gsp_set_geometry_mode(GSPState *s, unsigned int mode);
+void gsp_set_tri_scales(GSPState *s, int32_t dx_scale, int32_t idy_scale,
+                        int32_t frac_mask, int32_t vcr_bound);
 void gsp_set_persp_norm(GSPState *s, unsigned int pn);
 unsigned int gsp_get_geometry_mode(const GSPState *s);
 

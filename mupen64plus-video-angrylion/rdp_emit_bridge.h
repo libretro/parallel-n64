@@ -14,6 +14,10 @@ typedef struct BridgeViewport
     int32_t vscale_x, vscale_y, vscale_z;   /* s15.16 */
     int32_t vtrans_x, vtrans_y, vtrans_z;   /* s15.16 */
     unsigned int persp_norm; /* G_MW_PERSPNORM u16, applied to 1/w */
+    int32_t tri_dx_scale;    /* tri-setup v30 lanes, per microcode: */
+    int32_t tri_idy_scale;   /*   F3DEX2 0x4000/8, F3DZEX2 0x1000/0x20 */
+    int32_t tri_frac_mask;   /* v30[5] slope-fraction mask in the anchor walk */
+    int32_t tri_vcr_bound;   /* v30[3] vcr crimp bound on the slope integers */
 } BridgeViewport;
 
 /* Clip-space vertex inputs to the bridge: exact s15.16 clip coords (cx,cy,cz,cw)

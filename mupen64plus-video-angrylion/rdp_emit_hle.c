@@ -13,6 +13,8 @@
  *   gcc -std=c89 -pedantic -Wall -Wdeclaration-after-statement -Werror
  */
 
+#include <stdio.h>
+#include <stdlib.h>
 #include "rdp_emit_hle.h"
 #include "rdp_emit_f3dex2.h"
 
@@ -90,12 +92,37 @@ void rdp_emit_hle_process_dlist(void)
     if (rdram == 0 || dmem == 0 || rdram_size == 0)
         return;
 
+
     if (!s_inited)
     {
         gsp_init(&s_gsp);
         s_inited = 1;
     }
     gsp_task_reset(&s_gsp);
+
+    /* Triangle-setup scale constants live in the microcode's v30 vector,
+     * loaded from the ucode data segment to DMEM 0x1C0: lane 2 is the edge
+     * dX scale, lane 7 the inverse-dY reciprocal scale. They differ per
+     * microcode revision (F3DEX2 2.08: 0x4000/0x0008, F3DZEX2:
+     * 0x1000/0x0020) and the intermediate clamp points depend on the
+     * split, so read the shipped pair instead of assuming one. */
+    {
+        unsigned int ud = read_dmem_u32(dmem, 0xfd8) & 0x00ffffffu;
+        if (ud != 0 && ud + 0x1d0 <= rdram_size)
+        {
+            int32_t dxs  = (int32_t)((rdram[(ud + 0x1c4) ^ 3] << 8)
+                                   |  rdram[(ud + 0x1c5) ^ 3]);
+            int32_t idys = (int32_t)((rdram[(ud + 0x1ce) ^ 3] << 8)
+                                   |  rdram[(ud + 0x1cf) ^ 3]);
+            int32_t fmsk = (int32_t)((rdram[(ud + 0x1ca) ^ 3] << 8)
+                                   |  rdram[(ud + 0x1cb) ^ 3]);
+            {
+                int32_t vcrb = (int32_t)((rdram[(ud + 0x1c6) ^ 3] << 8)
+                                       |  rdram[(ud + 0x1c7) ^ 3]);
+                gsp_set_tri_scales(&s_gsp, dxs, idys, fmsk, vcrb);
+            }
+        }
+    }
 
     /* the FIFO lives in host memory; the top 256 KiB of RDRAM is used
      * only as the virtual address range the DPC registers report */
@@ -131,4 +158,5 @@ void rdp_emit_hle_process_dlist(void)
     /* submit the final batch (everything since the last overflow flush,
      * or the whole frame when no flush happened). */
     fifo_flush_to_rdp(&s_fifo);
+
 }
