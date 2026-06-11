@@ -24,6 +24,7 @@ typedef struct BridgeVertex
     int32_t cx, cy, cz, cw;
     int32_t r, g, b, a;
     int32_t s, t;
+    int16_t sv, tv;         /* the RSP's stored VTX_TC shorts, exact */
 } BridgeVertex;
 
 int bridge_add_triangle(int32_t *cmd,

@@ -968,6 +968,9 @@ static void gsp_fold_st(GSPState *s, GSPVertex *v)
                 for (k2 = 0; k2 < 3; k2++) tv[k2] -= sh;
                 sh_t = sh;
             }
+            /* The recenter shift feeds only the legacy emitters, which
+             * rebuild the absolute coordinate branch from it; the RSP
+             * triangle write consumes the exact stored shorts instead. */
             emit_set_st_bias(fit ? sh_s : 0, fit ? sh_t : 0);
             if (fit)
                 for (k2 = 0; k2 < 3; k2++)
@@ -1084,18 +1087,29 @@ int gsp_triangle(GSPState *s, int32_t *cmd, int i0, int i1, int i2,
             tv[0] = poly[i];
             tv[1] = poly[i + 1];
             tv[2] = poly[np - 1];
+            /* The fan loop routes each sub-triangle through the full
+             * triangle write, whose AND trivial-reject against the screen
+             * outcodes (the CLIP_ALL_SCRN constant, not the temporarily
+             * cleared activeClipPlanes) still applies: a guard-band
+             * polygon's fan can contain sub-triangles entirely past one
+             * screen plane, and the microcode drops those. */
+            if (tv[0].clip & tv[1].clip & tv[2].clip & GSP_CLIP_REJECT)
+                continue;
             if (gsp_cull_tri(s, tv))
                 continue;
             gsp_fold_st(s, tv);
             v0.cx = tv[0].cx; v0.cy = tv[0].cy; v0.cz = tv[0].cz; v0.cw = tv[0].cw;
             v0.r = tv[0].r; v0.g = tv[0].g; v0.b = tv[0].b; v0.a = tv[0].a;
             v0.s = tv[0].s; v0.t = tv[0].t;
+            v0.sv = tv[0].sv; v0.tv = tv[0].tv;
             v1.cx = tv[1].cx; v1.cy = tv[1].cy; v1.cz = tv[1].cz; v1.cw = tv[1].cw;
             v1.r = tv[1].r; v1.g = tv[1].g; v1.b = tv[1].b; v1.a = tv[1].a;
             v1.s = tv[1].s; v1.t = tv[1].t;
+            v1.sv = tv[1].sv; v1.tv = tv[1].tv;
             v2.cx = tv[2].cx; v2.cy = tv[2].cy; v2.cz = tv[2].cz; v2.cw = tv[2].cw;
             v2.r = tv[2].r; v2.g = tv[2].g; v2.b = tv[2].b; v2.a = tv[2].a;
             v2.s = tv[2].s; v2.t = tv[2].t;
+            v2.sv = tv[2].sv; v2.tv = tv[2].tv;
             nc = bridge_add_triangle(cmd + total, &v0, &v1, &v2, &s->viewport,
                                      textured, z_buffered,
                                      (s->geometry_mode & 0x00200000u) ? 1 : 0,

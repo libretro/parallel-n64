@@ -141,19 +141,22 @@ static int try_rsp_tri_write(int32_t *cmd,
     RspTriVtx r[3];
     const EmitVertex *ev[3];
     const BridgeVertex *bv[3];
-    int32_t bs, bt;
+
     int i;
 
     ev[0] = ea; ev[1] = eb; ev[2] = ec;
     bv[0] = v0; bv[1] = v1; bv[2] = v2;
-    emit_get_st_bias(&bs, &bt);
 
     for (i = 0; i < 3; i++)
     {
         int32_t x102 = ev[i]->x >> 14;
         int32_t y102 = ev[i]->y >> 14;
-        int32_t tcs = ((ev[i]->s >> 16) + bs) >> 1;
-        int32_t tct = ((ev[i]->t >> 16) + bt) >> 1;
+        /* The microcode's triangle write reloads the stored VTX_TC shorts;
+         * bv[i]->sv/tv carry those exactly (the s/t fields are the doubled
+         * S10.5 domain, which wraps int32 for large coordinates and is only
+         * kept for the non-RSP fallback's wide-arithmetic gradients). */
+        int32_t tcs = bv[i]->sv;
+        int32_t tct = bv[i]->tv;
         if (!ev[i]->rsp_ok)
             return -1;
         if (x102 < -32768 || x102 > 32767 ||
