@@ -22,6 +22,8 @@ extern unsigned int   plugin_get_rdram_size(void);
 extern unsigned char *plugin_get_dmem(void);
 extern unsigned int **plugin_get_dp_registers(void);
 extern void           n64video_process_list(void);
+extern void           n64video_set_hle_cmd_buffer(const unsigned int *buf,
+                          unsigned int base_byte_addr, unsigned int len_bytes);
 
 #define TASK_DATA_PTR_DMEM 0xff0u   /* OSTask data ptr, DMEM byte offset */
 
@@ -33,6 +35,15 @@ extern void           n64video_process_list(void);
 static GSPState s_gsp;
 static RdpFifo  s_fifo;
 static int      s_inited = 0;
+
+/* Host backing store for the synthesized RDP command FIFO. Kept out of
+ * guest RDRAM: Expansion Pak games (Majora's Mask) use all 8 MiB, and
+ * parking the FIFO in the top 256 KiB corrupted their heaps, ending in
+ * the game's own Fault_AddHungupAndCrash. The DPC registers are pointed
+ * at a virtual address range whose command fetch is redirected here via
+ * n64video_set_hle_cmd_buffer; guest memory is never written. */
+#define HLE_FIFO_CAP (256u * 1024u)
+static unsigned char s_fifo_storage[HLE_FIFO_CAP];
 
 /* DMEM/RDRAM 32-bit words are host-native in this core (the RSP's u32()
  * accessor reads them directly); read native, not big-endian. */
@@ -58,7 +69,10 @@ static void fifo_flush_to_rdp(RdpFifo *f)
     *dp[DPC_START]   = (unsigned int)f->base;
     *dp[DPC_CURRENT] = (unsigned int)f->base;
     *dp[DPC_END]     = (unsigned int)(f->base + f->used);
+    n64video_set_hle_cmd_buffer((const unsigned int *)f->storage,
+                                f->base, f->used);
     n64video_process_list();
+    n64video_set_hle_cmd_buffer(0, 0, 0);
     f->used = 0;
 }
 
@@ -83,11 +97,12 @@ void rdp_emit_hle_process_dlist(void)
     }
     gsp_task_reset(&s_gsp);
 
-    /* park the RDP command FIFO in the top 256 KiB of RDRAM */
+    /* the FIFO lives in host memory; the top 256 KiB of RDRAM is used
+     * only as the virtual address range the DPC registers report */
     if (rdram_size < (512u * 1024u))
         return;
-    fifo_base = rdram_size - (256u * 1024u);
-    rdp_fifo_init(&s_fifo, rdram, fifo_base, 256u * 1024u);
+    fifo_base = rdram_size - HLE_FIFO_CAP;
+    rdp_fifo_init(&s_fifo, s_fifo_storage, fifo_base, HLE_FIFO_CAP);
     s_fifo.flush = fifo_flush_to_rdp;
 
     dl_addr = read_dmem_u32(dmem, TASK_DATA_PTR_DMEM) & 0x00ffffffu;
@@ -98,6 +113,7 @@ void rdp_emit_hle_process_dlist(void)
      * z_buffered default off here; a gDP/state-translation follow-up sets the
      * render mode and the per-frame setup commands. */
     f3dex2_seg_reset();
+    f3dex2_set_rdram(rdram);
     f3dex2_set_rdram_size(rdram_size);
     f3dex2_run_dl(&s_gsp, &s_fifo, dl_addr, 0, 0);
 

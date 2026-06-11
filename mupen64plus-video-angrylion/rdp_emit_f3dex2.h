@@ -17,8 +17,12 @@ extern "C" {
  * at [base, base+used) and invokes the rasterizer. */
 typedef struct RdpFifo
 {
-    unsigned char *rdram;   /* RDRAM base */
-    unsigned int   base;    /* byte offset of the FIFO in RDRAM */
+    unsigned char *storage; /* host backing store for the command words */
+    unsigned int   base;    /* virtual RDRAM byte address reported to the
+                               DPC registers; never dereferenced into guest
+                               memory (the rasterizer's command fetch is
+                               redirected to `storage` via
+                               n64video_set_hle_cmd_buffer) */
     unsigned int   used;    /* bytes written so far */
     unsigned int   cap;     /* capacity in bytes */
     /* Called when an append would overflow the FIFO: must drain the
@@ -30,7 +34,7 @@ typedef struct RdpFifo
     void         (*flush)(struct RdpFifo *f);
 } RdpFifo;
 
-void rdp_fifo_init(RdpFifo *f, unsigned char *rdram,
+void rdp_fifo_init(RdpFifo *f, unsigned char *storage,
                    unsigned int base, unsigned int cap);
 void rdp_fifo_append(RdpFifo *f, const int32_t *words, int count);
 
@@ -45,6 +49,7 @@ void f3dex2_seg_reset(void);
 /* set the RDRAM size so the walker can bound display-list and geometry reads;
  * call before f3dex2_run_dl. 0 means assume the default 8 MiB. */
 void f3dex2_set_rdram_size(unsigned int size);
+void f3dex2_set_rdram(unsigned char *rdram);
 
 void f3dex2_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
                    int textured, int z_buffered);

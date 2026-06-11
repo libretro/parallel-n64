@@ -245,6 +245,32 @@ void n64video_init(struct n64video_config* _config)
         rdp_init(0, 1);
 }
 
+/* Host-side command overlay for the HLE graphics path. When set, command
+ * words whose RDRAM word index falls inside [base_idx, base_idx + len)
+ * are fetched from the host buffer instead of RDRAM. This lets the HLE
+ * frontend keep its synthesized RDP command FIFO out of guest memory
+ * (games with an Expansion Pak use all 8 MiB; parking the FIFO in the
+ * top 256 KiB of RDRAM corrupted their heaps). Only the command fetch is
+ * redirected: texture and image reads at the same addresses still see
+ * real RDRAM. */
+static const uint32_t* hle_cmd_buf;
+static uint32_t hle_cmd_base_idx;
+static uint32_t hle_cmd_len_words;
+
+void n64video_set_hle_cmd_buffer(const uint32_t* buf, uint32_t base_byte_addr, uint32_t len_bytes)
+{
+    hle_cmd_buf = buf;
+    hle_cmd_base_idx = base_byte_addr >> 2;
+    hle_cmd_len_words = len_bytes >> 2;
+}
+
+static uint32_t rdp_fetch_cmd_word(uint32_t idx)
+{
+    if (hle_cmd_buf != NULL && (idx - hle_cmd_base_idx) < hle_cmd_len_words)
+        return hle_cmd_buf[idx - hle_cmd_base_idx];
+    return rdram_read_idx32(idx);
+}
+
 void n64video_process_list(void)
 {
     uint32_t** dp_reg = config.gfx.dp_reg;
@@ -268,7 +294,7 @@ void n64video_process_list(void)
             if (xbus_dma) {
                 cmd_buf[rdp_cmd_pos++] = dmem[dp_current_al++ & 0x3ff];
             } else {
-                cmd_buf[rdp_cmd_pos++] = rdram_read_idx32(dp_current_al++);
+                cmd_buf[rdp_cmd_pos++] = rdp_fetch_cmd_word(dp_current_al++);
             }
 
             rdp_cmd_id = CMD_ID(cmd_buf);
@@ -284,7 +310,7 @@ void n64video_process_list(void)
             }
         } else {
             for (i = 0; i < toload; i++) {
-                cmd_buf[rdp_cmd_pos++] = rdram_read_idx32(dp_current_al++);
+                cmd_buf[rdp_cmd_pos++] = rdp_fetch_cmd_word(dp_current_al++);
             }
         }
 

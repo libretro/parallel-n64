@@ -120,14 +120,24 @@ void f3dex2_set_rdram_size(unsigned int size)
     s_rdram_size = size;
 }
 
-void rdp_fifo_init(RdpFifo *f, unsigned char *rdram,
+/* RDRAM base for display-list, vertex and matrix reads. Previously the
+ * walker borrowed the FIFO's pointer, which doubled as the FIFO backing
+ * store; with the FIFO moved to host memory the two are distinct. */
+static unsigned char *s_rdram_base = 0;
+
+void f3dex2_set_rdram(unsigned char *rdram)
+{
+    s_rdram_base = rdram;
+}
+
+void rdp_fifo_init(RdpFifo *f, unsigned char *storage,
                    unsigned int base, unsigned int cap)
 {
-    f->rdram = rdram;
-    f->base  = base;
-    f->used  = 0;
-    f->cap   = cap;
-    f->flush = 0;
+    f->storage = storage;
+    f->base    = base;
+    f->used    = 0;
+    f->cap     = cap;
+    f->flush   = 0;
 }
 
 void rdp_fifo_append(RdpFifo *f, const int32_t *words, int count)
@@ -147,14 +157,14 @@ void rdp_fifo_append(RdpFifo *f, const int32_t *words, int count)
         if (f->used + (unsigned int)count * 4u > f->cap)
             return;
     }
-    off = f->base + f->used;
+    off = f->used;
     for (i = 0; i < count; i++)
     {
         unsigned int w = (unsigned int)words[i];
         unsigned int a = off + (unsigned int)i * 4u;
-        /* RDP command words are read by angrylion in host-native order from
-         * RDRAM (rdram_read_idx32 is native); store native. */
-        *(int32_t *)(f->rdram + a) = (int32_t)w;
+        /* RDP command words are fetched by angrylion in host-native order
+         * (the overlay fetch mirrors rdram_read_idx32); store native. */
+        *(int32_t *)(f->storage + a) = (int32_t)w;
     }
     f->used += (unsigned int)count * 4u;
 }
@@ -210,7 +220,10 @@ void f3dex2_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
     {
         unsigned int w0, w1;
         int cmd;
-        const unsigned char *r = fifo->rdram;
+        const unsigned char *r = s_rdram_base;
+
+        if (r == 0)
+            return;
 
         w0 = rd_u32_be(r, pc);
         w1 = rd_u32_be(r, pc + 4);
