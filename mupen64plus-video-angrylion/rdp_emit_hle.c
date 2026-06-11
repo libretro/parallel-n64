@@ -100,12 +100,22 @@ void rdp_emit_hle_process_dlist(void)
     }
     gsp_task_reset(&s_gsp);
 
-    /* Triangle-setup scale constants live in the microcode's v30 vector,
-     * loaded from the ucode data segment to DMEM 0x1C0: lane 2 is the edge
-     * dX scale, lane 7 the inverse-dY reciprocal scale. They differ per
-     * microcode revision (F3DEX2 2.08: 0x4000/0x0008, F3DZEX2:
-     * 0x1000/0x0020) and the intermediate clamp points depend on the
-     * split, so read the shipped pair instead of assuming one. */
+    /* Triangle-setup scale constants live in a microcode constants vector
+     * loaded from the ucode data segment. Their location and lane layout
+     * changed between revisions:
+     *   F3DEX2/F3DZEX2 2.08: vector at data+0x1C0; dX scale lane 2
+     *     (0x1000), VCR crimp bound lane 3 (0x0100), anchor fraction
+     *     mask lane 5 (0xFFF8), inverse-dY scale lane 7 (0x0020).
+     *   F3DEX2/F3DZEX2 2.0xH (e.g. 2.04H/2.06H): vector at data+0x1B0;
+     *     fraction mask lane 0 (0xFFFF), inverse-dY lane 2 (0x0008),
+     *     dX scale lane 5 (0x4000); the VCR bound (0x01CC) sits in the
+     *     following vector's lane 2 (data+0x1C4).
+     * The dX and inverse-dY scales split one 17-bit fixed-point factor, so
+     * dxs * idys == 0x20000 in every revision; use that to validate which
+     * layout the shipped data segment actually uses instead of trusting
+     * offsets blindly (reading the 2.08 slots on a 2.0xH segment returns
+     * unrelated constants and mis-sets every triangle edge). If neither
+     * layout validates, keep the 2.0xH defaults. */
     {
         unsigned int ud = read_dmem_u32(dmem, 0xfd8) & 0x00ffffffu;
         if (ud != 0 && ud + 0x1d0 <= rdram_size)
@@ -116,11 +126,21 @@ void rdp_emit_hle_process_dlist(void)
                                    |  rdram[(ud + 0x1cf) ^ 3]);
             int32_t fmsk = (int32_t)((rdram[(ud + 0x1ca) ^ 3] << 8)
                                    |  rdram[(ud + 0x1cb) ^ 3]);
+            int32_t vcrb = (int32_t)((rdram[(ud + 0x1c6) ^ 3] << 8)
+                                   |  rdram[(ud + 0x1c7) ^ 3]);
+            if (!(dxs > 0 && idys > 0 && (int64_t)dxs * idys == 0x20000))
             {
-                int32_t vcrb = (int32_t)((rdram[(ud + 0x1c6) ^ 3] << 8)
-                                       |  rdram[(ud + 0x1c7) ^ 3]);
-                gsp_set_tri_scales(&s_gsp, dxs, idys, fmsk, vcrb);
+                dxs  = (int32_t)((rdram[(ud + 0x1ba) ^ 3] << 8)
+                               |  rdram[(ud + 0x1bb) ^ 3]);
+                idys = (int32_t)((rdram[(ud + 0x1b4) ^ 3] << 8)
+                               |  rdram[(ud + 0x1b5) ^ 3]);
+                fmsk = (int32_t)((rdram[(ud + 0x1b0) ^ 3] << 8)
+                               |  rdram[(ud + 0x1b1) ^ 3]);
+                vcrb = (int32_t)((rdram[(ud + 0x1c4) ^ 3] << 8)
+                               |  rdram[(ud + 0x1c5) ^ 3]);
             }
+            if (dxs > 0 && idys > 0 && (int64_t)dxs * idys == 0x20000)
+                gsp_set_tri_scales(&s_gsp, dxs, idys, fmsk, vcrb);
         }
     }
 
