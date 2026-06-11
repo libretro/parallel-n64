@@ -639,6 +639,15 @@ void f3dex2_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
                 (gsp_get_geometry_mode(gsp) & (w0 & 0x00ffffffu)) | w1);
             break;
 
+        case 0x02:
+        {
+            /* G_MODIFYVTX: byte 1 selects the field (G_MWO_POINT_*), the
+             * low half-word is the vertex index times two, w1 the value. */
+            gsp_modify_vertex(gsp, (int)((w0 & 0xffffu) / 2u),
+                              (w0 >> 16) & 0xffu, (unsigned int)w1);
+            break;
+        }
+
         default:
             /* RDP render-state commands embedded in the display list
              * (G_SETxIMG, G_SETSCISSOR, G_SETCOMBINE, G_RDPSETOTHERMODE,

@@ -470,6 +470,7 @@ void gsp_vertex(GSPState *s, const unsigned char *rdram, unsigned int addr,
                                                    s->light_kc[li],
                                                    s->light_kl[li],
                                                    s->light_kq[li]);
+                        /* TEMP PTL counter */
                     }
                     else
                         d = rsp_light_dirdot(nrm, s->light_dir[li]);
@@ -662,6 +663,38 @@ void gsp_set_light(GSPState *s, const unsigned char *rdram,
     s->light_pos[index][2] = (int32_t)(short)((read_u8_n64(rdram, addr + 12) << 8)
                                              | read_u8_n64(rdram, addr + 13));
     /* G_MOVEMEM does not touch lightsValid (see gsp_set_lookat). */
+}
+
+/* G_MODIFYVTX: patch one field of an already-transformed vertex in the
+ * buffer. The ST write (where == 0x14) carries texture coordinates the
+ * game has already multiplied by the G_TEXTURE scale, exactly the 16-bit
+ * value the RSP vertex buffer keeps, so it bypasses the vertex loader's
+ * scale fold; the stored s15.16 form is that value shifted up. The RGBA
+ * write replaces the shade color bytes. Screen-coordinate overrides
+ * (0x18/0x1c) are not modeled: the clip-space position they would
+ * desynchronize from feeds the clipper, and no validated content uses
+ * them yet. */
+void gsp_modify_vertex(GSPState *s, int vtx, unsigned int where,
+                       unsigned int w1)
+{
+    GSPVertex *vt;
+    if (vtx < 0 || vtx >= GSP_MAX_VERTICES)
+        return;
+    vt = &s->vtx[vtx];
+    if (where == 0x14u)         /* G_MWO_POINT_ST */
+    {
+        vt->s = (int32_t)(int16_t)((w1 >> 16) & 0xffffu) << 16;
+        vt->t = (int32_t)(int16_t)(w1 & 0xffffu) << 16;
+        vt->sv = (int16_t)((w1 >> 16) & 0xffffu);
+        vt->tv = (int16_t)(w1 & 0xffffu);
+    }
+    else if (where == 0x10u)    /* G_MWO_POINT_RGBA */
+    {
+        vt->r = (int32_t)((w1 >> 24) & 0xffu) << 16;
+        vt->g = (int32_t)((w1 >> 16) & 0xffu) << 16;
+        vt->b = (int32_t)((w1 >> 8) & 0xffu) << 16;
+        vt->a = (int32_t)(w1 & 0xffu) << 16;
+    }
 }
 
 void gsp_set_light_color(GSPState *s, int index,
