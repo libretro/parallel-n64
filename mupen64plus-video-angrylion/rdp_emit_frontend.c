@@ -463,12 +463,14 @@ void gsp_vertex(GSPState *s, const unsigned char *rdram, unsigned int addr,
                 for (li = s->num_lights - 1; li >= 0; li--)
                 {
                     if (s->light_kc[li] != 0)
+                    {
                         d = rsp_light_point_factor((const int32_t (*)[4])MV,
                                                    nrm, vtx3,
                                                    s->light_pos[li],
                                                    s->light_kc[li],
                                                    s->light_kl[li],
                                                    s->light_kq[li]);
+                    }
                     else
                         d = rsp_light_dirdot(nrm, s->light_dir[li]);
                     rsp_light_fold1(lt, s->light_rgb[li], d);
@@ -1025,6 +1027,7 @@ int gsp_triangle(GSPState *s, int32_t *cmd, int i0, int i1, int i2,
             v2.rsp_ok = tv[2].rsp_ok; v2.rsp_invw = tv[2].rsp_invw;
             nc = bridge_add_triangle(cmd + total, &v0, &v1, &v2, &s->viewport,
                                      textured, z_buffered,
+                                     (s->geometry_mode & 0x00000004u) ? 1 : 0,
                                      (s->geometry_mode & 0x00200000u) ? 1 : 0,
                                      (int)((s->geometry_mode >> 9) & 3u),
                                      s->tex_tile, s->tex_level, s->tex_w, s->tex_h);

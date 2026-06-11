@@ -1042,7 +1042,7 @@ static Rsp32 sub32(Rsp32 a, Rsp32 b)
 int rsp_tri_write(int32_t *ew,
                   const RspTriVtx *v1c, const RspTriVtx *v2c,
                   const RspTriVtx *v3c,
-                  int textured, int z_buffered, int smooth,
+                  int textured, int z_buffered, int shaded, int smooth,
                   int tile, int level,
                   int32_t dx_scale, int32_t idy_scale,
                   int32_t frac_mask, int32_t vcr_bound)
@@ -1355,7 +1355,10 @@ int rsp_tri_write(int32_t *ew,
     /* ---- assemble command words ---- */
     {
         int32_t w0;
-        int id = 0xc8 | (z_buffered ? 1 : 0) | 4 /* G_TRI_FILL base */
+        /* The command type mirrors the microcode's fill-mode byte:
+         * G_TRI_FILL 0xc8 base, +1 Z, +2 texture, +4 shade -- the shade
+         * bit follows G_SHADE in the geometry mode, not a constant. */
+        int id = 0xc8 | (z_buffered ? 1 : 0) | (shaded ? 4 : 0)
                | (textured ? 2 : 0);
         /* The microcode stores YL/YM/YH with plain 16-bit ssv: no 14-bit
          * masking, so negative values keep their full sign bits in the
@@ -1377,7 +1380,11 @@ int rsp_tri_write(int32_t *ew,
         ew[7] = (int32_t)(((uint32_t)U16(dxmdy.i) << 16) | (uint32_t)U16(dxmdy.f));
         nw = 8;
 
-        /* shade block */
+        /* shade block: emitted only when G_SHADE is set (the microcode
+         * computes the attribute lanes unconditionally and gates the
+         * stores) */
+        if (shaded)
+        {
         ew[nw + 0] = (int32_t)(((uint32_t)U16(base[0].i) << 16) | (uint32_t)U16(base[1].i));
         ew[nw + 1] = (int32_t)(((uint32_t)U16(base[2].i) << 16) | (uint32_t)U16(base[3].i));
         ew[nw + 2] = (int32_t)(((uint32_t)U16(dAdX[0].i) << 16) | (uint32_t)U16(dAdX[1].i));
@@ -1395,6 +1402,7 @@ int rsp_tri_write(int32_t *ew,
         ew[nw +14] = (int32_t)(((uint32_t)U16(dAdY[0].f) << 16) | (uint32_t)U16(dAdY[1].f));
         ew[nw +15] = (int32_t)(((uint32_t)U16(dAdY[2].f) << 16) | (uint32_t)U16(dAdY[3].f));
         nw += 16;
+        }
 
         if (textured)
         {

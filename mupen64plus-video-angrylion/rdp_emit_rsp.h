@@ -47,7 +47,7 @@ typedef struct RspTriVtx
 int rsp_tri_write(int32_t *ew,
                   const RspTriVtx *v1c, const RspTriVtx *v2c,
                   const RspTriVtx *v3c,
-                  int textured, int z_buffered, int smooth,
+                  int textured, int z_buffered, int shaded, int smooth,
                   int tile, int level,
                   int32_t dx_scale, int32_t idy_scale,
                   int32_t frac_mask, int32_t vcr_bound);
