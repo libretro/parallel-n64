@@ -345,9 +345,13 @@ void f3dex2_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
             int c1 = (int)((w1 >> 1) & 0x7f);
             int32_t cmdw[220];
             int nc;
-            nc = gsp_triangle(gsp, cmdw, a0, b0, c0, s_textured, s_zbuffered);
-            if (nc > 0) rdp_fifo_append(fifo, cmdw, nc);
+            /* The G_TRI2 handler stores the second triangle's indices and
+             * jals tri_to_rdp before falling through to the G_TRI1 path
+             * for the first triangle: the microcode emits the SECOND
+             * triangle of the pair first. */
             nc = gsp_triangle(gsp, cmdw, a1, b1, c1, s_textured, s_zbuffered);
+            if (nc > 0) rdp_fifo_append(fifo, cmdw, nc);
+            nc = gsp_triangle(gsp, cmdw, a0, b0, c0, s_textured, s_zbuffered);
             if (nc > 0) rdp_fifo_append(fifo, cmdw, nc);
             break;
         }
