@@ -1133,3 +1133,50 @@ void alist_overload(struct hle_t* hle, uint16_t dmem, int16_t count, int16_t gai
         count --;
     }
 }
+
+/* OoT aspMain command 0x03 ("AudioSynth_UnkCmd3" in the OoT
+ * decompilation, emitted after the final resample for samples with
+ * bookOffset == 2). Processes 32-byte chunks: within each chunk the
+ * first 8 samples A (signed) and the next 8 samples B (reinterpreted
+ * unsigned) are multiplied pairwise by a vmudn/vmadn pair, giving
+ * out[0..7]  = sat(acc = 2*B*A)  (RSP unsigned-low clamp on the 48-bit
+ *                                 accumulator: hi > 0x7fff -> 0xffff,
+ *                                 hi < -0x8000 -> 0x0000, else acc lo)
+ * out[8..15] = lo16(B*A)         (single mul: hi is always within
+ *                                 [-0x8000,0x7fff], so never clamped).
+ * The ucode loop is do-while on (count -= 0x20) > 0, so count <= 0x20
+ * (including 0) still processes exactly one chunk. */
+void alist_unkcmd3(struct hle_t* hle, uint16_t dmemo, uint16_t dmemi, uint16_t count)
+{
+    int32_t n = (int32_t)count;
+
+    do
+    {
+        unsigned i;
+        int32_t  a[8];
+        uint32_t b[8];
+
+        for (i = 0; i < 8; ++i)
+        {
+            a[i] = *alist_s16(hle, (uint16_t)(dmemi + (i << 1)));
+            b[i] = (uint16_t)*alist_s16(hle, (uint16_t)(dmemi + 0x10 + (i << 1)));
+        }
+
+        for (i = 0; i < 8; ++i)
+        {
+            int64_t acc = (int64_t)b[i] * (int64_t)a[i];
+            int32_t hi;
+
+            *alist_s16(hle, (uint16_t)(dmemo + 0x10 + (i << 1))) = (int16_t)(acc & 0xffff);
+
+            acc += (int64_t)b[i] * (int64_t)a[i];
+            hi = (int32_t)(acc >> 16);
+            *alist_s16(hle, (uint16_t)(dmemo + (i << 1))) =
+                (hi > 32767) ? (int16_t)0xffff :
+                (hi < -32768) ? (int16_t)0x0000 : (int16_t)(acc & 0xffff);
+        }
+        dmemi += 0x20;
+        dmemo += 0x20;
+        n -= 0x20;
+    } while (n > 0);
+}

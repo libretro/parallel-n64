@@ -345,6 +345,18 @@ static void S8DEC(struct hle_t* hle, uint32_t w1, uint32_t w2)
             address);
 }
 
+/* OoT aspMain command 0x03 (AudioSynth_UnkCmd3 in the OoT decomp,
+ * issued for bookOffset == 2 samples). w1 low 16 = byte count,
+ * w2 = dmemi << 16 | dmemo. */
+static void UNKCMD3(struct hle_t* hle, uint32_t w1, uint32_t w2)
+{
+    uint16_t count = w1;
+    uint16_t dmemi = (w2 >> 16);
+    uint16_t dmemo = w2;
+
+    alist_unkcmd3(hle, dmemo, dmemi, count);
+}
+
 static void SEGMENT(struct hle_t* UNUSED(hle), uint32_t UNUSED(w1), uint32_t UNUSED(w2))
 {
 }
@@ -498,12 +510,12 @@ void alist_process_nead_1080(struct hle_t* hle)
 void alist_process_nead_oot(struct hle_t* hle)
 {
     static const acmd_callback_t ABI[0x18] = {
-        UNKNOWN,        ADPCM,          CLEARBUFF,      UNKNOWN,
+        UNKNOWN,        ADPCM,          CLEARBUFF,      UNKCMD3,
         ADDMIXER,       RESAMPLE,       RESAMPLE_ZOH,   FILTER,
         SETBUFF,        DUPLICATE,      DMEMMOVE,       LOADADPCM,
         MIXER,          INTERLEAVE,     HILOGAIN,       SETLOOP,
         NEAD_16,        INTERL,         ENVSETUP1,      ENVMIXER,
-        LOADBUFF,       SAVEBUFF,       ENVSETUP2,      UNKNOWN
+        LOADBUFF,       SAVEBUFF,       ENVSETUP2,      S8DEC
     };
 
     alist_process(hle, ABI, 0x18);

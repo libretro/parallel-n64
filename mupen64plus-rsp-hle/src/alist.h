@@ -134,6 +134,12 @@ void alist_s8dec(
         uint32_t loop_address,
         uint32_t address);
 
+void alist_unkcmd3(
+        struct hle_t* hle,
+        uint16_t dmemo,
+        uint16_t dmemi,
+        uint16_t count);
+
 void alist_mix_nead(
         struct hle_t* hle,
         uint16_t dmemo,
