@@ -162,6 +162,27 @@ void rdp_emit_hle_process_dlist(void)
      * z_buffered default off here; a gDP/state-translation follow-up sets the
      * render mode and the per-frame setup commands. */
     f3dex2_seg_reset();
+
+    /* Seed the other-modes mirror from the microcode data defaults
+     * (pair at ucode_data + 0xc8 -> DMEM 0xc8): the baseline the partial
+     * 0xE2/0xE3 writes merge into for games that never send a wholesale
+     * G_RDPSETOTHERMODE. Applied after the per-task reset. */
+    {
+        unsigned int ud = read_dmem_u32(dmem, 0xfd8) & 0x00ffffffu;
+        if (ud != 0 && ud + 0xd0 <= rdram_size)
+        {
+            unsigned int oh = ((unsigned int)rdram[(ud + 0xc8) ^ 3] << 24)
+                            | ((unsigned int)rdram[(ud + 0xc9) ^ 3] << 16)
+                            | ((unsigned int)rdram[(ud + 0xca) ^ 3] << 8)
+                            |  (unsigned int)rdram[(ud + 0xcb) ^ 3];
+            unsigned int ol = ((unsigned int)rdram[(ud + 0xcc) ^ 3] << 24)
+                            | ((unsigned int)rdram[(ud + 0xcd) ^ 3] << 16)
+                            | ((unsigned int)rdram[(ud + 0xce) ^ 3] << 8)
+                            |  (unsigned int)rdram[(ud + 0xcf) ^ 3];
+            if ((oh >> 24) == 0xefu)
+                f3dex2_set_othermode_init(oh, ol);
+        }
+    }
     f3dex2_set_rdram(rdram);
     f3dex2_set_rdram_size(rdram_size);
     f3dex2_run_dl(&s_gsp, &s_fifo, dl_addr, 0, 0);

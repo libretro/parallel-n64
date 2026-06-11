@@ -112,6 +112,21 @@ static void seg_reset(void)
     s_othermode_l = 0u;
 }
 
+/* Seed the other-modes mirror with the microcode's data-segment default
+ * pair (DMEM 0xc8, loaded from ucode_data + 0xc8 at task boot). Games
+ * that never send a wholesale G_RDPSETOTHERMODE -- Super Smash Bros.
+ * updates only bitfields via 0xE2/0xE3 -- inherit these defaults on the
+ * real RSP, so partial writes must merge into them, not into zero. The
+ * stored high word keeps the microcode's 0xEF command byte, exactly as
+ * the RSP mirror does (the RDP decodes only the low 6 opcode bits). */
+void f3dex2_set_othermode_init(unsigned int h, unsigned int l)
+{
+    s_othermode_h = h;
+    s_othermode_l = l;
+    s_zbuffered = (((s_othermode_l >> 4) & 1u) ||
+                   ((s_othermode_l >> 5) & 1u)) ? 1 : 0;
+}
+
 void f3dex2_seg_reset(void)
 {
     s2dex_reset();
