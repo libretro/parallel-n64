@@ -13,6 +13,8 @@ void rsp_clip_lerp(const int32_t on_pos[4], const int32_t off_pos[4],
                    const int16_t cr[4],
                    const int16_t on_attr[8], const int16_t off_attr[8],
                    int32_t out_pos[4], int16_t out_attr[8]);
+void rsp_texgen(const int32_t n[3], const int32_t l0[3], const int32_t l1[3],
+                int linear, int32_t *s_out, int32_t *t_out);
 void rsp_light_vtx(const int32_t n[3], const int32_t amb[3],
                    const int32_t (*rgb)[3], const int32_t (*dirs)[3],
                    int num, int32_t out[3]);

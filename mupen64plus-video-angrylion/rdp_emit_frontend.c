@@ -274,50 +274,6 @@ static void gsp_light_dir_xfrm(GSPState *s)
     s->lights_valid = 1;
 }
 
-/* acos(x)/pi * 1024 for x = i/128, i in [0,128]; the G_TEXTURE_GEN_LINEAR
- * texture coordinate is acos(-n.L)/pi in S10.5 raw units (0..1024). */
-static const short acos_pi_1024[129] = {
-    512, 509, 507, 504, 502, 499, 497, 494, 492, 489, 487, 484,
-    481, 479, 476, 474, 471, 469, 466, 463, 461, 458, 456, 453,
-    451, 448, 445, 443, 440, 438, 435, 432, 430, 427, 424, 422,
-    419, 416, 414, 411, 408, 406, 403, 400, 398, 395, 392, 389,
-    387, 384, 381, 378, 376, 373, 370, 367, 364, 362, 359, 356,
-    353, 350, 347, 344, 341, 338, 335, 332, 329, 326, 323, 320,
-    317, 314, 311, 308, 305, 302, 298, 295, 292, 289, 285, 282,
-    279, 275, 272, 268, 265, 261, 258, 254, 251, 247, 243, 239,
-    236, 232, 228, 224, 220, 216, 211, 207, 203, 198, 194, 189,
-    185, 180, 175, 170, 165, 159, 154, 148, 142, 136, 130, 123,
-    116, 108, 100, 91, 82, 71, 58, 41, 0
-};
-
-/* Texture-coordinate generation (G_TEXTURE_GEN): map the cosine d = n . L
- * (s.15) to a raw S10.5 coordinate in [0, 32768] (0..1024 texels):
- *   plain:  raw = (d + 1) * 16384      == (d + 32768) >> 1
- *   linear: raw = acos(-d) / pi * 32768 (table + linear interpolation)
- * The result feeds the same G_TEXTURE-scale path as a vertex-supplied
- * coordinate. Calibrated against the cxd4 LLE oracle on the N64 boot logo
- * (G_TEXTURE_GEN_LINEAR, scale 0x0ED8, lookat Y zero): the constant
- * generated T at the d == 0 midpoint, 16384 * 0x0ED8 * 2 / 65536 == 1900
- * raw S10.5, matches the oracle's T coefficient exactly. */
-static int texgen_coord(int32_t d, int linear)
-{
-    if (!linear)
-        return (int)((d + 32768) >> 1);
-    else
-    {
-        int neg = (d < 0);
-        int32_t a = neg ? -d : d;
-        int idx  = (int)(a >> 8);
-        int frac = (int)(a & 0xff);
-        int v0, v1, v;
-        if (idx > 128) idx = 128;
-        v0 = acos_pi_1024[idx];
-        v1 = acos_pi_1024[idx < 128 ? idx + 1 : 128];
-        v  = v0 + (((v1 - v0) * frac) >> 8);
-        return (neg ? v : 1024 - v) << 5;
-    }
-}
-
 void gsp_set_fog(GSPState *s, int fm, int fo)
 {
     s->fog_m = fm;
@@ -585,25 +541,17 @@ void gsp_vertex(GSPState *s, const unsigned char *rdram, unsigned int addr,
 
             if (s->geometry_mode & 0x00040000u) /* G_TEXTURE_GEN */
             {
-                /* Generate texture coordinates from the transformed,
-                 * normalized normal dotted with the lookat X/Y vectors
-                 * (MOVEMEM light slots 0/1). The generated S10.5 raw values
-                 * replace the vertex-supplied ones and take the same
-                 * G_TEXTURE-scale path below. The boot-logo N is the OoT
-                 * test case (TEXTURE_GEN_LINEAR, scale 0x0ED8). */
+                /* lights_texgenmain: generated coordinates from the raw s8
+                 * normal against the two transformed lookat directions
+                 * (MOVEMEM light slots 0/1), through the exact vmulf/vmacf
+                 * accumulator chain; they replace the vertex-supplied lane
+                 * values ahead of the same texture-scale multiply. */
                 int linear = (s->geometry_mode & 0x00080000u) ? 1 : 0;
-                int32_t d0 = 2 * (nxb * s->lookat[0][0]
-                                + nyb * s->lookat[0][1]
-                                + nzb * s->lookat[0][2]);
-                int32_t d1 = 2 * (nxb * s->lookat[1][0]
-                                + nyb * s->lookat[1][1]
-                                + nzb * s->lookat[1][2]);
-                if (d0 >  32767) d0 =  32767;
-                if (d0 < -32768) d0 = -32768;
-                if (d1 >  32767) d1 =  32767;
-                if (d1 < -32768) d1 = -32768;
-                st_s = texgen_coord(d0, linear);
-                st_t = texgen_coord(d1, linear);
+                int32_t nrm[3], gs, gt;
+                nrm[0] = nxb; nrm[1] = nyb; nrm[2] = nzb;
+                rsp_texgen(nrm, s->lookat[0], s->lookat[1], linear, &gs, &gt);
+                st_s = gs;
+                st_t = gt;
             }
         }
         else

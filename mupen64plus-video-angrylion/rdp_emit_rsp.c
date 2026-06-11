@@ -485,6 +485,72 @@ void rsp_light_vtx(const int32_t n[3], const int32_t amb[3],
         out[c] = (lt[c] >> 7) & 0xff;
 }
 
+/* The lights_texgenmain chain (G_TEXTURE_GEN): texture coordinates from
+ * the raw s8 vertex normal dotted with the two transformed s8 lookat
+ * directions, all entering the lanes as byte << 8 (lpv), through the
+ * signed vmulf/vmacf accumulator. The plain coordinate is the
+ * vmudh(1, 0x4000) + vmacf(0x4000, dot) chain; G_TEXTURE_GEN_LINEAR
+ * continues the same accumulator with vmadh(1, 0xC000) to recenter, then
+ * applies the linearGenerateCoefficients polynomial {0x44D3, 0x6CB3} on
+ * the clamped lane values (the 2.08 behaviour, without the 2.04H
+ * BUG_TEXGEN_LINEAR_CLOBBER_S_T accumulator clobber). */
+static int32_t rsp_texgen_dot(const int32_t n[3], const int32_t d[3])
+{
+    RspAcc acc = 0x8000;    /* vmulf rounding bias */
+    int ax;
+    for (ax = 0; ax < 3; ax++)
+    {
+        int32_t nl = (int32_t)(int16_t)(uint16_t)((n[ax] & 0xff) << 8);
+        int32_t dl = (int32_t)(int16_t)(uint16_t)((d[ax] & 0xff) << 8);
+        acc += 2 * (RspAcc)nl * dl;
+    }
+    return (int32_t)(int16_t)acc_read_signed(acc);
+}
+
+void rsp_texgen(const int32_t n[3], const int32_t l0[3], const int32_t l1[3],
+                int linear, int32_t *s_out, int32_t *t_out)
+{
+    int32_t dot[2];
+    int32_t st[2];
+    RspAcc acc[2];
+    int k;
+    dot[0] = rsp_texgen_dot(n, l0);     /* S lanes (lookat 0) */
+    dot[1] = rsp_texgen_dot(n, l1);     /* T lanes (lookat 1) */
+    for (k = 0; k < 2; k++)
+    {
+        /* vmudh vOne, 0x4000 then vmacf mask, dot */
+        acc[k] = ((RspAcc)0x4000) << 16;
+        acc[k] += 2 * (RspAcc)0x4000 * dot[k];
+        st[k] = (int32_t)(int16_t)acc_read_signed(acc[k]);
+    }
+    if (linear)
+    {
+        for (k = 0; k < 2; k++)
+        {
+            int32_t st1, sq, v3;
+            RspAcc a2;
+            /* vmadh vOne, 0xC000: continue the accumulator with -0x4000 */
+            acc[k] += ((RspAcc)(int32_t)(int16_t)0xC000) << 16;
+            st1 = (int32_t)(int16_t)acc_read_signed(acc[k]);
+            /* vmulf(st, st) */
+            sq = (int32_t)(int16_t)acc_read_signed(
+                (RspAcc)0x8000 + 2 * (RspAcc)st1 * st1);
+            /* vmulf(st, 0x7FFF) + vmacf(st, 0x6CB3) */
+            v3 = (int32_t)(int16_t)acc_read_signed(
+                (RspAcc)0x8000 + 2 * (RspAcc)st1 * 0x7fff
+                               + 2 * (RspAcc)st1 * 0x6cb3);
+            /* vmudh vOne, 0x4000 (accumulator reset, result discarded),
+             * vmacf(st, 0x44D3), vmacf(sq, v3) */
+            a2 = ((RspAcc)0x4000) << 16;
+            a2 += 2 * (RspAcc)st1 * 0x44d3;
+            a2 += 2 * (RspAcc)sq * v3;
+            st[k] = (int32_t)(int16_t)acc_read_signed(a2);
+        }
+    }
+    *s_out = st[0];
+    *t_out = st[1];
+}
+
 /* ---- clipping ---------------------------------------------------------- */
 
 /* The clip-ratio-scaled W the vertex pipeline compares against for the
