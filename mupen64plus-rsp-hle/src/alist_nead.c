@@ -312,14 +312,20 @@ static void FILTER(struct hle_t* hle, uint32_t w1, uint32_t w2)
     uint32_t address = (w2 & 0xffffff);
 
     if (flags > 1) {
-        hle->alist_nead.filter_count          = w1;
-        hle->alist_nead.filter_lut_address[0] = address; /* t6 */
+        /* setup: latch the byte count and snapshot the 16-byte
+         * coefficient table from DRAM (the ucode DMAs it into DMEM;
+         * later DRAM changes must not be observed by the run). */
+        hle->alist_nead.filter_count = w1;
+        dram_load_u16(hle, (uint16_t*)hle->alist_nead.filter_table, address, 8);
     }
     else {
         uint16_t dmem = w1;
 
-        hle->alist_nead.filter_lut_address[1] = address + 0x10; /* t5 */
-        alist_filter(hle, dmem, hle->alist_nead.filter_count, address, hle->alist_nead.filter_lut_address);
+        /* run: flags==1 starts from zeroed state, flags==0 resumes
+         * from the 32-byte state at `address`. */
+        alist_filter(hle, (flags & 0x1) != 0, dmem,
+                     hle->alist_nead.filter_count, address,
+                     hle->alist_nead.filter_table);
     }
 }
 

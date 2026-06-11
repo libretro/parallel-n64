@@ -126,10 +126,11 @@ void alist_resample_zoh(
 
 void alist_filter(
         struct hle_t* hle,
+        bool init,
         uint16_t dmem,
         uint16_t count,
         uint32_t address,
-        const uint32_t* lut_address);
+        const int16_t* table);
 
 void alist_polef(
         struct hle_t* hle,

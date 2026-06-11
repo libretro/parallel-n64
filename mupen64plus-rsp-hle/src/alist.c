@@ -791,119 +791,88 @@ void alist_adpcm(
 }
 
 
+/* Bit-exact reimplementation of the aspMain FILTER command (opcode 0x07),
+ * derived from the F3DZEX-era audio microcode (Zelda MM aspMain) and
+ * validated word-for-word against cxd4. The previous implementation
+ * descended from ancient plugin folklore and had five behavioral
+ * divergences, including a write-back that corrupted the caller's
+ * coefficient table in RDRAM. See FILTER() in alist_nead.c for the
+ * setup/run command split.
+ *
+ * Semantics (run, flags 0/1):
+ *   state in DRAM at `address`: 8 previous input samples (+0x00) and the
+ *   previous working table (+0x10). flags==1 (init) uses zeros instead of
+ *   loading the state. The working table is the rounded average of the
+ *   16-byte table snapshot taken at setup time and the previous working
+ *   table (vmacf with a 0x4000 scalar: acc = 0x8000 + (a + b) << 15).
+ *   Each output is an 8-tap FIR over the window of the last 15 samples:
+ *     out[n] = clamp_s16((0x8000 + 2 * sum_k t[k] * s[n + 7 - k]) >> 16)
+ *   with s = [prev[1..7], cur[0..7]], processed in-place on the DMEM
+ *   buffer in 16-byte blocks (at least one block, count rounded up).
+ *   Afterwards the last raw input block and the working table are stored
+ *   back to DRAM at `address` (32 bytes). The setup-address table is
+ *   never written. */
 void alist_filter(
         struct hle_t* hle,
+        bool init,
         uint16_t dmem,
         uint16_t count,
         uint32_t address,
-        const uint32_t* lut_address)
+        const int16_t* table)
 {
-    int x;
-    int16_t outbuff[0x3c0];
-    int16_t *outp = outbuff;
+    int16_t state_samples[8];
+    int16_t state_table[8];
+    int16_t t[8];
+    int16_t win[15];
+    int16_t cur[8];
+    int16_t out[8];
+    unsigned int i;
+    int32_t remaining;
 
-    int16_t* const lutt6 = (int16_t*)(hle->dram + lut_address[0]);
-    int16_t* const lutt5 = (int16_t*)(hle->dram + lut_address[1]);
-
-    int16_t* in1 = (int16_t*)(hle->dram + address);
-    int16_t* in2 = (int16_t*)(hle->alist_buffer + dmem);
-
-
-    for (x = 0; x < 8; ++x) {
-        int32_t v = (lutt5[x] + lutt6[x]) >> 1;
-        lutt5[x] = lutt6[x] = v;
+    if (init) {
+        memset(state_samples, 0, sizeof(state_samples));
+        memset(state_table,   0, sizeof(state_table));
+    }
+    else {
+        dram_load_u16(hle, (uint16_t*)state_samples, address,        8);
+        dram_load_u16(hle, (uint16_t*)state_table,   address + 0x10, 8);
     }
 
-    for (x = 0; x < count; x += 16) {
-        int32_t v[8];
+    for (i = 0; i < 8; ++i)
+        t[i] = (int16_t)(((int32_t)table[i] + (int32_t)state_table[i] + 1) >> 1);
 
-        v[1] =  in1[0] * lutt6[6];
-        v[1] += in1[3] * lutt6[7];
-        v[1] += in1[2] * lutt6[4];
-        v[1] += in1[5] * lutt6[5];
-        v[1] += in1[4] * lutt6[2];
-        v[1] += in1[7] * lutt6[3];
-        v[1] += in1[6] * lutt6[0];
-        v[1] += in2[1] * lutt6[1]; /* 1 */
+    for (i = 0; i < 7; ++i)
+        win[i] = state_samples[i + 1];
 
-        v[0] =  in1[3] * lutt6[6];
-        v[0] += in1[2] * lutt6[7];
-        v[0] += in1[5] * lutt6[4];
-        v[0] += in1[4] * lutt6[5];
-        v[0] += in1[7] * lutt6[2];
-        v[0] += in1[6] * lutt6[3];
-        v[0] += in2[1] * lutt6[0];
-        v[0] += in2[0] * lutt6[1];
+    remaining = (int32_t)count;
+    do {
+        for (i = 0; i < 8; ++i) {
+            cur[i] = *alist_s16(hle, dmem + (uint16_t)(i << 1));
+            win[7 + i] = cur[i];
+        }
 
-        v[3] =  in1[2] * lutt6[6];
-        v[3] += in1[5] * lutt6[7];
-        v[3] += in1[4] * lutt6[4];
-        v[3] += in1[7] * lutt6[5];
-        v[3] += in1[6] * lutt6[2];
-        v[3] += in2[1] * lutt6[3];
-        v[3] += in2[0] * lutt6[0];
-        v[3] += in2[3] * lutt6[1];
+        for (i = 0; i < 8; ++i) {
+            int64_t acc = 0x8000;
+            unsigned int k;
+            for (k = 0; k < 8; ++k)
+                acc += 2 * (int64_t)((int32_t)t[k] * (int32_t)win[i + 7 - k]);
+            acc >>= 16;
+            if (acc >  32767) acc =  32767;
+            if (acc < -32768) acc = -32768;
+            out[i] = (int16_t)acc;
+        }
 
-        v[2] =  in1[5] * lutt6[6];
-        v[2] += in1[4] * lutt6[7];
-        v[2] += in1[7] * lutt6[4];
-        v[2] += in1[6] * lutt6[5];
-        v[2] += in2[1] * lutt6[2];
-        v[2] += in2[0] * lutt6[3];
-        v[2] += in2[3] * lutt6[0];
-        v[2] += in2[2] * lutt6[1];
+        for (i = 0; i < 8; ++i)
+            *alist_s16(hle, dmem + (uint16_t)(i << 1)) = out[i];
+        dmem += 16;
+        remaining -= 16;
 
-        v[5] =  in1[4] * lutt6[6];
-        v[5] += in1[7] * lutt6[7];
-        v[5] += in1[6] * lutt6[4];
-        v[5] += in2[1] * lutt6[5];
-        v[5] += in2[0] * lutt6[2];
-        v[5] += in2[3] * lutt6[3];
-        v[5] += in2[2] * lutt6[0];
-        v[5] += in2[5] * lutt6[1];
+        for (i = 0; i < 7; ++i)
+            win[i] = cur[i + 1];
+    } while (remaining > 0);
 
-        v[4] =  in1[7] * lutt6[6];
-        v[4] += in1[6] * lutt6[7];
-        v[4] += in2[1] * lutt6[4];
-        v[4] += in2[0] * lutt6[5];
-        v[4] += in2[3] * lutt6[2];
-        v[4] += in2[2] * lutt6[3];
-        v[4] += in2[5] * lutt6[0];
-        v[4] += in2[4] * lutt6[1];
-
-        v[7] =  in1[6] * lutt6[6];
-        v[7] += in2[1] * lutt6[7];
-        v[7] += in2[0] * lutt6[4];
-        v[7] += in2[3] * lutt6[5];
-        v[7] += in2[2] * lutt6[2];
-        v[7] += in2[5] * lutt6[3];
-        v[7] += in2[4] * lutt6[0];
-        v[7] += in2[7] * lutt6[1];
-
-        v[6] =  in2[1] * lutt6[6];
-        v[6] += in2[0] * lutt6[7];
-        v[6] += in2[3] * lutt6[4];
-        v[6] += in2[2] * lutt6[5];
-        v[6] += in2[5] * lutt6[2];
-        v[6] += in2[4] * lutt6[3];
-        v[6] += in2[7] * lutt6[0];
-        v[6] += in2[6] * lutt6[1];
-
-        outp[1] = ((v[1] + 0x4000) >> 15);
-        outp[0] = ((v[0] + 0x4000) >> 15);
-        outp[3] = ((v[3] + 0x4000) >> 15);
-        outp[2] = ((v[2] + 0x4000) >> 15);
-        outp[5] = ((v[5] + 0x4000) >> 15);
-        outp[4] = ((v[4] + 0x4000) >> 15);
-        outp[7] = ((v[7] + 0x4000) >> 15);
-        outp[6] = ((v[6] + 0x4000) >> 15);
-        in1 = in2;
-        in2 += 8;
-        outp += 8;
-    }
-
-    memcpy(hle->dram + address, in2 - 8, 16);
-    memcpy(hle->alist_buffer + dmem, outbuff, count);
+    dram_store_u16(hle, (uint16_t*)cur, address,        8);
+    dram_store_u16(hle, (uint16_t*)t,   address + 0x10, 8);
 }
 
 void alist_polef(
