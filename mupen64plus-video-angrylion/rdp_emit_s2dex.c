@@ -118,6 +118,8 @@ void s2dex_bg_1cyc(const unsigned char *rdram, unsigned int rdram_bytes,
     /* clipped frame rectangle (IMEM 0x784-0x7c4), 10.2 / pixel rows */
     unsigned int clip_ulx, clip_lrx;            /* DMEM 0x3d8 / 0x3da */
     unsigned int clip_uly_px, clip_h_px;        /* texrect row counters */
+    unsigned int clip_l_q, clip_t_q;            /* left/top clip, 10.2 */
+    unsigned int draw_w_q;                      /* drawn width, 10.2 */
 
     /* image-space start offsets and per-strip parameters */
     unsigned int line_words;        /* DMEM 0x3e2: SETTILE line field */
@@ -126,10 +128,11 @@ void s2dex_bg_1cyc(const unsigned char *rdram, unsigned int rdram_bytes,
     unsigned int strip_adv;         /* DMEM 0x404: image pointer advance */
     unsigned int img_rows;          /* DMEM 0x40c: image height in rows */
     unsigned int settimg_w0, settile_w0;        /* DMEM 0x3f8 / 0x3fc */
+    unsigned int seam_flag;         /* DMEM 0x3e1 */
+    unsigned int start_row, y_ofs;  /* DMEM 0x40e / 0x3f4 */
+    uint32_t     rows_q;            /* DMEM 0x3e8: rows step, u6.10 */
 
     int32_t cw[6];
-    unsigned int strip_ptr, rows_left, y_top, y_bot, t9_extra;
-    unsigned int n_rows, load_rows;
     unsigned int siz_add, siz_mul, fmt_cap;
     uint32_t extent_w, extent_h;    /* scaled image extents minus 1 LSB */
     uint32_t excess_w, excess_h;
@@ -158,9 +161,6 @@ void s2dex_bg_1cyc(const unsigned char *rdram, unsigned int rdram_bytes,
     scale_h    = bg_rd_u16(rdram, bg_addr + 0x1e);
 
     (void)image_load;
-    (void)image_x;
-    (void)image_y;
-    (void)t9_extra;
 
     bilerp  = (s_obj_rendermode >> 3) & 1u;     /* IMEM 0x854-0x85c */
     flip_s  = image_flip & 1u;                  /* IMEM 0x748-0x754 */
@@ -217,18 +217,10 @@ void s2dex_bg_1cyc(const unsigned char *rdram, unsigned int rdram_bytes,
         clip_lrx    = (clip_ulx + (unsigned int)draw_w) & 0xfffu;
         clip_uly_px = ((unsigned int)(frame_y + clip_t) >> 2);
         clip_h_px   = (unsigned int)draw_h >> 2;
-
-        /* image-space skip from the top clip (rows of source consumed
-         * before the first drawn row), in u10.2 rows * scale: the
-         * microcode folds this into the first strip's load offset; the
-         * common full-screen case has none. */
-        (void)clip_t;
+        clip_l_q    = (unsigned int)clip_l;
+        clip_t_q    = (unsigned int)clip_t;
+        draw_w_q    = (unsigned int)draw_w;
     }
-
-    /* IMEM 0x7d4-0x840: image bytes per row and the start-offset modulo
-     * (imageX wrap by 0x20-byte units). bpr = imageW(10.2) << siz >> 3
-     * texel-bytes (the 10.2 quarters carry the fractional padding). */
-    bpr = ((image_w << image_siz) >> 1) >> 2;
 
     /* IMEM 0x8a4-0x8d4: SETTILE line words.
      * needed = (frameW_px * scale + bilerp) * 32 texel-units (vmudn scale x
@@ -259,14 +251,67 @@ void s2dex_bg_1cyc(const unsigned char *rdram, unsigned int rdram_bytes,
     if (rows_strip == 0u || rows_strip > 0x3ffu)
         return;
 
-    strip_adv = rows_strip * bpr;               /* DMEM 0x404 */
+    /* IMEM 0x8ec-0x908: the u6.10 row-phase step = rows * 0x400 scaled by
+     * the 16.16 inverse vertical scale (exact lane folds). */
+    {
+        uint32_t t  = rows_strip * 0x400u;
+        uint32_t lo = t & 0xffffu, hi = (t >> 16) & 0xffffu;
+        uint32_t il = inv_h & 0xffffu, ih = inv_h >> 16;
+        rows_q = ((lo * il) >> 16) + hi * il + lo * ih + ((hi * ih) << 16);
+    }
+
     img_rows  = image_h >> 2;                   /* DMEM 0x40c */
 
-    /* IMEM 0xc54-0xc74: SETTIMG / SETTILE word templates. The image is
-     * always addressed 16-bit wide at the load (fmt/siz 0/2 in the
-     * opcode bytes); width comes from the byte row. */
+    /* IMEM 0x7d4-0x840 + 0x860-0x87c: image-space start offsets in
+     * 1/32-texel units and the wrap modulo. startx32 = imageX + the
+     * scissored left clip scaled into image space; the seam flag marks
+     * draws whose right edge reaches the image width (the strip loads
+     * then need the line-gap patches). The X wrap steps the start by
+     * 0x20 units and the source pointer origin alongside it. */
+    {
+        uint32_t prodl = (uint32_t)scale_w * 0u;    /* left clip, see below */
+        uint32_t imagew32 = ((uint32_t)image_w * 8u) & 0xffffu;
+        uint32_t drawnw32, startx32;
+        prodl = (uint32_t)scale_w * clip_l_q;
+        startx32 = (uint32_t)image_x
+                 + (((prodl & 0xffffu) * 0x200u) >> 16) + (prodl >> 16) * 0x200u;
+        {
+            uint32_t prodw = (uint32_t)scale_w * (uint32_t)draw_w_q;
+            drawnw32 = ((((prodw & 0xffffu) * 0x200u) >> 16)
+                        + (prodw >> 16) * 0x200u) + 0xbu;
+        }
+        while (startx32 >= imagew32)            /* IMEM 0x800-0x814 */
+            startx32 -= imagew32;
+        seam_flag = (startx32 + drawnw32 < imagew32) ? 0u : 1u;
+    }
+
+    /* IMEM 0xbe8-0xbf4: bytes per row from the per-size constant
+     * (imageW32 * mul >> 16 real 8-byte words, then *8). The settimg/
+     * settile templates and the start-row offset follow (IMEM 0xbb4-0xc20;
+     * the Y origin and phase are zero in the common unscrolled case and
+     * carry the imageYorig wrap otherwise). */
+    {
+        uint32_t imagew32 = ((uint32_t)image_w * 8u) & 0xffffu;
+        bpr = ((imagew32 * siz_mul) >> 16) * 8u;
+    }
+    if (bpr == 0u)
+        return;
+    strip_adv = rows_strip * bpr;               /* DMEM 0x404 */
     settimg_w0 = 0xfd100000u | (((bpr >> 1) - 1u) & 0xfffu);
     settile_w0 = 0xf5100000u | ((line_words & 0x1ffu) << 9);
+
+    /* Y start row (IMEM 0xbd0-0xbf8): the image row the first strip reads,
+     * wrapped into [0, imageH); zero without imageY/imageYorig scroll. */
+    {
+        uint32_t prodt = (uint32_t)scale_h * clip_t_q;
+        uint32_t starty32 = (uint32_t)image_y
+                 + (((prodt & 0xffffu) * 0x200u) >> 16) + (prodt >> 16) * 0x200u;
+        uint32_t imageh32 = ((uint32_t)image_h * 8u) & 0xffffu;
+        while (starty32 >= imageh32 && imageh32 != 0u)
+            starty32 -= imageh32;
+        start_row = starty32 >> 5;
+        y_ofs     = start_row * bpr;            /* DMEM 0x3f4 */
+    }
 
     /* IMEM 0xc78-0xcb8: preamble -- SETTILE 7 (load tile; w1 is the 0x27
      * template lane), SETTILE 0 (render tile with the struct's fmt/siz and
@@ -280,51 +325,215 @@ void s2dex_bg_1cyc(const unsigned char *rdram, unsigned int rdram_bytes,
     cw[5] = 0;
     rdp_fifo_append(fifo, cw, 6);
 
-    /* IMEM 0xcbc-0xd90 + 0xa18-0xb38 + 0xd98: the strip loop. The common
-     * path (no flip, no wrap, integer scale step) walks the image top to
-     * bottom: each strip loads rows_strip(+bilerp guard) rows into tile 7
-     * and draws rows_strip rows; the final strip draws the remainder. */
-    strip_ptr = image_ptr;
-    rows_left = img_rows;
-    y_top     = clip_uly_px;
-
-    while (rows_left > 0u && clip_h_px > 0u)
+    /* ---- strip loop (IMEM 0xcbc-0xd90 head, 0xa18-0xb74 loads, 0xd98
+     * texrect). Register model: v1 = image rows left, t6 = clipped frame
+     * rows left, v0 = u6.10 row-phase accumulator, t5 = drawn rows this
+     * strip, a0 = load rows, a1 = strip source pointer, t1/t2 = texrect
+     * top/bottom row. ---- */
     {
-        n_rows = (rows_left < rows_strip) ? rows_left : rows_strip;
-        if (n_rows > clip_h_px) n_rows = clip_h_px;
-        load_rows = n_rows + bilerp;
-        if (load_rows > rows_left) load_rows = rows_left;
-        y_bot = y_top + n_rows;
+        unsigned int v1   = img_rows - start_row;       /* IMEM 0xcdc */
+        unsigned int t6   = clip_h_px;                  /* DMEM 0x3de */
+        uint32_t     v0   = rows_q;                     /* DMEM 0x3ec */
+        unsigned int a0   = rows_strip;                 /* DMEM 0x400 */
+        unsigned int a1   = image_ptr + y_ofs;          /* IMEM 0xc1c */
+        unsigned int t1   = clip_uly_px;
+        unsigned int t5, t2, t9, t8, base;
+        int          tail;
 
-        /* IMEM 0x9e4-0xa14: SETTIMG + LOADSYNC + LOADTILE. lrs spans the
-         * padded line ((line-1)*4 texels), lrt the loaded rows. */
-        cw[0] = (int32_t)settimg_w0;
-        cw[1] = (int32_t)strip_ptr;
-        cw[2] = (int32_t)0x26000000u;
-        cw[3] = 0;
-        rdp_fifo_append(fifo, cw, 4);
-        cw[0] = (int32_t)0xf4000000u;
-        cw[1] = (int32_t)((7u << 24) |
-                          ((((line_words - 1u) << 4) & 0xfffu) << 12) |
-                          ((load_rows * 4u - 1u) & 0xfffu));
-        rdp_fifo_append(fifo, cw, 2);
+        base = image_ptr;                               /* DMEM 0x3c0 */
 
-        /* IMEM 0xd98-0xdcc: PIPESYNC + TEXRECT (raw 0x24 opcode byte,
-         * exclusive 10.2 coords, s/t from the strip phase, dsdx/dtdy are
-         * the raw u5.10 scales). */
-        cw[0] = (int32_t)0x27000000u;
-        cw[1] = 0;
-        cw[2] = (int32_t)(0x24000000u | ((clip_lrx & 0xfffu) << 12) |
-                          ((y_bot * 4u) & 0xfffu));
-        cw[3] = (int32_t)(((clip_ulx & 0xfffu) << 12) |
-                          ((y_top * 4u) & 0xfffu));
-        cw[4] = 0;
-        cw[5] = (int32_t)((scale_w << 16) | scale_h);
-        rdp_fifo_append(fifo, cw, 6);
+        for (;;)
+        {
+            t5 = v0 >> 10;                              /* IMEM 0xcf8 */
+            if (t5 == 0u)
+            {
+                /* sub-row strip (large vertical scale): consume the
+                 * source rows without drawing (IMEM 0xd04-0xd48). */
+                int rem = (int)v1 - (int)a0;
+                a1 += strip_adv;
+                if (rem <= 0)
+                {
+                    a1 = base + y_ofs + (unsigned int)(-rem) * bpr;
+                    rem += (int)img_rows;
+                }
+                v1  = (unsigned int)rem;
+                v0  = (v0 & 0x3ffu) + rows_q;           /* IMEM 0xdd8 */
+                a0  = rows_strip;
+                continue;
+            }
+            tail = (int)t6 - (int)t5;                   /* IMEM 0xd4c */
+            t6   = (unsigned int)((tail < 0) ? 0 : tail);
+            v0  &= 0x3ffu;                              /* IMEM 0xd54 (delay) */
+            if (tail < 0)
+            {
+                /* frame exhausted mid-strip: shrink the drawn rows and
+                 * recompute the load rows from the scaled overshoot
+                 * (IMEM 0xd58-0xd8c). */
+                int32_t over = (int32_t)((uint32_t)scale_h *
+                                         (uint32_t)tail) >> 10;
+                unsigned int cap = rows_strip;          /* DMEM 0x402 */
+                t5  = (unsigned int)((int)t5 + tail);
+                a0  = (unsigned int)((int)a0 + 1 + (int)over);
+                if (a0 > cap) a0 = cap;
+                if (t5 == 0u)
+                    break;
+            }
+            t2 = t1 + t5;
 
-        strip_ptr += strip_adv;
-        rows_left -= n_rows;
-        clip_h_px -= n_rows;
-        y_top      = y_bot;
+            /* IMEM 0xa18: normal or final-strip load */
+            t9 = a0 + bilerp;
+            t8 = v1 - seam_flag;
+            if ((int)(t8 - t9) >= 0)
+            {
+                /* normal strip: SETTIMG/LOADSYNC/LOADTILE of t9 rows */
+                cw[0] = (int32_t)settimg_w0;
+                cw[1] = (int32_t)a1;
+                cw[2] = (int32_t)0x26000000u;
+                cw[3] = 0;
+                cw[4] = (int32_t)0xf4000000u;
+                cw[5] = (int32_t)((7u << 24) |
+                        ((((line_words - 1u) << 4) & 0xfffu) << 12) |
+                        ((t9 * 4u - 1u) & 0xfffu));
+                rdp_fifo_append(fifo, cw, 6);
+                v1 -= a0;
+                a1 += strip_adv;
+            }
+            else
+            {
+                /* final image strip (IMEM 0xa4c-0xb74): the guard rows
+                 * wrap to the image top and the line-gap words get their
+                 * seam patches, each load prefixed by TILESYNC + SETTILE 7
+                 * at its TMEM offset (the 0x9cc emitter). */
+                unsigned int pre = t9 - v1;
+                unsigned int gap = line_words - (bpr >> 3);
+
+                if ((int)pre > 0)
+                {
+                    unsigned int rrow = v1, rsrc = base + y_ofs;
+                    unsigned int rcnt = pre;
+                    if (v1 & 1u)
+                    {
+                        rcnt += 1u;
+                        rrow -= 1u;
+                        rsrc -= bpr;
+                    }
+                    cw[0] = (int32_t)0x28000000u;
+                    cw[1] = 0;
+                    cw[2] = (int32_t)(settile_w0 | ((rrow * line_words) & 0x1ffu));
+                    cw[3] = (int32_t)0x27000000u;
+                    rdp_fifo_append(fifo, cw, 4);
+                    cw[0] = (int32_t)settimg_w0;
+                    cw[1] = (int32_t)rsrc;
+                    cw[2] = (int32_t)0x26000000u;
+                    cw[3] = 0;
+                    cw[4] = (int32_t)0xf4000000u;
+                    cw[5] = (int32_t)((7u << 24) |
+                            ((((line_words - 1u) << 4) & 0xfffu) << 12) |
+                            ((rcnt * 4u - 1u) & 0xfffu));
+                    rdp_fifo_append(fifo, cw, 6);
+                }
+                if (seam_flag)
+                {
+                    unsigned int t8e = t8, cnt = (t8 & 1u) + 1u;
+                    unsigned int src2 = base, src3 = a1 + t8 * bpr;
+                    if (t8 & 1u)
+                    {
+                        t8e -= 1u;
+                        src2 -= bpr;
+                        src3 -= bpr;
+                    }
+                    /* gap patch: first texels of the wrap row into the
+                     * line padding at the end of TMEM row t8 */
+                    cw[0] = (int32_t)0x28000000u;
+                    cw[1] = 0;
+                    cw[2] = (int32_t)(settile_w0 |
+                            ((t8e * line_words + (bpr >> 3)) & 0x1ffu));
+                    cw[3] = (int32_t)0x27000000u;
+                    rdp_fifo_append(fifo, cw, 4);
+                    cw[0] = (int32_t)settimg_w0;
+                    cw[1] = (int32_t)src2;
+                    cw[2] = (int32_t)0x26000000u;
+                    cw[3] = 0;
+                    cw[4] = (int32_t)0xf4000000u;
+                    cw[5] = (int32_t)((7u << 24) |
+                            ((((gap - 1u) << 4) & 0xfffu) << 12) |
+                            ((cnt * 4u - 1u) & 0xfffu));
+                    rdp_fifo_append(fifo, cw, 6);
+                    /* row patch: the row past the main load into TMEM
+                     * row t8 */
+                    cw[0] = (int32_t)0x28000000u;
+                    cw[1] = 0;
+                    cw[2] = (int32_t)(settile_w0 |
+                            ((t8e * line_words) & 0x1ffu));
+                    cw[3] = (int32_t)0x27000000u;
+                    rdp_fifo_append(fifo, cw, 4);
+                    cw[0] = (int32_t)settimg_w0;
+                    cw[1] = (int32_t)src3;
+                    cw[2] = (int32_t)0x26000000u;
+                    cw[3] = 0;
+                    cw[4] = (int32_t)0xf4000000u;
+                    cw[5] = (int32_t)((7u << 24) |
+                            (((((bpr >> 3) - 1u) << 4) & 0xfffu) << 12) |
+                            ((cnt * 4u - 1u) & 0xfffu));
+                    rdp_fifo_append(fifo, cw, 6);
+                }
+                /* main final load (TILESYNC + SETTILE at TMEM 0; the load
+                 * itself only when rows remain) */
+                if ((int)t8 > 0)
+                {
+                    cw[0] = (int32_t)0x28000000u;
+                    cw[1] = 0;
+                    cw[2] = (int32_t)settile_w0;
+                    cw[3] = (int32_t)0x27000000u;
+                    rdp_fifo_append(fifo, cw, 4);
+                    cw[0] = (int32_t)settimg_w0;
+                    cw[1] = (int32_t)a1;
+                    cw[2] = (int32_t)0x26000000u;
+                    cw[3] = 0;
+                    cw[4] = (int32_t)0xf4000000u;
+                    cw[5] = (int32_t)((7u << 24) |
+                            ((((line_words - 1u) << 4) & 0xfffu) << 12) |
+                            ((t8 * 4u - 1u) & 0xfffu));
+                    rdp_fifo_append(fifo, cw, 6);
+                }
+                else
+                {
+                    cw[0] = (int32_t)settile_w0;        /* IMEM 0xb10 */
+                    cw[1] = (int32_t)0x27000000u;
+                    rdp_fifo_append(fifo, cw, 2);
+                }
+                /* image exhausted: wrap back to the top (IMEM 0xb40-0xb74) */
+                {
+                    int rem = (int)v1 - (int)a0;
+                    if (rem > 0)
+                    {
+                        v1 = (unsigned int)rem;
+                        a1 += strip_adv;
+                    }
+                    else
+                    {
+                        a1 = base + y_ofs + (unsigned int)(-rem) * bpr;
+                        v1 = (unsigned int)rem + img_rows;
+                    }
+                }
+            }
+
+            /* IMEM 0xd98: PIPESYNC + TEXRECT */
+            cw[0] = (int32_t)0x27000000u;
+            cw[1] = 0;
+            cw[2] = (int32_t)(0x24000000u | ((clip_lrx & 0xfffu) << 12) |
+                              ((t2 * 4u) & 0xfffu));
+            cw[3] = (int32_t)(((clip_ulx & 0xfffu) << 12) |
+                              ((t1 * 4u) & 0xfffu));
+            cw[4] = 0;
+            cw[5] = (int32_t)((scale_w << 16) | scale_h);
+            rdp_fifo_append(fifo, cw, 6);
+
+            if ((int)t6 <= 0)                           /* IMEM 0xdd0 */
+                break;
+            t1  = t2;
+            v0 += rows_q;                               /* IMEM 0xdd8 */
+            a0  = rows_strip;                           /* DMEM 0x402 */
+        }
     }
 }
