@@ -402,6 +402,23 @@ void f3dex2_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
                 gsp_set_fog(gsp, (int)(short)((w1 >> 16) & 0xffffu),
                                  (int)(short)(w1 & 0xffffu));
             }
+            else if (index == 0x04)
+            {
+                /* G_MW_CLIP (gSPClipRatio): four words set the guard-band
+                 * clip ratio, offsets 0x04/0x0c = +RX/+RY (positive value)
+                 * and 0x14/0x1c = -RX/-RY (negative as u16). The gbi sets
+                 * all four consistently; take the magnitude from the
+                 * positive words. OoT's pause screen sets ratio 1 (clip at
+                 * the screen edges) and the scene restores 2; the scaled
+                 * outcodes and the clipper's plane rows both depend on it. */
+                unsigned int off = w0 & 0xffffu;
+                if (off == 0x04u || off == 0x0cu)
+                {
+                    int rv = (int)(int16_t)(w1 & 0xffffu);
+                    if (rv > 0 && rv <= 4)
+                        gsp->clip_ratio = rv;
+                }
+            }
             else if (index == G_MW_PERSPNORM)
             {
                 /* gSPPerspNormalize: the low 16 bits are the perspective

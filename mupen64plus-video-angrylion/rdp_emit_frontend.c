@@ -138,6 +138,7 @@ static void load_n64_matrix(int32_t m[4][4], const unsigned char *rdram, unsigne
 void gsp_init(GSPState *s)
 {
     int i;
+    s->clip_ratio = 2;
     mtx_identity(s->projection);
     for (i = 0; i < GSP_MTX_STACK; i++)
         mtx_identity(s->modelview[i]);
@@ -331,6 +332,9 @@ void gsp_task_reset(GSPState *s)
      * (skeleton/nested) draw transforms with a stale top-of-stack matrix. */
     s->modelview_top = 0;
     s->combined_valid = 0;
+    /* The task's DMEM data load restores the default guard-band clip
+     * ratio; a list that wants another ratio re-sends G_MW_CLIP. */
+    s->clip_ratio = 2;
 }
 
 void gsp_combine_matrices(GSPState *s)
@@ -366,6 +370,19 @@ void gsp_set_texture(GSPState *s, unsigned int scale_s, unsigned int scale_t,
 
 /* N64 Vertex struct in RDRAM (16 bytes), big-endian:
  *   s16 y, x;  u16 flag; s16 z;  s16 t, s;  color/normal[4] */
+/* Snapshot the screen-space values for a freshly written vertex under the
+ * currently active viewport/perspNorm, mirroring the microcode's
+ * vertices_store (G_VTX and the clipper's generated vertices both pass
+ * through it; the triangle write only reloads the stored results). */
+static void gsp_vertex_screen(GSPState *s, GSPVertex *vt)
+{
+    BridgeVertex bv;
+    bv.cx = vt->cx; bv.cy = vt->cy; bv.cz = vt->cz; bv.cw = vt->cw;
+    bridge_compute_screen(&bv, &s->viewport,
+                          &vt->scr_x, &vt->scr_y, &vt->scr_z,
+                          &vt->w_raw, &vt->rsp_ok, &vt->rsp_invw);
+}
+
 void gsp_vertex(GSPState *s, const unsigned char *rdram, unsigned int addr,
                 int n, int v0)
 {
@@ -653,7 +670,7 @@ void gsp_vertex(GSPState *s, const unsigned char *rdram, unsigned int addr,
              * 2; the products need 33 bits). The clipper's x/y conditions
              * test these bits. */
             {
-                int32_t w2 = rsp_clip_scale_w(vt->cw);
+                int32_t w2 = rsp_clip_scale_w(vt->cw, s->clip_ratio);
                 for (ax = 0; ax < 3; ax++)
                 {
                     int32_t cp = comps[ax];
@@ -665,6 +682,7 @@ void gsp_vertex(GSPState *s, const unsigned char *rdram, unsigned int addr,
                 }
             }
             vt->clip = (int)fl;
+            gsp_vertex_screen(s, vt);
         }
     }
 }
@@ -757,9 +775,9 @@ void gsp_set_light(GSPState *s, const unsigned char *rdram,
 static const int16_t gsp_clip_ratio_rows[6][4] = {
     { 0, 0, 0,  1 },   /* near (NoN: w)        */
     { 0, 0, 1, -1 },   /* far  (z - w)         */
-    { 0, 1, 0, -2 },   /* +y                   */
+    { 0, 1, 0, -2 },   /* +y (w lane = -clip_ratio, patched at use) */
     { 1, 0, 0, -2 },   /* +x                   */
-    { 0, 1, 0,  2 },   /* -y                   */
+    { 0, 1, 0,  2 },   /* -y (w lane = +clip_ratio, patched at use) */
     { 1, 0, 0,  2 }    /* -x                   */
 };
 
@@ -773,7 +791,7 @@ static const unsigned int gsp_clip_cond_mask[6] = {
 };
 
 /* Recompute the stored VCH outcodes for a clip-generated vertex. */
-static void gsp_clip_vertex_flags(GSPVertex *vt)
+static void gsp_clip_vertex_flags(const GSPState *st, GSPVertex *vt)
 {
     int32_t comps[4];
     int ax;
@@ -789,7 +807,7 @@ static void gsp_clip_vertex_flags(GSPVertex *vt)
         if (nb) fl |= 1u << (4 + ax);
         if (pb) fl |= 1u << (12 + ax);
     }
-    w2 = rsp_clip_scale_w(vt->cw);
+    w2 = rsp_clip_scale_w(vt->cw, st->clip_ratio);
     for (ax = 0; ax < 3; ax++)
     {
         int sn = ((comps[ax] ^ w2) < 0);
@@ -801,7 +819,8 @@ static void gsp_clip_vertex_flags(GSPVertex *vt)
     vt->clip = (int)fl;
 }
 
-static void gsp_clip_subdivide(GSPVertex *out, const GSPVertex *onv,
+static void gsp_clip_subdivide(GSPState *st, GSPVertex *out,
+                               const GSPVertex *onv,
                                const GSPVertex *offv, const int16_t cr[4])
 {
     int32_t on_pos[4], off_pos[4], out_pos[4];
@@ -843,20 +862,29 @@ static void gsp_clip_subdivide(GSPVertex *out, const GSPVertex *onv,
     out->tv = out_attr[5];
     out->s = (int32_t)((uint32_t)(int32_t)out_attr[4] << 17);
     out->t = (int32_t)((uint32_t)(int32_t)out_attr[5] << 17);
-    gsp_clip_vertex_flags(out);
+    gsp_clip_vertex_flags(st, out);
+    gsp_vertex_screen(st, out);
 }
 
-static int clip_polygon_guard(GSPVertex *poly, int n)
+static int clip_polygon_guard(GSPState *st, GSPVertex *poly, int n)
 {
     GSPVertex tmp[GSP_CLIP_MAX];
     int cond;
     for (cond = 0; cond < 6 && n > 0; cond++)
     {
         unsigned int mask = gsp_clip_cond_mask[cond];
-        const int16_t *cr = gsp_clip_ratio_rows[cond];
+        int16_t cr[4];
         int i, m = 0;
-        unsigned int f3 = (unsigned int)poly[n - 1].clip & mask;
-        int i3 = n - 1;
+        unsigned int f3;
+        int i3;
+        cr[0] = gsp_clip_ratio_rows[cond][0];
+        cr[1] = gsp_clip_ratio_rows[cond][1];
+        cr[2] = gsp_clip_ratio_rows[cond][2];
+        cr[3] = gsp_clip_ratio_rows[cond][3];
+        if (cond >= 2)  /* the +-x/+-y guard-band planes scale with the ratio */
+            cr[3] = (int16_t)((cr[3] < 0) ? -st->clip_ratio : st->clip_ratio);
+        f3 = (unsigned int)poly[n - 1].clip & mask;
+        i3 = n - 1;
         for (i = 0; i < n; i++)
         {
             unsigned int f2 = (unsigned int)poly[i].clip & mask;
@@ -866,7 +894,7 @@ static int clip_polygon_guard(GSPVertex *poly, int n)
                 const GSPVertex *offv = f2 ? &poly[i]  : &poly[i3];
                 if (m < GSP_CLIP_MAX)
                 {
-                    gsp_clip_subdivide(&tmp[m], onv, offv, cr);
+                    gsp_clip_subdivide(st, &tmp[m], onv, offv, cr);
                     m++;
                 }
             }
@@ -1030,7 +1058,7 @@ int gsp_triangle(GSPState *s, int32_t *cmd, int i0, int i1, int i2,
          * not the planes of its visible portion, so scissoring is not
          * equivalent), and steep overhang past the guard band loses
          * coefficient precision. */
-        np = clip_polygon_guard(poly, np);
+        np = clip_polygon_guard(s, poly, np);
         if (np < 3)
             return 0;
     }
@@ -1063,14 +1091,26 @@ int gsp_triangle(GSPState *s, int32_t *cmd, int i0, int i1, int i2,
             v0.r = tv[0].r; v0.g = tv[0].g; v0.b = tv[0].b; v0.a = tv[0].a;
             v0.s = tv[0].s; v0.t = tv[0].t;
             v0.sv = tv[0].sv; v0.tv = tv[0].tv;
+            v0.scr_valid = 1;
+            v0.scr_x = tv[0].scr_x; v0.scr_y = tv[0].scr_y;
+            v0.scr_z = tv[0].scr_z; v0.w_raw = tv[0].w_raw;
+            v0.rsp_ok = tv[0].rsp_ok; v0.rsp_invw = tv[0].rsp_invw;
             v1.cx = tv[1].cx; v1.cy = tv[1].cy; v1.cz = tv[1].cz; v1.cw = tv[1].cw;
             v1.r = tv[1].r; v1.g = tv[1].g; v1.b = tv[1].b; v1.a = tv[1].a;
             v1.s = tv[1].s; v1.t = tv[1].t;
             v1.sv = tv[1].sv; v1.tv = tv[1].tv;
+            v1.scr_valid = 1;
+            v1.scr_x = tv[1].scr_x; v1.scr_y = tv[1].scr_y;
+            v1.scr_z = tv[1].scr_z; v1.w_raw = tv[1].w_raw;
+            v1.rsp_ok = tv[1].rsp_ok; v1.rsp_invw = tv[1].rsp_invw;
             v2.cx = tv[2].cx; v2.cy = tv[2].cy; v2.cz = tv[2].cz; v2.cw = tv[2].cw;
             v2.r = tv[2].r; v2.g = tv[2].g; v2.b = tv[2].b; v2.a = tv[2].a;
             v2.s = tv[2].s; v2.t = tv[2].t;
             v2.sv = tv[2].sv; v2.tv = tv[2].tv;
+            v2.scr_valid = 1;
+            v2.scr_x = tv[2].scr_x; v2.scr_y = tv[2].scr_y;
+            v2.scr_z = tv[2].scr_z; v2.w_raw = tv[2].w_raw;
+            v2.rsp_ok = tv[2].rsp_ok; v2.rsp_invw = tv[2].rsp_invw;
             nc = bridge_add_triangle(cmd + total, &v0, &v1, &v2, &s->viewport,
                                      textured, z_buffered,
                                      (s->geometry_mode & 0x00200000u) ? 1 : 0,

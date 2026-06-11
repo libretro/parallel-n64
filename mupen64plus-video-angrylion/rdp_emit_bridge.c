@@ -12,12 +12,17 @@
  */
 
 #include "rdp_emit.h"
+#include <stdio.h>
 #include "rdp_emit_bridge.h"
 #include "rdp_emit_recip.h"
 #include "rdp_emit_rsp.h"
 
-static void clip_to_emit(EmitVertex *e, const BridgeVertex *v,
-                         const BridgeViewport *vp, int64_t *w_raw)
+void bridge_compute_screen(const BridgeVertex *v, const BridgeViewport *vp,
+                           int32_t *out_x, int32_t *out_y, int32_t *out_z,
+                           int64_t *w_raw, int *out_rsp_ok, int32_t *out_rsp_invw)
+{
+    EmitVertex tmp;
+    EmitVertex *e = &tmp;
 {
     /* Perspective divide. The RSP uses the double-precision reciprocal (VRCPL,
      * refined from the VRCP div_ROM estimate) for the screen-coordinate divide,
@@ -96,11 +101,6 @@ static void clip_to_emit(EmitVertex *e, const BridgeVertex *v,
         else
             *w_raw = 0;
     }
-    e->w = 0; /* set by the caller after triangle-wide normalisation */
-
-    e->r = v->r; e->g = v->g; e->b = v->b; e->a = v->a;
-    e->s = v->s; e->t = v->t;
-
     /* RSP-exact vertex transform: when in-domain it supersedes the screen
      * position computed above with the microcode's own MAC-chain results,
      * making the downstream triangle write bit-identical to the LLE RSP. */
@@ -123,6 +123,32 @@ static void clip_to_emit(EmitVertex *e, const BridgeVertex *v,
             e->rsp_invw = iw;
         }
     }
+}
+    *out_x = e->x;
+    *out_y = e->y;
+    *out_z = e->z;
+    *out_rsp_ok = e->rsp_ok;
+    *out_rsp_invw = e->rsp_invw;
+}
+
+static void clip_to_emit(EmitVertex *e, const BridgeVertex *v,
+                         const BridgeViewport *vp, int64_t *w_raw)
+{
+    if (v->scr_valid)
+    {
+        e->x = v->scr_x;
+        e->y = v->scr_y;
+        e->z = v->scr_z;
+        *w_raw = v->w_raw;
+        e->rsp_ok = v->rsp_ok;
+        e->rsp_invw = v->rsp_invw;
+    }
+    else
+        bridge_compute_screen(v, vp, &e->x, &e->y, &e->z, w_raw,
+                              &e->rsp_ok, &e->rsp_invw);
+    e->w = 0; /* set by the caller after triangle-wide normalisation */
+    e->r = v->r; e->g = v->g; e->b = v->b; e->a = v->a;
+    e->s = v->s; e->t = v->t;
 }
 
 /* RSP-exact path: convert the bridge vertices into the microcode's

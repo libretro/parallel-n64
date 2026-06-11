@@ -490,9 +490,9 @@ void rsp_light_vtx(const int32_t n[3], const int32_t amb[3],
 /* The clip-ratio-scaled W the vertex pipeline compares against for the
  * scaled outcodes: ratio (2) times the s15.16 w through the vmudn/vmadh
  * pair, whose mid read clamps. */
-int32_t rsp_clip_scale_w(int32_t w)
+int32_t rsp_clip_scale_w(int32_t w, int ratio)
 {
-    RspAcc acc = p_udn(w & 0xffff, 2) + p_udh((w >> 16) & 0xffff, 2);
+    RspAcc acc = p_udn(w & 0xffff, ratio) + p_udh((w >> 16) & 0xffff, ratio);
     int32_t f = acc_clamp_low(acc);
     int32_t i = acc_clamp_mid(acc);
     return (int32_t)(((uint32_t)U16(i) << 16) | (uint32_t)U16(f));

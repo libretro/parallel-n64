@@ -32,6 +32,15 @@ typedef struct GSPVertex
                                are these doubled (with int32 wrap for large
                                coordinates), which the emit path expects. */
     int     clip;           /* clip flags (outcode) */
+    /* Store-time screen snapshot (see BridgeVertex): the microcode
+     * computes screen coordinates and 1/w at G_VTX time under the
+     * then-active viewport/perspNorm and the triangle write reloads
+     * them, so a viewport change between the load and the draw must
+     * not retroactively move already-stored vertices. */
+    int32_t scr_x, scr_y, scr_z;
+    int64_t w_raw;
+    int     rsp_ok;
+    int32_t rsp_invw;
 } GSPVertex;
 
 /* VCH clip outcode bits, matching the F3DEX2 VTX_CLIP screen layout:
@@ -65,6 +74,11 @@ typedef struct GSPState
     int   combined_valid;
 
     BridgeViewport viewport;
+    /* gSPClipRatio (G_MOVEWORD G_MW_CLIP): the guard-band multiplier for
+     * the scaled clip planes. The microcode's DMEM defaults to 2 on task
+     * load; OoT's pause screen sets 1 (clip exactly at the screen edges)
+     * while the 3D scene restores 2. */
+    int clip_ratio;
     unsigned int   tex_scale_s, tex_scale_t; /* raw S0.16 from G_TEXTURE */
     unsigned int   persp_norm;               /* G_MW_PERSPNORM u16 (gSPPerspNormalize) */
     int            fog_m, fog_o;             /* G_MW_FOG multiplier/offset (s16 each) */
