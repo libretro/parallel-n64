@@ -79,6 +79,11 @@ typedef struct GSPState
      * load; OoT's pause screen sets 1 (clip exactly at the screen edges)
      * while the 3D scene restores 2. */
     int clip_ratio;
+    /* z coefficient of the near clip-plane row (microcode data + 0x1a8):
+     * 0 = NoN microcode (near plane is w >= 0 only), 1 = standard near
+     * clipping (z + w >= 0). Selects the near plane the polygon clipper
+     * uses and the VCH outcode bit that gates and rejects against it. */
+    int clip_near_z;
     unsigned int   tex_scale_s, tex_scale_t; /* raw S0.16 from G_TEXTURE */
     unsigned int   persp_norm;               /* G_MW_PERSPNORM u16 (gSPPerspNormalize) */
     int            fog_m, fog_o;             /* G_MW_FOG multiplier/offset (s16 each) */

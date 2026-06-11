@@ -718,6 +718,16 @@ int32_t rsp_clip_scale_w(int32_t w, int ratio)
  * as byte << 7 (luv domain) in lanes 0..3 and the s10.5 texture coords in
  * lanes 4..5. Outputs: lerped position (s15.16) and the eight lerped
  * attribute lanes (acc mid clamps, exactly vPairST). */
+/* Clip-lerp build selector: 0 = F3DEX2 2.05+/F3DZEX2 (vor 1 before the
+ * sign-extraction vabs), 1 = the 2.04H build (raw sum). Chosen per task
+ * from the microcode text (see the probe in rdp_emit_hle.c). */
+static int s_clip_lerp_204h = 0;
+
+void rsp_set_clip_lerp_204h(int on)
+{
+    s_clip_lerp_204h = on ? 1 : 0;
+}
+
 void rsp_clip_lerp(const int32_t on_pos[4], const int32_t off_pos[4],
                    const int16_t cr[4],
                    const int16_t on_attr[8], const int16_t off_attr[8],
@@ -773,9 +783,15 @@ void rsp_clip_lerp(const int32_t on_pos[4], const int32_t off_pos[4],
     /* vabs $v29, (v11 | 1), 2: +/- 2 by the sign of the int sum. The
      * vor with 1 (F3DEX2 2.05+/F3DZEX2) removes the sum-zero case the
      * 2.04H build mishandled; a zero int sum now takes the positive
-     * side. */
-    if (S16(v11[3] | 1) > 0)  abs2 = 2;
-    else                      abs2 = -2;
+     * side. The 2.04H build feeds the raw sum, and the RSP vabs of a
+     * zero sign operand is zero, not +2 -- the scaled reciprocal
+     * collapses and the boundary vertex lands elsewhere. Tiny
+     * perspNorm scales (Super Smash Bros. sends 8) make zero integer
+     * sums routine, so model the build the microcode actually is. */
+    if (s_clip_lerp_204h && S16(v11[3]) == 0)
+        abs2 = 0;
+    else if (S16(v11[3] | 1) > 0)  abs2 = 2;
+    else                           abs2 = -2;
     acc = p_udn(rcp_lo, abs2);
     rcp_lo = acc_clamp_low(acc);
     acc += p_udh(rcp_hi, abs2);

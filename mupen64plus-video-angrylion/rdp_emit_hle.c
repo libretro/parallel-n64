@@ -17,6 +17,7 @@
 #include <stdlib.h>
 #include "rdp_emit_hle.h"
 #include "rdp_emit_f3dex2.h"
+#include "rdp_emit_rsp.h"
 
 /* angrylion's RDRAM/DMEM/DPC accessors (interface.c) */
 extern unsigned char *plugin_get_rdram(void);
@@ -181,7 +182,47 @@ void rdp_emit_hle_process_dlist(void)
                             |  (unsigned int)rdram[(ud + 0xcf) ^ 3];
             if ((oh >> 24) == 0xefu)
                 f3dex2_set_othermode_init(oh, ol);
+
+            /* near clip-plane row (clip-ratio table at data + 0x180, row 5
+             * = bytes +0x1a8..0x1af): NoN microcodes store {0,0,0,1} (the
+             * near plane is just w), standard near clipping {0,0,1,1}
+             * (z + w). Adopt the z coefficient when the row validates. */
+            if (ud + 0x1b0 <= rdram_size)
+            {
+                int16_t nz = (int16_t)((rdram[(ud + 0x1ac) ^ 3] << 8)
+                                      | rdram[(ud + 0x1ad) ^ 3]);
+                int16_t nw = (int16_t)((rdram[(ud + 0x1ae) ^ 3] << 8)
+                                      | rdram[(ud + 0x1af) ^ 3]);
+                if (nw == 1 && (nz == 0 || nz == 1))
+                    s_gsp.clip_near_z = (int)nz;
+            }
         }
+    }
+
+    /* Clip-lerp build probe: F3DEX2 2.05+ and F3DZEX2 guard the boundary
+     * lerp's sign extraction with a vor 1 (opcode word 4b015f6a in every
+     * such build's clip overlay); the 2.04H build feeds the raw sum to
+     * vabs. Scan the microcode text image, overlays included, for the
+     * instruction and pick the build accordingly. */
+    {
+        unsigned int ut = read_dmem_u32(dmem, 0xfd0) & 0x00ffffffu;
+        int found = 0;
+        if (ut != 0 && ut + 0x1800 <= rdram_size)
+        {
+            unsigned int k;
+            for (k = 0; k + 4 <= 0x1800; k += 4)
+            {
+                if (rdram[(ut + k + 0) ^ 3] == 0x4bu
+                    && rdram[(ut + k + 1) ^ 3] == 0x01u
+                    && rdram[(ut + k + 2) ^ 3] == 0x5fu
+                    && rdram[(ut + k + 3) ^ 3] == 0x6au)
+                {
+                    found = 1;
+                    break;
+                }
+            }
+        }
+        rsp_set_clip_lerp_204h(!found);
     }
     f3dex2_set_rdram(rdram);
     f3dex2_set_rdram_size(rdram_size);

@@ -139,6 +139,7 @@ void gsp_init(GSPState *s)
 {
     int i;
     s->clip_ratio = 2;
+    s->clip_near_z = 0;
     s->tri_dx_scale  = 0x4000;
     s->tri_idy_scale = 0x0008;
     s->tri_frac_mask = (int32_t)0xffff;
@@ -299,6 +300,7 @@ void gsp_task_reset(GSPState *s)
     /* The task's DMEM data load restores the default guard-band clip
      * ratio; a list that wants another ratio re-sends G_MW_CLIP. */
     s->clip_ratio = 2;
+    s->clip_near_z = 0;
 }
 
 void gsp_combine_matrices(GSPState *s)
@@ -732,7 +734,7 @@ void gsp_set_light_color(GSPState *s, int index,
 #define GSP_CLIP_MAX 16
 
 static const int16_t gsp_clip_ratio_rows[6][4] = {
-    { 0, 0, 0,  1 },   /* near (NoN: w)        */
+    { 0, 0, 0,  1 },   /* near (NoN: w; z lane patched from clip_near_z) */
     { 0, 0, 1, -1 },   /* far  (z - w)         */
     { 0, 1, 0, -2 },   /* +y (w lane = -clip_ratio, patched at use) */
     { 1, 0, 0, -2 },   /* +x                   */
@@ -840,6 +842,15 @@ static int clip_polygon_guard(GSPState *st, GSPVertex *poly, int n)
         cr[1] = gsp_clip_ratio_rows[cond][1];
         cr[2] = gsp_clip_ratio_rows[cond][2];
         cr[3] = gsp_clip_ratio_rows[cond][3];
+        if (cond == 0)
+        {
+            /* non-NoN microcodes carry z + w >= 0 as the near plane (data
+             * table row {0,0,1,1}); the gating outcode is the VCH z-lane
+             * negative bit instead of the behind-the-eye w bit. */
+            cr[2] = (int16_t)st->clip_near_z;
+            if (st->clip_near_z)
+                mask = 1u << 6;     /* CLIP_NZ */
+        }
         if (cond >= 2)  /* the +-x/+-y guard-band planes scale with the ratio */
             cr[3] = (int16_t)((cr[3] < 0) ? -st->clip_ratio : st->clip_ratio);
         f3 = (unsigned int)poly[n - 1].clip & mask;
@@ -992,7 +1003,10 @@ int gsp_triangle(GSPState *s, int32_t *cmd, int i0, int i1, int i2,
      * the behind-the-eye encodings the VCH compare produces for w <= 0),
      * the triangle is dropped before any clipping. The guard-band clipper
      * below only sees triangles that survive this. */
-    if (a->clip & b->clip & c->clip & GSP_CLIP_REJECT)
+    if (a->clip & b->clip & c->clip
+        & (unsigned int)(s->clip_near_z
+                         ? ((GSP_CLIP_REJECT & ~GSP_CLIP_NW) | GSP_CLIP_NZ)
+                         : GSP_CLIP_REJECT))
         return 0;
 
     /* The RSP enters the clipper when any vertex's stored outcode has any
@@ -1009,7 +1023,8 @@ int gsp_triangle(GSPState *s, int32_t *cmd, int i0, int i1, int i2,
     np = 3;
 #define GSP_CLIP_TRIGGER ((1u << 20) | (1u << 21) | (1u << 28) | (1u << 29) \
                         | (1u << 14) | (1u << 7))
-    if ((oa | ob | oc) & GSP_CLIP_TRIGGER)
+    if ((oa | ob | oc) & (GSP_CLIP_TRIGGER
+                          | (s->clip_near_z ? (1u << 6) : 0u)))
     {
         /* Polygon clip against the guard band the way the RSP microcode
          * does: triangles that straddle w <= 0 cannot be passed through to
@@ -1043,7 +1058,10 @@ int gsp_triangle(GSPState *s, int32_t *cmd, int i0, int i1, int i2,
              * cleared activeClipPlanes) still applies: a guard-band
              * polygon's fan can contain sub-triangles entirely past one
              * screen plane, and the microcode drops those. */
-            if (tv[0].clip & tv[1].clip & tv[2].clip & GSP_CLIP_REJECT)
+            if (tv[0].clip & tv[1].clip & tv[2].clip
+                & (unsigned int)(s->clip_near_z
+                                 ? ((GSP_CLIP_REJECT & ~GSP_CLIP_NW) | GSP_CLIP_NZ)
+                                 : GSP_CLIP_REJECT))
                 continue;
             gsp_fold_st(s, tv);
             v0.cx = tv[0].cx; v0.cy = tv[0].cy; v0.cz = tv[0].cz; v0.cw = tv[0].cw;
