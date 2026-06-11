@@ -674,14 +674,6 @@ void s2dex_bg_copy(const unsigned char *rdram, unsigned int rdram_bytes,
     tmem_size_w  = bg_rd_u16(rdram, bg_addr + 0x24);
     tmem_size    = bg_rd_u16(rdram, bg_addr + 0x26);
 
-    /* imageX/imageY scrolling is not transcribed for the copy variant:
-     * a nonzero imageY shifts the start pointer, the row budget, and the
-     * wrap phase together (the LLE stream shows non-grid strip tops), and
-     * no validating content uses it -- gSPBgRectCopy backgrounds are
-     * static full-frame images. Pin it against the synthetic harness
-     * before relying on these fields. */
-    (void)image_x; (void)image_y;
-
     if (tmem_h == 0u || tmem_w == 0u)
         return;
 
@@ -710,11 +702,22 @@ void s2dex_bg_copy(const unsigned char *rdram, unsigned int rdram_bytes,
          * rows via tmemSizeW * clipped pixel rows, the X part via the
          * per-size 0x800<<siz lane fold, then halved and 8-byte scaled. */
         copy_clip_t_q = (unsigned int)clip_t;
-        x_units = (((unsigned int)clip_l) << image_siz) >> 5;
+        /* X units (4-byte) from the scissored left clip plus the imageX
+         * scroll (u10.5): both advance the pointer, skew the row loads,
+         * and so both contribute to the seam reservation. */
+        x_units = ((((unsigned int)clip_l) << image_siz) >> 5)
+                + (((unsigned int)image_x << image_siz) >> 8);
         {
-            unsigned int raw = tmem_size_w * (((unsigned int)clip_t) >> 2)
+            /* the imageY scroll (u10.5, integral rows) adds to the
+             * clipped top: it advances the start pointer and shrinks the
+             * image-side row budget identically (traced: a2 = rows<<2,
+             * v0 = base + tmemSizeW*rows*4) */
+            unsigned int y_rows = (image_y >> 5) & 0x3ffu;
+            unsigned int raw = tmem_size_w
+                * ((((unsigned int)clip_t) >> 2) + y_rows)
                 + x_units;
             clip_skip = (raw >> 1) << 3;
+            copy_clip_t_q += y_rows << 2;
         }
     }
 
