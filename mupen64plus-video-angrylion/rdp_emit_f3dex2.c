@@ -296,9 +296,9 @@ void f3dex2_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
 
                     /* tile setup: load tile 7 and render tile 0, identical
                      * fmt/siz/line, render tile clamped with mask 15. */
-                    cw[0] = (int32_t)(0x35000000u | (fmt << 21) | (siz << 19) | (line << 9));
+                    cw[0] = (int32_t)(0xf5000000u | (fmt << 21) | (siz << 19) | (line << 9));
                     cw[1] = (int32_t)(7u << 24);
-                    cw[2] = (int32_t)0x32000000u;            /* settilesize 0 */
+                    cw[2] = (int32_t)0xf2000000u;            /* settilesize 0 */
                     cw[3] = 0;
                     cw[4] = cw[0];                           /* settile 0 */
                     cw[5] = (int32_t)0x0007c1f0u;            /* clamp, mask 15 */
@@ -311,21 +311,21 @@ void f3dex2_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
                         if (n > rows) n = rows;
                         y0 = (unsigned int)frame_y + strip * 4u;
                         y1 = (unsigned int)frame_y + (strip + n) * 4u - 1u;
-                        cw[0]  = (int32_t)0x26000000u;       /* tilesync */
+                        cw[0]  = (int32_t)0xe6000000u;       /* tilesync */
                         cw[1]  = 0;
-                        cw[2]  = (int32_t)(0x3d000000u | (fmt << 21) | (siz << 19) | (img_w - 1u));
+                        cw[2]  = (int32_t)(0xfd000000u | (fmt << 21) | (siz << 19) | (img_w - 1u));
                         cw[3]  = (int32_t)(ptr + strip * bpr);
-                        cw[4]  = (int32_t)0x34000000u;       /* loadtile (0,0).. */
+                        cw[4]  = (int32_t)0xf4000000u;       /* loadtile (0,0).. */
                         cw[5]  = (int32_t)((7u << 24) | ((img_w * 4u - 1u) << 12) | (n * 4u - 1u));
-                        cw[6]  = (int32_t)0x27000000u;       /* pipesync */
+                        cw[6]  = (int32_t)0xe7000000u;       /* pipesync */
                         cw[7]  = 0;
-                        cw[8]  = (int32_t)(0x24000000u |
+                        cw[8]  = (int32_t)(0xe4000000u |
                                  (((unsigned int)frame_x + img_w * 4u - 1u) << 12) | (y1 & 0xfffu));
                         cw[9]  = (int32_t)((((unsigned int)frame_x & 0xfffu) << 12) | (y0 & 0xfffu));
                         cw[10] = 0;                          /* s=0, t=0 */
                         cw[11] = (cmd == 0x0a) ? (int32_t)0x10000400u   /* copy: dsdx 4.0 */
                                                : (int32_t)0x04000400u;  /* 1cyc: dsdx 1.0 */
-                        cw[12] = (int32_t)0x27000000u;       /* pipesync */
+                        cw[12] = (int32_t)0xe7000000u;       /* pipesync */
                         cw[13] = 0;
                         rdp_fifo_append(fifo, cw, 14);
                     }
@@ -514,7 +514,6 @@ void f3dex2_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
              * RDPHALF words we consumed. */
             unsigned int h0 = 0u, h1 = 0u;
             unsigned int c0, c1;
-            int rdp_id = cmd & 0x3f;
             int32_t tr[4];
             c0 = rd_u32_be(r, pc);
             c1 = rd_u32_be(r, pc + 4);
@@ -533,7 +532,7 @@ void f3dex2_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
                 h1 = rd_u32_be(r, pc + 4);
             pc += 8;
             (void)c1;
-            tr[0] = (int32_t)(((unsigned int)rdp_id << 24) | (w0 & 0x00ffffffu));
+            tr[0] = (int32_t)w0;    /* keep the raw 0xE4/0xE5 byte, as the RSP does */
             tr[1] = (int32_t)w1;
             tr[2] = (int32_t)h0;   /* s, t   (RDPHALF_2) */
             tr[3] = (int32_t)h1;   /* dsdx, dtdy (RDPHALF_1) */
