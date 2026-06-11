@@ -732,7 +732,17 @@ int rsp_vtx_screen(int32_t cx, int32_t cy, int32_t cz, int32_t cw,
 
     *sx102 = (int32_t)(int16_t)scr_i[0];
     *sy102 = (int32_t)(int16_t)scr_i[1];
-    *sz1616 = (int32_t)(((uint32_t)U16(scr_i[2]) << 16) | (uint32_t)U16(scr_f[2]));
+    /* vertices_store clamps the screen z's integer lane to >= 0 with vge
+     * before storing VTX_SCR_Z; the fraction halfword is stored from the
+     * unclamped register. Geometry behind z = 0 (no-z billboards) carries
+     * the clamped integer with the raw fraction into the triangle write's
+     * fourth texture lane. */
+    {
+        int32_t zi = (int32_t)(int16_t)scr_i[2];
+        if (zi < 0)
+            zi = 0;
+        *sz1616 = (int32_t)(((uint32_t)U16(zi) << 16) | (uint32_t)U16(scr_f[2]));
+    }
     return 1;
 }
 
