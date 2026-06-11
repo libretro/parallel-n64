@@ -164,6 +164,8 @@ void gsp_init(GSPState *s)
     s->clip_ratio = 2;
     s->clip_near_z = 0;
     s->clip_fan_first = 0;
+    s->branch_z_mode = 0;
+    s->branch_z_mode = 0;
     s->tri_dx_scale  = 0x4000;
     s->tri_idy_scale = 0x0008;
     s->tri_frac_mask = (int32_t)0xffff;
@@ -739,6 +741,20 @@ void gsp_modify_vertex(GSPState *s, int vtx, unsigned int where,
         vt->g = (int32_t)((w1 >> 16) & 0xffu) << 16;
         vt->b = (int32_t)((w1 >> 8) & 0xffu) << 16;
         vt->a = (int32_t)(w1 & 0xffu) << 16;
+    }
+    else if (where == 0x18u)    /* G_MWO_POINT_XYSCREEN */
+    {
+        /* The microcode stores the two s10.2 halves straight into the
+         * vertex record's screen x/y (+0x18/+0x1a); the rest of the
+         * record (z, 1/w, clip flags) is untouched, so the patched
+         * vertex keeps its original depth and reject behavior. */
+        vt->scr_x = (int32_t)(int16_t)((w1 >> 16) & 0xffffu);
+        vt->scr_y = (int32_t)(int16_t)(w1 & 0xffffu);
+    }
+    else if (where == 0x1cu)    /* G_MWO_POINT_ZSCREEN */
+    {
+        /* 32-bit screen-z word (int<<16 | frac) at +0x1c. */
+        vt->scr_z = (int32_t)w1;
     }
 }
 

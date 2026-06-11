@@ -445,6 +445,39 @@ void f3dex2_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
                 unsigned int seg = (w0 >> 2) & 0x0fu;
                 s_seg_table[seg] = w1;
             }
+            else if (index == 0x00)
+            {
+                /* G_MW_MATRIX: gSPInsertMatrix patches one 32-bit word of
+                 * the combined MVP in DMEM (two s16 element halves).
+                 * Offsets 0x00-0x1f address the integer halves of the
+                 * row-major 4x4, 0x20-0x3f the fraction halves. The write
+                 * lands on the current combined copy; a later G_MTX
+                 * recompute discards it, exactly as on the RSP. Kirby 64
+                 * billboards its sprite quads this way (recompute via
+                 * G_SPECIAL_1, then overwrite the rotation rows). */
+                unsigned int off = w0 & 0xffffu;
+                if (off < 0x40u && (off & 3u) == 0u)
+                {
+                    int mr = (int)((off & 0x1fu) >> 3);
+                    int mc = (int)((off & 7u) >> 1);
+                    int32_t *e0 = &gsp->combined[mr][mc];
+                    int32_t *e1 = &gsp->combined[mr][mc + 1];
+                    if (off < 0x20u)
+                    {
+                        *e0 = (int32_t)((w1 & 0xffff0000u)
+                                        | ((uint32_t)*e0 & 0xffffu));
+                        *e1 = (int32_t)(((w1 & 0xffffu) << 16)
+                                        | ((uint32_t)*e1 & 0xffffu));
+                    }
+                    else
+                    {
+                        *e0 = (int32_t)(((uint32_t)*e0 & 0xffff0000u)
+                                        | ((w1 >> 16) & 0xffffu));
+                        *e1 = (int32_t)(((uint32_t)*e1 & 0xffff0000u)
+                                        | (w1 & 0xffffu));
+                    }
+                }
+            }
             else if (index == G_MW_NUMLIGHT)
             {
                 /* number of directional lights = w1 / 24 */
@@ -536,10 +569,16 @@ void f3dex2_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
             break;
         }
 
+        case 0xD5:                       /* G_SPECIAL_1: recompute the MVP */
+            /* 2.04H-era gbi: forces the combined modelview*projection
+             * product to be rebuilt immediately, so following
+             * gSPInsertMatrix patches apply to fresh values. */
+            gsp_combine_matrices(gsp);
+            break;
+
         case 0xE1:                       /* G_RDPHALF_1: stage branch target */
             s_half1 = w1;
             break;
-
 
         case 0xDD:                       /* G_LOAD_UCODE (gSPLoadUcodeEx) */
         {
@@ -590,10 +629,17 @@ void f3dex2_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
              * distance-based skip; ignoring it renders the wrong variant. */
             int bv = (int)((w0 >> 1) & 0x7f);
             unsigned int ba = seg_addr(s_half1);
-            if (bv >= 0 && bv < GSP_MAX_VERTICES &&
-                (gsp->vtx[bv].cw >> 16) < (int32_t)w1 &&
-                addr_in_range(ba, 8u))
-                pc = ba;
+            if (bv >= 0 && bv < GSP_MAX_VERTICES && addr_in_range(ba, 8u))
+            {
+                /* F3DZEX2 compares the s16 clip-w integer; plain F3DEX2's
+                 * G_BRANCH_Z compares the 32-bit screen-z word stored at
+                 * vertex+0x1c (sub; bgez -> fall through). */
+                int32_t lhs = gsp->branch_z_mode
+                            ? gsp->vtx[bv].scr_z
+                            : (gsp->vtx[bv].cw >> 16);
+                if (lhs < (int32_t)w1)
+                    pc = ba;
+            }
             break;
         }
 

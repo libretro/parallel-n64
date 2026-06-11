@@ -88,6 +88,9 @@ typedef struct GSPState
      * last polygon vertex with ascending pairs (F3DEX2 2.05+/F3DZEX2),
      * 1 = fan from the first vertex with descending pairs (2.04H). */
     int clip_fan_first;
+    /* G_BRANCH_Z (F3DEX2: compare 32-bit screen z) vs G_BRANCH_W
+     * (F3DZEX2: compare s16 clip-w integer) for opcode 0x04. */
+    int branch_z_mode;
     unsigned int   tex_scale_s, tex_scale_t; /* raw S0.16 from G_TEXTURE */
     unsigned int   persp_norm;               /* G_MW_PERSPNORM u16 (gSPPerspNormalize) */
     int            fog_m, fog_o;             /* G_MW_FOG multiplier/offset (s16 each) */

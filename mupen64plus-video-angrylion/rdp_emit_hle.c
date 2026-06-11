@@ -250,6 +250,47 @@ void rdp_emit_hle_process_dlist(void)
         }
         s_gsp.clip_fan_first = first;
     }
+
+    /* G_BRANCH_Z/W probe: opcode 0x04 compares a vertex field against the
+     * command word and branches to the staged RDPHALF_1 list when it is
+     * smaller. F3DEX2 builds (e.g. 2.04H) load the 32-bit screen-Z word
+     * at vertex+0x1c (lhu rX, 0x380(rX); lw rY, 0x1c(rX)); F3DZEX2
+     * builds load the s16 clip-W integer at vertex+0x6 (lh rY, 0x6(rX)).
+     * Scan the text for the table-lookup/load pair, masking the register
+     * fields. */
+    {
+        unsigned int ut = read_dmem_u32(dmem, 0xfd0) & 0x00ffffffu;
+        int z_mode = 0;
+        if (ut != 0 && ut + 0x1800 <= rdram_size)
+        {
+            unsigned int k;
+            for (k = 0; k + 8 <= 0x1800; k += 4)
+            {
+                unsigned int i0 = ((unsigned int)rdram[(ut + k + 0) ^ 3] << 24)
+                                | ((unsigned int)rdram[(ut + k + 1) ^ 3] << 16)
+                                | ((unsigned int)rdram[(ut + k + 2) ^ 3] << 8)
+                                |  (unsigned int)rdram[(ut + k + 3) ^ 3];
+                unsigned int i1 = ((unsigned int)rdram[(ut + k + 4) ^ 3] << 24)
+                                | ((unsigned int)rdram[(ut + k + 5) ^ 3] << 16)
+                                | ((unsigned int)rdram[(ut + k + 6) ^ 3] << 8)
+                                |  (unsigned int)rdram[(ut + k + 7) ^ 3];
+                if ((i0 & 0xfc00ffffu) == 0x94000380u)
+                {
+                    if ((i1 & 0xfc00ffffu) == 0x8c00001cu)
+                    {
+                        z_mode = 1;
+                        break;
+                    }
+                    if ((i1 & 0xfc00ffffu) == 0x84000006u)
+                    {
+                        z_mode = 0;
+                        break;
+                    }
+                }
+            }
+        }
+        s_gsp.branch_z_mode = z_mode;
+    }
     f3dex2_set_rdram(rdram);
     f3dex2_set_rdram_size(rdram_size);
     f3dex2_set_task_ucode(rdram, read_dmem_u32(dmem, 0xfd0) & 0x00ffffffu);
