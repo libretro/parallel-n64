@@ -664,6 +664,18 @@ void gsp_set_light(GSPState *s, const unsigned char *rdram,
     /* G_MOVEMEM does not touch lightsValid (see gsp_set_lookat). */
 }
 
+void gsp_set_light_color(GSPState *s, int index,
+                         int32_t rr, int32_t gg, int32_t bb)
+{
+    if (index < 0 || index >= GSP_MAX_LIGHTS)
+        return;
+    s->light_rgb[index][0] = rr;
+    s->light_rgb[index][1] = gg;
+    s->light_rgb[index][2] = bb;
+    /* direction (and the lightsValid transform cache) intentionally
+     * untouched: gSPLightColor documents itself as a color-only update */
+}
+
 /* Guard-band plane distance for clip-space vertex v (s15.16) against plane p:
  * p0: 2w - x >= 0   (x <=  2w)
  * p1: 2w + x >= 0   (x >= -2w)

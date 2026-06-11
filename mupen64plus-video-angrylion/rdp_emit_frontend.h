@@ -164,6 +164,8 @@ unsigned int gsp_get_geometry_mode(const GSPState *s);
 void gsp_set_num_lights(GSPState *s, int n);
 void gsp_set_light(GSPState *s, const unsigned char *rdram,
                    unsigned int addr, int index);
+void gsp_set_light_color(GSPState *s, int index,
+                         int32_t rr, int32_t gg, int32_t bb);
 
 int gsp_triangle(GSPState *s, int32_t *cmd, int i0, int i1, int i2,
                  int textured, int z_buffered);

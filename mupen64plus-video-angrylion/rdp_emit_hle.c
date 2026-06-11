@@ -141,8 +141,10 @@ void rdp_emit_hle_process_dlist(void)
             }
             if (dxs > 0 && idys > 0 && (int64_t)dxs * idys == 0x20000)
                 gsp_set_tri_scales(&s_gsp, dxs, idys, fmsk, vcrb);
+
         }
     }
+
 
     /* the FIFO lives in host memory; the top 256 KiB of RDRAM is used
      * only as the virtual address range the DPC registers report */

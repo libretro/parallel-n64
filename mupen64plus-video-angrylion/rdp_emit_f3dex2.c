@@ -42,6 +42,7 @@
 #define F3DEX2_MOVEWORD   0xDB
 #define G_MW_SEGMENT      0x06
 #define G_MW_NUMLIGHT     0x02
+#define G_MW_LIGHTCOL     0x0a
 #define G_MW_FOG          0x08
 #define G_MW_PERSPNORM    0x0e
 
@@ -365,6 +366,21 @@ void f3dex2_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
             {
                 /* number of directional lights = w1 / 24 */
                 gsp_set_num_lights(gsp, (int)(w1 / 24u));
+            }
+            else if (index == G_MW_LIGHTCOL)
+            {
+                /* gSPLightColor: recolor a light without touching its
+                 * direction. Two movewords per call (col and colc copies,
+                 * 4 bytes apart) carry the same rgba32; the light index is
+                 * the 24-byte slot of the 16-bit offset. The ambient is the
+                 * last light, so index == numlights recolors the ambient
+                 * with no special casing. */
+                unsigned int ofs = w0 & 0xffffu;
+                if ((ofs % 24u) == 0)
+                    gsp_set_light_color(gsp, (int)(ofs / 24u),
+                                        (int32_t)((w1 >> 24) & 0xffu),
+                                        (int32_t)((w1 >> 16) & 0xffu),
+                                        (int32_t)((w1 >> 8) & 0xffu));
             }
             else if (index == G_MW_FOG)
             {
