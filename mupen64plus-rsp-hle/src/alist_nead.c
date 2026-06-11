@@ -125,7 +125,7 @@ static void MIXER(struct hle_t* hle, uint32_t w1, uint32_t w2)
     uint16_t dmemi = (w2 >> 16);
     uint16_t dmemo = w2;
 
-    alist_mix(hle, dmemo, dmemi, count, gain);
+    alist_mix_nead(hle, dmemo, dmemi, count, gain);
 }
 
 

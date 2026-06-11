@@ -804,6 +804,64 @@ void alist_adpcm(
 }
 
 
+/* Bit-exact reimplementation of the aspMain MIXER command (opcode 0x0c),
+ * validated against cxd4. Each lane computes
+ *   out = clamp_s16((0x8000 + 2*dst*0x7fff + 2*src*gain) >> 16)
+ * (vmulf dst by the 0x7fff constant, vmacf src by gain), i.e. the
+ * destination term decays by 1/32768 and the result is rounded, unlike
+ * the legacy dst + ((src*gain) >> 15). Processing follows the ucode's
+ * software-pipelined 0x20-byte block schedule: the next source block is
+ * fetched before the current results are stored and the next
+ * destination block is fetched between the two result stores. This
+ * ordering is observable when source and destination overlap, which
+ * games rely on for delay-style mixes. At least one block is always
+ * processed and trailing prefetches can read past the surface; both
+ * match the microcode. */
+void alist_mix_nead(struct hle_t* hle, uint16_t dmemo, uint16_t dmemi, uint16_t count, int16_t gain)
+{
+    int16_t d0[8], d1[8], s0[8], s1[8], r0[8], r1[8];
+    int32_t remaining = (int32_t)count;
+    unsigned int i;
+
+    for (i = 0; i < 8; ++i) {
+        d0[i] = *alist_s16(hle, dmemo + (uint16_t)(i << 1));
+        s0[i] = *alist_s16(hle, dmemi + (uint16_t)(i << 1));
+        d1[i] = *alist_s16(hle, dmemo + 0x10 + (uint16_t)(i << 1));
+        s1[i] = *alist_s16(hle, dmemi + 0x10 + (uint16_t)(i << 1));
+    }
+
+    do {
+        for (i = 0; i < 8; ++i) {
+            int64_t acc;
+            acc = 0x8000 + 2 * (int64_t)((int32_t)d0[i] * 0x7fff)
+                         + 2 * (int64_t)((int32_t)s0[i] * (int32_t)gain);
+            r0[i] = clamp_s16((int_fast32_t)(acc >> 16));
+            acc = 0x8000 + 2 * (int64_t)((int32_t)d1[i] * 0x7fff)
+                         + 2 * (int64_t)((int32_t)s1[i] * (int32_t)gain);
+            r1[i] = clamp_s16((int_fast32_t)(acc >> 16));
+        }
+
+        remaining -= 0x20;
+        dmemi += 0x20;
+
+        for (i = 0; i < 8; ++i)
+            s0[i] = *alist_s16(hle, dmemi + (uint16_t)(i << 1));
+        for (i = 0; i < 8; ++i)
+            *alist_s16(hle, dmemo + (uint16_t)(i << 1)) = r0[i];
+        for (i = 0; i < 8; ++i)
+            d0[i] = *alist_s16(hle, dmemo + 0x20 + (uint16_t)(i << 1));
+        for (i = 0; i < 8; ++i)
+            *alist_s16(hle, dmemo + 0x10 + (uint16_t)(i << 1)) = r1[i];
+        for (i = 0; i < 8; ++i)
+            s1[i] = *alist_s16(hle, dmemi + 0x10 + (uint16_t)(i << 1));
+
+        dmemo += 0x20;
+
+        for (i = 0; i < 8; ++i)
+            d1[i] = *alist_s16(hle, dmemo + 0x10 + (uint16_t)(i << 1));
+    } while (remaining > 0);
+}
+
 /* Bit-exact reimplementation of the aspMain FILTER command (opcode 0x07),
  * derived from the F3DZEX-era audio microcode (Zelda MM aspMain) and
  * validated word-for-word against cxd4. The previous implementation
