@@ -252,6 +252,7 @@ void rdp_emit_hle_process_dlist(void)
     }
     f3dex2_set_rdram(rdram);
     f3dex2_set_rdram_size(rdram_size);
+    f3dex2_set_task_ucode(rdram, read_dmem_u32(dmem, 0xfd0) & 0x00ffffffu);
     f3dex2_run_dl(&s_gsp, &s_fifo, dl_addr, 0, 0);
 
     /* terminate the command list with exactly one SYNC_FULL (RDP cmd 0x29).

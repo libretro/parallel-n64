@@ -53,6 +53,7 @@ void f3dex2_set_othermode_init(unsigned int h, unsigned int l);
  * call before f3dex2_run_dl. 0 means assume the default 8 MiB. */
 void f3dex2_set_rdram_size(unsigned int size);
 void f3dex2_set_rdram(unsigned char *rdram);
+void f3dex2_set_task_ucode(const unsigned char *rdram, unsigned int text);
 
 void f3dex2_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
                    int textured, int z_buffered);

@@ -71,6 +71,31 @@ static unsigned int s_seg_table[16];
  * address staged here by the preceding RDPHALF_1. */
 static unsigned int s_half1;
 
+/* Which microcode class the walker is currently interpreting. Kirby 64
+ * switches between F3DEX2 (3D), L3DEX2 (lines) and S2DEX2 (sprites)
+ * mid-display-list with gSPLoadUcodeL; the low opcode space means
+ * entirely different things per class. Identified by the first text
+ * words of the loaded microcode (word 1 distinguishes the 2.04
+ * builds: c81f201b = L3DEX2_2.04H, c81f2018 = S2DEX2_2.04; anything
+ * else is treated as the F3DEX2 family). */
+#define UCODE_F3DEX2 0
+#define UCODE_L3DEX2 1
+#define UCODE_S2DEX2 2
+static int s_ucode_class;
+
+static int probe_ucode_class(const unsigned char *r, unsigned int text)
+{
+    unsigned int w1;
+    if (text == 0 || text + 8 > s_rdram_size)
+        return UCODE_F3DEX2;
+    w1 = rd_u32_be(r, text + 4);
+    if (w1 == 0xc81f201bu)
+        return UCODE_L3DEX2;
+    if (w1 == 0xc81f2018u)
+        return UCODE_S2DEX2;
+    return UCODE_F3DEX2;
+}
+
 /* RDP render state is global on the real RSP (one set of mode registers),
  * not per-display-list. Track it module-wide so a mode set in one DL is seen
  * by sibling DLs drawn afterward; reset per frame alongside the segments. */
@@ -142,6 +167,14 @@ void f3dex2_set_rdram_size(unsigned int size)
  * walker borrowed the FIFO's pointer, which doubled as the FIFO backing
  * store; with the FIFO moved to host memory the two are distinct. */
 static unsigned char *s_rdram_base = 0;
+
+/* Identify the task's own microcode at task start (the task itself can be
+ * S2DEX2 or L3DEX2, and any mid-list gSPLoadUcodeL switch from the previous
+ * task must not leak in). */
+void f3dex2_set_task_ucode(const unsigned char *rdram, unsigned int text)
+{
+    s_ucode_class = probe_ucode_class(rdram, text);
+}
 
 void f3dex2_set_rdram(unsigned char *rdram)
 {
@@ -256,6 +289,41 @@ void f3dex2_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
         w1 = rd_u32_be(r, pc + 4);
         pc += 8;
         cmd = (int)((w0 >> 24) & 0xff);
+
+        /* The low opcode space is class-specific: under S2DEX2 it is the
+         * sprite/object command set, under L3DEX2 0x08 is G_LINE3D. Route
+         * those before the F3DEX2 interpretation; the shared flow-control
+         * and RDP-passthrough opcodes (0xD7..0xFF minus the class
+         * differences) fall through to the main switch. */
+        if (s_ucode_class == UCODE_S2DEX2)
+        {
+            int s2 = 1;
+            switch (cmd)
+            {
+            case 0x05:                  /* G_OBJ_LOADTXTR */
+                s2dex_obj_loadtxtr(r, s_rdram_size, seg_addr(w1), fifo,
+                                   seg_addr);
+                break;
+            case 0x01: case 0x02: case 0x04:
+            case 0x06: case 0x07: case 0x08: case 0xDA: case 0xDC:
+                /* The remaining object commands (G_OBJ_RECTANGLE/_R,
+                 * G_OBJ_SPRITE, G_SELECT_DL, G_OBJ_LDTX_*, G_OBJ_MOVEMEM)
+                 * are consumed without effect until content that uses
+                 * them surfaces; mis-reading them as F3DEX2 packets would
+                 * corrupt the rest of the list. */
+                break;
+            default:
+                s2 = 0;
+                break;
+            }
+            if (s2)
+                continue;
+        }
+        else if (s_ucode_class == UCODE_L3DEX2 && cmd == 0x08)
+        {
+            /* G_LINE3D: consumed; line rasterisation is not modeled yet. */
+            continue;
+        }
 
         switch (cmd)
         {
@@ -471,6 +539,21 @@ void f3dex2_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
         case 0xE1:                       /* G_RDPHALF_1: stage branch target */
             s_half1 = w1;
             break;
+
+
+        case 0xDD:                       /* G_LOAD_UCODE (gSPLoadUcodeEx) */
+        {
+            /* w1 = microcode text address; the preceding G_RDPHALF_1
+             * staged the data address. The RSP swaps the running
+             * microcode; the walker swaps its opcode interpretation. */
+            unsigned int text = seg_addr(w1);
+            s_ucode_class = probe_ucode_class(r, text);
+            /* The microcode reload re-DMAs the data segment, restoring
+             * the S2DEX scissor/status defaults. */
+            if (s_ucode_class == UCODE_S2DEX2)
+                s2dex_reset();
+            break;
+        }
 
 
         case 0x03:                       /* G_CULLDL (gSPCullDisplayList) */

@@ -42,11 +42,125 @@ void s2dex_set_scissor(unsigned int w0, unsigned int w1)
     s_scis_lry = w1 & 0xfffu;
 }
 
+/* DMEM 0x8c-0x9b: the four texture-load status words used by the
+ * G_OBJ_LOADTXTR dedup test: the load runs only when
+ * (status[sid >> 2] & mask) != flag, and afterwards stores
+ * status = (status & ~mask) | flag, so repeated loads of the texture
+ * already resident in TMEM emit nothing. Reset on every microcode load
+ * (the data segment, status words included, is re-DMAed). */
+static unsigned int s_obj_status[4];
+
 void s2dex_reset(void)
 {
+    /* Mirror the values the S2DEX2 data segment ships for these DMEM
+     * slots: a microcode (re)load DMAs them in fresh. The default
+     * scissor is the full 320x240 screen (0x204 = 0x00000500,
+     * 0x208 = 0x000003c0), not zero -- Zelda's pre-rendered rooms set
+     * the RDP scissor before gSPLoadUcodeL and never resend it, so a
+     * zeroed shadow would clip every background strip away. */
     s_obj_rendermode = 0;
     s_scis_ulx = s_scis_uly = 0;
-    s_scis_lrx = s_scis_lry = 0;
+    s_scis_lrx = 0x500;
+    s_scis_lry = 0x3c0;
+    s_obj_status[0] = s_obj_status[1] = 0;
+    s_obj_status[2] = s_obj_status[3] = 0;
+}
+
+/* ---- G_OBJ_LOADTXTR ----------------------------------------------------- */
+
+/* uObjTxtr (24 bytes, big-endian):
+ *   +0x00 u32 type     G_OBJLT_TXTRBLOCK 0x1033 / TXTRTILE 0xfc1034 /
+ *                      TLUT 0x30
+ *   +0x04 u32 image    source address (segmented)
+ *   +0x08 u16 tmem     TMEM word address (TLUT: palette head)
+ *   +0x0a u16 tsize    LOADBLOCK texel count (TLUT: entry count - 1)
+ *   +0x0c u16 tline    LOADBLOCK dxt (TLUT: unused)
+ *   +0x0e u16 sid      status id (0/4/8/12)
+ *   +0x10 u32 flag     dedup tag
+ *   +0x14 u32 mask     dedup mask
+ * Returns 1 when the command was consumed (always). The emitted command
+ * words mirror the S2DEX2 RSP output verbatim, including the junk upper
+ * bits the microcode leaves in the tile words (0x27000000), so the
+ * stream compares byte-exact against the LLE. */
+int s2dex_obj_loadtxtr(const unsigned char *rdram, unsigned int rdram_bytes,
+                       unsigned int ta, RdpFifo *fifo,
+                       unsigned int (*segfn)(unsigned int))
+{
+    unsigned int type, image, tmem, tsize, tline, sid, flag, mask;
+    int32_t cw[6];
+    if (ta + 24 > rdram_bytes)
+        return 1;
+    type  = ((unsigned int)rdram[(ta + 0) ^ 3] << 24)
+          | ((unsigned int)rdram[(ta + 1) ^ 3] << 16)
+          | ((unsigned int)rdram[(ta + 2) ^ 3] << 8)
+          |  (unsigned int)rdram[(ta + 3) ^ 3];
+    image = ((unsigned int)rdram[(ta + 4) ^ 3] << 24)
+          | ((unsigned int)rdram[(ta + 5) ^ 3] << 16)
+          | ((unsigned int)rdram[(ta + 6) ^ 3] << 8)
+          |  (unsigned int)rdram[(ta + 7) ^ 3];
+    tmem  = ((unsigned int)rdram[(ta + 8) ^ 3] << 8)
+          |  (unsigned int)rdram[(ta + 9) ^ 3];
+    tsize = ((unsigned int)rdram[(ta + 10) ^ 3] << 8)
+          |  (unsigned int)rdram[(ta + 11) ^ 3];
+    tline = ((unsigned int)rdram[(ta + 12) ^ 3] << 8)
+          |  (unsigned int)rdram[(ta + 13) ^ 3];
+    sid   = ((unsigned int)rdram[(ta + 14) ^ 3] << 8)
+          |  (unsigned int)rdram[(ta + 15) ^ 3];
+    flag  = ((unsigned int)rdram[(ta + 16) ^ 3] << 24)
+          | ((unsigned int)rdram[(ta + 17) ^ 3] << 16)
+          | ((unsigned int)rdram[(ta + 18) ^ 3] << 8)
+          |  (unsigned int)rdram[(ta + 19) ^ 3];
+    mask  = ((unsigned int)rdram[(ta + 20) ^ 3] << 24)
+          | ((unsigned int)rdram[(ta + 21) ^ 3] << 16)
+          | ((unsigned int)rdram[(ta + 22) ^ 3] << 8)
+          |  (unsigned int)rdram[(ta + 23) ^ 3];
+
+    sid = (sid >> 2) & 3u;
+    if ((s_obj_status[sid] & mask) == flag)
+        return 1;                       /* already resident */
+    s_obj_status[sid] = (s_obj_status[sid] & ~mask) | flag;
+
+    image = segfn(image);
+
+    if (type == 0x00000030u)            /* G_OBJLT_TLUT */
+    {
+        /* SETTIMG(RGBA, 16b, width = pnum), SETTILE(tmem = phead,
+         * tile 7), LOADTLUT(tile 7, pnum << 14). */
+        cw[0] = (int32_t)(0x3d100000u | (tsize & 0xfffu));
+        cw[1] = (int32_t)image;
+        cw[2] = (int32_t)(0x35000000u | (tmem & 0x1ffu));
+        cw[3] = (int32_t)0x27000000u;
+        cw[4] = (int32_t)0x30000000u;
+        cw[5] = (int32_t)(0x27000000u | ((tsize & 0x3ffu) << 14));
+        rdp_fifo_append(fifo, cw, 6);
+    }
+    else if (type == 0x00001033u)       /* G_OBJLT_TXTRBLOCK */
+    {
+        cw[0] = (int32_t)0x3d100000u;
+        cw[1] = (int32_t)image;
+        cw[2] = (int32_t)(0x35100000u | (tmem & 0x1ffu));
+        cw[3] = (int32_t)0x27000000u;
+        cw[4] = (int32_t)0x33000000u;
+        cw[5] = (int32_t)(0x27000000u | ((tsize & 0xfffu) << 12)
+                          | (tline & 0xfffu));
+        rdp_fifo_append(fifo, cw, 6);
+    }
+    else if (type == 0x00fc1034u)       /* G_OBJLT_TXTRTILE */
+    {
+        /* twidth = tsize, theight = tline per the GS_TT_* encodings:
+         * SETTIMG width = (tsize >> 2) + 1 pixels, LOADTILE lrs/lrt
+         * from the encoded fields. Marked for oracle validation when
+         * content reaches it. */
+        cw[0] = (int32_t)(0x3d100000u | ((tsize >> 2) & 0xfffu));
+        cw[1] = (int32_t)image;
+        cw[2] = (int32_t)(0x35100000u | (tmem & 0x1ffu));
+        cw[3] = (int32_t)0x27000000u;
+        cw[4] = (int32_t)0x34000000u;
+        cw[5] = (int32_t)(0x27000000u | ((tsize & 0xfffu) << 12)
+                          | (tline & 0xfffu));
+        rdp_fifo_append(fifo, cw, 6);
+    }
+    return 1;
 }
 
 /* ---- data-segment constants (S2DEX2 data, fixed in the ucode image) ---- */
