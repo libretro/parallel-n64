@@ -551,7 +551,7 @@ int32_t rsp_light_point_factor(const int32_t mv[4][4], const int32_t n[3],
     }
 
     for (c = 0; c < 3; c++)
-        d[c] = clamp_s16(S16(pos[c]) - vc[c]);
+        d[c] = clamp_s16(S16(pos[c]) - S16(vc[c]));
 
     for (c = 0; c < 3; c++)
     {
