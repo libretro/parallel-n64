@@ -163,10 +163,21 @@ void rdp_fifo_append(RdpFifo *f, const int32_t *words, int count)
  * physical = seg_table[(addr >> 24) & 0xf] + (addr & 0xffffff). For KSEG0
  * pointers (top byte 0x80/0xA0) the segment index is 0 (table base 0), so the
  * result is just the low 24 bits -- the standard virtual->physical strip. */
+static unsigned int seg_addr_rsp(unsigned int w1)
+{
+    /* segmented_to_physical: clears the input's top byte and adds the raw
+     * segment-table word, with no final mask. Games store KSEG0 pointers in
+     * the table, so the sum keeps the 0x80000000 bit; the RDP and the RSP
+     * DMA engine both ignore the upper address bits, but the emitted
+     * SET*IMG words carry the full sum. */
+    unsigned int seg = (w1 >> 24) & 0x0fu;
+    return s_seg_table[seg] + (w1 & 0x00ffffffu);
+}
+
 static unsigned int seg_addr(unsigned int w1)
 {
-    unsigned int seg = (w1 >> 24) & 0x0fu;
-    return (s_seg_table[seg] + (w1 & 0x00ffffffu)) & 0x00ffffffu;
+    /* physical address for this plugin's own RDRAM reads */
+    return seg_addr_rsp(w1) & 0x00ffffffu;
 }
 
 /* true if [a, a+bytes) lies within RDRAM; used to reject mis-segmented
@@ -377,7 +388,7 @@ void f3dex2_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
             if (index == G_MW_SEGMENT)
             {
                 unsigned int seg = (w0 >> 2) & 0x0fu;
-                s_seg_table[seg] = w1 & 0x00ffffffu;
+                s_seg_table[seg] = w1;
             }
             else if (index == G_MW_NUMLIGHT)
             {
@@ -666,7 +677,7 @@ void f3dex2_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
                      * the RDP, so resolve fully here -- keeping the segment id
                      * byte only works for identity-mapped segments. */
                     if (rdp_id == 0x3f || rdp_id == 0x3e || rdp_id == 0x3d)
-                        two[1] = (int32_t)seg_addr(w1);
+                        two[1] = (int32_t)seg_addr_rsp(w1);
                     else
                         two[1] = (int32_t)w1;
                     rdp_fifo_append(fifo, two, 2);
