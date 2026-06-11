@@ -816,6 +816,51 @@ void alist_adpcm(
 }
 
 
+/* Bit-exact implementation of the aspMain S8DEC command (opcode 0x17,
+ * A_S8DEC, issued by the OoT/MM-era audio driver for CODEC_S8
+ * samples), derived from the Zelda MM aspMain disassembly and
+ * validated against cxd4 with synthetic probe alists. The command
+ * takes its in/out/count from the previous SETBUFF and decodes 8-bit
+ * samples to 16-bit (s8 << 8, no rounding or gain). The first 32
+ * bytes of the output buffer act as a state header, mirroring ADPCM:
+ * zeroed when flags bit 0 (init) is set, otherwise DMAed in from the
+ * state address (or from the SETLOOP address when flags bit 1 is
+ * set). Decoding starts after the header, processing ceil(count/0x20)
+ * output blocks, and the last 32 output bytes (the header itself when
+ * count is zero) are stored back to the state address. */
+void alist_s8dec(struct hle_t* hle, bool init, bool loop, uint16_t dmemi, uint16_t dmemo, uint16_t count, uint32_t loop_address, uint32_t address)
+{
+    unsigned int i;
+    int32_t remaining;
+
+    for (i = 0; i < 0x20; i += 2)
+        *alist_s16(hle, dmemo + (uint16_t)i) = 0;
+
+    if (!init) {
+        uint32_t src = loop ? loop_address : address;
+        for (i = 0; i < 0x20; i += 2)
+            *alist_s16(hle, dmemo + (uint16_t)i) = *dram_u16(hle, src + i);
+    }
+
+    dmemo += 0x20;
+
+    remaining = (int32_t)count;
+    if (remaining != 0) {
+        do {
+            for (i = 0; i < 0x10; ++i) {
+                int8_t b = (int8_t)*alist_u8(hle, dmemi + (uint16_t)i);
+                *alist_s16(hle, dmemo + (uint16_t)(i << 1)) = (int16_t)((int16_t)b << 8);
+            }
+            dmemi += 0x10;
+            dmemo += 0x20;
+            remaining -= 0x20;
+        } while (remaining > 0);
+    }
+
+    for (i = 0; i < 0x20; i += 2)
+        *dram_u16(hle, address + i) = (uint16_t)*alist_s16(hle, dmemo - 0x20 + (uint16_t)i);
+}
+
 /* Bit-exact reimplementation of the aspMain MIXER command (opcode 0x0c),
  * validated against cxd4. Each lane computes
  *   out = clamp_s16((0x8000 + 2*dst*0x7fff + 2*src*gain) >> 16)

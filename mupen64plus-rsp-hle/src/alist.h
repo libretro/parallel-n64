@@ -124,6 +124,16 @@ void alist_resample_zoh(
         uint32_t pitch,
         uint32_t pitch_accu);
 
+void alist_s8dec(
+        struct hle_t* hle,
+        bool init,
+        bool loop,
+        uint16_t dmemi,
+        uint16_t dmemo,
+        uint16_t count,
+        uint32_t loop_address,
+        uint32_t address);
+
 void alist_mix_nead(
         struct hle_t* hle,
         uint16_t dmemo,

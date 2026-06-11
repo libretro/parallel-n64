@@ -329,6 +329,22 @@ static void FILTER(struct hle_t* hle, uint32_t w1, uint32_t w2)
     }
 }
 
+static void S8DEC(struct hle_t* hle, uint32_t w1, uint32_t w2)
+{
+    uint8_t  flags   = (w1 >> 16);
+    uint32_t address = (w2 & 0xffffff);
+
+    alist_s8dec(
+            hle,
+            (flags & 0x1) != 0,
+            (flags & 0x2) != 0,
+            hle->alist_nead.in,
+            hle->alist_nead.out,
+            hle->alist_nead.count,
+            hle->alist_nead.loop,
+            address);
+}
+
 static void SEGMENT(struct hle_t* UNUSED(hle), uint32_t UNUSED(w1), uint32_t UNUSED(w2))
 {
 }
@@ -502,7 +518,7 @@ void alist_process_nead_mm(struct hle_t* hle)
         SETBUFF,        DUPLICATE,      DMEMMOVE,       LOADADPCM,
         MIXER,          INTERLEAVE,     HILOGAIN,       SETLOOP,
         NEAD_16,        INTERL,         ENVSETUP1,      ENVMIXER,
-        LOADBUFF,       SAVEBUFF,       ENVSETUP2,      UNKNOWN
+        LOADBUFF,       SAVEBUFF,       ENVSETUP2,      S8DEC
     };
 
     alist_process(hle, ABI, 0x18);
