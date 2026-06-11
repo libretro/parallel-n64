@@ -40,7 +40,7 @@ static void merge(pi16 VD, pi16 cmp, pi16 pass, pi16 fail)
     for (i = 0; i < N; i++)
         diff[i] = pass[i] - fail[i];
     for (i = 0; i < N; i++)
-        VD[i] = fail[i] + cmp[i]*diff[i]; /* actually `(cmp[i] != 0)*diff[i]` */
+        VD[i] = fail[i] + (cmp[i] != 0)*diff[i];
 #endif
     return;
 }
