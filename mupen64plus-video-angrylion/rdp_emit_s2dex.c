@@ -129,8 +129,15 @@ void s2dex_bg_1cyc(const unsigned char *rdram, unsigned int rdram_bytes,
     unsigned int img_rows;          /* DMEM 0x40c: image height in rows */
     unsigned int settimg_w0, settile_w0;        /* DMEM 0x3f8 / 0x3fc */
     unsigned int seam_flag;         /* DMEM 0x3e1 */
-    unsigned int start_row, y_ofs;  /* DMEM 0x40e / 0x3f4 */
+    unsigned int start_row;         /* DMEM 0x40e */
+    unsigned int x_ofs;             /* DMEM 0x3f4: X byte offset */
     uint32_t     rows_q;            /* DMEM 0x3e8: rows step, u6.10 */
+    uint32_t     startx32, starty32;            /* 1/32-texel starts */
+    int32_t      origin32;          /* imageYorig, wrap-adjusted */
+    unsigned int first_a0, first_adv;           /* DMEM 0x400 / 0x404 */
+    uint32_t     v0_init;           /* DMEM 0x3ec */
+    unsigned int s_coord, t_coord;  /* first texrect S/T, s10.5 */
+    unsigned int drawnw_fold;       /* scale*drawW fold, hi lane (v9[0]) */
 
     int32_t cw[6];
     unsigned int siz_add, siz_mul, fmt_cap;
@@ -263,25 +270,39 @@ void s2dex_bg_1cyc(const unsigned char *rdram, unsigned int rdram_bytes,
     img_rows  = image_h >> 2;                   /* DMEM 0x40c */
 
     /* IMEM 0x7d4-0x840 + 0x860-0x87c: image-space start offsets in
-     * 1/32-texel units and the wrap modulo. startx32 = imageX + the
-     * scissored left clip scaled into image space; the seam flag marks
-     * draws whose right edge reaches the image width (the strip loads
-     * then need the line-gap patches). The X wrap steps the start by
-     * 0x20 units and the source pointer origin alongside it. */
+     * 1/32-texel units and the wrap modulo. The image is a linear texel
+     * stream: an X wrap past the right edge advances Y by one row (and the
+     * texture origin with it); a Y wrap subtracts the image height from
+     * both. The seam flag marks draws whose right edge reaches the image
+     * width (the strip loads then need the line-gap patches). */
     {
-        uint32_t prodl = (uint32_t)scale_w * 0u;    /* left clip, see below */
         uint32_t imagew32 = ((uint32_t)image_w * 8u) & 0xffffu;
-        uint32_t drawnw32, startx32;
-        prodl = (uint32_t)scale_w * clip_l_q;
+        uint32_t imageh32 = ((uint32_t)image_h * 8u) & 0xffffu;
+        uint32_t drawnw32;
+        uint32_t prodl = (uint32_t)scale_w * clip_l_q;
+        uint32_t prodt = (uint32_t)scale_h * clip_t_q;
         startx32 = (uint32_t)image_x
                  + (((prodl & 0xffffu) * 0x200u) >> 16) + (prodl >> 16) * 0x200u;
+        starty32 = (uint32_t)image_y
+                 + (((prodt & 0xffffu) * 0x200u) >> 16) + (prodt >> 16) * 0x200u;
+        origin32 = (int32_t)bg_rd_u32(rdram, bg_addr + 0x20);   /* imageYorig */
         {
             uint32_t prodw = (uint32_t)scale_w * (uint32_t)draw_w_q;
-            drawnw32 = ((((prodw & 0xffffu) * 0x200u) >> 16)
-                        + (prodw >> 16) * 0x200u) + 0xbu;
+            drawnw_fold = ((((prodw & 0xffffu) * 0x200u) >> 16)
+                           + (prodw >> 16) * 0x200u) & 0xffffu;
+            drawnw32 = drawnw_fold + 0xbu;
         }
         while (startx32 >= imagew32)            /* IMEM 0x800-0x814 */
+        {
             startx32 -= imagew32;
+            starty32 += 0x20u;
+            origin32 += 0x20;
+        }
+        while (starty32 >= imageh32 && imageh32 != 0u)  /* IMEM 0x81c-0x830 */
+        {
+            starty32 -= imageh32;
+            origin32 -= (int32_t)imageh32;
+        }
         seam_flag = (startx32 + drawnw32 < imagew32) ? 0u : 1u;
     }
 
@@ -300,18 +321,74 @@ void s2dex_bg_1cyc(const unsigned char *rdram, unsigned int rdram_bytes,
     settimg_w0 = 0xfd100000u | (((bpr >> 1) - 1u) & 0xfffu);
     settile_w0 = 0xf5100000u | ((line_words & 0x1ffu) << 9);
 
-    /* Y start row (IMEM 0xbd0-0xbf8): the image row the first strip reads,
-     * wrapped into [0, imageH); zero without imageY/imageYorig scroll. */
+    /* IMEM 0x90c-0x9c0 + 0xbb4-0xbf8: the Y phase and its division by the
+     * strip step. The scroll distance (start minus origin, in rows<<10
+     * through the inverse-scale folds, fraction bits masked) is divided by
+     * rows_q with the RSP reciprocal table and a Newton pick of q vs q+1;
+     * the remainder gives the first strip's shortened row count, its
+     * sub-row fraction lands in the first texrect's T coordinate, and the
+     * quotient/remainder/origin reconstruct the absolute start row. */
+    x_ofs   = (((startx32 * siz_mul) >> 16) * 8u);          /* DMEM 0x3f4 */
+    s_coord = startx32 & siz_add;               /* TMEM word phase, s10.5 */
+    if (flip_s)
     {
-        uint32_t prodt = (uint32_t)scale_h * clip_t_q;
-        uint32_t starty32 = (uint32_t)image_y
-                 + (((prodt & 0xffffu) * 0x200u) >> 16) + (prodt >> 16) * 0x200u;
-        uint32_t imageh32 = ((uint32_t)image_h * 8u) & 0xffffu;
-        while (starty32 >= imageh32 && imageh32 != 0u)
-            starty32 -= imageh32;
-        start_row = starty32 >> 5;
-        y_ofs     = start_row * bpr;            /* DMEM 0x3f4 */
+        /* Horizontal flip is a negative S into the always-mirrored render
+         * tile (the SETTILE template enables mirror_s): S' = -S minus the
+         * drawn width fold (IMEM 0xc44-0xc48; v9[0] from 0x848-0x850). */
+        s_coord = (0u - s_coord - drawnw_fold) & 0xffffu;
     }
+    {
+        uint32_t phase = (starty32 - (uint32_t)origin32) << 5;  /* DMEM 0x3e4 */
+        uint32_t il = inv_h & 0xffffu, ih = inv_h >> 16;
+        uint32_t lo = phase & 0xffffu, hi = phase >> 16;
+        uint32_t ph = ((lo * il) >> 16) + hi * il + lo * ih + ((hi * ih) << 16);
+        uint32_t ph_masked = (ph & 0xffff0000u) | (ph & 0xfc00u);
+        int32_t  rcp = rsp_recip_div((int32_t)rows_q);
+        uint32_t rl = (uint32_t)rcp & 0xffffu, rh = ((uint32_t)rcp >> 16) & 0xffffu;
+        uint32_t pl = ph_masked & 0xffffu, phh = ph_masked >> 16;
+        uint32_t qf = (((pl * rl) >> 16) + phh * rl + pl * rh + ((phh * rh) << 16)) * 2u;
+        uint32_t q  = qf >> 16;
+        uint32_t prod, prodm, remainder, rem_scaled, rem_i, orows32;
+        uint32_t rs_lo;
+
+        if (ph_masked >= rows_q * (q + 1u))     /* IMEM 0x950-0x960 */
+            q += 1u;
+        prod  = rows_q * q;
+        prodm = (prod & 0xffff0000u) | (prod & 0xfc00u);    /* IMEM 0x96c */
+        remainder = ph_masked - prodm;
+
+        /* remainder >> 10 with the x0x40 folds (integer remainder rows) */
+        rem_i = (((remainder & 0xffffu) * 0x40u) >> 16)
+              + ((remainder >> 16) & 0xffffu) * 0x40u;
+        /* scale back into image rows (IMEM 0x984-0x988) */
+        rem_scaled = (rem_i & 0xffffu) * scale_h
+                   + (((rem_i >> 16) & 0xffffu) * scale_h << 16);
+        rs_lo = rem_scaled & 0xffffu;
+        /* first texrect T: the sub-row fraction (IMEM 0x9a8-0x9ac) */
+        t_coord = (unsigned int)((((int32_t)(int16_t)rs_lo * 0x800) >> 16)
+                                 & 0x1f);
+        /* integer scaled remainder (IMEM 0x9b0-0x9b8) */
+        rem_i = ((((rem_scaled & 0xffffu) * 0x40u) >> 16)
+                 + ((rem_scaled >> 16) & 0xffffu) * 0x40u) & 0xffffu;
+
+        first_a0 = rows_strip - rem_i;          /* DMEM 0x400 */
+        /* v0 init: rows_q with the product's sub-1024 dust, minus the
+         * remainder (IMEM 0x98c-0x99c; the vand replaces the low
+         * accumulator lane). */
+        v0_init = (((rows_q >> 16) << 16) | (prod & 0x3ffu))
+                + (rows_q & 0xffffu) - remainder;
+
+        /* absolute start row (IMEM 0xbb4-0xbe4) */
+        orows32 = ((((uint32_t)origin32 & 0xffffu) * 0x800u) >> 16)
+                + (uint32_t)((int32_t)(int16_t)((uint32_t)origin32 >> 16)
+                             * 0x800);
+        start_row = (q * rows_strip + rem_i + orows32) & 0xffffu;
+        if ((int)(short)start_row < 0)
+            start_row = (start_row + img_rows) & 0xffffu;
+        if (start_row >= img_rows)
+            start_row -= img_rows;
+    }
+    first_adv = first_a0 * bpr;                 /* DMEM 0x404 */
 
     /* IMEM 0xc78-0xcb8: preamble -- SETTILE 7 (load tile; w1 is the 0x27
      * template lane), SETTILE 0 (render tile with the struct's fmt/siz and
@@ -333,10 +410,13 @@ void s2dex_bg_1cyc(const unsigned char *rdram, unsigned int rdram_bytes,
     {
         unsigned int v1   = img_rows - start_row;       /* IMEM 0xcdc */
         unsigned int t6   = clip_h_px;                  /* DMEM 0x3de */
-        uint32_t     v0   = rows_q;                     /* DMEM 0x3ec */
-        unsigned int a0   = rows_strip;                 /* DMEM 0x400 */
-        unsigned int a1   = image_ptr + y_ofs;          /* IMEM 0xc1c */
+        uint32_t     v0   = v0_init;                    /* DMEM 0x3ec */
+        unsigned int a0   = first_a0;                   /* DMEM 0x400 */
+        unsigned int adv  = first_adv;                  /* DMEM 0x404 */
+        unsigned int a1   = image_ptr + x_ofs
+                          + start_row * bpr;            /* IMEM 0xc1c */
         unsigned int t1   = clip_uly_px;
+        unsigned int tc   = t_coord;                    /* first-strip T */
         unsigned int t5, t2, t9, t8, base;
         int          tail;
 
@@ -350,15 +430,17 @@ void s2dex_bg_1cyc(const unsigned char *rdram, unsigned int rdram_bytes,
                 /* sub-row strip (large vertical scale): consume the
                  * source rows without drawing (IMEM 0xd04-0xd48). */
                 int rem = (int)v1 - (int)a0;
-                a1 += strip_adv;
+                a1 += adv;
                 if (rem <= 0)
                 {
-                    a1 = base + y_ofs + (unsigned int)(-rem) * bpr;
+                    a1 = base + x_ofs + (unsigned int)(-rem) * bpr;
                     rem += (int)img_rows;
                 }
                 v1  = (unsigned int)rem;
                 v0  = (v0 & 0x3ffu) + rows_q;           /* IMEM 0xdd8 */
                 a0  = rows_strip;
+                adv = strip_adv;                        /* DMEM 0x408 */
+                tc  = 0;
                 continue;
             }
             tail = (int)t6 - (int)t5;                   /* IMEM 0xd4c */
@@ -396,7 +478,7 @@ void s2dex_bg_1cyc(const unsigned char *rdram, unsigned int rdram_bytes,
                         ((t9 * 4u - 1u) & 0xfffu));
                 rdp_fifo_append(fifo, cw, 6);
                 v1 -= a0;
-                a1 += strip_adv;
+                a1 += adv;
             }
             else
             {
@@ -405,11 +487,14 @@ void s2dex_bg_1cyc(const unsigned char *rdram, unsigned int rdram_bytes,
                  * seam patches, each load prefixed by TILESYNC + SETTILE 7
                  * at its TMEM offset (the 0x9cc emitter). */
                 unsigned int pre = t9 - v1;
-                unsigned int gap = line_words - (bpr >> 3);
+                /* loaded data words per row: each row's load starts at
+                 * the X byte offset, so the real extent is bpr minus it
+                 * (IMEM 0xad0-0xae0: v24[2] = DMEM 0x3f4). */
+                unsigned int dw = ((bpr - x_ofs) & 0xffffu) >> 3;
 
                 if ((int)pre > 0)
                 {
-                    unsigned int rrow = v1, rsrc = base + y_ofs;
+                    unsigned int rrow = v1, rsrc = base + x_ofs;
                     unsigned int rcnt = pre;
                     if (v1 & 1u)
                     {
@@ -447,7 +532,7 @@ void s2dex_bg_1cyc(const unsigned char *rdram, unsigned int rdram_bytes,
                     cw[0] = (int32_t)0x28000000u;
                     cw[1] = 0;
                     cw[2] = (int32_t)(settile_w0 |
-                            ((t8e * line_words + (bpr >> 3)) & 0x1ffu));
+                            ((t8e * line_words + dw) & 0x1ffu));
                     cw[3] = (int32_t)0x27000000u;
                     rdp_fifo_append(fifo, cw, 4);
                     cw[0] = (int32_t)settimg_w0;
@@ -456,7 +541,7 @@ void s2dex_bg_1cyc(const unsigned char *rdram, unsigned int rdram_bytes,
                     cw[3] = 0;
                     cw[4] = (int32_t)0xf4000000u;
                     cw[5] = (int32_t)((7u << 24) |
-                            ((((gap - 1u) << 4) & 0xfffu) << 12) |
+                            ((((line_words - dw - 1u) << 4) & 0xfffu) << 12) |
                             ((cnt * 4u - 1u) & 0xfffu));
                     rdp_fifo_append(fifo, cw, 6);
                     /* row patch: the row past the main load into TMEM
@@ -473,7 +558,7 @@ void s2dex_bg_1cyc(const unsigned char *rdram, unsigned int rdram_bytes,
                     cw[3] = 0;
                     cw[4] = (int32_t)0xf4000000u;
                     cw[5] = (int32_t)((7u << 24) |
-                            (((((bpr >> 3) - 1u) << 4) & 0xfffu) << 12) |
+                            ((((dw - 1u) << 4) & 0xfffu) << 12) |
                             ((cnt * 4u - 1u) & 0xfffu));
                     rdp_fifo_append(fifo, cw, 6);
                 }
@@ -508,11 +593,11 @@ void s2dex_bg_1cyc(const unsigned char *rdram, unsigned int rdram_bytes,
                     if (rem > 0)
                     {
                         v1 = (unsigned int)rem;
-                        a1 += strip_adv;
+                        a1 += adv;
                     }
                     else
                     {
-                        a1 = base + y_ofs + (unsigned int)(-rem) * bpr;
+                        a1 = base + x_ofs + (unsigned int)(-rem) * bpr;
                         v1 = (unsigned int)rem + img_rows;
                     }
                 }
@@ -525,7 +610,7 @@ void s2dex_bg_1cyc(const unsigned char *rdram, unsigned int rdram_bytes,
                               ((t2 * 4u) & 0xfffu));
             cw[3] = (int32_t)(((clip_ulx & 0xfffu) << 12) |
                               ((t1 * 4u) & 0xfffu));
-            cw[4] = 0;
+            cw[4] = (int32_t)((s_coord << 16) | tc);
             cw[5] = (int32_t)((scale_w << 16) | scale_h);
             rdp_fifo_append(fifo, cw, 6);
 
@@ -534,6 +619,8 @@ void s2dex_bg_1cyc(const unsigned char *rdram, unsigned int rdram_bytes,
             t1  = t2;
             v0 += rows_q;                               /* IMEM 0xdd8 */
             a0  = rows_strip;                           /* DMEM 0x402 */
+            adv = strip_adv;                            /* DMEM 0x408 */
+            tc  = 0;                                    /* IMEM 0xde8 */
         }
     }
 }
