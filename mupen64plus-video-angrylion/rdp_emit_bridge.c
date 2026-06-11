@@ -185,6 +185,7 @@ int bridge_add_triangle(int32_t *cmd,
                         const BridgeVertex *v2,
                         const BridgeViewport *vp,
                         int textured, int z_buffered, int smooth,
+                        int cull_mode,
                         int tile, int max_level, int tex_w, int tex_h)
 {
     EmitVertex a, b, c;
@@ -195,6 +196,37 @@ int bridge_add_triangle(int32_t *cmd,
     clip_to_emit(&a, v0, vp, &wa);
     clip_to_emit(&b, v1, vp, &wb);
     clip_to_emit(&c, v2, vp, &wc);
+
+    /* tri_to_rdp's face cull: the cross product of the three 10.2 screen
+     * positions in command order, taken as the vmudh/vmadh lanes -- the
+     * 32-bit sum saturated to 16 bits and sign-extended (mfc2 of element
+     * 0) -- plus the gCullMagicNumbers word for the geometry-mode cull
+     * bits; the triangle is culled when the sum's sign bit is clear.
+     * Afterwards a zero cross product culls as degenerate regardless of
+     * mode. Both tests want the microcode's own screen positions, so they
+     * run here only when all three vertices took the RSP-exact transform
+     * (the out-of-domain fallback keeps its emitters' own handling). */
+    if (a.rsp_ok && b.rsp_ok && c.rsp_ok)
+    {
+        static const unsigned int magic[4] =
+        {
+            0xFFFF8000u,    /* cull neither: any value becomes negative */
+            0x80000000u,    /* cull front:   inverts the sign */
+            0x00000000u,    /* cull back:    no change */
+            0x00008000u     /* cull both:    any value becomes positive */
+        };
+        int32_t x0 = a.x >> 14, y0 = a.y >> 14;
+        int32_t x1 = b.x >> 14, y1 = b.y >> 14;
+        int32_t x2 = c.x >> 14, y2 = c.y >> 14;
+        int64_t cr = (int64_t)(x0 - x1) * (y0 - y2)
+                   + (int64_t)(x0 - x2) * (y1 - y0);
+        int32_t c6 = (cr > 32767) ? 32767 : (cr < -32768) ? -32768
+                   : (int32_t)cr;
+        if (!((magic[cull_mode & 3] + (unsigned int)c6) & 0x80000000u))
+            return 0;
+        if (c6 == 0)
+            return 0;
+    }
 
     n = try_rsp_tri_write(cmd, &a, &b, &c, v0, v1, v2,
                           textured, z_buffered, smooth, tile, max_level);

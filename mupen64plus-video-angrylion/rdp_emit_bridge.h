@@ -27,11 +27,14 @@ typedef struct BridgeVertex
     int16_t sv, tv;         /* the RSP's stored VTX_TC shorts, exact */
 } BridgeVertex;
 
+/* cull_mode: bit 0 = G_CULL_FRONT, bit 1 = G_CULL_BACK (the geometry-mode
+ * cull bits shifted down). */
 int bridge_add_triangle(int32_t *cmd,
                         const BridgeVertex *v0, const BridgeVertex *v1,
                         const BridgeVertex *v2,
                         const BridgeViewport *vp,
                         int textured, int z_buffered, int smooth,
+                        int cull_mode,
                         int tile, int max_level, int tex_w, int tex_h);
 
 #ifdef __cplusplus

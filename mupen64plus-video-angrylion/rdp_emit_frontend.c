@@ -670,8 +670,6 @@ void gsp_vertex(GSPState *s, const unsigned char *rdram, unsigned int addr,
 }
 
 #define GEOM_ZBUFFER    0x00000001u
-#define GEOM_CULL_FRONT 0x00000200u
-#define GEOM_CULL_BACK  0x00000400u
 
 void gsp_set_persp_norm(GSPState *s, unsigned int pn)
 {
@@ -982,41 +980,6 @@ static void gsp_fold_st(GSPState *s, GSPVertex *v)
     }
 }
 
-/* Backface cull and degenerate reject on the screen-space signed area of
- * one triangle, mirroring the test the microcode's triangle write applies
- * to every triangle individually -- the clipper's subdivision loop routes
- * each fan triangle through the full triangle write, so each sub-triangle
- * is culled on its own orientation (near-plane slivers whose projection
- * flips are dropped here, as the RSP drops them). Returns nonzero when
- * the triangle should be skipped. */
-static int gsp_cull_tri(const GSPState *s, const GSPVertex *v)
-{
-    int32_t ra = rsp_recip_div(v[0].cw);
-    int32_t rb = rsp_recip_div(v[1].cw);
-    int32_t rc = rsp_recip_div(v[2].cw);
-    int32_t sxa = (int32_t)((((int64_t)v[0].cx * ra) >> 15) * (int64_t)s->viewport.vscale_x >> 16);
-    int32_t sya = -(int32_t)((((int64_t)v[0].cy * ra) >> 15) * (int64_t)s->viewport.vscale_y >> 16);
-    int32_t sxb = (int32_t)((((int64_t)v[1].cx * rb) >> 15) * (int64_t)s->viewport.vscale_x >> 16);
-    int32_t syb = -(int32_t)((((int64_t)v[1].cy * rb) >> 15) * (int64_t)s->viewport.vscale_y >> 16);
-    int32_t sxc = (int32_t)((((int64_t)v[2].cx * rc) >> 15) * (int64_t)s->viewport.vscale_x >> 16);
-    int32_t syc = -(int32_t)((((int64_t)v[2].cy * rc) >> 15) * (int64_t)s->viewport.vscale_y >> 16);
-    int64_t cross = (int64_t)(sxb - sxa) * (syc - sya)
-                  - (int64_t)(sxc - sxa) * (syb - sya);
-    if (s->geometry_mode & (GEOM_CULL_FRONT | GEOM_CULL_BACK))
-    {
-        unsigned int cull = s->geometry_mode & (GEOM_CULL_FRONT | GEOM_CULL_BACK);
-        if (cull == (GEOM_CULL_FRONT | GEOM_CULL_BACK))
-            return 1;
-        if (cull == GEOM_CULL_BACK  && cross > 0)
-            return 1;
-        if (cull == GEOM_CULL_FRONT && cross < 0)
-            return 1;
-    }
-    if (cross == 0)
-        return 1;                           /* degenerate */
-    return 0;
-}
-
 int gsp_triangle(GSPState *s, int32_t *cmd, int i0, int i1, int i2,
                  int textured, int z_buffered)
 {
@@ -1095,8 +1058,6 @@ int gsp_triangle(GSPState *s, int32_t *cmd, int i0, int i1, int i2,
              * screen plane, and the microcode drops those. */
             if (tv[0].clip & tv[1].clip & tv[2].clip & GSP_CLIP_REJECT)
                 continue;
-            if (gsp_cull_tri(s, tv))
-                continue;
             gsp_fold_st(s, tv);
             v0.cx = tv[0].cx; v0.cy = tv[0].cy; v0.cz = tv[0].cz; v0.cw = tv[0].cw;
             v0.r = tv[0].r; v0.g = tv[0].g; v0.b = tv[0].b; v0.a = tv[0].a;
@@ -1113,6 +1074,7 @@ int gsp_triangle(GSPState *s, int32_t *cmd, int i0, int i1, int i2,
             nc = bridge_add_triangle(cmd + total, &v0, &v1, &v2, &s->viewport,
                                      textured, z_buffered,
                                      (s->geometry_mode & 0x00200000u) ? 1 : 0,
+                                     (int)((s->geometry_mode >> 9) & 3u),
                                      s->tex_tile, s->tex_level, s->tex_w, s->tex_h);
             if (nc > 0)
                 total += nc;
