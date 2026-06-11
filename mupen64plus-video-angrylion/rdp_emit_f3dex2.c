@@ -192,6 +192,15 @@ static unsigned int seg_addr(unsigned int w1)
     return seg_addr_rsp(w1) & 0x00ffffffu;
 }
 
+/* Exported segment resolution for the S2DEX background renderers: the
+ * uObjBg imagePtr is a segmented address (Zelda's pre-rendered rooms pass
+ * segment-relative pointers) which the microcode resolves through the same
+ * segment table before emitting it in SETTIMG. */
+unsigned int gsp_seg_addr_rsp(unsigned int w1)
+{
+    return seg_addr_rsp(w1);
+}
+
 /* true if [a, a+bytes) lies within RDRAM; used to reject mis-segmented
  * geometry pointers before the frontend dereferences them. */
 static int addr_in_range(unsigned int a, unsigned int bytes)
@@ -431,6 +440,7 @@ void f3dex2_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
         case 0xE1:                       /* G_RDPHALF_1: stage branch target */
             s_half1 = w1;
             break;
+
 
         case 0x03:                       /* G_CULLDL (gSPCullDisplayList) */
         {

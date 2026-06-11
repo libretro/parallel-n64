@@ -158,7 +158,7 @@ void s2dex_bg_1cyc(const unsigned char *rdram, unsigned int rdram_bytes,
     image_h    = bg_rd_u16(rdram, bg_addr + 0x0a);
     frame_y    = (int)(short)bg_rd_u16(rdram, bg_addr + 0x0c);
     frame_h    = bg_rd_u16(rdram, bg_addr + 0x0e);
-    image_ptr  = bg_rd_u32(rdram, bg_addr + 0x10) & 0x00ffffffu;
+    image_ptr  = gsp_seg_addr_rsp(bg_rd_u32(rdram, bg_addr + 0x10));
     image_load = bg_rd_u16(rdram, bg_addr + 0x14);
     image_fmt  = rdram[(bg_addr + 0x16) ^ 3];
     image_siz  = rdram[(bg_addr + 0x17) ^ 3];
@@ -661,7 +661,7 @@ void s2dex_bg_copy(const unsigned char *rdram, unsigned int rdram_bytes,
     image_h    = bg_rd_u16(rdram, bg_addr + 0x0a);
     frame_y    = (int)(short)bg_rd_u16(rdram, bg_addr + 0x0c);
     frame_h    = bg_rd_u16(rdram, bg_addr + 0x0e);
-    image_ptr  = bg_rd_u32(rdram, bg_addr + 0x10) & 0x00ffffffu;
+    image_ptr  = gsp_seg_addr_rsp(bg_rd_u32(rdram, bg_addr + 0x10));
     image_load = bg_rd_u16(rdram, bg_addr + 0x14);
     image_fmt  = rdram[(bg_addr + 0x16) ^ 3];
     image_siz  = rdram[(bg_addr + 0x17) ^ 3];

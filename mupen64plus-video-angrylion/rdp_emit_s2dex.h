@@ -11,6 +11,10 @@
  * G_OBJRM_BILERP, to reserve a filter guard row per strip). */
 void s2dex_set_obj_rendermode(unsigned int w1);
 
+/* provided by rdp_emit_f3dex2.c: full segment-table resolution (keeps the
+ * table base's upper bits, matching the words the microcode emits) */
+unsigned int gsp_seg_addr_rsp(unsigned int w1);
+
 /* Latched RDP scissor (G_SETSCISSOR passthrough; the microcode splits the
  * command into DMEM 0x204/0x208 and the BG path clips the frame to it). */
 void s2dex_set_scissor(unsigned int w0, unsigned int w1);
