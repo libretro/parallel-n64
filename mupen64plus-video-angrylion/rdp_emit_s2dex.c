@@ -744,15 +744,22 @@ void s2dex_bg_copy(const unsigned char *rdram, unsigned int rdram_bytes,
     cw[5] = (int32_t)(((image_pal & 0xfu) << 20) | S2DEX_SETTILE_W1);
     rdp_fifo_append(fifo, cw, 6);
 
-    /* per-strip constants (IMEM 0x324-0x37c) */
-    settimg_w0 = 0x3d100000u | ((image_fmt & 7u) << 21) |
-                 ((image_siz & 3u) << 19) | ((tmem_size_w * 2u - 1u) & 0xfffu);
+    /* per-strip constants (IMEM 0x324-0x37c). The strip loads always
+     * address the image as 16-bit RGBA texels regardless of the image's
+     * own format (the render tile set above carries the real fmt/siz);
+     * the drawn width therefore folds through the texel size into
+     * 16-bit units for the LOADTILE right edge. Verified against the
+     * RSP for the CI8 backdrops in Kirby 64 (settimg 3d100097 /
+     * lrs 0x257 for a 300px CI8 strip, not the image-sized 3d580097 /
+     * 0x4af). */
+    settimg_w0 = 0x3d100000u | ((tmem_size_w * 2u - 1u) & 0xfffu);
     if (image_load & 0x8000u)
     {
         /* LOADTILE: lrs is computed from the drawn width (IMEM 0x338-0x340,
-         * v10[4]*4-1), lrt comes from the struct */
+         * v10[4]*4-1) in 16-bit texel units, lrt comes from the struct */
         load_w0 = 0xf4000000u;
-        load_w1 = ((((draw_w_q - 1u) & 0xfffu) | 0x7000u) << 12)
+        load_w1 = (((((draw_w_q << image_siz >> 2) - 1u) & 0xfffu)
+                    | 0x7000u) << 12)
                 | tmem_load_th;
         adv     = (tmem_size << 16) | tmem_load_sh;
     }
