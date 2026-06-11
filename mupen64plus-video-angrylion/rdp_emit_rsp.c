@@ -627,11 +627,12 @@ void rsp_clip_lerp(const int32_t on_pos[4], const int32_t off_pos[4],
         rcp_lo = r & 0xffff;
         rcp_hi = (r >> 16) & 0xffff;
     }
-    /* vabs $v29, $v11, 2: +/- 2 by the sign of the int sum, 0 if it is 0
-     * (the 2.04H sum-zero bug). */
-    if (S16(v11[3]) > 0)      abs2 = 2;
-    else if (S16(v11[3]) < 0) abs2 = -2;
-    else                      abs2 = 0;
+    /* vabs $v29, (v11 | 1), 2: +/- 2 by the sign of the int sum. The
+     * vor with 1 (F3DEX2 2.05+/F3DZEX2) removes the sum-zero case the
+     * 2.04H build mishandled; a zero int sum now takes the positive
+     * side. */
+    if (S16(v11[3] | 1) > 0)  abs2 = 2;
+    else                      abs2 = -2;
     acc = p_udn(rcp_lo, abs2);
     rcp_lo = acc_clamp_low(acc);
     acc += p_udh(rcp_hi, abs2);
