@@ -176,10 +176,12 @@ static const uint16_t s2dex_siz_tab[4][2] = {
 
 /* per-format TMEM capacity constant at data 0x2a4 + fmt*2 (the rows budget
  * is (vrcp(line) * cap) >> 32 via the table reciprocal; 0x400 encodes the
- * 512 8-byte TMEM words, halved for 32-bit/YUV formats that load through
- * both TMEM banks). */
+ * 512 8-byte TMEM words). Only CI is halved -- the upper TMEM bank holds
+ * its palette. The shipped segment reads 0400 0400 0200 0400 0400; the
+ * earlier transcription also halved I, which split Kirby 64's I4 dialog
+ * panels into twice as many half-height strips as the RSP draws. */
 static const uint16_t s2dex_fmt_tab[5] = {
-    0x0400, 0x0400, 0x0200, 0x0400, 0x0200
+    0x0400, 0x0400, 0x0200, 0x0400, 0x0400
 };
 
 /* SETTILE second word template at data 0x264 (clamp both axes, mask 15). */
