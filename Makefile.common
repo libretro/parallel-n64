@@ -143,6 +143,8 @@ SOURCES_C += \
 	$(CORE_DIR)/src/main/device.c \
 	$(CORE_DIR)/src/main/profile.c \
 	$(CORE_DIR)/src/main/rom.c \
+	$(CORE_DIR)/src/main/rompatch_common.c \
+	$(CORE_DIR)/src/main/framerate_unlock.c \
 	$(CORE_DIR)/src/main/savestates.c \
 	$(CORE_DIR)/src/main/util.c \
 	$(CORE_DIR)/src/memory/m64p_memory.c \

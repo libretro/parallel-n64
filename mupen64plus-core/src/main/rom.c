@@ -36,6 +36,7 @@
 #include "rom.h"
 #include "main.h"
 #include "util.h"
+#include "framerate_unlock.h"
 
 #include "memory/memory.h"
 #include "osal/preproc.h"
@@ -64,6 +65,7 @@ unsigned alternate_vi_timing = 0;
  * NB: this is a cycles-per-scanline count, NOT a refresh rate in Hz. */
 int           g_count_per_scanline = DEFAULT_COUNT_PER_SCANLINE;
 int           g_force_parallel_sync = 0;
+int           g_framerate_unlock_hint = 0;
 
 extern bool frame_dupe;
 extern uint32_t OverrideSaveType;
@@ -188,6 +190,14 @@ m64p_error open_rom(const unsigned char* romimage, unsigned int size)
    swap_rom(g_rom, &imagetype, size);
 
    memcpy(&ROM_HEADER, g_rom, sizeof(m64p_rom_header));
+
+   /* Game-specific framerate unlock (Hint).  No-op unless the option is
+    * enabled AND the image is a recognised, byte-verified target; otherwise
+    * g_rom is left untouched.  Applied here because g_rom is already
+    * normalised to big-endian z64 and is the exact image the PI DMAs into
+    * RDRAM, so the patch reaches the executing code without a DMA hook. */
+   if (g_framerate_unlock_hint)
+      framerate_unlock_apply(g_rom, g_rom_size);
 
    /* Identity string for savestate validation: derived from the header
     * (CRC words, cartridge ID, region) instead of an MD5 of the whole

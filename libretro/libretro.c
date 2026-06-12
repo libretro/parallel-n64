@@ -263,6 +263,7 @@ static void n64DebugCallback(void* aContext, int aLevel, const char* aMessage)
 
 extern m64p_rom_header ROM_HEADER;
 extern int g_force_parallel_sync;
+extern int g_framerate_unlock_hint;
 
 static void core_settings_autoselect_gfx_plugin(void)
 {
@@ -1245,6 +1246,11 @@ static int parse_mouse_button(const char* value)
 void update_variables(bool startup)
 {
    struct retro_variable var;
+
+   var.key = CORE_NAME "-framerate-unlock-hint";
+   var.value = NULL;
+   if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+      g_framerate_unlock_hint = !strcmp(var.value, "enabled");
 
 #if defined(HAVE_PARALLEL)
    var.key = "parallel-n64-parallel-rdp-synchronous";

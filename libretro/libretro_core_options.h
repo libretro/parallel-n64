@@ -70,6 +70,20 @@ struct retro_core_option_v2_category option_cats_us[] = {
 
 struct retro_core_option_v2_definition option_defs_us[] = {
     {
+        CORE_NAME "-framerate-unlock-hint",
+        "Game-specific framerate unlock (Hint)",
+        NULL,
+        "Applies a verified framerate-unlock patch to recognised, byte-matching ROMs (currently Super Mario 64 USA v1.0, which runs at 60fps). This changes game timing and is not bit-exact emulation; unrecognised ROMs and ROM hacks are left untouched. Reload content to take effect.",
+        NULL,
+        NULL,
+        {
+            {"disabled", NULL},
+            {"enabled",  NULL},
+            { NULL, NULL },
+        },
+        "disabled"
+    },
+    {
         CORE_NAME "-cpucore",
         "CPU Core",
         NULL,
